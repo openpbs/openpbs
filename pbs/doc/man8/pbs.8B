@@ -1,0 +1,92 @@
+.\" Copyright (C) 1994-2016 Altair Engineering, Inc.
+.\" For more information, contact Altair at www.altair.com.
+.\"  
+.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" 
+.\" Open Source License Information:
+.\"  
+.\" PBS Pro is free software. You can redistribute it and/or modify it under the
+.\" terms of the GNU Affero General Public License as published by the Free 
+.\" Software Foundation, either version 3 of the License, or (at your option) any 
+.\" later version.
+.\"  
+.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+.\" PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+.\"  
+.\" You should have received a copy of the GNU Affero General Public License along 
+.\" with this program.  If not, see <http://www.gnu.org/licenses/>.
+.\"  
+.\" Commercial License Information: 
+.\" 
+.\" The PBS Pro software is licensed under the terms of the GNU Affero General 
+.\" Public License agreement ("AGPL"), except where a separate commercial license 
+.\" agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+.\"  
+.\" Altair’s dual-license business model allows companies, individuals, and 
+.\" organizations to create proprietary derivative works of PBS Pro and distribute 
+.\" them - whether embedded or bundled with other software - under a commercial 
+.\" license agreement.
+.\" 
+.\" Use of Altair’s trademarks, including but not limited to "PBS™", 
+.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+.\" trademark licensing policies.
+.\"
+.TH pbs 8B "8 October 2012" Local "PBS Professional"
+.SH NAME
+.B pbs 
+\- Start, stop, restart, or get the PIDs of PBS daemons
+
+
+.SH SYNOPSIS
+.B pbs 
+[start|stop|restart|status] 
+
+
+.SH DESCRIPTION
+The
+.B pbs
+command starts, stops or restarts all PBS daemons on the local machine.
+Does not affect other hosts.
+It also reports the PIDs of all daemons when given the 
+.I status
+argument.
+
+This command operates only on daemons that are marked as active
+in pbs.conf.  For example, if PBS_START_MOM is set to 0 in the local
+pbs.conf, this command will not operate on pbs_mom, and will not
+start, stop, or restart pbs_mom.
+
+This command is typically placed in /etc/init.d so that 
+PBS starts up automatically.  
+
+Root privilege is required to use this command.
+
+For information on PBS Professional, see the 
+.B pbs_professional.7B
+man page.
+
+.SH ARGUMENTS
+
+.IP "start" 10
+Each daemon on the local machine is started.  PBS reports the number
+and type of licenses available, as well as the name of the license
+server.  Any running jobs are killed.
+
+.IP "stop" 10
+Each daemon on the local machine is stopped, and its PID is reported.
+
+.IP "restart" 10
+All daemons on the local machine are stopped, then they are restarted.
+PBS reports the name of the license server and the 
+number and type of licenses available.
+
+.IP "status" 10
+PBS reports the PID of each daemon on the local machine.
+
+
+.SH SEE ALSO
+The
+.B PBS Professional Administrator's Guide
+.br
+pbs_mom(8B), pbs_server(8B), pbs_sched(8B)

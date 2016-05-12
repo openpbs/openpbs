@@ -1,0 +1,283 @@
+.\" Copyright (C) 1994-2016 Altair Engineering, Inc.
+.\" For more information, contact Altair at www.altair.com.
+.\"  
+.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" 
+.\" Open Source License Information:
+.\"  
+.\" PBS Pro is free software. You can redistribute it and/or modify it under the
+.\" terms of the GNU Affero General Public License as published by the Free 
+.\" Software Foundation, either version 3 of the License, or (at your option) any 
+.\" later version.
+.\"  
+.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+.\" PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+.\"  
+.\" You should have received a copy of the GNU Affero General Public License along 
+.\" with this program.  If not, see <http://www.gnu.org/licenses/>.
+.\"  
+.\" Commercial License Information: 
+.\" 
+.\" The PBS Pro software is licensed under the terms of the GNU Affero General 
+.\" Public License agreement ("AGPL"), except where a separate commercial license 
+.\" agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+.\"  
+.\" Altair’s dual-license business model allows companies, individuals, and 
+.\" organizations to create proprietary derivative works of PBS Pro and distribute 
+.\" them - whether embedded or bundled with other software - under a commercial 
+.\" license agreement.
+.\" 
+.\" Use of Altair’s trademarks, including but not limited to "PBS™", 
+.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+.\" trademark licensing policies.
+.\"
+.TH pbsnodes 8B "1 February 2016" Local "PBS Professional"
+.SH NAME
+
+.B pbsnodes 
+\- query PBS host or vnode status or mark hosts free or offline
+.SH SYNOPSIS
+
+.B pbsnodes 
+[-o | -r] [-s server] [-C comment] hostname [hostname ...]
+
+.B pbsnodes 
+[-l] [-s server] 
+
+.B pbsnodes 
+-v vnode [vnode ...] [-s server]
+
+.B pbsnodes 
+-a[v] [-S[j][L]] [-F json|dsv] [-D delim] [-s server]
+
+.B pbsnodes 
+[-H] [-S[j][L]] [-F json|dsv] [-D delim] host [host ...]
+
+.B pbsnodes 
+--version
+
+.SH DESCRIPTION
+The 
+.B pbsnodes
+command is used to query the status of hosts, to mark hosts FREE or
+OFFLINE, to edit a host's 
+.I comment 
+attribute, or to output vnode information.  The 
+.B pbsnodes 
+command obtains host information by sending a request to the PBS server.
+.LP
+To print the status of the specified host or hosts, run 
+.B pbsnodes
+with no options (except the 
+.I -s
+option) and with a list of hosts.
+.LP
+To print the command usage, run 
+.B pbsnodes 
+with no options and without a list of hosts.
+
+To remove a node from the scheduling pool, mark it OFFLINE.  If it is marked
+DOWN, when the server next queries the MoM, and can connect, the node will be
+marked FREE.
+
+To offline a single vnode in a multi-vnoded system, use: 
+.RS 5
+qmgr: set node <vnode name> state=offline
+.RE
+
+.SH OUTPUT
+The order in which hosts or vnodes are listed in the output of the
+.B pbsnodes 
+command is undefined.  Do not rely on output being ordered.
+If you print attributes, 
+.B pbsnodes
+prints out only those attributes which are not at default values.
+
+.SH PERMISSIONS
+PBS Manager or Operator privilege is required to execute 
+.B pbsnodes 
+with the
+.B \-o 
+or
+.B \-r
+options.
+Operator or manager privilege is required to view custom resources
+which have been created to be invisible to users, and to see some output
+such as PBS version.
+
+.SH OPTIONS
+.IP "(no options)" 15
+If neither options nor a host list is given, the 
+.B pbsnodes
+command prints usage syntax.
+.IP "-a" 15
+Lists all hosts and all their attributes (available and used.)
+
+When listing a host with multiple vnodes:
+
+.RS 
+.IP "" 5
+The output for the jobs attribute lists all the jobs on all the vnodes
+on that host.
+Jobs that run on more than one vnode will appear once for each vnode they
+run on.
+
+For consumable resources, the output for each resource is the sum of that
+resource across all vnodes on that host.
+
+For all other resources, e.g. string and boolean, if the value of that
+resource is the same on all vnodes on that host, the value is returned.
+Otherwise the output is the literal string "<various>".
+.LP
+.RE
+
+.IP "-C <comment>" 15
+Sets the 
+.I comment
+attribute for the specified host(s) to the value of <comment>.
+Comments containing spaces must be quoted.  The comment string is limited
+to 80 characters.  Usage:
+.RS 20
+pbsnodes -C <comment> host1 [host2 ...]
+.RE
+.IP ""
+To set the comment for a vnode:
+.RS 20
+qmgr -c "s n <vnode name> comment=<comment>"
+.RE
+.LP
+
+.IP "-D <delimiter>" 15
+Specifies delimiter for dsv format output.  Default delimiter is a 
+vertical bar ("|").
+
+.IP "-F <json|dsv>"
+Specifies output format.  Format can be json or dsv.
+
+.IP "-H host [host ...]"
+Prints all non-default-valued attributes for specified hosts and all
+vnodes on specified hosts.
+
+.IP "-j"
+Displays the following job-related headers for specified vnodes:
+.nf
+Header\ \ \ \ \ Width\ \ Description
+------------------------------------
+vnode       15    Vnode name
+state       15    Vnode state
+njobs        6    Number of jobs on vnode
+run          5    Number of running jobs at vnode
+susp         6    Number of suspended jobs at vnode
+mem f/t     12    Vnode memory free/total
+ncpus f/t    7    Number of CPUs at vnode free/total
+nmics f/t    7    Number of MICs at vnode free/total
+ngpus f/t    7    Number of GPUs at vnode free/total
+jobs        any   List of job IDs on vnode
+.fi
+
+.IP "-L"
+Displays output with no restrictions on column width.
+
+.IP "-l" 15
+Lists all hosts marked as DOWN or OFFLINE. Each such host's state and
+comment attribute (if set) is listed.  If a host also has state 
+STATE-UNKNOWN, that will be listed. For hosts with multiple vnodes, 
+only hosts where all vnodes are marked as DOWN or OFFLINE are listed.
+
+.IP "-o host [host ...]" 15
+Marks listed hosts as OFFLINE even if currently in use.  This is
+different from being marked DOWN.  A host that is marked OFFLINE will
+continue to execute the jobs already on it, but will be removed from
+the scheduling pool (no more jobs will be scheduled on it.)  
+
+For hosts with multiple vnodes, pbsnodes operates on a host and all of
+its vnodes, where the hostname is resources_available.host, which is
+the name of the natural vnode.  To offline a single vnode in a
+multi-vnoded system, use: 
+.RS
+.IP " " 5
+qmgr -c "set node <vnode name> state=offline"
+.LP
+
+Requires PBS Manager or Operator privilege.
+.RE
+
+.IP "-r host [host ...]" 15
+Clears OFFLINE from listed hosts.
+
+.IP "-S"
+Displays the following vnode information:
+.nf
+Header\ \ \ \ \ Width\ \ Description
+------------------------------------
+name        15    Vnode name
+state       15    Vnode state
+OS           8    Value of OS custom resource, if any
+hardware     8    Value of hardware custom resource, if any
+host        15    Hostname
+queue       10    Value of vnode's queue attribute
+ncpus        7    Number of CPUs at vnode
+nmics        7    Number of MICs at vnode
+mem         12    Vnode memory
+ngpus        7    Number of GPUs at vnode
+comment     any   Vnode comment
+.fi
+
+Note that 
+.I nmics, ngpus, 
+and 
+.I OS
+are custom resources that must be created by the administrator
+if you want their values displayed here.
+
+.IP "-s server" 15
+Specifies the PBS 
+.I server 
+to which to connect.
+
+.IP "-v <vnode list>" 15
+Lists all non-default-valued attributes for each specified vnode.
+.br
+With no arguments, prints one entry for each vnode in the PBS complex.
+.br
+With one or more vnodes specified, prints on entry for each specified
+vnode.
+
+.IP "--version" 15
+The 
+.B pbsnodes
+command returns its PBS version information and exits.
+This option can only be used alone.
+
+
+.SH OPERANDS
+.IP "server" 15
+Specifies the server to which to connect. 
+Default: default server.
+
+.IP "host [host ...]" 15
+Specifies the host(s) whose status will be returned.
+Format: hostname [hostname ...]
+
+.IP "vnode [vnode ...]" 15
+Specifies the vnode(s) whose status will be returned.
+Format: vnodename [vnodename ...]
+
+.SH EXIT STATUS
+.IP "Zero upon success."
+
+.IP "Greater than zero, if:" 15
+incorrect operands are given,
+.br
+.B pbsnodes
+cannot connect to the server, 
+.br
+there is an error querying the server for the nodes.
+
+.SH SEE ALSO
+The
+.B PBS Professional Administrator's Guide,
+.br
+pbs_server(8B) and qmgr(8B)
+

@@ -1,0 +1,163 @@
+#!/bin/bash
+# coding: utf-8
+
+# Copyright (C) 1994-2016 Altair Engineering, Inc.
+# For more information, contact Altair at www.altair.com.
+# 
+# This file is part of the PBS Professional ("PBS Pro") software.
+#
+# Open Source License Information:
+# 
+# PBS Pro is free software. You can redistribute it and/or modify it under the
+# terms of the GNU Affero General Public License as published by the Free 
+# Software Foundation, either version 3 of the License, or (at your option) any 
+# later version.
+# 
+# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+# PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+# 
+# You should have received a copy of the GNU Affero General Public License along 
+# with this program.  If not, see <http://www.gnu.org/licenses/>.
+# 
+# Commercial License Information: 
+#
+# The PBS Pro software is licensed under the terms of the GNU Affero General 
+# Public License agreement ("AGPL"), except where a separate commercial license 
+# agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+# 
+# Altair’s dual-license business model allows companies, individuals, and 
+# organizations to create proprietary derivative works of PBS Pro and distribute 
+# them - whether embedded or bundled with other software - under a commercial 
+# license agreement.
+#
+# Use of Altair’s trademarks, including but not limited to "PBS™", 
+# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+# trademark licensing policies.
+
+prog="`basename $0`"
+
+usage() {
+	echo -en "${prog}\n"
+	echo -en "\tParses the PTL test output file <ptl_test_log> and reports\n"
+	echo -en "\tvarious counts like total, passed, failed, error-ed,\n"
+	echo -en "\tskipped and timedout test cases from <ptl_test_log> file.\n\n"
+	echo -en "Usage:\n\t${prog} <ptl_test_log> [OPTIONS]\n\n"
+	echo -en "OPTIONS:\n"
+	echo -en "\t-t | --total\t- Print total number of test cases\n"
+	echo -en "\t-p | --passes\t- Print passed test cases\n"
+	echo -en "\t-f | --fails\t- Print failed test cases\n"
+	echo -en "\t-e | --errors\t- Print error-ed test cases\n"
+	echo -en "\t-s | --skipped\t- Print skipped test cases\n"
+	echo -en "\t-T | --timedout\t- Print timedout test cases\n"
+	echo -en "\t-r | --runtime\t- Print total runtime of tests\n"
+	echo -en "\t-S | --summary\t- Print summary of tests\n"
+	echo -en "\t-v | --verbose\t- Print verbose output, can be supplied multiple times to increase verbosity\n\n"
+}
+
+# args: <is_asked> <count> <type>
+print_info() {
+	if [ ${1} -eq 1 ]
+	then
+		[ ${_space} -eq 1 ] && echo " " || _space=1
+		if [ ${verbose} -ge 1 ]
+		then
+			[ ${2} -le 0 ] && echo "${3^} test(s): ${2}" && return
+			[ ${verbose} -eq 1 -o ${3} == "skipped" ] && echo "${2} test(s) ${3}:" && \
+				sed -n "/^${3}: \(.*\)$/p" ${ptl_test_log} | awk '{ $1 = "\t"; print $0 }' && return
+			if [ ${verbose} -gt 1 ]
+			then
+				lines=`sed -n "/^${3}: \(.*\)$/p" ${ptl_test_log} | awk '{ $1 = ""; gsub(/ /, "@", $0); print $0 }'`
+				for line in ${lines}
+				do
+					line=${3^^}":"`echo ${line} | tr '@' ' '`
+					echo ${line}
+					sed -n "/${line}/,\${N;/^\n$/{P;q};P;D}" ${ptl_test_log} | \
+						awk 'NR > 3 { sub(/.*Traceback/, "Traceback", $0); print "  "$0}'
+				done
+			fi
+		else
+			echo ${2}
+		fi
+	fi
+}
+
+if [ $# -le 1 ]
+then
+	usage
+	exit 1
+fi
+
+ptl_test_log=$1
+
+if [ ! -r "${ptl_test_log}" ]
+then
+	echo "${prog}: ${ptl_test_log} doesn't exist or does't have read permission!"
+	exit 1
+fi
+
+total=0
+passes=0
+fails=0
+errors=0
+skipped=0
+timedout=0
+summary=0
+verbose=0
+runtime=0
+_space=0
+
+shift
+while [ "$1" != "" ]; do
+	case $1 in
+		-p | --passes) passes=1; shift;;
+		-f | --fails) fails=1; shift;;
+		-e | --errors) errors=1; shift;;
+		-s | --skipped) skipped=1; shift ;;
+		-T | --timedout) timedout=1; shift;;
+		-v | --verbose) verbose=$((${verbose} + 1)); shift ;;
+		-t | --total) total=1; shift;;
+		-S | --summary) summary=1; shift;;
+		-r | --runtime) runtime=1; shift;;
+		-h | --help ) usage; exit 0;;
+		* ) echo -en "Unknown Option: $1\n\n"; usage; exit 1;
+	esac
+done
+
+summary_line=`sed -n '/^run:.*: [0-9]*$/p' ${ptl_test_log}`
+read total_ct pass_ct fail_ct err_ct skip_ct timedout_ct <<< \
+	`echo ${summary_line} | awk -F '[,:]' \
+	'ORS=" " { for (i=2; i<=NF; i=i+2) { gsub(/^[ \t]+/, "", $i); print $i } }'`
+
+if [ ${total} -eq 1 ]
+then
+	[ ${_space} -eq 1 ] && echo " " || _space=1
+	[ ${verbose} -ge 1 ] && echo "Total test(s): ${total_ct}" || echo ${total_ct}
+fi
+
+if [ ${passes} -eq 1 ]
+then
+	[ ${_space} -eq 1 ] && echo " " || _space=1
+	[ ${verbose} -ge 1 ] && echo "Passed test(s): ${pass_ct}" || echo ${pass_ct}
+fi
+
+print_info ${fails} ${fail_ct} "failed"
+print_info ${errors} ${err_ct} "error"
+print_info ${skipped} ${skip_ct} "skipped"
+print_info ${timedout} ${timedout_ct} "timedout"
+
+if [ ${summary} -eq 1 ]
+then
+	[ ${_space} -eq 1 ] && echo " " || _space=1
+	[ ${verbose} -ge 1 ] && echo -en "Summary: \n\t "
+	echo ${summary_line}
+fi
+
+if [ ${runtime} -eq 1 ]
+then
+	test_run_output=`sed -n '/^Tests run in [\.:0-9]*$/p' ${ptl_test_log} | awk -F. '{print $1}'`
+	[ ${_space} -eq 1 ] && echo " " || _space=1
+	[ ${verbose} -ge 1 ] && echo ${test_run_output} || echo ${test_run_output} | awk '{ print $NF }'
+fi
+
+exit 0

@@ -1,0 +1,279 @@
+/*
+ * Copyright (C) 1994-2016 Altair Engineering, Inc.
+ * For more information, contact Altair at www.altair.com.
+ *  
+ * This file is part of the PBS Professional ("PBS Pro") software.
+ * 
+ * Open Source License Information:
+ *  
+ * PBS Pro is free software. You can redistribute it and/or modify it under the
+ * terms of the GNU Affero General Public License as published by the Free 
+ * Software Foundation, either version 3 of the License, or (at your option) any 
+ * later version.
+ *  
+ * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ * PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+ *  
+ * You should have received a copy of the GNU Affero General Public License along 
+ * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  
+ * Commercial License Information: 
+ * 
+ * The PBS Pro software is licensed under the terms of the GNU Affero General 
+ * Public License agreement ("AGPL"), except where a separate commercial license 
+ * agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+ *  
+ * Altair’s dual-license business model allows companies, individuals, and 
+ * organizations to create proprietary derivative works of PBS Pro and distribute 
+ * them - whether embedded or bundled with other software - under a commercial 
+ * license agreement.
+ * 
+ * Use of Altair’s trademarks, including but not limited to "PBS™", 
+ * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+ * trademark licensing policies.
+ *
+ */
+#ifndef	_SORT_H
+#define	_SORT_H
+#ifdef	__cplusplus
+extern "C" {
+#endif
+
+/*
+ *	compare two new numerical resource numbers
+ *
+ *	returns -1 if r1 < r2
+ *		0  if r1 == r2
+ *		1  if r1 > r2
+ */
+int cmpres(sch_resource_t r1, sch_resource_t r2);
+
+/*
+ * cmp_nspec - sort nspec by sequence number
+ *
+ */
+int cmp_nspec(const void *v1, const void *v2);
+
+
+/*
+ *	cmp_placement_sets - sort placement sets by
+ *			total cpus
+ *			total memory
+ *			free cpus
+ *			free memory
+ */
+int cmp_placement_sets(const void *v1, const void *v2);
+
+/*
+ *	cmp_low_load - sort nodes ascending by load ave
+ */
+int cmp_low_load(const void *v1, const void *v2);
+
+
+/*
+ *
+ *      cmp_sch_prio_dsc - sort jobs decending by sch_priority
+ *
+ */
+int cmp_sch_prio_dsc(const void *j1, const void *j2);
+
+/*
+ * cmp_fairshare - compare based on extract_fairshare()
+ * note: extract_fairshare() returns 1 or -1 , there is no equal
+ *
+ */
+int cmp_fairshare(const void *j1, const void *j2);
+
+
+/*
+ *
+ *      cmp_queue_prio_dsc - compare function used by qsort to sort queues
+ *                           by decending priority
+ *
+ */
+int cmp_queue_prio_dsc(const void *q1, const void *q2);
+
+/*
+ *
+ *      cmp_queue_prio_asc - compare function used by qsort to sort queues
+ *                           by ascending priority
+ *
+ */
+int cmp_queue_prio_asc(const void *q1, const void *q2);
+
+/*
+ *
+ *      cmp_node_prio_dsc - sort nodes in decending priority
+ *
+ */
+int cmp_node_prio_dsc(const void *n1, const void *n2);
+
+
+/*
+ *      cmp_job_walltime_asc - sort jobs by requested walltime
+ *                                      in ascending order.
+ */
+int cmp_job_walltime_asc(const void *j1, const void *j2);
+
+/*
+ *      cmp_job_walltime_dsc - sort jobs by requested walltime
+ *                                      in ascending order.
+ */
+int cmp_job_walltime_dsc(const void *j1, const void *j2);
+
+/*
+ *
+ *      cmp_time_left - sort jobs by time remaining to run - decending
+ *
+ */
+int cmp_time_left(const void *j1, const void *j2);
+
+/*
+ *
+ *      cmp_job_cput_asc - compare function used by qsort to sort the jobs by
+ *                         requested cput time in ascending order.
+ *
+ */
+int cmp_job_cput_asc(const void *j1, const void *j2);
+
+/*
+ *
+ *      cmp_job_cput_dsc - compare function used by qsort to sort the jobs by
+ *                         requested cput time in descending order.
+ *
+ */
+int cmp_job_cput_dsc(const void *j1, const void *j2);
+
+/*
+ *
+ *      cmp_job_mem_asc -  compare function used by qsort to sort the jobs by
+ *                         requested mem time in ascending order.
+ *
+ */
+int cmp_job_mem_asc(const void *j1, const void *j2);
+
+/*
+ *
+ *      cmp_job_mem_dsc -  compare function used by qsort to sort the jobs by
+ *                         requested mem time in descending order.
+ *
+ */
+int cmp_job_mem_dsc(const void *j1, const void *j2);
+
+/*
+ *      cmp_fair_share - compare function for the fair share algorithm
+ */
+int cmp_fair_share(const void *j1, const void *j2);
+
+/*
+ *      cmp_preempt_priority_dsc - used to sort jobs in decending preemption
+ *                                 priority
+ */
+int cmp_preempt_priority_dsc(const void *j1, const void *j2);
+
+/*
+ *      cmp_preempt_priority_asc - used to sort jobs in decending preemption
+ *                                 priority
+ */
+int cmp_preempt_priority_asc(const void *j1, const void *j2);
+
+/*
+ *      cmp_preempt_stime_asc - used to soft jobs in ascending preemption
+ *                              start time
+ */
+int cmp_preempt_stime_asc(const void *v1, const void *v2);
+
+/*
+ *      multi_sort - a multi keyed sortint compare function
+ */
+int multi_sort(resource_resv *r1, resource_resv *r2);
+
+/*
+ *	cmp_job_sort_formula - used to sort jobs in descending order of their evaluated formula value
+ */
+int cmp_job_sort_formula(const void *j1, const void *j2);
+
+/*
+ *
+ *      cmp_sort - entrypoint into job sort used by qsort
+ */
+int cmp_sort(const void *v1, const void *v2);
+
+/*
+ *      find_resresv_amount - find resource amount for jobs + special cases
+ */
+sch_resource_t find_resresv_amount(resource_resv *resresv, char *res, resdef *def);
+
+/*
+ *      find_node_amount - find the resource amount for nodes + special cases
+ */
+sch_resource_t find_node_amount(node_info *ninfo, char *res, resdef *def, enum resource_fields res_type);
+
+/* return resource values based on res_type for node partition */
+sch_resource_t find_nodepart_amount(node_partition *np, char *res, resdef *def, enum resource_fields res_type);
+
+/*
+ * Compares either two nodes or node_partitions based on a resource,
+ * Ascending/Descending, and what part of the resource to use (total, unused, etc)
+ */
+int node_sort_cmp(const void *vp1, const void *vp2, struct sort_info *si, enum sort_obj_type obj_type);
+
+/*
+ *      resresv_sort_cmp - compares 2 jobs on the current resresv sort
+ *                      used with qsort (qsort calls multi_sort())
+ */
+int resresv_sort_cmp(resource_resv *r1, resource_resv *r2, struct sort_info *si);
+
+/*
+ *      multi_node_sort - a multi keyed sorting compare function for nodes
+ */
+int multi_node_sort(const void *n1, const void *n2);
+
+
+/* qsort() compare function for multi-resource node partition sorting */
+int multi_nodepart_sort(const void *n1, const void *n2);
+
+
+
+/*
+ *	cmp_events - sort jobs/resvs into a timeline of the next even to
+ *		happen: running jobs ending, advanced reservations starting
+ *		or ending
+ */
+int cmp_events(const void *v1, const void *v2);
+
+/* sort nodes by resources_available.host */
+int cmp_node_host(const void *v1, const void *v2);
+
+
+/* sorting routine to be used with PROVPOLICY_AVOID only */
+int cmp_aoe(const void *v1, const void *v2);
+
+/*
+ *      cmp_job_preemption_time_asc- used to sort jobs in ascending preempted
+ *                                 time.
+ */
+int cmp_job_preemption_time_asc(const void *j1, const void *j2);
+
+/*
+ *  cmp_preemption - This function is use to sort jobs according to their
+ *  preemption priority
+ */
+int cmp_preemption(resource_resv *r1, resource_resv *r2);
+
+/*
+ * cmp_starving_jobs - compare based on eligible_time
+ */
+int cmp_starving_jobs(const void *j1, const void *j2);
+
+/*
+ * sort_jobs - This function sorts all jobs according to their preemption
+ *             priority, preempted time and fairshare.
+ */
+void sort_jobs(status *policy, server_info *sinfo);
+
+#ifdef	__cplusplus
+}
+#endif
+#endif	/* _SORT_H */

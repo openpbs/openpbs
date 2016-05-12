@@ -1,0 +1,325 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# Copyright (C) 1994-2016 Altair Engineering, Inc.
+# For more information, contact Altair at www.altair.com.
+# 
+# This file is part of the PBS Professional ("PBS Pro") software.
+#
+# Open Source License Information:
+# 
+# PBS Pro is free software. You can redistribute it and/or modify it under the
+# terms of the GNU Affero General Public License as published by the Free 
+# Software Foundation, either version 3 of the License, or (at your option) any 
+# later version.
+# 
+# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+# PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+# 
+# You should have received a copy of the GNU Affero General Public License along 
+# with this program.  If not, see <http://www.gnu.org/licenses/>.
+# 
+# Commercial License Information: 
+#
+# The PBS Pro software is licensed under the terms of the GNU Affero General 
+# Public License agreement ("AGPL"), except where a separate commercial license 
+# agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+# 
+# Altair’s dual-license business model allows companies, individuals, and 
+# organizations to create proprietary derivative works of PBS Pro and distribute 
+# them - whether embedded or bundled with other software - under a commercial 
+# license agreement.
+#
+# Use of Altair’s trademarks, including but not limited to "PBS™", 
+# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+# trademark licensing policies.
+
+import getopt
+import sys
+import os
+import traceback
+import logging
+import logging.config
+import time
+import errno
+import ptl
+from ptl.utils.pbs_logutils import PBSLogUtils, PBSLogAnalyzer
+from ptl.utils.pbs_cliutils import CliUtils
+from ptl.utils.plugins.ptl_test_db import PTLTestDb
+from ptl.lib.pbs_testlib import PtlConfig
+
+
+# trap SIGINT and SIGPIPE
+def trap_exceptions(etype, value, tb):
+    sys.excepthook = sys.__excepthook__
+    if issubclass(etype, KeyboardInterrupt):
+        pass
+    elif issubclass(etype, IOError) and value.errno == errno.EPIPE:
+        pass
+    else:
+        sys.__excepthook__(etype, value, tb)
+sys.excepthook = trap_exceptions
+
+
+def usage():
+    msg = []
+    msg += ['Usage: ' + os.path.basename(sys.argv[0]).split('.pyc')[0]]
+    msg += [' [OPTION]\n\n']
+    msg += ['  Analyze PBS logs and return various throughput metrics\n\n']
+    msg += ['-a <acctlog>: path to accounting log file/dir to analyze\n']
+    msg += ['-b: process log from corresponding begin/start time\n']
+    msg += ['    format: %m/%d/%Y %H:%M:%S\n']
+    msg += ['-c: output cycle summary\n']
+    msg += ['-d <diag>: path to a pbs_diag directory\n']
+    msg += ['-e: process log up to corresponding end time\n']
+    msg += ['    format: %m/%d/%Y %H:%M:%S\n']
+    msg += ['-f <log>: generic log file for analysis\n']
+    msg += ['-h: display usage information\n']
+    msg += ['-t <hostname>: hostname. Defaults to FQDN local hostname\n']
+    msg += ['-l <schedlog>: path to scheduler log file/dir to analyze\n']
+    msg += ['-m <momlog>: path to mom log file/dir to analyze\n']
+    msg += ['-s <serverlog>: path to server log file/dir to analyze\n']
+    msg += ['-S: show per job scheduling details, time to '
+            'run/discard/calendar\n']
+    msg += ['-U: show utilization. Requires paths to jobs and nodes info\n']
+    msg += ['--estimated-info: show job start time estimate info. '
+            'Requires scheduler log(s)\n']
+    msg += ['--estimated-info-only: write only  estimated info to the DB.'
+            ' Requires --db-out\n']
+    msg += ['--last-week: analyze logs of the last 7 days\n']
+    msg += ['--last-month: analyze logs of the last month\n']
+    msg += ['--re-interval=<regexp>: report time interval between '
+            'occurrences of regexp\n']
+    msg += ['--re-frequency=<seconds>: report frequency of occurrences of '
+            'the re-interval\n']
+    msg += ['                          expression for every <seconds>\n']
+    msg += ['--silent: do not display progress bar. Defaults to False\n']
+    msg += ['--log-conf=<file>: logging config file\n']
+    msg += ['--nodes-file=<path>: path to file with output of pbsnodes -av\n']
+    msg += ['--jobs-file=<path>: path to file with output of qstat -f\n']
+    msg += ['--db-out=<file>: send results to db file\n']
+    msg += ['--db-type=<type>: database type\n']
+    msg += ['--db-access=<path>: Path to a file that defines db options '
+            '(PostreSQL only)\n']
+    msg += ['--version: print version number and exit\n']
+
+    print "".join(msg)
+
+
+if __name__ == '__main__':
+    if len(sys.argv) < 2:
+        usage()
+        sys.exit(0)
+
+    diag = None
+    schedulerlog = None
+    serverlog = None
+    momlog = None
+    acctlog = None
+    genericlog = None
+    hostname = None
+    sj = False
+    compact = False
+    begin = None
+    end = None
+    cyclesummary = False
+    nodesfile = None
+    jobsfile = None
+    utilization = None
+    silent = False
+    logconf = None
+    estimated_info = False
+    estimated_info_only = False
+    dbout = None
+    dbtype = None
+    dbaccess = None
+    re_interval = None
+    re_frequency = None
+    re_conditional = None
+    json_on = False
+    level = logging.FATAL
+    logutils = PBSLogUtils()
+    dbutils = PTLTestDb()
+
+    try:
+        shortopt = "a:b:d:e:f:t:l:L:s:m:cShU"
+        longopt = ["nodes-file=", "jobs-file=", "version", "log-conf=",
+                   "estimated-info", "db-out=", "json", "re-interval=",
+                   "re-frequency=", "last-week", "last-month",
+                   "re-conditional=", "estimated-info-only", "silent",
+                   "db-type=", "db-access="]
+        opts, args = getopt.getopt(sys.argv[1:], shortopt, longopt)
+    except:
+        usage()
+        sys.exit(1)
+
+    for o, val in opts:
+        if o == '-a':
+            acctlog = CliUtils.expand_abs_path(val)
+        elif o == '-b':
+            try:
+                begin = logutils.convert_date_time(val)
+            except:
+                print('Error converting time, expected format '
+                      '%m/%d/%Y %H:%M:%S')
+                sys.exit(1)
+        elif o == '-e':
+            try:
+                end = logutils.convert_date_time(val)
+            except:
+                print('Error converting time, expected format '
+                      '%m/%d/%Y %H:%M:%S')
+                print traceback.print_exc()
+                sys.exit(1)
+        elif o == '-d':
+            diag = CliUtils.expand_abs_path(val)
+        elif o == '-f':
+            genericlog = CliUtils.expand_abs_path(val)
+        elif o == '-t':
+            hostname = val
+        elif o == '-l':
+            schedulerlog = CliUtils.expand_abs_path(val)
+        elif o == '-s':
+            serverlog = CliUtils.expand_abs_path(val)
+        elif o == '-m':
+            momlog = CliUtils.expand_abs_path(val)
+        elif o == '-c':
+            cyclesummary = True
+        elif o == '-C':
+            compact = True
+        elif o == '-L':
+            level = CliUtils.get_logging_level(val)
+        elif o == '-S':
+            sj = True
+        elif o == '-U':
+            utilization = True
+        elif o == '--db-out':
+            dbout = CliUtils.expand_abs_path(val)
+        elif o == '--db-type':
+            dbtype = val
+        elif o == '--db-access':
+            dbaccess = CliUtils.expand_abs_path(val)
+        elif o == '--estimated-info':
+            estimated_info = True
+        elif o == '--estimated-info-only':
+            estimated_info_only = True
+        elif o == '--json':
+            json_on = True
+        elif o == '--last-week':
+            s = time.localtime(time.time() - (7 * 24 * 3600))
+            begin = int(time.mktime(time.strptime(time.strftime("%m/%d/%Y", s),
+                                                  "%m/%d/%Y")))
+            end = int(time.time())
+        elif o == '--last-month':
+            s = time.localtime(time.time() - (30 * 24 * 3600))
+            begin = int(time.mktime(time.strptime(time.strftime("%m/%d/%Y", s),
+                                                  "%m/%d/%Y")))
+            end = int(time.time())
+        elif o == '--log-conf':
+            logconf = CliUtils.expand_abs_path(val)
+        elif o == '--nodes-file':
+            nodesfile = CliUtils.expand_abs_path(val)
+        elif o == '--jobs-file':
+            jobsfile = CliUtils.expand_abs_path(val)
+        elif o == '--re-conditional':
+            re_conditional = eval(val, {}, {})
+        elif o == '--re-interval':
+            re_interval = val
+        elif o == '--silent':
+            silent = True
+        elif o == '--re-frequency':
+            re_frequency = int(val)
+        elif o == '--version':
+            print ptl.__version__
+            sys.exit(0)
+        elif o == '-h':
+            usage()
+            sys.exit(0)
+        else:
+            sys.stderr.write("Unrecognized option " + o)
+            usage()
+            sys.exit(1)
+
+    if logconf:
+        logging.config.fileConfig(logconf)
+    else:
+        logging.basicConfig(level=level)
+
+    PtlConfig()
+
+    if diag:
+        if nodesfile is None:
+            if os.path.isfile(os.path.join(diag, 'pbsnodes_va.out')):
+                nodesfile = os.path.join(diag, 'pbsnodes_va.out')
+        if jobsfile is None:
+            if os.path.isfile(os.path.join(diag, 'qstat_f.out')):
+                jobsfile = os.path.join(diag, 'qstat_f.out')
+
+    if ((re_interval is not None or re_conditional is not None) and
+            genericlog is None):
+        if schedulerlog is not None:
+            genericlog = schedulerlog
+            schedulerlog = None
+        elif serverlog is not None:
+            genericlog = serverlog
+            serverlog = None
+        elif momlog is not None:
+            genericlog = momlog
+            momlog = None
+        elif acctlog is not None:
+            genericlog = acctlog
+            acctlog = None
+
+    show_progress = not silent
+    pla = PBSLogAnalyzer(schedulerlog, serverlog, momlog, acctlog,
+                         genericlog, hostname, show_progress)
+
+    if utilization:
+        if acctlog is None:
+            logging.error("Accounting log is required to compute utilization")
+            sys.exit(1)
+        pla.accounting.enable_utilization_parsing(hostname, nodesfile,
+                                                  jobsfile)
+
+    if re_interval is not None:
+        pla.set_custom_match(re_interval, re_frequency)
+
+    if re_conditional is not None:
+        pla.set_conditional_match(re_conditional)
+
+    if estimated_info or estimated_info_only:
+        if schedulerlog is None:
+            logging.error("Scheduler log is required for estimated start time "
+                          "analysis")
+            sys.exit(1)
+        pla.scheduler.estimated_parsing_enabled = True
+        if estimated_info_only:
+            pla.scheduler.parse_estimated_only = True
+
+    info = pla.analyze_logs(start=begin, end=end, showjob=sj)
+
+    if genericlog:
+        dbutils.process_output(pla.info)
+
+    # Drift analysis and custom regex matching require additional
+    # post-processing and can't currently be passed through to JSON
+    if json_on:
+        if cyclesummary:
+            info['scheduler'] = info['scheduler']['summary']
+        print CliUtils.__json__(info)
+        sys.exit(0)
+
+    if acctlog:
+        dbutils.process_output(info['accounting'], dbout, dbtype, dbaccess,
+                               name=acctlog, logtype='accounting')
+    if schedulerlog:
+        dbutils.process_output(info['scheduler'], dbout, dbtype, dbaccess,
+                               name=schedulerlog, logtype='scheduler',
+                               summary=cyclesummary)
+    if serverlog:
+        dbutils.process_output(info['server'], dbout, dbtype, dbaccess,
+                               name=serverlog, logtype='server')
+    if momlog:
+        dbutils.process_output(info['mom'], dbout, dbtype, dbaccess,
+                               name=momlog, logtype='mom')

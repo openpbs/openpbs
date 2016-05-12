@@ -1,0 +1,197 @@
+.\" Copyright (C) 1994-2016 Altair Engineering, Inc.
+.\" For more information, contact Altair at www.altair.com.
+.\"  
+.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" 
+.\" Open Source License Information:
+.\"  
+.\" PBS Pro is free software. You can redistribute it and/or modify it under the
+.\" terms of the GNU Affero General Public License as published by the Free 
+.\" Software Foundation, either version 3 of the License, or (at your option) any 
+.\" later version.
+.\"  
+.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+.\" PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+.\"  
+.\" You should have received a copy of the GNU Affero General Public License along 
+.\" with this program.  If not, see <http://www.gnu.org/licenses/>.
+.\"  
+.\" Commercial License Information: 
+.\" 
+.\" The PBS Pro software is licensed under the terms of the GNU Affero General 
+.\" Public License agreement ("AGPL"), except where a separate commercial license 
+.\" agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+.\"  
+.\" Altair’s dual-license business model allows companies, individuals, and 
+.\" organizations to create proprietary derivative works of PBS Pro and distribute 
+.\" them - whether embedded or bundled with other software - under a commercial 
+.\" license agreement.
+.\" 
+.\" Use of Altair’s trademarks, including but not limited to "PBS™", 
+.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+.\" trademark licensing policies.
+.\"
+.TH pbs_manager 3B "13 Sept 2011" Local "PBS Professional"
+.SH NAME
+.B pbs_manager 
+\- modifies a PBS batch object
+.SH SYNOPSIS
+#include <pbs_error.h>
+.br
+#include <pbs_ifl.h>
+.sp
+.B int pbs_manager(\^int\ connect, int\ command, int\ obj_type, char\ *obj_name, 
+.B struct\ attropl\ *attrib, char\ *extend\^)
+
+.SH DESCRIPTION
+Issue a batch request to perform administration functions at a server.
+With this request, server objects such as queues can
+be created and deleted, and have their attributes set and unset.
+.LP
+A
+.I "Manage"
+batch request is generated and sent to the server over the connection
+specified by
+.I connect 
+which is the return value of \f3pbs_connect\f1().
+This request requires full batch administrator privilege.
+.LP
+The parameter,
+.I command ,
+specifies the operation to be performed.  See pbs_ifl.h:
+.br
+
+.IP " " 4
+.B    MGR_CMD_CREATE \ \  
+creates the object
+.br
+.B    MGR_CMD_DELETE \ \ 
+deletes the object
+.br
+.B    MGR_CMD_SET \ \ \ \ \  
+sets the value
+.br
+.B    MGR_CMD_UNSET\ \ \ \ 
+unsets the value
+.br
+.B    MGR_CMD_IMPORT \ \ 
+imports the hook
+.br
+.B    MGR_CMD_EXPORT \ \ 
+exports the hook
+.LP
+
+
+The parameter,
+.I obj_type ,
+declares the type of object upon which the command operates.  See pbs_ifl.h:
+.br
+.IP " " 4
+.B MGR_OBJ_SERVER  \ \ 
+Server object
+.br
+.B MGR_OBJ_QUEUE   \ \ \ 
+Queue object
+.br
+.B MGR_OBJ_NODE   \ \ \ \ 
+Node object
+.br
+.B MGR_OBJ_HOOK   \ \ \ \ 
+Hook object
+.LP
+The parameter,
+.I obj_name ,
+is the name of the specific object.
+.LP
+The parameter,
+.I attrib ,
+is a pointer to an
+.I attropl
+structure which is defined in pbs_ifl.h as:
+.sp
+.Ty
+.nf
+    struct attropl {
+        char   *name;
+        char   *resource;
+        char   *value;
+        enum batch_op op;
+        struct attropl *next;
+    };
+.fi
+.sp
+The
+.I attrib
+list is terminated by the first entry where
+.I next
+is a null pointer.
+.LP
+The
+.I name
+member points to a string which is the name of the attribute.
+.LP
+If the attribute is one which contains a set of resources, the
+specific resource is specified in the structure member
+.I resource .
+Otherwise, the member resource is pointer to a null string.
+.LP
+The
+.I value
+member points to a string which is the new value of the attribute.
+For parameterized limit attributes, this string contains
+all parameters for the attribute.
+.LP
+The 
+.I op
+member defines the manner in which the new value is assigned to the
+attribute.
+The operators are:
+.B "enum batch_op { ..., SET, UNSET, INCR, DECR };"
+.br
+.LP
+
+For MGR_CMD_IMPORT, specify attropl "name" as "content-type", 
+"content-encoding", and "input-file" along with the corresponding 
+"value" and an "op" of SET.
+
+For MGR_CMD_EXPORT, specify attropl "name" as "content-type", 
+"content-encoding", and "output-file" along with the corresponding 
+"value" and an "op" of SET.
+
+The parameter
+.I extend
+is reserved for implementation-defined extensions.
+.LP
+Privilege required for functions depends on whether those functions
+are used with hooks.
+.br
+When not used with hooks:
+.IP
+Functions MGR_CMD_CREATE and MGR_CMD_DELETE require PBS Manager privilege.
+.br
+Functions MGR_CMD_SET and MGR_CMD_UNSET require PBS Manager or Operator privilege.
+.LP
+When used with hooks:
+.IP
+All commands require root privilege on the server host.
+.LP
+Functions MGR_CMD_IMPORT, MGR_CMD_EXPORT, and MGR_OBJ_HOOK are used only with hooks, 
+and therefore require root privilege on the server host.
+
+
+.SH DIAGNOSTICS
+When the batch request generated by \f3pbs_manager\f1()
+function has been completed successfully by a batch server, the routine will
+return 0 (zero).
+Otherwise, a non zero error is returned.  The error number is also set
+in pbs_errno.
+
+.SH SEE ALSO
+The 
+.B PBS Professional Programmer's Guide,
+.br
+qmgr(1B), 
+pbs_connect(3B)
+
+

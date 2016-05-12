@@ -1,0 +1,207 @@
+.\" Copyright (C) 1994-2016 Altair Engineering, Inc.
+.\" For more information, contact Altair at www.altair.com.
+.\"  
+.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" 
+.\" Open Source License Information:
+.\"  
+.\" PBS Pro is free software. You can redistribute it and/or modify it under the
+.\" terms of the GNU Affero General Public License as published by the Free 
+.\" Software Foundation, either version 3 of the License, or (at your option) any 
+.\" later version.
+.\"  
+.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+.\" PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+.\"  
+.\" You should have received a copy of the GNU Affero General Public License along 
+.\" with this program.  If not, see <http://www.gnu.org/licenses/>.
+.\"  
+.\" Commercial License Information: 
+.\" 
+.\" The PBS Pro software is licensed under the terms of the GNU Affero General 
+.\" Public License agreement ("AGPL"), except where a separate commercial license 
+.\" agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+.\"  
+.\" Altair’s dual-license business model allows companies, individuals, and 
+.\" organizations to create proprietary derivative works of PBS Pro and distribute 
+.\" them - whether embedded or bundled with other software - under a commercial 
+.\" license agreement.
+.\" 
+.\" Use of Altair’s trademarks, including but not limited to "PBS™", 
+.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+.\" trademark licensing policies.
+.\"
+.TH qhold 1B "27 April 2012" Local "PBS Professional"
+.SH NAME
+.B qhold 
+\- hold PBS batch jobs
+
+
+.SH SYNOPSIS
+.B qhold
+[\-h hold_list]
+job_identifier_list
+.br
+.B qhold
+--version
+
+
+.SH DESCRIPTION
+The 
+.B qhold 
+command requests that a server place one or more holds on
+a job.  A job that has a hold is not eligible for execution.
+Supported holds: 
+.I USER ,
+.I OTHER
+(also known as operator),
+.I SYSTEM, 
+and 
+.I bad password.
+.LP
+A user may place a
+.I USER 
+hold upon any job the user owns.
+An operator, who is a user with operator privilege, may place either a
+.I USER 
+or an
+.I OTHER
+hold on any job.  The batch administrator may place any hold on any job.
+.LP
+The 
+.I p
+option can only be set by root or admin user via 
+.B qhold -h p.
+The owning user can release with 
+.B qrls -h p
+or query by 
+.B qselect -h p.
+.LP
+If no 
+.I "\-h"
+option is given, the
+USER 
+hold will be applied to the jobs described by the 
+.I job_identifier_list
+operand list.
+.LP
+If the job identified by
+.I job_identifier_list
+is in the queued, held, or waiting
+states, then all that occurs is that the hold type is added to the job.
+The job is then placed into the held
+state if it resides in an execution queue.
+.LP
+If the job is 
+running, then the result of the 
+.B qhold 
+command depends upon whether the job can be checkpointed.
+The job can be checkpointed if the OS supports checkpointing, or 
+if the application being checkpointed supports checkpointing.  See
+the 
+.B PBS Professional Administrator's Guide.
+If the job can be checkpointed, then:
+.RS 5
+The job is checkpointed and its execution is interrupted.
+
+The resources assigned to the job are released.
+
+The job is placed in the held state in the execution queue.
+
+The job's Hold_Types attribute is set to 
+.I u
+for User Hold.
+.RE
+
+A job's dependency places a system hold on the job.  When the
+dependency is satisfied, the system hold is removed.  This system hold
+is the same as the one set by an administrator.  If the administrator
+sets a system hold on a job with a dependency, then when the
+dependency is satisfied, the job becomes eligible for execution.
+
+If checkpoint / restart is not supported, 
+.B qhold 
+simply sets the
+job's Hold_Types attribute to 
+.I u.  
+The job continues to execute.
+.LP
+
+If the job is in the process of provisioning, it is not held.
+
+The 
+.B qhold 
+command can be used on job arrays, but not on subjobs or ranges of 
+subjobs.
+
+
+.SH OPTIONS
+.IP "\-h hold_list" 15
+Defines the types of holds to be placed on the job.
+.IP
+The
+.I hold_list
+argument is a string consisting of one or more of the letters "\f5u\fP",
+"\f5o\fP", or "\f5s\f1" in any combination or
+the character "n" or "p".
+The hold type associated with each letter is:
+.RS
+.IP "u \- " 4
+.I USER
+.IP "o \- " 4
+.I OTHER
+.IP "s \- " 4
+.I SYSTEM
+.IP "n \- " 4
+.I None
+.IP "p \- " 4
+.I Bad password
+.RE
+.LP
+.IP "--version" 15
+The 
+.B qhold
+command returns its PBS version information and exits.
+This option can only be used alone.
+
+.LP
+
+.SH OPERANDS
+The 
+.B qhold 
+command accepts a
+.I job_identifier_list
+which is one or more space-separated jobids in the form:
+.RS 4
+.I sequence_number[.server_name][@server]
+.RE
+Note that some shells require that you enclose a job array identifier in
+double quotes.
+
+.DE
+.LP
+
+
+.SH STANDARD ERROR
+The 
+.B qhold 
+command will write a diagnostic message to standard error for each
+error occurrence.
+
+
+.SH EXIT STATUS
+Zero upon successful processing of all the operands.
+.LP
+Greater than zero if the 
+.B qhold 
+command fails to process any operand.
+
+
+.SH SEE ALSO
+The
+.B PBS Professional User's Guide,
+the
+.B PBS Professional Administrator's Guide,
+qrls(1B), qalter(1B), qsub(1B), pbs_alterjob(3B), pbs_holdjob(3B),
+pbs_rlsjob(3B), pbs_job_attributes(7B), pbs_resources(7B)

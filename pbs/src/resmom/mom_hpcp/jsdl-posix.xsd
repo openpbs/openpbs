@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+The GGF takes no position regarding the validity or scope of any intellectual property or other rights that might be claimed to pertain to the implementation or use of the technology described in this document or the extent to which any license under such rights might or might not be available; neither does it represent that it has made any effort to identify any such rights. Copies of claims of rights made available for publication and any assurances of licenses to be made available, or the result of an attempt made to obtain a general license or permission for the use of such proprietary rights by implementers or users of this specification can be obtained from the GGF Secretariat.
+
+The GGF invites any interested party to bring to its attention any copyrights, patents or patent applications, or other proprietary rights which may cover technology that may be required to practice this recommendation. Please address the information to the GGF Executive Director.
+
+Copyright (C) Global Grid Forum (2003-2005). All Rights Reserved.
+
+This document and translations of it may be copied and furnished to others, and derivative works that comment on or otherwise explain it or assist in its implementation may be prepared, copied, published and distributed, in whole or in part, without restriction of any kind, provided that the above copyright notice and this paragraph are included on all such copies and derivative works. However, this document itself may not be modified in any way, such as by removing the copyright notice or references to the GGF or other organizations, except as needed for the purpose of developing Grid Recommendations in which case the procedures for copyrights defined in the GGF Document process must be followed, or as required to translate it into languages other than English.
+
+The limited permissions granted above are perpetual and will not be revoked by the GGF or its successors or assigns.
+This document and the information contained herein is provided on an "AS IS" basis and THE GLOBAL GRID FORUM DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF THE INFORMATION HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE."
+
+-->
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://schemas.ggf.org/jsdl/2005/11/jsdl-posix" xmlns:jsdl-posix="http://schemas.ggf.org/jsdl/2005/11/jsdl-posix" targetNamespace="http://schemas.ggf.org/jsdl/2005/11/jsdl-posix" elementFormDefault="qualified">
+	<!--========================================================================-->
+	<xsd:complexType name="Environment_Type">
+		<xsd:simpleContent>
+			<xsd:extension base="xsd:string">
+				<xsd:attribute name="name" type="xsd:NCName" use="required"/>
+				<xsd:attribute name="filesystemName" type="xsd:NCName" use="optional"/>
+				<xsd:anyAttribute namespace="##other" processContents="lax"/>
+			</xsd:extension>
+		</xsd:simpleContent>
+	</xsd:complexType>
+	<!--========================================================================-->
+	<xsd:complexType name="Argument_Type">
+		<xsd:simpleContent>
+			<xsd:extension base="xsd:normalizedString">
+				<xsd:attribute name="filesystemName" type="xsd:NCName" use="optional"/>
+				<xsd:anyAttribute namespace="##other" processContents="lax"/>
+			</xsd:extension>
+		</xsd:simpleContent>
+	</xsd:complexType>
+	<!--========================================================================-->
+	<xsd:complexType name="FileName_Type">
+		<xsd:simpleContent>
+			<xsd:extension base="xsd:string">
+				<xsd:attribute name="filesystemName" type="xsd:NCName" use="optional"/>
+				<xsd:anyAttribute namespace="##other" processContents="lax"/>
+			</xsd:extension>
+		</xsd:simpleContent>
+	</xsd:complexType>
+	<!--========================================================================-->
+	<xsd:complexType name="DirectoryName_Type">
+		<xsd:simpleContent>
+			<xsd:extension base="xsd:string">
+				<xsd:attribute name="filesystemName" type="xsd:NCName" use="optional"/>
+				<xsd:anyAttribute namespace="##other" processContents="lax"/>
+			</xsd:extension>
+		</xsd:simpleContent>
+	</xsd:complexType>
+	<!--========================================================================-->
+	<xsd:complexType name="Limits_Type">
+		<xsd:simpleContent>
+			<xsd:extension base="xsd:nonNegativeInteger">
+				<xsd:anyAttribute namespace="##other" processContents="lax"/>
+			</xsd:extension>
+		</xsd:simpleContent>
+	</xsd:complexType>
+	<!--========================================================================-->
+	<xsd:complexType name="UserName_Type">
+		<xsd:simpleContent>
+			<xsd:extension base="xsd:string">
+				<xsd:anyAttribute namespace="##other" processContents="lax"/>
+			</xsd:extension>
+		</xsd:simpleContent>
+	</xsd:complexType>
+	<!--========================================================================-->
+	<xsd:complexType name="GroupName_Type">
+		<xsd:simpleContent>
+			<xsd:extension base="xsd:string">
+				<xsd:anyAttribute namespace="##other" processContents="lax"/>
+			</xsd:extension>
+		</xsd:simpleContent>
+	</xsd:complexType>
+	<!--========================================================================-->
+	<xsd:complexType name="POSIXApplication_Type">
+		<xsd:sequence>
+			<xsd:element ref="jsdl-posix:Executable" minOccurs="0"/>
+			<xsd:element ref="jsdl-posix:Argument" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element ref="jsdl-posix:Input" minOccurs="0"/>
+			<xsd:element ref="jsdl-posix:Output" minOccurs="0"/>
+			<xsd:element ref="jsdl-posix:Error" minOccurs="0"/>
+			<xsd:element ref="jsdl-posix:WorkingDirectory" minOccurs="0"/>
+			<xsd:element ref="jsdl-posix:Environment" minOccurs="0" maxOccurs="unbounded"/>
+			<xsd:element ref="jsdl-posix:WallTimeLimit" minOccurs="0"/>
+			<xsd:element ref="jsdl-posix:FileSizeLimit" minOccurs="0"/>
+			<xsd:element ref="jsdl-posix:CoreDumpLimit" minOccurs="0"/>
+			<xsd:element ref="jsdl-posix:DataSegmentLimit" minOccurs="0"/>
+			<xsd:element ref="jsdl-posix:LockedMemoryLimit" minOccurs="0"/>
+			<xsd:element ref="jsdl-posix:MemoryLimit" minOccurs="0"/>
+			<xsd:element ref="jsdl-posix:OpenDescriptorsLimit" minOccurs="0"/>
+			<xsd:element ref="jsdl-posix:PipeSizeLimit" minOccurs="0"/>
+			<xsd:element ref="jsdl-posix:StackSizeLimit" minOccurs="0"/>
+			<xsd:element ref="jsdl-posix:CPUTimeLimit" minOccurs="0"/>
+			<xsd:element ref="jsdl-posix:ProcessCountLimit" minOccurs="0"/>
+			<xsd:element ref="jsdl-posix:VirtualMemoryLimit" minOccurs="0"/>
+			<xsd:element ref="jsdl-posix:ThreadCountLimit" minOccurs="0"/>
+			<xsd:element ref="jsdl-posix:UserName" minOccurs="0"/>
+			<xsd:element ref="jsdl-posix:GroupName" minOccurs="0"/>
+		</xsd:sequence>
+		<xsd:attribute name="name" type="xsd:NCName" use="optional"/>
+		<xsd:anyAttribute namespace="##other" processContents="lax"/>
+	</xsd:complexType>
+	<!--========================================================================-->
+	<xsd:element name="POSIXApplication" type="POSIXApplication_Type"/>
+	<xsd:element name="Executable" type="jsdl-posix:FileName_Type"/>
+	<xsd:element name="Argument" type="jsdl-posix:Argument_Type"/>
+	<xsd:element name="Input" type="jsdl-posix:FileName_Type"/>
+	<xsd:element name="Output" type="jsdl-posix:FileName_Type"/>
+	<xsd:element name="Error" type="jsdl-posix:FileName_Type"/>
+	<xsd:element name="WorkingDirectory" type="jsdl-posix:DirectoryName_Type"/>
+	<xsd:element name="Environment" type="jsdl-posix:Environment_Type"/>
+	<xsd:element name="WallTimeLimit" type="jsdl-posix:Limits_Type"/>
+	<xsd:element name="FileSizeLimit" type="jsdl-posix:Limits_Type"/>
+	<xsd:element name="CoreDumpLimit" type="jsdl-posix:Limits_Type"/>
+	<xsd:element name="DataSegmentLimit" type="jsdl-posix:Limits_Type"/>
+	<xsd:element name="LockedMemoryLimit" type="jsdl-posix:Limits_Type"/>
+	<xsd:element name="MemoryLimit" type="jsdl-posix:Limits_Type"/>
+	<xsd:element name="OpenDescriptorsLimit" type="jsdl-posix:Limits_Type"/>
+	<xsd:element name="PipeSizeLimit" type="jsdl-posix:Limits_Type"/>
+	<xsd:element name="StackSizeLimit" type="jsdl-posix:Limits_Type"/>
+	<xsd:element name="CPUTimeLimit" type="jsdl-posix:Limits_Type"/>
+	<xsd:element name="ProcessCountLimit" type="jsdl-posix:Limits_Type"/>
+	<xsd:element name="VirtualMemoryLimit" type="jsdl-posix:Limits_Type"/>
+	<xsd:element name="ThreadCountLimit" type="jsdl-posix:Limits_Type"/>
+	<xsd:element name="UserName" type="jsdl-posix:UserName_Type"/>
+	<xsd:element name="GroupName" type="jsdl-posix:GroupName_Type"/>
+</xsd:schema>

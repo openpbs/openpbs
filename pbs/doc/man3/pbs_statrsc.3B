@@ -1,0 +1,163 @@
+.\" Copyright (C) 1994-2016 Altair Engineering, Inc.
+.\" For more information, contact Altair at www.altair.com.
+.\"  
+.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" 
+.\" Open Source License Information:
+.\"  
+.\" PBS Pro is free software. You can redistribute it and/or modify it under the
+.\" terms of the GNU Affero General Public License as published by the Free 
+.\" Software Foundation, either version 3 of the License, or (at your option) any 
+.\" later version.
+.\"  
+.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+.\" PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+.\"  
+.\" You should have received a copy of the GNU Affero General Public License along 
+.\" with this program.  If not, see <http://www.gnu.org/licenses/>.
+.\"  
+.\" Commercial License Information: 
+.\" 
+.\" The PBS Pro software is licensed under the terms of the GNU Affero General 
+.\" Public License agreement ("AGPL"), except where a separate commercial license 
+.\" agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+.\"  
+.\" Altair’s dual-license business model allows companies, individuals, and 
+.\" organizations to create proprietary derivative works of PBS Pro and distribute 
+.\" them - whether embedded or bundled with other software - under a commercial 
+.\" license agreement.
+.\" 
+.\" Use of Altair’s trademarks, including but not limited to "PBS™", 
+.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+.\" trademark licensing policies.
+.\"
+.TH pbs_statrsc 3B "3 March 2015" Local "PBS Professional"
+.SH NAME
+pbs_statrsc - obtain status of PBS resources
+.SH SYNOPSIS
+#include <pbs_error.h>
+.br
+#include <pbs_ifl.h>
+.sp
+.B struct batch_status *pbs_statrsc(\^int\ connect, char\ *name, 
+.B struct\ attrl\ *attrib, char *extend)
+.sp
+.B void pbs_statfree(\^struct batch_status *psj\^)
+.sp
+.SH DESCRIPTION
+Issue a batch request to query and return the status of a specified 
+resource, or a set of resources at a server.
+.LP
+A
+.I "Status Resource"
+batch request is generated and sent to the server over the connection
+specified by
+.I connect.  
+.LP
+.SH PARAMETERS
+The 
+.I connect
+parameter is the file descriptor which is the connection to a PBS
+server, and is the return value of 
+.B pbs_connect().
+
+The 
+.I name
+parameter is the name of the resource to query.  To query all resources
+at the server, pass NULL as the name.
+.LP
+The 
+.I attrib 
+parameter is a pointer to a list of attributes to query.
+If 
+.I attrib
+is specified, then only the attributes in the list are returned by the server.
+Otherwise, all the attributes of a resource are returned.
+The 
+.I attrib
+parameter is a pointer to an
+.I attrl 
+structure which is defined in pbs_ifl.h as:
+.sp
+.Ty
+.nf
+    struct attrl {
+        struct attrl *next;
+        char         *name;
+        char         *resource; 
+        char         *value;
+    };
+.fi
+.sp
+.RS 4
+The 
+.I next
+member is a pointer to the next entry in the list.
+The
+.I attrib
+list is terminated by the first entry where
+.I next
+is a null pointer.  
+
+The
+.I name
+member is a pointer to an attribute name.  Attribute names are
+listed in pbs_ifl.h.
+
+The 
+.I resource
+member is unused.
+
+The
+.I value
+member should always be a pointer to a null string.
+.LP
+.RE
+The 
+.I extend
+parameter is unused.
+
+.SH RETURN VALUES and ERRORS
+For a single resource, if the resource can be queried, the return value is a pointer to a
+.I batch_status 
+structure containing the status of the specified resource.
+If the resource cannot be queried, a NULL pointer is returned, and 
+.I pbs_errno 
+is set to an error number.
+
+When querying a server, the connection to the server is already
+established by
+.B pbs_connect().
+If there are resources at the server, the return value of the query is a
+pointer to a
+.I batch_status 
+structure containing the status of all the queryable resources at the
+server.  
+
+In the unlikely event that the server does not contain any 
+queryable resources because the issuer is unprivileged and all resources
+have the i (invisible) flag set, a NULL pointer ia returned and 
+.I pbs_errno 
+is set to PBSE_NONE (0).
+
+The batch_status structure is defined in pbs_ifl.h as
+.sp
+.Ty
+.nf
+    struct batch_status {
+        struct batch_status *next;
+        char                *name;
+        struct attrl        *attribs;
+        char                *text;
+    }
+.fi
+.LP
+
+It is up the user to free the structure when no longer needed, by calling
+\f3pbs_statfree\f1().
+.LP
+
+
+.SH SEE ALSO
+qstat(1B) and pbs_connect(3B)

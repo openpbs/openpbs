@@ -1,0 +1,195 @@
+#!/usr/bin/env ksh93
+#  Copyright (C) 1994-2016 Altair Engineering, Inc.
+#  For more information, contact Altair at www.altair.com.
+#   
+#  This file is part of the PBS Professional ("PBS Pro") software.
+#  
+#  Open Source License Information:
+#   
+#  PBS Pro is free software. You can redistribute it and/or modify it under the
+#  terms of the GNU Affero General Public License as published by the Free 
+#  Software Foundation, either version 3 of the License, or (at your option) any 
+#  later version.
+#   
+#  PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+#  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+#  PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+#   
+#  You should have received a copy of the GNU Affero General Public License along 
+#  with this program.  If not, see <http://www.gnu.org/licenses/>.
+#   
+#  Commercial License Information: 
+#  
+#  The PBS Pro software is licensed under the terms of the GNU Affero General 
+#  Public License agreement ("AGPL"), except where a separate commercial license 
+#  agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+#   
+#  Altair’s dual-license business model allows companies, individuals, and 
+#  organizations to create proprietary derivative works of PBS Pro and distribute 
+#  them - whether embedded or bundled with other software - under a commercial 
+#  license agreement.
+#  
+#  Use of Altair’s trademarks, including but not limited to "PBS™", 
+#  "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+#  trademark licensing policies.
+#
+
+if [ $# -eq 1 ] && [ $1 = "--version" ]; then
+   echo pbs_version = @PBS_VERSION@
+   exit 0
+fi
+
+# We need to get name of the actual binary, and not some link
+# that resulted from wrapping
+if [ -h $0 ] ; then
+   realpath=`ls -l $0 | awk -F "->" '{print $2}'| tr -d ' '`
+   name=`basename $realpath`
+else
+   name=`basename $0`
+fi
+
+. ${PBS_CONF_FILE:-/etc/pbs.conf}
+PBS_LIB_PATH="${PBS_EXEC}/lib"
+if [ ! -d ${PBS_LIB_PATH} -a -d ${PBS_EXEC}/lib64 ] ; then
+	PBS_LIB_PATH=${PBS_EXEC}/lib64
+fi
+
+PBS_TMPDIR="${PBS_TMPDIR:-${TMPDIR:-/var/tmp}}"
+
+if [ -h ${PBS_LIB_PATH}/MPI/${name}.link ] ; then
+   ibmpoe=`ls -l ${PBS_LIB_PATH}/MPI/${name}.link | \
+		awk -F "->" '{print $2}'| tr -d ' '`
+   if [ ! -x "$ibmpoe" ] ; then
+	echo "poe=$ibmpoe is not executable!"
+	exit 127
+
+   fi
+else
+   echo "No poe link found under ${PBS_LIB_PATH}/MPI/$name.link !" 
+   echo "Please run pbsrun_wrap to create the link"
+   exit 127
+fi
+
+# let's source the initialization script
+if [ -s ${PBS_LIB_PATH}/MPI/${name}.init ] ; then
+   . ${PBS_LIB_PATH}/MPI/${name}.init
+else
+   echo "No ${PBS_LIB_PATH}/MPI/{$name}.init file exists!"
+   exit 127
+fi
+
+if [ "${PBS_NODEFILE:-XX}" = "XX" ]; then
+   echo "$name: Warning, not running under PBS"
+
+   if [ ${strict_pbs:=0} -eq 1 ] ; then
+         echo "$name: exiting since strict_pbs is enabled; execute only in PBS"
+         exit 1
+   fi
+   exec $ibmpoe "$@"
+fi
+
+# invoke man page
+if [ $# -eq 1 -a "XX$1" = "XX-h" ]; then
+	exec $ibmpoe -h
+elif [ $# -eq 0 ]; then
+	echo "$name: Error, interactive program name entry not supported under PBS"
+	exit 1
+fi
+
+# count number of entries in nodefile
+(( pbsnp=`wc -l < $PBS_NODEFILE` ))
+
+# make "list" an array
+set -A list
+while [ $# -gt 0 ]; do
+	if [ "XX$1" = "XX-procs" ]; then
+		shift
+		export MP_PROCS="$1"
+	elif [ "XX$1" = "XX-hostfile" -o "XX$1" = "XX-hfile" ]; then
+		echo "$name: Warning, $1 value replaced by PBS"
+		shift
+	elif [ "XX$1" = "XX-euilib" ]; then
+		shift
+		export MP_EUILIB="$1"
+	elif [ "XX$1" = "XX-msg_api" ]; then
+		shift
+		export MP_MSG_API="$1"
+	elif [ "XX$1" = "XX-devtype" ]; then
+		shift
+		export MP_DEVTYPE="$1"
+	elif [ "XX$1" = "XX-instances" ]; then
+		shift
+		echo "$name: Warning, -instances cmd line option removed by PBS"
+	elif [ "XX$1" = "XX-cmdfile" ]; then
+		shift
+		export MP_CMDFILE="$1"
+	else
+#		Append an element to list
+		list[${#list[@]}]="$1"
+	fi
+	shift
+done
+
+# PBS is HPS enabled, only MPI and LAPI are supported
+if [ -n "$PBS_HPS_JOBKEY" ]; then
+	if [ "XX$MP_MSG_API" = "XX" ]; then
+		export MP_MSG_API="MPI"
+	elif [ "XX$MP_MSG_API" != "XXMPI" -a "XX$MP_MSG_API" != "XXLAPI" \
+			-a "XX$MP_EUILIB" = "XXus" ]; then
+		export MP_EUILIB=ip
+	fi
+fi
+
+if [ -n "$MP_HOSTFILE" ]; then
+	echo "$name: Warning, MP_HOSTFILE value replaced by PBS"
+fi
+
+export MP_HOSTFILE=$PBS_NODEFILE
+if [ -n "$MP_PROCS" ]; then	# user has set a value for procs
+	if [ $MP_PROCS -lt $pbsnp -a "$MP_EUILIB" = "us" ]; then
+		echo "$name: Warning, usermode disabled due to MP_PROCS setting"
+		export MP_EUILIB="ip"
+		test "$MP_RESD" = "$PBS_MP_RESD" && unset MP_RESD
+		test "$MP_EUIDEVICE" = "$PBS_MP_EUIDEVICE" && unset MP_EUIDEVICE
+		test "$MP_DEVTYPE" = "$PBS_MP_DEVTYPE" && unset MP_DEVTYPE
+	fi
+else
+	export MP_PROCS="$pbsnp"	# set procs to PBS value
+fi
+
+# Duplicate the value of MP_EUILIB in an internal PBS variable so
+# we can depend on it being available to pbs_poerun.  Some versions
+# of poe seem to set MP_EUILIB="ip" if it has no other value set.
+export PBS_EUILIB="$MP_EUILIB"
+
+# Don't change MP_RESD if we are doing "mixed mode" i.e. IB is requested but
+# PBS doesn't support it.  Otherwise, LoadLeveler shouldn't allocate nodes.
+if [ "$MP_DEVTYPE" != "ib" -o -n "$PBS_AIXIB_JOBKEY" ]; then
+	export MP_RESD=no
+	unset MP_INSTANCES
+fi
+
+# If user mode is set and PBS will provide it, unset MP_EUILIB so poe
+# doesn't contact LoadLeveler to do switch setup.
+if [ "$MP_EUILIB" = "us" ]; then
+	if [ "$MP_DEVTYPE" = "ib" -a -n "$PBS_AIXIB_JOBKEY" ]; then
+		unset MP_EUILIB
+		export NRT_WINDOW_COUNT=$PBS_AIXIB_NETWORKS
+	elif [ "$MP_DEVTYPE" != "ib" -a -n "$PBS_HPS_JOBKEY" ]; then
+		unset MP_EUILIB
+	fi
+fi
+
+if [ "$MP_CMDFILE" ]; then
+	if [ -s "$MP_CMDFILE" ]; then
+		cmd="${PBS_TMPDIR}/PBS_cmd$$"
+		sed "s;^;${PBS_LIB_PATH}/MPI/pbs_poerun ;" "$MP_CMDFILE" > $cmd
+		export MP_CMDFILE="$cmd"
+		$ibmpoe "${list[@]}"
+		ret=$?
+		/bin/rm -f $cmd
+		exit $ret
+	fi
+else
+	exec $ibmpoe ${PBS_LIB_PATH}/MPI/pbs_poerun "${list[@]}"
+fi

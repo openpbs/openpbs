@@ -1,0 +1,249 @@
+.\" Copyright (C) 1994-2016 Altair Engineering, Inc.
+.\" For more information, contact Altair at www.altair.com.
+.\"  
+.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" 
+.\" Open Source License Information:
+.\"  
+.\" PBS Pro is free software. You can redistribute it and/or modify it under the
+.\" terms of the GNU Affero General Public License as published by the Free 
+.\" Software Foundation, either version 3 of the License, or (at your option) any 
+.\" later version.
+.\"  
+.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+.\" PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+.\"  
+.\" You should have received a copy of the GNU Affero General Public License along 
+.\" with this program.  If not, see <http://www.gnu.org/licenses/>.
+.\"  
+.\" Commercial License Information: 
+.\" 
+.\" The PBS Pro software is licensed under the terms of the GNU Affero General 
+.\" Public License agreement ("AGPL"), except where a separate commercial license 
+.\" agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+.\"  
+.\" Altair’s dual-license business model allows companies, individuals, and 
+.\" organizations to create proprietary derivative works of PBS Pro and distribute 
+.\" them - whether embedded or bundled with other software - under a commercial 
+.\" license agreement.
+.\" 
+.\" Use of Altair’s trademarks, including but not limited to "PBS™", 
+.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+.\" trademark licensing policies.
+.\"
+.TH pbs_selstat 3B "1 February 2016" Local "PBS Professional"
+.SH NAME
+pbs_selstat - obtain status of selected PBS batch jobs
+.SH SYNOPSIS
+#include <pbs_error.h>
+.br
+#include <pbs_ifl.h>
+.sp
+.B struct batch_status *pbs_selstat(\^int\ connect, struct\ attropl\ *sel_list, 
+.B struct\ attrl\ *rattrib, char *extend\^)
+.sp
+.B void pbs_statfree(\^struct batch_status *psj\^)
+.SH DESCRIPTION
+Issue a batch request to examine the status of jobs which meet certain criteria.
+\f3pbs_selstat\f1() returns a list of batch_status structures for those jobs
+which met the selection criteria.
+.LP
+The 
+.B sel_list
+struct holds the selection criteria.  The 
+.B rattrib
+struct holds the list of attributes whose values are to be returned.
+.LP
+This function is a combination of \f3pbs_selectjob\f1() and
+\f3pbs_statjob\f1().
+It is an extension to the POSIX Batch standard.
+.LP
+Initially all batch jobs are selected for which the user is authorized to
+query status.
+This set may be reduced or filtered by specifying certain attributes
+of the jobs.
+.LP
+A
+.I "Select Status"
+batch request is generated and sent to the server over the connection
+specified by
+.I connect 
+which is the return value of \f3pbs_connect\f1().
+.LP
+The parameter,
+.I sel_list ,
+is a pointer to an
+.I attropl 
+structure which is defined in pbs_ifl.h as:
+.sp
+.Ty
+.nf
+    struct attropl {
+        struct attropl *next;
+        char           *name;
+        char           *resource;
+        char           *value;
+        enum batch_op   op;
+    };
+.fi
+.sp
+The
+.I sel_list
+list is terminated by the first entry where
+.I next
+is a null pointer.
+.LP
+The
+.I name
+member points to a string which is the name of the attribute.
+Not all of the job attributes may be used as a selection criteria.
+The
+.I resource
+member points to a string which is the name of a resource.  This
+member is only used when
+.I name
+is set to ATTR_l,
+otherwise it should be a pointer to a null string.
+The
+.I value
+member points to a string which is the value of the attribute or resource.
+The attribute names are listed in pbs_job_attributes.7B.
+.br
+
+.LP
+The 
+.I op
+member defines the operator in the logical expression:
+.br
+.B \ \ \ \ value\ operator\ current_value
+.br 
+The logical expression must evaluate as true for the job to be selected.
+The permissible values of
+.I op
+are defined in pbs_ifl.h as:
+.RS 4
+.I "enum batch_op { ..., EQ, NE, GE, GT, LE, LT, ... };" .
+.RE
+The attributes marked with (E) in the description above may only be selected
+with the equal, EQ, or not equal, NE, operators.
+.LP
+If
+.I sel_list
+itself is a null pointer, then no selection is done on
+the basis of attributes.
+.LP
+The parameter,
+.I rattrib ,
+is a pointer to an
+.I attrl
+structure which is defined below.
+The
+.I rattrib
+list is terminated by the first entry where
+.I next
+is a null pointer.  If
+.I attrib
+is given, then only the attributes in the list are returned by the server.
+Otherwise, all the attributes of a job are returned.
+When an
+.I attrib
+list is specified, the
+.I name
+member is a pointer to a attribute name as listed in pbs_alter(3) and
+pbs_submit(3).  The
+.I resource
+member is only used if the name member is ATTR_l, otherwise it should be a
+pointer to a null string.
+The
+.I value
+member should always be a pointer to a null string.
+.LP
+The return value is a pointer to a list of
+.I batch_status
+structures or the null pointer if no jobs can be queried for status.
+The batch_status structure is defined in pbs_ifl.h as
+.sp
+.Ty
+.nf
+    struct batch_status {
+        struct batch_status *next;
+        char                *name;
+        struct attrl        *attribs;
+        char                *text;
+    }
+.fi
+.LP
+The entry,
+.I attribs ,
+is a pointer to a list of attrl structures defined in
+pbs_ifl.h as:
+.sp
+.Ty
+.nf
+    struct attrl {
+        struct attrl *next;
+        char         *name;
+        char         *resource;
+        char         *value;
+    };
+.fi
+.LP
+It is up the user to free the list of batch_status structures when no longer
+needed, by calling \f3pbs_statfree\f1().
+.LP
+The extend parameter is for optional features and or additions.  Normally, this should be null pointer.
+.LP
+.B Finished and Moved Jobs
+.br
+In order to get information on finished and moved jobs, you must add an 
+.I 'x'
+character to the 
+.I extend 
+parameter.  The 
+.I extend 
+parameter is a character string; set one character
+to be the 
+.I 'x' 
+character.
+For example:
+.RS 5
+.br
+.B pbs_selstat 
+( ..., ..., ..., extend) ...
+.RE
+.LP
+To get information on finished and moved jobs only, specify the Finished ('F')
+and moved ('M') job states.  You must also use the 
+.I extend
+character string containing the 
+.I 'x'
+character.  For example:
+.RS 5
+.br
+sel_list->next = sel_list;
+.br
+sel_list->name = ATTR_state;
+.br
+sel_list->value = "MF";
+.br
+sel_list->op = EQ;
+.br
+.B pbs_selstat 
+( ..., sel_list, ..., extend) ...
+.RE
+.LP
+Subjobs are not considered finished until the parent array job is finished.
+.LP
+
+
+.SH "SEE ALSO"
+qselect(1B), pbs_alterjob(3B), pbs_connect(3B), pbs_statjob(3B), and 
+pbs_selectjob(3B).
+.SH DIAGNOSTICS
+When the batch request generated by pbs_selstat()
+function has been completed successfully by a batch server, the routine will
+return a pointer to the list of batch_status structures.
+If no jobs met the criteria or an error occurred, the return will be the
+null pointer.  If an error occurred, the global integer pbs_errno will
+be set to a non-zero value.

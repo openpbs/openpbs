@@ -1,0 +1,251 @@
+/*
+ * Copyright (C) 1994-2016 Altair Engineering, Inc.
+ * For more information, contact Altair at www.altair.com.
+ *  
+ * This file is part of the PBS Professional ("PBS Pro") software.
+ * 
+ * Open Source License Information:
+ *  
+ * PBS Pro is free software. You can redistribute it and/or modify it under the
+ * terms of the GNU Affero General Public License as published by the Free 
+ * Software Foundation, either version 3 of the License, or (at your option) any 
+ * later version.
+ *  
+ * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ * PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+ *  
+ * You should have received a copy of the GNU Affero General Public License along 
+ * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  
+ * Commercial License Information: 
+ * 
+ * The PBS Pro software is licensed under the terms of the GNU Affero General 
+ * Public License agreement ("AGPL"), except where a separate commercial license 
+ * agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+ *  
+ * Altair’s dual-license business model allows companies, individuals, and 
+ * organizations to create proprietary derivative works of PBS Pro and distribute 
+ * them - whether embedded or bundled with other software - under a commercial 
+ * license agreement.
+ * 
+ * Use of Altair’s trademarks, including but not limited to "PBS™", 
+ * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+ * trademark licensing policies.
+ *
+ */
+#ifndef	_NODE_PARTITION_H
+#define _NODE_PARTITION_H
+#ifdef	__cplusplus
+extern "C" {
+#endif
+
+#include "data_types.h"
+#include <pbs_ifl.h>
+
+
+/*
+ *
+ *      new_node_partition - allocate and initialize a node_partition
+ *
+ *      returns new node partition or NULL on error
+ *
+ */
+#ifdef NAS /* localmod 005 */
+node_partition *new_node_partition(void);
+#else
+node_partition *new_node_partition();
+#endif /* localmod 005 */
+
+/*
+ *
+ *      free_node_partition_array - free an array of node_partitions
+ *
+ *        np_arr - node partition array to free
+ *
+ *      returns nothing
+ *
+ */
+void free_node_partition_array(node_partition **np_arr);
+
+/*
+ *
+ *      free_node_partition - free a node_partition structure
+ *
+ *        np - the node_partition to free
+ *
+ */
+void free_node_partition(node_partition *np);
+
+/*
+ *
+ *      dup_node_partition_array - duplicate a node_partition array
+ *
+ *        onp_arr - the node_partition array to duplicate
+ *        nsinfo - server for the new node partition
+ *
+ *      returns duplicated array or NULL on error
+ *
+ */
+node_partition **dup_node_partition_array(node_partition **onp_arr, server_info *nsinfo);
+
+/*
+ *
+ *      dup_node_partition - duplicate a node_partition structure
+ *
+ *        onp - the node_partition structure to duplicate
+ *        nsinfo - server for the new node partiton (the nodes are needed)
+ *
+ *      returns duplicated node_partition or NULL on error
+ *
+ */
+node_partition *dup_node_partition(node_partition *onp, server_info *nsinfo);
+
+/*
+ *
+ *      create_node_partitions - break apart nodes into partitions
+ *
+ *         IN: sinfo - nodes to create partitions from
+ *	   IN: resname - node grouping resource name
+ *         IN: dont_set_node - don't set the np_arr flags on the nodes
+ *	  OUT: num_parts - the number of node partitions created
+ *
+ *      returns node_partition array or NULL on error
+ *              num_parts set to the number of partitions created if not NULL
+ *
+ *
+ */
+node_partition **
+create_node_partitions(status *policy, node_info **nodes, char **resnames,
+	unsigned int flags, int *num_parts);
+/*
+ *
+ *	need_to_partition - determine if we need to partition the nodes
+ *			    criteria: if any node has partitioning resource
+ *
+ *	  ninfo_arr - node info array to determine if we need to partition
+ *	  resname   - resource name to partition on
+ *
+ *	returns 1: need to partition
+ *		0: no need to partition
+ *
+ */
+int need_to_partition(node_info **ninfo_arr, char *resname);
+
+/*
+ *
+ *      find_node_partition - find a node partition by name in an array
+ *
+ *        np_arr - array of node partitions to search
+ *        name
+ *
+ *      returns found node partition or NULL if not found
+ *
+ */
+node_partition *find_node_partition(node_partition **np_arr, char *name);
+
+/* find node partition by unique rank */
+
+node_partition *find_node_partition_by_rank(node_partition **np_arr, int rank);
+
+/*
+ *	node_partition_update_array - update an entire array of node partitions
+ *	  nodepart - the array of node partition to update
+ *
+ *	returns 1 on all success, 0 on any failure
+ *	Note: This is not an atomic operation
+ */
+int node_partition_update_array(status *policy, node_partition **nodepart);
+
+/*
+ *	node_partition_update - update the meta data about a node partition
+ *			like free_nodes and res
+ *
+ *	  np - the node partition to update
+ *
+ *	returns 1 on success, 0 on failure
+ */
+int node_partition_update(status *policy, node_partition *np);
+
+/*
+ *	new_np_cache - constructor
+ */
+np_cache *new_np_cache(void);
+
+/*
+ *	free_np_cache_array - destructor for array
+ */
+void free_np_cache_array(np_cache **npc_arr);
+
+/*
+ *	free_np_cache - destructor
+ */
+void free_np_cache(np_cache *npc);
+
+/*
+ *	find_np_cache - find a np_cache by the array of resource names and
+ *			nodes which created it.
+ *
+ *	  npc_arr - the array to search
+ *	  resnames - the list of names
+ *	  ninfo_arr - array of nodes
+ *
+ *	NOTE: function does node node_info pointer comparison to save time
+ *
+ *	returns the node found node partition or NULL if not (or on error)
+ *
+ */
+np_cache *
+find_np_cache(np_cache **npc_arr,
+	char **resnames, node_info **ninfo_arr);
+/*
+ *	find_alloc_np_cache - find a np_cache by the array of resource names
+ *			      and nodes which created it.  If the np_cache
+ *			      does not exist, create it and add it to the list
+ */
+np_cache *
+find_alloc_np_cache(status *policy, np_cache ***pnpc_arr,
+	char **resnames, node_info **ninfo_arr,
+	int (*sort_func)(const void *, const void *));
+/*
+ *	add_np_cache - add an np_cache to an array
+ *	returns 1 on success - 0 on failure
+ */
+int add_np_cache(np_cache ***npc_arr, np_cache *npc);
+
+/*
+ *	remove_noncomplete_sets - remove placement sets from a pool which do
+ *				  not contain all the nodes from the global
+ *				  pool.
+ *
+ *	  global_pool - global pool of placement sets
+ *	  pool - pool to modify
+ *
+ *	returns the number of placement sets removed
+ */
+int remove_noncomplete_sets(node_partition **global_pool, node_partition **pool);
+
+
+/*
+ * do an inital check to see if a resresv can fit into a node partition
+ * based on the meta data we keep
+ */
+int resresv_can_fit_nodepart(status *policy, node_partition *np, resource_resv *resresv, int total, schd_error *err);
+
+/*
+ *	create_specific_nodepart - create a node partition with specific
+ *				   nodes, rather than from a placement
+ *				   set resource=value
+ */
+node_partition *create_specific_nodepart(status *policy, char *name, node_info **nodes);
+/* create the placement sets for the server and queues */
+int create_placement_sets(status *policy, server_info *sinfo);
+
+/* Update placement sets and allparts */
+void update_all_nodepart(status *policy, server_info *sinfo, resource_resv *resresv);
+
+
+#ifdef	__cplusplus
+}
+#endif
+#endif	/* _NODE_PARTITION_H */

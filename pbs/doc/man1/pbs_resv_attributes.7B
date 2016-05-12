@@ -1,0 +1,496 @@
+.\" Copyright (C) 1994-2016 Altair Engineering, Inc.
+.\" For more information, contact Altair at www.altair.com.
+.\"  
+.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" 
+.\" Open Source License Information:
+.\"  
+.\" PBS Pro is free software. You can redistribute it and/or modify it under the
+.\" terms of the GNU Affero General Public License as published by the Free 
+.\" Software Foundation, either version 3 of the License, or (at your option) any 
+.\" later version.
+.\"  
+.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+.\" PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+.\"  
+.\" You should have received a copy of the GNU Affero General Public License along 
+.\" with this program.  If not, see <http://www.gnu.org/licenses/>.
+.\"  
+.\" Commercial License Information: 
+.\" 
+.\" The PBS Pro software is licensed under the terms of the GNU Affero General 
+.\" Public License agreement ("AGPL"), except where a separate commercial license 
+.\" agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+.\"  
+.\" Altair’s dual-license business model allows companies, individuals, and 
+.\" organizations to create proprietary derivative works of PBS Pro and distribute 
+.\" them - whether embedded or bundled with other software - under a commercial 
+.\" license agreement.
+.\" 
+.\" Use of Altair’s trademarks, including but not limited to "PBS™", 
+.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+.\" trademark licensing policies.
+.\"
+.TH pbs_resv_attributes 7B "1 February 2016" Local "PBS Professional"
+.SH NAME
+.B pbs_resv_attributes 
+\- attributes of PBS advance and standing reservations
+
+.SH DESCRIPTION
+.LP
+.B Settable Attributes
+.br
+The following attributes can be read and set by users, Operators, and Managers:
+
+.IP Account_Name
+No longer used.
+
+.IP Authorized_Groups
+List of groups who can or cannot submit jobs to this reservation.
+Group names are interpreted relative to the server, not the 
+submission host.
+This list is used to set the reservation queue's 
+.I acl_groups 
+attribute.  See the 
+.I G 
+option to the 
+.B pbs_rsub 
+command.
+.br
+Format: [+|-]group_name,...,[+|-]group_name] 
+.br
+Default value: owner's login group.
+.br
+Python attribute value type: pbs.acl
+
+.IP "Authorized_Hosts"
+The list of hosts from which jobs can and cannot be submitted to this reservation. 
+This list is used to set the reservation queue's 
+.I acl_hosts
+attribute.  See the 
+.I H
+option to the 
+.B pbs_rsub 
+command.  
+Hostnames may be wildcarded using an asterisk, according to the following rules:
+.RS
+.IP "" 5
+- A hostname can contain at most one asterisk
+.br
+- The asterisk must be the leftmost label
+.LP
+.br
+Examples:
+.IP "" 5
+*.test.example.com
+.br
+*.example.com
+.br
+*.com
+.LP
+
+.br
+Format: [+|-]hostname, ... , [+|-]hostname
+.br
+Default: Jobs can be submitted from all hosts.
+.br
+Python attribute value type: pbs.acl
+.RE
+
+.IP Authorized_Users 
+The list of users who can or cannot submit jobs to this reservation.
+This list is used to set the reservation queue's 
+.I acl_users
+attribute.  See the 
+.I U 
+option to the 
+.B pbs_rsub 
+command.
+.br
+Format: [+|-]user[hostname.domain],....,[+|-]... where, '-' means "deny" and '+' 
+means "allow". 
+The hostname portion of a username may be wildcarded, following the same
+rules as for the 
+.I Authorized_Hosts
+reservation attribute.
+.br
+Default value: reservation owner only.
+.br
+Python attribute value type: pbs.acl
+
+.IP group_list
+Comma-separated list of group names.
+.br
+Format: group@hostname[,group@hostname ...]
+.br
+Python attribute value type: pbs.group_list
+
+.IP "Mail_Points"
+Determines the list of events for which mail is sent by the server.  Mail 
+is sent to the list of users specified in the 
+.I Mail_Users
+attribute.  See the 
+.I m mail_points 
+option to the 
+.B pbs_rsub 
+command.
+.br
+Format: string consisting of one of more letters "a", "b", "c", "e", 
+or the string "n".  Cannot use "n" with any other letter.
+Default value: "ac".
+.br
+Python attribute value type: pbs.group_list
+
+.RS
+.IP a
+Notify when reservation is terminated
+.IP b
+Notify when reservation period begins
+.IP c
+Notify when reservation is confirmed
+.IP e
+Notify when reservation period ends
+.IP n
+Do not send mail.  Cannot be used with other letters.
+.RE
+.br
+
+
+.IP "Mail_Users"
+The set of users to whom mail is sent for the reservation events
+specified in the 
+.I Mail_Points
+attribute.  See the 
+.I M mail_list 
+option to the 
+.B pbs_rsub 
+command.
+.br
+Format: string of the form, user@host[,user@host].... .  
+.br
+Default value: reservation owner only.
+.br
+Python attribute value type: pbs.user_list
+
+.IP Priority
+No longer used.
+
+.IP "Reserve_Name"
+The name assigned to the reservation during creation, if specified.  See the 
+.I N 
+option to the 
+.B pbs_rsub 
+command.
+.br
+Format: string of up to 15 characters, where the first character is alphabetic.
+.br
+Default value: none.
+.br
+Python attribute value type: str
+
+.IP "Resource_List"
+The list of resources allocated to the reservation.  Jobs running in
+the reservation cannot use in aggregate more than the specified amount
+of a resource.
+.br
+Format: a set of
+.I resource=value
+strings.  
+.br
+Default value: none.
+.br
+Python attribute value type: dictionary: 
+.br
+.RS 10
+Resource_List["<resource name>"]=<resource value>
+.br
+where <resource> name is any built-in or custom resource
+.RE
+.LP
+
+.IP User_List
+No longer used.
+.LP
+.B Read-only Attributes
+.br
+The following reservation attributes are read-only for users, Operators, and
+Managers:
+
+.IP ctime
+The time that the reservation was created.
+.br
+Format: Date
+.br
+Python attribute value type: int
+
+.IP hashname
+No longer used.
+
+.IP "interactive"
+Number of seconds that the 
+.B pbs_rsub 
+command will block while waiting for confirmation or denial of the 
+reservation.  A negative value indicates that the reservation is 
+automatically deleted if it cannot be confirmed in the time specified.
+A positive value indicates that the reservation is not automatically
+deleted after this time.  See the 
+.I -I block_time
+option to the 
+.B pbs_rsub 
+command.
+.br
+Format: integer.
+.br
+Python attribute value type: int
+
+.IP mtime
+The time that the reservation was last modified.
+.br
+Format: Date
+.br
+Python attribute value type: int
+
+
+.IP queue
+Name of the reservation queue.  Jobs that 
+are to use resources belonging to this reservation are submitted to this queue. 
+.br
+Format for an advance reservation:
+.I R<unique integer>
+.br
+Format for a standing reservation:
+.I S<unique integer>
+.br
+Python attribute value type: pbs.queue
+
+.IP reserve_count
+The total number of occurrences in the standing reservation.
+.br 
+Format: integer.
+.br
+Python attribute value type: int
+
+.IP reserve_duration
+Reservation duration in seconds.  For a standing reservation, this is the
+duration for one occurrence.
+.br
+Format: integer.
+.br
+Python attribute value type: pbs.duration
+
+.IP reserve_end 
+The date and time when an advance reservation or soonest occurrence of a
+standing reservation ends.  
+.br
+Format: Date.
+.br
+Python attribute value type: long
+
+
+.IP reserve_index
+The index of the soonest occurrence of a standing reservation.
+.br
+Format: integer.
+.br
+Python attribute value type: int
+
+
+.IP reserve_ID
+The reservation identifier.  
+.br
+Format for an advance reservation: string of the form 
+.br
+R<unique integer>.server_name
+.br
+Format for a standing reservation: string of the form 
+.br
+S[unique integer].server_name
+.br
+Python attribute value type: str
+
+
+.IP "Reserve_Owner"
+The login name on the submitting host of the user who created the
+reservation.
+.br
+Python attribute value type: str
+
+.IP reserve_retry
+If this reservation becomes degraded, this is set to the 
+next time that PBS will attempt to reconfirm this reservation.
+.br
+Format: Integer seconds
+.br
+Python attribute value type: int
+
+.IP reserve_rrule
+The rule that describes the recurrence pattern of a standing reservation.
+See the 
+.I r
+option to the 
+.B pbs_rsub
+command.
+.br
+Python attribute value type: str
+
+.br
+Format takes one of two forms:
+.RS 
+"FREQ=
+.I freq_spec;
+COUNT=
+.I count_spec;
+.I interval_spec"
+.br
+or
+.br
+"FREQ=
+.I freq_spec;
+UNTIL=
+.I until_spec; interval_spec"
+.br
+where
+.RS 5
+.IP freq_spec 15
+Frequency with which the standing reservation repeats.  Valid values are:
+.br
+WEEKLY|DAILY|HOURLY
+
+
+.IP count_spec 15
+The exact number of occurrences.  Number up to 4 digits in length.  
+Format: integer.
+
+
+.IP interval_spec 15
+Specifies interval.  Format is one or both of:
+BYDAY = MO|TU|WE|TH|FR|SA|SU 
+.br
+or
+.br
+BYHOUR = 0|1|2|...|23
+.br
+
+.IP until_spec 15
+Occurrences will start up to but not after date and time 
+specified.
+.br
+Format: YYYYMMDD[THHMMSS] 
+.br
+Note that the year-month-day section is separated from 
+the hour-minute-second section by a capital T.
+.RE
+.RE
+
+.IP reserve_start 
+The date and time when the reservation period for the reservation 
+or soonest occurrence begins.  
+.br
+Format: Date
+.br
+Python attribute value type: long
+
+
+.IP reserve_state
+The state of the reservation.  
+.br
+Python attribute value type: reservation state constant.  
+
+The abbreviations, states, and Python constants are:
+.RS
+
+.IP "NO   RESV_NONE            RESV_STATE_NONE"
+No reservation yet.
+
+.IP "UN   RESV_UNCONFIRMED     RESV_STATE_UNCONFIRMED "
+Reservation request is awaiting confirmation.
+
+.IP "CO   RESV_CONFIRMED       RESV_STATE_CONFIRMED "
+Reservation has been confirmed.  For a standing reservation, this means
+that all occurrences of the reservation have been confirmed.
+
+.IP "WT   RESV_WAIT            RESV_STATE_WAIT "
+Unused.  
+
+.IP "TR   RESV_TIME_TO_RUN     RESV_STATE_TIME_TO_RUN "
+Start of the reservation period.
+
+.IP "RN   RESV_RUNNING         RESV_STATE_RUNNING "
+Reservation period has started and reservation is running.
+
+.IP "FN   RESV_FINISHED        RESV_STATE_FINISHED "
+End of the reservation period.
+
+.IP "BD   RESV_BEING_DELETED   RESV_STATE_BEING_DELETED "
+Reservation is being deleted.
+
+.IP "DE   RESV_DELETED         RESV_STATE_DELETED "
+Reservation has been deleted.
+
+.IP "DJ   RESV_DELETING_JOBS   RESV_STATE_DELETING_JOBS "
+Jobs belonging to the reservation are being deleted.
+.RE
+
+.IP "reserve_substate"
+The substate of the reservation or occurrence.  The 
+substate is used internally by the PBS server in managing the reservation.   
+.br
+Format: integer.
+.br
+Python attribute value type: int
+
+.IP reserve_type
+No longer used.
+
+.IP resv_nodes
+The list of vnodes and resources allocated from them to satisfy 
+the chunks requested for this reservation or occurrence.
+.br
+Format: (vnode_name:resource=value[:resource=value]...)
+.RS 15
+[+(vnode_name:resource=value[:resource=value])+...
+.RE
+.IP
+Python attribute value type: pbs.exec_vnode
+
+.IP server
+Name of server.
+.br
+Python attribute value type: pbs.server
+
+.IP Variable_List
+List of environment variables used by the reservation.
+.br
+Format: string of the form 
+.I name=value[,name=value]... .
+
+.br
+Python attribute value type: dictionary: 
+.RS 10
+Variable_List["<variable name>"]=<value>.  
+.br
+Note that PBS environment variables listed in the 
+.B qsub(1B)
+man page are not settable.
+.RE
+.LP
+
+.SH FORMATS
+.IP Datetime 
+[[[[CC]YY]MM]DD]hhmm[.SS]
+
+.IP Date
+<Day of week> <Name of month> <Day of month> <HH:MM:SS> <YYYY>
+
+
+.SH SEE ALSO
+The
+.B PBS Professional User's Guide,
+the
+.B PBS Professional Administrator's Guide,
+.br
+pbs_rstat(1B), 
+pbs_rsub(1B), 
+pbs_resources(7B)
+

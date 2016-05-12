@@ -1,0 +1,184 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# Copyright (C) 1994-2016 Altair Engineering, Inc.
+# For more information, contact Altair at www.altair.com.
+# 
+# This file is part of the PBS Professional ("PBS Pro") software.
+#
+# Open Source License Information:
+# 
+# PBS Pro is free software. You can redistribute it and/or modify it under the
+# terms of the GNU Affero General Public License as published by the Free 
+# Software Foundation, either version 3 of the License, or (at your option) any 
+# later version.
+# 
+# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+# PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+# 
+# You should have received a copy of the GNU Affero General Public License along 
+# with this program.  If not, see <http://www.gnu.org/licenses/>.
+# 
+# Commercial License Information: 
+#
+# The PBS Pro software is licensed under the terms of the GNU Affero General 
+# Public License agreement ("AGPL"), except where a separate commercial license 
+# agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+# 
+# Altair’s dual-license business model allows companies, individuals, and 
+# organizations to create proprietary derivative works of PBS Pro and distribute 
+# them - whether embedded or bundled with other software - under a commercial 
+# license agreement.
+#
+# Use of Altair’s trademarks, including but not limited to "PBS™", 
+# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+# trademark licensing policies.
+
+import sys
+import os
+import getopt
+import logging
+import tempfile
+import errno
+
+import ptl
+try:
+    from ptl.lib.pbs_ifl import pbs_py_spawn
+    from ptl.lib.pbs_testlib import Server, MoM, JOB, ResourceResv
+    from ptl.utils.pbs_cliutils import CliUtils
+except:
+    sys.stderr.write("API wrapping is required, see pbs_swigify utility")
+    exit(1)
+
+
+# trap SIGINT and SIGPIPE
+def trap_exceptions(etype, value, tb):
+    sys.excepthook = sys.__excepthook__
+    if issubclass(etype, KeyboardInterrupt):
+        pass
+    elif issubclass(etype, IOError) and value.errno == errno.EPIPE:
+        pass
+    else:
+        sys.__excepthook__(etype, value, tb)
+sys.excepthook = trap_exceptions
+
+# Helper script to allow a py_spawned script to run detached from the
+# session associated to a PBS Job
+
+# sys.argv[1] must be a valid path to the pbs_attach command
+# sys.argv[2] must be a valid job identifier
+# sys.argv[3:] must be a valid path to a Python script and args to run in
+# the background. The first output of this script must be its PID (e.g., a
+# shell script shall echo $$)
+_wrapper_body = """import os
+import sys
+from subprocess import Popen, PIPE
+
+if len(sys.argv) < 3:
+    exit(1)
+
+(r, w) = os.pipe()
+p = os.fork()
+if p < 0:
+    exit(1)
+elif p > 0:
+    os.close(w)
+    pid = os.read(r, 256)
+    p = Popen([sys.argv[1], "-j", sys.argv[2], "-p", str(pid)], stdout=PIPE)
+    p.communicate()
+    os.close(r)
+    exit(p.retcode)
+# child
+os.close(r)
+p = Popen(["setsid"] + sys.argv[3:], stdout=PIPE)
+os.write(w, p.stdout.readline())
+os.close(w)
+"""
+
+
+def usage():
+    msg = []
+    msg += ['Usage: ' + os.path.basename(sys.argv[0]) + ' [OPTION] '
+            '<path> <args>\n\n']
+    msg += ['   Run a py_spawn command\n\n']
+    msg += ['-e <envs>: comma-separated list of environment options\n']
+    msg += ['-j <jobid>: jobid to which the spawned process is run\n']
+    msg += ['-l <level>: logging level, INFO, DEBUG, ..., defaults to ERROR\n']
+    msg += ['-t <hostname>: target hostname to operate on\n']
+    msg += ['--detach: If set, run Python script in background\n']
+    msg += ['--wrapper=<path>: Optional path to wrapper script, to use with '
+            'detach\n']
+    msg += ['--version: print version number and exit\n']
+
+    print "".join(msg)
+
+
+if __name__ == '__main__':
+
+    if len(sys.argv) < 2:
+        usage()
+        sys.exit(0)
+
+    jobid = None
+    envs = []
+    detach = False
+    lvl = logging.ERROR
+    wrapper = None
+    cleanup_wrapper = False
+    hostname = None
+
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "e:j:l:t:hw",
+                                   ['detach', 'wrapper='])
+    except:
+        usage()
+        sys.exit(1)
+
+    for o, val in opts:
+        if o == '-j':
+            jobid = val
+        elif o == '-e':
+            envs = val.split(',')
+        elif o == '-l':
+            lvl = CliUtils.get_logging_level(val)
+        elif o == '-h':
+            usage()
+            sys.exit(0)
+        elif o == '-t':
+            hostname = val
+        elif o == '--detach':
+            detach = True
+        elif o == '--wrapper':
+            wrapper = val
+        else:
+            sys.stderr.write("Unrecognized option")
+            usage()
+            sys.exit(1)
+
+    logging.basicConfig(level=lvl)
+
+    s = Server(hostname)
+    if detach:
+        d = s.status(JOB, 'exec_host', id=jobid)
+        if d and 'exec_host' in d[0]:
+            hosts = ResourceResv.get_hosts(d[0]['exec_host'])
+            pconf = MoM(hosts[0]).pbs_conf['PBS_EXEC']
+            # Use path to pbs_attach on natural vnode of the job
+            pbs_attach = os.path.join(pconf, 'bin', 'pbs_attach')
+            if wrapper is None:
+                (fd, fn) = tempfile.mkstemp()
+                os.write(fd, _wrapper_body)
+                os.close(fd)
+                os.chmod(fn, 0755)
+                wrapper = fn
+                cleanup_wrapper = True
+            a = [wrapper, pbs_attach, jobid] + args
+            logging.debug(str(a))
+            pbs_py_spawn(s._conn, jobid, a, envs)
+            if cleanup_wrapper:
+                os.remove(wrapper)
+    else:
+        pbs_py_spawn(s._conn, jobid, args, envs)
+
+    sys.exit(0)

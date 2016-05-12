@@ -1,0 +1,912 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# Copyright (C) 1994-2016 Altair Engineering, Inc.
+# For more information, contact Altair at www.altair.com.
+# 
+# This file is part of the PBS Professional ("PBS Pro") software.
+#
+# Open Source License Information:
+# 
+# PBS Pro is free software. You can redistribute it and/or modify it under the
+# terms of the GNU Affero General Public License as published by the Free 
+# Software Foundation, either version 3 of the License, or (at your option) any 
+# later version.
+# 
+# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+# PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+# 
+# You should have received a copy of the GNU Affero General Public License along 
+# with this program.  If not, see <http://www.gnu.org/licenses/>.
+# 
+# Commercial License Information: 
+#
+# The PBS Pro software is licensed under the terms of the GNU Affero General 
+# Public License agreement ("AGPL"), except where a separate commercial license 
+# agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+# 
+# Altair’s dual-license business model allows companies, individuals, and 
+# organizations to create proprietary derivative works of PBS Pro and distribute 
+# them - whether embedded or bundled with other software - under a commercial 
+# license agreement.
+#
+# Use of Altair’s trademarks, including but not limited to "PBS™", 
+# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+# trademark licensing policies.
+
+import sys
+import getopt
+import logging
+import logging.config
+import os
+import time
+import re
+import errno
+
+import ptl
+from ptl.utils.pbs_cliutils import CliUtils
+from ptl.utils.pbs_logutils import PBSAccountingLog
+from ptl.utils.pbs_dshutils import DshUtils
+from ptl.lib.pbs_testlib import PtlConfig, BatchUtils, PbsTypeSize
+from ptl.lib.pbs_testlib import Server, Scheduler, PbsStatusError
+from ptl.lib.pbs_testlib import PTL_AND, PTL_OR, PTL_CLI
+from ptl.lib.pbs_testlib import VNODE, JOB, SERVER, SCHED, RSC, QUEUE, HOOK
+from ptl.lib.pbs_testlib import RESV, RESOURCES_AVAILABLE, RESOURCES_TOTAL
+
+# trap SIGINT and SIGPIPE
+
+
+def trap_exceptions(etype, value, tb):
+    sys.excepthook = sys.__excepthook__
+    if issubclass(etype, KeyboardInterrupt):
+        pass
+    elif issubclass(etype, IOError) and value.errno == errno.EPIPE:
+        pass
+    else:
+        sys.__excepthook__(etype, value, tb)
+sys.excepthook = trap_exceptions
+
+
+def usage():
+    msg = []
+    msg += ['Usage: ' + os.path.basename(sys.argv[0]).split('.pyc')[0]]
+    msg += [' [OPTION]\n\n']
+    msg += ['\tStatus and filter PBS entities on given attributes\n\n']
+    msg += ['\tNote: All output of this unsupported tool is experimental, \n']
+    msg += ['\tdo not rely on it remaining as-is across releases.\n\n']
+    msg += ['-A <path>: Path to accounting log\n']
+    msg += ['-a <attrs>: comma-separated list of attributes\n']
+    msg += ['    attrs can be in key[OP]val format where OP is one ' +
+            'of <,<=,=,>=,>,~\n']
+    msg += ['-b: show available resources (a.k.a backfill hole)\n']
+    msg += ['-c: counts number of matching items\n']
+    msg += ['-C: counts grand total of given attribute values in complex\n']
+    msg += ['-d <pbs_diag>: path to diag directory\n']
+    msg += ['-j: report job equivalence classes\n']
+    msg += ['-n: report node equivalence classes\n']
+    msg += ['-r <name>: comma-separated list of resource names, ' +
+            'e.g. ncpus, mem.\n']
+    msg += ['-s: show selected objects in qselect-like format\n']
+    msg += ['-t <hostname>: target hostname\n']
+    msg += ['-T: report total resources available. Operates only on '
+            'equivalence classes\n']
+    msg += ['-U: show current utilization of the system, use -r to \n' +
+            '    specify resources, default to ncpus, mem, nodes\n']
+    msg += ['--id=<obj_id>: identifier of the object to query\n']
+    msg += ['--key=<account record>: Accounting record key, one of Q or E\n']
+    msg += ['--user=<username>: username to query for limits or '
+            'utilization\n']
+    msg += ['--group=<groupname>: group to query for limits or '
+            'utilization\n']
+    msg += ['--project=<project>: project to query for limits\n']
+    msg += ['--json: display object type information in json format.\n']
+    msg += ['--mode: show operating mode of PTL, one of cli or api\n']
+    msg += ['--cli: force stat to query PBS server over cli\n']
+    msg += ['--report-twiki: produce report in Twiki format\n']
+    msg += ['--nodes: operate on node\n']
+    msg += ['--queues: operate on queues\n']
+    msg += ['--jobs: operate on jobs\n']
+    msg += ['--resvs: operate on reservations\n']
+    msg += ['--server: operate on server\n']
+    msg += ['--scheduler: operate on scheduler\n']
+    msg += ['--report: produce a site report\n']
+    msg += ['--resources: operate on resources\n']
+    msg += ['--resource=<name>: name of resource to stat\n']
+    msg += ['--resources-set: list resources set for a given object type\n']
+    msg += ['--fairshare-info=<entity>: query and display fairshare ' +
+            ' info of entity\n']
+    msg += ['--fairshare-tree: query and display fairshare tree \n']
+    msg += ['--sline: show selected objects on a single line\n'
+            '\t will not affect output of --json, -j, -s, nor -n\n']
+    msg += ['--eval-formula: evaluate job priority\n']
+    msg += ['--include-running-jobs: include running jobs in formula'
+            ' evaluation\n']
+    msg += ['--pports: show number of privileged ports in use\n']
+    msg += ['--resolve-indirectness: If set, dereference indirect '
+            ' resources\n']
+    msg += ['--db-access=<cred>: file to credentials to access db\n']
+    msg += ['--limits-info: show limit information per entity and '
+            'object\n']
+    msg += ['--over-soft-limits: show entities that are over soft '
+            'limits\n']
+    msg += [
+        '--server-file=<path>: path to file with output of qstat -Bf\n']
+    msg += ['--dedtime-file=<path>: path to a dedicated time file\n']
+    msg += [
+        '--nodes-file=<path>: path to file with output of pbsnodes -av\n']
+    msg += [
+        '--queues-file=<path>: path to file with output of qstat -Qf\n']
+    msg += ['--jobs-file=<path>: path to file with output of qstat -f\n']
+    msg += [
+        '--resvs-file=<path>: path to file with output of pbs_rstat -f\n']
+    msg += ['--log-conf=<file>: logging config file\n']
+    msg += ['--version: print version number and exit\n']
+
+    print "".join(msg)
+
+
+class SiteReportFormatter:
+
+    def __init__(self, diag, version, sched_version, jeq, neq, utilization,
+                 limits, qtypes, users, groups, sc, formula, backfill, hooks,
+                 job_states, osrelease):
+
+        self.report_tm = time.ctime()
+        if diag and len(diag) > 1:
+            diag = diag.replace(".", "")
+            diag = diag.replace("/", "_")
+            diag = diag.replace("pbs_diag_", "")
+            if diag[0] in ('/', '_'):
+                diag = diag[1:]
+            m = re.search("(?P<dtm>\d{6}_\d{6})", diag)
+            if m:
+                _tm = m.group("dtm")
+                _kt = time.mktime(time.strptime(_tm, "%y%m%d_%H%M%S"))
+                self.report_tm = time.ctime(_kt)
+
+        self.diag = diag
+        self.version = version
+        self.sched_version = sched_version
+        self.jeq = sorted(jeq, key=lambda e: len(e.entities))
+        self.neq = sorted(neq, key=lambda e: len(e.entities))
+        self.utilization = utilization
+        self.limits = limits
+        self.qtypes = qtypes
+        self.users = users
+        self.groups = groups
+        self.sc = sc
+        self.formula = formula
+        self.backfill = backfill
+        self.hooks = hooks
+        self.job_states = job_states
+
+        self.delim = "\n"
+        self.open_tag = []
+        self.close_tag = []
+
+    def __twiki__(self):
+        self.delim = "---+++++"
+        self.open_tag = ["<verbatim>"]
+        self.close_tag = ["</verbatim>"]
+        return self.__str__()
+
+    def __str__(self):
+        title = 'PBS Pro cluster report on ' + self.report_tm
+        if len(self.open_tag) == 0 or self.diag is None:
+            msg = []
+            self.sep = ['-' * len(title)]
+        else:
+            msg = ["---+++" + str(self.diag)]
+            self.sep = []
+
+        msg += [title]
+        msg += self.sep
+        msg += [self.delim + 'PBS Pro version']
+        msg += self.sep
+        msg += self.open_tag
+        if self.version == self.sched_version:
+            msg += [self.version]
+        else:
+            msg += ['Server: ' + self.version]
+            msg += ['Scheduler: ' + self.sched_version]
+        msg += self.close_tag
+        if osrelease is not None:
+            msg += [self.delim + 'OS release']
+            msg += self.sep
+            msg += self.open_tag
+            msg += [osrelease]
+            msg += self.close_tag
+        msg += [self.delim + 'Utilization']
+        msg += self.sep
+        msg += self.open_tag
+        msg += u
+        msg += self.close_tag
+        msg += [self.delim + 'Job States']
+        msg += self.sep
+        msg += self.open_tag
+        for k, v in self.job_states.items():
+            msg += ["%s: %d" % (k.split('=')[1], v)]
+        msg += self.close_tag
+        if self.limits:
+            qsl = ssl = qhl = shl = 0
+            if SERVER in self.limits:
+                for l in self.limits[SERVER]:
+                    if '_soft' in l.limit_type:
+                        ssl += 1
+                    else:
+                        shl += 1
+            if QUEUE in self.limits:
+                for l in self.limits[QUEUE]:
+                    if '_soft' in l.limit_type:
+                        qsl += 1
+                    else:
+                        qhl += 1
+            msg += [self.delim + 'Limits']
+            msg += self.sep
+            msg += self.open_tag
+            msg += ["Queue soft limits: %d" % qsl]
+            msg += ["Queue hard limits: %d" % qhl]
+            msg += ["Server soft limits: %d" % ssl]
+            msg += ["Server hard limits: %d" % shl]
+            msg += self.close_tag
+        msg += [self.delim + 'Queue types']
+        msg += self.sep
+        msg += self.open_tag
+        for k, v in qtypes.items():
+            msg += ["%s: %d" % (k.split('=')[1], v)]
+        msg += self.close_tag
+        msg += [self.delim + 'Number of users and groups']
+        msg += self.sep
+        msg += self.open_tag
+        msg += ["users: %d" % (users)]
+        msg += ["groups: %d" % (groups)]
+        msg += self.close_tag
+        if self.hooks:
+            msg += [self.delim + 'Hooks']
+            msg += self.sep
+            msg += self.open_tag
+            msg += self.hooks
+            msg += self.close_tag
+        msg += [self.delim + 'Scheduling policies']
+        msg += self.sep
+        msg += self.open_tag
+        if 'preemptive_sched' in sc:
+            msg += ["preemption: %s" % sc['preemptive_sched']]
+        if 'backfill' in sc:
+            msg += ["backfilling: %s" % sc['backfill']]
+        if 'fair_share' in sc:
+            msg += ["fair share: %s" % sc['fair_share']]
+        if formula is not None:
+            msg += ["formula: %s" % self.formula]
+        if backfill is not None:
+            msg += ["backfill depth: %s" % self.backfill]
+        msg += self.close_tag
+        msg += [self.delim + 'Node Equivalence Classes']
+        msg += self.sep
+        msg += self.open_tag
+        for e in self.neq:
+            msg += [str(e)]
+        msg += self.close_tag
+        msg += [self.delim + 'Job Equivalence Classes']
+        msg += self.sep
+        msg += self.open_tag
+        for e in self.jeq:
+            msg += [str(e)]
+        msg += self.close_tag
+        return "\n".join(msg)
+
+
+def utilization_to_str(u):
+    msg = []
+    for k, v in u.items():
+        if len(v) != 2:
+            continue
+
+        if v[1] == 0:
+            perc = 100
+        else:
+            perc = 100 * v[0] / v[1]
+
+        if 'mem' in k:
+            v[0] = PbsTypeSize(str(v[0]) + 'kb')
+            v[1] = PbsTypeSize(str(v[1]) + 'kb')
+            msg += [k + ': (' + str(v[0]) + '/' + str(v[1]) + ') ' +
+                    str(perc) + '%']
+        else:
+            msg += [k + ': (' + str(v[0]) + '/' + str(v[1]) + ') ' +
+                    str(perc) + '%']
+
+    return msg
+
+if __name__ == '__main__':
+
+    if len(sys.argv) < 2:
+        usage()
+        sys.exit(1)
+
+    diag = None
+    lvl = logging.ERROR
+    hostname = None
+    objtype = None
+    jobclasses = False
+    nodeclasses = False
+    attributes = None
+    backfillhole = None
+    attrop = PTL_OR
+    accumulate = False
+    grandtotal = False
+    inputfile = {}
+    qselectfmt = False
+    resources = None
+    utilization = False
+    fsusage_entity = None
+    fstree = False
+    fsentity = None
+    fsperc_entity = None
+    pbsfs = False
+    eval_formula = False
+    entity = {}
+    objid = None
+    resourcesset = None
+    dedtimefile = None
+    limits_info = False
+    over_soft_limits = False
+    json_on = False
+    pports = False
+    db_access = None
+    logconf = None
+    scheduler = None
+    server = None
+    report = False
+    report_twiki = False
+    force_cli = False
+    get_mode = False
+    fmt = {'%6': '\n'}
+    acct = None
+    key = 'E'
+    indirectness = False
+    osrelease = None
+    include_running_jobs = False
+    restotal = RESOURCES_AVAILABLE  # equivalence classes report avail - assgnd
+
+    lopts = ["nodes", "queues", "server", "scheduler", "jobs", "resvs"]
+    lopts += ["fairshare-tree", "eval-formula", "user=", "group=", "project="]
+    lopts += ["fairshare-info=", "resource=", "resources-set", "nodes-file="]
+    lopts += ["queues-file=", "jobs-file=", "resvs-file=", "server-file="]
+    lopts += ["dedtime-file=", "limits-info", "json", "pports", "db-access="]
+    lopts += ["over-soft-limits", "id=", "resources", "log-conf=", "version"]
+    lopts += ["mode", "cli", "report", "sline", "key=", "resolve-indirectness"]
+    lopts += ["report-twiki", "include-running-jobs"]
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "a:A:d:l:r:t:fUbcChjnsT",
+                                   lopts)
+    except:
+        logging.error('unhandled option')
+        usage()
+        sys.exit(1)
+
+    for o, val in opts:
+        if o == '-a':
+            attributes = val
+        elif o == '-A':
+            acct = CliUtils.expand_abs_path(val)
+        elif o == '-b':
+            backfillhole = True
+            objtype = VNODE
+        elif o == '-c':
+            accumulate = True
+        elif o == '-C':
+            grandtotal = True
+        elif o == '-d':
+            diag = CliUtils.expand_abs_path(val)
+            if not os.path.isdir(diag):
+                sys.stderr.write('Cannnot access diag at ' + str(diag) + '\n')
+                sys.exit(1)
+        elif o == '-j':
+            jobclasses = True
+        elif o == '-l':
+            lvl = CliUtils().get_logging_level(val)
+        elif o == '-n':
+            nodeclasses = True
+        elif o == '-r':
+            resources = val
+        elif o == '-s':
+            qselectfmt = True
+        elif o == '-t':
+            hostname = val
+        elif o == '-U':
+            utilization = True
+        elif o == '-h':
+            usage()
+            sys.exit(0)
+        elif o == '--cli':
+            force_cli = True
+        elif o == '--key':
+            key = val
+        elif o == '--id':
+            objid = val
+        elif o == '--sline':
+            fmt = {'%1': ': ', '%2': '', '%3': '=', '%4': ', ', '%5': '\n'}
+        elif o == "--pports":
+            pports = True
+        elif o == '--version':
+            print ptl.__version__
+            sys.exit(0)
+        elif o == "--user":
+            entity['euser'] = val
+        elif o == "--group":
+            entity['egroup'] = val
+        elif o == "--mode":
+            get_mode = True
+        elif o == "--project":
+            entity['project'] = val
+        elif o == "--fairshare-info":
+            fsentity = val
+            fstree = True
+        elif o == "--fairshare-tree":
+            fstree = True
+        elif o == "--eval-formula":
+            eval_formula = True
+        elif o == '--include-running-jobs':
+            include_running_jobs = True
+        elif o == "--db-access":
+            db_access = CliUtils.expand_abs_path(val)
+        elif o == "--json":
+            json_on = True
+        elif o == "--limits-info":
+            limits_info = True
+        elif o == "--over-soft-limits":
+            over_soft_limits = True
+        elif o == "--log-conf":
+            logconf = val
+        elif o == "--nodes":
+            objtype = VNODE
+        elif o == "--queues":
+            objtype = QUEUE
+        elif o == "--jobs":
+            objtype = JOB
+        elif o == "--resvs":
+            objtype = RESV
+        elif o == "--server":
+            objtype = SERVER
+        elif o == "--scheduler":
+            objtype = SCHED
+        elif o == "--report":
+            report = True
+        elif o == "--report-twiki":
+            report_twiki = True
+        elif o == "--resources":
+            objtype = RSC
+        elif o == "--resource":
+            objtype = RSC
+            objid = val
+        elif o == "--resources-set":
+            resourcesset = True
+        elif o == "--resolve-indirectness":
+            indirectness = True
+        elif o == "--nodes-file":
+            objtype = VNODE
+            inputfile[VNODE] = CliUtils.expand_abs_path(val)
+        elif o == "--queues-file":
+            objtype = QUEUE
+            inputfile[QUEUE] = CliUtils.expand_abs_path(val)
+        elif o == "--jobs-file":
+            objtype = JOB
+            inputfile[JOB] = CliUtils.expand_abs_path(val)
+        elif o == "--resvs-file":
+            objtype = RESV
+            inputfile[RESV] = CliUtils.expand_abs_path(val)
+        elif o == "--server-file":
+            objtype = SERVER
+            inputfile[SERVER] = CliUtils.expand_abs_path(val)
+        elif o == "--dedtime-file":
+            dedtimefile = CliUtils.expand_abs_path(val)
+        elif o == '-T':
+            restotal = None
+        else:
+            sys.stderr.write("Unrecognized option")
+            usage()
+            sys.exit(1)
+
+    PtlConfig()
+
+    if pports:
+        msg = CliUtils().priv_ports_info(hostname)
+        if not msg:
+            sys.exit(1)
+        print "\n".join(msg)
+        sys.exit(0)
+
+    if logconf:
+        logging.config.fileConfig(logconf)
+    else:
+        logging.basicConfig(level=lvl)
+    bu = BatchUtils()
+
+    if len(inputfile) > 0:
+        server = Server(diagmap=inputfile, db_access=db_access)
+    elif diag is not None or db_access is not None:
+        server = Server(hostname, diag=diag, db_access=db_access)
+        scheduler = Scheduler(server=server, diag=diag, db_access=db_access)
+    else:
+        if hostname is None:
+            if 'PBS_SERVER' in os.environ:
+                _h = os.environ['PBS_SERVER']
+            else:
+                if 'PBS_CONF_FILE' in os.environ:
+                    _c = DshUtils().parse_pbs_config(
+                        file=os.environ['PBS_CONF_FILE'])
+                elif os.path.isfile('/etc/pbs.conf'):
+                    _c = DshUtils().parse_pbs_config()
+                if 'PBS_SERVER' in _c:
+                    _h = _c['PBS_SERVER']
+                else:
+                    _h = None
+        else:
+            _h = hostname
+        server = Server(_h, stat=False)
+
+    if force_cli:
+        if server.get_op_mode() != PTL_CLI:
+            server.set_op_mode(PTL_CLI)
+
+    if get_mode:
+        print server.get_op_mode()
+        sys.exit(0)
+
+    if dedtimefile:
+        if scheduler is None:
+            scheduler = Scheduler(server=server, diag=diag, db_access=db_access)
+        scheduler.set_dedicated_time_file(dedtimefile)
+
+    # server is assumed up in diag mode
+    if not server.isUp() and objtype != RSC and\
+            not db_access:
+        logging.error('PBS Server is down, exiting')
+        sys.exit(1)
+
+    if report or report_twiki:
+        jobs = server.status(JOB)
+        nodes = server.status(VNODE)
+        queues = server.status(QUEUE)
+
+        jeq = server.equivalence_classes(JOB, bslist=jobs)
+        if scheduler is not None:
+            res = scheduler.get_resources(exclude=['host', 'vnode', 'arch'])
+            if res:
+                for i in range(len(res)):
+                    res[i] = "resources_available." + str(res[i])
+        else:
+            res = ['resources_available.ncpus', 'resources_available.mem']
+
+        neq = server.equivalence_classes(VNODE, res, bslist=nodes,
+                                         show_zero_resources=True,
+                                         op=RESOURCES_TOTAL,
+                                         resolve_indirectness=indirectness)
+
+        job_states = server.counter(JOB, 'job_state', bslist=jobs)
+
+        u = utilization_to_str(server.utilization(entity=entity, nodes=nodes,
+                                                  jobs=jobs))
+        lims = server.parse_all_limits(server=[server.attributes], queues=queues)
+        qtypes = server.counter(QUEUE, 'queue_type', bslist=queues)
+        d = server.counter(JOB, ['euser', 'egroup'], bslist=jobs)
+        users = groups = 0
+        for k, v in d.items():
+            if 'euser' in k:
+                users += 1
+            elif 'egroup' in k:
+                groups += 1
+        if scheduler is None:
+            scheduler = Scheduler(server=server, diag=server.diag,
+                                  diagmap=server.diagmap)
+        sc = scheduler.sched_config
+        formula = backfill = None
+        version = 'unavailable'
+        sched_version = 'unavailable'
+        hooks = []
+        _hlist = server.status(HOOK)
+        for hook in _hlist:
+            if (not hook['id'].startswith('PBS_translate_mpp') and
+                    not hook['id'].startswith('PBS_ibwins') and
+                    not hook['id'].startswith('PBSadd_spawn')):
+                if 'enabled' in hook and hook['enabled'] == 'false':
+                    _disabled = '[disabled]'
+                else:
+                    _disabled = ''
+                hooks.append(hook['id'] + ': ' + hook['event'] + ' ' +
+                             _disabled)
+        try:
+            if 'pbs_version' not in server.attributes:
+                d = server.status(SERVER, ['pbs_version', 'job_sort_formula',
+                                           'backfill_depth'])
+            else:
+                d = [server.attributes]
+
+            if 'job_sort_formula' in d[0]:
+                formula = d[0]['job_sort_formula']
+            if 'backfill_depth' in d[0]:
+                backfill = d[0]['backfill_depth']
+            if 'pbs_version' in d[0]:
+                version = d[0]['pbs_version']
+        except PbsStatusError:
+            pass
+        try:
+            server.status(SCHED, 'pbs_version')
+        except PbsStatusError:
+            pass
+        if d and 'pbs_version' in d[0]:
+            sched_version = d[0]['pbs_version']
+
+        if diag is not None:
+            f = os.path.join(diag, 'OSrelease')
+            if os.path.isfile(f):
+                fos = open(f)
+                osrelease = fos.readline()
+                fos.close()
+
+        sr = SiteReportFormatter(diag, version, sched_version, jeq, neq, u,
+                                 lims, qtypes, users, groups, sc, formula,
+                                 backfill, hooks, job_states, osrelease)
+        if report_twiki:
+            print str(sr.__twiki__())
+        else:
+            print str(sr)
+        sys.exit(0)
+
+    if utilization:
+        if resources:
+            resources = resources.split(',')
+        u = server.utilization(resources, entity=entity)
+        msg = utilization_to_str(u)
+        if msg:
+            print "\n".join(msg)
+        sys.exit(0)
+
+    if fstree:
+        if scheduler is None:
+            scheduler = Scheduler(server=server, diag=server.diag,
+                                  diagmap=server.diagmap, db_access=db_access)
+
+        fs_as_bs = scheduler.fairshare_tree.__batch_status__()
+        if json_on:
+            print CliUtils.__json__(fs_as_bs)
+        else:
+            scheduler.utils.show(fs_as_bs, fsentity)
+        sys.exit(0)
+
+    if eval_formula:
+        f = server.evaluate_formula(include_running_jobs=include_running_jobs)
+        if f:
+            d = server.status(SERVER, 'job_sort_formula')
+            print 'Formula: ' + d[0]['job_sort_formula']
+            ret = sorted(f.items(), key=lambda x: x[1][1], reverse=True)
+            for (jobid, (fml, val)) in ret:
+                print jobid + ': ' + fml + ' = ' + str(val)
+        sys.exit(0)
+
+    # parse resources and attributes 'language', i.e., handling of && and ||
+    if resources is not None:
+        if objtype in (JOB, RESV):
+            _r = "Resource_List."
+        else:
+            _r = "resources_available."
+        # add the resources to any attributes that may have been specified
+        if attributes is None:
+            attributes = ''
+        else:
+            attributes += ","
+        if "&&" in resources:
+            attrop = PTL_AND
+            resources = resources.replace("&&", ",")
+        elif "||" in resources:
+            resources = resources.replace("||", ',')
+        attributes += ",".join(map(lambda n: _r + n, resources.split(',')))
+
+    if attributes is not None:
+        attributes = attributes.replace(" ", "")
+        if "&&" in attributes:
+            attrop = PTL_AND
+            attributes = attributes.replace("&&", ",")
+        elif "||" in attributes:
+            attributes = attributes.replace("||", ',')
+
+        attributes = attributes.split(",")
+
+    if attributes:
+        setattrs = False
+        operators = ('<=', '>=', '!=', '=', '>', '<', '~')
+        for a in attributes:
+            for op in operators:
+                if op in a:
+                    setattrs = True
+                    break
+
+        d = bu.convert_attributes_by_op(attributes, setattrs)
+        if len(d) > 0:
+            attributes = d
+
+    if backfillhole is not None:
+        server.show_whats_available(attrib=attributes)
+        sys.exit(0)
+
+    # other than the backfill hole that requires working with server objects,
+    # since updating object attributes can be an expensive operation on large
+    # systems, we disable it on these select calls where they are needed
+    server.ptl_conf['update_attributes'] = False
+
+    if limits_info or over_soft_limits:
+        etype = None
+        ename = None
+        if 'euser' in entity:
+            etype = 'u'
+            ename = entity['euser']
+        elif 'egroup' in entity:
+            etype = 'g'
+            ename = entity['egroup']
+        elif 'project' in entity:
+            etype = 'p'
+            ename = entity['project']
+
+        linfo = server.limits_info(etype=etype,
+                                   ename=ename,
+                                   db_access=db_access,
+                                   over=over_soft_limits)
+        if json_on:
+            CliUtils.__json__(server.utils.decode_dictlist(linfo))
+        else:
+            server.utils.show(linfo)
+        sys.exit(0)
+
+    if nodeclasses:
+        if scheduler is None and os.getuid() == 0:
+            scheduler = Scheduler(server=server, diag=server.diag,
+                                  diagmap=server.diagmap, db_access=db_access)
+
+        if attributes:
+            res = attributes
+        elif scheduler is not None:
+            res = scheduler.get_resources(exclude=['host', 'vnode', 'arch'])
+            if res:
+                # ncpus and mem may have been removed from the resources line
+                # in which case we must add them back
+                if 'ncpus' not in res:
+                    res.append('ncpus')
+                if 'mem' not in res:
+                    res.append('mem')
+                for i in range(len(res)):
+                    res[i] = "resources_available." + str(res[i])
+
+        else:
+            res = ['resources_available.ncpus', 'resources_available.mem']
+
+        server.show_equivalence_classes(None, VNODE, res, op=restotal,
+                                        show_zero_resources=True,
+                                        db_access=db_access,
+                                        resolve_indirectness=indirectness)
+
+    if jobclasses or acct is not None:
+        if acct is not None:
+            eqclasses = {}
+            # no need to ping a live server, so pretend
+            sm = {SERVER: None}
+            # disable logging to avoid displaying server instatiation messages
+            logging.disable(logging.INFO)
+            server = Server('__diagserver__', diagmap=sm)
+            logging.disable(logging.NOTSET)
+
+            alog = PBSAccountingLog(show_progress=True)
+            alog.enable_accounting_workload_parsing()
+            alog.analyze(acct)
+            attrs = alog.job_attrs.values()
+            eq = server.equivalence_classes(JOB, attributes, bslist=attrs)
+            server.show_equivalence_classes(eq)
+            if alog.parser_errors > 0:
+                print 'Failed to parse: ' + str(alog.parser_errors)
+            sys.exit(0)
+        else:
+            server.show_equivalence_classes(None, JOB, attributes, op=restotal,
+                                            db_access=db_access)
+
+    # remaining operations are to filter an object type, skip if an
+    # equivalence class or resource was requested
+    if (jobclasses or nodeclasses):
+        sys.exit(0)
+
+    if restotal is None:
+        logging.error('-T option operates only an equivalence classes')
+        sys.exit(1)
+
+    if resourcesset is not None:
+        if objtype is None:
+            logging.error('no object type specified')
+            sys.exit(1)
+        res = bu.list_resources(objtype, server.status(objtype))
+        if res:
+            print "\n".join(res)
+        sys.exit(0)
+
+    if (accumulate or grandtotal) and (attributes is not None):
+        if objtype is None:
+            logging.error('no object type specified')
+            sys.exit(1)
+
+        d = server.counter(objtype, attributes, attrop=attrop,
+                           grandtotal=grandtotal, db_access=db_access,
+                           extend='t', resolve_indirectness=indirectness)
+        for k, v in d.items():
+            if grandtotal and 'mem' in k:
+                d[k] = PbsTypeSize().encode(value=v)
+            else:
+                d[k] = v
+    else:
+        if objtype is None:
+            logging.error('no object type specified')
+            sys.exit(1)
+        idonly = True
+        if not qselectfmt:
+            idonly = False
+        if attributes:
+            d = server.filter(objtype, attributes, attrop=attrop,
+                              idonly=idonly, id=objid, extend='t',
+                              db_access=db_access, grandtotal=grandtotal,
+                              resolve_indirectness=indirectness)
+        else:
+            statinfo = server.status(objtype, id=objid, extend='t',
+                                     db_access=db_access,
+                                     resolve_indirectness=indirectness)
+            if json_on:
+                print CliUtils.__json__(server.utils.decode_dictlist(statinfo))
+            else:
+                server.utils.show(statinfo, fmt=fmt)
+            sys.exit(0)
+
+    if not d:
+        sys.exit(0)
+
+    if not qselectfmt and not (grandtotal or accumulate):
+        if objtype is None:
+            logging.error('no object type specified')
+            sys.exit(1)
+        visited = []
+        toshow = []
+        for objs in d.values():
+            for obj in objs:
+                if obj['id'] in visited:
+                    continue
+                else:
+                    toshow.append(obj)
+                visited.append(obj['id'])
+
+        if json_on:
+            CliUtils.__json__(server.utils.decode_dictlist(toshow))
+        else:
+            server.utils.show(toshow, fmt=fmt)
+
+    elif attrop == PTL_AND and len(d) > 0:
+        if objtype is None:
+            logging.error('no object type specified')
+            sys.exit(1)
+        if isinstance(attributes, (list, dict)):
+            if grandtotal:
+                for k, v in d.items():
+                    print k + ": " + str(v)
+            elif accumulate:
+                print " && ".join(d.keys()) + ": " + str(d.values()[0])
+            else:
+                print " && ".join(d.keys()) + ": \n" + \
+                    "\n".join(str(d.values()[0]))
+        else:
+            print str(" && ".join(d.keys())) + ": " + str(d.values()[0])
+    else:
+        if objtype is None:
+            logging.error('no object type specified')
+            sys.exit(1)
+        for k, v in d.items():
+            if isinstance(v, list):
+                print k + ":"
+                for val in v:
+                    print val
+            else:
+                print k + ":" + str(v)

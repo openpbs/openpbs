@@ -1,0 +1,77 @@
+<xsd:schema id="hpcp-advancedfilter"
+                targetNamespace="http://schemas.ogf.org/hpcp/2007/11/bp/AdvancedFilter"
+                elementFormDefault="qualified"
+                xmlns="http://schemas.ogf.org/hpcp/2007/11/bp/AdvancedFilter"
+                xmlns:bes="http://schemas.ggf.org/bes/2006/08/bes-factory"
+                xmlns:wsa="http://www.w3.org/2005/08/addressing"
+                xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+
+  
+  <xsd:import namespace="http://schemas.ggf.org/bes/2006/08/bes-factory" schemaLocation="./bes-factory.xsd" />
+  
+  <xsd:complexType name="AdvancedFilterType">
+    <xsd:sequence>
+      <xsd:element name="UserName" type="xsd:string" minOccurs="0" maxOccurs="unbounded"/>
+      <xsd:element name="Owner" type="xsd:string" minOccurs="0" maxOccurs="unbounded"/>
+      <xsd:element name="State" type="bes:ActivityStateEnumeration" minOccurs="0" maxOccurs="unbounded" />
+      <xsd:element name="ActivityIdRange" type="ActivityIdRangeType" minOccurs="0" maxOccurs="unbounded" />
+     <xsd:element name="ActivityId" type="xsd:string" minOccurs="0" maxOccurs="unbounded" />
+      <xsd:element name="DateTimeRange" type="DateTimeRangeType" minOccurs="0" maxOccurs="unbounded" />
+      <xsd:element name="CompactResources" type="xsd:string" minOccurs="0" maxOccurs="1" />
+    <xsd:element name="UsageRecordFormat" type="xsd:string" minOccurs="0" maxOccurs="1" />
+      <xsd:element name="NodeStatus" type="xsd:string" minOccurs="0" maxOccurs="1" />
+    </xsd:sequence>
+    <xsd:anyAttribute namespace="##other" processContents="lax"/>
+  </xsd:complexType>
+  
+  <xsd:element name="AdvancedFilter" type="AdvancedFilterType" />
+
+  <xsd:complexType name="DateTimeRangeType">
+    <xsd:attribute name="from" type="xsd:dateTime" use="required" />
+    <xsd:attribute name="until" type="xsd:dateTime" use="required" />
+    <xsd:anyAttribute namespace="##other" processContents="lax" />
+  </xsd:complexType>
+  
+  <xsd:complexType name="ActivityIdRangeType">
+    <xsd:attribute name="start" type="xsd:long" use="required" />
+    <xsd:attribute name="end" type="xsd:long" use="required" />
+    <xsd:anyAttribute namespace="##other" processContents="lax" />
+  </xsd:complexType>
+  
+  
+  <xsd:complexType name="NodeStatusType">
+    <xsd:sequence>
+      <xsd:element name="Memory" type="MemoryType" minOccurs="1" maxOccurs="1" />
+      <xsd:element name="CPU" type="CPUType" minOccurs="1" maxOccurs="1" />
+      <xsd:element name="Job" type="ActivityIdType" minOccurs="0" maxOccurs="unbounded" />
+    </xsd:sequence>
+    <xsd:attribute name="name" type="xsd:string" use="required" />
+  </xsd:complexType>
+
+  <xsd:complexType name="MemoryType">
+    <xsd:attribute name="used" type="xsd:long" use="required" />
+    <xsd:attribute name="free" type="xsd:long" use="required" />
+    <xsd:anyAttribute namespace="##other" processContents="lax" />
+</xsd:complexType>
+
+  <xsd:complexType name="CPUType">
+    <xsd:attribute name="used" type="xsd:long" use="required" />
+    <xsd:attribute name="free" type="xsd:long" use="required" />
+    <xsd:attribute name="load" type="xsd:long" use="required" />
+    <xsd:anyAttribute namespace="##other" processContents="lax" />
+  </xsd:complexType>
+
+  <xsd:complexType name="ActivityIdType">
+    <xsd:attribute name="id" type="xsd:long" use="required" />
+    <xsd:anyAttribute namespace="##other" processContents="lax" />
+  </xsd:complexType>
+
+  <xsd:complexType name="DynamicNodeStatusType">
+    <xsd:sequence>
+      <xsd:element name="NodeStatus" type="NodeStatusType" minOccurs="0" maxOccurs="unbounded" />
+      <xsd:any namespace="##other" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>
+    </xsd:sequence>
+  </xsd:complexType>
+  
+</xsd:schema>
+

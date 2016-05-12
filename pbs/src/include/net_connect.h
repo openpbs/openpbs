@@ -1,0 +1,211 @@
+/*
+ * Copyright (C) 1994-2016 Altair Engineering, Inc.
+ * For more information, contact Altair at www.altair.com.
+ *  
+ * This file is part of the PBS Professional ("PBS Pro") software.
+ * 
+ * Open Source License Information:
+ *  
+ * PBS Pro is free software. You can redistribute it and/or modify it under the
+ * terms of the GNU Affero General Public License as published by the Free 
+ * Software Foundation, either version 3 of the License, or (at your option) any 
+ * later version.
+ *  
+ * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ * PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+ *  
+ * You should have received a copy of the GNU Affero General Public License along 
+ * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  
+ * Commercial License Information: 
+ * 
+ * The PBS Pro software is licensed under the terms of the GNU Affero General 
+ * Public License agreement ("AGPL"), except where a separate commercial license 
+ * agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+ *  
+ * Altair’s dual-license business model allows companies, individuals, and 
+ * organizations to create proprietary derivative works of PBS Pro and distribute 
+ * them - whether embedded or bundled with other software - under a commercial 
+ * license agreement.
+ * 
+ * Use of Altair’s trademarks, including but not limited to "PBS™", 
+ * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+ * trademark licensing policies.
+ *
+ */
+#ifndef	_NET_CONNECT_H
+#define	_NET_CONNECT_H
+
+
+/*
+ * Other Include Files Required
+ *	<sys/types.h>
+ *       "pbs_ifl.h"
+ */
+#define PBS_NET_H
+#ifndef PBS_NET_TYPE
+typedef unsigned long pbs_net_t;        /* for holding host addresses */
+#define PBS_NET_TYPE
+#endif
+
+#ifndef INADDR_NONE
+#define INADDR_NONE	(unsigned int)0xFFFFFFFF
+#endif
+
+#define PBS_NET_MAXCONNECTIDLE  900
+
+/* flag bits for cn_authen field */
+#define PBS_NET_CONN_AUTHENTICATED 0x01
+#define PBS_NET_CONN_FROM_PRIVIL   0x02
+#define PBS_NET_CONN_NOTIMEOUT	   0x04
+#define PBS_NET_CONN_FROM_QSUB_DAEMON	0x08
+#define PBS_NET_CONN_FORCE_QSUB_UPDATE	0x10
+
+#define	QSUB_DAEMON	"qsub-daemon"
+
+/*
+ **	Protocol numbers and versions for PBS communications.
+ */
+
+#define RM_PROTOCOL	1	/* resource monitor protocol number */
+#define RM_PROTOCOL_VER	1	/* resmon protocol version number */
+
+#define	TM_PROTOCOL	2	/* task manager protocol number */
+#define	TM_PROTOCOL_VER	2	/* task manager protocol version number */
+#define	TM_PROTOCOL_OLD	1	/* old task manager protocol version number */
+
+#define	IM_PROTOCOL	3	/* inter-mom protocol number */
+#define	IM_PROTOCOL_VER	6	/* inter-mom protocol version number */
+#define	IM_OLD_PROTOCOL_VER 5	/* inter-mom old protocol version number */
+
+#define	IS_PROTOCOL	4	/* inter-server protocol number */
+#define	IS_PROTOCOL_VER	3	/* inter-server protocol version number */
+
+
+/*
+ **	Types of Inter Server messages (between Server and Mom).
+ */
+#define	IS_NULL			0
+#define	IS_HELLO		1
+#define	IS_CLUSTER_ADDRS	2
+#define IS_UPDATE		3
+#define IS_RESCUSED		4
+#define IS_JOBOBIT		5
+#define IS_BADOBIT		6
+#define IS_RESTART		7
+#define IS_SHUTDOWN		8
+#define IS_IDLE			9
+#define IS_ACKOBIT		10
+#define IS_GSS_HANDSHAKE	11
+#define IS_CLUSTER_KEY		12
+#define IS_REGISTERMOM		13
+#define IS_UPDATE2		14
+#define IS_HELLO2		15
+#define IS_HOST_TO_VNODE	16
+#define IS_RECVD_VMAP		17
+#define IS_MOM_READY		17	/* alias for IS_RECD_VMAP */
+#define IS_HELLO3		18
+#define IS_DISCARD_JOB		19
+#define IS_HELLO4		20
+#define IS_DISCARD_DONE		21
+#define IS_HPCBP_ATTRIBUTES	22 	/* Depricated */
+#define	IS_CLUSTER_ADDRS2	23
+#define IS_UPDATE_FROM_HOOK	24
+#define IS_RESCUSED_FROM_HOOK	25 /* request from child mom for a hook */
+#define IS_HOOK_JOB_ACTION      26 /* request from hook to delete/requeue job */
+#define IS_HOOK_ACTION_ACK      27 /* acknowledge a request of the above 2    */
+#define IS_HOOK_SCHEDULER_RESTART_CYCLE  29 /* hook wish scheduler to recycle */
+#define IS_HOOK_CHECKSUMS		 30 /* mom reports about hooks seen */
+
+#define IS_CMD          40
+#define IS_CMD_REPLY    41
+
+/* Bits for IS_HELLO4 contents */
+#define HELLO4_vmap_version	 1
+#define HELLO4_running_jobs	 2
+
+/* return codes for client_to_svr() */
+
+#define PBS_NET_RC_FATAL -1
+#define PBS_NET_RC_RETRY -2
+
+/* bit flags: authentication method (resv ports/external) and authentication mode(svr/client) */
+
+#define B_RESERVED	0x1	/* need reserved port */
+#define B_SVR		0x2	/* generate server type auth message */
+#define B_EXTERNAL	0x4 /* External authentication framework like munge to be used */
+
+/**
+ * @brief
+ * enum conn_type is used to (1) indicate that a connection table entry is in
+ * use or is free (Idle).  Additional meaning for the entries are:
+ * @verbatim
+ * Primary - the primary entry (port) on which the daemon is listening for
+ *           connections from a client
+ * Secondary - another connection on which the daemon is listening, a different
+ *           service such as "resource monitor" part of Mom.
+ *           If init_network() is called twice, the second port/entry is
+ *           marked as the Secondary
+ * FromClientDIS - a client initiated connection
+ * RppComm - Used by the daemons who do RPP
+ * ChildPipe - Used by Mom for a "unix" pipe between herself and a child;
+ *           this is not a IP connection.
+ * @endverbatim
+ * The entries marked as Primary, Secondary, and RppComm do not require
+ * additional authenication of the user making the request.
+ */
+
+enum conn_type {
+	Primary = 0,
+	Secondary,
+	FromClientDIS,
+	ToServerDIS,
+	RppComm,
+	ChildPipe,
+	Idle
+};
+
+/* functions available in libnet.a */
+
+int add_conn(int sock, enum conn_type, pbs_net_t, unsigned int port, void (*func)(int));
+int  client_to_svr(pbs_net_t, unsigned int port, int);
+int  client_to_svr_extend(pbs_net_t, unsigned int port, int, char*);
+void set_client_to_svr_timeout(unsigned int);
+void close_conn(int socket);
+pbs_net_t get_connectaddr(int sock);
+int  get_connecthost(int sock, char *namebuf, int size);
+pbs_net_t get_hostaddr(char *hostname);
+unsigned int  get_svrport(char *servicename, char *proto, unsigned int df);
+int  init_network(unsigned int port, void (*readfunc)(int));
+void net_close(int);
+int  wait_request(time_t waittime);
+void net_add_close_func(int, void(*)(int));
+extern  pbs_net_t  get_addr_of_nodebyname(char *name, unsigned int *port);
+
+int  connection_find_usable_index(int socket);
+int  connection_find_actual_index(int socket);
+void connection_idlecheck(void);
+int connection_init(void);
+char *build_addr_string(pbs_net_t);
+int set_nodelay(int fd);
+
+struct connection {
+	int		cn_sock;	/* socket descriptor */
+	pbs_net_t	cn_addr;	/* internet address of client */
+	int		cn_sockflgs;	/* file status flags - fcntl(F_SETFL) */
+	int		cn_handle;	/* handle for API, see svr_connect() */
+	unsigned int	cn_port;	/* internet port number of client */
+	unsigned short  cn_authen;	/* authentication flags */
+	enum conn_type	cn_active;	/* idle or type if active */
+	time_t		cn_lasttime;	/* time last active */
+	void		(*cn_func)(int); /* read function when data rdy */
+	void		(*cn_oncl)(int); /* func to call on close */
+	/* following attributes are for */
+	/* credential checking */
+	time_t 		cn_timestamp;
+	void 		*cn_data;         /* pointer to some data for cn_func */
+	char		cn_username[PBS_MAXUSER];
+	char		cn_hostname[PBS_MAXHOSTNAME+1];
+};
+#endif	/* _NET_CONNECT_H */

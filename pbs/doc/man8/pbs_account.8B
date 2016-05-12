@@ -1,0 +1,125 @@
+.\" Copyright (C) 1994-2016 Altair Engineering, Inc.
+.\" For more information, contact Altair at www.altair.com.
+.\"  
+.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" 
+.\" Open Source License Information:
+.\"  
+.\" PBS Pro is free software. You can redistribute it and/or modify it under the
+.\" terms of the GNU Affero General Public License as published by the Free 
+.\" Software Foundation, either version 3 of the License, or (at your option) any 
+.\" later version.
+.\"  
+.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+.\" PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+.\"  
+.\" You should have received a copy of the GNU Affero General Public License along 
+.\" with this program.  If not, see <http://www.gnu.org/licenses/>.
+.\"  
+.\" Commercial License Information: 
+.\" 
+.\" The PBS Pro software is licensed under the terms of the GNU Affero General 
+.\" Public License agreement ("AGPL"), except where a separate commercial license 
+.\" agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+.\"  
+.\" Altair’s dual-license business model allows companies, individuals, and 
+.\" organizations to create proprietary derivative works of PBS Pro and distribute 
+.\" them - whether embedded or bundled with other software - under a commercial 
+.\" license agreement.
+.\" 
+.\" Use of Altair’s trademarks, including but not limited to "PBS™", 
+.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+.\" trademark licensing policies.
+.\"
+.TH pbs_account 8B "15 September 2011" Local "PBS Professional"
+.SH NAME
+.B pbs_account 
+\- manage PBS service account
+.SH SYNOPSIS
+.B pbs_account 
+[-a <PBS service account name>] [-c] [-s] [-p password] [--reg service_path] 
+[--unreg service_path] [-o output_path] [--ci]
+
+.SH DESCRIPTION
+The
+.B pbs_account
+command is used to manage the PBS service account. It is used to
+create the account, set or validate the account password, add
+privileges to the account, and register or unregister the account with
+the SCM.
+
+.SH Permissions
+This command can be run by administrators only.
+
+.SH Platforms
+This command is available on Windows only.
+
+.SH OPTIONS
+.IP "-a <account name>" 15
+Specifies account name.
+
+.IP "-c [<password>]" 15  
+If specified account does not exist, creates the account with the password.
+
+If specified account exists, validates password against it.
+
+If password is not specified, user is prompted for password.
+
+.IP "-o <output path>" 15   
+Prints stdout and stderr messages in specified output path.
+
+.IP "-p [<password >]" 15
+Updates the PBS service account password. If no password is specified,
+the user is prompted for a password.
+
+.IP "-S" 15
+Adds necessary privileges to the PBS service account. Grants the
+"Create Token Object", "Replace Process Level Token", "Log On as a
+Service", and "Act as Part of the Operating System" privileges to PBS
+service account.
+
+.IP "--reg-server <path to server> [<password>]" 
+.IP "--reg-mom <path to MOM> [<password>]"
+.IP "--reg-sched <path to scheduler> [<password>]"
+.IP "--reg-rshd <path to rshd> [<password>]" 15
+Registers the PBS service with the SCM, instructing it to run the
+services under the PBS service account and supplied password. <path>
+must be in double quotes.
+
+.IP "--unreg-server <path to server>"
+.IP "--unreg-mom <path to MOM>"
+.IP "--unreg-sched <path to scheduler>"
+.IP "--unreg-rshd <path to rshd>" 15
+Unregisters the PBS service with the SCM. <path> must be in double
+quotes.
+
+.IP "--ci" 15
+Prints actions taken by pbs_account while creating PBS service account
+when -c option is used.
+
+.IP "<no options>" 15
+Prints name of PBS service account, if it exists.  Exit value is 0.
+
+.SH Examples
+
+To create the PBS service account:
+.RS 4
+pbs_account -c -s -p <password>
+.RE
+To change the PBS service account:
+.RS 4
+pbs_account [--reg service_path] [-a <PBS service account name>]
+.RE
+To register the server, scheduler, MOM, and rshd services:
+.RS 4
+.nf
+pbs_account --reg "\Program Files\PBS Pro\exec\sbin\pbs_server.exe" [-p <password>]
+.br
+pbs_account --reg "\Program Files\PBS Pro\exec\sbin\pbs_mom.exe" [-p <password>]
+.br
+pbs_account --reg "\Program Files\PBS Pro\exec\sbin\pbs_sched.exe" [-p <password>]
+.br
+pbs_account --reg "\Program Files\PBS Pro\exec\sbin\pbs_rshd.exe" [-p <password>]
+.fi
+.RE

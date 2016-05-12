@@ -1,0 +1,817 @@
+#!/bin/sh -
+
+#  Copyright (C) 1994-2016 Altair Engineering, Inc.
+#  For more information, contact Altair at www.altair.com.
+#   
+#  This file is part of the PBS Professional ("PBS Pro") software.
+#  
+#  Open Source License Information:
+#   
+#  PBS Pro is free software. You can redistribute it and/or modify it under the
+#  terms of the GNU Affero General Public License as published by the Free 
+#  Software Foundation, either version 3 of the License, or (at your option) any 
+#  later version.
+#   
+#  PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+#  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+#  PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+#   
+#  You should have received a copy of the GNU Affero General Public License along 
+#  with this program.  If not, see <http://www.gnu.org/licenses/>.
+#   
+#  Commercial License Information: 
+#  
+#  The PBS Pro software is licensed under the terms of the GNU Affero General 
+#  Public License agreement ("AGPL"), except where a separate commercial license 
+#  agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+#   
+#  Altair’s dual-license business model allows companies, individuals, and 
+#  organizations to create proprietary derivative works of PBS Pro and distribute 
+#  them - whether embedded or bundled with other software - under a commercial 
+#  license agreement.
+#  
+#  Use of Altair’s trademarks, including but not limited to "PBS™", 
+#  "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+#  trademark licensing policies.
+
+#   This text is cited from
+#
+#		http://www.mpi-forum.org/docs/mpi-20-html/node42.htm,
+#
+# section "4.1. Portable MPI Process Startup":
+# 
+# A number of implementations of MPI-1 provide a startup command for MPI
+# programs that is of the form
+# 
+#     mpirun <mpirun arguments> <program> <program arguments> 
+# 
+# Separating the command to start the program from the program itself
+# provides flexibility, particularly for network and heterogeneous
+# implementations. For example, the startup script need not run on one of
+# the machines that will be executing the MPI program itself.
+# 
+# Having a standard startup mechanism also extends the portability of MPI
+# programs one step further, to the command lines and scripts that manage
+# them. For example, a validation suite script that runs hundreds of
+# programs can be a portable script if it is written using such a standard
+# starup mechanism. In order that the ``standard'' command not be confused
+# with existing practice, which is not standard and not portable among
+# implementations, instead of mpirun MPI specifies mpiexec.
+# 
+# While a standardized startup mechanism improves the usability of MPI,
+# the range of environments is so diverse (e.g., there may not even be a
+# command line interface) that MPI cannot mandate such a mechanism.
+# Instead, MPI specifies an mpiexec startup command and recommends but
+# does not require it, as advice to implementors. However, if an
+# implementation does provide a command called mpiexec, it must be of the
+# form described below.
+# 
+# It is suggested that
+# 
+#     mpiexec -n <numprocs> <program> 
+# 
+# be at least one way to start <program> with an initial MPI_COMM_WORLD
+# whose group contains <numprocs> processes. Other arguments to mpiexec
+# may be implementation-dependent.
+# 
+# This is advice to implementors, rather than a required part of MPI-2. It
+# is not suggested that this be the only way to start MPI programs. If an
+# implementation does provide a command called mpiexec, however, it must
+# be of the form described here.
+# 
+# 
+# / Advice to implementors./
+# 
+# Implementors, if they do provide a special startup command for MPI
+# programs, are advised to give it the following form. The syntax is
+# chosen in order that mpiexec be able to be viewed as a command-line
+# version of MPI_COMM_SPAWN (See Section Reserved Keys <node97.htm#Node97>).
+# 
+# Analogous to MPI_COMM_SPAWN, we have
+# 
+# 
+#     mpiexec -n    <maxprocs> 
+#            -soft  <        > 
+#            -host  <        > 
+#            -arch  <        > 
+#            -wdir  <        > 
+#            -path  <        > 
+#            -file  <        > 
+#             ... 
+#            <command line> 
+# 
+# for the case where a single command line for the application program and
+# its arguments will suffice. See Section Reserved Keys
+# <node97.htm#Node97> for the meanings of these arguments. For the case
+# corresponding to MPI_COMM_SPAWN_MULTIPLE there are two possible formats:
+# 
+# Form A:
+# 
+# 
+#     mpiexec { <above arguments> } : { ... } : { ... } : ... : { ... } 
+# 
+# As with MPI_COMM_SPAWN, all the arguments are optional. (Even the -n x
+# argument is optional; the default is implementation dependent. It might
+# be 1, it might be taken from an environment variable, or it might be
+# specified at compile time.) The names and meanings of the arguments are
+# taken from the keys in the info argument to MPI_COMM_SPAWN. There may be
+# other, implementation-dependent arguments as well.
+# 
+# Note that Form A, though convenient to type, prevents colons from being
+# program arguments. Therefore an alternate, file-based form is allowed:
+# 
+# Form B:
+# 
+# 
+#     mpiexec -configfile <filename> 
+# 
+# where the lines of /</filename/>/ are of the form separated by the
+# colons in Form A. Lines beginning with ` #' are comments, and lines may
+# be continued by terminating the partial line with `\'.
+# 
+# 
+# * Example* Start 16 instances of myprog on the current or default machine:
+# 
+#     mpiexec -n 16 myprog 
+# 
+# 
+# * Example* Start 10 processes on the machine called ferrari:
+# 
+#     mpiexec -n 10 -host ferrari myprog 
+# 
+# 
+# * Example* Start three copies of the same program with different
+# command-line arguments:
+# 
+#     mpiexec myprog infile1 : myprog infile2 : myprog infile3 
+# 
+# 
+# * Example* Start the ocean program on five Suns and the atmos program on
+# 10 RS/6000's:
+# 
+#     mpiexec -n 5 -arch sun ocean : -n 10 -arch rs6000 atmos 
+# 
+# It is assumed that the implementation in this case has a method for
+# choosing hosts of the appropriate type. Their ranks are in the order
+# specified.
+# * Example* Start the ocean program on five Suns and the atmos program on
+# 10 RS/6000's (Form B):
+# 
+#     mpiexec -configfile myfile 
+# 
+# where myfile contains
+# 
+#     -n 5  -arch sun    ocean  
+#     -n 10 -arch rs6000 atmos 
+# 
+# (/ End of advice to implementors./)
+# ...
+# MPI-2.0 of July 18, 1997
+# HTML Generated on September 10, 2001
+
+if [ $# -eq 1 ] && [ $1 = "--version" ]; then
+   echo pbs_version = @PBS_VERSION@
+   exit 0
+fi
+
+#	startup initializations
+init()
+{
+	pbsconffile=${PBS_CONF_FILE:-"/etc/pbs.conf"}
+	if [ -r $pbsconffile ]
+	then
+		. $pbsconffile
+		export PBS_TMPDIR="${PBS_TMPDIR:-${TMPDIR:-/var/tmp}}"
+	else
+		logerr "cannot read PBS configuration file \"$pbsconffile\""
+		exit 1
+	fi
+
+	vendor_init ${1+"$@"}
+
+	configfile=""
+	runfile="`mktemp ${PBS_TMPDIR}/mpiexec_runfileXXXXXX`"
+	tmpconfigfile="`mktemp ${PBS_TMPDIR}/mpiexec_configfileXXXXXX`"
+	trap "rm -f $runfile $tmpconfigfile" 0 1 2 3 15
+
+	ranknum=0
+	reset_rank
+
+	if [ -n "$PBS_MPI_DEBUG" ]
+	then
+		debug=1
+		if [ -n "$NASMODE" ] ; then
+			# NAS localmod 073
+			mpirunverbose=-v
+		fi
+	else
+		debug=0
+		if [ -n "$NASMODE" ] ; then 
+			# NAS localmod 073
+			mpirunverbose=''
+		fi
+	fi
+}
+
+#	The purpose of this function is to find another mpiexec in the user's
+#	path and hand control over to it.  If executing outside of PBS, the
+#	user's normal PATH is used;  if within PBS, we consult the pre-PBS path
+#	(available within PBS as $PBS_O_PATH).  In either case, we take special
+#	precautions to avoid attempting to re-exec ourselves.
+rempiexec()
+{
+	#	if PBS_ENVIRONMENT is not set, this function is called before
+	#	the init() function.
+	if [ -z "$PBS_ENVIRONMENT" ]
+	then
+	        testPATH=$PATH
+
+		# make implicit "." in $testPATH explicit
+		prepPATH=`echo $testPATH | sed	-e 's/^:/.:/'		\
+						-e 's/:$/:./'		\
+						-e 's/:::*/:.:/g'`
+
+		for component in `echo $prepPATH | tr : " "`
+		do
+			if [ $component = `dirname $0` ]
+			then
+				continue
+			fi
+			if [ -x $component/mpiexec ]
+			then
+				exec $component/mpiexec ${1+"$@"}
+			fi
+		done
+		logerr "unexpected error - no non-PBS mpiexec in PATH"
+	else
+		testPATH=$PBS_O_PATH
+		pbsbindirID="`filestat $PBS_EXEC/bin`"
+
+		# make implicit "." in $testPATH explicit
+		prepPATH=`echo $testPATH | sed	-e 's/^:/.:/'		\
+						-e 's/:$/:./'		\
+						-e 's/:::*/:.:/g'`
+
+		for component in `echo $prepPATH | tr : " "`
+		do
+			#	Check to see whether . is $PBS_EXEC/bin
+			if [ $component = "." ]
+			then
+				if [ "`filestat .`" = $pbsbindirID ]
+				then
+					continue
+				fi
+			else
+				if [ $component = "$PBS_EXEC/bin" ]
+				then
+					continue
+				fi
+			fi
+			if [ -x $component/mpiexec ]
+			then
+				exec $component/mpiexec ${1+"$@"}
+			fi
+		done
+		logerr "unexpected error - no non-PBS mpiexec in PBS_O_PATH"
+	fi
+
+	exit 1
+}
+
+filestat()
+{
+	if [ $# -ne 1 ]
+	then
+		logerr "filestat:  unexpected internal error ($#)"
+		exit 1
+	else
+		#	Check for GNU stat(1) command, which allows us to
+		#	return a tag (the file's serial number on a given
+		#	device) more likely to be unique than the serial
+		#	number alone.
+		if type stat > /dev/null 2>&1
+		then
+			statformat="%d:%i"
+			stat -c $statformat $1
+		else
+			#	Sigh - best we can do under the circumstances
+			ls -id $1 | awk '{print $1}'
+		fi
+	fi
+}
+
+#	reset per-rank settings
+reset_rank()
+{
+	maxprocs=`wc -l $PBS_NODEFILE | cut -f1 -d' '`
+	arch=""
+	file=""
+	host=""
+	path=""
+	prog=""
+	progargs=""
+	set=""
+	wdir=""
+}
+
+usage()
+{
+	printf "Usage:\n"
+	if [ -n "$NASMODE" ] ; then 
+		# NAS localmod 073
+		printf "\t%s\n" "mpiexec [-v] -n    <maxprocs>"
+	else
+		printf "\t%s\n" "mpiexec -n    <maxprocs>"
+	fi
+	printf "\t%s\n" "-soft  <        >"
+	printf "\t%s\n" "-host  <        >"
+	printf "\t%s\n" "-arch  <        >"
+	printf "\t%s\n" "-wdir  <        >"
+	printf "\t%s\n" "-path  <        >"
+	printf "\t%s\n" "-file  <        >"
+	printf "\t%s\n" "..."
+	printf "\t%s\n" "<command line>"
+	printf "or\n"
+	printf "\t%s\n" "mpiexec <args as above> [ : <args as above> ... ]"
+	printf "or\n"
+	printf "\t%s\n" "mpiexec -configfile <filename>"
+	printf "\t%s\n" "mpiexec --version"
+
+	exit 1
+}
+
+logerr()
+{
+	printf "%s:  %s\n" $MyName ${1+"$@"} > /dev/stderr
+}
+
+evalsimpleargs()
+{
+	if [ $# -le 1 ]
+	then
+		if [ $# -eq 1 ]
+		then
+			logerr "$1:  argument expected"
+		fi
+		usage
+	else
+		opt="$1"
+		arg="$2"
+	fi
+
+	if [ -n "$NASMODE" ] ; then
+		case "$opt" in
+			"-n")		maxprocs=$arg	;;
+			"-np")		maxprocs=$arg	;;	# NAS localmod 073
+			"-soft")	set=$arg	;;	# unimplemented?
+			"-host")	host=$arg	;;
+			"-arch")	arch=$arg	;;
+			"-wdir")	wdir=$arg	;;
+			"-path")	path=$arg	;;
+			"-file")	file=$arg	;;
+			*)		logerr "internal error - option \"$opt\""
+					exit 1
+					;;
+		esac
+	else
+		case "$opt" in
+			"-n")		maxprocs=$arg	;;
+			"-soft")	set=$arg	;;	# unimplemented?
+			"-host")	host=$arg	;;
+			"-arch")	arch=$arg	;;
+			"-wdir")	wdir=$arg	;;
+			"-path")	path=$arg	;;
+			"-file")	file=$arg	;;
+			*)		logerr "internal error - option \"$opt\""
+					exit 1
+					;;
+		esac
+	fi
+}
+
+#	debugging hook
+printargs()
+{
+	printf "%s:\n" $MyName
+	printf "\tmaxprocs:  %s\n" $maxprocs
+	printf "\tsoft:  %s\n" $soft
+	printf "\thost:  %s\n" $host
+	printf "\tarch:  %s\n" $arch
+	printf "\twdir:  %s\n" $wdir
+	printf "\tpath:  %s\n" $path
+	printf "\tfile:  %s\n" $file
+	printf "\tprog:  %s\n" $prog
+	printf "\targs:  %s\n" $progargs
+	printf "\tconfigfile:  %s\n" $configfile
+}
+
+dorank()
+{
+	line=""
+	[ -n "$maxprocs" ] && line="$line -n $maxprocs"
+	[ -n "$soft" ] && line="$line -soft $soft"
+	[ -n "$host" ] && line="$line -host $host"
+	[ -n "$arch" ] && line="$line -arch $arch"
+	[ -n "$wdir" ] && line="$line -wdir $wdir"
+	[ -n "$path" ] && line="$line -path $path"
+	[ -n "$file" ] && line="$line -file $file"
+	[ -n "$prog" ] && line="$line $prog"
+	[ -n "$progargs" ] && line="$line $progargs"
+	
+	echo "$line" >> $tmpconfigfile
+	reset_rank
+}
+
+#	This function is passed the script's initial arguments (via init()).
+#	It does any necessary vendor-specific initializations, including
+#	determining whether this is a supported platform.
+#
+#	Currently the only supported platforms are Altix systems running
+#	either the SGI MPI bundle of Performance Suite or older SGIs with
+#	ProPack version 4 or greater.  On Altix systems with an earlier
+#	version of ProPack, we complain about an unsupported version.  On
+#	non-Altix systems, we assume we were invoked by mistake and use
+#	the value of PBS_O_PATH to search for the correct version of mpiexec
+#	to execute.
+vendor_init()
+{
+	supported_platform=0
+
+	sgi_release="/etc/sgi-release"
+	sgi_compute_node="/etc/sgi-compute-node-release"
+	sgi_service_node="/etc/sgi-service-node-release"
+
+	if [ -f $sgi_release -o -f $sgi_compute_node -o -f $sgi_service_node ]
+	then
+		sgiinit
+		supported_platform=1
+	fi
+
+	if [ $supported_platform -eq 0 ]
+	then
+		rempiexec ${1+"$@"}
+	fi
+}
+
+#	This function is passed as its argument an mpiexec-style configuration
+#	file and is expected to reformat it into a format suitable for native
+#	consumption by the vendor's MPI infrastructure.
+vendor_config()
+{
+	if [ $# -ne 1 ]
+	then
+		usage
+	fi
+
+	sgiconfig ${1+"$@"}
+}
+
+#	This function takes no arguments.  It causes the native-format MPI job
+#	constructed by vendor_config() to be executed.
+vendor_run()
+{
+	sgimpirun
+}
+
+# Handle initialization of an SGI system based on either the chkfeature
+# utility or, as a fallback, the presence of various text files on an
+# older ProPack system.
+sgiinit()
+{
+	PATH=$PATH:/usr/sbin	# ensure access to chkfeature CLI if present
+	if type chkfeature > /dev/null 2>&1
+	then
+	    #	If MPT is present, make sure it's loaded so we can exec mpirun
+	    if chkfeature -p sgi-mpt > /dev/null 2>&1
+	    then
+		module load mpt > /dev/null 2>&1
+	    else
+		#	chkfeature says MPT is not present.  If there is an
+		#	mpirun in our path, we assume (as we did before) that
+		#	it's the SGI one.
+		if type mpirun > /dev/null 2>&1
+		then
+		    :
+		else
+		    logerr "unexpected error - MPT mpirun unavailable"
+		    exit 1
+		fi
+	    fi
+	else
+	    #	no chkfeature - older ProPack
+	    sgippinit
+	fi
+}
+
+#	For the release into which this change is targeted, only the Altix
+#	should use the PBS version of mpiexec.  Therefore, our mpiexec will
+#	determine whether it is executing on an SGI system running ProPack 4
+#	or greater.  This is accomplished by examining the /etc/sgi-release
+#	file to look for a string of the form
+#	
+#		"SGI ProPack N ..."
+#	
+#	where N is an integer greater than or equal to 4.  There are three
+#	cases to consider:
+#	
+#		-  if the file does not exist, 	PBS's mpiexec assumes that it
+#		   was the unintentional recipient of control and searches the
+#		   user's pre-PBS path, whose value is found in the PBS_O_PATH
+#		   environment variable, for mpiexec.  If one is found, we exec
+#		   it;  otherwise, an appropriate error message is displayed
+#		   and we exit with an error
+#	
+#		-  if the file does exist but its format is not what we expect
+#		   to find, or N is less than 4, an appropriate error message
+#		   is displayed and we exit with an error
+#	
+#		-  otherwise, we proceed with normal execution
+sgippinit()
+{
+	if ! sgicheckppversion
+	then
+		logerr "unexpected error - sgicheckppversion returned $?"
+		exit 1
+	fi
+}
+
+sgicheckppversion()
+{
+	sgi_release="/etc/sgi-release"
+	sgi_compute_node="/etc/sgi-compute-node-release"
+	sgi_ppversmin=4
+	if [ -r $sgi_release ]
+	then
+		read sgi propack propackvers rest < $sgi_release
+		if [ "$sgi" != "SGI" -o "$propack" != "ProPack" ]
+		then
+			logerr "$sgi_release:  unexpected contents"
+			exit 1
+		fi
+		if [ `expr substr $propackvers 1 1` -lt $sgi_ppversmin ]
+		then
+			logerr "ProPack version $propackvers is unsupported"
+			exit 1
+		else
+			return 0
+		fi
+	elif [ -r $sgi_compute_node ]
+	then
+		if grep "Build 5" $sgi_compute_node > /dev/null
+		then
+			return 0
+		fi
+	else
+		return 1
+	fi
+}
+
+#	Translate the mpiexec-style configuration file into an mpirun-style
+#	one ...
+sgiconfig()
+{
+	if [ $debug -eq 1 ]
+	then
+		report_config "$1"
+	fi
+
+	PBS_LIB_PATH=${PBS_EXEC}/lib
+	if [ ! -d ${PBS_LIB_PATH} -a -d ${PBS_EXEC}/lib64 ] ; then
+		PBS_LIB_PATH=${PBS_EXEC}/lib64
+	fi
+
+	if [ -n "$NASMODE" ] ; then
+		# NAS localmod 073
+		awkfile=${awkfile:-${PBS_LIB_PATH}/MPI/sgiMPI.awk}
+		awk -f $awkfile				-v configfile="$1"	\
+							-v runfile="$runfile"	\
+							-v pbs_exec="$PBS_EXEC"	\
+							-v debug=$debug
+	else
+		awk -f ${PBS_LIB_PATH}/MPI/sgiMPI.awk	-v configfile="$1"	\
+							-v runfile="$runfile"	\
+							-v pbs_exec="$PBS_EXEC"	\
+							-v debug=$debug
+	fi
+}
+
+#	... and execute it.
+sgimpirun()
+{
+	if [ $debug -eq 1 ]
+	then
+		report_run
+	fi
+
+	# The Performance Suite version of mpirun needs to be told
+	# that it ought not complain when we exec it via this script.
+	# Don't be confused by the name - it's simply a directive to
+	# the SGI mpirun command to assert that mpirun need not worry
+	# its pretty little head about the absence of a pbs_attach
+	# command among its command line arguments.
+	export MPI_IGNORE_PBS=1
+
+	if [ -f "/proc/self/cpuset" ] && [ "`cat /proc/self/cpuset`" != "/" ]
+	then
+		# assert exclusive use of the resources in the assigned CPU set
+		PBS_CPUSET_DEDICATED="YES"
+		export PBS_CPUSET_DEDICATED
+	fi
+
+	a_opt=''
+	if [ -n "$PBS_MPI_SGIARRAY" ]
+	then
+		a_opt="-a $PBS_MPI_SGIARRAY"
+	fi
+
+	if [ -n "$NASMODE" ] ; then
+		set -- $mpirunverbose "${mpirun_args[@]}" $a_opt -f $runfile
+		if [ $debug -eq 1 ]
+		then
+			report_run "$@"
+			exit
+		fi
+
+		mpirun "$@"
+	else
+		mpirun $a_opt -f $runfile
+	fi
+}
+
+#	debugging hooks
+report_config()
+{
+	echo "generated mpiexec configuration file ($1) contains"
+	cat "$1" | sed -e 's/^/\t/'
+}
+report_run()
+{
+	# NAS localmod 073
+	if [ -n "$NASMODE" ] ; then
+		echo mpirun "$@"
+	else
+		if [ -n "$PBS_MPI_SGIARRAY" ]
+		then
+			echo "mpirun -a $PBS_MPI_SGIARRAY -f $runfile"
+		else
+			echo "mpirun -f $runfile"
+	 	fi
+	fi
+
+	echo "where $runfile contains:"
+	cat $runfile | sed -e 's/^/\t/'
+}
+
+MyName="`basename $0`"					# must occur first
+
+[ -z "$PBS_ENVIRONMENT" ] && rempiexec ${1+"$@"}	# no work for us to do
+
+init ${1+"$@"}
+
+if [ -n "$NASMODE" ] ; then
+	# NAS localmod 073
+	declare -a mpirun_args
+	in_rankdef=0
+	while [ $# -gt 0 ]
+	do
+		# NAS localmod 073
+		case "$1" in
+			"-n"|"-np"|"-soft"|"-host"|"-arch"|"-wdir"|"-path"|"-file")
+				in_rankdef=1
+				evalsimpleargs ${1+"$@"}
+				shift 2
+				;;
+			"-configfile")
+				if [ $in_rankdef -eq 1 ]
+				then
+					logerr "-configfile in rank definition"
+					exit 1
+				fi
+				# first "-configfile" option terminates argument parsing
+				shift
+				configfile="$1"
+				vendor_config $configfile && vendor_run
+				exit $?
+				;;
+			# NAS localmod 073
+			"-v")
+				mpirunverbose=-v
+				shift
+				;;
+			":")
+				in_rankdef=0
+				shift
+				evalsimpleargs ${1+"$@"}
+				while [ $# -gt 0 -a "$1" != ":" ]
+				do
+					shift
+				done
+				;;
+			# NAS localmod 073
+			-*)
+				mpirun_args=("${mpirun_args[@]}" "$1")
+				shift
+				if [ "$1" = "${1#-}" ]; then
+					mpirun_args=("${mpirun_args[@]}" "$1")
+					shift
+				fi
+				;;
+			*)
+				prog="$1"
+				shift
+				while [ $# -gt 0 ]
+				do
+					if [ "$1" = ":" ]
+					then
+						in_rankdef=0
+						dorank
+						break
+					else
+						progargs="$progargs $1"
+					fi
+					shift
+				done
+				if [ $# -gt 0 ]
+				then
+					if [ `expr substr "$1" 1 1` = ":" ]
+					then
+						shift
+					fi
+				else
+					ranknum=`expr $ranknum + 1`
+					in_rankdef=0
+					dorank
+				fi
+				;;
+		esac
+	done
+else
+	in_rankdef=0
+	while [ $# -gt 0 ]
+	do
+		case "$1" in
+			"-n"|"-soft"|"-host"|"-arch"|"-wdir"|"-path"|"-file")
+				in_rankdef=1
+				evalsimpleargs ${1+"$@"}
+				shift 2
+				;;
+			"-configfile")
+				if [ $in_rankdef -eq 1 ]
+				then
+					logerr "-configfile in rank definition"
+					exit 1
+				fi
+				# first "-configfile" option terminates argument parsing
+				shift
+				configfile="$1"
+				vendor_config $configfile && vendor_run
+				exit $?
+				;;
+			":")
+				in_rankdef=0
+				shift
+				evalsimpleargs ${1+"$@"}
+				while [ $# -gt 0 -a "$1" != ":" ]
+				do
+					shift
+				done
+				;;
+			*)
+				prog="$1"
+				shift
+				while [ $# -gt 0 ]
+				do
+					if [ "$1" = ":" ]
+					then
+						in_rankdef=0
+						dorank
+						break
+					else
+						progargs="$progargs $1"
+					fi
+					shift
+				done
+				if [ $# -gt 0 ]
+				then
+					if [ `expr substr "$1" 1 1` = ":" ]
+					then
+						shift
+					fi
+				else
+					ranknum=`expr $ranknum + 1`
+					in_rankdef=0
+					dorank
+				fi
+				;;
+		esac
+	done
+
+fi
+
+if [ $in_rankdef -eq 1 -a -z "$prog" ]
+then
+	logerr "rank $ranknum has no executable"
+	exit 1
+else
+	vendor_config $tmpconfigfile && vendor_run
+fi

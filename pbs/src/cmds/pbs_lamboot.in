@@ -1,0 +1,112 @@
+#!/bin/sh
+#  Copyright (C) 1994-2016 Altair Engineering, Inc.
+#  For more information, contact Altair at www.altair.com.
+#   
+#  This file is part of the PBS Professional ("PBS Pro") software.
+#  
+#  Open Source License Information:
+#   
+#  PBS Pro is free software. You can redistribute it and/or modify it under the
+#  terms of the GNU Affero General Public License as published by the Free 
+#  Software Foundation, either version 3 of the License, or (at your option) any 
+#  later version.
+#   
+#  PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+#  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+#  PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+#   
+#  You should have received a copy of the GNU Affero General Public License along 
+#  with this program.  If not, see <http://www.gnu.org/licenses/>.
+#   
+#  Commercial License Information: 
+#  
+#  The PBS Pro software is licensed under the terms of the GNU Affero General 
+#  Public License agreement ("AGPL"), except where a separate commercial license 
+#  agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+#   
+#  Altair’s dual-license business model allows companies, individuals, and 
+#  organizations to create proprietary derivative works of PBS Pro and distribute 
+#  them - whether embedded or bundled with other software - under a commercial 
+#  license agreement.
+#  
+#  Use of Altair’s trademarks, including but not limited to "PBS™", 
+#  "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+#  trademark licensing policies.
+#
+
+if [ $# -eq 1 ] && [ $1 = "--version" ]; then
+   echo pbs_version = @PBS_VERSION@
+   exit 0
+fi
+
+lamboot="lamboot"
+name=`basename $0`
+
+if [ "${PBS_NODEFILE:-XX}" = "XX" ]; then
+        if [ "$name" != "lamboot" ]; then
+               echo "$name: Warning, not running under PBS"
+        fi
+	$lamboot $*
+	exit $?
+fi
+
+options=""
+bhost=""
+boot_tm=0
+boot_rsh=0
+ssi_arg1=""
+ssi_arg2=""
+while [ $# -gt 0 ]; do
+
+	if   [ "XX$1" = "XX-c" ]     		 ||
+             [ "XX$1" = "XX-prefix" ]     	 ||
+             [ "XX$1" = "XX-sessionprefix" ]     ||
+             [ "XX$1" = "XX-sessionsuffix" ]     ||
+             [ "XX$1" = "XX-withlamprefixpath" ] ; then
+		options="$options $1"	
+		shift
+		options="$options $1"	
+        elif [ "XX$1" = "XX-ssi" ] ; then
+		options="$options $1"	
+		shift
+		options="$options $1"	
+		ssi_arg1=$1
+		shift
+		ssi_arg2=$1
+
+		if [ "$ssi_arg1" = "boot" ] &&
+		   [ "$ssi_arg2" = "tm" ] ; then
+			boot_tm=1
+		elif [ "$ssi_arg1" = "boot" ] &&
+		     [ "$ssi_arg2" = "rsh" ] ; then
+			boot_rsh=1
+		fi
+
+		if [ `echo $1 | wc -w` -gt 1 ] ; then
+			options="$options \"$1\""
+		else
+			options="$options $1"
+		fi
+	elif [ `expr match "$1" "-\+"` -ne 0 ] ; then
+		options="$options $1"
+	else
+		bhost="$1"
+        fi
+
+	shift
+
+done
+
+if [ "${bhost:-XX}" != "XX" ]; then
+	echo "$name: Warning, <bhost> value ignored by PBS"
+fi
+
+# check if tm boot module is specified with lamboot
+if [ $boot_tm -eq 1 ] ||
+   ( [ $boot_rsh -eq 0 ] &&
+     [ "${LAM_MPI_SSI_boot:-XX}" != "XX" ] &&
+     [ "${LAM_MPI_SSI_boot}" = "tm" ] ) ; then
+	eval $lamboot $options
+else
+	eval $lamboot $options ${PBS_NODEFILE}
+fi

@@ -1,0 +1,1103 @@
+.\" Copyright (C) 1994-2016 Altair Engineering, Inc.
+.\" For more information, contact Altair at www.altair.com.
+.\"  
+.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" 
+.\" Open Source License Information:
+.\"  
+.\" PBS Pro is free software. You can redistribute it and/or modify it under the
+.\" terms of the GNU Affero General Public License as published by the Free 
+.\" Software Foundation, either version 3 of the License, or (at your option) any 
+.\" later version.
+.\"  
+.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+.\" PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+.\"  
+.\" You should have received a copy of the GNU Affero General Public License along 
+.\" with this program.  If not, see <http://www.gnu.org/licenses/>.
+.\"  
+.\" Commercial License Information: 
+.\" 
+.\" The PBS Pro software is licensed under the terms of the GNU Affero General 
+.\" Public License agreement ("AGPL"), except where a separate commercial license 
+.\" agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+.\"  
+.\" Altair’s dual-license business model allows companies, individuals, and 
+.\" organizations to create proprietary derivative works of PBS Pro and distribute 
+.\" them - whether embedded or bundled with other software - under a commercial 
+.\" license agreement.
+.\" 
+.\" Use of Altair’s trademarks, including but not limited to "PBS™", 
+.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+.\" trademark licensing policies.
+.\"
+.TH qalter 1B "2 February 2016" Local "PBS Professional"
+.SH NAME
+.B qalter 
+\- alter PBS job
+
+
+.SH SYNOPSIS
+.B qalter 
+[-a date_time] [-A account_string] [-c interval] 
+.RS 7
+[-e path] 
+[-h hold_list] [-j join] [-k keep] [-l resource_list]
+[-m mail_events] [-M user_list] [-N name] [-o path] 
+[-p priority] [-P project] [-r c] [-S path] [-u user_list] 
+[-W additional_attributes] 
+job_identifier_list
+.RE
+
+.B qalter
+--version
+
+.SH DESCRIPTION
+The 
+.B qalter 
+command is used to alter one or more PBS batch jobs.
+The attributes listed with the options to the 
+.B qalter
+command can be modified.  If any of the modifications to a job fails, 
+none of the job's attributes is modified.
+
+.B Required Privilege
+.br
+A non-privileged user may only lower the limits for resources and the
+.I run_count
+attribute.
+A Manager or Operator may lower or raise resource limits, except for 
+per-process limits such as pcput and pmem, because these are set when 
+the process starts, and enforced by the kernel.
+The 
+.B qalter
+command cannot be used by a non-privileged user to alter a custom resource 
+which has been created to be invisible or read-only for users.
+
+.B Modifying resources and job placement
+.br
+If a job is running, the only resources that can be modified are
+.I cputime 
+and 
+.I walltime.
+.LP
+
+If a job is queued, any resource mentioned in the options to the
+.B qalter
+command can be modified, but
+requested modifications must fit within the 
+limits set at the server and queue for the amount of each resource
+allocated for queued jobs.  If a requested modification does 
+not fit within these limits, the modification is rejected.
+
+Note that a job's resource request must fit within the queue's and
+server's resource run limits.  If a modification to a resource exceeds
+the amount of the resource allowed by the queue or server to be used
+by running jobs, the job is never run.
+
+Resources are modified
+by using the 
+.I -l
+option, either in
+.I chunks 
+inside of 
+.I selection statements,
+or in job-wide modifications using
+.I resource_name=value
+pairs.
+The 
+.I selection statement 
+is of the form:
+.IP
+.I -l select=[N:]chunk[+[N:]chunk ...]
+.LP
+where 
+.I N
+specifies how many of that chunk, and 
+a 
+.I chunk 
+is of the form:
+.IP
+.I resource_name=value[:resource_name=value ...]
+.LP
+Job-wide 
+.I resource_name=value 
+modifications are of the form:
+.IP
+.I -l resource_name=value[,resource_name=value ...]
+.LP
+Placement of jobs on nodes is changed using the
+.I place 
+statement:
+.IP
+.I -l place=modifier[:modifier]
+.LP
+where
+.I modifier
+is any combination of the following:
+.I group, 
+one of 
+.I excl|exclhost|shared,
+and one of
+.I free|pack|scatter|vscatter.
+
+For more on resource requests, usage limits and job placement, see
+.B pbs_resources(7B).
+
+.B Modifying attributes
+.br
+The user alters job attributes by giving options to the 
+.B qalter 
+command.  Each
+.B qalter 
+option changes a job attribute.  See the
+.B PBS Professional User's Guide
+and 
+.B pbs_job_attributes(7B).
+
+The behavior of the 
+.B qalter 
+command may be affected by 
+any site hooks.  Site hooks can modify the job's attributes, 
+change its routing, etc.
+
+A job that is in the process of provisioning cannot be altered.
+
+.SH OPTIONS
+
+.IP "-a date_time" 8
+Changes the point in time after which the job is eligible for execution.
+Given in pairs of digits.  Sets job's 
+.I Execution_Time
+attribute to 
+.I date_time.
+Format:
+.RS 13
+.I "[[[[CC]YY]MM]DD]hhmm[.SS]"
+.RE
+.IP
+where CC is the century,
+YY is the year, 
+MM is the month,
+DD is the day of the month, 
+hh is the hour, mm is the minute,
+and SS is the seconds.
+
+Each portion of the date defaults to the current date, as long as the 
+next-smaller portion is in the future.  For example, if today is the
+3rd of the month and the specified day 
+.I DD 
+is the 5th, the month 
+.I MM
+will be set to the current month.
+
+If a specified portion has already passed, the next-larger portion will be set
+to one after the current date.  For example, if the day
+.I DD
+is not specified, but the hour 
+.I hh 
+is specified to be 10:00 a.m. and the current time is 11:00 a.m., 
+the day 
+.I DD
+will be set to tomorrow.
+
+The job's 
+.I Execution_Time
+attribute can be altered after the job has begun execution, in which
+case it will not take effect until the job is rerun.
+
+.IP "-A account_string" 8
+Replaces the accounting string associated with the job.  Used for labeling accounting data.
+Sets job's 
+.I Account_Name 
+attribute to 
+.I account_string.
+Format: string.
+
+This attribute cannot be altered once the job has begun execution.
+
+.IP "-c checkpoint_spec"
+Changes when the job will be checkpointed.  Sets job's 
+.I Checkpoint
+attribute.  An 
+.I $action
+script is required to checkpoint the job.  See the 
+.B pbs_mom(8B)
+man page.  
+This attribute can be altered after the job has begun execution, 
+in which case the new value will not take effect until the
+job is rerun.
+.IP
+The argument 
+.I checkpoint_spec
+can take on one of the following values:
+.RS
+.IP c 5
+Checkpointing is to be performed according to the interval, measured
+in CPU time, set on the execution queue in which the job resides.
+If there is no interval set on the queue, the job is not checkpointed.
+.IP "c=<minutes of CPU time>" 5
+Checkpointing is to be performed at intervals of the specified number
+of minutes of CPU time used by the job.  This value must be greater
+than zero.  If the interval specified is less that that set on the
+execution queue in which the job resides, the queue's interval is
+used.
+.br
+Format: integer.  
+.IP w 5
+Checkpointing is to be performed according to the interval, measured
+in walltime, set on the execution queue in which the job resides. 
+If there is no interval set on the queue, the job is not checkpointed.
+
+.IP "w=<minutes of walltime>" 5
+Checkpointing is to be performed at intervals of the specified number
+of minutes of walltime used by the job.  This value must be greater
+than zero.  If the interval specified is less than that set on the
+execution queue in which the job resides, the queue's interval is
+used.
+.br
+Format: integer.  
+.IP n 5
+No checkpointing is to be performed.
+.IP s 5
+Checkpointing is to be performed only when the server is shut down.
+
+.IP u 5
+Unset.  Defaults to behavior when 
+.I interval
+argument is set to 
+.I s.
+.I 
+.LP
+Default: 
+.I u.
+.br
+Format: String.
+.RE
+.RE
+
+.IP "-e path" 8
+Replaces the path to be used for the job's standard error stream.
+Sets job's 
+.I Error_Path 
+attribute to 
+.I path.
+The
+.I path
+argument is of the form:
+.RS 13
+.I [hostname:]path_name
+.RE
+.RS
+The 
+.I path 
+will be interpreted as follows:
+
+.IP path_name 5
+If
+.I path_name 
+is a relative path, then it is taken to be relative to 
+the current working directory of the 
+.B qalter
+command, where it is executing 
+on the current host.
+
+If
+.I path_name
+is an absolute path, then it is taken to be an absolute path on 
+the current host where the 
+.B qalter
+command is executing.
+
+.IP hostname:path_name
+If 
+.I path_name
+is a relative path, then it is taken to be relative to the user's 
+home directory on the host named
+.I hostname.
+
+If 
+.I path_name 
+is an absolute path, then it is the absolute path on the host named
+.I hostname.
+.LP
+If 
+.I path_name
+does not include a filename, the default filename will be 
+.RS 
+jobid.ER
+.RE
+If the
+.I -e
+option is not specified, the default filename for the standard error stream
+is used.  It has this form:
+.RS 
+.I job_name.esequence_number
+.RE
+
+This attribute can be altered after the job has begun execution, 
+in which case the new value will not take effect until the
+job is rerun.
+
+If you use a UNC path, the hostname is optional.  If you use a non-UNC 
+path, the hostname is required.
+.RE
+
+.IP "-h hold_list" 8
+Updates the job's hold list.
+Adds 
+.I hold_list
+to the job's 
+.I Hold_Types 
+attribute.
+The 
+.I hold_list
+is a string of one or more of the following:
+.RS
+.IP u 5
+Add a USER hold.
+.IP o 5
+Add OTHER hold.  Requires operator privilege.
+.IP n 5
+Clear the holds for which the user has privilege.
+.LP
+This attribute can be altered after the job has begun execution, 
+in which case the new value will not take effect until the
+job is rerun.
+.RE
+
+.IP "-j join" 8
+Changes whether and how to join the job's standard error 
+and standard output streams.
+Sets job's 
+.I Join_Path
+attribute to 
+.I join.
+Default: not merged.  
+Possible values of 
+.I join:
+.RS
+.IP oe 5
+Standard error and standard output are merged into standard output.
+.IP eo 5
+Standard error and standard output are merged into standard error.
+.IP n 5
+Standard error and standard output are not merged.
+.LP
+This attribute can be altered after the job has begun execution, 
+in which case the new value will not take effect until the
+job is rerun.
+.RE
+
+.IP "-k keep" 8
+Changes whether and which of the standard output and standard error streams
+will be retained on the execution host.  Overrides default path names for these
+streams.  Sets the job's 
+.I Keep_Files 
+attribute to 
+.I keep.
+Default: neither is retained.  
+This attribute cannot be altered once the job has begun execution.
+
+In the case where output and/or error is retained on the execution host in
+a job-specific staging and execution directory created by PBS, these
+files are deleted when PBS deletes the directory.
+
+The 
+.I keep 
+argument can take on the following values:
+.RS
+.IP e 5
+The standard error stream is retained on the execution host, in the 
+job's staging and execution directory.  The filename will be:
+.RS
+.RS 5
+job_name.e<sequence number>
+.RE
+.RE
+.IP o  5
+The standard output stream is retained on the execution host, in the 
+job's staging and execution directory.  The filename will be:
+.RS
+.RS 5
+job_name.o<sequence number>
+.RE
+.RE
+
+.IP "eo, oe"  5
+Both standard output and standard error streams are 
+retained on the execution host, in the job's staging 
+and execution directory.
+.IP n  5
+Neither stream is retained.
+.RE
+
+.IP "-l resource_arg" 8
+.RS
+Allows the user to change requested resources and job
+placement.  Sets job's 
+.I Resource_list 
+attribute to 
+.I resource_arg.
+Uses resource request syntax.
+Requesting a resource places a limit on its usage.
+Users without manager or operator privilege cannot alter a custom 
+resource which was created to be invisible or read-only for users.
+
+Requesting resources in 
+.I chunks:
+.RS 4
+.I -l select=[N:]chunk[+[N:]chunk ...]
+.br
+where N specifies how many of that chunk, and a chunk is:
+.RS 4
+.I resource_name=value[:resource_name=value ...]
+.RE
+.RE
+Requesting job-wide resources:
+.RS 4
+.I -l resource_name=value[,resource_name=value ...]
+.RE
+The place statement can contain the following elements, in any order:
+.RS 4
+-l place=[
+.I arrangement
+][:
+.I sharing
+][:
+.I grouping
+]
+where
+.RS 4
+.I arrangement 
+is one of 
+.I free
+|
+.I pack
+|
+.I scatter
+| 
+.I vscatter
+.br
+.I sharing
+is one of 
+.I excl 
+| 
+.I shared 
+|
+.I exclhost
+.br
+.I grouping 
+can have only one instance of 
+.I group=resource
+.RE
+and where
+.RS 4
+.I free:
+Place job on any vnode(s).
+.br
+.I pack:
+All chunks will be taken from one host.
+.br
+.I scatter:
+Only one chunk with any MPI processes will be taken from a host.
+A chunk with no MPI processes may be taken from the same node as
+another chunk.
+.br
+.I vscatter:
+Only one chunk is taken from any vnode.
+.br
+.I excl:
+Only this job uses the vnodes chosen.
+.br
+.I exclhost:
+The entire host is allocated to the job.
+.br
+.I shared:
+This job can share the vnodes chosen.
+.br
+.I group=resource:
+Chunks will be grouped according to a 
+.I resource.  
+All nodes in the group must have a common value for the 
+.I resource, 
+which can be either the built-in resource
+.I host
+or a site-defined node-level resource.
+
+The place statement cannot begin with a colon.
+
+.RE
+.RE
+If a requested modification to a resource would exceed the 
+job's queue's limits, the resource request will be rejected.
+For a running job, resources may only be reduced.  Which resources
+can be altered is system-dependent.
+
+If the job was submitted with an explicit "-l select=", then node
+level resources must be qaltered using the "-l select=" form.  In this
+case a node level resource RES cannot be qaltered with the "-l RES"
+form.
+
+For example: 
+.RS
+Submit the job:
+.br
+% qsub -l select=1:ncpus=2:mem=512mb jobscript
+.br
+Job's ID is 230
+
+qalter the job using "-l RES" form:
+.br
+% qalter -l ncpus=4 230
+.br
+
+Error reported by qalter:
+.br
+qalter: Resource must only appear in "select" specification 
+when select is used: ncpus 230
+.br
+
+qalter the job using the "-l select=" form:
+.br
+% qalter -l select=1:ncpus=4:mem=512mb 230
+.br
+
+No error reported by qalter:
+.br
+%
+.RE
+
+For more on resource requests, usage limits and job placement, see
+.B pbs_resources(7B).
+.RE
+
+.IP "-m mail_events " 8
+Changes the set of conditions under which mail about the job is sent.
+Format: string.  Default value: "a".  Sets job's 
+.I Mail_Points
+attribute to 
+.I mail_events.  
+The 
+.I mail_events
+argument can be either "n" or any combination of "a", "b", and "e".
+.RS
+.IP n 5
+No mail will be sent.  
+.IP
+.IP a 5
+Mail is sent when the job is aborted by the batch system.
+.IP b 5
+Mail is sent when the job begins execution.
+.IP e 5
+Mail is sent when the job terminates.
+.RE
+.IP "-M user_list" 8
+Alters list of users to whom mail about the job is sent.  Sets job's 
+.I Mail_Users 
+attribute to 
+.I user_list.  
+Default: job owner.
+.RS
+The
+.I user_list
+argument is of the form:
+.RS 5
+.I user[@host][,user[@host],...]
+.RE
+.RE
+.IP "-N name " 8
+Renames the job.
+Sets job's 
+.I Job_Name
+attribute to 
+.I name.
+Format: string, up to 236 characters in length.
+It must consist of an alphabetic character followed by printable, non-white-space characters.
+Default: if a script is used to submit the job, the job's name is the name of the script.  
+If no script is used, the job's name is "STDIN". 
+
+.IP "-o path" 8
+Alters path to be used for the job's standard output stream.
+Sets job's 
+.I Output_Path 
+attribute to 
+.I path.
+The
+.I path
+argument is of the form:
+.RS 13
+.I [hostname:]path_name
+.RE
+.RS
+The 
+.I path 
+will be interpreted as follows:
+
+.IP path_name 5
+If
+.I path_name 
+is a relative path, then it is taken to be relative to 
+the current working directory of the command, where it is executing 
+on the current host.
+
+If
+.I path_name
+is an absolute path, then it is taken to be an absolute path on 
+the current host where the command is executing.
+
+.IP hostname:path_name
+If 
+.I path_name
+is a relative path, then it is taken to be relative to the user's 
+home directory on the host named
+.I hostname.
+
+If 
+.I path_name 
+is an absolute path, then it is the absolute path on the host named
+.I hostname.
+.LP
+If 
+.I path_name
+does not include a filename, the default filename will be 
+.RS 
+jobid.OU
+.RE
+
+If the
+.I -o
+option is not specified, the default filename for the standard output stream
+is used.  It has this form:
+.RS 
+.I job_name.osequence_number
+.RE
+This attribute can be altered after the job has begun execution, 
+in which case the new value will not take effect until the
+job is rerun.
+
+If you use a UNC path, the hostname is optional.  If you use a non-UNC
+path, the hostname is required.
+.RE
+.IP "-p priority" 8
+Alters priority of the job.  Format: host-dependent integer.
+Default: zero.  Range: [-1024, +1023] inclusive.  Sets job's 
+.I Priority
+attribute to 
+.I priority.
+
+This attribute can be altered after the job has begun execution, 
+in which case the new value will not take effect until the
+job is rerun.
+
+.IP "-P project" 8
+
+Specifies a project for the job. Sets job's 
+.I project
+attribute to specified value.
+
+Format: String.
+.br
+Project name can contain any characters except for the following:
+Slash ("/"), left bracket ("["), right bracket ("]"), double quote ("""), 
+semicolon (";"), colon (":"), vertical bar ("|"), left angle bracket ("<"), 
+right angle bracket (">"), plus ("+"), comma (","), question mark ("?"), 
+and asterisk ("*").
+.br
+Default value: "_pbs_project_default".
+
+.IP "-r y|n" 8
+Changes whether the job is rerunnable.  This setting does not affect
+how the job is handled in the case where the job was unable to begin
+execution.
+See the
+.B qrerun(1B)
+command.  Default: "y".  Sets job's 
+.I Rerunable
+attribute to the argument.
+Format: single character, "y" or "n".
+.RS
+.IP y 5
+Job is rerunnable.
+.IP n 5
+Job is not rerunnable.
+.RE
+
+.IP "-S path_list" 8
+Specifies the interpreter or shell path for the job script.  Sets job's 
+.I Shell_Path_List 
+attribute to 
+.I path_list.
+Default: user's login shell on execution node.
+The 
+.I path_list
+argument is the full path to the interpreter or shell including the 
+executable name.  Format:
+.RS
+.IP
+.I path[@host][,path@host ...]
+.LP
+Only one path may be specified without a host name.
+Only one path may be specified per named host.  The path selected
+is the one whose host name is that of the server on which the job
+resides.  
+
+This attribute can be altered after the job has begun execution, 
+in which case the new value will not take effect until the
+job is rerun.
+
+Example of using bash via a directive:
+.IP
+#PBS -S /bin/bash@mars,/usr/bin/bash@jupiter
+.LP
+Example of using a Python script from the command line on UNIX/Linux: 
+.IP
+qsub -S $PBS_EXEC/bin/pbs_python <script name>
+.LP
+Example of using a Python script from the command line on Windows: 
+.IP
+qsub -S \%PBS_EXEC\%\\bin\\pbs_python.exe <script name>
+.LP
+If the path contains spaces, it must be quoted, for example:
+.IP
+qsub -S "C:\Program Files\\PBS Pro\\bin\\pbs_python.exe" <script name>
+.LP
+
+.RE
+.IP 
+.IP "-u user_list" 8
+Alters list of usernames.  Job will be run under a username from this list.
+Sets job's 
+.I User_List 
+attribute to 
+.I user_list.
+Default: job owner (username on submit host.)  Format of
+.I user_list: 
+.RS
+.IP 
+.I user[@host][,user@host ...]
+.LP
+Only one username may be specified without a host name.
+Only one username may be specified per named host.  
+The server on which the job resides will select first the username whose
+host name is the same as the server name.  Failing that, 
+the next selection will be the username with no specified hostname.
+The usernames on the server and execution hosts must be the same.
+The job owner must have authorization to run as the specified user.
+
+This attribute cannot be altered once the job has begun execution.
+.RE
+
+.IP "-W additional_attributes" 8
+The -W option allows change in specification of additional job attributes.
+Format:
+.RS
+.IP
+.I -W attribute_name=value[,attribute_name=value...]
+.LP
+If white space occurs within the 
+.I additional_attributes
+argument, or the equal sign "=" occurs within an 
+.I attribute_value
+string, then that must be enclosed with single- or double-quotes.
+PBS supports the following attributes within the -W option:
+
+.I "depend=dependency_list"
+.IP
+Defines dependencies between this and other jobs.  
+Sets the job's
+.I depend
+attribute to 
+.I dependency_list.
+The 
+.I dependency_list
+has the form:
+.RS
+.RS 5
+.I type:arg_list[,type:arg_list ...]
+.RE
+where except for the 
+.I on
+type, 
+the
+.I arg_list
+is one or more PBS job IDs in the form:
+.RS 5
+.I jobid[:jobid ...]
+.RE
+The 
+.I type 
+can be:
+
+.IP " after: arg_list" 4
+This job may be scheduled for execution at any point after all jobs
+in 
+.I arg_list
+have started execution.
+
+.IP " afterok: arg_list" 4
+This job may be scheduled for execution only after all jobs in
+.I arg_list
+have terminated with no errors.
+See "Warning about exit status with csh" in 
+.B EXIT STATUS.
+
+.IP " afternotok: arg_list" 4
+This job may be scheduled for execution only after all jobs in 
+.I arg_list
+have terminated with errors.
+See "Warning about exit status with csh" in 
+.B EXIT STATUS.
+
+.IP " afterany: arg_list" 4
+This job may be scheduled for execution after all jobs in
+.I arg_list
+have finished execution, with any exit status (with or without errors.)
+This job will not run if a job in the 
+.I arg_list 
+was deleted without ever having been run.
+
+.IP " before: arg_list"  4
+Jobs in 
+.I arg_list 
+may begin execution once this job has begun execution.
+
+.IP  " beforeok: arg_list " 4
+Jobs in 
+.I arg_list
+may begin execution once this job terminates without errors.
+See "Warning about exit status with csh" in 
+.B EXIT STATUS.
+
+.IP " beforenotok: arg_list"  4
+If this job terminates execution with errors, then jobs in 
+.I arg_list
+may begin.
+See "Warning about exit status with csh" in 
+.B EXIT STATUS.
+
+.IP " beforeany: arg_list"  4
+Jobs in 
+.I arg_list
+may begin execution once this job terminates execution,
+with or without errors.
+
+.IP " on: count " 4
+This job may be scheduled for execution after
+.I count
+dependencies on
+other jobs have been satisfied.  This type is used in conjunction
+with one of the 
+.I before
+types listed.
+Count is an integer greater than 0.
+.LP
+
+Job IDs in the
+.I arg_list 
+of 
+.I before 
+types must have been submitted with a 
+.I type 
+of 
+.I on.
+
+To use the 
+.I before types,
+the user must have the authority to alter the jobs in 
+.I arg_list.
+Otherwise, the dependency is rejected and the new job aborted.
+
+Error processing of the existence, state, or condition of the job on which the
+newly submitted job is a deferred service, i.e. the check is performed after
+the job is queued.  If an error is detected, the new job will be deleted by
+the server.  Mail will be sent to the job submitter stating the error.
+
+Dependency examples:
+.br
+qalter -W depend=afterok:123.host1.domain.com /tmp/script
+.br
+qalter -W depend=before:234.host1.com:235.host1.com /tmp/script
+.RE
+
+.I "group_list=g_list"
+.IP
+Alters list of group names.  Job will be run under a group name from this list.
+Sets job's
+.I group_List
+attribute to
+.I g_list.
+Default: login group name of job owner.  Format of
+.I g_list:
+.RS 
+.IP
+group[@host][,group@host ...]
+.LP
+Only one group name may be specified without a host name.
+Only one group name may be specified per named host.
+The server on which the job resides will select first the group name whose
+host name is the same as the server name.  Failing that,
+the next selection will be the group name with no specified hostname.
+The group names on the server and execution hosts must be the same.
+.RE
+
+.I "run_count=<value>"
+.IP
+Sets the number of times the server thinks it has run the job.  Sets the value of
+the job's 
+.I run_count
+attribute.  Job is held when the value of this attribute goes over 20.
+Can be set while job is running.
+.br
+Format: integer greater than or equal to zero.
+.LP
+
+.I "sandbox=<value>"
+.IP
+Changes which directory PBS uses for the job's staging and execution.
+If
+.I value
+is 
+.I PRIVATE
+, PBS creates a job-specific directory for staging and execution.
+If 
+.I value
+is 
+.I HOME 
+or is unset, PBS uses the user's home directory for staging and execution.
+.LP
+
+.I "stagein=path_list"
+.br
+.I "stageout=path_list"
+.IP
+Changes files or directories to be staged-in before execution or staged-out
+after execution is complete.  Sets the job's 
+.I stagein
+and 
+.I stageout
+attributes to the specified
+.I path_lists.
+On completion of the job, all staged-in and staged-out files and directories
+are removed from the execution host(s).  The
+.I path_list
+has the form:
+.RS
+.IP
+.I filespec[,filespec]
+.LP
+where 
+.I filespec 
+is 
+.IP
+.I local_path@hostname:remote_path
+.LP
+regardless of the direction of the copy.
+The name
+.I local_path 
+is the name of the file or directory on the primary execution host.
+It can be relative to the staging and execution directory on the
+execution host, or it can be an absolute path.
+
+The "@" character separates local_path from remote_path.
+
+The name
+.I remote_path
+is the path on 
+.I hostname. 
+The name can be relative to the staging and execution directory on the
+primary execution host, or it can be an absolute path.
+
+If 
+.I path_list
+has more than one 
+.I filespec,
+i.e. it contains commas, it must be enclosed in double-quotes.
+
+If you use a UNC path, the hostname is optional.  If you use a non-UNC 
+path, the hostname is required.
+.RE
+.LP
+
+.I "umask=NNNN"
+.IP
+Alters the umask with which the job will be started.  Default value: 077.
+Can be used with one to four digits; typically two.
+Sets job's 
+.I umask
+attribute to 
+.I NNNN.
+Controls umask of job's standard output and standard error.
+Example:  
+.I -W umask=33
+allows group and world read on the job's output.
+.LP
+.RE
+
+.IP "--version" 8
+The 
+.B qalter
+command returns its PBS version information and exits.
+This option can only be used alone.
+.LP
+
+
+.SH  OPERANDS
+The 
+.B qalter 
+command accepts a 
+.I job_identifier_list
+as its operand.
+The 
+.I job_identifier_list
+is one or more jobids for normal jobs or array jobs.  
+Individual subjobs of an array job are not alterable.
+For a job, this is:
+.IP
+.I sequence_number[.server_name][@server]
+.LP
+and for an array job, it is:
+.IP
+.I sequence_number[][.server_name][@server]
+.LP
+
+Note that some shells require that you enclose a job array ID 
+in double quotes.
+
+.SH STANDARD ERROR
+The
+.B qalter
+command will write a diagnostic message to standard error for
+each error occurrence.
+
+.SH EXIT STATUS
+Zero upon successful processing of input.
+Exit value will be greater than zero upon failure of 
+.B qalter.
+
+Warning about exit status with csh:
+.br
+If a job is run in csh and a .logout file
+exists in the home directory in which the job executes, the exit status
+of the job is that of the .logout script, not the job script.  This may
+impact any inter-job dependencies.  
+
+
+.SH SEE ALSO
+The
+.B PBS Professional User's Guide,
+the
+.B PBS Professional Administrator's Guide,
+.br
+pbs_job_attributes(7B),
+pbs_resources(7B),
+qdel(1B), 
+qhold(1B), 
+qmove(1B), 
+qmsg(1B), 
+qrerun(1B),
+qrls(1B), 
+qselect(1B), 
+qstat(1B),
+qsub(1B)

@@ -1,0 +1,141 @@
+.\" Copyright (C) 1994-2016 Altair Engineering, Inc.
+.\" For more information, contact Altair at www.altair.com.
+.\"  
+.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" 
+.\" Open Source License Information:
+.\"  
+.\" PBS Pro is free software. You can redistribute it and/or modify it under the
+.\" terms of the GNU Affero General Public License as published by the Free 
+.\" Software Foundation, either version 3 of the License, or (at your option) any 
+.\" later version.
+.\"  
+.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+.\" PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+.\"  
+.\" You should have received a copy of the GNU Affero General Public License along 
+.\" with this program.  If not, see <http://www.gnu.org/licenses/>.
+.\"  
+.\" Commercial License Information: 
+.\" 
+.\" The PBS Pro software is licensed under the terms of the GNU Affero General 
+.\" Public License agreement ("AGPL"), except where a separate commercial license 
+.\" agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+.\"  
+.\" Altair’s dual-license business model allows companies, individuals, and 
+.\" organizations to create proprietary derivative works of PBS Pro and distribute 
+.\" them - whether embedded or bundled with other software - under a commercial 
+.\" license agreement.
+.\" 
+.\" Use of Altair’s trademarks, including but not limited to "PBS™", 
+.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+.\" trademark licensing policies.
+.\"
+.TH pbsfs 8B "15 September 2011" Local "PBS Professional"
+.SH NAME
+.B pbsfs 
+\- show or manipulate PBS fairshare usage data
+.SH SYNOPSIS
+.B pbsfs 
+-[t|p]
+.sp
+.B pbsfs 
+-g entity
+.sp
+.B pbsfs 
+-s entity usage_value
+.sp
+.B pbsfs 
+-d
+.sp 
+.B pbsfs 
+-e
+.sp 
+.B pbsfs 
+-c entity1 entity2
+.sp
+.B pbsfs
+--version
+.SH DESCRIPTION
+The 
+.B pbsfs
+command is used to print or manipulate the PBS scheduler's fairshare usage data.
+Some options should only be used when the scheduler is not running.  There are
+multiple parts to a fairshare node and you can print these data in different
+formats.  The 
+.B pbsfs 
+command must be run by root; otherwise it will print the error message, 
+"Unable to access fairshare data".
+
+
+The data:
+.br
+.IP "fairshare entity" 10
+the entity in the fairshare tree.  
+.IP group 10
+the group ID the node is in (i.e. the node's parent).
+.IP cgroup 10
+the group ID of this group
+.IP shares 10
+the number of shares the group has
+.IP usage 10
+the amount of usage
+.IP percentage 10
+The percentage of the tree belonging to the entity.  Note that only
+the leaf nodes sum to 100%.  If all of the nodes are summed, the
+result will be greater then 100%.  Only the leaf nodes of the tree are
+fairshare entities.
+.IP "usage / perc" 10
+The value the scheduler will use to the pick which entity has
+priority over another.  The smaller the number the higher the priority.
+.IP "Path from root" 
+The path from the root of the tree to the node.  This
+is useful because the scheduler will look down the path to compare two nodes
+to see which has the higher priority.  
+.IP resource 10
+The resource for which the scheduler accumulates usage for its fairshare 
+calculations.  This defaults to cput (cpu seconds) but can be set in the 
+scheduler's config file.
+.LP
+
+.SH OPTIONS
+
+.B Scheduler can be running:
+.IP "-t" 10
+print the fairshare tree in a hierarchical format.
+.IP "-p" 10
+print the fairshare tree in a flat format with more data.
+.IP "-g entity" 10
+print one entry with all data and print the path from the root of the tree to
+the node.
+.IP "-c entity1 entity2" 10
+compare two fairshare entities
+.LP
+
+.B Scheduler must be down:
+.IP "-s entity usage_value" 10
+set 
+.I entity's 
+usage value to 
+.I usage_value.  
+Please note that editing a
+non-leaf node is ignored.  All non-leaf node usage values are calculated each
+time the scheduler is run/HUPed.
+.IP "-d" 10
+decay the fairshare tree (divide all values in half)
+.IP "-e" 10
+trim fairshare tree to just the entities in the resource_group file
+.LP
+
+.B Scheduler can be running or down:
+.IP "--version" 10
+The 
+.B pbsfs
+command returns its PBS version information and exits.
+This option can only be used alone.
+
+.SH SEE ALSO
+The
+.B PBS Professional Administrator's Guide,
+pbs_sched(8B)

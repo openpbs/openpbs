@@ -1,0 +1,6 @@
+type=pbs
+enabled=false
+user=pbsadmin
+event=queuejob
+order=0
+alarm=30

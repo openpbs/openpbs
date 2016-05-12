@@ -1,0 +1,299 @@
+
+#
+#  Copyright (C) 1994-2016 Altair Engineering, Inc.
+#  For more information, contact Altair at www.altair.com.
+#   
+#  This file is part of the PBS Professional ("PBS Pro") software.
+#  
+#  Open Source License Information:
+#   
+#  PBS Pro is free software. You can redistribute it and/or modify it under the
+#  terms of the GNU Affero General Public License as published by the Free 
+#  Software Foundation, either version 3 of the License, or (at your option) any 
+#  later version.
+#   
+#  PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+#  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+#  PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+#   
+#  You should have received a copy of the GNU Affero General Public License along 
+#  with this program.  If not, see <http://www.gnu.org/licenses/>.
+#   
+#  Commercial License Information: 
+#  
+#  The PBS Pro software is licensed under the terms of the GNU Affero General 
+#  Public License agreement ("AGPL"), except where a separate commercial license 
+#  agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+#   
+#  Altair’s dual-license business model allows companies, individuals, and 
+#  organizations to create proprietary derivative works of PBS Pro and distribute 
+#  them - whether embedded or bundled with other software - under a commercial 
+#  license agreement.
+#  
+#  Use of Altair’s trademarks, including but not limited to "PBS™", 
+#  "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+#  trademark licensing policies.
+#
+
+AC_PREREQ([2.69])
+AC_INIT([pbspro], [13.1.800], [pbssupport@altair.com])
+AC_CONFIG_HEADERS([src/include/pbs_config.h])
+AC_CONFIG_SRCDIR([src/cmds/qmgr.c])
+AC_CONFIG_AUX_DIR([buildutils])
+AC_CONFIG_MACRO_DIR([m4])
+AC_CANONICAL_TARGET([])
+AM_INIT_AUTOMAKE([-Wall foreign])
+
+# Checks for programs.
+AC_PROG_AWK
+AC_PROG_YACC
+AC_PROG_SED
+AC_PROG_CC
+AC_PROG_LEX
+AC_PROG_INSTALL
+AC_PROG_LN_S
+
+# Automake macros
+AM_PROG_AR
+AM_PROG_CC_C_O
+
+# Initialize libtool
+LT_INIT([shared static])
+
+# Checks for libraries.
+AC_CHECK_LIB([c], [xdr_int],
+  [],
+  AC_CHECK_LIB(nsl, xdr_int)
+)
+AC_CHECK_LIB([c], [ruserok],
+  [],
+  AC_CHECK_LIB(socket, ruserok)
+)
+AC_CHECK_LIB([c], [crypt],
+  [],
+  AC_CHECK_LIB(crypt, crypt)
+)
+AC_CHECK_LIB([c], [posix_openpt],
+  AC_DEFINE([HAVE_POSIX_OPENPT], [], [Defined whe posix_openpt is available])
+)
+AC_CHECK_LIB(dl, dlopen)
+AC_CHECK_LIB([kvm], [kvm_open])
+AC_CHECK_LIB([socket], [socket],
+  [socket_lib="-lsocket -lnsl"]
+  AC_SUBST(socket_lib),
+  [socket_lib=""]
+  AC_SUBST(socket_lib),
+  [-lnsl]
+)
+
+# Checks for header files.
+AC_PATH_XTRA
+AC_FUNC_ALLOCA
+AC_CHECK_HEADERS([ \
+	arpa/inet.h \
+	crypt.h \
+	fcntl.h \
+	float.h \
+	limits.h \
+	mach/mach.h \
+	malloc.h \
+	memory.h \
+	mntent.h \
+	netdb.h \
+	netinet/in.h \
+	nlist.h \
+	paths.h \
+	signal.h \
+	stddef.h \
+	stdint.h \
+	stdlib.h \
+	string.h \
+	strings.h \
+	sys/eventfd.h \
+	sys/file.h \
+	sys/ioctl.h \
+	sys/mount.h \
+	sys/param.h \
+	sys/socket.h \
+	sys/statfs.h \
+	sys/statvfs.h \
+	sys/systeminfo.h \
+	sys/time.h \
+	sys/timeb.h \
+	sys/vfs.h \
+	syslog.h \
+	termios.h \
+	unistd.h \
+	utime.h \
+])
+
+# Checks for typedefs, structures, and compiler characteristics.
+AC_CHECK_HEADER_STDBOOL
+AC_TYPE_UID_T
+AC_TYPE_MODE_T
+AC_TYPE_OFF_T
+AC_TYPE_PID_T
+AC_C_RESTRICT
+AC_TYPE_SIZE_T
+AC_TYPE_SSIZE_T
+AC_CHECK_MEMBERS([struct stat.st_blksize])
+AC_TYPE_UINT16_T
+AC_TYPE_UINT32_T
+AC_TYPE_UINT64_T
+AC_TYPE_UINT8_T
+AC_CHECK_TYPES([ptrdiff_t])
+
+# Checks for library functions.
+AC_FUNC_CHOWN
+AC_FUNC_ERROR_AT_LINE
+AC_FUNC_FORK
+AC_FUNC_GETGROUPS
+AC_FUNC_GETMNTENT
+AC_FUNC_LSTAT_FOLLOWS_SLASHED_SYMLINK
+AC_FUNC_MALLOC
+AC_FUNC_MKTIME
+AC_FUNC_MMAP
+AC_FUNC_REALLOC
+AC_FUNC_STRERROR_R
+AC_FUNC_STRTOD
+AC_CHECK_FUNCS([ \
+	alarm \
+	atexit \
+	bzero \
+	dup2 \
+	endpwent \
+	floor \
+	ftruncate \
+	getcwd \
+	gethostbyaddr \
+	gethostbyname \
+	gethostname \
+	getmntent \
+	getpagesize \
+	gettimeofday \
+	hasmntopt \
+	inet_ntoa \
+	localtime_r \
+	memchr \
+	memmove \
+	memset \
+	mkdir \
+	munmap \
+	pathconf \
+	poll \
+	pstat_getdynamic \
+	putenv \
+	realpath \
+	regcomp \
+	rmdir \
+	select \
+	setresuid \
+	setresgid \
+	seteuid \
+	setegid \
+	strerror_r \
+	socket \
+	strcasecmp \
+	strchr \
+	strcspn \
+	strdup \
+	strerror \
+	strncasecmp \
+	strpbrk \
+	strrchr \
+	strspn \
+	strstr \
+	strtol \
+	strtoul \
+	strtoull \
+	sysinfo \
+	uname \
+	utime \
+])
+
+# PBS macros (order matters for some of these)
+PBS_AC_PBS_VERSION
+PBS_AC_MACHINE_TYPE
+PBS_AC_DECL_H_ERRNO
+PBS_AC_DECL_SOCKLEN_T
+PBS_AC_DECL_EPOLL
+PBS_AC_WITH_SERVER_HOME
+PBS_AC_WITH_SERVER_NAME_FILE
+PBS_AC_WITH_DATABASE_DIR
+PBS_AC_WITH_DATABASE_USER
+PBS_AC_WITH_DATABASE_PORT
+PBS_AC_WITH_PBS_CONF_FILE
+PBS_AC_WITH_TMP_DIR
+PBS_AC_WITH_UNSUPPORTED_DIR
+PBS_AC_WITH_CORE_LIMIT
+PBS_AC_WITH_PYTHON
+PBS_AC_WITH_EXPAT
+PBS_AC_WITH_EDITLINE
+PBS_AC_WITH_HWLOC
+PBS_AC_WITH_LIBICAL
+PBS_AC_WITH_SENDMAIL
+PBS_AC_WITH_SWIG
+PBS_AC_WITH_TCL
+PBS_AC_WITH_TCLATRSEP
+PBS_AC_WITH_XAUTH
+PBS_AC_WITH_MIN_STACK_LIMIT
+PBS_AC_DISABLE_RPP
+PBS_AC_DISABLE_SHELL_PIPE
+PBS_AC_ENABLE_AIXIB
+PBS_AC_ENABLE_ALPS
+PBS_AC_ENABLE_CPUSET
+PBS_AC_ENABLE_HPS
+
+AC_CONFIG_FILES([
+	Makefile
+	buildutils/Makefile
+	buildutils/pbs_mkdirs
+	doc/Makefile
+	test/Makefile
+	test/fw/Makefile
+	src/Makefile
+	src/cmds/Makefile
+	src/cmds/mpiexec
+	src/cmds/nqs2pbs
+	src/cmds/pbs_lamboot
+	src/cmds/pbs_mpihp
+	src/cmds/pbs_mpilam
+	src/cmds/pbs_mpirun
+	src/cmds/pbs_remsh
+	src/cmds/pbsrun_unwrap
+	src/cmds/pbsrun_wrap
+	src/cmds/pbsrun
+	src/cmds/scripts/Makefile
+	src/cmds/scripts/au-nodeupdate
+	src/cmds/scripts/pbs_habitat
+	src/cmds/scripts/pbs_init.d
+	src/cmds/scripts/pbs_poerun
+	src/cmds/scripts/pbs_postinstall
+	src/cmds/scripts/pbsrun.poe
+	src/iff/Makefile
+	src/include/Makefile
+	src/include/pbs_version.h
+	src/lib/Libattr/Makefile
+	src/lib/Libdb/Makefile
+	src/lib/Liblog/Makefile
+	src/lib/Libnet/Makefile
+	src/lib/Libpbs/Makefile
+	src/lib/Libpython/Makefile
+	src/lib/Libsec/Makefile
+	src/lib/Libsite/Makefile
+	src/lib/Libtpp/Makefile
+	src/lib/Libutil/Makefile
+	src/lib/Makefile
+	src/modules/Makefile
+	src/modules/python/Makefile
+	src/mom_rcp/Makefile
+	src/resmom/Makefile
+	src/scheduler/Makefile
+	src/server/Makefile
+	src/tools/Makefile
+	src/tools/wrap_tcl.sh
+	src/unsupported/Makefile
+	src/unsupported/pbs_diag
+	src/unsupported/pbs_dtj
+])
+AC_OUTPUT

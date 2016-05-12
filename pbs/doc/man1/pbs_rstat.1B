@@ -1,0 +1,144 @@
+.\" Copyright (C) 1994-2016 Altair Engineering, Inc.
+.\" For more information, contact Altair at www.altair.com.
+.\"  
+.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" 
+.\" Open Source License Information:
+.\"  
+.\" PBS Pro is free software. You can redistribute it and/or modify it under the
+.\" terms of the GNU Affero General Public License as published by the Free 
+.\" Software Foundation, either version 3 of the License, or (at your option) any 
+.\" later version.
+.\"  
+.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+.\" PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+.\"  
+.\" You should have received a copy of the GNU Affero General Public License along 
+.\" with this program.  If not, see <http://www.gnu.org/licenses/>.
+.\"  
+.\" Commercial License Information: 
+.\" 
+.\" The PBS Pro software is licensed under the terms of the GNU Affero General 
+.\" Public License agreement ("AGPL"), except where a separate commercial license 
+.\" agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+.\"  
+.\" Altair’s dual-license business model allows companies, individuals, and 
+.\" organizations to create proprietary derivative works of PBS Pro and distribute 
+.\" them - whether embedded or bundled with other software - under a commercial 
+.\" license agreement.
+.\" 
+.\" Use of Altair’s trademarks, including but not limited to "PBS™", 
+.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+.\" trademark licensing policies.
+.\"
+.TH pbs_rstat 1B "13 Sept 2011" Local "PBS Professional"
+.SH NAME
+.B pbs_rstat 
+\- show status of PBS advance or standing reservations
+.SH SYNOPSIS
+.B pbs_rstat 
+[-F][-B][-S] [reservation_id...]
+.br
+.B pbs_rstat 
+--version
+.SH DESCRIPTION
+The
+.B pbs_rstat
+command is used to show the status of all reservations on the PBS
+Server.  Denied reservations are not
+displayed.  
+
+This command has three different output formats: brief
+.I (B),
+short
+.I (S),
+and full
+.I (F).
+This command can be used with any level of PBS privilege.
+
+See the 
+.B pbs_resv_attributes(7B) 
+man page for information about reservation attributes.
+
+.SH OPTIONS
+.IP "-B" 10
+Brief.  Displays each reservation identifier only.
+
+.IP "-S" 10
+Short.  Displays a table showing the name, queue, owner, state, 
+start time, duration, and end time of each reservation.
+
+.IP "-F" 10
+Full.  Displays all reservation attributes that are not set to 
+the default value.  Users without manager or operator privilege
+cannot print custom resources which were created to be invisible to users.
+
+.IP "--version" 10
+The 
+.B pbs_rstat
+command returns its PBS version information and exits.
+This option can only be used alone.
+
+.SH OUTPUT
+
+Reservation States:
+.RS
+.IP UN
+Reservation not confirmed.
+.IP CO
+Reservation is confirmed.
+.IP RN
+Reservation is running.
+.IP DJ
+Jobs remaining after reservation has ended are being deleted.
+.RE
+
+Duration is shown in seconds.
+
+.SH OPERANDS
+The 
+.B pbs_rstat 
+command accepts one or more
+.I reservation_identifier
+operands.  
+.br
+.B Reservations at the default server
+.br
+For an advance reservation, the 
+.I reservation_identifier 
+has the form:
+.RS 4
+.I "[R]sequence_number[.server_name]"
+.RE
+
+For a standing reservation, the 
+.I reservation_identifier 
+has the form:
+.RS 4
+.I "[S]sequence_number[.server_name]"
+.RE
+
+.B Reservations at a server other 
+.B than the default server:
+.br
+Specify the remote server's name using 
+.I @remote_server.  
+.br
+For an advance reservation:
+.RS 4
+.I "[R]sequence_number[.server_name][@remote_server]"
+.RE
+For a standing reservation:
+.RS 4
+.I "[S]sequence_number[.server_name][@remote_server]"
+.RE
+
+.SH SEE ALSO
+The
+.B PBS Professional User's Guide,
+the
+.B PBS Professional Administrator's Guide,
+.br
+pbs_rsub(1B), pbs_rdel(1B), pbs_resv_attributes(7B)
+

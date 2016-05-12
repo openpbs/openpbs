@@ -1,0 +1,328 @@
+#!/bin/sh
+#
+#  Copyright (C) 1994-2016 Altair Engineering, Inc.
+#  For more information, contact Altair at www.altair.com.
+#   
+#  This file is part of the PBS Professional ("PBS Pro") software.
+#  
+#  Open Source License Information:
+#   
+#  PBS Pro is free software. You can redistribute it and/or modify it under the
+#  terms of the GNU Affero General Public License as published by the Free 
+#  Software Foundation, either version 3 of the License, or (at your option) any 
+#  later version.
+#   
+#  PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+#  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+#  PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+#   
+#  You should have received a copy of the GNU Affero General Public License along 
+#  with this program.  If not, see <http://www.gnu.org/licenses/>.
+#   
+#  Commercial License Information: 
+#  
+#  The PBS Pro software is licensed under the terms of the GNU Affero General 
+#  Public License agreement ("AGPL"), except where a separate commercial license 
+#  agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+#   
+#  Altair’s dual-license business model allows companies, individuals, and 
+#  organizations to create proprietary derivative works of PBS Pro and distribute 
+#  them - whether embedded or bundled with other software - under a commercial 
+#  license agreement.
+#  
+#  Use of Altair’s trademarks, including but not limited to "PBS™", 
+#  "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+#  trademark licensing policies.
+#
+
+### FILE: pbsrun.gm_mpd.init ###
+
+####################################################################
+# strict_pbs: set to 1 if you want the wrapper script to be executed
+#             only if in a PBS environment
+#
+#####################################################################
+strict_pbs=0
+
+#####################################################################
+# options_to_retain:  space-separted list of options and values that
+# "pbsrun" will pass on to the actual mpirun call. options must begin
+# with "-" or "--", option name can contain a wildcard (*) to match a
+# number of characters (e.g. --totalnum=*), and option arguments must
+# be specified by some arbitrary name bounded by angle brackets,
+# as in "<val1>".
+#####################################################################
+options_to_retain="\
+-np <n> \
+-s \
+-h \
+-g <group_size> \
+-iI \
+-l \
+-1 \
+-y \
+-whole \
+-wdir <dirname> \
+-jid <jobid> \
+-jidfile <file> \
+"
+
+#####################################################################
+# options_to_ignore:  space-separted list of options and values that
+# "pbsrun" will NOT pass on to the actual mpirun call. options must begin
+# with "-" or "--", option name can contain a wildcard (*) to match a
+# number of characters (e.g. --totalnum=*), and option arguments must
+# be specified by some arbitrary name bounded by angle brackets,
+# as in "<val1>".
+#####################################################################
+options_to_ignore="\
+-m <file> \
+"
+
+####################################################################
+# options_to_transform:  space-separted list of options and values that
+# "pbsrun" will modify before passing on to the actual mpirun call.
+# options must begin with "-" or "--", option name can contain a
+# wildcard (*) to match a number of characters (e.g. --totalnum=*),
+# and option arguments must be specified by some arbitrary name
+# bounded by angle brackets, as in "<val1>".
+# NOTE: Adding values here require code to be added to
+# transform_action() function appearing later in this file.
+#####################################################################
+options_to_transform="\
+"
+
+#####################################################################
+# options_to_fail: space-separated list of options that will cause "pbsrun"
+# to exit upon encountering a match.
+# options must begin with "-" or "--", and option name can contain a
+# wildcard (*) to match a number of characters (e.g. --totalnum=*).
+#
+#####################################################################
+options_to_fail="\
+"
+
+#####################################################################
+# option_to_configfile: the SINGLE option and value that refers to the
+# name of the "configfile" containing command line segments, found
+# in certain versions of mpirun.
+# option must begin with "-" or "--".
+#
+#####################################################################
+option_to_configfile="\
+"
+
+#####################################################################
+# options_with_another_form: space-separated list of options and values
+# that can be found in options_to_retain, options_to_ignore, or
+# options_to_transform, whose syntax has an alternate, unsupported
+# form.
+# This usually occurs if a version of mpirun has different forms for
+# the same option.
+# For instance,
+#       MPICH2's mpirun provides:
+#               mpirun -localonly <x>
+#               mpirun -localonly
+# If options_to_retain lists "-localonly" as supported value, then
+# set options_with_another_form="-localonly" as well.
+# This would cause "pbsrun" to issue a
+# warning about alternate forms upon encountering the  option.
+#
+# options must begin with "-" or "--", and option name can contain a
+# wildcard (*) to match a number of characters (e.g. --totalnum=*).
+#
+#####################################################################
+options_with_another_form="\
+"
+
+####################################################################
+# pbs_attach: full path or relative path to the pbs_attach executable.
+#
+#####################################################################
+pbs_attach="pbs_attach"
+
+#####################################################################
+# options_to_pbs_attach:  are the special options to pass to the
+# pbs_attach call. You may pass variable references (e.g. $PBS_JOBID)
+# and they will be substituted  by pbsrun to actual values.
+#####################################################################
+options_to_pbs_attach="-j $PBS_JOBID"
+
+################## transform_action() ###################################
+# The action to be performed for each actual item and value matched in
+# options_to_transform.
+# RETURN: echo the replacement item and value for the matched arguments.
+# NOTES:
+# (1) "echo" produces the return value of this function;
+#     do not arbitrarily invoke echo statements.
+# (2) Please use 'printf "%s" "<value>"' (must quote the <value>) in place
+#     of "echo" command here since we're returning an option, and 'echo' is
+#     notorius for the following behavior:
+#               echo "-n"               --> prints empty (-n is an echo opt)
+#     Desired behavior:
+#               printf "%s" "-n"        --> prints "-n"
+#
+########################################################################
+transform_action () {
+       args=$*
+
+        printf "%s" "$*"
+}
+
+################## boot_action() ###################################
+# The action to be performed BEFORE before calling mpirun.
+# The location of actual mpirun is passed as first argument.
+# RETURN: 0 for success; non-zero otherwise.
+# NOTES:
+# (1) 'return' produces the exit status of this function:
+#     0 for success; non-zero for failure.
+####################################################################
+boot_action () {
+	mpirun_location=$1
+	pbs_hostsfile="${PBS_TMPDIR:-/var/tmp}/pbsrun_hosts$$"
+
+	if [ "$RSHCOMMAND" = "" ] ; then
+		RSHCOMMAND=rsh
+	fi
+
+	MPD=${mpirun_location}/mpd
+	MPDKILL=${mpirun_location}/mpdallexit
+	MPDTRACE=${mpirun_location}/mpdtrace
+
+	# Get the host.list from PBS and uniq it.
+	sort -u $PBS_NODEFILE > $pbs_hostsfile
+
+	# Kill a previous ring
+	rm -f /tmp/mpd.console_${USER}
+	$MPDKILL >/dev/null 2>/dev/null
+
+	# Start a ring here : (assuming the first host in pbs_hostsfile is here)
+	# check that the port is valid : 12345
+
+	port=$($MPD -b -t|tail -1)
+	if [ $? -ne 0 ] || [ "x${port}" = "x" ]
+	then
+  		rm -f $pbs_hostsfile
+  		return 1
+	fi
+
+	# For all remaining hosts in the pbs_hostsfile, join the ring
+	hostname=`hostname | awk -F. '{print $1}'`
+	master=$(hostname)
+	for h in `cat $pbs_hostsfile |grep -vw $hostname`
+	do
+   		$RSHCOMMAND $h "$MPDKILL;rm -f /tmp/mpd.console_${USER};$MPD -h $master -p $port -b" >/dev/null 2>/dev/null
+	done
+
+	# Ring is ready
+	$MPDTRACE > /dev/null 2>/dev/null
+	if [ $? -ne 0 ]
+	then
+   		echo Well ring is not ready
+   		rm -f $pbs_hostsfile
+   		return 2
+	fi
+
+	rm -f $pbs_hostsfile
+	return 0
+}
+
+################## evaluate_options_action() #######################
+# The action to be performed on the actual options and values matched
+# in options_to_retain, not including those in options_to_ignore, and
+# those changed arguments in options_to_transform, as well as any
+# other transformation needed on the program name and program arguments.
+#
+# RETURN: echo the list of final arguments and program arguments
+# to be passed on to mpirun command line.
+
+# NOTES:
+# (1) "echo" produces the return value of this function;
+#     do not arbitrarily invoke echo statements.
+# (2) Please use 'printf "%s" "<value>"' (must quote <value>) in place of
+#     "echo" command here since we're returning option string, and
+#     'echo' is notorius for the following behavior:
+#               echo "-n"               --> prints empty (-n is an echo opt)
+#     Desired behavior:
+#               printf "%s" "-n"        --> prints "-n"
+#
+########################################################################
+evaluate_options_action () {
+	args=$*
+
+	found_np=0
+	while [ $# -gt 0 ]; do
+          if [ "XX$1" = "XX-np" ]; then
+		found_np=1
+		break
+	  fi
+	  shift
+	done
+
+	if [ $found_np -eq 0 ] ; then
+		usernp=`cat ${PBS_NODEFILE} | wc -l | tr -d ' '`
+		args="-np $usernp $args"
+	fi
+
+        pbs_machinefile="${PBS_TMPDIR:-/var/tmp}/pbsrun_machfile$$"
+        cat -n ${PBS_NODEFILE} | \
+        sort -k2 | uniq -f1 -c | \
+        awk '{if ($1 == 1) print $2, $3; else print $2, $3 ":" $1}'|\
+        sort -n | awk '{print $2}' > $pbs_machinefile
+
+        args="-m $pbs_machinefile $args"
+
+	printf "%s" "$args"
+
+}
+
+################## configfile_cmdline_action() #######################
+# If the option_to_configfile (e.g. -configfile) is specified in the
+# mpirun command line, then this function gets passed any leading options
+# and values found before option_to_configfile.
+#
+# RETURN: return the actual options and values to be put in before the
+# option_to_configfile parameter. For instance,
+#	returning "--totalnum=N --file=Y" would result in
+# an mpirun command line of:
+#	mpirun --totalnum=N --file=Y -configfile pbs_config
+#
+########################################################################
+configfile_cmdline_action () {
+	args=$*
+
+        printf ""
+
+}
+
+################## configfile_firstline_action () #######################
+# If the option_to_configfile (e.g. -configfile) is specified in the
+# mpirun command line, return here the item that will be put in the
+# FIRST line of the configuration file.
+# This is the place to put  the "-machinefile <filename>" parameter
+# which determines the processes to hosts mappings. Some versions
+# of mpirun (MPICH2, Intel MPI) require that the -machinefile parameter
+# must appear inside the config file and not on the commmand line.
+########################################################################
+configfile_firstline_action () {
+	printf ""
+}
+
+################## end_action() ########################################
+# The action to be performed AFTER calling mpirun, and also when
+# mpirun wrap script is prematurely interrupted.
+# INPUT: The location of actual mpirun is passed as first argument.
+# RETURN: none
+########################################################################
+end_action () {
+	mpirun_location=$1
+
+	pbs_hostsfile="${PBS_TMPDIR:-/var/tmp}/pbsrun_hosts$$"
+	pbs_machinefile="${PBS_TMPDIR:-/var/tmp}/pbsrun_machfile$$"
+
+	rm -f $pbs_hostsfile
+	rm -f $pbs_machinefile 2>/dev/null
+
+	${mpirun_location}/mpdallexit >/dev/null 2>/dev/null
+
+}

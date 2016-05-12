@@ -1,0 +1,179 @@
+.\" Copyright (C) 1994-2016 Altair Engineering, Inc.
+.\" For more information, contact Altair at www.altair.com.
+.\"  
+.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" 
+.\" Open Source License Information:
+.\"  
+.\" PBS Pro is free software. You can redistribute it and/or modify it under the
+.\" terms of the GNU Affero General Public License as published by the Free 
+.\" Software Foundation, either version 3 of the License, or (at your option) any 
+.\" later version.
+.\"  
+.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+.\" PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+.\"  
+.\" You should have received a copy of the GNU Affero General Public License along 
+.\" with this program.  If not, see <http://www.gnu.org/licenses/>.
+.\"  
+.\" Commercial License Information: 
+.\" 
+.\" The PBS Pro software is licensed under the terms of the GNU Affero General 
+.\" Public License agreement ("AGPL"), except where a separate commercial license 
+.\" agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+.\"  
+.\" Altair’s dual-license business model allows companies, individuals, and 
+.\" organizations to create proprietary derivative works of PBS Pro and distribute 
+.\" them - whether embedded or bundled with other software - under a commercial 
+.\" license agreement.
+.\" 
+.\" Use of Altair’s trademarks, including but not limited to "PBS™", 
+.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+.\" trademark licensing policies.
+.\"
+.TH pbs_selectjob 3B "3 March 2015" Local "PBS Professional"
+.SH NAME
+pbs_selectjob - select PBS batch jobs
+.SH SYNOPSIS
+#include <pbs_error.h>
+.br
+#include <pbs_ifl.h>
+.sp
+.B char **pbs_selectjob(\^int\ connect, struct\ attropl\ *attrib, char\ *extend\^)
+.SH DESCRIPTION
+Issue a batch request to select jobs which meet certain criteria.
+\f3pbs_selectjob\f1() returns an array of job identifiers which met the criteria.
+.LP
+The 
+.I attropl
+struct contains the list of selection criteria.
+.LP
+Initially all batch jobs are selected for which the user is authorized to
+query status.
+This set may be reduced or filtered by specifying certain attributes
+of the jobs.
+.LP
+A
+.I "Select Jobs"
+batch request is generated and sent to the server over the connection
+specified by
+.I connect 
+which is the return value of \f3pbs_connect\f1().
+.LP
+The argument,
+.I attrib ,
+is a pointer to an
+.I attropl 
+structure which is defined in pbs_ifl.h as:
+.sp
+.Ty
+.nf
+    struct attropl {
+        struct attropl *next;
+        char           *name;
+        char           *resource;
+        char           *value;
+        enum batch_op   op;
+    };
+.fi
+.sp
+The
+.I attrib
+list is terminated by the first entry where
+.I next
+is a null pointer.
+.LP
+The
+.I name
+member points to a string which is the name of the attribute.
+Not all of the job attributes may be used as a selection criteria.
+The
+.I resource
+member points to a string which is the name of a resource.  This
+member is only used when
+.I name
+is set to ATTR_l.
+Otherwise, resource should be a pointer to a null string.
+The
+.I value
+member points to a string which is the value of the attribute or resource.
+The attribute names are listed in pbs_job_attributes.7B.
+.LP
+The 
+.I op
+member defines the operator in the logical expression:
+.br
+.B \ \ \ \ value\ operator\ current_value
+.br 
+The logical expression must evaluate as true for the job to be selected.
+The permissible values of
+.I op
+are defined in pbs_ifl.h as:
+.br
+.B "enum batch_op { ..., EQ, NE, GE, GT, LE, LT, ... };" .
+.br
+The attributes marked with (E) in the description above may only be selected
+with the equal, EQ, or not equal, NE, operators.
+.LP
+If
+.I attrib
+itself is a null pointer, then no selection is done on
+the basis of attributes.
+.LP
+The return value is a pointer to a null terminated array of character pointers.
+Each character pointer in the array points to a character string which is a
+.IR job_identifier
+in the form:
+.RS 4
+.I sequence_number.server@server
+.RE
+.LP
+The array is allocated by pbs_selectjob via \f3malloc\f1().
+When the array is no longer needed, the user is responsible for freeing it
+by a call to \f3free\f1().
+.LP
+The parameter,
+.I extend ,
+is reserved for implementation-defined extensions.
+
+.B Finished and Moved Jobs
+.br
+In order to get information on finished and moved jobs, you must add an 
+.I 'x'
+character to the 
+.I extend 
+parameter.  The 
+.I extend 
+parameter is a character string; set one character
+to be the 
+.I 'x' 
+character.
+For example:
+.RS 5
+.br
+.B pbs_selectjob 
+( ..., ..., extend) ...
+.RE
+.LP
+To get information on finished and moved jobs only, specify the Finished ('F')
+and moved ('M') job states.  You must also use the 
+.I extend
+character string containing the 
+.I 'x'
+character.  
+.LP
+Subjobs are not considered finished until the parent array job is finished.
+
+.SH "SEE ALSO"
+qselect(1B), pbs_alterjob(3B), and pbs_connect(3B)
+.SH DIAGNOSTICS
+When the batch request generated by 
+pbs_selectjob()
+function has been completed successfully by a batch server, the routine will
+return a pointer to the array of job identifiers.
+If no jobs met the criteria, the first pointer in the array will be the
+null pointer.
+.LP
+If an error occurred, a null pointer is returned and the error is available
+in the global integer pbs_errno.

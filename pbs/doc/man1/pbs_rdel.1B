@@ -1,0 +1,92 @@
+.\" Copyright (C) 1994-2016 Altair Engineering, Inc.
+.\" For more information, contact Altair at www.altair.com.
+.\"  
+.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" 
+.\" Open Source License Information:
+.\"  
+.\" PBS Pro is free software. You can redistribute it and/or modify it under the
+.\" terms of the GNU Affero General Public License as published by the Free 
+.\" Software Foundation, either version 3 of the License, or (at your option) any 
+.\" later version.
+.\"  
+.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+.\" PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+.\"  
+.\" You should have received a copy of the GNU Affero General Public License along 
+.\" with this program.  If not, see <http://www.gnu.org/licenses/>.
+.\"  
+.\" Commercial License Information: 
+.\" 
+.\" The PBS Pro software is licensed under the terms of the GNU Affero General 
+.\" Public License agreement ("AGPL"), except where a separate commercial license 
+.\" agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+.\"  
+.\" Altair’s dual-license business model allows companies, individuals, and 
+.\" organizations to create proprietary derivative works of PBS Pro and distribute 
+.\" them - whether embedded or bundled with other software - under a commercial 
+.\" license agreement.
+.\" 
+.\" Use of Altair’s trademarks, including but not limited to "PBS™", 
+.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+.\" trademark licensing policies.
+.\"
+.TH pbs_rdel 1B "17 August 2011" Local "PBS Professional"
+.SH NAME
+.B pbs_rdel 
+\- delete a PBS advance or standing reservation 
+.SH SYNOPSIS
+.B pbs_rdel
+reservation_identifier[,reservation_identifier...]
+.br
+.B pbs_rdel
+--version
+.SH DESCRIPTION
+The 
+.B pbs_rdel
+command deletes reservations in the order in which
+their reservation identifiers are presented to the command.
+.LP
+A reservation may be deleted by its owner, the PBS Operator,
+or the PBS Manager.
+
+
+.SH OPTIONS
+.IP "--version" 8
+The 
+.B pbs_rdel
+command returns its PBS version information and exits.
+This option can only be used alone.
+
+.SH OPERANDS
+The pbs_rdel command accepts one or more 
+.I reservation_identifier
+operands.  
+.br
+For an advance reservation this has the form:
+.RS 4
+.I "[R]sequence_number[.server_name][@remote_server]"
+.RE
+For a standing reservation this has the form:
+.RS 4
+.I "[S]sequence_number[.server_name][@remote_server]"
+.RE
+
+.I @remote_server 
+is used to specify a reservation 
+at a server other than the default server.
+
+.SH EXIT STATUS
+Zero upon success.
+.LP
+Greater than zero upon failure to process any operand.
+
+.SH SEE ALSO
+The
+.B PBS Professional User's Guide,
+the
+.B PBS Professional Administrator's Guide,
+pbs_rsub(1B),
+pbs_rstat(1B),
+pbs_resv_attributes(7B)

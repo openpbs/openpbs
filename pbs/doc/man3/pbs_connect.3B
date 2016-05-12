@@ -1,0 +1,123 @@
+.\" Copyright (C) 1994-2016 Altair Engineering, Inc.
+.\" For more information, contact Altair at www.altair.com.
+.\"  
+.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" 
+.\" Open Source License Information:
+.\"  
+.\" PBS Pro is free software. You can redistribute it and/or modify it under the
+.\" terms of the GNU Affero General Public License as published by the Free 
+.\" Software Foundation, either version 3 of the License, or (at your option) any 
+.\" later version.
+.\"  
+.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+.\" PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+.\"  
+.\" You should have received a copy of the GNU Affero General Public License along 
+.\" with this program.  If not, see <http://www.gnu.org/licenses/>.
+.\"  
+.\" Commercial License Information: 
+.\" 
+.\" The PBS Pro software is licensed under the terms of the GNU Affero General 
+.\" Public License agreement ("AGPL"), except where a separate commercial license 
+.\" agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+.\"  
+.\" Altair’s dual-license business model allows companies, individuals, and 
+.\" organizations to create proprietary derivative works of PBS Pro and distribute 
+.\" them - whether embedded or bundled with other software - under a commercial 
+.\" license agreement.
+.\" 
+.\" Use of Altair’s trademarks, including but not limited to "PBS™", 
+.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+.\" trademark licensing policies.
+.\"
+.TH pbs_connect 3B "18 March 2015" Local "PBS Professional"
+.SH NAME
+pbs_connect - connect to a PBS batch server
+.SH SYNOPSIS
+#include <pbs_error.h>
+.br
+#include <pbs_ifl.h>
+.sp
+.B int pbs_connect(\^char *server\^)
+.RS 6
+extern char *pbs_server;
+.RE
+.SH DESCRIPTION
+A virtual stream (TCP/IP) connection is established with the server
+specified by
+.I server.
+.LP
+This function must be called before any of the other 
+.B pbs_
+functions.
+They will transmit their batch requests over the connection established
+by this function.
+Multiple requests may be issued over the connection before it is closed.
+.LP
+The connection should be closed by a call to \f3pbs_disconnect\f1()
+when all requests have been sent to the server.
+.LP
+The parameter called 
+.I "server"
+is of the form:
+.RS 4
+.I host_name[:port].
+.RE
+If 
+.I port
+is not specified, the standard PBS port number will be used.
+.LP
+If the parameter,
+.I server,
+is either the null string or a null pointer,
+a connection will be opened to the default server.
+The default server is defined
+by (a) the setting of the environment
+variable
+.B PBS_DEFAULT
+which contains a destination, or (b) by adding the parameter
+.B PBS_SERVER
+to the global configuration file /etc/pbs.conf.
+.LP
+The variable
+.I pbs_server,
+declared in pbs_ifl.h,
+is set on return to point to the server
+name to which pbs_connect() connected or attempted to connect.
+
+.B pbs_connect()
+determines whether or not the complex has a failover server configured.
+It also determines which server is the primary and which is the secondary.
+.B pbs_connect() 
+is called by client commands, and directs traffic to the correct server.
+
+In order to use 
+.B pbs_connect 
+with Windows, initialize the network
+library and link with 
+.B winsock2.  
+To do this, call 
+.B winsock_init() 
+before calling 
+.B pbs_connect(), 
+and link against the 
+.B ws2_32.lib 
+library.
+
+.SH SEE ALSO
+qsub(1B),
+pbs_alterjob(3B), pbs_deljob(3B), pbs_disconnect(3B), pbs_geterrmsg(3B), 
+pbs_holdjob(3B), pbs_locjob(3B), pbs_manager(3B), pbs_movejob(3B), 
+pbs_msgjob(3B), pbs_rerunjob(3B), pbs_rlsjob(3B), pbs_runjob(3B),
+pbs_selectjob(3B), pbs_selstat(3B), pbs_sigjob(3B), pbs_statjob(3B), 
+pbs_statque(3B), pbs_statserver(3B), pbs_submit(3B), pbs_terminate(3B),
+pbs_server(8B),
+and the PBS Professional Programmer's Guide
+.SH DIAGNOSTICS
+When the connection to batch server
+has been successfully created, the routine will return a connection
+identifier which is positive.
+Otherwise, a negative value is returned.  The error number is set
+in pbs_errno.

@@ -1,0 +1,18 @@
+pbs_hpcp_client.c	-	Main HPCBP MOM file
+xml_encode_decode.c	-	File responsible for encoding and decoding Argument list in xml from
+pbs_hpcp_client.h	-	Header file contains function declarations 
+pbs_hpcp_headers.h	-	Header file
+bes-factory.h		-	Auto-generated code from gSOAP compiler(wsdl2h)
+soapC.c			-	Auto-generated code from gSOAP compiler
+soapClient.c		-	Auto-generated code from gSOAP compiler
+soapH.h			-	Auto-generated code from gSOAP compiler
+soapStub.h		-	Auto-generated code from gSOAP compiler
+bes-factory.wsdl	-	WSDL Interface file used to generated bes-factory.h file and other auto-genrated code
+BESFactoryBinding.nsmap	-	Auto-generated file from gSOAP compiler(contains all name space defintions)
+bes-factory.xsd		-	XML schema file for Basic Execution service specification
+jsdl-hpcpa.xsd		-	XML schema file for JSDL-HPCPA specification
+jsdl-posix.xsd		-	XML Schema file for JSDL-posix specification
+jsdl.xsd		-	XML schema file for Job submission and Description language specification
+advancedfilter.xsd	-	XML schema file for HPC Advanced Filter Specification
+ws-addr.xsd		-	XML schema file for WS-Addressing specification
+

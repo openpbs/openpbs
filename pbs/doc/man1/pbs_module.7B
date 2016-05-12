@@ -1,0 +1,901 @@
+.\" Copyright (C) 1994-2016 Altair Engineering, Inc.
+.\" For more information, contact Altair at www.altair.com.
+.\"  
+.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" 
+.\" Open Source License Information:
+.\"  
+.\" PBS Pro is free software. You can redistribute it and/or modify it under the
+.\" terms of the GNU Affero General Public License as published by the Free 
+.\" Software Foundation, either version 3 of the License, or (at your option) any 
+.\" later version.
+.\"  
+.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+.\" PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+.\"  
+.\" You should have received a copy of the GNU Affero General Public License along 
+.\" with this program.  If not, see <http://www.gnu.org/licenses/>.
+.\"  
+.\" Commercial License Information: 
+.\" 
+.\" The PBS Pro software is licensed under the terms of the GNU Affero General 
+.\" Public License agreement ("AGPL"), except where a separate commercial license 
+.\" agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+.\"  
+.\" Altair’s dual-license business model allows companies, individuals, and 
+.\" organizations to create proprietary derivative works of PBS Pro and distribute 
+.\" them - whether embedded or bundled with other software - under a commercial 
+.\" license agreement.
+.\" 
+.\" Use of Altair’s trademarks, including but not limited to "PBS™", 
+.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+.\" trademark licensing policies.
+.\"
+.TH pbs_module 7B "26 February 2015" Local "PBS Professional"
+.SH NAME
+.B pbs_module
+\- description of the pbs module
+
+
+.SH DESCRIPTION
+ 
+The 
+.I pbs module 
+provides an interface to PBS and the hook environment.
+The interface is made up of Python objects, which have attributes and
+methods.  You can operate on these objects using Python code.
+For a description of each object, see the 
+.B PBS Professional Administrator's Guide.
+
+.SH PBS MODULE OBJECTS
+
+.IP  pbs.acl
+Represents a PBS ACL type. 
+.IP  pbs.args
+Represents a space-separated list of PBS arguments to commands like qsub, qdel.
+.IP  pbs.argv[]
+Represents a list of argument strings to be passed to the program
+.IP  pbs.BadAttributeValueError
+Raised when setting the attribute value of a pbs.* object to an invalid value.
+.IP  pbs.BadAttributeValueTypeError
+Raised when setting the attribute value of a pbs.* object to an invalid value type.
+.IP  pbs.BadResourceValueError
+Raised when setting the resource value of a pbs.* object to an invalid value.
+.IP  pbs.BadResourceValueTypeError
+Raised when setting the resource value of a pbs.* object to an invalid value type.
+.IP  pbs.checkpoint
+Represents a job's 
+.I Checkpoint 
+attribute.
+.IP  pbs.depend
+Represents a job's 
+.I depend
+attribute.
+.IP  pbs.duration
+Represents a time interval.
+.IP  pbs.email_list
+Represents the set of users to whom mail may be sent.
+.IP  pbs.env[]
+Dictionary of environment variables.
+.IP  pbs.event
+Represents a PBS event.
+.IP  pbs.EventIncompatibleError
+Raised when referencing a non-existent attribute in pbs.event().
+.IP  pbs.EXECHOST_PERIODIC
+The 
+.I exechost_periodic 
+event type.
+.IP  pbs.EXECHOST_STARTUP
+The 
+.I exechost_startup
+event type.
+.IP  pbs.EXECJOB_ATTACH
+The 
+.I execjob_attach
+event type.
+.IP  pbs.EXECJOB_BEGIN
+The 
+.I execjob_begin
+event type.
+.IP  pbs.EXECJOB_END
+The 
+.I execjob_end
+event type.
+.IP  pbs.EXECJOB_EPILOGUE
+The 
+.I execjob_epilogue
+event type.
+.IP  pbs.EXECJOB_LAUNCH
+The 
+.I execjob_launch
+event type.
+.IP  pbs.EXECJOB_PRETERM
+The 
+.I execjob_preterm
+event type.
+.IP  pbs.EXECJOB_PROLOGUE
+The 
+.I execjob_prologue
+event type.
+.IP  pbs.exec_host
+Represents a job's 
+.I exec_host 
+attribute.
+.IP  pbs.exec_vnode
+Represents a job's 
+.I exec_vnode 
+attribute.
+.IP  pbs.group_list
+Represents a list of group names.
+.IP  pbs.hold_types
+Represents a job's 
+.I Hold_Types 
+attribute.
+.IP  pbs.hook_config_filename
+Contains path to hook's configuration file.
+.IP  pbs.job
+Represents a PBS job.
+.IP  pbs.job_list[]
+Represents a list of pbs.job objects.
+.IP  pbs.job_sort_formula
+Represents the server's
+.I job_sort_formula 
+attribute.
+.IP  pbs.JOB_STATE_BEGUN
+Represents the job array state of having started.
+.IP  pbs.JOB_STATE_EXITING
+Represents the job state of exiting.
+.IP  pbs.JOB_STATE_EXPIRED
+Represents the subjob state of expiring.
+.IP  pbs.JOB_STATE_FINISHED
+Represents the job state of finished.
+.IP  pbs.JOB_STATE_HELD
+Represents the job state of held.
+.IP  pbs.JOB_STATE_MOVED
+Represents the job state of moved.
+.IP  pbs.JOB_STATE_QUEUED
+Represents the job state of queued.
+.IP  pbs.JOB_STATE_RUNNING
+Represents the job state of running.
+.IP  pbs.JOB_STATE_SUSPEND
+Represents the job state of suspended.
+.IP  pbs.JOB_STATE_SUSPEND_USERACTIVE
+Represents the job state of suspended due to user activity.
+.IP  pbs.JOB_STATE_TRANSIT
+Represents the job state of transiting.
+.IP  pbs.JOB_STATE_WAITING
+Represents the job state of waiting.
+.IP  pbs.join_path
+Represents a job's 
+.I Join_Path
+attribute.
+.IP  pbs.keep_files
+Represents a job's 
+.I Keep_Files 
+attribute.
+.IP pbs.license_count
+Represents a set of licensing-related counters.
+.IP  pbs.LOG_DEBUG
+Log level 004.
+.IP  pbs.LOG_ERROR
+Log level 004.
+.IP  pbs.LOG_WARNING
+Log level 004.
+.IP  pbs.mail_points
+Represents a job's 
+.I Mail_Points 
+attribute.
+.IP  pbs.MODIFYJOB
+The 
+.I modifyjob 
+event type.
+.IP  pbs.MOVEJOB
+The 
+.I movejob 
+event type.
+
+.IP pbs.ND_BUSY
+Represents 
+.I busy 
+vnode state.
+
+.IP pbs.ND_DEFAULT_EXCL
+Represents 
+.I default_excl sharing 
+vnode attribute value
+
+.IP pbs.ND_DEFAULT_SHARED
+Represents 
+.I default_shared sharing 
+vnode attribute value.
+
+.IP pbs.ND_DOWN
+Represents 
+.I down 
+vnode state
+
+.IP pbs.ND_FORCE_EXCL
+Represents 
+.I force_excl sharing 
+vnode attribute value.
+
+.IP pbs.ND_FREE
+Represents 
+.I free 
+vnode state. 
+
+.IP pbs.ND_IGNORE_EXCL
+Represents 
+.I ignore_excl sharing 
+vnode attribute value.
+
+.IP pbs.ND_JOBBUSY
+Represents 
+.I job-busy 
+vnode state.
+
+.IP pbs.ND_JOB_EXCLUSIVE
+Represents 
+.I job-exclusive 
+vnode state.
+
+.IP pbs.ND_OFFLINE
+Represents 
+.I offline 
+vnode state.  
+
+.IP pbs.ND_PBS
+Represents 
+.I pbs 
+vnode 
+.I ntype.
+
+.IP pbs.ND_PROV
+Represents 
+.I provisioning 
+vnode state.
+
+.IP pbs.ND_RESV_EXCLUSIVE
+Represents
+.I resv-exclusive
+vnode state.
+
+.IP pbs.ND_STALE
+Represents 
+.I stale 
+vnode state.
+
+.IP pbs.ND_STATE_UNKNOWN
+Represents 
+.I state-unknown, down 
+vnode state.
+
+.IP pbs.ND_UNRESOLVABLE
+Represents the 
+.I unresolvable
+vnode state.
+
+.IP pbs.ND_WAIT_PROV
+Represents 
+.I wait-provisioning 
+vnode state.
+
+.IP  pbs.node_group_key
+Represents the server or queue 
+.I node_group_key
+attribute.
+.IP  pbs.path_list
+Represents a list of pathnames.
+.IP  pbs.pbs_conf[]
+Dictionary of entries in pbs.conf.
+.IP  pbs.pid
+Represents the process ID of a process belonging to a job.
+
+.IP  pbs.place
+Represents the 
+.I place
+job submission specification.
+.IP pbs.progname
+Path of job shell or executable.
+.IP  pbs.QTYPE_EXECUTION
+The 
+.I execution
+queue type.
+.IP  pbs.QTYPE_ROUTE
+The 
+.I route
+queue type.
+.IP  pbs.queue
+Represents a PBS queue.
+.IP  pbs.QUEUEJOB
+The 
+.I queuejob 
+event type.
+.IP  pbs.range
+Represents a range of numbers referring to array indices.
+.IP  pbs.resv
+Represents a PBS reservation.
+.IP  pbs.RESVSUB
+The 
+.I resvsub
+event type.
+.IP  pbs.RESV_STATE_BEING_DELETED
+Represents the reservation state RESV_BEING_DELETED.
+.IP  pbs.RESV_STATE_CONFIRMED
+Represents the reservation state RESV_CONFIRMED.
+.IP  pbs.RESV_STATE_DEGRADED
+Represents the reservation state RESV_DEGRADED.
+.IP  pbs.RESV_STATE_DELETED
+Represents the reservation state RESV_DELETED.
+.IP  pbs.RESV_STATE_DELETING_JOBS
+Represents the reservation state RESV_DELETING_JOBS.
+.IP  pbs.RESV_STATE_FINISHED
+Represents the reservation state RESV_FINISHED.
+.IP  pbs.RESV_STATE_NONE
+Represents the reservation state RESV_NONE.
+.IP  pbs.RESV_STATE_RUNNING
+Represents the reservation state RESV_RUNNING.
+.IP  pbs.RESV_STATE_TIME_TO_RUN
+Represents the reservation state RESV_TIME_TO_RUN.
+.IP  pbs.RESV_STATE_UNCONFIRMED
+Represents the reservation state RESV_UNCONFIRMED.
+.IP  pbs.RESV_STATE_WAIT
+Represents the reservation state RESV_WAIT.
+.IP  pbs.route_destinations
+Represents a queue's 
+.I route_destinations
+attribute.
+.IP  pbs.RUNJOB
+The 
+.I runjob
+event type.
+.IP  pbs.select
+Represents the 
+.I select
+job submission specification.
+.IP  pbs.server
+Represents the local PBS server.
+.IP  pbs.size
+Represents a PBS 
+.I size
+type.
+.IP  pbs.software
+Represents a site-dependent software specification resource.
+.IP  pbs.staging_list
+Represents a list of file stagein or stageout parameters.
+.IP  pbs.state_count
+Represents a set of job-related state counters.
+.IP  pbs.SV_STATE_ACTIVE
+Represents the server state "Scheduling".
+.IP  pbs.SV_STATE_HOT
+Represents the server state "Hot_Start".
+.IP  pbs.SV_STATE_IDLE
+Represents the server state "Idle".
+.IP  pbs.SV_STATE_SHUTDEL
+Represents the server state "Terminating, Delayed".
+.IP  pbs.SV_STATE_SHUTIMM
+Represents the server state "Terminating".
+.IP  pbs.SV_STATE_SHUTSIG
+Represents the server state "Terminating", when a signal has been caught.
+.IP  pbs.UnsetAttributeNameError
+Raised when referencing a non-existent name of a pbs.* object.
+.IP  pbs.UnsetResourceNameError
+Raised when referencing a non-existent name of a pbs.* object.
+.IP  pbs.user_list
+Represents a list of user names.
+.IP  pbs.vchunk
+Represents a resource chunk assigned to a job.
+.IP  pbs.version
+Represents PBS version information.
+.IP  pbs.vnode
+Represents a PBS vnode.
+.IP  pbs.vnode_list[]
+Represents a list of PBS vnodes.
+.IP  SystemExit
+Raised when accepting or rejecting an action.
+.LP
+
+.SH PBS MODULE GLOBAL METHODS
+.IP pbs.acl("[+|-]<entity>][,...]")
+Creates an object representing a PBS ACL, using the given string parameter.
+Instantiation of these objects requires a formatted input string.
+
+
+.IP pbs.args("<args>")
+where 
+.I <args> 
+are space-separated arguments to a command such as 
+.B qsub 
+or 
+.B qdel.
+Creates an object representing the arguments to the command.
+Example:
+.RS 10
+pbs.args("-Wsuppress_email=N -r y")
+.RE
+.IP
+Instantiation of these objects requires a formatted input string.
+
+.IP pbs.checkpoint("<checkpoint_string>")
+where 
+.I <checkpoint_string> 
+must be one of "n", "s", "c", "c=mmm", "w", or "w=mmm"
+Creates an object representing the job's
+.I Checkpoint 
+attribute, using the given string.
+Instantiation of these objects requires a formatted input string.
+.IP pbs.depend("<depend_string>")
+.I <depend_string> 
+must be of format "<type>:<jobid>[,<jobid>...]", or "on:<count>", and
+where 
+.I <type> 
+is one of "after", "afterok", "afterany", "before", "beforeok",
+and "beforenotok".
+Creates a PBS dependency specification object representing the job's
+.I depend 
+attribute, using the given 
+.I <depend_string>.
+Instantiation of these objects requires a formatted input string.
+.IP pbs.duration("[[hours:]minutes:]seconds[.milliseconds]")
+Creates a time specification duration instance, returning the
+equivalent number of seconds from the given time string. Represents an
+interval or elapsed time in number of seconds. Duration objects can be
+specified using either a time or an integer. See the
+"pbs.duration(<integer>)" creation method.
+.IP pbs.duration(<integer>)
+Creates an integer duration instance using the specified number of
+seconds.  A 
+.I pbs.duration 
+instance can be operated on by any of the
+Python 
+.I int 
+functions.  When performing arithmetic operations on a
+.I pbs.duration 
+type, ensure the resulting value is a 
+.I pbs.duration()
+type, before assigning to a job member that expects such a type.
+.IP pbs.email_list("<email_address1>[,<email_address2>...]")
+Creates an object representing a mail list.
+Instantiation of these objects requires a formatted input string.
+.IP pbs.exec_host("host/N[*C][+...]")
+Create an object representing the 
+.I exec_host 
+job attribute, using the
+given host and resource specification.
+Instantiation of these objects requires a formatted input string.
+.IP pbs.exec_vnode("<vchunk>[+<vchunk>...]")
+.I <vchunk> 
+is (<vnodename:ncpus=N:mem=M>)
+Creates an object representing the 
+.I exec_vnode 
+job attribute, using the
+given vnode and resource specification. When the 
+.B qrun -H 
+command is used, or when the scheduler runs a job, the 
+.I pbs.job.exec_vnode 
+object contains the vnode specification for the job.  Instantiation of these
+objects requires a formatted input string.
+.br
+Example:
+.br
+pbs.exec_vnode("(vnodeA:ncpus=N:mem=X)+(nodeB:ncpus=P:mem=Y+nodeC:mem=Z)")
+.br
+This object is managed and accessed via the 
+.I str() 
+or 
+.I repr() 
+functions. 
+.br
+Example:
+.br
+Python> ev = pbs.server().job("10").exec_vnode
+.br
+Python> str(ev)
+.br
+"(vnodeA:ncpus=2:mem=200m)+(vnodeB:ncpus=5:mem=1g)"
+
+.IP pbs.get_hook_config_file()
+Returns the path to the hook's configuration file, or None if there is
+no configuration file.  For example:
+.RS 10
+configfilepath = pbs.get_hook_config_file()
+.RE
+
+.IP pbs.get_local_nodename()
+This returns a Python str whose value is the name of the local natural vnode.
+If you want to refer to the vnode object representing the current
+host, you can pass this vnode name as the key to
+.I pbs.event().vnode_list[].  
+For example:
+.RS 10
+Vn = pbs.event().vnode_list[pbs.get_local_nodename()]
+.RE
+
+.IP pbs.get_pbs_conf()
+This method returns a dictionary of values which represent entries in
+the pbs.conf file.  The method reads the file on the host where a hook
+runs, so pre-execution event hooks get the entries on the server host,
+and execution event hooks get the entries on the execution host where
+the hook runs.  The method reads /etc/pbs.conf on the host where
+pbs_python runs.
+Example:
+.RS 10
+pbs_conf = pbs.get_pbs_conf()
+.br
+pbs.logmsg(pbs.LOG_DEBUG, "pbs home is " % (pbs_conf['PBS_HOME]))
+.RE
+.IP
+If you HUP pbs_mom (Linux/UNIX), pbs.get_pbs_conf returns the reloaded
+contents of the pbs.conf file.
+
+.IP pbs.group_list("<group_name>[@<host>][,<group_name>[@<host>]...]")
+Creates an object representing a PBS group list.
+To use a group list object:
+.br
+pbs.job.group_list = pbs.group_list(....)
+.br
+Instantiation of these objects requires a formatted input string.
+.IP pbs.hold_types("<hold_type_str>")
+where 
+.I <hold_type_str> 
+is one of "u", "o", "s", or "n".
+Creates an object representing the 
+.I Hold_Types 
+job attribute.
+Instantiation of these objects requires a formatted input string.
+.IP pbs.job_sort_formula("<formula_string>")
+where 
+.I <formula_string> 
+is a string containing a math formula. 
+Creates an object representing the 
+.I job_sort_formula 
+server attribute.
+Instantiation of these objects requires a formatted input string.
+.IP pbs.join_path({"oe"|"eo"|"n"})
+Creates an object representing the 
+.I Join_Path 
+job attribute.
+Instantiation of these objects requires a formatted input string.
+.IP pbs.keep_files("<keep_files_str>")
+where 
+.I <keep_files_str> 
+is one of "o", "e", "oe", "eo".
+Creates an object representing the 
+.I Keep_Files 
+job attribute.
+Instantiation of these objects requires a formatted input string.
+.IP pbs.license_count("Avail_Global:<W>Avail_Local:<X>Used:<Y>High_Use:<Z>")
+Instantiates an object representing a 
+.I license_count 
+attribute.
+Instantiation of these objects requires a formatted input string.
+.IP pbs.logjobmsg(job_ID,message)
+where 
+.I job_ID 
+must be an existing or previously existing job ID and where 
+.I message 
+is an arbitrary string.  This puts a custom string in the PBS Server
+log. The 
+.B tracejob 
+command can be used to print out the job-related
+messages logged by a hook script.  Messages are logged at log event
+class 
+.I pbs.LOG_DEBUG.
+.IP pbs.logmsg(log_event_class,message)
+where 
+.I message 
+is an arbitrary string, and where 
+.I log_event_class 
+can be one of the message log event class constants:
+.br
+pbs.LOG_WARNING
+.br
+pbs.LOG_ERROR
+.br
+pbs.LOG_DEBUG
+.br
+This puts a custom string in the daemon log.
+.IP pbs.mail_points("<mail_points_string>")
+where 
+.I <mail_points_string> 
+is "a", "b", and/or "e", or "n".
+Creates an object representing a 
+.I Mail_Points 
+attribute.
+Instantiation of these objects requires a formatted input string.
+.IP pbs.node_group_key("<resource>")
+Creates an object representing the resource to be used for node
+grouping, using the specified resource.
+.IP pbs.path_list("<path>[@<host>][,<path>@<host>...]")
+Creates an object representing a PBS pathname list.
+To use a path list object:
+.br
+pbs.job.Shell_Path_List = pbs.path_list(....)
+.br
+Instantiation of these objects requires a formatted input string.
+
+.IP pbs.env()
+Creates an empty environment variable list.  For example, to create
+an empty environment variable list:
+.RS 10
+pbs.event().env = pbs.pbs_env()
+.RE
+
+.IP pbs.place("[arrangement]:[sharing]:[group]")
+.I arrangement 
+can be "pack", "scatter", "free", "vscatter"
+.br
+.I sharing 
+can be "shared", "excl", "exclhost"
+.br
+.I group 
+can be of the form "group=<resource>"
+.br
+.I [arrangement], [sharing], 
+and 
+.I [group] 
+can be given in any order or combination.
+.br
+Creates a place object representing the job's place specification.
+Instantiation of these objects requires a formatted input string.
+.br
+Example:
+.br
+pl = pbs.place("pack:excl")
+.br
+s = repr(pl) (or s = `pl`)
+.br
+letter = pl[0] (assigns 'p' to letter)
+.br
+s = s + ":group=host" (append to string)
+br
+pl = pbs.place(s) (update original pl)
+.IP pbs.range("<start>-<stop>:<step>")
+Creates a PBS object representing a range of values.
+.br
+Example:
+.br
+pbs.range("1-30:3")
+.br
+Instantiation of these objects requires a formatted input string.
+
+.IP pbs.reboot([<command>])
+This stops hook execution, so that remaining lines in the hook script
+are not executed, and starts the tasks that would normally begin after
+the hook is finished, such as flagging the current host to be
+rebooted.  The MoM logs show the following:
+.RS 10
+<hook name> requested for host to be rebooted
+.RE
+.IP
+We recommend that before calling pbs.reboot(), you set any vnodes
+managed by this MoM offline, and requeue the current job, if this hook
+is not an exechost_periodic hook.  For example:
+.RS 10
+for  v in pbs.event().vnode_list.keys():
+.br
+\ \ \ pbs.event().vnode_list[v].state = pbs.ND_OFFLINE
+.br
+\ \ \ pbs.event().vnode_list[v].comment = "MoM host rebooting"
+.br
+pbs.event().job.rerun()
+.br
+pbs.reboot()
+.RE
+.IP
+The effect of the call to pbs.reboot() is not instantaneous. The
+reboot happens after the hook executes, and after any of the other
+actions such as pbs.event().job.rerun(), pbs.event().delete(), and
+pbs.event().vnode_list[] take effect.
+
+A hook with its user attribute set to pbsuser cannot successfully
+invoke pbs.reboot(), even if the owner is a PBS Manager or Operator.
+If this is attempted, the host is not rebooted, and the following
+message appears at log event class PBSEVENT_DEBUG2 in the MoM logs:
+.RS 10
+<hook_name>; Not allowed to issue reboot if run as user.
+.RE
+.IP
+The <command> is an optional argument.  It is a Python str which is
+executed instead of the reboot command that is the default for the
+system.  For example:
+.RS 10
+pbs.reboot("/usr/local/bin/my_reboot -s 10 -c 'going down in 10'")
+.RE
+.IP
+The specified <command> is executed in a shell on Linux/UNIX or via cmd on Windows.
+
+
+.IP pbs.route_destinations("<queue_spec>[,<queue_spec>,...]")
+where 
+.I <queue_spec> 
+is queue_name[@server_host[:port]]
+.br
+Creates an object that represents a 
+.I route_destinations 
+routing queue attribute.
+Instantiation of these objects requires a formatted input string.
+.IP pbs.select("[N:]res=val[:res=val][+[N:]res=val[:res=val]...]")
+Creates a 
+.I select 
+object representing the job's select specification.
+Instantiation of these objects requires a formatted input string.
+Example:
+.br
+sel = pbs.select("2:ncpus=1:mem=5gb+3:ncpus=2:mem=5gb")
+.br
+s = repr(sel) (or s = `sel`)
+.br
+letter = s[3] (assigns 'c' to letter)
+.br
+s = s + "+5:scratch=10gb" (append to string)
+.br
+sel = pbs.select(s) (reset the value of sel)
+.br
+.IP pbs.size(<integer>)
+Creates a PBS 
+.I size 
+object using the given integer value, storing the
+value as the number of bytes. Size objects can be specified using
+either an integer or a string. See the "pbs.size("<integer><suffix>")"
+creation method.
+.IP pbs.size("<integer><suffix>")
+Creates a PBS 
+.I size 
+object out of the given string specification. 
+See the PBS Professional Reference Guide for suffix information.
+The size of a word
+is the word size on the execution host. 
+.I Size 
+objects can be specified
+using either an integer or a string.  To operate on 
+.I pbs.size
+instances, use the "+" and "-" operators.  To compare 
+.I pbs.size
+instances, use the "==", "!=", ">", "<", ">=", and "<=" operators.
+Example: the sizes are normalized to the smaller of the 2 suffixes. In
+this case, "10gb" becomes "10240mb" and is added to "10mb":
+.br
+sz = pbs.size("10gb")
+.br
+sz = sz + 10mb
+.br
+10250mb
+.br
+Example: the following returns 
+.I True 
+because 
+.I sz 
+is greater than 100 bytes:
+.br
+if sz > 100:
+.br
+\ \ \ \ gt100 = True
+.br
+
+.IP pbs.software("<software_info_string>")
+Creates an object representing a site-dependent software resource.
+Instantiation of these objects requires a formatted input string.
+
+.IP pbs.staging_list("<filespec>[,<filespec>,...]")
+where 
+.I <filespec> 
+is <execution_path>@<storage_host>:<storage_path>
+Creates an object representing a job file staging parameters list.
+To use a staging list object:
+.br
+pbs.job.stagein = pbs.staging_list(....)
+.br
+Instantiation of these objects requires a formatted input string.
+.IP pbs.state_count("Transit:<U>Queued:<V>Held:<W>Running:<X>Exiting:<Y>Begun:<Z>)
+Instantiates an object representing a 
+.I state_count 
+attribute.
+Instantiation of these objects requires a formatted input string.
+.IP pbs.user_list("<user>[@<host>][,<user>@<host>...]")
+Creates an object representing a PBS user list.
+To use a user list object:
+.br
+pbs.job.User_List = pbs.user_list(....)
+.br
+Instantiation of these objects requires a formatted input string.
+
+.IP pbs.version("<pbs_version_string>")
+Creates an object representing the PBS version string.
+Instantiation of these objects requires a formatted input string.
+
+
+
+.SH ATTRIBUTES AND RESOURCES
+.br
+Hooks can read Server, Queue, or reservation resources. 
+Hooks can read vnode or job attributes and resources.  Hooks can modify
+.IP
+The resources requested by a job
+.br
+The resources used by a job
+.br
+The attributes of a job
+.br
+The resource arguments to pbs_rsub
+.br
+Vnode attributes and resources
+.br
+The shell or program to be executed in a job
+.br 
+The arguments to the shell or program to be executed in a job
+.br
+The environment of the job
+.LP
+
+Custom and built-in PBS resources are represented in Python dictionaries,
+where the resource names are the dictionary keys.  Built-in resources are
+listed in pbs_resources(7B).  You reference a resource through a vnode,
+the Server, the event that triggered the hook, or the current job, for example:
+
+.IP
+pbs.server().resources_available["< resource name>"]
+.br
+pbs.event().job.Resource_List["< resource name>"]
+.br 
+pbs.event().vnode_list[<vnode name>].resources_available["< resource name >"]
+.LP
+
+The resource name must be in quotes.
+Example: Get the number of CPUs:
+
+.IP
+ncpus = Resource_List["ncpus"]
+.LP
+
+An instance R of a job resource can be set as follows:
+.IP
+R["<resource name>"] = <resource value>
+.LP
+
+For example:
+.IP
+pbs.event().job().Resource_List["mem"] = 8gb
+.LP
+
+.SH EXCEPTIONS
+
+.IP  pbs.BadAttributeValueError
+Raised when setting the attribute value of a pbs.* object to an invalid value.
+.IP  pbs.BadAttributeValueTypeError
+Raised when setting the attribute value of a pbs.* object to an invalid value type.
+.IP  pbs.BadResourceValueError
+Raised when setting the resource value of a pbs.* object to an invalid value.
+.IP  pbs.BadResourceValueTypeError
+Raised when setting the resource value of a pbs.* object to an invalid value type.
+.IP  pbs.EventIncompatibleError
+Raised when referencing a non-existent attribute in pbs.event().
+.IP  pbs.UnsetAttributeNameError
+Raised when referencing a non-existent name of an attribute.
+.IP  pbs.UnsetResourceNameError
+Raised when referencing a non-existent name of a resource.
+.IP  SystemExit
+Raised when accepting or rejecting an action.
+.LP
+
+If a hook encounters an unhandled exception:
+.IP
+PBS rejects the corresponding action, and an error message is printed 
+to stderr.
+.br
+A message is printed to the daemon log.
+.LP
+
+
+
+
+
+.SH SEE ALSO
+The
+.B PBS Professional Administrator's Guide,
+.br
+pbs_hook_attributes(7B), pbs_resources(7B),
+qmgr(1B)
+
+

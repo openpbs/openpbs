@@ -1,0 +1,130 @@
+/*
+ * Copyright (C) 1994-2016 Altair Engineering, Inc.
+ * For more information, contact Altair at www.altair.com.
+ *  
+ * This file is part of the PBS Professional ("PBS Pro") software.
+ * 
+ * Open Source License Information:
+ *  
+ * PBS Pro is free software. You can redistribute it and/or modify it under the
+ * terms of the GNU Affero General Public License as published by the Free 
+ * Software Foundation, either version 3 of the License, or (at your option) any 
+ * later version.
+ *  
+ * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ * PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+ *  
+ * You should have received a copy of the GNU Affero General Public License along 
+ * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  
+ * Commercial License Information: 
+ * 
+ * The PBS Pro software is licensed under the terms of the GNU Affero General 
+ * Public License agreement ("AGPL"), except where a separate commercial license 
+ * agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+ *  
+ * Altair’s dual-license business model allows companies, individuals, and 
+ * organizations to create proprietary derivative works of PBS Pro and distribute 
+ * them - whether embedded or bundled with other software - under a commercial 
+ * license agreement.
+ * 
+ * Use of Altair’s trademarks, including but not limited to "PBS™", 
+ * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+ * trademark licensing policies.
+ *
+ */
+#ifndef	_HOOK_FUNC_H
+#define	_HOOK_FUNC_H
+#ifdef	__cplusplus
+extern "C" {
+#endif
+
+
+/*
+ * hook_func.h - structure definitions for hook objects
+ *
+ * Include Files Required:
+ *	<sys/types.h>
+ *	"list_link.h"
+ *	"batch_request.h"
+ *	"pbs_ifl.h"
+ */
+
+#define	MOM_HOOK_ACTION_NONE		0
+#define MOM_HOOK_ACTION_SEND_ATTRS	0x01
+#define	MOM_HOOK_ACTION_SEND_SCRIPT	0x02
+#define	MOM_HOOK_ACTION_DELETE		0x04
+#define	MOM_HOOK_ACTION_SEND_RESCDEF	0x08
+#define	MOM_HOOK_ACTION_DELETE_RESCDEF	0x10
+#define	MOM_HOOK_ACTION_SEND_CONFIG	0x20
+
+struct mom_hook_action {
+	char            hookname[MAXPATHLEN+1];
+	unsigned int	action;
+	long long int	tid;	/* transaction id to group actions under */
+};
+
+
+/* Return values to sync_mom_hookfiles() function */
+enum sync_hookfiles_result {
+	SYNC_HOOKFILES_NONE,
+	SYNC_HOOKFILES_SUCCESS_ALL,
+	SYNC_HOOKFILES_SUCCESS_PARTIAL,
+	SYNC_HOOKFILES_FAIL
+};
+
+#define	SEND_HOOKS_RETRY	8
+
+typedef	struct mom_hook_action mom_hook_action_t;
+
+extern	int add_mom_hook_action(mom_hook_action_t ***,
+	int *, char *, unsigned int, int, long long int);
+
+extern int delete_mom_hook_action(mom_hook_action_t **, int,
+	char *, unsigned int);
+
+extern mom_hook_action_t *find_mom_hook_action(mom_hook_action_t **,
+	int, char *);
+
+extern void add_pending_mom_hook_action(void *minfo, char *, unsigned int);
+
+extern void delete_pending_mom_hook_action(void *minfo, char *, unsigned int);
+
+extern void add_pending_mom_allhooks_action(void *minfo, unsigned int);
+
+extern int has_pending_mom_action_delete(char *);
+
+extern void hook_track_save(void *, int);
+extern void hook_track_recov(void);
+extern int bg_sync_mom_hookfiles(void);
+extern int bg_delete_mom_hooks(void *);
+extern enum sync_hookfiles_result sync_mom_hookfiles(void *);
+extern int sync_mom_hookfiles_count(void *);
+extern void next_sync_mom_hookfiles(void);
+extern void send_rescdef(int);
+extern unsigned long get_hook_rescdef_checksum(void);
+extern void mark_mom_hooks_seen(void);
+extern int mom_hooks_seen_count(void);
+extern void hook_action_tid_set(long long int);
+extern long long int hook_action_tid_get(void);
+
+#ifdef	_BATCH_REQUEST_H
+extern int status_hook(hook *, struct batch_request *, pbs_list_head *, char *, size_t);
+extern void mgr_hook_import(struct batch_request *);
+extern void mgr_hook_export(struct batch_request *);
+extern void mgr_hook_set(struct batch_request *);
+extern void mgr_hook_unset(struct batch_request *);
+extern void mgr_hook_create(struct batch_request *);
+extern void mgr_hook_delete(struct batch_request *);
+extern void req_stat_hook(struct batch_request *);
+
+/* Hook script processing */
+extern int process_hooks(struct batch_request *, char *, size_t, void (*)(void));
+extern int recreate_request(struct batch_request *);
+#endif
+
+#ifdef	__cplusplus
+}
+#endif
+#endif	/* _HOOK_FUNC_H */

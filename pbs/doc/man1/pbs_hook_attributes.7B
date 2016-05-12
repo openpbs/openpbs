@@ -1,0 +1,160 @@
+.\" Copyright (C) 1994-2016 Altair Engineering, Inc.
+.\" For more information, contact Altair at www.altair.com.
+.\"  
+.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" 
+.\" Open Source License Information:
+.\"  
+.\" PBS Pro is free software. You can redistribute it and/or modify it under the
+.\" terms of the GNU Affero General Public License as published by the Free 
+.\" Software Foundation, either version 3 of the License, or (at your option) any 
+.\" later version.
+.\"  
+.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+.\" PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+.\"  
+.\" You should have received a copy of the GNU Affero General Public License along 
+.\" with this program.  If not, see <http://www.gnu.org/licenses/>.
+.\"  
+.\" Commercial License Information: 
+.\" 
+.\" The PBS Pro software is licensed under the terms of the GNU Affero General 
+.\" Public License agreement ("AGPL"), except where a separate commercial license 
+.\" agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+.\"  
+.\" Altair’s dual-license business model allows companies, individuals, and 
+.\" organizations to create proprietary derivative works of PBS Pro and distribute 
+.\" them - whether embedded or bundled with other software - under a commercial 
+.\" license agreement.
+.\" 
+.\" Use of Altair’s trademarks, including but not limited to "PBS™", 
+.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+.\" trademark licensing policies.
+.\"
+.TH pbs_hook_attributes 7B "26 February 2015" Local "PBS Professional"
+.SH NAME
+.B pbs_hook_attributes 
+\- attributes of PBS hooks
+
+.SH DESCRIPTION
+.LP
+Hook attributes can be set, unset, and viewed using the 
+.B qmgr 
+command.
+See the 
+.B qmgr(1B) 
+man page.
+
+An unset hook attribute takes the default value for that attribute.
+
+Under UNIX/Linux, root privilege is required in order to operate on
+hooks.  Under Windows, this must be done from the installation
+account.  For domained environments, the installation account must be
+a lo cal account that is a member of the local Administrators group on
+the local computer.  For standalone environments, the ins tallation
+account must be a local account that is a member of the local
+Administrators group on the local computer.
+
+.B The following hook attributes can 
+.B be set by the administrator:
+
+.IP "alarm=<n>"
+Specifies the number of seconds to allow a hook to run before
+the hook times out.
+
+Valid values: >0
+.br
+Format: Integer
+.br
+Default value: 30
+
+.IP "debug"
+Specifies whether or not the hook produces debugging files under
+PBS_HOME/server_priv/hooks/tmp or PBS_HOME/mom_priv/hooks/tmp.  Files
+are named hook_<hook event>_<hook name>_<unique ID>.in, .data, and .out.
+Format: Boolean.
+Default value: False.
+
+.IP "enabled=<t|T|1|true|f|F|0|false>
+Determines whether or not a hook is run when its triggering event occurs.
+If a hook's 
+.I enabled
+attribute is "True", the hook is run.
+.br
+Format: Boolean
+.br
+Default: True
+
+.IP "event=<event_string_array>"
+List of events that trigger the hook.  Can be operated on with 
+the "=", "+=", and "-=" operators.
+.br
+Valid events: "queuejob", "modifyjob", "movejob", "resvsub", "runjob",
+"provision", "execjob_begin", "execjob_end", execjob_prologue",
+"execjob_epilogue", "execjob_preterm", "execjob_launch", "execjob_attach", 
+"exechost_startup", "exechost_periodic", "" (meaning
+no event)
+.br
+Format: string array 
+.br
+Default value: "" (meaning none, i.e. the hook is not triggered)
+
+.IP "fail_action"
+Specifies the action to be taken when hook fails due to alarm call or
+unhandled exception, or to an internal error such as not enough disk
+space or memory.  Can also specify a subsequent action to be taken
+when hook runs successfully.  Value can be either "none" or one or more of 
+"offline_vnodes", "clear_vnodes_upon_recovery", and "scheduler_restart_cycle". 
+If this attribute is set to multiple values, scheduler restart happens last.
+See the Hooks chapter in the PBS Professional Administrator's Guide.
+Format: string_array.  Default value: "none".
+
+.IP "freq"
+Number of seconds between exechost_periodic triggers.
+.br 
+Format: integer
+.br
+Default: 120 seconds
+
+.IP "order=<n>"
+Indicates relative order of hook execution, for hooks sharing a trigger.
+Hooks with lower values for 
+.I n
+execute before those with higher values.
+.br
+Format: integer
+.br
+Default value: 1
+
+.IP "Type = {site}"
+Valid values: "site"
+.br
+Format: string
+.br
+Default value: "site"
+
+.IP "user=<user type>
+Specifies who executes the hook.  If the value is "pbsadmin", the hook
+executes as root.  If the value is "pbsuser", the hook executes as the 
+triggering job's owner.
+.br
+Valid values: "pbsadmin", "pbsuser"
+.br
+Format: string
+.br
+Default value: "pbsadmin"
+
+.SH SEE ALSO
+The
+.B PBS Professional User's Guide,
+the
+.B PBS Professional Administrator's Guide,
+the
+.B PBS Professional Programmer's Guide,
+.br
+qmgr(1B),
+pbs_module(7B), 
+pbs_stathook(3B)
+
+

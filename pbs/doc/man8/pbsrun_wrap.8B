@@ -1,0 +1,180 @@
+.\" Copyright (C) 1994-2016 Altair Engineering, Inc.
+.\" For more information, contact Altair at www.altair.com.
+.\"  
+.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" 
+.\" Open Source License Information:
+.\"  
+.\" PBS Pro is free software. You can redistribute it and/or modify it under the
+.\" terms of the GNU Affero General Public License as published by the Free 
+.\" Software Foundation, either version 3 of the License, or (at your option) any 
+.\" later version.
+.\"  
+.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+.\" PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+.\"  
+.\" You should have received a copy of the GNU Affero General Public License along 
+.\" with this program.  If not, see <http://www.gnu.org/licenses/>.
+.\"  
+.\" Commercial License Information: 
+.\" 
+.\" The PBS Pro software is licensed under the terms of the GNU Affero General 
+.\" Public License agreement ("AGPL"), except where a separate commercial license 
+.\" agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+.\"  
+.\" Altair’s dual-license business model allows companies, individuals, and 
+.\" organizations to create proprietary derivative works of PBS Pro and distribute 
+.\" them - whether embedded or bundled with other software - under a commercial 
+.\" license agreement.
+.\" 
+.\" Use of Altair’s trademarks, including but not limited to "PBS™", 
+.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+.\" trademark licensing policies.
+.\"
+.TH pbsrun_wrap 8B "2 March 2015" Local "PBS Professional"
+.SH NAME
+.B pbsrun_wrap
+\- general-purpose script for wrapping mpirun in pbsrun
+
+.SH SYNOPSIS
+.B pbsrun_wrap
+[-s] <path_to_actual_mpirun> pbsrun.<mpirun version/flavor>
+
+.B pbsrun_wrap
+--version
+
+.SH DESCRIPTION
+The 
+.B pbsrun_wrap
+script is used to wrap any of several versions of mpirun in 
+.B pbsrun. 
+The 
+.B pbsrun_wrap 
+script creates a symbolic link with the same
+path and name as the mpirun being wrapped.  This calls 
+.B pbsrun, 
+which uses 
+.B pbs_attach
+to give MOM control of jobs.  The result is transparent to the
+user; 
+when mpirun is called from inside a
+PBS job, 
+PBS can monitor and control the job, but when mpirun is called
+from outside of a PBS job, it behaves as it would normally.
+See the 
+.B pbs_attach(8B) 
+and 
+.B pbsrun(8B)
+man pages.
+
+Use 
+.B pbsrun_unwrap
+to reverse the process.
+
+Using 
+.B pbsrun_wrap
+with Intel MPI is 
+.B deprecated 
+as of 13.0.
+
+.SH OPTIONS
+
+.IP "-s" 5
+Sets the "strict_pbs" options in the various 
+initialization scripts (e.g. pbsrun.bgl.init, pbsrun.ch_gm.init, etc...)
+to 1 from the default 0. This means that the mpirun being wrapped by 
+pbsrun will only be executed if inside a PBS environment. Otherwise, the user 
+will get the error:
+.RS
+.IP 
+Not running under PBS
+exiting since strict_pbs is enabled; execute only in PBS
+.LP
+
+.RE
+
+.IP "--version" 5
+The 
+.B pbsrun_wrap
+command returns its PBS version information and exits.
+This option can only be used alone.
+
+.SH USAGE
+
+Syntax: 
+.RS 5
+.B pbsrun_wrap 
+[-s] <path_to_actual_mpirun> pbsrun.<mpirun version/flavor>
+.RE
+
+Any mpirun version/flavor that can be wrapped has
+an initialization script ending in ".init", 
+found in $PBS_EXEC/lib/MPI:
+.br
+.RS 5
+$PBS_EXEC/lib/MPI/pbsrun.<mpirun version/flavor>.init.
+.RE
+
+The  
+.B pbsrun_wrap 
+script
+instantiates the 
+.B pbsrun 
+wrapper script as
+.B pbsrun.<mpirun version/flavor> 
+in the same directory where 
+.B pbsrun 
+is located, and sets up the link to actual mpirun call via the symbolic link
+.RS 5
+$PBS_EXEC/lib/MPI/pbsrun.<mpirun version/flavor>.link
+.RE
+
+For example, running:
+.RS 5
+.B pbsrun_wrap 
+/opt/mpich-gm/bin/mpirun.ch_gm pbsrun.ch_gm
+.RE
+causes the following actions:
+.RS 4
+Save original mpirun.ch_gm script:
+.RS 4
+.IP "mv" 4
+/opt/mpich-gm/bin/mpirun.ch_gm 
+.br 
+/opt/mpich/gm/bin/mpirun.ch_gm.actual
+.LP
+.RE
+Instantiate pbsrun wrapper script as pbsrun.ch_gm:
+.RS 4
+.IP "cp" 4
+$PBS_EXEC/bin/pbsrun $PBS_EXEC/bin/pbsrun.ch_gm
+.LP
+.RE
+Link "mpirun.ch_gm" to actually call "pbsrun.ch_gm":
+.RS 4
+.IP "ln -s" 6
+$PBS_EXEC/bin/pbsrun.ch_gm /opt/mpich-gm/bin/mpirun.ch_gm
+.LP
+.RE
+Create a link so that "pbsrun.ch_gm" calls "mpirun.ch_gm.actual":
+.RS 4
+.IP "ln -s" 6
+/opt/mpich-gm/bin/mpirun.ch_gm.actual
+$PBS_EXEC/lib/MPI/pbsrun.ch_gm.link
+.RE
+.RE
+.RE
+
+.SH REQUIREMENTS
+The mpirun being wrapped
+must be installed and working on all the nodes in the PBS cluster.
+
+
+.SH SEE ALSO
+The 
+.B PBS Professional Administrator's Guide
+.LP
+pbs_attach(8B), 
+pbsrun(8B), 
+pbsrun_unwrap(8B)

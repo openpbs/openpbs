@@ -1,0 +1,115 @@
+.\" Copyright (C) 1994-2016 Altair Engineering, Inc.
+.\" For more information, contact Altair at www.altair.com.
+.\"  
+.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" 
+.\" Open Source License Information:
+.\"  
+.\" PBS Pro is free software. You can redistribute it and/or modify it under the
+.\" terms of the GNU Affero General Public License as published by the Free 
+.\" Software Foundation, either version 3 of the License, or (at your option) any 
+.\" later version.
+.\"  
+.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+.\" PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+.\"  
+.\" You should have received a copy of the GNU Affero General Public License along 
+.\" with this program.  If not, see <http://www.gnu.org/licenses/>.
+.\"  
+.\" Commercial License Information: 
+.\" 
+.\" The PBS Pro software is licensed under the terms of the GNU Affero General 
+.\" Public License agreement ("AGPL"), except where a separate commercial license 
+.\" agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+.\"  
+.\" Altair’s dual-license business model allows companies, individuals, and 
+.\" organizations to create proprietary derivative works of PBS Pro and distribute 
+.\" them - whether embedded or bundled with other software - under a commercial 
+.\" license agreement.
+.\" 
+.\" Use of Altair’s trademarks, including but not limited to "PBS™", 
+.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+.\" trademark licensing policies.
+.\"
+.TH pbs_idled 8B "5 October 2012" Local "PBS Professional"
+.SH NAME
+.B pbs_idled 
+\- PBS daemon to watch the X console and inform pbs_mom of idle time
+.SH UNIX/LINUX SYNOPSIS
+.B pbs_idled 
+[-w wait_time] [-f idle_file] [-D display] 
+.RS 10
+[-r reconnect_delay]
+.RE
+.br
+.B pbs_idled
+--version
+.SH WINDOWS SYNOPSIS
+.B pbs_idled 
+[start | stop] 
+.br
+.B pbs_idled
+--version
+.SH UNIX/LINUX DESCRIPTION
+On UNIX/Linux, the 
+.B pbs_idled 
+program sits and watches an X windows
+display and communicates the idle time of the display back to PBS.  If
+the mouse is moved or a key is touched, PBS is informed that the node
+is busy.
+.br
+This program should be run out of the system-wide Xsession file.  It
+should be run in the background before the window manager is run.  If
+this program is run outside of the Xsession, it will need to be able
+to make a connection to the X display.  See the xhost or xauth man
+pages for a description of X security.
+.SH WINDOWS DESCRIPTION
+On Windows, 
+.B pbs_idled 
+reads its polling interval from a file called
+.I idle_poll_time 
+which is created by MoM.  The process monitors
+keyboard, mouse, and console activity, and updates a file called
+.I idle_touch 
+when it finds user activity.  The 
+.I idle_touch 
+file is created by MoM.
+
+.SH UNIX/LINUX OPTIONS
+.IP "-w <wait_time>" 10
+Granularity between when the daemon checks for events or pointer movement.
+.IP "-f <idle_file>" 10
+Update file times on <idle_file>.  PBS will not monitor any 
+other than the default.
+.IP "-D <display>" 10
+The display to connect to and monitor.
+.IP "-r <reconnect_delay>" 10
+The amount of time to try and reconnect to the X display if the previous 
+attempt was unsuccessful.
+
+.IP "--version" 10
+The 
+.B pbs_idled
+command returns its PBS version information and exits.
+This option can only be used alone.
+.SH WINDOWS OPTIONS
+.IP "start" 10
+Starts the 
+.B pbs_idled 
+process.
+.IP "stop" 10
+Stops the 
+.B pbs_idled 
+process.
+.IP "--version" 10
+The 
+.B pbs_idled 
+process returns its PBS version information and exits.
+This option can only be used alone.
+
+.SH SEE ALSO
+The
+.B PBS Professional Administrator's Guide
+and the following manual pages:
+pbs_mom(8B), xhost(1), xauth(1)
