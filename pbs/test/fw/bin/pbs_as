@@ -1,0 +1,357 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# Copyright (C) 1994-2016 Altair Engineering, Inc.
+# For more information, contact Altair at www.altair.com.
+# 
+# This file is part of the PBS Professional ("PBS Pro") software.
+#
+# Open Source License Information:
+# 
+# PBS Pro is free software. You can redistribute it and/or modify it under the
+# terms of the GNU Affero General Public License as published by the Free 
+# Software Foundation, either version 3 of the License, or (at your option) any 
+# later version.
+# 
+# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+# PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+# 
+# You should have received a copy of the GNU Affero General Public License along 
+# with this program.  If not, see <http://www.gnu.org/licenses/>.
+# 
+# Commercial License Information: 
+#
+# The PBS Pro software is licensed under the terms of the GNU Affero General 
+# Public License agreement ("AGPL"), except where a separate commercial license 
+# agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+# 
+# Altair’s dual-license business model allows companies, individuals, and 
+# organizations to create proprietary derivative works of PBS Pro and distribute 
+# them - whether embedded or bundled with other software - under a commercial 
+# license agreement.
+#
+# Use of Altair’s trademarks, including but not limited to "PBS™", 
+# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+# trademark licensing policies.
+
+import sys
+import os
+import getopt
+import cPickle
+import pwd
+
+from ptl.lib.pbs_testlib import PtlConfig, Server
+from ptl.lib.pbs_testlib import PbsStatusError, PbsSubmitError, PbsDeleteError
+from ptl.lib.pbs_testlib import PbsManagerError, PbsAlterError, PbsSignalError
+from ptl.lib.pbs_testlib import PbsOrderError, PbsMessageError, PbsHoldError
+from ptl.lib.pbs_testlib import PbsReleaseError, PbsRunError, PbsRerunError
+from ptl.lib.pbs_testlib import PbsMoveError, PbsDeljobError, PbsDelresvError
+
+
+def usage():
+    msg = []
+    msg += ['PBS Pro user impersonation tool. This tool is an internal ']
+    msg += ['tool and is not intended to be used by end-users\n\n']
+    msg += ['Usage: ' + os.path.basename(sys.argv[0]) + ' [OPTION]\n\n']
+    msg += ['-c <cmd>: command to perform, one of submit, status\n']
+    msg += ['-e <extend>: extend options to commands']
+    msg += ['-o <objid>: identifier of object to act upon\n']
+    msg += ['-u <user>: username to perform commandd as\n']
+    msg += ['-f <serialized_file>: filename containing serialized data\n']
+    msg += ['-s <hostname>: name of host on which to perform command\n']
+    msg += ['-h: usage help\n']
+
+    print "".join(msg)
+
+
+def _load_data(objfile=None, servername=None, user=None):
+    if objfile:
+        f = open(objfile, 'r')
+        _data = cPickle.load(f)
+        f.close()
+    else:
+        _data = None
+    if user is not None:
+        uid = pwd.getpwnam(user)[2]
+        if os.getuid() == 0 and uid != 0:
+            os.setuid(uid)
+    s = Server(servername, stat=False)
+    return (s, _data)
+
+if __name__ == '__main__':
+
+    if len(sys.argv) < 2:
+        usage()
+        sys.exit(1)
+
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "c:e:o:u:f:s:h")
+    except:
+        usage()
+        sys.exit(1)
+
+    cmd = None
+    objid = None
+    user = None
+    objfile = None
+    servername = None
+    extend = None
+
+    for o, val in opts:
+        if o == '-e':
+            extend = val
+        elif o == '-c':
+            cmd = val
+        elif o == '-o':
+            objid = val.split(',')
+        elif o == '-u':
+            user = val
+        elif o == '-f':
+            objfile = val
+        elif o == '-s':
+            servername = val
+        elif o == '-h':
+            usage()
+            sys.exit(0)
+        else:
+            sys.stderr.write('unrecognized option. Exiting')
+            usage()
+            sys.exit(1)
+
+    if cmd is None or user is None or servername is None:
+        print None
+        sys.exit(0)
+
+    PtlConfig()
+
+    if cmd == 'submit':
+        (s, job) = _load_data(objfile, servername, user)
+        job.attrl = s.utils.dict_to_attrl(job.attributes)
+        job.attropl = s.utils.dict_to_attropl(job.attributes)
+        try:
+            jid = s.submit(job)
+            sys.stdout.write(jid.strip())
+        except PbsSubmitError, e:
+            sys.stdout.write(str(e.rv))
+            sys.stderr.write(repr(e))
+            sys.exit(e.rc)
+
+    elif cmd == 'status':
+        (s, _data) = _load_data(objfile, servername, user)
+        if 'obj_type' in _data:
+            obj_type = int(_data['obj_type'])
+        else:
+            obj_type = None
+        if 'attrib' in _data:
+            attrib = _data['attrib']
+        else:
+            attrib = None
+        if 'id' in _data:
+            id = _data['id']
+        else:
+            id = None
+
+        try:
+            rv = s.status(obj_type, attrib, id, extend=extend)
+            sys.stdout.write(str(rv))
+        except PbsStatusError, e:
+            rv = e.rv
+            sys.stdout.write(str(rv))
+            sys.stderr.write(repr(e))
+            sys.stderr.flush()
+            sys.exit(e.rc)
+
+    elif cmd == 'delete':
+        if objid is None:
+            print '1'
+        else:
+            (s, data) = _load_data(objfile, servername, user)
+            try:
+                rc = s.delete(objid, extend=extend)
+                sys.stdout.write(str(rc))
+            except PbsDeleteError, e:
+                sys.stdout.write(str(rc))
+                sys.stderr.write(repr(e))
+                sys.exit(e.rc)
+
+    elif cmd == 'deljob':
+        if objid is None:
+            print '1'
+        else:
+            (s, data) = _load_data(objfile, servername, user)
+            try:
+                rc = s.deljob(objid, extend=extend)
+                sys.stdout.write(str(rc))
+            except PbsDeljobError, e:
+                sys.stdout.write(str(rc))
+                sys.stderr.write(repr(e))
+                sys.exit(e.rc)
+
+    elif cmd == 'delresv':
+        if objid is None:
+            print '1'
+        else:
+            (s, data) = _load_data(objfile, servername, user)
+            try:
+                rc = s.delresv(objid, extend=extend)
+                sys.stdout.write(str(rc))
+            except PbsDelresvError, e:
+                sys.stdout.write(str(rc))
+                sys.stderr.write(repr(e))
+                sys.exit(e.rc)
+
+    elif cmd == 'select':
+        (s, attrib) = _load_data(objfile, servername, user)
+        rv = s.select(attrib, extend=extend)
+        print rv
+
+    elif cmd == 'alterjob':
+        if objid is None:
+            print '1'
+        else:
+            (s, attrib) = _load_data(objfile, servername, user)
+            try:
+                rc = s.alterjob(objid, attrib, extend=extend)
+                sys.stdout.write(str(rc))
+            except PbsAlterError, e:
+                sys.stdout.write(str(rc))
+                sys.stderr.write(repr(e))
+                sys.exit(e.rc)
+
+    elif cmd == 'holdjob':
+        if objid is None:
+            print '1'
+        else:
+            (s, hold_list) = _load_data(objfile, servername, user)
+            try:
+                rc = s.holdjob(objid, str(hold_list), extend=extend)
+                sys.stdout.write(str(rc))
+            except PbsHoldError, e:
+                sys.stdout.write(str(rc))
+                sys.stderr.write(repr(e))
+                sys.exit(e.rc)
+
+    elif cmd == 'sigjob':
+        if objid is None:
+            print '1'
+        else:
+            (s, signal) = _load_data(objfile, servername, user)
+            try:
+                rc = s.sigjob(objid, str(signal), extend=extend)
+                sys.stdout.write(str(rc))
+            except PbsSignalError, e:
+                sys.stdout.write(str(rc))
+                sys.stderr.write(repr(e))
+                sys.exit(e.rc)
+
+    elif cmd == 'msgjob':
+        if objid is None:
+            print '1'
+        else:
+            (s, msg) = _load_data(objfile, servername, user)
+            try:
+                rc = s.holdjob(objid, str(msg), extend=extend)
+                sys.stdout.write(str(rc))
+            except PbsMessageError, e:
+                sys.stdout.write(str(rc))
+                sys.stderr.write(repr(e))
+                sys.exit(e.rc)
+
+    elif cmd == 'rlsjob':
+        if objid is None:
+            print '1'
+        else:
+            (s, hold_list) = _load_data(objfile, servername, user)
+            try:
+                rc = s.rlsjob(objid, str(hold_list), extend=extend)
+                sys.stdout.write(str(rc))
+            except PbsReleaseError, e:
+                sys.stdout.write(str(rc))
+                sys.stderr.write(repr(e))
+                sys.exit(e.rc)
+
+    elif cmd == 'rerunjob':
+        if objid is None:
+            print '1'
+        else:
+            (s, data) = _load_data(objfile, servername, user)
+            try:
+                rc = s.rerunjob(objid, extend=extend)
+                sys.stdout.write(str(rc))
+            except PbsRerunError, e:
+                sys.stdout.write(str(rc))
+                sys.stderr.write(repr(e))
+                sys.exit(e.rc)
+
+    elif cmd == 'orderjob':
+        if objid is None:
+            print '1'
+        else:
+            (s, jobid2) = _load_data(objfile, servername, user)
+            try:
+                rc = s.orderjob(objid, str(jobid2), extend=extend)
+                sys.stdout.write(str(rc))
+            except PbsOrderError, e:
+                sys.stdout.write(str(rc))
+                sys.stderr.write(repr(e))
+                sys.exit(e.rc)
+
+    elif cmd == 'runjob':
+        if objid is None:
+            print '1'
+        else:
+            (s, location) = _load_data(objfile, servername, user)
+            try:
+                rc = s.runjob(objid, str(location), extend=extend)
+            except PbsRunError, e:
+                rc = e.rc
+            print str(rc)
+
+    elif cmd == 'movejob':
+        if objid is None:
+            print '1'
+        else:
+            (s, destination) = _load_data(objfile, servername, user)
+            try:
+                rc = s.movejob(objid, str(destination), extend=extend)
+                sys.stdout.write(rc)
+            except PbsMoveError, e:
+                sys.stdout.write(str(rc))
+                sys.stderr.write(repr(e))
+                sys.exit(e.rc)
+
+    elif cmd == 'manager':
+        (s, _data) = _load_data(objfile, servername, user)
+        if 'cmd' in _data:
+            cmd = int(_data['cmd'])
+        else:
+            cmd = None
+        if 'obj_type' in _data:
+            obj_type = int(_data['obj_type'])
+        else:
+            obj_type = None
+        if 'attrib' in _data:
+            attrib = _data['attrib']
+        else:
+            attrib = None
+        if 'id' in _data:
+            id = _data['id']
+        else:
+            id = None
+        try:
+            rc = s.manager(cmd, obj_type, attrib, id, extend=extend)
+            sys.stdout.write(str(rc))
+        except PbsManagerError, e:
+            sys.stderr.write(repr(e))
+            sys.exit(e.rc)
+
+    elif cmd == 'terminate':
+        if objid is None:
+            print '1'
+        else:
+            (s, manner) = _load_data(objfile, servername, user)
+            rc = s.terminate(objid, str(manner), extend=extend)
+            print str(rc)
+
+    sys.exit(0)

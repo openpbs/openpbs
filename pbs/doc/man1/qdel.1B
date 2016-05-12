@@ -1,0 +1,232 @@
+.\" Copyright (C) 1994-2016 Altair Engineering, Inc.
+.\" For more information, contact Altair at www.altair.com.
+.\"  
+.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" 
+.\" Open Source License Information:
+.\"  
+.\" PBS Pro is free software. You can redistribute it and/or modify it under the
+.\" terms of the GNU Affero General Public License as published by the Free 
+.\" Software Foundation, either version 3 of the License, or (at your option) any 
+.\" later version.
+.\"  
+.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+.\" PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+.\"  
+.\" You should have received a copy of the GNU Affero General Public License along 
+.\" with this program.  If not, see <http://www.gnu.org/licenses/>.
+.\"  
+.\" Commercial License Information: 
+.\" 
+.\" The PBS Pro software is licensed under the terms of the GNU Affero General 
+.\" Public License agreement ("AGPL"), except where a separate commercial license 
+.\" agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+.\"  
+.\" Altair’s dual-license business model allows companies, individuals, and 
+.\" organizations to create proprietary derivative works of PBS Pro and distribute 
+.\" them - whether embedded or bundled with other software - under a commercial 
+.\" license agreement.
+.\" 
+.\" Use of Altair’s trademarks, including but not limited to "PBS™", 
+.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+.\" trademark licensing policies.
+.\"
+.TH qdel 1B "8 October 2012" Local "PBS Professional"
+.SH NAME
+.B qdel 
+- deletes PBS jobs
+.SH SYNOPSIS
+.B qdel 
+[-x] 
+[\-Wforce | -Wsuppress_email=<N>] 
+.RS 6
+job_identifier [job_identifier ...]
+.RE
+.B qdel
+--version
+.SH DESCRIPTION
+The 
+.B qdel 
+command deletes jobs in the order given, whether they are at the local
+server or at a remote server.  
+
+The qdel command is used without options to delete queued, running,
+held, or suspended jobs, while the
+.I -x  
+option gives it the additional capacity to delete finished or moved
+jobs.  With the
+.I -x 
+option, this command can be used on finished and moved jobs, in
+addition to queued, running, held, or suspended jobs.
+
+When this command is used without the 
+.I -x 
+option, if job history is enabled, the deleted job's history is
+retained.  The 
+.I -x 
+option is used to additionally remove the history of the job being
+deleted.
+
+.LP
+A PBS job may be deleted by its owner, an operator, or the
+administrator.  The server deletes a PBS job by sending a 
+.B SIGTERM
+signal, then, if there are remaining processes, a
+.B SIGKILL 
+signal.  
+
+If someone other than the job's owner deletes the job, mail is
+sent to the job's owner, or to a list of mail recipients if 
+specified during 
+.B qsub.  
+See the 
+.B qsub(1B)
+man page.
+.LP
+
+.B "How Behavior of qdel Command Can Be Affected"
+.RS 3
+The server's 
+.I default_qdel_arguments
+attribute may affect the behavior of the 
+.B qdel 
+command.  This attribute is settable by the administrator 
+via the 
+.B qmgr
+command.  The attribute may be set to "-Wsuppress_email=<N>".
+The server attribute is overridden by command line arguments.
+See the 
+.B pbs_server_attributes(1B) 
+man page.
+
+If the job is in the process of provisioning,
+it can be deleted only by using the 
+.I -W force
+option.
+.RE
+
+.B Sequence of Events
+.IP " " 3
+The job's running processes are killed.
+.IP
+The epilogue runs.
+.IP
+Files that were staged in are staged out.  This includes
+standard out (.o) and standard error (.e) files.
+.IP
+Files that were staged in or out are deleted.
+.IP
+The job's temp directory is removed.
+.IP
+The job is removed from the MOM(s) and the server.
+.LP
+
+.SH OPTIONS
+.IP "(no options)" 10
+Can delete queued, running, held, or suspended jobs.  
+Does not delete job history for specified job(s).
+.IP "-W force" 10
+Deletes the job whether or not the job's execution host is 
+reachable.  Deletes the job whether or not the job is in the
+process of provisioning.  Cannot be used with the 
+.I -Wsuppress_email
+option.
+.LP
+.IP "-Wsuppress_email=<N>" 10
+Sets limit on number of emails sent when deleting multiple jobs.  If 
+.I N
+>= 1 and 
+.I N 
+or more 
+.I job_identifiers 
+are given, 
+.I N 
+emails are sent.  If 
+.I N
+>=1 and less than 
+.I N 
+job identifiers are given, the number of emails is
+the same as the number of jobs.  If 
+.I N
+=0, this option is ignored.  If 
+.I N
+= -1, no email is sent.
+The 
+.I <N>
+argument is an integer.  Note that there is no space between "W" and "suppress_email".
+Cannot be used with the 
+.I -Wforce
+option.
+.LP
+.IP "-x" 10
+Can delete running, queued, suspended, held, finished, or moved jobs.
+Deletes job history for specified job(s).
+.LP
+.IP "--version" 10
+The 
+.B qdel
+command returns its PBS version information and exits.
+This option can only be used alone.
+
+.SH OPERANDS
+The 
+.B qdel 
+command accepts one or more
+.I job_identifier
+operands.  
+.B Square brackets in the following 
+.B description have two different meanings.  
+Job array identifiers have square brackets, 
+.B and
+the brackets indicate the contents are optional for 
+.I "[.server_name]" 
+and 
+.I "[@server]".
+The format of 
+.I job_identifier
+is:
+
+.IP "Jobs" 10
+.I sequence_number[.server_name][@server]
+.LP
+.IP "Job arrays" 10
+.I sequence_number[][.server_name][@server]
+.LP
+.IP "Array range" 10
+.I sequence_number[<first>-<last>][.server_name][@server]
+.br
+.I first
+and 
+.I last
+are the first and last indices of the subjobs to be deleted.
+.LP
+.IP "Subjob" 10
+sequence_number[<index>][.server_name][@server]
+.br
+.I index
+is the index of the subjob to be deleted.
+.LP
+.IP " " 10
+Job array identifiers must be enclosed in double quotes for some shells.
+.LP
+
+.SH STANDARD ERROR
+The 
+.B qdel 
+command writes a diagnostic message to standard error for each
+error occurrence.
+
+.SH EXIT STATUS
+Zero upon successful processing of input.
+.LP
+Greater than zero upon error.
+
+.SH SEE ALSO
+The
+.B PBS Professional User's Guide,
+the
+.B PBS Professional Administrator's Guide,
+.br
+pbs_queue_attributes(7B), pbs_server_attributes(1B), 
+qsub(1B), qsig(1B), pbs_deljob(3B)

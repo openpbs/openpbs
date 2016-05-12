@@ -1,0 +1,226 @@
+.\" Copyright (C) 1994-2016 Altair Engineering, Inc.
+.\" For more information, contact Altair at www.altair.com.
+.\"  
+.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" 
+.\" Open Source License Information:
+.\"  
+.\" PBS Pro is free software. You can redistribute it and/or modify it under the
+.\" terms of the GNU Affero General Public License as published by the Free 
+.\" Software Foundation, either version 3 of the License, or (at your option) any 
+.\" later version.
+.\"  
+.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+.\" PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+.\"  
+.\" You should have received a copy of the GNU Affero General Public License along 
+.\" with this program.  If not, see <http://www.gnu.org/licenses/>.
+.\"  
+.\" Commercial License Information: 
+.\" 
+.\" The PBS Pro software is licensed under the terms of the GNU Affero General 
+.\" Public License agreement ("AGPL"), except where a separate commercial license 
+.\" agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+.\"  
+.\" Altair’s dual-license business model allows companies, individuals, and 
+.\" organizations to create proprietary derivative works of PBS Pro and distribute 
+.\" them - whether embedded or bundled with other software - under a commercial 
+.\" license agreement.
+.\" 
+.\" Use of Altair’s trademarks, including but not limited to "PBS™", 
+.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+.\" trademark licensing policies.
+.\"
+.TH qterm 8B "6 October 2011" Local "PBS Professional"
+.SH NAME
+.B qterm 
+\- terminate a PBS Server
+
+
+.SH SYNOPSIS
+.B qterm 
+[\^-t\ type\^] [-f | -i | -F] [-m] [-s] [server_list]
+.br
+.B qterm
+--version
+
+.SH DESCRIPTION
+The
+.B qterm 
+command terminates a PBS batch server (
+.B pbs_server
+).
+When a server receives a 
+terminate command,
+The server will go into 
+.I Terminating 
+or 
+.I Terminating-Delayed
+state.
+.br
+Once the server is terminating, no new jobs are accepted by the
+server, and no jobs are allowed to begin execution.  The impact on
+running jobs depends on the way the server is shut down.  
+.br
+The qterm
+command does not exit until the server has completed its shutdown
+procedure.  
+.br
+If the complex is configured for failover, and the primary
+server is shut down, the normal behavior for the secondary server is
+to become active.  The 
+.B qterm 
+command provides options to manage the
+behavior of the secondary server; it can be shut down, forced to
+remain idle, or shut down in place of the primary server.  
+.br
+In order to
+run the 
+.B qterm 
+command, the user must have PBS Operator or Manager
+privilege.
+
+.SH OPTIONS
+.IP "(no options)" 10
+The 
+.B qterm 
+command defaults to 
+.B qterm -t quick.
+
+.IP "-f" 10
+If the complex is configured for failover, both the primary and
+secondary servers are shut down.  Without the 
+.I -f 
+option, the primary
+server is shut down and the secondary server becomes active.  
+.br
+The 
+.I -f
+option cannot be used with the 
+.I -i 
+or 
+.I -F 
+options.
+
+.IP "-F" 10
+If the complex is configured for failover, only the secondary server
+is shut down, and the primary server remains active.
+.br
+The 
+.I -F 
+option cannot be used with the 
+.I -f 
+or 
+.I -i 
+options.
+
+.IP "-i" 10
+If the complex is configured for failover, the secondary server
+remains idle when the primary server is shut down.
+
+The 
+.I -i 
+option cannot be used with the 
+.I -f 
+or 
+.I -F 
+options.
+
+.IP "-m" 10
+All MOMs (
+.B pbs_mom
+) are shut down.  This option does not cause jobs or subjobs to be killed.
+Jobs are left running subject to other options to the 
+.B qterm
+command.  
+
+.IP "-s" 10
+The scheduler (
+.B pbs_sched
+) is shut down.
+
+.IP "-t <type>" 10
+The 
+.I type 
+specifies how the server is shut down.  The 
+.I types
+are the following:
+.RS
+.IP immediate
+All running jobs and subjobs immediately stop execution.
+Any running jobs that can be checkpointed are checkpointed,
+terminated, and requeued.  Jobs that cannot be checkpointed are
+terminated and requeued if they are rerunnable, otherwise they are
+killed. All subjobs are killed and requeued.
+.br
+If any job cannot be terminated, for example the server
+cannot contact the MOM of a running job, the server continues to
+execute and the job is listed as running.  The server can be
+terminated by a second 
+.B qterm -t immediate 
+command.
+.br
+While terminating, the server is in the 
+.I Terminating
+state.
+  
+.IP
+
+.IP delay
+The server waits to terminate until all non-checkpointable,
+non-rerunnable jobs are finished executing.  Any running jobs that can
+be checkpointed are checkpointed, terminated, and requeued.  Jobs that
+cannot be checkpointed are terminated and requeued if they are
+rerunnable, otherwise they are allowed to continue to run.
+All subjobs are killed and requeued.
+.br
+While terminating, the server is in the 
+.I Terminating-Delayed
+state.
+
+.IP quick
+Running jobs are left running.  Running subjobs 
+are requeued.
+.br
+This is the default behavior when no options are given to the 
+.B qterm 
+command.
+.br
+While terminating, the server is in the 
+.I Terminating
+state.
+.RE
+.LP
+.IP "--version" 10
+The 
+.B qterm
+command returns its PBS version information and exits.
+This option can only be used alone.
+
+.SH OPERANDS
+The server list operand specifies which servers are to shut down.  It
+is a space-separated list of server names.  If no servers are
+specified, then the default server is terminated.
+
+.SH STANDARD ERROR
+The
+.B qterm
+command writes a diagnostic message to standard error for
+each error occurrence.
+
+.SH EXIT STATUS
+Zero upon successful processing of all the operands presented to the
+.B qterm
+command.
+.LP
+Greater than zero if the 
+.B qterm 
+command fails to process any operand.
+
+.SH SEE ALSO
+The
+.B PBS Professional Administrator's Guide, 
+pbs_server(8B), pbs_mom(8B), pbs_sched(8B)
+
+

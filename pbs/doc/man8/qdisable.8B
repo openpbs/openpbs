@@ -1,0 +1,100 @@
+.\" Copyright (C) 1994-2016 Altair Engineering, Inc.
+.\" For more information, contact Altair at www.altair.com.
+.\"  
+.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" 
+.\" Open Source License Information:
+.\"  
+.\" PBS Pro is free software. You can redistribute it and/or modify it under the
+.\" terms of the GNU Affero General Public License as published by the Free 
+.\" Software Foundation, either version 3 of the License, or (at your option) any 
+.\" later version.
+.\"  
+.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+.\" PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+.\"  
+.\" You should have received a copy of the GNU Affero General Public License along 
+.\" with this program.  If not, see <http://www.gnu.org/licenses/>.
+.\"  
+.\" Commercial License Information: 
+.\" 
+.\" The PBS Pro software is licensed under the terms of the GNU Affero General 
+.\" Public License agreement ("AGPL"), except where a separate commercial license 
+.\" agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+.\"  
+.\" Altair’s dual-license business model allows companies, individuals, and 
+.\" organizations to create proprietary derivative works of PBS Pro and distribute 
+.\" them - whether embedded or bundled with other software - under a commercial 
+.\" license agreement.
+.\" 
+.\" Use of Altair’s trademarks, including but not limited to "PBS™", 
+.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+.\" trademark licensing policies.
+.\"
+.TH qdisable 8B "23 August 2011" Local "PBS Professional"
+.SH NAME
+.B qdisable 
+- disable input to a PBS destination
+.SH SYNOPSIS
+.B qdisable 
+destination ...
+.br
+.B qdisable
+--version
+.SH DESCRIPTION
+The
+.B qdisable
+command directs that a destination should no longer accept batch jobs.
+If the command is accepted, the destination will no longer accept
+.I "Queue Job"
+requests which specified the disabled queue.  Jobs which already reside
+in the queue will continue to be processed.  This allows a queue to be
+"drained."
+.LP
+In order to execute qdisable, the user must have PBS Operation or Manager
+privilege.
+
+.SH OPTIONS
+.IP "--version" 8
+The 
+.B qdisable
+command returns its PBS version information and exits.
+This option can only be used alone.
+
+.SH  OPERANDS
+The qdisable command accepts one or more
+.I destination
+operands.  The operands are one of three forms:
+.RS 5
+.B queue
+.br
+.B @server
+.br
+.B queue@server
+.RE
+If
+.B queue
+is specified, the request is to disable that queue at the default server.
+If the
+.B @server
+form is given, the request is to disable all the queues at that server.
+If a full destination identifier,
+.B queue@server ,
+is given, the request is to disable the named queue at the named server.
+.SH STANDARD ERROR
+The qdisable
+command will write a diagnostic message to standard error for
+each error occurrence.
+.SH EXIT STATUS
+Upon successful processing of all the operands presented to the
+qdisable
+command, the exit status will be a value of zero.
+.LP
+If the qdisable command fails to process any operand, the
+command exits with a value greater than zero.
+.SH SEE ALSO
+The
+.B PBS Professional Administrator's Guide
+and the following manual pages:
+pbs_server(8B), qmgr(8B), and qenable(8B)

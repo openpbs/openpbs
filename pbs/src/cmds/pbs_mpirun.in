@@ -1,0 +1,91 @@
+#!/bin/sh
+#  Copyright (C) 1994-2016 Altair Engineering, Inc.
+#  For more information, contact Altair at www.altair.com.
+#   
+#  This file is part of the PBS Professional ("PBS Pro") software.
+#  
+#  Open Source License Information:
+#   
+#  PBS Pro is free software. You can redistribute it and/or modify it under the
+#  terms of the GNU Affero General Public License as published by the Free 
+#  Software Foundation, either version 3 of the License, or (at your option) any 
+#  later version.
+#   
+#  PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+#  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+#  PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+#   
+#  You should have received a copy of the GNU Affero General Public License along 
+#  with this program.  If not, see <http://www.gnu.org/licenses/>.
+#   
+#  Commercial License Information: 
+#  
+#  The PBS Pro software is licensed under the terms of the GNU Affero General 
+#  Public License agreement ("AGPL"), except where a separate commercial license 
+#  agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+#   
+#  Altair’s dual-license business model allows companies, individuals, and 
+#  organizations to create proprietary derivative works of PBS Pro and distribute 
+#  them - whether embedded or bundled with other software - under a commercial 
+#  license agreement.
+#  
+#  Use of Altair’s trademarks, including but not limited to "PBS™", 
+#  "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+#  trademark licensing policies.
+#
+
+if [ $# -eq 1 ] && [ $1 = "--version" ]; then
+   echo pbs_version = @PBS_VERSION@
+   exit 0
+fi
+
+mpirun="mpirun"
+name=`basename $0`
+
+export PBS_RSHCOMMAND=${P4_RSHCOMMAND:-rsh}
+. ${PBS_CONF_FILE:-/etc/pbs.conf}
+export P4_RSHCOMMAND=${PBS_EXEC}/bin/pbs_remsh
+export MPICH_PROCESS_GROUP=no
+export PBS_TMPDIR="${PBS_TMPDIR:-${TMPDIR:-/var/tmp}}"
+
+if [ "${PBS_NODEFILE:-XX}" = "XX" ]; then
+	if [ "$name" != "mpirun" ]; then
+		echo "$name: Warning, not running under PBS"
+	fi
+	$mpirun $*
+	exit $?
+fi
+
+list=""
+if [ -n "$NASMODE"] ; then
+# NAS localmod 074
+	usernp=1
+else
+	usernp=`cat ${PBS_NODEFILE} | wc -l`
+fi
+
+while [ $# -gt 0 ]; do
+	if [ "XX$1" = "XX-np" ]; then
+		shift
+		usernp=$1
+	elif [ "XX$1" = "XX-machinefile" ]; then
+		shift
+		echo "$name: Warning, -machinefile value replaced by PBS"
+	else
+		list="$list $1"
+	fi
+	shift
+done
+
+machinefile="${PBS_TMPDIR}/pbs_mpimach$$"
+cat -n ${PBS_NODEFILE} | \
+	sort -k2 | uniq -f1 -c | \
+	awk '{if ($1 == 1) print $2, $3; else print $2, $3 ":" $1}' | \
+	sort -n | awk '{print $2}' > $machinefile
+
+
+$mpirun -np $usernp -machinefile $machinefile $list
+ret=$?
+
+rm $machinefile
+exit $ret

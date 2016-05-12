@@ -1,0 +1,55 @@
+
+These instructions describe how to build PBS from source using rpmbuild
+under CentOS 7.
+
+Before getting started, you should have three files:
+1. README (the file you are currently reading)
+2. pbspro.spec
+3. pbspro-[VERSION].tar.gz
+
+PBS is installed in the /opt/pbs directory by default. This may be
+changed by editing the pbs.spec file and modifying the value of
+pbs_prefix defined near the top. This alters the prefix value passed
+to configure. 
+
+Building PBS:
+
+Setup the RPM development tree (~/rpmbuild) if not already present using
+one of the following methods.
+
+If you have the rpmdevtools package installed, run the following:
+
+$ rpmdev-setuptree
+$ ls ~/rpmbuild
+BUILD  BUILDROOT  RPMS  SOURCES  SPECS  SRPMS
+$
+
+You may also create the directories manually. For a 64 bit system,
+run the following:
+
+$ mkdir ~/rpmbuild
+$ mkdir ~/rpmbuild/RPMS
+$ mkdir ~/rpmbuild/RPMS/x86_64
+$ mkdir ~/rpmbuild/BUILD
+$ mkdir ~/rpmbuild/BUILDROOT
+$ mkdir ~/rpmbuild/SRPMS
+$ mkdir ~/rpmbuild/SOURCES
+$ mkdir ~/rpmbuild/SPECS
+
+Place the pbs.spec file in the ~/rpmbuild/SPECS directory.
+
+Place the pbspro-[VERSION].tar.gz file in the ~/rpmbuild/SOURCES directory.
+
+Start the build:
+
+$ cd ~/rpmbuild/SPECS
+$ rpmbuild -bb pbspro.spec
+Executing(%prep): /bin/sh -e /var/tmp/rpm-tmp.gF43VM
+...
+
+The RPM packages may be found in the ~/rpmbuilds/RPMS/x86_64 directory
+when the build completes. Use yum (as root) to install the PBS package:
+
+$ cd ~/rpmbuild/RPMS/x86_64
+$ sudo yum install pbspro-server-[VERSION].x86_64.rpm
+

@@ -1,0 +1,977 @@
+#!/bin/sh 
+#
+#  Copyright (C) 1994-2016 Altair Engineering, Inc.
+#  For more information, contact Altair at www.altair.com.
+#   
+#  This file is part of the PBS Professional ("PBS Pro") software.
+#  
+#  Open Source License Information:
+#   
+#  PBS Pro is free software. You can redistribute it and/or modify it under the
+#  terms of the GNU Affero General Public License as published by the Free 
+#  Software Foundation, either version 3 of the License, or (at your option) any 
+#  later version.
+#   
+#  PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+#  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+#  PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+#   
+#  You should have received a copy of the GNU Affero General Public License along 
+#  with this program.  If not, see <http://www.gnu.org/licenses/>.
+#   
+#  Commercial License Information: 
+#  
+#  The PBS Pro software is licensed under the terms of the GNU Affero General 
+#  Public License agreement ("AGPL"), except where a separate commercial license 
+#  agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+#   
+#  Altair’s dual-license business model allows companies, individuals, and 
+#  organizations to create proprietary derivative works of PBS Pro and distribute 
+#  them - whether embedded or bundled with other software - under a commercial 
+#  license agreement.
+#  
+#  Use of Altair’s trademarks, including but not limited to "PBS™", 
+#  "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+#  trademark licensing policies.
+#
+
+#
+#    PBS init script
+#
+#	Recognized arguments:
+#	    start   - start PBS
+#	    stop    - terminate PBS
+#	    restart - terminate and start PBS
+#	    status  - report PBS deamon pids
+#
+#
+# chkconfig: 35 90 10
+# description: The Portable Batch System (PBS) is a flexible workload 
+# management  system. It operates on # networked, multi-platform UNIX 
+# environments, including heterogeneous clusters of workstations, 
+# supercomputers, and massively parallel systems. 
+#
+### BEGIN INIT INFO
+# Provides:       pbs
+# Required-Start: $network $local_fs $remote_fs $named
+# Should-Start: $sshd
+# Required-Stop:  $network $local_fs $remote_fs $named
+# Default-Start:  3 5
+# Default-Stop:   0 1 2 4 6
+# Description:    Portable Batch System
+### END INIT INFO
+
+if [ $# -eq 1 ] && [ $1 = "--version" ]; then
+   echo pbs_version = @PBS_VERSION@
+   exit 0
+fi
+
+tmpdir=${PBS_TMPDIR:-${TMPDIR:-"/var/tmp"}}
+ostype=`uname 2>/dev/null`
+is_systemd=0
+#
+# check for special system setup
+case "$ostype" in
+	AIX)
+		ldrval="MAXDATA=0x80000000"
+		if [ "$LDR_CNTRL" == "" ]; then
+			LDR_CNTRL=$ldrval
+			export LDR_CNTRL
+		elif [ "`echo $LDR_CNTRL | grep MAXDATA=`" == "" ]; then
+			LDR_CNTRL="$LDR_CNTRL@$ldrval"
+			export LDR_CNTRL
+		fi
+		;;
+esac
+
+getpid() {
+	if [ -f $1 ]; then
+		cat $1
+	else
+		echo -1
+	fi
+}
+
+# update_pids may cause an I/O read to block if PBS_HOME is on a shared 
+# mount, it is called selectively after sanity checks are performed
+update_pids() {
+	pbs_server_pid=`getpid ${PBS_HOME}/server_priv/server.lock`
+	pbs_secondary_server_pid=`getpid ${PBS_HOME}/server_priv/server.lock.secondary`
+	pbs_mom_pid=`getpid ${PBS_MOM_HOME}/mom_priv/mom.lock`
+	pbs_sched_pid=`getpid ${PBS_HOME}/sched_priv/sched.lock`
+	pbs_secondary_sched_pid=`getpid ${PBS_HOME}/sched_priv/sched.lock.secondary`
+	pbs_comm_pid=`getpid ${PBS_HOME}/server_priv/comm.lock`
+	pbs_secondary_comm_pid=`getpid ${PBS_HOME}/server_priv/comm.lock.secondary`
+}
+
+# lc_host_name - convert host name into lower case short host name
+
+lc_host_name() 
+{
+  echo $1 | cut -d: -f1 | cut -d. -f1 | sed -e "y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/"
+}
+
+# check_started - check if a particular pid is the program which is expected.
+#                 pbs stores the pid of the currently running incarnation of 
+#                 itself.  This function is used to see if that pid is correct 
+#		  program.
+# 	$1 - the pid
+# 	$2 - the program name (pbs_server pbs_mom pbs_sched)
+#
+# return value: 0 - program is already running
+#		1 - program is not running
+#
+: check_started
+check_started() {
+
+  ps_out=`ps -p $1 -o args 2> /dev/null | tail -1`
+  if [ -z "${ps_out}" -o "`echo ${ps_out} | cut -c1`" = "[" ]  ; then
+    ps_out=`ps -p $1 -o command 2> /dev/null | tail -1`
+    if [ -z "${ps_out}" ]; then
+	return 1
+    fi
+  fi
+
+# strip out everything except executable name
+  prog_name=`echo ${ps_out} | awk '{print $1}' | \
+	awk -F/ '{print $NF}' | awk '{print $1}'`
+
+  if [ "${prog_name}" = $2 ] ; then
+    return 0;
+  fi
+
+  return 1;
+}
+
+# check_prog - this function checks to see if a prog is still running.  It will
+#              get the pid out of the prog.lock file and run check_started 
+#	       on that pid.
+#
+#	$1 is either "server" "oldserver" "mom" or "sched" 
+#		"oldserver" is for non-database server (pbs_server)
+#		as opposed to "pbs_server.bin"
+#
+# return value: 0 - program is still running
+#		1 - program is not running
+#
+: check_prog
+check_prog() {
+
+  case $1 in 
+    mom)
+        daemon_name="pbs_mom"
+        pid=${pbs_mom_pid} ;;
+    server)
+        daemon_name="pbs_server.bin"
+        if [ ${is_secondary} -eq 0 ] ; then 
+            pid=${pbs_server_pid} 
+        else 
+            pid=${pbs_secondary_server_pid} 
+        fi ;; 
+    oldserver)
+        daemon_name="pbs_server"
+        if [ ${is_secondary} -eq 0 ] ; then 
+            pid=${pbs_server_pid} 
+        else 
+            pid=${pbs_secondary_server_pid} 
+        fi ;; 
+    sched)
+        daemon_name="pbs_sched"
+        if [ ${is_secondary} -eq 0 ] ; then
+            pid=${pbs_sched_pid} ;
+        else
+            pid=${pbs_secondary_sched_pid} ;
+        fi ;;
+    pbs_comm)
+        daemon_name="pbs_comm"
+        if [ ${is_secondary} -eq 0 ] ; then
+            pid=${pbs_comm_pid} ;
+        else
+            pid=${pbs_secondary_comm_pid} ;
+        fi ;;
+
+    *)   echo Invalid PBS daemon name: $1 >&2;
+	 return 1;;
+  esac
+
+  if [ -n "${pid}" ]; then
+    if [ "${pid}" -ne -1 ] ; then
+      if check_started "${pid}" "$daemon_name" ; then
+        return 0
+      fi
+    fi
+  fi
+
+  # Since the pid file does not exist, PBS has never been run
+  return 1
+}
+
+# Look to see if restrict_user_maxsysid exists in MOM config file
+# If it is there, nothing else needs to be done.
+# Otherwise, see if a default can be determined from login.defs.
+check_maxsys()
+{
+	if grep '^$restrict_user_maxsysid' \
+			${PBS_MOM_HOME}/mom_priv/config > /dev/null ;then
+		return
+	fi
+
+	file=/etc/login.defs
+	if [ -f $file ]; then
+		val=`awk '$1 == "SYSTEM_UID_MAX" {print $2}' $file`
+		if [ -z "$val" ]; then
+			val=`awk '$1 == "UID_MIN" {print $2 - 1}' $file`
+		fi
+		if [ -n "$val" ]; then
+			echo '$restrict_user_maxsysid' $val \
+				>> ${PBS_MOM_HOME}/mom_priv/config
+		fi
+	fi
+}
+
+# Look if core or core.pid file exists in given _priv directory
+# If exists format the name to core_<next_sequence_number>
+# When core file found set core flag 
+check_core() {
+        core_dir="$1"
+	[ -n "${core_dir}" ] || core_dir="."
+
+        core_list=`/bin/ls -1 "${core_dir}"/core* 2> /dev/null`
+	if [ -n "${core_list}" ]; then
+		seq_files=`echo "${core_list}" | grep "core_"`
+		if [ $? -eq 0 ]; then
+			max_seq=`echo "${seq_files}" | sed -e 's/[^0-9 ]*//g' | sort -n | tail -1`
+		else
+			max_seq=0
+		fi
+	
+        	for core_name in `/bin/ls "${core_dir}"/core* | grep -v "core_" 2> /dev/null`
+        	do
+               		max_seq=`expr ${max_seq} + 1`
+			new_seq=`printf "%04d" ${max_seq}`
+                	mv $core_name "${core_dir}"/"core_${new_seq}"
+        	done
+
+		core_flag=1
+	fi
+}
+
+# Return the name of the PBS server host
+get_server_hostname() {
+	shn=""
+	if [ -z "${PBS_PRIMARY}" -o -z "${PBS_SECONDARY}" ] ; then
+		if [ -z "${PBS_SERVER_HOST_NAME}" ]; then
+			shn="${PBS_SERVER}"
+		else
+			shn="${PBS_SERVER_HOST_NAME}"
+		fi
+	else
+		shn="${PBS_PRIMARY}"
+	fi
+	echo `lc_host_name "${shn}"`
+}
+
+# Ensure the supplied hostname is valid
+check_hostname() {
+	# Check the hosts file
+	getent hosts "${1}" >/dev/null 2>&1 && return 0
+	# Check DNS
+	host "${1}" >/dev/null 2>&1 && return 0
+	return 1
+}
+
+start_pbs() {
+    echo "Starting PBS"
+
+    # Perform sanity checks
+    server_hostname=`get_server_hostname`
+    if [ -z "${server_hostname}" -o "${server_hostname}" = 'CHANGE_THIS_TO_PBS_PRO_SERVER_HOSTNAME' ] ; then
+	echo "***" >&2
+	echo "*** The hostname of the PBS Pro server in ${conf} is invalid." >&2
+	echo "*** Update the configuration file before starting PBS Pro." >&2
+	echo "***" >&2
+	exit 1
+    fi
+    check_hostname "${server_hostname}"
+    if [ $? -ne 0 ]; then
+	echo "***" >&2
+	echo "*** The PBS Pro server could not be found: $server" >&2
+	echo "*** This value must resolve to a valid IP address." >&2
+	echo "***" >&2
+	exit 1
+    fi
+
+    update_pids
+
+    # See if we need to populate PBS_HOME. We do if...
+    # 1) PBS_HOME doesn't exist  (needmakehome=1 -> create PBS_HOME)
+    # 2) PBS_HOME/pbs_version doesn't exist 
+    # 3) if the version number in PBS_HOME/pbs_version does not match 
+    #    the version of the commands  (2 and 3 needmakehome=2 -> update)
+    # 4) PBS_HOME/datastore does not exist and this is a server
+    needmakehome=0
+    [ ! -d "${PBS_HOME}" ] && needmakehome=1
+    [ $needmakehome -eq 0 -a ! -f "${PBS_HOME}/pbs_version" ] && needmakehome=2
+    if [ $needmakehome -eq 0 ]; then
+	qstatver=`${PBS_EXEC}/bin/qstat --version | sed -e "s/^.* = //"`
+	homever=`cat ${PBS_HOME}/pbs_version`
+	[ "${qstatver}" != "${homever}" ] && needmakehome=3
+    fi
+    [ $needmakehome -eq 0 -a "${PBS_START_SERVER}" != "0" -a ! -d "${PBS_HOME}/datastore" ] && needmakehome=4
+
+    if [ $needmakehome -ne 0 -a ! -x ${PBS_EXEC}/libexec/pbs_habitat ]; then
+	echo "***" >&2
+	echo "*** ${PBS_EXEC}/libexec/pbs_habitat is missing." >&2
+	echo "***" >&2
+	exit 1
+    fi
+
+    case $needmakehome in
+	1)
+	    echo PBS Home directory ${PBS_HOME} does not exist.
+	    echo Running ${PBS_EXEC}/libexec/pbs_habitat to create it.
+	    ${PBS_EXEC}/libexec/pbs_habitat || return 1
+	    echo Home directory ${PBS_HOME} created.
+	    ;;
+	2|3)
+	    echo PBS Home directory ${PBS_HOME} needs updating.
+	    echo Running ${PBS_EXEC}/libexec/pbs_habitat to update it.
+	    ${PBS_EXEC}/libexec/pbs_habitat || return 1
+	    echo Home directory ${PBS_HOME} updated.
+	    ;;
+	4)
+	    echo PBS Home directory ${PBS_HOME} needs datastore.
+	    echo Running ${PBS_EXEC}/libexec/pbs_habitat to initialize it.
+	    ${PBS_EXEC}/libexec/pbs_habitat || return 1
+	    echo Datastore directory ${PBS_HOME}/datastore initialized.
+	    ;;
+    esac
+
+    core_flag=0
+    if [ -d ${PBS_HOME}/server_priv ]; then
+        check_core ${PBS_HOME}/server_priv
+    fi
+    if [ -d ${PBS_HOME}/sched_priv ]; then
+        check_core ${PBS_HOME}/sched_priv
+    fi
+    if [ -d ${PBS_HOME}/mom_priv ]; then
+	check_core ${PBS_HOME}/mom_priv
+    fi 
+
+    if [ $core_flag -eq 1 ];then
+        echo "Warning: PBS Professional has detected core file(s) in PBS_HOME that require attention!!!"
+        echo "Warning: Please inform your administrator immediately or contact Altair customer support"
+    fi
+
+    if [ "${PBS_START_COMM}" -gt 0 ] ; then
+      if check_prog "pbs_comm" ; then
+	echo "PBS comm already running."
+      else
+	 if ${PBS_EXEC}/sbin/pbs_comm
+	 then
+            echo "PBS comm"
+         else
+            ret_val=$?
+            echo "pbs_comm startup failed, exit ${retval} aborting." >&2
+            exit 1
+         fi
+      fi
+    fi
+
+    if [ "${PBS_START_MOM}" -gt 0 ] ; then
+      if check_prog "mom" ; then
+	echo "PBS mom already running."
+      else
+        if [ -f ${pbslibdir}/init.d/limits.pbs_mom ] ; then
+            . ${pbslibdir}/init.d/limits.pbs_mom
+        fi	
+	check_maxsys
+	site_mom_startup
+        if [ "XX${BGLDIR}" != "XX" ] && [ "XX${DB2DIR}" != "XX" ] ; then
+	    env LD_LIBRARY_PATH=$DB2DIR/lib64:$DB2DIR/lib ${PBS_EXEC}/sbin/pbs_mom
+	    echo "PBS Blue Gene mom"
+        else
+	   if using_cpuset_mom
+	   then
+	      if devcpuset_available
+	      then
+	         :
+	      else
+		 echo "using a CPU set-enabled pbs_mom on a system without CPU sets is unsupported."
+		 return 1
+	      fi
+	   fi
+
+	   if  ${PBS_EXEC}/sbin/pbs_mom
+           then
+	      echo "PBS mom"
+           else
+              ret_val=$?
+              echo "pbs_mom startup failed, exit ${ret_val} aborting." >&2
+              return 1
+           fi
+	fi
+      fi
+    fi
+
+    if [ "${PBS_START_SCHED}" -gt 0 ] ; then
+      if check_prog "sched" ; then
+	echo "PBS scheduler already running."
+      else
+         if [ -f ${pbslibdir}/init.d/limits.pbs_sched ] ; then
+             . ${pbslibdir}/init.d/limits.pbs_sched
+         fi	
+	 if ${PBS_EXEC}/sbin/pbs_sched
+	 then
+            echo "PBS sched"
+         else
+            ret_val=$?
+            echo "pbs_sched startup failed, exit ${ret_val} aborting." >&2
+            return 1
+         fi
+      fi
+    fi
+
+    if [ "${PBS_START_SERVER}" -gt 0 ] ; then
+      if check_prog "server" || check_prog "oldserver" ; then
+	echo "PBS Server already running."
+      else
+         if [ -f ${pbslibdir}/init.d/limits.pbs_server ] ; then
+             . ${pbslibdir}/init.d/limits.pbs_server
+         fi	
+	 if ${PBS_EXEC}/sbin/pbs_server ; then
+            echo "PBS server"
+         else
+            ret_val=$?
+	    if [ $ret_val -eq 4 ] ; then
+		echo "pbs_server failed to start, will retry once in 30 seconds" >&2
+		sleep 30
+	        if ${PBS_EXEC}/sbin/pbs_server ; then
+		    echo "PBS server"
+		else
+		    ret_val=$?
+            	    echo "pbs_server startup failed, exit ${ret_val} aborting." >&2
+		    return 1
+		fi
+	    else
+		echo "pbs_server startup failed, exit ${ret_val} aborting." >&2
+		return 1
+	    fi
+	 fi
+         if [ $is_systemd -eq 1 ] ; then
+             SYSTEMD_CGROUP=`grep ^cgroup /proc/mounts | grep systemd | head -1 | cut -d ' ' -f2`
+             if [ ! -d $SYSTEMD_CGROUP/system.slice/pbs.service ] ; then
+               mkdir -p $SYSTEMD_CGROUP/system.slice/pbs.service
+             fi
+           if [ -f ${PBS_HOME}/datastore/postmaster.pid ] ; then
+             P_PID=`head -n 1 ${PBS_HOME}/datastore/postmaster.pid`
+            if [ -n "$P_PID" ] ; then
+               echo $P_PID >> $SYSTEMD_CGROUP/system.slice/pbs.service/tasks
+               pidlist=`pgrep -P $P_PID`
+               if [ -n "$pidlist" ] ; then
+                 for PID in $pidlist; do
+                   echo $PID >> $SYSTEMD_CGROUP/system.slice/pbs.service/tasks
+                 done
+              fi
+             fi
+           fi
+         fi
+         if [ -r "${PBS_HOME}/server_priv/qmgr_startup" ]; then
+           echo "pbs_server evaluating ${PBS_HOME}/server_priv/qmgr_startup"
+           ${PBS_EXEC}/bin/qmgr <"${PBS_HOME}/server_priv/qmgr_startup"
+         fi
+      fi
+    fi
+
+    if [ -f ${pbslibdir}/init.d/limits.post_services ] ; then
+        . ${pbslibdir}/init.d/limits.post_services
+    fi
+    if [ -f /etc/redhat-release ] ; then
+	touch ${redhat_subsys_filepath}
+    fi
+
+    return 0
+}
+
+stop_pbs() {
+    echo "Stopping PBS"
+    update_pids
+    if [ "${PBS_START_SERVER}" -gt 0 ] ; then
+      active_server=`lc_host_name \`${PBS_EXEC}/bin/qstat -Bf 2>/dev/null | \
+	  grep "server_host = " | \
+	  sed -e "s/.*server_host = //"\``
+      if check_prog "server" || check_prog "oldserver"; then
+	if [ "${my_hostname}" = "${active_server}" ]; then
+	  if [ -z "${PBS_SECONDARY}" -o ${is_secondary} -eq 1 ]; then
+	    echo "Shutting server down with qterm."
+	  else
+	    echo "This is active server, shutting down with qterm, secondary will take over."
+	  fi
+	  if [ -r "${PBS_HOME}/server_priv/qmgr_shutdown" ]; then
+	    echo "pbs_server evaluating ${PBS_HOME}/server_priv/qmgr_shutdown"
+	    ${PBS_EXEC}/bin/qmgr <"${PBS_HOME}/server_priv/qmgr_shutdown"
+	  fi
+	  ${PBS_EXEC}/bin/qterm -t quick
+	  echo "PBS server - was pid: ${pbs_server_pid}"
+	elif [ ${is_secondary} -eq 1 ]; then
+	  echo "This is secondary server, killing process."
+	  kill ${pbs_secondary_server_pid}
+	  echo "PBS server - was pid: ${pbs_secondary_server_pid}"
+	  rm -f ${PBS_HOME}/server_priv/server.lock.secondary
+	else
+	  echo "Killing Server."
+	  kill ${pbs_server_pid}
+	  echo "PBS server - was pid: ${pbs_server_pid}"
+	fi
+      fi
+      ${PBS_EXEC}/sbin/pbs_dataservice status > /dev/null 2>&1
+      if [ $? -eq 0 ]; then
+          ${PBS_EXEC}/sbin/pbs_dataservice stop > /dev/null 2>&1
+      fi
+    fi
+    if [ "${PBS_START_MOM}" -gt 0 ] ; then
+      if check_prog "mom" ; then
+	site_mom_cleanup
+	kill ${pbs_mom_pid}
+	echo "PBS mom - was pid: ${pbs_mom_pid}"
+      fi
+    fi
+    if [ "${PBS_START_SCHED}" -gt 0 ] ; then
+      if check_prog "sched" ; then
+	if [ ${is_secondary} -eq 0 ] ; then
+	  kill ${pbs_sched_pid} 
+	  echo "PBS sched - was pid: ${pbs_sched_pid}"
+	else
+	  kill ${pbs_secondary_sched_pid}
+	  echo "PBS schedx - was pid: ${pbs_secondary_sched_pid}"
+	  rm -f ${PBS_HOME}/sched_priv/sched.lock.secondary
+	fi
+      fi
+    fi
+    if [ "${PBS_START_COMM}" -gt 0 ] ; then
+      if check_prog "pbs_comm" ; then
+	if [ ${is_secondary} -eq 0 ] ; then
+	  kill -TERM ${pbs_comm_pid} 
+	  echo "PBS comm - was pid: ${pbs_comm_pid}"
+	else
+	  kill -TERM ${pbs_secondary_comm_pid}
+	  echo "PBS comm - was pid: ${pbs_secondary_comm_pid}"
+	  rm -f ${PBS_HOME}/server_priv/comm.lock.secondary
+	fi
+      fi
+    fi
+    if [ -f ${redhat_subsys_filepath} ] ; then
+	  rm -f ${redhat_subsys_filepath}
+    fi
+    # make sure the daemons have exited for up to 30 seconds
+    # if any still there, exit with message and error
+    waitloop=1
+    echo "Waiting for shutdown to complete" 
+    while [ ${waitloop} -lt 30 ]
+    do
+	sleep 1
+	something_running=""
+	if [ "${PBS_START_SERVER}" -gt 0 ] ; then
+	    if check_prog "server" || check_prog "oldserver" ; then
+		something_running=" pbs_server"
+	    fi
+	fi
+	if [ "${PBS_START_MOM}" -gt 0 ] ; then
+	    if check_prog "mom" ; then
+		something_running="${something_running} pbs_mom"
+	    fi
+	fi
+	if [ "${PBS_START_SCHED}" -gt 0 ] ; then
+	    if check_prog "sched" ; then
+		something_running="${something_running} pbs_sched"
+	    fi
+	fi
+	if [ "${PBS_START_COMM}" -gt 0 ] ; then
+	    if check_prog "pbs_comm" ; then
+		something_running=" pbs_comm"
+	    fi
+	fi
+	if [ "${something_running}" = "" ]; then
+	    return
+	fi
+	waitloop=`expr ${waitloop} + 1`
+    done
+    echo "Unable to stop PBS,${something_running} still active"
+    exit 1
+}
+
+status_pbs() {
+    update_pids
+    if [ "${PBS_START_SERVER}" -gt 0 ] ; then
+      if check_prog "server" || check_prog "oldserver" ; then
+	echo "pbs_server is pid ${pid}"
+      else
+	echo "pbs_server is not running"
+      fi
+    fi
+    if [ "${PBS_START_MOM}" -gt 0 ] ; then
+      if check_prog "mom" ; then
+	echo "pbs_mom is pid ${pbs_mom_pid}"
+      else
+	echo "pbs_mom is not running"
+      fi
+    fi
+    if [ "${PBS_START_SCHED}" -gt 0 ] ; then
+      if check_prog "sched" ; then
+	echo "pbs_sched is pid ${pbs_sched_pid}"
+      else
+	echo "pbs_sched is not running"
+      fi
+    fi
+    if [ "${PBS_START_COMM}" -gt 0 ] ; then
+      if check_prog "pbs_comm" ; then
+	echo "pbs_comm is ${pbs_comm_pid}"
+      else
+	echo "pbs_comm is not running"
+      fi
+    fi
+}
+
+using_cpuset_mom()
+{
+	if type ldd > /dev/null 2>&1
+	then
+		ldd $PBS_EXEC/sbin/pbs_mom 2> /dev/null | grep libcpuset > /dev/null
+	else
+		return 1
+	fi
+}
+
+devcpuset_available()
+{
+	if sgi_chkfeature -qr sgi-cpuset
+	then
+	    	return 0
+	fi
+	# Note:  the grep in Solaris's normal path does not understand the -q
+	# argument.  This function should be called only if using_cpuset_mom
+	# has returned true, assuring that the platform isn't Solaris.
+	if grep -q cpuset /proc/filesystems
+	then
+		if mount | grep -q /dev/cpuset
+		then
+			return 0
+		else
+			return 1
+		fi
+	else
+		return 1
+	fi
+}
+
+# find_bgl_environment:
+#
+# Finds a BGLDIR path that contains Blue Gene API include
+# files and library files, and DB2DIR path that has the DB2 API includes
+# and libdirs.
+# This function attempts to derive BGLDIR from BRIDGE_CONFIG_FILE.
+#
+
+find_bgl_environment ()
+{
+
+	bgldef=""
+        if [ "XX${BRIDGE_CONFIG_FILE}" != "XX" ] ; then
+        	bgldef0=`dirname $BRIDGE_CONFIG_FILE 2>/dev/null`
+        	bgldef=`dirname $bgldef0 2>/dev/null`
+	fi
+
+        bglpaths="$bgldef /bgl/BlueLight/ppcfloor/bglsys"
+
+        BGLDIR=""
+        for path in $bglpaths ; do
+                if [ -d  "$path" ] ; then
+                        BGLDIR="$path"
+                        break
+                fi
+        done
+
+        db2paths="$DB2DIR /opt/IBM/db2/V8.1"
+        DB2DIR=""
+        for path in $db2paths ; do
+                if [ -d  "$path" ] ; then
+                        DB2DIR="$path"
+                        break
+                fi
+        done
+
+}
+
+# Wrapper for SGI's chkfeature utility, q.v..  "has_chkfeature" is initialized
+# in the site_mom_startup function.
+sgi_chkfeature()
+{
+	if [ $has_chkfeature -ne 0 ]
+	then
+		chkfeature ${1+"$@"}
+		return $?
+	else
+		return 1
+	fi
+}
+
+# called when we are starting on a SGI ICE system
+# /etc/sgi-compute-node-release exists
+# Make a vnodedef file with cpuset info 
+sgi_ice_startup()
+{
+	vnodedefsdir=`dirname $vnodedefs`
+	[ -d $vnodedefsdir ] || mkdir -p -m 0700 $vnodedefsdir
+
+	sh $momscriptdir/sgiICEvnode.sh "$1"  > ${vnodedefs}.new
+
+	if [ ! -f $vnodedefs ] || ! cmp -s $vnodedefs ${vnodedefs}.new
+	then
+		/bin/cp ${vnodedefs}.new $vnodedefs
+	fi
+	/bin/rm -f ${vnodedefs}.new
+}
+
+site_mom_startup()
+{
+    vnodedefs="${PBS_MOM_HOME}/mom_priv/config.d/PBSvnodedefs"
+    momscriptdir="${pbslibdir}/init.d"
+    SGItopology="/proc/sgi_sn/sn_topology";
+    UVSGItopology="/proc/sgi_uv/topology";
+    SGIcomputenode="/etc/sgi-compute-node-release"
+    if type chkfeature > /dev/null 2>&1
+    then
+	has_chkfeature=1
+    else
+	has_chkfeature=0
+    fi
+    #	If this site is using a pbs_mom that supports CPU sets ...
+    if using_cpuset_mom
+    then
+	# and if there's an SGI topology file (Altix), 
+	# generate a placement and vnode definitions file.
+	if  [ -f $SGItopology -o -f $UVSGItopology ]
+	then
+		vnodedefsdir=`dirname $vnodedefs`
+		[ -d $vnodedefsdir ] || mkdir -p -m 0700 $vnodedefsdir
+		awk -f "$momscriptdir/sgigenvnodelist.awk" > $vnodedefs
+	elif [ -f $SGIcomputenode ]
+	then
+		sgi_ice_startup cpuset
+	fi
+    else
+	if cmp -s ${PBS_EXEC}/sbin/pbs_mom.ib ${PBS_EXEC}/sbin/pbs_mom ;then
+	    rm -f $vnodedefs
+	elif type nrt_status > /dev/null 2>&1 ;then
+	    # If IB MOM is not in use and InfiniBand is configured
+	    # setup MOM to report the number of windows
+	    nrt_file="$tmpdir/nrt$$"
+	    if nrt_status > $nrt_file 2> /dev/null ;then
+		wins=`wc -l < $nrt_file`
+		if [ "$wins" -gt 1 ]; then
+		    vnodedefsdir=`dirname $vnodedefs`
+		    [ -d $vnodedefsdir ] || mkdir -p -m 0700 $vnodedefsdir
+		    wins=`expr $wins - 1`
+		    echo '$configversion 2' > $vnodedefs
+		    echo "${my_hostname}:  resources_available.netwins = $wins" >> $vnodedefs
+		fi
+	    fi
+	    rm -f $nrt_file
+	else
+	    rm -f $vnodedefs
+	fi
+    fi
+    find_bgl_environment
+}
+
+#	When shutting down PBS, if no processes are left running in
+#	the /dev/cpuset/PBSPro hierarchy, tidy up by turning off the
+#	cpu_exclusive and mem_exclusive flags on the sets created by
+#	pbs_mom.cpuset.
+PBSPro_cleanup()
+{
+	CPUset_root="/dev/cpuset"
+	PBSPro_root="PBSPro"
+	tmpfile="$tmpdir/cpusetlist$$"
+
+	trap "rm -f $tmpfile" 0 1 2 3 15
+
+	[ -d "$CPUset_root/$PBSPro_root" ] || return
+	cpuset -s $PBSPro_root -r > $tmpfile
+	while read set
+	do
+		[ -n "`cpuset -p $set`" ] && return
+	done < $tmpfile
+
+	find $CPUset_root/$PBSPro_root -type d -print |
+	sed -e "s,$CPUset_root,," |
+	sort -r |
+	while read set
+	do
+		cpuset -x $set
+	done
+}
+
+site_mom_cleanup()
+{
+	CPUset_root="/dev/cpuset"
+
+	if [ -d $CPUset_root ] && using_cpuset_mom
+	then
+		PBSPro_cleanup
+	fi
+}
+
+# Check whether system is being booted or not 
+# and also update the time in /var/tmp/pbs_boot_check file  
+# return 0 if system is being booted otherwise return 1
+is_boottime()
+{
+	PYTHON_EXE=${PBS_EXEC}/python/bin/python
+	if [ -z "${PYTHON_EXE}" -o ! -x "${PYTHON_EXE}" ] ; then
+		return 1
+	fi
+	
+	BOOTPYFILE="/var/tmp/pbs_bootcheck.py"
+	BOOTCHECKFILE="/var/tmp/pbs_boot_check"
+
+	if [ ! -r "${BOOTPYFILE}" ] ; then
+		return 1
+	fi
+	
+	${PYTHON_EXE} ${BOOTPYFILE} ${BOOTCHECKFILE} > /dev/null 2>&1
+        ret=$?
+        return ${ret}
+}
+
+pre_start_pbs()
+{
+	# Check whether systemd (i.e. systemctl) is available on system or not?
+	# If systemctl is available then start PBS using the regular mechanism
+	# because systemd will start PBS in the background
+	systemctl --version >/dev/null 2>&1
+	if [ $? -ne 0 ] ; then
+		if is_boottime
+		then
+                        case "$ostype" in
+                                Linux) echo -e "\nStarting PBS in background\c" ;;
+                                *)  echo "\nStarting PBS in background\c" ;;
+                        esac
+			(
+				TEMP_DIR=${PBS_TMPDIR:-${TMPDIR:-"/var/tmp"}}
+				TEMPFILE=${TEMP_DIR}/start_pbs_logs_tmp_$$
+				start_pbs > ${TEMPFILE} 2>&1
+				ret=$?
+				logger -i -t PBS -f ${TEMPFILE}
+				rm -f ${TEMPFILE}
+				exit ${ret}
+			) &
+		else
+			start_pbs
+			exit $?
+		fi
+	else
+		is_systemd=1
+		start_pbs
+		exit $?
+	fi
+}
+
+: main code
+conf=${PBS_CONF_FILE:-/etc/pbs.conf}
+
+[ -r "${conf}" ] && . "${conf}"
+
+if [ -z "${PBS_EXEC}" ] ; then
+    echo "PBS_EXEC is undefined." >&2
+    exit 1
+fi
+if [ ! -d "${PBS_EXEC}" ] ; then
+    echo "${PBS_EXEC} is not a directory." >&2
+    echo "PBS_EXEC directory does not exist: ${PBS_EXEC}" >&2
+    exit 1
+fi
+
+pbslibdir="${PBS_EXEC}/lib"
+[  ! -d "${pbslibdir}" -a -d "${PBS_EXEC}/lib64" ] && pbslibdir="${PBS_EXEC}/lib64"
+
+if [ -z "${PBS_HOME}" ] ; then
+    echo "PBS_HOME is undefined." >&2
+    exit 1
+fi
+
+[ -z "${PBS_START_SERVER}" ] && PBS_START_SERVER=0
+[ -z "${PBS_START_MOM}" ] && PBS_START_MOM=0
+[ -z "${PBS_START_SCHED}" ] && PBS_START_SCHED=0
+[ -z "${PBS_START_COMM}" ] && PBS_START_COMM=0
+
+UNIX95=1
+export UNIX95
+PBS_MOM_HOME=${PBS_MOM_HOME:-$PBS_HOME}
+
+redhat_subsys_filepath="/var/lock/subsys/pbs"
+
+# Determine the hostname that the local system should use
+if [ -n "${PBS_LEAF_NAME}" ]; then
+  my_hostname=`lc_host_name "${PBS_LEAF_NAME}"`
+else
+  my_hostname=`lc_host_name \`hostname\``
+fi
+
+# Check whether the hostname has an IP address
+check_hostname "${my_hostname}"
+if [ $? -ne 0 ]; then
+	echo "***" >&2
+	echo "*** Invalid local hostname: $my_hostname" >&2
+	echo "*** This value must resolve to a valid IP address." >&2
+	echo "***" >&2
+	exit 1
+fi
+
+is_secondary=0
+if [ -n "${PBS_SECONDARY}" ]; then
+  sec_host=`lc_host_name ${PBS_SECONDARY}`
+  if [ ${sec_host} = ${my_hostname} ]; then
+    is_secondary=1
+  fi
+fi
+
+# lets see how we were called
+case "`basename $0`" in
+  pbs_start)
+    pre_start_pbs
+    ;;
+  pbs_stop)
+    stop_pbs
+    ;;
+  *)
+    case "$1" in
+      start_msg)
+        echo "Starting PBS"
+        ;;
+      stop_msg)
+        echo "Stopping PBS"
+        ;;
+      status)
+        status_pbs
+        ;;
+      start)
+        pre_start_pbs
+        ;;
+      stop)
+        stop_pbs
+        ;;
+      restart)
+        echo "Restarting PBS"
+        stop_pbs
+        pre_start_pbs
+        ;;
+      *)
+        echo "Usage: `basename $0` --version"
+        echo "Usage: `basename $0` {start|stop|restart|status}"
+        exit 1
+        ;;
+    esac
+    ;;
+esac
+

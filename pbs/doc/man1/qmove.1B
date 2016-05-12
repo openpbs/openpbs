@@ -1,0 +1,171 @@
+.\" Copyright (C) 1994-2016 Altair Engineering, Inc.
+.\" For more information, contact Altair at www.altair.com.
+.\"  
+.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" 
+.\" Open Source License Information:
+.\"  
+.\" PBS Pro is free software. You can redistribute it and/or modify it under the
+.\" terms of the GNU Affero General Public License as published by the Free 
+.\" Software Foundation, either version 3 of the License, or (at your option) any 
+.\" later version.
+.\"  
+.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+.\" PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+.\"  
+.\" You should have received a copy of the GNU Affero General Public License along 
+.\" with this program.  If not, see <http://www.gnu.org/licenses/>.
+.\"  
+.\" Commercial License Information: 
+.\" 
+.\" The PBS Pro software is licensed under the terms of the GNU Affero General 
+.\" Public License agreement ("AGPL"), except where a separate commercial license 
+.\" agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+.\"  
+.\" Altair’s dual-license business model allows companies, individuals, and 
+.\" organizations to create proprietary derivative works of PBS Pro and distribute 
+.\" them - whether embedded or bundled with other software - under a commercial 
+.\" license agreement.
+.\" 
+.\" Use of Altair’s trademarks, including but not limited to "PBS™", 
+.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+.\" trademark licensing policies.
+.\"
+.TH qmove 1B "5 Oct 2012" Local "PBS Professional"
+.SH NAME
+.B qmove 
+- move PBS batch job
+
+.SH SYNOPSIS
+.B qmove 
+destination job_identifier ...
+.br
+.B qmove
+--version
+
+.SH DESCRIPTION
+To move a job is to remove the job from the queue in which it 
+resides and place the job in another queue. 
+
+The
+.B qmove
+command can be used on job arrays, but not on subjobs or ranges of
+subjobs.  
+
+Note that job arrays can only be moved from one server to another if
+they are in the 'Q', 'H', or 'W' states, and only if there are no
+running subjobs.  The state of the job array is preserved, and the job
+array will run to completion on the new server.
+.LP
+A job in the
+.B Running ,
+.B Transiting ,
+or
+.B Exiting
+state cannot be moved.  A job in the process of provisioning cannot 
+be moved.
+
+The behavior of the 
+.B qmove 
+command may be affected by 
+any site hooks.  Site hooks can modify the job's attributes, 
+change its routing, etc.
+
+.SH EFFECT OF PRIVILEGE ON BEHAVIOR
+
+An unprivileged user can use the 
+.B qmove 
+command to move a job only when
+the move would not violate queue restrictions.  A privileged user
+(root, Manager, Operator) can use the 
+.B qmove 
+command to move a job
+under some circumstances where an unprivileged user cannot.  The
+restrictions that apply only to unprivileged users are listed here:
+
+.RS 4
+The queue must be enabled
+.br
+Moving the job into the queue must not exceed the queue limits for
+jobs or resources
+.br
+If the job is an array job, the size of the job array must not exceed 
+.I max_array_size 
+for the queue
+.br 
+If the queue is accepting jobs only from routing queues, unprivileged
+users cannot move jobs into it using the 
+.B qmove 
+command
+.RE
+
+.SH OPTIONS
+.IP "--version" 10
+The 
+.B qmove
+command returns its PBS version information and exits.
+This option can only be used alone.
+
+
+.SH OPERANDS
+The first operand is the new
+.I destination 
+for the jobs.  It will be accepted in the syntax:
+.RS 4
+.I "queue"
+.br
+.I "@server"
+.br
+.I "queue@server"
+.RE
+
+.LP
+If the 
+.I destination
+operand describes only a queue, then qmove
+will move jobs into the queue of the specified name at the job's current server.
+.LP
+If the 
+.I destination
+operand describes only a batch server, then qmove
+will move jobs into the default queue at that batch server.
+.LP
+If the 
+.I destination
+operand describes both a queue and a batch server, then qmove
+will move the jobs into the specified queue at the specified server.
+.LP
+All following operands are
+.I job_identifiers
+which specify the jobs to be moved to the new
+.I destination .
+The qmove
+command accepts one or more
+.I job_identifier
+operands of the form:
+.RS 4
+.I "sequence_number[.server_name][@server]"
+.RE
+
+Note that some shells require that you enclose a job array identifier in
+double quotes.
+
+.br
+.SH STANDARD ERROR
+The qmove command will write a diagnostic messages to standard error for each
+error occurrence.
+.SH EXIT STATUS
+Upon successful processing of all the operands presented to the
+qmove command, the exit status will be a value of zero.
+.LP
+If the qmove command fails to process any operand, the
+command exits with a value greater than zero.
+\" turn off any extra indent left by the Sh macro
+.SH SEE ALSO
+The
+.B PBS Professional User's Guide,
+the
+.B PBS Professional Administrator's Guide,
+.br
+qsub(1B), pbs_movejob(3B)

@@ -1,0 +1,75 @@
+# Object files
+*.o
+*.ko
+*.obj
+*.elf
+*.slo
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
+*.lai
+
+# module files
+*.mod
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+# Debug files
+*.dSYM/
+
+# Eclipse project files
+.project
+.cproject
+.pydevproject
+.settings/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Python Distribution / packaging
+.Python
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+sdist/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# pip Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+*.log
+
+# Build directory
+target/
+
+# From automake/autoconf
+autom4te.cache/
+autoscan.log
+autoscan-*.log
+configure.scan
+

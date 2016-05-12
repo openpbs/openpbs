@@ -1,0 +1,380 @@
+.\" Copyright (C) 1994-2016 Altair Engineering, Inc.
+.\" For more information, contact Altair at www.altair.com.
+.\"  
+.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" 
+.\" Open Source License Information:
+.\"  
+.\" PBS Pro is free software. You can redistribute it and/or modify it under the
+.\" terms of the GNU Affero General Public License as published by the Free 
+.\" Software Foundation, either version 3 of the License, or (at your option) any 
+.\" later version.
+.\"  
+.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+.\" PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+.\"  
+.\" You should have received a copy of the GNU Affero General Public License along 
+.\" with this program.  If not, see <http://www.gnu.org/licenses/>.
+.\"  
+.\" Commercial License Information: 
+.\" 
+.\" The PBS Pro software is licensed under the terms of the GNU Affero General 
+.\" Public License agreement ("AGPL"), except where a separate commercial license 
+.\" agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+.\"  
+.\" Altair’s dual-license business model allows companies, individuals, and 
+.\" organizations to create proprietary derivative works of PBS Pro and distribute 
+.\" them - whether embedded or bundled with other software - under a commercial 
+.\" license agreement.
+.\" 
+.\" Use of Altair’s trademarks, including but not limited to "PBS™", 
+.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+.\" trademark licensing policies.
+.\"
+.TH pbs_tclapi 3B "29 August 2011" Local "PBS Professional"
+.SH NAME
+pbs_tclapi \- PBS TCL Application Programming Interface 
+.SH DESCRIPTION
+The
+.B pbs_tclapi
+is a subset of the PBS external API wrapped in a TCL
+library. This functionality allows the creation of 
+scripts that query the PBS system. Specifically,
+it permits the user to query the
+.B pbs_server
+about the state of PBS, jobs,
+queues, and nodes, and communicate with
+.B pbs_mom
+to get information about the status of running jobs, available
+resources on nodes, etc.
+.LP
+.SH USAGE
+A set of functions to communicate with the PBS
+server and resource monitor have been added to those normally
+available with Tcl. All these calls will set the Tcl variable
+"pbs_errno" to a value to indicate if an error occurred.
+In all cases, the value "0" means no error. If a call to
+a Resource Monitor function is made, any error value will
+come from the system supplied
+.B errno
+variable. If the function call communicates with the PBS
+Server, any error value will come from the error number returned
+by the server. This is the same TCL interface used by the
+.B pbs_tclsh
+and 
+.B pbs_wish
+commands.
+
+.IP "openrm host ?port?" 6
+Creates a connection to the PBS Resource Monitor on
+.I host
+using
+.I port
+as the port number or the standard port for the resource monitor
+if it is not given.  A connection handle is returned.
+If the open is successful, this will be a non-negative integer.
+If not, an error occurred.
+.IP "closerm connection" 6
+The parameter
+.I connection
+is a handle to a resource monitor which was previously returned from
+.B openrm.
+This connection is closed.  Nothing is returned.
+.LP
+.IP "downrm connection" 6
+Sends a command to the connected resource monitor to shutdown.
+Nothing is returned.
+.LP
+.IP "configrm connection filename" 6
+Sends a command to the connected resource monitor to read the configuration
+file given by
+.I filename.
+If this is successful, a "0" is returned, otherwise, "-1" is returned.
+.LP
+.IP "addreq connection request" 6
+A resource request is sent to the connected resource monitor.
+If this is successful, a "0" is returned, otherwise, "-1" is returned.
+.LP
+.IP "getreq connection" 6
+One resource request response from the connected resource monitor is
+returned.  If an error occurred or there are no more responses, an
+empty string is returned.
+.LP
+.IP "allreq request" 6
+A resource request is sent to all connected resource monitors.
+The number of streams acted upon is returned.
+.LP
+.IP "flushreq" 6
+All resource requests previously sent to all connected resource monitors
+are flushed out to the network.  Nothing is returned.
+.LP
+.IP "activereq" 6
+The connection number of the next stream with something to read is returned.
+If there is nothing to read from any of the connections, a negative
+number is returned.
+.LP
+.IP "fullresp flag" 6
+Evaluates
+.I flag
+as a boolean value and sets
+the response mode used by
+.B getreq
+to
+.B full
+if
+.I flag
+evaluates to "true".
+The full return from a resource monitor includes the original request
+followed by an equal sign followed by the response.  The default
+situation is only to return the response following the equal sign.
+If a script needs to "see" the entire line, this function may be used.
+.LP
+.IP "pbsstatserv" 6
+The server is sent a status request for information about the server
+itself.
+If the request succeeds, a list with three elements is returned,
+otherwise an empty string is returned.
+The first element is the server's name.  The second is a list of attributes.
+The third is the "text" associated with the server (usually blank).
+.LP
+.IP "pbsstatjob" 6
+The server is sent a status request for information about the all
+jobs resident within the server.
+If the request succeeds, a list is returned, otherwise an empty string
+is returned.
+The list contains an entry for each job.  Each element is a list
+with three elements.  The first is the job's jobid.  The second
+is a list of attributes.  The attribute names which specify
+resources will have a name of the form "Resource_List:name" where
+"name" is the resource name.
+The third is the "text" associated with the job (usually blank).
+.LP
+.IP "pbsstatque" 6
+The server is sent a status request for information about all
+queues resident within the server.
+If the request succeeds, a list is returned, otherwise an empty string
+is returned.
+The list contains an entry for each queue.  Each element is a list
+with three elements.  This first is the queue's name.  The second
+is a list of attributes similar to
+.B pbsstatjob.
+The third is the "text" associated with the queue (usually blank).
+.LP
+.IP "pbsstatnode" 6
+The server is sent a status request for information about all
+nodes defined within the server.
+If the request succeeds, a list is returned, otherwise an empty string
+is returned.
+The list contains an entry for each node.  Each element is a list
+with three elements.  This first is the node's name.  The second
+is a list of attributes similar to
+.B pbsstatjob.
+The third is the "text" associated with the node (usually blank).
+.LP
+.IP "pbsselstat" 6
+The server is sent a status request for information about the all runnable
+jobs resident within the server.
+If the request succeeds, a list similar to
+.B pbsstatjob
+is returned, otherwise an empty string is returned.
+.LP
+.IP "pbsrunjob jobid ?location?" 6
+Run the job given by
+.I jobid
+at the location given by
+.I location.
+If
+.I location
+is not given, the default location is used.
+If this is successful, a "0" is returned, otherwise, "-1" is returned.
+.LP
+.IP "pbsasyrunjob jobid ?location?" 6
+Run the job given by
+.I jobid
+at the location given by
+.I location
+without waiting for a positive response that the job
+has actually started.
+If
+.I location
+is not given, the default location is used.
+If this is successful, a "0" is returned, otherwise, "-1" is returned.
+.LP
+.IP "pbsrerunjob jobid" 6
+Re-runs the job given by
+.I jobid.
+If this is successful, a "0" is returned, otherwise, "-1" is returned.
+.LP
+.IP "pbsdeljob jobid" 6
+Delete the job given by
+.I jobid.
+If this is successful, a "0" is returned, otherwise, "-1" is returned.
+.LP
+.IP "pbsholdjob jobid" 6
+Place a hold on the job given by
+.I jobid.
+If this is successful, a "0" is returned, otherwise, "-1" is returned.
+.LP
+.IP "pbsmovejob jobid ?location?" 6
+Move the job given by
+.I jobid
+to the location given by
+.I location.
+If
+.I location
+is not given, the default location is used.
+If this is successful, a "0" is returned, otherwise, "-1" is returned.
+.LP
+.IP "pbsqenable queue" 6
+Set the "enabled" attribute for the queue given by
+.I queue
+to true.
+If this is successful, a "0" is returned, otherwise, "-1" is returned.
+.LP
+.IP "pbsqdisable queue" 6
+Set the "enabled" attribute for the queue given by
+.I queue
+to false.
+If this is successful, a "0" is returned, otherwise, "-1" is returned.
+.LP
+.IP "pbsqstart queue" 6
+Set the "started" attribute for the queue given by
+.I queue
+to true.
+If this is successful, a "0" is returned, otherwise, "-1" is returned.
+.LP
+.IP "pbsqstop queue" 6
+Set the "started" attribute for the queue given by
+.I queue
+to false.
+If this is successful, a "0" is returned, otherwise, "-1" is returned.
+.LP
+.IP "pbsalterjob jobid attribute_list" 6
+Alter the attributes for a job specified by
+.I jobid.
+The parameter
+.I attribute_list
+is the list of attributes to be altered.  There can be more than one.
+Each attribute consists of a list of three elements.  The first
+is the name, the second the resource and the third is the new value.
+If the alter is successful, a "0" is returned, otherwise, "-1" is returned.
+.LP
+.IP "pbsrescquery resource_list" 6
+.B Deprecated. 
+Obtain information about the resources specified by
+.I resource_list.
+This will be a list of strings.  If the request succeeds, a list
+with the same number of elements as
+.I resource_list
+is returned.  Each element in this list will be a list with four
+numbers.  The numbers specify
+.I available,
+.I allocated,
+.I reserved,
+and
+.I down
+in that order.
+.LP
+.IP "pbsrescreserve resource_id resource_list" 6
+.B Deprecated. 
+Make (or extend) a reservation for the resources specified by
+.I resource_list
+which will be given as a list of strings.  The parameter
+.I resource_id
+is a number which provides a unique identifier for a reservation
+being tracked by the server.  If
+.I resource_id
+is given as "0", a new reservation is created.  In this case,
+a new identifier is generated and returned by the function.
+If an old identifier is used, that same number will be returned.
+The Tcl variable "pbs_errno" will be set to indicate the success
+or failure of the reservation.
+.LP
+.IP "pbsrescrelease resource_id" 6
+.B Deprecated. 
+The reservation specified by
+.I resource_id
+is released.
+.LP
+The two following commands are not normally used by the scheduler.
+They are included here because there could be a need for a scheduler
+to contact a server other than the one which it normally communicates
+with.  Also, these commands are used by the Tcl tools.
+.LP
+.IP "pbsconnect ?server?" 6
+Make a connection to the named server or the default server if
+a parameter is not given.
+Only one connection to a server is allowed at any one time.
+.LP
+.IP pbsdisconnect 6
+Disconnect from the currently connected server.
+.LP
+The above Tcl functions use PBS interface library calls for communication
+with the server and the PBS resource monitor library to communicate
+with pbs_mom.
+.LP
+.IP "datetime ?day? ?time?" 6
+The number of arguments used determine the type of
+date to be calculated.  With no arguments, the current POSIX
+date is returned.  This is an integer in seconds.
+.sp
+With one argument there are two possible formats.  The first is a 12
+(or more) character string specifying a complete date in
+the following format:
+.br
+.I \ \ \ YYMMDDhhmmss
+.br
+All characters must be digits.  The year (YY) is given by the first
+two (or more) characters and is the number of years since 1900.
+The month (MM) is the number of the month [01-12].
+The day (DD) is the day of the month [01-32].  The hour (hh) is the hour
+of the day [00-23].  The minute (mm) is minutes after the hour [00-59].
+The second (ss) is seconds after the minute [00-59].  The POSIX date
+for the given date/time is returned.
+.sp
+The second option with one argument is a relative time.  The format
+for this is
+.br
+.I \ \ \ HH:MM:SS
+.br
+With hours (HH), minutes (MM) and seconds (SS) being separated by
+colons ":".  The number returned in this case will be the number of seconds
+in the interval specified, not an absolute POSIX date.
+.sp
+With two arguments a relative date is calculated.  The first argument
+specifies a day of the week and must be one of the following strings:
+"Sun", "Mon", "Tue", "Wed", "Thr", "Fri", or "Sat".  The second
+argument is a relative time as given above.  The POSIX date
+calculated will be the day of the week given which follows the
+current day, and the time given in the second argument.  For example,
+if the current day was Monday, and the two arguments were
+"Fri" and "04:30:00", the date calculated would be the POSIX date
+for the Friday following the current Monday, at four-thirty in the
+morning.  If the day specified and the current day are the same,
+the current day is used, not the day one week later.
+.LP
+.IP "strftime format time"
+This function calls the POSIX function
+.I strftime().
+It requires two arguments.  The first
+is a format string.  The format conventions are the same as those
+for the POSIX function strftime().  The second argument is POSIX
+calendar time in second as returned by
+.I datetime.
+It returns a string based on the format given.  This gives the ability to
+extract information about a time, or format it for printing.
+.LP
+.IP "logmsg tag message" 6
+This function calls the internal PBS function
+.I log_err().
+It will cause a log message to be written to the scheduler's log file.  The 
+.I tag
+specifies a function name or other word used to identify the area
+where the message is generated.  The
+.I message
+is the string to be logged.
+.LP
+.SH "SEE ALSO"
+pbs_tclsh(8B), pbs_wish(8B), pbs_mom(8B),
+pbs_server(8B), pbs_sched(8B)

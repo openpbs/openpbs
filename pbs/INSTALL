@@ -1,0 +1,51 @@
+ 
+--------------------------------------------------------------------
+
+How to install PBS Pro using the configure script.
+
+- Unpack the tarball and cd to the package directory.
+
+- Run "./configure --help" to see the available build parameters.
+
+- Run "./configure --prefix=/opt/pbs" with any additional options
+  set appropriately for your installation. (See note 1 below)
+
+- Run "make". (See note 2 below)
+
+- Run "sudo make install". The installation directory (--prefix)
+  will require root privilege for this step.
+
+- Run "sudo <prefix>/libexec/pbs_postinstall"
+
+- Edit /etc/pbs.conf to configure the PBS Pro services that
+  should be started.
+
+- Some file permissions must be modified to add SUID privilege.
+  Run "sudo chmod 4755 /opt/pbs/sbin/pbs_iff /opt/pbs/sbin/pbs_rcp"
+
+- Start the PBS Pro services by running "sudo /etc/init.d/pbs start"
+
+--------------------------------------------------------------------
+
+Note 1: It is advisable to create a simple shell script
+  that calls configure with the appropriate options so that you
+  can save typing on reconfigures. If you have already run configure
+  you can remake all of the Makefiles by running "./config.status".
+  Also, looking at the first few lines of config.status will
+  tell you the options that were set when configure was run.
+  To figure out which options one can set run "./configure --help"
+  
+
+Note 2: You need to use a POSIX (or nearly POSIX) make. GNU make
+  works quite well in this regard; BSD make does not. If you are
+  having any sort of build problems, your make should be a prime suspect.
+  Tremendous effort has been expended to provide proper dependency
+  generation and makefiles without relying on any non-POSIX features. 
+  The build should work fine with a simple call to make, however,
+  complicating things by using various make flags is not guaranteed
+  to work. Don't be surprised if the first thing that make does is
+  call configure again. See the note in Makefile.in if this happens.
+
+If you need to modify configure.ac you will need to install the GNU
+automake package.
+

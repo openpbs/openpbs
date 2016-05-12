@@ -1,0 +1,1309 @@
+.\" Copyright (C) 1994-2016 Altair Engineering, Inc.
+.\" For more information, contact Altair at www.altair.com.
+.\"  
+.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" 
+.\" Open Source License Information:
+.\"  
+.\" PBS Pro is free software. You can redistribute it and/or modify it under the
+.\" terms of the GNU Affero General Public License as published by the Free 
+.\" Software Foundation, either version 3 of the License, or (at your option) any 
+.\" later version.
+.\"  
+.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+.\" PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+.\"  
+.\" You should have received a copy of the GNU Affero General Public License along 
+.\" with this program.  If not, see <http://www.gnu.org/licenses/>.
+.\"  
+.\" Commercial License Information: 
+.\" 
+.\" The PBS Pro software is licensed under the terms of the GNU Affero General 
+.\" Public License agreement ("AGPL"), except where a separate commercial license 
+.\" agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+.\"  
+.\" Altair’s dual-license business model allows companies, individuals, and 
+.\" organizations to create proprietary derivative works of PBS Pro and distribute 
+.\" them - whether embedded or bundled with other software - under a commercial 
+.\" license agreement.
+.\" 
+.\" Use of Altair’s trademarks, including but not limited to "PBS™", 
+.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+.\" trademark licensing policies.
+.\"
+.TH pbs_server_attributes 7B "16 February 2016" Local "PBS Professional"
+.SH NAME
+pbs_server_attributes - pbs server attributes
+.SH DESCRIPTION
+.LP
+All server attributes except those noted can be read by users, Managers,
+and Operators, and can be set by Managers only.
+.RS .25i
+.SH Settable Server Attributes
+
+.IP acl_host_enable
+Attribute which when true directs the server to use the 
+.I acl_hosts
+access control lists.
+.br
+Format: Boolean
+.br
+Default value: false = disabled.
+.br
+Python type: bool
+
+.IP acl_hosts
+List of hosts which may request services from this server.
+This list contains the network name of the hosts.
+Local requests, i.e. from the server's host itself, are always accepted even
+if the host is not included in the list.
+More specific entries should be listed before more general, because the
+list is read left-to-right, and the first match determines access.
+.br
+Format: "[+|-]hostname.domain[,...]"
+.br
+Default value: all hosts.
+.br
+Python type: pbs.acl
+
+.IP acl_resv_group_enable
+Attribute which when true directs the server to use the reservation group
+access control list
+.I acl_resv_groups .
+.br
+Format: Boolean
+.br
+Default value: false = disabled.
+.br
+Python type: bool
+
+.IP acl_resv_groups
+List which allows or denies accepting reservations owned by members of the
+listed groups.  The groups in the list are groups on the server host, not
+submitting hosts.
+More specific entries should be listed before more general, because the
+list is read left-to-right, and the first match determines access.
+.br
+Format: String: "[+|-]group_name[,...]"
+.br
+Default value: all groups allowed.
+.br
+Python type: pbs.acl
+
+.IP acl_resv_host_enable
+Attribute which when true directs the server to use the 
+.I acl_resv_hosts
+access control list.
+.br
+Format: Boolean
+.br
+Default value: false = disabled.
+.br
+Python type: bool
+
+.IP acl_resv_hosts
+List of hosts which may request reservation services from this server.
+This list contains the network name of the hosts.
+More specific entries should be listed before more general, because the
+list is read left-to-right, and the first match determines access.
+.br
+Format: "[+|-]hostname.domain[,...]"
+.br
+Default value: all hosts.
+.br
+Python type: pbs.acl
+
+.IP acl_resv_user_enable
+Attribute which when true directs the server to use the server level
+.I acl_resv_users
+access list.
+.br
+Format: Boolean
+.br
+Default value: disabled.
+.br
+Python type: bool
+
+.IP acl_resv_users
+List of users allowed or denied the ability to make any reservation requests of
+this server.
+More specific entries should be listed before more general, because the
+list is read left-to-right, and the first match determines access.
+.br
+Format: "[+|-]user[@host][,...]"
+.br
+Default value: all users allowed.
+.br
+Python type: pbs.acl
+
+.IP acl_roots
+List of users with root privilege who may run jobs
+at this server.  If the owner of a job is root or Administrator,
+the owner must be listed in this access control list or
+the job is rejected.  More specific entries should be listed before
+more general, because the list is read left-to-right, and the first
+match determines access.
+.br
+Can be set or altered by root only, and only at the server host.
+.br
+Format: String: "[+|-]user[@host][,...]"
+.br
+Default value: no root jobs allowed.
+.br
+Python type: pbs.acl
+
+.IP acl_user_enable
+Attribute which when true directs the server to use the server level
+.I acl_users
+access list.
+.br
+Format: Boolean
+.br
+Default value: disabled.
+.br
+Python type: bool
+
+.IP acl_users
+List of users allowed or denied the ability to make any requests of this 
+server.
+More specific entries should be listed before more general, because the
+list is read left-to-right, and the first match determines access.
+.br
+Format: "[+|-]user[@host][,...]"
+.br
+Default value: all users allowed.
+.br
+Python type: pbs.acl
+
+.IP backfill_depth
+.B Deprecated.  
+Modifies backfilling behavior.  Sets the number of jobs that are to be backfilled 
+around.  When unset, backfill depth is set to 1.
+.br
+Can be set by Operator or Manager.
+.br
+Format: Integer.  Must be >=1
+.br
+Default: 1
+.br
+Python type: int
+
+.IP comment
+A text string which may be set by the scheduler or other privileged client
+to provide information to the batch system users.
+.br
+Requires Manager or Operator privilege to set or alter.
+.br
+Format: Any string
+.br
+Default value: none.
+.br
+Python type: str
+
+.IP default_chunk 
+The list of resources which will be inserted into each chunk of a job's select  specification if the corresponding resource is not specified by the user. 
+This provides a means for a site to be sure a given resource is properly  
+accounted for even if not specified by the user. 
+.br
+Requires Manager or Operator privilege to set or alter.
+.br
+Python type: dictionary:
+.br
+.RS 10
+default_chunk["<resource name>"]=<value> 
+.br
+where <resource name> is any built-in or custom resource
+.RE
+
+.IP default_node
+No longer used.
+
+.IP default_qdel_arguments
+String containing argument to 
+.B qdel.  
+Argument is "-Wsuppress_mail=<N>".  See
+.B qdel(1B).
+Settable by the administrator via the 
+.B qmgr
+command.  Overrides standard defaults.  Overridden by arguments given
+on the 
+.B qdel 
+command line.  
+.br
+Requires Manager or Operator privilege to set or alter.
+.br
+Format: String.
+.br
+Python type: pbs.args
+
+.IP default_qsub_arguments
+String containing any valid arguments to 
+.B qsub
+, such as job attributes.  Setting a job attribute via 
+.I default_qsub_arguments
+sets that
+attribute for each job which does not explicitly override it.
+See
+.B qsub(1B).
+Settable by the administrator via the 
+.B qmgr 
+command.  Overrides standard defaults.  Overridden by arguments given
+on the 
+.B qsub
+command line and in script directives.
+.br
+Example: Qmgr: set server default_qsub_arguments = "-r y -N MyJob"
+.br
+Example: Qmgr: set server default_qsub_arguments += "-l Blue=False"
+.br
+Requires Manager or Operator privilege to set or alter.
+.br
+Format: String.
+.br
+Python type: pbs.args
+
+.IP default_queue
+The queue which is the target queue when a request does not specify a queue
+name.  
+.br
+Requires Manager or Operator privilege to set or alter.
+.br
+Format: Queue name
+.br
+Default value: workq
+.br
+Python type: pbs.queue
+
+.IP eligible_time_enable
+Controls starving behavior. When set to true, the value of the job's
+.I eligible_time 
+attribute is used for its starving time.  When set to
+false, the job's starving time is calculated as now() -
+etime. Viewable via 
+.B qstat 
+by job owner, Operator and Manager.
+.br
+Format: Boolean.
+.br
+Default: False.
+.br
+Python type: bool
+
+.IP est_start_time_freq
+Interval at which PBS estimates start times and vnodes for all jobs.
+When set to >0, PBS estimates start times and vnodes for all jobs at 
+the specified interval.  When set to 0, PBS estimates start times and
+vnodes for all jobs after every scheduling cycle.  When unset, PBS 
+estimates start times and vnodes for top N jobs only.
+.br
+Can be set by Operator or Manager.
+.br 
+Format: Duration, expressed as duration or as integer number of seconds
+.br
+Default: Unset
+.br
+Python type: pbs.duration
+
+.IP flatuid
+Used for authorization allowing users to submit and alter jobs.
+Specifies whether user names are treated as being the same across the
+PBS server and all submission hosts in the complex.  Can be used to
+allow users without accounts at the server host to submit jobs.
+
+If UserA has an account at the server host, PBS requires that
+UserA@<server host> is the same as UserA@<execution host>.
+
+When true, indicates that the user execution ID, UID, space is flat,
+consistent, across all systems from which a user may submit a job to
+this server.  Therefore, if the job will execute under the UID of the
+job owner, the server will not need to authorize execution with that
+UID.  If the job is to execute under a user name supplied in the job
+user list, see -u option, then authorization will take place.
+.br
+Format: Boolean
+.br
+Default value: unset \- authorization is required for all UIDs
+.br
+Python type: bool
+
+.IP job_history_duration
+Specifies the length of time PBS will keep each job's history.
+.br
+Format: Duration: [[hours:]minutes:]seconds[.milliseconds]
+.br
+Default: Two weeks
+.br
+Python type: int
+
+.IP job_history_enable
+Setting this attribute to True enables job history management.  
+.br 
+Format: Boolean
+.br
+Default: False
+.br
+Python type: bool
+
+.IP job_requeue_timeout
+Specifies the length of time that can be taken while requeueing a job.
+.br
+Minimum allowed value: 1 second
+.br 
+Maximum allowed value: 3 hours
+.br
+Format: Duration
+.br 
+Default: 45 seconds
+.br
+Python type: pbs.duration
+
+.IP job_sort_formula
+Formula for computing job priorities.
+Described in the
+.B PBS Professional Administrator's Guide.
+If the attribute job_sort_formula is set, the scheduler 
+will use the formula in it to compute job priorities.
+If it is unset, the scheduler computes job
+priorities according to fairshare, if fairshare is enabled. If neither
+is defined, the scheduler uses job_sort_key. When the scheduler sorts
+jobs according to the formula, it computes a priority for each job,
+where that priority is the value produced by the formula.  Jobs with a
+higher value get higher priority.
+.br
+Can be set by Manager or Operator.
+Viewable by users, Manager or Operator.
+.br
+Format: String containing mathematical formula.
+The formula can be made up of expressions, where
+expressions contain terms which are added, subtracted,
+multiplied, or divided, and which can contain parentheses, 
+exponents, and unary plus and minus. For details, see the 
+.B PBS Professional Administrator's Guide.
+.br
+Default: unset.
+.br
+Python type: pbs.job_sort_formula
+
+.IP jobscript_max_size
+Limit on the size of any job script.  Visible to all; settable by 
+Manager only.
+.br
+Format: size; units default to bytes
+.br 
+Default: 100MB
+
+.IP log_events
+A bit string which specifies the type of events which are logged.  See
+the 
+.B PBS Professional Administrator's Guide.
+.br
+Requires Manager or Operator privilege to set or alter.
+.br
+Format: Integer
+.br
+Default value: 511, all events.
+.br
+Python type: int
+
+.IP mail_from
+The username from which server generated mail is sent to users.
+On Windows, requires fully-qualified mail address.
+.br
+Format: String.
+.br
+Default value: "adm".
+.br
+Python type: str
+
+.IP managers
+List of users granted batch administrator privileges.
+.br
+Format: String: "user@host.sub.domain[,user@host.sub.domain...]"
+The host, sub-domain, or domain name may be \*Qwild carded\*U by the use of
+an \*Q*\*U character.
+.br
+Default value: root on the server host.
+.br
+Python type: pbs.acl
+
+.IP max_array_size
+The maximum number of subjobs (separate indices) that are allowed in an array
+job.  
+.br
+Requires Manager or Operator privilege to set or alter.
+.br
+Format: Integer
+.br
+Default value: 10000
+.br
+Python type: int
+
+.IP max_concurrent_provision
+The maximum number of vnodes allowed to be in the process of being provisioned.
+When unset, default value is used.  Cannot be set to zero; previous value is retained.
+.br
+Format: Integer
+.br
+Default: 5
+.br
+Python type: int
+
+.IP max_group_res
+Old limit attribute.  Incompatible with new limit attributes.
+The maximum amount of the specified resource that any single group may consume
+in a complex. 
+The named resource can be any valid PBS resource, e.g. "ncpus", "mem", "pmem", 
+etc.  
+.br
+Requires Manager or Operator privilege to set or alter.
+.br
+Format: max_group_res.resource_name=value
+.br
+Default value: none.
+.br
+Example: set server max_group_res.ncpus=6
+.br
+Python type: dictionary:
+.br
+.RS 10
+max_group_res["<resource name>"]=<value> 
+.br
+where <resource name> is any built-in or custom resource
+.RE
+
+.IP max_group_res_soft
+Old limit attribute.  Incompatible with new limit attributes.  The
+soft limit on the amount of the specified resource that any single
+group may consume in a complex.  The named resource can be any valid
+PBS resource, e.g. "ncpus", "mem", "pmem", etc.  If a group is
+consuming more than this amount of the specified resource, their jobs
+are eligible to be preempted by jobs from groups who are not over
+their soft limit.
+.br
+Requires Manager or Operator privilege to set or alter.
+.br
+Format: max_group_res_soft.resource_name=value
+.br
+Example: set server max_group_res_soft.ncpus=3
+.br
+Default value: none.
+.br
+Python type: dictionary:
+.br
+.RS 10
+max_group_res_soft["<resource name>"]=<value> 
+.br
+where <resource name> is any built-in or custom resource
+.RE
+
+.IP max_group_run
+Old limit attribute.  Incompatible with new limit attributes.
+The maximum number of jobs owned by any users in a single group that are
+allowed to be running within this complex at one time.
+.br
+Requires Manager or Operator privilege to set or alter.
+.br
+Format: integer
+.br
+Default value: none.
+.br
+Python type: int
+
+.IP max_group_run_soft
+Old limit attribute.  Incompatible with new limit attributes.
+The maximum number of jobs owned by any users in a single group that are
+allowed to be running in this complex at one time.
+If a group has more than this number of jobs
+running, their jobs are eligible to be preempted by jobs from groups who are not over
+their soft limit.
+.br
+Requires Manager or Operator privilege to set or alter.
+.br
+Format: Integer
+.br
+Default value: none.
+.br
+Python type: int
+
+.IP max_queued
+Limit attribute.  The maximum number of jobs allowed to be queued
+or running in the complex.  Can be specified for projects, users, groups, or all.
+Cannot be used with old limit attributes. 
+.br
+Requires Manager or Operator privilege to set or alter.
+.br
+Format: Limit specification.  See 
+.B FORMATS.
+.IP
+
+.IP max_queued_res.<resource>
+Limit attribute.  The maximum amount of the specified resource 
+allowed to be allocated to jobs queued or running in the complex.
+Can be specified for projects, users, groups, or all.
+Cannot be used with old limit attributes.  
+.br
+Requires Manager or Operator privilege to set or alter.
+.br
+Format: Limit specification.  See 
+.B FORMATS.
+.IP
+
+.IP max_run
+Limit attribute.  The maximum number of jobs allowed to be running 
+in the complex.  Can be specified for projects, users, groups, or all.
+Cannot be used with old limit attributes. 
+.br
+Requires Manager or Operator privilege to set or alter.
+.br
+Format: Limit specification.  See 
+.B FORMATS.
+.IP
+
+.IP max_run_res.<resource>
+Limit attribute.  The maximum amount of the specified resource 
+allowed to be allocated to jobs running in the complex.
+Can be specified for projects, users, groups, or all.
+Cannot be used with old limit attributes.  
+.br
+Requires Manager or Operator privilege to set or alter.
+.br
+Format: Limit specification.  See 
+.B FORMATS.
+.IP
+
+.IP max_run_res_soft.<resource>
+Limit attribute.  Soft limit on the amount of the specified resource 
+allowed to be allocated to jobs running in the complex.
+Can be specified for projects, users, groups, or all.
+Cannot be used with old limit attributes.
+.br
+Requires Manager or Operator privilege to set or alter.  
+.br
+Format: Limit specification.  See 
+.B FORMATS.
+.IP
+
+.IP max_run_soft
+Limit attribute.  Soft limit on the number of jobs allowed to be running 
+in the complex.  Can be specified for projects, users, groups, or all.
+Cannot be used with old limit attributes.  
+.br
+Requires Manager or Operator privilege to set or alter.
+.br
+Format: Limit specification.  See 
+.B FORMATS.
+.IP
+
+.IP max_running
+Old limit attribute.  Incompatible with new limit attributes.
+The maximum number of jobs allowed to be selected for execution at
+any given time, from all possible jobs.
+.br
+Requires Manager or Operator privilege to set or alter.
+.br
+Format: integer.
+.br
+Python type: int
+
+.IP max_user_res
+Old limit attribute.  Incompatible with new limit attributes.
+The maximum amount of the specified resource that any single user may consume
+within a complex. 
+The named resource can be any valid PBS resource, e.g. "ncpus", "mem", "pmem", 
+etc.  
+.br
+Requires Manager or Operator privilege to set or alter.
+.br
+Format: max_user_res.resource_name=value
+.br
+Example: set server max_user_res.ncpus=6
+.br
+Default value: none.
+.br
+Python type: dictionary:
+.br
+.RS 10
+max_user_res["<resource name>"]=<value> 
+.br
+where <resource name> is any built-in or custom resource
+.RE
+
+.IP max_user_res_soft
+Old limit attribute.  Incompatible with new limit attributes.
+The soft limit on the amount of the specified resource that any single user may consume
+within a complex.
+The named resource can be any valid PBS resource, e.g. "ncpus", "mem", "pmem", 
+etc.  
+If a user is consuming more than this amount of the specified resource,
+their jobs are eligible to be preempted by jobs from users who are not over
+their soft limit.
+.br
+Requires Manager or Operator privilege to set or alter.
+.br
+Format: max_user_res_soft.resource_name=value
+.br
+Example: set server max_user_res_soft.ncpus=3
+.br
+Default value: none.
+.br
+Python type: dictionary:
+.br
+.RS 10
+max_user_res_soft["<resource name>"]=<value> 
+.br
+where <resource name> is any built-in or custom resource
+.RE
+
+.IP max_user_run
+Old limit attribute.  Incompatible with new limit attributes.
+The maximum number of jobs owned by a single user that are allowed to be
+running within the complex at one time.
+.br
+Requires Manager or Operator privilege to set or alter.
+.br
+Format: Integer
+.br
+Default value: none.
+.br
+Python type: int
+
+.IP max_user_run_soft
+Old limit attribute.  Incompatible with new limit attributes.
+The soft limit on the number of jobs owned by a single user that are allowed to be
+running within this complex at one time.  If a user has more than this number of jobs 
+running, their jobs are eligible to be preempted by jobs from users who are not over 
+their soft limit.
+.br
+Requires Manager or Operator privilege to set or alter.
+.br
+Format: Integer
+.br
+Default value: none.
+.br
+Python type: int
+
+.IP node_fail_requeue
+Controls whether running a jobs are automatically requeued or deleted
+if the primary execution host fails.  Number of seconds to wait after
+losing contact with MOM before requeueing or deleting jobs.  If unset
+or set to zero, jobs are left in the "Running" state until the
+execution host is recovered.  If set to a non-zero value, the jobs are
+requeued if they are rerunnable or deleted when the node has been down
+for the specified number of seconds.
+.br
+Can be set by Managers and Operators.  Visible to all.
+.br
+Format: Integer
+.br
+Default: 310
+.br
+Python type: int
+
+.IP "node_group_enable=<true|false>"
+Enables node grouping when true. See 
+.I node_group_key.  
+.br
+Requires Manager or Operator privilege to set or alter.
+.br
+Format: Boolean.
+.br  
+Default: False.  
+.br
+Example:
+.br
+.B Qmgr> set server node_group_enable=true
+.br
+Python type: bool
+
+.IP "node_group_key=<resource list>"
+Specifies the resources to use for placement sets (node grouping.)  
+When specifying multiple resources, separate them with commas and 
+enclose the value in double quotes.
+See
+.I node_group_enable.
+.br
+Requires manager or operator privilege to set or alter.  
+.br
+Format: string_array.  
+.br
+Default: unset.  
+.br
+Example:
+.br
+.B Qmgr> set server node_group_key="ncpus,mem"
+.br
+Python type: pbs.node_group_key
+
+.IP operators
+List of users granted batch operator privileges.
+Format of the list is identical with
+.I managers
+above.
+.br
+Format: String
+.br
+Default value: none.
+.br
+Python type: pbs.acl
+
+.IP pbs_license_file_location
+.B Deprecated.  
+Do not use.
+
+.IP pbs_license_info
+Path to license file and/or port@hostname for license server(s).
+Delimiter between items is
+colon (":") for UNIX/Linux and semi-colon (";") for Windows.
+.br
+Format: String
+.br
+Python type: str
+
+To set 
+.I pbs_license_info
+to a license file and multiple license servers:
+qmgr> set server pbs_license_info=
+<file path>:<port1>@<host1>:<port2>@<host2>:...:<portN>@<hostN>
+.br
+where <host1>, <host2>, ... <hostN> can be IP addresses.
+The file path can be first or last.
+
+
+.IP pbs_license_linger_time
+The number of seconds to keep an unused CPU license, when the number
+of licenses is above the value given by pbs_license_min.  
+.br
+Format: Integer (seconds)
+.br
+Default: 3600 seconds
+.br
+Python type: pbs.duration
+
+To set 
+.I pbs_license_linger_time:
+.br
+Qmgr> set server pbs_license_linger_time=<Z>
+
+To unset 
+.I pbs_license_linger_time:
+.br
+Qmgr> unset server pbs_license_linger_time
+
+.IP pbs_license_max
+Maximum number of licenses to be checked out at any time, i.e maximum
+number of CPU licenses to keep in the PBS local license pool.  Sets a
+cap on the number of CPUs that can be licensed at one time.  
+.br
+Format: Integer
+.br
+Default: maximum value for an integer.
+.br
+Python type: int
+
+To set
+.I pbs_license_max:
+.br
+Qmgr> set server pbs_license_max=<Y>
+
+To unset 
+.I pbs_license_max:
+.br
+Qmgr> unset server pbs_license_max
+
+.IP pbs_license_min
+Minimum number of CPUs to permanently keep licensed, i.e. the minimum
+number of CPU licenses to keep in the PBS local license pool. This is
+the minimum number of licenses to keep checked out.  
+.br
+Format: Integer.
+.br
+Default: zero.
+.br
+Python type: int
+
+To set pbs_license_min:
+.br
+Qmgr> set server pbs_license_min=<X>
+
+To unset pbs_license_min:
+.br
+Qmgr> unset server pbs_license_min)
+
+.IP query_other_jobs
+The setting of this attribute controls whether general users, other than the
+job owner, are allowed to query the status of or select the job.
+.br
+Format: boolean (see acl_host_enable);
+.br
+Default value: True - users may query or select jobs owned by other users.
+.br
+Python type: bool
+
+.IP queued_jobs_threshold
+Limit attribute.  The maximum number of jobs allowed
+to be queued in the complex.  Can be specified for
+projects, users, groups, or all.  Cannot be used with old limit
+attributes.
+Format: limit specification.
+Default value: No default
+
+.IP queued_jobs_threshold_res
+Limit attribute.  The maximum amount of the specified resource allowed
+to be allocated to jobs queued in the complex.  Can be specified for
+projects, users, groups, or all.  Cannot be used with old limit
+attributes.
+Format: limit specification.
+Default value: No default
+
+.IP require_cred
+Specifies the credential type required.  All jobs submitted without the specified 
+credential will be rejected.  See
+also 
+.I require_cred_enable.  
+Depends on optional kerberos and DCE support.
+Not supported under Windows.
+.br
+Format: String (
+.I krb5 
+or 
+.I dce 
+);
+.br
+Default value: unset
+.br
+Python type: str
+
+.IP require_cred_enable
+When true directs the Server to use the credential authentication method 
+specified by 
+.I require_cred.
+Depends on optional kerberos and DCE support. 
+Not supported under Windows.
+.br
+Format: boolean.
+.br
+Default value: false = disabled
+.br
+Python type: bool
+
+.IP reserve_retry_cutoff
+The time period before the reservation start time during which 
+PBS does not attempt to reconfirm a degraded reservation.
+When this value is changed, all degraded reservations use the 
+new value.
+.br
+Cannot be read by user or Operator.
+.br
+Format: Integer (seconds)
+.br
+Values: Must be greater than zero
+.br
+Default: 7200 (2 hours)
+.br
+Python type: int
+
+.IP reserve_retry_init
+The amount of time after a reservation becomes degraded that
+PBS waits before attempting to reconfirm the reservation.
+When this value is changed, only reservations that become degraded
+after the change use the new value.
+.br
+Cannot be read by user or Operator.
+.br
+Format: Integer seconds
+.br
+Values: Must be greater than zero
+.br
+Default: 7200 (2 hours)
+.br
+Python type: int
+
+.IP resources_available
+The list of available resources and their values defined on the server.  
+Each resource is listed on a separate line.
+.br
+Requires Manager or Operator privilege to set or alter.
+.br
+Format: String of the form 
+.br 
+"resources_available.<resource>=<value>"
+.br
+Default: None.
+.br
+Python type: dictionary:
+.br
+.RS 10
+resources_available["<resource name>"]=<value> 
+.br
+where <resource name> is any built-in or custom resource
+.RE
+
+.IP resources_cost
+No longer used.
+
+.IP resources_default
+The list of default resource values that are set as limits for a job 
+executing on this server when the job does not specify a limit,
+and there is no queue default.  These resources are job-wide only.
+For default chunk resources, see 
+.I default_chunk.<resource>.
+.br
+Requires Manager or Operator privilege to set or alter.
+.br
+Format: "resources_default.resource_name=value[,...]"
+.br
+Default value: no limit.
+.br
+Python type: dictionary:
+.br
+.RS 10
+resources_default["<resource name>"]=<value> 
+.br
+where <resource name> is any built-in or custom resource
+.RE
+
+.IP resources_max
+The maximum amount of each resource which can be requested by a single job
+executing on this server if there is not a resources_max valued defined for
+the queue in which the job resides.
+.br
+Requires Manager or Operator privilege to set or alter.
+.br
+Format: String: "resources_max.resource_name=value[,...]"
+.br
+Default value: infinite usage.
+.br
+Python type: dictionary:
+.br
+.RS 10
+resources_max["<resource name>"]=<value> 
+.br
+where <resource name> is any built-in or custom resource
+.RE
+
+.IP "resv_enable"
+Specifies whether or not advance and standing reservations can be 
+created at this server.  When set to True, new reservations can 
+be created.  When changed from True to False, new reservations 
+cannot be created, but existing reservations are honored.
+.br
+Format: Boolean
+.br
+Default value: True.
+.br
+Python type: bool
+
+.IP "resv_post_processing_time"
+The amount of time allowed for reservations to clean up after running jobs.
+Reservation duration and end time are extended by this amount of time.  Jobs
+are not allowed to run during the cleanup period.
+.br
+Can be set by Manager or Operator.
+.br
+Format: Duration: [[hours:]minutes:]seconds[.milliseconds]
+.br
+Default value: Unset, equivalent to zero
+.br
+Python type: int
+
+.IP rpp_highwater
+The maximum number of RPP packets that can be in transit at any time.
+.br
+Format: Integer.
+.br
+Acceptable values: Greater than or equal to one.  
+.br
+Default: 64.  
+.br
+Python type: int
+
+.IP rpp_retry
+The maximum number of times the RPP network library will
+try to send a UDP packet again before giving up.  The number of retries
+is added to the original try , so if
+.I rpp_retry
+is set to 2, the total number of tries will be 3.  
+.br
+Format: Integer.
+.br
+Acceptable values: Greater than or equal to zero.
+.br
+Default: 10.  
+.br
+Python type: int
+
+.IP schedule_iteration
+The time, in seconds, between iterations of attempts by the batch server
+to schedule jobs.  On each iteration, the server examines the available
+resources and runnable jobs to see if a job can be initiated.  This
+examination also occurs whenever a running batch job terminates or a
+new job is placed in the queued state in an execution queue.
+.br
+Requires Manager or Operator privilege to set or alter.
+.br
+Format: Integer (seconds)
+.br
+Default value: 10 minutes.
+.br
+Python type: pbs.duration
+
+.IP scheduling
+Controls whether the server requests job scheduling by the PBS job scheduler.
+If true, the scheduler is called as required; if false, the scheduler
+is not called and no job is placed into execution unless the
+server is directed to do so by an Operator or Manager.  Setting or 
+resetting this attribute to true results in an immediate call to the scheduler.
+.br
+Requires Manager or Operator privilege to set or alter.
+.br
+Format: Boolean 
+.br
+Default value: value of 
+.I -a 
+option when server is invoked. If
+.I -a 
+is not
+specified, the value is is recovered from the prior server run.  If it has never
+been set, the value is False.
+.br
+Python type: bool
+
+.IP single_signon_password_enable
+Used only on systems requiring passwords, e.g. Windows.
+Incompatible with other systems.  Specifies whether or not users must
+give a password for each job.  Can be enabled only when no jobs exist,
+or when all jobs have a bad password ("p") hold.  Can be disabled only
+when no jobs exist.
+.br
+When set to True, users submitting jobs must specify a password only
+once; PBS remembers it for future job execution.  When set to False,
+users submitting jobs must specify a password for each job.
+.br
+Requires Manager or Operator privilege to set or alter.
+.br
+Format: Boolean.
+.br
+Defaults: UNIX: False; Windows: True.
+.br
+Python type: bool
+
+.IP system_cost
+No longer used.
+
+.SH Read-only Server Attributes
+.LP
+The following attributes are read-only.  They are set by the server
+and can be read, but cannot be changed, by Managers, Operators, or users.
+
+
+.IP FLicenses
+The number of floating licenses currently available for allocation to unlicensed
+CPUs.  One license is required for each virtual CPU.
+.br
+Python type: int
+
+.IP license_count
+The 
+.I license_count
+attribute contains the following elements with their values: 
+Avail_Global, Avail_Local, Used, High_Use, Avail_Sockets, Unused_Sockets.  
+.RS
+.IP Avail_Global
+Number of PBS CPU licenses still kept by the Altair license server
+(checked in.)
+.LP
+.IP Avail_Local 
+Number of PBS CPU licenses still kept by PBS (checked out.)
+.LP
+.IP Used
+Number of PBS CPU licenses currently in use.
+.LP
+.IP High_Use 
+Highest number of PBS CPU licenses checked out and used at any time 
+by the current instance of the PBS server.
+.LP
+.IP Avail_Sockets
+Total number of socket licenses in license file.
+.LP
+.IP Unused_Sockets
+Number of unused socket licenses.
+.LP
+
+Python type: pbs.license_count
+.RE
+
+.IP pbs_version
+The version of PBS for this server.  
+.br
+Format: String.
+.br
+Python type: pbs.version
+
+.IP resources_assigned
+The total amount of each type of resource allocated to running jobs, plus
+the total of each type of resource allocated to a reservation that has started.
+.br
+Format: String
+.br
+Python type: dictionary:
+.br
+.RS 10
+resources_assigned["<resource name>"]=<value> 
+.br
+where <resource name> is any built-in or custom resource
+.RE
+
+.IP server_host
+The name of the host on which the active server is running.
+If the secondary server takes over, this attribute is set to the 
+name of the secondary server's host.  When the primary server
+takes control again, this attribute shows the name of the primary
+server's host.
+.br
+Format: String
+.br
+Python type: str
+
+.IP server_state
+The current state of the server: 
+.br
+Format: String.
+.br
+Python type: server state constants.  
+.br 
+Server states and their Python types:
+.RS
+.IP "Active                  pbs.SV_STATE_ACTIVE"
+The server is running.  The scheduler is between scheduling cycles.
+
+.IP "Idle                  pbs.SV_STATE_IDLE"
+The server is running.  Scheduling has been turned off.
+
+.IP "Hot_Start             pbs.SV_STATE_HOT "
+The server will run first any jobs that were running when it 
+was shut down.
+
+.IP "Scheduling            pbs.SV_STATE_ACTIVE"
+The server is running.  The scheduler is in a scheduling cycle.
+
+.IP "Terminating    pbs.SV_STATE_SHUTIMM or pbs.SV_STATE_SHUTSIG"
+The server is terminating.  No additional jobs will be run.
+
+.IP "Terminating_Delayed   pbs.SV_STATE_SHUTDEL"
+The server is terminating in delayed mode.  No new jobs will be run.
+The server will shut down when all running jobs have finished.
+.RE
+
+
+.IP state_count
+The total number of jobs managed by the server currently in each state.
+.br
+Format: String.
+.br
+Python type: pbs.state_count
+
+.IP total_jobs
+The total number of jobs currently managed by the server.  If the 
+.I job_history_enable
+attribute is set to True, the number for
+.I total_jobs
+includes jobs that are finished, 
+deleted, and moved.
+.br
+Format: Integer
+.br
+Python type: int
+
+.LP
+
+.B Incompatible Limit Attributes
+.br
+The old and new limit attributes are incompatible.  
+If any of one kind is set, none of the other kind can be set.
+All of one kind must be unset in order to set any of the other kind.
+
+.SH FORMATS
+.RS .25i
+
+.IP "Limit specification"
+Limit attributes can be set, added to or removed from.
+
+.RS 3 
+Format for setting a limit-spec:
+.RS 3
+set server <limit attribute> = "[limit-spec=<limit>], [limit-spec=<limit>] ..."
+.RE
+Format for adding to a limit-spec:
+.RS 3
+set server <limit attribute> += "[limit-spec=<limit>], [limit-spec=<limit>] ..."
+.RE
+Format for removing from a limit-spec:
+.RS 3
+set server <limit attribute> -= "[limit-spec=<limit>], [limit-spec=<limit>] ..."
+.br
+or
+.br
+set server <limit attribute> -= "[limit-spec], [limit-spec] ..."
+.RE
+
+Where limit-spec is 
+.RS 3
+o:PBS_ALL
+.br
+p:PBS_GENERIC
+.br
+p:<project name>
+.br
+u:PBS_GENERIC
+.br
+u:<user name>
+.br
+g:PBS_GENERIC
+.br
+g:<group name>
+.RE
+
+The limit-spec can contain spaces anywhere except after the colon
+(":").
+.br
+If there are comma-separated limit-specs, the entire string must be
+enclosed in double quotes.
+.br
+A project name, user name, or group name containing spaces must be
+enclosed in quotes.
+.br
+If a project name, user name or group name is quoted using double
+quotes, and the entire string requires quotes, the outer enclosing
+quotes must be single quotes.  Similarly, if the inner quotes are
+single quotes, the outer quotes must be double quotes.
+.br
+PBS_ALL is a keyword which indicates that this limit applies to all
+users.
+.br
+PBS_GENERIC is a keyword which indicates that this limit applies to
+generic projects, users or groups.
+.br
+When removing a limit, the limit value does not need to be specified.
+.br
+Examples of setting, adding, and removing: 
+.br
+.RS 3
+set server max_run="[u:PBS_GENERIC=2], [g:group1=10], [o:PBS_ALL = 100]"
+.br
+set server max_run+="[u:user1=3], [g:PBS_GENERIC=8]"
+.br
+set server max_run-="[u:user2], [g:group3]"
+.RE
+
+See the 
+.B PBS Professional Administrator's Guide.
+
+.SH SEE ALSO
+The 
+.B PBS Professional Administrator's Guide, 
+The 
+.B PBS Professional User's Guide, 
+qdel(1B),
+qmgr(1B),
+qsub(1b)

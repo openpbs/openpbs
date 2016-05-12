@@ -1,0 +1,218 @@
+.\"
+.\" Copyright (c) 1999-2016 Altair Grid Technologies, LLC.  All rights reserved. 
+.\" 
+.\" This unpublished, proprietary work is protected by trade secret, copyright,
+.\" and other laws. Except as permitted under the "PBS Pro (Portable Batch 
+.\" System) Software Source Code License Agreement", when signed by either 
+.\" Altair Grid Technologies, LLC or Altair Engineering Inc., and a Licensee of 
+.\" the source code, no part of this work or its content may be used, reproduced
+.\" or disclosed in any form.
+.\"
+.if \n(Pb .ig Ig
+.TH pbs_rescquery 3B "" Local "PBS Pro"
+.\" The following macros are style for object names and values.
+.de Ar		\" command/function arguments and operands (italic)
+.ft 2
+.if \\n(.$>0 \&\\$1\f1\\$2
+..
+.de Av		\" data item values  (Helv)
+.if  \n(Pb .ft 6
+.if !\n(Pb .ft 3
+.ps -1
+.if \\n(.$>0 \&\\$1\s+1\f1\\$2
+..
+.de At		\" attribute and data item names (Helv Bold)
+.if  \n(Pb .ft 6
+.if !\n(Pb .ft 2
+.ps -1
+.if \\n(.$>0 \&\\$1\s+1\f1\\$2
+..
+.de Ty		\" Type-ins and examples (typewritter)
+.if  \n(Pb .ft 5
+.if !\n(Pb .ft 3
+.if \\n(.$>0 \&\\$1\f1\\$2
+..
+.de Er		\" Error values ( [Helv] )
+.if  \n(Pb .ft 6
+.if !\n(Pb .ft 3
+\&\s-1[\^\\$1\^]\s+1\f1\\$2
+..
+.de Sc		\" Symbolic constants ( {Helv} )
+.if  \n(Pb .ft 6
+.if !\n(Pb .ft 3
+\&\s-1{\^\\$1\^}\s+1\f1\\$2
+..
+.de Al		\" Attribute list item, like .IP but set font and size
+.if !\n(Pb .ig Ig
+.ft 6
+.IP "\&\s-1\\$1\s+1\f1"
+.Ig
+.if  \n(Pb .ig Ig
+.ft 2
+.IP "\&\\$1\s+1\f1"
+.Ig
+..
+.\" the following pair of macros are used to bracket sections of code
+.de Cs
+.ft 5
+.nf
+..
+.de Ce
+.sp
+.fi
+.ft 1
+..
+.\" End of macros 
+.Ig
+.SH NAME
+pbs_rescquery, avail, totpool, usepool - query resource availability
+.SH SYNOPSIS
+#include <pbs_error.h>
+.br
+#include <pbs_ifl.h>
+.sp
+.ft 3
+.nf
+int pbs_rescquery\^(\^int\ connect, char\ **resourcelist, int *arraysize,
+int *available, int *allocated, int *reserved, int *down \^)
+.sp
+char *avail\^(\^int connect, char *resc\^)
+.sp
+int totpool\^(\^int connect, int update\^)
+.sp
+int usepool\^(\^int connect, int update\^)
+.fi
+.ft 1
+.SH DESCRIPTION
+.if \n(Pb .ig Ig
+.HP 2
+.Ig
+.if !\n(Pb .ig Ig
+.sp
+.Ig
+.B pbs_rescquery
+.br
+Issue a request to the batch server to query the availability of resources.
+.Ar connect
+is the connection returned by \f3pbs_connect\fP().
+.Ar resourcelist 
+is an array of one or more strings specifying the resources to be queried.
+.Ar arraysize
+is the is the number of strings in resourcelist.
+.Ar available ,
+.Ar allocated ,
+.Ar reserved ,
+and
+.Ar down
+are integer arrays of size arraysize.  The amount of resource specified in
+the corresponding resourcelist string which is available, already allocated,
+reserved, and down/off-line is returned in the integer arrays.
+.IP
+At the present time the only resources which may be specified is "nodes". 
+It may be specified as 
+.br
+.Ty \ \ \ \ nodes
+.br
+.Ty \ \ \ \ nodes= 
+.br
+.Ty \ \ \ \ nodes=\f2specification\f1
+.br
+where specification is what a user specifies in the -l option arguement list
+for nodes, see qsub(1B) and the various pbs_resource_* man pages.
+.IP
+Where the node resourcelist is a simple type, such as "nodes", "nodes=",
+or "nodes=\f2type\fP", the numbers returned reflect the actual number of nodes
+(of the specified type) which are \f2available\fP, \f2allocated\fP,
+\f2reserved\fP, or \f2down\fP.
+.IP
+For a more complex node resourcelist, such as
+"nodes=2" or "nodes=type1:type2", only the value returned in 
+.I available
+has meaning.
+If the number in
+.I available
+is positive, it is the number of nodes required to satisfy the specification
+and that some set of nodes are available which will satisfy it, see 
+.I avail ().
+If the number in
+.I available
+is zero, some number of nodes required for the specification are
+currently unavailable, the request might be satisfied at a later time.
+If the number in
+.I available
+is negative, no combination of known nodes can fulfill the specification.
+.if \n(Pb .ig Ig
+.HP 2
+.Ig
+.if !\n(Pb .ig Ig
+.sp
+.Ig
+.B avail
+.br
+The
+.I avail ()
+call is provided as a conversion aid for schedulers written for early versions
+of PBS.   The avail() routine uses pbs_rescquery() and returns a character
+string answer.  
+.Ar connect
+is the connection returned by \f3pbs_connect\fP().
+.Ar resc
+is a single 
+.I node=specification
+specification as discussed above.  If the nodes to satisfy the specification
+are currently available, the return value is the character string
+.B yes .
+If the nodes are currently unavailable, the return is the character string
+.B no .
+If the specification could never be satisfied, the return is the string
+.B never .
+An error in the specification returns the character string
+.B ? .
+.if \n(Pb .ig Ig
+.HP 2
+.Ig
+.if !\n(Pb .ig Ig
+.sp
+.Ig
+.B totpool
+.br
+The 
+.I totpool ()
+function returns the total number of nodes known to the PBS server.  This is
+the sum of the number of nodes available, allocated, reserved, and down.
+The parameter
+.Ar connection
+is the connection returned by pbs_connect().
+The parameter
+.Ar update
+if non-zero, causes totpool() to issue a pbs_rescquery() call to obtain
+fresh information.   If zero, numbers from the prior pbs_rescquery() are used.
+.if \n(Pb .ig Ig
+.HP 2
+.Ig
+.if !\n(Pb .ig Ig
+.sp
+.Ig
+.B usepool
+.br
+.I usepool ()
+returns the number of nodes currently in use, the sum of allocated, reserved, 
+and down.
+The parameter
+.Ar connection
+is the connection returned by pbs_connect().
+The parameter
+.Ar update
+if non-zero, causes totpool() to issue a pbs_rescquery() call to obtain
+fresh information.   If zero, numbers from the prior pbs_rescquery() are used.
+.SH "SEE ALSO"
+qsub(1B), pbs_connect(3B), pbs_disconnect(3B), pbs_rescreserve(3B) and
+pbs_resources(7B)
+.SH DIAGNOSTICS
+When the batch request generated by the \f3pbs_rescquery\f1()
+function has been completed successfully
+by a batch server, the routine will return 0 (zero).
+Otherwise, a non zero error is returned.  The error number is also set
+in pbs_errno.
+.LP
+The functions usepool() and totpool() return -1 on error.

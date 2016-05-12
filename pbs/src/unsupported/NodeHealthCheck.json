@@ -1,0 +1,89 @@
+{
+   "mounts": {
+
+      "comment": [ "Check the these mount points on the system",
+         "This should be the actual mount point and not a link. ",
+         "Consider looking to see if it is a link and points to a mount point ",
+         "Possible actions upon failure: Warn,Offline,Reboot"
+      ],
+      "check":true,
+      "mount_points" : { 
+         "/home":"Warn", 
+         "/scratch":"Warn"
+      }
+   },
+
+   "disk_space": {
+      "check":true,
+
+      "comment": [
+         "Check the disk space on the system.",
+         "Format 'Directory':['Min free space','Action upon fail']",
+         "if % is used then it refers to the amount of space used. example '15%'",
+         "if a number is used then its units are bytes. example 1073741824",
+         "if string is used then units must be defined example '1gb'"
+      ],
+      "dirs" : {
+         "/tmp":["1gb","Warn"],
+         "/scratch":[1073741824,"Warn"]
+      },
+
+      "comment1": [
+         "Return the values in decimal (KB, MB, GB, etc) or in binary (KiB, MiB, GiB, etc)",
+         "values:decimal,binary"
+      ],
+      "units" : "decimal"
+   },
+
+   "permissions": {
+      "check":true,
+
+      "comment": [
+         "Check the system permissions.",
+         "Format 'File':['Required permissions','Action upon fail']",
+         "Format 'Directory':['Required permissions','Action upon fail']"
+      ],
+      "check_dirs_and_files" : {
+         "/tmp":["1777","Warn"]
+      }
+   },
+
+   "processes": {
+      "check":true,
+
+      "comment": [
+         "Check the system permissions.",
+         "Format 'File':['Required permissions','Action upon fail']",
+         "Format 'Directory':['Required permissions','Action upon fail']"
+      ],
+      "running" : {
+         "sshd":["root","Warn"]
+      },
+      "stopped" : {
+         "nscd":["root","Warn"]
+      }
+   },
+
+   "as_user_operations": {
+      "comment": "To disable the touch file check set the value to False",
+      "check" : true,
+
+      "comment": [
+         "Touch a file in the following directories",
+         "Format 'Directory':['Touch file as this user','Action upon fail']",
+         "Possible options for Directory: ",
+         "<user_home> (Will be replaced with the users home dir)",
+         "<userid> (Will be replace with the users id)",
+         "'/actual/path' (No changes)",
+         "Possible options for user: pbsuser (user running job) or pbsadmin (root)",
+         "To look in the Variable list place a $ in front of the variable (i.e. $PBS_O_WORKDIR)"
+      ],
+      "touch_files" : { 
+         "<user_home>":["pbsuser","Warn"], 
+         "/scratch/<userid>":["pbsuser","Warn"], 
+         "$PBS_O_WORKDIR":["pbsuser","Warn"],
+         "/var/spool/PBS/mom_priv":["pbsadmin","Warn"]
+      }
+   }
+}
+

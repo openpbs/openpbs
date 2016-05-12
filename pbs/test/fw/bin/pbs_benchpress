@@ -1,0 +1,392 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# Copyright (C) 1994-2016 Altair Engineering, Inc.
+# For more information, contact Altair at www.altair.com.
+# 
+# This file is part of the PBS Professional ("PBS Pro") software.
+#
+# Open Source License Information:
+# 
+# PBS Pro is free software. You can redistribute it and/or modify it under the
+# terms of the GNU Affero General Public License as published by the Free 
+# Software Foundation, either version 3 of the License, or (at your option) any 
+# later version.
+# 
+# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+# PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+# 
+# You should have received a copy of the GNU Affero General Public License along 
+# with this program.  If not, see <http://www.gnu.org/licenses/>.
+# 
+# Commercial License Information: 
+#
+# The PBS Pro software is licensed under the terms of the GNU Affero General 
+# Public License agreement ("AGPL"), except where a separate commercial license 
+# agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+# 
+# Altair’s dual-license business model allows companies, individuals, and 
+# organizations to create proprietary derivative works of PBS Pro and distribute 
+# them - whether embedded or bundled with other software - under a commercial 
+# license agreement.
+#
+# Use of Altair’s trademarks, including but not limited to "PBS™", 
+# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+# trademark licensing policies.
+
+import sys
+import os
+import getopt
+import logging
+import logging.config
+import platform
+import errno
+import signal
+import ptl
+import nose
+from ptl.lib.pbs_testlib import PtlConfig
+from distutils.version import LooseVersion
+from ptl.utils.pbs_cliutils import CliUtils
+from ptl.utils.plugins.ptl_test_loader import PTLTestLoader
+from ptl.utils.plugins.ptl_test_runner import PTLTestRunner
+from ptl.utils.plugins.ptl_test_db import PTLTestDb
+from ptl.utils.plugins.ptl_test_info import PTLTestInfo
+from ptl.utils.plugins.ptl_test_tags import PTLTestTags
+#from ptl.utils.plugins.ptl_test_data import PTLTestData
+
+
+# trap SIGINT and SIGPIPE
+def trap_exceptions(etype, value, tb):
+    sys.excepthook = sys.__excepthook__
+    if issubclass(etype, IOError) and value.errno == errno.EPIPE:
+        pass
+    else:
+        #if not only_info:
+        #    data.finalize(None)
+        sys.__excepthook__(etype, value, tb)
+sys.excepthook = trap_exceptions
+
+
+def sighandler(signum, frames):
+    signal.alarm(0)
+    #if not only_info:
+    #    data.finalize(None)
+    raise KeyboardInterrupt('Signal %d received' % (signum))
+
+# join process group of caller makes it possible to programmatically interrupt
+# when run in a subshell
+os.setpgrp()
+signal.signal(signal.SIGINT, sighandler)
+signal.signal(signal.SIGTERM, sighandler)
+
+
+def usage():
+    msg = []
+    msg += ['Usage: ' + os.path.basename(sys.argv[0]) + ' [OPTION]\n\n']
+    msg += ['  Test harness used to run or list test suites and test ' +
+            'cases\n\n']
+    msg += ['-f <file names>: comma-separated list of file names to run\n']
+    msg += ['-F: set logging format to include timestamp and level\n']
+    msg += ['-g <testgroup file>: path to file containing comma-separated']
+    msg += [' list of testsuites\n']
+    msg += ['-h: display usage information\n']
+    msg += ['-i: show test info\n']
+    msg += ['-l <level>: log level\n']
+    msg += ['-L: display list of tests\n']
+    msg += ['-o <logfile>: log file name\n']
+    msg += ['-p <param>: test parameter. Comma-separated list of key=val']
+    msg += [' pairs. Note that the comma can not be used in val\n']
+    msg += ['-t <test suites>: comma-separated list of test suites to run\n']
+    msg += ['--exclude=<names>: comma-separated string of tests to exclude\n']
+    msg += ['--db-type=<type>: Type of database to use.']
+    msg += [' can be one of "html", "file", "sqlite", "pgsql".']
+    msg += [' Default to "file"\n']
+    msg += ['--db-name=<name>: database name. Default to']
+    msg += [' ptl_test_results.db\n']
+    msg += ['--db-access=<path>: Path to a file that defines db options '
+            '(PostreSQL only)\n']
+    msg += ['--lcov-bin=<bin>: path to lcov binary. Defaults to lcov\n']
+    msg += ['--genhtml-bin=<bin>: path to genhtml binary. '
+            'Defaults to genhtml\n']
+    msg += ['--lcov-data=<dir>: path to directory containig .gcno files\n']
+    msg += ['--lcov-out=<dir>: path to output directory\n']
+    msg += ['--lcov-baseurl=<url>: use <url> as baseurl in html report\n']
+    msg += ['--lcov-nosrc: don\'t include PBS source in coverage analysis.']
+    msg += [' Default PBS source will be included in coverage analysis\n']
+    msg += ['--log-conf=<file>: logging config file\n']
+    msg += ['--min-pyver=<version>: minimum Python version\n']
+    msg += ['--max-pyver=<version>: maximum Python version\n']
+    msg += ['--param-file=<file>: get params from file. Overrides -p\n']
+    msg += ['--stop-on-failure: if set, stop when one of multiple tests ' +
+            'fails\n']
+    msg += ['--timeout=<seconds>: duration after which no test suites are '
+            'run\n']
+    msg += ['--follow-child: if set, walk the test hierarchy and run ' +
+            'each test\n']
+    msg += ['--tags=<tag>: Select only tests that have <tag> tag.']
+    msg += [' can be applied multiple times\n']
+    msg += ['               Format: [!]tag[,tag]\n']
+    msg += ['               Example:\n']
+    msg += ['                 smoke - This will select all tests which has']
+    msg += [' "smoke" tag\n']
+    msg += ['                 !smoke - This will select all tests which']
+    msg += [' doesn\'t have "smoke" tag\n']
+    msg += ['                 smoke,regression - This will select all tests']
+    msg += [' which has both "smoke" and "regression" tag\n']
+    msg += ['--eval-tags=\'<Python expression>\': Select only tests for whose']
+    msg += [' tags evaluates <Python expression> to True.']
+    msg += [' can be applied multiple times\n']
+    msg += ['            Example:\n']
+    msg += ['               \'smoke and (not regression)\' - This will select']
+    msg += [' all tests which has "smoke" tag and does\'t have "regression"']
+    msg += [' tag\n']
+    msg += ['               \'priority>4\' - This will select all tests which']
+    msg += [' has "priority" tag and its value is >4\n']
+    msg += ['--tags-info: List all selected test suite (or test cases if ']
+    msg += ['--verbose applied)\n']
+    msg += ['            used with --tags or --eval-tags (also -t or --exclude']
+    msg += [' can be applied to limit selection)\n']
+    msg += ['--list-tags: List all currenlty used tags\n']
+    msg += ['--verbose: show verbose output (used with -i, -L or --tag-info)\n']
+    msg += ['--version: show version number and exit\n']
+
+    print ''.join(msg)
+
+if __name__ == '__main__':
+
+    if len(sys.argv) < 2:
+        usage()
+        sys.exit(1)
+
+    level = 'INFOCLI2'
+    fmt = '%(asctime)-15s %(levelname)-8s %(message)s'
+    outfile = None
+    dbtype = None
+    dbname = None
+    dbaccess = None
+    testfiles = None
+    testsuites = None
+    testparam = None
+    testgroup = None
+    list_test = False
+    showinfo = False
+    follow = False
+    excludes = None
+    stoponfail = False
+    paramfile = None
+    logconf = None
+    minpyver = None
+    maxpyver = None
+    verbose = False
+    lcov_data = None
+    lcov_bin = None
+    lcov_out = None
+    lcov_nosrc = False
+    lcov_baseurl = None
+    genhtml_bin = None
+    timeout = None
+    nosedebug = False
+    only_info = False
+    tags = []
+    eval_tags = []
+    tags_info = False
+    list_tags = False
+    sharedpath = None
+    gen_ts_tree = False
+
+    PtlConfig()
+
+    largs = ['exclude=', 'log-conf=', 'timeout=']
+    largs += ['param-file=', 'min-pyver=', 'max-pyver=']
+    largs += ['db-name=', 'db-access=', 'db-type=', 'genhtml-bin=']
+    largs += ['lcov-bin=', 'lcov-data=', 'lcov-out=', 'lcov-nosrc']
+    largs += ['lcov-baseurl=', 'tags=', 'eval-tags=', 'tags-info', 'list-tags']
+    largs += ['version', 'verbose', 'follow-child']
+    largs += ['stop-on-failure', 'enable-nose-debug']
+    largs += ['shared-path=', 'gen-ts-tree']
+
+    try:
+        opts, args = getopt.getopt(
+            sys.argv[1:], 'f:il:t:o:p:g:hLF', largs)
+    except:
+        sys.stderr.write('Unrecognized option. Exiting\n')
+        usage()
+        sys.exit(1)
+
+    for o, val in opts:
+        if o == '-i':
+            showinfo = True
+            list_test = False
+            gen_ts_tree = False
+            only_info = True
+        elif o == '-L':
+            showinfo = False
+            list_test = True
+            gen_ts_tree = False
+            only_info = True
+        elif o == '--gen-ts-tree':
+            showinfo = False
+            list_test = False
+            gen_ts_tree = True
+            only_info = True
+        elif o == '-l':
+            level = val
+        elif o == '-o':
+            outfile = CliUtils.expand_abs_path(val)
+        elif o == '-f':
+            testfiles = CliUtils.expand_abs_path(val)
+        elif o == '-t':
+            testsuites = val
+        elif o == '--tags':
+            tags.append(val.strip())
+        elif o == '--eval-tags':
+            eval_tags.append(val.strip())
+        elif o == '--tags-info':
+            tags_info = True
+        elif o == '--list-tags':
+            list_tags = True
+        elif o == '--exclude':
+            excludes = val
+        elif o == '-F':
+            fmt = '%(asctime)-15s %(levelname)-8s %(message)s'
+        elif o == '-p':
+            testparam = val
+        elif o == '-g':
+            testgroup = val
+        elif o == '--timeout':
+            timeout = int(val)
+        elif o == '--db-type':
+            dbtype = val
+        elif o == '--db-name':
+            dbname = CliUtils.expand_abs_path(val)
+        elif o == '--db-access':
+            dbaccess = CliUtils.expand_abs_path(val)
+        elif o == '--genhtml-bin':
+            genhtml_bin = CliUtils.expand_abs_path(val)
+        elif o == '--lcov-bin':
+            lcov_bin = CliUtils.expand_abs_path(val)
+        elif o == '--lcov-data':
+            lcov_data = CliUtils.expand_abs_path(val)
+        elif o == '--lcov-out':
+            lcov_out = CliUtils.expand_abs_path(val)
+        elif o == '--lcov-nosrc':
+            lcov_nosrc = True
+        elif o == '--lcov-baseurl':
+            lcov_baseurl = val
+        elif o == '--param-file':
+            paramfile = CliUtils.expand_abs_path(val)
+        elif o == '--stop-on-failure':
+            stoponfail = True
+        elif o == '--follow-child':
+            follow = True
+        elif o == '--log-conf':
+            logconf = val
+        elif o == '--min-pyver':
+            minpyver = val
+        elif o == '--max-pyver':
+            maxpyver = val
+        elif o == '--enable-nose-debug':
+            nosedebug = True
+        elif o == '--verbose':
+            verbose = True
+        elif o == '--shared-path':
+            sharedpath = CliUtils.expand_abs_path(val)
+        elif o == '-h':
+            usage()
+            sys.exit(0)
+        elif o == '--version':
+            print ptl.__version__
+            sys.exit(0)
+        else:
+            sys.stderr.write('Unreocgnized option %s\n' % o)
+            usage()
+            sys.exit(1)
+
+    if nosedebug:
+        level = 'DEBUG'
+
+    l = CliUtils.get_logging_level(level)
+    if logconf:
+        logging.config.fileConfig(logconf)
+    else:
+        logging.basicConfig(filename=outfile, filemode='w+', level=l,
+                            format=fmt)
+
+    if outfile is not None:
+        stream_hdlr = logging.StreamHandler()
+        stream_hdlr.setLevel(l)
+        stream_hdlr.setFormatter(logging.Formatter(fmt))
+        ptl_logger = logging.getLogger('ptl')
+        ptl_logger.addHandler(stream_hdlr)
+        ptl_logger.setLevel(l)
+
+    pyver = platform.python_version()
+    if minpyver is not None and LooseVersion(pyver) < LooseVersion(minpyver):
+        logging.error('Python version ' + str(pyver) + ' does not meet ' +
+                      'required minimum version of ' + minpyver)
+        sys.exit(1)
+    if maxpyver is not None and LooseVersion(pyver) > LooseVersion(maxpyver):
+        logging.error('Python version ' + str(pyver) + ' does not meet ' +
+                      'required max version of ' + maxpyver)
+        sys.exit(1)
+
+    if showinfo and testsuites is None:
+        logging.error('Testsuites names require (see -t) along with -i option!')
+        sys.exit(1)
+
+    if outfile is not None and not os.path.isdir(os.path.dirname(outfile)):
+        os.mkdir(os.path.dirname(outfile))
+
+    if timeout is not None:
+        signal.signal(signal.SIGALRM, sighandler)
+        signal.alarm(timeout)
+
+    if list_test:
+        excludes = None
+        testgroup = None
+        follow = True
+    if testfiles is not None:
+        tests = testfiles.split(',')
+    else:
+        tests = os.getcwd()
+
+    if testsuites is None:
+        testsuites = 'PBSTestSuite'
+        follow = True
+
+    if only_info:
+        testinfo = PTLTestInfo()
+        testinfo.set_data(testsuites, list_test, showinfo, verbose, gen_ts_tree)
+        plugins = (testinfo,)
+    elif (tags_info or list_tags):
+        loader = PTLTestLoader()
+        testtags = PTLTestTags()
+        loader.set_data(testgroup, testsuites, excludes, True)
+        testtags.set_data(tags, eval_tags, tags_info, list_tags, verbose)
+        plugins = (loader, testtags)
+    else:
+        loader = PTLTestLoader()
+        testtags = PTLTestTags()
+        runner = PTLTestRunner()
+        db = PTLTestDb()
+        #data = PTLTestData()
+        loader.set_data(testgroup, testsuites, excludes, follow)
+        testtags.set_data(tags, eval_tags)
+        runner.set_data(paramfile, testparam, lcov_bin, lcov_data, lcov_out,
+                        genhtml_bin, lcov_nosrc, lcov_baseurl)
+        db.set_data(dbtype, dbname, dbaccess)
+        #data.set_data(sharedpath)
+        #plugins = (loader, testtags, runner, db, data)
+        plugins = (loader, testtags, runner, db)
+    test_regex = r'(^(?:[\w]+|^)Test|pbs_|^test_[\(]*)'
+    os.environ['NOSE_TESTMATCH'] = test_regex
+    if nosedebug:
+        os.environ['NOSE_VERBOSE'] = '7'
+        if outfile:
+            os.environ['NOSE_DEBUG_LOG'] = outfile
+    else:
+        os.environ['NOSE_VERBOSE'] = '2'
+    if stoponfail:
+        os.environ['NOSE_STOP'] = '1'
+    nose.main(defaultTest=tests, argv=[sys.argv[0]], plugins=plugins)

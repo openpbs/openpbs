@@ -1,0 +1,494 @@
+.\" Copyright (C) 1994-2016 Altair Engineering, Inc.
+.\" For more information, contact Altair at www.altair.com.
+.\"  
+.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" 
+.\" Open Source License Information:
+.\"  
+.\" PBS Pro is free software. You can redistribute it and/or modify it under the
+.\" terms of the GNU Affero General Public License as published by the Free 
+.\" Software Foundation, either version 3 of the License, or (at your option) any 
+.\" later version.
+.\"  
+.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+.\" PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+.\"  
+.\" You should have received a copy of the GNU Affero General Public License along 
+.\" with this program.  If not, see <http://www.gnu.org/licenses/>.
+.\"  
+.\" Commercial License Information: 
+.\" 
+.\" The PBS Pro software is licensed under the terms of the GNU Affero General 
+.\" Public License agreement ("AGPL"), except where a separate commercial license 
+.\" agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+.\"  
+.\" Altair’s dual-license business model allows companies, individuals, and 
+.\" organizations to create proprietary derivative works of PBS Pro and distribute 
+.\" them - whether embedded or bundled with other software - under a commercial 
+.\" license agreement.
+.\" 
+.\" Use of Altair’s trademarks, including but not limited to "PBS™", 
+.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+.\" trademark licensing policies.
+.\"
+.\" @(#)string.3 1.0 97/05/21 TMP;
+.TH TM 3 "24 February 2015" Local "PBS Professional"
+.SH NAME
+tm_init, tm_nodeinfo, tm_poll, tm_notify, tm_spawn, tm_kill, tm_obit, tm_taskinfo, tm_atnode, tm_rescinfo, tm_publish, tm_subscribe, tm_finalize, tm_attach \- task management API
+.SH SYNOPSIS
+.B
+#include <tm.h>
+.LP
+.B
+int tm_init(info, roots)
+.RS 6
+void \(**info;
+.br
+struct tm_roots \(**roots;
+.RE
+.LP
+.B
+int tm_nodeinfo(list, nnodes)
+.RS 6
+tm_node_id \(**\(**list;
+.br
+int \(**nnodes;
+.RE
+.LP
+.B
+int tm_poll(poll_event, result_event, wait, tm_errno)
+.RS 6
+tm_event_t poll_event;
+.br
+tm_event_t \(**result_event;
+.br
+int wait;
+.br
+int \(**tm_errno;
+.RE
+.LP
+.B
+int tm_notify(tm_signal)
+.RS 6
+int tm_signal;
+.RE
+.LP
+.B
+int tm_spawn(argc, argv, envp, where, tid, event)
+.RS 6
+int argc;
+.br
+char \(**\(**argv;
+.br
+char \(**\(**envp;
+.br
+tm_node_id where;
+.br
+tm_task_id \(**tid;
+.br
+tm_event_t \(**event;
+.RE
+.LP
+.B
+int tm_kill(tid, sig, event)
+.RS 6
+tm_task_id tid;
+.br
+int sig;
+.br
+tm_event_t \(**event;
+.RE
+.LP
+.B
+int tm_obit(tid, obitval, event)
+.RS 6
+tm_task_id tid;
+.br
+int \(**obitval;
+.br
+tm_event_t \(**event;
+.RE
+.LP
+.B
+int tm_taskinfo(node, tid_list, list_size, ntasks, event)
+.RS 6
+tm_node_id node;
+.br
+tm_task_id \(**tid_list;
+.br
+int list_size;
+.br
+int \(**ntasks;
+.br
+tm_event_t \(**event;
+.RE
+.LP
+.B
+int tm_atnode(tid, node)
+.RS 6
+tm_task_id tid;
+.br
+tm_node_id \(**node;
+.RE
+.LP
+.B
+int tm_rescinfo(node, resource, len, event)
+.RS 6
+tm_node_id node;
+.br
+char \(**resource;
+.br
+int len;
+.br
+tm_event_t \(**event;
+.RE
+.LP
+.B
+int tm_publish(name, info, len, event)
+.RS 6
+char \(**name;
+.br
+void \(**info;
+.br
+int len;
+.br
+tm_event_t \(**event;
+.RE
+.LP
+.B
+int tm_subscribe(tid, name, info, len, info_len, event)
+.RS 6
+tm_task_id tid;
+.br
+char \(**name;
+.br
+void \(**info;
+.br	
+int len;
+.br
+int \(**info_len;
+.br
+tm_event_t \(**event;
+.RE
+.LP
+.B
+int tm_attach(jobid, cookie, pid, tid, host, port)
+.RS 6
+char \(**jobid;
+.br
+char \(**cookie;
+.br
+pid_t pid;
+.br
+tm_task_id \(**tid;
+.br
+char \(**host;
+.br
+int port;
+.RE
+.LP
+.B
+int tm_finalize()
+
+.SH DESCRIPTION
+.LP
+These functions provide a partial implementation of the task
+management interface part of the PSCHED API.  In PBS, MOM
+provides the task manager functions.  This library opens a
+tcp socket to the MOM running on the local host and sends
+and receives messages using the DIS protocol (described in
+the PBS IDS).  The 
+.B tm 
+interface can only be used by a process within a PBS job.
+.LP
+The PSCHED Task Management API description used to create this
+library was committed to paper on November 15, 1996 and was
+given the version number 0.1.  Changes may have taken place since
+that time which are not reflected in this library.
+.LP
+The API description uses several data types that it purposefully
+does not define.  This was done so an implementation would not be
+confined in the way it was written.  For this specific work,
+the definitions follow:
+.sp
+.nf
+typedef	int			tm_node_id;	/* job-relative node id */
+#define	TM_ERROR_NODE	((tm_node_id)-1)
+
+typedef	int			tm_event_t;	/* > 0 for real events */
+#define	TM_NULL_EVENT	((tm_event_t)0)
+#define	TM_ERROR_EVENT	((tm_event_t)-1)
+
+typedef	unsigned long	tm_task_id;
+#define	TM_NULL_TASK	(tm_task_id)0
+.fi
+.LP
+There are a number of error values defined as well:
+.na
+TM_SUCCESS, TM_ESYSTEM, TM_ENOEVENT, TM_ENOTCONNECTED, TM_EUNKNOWNCMD,
+TM_ENOTIMPLEMENTED, TM_EBADENVIRONMENT, TM_ENOTFOUND.
+.ad
+.LP
+
+.B tm_init(\|)
+initializes the library by opening a socket to the MOM on the local
+host and sending a TM_INIT message, then waiting for the reply.
+The
+.IR info
+parameter has no use and is included to conform with the PSCHED
+document.  The
+.IR roots
+pointer will contain valid data after the function returns and
+has the following structure:
+.sp
+.nf
+struct	tm_roots {
+	tm_task_id	tm_me;
+	tm_task_id	tm_parent;
+	int		tm_nnodes;
+	int		tm_ntasks;
+	int		tm_taskpoolid;
+	tm_task_id	*tm_tasklist;
+};
+.fi
+.sp
+.IP tm_me 20
+The task id of this calling task.
+.IP tm_parent 20
+The task id of the task which spawned this task or TM_NULL_TASK if
+the calling task is the initial task started by PBS.
+.IP tm_nnodes 20
+The number of nodes allocated to the job.
+.IP tm_ntasks 20
+This will always be 0 for PBS.
+.IP tm_taskpoolid 20
+PBS does not support task pools so this will always be -1.
+.IP tm_tasklist 20
+This will be NULL for PBS.
+.LP
+The
+.IR tm_ntasks ,
+.IR tm_taskpoolid
+and
+.IR tm_tasklist
+fields are not filled with data specified by the PSCHED document.  PBS does
+not support task pools and, at this time, does not return information
+about current running tasks from
+.B tm_init.
+There is a separate call to get information for current running tasks called
+.B tm_taskinfo
+which is described below.  The return value from
+.B tm_init
+is TM_SUCCESS if the library initialization was successful, or an error
+is returned otherwise.
+.LP
+.B tm_nodeinfo(\|)
+places a pointer to a malloc'ed
+array of tm_node_id's in the pointer pointed at by
+.IR list .
+The order of the tm_node_id's in
+.IR list
+is the same as that specified to MOM in the "exec_host" attribute.  The
+int pointed to by
+.IR nnodes
+contains the number of nodes allocated to the job.
+This is information that is returned during initialization and does
+not require communication with MOM.  If
+.B tm_init
+has not been called, TM_ESYSTEM is returned, otherwise TM_SUCCESS is
+returned.
+.LP
+.B tm_poll(\|)
+is the function which will retrieve information about the task management
+system to locations specified when other routines request an action
+take place.  The bookkeeping for this is done by generating an
+.IR event
+for each action.  When the task manager (MOM) sends a message that an
+action is complete, the event is reported by
+.B tm_poll
+and information is placed where the caller requested it.
+The argument
+.IR poll_event
+is meant to be used to request a specific event.  This implementation
+does not use it and it must be set to TM_NULL_EVENT or an error
+is returned.  Upon return, the argument
+.IR result_event
+will contain a valid event number or TM_ERROR_EVENT on error.  If
+.IR wait
+is zero and there are no events to report,
+.IR result_event
+is set to TM_NULL_EVENT.  If
+.IR wait
+is non-zero an there are no events to report, the function will block
+waiting for an event.  If no local error takes place, TM_SUCCESS is
+returned.  If an error is reported by MOM for an event, then the argument
+.IR tm_errno
+will be set to an error code.
+.LP
+.B tm_notify(\|)
+is described in the PSCHED documentation, but is not implemented for
+PBS yet.  It will return TM_ENOTIMPLEMENTED.
+.LP
+.B tm_spawn(\|)
+sends a message to MOM to start a new task.  The node id of the
+host to run the task is given by
+.IR where .
+The parameters
+.IR argc ,
+.IR argv
+and
+.IR envp
+specify the program to run and its arguments and environment very
+much like
+.B exec(\|).
+The full path of the program executable must be given by
+.IR argv[0]
+and the number of elements in the argv array is given by
+.IR argc .
+The array
+.IR envp
+is NULL terminated.  The argument
+.IR event
+points to a tm_event_t variable which is filled in with an event
+number.  When this event is returned by
+.B tm_poll ,
+the tm_task_id pointed to by
+.IR tid
+will contain the task id of the newly created task.
+.LP
+.B tm_kill(\|)
+sends a signal specified by
+.IR sig
+to the task
+.IR tid
+and puts an event number in the tm_event_t pointed to by
+.IR event .
+.LP
+.B tm_obit(\|)
+creates an event which will be reported when the task
+.IR tid
+exits.  The int pointed to by
+.IR obitval
+will contain the exit value of the task when the event is reported.
+.LP
+.B tm_taskinfo(\|)
+returns the list of tasks running on the node specified by
+.IR node .
+The PSCHED documentation mentions a special ability to retrieve
+all tasks running in the job.  This is not supported by PBS.
+The argument
+.IR tid_list
+points to an array of tm_task_id's which contains
+.IR list_size
+elements.  Upon return,
+.IR event
+will contain an event number.  When this event is polled, the int
+pointed to by
+.IR ntasks
+will contain the number of tasks running on the node and the array
+will be filled in with tm_task_id's.  If
+.IR ntasks
+is greater than
+.IR list_size ,
+only
+.IR list_size
+tasks will be returned.
+.LP
+.B tm_atnode(\|)
+will place the node id where the task
+.IR tid
+exists in the tm_node_id pointed to by
+.IR node .
+.LP
+.B tm_rescinfo(\|)
+makes a request for a string specifying the resources available on
+a node given by the argument
+.IR node .  
+The string is returned in the buffer pointed to by
+.IR resource
+and is terminated by a NUL character unless the number of characters
+of information is greater than specified by
+.IR len .
+The resource string PBS returns is formatted as follows:
+.sp
+A space separated set of strings from the
+.B uname
+system call.  The order of the strings is 
+.B sysname,
+.B nodename,
+.B release,
+.B version,
+.B machine.
+.sp
+A comma separated set of strings giving the components of the
+"Resource_List" attribute of the job, preceded by a colon (:).
+Each component has the
+resource name, an equal sign, and the limit value.
+.LP
+.B tm_publish(\|)
+causes
+.IR len
+bytes of information pointed at by
+.IR info
+to be sent to the local MOM to be saved under the name given by
+.IR name .
+.LP
+.B tm_subscribe(\|)
+returns a copy of the information named by
+.IR name
+for the task given by
+.IR tid .
+The argument
+.IR info
+points to a buffer of size
+.IR len
+where the information will be returned.  The argument
+.IR info_len
+will be set with the size of the published data.  If this is larger
+than the supplied buffer, the data will have been truncated.
+.LP
+.B tm_attach(\|)
+commands MOM to create a new PBS "attached task" out of a session running on MOM's host.
+The 
+.IR jobid
+parameter specifies the job which is to have a new task attached.  If it is NULL, the system 
+will try to determine the correct 
+.IR jobid.
+The 
+.IR cookie
+parameter must be NULL.  The 
+.IR pid
+parameter must be a non-zero process id for the process which is to be 
+added to the job specified by 
+.IR jobid.
+If 
+.IR tid
+is non-NULL, it will be used to store the task id of the new task.  The 
+.IR host
+and 
+.IR port 
+parameters specify where to contact MOM.  
+.IR host
+should be NULL.  The return value will be 0 if a new 
+task has been successfully
+created and non-zero on error.  The return value will be one of the 
+TM error numbers defined in 
+.B tm.h
+as follows:
+   TM_ESYSTEM          MOM cannot be contacted
+   TM_ENOTFOUND        No matching job was found
+   TM_ENOTIMPLEMENTED  The call is not implemented/supported
+   TM_ESESSION         The session specified is already attached
+   TM_EUSER            The calling user is not permitted to attach
+   TM_EOWNER           The process owner does not match the job
+   TM_ENOPROC          The process does not exist
+.LP
+.B tm_finalize(\|)
+may be called to free any memory in use by the library and close
+the connection to MOM.
+.SH SEE ALSO
+pbs_mom(8B),
+pbs_sched(8B)
+
+

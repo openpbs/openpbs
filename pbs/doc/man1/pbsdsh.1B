@@ -1,0 +1,125 @@
+.\" Copyright (C) 1994-2016 Altair Engineering, Inc.
+.\" For more information, contact Altair at www.altair.com.
+.\"  
+.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" 
+.\" Open Source License Information:
+.\"  
+.\" PBS Pro is free software. You can redistribute it and/or modify it under the
+.\" terms of the GNU Affero General Public License as published by the Free 
+.\" Software Foundation, either version 3 of the License, or (at your option) any 
+.\" later version.
+.\"  
+.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+.\" PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+.\"  
+.\" You should have received a copy of the GNU Affero General Public License along 
+.\" with this program.  If not, see <http://www.gnu.org/licenses/>.
+.\"  
+.\" Commercial License Information: 
+.\" 
+.\" The PBS Pro software is licensed under the terms of the GNU Affero General 
+.\" Public License agreement ("AGPL"), except where a separate commercial license 
+.\" agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+.\"  
+.\" Altair’s dual-license business model allows companies, individuals, and 
+.\" organizations to create proprietary derivative works of PBS Pro and distribute 
+.\" them - whether embedded or bundled with other software - under a commercial 
+.\" license agreement.
+.\" 
+.\" Use of Altair’s trademarks, including but not limited to "PBS™", 
+.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+.\" trademark licensing policies.
+.\"
+.TH pbsdsh 1B "24 February 2015" Local "PBS Professional"
+.SH NAME
+.B pbsdsh 
+\- distribute task(s) to vnodes under PBS
+
+.SH SYNOPSIS
+.B pbsdsh 
+[-c copies] [-s] [-v] [-o] -- program [program_args]
+.br
+.B pbsdsh 
+[-n node_index] [-s] [-v] [-o] 
+.RS 7
+-- program [program_args]
+.RE
+.br
+.B pbsdsh 
+--version
+
+.SH DESCRIPTION
+The 
+.B pbsdsh
+command executes (spawns) a normal application program on one or
+more nodes under control of
+the PBS.  
+.B pbsdsh 
+uses the Task Manager
+API to distribute the program on the allocated nodes.
+.LP
+When run without the -c or the -n option, 
+.B pbsdsh 
+will spawn the program
+on all nodes allocated to the PBS job.  The spawns take place concurrently \-
+all execute at (about) the same time.
+
+Note that the double dash must come after the options and before the 
+program and arguments.  The double dash is only required for Linux.
+
+.SH OPTIONS
+.IP "-c copies"
+The program is spawned 
+.I copies
+times on the nodes allocated, one per node, unless
+.I copies 
+is greater than the number of nodes.
+If this is true,
+it will wrap around, running multiple instances on some nodes.
+This option is mutually exclusive with 
+.I -n.
+.IP "-n node_index"
+The program is spawned only on the 
+.I node_index -th
+node allocated.  This option is mutually exclusive with 
+.I -c.
+.IP -s
+The program is run in turn on each 
+node, one after the other.
+.IP -v
+Produces verbose output about error conditions and task exit status.
+.IP -o
+No obit request is made for spawned tasks.  The program will not wait for
+the tasks to finish.
+.IP --version
+The 
+.B pbsdsh
+command returns its PBS version information and exits.
+This option can only be used alone
+
+.SH OPERANDS
+The first operand,
+.I program ,
+is the program to execute.  The double dash must precede the 
+.I program 
+under Linux.
+.LP
+Additional operands,
+.I program_args ,
+are passed as arguments to the 
+.I program.
+
+.SH STANDARD ERROR
+The 
+.B pbsdsh 
+command will write a diagnostic message to standard error for
+each error occurrence.
+
+.SH SEE ALSO
+The
+.B PBS Professional User's Guide,
+the
+.B PBS Professional Administrator's Guide,
+qsub(1B), tm(3).

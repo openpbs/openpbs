@@ -1,0 +1,768 @@
+#!/bin/sh
+#  Copyright (C) 1994-2016 Altair Engineering, Inc.
+#  For more information, contact Altair at www.altair.com.
+#   
+#  This file is part of the PBS Professional ("PBS Pro") software.
+#  
+#  Open Source License Information:
+#   
+#  PBS Pro is free software. You can redistribute it and/or modify it under the
+#  terms of the GNU Affero General Public License as published by the Free 
+#  Software Foundation, either version 3 of the License, or (at your option) any 
+#  later version.
+#   
+#  PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+#  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+#  PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+#   
+#  You should have received a copy of the GNU Affero General Public License along 
+#  with this program.  If not, see <http://www.gnu.org/licenses/>.
+#   
+#  Commercial License Information: 
+#  
+#  The PBS Pro software is licensed under the terms of the GNU Affero General 
+#  Public License agreement ("AGPL"), except where a separate commercial license 
+#  agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+#   
+#  Altair’s dual-license business model allows companies, individuals, and 
+#  organizations to create proprietary derivative works of PBS Pro and distribute 
+#  them - whether embedded or bundled with other software - under a commercial 
+#  license agreement.
+#  
+#  Use of Altair’s trademarks, including but not limited to "PBS™", 
+#  "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+#  trademark licensing policies.
+#
+
+if [ $# -eq 1 ] && [ $1 = "--version" ]; then
+   echo pbs_version = @PBS_VERSION@
+   exit 0
+fi
+
+#
+# is_comment_line: echoes 0 if line content as specified
+#         by first argument begins with #; returns
+#         1 otherwise.
+#
+
+is_comment_line ()
+{
+   line=$*
+
+   if [ `echo "$1" | egrep -c "^#"` -ne 0 ] ; then
+      echo 0
+      return
+   fi
+
+   echo 1
+
+}
+
+#
+# read_appfile: read next non-comment line of  user's appfile
+#      named in $1. Be sure to set 'appfile_num_entries" global
+#      variable first.
+# Returns: line read-in put in 'appfile_content" global
+#      variable, which can be the <empty> string if all
+#      lines have been read.
+#
+# Global variables:
+#   appfile_idx - next line to read in user's appfile
+#   appfile_num_entries - number of entries in user's appfile
+#   appfile_content - upon returns, holds the content
+#           of line read.
+
+appfile_idx=1
+appfile_num_entries=0
+appfile_content=""
+
+read_appfile ()
+{
+   appfile=$1
+
+   while true ; do
+   
+      if [ $appfile_idx -gt $appfile_num_entries ] ; then
+         appfile_content=""
+         return
+      fi
+
+      appfile_content=`eval sed -n '${appfile_idx}p' $appfile`
+      appfile_idx=`expr $appfile_idx + 1`
+
+      if [ `is_comment_line $appfile_content` -eq 1 ] ; then
+         return
+      fi
+
+   done
+}
+
+#
+# reset_appfile: resets the  next line to read in user's
+#       appfile back to first line.
+#
+
+reset_appfile ()
+{
+
+   appfile_idx=1
+}
+
+
+#
+# read_nodefile: read next line of  nodefile named in
+#      in $1. Be sure to set 'nodefile_num_entries"
+#      first.
+# Returns: line read-in put in 'nodefile_content" global
+#      variable, which can be the <empty> string if all
+#      lines have been read.
+#
+# Global variables:
+#   nodefile_idx - next line to read in nodefile
+#   nodefile_num_entries - number of entries in nodefile
+#   nodeile_content - upon returns, holds the content
+#           of line read.
+
+nodefile_idx=1
+nodefile_num_entries=0
+nodefile_content=""
+
+read_nodefile ()
+{
+   nodefile=$1
+
+   if [ $nodefile_idx -gt $nodefile_num_entries ] ; then
+      nodefile_content=""
+      return
+   fi
+   nodefile_content=`eval sed -n '${nodefile_idx}p' $nodefile`
+
+   nodefile_idx=`expr $nodefile_idx + 1`
+}
+
+
+#
+# reset_nodefile: resets the  next line to read in user's
+#       nodefile back to first line.
+#
+
+reset_nodefile ()
+{
+
+   nodefile_idx=1
+}
+
+#
+# get_rank (): echoes the rank (-np value) value given
+#          in an appfile specification:
+#      [-np X] [-h host] ... <prog> <args>
+#
+
+get_rank ()
+{
+   line=$*
+
+   np_val=1   # default is 1
+
+   while [ $# -gt 0 ] ; do 
+      if [ "XX$1" = "XX-np" ] ; then
+         shift
+         np_val="$1"
+         break
+      fi
+      shift
+   done
+   echo $np_val
+}
+
+#
+# get_appfile_args (): given an mpirun command line
+#  argument specification of the form:
+#
+#  (1)  [-np #] [-help] [-version] [-djpv] [-ck]
+#       [-h host] [-l user] [-stdio=[options]] [-e var[=val]]...
+#       [-sp paths] [-i spec] [-tv] program [args]
+#
+#  (2)  [-help] [-version] [-djpv] [-ck]
+#   [-i spec] [-stdio=[options]] [-commd] [-tv]
+#   [-f appfile] [-- extra_args_for_appfile]
+#
+# echoes only the options and arguments that are allowed
+# to appear in an application file except
+# "-h host", and "-l user" options which are ignored
+# under PBS.
+#
+#   -np <#> [-E <VAR>[=<val>] [...]] [-sp <paths>] <program> [<args>]
+#
+
+get_appfile_args ()
+{
+   line=$*
+
+   args=""
+   in_program_args=0
+   while [ $# -gt 0 ] ; do 
+
+      if [ $in_program_args -eq 1 ] ; then
+         args="$args $1"
+      elif [ "XX$1" = "XX-e" ]  ||
+           [ "XX$1" = "XX-np" ] ||
+           [ "XX$1" = "XX-sp" ] ; then
+         args="$args $1"
+         shift
+         args="$args $1"
+      
+#      NOTE: we're using egrep for
+#            regular expression matching
+#            as expr MATCH doesn't seemed
+#            to work under HP
+         
+      elif [ "XX$1" = "XX-h" ]  ||
+           [ "XX$1" = "XX-l" ]  ||
+           [ "XX$1" = "XX-i" ] ; then
+	 shift
+      elif [ `echo "$1" | egrep -c "^\-aff=.+"` -ne 0 ] ; then
+         shift
+         continue
+      elif [ "XX$1" = "XX--" ] ; then
+         break
+      elif [ `echo "$1" | egrep -c "^\-.+"` -ne 0 ] ; then
+         shift
+         continue
+      else
+         args="$args $1"
+	 in_program_args=1
+      fi
+      shift
+   done
+   echo "$args"
+}
+
+#
+# get_global_args (): given an mpirun command line
+#  argument specification of the form:
+#
+#  (1)  [-np #] [-help] [-version] [-djpv] [-ck]
+#       [-h host] [-l user] [-stdio=[options]] [-e var[=val]]...
+#       [-sp paths] [-i spec] [-tv] program [args]
+#
+#  (2)  [-help] [-version] [-djpv] [-ck]
+#   [-i spec] [-stdio=[options]] [-commd] [-tv]
+#   [-f appfile] [-- extra_args_for_appfile]
+#
+# puts in the global variable 'global_args', the
+# options and arguments that are NOT allowed
+# to appear inside an application file - global arguments:
+#
+#   [-help] [-version] [-djpv] [-ck] [-i spec] [-tv]
+#                         ... [-- extra_args_for_appfile]
+# Also sets global variable 'global_extra_args'
+# the value of
+#   [-- extra_args_for_appfile]
+#
+# NOTE: Under HP Linux, mpirun has the following
+#       additional global arguments:
+#       [-universe=#] [-T] [-prot] [-spawn] [-1sided] [-ha] [-hmp]
+# Returns: value of 0 for success; 1 if -client argument
+#          was encountered.
+#
+#
+
+global_args=""
+global_extra_args=""
+get_global_args ()
+{
+   in_extra_args=0
+   in_prog_args=0
+
+   while [ $# -gt 0 ] ; do 
+
+      if [ $in_prog_args -eq 1 ] ; then
+         break
+      elif [ $in_extra_args -eq 1 ] ; then
+         global_extra_args="$global_extra_args $1"
+      elif [ "XX$1" = "XX-help" ]  ||
+         [ "XX$1" = "XX-version" ] ||
+         [ "XX$1" = "XX-tv" ] ||
+         [ "XX$1" = "XX-commd" ] ||
+         [ "XX$1" = "XX-T" ] ||
+         [ "XX$1" = "XX-prot" ] ||
+         [ "XX$1" = "XX-spawn" ] ||
+         [ "XX$1" = "XX-1sided" ] ||
+         [ "XX$1" = "XX-ha" ] ||
+         [ "XX$1" = "XX-hmp" ] ||
+         [ "XX$1" = "XX-itapi" ] ||
+         [ "XX$1" = "XX-ITAPI" ] ||
+         [ "XX$1" = "XX-TCP" ] ||
+         [ "XX$1" = "XX-intra=mix" ] ||
+         [ "XX$1" = "XX-intra=nic" ] ||
+         [ "XX$1" = "XX-intra=shm" ] ||
+         [ "XX$1" = "XX-cpu_bind" ] ||
+         [ "XX$1" = "XX-dd" ] ||
+         [ "XX$1" = "XX-ndd" ] ||
+         [ "XX$1" = "XX-rdma" ] ||
+         [ "XX$1" = "XX-srq" ] ||
+         [ "XX$1" = "XX-ibv" ] ||
+         [ "XX$1" = "XX-IBV" ] ||
+         [ `echo "$1" | egrep -c "^\-[djpv]+"` -ne 0 ] ||
+         [ `echo "$1" | egrep -c "^\-stdio=.+"` -ne 0 ] ||
+         [ `echo "$1" | egrep -c "^\-aff=.+"` -ne 0 ] ||
+         [ `echo "$1" | egrep -c "^\-universe_size=.+"` -ne 0 ] ||
+         [ "XX$1" = "XX-ck" ] ; then
+         global_args="$global_args $1"
+      
+#      NOTE: we're using egrep for
+#            regular expression matching
+#            as expr MATCH doesn't seemed
+#            to work under HP
+         
+      elif [ "XX$1" = "XX-i" ] ||
+	   [ "XX$1" = "XX-netaddr" ] ||
+           [ "XX$1" = "XX-e" ] ||
+	   [ "XX$1" = "XX-subnet" ] ; then
+         global_args="$global_args $1"
+	 shift
+         global_args="$global_args $1"
+      elif [ "XX$1" = "XX-client" ] ; then
+         return 1
+      elif [ "XX$1" = "XX--" ] ; then
+	 global_extra_args="--"
+	 in_extra_args=1
+      elif [ "XX$1" = "XX-f" ]  ||
+	   [ "XX$1" = "XX-np" ] ||
+	   [ "XX$1" = "XX-h" ]  ||
+	   [ "XX$1" = "XX-l" ]  ||
+	   [ "XX$1" = "XX-sp" ] ; then
+         shift
+      else
+         in_prog_args=1
+      fi
+      shift
+   done
+
+   return 0
+}
+
+#
+# get_appfile (): echoes the application file name given
+# by the -f command line option. This returns an empty
+# string ("") if -f option is not given
+#
+
+get_appfile ()
+{
+   appfile=""
+   while [ $# -gt 0 ] ; do 
+
+      if [ "XX$1" = "XX-f" ] ; then
+         shift
+	 if [ "$appfile" != "" ] ; then
+		echo "Encountered multiple -f arguments"
+		return 1
+	 fi
+	 appfile="$1"
+      elif [ "XX$1" = "XX-help" ]  ||
+         [ "XX$1" = "XX-version" ] ||
+         [ "XX$1" = "XX-tv" ] ||
+         [ "XX$1" = "XX-commd" ] ||
+         [ "XX$1" = "XX-T" ] ||
+         [ "XX$1" = "XX-prot" ] ||
+         [ "XX$1" = "XX-spawn" ] ||
+         [ "XX$1" = "XX-1sided" ] ||
+         [ "XX$1" = "XX-ha" ] ||
+         [ "XX$1" = "XX-hmp" ] ||
+         [ "XX$1" = "XX-client" ] ||
+         [ "XX$1" = "XX-itapi" ] ||
+         [ "XX$1" = "XX-ITAPI" ] ||
+         [ "XX$1" = "XX-TCP" ] ||
+         [ "XX$1" = "XX-intra=mix" ] ||
+         [ "XX$1" = "XX-intra=nic" ] ||
+         [ "XX$1" = "XX-intra=shm" ] ||
+         [ "XX$1" = "XX-cpu_bind" ] ||
+         [ "XX$1" = "XX-dd" ] ||
+         [ "XX$1" = "XX-ndd" ] ||
+         [ "XX$1" = "XX-rdma" ] ||
+         [ "XX$1" = "XX-srq" ] ||
+         [ "XX$1" = "XX-ibv" ] ||
+         [ "XX$1" = "XX-IBV" ] ||
+         [ `echo "$1" | egrep -c "^\-[djpv]+"` -ne 0 ] ||
+         [ `echo "$1" | egrep -c "^\-stdio=.+"` -ne 0 ] ||
+         [ `echo "$1" | egrep -c "^\-aff=.+"` -ne 0 ] ||
+         [ `echo "$1" | egrep -c "^\-universe_size=.+"` -ne 0 ] ||
+         [ "XX$1" = "XX-ck" ] ; then
+         shift
+         continue 
+      
+#      NOTE: we're using egrep for
+#            regular expression matching
+#            as expr MATCH doesn't seemed
+#            to work under HP
+         
+      elif [ "XX$1" = "XX-i" ]  ||
+           [ "XX$1" = "XX-e" ]	||
+	   [ "XX$1" = "XX-np" ] ||
+	   [ "XX$1" = "XX-h" ]  ||
+	   [ "XX$1" = "XX-l" ]  ||
+           [ "XX$1" = "XX-netaddr" ] ||
+           [ "XX$1" = "XX-subnet" ] ||
+	   [ "XX$1" = "XX-sp" ] ; then
+         shift
+      else
+         break
+      fi
+
+      shift
+   done
+   echo $appfile
+   return 0
+}
+
+# is_prun_specified(): given as input the HP mpirun
+# command line arguments of the form:
+#
+#   mpirun [-help] [-version] [-jv] [-i <spec>]
+#          [-spawn] [-1sided] [-universe_size=#] [-sp <paths>]
+#          [-T] [-prot] [-e var[=val]] [...] -prun <prun-options> <program> [<args>]
+#
+# RETURN: 
+#  Echoes 1 if one of the arguments is "-prun"; 0 otherwise.
+#
+
+is_prun_specified ()
+{
+   is_prun=0 
+
+   while [ $# -gt 0 ] ; do 
+
+      if [ "XX$1" = "XX-prun" ] ; then
+         is_prun=1
+         break
+      elif [ "XX$1" = "XX-help" ]  ||
+         [ "XX$1" = "XX-version" ] ||
+         [ "XX$1" = "XX-tv" ] ||
+         [ "XX$1" = "XX-commd" ] ||
+         [ "XX$1" = "XX-T" ] ||
+         [ "XX$1" = "XX-prot" ] ||
+         [ "XX$1" = "XX-spawn" ] ||
+         [ "XX$1" = "XX-1sided" ] ||
+         [ "XX$1" = "XX-ha" ] ||
+         [ "XX$1" = "XX-hmp" ] ||
+         [ "XX$1" = "XX-client" ] ||
+         [ "XX$1" = "XX-itapi" ] ||
+         [ "XX$1" = "XX-ITAPI" ] ||
+         [ "XX$1" = "XX-TCP" ] ||
+         [ "XX$1" = "XX-intra=mix" ] ||
+         [ "XX$1" = "XX-intra=nic" ] ||
+         [ "XX$1" = "XX-intra=shm" ] ||
+         [ "XX$1" = "XX-cpu_bind" ] ||
+         [ "XX$1" = "XX-dd" ] ||
+         [ "XX$1" = "XX-ndd" ] ||
+         [ "XX$1" = "XX-rdma" ] ||
+         [ "XX$1" = "XX-srq" ] ||
+         [ "XX$1" = "XX-ibv" ] ||
+         [ "XX$1" = "XX-IBV" ] ||
+         [ `echo "$1" | egrep -c "^\-[djpv]+"` -ne 0 ] ||
+         [ `echo "$1" | egrep -c "^\-stdio=.+"` -ne 0 ] ||
+         [ `echo "$1" | egrep -c "^\-aff=.+"` -ne 0 ] ||
+         [ `echo "$1" | egrep -c "^\-universe_size=.+"` -ne 0 ] ||
+         [ "XX$1" = "XX-ck" ] ; then
+         shift
+         continue 
+      
+#      NOTE: we're using egrep for
+#            regular expression matching
+#            as expr MATCH doesn't seemed
+#            to work under HP
+         
+      elif [ "XX$1" = "XX-i" ]  ||
+           [ "XX$1" = "XX-e" ]	||
+           [ "XX$1" = "XX-f" ]	||
+	   [ "XX$1" = "XX-np" ] ||
+	   [ "XX$1" = "XX-h" ]  ||
+	   [ "XX$1" = "XX-l" ]  ||
+           [ "XX$1" = "XX-netaddr" ] ||
+           [ "XX$1" = "XX-subnet" ] ||
+	   [ "XX$1" = "XX-sp" ] ; then
+         shift
+      else
+         break
+      fi
+
+      shift
+   done
+   echo $is_prun
+}
+
+#
+# get_appfile_args_nonp (): same as get_appfile_args ()
+#             except -np argument is
+#             stripped out.
+#
+get_appfile_args_nonp ()
+{
+   line=$*
+
+   args=""
+   in_program_args=0
+   while [ $# -gt 0 ] ; do 
+
+      if [ $in_program_args -eq 1 ] ; then
+         args="$args $1"
+      elif [ "XX$1" = "XX-e" ]  ||
+           [ "XX$1" = "XX-sp" ] ; then
+         args="$args $1"
+         shift
+         args="$args $1"
+
+#      NOTE: we're using egrep for
+#            regular expression matching
+#            as expr MATCH doesn't seemed
+#            to work under HP
+
+      elif [ "XX$1" = "XX-h" ]  ||
+           [ "XX$1" = "XX-l" ]  ||
+           [ "XX$1" = "XX-np" ]  ||
+           [ "XX$1" = "XX-i" ] ; then
+   	 shift
+
+      elif [ "XX$1" = "XX--" ] ; then
+         break
+      elif [ `echo "$1" | egrep -c "^\-.+"` -ne 0 ] ; then
+         shift
+         continue
+      else
+         args="$args $1"
+         in_program_args=1
+      fi
+      shift
+   done
+   echo "$args"
+}
+
+#
+# transform_appfile (): given a <user_appfile> (named in first argument),
+#      transform its contents into a PBS-environment
+#      friendly <pbs_appfile> (named in second argument)
+#      using nodes assigned in <pbs_nodes_file>
+#
+transform_appfile ()
+{
+   user_appfile=$1
+   pbs_appfile=$2
+   pbs_nodes_file=$3
+
+   cat /dev/null > $pbs_appfile
+
+   appfile_num_entries=`wc -l $user_appfile | awk '{print $1}'`
+   nodefile_num_entries=`wc -l $pbs_nodes_file | awk '{print $1}'`
+
+   nodefile_rank=0
+   appfile_rank=0
+   read_appfile $user_appfile
+   while [ "$appfile_content" != "" ] ; do
+   
+         if [ $appfile_rank -eq 0 ] ; then
+            appfile_rank=`get_rank $appfile_content`
+         fi
+   
+         if [ $nodefile_rank -eq 0 ] ; then
+            read_nodefile $pbs_nodes_file
+         fi      
+   
+         while [ "$nodefile_content" != "" ] ; do
+            if [ $nodefile_rank -eq 0 ] ; then
+               nodefile_rank=`get_rank $nodefile_content`
+            fi
+            node=`echo $nodefile_content | awk '{print $1}'`
+   
+            if [ $appfile_rank -eq $nodefile_rank ] ; then
+               echo "-np $appfile_rank -h $node  `get_appfile_args_nonp $appfile_content`" >> $pbs_appfile
+               nodefile_rank=0
+               break
+            elif [ $appfile_rank -gt $nodefile_rank ] ; then
+               echo "-np $nodefile_rank -h $node `get_appfile_args_nonp $appfile_content`" >> $pbs_appfile 
+               appfile_rank=`expr $appfile_rank - $nodefile_rank`
+               read_nodefile $pbs_nodes_file
+               nodefile_rank=0
+               continue
+            else
+               echo "-np $appfile_rank -h $node `get_appfile_args_nonp $appfile_content`" >> $pbs_appfile 
+               nodefile_rank=`expr $nodefile_rank - $appfile_rank`
+
+               read_appfile $user_appfile
+               if [ "$appfile_content" = "" ] ; then
+                  break
+               fi	
+               appfile_rank=`get_rank $appfile_content`
+               continue
+            fi
+         done
+   
+#        all nodes have been processed
+         if [ "$nodefile_content" = "" ] ; then
+            break
+         fi
+   
+         read_appfile $user_appfile
+         appfile_rank=0
+   
+   
+   done
+   
+#  still more appfile lines to process, but we've cycled through all nodes
+   
+   while [ "$appfile_content" != "" ] ; do
+   
+      if [ $nodefile_num_entries -eq 0 ] ; then
+         break
+      fi
+   
+      if [ $appfile_rank -eq 0 ] ; then
+         appfile_rank=`get_rank $appfile_content`
+      fi
+   
+      chunk=`expr $appfile_rank / $nodefile_num_entries`
+   
+      if [ $chunk -eq 0 ] ; then
+         chunk=1
+      fi
+   
+      reset_nodefile $pbs_nodes_file
+      read_nodefile $pbs_nodes_file
+      while [ "$nodefile_content" != "" ] ; do
+         node=`echo $nodefile_content | awk '{print $1}'`
+   
+         rank_remain=`expr $appfile_rank - $chunk`
+         if [ $rank_remain -eq 0 ] ; then
+            echo "-np $chunk -h $node `get_appfile_args_nonp $appfile_content`" >> $pbs_appfile
+            break
+         elif [  $rank_remain -lt 0 ] ; then
+            echo "-np $appfile_rank -h $node `get_appfile_args_nonp $appfile_content`" >> $pbs_appfile
+            break
+         else
+            echo "-np $chunk -h $node `get_appfile_args_nonp $appfile_content`" >> $pbs_appfile
+            appfile_rank=`expr $appfile_rank - $chunk`
+         fi
+   
+         read_nodefile $pbs_nodes_file
+
+#	 if processed all nodes but appfile not completely satisfied,
+#	 we'll continue to round robin through the nodes
+	 if [ "$nodefile_content" = "" ] && [ $appfile_rank -gt 0 ] ; then
+		reset_nodefile
+         	read_nodefile $pbs_nodes_file
+	 fi
+ 
+      done
+   
+      read_appfile $user_appfile
+      appfile_rank=0	
+      
+   done
+}
+
+#####################################################
+# MAIN
+#####################################################
+
+. ${PBS_CONF_FILE:-/etc/pbs.conf}
+export PBS_TMPDIR="${PBS_TMPDIR:-${TMPDIR:-/var/tmp}}"
+
+# Global variables
+
+user_appfile="${PBS_TMPDIR}/pbs_mpihp_uappfile$$"
+pbs_appfile="${PBS_TMPDIR}/pbs_mpihp_pappfile$$"
+pbs_nodefile="${PBS_TMPDIR}/pbs_mpihp_nodefile$$"
+
+type mpirun >/dev/null 2>&1 
+mpirun_found=$?
+
+if [ -h ${PBS_EXEC}/etc/pbs_mpihp ] ; then
+   mpirun=`ls -l ${PBS_EXEC}/etc/pbs_mpihp | awk -F "->" '{print $2}'| tr -d ' '`
+   if [ ! -x "$mpirun" ] ; then
+	echo "mpirun=$mpirun is not executable!"
+	exit 127
+
+   fi
+elif [ $mpirun_found -eq 0 ] && #    Platform bought HP MPI so match either
+     [ `(mpirun -version | egrep -c "HP MPI|Platform") 2>/dev/null` -ne 0 ] ; then
+   mpirun=mpirun
+else
+   echo "HP version of mpirun not found" 
+   exit 127
+fi
+
+name=`basename $0`
+if [ "${PBS_NODEFILE:-XX}" = "XX" ]; then
+   if [ "$name" != "mpirun" ]; then
+      echo "$name: Warning, not running under PBS"
+   fi
+   $mpirun $*
+   exit $?
+fi
+
+# mpirun -prun specified, pass all arguments to HP mpirun,
+# but keep processes under control of PBS
+if [ `is_prun_specified $*` -eq 1 ]; then
+   export MPI_REMSH="${PBS_EXEC}/bin/pbs_remsh -j $PBS_JOBID -r ${PBS_RSHCOMMAND:-rsh}"
+   $mpirun $*
+   exit $?
+fi
+
+### get arguments  to appear outside of an appfile
+get_global_args $*
+if [ $? -eq 1 ] ; then
+   echo "-client option is unsupported. Exiting..."
+   exit 1
+fi
+
+# Signals to catch
+trap '(rm -f $user_appfile $pbs_appfile $pbs_nodefile) 2> /dev/null; exit 1;'  1 2 3 9 15
+
+### create interim user appfile
+input_appfile=`get_appfile $*`
+if [ $? -eq 1 ] ; then
+   echo "Encountered multiple -f arguments. Exiting..."
+   exit 1
+fi
+
+if [ "$input_appfile" = "" ] ; then
+   appfile_args=`get_appfile_args $*`
+   echo "$appfile_args" > $user_appfile
+else
+   cat /dev/null > $user_appfile
+   while read line
+   do
+      if [ `is_comment_line $line` -eq 0 ] ; then
+         continue
+      fi
+      appfile_args=`get_appfile_args $line`
+      echo "$appfile_args" >> $user_appfile
+   done < $input_appfile
+
+fi
+
+### tally up PBS nodes
+cat -n ${PBS_NODEFILE} | \
+	sort -k2 | uniq -f1 -c | \
+	awk '{if ($1 == 1) print $2, $3; else print $2, $3 " -np " $1}' | \
+	sort -n | awk '{print $2, $3, $4}' > $pbs_nodefile
+
+### transform appfile to a PBS-friendly appfile
+transform_appfile $user_appfile $pbs_appfile $pbs_nodefile
+
+rm -f $user_appfile $pbs_nodefile
+
+export MPI_REMSH="${PBS_EXEC}/bin/pbs_remsh -j $PBS_JOBID -r ${PBS_RSHCOMMAND:-rsh}"
+
+if [ -s $pbs_appfile ] ; then
+   $mpirun $global_args -f $pbs_appfile $global_extra_args
+   ret=$?
+else
+   echo "No MPI application to process"
+   ret=2
+fi
+
+rm -f $pbs_appfile
+
+exit $ret

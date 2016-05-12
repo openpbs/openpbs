@@ -1,0 +1,116 @@
+.\" Copyright (C) 1994-2016 Altair Engineering, Inc.
+.\" For more information, contact Altair at www.altair.com.
+.\"  
+.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" 
+.\" Open Source License Information:
+.\"  
+.\" PBS Pro is free software. You can redistribute it and/or modify it under the
+.\" terms of the GNU Affero General Public License as published by the Free 
+.\" Software Foundation, either version 3 of the License, or (at your option) any 
+.\" later version.
+.\"  
+.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+.\" PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+.\"  
+.\" You should have received a copy of the GNU Affero General Public License along 
+.\" with this program.  If not, see <http://www.gnu.org/licenses/>.
+.\"  
+.\" Commercial License Information: 
+.\" 
+.\" The PBS Pro software is licensed under the terms of the GNU Affero General 
+.\" Public License agreement ("AGPL"), except where a separate commercial license 
+.\" agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+.\"  
+.\" Altair’s dual-license business model allows companies, individuals, and 
+.\" organizations to create proprietary derivative works of PBS Pro and distribute 
+.\" them - whether embedded or bundled with other software - under a commercial 
+.\" license agreement.
+.\" 
+.\" Use of Altair’s trademarks, including but not limited to "PBS™", 
+.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+.\" trademark licensing policies.
+.\"
+.TH qorder 1B "5 Oct 2012" Local "PBS Professional"
+.SH NAME
+.B qorder 
+\- exchange order of two PBS batch jobs.
+.SH SYNOPSIS
+.B qorder 
+job_identifier job_identifier
+.br
+.B qorder 
+--version
+.SH DESCRIPTION
+
+Allows the exchange of two jobs' positions in the queue or queues in
+which the jobs reside.  
+
+No attribute of the job, e.g. priority, is changed.
+The impact of interchanging the order within or between queues is dependent on local
+job scheduling policy; contact your systems administrator.  
+
+.SH RESTRICTIONS
+The two jobs must be located at the same server.
+.br
+A job in the
+.B running
+state cannot be reordered.
+.br
+The 
+.B qorder
+command can be used on job arrays, but not on subjobs or ranges of subjobs.
+
+.SH EFFECT OF PRIVILEGE ON BEHAVIOR 
+For an unprivileged user to reorder jobs, both jobs must be owned by
+the user.  A privileged user (Manager, Operator) can reorder any jobs.
+
+.SH OPTIONS
+.IP "--version" 8
+The 
+.B qorder
+command returns its PBS version information and exits.
+This option can only be used alone.
+
+.SH OPERANDS
+Both operands are
+.I job_identifiers
+which specify the jobs to be exchanged.
+The 
+.B qorder
+command accepts two
+.I job_identifier
+operands of the form:
+.RS 4
+.I "sequence_number[.server_name][@server]"
+.RE
+
+The server specification for the two jobs must agree as to the current
+location of the two job ids.
+
+Note that some shells require that you enclose a job array identifier in
+double quotes.
+
+.SH STANDARD ERROR
+The 
+.B qorder 
+command will write diagnostic messages to standard error for each
+error occurrence.
+.SH EXIT STATUS
+Upon successful processing of all the operands presented to the
+.B qorder 
+command, the exit status will be a value of zero.
+.LP
+If the 
+.B qorder 
+command fails to process any operand, the
+command exits with a value greater than zero.
+\" turn off any extra indent left by the Sh macro
+.SH SEE ALSO
+The
+.B PBS Professional User's Guide,
+the
+.B PBS Professional Administrator's Guide,
+.br
+qsub(1B), qmove(1B), pbs_orderjob(3B), pbs_movejob(3B)

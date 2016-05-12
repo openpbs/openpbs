@@ -1,0 +1,607 @@
+# Copyright (C) 1994-2016 Altair Engineering, Inc.
+# For more information, contact Altair at www.altair.com.
+#  
+# This file is part of the PBS Professional ("PBS Pro") software.
+# 
+# Open Source License Information:
+#  
+# PBS Pro is free software. You can redistribute it and/or modify it under the
+# terms of the GNU Affero General Public License as published by the Free 
+# Software Foundation, either version 3 of the License, or (at your option) any 
+# later version.
+#  
+# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+# PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+#  
+# You should have received a copy of the GNU Affero General Public License along 
+# with this program.  If not, see <http://www.gnu.org/licenses/>.
+#  
+# Commercial License Information: 
+# 
+# The PBS Pro software is licensed under the terms of the GNU Affero General 
+# Public License agreement ("AGPL"), except where a separate commercial license 
+# agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+#  
+# Altair’s dual-license business model allows companies, individuals, and 
+# organizations to create proprietary derivative works of PBS Pro and distribute 
+# them - whether embedded or bundled with other software - under a commercial 
+# license agreement.
+# 
+# Use of Altair’s trademarks, including but not limited to "PBS™", 
+# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+# trademark licensing policies.
+#
+
+
+# This is the config file for the scheduling policy
+# FORMAT:  option: value prime_option
+#	option 		- the name of what we are changing defined in config.h
+#	value  		- can be boolean/string/numeric depending on the option
+#	prime_option	- can be prime/non_prime/all ONLY FOR SOME OPTIONS
+
+#### OVERALL SCHEDULING OPTIONS
+
+#
+# round_robin
+#	Run a job from each queue before running second job from the
+#	first queue.
+#
+#	PRIME OPTION
+
+round_robin: False	all
+
+
+#
+# by_queue
+#	Run jobs by queues.  If both round_robin and by_queue are not set,
+#	The scheduler will look at all the jobs on on the server as one 
+#	large queue, and ignore the queues set by the administrator.
+#
+#	PRIME OPTION
+
+by_queue: True		prime
+by_queue: True		non_prime
+
+
+#
+# strict_ordering
+#
+#	Run jobs exactly in the order determined by the scheduling option
+#	settings, so that we run the "most deserving" job as soon as possible
+#	while adhering to site policy.  Note that strict_ordering can result
+#	in significant idle time unless you use backfilling, which runs smaller
+#	"less deserving" jobs provided that they do not delay the start time
+#	of the "most deserving" job.
+#
+#       PRIME OPTION
+
+strict_ordering: false	ALL
+
+#### STARVING JOB OPTIONS
+
+#
+# help_starving_jobs
+#	When this option is turned on, jobs which have been waiting a long
+#	time are considered to be "starving".  The default amount of time for
+#	a job to wait before it is considered starving is 24 hours, but you can
+#	specify the minimum time in the max_starve scheduler parameter.  Note
+#	that unless you use backfilling, this option can result in significant
+#	idle time while starving jobs wait for resources.
+#
+#	PRIME OPTION
+
+help_starving_jobs:	true	ALL
+
+#
+# max_starve
+#	Maximum  duration before a job is considered starving.
+#
+#  	Examples:
+#  	max_starve: 24:00:00
+#  	This means that jobs waiting/queued for 24 hours will be given higher
+#  	priority to run. NOTE: help_starving_jobs must be enabled.
+#
+#	NO PRIME OPTION
+
+max_starve: 24:00:00
+
+#### PRIMETIME OPTIONS: 
+
+# NOTE: to set primetime/nonprimetime see $PBS_HOME/sched_priv/holidays file
+
+#
+# backfill_prime
+#
+#	When backfill_prime is turned on, jobs are not allowed to cross from
+#	primetime into non-primetime or vice versa.  This option is not related
+#	to the backfill_depth server parameter.
+#
+#	PRIME OPTION
+
+backfill_prime:	false	ALL
+
+#
+# prime_exempt_anytime_queues
+#
+#	Avoid backfill on queues that are not defined as primetime
+#	or nonprimetime.
+#	NOTE: This is not related to backfill for starving jobs.
+#
+#	NO PRIME OPTION
+
+prime_exempt_anytime_queues:	false
+
+#
+# prime_spill
+#
+#	Time duration to allow jobs to cross-over or 'spill' into primetime or
+#  	nonprimetime.
+#	NOTE: This is used in conjunction with backfill_prime.
+#
+#	Usage: prime_spill: "HH:MM:SS"
+#
+#	Examples:
+#	prime_spill: "2:00:00" 	PRIME
+#	This means primetime jobs can spill into nonprimetime by up to 2 hours
+#
+#	prime_spill: "1:00:00" ALL
+#	This will allow jobs to spill into nonprimeime or into primetime by
+#	up to an hour.
+#
+#	PRIME OPTION
+#
+
+#prime_spill: 1:00:00	ALL
+
+#
+# primetime_prefix
+# 	Prefix to define a primetime queue.  
+#	Jobs in primeime queues will only be run in primetime
+#
+#	NO PRIME OPTION
+
+primetime_prefix: p_
+
+#
+# nonprimetime_prefix
+#	Prefix to define non-primetime queues.
+# 	Job in non-primetime queues will only be run in non-primetime
+#
+#	NO PRIME OPTION
+nonprimetime_prefix: np_
+
+#### SORTING OPTIONS: 
+
+# job_sort_key 
+#
+#	Sort jobs by any resource known to PBS Pro.
+#	job_sort_key allows jobs to be sorted by any resource.  This 
+#	includes any admin defined resource resources.  The sort can be 
+#	ascending (low to high) or descending (high to low).  
+#
+#	Usage: job_sort_key: "resource_name HIGH | LOW"
+#
+#	Allowable non resource keys: 
+#		fair_share_perc, preempt_priority, job_priority
+#
+#
+#	Examples:
+#
+#	job_sort_key: "ncpus HIGH"
+#	job_sort_key: "mem LOW"
+#
+#	This would have a 2 key sort, descending by ncpus and ascending by mem
+#
+#	PRIME OPTION
+#
+
+#job_sort_key: "cput LOW"	ALL
+
+# node_sort_key
+#
+#	Sort nodes by any resource known to PBS Pro.
+#	node_sort_key is similar to job_sort_key but works for nodes.  
+#	Nodes can be sorted on any resource.  The resource value 
+#	sorted on is the resources_available amount.
+#
+#	Usage: node_sort_key: "resource_name HIGH | LOW"
+#
+#	non resource key: sort_priority
+#
+#	Example:
+#
+#	node_sort_key: "sort_priority HIGH"
+#	node_sort_key: "ncpus HIGH"
+#
+#	PRIME OPTION
+#
+
+node_sort_key: "sort_priority HIGH"	ALL
+
+#
+# provision_policy 
+#
+#	Determines how scheduler is going to select nodes to satisfy
+#	provisioning request of a job.
+#
+#	"avoid_provision" sorts vnodes by requested AOE.
+#	Nodes with same AOE are sorted on node_sort_key.
+#
+#	"aggressive_provision" lets scheduler select nodes first and then
+#	provision if necessary. This is the default policy.
+#
+#  	Example:
+#
+#	provision_policy: "avoid_provision"
+#
+#	NO PRIME OPTION
+
+provision_policy: "aggressive_provision"
+
+#
+# sort_queues 
+#	sort queues by the priority attribute
+#
+#	PRIME OPTION
+#
+
+sort_queues:	true	ALL
+
+#### SMP JOB OPTIONS: 
+
+#
+# resources
+#
+#	Define resource limits to be honored by PBS Pro.
+#	The scheduler will not allow a job to run if the amount of assigned 
+#	resources exceeds the available amount.
+#
+#	NOTE: you need to encase the comma separated list of resources in 
+#	      double quotes (")
+#  	Example:
+#
+#  	resources: "ncpus, mem, arch"
+#
+#  	This is ONLY schedules jobs based on available ncpus, mem, and arch
+#  	within the cluster. Other resources requested by the job will not
+#  	evaluated for availability.
+#
+#  	NOTE: Define new resources within 
+#		$PBS_HOME/server_priv/resourcedef file.
+#
+#	NO PRIME OPTION
+
+resources: "ncpus, mem, arch, host, vnode, netwins, aoe"
+
+#
+# load_balancing 
+#	Load balance between timesharing nodes
+#
+#	PRIME OPTION
+#
+
+load_balancing: false	ALL
+
+#
+# smp_cluster_dist
+#
+#	This option allows you to decide how to distribute jobs to all the 
+#	nodes on your systems.  
+#	
+#	pack 	    - pack as many jobs onto a node that will fit before 
+#		      running on another node
+#	round_robin - run one job on each node in a cycle
+#	lowest_load - run the job on the lowest loaded node
+#
+#	PRIME OPTION
+
+smp_cluster_dist: pack
+
+#### FAIRSHARE OPTIONS
+
+# NOTE: to define fairshare tree see $PBS_HOME/sched_priv/resources_group file
+
+#
+# fair_share 
+#	Schedule jobs based on usage and share values
+#
+#	PRIME OPTION
+#
+
+fair_share: false	ALL
+
+#
+# unknown_shares 
+#	The number of shares for the "unknown" group
+#
+#	NO PRIME OPTION
+#
+#	NOTE: To turn on fairshare and give everyone equal shares, 
+#	      Uncomment this line (and turn on fair_share above)
+
+#unknown_shares: 10
+
+
+#
+# fairshare_usage_res
+#	This specifies the resource to collect to fairshare from.
+#	The scheduler will collect timing information pertaining to the 
+#	utilization of a particular resources to schedule jobs
+#
+#  	Example:
+#  	fairshare_usage_res: cput
+#
+#	This collects the cput (cputime) resource.
+#	NOTE: ONLY one resource can be collected.
+#
+#	NO PRIME OPTION
+fairshare_usage_res: cput
+
+#
+# fairshare_entity
+#	This is a job attribute which will be used for fairshare entities.  
+#	This can be anything from the username (euser) to the group (egroup)
+#	etc.  It can also be "queue" for the queue name of the job
+#
+#	NO PRIME OPTION
+
+fairshare_entity: euser
+
+#
+# fairshare_decay_time
+#	The duration between when the scheduler decays the fairshare tree
+#
+#	NO PRIME OPTION
+
+fairshare_decay_time: 24:00:00
+
+#
+# fairshare_decay_factor
+# 	The factor in which the fairshare tree will be decayed by when it is decayed
+# 	Example: 0.5 would mean a half-life
+#
+fairshare_decay_factor: 0.5
+
+#
+# fairshare_enforce_no_shares
+#
+#	Any fairshare entity with zero shares will never run.  If an 
+#	entity is in a group with zero shares, they will still not run.
+#
+# 	Usage: fairshare_enforce_no_shares: TRUE|FALSE
+#
+#	NO PRIME OPTION
+
+# fairshare_enforce_no_shares: TRUE
+
+#### PREEMPTIVE SCHEDULING OPTIONS
+
+#
+# preemptive_sched
+#
+#	Enables preemptive scheduling. 
+#	This will allow the scheduler to preempt lower priority 
+#	work to run higher priority jobs.
+#
+#	PRIME OPTION
+
+preemptive_sched: true	ALL
+
+#
+# preempt_queue_prio
+#
+#	Defines the priority value of an express queue.
+#	If a queue's priority is this or higher, this queue 
+#	becomes an express_queue.  All jobs in this queue will
+#	have the "express_queue" preempt priority
+#
+#	NOTE: This options works with preempt_prio
+#
+#	NO PRIME OPTION
+preempt_queue_prio:	150
+
+#
+# preempt_prio
+#
+#	Define a list of preemption levels and their relative priority in
+#	respect to each other.
+#
+#	The ordering of the levels are the order of priority from 
+#	left to right.  A job which does not fit into any other preemption level
+#	is in the special "normal_job" level.  
+#
+#	If two or more levels are desired, they may be indicated by putting a 
+#	'+' between them (NO SPACES)
+#
+#	preemption levels: 
+#		express_queue - jobs in a preemption queue
+#		starving_jobs - jobs who are starving
+#				SEE: help_starving_jobs
+#		fairshare     - when a job is over his fairshare of the machine
+#				SEE: fair_share
+#		queue_softlimits - jobs who are over their queue soft limits
+#		server_softlimits - jobs who are over their server soft limits
+#		normal_jobs - all other jobs
+#
+#	Most likely express_queue and starving_jobs should have priority over 
+#	normal jobs (to the left) where fairshare and the soft limits should 
+#	be under normal jobs (to the right).
+#
+#	Examples:
+#
+#	example 1:
+#	preempt_prio: "starving_jobs, normal_jobs, fairshare" 
+#
+#	example 2: 
+#	preempt_prio:
+#	    "starving_jobs, normal_jobs, starving_jobs+fairshare, fairshare"
+#
+#	These examples gives starving jobs the highest priority.  Then jobs
+#	which are not starving nor over their fairshare limit come next.  
+#	Then jobs which are starving AND over their fairshare limit come 
+#	after that, and finally jobs which are over their fairshare limit.
+#
+#       example 3:
+#       preempt_prio:
+#           "express_queue, normal_jobs, server_softlimits, queue_softlimits"
+#	This example gives the express queue the highest priority, followed
+#	by normal jobs, then jobs over server soft limits, then jobs over
+#	queue soft limits.
+#
+# 	Please note: If starving_jobs+fairshare was not in the list, once 
+#	a job became starving it would get the highest priority and preempt
+#	other normal jobs to run.  What this does is allow us to say that 
+#	starving over fairshare jobs don't preempt normal jobs, just other 
+#	over fairshare jobs.
+#
+#	NO PRIME OPTION
+
+preempt_prio: "express_queue, normal_jobs"
+
+# preempt_order
+#
+#	Defines the order of preemption methods.
+#
+# 	preempt_order defines the order of preemption methods in which the 
+#	scheduler will attempt to preempt a job.  This order can change 
+#	depending on the percentage of time remaining on the job.  The 
+#	orderings can be any combination of S C and R (for suspend 
+#	checkpoint and requeue). The usage is an ordering (SCR) followed by 
+#	a percentage of time remaining 	and another ordering.  
+#
+#	NOTE: This has to be a quoted list("")
+#
+# 	Example: 
+#
+# 	preempt_order: "SR"
+#
+# 	This attempts to suspend and then requeue no matter what 
+#	percentage of walltime a job has completed
+#
+# 	Example 2:
+#
+# 	preempt_order: "SCR 80 SC 50 S"
+#
+# 	This would mean if the job was between 100-81% try to suspend 
+#	then checkpoint then requeue.  If the job is between 80-51% try to 
+#	suspend then checkpoint and between 50% and 0% time remaining just 
+#	attempt to suspend
+#
+preempt_order: "SCR"
+
+
+# preempt_sort
+#
+#       Defines the sort of preemption methods.
+#
+#       preempt_sort defines the preemption sort methods in which the
+#       scheduler will attempt to preempt a job.  This sort can change
+#       depending on the minimum time since the job starts.
+#
+#       Example:
+#
+#       preempt_sort: min_time_since_start
+#
+#       This attempts to suspend a job which has lest time since the job starts
+#
+preempt_sort: min_time_since_start
+
+
+#### PEER SCHEDULING OPTIONS 
+
+#
+# peer_queue
+#	
+#	Defines and enables the scheduler to obtain work from other PBS Pro
+#	clusters.
+#
+#	Peer scheduling works by mapping a queue on a remote server to a 
+#	queue on the local server.  Only one mapping can be made per line, 
+#	but multiple peer_queue lines can appear in this file. More then 
+#	one mapping can be made to the same queue.  The scheduler will 
+#	see the union of all the jobs of the multiple queues (local and remote).
+#
+#	Usage: peer_queue: "local_queue		remote_queue@remote_server"
+#
+#	Examples:
+#	peer_queue: "workq		workq@svr1"
+#	peer_queue: "workq		workq@svr2"
+#	peer_queue: "remote_work	workq@svr3"
+#
+#	NO PRIME OPTION
+
+#### DYNAMIC RESOURCE OPTIONS
+
+#
+# mom_resources
+#
+#	Defines Dynamic Consumable Resources on a per node basis.
+#
+#	The mom_resources option is used to be able to query the MOMs to
+#	set the value resources_available.res where res is a site defined
+#	resource.  Each mom is queried with the resource name and the 
+#	return value is used to replace resources_available.res on that node.
+#
+#	NOTE: this is internal to the scheduler, these values will not
+#	      be visible outside of the scheduler.
+#
+#	Usage: mom_resources: "res1, res2, res3, ... resN"
+#
+#	Example:
+#	mom_resources: "foo"
+#
+#	NO PRIME OPTION
+
+# server_dyn_res
+#
+#	Defines Dynamic Consumable Resources on a per job basis.
+#
+#	server_dyn_res allows the values of resources to be replaced by running
+#	a program and taking the first line of output as the new value. For
+#	instance, querying a licensing server for the available licenses.
+#
+#	NOTE: this value MUST be quoted (i.e. server_dyn_res: " ... " )
+#
+#	Examples:
+#	server_dyn_res: "mem !/bin/get_mem"
+#	server_dyn_res: "ncpus !/bin/get_ncpus"
+#
+#	NO PRIME OPTION
+
+#### DEDICATED TIME OPTIONS
+
+# NOTE: to set dedicated time see $PBS_HOME/sched_priv/dedicated_time file
+
+#
+# dedicated_prefix
+#
+#	Prefix to define dedicated time queues.
+# 	All queues starting with this value are dedicated time queues and 
+#	jobs within these queues will only run during dedicated time.
+#
+# 	Example:
+#
+#	dedicated_prefix: ded
+#
+#	dedtime or dedicated time would be dedicated time queues 
+#	(along with anything else starting with ded).
+#
+#	NO PRIME OPTION
+dedicated_prefix: ded
+
+#### MISC OPTIONS
+
+#
+# log_filter
+#
+#	Bit field of log levels to have the scheduler NOT write to its log file.
+#
+# 	256 are DEBUG2 messages 
+#	1024 are DEBUG3 messages (the most prolific messages)
+#	1280 is the combination of these two
+#
+#	NO PRIME OPTION
+
+log_filter: 3328
+

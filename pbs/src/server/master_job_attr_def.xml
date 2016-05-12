@@ -1,0 +1,2348 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<data>
+   <!--  				
+ * Copyright (C) 1994-2016 Altair Engineering, Inc.
+ * For more information, contact Altair at www.altair.com.
+ *  
+ * This file is part of the PBS Professional ("PBS Pro") software.
+ * 
+ * Open Source License Information:
+ *  
+ * PBS Pro is free software. You can redistribute it and/or modify it under the
+ * terms of the GNU Affero General Public License as published by the Free 
+ * Software Foundation, either version 3 of the License, or (at your option) any 
+ * later version.
+ *  
+ * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ * PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+ *  
+ * You should have received a copy of the GNU Affero General Public License along 
+ * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  
+ * Commercial License Information: 
+ * 
+ * The PBS Pro software is licensed under the terms of the GNU Affero General 
+ * Public License agreement ("AGPL"), except where a separate commercial license 
+ * agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+ *  
+ * Altair’s dual-license business model allows companies, individuals, and 
+ * organizations to create proprietary derivative works of PBS Pro and distribute 
+ * them - whether embedded or bundled with other software - under a commercial 
+ * license agreement.
+ * 
+ * Use of Altair’s trademarks, including but not limited to "PBS™", 
+ * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+ * trademark licensing policies.
+    
+	NOTE (Server File) 
+    
+	job_attr_def is the array of attribute definitions for jobs.
+    Each legal job attribute is defined here.
+    The entries for each attribute are (see attribute.h):
+       name,
+       decode function,
+       encode function,
+       set function,
+       compare function,
+       free value space function,
+       action function,
+       access permission flags,
+       value type,
+       parent object type
+	   
+	 NOTE (ECL File)
+	 
+	 The entries for each attribute are (see attribute.h):\n
+       name,
+       type,
+       flag,
+       verify datatype function,
+       verify value function
+ 
+       NOTE NOTE NOTE NOTE NOTE
+       For array jobs, if you want the job attribute to be
+       included in a subjob, you must also modify
+       "attrs_to_copy" in array_func.c
+      -->
+   <head>
+      <SVR>
+      #include &lt;pbs_config.h&gt;   
+      #include &lt;sys/types.h&gt;
+      #include "pbs_ifl.h"
+      #include "list_link.h"
+      #include "attribute.h"
+      #include "job.h"
+      #include "server_limits.h"
+   
+      attribute_def job_attr_def[] = {
+      </SVR>
+      <ECL>
+      #include &lt;pbs_config.h&gt; 
+      #include &lt;sys/types.h&gt;
+      #include "pbs_ifl.h"
+      #include "pbs_ecl.h"
+      ecl_attribute_def ecl_job_attr_def[] = {
+     </ECL>
+   </head>
+   <attributes>
+      /* JOB_ATR_jobname */
+      <member_name>
+         <both>ATTR_N</both>
+      </member_name>
+      <member_at_decode>decode_jobname</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <SVR>READ_WRITE | ATR_DFLAG_ALTRUN | ATR_DFLAG_SELEQ | ATR_DFLAG_MOM</SVR>
+         <ECL>READ_ONLY</ECL>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>verify_value_jobname</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "Job_Owner" */
+      <member_name>
+         <both>ATTR_owner</both>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_ONLY | ATR_DFLAG_SSET | ATR_DFLAG_SELEQ | ATR_DFLAG_MOM</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_resc_used" */
+      <member_name>
+         <both>ATTR_used</both>
+      </member_name>
+      <member_at_decode>decode_resc</member_at_decode>
+      <member_at_encode>encode_resc</member_at_encode>
+      <member_at_set>set_resc</member_at_set>
+      <member_at_comp>comp_resc</member_at_comp>
+      <member_at_free>free_resc</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_ONLY | ATR_DFLAG_SvWR | ATR_DFLAG_NOSAVM</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_RESC</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_state" */
+      <member_name>
+         <both>ATTR_state</both>
+      </member_name>
+      <member_at_decode>decode_c</member_at_decode>
+      <member_at_encode>encode_c</member_at_encode>
+      <member_at_set>set_c</member_at_set>
+      <member_at_comp>comp_c</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_ONLY | ATR_DFLAG_SvWR</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_CHAR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>verify_value_state</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_in_queue" */
+      <member_name>
+         <both>ATTR_queue</both>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_ONLY | ATR_DFLAG_MOM</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_at_server" */
+      <member_name>
+         <both>ATTR_server</both>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_ONLY | ATR_DFLAG_MOM</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_account" */
+      <member_name>
+         <both>ATTR_A</both>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_WRITE | ATR_DFLAG_SELEQ | ATR_DFLAG_MOM | ATR_DFLAG_SCGALT</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_chkpnt" */
+      <member_name>
+         <both>ATTR_c</both>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>#ifdef PBS_MOM
+				comp_str
+		      #else
+				comp_chkpnt
+		      #endif</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>#ifdef PBS_MOM
+			       NULL_FUNC
+			#else
+				ck_chkpnt
+			#endif</member_at_action>
+      <member_at_flags>
+         <both>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_ALTRUN</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+		 <ECL>verify_value_checkpoint</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_ctime" */
+      <member_name>
+         <both>ATTR_ctime</both>
+      </member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_ONLY | ATR_DFLAG_SSET</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_LONG</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_depend" */
+      <member_name>
+         <both>ATTR_depend</both>
+      </member_name>
+      <member_at_decode>#ifndef PBS_MOM
+				decode_depend
+			#else
+				decode_str
+			#endif</member_at_decode>
+      <member_at_encode>#ifndef PBS_MOM
+				encode_depend
+			#else
+				encode_str
+			#endif</member_at_encode>
+      <member_at_set>#ifndef PBS_MOM
+				set_depend
+			#else
+				set_str
+			#endif</member_at_set>
+      <member_at_comp>#ifndef PBS_MOM
+				comp_depend
+			#else
+				comp_str
+			#endif</member_at_comp>
+      <member_at_free>#ifndef PBS_MOM
+				free_depend
+			#else
+				free_str
+			#endif</member_at_free>
+      <member_at_action>#ifndef PBS_MOM
+				depend_on_que
+			#else
+				NULL_FUNC
+			#endif</member_at_action>
+      <member_at_flags>
+         <both>READ_WRITE</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_LIST</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>verify_value_dependlist</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_errpath" */
+      <member_name>
+         <both>ATTR_e</both>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_WRITE | ATR_DFLAG_ALTRUN | ATR_DFLAG_SELEQ | ATR_DFLAG_MOM</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>verify_value_path</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_exec_host" */
+      <member_name>
+         <both>ATTR_exechost</both>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <SVR>#ifdef PBS_MOM
+		       READ_ONLY | ATR_DFLAG_MOM
+			#else
+		       READ_ONLY
+			#endif</SVR>
+         <ECL>READ_ONLY</ECL>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_exec_host2" */
+      <member_name>
+         <both>ATTR_exechost2</both>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_MOM</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_exec_vnode" */
+      <member_name>
+         <both>ATTR_execvnode</both>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_ONLY | ATR_DFLAG_MOM</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_exectime" */
+      <member_name>
+         <both>ATTR_a</both>
+      </member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>#ifndef PBS_MOM
+				job_set_wait
+			#else
+				NULL_FUNC
+			#endif</member_at_action>
+      <member_at_flags>
+         <both>READ_WRITE | ATR_DFLAG_ALTRUN</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_LONG</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_grouplst" */
+      <member_name>
+         <both>ATTR_g</both>
+      </member_name>
+      <member_at_decode>decode_arst</member_at_decode>
+      <member_at_encode>encode_arst</member_at_encode>
+      <member_at_set>set_arst</member_at_set>
+      <member_at_comp>comp_arst</member_at_comp>
+      <member_at_free>free_arst</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_WRITE | ATR_DFLAG_SELEQ | ATR_DFLAG_MOM | ATR_DFLAG_SCGALT</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_ARST</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>verify_value_user_list</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_hold" */
+      <member_name>
+         <both>ATTR_h</both>
+      </member_name>
+      <member_at_decode>decode_hold</member_at_decode>
+      <member_at_encode>encode_hold</member_at_encode>
+      <member_at_set>set_b</member_at_set>
+      <member_at_comp>comp_hold</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_WRITE | ATR_DFLAG_ALTRUN | ATR_DFLAG_SELEQ</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_LONG</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>verify_value_hold</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_interactive" */
+      <member_name>
+         <both>ATTR_inter</both>
+      </member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_inter</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_b</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_ONLY | ATR_DFLAG_SvRD | ATR_DFLAG_Creat | ATR_DFLAG_SELEQ | ATR_DFLAG_MOM</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_LONG</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_join" */
+      <member_name>
+         <both>ATTR_j</both>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_WRITE | ATR_DFLAG_SELEQ | ATR_DFLAG_MOM</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>verify_value_joinpath</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_keep" */
+      <member_name>
+         <both>ATTR_k</both>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_WRITE | ATR_DFLAG_SELEQ | ATR_DFLAG_MOM</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>verify_value_keepfiles</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_mailpnts" */
+      <member_name>
+         <both>ATTR_m</both>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_WRITE | ATR_DFLAG_ALTRUN | ATR_DFLAG_SELEQ</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>verify_value_mailpoints</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_mailuser" */
+      <member_name>
+         <both>ATTR_M</both>
+      </member_name>
+      <member_at_decode>decode_arst</member_at_decode>
+      <member_at_encode>encode_arst</member_at_encode>
+      <member_at_set>set_arst</member_at_set>
+      <member_at_comp>comp_arst</member_at_comp>
+      <member_at_free>free_arst</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_WRITE | ATR_DFLAG_ALTRUN | ATR_DFLAG_SELEQ</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_ARST</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>verify_value_mailusers</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* JOB_ATR_mtime */
+      <member_name>
+         <both>ATTR_mtime</both>
+      </member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_ONLY | ATR_DFLAG_SSET</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_LONG</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_nodemux" */
+      <member_name>
+         <both>ATTR_nodemux</both>
+      </member_name>
+      <member_at_decode>decode_b</member_at_decode>
+      <member_at_encode>encode_b</member_at_encode>
+      <member_at_set>set_b</member_at_set>
+      <member_at_comp>comp_b</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_SELEQ</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_BOOL</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_bool</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_outpath" */
+      <member_name>
+         <both>ATTR_o</both>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_WRITE | ATR_DFLAG_ALTRUN | ATR_DFLAG_SELEQ | ATR_DFLAG_MOM</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>verify_value_path</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_priority" */
+      <member_name>
+         <both>ATTR_p</both>
+      </member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_WRITE | ATR_DFLAG_ALTRUN</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_LONG</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+	     <ECL>verify_value_priority</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_qtime"  (time entered queue) */
+      <member_name>
+         <both>ATTR_qtime</both>
+      </member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_ONLY</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_LONG</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_rerunable" */
+      <member_name>
+         <both>ATTR_r</both>
+      </member_name>
+      <member_at_decode>decode_b</member_at_decode>
+      <member_at_encode>encode_b</member_at_encode>
+      <member_at_set>set_b</member_at_set>
+      <member_at_comp>comp_b</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_WRITE | ATR_DFLAG_ALTRUN | ATR_DFLAG_SELEQ</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_BOOL</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_bool</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_resource" */
+      <member_name>
+         <both>ATTR_l</both>
+      </member_name>
+      <member_at_decode>decode_resc</member_at_decode>
+      <member_at_encode>encode_resc</member_at_encode>
+      <member_at_set>set_resc</member_at_set>
+      <member_at_comp>comp_resc</member_at_comp>
+      <member_at_free>free_resc</member_at_free>
+      <member_at_action>action_resc_job</member_at_action>
+      <member_at_flags>
+         <both>READ_WRITE | ATR_DFLAG_ALTRUN | ATR_DFLAG_MOM | ATR_DFLAG_SCGALT</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_RESC</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>verify_value_resc</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_SchedSelect" */
+      <member_name>
+         <both>ATTR_SchedSelect</both>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_MGRD | ATR_DFLAG_MOM</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_stime"  (time started execution)  */
+      <member_name>
+         <both>ATTR_stime</both>
+      </member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_ONLY</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_LONG</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_session_id"  */
+      <member_name>
+         <both>ATTR_session</both>
+      </member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_ONLY | ATR_DFLAG_SvWR</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_LONG</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_shell"  */
+      <member_name>
+         <both>ATTR_S</both>
+      </member_name>
+      <member_at_decode>decode_arst</member_at_decode>
+      <member_at_encode>encode_arst</member_at_encode>
+      <member_at_set>set_arst</member_at_set>
+      <member_at_comp>comp_arst</member_at_comp>
+      <member_at_free>free_arst</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_WRITE | ATR_DFLAG_ALTRUN | ATR_DFLAG_SELEQ | ATR_DFLAG_MOM</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_ARST</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>verify_value_shellpathlist</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_sandbox"  */
+      <member_name>
+         <both>ATTR_sandbox</both>
+      </member_name>
+      <member_at_decode>decode_sandbox</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_WRITE | ATR_DFLAG_SELEQ | ATR_DFLAG_MOM</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>verify_value_sandbox</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_jobdir"  */
+      <member_name>
+         <both>ATTR_jobdir</both>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_SvWR | READ_ONLY</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_stagein "  */
+      <member_name>
+         <both>ATTR_stagein</both>
+      </member_name>
+      <member_at_decode>decode_arst</member_at_decode>
+      <member_at_encode>encode_arst</member_at_encode>
+      <member_at_set>set_arst</member_at_set>
+      <member_at_comp>comp_arst</member_at_comp>
+      <member_at_free>free_arst</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_WRITE | ATR_DFLAG_MOM</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_ARST</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>verify_value_stagelist</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_stageout"  */
+      <member_name>
+         <both>ATTR_stageout</both>
+      </member_name>
+      <member_at_decode>decode_arst</member_at_decode>
+      <member_at_encode>encode_arst</member_at_encode>
+      <member_at_set>set_arst</member_at_set>
+      <member_at_comp>comp_arst</member_at_comp>
+      <member_at_free>free_arst</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_WRITE | ATR_DFLAG_MOM</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_ARST</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>verify_value_stagelist</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_substate"  */
+      <member_name>
+         <both>ATTR_substate</both>
+      </member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_USRD | ATR_DFLAG_OPRD | ATR_DFLAG_MGRD | ATR_DFLAG_SvWR</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_LONG</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_userlst"  */
+      <member_name>
+         <both>ATTR_u</both>
+      </member_name>
+      <member_at_decode>decode_arst</member_at_decode>
+      <member_at_encode>encode_arst</member_at_encode>
+      <member_at_set>#ifndef PBS_MOM
+				set_uacl
+			#else
+				set_arst
+			#endif</member_at_set>
+      <member_at_comp>comp_arst</member_at_comp>
+      <member_at_free>free_arst</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_WRITE | ATR_DFLAG_SELEQ | ATR_DFLAG_SCGALT</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_ARST</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>verify_value_user_list</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_variables"  */
+      <member_name>
+         <both>ATTR_v</both>
+      </member_name>
+      <member_at_decode>decode_arst_bs</member_at_decode>
+      <member_at_encode>encode_arst_bs</member_at_encode>
+      <member_at_set>set_arst</member_at_set>
+      <member_at_comp>comp_arst</member_at_comp>
+      <member_at_free>free_arst</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_WRITE | ATR_DFLAG_SELEQ | ATR_DFLAG_MOM</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_ARST</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_euser"  */
+      <member_name>
+         <both>ATTR_euser</both>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+          <both>ATR_DFLAG_MGRD | ATR_DFLAG_MOM</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_egroup"  */
+      <member_name>
+         <both>ATTR_egroup</both>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_MGRD | ATR_DFLAG_MOM</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_hashname"  */
+      <member_name>
+         <both>ATTR_hashname</both>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_MGRD | ATR_DFLAG_MOM</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_hopcount"  */
+      <member_name>
+         <both>ATTR_hopcount</both>
+      </member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_SSET</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_LONG</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_queuerank"  */
+      <member_name>
+         <both>ATTR_qrank</both>
+      </member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_MGRD</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_LONG</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_queuetype"  */
+      <member_name>
+         <both>ATTR_qtype</both>
+      </member_name>
+      <member_at_decode>decode_c</member_at_decode>
+      <member_at_encode>encode_c</member_at_encode>
+      <member_at_set>set_c</member_at_set>
+      <member_at_comp>comp_c</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_MGRD | ATR_DFLAG_SELEQ</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_CHAR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_sched_hint"  */
+      <member_name>
+         <both>ATTR_sched_hint</both>
+      </member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_MGRD | ATR_DFLAG_MGWR</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_LONG</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_security"  */
+      <member_name>
+         <both>ATTR_security</both>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_SSET</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_Comment"  */
+      <member_name>
+         <both>ATTR_comment</both>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>NO_USER_SET | ATR_DFLAG_SvWR | ATR_DFLAG_ALTRUN | ATR_DFLAG_NOSAVM</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_Cookie"  */
+      <member_name>
+         <both>ATTR_cookie</both>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_SvRD | ATR_DFLAG_SvWR | ATR_DFLAG_MOM</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_altid"  */
+      <member_name>
+         <both>ATTR_altid</both>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_ONLY | ATR_DFLAG_SvWR</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_altid2"  */
+      <member_name>
+         <both>ATTR_altid2</both>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_ONLY | ATR_DFLAG_SvWR</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_etime"  */
+      <member_name>
+         <both>ATTR_etime</both>
+      </member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_ONLY | ATR_DFLAG_SSET</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_LONG</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_reserve_start"  */
+      <member_name>
+         <both>ATTR_resv_start</both>
+      </member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_SvWR | ATR_DFLAG_Creat | READ_ONLY</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_LONG</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_reserve_end"  */
+      <member_name>
+         <both>ATTR_resv_end</both>
+      </member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_SvWR | ATR_DFLAG_Creat | READ_ONLY</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_LONG</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_reserve_duration"  */
+      <member_name>
+         <both>ATTR_resv_duration</both>
+      </member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_SvWR | ATR_DFLAG_Creat | READ_ONLY</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_LONG</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_reserve_state"  */
+      <member_name>
+         <both>ATTR_resv_state</both>
+      </member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_SvWR | READ_ONLY</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_LONG</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_reserve_Tag"  */
+      <member_name>
+         <both>ATTR_resvTag</both>
+      </member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_Creat | READ_ONLY</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_LONG</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_reserve_ID"  */
+      <member_name>
+         <both>ATTR_resv_ID</both>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_Creat | ATR_DFLAG_SvWR | READ_ONLY</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_refresh "  */
+      <member_name> <!-- when login context refresh last occured -->
+         <both>ATTR_refresh</both>
+      </member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_SvRD | ATR_DFLAG_SvWR | ATR_DFLAG_MOM</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_LONG</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_gridname "  */
+      <member_name>
+         <both>ATTR_gridname</both>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_WRITE | ATR_DFLAG_SELEQ | ATR_DFLAG_MOM</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_umask "  */
+      <member_name>
+         <both>ATTR_umask</both>
+      </member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_WRITE | ATR_DFLAG_MOM</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_LONG</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_block"  */
+      <member_name>
+         <both>ATTR_block</both>
+      </member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_inter</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_b</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_ONLY | ATR_DFLAG_SvRD | ATR_DFLAG_Creat | ATR_DFLAG_SELEQ</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_LONG</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* JOB_ATR_cred  */
+      <member_name>
+         <both>ATTR_cred</both>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_ONLY | ATR_DFLAG_SvRD | ATR_DFLAG_Creat | ATR_DFLAG_SELEQ</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_runcount "  */
+      <member_name>
+         <both>ATTR_runcount</both>
+      </member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_b</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_WRITE | ATR_DFLAG_ALTRUN | ATR_DFLAG_MOM</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_LONG</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+	     <ECL>verify_value_zero_or_positive</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_acct_id "  */
+      <member_name>
+         <both>ATTR_acct_id</both>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_SvWR | READ_ONLY</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_eligible_time"  */
+      <member_name>
+         <both>ATTR_eligible_time</both>
+      </member_name>
+      <member_at_decode>decode_time</member_at_decode>
+      <member_at_encode>encode_time</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>#ifndef PBS_MOM
+				alter_eligibletime
+			#else
+				NULL_FUNC
+			#endif</member_at_action>
+      <member_at_flags>
+         <both>NO_USER_SET | ATR_DFLAG_SSET | ATR_DFLAG_ALTRUN</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_LONG</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_time</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_accrue_type "  */
+      <member_name>
+         <both>ATTR_accrue_type</both>
+      </member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_none</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_MGRD | ATR_DFLAG_ALTRUN | ATR_DFLAG_SvWR</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_LONG</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_sample_starttime"  */
+      <member_name>
+         <both>ATTR_sample_starttime</both>
+      </member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_SvWR</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_LONG</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_job_kill_delay"  */
+      <member_name>
+         <both>ATTR_job_kill_delay</both>
+      </member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_MOM</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_LONG</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_stageout_status"  */
+      <member_name>
+         <both>ATTR_stageout_status</both>
+      </member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_SvWR | READ_ONLY</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_LONG</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_exit_status"  */
+      <member_name>
+         <both>ATTR_exit_status</both>
+      </member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_SvWR | READ_ONLY</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_LONG</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* JOB_ATR_submit_arguments */
+      <member_name>
+         <both>ATTR_submit_arguments</both>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_SvWR | READ_WRITE</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+  </attributes>
+  <!-- 
+       Attributes to store command and its argument list specified
+       in qsub command-line options list.
+    -->
+   <attributes>
+      /* "JOB_ATR_executable"  */
+      <member_name>
+         <both>ATTR_executable</both>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_SvWR | READ_WRITE | ATR_DFLAG_MOM</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_Arglist"  */
+      <member_name>
+         <both>ATTR_Arglist</both>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_SvWR | READ_WRITE | ATR_DFLAG_MOM</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_prov_vnode"  */
+      <member_name>
+         <both>ATTR_prov_vnode</both>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_SvRD | ATR_DFLAG_SvWR</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+    <!--
+	The following, Array Job related, attributes should be at the end of the
+	job attributes, see status_subjob() to understand why.   When statusing
+	a subjob,  they are not copied from the parent array job and having them
+	at the end helps to do that.
+    -->
+   <attributes>
+      /* "JOB_ATR_array"  */
+      <member_name>
+         <both>ATTR_array</both>
+      </member_name>
+      <member_at_decode>decode_b</member_at_decode>
+      <member_at_encode>encode_b</member_at_encode>
+      <member_at_set>set_b</member_at_set>
+      <member_at_comp>comp_b</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_SvWR | ATR_DFLAG_Creat | READ_ONLY | ATR_DFLAG_NOSAVM</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_BOOL</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_bool</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_array_id"  */
+      <member_name>
+         <both>ATTR_array_id</both>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_ONLY | ATR_DFLAG_MOM</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_array_index"  */
+      <member_name>
+         <both>ATTR_array_index</both>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_MOM | READ_ONLY</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_array_state_count"  */
+      <member_name>
+         <both>ATTR_array_state_count</both>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_SvWR | READ_ONLY | ATR_DFLAG_NOSAVM</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_array_indices_submitted"  */
+      <member_name>
+         <both>ATTR_array_indices_submitted</both>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>#ifndef PBS_MOM
+	       setup_arrayjob_attrs
+       #else
+	       NULL_FUNC
+       #endif</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_SvWR | ATR_DFLAG_SvRD | ATR_DFLAG_Creat | READ_ONLY</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>verify_value_jrange</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_array_indices_remaining"  */
+      <member_name>
+         <both>ATTR_array_indices_remaining</both>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>#ifndef PBS_MOM
+				fixup_arrayindicies
+			#else
+				NULL_FUNC
+			#endif</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_SvWR | ATR_DFLAG_SvRD | READ_ONLY | ATR_DFLAG_NOSAVM</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_pset"  */
+      <member_name>
+         <both>ATTR_pset</both>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_SvWR | ATR_DFLAG_MGWR | READ_ONLY | ATR_DFLAG_MOM</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_estimated"  */
+      <member_name>
+         <both>ATTR_estimated</both>
+      </member_name>
+      <member_at_decode>decode_resc</member_at_decode>
+      <member_at_encode>encode_resc</member_at_encode>
+      <member_at_set>set_resc</member_at_set>
+      <member_at_comp>comp_resc</member_at_comp>
+      <member_at_free>free_resc</member_at_free>
+      <member_at_action>action_resc_job</member_at_action>
+      <member_at_flags>
+         <both>MGR_ONLY_SET | ATR_DFLAG_ALTRUN</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_RESC</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>verify_value_resc</ECL>
+      </member_verify_function>
+   </attributes>
+   <!--
+	the following is not really a job attribute, but used by selectjobs
+	so listing them here at the end
+    -->
+   <attributes flag = 'ECL'>
+      /* "ATTR_q" */
+      <member_name>
+         <ECL>ATTR_q</ECL>
+      </member_name>
+      <member_at_decode>decode_arst</member_at_decode>
+      <member_at_encode>encode_arst</member_at_encode>
+      <member_at_set>set_arst</member_at_set>
+      <member_at_comp>comp_arst</member_at_comp>
+      <member_at_free>free_arst</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <ECL>ATR_DFLAG_SvWR|ATR_DFLAG_MGWR</ECL>
+      </member_at_flags>
+      <member_at_type>
+         <ECL>ATR_TYPE_STR</ECL>
+      </member_at_type>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_node_set" */
+      <member_name>
+         <both>ATTR_node_set</both>
+      </member_name>
+      <member_at_decode>decode_arst</member_at_decode>
+      <member_at_encode>encode_arst</member_at_encode>
+      <member_at_set>set_arst</member_at_set>
+      <member_at_comp>comp_arst</member_at_comp>
+      <member_at_free>free_arst</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_SvWR|ATR_DFLAG_MGWR</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_ARST</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_history_timestamp"  */
+      <member_name>
+         <both>ATTR_history_timestamp</both>
+      </member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_ONLY|ATR_DFLAG_SvWR</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_LONG</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_project"  */
+      <member_name>
+         <both>ATTR_project</both>
+      </member_name>
+      <member_at_decode>decode_project</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_WRITE | ATR_DFLAG_SELEQ | ATR_DFLAG_MOM | ATR_DFLAG_SCGALT</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_X11_cookie"  */
+      <member_name>
+         <both>ATTR_X11_cookie</both>
+      </member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_USWR | ATR_DFLAG_MGRD | ATR_DFLAG_SELEQ | ATR_DFLAG_MOM</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_STR</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_X11_port"  */
+      <member_name>
+         <both>ATTR_X11_port</both>
+      </member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_inter</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_b</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>READ_ONLY | ATR_DFLAG_SvRD | ATR_DFLAG_Creat | ATR_DFLAG_SELEQ | ATR_DFLAG_MOM</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_LONG</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+  </attributes>
+   <attributes>
+      /* "ATTR_sched_preempted"  */
+      <member_name>
+         <both>ATTR_sched_preempted</both>
+      </member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_l</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_SvWR | ATR_DFLAG_MGWR | ATR_DFLAG_ALTRUN</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_LONG</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_long</ECL>
+	     <ECL>verify_value_zero_or_positive</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      /* "JOB_ATR_run_version"  */
+      <member_name>
+         <both>ATTR_run_version</both>
+      </member_name>
+      <member_at_decode>decode_l</member_at_decode>
+      <member_at_encode>encode_l</member_at_encode>
+      <member_at_set>set_l</member_at_set>
+      <member_at_comp>comp_b</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_MGRD | ATR_DFLAG_MOM</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_LONG</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+     /* "JOB_ATR_GUI" */
+     <member_name>
+       <both>ATTR_GUI</both>
+     </member_name>
+     <member_at_decode>decode_b</member_at_decode>
+     <member_at_encode>encode_b</member_at_encode>
+     <member_at_set>set_b</member_at_set>
+     <member_at_comp>comp_b</member_at_comp>
+     <member_at_free>free_null</member_at_free>
+     <member_at_action>NULL_FUNC</member_at_action>
+     <member_at_flags>
+       <both>READ_ONLY | ATR_DFLAG_SvRD | ATR_DFLAG_Creat | ATR_DFLAG_SELEQ | ATR_DFLAG_MOM</both>
+     </member_at_flags>
+     <member_at_type>
+       <both>ATR_TYPE_BOOL</both>
+     </member_at_type>
+     <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+     <member_verify_function>
+       <ECL>verify_datatype_bool</ECL>
+            <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+     </member_verify_function>
+  </attributes>
+   <attributes>
+      /* "topjob_ineligible" */
+      <member_name>
+         <both>ATTR_topjob_ineligible</both>
+      </member_name>
+      <member_at_decode>decode_b</member_at_decode>
+      <member_at_encode>encode_b</member_at_encode>
+      <member_at_set>set_b</member_at_set>
+      <member_at_comp>comp_b</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <both>ATR_DFLAG_MGRD | ATR_DFLAG_MGWR | ATR_DFLAG_ALTRUN</both>
+      </member_at_flags>
+      <member_at_type>
+         <both>ATR_TYPE_BOOL</both>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+      <member_verify_function>
+         <ECL>verify_datatype_bool</ECL>
+	     <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+    <attributes flag = 'SVR'>
+       #include "site_job_attr_def.h"
+      /* "JOB_ATR_UNKN - THIS MUST BE THE LAST ENTRY"  */
+      <member_name>
+         <SVR>"_other_"</SVR>
+      </member_name>
+      <member_at_decode>decode_unkn</member_at_decode>
+      <member_at_encode>encode_unkn</member_at_encode>
+      <member_at_set>set_unkn</member_at_set>
+      <member_at_comp>comp_unkn</member_at_comp>
+      <member_at_free>free_unkn</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>
+         <SVR>READ_WRITE | ATR_DFLAG_SELEQ</SVR>
+      </member_at_flags>
+      <member_at_type>
+         <SVR>ATR_TYPE_LIST</SVR>
+      </member_at_type>
+      <member_at_parent>PARENT_TYPE_JOB</member_at_parent>
+   </attributes>
+   <tail>
+      <SVR>};</SVR>
+      <ECL>};
+		int   ecl_job_attr_size = sizeof(ecl_job_attr_def) / sizeof(ecl_attribute_def);</ECL>
+   </tail>
+</data>
+
+

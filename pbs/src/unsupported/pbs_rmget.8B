@@ -1,0 +1,188 @@
+.\"
+.\"
+.\"
+.\" Copyright (C) 1994-2016 Altair Engineering, Inc.
+.\" For more information, contact Altair at www.altair.com.
+.\"  
+.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" 
+.\" Open Source License Information:
+.\"  
+.\" PBS Pro is free software. You can redistribute it and/or modify it under the
+.\" terms of the GNU Affero General Public License as published by the Free 
+.\" Software Foundation, either version 3 of the License, or (at your option) any 
+.\" later version.
+.\"  
+.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+.\" PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+.\"  
+.\" You should have received a copy of the GNU Affero General Public License along 
+.\" with this program.  If not, see <http://www.gnu.org/licenses/>.
+.\"  
+.\" Commercial License Information: 
+.\" 
+.\" The PBS Pro software is licensed under the terms of the GNU Affero General 
+.\" Public License agreement ("AGPL"), except where a separate commercial license 
+.\" agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+.\"  
+.\" Altair’s dual-license business model allows companies, individuals, and 
+.\" organizations to create proprietary derivative works of PBS Pro and distribute 
+.\" them - whether embedded or bundled with other software - under a commercial 
+.\" license agreement.
+.\" 
+.\" Use of Altair’s trademarks, including but not limited to "PBS™", 
+.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+.\" trademark licensing policies.
+.\"
+.if \n(Pb .ig Iq
+.TH pbs_rmget 8B "8 February 2007" Local "PBS Professional"
+.\" The following macros are style for object names and values.
+.de Ar		\" command/function arguments and operands (italic)
+.ft 2
+.if \\n(.$>0 \&\\$1\f1\\$2
+..
+.de Av		\" data item values  (Helv)
+.if  \n(Pb .ft 6
+.if !\n(Pb .ft 3
+.ps -1
+.if \\n(.$>0 \&\\$1\s+1\f1\\$2
+..
+.de At		\" attribute and data item names (Helv Bold)
+.if  \n(Pb .ft 6
+.if !\n(Pb .ft 2
+.ps -1
+.if \\n(.$>0 \&\\$1\s+1\f1\\$2
+..
+.de Ty		\" Type-ins and examples (typewriter)
+.if  \n(Pb .ft 5
+.if !\n(Pb .ft 3
+.if \\n(.$>0 \&\\$1\f1\\$2
+..
+.de Er		\" Error values ( [Helv] )
+.if  \n(Pb .ft 6
+.if !\n(Pb .ft 3
+\&\s-1[\^\\$1\^]\s+1\f1\\$2
+..
+.de Sc		\" Symbolic constants ( {Helv} )
+.if  \n(Pb .ft 6
+.if !\n(Pb .ft 3
+\&\s-1{\^\\$1\^}\s+1\f1\\$2
+..
+.de Al		\" Attribute list item, like .IP but set font and size
+.if !\n(Pb .ig Ig
+.ft 6
+.IP "\&\s-1\\$1\s+1\f1"
+.Ig
+.if  \n(Pb .ig Ig
+.ft 2
+.IP "\&\\$1\s+1\f1"
+.Ig
+..
+.\" the following pair of macros are used to bracket sections of code
+.de Cs
+.ft 5
+.nf
+..
+.de Ce
+.sp
+.fi
+.ft 1
+..
+.\" End of macros 
+.Iq
+
+
+.SH NAME
+.B pbs_rmget 
+\- queries MOM for resource values
+
+.SH SYNOPSIS
+pbs_rmget [-m MOM name] [-p port] [resource list]
+
+.SH DESCRIPTION
+The
+.B pbs_rmget
+command uses the resource monitor interface to query the MOM
+for resource values.
+
+.SH OPTIONS
+.IP "-m MOM name" 15
+The 
+.I MOM name 
+(hostname) to query.
+If the 
+.I MOM name 
+is not specified, the MOM on the current host is queried.
+
+.IP "-p port" 15
+Specifies the MOM's RM 
+.I port 
+to query.  If the 
+.I port
+is not specified, the default port is queried.
+
+.SH OPERANDS
+.IP "resource list" 15 
+Space-separated list of one or more resources.
+If no 
+.I resource list 
+is given, the 
+.B pbs_rmget
+command returns its usage.
+
+.SH OUTPUT
+Given 
+.B pbs_rmget RES_A RES_B,
+the output is:
+.RS 5
+[0] RES_A=<value of RES_A>
+.br 
+[1] RES_B=<value of RES_B>
+.RE
+.br
+
+Querying a nonexistent resource:
+.br
+Given 
+.B pbs_rmget RES_C,
+where RES_C is nonexistent, the output is:
+.RS 5
+[0] RES_C=? 15201
+.RE
+
+.SH EXIT STATUS
+.IP "0" 15 
+Success
+.IP "1" 15
+if MOM name, option, or port is unrecognized.
+A message is printed to standard error.
+.LP
+
+.SH ERROR MESSAGES
+If the 
+.B pbs_rmget
+command fails to open a connection to the MOM name given in the 
+.I -m 
+option:
+.RS 5
+"Unable to open connection to mom: <MOM name>, <MOM port>"
+.RE
+The default MOM port is reported as zero.
+.br
+
+If the 
+.B pbs_rmget
+command fails to get a message back from MOM:
+.RS 5
+"Error getting response <resource request> from mom."
+.RE
+
+.SH SEE ALSO
+The
+.B PBS Professional External Reference Specification, 
+The 
+.B PBS Professional Administrator's Guide, 
+.br
+rm(3B),
+pbs_mom(8B), pbs_tclsh(8B)

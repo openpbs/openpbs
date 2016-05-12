@@ -1,0 +1,198 @@
+.\" Copyright (C) 1994-2016 Altair Engineering, Inc.
+.\" For more information, contact Altair at www.altair.com.
+.\"  
+.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" 
+.\" Open Source License Information:
+.\"  
+.\" PBS Pro is free software. You can redistribute it and/or modify it under the
+.\" terms of the GNU Affero General Public License as published by the Free 
+.\" Software Foundation, either version 3 of the License, or (at your option) any 
+.\" later version.
+.\"  
+.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+.\" PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+.\"  
+.\" You should have received a copy of the GNU Affero General Public License along 
+.\" with this program.  If not, see <http://www.gnu.org/licenses/>.
+.\"  
+.\" Commercial License Information: 
+.\" 
+.\" The PBS Pro software is licensed under the terms of the GNU Affero General 
+.\" Public License agreement ("AGPL"), except where a separate commercial license 
+.\" agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+.\"  
+.\" Altair’s dual-license business model allows companies, individuals, and 
+.\" organizations to create proprietary derivative works of PBS Pro and distribute 
+.\" them - whether embedded or bundled with other software - under a commercial 
+.\" license agreement.
+.\" 
+.\" Use of Altair’s trademarks, including but not limited to "PBS™", 
+.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+.\" trademark licensing policies.
+.\"
+.\" @(#)string.3 1.32 90/02/03 TMP;
+.TH RM 3 "29 August 2011" Local "PBS Professional"
+.SH NAME
+openrm, closerm, downrm, configrm, addreq, allreq, getreq, flushreq, activereq, fullresp \- resource monitor API
+.SH SYNOPSIS
+
+.B #include <sys/types.h>
+.br
+.B #include <netinet/in.h>
+.br
+.B #include <rm.h>
+
+.LP
+.B
+int openrm (host, port)
+.br
+.RS 6
+char *host;
+.br
+unsigned int port;
+.RE
+.LP
+.B int closerm (stream) 
+.br
+.RS 6
+int stream;
+.RE
+.LP
+.B
+int downrm (stream)   
+.br
+.RS 6
+int stream;
+.RE
+.LP
+.B
+int configrm (stream, file)
+.br
+.RS 6
+int stream;
+.br
+char *file;
+.RE
+.LP
+.B
+int addreq (stream, line)
+.br
+.RS 6
+int stream; 
+.br
+char *line;
+.RE
+.LP
+.B
+int allreq (line) 
+.br
+.RS 6
+char *line; 
+.RE
+.LP
+.B
+char *getreq(stream)  
+.br
+.RS 6
+int stream;
+.RE
+.LP
+.B
+int flushreq() 
+.LP
+.B
+int activereq()
+.LP
+.B
+void fullresp(flag)  
+.br
+.RS 6
+int flag; 
+.RE
+.SH DESCRIPTION
+.LP
+The resource monitor library contains functions to facilitate
+communication with the PBS Professional resource monitor. It is set up
+to make it easy to connect to several resource monitors and
+handle the network communication efficiently.
+.LP
+In all these routines, the variable
+.B pbs_errno
+will be set when an error is indicated.
+The lower levels of network protocol are handled by the
+"Data Is Strings" 
+.I DIS
+library and the "Reliable Packet Protocol"
+.I RPP
+library.
+
+.LP
+.B configrm() 
+causes the resource monitor to read the file named. 
+.B Deprecated.
+
+.LP
+.B addreq()
+begins a new message to the resource monitor if necessary.
+Then adds a line to the body of an outstanding command to the resource
+monitor.
+
+.LP
+.B allreq()
+begins, for each stream, a new message to the resource monitor if necessary.
+Then adds a line to the body of an outstanding command to the resource
+monitor.
+
+.LP
+.B getreq()
+finishes and sends any outstanding message to the resource monitor.
+If
+.B fullresp()
+has been called to turn off "full response" mode, the routine
+searches down the line to find the equal sign just before the
+response value.
+The returned string (if it is not NULL) has been allocated by
+.I malloc
+and thus
+.I free
+must be called when it is no longer needed to prevent memory leaks.
+
+.LP
+.B flushreq()
+finishes and sends any outstanding messages to all resource monitors.
+For each active resource monitor structure, it checks if any
+outstanding data is waiting to be sent. If there is, it is sent and
+the internal structure is marked to show "waiting for response".
+
+.LP
+.B fullresp()
+turns on, if flag is true, "full response" mode where
+.B getreq()
+returns a pointer to the beginning of a line of response.
+This is the default.  If flag is false,
+the line returned by
+.B getreq()
+is just the answer following the equal sign.
+
+.LP
+.B activereq()
+Returns the stream number of the next stream with something
+to read or a negative number (the return from
+.I rpp_poll )
+if there is no stream to read.
+
+In order to use any of the above with Windows, initialize the network
+library and link with 
+.B winsock2.  
+To do this, call 
+.B winsock_init() 
+before calling the function and link against the 
+.B ws2_32.lib 
+library.
+
+.SH SEE ALSO
+.BR rpp (3B),
+.BR tcp (4P),
+.BR udp (4P)

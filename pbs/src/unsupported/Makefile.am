@@ -1,0 +1,73 @@
+
+#
+#  Copyright (C) 1994-2016 Altair Engineering, Inc.
+#  For more information, contact Altair at www.altair.com.
+#   
+#  This file is part of the PBS Professional ("PBS Pro") software.
+#  
+#  Open Source License Information:
+#   
+#  PBS Pro is free software. You can redistribute it and/or modify it under the
+#  terms of the GNU Affero General Public License as published by the Free 
+#  Software Foundation, either version 3 of the License, or (at your option) any 
+#  later version.
+#   
+#  PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+#  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+#  PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+#   
+#  You should have received a copy of the GNU Affero General Public License along 
+#  with this program.  If not, see <http://www.gnu.org/licenses/>.
+#   
+#  Commercial License Information: 
+#  
+#  The PBS Pro software is licensed under the terms of the GNU Affero General 
+#  Public License agreement ("AGPL"), except where a separate commercial license 
+#  agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+#   
+#  Altair’s dual-license business model allows companies, individuals, and 
+#  organizations to create proprietary derivative works of PBS Pro and distribute 
+#  them - whether embedded or bundled with other software - under a commercial 
+#  license agreement.
+#  
+#  Use of Altair’s trademarks, including but not limited to "PBS™", 
+#  "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+#  trademark licensing policies.
+#
+
+unsupporteddir = ${exec_prefix}/unsupported
+
+unsupported_PROGRAMS = pbs_rmget
+
+dist_unsupported_SCRIPTS = \
+	pbs_diag \
+	pbs_dtj \
+	pbs_loganalyzer \
+	pbs_stat
+
+dist_unsupported_PYTHON = \
+	NodeHealthCheck.py \
+	load_balance.py \
+	mom_dyn_res.py \
+	pbs-alps-inventory-check.py \
+	rapid_inter.py \
+	run_pelog_shell.py
+
+dist_unsupported_DATA = \
+	NodeHealthCheck.json \
+	README \
+	pbs_dtj.8B \
+	pbs_jobs_at.8B \
+	pbs_rescquery.3B \
+	run_pelog_shell.ini
+
+pbs_rmget_CPPFLAGS = -I$(top_srcdir)/src/include
+pbs_rmget_LDADD = \
+	$(top_builddir)/src/lib/Libtpp/libtpp.a \
+	$(top_builddir)/src/lib/Liblog/liblog.a \
+	$(top_builddir)/src/lib/Libnet/libnet.a \
+	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
+	$(top_builddir)/src/lib/Libutil/libutil.a \
+	-lpthread
+pbs_rmget_SOURCES = pbs_rmget.c
+

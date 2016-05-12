@@ -1,0 +1,51 @@
+# Copyright (C) 1994-2016 Altair Engineering, Inc.
+# For more information, contact Altair at www.altair.com.
+#  
+# This file is part of the PBS Professional ("PBS Pro") software.
+# 
+# Open Source License Information:
+#  
+# PBS Pro is free software. You can redistribute it and/or modify it under the
+# terms of the GNU Affero General Public License as published by the Free 
+# Software Foundation, either version 3 of the License, or (at your option) any 
+# later version.
+#  
+# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+# PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+#  
+# You should have received a copy of the GNU Affero General Public License along 
+# with this program.  If not, see <http://www.gnu.org/licenses/>.
+#  
+# Commercial License Information: 
+# 
+# The PBS Pro software is licensed under the terms of the GNU Affero General 
+# Public License agreement ("AGPL"), except where a separate commercial license 
+# agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+#  
+# Altair’s dual-license business model allows companies, individuals, and 
+# organizations to create proprietary derivative works of PBS Pro and distribute 
+# them - whether embedded or bundled with other software - under a commercial 
+# license agreement.
+# 
+# Use of Altair’s trademarks, including but not limited to "PBS™", 
+# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+# trademark licensing policies.
+#
+
+#grp1	50	root	10
+#grp2	51	root	20
+#grp3	52	root	10
+#grp4	53	grp1	20
+#grp5 	54	grp1	10
+#grp6	55	grp2	20
+#usr1	60	root	5
+#usr2	61	grp1	10
+#usr3	62	grp2	10
+#usr4	63	grp6	10
+#usr5	64	grp6	10
+#usr6	65	grp6	20
+#usr7	66	grp3	10
+#usr8	67	grp4	10
+#usr9	68	grp4	10
+#usr10	69	grp5	10

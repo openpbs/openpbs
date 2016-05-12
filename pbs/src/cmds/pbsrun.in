@@ -1,0 +1,659 @@
+#!/bin/sh
+#  Copyright (C) 1994-2016 Altair Engineering, Inc.
+#  For more information, contact Altair at www.altair.com.
+#   
+#  This file is part of the PBS Professional ("PBS Pro") software.
+#  
+#  Open Source License Information:
+#   
+#  PBS Pro is free software. You can redistribute it and/or modify it under the
+#  terms of the GNU Affero General Public License as published by the Free 
+#  Software Foundation, either version 3 of the License, or (at your option) any 
+#  later version.
+#   
+#  PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+#  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+#  PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+#   
+#  You should have received a copy of the GNU Affero General Public License along 
+#  with this program.  If not, see <http://www.gnu.org/licenses/>.
+#   
+#  Commercial License Information: 
+#  
+#  The PBS Pro software is licensed under the terms of the GNU Affero General 
+#  Public License agreement ("AGPL"), except where a separate commercial license 
+#  agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+#   
+#  Altair’s dual-license business model allows companies, individuals, and 
+#  organizations to create proprietary derivative works of PBS Pro and distribute 
+#  them - whether embedded or bundled with other software - under a commercial 
+#  license agreement.
+#  
+#  Use of Altair’s trademarks, including but not limited to "PBS™", 
+#  "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+#  trademark licensing policies.
+#
+#
+
+if [ $# -eq 1 ] && [ $1 = "--version" ]; then
+   echo pbs_version = @PBS_VERSION@
+   exit 0
+fi
+
+# Global variables
+
+# build_arg_counts: given a list of options and their arguments, returns
+# a space-separated list of elements of the form:
+#
+#   -optionN:<# of arguments>
+#
+# For instance,
+#	given: -v -gm-wait <n>"
+#	output: -v:0 -gm-wait:1
+# NOTE: if error encountered parsing the arguments, return value is "".
+
+build_arg_counts ()
+{
+
+  num_args=0
+  find_opt=1
+  arg_counts=""
+  while [ $# -gt 0 ] ; do 
+
+    first_char=`printf "%s" "$1" | cut -b1`
+    last_char=`printf "%s" "$1" | awk '{printf "%s", substr($1,length($1),1)}'`
+
+    if [ $find_opt -eq 1 ] ; then
+
+
+	if [ "$first_char" = "-" ] ; then
+
+	  if [ "`printf "%s" "$1" | sed $SED_OPT_XREGEXP 's/^(-|--)//g' | cut -b1`" = "-" ] ; then
+		echo ""
+		return
+	  fi
+
+    	  find_opt=0
+          num_args=0
+          arg_counts="$arg_counts $1"
+	  shift
+	  if [ "$1" = "" ] ; then
+             arg_counts="${arg_counts}:${num_args}"
+	  fi
+	else
+	  echo ""
+	  return
+	fi	
+
+     else
+
+	if [ "$first_char" = "<" ] && [ "$last_char" = ">" ] ; then
+      	  num_args=`expr $num_args + 1`
+	  shift
+	  if [ "$1" = "" ] ; then
+             arg_counts="${arg_counts}:${num_args}"
+	  fi
+        elif [ "$first_char" = "-" ] ; then
+          arg_counts="${arg_counts}:${num_args}"
+	  find_opt=1
+	else
+	  echo ""
+	  return
+	fi
+     fi
+
+  done 
+
+  echo "$arg_counts"
+  
+}
+
+# Given an option, and an options list that was transformed by
+# build_arg_counts(), returns the # of arguments of the option that
+# was matched in the options list. Otherwise, -1 is returned.
+# For instance,
+#	given: -v -x:0 -opt:1 -z:0 -v:0 -gm-buffers:1 -gx:gb:3 --totalnum=*:0
+#	return:  0 since "-v" (first argument) has no arguments (-v:0)
+match_opt ()
+{
+
+  opt_given=$1
+  shift
+
+  if [ "`printf "%s" "$opt_given" | cut -b1`" != "-" ] ; then
+	echo -1
+	return
+  fi
+
+  while [ $# -gt 0 ] ; do 
+	
+	opt_2match=`printf "%s" "$1" | awk -F":" '{
+             for(i=1;i<NF;i++) {
+                if( i == (NF-1) ) {
+                  printf "%s",$i
+                } else {
+                  printf "%s:",$i
+                }
+             } }'`
+
+    	opt_num_args=`printf "%s" "$1" | awk -F":" '{ print $NF }'`
+
+	# wcard_str is for egrep matching and not glob
+	wcard_str=""
+	if [ `printf "%s" $opt_2match | egrep -c "\*"` -ne 0 ]  ; then
+		wcard_str=`printf "%s" $opt_2match | sed 's/*/.+/g'`
+	fi
+
+	# if opt_given contains wildcard "*", then do egrep matching
+	if [ "$opt_2match" = "$opt_given" ]  || \
+	   ([ "$wcard_str" != "" ] && \
+	    [ `printf "%s" $opt_given | egrep -c -e "$wcard_str"` -ne 0 ]) ; then
+		echo $opt_num_args
+		return
+	fi
+	shift
+
+  done
+
+  echo -1
+
+}
+
+# given a list of options and values as transformed by
+# build_arg_counts(), this returns a space-separated, list of single
+# option letters. For instance,
+#	given: -v:0 -opt:1 -x:0 -y:2 -z:0 -gm-buffers:1 -gx:gb:3
+#	return: -v -x -z
+
+build_single_letter_noargs_opts ()
+{
+  single_letter_opts=""
+  while [ $# -gt 0 ] ; do 
+
+	opt_2match=`printf "%s" "$1" | awk -F":" '{
+             for(i=1;i<NF;i++) {
+                if( i == (NF-1) ) {
+                  printf "%s",$i
+                } else {
+                  printf "%s:",$i
+                }
+             } }'`
+        opt_2match_len=`printf "%s" "$opt_2match" | sed $SED_OPT_XREGEXP 's/^(-|--)//g' | \
+					awk '{print length($1)}'`
+    	opt_num_args=`printf "%s" "$1" | awk -F":" '{ print $NF }'` 
+
+	if [ $opt_2match_len -eq 1 ] && [ $opt_num_args -eq 0 ] ; then
+		single_letter_opts="$single_letter_opts $opt_2match"
+	fi
+	shift
+
+  done
+
+  printf "%s" "$single_letter_opts"
+
+}
+
+# Given an option, and an options list, return 0 if the given option
+# matches one of the items on the options list.
+# For instance,
+#	given: "-v" -x -opt happy -z -v --totalnum=*
+#	return 0 since "-v" (first argument) is in the  succeeding
+#	arguments list.
+match_opt2 ()
+{
+	opt_given=$1
+	shift
+
+	if [ "`printf "%s" "$opt_given" | cut -b1`" != "-" ] ; then
+		echo -1
+		return
+	fi
+	
+   	while [ $# -gt 0 ] ; do 
+
+		if [ "`printf "%s" "$1" | cut -b1`" != "-" ] ; then
+			shift
+			continue
+		fi
+
+		# wcard_str is for egrep matching and not glob
+		wcard_str=""
+		if [ `printf "%s" $1 | egrep -c "\*"` -ne 0 ]  ; then
+			wcard_str=`printf "%s" $1 | sed 's/*/.+/g'`
+		fi
+		
+
+		if [ "$opt_given" = "$1" ] || \
+		   ([ "$wcard_str" != "" ] && \
+		    [ `printf "%s" $opt_given | egrep -c -e "$wcard_str"` -ne 0 ]) ; then
+			echo 0
+			return
+		fi
+		shift
+	done
+	echo -1
+}
+
+# Given an input list of single letter/no option arguments (SLNOA) (arg #1),
+# a valid options list that was transformed by build_arg_counts() (arg #2),
+# and a list of actual options and arguments to parse (args #3..#N),
+# return a new list such that any "combined" single letter, no option arguments
+# appearing in the SLNOA list are separated out. For instance,
+# given: "-v -x -y -z -a -b" "-v:0 -x:0 -y:0 -z:0 -opt:1" -v -opt happy -xyz
+# output: -v -opt happy -x -y -z
+expand_args ()
+{
+	options_single_letter=$1
+	options_valid=$2
+	shift 2
+
+	options_to_return=""
+   	while [ $# -gt 0 ] ; do 
+    	  first_char=`printf "%s" $1 | cut -b1`
+	  second_char=`printf "%s" $1 | cut -b2,2`
+
+	  if [ "$first_char"  = "-" ] ; then
+
+		if [ "$second_char" = "-" ] ; then
+			prefix="--"
+		else
+			prefix="-"
+		fi
+	  	option_str="`printf "%s" "$1" | sed $SED_OPT_XREGEXP 's/^(-|--)//g'`"
+	  	option_str_len=`printf "%s" "$option_str" | awk '{print length($1)}'` 
+
+		i=1
+	  	exp_option_str=""
+		while [ $i -le $option_str_len ] ; do
+			exp_option_str="$exp_option_str ${prefix}`printf "%s" "$option_str" | cut -b${i},${i}`"
+			i=`expr $i + 1`
+		done
+
+		match_all=1
+		for opt in $exp_option_str ; do
+		   if [ `match_opt2 $opt $options_single_letter` -eq -1 ] ; then
+			match_all=0
+			break
+		   fi
+		done
+
+		if [ $match_all -eq 1 ] && \
+		   [ `match_opt $1 $options_valid` -eq -1 ] ; then
+			options_to_return="$options_to_return $exp_option_str"
+		else
+			options_to_return="$options_to_return $1"
+		fi
+
+	  else
+		options_to_return="$options_to_return $1"
+	  fi
+	  shift
+	done
+	printf "%s" "$options_to_return"
+}
+
+#####################################################
+# MAIN
+#####################################################
+
+# Returns the option in sed for doing extended regular expression.
+# This returns "-r", "-E", or "" if no option could be found.
+
+SED_OPT_XREGEXP=""
+for e in "-r" "-E" ; do
+	sed $e 's/^(-|--)//g' /dev/null 2>/dev/null >/dev/null
+	if [ $? -eq 0 ]; then
+		SED_OPT_XREGEXP="$e"
+		break
+	fi
+done
+
+if [ "$SED_OPT_XREGEXP" = "" ] ; then
+	echo "Could not find option to sed for doing extended regular expressions."
+	exit 1
+fi
+
+
+# We need to get name of the actual binary, and not some link
+# that resulted from wrapping
+if [ -h $0 ] ; then
+   realpath=`ls -l $0 | awk -F "->" '{print $2}'| tr -d ' '`
+   name=`basename $realpath`
+else
+   name=`basename $0`
+fi
+
+. ${PBS_CONF_FILE:-/etc/pbs.conf}
+export PBS_TMPDIR="${PBS_TMPDIR:-${TMPDIR:-/var/tmp}}"
+export PATH=$PATH:${PBS_EXEC}/bin
+
+PBS_LIB_PATH=${PBS_EXEC}/lib
+if [ ! -d ${PBS_LIB_PATH} -a -d ${PBS_EXEC}/lib64 ] ; then
+	PBS_LIB_PATH=${PBS_EXEC}/lib64
+fi
+
+if [ -h ${PBS_LIB_PATH}/MPI/${name}.link ] ; then
+   mpirun=`ls -l ${PBS_LIB_PATH}/MPI/${name}.link | awk -F "->" '{print $2}'| tr -d ' '`
+   if [ ! -x "$mpirun" ] ; then
+	echo "mpirun=$mpirun is not executable!"
+	exit 127
+
+   fi
+else
+   echo "No mpirun link found under ${PBS_LIB_PATH}/MPI/$name.link !" 
+   echo "Please run pbsrun_wrap to create the link"
+   exit 127
+fi
+
+# let's source the initialization script
+mpirun_location=`dirname $mpirun`
+
+if [ -s ${PBS_LIB_PATH}/MPI/${name}.init ] ; then
+   . ${PBS_LIB_PATH}/MPI/${name}.init
+else
+   echo "No ${PBS_LIB_PATH}/MPI/{$name}.init file exists!"
+   exit 127
+fi
+
+if [ "${PBS_NODEFILE:-XX}" = "XX" ]; then
+   if [ "$name" != "mpirun" ]; then
+      echo "$name: Warning, not running under PBS"
+
+      if [ ${strict_pbs:=0} -eq 1 ] ; then
+		echo "$name: exiting since strict_pbs is enabled; execute only in PBS"
+		exit 1
+      fi	
+   fi
+
+   # parse arguments looking for any quoted arguments
+   # to preserved.
+   # Use 'pres_pos_params' in place of $*
+
+   pres_pos_params=""
+   while [ $# -gt 0 ]
+   do
+        nwords=`echo $1 | wc -w 2>/dev/null`
+        if [ "$nwords" = "" ] ; then
+           nwords=1
+        fi
+        if [ $nwords -gt 1 ] ; then
+                pres_pos_params="${pres_pos_params} \"$1\""
+        else
+                pres_pos_params="${pres_pos_params} $1"
+        fi
+        shift
+   done
+
+   eval $mpirun $pres_pos_params
+   exit $?
+fi
+
+if [ "$option_to_configfile" != "" ] ; then
+	if [ `printf "%s" "$option_to_configfile" | awk '{print NF}'` -ne 2 ] ; then
+		echo "option_to_configfile must contain single option and its argument: Please fix in ${PBS_LIB_PATH}/MPI/${name}.init!"
+   		exit 127
+	fi
+fi
+
+_options_to_retain="`build_arg_counts $options_to_retain`"
+
+if [ "$_options_to_retain" = "" ] && [ "$options_to_retain" != "" ] ; then
+   echo "Encountered bad options_to_retain=$options_to_retain in ${PBS_LIB_PATH}/MPI/${name}.init!"
+   exit 127
+fi
+
+_options_to_ignore="`build_arg_counts $options_to_ignore`"
+if [ "$_options_to_ignore" = "" ] && [ "$options_to_ignore" != "" ] ; then
+   echo "Encountered bad options_to_ignore=$options_to_ignore in ${PBS_LIB_PATH}/MPI/${name}.init!"
+   exit 127
+fi
+
+_options_to_transform="`build_arg_counts $options_to_transform`"
+if [ "$_options_to_transform" = "" ] && \
+			[ "$options_to_transform" != "" ] ; then
+   echo "Encountered bad options_to_transform=$options_to_transform in ${PBS_LIB_PATH}/MPI/${name}.init!"
+   exit 127
+fi
+
+_options_with_single_letter=`build_single_letter_noargs_opts \
+				$_options_to_retain \
+				$_options_to_ignore \
+				$_options_to_transform`
+
+
+configfile=""
+configfile_new="${PBS_TMPDIR}/pbsrun_config$$"
+in_configfile=0
+
+# Signals to catch
+trap '(end_action $mpirun_location); /bin/rm -f ${configfile_new}; exit 1;'  1 2 3 15
+
+num_lines=1
+line=1
+_option_list_global=""
+while [ $line -le $num_lines ] ; do
+
+
+   if [ $in_configfile -eq 1 ] ; then
+	cmd_seg=`eval sed -n '${line}p' $configfile`
+
+	# skip past comment lines
+	while [ `printf "%s" "$cmd_seg" | egrep -c "^#"` -ne 0 ] ; do
+		line=`expr $line + 1`
+		if [ $line -gt $num_lines ] ; then
+			# go to top loop
+			break 2
+		fi
+		cmd_seg=`eval sed -n '${line}p' $configfile`
+	done
+	set -- $cmd_seg
+   fi
+
+   # parse arguments looking for any quoted arguments
+   # to preserved.
+   # Use 'pres_pos_params' in place of $*
+
+   pres_pos_params=""
+   while [ $# -gt 0 ]
+   do
+        nwords=`echo $1 | wc -w 2>/dev/null`
+        if [ "$nwords" = "" ] ; then
+           nwords=1
+        fi
+        if [ $nwords -gt 1 ] ; then
+                pres_pos_params="${pres_pos_params} \"$1\""
+        else
+                pres_pos_params="${pres_pos_params} $1"
+        fi
+        shift
+   done
+
+   eval set -- `expand_args "$_options_with_single_letter" \
+	   "$_options_to_retain $_options_to_ignore $_options_to_transform" $pres_pos_params`
+
+   option_list=""
+   num_retain=-1
+   num_ignore=-1
+   num_transform=-1
+   prog_args=""
+   in_prog_args=0
+   while [ $# -gt 0 ] ; do 
+
+	# first time matching configfile option
+	if [ $in_configfile -eq 0 ] &&
+		[ `match_opt2 $1 $option_to_configfile` -eq 0 ] ; then
+
+		shift
+		configfile="$1"
+
+		if [ "$configfile" = "" ] ; then
+			echo "$name: No configfile value given!"
+			(end_action)
+			exit 1
+		fi
+		if ! [ -s "$configfile" ] ; then
+			echo "$name: File $configfile does not exit or zero length!"
+			(end_action)
+			exit 1
+		fi
+
+		# reset flags and counters
+		in_configfile=1
+		num_lines=`wc -l $configfile | awk '{print $1}'`
+		line=1
+   		cat /dev/null > ${configfile_new}
+
+		# whatever command line segment we've encountered 
+		# previously will be considered "global" arguments.
+   		_option_list_global=`configfile_cmdline_action $option_list`
+
+		shift
+		if [ "$1" != "" ] ; then
+			echo "$name: Extra options after ${option_to_configfile}!"
+			(end_action)
+			exit 1
+		fi
+		# first line will contain -machinefile option
+		# which maps processes to host
+		configfile_first=`configfile_firstline_action`
+		if [ "$configfile_first" != "" ] ; then
+   			echo "$configfile_first" >> ${configfile_new}
+		fi
+		# go to top loop
+		continue 2
+	fi
+
+	if [ $in_prog_args -eq 1 ] ; then
+
+		# handle multiple command line segments
+		if [ "$1" = ":" ] ; then
+			option_list="$option_list :"
+			in_prog_args=0
+			shift
+			if [ "$1" = ":" ] ; then
+			   echo "$name: encountered empty command args segment!"
+			   (end_action $mpirun_location)
+		    	   /bin/rm -f ${configfile_new}
+			   exit 1
+			fi
+		else
+			option_list="$option_list $1"
+			shift
+		fi
+		continue
+	fi
+
+	if [ `match_opt2 $1 $options_to_fail` -eq 0 ] ; then
+		echo "$name: option $1 is not allowed!"
+		(end_action $mpirun_location)
+		/bin/rm -f ${configfile_new}
+		exit 1
+	fi
+
+	if [ `match_opt2 $1 $options_with_another_form` -eq 0 ] ; then
+		echo "$name: warning: $1 has multiple forms; the  one supported is listed in \"$options_with_another_form\""
+	fi
+
+	num_retain=`match_opt $1 $_options_to_retain`
+	if [ $num_retain -ge 0 ] ; then
+
+		option_list="$option_list $1"
+
+		loop=$num_retain
+		while [ $loop -gt 0 ] ; do
+			shift
+			nwords=`echo $1 | wc -w 2>/dev/null`
+			if [ "$nwords" = "" ] ; then
+				nwords=1
+			fi
+			if [ $nwords -gt 1 ] ; then
+				option_list="$option_list \"$1\""
+			else
+				option_list="$option_list $1"
+			fi
+			loop=`expr $loop - 1`
+		done
+
+		shift
+		continue
+	fi
+
+	num_ignore=`match_opt $1 $_options_to_ignore`
+	if [ $num_ignore -ge 0 ] ; then
+		echo "$name: warning: ignoring option $1"
+		loop=$num_ignore
+		while [ $loop -gt 0 ] ; do
+			shift
+			loop=`expr $loop - 1`
+		done
+		shift
+		continue
+	fi
+
+	num_transform=`match_opt $1 $_options_to_transform`
+	if [ $num_transform -ge 0 ] ; then
+		loop=$num_transform
+		transform_list="$transform_list $1"
+
+		while [ $loop -gt 0 ] ; do
+			shift
+			nwords=`echo $1 | wc -w 2>/dev/null`
+			if [ "$nwords" = "" ] ; then
+				nwords=1
+			fi
+			if [ $nwords -gt 1 ] ; then
+				transform_list="$transform_list \"$1\""
+			else
+				transform_list="$transform_list $1"
+			fi
+			loop=`expr $loop - 1`
+		done
+
+		option_list="$option_list `transform_action $transform_list`"
+	fi
+
+	if [ $num_retain -eq -1 ] && [ $num_ignore -eq  -1 ] && \
+					[ $num_transform -eq -1 ] ; then
+		if [ "`printf "%s" $1 | cut -b1`" = "-" ] ; then
+			echo "$name: option $1 is not recognized!"
+			echo "$name: Please update ${PBS_LIB_PATH}/MPI/${name}.init"
+			(end_action $mpirun_location)
+			/bin/rm -f ${configfile_new}
+			exit 127
+		else
+			option_list="$option_list $pbs_attach $options_to_pbs_attach $1"
+			in_prog_args=1
+		fi
+	fi
+      shift
+#  inner loop
+   done
+
+   if [ $in_configfile -eq 1 ] ; then
+	if [ "$option_list" != "" ] ; then
+   		echo "$option_list" >> ${configfile_new}
+	fi
+   else	
+   	_option_list=`evaluate_options_action $option_list`
+   fi
+
+   line=`expr $line + 1`
+
+# top loop
+done
+
+(boot_action $mpirun_location)
+if [ $? -eq 0 ] ; then
+	if [ $in_configfile -eq 1 ] ; then
+		eval $mpirun $_option_list_global -configfile ${configfile_new}
+	else	
+		eval $mpirun $_option_list
+	fi
+fi
+ret=$?
+
+(end_action $mpirun_location)
+/bin/rm -f ${configfile_new}
+exit $ret
+
+return 0

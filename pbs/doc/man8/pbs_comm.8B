@@ -1,0 +1,203 @@
+.\" Copyright (C) 1994-2016 Altair Engineering, Inc.
+.\" For more information, contact Altair at www.altair.com.
+.\"  
+.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" 
+.\" Open Source License Information:
+.\"  
+.\" PBS Pro is free software. You can redistribute it and/or modify it under the
+.\" terms of the GNU Affero General Public License as published by the Free 
+.\" Software Foundation, either version 3 of the License, or (at your option) any 
+.\" later version.
+.\"  
+.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+.\" PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+.\"  
+.\" You should have received a copy of the GNU Affero General Public License along 
+.\" with this program.  If not, see <http://www.gnu.org/licenses/>.
+.\"  
+.\" Commercial License Information: 
+.\" 
+.\" The PBS Pro software is licensed under the terms of the GNU Affero General 
+.\" Public License agreement ("AGPL"), except where a separate commercial license 
+.\" agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+.\"  
+.\" Altair’s dual-license business model allows companies, individuals, and 
+.\" organizations to create proprietary derivative works of PBS Pro and distribute 
+.\" them - whether embedded or bundled with other software - under a commercial 
+.\" license agreement.
+.\" 
+.\" Use of Altair’s trademarks, including but not limited to "PBS™", 
+.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+.\" trademark licensing policies.
+.\"
+.TH pbs_comm 8B "2 February 2016" Local "PBS Professional"
+.SH NAME
+.B pbs_comm 
+- start the PBS communication daemon
+.SH SYNOPSIS
+UNIX/Linux:
+.br
+.B pbs_comm 
+[-N] [-r <other routers>] [-t <number of threads>]
+.br
+.B pbs_comm
+--version
+.br
+.sp
+Windows:
+.br
+.B pbs_comm.exe
+[-R | -U | -N] [-r <other routers>] 
+.br
+\ \ \ \ \ \ \ \ \ \ \ \ \ [-t <number of threads>]
+.br
+.B pbs_comm
+--version
+
+.SH DESCRIPTION
+The PBS communication daemon, 
+.B pbs_comm, 
+handles communication between daemons, except for scheduler-server and
+server-server communication, which uses TCP.  The server, scheduler,
+and MoMs are connected by one or more pbs_comm daemons.
+
+.SH OPTIONS
+.IP "-N" 10
+Runs the communication daemon in standalone mode.
+
+.IP "-r" 10
+Used to specify the list of other pbs_comm daemons to which this
+pbs_comm must connect. This is equivalent to the pbs.conf variable
+.I PBS_COMM_ROUTERS. 
+The command line overrides the variable.  
+.br
+Format: <host>[:<port>][,<host>[:<port>]]
+
+.IP "-R" 10
+Registers the pbs_comm process.  Available under Windows only.
+
+.IP "-t" 10
+Used to specify the number of threads the pbs_comm daemon uses.  This
+is equivalent to the pbs.conf variable 
+.I PBS_COMM_THREADS.  
+The command
+line overrides the variable.  
+.br
+Format: Integer
+
+.IP "-U" 10
+Unregisters the pbs_comm process.  Available under Windows only.
+
+.IP "--version" 10
+Prints the PBS version and exits.  This option can only be used alone.
+
+.SH CONFIGURATION PARAMETERS
+
+.IP "PBS_LEAF_ROUTERS" 10
+Parameter in /etc/pbs.conf.  Tells an endpoint where to find its
+communication daemon.  You can tell each endpoint which communication
+daemon it should talk to.  Specifying the port is optional.
+.br
+Format: PBS_LEAF_ROUTERS=<host>[:<port>][,<host>[:>port>]]
+
+.IP "PBS_COMM_ROUTERS" 10
+Parameter in /etc/pbs.conf.  Tells a pbs_comm where to find its fellow
+communication daemons.  When you add a communication daemon, you must
+tell it about the other pbs_comms in the complex.  When you inform
+communication daemons about each other, you only tell one of each pair
+about the other.  Do not tell both about each other.  We recommend
+that an easy way to do this is to tell each new pbs_comm about each
+existing pbs_comm, and leave it at that.
+.br
+Format: PBS_COMM_ROUTERS=<host>[:<port>][,<host>[:>port>]]
+
+.IP "PBS_COMM_THREADS" 10
+Parameter in /etc/pbs.conf.  Tells pbs_comm how many threads to start.
+By default, each pbs_comm process starts four threads.  You can
+configure the number of threads that each pbs_comm uses.  Usually, you
+want no more threads than the number of processors on the host.
+.br
+Maximum allowed value: 100
+.br
+Format: Integer
+.br
+Example: PBS_COMM_THREADS=8
+
+.IP "PBS_COMM_LOGMASK" 10
+Parameter in /etc/pbs.conf.  Tells pbs_comm which log mask to use.  By
+default, pbs_comm produces few log messages.  You can choose more
+logging, usually for troubleshooting.
+.br
+Format: Integer
+.br
+Example: PBS_COMM_LOGMASK=<log level>
+
+.IP "PBS_LEAF_NAME" 10
+Parameter in /etc/pbs.conf.  Tells endpoint what name to use for
+network.  The value does not include a port, since that is usually set
+by the daemon.  By default, the name of the endpoint's host is the
+hostname of the machine.  You can set the name where an endpoint runs.
+This is useful when you have multiple networks configured, and you
+want PBS to use a particular network.  TPP internally resolves the
+name to a set of IP addresses, so you do not affect how pbs_comm
+works.
+.br
+Format: String
+.br
+Example: PBS_LEAF_NAME=host1
+
+.IP "PBS_START_COMM" 10
+Parameter in /etc/pbs.conf.  Tells PBS init script whether to start a
+pbs_comm on this host if one is installed.  When set to 1, pbs_comm is
+started.  Just as with the other PBS daemons, you can specify whether
+each host should start pbs_comm.
+.br
+Format: Boolean
+.br
+Default: 0
+.br
+Example: PBS_START_COMM=1
+
+.SH COMMUNICATION DAEMON LOGFILES
+
+The pbs_comm daemon creates its log files under $PBS_HOME/comm_logs.
+This directory is automatically created by the PBS installer.  In a
+failover configuration, this directory is in the shared PBS_HOME,
+and is used by the pbs_comm daemons running on both the primary and
+secondary servers.  This directory must never be shared across
+multiple pbs_comm daemons in any other case.
+.br
+The log filename format is yyyymmdd (the same as for other PBS
+daemons).  The log record format is the same as used by other pbs
+daemons, with the addition of the thread number and the daemon name in
+the log record. The log record format is as follows:
+date-time;event_code;daemon_name(thread
+number);object_type;object_name;message
+.br
+Example: 
+.br
+03/25/2014
+15:13:39;0d86;host1.example.com;TPP;host1.example.com(Thread 2);
+Connection from leaf 192.168.184.156:19331, tfd=81 down
+
+.SH SIGNAL HANDLING
+The 
+.B pbs_comm
+daemon handles the following signals:
+
+.IP "SIGHUP" 10
+Re-reads the value of
+.I PBS_COMM_LOGMASK
+from pbs.conf.
+
+.IP "SIGTERM" 10
+The 
+.B pbs_comm
+daemon exits.
+
+
+.SH SEE ALSO
+The
+.B PBS Professional Installation and Upgrade Guide

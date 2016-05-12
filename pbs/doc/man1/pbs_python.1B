@@ -1,0 +1,279 @@
+.\" Copyright (C) 1994-2016 Altair Engineering, Inc.
+.\" For more information, contact Altair at www.altair.com.
+.\"  
+.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" 
+.\" Open Source License Information:
+.\"  
+.\" PBS Pro is free software. You can redistribute it and/or modify it under the
+.\" terms of the GNU Affero General Public License as published by the Free 
+.\" Software Foundation, either version 3 of the License, or (at your option) any 
+.\" later version.
+.\"  
+.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+.\" PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+.\"  
+.\" You should have received a copy of the GNU Affero General Public License along 
+.\" with this program.  If not, see <http://www.gnu.org/licenses/>.
+.\"  
+.\" Commercial License Information: 
+.\" 
+.\" The PBS Pro software is licensed under the terms of the GNU Affero General 
+.\" Public License agreement ("AGPL"), except where a separate commercial license 
+.\" agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+.\"  
+.\" Altair’s dual-license business model allows companies, individuals, and 
+.\" organizations to create proprietary derivative works of PBS Pro and distribute 
+.\" them - whether embedded or bundled with other software - under a commercial 
+.\" license agreement.
+.\" 
+.\" Use of Altair’s trademarks, including but not limited to "PBS™", 
+.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+.\" trademark licensing policies.
+.\"
+.TH pbs_python 1B "2 March 2015" Local "PBS Professional"
+.SH NAME
+.B pbs_python 
+\- Python interpreter for debugging a hook script from the command line
+.SH SYNOPSIS
+.B pbs_python
+--hook  [-e <log_event_mask>] [-i <event file>] 
+.RS 11
+[-L <log_dir>] [-l <log_file>] [-o <output_file>] 
+.br
+[-r <resourcedef_file>] [-s <site data file>] [<python_script>]
+.RE
+.B pbs_python
+--version
+
+.SH DESCRIPTION
+The PBS Python interpreter is a wrapper for Python.  
+You can use the PBS Python interpreter for debugging a hook script at
+the command line by specifying the 
+.I --hook 
+option. You can use the
+.I --hook 
+option to get access to the PBS Python module and perform 
+interactive or non-interactive debugging.
+
+Without the 
+.I --hook
+option, you can use 
+.B pbs_python 
+to run the Python interpreter that is distributed with PBS Professional.
+
+.SH Debugging
+You can get each hook to write out debugging files, and then modify the files
+and use them as debugging input to
+.B pbs_python.  
+Alternatively, you can write them yourself.  
+
+A hook can write an event file
+containing the values that populate the pbs.event() objects in the hook, 
+a site data file containing the values that populate the pbs.server() objects, 
+and a hook execution record listing what the hook changed and whether the 
+hook accepted or rejected the event.  To use these files as debugging input,
+you can pass the event file to 
+.B pbs_python 
+using the 
+.I -i
+option, and you can pass the site data file to 
+.B pbs_python
+using the 
+.I -s 
+option.
+For details about debugging hooks, see the Hooks chapter in the PBS
+Professional Administrator's Guide.
+
+.SH OPTIONS
+.IP "--hook" 6
+This option is a switch.  When you use this option, you can use the
+PBS Python module (via "import pbs"), and the other options described
+here are available.  When you use this option, you cannot use the
+standard Python options.  This option is useful for debugging.  
+
+When you do not use this option, you cannot use
+the other options listed here, but you can use the standard 
+Python options.
+
+.IP "-i <event file>" 6
+Text file containing data to populate pbs.event() objects.  
+This file is for debugging 
+and is written by a hook or by the administrator.  
+
+Each line
+specifies an attribute value or a resource value.  Syntax of each
+input line is one of the following:
+.RS 10
+<object_name>.<attribute_name>=<attribute_value>
+.br
+<object_name>.<resource_list>[<resource_name>]=<resource_value>
+.RE
+.IP
+Where
+.RS 10
+<object_name> is a PBS object name which can refer to its sub objects.  Examples:  
+"pbs.event()", "pbs.event().job", "pbs.event().vnode_list["<vnode name>"]".
+.RE
+.IP
+Example input file:
+.RS 10
+.br
+pbs.event().hook_name=proto
+.br
+pbs.event().hook_type=site
+.br
+pbs.event().type=queuejob
+.br
+pbs.event().requestor=user1
+.br
+pbs.event().requestor_host=host1
+.br
+pbs.event().hook_alarm=40
+.br
+pbs.event().job.id=72
+.br
+pbs.event().job.Job_Name=job1
+.br
+pbs.event().job.Resource_List[ncpus]=5
+.br
+pbs.event().job.Resource_List[mem]=6mb
+.br
+pbs.event().vnode_list["host1"].resources_available["ncpus"] = 5
+.br
+pbs.event().vnode_list["host1"].resources_available["mem"] = 300gb
+.RE
+
+.IP
+Available only when 
+.I --hook 
+option is used.
+
+.IP "-e <log_event_mask>" 6
+Sets the mask that determines which event types are logged by
+.B pbs_python. 
+To see only debug messages, set the value to 0xd80. To
+see all messages, set the value to 0xffff.
+.br
+The 
+.B pbs_python 
+interpreter uses the same set of mask values that are
+used for the $logevent <mask> entry in the pbs_mom configuration file.
+See the pbs_mom.8B man page.  Available only when 
+.I --hook 
+option is used.
+
+.IP "-L <log_dir>" 6
+Directory holding the log file where pbs.logmsg() and pbs.logjobmsg()
+write their output.  Default is current working directory where 
+.B pbs_python
+is executed.
+Available only when 
+.I --hook 
+option is used.
+
+.IP "-l <log_file>" 6
+Log file where pbs.logmsg() and pbs.logjobmsg() write their output.
+Default file name is current date in 
+.I yyyymmdd 
+format.
+Available only when 
+.I --hook 
+option is used.
+
+.IP "-o <output_file>" 6
+The output file contains the changes made after executing the hook
+script, such as the attributes and resources set in any pbs.event()
+jobs and reservations, whether to accept or reject an action, and any
+pbs.reject() messages.
+.br
+Example output file:
+.RS 10
+.br
+pbs.event().job.Job_Name=job2
+.br
+pbs.event().job.Resource_List[file]=60gb
+.br
+pbs.event().job.Resource_List[ncpus]=5
+.br
+pbs.event().job.Resource_List[mem]=20gb
+.br
+pbs.event().job.Account_Name=account2
+.br
+pbs.event().reject=True
+.br
+pbs.event().reject_msg=No way! 
+.RE
+
+.IP 
+Without this option, output goes to stdout.
+
+.IP
+Available only when 
+.I --hook 
+option is used.
+
+.IP "-r <resourcedef>" 6
+File/path name containing a resource definition specifying a custom
+resource whose Python type is pbs.resource.
+.br 
+Format: 
+.br
+.I <resource_name>type=<typename> [flag=<value>]
+.br
+This file has the same format as the PBS_HOME/server_priv/resourcedef
+file.  Available only when 
+.I --hook 
+option is used.
+
+.IP "-s <site data file>" 6
+The site data file can contain any relevant information about the
+server, queues, vnodes, and jobs at the server.  This file is for debugging 
+and is written by a hook or by the administrator.  
+.br
+When the hook writes it, this file contains the values that populate
+the server, queues, vnodes, reservations, and jobs, with all
+attributes and resources for which there are values.
+.br 
+The site data file is named 
+.I hook_<event type>_<hook name>_<random integer>.data.  
+Available only when 
+.I --hook 
+option is used.
+
+.IP "--version" 6
+The 
+.B pbs_python 
+command prints its version information and exits.  This option
+can only be used alone.  
+
+.SH ARGUMENTS
+.IP "<python_script>" 6
+The hook script to execute.
+We recommend importing the PBS Python module at the start of the script:
+.br
+import pbs
+.br
+If you do not specify <python script>, you can perform interactive
+debugging.  If you type the following:
+.br
+1800d44bs_python --hook -i hook.input
+.br
+The interpreter displays a prompt:
+.br
+>>
+.br
+You can type your Python lines at the prompt:
+.br
+>>import pbs
+.br
+  >> e=pbs.event().job
+.br
+         >> print e.id
+.br
+    <job-id>
+.br
+    ...
+.br
+

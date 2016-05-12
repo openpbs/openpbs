@@ -1,0 +1,92 @@
+MOM's rcp
+
+1. What is this rcp stuff?
+
+The majority contents of this directory is the source code
+for the rcp(1) command.  This source is from the bsd4.4-Lite
+distribution.  It is copyrighted by UCB as noted in the source
+files.  This code has been slightly modified in order to have
+in compile on systems other than bsd4.4;  note their liberal
+use of functions suchs as vwarnx() and snprintf() not found in
+POSIX.   The copyright, reproduced below, clearly grants the right
+to modify and redistribute the source.
+
+ * Copyright (c) 1992, 1993
+ *      The Regents of the University of California.  All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. All advertising materials mentioning features or use of this software
+ *    must display the following acknowledgement:
+ *      This product includes software developed by the University of
+ *      California, Berkeley and its contributors.
+ * 4. Neither the name of the University nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+
+
+2. Why do we need it?
+
+Within PBS, there are three cases in which MOM must move files
+between her machine and some other:
+	a. Pre-execution stage in of files.
+	b. Post-execution stage out of files.
+	c. Post-execution return of the job`s standard output and
+	   standard error.
+
+The PBS project did not wish to be dependent on NFS, AFS, or any
+other distributed file system in order to support file delivery.
+Nor did we wish to restrict the source/target of file movement to
+those systems with a PBS server.  This ruled out using the "job"
+protocol as a file transport.  Ftp(1) and ftam require the user's
+password.  We did not wish to require that knowledge.  Thus rcp(1)
+was selected as the transport method.   MOM uses the system(3)
+library routine to execute the rcp command.
+
+However, many rcp implementations come with a serious flaw.  They
+may exit and return an exit status of zero (0), when the file was
+not delivered.  If this happens, MOM would believe that the file
+was delivered when it was not.  
+
+One solution would have been to implement a new copy utility for MOM
+very similar to rcp.  But this would have required it's installation
+on every system to/from which the user may wish to move files.  Rather
+than duplicate rcp, lets just fix it.  As only the rcp used by MOM
+must be "fixed", the PBS team opted to provide a version of rcp that
+works correctly.   The bsd4.4-Lite version was chosen because of the
+freedom to copy and modify it granted by its copyright.
+
+
+3. How is it used?
+
+The supplied rcp source is compiled and the program is named
+"pbs_rcp" in order to reduce the level of confusion on having
+two "rcp"s installed on the system.  It is installed in the same
+directory as MOM (pbs_mom).
+
+When MOM invokes pbs_rcp, MOM has forked a child which as set its
+effective and real uid to that of the user on whoses behalf MOM
+is operation.  This child of MOM, as the user, will use system(3)
+to fork a shell and execute pbs_rcp.  The path to the pbs_rcp 
+is specified in building src/mom/requests.c and contains the directory
+where MOM is (will be) installed.
+
+Pbs_rcp, as in normal rcp, must be installed "setuid" and owned by root.

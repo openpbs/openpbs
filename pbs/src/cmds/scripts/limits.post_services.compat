@@ -1,0 +1,8 @@
+#	This file will be sourced by the PBS startup script, pbs_init.d.
+#	It is here only for binary compatibility with previous releases.
+#	Feel free to replace its contents.
+if [ -n "${MEMLOCKLIM}" ] ; then
+    ulimit -l ${MEMLOCKLIM}
+    ulimit -n ${NOFILESLIM}
+    ulimit -s ${STACKLIM}
+fi

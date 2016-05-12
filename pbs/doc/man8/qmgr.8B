@@ -1,0 +1,540 @@
+.\" Copyright (C) 1994-2016 Altair Engineering, Inc.
+.\" For more information, contact Altair at www.altair.com.
+.\"  
+.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" 
+.\" Open Source License Information:
+.\"  
+.\" PBS Pro is free software. You can redistribute it and/or modify it under the
+.\" terms of the GNU Affero General Public License as published by the Free 
+.\" Software Foundation, either version 3 of the License, or (at your option) any 
+.\" later version.
+.\"  
+.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+.\" PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+.\"  
+.\" You should have received a copy of the GNU Affero General Public License along 
+.\" with this program.  If not, see <http://www.gnu.org/licenses/>.
+.\"  
+.\" Commercial License Information: 
+.\" 
+.\" The PBS Pro software is licensed under the terms of the GNU Affero General 
+.\" Public License agreement ("AGPL"), except where a separate commercial license 
+.\" agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+.\"  
+.\" Altair’s dual-license business model allows companies, individuals, and 
+.\" organizations to create proprietary derivative works of PBS Pro and distribute 
+.\" them - whether embedded or bundled with other software - under a commercial 
+.\" license agreement.
+.\" 
+.\" Use of Altair’s trademarks, including but not limited to "PBS™", 
+.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+.\" trademark licensing policies.
+.\"
+.TH qmgr 8B "7 April 2015" Local "PBS Professional"
+.SH NAME
+.B qmgr 
+\- administrator's command interface for managing PBS
+.SH SYNOPSIS
+.B qmgr 
+[-a] [-c directive] [-e] [-n] [-z] [server[,server...]]
+.br
+.B qmgr
+--version
+.SH DESCRIPTION
+The
+.B qmgr
+command is used to create or delete queues, vnodes, resources, and
+hooks, to set or change vnode, queue, hook, server or scheduler
+attributes and resources, and to view information about queues,
+vnodes, hooks, resource definitions, the server, and the scheduler.  See the
+.B pbs_resources(7B), pbs_queue_attributes(7B), pbs_server_attributes(7B), 
+.B pbs_hook_attributes(7B), 
+and 
+.B pbs_node_attributes(7B) 
+man pages.
+Attributes whose values are unset do not appear in the output of the 
+.B qmgr
+command.
+Definitions for built-in resources do not appear in the output of the 
+.B qmgr
+command.
+
+If 
+.B qmgr
+is invoked without the 
+.B -c 
+option and standard output is connected to a terminal, 
+.B qmgr
+reads directives from standard input and writes a prompt to standard output.
+For a 
+.B qmgr 
+prompt, type:
+.RS 4
+qmgr <return>
+.RE
+
+To save and recreate a configuration, print the configuration information
+to a file, then read it back in later.  See the 
+.B print
+command and the 
+.B STANDARD INPUT 
+section.
+
+For a detailed description of the 
+.B qmgr 
+command, see the PBS Professional Reference Guide.
+
+.SH Reusing and Editing the qmgr Command Line
+You can reuse or edit qmgr command lines.  The qmgr command maintains
+a history of commands entered, up to a maximum of 500.  You can use
+the 
+history 
+command to see a numbered list of commands, and the 
+.B !<n>
+command to execute the line whose number is 
+.I n.  
+You must not put any
+spaces between the bang ("!") and the number.  For example, to execute
+the 123rd command, type the following:
+.RS
+!123
+.RE
+You can see the last m
+commands by typing 
+.B history m.
+For example, to see the last 6
+commands, type the following:
+.RS
+history 6
+.RE
+You can use the up and down
+arrows to navigate through the command history list, and the left and
+right arrows to navigate within a command line.  Within a command
+line, you can use emacs commands to move forward and backward, and
+delete characters.
+
+You can edit the qmgr command line using the
+backspace and delete keys, and you can insert characters anywhere in a
+command line.
+
+History is maintained across qmgr sessions, so that if
+you start qmgr, then exit, then restart it, you can reuse your
+commands from the previous session.  If you exit qmgr and then restart
+it, the command lines are renumbered.
+
+If you enter the same command
+line more than once in a row, only one occurrence is recorded in the
+history.  If you enter the same command line multiple times, but
+intersperse other command lines after each line, each occurrence is
+recorded.
+
+Each user's history is unique to that user on that host.
+
+In the case where an account runs concurrent sessions, the most recent
+logout of a session overwrites history from previous logouts.  For
+example, if two people are both logged in as root and using qmgr, the
+second person to log out overwrites the history file.
+
+.SH The qmgr History File
+The qmgr command stores its history in the ${HOME}/.pbs_qmgr_history
+file.  If this is not writable, it stores its history in
+${PBS_HOME}/spool/.pbs_qmgr_history_<user name>.  If this is not writable,
+the qmgr command prints an error, and cannot provide history across
+sessions.
+
+.SH PERMISSIONS
+The 
+.B qmgr
+command provides different services depending on the level of privilege
+of the user.  All users can list or print attributes.  Operator privilege
+is required in order to set or unset attributes.  Manager privilege is 
+required in order to create or delete queues or nodes.  Users without 
+manager or operator privilege cannot view custom resources which
+were created to be invisible to users.
+
+Under UNIX/Linux, root privilege is required in order to operate on
+hooks or the 
+.I job_sort_formula 
+server attribute.  Under Windows, this
+must be done from the installation account.  For domained
+environments, the installation account must be a local account that
+is a member of the local Administrators group on the local computer.
+For standalone environments, the installation account must be a local
+account that is a member of the local Administrators group on the
+local computer.
+
+.SH When to Run qmgr at Server Host
+When operating on hooks or on the job_sort_formula server attribute, 
+the 
+.B qmgr
+command must be run at the server host.
+
+.SH OPTIONS
+.IP "-a" 12
+Abort
+.B qmgr 
+on any syntax errors or any requests rejected by a server.
+
+.IP "-c directive"
+Execute a single
+.I command
+and exit
+.B qmgr .
+The command must be enclosed in double quotes, e.g. 
+.br
+qmgr -c "print server"
+
+.IP "-e"
+Echo all commands to standard output.
+
+.IP "-n"
+No commands are executed, syntax checking only is performed.
+.IP "server[,server ...]"
+Makes the specified server(s) active.
+
+.IP "-z"
+No errors are written to standard error.
+
+.IP "--version" 
+The 
+.B qmgr
+command returns its PBS version information and exits.
+This option can only be used alone.
+.LP
+.SH OPERANDS
+The
+.I server 
+operands identify the name of the batch server to which the administrator
+requests are sent.  Each
+.I server
+conforms to the following syntax:
+.RS 4
+.I host_name[:port]
+.RE
+where
+.B host_name
+is the network name of the host on which the server is running and
+.B port
+is the port number to which to connect.  If
+.B port 
+is not specified, the default port number is used.
+.LP
+If 
+.I server
+is not specified, the administrator requests are sent to the local
+server.
+.SH STANDARD INPUT
+The
+.B qmgr
+command reads standard input for directives until end of file is reached,
+or the
+.I exit 
+or
+.I quit
+directive is read.  To recreate a configuration from a saved configuration file, use
+.B qmgr < savedfile.
+See the 
+.B print
+command.
+
+.SH STANDARD OUTPUT
+If Standard Output is connected to a terminal, a command prompt will
+be written to standard output when qmgr is ready to read a directive.
+.LP
+If the
+.I -e
+option is specified, 
+.B qmgr
+will echo the directives read from standard input to standard output.
+.SH STANDARD ERROR
+If the
+.I -z
+option is not specified, the qmgr command will write a diagnostic message
+to standard error for each error occurrence.
+.SH EXTENDED DESCRIPTION
+If
+.B qmgr
+is invoked without the
+.I -c
+option and standard output is connected to a terminal, qmgr will write a
+prompt to standard output and read a directive from
+standard input.
+.LP
+Commands can be abbreviated to their minimum unambiguous form.
+A command is terminated by a new line character or a semicolon (";")
+character.  Multiple commands may be entered on a single line.
+A command may extend across lines by escaping the new line character
+with a back-slash "\\".
+.LP
+Comments begin with the # character and continue to end of the line.
+Comments and blank lines are ignored by qmgr.
+
+Type "help" or "?" at the qmgr prompt for information on syntax,
+commands, attributes, operators, names, and values.
+
+.SH DIRECTIVE SYNTAX
+A qmgr directive is one of the following forms:
+.sp
+.B "command server [<server name(s)>] [attr OP value[,attr OP value,...]]"
+.br
+.B "command queue [<queue name(s)>] [attr OP value[,attr OP value,...]]"
+.br
+.B "command node [<vnode name(s)>] [attr OP value[,attr OP value,...]]"
+.br
+.B "command sched [<sched hostname(s)>] [attr OP value[,attr OP value,...]]"
+.br
+.B "command resource [<resource name(s)>] [type=<type>,[flag=<flag(s)>]"
+.br
+.B "command hook [<hook name(s)>] [attr OP value[,attr OP value,...]]"
+.br
+.B "command pbshook [<hook name(s)>] [attr OP value[,attr OP value,...]]"
+.br
+.B "import hook <name> <application/x-python> <content-encoding> {<input hook file>|-}
+.br
+.B "export hook <name> <content-type> <content-encoding> {<output file>|-}
+.br
+.B "import hook <name> <application/x-config> <content-encoding> {<input config file>|-}
+
+.sp
+Where 
+.I command
+is the command to perform on an object.  Commands can be abbreviated
+as shown in parentheses.  Commands are:
+.RS
+
+.IP "active (a)" 12
+Sets the active objects.  If the active objects are specified, and the name is 
+not given in a qmgr cmd, the active object names will be used.
+Cannot be used with 
+.I hooks, pbshooks, 
+or 
+.I resources.
+
+.IP "create (c)" 12
+Creates a new object, such as a queue, vnode, resource, or hook.
+Cannot be used with 
+.I pbshook.
+
+To create a host-level consumable custom string resource named "foo":
+.RS 15
+qmgr -c "create resource foo type=string,flag=nh"
+.RE
+
+.IP "delete (d)" 12
+Destroys an existing object, such as a queue, vnode, resource, or hook.
+Cannot be used with 
+.I pbshook.
+
+.IP "export (e)" 12
+Exports a hook; prints the contents of the hook to the specified file.
+Cannot be used with 
+.I pbshook.
+
+.IP "help (h, ?)" 12
+Prints usage to stdout.
+
+.IP "import (i)" 12
+To import a hook:
+.br
+.B Qmgr: import hook <hook name> application/x-python <content-encoding> <input_hook_file>
+.br
+The script named <input_hook_file> becomes the contents of your hook.
+If your hook already has a content script, it is overwritten by this import call.
+Cannot be used with 
+.I pbshook.
+
+To import a hook configuration file:
+.br
+.B Qmgr: import hook <hook name> application/x-config <content-encoding> <input_config_file>
+.br
+The script named <input_config_file> becomes the contents of your hook configuration file.
+If your hook already has a configuration file, it is overwritten by this import call.
+.br
+Hook configuration file format suffixes:
+.RS 15
+ini
+.br
+json 
+.br
+py
+.br
+txt
+.br
+xml
+.br
+No suffix: treat the input file as if it is a .txt file
+.br
+The dash ("-") symbol: configuration file content is taken from STDIN.  The content is 
+treated as if it is a .txt file.
+.RE
+.IP
+When importing a hook or a hook configuration file:
+.br
+<input_file> must be encoded with <content-encoding>.
+.br
+Allowed values for <content-encoding> are "default" (7 bit) and "base64".
+.br
+<input_file> must be locally accessible to both qmgr and the batch server.
+.br
+A relative path in <input_file> is relative to the directory where 
+.B qmgr 
+was executed.
+.br
+If the name of <input_file> contains spaces, as are used in Windows filenames, then <input file> must be quoted.
+
+.IP "list (l)" 12
+Lists the current attributes and associated values of the object.
+.IP "print (p)" 12
+Prints creation and configuration commands for the specified object(s).
+For example, "print queue QUEUE" prints the commands used to
+create the queue QUEUE and set its attributes.  
+.IP "quit (q)" 12
+Exits the qmgr command.
+.IP "set (s)" 12
+Defines or alters attribute values of the object.
+.IP "unset (u)" 12
+Clears the value of attributes of the object.
+Note, this form does not accept an OP and value, only the
+attribute name.
+If "print server" is given,
+qmgr prints the commands used to create any queues and set their
+attributes, as well as those used to set server attributes.  The file
+produced by 
+.B Qmgr: print server > savedfile 
+can be used as input to the 
+.B qmgr 
+command when recreating a configuration.
+.RE
+
+.IP " " 7
+The 
+.I list, print, 
+and 
+.I unset 
+commands can take multiple attributes as 
+arguments.  Spaces after the comma are optional.  Examples:
+.RS 19
+list queue workq max_running, max_queuable
+.br
+print queue workq node_group_key,Priority
+.br
+unset queue workq max_running,  Priority
+.RE
+
+.IP "Objects"
+You can abbreviate object types as follows:
+.RS 10
+server (s)
+.br
+queue (q)
+.br
+node (n)
+.br
+hook (h)
+.br
+pbshook (p)
+.br
+resource (r)
+.br
+sched (sc)
+.RE
+
+.IP "name(s)" 
+List of one or more names of specific objects.
+The name list is in the form:
+.RS 10
+.I name[@server],[name[@server]]
+.br
+.I <queue name>[@server]
+.RE
+.IP ""
+with no intervening white space.  The name of an object is declared
+when the object is first created.  If the name is "@server", then all
+the objects of specified type at the server will be affected.  Node
+attributes cannot be used as node names.
+
+.IP attr
+specifies the name of an attribute
+of the object which is to be set or modified.
+If the attribute is one which consists of a set of resources, then the
+attribute is specified in the form:
+.RS 11
+.I attribute_name.resource_name
+.RE
+
+.IP OP
+operation to be performed with the attribute and its value:
+.RS
+.IP =
+set the value of the attribute.  If the attribute has an existing value, the
+current value is replaced with the new value.
+.IP +=
+increase the current value of the attribute by the amount in the new value.
+When used for a string array, adds the new value as another string after 
+a comma.
+.IP -=
+decrease the current value of the attribute by the amount in the new value.
+When used for a string array, removes the first matching string.
+.LP
+.RE
+
+.IP "value"
+the value to assign to an attribute, which may be a resource.  
+If the value includes white space,
+commas or other special characters, such as the # character,
+the value string must be enclosed in double quotes (").
+.br
+Resource values can be any string made up of alphanumeric, comma (","), 
+underscore ("_"), dash ("-"), colon (":"), slash ("/"), backslash ("\"), 
+space (" "), and equal sign ("=") characters.
+
+.IP "resource types"
+Resources can be of type 
+.I string, boolean, string_array, long, size, float
+
+.IP "resource flags" 
+Resource flags can be 
+.I n, h, q, f, nh, fh
+.LP
+
+.IP "The following are examples of qmgr directives:" 8
+set resource foo type=long,flag=nh
+set resource foo,bar type=long
+list sched @serverA - list serverA's scheduler's attributes
+l sched @default - list attributes for default server's scheduler 
+l sched @default pbs_version 
+         - list PBS version for default server's scheduler
+set node mynode resources_available.software = "myapp=/tmp/foo"
+create queue fast priority=10,queue_type=e,enabled = true,max_running=0
+set queue fast max_running +=2
+create queue little
+set queue little resources_max.mem=8mw,resources_max.cput=10
+unset queue fast max_running
+set node state = "offline"
+active server s1,s2,s3
+list queue @server1
+set queue max_running = 10	- uses active queues
+.RE
+
+.SH EXIT STATUS
+.IP "Zero" 8
+Upon successful processing of all operands presented to the
+.B qmgr
+command
+.LP
+.IP "Greater than zero" 8
+If the 
+.B qmgr 
+command fails to process any operand
+.LP
+.SH SEE ALSO
+The
+.B PBS Professional Administrator's Guide, 
+the 
+.B PBS Professional Installation and Upgrade Guide, 
+.br
+pbs_hook_attributes, pbs_queue_attributes(7B), pbs_server_attributes(7B),
+pbs_node_attributes(7B), pbs_sched_attributes(7B)
+
