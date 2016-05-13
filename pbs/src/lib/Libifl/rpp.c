@@ -1598,6 +1598,9 @@ __rpp_alist(struct hostent *hp, struct stream *sp)
 {
 	int	i, j;
 
+	if (!hp || !sp)
+		return;
+
 	for (i=1; hp->h_addr_list[i]; i++);
 	if (i == 1)
 		return;
@@ -2636,7 +2639,13 @@ __rpp_open(char *name, uint port)
 	sp->addr.sin_port = htons((unsigned short)port);
 	sp->addr.sin_family = hp->h_addrtype;
 	sp->fd = rpp_fd;
-	__rpp_alist(NULL, sp);
+	if (hp->h_addr_list[1] == NULL) {
+		if ((hp = __rpp_get_cname(&sp->addr)) == NULL) {
+			errno = ENOENT;
+			return -1;
+		}
+	}
+	__rpp_alist(hp, sp);
 	sp->stream_id = stream;	/* use my streamid for HELLO1 */
 	sp->state = RPP_OPEN_WAIT;
 	sp->open_key = open_key++;
