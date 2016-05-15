@@ -48,7 +48,7 @@
 %define pbs_client client%{PROJ_DELIM}
 %define pbs_execution execution%{PROJ_DELIM}
 %define pbs_server server%{PROJ_DELIM}
-%define pbs_version 13.1.0
+%define pbs_version 13.1.800
 %define pbs_release 0
 %define pbs_prefix %{install_path}
 %define pbs_home /var/spool/pbs
