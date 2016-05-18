@@ -549,7 +549,7 @@ struct node_info
 
 	char **jobs;			/* the name of the jobs currently on the node */
 	resource_resv **job_arr;	/* ptrs to structs of the jobs on the node */
-	resource_resv **run_resvs_arr;/* ptrs to structs of running resvs on node */
+	resource_resv **run_resvs_arr;	/* ptrs to structs of resvs holding resources on the node */
 
 	int pcpus;			/* the number of physical cpus */
 

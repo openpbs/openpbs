@@ -3587,7 +3587,9 @@ check_resources_for_node(resource_req *resreq, node_info *ninfo,
 				event_time = event->event_time;
 				resc_resv = (resource_resv *) event->event_ptr;
 
-				if (event_time <= cur_time)
+				if (event_time < cur_time)
+					continue;
+				if (resc_resv->job != NULL && resc_resv->job->resv != NULL)
 					continue;
 
 				if (resc_resv->nspec_arr != NULL) {
