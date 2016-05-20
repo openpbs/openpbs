@@ -1,6 +1,4 @@
 # coding: utf-8
-#!/usr/bin/python
-
 
 '''
 #  Copyright (C) 1994-2016 Altair Engineering, Inc.

@@ -122,7 +122,6 @@ subdir = src/unsupported
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
 	$(srcdir)/pbs_diag.in $(srcdir)/pbs_dtj.in \
 	$(dist_unsupported_SCRIPTS) $(top_srcdir)/buildutils/depcomp \
-	$(dist_unsupported_PYTHON) $(top_srcdir)/buildutils/py-compile \
 	$(dist_unsupported_DATA) README
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/disable_rpp.m4 \
@@ -163,8 +162,7 @@ CONFIG_HEADER = $(top_builddir)/src/include/pbs_config.h
 CONFIG_CLEAN_FILES = pbs_diag pbs_dtj
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(unsupporteddir)" \
-	"$(DESTDIR)$(unsupporteddir)" "$(DESTDIR)$(unsupporteddir)" \
-	"$(DESTDIR)$(unsupporteddir)"
+	"$(DESTDIR)$(unsupporteddir)" "$(DESTDIR)$(unsupporteddir)"
 PROGRAMS = $(unsupported_PROGRAMS)
 am_pbs_rmget_OBJECTS = pbs_rmget-pbs_rmget.$(OBJEXT)
 pbs_rmget_OBJECTS = $(am_pbs_rmget_OBJECTS)
@@ -246,10 +244,6 @@ am__can_run_installinfo = \
     n|no|NO) false;; \
     *) (install-info --version) >/dev/null 2>&1;; \
   esac
-am__py_compile = PYTHON=$(PYTHON) $(SHELL) $(py_compile)
-am__pep3147_tweak = \
-  sed -e 's|\.py$$||' -e 's|[^/]*$$|__pycache__/&.*.py|'
-py_compile = $(top_srcdir)/buildutils/py-compile
 DATA = $(dist_unsupported_DATA)
 am__tagged_files = $(HEADERS) $(SOURCES) $(TAGS_FILES) $(LISP)
 # Read a list of newline-separated strings from the standard input,
@@ -460,15 +454,16 @@ dist_unsupported_SCRIPTS = \
 	pbs_loganalyzer \
 	pbs_stat
 
-dist_unsupported_PYTHON = \
+
+# Marking all *.py files as data as these files are meant to be used as hooks and 
+# need no compilation.
+dist_unsupported_DATA = \
 	NodeHealthCheck.py \
 	load_balance.py \
 	mom_dyn_res.py \
 	pbs-alps-inventory-check.py \
 	rapid_inter.py \
-	run_pelog_shell.py
-
-dist_unsupported_DATA = \
+	run_pelog_shell.py \
 	NodeHealthCheck.json \
 	README \
 	pbs_dtj.8B \
@@ -661,54 +656,6 @@ mostlyclean-libtool:
 
 clean-libtool:
 	-rm -rf .libs _libs
-install-dist_unsupportedPYTHON: $(dist_unsupported_PYTHON)
-	@$(NORMAL_INSTALL)
-	@list='$(dist_unsupported_PYTHON)'; dlist=; list2=; test -n "$(unsupporteddir)" || list=; \
-	if test -n "$$list"; then \
-	  echo " $(MKDIR_P) '$(DESTDIR)$(unsupporteddir)'"; \
-	  $(MKDIR_P) "$(DESTDIR)$(unsupporteddir)" || exit 1; \
-	fi; \
-	for p in $$list; do \
-	  if test -f "$$p"; then b=; else b="$(srcdir)/"; fi; \
-	  if test -f $$b$$p; then \
-	    $(am__strip_dir) \
-	    dlist="$$dlist $$f"; \
-	    list2="$$list2 $$b$$p"; \
-	  else :; fi; \
-	done; \
-	for file in $$list2; do echo $$file; done | $(am__base_list) | \
-	while read files; do \
-	  echo " $(INSTALL_DATA) $$files '$(DESTDIR)$(unsupporteddir)'"; \
-	  $(INSTALL_DATA) $$files "$(DESTDIR)$(unsupporteddir)" || exit $$?; \
-	done || exit $$?; \
-	if test -n "$$dlist"; then \
-	  $(am__py_compile) --destdir "$(DESTDIR)" \
-	                    --basedir "$(unsupporteddir)" $$dlist; \
-	else :; fi
-
-uninstall-dist_unsupportedPYTHON:
-	@$(NORMAL_UNINSTALL)
-	@list='$(dist_unsupported_PYTHON)'; test -n "$(unsupporteddir)" || list=; \
-	py_files=`for p in $$list; do echo $$p; done | sed -e 's|^.*/||'`; \
-	test -n "$$py_files" || exit 0; \
-	dir='$(DESTDIR)$(unsupporteddir)'; \
-	pyc_files=`echo "$$py_files" | sed 's|$$|c|'`; \
-	pyo_files=`echo "$$py_files" | sed 's|$$|o|'`; \
-	py_files_pep3147=`echo "$$py_files" | $(am__pep3147_tweak)`; \
-	echo "$$py_files_pep3147";\
-	pyc_files_pep3147=`echo "$$py_files_pep3147" | sed 's|$$|c|'`; \
-	pyo_files_pep3147=`echo "$$py_files_pep3147" | sed 's|$$|o|'`; \
-	st=0; \
-	for files in \
-	  "$$py_files" \
-	  "$$pyc_files" \
-	  "$$pyo_files" \
-	  "$$pyc_files_pep3147" \
-	  "$$pyo_files_pep3147" \
-	; do \
-	  $(am__uninstall_files_from_dir) || st=$$?; \
-	done; \
-	exit $$st
 install-dist_unsupportedDATA: $(dist_unsupported_DATA)
 	@$(NORMAL_INSTALL)
 	@list='$(dist_unsupported_DATA)'; test -n "$(unsupporteddir)" || list=; \
@@ -817,7 +764,7 @@ check-am: all-am
 check: check-am
 all-am: Makefile $(PROGRAMS) $(SCRIPTS) $(DATA)
 installdirs:
-	for dir in "$(DESTDIR)$(unsupporteddir)" "$(DESTDIR)$(unsupporteddir)" "$(DESTDIR)$(unsupporteddir)" "$(DESTDIR)$(unsupporteddir)"; do \
+	for dir in "$(DESTDIR)$(unsupporteddir)" "$(DESTDIR)$(unsupporteddir)" "$(DESTDIR)$(unsupporteddir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: install-am
@@ -874,8 +821,7 @@ info: info-am
 info-am:
 
 install-data-am: install-dist_unsupportedDATA \
-	install-dist_unsupportedPYTHON install-dist_unsupportedSCRIPTS \
-	install-unsupportedPROGRAMS
+	install-dist_unsupportedSCRIPTS install-unsupportedPROGRAMS
 
 install-dvi: install-dvi-am
 
@@ -922,7 +868,6 @@ ps: ps-am
 ps-am:
 
 uninstall-am: uninstall-dist_unsupportedDATA \
-	uninstall-dist_unsupportedPYTHON \
 	uninstall-dist_unsupportedSCRIPTS \
 	uninstall-unsupportedPROGRAMS
 
@@ -934,17 +879,15 @@ uninstall-am: uninstall-dist_unsupportedDATA \
 	distclean-libtool distclean-tags distdir dvi dvi-am html \
 	html-am info info-am install install-am install-data \
 	install-data-am install-dist_unsupportedDATA \
-	install-dist_unsupportedPYTHON install-dist_unsupportedSCRIPTS \
-	install-dvi install-dvi-am install-exec install-exec-am \
-	install-html install-html-am install-info install-info-am \
-	install-man install-pdf install-pdf-am install-ps \
-	install-ps-am install-strip install-unsupportedPROGRAMS \
-	installcheck installcheck-am installdirs maintainer-clean \
-	maintainer-clean-generic mostlyclean mostlyclean-compile \
-	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
-	tags tags-am uninstall uninstall-am \
-	uninstall-dist_unsupportedDATA \
-	uninstall-dist_unsupportedPYTHON \
+	install-dist_unsupportedSCRIPTS install-dvi install-dvi-am \
+	install-exec install-exec-am install-html install-html-am \
+	install-info install-info-am install-man install-pdf \
+	install-pdf-am install-ps install-ps-am install-strip \
+	install-unsupportedPROGRAMS installcheck installcheck-am \
+	installdirs maintainer-clean maintainer-clean-generic \
+	mostlyclean mostlyclean-compile mostlyclean-generic \
+	mostlyclean-libtool pdf pdf-am ps ps-am tags tags-am uninstall \
+	uninstall-am uninstall-dist_unsupportedDATA \
 	uninstall-dist_unsupportedSCRIPTS \
 	uninstall-unsupportedPROGRAMS
 
