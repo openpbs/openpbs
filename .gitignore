@@ -42,6 +42,10 @@
 .pydevproject
 .settings/
 
+# Files used by cscope
+cscope.files
+cscope.out
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
