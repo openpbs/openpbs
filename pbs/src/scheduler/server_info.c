@@ -1981,7 +1981,7 @@ int
 check_resv_running_on_node(resource_resv *resv, void *arg)
 {
 	if (resv->is_adv_resv && resv->resv !=NULL) {
-		if (resv->resv->resv_state ==RESV_RUNNING)
+		if (resv->resv->resv_state ==RESV_RUNNING || resv->resv->resv_state == RESV_BEING_DELETED)
 			if (find_node_info(resv->ninfo_arr, (char *) arg))
 				return 1;
 	}
@@ -3646,24 +3646,39 @@ create_resource_assn_for_node(node_info *ninfo)
 	
 	if(ninfo == NULL)
 		return 0;
-	
-	if(ninfo->job_arr == NULL)
-		return 0;
-	
+		
 	for (r = ninfo->res; r != NULL; r = r->next)
 		if(r->type.is_consumable)
 			r->assigned = 0;
 
-	for (i = 0; ninfo->job_arr[i] != NULL; i++) {
-		if (ninfo->job_arr[i]->nspec_arr != NULL) {
-			int j;
-			for(j = 0; ninfo->job_arr[i]->nspec_arr[j] != NULL; j++) {
-				nspec *n = ninfo->job_arr[i]->nspec_arr[j];
-				if(n->ninfo->rank == ninfo->rank)
-					add_req_list_to_assn(ninfo->res, n->resreq);
+	if (ninfo->job_arr != NULL) {
+		for (i = 0; ninfo->job_arr[i] != NULL; i++) {
+			/* ignore jobs in reservations.  The resources will be accounted for with the reservation itself.  */
+			if (ninfo->job_arr[i]->job != NULL && ninfo->job_arr[i]->job->resv == NULL) {
+				if (ninfo->job_arr[i]->nspec_arr != NULL) {
+					int j;
+					for (j = 0; ninfo->job_arr[i]->nspec_arr[j] != NULL; j++) {
+						nspec *n = ninfo->job_arr[i]->nspec_arr[j];
+						if (n->ninfo->rank == ninfo->rank)
+							add_req_list_to_assn(ninfo->res, n->resreq);
+					}
+				}
 			}
 		}
 	}
+
+	if (ninfo->run_resvs_arr != NULL) {
+		for (i = 0; ninfo->run_resvs_arr[i] != NULL; i++) {
+			if (ninfo->run_resvs_arr[i]->nspec_arr != NULL) {
+				int j;
+				for (j = 0; ninfo->run_resvs_arr[i]->nspec_arr[j] != NULL; j++) {
+					nspec *n = ninfo->run_resvs_arr[i]->nspec_arr[j];
+					if (n->ninfo->rank == ninfo->rank)
+						add_req_list_to_assn(ninfo->res, n->resreq);
+				}
+			}
+		}
+	}
+	
 	return 1;
 }
-
