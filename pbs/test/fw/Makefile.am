@@ -49,7 +49,6 @@ ptlmodulelibdir = $(ptlmoduledir)/lib
 dist_ptlmodulelib_PYTHON = \
 	ptl/lib/pbs_api_to_cli.py \
 	ptl/lib/pbs_ifl_mock.py \
-	ptl/lib/pbs_messages.py \
 	ptl/lib/pbs_testlib.py \
 	ptl/lib/__init__.py
 

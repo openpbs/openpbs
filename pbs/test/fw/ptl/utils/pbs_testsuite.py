@@ -50,7 +50,6 @@ from ptl.utils.pbs_logutils import PBSLogAnalyzer
 from ptl.utils.pbs_dshutils import DshUtils
 from ptl.utils.pbs_cliutils import CliUtils
 from ptl.utils.pbs_procutils import ProcMonitor
-from ptl.lib.pbs_messages import PbsMessages
 from ptl.lib.pbs_testlib import *
 try:
     from ptl.utils.plugins.ptl_test_tags import tags
@@ -130,9 +129,6 @@ SETUPLOG = 'setuplog'
 TEARDOWNLOG = 'teardownlog'
 
 SMOKE = 'smoke'
-NIGHTLY_BUILD = 'nightly_build'
-RELEASE_BUILD = 'release_build'
-DEV_BUILD = 'dev_build'
 REGRESSION = 'regression'
 NUMNODES = 'numnodes'
 TIMEOUT_KEY = '__testcase_timeout__'
@@ -147,34 +143,6 @@ def timeout(val):
         setattr(obj, TIMEOUT_KEY, int(val))
         return obj
     return wrapper
-
-
-def checkPbsVersion(op, req_version):
-    """
-    Decorator to check for compatibility of the version of PBS and skip test
-    otherwise
-
-    op - One of > < >= <= =
-    req_version - Version to check against e.g. 12.0 or 12
-
-    The check ('>', '12.0') will check whether the installed version of PBS is
-    greater than 12.0 and will skip the test otherwise
-    """
-    def decorated(function):
-        def wrapper(self, *args, **kwargs):
-            a = {'pbs_version': (PTL_STR_TO_OP[op], req_version)}
-            try:
-                rv = self.server.expect(SERVER, a, max_attempts=2)
-            except PtlExpectError, e:
-                rv = e.rv
-            if not rv:
-                self.skipTest(reason='version mismatch ')
-            else:
-                function(self, *args, **kwargs)
-        wrapper.__doc__ = function.__doc__
-        wrapper.__name__ = function.__name__
-        return wrapper
-    return decorated
 
 
 def checkModule(modname):
@@ -204,22 +172,6 @@ def skipOnCray(function):
     def wrapper(self, *args, **kwargs):
         if self.server.is_cray():
             self.skipTest(reason='capability not supported on Cray')
-        else:
-            function(self, *args, **kwargs)
-    wrapper.__doc__ = function.__doc__
-    wrapper.__name__ = function.__name__
-    return wrapper
-
-
-def skipOn32bitsArch(function):
-    """
-    Decorator to check that architecture is not 32 bits and skip otherwise
-    """
-
-    def wrapper(self, *args, **kwargs):
-        (queried_bits, _) = platform.architecture()
-        if queried_bits.startswith('32'):
-            self.skipTest(reason='32bit architecture are not supported')
         else:
             function(self, *args, **kwargs)
     wrapper.__doc__ = function.__doc__
@@ -448,7 +400,6 @@ class PBSTestSuite(unittest.TestCase):
         cls.init_servers()
         cls.init_schedulers()
         cls.init_moms()
-        cls.init_messages()
         cls.log_end_setup(True)
 
     def setUp(self):
@@ -679,12 +630,6 @@ class PBSTestSuite(unittest.TestCase):
             cls.mom = cls.moms.values()[0]
 
     @classmethod
-    def init_messages(cls, version=None):
-        if ((version is None) and (cls.server is not None)):
-            version = cls.server.version
-        cls.messages = PbsMessages(version)
-
-    @classmethod
     def init_server(cls, hostname, pbsconf_file=None):
         """
         Initialize a server instance
@@ -867,8 +812,9 @@ class PBSTestSuite(unittest.TestCase):
                 self.server.status(NODE, id=name)
             except PbsStatusError:
                 # server doesn't have node for this mom yet
-                # so just return mom object
-                return mom
+                # so create with shortname
+                name = mom.shortname
+                self.server.manager(MGR_CMD_CREATE, NODE, None, mom.shortname)
         self.server.expect(NODE, {ATTR_NODE_state: 'free'}, id=name,
                            interval=1)
         return mom

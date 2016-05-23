@@ -69,21 +69,14 @@ import datetime
 import traceback
 import threading
 from operator import itemgetter
+from collections import OrderedDict
+from distutils.version import LooseVersion
 
 try:
     import psycopg2
     PSYCOPG = True
 except:
     PSYCOPG = False
-
-# Python's OrderedDict introduced in v2.7, fall back to a local back-port of it
-# if not available
-try:
-    from collections import OrderedDict
-except:
-    from ordereddict import OrderedDict
-
-from distutils.version import LooseVersion
 
 try:
     from ptl.lib.pbs_ifl import *
@@ -1306,7 +1299,7 @@ class BatchUtils(object):
 
         if isinstance(attrib, (list, tuple)):
             a = self.list_to_attropl(attrib, op)
-        elif isinstance(attrib, (dict, PtlOrderedDict)):
+        elif isinstance(attrib, (dict, OrderedDict)):
             a = self.dict_to_attropl(attrib, op)
         elif isinstance(attrib, str):
             a = self.str_to_attropl(attrib, op)
@@ -2156,7 +2149,7 @@ class BatchUtils(object):
             attrs = tmp_attrs
             del tmp_attrs
 
-        if isinstance(attrs, (dict, PtlOrderedDict)):
+        if isinstance(attrs, (dict, OrderedDict)):
             attrs = attrs.items()
 
         for a, v in attrs:
@@ -2518,15 +2511,6 @@ class PbsBatchStatus(list):
         for l in self.__bs:
             rv += [self.__bu.batch_status_as_dict_to_str(l)]
         return "\n".join(rv)
-
-
-class PtlOrderedDict(OrderedDict):
-
-    def __str__(self):
-        m = []
-        for k, v in self.items():
-            m.append(str(k) + ': ' + str(v))
-        return ','.join(m)
 
 
 class PbsBatchObject(list):
@@ -3462,11 +3446,11 @@ class PBSObject(object):
         defaults - Dictionary of default attributes. Setting this will override
         any other object's default
         """
-        self.attributes = PtlOrderedDict()
+        self.attributes = OrderedDict()
         self.name = name
         self.dflt_attributes = defaults
         self.attropl = None
-        self.custom_attrs = PtlOrderedDict()
+        self.custom_attrs = OrderedDict()
         self.ctime = int(time.time())
 
         self.set_attributes(attrs)
@@ -3477,13 +3461,13 @@ class PBSObject(object):
         custom attributes are used when converting attributes to CLI
         """
         if isinstance(a, list):
-            a = PtlOrderedDict(a)
+            a = OrderedDict(a)
 
-        self.attributes = PtlOrderedDict(self.dflt_attributes.items() +
-                                         self.attributes.items() + a.items())
+        self.attributes = OrderedDict(self.dflt_attributes.items() +
+                                      self.attributes.items() + a.items())
 
-        self.custom_attrs = PtlOrderedDict(self.custom_attrs.items() +
-                                           a.items())
+        self.custom_attrs = OrderedDict(self.custom_attrs.items() +
+                                        a.items())
 
     def unset_attributes(self, attrl=[]):
         """
@@ -4737,26 +4721,13 @@ class Server(PBSService):
         if len(setdict) > 0:
             self.manager(MGR_CMD_SET, MGR_OBJ_SERVER, setdict)
         if revertresources:
-            if self.utils.compare_versions(self.version, '12.3', GE):
-                try:
-                    rescs = self.status(RSC)
-                    rescs = [r['id'] for r in rescs]
-                except:
-                    rescs = []
-                if len(rescs) > 0:
-                    self.manager(MGR_CMD_DELETE, RSC, id=rescs, expect=True)
-            else:
-                resdef = os.path.join(self.pbs_conf['PBS_HOME'],
-                                      'server_priv', 'resourcedef')
-                # delete file + restart server only if resdef exist
-                # this is because force removing resdef always return True
-                if self.du.isfile(self.hostname, resdef, sudo=True):
-                    ret = self.du.rm(self.hostname, resdef, force=True,
-                                     sudo=True)
-                    if not ret:
-                        return False
-                    self.restart()
-                    return self.isUp()
+            try:
+                rescs = self.status(RSC)
+                rescs = [r['id'] for r in rescs]
+            except:
+                rescs = []
+            if len(rescs) > 0:
+                self.manager(MGR_CMD_DELETE, RSC, id=rescs, expect=True)
         return True
 
     def save_configuration(self, outfile, mode='a'):
@@ -5102,21 +5073,6 @@ class Server(PBSService):
             else:
                 bsl = self.utils.file_to_dictlist(self.diagmap[obj_type],
                                                   attrib, id=id)
-        # 5- Special case for stat'ing resources
-        # VERSION INFO: Up to 12.3 stat'ing resources is not in IFL, it gets
-        # parsed through the resourcedef file
-        elif ((obj_type == RSC) and
-              (self.utils.compare_versions(self.version, "12.3", LT))):
-            if len(self.resources) == 0:
-                self.parse_resources()
-            if id is not None:
-                if id in self.resources:
-                    return [self.resources[id].attributes]
-                else:
-                    return []
-            elif self.resources:
-                return [r.attributes for r in self.resources.values()]
-
         # 6- Stat using PBS CLI commands
         elif self.get_op_mode() == PTL_CLI:
             tgt = self.client
@@ -6019,7 +5975,7 @@ class Server(PBSService):
                                 attrib['content-encoding'],
                                 attrib['input-file']]
                 else:
-                    if isinstance(attrib, (dict, PtlOrderedDict)):
+                    if isinstance(attrib, (dict, OrderedDict)):
                         kvpairs = []
                         for k, v in attrib.items():
                             if isinstance(v, tuple):
@@ -7050,14 +7006,113 @@ class Server(PBSService):
             _msg = 'qstop: currently not supported in API mode'
             raise PbsQstopError(rv=False, rc=1, msg=_msg)
 
-    def parse_resourcedef_file(self, file=None):
+    def parse_resources(self):
+        """
+        Parse server resources as defined in the resourcedef file
+        Populates instance variable self.resources
+
+        Returns the resources as a dictionary
+        """
+        if not self.has_diag:
+            self.manager(MGR_CMD_LIST, RSC)
+        return self.resources
+
+    def remove_resource(self, name):
+        """
+        Remove an entry from resourcedef
+
+        name - The name of the resource to remove
+        """
+        self.parse_resources()
+        if not self.has_diag:
+            if name in self.resources:
+                self.manager(MGR_CMD_DELETE, RSC, id=name)
+
+    def add_resource(self, name, type=None, flag=None):
+        """
+        Define a server resource
+
+        name - The name of the resource to add to the resourcedef file
+
+        type - The type of the resource, one of string, long, boolean, float
+
+        flag - The target of the resource, one of n, h, q, or none
+
+        return True on success False on error
+        """
+        rv = self.parse_resources()
+        if rv is None:
+            return False
+
+        resource_exists = False
+        if name in self.resources:
+            msg = [self.logprefix + "resource " + name]
+            if type:
+                msg += ["type: " + type]
+            if flag:
+                msg += ["flag: " + flag]
+            msg += [" already defined"]
+            self.logger.info(" ".join(msg))
+
+            (t, f) = (self.resources[name].type, self.resources[name].flag)
+            if type == t and flag == f:
+                return True
+
+            self.logger.info("resource: redefining resource " + name +
+                             " type: " + str(type) + " and flag: " + str(flag))
+            del self.resources[name]
+            resource_exists = True
+
+        r = Resource(name, type, flag)
+        self.resources[name] = r
+        a = {}
+        if type:
+            a['type'] = type
+        if flag:
+            a['flag'] = flag
+        if resource_exists:
+            self.manager(MGR_CMD_SET, RSC, a, id=name)
+        else:
+            self.manager(MGR_CMD_CREATE, RSC, a, id=name)
+        return True
+
+    def write_resourcedef(self, resources=None, filename=None, restart=True):
+        if resources is None:
+            resources = self.resources
+        if isinstance(resources, Resource):
+            resources = {resources.name:resources}
+        fn = self.du.mkstemp()[1]
+        f = open(fn, 'w+')
+        for r in resources.values():
+            f.write(r.attributes['id'])
+            if r.attributes['type'] is not None:
+                f.write(' type=' + r.attributes['type'])
+            if r.attributes['flag'] is not None:
+                f.write(' flag=' + r.attributes['flag'])
+            f.write('\n')
+        f.close()
+        if filename is None:
+            dest = os.path.join(self.pbs_conf['PBS_HOME'], 'server_priv',
+                                'resourcedef')
+        else:
+            dest = filename
+        self.du.run_copy(self.hostname, fn, dest, mode=0644, sudo=True)
+        if filename is None:
+            self.du.chown(self.hostname, path=dest, uid=0, gid=0,
+                          sudo=True)
+        os.remove(fn)
+        if restart:
+            return self.restart()
+        return True
+
+    def parse_resourcedef(self, file=None):
         """
         Parse an arbitrary resource definition file passed as input and return
         a dictionary of resources
         """
         if file is None:
-            return None
-
+            file = os.path.join(self.pbs_conf['PBS_HOME'], 'server_priv',
+                                    'resourcedef')
         ret = self.du.cat(self.hostname, file, logerr=False, sudo=True)
         if ret['rc'] != 0 or len(ret['out']) == 0:
             # Most probable error is that file does not exist, we'll let it
@@ -7068,6 +7123,7 @@ class Server(PBSService):
         lines = ret['out']
         try:
             for l in lines:
+                l = l.strip()
                 if l == '' or l.startswith('#'):
                     continue
                 name = None
@@ -7097,150 +7153,7 @@ class Server(PBSService):
         except:
             raise PbsResourceError(rc=1, rv=False,
                                    msg="error in parse_resources")
-
         return resources
-
-    def parse_resources(self):
-        """
-        Parse server resources as defined in the resourcedef file
-        Populates instance variable self.resources
-
-        Returns the resources as a dictionary
-        """
-        if ((not self.has_diag) and
-            self.utils.compare_versions(self.version, "12.3", GE) and
-                (self.get_op_mode() == PTL_CLI)):
-            self.manager(MGR_CMD_LIST, RSC)
-        else:
-            rdef = os.path.join(self.pbs_conf['PBS_HOME'], 'server_priv',
-                                'resourcedef')
-            self.resources = self.parse_resourcedef_file(rdef)
-        return self.resources
-
-    def remove_resource(self, name, restart=True, update_mode='auto'):
-        """
-        Remove an entry from resourcedef
-
-        name - The name of the resource to remove
-
-        restart - Whether to restart the server or not. Applicable to
-        update_mode 'file' operations only.
-
-        update_mode - one of 'file' or 'auto' (the default). If 'file', updates
-        the resourcedef file only and will not use the qmgr operations on
-        resources introduced in 12.3. If 'auto', will automatically handle
-        the update on resourcedef or using qmgr based on the version of the
-        Server.
-        """
-        self.parse_resources()
-        if name in self.resources:
-            if ((not self.has_diag) and (update_mode == 'auto') and
-                    self.utils.compare_versions(self.version, "12.3", GE)):
-                self.manager(MGR_CMD_DELETE, RSC, id=name)
-            else:
-                del self.resources[name]
-                self.write_resource_def()
-                if restart:
-                    return self.restart()
-
-    def add_resource(self, name, type=None, flag=None, restart=True,
-                     update_mode='auto'):
-        """
-        Define a server resource
-
-        name - The name of the resource to add to the resourcedef file
-
-        type - The type of the resource, one of string, long, boolean, float
-
-        flag - The target of the resource, one of n, h, q, or none
-
-        restart - Whether to restart the server after adding a resource.
-        Applicable to update_mode 'file' operations only.
-
-        update_mode - one of 'file' or 'auto' (the default). If 'file', updates
-        the resourcedef file only and will not use the qmgr operations on
-        resources introduced in 12.3. If 'auto', will automatically handle
-        the update on resourcedef or using qmgr based on the version of the
-        Server.
-
-        return True on success False on error
-        """
-        rv = self.parse_resources()
-        if rv is None:
-            return False
-
-        resource_exists = False
-        if name in self.resources:
-            msg = [self.logprefix + "resource " + name]
-            if type:
-                msg += ["type: " + type]
-            if flag:
-                msg += ["flag: " + flag]
-            msg += [" already defined"]
-            self.logger.info(" ".join(msg))
-
-            (t, f) = (self.resources[name].type, self.resources[name].flag)
-            if type == t and flag == f:
-                return True
-
-            self.logger.info("resource: redefining resource " + name +
-                             " type: " + str(type) + " and flag: " + str(flag))
-            del self.resources[name]
-            resource_exists = True
-
-        r = Resource(name, type, flag)
-        self.resources[name] = r
-
-        if (update_mode == 'auto' and
-                self.utils.compare_versions(self.version, "12.3", GE)):
-            a = {}
-            if type:
-                a['type'] = type
-            if flag:
-                a['flag'] = flag
-
-            if resource_exists:
-                self.manager(MGR_CMD_SET, RSC, a, id=name)
-            else:
-                self.manager(MGR_CMD_CREATE, RSC, a, id=name)
-        else:
-            self.write_resource_def()
-            if restart:
-                return self.restart()
-        return True
-
-    def write_resource_def(self, resources=None, filename=None):
-        if resources is None:
-            resources = self.resources
-        try:
-            fn = self.du.mkstemp()[1]
-            f = open(fn, 'w+')
-            for r in resources.values():
-                f.write(r.attributes['id'])
-                if r.attributes['type'] is not None:
-                    f.write(' type=' + r.attributes['type'])
-                if r.attributes['flag'] is not None:
-                    f.write(' flag=' + r.attributes['flag'])
-                f.write('\n')
-
-            f.close()
-
-            if filename is None:
-                dest = os.path.join(self.pbs_conf['PBS_HOME'], 'server_priv',
-                                    'resourcedef')
-            else:
-                dest = filename
-
-            self.du.run_copy(self.hostname, fn, dest, mode=0644, sudo=True)
-
-            if filename is None:
-                self.du.chown(self.hostname, path=dest, uid=0, gid=0,
-                              sudo=True)
-
-            os.remove(fn)
-        except:
-            raise PbsResourceError(rc=1, rv=False,
-                                   msg='error processing resource file')
 
     def pbs_api_as(self, cmd=None, obj=None, user=None, **kwargs):
         """
