@@ -45,15 +45,16 @@ dist_unsupported_SCRIPTS = \
 	pbs_loganalyzer \
 	pbs_stat
 
-dist_unsupported_PYTHON = \
+
+# Marking all *.py files as data as these files are meant to be used as hooks and 
+# need no compilation.
+dist_unsupported_DATA = \
 	NodeHealthCheck.py \
 	load_balance.py \
 	mom_dyn_res.py \
 	pbs-alps-inventory-check.py \
 	rapid_inter.py \
-	run_pelog_shell.py
-
-dist_unsupported_DATA = \
+	run_pelog_shell.py \
 	NodeHealthCheck.json \
 	README \
 	pbs_dtj.8B \

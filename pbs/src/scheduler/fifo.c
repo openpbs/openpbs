@@ -147,13 +147,12 @@ schedinit(int argc, char *argv[])
 #ifdef PYTHON
 	char errMsg[MAX_BUF_SIZE];
 	char buf[MAXPATHLEN];
-	char *new_pypath = NULL;
-	int new_pypath_len = 0;
 	char *errstr;
 	
 	PyObject *module;
 	PyObject *obj;
 	PyObject *dict;
+	PyObject *path;
 #endif 
 
 	init_config();
@@ -203,19 +202,15 @@ schedinit(int argc, char *argv[])
 	Py_FrozenFlag = 1;
 	Py_Initialize();
 
+	path = PySys_GetObject("path");
 
 	snprintf(buf, sizeof(buf), "%s/python/lib/python2.7", pbs_conf.pbs_exec_path);
-	if(pbs_strcat(&new_pypath, &new_pypath_len, buf) == NULL) {
-		free(new_pypath);
-		return 1;
-	}
-	snprintf(buf, sizeof(buf), ":%s/python/lib/python2.7/lib-dynload", pbs_conf.pbs_exec_path);
-	if(pbs_strcat(&new_pypath, &new_pypath_len, buf) == NULL) {
-		free(new_pypath);
-		return 1;
-	}
+	PyList_Append(path, PyString_FromString(buf));
 
-	PySys_SetPath(new_pypath);
+	snprintf(buf, sizeof(buf), ":%s/python/lib/python2.7/lib-dynload", pbs_conf.pbs_exec_path);
+	PyList_Append(path, PyString_FromString(buf));
+
+	PySys_SetObject("path", path);
 
 	PyRun_SimpleString(
 		"_err =\"\"\n"
@@ -242,7 +237,6 @@ schedinit(int argc, char *argv[])
 		Py_XDECREF(obj);
 	}
 
-	free(new_pypath);
 #endif
 
 	return 0;
