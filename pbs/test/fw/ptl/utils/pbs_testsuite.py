@@ -344,6 +344,9 @@ class PBSTestSuite(unittest.TestCase):
     moms: Colon-separated list of hostnames hosting a PBS MoM. MoMs are made
     accessible as a dictionary in the instance variable moms.
 
+    comms: Colon-separated list of hostnames hosting a PBS Comm. Comms are made
+    accessible as a dictionary in the instance variable comms.
+
     nomom=<host1>:<host2>...: expect no MoM on given set of hosts
 
     mode: Sets mode of operation to PBS server. Can be either 'cli' or 'api'.
@@ -383,6 +386,9 @@ class PBSTestSuite(unittest.TestCase):
     Defaults to True.
 
     server-revert-to-defaults=<True|False>: if False, don't revert Server to
+    defaults
+
+    comm-revert-to-defaults=<True|False>: if False, don't revert Comm to
     defaults
 
     mom-revert-to-defaults=<True|False>: if False, don't revert MoM to defaults
@@ -434,9 +440,11 @@ class PBSTestSuite(unittest.TestCase):
     server = None
     scheduler = None
     mom = None
+    comm = None
     servers = None
     schedulers = None
     moms = None
+    comms = None
 
     @classmethod
     def setUpClass(cls):
@@ -446,6 +454,7 @@ class PBSTestSuite(unittest.TestCase):
         cls.init_param()
         cls.check_users_exist()
         cls.init_servers()
+        cls.init_comms()
         cls.init_schedulers()
         cls.init_moms()
         cls.init_messages()
@@ -457,6 +466,7 @@ class PBSTestSuite(unittest.TestCase):
         self.log_enter_setup()
         self.init_proc_mon()
         self.revert_servers()
+        self.revert_comms()
         self.revert_schedulers()
         self.revert_moms()
         self.log_end_setup()
@@ -563,6 +573,7 @@ class PBSTestSuite(unittest.TestCase):
     def init_param(cls):
         cls._validate_param('revert-to-defaults')
         cls._validate_param('server-revert-to-defaults')
+        cls._validate_param('comm-revert-to-defaults')
         cls._validate_param('mom-revert-to-defaults')
         cls._validate_param('sched-revert-to-defaults')
         cls._validate_param('del-hooks')
@@ -642,11 +653,15 @@ class PBSTestSuite(unittest.TestCase):
         if init_server_func is None:
             init_server_func = cls.init_server
         if 'servers' in cls.conf:
+            if 'comms' not in cls.conf:
+                cls.conf['comms'] = cls.conf['servers']
             if 'schedulers' not in cls.conf:
                 cls.conf['schedulers'] = cls.conf['servers']
             if 'moms' not in cls.conf:
                 cls.conf['moms'] = cls.conf['servers']
         if 'server' in cls.conf:
+            if 'comm' not in cls.conf:
+                cls.conf['comm'] = cls.conf['server']
             if 'scheduler' not in cls.conf:
                 cls.conf['scheduler'] = cls.conf['server']
             if 'mom' not in cls.conf:
@@ -656,6 +671,17 @@ class PBSTestSuite(unittest.TestCase):
                                          func=init_server_func)
         if cls.servers:
             cls.server = cls.servers.values()[0]
+
+    @classmethod
+    def init_comms(cls, init_comm_func=None, skip=None):
+        if init_comm_func is None:
+            init_comm_func = cls.init_comm
+        cls.comms = cls.init_from_conf(conf=cls.conf,
+                                       single='comm',
+                                       multiple='comms', skip=skip,
+                                       func=init_comm_func)
+        if cls.comms:
+            cls.comm = cls.comms.values()[0]
 
     @classmethod
     def init_schedulers(cls, init_sched_func=None, skip=None):
@@ -717,6 +743,21 @@ class PBSTestSuite(unittest.TestCase):
         return server
 
     @classmethod
+    def init_comm(cls, hostname, pbsconf_file=None):
+        """
+        Initialize a Comm instance associated to the given hostname.
+
+        This method must be called after init_server
+
+        hostname - The host on which the Comm is running
+
+        pbsconf_file - Optional path to an alternate pbs config file
+
+        Return the instantiated Comm upon success and None on failure.
+        """
+        return Comm(hostname, pbsconf_file=pbsconf_file)
+
+    @classmethod
     def init_scheduler(cls, server, pbsconf_file=None):
         """
         Initialize a Scheduler instance associated to the given server.
@@ -738,11 +779,8 @@ class PBSTestSuite(unittest.TestCase):
     def init_mom(cls, hostname, pbsconf_file=None):
         """
         Initialize a MoM instance associated to the given hostname.
-        Ensure that MoM is Up, and revert configuration to defaults.
 
         This method must be called after init_server
-
-        Add $clienthost to each servername
 
         hostname - The host on which the MoM is running
 
@@ -772,6 +810,10 @@ class PBSTestSuite(unittest.TestCase):
     def revert_servers(self, force=False):
         for server in self.servers.values():
             self.revert_server(server, force)
+
+    def revert_comms(self, force=False):
+        for comm in self.comms.values():
+            self.revert_comm(comm, force)
 
     def revert_schedulers(self, force=False):
         for sched in self.schedulers.values():
@@ -811,6 +853,14 @@ class PBSTestSuite(unittest.TestCase):
         self.assertTrue(rv, _msg)
         self.logger.info('server: %s licensed', server.hostname)
 
+    def revert_comm(self, comm, force=False):
+        rv = comm.isUp()
+        if not rv:
+            self.logger.error('comm ' + comm.hostname + ' is down')
+            comm.start()
+            msg = 'Failed to restart comm ' + comm.hostname
+            self.assertTrue(comm.isUp(), msg)
+
     def revert_scheduler(self, scheduler, force=False):
         rv = scheduler.isUp()
         if not rv:
@@ -825,7 +875,7 @@ class PBSTestSuite(unittest.TestCase):
             self.assertTrue(rv, _msg)
 
     def revert_mom(self, mom, force=False):
-        # this call is a Noop if no switching is needed
+        # below call is a Noop if no switching is needed
         mom.switch_to_standard_mom()
         rv = mom.isUp()
         if not rv:
