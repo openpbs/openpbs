@@ -8483,18 +8483,25 @@ class Server(PBSService):
         mom.insert_vnode_def(vdef, fname=fname, additive=additive,
                              restart=restart)
         if createnode:
-            if mom.pbs_conf and 'PBS_MOM_SERVICE_PORT' in mom.pbs_conf:
-                m_attr = {'port': mom.pbs_conf['PBS_MOM_SERVICE_PORT']}
+            try:
+                statm = self.status(NODE, id=natvnode)
+            except:
+                statm = []
+            if len(statm) >= 1:
+                _m = 'Mom %s already exists, not creating' % (natvnode)
+                self.logger.info(_m)
             else:
-                m_attr = None
-            self.manager(MGR_CMD_CREATE, NODE, m_attr, natvnode)
+                if mom.pbs_conf and 'PBS_MOM_SERVICE_PORT' in mom.pbs_conf:
+                    m_attr = {'port': mom.pbs_conf['PBS_MOM_SERVICE_PORT']}
+                else:
+                    m_attr = None
+                self.manager(MGR_CMD_CREATE, NODE, m_attr, natvnode)
         attrs = {}
         # only expect if vnodes were added rather than the nat vnode modified
         if expect and num > 0:
             for k, v in attrib.items():
                 attrs[str(k) + '=' + str(self.utils.decode_value(v))] = num
             attrs['state=free'] = num
-
             rv = self.expect(VNODE, attrs, attrop=PTL_AND)
         else:
             rv = True
