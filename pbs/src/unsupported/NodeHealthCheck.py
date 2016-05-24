@@ -1,7 +1,4 @@
 # coding: utf-8
-#!/opt/pbs/default/python/bin/python
-
-# coding: utf-8
 
 ##################################################################################
 # Purpose: To create a class for preforming node disk checks 

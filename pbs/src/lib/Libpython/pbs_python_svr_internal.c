@@ -269,7 +269,6 @@ static int      hook_scheduler_restart_cycle = FALSE; 	/* flag to tell local */
 /* scheduler to */
 /* restart sched cycle*/
 
-static int	py_pbs_objects_created = 0;/* # of Python PBS objects created */
 
 typedef struct hook_debug_t {
 	FILE	*input_fp;
@@ -3153,7 +3152,6 @@ _pps_helper_get_queue(pbs_queue *pque, const char *que_name)
 		goto ERROR_EXIT;
 	}
 
-	py_pbs_objects_created++;
 
 	if (server.sv_qs.sv_numque > 0) {
 
@@ -3299,7 +3297,6 @@ _pps_helper_get_server(void)
 		goto ERROR_EXIT;
 	}
 
-	py_pbs_objects_created++;
 	py_hook_pbsserver = py_svr;
 	return py_svr;
 ERROR_EXIT:
@@ -3445,7 +3442,6 @@ _pps_helper_get_job(job *pjob_o, const char *jobid, const char *qname)
 		goto ERROR_EXIT;
 	}
 
-	py_pbs_objects_created++;
 	return py_job;
 ERROR_EXIT:
 	if (PyErr_Occurred())
@@ -3577,7 +3573,6 @@ _pps_helper_get_resv(resc_resv *presv_o, const char *resvid)
 		goto GR_ERROR_EXIT;
 	}
 
-	py_pbs_objects_created++;
 	return py_resv;
 
 GR_ERROR_EXIT:
@@ -3702,7 +3697,6 @@ _pps_helper_get_vnode(struct pbsnode *pvnode_o, const char *vname)
 		goto GR_ERROR_EXIT;
 	}
 
-	py_pbs_objects_created++;
 	return py_vnode;
 
 GR_ERROR_EXIT:
@@ -4483,7 +4477,6 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 	PyObject *py_env = (PyObject *) NULL;
 	PyObject *py_pid = (PyObject *) NULL;
 
-	static int req_counter = 0; /* for tracking interpreter restart */
 	static int init_iters = 0;  /* 1 to initialize the PBS iterarators list */
 	static int init_vnode_set = 0;  /* 1 to initialize the vnode set opers */
 
@@ -4580,24 +4573,6 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 		}
 	}
 
-	req_counter++;
-	if ((req_counter == PBS_PYTHON_RESTART_COUNTER) ||
-		(py_pbs_objects_created > PBS_PYTHON_OBJECTS_MAX_CREATED)) {
-		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-			LOG_INFO, __func__, "Restarting Python interpreter to reduce mem usage");
-		pbs_python_ext_shutdown_interpreter(&svr_interp_data);
-		pbs_python_ext_start_interpreter(&svr_interp_data);
-
-		/* clear out counters for the next interpreter restart */
-		req_counter = 0;
-		py_pbs_objects_created = 0;
-
-		if (!svr_interp_data.interp_started) {
-			log_err(PBSE_INTERNAL, __func__, "Failed to restart interpreter");
-			return (-1);
-		}
-
-	}
 
 	hook_set_mode = C_MODE;
 
@@ -9616,7 +9591,6 @@ py_get_server_static(void)
 		goto server_static_error_exit;
 	}
 
-	py_pbs_objects_created++;
 	return py_svr;
 server_static_error_exit:
 	if (PyErr_Occurred())

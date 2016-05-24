@@ -329,6 +329,8 @@ echo
 %{_sysconfdir}/profile.d/pbs.csh
 %{_sysconfdir}/profile.d/pbs.sh
 # %{_sysconfdir}/init.d/pbs
+%exclude %{pbs_prefix}/unsupported/*.pyc
+%exclude %{pbs_prefix}/unsupported/*.pyo
 
 %files %{pbs_execution}
 %defattr(-,root,root, -)
@@ -357,6 +359,8 @@ echo
 %exclude %{pbs_prefix}/sbin/pbs_server
 %exclude %{pbs_prefix}/sbin/pbs_server.bin
 %exclude %{pbs_prefix}/sbin/pbsfs
+%exclude %{pbs_prefix}/unsupported/*.pyc
+%exclude %{pbs_prefix}/unsupported/*.pyo
 
 %files %{pbs_client}
 %defattr(-,root,root, -)
@@ -396,4 +400,6 @@ echo
 %exclude %{pbs_prefix}/sbin/pbs_server.bin
 %exclude %{pbs_prefix}/sbin/pbs_upgrade_job
 %exclude %{pbs_prefix}/sbin/pbsfs
+%exclude %{pbs_prefix}/unsupported/*.pyc
+%exclude %{pbs_prefix}/unsupported/*.pyo
 

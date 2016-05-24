@@ -40,7 +40,7 @@
  * @file    resv_info.c
  *
  * @brief
- * 	resv_info.c - This file contains functions related to resource reservations.
+ * 	resv_info.c - This file contains functions related to advance reservations.
  *
  * Functions included are:
  *	stat_resvs()
@@ -227,13 +227,17 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 			cur_resv = cur_resv->next;
 			continue;
 		}
-
+		
+		resresv->duration = resresv->resv->req_duration;
 		if (resresv->resv->resv_state !=RESV_UNCONFIRMED) {
 			resresv->start = resresv->resv->req_start;
-			resresv->end = resresv->resv->req_end;
+			if(resresv->resv->resv_state == RESV_BEING_DELETED ||
+			   resresv->start + resresv->duration <= sinfo->server_time) {
+				resresv->end = sinfo->server_time + EXITING_TIME;
+			} else
+				resresv->end = resresv->resv->req_end;
 		}
-		resresv->duration = resresv->resv->req_duration;
-
+	
 		/* Skip all but general reservations. */
 		if (resresv->resv->resv_type ==2) {
 			if (resresv->node_set_str != NULL) {

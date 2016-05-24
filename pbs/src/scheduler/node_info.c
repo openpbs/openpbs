@@ -1581,7 +1581,7 @@ update_node_on_run(nspec *ns, resource_resv *resresv)
 			set_node_state(ninfo, ND_prov);
 
 			/* for jobs inside reservation, update the server's node info as well */
-			if (resresv->is_job && resresv->job->resv != NULL &&
+			if (resresv->job != NULL && resresv->job->resv != NULL &&
 				ninfo->svr_node != NULL) {
 				set_node_state(ninfo->svr_node, ND_prov);
 			}
@@ -3189,7 +3189,7 @@ is_vnode_eligible(node_info *node, resource_resv *resresv,
 	 * the node in the server's universe.  We may have provisioned the node
 	 * and it could be down.
 	 */
-	if (resresv->is_job && resresv->job->resv != NULL) {
+	if (resresv->job != NULL && resresv->job->resv != NULL) {
 		if (node->svr_node != NULL) {
 			if (node->svr_node->is_provisioning) {
 				set_schd_error_codes(err, NOT_RUN, INVALID_NODE_STATE);
@@ -3557,7 +3557,7 @@ check_resources_for_node(resource_req *resreq, node_info *ninfo,
 	 * reservation.
 	 */
 	if (min_chunks > 0 && calendar != NULL && exists_run_event(calendar, end_time)
-		&& !(resresv->is_job && resresv->job->resv !=NULL)) {
+		&& !(resresv->job != NULL && resresv->job->resv !=NULL)) {
 		/* Check for possible conflicts with timed events by walking the sorted
 		 * event list that was created in eval_selspec. This runs a simulation
 		 * forward in time to account for timed events consuming and/or releasing
@@ -3587,7 +3587,9 @@ check_resources_for_node(resource_req *resreq, node_info *ninfo,
 				event_time = event->event_time;
 				resc_resv = (resource_resv *) event->event_ptr;
 
-				if (event_time <= cur_time)
+				if (event_time < cur_time)
+					continue;
+				if (resc_resv->job != NULL && resc_resv->job->resv != NULL)
 					continue;
 
 				if (resc_resv->nspec_arr != NULL) {

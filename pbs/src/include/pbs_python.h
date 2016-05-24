@@ -220,15 +220,6 @@ extern int  pbs_python_ext_alloc_python_script(
 extern void pbs_python_ext_quick_start_interpreter(void);
 extern void pbs_python_ext_quick_shutdown_interpreter(void);
 
-#define	PBS_PYTHON_RESTART_COUNTER	100 /* # of hook events to service    */
-/* before auto-restarting the     */
-/* interpreter (minize mem usage).*/
-
-#define PBS_PYTHON_OBJECTS_MAX_CREATED  1000    /* # of PBS Python objects    */
-/* created before also        */
-/* auto-restarting the        */
-/* interpreter to minimize    */
-/* mem  usage.                */
 
 /* -- END pbs_python_external.c implementations -- */
 
