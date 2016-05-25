@@ -1818,6 +1818,7 @@ main(int argc, char **argv, char **envp) /* qstat */
 #endif /* localmod 071 */
 
 	char *errmsg;
+	char *job_list = NULL;
 
 #if !defined(PBS_NO_POSIX_VIOLATION)
 #ifdef NAS /* localmod 071 */
@@ -2199,7 +2200,12 @@ qstat -B [-f] [ server_name... ]\n";
 				goto svr_no_args;
 		}
 	}
-
+	if (mode == JOBS) {
+		/* allocate enough memory to store list of job ids */
+		job_list = calloc(argc-1,PBS_MAXCLTJOBID+1);
+		if (job_list == NULL)
+			exit(1);
+	}
 	for (; optind < argc; optind++) {
 		int connect;
 
@@ -2222,6 +2228,11 @@ qstat -B [-f] [ server_name... ]\n";
 #endif /* localmod 071 */
 						any_failed = 1;
 						break;
+					}
+					strncat(job_list, job_id_out, PBS_MAXCLTJOBID-1);
+					if (optind != argc -1) {
+						strncat(job_list,",",1);
+						continue;
 					}
 				} else {  /* must be a destination-id */
 					stat_single_job = 0;
@@ -2279,7 +2290,7 @@ job_no_args:
 				}
 
 				if ((stat_single_job == 1) || (new_atropl == 0)) {
-					p_status = pbs_statjob(connect, job_id_out, display_attribs, extend);
+					p_status = pbs_statjob(connect, job_list, display_attribs, extend);
 				} else {
 					p_status = pbs_selstat(connect, new_atropl, NULL, extend);
 				}
@@ -2484,6 +2495,7 @@ svr_no_args:
 	tcl_run(f_opt);
 #endif /* localmod 071 */
 
+	free(job_list);
 	/*cleanup security library initializations before exiting*/
 	CS_close_app();
 
