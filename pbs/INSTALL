@@ -1,16 +1,58 @@
- 
+
 --------------------------------------------------------------------
 
 How to install PBS Pro using the configure script.
 
-- Unpack the tarball and cd to the package directory.
+- Install the prerequisite packages for building PBS Pro.
+    gcc
+    make
+    rpm-build
+    libtool
+    hwloc-devel
+    libX11-devel
+    libXt-devel
+    libedit-devel
+    libical-devel
+    ncurses-devel
+    perl
+    postgresql-devel
+    python-devel (version 2.7)
+    tcl-devel
+    tk-devel
+    swig
+    libexpat-devel (SUSE)
+    libopenssl-devel (SUSE)
+    libXext-devel (SUSE)
+    libXft-devel (SUSE)
+    fontconfig (SUSE)
+    expat-devel (CentOS)
+    openssl-devel (CentOS)
+    libXext (CentOS)
+    libXft (CentOS)
+
+- Install the prerequisite packages for running PBS Pro.
+    expat
+    libedit
+    postgresql-server
+    python (version 2.7)
+    sendmail
+    tcl
+    tk
+    libical1 (SUSE)
+    libical (CentOS)
+
+- Open a terminal as a normal (non-root) user, unpack the PBS Pro
+  tarball, and cd to the package directory.
+    tar -xpvf pbspro-14.0.1.tar.gz
+    cd pbspro-14.0.1
 
 - Run "./configure --help" to see the available build parameters.
 
 - Run "./configure --prefix=/opt/pbs" with any additional options
-  set appropriately for your installation. (See note 1 below)
+  set appropriately for your installation. (See notes 1 and 2
+  below)
 
-- Run "make". (See note 2 below)
+- Run "make". (See note 3 below)
 
 - Run "sudo make install". The installation directory (--prefix)
   will require root privilege for this step.
@@ -34,18 +76,19 @@ Note 1: It is advisable to create a simple shell script
   Also, looking at the first few lines of config.status will
   tell you the options that were set when configure was run.
   To figure out which options one can set run "./configure --help"
-  
 
-Note 2: You need to use a POSIX (or nearly POSIX) make. GNU make
+Note 2: If you modify configure.ac or adjust timestamps on any files
+  that are automatically generated, you will need to install the GNU
+  autoconf and automake packages in order for configure to
+  regenerate those files.
+
+Note 3: You need to use a POSIX (or nearly POSIX) make. GNU make
   works quite well in this regard; BSD make does not. If you are
-  having any sort of build problems, your make should be a prime suspect.
-  Tremendous effort has been expended to provide proper dependency
-  generation and makefiles without relying on any non-POSIX features. 
-  The build should work fine with a simple call to make, however,
-  complicating things by using various make flags is not guaranteed
-  to work. Don't be surprised if the first thing that make does is
-  call configure again. See the note in Makefile.in if this happens.
-
-If you need to modify configure.ac you will need to install the GNU
-automake package.
+  having any sort of build problems, your make should be a prime
+  suspect. Tremendous effort has been expended to provide proper
+  dependency generation and makefiles without relying on any
+  non-POSIX features. The build should work fine with a simple call
+  to make, however, complicating things by using various make flags
+  is not guaranteed to work. Don't be surprised if the first thing
+  that make does is call configure again.
 
