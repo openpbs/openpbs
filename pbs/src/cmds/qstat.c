@@ -2229,6 +2229,11 @@ qstat -B [-f] [ server_name... ]\n";
 						any_failed = 1;
 						break;
 					}
+					strncat(job_list, job_id_out, PBS_MAXCLTJOBID-1);
+					if (optind != argc -1) {
+						strncat(job_list,",",1);
+						continue;
+					}
 				} else {  /* must be a destination-id */
 					stat_single_job = 0;
 					strcpy(destination, operand);
@@ -2256,11 +2261,6 @@ qstat -B [-f] [ server_name... ]\n";
 							added_queue = 1;
 						}
 					}
-				}
-				strncat(job_list, job_id_out, PBS_MAXCLTJOBID-1);
-				if (optind != argc -1) {
-					strncat(job_list,",",1);
-					continue;
 				}
 job_no_args:
 				/* We could have been sent here after p_server was set. Free it. */
