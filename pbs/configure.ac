@@ -36,7 +36,7 @@
 #
 
 AC_PREREQ([2.69])
-AC_INIT([pbspro], [13.1.800], [pbssupport@altair.com])
+AC_INIT([pbspro], [14.0.1], [pbssupport@altair.com])
 AC_CONFIG_HEADERS([src/include/pbs_config.h])
 AC_CONFIG_SRCDIR([src/cmds/qmgr.c])
 AC_CONFIG_AUX_DIR([buildutils])
