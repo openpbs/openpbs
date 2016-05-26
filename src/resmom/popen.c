@@ -82,7 +82,6 @@
 
 #include <sys/param.h>
 #include <sys/wait.h>
-#include "libpbs.h" /* so that pbs_popen etc are declared as DECLDIR for aif */
 
 extern pid_t fork_me(int sock);
 extern int kill_session(pid_t pid, int sig, int dir);

@@ -748,7 +748,7 @@ WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 
 _ _ _ _ _ _
 
-src/lib/Libifl/popen.c
+src/resmom/popen.c
 
 Copyright (c) 1988, 1993
      The Regents of the University of California.  All rights reserved.
