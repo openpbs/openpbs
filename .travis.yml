@@ -19,18 +19,18 @@ install:
     - ${DOCKER_EXEC} rpmdev-setuptree
     - '[ "${OS_TYPE}" == "centos:7" ] && travis_retry ${DOCKER_EXEC} yum-builddep -y ./pbspro.spec || true'
     - '[ "${OS_TYPE}" == "opensuse:13.2" ] && travis_retry ${DOCKER_EXEC} /bin/bash -c "zypper -n install \$(rpmspec --buildrequires -q pbspro.spec)" || true'
-    - ${DOCKER_EXEC} /bin/bash -c "cd pbs; ./autogen.sh"
-    - ${DOCKER_EXEC} /bin/bash -c "cd pbs; ./configure"
-    - ${DOCKER_EXEC} /bin/bash -c "cd pbs; make dist"
-    - ${DOCKER_EXEC} /bin/bash -c "cd pbs; cp pbspro-*.tar.gz /root/rpmbuild/SOURCES/"
+    - ${DOCKER_EXEC} ./autogen.sh
+    - ${DOCKER_EXEC} ./configure
+    - ${DOCKER_EXEC} make dist
+    - ${DOCKER_EXEC} /bin/bash -c "cp pbspro-*.tar.gz /root/rpmbuild/SOURCES/"
     - ${DOCKER_EXEC} rpmbuild -bb pbspro.spec
     - '[ "${OS_TYPE}" == "centos:7" ] && travis_retry ${DOCKER_EXEC} /bin/bash -c "yum -y install /root/rpmbuild/RPMS/x86_64/pbspro-server-*.x86_64.rpm" || true'
     - '[ "${OS_TYPE}" == "opensuse:13.2" ] && travis_retry ${DOCKER_EXEC} /bin/bash -c "zypper -n install /root/rpmbuild/RPMS/x86_64/pbspro-server-*.x86_64.rpm" || true'
     - ${DOCKER_EXEC} /etc/init.d/pbs start
     - '[ "${OS_TYPE}" == "centos:7" ] && travis_retry ${DOCKER_EXEC} yum -y install python-pip sudo which net-tools || true'
     - '[ "${OS_TYPE}" == "opensuse:13.2" ] && travis_retry ${DOCKER_EXEC} zypper -n install python-pip sudo which net-tools || true'
-    - ${DOCKER_EXEC} /bin/bash -c "cd pbs/test/fw; pip install -r requirements.txt ."
+    - ${DOCKER_EXEC} /bin/bash -c "cd test/fw; pip install -r requirements.txt ."
     - ${DOCKER_EXEC} pbs_config --make-ug
-    - ${DOCKER_EXEC} /bin/bash -c "cd pbs/test/tests; pbs_benchpress -l INFOCLI2 -o ../../../ptl.txt"
+    - ${DOCKER_EXEC} /bin/bash -c "cd test/tests; pbs_benchpress -l INFOCLI2 -o ../../ptl.txt"
 script: true
 
