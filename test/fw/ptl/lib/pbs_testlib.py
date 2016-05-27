@@ -4322,7 +4322,7 @@ class Server(PBSService):
         """
         Initialize a Server instance.
 
-        name - The hostname of the server. Defaults to calling pbs_default()
+        name - The hostname of the server. Defaults to current hostname.
 
         attrs - Dictionary of attributes to set, these will override defaults.
 
@@ -11281,7 +11281,7 @@ class MoM(PBSService):
     def __init__(self, name=None, attrs={}, pbsconf_file=None, diagmap={},
                  diag=None, server=None, db_access=None):
         """
-        name - The hostname of the server. Defaults to calling pbs_default()
+        name - The hostname of the mom. Defaults to current hostname.
 
         attrs - Dictionary of attributes to set, these will override defaults.
 
