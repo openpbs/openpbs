@@ -397,12 +397,6 @@ DECLDIR int pbs_loadconf(int);
 
 DECLDIR char *pbs_get_tmpdir(void);
 
-DECLDIR FILE *pbs_popen(const char *, const char *);
-
-DECLDIR int pbs_pkill(FILE *, int);
-
-DECLDIR int pbs_pclose(FILE *);
-
 DECLDIR char *pbs_strsep(char **, const char *);
 
 DECLDIR int pbs_confirmresv(int, char *, char *, unsigned long, char *);

@@ -279,8 +279,8 @@ am_libpbs_la_OBJECTS = libpbs_la-attr_fn_arst.lo \
 	libpbs_la-pbsD_submit_resv.lo libpbs_la-pbsD_stathook.lo \
 	libpbs_la-pbsD_delresv.lo libpbs_la-pbsD_statresv.lo \
 	libpbs_la-pbsD_confirmresv.lo libpbs_la-pbsD_defschreply.lo \
-	libpbs_la-pbsD_statrsc.lo libpbs_la-popen.lo libpbs_la-rpp.lo \
-	libpbs_la-strsep.lo libpbs_la-tcp_dis.lo libpbs_la-tm.lo \
+	libpbs_la-pbsD_statrsc.lo libpbs_la-rpp.lo libpbs_la-strsep.lo \
+	libpbs_la-tcp_dis.lo libpbs_la-tm.lo \
 	libpbs_la-xml_encode_decode.lo libpbs_la-pbs_messages.lo \
 	libpbs_la-cs.lo libpbs_la-cs_standard.lo \
 	libpbs_la-misc_utils.lo libpbs_la-munge_supp.lo \
@@ -748,7 +748,6 @@ libpbs_la_SOURCES = \
 	../Libifl/pbsD_confirmresv.c \
 	../Libifl/pbsD_defschreply.c \
 	../Libifl/pbsD_statrsc.c \
-	../Libifl/popen.c \
 	../Libifl/rpp.c \
 	../Libifl/strsep.c \
 	../Libifl/tcp_dis.c \
@@ -1057,7 +1056,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libpbs_la-pbs_quote_parse.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libpbs_la-pbs_secrets.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libpbs_la-pbs_statfree.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libpbs_la-popen.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libpbs_la-prepare_path.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libpbs_la-prt_job_err.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libpbs_la-ps_dis.Plo@am__quote@
@@ -2458,13 +2456,6 @@ libpbs_la-pbsD_statrsc.lo: ../Libifl/pbsD_statrsc.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../Libifl/pbsD_statrsc.c' object='libpbs_la-pbsD_statrsc.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libpbs_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libpbs_la-pbsD_statrsc.lo `test -f '../Libifl/pbsD_statrsc.c' || echo '$(srcdir)/'`../Libifl/pbsD_statrsc.c
-
-libpbs_la-popen.lo: ../Libifl/popen.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libpbs_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libpbs_la-popen.lo -MD -MP -MF $(DEPDIR)/libpbs_la-popen.Tpo -c -o libpbs_la-popen.lo `test -f '../Libifl/popen.c' || echo '$(srcdir)/'`../Libifl/popen.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libpbs_la-popen.Tpo $(DEPDIR)/libpbs_la-popen.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../Libifl/popen.c' object='libpbs_la-popen.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libpbs_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libpbs_la-popen.lo `test -f '../Libifl/popen.c' || echo '$(srcdir)/'`../Libifl/popen.c
 
 libpbs_la-rpp.lo: ../Libifl/rpp.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libpbs_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libpbs_la-rpp.lo -MD -MP -MF $(DEPDIR)/libpbs_la-rpp.Tpo -c -o libpbs_la-rpp.lo `test -f '../Libifl/rpp.c' || echo '$(srcdir)/'`../Libifl/rpp.c

@@ -40,6 +40,7 @@
 extern "C" {
 #endif
 
+#include <stdio.h>
 
 #ifndef	MOM_MACH
 #include "mom_mach.h"
@@ -379,6 +380,11 @@ extern int init_x11_display(struct pfwdsock *, int, char *, char *, char *);
 extern int setcurrentworkdir(char *);
 extern int becomeuser(job *);
 extern int becomeuser_args(char *, uid_t, gid_t, gid_t);
+
+/* From popen.c */
+extern FILE *pbs_popen(const char *, const char *);
+extern int pbs_pkill(FILE *, int);
+extern int pbs_pclose(FILE *);
 
 /* Define for max xauth data*/
 #define X_DISPLAY_LEN   512

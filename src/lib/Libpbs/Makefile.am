@@ -244,7 +244,6 @@ libpbs_la_SOURCES = \
 	../Libifl/pbsD_confirmresv.c \
 	../Libifl/pbsD_defschreply.c \
 	../Libifl/pbsD_statrsc.c \
-	../Libifl/popen.c \
 	../Libifl/rpp.c \
 	../Libifl/strsep.c \
 	../Libifl/tcp_dis.c \
