@@ -721,7 +721,7 @@ class PBSTestSuite(unittest.TestCase):
         return Scheduler(server=server, pbsconf_file=pbsconf_file)
 
     @classmethod
-    def init_mom(cls, hostname, pbsconf_file=None):
+    def init_mom(cls, hostname, pbsconf_file=None, server=None):
         """
         Initialize a MoM instance associated to the given hostname.
 
@@ -731,9 +731,15 @@ class PBSTestSuite(unittest.TestCase):
 
         pbsconf_file - Optional path to an alternate pbs config file
 
+        server - The server name associated to the mom
+
         Return the instantiated MoM upon success and None on failure.
         """
-        return MoM(hostname, pbsconf_file=pbsconf_file)
+        try:
+            server = cls.servers[server]
+        except:
+            server = None
+        return MoM(hostname, pbsconf_file=pbsconf_file, server=server)
 
     def init_proc_mon(self):
         """

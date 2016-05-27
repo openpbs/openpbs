@@ -202,7 +202,7 @@ am__pbs_mom_SOURCES_DIST = $(top_builddir)/src/server/job_attr_def.c \
 	${PBS_MACH}/mom_mach.h ${PBS_MACH}/mom_start.c \
 	${PBS_MACH}/pe_input.c catch_child.c mom_comm.c \
 	mom_hook_func.c mom_inter.c mom_main.c mom_server.c \
-	mom_vnode.c prolog.c requests.c rm_dep.h stage_func.c \
+	mom_vnode.c popen.c prolog.c requests.c rm_dep.h stage_func.c \
 	start_exec.c vnode_storage.c linux/alps.c \
 	irix6cpuset/allocnodes.c irix6cpuset/allocnodes.h \
 	irix6cpuset/collector.c irix6cpuset/collector.h \
@@ -234,10 +234,11 @@ am_pbs_mom_OBJECTS = pbs_mom-job_attr_def.$(OBJEXT) \
 	pbs_mom-catch_child.$(OBJEXT) pbs_mom-mom_comm.$(OBJEXT) \
 	pbs_mom-mom_hook_func.$(OBJEXT) pbs_mom-mom_inter.$(OBJEXT) \
 	pbs_mom-mom_main.$(OBJEXT) pbs_mom-mom_server.$(OBJEXT) \
-	pbs_mom-mom_vnode.$(OBJEXT) pbs_mom-prolog.$(OBJEXT) \
-	pbs_mom-requests.$(OBJEXT) pbs_mom-stage_func.$(OBJEXT) \
-	pbs_mom-start_exec.$(OBJEXT) pbs_mom-vnode_storage.$(OBJEXT) \
-	$(am__objects_1) $(am__objects_2) $(am__objects_3)
+	pbs_mom-mom_vnode.$(OBJEXT) pbs_mom-popen.$(OBJEXT) \
+	pbs_mom-prolog.$(OBJEXT) pbs_mom-requests.$(OBJEXT) \
+	pbs_mom-stage_func.$(OBJEXT) pbs_mom-start_exec.$(OBJEXT) \
+	pbs_mom-vnode_storage.$(OBJEXT) $(am__objects_1) \
+	$(am__objects_2) $(am__objects_3)
 pbs_mom_OBJECTS = $(am_pbs_mom_OBJECTS)
 am__DEPENDENCIES_1 =
 pbs_mom_DEPENDENCIES = $(top_builddir)/src/lib/Libattr/libattr.a \
@@ -528,7 +529,7 @@ pbs_mom_SOURCES = $(top_builddir)/src/server/job_attr_def.c \
 	${PBS_MACH}/mom_mach.h ${PBS_MACH}/mom_start.c \
 	${PBS_MACH}/pe_input.c catch_child.c mom_comm.c \
 	mom_hook_func.c mom_inter.c mom_main.c mom_server.c \
-	mom_vnode.c prolog.c requests.c rm_dep.h stage_func.c \
+	mom_vnode.c popen.c prolog.c requests.c rm_dep.h stage_func.c \
 	start_exec.c vnode_storage.c $(am__append_3) $(am__append_6) \
 	$(am__append_7)
 EXTRA_DIST = \
@@ -697,6 +698,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pbs_mom-mom_start.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pbs_mom-mom_vnode.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pbs_mom-pe_input.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pbs_mom-popen.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pbs_mom-process_request.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pbs_mom-prolog.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pbs_mom-reply_send.Po@am__quote@
@@ -1038,6 +1040,20 @@ pbs_mom-mom_vnode.obj: mom_vnode.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='mom_vnode.c' object='pbs_mom-mom_vnode.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(pbs_mom_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o pbs_mom-mom_vnode.obj `if test -f 'mom_vnode.c'; then $(CYGPATH_W) 'mom_vnode.c'; else $(CYGPATH_W) '$(srcdir)/mom_vnode.c'; fi`
+
+pbs_mom-popen.o: popen.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(pbs_mom_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT pbs_mom-popen.o -MD -MP -MF $(DEPDIR)/pbs_mom-popen.Tpo -c -o pbs_mom-popen.o `test -f 'popen.c' || echo '$(srcdir)/'`popen.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/pbs_mom-popen.Tpo $(DEPDIR)/pbs_mom-popen.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='popen.c' object='pbs_mom-popen.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(pbs_mom_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o pbs_mom-popen.o `test -f 'popen.c' || echo '$(srcdir)/'`popen.c
+
+pbs_mom-popen.obj: popen.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(pbs_mom_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT pbs_mom-popen.obj -MD -MP -MF $(DEPDIR)/pbs_mom-popen.Tpo -c -o pbs_mom-popen.obj `if test -f 'popen.c'; then $(CYGPATH_W) 'popen.c'; else $(CYGPATH_W) '$(srcdir)/popen.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/pbs_mom-popen.Tpo $(DEPDIR)/pbs_mom-popen.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='popen.c' object='pbs_mom-popen.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(pbs_mom_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o pbs_mom-popen.obj `if test -f 'popen.c'; then $(CYGPATH_W) 'popen.c'; else $(CYGPATH_W) '$(srcdir)/popen.c'; fi`
 
 pbs_mom-prolog.o: prolog.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(pbs_mom_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT pbs_mom-prolog.o -MD -MP -MF $(DEPDIR)/pbs_mom-prolog.Tpo -c -o pbs_mom-prolog.o `test -f 'prolog.c' || echo '$(srcdir)/'`prolog.c

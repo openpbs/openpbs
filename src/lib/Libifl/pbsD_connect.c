@@ -57,6 +57,9 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <netinet/in.h>
+#ifndef WIN32
+#include <netinet/tcp.h>
+#endif
 #include <arpa/inet.h>
 #include <pbs_ifl.h>
 #include "libpbs.h"
@@ -845,16 +848,26 @@ pbs_connect_extend(char *server, char *extend_data)
 int
 pbs_connection_set_nodelay(int connect)
 {
+	int fd;
+	int opt;
+	pbs_socklen_t optlen;
+
 	if (connect < 0 || NCONNECTS <= connect)
 		return -1;
 
 	if (!connection[connect].ch_inuse)
 		return -1;
 
-	if (set_nodelay(connection[connect].ch_socket) == -1)
+	optlen = sizeof(opt);
+	fd = connection[connect].ch_socket;
+	if (getsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &opt, &optlen) == -1)
 		return -1;
 
-	return 0;
+	if (opt == 1)
+		return 0;
+
+	opt = 1;
+	return setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(opt));
 }
 
 /**
