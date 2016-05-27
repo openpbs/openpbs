@@ -4322,7 +4322,7 @@ class Server(PBSService):
         """
         Initialize a Server instance.
 
-        name - The hostname of the server. Defaults to calling pbs_default()
+        name - The hostname of the server. Defaults to current hostname.
 
         attrs - Dictionary of attributes to set, these will override defaults.
 
@@ -11279,9 +11279,9 @@ class MoM(PBSService):
                        'PBS_HOME': '-d'}
 
     def __init__(self, name=None, attrs={}, pbsconf_file=None, diagmap={},
-                 diag=None):
+                 diag=None, server=None, db_access=None):
         """
-        name - The hostname of the server. Defaults to calling pbs_default()
+        name - The hostname of the mom. Defaults to current hostname.
 
         attrs - Dictionary of attributes to set, these will override defaults.
 
@@ -11291,9 +11291,25 @@ class MoM(PBSService):
         from PBS diag directory
 
         diag - path to PBS diag directory (This will overrides diagmap)
+
+        server - A PBS server instance to which this mom is associated
+
+        db_acccess- set to either file containing credentials to DB access or
+        dictionary containing {'dbname':...,'user':...,'port':...}
         """
 
         self.logger = logging.getLogger(__name__)
+
+        if server is not None:
+            self.server = server
+            if diag is None and self.server.diag is not None:
+                diag = self.server.diag
+            if ((len(diagmap) == 0) and (len(self.server.diagmap) != 0)):
+                diagmap = self.server.diagmap
+        else:
+            self.server = Server(name, pbsconf_file=pbsconf_file,
+                                 db_access=db_access, diag=diag,
+                                 diagmap=diagmap)
 
         PBSService.__init__(self, name, attrs, self.dflt_attributes,
                             pbsconf_file, diag=diag, diagmap=diagmap)
@@ -11391,6 +11407,10 @@ class MoM(PBSService):
             if delvnodedefs and self.has_vnode_defs():
                 restart = True
                 self.delete_vnode_defs()
+                rah = ATTR_rescavail + '.host'
+                vs = self.server.status(VNODE, {rah: self.hostname})
+                vs = [ v['id'] for v in vs if v['id'] != v[rah]]
+                self.server.manager(MGR_CMD_DELETE, VNODE, id=vs, expect=True)
             if cmp(self.config, self.dflt_config) != 0:
                 self.apply_config(self.dflt_config, hup=False, restart=False)
             if restart:
