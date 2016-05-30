@@ -11413,7 +11413,7 @@ class MoM(PBSService):
                 try:
                     _vs = self.server.status(VNODE, a, id=self.hostname)
                 except:
-                    _vs = self.server.status(VNODE, a, id=self.shorname)
+                    _vs = self.server.status(VNODE, a, id=self.shortname)
                 vs = []
                 for v in _vs:
                     if v[rav].split('.')[0] != v[rah].split('.')[0]:
