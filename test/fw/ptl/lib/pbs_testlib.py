@@ -11408,8 +11408,13 @@ class MoM(PBSService):
                 restart = True
                 self.delete_vnode_defs()
                 rah = ATTR_rescavail + '.host'
-                vs = self.server.status(VNODE, {rah: self.hostname})
-                vs = [ v['id'] for v in vs if v['id'] != v[rah]]
+                rav = ATTR_rescavail + '.vnode'
+                a = {rah: self.hostname, rav: None}
+                _vs = self.server.status(VNODE, a)
+                vs = []
+                for v in _vs:
+                    if v[rav].split('.')[0] != v[rah].split('.')[0]:
+                        vs.append(v['id'])
                 if len(vs) > 0:
                     self.server.manager(MGR_CMD_DELETE, VNODE, id=vs,
                                         expect=True)
