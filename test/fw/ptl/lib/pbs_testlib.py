@@ -11410,7 +11410,9 @@ class MoM(PBSService):
                 rah = ATTR_rescavail + '.host'
                 vs = self.server.status(VNODE, {rah: self.hostname})
                 vs = [ v['id'] for v in vs if v['id'] != v[rah]]
-                self.server.manager(MGR_CMD_DELETE, VNODE, id=vs, expect=True)
+                if len(vs) > 0:
+                    self.server.manager(MGR_CMD_DELETE, VNODE, id=vs,
+                                        expect=True)
             if cmp(self.config, self.dflt_config) != 0:
                 self.apply_config(self.dflt_config, hup=False, restart=False)
             if restart:
