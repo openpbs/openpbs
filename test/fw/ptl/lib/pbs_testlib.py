@@ -11410,7 +11410,10 @@ class MoM(PBSService):
                 rah = ATTR_rescavail + '.host'
                 rav = ATTR_rescavail + '.vnode'
                 a = {rah: self.hostname, rav: None}
-                _vs = self.server.status(VNODE, a)
+                try:
+                    _vs = self.server.status(VNODE, a, id=self.hostname)
+                except:
+                    _vs = self.server.status(VNODE, a, id=self.shorname)
                 vs = []
                 for v in _vs:
                     if v[rav].split('.')[0] != v[rah].split('.')[0]:
