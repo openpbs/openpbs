@@ -15,7 +15,7 @@ install:
     - '[ "${OS_TYPE}" == "centos:7" ] && travis_retry ${DOCKER_EXEC} yum -y install yum-utils epel-release rpmdevtools || true'
     - '[ "${OS_TYPE}" == "opensuse:13.2" ] && travis_retry ${DOCKER_EXEC} zypper -n ar -f -G http://download.opensuse.org/repositories/devel:/tools/openSUSE_13.2/devel:tools.repo || true'
     - '[ "${OS_TYPE}" == "opensuse:13.2" ] && travis_retry ${DOCKER_EXEC} zypper -n ref || true'
-    - '[ "${OS_TYPE}" == "opensuse:13.2" ] && travis_retry ${DOCKER_EXEC} zypper -n install rpmdevtools python-xml || true'
+    - '[ "${OS_TYPE}" == "opensuse:13.2" ] && travis_retry ${DOCKER_EXEC} zypper -n install rpmdevtools || true'
     - ${DOCKER_EXEC} rpmdev-setuptree
     - '[ "${OS_TYPE}" == "centos:7" ] && travis_retry ${DOCKER_EXEC} yum-builddep -y ./pbspro.spec || true'
     - '[ "${OS_TYPE}" == "opensuse:13.2" ] && travis_retry ${DOCKER_EXEC} /bin/bash -c "zypper -n install \$(rpmspec --buildrequires -q pbspro.spec)" || true'
