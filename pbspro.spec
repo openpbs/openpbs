@@ -87,6 +87,8 @@ BuildRequires: libopenssl-devel
 BuildRequires: libXext-devel
 BuildRequires: libXft-devel
 BuildRequires: fontconfig
+BuildRequires: timezone
+BuildRequires: python-xml
 %else
 BuildRequires: expat-devel
 BuildRequires: openssl-devel
