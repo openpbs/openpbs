@@ -85,6 +85,36 @@ class SmokeTest(PBSTestSuite):
         a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
         self.server.expect(RESV, a, id=rid)
 
+     def test_standing_reservation(self):
+        """
+        Test to submit a standing reservation
+        """
+        # PBS_TZID environment variable must be set, there is no way to set
+        # it through the API call, use CLI instead for this test
+
+        _m = self.server.get_op_mode()
+        if _m != PTL_CLI:
+            self.server.set_op_mode(PTL_CLI)
+        if 'PBS_TZID' in self.conf:
+            tzone = self.conf['PBS_TZID']
+        elif 'PBS_TZID' in os.environ:
+            tzone = os.environ['PBS_TZID']
+        else:
+            self.logger.info('Missing timezone, using America/Los_Angeles')
+            tzone = 'America/Los_Angeles'
+        a = {'Resource_List.select': '1:ncpus=1',
+             ATTR_resv_rrule: 'FREQ=WEEKLY;COUNT=3',
+             ATTR_resv_timezone: tzone,
+             ATTR_resv_standing: '1',
+             'reserve_start': time.time() + 20,
+             'reserve_end': time.time() + 30,}
+        r = Reservation(TEST_USER, a)
+        rid = self.server.submit(r)
+        a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        self.server.expect(RESV, a, id=rid)
+        if _m == PTL_API:
+            self.server.set_op_mode(PTL_API)
+
     def test_degraded_advance_reservation(self):
         """
         Make reservations more fault tolerant
