@@ -14,78 +14,78 @@ and reporting of test suites and test cases.
 To list information about a test suite::
 
   pbs_benchpress -t <TestSuiteName> -i
-  
+
 To Run a test suite and/or a test case
 
    1. To run the entire test suite::
-    
-        pbs_benchpress -t <TestSuiteName>  
+
+        pbs_benchpress -t <TestSuiteName>
 
     where `TestSuiteName` is the name of the class in the .py file you created
 
    2. To run a test case part of a test suite::
-    
+
         pbs_benchpress -t <TestSuiteName>.<test_case_name>
-    
+
     where `TestSuiteName` is as described above and `test_case_name` is the name
     of the test method in the class
 
    3. You can run the under various logging levels using the -l option::
-        
+
         pbs_benchpress -t <TestSuiteName> -l DEBUG
-    
+
     To see various logging levels see :ref:`log_levels`
-    
-   4. To run all tests that inherit from a parent test suite class run the 
+
+   4. To run all tests that inherit from a parent test suite class run the
       parent test suite passing the `--follow-child` param to pbs_benchpress::
-    
+
         pbs_benchpress -t <TestSuite> --follow-child
 
    5. To exclude specific testsuites, use the --excluding option as such::
-    
+
         pbs_benchpress -t <TestSuite> --follow-child --exclude=<SomeTest>
-   
+
    6. To run the test by the name of the test file, for example, if a test
       class is defined in a file named pbs_spidXYZ.py then you an run it using::
-    
+
         pbs_benchpress -f ./path/to/pbs_spidXYZ.py
-   
+
    7. To pass custom parameters to a test suite::
-    
+
         pbs_benchpress -t <TestSuite> -p "<key1>=<val1>,<key2>=<val2>,..."
 
     Alternatively you can pass --param-file pointing to a file where parameters
     are specified. The contents of the file should be one parameter per line::
-    
+
         pbs_benchpress -t <TestSuite> --param-file=</path/to/file>
 
-    Once params are specified, a class variable called param is set in the Test 
-    that can then be parsed out to be used in the test. When inheriting from 
-    PBSTestSuite, the key=val pairs are parsed out and made available in the 
+    Once params are specified, a class variable called param is set in the Test
+    that can then be parsed out to be used in the test. When inheriting from
+    PBSTestSuite, the key=val pairs are parsed out and made available in the
     class variable ``conf``, so the test can retrieve the information using::
-    
+
         if self.conf.has_key(key1):
             ...
-    
+
    8. To check that the available Python version is above a minimum::
-   
+
         pbs_benchpress --min-pyver=<version>
 
    9. To check that the available Python version is less than a maximum::
-    
+
         pbs_benchpress --max-pyver=<version>
 
 On Linux, you can generate PBS coverage data using PTL.
-To collect coverage data using LCOV/LTP, first ensure that PBS was 
+To collect coverage data using LCOV/LTP, first ensure that PBS was
 compiled using --set-cflags="--coverage" and make sure that you have the lcov
 utility installed. Lcov utility can be obtained at http://ltp.sourceforge.net/coverage/lcov.php::
 Then to collect PBS coverage data run pbs_benchpress as follow::
 
     pbs_benchpress -t <TestName> --lcov-data=</path/to/gcov/build/dir>
 
-By default the output data will be written to TMPDIR/pbscov-YYYMMDD_HHMMSS, 
+By default the output data will be written to TMPDIR/pbscov-YYYMMDD_HHMMSS,
 this can be controlled using the option --lcov-out.
-By default the lcov binary is expected to be available in the environment, if 
+By default the lcov binary is expected to be available in the environment, if
 it isn't you can set the path using the option --lcov-bin.
 
 For tests that inherit from PBSTestSuite, to collect procecess information::
@@ -100,7 +100,7 @@ RSS,VSZ,PCPU info will be collected for each colon separated name.
 
 Logging levels
 ~~~~~~~~~~~~~~
- 
+
 PTL uses the generic unittest log levels: INFO, WARNING, DEBUG, ERROR, FATAL
 
 and three custom log levels: INFOCLI, INFOCLI2, DEBUG2.
@@ -108,9 +108,9 @@ and three custom log levels: INFOCLI, INFOCLI2, DEBUG2.
 INFOCLI is used to log command line calls such that the output of a test run
 can be read with anyone familiar with the PBS commands.
 
-INFOCLI2 is used to log a wider set of commands run through PTL. 
+INFOCLI2 is used to log a wider set of commands run through PTL.
 
-DEBUG2 is a verbose debugging level. It will log commands, including return 
+DEBUG2 is a verbose debugging level. It will log commands, including return
 code, stdout and stderr.
 
 How to use pbs_loganalyzer
@@ -121,11 +121,11 @@ To analyze scheduler logs::
   pbs_loganalyzer -l </path/to/schedlog>
 
 To only display scheduling cycles summary::
-  
+
   pbs_loganalyzer -l </path/to/schedlog> -c
 
 To analyze server logs::
-  
+
   pbs_loganalyzer -s </path/to/serverlog>
 
 To analyze mom logs::
@@ -158,21 +158,21 @@ To analyze the scheduler's estimated start time::
   pbs_loganalyzer --estimated-info -l <path/to/sched/log>
 
 To analyze per job scheduler performance metrics, time to run, time to discard,
-time in scheduler (solver time as opposed to I/O with the server), time to 
+time in scheduler (solver time as opposed to I/O with the server), time to
 calendar::
 
   pbs_loganalyzer -l </path/to/schedlog> -S
-  
-In addition to a scheduler log, a server log is required to compute the time in 
-scheduler metric, this is due to the fact that the time in sched is measured 
-as the difference between a sched log "Considering job to run" and a 
+
+In addition to a scheduler log, a server log is required to compute the time in
+scheduler metric, this is due to the fact that the time in sched is measured
+as the difference between a sched log "Considering job to run" and a
 corresponding server log's "Job Run" message.
 
 To output analysis to a SQLite file::
 
   pbs_loganalyzer --db-name=<name or path of database> --db-type=sqlite
 
-Note that the sqlite3 module is needed to write out to the DB file. 
+Note that the sqlite3 module is needed to write out to the DB file.
 
 To output to a PostgreSQL database::
 
@@ -180,7 +180,7 @@ To output to a PostgreSQL database::
                   --db-name=<name or path of database>
                   --db-type=psql
 
-Note that the psycopg2 module is needed to write out ot the PostgreSQL database.  
+Note that the psycopg2 module is needed to write out ot the PostgreSQL database.
 The cred file should specify the following::
 
   user=<db username> password=<user's password> dbname=<databasename> port=<val>
@@ -189,24 +189,24 @@ To analyze the time (i.e., log record time) between occurrences of a regular
 expression in any log file::
 
   pbs_loganalyzer --re-interval=<regex expression>
-  
+
 This can be used, for example, to measure the interval of occurrences between
 E records in an accounting log::
 
   pbs_loganalyzer -a <path/to/accountlog> --re-interval=";E;"
-  
-A useful extended option to the occurrences interval is to compute the number 
+
+A useful extended option to the occurrences interval is to compute the number
 of regular expression matches over a given period of time::
 
   pbs_loganalyzer --re-interval=<regex> --re-frequency=<seconds>
-  
+
 For example, to count how many E records are emitted over a 60 second window::
- 
+
   pbs_loganalyzer -a <acctlog> --re-interval=";E;" --re-frequency=60
 
-When using --re-interval, the -f option can be used to point to an arbitrary 
+When using --re-interval, the -f option can be used to point to an arbitrary
 log file instead of depending on -a, -l, -s, or -m, however all these log
-specific options will work. 
+specific options will work.
 
 A note about the regular expression used, every Python named group, i.e.,
 expressions of the (?P<name>...), will be reported out as a dictionary of
@@ -224,13 +224,13 @@ associated to an attribute or resource.
 
 In the examples below one can replace the object type by any of
 those alternative ones, with the appropriate changes in attribute or resource
-names. 
+names.
 
 Each command can be run by passing a -t <hostname> option to specify a
 desired target hostname, the default (no -t) will query the localhost.
 
 To list a summary of all jobs equivalence classes on Resource_List.select, use::
- 
+
   pbs_stat -j -a "Resource_List.select"
 
 To list a summary of all nodes equivalence classes::
@@ -268,8 +268,8 @@ To display data with one entity per line use the --sline option::
 
 To show what is available now in the complex (a.k.a, backfill hole) use::
 
-  pbs_stat -b 
-  
+  pbs_stat -b
+
 by default the backfill hole is computed based on ncpus, mem, and state, you
 can specify the attributes to compute it on by passing comma-separated list of
 attributes into the -a option. An alternative to compute the backfill hole is
@@ -278,7 +278,7 @@ to use pbs_sim -b.
 To show utilization of the system use::
 
   pbs_stat -U [-r "<resource1,resource2,...>]
-  
+
 resources default to ncpus, memory, and nodes
 
 To show utilization of a specific user::
@@ -300,7 +300,7 @@ To count the total amount of a resource available on an object::
 Note that nodes that are not up are not counted
 
 To count the amount of a resource on some object::
-  
+
   pbs_stat -r <resource e.g. ncpus>  -c --nodes
 
 To show an evaluation of the formula for all non-running jobs::
@@ -316,7 +316,7 @@ To read information from file use for example::
   pbs_stat -f /path/to/pbsnodes/or/qstat_f/output --nodes -r ncpus
 
 To list all resources currently set on a given object type::
- 
+
   pbs_stat --nodes --resources-set
 
 To list all resources defined in resourcedef::
@@ -330,7 +330,7 @@ To list a specific resource by name from resourcedef (if it exists)::
 To show limits associated to all entities::
 
   pbs_stat --limits-info
-  
+
 To show limits associated to a specific user::
 
   pbs_stat --limits-info --user=<name>
@@ -345,13 +345,13 @@ To show limits associated to a specific project::
 
 To show entities that are over their soft limits::
 
-  pbs_stat --over-soft-limits 
+  pbs_stat --over-soft-limits
 
-The output of limits information shows named entities associated to each 
+The output of limits information shows named entities associated to each
 container (server or queue) to which a limit is applied. The entity's usage
-as well as limit set are displayed, as well as a remainder usage value that 
+as well as limit set are displayed, as well as a remainder usage value that
 indicates whether an entity is over a limit (represented by a negative value)
-or under a limit (represented by a positive or zero value). In the case of a 
+or under a limit (represented by a positive or zero value). In the case of a
 PBS_ALL or PBS_GENERIC limit setting, each entity's name is displayed using
 the entity's name followed by "/PBS_ALL" or "/PBS_GENERIC" as the case may be.
 
@@ -392,7 +392,7 @@ To show the number of privileged ports in use::
   pbs_stat --pports
 
 To show information directly from the database (requires psycopg2 module)::
- 
+
   pbs_stat --db-access=<path/to/dbaccess_file> --db-type=psql
            --<objtype> [-a <attribs>]
 
@@ -463,11 +463,11 @@ the PBS_HOME prefix can be changed via --home-prefix.
 To make a PBS daemons mimic the snapshot of a pbs_diag::
 
   pbs_config --as-diag=<path/to/diag>
-  
+
 This will set all server and queue attributes from the diag, copy sched_config,
 resource_group, holidays, resourcedef, all site hooks, and create and insert a
 vnode definition that translates all of the nodes reported by pbsnodes -av.
-There may be some specific attributes to adjust, such as pbs_license_info, 
+There may be some specific attributes to adjust, such as pbs_license_info,
 or users or groups, that may prevent submission of jobs.
 
 

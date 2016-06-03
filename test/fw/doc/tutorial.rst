@@ -2,7 +2,7 @@ Brief tutorial about common library API
 =======================================
 
 Most of the examples below show specific calls to the library functions,
-there are typically many more derivations possible, check the full API 
+there are typically many more derivations possible, check the full API
 under doc for details.
 
 Importing the library
@@ -42,7 +42,7 @@ Instantiating a Job
 -------------------
 
 ::
- 
+
   job = Job()
 
 Setting job attributes
@@ -91,7 +91,7 @@ where `jid` is the result of a server.submit(job)
 
 Each attribute can be given an operand, one of LT, LE, EQ, GE, GT, NE
 For example to expect a job to be in state R and substate != 41::
- 
+
   server.expect(JOB, {'job_state':(EQ,'R'), 'substate':(NE,41)}, id=jid)
 
 Instantiating a Scheduler object

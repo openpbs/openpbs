@@ -8,13 +8,13 @@ Command line tools
 - ``pbs_loganalyzer`` used to analyze PBS logs
 - ``pbs_swigify`` used to build IFL swig wrappers and copy them over to the library
 - ``pbs_as`` used by the library to impersonate a user for API operations
-- ``pbs_stat`` used to filter PBS objects based on select properties 
+- ``pbs_stat`` used to filter PBS objects based on select properties
 - ``pbs_config`` used to configure services, e.g., create vnodes
 - ``pbs_cov`` used to generate lcov/ltp (gcov) coverage analysis
 
 Library
 -------
- 
+
 - Provides PBS IFL operations through either SWIG-wrappers or PBS CLI e.g. qstat, qsub etc.
 - Encapsulated PBS entities: Server, Scheduler, MoM, Comm, Queue, Job, Reservation, Hook, Resource
 - Utility class to convert batch status and attributes to Python lists, strings and dictionaries
@@ -23,7 +23,7 @@ Library
 Utilities
 ---------
 
-- Logging to parse and report metrics from server/scheduler/MoM/Accounting logs. 
+- Logging to parse and report metrics from server/scheduler/MoM/Accounting logs.
 - Distributed tools to transparently run commands locally or remotely, including file copying.
 
 Plugins

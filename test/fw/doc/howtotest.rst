@@ -13,15 +13,15 @@ The library and utility make several assumptions about the environment:
 - The file system layout should be same on all systems
 - PBS_CONF_FILE variable should be set on all systems
 
-Naming conventions, recommended practices, and guidelines 
+Naming conventions, recommended practices, and guidelines
 ---------------------------------------------------------
 
-Write the test in a filename prefixed by ``pbs_`` 
-followed by either the issue number, for example pbs_1234.py or by a 
+Write the test in a filename prefixed by ``pbs_``
+followed by either the issue number, for example pbs_1234.py or by a
 descriptive name, for example pbs_smoketest.py, (strongly
 favor the issue number format).
 
-Name the test class prefixed by ``Test`` followed by either the issue number from 
+Name the test class prefixed by ``Test`` followed by either the issue number from
 which it originates, for example Test1234, if the test is not from a issue,
 consider using a descriptive short name, for example TestSmoke.
 
@@ -50,7 +50,7 @@ PBSTestSuite offers the following:
 
   - Parse custom parameters that are passed in to the Class variable called 'param' (i.e. -p option to pbs_benchpress).
     The built-in parameters are:
-    
+
     - servers: Colon-separated list of hostnames hosting a PBS server/scheduler.
     - server: The hostname on which the PBS Server/scheduler is running
     - moms: Colon-separated list of hostnames hosting a PBS MoMs.
@@ -86,7 +86,7 @@ PBSTestSuite offers the following:
     - build-users: colon-separated list of build users.
 
   - Check required users are available or not
-  - Creates servers, moms, schedulers and comms object 
+  - Creates servers, moms, schedulers and comms object
 
 .. topic:: setUp:
 
@@ -95,7 +95,7 @@ PBSTestSuite offers the following:
   - Add the current user to the list of managers
   - Bring servers, schedulers, moms and comms configurations back to out-of-box defaults
   - Cleanup jobs and reservations
-  - If no nodes are defined in the system, a single 8 cpu node is defined. 
+  - If no nodes are defined in the system, a single 8 cpu node is defined.
   - start process monitoring thread if process monitoring enabled
 
 .. topic:: tearDown:
@@ -158,16 +158,16 @@ How to add a new attribute to the library
 This section is targeted to PBS developers who may be adding a new job, queue,
 server, or node attribute and need to write tests that depend on such a new
 attribute.
-PTL does not automatically generate mappings from API to CLI, so when adding 
+PTL does not automatically generate mappings from API to CLI, so when adding
 new attributes, it is the responsibility of the test writer to define the
 attribute conversion in ptl/lib/pbs_api_to_cli.py. The new attribute must also
 be defined ptl/lib/pbs_ifl_mock.py so that the attribute name can be
 dereferenced if the SWIG wrapping was not performed.
 
 Here is an example, let's assume we are introducing a new job attribute called
-ATTR_geometry that maps to the string "job_geometry", in order to be able to 
+ATTR_geometry that maps to the string "job_geometry", in order to be able to
 set the attribute on a job, we need to define it in pbs_api_to_cli.py as:
-ATTR_geometry: "W job_geometry=" 
+ATTR_geometry: "W job_geometry="
 and add it to ptl/lib/pbs_ifl_mock.py as:
 ATTR_geometry: "job_geometry".
 In order to get the API to take the new attribute into consideration,

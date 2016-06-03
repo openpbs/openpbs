@@ -18,5 +18,5 @@ Uninstall
 ---------
 
 To uninstall package run following::
-    
+
     pip uninstall PbsTestLab
