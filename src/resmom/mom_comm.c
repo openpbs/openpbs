@@ -1554,10 +1554,11 @@ im_eof(int stream, int ret)
 			 ** If this is a sister, we check pjob->ji_qs.ji_substate == JOB_SUBSTATE_PRERUN || JOB_SUBSTATE_RUNNING
 			 ** We include PRERUN in case of jobs at sisters since at sister moms job substate stays at PRERUN
 			 ** till a tm task is initiated on it by the MS
+                         ** We also check for substate JOB_SUBSTATE_SUSPEND to retain suspended jobs.
 			 **
 			 */
 			if ((((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) == 0) && (pjob->ji_qs.ji_substate == JOB_SUBSTATE_PRERUN)) ||
-					(pjob->ji_qs.ji_substate == JOB_SUBSTATE_RUNNING)) {
+                                (pjob->ji_qs.ji_substate == JOB_SUBSTATE_RUNNING) || (pjob->ji_qs.ji_substate == JOB_SUBSTATE_SUSPEND)) {
 				if ((time_now - np->hn_eof_ts) <= max_poll_downtime_val) {
 					sprintf(log_buffer, "lost communication with %s, not killing job yet", np->hn_host);
 					log_joberr(-1, __func__, log_buffer, pjob->ji_qs.ji_jobid);
