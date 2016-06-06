@@ -26,7 +26,8 @@ Library
 Utilities
 ---------
 
-- Logging to parse and report metrics from server, scheduler, Comm, MoM and Accounting logs.
+- Logging to parse and report metrics from :py:class:`Server <ptl.utils.pbs_logutils.PBSServerLog>`, :py:class:`Scheduler <ptl.utils.pbs_logutils.PBSSchedulerLog>`,
+  :py:class:`MoM <ptl.utils.pbs_logutils.PBSMoMLog>` and :py:class:`Accounting <ptl.utils.pbs_logutils.PBSAccountingLog>` logs.
 - Distributed tools to transparently run commands locally or remotely, including file copying.
 
 Plugins
