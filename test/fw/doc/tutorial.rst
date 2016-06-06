@@ -2,8 +2,8 @@ Brief tutorial about common library API
 =======================================
 
 Most of the examples below show specific calls to the library functions,
-there are typically many more derivations possible, check the full API
-under doc for details.
+there are typically many more derivations possible, check the :ref:`full API <full-api>`
+for details.
 
 Importing the library
 ---------------------

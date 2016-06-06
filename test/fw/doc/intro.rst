@@ -4,32 +4,35 @@ Introduction of PbsTestLab
 Command line tools
 ------------------
 
-- ``pbs_benchpress`` used to run unit tests
-- ``pbs_loganalyzer`` used to analyze PBS logs
-- ``pbs_swigify`` used to build IFL swig wrappers and copy them over to the library
-- ``pbs_as`` used by the library to impersonate a user for API operations
-- ``pbs_stat`` used to filter PBS objects based on select properties
-- ``pbs_config`` used to configure services, e.g., create vnodes
-- ``pbs_cov`` used to generate lcov/ltp (gcov) coverage analysis
+- :ref:`pbs_benchpress <pbs_benchpress>` used to run unit tests
+- :ref:`pbs_loganalyzer <pbs_loganalyzer>` used to analyze PBS logs
+- :ref:`pbs_stat <pbs_stat>` used to filter PBS objects based on select properties
+- :ref:`pbs_config <pbs_config>` used to configure services, e.g., create vnodes
+- :ref:`pbs_swigify <pbs_swigify>` used to build IFL swig wrappers and copy them over to the library
+- :ref:`pbs_cov <pbs_cov>` used to generate lcov/ltp (gcov) coverage analysis
+- :ref:`pbs_py_spawn <pbs_py_spawn>` used to invoke a pbs_py_spawn action associated to a job running on a MoM
 
 Library
 -------
 
 - Provides PBS IFL operations through either SWIG-wrappers or PBS CLI e.g. qstat, qsub etc.
-- Encapsulated PBS entities: Server, Scheduler, MoM, Comm, Queue, Job, Reservation, Hook, Resource
+- Encapsulated PBS entities: :py:class:`~ptl.lib.pbs_testlib.Server`, :py:class:`~ptl.lib.pbs_testlib.Scheduler`,
+  :py:class:`~ptl.lib.pbs_testlib.MoM`, :py:class:`~ptl.lib.pbs_testlib.Comm`, :py:class:`~ptl.lib.pbs_testlib.Queue`,
+  :py:class:`~ptl.lib.pbs_testlib.Job`, :py:class:`~ptl.lib.pbs_testlib.Reservation`, :py:class:`~ptl.lib.pbs_testlib.Hook`,
+  :py:class:`~ptl.lib.pbs_testlib.Resource`
 - Utility class to convert batch status and attributes to Python lists, strings and dictionaries
 - High-level PBS operations to operate on PBS entities including nodes, queues, jobs, reservations, resources, and server
 
 Utilities
 ---------
 
-- Logging to parse and report metrics from server/scheduler/MoM/Accounting logs.
+- Logging to parse and report metrics from server, scheduler, Comm, MoM and Accounting logs.
 - Distributed tools to transparently run commands locally or remotely, including file copying.
 
 Plugins
 -------
 
-- Provides utilities to load, run test cases in form of Nose plugins
+- Provides utilities to load, run and get info of test cases in form of `Nose framework`_ plugins
 
 Documentation
 -------------
@@ -49,3 +52,5 @@ Directory structure
        |- lib -- Library
        `- utils -- Utilities
           `- plugins -- plugins of PTL for Nose framework
+
+.. _Nose framework: http://readthedocs.org/docs/nose/

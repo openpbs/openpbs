@@ -5,6 +5,8 @@ Here is an overview of the most common usage of the PTL commands, there are many
 more options to control the commands, see the --help option of each command for
 details.
 
+.. _pbs_benchpress:
+
 How to use pbs_benchpress
 -------------------------
 
@@ -113,6 +115,8 @@ INFOCLI2 is used to log a wider set of commands run through PTL.
 DEBUG2 is a verbose debugging level. It will log commands, including return
 code, stdout and stderr.
 
+.. _pbs_loganalyzer:
+
 How to use pbs_loganalyzer
 --------------------------
 
@@ -212,6 +216,7 @@ A note about the regular expression used, every Python named group, i.e.,
 expressions of the (?P<name>...), will be reported out as a dictionary of
 items mapped to each named group.
 
+.. _pbs_stat:
 
 How to use pbs_stat
 -------------------
@@ -404,6 +409,7 @@ where the dbaccess file is of the form::
   [port=<value>]
   [dbname=<value>]
 
+.. _pbs_config:
 
 How to use pbs_config
 ---------------------
@@ -470,6 +476,19 @@ vnode definition that translates all of the nodes reported by pbsnodes -av.
 There may be some specific attributes to adjust, such as pbs_license_info,
 or users or groups, that may prevent submission of jobs.
 
+.. _pbs_swigify:
+
+How to use pbs_swigify
+----------------------
+**TODO**: Add this
+
+.. _pbs_cov:
+
+How to use pbs_cov
+------------------
+**TODO**: Add this
+
+.. _pbs_py_spawn:
 
 How to use pbs_py_spawn
 -----------------------
