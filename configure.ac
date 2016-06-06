@@ -42,6 +42,7 @@ AC_CONFIG_SRCDIR([src/cmds/qmgr.c])
 AC_CONFIG_AUX_DIR([buildutils])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CANONICAL_TARGET([])
+# FIXME: The subdir-objects option will be enabled by default in the future
 AM_INIT_AUTOMAKE([-Wall foreign])
 
 # Checks for programs.
@@ -86,46 +87,115 @@ AC_CHECK_LIB([socket], [socket],
   [-lnsl]
 )
 
-# Checks for header files.
+# Check for X Window System
 AC_PATH_XTRA
-AC_FUNC_ALLOCA
+
+# Checks for optional header files.
 AC_CHECK_HEADERS([ \
-	arpa/inet.h \
-	crypt.h \
-	fcntl.h \
-	float.h \
-	limits.h \
+	com_err.h \
+	gssapi.h \
+	krb5.h \
+	libpq-fe.h \
 	mach/mach.h \
+	nlist.h \
+	sys/systeminfo.h \
+])
+
+# Checks for required header files.
+AC_CHECK_HEADERS([ \
+	stdio.h \
+	alloca.h \
+	arpa/inet.h \
+	asm/types.h \
+	assert.h \
+	crypt.h \
+	ctype.h \
+	dirent.h \
+	dlfcn.h \
+	errno.h \
+	error.h \
+	execinfo.h \
+	expat.h \
+	fcntl.h \
+	features.h \
+	float.h \
+	fstab.h \
+	ftw.h \
+	grp.h \
+	libgen.h \
+	limits.h \
 	malloc.h \
+	math.h \
 	memory.h \
 	mntent.h \
 	netdb.h \
 	netinet/in.h \
-	nlist.h \
+	netinet/in_systm.h \
+	netinet/ip.h \
+	netinet/tcp.h \
+	openssl/aes.h \
+	openssl/bio.h \
+	openssl/err.h \
+	openssl/evp.h \
+	openssl/ssl.h \
 	paths.h \
+	poll.h \
+	pthread.h \
+	pwd.h \
+	regex.h \
 	signal.h \
 	stddef.h \
 	stdint.h \
+	stdio.h \
 	stdlib.h \
 	string.h \
 	strings.h \
+	syscall.h \
+	syslog.h \
+	sys/epoll.h \
 	sys/eventfd.h \
+	sys/fcntl.h \
 	sys/file.h \
 	sys/ioctl.h \
+	sys/mman.h \
 	sys/mount.h \
 	sys/param.h \
+	sys/poll.h \
+	sys/prctl.h \
+	sys/procfs.h \
+	sys/quota.h \
+	sys/resource.h \
+	sys/select.h \
+	sys/signal.h \
 	sys/socket.h \
 	sys/statfs.h \
+	sys/stat.h \
 	sys/statvfs.h \
-	sys/systeminfo.h \
+	sys/sysctl.h \
+	sys/sysinfo.h \
+	sys/sysmacros.h \
 	sys/time.h \
 	sys/timeb.h \
+	sys/times.h \
+	sys/types.h \
+	sys/uio.h \
+	sys/un.h \
+	sys/unistd.h \
+	sys/user.h \
+	sys/utsname.h \
 	sys/vfs.h \
-	syslog.h \
+	sys/wait.h \
+	tcl.h \
 	termios.h \
+	time.h \
 	unistd.h \
 	utime.h \
-])
+	X11/Intrinsic.h \
+	X11/X.h \
+	X11/Xlib.h \
+	zlib.h \
+	],, AC_MSG_ERROR([Required header file is missing.]) \
+)
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_CHECK_HEADER_STDBOOL
@@ -144,6 +214,7 @@ AC_TYPE_UINT8_T
 AC_CHECK_TYPES([ptrdiff_t])
 
 # Checks for library functions.
+AC_FUNC_ALLOCA
 AC_FUNC_CHOWN
 AC_FUNC_ERROR_AT_LINE
 AC_FUNC_FORK

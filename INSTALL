@@ -3,71 +3,139 @@
 
 How to install PBS Pro using the configure script.
 
-- Install the prerequisite packages for building PBS Pro.
-    gcc
-    make
-    rpm-build
-    libtool
-    hwloc-devel
-    libX11-devel
-    libXt-devel
-    libedit-devel
-    libical-devel
-    ncurses-devel
-    perl
-    postgresql-devel
-    python-devel (version 2.7)
-    tcl-devel
-    tk-devel
-    swig
-    libexpat-devel (SUSE)
-    libopenssl-devel (SUSE)
-    libXext-devel (SUSE)
-    libXft-devel (SUSE)
-    fontconfig (SUSE)
-    expat-devel (CentOS)
-    openssl-devel (CentOS)
-    libXext (CentOS)
-    libXft (CentOS)
+1. Install the prerequisite packages for building PBS Pro.
 
-- Install the prerequisite packages for running PBS Pro.
-    expat
-    libedit
-    postgresql-server
-    python (version 2.7)
-    sendmail
-    tcl
-    tk
-    libical1 (SUSE)
-    libical (CentOS)
+  For CentOS systems you should run the following commad as root:
 
-- Open a terminal as a normal (non-root) user, unpack the PBS Pro
+    yum install -y gcc make rpm-build libtool hwloc-devel \
+      libX11-devel libXt-devel libedit-devel libical-devel \
+      ncurses-devel perl postgresql-devel python-devel tcl-devel \
+      tk-devel swig expat-devel openssl-devel libXext libXft
+
+  For OpenSUSE systems you should run the following command as root:
+
+    zypper install gcc make rpm-build libtool hwloc-devel \
+      libX11-devel libXt-devel libedit-devel libical-devel \
+      ncurses-devel perl postgresql-devel python-devel tcl-devel \
+      tk-devel swig libexpat-devel libopenssl-devel libXext-devel \
+      libXft-devel fontconfig
+
+2. Install the prerequisite packages for running PBS Pro. In addition
+  to the commands below, you should also install a text editor of
+  your choosing (vim, emacs, gedit, etc.).
+
+  For CentOS systems you should run the following commad as root:
+
+    yum install -y expat libedit postgresql-server python \
+      sendmail sudo tcl tk libical
+
+  For OpenSUSE systems you should run the following command as root:
+
+    zypper install expat libedit postgresql-server python \
+      sendmail sudo tcl tk libical1
+
+3. Open a terminal as a normal (non-root) user, unpack the PBS Pro
   tarball, and cd to the package directory.
+
     tar -xpvf pbspro-14.0.1.tar.gz
     cd pbspro-14.0.1
 
-- Run "./configure --help" to see the available build parameters.
+4. Display the available build parameters.
 
-- Run "./configure --prefix=/opt/pbs" with any additional options
-  set appropriately for your installation. (See notes 1 and 2
+    ./configure --help
+
+5. Configure the build for your environment. You may utilize the
+  parameters displayed in the previous step. (See notes 1 and 2
   below)
 
-- Run "make". (See note 3 below)
+    ./configure --prefix=/opt/pbs
 
-- Run "sudo make install". The installation directory (--prefix)
-  will require root privilege for this step.
 
-- Run "sudo <prefix>/libexec/pbs_postinstall"
+6. Build PBS Pro by running "make". (See note 3 below)
 
-- Edit /etc/pbs.conf to configure the PBS Pro services that
-  should be started.
+    make
 
-- Some file permissions must be modified to add SUID privilege.
-  Run "sudo chmod 4755 /opt/pbs/sbin/pbs_iff /opt/pbs/sbin/pbs_rcp"
+7. Configure sudo to allow your user account to run commands as
+  root. Refer to the online manual pages for sudo, sudoers, and
+  visudo.
 
-- Start the PBS Pro services by running "sudo /etc/init.d/pbs start"
+8. Install PBS Pro. Use sudo to run the command as root.
+
+    sudo make install
+
+9. Configure PBS Pro by executing the post-install script.
+
+    sudo /opt/pbs/libexec/pbs_postinstall
+
+10. Edit /etc/pbs.conf to configure the PBS Pro services that
+  should be started. If you are installing PBS Pro on only
+  one system, you should change the value of PBS_START_MOM
+  from zero to one. If you use vi as your editor, you would
+  run:
+
+    sudo vi /etc/pbs.conf
+
+11. Some file permissions must be modified to add SUID privilege.
+
+    sudo chmod 4755 /opt/pbs/sbin/pbs_iff /opt/pbs/sbin/pbs_rcp
+
+12. Start the PBS Pro services.
+
+    sudo /etc/init.d/pbs start
+
+13. All configured PBS services should now be running. Update
+  your PATH and MANPATH variables by sourcing the appropriate
+  PBS Pro profile or logging out and back in.
+
+  For Bourne shell (or similar) run the following:
+    . /etc/profile.d/pbs.sh
+
+  For C shell (or similar) run the following:
+    source /etc/profile.d/pbs.csh
+
+14. You should now be able to run PBS Pro commands to submit
+  and query jobs. Some examples follow.
+
+bash$ qstat -B
+Server             Max   Tot   Que   Run   Hld   Wat   Trn   Ext Status
+---------------- ----- ----- ----- ----- ----- ----- ----- ----- -----------
+foovm                0     0     0     0     0     0     0     0 Active
+bash$ pbsnodes -a
+foovm
+     Mom = foovm.elusive.name
+     ntype = PBS
+     state = free
+     pcpus = 2
+     resources_available.arch = linux
+     resources_available.host = foovm
+     resources_available.mem = 2049248kb
+     resources_available.ncpus = 2
+     resources_available.vnode = foovm
+     resources_assigned.accelerator_memory = 0kb
+     resources_assigned.mem = 0kb
+     resources_assigned.naccelerators = 0
+     resources_assigned.ncpus = 0
+     resources_assigned.netwins = 0
+     resources_assigned.vmem = 0kb
+     resv_enable = True
+     sharing = default_shared
+     license = l
+
+bash$ echo "sleep 60" | qsub
+0.foovm
+[mike@foovm PBSPro_13.0.402.161242b]$ qstat -a
+
+foovm:
+                                                            Req'd  Req'd   Elap
+Job ID          Username Queue    Jobname    SessID NDS TSK Memory Time  S Time
+--------------- -------- -------- ---------- ------ --- --- ------ ----- - -----
+0.foovm         mike     workq    STDIN        2122   1   1    --    --  R 00:00
+
+bash$
 
 --------------------------------------------------------------------
+
+NOTES:
 
 Note 1: It is advisable to create a simple shell script
   that calls configure with the appropriate options so that you
@@ -75,7 +143,6 @@ Note 1: It is advisable to create a simple shell script
   you can remake all of the Makefiles by running "./config.status".
   Also, looking at the first few lines of config.status will
   tell you the options that were set when configure was run.
-  To figure out which options one can set run "./configure --help"
 
 Note 2: If you modify configure.ac or adjust timestamps on any files
   that are automatically generated, you will need to install the GNU

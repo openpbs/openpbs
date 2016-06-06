@@ -1829,7 +1829,7 @@ no_suspend(int sig)
  *
  */
 void
-close_sock(sock)
+close_sock(int sock)
 {
 	shutdown(sock, 2);
 #ifdef WIN32

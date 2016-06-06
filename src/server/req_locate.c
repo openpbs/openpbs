@@ -70,6 +70,7 @@ extern char   *pbs_server_name;
 
 /* External functions */
 extern int svr_chk_histjob(job *);
+extern int is_job_array(char *);
 
 /**
  * @brief
