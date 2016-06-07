@@ -34,8 +34,9 @@
  * trademark licensing policies.
  *
  */
-/*	pbs_submit.c
- *
+/**
+ * @file	pbs_submit.c
+ * @brief
  *	The Submit Reservation request.
  */
 

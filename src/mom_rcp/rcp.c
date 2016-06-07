@@ -73,7 +73,9 @@ static const char sccsid[] = "@(#)rcp.c	8.2 (Berkeley) 4/2/94";
 #include <syslog.h>
 #include <arpa/inet.h>
 #endif        /* USELOG */
-
+/**
+ * @file	rcp.c
+ */
 /*
  ** Anything old enough to not have utimes() needs this.
  */

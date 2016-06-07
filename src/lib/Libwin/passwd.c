@@ -55,7 +55,9 @@
 #include <TlHelp32.h>
 #include <shlobj.h>
 #include "ticket.h"
-
+/**
+ * @file	passwd.c
+ */
 #define	NETWORK_DRIVE_PATHLEN 4  /* Example: "Z:\" */
 #ifndef SECURITY_WIN32
 #define SECURITY_WIN32 1

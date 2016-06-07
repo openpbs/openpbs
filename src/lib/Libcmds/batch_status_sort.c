@@ -39,7 +39,12 @@
 
 #include "pbs_ifl.h"
 
-
+/**
+ * @file	batch_status_sort
+ *
+ * @brief
+ *	batch_status_sort - insertion sort for batch_status structures
+ */
 /**
  * @brief
  *	bs_isort - insertion sort for batch_status structures

@@ -44,7 +44,13 @@
 #undef strToL
 #undef strTouL
 u_Long strTouL(const char *nptr, char **endptr, int base);
-
+/**
+ * @file	strToL.c
+ *
+ * @brief
+ * 	strToL - returns the Long value representing the string whose first
+ *	character is *nptr, when interpreted as an integer in base, base.
+ */
 
 /**
  * @brief

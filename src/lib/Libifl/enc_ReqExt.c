@@ -36,7 +36,9 @@
  */
 
 
-/*
+/**
+ * @file	enc_ReqExt.c
+ * @brief
  * encode_DIS_ReqExtend() - write an extension to a Batch Request
  *	The extension is in two parts:
  *		unsigned integer - 1 if an extension string follows, 0 if not

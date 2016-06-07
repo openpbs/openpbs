@@ -65,15 +65,17 @@
 #include "resmon.h"
 #include "rm_dep.h"
 
-/*
- **	System dependent code to gather information for the resource
- **	monitor for a WIN2000 machine
- **
- **	Resources known by this code:
- **		cput		cpu time for a job
- **		ncpus		number of cpus
- **		physmem		physical memory size in KB
- **		size		size of a file or filesystem in KB
+/**
+ * @file
+ * @brief
+ *	System dependent code to gather information for the resource
+ *	monitor for a WIN2000 machine
+ *
+ * @par Resources known by this code:
+ *		cput		cpu time for a job
+ *		ncpus		number of cpus
+ *		physmem		physical memory size in KB
+ *		size		size of a file or filesystem in KB
  */
 
 

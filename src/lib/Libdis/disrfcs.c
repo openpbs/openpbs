@@ -35,8 +35,9 @@
  *
  */
 /**
- * @brief
- * Synopsis:
+ * @file	disrfcs.c
+ *
+ * @par Synopsis:
  *	int disrfcs(int stream, size_t *nchars, size_t achars, char *value)
  *
  *	Gets a Data-is-Strings character string from <stream> and converts it

@@ -34,7 +34,9 @@
  * trademark licensing policies.
  *
  */
-/*
+/**
+ * @file	pbsD_selectj.c
+ * @brief
  *	This file contines two main library entries:
  *		pbs_selectjob()
  *		pbs_selstat()

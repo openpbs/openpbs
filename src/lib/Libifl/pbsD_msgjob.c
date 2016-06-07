@@ -34,8 +34,9 @@
  * trademark licensing policies.
  *
  */
-/*	pbs_msgjob.c
- *
+/**
+ * @file	pbs_msgjob.c
+ * @brief
  *	send the MessageJob request and get the reply.
  */
 

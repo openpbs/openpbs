@@ -36,7 +36,9 @@
  */
 
 
-/*
+/**
+ * @file	dec_rpys.c
+ * @brief
  * decode_DIS_replySvr() - decode a Batch Protocol Reply Structure for Server
  *
  *	This routine decodes a batch reply into the form used by server.

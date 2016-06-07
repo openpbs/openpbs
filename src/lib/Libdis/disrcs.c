@@ -34,8 +34,10 @@
  * trademark licensing policies.
  *
  */
-/*
- * Synopsis:
+/**
+ * @file	disrcs.c
+ *
+ * @par Synopsis:
  *	char *disrcs(int stream, size_t *nchars, int *retval)
  *
  *	Gets a Data-is-Strings character string from <stream> and converts it

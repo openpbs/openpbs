@@ -36,13 +36,16 @@
  */
 
 
-/*
+/**
+ * @file	enc_JobObit.c
+ * @brief
  * encode_DIS_JobObit() - encode a Job Obituary Batch Request (Notice)
  *
  *	This request is used by the server ONLY; its input is a server
  *	batch request structure.
  *
- *	Data items are:	string		job id
+ * @par Data items are:
+ * 			string		job id
  *			signed int	status
  *			list of		svrattrl
  */

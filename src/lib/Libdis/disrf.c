@@ -35,8 +35,9 @@
  *
  */
 /**
- * @brief
- * Synopsis:
+ * @file	disrf.c
+ *
+ * @par Synopsis:
  * 	float disrf(int stream, int *retval)
  *
  *	Gets a Data-is-Strings floating point number from <stream> and converts

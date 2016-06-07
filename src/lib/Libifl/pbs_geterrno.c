@@ -35,8 +35,9 @@
  *
  */
 
-/*	pbs_geterrno.c
- *
+/**
+ * @file	pbs_geterrno.c
+ * @brief
  *	Return pbs_errno
  */
 

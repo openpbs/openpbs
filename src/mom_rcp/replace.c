@@ -34,11 +34,13 @@
  * trademark licensing policies.
  *
  */
-/*
+/**
+ * @file	replace.c
+ * @brief
  * This file contains homebrewed PBS replacements for
  * library functions found on BSD 4.4-Lite.
- *
- * NOTE: the strange set of "if define..." results from Sun not having
+ * @note
+ * the strange set of "if define..." results from Sun not having
  * stdarg.h, at least on SunOS 4.x
  */
 

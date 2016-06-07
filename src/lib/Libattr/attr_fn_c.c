@@ -50,10 +50,12 @@
 #include "pbs_error.h"
 
 
-/*
- * This file contains functions for manipulating attributes
+/**
+ * @file	attr_fn_c.c
+ * @brief
+ * 	This file contains functions for manipulating attributes
  *	character, a single
- *
+ * @details
  * Each set has functions for:
  *	Decoding the value string to the machine representation.
  *	Encoding the machine representation of the attribute to external form

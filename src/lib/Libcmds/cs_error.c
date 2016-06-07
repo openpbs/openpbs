@@ -34,13 +34,14 @@
  * trademark licensing policies.
  *
  */
-/*
- * cs_logerr
- *
+/**
+ * @file	cs_logerr.c
+ * @brief
  *	This function is ment to be called by the "CS" library code in the
  *	case where the CS library is being used in a command executable.
  *
- *	Note:.  A function by the same name but with a different definition
+ * @note
+ *	  A function by the same name but with a different definition
  *	is also part of PBS' Liblog library.  We can do this because the PBS
  *	commands are not linked against the Liblog library.  That function
  *	will be the one used by the CS library when the executable is a PBS

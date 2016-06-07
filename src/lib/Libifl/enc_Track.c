@@ -36,13 +36,16 @@
  */
 
 
-/*
+/**
+ * @file	enc_Track.c
+ * @brief
  * encode_DIS_TrackJob() - encode a Track Job Batch Request
  *
  *	This request is used by the server ONLY; its input is a server
  *	batch request structure.
  *
- *	Data items are:	string		job id
+ * @par Data items are:
+ * 			string		job id
  *			unsigned int	hopcount
  *			string		location
  *			u char		state

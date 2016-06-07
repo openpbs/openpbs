@@ -35,8 +35,9 @@
  *
  */
 /**
- * @brief
- * Synopsis:
+ * @file	disrus.c
+ *
+ * @par Synopsis:
  *	unsigned short disrus(int stream, int *retval)
  *
  *	Gets a Data-is-Strings unsigned integer from <stream>, converts it into

@@ -65,7 +65,9 @@
  */
 
 /* OPENBSD ORIGINAL: lib/libc/string/strsep.c */
-
+/**
+ * @file	strsep.c
+ */
 
 #include <string.h>
 #include <stdio.h>

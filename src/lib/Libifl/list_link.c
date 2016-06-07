@@ -45,14 +45,16 @@
 #endif
 
 
-/*
+/**
+ * @file	list_link.c
+ * @brief
  * list_link.c - general routines for maintenance of a double
  *	linked list.  A user defined structure can be managed as
  *	a double linked list if the first element in the user structure
  *	is the "pbs_list_link" struct defined in list_link.h and the list
  *	is headed by a "pbs_list_head" struct also defined in list_link.h.
  *
- *	There are the routines provided:
+ * @par	These are the routines provided:
  *		insert_link - inserts a new entry before or after an old
  *		append_link - adds a new entry to the end of the list
  *		delete_link - removes an entry from the list

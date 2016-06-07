@@ -34,7 +34,9 @@
  * trademark licensing policies.
  *
  */
-/*
+/**
+ * @file	site_mom_chu.c
+ * @brief
  * site_mom_chu.c = a site modifible file
  */
 

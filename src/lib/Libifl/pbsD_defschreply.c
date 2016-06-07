@@ -34,7 +34,9 @@
  * trademark licensing policies.
  *
  */
-/*	pbs_defschreply.c
+/**
+ * @file	pbs_defschreply.c
+ * @brief
  *		Deferred reply from the Scheduler to the Server
  */
 

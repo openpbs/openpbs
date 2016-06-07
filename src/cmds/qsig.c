@@ -34,19 +34,19 @@
  * trademark licensing policies.
  *
  */
-/*
+/**
+ * @file	qsig.c
+ * @brief
+ * 	qsig - (PBS) signal a batch job
  *
- * qsig - (PBS) signal a batch job
+ * @author	    Terry Heidelberg
+ * 				Livermore Computing
  *
- * Authors:
- *      Terry Heidelberg
- *      Livermore Computing
+ * @author      Bruce Kelly
+ * 				National Energy Research Supercomputer Center
  *
- *      Bruce Kelly
- *      National Energy Research Supercomputer Center
- *
- *      Lawrence Livermore National Laboratory
- *      University of California
+ * @author     	Lawrence Livermore National Laboratory
+ * 				University of California
  */
 
 #include "cmds.h"

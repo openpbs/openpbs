@@ -34,11 +34,13 @@
  * trademark licensing policies.
  *
  */
-/*
+/**
+ * @file	pbs_dcelogin.c
+ * @brief
  * The purpose of this program is to establish a DCE login context for a user,
  * keep that context refreshed, and exec whatever program was passed in via
  * the command line arguments array (argv[]).
- *
+ * @details
  * Command line argument argv[1] is to be the user's name and argv[2] should be
  * the name of a program that this program is to exec.  All remaining args,
  * if any, will become the argument vector for the program being exec'd.

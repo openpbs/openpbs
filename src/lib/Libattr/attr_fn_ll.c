@@ -48,11 +48,13 @@
 #include "pbs_error.h"
 
 
-/*
- * This file contains functions for manipulating attributes of type
+/**
+ * @file	attr_fn_ll.c
+ * @brief
+ * 	This file contains functions for manipulating attributes of type
  *	Long integer, where "Long" is defined as the largest integer
  *	available.
- *
+ * @details
  * Each set has functions for:
  *	Decoding the value string to the machine representation.
  *	Encoding the internal attribute to external form

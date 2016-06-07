@@ -50,12 +50,14 @@
 #include "pbs_error.h"
 
 
-/*
- * This file contains functions for manipulating attributes of type string
+/**
+ * @file	attr_fn_str.c
+ * @brief
+ * 	This file contains functions for manipulating attributes of type string
  *
- * Then there are a set of functions for each type of attribute:
+ * 	Then there are a set of functions for each type of attribute:
  *	string
- *
+ * @details
  * Each set has functions for:
  *	Decoding the value string to the internal representation.
  *	Encoding the internal attribute form to external form

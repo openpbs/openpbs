@@ -35,7 +35,9 @@
  *
  */
 
-/*
+/**
+ * @file	execvnode_seq_util.c
+ * @brief
  *  Utility functions to condense and unroll a sequence of execvnodes that are
  *  returned by the scheduler as confirmation of a standing reservation.
  *  The functionality is to condense into a human-readable string, the execvnodes

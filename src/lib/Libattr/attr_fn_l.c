@@ -52,20 +52,22 @@
 #include "pbs_error.h"
 
 
-/*
- * This file contains functions for manipulating attributes of type
- *	long integer
- *
- * Each set has functions for:
+/**
+ * @file	attr_fn_l.c
+ * @brief
+ * 	This file contains functions for manipulating attributes of type
+ *		long integer
+ * @details
+ * 	Each set has functions for:
  *	Decoding the value string to the machine representation.
  *	Encoding the internal attribute to external form
  *	Setting the value by =, + or - operators.
  *	Comparing a (decoded) value with the attribute value.
  *
- * Some or all of the functions for an attribute type may be shared with
- * other attribute types.
+ * 	Some or all of the functions for an attribute type may be shared with
+ * 	other attribute types.
  *
- * The prototypes are declared in "attribute.h"
+ * 	The prototypes are declared in "attribute.h"
  *
  * --------------------------------------------------
  * The Set of Attribute Functions for attributes with

@@ -37,7 +37,9 @@
 #include <stdio.h>
 #include <windows.h>
 #include "win.h"
-
+/**
+ * @file	dir.c
+ */
 /**
  * @brief
  *	open given directory name.

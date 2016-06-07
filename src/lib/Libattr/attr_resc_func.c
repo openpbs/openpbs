@@ -53,7 +53,9 @@
 #include "pbs_error.h"
 
 
-/*
+/**
+ * @file	attr_resc_func.c
+ * @brief
  * This file contains functions for decoding "nodes" and "select" resources
  *
  * The prototypes are declared in "attribute.h", also see resource.h

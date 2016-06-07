@@ -36,13 +36,16 @@
  */
 
 
-/*
- * decode_DIS_JobObit() - decode a Job Obituary Batch Request (Notice)
+/**
+ * @file	dec_JobObit.c
+ * @brief
+ * 	decode_DIS_JobObit() - decode a Job Obituary Batch Request (Notice)
  *
  *	This request is used by the server ONLY.
  *	The batch request structure must already exist.
  *
- *	Data items are:	string		job id
+ * @par	Data items are:
+ * 			string		job id
  *			signed int	status
  *			list of		svrattrl
  */

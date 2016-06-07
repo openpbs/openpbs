@@ -36,7 +36,9 @@
  */
 
 
-/*
+/**
+ * @file	dec_Manage.c
+ * @brief
  * decode_DIS_Manage() - decode a Manager Batch Request
  *
  *	This request is used for most operations where an object is being
@@ -46,7 +48,8 @@
  *	caller.   It is assumed that the header fields (protocol type,
  *	protocol version, request type, and user name) have already be decoded.
  *
- *	Data items are:	unsigned int	command
+ * @par	Data items are:
+ * 			unsigned int	command
  *			unsigned int	object type
  *			string		object name
  *			attropl		attributes

@@ -36,13 +36,16 @@
  */
 
 
-/*
+/**
+ * @file	enc_CpyFil.c
+ * @brief
  * encode_DIS_CopyFiles() - encode a Copy Files Dependency Batch Request
  *
  *	This request is used by the server ONLY; its input is a server
  *	batch request structure.
  *
- *	Data items are:	string		job id
+ * @par	Data items are:
+ * 			string		job id
  *			string		job owner		(may be null)
  *			string		execution user name
  *			string		execution group name	(may be null)

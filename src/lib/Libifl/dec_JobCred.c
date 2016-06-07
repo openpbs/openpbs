@@ -36,14 +36,17 @@
  */
 
 
-/*
+/**
+ * @file	dec_JobCred.c
+ * @brief
  * decode_DIS_JobCred() - decode a Job Credential batch request
  *
  *	The batch_request structure must already exist (be allocated by the
  *	caller.   It is assumed that the header fields (protocol type,
  *	protocol version, request type, and user name) have already be decoded.
  *
- *	Data items are:	unsigned int	credential type
+ * @par	Data items are:
+ *			unsigned int	credential type
  *			counted string	the message
  */
 

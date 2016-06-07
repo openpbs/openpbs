@@ -50,11 +50,13 @@
 #include "pbs_error.h"
 
 
-/*
- * This file contains general functions for attributes of type
+/**
+ * @file	attr_fn_acl.c
+ * @brief
+ * 	This file contains general functions for attributes of type
  *      User/Group/Hosts Acess Control List.
- *
- * The following functions should be used for the 3 types of ACLs:
+ * @details
+ * 	The following functions should be used for the 3 types of ACLs:
  *
  *	 User ACL	 Group ACL	 Host ACL
  *	(+ mgrs + ops)
@@ -65,15 +67,15 @@
  *	comp_arst	comp_arst	comp_arst
  *	free_arst	free_arst	free_arst
  *
- * The "encoded" or external form of the value is a string with the orginial
- * strings separated by commas (or new-lines) and terminated by a null.
+ * 	The "encoded" or external form of the value is a string with the orginial
+ * 	strings separated by commas (or new-lines) and terminated by a null.
  *
- * The "decoded" form is a set of strings pointed to by an array_strings struct
+ * 	The "decoded" form is a set of strings pointed to by an array_strings struct
  *
- * These forms are identical to ATR_TYPE_ARST, and in fact encode_arst(),
- * comp_arst(), and free_arst() are used for those functions.
+ * 	These forms are identical to ATR_TYPE_ARST, and in fact encode_arst(),
+ * 	comp_arst(), and free_arst() are used for those functions.
  *
- * set_ugacl() is different because of the special  sorting required.
+ * 	set_ugacl() is different because of the special  sorting required.
  */
 
 /* External Functions called */

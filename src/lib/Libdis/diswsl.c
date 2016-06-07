@@ -34,8 +34,10 @@
  * trademark licensing policies.
  *
  */
-/*
- * Synopsis:
+/**
+ * @file	diswsl.c
+ *
+ * @par Synopsis:
  * 	int diswsl(int stream, long value)
  *
  *	Converts <value> into a Data-is-Strings signed integer and sends it to

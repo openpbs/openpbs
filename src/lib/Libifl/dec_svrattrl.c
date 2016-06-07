@@ -36,7 +36,9 @@
  */
 
 
-/*
+/**
+ * @file	dec_svrattrl.c
+ * @brief
  * decode_DIS_svrattrl() - decode into a list of server "svrattrl" structures
  *
  *	The space for the svrattrl structures is allocated as needed.
@@ -54,7 +56,8 @@
  *		string  value of attribute/resource
  *		u int	"op" of attrlop
  *
- *	Note, the encoding of a svrattrl is the same as the encoding of
+ * @note
+ *	the encoding of a svrattrl is the same as the encoding of
  *	the pbs_ifl.h structures "attrl" and "attropl".  Any one of
  *	the three forms can be decoded into any of the three with the
  *	possible loss of the "flags" field (which is the "op" of the attrlop).

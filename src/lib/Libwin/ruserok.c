@@ -45,7 +45,9 @@
 #include "win.h"
 #include "pbs_ifl.h"
 #include "log.h"
-
+/**
+ * @file	ruserok.c
+ */
 /**
  * @brief
  * 	match_rhosts_entry; matches the rhosts entries in rhosts file.

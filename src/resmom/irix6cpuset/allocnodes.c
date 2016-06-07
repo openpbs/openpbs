@@ -46,7 +46,9 @@
 
 #include "allocnodes.h"
 #include "mapnodes.h"
-
+/**
+ * @file	allocnodes.c
+ */
 /* local prototypes */
 static unsigned long long alloc_chunk(unsigned long long chunk, int need);
 static int msbit(unsigned long long word);

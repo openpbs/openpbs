@@ -35,7 +35,9 @@
  *
  */
 #include	"pbs_config.h"
-
+/**
+ * @file	cpuset_misc.c
+ */
 #if	defined(MOM_CPUSET) && (CPUSET_VERSION >= 4)
 #include	<assert.h>
 #include	<errno.h>

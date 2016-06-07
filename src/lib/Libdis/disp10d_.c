@@ -38,7 +38,9 @@
 
 #include <math.h>
 #include "dis_.h"
-
+/**
+ * @file	disp10d_.c
+ */
 /**
  * @brief
  *		  expon

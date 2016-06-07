@@ -36,7 +36,9 @@
  */
 
 
-/*
+/**
+ * @file	enc_svrattrl.c
+ * @brief
  * encode_DIS_svrattrl() - encode a list of server "svrattrl" structures
  *
  *	The first item encoded is a unsigned integer, a count of the
@@ -52,7 +54,8 @@
  *		string  value of attribute/resource
  *		u int	"op" of attrlop
  *
- *	Note, the encoding of a svrattrl is the same as the encoding of
+ * @note
+ *	the encoding of a svrattrl is the same as the encoding of
  *	the pbs_ifl.h structures "attrl" and "attrlop".  Any one of the
  *	three forms can be decoded into any of the three with the possible
  *	loss of the "flags" field (which is the "op" of the attrlop).

@@ -36,7 +36,9 @@
  */
 
 
-/*
+/**
+ * @file	pbs_python_import_types.c
+ * @brief
  * This file contains all the neccessary type initialization for the "extension"
  * module.
  * Also all Python types implemented in "C" are added as "module object"

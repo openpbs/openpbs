@@ -70,7 +70,9 @@ static char sccsid[] = "@(#)rcmd.c	5.17 (Berkeley) 6/27/88";
 #include <sys/signal.h>
 #endif
 #include <sys/stat.h>
-
+/**
+ * @file	rcmd.c
+ */
 /**
  * @brief
  *	binds a available reserved port to a socket and returns the socket.

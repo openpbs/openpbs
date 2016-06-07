@@ -35,8 +35,9 @@
  *
  */
 
-/*	pbs_stathook.c
- *
+/**
+ * @file	pbs_stathook.c
+ * @brief
  *	Return the status of a hook.
  */
 

@@ -35,7 +35,9 @@
  *
  */
 
-/*
+/**
+ * @file pbs_demux.c
+ * @brief
  * pbs_demux - handle I/O from multiple node job
  *
  *	Standard Out and Standard Error of each task is bound to

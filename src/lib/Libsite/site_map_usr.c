@@ -34,10 +34,12 @@
  * trademark licensing policies.
  *
  */
-/*
+/**
+ * @file	site_map_usr.c
+ * @brief
  * site_map_user - map user name on a named host to user name on this host
- *
- *	NOTE:  for those of us who operate in a world of consistant
+ * @note
+ *	for those of us who operate in a world of consistant
  *	user names, this routine just returns the original name.
  *
  *	This routine is "left as an exercise for the reader."

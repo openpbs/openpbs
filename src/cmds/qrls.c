@@ -34,19 +34,18 @@
  * trademark licensing policies.
  *
  */
-/*
- *
+/**
+ * @file	qrls.c
  * qrls - (PBS) release a hold on a batch job
  *
- * Authors:
- *      Terry Heidelberg
- *      Livermore Computing
+ * @author	   	Terry Heidelberg
+ * 				Livermore Computing
  *
- *      Bruce Kelly
- *      National Energy Research Supercomputer Center
+ * @author     	Bruce Kelly
+ * 				National Energy Research Supercomputer Center
  *
- *      Lawrence Livermore National Laboratory
- *      University of California
+ * @author     	Lawrence Livermore National Laboratory
+ * 				University of California
  */
 
 #include "cmds.h"

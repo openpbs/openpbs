@@ -35,8 +35,10 @@
  *
  */
 
-/*
- * These were moved from qsub so that AIF could access them.
+/**
+ * @file	check_job_script.c
+ * @brief
+ * 	These were moved from qsub so that AIF could access them.
  */
 #include <ctype.h>
 #include <string.h>

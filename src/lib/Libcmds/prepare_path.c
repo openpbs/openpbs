@@ -34,10 +34,10 @@
  * trademark licensing policies.
  *
  */
-/*
- * perpare_path
- *
- *	Perpare a full path name to give to the server.
+/**
+ * @file	perpare_path.c
+ * @brief
+ *	Prepare a full path name to give to the server.
  *
  */
 

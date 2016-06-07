@@ -35,8 +35,9 @@
  *
  */
 /**
- * @brief
- * Synopsis:
+ * @file	disrui.c
+ *
+ * @par Synopsis:
  *	unsigned disrui(int stream, int *value)
  *
  *	Gets a Data-is-Strings unsigned integer from <stream>, converts it into

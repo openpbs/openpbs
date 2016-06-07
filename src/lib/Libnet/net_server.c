@@ -72,7 +72,9 @@
 #include "job.h"
 #include "svrfunc.h"
 
-
+/**
+ * @file	net_server.c
+ */
 /* Global Data (I wish I could make it private to the library, sigh, but
  * C don't support that scope of control.)
  *

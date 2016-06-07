@@ -4,7 +4,9 @@
  This part of the software is released under one of the following licenses:
  Genivia's license for commercial use.
  */
-
+/**
+ * @file	soapC.
+ */
 #include "soapH.h"
 
 #ifdef __cplusplus

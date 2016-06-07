@@ -36,10 +36,13 @@
  */
 
 
-/*
+/**
+ * @file	enc_Sig.c
+ * @brief
  * encode_DIS_SignalJob() - encode a Signal Job Batch Request
  *
- *	Data items are:	string		job id
+ * @par Data items are:
+ * 			string		job id
  *			string 		signal
  */
 

@@ -35,7 +35,8 @@
  *
  */
 
-/*
+/**
+ * @author
  * The Digital Unix Port was developed and provided by
  * Dirk Grunwald of the Department of Computer Science at
  * the University of Colorado at Boulder
@@ -83,27 +84,29 @@
 #include "resmon.h"
 #include "../rm_dep.h"
 
-/*
- **	System dependent code to gather information for the resource
- **	monitor for a Digital Unix machine
- **
- **	Resources known by this code:
- **		cput		cpu time for a pid or job
- **		mem		memory size for a pid or job in KB
- **		resi		resident memory size for a pid or job in KB
- **		sessions	list of sessions in the system
- **		pids		list of pids in a job
- **		nsessions	number of sessions in the system
- **		nusers		number of users in the system
- **		ncpus		number of cpus
- **		physmem		physical memory size in KB
- **		size		size of a file or filesystem in KB
- **		idletime	seconds of idle time (see mom_main.c)
- **		walltime	wall clock time for a pid
- **		loadave		current load average
- **		cpuclock	clock rate of the CPU
- **		cputype		cpu type
- **		platform	platform name (as string)
+/**
+ * @file
+ * @brief
+ *	System dependent code to gather information for the resource
+ *	monitor for a Digital Unix machine
+ *
+ * @par	Resources known by this code:
+ *		cput		cpu time for a pid or job
+ *		mem		memory size for a pid or job in KB
+ *		resi		resident memory size for a pid or job in KB
+ *		sessions	list of sessions in the system
+ *		pids		list of pids in a job
+ *		nsessions	number of sessions in the system
+ *		nusers		number of users in the system
+ *		ncpus		number of cpus
+ *		physmem		physical memory size in KB
+ *		size		size of a file or filesystem in KB
+ *		idletime	seconds of idle time (see mom_main.c)
+ *		walltime	wall clock time for a pid
+ *		loadave		current load average
+ *		cpuclock	clock rate of the CPU
+ *		cputype		cpu type
+ *		platform	platform name (as string)
  */
 
 

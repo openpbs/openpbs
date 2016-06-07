@@ -42,7 +42,9 @@
 #include "dis_.h"
 
 void disi10l_();
-
+/**
+ * @file	disp10l_.c
+ */
 /**
  * @brief	   expon
  *	-Returns 10	as a dis_long_double_t value.

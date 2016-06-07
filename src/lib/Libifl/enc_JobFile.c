@@ -36,10 +36,13 @@
  */
 
 
-/*
+/**
+ * @file	enc_JobFile.c
+ * @brief
  * encode_DIS_JobFile() - encode a Job Releated File
  *
- *	Data items are:	u int	block sequence number
+ * @par	Data items are:
+ * 			u int	block sequence number
  *			u int	file type (stdout, stderr, ...)
  *			u int	size of data in block
  *			string	job id

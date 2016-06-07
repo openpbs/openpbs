@@ -57,7 +57,9 @@ static AVL_IX_DESC *env_avltree = NULL;
 typedef BOOL(WINAPI *LPFN_ISWOW64PROCESS)(HANDLE, PBOOL);
 
 LPFN_ISWOW64PROCESS fnIsWow64Process;
-
+/**
+ * @file	util.c
+ */
 /**
  * @brief
  *	Determine if this is a Wow64 process

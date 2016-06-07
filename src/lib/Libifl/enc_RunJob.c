@@ -36,10 +36,13 @@
  */
 
 
-/*
+/**
+ * @file	enc_RunJob.c
+ * @brief
  * encode_DIS_RunJob() - encode a Run Job Batch Request
  *
- *	Data items are:	string		job id
+ * @par Data items are:
+ * 			string		job id
  *			string		destination
  *			unsigned int	resource handle (currently 0)
  */

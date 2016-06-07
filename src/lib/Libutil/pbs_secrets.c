@@ -45,6 +45,7 @@ extern "C" {
 #include "ticket.h"
 
 /**
+ * @file	pbs_secrets.c
  * @brief
  *	Key and iv to use with the AES encryption routines.
  */

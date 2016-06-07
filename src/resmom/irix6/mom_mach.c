@@ -86,27 +86,29 @@
 #include "../rm_dep.h"
 #include "mom_func.h"
 
-/*
- **	System dependent code to gather information for the resource
- **	monitor for a Silicon Graphics (SGI) machine.
- **
- **	Resources known by this code:
- **		cput		cpu time for a pid or session
- **		mem		memory size for a pid or session in KB
- **		resi		resident memory size for a pid or session in KB
- **		sessions	list of sessions in the system
- **		pids		list of pids in a session
- **		nsessions	number of sessions in the system
- **		nusers		number of users in the system
- **		totmem		total memory size in KB
- **		availmem	available memory size in KB
- **		ncpus		number of cpus
- **		physmem		physical memory size in KB
- **		size		size of a file or filesystem in KB
- **		idletime	seconds of idle time (see mom_main.c)
- **		walltime	wall clock time for a pid
- **		loadave		current load average
- **		quota		quota information (sizes in KB)
+/**
+ * @file
+ * @brief
+ *	System dependent code to gather information for the resource
+ *	monitor for a Silicon Graphics (SGI) machine.
+ *
+ * @par Resources known by this code:
+ *		cput		cpu time for a pid or session
+ *		mem		memory size for a pid or session in KB
+ *		resi		resident memory size for a pid or session in KB
+ *		sessions	list of sessions in the system
+ *		pids		list of pids in a session
+ *		nsessions	number of sessions in the system
+ *		nusers		number of users in the system
+ *		totmem		total memory size in KB
+ *		availmem	available memory size in KB
+ *		ncpus		number of cpus
+ *		physmem		physical memory size in KB
+ *		size		size of a file or filesystem in KB
+ *		idletime	seconds of idle time (see mom_main.c)
+ *		walltime	wall clock time for a pid
+ *		loadave		current load average
+ *		quota		quota information (sizes in KB)
  */
 
 

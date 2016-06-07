@@ -51,7 +51,9 @@
 #include "mapnodes.h"
 #include "cpusets.h"
 #include "log.h"
-
+/**
+ * @file	mom_share.c
+ */
 /*
  * A global pointer to a shared region used for intercommunication between
  * the threads of the mom.  See mom_share.h for details of the shared_block.

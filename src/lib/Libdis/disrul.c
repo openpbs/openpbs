@@ -35,8 +35,9 @@
  *
  */
 /**
- * @brief
- * Synopsis:
+ * @file	disrul.c
+ *
+ * @par Synopsis:
  *	unsigned long disrul(int stream, int *retval)
  *
  *	Gets a Data-is-Strings unsigned integer from <stream>, converts it into

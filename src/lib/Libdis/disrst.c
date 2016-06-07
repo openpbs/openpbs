@@ -35,8 +35,9 @@
  *
  */
 /**
- * @brief
- * Synopsis:
+ * @file	disrst.c
+ *
+ * @par Synopsis:
  *	char *disrst(int stream, int *retval)
  *
  *	Gets a Data-is-Strings character string from <stream> and converts it

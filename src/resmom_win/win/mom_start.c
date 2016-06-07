@@ -55,7 +55,9 @@
 #include "net_connect.h"
 #include "work_task.h"
 
-
+/**
+ * @file
+ */
 /* Global Variables */
 
 extern int		exiting_tasks;

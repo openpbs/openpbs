@@ -34,10 +34,12 @@
  * trademark licensing policies.
  *
  */
-/*
+/**
+ * @file	w32_send_hooks.c
+ * @brief
  * The entry point function for pbs_daemon.
  *
- * Included public functions re:
+ * @par Included public functions re:
  *
  *	main	initialization and main loop of pbs_daemon
  */

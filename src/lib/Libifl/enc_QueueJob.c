@@ -36,13 +36,16 @@
  */
 
 
-/*
+/**
+ * @file	enc_QueueJob.c
+ * @brief
  * encode_DIS_QueueJob() - encode a Queue Job Batch Request
  *
  *	This request is used for the first step in submitting a job, sending
  *	the job attributes.
  *
- *	Data items are:	string	job id
+ * @par Data items are:
+ * 			string	job id
  *			string	destination
  *			list of	attribute, see encode_DIS_attropl()
  */

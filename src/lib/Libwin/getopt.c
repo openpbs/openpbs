@@ -41,7 +41,9 @@
 #include <windows.h>
 #include "log.h"
 #include "win.h"
-
+/**
+ * @file	getopt.c
+ */
 char	*optarg;
 int 	optind = 1;
 int	opterr = 1;

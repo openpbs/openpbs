@@ -34,19 +34,19 @@
  * trademark licensing policies.
  *
  */
-/*
+/**
+ * @file	qrerun.c
+ * @brief
+ * 	qrerun - (PBS) rerun batch job
  *
- * qrerun - (PBS) rerun batch job
+ * @author	   	Terry Heidelberg
+ * 				Livermore Computing
  *
- * Authors:
- *      Terry Heidelberg
- *      Livermore Computing
+ * @author     	Bruce Kelly
+ * 				National Energy Research Supercomputer Center
  *
- *      Bruce Kelly
- *      National Energy Research Supercomputer Center
- *
- *      Lawrence Livermore National Laboratory
- *      University of California
+ * @author     	Lawrence Livermore National Laboratory
+ * 				University of California
  */
 
 #include "cmds.h"

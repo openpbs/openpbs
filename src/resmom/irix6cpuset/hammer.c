@@ -52,7 +52,9 @@
 #include "mom_share.h"
 #include "hammer.h"
 #include "log.h"
-
+/**
+ * @file	hammer.c
+ */
 /* Starting brk() point from ../mom_main.c */
 extern caddr_t	startbrk;
 

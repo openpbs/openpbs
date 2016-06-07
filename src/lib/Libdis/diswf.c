@@ -34,8 +34,10 @@
  * trademark licensing policies.
  *
  */
-/*
- * Synopsis:
+/**
+ * @file	diswf.c
+ *
+ * @par Synopsis:
  * 	int diswf(int stream, float value)
  *
  *	Converts <value> into a Data-is-Strings floating point number and sends

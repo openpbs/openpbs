@@ -35,8 +35,10 @@
  *
  */
 
-/*
- * entlim functions - This file contains functions to deal will adding to,
+/**
+ * @file	entlim.c
+ * @brief
+ * 	entlim functions - This file contains functions to deal will adding to,
  *	finding in, and removing from entities limits from a data structure.
  *
  *	We will attempt to hide the details of the fgc holding structure,

@@ -34,12 +34,12 @@
  * trademark licensing policies.
  *
  */
-/*
- * set_resources
- *
+/**
+ * @file	set_resources
+ * @brief
  *	Append entries to the attribute list that are from the resource list.
- * If the add flag is set, append the resource regardless. Otherwise, append
- * it only if it is not already on the list.
+ * 	If the add flag is set, append the resource regardless. Otherwise, append
+ * 	it only if it is not already on the list.
  *
  */
 

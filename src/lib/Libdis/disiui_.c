@@ -45,7 +45,9 @@
 
 char *dis_umax = NULL;
 unsigned dis_umaxd = 0;
-
+/**
+ * @file	disiui_.c
+ */
 /**
  * @brief
  *	Allocate and fill a counted string containing the constant, UINT_MAX,

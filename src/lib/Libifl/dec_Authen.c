@@ -36,9 +36,11 @@
  */
 
 
-/*
- * decode_DIS_AuthenResvPort() - decode a priv port based authentication request
- * decode_DIS_AuthExternal() - decode a External authentication request
+/**
+ * @file	dec_Authen.c
+ * @brief
+ * 	decode_DIS_AuthenResvPort() - decode a priv port based authentication request
+ * 	decode_DIS_AuthExternal() - decode a External authentication request
  *
  *	The batch_request structure must already exist (be allocated by the
  *	caller.   It is assumed that the header fields (protocol type,

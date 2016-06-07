@@ -36,10 +36,13 @@
  */
 
 
-/*
+/**
+ * @file	enc_MsgJob.c
+ * @brief
  * encode_DIS_MessageJob() - encode a Message Job Batch Request
  *
- *	Data items are:	string		job id
+ * @par	Data items are:
+ * 			string		job id
  *			unsigned int	which file (fileopt)
  *			string		the message
  */

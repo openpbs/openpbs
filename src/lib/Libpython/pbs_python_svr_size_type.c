@@ -36,7 +36,9 @@
  */
 
 
-/*
+/**
+ * @file	pbs_python_svr_size_type.c
+ * @brief
  * CONVENTION
  *
  *  For Types and Objects:

@@ -36,10 +36,12 @@
  */
 
 
-/*
+/**
+ * @file	enc_JobId.c
+ * @brief
  * encode_DIS_JobId() - encode a Job ID string
  *
- *	This is used for the following batch requests:
+ * @par This is used for the following batch requests:
  *		Ready_to_Commit
  *		Commit
  *		Locate Job

@@ -36,10 +36,13 @@
  */
 
 
-/*
- * decode_DIS_QueueJob() - decode a Queue Job Batch Request
+/**
+ * @file	dec_QueueJob.c
+ * @brief
+ * 	decode_DIS_QueueJob() - decode a Queue Job Batch Request
  *
- *	Data items are:	string	job id
+ * @par Data items are:
+ * 			string	job id
  *			string	destination
  *			list of attributes (attropl)
  */

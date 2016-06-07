@@ -48,10 +48,12 @@
 #include "attribute.h"
 #include "pbs_error.h"
 
-
-/*
- * This file contains general functions for manipulating attributes and attribute lists.
- * Included are:
+/**
+ * @file	attr_func.c
+ * @brief
+ * 	This file contains general functions for manipulating attributes and attribute lists.
+ *
+ * @par Included are:
  *	clear_attr()
  *	find_attr()
  *	free_null()

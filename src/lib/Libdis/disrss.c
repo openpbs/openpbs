@@ -35,8 +35,9 @@
  *
  */
 /**
- * @brief
- * Synopsis:
+ * @file	disrss.c
+ *
+ * @par Synopsis:
  *	short disrss(int stream, int *retval)
  *
  *	Gets a Data-is-Strings signed integer from <stream>, converts it

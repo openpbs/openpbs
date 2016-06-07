@@ -37,7 +37,8 @@
 
 
 /**
- * @file
+ * @file	alps.c
+ * @brief
  * Cray ALPS related functionality.
  * The functions in this file are responsible for parsing the XML response
  * from the ALPS BASIL client (either catnip or apbasil). These functions

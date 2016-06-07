@@ -41,7 +41,9 @@
 
 #include "dis.h"
 #include "dis_.h"
-
+/**
+ * @file	disrsi_.c
+ */
 /**
  * @brief
  *      -Gets a Data-is-Strings signed integer from <stream>, converts it into a

@@ -38,8 +38,10 @@
 
 #include "dis_.h"
 
-/*
- **	Routines to read and write down a stream
+/**
+ * @file	disc.c
+ * @brief
+ *	Routines to read and write down a stream
  */
 int (*dis_getc)(int stream)					= NULL;
 int (*dis_puts)(int stream, const char *string, size_t count)	= NULL;

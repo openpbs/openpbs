@@ -42,7 +42,9 @@
 #include "libpbs.h"
 
 
-/*
+/**
+ * @file	PBS_data.c
+ * @brief
  * define common data items for libpbs.a
  */
 

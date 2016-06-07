@@ -34,21 +34,19 @@
  * trademark licensing policies.
  *
  */
-/*
- * cnt2mom
- *
+/**
+ * @file	cnt2mom.c
+ * @brief
  *	Connect to MOM, and if there is an error, print a more
  *	descriptive message.
  *
- * Synopsis:
- *
+ * @par	Synopsis:
  *	int cnt2mom( char *momhost )
  *
  *	momhost	The name of the MOM host to connect to. A NULL or null
  *		string for the localhost.
  *
- * Returns:
- *
+ * @par	Returns:
  *	The connection returned by pbs_connect().
  */
 

@@ -34,7 +34,9 @@
  * trademark licensing policies.
  *
  */
-/*
+/**
+ * @file	pbs_attach.c
+ * @brief
  * pbs_attach - attach a session to a job.
  *
  */

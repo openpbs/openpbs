@@ -34,8 +34,10 @@
  * trademark licensing policies.
  *
  */
-/*
- * Synopsis:
+/**
+ * @file	disrd.c
+ *
+ * @par Synopsis:
  * 	double disrd(int stream, int *retval)
  *
  *	Gets a Data-is-Strings floating point number from <stream> and converts

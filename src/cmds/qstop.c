@@ -34,15 +34,16 @@
  * trademark licensing policies.
  *
  */
-/*
- * qstop
+/**
+ * @file	qstop.c
+ * @brief
  *  The qstop command directs that a destination should stop scheduling
  *  or routing batch jobs.
  *
- * Synopsis:
+ * @par	Synopsis:
  *  qstop destination ...
  *
- * Arguments:
+ * @par Arguments:
  *  destination ...
  *      A list of destinations.  A destination has one of the following
  *      three forms:
@@ -54,11 +55,9 @@
  *      stop all queues at the server.  If queue@server is used,
  *      the request is to stop the named queue at the named server.
  *
- * Written by:
- *  Bruce Kelly
- *  National Energy Research Supercomputer Center
- *  Livermore, CA
- *  May, 1993
+ *  @author	Bruce Kelly
+ *  		National Energy Research Supercomputer Center, Livermore, CA
+ *  		May, 1993
  */
 
 #include "cmds.h"

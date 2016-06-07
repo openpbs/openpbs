@@ -59,7 +59,9 @@
 #include "mom_mach.h"
 #include "mom_func.h"
 
-
+/**
+ * @file
+ */
 /* Global Variables */
 
 extern int	 exiting_tasks;

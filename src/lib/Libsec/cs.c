@@ -35,13 +35,15 @@
  *
  */
 
-/*------------------------------------------------------------------------
+/**
+ * @file	cs.c
+ * @brief
  * cs.c - Customer Authentication Module
  * 	  Kerberos initialization, authentication, encryption
  * 	  and cleanup
- *	  Author: Jesse Pollard
- *	  Modification/Additions: Cas Lesiak
- *------------------------------------------------------------------------
+ * @author Jesse Pollard
+ * @par	Modification/Additions:
+ * 		Cas Lesiak
  */
 
 #include <pbs_config.h>

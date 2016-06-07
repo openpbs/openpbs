@@ -34,8 +34,10 @@
  * trademark licensing policies.
  *
  */
-/*
- * Synopsis:
+/**
+ * @file	diswl_.c
+ *
+ * @par Synopsis:
  * 	int diswl_(int stream, dis_long_double_t value, unsigned int ndigs)
  *
  *	Converts <value> into a Data-is-Strings floating point number and sends

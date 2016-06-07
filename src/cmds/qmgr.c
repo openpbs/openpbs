@@ -34,17 +34,17 @@
  * trademark licensing policies.
  *
  */
-/*
- * qmgr
- *      The qmgr command provides an administrator interface to the batch
+/**
+ * @file	qmgr.c
+ * @brief
+ *  	The qmgr command provides an administrator interface to the batch
  *      system.  The command reads directives from standard input.  The syntax
  *      of each directive is checked and the appropriate request is sent to the
  *      batch server or servers.
- *
- * Synopsis:
+ * @par	Synopsis:
  *      qmgr [-a] [-c command] [-e] [-n] [-z] [server...]
  *
- * Options:
+ * @par Options:
  *      -a      Abort qmgr on any syntax errors or any requests rejected by a
  *              server.
  *
@@ -57,13 +57,13 @@
  *
  *      -z      No errors are written to standard error.
  *
- * Arguments:
+ * 	@par Arguments:
  *      server...
  *              A list of servers to administer.  If no servers are given, then
  *              use the default server.
  *
  *
- *	Exitcodes:
+ *	@par Exitcodes:
  *	  0 - successful
  *	  1 - error in parse
  *	  2 - error in execute
@@ -71,14 +71,10 @@
  *	  4 - error set_active
  *	  5 - memory allocation error
  *
- *
- *
- *
- * Written by:
- *      Bruce Kelly
- *      National Energy Research Supercomputer Center
- *      Livermore, CA
- *      March, 1993
+ * @author 	Bruce Kelly
+ * 			National Energy Research Supercomputer Center
+ * 			Livermore, CA
+ *			March, 1993
  *
  */
 

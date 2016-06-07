@@ -49,13 +49,16 @@
 #include "pbs_error.h"
 
 
-/*
- * This file contains general functions for manipulating an attribute array.
- * Included is:
+/**
+ * @file	attr_atomic.c
+ * @brief
+ * 	This file contains general functions for manipulating an attribute array.
+ *
+ * @par	Included is:
  *	attr_atomic_set()
  *	attr_atomic_kill()
  *
- * The prototypes are declared in "attr_func.h"
+ * 	The prototypes are declared in "attr_func.h"
  */
 
 /* Global Variables */

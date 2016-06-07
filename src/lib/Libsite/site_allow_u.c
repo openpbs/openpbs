@@ -45,7 +45,9 @@
 #include "pbs_error.h"
 #include "job.h"
 
-
+/**
+ * @file	site_allow_u.c
+ */
 
 /**
  * @brief

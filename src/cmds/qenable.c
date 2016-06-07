@@ -34,15 +34,16 @@
  * trademark licensing policies.
  *
  */
-/*
- * qenable
+/**
+ * @file	qenable.c
+ * @brief
  *  The qenable command directs that a destination should no longer accept
  *  batch jobs.
  *
- * Synopsis:
+ * @par	Synopsis:
  *  qenable destination ...
  *
- * Arguments:
+ * @par	Arguments:
  *  destination ...
  *      A list of destinations.  A destination has one of the following
  *      three forms:
@@ -55,11 +56,9 @@
  *      used, the request is to enable the named queue at the named
  *      server.
  *
- * Written by:
- *  Bruce Kelly
- *  National Energy Research Supercomputer Center
- *  Livermore, CA
- *  May, 1993
+ *  @author	Bruce Kelly
+ *   		National Energy Research Supercomputer Center, Livermore, CA
+ *  		May, 1993
  */
 
 #include "cmds.h"

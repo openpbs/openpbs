@@ -36,10 +36,13 @@
  */
 
 
-/*
+/**
+ * @file	enc_Status.c
+ * @brief
  * encode_DIS_Status() - encode a Status Job Batch Request
  *
- *	Data items are:	string		object id
+ * @par Data items are:
+ * 			string		object id
  *			list of		attrl
  */
 

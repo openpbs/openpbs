@@ -36,8 +36,10 @@
  */
 
 
-/*
- * decode_DIS_JobId() - decode a Job ID string into a batch_request
+/**
+ * @file	dec_JobId.c
+ * @brief
+ * 	decode_DIS_JobId() - decode a Job ID string into a batch_request
  *
  *	This is used for the following batch requests:
  *		Ready_to_Commit
@@ -45,7 +47,8 @@
  *		Locate Job
  *		Rerun Job
  *
- *	Data items:	string		job id
+ * @par	Data items:
+ *		string		job id
  *
  *	The batch_request structure must already exist (be allocated by the
  *	caller.   It is assumed that the header fields (protocol type,

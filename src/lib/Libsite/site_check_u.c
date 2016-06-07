@@ -57,7 +57,9 @@
 #include "pbs_ifl.h"
 #include "svrfunc.h"            /* to resolve cvrt_fqn_to_name */
 
-
+/**
+ * @file	site_check_u.c
+ */
 /* Global Data Items */
 
 extern char *pbs_o_host;

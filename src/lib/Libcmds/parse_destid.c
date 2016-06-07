@@ -34,10 +34,9 @@
  * trademark licensing policies.
  *
  */
-/*
- *
- * parse_destination_id
- *
+/**
+ * @file	parse_destid
+ * @brief
  * full syntax permitted;
  *
  * queue_name[@server_name[:port_number]]

@@ -36,7 +36,9 @@
  */
 
 
-/*
+/**
+ * @file	dec_ReqExt.c
+ * @brief
  * decode_DIS_ReqExtend() - decode a batch_request Extend string
  *
  *	The batch_request structure must already exist (be allocated by the

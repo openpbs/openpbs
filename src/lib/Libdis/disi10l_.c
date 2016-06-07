@@ -42,7 +42,9 @@
 #include <stdlib.h>
 
 #include <dis.h>
-
+/**
+ * @file	disi10l_.c
+ */
 unsigned dis_lmx10 = 0;
 dis_long_double_t *dis_lp10 = NULL;
 dis_long_double_t *dis_ln10 = NULL;

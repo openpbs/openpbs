@@ -46,7 +46,9 @@
 #include "win.h"
 #endif
 
-
+/**
+ * @file	setup_env.c
+ */
 /**
  * @brief
  *	setup the daemon's environment

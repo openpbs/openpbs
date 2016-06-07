@@ -35,7 +35,9 @@
  *
  */
 
-/*
+/**
+ * @file	pbs_python_external.c
+ * @brief
  *  This file contains shared routines that can be used by any of the PBS
  *  infrastructure daemons (Server,MOM or Scheduler). This file basically
  *  provides all the implementation for external interface routines found

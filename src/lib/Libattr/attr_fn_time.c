@@ -50,11 +50,13 @@
 #include "pbs_error.h"
 
 
-/*
- * This file contains functions for manipulating attributes of type
+/**
+ * @file	attr_fn_time.c
+ * @brief
+ * 	This file contains functions for manipulating attributes of type
  *	time:	[[hh:]mm:]ss[.sss]
- *
- * Each set has functions for:
+ * @details
+ * 	Each set has functions for:
  *	Decoding the value string to the machine representation.
  *	Encoding the internal attribute to external form
  *	Setting the value by =, + or - operators.

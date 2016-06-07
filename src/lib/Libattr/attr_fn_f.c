@@ -54,9 +54,11 @@
 #include "pbs_share.h"
 
 
-/*
+/**
+ * @file	attr_fn_f.c
+ * @brief
  * This file contains functions for manipulating attributes of type float
- *
+ * @details
  * Each set has functions for:
  *	Decoding the value string to the machine representation.
  *	Encoding the internal attribute to external form

@@ -46,7 +46,9 @@
 
 extern char *ulmax;
 extern unsigned ulmaxdigs;
-
+/**
+ * @file	disrsl.c
+ */
 /**
  * @brief
  *      -  Gets a Data-is-Strings signed integer from <stream>, converts it into

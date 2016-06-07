@@ -40,11 +40,13 @@
 #include "pbs_error.h"
 
 
-/*
+/**
+ * @file	pbs_messages.c
+ * @brief
  * Messages issued by the server.  They are kept here in one place
  * to make translation a bit easier.
- *
- * WARNING - there are places where a message and other info is stuffed
+ * @warning
+ *  there are places where a message and other info is stuffed
  *	into a buffer, keep the messages short!
  *
  * This first set of messages are recorded by the server or mom to the log.

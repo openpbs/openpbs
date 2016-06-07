@@ -34,8 +34,10 @@
  * trademark licensing policies.
  *
  */
-/*
- * qorder - change the order of two batch jobs in a queue
+/**
+ * @file	qorder.c
+ * @brief
+ * 	qorder - change the order of two batch jobs in a queue
  */
 
 #include <string.h>

@@ -35,8 +35,9 @@
  *
  */
 /**
- * @brief
- * Synopsis:
+ * @file	disrsc.c
+ *
+ * @par Synopsis:
  *	signed char disrsc(int stream, int *retval)
  *
  *	Gets a Data-is-Strings signed integer from <stream>, converts it into a

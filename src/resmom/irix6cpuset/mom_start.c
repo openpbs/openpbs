@@ -69,7 +69,9 @@
 #include "hammer.h"
 #include "mapnodes.h"
 
-
+/**
+ * @file
+ */
 /* Global Variables */
 
 extern int	 exiting_tasks;

@@ -42,7 +42,9 @@
 #include "libpbs.h"
 #include "dis.h"
 
-
+/**
+ * @file	dec_attropl.c
+ */
 /**
  * @brief
  *	decode into a list of PBS API "attropl" structures

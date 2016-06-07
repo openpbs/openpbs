@@ -35,12 +35,13 @@
  *
  */
 
-/*------------------------------------------------------------------------
+/**
+ * @file	cs_standard.c
+ * @brief
  * cs_standard.c - Standard PBS Authentication Module
  * 	  Authentication provided by this module is the standard (pbs_iff)
  * 	  authentication used in vanilla PBS.  Internal security interface
  * 	  (Hooks) are for the most part stubs which return CS_SUCCESS
- *------------------------------------------------------------------------
  */
 
 

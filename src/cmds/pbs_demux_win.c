@@ -184,7 +184,18 @@ handle_np_conn(char *pipename, char *jobid, int num_nodes)
 	close_valid_handle(&(hPipe));
 	return 0;
 }
-
+/**
+ * @brief
+ *	The main function in C - entry point
+ *
+ * @param[in]  argc - argument count
+ * @param[in]  argv - pointer to argument array
+ * @param[in]  envp - pointer to environment values
+ *
+ * @return  int
+ * @retval  0 - success
+ * @retval  !0 - error
+ */
 int
 main(int argc, char **argv, char **envp)
 {

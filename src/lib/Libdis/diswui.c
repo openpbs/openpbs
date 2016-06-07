@@ -34,8 +34,10 @@
  * trademark licensing policies.
  *
  */
-/*
- * Synopsis:
+/**
+ * @file	diswui.c
+ *
+ * @par Synopsis:
  *	int diswui(int stream, unsigned value)
  *
  *	Converts <value> into a Data-is-Strings unsigned integer and sends it to

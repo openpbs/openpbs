@@ -34,7 +34,9 @@
  * trademark licensing policies.
  *
  */
-/*
+/**
+ * @file	pbs_dsh.c
+ * @brief
  * pbs_dsh - a distribute task program using the Task Management API
  *
  */

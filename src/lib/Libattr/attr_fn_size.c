@@ -50,12 +50,14 @@
 #include "pbs_share.h"
 
 
-/*
- * This file contains functions for manipulating attributes of type
+/**
+ * @file	attr_fn_size.c
+ * @brief
+ * 	This file contains functions for manipulating attributes of type
  *	size, which is an integer optionally followed by k,K,m,M,g,
  *	G,t, or T, optionally followed by w,W,b,B.
  *	If 'w' or 'W' is not specified, b for bytes is assumed.
- *
+ * @details
  * The attribute has functions for:
  *	Decoding the value string to the machine representation.
  *	Encoding the internal attribute to external form

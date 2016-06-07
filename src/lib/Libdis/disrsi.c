@@ -35,8 +35,9 @@
  *
  */
 /**
- * @brief
- * Synopsis:
+ * @file	disrsi.c
+ *
+ * @par Synopsis:
  *	int disrsi(int stream, int *retval)
  *
  *	Gets a Data-is-Strings signed integer from <stream>, converts it into

@@ -34,6 +34,9 @@
  * trademark licensing policies.
  *
  */
+/**
+ * @file	pbs_quote_parse.c
+ */
 #include <pbs_config.h>
 
 #include <ctype.h>

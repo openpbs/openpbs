@@ -34,7 +34,9 @@
  * trademark licensing policies.
  *
  */
-/*
+/**
+ * @file	mom_main.c
+ * @brief
  * The entry point function for MOM.
  */
 

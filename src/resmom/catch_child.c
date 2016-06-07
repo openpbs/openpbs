@@ -77,7 +77,9 @@
 #include "mom_hook_func.h"
 #include "placementsets.h"
 
-
+/**
+ * @file	catch_child.c
+ */
 /* External Functions */
 void			(*free_job_CPUs)(job *) = NULL;
 

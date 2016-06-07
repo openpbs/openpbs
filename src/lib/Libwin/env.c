@@ -48,7 +48,9 @@ static char	sysrootdir[MAXPATHLEN+1] = "";
 static char	sysdrive[MAXPATHLEN+1] = "";
 static char	temp_path[MAXPATHLEN+1] = "";
 static char	user_domain[PBS_MAXHOSTNAME+1] = "";
-
+/**
+ * @file	env.c
+ */
 /**
  * @brief
  * 	save_env: gets/sets some important environment variable values that can

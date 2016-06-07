@@ -36,11 +36,14 @@
  */
 
 
-/*
+/**
+ * @file	enc_MoveJob.c
+ * @brief
  * encode_DIS_MoveJob() - encode a Move Job Batch Request
  *			  also used for an Order Job Batch Request
  *
- *	Data items are:	string		job id
+ * @par Data items are:
+ * 			string		job id
  *			string		destination
  */
 

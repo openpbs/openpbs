@@ -34,8 +34,9 @@
  * trademark licensing policies.
  *
  */
-/*	int_msg2.c
- *
+/**
+ * @file	int_msg2.c
+ * @brief
  *	send the MessageJob request
  */
 

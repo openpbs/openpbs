@@ -34,12 +34,14 @@
  * trademark licensing policies.
  *
  */
-/*
+/**
+ * @file	log_event.c
+ * @brief
  * log_event.c - contains functions to log event messages to the log file.
  *
  *	This is specific to the PBS Server.
  *
- * Functions included are:
+ * @par Functions included are:
  *	log_event()
  *	log_change()
  */

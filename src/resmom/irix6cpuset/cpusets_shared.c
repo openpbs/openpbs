@@ -35,7 +35,9 @@
  *
  */
 
- *
+/**
+ * @file	cpusets_shared.c
+ * @brief
  * Library functions to simplify access to cpusets.
  */
 /*

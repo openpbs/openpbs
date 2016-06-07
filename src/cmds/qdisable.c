@@ -34,16 +34,17 @@
  * trademark licensing policies.
  *
  */
-/*
- * qdisable
+/**
+ * @file	qdisable.c
+ * @brief
  *  The qdisable command directs that a destination should no longer accept
  *  batch jobs.
  *
- * Synopsis:
- *  qdisable destination ...
+ * @par	Synopsis:
+ *  	qdisable destination ...
  *
- * Arguments:
- *  destination ...
+ * @par	Arguments:
+ *  	destination ...
  *      A list of destinations.  A destination has one of the following
  *      three forms:
  *          queue
@@ -55,11 +56,10 @@
  *      used, the request is to disable the named queue at the named
  *      server.
  *
- * Written by:
- *  Bruce Kelly
- *  National Energy Research Supercomputer Center
- *  Livermore, CA
- *  May, 1993
+ * @author 	Bruce Kelly
+ *  		National Energy Research Supercomputer Center
+ *  		Livermore, CA
+ *    		May, 1993
  */
 
 #include "cmds.h"

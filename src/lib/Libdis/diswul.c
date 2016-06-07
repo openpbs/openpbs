@@ -34,8 +34,10 @@
  * trademark licensing policies.
  *
  */
-/*
- * Synopsis:
+/**
+ * @file	diswul.c
+ *
+ * @par Synopsis:
  *	int diswul(int stream, unsigned long value)
  *
  *	Converts <value> into a Data-is-Strings unsigned integer and sends it to

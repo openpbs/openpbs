@@ -48,7 +48,9 @@ static vnl_t	*vn_decode_DIS_V3(int, int *);
 static vnl_t	*vn_decode_DIS_V4(int, int *);
 static int	vn_encode_DIS_V4(int, vnl_t *);
 static vnl_t	*free_and_return(vnl_t *);	/* expedient error function */
-
+/**
+ * @file	ps_dis.c
+ */
 /**
  * @brief
  *	vn_decode_DIS - read verison 3 or 4 vnode definition information from

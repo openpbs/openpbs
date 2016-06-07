@@ -34,6 +34,9 @@
  * trademark licensing policies.
  *
  */
+ /**
+  * @file	pbs_renew.c
+  */
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>

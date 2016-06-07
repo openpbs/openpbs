@@ -34,9 +34,9 @@
  * trademark licensing policies.
  *
  */
-/*
- *  parse_jobid
- *
+/**
+ * @file	parse_jobid.c
+ * @brief
  * takes a job_id string as input, parses it to separate the
  * 'current_server[:port]' part, and returns this in the return
  * argument 'server'; if things go OK, the function value is

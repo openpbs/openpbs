@@ -59,7 +59,9 @@
 #include "libsec.h"
 #include "pbs_internal.h"
 
-
+/**
+ * @file	net_client.c
+ */
 static int conn_timeout = PBS_DIS_TCP_TIMEOUT_CONNECT; /* timeout for connect */
 
 #ifdef WIN32

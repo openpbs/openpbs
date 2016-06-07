@@ -35,9 +35,11 @@
  *
  */
 
- *
- * Library functions to simplify access to cpusets.
- */
+ /**
+  * @file	cpusets.c
+  * @brief
+  * Library functions to simplify access to cpusets.
+  */
 
 #include <pbs_config.h>
 

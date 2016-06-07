@@ -43,7 +43,9 @@
 #include "log.h"
 #include <ctype.h>
 #include <string.h>
-
+/**
+ * @file	alarm.c
+ */
 static HANDLE g_hEvent = NULL;
 static HANDLE g_hMutex = NULL;
 static unsigned int initial_time;

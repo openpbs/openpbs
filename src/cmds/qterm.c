@@ -34,14 +34,15 @@
  * trademark licensing policies.
  *
  */
-/*
- * qterm
+/**
+ * @file	qterm.c
+ * @brief
  *  The qterm command terminates the batch server.
  *
- * Synopsis:
+ * @par	Synopsis:
  *  qterm [-t type] [-F|-f|-i] [-s] [-m] [server ...]
  *
- * Options:
+ * @par	Options:
  *  -t  delay   Jobs are (1) checkpointed if possible; otherwise, (2) jobs are
  *		rerun (requeued) if possible; otherwise, (3) jobs are left to
  *              run.
@@ -63,12 +64,11 @@
  *
  *  -m  shutdown Moms also
  *
- * Arguments:
+ * @par	Arguments:
  *  server ...
  *      A list of servers to terminate.
  *
- * Written by:
- *  Bruce Kelly
+ * @author	Bruce Kelly
  *  National Energy Research Supercomputer Center
  *  Livermore, CA
  *  May, 1993

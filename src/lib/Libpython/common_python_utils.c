@@ -42,10 +42,10 @@
 #include "hook.h"
 
 extern char *pbs_python_daemon_name;
-/*
- * ----------------------------------------------------------------------------
- * Common Python Utilities shared by extension and embedded C routines.
- * ----------------------------------------------------------------------------
+/**
+ * @file	common_python_utils.c
+ * @brief
+ * 	Common Python Utilities shared by extension and embedded C routines.
  */
 
 /**

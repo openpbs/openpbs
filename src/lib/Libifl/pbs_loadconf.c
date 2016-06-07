@@ -34,7 +34,9 @@
  * trademark licensing policies.
  *
  */
-
+/**
+ * @file	pbs_loadconf.c
+ */
 #include <pbs_config.h>
 #include <ctype.h>
 #include <sys/types.h>

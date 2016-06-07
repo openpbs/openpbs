@@ -53,10 +53,12 @@
 
 #define HOLD_ENCODE_SIZE 4
 
-/*
- * This file contains special decode and encode functions for the hold-types
- * attribute.  All other functions for this attribute are the standard
- * _b (boolean) routines.
+/**
+ * @file	attr_fn_hold.c
+ * @brief
+ * 	This file contains special decode and encode functions for the hold-types
+ * 	attribute.  All other functions for this attribute are the standard
+ * 	_b (boolean) routines.
  *
  */
  

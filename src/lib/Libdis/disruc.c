@@ -35,8 +35,9 @@
  *
  */
 /**
- * @brief
- * Synopsis:
+ * @file	disruc.c
+ *
+ * @par Synopsis:
  *	unsigned char disruc(int stream, int *<retval>)
  *
  *	Gets a Data-is-Strings unsigned integer from <stream>, converts it into

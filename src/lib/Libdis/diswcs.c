@@ -34,8 +34,10 @@
  * trademark licensing policies.
  *
  */
-/*
- * Synopsis:
+/**
+ * @file	diswcs.c
+ *
+ * @par Synopsis:
  *	int diswcs(int stream, char *value, size_t nchars)
  *
  *	Converts a counted string in *<value> into a Data-is-Strings character

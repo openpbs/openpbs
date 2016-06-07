@@ -52,7 +52,8 @@
 
 
 /**
- *@file
+ * @file	resc_map.c
+ * @brief
  * This file contains functions for mapping a known resource type into the
  * corresponding functions.  They are used for adding custom resources where
  * the type is specified as a string such as "boolean" or "string".

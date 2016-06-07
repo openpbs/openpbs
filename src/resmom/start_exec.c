@@ -97,6 +97,9 @@
 
 #define EXTRA_ENV_PTRS	       32
 
+/**
+ * @file
+ */
 /* Global Variables */
 
 extern	vnl_t		*vnlp;

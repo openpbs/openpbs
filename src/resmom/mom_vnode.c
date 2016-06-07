@@ -34,7 +34,9 @@
  * trademark licensing policies.
  *
  */
-
+/**
+ * @file	mom_vnode.c
+ */
 #include	<sys/types.h>
 #include	<assert.h>
 #include	<errno.h>

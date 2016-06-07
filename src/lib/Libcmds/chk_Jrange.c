@@ -34,7 +34,12 @@
  * trademark licensing policies.
  *
  */
-
+/**
+ * @file	chk_Jrange.c
+ *
+ * @brief
+ * 	chk_Jrange - validate the subjob index range for the J option to qsub/qalter
+ */
 #include <pbs_config.h>
 #include <ctype.h>
 #include <limits.h>

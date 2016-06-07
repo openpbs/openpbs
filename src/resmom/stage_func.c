@@ -63,7 +63,9 @@
 #include "batch_request.h"
 #include "pbs_nodes.h"
 #include "mom_func.h"
-
+/**
+ * @file	stage_func.c
+ */
 extern char *path_spool;			/* path to spool directory */
 extern char *path_undeliv;			/* path to undelivered directory */
 extern char *path_checkpoint;			/* path to checkpoint directory */

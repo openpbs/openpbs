@@ -56,6 +56,9 @@ extern void	mom_CPUs_report();
 #endif	/* DEBUG */
 
 /**
+ * @file
+ */
+/**
  * @brief
  *	creates vnode map
  *

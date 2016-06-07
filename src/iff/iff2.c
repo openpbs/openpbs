@@ -23,14 +23,16 @@
 
 #define PBS_IFF_MAX_CONN_RETRIES 6
 
-/*
- * pbs_iff - authenticates the user to the PBS server.
+/**
+ * @file	iff2.c
+ * @brief
+ * 	pbs_iff - authenticates the user to the PBS server.
  *
- *	Usage: call via pbs_connect() with
+ * @par	Usage: call via pbs_connect() with
  *		pbs_iff [-t] hostname port [parent_connection_port]
  *		pbs_iff --version
  *
- *	The parent_connection_port is required unless -t (for test) is given.
+ *		The parent_connection_port is required unless -t (for test) is given.
  */
 /* 
  * Copyright (C) 1994-2016 Altair Engineering, Inc.

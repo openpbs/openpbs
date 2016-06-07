@@ -36,14 +36,17 @@
  */
 
 
-/*
- * decode_DIS_Register() - decode a Register Dependency Batch Request
+/**
+ * @file	dec_Reg.c
+ * @brief
+ * 	decode_DIS_Register() - decode a Register Dependency Batch Request
  *
  *	The batch_request structure must already exist (be allocated by the
  *	caller.   It is assumed that the header fields (protocol type,
  *	protocol version, request type, and user name) have already be decoded.
  *
- *	Data items are:	string		job owner
+ * @par Data items are:
+ * 			string		job owner
  *			string		parent job id
  *			string		child job id
  *			unsigned int	dependency type

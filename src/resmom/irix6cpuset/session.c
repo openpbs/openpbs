@@ -53,7 +53,9 @@
 #include "log.h"
 
 static metaarray cache_sidlist;
-
+/**
+ * @file	session.c
+ */
 /**
  * @brief
  * 	find_index: return the corresponding positional index number that

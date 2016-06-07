@@ -36,10 +36,13 @@
  */
 
 
-/*
+/**
+ * @file	enc_JobCred.c
+ * @brief
  * encode_DIS_JobCred() - encode a Job Credential Batch Request
  *
- *	Data items are:	unsigned int	Credential type
+ * @par Data items are:
+ * 			unsigned int	Credential type
  *			string		the credential (octet array)
  */
 

@@ -36,14 +36,17 @@
  */
 
 
-/*
- * decode_DIS_SignalJob() - decode a Signal Job batch request
+/**
+ * @file	dec_Sig.c
+ * @brief
+ * 	decode_DIS_SignalJob() - decode a Signal Job batch request
  *
  *	The batch_request structure must already exist (be allocated by the
  *	caller.   It is assumed that the header fields (protocol type,
  *	protocol version, request type, and user name) have already be decoded.
  *
- *	Data items are:	string		job id
+ * @par Data items are:
+ * 			string		job id
  *			string		signal (name)
  */
 

@@ -34,15 +34,16 @@
  * trademark licensing policies.
  *
  */
-/*
- * qstart
+/**
+ * @file	qstart.c
+ * @brief
  *  The qstart command directs that a destination should start scheduling
  *  or routing batch jobs.
  *
- * Synopsis:
+ * @par	Synopsis:
  *  qstart destination ...
  *
- * Arguments:
+ * @par	Arguments:
  *  destination ...
  *      A list of destinations.  A destination has one of the following
  *      three forms:
@@ -54,11 +55,10 @@
  *      start all queues at the server.  If queue@server is used,
  *      the request is to start the named queue at the named server.
  *
- * Written by:
- *  Bruce Kelly
- *  National Energy Research Supercomputer Center
- *  Livermore, CA
- *  May, 1993
+ * @author	Bruce Kelly
+ *			National Energy Research Supercomputer Center
+ *			Livermore, CA
+ * 			May, 1993
  */
 
 #include "cmds.h"

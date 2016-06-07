@@ -39,7 +39,9 @@
 #include <fcntl.h>
 #include <sys/param.h>
 
-
+/**
+ * @file
+ */
 /**
  * @brief
  *      pe_input() - open architecture dependent input file for prologue

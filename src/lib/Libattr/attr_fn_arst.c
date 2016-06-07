@@ -51,30 +51,31 @@
 
 
 /**
- *@file
- * This file contains general function for attributes of type
- * array of (pointers to) strings
+ * @file	attr_fn_arst.c
+ * @brief
+ * 	This file contains general function for attributes of type
+ * 	array of (pointers to) strings
+ * @details
+ * 	Each set has functions for:
+ *		Decoding the value string to the machine representation.
+ *		Encoding the internal representation of the attribute to external
+ *		Setting the value by =, + or - operators.
+ *		Comparing a (decoded) value with the attribute value.
+ *		Freeing the space malloc-ed to the attribute value.
  *
- * Each set has functions for:
- *	Decoding the value string to the machine representation.
- *	Encoding the internal representation of the attribute to external
- *	Setting the value by =, + or - operators.
- *	Comparing a (decoded) value with the attribute value.
- *	Freeing the space malloc-ed to the attribute value.
+ * 	Some or all of the functions for an attribute type may be shared with
+ * 	other attribute types.
  *
- * Some or all of the functions for an attribute type may be shared with
- * other attribute types.
+ * 	The prototypes are declared in "attribute.h"
  *
- * The prototypes are declared in "attribute.h"
+ * 	Attribute functions for attributes with value type "array of strings":
  *
- * Attribute functions for attributes with value type "array of strings":
+ * 	The "encoded" or external form of the value is a string with the orginial
+ * 	strings separated by commas (or new-lines) and terminated by a null.
+ * 	Any embedded commas or back-slashes must be escaped by a prefixed back-
+ * 	slash.
  *
- * The "encoded" or external form of the value is a string with the orginial
- * strings separated by commas (or new-lines) and terminated by a null.
- * Any embedded commas or back-slashes must be escaped by a prefixed back-
- * slash.
- *
- * The "decoded" form is a set of strings pointed to by an array_strings struct
+ * 	The "decoded" form is a set of strings pointed to by an array_strings struct
  */
 
 /**

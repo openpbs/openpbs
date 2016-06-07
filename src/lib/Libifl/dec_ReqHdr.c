@@ -36,16 +36,20 @@
  */
 
 
-/*
+/**
+ * @file	dec_ReqHdr.c
+ * @brief
  * decode_DIS_ReqHdr() - Decode the Request Header Fields
  *	common to all requests
  *
- *	Fields are:	Protocol ID (unsigned integer)
+ * @par	Fields are:
+ * 			Protocol ID (unsigned integer)
  *			Protocol Version (unsigned integer)
  *			Request Type (unsignded integer)
  *			User Name (string)
  *
- *	Returns:  -1	on EOF (end of file on first read only)
+ * @par Returns:
+ *		  -1	on EOF (end of file on first read only)
  *		   0	on success
  *		  >0	a DIS error return, see dis.h
  */

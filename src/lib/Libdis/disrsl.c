@@ -35,8 +35,9 @@
  *
  */
 /**
- * @brief
- * Synopsis:
+ * @file	disrsl.c
+ *
+ * @par Synopsis:
  *	long disrsl(int stream, int *retval)
  *
  *	Gets a Data-is-Strings signed integer from <stream>, converts it into a

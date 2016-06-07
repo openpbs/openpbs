@@ -36,7 +36,9 @@
  */
 
 
-/*
+/**
+ * @file	enc_Manage.c
+ * @brief
  * encode_DIS_Manage() - encode a Manager Batch Request
  *
  *	This request is used for most operations where an object is being

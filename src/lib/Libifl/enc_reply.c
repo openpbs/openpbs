@@ -36,7 +36,9 @@
  */
 
 
-/*
+/**
+ * @file	enc_reply.c
+ * @brief
  * encode_DIS_reply() - encode a Batch Protocol Reply Structure
  *
  * 	batch_reply structure defined in libpbs.h, it must be allocated

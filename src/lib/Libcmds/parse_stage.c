@@ -39,7 +39,9 @@
 
 #include "cmds.h"
 
-
+/**
+ * @file	parse_stage.c
+ */
 
 #define ISNAMECHAR(x)  (((isprint(x)) || (isspace(x))) && ((x) != '@') )
 #define ISNAMECHAR2(x) ((isprint(x)) && (! isspace(x))  && ((x) != '@') && ((x) != ':') )

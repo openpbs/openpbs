@@ -52,7 +52,9 @@ static const char sccsid[] = "@(#)util.c	8.2 (Berkeley) 4/2/94";
 
 #include "extern.h"
 #include "pathnames.h"
-
+/**
+ * @file	util.c
+ */
 
 #ifdef        USELOG
 extern int    use_neterr;

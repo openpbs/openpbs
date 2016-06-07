@@ -46,7 +46,9 @@
 unsigned dis_dmx10 = 0;
 double *dis_dp10 = NULL;
 double *dis_dn10 = NULL;
-
+/**
+ * @file	disi10d_.c
+ */
 /**
  * @brief
  *	-Allocate and fill tables with all powers of 10 that fit the forms:

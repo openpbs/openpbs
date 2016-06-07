@@ -35,8 +35,9 @@
  *
  */
 
-/*
- *
+/**
+ * @file	collector.c
+ * @brief
  * Collect usage and resource information for Mom.  This functionality is
  * multi-threaded since the kernel interfaces used to grab this information
  * can block for long periods of time.

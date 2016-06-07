@@ -62,6 +62,9 @@
 #include  "pbs_nodes.h"
 #include "mom_func.h"
 
+/**
+ * @file	mom_stage_file.c
+ */
 /* Global Data Items */
 char *path_log = NULL;
 char *path_spool = NULL;

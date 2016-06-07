@@ -35,7 +35,9 @@
  *
  */
 
-/*
+/**
+ * @file	munge_supp.c
+ * @brief
  *  Utility functions to support munge authentication
  */
 

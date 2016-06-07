@@ -36,15 +36,18 @@
  */
 
 
-/*
- * decode_DIS_MoveJob() - decode a Move Job batch request
+/**
+ * @file	dec_MoveJob.c
+ * @brief
+ * 	decode_DIS_MoveJob() - decode a Move Job batch request
  *			  also used for an Order Job batch request
  *
  *	The batch_request structure must already exist (be allocated by the
  *	caller.   It is assumed that the header fields (protocol type,
  *	protocol version, request type, and user name) have already be decoded.
  *
- *	Data items are:	string		job id
+ * @par Data items are:
+ * 			string		job id
  *			string		destination
  */
 

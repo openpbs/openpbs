@@ -50,10 +50,12 @@
 #include "pbs_error.h"
 
 
-/*
- * This file contains functions for manipulating attributes of type
- *	interactive
- *
+/**
+ * @file	attr_fn_intr.c
+ * @brief
+ * 	This file contains functions for manipulating attributes of type
+ *		interactive
+ * @details
  * Each set has functions for:
  *	Decoding the value string to the machine representation.
  *	Encoding the machine representation of the value to a string

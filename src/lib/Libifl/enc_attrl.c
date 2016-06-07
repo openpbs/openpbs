@@ -36,14 +36,16 @@
  */
 
 
-/*
- * encode_DIS_attrl() - encode a list of PBS API "attrl" structures
+/**
+ * @file	enc_attrl.c
+ * @brief
+ * 	encode_DIS_attrl() - encode a list of PBS API "attrl" structures
  *
  *	The first item encoded is a unsigned integer, a count of the
  *	number of attrl entries in the linked list.  This is encoded
  *	even when there are no svrattrl entries in the list.
  *
- *	Each individual entry is then encoded as:
+ * @par	Each individual entry is then encoded as:
  *		u int	size of the three strings (name, resource, value)
  *			including the terminating nulls
  *		string	attribute name
@@ -52,7 +54,8 @@
  *		string  value of attribute/resource
  *		u int	"op" of attrlop, forced to "Set"
  *
- *	Note, the encoding of an "attrl" is the same as the encoding of
+ * @note
+ *	the encoding of an "attrl" is the same as the encoding of
  *	the pbs_ifl.h structures "attrlop" and the server svrattrl.  Any
  *	one of the three forms can be decoded into any of the three with the
  *	possible loss of the "flags" field (which is the "op" of the attrlop).

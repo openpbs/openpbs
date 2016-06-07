@@ -35,7 +35,8 @@
  *
  */
 /**
- * @mainpage
+ * @file	rpp.c
+ * @brief
  *	Routines to communicate with UDP packets - Reliable Packet Protocol.
  *
  *	This package provides for sending information in "messages"

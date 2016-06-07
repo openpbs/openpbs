@@ -8,7 +8,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
+/**
+ * @file	soapClient.c
+ */
 SOAP_SOURCE_STAMP("@(#) soapClient.c ver 2.7.9i 2008-12-02 09:56:55 GMT")
 
 

@@ -52,14 +52,16 @@
 #include "pbs_error.h"
 
 
-/*
- * This file contains functions for manipulating attributes of type
+/**
+ * @file	attr_fn_resc.c
+ * @brief
+ * 	This file contains functions for manipulating attributes of type
  *	resource
  *
- * A "resource" is similiar to an attribute but with two levels of
- * names.  The first name is the attribute name, e.g. "resource-list",
- * the second name is the resource name, e.g. "mem".
- *
+ *  A "resource" is similiar to an attribute but with two levels of
+ *  names.  The first name is the attribute name, e.g. "resource-list",
+ *  the second name is the resource name, e.g. "mem".
+ * @details
  * Each resource_def has functions for:
  *	Decoding the value string to the internal representation.
  *	Encoding the internal attribute to external form

@@ -51,7 +51,9 @@
 #include "pbs_error.h"
 
 
-/*
+/**
+ * @file	attr_fn_unkn.c
+ * @brief
  * This file contains functions for manipulating attributes of an
  * unknown (unrecognized) name (and therefore unknown type).
  * It is a collection point for all "other" attributes, other than

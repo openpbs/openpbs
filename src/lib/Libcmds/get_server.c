@@ -34,9 +34,9 @@
  * trademark licensing policies.
  *
  */
-/*
- * get_server
- *
+/**
+ * @file	get_server.c
+ * @brief
  * ------------------------------------
  * As specified in section 5 of the ERS:
  *
@@ -81,7 +81,7 @@
  * If things go OK, the function value is set to 0,
  * if errors, it is set to 1.
  *
- * Full legal syntax is:
+ * @par Full legal syntax is:
  *  seq_number[.parent_server[:port]][@current_server[:port]]
  *
  */

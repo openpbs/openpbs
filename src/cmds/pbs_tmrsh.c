@@ -34,7 +34,9 @@
  * trademark licensing policies.
  *
  */
-/*
+/**
+ * @file	pbs_tmrsh.c
+ * @brief
  * pbs_tmrsh - a replacement for rsh using the Task Management API
  *
  */

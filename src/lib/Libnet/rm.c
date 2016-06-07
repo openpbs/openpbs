@@ -70,7 +70,9 @@
 #endif
 #endif
 
-
+/**
+ * @file	rm.c
+ */
 static	int	full = 1;
 
 /*

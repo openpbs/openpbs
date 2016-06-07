@@ -34,21 +34,18 @@
  * trademark licensing policies.
  *
  */
-/*
- * cnt2server
- *
+/**
+ * @file	cnt2server
  *	Connect to the server, and if there is an error, print a more
- * descriptive message.
+ * 	descriptive message.
  *
- * Synopsis:
- *
+ * @par	Synopsis:
  *	int cnt2server( char *server )
  *
  *	server	The name of the server to connect to. A NULL or null string
  *		for the default server.
  *
- * Returns:
- *
+ * @par	Returns:
  *	The connection returned by pbs_connect().
  */
 

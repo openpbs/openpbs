@@ -39,7 +39,9 @@
 #include <windows.h>
 #include <win.h>
 
-
+/**
+ * @file	gethostid.c
+ */
 /**
  * @brief
  *	get_loworder_macaddr: get the lower 4 bytes of the ethernet mac address for

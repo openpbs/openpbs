@@ -36,8 +36,10 @@
  */
 
 
-/*
- * decode_DIS_replyCmd() - decode a Batch Protocol Reply Structure for a Command
+/**
+ * @file	dec_rcpy.c
+ * @brief
+ * 	decode_DIS_replyCmd() - decode a Batch Protocol Reply Structure for a Command
  *
  *	This routine decodes a batch reply into the form used by commands.
  *	The only difference between this and the server version is on status

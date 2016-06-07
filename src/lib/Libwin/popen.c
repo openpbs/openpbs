@@ -43,6 +43,9 @@
 #include "libutil.h"
 #include "win_remote_shell.h"
 /**
+ * @file	popen.c
+ */
+/**
  * @brief       Opens a process and initiates pipe streams to and from the process.
  *
  * @param[in]   cmd             : The command to be executed

@@ -35,8 +35,9 @@
  *
  */
 /**
- * @brief
- * Synopsis:
+ * @file	disrl.c
+ *
+ * @par Synopsis:
  * 	long double disrl(int stream, int *retval)
  *
  *	Gets a Data-is-Strings floating point number from <stream> and converts

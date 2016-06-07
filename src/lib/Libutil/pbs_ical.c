@@ -36,7 +36,9 @@
  */
 
 
-/*
+/**
+ * @file	pbs_ical.c
+ * @brief
  * pbs_ical.c : Utility functions to parse and handle iCal syntax
  *
  *	This is used to abstract the use of libical from the

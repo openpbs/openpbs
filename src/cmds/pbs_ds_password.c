@@ -384,7 +384,17 @@ change_ownership(char *path, char *userid)
 	return 0;
 }
 #endif
-
+/**
+ * @brief
+ *	The main function in C - entry point
+ *
+ * @param[in]  argc - argument count
+ * @param[in]  argv - pointer to argument array
+ *
+ * @return  int
+ * @retval  0 - success
+ * @retval  !0 - error
+ */
 int
 main(int argc, char *argv[])
 {

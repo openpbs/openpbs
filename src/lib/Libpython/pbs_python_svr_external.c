@@ -36,11 +36,13 @@
  */
 
 
-/*
+/**
+ * @file	pbs_python_svr_external.c
+ * @brief
  * This file should contain interface implementation interacting with the
  * Core PBS Server. So *no* MOM and SCHED dependency should be in this file.
  *
- * library:
+ * @par	library:
  *   libpbspython_svr.a
  */
 

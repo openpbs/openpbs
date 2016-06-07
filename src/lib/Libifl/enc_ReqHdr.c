@@ -36,9 +36,12 @@
  */
 
 
-/*
+/**
+ * @file	enc_ReqHdr.c
+ * @brief
  * encode_DIS_ReqHdr() - DIS encode a Request Header
- *	Fields are:	Protocol ID (unsigned integer)
+ * @par	Fields are:
+ * 			Protocol ID (unsigned integer)
  *			Protocol Version (unsigned integer)
  *			Request Type (unsignded integer)
  *			User Name (string)

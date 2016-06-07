@@ -34,25 +34,25 @@
  * trademark licensing policies.
  *
  */
-/*
- * qrun
- *  The qrun command forces a batch job to run.
+/**
+ * @file	qrun.c
+ * @brief
+ *  	The qrun command forces a batch job to run.
  *
- * Synopsis:
- *  qrun [-H host][-a] job_identifier ...
+ * @par	Synopsis:
+ *  	qrun [-H host][-a] job_identifier ...
  *
- * Arguments:
+ * @par	Arguments:
  *  host
  *      The host to run the job at.
  *  job_identifier ...
  *      A list of job_identifiers.  A job_identifier has the following form:
  *          sequence_number[.server_name][@server]
  *
- * Written by:
- *  Bruce Kelly
- *  National Energy Research Supercomputer Center
- *  Livermore, CA
- *  May, 1993
+ *  @author	Bruce Kelly
+ *  		National Energy Research Supercomputer Center
+ *  		Livermore, CA
+ *  		May, 1993
  */
 
 #include "cmds.h"

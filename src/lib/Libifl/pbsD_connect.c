@@ -34,8 +34,9 @@
  * trademark licensing policies.
  *
  */
-/*	pbs_connect.c
- *
+/**
+ * @file	pbs_connect.c
+ * @brief
  *	Open a connection with the pbs server.  At this point several
  *	things are stubbed out, and other things are hard-wired.
  *

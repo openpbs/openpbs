@@ -74,24 +74,26 @@
 #include "../rm_dep.h"
 #include "mom_func.h"
 
-/*
- **	System dependent code to gather information for the resource
- **	monitor for a Sun Solaris machine
- **
- **	Resources known by this code:
- **		cput		cpu time for a pid or job
- **		mem		memory size for a pid or job in KB
- **		resi		resident memory size for a pid or job in KB
- **		sessions	list of sessions in the system
- **		pids		list of pids in a job
- **		nsessions	number of sessions in the system
- **		nusers		number of users in the system
- **		ncpus		number of cpus
- **		physmem		physical memory size in KB
- **		size		size of a file or filesystem in KB
- **		idletime	seconds of idle time (see mom_main.c)
- **		walltime	wall clock time for a pid
- **		loadave		current load average
+/**
+ * @file
+ * @brief
+ *	System dependent code to gather information for the resource
+ *	monitor for a Sun Solaris machine
+ *
+ * @par Resources known by this code:
+ *		cput		cpu time for a pid or job
+ *		mem		memory size for a pid or job in KB
+ *		resi		resident memory size for a pid or job in KB
+ *		sessions	list of sessions in the system
+ *		pids		list of pids in a job
+ *		nsessions	number of sessions in the system
+ *		nusers		number of users in the system
+ *		ncpus		number of cpus
+ *		physmem		physical memory size in KB
+ *		size		size of a file or filesystem in KB
+ *		idletime	seconds of idle time (see mom_main.c)
+ *		walltime	wall clock time for a pid
+ *		loadave		current load average
  */
 
 

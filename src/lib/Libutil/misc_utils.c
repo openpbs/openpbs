@@ -35,7 +35,9 @@
  *
  */
 
-/*
+/**
+ * @file	misc_utils.c
+ * @brief
  *  Utility functions to condense and unroll a sequence of execvnodes that are
  *  returned by the scheduler for standing reservations.
  *  The objective is to condense in a human-readable format the execvnodes

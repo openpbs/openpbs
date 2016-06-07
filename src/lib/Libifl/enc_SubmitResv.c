@@ -36,13 +36,16 @@
  */
 
 
-/*
+/**
+ * @file	enc_SubmitResv.c
+ * @brief
  * encode_DIS_SubmitResv() - encode a Submit Resvervation Batch Request
  *
  *	This request is used for the first step in submitting a reservation
  *      sending the reservation attributes.
  *
- *	Data items are:	string	resv id
+ * @par	Data items are:
+ * 			string	resv id
  *			list of	attribute, see encode_DIS_attropl()
  */
 

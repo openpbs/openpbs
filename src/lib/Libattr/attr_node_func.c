@@ -80,12 +80,14 @@ static struct node_type {
 } nt[] = {	{NTYPE_PBS,	ND_pbs},
 	{0,		(char *)0} };
 
-/*
- * This file contains functions for deriving attribute values from a pbsnode
- * and for updating the "state" (inuse), "node type" (ntype) or "properties"
- * list using the "value" carried in an attribute.
+/**
+ * @file	attr_node_func.c
+ * @brief
+ * 	This file contains functions for deriving attribute values from a pbsnode
+ * 	and for updating the "state" (inuse), "node type" (ntype) or "properties"
+ * 	list using the "value" carried in an attribute.
  *
- * Included are:
+ * @par Included are:
  *
  * global:
  * decode_state()		"functions for at_decode func pointer"

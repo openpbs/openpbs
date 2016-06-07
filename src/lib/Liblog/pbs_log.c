@@ -34,11 +34,13 @@
  * trademark licensing policies.
  *
  */
-/*
+/**
+ * @file	pbs_log.c
+ * @brief
  * pbs_log.c - contains functions to log error and event messages to
  *	the log file.
  *
- * Functions included are:
+ * @par Functions included are:
  *	log_open()
  *	log_open_main()
  *	log_err()

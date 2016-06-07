@@ -44,7 +44,9 @@
 static HANDLE	*pid_handles = NULL;
 static int	pids_cnt = 0;
 static int	pids_nextidx = 0;
-
+/**
+ * @file	pid.c
+ */
 /**
  * @brief
  * 	initializes the pid_handles table. 

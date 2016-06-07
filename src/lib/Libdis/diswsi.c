@@ -34,8 +34,10 @@
  * trademark licensing policies.
  *
  */
-/*
- * Synopsis:
+/**
+ * @file	diswsi.c
+ *
+ * @par Synopsis:
  * 	int diswsi(int stream, int value)
  *
  *	Converts <value> into a Data-is-Strings signed integer and sends it to

@@ -56,12 +56,13 @@
 
 
 /**
- * @file
- * This file contains functions for manipulating attributes of type "entlim"
- * entity limits for Finer Granularity Control (FGC)
- * This layer is to somewhat isolate the entlim concept from the specific
- * implementation (avl tree).
- *
+ * @file	attr_fn_entlim.c
+ * @brief
+ * 	This file contains functions for manipulating attributes of type "entlim"
+ * 	entity limits for Finer Granularity Control (FGC)
+ * 	This layer is to somewhat isolate the entlim concept from the specific
+ * 	implementation (avl tree).
+ * @details
  * The entities are maintained in an AVL tree for fast searching,
  *	see attr_entity in attribute.h.
  * The "key" is the entity+resource and the corresponding data is
