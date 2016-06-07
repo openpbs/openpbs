@@ -71,14 +71,8 @@
 /* Define to 1 if you have the `endpwent' function. */
 #undef HAVE_ENDPWENT
 
-/* Define to 1 if you have the <error.h> header file. */
-#undef HAVE_ERROR_H
-
 /* Define to 1 if you have the <execinfo.h> header file. */
 #undef HAVE_EXECINFO_H
-
-/* Define to 1 if you have the <expat.h> header file. */
-#undef HAVE_EXPAT_H
 
 /* Define to 1 if you have the <fcntl.h> header file. */
 #undef HAVE_FCNTL_H
