@@ -112,8 +112,6 @@ AC_CHECK_HEADERS([ \
 	ctype.h \
 	dirent.h \
 	dlfcn.h \
-	errno.h \
-	error.h \
 	execinfo.h \
 	expat.h \
 	fcntl.h \

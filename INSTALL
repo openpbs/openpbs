@@ -99,18 +99,18 @@ How to install PBS Pro using the configure script.
 bash$ qstat -B
 Server             Max   Tot   Que   Run   Hld   Wat   Trn   Ext Status
 ---------------- ----- ----- ----- ----- ----- ----- ----- ----- -----------
-foovm                0     0     0     0     0     0     0     0 Active
+host1                0     0     0     0     0     0     0     0 Active
 bash$ pbsnodes -a
-foovm
-     Mom = foovm.elusive.name
+host1
+     Mom = host1.elusive.name
      ntype = PBS
      state = free
      pcpus = 2
      resources_available.arch = linux
-     resources_available.host = foovm
+     resources_available.host = host1
      resources_available.mem = 2049248kb
      resources_available.ncpus = 2
-     resources_available.vnode = foovm
+     resources_available.vnode = host1
      resources_assigned.accelerator_memory = 0kb
      resources_assigned.mem = 0kb
      resources_assigned.naccelerators = 0
@@ -122,14 +122,14 @@ foovm
      license = l
 
 bash$ echo "sleep 60" | qsub
-0.foovm
-[mike@foovm PBSPro_13.0.402.161242b]$ qstat -a
+0.host1
+[mike@host1 PBSPro_13.0.402.161242b]$ qstat -a
 
-foovm:
+host1:
                                                             Req'd  Req'd   Elap
 Job ID          Username Queue    Jobname    SessID NDS TSK Memory Time  S Time
 --------------- -------- -------- ---------- ------ --- --- ------ ----- - -----
-0.foovm         mike     workq    STDIN        2122   1   1    --    --  R 00:00
+0.host1         mike     workq    STDIN        2122   1   1    --    --  R 00:00
 
 bash$
 
