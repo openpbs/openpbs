@@ -113,7 +113,6 @@ AC_CHECK_HEADERS([ \
 	dirent.h \
 	dlfcn.h \
 	execinfo.h \
-	expat.h \
 	fcntl.h \
 	features.h \
 	float.h \
