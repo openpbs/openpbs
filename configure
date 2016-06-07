@@ -13571,10 +13571,7 @@ for ac_header in  \
 	ctype.h \
 	dirent.h \
 	dlfcn.h \
-	errno.h \
-	error.h \
 	execinfo.h \
-	expat.h \
 	fcntl.h \
 	features.h \
 	float.h \
