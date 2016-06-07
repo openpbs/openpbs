@@ -361,6 +361,10 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 unsupporteddir = @unsupporteddir@
 EXTRA_DIST = \
+	attr_parser.py \
+	compile \
+	depcomp \
+	missing \
 	pbs_mach_type \
 	python-autoconf.py
 

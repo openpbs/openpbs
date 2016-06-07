@@ -6963,13 +6963,8 @@ int	proc_num = 0;
  * @return	Void
  *
  */
-#ifdef NAS /* localmod 005 */
 static void
 proc_new(int physid, int coreid)
-#else
-void
-proc_new(physid, coreid)
-#endif /* localmod 005 */
 {
 	int	i;
 

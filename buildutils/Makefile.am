@@ -36,6 +36,10 @@
 #
 
 EXTRA_DIST = \
+	attr_parser.py \
+	compile \
+	depcomp \
+	missing \
 	pbs_mach_type \
 	python-autoconf.py
 

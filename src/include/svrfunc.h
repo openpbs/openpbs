@@ -129,6 +129,7 @@ extern int recov_attr_db_raw(pbs_db_conn_t *, pbs_db_attr_info_t *, pbs_list_hea
 extern int apply_aoe_inchunk_rules(resource *, attribute *, void *, int);
 extern int apply_select_inchunk_rules(resource *, attribute *, void *, int, int);
 extern int svr_create_tmp_jobscript(job *, char *);
+extern void unset_jobscript_max_size(void);
 extern char *svr_load_jobscript(job *);
 
 #ifdef	_PROVISION_H
