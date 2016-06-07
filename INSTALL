@@ -102,7 +102,7 @@ Server             Max   Tot   Que   Run   Hld   Wat   Trn   Ext Status
 host1                0     0     0     0     0     0     0     0 Active
 bash$ pbsnodes -a
 host1
-     Mom = host1.elusive.name
+     Mom = host1
      ntype = PBS
      state = free
      pcpus = 2
