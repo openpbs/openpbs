@@ -13545,6 +13545,7 @@ for ac_header in  \
 	libpq-fe.h \
 	mach/mach.h \
 	nlist.h \
+	sys/eventfd.h \
 	sys/systeminfo.h \
 
 do :
@@ -13609,7 +13610,6 @@ for ac_header in  \
 	syscall.h \
 	syslog.h \
 	sys/epoll.h \
-	sys/eventfd.h \
 	sys/fcntl.h \
 	sys/file.h \
 	sys/ioctl.h \
