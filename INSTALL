@@ -50,6 +50,10 @@ How to install PBS Pro using the configure script.
 
     ./configure --prefix=/opt/pbs
 
+	For openSUSE systems an additional argument should be passed.
+
+	./configure --prefix=/opt/pbs --libexecdir=/opt/pbs/libexec
+	(See note 4 below)
 
 6. Build PBS Pro by running "make". (See note 3 below)
 
@@ -159,3 +163,6 @@ Note 3: You need to use a POSIX (or nearly POSIX) make. GNU make
   is not guaranteed to work. Don't be surprised if the first thing
   that make does is call configure again.
 
+Note 4: Since openSUSE does not support libexec, post install scripts
+  will go to /lib. With additional argument --libexecdir to configure 
+  we are forcing to use {prefix}/libexec instead of {prefix}/lib.
