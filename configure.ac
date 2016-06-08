@@ -98,6 +98,7 @@ AC_CHECK_HEADERS([ \
 	libpq-fe.h \
 	mach/mach.h \
 	nlist.h \
+	sys/eventfd.h \
 	sys/systeminfo.h \
 ])
 
@@ -150,7 +151,6 @@ AC_CHECK_HEADERS([ \
 	syscall.h \
 	syslog.h \
 	sys/epoll.h \
-	sys/eventfd.h \
 	sys/fcntl.h \
 	sys/file.h \
 	sys/ioctl.h \
