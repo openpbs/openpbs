@@ -5,14 +5,14 @@ How to install PBS Pro using the configure script.
 
 1. Install the prerequisite packages for building PBS Pro.
 
-  For CentOS systems you should run the following commad as root:
+  For CentOS systems you should run the following command as root:
 
     yum install -y gcc make rpm-build libtool hwloc-devel \
       libX11-devel libXt-devel libedit-devel libical-devel \
       ncurses-devel perl postgresql-devel python-devel tcl-devel \
       tk-devel swig expat-devel openssl-devel libXext libXft
 
-  For OpenSUSE systems you should run the following command as root:
+  For openSUSE systems you should run the following command as root:
 
     zypper install gcc make rpm-build libtool hwloc-devel \
       libX11-devel libXt-devel libedit-devel libical-devel \
@@ -24,12 +24,12 @@ How to install PBS Pro using the configure script.
   to the commands below, you should also install a text editor of
   your choosing (vim, emacs, gedit, etc.).
 
-  For CentOS systems you should run the following commad as root:
+  For CentOS systems you should run the following command as root:
 
     yum install -y expat libedit postgresql-server python \
       sendmail sudo tcl tk libical
 
-  For OpenSUSE systems you should run the following command as root:
+  For openSUSE systems you should run the following command as root:
 
     zypper install expat libedit postgresql-server python \
       sendmail sudo tcl tk libical1
@@ -48,12 +48,14 @@ How to install PBS Pro using the configure script.
   parameters displayed in the previous step. (See notes 1 and 2
   below)
 
+  For CentOS systems you should run the following command:
+
     ./configure --prefix=/opt/pbs
 
-	For openSUSE systems an additional argument should be passed.
+  For openSUSE systems (see note 4 below) you should run the
+  following command:
 
-	./configure --prefix=/opt/pbs --libexecdir=/opt/pbs/libexec
-	(See note 4 below)
+    ./configure --prefix=/opt/pbs --libexecdir=/opt/pbs/libexec
 
 6. Build PBS Pro by running "make". (See note 3 below)
 
@@ -163,6 +165,8 @@ Note 3: You need to use a POSIX (or nearly POSIX) make. GNU make
   is not guaranteed to work. Don't be surprised if the first thing
   that make does is call configure again.
 
-Note 4: Since openSUSE does not support libexec, post install scripts
-  will go to /lib. With additional argument --libexecdir to configure 
-  we are forcing to use {prefix}/libexec instead of {prefix}/lib.
+Note 4: The openSUSE rpm package expands %_libexecdir to /opt/pbs/lib
+  rather than /opt/pbs/libexec which causes problems for the post-
+  install scripts. Providing the --libexecdir value to configure 
+  overrides this behavior.
+
