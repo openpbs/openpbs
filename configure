@@ -15847,8 +15847,8 @@ if test "${with_pbs_server_home+set}" = set; then :
   withval=$with_pbs_server_home;
 fi
 
-  if test "x$with_server_home" != "x"; then :
-  PBS_SERVER_HOME=$with_server_home
+  if test "x$with_pbs_server_home" != "x"; then :
+  PBS_SERVER_HOME=$with_pbs_server_home
 else
   PBS_SERVER_HOME=/var/spool/pbs
 

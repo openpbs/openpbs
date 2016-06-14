@@ -43,8 +43,8 @@ AC_DEFUN([PBS_AC_WITH_SERVER_HOME],
       [Location of the PBS spool directory. Default is /var/spool/pbs]
     )
   )
-  AS_IF([test "x$with_server_home" != "x"],
-    PBS_SERVER_HOME=[$with_server_home],
+  AS_IF([test "x$with_pbs_server_home" != "x"],
+    PBS_SERVER_HOME=[$with_pbs_server_home],
     PBS_SERVER_HOME=[/var/spool/pbs]
   )
   AC_MSG_RESULT([$PBS_SERVER_HOME])
