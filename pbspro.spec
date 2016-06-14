@@ -205,6 +205,9 @@ cd build
 ../configure \
 	PBS_VERSION=%{version} \
 	--prefix=%{pbs_prefix} \
+%if %{defined suse_version}
+        --libexecdir=%{pbs_prefix}/libexec \
+%endif
 %if %{with alps}
 	--enable-alps \
 %endif
