@@ -835,27 +835,26 @@ tpp_open(char *dest_host, unsigned int port)
 
 	tpp_lock(&strmarray_lock);
 
+	/*
+	 * Just try to find a fully open stream to use, else fall through
+	 * to create a new stream. Any half closed streams will be closed
+	 * elsewhere, either when network first dropped or if any message
+	 * comes to such a half open stream
+	 */
+
 	if ((pkey = tpp_avlkey_create(AVL_streams, &dest_addr))) {
 		if (avl_find_key(pkey, AVL_streams) == AVL_IX_OK) {
 			while (1) {
 				strm = pkey->recptr;
-				if (strm->u_state == TPP_STRM_STATE_OPEN && strm->used_locally == 1) {
-					if (strm->t_state == TPP_TRNS_STATE_OPEN) {
-						tpp_unlock(&strmarray_lock);
-						free(pkey);
+				if (strm->u_state == TPP_STRM_STATE_OPEN &&
+						strm->t_state == TPP_TRNS_STATE_OPEN &&
+						strm->used_locally == 1) {
+					tpp_unlock(&strmarray_lock);
+					free(pkey);
 
-						TPP_DBPRT(("Stream for dest[%s] returned = %d", dest, strm->sd));
-						free(dest);
-						return strm->sd;
-					} else {
-						/* If the stream had a closed net state, don't return that to app
-						 * rather close it here and go on to open a new stream instead
-						 */
-						tpp_unlock(&strmarray_lock);
-						free(pkey);
-						tpp_close(strm->sd);
-						goto new_strm;
-					}
+					TPP_DBPRT(("Stream for dest[%s] returned = %d", dest, strm->sd));
+					free(dest);
+					return strm->sd;
 				}
 
 				if (avl_next_key(pkey, AVL_streams) != AVL_IX_OK)
@@ -870,7 +869,6 @@ tpp_open(char *dest_host, unsigned int port)
 
 	tpp_unlock(&strmarray_lock);
 
-new_strm:
 	/* by default use the first address of the host as the source address */
 	if ((strm = alloc_stream(&leaf_addrs[0], &dest_addr)) == NULL) {
 		tpp_log_func(LOG_CRIT, __func__, "Out of memory allocating stream");
@@ -4114,6 +4112,14 @@ check_strm_valid(unsigned int src_sd, tpp_addr_t *dest_addr, int dest_sd)
 	}
 
 	strm = strmarray[src_sd].strm;
+
+	if (strm->t_state != TPP_TRNS_STATE_OPEN) {
+		snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Data to sd=%u whose transport is not open (t_state=%d)",
+				 src_sd, strm->t_state);
+		send_app_strm_close(strm, TPP_CMD_NET_CLOSE, 0);
+		return NULL;
+	}
+
 	if ((strm->dest_sd != UNINITIALIZED_INT && strm->dest_sd != dest_sd) ||
 			memcmp(&strm->dest_addr, dest_addr, sizeof(tpp_addr_t)) != 0) {
 		snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Data to sd=%u mismatch dest info in stream", src_sd);
@@ -4575,8 +4581,11 @@ leaf_close_handler(int tfd, int error, void *c)
 			} else {
 				tpp_lock(&strmarray_lock);
 				for (i = 0; i < max_strms; i++) {
-					if (strmarray[i].slot_state == TPP_SLOT_BUSY)
+					if (strmarray[i].slot_state == TPP_SLOT_BUSY) {
 						strmarray[i].strm->t_state = TPP_TRNS_STATE_NET_CLOSED;
+						TPP_DBPRT(("net down, sending TPP_CMD_NET_CLOSE sd=%d", strmarray[i].strm->sd));
+						send_app_strm_close(strmarray[i].strm, TPP_CMD_NET_CLOSE, 0);
+					}
 				}
 				tpp_unlock(&strmarray_lock);
 				if (tpp_mbox_post(&app_mbox, UNINITIALIZED_INT, TPP_CMD_NET_DOWN, NULL) != 0) {
