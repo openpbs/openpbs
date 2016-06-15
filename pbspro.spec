@@ -50,6 +50,9 @@ Name: %{pbs_name}
 Version: %{pbs_version}
 Release: %{pbs_release}
 Source0: %{pbs_dist}
+%if %{defined suse_version}
+Source1: %{name}-rpmlintrc
+%endif
 Summary: PBS Professional
 License: AGPLv3 with exceptions
 URL: http://www.pbspro.com
@@ -89,6 +92,8 @@ BuildRequires: libXft-devel
 BuildRequires: fontconfig
 BuildRequires: timezone
 BuildRequires: python-xml
+# FIXME: The SuSE post build checks should not be ignored
+BuildRequires: -post-build-checks
 %else
 BuildRequires: expat-devel
 BuildRequires: openssl-devel
@@ -190,10 +195,6 @@ HPC clusters, clouds and supercomputers.
 
 This package is intended for a client host and provides
 the PBS Professional user commands.
-
-%if %{defined suse_version}
-%debug_package
-%endif
 
 %prep
 %setup
