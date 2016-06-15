@@ -5022,7 +5022,7 @@ is_vnode_prov_done(char * vnode)
 	remove_prov_record(pnode->nd_name);
 	prov_track_save(); /* save tracking table since its modified now */
 
-	free(prov_vnode_info);
+	free_pvnfo(prov_vnode_info);
 
 	/*
 	 * since one provisioning was finished, we have space
@@ -5965,14 +5965,14 @@ check_and_enqueue_provisioning(job *pjob, int *need_prov)
 		 */
 		if ((prov_vnode_info->pvnfo_vnode = strdup(prov_vnode_list[i])) == NULL) {
 			free(prov_vnode_list);
-			free(prov_vnode_info);
+			free_pvnfo(prov_vnode_info);
 			if (aoe_req)
 				free(aoe_req);
 			return PBSE_SYSTEM;
 		}
 		if ((prov_vnode_info->pvnfo_aoe_req = strdup(aoe_req)) == NULL) {
-			free(prov_vnode_info->pvnfo_vnode);
 			free(prov_vnode_list);
+			free_pvnfo(prov_vnode_info);
 			free(prov_vnode_info);
 			if (aoe_req)
 				free(aoe_req);
