@@ -43,5 +43,7 @@ EXTRA_DIST = \
 	INSTALL \
 	LICENSE \
 	README \
-	autogen.sh
+	autogen.sh \
+	pbspro-rpmlintrc \
+	pbspro.spec
 
