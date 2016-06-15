@@ -1133,7 +1133,6 @@ create_placement_sets(status *policy, server_info *sinfo)
 {
 	int i;
 	int is_success = 1;
-	node_info **ngroup_nodes;
 	char *resstr[] = {"host", NULL};
 	int num;
 
@@ -1184,19 +1183,26 @@ create_placement_sets(status *policy, server_info *sinfo)
 	}
 
 	for (i = 0; sinfo->queues[i] != NULL; i++) {
+		node_info **ngroup_nodes;
+		char **ngkey;
 		queue_info *qinfo = sinfo->queues[i];
 
 		if (qinfo->has_nodes)
 			qinfo->allpart = create_specific_nodepart(policy, "all", qinfo->nodes);
 
-		if (sinfo->node_group_enable && qinfo->node_group_key !=NULL) {
+		if (sinfo->node_group_enable && (qinfo->has_nodes || qinfo->node_group_key)) {
 			if (qinfo->has_nodes)
 				ngroup_nodes = qinfo->nodes;
 			else
 				ngroup_nodes = sinfo->unassoc_nodes;
+			
+			if(qinfo->node_group_key)
+				ngkey = qinfo->node_group_key;
+			else
+				ngkey = sinfo->node_group_key;
 
 			qinfo->nodepart = create_node_partitions(policy, ngroup_nodes,
-				qinfo->node_group_key, NP_CREATE_REST, &(qinfo->num_parts));
+				ngkey, NP_CREATE_REST, &(qinfo->num_parts));
 			if (qinfo->nodepart != NULL) {
 				qsort(qinfo->nodepart, qinfo->num_parts,
 					sizeof(node_partition *), cmp_placement_sets);
