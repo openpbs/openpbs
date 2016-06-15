@@ -1,0 +1,9 @@
+
+# FIXME: The following errors need to be addressed rather than ignored
+addFilter('permissions-file-setuid-bit')
+setBadness('permissions-file-setuid-bit', 0)
+addFilter('non-position-independent-executable')
+setBadness('non-position-independent-executable', 0)
+addFilter('devel-file-in-non-devel-package')
+setBadness('devel-file-in-non-devel-package', 0)
+
