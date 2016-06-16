@@ -1129,23 +1129,24 @@ cmp_sort(const void *v1, const void *v2)
 		cmp = cmp_job_preemption_time_asc(&r1, &r2);
 		if (cmp != 0)
 			return cmp;
-
+#ifndef NAS /* localmod 041 */
 		if (r1->is_job && r1->server->policy->help_starving_jobs) {
 			cmp = cmp_starving_jobs(&r1, &r2);
 			if (cmp != 0)
 				return cmp;
 		}
-
+#endif /* localmod 041 */
 		/* sort on the basis of job sort formula */
 		cmp = cmp_job_sort_formula(&r1, &r2);
 		if (cmp != 0)
 			return cmp;
-
+#ifndef NAS /* localmod 041 */
 		if (r1->server->policy->fair_share) {
 			cmp = cmp_fairshare(&r1, &r2);
 			if (cmp != 0)
 				return cmp;
 		}
+#endif /* localmod 041 */
 
 		/* normal resource based sort */
 		cmp = multi_sort(r1, r2);

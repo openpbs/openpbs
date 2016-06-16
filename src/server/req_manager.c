@@ -4596,8 +4596,21 @@ node_current_aoe_action(attribute *new, void *pobj, int act)
 		return PBSE_NODEPROV_NOACTION;
 
 	/* check if value being set is available in resources_available.aoe */
+#ifdef NAS /* localmod 148 */
+	if (check_req_aoe_available(pnode, new->at_val.at_str) != 0) {
+		if (pnode->nd_name != NULL) {
+			sprintf(log_buffer, "node \"%s\" would have received PBSE_NODE_BAD_CURRENT_AOE, but localmod 148 avoided this", pnode->nd_name);
+		} else {
+			sprintf(log_buffer, "unknown node would have received PBSE_NODE_BAD_CURRENT_AOE");
+		}
+
+		log_err(-1, "node_current_aoe_action", log_buffer);
+	}
+#else
 	if (check_req_aoe_available(pnode, new->at_val.at_str) != 0)
 		return PBSE_NODE_BAD_CURRENT_AOE;
+#endif /* localmod 148 */
+
 
 	return PBSE_NONE;
 }

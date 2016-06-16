@@ -285,6 +285,11 @@ unsigned long	QA_testing = 0;
 unsigned long	spoolsize = 0; /* default spoolsize = unlimited */
 #endif /* localmod 015 */
 
+#ifdef NAS /* localmod 153 */
+static  char    quiesce_mom_flag_file[_POSIX_PATH_MAX] = "/PBS/flags/quiesce_mom";
+int             mom_should_quiesce = 0;
+#endif /* localmod 153 */
+
 #ifdef NAS_UNKILL /* localmod 011 */
 #define KP_WAIT_TIME	60		/* number of seconds to wait for kill
 					   to do its deed before declaring the
@@ -9579,6 +9584,17 @@ main(int argc, char *argv[])
 			/* send updated resource usage info to server */
 			update_jobs_status();
 		}
+#ifdef NAS /* localmod 153 */
+		int rc_qflag = access(quiesce_mom_flag_file, F_OK);
+
+		if (rc_qflag != 0 && mom_should_quiesce != 0) {
+			log_event(PBSEVENT_SYSTEM, 0, LOG_NOTICE, id, "mom is no longer quiesced");
+			mom_should_quiesce = 0;
+		} else if (rc_qflag == 0 && mom_should_quiesce == 0) {
+			log_event(PBSEVENT_SYSTEM, 0, LOG_NOTICE, id, "mom will now quiesce");
+			mom_should_quiesce = 1;
+		}
+#endif /* localmod 153 */
 
 		if (mom_recvd_ip_cluster_addrs) {
 			int num;
@@ -9587,6 +9603,11 @@ main(int argc, char *argv[])
 			/* check on over limit condition for polled jobs */
 			for (pjob = (job *)GET_NEXT(mom_polljobs); pjob;
 				pjob = (job *)GET_NEXT(pjob->ji_jobque)) {
+#ifdef NAS /* localmod 153 */
+				if (mom_should_quiesce) {
+					break;
+				}
+#endif /* localmod 153 */
 				if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING)
 					continue;
 				/*

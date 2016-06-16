@@ -1,6 +1,9 @@
 /*
  * site_data.h - Site additions to scheduler data types
+ * $Id: site_data.h,v 1.8 2016/02/26 17:38:56 dtalcott Exp $
  */
+
+#ifdef NAS
 
 typedef sh_amt	sh_amt_array[J_TYPE_COUNT];
 
@@ -25,6 +28,10 @@ struct share_info
 	regex_t pattern;		/* name compiled into a regex */
 	double		ratio;		/* current use / allocation */
 	double		ratio_bak;	/* backup copy of ratio */
+	/* localmod 154 */
+	double		ratio_max;	/* max ratio seen during calendaring */
+	double		tj_cpu_cost;	/* how much CPU time has been consumed
+					 * putting top jobs on calendar */
 	sh_amt	*share_gross;		/* group's gross share, if specified */
 	sh_amt	*share_net;		/* gross minus children's gross */
 	sh_amt	*share_ncpus;		/* share, as CPU count */
@@ -50,3 +57,5 @@ struct site_user_info {
 	sch_resource_t	saved_cup;	/* Saved current_use_pqt */
 	char		user_name[1];	/* Dummy length */
 };
+
+#endif /* NAS */

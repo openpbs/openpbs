@@ -175,11 +175,7 @@ int run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int throughput, sc
  *	should_backfill_with_job - should we call add_job_to_calendar() with job
  *	returns 1: we should backfill 0: we should not
  */
-#ifdef NAS /* localmod 065 */
-int should_backfill_with_job(status *policy, server_info *sinfo, resource_resv *resresv, int num_topjobs, schd_error *err);
-#else
 int should_backfill_with_job(status *policy, server_info *sinfo, resource_resv *resresv, int num_topjobs);
-#endif /* localmod 065 */
 
 /*
  *

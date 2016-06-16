@@ -356,8 +356,6 @@ struct server_info
 	node_info **nodes_by_NASrank;	/* nodes indexed by NASrank */
 	/* localmod 034 */
 	share_head *share_head;	/* root of share info */
-	resource_resv **preempting_jobs;
-	resource_resv **starving_jobs;
 #endif
 };
 

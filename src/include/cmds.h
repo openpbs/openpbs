@@ -61,11 +61,7 @@
 #define notNULL(x)	(((x)!=NULL) && (strlen(x)>(size_t)0))
 #define NULLstr(x)	(((x)==NULL) || (strlen(x)==0))
 
-#ifdef NAS /* localmod 081 */
-#define MAX_LINE_LEN 20480
-#else
 #define MAX_LINE_LEN 4095
-#endif /* localmod 081 */
 #define MAXSERVERNAME PBS_MAXSERVERNAME+PBS_MAXPORTNUM+2
 #define PBS_DEPEND_LEN 2040
 

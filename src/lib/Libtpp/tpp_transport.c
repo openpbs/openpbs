@@ -103,15 +103,52 @@ typedef struct {
 typedef struct {
 	int thrd_index;			  /* thread index for debugging */
 	pthread_t worker_thrd_id; /* Thread id of this thread */
-	int listen_fd;            /* If this is the thread that is also doing
-				   * the listening, then the listening socket
-				   * descriptor
-				   */
+	int listen_fd;		/* If this is the thread that is also doing
+				 * the listening, then the listening socket
+				 * descriptor
+				 */
+#ifdef NAS /* localmod 149 */
+	int nas_tpp_log_enabled;	/* controls the printing of statistics
+					 * to the log
+					 */
+	int NAS_TPP_LOG_PERIOD_A;	/* this should be the shortest of the
+					 * logging periods, as it is also the
+					 * frequency with which we check if
+					 * statistics should be printed
+					 */
+	int NAS_TPP_LOG_PERIOD_B;
+	int NAS_TPP_LOG_PERIOD_C;
+	time_t nas_last_time_A;
+	double nas_kb_sent_A;
+	int nas_num_lrg_sends_A;
+	int nas_num_qual_lrg_sends_A;
+	int nas_max_bytes_lrg_send_A;
+	int nas_min_bytes_lrg_send_A;
+	double nas_lrg_send_sum_kb_A;
+	time_t nas_last_time_B;
+	double nas_kb_sent_B;
+	int nas_num_lrg_sends_B;
+	int nas_num_qual_lrg_sends_B;
+	int nas_max_bytes_lrg_send_B;
+	int nas_min_bytes_lrg_send_B;
+	double nas_lrg_send_sum_kb_B;
+	time_t nas_last_time_C;
+	double nas_kb_sent_C;
+	int nas_num_lrg_sends_C;
+	int nas_num_qual_lrg_sends_C;
+	int nas_max_bytes_lrg_send_C;
+	int nas_min_bytes_lrg_send_C;
+	double nas_lrg_send_sum_kb_C;
+#endif /* localmod 149 */
 	void *em_context;         /* the em context */
 	tpp_que_t lazy_conn_que;  /* The delayed connection queue on this thread */
 	tpp_que_t close_conn_que;  /* The closed connection queue on this thread */
 	tpp_mbox_t mbox;     /* message box for this thread */
 } thrd_data_t;
+
+#ifdef NAS /* localmod 149 */
+static  char tpp_instr_flag_file[_POSIX_PATH_MAX] = "/PBS/flags/tpp_instrumentation";
+#endif /* localmod 149 */
 
 static thrd_data_t **thrd_pool; /* array of threads - holds the thread pool */
 static int num_threads;       /* number of threads in the thread pool */
@@ -494,6 +531,34 @@ tpp_transport_init(struct tpp_config *conf)
 			return -1;
 		}
 		tpp_invalidate_thrd_handle(&(thrd_pool[i]->worker_thrd_id));
+#ifdef NAS /* localmod 149 */
+		thrd_pool[i]->nas_tpp_log_enabled = 0;
+		thrd_pool[i]->NAS_TPP_LOG_PERIOD_A = 60;
+		thrd_pool[i]->NAS_TPP_LOG_PERIOD_B = 300;
+		thrd_pool[i]->NAS_TPP_LOG_PERIOD_C = 600;
+		thrd_pool[i]->nas_last_time_A = time(0);
+		thrd_pool[i]->nas_kb_sent_A = 0.0;
+		thrd_pool[i]->nas_num_lrg_sends_A = 0;
+		thrd_pool[i]->nas_num_qual_lrg_sends_A = 0;
+		thrd_pool[i]->nas_max_bytes_lrg_send_A = 0;
+		thrd_pool[i]->nas_min_bytes_lrg_send_A = INT_MAX - 1;
+		thrd_pool[i]->nas_lrg_send_sum_kb_A = 0.0;
+		thrd_pool[i]->nas_last_time_B = time(0);
+		thrd_pool[i]->nas_kb_sent_B = 0.0;
+		thrd_pool[i]->nas_num_lrg_sends_B = 0;
+		thrd_pool[i]->nas_num_qual_lrg_sends_B = 0;
+		thrd_pool[i]->nas_max_bytes_lrg_send_B = 0;
+		thrd_pool[i]->nas_min_bytes_lrg_send_B = INT_MAX - 1;
+		thrd_pool[i]->nas_lrg_send_sum_kb_B = 0.0;
+		thrd_pool[i]->nas_last_time_C = time(0);
+		thrd_pool[i]->nas_kb_sent_C = 0.0;
+		thrd_pool[i]->nas_num_lrg_sends_C = 0;
+		thrd_pool[i]->nas_num_qual_lrg_sends_C = 0;
+		thrd_pool[i]->nas_max_bytes_lrg_send_C = 0;
+		thrd_pool[i]->nas_min_bytes_lrg_send_C = INT_MAX - 1;
+		thrd_pool[i]->nas_lrg_send_sum_kb_C = 0.0;
+#endif /* localmod 149 */
+
 		thrd_pool[i]->listen_fd = -1;
 		TPP_QUE_CLEAR(&thrd_pool[i]->lazy_conn_que);
 		TPP_QUE_CLEAR(&thrd_pool[i]->close_conn_que);
@@ -1983,6 +2048,11 @@ send_data(phy_conn_t *conn)
 	int rc;
 	int can_send_more;
 	tpp_que_elem_t *n;
+#ifdef NAS /* localmod 149 */
+	time_t curr;
+	int rc_iflag;
+#endif /* localmod 149 */
+
 
 	/*
 	 * if a socket is still connecting, we will wait to send out data,
@@ -2016,6 +2086,156 @@ send_data(phy_conn_t *conn)
 
 		while (tosend > 0) {
 			rc = tpp_sock_send(conn->sock_fd, p->pos, tosend, 0);
+#ifdef NAS /* localmod 149 */
+			if (rc > 0) {
+				curr = time(0);
+
+				conn->td->nas_kb_sent_A += ((double) rc) / 1024.0;
+				conn->td->nas_kb_sent_B += ((double) rc) / 1024.0;
+				conn->td->nas_kb_sent_C += ((double) rc) / 1024.0;
+
+				if (tosend > TPP_SCRATCHSIZE) {
+					conn->td->nas_num_lrg_sends_A++;
+					conn->td->nas_lrg_send_sum_kb_A += ((double) tosend) / 1024.0;
+
+					if (rc != tosend) {
+						conn->td->nas_num_qual_lrg_sends_A++;
+					}
+
+					if (tosend > conn->td->nas_max_bytes_lrg_send_A) {
+						conn->td->nas_max_bytes_lrg_send_A = tosend;
+					}
+
+					if (tosend < conn->td->nas_min_bytes_lrg_send_A) {
+						conn->td->nas_min_bytes_lrg_send_A = tosend;
+					}
+
+
+
+					conn->td->nas_num_lrg_sends_B++;
+					conn->td->nas_lrg_send_sum_kb_B += ((double) tosend) / 1024.0;
+
+					if (rc != tosend) {
+						conn->td->nas_num_qual_lrg_sends_B++;
+					}
+
+					if (tosend > conn->td->nas_max_bytes_lrg_send_B) {
+						conn->td->nas_max_bytes_lrg_send_B = tosend;
+					}
+
+					if (tosend < conn->td->nas_min_bytes_lrg_send_B) {
+						conn->td->nas_min_bytes_lrg_send_B = tosend;
+					}
+
+
+
+					conn->td->nas_num_lrg_sends_C++;
+					conn->td->nas_lrg_send_sum_kb_C += ((double) tosend) / 1024.0;
+
+					if (rc != tosend) {
+						conn->td->nas_num_qual_lrg_sends_C++;
+					}
+
+					if (tosend > conn->td->nas_max_bytes_lrg_send_C) {
+						conn->td->nas_max_bytes_lrg_send_C = tosend;
+					}
+
+					if (tosend < conn->td->nas_min_bytes_lrg_send_C) {
+						conn->td->nas_min_bytes_lrg_send_C = tosend;
+					}
+				}
+
+				if (curr > (conn->td->nas_last_time_A + conn->td->NAS_TPP_LOG_PERIOD_A)) {
+					rc_iflag = access(tpp_instr_flag_file, F_OK);
+					if (rc_iflag != 0) {
+						conn->td->nas_tpp_log_enabled = 0;
+					} else {
+						conn->td->nas_tpp_log_enabled = 1;
+					}
+
+					if (conn->td->nas_tpp_log_enabled) {
+						snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ,
+							 "tpp_instr period_A %d last %d secs (mb=%.3f, mb/min=%.3f) lrg send over %d (sends=%d, qualified=%d, minbytes=%d, maxbytes=%d, avgkb=%.1f)",
+							 conn->td->NAS_TPP_LOG_PERIOD_A,
+							 (int) (curr - conn->td->nas_last_time_A),
+							 conn->td->nas_kb_sent_A / 1024.0,
+							 (conn->td->nas_kb_sent_A / 1024.0) / (((double) (curr - conn->td->nas_last_time_A)) / 60.0),
+							 TPP_SCRATCHSIZE,
+							 conn->td->nas_num_lrg_sends_A,
+							 conn->td->nas_num_qual_lrg_sends_A,
+							 conn->td->nas_num_lrg_sends_A > 0 ? conn->td->nas_min_bytes_lrg_send_A : 0,
+							 conn->td->nas_max_bytes_lrg_send_A,
+							 conn->td->nas_num_lrg_sends_A > 0 ? conn->td->nas_lrg_send_sum_kb_A / ((double) conn->td->nas_num_lrg_sends_A) : 0.0);
+						tpp_log_func(LOG_ERR, __func__, tpp_get_logbuf());
+					}
+
+					conn->td->nas_last_time_A = curr;
+					conn->td->nas_kb_sent_A = 0.0;
+					conn->td->nas_num_lrg_sends_A = 0;
+					conn->td->nas_num_qual_lrg_sends_A = 0;
+					conn->td->nas_max_bytes_lrg_send_A = 0;
+					conn->td->nas_min_bytes_lrg_send_A = INT_MAX - 1;
+					conn->td->nas_lrg_send_sum_kb_A = 0.0;
+				}
+
+				if (curr > (conn->td->nas_last_time_B + conn->td->NAS_TPP_LOG_PERIOD_B)) {
+					if (conn->td->nas_tpp_log_enabled) {
+						snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ,
+							 "tpp_instr period_B %d last %d secs (mb=%.3f, mb/min=%.3f) lrg send over %d (sends=%d, qualified=%d, minbytes=%d, maxbytes=%d, avgkb=%.1f)",
+							 conn->td->NAS_TPP_LOG_PERIOD_B,
+							 (int) (curr - conn->td->nas_last_time_B),
+							 conn->td->nas_kb_sent_B / 1024.0,
+							 (conn->td->nas_kb_sent_B / 1024.0) / (((double) (curr - conn->td->nas_last_time_B)) / 60.0),
+							 TPP_SCRATCHSIZE,
+							 conn->td->nas_num_lrg_sends_B,
+							 conn->td->nas_num_qual_lrg_sends_B,
+							 conn->td->nas_num_lrg_sends_B > 0 ? conn->td->nas_min_bytes_lrg_send_B : 0,
+							 conn->td->nas_max_bytes_lrg_send_B,
+							 conn->td->nas_num_lrg_sends_B > 0 ? conn->td->nas_lrg_send_sum_kb_B / ((double) conn->td->nas_num_lrg_sends_B) : 0.0);
+						tpp_log_func(LOG_ERR, __func__, tpp_get_logbuf());
+					}
+
+					conn->td->nas_last_time_B = curr;
+					conn->td->nas_kb_sent_B = 0.0;
+					conn->td->nas_num_lrg_sends_B = 0;
+					conn->td->nas_num_qual_lrg_sends_B = 0;
+					conn->td->nas_max_bytes_lrg_send_B = 0;
+					conn->td->nas_min_bytes_lrg_send_B = INT_MAX - 1;
+					conn->td->nas_lrg_send_sum_kb_B = 0.0;
+				}
+
+				if (curr > (conn->td->nas_last_time_C + conn->td->NAS_TPP_LOG_PERIOD_C)) {
+					if (conn->td->nas_tpp_log_enabled) {
+						snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ,
+							 "tpp_instr period_C %d last %d secs (mb=%.3f, mb/
+							 min = % .3f) lrg send over % d(sends = % d, qualified = % d, minbytes = % d, maxbytes = % d, avgkb = % .1f)",
+							conn->td->NAS_TPP_LOG_PERIOD_C,
+							(int) (curr - conn->td->nas_last_time_C),
+							conn->td->nas_kb_sent_C / 1024.0,
+							(conn->td->nas_kb_sent_C / 1024.0) / (((double) (
+							curr - conn->td->nas_last_time_C)) / 60.0),
+							TPP_SCRATCHSIZE,
+							conn->td->nas_num_lrg_sends_C,
+							conn->td->nas_num_qual_lrg_sends_C,
+							conn->td->nas_num_lrg_sends_C > 0 ? conn->td->nas
+							_min_bytes_lrg_send_C : 0,
+							conn->td->nas_max_bytes_lrg_send_C,
+							conn->td->nas_num_lrg_sends_C > 0 ? conn->td->nas
+							_lrg_send_sum_kb_C / ((double) conn->td->nas_num_lrg_sends_C) : 0.0);
+						tpp_log_func(LOG_ERR, __func__, tpp_get_logbuf());
+					}
+
+					conn->td->nas_last_time_C = curr;
+					conn->td->nas_kb_sent_C = 0.0;
+					conn->td->nas_num_lrg_sends_C = 0;
+					conn->td->nas_num_qual_lrg_sends_C = 0;
+					conn->td->nas_max_bytes_lrg_send_C = 0;
+					conn->td->nas_min_bytes_lrg_send_C = INT_MAX - 1;
+					conn->td->nas_lrg_send_sum_kb_C = 0.0;
+				}
+			}
+#endif /* localmod 149 */
+
 			if (rc < 0) {
 				if (errno == EWOULDBLOCK || errno == EAGAIN) {
 					/* set this socket in POLLOUT */
