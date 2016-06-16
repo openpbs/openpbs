@@ -1262,7 +1262,9 @@ initialize(void)
 		char	*exclhost = none;
 		enum vnode_sharing	shareval;
 
-		if (host == NULL)	/* use mom host by default */
+		if (host == NULL)
+			/* mom_host and mom_short_name are different!! */
+			/* use mom short name by default */
 			host = mom_short_name;
 
 		share = attr_exist(vnrlp, "sharing");
@@ -8477,24 +8479,63 @@ main(int argc, char *argv[])
 			LOG_WARNING, msg_daemonname, winlog_buffer);
 	}
 #endif
-	/* setup short and Fully Qualified host name */
-	if ((c = gethostname(mom_host, (sizeof(mom_host) - 1))) == 0) {
-		(void)strcpy(mom_short_name, mom_host);
-		if ((ptr = strchr(mom_short_name, (int)'.')) != NULL)
-			*ptr = '\0';  /* terminate shortname at first dot */
-		c = get_fullhostname(mom_host, mom_host, (sizeof(mom_host) - 1));
+	/*
+	 * Set mom_host to PBS_MOM_NODE_NAME if it is defined.
+	 * Otherwise, set mom_host with a call to gethostname().
+	 */
+	c = 0;
+	if (pbs_conf.pbs_mom_node_name) {
+		/* Hostname was defined by PBS_MOM_NODE_NAME */
+		(void)strncpy(mom_host, pbs_conf.pbs_mom_node_name, (sizeof(mom_host) - 1));
+		mom_host[(sizeof(mom_host) - 1)] = '\0';
+		ptr = mom_host;
+		/* First character must be a dash or alpha-numeric */
+		if ((*ptr == '-') || isalnum((int)*ptr)) {
+			/* Subsequent characters may also be dots */
+			for (ptr++; (c == 0) && (*ptr != '\0'); ptr++) {
+				if (*ptr == '.') {
+					/* Disallow two dots in a row or a trailing dot */
+					if (*(ptr+1) == '.' || *(ptr+1) == '\0')
+						c = -1;
+				} else if ((*ptr != '-') && !isalnum((int)*ptr)) {
+					c = -1;
+				}
+			}
+		} else {
+			c = -1;
+		}
+	} else {
+		/* Query the hostname. */
+		c = gethostname(mom_host, (sizeof(mom_host) - 1));
 	}
+	if (c != 0) {
+		log_err(-1, msg_daemonname, "Unable to obtain my host name");
+		return (-1);
+	}
+	(void)strncpy(mom_short_name, mom_host, (sizeof(mom_short_name) - 1));
+	mom_short_name[(sizeof(mom_short_name) - 1)] = '\0';
+	if ((ptr = strchr(mom_short_name, (int)'.')) != NULL)
+		*ptr = '\0';  /* terminate shortname at first dot */
+
+	/*
+	 * Now get mom_host, which determines resources_available.host
+	 * and also the interface used to register to pbs_comm if
+	 * PBS_LEAF_NAME is unset. Note that mom_host will be overridden
+	 * by PBS_LEAF_NAME later on if TPP is enabled (search
+	 * pbs_conf.pbs_leaf_name to find code section).
+	 */
+	c = get_fullhostname(mom_host, mom_host, (sizeof(mom_host) - 1));
 	if (c == -1) {
-		log_err(-1, msg_daemonname, "Unable to get my host name");
+		log_err(-1, msg_daemonname, "Unable to resolve my host name");
 #ifdef	WIN32
 		g_dwCurrentState = SERVICE_STOPPED;
 		ss.dwCurrentState = g_dwCurrentState;
 		ss.dwWin32ExitCode = ERROR_INVALID_COMPUTERNAME;
-		if (g_ssHandle != 0) SetServiceStatus(g_ssHandle, &ss);
+		if (g_ssHandle != 0)
+			SetServiceStatus(g_ssHandle, &ss);
 #endif
-			return (-1);
+		return (-1);
 	}
-
 
 	lockfds = open("mom.lock", O_CREAT | O_WRONLY, pmode);
 	if (lockfds < 0) {

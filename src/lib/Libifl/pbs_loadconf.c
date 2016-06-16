@@ -118,8 +118,9 @@ struct pbs_config pbs_conf = {
 	NULL,					/* for router, default communication routers list */
 	0,					/* default comm logevent mask */
 	4,					/* default number of threads */
+	NULL					/* mom short name override */
 #ifdef WIN32
-	NULL					/* remote viewer launcher executable alongwith launch options */
+	,NULL					/* remote viewer launcher executable alongwith launch options */
 #endif
 };
 
@@ -556,6 +557,10 @@ pbs_loadconf(int reload)
 				if (sscanf(conf_value, "%u", &uvalue) == 1)
 					pbs_conf.sched_modify_event = ((uvalue > 0) ? 1 : 0);
 			}
+			else if (!strcmp(conf_name, PBS_CONF_MOM_NODE_NAME)) {
+				free(pbs_conf.pbs_mom_node_name);
+				pbs_conf.pbs_mom_node_name = strdup(conf_value);
+			}
 #ifdef WIN32
 			else if (!strcmp(conf_name, PBS_CONF_REMOTE_VIEWER)) {
 				free(pbs_conf.pbs_conf_remote_viewer);
@@ -751,24 +756,30 @@ pbs_loadconf(int reload)
 				((uvalue <= 65535) ? uvalue : pbs_conf.pbs_data_service_port);
 	}
 	if ((gvalue = getenv(PBS_CONF_SERVER_HOST_NAME)) != NULL) {
-			free(pbs_conf.pbs_server_host_name);
-			pbs_conf.pbs_server_host_name = strdup(gvalue);
+		free(pbs_conf.pbs_server_host_name);
+		pbs_conf.pbs_server_host_name = strdup(gvalue);
 	}
 	if ((gvalue = getenv(PBS_CONF_PUBLIC_HOST_NAME)) != NULL) {
-			free(pbs_conf.pbs_public_host_name);
-			pbs_conf.pbs_public_host_name = strdup(gvalue);
+		free(pbs_conf.pbs_public_host_name);
+		pbs_conf.pbs_public_host_name = strdup(gvalue);
 	}
 	if ((gvalue = getenv(PBS_CONF_MAIL_HOST_NAME)) != NULL) {
-			free(pbs_conf.pbs_mail_host_name);
-			pbs_conf.pbs_mail_host_name = strdup(gvalue);
+		free(pbs_conf.pbs_mail_host_name);
+		pbs_conf.pbs_mail_host_name = strdup(gvalue);
 	}
 	if ((gvalue = getenv(PBS_CONF_SMTP_SERVER_NAME)) != NULL) {
-			free(pbs_conf.pbs_smtp_server_name);
-			pbs_conf.pbs_smtp_server_name = strdup(gvalue);
+		free(pbs_conf.pbs_smtp_server_name);
+		pbs_conf.pbs_smtp_server_name = strdup(gvalue);
 	}
 	if ((gvalue = getenv(PBS_CONF_OUTPUT_HOST_NAME)) != NULL) {
-			free(pbs_conf.pbs_output_host_name);
-			pbs_conf.pbs_output_host_name = strdup(gvalue);
+		free(pbs_conf.pbs_output_host_name);
+		pbs_conf.pbs_output_host_name = strdup(gvalue);
+	}
+
+	/* support PBS_MOM_NODE_NAME to tell MOM natural node name on server */
+	if ((gvalue = getenv(PBS_CONF_MOM_NODE_NAME)) != NULL) {
+		free(pbs_conf.pbs_mom_node_name);
+		pbs_conf.pbs_mom_node_name = strdup(gvalue);
 	}
 
 	/* rcp_path is inferred from pbs_conf.pbs_exec_path - see below */
@@ -826,6 +837,10 @@ pbs_loadconf(int reload)
 	else if ((pbs_conf.pbs_output_host_name != NULL) &&
 			(strchr(pbs_conf.pbs_output_host_name, ':') != NULL))
 		strcpy(buf, PBS_CONF_OUTPUT_HOST_NAME);
+	else if ((pbs_conf.pbs_mom_node_name != NULL) &&
+			(strchr(pbs_conf.pbs_mom_node_name, ':') != NULL))
+		strcpy(buf, PBS_CONF_MOM_NODE_NAME);
+
 	if (buf[0] != '\0') {
 		fprintf(stderr, "pbsconf error: illegal value for: %s\n", buf);
 		goto err;

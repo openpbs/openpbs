@@ -4289,6 +4289,9 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 
 					if (strcmp(hp->hn_host, mom_host) == 0) {
 						hostmatch = 1;
+					} else if (pbs_conf.pbs_mom_node_name &&
+							(strcmp(hp->hn_host, pbs_conf.pbs_mom_node_name) == 0)) {
+						hostmatch = 1;
 					} else {
 						char namebuf[PBS_MAXHOSTNAME + 1];
 
