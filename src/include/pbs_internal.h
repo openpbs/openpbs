@@ -221,6 +221,7 @@ struct pbs_config
 	char *pbs_comm_routers;		/* for this router, the optional list of other routers to talk to */
 	long  pbs_comm_log_events;      /* log_events for pbs_comm process, default 0 */
 	unsigned int pbs_comm_threads;	/* number of threads for router, default 4 */
+	char *pbs_mom_node_name;	/* mom short name used for natural node, default NULL */
 #ifdef WIN32
 	char *pbs_conf_remote_viewer; /* Remote viewer client executable for PBS GUI jobs, alongwith launch options */
 #endif
@@ -282,6 +283,7 @@ extern struct pbs_config pbs_conf;
 #define	PBS_CONF_LICENSE_STRING	"PBS_LICENSE_FILE_LOCATION"	/* LM-X recovery hook */
 #define PBS_CONF_AUTH           "PBS_AUTH_METHOD"
 #define PBS_CONF_SCHEDULER_MODIFY_EVENT	"PBS_SCHEDULER_MODIFY_EVENT"
+#define PBS_CONF_MOM_NODE_NAME	"PBS_MOM_NODE_NAME"
 #ifdef WIN32
 #define PBS_CONF_REMOTE_VIEWER "PBS_REMOTE_VIEWER"	/* Executable for remote viewer application alongwith its launch options, for PBS GUI jobs */
 #endif
