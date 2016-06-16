@@ -848,23 +848,23 @@ stage_file(int dir, int	rmtflag, char *owner, struct rqfpair *pair, int conn, cp
 		}
 		strcat(source, pair->fp_local);
 #ifdef NAS /* localmod 118 */
-                /* *** SOG ***
-                 * Staging out. Check to see if file is being staged out from spool directory (i.e., is stdout or stderr). If so,
-                 * skip file if it doesn't exist in the spool directory, since it may have been directly written. Allow any other errors
-                 * to be caught by the staging process. This is a little kludgy, but is necessary to prevent issuing of spurious
-                 * "file previously deleted" messages.
-                 */
+		/* *** SOG ***
+		 * Staging out. Check to see if file is being staged out from spool directory (i.e., is stdout or stderr). If so,
+		 * skip file if it doesn't exist in the spool directory, since it may have been directly written. Allow any other errors
+		 * to be caught by the staging process. This is a little kludgy, but is necessary to prevent issuing of spurious
+		 * "file previously deleted" messages.
+		 */
 
-                if (stage_inout->from_spool) {
-                        if (stat(source, &statbuf) == -1) {
-                                if (errno == ENOENT) {
-                                        sprintf(log_buffer, "Skipping directly written/absent spool file %s", source);
-                                        log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_FILE,
-                                                LOG_DEBUG, "stage_file", log_buffer);
-                                        return 0;
-                                }
-                        }
-                }
+		if (stage_inout->from_spool) {
+			if (stat(source, &statbuf) == -1) {
+				if (errno == ENOENT) {
+					sprintf(log_buffer, "Skipping directly written/absent spool file %s", source);
+					log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_FILE,
+						  LOG_DEBUG, "stage_file", log_buffer);
+					return 0;
+				}
+			}
+		}
 #endif /* localmod 118 */
 
 	} else {	/* in bound (stage-in) file */

@@ -1,86 +1,10 @@
-/**
- * @file    site_code.c
- *
- * @brief
- * 		site_code.c - Code to implement site-specific scheduler functions
- *
- * Functions included are:
- * 	site_bump_topjobs()
- * 	site_check_cpu_share()
- * 	check_cpu_share()
- * 	site_decode_time()
- * 	site_dup_shares()
- * 	site_dup_share_amts()
- * 	site_find_alloc_share()
- * 	site_free_shares()
- * 	site_get_share()
- * 	site_init_alloc()
- * 	site_is_queue_topjob_set_aside()
- * 	site_is_share_king()
- * 	site_list_shares()
- * 	site_list_jobs()
- * 	site_parse_shares()
- * 	site_pick_next_job()
- * 	site_resort_jobs()
- * 	site_restore_users()
- * 	site_save_users()
- * 	site_set_job_share()
- * 	site_set_NAS_pri()
- * 	site_set_node_share()
- * 	site_set_share_head()
- * 	site_set_share_type()
- * 	site_tidy_server()
- * 	site_update_on_end()
- * 	site_update_on_run()
- * 	site_vnode_inherit()
- * 	site_create_provvnode()
- * 	site_combine_exec_prov_vnode()
- * 	clear_topjob_counts()
- * 	count_cpus()
- * 	count_active_cpus()
- * 	count_demand_cpus()
- * 	count_contrib_cpus()
- * 	dup_shares()
- * 	dup_share_tree()
- * 	find_entity_share()
- * 	find_most_favored_share()
- * 	find_share_class()
- * 	find_share_group()
- * 	find_share_type()
- * 	find_user()
- * 	free_share_head()
- * 	free_share_tree()
- * 	free_users()
- * 	get_share_ratio()
- * 	init_users()
- * 	list_share_info()
- * 	set_share_cpus()
- * 	bump_share_count()
- * 	bump_demand_count()
- * 	zero_share_counts()
- * 	new_share_head()
- * 	new_share_info()
- * 	new_share_info_clone()
- * 	reconcile_shares()
- * 	reconcile_share_tree()
- * 	shr_class_info_by_idx()
- * 	shr_class_info_by_name()
- * 	shr_class_info_by_type_name()
- * 	shr_class_name_by_idx()
- * 	shr_type_info_by_idx()
- * 	shr_type_info_by_name()
- * 	squirrel_shr_head()
- * 	un_squirrel_shr_head()
- * 	squirrel_shr_tree()
- * 	un_squirrel_shr_tree()
- * 	pick_next_job()
- * 	job_filter_hwy149()
- * 	job_filter_dedres()
- * 	job_filter_hwy101()
- * 	job_filter_normal()
- * 	check_for_cycle_interrupt()
- *
+/*
+ *=====================================================================
+ * site_code.c - Code to implement site-specific scheduler functions
+ *=====================================================================
  */
+
+static const char ident[] = "$Id: site_code.c,v 1.56 2016/04/19 00:10:27 dtalcott Exp $";
 
 #include <pbs_config.h>
 
@@ -126,6 +50,7 @@
 #include "site_code.h"
 #include "site_queue.h"
 
+#define TJ_COST_MAX	10.0	/* Max CPU to spend searching for top jobs */
 /* Global NAS variables */
 /* localmod 030 */
 int do_soft_cycle_interrupt;
@@ -226,17 +151,17 @@ static	site_user_info	*users = NULL;
 
 
 
-/**
- * @brief
- * 		site_bump_topjobs(resv) - Increment topjob count for job's share group
- *
- * @param[in]	resv	-	resource_resv for job
- *
- * @return	new value for topjob count
- * @retval	0	: something wrong
+/*
+ *=====================================================================
+ * site_bump_topjobs(resv, delta) - Increment topjob count for job's
+ *	share group
+ * Entry:	resv = resource_resv for job
+ *		delta = CPU time needed to calendar the job
+ * Returns:	new value for topjob count
+ *=====================================================================
  */
 int
-site_bump_topjobs(resource_resv *resv)
+site_bump_topjobs(resource_resv *resv, double delta)
 {
 	job_info*	job;
 	share_info*	si;
@@ -245,23 +170,26 @@ site_bump_topjobs(resource_resv *resv)
 		return 0;
 	if ((si = job->sh_info) == NULL || (si = si->leader) == NULL)
 		return 0;
+	si->tj_cpu_cost += delta;
+#ifdef NAS_DEBUG
+	printf("YYY %s %d %g %g %g\n", si->name, si->topjob_count+1,
+		si->ratio, si->ratio_max, si->tj_cpu_cost);
+	fflush(stdout);
+#endif
 	return ++(si->topjob_count);
 }
 
 
 
-/**
- * @brief
- * 		site_check_cpu_share(sinfo, resv) - Check whether job
- *		would exceed any group CPU allocation.
- *
- * @param[in]	sinfo	-	Server info
- * @param[in]	policy	-	policy in effect at current time
- * @param[in]	resv	-	job/reservation
- *
- * @return	int
- * @retval	0	: if job not blocked
- * @retval	<>0	: if blocked by group CPU allocation
+/*
+ *=====================================================================
+ * site_check_cpu_share(sinfo, resv) - Check whether job
+ *			would exceed any group CPU allocation.
+ * Entry:	sinfo = Server info
+ *		policy = policy in effect at current time
+ *		resv = job/reservation
+ * Returns:	0 if job not blocked
+ *		<> if blocked by group CPU allocation
  *=====================================================================
  */
 int
@@ -326,7 +254,7 @@ site_check_cpu_share(server_info *sinfo, status *policy, resource_resv *resv)
 		if (te_rr == resv)
 			continue;		/* Should not happen */
 		if (te->event_type == TIMED_RUN_EVENT) {
-			site_update_on_run(sinfo, NULL, te_rr, NULL);
+			site_update_on_run(sinfo, NULL, te_rr, 0, NULL);
 			rc = check_cpu_share(sh, resv);
 			if (rc != 0) {
 				rc = BACKFILL_CONFLICT;
@@ -349,18 +277,13 @@ site_check_cpu_share(server_info *sinfo, status *policy, resource_resv *resv)
 
 
 
-/**
- * @brief
- * 		check_cpu_share(sinfo, resv) - Check whether job would exceed CPU
+/*
+ *=====================================================================
+ * check_cpu_share(sinfo, resv) - Check whether job would exceed CPU
  *		shares at this instant in time.
- *
- * @param[in]	sh		-	global share totals
- * @param[in]	resv	-	resource reservation to check
- *
- * @return	int
- * @retval	0	: Assume okay
- * @retval	GROUP_CPU_INSUFFICIENT	: asking > allocated
- * @retval	GROUP_CPU_SHARE	: asking + limited > allocated
+ * Entry:	sh = global share totals
+ *		resv = resource reservation to check
+ *=====================================================================
  */
 static int
 check_cpu_share(share_head *sh, resource_resv *resv)
@@ -386,7 +309,6 @@ check_cpu_share(share_head *sh, resource_resv *resv)
 	 * Precedence of blockages: high to low
 	 * GROUP_CPU_INSUFFICIENT
 	 * GROUP_CPU_SHARE
-	 * BACKFILL_CONFLICT
 	 * none
 	 */
 	for (sh_cls = 0; sh_cls < shr_class_count ; ++sh_cls) {
@@ -437,21 +359,20 @@ check_cpu_share(share_head *sh, resource_resv *resv)
 		/*
 		 * Remember most important limit among shares
 		 */
-		if (rc == 0) rc = rc2;
+		if (rc == 0 || rc2 == GROUP_CPU_INSUFFICIENT) rc = rc2;
 	}
 	return rc;
 }
 
 
 
-/**
- * @brief
- * 		site_decode_time(str) - decode time string
- * 		(Based on decode_time in attr_fn_time.c)
- *
- * @param[in]	str	-	string in hh:mm:ss format
- *
- * @return	value of str in seconds
+/*
+ *=====================================================================
+ * site_decode_time(str) - decode time string
+ * (Based on decode_time in attr_fn_time.c)
+ * Entry:	str = string in hh:mm:ss format
+ * Returns:	value of str in seconds
+ *=====================================================================
  */
 #define PBS_MAX_TIME (LONG_MAX - 1)
 time_t
@@ -508,20 +429,15 @@ site_decode_time(const char *val)
 
 
 
-/**
- * @brief
- * 		site_dup_shares( osinfo, nsinfo ) - Duplicate share info.
- *
- * @param[in]	osinfo	-	ptr to current server info
- * @param[in]	nsinfo 	-	ptr to new server info
- *							jobs[] in nsinfo must be filled in already
- *
- * @return	int
- * @retval	1	: if duped okay
- * @retval	0	: otherwise
- *
- * @note
- * 		Sets		nsinfo->share_head
+/*
+ *=====================================================================
+ * site_dup_shares( osinfo, nsinfo ) - Duplicate share info.
+ * Entry:	osinfo = ptr to current server info
+ *		nsinfo = ptr to new server info
+ *			jobs[] in nsinfo must be filled in already
+ * Returns:	1 if duped okay, else 0
+ * Sets		nsinfo->share_head
+ *=====================================================================
  */
 int
 site_dup_shares(server_info *osinfo, server_info *nsinfo)
@@ -556,14 +472,12 @@ site_dup_shares(server_info *osinfo, server_info *nsinfo)
 
 
 
-/**
- * @brief
- * 		site_dup_share_amts(oldp) - Clone share amount array
- *
- * @param[in]	oldp	-	ptr to existing array
- *
- * @return	ptr to copy of old
- * @retval	NULL	: on error
+/*
+ *=====================================================================
+ * site_dup_share_amts(oldp) - Clone share amount array
+ * Entry:	oldp = ptr to existing array
+ * Returns:	ptr to copy of old
+ *=====================================================================
  */
 sh_amt *
 site_dup_share_amts(sh_amt *oldp)
@@ -583,16 +497,15 @@ site_dup_share_amts(sh_amt *oldp)
 
 
 
-/**
- * @brief
- * 		site_find_alloc_share(sinfo, name) - Find share info, allocating new
+/*
+ *=====================================================================
+ * site_find_alloc_share(sinfo, name) - Find share info, allocating new
  *		entry if needed.
- *
- * @param[in]	sinfo	-	Current server info
- * @param[in]	name	-	Entity to locate share info for.
- *
- * @return	pointer to matching share_info structure,
- * @retval	NULL	: if no match
+ * Entry:	sinfo = Current server info
+ *		name = Entity to locate share info for.
+ * Returns:	pointer to matching share_info structure,
+ *		NULL if no match
+ *=====================================================================
  */
 share_info *
 site_find_alloc_share(server_info *sinfo, char *name)
@@ -635,11 +548,11 @@ site_find_alloc_share(server_info *sinfo, char *name)
 
 
 
-/**
- * @brief
- * 		site_free_shares(sinfo) - Free cloned share info
- *
- * @param[in]	sinfo	-	server owning cloned info
+/*
+ *=====================================================================
+ * site_free_shares(sinfo) - Free cloned share info
+ * Entry:	sinfo = server owning cloned info
+ *=====================================================================
  */
 void
 site_free_shares(server_info *sinfo)
@@ -654,14 +567,13 @@ site_free_shares(server_info *sinfo)
 
 
 
-/**
- * @brief
- * 		site_get_share( resresv ) - Get ratio of cpus used to allocated
- *
- * @param[in]	resresv		-	pointer to resource_resv
- *
- * @return	Approximate ratio of current CPUs in use to allocation
- *			for job's group.
+/*
+ *=====================================================================
+ * site_get_share( resresv ) - Get ratio of cpus used to allocated
+ * Entry:	resresv = pointer to resource_resv
+ * Returns:	Approximate ratio of current CPUs in use to allocation
+ *		for job's group.
+ *=====================================================================
  */
 double
 site_get_share(resource_resv *resresv)
@@ -680,7 +592,7 @@ site_get_share(resource_resv *resresv)
 		return result;		/* Favor jobs on highway */
 	}
 #endif
-#ifdef	NAS_HWY101
+#ifdef	DRT_XXX_NAS_HWY101
 	if (job->priority == NAS_HWY101 || job->NAS_pri == NAS_HWY101) {
 		return result;		/* Favor jobs on highway */
 	}
@@ -693,13 +605,16 @@ site_get_share(resource_resv *resresv)
 	return result;
 }
 
-/**
- * @brief
- * 		site_init_alloc( sinfo ) - Initialize allocated shares CPUs data
- *
- * @param[in]	sinfo	-	ptr to server_info, with all data about jobs,
- *							queues, nodes, etc, already collected.
- * @return	alloc info updated
+
+
+
+/*
+ *=====================================================================
+ * site_init_alloc( sinfo ) - Initialize allocated shares CPUs data
+ * Entry:	sinfo = ptr to server_info, with all data about jobs,
+ *			queues, nodes, etc, already collected.
+ * Exit:	alloc info updated
+ *=====================================================================
  */
 void
 site_init_alloc(server_info *sinfo)
@@ -765,22 +680,22 @@ site_init_alloc(server_info *sinfo)
 	for (i = 0; i < shr_class_count; ++i) {
 		root->share_ncpus[i] = sh_total[i];
 	}
-	site_list_shares(stdout, sinfo, "sia_", 1);
-	fflush(stdout);
+	if (conf.partition_id == NULL) {
+		site_list_shares(stdout, sinfo, "sia_", 1);
+		fflush(stdout);
+	}
 }
 
 
 
-/**
- * @brief
- * 		site_is_queue_topjob_set_aside(resv) - Check the topjob_set_aside attribute
+/*
+ *=====================================================================
+ * site_is_queue_topjob_set_aside(resv) - Check the topjob_set_aside attribute
  *		for the queue of the given job
- *
- * @param[in]	resv	-	resource_resv for job
- *
- * @return	int
- * @retval	1	: if topjob_set_aside=True for the queue
- * @retval	0 	: otherwise
+ * Entry:	resv = resource_resv for job
+ * Returns:	1 if topjob_set_aside=True for the queue
+ *		0 otherwise
+ *=====================================================================
  */
 int
 site_is_queue_topjob_set_aside(resource_resv *resv)
@@ -796,19 +711,15 @@ site_is_queue_topjob_set_aside(resource_resv *resv)
 
 
 
-/**
- * @brief
- * 		site_is_share_king(policy) - Check if group shares are most important
+/*
+ *=====================================================================
+ * site_is_share_king(policy) - Check if group shares are most important
  *		job sort criterion
- *
- * @param[in]	policy	-	policy in effect
- *							Call with policy = NULL
- *							to fetch previously computed value.
- *
- * @return	int
- * @retval	1	: if group shares is second job sort key (after formula)
- * @retval	0 	: otherwise
- *
+ * Entry:	policy = policy in effect
+ *		Call with policy = NULL to fetch previously computed value.
+ * Returns:	1 if group shares is second job sort key (after formula)
+ *		0 otherwise
+ *=====================================================================
  */
 int
 site_is_share_king(status *policy)
@@ -826,13 +737,12 @@ site_is_share_king(status *policy)
 	}
 	/*
 	 * Examine the sort keys to see if shares are primary key
-	 * (Key 0 is always the job formula, so we check key 1).
 	 */
 	is_king = 0;
 	if (policy->sort_by) {
-		if (policy->sort_by[0].res_name != NULL &&
-			policy->sort_by[1].res_name != NULL &&
-			strcmp(policy->sort_by[1].res_name, SORT_ALLOC) == 0) {
+		char *res_name;
+		if ((res_name = policy->sort_by[0].res_name) != NULL &&
+		    strcmp(res_name, SORT_ALLOC) == 0) {
 			is_king = 1;
 		}
 	}
@@ -841,19 +751,16 @@ site_is_share_king(status *policy)
 
 
 
-/**
- * @breif
- * 		site_list_shares(fp, sinfo, pfx, flag) - Write current CPU allocation
- *		info to file
- *
- * @param[in]	fp		-	FILE * to write to
- * @param[in]	sinfo 	- 	server to list data for
- * @param[in]	pfx 	-	string to prefix each line with
- * @param[in]	flag 	-	non-zero to list only leaders
- *
- * @note
- * 		Data from tree written to file
- *
+/*
+ *=====================================================================
+ * site_list_shares(fp, sinfo, pfx, flag) - Write current CPU allocation
+ *			info to file
+ * Entry:	fp = FILE * to write to
+ *		sinfo = server to list data for
+ *		pfx = string to prefix each line with
+ *		flag = non-zero to list only leaders
+ * Exit:	Data from tree written to file
+ *=====================================================================
  */
 void
 site_list_shares(FILE *fp, server_info *sinfo, const char *pfx, int flag)
@@ -875,12 +782,12 @@ site_list_shares(FILE *fp, server_info *sinfo, const char *pfx, int flag)
 
 
 
-/**
- * @brief
- * 		site_list_jobs( sinfo, rarray ) - List jobs in queue to file
- *
- * @param[in]	sinfo	-	server info
- * @param[in]	rarray 	-	array of pointers to jobs, terminated by NULL
+/*
+ *=====================================================================
+ * site_list_jobs( sinfo, rarray ) - List jobs in queue to file
+ * Entry:	sinfo = server info
+ *		rarray array of pointers to jobs, terminated by NULL
+ *=====================================================================
  */
 void
 site_list_jobs(server_info *sinfo, resource_resv **rarray)
@@ -892,6 +799,7 @@ site_list_jobs(server_info *sinfo, resource_resv **rarray)
 	sh_amt		*job_amts;
 	char		*sname;
 	char		*starving;
+	static char	whoami[] = "site_list_jobs" ;
 
 	fname = SORTED_FILE;
 	sj = fopen(fname, "w+");
@@ -899,7 +807,7 @@ site_list_jobs(server_info *sinfo, resource_resv **rarray)
 		sprintf(log_buffer, "Cannot open %s: %s\n",
 			fname, strerror(errno));
 		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_ERR,
-			__func__, log_buffer);
+			whoami, log_buffer);
 		return;
 	}
 	site_list_shares(sj, sinfo, "#A ", 0);
@@ -946,7 +854,7 @@ site_list_jobs(server_info *sinfo, resource_resv **rarray)
 		starving = job->is_starving ? "s" : "-";
 		start = rp->start;
 		jpri = job->NAS_pri;
-		ncpus = rp->select ? rp->select->total_cpus : -1;
+		ncpus = rp->select ? rp->select->total_cpus : -1; /* XXX */
 		job_amts = job->sh_amts;
 		if (job_amts) {
 			int sh_cls;
@@ -965,20 +873,14 @@ site_list_jobs(server_info *sinfo, resource_resv **rarray)
 }
 
 
-/**
- * @brief
- * 		site_parse_shares(fname) - Read CPU shares file
- *
- * @param[in]	fname	-	path to file
- *
- * @return	int
- * @retval	1	: if all okay
- * @retval	0 	: on errors, messages to log
- *
- * @par Side Effects:
- * 		Modifies static variables declared at start of file
- *
- * @par MT-safe: No
+/*
+ *=====================================================================
+ * site_parse_shares(fname) - Read CPU shares file
+ * Entry	fname = path to file
+ * Returns	1 if all okay
+ *		0 on errors, messages to log
+ * Modifies	static variables declared at start of file
+ *=====================================================================
  */
 int
 site_parse_shares(char *fname)
@@ -998,6 +900,7 @@ site_parse_shares(char *fname)
 	sh_amt		*tshares;	/* temp shares values */
 	struct shr_class *tclass;	/* temp class pointer */
 	struct shr_type	*ttype;		/* temp type pointer */
+	char		*whoami = "site_parse_shares";
 	int		new_cls_cnt;	/* number of CPU classes */
 	int		new_type_cnt;	/* number of CPU types */
 	struct shr_class *new_shr_clses;	/* new class list */
@@ -1019,7 +922,7 @@ site_parse_shares(char *fname)
 	if ((fp = fopen(fname, "r")) == NULL) {
 		i = errno;
 		sprintf(log_buffer, "Error opening file %s", fname);
-		log_err(i, __func__, log_buffer);
+		log_err(i, whoami, log_buffer);
 		return 1;		/* continue without shares */
 	}
 	while (fgets(buf, LINE_BUF_SIZE, fp) != NULL) {
@@ -1333,6 +1236,7 @@ site_parse_shares(char *fname)
 				} else {
 					sprintf(log_buffer,
 						"Regcomp error on line %d for pattern %s", lineno, t);
+					free(t);
 					goto err_parse;
 				}
 				free(t);
@@ -1351,7 +1255,7 @@ site_parse_shares(char *fname)
 		continue;		/* Done with line */
 err_parse:
 		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE,
-				__func__, log_buffer);
+			whoami, log_buffer);
 		if (cur) {
 			free(cur);
 		}
@@ -1410,8 +1314,8 @@ err_parse:
 	return 1;
 
 err_out_l:
-	log_err(-1, __func__, log_buffer);
-	schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, __func__,
+	log_err(-1, whoami, log_buffer);
+	schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, whoami,
 		"Warning: CPU shares file parse error: file ignored");
 	for (ttype = new_shr_types; ttype; ttype = new_shr_types) {
 		new_shr_types = ttype->next;
@@ -1427,25 +1331,22 @@ err_out_l:
 
 
 
-/**
- * @brief
- * 		site_pick_next_job( resv_arr ) - Site specific code for picking
- *		next job to try to run
- *
- * @param[in]	resv_arr	-	array of ptrs to resource_resv for jobs,
- *								sorted per job sort key list.
- *								Should be called at beginning of job loop with NULL
- *								to reset state.
- *
- * @return	ptr to selected job resource_resv
- * @retval	NULL	: if no more choices.
- *
- * @par MT-safe: No
+/*
+ *=====================================================================
+ * site_find_runnable_res( resv_arr ) - Site specific code for picking
+ *			next resv/job to try to run
+ * Entry:	resv_arr = array of ptrs to resource_resv,
+ *			sorted per job sort key list.
+ *		Should be called at beginning of job loop with NULL
+ *		to reset state.
+ * Returns:	ptr to selected resource_resv,
+ *			NULL if no more choices.
+ *=====================================================================
  */
 resource_resv *
-site_pick_next_job(resource_resv** resresv_arr)
+site_find_runnable_res(resource_resv** resresv_arr)
 {
-	static	enum { S_INIT, S_HWY149, S_DEDRES, S_HWY101, S_TOPJOB, S_NORMAL } state;
+	static	enum { S_INIT, S_RESV, S_HWY149, S_DEDRES, S_HWY101, S_TOPJOB, S_NORMAL } state;
 	resource_resv *	resv;
 	server_info *	sinfo;
 	share_head *	shp;
@@ -1468,12 +1369,21 @@ site_pick_next_job(resource_resv** resresv_arr)
 		return NULL;
 	sinfo = resv->job->queue->server;
 	shp = sinfo->share_head;
-	if (shp == NULL)
-		return NULL;		/* should not happen */
 	si = NULL;
 
 	if (state == S_INIT) {
-		clear_topjob_counts(shp->root);
+		if (shp) {
+			clear_topjob_counts(shp->root);
+		}
+		state = S_RESV;
+	}
+	if (state == S_RESV) {
+		for (i = 0; (resv = resresv_arr[i]) != NULL; i++) {
+			if (!resv->is_job && !resv->can_not_run &&
+					in_runnable_state(resv)) {
+				return resv;
+			}
+		}
 		state = S_HWY149;
 	}
 	if (state == S_HWY149) {
@@ -1487,6 +1397,12 @@ site_pick_next_job(resource_resv** resresv_arr)
 #endif
 		state = S_DEDRES;
 	}
+	/*
+	 * Stop looking now if interested only in resuming jobs.
+	 * localmod XXXY
+	 */
+	if (conf.resume_only)
+		return NULL;
 	if (state == S_DEDRES) {
 		/*
 		 * Go through jobs in queues that use per_queues_topjobs, these
@@ -1515,7 +1431,8 @@ site_pick_next_job(resource_resv** resresv_arr)
 		/*
 		 * Find most-favored group not at topjob limit
 		 */
-		si = find_most_favored_share(shp->root, conf.per_share_topjobs);
+		if (shp != NULL)
+			si = find_most_favored_share(shp->root, conf.per_share_topjobs);
 		if (si == NULL) {
 			state = S_NORMAL;
 		}
@@ -1530,19 +1447,18 @@ site_pick_next_job(resource_resv** resresv_arr)
 	 */
 	if (si != NULL) {
 		si->none_left = 1;
-		resv = site_pick_next_job(resresv_arr);
+		resv = site_find_runnable_res(resresv_arr);
 	}
 	return resv;
 }
 
 
 
-/**
- * @brief
- * 		site_resort_jobs(njob) - Possibly resort queues after starting job
- *
- * @param[in]	njob	-	job that was just started
- *
+/*
+ *=====================================================================
+ * site_resort_jobs(njob) - Possibly resort queues after starting job
+ * Entry:	njob = job that was just started
+ *=====================================================================
  */
 void
 site_resort_jobs(resource_resv *njob)
@@ -1577,14 +1493,12 @@ site_resort_jobs(resource_resv *njob)
 
 
 
-/**
- * @brief
- * 		site_restore_users() - Restore user values after adding job to
- *		calendar
- *
- * @par
- * 		User values reset
- *
+/*
+ *=====================================================================
+ * site_restore_users() - Restore user values after adding job to
+ *			calendar
+ * Exit:	User values reset
+ *=====================================================================
  */
 void
 site_restore_users(void)
@@ -1599,12 +1513,11 @@ site_restore_users(void)
 
 
 
-/**
- * @brief
- * 		site_save_users() - Save users values during clone operation.
- *
- * @return	Current important values stored away
- *
+/*
+ *=====================================================================
+ * site_save_users() - Save users values during clone operation.
+ * Exit:	Current important values stored away
+ *=====================================================================
  */
 void
 site_save_users(void)
@@ -1620,16 +1533,14 @@ site_save_users(void)
 
 
 
-/**
- * @brief
- * 		site_set_job_share(resresv) - Set counts of share resources
+/*
+ *=====================================================================
+ * site_set_job_share(resresv) - Set counts of share resources
  *		requested by job.
- *
- * @param[in]	resresv	-	resource reservation for job
- *							The select spec is assumed to be parsed into chunks.
- *
- * @return	job's sh_amts array set
- *
+ * Entry:	resresv = resource reservation for job
+ *		The select spec is assumed to be parsed into chunks.
+ * Exit:	job's sh_amts array set
+ *=====================================================================
  */
 void
 site_set_job_share(resource_resv *resresv)
@@ -1682,26 +1593,24 @@ site_set_job_share(resource_resv *resresv)
 		if (stp->cpus_per_node > ncpus) {
 			ncpus = stp->cpus_per_node;
 		}
-		
+		/* XXX HACK HACK until SBUrate available, localmod 126 */
 		ncpus = stp->cpus_per_node;
-		
+		/* end HACK localmod 126 */
 		sh_amts[sh_cls] += chunk->num_chunks * ncpus;
 	}
 }
 
 
 
-/**
- * @brief
- * 		site_set_NAS_pri(job, max_starve, starve_num) - calculate the
+/*
+ *=====================================================================
+ * site_set_NAS_pri(job, max_starve, starve_num) - calculate the
  *		NAS priority for a job
- *
- * @param[in]	job			-	job to have its NAS_pri field set
- * @param[in]	max_starve	-	starve time for queue job is in
- * @param[in]	starve_num	-	how long job has starved
- *
- * @return	job->NAS_pri set
- *
+ * Entry:	job = job to have its NAS_pri field set
+ *		max_starve = starve time for queue job is in
+ *		starve_num = how long job has starved
+ * Exit:	job->NAS_pri set
+ *=====================================================================
  */
 #if	NAS_HWY101
 #define	MAX_NAS_PRI	(NAS_HWY101 - 1)
@@ -1751,16 +1660,13 @@ site_set_NAS_pri(job_info *job, time_t max_starve, long starve_num)
 }
 
 
-/**
- * @brief
- * 		site_set_node_share(ninfo, res) - Set type of share node supplies
- *
- * @param[out]	ninfo	-	pointer to node info
- * @param[in]	res		-	pointer to resource available on node
- *
- * @note
- * 		ninfo->sh_cls, sh_type set if appropriate
- *
+/*
+ *=====================================================================
+ * site_set_node_share(ninfo, res) - Set type of share node supplies
+ * Entry:	ninfo = pointer to node info
+ *		res = pointer to resource available on node
+ * Exit:	ninfo->sh_cls, sh_type set if appropriate
+ *=====================================================================
  */
 void
 site_set_node_share(node_info *ninfo, resource *res)
@@ -1786,19 +1692,13 @@ site_set_node_share(node_info *ninfo, resource *res)
 
 
 
-/**
- * @brief
- * 		site_set_share_head(sinfo) - Set share head into server info
- *
- * @param[out]	sinfo	-	ptr to server info
- *
- * @return	int
- * @retval	1	: on success
- * @reval	0	: on error
- *
- * @note
- * 		Assumes:	cur_shr_head set
- *
+/*
+ *=====================================================================
+ * site_set_share_head(sinfo) - Set share head into server info
+ * Entry:	sinfo = ptr to server info
+ * Returns:	1 on success, 0 on error
+ * Assumes:	cur_shr_head set
+ *=====================================================================
  */
 int
 site_set_share_head(server_info *sinfo)
@@ -1813,12 +1713,10 @@ site_set_share_head(server_info *sinfo)
 
 
 
-/**
- * @brief
- * 		site_set_share_type(sinfo, resresv) - Set share type for job
- *
- * @param[out]	sinfo		-	ptr to server info
- * @param[in,out]	resresv	-	ptr to resource_resv
+/*
+ *=====================================================================
+ * site_set_share_type(sinfo, resresv) - Set share type for job
+ *=====================================================================
  */
 void
 site_set_share_type(server_info * sinfo, resource_resv * resresv)
@@ -1862,29 +1760,116 @@ site_set_share_type(server_info * sinfo, resource_resv * resresv)
 }
 
 
-/**
- * @brief
- * 		site_tidy_server(sinfo) - Tweak data collected from server
+
+/*
+ *=====================================================================
+ * site_should_backfill_with_job(policy, sinfo, resresv, ntj, nqtj, err)
+ * Entry:	policy = pointer to current policy
+ *		sinfo = server state where job resides
+ *		resresv = the job to check
+ *		ntj = number of topjobs so far
+ *		nqtj = number of queue topjobs so far
+ *		err = error structure from trying to run job immediately
+ * Returns:	0 if should not calendar
+ *		1 calendar based on backfill_depth
+ *		2 calendar based on per_queue_topjobs
+ *		3 calendar based on per_share_topjobs
+ *		4 calendar based on share usage ratio
+ *=====================================================================
+ */
+int site_should_backfill_with_job(status *policy, server_info *sinfo, resource_resv *resresv, int ntj, int nqtj, schd_error *err)
+{
+	int		rc;
+	share_info	*si;
+	struct job_info	*job;
+
+	if (policy == NULL || sinfo == NULL || resresv == NULL || err == NULL)
+		return 0;
+	if (!resresv->is_job || (job = resresv->job) == NULL)
+		return 0;
+	/*
+	 * Do normal checks and reject if they reject.
+	 */
+	rc = should_backfill_with_job(policy, sinfo, resresv, ntj);
+	if (rc == 0)
+		return rc;
+	/*
+	 * Start of site-specific calendaring code
+	 */
+#ifdef NAS_HWY149
+	/*
+	 * Don't drain for node shuffle jobs or other specials.
+	 */
+	if (job->NAS_pri == NAS_HWY149)
+		return 0;
+#endif
+	/*
+	 * Jobs blocked by other jobs from the same user are not eligible
+	 * for starving/backfill help.
+	 */
+	switch (err->error_code) {
+		case SERVER_USER_LIMIT_REACHED:
+		case QUEUE_USER_LIMIT_REACHED:
+		case SERVER_USER_RES_LIMIT_REACHED:
+		case QUEUE_USER_RES_LIMIT_REACHED:
+			return 0;
+			/*
+			 * No point to backfill for jobs blocked by dedicated
+			 * time.  All resources will become available at
+			 * the end of the dedicated time.
+			 */
+		case DED_TIME:
+		case CROSS_DED_TIME_BOUNDRY:
+			return 0;
+			/*
+			 * If job exceeds total mission allocation,
+			 * it can never run.
+			 */
+		case GROUP_CPU_INSUFFICIENT:
+			return 0;
+		default:
+			;
+	}
+	/* Check if in queues with special topjob limit */
+	/* localmod 038 */
+	if (site_is_queue_topjob_set_aside(resresv)
+			&& nqtj < conf.per_queues_topjobs)
+	  	return 2;
+	/* Check if per-share count exhausted. */
+	si = job->sh_info;
+	if (si) si = si->leader;
+	if (si && si->topjob_count < conf.per_share_topjobs)
+		return 3;		/* Still within share guarantee */
+	/* localmod 154 */
+	/* Check if share using less than allocation */
+	if (si && si->ratio_max < 1.0 && si->tj_cpu_cost < TJ_COST_MAX /* XXX */)
+		return 4;
+	/* Back to non-NAS tests.  Have we calendared backfill_depth jobs? */
+	if (ntj >= policy->backfill_depth)
+		return 0;
+	return 1;
+}
+
+
+/*
+ *=====================================================================
+ * site_tidy_server(sinfo) - Tweak data collected from server
+ * Entry:	sinfo = Server info.  The following are some of the
+ *			fields that can be used:
  *
- * @param[in,out]	sinfo	-	Server info.  The following are some of the
- *								fields that can be used:
- *								nodes = array of nodes
- *								queues = array of queues (sorted)
- *								resvs = array of reservations
- *								jobs = array of jobs (partially sorted or not,
- *								depending on by_queue or round_robin)
- *								all_resresv = array of all jobs and reservations
- *								(sorted on event time)
+ *			nodes = array of nodes
+ *			queues = array of queues (sorted)
+ *			resvs = array of reservations
+ *			jobs = array of jobs (partially sorted or not,
+ *				depending on by_queue or round_robin)
+ *			all_resresv = array of all jobs and reservations
+ *				(sorted on event time)
  *
- * @par Note:
- * 			the following are *not* set: running_resvs,
+ *			Note: the following are *not* set: running_resvs,
  *			running_jobs, exiting_jobs, starving_jobs,
  *			user_counts, group_counts.
- *
- * @return	int
- * @retval	0	: on error
- * @retval	1	: on success
- *
+ * Return:	0 on error, 1 on success
+ *=====================================================================
  */
 int
 site_tidy_server(server_info *sinfo)
@@ -1913,17 +1898,15 @@ site_tidy_server(server_info *sinfo)
 
 
 
-/**
- * @brief
- * 		site_update_on_end(sinfo, qinfo, res) - Do site specific updating
+/*
+ *=====================================================================
+ * site_update_on_end(sinfo, qinfo, res) - Do site specific updating
  *		when job ends.
- *
- * @param[in]	sinfo	-	server info
- * @param[in]	qinfo 	-	info for queue job running in
- * @param[in]	res		-	resv/job info
- *
- * @return	Local data updated
- *
+ * Entry:	sinfo = server info
+ *		qinfo = info for queue job running in
+ *		res = resv/job info
+ * Exit:	Local data updated
+ *=====================================================================
  */
 void
 site_update_on_end(server_info *sinfo, queue_info *qinfo, resource_resv *resv)
@@ -1932,8 +1915,6 @@ site_update_on_end(server_info *sinfo, queue_info *qinfo, resource_resv *resv)
 	share_info	*si;
 	sh_amt		*sc;
 	share_head	*shead;
-	queue_info	*queue;
-	site_user_info	*sui;
 	int		i, ncpus, borrowed;
 
 	if (sinfo == NULL || (shead = sinfo->share_head) == NULL)
@@ -1942,15 +1923,6 @@ site_update_on_end(server_info *sinfo, queue_info *qinfo, resource_resv *resv)
 		return;
 	if ((si = job->sh_info) == NULL || (sc = job->sh_amts) == NULL)
 		return;
-	queue = job->queue;
-	sui = job->u_info;
-	if (sui && queue) {
-		if (queue->is_topjob_set_aside) {
-			sui->current_use_pqt -= job->accrue_rate;
-		} else {
-			sui->current_use -= job->accrue_rate;
-		}
-	}
 	bump_share_count(si, resv->share_type, sc, -1);
 	bump_demand_count(si, resv->share_type, sc, 1);
 	if ((si = si->leader) == NULL)
@@ -1961,8 +1933,8 @@ site_update_on_end(server_info *sinfo, queue_info *qinfo, resource_resv *resv)
 			shead->sh_avail[i] += ncpus;
 			borrowed = \
 			   si->share_inuse[i][J_TYPE_limited]
-			+si->share_inuse[i][J_TYPE_borrow]
-			-si->share_ncpus[i];
+			  +si->share_inuse[i][J_TYPE_borrow]
+			  -si->share_ncpus[i];
 			if (borrowed > 0) {
 				if (borrowed > ncpus)
 					borrowed = ncpus;
@@ -1972,26 +1944,29 @@ site_update_on_end(server_info *sinfo, queue_info *qinfo, resource_resv *resv)
 		si->ratio = get_share_ratio(si->share_ncpus, NULL,
 			si->share_inuse);
 	}
+#ifdef NAS_DEBUG
+	printf(" YYY- %s %d %g %g %s\n", si->name, (int)resv->share_type, si->ratio, si->ratio_max, resv->name);
+	fflush(stdout);
+#endif
 }
 
 
 
-/**
- * @brief
- * 		site_update_on_run(sinfo, qinfo, res, ns) - Do site specific updating
- *		when job started.
- *
- * @param[in]	sinfo	-	server info
- * @param[in]	qinfo 	-	info for queue job running in
- * @param[in]	resv 	-	resv/job info
- * @param[in]	ns		- 	node specification job run on
- *
- * @return	Local data updated
- *
+/*
+ *=====================================================================
+ * site_update_on_run(sinfo, qinfo, res, flag, ns) - Do site specific
+ *		updating when job started.
+ * Entry:	sinfo = server info
+ *		qinfo = info for queue job running in
+ *		res = resv/job info
+ *		flag = 0 when calendaring, 1 if really starting
+ *		ns = node specification job run on
+ * Exit:	Local data updated
+ *=====================================================================
  */
 void
 site_update_on_run(server_info *sinfo, queue_info *qinfo,
-	resource_resv *resv, nspec **ns)
+	resource_resv *resv, int flag, nspec **ns)
 {
 	job_info	*job;
 	share_info	*si;
@@ -2009,7 +1984,7 @@ site_update_on_run(server_info *sinfo, queue_info *qinfo,
 		return;
 	queue = job->queue;
 	sui = job->u_info;
-	if (sui && queue) {
+	if (flag && sui && queue) {
 		if (queue->is_topjob_set_aside) {
 			sui->current_use_pqt += job->accrue_rate;
 		} else {
@@ -2026,8 +2001,8 @@ site_update_on_run(server_info *sinfo, queue_info *qinfo,
 			shead->sh_avail[i] -= ncpus;
 			borrowed = \
 			   si->share_inuse[i][J_TYPE_limited]
-			+si->share_inuse[i][J_TYPE_borrow]
-			-si->share_ncpus[i];
+			  +si->share_inuse[i][J_TYPE_borrow]
+			  -si->share_ncpus[i];
 			if (borrowed > 0) {
 				if (borrowed > ncpus)
 					borrowed = ncpus;
@@ -2036,20 +2011,26 @@ site_update_on_run(server_info *sinfo, queue_info *qinfo,
 		}
 		si->ratio = get_share_ratio(si->share_ncpus, NULL,
 			si->share_inuse);
+		/* localmod 154 */
+		/* Keep track of highest ratio seen */
+		if (si->ratio > si->ratio_max)
+			si->ratio_max = si->ratio;
 	}
+#ifdef NAS_DEBUG
+	printf(" YYY+ %s %d %g %g %s\n", si->name, (int)resv->share_type, si->ratio, si->ratio_max, resv->name);
+	fflush(stdout);
+#endif
 }
 
 
 
-/**
- * @brief
- * 		site_vnode_inherit( nodes ) - Have vnodes inherit certain values
+/*
+ *=====================================================================
+ * site_vnode_inherit( nodes ) - Have vnodes inherit certain values
  *		from their natural vnode.
- *
- * @param[in]	nodes	-	array of node_info structures for all vnodes
- *
- * @return	vnodes updated
- *
+ * Entry:	nodes = array of node_info structures for all vnodes
+ * Exit:	vnodes updated
+ *=====================================================================
  */
 void
 site_vnode_inherit(node_info ** nodes)
@@ -2145,173 +2126,20 @@ site_vnode_inherit(node_info ** nodes)
 }
 
 
-#if     NAS_COMPAT10_4
-/**
- * @brief
- *		Creates a string of vnode names that need provisioning
- *      Note: heavily modified from 10.x create_provvnode
- *
- * @par Functionality:
- *		This function creates a string of '+' separated vnode names.
- *		The string is used to identify vnodes that need provisioning.
- *		The string is combined with exec_vnode and sent to server to
- *		run the job.
- *
- * @see
- *		site_combine_exec_prov_vnode
- *
- * @param[in]	ns			-	pointer to nspec
- * @param[in]	resresv		-	pointer to resource_resv
- *
- * @return	char*
- * @retval	string containing vnode names
- *
- * @par Side Effects:
- *		Unknown
- *
- * @par MT-safe:	No
- *
+
+/*
+ *=====================================================================
+ * Internal functions
+ *=====================================================================
  */
-char *
-site_create_provvnode(nspec **ns, resource_resv *resresv)
-{
-	int i, k=0;
-	char *provvnode = NULL;
-	int provlen = 0;
-	char *buffer = NULL;
-	int bufsize = 0;
-	resource_req *req;
 
-	if (provvnode == NULL) {
-		provvnode = malloc(INIT_ARR_SIZE + 1);
-		if (provvnode == NULL) {
-			return NULL;
-		}
-		provlen = INIT_ARR_SIZE;
-	}
-
-	if (buffer == NULL) {
-		buffer = malloc(INIT_ARR_SIZE + 1);
-		if (buffer == NULL) {
-			free(provvnode);
-			return NULL;
-		}
-		bufsize = INIT_ARR_SIZE;
-	}
-
-	provvnode[0] = '\0';
-
-	for (i = 0; ns[i] != NULL; i++) {
-		buffer[0] = '\0';
-
-		if (ns[i]->go_provision) {
-			req = ns[i]->resreq;
-			while (req  != NULL) {
-				if (strcmp(req->name, "aoe") == 0) {
-					if (k > 0)
-						sprintf(buffer, "+(%s:aoe=%s)", ns[i]->ninfo->name, req->res_str);
-					else
-						sprintf(buffer, "|(%s:aoe=%s)", ns[i]->ninfo->name, req->res_str);
-
-					++k;
-					if (pbs_strcat(&provvnode, &provlen, buffer) == NULL) {
-						if (provvnode != NULL) {
-							free(provvnode);
-						}
-						if (buffer != NULL) {
-							free(buffer);
-						}
-						return NULL;
-					}
-
-					break;
-				}
-
-				req = req->next;
-			}
-		}
-	} /* end of for loop */
-
-	if (k == 0) {
-		if (provvnode != NULL) {
-			free(provvnode);
-			provvnode = NULL;
-		}
-	}
-
-	if (buffer != NULL) {
-		free(buffer);
-	}
-
-	return provvnode;
-}
-
-
-/**
- * @brief
- *		Combines exec_vnode and prov_vnode of a job
- *      Note: lifted as-is from 10.x combine_exec_prov_vnode
- *
- * @par Functionality:
- *		This function combines exec_vnode and prov_vnode of a job if both
- *		are non null strings. It creates a new string containing data in
- *		exec_vnode, a '|' as delimiter and data in prov_vnode.
- *
- * @see
- *		site_create_provvnode
- *
- * @param[in]	exec		-	pointer to char*
- * @param[in]	prov		-	pointer to char*
- *
- * @return	char*
- * @retval	new string containing exec_vnode and prov_vnode
- *
- * @par Side Effects:
- *		Unknown
- *
- * @par MT-safe: No
- *
- */
-char *
-site_combine_exec_prov_vnode(char *exec, char *prov)
-{
-	int elen = 0;	/* for the null terminating */
-	int plen = 0;
-	char *re_tmp = NULL;
-
-	if (prov == NULL || exec == NULL)
-		return NULL;
-
-	elen = strlen(exec);
-	plen = strlen(prov);
-
-	/* doing realloc on execvnode outside create_execvnode */
-	re_tmp = malloc(elen+plen+1);
-	if (re_tmp == NULL)
-		return NULL;
-
-	strcpy(re_tmp, exec);
-	strcat(re_tmp, prov);
-
-	return re_tmp;
-}
-#endif
 
 
 /*
- *
- * Internal functions
- *
- */
-
-
-
-/**
- * @brief
- * 		clear_topjob_counts(root) - Reset per group topjob counts
- *
- * @param[in,out]	root	-	root of share subtree to work on
- *
+ *=====================================================================
+ * clear_topjob_counts(root) - Reset per group topjob counts
+ * Entry:       root = root of share subtree to work on
+ *=====================================================================
  */
 static void
 clear_topjob_counts(share_info* root)
@@ -2323,6 +2151,9 @@ clear_topjob_counts(share_info* root)
 	if (root->leader == root) {
 		root->ratio = get_share_ratio(root->share_ncpus, NULL,
 			root->share_inuse);
+		/* localmod 154 */
+		root->ratio_max = root->ratio;
+		root->tj_cpu_cost = 0.0;
 	}
 	if (root->child)
 		clear_topjob_counts(root->child);
@@ -2331,18 +2162,16 @@ clear_topjob_counts(share_info* root)
 }
 
 
-/**
- * @brief
- * 		count_cpus(nodes, ncnt, queues, totals) - Count total CPUs available
+/*
+ *=====================================================================
+ * count_cpus(nodes, ncnt, queues, totals) - Count total CPUs available
  *		for allocation
- *
- * @param[in]	nodes	-	array of node_info struct ptrs
- * @param[in]	ncnt 	-	count of entries in nodes
- * @param[in]	queues 	-	array of queue_info structures
- * @param[out]	totals 	-	sh_amt array for totals
- *
- * @return	totals array updated with CPU type counts
- *
+ * Entry:	nodes = array of node_info struct ptrs
+ *		ncnt = count of entries in nodes
+ *		queues = array of queue_info structures
+ *		totals = sh_amt array for totals
+ * Exit:	totals array updated with CPU type counts
+ *=====================================================================
  */
 static void
 count_cpus(node_info **nodes, int ncnt, queue_info **queues, sh_amt *totals)
@@ -2382,7 +2211,7 @@ count_cpus(node_info **nodes, int ncnt, queue_info **queues, sh_amt *totals)
 		 * assigned CPUs.  This should exactly balance the CPUs
 		 * counted against running jobs.
 		 */
-#if 0
+#if 0 /* XXX HACK until SBUrate available, localmod 126 */
 		res = find_resource(node->res, getallres(RES_NCPUS));
 		if (res != NULL && res->avail != SCHD_INFINITY) {
 			if (node->is_down || node->is_offline)
@@ -2409,17 +2238,15 @@ count_cpus(node_info **nodes, int ncnt, queue_info **queues, sh_amt *totals)
 
 
 
-/**
- * @brief
- * 		count_active_cpus(resvs, jcnt, sh_active) - Update share alloc data
+/*
+ *=====================================================================
+ * count_active_cpus(resvs, jcnt, sh_active) - Update share alloc data
  *		based on running jobs.
- *
- * @param[in]	resvs		-	array of resource_resv struct ptrs
- * @param[in]	jcnt 		-	count of entries in jobs array
- * @param[out]	sh_active	-	array to total use into
- *
- * @return	share_inuse values updated
- *
+ * Entry:	resvs = array of resource_resv struct ptrs
+ *		jcnt = count of entries in jobs array
+ *		sh_active = array to total use into
+ * Exit:	share_inuse values updated
+ *=====================================================================
  */
 static void
 count_active_cpus(resource_resv **resvs, int jcnt, sh_amt *sh_active)
@@ -2455,16 +2282,14 @@ count_active_cpus(resource_resv **resvs, int jcnt, sh_amt *sh_active)
 
 
 
-/**
- * @brief
- * 		count_demand_cpus(resvs, jcnt, sh_demand) - Update share use data
+/*
+ *=====================================================================
+ * count_demand_cpus(resvs, jcnt, sh_demand) - Update share use data
  *		for queued jobs.
- *
- * @param[in]	resvs	-	array of resource_resv struct ptrs
- * @param[in]	jcnt 	-	count of entries in jobs array
- *
- * @return	share_demand values updated
- *
+ * Entry:	resvs = array of resource_resv struct ptrs
+ *		jcnt = count of entries in jobs array
+ * Exit:	share_demand values updated
+ *=====================================================================
  */
 static void
 count_demand_cpus(resource_resv **resvs, int jcnt)
@@ -2489,17 +2314,15 @@ count_demand_cpus(resource_resv **resvs, int jcnt)
 
 
 
-/**
- * @brief
- * 		count_contrib_cpus(root, node, sh_contrib) - Count CPUs available
+/*
+ *=====================================================================
+ * count_contrib_cpus(root, node, sh_contrib) - Count CPUs available
  *		for borrowing.
- *
- * @param[in]	root		-	base of share info tree
- * @param[in]	node 		-	base of current sub-tree
- * @param[in]	sh_contrib	-	where to accumulate overall totals
- *
- * @return	Contents of sh_contrib set
- *
+ * Entry:	root = base of share info tree
+ *		node = base of current sub-tree
+ *		sh_contrib = where to accumulate overall totals
+ * Exit:	Contents of sh_contrib set
+ *=====================================================================
  */
 static void
 count_contrib_cpus(share_info *root, share_info *node, sh_amt *sh_contrib)
@@ -2552,17 +2375,13 @@ count_contrib_cpus(share_info *root, share_info *node, sh_amt *sh_contrib)
 
 
 
-/**
- * @brief
- * 		dup_shares (oldsh, nsinfo) - duplicate share tree
- *
- * @param[in]	oldsh	-	existing share head
- * @param[out]	nsinfo 	-	server info to record new share tree in
- *
- * @return	int
- * @retval	1	: on success
- * @retval	0	: on error
- *
+/*
+ *=====================================================================
+ * dup_shares (oldsh, nsinfo) - duplicate share tree
+ * Entry:	oldsh = existing share head
+ *		nsinfo = server info to record new share tree in
+ * Returns:	1 on success, 0 on error
+ *=====================================================================
  */
 static int
 dup_shares(share_head *oldsh, server_info *nsinfo)
@@ -2598,18 +2417,13 @@ dup_shares(share_head *oldsh, server_info *nsinfo)
 
 
 
-/**
- * @brief
- * 		dup_share_tree(root) - clone a share_info (sub)tree
- *
- * @param[in]	root	-	root of subtree to clone
- *
- * @return	root of cloned copy
- * @retval	NULL	: on error
- *
- * @note
- * 		Modifies:	tptr link in original tree points to clone of that node
- *
+/*
+ *=====================================================================
+ * dup_share_tree(root) - clone a share_info (sub)tree
+ * Entry:	root = root of subtree to clone
+ * Returns:	root of cloned copy
+ * Modifies:	tptr link in original tree points to clone of that node
+ *=====================================================================
  */
 static share_info *
 dup_share_tree(share_info *oroot)
@@ -2639,19 +2453,17 @@ dup_share_tree(share_info *oroot)
 
 
 
-/**
- * @brief
- * 		find_entity_share(name, node) - Look up share info for entity
+/*
+ *=====================================================================
+ * find_entity_share(name, node) - Look up share info for entity
  *		Patterns are taken into account.
  *		The sub-tree rooted at node is searched for the best
  *		match, where best is either an exact match, or the
  *		pattern with the lowest line number.
- *
- * @param[in]	name	-	Name of entity to locate.
- * @param[in]	node	-	Root of subtree to search
- *
- * @return	Pointer to matching share_info structure
- * @retval	NULL	: if node is empty.
+ * Entry:	name = Name of entity to locate.
+ *		node = Root of subtree to search
+ * Returns:	Pointer to matching share_info structure
+ *=====================================================================
  */
 static share_info *
 find_entity_share(char *name, share_info *node)
@@ -2695,17 +2507,16 @@ find_entity_share(char *name, share_info *node)
 
 
 
-/**
- * @brief
- * 		find_most_favored_share(root, topjobs) - Search share group list
+/*
+ *=====================================================================
+ * find_most_favored_share(root, topjobs) - Search share group list
  *		for group that is under the topjobs limit and has
  *		the lowest share use ratio.
- *
- * @param[in]	root	-	pointer to (sub)tree to search
- * @param[in]	topjobs	-	configured topjob guarantee
- *
- * @return	Pointer to favored share group info
- * @retval	NULL	: if no group under topjobs.
+ * Entry:	root = pointer to (sub)tree to search
+ *		topjobs = configured topjob guarantee
+ * Returns:	Pointer to favored share group info
+ *		NULL if no group under topjobs.
+ *=====================================================================
  */
 share_info *
 find_most_favored_share(share_info* root, int topjobs)
@@ -2716,7 +2527,8 @@ find_most_favored_share(share_info* root, int topjobs)
 	if (root == NULL)
 		return NULL;
 	if (root->leader == root
-		&& root->topjob_count < topjobs
+		&& (root->topjob_count < topjobs
+		  || root->tj_cpu_cost < TJ_COST_MAX)
 		&& !root->none_left)
 		best = root;
 	else
@@ -2736,17 +2548,15 @@ find_most_favored_share(share_info* root, int topjobs)
 
 
 
-/**
- * @brief
- * 		find_share_class(root, name) - Find share class in tree and return
+/*
+ *=====================================================================
+ * find_share_class(root, name) - Find share class in tree and return
  *		its class index
- *
- * @param[in]	root	-	root of class list to search
- * @param[in]	name 	-	name of class to search for
- *
- * @return	matching class index
- * @retval	0	: (default) on no match
- *
+ * Entry:	root = root of class list to search
+ *		name = name of class to search for
+ * Returns:	matching class index
+ *		0 (default) on no match
+ *=====================================================================
  */
 static int
 find_share_class(struct shr_class *root, char *name)
@@ -2761,17 +2571,14 @@ find_share_class(struct shr_class *root, char *name)
 
 
 
-/**
- * @brief
- * 		find_share_group(root, name) - Look up share group info by name.
+/*
+ *=====================================================================
+ * find_share_group(root, name) - Look up share group info by name.
  *		No pattern matching is performed.
- *
- * @param[in]	root	-	root of share info tree
- * @param[in]	name 	-	name to find
- *
- * @return	ptr to share info
- * @retval	NULL	: if not found
- *
+ * Entry:	root = root of share info tree
+ *		name = name to find
+ * Returns:	ptr to share info, or NULL if not found
+ *=====================================================================
  */
 static share_info *
 find_share_group(share_info *root, char *name)
@@ -2792,17 +2599,14 @@ find_share_group(share_info *root, char *name)
 }
 
 
-/**
- * @brief
- * 		find_share_type(head, name) - Look up type by name and return its
- *		type index.
- *
- * @param[in]	head	-	head of table list
- * @param[in]	name 	-	name to find
- *
- * @return	index
- * @retval	0	: on no match (default)
- *
+/*
+ *=====================================================================
+ * find_share_type(head, name) - Look up type by name and return its
+ *	type index.
+ * Entry:	head = head of table list
+ *		name = name to find
+ * Returns:	index, or 0 on no match (default)
+ *=====================================================================
  */
 #if 0
 static int
@@ -2821,19 +2625,15 @@ find_share_type(struct shr_type *head, char *name)
 
 
 
-/**
- * @brief
- * 		find_user(head, name) - Look up user in list, adding if missing.
- *
- * @param[in,out]	head	-	ptr to head of list
- * @param[in]	name		-	name to find
- *
- * @return	ptr to user info structure
- * @retval	NULL	: on error
- *
- * @note
+/*
+ *=====================================================================
+ * find_user(head, name) - Look up user in list, adding if missing.
+ * Entry:	head = ptr to head of list
+ *		name = name to find
+ * Returns:	ptr to user info structure
+ *		NULL on error
  *		*head possibly updated
- *
+ *=====================================================================
  */
 static site_user_info*
 find_user(site_user_info **head, char *name)
@@ -2871,13 +2671,12 @@ find_user(site_user_info **head, char *name)
 }
 
 
-/**
- * @brief
- * 		free_share_head(sh, flag) - Free a share head and associated tree
- *
- * @param[in,out]	sh		-	ptr to share head
- * @param[in]		flag	-	true if tree expected to be a clone
- *
+/*
+ *=====================================================================
+ * free_share_head(sh, flag) - Free a share head and associated tree
+ * Entry:	sh = ptr to share head
+ *		flag = true if tree expected to be a clone
+ *=====================================================================
  */
 static void
 free_share_head(share_head *sh, int flag)
@@ -2906,12 +2705,11 @@ free_share_head(share_head *sh, int flag)
 
 
 
-/**
- * @brief
- * 		free_share_tree(root) - Free share info tree
- *
- * @param[in,out]	root	-	root of (sub)tree to free
- *
+/*
+ *=====================================================================
+ * free_share_tree(root) - Free share info tree
+ * Entry:	root = root of (sub)tree to free
+ *=====================================================================
  */
 static void
 free_share_tree(share_info *root)
@@ -2930,14 +2728,12 @@ free_share_tree(share_info *root)
 
 
 
-/**
- * @brief
- * 		free_users(head) - Free linked list of users rooted at head
- *
- * @param[in,out]	head	-	ptr to head of list
- *
- * @return	List freed, head NULLed
- *
+/*
+ *=====================================================================
+ * free_users(head) - Free linked list of users rooted at head
+ * Entry:	head = ptr to head of list
+ * Exit:	List freed, head NULLed
+ *=====================================================================
  */
 static void
 free_users(site_user_info **head)
@@ -2954,17 +2750,16 @@ free_users(site_user_info **head)
 
 
 
-/**
- * @brief
- * 		get_share_ratio(ncpus, asking, amts) - Compute group share use ratio
+/*
+ *=====================================================================
+ * get_share_ratio(ncpus, asking, amts) - Compute group share use ratio
  *		This is the maximum of the use ratios for classes
  *		that are relevant.
- *
- * @param[in]	ncpus	-	sh_amt array for group allocation
- * @param[in]	asking	-	sh_amt array for job,
- *							NULL if desire value for group as a whole.
- * @param[in]	amts	-	current use numbers.
- *
+ * Entry:	ncpus = sh_amt array for group allocation
+ *		asking = sh_amt array for job,
+ *			NULL if desire value for group as a whole.
+ *		amts = current use numbers.
+ *=====================================================================
  */
 double
 get_share_ratio(sh_amt* ncpus, sh_amt* asking, sh_amt_array* amts)
@@ -2989,15 +2784,12 @@ get_share_ratio(sh_amt* ncpus, sh_amt* asking, sh_amt_array* amts)
 
 
 
-/**
- * @brief
- * 		init_users(sinfo) - Collect information about users
- *
- * @param[in]	sinfo	-	Server info
- * @return	int
- * @retval	0	: on success
- * @retval	non-zero	: otherwise
- *
+/*
+ *=====================================================================
+ * init_users(sinfo) - Collect information about users
+ * Entry:	sinfo = Server info
+ * Returns:	0 on success, else non-zero
+ *=====================================================================
  */
 static int
 init_users(server_info *sinfo)
@@ -3040,20 +2832,18 @@ init_users(server_info *sinfo)
 
 
 
-/**
- * @brief
- * 		list_share_info(fp, root, pfx, idx, sname, flag) - Write current share
+/*
+ *=====================================================================
+ * list_share_info(fp, root, pfx, idx, sname, flag) - Write current share
  *		info to file
- *
- * @param[in]	fp		-	FILE * to write to
- * @param[in]	root	-	base of sub-tree to write
- * @param[in]	pfx		-	string to prefix each line with
- * @param[in]	idx		-	share type to report on
- * @param[in]	sname	-	identifier for share type
- * @param[in]	flag	-	non-zero to list only leaders
- *
- * @return	subtree info written to file
- *
+ * Entry:	fp = FILE * to write to
+ *		root = base of sub-tree to write
+ *		pfx = string to prefix each line with
+ *		idx = share type to report on
+ *		sname = identifier for share type
+ *		flag = non-zero to list only leaders
+ * Exit:	subtree info written to file
+ *=====================================================================
  */
 static void
 list_share_info(FILE *fp, share_info *root, const char *pfx, int idx, const char *sname, int flag)
@@ -3092,16 +2882,14 @@ list_share_info(FILE *fp, share_info *root, const char *pfx, int idx, const char
 
 
 
-/**
- * @brief
- * 		set_share_cpus(node, gross, sh_avail) - Apportion CPUs based on allocations
- *
- * @param[in,out]	node	-	fairshare info subtree
- * @param[in]		gross	-	total gross share units
- * @param[in]		avail	-	available CPUs of each type
- *
- * @return	share_ncpus fields in tree updated
- *
+/*
+ *=====================================================================
+ * set_share_cpus(node, gross, sh_avail) - Apportion CPUs based on allocations
+ * Entry:	node = fairshare info subtree
+ *		gross = total gross share units
+ *		avail = available CPUs of each type
+ * Exit:	share_ncpus fields in tree updated
+ *=====================================================================
  */
 static void
 set_share_cpus(share_info *node, sh_amt *gross, sh_amt *sh_avail)
@@ -3109,6 +2897,7 @@ set_share_cpus(share_info *node, sh_amt *gross, sh_amt *sh_avail)
 	int		cpus;
 	double		t_shares, t_cpus;
 	int		i;
+	static char	whoami[] = "set_share_cpus";
 
 	if (node == NULL)
 		return;
@@ -3130,8 +2919,9 @@ set_share_cpus(share_info *node, sh_amt *gross, sh_amt *sh_avail)
 					t_shares);
 				if (cpus < 4) {
 					printf("%s: group %s gets only %d %s CPUs\n",
-						__func__, node->name,
+						whoami, node->name,
 						cpus, shr_class_name_by_idx(i));
+					fflush(stdout);
 				}
 			}
 			node->share_ncpus[i] = cpus;
@@ -3149,17 +2939,15 @@ set_share_cpus(share_info *node, sh_amt *gross, sh_amt *sh_avail)
 
 
 
-/**
- * @brief
- * 		bump_share_count(si, stype, sc, sign) - Bump group inuse CPU counts
- *
- * @param[in,out]	si		-	group's share info
- * @param[in]		stype	-	Which counter to bump
- * @param[in]		sc		-	Array of counts to bump by.
- * @param[in]		sign	-	+/-1 to select incrementing/decrementing
- *
- * @return	Counters bumped within tree
- *
+/*
+ *=====================================================================
+ * bump_share_count(si, stype, sc, sign) - Bump group inuse CPU counts
+ * Entry:	si = group's share info
+ *		stype = Which counter to bump
+ *		sc = Array of counts to bump by.
+ *		sign = +/-1 to select incrementing/decrementing
+ * Exit:	Counters bumped within tree
+ *=====================================================================
  */
 static void
 bump_share_count(share_info *si, enum site_j_share_type stype, sh_amt *sc, int sign)
@@ -3186,17 +2974,15 @@ bump_share_count(share_info *si, enum site_j_share_type stype, sh_amt *sc, int s
 
 
 
-/**
- * @brief
- * 		bump_demand_count(si, stype, sc, sign) - Bump group demand CPU counts
- *
- * @param[in,out]	si		-	group's share info
- * @param[in]		stype	-	Which counter to bump
- * @param[in]		sc		-	Array of counts to bump by.
- * @param[in]		sign	-	+/-1 to select incrementing/decrementing
- *
- * @return	Counters bumped within tree
- *
+/*
+ *=====================================================================
+ * bump_demand_count(si, stype, sc, sign) - Bump group demand CPU counts
+ * Entry:	si = group's share info
+ *		stype = Which counter to bump
+ *		sc = Array of counts to bump by.
+ *		sign = +/-1 to select incrementing/decrementing
+ * Exit:	Counters bumped within tree
+ *=====================================================================
  */
 static void
 bump_demand_count(share_info *si, enum site_j_share_type stype, sh_amt *sc, int sign)
@@ -3219,14 +3005,12 @@ bump_demand_count(share_info *si, enum site_j_share_type stype, sh_amt *sc, int 
 
 
 
-/**
- * @brief
- * 		zero_share_counts(node) - zero CPU info in tree
- *
- * @param[in]	node	-	root of portion of tree to zero
- *
- * @return	share_inuse[], share_demand[] zeroed in sub-tree
- *
+/*
+ *=====================================================================
+ * zero_share_counts(node) - zero CPU info in tree
+ * Entry:	node = root of portion of tree to zero
+ * Exit:	share_inuse[], share_demand[] zeroed in sub-tree
+ *=====================================================================
  */
 static void
 zero_share_counts(share_info *node)
@@ -3243,14 +3027,12 @@ zero_share_counts(share_info *node)
 
 
 
-/**
- * @brief
- * 		new_share_head(cnt) - Allocate new share_info head structure
- *
- * @param[in]	cnt	-	number of sh_amt classes
- *
- * @return	pointer to initialized head structure
- *
+/*
+ *=====================================================================
+ * new_share_head(cnt) - Allocate new share_info head structure
+ * Entry:	cnt = number of sh_amt classes
+ * Returns:	pointer to initialized head structure
+ *=====================================================================
  */
 static share_head *
 new_share_head(int cnt)
@@ -3283,15 +3065,13 @@ new_share_head(int cnt)
 
 
 
-/**
- * @brief
- * 		new_share_info(name, cnt) - Create new share_info node
- *
- * @param[in]	name	-	name to assign to node
- * @param[in]	cnt 	-	number of classes to make room for.
- *
- * @return	pointer to new share_info struct
- *
+/*
+ *=====================================================================
+ * new_share_info(name, cnt) - Create new share_info node
+ * Entry:	name = name to assign to node
+ *		cnt = number of classes to make room for.
+ * Returns:	pointer to new share_info struct
+ *=====================================================================
  */
 static share_info *
 new_share_info(char *name, int cnt)
@@ -3338,16 +3118,14 @@ new_share_info(char *name, int cnt)
 
 
 
-/**
- * @brief
- * 		new_share_info_clone(old) - Clone a share_info structure
- *		Returned node has copy of sh_amt values, but shares
- *		name.
- *
- * @param[in]	old	-	ptr to existing share_info to copy
- *
- * @return	ptr to clone
- *
+/*
+ *=====================================================================
+ * new_share_info_clone(old) - Clone a share_info structure
+ *	Returned node has copy of sh_amt values, but shares
+ *	name.
+ * Entry:	old = ptr to existing share_info to copy
+ * Returns:	ptr to clone
+ *=====================================================================
  */
 static share_info *
 new_share_info_clone(share_info *old)
@@ -3381,18 +3159,14 @@ new_share_info_clone(share_info *old)
 
 
 
-/**
- * @brief
- * 		reconcile_shares(root, cnt) - Complete construction of share tree after
+/*
+ *=====================================================================
+ * reconcile_shares(root, cnt) - Complete construction of share tree after
  *		share file all read.
- *
- * @param[in]	root	-	root of share_info tree
- * @param[in[	cnt 	-	count of sh_amt entries in amount arrays
- *
- * @return	int
- * @retval	1	: if all okay
- * @retval	0	: otherwise
- *
+ * Entry:	root = root of share_info tree
+ *		cnt = count of sh_amt entries in amount arrays
+ * Returns:	1 if all okay, else 0
+ *=====================================================================
  */
 static int
 reconcile_shares(share_info *root, int cnt)
@@ -3411,18 +3185,15 @@ reconcile_shares(share_info *root, int cnt)
 
 
 
-/**
- * @brief
- * 		reconcile_share_tree(root, def, cnt) - Complete construction of
+/*
+ *=====================================================================
+ * reconcile_share_tree(root, def, cnt) - Complete construction of
  *		share info subtree.
- *
- * @param[in,out]	root	-	root of subtree
- * @param[in,out]	def 	-	default leader for this subtree
- * @param[in,out]	cnt 	-	count of sh_amt entries in amount arrays
- *
- * @return	1	: if all okay
- * @retval	0	: otherwise
- *
+ * Entry:	root = root of subtree
+ *		def = default leader for this subtree
+ *		cnt = count of sh_amt entries in amount arrays
+ * Returns:	1 if all okay, else 0
+ *=====================================================================
  */
 static int
 reconcile_share_tree(share_info *root, share_info *def, int cnt)
@@ -3430,6 +3201,7 @@ reconcile_share_tree(share_info *root, share_info *def, int cnt)
 	share_info	*child;
 	int		i;
 	sh_amt		c_sum, gross;
+	static char	whoami[] = "reconcile_share_tree";
 
 	if (root == NULL || def == NULL)
 		return 1;
@@ -3474,7 +3246,7 @@ reconcile_share_tree(share_info *root, share_info *def, int cnt)
 						root->name, shr_class_name_by_idx(i),
 						gross, c_sum);
 					schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE,
-						LOG_NOTICE, __func__, log_buffer);
+						LOG_NOTICE, whoami, log_buffer);
 				}
 				root->share_gross[i] = gross = c_sum;
 			}
@@ -3490,14 +3262,12 @@ reconcile_share_tree(share_info *root, share_info *def, int cnt)
 
 
 
-/**
- * @brief
- * 		shr_class_info_by_idx(idx) - Look up Nth CPU share class info.
- *
- * @param[in]	idx	-	index of share class
- *
- * @return	pointer to matching class info, or default entry
- *
+/*
+ *=====================================================================
+ * shr_class_info_by_idx(idx) - Look up Nth CPU share class info.
+ * Entry:	idx = index of share class
+ * Returns:	pointer to matching class info, or default entry
+ *=====================================================================
  */
 #if 0
 static struct shr_class *
@@ -3517,14 +3287,12 @@ shr_class_info_by_idx(int idx)
 
 
 
-/**
- * @brief
- * 		shr_class_info_by_name(name) - Look up CPU share class by class name
- *
- * @param[in]	name	-	name of class
- *
- * @return	pointer to matching class info, or default entry.
- *
+/*
+ *=====================================================================
+ * shr_class_info_by_name(name) - Look up CPU share class by class name
+ * Entry:	name = name of class
+ * Returns:	pointer to matching class info, or default entry.
+ *=====================================================================
  */
 #if 0
 static struct shr_class *
@@ -3544,15 +3312,13 @@ shr_class_info_by_name(const char * name)
 
 
 
-/**
- * @brief
- * 		shr_class_info_by_type_name(name) - Look up share class by type name
- *
- * @param[in]	name	-	name of CPU type to look up
- *
- * @return	pointer to matching share class, or default class if no
- *			match
- *
+/*
+ *=====================================================================
+ * shr_class_info_by_type_name(name) - Look up share class by type name
+ * Entry:	name = name of CPU type to look up
+ * Returns:	pointer to matching share class, or default class if no
+ *		match
+ *=====================================================================
  */
 #if 0
 static struct shr_class *
@@ -3575,14 +3341,12 @@ shr_class_info_by_type_name(const char * name)
 
 
 
-/**
- * @brief
- * 		shr_class_name_by_idx(idx) - Look up Nth share class name.
- *
- * @param[in]	idx	-	which share class to find
- *
- * @return	matching class name or "" if none
- *
+/*
+ *=====================================================================
+ * shr_class_name_by_idx(idx) - Look up Nth share class name.
+ * Entry:	idx = which share class to find
+ * Returns:	matching class name or "" if none
+ *=====================================================================
  */
 static char *
 shr_class_name_by_idx(int idx)
@@ -3600,14 +3364,12 @@ shr_class_name_by_idx(int idx)
 
 
 
-/**
- * @brief
- * 		shr_type_info_by_idx(idx) - Look up Nth CPU type info
- *
- * @param[in]	idx	-	desired CPU type
- *
- * @return	pointer to idx'th CPU type info, or default type info
- *
+/*
+ *=====================================================================
+ * shr_type_info_by_idx(idx) - Look up Nth CPU type info
+ * Entry:	idx = desired CPU type
+ * Returns:	pointer to idx'th CPU type info, or default type info
+ *=====================================================================
  */
 static struct shr_type *
 shr_type_info_by_idx(int idx)
@@ -3625,14 +3387,12 @@ shr_type_info_by_idx(int idx)
 
 
 
-/**
- * @brief
- * 		shr_type_info_by_name(name) - Look up CPU type info by type name
- *
- * @param[in]	name	-	desired CPU type name
- *
- * @return	pointer to matching CPU type info, or default type
- *
+/*
+ *=====================================================================
+ * shr_type_info_by_name(name) - Look up CPU type info by type name
+ * Entry:	name = desired CPU type name
+ * Returns:	pointer to matching CPU type info, or default type
+ *=====================================================================
  */
 static struct shr_type *
 shr_type_info_by_name(const char* name)
@@ -3650,12 +3410,11 @@ shr_type_info_by_name(const char* name)
 
 
 
-/**
- * @brief
- * 		squirrel_shr_head(sinfo) - make backup of alterable shares data
- *
- * @param[in]	sinfo	-	current server info
- *
+/*
+ *=====================================================================
+ * squirrel_shr_head(sinfo) - make backup of alterable shares data
+ * Entry:	sinfo = current server info
+ *=====================================================================
  */
 static void
 squirrel_shr_head(server_info *sinfo)
@@ -3675,12 +3434,11 @@ squirrel_shr_head(server_info *sinfo)
 }
 
 
-/**
- * @brief
- * 		un_squirrel_shr_head(sinfo) - restore share values from backup
- *
- * @param[in]	sinfo	-	server info
- *
+/*
+ *=====================================================================
+ * un_squirrel_shr_head(sinfo) - restore share values from backup
+ * Entry:	sinfo = server info
+ *=====================================================================
  */
 static void
 un_squirrel_shr_head(server_info *sinfo)
@@ -3701,12 +3459,11 @@ un_squirrel_shr_head(server_info *sinfo)
 
 
 
-/**
- * @brief
- * 		squirrel_shr_tree(root) - make backup of alterable shares data
- *
- * @param[in,out]	root	-	root of (sub)tree of share_info to backup.
- *
+/*
+ *=====================================================================
+ * squirrel_shr_tree(root) - make backup of alterable shares data
+ * Entry:	root = root of (sub)tree of share_info to backup.
+ *=====================================================================
  */
 static void
 squirrel_shr_tree(share_info *root)
@@ -3728,12 +3485,11 @@ squirrel_shr_tree(share_info *root)
 
 
 
-/**
- * @brief
- * 		un_squirrel_shr_tree(root) - restore alterable share data
- *
- * @param[in,out]	root	-	root of (sub)tree of share_info to restore.
- *
+/*
+ *=====================================================================
+ * un_squirrel_shr_tree(root) - restore alterable share data
+ * Entry:	root = root of (sub)tree of share_info to restore.
+ *=====================================================================
  */
 static void
 un_squirrel_shr_tree(share_info *root)
@@ -3755,20 +3511,17 @@ un_squirrel_shr_tree(share_info *root)
 
 
 
-/**
- * @brief
- * 		pick_next_job(policy, jobs, pnfilter, si) - Slightly modified version
+/*
+ *=====================================================================
+ * pick_next_job(policy, jobs, pnfilter, si) - Slightly modified version
  *		of Altair's extract_fairshare. We add an additional job
  *		check using the pnfilter function
- *
- * @param[in]	policy		-	current scheduler policy structure
- * @param[in]	jobs 		-	list of jobs to search
- * @param[in]	pnfilter	-	pointer to a binary job filter function
- * @param[in]	si			-	pointer to current most favored share
- *
- * @return	pointer to next job that matches search criteria
- * @retval	NULL	: otherwise
- *
+ * Entry:	policy = current scheduler policy structure
+ *		jobs = list of jobs to search
+ *		pnfilter = pointer to a binary job filter function
+ *		si = pointer to current most favored share
+ * Returns:	pointer to next job that matches search criteria, else NULL
+ *=====================================================================
  */
 static resource_resv *
 pick_next_job(status *policy, resource_resv **jobs, pick_next_filter pnfilter, share_info *si)
@@ -3777,6 +3530,7 @@ pick_next_job(status *policy, resource_resv **jobs, pick_next_filter pnfilter, s
 	int cmp;			/* comparison value of two jobs */
 	int i;
 #if NAS_DEBUG
+	char *whoami = "pick_next_job";
 #endif /* NAS_DEBUG */
 
 	if (policy == NULL || jobs == NULL || pnfilter == NULL)
@@ -3799,7 +3553,8 @@ pick_next_job(status *policy, resource_resv **jobs, pick_next_filter pnfilter, s
 				if (multi_sort(good, jobs[i]) != 0) {
 #if NAS_DEBUG
 					printf("%s: stopped at %s vs. %s\n",
-						__func__, good->name, jobs[i]->name);
+						whoami, good->name, jobs[i]->name);
+					fflush(stdout);
 #endif
 					break;
 				}
@@ -3817,17 +3572,13 @@ pick_next_job(status *policy, resource_resv **jobs, pick_next_filter pnfilter, s
 
 
 
-/**
- * @brief
- * 		job_filter_hwy149(resv, si) - binary job filter
- *
- * @param[in]	resv	-	job
- * @param[in]	si 		-	pointer to current most favored share
- *
- * @return	int
- * @retval	1	: if job passes filter
- * @retval	0	: otherwise
- *
+/*
+ *=====================================================================
+ * job_filter_hwy149(resv, si) - binary job filter
+ * Entry:	resv = job
+ *		si = pointer to current most favored share
+ * Returns:	1 if job passes filter, else 0
+ *=====================================================================
  */
 #ifdef	NAS_HWY149
 static int
@@ -3846,17 +3597,13 @@ job_filter_hwy149(resource_resv *resv, share_info *si)
 
 
 
-/**
- * @brief
- * 		job_filter_dedres(resv, si) - binary job filter
- *
- * @param[in]	resv	-	job
- * @param[in]	si		-	pointer to current most favored share
- *
- * @return	int
- * @retval	1 	: if job passes filter
- * @retval	0	: otherwise
- *
+/*
+ *=====================================================================
+ * job_filter_dedres(resv, si) - binary job filter
+ * Entry:	resv = job
+ *		si = pointer to current most favored share
+ * Returns:	1 if job passes filter, else 0
+ *=====================================================================
  */
 static int
 job_filter_dedres(resource_resv *resv, share_info *si)
@@ -3873,17 +3620,13 @@ job_filter_dedres(resource_resv *resv, share_info *si)
 
 
 
-/**
- * @brief
- * 		job_filter_hwy101(resv, si) - binary job filter
- *
- * @param[in]	resv	-	job
- * @param[in]	si 		-	pointer to current most favored share
- *
- * @return	int
- * @retval	1	: if job passes filter
- * @retval	0	:	otherwise
- *
+/*
+ *=====================================================================
+ * job_filter_hwy101(resv, si) - binary job filter
+ * Entry:	resv = job
+ *		si = pointer to current most favored share
+ * Returns:	1 if job passes filter, else 0
+ *=====================================================================
  */
 #ifdef	NAS_HWY101
 static int
@@ -3902,48 +3645,52 @@ job_filter_hwy101(resource_resv *resv, share_info *si)
 
 
 
-/**
- * @brief
- * 		job_filter_normal(resv, si) - binary job filter
- *
- * @param[in]	resv	-	job
- * @param[in]	si		-	pointer to current most favored share
- *
- * @return	int
- * @retval	1	: if job passes filter
- * @retval	0	: otherwise
- *
+/*
+ *=====================================================================
+ * job_filter_normal(resv, si) - binary job filter
+ * Entry:	resv = job
+ *		si = pointer to current most favored share
+ * Returns:	1 if job passes filter, else 0
+ *=====================================================================
  */
 static int
 job_filter_normal(resource_resv *resv, share_info *si)
 {
-	if (resv == NULL || resv->job == NULL || resv->job->sh_info == NULL)
+	if (resv == NULL || resv->job == NULL)
 		return 0;
 
-	if (si == NULL || (resv->job->sh_info->leader == si &&
-		!site_is_queue_topjob_set_aside(resv)))
+	if (si == NULL || resv->job->sh_info == NULL)
+		/* Not using shares */
+		return 1;
+	if (resv->job->sh_info->leader == si &&
+		!site_is_queue_topjob_set_aside(resv))
 		return 1;
 
 	return 0;
 }
 
 
+
+/*
+ *=====================================================================
+ *=====================================================================
+ */
+
+
 /* start localmod 030 */
-/**
- * @brief
- * 		check_for_cycle_interrupt(do_logging) - Check if a cycle interrupt
- *	 	has been requested.
- *
- * @param[in]	do_logging	-	whether to print to scheduler log
- *
- * @return	int
- * @retval	1	: if cycle should be interrupted
- * @retval	0	: if cycle should continue
- *
+/*
+ *=====================================================================
+ * check_for_cycle_interrupt(do_logging) - Check if a cycle interrupt
+ has been requested.
+ * Entry	do_logging = whether to print to scheduler log
+ * Returns	1 if cycle should be interrupted
+ *		0 if cycle should continue
+ *=====================================================================
  */
 int
 check_for_cycle_interrupt(int do_logging)
 {
+	char    *id = "check_for_cycle_interrupt";
 
 	if (!do_soft_cycle_interrupt && !do_hard_cycle_interrupt) {
 		return 0;
@@ -3958,7 +3705,7 @@ check_for_cycle_interrupt(int do_logging)
 	    time(NULL) >=
 		interrupted_cycle_start_time + conf.min_intrptd_cycle_length) {
 		if (do_logging)
-			schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+			schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, id,
 				"Short circuit of this cycle");
 
 		return 1;
@@ -3968,7 +3715,7 @@ check_for_cycle_interrupt(int do_logging)
 		sprintf(log_buffer, "Too early to short circuit (%ds elapsed, need %ds)",
 			(int)(time(NULL) - interrupted_cycle_start_time),
 			conf.min_intrptd_cycle_length);
-		schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, log_buffer);
+		schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, id, log_buffer);
 	}
 
 	return 0;

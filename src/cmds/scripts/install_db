@@ -84,7 +84,6 @@ chk_dataservice_user() {
 
 	if [ -n "$NASMODE" ] ; then
 		# login as ${chk_usr} and try to cd to user home dir
-		# NAS localmod 006
 		su - ${chk_usr} -s /bin/sh -c "cd" > /dev/null 2>&1
 	else
 		su - ${chk_usr} -c "cd" > /dev/null 2>&1

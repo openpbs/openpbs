@@ -875,31 +875,45 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 		}
 		else if (rc != SUCCESS && rc != RUN_FAILURE) {
 			int cal_rc;
+#ifdef NAS /* localmod 034 */
+			int bf_rc;
 			sort_again = SORTED;
-#ifdef NAS
-			/* localmod 034 */
-			/* localmod 038 */
-			if (should_backfill_with_job(policy, sinfo, njob, num_topjobs, err)  &&
-				((site_is_queue_topjob_set_aside(njob) &&
-				++num_topjobs_per_queues <= conf.per_queues_topjobs) ||
-				(!site_is_queue_topjob_set_aside(njob) &&
-				(site_bump_topjobs(njob) <= conf.per_share_topjobs ||
-				num_topjobs < policy->backfill_depth)))) {
+			if ((bf_rc = site_should_backfill_with_job(policy, sinfo, njob, num_topjobs, num_topjobs_per_queues, err)))
 #else
+			sort_again = SORTED;
 			if (should_backfill_with_job(policy, sinfo, njob, num_topjobs)) {
 #endif
 				cal_rc = add_job_to_calendar(sd, policy, sinfo, njob);
 
 				if (cal_rc > 0) { /* Success! */
-#ifdef NAS /* localmod 038 */
-					if (!site_is_queue_topjob_set_aside(njob))
-#endif /* localmod 038 */
+#ifdef NAS /* localmod 034 */
+					switch(bf_rc)
+					{
+						case 1:
+							num_topjobs++;
+							break;
+						case 2: /* localmod 038 */
+							num_topjobs_per_queues++;
+							break;
+						case 3:
+							site_bump_topjobs(njob, 0.0);
+							num_topjobs++;
+							break;
+						case 4:
+							if (!njob->job->is_preempted) {
+								site_bump_topjobs(njob, delta);
+								num_topjobs++;
+							}
+							break;
+					}
+#else
 					if (njob->job->is_preempted == 0 || sinfo->enforce_prmptd_job_resumption == 0) { /* preempted jobs don't increase top jobs count */
 						if (qinfo->backfill_depth == UNSPECIFIED)
 							num_topjobs++;
 						else
 							qinfo->num_topjobs++;
 					}
+#endif /* localmod 034 */
 				}
 				else if (cal_rc == -1) { /* recycle */
 					end_cycle = 1;
@@ -1723,13 +1737,8 @@ sim_run_update_resresv(status *policy, resource_resv *resresv, nspec **ns_arr, u
  * @retval	0	: we should not
  *
  */
-#ifdef NAS /* localmod 065 */
-int
-should_backfill_with_job(status *policy, server_info *sinfo, resource_resv *resresv, int num_topjobs, schd_error *err)
-#else
 int
 should_backfill_with_job(status *policy, server_info *sinfo, resource_resv *resresv, int num_topjobs)
-#endif /* localmod 065 */
 {
 
 	if (policy == NULL || sinfo == NULL || resresv == NULL)
@@ -1745,6 +1754,7 @@ should_backfill_with_job(status *policy, server_info *sinfo, resource_resv *resr
 	if (resresv->job->resv !=NULL)
 		return 0;
 
+#ifndef NAS /* localmod 038 */
 	if (!resresv->job->is_preempted) {
 		queue_info *qinfo = resresv->job->queue;
 		int bf_depth;
@@ -1766,6 +1776,7 @@ should_backfill_with_job(status *policy, server_info *sinfo, resource_resv *resr
 		if ((num_tj >= bf_depth))
 			return 0;
 	}
+#endif /* localmod 038 */
 
 	/* jobs with AOE are not eligible for backfill unless specifically allowed */
 	if (!conf.allow_aoe_calendar && resresv->aoename != NULL)
@@ -1783,34 +1794,6 @@ should_backfill_with_job(status *policy, server_info *sinfo, resource_resv *resr
 	/* Admin settable flag - don't add to calendar */
 	if(resresv->job->topjob_ineligible)
 		return 0;
-
-#ifdef NAS /* localmod 065 */
-	/* Jobs blocked by other jobs from the same user are not eligible
-	 * for starving/backfill help.
-	 */
-	switch (err->error_code) {
-		case SERVER_USER_LIMIT_REACHED:
-		case QUEUE_USER_LIMIT_REACHED:
-		case SERVER_USER_RES_LIMIT_REACHED:
-		case QUEUE_USER_RES_LIMIT_REACHED:
-			return 0;
-			/* localmod 066 */
-			/*
-			 * No point to backfill for jobs blocked by dedicated time.  All
-			 * resources will become available at the end of the dedicated time.
-			 */
-		case DED_TIME:
-		case CROSS_DED_TIME_BOUNDRY:
-			return 0;
-			/*
-			 * If job exceeds total mission allocation, it can never run.
-			 */
-		case GROUP_CPU_INSUFFICIENT:
-			return 0;
-		default:
-			;
-	}
-#endif /* localmod 065 */
 
 	if (policy->strict_ordering)
 		return 1;
@@ -2058,6 +2041,9 @@ find_ready_resv_job(resource_resv **resvs)
 resource_resv *
 find_runnable_resresv(resource_resv **resresv_arr)
 {
+#ifdef NAS      /* localmod 034 */
+	return site_find_runnable_res(resresv_arr);
+#else
 	int i;
 
 	if (resresv_arr == NULL)
@@ -2068,6 +2054,8 @@ find_runnable_resresv(resource_resv **resresv_arr)
 			return resresv_arr[i];
 	}
 	return NULL;
+#endif /* localmod 034 */
+
 }
 
 /**
@@ -2172,13 +2160,9 @@ next_job(status *policy, server_info *sinfo, int flag)
 	static int queue_list_size; /* Count of number of priority levels in queue_list */
 	resource_resv *rjob = NULL;		/* the job to return */
 	int i = 0;
-#ifdef NAS
-	resource_resv *(*func)(resource_resv **);
-#else
 	int queues_finished = 0;
 	int queue_index_size = 0;
 	int j = 0;
-#endif
 
 	if ((policy == NULL) || (sinfo == NULL))
 		return NULL;
@@ -2198,104 +2182,7 @@ next_job(status *policy, server_info *sinfo, int flag)
 		return NULL;
 	}
 
-#ifdef NAS /* localmod 034 */
-	if (sinfo->qrun_job != NULL) {
-		skip = 5;
-		if (!sinfo->qrun_job->can_not_run &&
-			in_runnable_state(sinfo->qrun_job))
-			rjob = sinfo->qrun_job;
-		else
-			rjob = NULL;
-	}
 
-	/* Please note, there are no breaks in this switch statement
-	 * Order matters: Each case is higher priority than following cases
-	 */
-	switch (skip) {
-		case 0: /* find jobs in running reservations */
-			if (rjob == NULL)
-				rjob = find_ready_resv_job(sinfo->resvs);
-
-		case 1: /* find high priority preempting jobs */
-			if (rjob == NULL) {
-				if (skip < 1)
-					skip = 1;
-				if (policy->preempting)
-					rjob = find_runnable_resresv(sinfo->preempting_jobs);
-			}
-
-		case 2: /* find starving jobs */
-			if (rjob == NULL) {
-				if (skip < 2)
-					skip = 2;
-#ifdef NAS_FAIR_STARVE /* localmod 069 */
-				if (policy->help_starving_jobs) {
-					if (policy->fair_share)
-						func = &extract_fairshare;
-					else
-						func = &find_runnable_resresv;
-					rjob = (*func)(sinfo->starving_jobs);
-				}
-#else
-				if (policy->help_starving_jobs)
-					rjob = find_runnable_resresv(sinfo->starving_jobs);
-#endif /* localmod 069 */
-			}
-
-		case 3: /* find suspended jobs */
-			if (rjob == NULL) {
-				if (skip < 3)
-					skip = 3;
-				rjob = find_susp_job(sinfo->jobs);
-			}
-
-		case 4: /* normal jobs */
-			if (rjob == NULL) {
-				/* use formula (built into job_sort_key)*/
-				if (sinfo->job_formula != NULL)
-					func = &find_runnable_resresv;
-				else if (site_is_share_king(NULL))
-					func = &site_pick_next_job;
-				/* next: Use fairshare */
-				else if (policy->fair_share)
-					func = &extract_fairshare;
-				else /* lastly use job_sort_key */
-					func = &find_runnable_resresv;
-
-				if (skip < 4)
-					skip = 4;
-				if (policy->round_robin) {
-					/* cycle through queues looking for a runnable job */
-					for (i = 0; i < sinfo->num_queues && rjob == NULL; i++) {
-						/* we have reached the end of the array, cycle back through */
-						if (last_queue == (sinfo->num_queues - 1)) {
-							last_queue = 0;
-						}
-						else /* still more queues to go */
-							last_queue++;
-
-						/* If we're fairsharing, find the most deserving fairshare job
-						 * if we're not, find the first job which is in a runable state
-						 * and not marked can_not_run
-						 */
-						rjob = (*func)(sinfo->queues[last_queue]->jobs);
-					}
-				}
-				else if (policy->by_queue) {
-					while (last_queue < sinfo->num_queues &&
-						(rjob = (*func)(sinfo->queues[last_queue]->jobs)) == NULL) {
-						last_queue++;
-					}
-				}
-				else	 { /* treat the entire system as one large queue */
-					rjob = (*func)(sinfo->jobs);
-				}
-			}
-		default:
-			/* skip everything */ ;
-	}
-	return rjob;
-#else
 	if (sinfo->qrun_job != NULL) {
 		if (!sinfo->qrun_job->can_not_run &&
 			in_runnable_state(sinfo->qrun_job)) {
@@ -2401,7 +2288,6 @@ next_job(status *policy, server_info *sinfo, int flag)
 		rjob = find_runnable_resresv(sinfo->jobs);
 	}
 	return rjob;
-#endif /* localmod 034 */
 }
 
 

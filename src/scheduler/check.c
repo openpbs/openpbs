@@ -883,11 +883,16 @@ is_ok_to_run(status *policy, int pbs_sd, server_info *sinfo,
 					return NULL;
 			}
 #ifdef NAS /* localmod 034 */
-			if ((rc = site_check_cpu_share(sinfo, policy, resresv))) {
-				/* status_code = NOT_RUN ?*/
-				err->error_code = (enum sched_error) rc;
-				return NULL;
-			}
+				if ((rc = site_check_cpu_share(sinfo, policy, resresv))) {
+					set_schd_error_codes(err, NOT_RUN, rc);
+					add_err(&prev_err, err);
+					if (!(flags & RETURN_ALL_ERR))
+						return NULL;
+
+					err = new_schd_error();
+					if (err == NULL)
+						return NULL;
+					}
 #endif /* localmod 034 */
 		}
 	}
@@ -944,14 +949,19 @@ is_ok_to_run(status *policy, int pbs_sd, server_info *sinfo,
 #ifdef NAS /* localmod 036 */
 		{
 			if (resresv->job->resv->resv->is_standing) {
-				resource_req *req = find_resource_req_by_str(resresv->resreq, "walltime");
+				resource_req *req = find_resource_req(resresv->resreq, getallres(RES_MIN_WALLTIME));
 
 				if (req != NULL) {
 					int resv_time_left = calc_time_left(resresv->job->resv);
 					if (req->amount > resv_time_left) {
-						strcpy(err->argbuf, "walltime");
-						err->error_code = (enum sched_error) INSUFFICIENT_RESOURCE;
-						return NULL;
+						set_schd_error_codes(err, NOT_RUN, INSUFFICIENT_RESOURCE);
+						add_err(&prev_err, err);
+						if (!(flags & RETURN_ALL_ERR))
+							return NULL;
+
+						err = new_schd_error();
+						if (err == NULL)
+							return NULL;
 					}
 				}
 			}

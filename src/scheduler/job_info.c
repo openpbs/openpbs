@@ -481,7 +481,7 @@ static struct fc_translation_table fctt[] = {
 	},
 	/* localmod 998 */
 	{	/* RESOURCES_INSUFFICIENT */
-		"Not Running: Too few free resources",
+		"Too few free resources",
 		"Too few free resources",
 #endif
 	}
@@ -1069,6 +1069,18 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 					resresv->is_invalid = 1;
 
 				}
+#ifdef NAS
+				if (!strcmp(attrp->resource, "nodect")) { /* nodect for sort */
+					/* localmod 040 */
+					count = strtol(attrp->value, &endp, 10);
+					if (*endp != '\n')
+						resresv->job->nodect = count;
+					else
+						resresv->job->nodect = 0;
+					/* localmod 034 */
+					resresv->job->accrue_rate = resresv->job->nodect; /* XXX should be SBU rate */
+				}
+#endif
 			}
 		}
 		else if (!strcmp(attrp->name, ATTR_used)) { /* resources used */

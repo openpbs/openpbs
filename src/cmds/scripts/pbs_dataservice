@@ -141,7 +141,6 @@ fi
 
 # Check if PGUSR is enabled, try to cd to user home
 if [ -n "$NASMODE" ] ; then
-	# NAS localmod 006
 	su - ${PGUSR} -s /bin/sh -c "cd" >/dev/null 2>&1
 else
 	su - ${PGUSR} -c "cd" >/dev/null 2>&1
@@ -185,7 +184,6 @@ check_status() {
   fi
 
   if [ -n "$NASMODE" ] ; then
-	# NAS localmod 006
 	res=`su - ${PGUSR} -s /bin/sh -c "/bin/sh -c '${PGSQL_LIBSTR} ${PG_CTL} -o \"-p ${PGPORT}\" -w status'"`
   else
 	res=`su - ${PGUSR} -c "/bin/sh -c '${PGSQL_LIBSTR} ${PG_CTL} -o \"-p ${PGPORT}\" -w status'"`
@@ -251,7 +249,6 @@ start_dataservice() {
 	if [ $ret -eq 0 ]; then
 		if [ "$1" = "startasync" ]; then
 			if [ -n "$NASMODE" ] ; then
-				# NAS localmod 006
 				su - ${PGUSR} -s /bin/sh -c "/bin/sh -c '${PGSQL_LIBSTR} ${PG_CTL} -o \"-p ${PGPORT}\" -W start'"
 			else
 				su - ${PGUSR} -c "/bin/sh -c '${PGSQL_LIBSTR} ${PG_CTL} -o \"-p ${PGPORT}\" -W start'"
@@ -333,14 +330,12 @@ case "$1" in
 		fi
 		if [ "$2" = "PBS" ]; then
 			if [ -n "$NASMODE" ] ; then
-				# NAS localmod 006
 				su - ${PGUSR} -s /bin/sh -c "/bin/sh -c '${PGSQL_LIBSTR} ${PG_CTL} -w stop -m fast'"
 			else
 				su - ${PGUSR} -c "/bin/sh -c '${PGSQL_LIBSTR} ${PG_CTL} -w stop -m fast'"
 			fi
 		else
 			if [ -n "$NASMODE" ] ; then
-				# NAS localmod 006
 				su - ${PGUSR} -s /bin/sh -c "/bin/sh -c '${PGSQL_LIBSTR} ${PG_CTL} -w stop'"
 			else
 				su - ${PGUSR} -c "/bin/sh -c '${PGSQL_LIBSTR} ${PG_CTL} -w stop'"
