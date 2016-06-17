@@ -19,9 +19,9 @@ PBS Professional® software optimizes job scheduling and workload management in 
 
 ## Community and Ways to Participate
 
-PBS Professional is a community effort and there are a variety of ways to engage, from helping answer questions to benchmarking to developing new capabilities and tests.  We value being aggressively open and inclusive, but also aggressively respectful and professional (see our [Code of Conduct](https://pbspro.atlassian.net/wiki/display/PBSPro/Code+of+Conduct)).
+PBS Professional is a community effort and there are a variety of ways to engage, from helping answer questions to benchmarking to developing new capabilities and tests.  We value being aggressively open and inclusive, but also aggressively respectful and professional.  See our [Code of Conduct](https://pbspro.atlassian.net/wiki/display/PBSPro/Code+of+Conduct).
 
-The best place to start is by joining the mailing lists.  You can subscribe and view the archives via [PBS Pro Community](http://community.pbspro.org).
+The best place to start is by joining the mailing lists.  You may subscribe and view the archives via [PBS Pro Community](http://community.pbspro.org).
 
 * announce@pbspro.org -- important updates relevant to the entire PBS Pro community
 * users@pbspro.org -- general questions and discussions among end users (system admins, engineers, scientists)
