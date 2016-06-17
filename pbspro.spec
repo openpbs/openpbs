@@ -50,8 +50,10 @@ Name: %{pbs_name}
 Version: %{pbs_version}
 Release: %{pbs_release}
 Source0: %{pbs_dist}
+%if 0%{?opensuse_bs}
 %if %{defined suse_version}
 Source1: %{name}-rpmlintrc
+%endif
 %endif
 Summary: PBS Professional
 License: AGPLv3 with exceptions
@@ -194,7 +196,9 @@ HPC clusters, clouds and supercomputers.
 This package is intended for a client host and provides
 the PBS Professional user commands.
 
-%if 0%{!?opensuse_bs}
+%if 0%{?opensuse_bs}
+# Do not specify debug_package for OBS builds.
+%else
 %if %{defined suse_version}
 %debug_package
 %endif
