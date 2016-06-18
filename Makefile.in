@@ -116,7 +116,7 @@ host_triplet = @host@
 target_triplet = @target@
 subdir = .
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
-	$(top_srcdir)/configure $(am__configure_deps) INSTALL README \
+	$(top_srcdir)/configure $(am__configure_deps) INSTALL \
 	$(top_srcdir)/buildutils/ar-lib \
 	$(top_srcdir)/buildutils/compile \
 	$(top_srcdir)/buildutils/config.guess \
@@ -451,7 +451,7 @@ EXTRA_DIST = \
 	COPYRIGHT \
 	INSTALL \
 	LICENSE \
-	README \
+	README.md \
 	autogen.sh \
 	pbspro-rpmlintrc \
 	pbspro.spec
