@@ -7,7 +7,7 @@ How to install PBS Pro using the configure script.
 
   For CentOS systems you should run the following command as root:
 
-    yum install -y gcc make rpm-build libtool hwloc-devel \
+    yum install -y gcc make rpm-build libtool hwloc-devel \ test
       libX11-devel libXt-devel libedit-devel libical-devel \
       ncurses-devel perl postgresql-devel python-devel tcl-devel \
       tk-devel swig expat-devel openssl-devel libXext libXft
