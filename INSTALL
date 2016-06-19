@@ -9,7 +9,7 @@ How to install PBS Pro using the configure script.
 
     yum install -y gcc make rpm-build libtool hwloc-devel \
       libX11-devel libXt-devel libedit-devel libical-devel \
-      ncurses-devel perl postgresql-devel python-devel tcl-devel \
+      ncurses-devel perl postgresql-devel python-devel tcl-devel \ test
       tk-devel swig expat-devel openssl-devel libXext libXft
 
   For openSUSE systems you should run the following command as root:
