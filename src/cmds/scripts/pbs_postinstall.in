@@ -245,6 +245,15 @@ script)
 		echo "***"
 		exit 1
 	fi
+	# if both conf files are present merge the files but precedence should be given to newconf
+        if [ -f "$newconf" -a -f "$conf" ]; then
+                while IFS='=' read -r key value
+                do
+                    if [ -z `grep -q "$key" "$newconf" && echo $?` ]; then
+                        echo "$key=$value" >> "$newconf"
+                    fi
+                done < "$conf"
+        fi
 	# The INSTALL script may have already created newconf. If it
 	# did, leave it alone. If not, and an existing configuration
 	# file is present, adapt it by substituting the new value
