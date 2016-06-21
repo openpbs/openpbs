@@ -138,6 +138,7 @@ DEFAULT_TC_TIMEOUT = 180
 def timeout(val):
     """
     Decorator to set timeout value of test case
+
     """
     def wrapper(obj):
         setattr(obj, TIMEOUT_KEY, int(val))
@@ -149,6 +150,7 @@ def checkModule(modname):
     """
     Decorator to check if named module is available on the system and if not
     skip the test
+
     """
     def decorated(function):
         def wrapper(self, *args, **kwargs):
@@ -166,7 +168,8 @@ def checkModule(modname):
 
 def skipOnCray(function):
     """
-    Decorator to skip a test on a Cray system
+    Decorator to skip a test on a ``Cray`` system
+
     """
 
     def wrapper(self, *args, **kwargs):
@@ -181,19 +184,20 @@ def skipOnCray(function):
 
 class PBSServiceInstanceWrapper(dict):
 
-    """
-    A wrapper class to handle multiple service (i.e., mom, server, scheduler)
-    instances as passed along through the test harness (pbs_benchpress).
-    Returns an ordered dictionary of PBS service instances (i.e., mom/server/
-    scheduler)
+    """PBSServiceInstanceWrapper([*args[, **kwargs]])
+
+    A wrapper class to handle multiple service ``(i.e., mom, server, scheduler)``
+    instances as passed along through the test harness ``(pbs_benchpress)``.
+    Returns an ordered dictionary of PBS service instances ``(i.e., mom/server/
+    scheduler)``
 
     Users may invoke PTL using pointers to multiple services per host, for
     example:
 
-    pbs_benchpress -p moms=hostA@/etc/pbs.conf,hostB,hostA@/etc/pbs.conf3
+    ``pbs_benchpress -p moms=hostA@/etc/pbs.conf,hostB,hostA@/etc/pbs.conf3``
 
     In such cases, the moms instance variable must be able to distinguish
-    the self.moms['hostA'] instances, each instance will be mapped to a unique
+    the ``self.moms['hostA']`` instances, each instance will be mapped to a unique
     configuration file
 
     """
@@ -272,104 +276,81 @@ class tearDownClassError(Exception):
 
 class PBSTestSuite(unittest.TestCase):
 
-    """
-    Generic setup, teardown, and logging functions to be used as parent class
+    """PBSTestSuite()
+
+    Generic ``setup``, ``teardown``, and ``logging`` functions to be used as parent class
     for most tests.
     Class instantiates:
-    server object connected to localhost
-    scheduler objected connected to localhost
-    mom object connected to localhost
+
+    ``server object connected to localhost``
+
+    ``scheduler objected connected to localhost``
+
+    ``mom object connected to localhost``
 
     Custom parameters:
 
-    server: The hostname on which the PBS server/scheduler are running
+    :param server: The hostname on which the PBS ``server/scheduler`` are running
+    :param mom: The hostname on which the PBS MoM is running
+    :param servers: Colon-separated list of hostnames hosting a PBS server.
+                    Servers are then accessible as a dictionary in the instance variable
+                    servers.
+    :param client: For CLI mode only, name of the host on which the PBS client
+                   commands are to be run from. Format is ``<host>@<path-to-config-file>``
+    :param moms: Colon-separated list of hostnames hosting a PBS MoM. MoMs are made
+                 accessible as a dictionary in the instance variable moms.
+    :param comms: Colon-separated list of hostnames hosting a PBS Comm. Comms are made
+                  accessible as a dictionary in the instance variable comms.
+    :param nomom=<host1>\:<host2>...: expect no MoM on given set of hosts
+    :param mode: Sets mode of operation to PBS server. Can be either ``'cli'`` or ``'api'``.
+                 Defaults to API behavior.
+    :param conn_timeout: set a timeout in seconds after which a pbs_connect IFL call
+                   is refreshed (i.e., disconnected)
+    :param skip-setup: Bypasses setUp of PBSTestSuite (not custom ones)
+    :param skip-teardown: Bypasses tearDown of PBSTestSuite (not custom ones)
+    :param procinfo: Enables process monitoring thread, logged into ptl_proc_info test
+                     metrics. The value can be set to _all_ to monitor all PBS processes,
+                     including ``pbs_server``, ``pbs_sched``, ``pbs_mom``, or a process 
+                     defined by name.
+    :param revert-to-defaults=<True|False>: if False, will not revert to defaults.
+                                            True by default.
+    :param revert-hooks=<True|False>: if False, do not revert hooks to defaults.
+                                      Defaults to True. ``revert-to-defaults`` set to False 
+                                      overrides this setting.
+    :param del-hooks=<True|False>: If False, do not delete hooks. Defaults to False.
+                                   ``revert-to-defaults`` set to False overrides this setting.
+    :param revert-queues=<True|False>: If False, do not revert queues to defaults.
+                                       Defaults to True. ``revert-to-defaults`` set to False 
+                                       overrides this setting.
+    :param revert-resources=<True|False>: If False, do not revert resources to
+                                          defaults. Defaults to True. ``revert-to-defaults`` 
+                                          set to False overrides this setting.
+    :param del-queues=<True|False>: If False, do not delete queues. Defaults to False.
+                                    ``revert-to-defaults`` set to False overrides this setting.
+    :param del-vnodes=<True|False>: If False, do not delete vnodes on MoM instances.
+                                    Defaults to True.
+    :param server-revert-to-defaults=<True|False>: if False, don't revert Server to
+                                                   defaults
+    :param comm-revert-to-defaults=<True|False>: if False, don't revert Comm to
+                                                 defaults
+    :param mom-revert-to-defaults=<True|False>: if False, don't revert MoM to defaults
+    :param sched-revert-to-defaults=<True|False>: if False, don't revert Scheduler to
+                                                  defaults
+    :param procmon: Enables process monitoring. Multiple values must be colon
+                    separated. For example to monitor ``server``, ``sched``, and ``mom`` use
+                    ``procmon=pbs_server:pbs_sched:pbs_mom``
+    :param procmon-freq: Sets a polling frequency for the process monitoring tool.
+                         Defaults to 10 seconds.
+    :param test-users: colon-separated list of users to use as test users. The users
+                       specified override the default users in the order in which they 
+                       appear in the ``PBS_USERS`` list.
+    :param data-users: colon-separated list of data users.
+    :param oper-users: colon-separated list of operator users.
+    :param mgr-users: colon-separated list of manager users.
+    :param root-users: colon-separated list of root users.
+    :param build-users: colon-separated list of build users.
+    :param clienthost: the hostnames to set in the MoM config file
 
-    mom: The hostname on which the PBS MoM is running
-
-    servers: Colon-separated list of hostnames hosting a PBS server.
-    Servers are then accessible as a dictionary in the instance variable
-    servers.
-
-    client: For CLI mode only, name of the host on which the PBS client
-    commands are to be run from. Format is <host>@<path-to-config-file>
-
-    moms: Colon-separated list of hostnames hosting a PBS MoM. MoMs are made
-    accessible as a dictionary in the instance variable moms.
-
-    comms: Colon-separated list of hostnames hosting a PBS Comm. Comms are made
-    accessible as a dictionary in the instance variable comms.
-
-    nomom=<host1>:<host2>...: expect no MoM on given set of hosts
-
-    mode: Sets mode of operation to PBS server. Can be either 'cli' or 'api'.
-    Defaults to API behavior.
-
-    conn_timeout: set a timeout in seconds after which a pbs_connect IFL call
-    is refreshed (i.e., disconnected)
-
-    skip-setup: Bypasses setUp of PBSTestSuite (not custom ones)
-
-    skip-teardown: Bypasses tearDown of PBSTestSuite (not custom ones)
-
-    procinfo: Enables process monitoring thread, logged into ptl_proc_info test
-    metrics. The value can be set to _all_ to monitor all PBS processes,
-    including pbs_server, pbs_sched, pbs_mom, or a process defined by name.
-
-    revert-to-defaults=<True|False>: if False, will not revert to defaults.
-    True by default.
-
-    revert-hooks=<True|False>: if False, do not revert hooks to defaults.
-    Defaults to True. revert-to-defaults set to False overrides this setting.
-
-    del-hooks=<True|False>: If False, do not delete hooks. Defaults to False.
-    revert-to-defaults set to False overrides this setting.
-
-    revert-queues=<True|False>: If False, do not revert queues to defaults.
-    Defaults to True. revert-to-defaults set to False overrides this setting.
-
-    revert-resources=<True|False>: If False, do not revert resources to
-    defaults. Defaults to True. revert-to-defaults set to False overrides this
-    setting.
-
-    del-queues=<True|False>: If False, do not delete queues. Defaults to False.
-    revert-to-defaults set to False overrides this setting.
-
-    del-vnodes=<True|False>: If False, do not delete vnodes on MoM instances.
-    Defaults to True.
-
-    server-revert-to-defaults=<True|False>: if False, don't revert Server to
-    defaults
-
-    comm-revert-to-defaults=<True|False>: if False, don't revert Comm to
-    defaults
-
-    mom-revert-to-defaults=<True|False>: if False, don't revert MoM to defaults
-
-    sched-revert-to-defaults=<True|False>: if False, don't revert Scheduler to
-    defaults
-
-    procmon: Enables process monitoring. Multiple values must be colon
-    separated. For example to monitor server, sched, and mom use
-    procmon=pbs_server:pbs_sched:pbs_mom
-
-    procmon-freq: Sets a polling frequency for the process monitoring tool.
-    Defaults to 10 seconds.
-
-    test-users: colon-separated list of users to use as test users. The users
-    specified override the default users in the order in which they appear in
-    the PBS_USERS list.
-
-    data-users: colon-separated list of data users.
-
-    oper-users: colon-separated list of operator users.
-
-    mgr-users: colon-separated list of manager users.
-
-    root-users: colon-separated list of root users.
-
-    build-users: colon-separated list of build users.
-
-    clienthost: the hostnames to set in the MoM config file
     """
 
     logger = logging.getLogger(__name__)
@@ -424,6 +405,8 @@ class PBSTestSuite(unittest.TestCase):
 
     @classmethod
     def log_enter_setup(cls, iscls=False):
+        """log_enter_setup(cls[, iscls=False])
+        """
         _m = ' Entered ' + cls.__name__ + ' setUp'
         if iscls:
             _m += 'Class'
@@ -434,6 +417,9 @@ class PBSTestSuite(unittest.TestCase):
 
     @classmethod
     def log_end_setup(cls, iscls=False):
+        """log_end_setup(cls[, iscls=False])
+
+        """
         _m = 'Completed ' + cls.__name__ + ' setUp'
         if iscls:
             _m += 'Class'
@@ -445,11 +431,12 @@ class PBSTestSuite(unittest.TestCase):
     @classmethod
     def _validate_param(cls, pname):
         """
-        Check if parameter was enabled at the command-line
+        Check if parameter was enabled at the ``command-line``
 
-        pname - parameter name
-
-        pvar - class variable to set according to command-line setting
+        :param pname: parameter name
+        :type pname: str
+        :param pvar: class variable to set according to command-line setting
+        
         """
         if pname not in cls.conf:
             return
@@ -466,6 +453,10 @@ class PBSTestSuite(unittest.TestCase):
 
     @classmethod
     def check_users_exist(cls):
+        """
+        Check whether the user is exist or not
+
+        """
         testusersexist = True
         for u in [TEST_USER, TEST_USER1, TEST_USER2, TEST_USER3]:
             rv = cls.du.check_user_exists(str(u))
@@ -479,6 +470,7 @@ class PBSTestSuite(unittest.TestCase):
         """
         custom scheduler action to kick a scheduling cycle when expectig a job
         state change
+
         """
         if server is None:
             cls.logger.error('no server defined for custom action')
@@ -493,12 +485,13 @@ class PBSTestSuite(unittest.TestCase):
     @classmethod
     def parse_param(cls):
         """
-        get test configuration parameters as a comma-separated list of
+        get test configuration parameters as a ``comma-separated`` list of
         attributes.
 
-        Attributes may be '=' separated key value pairs or standalone entries.
+        Attributes may be ``'='`` separated key value pairs or standalone entries.
 
-        Multi-property attributes are colon-delimited.
+        ``Multi-property`` attributes are colon-delimited.
+
         """
         if cls.param is None:
             return
@@ -536,6 +529,10 @@ class PBSTestSuite(unittest.TestCase):
 
     @classmethod
     def is_server_licensed(cls, server):
+        """
+        Check if server is licensed or not
+
+        """
         for i in range(0, 10, 1):
             lic = server.status(SERVER, 'license_count', level=logging.INFOCLI)
             if lic and 'license_count' in lic[0]:
@@ -552,20 +549,22 @@ class PBSTestSuite(unittest.TestCase):
     @classmethod
     def init_from_conf(cls, conf, single=None, multiple=None, skip=None,
                        func=None):
-        """
-        Helper method to parse test parameters for mom/server/scheduler
+        """init_from_conf(cls, conf[, single=None[, multiple=None[, skip=None[, func=None]]]])
+
+        Helper method to parse test parameters for`` mom/server/scheduler``
         instances.
 
         The supported format of each service request is:
 
-        hostname@configuration/path
+        ``hostname@configuration/path``
 
         For example:
 
-        pbs_benchpress -p server=remote@/etc/pbs.conf.12.0
+        ``pbs_benchpress -p server=remote@/etc/pbs.conf.12.0``
 
         initializes a remote server instance that is configured according to
-        the remote file /etc/pbs.conf.12.0
+        the remote file ``/etc/pbs.conf.12.0``
+
         """
         endpoints = []
         if ((multiple in conf) and (conf[multiple] is not None)):
@@ -601,6 +600,11 @@ class PBSTestSuite(unittest.TestCase):
 
     @classmethod
     def init_servers(cls, init_server_func=None, skip=None):
+        """init_servers(cls[, init_server_func=None[, skip=None]])
+
+        Initialize servers
+
+        """
         if init_server_func is None:
             init_server_func = cls.init_server
         if 'servers' in cls.conf:
@@ -625,6 +629,11 @@ class PBSTestSuite(unittest.TestCase):
 
     @classmethod
     def init_comms(cls, init_comm_func=None, skip=None):
+        """init_comms(cls[, init_comm_func=None[, skip=None]])
+
+        Initialize comms
+
+        """
         if init_comm_func is None:
             init_comm_func = cls.init_comm
         cls.comms = cls.init_from_conf(conf=cls.conf,
@@ -636,6 +645,11 @@ class PBSTestSuite(unittest.TestCase):
 
     @classmethod
     def init_schedulers(cls, init_sched_func=None, skip=None):
+        """init_schedulers(cls[, init_sched_func=None[, skip=None]])
+
+        Initialize schedulers
+
+        """
         if init_sched_func is None:
             init_sched_func = cls.init_scheduler
         cls.schedulers = cls.init_from_conf(conf=cls.conf,
@@ -647,6 +661,11 @@ class PBSTestSuite(unittest.TestCase):
 
     @classmethod
     def init_moms(cls, init_mom_func=None, skip='nomom'):
+        """init_moms(cls[, init_mom_func=None[, skip='nomom']])
+
+        Initialize moms
+
+        """
         if init_mom_func is None:
             init_mom_func = cls.init_mom
         cls.moms = cls.init_from_conf(conf=cls.conf, single='mom',
@@ -657,13 +676,15 @@ class PBSTestSuite(unittest.TestCase):
 
     @classmethod
     def init_server(cls, hostname, pbsconf_file=None):
-        """
+        """init_server(cls, hostname[, pbsconf_file=None])
+
         Initialize a server instance
 
         Define custom expect action to trigger a scheduling cycle when job
         is not in running state
 
-        Return the server instance on success and None on failure
+        :returns: The server instance on success and None on failure
+
         """
         client = hostname
         client_conf = None
@@ -689,30 +710,34 @@ class PBSTestSuite(unittest.TestCase):
 
     @classmethod
     def init_comm(cls, hostname, pbsconf_file=None):
-        """
+        """init_comm(cls, hostname[, pbsconf_file=None])
+
         Initialize a Comm instance associated to the given hostname.
 
         This method must be called after init_server
 
-        hostname - The host on which the Comm is running
+        :param hostname: The host on which the Comm is running
+        :type hostname: str
+        :param pbsconf_file: Optional path to an alternate pbs config file
+        :type pbsconf_file: str or None
+        :returns: The instantiated Comm upon success and None on failure.
 
-        pbsconf_file - Optional path to an alternate pbs config file
-
-        Return the instantiated Comm upon success and None on failure.
         """
         return Comm(hostname, pbsconf_file=pbsconf_file)
 
     @classmethod
     def init_scheduler(cls, server, pbsconf_file=None):
-        """
+        """init_scheduler(cls, server[, pbsconf_file=None])
+
         Initialize a Scheduler instance associated to the given server.
-        This method must be called after init_server
+        This method must be called after ``init_server``
 
-        server - The server name associated to the scheduler
+        :param server: The server name associated to the scheduler
+        :type server: str
+        :param pbsconf_file: Optional path to an alternate config file
+        :type pbsconf_file: str or None
+        :returns: The instantiated scheduler upon success and None on failure
 
-        pbsconf_file - Optional path to an alternate config file
-
-        Return the instantiated scheduler upon success and None on failure
         """
         try:
             server = cls.servers[server]
@@ -721,29 +746,27 @@ class PBSTestSuite(unittest.TestCase):
         return Scheduler(server=server, pbsconf_file=pbsconf_file)
 
     @classmethod
-    def init_mom(cls, hostname, pbsconf_file=None, server=None):
+    def init_mom(cls, hostname, pbsconf_file=None):
+        """init_mom(cls, hostname[, pbsconf_file=None])
+
+        Initialize a ``MoM`` instance associated to the given hostname.
+
+        This method must be called after ``init_server``
+
+        :param hostname: The host on which the MoM is running
+        :type hostname: str
+        :param pbsconf_file: Optional path to an alternate pbs config file
+        :type pbsconf_file: str or None
+        :returns: The instantiated MoM upon success and None on failure.
+
         """
-        Initialize a MoM instance associated to the given hostname.
 
-        This method must be called after init_server
-
-        hostname - The host on which the MoM is running
-
-        pbsconf_file - Optional path to an alternate pbs config file
-
-        server - The server name associated to the mom
-
-        Return the instantiated MoM upon success and None on failure.
-        """
-        try:
-            server = cls.servers[server]
-        except:
-            server = None
-        return MoM(hostname, pbsconf_file=pbsconf_file, server=server)
+        return MoM(hostname, pbsconf_file=pbsconf_file)
 
     def init_proc_mon(self):
         """
         Initialize process monitoring when requested
+
         """
         if 'procmon' in self.conf:
             _proc_mon = []
@@ -759,22 +782,47 @@ class PBSTestSuite(unittest.TestCase):
                 self._process_monitoring = True
 
     def revert_servers(self, force=False):
+        """revert_servers(self[, force=False])
+
+        Revert the values set for servers
+
+        """
         for server in self.servers.values():
             self.revert_server(server, force)
 
     def revert_comms(self, force=False):
+        """revert_comms(self[, force=False])
+
+        Revert the values set for comms
+
+        """
         for comm in self.comms.values():
             self.revert_comm(comm, force)
 
     def revert_schedulers(self, force=False):
+        """revert_schedulers(self[, force=False])
+
+        Revert the values set for schedulers
+
+        """
         for sched in self.schedulers.values():
             self.revert_scheduler(sched, force)
 
     def revert_moms(self, force=False):
+        """revert_moms(self[, force=False])
+
+        Revert the values set for moms
+
+        """
         for mom in self.moms.values():
             self.revert_mom(mom, force)
 
     def revert_server(self, server, force=False):
+        """revert_server(self, server[, force=False])
+
+        Revert the values set for server
+
+        """
         rv = server.isUp()
         if not rv:
             self.logger.error('server ' + server.hostname + ' is down')
@@ -805,6 +853,11 @@ class PBSTestSuite(unittest.TestCase):
         self.logger.info('server: %s licensed', server.hostname)
 
     def revert_comm(self, comm, force=False):
+        """revert_comm(self, comm[, force=False])
+
+        Revert the values set for comm
+
+        """
         rv = comm.isUp()
         if not rv:
             self.logger.error('comm ' + comm.hostname + ' is down')
@@ -813,6 +866,11 @@ class PBSTestSuite(unittest.TestCase):
             self.assertTrue(comm.isUp(), msg)
 
     def revert_scheduler(self, scheduler, force=False):
+        """revert_scheduler(scheduler[, force=False])
+
+        Revert the values set for scheduler
+
+        """
         rv = scheduler.isUp()
         if not rv:
             self.logger.error('scheduler ' + scheduler.hostname + ' is down')
@@ -826,6 +884,11 @@ class PBSTestSuite(unittest.TestCase):
             self.assertTrue(rv, _msg)
 
     def revert_mom(self, mom, force=False):
+        """revert_mom(mom[, force=False])
+
+        Revert the values set for mom
+
+        """
         # below call is a Noop if no switching is needed
         mom.switch_to_standard_mom()
         rv = mom.isUp()
@@ -879,6 +942,7 @@ class PBSTestSuite(unittest.TestCase):
         """
         analyze accounting and scheduler logs from time test was started until
         it finished
+
         """
         pla = PBSLogAnalyzer()
         self.metrics_data = pla.analyze_logs(serverlog=self.server.logfile,
@@ -889,6 +953,15 @@ class PBSTestSuite(unittest.TestCase):
                                              end=int(time.time()))
 
     def start_proc_monitor(self, name=None, regexp=False, frequency=60):
+        """start_proc_monitor([name=None[, regexp=False[, frequency=60]]])
+
+        Start the process monitoring
+
+        :param name: Process name
+        :param regexp: Regular expression to match
+        :param frequency: Frequency of monitoring
+
+        """
         if self._procmon is not None:
             self.logger.info('A process monitor is already instantiated')
             return
@@ -899,6 +972,10 @@ class PBSTestSuite(unittest.TestCase):
         self._procmon.start()
 
     def stop_proc_monitor(self):
+        """
+        Stop the process monitoring
+
+        """
         if not self._process_monitoring:
             return
         self.logger.info('stopping process monitoring')
@@ -907,9 +984,13 @@ class PBSTestSuite(unittest.TestCase):
         self._process_monitoring = False
 
     def skipTest(self, reason=None):
-        """
+        """skipTest([reason=None])
+
         Skip Test
-        reason - message to indicate why test is skipped
+
+        :param reason: message to indicate why test is skipped
+        :type reason: str or None
+
         """
         if reason:
             self.logger.warning('test skipped: ' + reason)
@@ -921,6 +1002,9 @@ class PBSTestSuite(unittest.TestCase):
 
     @classmethod
     def log_enter_teardown(cls, iscls=False):
+        """log_enter_teardown(cls[, iscls=False])
+
+        """
         _m = ' Entered ' + cls.__name__ + ' tearDown'
         if iscls:
             _m += 'Class'
@@ -931,6 +1015,9 @@ class PBSTestSuite(unittest.TestCase):
 
     @classmethod
     def log_end_teardown(cls, iscls=False):
+        """log_end_teardown(cls[, iscls=False])
+
+        """
         _m = 'Completed ' + cls.__name__ + ' tearDown'
         if iscls:
             _m += 'Class'
@@ -941,8 +1028,9 @@ class PBSTestSuite(unittest.TestCase):
 
     def tearDown(self):
         """
-        verify that server and scheduler are up
+        verify that ``server`` and ``scheduler`` are up
         clean up jobs and reservations
+
         """
         if 'skip-teardown' in self.conf:
             return

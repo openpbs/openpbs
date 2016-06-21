@@ -51,6 +51,7 @@ class PTLTestData(Plugin):
 
     """
     Save post analysis data on test cases failure or error
+
     """
     name = 'PTLTestData'
     score = sys.maxint - 3
@@ -65,6 +66,7 @@ class PTLTestData(Plugin):
     def options(self, parser, env):
         """
         Register command line options
+
         """
         pass
 
@@ -74,6 +76,7 @@ class PTLTestData(Plugin):
     def configure(self, options, config):
         """
         Configure the plugin and system, based on selected options
+
         """
         self.config = config
         self.enabled = True
@@ -252,6 +255,7 @@ class SyncData(threading.Thread):
 
     """
     Sync thread
+
     """
 
     def __init__(self, sharedpath, queue):

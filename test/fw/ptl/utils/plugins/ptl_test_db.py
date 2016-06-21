@@ -84,8 +84,14 @@ _JOBM_TN = 'ptl_job_metrics'
 
 class PTLDbError(Exception):
 
-    """
+    """PTLDbError([rv=None[, rc=None[, msg=None[, post=None[, *args[, **kwargs]]]]]])
+
     PTL database error class
+    
+    :param rv: Return value for the database error
+    :param rc: Return code for the database error
+    :param msg: Error message
+    
     """
 
     def __init__(self, rv=None, rc=None, msg=None, post=None, *args, **kwargs):
@@ -106,9 +112,15 @@ class PTLDbError(Exception):
 
 class DBType(object):
 
-    """
+    """DBType(dbtype, dbpath, dbaccess)
+
     Base class for each database type
     Any type of database must inherit from me
+
+    :param dbtype: Database type
+    :param dbpath: Path to database
+    :param dbaccess: Path to a file that defines db options
+
     """
 
     def __init__(self, dbtype, dbpath, dbaccess):
@@ -129,11 +141,22 @@ class DBType(object):
         self.dbaccess = dbaccess
 
     def write(self, data, logfile=None):
+        """write(data[, logfile=None])
+
+        :param data: Data to write
+        :param logfile: Can be one of ``server``, ``scheduler``, ``mom``, 
+                        ``accounting`` or ``procs`` 
+
+        """
         _msg = 'write method must be implemented in'
         _msg += ' %s' % (str(self.__class__.__name__))
         raise PTLDbError(rc=1, rv=False, msg=_msg)
 
     def close(self):
+        """
+        Close the database
+
+        """
         _msg = 'close method must be implemented in'
         _msg += ' %s' % (str(self.__class__.__name__))
         raise PTLDbError(rc=1, rv=False, msg=_msg)
@@ -141,8 +164,10 @@ class DBType(object):
 
 class PostgreSQLDb(DBType):
 
-    """
+    """PostgreSQLDb(self, dbtype, dbpath, dbaccess)
+
     PostgreSQL type database
+
     """
 
     def __init__(self, dbtype, dbpath, dbaccess):
@@ -512,6 +537,9 @@ class PostgreSQLDb(DBType):
         self.__dbobj.commit()
 
     def write(self, data, logfile=None):
+        """write([data[, logfile=None]])
+
+        """
         if len(data) == 0:
             return
         if 'testdata' in data.keys():
@@ -538,8 +566,10 @@ class PostgreSQLDb(DBType):
 
 class SQLiteDb(DBType):
 
-    """
+    """SQLiteDb(self, dbtype, dbpath, dbaccess)
+
     SQLite type database
+
     """
 
     def __init__(self, dbtype, dbpath, dbaccess):
@@ -910,6 +940,9 @@ class SQLiteDb(DBType):
         self.__dbobj.commit()
 
     def write(self, data, logfile=None):
+        """write(data[, logfile=None])
+
+        """
         if len(data) == 0:
             return
         if 'testdata' in data.keys():
@@ -936,8 +969,10 @@ class SQLiteDb(DBType):
 
 class FileDb(DBType):
 
-    """
+    """FileDb(dbtype, dbpath, dbaccess)
+
     File type database
+
     """
 
     def __init__(self, dbtype, dbpath, dbaccess):
@@ -1048,6 +1083,9 @@ class FileDb(DBType):
         self.__dbobj[_TESTRESULT_TN].flush()
 
     def write(self, data, logfile=None):
+        """write(data[, logfile=None])
+
+        """
         if len(data) == 0:
             return
         if 'testdata' in data.keys():
@@ -1075,8 +1113,10 @@ class FileDb(DBType):
 
 class HTMLDb(DBType):
 
-    """
+    """HTMLDb(dbtype, dbpath, dbaccess)
+
     HTML type database
+
     """
 
     def __init__(self, dbtype, dbpath, dbaccess):
@@ -1546,6 +1586,9 @@ class HTMLDb(DBType):
         self.__index += 1
 
     def write(self, data, logfile=None):
+        """write(data[, logfile=None])
+
+        """
         if len(data) == 0:
             return
         if 'testdata' in data.keys():
@@ -1562,6 +1605,7 @@ class PTLTestDb(Plugin):
 
     """
     PTL Test Database Plugin
+
     """
     name = 'PTLTestDb'
     score = sys.maxint - 5
@@ -1581,10 +1625,15 @@ class PTLTestDb(Plugin):
     def options(self, parser, env):
         """
         Register command line options
+
         """
         pass
 
     def set_data(self, dbtype, dbpath, dbaccess):
+        """
+        Set the data
+
+        """
         self.__dbtype = dbtype
         self.__dbpath = dbpath
         self.__dbaccess = dbaccess
@@ -1592,6 +1641,9 @@ class PTLTestDb(Plugin):
     def configure(self, options, config):
         """
         Configure the plugin and system, based on selected options
+
+        :param options: Configuration options for ``plugin`` and ``system``
+        
         """
         if self.__dbconn is not None:
             return
@@ -1669,24 +1721,23 @@ class PTLTestDb(Plugin):
 
     def process_output(self, info={}, dbout=None, dbtype=None, dbaccess=None,
                        name=None, logtype=None, summary=False):
-        """
+        """process_output([info[, dbout=None[, dbtype=None[, dbaccess=None[, name=None[, logtype=None[, summary=False]]]]]]])
+
         Send analyzed log information to either the screen or to a database
         file.
 
-        info - A dictionary of log analysis metrics.
+        :param info: A dictionary of log analysis metrics.
+        :type info: Dictionary
+        :param dbout: The name of the database file to send output to
+        :type dbout: str or None
+        :param dbtype: Type of database
+        :param dbaccess: Path to a file that defines db options (PostreSQL only)
+        :param name: The name of the log file being analyzed
+        :type name: str or None
+        :param logtype: The log type, one of ``accounting``, ``schedsummary``, ``scheduler``,
+                        ``server``, or ``mom``
+        :param summary: If True output summary only
 
-        dbout - The name of the database file to send output to
-
-        dbtype - Type of database
-
-        dbaccess - Path to a file that defines db options (PostreSQL only)
-
-        name - The name of the log file being analyzed
-
-        logtype - The log type, one of accounting, schedsummary, scheduler,
-        server, or mom
-
-        summary - If True output summary only
         """
         if dbout is not None:
             try:

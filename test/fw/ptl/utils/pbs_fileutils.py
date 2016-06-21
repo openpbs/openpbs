@@ -40,17 +40,19 @@ FILE_TAIL = 'tail'
 
 class FileUtils:
 
-    """
-    Utility to walk a file from 'head' or 'tail' on the local filesystem
+    """FileUtils(f[, mode])
+
+    Utility to walk a file from ``'head'`` or ``'tail'`` on the local filesystem
+
+    :param f: File to process
+    :type f: str
+    :param mode: One of FILE_HEAD or FILE_TAIL, which respectively set the
+                 file for processing from head or tail. Defaults to head.
+
     """
 
     def __init__(self, f, mode=FILE_HEAD):
-        """
-        f - File to process
 
-        mode - One of FILE_HEAD or FILE_TAIL, which respectively set the
-        file for processing from head or tail. Defaults to head.
-        """
         self.filename = f
         self.fd = open(f, 'rb')
         self._buf_size = 1024
@@ -60,16 +62,25 @@ class FileUtils:
         self.num_lines = None
 
     def get_file_descriptor(self):
-        " Return the file descriptor associated to the file being processed "
+        """ 
+        Return the file descriptor associated to the file being processed 
+
+        """
         return self.fd
 
     def set_buf_size(self, bs=1024):
-        " Set the buffer size to read blocks of file into "
+        """set_buf_size([bs=1024])
+ 
+        Set the buffer size to read blocks of file into 
+        
+        """
         self._buf_size = bs
 
     def set_mode(self, m=None):
-        """
-        m - FILE_TAIL if file to be tailed, and FILE_HEAD to read from head
+        """set_mode([m=None])
+
+        :param m: ``FILE_TAIL`` if file to be tailed, and ``FILE_HEAD`` to read from head
+
         """
         if m == FILE_TAIL:
             self._backward = True
@@ -79,11 +90,17 @@ class FileUtils:
             self.fd.seek(0, 0)
 
     def tell(self):
-        " Return the current file 'cursor' "
+        """ 
+        :returns: The current file ``'cursor'`` 
+        
+        """
         return self.fd.tell()
 
     def get_size(self):
-        " Return the size of the file "
+        """ 
+        :returns: The size of the file 
+     
+        """
         cur_pos = self.fd.tell()
         self.fd.seek(0, 2)
         size = self.fd.tell()
@@ -91,6 +108,10 @@ class FileUtils:
         return size
 
     def get_num_lines(self):
+        """
+        :returns: No of lines for the file
+ 
+        """
         if self.num_lines is not None:
             return self.num_lines
         _c = self.fd.tell()
@@ -99,10 +120,13 @@ class FileUtils:
         return self.num_lines
 
     def next(self, n=1):
-        """
+        """next([n=1])
+
         Get the next n lines of the file
 
-        n - the numer of lines to retrieve
+        :param n: the numer of lines to retrieve
+        :type n: int
+
         """
         if self._backward:
             return self.tail(n)
@@ -110,7 +134,11 @@ class FileUtils:
             return self.head(n)
 
     def get_line(self, n=1):
-        " Return the nth line from file "
+        """get_line([n=1])
+
+        :returns: The nth line from file 
+
+        """
         self.fd.seek(0, 0)
         i = 0
         while i != (n - 1):
@@ -122,8 +150,10 @@ class FileUtils:
         return self.fd.readline()
 
     def get_block(self, from_n=1, to_n=1):
-        """
-        Return a block of lines between from_n and to_n
+        """get_block([from_n=1[, to_n=1]])
+
+        :returns: A block of lines between ``from_n`` and ``to_n``
+
         """
         if to_n < from_n:
             return None
@@ -148,16 +178,29 @@ class FileUtils:
         return block
 
     def next_head(self, n=1):
-        " Next line(s) from head "
+        """next_head([n=1])
+ 
+        Next line(s) from head 
+
+        """
         return self.head(n)
 
     def next_tail(self, n=1):
-        " Next line(s) from tail "
+        """next_tail([n=1])
+ 
+        Next line(s) from tail 
+
+        """
         if not self._backward:
             self.set_mode(FILE_TAIL)
         return self.tail(n)
 
     def head(self, n=1):
+        """head([n=1])
+
+        :returns: n lines of head
+
+        """
         head_lines = []
         i = 0
         while i != n:
@@ -169,6 +212,11 @@ class FileUtils:
         return head_lines
 
     def tail(self, n=1):
+        """tail([n=1])
+
+        :returns: n lines of tail
+
+        """
         if not self._backward:
             self.set_mode(FILE_TAIL)
 
