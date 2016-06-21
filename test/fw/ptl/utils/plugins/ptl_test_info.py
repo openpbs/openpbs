@@ -45,7 +45,9 @@ log = logging.getLogger('nose.plugins.PTLTestInfo')
 
 
 class FakeRunner(object):
+    """FakeRunner(config)
 
+    """
     def __init__(self, config):
         self.config = config
 
@@ -58,6 +60,7 @@ class PTLTestInfo(Plugin):
 
     """
     Load test cases from given parameter
+
     """
     name = 'PTLTestInfo'
     score = sys.maxint - 1
@@ -78,10 +81,19 @@ class PTLTestInfo(Plugin):
     def options(self, parser, env):
         """
         Register command line options
+
         """
         pass
 
     def set_data(self, suites, list_test, showinfo, verbose, gen_ts_tree):
+        """
+        Set the data required for running the tests
+
+        :param suites: Test suites to run
+        :param list_test: List of test to run
+        :param gen_ts_tree: Generate test suite tree
+        
+        """
         self.suites = suites.split(',')
         self.list_test = list_test
         self.showinfo = showinfo
@@ -91,6 +103,9 @@ class PTLTestInfo(Plugin):
     def configure(self, options, config):
         """
         Configure the plugin and system, based on selected options
+
+        :param options: Options to configure plugin and system
+
         """
         self.config = config
         self.enabled = True
@@ -101,6 +116,7 @@ class PTLTestInfo(Plugin):
     def wantClass(self, cls):
         """
         Is the class wanted?
+        
         """
         if not issubclass(cls, PBSTestSuite):
             return False
@@ -114,12 +130,14 @@ class PTLTestInfo(Plugin):
     def wantFunction(self, function):
         """
         Is the function wanted?
+
         """
         return False
 
     def wantMethod(self, method):
         """
         Is the method wanted?
+
         """
         return False
 
