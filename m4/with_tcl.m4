@@ -51,7 +51,9 @@ AC_DEFUN([PBS_AC_WITH_TCL],
     [. "$tcl_dir/lib64/tclConfig.sh"],
     AS_IF([test -r "$tcl_dir/lib/tclConfig.sh"],
       [. "$tcl_dir/lib/tclConfig.sh"],
-      AC_MSG_ERROR([tclConfig.sh not found])))
+      AS_IF([test -r "$tcl_dir/lib/x86_64-linux-gnu/tclConfig.sh"],
+        [. "$tcl_dir/lib/x86_64-linux-gnu/tclConfig.sh"],
+        AC_MSG_ERROR([tclConfig.sh not found]))))
   AC_MSG_RESULT([$tcl_dir])
   AC_MSG_CHECKING([for Tcl version])
   AS_IF([test "x$TCL_VERSION" = "x"],
@@ -64,7 +66,9 @@ AC_DEFUN([PBS_AC_WITH_TCL],
     [. "$tcl_dir/lib64/tkConfig.sh"],
     AS_IF([test -r "$tcl_dir/lib/tkConfig.sh"],
       [. "$tcl_dir/lib/tkConfig.sh"],
-      AC_MSG_ERROR([tkConfig.sh not found])))
+      AS_IF([test -r "$tcl_dir/lib/x86_64-linux-gnu/tkConfig.sh"],
+        [. "$tcl_dir/lib/x86_64-linux-gnu/tkConfig.sh"],
+        AC_MSG_ERROR([tkConfig.sh not found]))))
   AC_MSG_RESULT([$tcl_dir])
   AC_MSG_CHECKING([for Tk version])
   AS_IF([test "x$TK_VERSION" = "x"],

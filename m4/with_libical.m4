@@ -53,7 +53,7 @@ AC_DEFUN([PBS_AC_WITH_LIBICAL],
     AC_MSG_ERROR([libical headers not found.]))
   AS_IF([test "$libical_dir" = "/usr"],
     # Using system installed libical
-    AS_IF([test -r "/usr/lib64/libical.so" -o -r "/usr/lib/libical.so"],
+    AS_IF([test -r "/usr/lib64/libical.so" -o -r "/usr/lib/libical.so" -o -r "/usr/lib/x86_64-linux-gnu/libical.so"],
       [libical_lib="-lical"],
       AC_MSG_ERROR([libical shared object library not found.])),
     # Using developer installed libical

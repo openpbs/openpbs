@@ -182,7 +182,6 @@ AC_CHECK_HEADERS([ \
 	sys/utsname.h \
 	sys/vfs.h \
 	sys/wait.h \
-	tcl.h \
 	termios.h \
 	time.h \
 	unistd.h \

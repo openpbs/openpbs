@@ -19,6 +19,13 @@ How to install PBS Pro using the configure script.
       ncurses-devel perl postgresql-devel python-devel tcl-devel \
       tk-devel swig libexpat-devel libopenssl-devel libXext-devel \
       libXft-devel fontconfig
+      
+  For Debian systems you should run the following command as root:      
+  
+    sudo apt-get install gcc make libtool libhwloc-dev libX11-dev \
+      libXt-dev libedit-dev libical-dev ncurses-dev perl \
+      postgresql-server-dev-all python-dev tcl-dev tk-dev swig \
+      libexpat-dev libssl-dev libxext-dev libxft-dev
 
 2. Install the prerequisite packages for running PBS Pro. In addition
   to the commands below, you should also install a text editor of
@@ -33,6 +40,11 @@ How to install PBS Pro using the configure script.
 
     zypper install expat libedit postgresql-server python \
       sendmail sudo tcl tk libical1
+      
+  For Debian systems you should run the following command as root:
+
+    apt-get install expat libedit2 postgresql python sendmail-bin \
+      sudo tcl tk libical1a
 
 3. Open a terminal as a normal (non-root) user, unpack the PBS Pro
   tarball, and cd to the package directory.
@@ -56,6 +68,10 @@ How to install PBS Pro using the configure script.
   following command:
 
     ./configure --prefix=/opt/pbs --libexecdir=/opt/pbs/libexec
+    
+  For Debian systems you should run the following command:
+
+    ./configure --prefix=/opt/pbs
 
 6. Build PBS Pro by running "make". (See note 3 below)
 

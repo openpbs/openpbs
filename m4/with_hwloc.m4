@@ -57,7 +57,7 @@ AC_DEFUN([PBS_AC_WITH_HWLOC],
   )
   AS_IF([test "$hwloc_dir" = "/usr"],
     # Using system installed hwloc
-    AS_IF([test -r "/usr/lib64/libhwloc.so" -o -r "/usr/lib/libhwloc.so"],
+    AS_IF([test -r "/usr/lib64/libhwloc.so" -o -r "/usr/lib/libhwloc.so" -o -r "/usr/lib/x86_64-linux-gnu/libhwloc.so"],
       [hwloc_lib="-lhwloc"],
       AC_MSG_ERROR([hwloc shared object library not found.])
     ),

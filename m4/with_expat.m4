@@ -53,7 +53,7 @@ AC_DEFUN([PBS_AC_WITH_EXPAT],
     AC_MSG_ERROR([expat headers not found.]))
   AS_IF([test "$expat_dir" = "/usr"],
     # Using system installed expat
-    AS_IF([test -r "/usr/lib64/libexpat.so" -o -r "/usr/lib/libexpat.so"],
+    AS_IF([test -r "/usr/lib64/libexpat.so" -o -r "/usr/lib/libexpat.so" -o -r "/usr/lib/x86_64-linux-gnu/libexpat.so"],
       [expat_lib="-lexpat"],
       AC_MSG_ERROR([expat shared object library not found.])),
     # Using developer installed expat
