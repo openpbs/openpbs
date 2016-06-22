@@ -478,6 +478,11 @@ elif [ $INSTALL_PACKAGE != client ] ; then
 			[ -f /etc/profile.d/pbs.csh ] || cp ${PBS_EXEC}/etc/pbs.csh /etc/profile.d
 			[ -f /etc/profile.d/pbs.sh ] || cp ${PBS_EXEC}/etc/pbs.sh /etc/profile.d
 		fi
+		unitfilepath="/usr/lib/systemd/system/"
+		if [ -d $unitfilepath ]; then
+			[ -f $unitfilepath/pbs.service ] || cp ${PBS_EXEC}/libexec/pbs.service $unitfilepath
+			chmod 644 $unitfilepath/pbs.service
+		fi
 		;;
 	AIX)
 		initscript="/etc/rc.d/rc2.d/S90pbs"

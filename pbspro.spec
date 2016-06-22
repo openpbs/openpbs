@@ -45,6 +45,9 @@
 %define pbs_home /var/spool/pbs
 %define pbs_dbuser postgres
 %define pbs_dist %{pbs_name}-%{pbs_version}.tar.gz
+%if 0%{?suse_version} >= 1210 || 0%{?rhel} >= 7
+%define have_systemd 1
+%endif
 
 Name: %{pbs_name}
 Version: %{pbs_version}
@@ -342,6 +345,9 @@ echo
 %attr(4755, root, root) %{pbs_prefix}/sbin/pbs_iff
 %{_sysconfdir}/profile.d/pbs.csh
 %{_sysconfdir}/profile.d/pbs.sh
+%if %{defined have_systemd}
+%attr(644, root, root) %{_unitdir}/pbs.service
+%endif
 # %{_sysconfdir}/init.d/pbs
 %exclude %{pbs_prefix}/unsupported/*.pyc
 %exclude %{pbs_prefix}/unsupported/*.pyo
@@ -354,6 +360,9 @@ echo
 %attr(4755, root, root) %{pbs_prefix}/sbin/pbs_iff
 %{_sysconfdir}/profile.d/pbs.csh
 %{_sysconfdir}/profile.d/pbs.sh
+%if %{defined have_systemd}
+%attr(644, root, root) %{_unitdir}/pbs.service
+%endif
 # %{_sysconfdir}/init.d/pbs
 %exclude %{pbs_prefix}/bin/printjob_svr.bin
 %exclude %{pbs_prefix}/etc/pbs_db_schema.sql
@@ -416,4 +425,5 @@ echo
 %exclude %{pbs_prefix}/sbin/pbsfs
 %exclude %{pbs_prefix}/unsupported/*.pyc
 %exclude %{pbs_prefix}/unsupported/*.pyo
+%exclude %{_unitdir}/pbs.service
 
