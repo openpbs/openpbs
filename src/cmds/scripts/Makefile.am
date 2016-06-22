@@ -72,6 +72,11 @@ dist_sysprofile_DATA = \
 	pbs.csh \
 	pbs.sh
 
+unitfiledir = /usr/lib/systemd/system
+
+dist_unitfile_DATA = \
+	pbs.service
+
 dist_libexec_SCRIPTS = \
 	au-nodeupdate \
 	install_db \

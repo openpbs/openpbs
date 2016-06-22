@@ -35,6 +35,6 @@ install:
     - '[ "${OS_TYPE}" == "opensuse:13.2" ] && travis_retry ${DOCKER_EXEC} zypper -n install python-pip sudo which net-tools || true'
     - ${DOCKER_EXEC} /bin/bash -c "cd test/fw; pip install -r requirements.txt ."
     - ${DOCKER_EXEC} pbs_config --make-ug
-    - ${DOCKER_EXEC} /bin/bash -c "cd test/tests; pbs_benchpress -l INFOCLI2 -o ../../ptl.txt"
+    - ${DOCKER_EXEC} /bin/bash -c "cd test/tests; pbs_benchpress -l INFOCLI2 -o ../../ptl.txt --exclude=Test_systemd:test_systemd"
 script: true
 
