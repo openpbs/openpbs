@@ -6,6 +6,8 @@ env:
     - OS_TYPE=centos:7
     - OS_TYPE=opensuse:13.2
 before_install:
+    - gem install octokit
+    - .github/runchecks
     - docker pull ${OS_TYPE}
     - docker run -it -d -h testdev.pbspro.com --name testdev -v `pwd`:`pwd` --privileged -w `pwd` ${OS_TYPE} /bin/bash
     - docker ps -a
