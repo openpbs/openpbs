@@ -206,12 +206,6 @@ PBS_OBJ_MAP = {
     PBS_HOOK: 'pbshook'
 }
 
-PBS_TERM_MAP = {
-    SHUT_QUICK: 'quick',
-    SHUT_IMMEDIATE: 'immediate',
-    SHUT_DELAY: 'delay'
-}
-
 PTL_TRUE = ('1', 'true', 't', 'yes', 'y', 'enable', 'enabled', 'True', True)
 PTL_FALSE = ('0', 'false', 'f', 'no', 'n', 'disable', 'disabled', 'False',
              False)
@@ -235,7 +229,8 @@ CMD_ERROR_MAP = {
     'delresv': 'PbsDelresvError',
     'status': 'PbsStatusError',
     'manager': 'PbsManagerError',
-    'submit': 'PbsSubmitError'
+    'submit': 'PbsSubmitError',
+    'terminate': 'PbsQtermError'
 }
 
 
@@ -431,6 +426,9 @@ class PtlExpectError(PtlException):
     pass
 
 class PbsInitServicesError(PtlException):
+    pass
+
+class PbsQtermError(PtlException):
     pass
 
 class PbsTypeSize(str):
@@ -2127,13 +2125,29 @@ class BatchUtils(object):
             return _c
 
         elif op == IFL_TERMINATE:
-            if attrs == SHUT_QUICK:
-                return ['-t', 'quick']
-            elif attrs == SHUT_IMMEDIATE:
-                return ['-t', 'immediate']
-            elif attrs == SHUT_DELAY:
-                return ['-t', 'delay']
-            return None
+            _c = []
+            if attrs is None:
+                _c = []
+            elif isinstance(attrs, str):
+                _c = ['-t', attrs]
+            else:
+                if ((attrs & SHUT_QUICK) == SHUT_QUICK):
+                    _c = ['-t', 'quick']
+                if ((attrs & SHUT_IMMEDIATE) == SHUT_IMMEDIATE):
+                    _c = ['-t', 'immediate']
+                if ((attrs & SHUT_DELAY) == SHUT_DELAY):
+                    _c = ['-t', 'delay']
+                if ((attrs & SHUT_WHO_SCHED) == SHUT_WHO_SCHED):
+                    _c.append('-s')
+                if ((attrs & SHUT_WHO_MOM) == SHUT_WHO_MOM):
+                    _c.append('-m')
+                if ((attrs & SHUT_WHO_SECDRY) == SHUT_WHO_SECDRY):
+                    _c.append('-f')
+                if ((attrs & SHUT_WHO_IDLESECDRY) == SHUT_WHO_IDLESECDRY):
+                    _c.append('-F')
+                if ((attrs & SHUT_WHO_SECDONLY) == SHUT_WHO_SECDONLY):
+                    _c.append('-i')
+            return _c
 
         if attrs is None or len(attrs) == 0:
             return ret
@@ -6773,21 +6787,59 @@ class Server(PBSService):
 
         return rc
 
-    def terminate(self, manner=SHUT_QUICK, extend=None, runas=None):
+    def qterm(self, manner=None, extend=None, server_name=None, runas=None,
+              logerr=True):
         """
         Terminate the pbs_server daemon
 
-        manner - one of SHUT_IMMEDIATE, SHUT_DELAY, SHUT_QUICK. \
-        Default:SHUT_QUICK
+        manner - one of (SHUT_IMMEDIATE | SHUT_DELAY | SHUT_QUICK) and can be\
+                 combined with SHUT_WHO_SCHED, SHUT_WHO_MOM, SHUT_WHO_SECDRY, \
+                 SHUT_WHO_IDLESECDRY, SHUT_WHO_SECDONLY. \
+
+        Default:None
 
         extend - extend options
 
+        server_name - name of the pbs server
+
         runas - run as user
+
+        logerr - If True (default) logs run_cmd errors
         """
-        self.logger.info('terminate ' + self.shortname + ': ' +
-                         PBS_TERM_MAP[manner])
+        prefix = 'terminate ' + self.shortname
+        if runas is not None:
+            prefix += ' as ' + str(runas)
+        prefix += ': with manner '
+        attrs = manner
+        if attrs is None:
+            prefix += "None "
+        elif isinstance(attrs, str):
+            prefix += attrs
+        else:
+            if ((attrs & SHUT_QUICK) == SHUT_QUICK):
+                prefix += "quick "
+            if ((attrs & SHUT_IMMEDIATE) == SHUT_IMMEDIATE):
+                prefix += "immediate "
+            if ((attrs & SHUT_DELAY) == SHUT_DELAY):
+                prefix += "delay "
+            if ((attrs & SHUT_WHO_SCHED) == SHUT_WHO_SCHED):
+                prefix += "schedular "
+            if ((attrs & SHUT_WHO_MOM) == SHUT_WHO_MOM):
+                prefix += "mom "
+            if ((attrs & SHUT_WHO_SECDRY) == SHUT_WHO_SECDRY):
+                prefix += "secondary server "
+            if ((attrs & SHUT_WHO_IDLESECDRY) == SHUT_WHO_IDLESECDRY):
+                prefix += "idle secondary "
+            if ((attrs & SHUT_WHO_SECDONLY) == SHUT_WHO_SECDONLY):
+                prefix += "shoutdown secondary only "
+
+        self.logger.info(prefix)
+
         if self.has_diag:
             return 0
+
+        c = None
+        rc = 0
 
         if self.get_op_mode() == PTL_CLI:
             pcmd = [os.path.join(self.client_conf['PBS_EXEC'], 'bin', 'qterm')]
@@ -6795,7 +6847,9 @@ class Server(PBSService):
             pcmd += self.utils.convert_to_cli(manner, op=IFL_TERMINATE,
                                               hostname=self.hostname,
                                               dflt_conf=_conf)
-            pcmd += [self.shortname]
+            if server_name is not None:
+                pcmd += [server_name]
+
             if not self.default_client_pbs_conf:
                 pcmd = ['PBS_CONF_FILE=' + self.client_pbs_conf_file] + pcmd
                 as_script = True
@@ -6809,13 +6863,23 @@ class Server(PBSService):
                 self.last_error = ret['err']
             self.last_rc = rc
         elif runas is not None:
-            rc = self.pbs_api_as('terminate', None, runas, data=manner,
+            attrs = {'manner': manner, 'server_name': server_name}
+            rc = self.pbs_api_as('terminate', None, runas, data=attrs,
                                  extend=extend)
         else:
+            if server_name is None:
+                server_name = self.hostname
             c = self._connect(self.hostname)
             rc = pbs_terminate(c, manner, extend)
+        if rc != 0:
+            raise PbsQtermError(rc=rc, rv=False, msg=self.geterrmsg(),
+                                post=self._disconnect, conn=c, force=True)
+
+        if c:
             self._disconnect(c, force=True)
+
         return rc
+    teminate = qterm
 
     def geterrmsg(self):
         mode = self.get_op_mode()

@@ -47,6 +47,7 @@ from ptl.lib.pbs_testlib import PbsManagerError, PbsAlterError, PbsSignalError
 from ptl.lib.pbs_testlib import PbsOrderError, PbsMessageError, PbsHoldError
 from ptl.lib.pbs_testlib import PbsReleaseError, PbsRunError, PbsRerunError
 from ptl.lib.pbs_testlib import PbsMoveError, PbsDeljobError, PbsDelresvError
+from ptl.lib.pbs_testlib import PbsQtermError
 
 
 def usage():
@@ -347,11 +348,9 @@ if __name__ == '__main__':
             sys.exit(e.rc)
 
     elif cmd == 'terminate':
-        if objid is None:
-            print '1'
-        else:
-            (s, manner) = _load_data(objfile, servername, user)
-            rc = s.terminate(objid, str(manner), extend=extend)
-            print str(rc)
+        (s, data) = _load_data(servername, user)
+        rc = s.terminate(manner=data['manner'],
+                         server_name=data['server_name'], extend=extend)
+        print str(rc)
 
     sys.exit(0)

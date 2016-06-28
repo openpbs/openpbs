@@ -301,14 +301,16 @@ ATTR_NODE_LicenseInfo = 'license_info'
 ATTR_NODE_TopologyInfo = 'topology_info'
 ATTR_RESC_TYPE = 'type'
 ATTR_RESC_FLAG = 'flag'
-SHUT_QUICK = 'quick'
-SHUT_DELAY = 'delay'
-SHUT_IMMEDIATE = 'immediate'
-SHUT_WHO_SCHED = 'sched'
-SHUT_WHO_MOM = 'mom'
-SHUT_WHO_SECDRY = 'secdry'
-SHUT_WHO_IDLESECDRY = 'idlesecdry'
-SHUT_WHO_SECDONLY = 'sedonly'
+
+SHUT_IMMEDIATE = 0x0
+SHUT_DELAY = 0x01
+SHUT_QUICK = 0x02
+SHUT_WHO_SCHED = 0x10
+SHUT_WHO_MOM = 0x20
+SHUT_WHO_SECDRY = 0x40
+SHUT_WHO_IDLESECDRY = 0x80
+SHUT_WHO_SECDONLY = 0x100
+
 USER_HOLD = 'u'
 OTHER_HOLD = 'o'
 SYSTEM_HOLD = 's'
