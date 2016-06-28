@@ -40,9 +40,19 @@ import re
 
 
 class CliUtils(object):
+    """
+    Command line interface utility 
+
+    """
 
     @classmethod
     def get_logging_level(cls, level):
+        """
+        Get the logging levels
+
+        :param level: Name of the logging level
+ 
+        """
 
         logging.DEBUG2 = logging.DEBUG - 1
         logging.INFOCLI = logging.INFO - 1
@@ -71,6 +81,13 @@ class CliUtils(object):
 
     @staticmethod
     def check_bin(bin_name):
+        """
+        Check for command exist
+        
+        :param bin_name: Command to be checked
+        :returns: True if command exist else return False
+ 
+        """
         ec = os.system("/usr/bin/which " + bin_name + " > /dev/null")
         if ec == 0:
             return True
@@ -89,17 +106,24 @@ class CliUtils(object):
 
     @staticmethod
     def expand_abs_path(path):
+        """
+        Expand the path to absolute path
+
+        """
         if path.startswith('~'):
             return os.path.expanduser(path)
         return os.path.abspath(path)
 
     @staticmethod
     def priv_ports_info(hostname=None):
-        """
+        """priv_ports_info([hostname=None])
+
         Return a list of privileged ports in use on a given host
 
-        hostname - The host on which to query privilege ports usage. Defaults
-        to the local host
+        :param hostname: The host on which to query privilege ports usage. Defaults
+                         to the local host
+        :type hostname: str or None
+      
         """
         from ptl.utils.pbs_dshutils import DshUtils
 
