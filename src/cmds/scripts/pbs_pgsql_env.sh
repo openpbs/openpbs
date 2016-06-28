@@ -89,7 +89,12 @@ else
 		echo "\*\*\* psql command is not in PATH"
 		exit 1
 	fi
-	PGSQL_BIN=`dirname $PGSQL_CMD`
+	PGSQL_CONF=`type pg_config 2>/dev/null | cut -d' ' -f3`
+	if [ -z "$PGSQL_CONF" ]; then
+		PGSQL_BIN=`dirname ${PGSQL_CMD}`
+	else
+		PGSQL_BIN=`${PGSQL_CONF} | awk '/BINDIR/{ print $3 }'`
+	fi
 	PGSQL_DIR=`dirname $PGSQL_BIN`
 	[ "$PGSQL_DIR" = "/" ] && PGSQL_DIR=""
 fi

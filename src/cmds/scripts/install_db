@@ -127,7 +127,7 @@ if [ -z "${PBS_DATA_SERVICE_PORT}" ]; then
 fi
 export PBS_DATA_SERVICE_PORT
 
-bin_dir="${PBS_EXEC}/pgsql/bin"
+bin_dir="${PGSQL_BIN}"
 data_dir="${PBS_HOME}/datastore"
 server_ctl="${PBS_EXEC}/sbin/pbs_dataservice"
 tmp_file="${PBS_HOME}/spool/tmp_inst_$$"
