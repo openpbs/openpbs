@@ -2377,6 +2377,12 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 	char log_buf[MAX_LOG_SIZE];
 	nspec **ns_arr = NULL;
 	schd_error *err;
+
+	enum sched_error old_errorcode = SUCCESS;
+	char *old_errorarg1 = NULL;
+	long indexfound;
+	long skipto;
+
 	schd_error *full_err = NULL;
 	schd_error *cur_err;
 	timed_event *te = NULL;
@@ -2533,7 +2539,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 
 	}
 	else {
-	rjobs = nsinfo->running_jobs;
+		rjobs = nsinfo->running_jobs;
 		rjobs_count = nsinfo->sc.running;
 	}
 
@@ -2544,22 +2550,34 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 		qsort(rjobs, rjobs_count, sizeof(job_info *),
 			cmp_preempt_stime_asc);
 	}
-	else
+	else {
 		/* sort jobs in ascending preemption priority... we want to preempt them
 		 * from lowest prio to highest
 		 */
-		{
-			qsort(rjobs, rjobs_count, sizeof(job_info *),
-			cmp_preempt_priority_asc);
+		qsort(rjobs, rjobs_count, sizeof(job_info *),
+		cmp_preempt_priority_asc);
 	}
-	
+
 	err = dup_schd_error(full_err);	/* only first element */
 	if(err == NULL) {
 		free_schd_error_list(full_err);
 		free_server(nsinfo, 1);
 		free(pjobs);
 	}
-	while ((pjob = select_job_to_preempt(policy, njob, rjobs, (int) err->error_code, fail_list)) != NULL) {
+
+	skipto=0;
+	while ((indexfound = select_index_to_preempt(policy, njob, rjobs, skipto, err, fail_list)) != NO_JOB_FOUND) {
+		if (indexfound == ERR_IN_SELECT) {
+			/* System error occurred, no need to proceed */
+			free_server(nsinfo, 1);
+			free(pjobs);
+			free(old_errorarg1);
+			free_schd_error_list(full_err);
+			free_schd_error(err);
+			log_err(errno, __func__, MEM_ERR_MSG);
+			return NULL;
+		}
+		pjob=rjobs[indexfound];
 		if (pjob->job->preempt < njob->job->preempt) {
 			schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->name,
 				"Simulation: preempting job");
@@ -2575,6 +2593,37 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 
 			pjobs[j] = pjob;
 			j++;
+
+			if( err != NULL) {
+				old_errorcode = err->error_code;
+				if (old_errorarg1 != NULL)
+					free(old_errorarg1);
+				switch(old_errorcode)
+				{
+					case SERVER_USER_RES_LIMIT_REACHED:
+					case SERVER_BYUSER_RES_LIMIT_REACHED:
+					case QUEUE_USER_RES_LIMIT_REACHED:
+					case QUEUE_BYUSER_RES_LIMIT_REACHED:
+
+					case SERVER_GROUP_RES_LIMIT_REACHED:
+					case SERVER_BYGROUP_RES_LIMIT_REACHED:
+					case QUEUE_GROUP_RES_LIMIT_REACHED:
+					case QUEUE_BYGROUP_RES_LIMIT_REACHED:
+
+					case SERVER_PROJECT_RES_LIMIT_REACHED:
+					case SERVER_BYPROJECT_RES_LIMIT_REACHED:
+					case QUEUE_PROJECT_RES_LIMIT_REACHED:
+					case QUEUE_BYPROJECT_RES_LIMIT_REACHED:
+						old_errorarg1 = string_dup(err->arg1);
+						break;
+					case INSUFFICIENT_RESOURCE:
+						old_errorarg1 = string_dup(err->rdef->name);
+						break;
+					default:
+						old_errorarg1 = NULL;
+				}
+			}
+
 
 			clear_schd_error(err);
 			if ((ns_arr = is_ok_to_run(policy, -1, nsinfo,
@@ -2593,6 +2642,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 						free(pjobs);
 						free_schd_error_list(full_err);
 						free_schd_error(err);
+						free(old_errorarg1);
 						return NULL;
 					}
 					njob = nj;
@@ -2604,12 +2654,51 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 				rc = sim_run_update_resresv(policy, njob, ns_arr, RURR_NO_FLAGS);
 				break;
 			}
+ 
+			if (old_errorcode == err->error_code) {
+				switch(old_errorcode)
+				{
+					case SERVER_USER_RES_LIMIT_REACHED:
+					case SERVER_BYUSER_RES_LIMIT_REACHED:
+					case QUEUE_USER_RES_LIMIT_REACHED:
+					case QUEUE_BYUSER_RES_LIMIT_REACHED:
+
+					case SERVER_GROUP_RES_LIMIT_REACHED:
+					case SERVER_BYGROUP_RES_LIMIT_REACHED:
+					case QUEUE_GROUP_RES_LIMIT_REACHED:
+					case QUEUE_BYGROUP_RES_LIMIT_REACHED:
+
+					case SERVER_PROJECT_RES_LIMIT_REACHED:
+					case SERVER_BYPROJECT_RES_LIMIT_REACHED:
+					case QUEUE_PROJECT_RES_LIMIT_REACHED:
+					case QUEUE_BYPROJECT_RES_LIMIT_REACHED:
+						if (strcmp(old_errorarg1, err->arg1) != 0)
+						/* same limit type, but different resource, revisit earlier jobs */
+							skipto = 0;
+						break;
+					case INSUFFICIENT_RESOURCE:
+						if (strcmp(old_errorarg1, err->rdef->name) != 0)
+						/* same limit type, but different resource, revisit earlier jobs */
+							skipto = 0;
+						break;
+					default:
+					/* same error as before -- continue to consider next job in rjobs */
+					/* don't forget current job found has been removed from sinfo->running_jobs! */
+					/* So we need to start again "where we last were" */
+						skipto = indexfound;
+				}
+			} else {
+				/* error changed, so we need to revisit jobs discarded as preemption candidates earlier */
+				skipto = 0; 
+			}
+
 		}
 		translate_fail_code(err, NULL, log_buf);
 		sprintf(buf, "Simulation: not enough work preempted: %s", log_buf);
 		schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB,
 			LOG_DEBUG, njob->name, buf);
 	}
+
 	pjobs[j] = NULL;
 
 	/* check to see if we lowered our preempt priority in our simulation
@@ -2637,6 +2726,9 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 		if ((pjobs_list = calloc((j + 1), sizeof(int))) == NULL) {
 			free_server(nsinfo, 1);
 			free(pjobs);
+			free(old_errorarg1);
+			free_schd_error_list(full_err);
+			free_schd_error(err);
 			log_err(errno, __func__, MEM_ERR_MSG);
 			return NULL;
 		}
@@ -2679,6 +2771,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 	free(prjobs);
 	free_schd_error_list(full_err);
 	free_schd_error(err);
+	free(old_errorarg1);
 
 
 	return pjobs_list;
@@ -2686,50 +2779,133 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 
 /**
  * @brief
- * 		select a good candidate for preemption
+ *		select a good candidate for preemption
  *
- * @param[in]	policy	-	policy info
- * @param[in]	hjob	-	the high priority job to preempt for
- * @param[in]	rjobs	-	the list of running jobs to select from
- * @param[in]	rc	-	reason the high prio job isn't running
- * @param[in]	fail_list	-	list of jobs to skip.
- *								They previously failed to be preempted.
- *								  Do not select them again.
+ * @param[in] policy - policy info
+ * @param[in] hjob - the high priority job to preempt for
+ * @param[in] rjobs - the list of running jobs to select from
+ * @param[in] skipto - Index from where we need to start looking into rjobs
+ * @param[in] err    - reason the high prio job isn't running
+ * @param[in] fail_list - list of jobs to skip. They previously failed to be preempted.
+ *			  Do not select them again.
  *
- * @return	resource_resv *
- * @retval	the job to preempt
- * @retval	NULL	: on error
- *
+ * @return long
+ * @retval index of the job to preempt
+ * @retval NO_JOB_FOUND nothing can be selected for preemption
+ * @retval ERR_IN_SELECT error 
  */
-resource_resv *
-select_job_to_preempt(status *policy, resource_resv *hjob,
-	resource_resv **rjobs, int rc,
+long
+select_index_to_preempt(status *policy, resource_resv *hjob,
+	resource_resv **rjobs, long skipto, schd_error *err,
 	int *fail_list)
 {
 	int i, j, k;
 	resource_req *req;
-	int good;		/* good boolean: Is job eligible to be preempted */
+	int good=1, certainlygood=0;		/* good boolean: Is job eligible to be preempted */
 	struct preempt_ordering *po;
 	resource_req *req2;
+	resdef **rdtc_non_consumable = NULL;
+	char *limitres_name = NULL;
+	int limitres_injob=1;
+	resource_req *req_scan;
 
-	if (hjob == NULL || hjob->job == NULL || rjobs == NULL || rjobs[0] == NULL)
-		return NULL;
+	int rc;
+
+	if ( err == NULL || hjob == NULL || hjob->job == NULL || 
+		rjobs == NULL || rjobs[0] == NULL)
+		return NO_JOB_FOUND;
+
+	rc = err->error_code;
+
+	switch(rc)
+	{
+		case SERVER_USER_RES_LIMIT_REACHED:
+		case SERVER_BYUSER_RES_LIMIT_REACHED:
+		case QUEUE_USER_RES_LIMIT_REACHED:
+		case QUEUE_BYUSER_RES_LIMIT_REACHED:
+
+		case SERVER_GROUP_RES_LIMIT_REACHED:
+		case SERVER_BYGROUP_RES_LIMIT_REACHED:
+		case QUEUE_GROUP_RES_LIMIT_REACHED:
+		case QUEUE_BYGROUP_RES_LIMIT_REACHED:
+
+		case SERVER_PROJECT_RES_LIMIT_REACHED:
+		case SERVER_BYPROJECT_RES_LIMIT_REACHED:
+		case QUEUE_PROJECT_RES_LIMIT_REACHED:
+		case QUEUE_BYPROJECT_RES_LIMIT_REACHED:
+			if (err->arg1 != NULL)
+			{
+				limitres_name = string_dup (err->arg1);
+				if (limitres_name == NULL)
+					return ERR_IN_SELECT;
+			}
+			break;
+		case INSUFFICIENT_RESOURCE:
+			if (err->rdef != NULL) {
+				limitres_name = string_dup(err->rdef->name);
+				if (limitres_name == NULL)
+					return ERR_IN_SELECT;
+			}
+			break;
+		default:
+			limitres_name = NULL;
+	}
 
 	/* This shouldn't happen, but you can never be too paranoid */
 	if (hjob->job->is_running && hjob->ninfo_arr == NULL)
-		return NULL;
+		return NO_JOB_FOUND;
 
 	/* if we find a good job, we'll break out at the bottom
 	 * we can't break out up here since i will be incremented by this point
 	 * and we'll be returning the job AFTER the one we want too
 	 */
-	for (i = 0; rjobs[i] != NULL; i++) {
+	for (i = skipto; rjobs[i] != NULL; i++) {
 		/* Does the running job have any resource we need? */
 		int node_good = 1;
 		int svr_res_good = 1;
 
 		/* lets be optimistic.. we'll start off assuming this is a good candidate */
 		good = 1;
+		certainlygood = 0;
+
+		/* if hjob hit a hard limit, check if candidate job has requested that resource
+		 * if reason is different then set flag as if resource was found
+		 */
+		switch(rc)
+		{
+			case SERVER_USER_RES_LIMIT_REACHED:
+			case SERVER_BYUSER_RES_LIMIT_REACHED:
+			case QUEUE_USER_RES_LIMIT_REACHED:
+			case QUEUE_BYUSER_RES_LIMIT_REACHED:
+
+			case SERVER_GROUP_RES_LIMIT_REACHED:
+			case SERVER_BYGROUP_RES_LIMIT_REACHED:
+			case QUEUE_GROUP_RES_LIMIT_REACHED:
+			case QUEUE_BYGROUP_RES_LIMIT_REACHED:
+
+			case SERVER_PROJECT_RES_LIMIT_REACHED:
+			case SERVER_BYPROJECT_RES_LIMIT_REACHED:
+			case QUEUE_PROJECT_RES_LIMIT_REACHED:
+			case QUEUE_BYPROJECT_RES_LIMIT_REACHED:
+			case INSUFFICIENT_RESOURCE:
+				limitres_injob=0;
+				req_scan=rjobs[i]->resreq;
+				while (req_scan)
+				{
+					if ( strcmp(req_scan->name,limitres_name) == 0 &&
+					     req_scan->amount > 0 )
+					{
+						limitres_injob = 1;
+						break;
+					}
+					req_scan = req_scan->next;
+				}
+
+				break;
+			default:
+				limitres_injob = 1;
+		}
+
 
 		if (rjobs[i]->job == NULL || rjobs[i]->ninfo_arr == NULL)
 			continue; /* we have problems... */
@@ -2788,24 +2964,6 @@ select_job_to_preempt(status *policy, resource_resv *hjob,
 			}
 		}
 
-		/* if the high priority job is suspended then make sure we only
-		 * select jobs from the node the job is currently suspended on
-		 */
-		if (good) {
-			if (hjob->job->is_susp_sched) {
-				for (j = 0; hjob->ninfo_arr[j] != NULL; j++) {
-					if (find_node_by_rank(rjobs[i]->ninfo_arr,
-							hjob->ninfo_arr[j]->rank) != NULL)
-						break;
-				}
-
-				/* if we made all the way through the list, then rjobs[i] has no useful
-				 * nodes for us to use... don't select it
-				 */
-				if (hjob->ninfo_arr[j] == NULL)
-					good = 0;
-			}
-		}
 		if (good) {
 			switch(rc)
 			{
@@ -2813,88 +2971,172 @@ select_job_to_preempt(status *policy, resource_resv *hjob,
 				case QUEUE_RESOURCE_LIMIT_REACHED:
 					if (rjobs[i]->job->queue != hjob->job->queue)
 						good = 0;
+					else
+						certainlygood = 1;
 					break;
 				case SERVER_USER_LIMIT_REACHED:
-				case SERVER_USER_RES_LIMIT_REACHED:
 				case SERVER_BYUSER_JOB_LIMIT_REACHED:
+				case SERVER_USER_RES_LIMIT_REACHED:
 				case SERVER_BYUSER_RES_LIMIT_REACHED:
-					if (strcmp(rjobs[i]->user, hjob->user))
+					if (strcmp(rjobs[i]->user, hjob->user) || !limitres_injob)
 						good = 0;
+					else
+						certainlygood = 1;
 					break;
 				case QUEUE_USER_LIMIT_REACHED:
-				case QUEUE_USER_RES_LIMIT_REACHED:
 				case QUEUE_BYUSER_JOB_LIMIT_REACHED:
+				case QUEUE_USER_RES_LIMIT_REACHED:
 				case QUEUE_BYUSER_RES_LIMIT_REACHED:
 					if (rjobs[i]->job->queue != hjob->job->queue)
 						good = 0;
-
 					if (strcmp(rjobs[i]->user, hjob->user))
 						good = 0;
+					if (!limitres_injob)
+						good = 0;
+					if (good)
+						certainlygood = 1;
 					break;
 				case SERVER_GROUP_LIMIT_REACHED:
+				case SERVER_BYGROUP_JOB_LIMIT_REACHED:
 				case SERVER_GROUP_RES_LIMIT_REACHED:
 				case SERVER_BYGROUP_RES_LIMIT_REACHED:
-				case SERVER_BYGROUP_JOB_LIMIT_REACHED:
-					if (strcmp(rjobs[i]->group, hjob->group))
+					if (strcmp(rjobs[i]->group, hjob->group) || !limitres_injob)
 						good = 0;
-					break;
-				case SERVER_PROJECT_LIMIT_REACHED:
-				case SERVER_PROJECT_RES_LIMIT_REACHED:
-				case SERVER_BYPROJECT_RES_LIMIT_REACHED:
-				case SERVER_BYPROJECT_JOB_LIMIT_REACHED:
-					if (strcmp(rjobs[i]->project, hjob->project))
-						good = 0;
+					else
+						certainlygood = 1;
 					break;
 				case QUEUE_GROUP_LIMIT_REACHED:
-				case QUEUE_GROUP_RES_LIMIT_REACHED:
 				case QUEUE_BYGROUP_JOB_LIMIT_REACHED:
+				case QUEUE_GROUP_RES_LIMIT_REACHED:
 				case QUEUE_BYGROUP_RES_LIMIT_REACHED:
 					if (rjobs[i]->job->queue != hjob->job->queue)
 						good = 0;
-
 					if (strcmp(rjobs[i]->group, hjob->group))
 						good = 0;
+					if (!limitres_injob)
+						good = 0;
+					if (good)
+						certainlygood = 1;
+					break;
+				case SERVER_PROJECT_LIMIT_REACHED:
+				case SERVER_BYPROJECT_JOB_LIMIT_REACHED:
+				case SERVER_PROJECT_RES_LIMIT_REACHED:
+				case SERVER_BYPROJECT_RES_LIMIT_REACHED:
+					if (strcmp(rjobs[i]->project, hjob->project) || !limitres_injob)
+						good = 0;
+					else
+						certainlygood = 1;
 					break;
 				case QUEUE_PROJECT_LIMIT_REACHED:
+				case QUEUE_BYPROJECT_JOB_LIMIT_REACHED:
 				case QUEUE_PROJECT_RES_LIMIT_REACHED:
 				case QUEUE_BYPROJECT_RES_LIMIT_REACHED:
-				case QUEUE_BYPROJECT_JOB_LIMIT_REACHED:
 					if (rjobs[i]->job->queue != hjob->job->queue)
 						good = 0;
-
 					if (strcmp(rjobs[i]->project, hjob->project))
 						good = 0;
+					if (!limitres_injob)
+						good = 0;
+					if (good)
+						certainlygood = 1;
 					break;
+				case INSUFFICIENT_RESOURCE:
+					if (!limitres_injob)
+						good = 0;
+					else
+						certainlygood = 1;
+					break;
+
 			}
 		}
 
+		/* if the high priority job is suspended then make sure we only
+		 * select jobs from the node the job is currently suspended on
+		 */
+
+		if (good && !certainlygood) {
+			if (hjob->ninfo_arr != NULL) {
+				for (j = 0; hjob->ninfo_arr[j] != NULL; j++) {
+					if (find_node_by_rank(rjobs[i]->ninfo_arr,
+						hjob->ninfo_arr[j]->rank) != NULL)
+						break;
+				}
+
+				/* if we made all the way through the list, then rjobs[i] has no useful
+				 * nodes for us to use... don't select it, unless it's not node resources we're after
+				 */
+
+				if (hjob->ninfo_arr[j] == NULL) {
+					good = 0;
+					svr_res_good = 0;
+					for (req = hjob->resreq; req != NULL; req = req->next) {
+					/* Check for resources in the resources line that are not RASSN resources.
+					 * RASSN resources are accumulated across the select.
+					 * This means all jobs will have them, and it invalidates the earlier check.
+					 */
+						if (resdef_exists_in_array(policy->resdef_to_check, req->def) &&
+						   (resdef_exists_in_array(policy->resdef_to_check_rassn, req->def) == 0)) {
+							req2 = find_resource_req(rjobs[i]->resreq, req->def);
+							if (req2 != NULL)
+								svr_res_good = 1;
+						}
+					}
+					if ( svr_res_good == 1)
+						certainlygood = 1;
+				} else
+					/* we'll have to consider this, since it's sitting on vnodes this suspended job lives on */
+					certainlygood = 1;
+			}
+		}
 		if (good) {
 			schd_error *err;
 			node_good = 0;
 
 			err = new_schd_error();
 			if(err == NULL)
-				return NULL;
+				return NO_JOB_FOUND;
+
 			for (j = 0; rjobs[i]->ninfo_arr[j] != NULL && !node_good; j++) {
 				resdef **check_resdef = NULL;
+				resdef **rdtc_here = NULL; /* at first assume all resources (including consumables) need to be checked */
 				node_info *node = rjobs[i]->ninfo_arr[j];
 				if (node->is_multivnoded) {
-					/* Legitimate chunks can be larger than a vnode on multi-vnoded hosts.
-					 * Due to this fact, we can't check to see of an entire chunk fits on a node.
-					 * The best we can do is check the non-consumables.
+					/* unsafe to consider vnodes from multivnoded hosts "no good" when "not enough" of some consumable
+					 * resource can be found in the vnode, since rest may be provided by other vnodes on the same host
+					 * restrict check on these vnodes to check only against non consumable resources
 					 */
-					if (policy->resdef_to_check_noncons == NULL)
-						policy->resdef_to_check_noncons = (resdef **) filter_array((void **)policy->resdef_to_check,
-													    filter_noncons, NULL, 0);
-					check_resdef = policy->resdef_to_check_noncons;
+					if (rdtc_non_consumable == NULL) {
+						long max_resdefs = 0;
+						if (policy != NULL) {
+							max_resdefs = count_array( (void **) policy->resdef_to_check);
+						}
+						if (max_resdefs > 0)    {
+							rdtc_non_consumable = (resdef **) calloc(sizeof(resdef *),(size_t) max_resdefs + 1);
+							if (rdtc_non_consumable != NULL) {
+								long resdef_index = 0;
+								long rdtc_nc_index = 0;
+								for (; policy->resdef_to_check[resdef_index] != NULL; resdef_index++) {
+									if (policy->resdef_to_check[resdef_index]->type.is_non_consumable) {
+										rdtc_non_consumable[rdtc_nc_index] = policy->resdef_to_check[resdef_index];
+										rdtc_nc_index++;
+									}
+									rdtc_non_consumable[rdtc_nc_index] = NULL;
+								}
+							}
+						}
+					}
+					rdtc_here = rdtc_non_consumable;
 				}
 				for (k = 0; hjob->select->chunks[k] != NULL; k++) {
-					long long num_chunks = 0;
+					long num_chunks_returned = 0;
+					/* if only non consumables are checked, infinite number of chunks can be satisfied,
+					 * and SCHD_INFINITY is negative, so don't be tempted to check on positive value
+					 */
 					clear_schd_error(err);
-					num_chunks = check_avail_resources(node->res, hjob->select->chunks[k]->req,
+					num_chunks_returned = check_avail_resources(node->res, hjob->select->chunks[k]->req,
 								COMPARE_TOTAL | CHECK_ALL_BOOLS | UNSET_RES_ZERO,
-								check_resdef, INSUFFICIENT_RESOURCE, err);
-					if((num_chunks > 0) || (num_chunks == SCHD_INFINITY)) {
+								rdtc_here, INSUFFICIENT_RESOURCE, err); 
+					if ( (num_chunks_returned > 0) || (num_chunks_returned == SCHD_INFINITY) ) {
 						node_good = 1;
 						break;
 					}
@@ -2922,18 +3164,23 @@ select_job_to_preempt(status *policy, resource_resv *hjob,
 
 		}
 
-		if (node_good == 0 && svr_res_good == 0)
+		if (!certainlygood && node_good == 0 && svr_res_good == 0)
 			good = 0;
 
 
-		if (good)
+		if (good || certainlygood)
 			break;
 	}
+	if (rdtc_non_consumable != NULL)
+		free (rdtc_non_consumable);
+
+	if (limitres_name != NULL)
+		free (limitres_name);
 
 	if (good && rjobs[i] != NULL)
-		return rjobs[i];
+		return i;
 
-	return NULL;
+	return NO_JOB_FOUND;
 }
 
 /**

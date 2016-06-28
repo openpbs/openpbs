@@ -156,9 +156,9 @@ find_jobs_to_preempt(status *policy, resource_resv *jinfo,
  *      select_job_to_preempt - select the best candidite out of the running
  *                              jobs to preempt
  */
-resource_resv *
-select_job_to_preempt(status *policy, resource_resv *hjob,
-	resource_resv **rjobs, int rc,
+long
+select_index_to_preempt(status *policy, resource_resv *hjob,
+	resource_resv **rjobs, long skipto, schd_error *err,
 	int *fail_list);
 
 /*
