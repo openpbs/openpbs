@@ -56,6 +56,7 @@
 #include "cmds.h"
 #include "pbs_share.h"
 #include <pwd.h>
+#include <stdlib.h>
 
 #if	TCL_QSTAT
 #include	<sys/stat.h>
@@ -65,6 +66,8 @@ extern char *	tcl_atrsep;
 #endif /* localmod 071 */
 #endif
 
+/* default server */
+char *def_server;
 
 static void states();
 static char *	cvtResvstate(char *);
@@ -133,6 +136,88 @@ static struct attrl alt_attribs[] = {
 };
 
 static struct attrl *display_attribs = &basic_attribs[0];
+
+int cmp_jobs(const void *j1, const void *j2)
+{
+	char *job1, *job2;
+	char server1[MAXSERVERNAME], server2[MAXSERVERNAME];
+	char job_id[PBS_MAXCLTJOBID];
+	char *seq_num1 = NULL;
+	char *seq_num2 = NULL;
+	char *job_id_out = NULL;
+	char *pserver_one = NULL;
+	char *pserver_two = NULL;
+	int ret = 0;
+	int ret_val = 0;
+	char *eptr = NULL;
+	long jid1,jid2;
+	job1 = *(char **)j1;
+	job2 = *(char **)j2;
+	if (pbs_isjobid(job1)== 0) {
+		ret_val = 1;
+		goto return_here;
+	}
+	else if (pbs_isjobid(job2) == 0) {
+		ret_val = 1;
+		goto return_here;
+	}
+	else {
+		parse_jobid(job1, &seq_num1, &pserver_one, NULL);
+		/* default server */
+		if (pserver_one == NULL)
+			pserver_one =  strdup(def_server);
+		else if (pserver_one[0] == '\0')
+			strcpy(pserver_one, def_server);
+		parse_jobid(job2, &seq_num2, &pserver_two, NULL);
+		/* default server */
+		if (pserver_two == NULL)
+			pserver_two =  strdup(def_server);
+		else if (pserver_two[0] == '\0')
+			strcpy(pserver_two, def_server);
+
+		ret = strcmp(pserver_one, pserver_two);
+		if (ret < 0) {
+			ret_val = -1;
+			goto return_here;
+		}
+		else if (ret > 0) {
+			ret_val = 1;
+			goto return_here;
+		}
+	}
+	/* Server name is same, Now sort on the job id */
+	jid1 = strtoll(job1, &eptr, 10);
+	jid2 = strtoll(job2, &eptr, 10);
+	if (jid1 < jid2) {
+		ret_val = -1;
+		goto return_here;
+	}
+	else if (jid1 > jid2) {
+		ret_val = 1;
+		goto return_here;
+	}
+	else if (seq_num1!= NULL && seq_num2 != NULL) {
+		/* Array sub jobs, sort on the basis of index */
+		jid1 = strtoll(seq_num1, &eptr,10);
+		jid2 = strtoll(seq_num2, &eptr,10);
+		if (jid1 < jid2) {
+			ret_val = -1;
+			goto return_here;
+		}
+		else if (jid1 > jid2) {
+			ret_val = 1;
+			goto return_here;
+		}
+	}
+	/* Same job id getting repeated */
+	ret_val = 0;
+return_here:
+	    free(seq_num1);
+	    free(seq_num2);
+	    free(pserver_one);
+	    free(pserver_two);
+	    return ret_val;
+}
 
 /**
  * @brief
@@ -1793,20 +1878,21 @@ main(int argc, char **argv, char **envp) /* qstat */
 	char job_id[PBS_MAXCLTJOBID];
 
 	char job_id_out[PBS_MAXCLTJOBID];
-	char server_out[MAXSERVERNAME];
+	char server_out[MAXSERVERNAME] = {0};
+	char prev_server[MAXSERVERNAME] = {0};
 	char server_old[MAXSERVERNAME] = "";
 	char rmt_server[MAXSERVERNAME];
 	char destination[PBS_MAXDEST+1];
-	char *def_server;
 
 	char *queue_name_out;
 	char *server_name_out;
 
 	char operand[PBS_MAXCLTJOBID+1];
 	int alt_opt;
-	int f_opt, B_opt, Q_opt, p_opt;
+	int f_opt, B_opt, Q_opt, p_opt, E_opt;
 	int p_header = TRUE;
 	int stat_single_job = 0;
+	int new_remote_server = 0;
 	enum { JOBS, QUEUES, SERVERS } mode;
 	struct batch_status *p_status;
 	struct batch_status *p_server = NULL;
@@ -1818,12 +1904,14 @@ main(int argc, char **argv, char **envp) /* qstat */
 #endif /* localmod 071 */
 
 	char *errmsg;
+	char *job_list = NULL;
+	char *query_job_list = NULL;
 
 #if !defined(PBS_NO_POSIX_VIOLATION)
 #ifdef NAS /* localmod 071 */
-#define GETOPT_ARGS "aeinpqrstwxu:fGHJMQBW:T1"
+#define GETOPT_ARGS "aeinpqrstwxu:fGHJMQEBW:T1"
 #else
-#define GETOPT_ARGS "ainpqrstwxu:fGHJMQBW:T1"
+#define GETOPT_ARGS "ainpqrstwxu:fGHJMQEBW:T1"
 #endif /* localmod 071 */
 #else
 #define GETOPT_ARGS "fQBW:"
@@ -1843,6 +1931,7 @@ main(int argc, char **argv, char **envp) /* qstat */
 	f_opt = 0;
 	B_opt = 0;
 	Q_opt = 0;
+	E_opt = 0;
 	p_opt = 0;
 #ifdef NAS /* localmod 071 */
 	tcl_opt = -2;
@@ -2012,6 +2101,9 @@ main(int argc, char **argv, char **envp) /* qstat */
 					errflg++;
 				}
 				break;
+			case 'E':
+				E_opt = 1;
+				break;
 
 			case 'W':
 #if (TCL_QSTAT == 0)
@@ -2146,7 +2238,7 @@ main(int argc, char **argv, char **envp) /* qstat */
 	if (errflg) {
 		static char usag2[]="qstat --version\n";
 		static char usage[]="usage: \n\
-qstat [-f] [-J] [-p] [-t] [-x] [ job_identifier... | destination... ]\n\
+qstat [-f] [-J] [-p] [-t] [-x] [-E] [ job_identifier... | destination... ]\n\
 qstat [-a|-i|-r|-H|-T] [-J] [-t] [-u user] [-n] [-s] [-G|-M] [-1] [-w]\n\
 \t[ job_identifier... | destination... ]\n\
 qstat -Q [-f] [ destination... ]\n\
@@ -2199,7 +2291,14 @@ qstat -B [-f] [ server_name... ]\n";
 				goto svr_no_args;
 		}
 	}
-
+	if (E_opt == 1 && mode == JOBS) {
+		/* allocate enough memory to store list of job ids */
+		job_list = calloc(argc-1,PBS_MAXCLTJOBID+1);
+		if (job_list == NULL)
+			exit(1);
+		/* sort all jobs */
+		qsort(&argv[optind], argc-optind, sizeof (char *), cmp_jobs);
+	}
 	for (; optind < argc; optind++) {
 		int connect;
 
@@ -2222,6 +2321,51 @@ qstat -B [-f] [ server_name... ]\n";
 #endif /* localmod 071 */
 						any_failed = 1;
 						break;
+					}
+					if (E_opt == 1) {
+						/* Local Server */
+						if (server_out[0] == '\0' || (strcmp(server_out, def_server) == 0)) {
+							/* This is probably the first job id requested from primary server */
+							if (prev_server[0] == '\0')
+								strcpy(prev_server, def_server);
+							strncat(job_list, job_id_out, PBS_MAXCLTJOBID-1);
+							strncat(job_list, ",", 1);
+							if (optind != argc -1)
+								continue;
+							else {
+								free(query_job_list);
+								query_job_list = strdup(job_list);
+								job_list[0] = '\0';
+							}
+						}
+						else {
+							/* Remote server but jobs in continuation */
+							if ((prev_server[0] == '\0' ) || (strcmp(server_out, prev_server) == 0)) {
+								/* This is probably the first job id requested and not from primary server */
+								if (prev_server[0] == '\0')
+									strcpy(prev_server, server_out);
+								strncat(job_list, job_id_out, PBS_MAXCLTJOBID-1);
+								strncat(job_list, ",", 1);
+								if (optind != argc-1)
+									continue;
+								else {
+									/* It's a new remote server and the only job */
+									new_remote_server = 1;
+									free(query_job_list);
+									query_job_list = strdup(job_list);
+									job_list[0] = '\0';
+								}
+							}
+							/* A new remote server */
+							else {
+								new_remote_server = 1;
+								free(query_job_list);
+								query_job_list = strdup(job_list);
+								memset(job_list, 0, ((argc-1) * (PBS_MAXCLTJOBID+1)));
+								strncpy(job_list, job_id_out, PBS_MAXCLTJOBID-1);
+								strncat(job_list, ",", 1);
+							}
+						}
 					}
 				} else {  /* must be a destination-id */
 					stat_single_job = 0;
@@ -2250,12 +2394,18 @@ qstat -B [-f] [ server_name... ]\n";
 							added_queue = 1;
 						}
 					}
+					if (E_opt == 1)
+						strcpy(prev_server, server_out);
 				}
 job_no_args:
 				/* We could have been sent here after p_server was set. Free it. */
 				pbs_statfree(p_server);
 				p_server = NULL;
-				connect = cnt2server(server_out);
+				if (E_opt == 1)
+					connect = cnt2server(prev_server);
+				else
+					connect = cnt2server(server_out);
+
 				if (connect <= 0) {
 					fprintf(stderr, "qstat: cannot connect to server %s (errno=%d)\n",
 						pbs_server, pbs_errno);
@@ -2279,7 +2429,10 @@ job_no_args:
 				}
 
 				if ((stat_single_job == 1) || (new_atropl == 0)) {
-					p_status = pbs_statjob(connect, job_id_out, display_attribs, extend);
+					if (E_opt == 1)
+						p_status = pbs_statjob(connect, query_job_list, display_attribs, extend);
+					else
+						p_status = pbs_statjob(connect, job_id_out, display_attribs, extend);
 				} else {
 					p_status = pbs_selstat(connect, new_atropl, NULL, extend);
 				}
@@ -2366,6 +2519,32 @@ job_no_args:
 				pbs_statfree(p_server);
 				p_server = NULL;
 				pbs_disconnect(connect);
+				if (E_opt == 1) {
+					free(query_job_list);
+					query_job_list = NULL;
+					if (new_remote_server == 1) {
+						/* If there is a new remote server
+						* then update the prev_server to new server
+						*/
+						strcpy(prev_server, server_out);
+						new_remote_server = 0;
+						/* If we are at the end of the loop then
+						* query jobs one more time if and only if
+						* there are jobs present in job_list
+						*/
+						if (optind == argc -1) {
+							if (query_job_list != NULL) {
+								free(query_job_list);
+								query_job_list = NULL;
+							}
+							if (job_list [0] != '\0') {
+								query_job_list = strdup(job_list);
+								optind++;
+								goto job_no_args;
+							}
+						}
+					}
+				}
 				break;
 
 			case QUEUES:        /* get status of batch queues */
@@ -2483,7 +2662,11 @@ svr_no_args:
 #else
 	tcl_run(f_opt);
 #endif /* localmod 071 */
-
+	if (E_opt == 1) {
+		if (query_job_list != NULL)
+			free(query_job_list);
+		free(job_list);
+	}
 	/*cleanup security library initializations before exiting*/
 	CS_close_app();
 
