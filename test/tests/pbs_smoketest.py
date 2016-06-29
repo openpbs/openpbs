@@ -704,8 +704,18 @@ class SmokeTest(PBSTestSuite):
         """
         Examples to demonstrate how to add a server dynamic resource script
         """
+        attr = {}
+        attr['type']='long'
+        self.server.manager(MGR_CMD_CREATE, RSC, attr, id='foo')
         body = "echo 10"
         self.scheduler.add_server_dyn_res("foo", script_body=body)
+        self.scheduler.add_resource("foo", apply=True)
+        j1 = Job(TEST_USER)
+        j1.set_attributes({'Resource_List': 'foo=5'})
+        j1id = self.server.submit(j1)
+        a = {'job_state': 'R', 'Resource_List.foo': '5'}
+        self.server.expect(JOB, a, id=j1id)
+
 
     def test_schedlog_preempted_info(self):
         """
