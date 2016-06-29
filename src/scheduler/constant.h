@@ -82,6 +82,13 @@ enum skip
 	SKIP_NON_NORMAL_JOBS
 };
 
+/* return value of select_index_to_preempt function */
+enum select_job_status
+{
+	NO_JOB_FOUND = -1,	/* fails to find a job to preempt */
+	ERR_IN_SELECT = -2	/* error while selecting a job to preempt */
+};
+
 #define INIT_ARR_SIZE 2048
 
 /* Unspecified resource value */
