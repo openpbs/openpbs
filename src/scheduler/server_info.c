@@ -389,8 +389,6 @@ query_server(status *pol, int pbs_sd)
 		create_total_counts(sinfo, NULL, NULL, SERVER);
 	}
 
-	create_placement_sets(policy, sinfo);
-
 	size = sinfo->sc.running + sinfo->sc.exiting + sinfo->sc.suspended
 		+ sinfo->sc.userbusy;
 	/* To avoid duplicate accounting of jobs on nodes, we are only interested in
@@ -416,6 +414,10 @@ query_server(status *pol, int pbs_sd)
 			create_resource_assn_for_node(ninfo);
 
 	}
+	/* Create placement sets  after collecting jobs on nodes because
+	 * we don't want to account for resources consumed by ghost jobs
+	 */
+	create_placement_sets(policy, sinfo);
 
 	pbs_statfree(server);
 
