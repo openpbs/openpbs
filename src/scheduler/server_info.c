@@ -575,6 +575,8 @@ query_server_info(status *pol, struct batch_status *server)
 			count = strtol(attrp->value, &endp, 10);
 			if (*endp == '\0')
 				sinfo->policy->backfill_depth = count;
+			if (count == 0)
+				sinfo->policy->backfill = 0;
 		}
 
 		attrp = attrp->next;
