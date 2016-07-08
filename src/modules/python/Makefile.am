@@ -42,7 +42,7 @@ pbsmodule_PYTHON = pbs/__init__.py
 pbsv1moduledir = $(libdir)/@PBS_PYTHON_DESTLIB@/pbs/v1
 
 pbsv1module_PYTHON = \
-	$(top_srcdir)/src/lib/Libifl/pbs_ifl.py \
+	$(top_builddir)/src/lib/Libpython/pbs_ifl.py \
 	pbs/v1/__init__.py \
 	pbs/v1/_attr_types.py \
 	pbs/v1/_base_types.py \
