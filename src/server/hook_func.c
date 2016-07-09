@@ -3581,9 +3581,31 @@ do_runjob_reject_actions(job *pjob, char *hook_name)
 static void
 write_hook_reject_debug_output_and_close(char *reject_msg)
 {
+	char	*hook_outfile;
 	FILE	*fp_debug_out = NULL;
 
 	fp_debug_out = pbs_python_get_hook_debug_output_fp();
+
+	if ( fp_debug_out == NULL) {
+		/* prepare to open file if output file pointer not stored */
+		hook_outfile = pbs_python_get_hook_debug_output_file();
+		if ((hook_outfile != NULL) && (hook_outfile[0] != '\0')) {
+			/* need to open in append mode, as */
+			/* process_hooks() may have */
+			/* already written into this file. */
+			fp_debug_out = fopen(hook_outfile, "a");
+			if (fp_debug_out == NULL) {
+				snprintf(log_buffer, sizeof(log_buffer),
+				"warning: open of hook debug output file %s failed!",
+							hook_outfile);
+				log_err(-1,
+				     "write_hook_reject_output_and_close",
+				     		log_buffer);
+			} else {
+				pbs_python_set_hook_debug_output_fp(fp_debug_out);
+			}
+		}
+	}
 
 	if (fp_debug_out != NULL) {
 		fprintf(fp_debug_out, "%s=True\n",
@@ -3612,9 +3634,31 @@ write_hook_reject_debug_output_and_close(char *reject_msg)
 static void
 write_hook_accept_debug_output_and_close(void)
 {
+	char	*hook_outfile;
 	FILE	*fp_debug_out = NULL;
 
 	fp_debug_out = pbs_python_get_hook_debug_output_fp();
+
+	if ( fp_debug_out == NULL) {
+		/* prepare to open file if output file pointer not stored */
+		hook_outfile = pbs_python_get_hook_debug_output_file();
+		if ((hook_outfile != NULL) && (hook_outfile[0] != '\0')) {
+			/* need to open in append mode, as */
+			/* process_hooks() may have */
+			/* already written into this file. */
+			fp_debug_out = fopen(hook_outfile, "a");
+			if (fp_debug_out == NULL) {
+				snprintf(log_buffer, sizeof(log_buffer),
+				"warning: open of hook debug output file %s failed!",
+							hook_outfile);
+				log_err(-1,
+				     "write_hook_accept_output_and_close",
+				     		log_buffer);
+			} else {
+				pbs_python_set_hook_debug_output_fp(fp_debug_out);
+			}
+		}
+	}
 
 	if (fp_debug_out != NULL) {
 		fprintf(fp_debug_out, "%s=True\n",
@@ -3677,6 +3721,7 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 	FILE			*fp_debug = NULL;
 	FILE			*fp2_debug = NULL;
 	FILE			*fp_debug_out = NULL;
+	FILE			*fp_debug_out_save = NULL;
 	char			hook_inputfile[MAXPATHLEN+1];
 	char			hook_datafile[MAXPATHLEN+1];
 	char			hook_outfile[MAXPATHLEN+1];
@@ -3740,6 +3785,10 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 	pbs_python_event_accept();
 
 	suffix_sz = strlen(HOOK_SCRIPT_SUFFIX);
+
+	/* initialize various hook_debug_* instance */
+	pbs_python_set_hook_debug_output_fp(NULL);
+	pbs_python_set_hook_debug_output_file("");
 
 	for (phook = (hook *)GET_NEXT(*head_ptr); phook; phook = phook_next) {
 
@@ -3853,7 +3902,8 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 					default:
 						do_recreate = 0;
 				}
-				if (do_recreate) { 
+				if (do_recreate) {
+					fp_debug_out_save = pbs_python_get_hook_debug_output_fp();
 					pbs_python_set_hook_debug_output_fp(fp_debug);
 					/* recreate_request() appends */
 					/* pbs.event().job or */
@@ -3864,7 +3914,7 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 					/* written into the file represented */
 					/* by 'fp_debug'. */
 					(void)recreate_request(temp_req);
-					pbs_python_set_hook_debug_output_fp(NULL);
+					pbs_python_set_hook_debug_output_fp(fp_debug_out_save);
 				}
 				free_br(temp_req);
 			} else {
@@ -3895,6 +3945,12 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 				pbs_python_set_hook_debug_data_fp(NULL);
 				pbs_python_set_hook_debug_data_file("");
 			}
+			if (fp_debug_out != NULL) {
+				fclose(fp_debug_out);
+				fp_debug_out = NULL;
+				pbs_python_set_hook_debug_output_fp(NULL);
+				pbs_python_set_hook_debug_output_file("");
+			}
 			return (-1);
 		}
 
@@ -3919,6 +3975,12 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 				fp2_debug = NULL;
 				pbs_python_set_hook_debug_data_fp(NULL);
 				pbs_python_set_hook_debug_data_file("");
+			}
+			if (fp_debug_out != NULL) {
+				fclose(fp_debug_out);
+				fp_debug_out = NULL;
+				pbs_python_set_hook_debug_output_fp(NULL);
+				pbs_python_set_hook_debug_output_file("");
 			}
 			return (-1);
 		}
@@ -3994,6 +4056,13 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 					pbs_python_set_hook_debug_data_fp(NULL);
 					pbs_python_set_hook_debug_data_file("");
 				}
+			
+				if (fp_debug_out != NULL) {
+					fclose(fp_debug_out);
+					fp_debug_out = NULL;
+					pbs_python_set_hook_debug_output_fp(NULL);
+					pbs_python_set_hook_debug_output_file("");
+				}
 				return (-1);
 			}
 		}
@@ -4038,11 +4107,26 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 			pbs_python_set_hook_debug_output_file(hook_outfile);
 			fp_debug_out = fopen(hook_outfile, "w");
 			if (fp_debug_out != NULL) {
+				fp_debug_out_save = pbs_python_get_hook_debug_output_fp();
+				if (fp_debug_out_save != NULL) {
+					fclose(fp_debug_out_save);
+				}
 				pbs_python_set_hook_debug_output_fp(fp_debug_out);
 			}
 		} else {
+			fp_debug_out_save = pbs_python_get_hook_debug_output_fp();
+			if (fp_debug_out_save != NULL) {
+				fclose(fp_debug_out_save);
+			}
 			pbs_python_set_hook_debug_output_fp(NULL);
-			pbs_python_set_hook_debug_output_file("");
+			/* NOTE: don't call */
+			/* pbs_python_set_hook_debug_output_file() as */
+			/* we still need a file to dump any remaining */
+			/* debug output in case all hooks end */
+			/* up accepting the current event with some */
+			/* hooks with debug=true and some that are */
+			/* debug=false */
+
 		}
 
 		if (fp2_debug != NULL) {
@@ -4069,6 +4153,12 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
 					LOG_ERR, phook->hook_name,
 					"Internal server error encountered. Skipping hook.");
+				if (fp_debug_out != NULL) {
+					fclose(fp_debug_out);
+					fp_debug_out = NULL;
+					pbs_python_set_hook_debug_output_fp(NULL);
+					pbs_python_set_hook_debug_output_file("");
+				}
 				return (-1); /* should not happen */
 			case -2:	/* unhandled exception */
 				pbs_python_event_reject(NULL);
