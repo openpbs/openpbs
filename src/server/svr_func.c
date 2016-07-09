@@ -4657,11 +4657,6 @@ mark_prov_vnode_offline(pbsnode *pnode, char * comment)
 	set_vnode_state(pnode, ~INUSE_PROV, Nd_State_And);
 
 
-#ifdef NAS /* localmod 128 */
-	pnode->nd_modified |= NODE_UPDATE_OTHERS;
-	save_nodes_db(0);
-	pnode->nd_modified &= ~NODE_UPDATE_OTHERS;
-#endif /* localmod 128 */
 
 	/* write the node state and current_aoe */
 	pnode->nd_modified |= (NODE_UPDATE_CURRENT_AOE | NODE_UPDATE_STATE);
@@ -5133,11 +5128,6 @@ prov_request_deferred(struct work_task *wtask)
 			id, pnode->nd_name, prov_vnode_info->pvnfo_aoe_req))
 
 
-#ifdef NAS /* localmod 128 */
-		pnode->nd_modified |= NODE_UPDATE_OTHERS;
-		save_nodes_db(0);
-		pnode->nd_modified &= ~NODE_UPDATE_OTHERS;
-#endif /* localmod 128 */
 		/* write the node current_aoe */
 		pnode->nd_modified |= NODE_UPDATE_CURRENT_AOE;
 		write_single_node_state(pnode);
@@ -5711,6 +5701,7 @@ start_vnode_provisioning(struct prov_vnode_info * prov_vnode_info)
 		/* exit with the return code from the script */
 		rc = execute_python_prov_script(phook, prov_vnode_info);
 
+#ifndef NAS /* localmod 156 */
 		if ((rc == 0) && (mom_hooks_seen_count() > 0)) {
 			int 	ret;
 			/* Point path_hooks_tracking file to some private   */
@@ -5776,7 +5767,7 @@ start_vnode_provisioning(struct prov_vnode_info * prov_vnode_info)
 				}
 			}
 		}
-
+#endif /* localmod 156 */
 		/* if python did sys.exit we wont be here */
 		exit(rc);
 	}
@@ -5793,11 +5784,6 @@ start_vnode_provisioning(struct prov_vnode_info * prov_vnode_info)
 		&(pnode->nd_attr[(int)ND_ATR_current_aoe]));
 
 
-#ifdef NAS /* localmod 128 */
-	pnode->nd_modified |= NODE_UPDATE_OTHERS;
-	save_nodes_db(0);
-	pnode->nd_modified &= ~NODE_UPDATE_OTHERS;
-#endif /* localmod 128 */
 	/* write the node current_aoe */
 	pnode->nd_modified |= NODE_UPDATE_CURRENT_AOE;
 	write_single_node_state(pnode);

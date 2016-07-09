@@ -311,7 +311,8 @@ req_runjob(struct batch_request *preq)
 		req_reject(PBSE_IVALREQ, 0, preq);
 		return;
 	}
-
+	
+#ifndef NAS /* localmod 133 */
 	if ((scheduler_sock != -1) && was_job_alteredmoved(parent)) {
 		int index = find_attr(sched_attr_def, ATTR_throughput_mode, SCHED_ATR_LAST);
 		/* do not blacklist altered/moved jobs when throughput_mode is enabled */
@@ -323,6 +324,7 @@ req_runjob(struct batch_request *preq)
 			return;
 		}
 	}
+#endif /* localmod 133 */
 
 	if (jt == IS_ARRAY_NO) {
 

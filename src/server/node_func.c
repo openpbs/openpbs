@@ -2622,6 +2622,10 @@ remove_node_topology(char *node_name)
 int
 set_node_topology(attribute *new, void *pobj, int op)
 {
+#ifdef NAS /* localmod 035 */
+	return (PBSE_NONE);
+#else
+
 	int		rc = PBSE_NONE;
 	struct pbsnode	*pnode = ((pbsnode *) pobj);
 	attribute_def	*pnadl = &node_attr_def[(int) ND_ATR_License];
@@ -2774,4 +2778,5 @@ set_node_topology(attribute *new, void *pobj, int op)
 			ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 	}
 	return rc;
+#endif /* localmod 035 */
 }

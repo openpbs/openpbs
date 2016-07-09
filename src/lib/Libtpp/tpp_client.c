@@ -4184,7 +4184,11 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx)
 					char *msg = ((char *) data) + sizeof(tpp_ctl_pkt_hdr_t);
 					snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "sd %d, Received noroute to dest %s, msg=\"%s\"", src_sd,
 								tpp_netaddr(&hdr->src_addr), msg);
+#ifdef NAS /* localmod 149 */
+					tpp_log_func(LOG_DEBUG, NULL, tpp_get_logbuf());
+#else
 					tpp_log_func(LOG_INFO, NULL, tpp_get_logbuf());
+#endif /* localmod 149 */
 
 					TPP_DBPRT(("received noroute, sending TPP_CMD_NET_CLOSE to %d", strm->sd));
 					send_app_strm_close(strm, TPP_CMD_NET_CLOSE, 0);

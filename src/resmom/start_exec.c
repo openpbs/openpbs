@@ -5045,7 +5045,7 @@ create_file_securely(char *path, uid_t exuid, gid_t exgid)
  *	    create the file in its final destination directory and set the "keeping" flag so it will not be staged.
  *	5.  Else, the file path is created to put the file in PBS_HOME/spool
  #else
- *	6.  Else, the file path is created to put the file in PBS_HOME/spool
+ *	4.  Else, the file path is created to put the file in PBS_HOME/spool
  #endif localmod 118
  * @param[in]  pjob - pointer to job structure
  * @param[in]  which - identifies which file: StdOut, StdErr, or Chkpt.

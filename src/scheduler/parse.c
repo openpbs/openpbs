@@ -965,6 +965,14 @@ int is_speccase_sort(char *sort_res, int sort_type) {
 	if (sort_type == SOBJ_JOB) {
 		if (!strcmp(sort_res, SORT_JOB_PRIORITY))
 			return 1;
+#ifdef NAS
+		/* localmod 034 */
+		if (!strcmp(sort_res, SORT_ALLOC))
+			return 1;
+		/* localmod 039 */
+		if (!strcmp(sort_res, SORT_QPRI))
+			return 1;
+#endif
 		else
 			return 0;
 	} else if (sort_type == SOBJ_NODE) {

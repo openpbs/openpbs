@@ -1387,7 +1387,7 @@ set_job_ProvAcctRcd(job *pjob, long time_se, int type)
 	len = acct_bufsize - nd;
 
 	/* node list that were provisioned */
-#ifdef NAS /* localmod 130 */
+#ifdef NAS /* localmod 136 */
 	if (pjob->ji_wattr[(int)JOB_ATR_prov_vnode].at_val.at_str == NULL) {
 		char  logmsg[1024];
 		(void)sprintf(logmsg, "prov_vnode is NULL for job %s", pjob->ji_wattr[(int)JOB_ATR_hashname].at_val.at_str);
@@ -1395,7 +1395,7 @@ set_job_ProvAcctRcd(job *pjob, long time_se, int type)
 
 		return;	
 	}
-#endif /* localmod 130 */
+#endif /* localmod 136 */
 	nd = 18 + strlen(pjob->ji_wattr[(int)JOB_ATR_prov_vnode].at_val.at_str);
 	if (nd > len)
 		if (grow_acct_buf(&pb, &len, nd) == -1)
