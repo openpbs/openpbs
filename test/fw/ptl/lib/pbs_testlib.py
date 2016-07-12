@@ -9569,6 +9569,7 @@ class Scheduler(PBSService):
         self.resource_group = None
         self.server = None
         self.server_dyn_res = None
+	self.deletable_files = ['usage']
 
         self.logger = logging.getLogger(__name__)
 
@@ -10013,6 +10014,10 @@ class Scheduler(PBSService):
             self.du.run_copy(self.hostname, self.dflt_sched_config_file,
                              self.sched_config_file, mode=0644, sudo=True)
         self.signal('-HUP')
+        for f in self.deletable_files:
+            fn = os.path.join(self.pbs_conf['PBS_HOME'], 'sched_priv', f)
+            if fn is not None:
+                self.du.rm(self.hostname, fn, sudo=True)
         self.parse_sched_config()
         self.fairshare_tree = None
         self.resource_group = None
