@@ -8496,9 +8496,9 @@ main(int argc, char *argv[])
 		(void)strncpy(mom_host, pbs_conf.pbs_mom_node_name, (sizeof(mom_host) - 1));
 		mom_host[(sizeof(mom_host) - 1)] = '\0';
 		ptr = mom_host;
-		/* First character must be a dash or alpha-numeric */
-		if ((*ptr == '-') || isalnum((int)*ptr)) {
-			/* Subsequent characters may also be dots */
+		/* First character must be alpha-numeric */
+		if (isalnum((int)*ptr)) {
+			/* Subsequent characters may also be dots or dashes */
 			for (ptr++; (c == 0) && (*ptr != '\0'); ptr++) {
 				if (*ptr == '.') {
 					/* Disallow two dots in a row or a trailing dot */
