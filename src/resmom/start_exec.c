@@ -4299,7 +4299,7 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 					 */
 					if ((pbs_conf.pbs_use_tcp == 1) && pbs_conf.pbs_leaf_name) {
 						if (strcmp(pbs_conf.pbs_leaf_name, node_name) != 0) {
-							/* PBS_LEAF_NAME has changed or node_name is unitialized */
+							/* PBS_LEAF_NAME has changed or node_name is uninitialized */
 							strncpy(node_name, pbs_conf.pbs_leaf_name, PBS_MAXHOSTNAME);
 							node_name[PBS_MAXHOSTNAME] = '\0';
 							/* Need to canonicalize PBS_LEAF_NAME */
@@ -4316,7 +4316,7 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 						}
 					} else {
 						if (strcmp(mom_host, node_name) != 0) {
-							/* mom_host has changed or node_name is unitialized */
+							/* mom_host has changed or node_name is uninitialized */
 							strncpy(node_name, mom_host, PBS_MAXHOSTNAME);
 							node_name[PBS_MAXHOSTNAME] = '\0';
 							/* mom_host contains the canonical name */
