@@ -56,6 +56,7 @@
 #include	"pbs_ifl.h"
 #include	"pbs_internal.h"
 #include	"log.h"
+#include	"rpp.h"
 
 
 
@@ -65,6 +66,22 @@ extern	int	quiet;
 #endif /* localmod 099 */
 
 extern	void	add_cmds(Tcl_Interp *interp);
+
+#define SHOW_NONE 0xff
+int log_mask;
+
+void
+log_rppfail(char *mess)
+{
+	fprintf(stderr, "rpp error: %s\n", mess);
+}
+
+void
+log_tppmsg(int level, const char *objname, char *mess)
+{
+	if ((level | log_mask) <= LOG_ERR)
+		fprintf(stderr, "rpp error: %s\n", mess);
+}
 
 /**
  * @brief
@@ -106,6 +123,7 @@ int
 main(int argc, char *argv[])
 {
 	char	tcl_libpath[MAXPATHLEN+13];	/* 13 for "TCL_LIBRARY=" + \0 */
+	int rc;
 
 	/*the real deal or just pbs_version and exit?*/
 
@@ -121,8 +139,13 @@ main(int argc, char *argv[])
 	Tcl_FindExecutable(argv[0]);
 #endif
 
+	/* load the pbs conf file */
+	if (pbs_loadconf(0) == 0) {
+		fprintf(stderr, "%s: Configuration error\n", argv[0]);
+		return (1);
+	}
+
 	if (!getenv("TCL_LIBRARY")) {
-		pbs_loadconf(0);
 		if (pbs_conf.pbs_exec_path) {
 			sprintf((char *)tcl_libpath,
 #ifdef WIN32
@@ -134,8 +157,72 @@ main(int argc, char *argv[])
 			putenv(tcl_libpath);
 		}
 	}
+	if (pbs_conf.pbs_use_tcp == 1) {
+		char 			*nodename;
+		struct			tpp_config tpp_conf;
+		char			my_hostname[PBS_MAXHOSTNAME+1];
+		fd_set 			selset;
+		struct 			timeval tv;
 
+		if (pbs_conf.pbs_leaf_name)
+			nodename = pbs_conf.pbs_leaf_name;
+		else {
+			if (gethostname(my_hostname, (sizeof(my_hostname) - 1)) < 0) {
+				fprintf(stderr, "Failed to get hostname\n");
+				return -1;
+			}
+			nodename = my_hostname;
+		}
 
+		/* We don't want to show logs related to connecting pbs_comm on console
+		 * this set this flag to ignore it
+		 */
+		log_mask = SHOW_NONE;
+
+		/* set tpp function pointers */
+		set_tpp_funcs(log_tppmsg);
+
+		/* call tpp_init */
+		rc = 0;
+#ifndef WIN32
+		if (pbs_conf.auth_method == AUTH_MUNGE)
+			rc = set_tpp_config(&pbs_conf, &tpp_conf, nodename, -1, pbs_conf.pbs_leaf_routers,
+								pbs_conf.pbs_use_compression,
+								TPP_AUTH_EXTERNAL,
+								get_ext_auth_data, validate_ext_auth_data);
+		else
+#endif
+			rc = set_tpp_config(&pbs_conf, &tpp_conf, nodename, -1, pbs_conf.pbs_leaf_routers,
+								pbs_conf.pbs_use_compression,
+								TPP_AUTH_RESV_PORT,
+								NULL, NULL);
+		if (rc == -1) {
+			fprintf(stderr, "Error setting TPP config\n");
+			return -1;
+		}
+
+		if ((rpp_fd = tpp_init(&tpp_conf)) == -1) {
+			fprintf(stderr, "rpp_init failed\n");
+			return -1;
+		}
+
+		/*
+		 * Wait for net to get restored, ie, app to connect to routers
+		 */
+		FD_ZERO(&selset);
+		FD_SET(rpp_fd, &selset);
+		tv.tv_sec = 5;
+		tv.tv_usec = 0;
+		select(FD_SETSIZE, &selset, (fd_set *) 0, (fd_set *) 0, &tv);
+
+		rpp_poll(); /* to clear off the read notification */
+
+		/* Once the connection is established we can unset log_mask */
+		log_mask &= ~SHOW_NONE;
+	} else {
+		/* set rpp function pointers */
+		set_rpp_funcs(log_rppfail);
+	}
 	Tcl_Main(argc, argv, pbsTcl_Init);
 	return 0;
 }

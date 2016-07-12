@@ -47,6 +47,9 @@
 #include "log.h"
 
 
+#define SHOW_NONE 0xff
+int log_mask;
+
 void
 log_rppfail(char *mess)
 {
@@ -56,7 +59,7 @@ log_rppfail(char *mess)
 static void
 log_tppmsg(int level, const char *objname, char *mess)
 {
-	if (level <= LOG_ERR)
+	if ((level | log_mask) <= LOG_ERR)
 		fprintf(stderr, "rpp error: %s\n", mess);
 }
 
@@ -123,6 +126,11 @@ main(int argc, char *argv[])
 			nodename = my_hostname;
 		}
 
+		/* We don't want to show logs related to connecting pbs_comm on console
+		 * this set this flag to ignore it
+		 */
+		log_mask = SHOW_NONE;
+
 		/* set tpp function pointers */
 		set_tpp_funcs(log_tppmsg);
 
@@ -161,6 +169,8 @@ main(int argc, char *argv[])
 
 		rpp_poll(); /* to clear off the read notification */
 
+		/* Once the connection is established we can unset log_mask */
+		log_mask &= ~SHOW_NONE;
 	} else {
 		/* set rpp function pointers */
 		set_rpp_funcs(log_rppfail);
