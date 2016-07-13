@@ -26,6 +26,7 @@
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
+				CommandLine="&quot;$(ProjectDir)gen_pbs_version.bat&quot;"
 			/>
 			<Tool
 				Name="VCCustomBuildTool"
@@ -50,6 +51,7 @@
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
+				CommandLine="&quot;$(ProjectDir)gen_pbs_version.bat&quot;"
 			/>
 			<Tool
 				Name="VCCustomBuildTool"

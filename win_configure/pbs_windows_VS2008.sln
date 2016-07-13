@@ -366,6 +366,9 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Libpbsaif", "projects.VS200
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Libutil", "projects.VS2008\Libutil.vcproj", "{625346DC-194A-4E7D-92C4-8F9E10B0BB2A}"
+	ProjectSection(ProjectDependencies) = postProject
+		{0B889879-456F-4F8E-A15E-3C0A7BBF3B25} = {0B889879-456F-4F8E-A15E-3C0A7BBF3B25}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Libpbspython", "projects.VS2008\Libpbspython.vcproj", "{2F37584C-B957-4949-A2EB-A11471AE5FDE}"
 EndProject
