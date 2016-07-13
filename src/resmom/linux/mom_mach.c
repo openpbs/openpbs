@@ -879,7 +879,7 @@ cpuset_pidlist_broken(void)
 }
 
 /**
- * @brief	Wait for remaining cpuset tasks to end.
+ * @brief	Kill remaining cpuset tasks.
  * 		Timeout after cpuset_destroy_delay seconds.
  *
  * @par		If cpuset_init_pidlist() fails, this function
@@ -890,44 +890,86 @@ cpuset_pidlist_broken(void)
  * @param[in]	isrecursive - Whether to descend into the cpuset
  * @param[in]	jid - Job ID string
  *
- * @return void
+ * @return int
+ * @retval -1	- Error
+ * @retval >= 0	- Number of PIDs remaining
  */
-static void
-wait_for_stragglers(const char *setname, int isrecursive, const char *jid)
+static int
+kill_cpuset_procs(const char *setname, int isrecursive, const char *jid)
 {
-	static char id[] = "wait_for_stragglers";
-	struct cpuset_pidlist *pl;
-	int pl_len;
-	unsigned int remaining = (unsigned int)cpuset_destroy_delay;
+	ulong			unslept = cpuset_destroy_delay;
+	pid_t			pid;
+	pid_t			mypid;		/* to avoid signalling myself */
+	int			pll = 0;	/* PID list length */
+	int			i;
+	struct cpuset_pidlist	*pl;
 
-	while (remaining > 0) {
-		/* Do not decrement remaining if sleep fails. */
-		if (sleep(1) != 0)
-			continue;
-		/* Now decrement. */
-		remaining--;
+	mypid = getpid();
+	do {
 		if ((pl = cpuset_init_pidlist(setname, isrecursive)) == NULL) {
-			log_joberr(errno, id, "NULL cpuset_init_pidlist", (char *)jid);
-			return;
+			log_joberr(errno, __func__, "NULL cpuset_init_pidlist", (char *)jid);
+			pll = -1;
+		} else {
+			pll = cpuset_pidlist_length(pl);
+			sprintf(log_buffer, "cpuset_pidlist_length (#1):  %d", pll);
+			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, (char *)jid, log_buffer);
+#ifdef	DEBUG
+			DBPRT(("%s:  pll %d", __func__, pll));
+			for (i = 0; i < pll; i++) {
+				DBPRT(("%s:  cpuset_get_pidlist(pl, %d) = %d\n", __func__, i, cpuset_get_pidlist(pl, i)));
+			}
+#endif	/* DEBUG */
+			for (i = 0; i < pll; i++) {
+				if ((pid = cpuset_get_pidlist(pl, i)) != (pid_t)-1) {
+					if (pid < 2) {
+						int	save_errno = errno;
+						sprintf(log_buffer,
+							"cpuset_get_pidlist index %d "
+							"returned %d", i, pid);
+						log_joberr(save_errno, __func__, log_buffer,
+							(char *)jid);
+					} else if (ownerof(pid) == 0) {
+						sprintf(log_buffer, "skip root-owned PID %d in set %s",
+							pid, setname);
+						log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB,
+							LOG_DEBUG, (char *)jid, log_buffer);
+					} else if (pid == mypid) {
+						sprintf(log_buffer, "skip my PID %d in set %s",
+							pid, setname);
+						log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB,
+							LOG_DEBUG, (char *)jid, log_buffer);
+					} else {
+						(void) kill(pid, SIGKILL);
+					}
+				}
+			}
+			/* some documentation incorrectly refers to cpuset_free_pidlist() */
+			cpuset_freepidlist(pl);
+			/* break from the loop if no PIDs remain */
+			if (pll == 0)
+				break;
 		}
-		pl_len = cpuset_pidlist_length(pl);
-		cpuset_freepidlist(pl);
-		if (pl_len < 1)
-			return;
-	}
+		/* Do not sleep if cpuset_destroy_delay is unset */
+		if (cpuset_destroy_delay > 0)
+			/* Do not decrement unslept if sleep() fails. */
+			if (sleep(1) != 0)
+				continue;
+		/* Now decrement. */
+		unslept--;
+	} while (unslept > 0);
+	return (pll);
 }
 
 /**
  * @brief
- *	remove cpuset processes .
+ *	Remove cpuset processes.
  *
  * @param[in] setname - cpuset name
  * @param[in] jid - job id
  *
- * @return Void
+ * @return void
  *
  */
-
 static void
 remove_cpuset_procs(const char *setname, const char *jid)
 {
@@ -937,7 +979,6 @@ remove_cpuset_procs(const char *setname, const char *jid)
 	pid_t			mypid;	/* to avoid signalling myself */
 	struct cpuset_pidlist	*pl;
 	int			pll;
-	char			buf[LOG_BUF_SIZE];
 	static int		firsttime = 1;
 
 	/* avoid using some broken libcpuset functions */
@@ -945,12 +986,14 @@ remove_cpuset_procs(const char *setname, const char *jid)
 		if (firsttime) {
 			/* note the problem, but only once */
 			firsttime = 0;
-			sprintf(buf, "ProPack < 5:  can't remove_cpuset_procs");
-			log_event(PBSEVENT_SYSTEM, 0, LOG_NOTICE, __func__, buf);
+			sprintf(log_buffer, "ProPack < 5:  can't remove_cpuset_procs");
+			log_event(PBSEVENT_SYSTEM, 0, LOG_NOTICE, __func__, log_buffer);
 		}
-		wait_for_stragglers(setname, isrecursive, jid);
+		(void)kill_cpuset_procs(setname, isrecursive, jid);
 		return;
 	}
+
+	mypid = getpid();
 
 	/*
 	 *	Step 1:  find the list of processes that remain in setname
@@ -960,49 +1003,14 @@ remove_cpuset_procs(const char *setname, const char *jid)
 	 *	ought to have returned non-NULL, but cpuset_pidlist_length()
 	 *	should return 0.
 	 */
-	if ((pl = cpuset_init_pidlist(setname, isrecursive)) == NULL) {
-		log_joberr(errno, __func__, "NULL cpuset_init_pidlist", (char *)jid);
+	pll = kill_cpuset_procs(setname, isrecursive, jid);
+	if (pll == 0)
 		return;
-	}
-	pll = cpuset_pidlist_length(pl);
-	sprintf(buf, "cpuset_pidlist_length (#1):  %d", pll);
-	log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, (char *)jid, buf);
-	mypid = getpid();
-#ifdef	DEBUG
-	DBPRT(("%s:  pll %d", __func__, pll));
-	for (i = 0; i < pll; i++) {
-		DBPRT(("%s:  cpuset_get_pidlist(pl, %d) = %d\n", __func__, i, cpuset_get_pidlist(pl, i)));
-	}
-#endif	/* DEBUG */
-	for (i = 0; i < pll; i++)
-		if ((pid = cpuset_get_pidlist(pl, i)) != (pid_t) -1) {
-			if (pid == 0) {
-				sprintf(buf,
-					"cpuset_get_pidlist() returned 0"
-					" in set %s", setname);
-				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB,
-					LOG_DEBUG, (char *)jid, buf);
-			} else if ((ownerof(pid) != 0) && (pid != mypid))
-				(void) kill(pid, SIGKILL);
-			else {
-				sprintf(buf, "skip root-owned PID %d in set %s",
-					pid, setname);
-				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB,
-					LOG_DEBUG, (char *)jid, buf);
-			}
-		}
-
-	/* some documentation incorrectly refers to cpuset_free_pidlist() */
-	cpuset_freepidlist(pl);
-
-	/* Don't sleep() unless we found at least one process remaining. */
-	if (pll > 0)
-		wait_for_stragglers(setname, isrecursive, jid);
 
 	/*
-	 *	Step 2:  are there any processes that didn't respond to the
-	 *	SIGKILL?  If so, attempt to sweep them under the rug (i.e.
-	 *	into the place suspended processes go) so the CPU set may
+	 *	Step 2:  there are processes that didn't respond to the
+	 *	SIGKILL.  Attempt to sweep them under the rug (i.e. into
+	 *	the place suspended processes go) so the CPU set may
 	 *	then be deleted.
 	 */
 	if ((pl = cpuset_init_pidlist(setname, isrecursive)) == NULL) {
@@ -1012,9 +1020,9 @@ remove_cpuset_procs(const char *setname, const char *jid)
 
 	/* are we done or do we need to deal with undead processes? */
 	pll = cpuset_pidlist_length(pl);
-	sprintf(buf, "cpuset_pidlist_length (#2a):  %d", pll);
+	sprintf(log_buffer, "cpuset_pidlist_length (#2a):  %d", pll);
 	log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, (char *)jid,
-		buf);
+		log_buffer);
 	if (pll == 0) {
 		cpuset_freepidlist(pl);
 
@@ -1028,9 +1036,9 @@ remove_cpuset_procs(const char *setname, const char *jid)
 			return;
 		}
 		pll = cpuset_pidlist_length(pl);
-		sprintf(buf, "cpuset_pidlist_length (#2b):  %d", pll);
+		sprintf(log_buffer, "cpuset_pidlist_length (#2b):  %d", pll);
 		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-			(char *)jid, buf);
+			(char *)jid, log_buffer);
 
 		if (pll == 0) {
 			cpuset_freepidlist(pl);
@@ -1041,49 +1049,49 @@ remove_cpuset_procs(const char *setname, const char *jid)
 				if (pid == -1) {
 					int	save_errno = errno;
 
-
 					sprintf(log_buffer,
 						"cpuset_get_pidlist index %d "
 						"returned -1", i);
-					log_joberr(save_errno, __func__, buf,
+					log_joberr(save_errno, __func__, log_buffer,
 						(char *)jid);
 				} else
 					logprocinfo(pid, errno, jid);
 			}
 		}
 	}
-	for (i = 0; i < pll; i++)
+	for (i = 0; i < pll; i++) {
 		if ((pid = cpuset_get_pidlist(pl, i)) != (pid_t) -1) {
 			if (ownerof(pid) != 0) {
-				sprintf(buf, "failed to kill pid %d in set %s",
+				sprintf(log_buffer, "failed to kill pid %d in set %s",
 					pid, setname);
-				log_joberr(-1, __func__, buf, (char *)jid);
+				log_joberr(-1, __func__, log_buffer, (char *)jid);
 			}
 			if (pid == mypid) {
-				sprintf(buf, "my PID (%d) in pidlist of set %s",
+				sprintf(log_buffer, "my PID (%d) in pidlist of set %s",
 					pid, setname);
-				log_joberr(-1, __func__, buf, (char *)jid);
+				log_joberr(-1, __func__, log_buffer, (char *)jid);
 			}
 			if (cpuset_move(pid, DEV_CPUSET_ROOT) != 0) {
-				sprintf(buf,
+				sprintf(log_buffer,
 					"cpuset_move PID %d (from set %s) failed",
 					pid, setname);
-				log_joberr(errno, __func__, buf, (char *)jid);
+				log_joberr(errno, __func__, log_buffer, (char *)jid);
 			} else {
 				if (pid != mypid)
 					(void) kill(pid, SIGSTOP);
-				sprintf(buf,
+				sprintf(log_buffer,
 					"PID %d moved to set %s",
 					pid, DEV_CPUSET_ROOT);
-				log_joberr(0, __func__, buf, (char *)jid);
+				log_joberr(0, __func__, log_buffer, (char *)jid);
 			}
 		} else {
 			int	save_errno = errno;
 
-			sprintf(buf, "cpuset_get_pidlist index %d returned -1",
+			sprintf(log_buffer, "cpuset_get_pidlist index %d returned -1",
 				i);
-			log_joberr(save_errno, __func__, buf, (char *)jid);
+			log_joberr(save_errno, __func__, log_buffer, (char *)jid);
 		}
+	}
 
 	cpuset_freepidlist(pl);
 }
