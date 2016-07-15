@@ -10,7 +10,8 @@ How to install PBS Pro using the configure script.
     yum install -y gcc make rpm-build libtool hwloc-devel \
       libX11-devel libXt-devel libedit-devel libical-devel \
       ncurses-devel perl postgresql-devel python-devel tcl-devel \
-      tk-devel swig expat-devel openssl-devel libXext libXft
+      tk-devel swig expat-devel openssl-devel libXext libXft \
+      autoconf automake
 
   For openSUSE systems you should run the following command as root:
 
@@ -18,14 +19,15 @@ How to install PBS Pro using the configure script.
       libX11-devel libXt-devel libedit-devel libical-devel \
       ncurses-devel perl postgresql-devel python-devel tcl-devel \
       tk-devel swig libexpat-devel libopenssl-devel libXext-devel \
-      libXft-devel fontconfig
-      
-  For Debian systems you should run the following command as root:      
-  
+      libXft-devel fontconfig autoconf automake
+
+  For Debian systems you should run the following command as root:
+
     sudo apt-get install gcc make libtool libhwloc-dev libX11-dev \
       libXt-dev libedit-dev libical-dev ncurses-dev perl \
       postgresql-server-dev-all python-dev tcl-dev tk-dev swig \
-      libexpat-dev libssl-dev libxext-dev libxft-dev
+      libexpat-dev libssl-dev libxext-dev libxft-dev autoconf \
+      automake
 
 2. Install the prerequisite packages for running PBS Pro. In addition
   to the commands below, you should also install a text editor of
@@ -40,7 +42,7 @@ How to install PBS Pro using the configure script.
 
     zypper install expat libedit postgresql-server python \
       sendmail sudo tcl tk libical1
-      
+
   For Debian systems you should run the following command as root:
 
     apt-get install expat libedit2 postgresql python sendmail-bin \
@@ -52,44 +54,44 @@ How to install PBS Pro using the configure script.
     tar -xpvf pbspro-14.0.1.tar.gz
     cd pbspro-14.0.1
 
-4. Display the available build parameters.
+4. Generate the configure script and Makefiles. (See note 1 below)
+
+    ./autogen.sh
+
+5. Display the available build parameters.
 
     ./configure --help
 
-5. Configure the build for your environment. You may utilize the
-  parameters displayed in the previous step. (See notes 1 and 2
-  below)
+6. Configure the build for your environment. You may utilize the
+  parameters displayed in the previous step. (See note 2 below)
 
-  For CentOS systems you should run the following command:
+  For CentOS and Debian systems you should run the following
+  command:
 
     ./configure --prefix=/opt/pbs
 
-  For openSUSE systems (see note 4 below) you should run the
+  For openSUSE systems (see note 3 below) you should run the
   following command:
 
     ./configure --prefix=/opt/pbs --libexecdir=/opt/pbs/libexec
-    
-  For Debian systems you should run the following command:
 
-    ./configure --prefix=/opt/pbs
-
-6. Build PBS Pro by running "make". (See note 3 below)
+7. Build PBS Pro by running "make". (See note 4 below)
 
     make
 
-7. Configure sudo to allow your user account to run commands as
+8. Configure sudo to allow your user account to run commands as
   root. Refer to the online manual pages for sudo, sudoers, and
   visudo.
 
-8. Install PBS Pro. Use sudo to run the command as root.
+9. Install PBS Pro. Use sudo to run the command as root.
 
     sudo make install
 
-9. Configure PBS Pro by executing the post-install script.
+10. Configure PBS Pro by executing the post-install script.
 
     sudo /opt/pbs/libexec/pbs_postinstall
 
-10. Edit /etc/pbs.conf to configure the PBS Pro services that
+11. Edit /etc/pbs.conf to configure the PBS Pro services that
   should be started. If you are installing PBS Pro on only
   one system, you should change the value of PBS_START_MOM
   from zero to one. If you use vi as your editor, you would
@@ -97,15 +99,15 @@ How to install PBS Pro using the configure script.
 
     sudo vi /etc/pbs.conf
 
-11. Some file permissions must be modified to add SUID privilege.
+12. Some file permissions must be modified to add SUID privilege.
 
     sudo chmod 4755 /opt/pbs/sbin/pbs_iff /opt/pbs/sbin/pbs_rcp
 
-12. Start the PBS Pro services.
+13. Start the PBS Pro services.
 
     sudo /etc/init.d/pbs start
 
-13. All configured PBS services should now be running. Update
+14. All configured PBS services should now be running. Update
   your PATH and MANPATH variables by sourcing the appropriate
   PBS Pro profile or logging out and back in.
 
@@ -115,7 +117,7 @@ How to install PBS Pro using the configure script.
   For C shell (or similar) run the following:
     source /etc/profile.d/pbs.csh
 
-14. You should now be able to run PBS Pro commands to submit
+15. You should now be able to run PBS Pro commands to submit
   and query jobs. Some examples follow.
 
 bash$ qstat -B
@@ -145,7 +147,7 @@ host1
 
 bash$ echo "sleep 60" | qsub
 0.host1
-[mike@host1 PBSPro_13.0.402.161242b]$ qstat -a
+bash$ qstat -a
 
 host1:
                                                             Req'd  Req'd   Elap
@@ -159,19 +161,28 @@ bash$
 
 NOTES:
 
-Note 1: It is advisable to create a simple shell script
-  that calls configure with the appropriate options so that you
-  can save typing on reconfigures. If you have already run configure
-  you can remake all of the Makefiles by running "./config.status".
-  Also, looking at the first few lines of config.status will
-  tell you the options that were set when configure was run.
+Note 1: If you modify configure.ac or adjust timestamps on any files
+  that are automatically generated, you will need to regenerate them
+  by re-running autogen.sh.
 
-Note 2: If you modify configure.ac or adjust timestamps on any files
-  that are automatically generated, you will need to install the GNU
-  autoconf and automake packages in order for configure to
-  regenerate those files.
+Note 2: It is advisable to create a simple shell script that calls
+  configure with the appropriate options for your environment. This
+  ensures configure will be called with the same arguments during
+  subsequent invocations. If you have already run configure you can
+  regenerate all of the Makefiles by running "./config.status".
+  The first few lines of config.status will reveal the options that
+  were specified when configure was run. If you set envirnment
+  variables such as CFLAGS it is best to do so as an argument to
+  configure (e.g. ./configure CFLAGS="-O0 -g" --prefix=/opt/pbs).
+  This will ensure consistency when config.status regenerates the
+  Makefiles.
 
-Note 3: You need to use a POSIX (or nearly POSIX) make. GNU make
+Note 3: The openSUSE rpm package expands %_libexecdir to /opt/pbs/lib
+  rather than /opt/pbs/libexec which causes problems for the post-
+  install scripts. Providing the --libexecdir value to configure
+  overrides this behavior.
+
+Note 4: You need to use a POSIX (or nearly POSIX) make. GNU make
   works quite well in this regard; BSD make does not. If you are
   having any sort of build problems, your make should be a prime
   suspect. Tremendous effort has been expended to provide proper
@@ -180,9 +191,4 @@ Note 3: You need to use a POSIX (or nearly POSIX) make. GNU make
   to make, however, complicating things by using various make flags
   is not guaranteed to work. Don't be surprised if the first thing
   that make does is call configure again.
-
-Note 4: The openSUSE rpm package expands %_libexecdir to /opt/pbs/lib
-  rather than /opt/pbs/libexec which causes problems for the post-
-  install scripts. Providing the --libexecdir value to configure 
-  overrides this behavior.
 
