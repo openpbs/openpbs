@@ -51,9 +51,7 @@
 #include <aclapi.h>
 #include "pbs_ifl.h"
 #include "pbs_internal.h"
-/**
- * @file	accesinfo.c
- */
+
 
 /**
  * @brief 
@@ -1150,6 +1148,8 @@ make_dir_files_everyone_read(char *path)
 	DIR	*dir;
 	struct	dirent *pdirent;
 	char	dirfile[MAXPATHLEN+1];
+	struct stat sb;
+	int	isdir = 1;
 
 	if (path == NULL || *path == '\0')
 		return;
@@ -1159,6 +1159,15 @@ make_dir_files_everyone_read(char *path)
 	sprintf(logb,"securing %s for read access by Everyone", path);
 	log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_DEBUG, "", logb);
 	/* If the item is not a directory, we are done. */
+	if (stat(path, &sb) == -1) {
+		sprintf(logb, "\"%s\" does not exist", path);
+		log_err(-1, "make_dir_files_everyone_read", logb);
+		return;
+	}
+	if (!S_ISDIR(sb.st_mode)) {		
+		return;
+	}
+	
 	dir = opendir(path);
 	if (dir == (DIR *)0) {
 		sprintf(logb,"readdir error; %s", path);

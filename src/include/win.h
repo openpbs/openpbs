@@ -308,7 +308,7 @@ extern BOOL impersonate_user(HANDLE hlogintoken);
 extern BOOL revert_impersonated_user();
 extern int setuser(char *username);
 extern int setuser_with_password(char *username, char *cred_buf,
-	size_t cred_len, int (*decrypt_func)(char *, size_t, char **));
+	size_t cred_len, int (*decrypt_func)(char *, int, size_t, char **));
 extern HANDLE setuser_handle(void);
 extern void setuser_close_handle(void);
 extern int setuid(uid_t uid);	/* mimics UNIX call */
