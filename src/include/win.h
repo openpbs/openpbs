@@ -110,6 +110,8 @@
 #define	strtok_r	strtok_s
 #define creat(path, mode)	win_open((path), O_CREAT|O_WRONLY|O_TRUNC, (mode))
 #define _creat(path, mode)	win_open((path), O_CREAT|O_WRONLY|O_TRUNC, (mode))
+#define strtoll _strtoi64
+#define strtoull _strtoui64
 
 #pragma warning(disable:4996) /* disable CRT secure warning */
 
