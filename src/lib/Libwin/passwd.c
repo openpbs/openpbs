@@ -55,9 +55,7 @@
 #include <TlHelp32.h>
 #include <shlobj.h>
 #include "ticket.h"
-/**
- * @file	passwd.c
- */
+
 #define	NETWORK_DRIVE_PATHLEN 4  /* Example: "Z:\" */
 #ifndef SECURITY_WIN32
 #define SECURITY_WIN32 1
@@ -1531,8 +1529,8 @@ isLocalAdminMember(char *user)
 {
 	SID	*sid = NULL;
 	char	*gname = NULL;
-	wchar_t	userw[PBS_MAXHOSTNAME+UNLEN+2]; /* domain\user0 */
-	wchar_t	 gnamew[GNLEN+1];
+	wchar_t	userw[PBS_MAXHOSTNAME+UNLEN+2]=L""; /* domain\user0 */
+	wchar_t	 gnamew[GNLEN+1]=L"";
 	LOCALGROUP_MEMBERS_INFO_2 *members = NULL;
 	DWORD	nread = 0;
 	DWORD	totentries = 0;
@@ -1547,7 +1545,7 @@ isLocalAdminMember(char *user)
 	if ((gname=getgrpname(sid)) == NULL) {
 		goto isLocalAdminMember_end;
 	}
-	mbstowcs(userw, user, GNLEN);
+	mbstowcs(userw, user, PBS_MAXHOSTNAME+UNLEN+1);
 	mbstowcs(gnamew, gname, GNLEN);
 
 	if (NetLocalGroupGetMembers(NULL, gnamew, 2, (LPBYTE *)&members,
@@ -1738,8 +1736,8 @@ isAdminPrivilege(char *user)
 	GROUP_USERS_INFO_0 *groups = NULL;
 	DWORD	nread;
 	DWORD	i;
-	char	realuser[UNLEN+1];
-	char	group[GNLEN+1];
+	char	realuser[UNLEN+1]={'\0'};
+	char	group[GNLEN+1]={'\0'};
 	SID		*usid;
 	SID		*gsid;
 	DWORD	grid;
@@ -3942,7 +3940,7 @@ int
 setuser_with_password(char *user,
 	char *cred_buf,
 	size_t cred_len,
-	int (*decrypt_func)(char *, size_t, char **))
+	int (*decrypt_func)(char *, int, size_t, char **))
 {
 
 	SID     *usid;
@@ -3976,7 +3974,7 @@ setuser_with_password(char *user,
 		char *pass = NULL;
 		char *p = NULL;
 
-		if (decrypt_func(cred_buf, cred_len, &pass) != 0) {/* fails */
+		if (decrypt_func(cred_buf, PBS_CREDTYPE_AES, cred_len, &pass) != 0) {/* fails */
 			return (0);
 		}
 		strncpy(thepass, pass, cred_len);
