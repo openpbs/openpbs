@@ -35,7 +35,7 @@
 #  trademark licensing policies.
 #
 
-AC_PREREQ([2.69])
+AC_PREREQ([2.63])
 AC_INIT([pbspro], [14.0.1], [pbssupport@altair.com])
 AC_CONFIG_HEADERS([src/include/pbs_config.h])
 AC_CONFIG_SRCDIR([src/cmds/qmgr.c])
@@ -55,7 +55,8 @@ AC_PROG_INSTALL
 AC_PROG_LN_S
 
 # Automake macros
-AM_PROG_AR
+#AM_PROG_AR macro is defined with automake version >= 1.12
+m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 AM_PROG_CC_C_O
 
 # Initialize libtool
@@ -194,7 +195,8 @@ AC_CHECK_HEADERS([ \
 )
 
 # Checks for typedefs, structures, and compiler characteristics.
-AC_CHECK_HEADER_STDBOOL
+#AC_CHECK_HEADER_STDBOOL macro is defined with autoconf version >= 2.67
+m4_ifdef([AC_CHECK_HEADER_STDBOOL], [AC_CHECK_HEADER_STDBOOL])
 AC_TYPE_UID_T
 AC_TYPE_MODE_T
 AC_TYPE_OFF_T
