@@ -23,9 +23,10 @@
 - [ ] My code follows the **[coding style](https://pbspro.atlassian.net/wiki/display/DG/Coding+Standards)** of this project.
 - [ ] My change requires project documentation. See **[required documentation checklist](https://pbspro.atlassian.net/wiki/display/DG/Checklist+for+Developing+Features+and+Bug+Fixes)** for details.
 - [ ] I have added documentation in the **[project documentation area](https://pbspro.atlassian.net/wiki/display/PD)**.
-- [ ] I have added tests to cover my changes. To create automated tests, see **[using PTL for testing](https://pbspro.atlassian.net/wiki/display/DG/Using+PTL+for+Testing)**.
-- [ ] All new and existing automated tests have passed. See **[running automated PTL tests](https://pbspro.atlassian.net/wiki/display/DG/PTL+Quick+Start+Guide)**.
-- [ ] I have attached automated (PTL)/manual test logs to the associated Jira ticket.
+- [ ] I have added new **PTL test(s) to my commit**. (See **[using PTL for testing](https://pbspro.atlassian.net/wiki/display/DG/Using+PTL+for+Testing)**) *(or)*
+- [ ] I have added  **manual test(s) to the Jira ticket and explained why PTL is not appropriate** for this case.
+- [ ] All new and existing automated tests have passed. (See **[running automated PTL tests](https://pbspro.atlassian.net/wiki/display/DG/PTL+Quick+Start+Guide)**).
+- [ ] I have attached **test logs to the Jira ticket** as evidence of testing/verification.
 
 
 __***For further information please visit the [Developer Guide Home](https://pbspro.atlassian.net/wiki/display/DG/Developer+Guide+Home).***__
