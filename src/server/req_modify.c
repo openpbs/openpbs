@@ -275,7 +275,12 @@ req_modifyjob(struct batch_request *preq)
 
 			/* should the resource be only in a select spec */
 
-			if (prsd->rs_flags & ATR_DFLAG_CVTSLT) {
+			if (prsd->rs_flags & ATR_DFLAG_CVTSLT && !outsideselect && 
+				plist->al_atopl.value && plist->al_atopl.value[0]) {
+				/* if "-lresource" is set and has non-NULL value,  
+				** remember as potential bad resource 
+				** if this appears along "select".  
+				*/
 				outsideselect = prsd;
 			}
 		}
