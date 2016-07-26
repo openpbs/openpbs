@@ -1,9 +1,9 @@
+<!--- Please review your changes in preview mode -->
 <!--- Provide a general summary of your changes in the Title above -->
 
 #### Issue-ID
-<!--- Enter your JIRA issue id below -->
-<!--- If a JIRA issue is not available, please first create one at pbspro.atlassian.net -->
-* PP-XXXX
+<!--- Replace XXXX below (2 places) with the actual JIRA id -->
+* **[PP-XXXX](https://pbspro.atlassian.net/browse/PP-XXXX)**
 
 #### Problem description
 * Describe the issue being fixed
@@ -16,7 +16,7 @@
 
 #### Checklist:
 <!--- Use the preview button to see the checkboxes/links properly. -->
-<!--- Go over all the following points, and put an `x` in all the boxes that apply. -->
+<!--- Go over the following points, and put an `x` (without spaces around it) in the boxes that apply. -->
 <!--- If you're unsure about any of these, don't hesitate to ask. We're here to help! -->
 - [ ] I have joined the **[pbspro community forum](http://community.pbspro.org/)**.
 - [ ] My pull request contains a **single, signed** commit. See **[setting up gpg signature](https://pbspro.atlassian.net/wiki/display/DG/Signing+Your+Git+Commits)**.
