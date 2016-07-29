@@ -3002,6 +3002,28 @@ mom_process_hooks(unsigned int hook_event, char *req_user, char *req_host,
 								at_flags |=
 				(ATR_VFLAG_SET | ATR_VFLAG_MODCACHE);
 			set_job_exit = 1;
+		} else if ((hook_event == HOOK_EVENT_EXECJOB_LAUNCH) && (num_run >= 1)) {
+
+			/*
+			 * If there are multiple execjob_launch hooks,
+			 * we need to cascade the execjob_launch specific
+			 * parameters to the next execjob_launch hook,
+			 * if any of the previous hooks has set these
+			 * values.
+			 */
+
+			if (hook_output != NULL) {
+
+				if (hook_output->progname != NULL) {
+					hook_input->progname = *hook_output->progname;
+				}
+
+				if (hook_output->env != NULL) {
+					hook_input->env = hook_output->env;
+				}
+				hook_input->argv = svrattrl_to_str_array(hook_output->argv);
+			}
+
 		}
 
 		rc = run_hook(phook, hook_event, hook_input,
