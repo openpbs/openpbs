@@ -44,6 +44,8 @@
 
 #ifndef WIN32
 #include <unistd.h>
+#else
+#include "win.h"
 #endif
 
 #include <errno.h>

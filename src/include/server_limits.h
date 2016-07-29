@@ -39,7 +39,9 @@
 #ifdef	__cplusplus
 extern "C" {
 #endif
-
+#ifdef WIN32
+#include "win.h"
+#endif
 
 /*
  * This section contains size limit definitions

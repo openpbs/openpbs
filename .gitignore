@@ -46,6 +46,11 @@
 cscope.files
 cscope.out
 
+#Visual Studio files
+*.user
+*.ncb
+*.suo
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -190,7 +195,14 @@ src/lib/Libpbs/ecl_resv_attr_def.c
 src/lib/Libpbs/ecl_sched_attr_def.c
 src/lib/Libpbs/ecl_svr_attr_def.c
 
-src/include/stamp-h1
-src/lib/Libpython/pbs_ifl.i
-src/lib/Libpython/pbs_ifl.py
-src/lib/Libpython/pbs_ifl_wrap.c
+#Generated source files - Windows
+src/lib/Libecl/ecl_node_attr_def.c
+src/lib/Libecl/ecl_job_attr_def.c
+src/lib/Libecl/ecl_queue_attr_def.c
+src/lib/Libecl/ecl_resc_def_all.c
+src/lib/Libecl/ecl_resv_attr_def.c
+src/lib/Libecl/ecl_sched_attr_def.c
+src/lib/Libecl/ecl_svr_attr_def.c
+win_configure/projects.VS2008/pbs_ifl.i
+win_configure/projects.VS2008/pbs_ifl.py
+win_configure/projects.VS2008/pbs_ifl_wrap.c
