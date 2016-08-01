@@ -425,5 +425,7 @@ echo
 %exclude %{pbs_prefix}/sbin/pbsfs
 %exclude %{pbs_prefix}/unsupported/*.pyc
 %exclude %{pbs_prefix}/unsupported/*.pyo
+%if %{defined have_systemd}
 %exclude %{_unitdir}/pbs.service
+%endif
 

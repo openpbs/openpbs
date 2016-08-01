@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 #  Copyright (C) 1994-2016 Altair Engineering, Inc.
 #  For more information, contact Altair at www.altair.com.
@@ -478,10 +478,13 @@ elif [ $INSTALL_PACKAGE != client ] ; then
 			[ -f /etc/profile.d/pbs.csh ] || cp ${PBS_EXEC}/etc/pbs.csh /etc/profile.d
 			[ -f /etc/profile.d/pbs.sh ] || cp ${PBS_EXEC}/etc/pbs.sh /etc/profile.d
 		fi
-		unitfilepath="/usr/lib/systemd/system/"
-		if [ -d $unitfilepath ]; then
+		if [[ 1 == `pidof systemd` ]]; then
+			unitfilepath="/usr/lib/systemd/system/"
 			[ -f $unitfilepath/pbs.service ] || cp ${PBS_EXEC}/libexec/pbs.service $unitfilepath
 			chmod 644 $unitfilepath/pbs.service
+			eval "sed -i 's;\(^[[:space:]]*SourcePath=\)[^[:space:]]*;\1${PBS_EXEC}/libexec/pbs_init.d;' \"$unitfilepath/pbs.service\""
+                        eval "sed -i 's;\(^[[:space:]]*ExecStart=\)[^[:space:]]*;\1${PBS_EXEC}/libexec/pbs_init.d start;' \"$unitfilepath/pbs.service\""
+                        eval "sed -i 's;\(^[[:space:]]*ExecStop=\)[^[:space:]]*;\1${PBS_EXEC}/libexec/pbs_init.d stop;' \"$unitfilepath/pbs.service\""
 		fi
 		;;
 	AIX)
