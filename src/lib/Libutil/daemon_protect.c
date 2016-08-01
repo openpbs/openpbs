@@ -5,9 +5,6 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <fcntl.h>
-#ifdef WIN32
-#define pid_t int
-#endif
 #include "server_limits.h"
 
 #ifndef MAXPATHLEN

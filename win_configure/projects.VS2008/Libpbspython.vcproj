@@ -45,8 +45,8 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				InlineFunctionExpansion="1"
-				AdditionalIncludeDirectories="..\..\src\include;..\include;&quot;c:\Program Files\Openssl\Include&quot;;&quot;c:\Program Files\Python\include\python2.5&quot;"
-				PreprocessorDefinitions="WIN32;NDEBUG;_LIB;_USE_32BIT_TIME_T "
+				AdditionalIncludeDirectories="..\..\src\include;..\include;&quot;c:\Program Files\Openssl\Include&quot;;&quot;C:\Program Files\Python-2.7.11\Include&quot;;&quot;C:\Program Files\Python-2.7.11\PC&quot;"
+				PreprocessorDefinitions="WIN32;NDEBUG;_LIB;_USE_32BIT_TIME_T;LINKS_PYTHON;Py_NO_ENABLE_SHARED"
 				StringPooling="true"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
@@ -73,6 +73,7 @@
 			<Tool
 				Name="VCLibrarianTool"
 				OutputFile=".\..\..\..\win_build\src\lib\Libpython\Release\Libpbspython.lib"
+				AdditionalLibraryDirectories="&quot;C:\Program Files\Python-2.7.11\PC\VS9.0\Release&quot;"
 				SuppressStartupBanner="true"
 			/>
 			<Tool
@@ -121,10 +122,10 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\..\src\include;..\include;&quot;c:\Program Files\Openssl\Include&quot;;&quot;c:\Program Files\Python\include\python2.5&quot;"
-				PreprocessorDefinitions="WIN32;_DEBUG;_LIB;_USE_32BIT_TIME_T "
+				AdditionalIncludeDirectories="..\..\src\include;..\include;&quot;c:\Program Files\Openssl\Include&quot;;&quot;C:\Program Files\Python-2.7.11\Include&quot;;&quot;C:\Program Files\Python-2.7.11\PC&quot;"
+				PreprocessorDefinitions="WIN32;_DEBUG;_LIB;_USE_32BIT_TIME_T;LINKS_PYTHON;Py_NO_ENABLE_SHARED"
 				BasicRuntimeChecks="3"
-				RuntimeLibrary="0"
+				RuntimeLibrary="1"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile=".\..\..\..\win_build\src\lib\Libpython\Debug/Libpbspython.pch"
 				AssemblerListingLocation=".\..\..\..\win_build\src\lib\Libpython\Debug/"
@@ -149,6 +150,7 @@
 			<Tool
 				Name="VCLibrarianTool"
 				OutputFile=".\..\..\..\win_build\src\lib\Libpython\Debug\Libpbspython.lib"
+				AdditionalLibraryDirectories="&quot;C:\Program Files\Python-2.7.11\PC\VS9.0\Debug&quot;"
 				SuppressStartupBanner="true"
 			/>
 			<Tool
