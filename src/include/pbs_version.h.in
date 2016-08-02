@@ -46,7 +46,8 @@ extern "C" {
  */
 
 #ifdef WIN32
-#include "pbs_version_win.h"
+#define	PBS_BUILD	"mach=WIN32:security=:configure_args="
+#define	PBS_VERSION	"@PBS_WIN_VERSION@"
 #else
 #include <pbs_config.h>
 

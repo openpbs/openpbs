@@ -194,6 +194,10 @@ src/lib/Libpbs/ecl_resc_def_all.c
 src/lib/Libpbs/ecl_resv_attr_def.c
 src/lib/Libpbs/ecl_sched_attr_def.c
 src/lib/Libpbs/ecl_svr_attr_def.c
+src/include/stamp-h1
+src/lib/Libpython/pbs_ifl.i
+src/lib/Libpython/pbs_ifl.py
+src/lib/Libpython/pbs_ifl_wrap.c
 
 #Generated source files - Windows
 src/lib/Libecl/ecl_node_attr_def.c

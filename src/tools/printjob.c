@@ -63,11 +63,6 @@
 
 #define	PBS_MOM 1	/* this is so we can use the task struct */
 
-#ifdef PRINTJOBSVR
-#ifdef WIN32
-#undef pid_t
-#endif
-#endif
 #include "cmds.h"
 #include "pbs_version.h"
 #include "portability.h"
