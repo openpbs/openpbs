@@ -1054,17 +1054,9 @@ set_license_location(attribute *pattr, void *pobject, int actmode)
 	if ((actmode == ATR_ACTION_ALTER) ||
 		(actmode == ATR_ACTION_RECOV)) {
 
-		if( (server.sv_attr[SRV_ATR_pbs_license_info].at_flags & \
-							    ATR_VFLAG_SET) &&
-		(server.sv_attr[SRV_ATR_pbs_license_info].at_val.at_str[0] \
-							!= '\0') ) {
-			close_licensing();	/* checkin, close connection */
-		} else { /* from no license server */
-			init_license(&licenses);
-			/* set svr_unlicensedjobs list to currently running */
-			/* jobs.                                            */
-			clear_and_populate_svr_unlicensedjobs();
-		}
+		init_license(&licenses);
+		clear_and_populate_svr_unlicensedjobs();
+
 
 		if (pbs_licensing_license_location)
 			free(pbs_licensing_license_location);
@@ -1112,19 +1104,10 @@ unset_license_location(void)
 
 	if (pbs_licensing_license_location) {
 
-		if (pbs_licensing_license_location[0] != '\0') {
-
-			close_licensing();
-
-		} else { /* from no license server */
-			init_license(&licenses);
-			/* set svr_unlicensedjobs list to currently running */
-			/* jobs.                                            */
-			clear_and_populate_svr_unlicensedjobs();
-		}
+		init_license(&licenses);
+		clear_and_populate_svr_unlicensedjobs();
 		free(pbs_licensing_license_location);
 		pbs_licensing_license_location = NULL;
-		licstate_unconfigured(LIC_SERVER);
 	}
 
 	/* try to find a trial license */

@@ -1465,15 +1465,6 @@ mgr_server_unset(struct batch_request *preq)
 		} else if (strcasecmp(plist->al_name,
 			ATTR_pbs_license_info) == 0) {
 			unset_license_location();
-		} else if (strcasecmp(plist->al_name,
-			ATTR_license_min) == 0) {
-			unset_license_min();
-		} else if (strcasecmp(plist->al_name,
-			ATTR_license_max) == 0) {
-			unset_license_max();
-		} else if (strcasecmp(plist->al_name,
-			ATTR_license_linger) == 0) {
-			unset_license_linger();
 		}
 		else if (strcasecmp(plist->al_name,
 			ATTR_resv_retry_cutoff) == 0) {

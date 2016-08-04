@@ -797,6 +797,8 @@ if [ "${PBS_START_SERVER:-0}" != 0 ] ; then
 	# Source the file that sets PGSQL_LIBSTR
 	. "$PBS_EXEC"/libexec/pbs_pgsql_env.sh
 
+	PBS_licensing_loc_file=PBS_licensing_loc
+
 	# On some platforms LD_LIBRARY_PATH etc is not passed on after su
 	# so we set it again after the su. PGSQL_LIBSTR contains the line to
 	# set the variable again
@@ -928,22 +930,22 @@ if [ "${PBS_START_SERVER:-0}" != 0 ] ; then
 			set server resources_default.ncpus = 1
 			set server scheduling = True
 		EOF
-		if [ -f ${PBS_EXEC}/etc/$PBS_licensing_loc_file ]; then
-			read ans < ${PBS_EXEC}/etc/$PBS_licensing_loc_file
+		if [ -f ${PBS_HOME}/server_priv/$PBS_licensing_loc_file ]; then
+			read ans < ${PBS_HOME}/server_priv/$PBS_licensing_loc_file
 			echo "*** Setting license file location(s)."
 			echo "***"
 			${PBS_EXEC}/bin/qmgr <<-EOF > /dev/null
 				set server pbs_license_info = $ans
 			EOF
 			if ! is_cray_xt; then
-				rm -f ${PBS_EXEC}/etc/$PBS_licensing_loc_file	# clean up after INSTALL
+				rm -f ${PBS_HOME}/server_priv/$PBS_licensing_loc_file	# clean up after INSTALL
 			fi
 		fi
 	else
 		# the upgrade case:  serverdb already exists, but license file
 		# information is new
-		if [ -f ${PBS_EXEC}/etc/$PBS_licensing_loc_file ]; then
-			read ans < ${PBS_EXEC}/etc/$PBS_licensing_loc_file
+		if [ -f ${PBS_HOME}/server_priv/$PBS_licensing_loc_file ]; then
+			read ans < ${PBS_HOME}/server_priv/$PBS_licensing_loc_file
 			echo "*** Setting license file location(s)."
 			echo "***"
 			${PBS_EXEC}/sbin/pbs_server > /dev/null
@@ -952,7 +954,7 @@ if [ "${PBS_START_SERVER:-0}" != 0 ] ; then
 				set server pbs_license_info = $ans
 			EOF
 			if ! is_cray_xt; then
-				rm -f ${PBS_EXEC}/etc/$PBS_licensing_loc_file	# clean up after INSTALL
+				rm -f ${PBS_HOME}/server_priv/$PBS_licensing_loc_file	# clean up after INSTALL
 			fi
 			server_started=1
 		fi
