@@ -48,6 +48,7 @@ extern "C" {
 
 #include "port_forwarding.h"
 #include "batch_request.h"
+#include "pbs_internal.h"
 
 /* struct var_table = used to hold environment variables for the job */
 
@@ -243,7 +244,7 @@ extern int	im_compose(int stream, char *jobid, char *cookie,
 	int command, tm_event_t	event, tm_task_id taskid, int version);
 extern int	message_job(job *pjob, enum job_file jft, char *text);
 extern void	term_job(job *pjob);
-extern int	start_process(pbs_task *pt, char **argv, char **envp);
+extern int	start_process(pbs_task *pt, char **argv, char **envp, bool nodemux);
 extern void	finish_exec(job *pjob);
 extern int	job_nodes_inner(struct job *pjob, hnodent **mynp);
 extern int	job_nodes(job *pjob);

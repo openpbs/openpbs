@@ -99,6 +99,7 @@
 #include "svrfunc.h"
 #include "libsec.h"
 #include "mom_hook_func.h"
+#include "pbs_internal.h"
 
 
 #define EXTRA_ENV_PTRS	       32
@@ -1362,6 +1363,7 @@ finish_exec(job *pjob)
 	SECURITY_ATTRIBUTES     sa;
 	HANDLE                  hReadPipe_dummy = INVALID_HANDLE_VALUE;	/* dummy pipe read handle */
 	HANDLE                  hWritePipe_dummy = INVALID_HANDLE_VALUE; /* dummy pipe write handle */
+	char			cmd_shell[MAX_PATH + 1] = {'\0'};
 
 
 	script_in = script_out = script_err = -1;
@@ -1997,8 +1999,11 @@ finish_exec(job *pjob)
 			/* Need to launch a shell*/
 			launch_shell = 1;
 		}
+		/* If we fail to get cmd shell(unlikely), use "cmd.exe" as shell */
+		if (0 != get_cmd_shell(cmd_shell, sizeof(cmd_shell)))
+			(void)snprintf(cmd_shell, sizeof(cmd_shell) - 1, "cmd.exe");
 		snprintf(cmdline_demux, _countof(cmdline_demux) -1,
-			"%s /c %s/sbin/pbs_demux.exe %s %d", shell,
+			"%s /c %s/sbin/pbs_demux.exe %s %d", cmd_shell,
 			pbs_conf.pbs_exec_path, pjob->ji_qs.ji_jobid, pjob->ji_numnodes);
 	}
 	if(is_interactive_job) { /* Interactive job */
@@ -2430,12 +2435,17 @@ finish_exec(job *pjob)
  * 	a job's initial shell task in that the environment will be specified
  * 	and no interactive code need be included.
  *
+ * @param[in]	ptask - pointer to task
+ * @param[in]	argv - arguments to the task process
+ * @param[in]	envp - environment to be passed to the task process
+ * @param[in]	nodemux - false if the task process needs demux, true otherwise
+
  * @return      int
  * @retval      PBSE_NONE (0) if success
  * @retval      PBSE_* on error.
  */
 int
-start_process(task *ptask, char **argv, char **envp)
+start_process(task *ptask, char **argv, char **envp, bool nodemux)
 {
 	job	                *pjob = ptask->ti_job;
 	char	                buf[MAXPATHLEN+2] = {'\0'};
@@ -2481,6 +2491,7 @@ start_process(task *ptask, char **argv, char **envp)
 	char			**env;
 	char			*env_str = NULL;
 	char			*p = NULL;
+	char			cmd_shell[MAX_PATH + 1] = {'\0'};
 
 	/* should not be impersonated user */
 	(void)revert_impersonated_user();
@@ -2579,10 +2590,10 @@ start_process(task *ptask, char **argv, char **envp)
 	}
 	else {
 #endif
-		/* Normal batch job, single node, write straight to files
+		/* Normal batch job, single node, task with nodemux, write straight to files
 		 * For interactive job, do not write to files.
 		 */
-		if (!is_interactive_job && (pjob->ji_numnodes == 1) && (open_std_out_err(pjob) == -1)) {
+		if (!is_interactive_job && ((pjob->ji_numnodes == 1) || nodemux) && (open_std_out_err(pjob) == -1)) {
 			proc_bail(ptask);
 			(void)revert_impersonated_user();
 			return PBSE_SYSTEM;
@@ -2773,7 +2784,7 @@ start_process(task *ptask, char **argv, char **envp)
 	si.lpDesktop = PBS_DESKTOP_NAME;
 	
 	si.hStdInput = INVALID_HANDLE_VALUE;
-	if ((is_interactive_job) || (pjob->ji_numnodes > 1)) {	/* mom_open_demux mechanism available */
+	if ((is_interactive_job) || ((pjob->ji_numnodes > 1) && (!nodemux))) {	/* mom_open_demux mechanism available */
 		si.hStdOutput = INVALID_HANDLE_VALUE;
 		si.hStdError = INVALID_HANDLE_VALUE;
 	} else { /* no mom_open_demux, write straight to job's output and error files */
@@ -2787,6 +2798,10 @@ start_process(task *ptask, char **argv, char **envp)
 			(PLONG)NULL, FILE_END);
 	}
 	
+	/* If we fail to get cmd shell(unlikely), use "cmd.exe" as shell */
+	if (0 != get_cmd_shell(cmd_shell, sizeof(cmd_shell)))
+		(void)snprintf(cmd_shell, sizeof(cmd_shell) - 1, "cmd.exe");
+	
 	/*
 	 * On Windows spawn mom_open_demux that will take care of running
 	 * a multinode job task and redirecting it's output to pbs_demux at MS host
@@ -2794,11 +2809,12 @@ start_process(task *ptask, char **argv, char **envp)
 	 * cmdline is already formed
 	 */
 	if (is_interactive_job || (pjob->ji_numnodes > 1)) {
-		snprintf(cmdline, _countof(cmdline) -1, "%s /c %s/sbin/mom_open_demux.exe %s", shell, pbs_conf.pbs_exec_path, pjob->ji_qs.ji_jobid);
-		strncat(cmdline, " ", _countof(cmdline) -1);
-		strncat(cmdline, pjob->ji_hosts[0].hn_host, _countof(cmdline) -1);
-		strncat(cmdline, " ", _countof(cmdline) -1);
-		strncat(cmdline, "\"", _countof(cmdline) -1);
+		if(!nodemux) {
+			snprintf(cmdline, _countof(cmdline) -1, "%s /c %s/sbin/mom_open_demux.exe %s", cmd_shell, pbs_conf.pbs_exec_path, pjob->ji_qs.ji_jobid);
+			strncat(cmdline, " ", _countof(cmdline) -1);
+			strncat(cmdline, pjob->ji_hosts[0].hn_host, _countof(cmdline) -1);
+			strncat(cmdline, " ", _countof(cmdline) -1);
+		}		strncat(cmdline, "\"", _countof(cmdline) -1);
 		strncat(cmdline, argv[0], _countof(cmdline) -1);
 		strncat(cmdline, "\"", _countof(cmdline) -1);
 		for (i=1; argv[i]; i++) {
@@ -4545,13 +4561,14 @@ finish_exec(job *pjob)
  * @param[in] ptask - pointer to task structure
  * @param[in] argv - argument list
  * @param[in] envp - pointer to environment variable list
+ * @param[in] nodemux - false if the task process needs demux, true otherwise
  *
  * @return      int
  * @retval      PBSE_NONE (0) if success
  * @retval      PBSE_* on error.
  */
 int
-start_process(task *ptask, char **argv, char **envp)
+start_process(task *ptask, char **argv, char **envp, bool nodemux)
 {
 	job	*pjob = ptask->ti_job;
 	int	ebsize;
@@ -4565,8 +4582,7 @@ start_process(task *ptask, char **argv, char **envp)
 	struct	array_strings	*vstrs;
 	struct  startjob_rtn sjr;
 	attribute		*pattr;
-	int	nodemux = 0;
-
+	
 	memset(&sjr, 0, sizeof(sjr));
 	if (pipe(pipes) == -1)
 		return PBSE_SYSTEM;
@@ -4807,7 +4823,8 @@ start_process(task *ptask, char **argv, char **envp)
 	}
 
 	pattr = &pjob->ji_wattr[(int)JOB_ATR_nodemux];
-	if (pattr->at_flags & ATR_VFLAG_SET)
+	/* If nodemux is not already set by the caller, check job's JOB_ATR_nodemux attribute. */
+	if (!nodemux && (pattr->at_flags & ATR_VFLAG_SET))
 		nodemux = (int)pattr->at_val.at_long;
 
 	if (pjob->ji_numnodes > 1) {

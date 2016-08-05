@@ -367,6 +367,25 @@ enum accrue_types {
 #define ERRORNO        errno
 #endif
 
+#if defined(__STDC__)
+#define C89
+#if defined(__STDC_VERSION__)
+#define C90
+#if (__STDC_VERSION__ >= 199409L)
+#define C94
+#endif
+#if (__STDC_VERSION__ >= 199901L)
+#define C99
+#endif
+#endif
+#endif
+
+#if !defined(C99) && !defined(__cplusplus) 
+typedef enum { false, true } bool;
+#else
+#include "stdbool.h"
+#endif
+
 #ifdef _USRDLL		/* This is only for building Windows DLLs
 			 * and not their static libraries
 			 */

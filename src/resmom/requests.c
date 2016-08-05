@@ -83,6 +83,7 @@
 #include "mom_hook_func.h"
 #include "work_task.h"
 #include "placementsets.h"
+#include "pbs_internal.h"
 
 /**
  * @file	requests.c
@@ -1203,8 +1204,9 @@ req_py_spawn(struct batch_request *preq)
 	ptask->ti_qs.ti_myvnode = TM_ERROR_NODE;
 	ptask->ti_qs.ti_parenttask = TM_INIT_TASK;
 	(void)task_save(ptask);
-
-	ret = start_process(ptask, argv, preq->rq_ind.rq_py_spawn.rq_envp);
+	
+	/* start the task with no demux option */
+	ret = start_process(ptask, argv, preq->rq_ind.rq_py_spawn.rq_envp, true);
 	free(argv);
 	if (ret != PBSE_NONE) {
 		snprintf(log_buffer, sizeof(log_buffer),

@@ -2736,7 +2736,7 @@ join_err:
 				arrayfree(envp);
 				break;
 			}
-			errcode = start_process(ptask, argv, envp);
+			errcode = start_process(ptask, argv, envp, false);
 			if (errcode != PBSE_NONE) {
 				SEND_ERR(errcode)
 			}
@@ -4814,7 +4814,7 @@ aterr:
 					ptask->ti_qs.ti_myvnode = tvnodeid;
 					ptask->ti_qs.ti_parenttask = fromtask;
 					if (task_save(ptask) != -1) {
-						ret = start_process(ptask, argv, envp);
+						ret = start_process(ptask, argv, envp, false);
 						if (ret == PBSE_NONE)
 							i = TM_OKAY;
 					}

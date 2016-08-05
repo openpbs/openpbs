@@ -93,6 +93,7 @@
 #include "libsec.h"
 #include "mom_hook_func.h"
 #include "placementsets.h"
+#include "pbs_internal.h"
 
 
 #define EXTRA_ENV_PTRS	       32
@@ -3256,6 +3257,8 @@ finish_exec(job *pjob)
  * @param[in] ptask - pointer to task structure
  * @param[in] argv - argument list
  * @param[in] envp - pointer to environment variable list
+ * @param[in]	nodemux - false if the task process needs demux, true otherwise 
+
  *
  * @return	int
  * @retval	PBSE_NONE (0) if success
@@ -3264,7 +3267,7 @@ finish_exec(job *pjob)
  */
 
 int
-start_process(task *ptask, char **argv, char **envp)
+start_process(task *ptask, char **argv, char **envp, bool nodemux)
 {
 	job	*pjob = ptask->ti_job;
 	int	ebsize;
@@ -3278,7 +3281,6 @@ start_process(task *ptask, char **argv, char **envp)
 	struct	array_strings	*vstrs;
 	struct  startjob_rtn sjr;
 	attribute		*pattr;
-	int	nodemux = 0;
 	char	*pbs_jobdir; /* staging and execution directory of this job */
 	int			hook_errcode = 0;
 	char			hook_msg[HOOK_MSG_SIZE+1];
@@ -3690,7 +3692,8 @@ start_process(task *ptask, char **argv, char **envp)
 	}
 
 	pattr = &pjob->ji_wattr[(int)JOB_ATR_nodemux];
-	if (pattr->at_flags & ATR_VFLAG_SET)
+	/* If nodemux is not already set by the caller, check job's JOB_ATR_nodemux attribute. */
+	if (!nodemux && (pattr->at_flags & ATR_VFLAG_SET))
 		nodemux = (int)pattr->at_val.at_long;
 
 	if (pjob->ji_numnodes > 1) {
