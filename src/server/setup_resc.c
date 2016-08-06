@@ -61,10 +61,10 @@
 #include "libutil.h"
 
 extern char *msg_daemonname;
+#ifndef PBS_MOM
 extern struct python_interpreter_data  svr_interp_data;
 
 struct resc_sum *svr_resc_sum;
-
 
 /**
  * @brief
@@ -82,6 +82,7 @@ restart_python_interpreter(const char *caller)
 	pbs_python_ext_shutdown_interpreter(&svr_interp_data);
 	pbs_python_ext_start_interpreter(&svr_interp_data);
 }
+#endif
 
 /**
  * @brief
@@ -127,8 +128,9 @@ add_resource_def(char *name, int type, int perms)
 		return -1;
 
 	}
-
+#ifndef PBS_MOM
 	set_scheduler_flag(SCH_CONFIGURE);
+#endif
 
 	return 0;
 }
@@ -615,15 +617,7 @@ setup_resc(int autocorrect)
 
 		presc = find_resc_def(svr_resc_def, rescname, svr_resc_size);
 		if (presc != NULL) {
-			if (resc_type != presc->rs_type) {
-			sprintf(log_buffer, "Erroneous to define duplicate "
-				"resource \"%s\" with differing type "
-				"specification, ignoring new definition",
-				rescname);
-			fprintf(stderr, "%s\n", log_buffer);
-			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-				LOG_WARNING, msg_daemonname, log_buffer);
-			} else {
+			if (resc_type == presc->rs_type) {
 				resc_flag &= ( ATR_DFLAG_RASSN |
 					ATR_DFLAG_ANASSN |
 					ATR_DFLAG_FNASSN |
@@ -634,7 +628,18 @@ setup_resc(int autocorrect)
 						ATR_DFLAG_FNASSN |
 						ATR_DFLAG_CVTSLT |
 						READ_WRITE );
-			presc->rs_flags |= resc_flag;
+				presc->rs_flags |= resc_flag;
+#ifndef PBS_MOM
+			} else {
+				sprintf(log_buffer,
+					"Erroneous to define duplicate "
+					"resource \"%s\" with differing type "
+					"specification, ignoring new definition",
+						rescname);
+				fprintf(stderr, "%s\n", log_buffer);
+				log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+					LOG_WARNING, msg_daemonname, log_buffer);
+#endif
 			}
 		} else {
 			err = expand_resc_array(rescname, resc_type, resc_flag);
@@ -660,6 +665,7 @@ errtoken3:
 	return err_code;
 }
 
+#ifndef PBS_MOM
 /**
  * @brief
  * 		Update the global resource summation array that tracks the resources
@@ -703,3 +709,4 @@ update_resc_sum(void)
 	}
 	svr_resc_sum[i].rs_def = NULL;
 }
+#endif

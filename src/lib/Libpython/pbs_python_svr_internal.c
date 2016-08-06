@@ -2490,6 +2490,73 @@ varlist_same_end:
 }
 
 /**
+ * @brief
+ *	Load the cached values found 'pbs_resource_value_list' into the
+ *	Python resource list type object, py_resource_match.
+ *
+ * @param[in]	py_resource_match - the Resource list type object.
+ *
+ * @return int
+ * @retval 0	- for success.
+ * @retval != 0 - if some failure occurred.
+ *
+ */
+static int
+load_cached_resource_value(PyObject *py_resource_match)
+{
+	pbs_resource_value *resc_val = NULL;
+	int rc;
+
+	resc_val = (pbs_resource_value *)GET_NEXT(pbs_resource_value_list);
+	while (resc_val != NULL) {
+
+		if ( (resc_val->py_resource != NULL) &&
+				(py_resource_match == resc_val->py_resource) ) {
+			break;
+		}
+
+		resc_val = (pbs_resource_value *) GET_NEXT(resc_val->all_rescs);
+	}
+
+	if (resc_val == NULL) {
+		/* no match */
+		return (0);  /* no cached value found */
+	}
+
+	if (TYPE_ENTITY(resc_val->attr_def_p->at_type)) {
+		rc = set_entity_resource_or_return_value(
+			&(resc_val->value_list), resc_val->attr_def_p->at_name,
+			resc_val->py_resource, NULL);
+	} else {	/* a regular resource */
+		rc = set_resource_or_return_value(&(resc_val->value_list),
+			resc_val->attr_def_p->at_name,
+			resc_val->py_resource, NULL);
+
+	}
+
+	if (rc == 0) {
+
+		hook_set_mode = C_MODE;
+		rc = pbs_python_object_set_attr_integral_value(
+			resc_val->py_resource, PY_RESOURCE_HAS_VALUE, TRUE);
+		hook_set_mode = PY_MODE;
+
+		if (rc == -1) {
+			LOG_ERROR_ARG2("%s:failed to set resource <%s>",
+				resc_val->attr_def_p->at_name,
+				PY_RESOURCE_HAS_VALUE);
+		}
+		Py_DECREF(resc_val->py_resource);
+		free_attrlist(&resc_val->value_list);
+		delete_link(&resc_val->all_rescs);
+		free(resc_val);
+
+	}
+
+	return (rc);
+}
+
+/**
  *
  * @brief
  *	Repopulates the 'svrattrl_list' (pbs_list_head) with values found from
@@ -2537,6 +2604,9 @@ pbs_python_populate_svrattrl_from_python_class(PyObject *py_instance,
 	PyObject	*py_resc_hookset_dict0 = (PyObject *)NULL;
 	PyObject	*py_attr_keys = (PyObject *)NULL;
 	PyObject 	*py_val = (PyObject *)NULL;
+	PyObject	*py_keys = NULL;
+	PyObject	*py_keys_dict = NULL;
+	PyObject	*py_keys_dict2 = NULL;
 	char		*name_str_dup = NULL;
 	char		*val_str_dup = NULL;
 	int		num_attrs, i;
@@ -2616,7 +2686,7 @@ pbs_python_populate_svrattrl_from_python_class(PyObject *py_instance,
 	if (PyObject_HasAttrString(py_instance, PY_ATTRIBUTES_HOOK_SET)) {
 
 		py_attr_hookset_dict = PyObject_GetAttrString(py_instance,
-			PY_ATTRIBUTES_HOOK_SET); /* NEW */
+			PY_ATTRIBUTES_HOOK_SET); /* must be Py_CLEAR(-)ed or Py_DECREF()-ed later, so as to not leak memory */
 
 		if (py_attr_hookset_dict) {
 
@@ -2656,11 +2726,9 @@ pbs_python_populate_svrattrl_from_python_class(PyObject *py_instance,
 
 	for (i=0; i < num_attrs; i++) {
 		char	 *name_str = NULL;
-		char	 *val_str = NULL;
 		resource_def *rescdef = NULL;
 
-		name_str_dup = \
-		strdup(pbs_python_list_get_item_string_value(py_attr_keys, i));
+		name_str_dup = strdup(pbs_python_list_get_item_string_value(py_attr_keys, i));
 		if (!name_str_dup) {
 			log_err(errno, __func__, "strdup error");
 			goto svrattrl_exit;
@@ -2686,7 +2754,10 @@ pbs_python_populate_svrattrl_from_python_class(PyObject *py_instance,
 			continue;
 		}
 
-		py_val = PyObject_GetAttrString(py_instance, name_str); /* NEW */
+		py_val = PyObject_GetAttrString(py_instance, name_str);
+		/* must be Py_CLEAR(-)ed or
+		 * Py_DECREF()-ed later, so as to not leak memory
+		 */
 
 		if (!py_val || (py_val == Py_None)) {
 
@@ -2697,16 +2768,84 @@ pbs_python_populate_svrattrl_from_python_class(PyObject *py_instance,
 			continue;
 		}
 
-		val_str = pbs_python_object_str(py_val); /* does not return NULL */
-
 		if (PyObject_IsInstance(py_val,
 			pbs_python_types_table[PP_RESC_IDX].t_class)) {/* a resource */
 			char *resc, *val;
-			char *np, *np1;
+			int k, num_keys;
+			PyObject *py_class = pbs_python_types_table[PP_RESC_IDX].t_class;
+			PyObject *py_tmp = (PyObject *)NULL;
 
-			val_str_dup = strdup(val_str); /* NEW malloc */
-			if (!val_str_dup) {
-				log_err(errno, __func__, "strdup error");
+			/* code snippet below mimics what's done in the
+			 * __str__ method of class pbs_resource under
+			 * /pbs/v1/_base_types.py for accessing entries
+			 * in resource list.
+			 */
+			if (PyObject_HasAttrString(py_val, PY_RESOURCE_HAS_VALUE)) {
+				if (pbs_python_object_get_attr_integral_value(py_val, PY_RESOURCE_HAS_VALUE) == 0) { /* no value yet */
+					if (load_cached_resource_value(py_val) != 0) {
+						log_err(PBSE_INTERNAL, __func__,
+							"Failed to to load cached value for resource list");
+						goto svrattrl_exit;
+					}
+				}
+			}
+
+			/* Obtain list of resource names from
+			 *  <class pbs_resource>._attributes  dictionary
+			 */
+			if (PyObject_HasAttrString(py_class, PY_ATTRIBUTES)) {
+				py_keys_dict = PyObject_GetAttrString(py_class,
+					PY_ATTRIBUTES);
+			}
+
+			if (!py_keys_dict || !PyDict_Check(py_keys_dict)) {
+				log_err(PBSE_INTERNAL, __func__,
+					"Failed to obtain event job's resource list dictionary");
+				goto svrattrl_exit;
+			}
+			py_tmp = py_keys_dict;
+			py_keys_dict = PyDict_Copy(py_tmp);
+			Py_CLEAR(py_tmp);
+			if (!py_keys_dict) {
+				log_err(PBSE_INTERNAL, __func__,
+					"Failed to duplicate resource list dictionary");
+				goto svrattrl_exit;
+			}
+
+			/* look into <class pbs_resource>._attributes_unknown
+			 * for custom resource names defined in a hook but
+			 * not yet in resource table.
+			 */
+			if (PyObject_HasAttrString(py_class,
+				"_attributes_unknown")) {
+				PyObject *py_i = (PyObject *)NULL;
+
+				py_keys_dict2 = PyObject_GetAttrString(py_class,
+					"_attributes_unknown");
+				/* must be Py_CLEAR(-)ed or Py_DECREF()-ed
+				 * later, so as to not leak memory
+		 		*/
+
+				if (py_keys_dict2) {
+					/* Merge resource list dictionary
+					 * with the dictionary of unknown
+					 * resources
+					 */
+					if (PyDict_Check(py_keys_dict2) &&
+					    PyDict_Contains(py_keys_dict2,
+							py_val) &&
+					    (py_i=PyDict_GetItem(py_keys_dict2,
+						py_val))) {
+						PyDict_Update(py_keys_dict,
+							py_i);
+					}
+				}
+			}
+
+			py_keys = PyDict_Keys(py_keys_dict);
+			if (!py_keys || !PyList_Check(py_keys)) {
+				log_err(PBSE_INTERNAL, __func__,
+					"Failed to obtain event job's resource list keys");
 				goto svrattrl_exit;
 			}
 
@@ -2726,19 +2865,42 @@ pbs_python_populate_svrattrl_from_python_class(PyObject *py_instance,
 						py_resc_hookset_dict0 = (PyObject *)NULL;/* don't use */
 				}
 			}
-			np = strtok_quoted(val_str_dup, ",");
-			while (np) {
-				resc = np;
-				val = NULL;
-				np1 = strstr(np, "=");
-				if (np1) {
-					*np1 = '\0';
-					val = np1+1;
+
+			num_keys = PyList_Size(py_keys);
+			for (k=0; k < num_keys; k++) {
+				char *tmpstr = NULL;
+				tmpstr = pbs_python_list_get_item_string_value(py_keys, k);
+				if (tmpstr == NULL)
+					continue;
+
+				resc = strdup(tmpstr);
+				if (resc == NULL) {
+					log_err(errno, __func__, "strdup error");
+					goto svrattrl_exit;
 				}
+				tmpstr = pbs_python_object_get_attr_string_value(py_val, resc);
+				if (tmpstr == NULL) {
+					free(resc);
+					continue;
+				}
+
+				val = strdup(tmpstr);
+				if (val == NULL) {
+					log_err(errno, __func__, "strdup error");
+					free(resc);
+					goto svrattrl_exit;
+				}
+
+				if ((strcmp(resc, PY_RESOURCE_NAME) == 0) ||
+				   (strcmp(resc, PY_RESOURCE_HAS_VALUE) == 0)) {
+					free(resc);
+					free(val);
+					continue;
+				}
+
 				hook_set_flag = 0;
 				if ((py_resc_hookset_dict0 != NULL) &&
-				(PyDict_GetItemString(py_resc_hookset_dict0,resc) \
-								!= NULL)) {
+				(PyDict_GetItemString(py_resc_hookset_dict0, resc) != NULL)) {
 					hook_set_flag = 1;	/* resource set/unset in hook script */
 				}
 
@@ -2749,7 +2911,8 @@ pbs_python_populate_svrattrl_from_python_class(PyObject *py_instance,
 					log_buffer[LOG_BUF_SIZE-1] = '\0';
 					log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_INFO,
 						__func__, log_buffer);
-					np = strtok_quoted(NULL, ",");
+					free(resc);
+					free(val);
 					continue;
 				}
 
@@ -2836,22 +2999,27 @@ pbs_python_populate_svrattrl_from_python_class(PyObject *py_instance,
 						name_str, resc, (val?val:""));
 					log_buffer[LOG_BUF_SIZE-1] = '\0';
 					log_err(errno, __func__, log_buffer);
+					free(resc);
+					free(val);
 					goto svrattrl_exit;
 				}
 
 				if (hook_debug.output_fp != NULL)
 					fprintf(hook_debug.output_fp, "%s.%s[%s]=%s\n", objname, name_str, the_resc,
 						return_external_value(name_str, the_val));
-				np = strtok_quoted(NULL, ",");
-			}
-			free(val_str_dup);
-			val_str_dup = NULL;  /* freed here so as to get re-freed on exit */
+				free(resc);
+				free(val);
 
+			}
 		} else {
+
 			char *val_str2;         /* what gets sent to the server */
 			char val_buf[40];       /* holds JOB_NAME_UNSET_VALUE and */
+			char *val_str;         /* what gets sent to the server */
 			/* 'long' value string */
 			long nsecs;
+
+			val_str = pbs_python_object_str(py_val); /* does not return NULL */
 
 			val_str2 = val_str;
 
@@ -2907,6 +3075,9 @@ pbs_python_populate_svrattrl_from_python_class(PyObject *py_instance,
 		}
 		/* must be cleared as they take on different values on each iteration */
 		Py_CLEAR(py_val);
+		Py_CLEAR(py_keys);
+		Py_CLEAR(py_keys_dict);
+		Py_CLEAR(py_keys_dict2);
 		Py_CLEAR(py_resc_hookset_dict);
 		free(name_str_dup);
 		name_str_dup = NULL;
@@ -2923,6 +3094,10 @@ svrattrl_exit:
 	Py_CLEAR(py_attr_keys);
 	Py_CLEAR(py_val);
 	Py_CLEAR(py_resc);
+	Py_CLEAR(py_keys);
+	Py_CLEAR(py_keys_dict);
+	Py_CLEAR(py_keys_dict2);
+
 	if (name_str_dup) {
 		free(name_str_dup);
 	}
@@ -11085,9 +11260,7 @@ PyObject *
 pbsv1mod_meth_load_resource_value(PyObject *self, PyObject *args, PyObject *kwds)
 {
 	static char *kwlist[] = {"resc_object", NULL};
-	pbs_resource_value *resc_val = NULL;
 	PyObject *py_resource_match = (PyObject *)NULL;
-	int  rc;
 
 	if (!PyArg_ParseTupleAndKeywords(args, kwds,
 		"O:load_resource_value",
@@ -11096,50 +11269,10 @@ pbsv1mod_meth_load_resource_value(PyObject *self, PyObject *args, PyObject *kwds
 		return ((PyObject *)NULL);
 	}
 
-	resc_val = (pbs_resource_value *)GET_NEXT(pbs_resource_value_list);
-	while (resc_val != NULL) {
-
-		if ( (resc_val->py_resource != NULL) && \
-				(py_resource_match == resc_val->py_resource) )
-			break;
-
-		resc_val = (pbs_resource_value *) GET_NEXT(resc_val->all_rescs);
-	}
-
-	if (resc_val == NULL) {
-		/* no match */
-		Py_RETURN_NONE;
-	}
-
-	if (TYPE_ENTITY(resc_val->attr_def_p->at_type)) {
-		rc = set_entity_resource_or_return_value(\
-			&(resc_val->value_list), resc_val->attr_def_p->at_name,
-			resc_val->py_resource, NULL);
-	} else {	/* a regular resource */
-		rc = set_resource_or_return_value(&(resc_val->value_list),
-			resc_val->attr_def_p->at_name,
-			resc_val->py_resource, NULL);
-
-	}
-
-	if (rc == 0) {
-
-		hook_set_mode = C_MODE;
-		rc = pbs_python_object_set_attr_integral_value(\
-					resc_val->py_resource,
-			PY_RESOURCE_HAS_VALUE, TRUE);
-		hook_set_mode = PY_MODE;
-
-		if (rc == -1) {
-			LOG_ERROR_ARG2("%s:failed to set resource <%s>",
-				resc_val->attr_def_p->at_name,
-				PY_RESOURCE_HAS_VALUE);
-		}
-		Py_DECREF(resc_val->py_resource);
-		free_attrlist(&resc_val->value_list);
-		delete_link(&resc_val->all_rescs);
-		free(resc_val);
-
+	if (load_cached_resource_value(py_resource_match) != 0) {
+		PyErr_SetString(PyExc_AssertionError,
+				"Failed to load cached value for resoure list");
+		return ((PyObject *)NULL);
 	}
 
 	Py_RETURN_NONE;

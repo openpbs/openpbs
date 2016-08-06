@@ -543,8 +543,16 @@ job_free(job *pj)
 	assert(pj->ji_preq == NULL);
 	nodes_free(pj);
 	tasks_free(pj);
-	if (pj->ji_resources)
+	if (pj->ji_resources) {
+		int j;
+		for (j=0; j < (pj->ji_numnodes-1); j++) {
+			if  ((pj->ji_resources[j].nr_used.at_flags & ATR_VFLAG_SET) != 0) {
+				job_attr_def[(int)JOB_ATR_resc_used].at_free(&pj->ji_resources[j].nr_used);
+			}
+		}
 		free(pj->ji_resources);
+		pj->ji_resources = NULL;
+	}
 	/*
 	 ** This gets rid of any dependent job structure(s) from ji_setup.
 	 */

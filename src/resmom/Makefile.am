@@ -74,6 +74,7 @@ pbs_mom_SOURCES = \
 	$(top_srcdir)/src/server/req_quejob.c \
 	$(top_srcdir)/src/server/resc_attr.c \
 	$(top_srcdir)/src/server/vnparse.c \
+	$(top_srcdir)/src/server/setup_resc.c \
 	${PBS_MACH}/mom_mach.c \
 	${PBS_MACH}/mom_mach.h \
 	${PBS_MACH}/mom_start.c \

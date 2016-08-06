@@ -1883,6 +1883,197 @@ static	char	bail_format[] = "dis read failed: %s";
 
 /**
  * @brief
+ *	Send resources_used values to the MS via
+ *	'stream' descriptor.
+ *
+ * @param[in] stream - descriptor pathway to MS.
+ * @param[in] jobid - the jobid of the owning job.
+ *
+ * @return  error code
+ * @retval -1     error
+ * @retval  0     Success
+ *
+ */
+int
+send_resc_used_to_ms(int stream, char *jobid)
+{
+	attribute		*at;
+	attribute_def		*ad;
+	svrattrl		*pal;
+	svrattrl		*nxpal;
+	svrattrl		*sister;
+	pbs_list_head		lhead;
+	pbs_list_head		send_head;
+	extern	int		resc_access_perm;
+	svrattrl		 *psatl;
+	job			*pjob;
+	int			ret;
+
+	if (jobid == NULL)
+		return (-1);
+
+	if (stream == -1)
+		return (-1);
+
+	pjob = find_job(jobid);
+	if (pjob == NULL)
+		return (-1);
+
+	at = &pjob->ji_wattr[(int)JOB_ATR_resc_used];
+	if (at->at_type != ATR_TYPE_RESC) {
+		return (-1);
+	}
+	ad = &job_attr_def[(int)JOB_ATR_resc_used];
+	resc_access_perm = ATR_DFLAG_MGRD;
+
+	memset(&lhead, 0, sizeof(lhead));
+	CLEAR_HEAD(lhead);
+
+	(void)ad->at_encode(at,
+		&lhead, ad->at_name,
+		NULL, ATR_ENCODE_CLIENT, NULL);
+
+	memset(&send_head, 0, sizeof(send_head));
+	CLEAR_HEAD(send_head);
+
+	pal = (svrattrl *)GET_NEXT(lhead);
+	psatl = pal;
+
+	while (pal != (svrattrl *)0) {
+		nxpal = (struct svrattrl *)GET_NEXT(pal->al_link);
+
+		/* no need to track the resources automatically sent to MS */
+		/* like 'cput', 'mem', and 'cpupercent',but only those */
+		/* resources that are set in a mom hook */
+		if (((pal->al_flags & ATR_VFLAG_HOOK) != 0) && \
+		     (strcmp(pal->al_resc, "cput") != 0) && \
+		     (strcmp(pal->al_resc, "mem") != 0) && \
+		     (strcmp(pal->al_resc, "cpupercent") != 0)) {
+			if (add_to_svrattrl_list(
+				&send_head,
+				pal->al_name,
+				pal->al_resc,
+				pal->al_value,
+				pal->al_op, NULL) == -1) {
+				free_attrlist(&send_head);
+				free_attrlist(&lhead);
+				return (-1);
+			}
+
+		}
+		pal = nxpal;
+	}
+	free_attrlist(&lhead);
+
+	psatl = (svrattrl *)GET_NEXT(send_head);
+
+	if (psatl == NULL) {
+		free_attrlist(&send_head);
+		return (-1);
+	}
+
+	ret = encode_DIS_svrattrl(stream, psatl);
+	free_attrlist(&send_head);
+	if (ret != DIS_SUCCESS)
+		return (-1);
+	return (0);
+}
+
+/**
+ * @brief
+ *	Received resources_used values for job 'jobid'
+ *	from descriptor 'stream', with values to be saved in
+ *	internal nodes resources table indexed by 'nodeidx'.
+ *
+ * @param[in] stream - descriptor pathway
+ * @param[in] jobid - the jobid of the owning job.
+ * @param[in] nodeidx - node index to the job's internal resources table
+ *			where received values will be saved.
+ *			resources values received from 
+ *
+ * @return  error code
+ * @retval -1     error
+ * @retval  0     Success
+ *
+ */
+int
+recv_resc_used_from_sister(int stream, char *jobid, int nodeidx)
+{
+	attribute_def		*pdef;
+	svrattrl		*pal;
+	svrattrl		*nxpal;
+	svrattrl		*sister;
+	pbs_list_head		lhead;
+	extern	int		resc_access_perm;
+	svrattrl		*psatl;
+	job			*pjob;
+	int			errcode;
+
+	if (jobid == NULL)
+		return (-1);
+
+	if (stream == -1)
+		return (-1);
+
+	if (nodeidx < 0)
+		return (-1);
+
+	pjob = find_job(jobid);
+	if (pjob == NULL)
+		return (-1);
+
+
+	pdef = &job_attr_def[(int)JOB_ATR_resc_used];
+
+	CLEAR_HEAD(lhead);
+	if (decode_DIS_svrattrl(stream, &lhead) != DIS_SUCCESS) {
+		sprintf(log_buffer, "decode_DIS_svrattrl failed");
+		return (-1);
+	}
+	/* decode attributes from request into job structure */
+	errcode = 0;
+	clear_attr(&pjob->ji_resources[nodeidx].nr_used,
+		&job_attr_def[JOB_ATR_resc_used]);
+
+	resc_access_perm = READ_WRITE;
+	for (psatl = (svrattrl *)GET_NEXT(lhead);
+		psatl;
+		psatl = (svrattrl *)GET_NEXT(psatl->al_link)) {
+
+		if ((psatl->al_name == NULL) || (psatl->al_resc == NULL)) {
+			free_attrlist(&lhead);
+			return (-1);
+		}
+
+		if (strcmp(psatl->al_name, ATTR_used) != 0) {
+			free_attrlist(&lhead);
+			return (-1);
+		}
+
+		/* decode attribute */
+		errcode = pdef->at_decode(
+			&pjob->ji_resources[nodeidx].nr_used,
+			psatl->al_name, psatl->al_resc,
+			psatl->al_value);
+		/* Unknown resources still get decoded */
+		/* under "unknown" resource def */
+		if ((errcode != 0) && (errcode != PBSE_UNKRESC)) {
+			free_attrlist(&lhead);
+			return (-1);
+		}
+
+		if (psatl->al_op == DFLT) {
+			pjob->ji_resources[nodeidx].nr_used.at_flags |=
+				ATR_VFLAG_DEFLT;
+		}
+	}
+
+	free_attrlist(&lhead);
+	return (0);
+}
+
+/**
+ * @brief
  *      Input is coming from another MOM over a DIS rpp stream.
  *      Read the stream to get a Inter-MOM request.
  *
@@ -2984,6 +3175,9 @@ join_err:
 			if (ret != DIS_SUCCESS)
 				break;
 			ret = diswul(stream, resc_used(pjob, "cpupercent", gettime));
+
+			send_resc_used_to_ms(stream, jobid);
+
 			break;
 
 		case	IM_SUSPEND:
@@ -3414,6 +3608,7 @@ join_err:
 						__func__, jobid, nodeidx,
 						pjob->ji_resources[nodeidx-1].nr_cput,
 						pjob->ji_resources[nodeidx-1].nr_mem))
+					recv_resc_used_from_sister(stream, jobid, nodeidx-1);
 
 					/* don't close stream in case other jobs use it */
 					np->hn_sister = SISTER_KILLDONE;
@@ -3621,6 +3816,7 @@ join_err:
 					pjob->ji_resources[nodeidx-1].nr_cpupercent =
 						disrul(stream, &ret);
 					BAIL("OK-POLL_JOB cpupercent")
+					recv_resc_used_from_sister(stream, jobid, nodeidx-1);
 					DBPRT(("%s: POLL_JOB %s OKAY kill %d cpu %lu mem %lu\n",
 						__func__, jobid, exitval,
 						pjob->ji_resources[nodeidx-1].nr_cput,

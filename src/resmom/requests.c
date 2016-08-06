@@ -123,6 +123,7 @@ extern char *path_hooks;
 extern char *msg_hookfile_open;
 extern char *msg_hookfile_write;
 extern unsigned long	hooks_rescdef_checksum;
+extern char *path_rescdef;
 
 /* External Functions */
 #ifdef NAS /* localmod 118 */
@@ -4840,6 +4841,13 @@ req_copy_hookfile(struct batch_request *preq) /* ptr to the decoded request   */
 			}
 			free_str_array(new_resources);
 			free_str_array(prev_resources);
+
+			path_rescdef = (char *)namebuf;
+			if (setup_resc(1) != 0) {
+				/* log_buffer set in setup_resc */
+				log_err(-1, "setup_resc",
+					"warning: failed to setup resourcedef");
+			}
 		}
 	}
 	/* obtain new checksums after file is closed/flushed */ 

@@ -379,6 +379,7 @@ typedef struct	noderes {
 	long		nr_cput;	/* cpu time */
 	long		nr_mem;		/* memory */
 	long		nr_cpupercent;  /* cpu percent */
+	attribute	nr_used;	/* node resources used */
 } noderes;
 
 /* State for a sister */
