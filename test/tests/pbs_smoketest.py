@@ -37,6 +37,7 @@
 from ptl.utils.pbs_testsuite import *
 
 
+@tags('smoke')
 class SmokeTest(PBSTestSuite):
 
     """
