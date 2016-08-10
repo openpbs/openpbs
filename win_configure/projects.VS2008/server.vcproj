@@ -75,7 +75,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalOptions="/SAFESEH /STACK:0x1000000"
-				AdditionalDependencies="secur32.lib Userenv.lib mpr.lib libeay32.lib netapi32.lib ws2_32.lib odbc32.lib odbccp32.lib liblmx-altair.lib comctl32.lib python25.lib libical.lib libpq.lib"
+				AdditionalDependencies="secur32.lib Userenv.lib mpr.lib libeay32.lib netapi32.lib ws2_32.lib odbc32.lib odbccp32.lib comctl32.lib python25.lib libical.lib libpq.lib"
 				OutputFile="..\..\..\win_build\src\server\Release\pbs_server.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
@@ -169,7 +169,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalOptions="/SAFESEH /STACK:0x1000000"
-				AdditionalDependencies="secur32.lib Userenv.lib mpr.lib libeay32.lib netapi32.lib ws2_32.lib odbc32.lib odbccp32.lib liblmx-altair.lib comctl32.lib python25.lib libical.lib libpq.lib"
+				AdditionalDependencies="secur32.lib Userenv.lib mpr.lib libeay32.lib netapi32.lib ws2_32.lib odbc32.lib odbccp32.lib comctl32.lib python25.lib libical.lib libpq.lib"
 				OutputFile="..\..\..\win_build\src\server\Debug\pbs_server.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
