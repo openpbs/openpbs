@@ -12,6 +12,9 @@ before_install:
     - docker run -it -d -h testdev.pbspro.com --name testdev -v `pwd`:`pwd` --privileged -w `pwd` ${OS_TYPE} /bin/bash
     - docker ps -a
     - export DOCKER_EXEC="docker exec -it testdev"
+    - export DOCKER_TESTDEV_IP="$(docker inspect -f '{{ .NetworkSettings.IPAddress }}' testdev)"
+    - ${DOCKER_EXEC} /bin/bash -c "echo '${DOCKER_TESTDEV_IP}     testdev' >> /etc/hosts"
+    - ${DOCKER_EXEC} cat /etc/hosts
 install:
     - '[ "${OS_TYPE}" == "centos:7" ] && travis_retry ${DOCKER_EXEC} yum -y update || true'
     - '[ "${OS_TYPE}" == "centos:7" ] && travis_retry ${DOCKER_EXEC} yum -y install yum-utils epel-release rpmdevtools || true'
