@@ -114,6 +114,7 @@ int  local_move(job *, struct batch_request *);
 
 static void post_movejob(struct work_task *);
 static void post_routejob(struct work_task *);
+static int small_spool_files(job* pjob);
 extern int should_retry_route(int err);
 extern int move_job_file(int con, job *pjob, enum job_file which, int rpp, char **msgid);
 extern void post_sendmom(struct work_task *pwt);
@@ -875,8 +876,17 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 		gridproxy_cred = 1;
 #endif
 
-	if (pbs_conf.pbs_use_tcp == 1 && move_type == MOVE_TYPE_Exec && gridproxy_cred == 0) {
+	if (pbs_conf.pbs_use_tcp == 1 && move_type == MOVE_TYPE_Exec && gridproxy_cred == 0 && small_spool_files(jobp)) {
+		if (jobp->ji_qs.ji_svrflags & JOB_SVFLG_HASRUN) {
+			(void)sprintf(log_buffer, "small job files on rerun, sending through TPP");
+			log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_INFO, jobp->ji_qs.ji_jobid, log_buffer);
+		}
 		return (send_job_exec(jobp, hostaddr, port, preq));
+	}
+	
+	if (jobp->ji_qs.ji_svrflags & JOB_SVFLG_HASRUN) {
+		(void)sprintf(log_buffer, "big job files on rerun, need to fork()");
+		log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_INFO, jobp->ji_qs.ji_jobid, log_buffer);
 	}
 
 	script_name[0] = '\0';
@@ -1358,5 +1368,62 @@ int
 cnvrt_local_move(job *jobp, struct batch_request *req)
 {
 	return (local_move(jobp, req));
+}
+
+/**
+ * @brief
+ * 		small_spool_files - check size of job files
+ * @par
+ * 		Checks the size of the output/error/checkpoint files for a job.
+ * 		If the job is not being rerun, simply returns 1.
+ *
+ * @return	int
+ * @retval	0	: at least one file is larger than 2MB.
+ * @retval	1	: all spool files are smaller than 2MB.
+ */
+static int small_spool_files(job* pjob)
+{
+	int  		max_bytes_over_tpp = 2*1024*1024;
+	char 		path[MAXPATHLEN+1] = {0};
+	struct stat 	sb;
+	int		have_file_prefix = 0;
+
+	/* 
+	 * If the job is not being rerun, we need not check
+	 * the size of the spool files.
+	 */
+	if (!(pjob->ji_qs.ji_svrflags & JOB_SVFLG_HASRUN))
+		return 1;
+	
+	if (*pjob->ji_qs.ji_fileprefix != '\0')
+		have_file_prefix = 1;
+
+	if (have_file_prefix)
+		snprintf(path, MAXPATHLEN, "%s%s%s", path_spool, pjob->ji_qs.ji_fileprefix, JOB_STDOUT_SUFFIX); 
+	else
+		snprintf(path, MAXPATHLEN, "%s%s%s", path_spool, pjob->ji_qs.ji_jobid, JOB_STDOUT_SUFFIX); 
+	if ((access(path, F_OK) == 0) && !stat(path, &sb))
+		if (sb.st_size > max_bytes_over_tpp)
+			return 0;
+
+	memset(path, 0, sizeof(path));
+	if (have_file_prefix)
+		snprintf(path, MAXPATHLEN, "%s%s%s", path_spool, pjob->ji_qs.ji_fileprefix, JOB_STDERR_SUFFIX); 
+	else
+		snprintf(path, MAXPATHLEN, "%s%s%s", path_spool, pjob->ji_qs.ji_jobid, JOB_STDERR_SUFFIX); 
+	if ((access(path, F_OK) == 0) && !stat(path, &sb))
+		if (sb.st_size > max_bytes_over_tpp)
+			return 0;
+
+	memset(path, 0, sizeof(path));
+	if (have_file_prefix)
+		snprintf(path, MAXPATHLEN, "%s%s%s", path_spool, pjob->ji_qs.ji_fileprefix, JOB_CKPT_SUFFIX); 
+	else
+		snprintf(path, MAXPATHLEN, "%s%s%s", path_spool, pjob->ji_qs.ji_jobid, JOB_CKPT_SUFFIX); 
+	if ((access(path, F_OK) == 0) && !stat(path, &sb))
+		if (sb.st_size > max_bytes_over_tpp)
+			return 0;
+
+	return 1;
 }
 
