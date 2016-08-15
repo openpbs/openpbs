@@ -103,8 +103,8 @@ main(int argc, char **argv, char **envp) /* qmsg */
 				"usage: qmsg [-O] [-E] msg_string job_identifier...\n";
 			static char usag2[]=
 				"       qmsg --version\n";
-			fprintf(stderr, usage);
-			fprintf(stderr, usag2);
+			fprintf(stderr, "%s", usage);
+			fprintf(stderr, "%s", usag2);
 			exit(2);
 		}
 

@@ -77,8 +77,8 @@ main(int argc, char **argv, char **envp)
 	if (argc != 3) {
 		static char usage[]="usage: qorder job_identifier job_identifier\n";
 		static char usag2[]="       qorder --version\n";
-		fprintf(stderr, usage);
-		fprintf(stderr, usag2);
+		fprintf(stderr, "%s", usage);
+		fprintf(stderr, "%s", usag2);
 		exit(2);
 	}
 

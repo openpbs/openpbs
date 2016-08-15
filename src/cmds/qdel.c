@@ -142,7 +142,7 @@ char **envp;
 			"usage:\n"
 		"\tqdel [-W force|suppress_email=X] [-x] job_identifier...\n"
 		"\tqdel --version\n";
-		fprintf(stderr, usage);
+		fprintf(stderr, "%s", usage);
 		exit(2);
 	}
 

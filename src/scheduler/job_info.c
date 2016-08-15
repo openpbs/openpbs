@@ -1678,7 +1678,7 @@ translate_fail_code(schd_error *err, char *comment_msg, char *log_msg)
 		if (comment_msg != NULL)
 			snprintf(commentbuf, sizeof(commentbuf), "%s", pbse);
 		if (log_msg != NULL)
-			snprintf(log_msg, MAX_LOG_SIZE, pbse);
+			snprintf(log_msg, MAX_LOG_SIZE, "%s", pbse);
 	}
 
 	arg1 = err->arg1;
@@ -1700,7 +1700,7 @@ translate_fail_code(schd_error *err, char *comment_msg, char *log_msg)
 			if (comment_msg != NULL)
 				snprintf(commentbuf, sizeof(commentbuf), "%s", spec);
 			if (log_msg != NULL)
-				snprintf(log_msg, MAX_LOG_SIZE, spec);
+				snprintf(log_msg, MAX_LOG_SIZE, "%s", spec);
 			break;
 
 			/* codes using arg1  */

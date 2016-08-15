@@ -127,8 +127,8 @@ main(int argc, char **argv, char **envp) /* qrls */
 	if (errflg || optind >= argc) {
 		static char usage[]="usage: qrls [-h hold_list] job_identifier...\n";
 		static char usag2[]="       qrls --version\n";
-		fprintf(stderr, usage);
-		fprintf(stderr, usag2);
+		fprintf(stderr, "%s", usage);
+		fprintf(stderr, "%s", usag2);
 		exit(2);
 	}
 

@@ -2247,7 +2247,7 @@ check_entity_ct_limit_queued(job *pjob, pbs_queue *pque)
 			snprintf(ebuff, COMMENT_BUF_SIZE, msg_et_qct_q,
 				pque->qu_qs.qu_name);
 		} else {
-			snprintf(ebuff, COMMENT_BUF_SIZE, msg_et_sct_q);
+			snprintf(ebuff, COMMENT_BUF_SIZE, "%s", msg_et_sct_q);
 		}
 		ebuff[COMMENT_BUF_SIZE] = '\0';
 		if ((pjob->ji_clterrmsg = strdup(ebuff)) == NULL)
@@ -2301,7 +2301,7 @@ check_entity_ct_limit_queued(job *pjob, pbs_queue *pque)
 			snprintf(ebuff, COMMENT_BUF_SIZE, msg_et_ggq_q,
 				pque->qu_qs.qu_name);
 		} else {
-			snprintf(ebuff, COMMENT_BUF_SIZE, msg_et_ggs_q);
+			snprintf(ebuff, COMMENT_BUF_SIZE, "%s", msg_et_ggs_q);
 		}
 		ebuff[COMMENT_BUF_SIZE] = '\0';
 		if ((pjob->ji_clterrmsg = strdup(ebuff)) == NULL)
@@ -2329,7 +2329,7 @@ check_entity_ct_limit_queued(job *pjob, pbs_queue *pque)
 			snprintf(ebuff, COMMENT_BUF_SIZE, msg_et_gpq_q,
 				pque->qu_qs.qu_name);
 		} else {
-			snprintf(ebuff, COMMENT_BUF_SIZE, msg_et_gps_q);
+			snprintf(ebuff, COMMENT_BUF_SIZE, "%s", msg_et_gps_q);
 		}
 		ebuff[COMMENT_BUF_SIZE] = '\0';
 		if ((pjob->ji_clterrmsg = strdup(ebuff)) == NULL)
@@ -2407,7 +2407,7 @@ check_entity_ct_limit_max(job *pjob, pbs_queue *pque)
 			snprintf(ebuff, COMMENT_BUF_SIZE, msg_et_qct,
 				pque->qu_qs.qu_name);
 		} else {
-			snprintf(ebuff, COMMENT_BUF_SIZE, msg_et_sct);
+			snprintf(ebuff, COMMENT_BUF_SIZE, "%s", msg_et_sct);
 		}
 		ebuff[COMMENT_BUF_SIZE] = '\0';
 		if ((pjob->ji_clterrmsg = strdup(ebuff)) == NULL)
@@ -2461,7 +2461,7 @@ check_entity_ct_limit_max(job *pjob, pbs_queue *pque)
 			snprintf(ebuff, COMMENT_BUF_SIZE, msg_et_ggq,
 				pque->qu_qs.qu_name);
 		} else {
-			snprintf(ebuff, COMMENT_BUF_SIZE, msg_et_ggs);
+			snprintf(ebuff, COMMENT_BUF_SIZE, "%s", msg_et_ggs);
 		}
 		ebuff[COMMENT_BUF_SIZE] = '\0';
 		if ((pjob->ji_clterrmsg = strdup(ebuff)) == NULL)
@@ -2489,7 +2489,7 @@ check_entity_ct_limit_max(job *pjob, pbs_queue *pque)
 			snprintf(ebuff, COMMENT_BUF_SIZE, msg_et_gpq,
 				pque->qu_qs.qu_name);
 		} else {
-			snprintf(ebuff, COMMENT_BUF_SIZE, msg_et_gps);
+			snprintf(ebuff, COMMENT_BUF_SIZE, "%s", msg_et_gps);
 		}
 		ebuff[COMMENT_BUF_SIZE] = '\0';
 		if ((pjob->ji_clterrmsg = strdup(ebuff)) == NULL)

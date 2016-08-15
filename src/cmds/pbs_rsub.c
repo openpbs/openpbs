@@ -249,7 +249,7 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 				}   /* bottom of inner while loop */
 
 				if (i == -1) {
-					fprintf(stderr, badw);
+					fprintf(stderr, "%s", badw);
 					errflg++;
 				}
 				break;
@@ -546,8 +546,8 @@ print_usage()
 	"                [-R start_time] [-E end_time] [-D duration] [-q destination]\n"
 	"                [-r rrule_expression] [-W otherattributes=value...] -l resource_list\n";
 
-	fprintf(stderr, usage);
-	fprintf(stderr, usag2);
+	fprintf(stderr, "%s", usage);
+	fprintf(stderr, "%s", usag2);
 }
 
 /**

@@ -69,8 +69,8 @@ print_usage()
 	static char usage[]=
 		"usage: qhold [-h hold_list] job_identifier...\n";
 
-	fprintf(stderr, usage);
-	fprintf(stderr, usag2);
+	fprintf(stderr, "%s", usage);
+	fprintf(stderr, "%s", usag2);
 }
 
 /**

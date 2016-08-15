@@ -1505,7 +1505,7 @@ job_obit(struct resc_used_update *pruu, int	stream)
 			(server_init_type == RECOV_CREATE)) {
 			(void)sprintf(log_buffer, msg_obitnojob, PBSE_CLEANEDOUT);
 		} else if (is_job_array(pruu->ru_pjobid) == IS_ARRAY_Single) {
-			(void)sprintf(log_buffer, msg_obitnotrun);
+			(void)sprintf(log_buffer, "%s", msg_obitnotrun);
 		} else {
 			(void)sprintf(log_buffer, msg_obitnojob, PBSE_UNKJOBID);
 		}
@@ -1540,7 +1540,7 @@ job_obit(struct resc_used_update *pruu, int	stream)
 				id, pruu->ru_pjobid))
 			reject_obit(stream, pruu->ru_pjobid);
 
-			(void)sprintf(log_buffer, msg_obitnotrun);
+			(void)sprintf(log_buffer, "%s", msg_obitnotrun);
 			log_event(PBSEVENT_ERROR|PBSEVENT_JOB,
 				PBS_EVENTCLASS_JOB, LOG_INFO,
 				pruu->ru_pjobid, log_buffer);

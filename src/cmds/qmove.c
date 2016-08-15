@@ -79,8 +79,8 @@ main(int argc, char **argv, char **envp) /* qmove */
 	if (argc < 3) {
 		static char usage[]="usage: qmove destination job_identifier...\n";
 		static char usag2[]="       qmove --version\n";
-		fprintf(stderr, usage);
-		fprintf(stderr, usag2);
+		fprintf(stderr, "%s", usage);
+		fprintf(stderr, "%s", usag2);
 		exit(2);
 	}
 

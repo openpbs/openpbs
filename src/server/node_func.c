@@ -1544,7 +1544,7 @@ setup_nodes()
 	obj.pbs_db_un.pbs_db_node = &dbnode;
 	state = pbs_db_cursor_init(conn, &obj, NULL);
 	if (state == NULL) {
-		sprintf(log_buffer, (char *) conn->conn_db_err);
+		sprintf(log_buffer, "%s", (char *) conn->conn_db_err);
 		goto db_err;
 	}
 
@@ -2501,7 +2501,7 @@ record_node_topology(char *node_name, char *topology)
 	if (snprintf(path, sizeof(path), "%s/server_priv/%s",
 		pbs_conf.pbs_home_path,
 		topology_dir) >= sizeof(path)) {
-		sprintf(log_buffer, msg_topologydiroverflow);
+		sprintf(log_buffer, "%s", msg_topologydiroverflow);
 		log_event(PBSEVENT_DEBUG3,
 			PBS_EVENTCLASS_SERVER,
 			LOG_DEBUG, msg_daemonname,
@@ -2511,7 +2511,7 @@ record_node_topology(char *node_name, char *topology)
 	if (stat(path, &sb) == -1) {
 		/* can't stat path - assume it does not exist */
 		if (mkdir(path, S_IRWXU) == -1) {
-			sprintf(log_buffer, msg_mkdirfail);
+			sprintf(log_buffer, "%s", msg_mkdirfail);
 			log_err(errno, __func__, log_buffer);
 			return;
 		}
@@ -2520,7 +2520,7 @@ record_node_topology(char *node_name, char *topology)
 #endif
 	} else if (!S_ISDIR(sb.st_mode)) {
 		/* path exists but is not a directory */
-		sprintf(log_buffer, msg_notdir);
+		sprintf(log_buffer, "%s", msg_notdir);
 		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
 			msg_daemonname, log_buffer);
 		return;

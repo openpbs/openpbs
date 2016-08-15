@@ -93,8 +93,8 @@ main(int argc, char **argv, char **envp) /* qsig */
 	if (errflg || optind >= argc) {
 		static char usage[]="usage: qsig [-s signal] job_identifier...\n";
 		static char usag2[]="       qsig --version\n";
-		fprintf(stderr, usage);
-		fprintf(stderr, usag2);
+		fprintf(stderr, "%s", usage);
+		fprintf(stderr, "%s", usag2);
 		exit(2);
 	}
 

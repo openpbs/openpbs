@@ -71,8 +71,8 @@ print_usage()
 	"\t[-h hold_list] [-j y|n] [-k keep] [-J X-Y[:Z]] [-l resource_list]\n"
 	"\t[-m mail_options] [-M user_list] [-N jobname] [-o path] [-p priority]\n"
 	"\t[-r y|n] [-S path] [-u user_list] [-W dependency_list] [-P project_name] job_identifier...\n";
-	fprintf(stderr, usage);
-	fprintf(stderr, usag2);
+	fprintf(stderr, "%s", usage);
+	fprintf(stderr, "%s", usag2);
 }
 
 /**

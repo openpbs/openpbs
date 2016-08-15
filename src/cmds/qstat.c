@@ -2107,7 +2107,7 @@ main(int argc, char **argv, char **envp) /* qstat */
 				B_opt = 1;
 				mode = SERVERS;
 				if (Q_opt || alt_opt) {
-					fprintf(stderr, conflict);
+					fprintf(stderr, "%s", conflict);
 					errflg++;
 				}
 				break;
@@ -2116,7 +2116,7 @@ main(int argc, char **argv, char **envp) /* qstat */
 				Q_opt = 1;
 				mode = QUEUES;
 				if (B_opt || alt_opt) {
-					fprintf(stderr, conflict);
+					fprintf(stderr, "%s", conflict);
 					errflg++;
 				}
 				break;
@@ -2227,22 +2227,22 @@ main(int argc, char **argv, char **envp) /* qstat */
 	if ((c != 0) && ((c != ALT_DISPLAY_a) && (c != ALT_DISPLAY_i) &&
 		(c != ALT_DISPLAY_r) && (c != ALT_DISPLAY_q) &&
 		(c != ALT_DISPLAY_H))) {
-		fprintf(stderr, conflict);
+		fprintf(stderr, "%s", conflict);
 		errflg++;
 	}
 	c = alt_opt & (ALT_DISPLAY_Mw | ALT_DISPLAY_G);
 	if (c == (ALT_DISPLAY_Mw | ALT_DISPLAY_G)) {
-		fprintf(stderr, conflict);
+		fprintf(stderr, "%s", conflict);
 		errflg++;
 	}
 #ifndef NAS /* localmod 071 */
 	if ((alt_opt & ALT_DISPLAY_q) && (f_opt == 1)) {
-		fprintf(stderr, conflict);
+		fprintf(stderr, "%s", conflict);
 		errflg++;
 	}
 #endif /* localmod 071 */
 	if ((alt_opt&ALT_DISPLAY_1l) && !(alt_opt&(ALT_DISPLAY_n|ALT_DISPLAY_s))) {
-		fprintf(stderr, conflict);
+		fprintf(stderr, "%s", conflict);
 		errflg++;
 	}
 	if (wide) {
@@ -2263,8 +2263,8 @@ qstat [-a|-i|-r|-H|-T] [-J] [-t] [-u user] [-n] [-s] [-G|-M] [-1] [-w]\n\
 qstat -Q [-f] [ destination... ]\n\
 qstat -q [-G|-M] [ destination... ]\n\
 qstat -B [-f] [ server_name... ]\n";
-		fprintf(stderr, usage);
-		fprintf(stderr, usag2);
+		fprintf(stderr, "%s", usage);
+		fprintf(stderr, "%s", usag2);
 		exit(2);
 	}
 

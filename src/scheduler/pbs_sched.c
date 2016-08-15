@@ -807,7 +807,7 @@ lock_out(int fds, int op)
 	if (fcntl(fds, F_SETLK, &flock) < 0) {
 		(void)strcpy(log_buffer, "pbs_sched: another scheduler running\n");
 		log_err(errno, msg_daemonname, log_buffer);
-		fprintf(stderr, log_buffer);
+		fprintf(stderr, "%s", log_buffer);
 		exit(1);
 	}
 }

@@ -85,22 +85,22 @@ main(int argc, char **argv, char **envp) /* qrerun */
 				if (strcmp(optarg, force) == 0)
 					extra = force;
 				else {
-					fprintf(stderr, usage);
-					fprintf(stderr, usag2);
+					fprintf(stderr, "%s", usage);
+					fprintf(stderr, "%s", usag2);
 					exit(2);
 				}
 				break;
 			default:
-				fprintf(stderr, usage);
-				fprintf(stderr, usag2);
+				fprintf(stderr, "%s", usage);
+				fprintf(stderr, "%s", usag2);
 				exit(2);
 		}
 	}
 
 
 	if (optind == argc) {
-		fprintf(stderr, usage);
-		fprintf(stderr, usag2);
+		fprintf(stderr, "%s", usage);
+		fprintf(stderr, "%s", usag2);
 		exit(2);
 	}
 

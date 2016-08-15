@@ -506,7 +506,7 @@ svr_migrate_data_from_fs(void)
 	dir = opendir(".");
 	if (dir == (DIR *) 0) {
 		if (had == 0) {
-			fprintf(stderr, msg_init_nojobs);
+			fprintf(stderr, "%s", msg_init_nojobs);
 		} else {
 			fprintf(stderr, msg_init_exptjobs, had, 0);
 		}

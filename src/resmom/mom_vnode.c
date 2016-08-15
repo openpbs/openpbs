@@ -254,7 +254,7 @@ mom_vnlp_report(vnl_t *vnl, char *header)
 			break;
 		p += k;
 		if (vnalp->vnal_used > 0) {
-			k = snprintf(p, bytes_left, attrprefix);
+			k = snprintf(p, bytes_left, "%s", attrprefix);
 			if (k < 0)
 				break;
 			bytes_left -= k;

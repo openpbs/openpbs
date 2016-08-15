@@ -3445,7 +3445,7 @@ get_queue_for_reservation(resc_resv *presv)
 		handle_qmgr_reply_to_resvQcreate, &pwt, 0) == -1) {
 		free_br(newreq);
 
-		(void)sprintf(log_buffer, msg_resvQcreateFail);
+		(void)sprintf(log_buffer, "%s", msg_resvQcreateFail);
 		log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_ERR,
 			presv->ri_qs.ri_resvID, log_buffer);
 

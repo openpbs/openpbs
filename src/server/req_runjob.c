@@ -1357,7 +1357,7 @@ post_sendmom(struct work_task *pwt)
 			/* need to record log message before aborting and
 			 * requeuing job both in server and accounting logs
 			 */
-			snprintf(log_buffer, LOG_BUF_SIZE, msg_job_abort);
+			snprintf(log_buffer, LOG_BUF_SIZE, "%s", msg_job_abort);
 			log_event(PBSEVENT_SYSTEM|PBSEVENT_JOB|PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO, jobp->ji_qs.ji_jobid, log_buffer);
 
 			/* abort job irrespective of its presence

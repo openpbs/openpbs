@@ -1801,7 +1801,7 @@ try_db_again:
 
 		if (!nodename) {
 			(void) sprintf(log_buffer, "Unable to determine TPP node name");
-			fprintf(stderr, log_buffer);
+			fprintf(stderr, "%s", log_buffer);
 			stop_db();
 			return (3);
 		}
@@ -1829,7 +1829,7 @@ try_db_again:
 
 		if ((rppfd = tpp_init(&tpp_conf)) == -1) {
 			log_err(-1, msg_daemonname, "tpp_init failed");
-			fprintf(stderr, log_buffer);
+			fprintf(stderr, "%s", log_buffer);
 			stop_db();
 			return (3);
 		}

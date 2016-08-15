@@ -3296,18 +3296,18 @@ process_opts(int argc, char **argv, int passet)
 #if !defined(PBS_NO_POSIX_VIOLATION)
 			case 'I':
 				if (J_opt != 0) {
-					fprintf(stderr, interarray);
+					fprintf(stderr, "%s", interarray);
 					errflg++;
 					break;
 				}
 				if_cmd_line(Interact_opt) {
 					Interact_opt = passet;
 					if (block_opt != FALSE) {
-						fprintf(stderr, interblock_warn);
+						fprintf(stderr, "%s", interblock_warn);
 						block_opt = FALSE;
 					}
 					if (roptarg_inter == TRUE) {
-						fprintf(stderr, reruninteract);
+						fprintf(stderr, "%s", reruninteract);
 					}
 					set_attr(&attrib, ATTR_inter, interactive_port());
 				}
@@ -3321,12 +3321,12 @@ process_opts(int argc, char **argv, int passet)
 				break;
 			case 'J':
 				if (Interact_opt != FALSE) {
-					fprintf(stderr, interarray);
+					fprintf(stderr, "%s", interarray);
 					errflg++;
 					break;
 				}
 				if (roptarg != 'y') {
-					fprintf(stderr, norerunarray);
+					fprintf(stderr, "%s", norerunarray);
 					errflg++;
 					break;
 				}
@@ -3429,7 +3429,7 @@ process_opts(int argc, char **argv, int passet)
 						errflg++;
 						break;
 					} else if ((*optarg == 'n') && (J_opt != 0)) {
-						fprintf(stderr, norerunarray);
+						fprintf(stderr, "%s", norerunarray);
 						errflg++;
 						break;
 
@@ -3437,7 +3437,7 @@ process_opts(int argc, char **argv, int passet)
 					if ((*optarg=='y')) {
 						roptarg_inter=TRUE;
 						if (Interact_opt) {
-							fprintf(stderr, reruninteract);
+							fprintf(stderr, "%s", reruninteract);
 						}
 					}
 					roptarg = *optarg;
@@ -3483,7 +3483,7 @@ process_opts(int argc, char **argv, int passet)
 			case 'W':
 				while (isspace((int)*optarg)) optarg++;
 				if (strlen(optarg) == 0) {
-					fprintf(stderr, badw);
+					fprintf(stderr, "%s", badw);
 					errflg++;
 					break;
 				}
@@ -3538,7 +3538,7 @@ process_opts(int argc, char **argv, int passet)
 					} else if (strcmp(keyword, ATTR_inter) == 0) {
 						if_cmd_line(Interact_opt) {
 							if (J_opt != 0) {
-								fprintf(stderr, interarray);
+								fprintf(stderr, "%s", interarray);
 								errflg++;
 								break;
 							}
@@ -3559,16 +3559,16 @@ process_opts(int argc, char **argv, int passet)
 								/* Do Nothing, let it run as a non-interactive job */
 							} else {
 								/* Any value other than true/false is not acceptable */
-								fprintf(stderr, badw);
+								fprintf(stderr, "%s", badw);
 								errflg++;
 								break;
 							}
 							if (roptarg_inter == TRUE) {
-								fprintf(stderr, reruninteract);
+								fprintf(stderr, "%s", reruninteract);
 							}
 							/* check if both block and interactive are true */
 							if ((block_opt != FALSE) && (Interact_opt)) {
-								fprintf(stderr, interblock_warn);
+								fprintf(stderr, "%s", interblock_warn);
 								block_opt = FALSE;
 								break;
 							}
@@ -3581,12 +3581,12 @@ process_opts(int argc, char **argv, int passet)
 								/* Do Nothing, Let it run as a non-blocking job */
 							} else {
 								/* Any value other than true/false is not acceptable */
-								fprintf(stderr, badw);
+								fprintf(stderr, "%s", badw);
 								errflg++;
 								break;
 							}
 							if ((Interact_opt != FALSE) && (block_opt == passet)) {
-								fprintf(stderr, interblock_warn);
+								fprintf(stderr, "%s", interblock_warn);
 								block_opt = FALSE;
 								break;
 							}
@@ -3595,7 +3595,7 @@ process_opts(int argc, char **argv, int passet)
 						if_cmd_line(Resvstart_opt) {
 							Resvstart_opt = passet;
 							if ((after = cvtdate(valuewd)) < 0) {
-								fprintf(stderr, badw);
+								fprintf(stderr, "%s", badw);
 								errflg++;
 								break;
 							}
@@ -3606,7 +3606,7 @@ process_opts(int argc, char **argv, int passet)
 						if_cmd_line(Resvend_opt) {
 							Resvend_opt = passet;
 							if ((after = cvtdate(valuewd)) < 0) {
-								fprintf(stderr, badw);
+								fprintf(stderr, "%s", badw);
 								errflg++;
 								break;
 							}
@@ -3648,7 +3648,7 @@ process_opts(int argc, char **argv, int passet)
 					i = parse_equal_string((char *)0, &keyword, &valuewd);
 				}   /* bottom of long while loop */
 				if (i == -1) {
-					fprintf(stderr, badw);
+					fprintf(stderr, "%s", badw);
 					errflg++;
 				}
 				break;
@@ -4557,8 +4557,8 @@ print_usage()
 	"\t[-S path] [-u user_list] [-W otherattributes=value...]\n"
 	"\t[-v variable_list] [-V ] [-z] [script | -- command [arg1 ...]]\n";
 #endif
-	fprintf(stderr, usage);
-	fprintf(stderr, usag2);
+	fprintf(stderr, "%s", usage);
+	fprintf(stderr, "%s", usag2);
 }
 
 

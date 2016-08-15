@@ -1734,7 +1734,7 @@ res_to_str_re(void *p, enum resource_fields fld, char **buf,
 		else
 			snprintf(localbuf, sizeof(localbuf), "%ldkb", (long) amount);
 		if (flags & NOEXPAND)
-			snprintf(*buf, *bufsize, localbuf);
+			snprintf(*buf, *bufsize, "%s", localbuf);
 		else
 			ret = pbs_strcat(buf, bufsize, localbuf);
 	}
@@ -1767,7 +1767,7 @@ res_to_str_re(void *p, enum resource_fields fld, char **buf,
 			else
 				snprintf(localbuf, sizeof(localbuf), "%ld", (long) amount);
 			if (flags & NOEXPAND)
-				snprintf(*buf, *bufsize, localbuf);
+				snprintf(*buf, *bufsize, "%s", localbuf);
 			else
 				ret = pbs_strcat(buf, bufsize, localbuf);
 		}

@@ -6338,7 +6338,7 @@ mom_lock(int fds,
 		(void)strcpy(log_buffer, "pbs_mom: another mom running");
 		log_err(errno, msg_daemonname, log_buffer);
 		(void)strcat(log_buffer, "\n");
-		(void)fprintf(stderr, log_buffer);
+		(void)fprintf(stderr, "%s", log_buffer);
 		exit(1);
 	}
 }
@@ -8549,7 +8549,7 @@ main(int argc, char *argv[])
 		(void)strcpy(log_buffer, "Unable to open lock file");
 		log_err(-1, msg_daemonname, log_buffer);
 		(void)strcat(log_buffer, "\n");
-		(void)fprintf(stderr, log_buffer);
+		(void)fprintf(stderr, "%s", log_buffer);
 #ifdef	WIN32
 		g_dwCurrentState = SERVICE_STOPPED;
 		ss.dwCurrentState = g_dwCurrentState;
@@ -8612,7 +8612,7 @@ main(int argc, char *argv[])
 			(void)strcat(log_buffer, ", already in use");
 		log_err(-1, msg_daemonname, log_buffer);
 		(void)strcat(log_buffer, "\n");
-		(void)fprintf(stderr, log_buffer);
+		(void)fprintf(stderr, "%s", log_buffer);
 #ifdef	WIN32
 		g_dwCurrentState = SERVICE_STOPPED;
 		ss.dwCurrentState = g_dwCurrentState;
@@ -8639,7 +8639,7 @@ main(int argc, char *argv[])
 			(void)strcat(log_buffer, ", already in use");
 		log_err(-1, msg_daemonname, log_buffer);
 		(void)strcat(log_buffer, "\n");
-		(void)fprintf(stderr, log_buffer);
+		(void)fprintf(stderr, "%s", log_buffer);
 
 #ifdef	WIN32
 		g_dwCurrentState = SERVICE_STOPPED;

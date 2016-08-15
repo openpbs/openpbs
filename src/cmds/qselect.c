@@ -297,8 +297,8 @@ print_usage()
 	"\t[-h hold_list] [-H] [-J] [-l resource_list] [-N name] [-p [op]priority]\n"
 	"\t[-q destination] [-r y|n] [-s states] [-t subopt[op]date_time] [-T] [-P project_name]\n"
 	"\t[-x] [-u user_name]\n";
-	fprintf(stderr, usage);
-	fprintf(stderr, usag2);
+	fprintf(stderr, "%s", usage);
+	fprintf(stderr, "%s", usag2);
 }
 
 /**

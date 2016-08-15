@@ -149,8 +149,8 @@ main(int argc, char **argv)
 				break;
 		}
 	if (errflg) {
-		fprintf(stderr, usage);
-		fprintf(stderr, usag2);
+		fprintf(stderr, "%s", usage);
+		fprintf(stderr, "%s", usag2);
 		exit(1);
 	} else if (type != NULL) {
 		if (strcmp(type, "delay") == 0)
@@ -160,8 +160,8 @@ main(int argc, char **argv)
 		else if (strcmp(type, "quick") == 0)
 			manner = SHUT_QUICK;
 		else {
-			fprintf(stderr, usage);
-			fprintf(stderr, usag2);
+			fprintf(stderr, "%s", usage);
+			fprintf(stderr, "%s", usag2);
 			exit(1);
 		}
 	} else

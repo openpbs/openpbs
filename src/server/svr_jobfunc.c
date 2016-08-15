@@ -4246,7 +4246,7 @@ change_enableORstart(resc_resv *presv, int which, char *value)
 		handle_qmgr_reply_to_startORenable, &pwt, 0) == -1) {
 		free_br(newreq);
 
-		(void)sprintf(log_buffer, msg_internalReqFail);
+		(void)sprintf(log_buffer, "%s", msg_internalReqFail);
 		log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_NOTICE,
 			presv->ri_qs.ri_resvID, log_buffer);
 
@@ -4290,7 +4290,7 @@ handle_qmgr_reply_to_startORenable(struct work_task *pwt)
 
 	if (preq->rq_reply.brp_code) {
 
-		(void)sprintf(log_buffer, msg_qEnabStartFail);
+		(void)sprintf(log_buffer, "%s", msg_qEnabStartFail);
 		log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_NOTICE,
 			presv->ri_qs.ri_resvID, log_buffer);
 	}

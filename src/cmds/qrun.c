@@ -120,7 +120,7 @@ main(int argc, char **argv)
 		}
 
 	if (errflg || (optind >= argc)) {
-		fprintf(stderr, usage);
+		fprintf(stderr, "%s", usage);
 		exit(1);
 	}
 

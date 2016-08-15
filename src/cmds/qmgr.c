@@ -3405,9 +3405,9 @@ get_request(char **request)
 			if (qmgr_hist_enabled == 0) {
 				if (isatty(0) && isatty(1)) {
 					if (lp == line)
-						printf(prompt);
+						printf("%s", prompt);
 					else
-						printf(contin);
+						printf("%s", contin);
 				}
 
 				start_time = time(0);

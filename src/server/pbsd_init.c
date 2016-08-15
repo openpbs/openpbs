@@ -823,7 +823,7 @@ pbsd_init(int type)
 
 	state = pbs_db_cursor_init(conn, &obj, NULL);
 	if (state == NULL) {
-		sprintf(log_buffer, (char *) conn->conn_db_err);
+		sprintf(log_buffer, "%s", (char *) conn->conn_db_err);
 		log_err(-1, "pbsd_init", log_buffer);
 		pbs_db_cursor_close(conn, state);
 		(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
@@ -885,7 +885,7 @@ pbsd_init(int type)
 			 * the nodes.
 			 */
 			if (sockets_consume(nslneed) != 0) {	/* failure */
-				sprintf(log_buffer, msg_bad_socket_init);
+				sprintf(log_buffer, "%s", msg_bad_socket_init);
 				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER,
 					LOG_ERR, msg_daemonname, log_buffer);
 				unlicense_socket_licensed_nodes();
@@ -897,7 +897,7 @@ pbsd_init(int type)
 				 * server doesn't have a valid socket license
 				 * file - complain and unlicense the nodes.
 				 */
-				sprintf(log_buffer, msg_bad_socket_failover);
+				sprintf(log_buffer, "%s", msg_bad_socket_failover);
 				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER,
 					LOG_ERR, msg_daemonname, log_buffer);
 				unlicense_socket_licensed_nodes();
@@ -935,7 +935,7 @@ pbsd_init(int type)
 	obj.pbs_db_un.pbs_db_resv = &dbresv;
 	state = pbs_db_cursor_init(conn, &obj, NULL);
 	if (state == NULL) {
-		sprintf(log_buffer, (char *) conn->conn_db_err);
+		sprintf(log_buffer, "%s", (char *) conn->conn_db_err);
 		log_err(-1, "pbsd_init", log_buffer);
 		pbs_db_cursor_close(conn, state);
 		(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
@@ -991,7 +991,7 @@ pbsd_init(int type)
 	obj.pbs_db_un.pbs_db_job = &dbjob;
 	state = pbs_db_cursor_init(conn, &obj, NULL);
 	if (state == NULL) {
-		sprintf(log_buffer, (char *) conn->conn_db_err);
+		sprintf(log_buffer, "%s", (char *) conn->conn_db_err);
 		log_err(-1, "pbsd_init", log_buffer);
 		pbs_db_cursor_close(conn, state);
 		(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
