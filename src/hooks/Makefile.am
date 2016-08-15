@@ -35,17 +35,10 @@
 #  trademark licensing policies.
 #
 
-SUBDIRS = \
-	include \
-	lib \
-	server \
-	scheduler \
-	modules \
-	resmom \
-	mom_rcp \
-	iff \
-	cmds \
-	tools \
-	hooks \
-	unsupported
+pbshooksdir = $(libdir)/@PBS_PYTHON_DESTLIB@/pbs_hooks
+
+dist_pbshooks_DATA = \
+	cgroups/pbs_cgroups.HK \
+	cgroups/pbs_cgroups.PY \
+	cgroups/pbs_cgroups.CF
 

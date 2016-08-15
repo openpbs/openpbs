@@ -6368,7 +6368,7 @@ class Server(PBSService):
             if rc == 0:
                 if cmd == MGR_CMD_LIST:
                     bsl = self.utils.convert_to_dictlist(ret['out'], attrib,
-                                                         mergelines=False)
+                                                         mergelines=True)
                     self.update_attributes(obj_type, bsl)
             else:
                 # Need to rework setting error, this is not thread safe
