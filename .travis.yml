@@ -8,6 +8,9 @@ env:
 before_install:
     - gem install octokit
     - .github/runchecks
+    - sudo apt-get update
+    - sudo apt-get remove docker-engine -yq
+    - sudo apt-get install docker-engine="1.9.1-0~trusty" -yq --no-install-suggests --no-install-recommends --force-yes -o Dpkg::Options::="--force-confnew"
     - docker pull ${OS_TYPE}
     - docker run -it -d -h testdev.pbspro.com --name testdev -v `pwd`:`pwd` --privileged -w `pwd` ${OS_TYPE} /bin/sh
     - docker ps -a
@@ -29,15 +32,15 @@ install:
     - ${DOCKER_EXEC} ./autogen.sh
     - ${DOCKER_EXEC} ./configure
     - ${DOCKER_EXEC} make dist
-    - travis_retry ${DOCKER_EXEC} /bin/sh -c "cp pbspro-*.tar.gz /root/rpmbuild/SOURCES/"
+    - ${DOCKER_EXEC} /bin/sh -c 'cp -fv pbspro-*.tar.gz /root/rpmbuild/SOURCES/'
     - ${DOCKER_EXEC} rpmbuild -bb pbspro.spec
-    - '[ "${OS_TYPE}" == "centos:7" ] && travis_retry ${DOCKER_EXEC} /bin/sh -c "yum -y install /root/rpmbuild/RPMS/x86_64/pbspro-server-*.x86_64.rpm" || true'
-    - '[ "${OS_TYPE}" == "opensuse:13.2" ] && travis_retry ${DOCKER_EXEC} /bin/sh -c "zypper -n install /root/rpmbuild/RPMS/x86_64/pbspro-server-*.x86_64.rpm" || true'
+    - '[ "${OS_TYPE}" == "centos:7" ] && travis_retry ${DOCKER_EXEC} /bin/sh -c ''yum -y install /root/rpmbuild/RPMS/x86_64/pbspro-server-*.x86_64.rpm'' || true'
+    - '[ "${OS_TYPE}" == "opensuse:13.2" ] && travis_retry ${DOCKER_EXEC} /bin/sh -c ''zypper -n install /root/rpmbuild/RPMS/x86_64/pbspro-server-*.x86_64.rpm'' || true'
     - ${DOCKER_EXEC} /etc/init.d/pbs start
     - '[ "${OS_TYPE}" == "centos:7" ] && travis_retry ${DOCKER_EXEC} yum -y install python-pip sudo which net-tools || true'
     - '[ "${OS_TYPE}" == "opensuse:13.2" ] && travis_retry ${DOCKER_EXEC} zypper -n install python-pip sudo which net-tools || true'
     - ${DOCKER_EXEC} /bin/sh -c "cd test/fw; pip install -r requirements.txt ."
     - ${DOCKER_EXEC} pbs_config --make-ug
-    - ${DOCKER_EXEC} /bin/sh -c "cd test/tests; pbs_benchpress -l INFOCLI2 -o ../../ptl.txt --exclude=Test_systemd.test_systemd"
+    - ${DOCKER_EXEC} /bin/sh -c "cd test/tests; pbs_benchpress -l INFOCLI2 -o ../../ptl.txt --tags=smoke"
 script: true
 
