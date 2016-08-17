@@ -1829,6 +1829,12 @@ pbsd_init_reque(job *pjob, int change_state)
 		/* update the state, typically to some form of QUEUED */
 		svr_evaljobstate(pjob, &newstate, &newsubstate, 1);
 		(void)svr_setjobstate(pjob, newstate, newsubstate);
+		if (newstate == JOB_STATE_QUEUED)
+			/* The state count will be incremented in both
+ 			 * svr_setjobstate() and svr_enquejob()
+			 * Decrement here so the counts do not get off
+ 			 */
+			server.sv_jobstates[newstate]--;
 	} else {
 		set_statechar(pjob);
 		/* make sure substate attributes match actual value */
