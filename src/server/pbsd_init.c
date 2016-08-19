@@ -158,7 +158,6 @@ extern char	*msg_unkresc;
 extern char	*msg_corelimit;
 
 extern char	*acct_file;
-extern int	 ext_license_server;
 extern char	*log_file;
 extern char	*path_acct;
 extern char     *path_usedlicenses;
@@ -283,19 +282,6 @@ init_server_attrs()
 	server.sv_attr[(int)SVR_ATR_maxarraysize].at_flags =
 		ATR_VFLAG_DEFLT|ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
 
-	server.sv_attr[(int)SRV_ATR_license_min].at_val.at_long =
-		PBS_MIN_LICENSING_LICENSES;
-	server.sv_attr[(int)SRV_ATR_license_min].at_flags =
-		ATR_VFLAG_DEFLT|ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
-
-	server.sv_attr[(int)SRV_ATR_license_max].at_val.at_long =
-		PBS_MAX_LICENSING_LICENSES;
-	server.sv_attr[(int)SRV_ATR_license_max].at_flags =
-		ATR_VFLAG_DEFLT|ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
-
-	server.sv_attr[(int)SRV_ATR_license_linger].at_val.at_long = PBS_LIC_LINGER_TIME;
-	server.sv_attr[(int)SRV_ATR_license_linger].at_flags =
-		ATR_VFLAG_DEFLT|ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
 
 	server.sv_attr[(int)SVR_ATR_FLicenses].at_val.at_long = 0;
 	server.sv_attr[(int)SVR_ATR_FLicenses].at_flags =
@@ -765,20 +751,14 @@ pbsd_init(int type)
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_ALERT,
 			msg_daemonname, badlicense);
 	} else {
-		if (ext_license_server) {
-			sprintf(log_buffer, "Using license server at %s",
-				PBS_LICENSE_LOCATION);
-		} else {
-			sprintf(log_buffer,
-				"Licenses valid for %d Floating hosts",
-				licenses.lb_aval_floating);
-		}
+		sprintf(log_buffer,"Licenses valid for %d Floating hosts",licenses.lb_aval_floating);
+		
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
 			msg_daemonname, log_buffer);
 		printf("%s\n", log_buffer);
 	}
 	/* start a timed-event every hour to long the number of floating used */
-	if ((licenses.lb_aval_floating > 0) || ext_license_server)
+	if ((licenses.lb_aval_floating > 0) )
 		(void)set_task(WORK_Timed, (long)(((time_now+3600)/3600)*3600),
 			call_log_license, 0);
 

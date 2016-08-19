@@ -103,7 +103,6 @@ extern void   licstate_down(enum licensing_backend);
 extern void   licstate_unconfigured(enum licensing_backend);
 
 /* Licensing-related variables */
-extern int    ext_license_server;
 extern char   *pbs_licensing_license_location;
 extern long   pbs_min_licenses;
 extern long   pbs_max_licenses;

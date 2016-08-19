@@ -39,6 +39,11 @@
 # Source the file that sets PGSQL_LIBSTR
 . "$PBS_EXEC"/libexec/pbs_pgsql_env.sh
 
+
+# Loading dynamic library at PBS_EXEC/lib
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PBS_EXEC/lib/
+
+
 # Check if old variable PBS_DATA_SERVICE_USER is exported in env or pbs.conf
 if [ ! -z "${PBS_DATA_SERVICE_USER}" ]; then
   echo "WARNING! Obsolete variable PBS_DATA_SERVICE_USER is being ignored"

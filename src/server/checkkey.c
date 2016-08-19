@@ -74,19 +74,15 @@
 #include "job.h"
 
 
-/********************   NOTE - NOTE - NOTE   ****************************
- * All keys have been stripped from this file. The following note	*
- * remains for historical reasons:					*
- * The 'checkkey.c' file goes with the source package is stripped down	*
- * to remove the secret key used for the old style and Trial licenses.	*
- * We must not let the key out. However, any changes made to this file	*
- * must be made to the version in packages/common as well.		*
- ************************************************************************/
 
 char *pbs_licensing_license_location  = NULL;
 long pbs_min_licenses		= PBS_MIN_LICENSING_LICENSES;
 long pbs_max_licenses		= PBS_MAX_LICENSING_LICENSES;
 int  pbs_licensing_linger	= PBS_LIC_LINGER_TIME;
+
+/* Global Data Items: */
+extern pbs_list_head svr_alljobs;
+extern pbs_list_head svr_unlicensedjobs;
 
 extern pbs_net_t pbs_server_addr;
 unsigned long hostidnum;
@@ -168,5 +164,165 @@ check_license(struct license_block *licenses)
 {
 	hostidnum = pbs_get_hostid();
 	return (0);
+}
+
+
+
+/*
+ ************************************************************************
+ *
+ * 		Licensing Jobs Functions
+ *
+ ************************************************************************
+ */
+
+/**
+ * @brief
+ * 		set_cpu_licenses_need - sets the job's ji_licneed to the number of CPUs needed for the
+ *		assigned exec_vnode
+ *
+ * @param[in]	pjob	-	the job
+ * @param[in]	exec_vnode	-	exec_vnode string used to compute job's required
+ *								number of CPUs
+ * @return	int
+ * @retval	number of CPUs required for the given node set
+ *
+ * @par MT-Safe:	no
+ *
+ * @par Side Effects:
+ *	None
+ */
+int
+set_cpu_licenses_need(job *pjob, char *exec_vnode)
+{
+	char            *chunk;
+	char            *last;
+	int             hasprn;
+	char            *vname;
+	int             nelem;
+	struct key_value_pair *pkvp;
+	char            *execvnod = NULL;
+	int             cpus_assn;
+	int             cpus = 0;
+	int		i;
+
+	execvnod=strdup(exec_vnode);
+	if (execvnod == NULL) {
+		sprintf(log_buffer,
+			"failed to strdup exec_vnode %s!", exec_vnode);
+		log_err(errno, "set_cpu_licenses_need", log_buffer);
+		return (1);	/* we don't know for sure - lie */
+	}
+
+	for (cpus_assn = 0, chunk = parse_plus_spec_r(execvnod, &last, &hasprn);
+		chunk != NULL;
+		chunk = parse_plus_spec_r(last, &last, &hasprn)) {
+		if (parse_node_resc(chunk, &vname, &nelem, &pkvp) == 0) {
+			attribute	*pattr;
+			struct pbsnode	*pnode;
+
+			/*
+			 *	If vnode is already licensed, don't count
+			 *	its CPUs as needed.
+			 */
+			if ((pnode = find_nodebyname(vname)) != NULL) {
+				pattr = &pnode->nd_attr[(int) ND_ATR_License];
+				if ((pattr->at_flags & ATR_VFLAG_SET) &&
+					(pattr->at_val.at_char == ND_LIC_TYPE_locked))
+					continue;
+			}
+
+			for (i=0; i<nelem; i++) {
+				if (strcasecmp("ncpus",
+					(pkvp+i)->kv_keyw) == 0) {
+					cpus += atoi((pkvp+i)->kv_val);
+				}
+			}
+		}
+	}
+
+	(void)free(execvnod);
+
+	if (cpus > 0) {
+		cpus_assn += cpus;
+	}
+
+	pjob->ji_licneed = cpus_assn;
+	return (cpus > 0 ? 1 : 0);
+}
+
+static void
+report_license_highuse(void)
+{
+}
+
+/**
+ * @brief
+ * 		allocate_cpu_licenses: takes care of allocating "pjob->ji_licneed" number of
+ * 		cpu licenses to the job 'pjob'.
+ *
+ * @param[out]	pjob	-	the job
+ *
+ * @return	pjob->ji_licalloc	: is set to the actual # of cpu licenses assigned.
+ * @retval	 actual # of cpu licenses assigned.
+ * @retval	0	: nothing got assigned.
+ * @note
+ * 		NOTE: Must call set_cpu_licenses_need() first before calling this function
+ * 		in order for licenses to actually get assigned. The set_cpu_licenses_need()
+ * 		takes care of assigning a value to pjob->ji_licneed.
+ */
+void
+allocate_cpu_licenses(job *pjob)
+{
+	if (pjob == NULL) {
+		log_err(PBSE_INTERNAL, "allocate_cpu_licenses",
+			"pjob is NULL so no action taken");
+		return;
+	}
+	/* The following line works around the check in set_nodes() */
+	pjob->ji_licalloc = 1;
+}
+
+void
+deallocate_cpu_licenses(job *pjob)
+{
+}
+
+/**
+ * @brief
+ * 		clear_and_populate_svr_unlicensedjobs - removes all job entries from the
+ *		svr_unlicensedjobs list, and re-populates the list
+ *		with all currently running/exiting jobs (not suspended jobs).
+ *
+ */
+
+void
+clear_and_populate_svr_unlicensedjobs(void)
+{
+	job *pjob;
+
+	while ((pjob = GET_NEXT(svr_unlicensedjobs)))
+		delete_link(&pjob->ji_unlicjobs);
+
+	/* repopulate the list */
+	pjob = (job *)GET_NEXT(svr_alljobs);
+
+	while (pjob  != (struct job *)0) {
+
+		if (((pjob->ji_qs.ji_state == JOB_STATE_RUNNING) &&
+			((pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend) == 0)) &&
+			!is_linked(&svr_unlicensedjobs, &pjob->ji_unlicjobs)) {
+			append_link(&svr_unlicensedjobs, &pjob->ji_unlicjobs,
+				pjob);
+			pjob->ji_licalloc = 0;
+		}
+		pjob = GET_NEXT(pjob->ji_alljobs);
+	}
+
+}
+
+void
+relicense_svr_unlicensedjobs(void)
+{
 }
 
