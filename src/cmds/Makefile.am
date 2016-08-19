@@ -88,7 +88,8 @@ common_libs = \
 	$(top_builddir)/src/lib/Libnet/libnet.a \
 	$(top_builddir)/src/lib/Libsec/libsec.a \
 	-lpthread \
-	@socket_lib@
+	@socket_lib@ \
+	@KRB5_LIBS@
 
 pbsdsh_CPPFLAGS = -I$(top_srcdir)/src/include
 pbsdsh_LDADD = ${common_libs}

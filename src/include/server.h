@@ -146,6 +146,9 @@ enum srv_atr {
 	SRV_ATR_queued_jobs_threshold,
 	SRV_ATR_queued_jobs_threshold_res,
 	SVR_ATR_jobscript_max_size,
+        SRV_ATR_acl_krb_realm_enable,
+        SRV_ATR_acl_krb_realms,
+        SRV_ATR_krb_realm_submit_acl,
 	/* This must be last */
 	SRV_ATR_LAST
 };

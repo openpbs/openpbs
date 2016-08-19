@@ -35,41 +35,56 @@
 #  trademark licensing policies.
 #
 
-unsupporteddir = ${exec_prefix}/unsupported
+AC_DEFUN([_KRB5_CONFIG_PATH],
+[
+  AC_ARG_VAR([PATH_KRB5_CONFIG], [Path to krb5-config.])
+  AC_PATH_PROG([PATH_KRB5_CONFIG], [krb5-config], [], [${PATH}:/usr/kerberos/bin])
+  AS_IF([test -x "$PATH_KRB5_CONFIG"],
+    [ ],
+    [
+    AC_MSG_ERROR([krb5-config not found at provided/default path])
+    ])
+])
 
-unsupported_PROGRAMS = pbs_rmget
+AC_DEFUN([_KRB5_CONFIG_LIBS],
+  [AC_REQUIRE([_KRB5_CONFIG_PATH])
+  $3[]_LIBS=`"$1" --libs $2 2>/dev/null`
+])
 
-dist_unsupported_SCRIPTS = \
-	pbs_diag \
-	pbs_dtj \
-	pbs_loganalyzer \
-	pbs_stat
+AC_DEFUN([_KRB5_CONFIG_CFLAGS],
+  [AC_REQUIRE([_KRB5_CONFIG_PATH])
+  $3[]_CFLAGS=`"$1" --cflags $2 2>/dev/null`
+])
 
+AC_DEFUN([KRB5_CONFIG],
+[
+  AC_REQUIRE([_KRB5_CONFIG_PATH])
 
-# Marking all *.py files as data as these files are meant to be used as hooks and 
-# need no compilation.
-dist_unsupported_DATA = \
-	NodeHealthCheck.py \
-	load_balance.py \
-	mom_dyn_res.py \
-	pbs-alps-inventory-check.py \
-	rapid_inter.py \
-	run_pelog_shell.py \
-	NodeHealthCheck.json \
-	README \
-	pbs_dtj.8B \
-	pbs_jobs_at.8B \
-	pbs_rescquery.3B \
-	run_pelog_shell.ini
+  _KRB5_CONFIG_CFLAGS([$PATH_KRB5_CONFIG],[],[_KRB5])
+  _KRB5_CONFIG_LIBS([$PATH_KRB5_CONFIG],[krb5],[_KRB5_KRB5])
+  _KRB5_CONFIG_LIBS([$PATH_KRB5_CONFIG],[gssapi],[_KRB5_GSSAPI])
 
-pbs_rmget_CPPFLAGS = -I$(top_srcdir)/src/include
-pbs_rmget_LDADD = \
-	$(top_builddir)/src/lib/Libtpp/libtpp.a \
-	$(top_builddir)/src/lib/Liblog/liblog.a \
-	$(top_builddir)/src/lib/Libnet/libnet.a \
-	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
-	$(top_builddir)/src/lib/Libutil/libutil.a \
-	-lpthread \
-	@KRB5_LIBS@
-pbs_rmget_SOURCES = pbs_rmget.c
+  AC_SUBST([KRB5_CFLAGS],[$_KRB5_CFLAGS])
+  _KRB5_LIBS="$_KRB5_KRB5_LIBS $_KRB5_GSSAPI_LIBS -lcom_err -lkrb525 -lkafs"
+  AC_SUBST([KRB5_LIBS],[$_KRB5_LIBS])
+])
 
+AC_DEFUN([PBS_AC_WITH_KRBAUTH],
+[
+  AC_MSG_CHECKING([for kerberos support])
+  AC_ARG_WITH([krbauth],
+    [AS_HELP_STRING([--with-krbauth],
+       [enable kerberos authentication, krb5-config required for setup])],
+    [],[with_krbauth=no])
+
+  AS_IF([test "x$with_krbauth" != xno],
+    [
+    AC_MSG_RESULT([requested])
+    _KRB5_CONFIG_PATH
+    KRB5_CONFIG
+    AC_DEFINE_UNQUOTED([PBS_SECURITY],[KRB5],[Enable krb5/gssapi security.])
+    ],
+    [
+    AC_MSG_RESULT([disabled])
+    ])
+])

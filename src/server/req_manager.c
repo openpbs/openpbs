@@ -4334,6 +4334,10 @@ manager_oper_chk(attribute *pattr, void *pobject, int actmode)
 
 	if ((pstr = pattr->at_val.at_arst) == (struct array_strings *)0)
 		return (0);
+        
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+        return 0;
+#endif
 
 	for (i=0; i<pstr->as_usedptr; ++i) {
 		entry = strchr(pstr->as_string[i], (int)'@');

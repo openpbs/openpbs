@@ -517,10 +517,10 @@ dis_request_read(int sfds, struct batch_request *request)
 		if (rc == DIS_EOF)
 			return EOF;
 		(void)sprintf(log_buffer,
-			"Req Header bad, errno %d, dis error %d",
-			errno, rc);
+			"Req Header bad, errno %d, dis error %d, sock = %d",
+			errno, rc, sfds);
 		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_DEBUG,
-			"?", log_buffer);
+			__func__, log_buffer);
 
 		return PBSE_DISPROTO;
 	}
@@ -533,6 +533,8 @@ dis_request_read(int sfds, struct batch_request *request)
 	switch (request->rq_type) {
 		case PBS_BATCH_Connect:
 			break;
+                case PBS_BATCH_GSSAuthenUser:
+                        break;
 
 		case PBS_BATCH_Disconnect:
 			return (-1);		/* set EOF return */

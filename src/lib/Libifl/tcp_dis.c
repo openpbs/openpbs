@@ -85,6 +85,8 @@
 #include "dis.h"
 #include "dis_init.h"
 
+#include "pbsgss.h"
+
 #define THE_BUF_SIZE 1024
 
 struct tcpdisbuf {
@@ -98,6 +100,13 @@ struct tcpdisbuf {
 struct	tcp_chan {
 	struct	tcpdisbuf	readbuf;
 	struct	tcpdisbuf	writebuf;
+	
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)	
+        struct tcpdisbuf gssrdbuf;   /* incoming wrapped data */
+        gss_buffer_desc  unwrapped;  /* release after copying to readbuf */
+        gss_ctx_id_t     gssctx;
+        int              Confidential;        /* (boolean) */
+#endif
 };
 
 /* resize of following global variables are protected by a mutex */
@@ -222,6 +231,477 @@ tcp_pack_buff(struct tcpdisbuf *tp)
 	}
 }
 
+static int tcp_buff_resize(struct tcpdisbuf *tp, size_t newsize)
+{
+        /* no need to lock mutex here, this is per fd resize */
+	/* needing a larger buffer area for the data */
+
+	char *newbuf = realloc(tp->tdis_thebuf, newsize);
+
+	if (newbuf != NULL)
+	{
+		tp->tdis_bufsize = newsize;
+		tp->tdis_thebuf = newbuf;
+		return 0;
+	} else {
+		return -1;
+	}
+}
+
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+
+static int tcp_get_confidential_flag(int fd)
+{
+    int conf;
+    int rc;
+
+    rc = pbs_client_thread_lock_tcp();
+    assert(rc == 0);
+    conf = tcparray[fd]->Confidential;
+    rc = pbs_client_thread_unlock_tcp();
+    assert(rc == 0);
+
+    return conf;
+}
+
+static gss_buffer_desc * tcp_get_decryptbuf(int fd)
+{
+    gss_buffer_desc *tp;
+    int rc;
+
+    rc = pbs_client_thread_lock_tcp();
+    assert(rc == 0);
+    tp = &tcparray[fd]->unwrapped;
+    rc = pbs_client_thread_unlock_tcp();
+    assert(rc == 0);
+
+    assert(tp != NULL);
+    return (tp);
+}
+
+static struct tcpdisbuf * tcp_get_encryptbuf(int fd)
+{
+    struct	tcpdisbuf	*tp;
+    int rc;
+
+    rc = pbs_client_thread_lock_tcp();
+    assert(rc == 0);
+    tp = &tcparray[fd]->gssrdbuf;
+    rc = pbs_client_thread_unlock_tcp();
+    assert(rc == 0);
+
+    assert(tp != NULL);
+    return (tp);
+}
+
+static gss_ctx_id_t tcp_get_seccontext(int fd)
+{
+    gss_ctx_id_t    sec_ctx;
+    int rc;
+
+    rc = pbs_client_thread_lock_tcp();
+    assert(rc == 0);
+    sec_ctx = tcparray[fd]->gssctx;
+    rc = pbs_client_thread_unlock_tcp();
+    assert(rc == 0);
+
+    return (sec_ctx);
+}
+
+static int tcp_fillbuffer(struct tcpdisbuf *to, gss_buffer_desc *from)
+{
+    size_t remaining_data = from->length;
+    OM_uint32 minor;
+
+    if (remaining_data == 0)
+        return 0;
+
+    tcp_pack_buff(to);
+    
+    ssize_t remaining_cap = to->tdis_bufsize - to->tdis_eod;
+    if ((size_t)remaining_cap < remaining_data) // remove first f bytes from unwrapped values
+      {
+      memcpy(&to->tdis_thebuf[to->tdis_eod], from->value, remaining_cap);
+      to->tdis_eod += remaining_cap;
+      memmove(from->value, ((char *)from->value)+remaining_cap, remaining_data-remaining_cap);
+      from->length = remaining_data-remaining_cap;
+      return remaining_cap;	/* readbuf is now full after reading remaining_cap */
+      }
+    else
+      {
+      memcpy(&to->tdis_thebuf[to->tdis_eod], from->value, remaining_data);
+      to->tdis_eod += remaining_data;
+      gss_release_buffer(&minor, from);
+      return remaining_data;	/* for simplicity */
+      }
+}
+
+/**
+ * @brief
+ * 	-raw_timed_read - read data from socket if any available
+ *
+ * @param[in]  fd	- socket descriptor
+ * @param[out] buff	- buffer to be read into
+ * @param[in]  max_size	- maximum amount of data
+ * @param[in]  timeout_sec - timeout in seconds
+ *
+ * @return int
+ * @retval >0 number of characters read
+ * @retval 0  no data on socket
+ * @retval -1 system error
+ */
+static int raw_timed_read(int fd, char *buff, size_t max_size, int timeout_sec)
+{
+	struct	pollfd pollfds[1];
+	int i;
+	
+	/*
+	 * we don't want to be locked out by an attack on the port to
+	 * deny service, so we time out the read, the network had better
+	 * deliver promptly
+	 */
+	do {
+		pollfds[0].fd = fd;
+		pollfds[0].events = POLLIN;
+		pollfds[0].revents = 0;
+
+		i = poll(pollfds, 1, timeout_sec * 1000);
+		if (pbs_tcp_interrupt)
+			break;
+	} while ((i == -1) && (errno == EINTR));
+
+	if (i <= 0) // no data on socket or error
+		return i;
+
+	while ((i = read(fd, buff, max_size)) == -1) {
+
+		if (errno != EINTR)
+			break;
+	}
+
+	return i;
+}
+
+/**
+ * @brief
+ * 	-tcp_read_buff - read data from tcp stream to "fill" the buffer
+ *	Update the various buffer pointers.
+ *
+ * @param[in] fd - socket descriptor
+ * @param[out] tp - tcp buffer to read into
+ *
+ * @return	int
+ * @retval	>0 	number of characters read
+ * @retval	0 	if EOD (no data currently avalable)
+ * @retval	-1 	if error
+ * @retval	-2 	if EOF (stream closed)
+ */
+static int tcp_read_buff(int fd, struct	tcpdisbuf *tp)
+{
+	int i;
+
+	/* compact (move to the front) the uncommitted data */
+
+	tcp_pack_buff(tp);
+
+	if ((tp->tdis_bufsize - tp->tdis_eod) < 64) {
+		if (tcp_buff_resize(tp,tp->tdis_bufsize + THE_BUF_SIZE) != 0)
+			return -1;
+	}
+
+	i = raw_timed_read(fd, &tp->tdis_thebuf[tp->tdis_eod],
+				tp->tdis_bufsize - tp->tdis_eod, pbs_tcp_timeout);
+
+	if (i == 0) // EOF
+		return -2;
+
+	if (i > 0)
+		tp->tdis_eod += i;
+
+	return i;
+}
+
+
+/**
+ * @brief
+ * 	-tcp_read - read data from tcp stream to "fill" the buffer
+ *	Update the various buffer pointers.
+ *
+ * @param[in] fd - socket descriptor
+ *
+ * @return	int
+ * @retval	>0 	number of characters read
+ * @retval	0 	if EOD (no data currently avalable)
+ * @retval	-1 	if error
+ * @retval	-2 	if EOF (stream closed)
+ */
+static int tcp_read(int fd)
+{
+	gss_ctx_id_t		sec_ctx;
+	struct	tcpdisbuf	*out;
+	
+	sec_ctx = tcp_get_seccontext(fd);
+	out = tcp_get_readbuf(fd);
+	
+	// if this connection is not unsecured, use simple tcp read
+	if (sec_ctx == GSS_C_NO_CONTEXT)
+            return tcp_read_buff(fd,out);
+	
+	int read;
+	gss_buffer_desc        *dec;
+	dec = tcp_get_decryptbuf(fd);
+	
+	// if we have decoded data, simply copy it into the read buffer
+        if ((read = tcp_fillbuffer(out,dec)) > 0)
+            return read;
+	
+	// we do not have decoded data, we need to read new data into coded buffer
+	struct	tcpdisbuf	*enc;
+	enc = tcp_get_encryptbuf(fd);
+		
+	read = tcp_read_buff(fd,enc);
+	
+	if (read <= 0) // EOF or read error
+		return read;
+	
+	if (enc->tdis_eod - enc->tdis_lead >= 4) {
+		
+		// decode the header with packet size
+		int l = 0;
+		for (int i=0; i<4; i++)
+		{
+	                l = l<<8 | (enc->tdis_thebuf[enc->tdis_lead] & 0xff);
+			enc->tdis_lead++;
+		}
+		
+		/*
+		 * if the buffer is to small to have read the entire gss token,
+		 * make the buffer bigger and call read again to read the rest from the
+		 * socket. Then proceed.
+		 */
+		if (l+4 > enc->tdis_bufsize)
+			tcp_buff_resize(enc, l+4);
+		
+		// try to read the encrypted message (on error, fail)
+		if ((read = tcp_read_buff(fd, enc)) < 0)
+                    return read;
+
+		
+		if (enc->tdis_eod - enc->tdis_lead >= l) {
+			
+			OM_uint32 major, minor;
+			gss_buffer_desc msg_in;
+
+			msg_in.length = l;
+			msg_in.value = &enc->tdis_thebuf[enc->tdis_lead];
+
+			major = gss_unwrap(&minor, sec_ctx, &msg_in, dec, NULL, NULL);
+
+			enc->tdis_lead += l;
+			enc->tdis_trail = enc->tdis_lead;	/* commit */
+
+			if (major != GSS_S_COMPLETE) {
+				gss_release_buffer(&minor, dec);
+				return(-1);
+			}
+
+			if (dec->length == 0)
+				return -2;
+			
+			if ((read = tcp_fillbuffer(out,dec)) > 0)
+				return read;
+			
+			return -2;
+            } else {
+                out->tdis_lead = out->tdis_trail;	/* uncommit */
+                return -2;
+            }
+
+	} else {
+		// we were not able to read enough data to read the message header
+		return -2; // EOF
+	}
+}
+
+/** \brief Associate GSSAPI information with a TCP channel
+ *
+ * \param fd TCP channel descriptor
+ * \param ctx Kerberos security context
+ * \param flags
+ * \returns \c PBSGSS_OK on SUCCESS, \c PBSGSS_ERR_INTERNAL when memory couldn't be allocated
+ */
+int DIS_tcp_set_gss(int fd, gss_ctx_id_t ctx, OM_uint32 flags)
+{
+	int rc;
+	rc = pbs_client_thread_lock_tcp();
+	assert(rc == 0);
+
+	tcparray[fd]->gssctx = ctx;
+	tcparray[fd]->Confidential = (flags & GSS_C_CONF_FLAG);
+	struct tcpdisbuf *tp = &tcparray[fd]->gssrdbuf;
+	
+	rc = pbs_client_thread_unlock_tcp();
+	assert(rc == 0);
+	
+	OM_uint32 major, minor, bufsize;
+	major = gss_wrap_size_limit(&minor, ctx, (flags & GSS_C_CONF_FLAG), GSS_C_QOP_DEFAULT, THE_BUF_SIZE, &bufsize);
+
+	/* reallocate the gss buffer if it's too small to handle the wrapped
+	 * version of the largest unwrapped message
+	 */
+	if (major == GSS_S_COMPLETE)
+	{
+		if (tp->tdis_bufsize < bufsize)
+			tcp_buff_resize(tp,bufsize);
+
+		return PBSGSS_OK;
+	} else {
+		return PBSGSS_ERR_WRAPSIZE;
+	}
+} /* END DIS_tcp_set_gss */
+
+/* Ensure true failure or full write on file descriptor */
+int ensured_write(int fd, char *buff, size_t buff_size)
+{
+	char *pb = buff;
+	size_t ct = buff_size;
+	struct	pollfd pollfds[1];
+
+	int	i,j;
+
+	while ((ct > 0) && (i = write(fd, pb, ct)) != ct) {
+
+		if (i < 0) {
+			if (errno == EINTR)
+				continue;
+
+			if (errno != EAGAIN) {
+				/* fatal error on write, abort output */
+				pbs_tcp_errno = errno;
+				return (-1);
+			}
+
+			/* write would have blocked (EAGAIN returned) */
+			/* poll for socket to be ready to accept, if  */
+			/* not ready in TIMEOUT_SHORT seconds, fail   */
+			/* redo the poll if EINTR		      */
+			do {
+
+			    pollfds[0].fd = fd;
+			    pollfds[0].events = POLLOUT;
+			    pollfds[0].revents = 0;
+			    j = poll(pollfds, 1, PBS_DIS_TCP_TIMEOUT_SHORT * 1000);
+
+			} while ((j == -1) && (errno == EINTR));
+
+			if (j == 0) {
+				/* never came ready, return error */
+				/* pbs_tcp_errno will add to log message */
+				pbs_tcp_errno = EAGAIN;
+				return (-1);
+			} else if (j == -1) {
+				/* some other error - fatal */
+				pbs_tcp_errno = errno;
+				return (-1);
+			}
+
+			continue;	/* socket ready, retry write */
+		}
+
+		/* write succeeded, do more if needed */
+		ct -= i;
+		pb += i;
+	}
+
+	return buff_size;
+}
+
+/**
+ * @brief
+ * 	-DIS_tcp_wflush - flush tcp/dis write buffer
+ *
+ * @par Functionality:
+ *	Writes "committed" data in buffer to file discriptor,
+ *	packs remaining data (if any), resets pointers
+ *
+ * @return	int
+ * @retval	0	success
+ * @retval	-1	error
+ *
+ */
+int DIS_tcp_wflush(int fd) 
+{
+	size_t	ct;
+	char	*pb;
+
+	gss_ctx_id_t context  = tcp_get_seccontext(fd);
+	struct	tcpdisbuf *tp = tcp_get_writebuf(fd);
+
+	pb = tp->tdis_thebuf;
+	ct = tp->tdis_trail;
+	if (ct == 0) // no data to write
+		return 0;
+	
+	OM_uint32 major, minor = 0;
+	gss_buffer_desc msg_in, msg_out;
+
+        // encode the message and send it out
+        msg_out.value = NULL;
+        msg_out.length = 0;
+        if (context != GSS_C_NO_CONTEXT)
+        {
+		int confidential_flag = tcp_get_confidential_flag(fd);
+		int conf_state = 0;
+
+		msg_in.value  = pb;
+		msg_in.length = ct;
+		major = gss_wrap(&minor, context, confidential_flag, GSS_C_QOP_DEFAULT, &msg_in, &conf_state, &msg_out);
+		if (major != GSS_S_COMPLETE)
+		{
+			gss_release_buffer(&minor, &msg_out);
+			return(-1);
+		}
+
+		if (confidential_flag && !conf_state)
+		{
+			gss_release_buffer(&minor, &msg_out);
+			return(-1);
+		}		
+		
+		// encode header with the coded message size
+		unsigned char nct[4];
+		ct = msg_out.length;
+		for (int i = sizeof(nct); i > 0; ct>>=8)
+			nct[--i] = ct & 0xff;
+
+		pbs_tcp_errno = 0;
+		int ret = ensured_write(fd,(char*)nct,sizeof(nct));
+		if (ret != sizeof(nct))
+		{
+			gss_release_buffer(&minor,&msg_out);
+			return -1;
+		}
+
+		pb = msg_out.value;
+		ct = msg_out.length;
+	}
+
+	pbs_tcp_errno = 0;
+        int ret = ensured_write(fd,pb,ct);
+        if (ret != ct)
+        {
+            gss_release_buffer(&minor,&msg_out);
+            return -1;
+        }
+
+	tp->tdis_eod = tp->tdis_lead;
+	tcp_pack_buff(tp);
+	gss_release_buffer(&minor, &msg_out);
+	return 0;
+}
+
+#else
+
 /**
  * @brief
  * 	-tcp_read - read data from tcp stream to "fill" the buffer
@@ -278,20 +758,9 @@ tcp_read(int fd)
 
 	tcp_pack_buff(tp);
 
-	if ((tp->tdis_bufsize - tp->tdis_eod) < 20) {
-
-		/* no need to lock mutex here, this is per fd resize */
-		/* needing a larger buffer area for the data */
-
-		tp->tdis_bufsize += THE_BUF_SIZE;
-		tmcp = (char *)realloc(tp->tdis_thebuf,
-			sizeof(char)*tp->tdis_bufsize);
-		if (tmcp != NULL) {
-			tp->tdis_thebuf = tmcp;
-		} else {
-			/* realloc failed */
+	if ((tp->tdis_bufsize - tp->tdis_eod) < 64) {
+		if (tcp_buff_resize(tp,tp->tdis_bufsize + THE_BUF_SIZE) != 0)
 			return -1;
-		}
 	}
 
 	/*
@@ -327,30 +796,6 @@ tcp_read(int fd)
 		tp->tdis_eod += i;
 
 	return ((i == 0) ? -2 : i);
-}
-
-/**
- * @brief
- * 	-DIS_wflush - Wrapper function to do a tcp or TPP write buffer
- *
- * @par	Functionality:
- * 	calls DIS_tcp_wflush or rpp_flush based on input parameter rpp
- *
- * @param[in] sock - socket descriptor
- * @param[in] rpp - indication to use rpp or not
- *
- * @return	int
- * @retval	0	success
- * @retval	-1	error
- *
- */
-int
-DIS_wflush(int sock, int rpp)
-{
-	if (rpp)
-		return (rpp_flush(sock));
-	else
-		return (DIS_tcp_wflush(sock));
 }
 
 /**
@@ -425,6 +870,32 @@ DIS_tcp_wflush(int fd)
 	tp->tdis_eod = tp->tdis_lead;
 	tcp_pack_buff(tp);
 	return 0;
+}
+
+#endif
+
+/**
+ * @brief
+ * 	-DIS_wflush - Wrapper function to do a tcp or TPP write buffer
+ *
+ * @par	Functionality:
+ * 	calls DIS_tcp_wflush or rpp_flush based on input parameter rpp
+ *
+ * @param[in] sock - socket descriptor
+ * @param[in] rpp - indication to use rpp or not
+ *
+ * @return	int
+ * @retval	0	success
+ * @retval	-1	error
+ *
+ */
+int
+DIS_wflush(int sock, int rpp)
+{
+	if (rpp)
+		return (rpp_flush(sock));
+	else
+		return (DIS_tcp_wflush(sock));
 }
 
 /**
@@ -565,7 +1036,6 @@ static int
 tcp_puts(int fd, const char *str, size_t ct)
 {
 	struct	tcpdisbuf	*tp;
-	char			*tmcp;
 
 	tp = tcp_get_writebuf(fd);
 	if ((tp->tdis_bufsize - tp->tdis_lead) < ct) {
@@ -578,13 +1048,8 @@ tcp_puts(int fd, const char *str, size_t ct)
 			/* no need to lock mutex here, per fd resize */
 			size_t	ru = (ct + tp->tdis_lead) / THE_BUF_SIZE;
 
-			tp->tdis_bufsize = (ru + 1) * THE_BUF_SIZE;
-			tmcp = (char *)realloc(tp->tdis_thebuf,
-				sizeof(char)*tp->tdis_bufsize);
-			if (tmcp != NULL)
-				tp->tdis_thebuf = tmcp;
-			else
-				return -1;	/* realloc failed */
+			if (tcp_buff_resize(tp,(ru+1)*THE_BUF_SIZE) != 0)
+				return -1;
 		}
 	}
 	(void)memcpy(&tp->tdis_thebuf[tp->tdis_lead], str, ct);
@@ -725,12 +1190,60 @@ DIS_tcp_setup(int fd)
 		tcp->writebuf.tdis_thebuf = malloc(THE_BUF_SIZE);
 		assert(tcp->writebuf.tdis_thebuf != NULL);
 		tcp->writebuf.tdis_bufsize = THE_BUF_SIZE;
+		
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+		tcp->gssrdbuf.tdis_thebuf = malloc(THE_BUF_SIZE);
+		assert(tcp->gssrdbuf.tdis_thebuf != NULL);
+		tcp->gssrdbuf.tdis_bufsize = THE_BUF_SIZE;
+
+		tcp->gssctx = GSS_C_NO_CONTEXT;
+		tcp->unwrapped.value = NULL;
+		tcp->unwrapped.length = 0;		
+#endif
 	}
 
 	/* initialize read and write buffers */
 	DIS_tcp_clear(&tcp->readbuf);
 	DIS_tcp_clear(&tcp->writebuf);
+	
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+        DIS_tcp_clear(&tcp->gssrdbuf);
+
+        OM_uint32 minor;
+        if (tcp->unwrapped.value)
+            gss_release_buffer (&minor, &tcp->unwrapped);
+
+        tcp->gssctx = GSS_C_NO_CONTEXT; // reset context before each request	
+#endif
 
 	rc = pbs_client_thread_unlock_tcp();
 	assert(rc == 0);
 }
+
+/*
+ * DIS_tcp_release - release GSSAPI structures associated with fd
+ */
+void DIS_tcp_release(int fd)
+{
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	int rc;
+	rc = pbs_client_thread_lock_tcp();
+	assert(rc == 0);		
+	
+	if (tcparray != NULL && tcparray[fd] != NULL)
+	{
+		OM_uint32 minor;
+		if (tcparray[fd]->gssctx != GSS_C_NO_CONTEXT)
+		{
+			(void)gss_delete_sec_context (&minor, &tcparray[fd]->gssctx, GSS_C_NO_BUFFER);
+			tcparray[fd]->gssctx = GSS_C_NO_CONTEXT;
+		}
+
+		if (tcparray[fd]->unwrapped.value)
+			gss_release_buffer (&minor, &tcparray[fd]->unwrapped);
+	}
+	
+	rc = pbs_client_thread_unlock_tcp();
+	assert(rc == 0);
+#endif
+}  /* END DIS_tcp_release() */

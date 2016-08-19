@@ -43,7 +43,8 @@ pbs_mom_CPPFLAGS = \
 	-I$(top_srcdir)/src/resmom/${PBS_MACH} \
 	@hwloc_flags@ \
 	@hwloc_inc@ \
-	@PYTHON_INCLUDES@
+	@PYTHON_INCLUDES@ \
+	@KRB5_CFLAGS@
 
 pbs_mom_LDADD = \
 	$(top_builddir)/src/lib/Libattr/libattr.a \
@@ -59,7 +60,8 @@ pbs_mom_LDADD = \
 	@PYTHON_LIBS@ \
 	@mom_mach_libs@ \
 	-lssl \
-	-lcrypto
+	-lcrypto \
+	@KRB5_LIBS@
 
 pbs_mom_SOURCES = \
 	$(top_builddir)/src/server/job_attr_def.c \
@@ -91,7 +93,11 @@ pbs_mom_SOURCES = \
 	rm_dep.h \
 	stage_func.c \
 	start_exec.c \
-	vnode_storage.c
+	vnode_storage.c \
+	renew.c \
+	renew.h
+
+
 
 if ALPS_ENABLED
 pbs_mom_CPPFLAGS += -DMOM_ALPS=1 @expat_inc@

@@ -145,6 +145,7 @@ static enum job_atr attrs_to_copy[] = {
 	JOB_ATR_reserve_ID,
 	JOB_ATR_project,
 	JOB_ATR_run_version,
+	JOB_ATR_job_host,
 	JOB_ATR_LAST		/* This MUST be LAST	*/
 };
 
