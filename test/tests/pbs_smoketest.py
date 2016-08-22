@@ -229,7 +229,7 @@ class SmokeTest(PBSTestSuite):
         a = {'resources_available.ncpus': 20, 'sharing': 'force_excl'}
         momstr = self.mom.create_vnode_def('testnode', a, 10)
         self.mom.insert_vnode_def(momstr)
-        self.server.manager(MGR_CMD_CREATE, NODE, None, self.server.hostname)
+        self.server.manager(MGR_CMD_CREATE, NODE, None, self.mom.hostname)
         a = {'resources_available.ncpus=20': 10}
         self.server.expect(VNODE, a, count=True, interval=5)
 
@@ -681,11 +681,11 @@ class SmokeTest(PBSTestSuite):
         jid = self.server.submit(j)
         a = {'job_state': 'R', 'substate': 42}
         self.server.expect(JOB, a, id=jid)
-        printjob = os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin',
+        printjob = os.path.join(self.mom.pbs_conf['PBS_EXEC'], 'bin',
                                 'printjob')
-        jbfile = os.path.join(self.server.pbs_conf['PBS_HOME'], 'mom_priv',
+        jbfile = os.path.join(self.mom.pbs_conf['PBS_HOME'], 'mom_priv',
                               'jobs', jid + '.JB')
-        ret = self.du.run_cmd(self.server.hostname, cmd=[printjob, jbfile],
+        ret = self.du.run_cmd(self.mom.hostname, cmd=[printjob, jbfile],
                               sudo=True)
         self.assertEqual(ret['rc'], 0)
 
@@ -925,13 +925,13 @@ class SmokeTest(PBSTestSuite):
         <ppid> in Suspended state else return False
         """
         state = 'T'
-        rv = self.pu.get_proc_state(self.server.shortname, ppid)
+        rv = self.pu.get_proc_state(self.mom.shortname, ppid)
         if rv != state:
             return False
-        childlist = self.pu.get_proc_children(self.server.shortname,
+        childlist = self.pu.get_proc_children(self.mom.shortname,
                                               ppid)
         for child in childlist:
-            rv = self.pu.get_proc_state(self.server.shortname, child)
+            rv = self.pu.get_proc_state(self.mom.shortname, child)
             if rv != state:
                 return False
         return True
@@ -962,8 +962,8 @@ class SmokeTest(PBSTestSuite):
             a = {'resources_available.ncpus': 3}
         else:
             a = {'resources_available.ncpus': 1}
-        self.server.create_vnodes(self.server.shortname, a, 1,
-                                  mom=self.mom, usenatvnode=True)
+        self.server.create_vnodes('vn', a, 1,
+                                  mom=self.mom)
         if isWithPreemt:
             self.do_preempt_config()
         j1 = Job(TEST_USER, attrs={'Resource_List.walltime': 100})

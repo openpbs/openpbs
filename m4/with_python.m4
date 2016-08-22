@@ -71,5 +71,8 @@ AC_DEFUN([PBS_AC_WITH_PYTHON],
   [PYTHON_PBS_IFL_OBJ="pbs_ifl_wrap.o"]
   AC_SUBST(PYTHON_PBS_IFL_OBJ)
   AC_DEFINE([PYTHON], [], [Defined when Python is available])
+  AS_IF([test "x$with_python" == "x"],
+    [AC_DEFINE_UNQUOTED([SYSTEM_PYTHON_PATH], ["$PYTHON"], [Python executable path])]
+  )
 ])
 
