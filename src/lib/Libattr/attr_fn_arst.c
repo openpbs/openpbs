@@ -493,7 +493,7 @@ set_arst(struct attribute *attr, struct attribute *new, enum batch_op op)
 						nsize = strlen(pas->as_string[i]) + 1;
 						pc = pas->as_string[i] + nsize;
 						need = pas->as_next - pc;
-						(void)memcpy(pas->as_string[i], pc, (int)need);
+						(void)memmove(pas->as_string[i], pc, (int)need);
 						pas->as_next -= nsize;
 						/* compact pointers */
 						for (++i; i < pas->as_npointers; i++)
