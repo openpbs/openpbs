@@ -74,19 +74,15 @@
 #include "job.h"
 
 
-/********************   NOTE - NOTE - NOTE   ****************************
- * All keys have been stripped from this file. The following note	*
- * remains for historical reasons:					*
- * The 'checkkey.c' file goes with the source package is stripped down	*
- * to remove the secret key used for the old style and Trial licenses.	*
- * We must not let the key out. However, any changes made to this file	*
- * must be made to the version in packages/common as well.		*
- ************************************************************************/
 
 char *pbs_licensing_license_location  = NULL;
 long pbs_min_licenses		= PBS_MIN_LICENSING_LICENSES;
 long pbs_max_licenses		= PBS_MAX_LICENSING_LICENSES;
 int  pbs_licensing_linger	= PBS_LIC_LINGER_TIME;
+
+/* Global Data Items: */
+extern pbs_list_head svr_alljobs;
+extern pbs_list_head svr_unlicensedjobs;
 
 extern pbs_net_t pbs_server_addr;
 unsigned long hostidnum;
@@ -168,5 +164,53 @@ check_license(struct license_block *licenses)
 {
 	hostidnum = pbs_get_hostid();
 	return (0);
+}
+
+
+
+/*
+ ************************************************************************
+ *
+ * 		Licensing Jobs Functions
+ *
+ ************************************************************************
+ */
+
+int
+set_cpu_licenses_need(job *pjob, char *exec_vnode)
+{
+	return 1;
+}
+
+static void
+report_license_highuse(void)
+{
+}
+
+void
+allocate_cpu_licenses(job *pjob)
+{
+	if (pjob == NULL) {
+		log_err(PBSE_INTERNAL, "allocate_cpu_licenses",
+			"pjob is NULL so no action taken");
+		return;
+	}
+	/* The following line works around the check in set_nodes() */
+	pjob->ji_licalloc = 1;
+}
+
+void
+deallocate_cpu_licenses(job *pjob)
+{
+}
+
+void
+clear_and_populate_svr_unlicensedjobs(void)
+{
+}
+
+void
+relicense_svr_unlicensedjobs(void)
+{
 }
 

@@ -2310,11 +2310,35 @@ main(int argc, char *argv[], char *envp[])
 		char *largv[3];
 		int ll;
 		char *pc, *pc2;
+
+#ifdef SYSTEM_PYTHON_PATH
+		snprintf(python_path, MAXPATHLEN, "%s", SYSTEM_PYTHON_PATH);
+		pc = strdup(SYSTEM_PYTHON_PATH);
+		if(pc == NULL) {
+			fprintf(stderr, "Out of memory\n");
+			return 1;
+		}
+		pc2 = strstr(pc,"bin/python");
+		if(pc2 == NULL) {
+			fprintf(stderr, "Python executable not found!\n");
+			return 1;
+		}
+		*pc2 = '\0';
+		if(strlen(pc) > 0) {
+			snprintf(python_prefix, MAXPATHLEN, "%s", pc);
+			free(pc);
+		} else {
+			fprintf(stderr, "Python home not found!\n");
+			return 1;
+		}
+		snprintf(python_envbuf, MAXBUF, "%s=%s", PYHOME, python_prefix);
+#else
 		snprintf(python_prefix, MAXPATHLEN, "%s/python",
 			pbs_conf.pbs_exec_path);
 		snprintf(python_path, MAXPATHLEN, "%s/bin/python",
 			python_prefix);
 		snprintf(python_envbuf, MAXBUF, "%s=%s", PYHOME, python_prefix);
+#endif
 
 		/* Linux/Unix: Create a local environment block (i.e. lenvp)    */
 		/* containing PYTHONHOME setting, and give to execve() when it	*/

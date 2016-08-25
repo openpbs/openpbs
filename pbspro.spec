@@ -130,12 +130,13 @@ Requires: libedit
 Requires: postgresql-server
 Requires: python >= 2.6
 Requires: python < 3.0
-Requires: sendmail
 Requires: tcl
 Requires: tk
 %if %{defined suse_version}
+Requires: smtp_daemon
 Requires: libical1
 %else
+Requires: smtpdaemon
 Requires: libical
 %endif
 Autoreq: 1

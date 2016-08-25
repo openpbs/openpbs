@@ -1,36 +1,36 @@
 /*
  * Copyright (C) 1994-2016 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
- *  
+ *
  * This file is part of the PBS Professional ("PBS Pro") software.
- * 
+ *
  * Open Source License Information:
- *  
+ *
  * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free 
- * Software Foundation, either version 3 of the License, or (at your option) any 
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
  * later version.
- *  
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+ *
+ * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
  * PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
- *  
- * You should have received a copy of the GNU Affero General Public License along 
+ *
+ * You should have received a copy of the GNU Affero General Public License along
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
- *  
- * Commercial License Information: 
- * 
- * The PBS Pro software is licensed under the terms of the GNU Affero General 
- * Public License agreement ("AGPL"), except where a separate commercial license 
+ *
+ * Commercial License Information:
+ *
+ * The PBS Pro software is licensed under the terms of the GNU Affero General
+ * Public License agreement ("AGPL"), except where a separate commercial license
  * agreement for PBS Pro version 14 or later has been executed in writing with Altair.
- *  
- * Altair’s dual-license business model allows companies, individuals, and 
- * organizations to create proprietary derivative works of PBS Pro and distribute 
- * them - whether embedded or bundled with other software - under a commercial 
+ *
+ * Altair’s dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of PBS Pro and distribute
+ * them - whether embedded or bundled with other software - under a commercial
  * license agreement.
- * 
- * Use of Altair’s trademarks, including but not limited to "PBS™", 
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+ *
+ * Use of Altair’s trademarks, including but not limited to "PBS™",
+ * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
  * trademark licensing policies.
  *
  */
@@ -93,6 +93,7 @@ char *cnvt_est_start_time(char *start_time, int shortform);
 #define ALT_DISPLAY_w   0x1000	/* -[a|s|n]w - wide output */
 #define ALT_DISPLAY_T   0x2000  /* -T option - estimated start times */
 #endif /* not PBS_NO_POSIX_VIOLATION */
+#define HPCBP_EXEC_TAG  "jsdl-hpcpa:Executable"
 
 static struct attrl basic_attribs[] = {
 	{	&basic_attribs[1],
@@ -245,14 +246,14 @@ istrue(char *string)
  *	sets single character for each state of job
  *
  * @param[in] string - string holding state of job
- * @param[in] q      - string holding string for que 
- * @param[in] r      - string holding string for run 
- * @param[in] h      - string holding string for hld 
- * @param[in] w      - string holding string for wait 
+ * @param[in] q      - string holding string for que
+ * @param[in] r      - string holding string for run
+ * @param[in] h      - string holding string for hld
+ * @param[in] w      - string holding string for wait
  * @param[in] t      - string holding string for transit
  * @param[in] e      - string holding string for end
  * @param[in] len    - length of string
- * 
+ *
  * @return Void
  *
  */
@@ -295,7 +296,7 @@ states(char *string, char *q, char *r, char *h, char *w, char *t, char *e, int l
 
 
 /**
- * @brief 
+ * @brief
  *	print a attribute value string, formating to break at a comma if possible
  *
  * @param[in] n - attribute name
@@ -367,7 +368,7 @@ prt_attr(char *n, char *r, char *v)
  *	if present and (2) break line at '+' sign.
  *
  * @param[in] nodes - name of exechosts
- * @param[in] no_newl - int value to decide which comment to be set 
+ * @param[in] no_newl - int value to decide which comment to be set
  *
  * @return Void
  *
@@ -436,7 +437,7 @@ prt_nodes(char *nodes, int no_newl)
  * @param[in] opt   - option indicating which conversion
  *
  * @return string
- * @retval string holding magnitude 
+ * @retval string holding magnitude
  *
  */
 
@@ -1012,6 +1013,7 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 	char format[80];
 	char long_name[SIZEJOBNAME + 1] = {'\0'};
 	char *cmdargs = (char *)0;
+	char *hpcbp_executable;
 
 	sprintf(format, "%%-%ds %%-%ds %%-%ds  %%%ds %%%ds %%-%ds\n",
 		PBS_MAXSEQNUM+10, NAMEL, OWNERL, TIMEUL, STATEL, LOCL);
@@ -1040,13 +1042,14 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 		arsct = NULL;
 		state = NULL;
 		location = NULL;
+		hpcbp_executable = NULL;
 		if (full) {
 			printf("Job Id: %s\n", p->name);
 			a = p->attribs;
 			while (a != NULL) {
 				if (a->name != NULL) {
 					time_t epoch;
-					
+
 					if (strcmp(a->name, ATTR_ctime) == 0 ||
 						strcmp(a->name, ATTR_etime) == 0 ||
 						strcmp(a->name, ATTR_stime) == 0 ||
@@ -1077,6 +1080,22 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 					} else if (strcmp(a->name, ATTR_submit_arguments) == 0) {
 						(void)decode_xml_arg_list_str((a->value),  &cmdargs);
 						prt_attr(a->name, a->resource, cmdargs);
+						printf("\n");
+					} else if (strcmp(a->name, ATTR_executable) == 0) {
+						/*
+						 * Prefix and suffix attribute value with
+						 * HPCBP_EXEC_TAG value.
+						 */
+						hpcbp_executable =
+								malloc((strlen(HPCBP_EXEC_TAG) * 2) +
+								sizeof("<></>") + strlen(a->value) + 1);
+						if (hpcbp_executable == NULL) {
+								fprintf(stderr, "cannot malloc space\n");
+								exit(1);
+						}
+						(void)sprintf(hpcbp_executable, "<%s>%s</%s>",
+								HPCBP_EXEC_TAG, a->value, HPCBP_EXEC_TAG);
+						prt_attr(a->name, a->resource, hpcbp_executable);
 						printf("\n");
 					} else {
 						prt_attr(a->name, a->resource, a->value);
@@ -1765,7 +1784,7 @@ tcl_stat(char *type, struct  batch_status  *bs, int tcl_opt)
  * @brief
  *	set tcl status .
  *
- * @param[in] type - type 
+ * @param[in] type - type
  * @param[in] bs - batch request for tcl status
  * @param[in] f_opt - file option
  *
@@ -2687,7 +2706,7 @@ svr_no_args:
 
 
 /**
- * @brief 
+ * @brief
  *	cvtResvstate - converts a job reservation "state code" to
  *	descriptive text string
  *

@@ -412,8 +412,10 @@ go_to_background()
 
 	lock_out(lockfds, F_UNLCK);
 	rc = fork();
-	if (rc == -1) /* fork failed */
+	if (rc == -1) { /* fork failed */
+		log_err(errno, msg_daemonname, "fork failed");
 		return ((pid_t) -1);
+	}
 	if (rc > 0)
 		exit(0); /* parent goes away, allowing booting to continue */
 
