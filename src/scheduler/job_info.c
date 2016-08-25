@@ -2900,17 +2900,24 @@ select_index_to_preempt(status *policy, resource_resv *hjob,
 			case QUEUE_PROJECT_RES_LIMIT_REACHED:
 			case QUEUE_BYPROJECT_RES_LIMIT_REACHED:
 			case INSUFFICIENT_RESOURCE:
-				limitres_injob=0;
-				req_scan=rjobs[i]->resreq;
-				while (req_scan)
+				limitres_injob = 0;
+				for (j = 0; rjobs[i]->select->chunks[j] != NULL; j++)
 				{
-					if ( strcmp(req_scan->name,limitres_name) == 0 &&
-					     req_scan->amount > 0 )
+					req_scan=rjobs[i]->select->chunks[j]->req;
+					while (req_scan)
 					{
-						limitres_injob = 1;
-						break;
+						if ( strcmp(req_scan->name,limitres_name) == 0 )
+						{
+							if ((req_scan->type.is_non_consumable) ||
+								(req_scan->amount > 0)) {
+								limitres_injob = 1;
+								break;
+							}
+						}
+						req_scan = req_scan->next;
 					}
-					req_scan = req_scan->next;
+					if (limitres_injob == 1)
+						 break;
 				}
 
 				break;
