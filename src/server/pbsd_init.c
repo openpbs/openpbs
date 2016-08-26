@@ -390,6 +390,9 @@ pbsd_init(int type)
 	void		*state = NULL;
 	pbs_db_conn_t	*conn = (pbs_db_conn_t *) svr_db_conn;
 	int	nslneed;
+	char *buf = NULL;
+	int buf_len = 0;
+
 	char msg_bad_socket_failover[] = "invalid failover configuration - "
 		"socket-licensed nodes but no valid "
 	"socket license file";
@@ -1449,6 +1452,59 @@ pbsd_init(int type)
 #endif
 
 	hook_track_recov();
+	
+	/* Check to see that jobs in the maintenance_jobs attribute on a node still exist
+	 * If they don't exist any more, remove them from a node's maintenance_jobs attribute
+	 */
+	buf = NULL;
+	buf_len = 0;
+	for (i=0; i<svr_totnodes; i++) {
+		struct array_strings *arst;
+		arst = pbsndlist[i]->nd_attr[(int)ND_ATR_MaintJobs].at_val.at_arst;
+		if (pbsndlist[i]->nd_attr[(int)ND_ATR_MaintJobs].at_flags & ATR_VFLAG_SET && 
+		    arst->as_usedptr > 0) {
+			int j;
+			int len = 0;
+			int cur_len = 0;
+			attribute new;
+
+			for(j = 0; j < arst->as_usedptr; j++)
+				len += strlen(arst->as_string[j]) + 1; /* 1 for the comma*/
+			
+			if(len > buf_len) {
+				char *tmp_buf;
+				tmp_buf = realloc(buf, len + 1);
+				if(tmp_buf == NULL) {
+					free(buf);
+					return (-1);
+				}
+				else {
+					buf = tmp_buf;
+					buf_len = len;
+				}
+			}
+			buf[0] = '\0';
+			for(j = 0; j < arst->as_usedptr; j++) {
+				if(find_job(arst->as_string[j]) == NULL) {
+					strncat(buf, arst->as_string[j], len);
+					strncat(buf, ",", len);
+					buf[len] = '\0';
+				}
+			}
+			/* Did we find a string we need to remove*/
+			cur_len = strlen(buf);
+			if(cur_len > 0) {
+				buf[cur_len - 1] = '\0'; /* remove trailing comma */
+				clear_attr(&new, &node_attr_def[(int) ND_ATR_MaintJobs]);
+				decode_arst(&new, ATTR_NODE_MaintJobs, NULL, buf);
+				set_arst(&pbsndlist[i]->nd_attr[(int) ND_ATR_MaintJobs], &new, DECR);
+			}
+
+			if(arst->as_usedptr > 0)
+				set_vnode_state(pbsndlist[i], INUSE_MAINTENANCE, Nd_State_Or);
+		}
+	}
+	free(buf);
 
 	/* purge deleted hooks */
 	phook = (hook *)GET_NEXT(svr_allhooks);

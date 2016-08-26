@@ -296,6 +296,7 @@ char *msg_hook_reject = "hook rejected request";
 char *msg_hook_reject_rerunjob = "hook rejected request, requiring job to be rerun";
 char *msg_hook_reject_deletejob = "hook rejected request, requiring job to be deleted";
 char *msg_ival_obj_name = "Invalid object name";
+char *msg_wrong_resume =	"Job can not be resumed with the requested resume signal";
 
 /* Provisioning specific */
 char *msg_provheadnode_error    = "Cannot set provisioning attribute on host running PBS server and scheduler";
@@ -551,6 +552,7 @@ struct pbs_err_to_txt pbs_err_to_txt[] = {
 	{PBSE_JOB_MOVED, &msg_job_moved},
 	{PBSE_JOBSCRIPTMAXSIZE, &msg_jobscript_max_size},
 	{PBSE_BADJOBSCRIPTMAXSIZE,&msg_badjobscript_max_size},
+	{PBSE_WRONG_RESUME, &msg_wrong_resume},
 	{ 0, (char **)0 }		/* MUST be the last entry */
 };
 

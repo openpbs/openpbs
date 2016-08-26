@@ -313,8 +313,8 @@ encode_arst(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, i
 	pc    = pal->al_value;
 	pfrom = attr->at_val.at_arst->as_buf;
 
-	/* replace nulls between sub-strings with separater characters */
-	/* in the futue we need to escape any embedded special character */
+	/* replace nulls between sub-strings with separator characters */
+	/* in the future we need to escape any embedded special character */
 
 	end = attr->at_val.at_arst->as_next;
 	while (pfrom < end) {

@@ -93,6 +93,7 @@ enum nodeattr {
 	ND_ATR_ProvisionEnable,
 	ND_ATR_current_aoe,	/* current AOE instantiated */
 	ND_ATR_in_multivnode_host,
+	ND_ATR_MaintJobs,
 	ND_ATR_License,
 	ND_ATR_LicenseInfo,
 	ND_ATR_TopologyInfo,
@@ -126,7 +127,7 @@ typedef struct mominfo mominfo_t;
  */
 
 struct mom_svrinfo {
-	int	      msr_state;   /* Mom's state */
+	unsigned long msr_state;   /* Mom's state */
 	long	      msr_pcpus;   /* number of physical cpus reported by Mom */
 	long	      msr_acpus;   /* number of avail    cpus reported by Mom */
 	u_Long	      msr_pmem;	   /* amount of physical mem  reported by Mom */
@@ -237,7 +238,7 @@ struct node_req {
 struct	pbssubn {
 	struct pbssubn	*next;
 	struct jobinfo	*jobs;
-	long		 inuse;
+	unsigned long	 inuse;
 	long		 index;
 };
 
@@ -265,7 +266,7 @@ struct	pbsnode {
 	long			 nd_nsnfree;	/* number of VPs free */
 	long			 nd_ncpus;	/* number of phy cpus on node */
 	short			 nd_written;	/* written to nodes file */
-	unsigned short		 nd_state;	/* state of node */
+	unsigned long		 nd_state;	/* state of node */
 	unsigned short	 	 nd_ntype;	/* node type */
 	unsigned short		 nd_accted;	/* resc recorded in job acct */
 	struct pbs_queue	*nd_pque;	/* queue to which it belongs */
@@ -281,8 +282,11 @@ enum	part_flags { PART_refig, PART_add, PART_rmv };
 
 
 /*
- * The following INUSE_* values are used in both "subnode.inuse" and
- * in "node.nd_state"
+ * The following INUSE_* flags are used for several structures
+ * (subnode.inuse, node.nd_state, and mom_svrinfo.msr_state).
+ * The database schema stores node.nd_state as a 4 byte integer.
+ * If more than 32 flags bits need to be added, the database schema will
+ * need to be updated.  If not, the excess flags will be lost upon server restart
  */
 #define	INUSE_FREE	 0x00	/* Node has one or more avail VPs	*/
 #define	INUSE_OFFLINE	 0x01	/* Node was removed by administrator	*/
@@ -307,12 +311,14 @@ enum	part_flags { PART_refig, PART_add, PART_rmv };
 #define INUSE_OFFLINE_BY_MOM 0x4000 /* Node is offlined by mom */
 #define INUSE_MARKEDDOWN 0x8000 /* TPP layer marked node down */
 #define INUSE_NEEDS_UPDATE	0x10000	/* Node needs to be informed of a cluster information update */
+#define INUSE_MAINTENANCE	0x20000 /* Node has a job in the admin suspended state */
+
 
 #define VNODE_AVAILABLE (INUSE_FREE | INUSE_JOB | INUSE_JOBEXCL | \
 			 INUSE_RESVEXCL | INUSE_BUSY)
 #define VNODE_UNAVAILABLE (INUSE_STALE | INUSE_OFFLINE | INUSE_DOWN | \
-			   INUSE_DELETED | INUSE_UNKNOWN | \
-			   INUSE_UNRESOLVABLE | INUSE_OFFLINE_BY_MOM)
+			   INUSE_DELETED | INUSE_UNKNOWN | INUSE_UNRESOLVABLE \
+			   | INUSE_OFFLINE_BY_MOM | INUSE_MAINTENANCE)
 
 /* the following are used in Mom's internal state			*/
 #define MOM_STATE_DOWN	 INUSE_DOWN
@@ -330,7 +336,7 @@ enum	part_flags { PART_refig, PART_add, PART_rmv };
 /* bits both in nd_state and inuse	*/
 #define INUSE_SUBNODE_MASK (INUSE_OFFLINE|INUSE_OFFLINE_BY_MOM|INUSE_DOWN|INUSE_JOB|INUSE_STALE|\
 INUSE_JOBEXCL|INUSE_BUSY|INUSE_UNKNOWN|INUSE_INIT|INUSE_PROV|INUSE_WAIT_PROV|\
-INUSE_RESVEXCL|INUSE_UNRESOLVABLE)
+INUSE_RESVEXCL|INUSE_UNRESOLVABLE|INUSE_MAINTENANCE)
 
 #define INUSE_COMMON_MASK  (INUSE_OFFLINE|INUSE_DOWN)
 /* state bits that go from node to subn */
@@ -402,7 +408,7 @@ extern	void vnode_unavailable(struct pbsnode *, int);
 extern	void vnode_available(struct pbsnode *);
 extern	int find_degraded_occurrence(resc_resv *, struct pbsnode *, enum vnode_degraded_op);
 extern	int find_vnode_in_execvnode(char *, char *);
-extern	void set_vnode_state(struct pbsnode *, int , enum vnode_state_op);
+extern	void set_vnode_state(struct pbsnode *, unsigned long , enum vnode_state_op);
 extern	struct resvinfo *find_vnode_in_resvs(struct pbsnode *, enum vnode_degraded_op);
 extern	void free_rinf_list(struct resvinfo *);
 extern	void degrade_offlined_nodes_reservations(void);

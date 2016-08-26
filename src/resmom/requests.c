@@ -1967,9 +1967,9 @@ req_signaljob(struct batch_request *preq)
 			reply_ack(preq);
 		}
 		return;
-	} else if (strcmp(sname, SIG_SUSPEND) == 0) {
+	} else if (strcmp(sname, SIG_SUSPEND) == 0  || strcmp(sname, SIG_ADMIN_SUSPEND) == 0) {
 		/**
-		 *		PBS pseudo signal to suppend a running job.
+		 *		PBS pseudo signal to suspend a running job.
 		 *		Job must be actually running.
 		 */
 		if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend) != 0) {
@@ -2002,7 +2002,7 @@ req_signaljob(struct batch_request *preq)
 		susp_resum(pjob, 1, preq);
 		return;
 #endif
-	} else if (strcmp(sname, SIG_RESUME) == 0) {
+	} else if (strcmp(sname, SIG_RESUME) == 0 || strcmp(sname, SIG_ADMIN_RESUME) == 0) {
 		/**
 		 *		PBS pseudo signal to resume a suspended job.
 		 */

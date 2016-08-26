@@ -68,6 +68,7 @@ extern "C" {
 #define ND_state_unknown	"state-unknown"
 #define ND_prov			"provisioning"
 #define ND_wait_prov		"wait-provisioning"
+#define ND_maintenance		"maintenance"
 #define ND_pbs			"PBS"
 #define ND_Default_Shared	"default_shared"
 #define ND_Default_Excl		"default_excl"
@@ -145,6 +146,8 @@ extern "C" {
 #define SIG_SUSPEND	"suspend"
 #define SIG_TermJob	"TermJob"
 #define SIG_RERUN	"Rerun"
+#define SIG_ADMIN_SUSPEND "admin-suspend"
+#define SIG_ADMIN_RESUME "admin-resume"
 
 
 #define PLACE_Group	"group"

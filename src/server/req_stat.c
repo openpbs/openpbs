@@ -627,7 +627,7 @@ status_node(struct pbsnode *pnode, struct batch_request *preq, pbs_list_head *ps
 	int		   rc = 0;
 	struct brp_status *pstat;
 	svrattrl	  *pal;
-	short		   old_nd_state = VNODE_UNAVAILABLE;
+	unsigned long		   old_nd_state = VNODE_UNAVAILABLE;
 
 	if (pnode->nd_state & INUSE_DELETED)  /*node no longer valid*/
 		return  (0);
@@ -637,19 +637,19 @@ status_node(struct pbsnode *pnode, struct batch_request *preq, pbs_list_head *ps
 
 	/* sync state attribute with nd_state */
 
-	if (pnode->nd_state != pnode->nd_attr[(int)ND_ATR_state].at_val.at_short) {
-		pnode->nd_attr[(int)ND_ATR_state].at_val.at_short = pnode->nd_state;
+	if (pnode->nd_state != pnode->nd_attr[(int)ND_ATR_state].at_val.at_long) {
+		pnode->nd_attr[(int)ND_ATR_state].at_val.at_long = pnode->nd_state;
 		pnode->nd_attr[(int)ND_ATR_state].at_flags |= ATR_VFLAG_MODIFY |
 			ATR_VFLAG_MODCACHE;
 	}
 
 	/*node is provisioning - mask out the DOWN/UNKNOWN flags while prov is on*/
-	if (pnode->nd_attr[(int)ND_ATR_state].at_val.at_short &
+	if (pnode->nd_attr[(int)ND_ATR_state].at_val.at_long &
 		(INUSE_PROV | INUSE_WAIT_PROV)) {
-		old_nd_state = pnode->nd_attr[(int)ND_ATR_state].at_val.at_short;
+		old_nd_state = pnode->nd_attr[(int)ND_ATR_state].at_val.at_long;
 
 		/* don't want to show job-busy, job/resv-excl while provisioning */
-		pnode->nd_attr[(int)ND_ATR_state].at_val.at_short &=
+		pnode->nd_attr[(int)ND_ATR_state].at_val.at_long &=
 			~(INUSE_DOWN | INUSE_UNKNOWN | INUSE_JOB |
 			INUSE_JOBEXCL | INUSE_RESVEXCL);
 	}
@@ -681,8 +681,8 @@ status_node(struct pbsnode *pnode, struct batch_request *preq, pbs_list_head *ps
 
 	/*reverting back the state*/
 
-	if (pnode->nd_attr[(int)ND_ATR_state].at_val.at_short & INUSE_PROV)
-		pnode->nd_attr[(int)ND_ATR_state].at_val.at_short = old_nd_state ;
+	if (pnode->nd_attr[(int)ND_ATR_state].at_val.at_long & INUSE_PROV)
+		pnode->nd_attr[(int)ND_ATR_state].at_val.at_long = old_nd_state ;
 
 
 	return (rc);

@@ -75,6 +75,7 @@
 
 static void post_signal_req(struct work_task *);
 static void req_signaljob2(struct batch_request *preq, job *pjob);
+void set_admin_suspend(job *pjob, int set_remove_nstate);
 
 /* Global Data Items: */
 
@@ -103,7 +104,8 @@ req_signaljob(struct batch_request *preq)
 	job		 *pjob;
 	job		 *parent;
 	char		 *range;
-	int		  susrsm = 0;	/* 1=suspend, -1=resume, 0=neither */
+	int		  suspend = 0;
+	int		  resume = 0;
 	char		 *vrange;
 	int		  x, y, z;
 
@@ -112,8 +114,13 @@ req_signaljob(struct batch_request *preq)
 	if (parent == (job *)0)
 		return;		/* note, req_reject already called */
 
-	if ((strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_RESUME) == 0) ||
-		(strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_SUSPEND) == 0)) {
+	if (strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_RESUME) == 0 || strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_ADMIN_RESUME) == 0)
+		resume = 1;
+	else if (strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_SUSPEND) == 0 || strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_ADMIN_SUSPEND) == 0)
+		suspend = 1;
+
+	
+	if (suspend || resume) {
 
 		if ((preq->rq_perm & (ATR_DFLAG_OPRD | ATR_DFLAG_OPWR |
 			ATR_DFLAG_MGRD | ATR_DFLAG_MGWR)) == 0) {
@@ -121,10 +128,6 @@ req_signaljob(struct batch_request *preq)
 			req_reject(PBSE_PERM, 0, preq);
 			return;
 		}
-		if (strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_RESUME) == 0)
-			susrsm = -1;
-		else
-			susrsm = 1;
 	}
 
 	if (jt == IS_ARRAY_NO) {
@@ -178,13 +181,11 @@ req_signaljob(struct batch_request *preq)
 			if (get_subjob_state(parent, i) == JOB_STATE_RUNNING) {
 				pjob = find_job(mk_subjob_id(parent, i));
 				if (pjob) {
-					/* if suspending,  skip those already suspened,  */
-					if ((susrsm == 1) &&
-						(pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend))
+					/* if suspending,  skip those already suspended,  */
+					if (suspend && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend))
 						continue;
 					/* if resuming, skip those not suspended         */
-					if ((susrsm == -1) &&
-						!(pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend))
+					if (resume && !(pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend))
 						continue;
 
 					dup_br_for_subjob(preq, pjob, req_signaljob2);
@@ -279,18 +280,28 @@ req_signaljob2(struct batch_request *preq, job *pjob)
 {
 	int		  rc;
 	char 		 *pnodespec;
+	int		suspend = 0;
+	int		resume = 0;
 
 	if ((pjob->ji_qs.ji_state != JOB_STATE_RUNNING)	||
-		((pjob->ji_qs.ji_state == JOB_STATE_RUNNING) &&
-		(pjob->ji_qs.ji_substate == JOB_SUBSTATE_PROVISION))) {
+		((pjob->ji_qs.ji_state == JOB_STATE_RUNNING) && (pjob->ji_qs.ji_substate == JOB_SUBSTATE_PROVISION))) {
 		req_reject(PBSE_BADSTATE, 0, preq);
 		return;
 	}
+	if ((strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_ADMIN_RESUME) == 0 && !(pjob->ji_qs.ji_svrflags & JOB_SVFLG_AdmSuspd)) ||
+		(strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_RESUME) == 0 && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_AdmSuspd))) {
+		req_reject(PBSE_WRONG_RESUME, 0, preq);
+		return;
+	}
+	
+	if (strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_RESUME) == 0 || strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_ADMIN_RESUME) == 0)
+		resume = 1;
+	else if (strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_SUSPEND) == 0 || strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_ADMIN_SUSPEND) == 0)
+		suspend = 1;
 
 	/* Special pseudo signals for suspend and resume require op/mgr */
 
-	if ((strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_RESUME) == 0) ||
-		(strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_SUSPEND) == 0)) {
+	if (suspend || resume) {
 
 		preq->rq_extra = pjob;	/* save job ptr for post_signal_req() */
 
@@ -299,10 +310,11 @@ req_signaljob2(struct batch_request *preq, job *pjob)
 			preq->rq_user, preq->rq_host);
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO,
 			pjob->ji_qs.ji_jobid, log_buffer);
-		if (strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_RESUME) == 0) {
+		if (resume) {
 			if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend) != 0) {
 
-				if (preq->rq_fromsvr == 1) {
+				if (preq->rq_fromsvr == 1 || 
+				    strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_ADMIN_RESUME) == 0) {
 					/* from Scheduler, resume job */
 					pnodespec = pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_val.at_str;
 					if (pnodespec) {
@@ -339,7 +351,7 @@ req_signaljob2(struct batch_request *preq, job *pjob)
 		pjob->ji_qs.ji_jobid, log_buffer);
 	rc = relay_to_mom(pjob, preq, post_signal_req);
 	if (rc) {
-		if (strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_RESUME)==0)
+		if (resume)
 			rel_resc(pjob);
 		req_reject(rc, 0, preq);	/* unable to get to MOM */
 	}
@@ -393,6 +405,8 @@ post_signal_req(struct work_task *pwt)
 	struct batch_request *preq;
 	int		      rc;
 	int		      ss;
+	int		suspend = 0;
+	int		resume = 0;
 
 	if (pwt->wt_aux2 != 1) /* not rpp */
 		svr_disconnect(pwt->wt_event);	/* disconnect from MOM */
@@ -400,6 +414,13 @@ post_signal_req(struct work_task *pwt)
 	preq = pwt->wt_parm1;
 	preq->rq_conn = preq->rq_orgconn;  /* restore client socket */
 	pjob = preq->rq_extra;
+	
+	if(strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_SUSPEND)==0 ||
+			strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_ADMIN_SUSPEND) == 0)
+		suspend = 1;
+	else if(strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_RESUME) == 0 ||
+			strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_ADMIN_RESUME) == 0)
+		resume = 1;
 
 	if ((rc = preq->rq_reply.brp_code)) {
 
@@ -410,7 +431,7 @@ post_signal_req(struct work_task *pwt)
 		errno = 0;
 		if (rc == PBSE_UNKJOBID)
 			rc = PBSE_INTERNAL;
-		if (strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_RESUME)==0) {
+		if (resume) {
 			/* resume failed, re-release resc and nodes */
 			rel_resc(pjob);
 		}
@@ -420,23 +441,88 @@ post_signal_req(struct work_task *pwt)
 
 		/* everything went ok for signal request at Mom */
 
-		if ((strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_SUSPEND)==0) && pjob && (pjob->ji_qs.ji_state == JOB_STATE_RUNNING)) {
+		if (suspend && pjob && (pjob->ji_qs.ji_state == JOB_STATE_RUNNING)) {
 			if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend) == 0) {
 				if (preq->rq_fromsvr == 1)
 					ss = JOB_SUBSTATE_SCHSUSP;
 				else
 					ss = JOB_SUBSTATE_SUSPEND;
 				pjob->ji_qs.ji_svrflags |= JOB_SVFLG_Suspend;
-				svr_setjobstate(pjob, JOB_STATE_RUNNING, ss);
 				rel_resc(pjob);  /* release resc and nodes */
+				if(strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_ADMIN_SUSPEND) == 0)
+					set_admin_suspend(pjob, 1);
+				svr_setjobstate(pjob, JOB_STATE_RUNNING, ss);
 			}
 
-		} else if ((strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_RESUME) == 0) && pjob && (pjob->ji_qs.ji_state == JOB_STATE_RUNNING)) {
+		} else if (resume && pjob && (pjob->ji_qs.ji_state == JOB_STATE_RUNNING)) {
 			/* note - the resources have already been reallocated */
 			pjob->ji_qs.ji_svrflags &= ~JOB_SVFLG_Suspend;
+			if(strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_ADMIN_RESUME) == 0)
+				set_admin_suspend(pjob, 0);
 			svr_setjobstate(pjob, JOB_STATE_RUNNING, JOB_SUBSTATE_RUNNING);
 		}
 
 		reply_ack(preq);
 	}
+}
+/**
+ *	@brief Handle admin-suspend/admin-resume on the job and nodes
+ *		set or remove the JOB_SVFLG_AdmSuspd flag on the job
+ *		set or remove nodes in state maintenance
+ * 
+ *	@param[in] pjob - job to act upon
+ *	@param[in] set_remove_nstate if 1, set flag/state if 0 remove flag/state
+ * 
+ *	@return void
+ */
+void set_admin_suspend(job *pjob, int set_remove_nstate) {
+	char *chunk;
+	char *execvncopy;
+	char *last;
+	char *vname;
+	struct key_value_pair *pkvp;
+	int hasprn;
+	int nelem;
+	struct pbsnode *pnode;
+	attribute new;
+	
+	if(pjob == NULL)
+		return;
+	
+	execvncopy = strdup(pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_val.at_str);
+	
+	if(execvncopy == NULL)
+		return;
+	
+	if(set_remove_nstate)
+		pjob->ji_qs.ji_svrflags |= JOB_SVFLG_AdmSuspd;
+	 else
+		pjob->ji_qs.ji_svrflags &= ~JOB_SVFLG_AdmSuspd;
+	
+	clear_attr(&new, &node_attr_def[(int)ND_ATR_MaintJobs]);
+	decode_arst(&new, ATTR_NODE_MaintJobs, NULL, pjob->ji_qs.ji_jobid);
+		
+	chunk = parse_plus_spec_r(execvncopy, &last, &hasprn);
+		
+	while (chunk) {
+
+		if (parse_node_resc(chunk, &vname, &nelem, &pkvp) == 0) {
+			pnode = find_nodebyname(vname);
+			if(pnode) {
+				if(set_remove_nstate) {
+					set_arst(&pnode->nd_attr[(int)ND_ATR_MaintJobs], &new, INCR);
+					set_vnode_state(pnode, INUSE_MAINTENANCE, Nd_State_Or);
+				} else {
+					set_arst(&pnode->nd_attr[(int)ND_ATR_MaintJobs], &new, DECR);
+					if (pnode->nd_attr[(int)ND_ATR_MaintJobs].at_val.at_arst->as_usedptr == 0)
+						set_vnode_state(pnode, ~INUSE_MAINTENANCE, Nd_State_And);
+				}
+				pnode->nd_modified |= NODE_UPDATE_OTHERS; /* force save of attributes */
+			}
+		}
+		chunk = parse_plus_spec_r(last, &last, &hasprn);
+	}
+	save_nodes_db(0);
+	free_arst(&new);
+	free(execvncopy);
 }

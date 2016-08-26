@@ -320,9 +320,10 @@ extern "C" {
 #define ATTR_NODE_ProvisionEnable	"provision_enable"
 #define ATTR_NODE_current_aoe	"current_aoe"
 #define ATTR_NODE_in_multivnode_host	"in_multivnode_host"
-#define	ATTR_NODE_License	"license"
-#define	ATTR_NODE_LicenseInfo	"license_info"
-#define	ATTR_NODE_TopologyInfo	"topology_info"
+#define ATTR_NODE_License	"license"
+#define ATTR_NODE_LicenseInfo	"license_info"
+#define ATTR_NODE_TopologyInfo	"topology_info"
+#define ATTR_NODE_MaintJobs	"maintenance_jobs"
 
 /* Resource "attribute" names */
 #define ATTR_RESC_TYPE		"type"

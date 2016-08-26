@@ -481,15 +481,15 @@ enum Set_All_State_When {
  * @par MT-safe: No
  */
 static void
-set_all_state(mominfo_t *pmom, int do_set, int bits, char *txt,
+set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 	enum Set_All_State_When setwhen)
 {
 	int		do_this_vnode;
 	int		imom;
-	int		mstate;
+	unsigned long	mstate;
 	mom_svrinfo_t  *psvrmom = (mom_svrinfo_t *)(pmom->mi_data);
 	struct pbsnode *pvnd;
-	attribute      *pat;
+	attribute	*pat;
 	int		nchild;
 
 	if (do_set) { /* STALE is not meaning in the state of the Mom, don't set it */
@@ -1316,10 +1316,10 @@ ping_a_mom_mcast(mominfo_t *pmom, int force_hello, int mtfd_ishello, int mtfd_is
  * @par MT-safe: No
  */
 void
-set_vnode_state(struct pbsnode *pnode, int state_bits, enum vnode_state_op type)
+set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_state_op type)
 {
 	DOID("set_vnode_state")
-	int nd_prev_state;
+	unsigned long nd_prev_state;
 
 	if (pnode == NULL)
 		return;
@@ -1348,8 +1348,8 @@ set_vnode_state(struct pbsnode *pnode, int state_bits, enum vnode_state_op type)
 
 	/* sync state attribute with nd_state */
 
-	if (pnode->nd_state != pnode->nd_attr[(int)ND_ATR_state].at_val.at_short) {
-		pnode->nd_attr[(int)ND_ATR_state].at_val.at_short = pnode->nd_state;
+	if (pnode->nd_state != pnode->nd_attr[(int)ND_ATR_state].at_val.at_long) {
+		pnode->nd_attr[(int)ND_ATR_state].at_val.at_long = pnode->nd_state;
 		pnode->nd_attr[(int)ND_ATR_state].at_flags |= ATR_VFLAG_MODIFY |
 			ATR_VFLAG_MODCACHE;
 	}
@@ -3950,7 +3950,7 @@ is_request(int stream, int version)
 	char			restartmsg[]="Mom restarted on host";
 	char			*val;
 	size_t			len;
-	int			 oldstate;
+	unsigned long		 oldstate;
 	vnl_t			*vnlp;			/* vnode list */
 	static char		node_up[] = "node up";
 	pbs_list_head		reported_hooks;
@@ -5043,6 +5043,7 @@ write_single_node_state(struct pbsnode *np)
 	obj.pbs_db_un.pbs_db_attr = &attr;
 	attr.parent_obj_type = PARENT_TYPE_NODE;
 	isoff = np->nd_state & (INUSE_OFFLINE|INUSE_OFFLINE_BY_MOM);
+
 	if (isoff) {
 		sprintf(offline_bits, "%d", isoff);
 		p = get_vnode_state_str(offline_bits);

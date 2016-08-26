@@ -128,6 +128,7 @@ extern void set_resc_assigned(void *, int,  enum batch_op);
 void	job_obit(struct resc_used_update *, int s);
 void	on_job_rerun(struct work_task *ptask);
 void	on_job_exit(struct work_task *ptask);
+extern void set_admin_suspend(job *pjob, int set_remove_nstate);
 
 /* Local private functions */
 
@@ -628,6 +629,8 @@ rel_resc(job *pjob)
 
 		pjob->ji_rerun_preq = NULL;
 	}
+	if(pjob->ji_qs.ji_svrflags & JOB_SVFLG_AdmSuspd)
+		set_admin_suspend(pjob, 0);
 
 	/* Mark that scheduler should be called */
 

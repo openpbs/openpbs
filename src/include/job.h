@@ -845,7 +845,7 @@ task_find	(job		*pjob,
 #define JOB_SVFLG_HERE     0x01	/* SERVER: job created here */
 /* MOM: set for Mother Superior */
 #define JOB_SVFLG_HASWAIT  0x02 /* job has timed task entry for wait time */
-#define JOB_SVFLG_HASRUN   0x04	/* job has been run before (being rerun */
+#define JOB_SVFLG_HASRUN   0x04	/* job has been run before (being rerun) */
 #define JOB_SVFLG_HOTSTART 0x08	/* job was running, if hot init, restart */
 #define JOB_SVFLG_CHKPT	   0x10 /* job has checkpoint file for restart */
 #define JOB_SVFLG_SCRIPT   0x20	/* job has a Script file */
@@ -867,6 +867,7 @@ task_find	(job		*pjob,
 /* If you intend to use it, make sure jobs to be recovered do not have
  * 0x100000 bit set. Refer SPM229744
  */
+#define JOB_SVFLG_AdmSuspd 0x200000 /* Job is suspended for maintenance */
 
 /*
  * Related defines

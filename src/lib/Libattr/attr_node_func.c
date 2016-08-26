@@ -57,8 +57,8 @@
 
 
 static struct node_state {
-	short	 bit;
-	char	*name;
+	unsigned long	 bit;
+	char		*name;
 } ns[] = {	{INUSE_UNKNOWN,	ND_state_unknown},
 	{INUSE_DOWN,    ND_down},
 	{INUSE_STALE,   ND_Stale},
@@ -72,6 +72,7 @@ static struct node_state {
 	{INUSE_RESVEXCL, ND_resv_exclusive},
 	{INUSE_UNRESOLVABLE, ND_unresolvable},
 	{INUSE_OFFLINE_BY_MOM, ND_offline_by_mom},
+	{INUSE_MAINTENANCE, ND_maintenance},
 	{0,		(char *)0} };
 
 static struct node_type {
@@ -125,7 +126,7 @@ static struct node_type {
  * Set of forward declarations for functions used before defined
  * keeps the compiler happy
  */
-static	int	set_nodeflag(char*, short*);
+static	int	set_nodeflag(char*, unsigned long*);
 
 /**
  * @brief
@@ -295,7 +296,7 @@ encode_state(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int 
 {
 	int	  i;
 	svrattrl *pal;
-	short	  state;
+	unsigned long	  state;
 	static   char	state_str[ MAX_ENCODE_BFR ];
 	int      offline_str_seen;
 	char	 *ns_name;
@@ -306,7 +307,7 @@ encode_state(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int 
 	if (!(pattr->at_flags & ATR_VFLAG_SET))
 		return (0);      /*nothing to report back*/
 
-	state = pattr->at_val.at_short & INUSE_SUBNODE_MASK;
+	state = pattr->at_val.at_long & INUSE_SUBNODE_MASK;
 	if (!state)
 		strcpy(state_str, ND_free);
 
@@ -512,17 +513,17 @@ encode_jobs(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int m
 	if (!pattr)
 		return (-1);
 	if (!(pattr->at_flags & ATR_VFLAG_SET) || !pattr->at_val.at_jinfo)
-		return (0);                  /*nothing to report back   */
+		return (0);		/*nothing to report back   */
 
 	/*cnt number of jobs and estimate size of string buffer required*/
 	jobcnt = 0;
-	strsize = 1;			     /*allow for terminating null char*/
+	strsize = 1;			/*allow for terminating null char*/
 	pnode = pattr->at_val.at_jinfo;
 	for (psubn = pnode->nd_psn; psubn; psubn = psubn->next) {
 		for (jip = psubn->jobs; jip; jip = jip->next) {
 			jobcnt++;
-			/* add 3 to lenth of node name for slash, comma, and space */
-			/* plue one for the cpu index				   */
+			/* add 3 to length of node name for slash, comma, and space */
+			/* plus one for the cpu index				   */
 			strsize += strlen(jip->job->ji_qs.ji_jobid) + 4;
 			i = psubn->index;
 			/* now add additional space needed for the cpu index */
@@ -532,7 +533,7 @@ encode_jobs(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int m
 	}
 
 	if (jobcnt == 0)
-		return (0);		     /*no jobs currently on this node*/
+		return (0);		/*no jobs currently on this node*/
 
 	else if (!(job_str = (char *)malloc(strsize+1)))
 		return -(PBSE_SYSTEM);
@@ -575,7 +576,7 @@ encode_jobs(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int m
 	if (rtnl)
 		*rtnl = pal;
 
-	return (0);                  /*success*/
+	return (0);			/*success*/
 }
 
 
@@ -740,8 +741,8 @@ int
 decode_state(attribute *pattr, char *name, char *rescn, char *val)
 {
 	int	rc = 0;		/*return code; 0==success*/
-	short	flag, currflag;
-	char    *str;
+	unsigned long	flag, currflag;
+	char	*str;
 
 	char	strbuf[512];	/*should handle most vals*/
 	char	*sbufp;
@@ -796,7 +797,7 @@ decode_state(attribute *pattr, char *name, char *rescn, char *val)
 	}
 
 	if (!rc) {
-		pattr->at_val.at_short = flag;
+		pattr->at_val.at_long = flag;
 		pattr->at_flags |=
 			ATR_VFLAG_SET|ATR_VFLAG_MODIFY|ATR_VFLAG_MODCACHE;
 	}
@@ -901,29 +902,29 @@ set_node_state(attribute *pattr, attribute *new, enum batch_op op)
 	switch (op) {
 
 		case SET:
-			pattr->at_val.at_short = new->at_val.at_short;
+			pattr->at_val.at_long = new->at_val.at_long;
 			break;
 
 		case INCR:
-			if (pattr->at_val.at_short && new->at_val.at_short == 0) {
+			if (pattr->at_val.at_long && new->at_val.at_long == 0) {
 				rc = PBSE_BADNDATVAL;  /*"free" mutually exclusive*/
 				break;
 			}
 
-			pattr->at_val.at_short |= new->at_val.at_short;
+			pattr->at_val.at_long |= new->at_val.at_long;
 			break;
 
 		case DECR:
-			if (pattr->at_val.at_short && new->at_val.at_short == 0) {
+			if (pattr->at_val.at_long && new->at_val.at_long == 0) {
 				rc = PBSE_BADNDATVAL;  /*"free" mutually exclusive*/
 				break;
 			}
 
-			pattr->at_val.at_short &= ~new->at_val.at_short;
-			if (new->at_val.at_short & INUSE_OFFLINE) {
+			pattr->at_val.at_long &= ~new->at_val.at_long;
+			if (new->at_val.at_long & INUSE_OFFLINE) {
 				/* if INUSE_OFFLINE is being cleared, must also */
-			        /* clear INUSE_OFFLINE_BY_MOM. */
-				pattr->at_val.at_short &= ~INUSE_OFFLINE_BY_MOM;
+				/* clear INUSE_OFFLINE_BY_MOM. */
+				pattr->at_val.at_long &= ~INUSE_OFFLINE_BY_MOM;
 			}
 			break;
 
@@ -1012,7 +1013,7 @@ set_node_ntype(attribute *pattr, attribute *new, enum batch_op op)
  */
 
 static int
-set_nodeflag(char *str, short *pflag)
+set_nodeflag(char *str, unsigned long *pflag)
 {
 	int	rc = 0;
 
@@ -1056,7 +1057,7 @@ node_state(attribute *new, void *pnode, int actmode)
 {
 	int rc = 0;
 	struct pbsnode* np;
-	static short keep = ~(INUSE_DOWN | INUSE_OFFLINE | INUSE_OFFLINE_BY_MOM);
+	static unsigned long keep = ~(INUSE_DOWN | INUSE_OFFLINE | INUSE_OFFLINE_BY_MOM);
 
 
 	np = (struct pbsnode*)pnode;	/*because of def of at_action  args*/
@@ -1072,11 +1073,11 @@ node_state(attribute *new, void *pnode, int actmode)
 	switch (actmode) {
 
 		case ATR_ACTION_NEW:  /*derive attribute*/
-			set_vnode_state(np, (np->nd_state & keep) | new->at_val.at_short, Nd_State_Set);
+			set_vnode_state(np, (np->nd_state & keep) | new->at_val.at_long, Nd_State_Set);
 			break;
 
 		case ATR_ACTION_ALTER:
-			set_vnode_state(np, (np->nd_state & keep) | new->at_val.at_short, Nd_State_Set);
+			set_vnode_state(np, (np->nd_state & keep) | new->at_val.at_long, Nd_State_Set);
 			break;
 
 		default: rc = PBSE_INTERNAL;

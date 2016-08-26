@@ -508,7 +508,7 @@ ERROR_EXIT:
  * TODO
  *  	- It is possible to combine pbs_python_setup_resc_get_value_type
  *    	and pbs_python_setup_attr_get_value_type into a macro.
- *
+ */
  
 
 /*
@@ -3677,7 +3677,7 @@ _pps_helper_get_vnode(struct pbsnode *pvnode_o, const char *vname)
 		}
 	}
 
-	snprintf(buf, sizeof(buf), "%d", pvnode->nd_state);
+	snprintf(buf, sizeof(buf), "%ld", pvnode->nd_state);
 	tmp_rc = pbs_python_object_set_attr_string_value(py_vnode, ATTR_NODE_state,
 		buf);
 	if (tmp_rc == -1) {

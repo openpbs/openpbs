@@ -242,7 +242,7 @@ char *nodename;
 
 
 static struct pbsnode	*old_address = 0;			/*node in question */
-static short		old_state = (short)0xdead;	/*node's   state   */
+static unsigned long	old_state = 0;				/*node's   state   */
 
 
 /**
@@ -282,7 +282,7 @@ save_characteristic(struct pbsnode *pnode)
 int
 chk_characteristic(struct pbsnode *pnode, int *pneed_todo)
 {
-	short		tmp;
+	unsigned long	tmp;
 	int		i;
 	int		deleted=0;
 
@@ -505,7 +505,7 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 
 	/* then, setup certain attributes */
 
-	pnode->nd_attr[(int)ND_ATR_state].at_val.at_short = pnode->nd_state;
+	pnode->nd_attr[(int)ND_ATR_state].at_val.at_long = pnode->nd_state;
 	pnode->nd_attr[(int)ND_ATR_state].at_flags = ATR_VFLAG_SET;
 
 	pnode->nd_attr[(int)ND_ATR_ntype].at_val.at_short = pnode->nd_ntype;
@@ -934,6 +934,7 @@ save_nodes_db_inner()
 				 */
 				isoff = np->nd_state &
 					(INUSE_OFFLINE | INUSE_OFFLINE_BY_MOM);
+
 				hascomment = (np->nd_attr[(int) ND_ATR_Comment].at_flags &
 					(ATR_VFLAG_SET | ATR_VFLAG_DEFLT)) == ATR_VFLAG_SET;
 
@@ -2248,7 +2249,7 @@ is_vnode_up(char *nodename)
 int
 decode_Mom_list(struct attribute *patr, char *name, char *rescn, char *val)
 {
-	int                     rc;
+	int			rc;
 	int			ns;
 	int			i = 0;
 	char			*p;

@@ -521,7 +521,7 @@ int        actmode;
 }
 
 void
-set_vnode_state(struct pbsnode *pnode, int state_bits, enum vnode_state_op type)
+set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_state_op type)
 {
 	return;
 }

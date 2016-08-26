@@ -193,24 +193,24 @@ extern "C" {
 #define PBSE_NODESTALE		     15115 /* Cannot change state of stale nd */
 #define PBSE_DUPRESC		     15116 /* cannot dup resc within a chunk */
 #define PBSE_CONNFULL		     15117 /* server connection table full */
-#define	PBSE_LICENSE_MIN_BADVAL	     15118 /* bad value for pbs_license_min */
-#define	PBSE_LICENSE_MAX_BADVAL	     15119 /* bad value for pbs_license_max */
+#define	PBSE_LICENSE_MIN_BADVAL      15118 /* bad value for pbs_license_min */
+#define	PBSE_LICENSE_MAX_BADVAL      15119 /* bad value for pbs_license_max */
 #define	PBSE_LICENSE_LINGER_BADVAL   15120 /* bad value for pbs_license_linger_time*/
 #define PBSE_LICENSE_SERVER_DOWN     15121 /* License server is down */
 #define PBSE_LICENSE_BAD_ACTION	     15122 /* Not allowed action with FLEX licensing */
-#define PBSE_BAD_FORMULA	15123	/* invalid sort formula */
-#define PBSE_BAD_FORMULA_KW	15124	/* invalid keyword in formula */
-#define PBSE_BAD_FORMULA_TYPE	15125	/* invalid resource type in formula */
-#define PBSE_BAD_RRULE_YEARLY        15126 /* reservation duration exceeds 1 year */
-#define PBSE_BAD_RRULE_MONTHLY       15127 /* reservation duration exceeds 1 month */
-#define PBSE_BAD_RRULE_WEEKLY        15128 /* reservation duration exceeds 1 week */
-#define PBSE_BAD_RRULE_DAILY         15129 /* reservation duration exceeds 1 day */
-#define PBSE_BAD_RRULE_HOURLY        15130 /* reservation duration exceeds 1 hour */
-#define PBSE_BAD_RRULE_MINUTELY      15131 /* reservation duration exceeds 1 minute */
-#define PBSE_BAD_RRULE_SECONDLY      15132 /* reservation duration exceeds 1 second */
-#define PBSE_BAD_RRULE_SYNTAX        15133 /* invalid recurrence rule syntax */
-#define PBSE_BAD_RRULE_SYNTAX2       15134 /* invalid recurrence rule syntax. COUNT/UNTIL required*/
-#define PBSE_BAD_ICAL_TZ             15135 /* Undefined timezone info directory */
+#define PBSE_BAD_FORMULA	     15123 /* invalid sort formula */
+#define PBSE_BAD_FORMULA_KW	     15124 /* invalid keyword in formula */
+#define PBSE_BAD_FORMULA_TYPE	     15125 /* invalid resource type in formula */
+#define PBSE_BAD_RRULE_YEARLY	     15126 /* reservation duration exceeds 1 year */
+#define PBSE_BAD_RRULE_MONTHLY	     15127 /* reservation duration exceeds 1 month */
+#define PBSE_BAD_RRULE_WEEKLY	     15128 /* reservation duration exceeds 1 week */
+#define PBSE_BAD_RRULE_DAILY	     15129 /* reservation duration exceeds 1 day */
+#define PBSE_BAD_RRULE_HOURLY	     15130 /* reservation duration exceeds 1 hour */
+#define PBSE_BAD_RRULE_MINUTELY	     15131 /* reservation duration exceeds 1 minute */
+#define PBSE_BAD_RRULE_SECONDLY	     15132 /* reservation duration exceeds 1 second */
+#define PBSE_BAD_RRULE_SYNTAX	     15133 /* invalid recurrence rule syntax */
+#define PBSE_BAD_RRULE_SYNTAX2	     15134 /* invalid recurrence rule syntax. COUNT/UNTIL required*/
+#define PBSE_BAD_ICAL_TZ	     15135 /* Undefined timezone info directory */
 #define PBSE_HOOKERROR		     15136 /* error encountered related to hooks */
 #define PBSE_NEEDQUET		     15137 /* need queue type set */
 #define PBSE_ETEERROR		     15138 /* not allowed to alter attribute when eligible_time_enable is off */
@@ -219,13 +219,13 @@ extern "C" {
 #define PBSE_MIXENTLIMS		     15141 /* mixing old and new limit enformcement */
 #define PBSE_ENTLIMCT		     15142 /* entity count limit exceeded */
 #define PBSE_ENTLIMRESC		     15143 /* entity resource limit exceeded */
-#define PBSE_ATVALERANGE             15144 /* attribute value out of range */
+#define PBSE_ATVALERANGE	     15144 /* attribute value out of range */
 #define PBSE_PROV_HEADERROR	     15145 /* not allowed to set provisioningattributes on head node */
 #define PBSE_NODEPROV_NOACTION	     15146 /* cannot modify attribute while node is provisioning */
 #define PBSE_NODEPROV		     15147 /* Cannot change state of provisioning node */
 #define PBSE_NODEPROV_NODEL	     15148 /* Cannot del node if provisioning*/
 #define PBSE_NODE_BAD_CURRENT_AOE    15149 /* current aoe is not one of resources_available.aoe */
-#define PBSE_NOLOOPBACKIF            15153 /* Local host does not have loopback interface configured. */
+#define PBSE_NOLOOPBACKIF	    15153 /* Local host does not have loopback interface configured. */
 #define PBSE_IVAL_AOECHUNK	     15155 /* aoe not following chunk rules */
 #define PBSE_JOBINRESV_CONFLICT      15156 /* job and reservation conflict */
 
@@ -233,7 +233,7 @@ extern "C" {
 #define PBSE_HISTJOBDELETED	     15158 /* Job was in F or M state . Its history deleted upon request. */
 #define PBSE_NOHISTARRAYSUBJOB	     15159 /* Request invalid for finished array subjob */
 #define PBSE_FORCE_QSUB_UPDATE       15160 /* a qsub action needs to be redone */
-#define PBSE_SAVE_ERR                15161 /* failed to save job or resv to database */
+#define PBSE_SAVE_ERR		     15161 /* failed to save job or resv to database */
 #define PBSE_MAX_NO_MINWT	     15162 /* no max walltime w/o min walltime */
 #define PBSE_MIN_GT_MAXWT	     15163 /* min_walltime can not be > max_walltime */
 #define PBSE_NOSTF_RESV		     15164 /* There can not be a shrink-to-fit reservation */
@@ -251,6 +251,7 @@ extern "C" {
 #define PBSE_RESCBUSY		     15174 /* Resource is set on an object */
 #define PBSE_JOBSCRIPTMAXSIZE	     15175 /* job script max size exceeded */
 #define PBSE_BADJOBSCRIPTMAXSIZE     15176 /* user set size more than 2GB */
+#define PBSE_WRONG_RESUME	     15177 /* user tried to resume job with wrong resume signal*/
 
 /*
  ** 	Resource monitor specific
