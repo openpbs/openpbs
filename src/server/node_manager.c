@@ -705,12 +705,6 @@ node_down_requeue(struct work_task *pwt)
 							}
 						}
 
-						/* Clear "resources_used" before job is requeued */
-						if ((pj->ji_qs.ji_svrflags & (JOB_SVFLG_CHKPT | JOB_SVFLG_ChkptMig)) == 0) {
-							job_attr_def[(int)JOB_ATR_resc_used].at_free(
-								&pj->ji_wattr[(int)JOB_ATR_resc_used]);
-						}
-						
 						/* When job is non-rerunnable and if job has any dependencies,
 						 *register dependency request to delete the dependent jobs.
 						 */
@@ -723,6 +717,12 @@ node_down_requeue(struct work_task *pwt)
 
 						/* notify all sisters to discard the job */
 						discard_job(pj, "on node down requeue", 0);
+
+						/* Clear "resources_used" */
+						if ((pj->ji_qs.ji_svrflags & (JOB_SVFLG_CHKPT | JOB_SVFLG_ChkptMig)) == 0) {
+							job_attr_def[(int)JOB_ATR_resc_used].at_free(
+								&pj->ji_wattr[(int)JOB_ATR_resc_used]);
+						}
 
 					}
 				}

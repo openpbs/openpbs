@@ -1083,7 +1083,9 @@ account_jobend(job *pjob, char *used, int type)
 	char tmp_resc_used[RESC_USED_BUF_SIZE] = {0};
 	int amt = 0;
 	int need = 0;
+	pbs_list_head temp_head;
 
+	CLEAR_HEAD(temp_head);
 	/* pack in general information about the job */
 
 	pb = acct_job(pjob, acct_buf, acct_bufsize);
@@ -1146,7 +1148,8 @@ account_jobend(job *pjob, char *used, int type)
 	len -= i;
 
 	/* finally add on resources used from req_jobobit() */
-	if ((used == NULL) && (pjob->ji_acctrec == NULL) && (type == PBS_ACCT_END)) {
+	if (((used == NULL) && (pjob->ji_acctrec == NULL) && (type == PBS_ACCT_END)) || 
+		!(used && strstr(used, "resources_used") && (type == PBS_ACCT_RERUN))) {
 		/* If pbs_server is restarted during the end of job processing then used maybe NULL.
 		 * So we try to derive the resource usage information from resources_used attribute of
 		 * the job and then reconstruct the resources usage information into tmp_resc_used buffer.
@@ -1155,6 +1158,10 @@ account_jobend(job *pjob, char *used, int type)
 			patlist = pjob->ji_wattr[(int)JOB_ATR_resc_used].at_user_encoded;
 		else if (pjob->ji_wattr[(int)JOB_ATR_resc_used].at_priv_encoded != NULL)
 			patlist = pjob->ji_wattr[(int)JOB_ATR_resc_used].at_priv_encoded;
+		else 
+			encode_resc(&pjob->ji_wattr[(int)JOB_ATR_resc_used], 
+				&temp_head, job_attr_def[(int)JOB_ATR_resc_used].at_name, 
+				(char *)0, ATR_ENCODE_CLIENT, &patlist);
 		(void)snprintf(tmp_resc_used, sizeof(tmp_resc_used), msg_job_end_stat,
 			pjob->ji_qs.ji_un.ji_exect.ji_exitstat);
 
@@ -1190,6 +1197,7 @@ account_jobend(job *pjob, char *used, int type)
 		if ((used = strdup(tmp_resc_used)) == NULL)
 			goto writeit;
 		pjob->ji_acctrec = used;
+		free_attrlist(&temp_head);
 	}
 
 	if (used != NULL) {
