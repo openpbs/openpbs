@@ -13,22 +13,24 @@
 # later version.
 #
 # PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-# PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+# A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+# details.
 #
-# You should have received a copy of the GNU Affero General Public License along
-# with this program.  If not, see <http://www.gnu.org/licenses/>.
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 # Commercial License Information:
 #
 # The PBS Pro software is licensed under the terms of the GNU Affero General
 # Public License agreement ("AGPL"), except where a separate commercial license
-# agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+# agreement for PBS Pro version 14 or later has been executed in writing with
+# Altair.
 #
 # Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and distribute
-# them - whether embedded or bundled with other software - under a commercial
-# license agreement.
+# organizations to create proprietary derivative works of PBS Pro and
+# distribute them - whether embedded or bundled with other software - under
+# a commercial license agreement.
 #
 # Use of Altair’s trademarks, including but not limited to "PBS™",
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
@@ -329,7 +331,7 @@ def job_to_be_ignored(jobid):
                        "Exiting the cgroups hook")
             pbs.accept()
 
-    printjob_cmd = pbs_exec+os.sep+'bin'+os.sep+'printjob'
+    printjob_cmd = pbs_exec + os.sep + 'bin' + os.sep + 'printjob'
 
     cmd = [printjob_cmd, jobid]
 
@@ -338,9 +340,9 @@ def job_to_be_ignored(jobid):
         pbs.logmsg(pbs.EVENT_DEBUG3, "cmd: %s" % cmd)
         # Collect the job substate information
         process = subprocess.Popen(
-                                   cmd,
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE)
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
         (out, err) = process.communicate()
         # Find the job substate
         substate_re = re.compile(r"substate:\s+(?P<jobstate>\S+)\s+")
@@ -349,7 +351,7 @@ def job_to_be_ignored(jobid):
         pbs.logmsg(pbs.EVENT_DEBUG,
                    "Unexpected error in job_to_be_ignored: %s" %
                    ' '.join([repr(sys.exc_info()[0]),
-                            repr(sys.exc_info()[1])]))
+                             repr(sys.exc_info()[1])]))
         out = "Unknown: failed to run " + printjob_cmd
 
     if substate is not None:
@@ -549,7 +551,7 @@ class HookUtils:
         # Delete the cgroup(s) for the job
         cgroup.delete(e.job.id)
         # Remove the host_assigned_resources and job_env file
-        for filename in [cgroup.hook_storage_dir+os.sep+e.job.id,
+        for filename in [cgroup.hook_storage_dir + os.sep + e.job.id,
                          cgroup.host_job_env_filename % e.job.id]:
             try:
                 os.remove(filename)
@@ -713,7 +715,7 @@ class ShallIRunUtils:
                            "Exiting the cgroups hook")
                 pbs.accept()
 
-        vntype_file = pbs_home+os.sep+'mom_priv'+os.sep+'vntype'
+        vntype_file = pbs_home + os.sep + 'mom_priv' + os.sep + 'vntype'
         if os.path.isfile(vntype_file):
             fdata = open(vntype_file).readlines()
             vntype = fdata[0].strip()
@@ -839,14 +841,14 @@ class JobUtils:
                         if isinstance(chunk.chunk_resources[resc],
                                       pbs.pbs_int):
                             resources['vnodes'][chunk.vnode_name][resc] = \
-                                      pbs.pbs_int(0)
+                                pbs.pbs_int(0)
                         elif isinstance(chunk.chunk_resources[resc],
                                         pbs.pbs_float):
                             resources['vnodes'][chunk.vnode_name][resc] = \
-                                      pbs.pbs_float(0)
+                                pbs.pbs_float(0)
                         elif isinstance(chunk.chunk_resources[resc], pbs.size):
                             resources['vnodes'][chunk.vnode_name][resc] = \
-                                      pbs.size('0')
+                                pbs.size('0')
 
             pbs.logmsg(pbs.EVENT_DEBUG3, "%s: Chunk %s" %
                        (caller_name(), chunk.vnode_name))
@@ -872,7 +874,7 @@ class JobUtils:
                                 resources[resc]))
                     if vnode is True:
                         resources['vnodes'][chunk.vnode_name][resc] += \
-                                  chunk.chunk_resources[resc]
+                            chunk.chunk_resources[resc]
                 else:
                     pbs.logmsg(pbs.EVENT_DEBUG,
                                "%s: Setting resource %s to string %s" %
@@ -881,7 +883,7 @@ class JobUtils:
                     resources[resc] = str(chunk.chunk_resources[resc])
                     if vnode is True:
                         resources['vnodes'][chunk.vnode_name][resc] = \
-                                  str(chunk.chunk_resources[resc])
+                            str(chunk.chunk_resources[resc])
         if not resources:
             pbs.logmsg(pbs.EVENT_DEBUG,
                        "%s: No resources assigned to host %s" %
@@ -950,7 +952,7 @@ class NodeConfig:
                            "Exiting the cgroups hook")
                 pbs.accept()
 
-        self.host_mom_jobdir = pbs_home+'/mom_priv/jobs'
+        self.host_mom_jobdir = pbs_home + '/mom_priv/jobs'
 
         if kwargs:
             for arg, val in kwargs.items():
@@ -1027,7 +1029,8 @@ class NodeConfig:
         pbs.logmsg(pbs.EVENT_DEBUG3, "%s: Method called" % (caller_name()))
         numa_nodes = {}
         for dir in glob.glob(os.path.join(os.sep,
-                             "sys", "devices", "system", "node", "node*")):
+                                          "sys", "devices", "system",
+                                          "node", "node*")):
             id = int(dir.split(os.sep)[5][4:])
             if id not in numa_nodes.keys():
                 numa_nodes[id] = {}
@@ -1203,7 +1206,7 @@ class NodeConfig:
                         rc = True
                         break
         if rc is True:
-            self.hyperthreads_per_core = int(siblings)/int(cpu_cores)
+            self.hyperthreads_per_core = int(siblings) / int(cpu_cores)
             pbs.logmsg(pbs.EVENT_DEBUG3, "%s: hyperthreads/core: %d" %
                        (caller_name(), self.hyperthreads_per_core))
             if self.hyperthreads_per_core == 1:
@@ -1390,7 +1393,7 @@ class NodeConfig:
             for key, val in sorted(self.numa_nodes[id].iteritems()):
                 if key == 'cpus':
                     vnode_list[vnode_name].resources_available['ncpus'] = \
-                        len(cpus2list(val))/self.hyperthreads_per_core
+                        len(cpus2list(val)) / self.hyperthreads_per_core
                     # set the value on the host to 0
                     vnode_list[self.hostname].resources_available['ncpus'] = 0
                 elif key == 'MemTotal':
@@ -1429,6 +1432,7 @@ class NodeConfig:
 
 
 class CgroupUtils:
+
     def __init__(self, hostname, vnode, **kwargs):
         cfg = None
         subsystems = None
@@ -1502,13 +1506,14 @@ class CgroupUtils:
                                "Exiting the cgroups hook")
                     pbs.accept()
 
-            self.hook_storage_dir = pbs_home+'/mom_priv/hooks/hook_data'
-            self.host_job_env_dir = pbs_home+'/aux'
-            self.host_job_env_filename = self.host_job_env_dir+os.sep+"%s.env"
+            self.hook_storage_dir = pbs_home + '/mom_priv/hooks/hook_data'
+            self.host_job_env_dir = pbs_home + '/aux'
+            self.host_job_env_filename = self.host_job_env_dir + os.sep
+            self.host_job_env_filename += "%s.env"
 
             # information for offlining nodes
             self.offline_file = \
-                pbs_home+os.sep+'mom_priv'+os.sep+'hooks'+os.sep
+                pbs_home + os.sep + 'mom_priv' + os.sep + 'hooks' + os.sep
             self.offline_file += "%s.offline" % pbs.event().hook_name
             self.offline_msg = "Hook %s: " % pbs.event().hook_name
             self.offline_msg += "Unable to clean up one or more cgroups"
@@ -1721,7 +1726,7 @@ class CgroupUtils:
                            "Exiting the cgroups hook")
 
         # File to check for if it is not defined in the hook input file
-        vntype_file = pbs_home+os.sep+'mom_priv'+os.sep+'vntype'
+        vntype_file = pbs_home + os.sep + 'mom_priv' + os.sep + 'vntype'
 
         # self.vnode is None for pbs_attach events
         pbs.logmsg(pbs.EVENT_DEBUG3, "vnode: %s" % self.vnode)
@@ -1773,11 +1778,11 @@ class CgroupUtils:
                     if tmp_dir not in assigned_resources:
                         assigned_resources[tmp_dir] = {}
                     path = os.path.join(self.paths['cpuset'], tmp_dir)
-                    with open(path+os.sep+'cpuset.cpus') as fd:
+                    with open(path + os.sep + 'cpuset.cpus') as fd:
                         tmp_val = fd.read()
                         assigned_resources[tmp_dir]['cpuset.cpus'] = \
                             cpus2list(tmp_val.strip())
-                    with open(path+os.sep+'cpuset.mems') as fd:
+                    with open(path + os.sep + 'cpuset.mems') as fd:
                         tmp_val = fd.read()
                         assigned_resources[tmp_dir]['cpuset.mems'] = \
                             cpus2list(tmp_val.strip())
@@ -1802,14 +1807,16 @@ class CgroupUtils:
                     if tmp_dir not in assigned_resources:
                         assigned_resources[tmp_dir] = {}
                     path = os.path.join(self.paths['memory'], tmp_dir)
-                    with open(path+os.sep+'memory.limit_in_bytes') as fd:
+                    with open(path + os.sep + 'memory.limit_in_bytes') as fd:
                         tmp_val = fd.read()
                         assigned_resources[tmp_dir]['memory.limit'] = \
                             tmp_val.strip()
-                    tmp_filename = path+os.sep+'memory.memsw.limit_in_bytes'
+                    tmp_filename = path + os.sep
+                    tmp_filename += 'memory.memsw.limit_in_bytes'
                     if os.path.isfile(tmp_filename) is False:
                         continue
-                    tmp_filename = path+os.sep+'memory.memsw.limit_in_bytes'
+                    tmp_filename = path + os.sep
+                    tmp_filename += 'memory.memsw.limit_in_bytes'
                     with open(tmp_filename) as fd:
                         tmp_val = fd.read()
                         assigned_resources[tmp_dir]['memsw.limit'] = \
@@ -1836,7 +1843,7 @@ class CgroupUtils:
                     if tmp_dir not in assigned_resources:
                         assigned_resources[tmp_dir] = {}
                     path = os.path.join(self.paths['devices'], tmp_dir)
-                    with open(path+os.sep+'devices.list') as fd:
+                    with open(path + os.sep + 'devices.list') as fd:
                         tmp_val = fd.read()
                         assigned_resources[tmp_dir]['devices.list'] = \
                             tmp_val.strip().split('\n')
@@ -1988,14 +1995,14 @@ class CgroupUtils:
                 if 'memory' in self.subsystems and \
                         self.cfg['cgroup']['memory']['enabled']:
                     self.write_value(os.path.join(self.paths['memory'],
-                                     'memory.limit_in_bytes'),
+                                                  'memory.limit_in_bytes'),
                                      size_as_int(value))
             elif resource == 'vmem':
                 if 'memsw' in self.subsystems and \
                         self.cfg['cgroup']['memsw']['enabled']:
-                    self.write_value(os.path.join(self.paths['memsw'],
-                                     'memory.memsw.limit_in_bytes'),
-                                     size_as_int(value))
+                    __path = os.path.join(self.paths['memsw'],
+                                          'memory.memsw.limit_in_bytes')
+                    self.write_value(__path, size_as_int(value))
             elif resource == 'hpmem':
                 if 'hugetlb' in self.subsystems and \
                         self.cfg['cgroup']['hugetlb']['enabled']:
@@ -2011,9 +2018,10 @@ class CgroupUtils:
             raise
 
     def setup_job_devices_env(self):
-        """ Setup the job environment for the devices assigned to the job for an
-            execjob_launch hook
-         """
+        """
+        Setup the job environment for the devices assigned to the job for
+        an execjob_launch hook
+        """
         if 'devices_name' in self.host_assigned_resources:
             names = self.host_assigned_resources['devices_name']
             pbs.logmsg(pbs.EVENT_DEBUG3,
@@ -2052,7 +2060,7 @@ class CgroupUtils:
         # Add the devices that the user is allowed to use
         if subsys in self.cfg['cgroup']:
             devices_allowed = open(os.path.join(path,
-                                   "devices.list")).readlines()
+                                                "devices.list")).readlines()
             pbs.logmsg(pbs.EVENT_DEBUG3,
                        "Initial devices.list: %s" %
                        devices_allowed)
@@ -2121,7 +2129,7 @@ class CgroupUtils:
                                     value += "%s " % os.minor(s.st_rdev)
                                     value += "%s" % item[1]
                                 self.write_value(os.path.join(
-                                                path, 'devices.allow'), value)
+                                    path, 'devices.allow'), value)
                                 pbs.logmsg(pbs.EVENT_DEBUG3,
                                            "write_value: %s" % value)
                         except OSError:
@@ -2142,11 +2150,11 @@ class CgroupUtils:
 
     # Select devices to assign to the job
     def assign_devices(
-                       self,
-                       device_type,
-                       device_list,
-                       number_of_devices,
-                       node):
+            self,
+            device_type,
+            device_list,
+            number_of_devices,
+            node):
         devices = device_list[:number_of_devices]
         device_ids = list()
         device_names = list()
@@ -2248,7 +2256,7 @@ class CgroupUtils:
                                (socket, available[socket]))
                     room_on_socket = False
             if ('nmics' in resources['vnodes'][vnode] and
-               int(resources['vnodes'][vnode]['nmics']) > 0):
+                    int(resources['vnodes'][vnode]['nmics']) > 0):
                 if 'devices_name' not in assigned:
                     assigned['devices_name'] = list()
                     assigned['devices'] = list()
@@ -2258,9 +2266,9 @@ class CgroupUtils:
                         for l in available[socket]['devices']
                         for m in [regex.search(l)] if m]
                 if (int(resources['vnodes'][vnode]['nmics']) > 0 and
-                   int(resources['vnodes'][vnode]['nmics']) <= len(mics)):
+                        int(resources['vnodes'][vnode]['nmics']) <= len(mics)):
                     tmp_names, tmp_devices = self.assign_devices(
-                             'mic', mics[:tmp_nmics], tmp_nmics, node)
+                        'mic', mics[:tmp_nmics], tmp_nmics, node)
                     assigned['devices_name'] += tmp_names
                     assigned['devices'] += tmp_devices
                 else:
@@ -2270,7 +2278,7 @@ class CgroupUtils:
                     pbs.logmsg(pbs.EVENT_DEBUG3, "mics: %s" % (mics))
                     room_on_socket = False
             if ('ngpus' in resources['vnodes'][vnode] and
-               int(resources['vnodes'][vnode]['ngpus']) > 0):
+                    int(resources['vnodes'][vnode]['ngpus']) > 0):
                 if 'devices_name' not in assigned:
                     assigned['devices_name'] = list()
                     assigned['devices'] = list()
@@ -2280,7 +2288,7 @@ class CgroupUtils:
                         for l in available[socket]['devices']
                         for m in [regex.search(l)] if m]
                 if (int(resources['vnodes'][vnode]['ngpus']) > 0 and
-                   int(resources['vnodes'][vnode]['ngpus']) <= len(gpus)):
+                        int(resources['vnodes'][vnode]['ngpus']) <= len(gpus)):
                     tmp_names, tmp_devices = self.assign_devices(
                         'gpu', gpus[:tmp_ngpus], tmp_ngpus, node)
                     assigned['devices_name'] += tmp_names
@@ -2582,7 +2590,7 @@ class CgroupUtils:
                     devices = self.assigned_resources[job]['devices.list']
                 if 'memory.limit' in self.assigned_resources[job]:
                     memory = size_as_int(
-                                self.assigned_resources[job]['memory.limit'])
+                        self.assigned_resources[job]['memory.limit'])
 
                 # Loop through the sockets and remove cpus that are
                 # assigned to other cgroups
@@ -2619,8 +2627,8 @@ class CgroupUtils:
                                            (available[socket]['devices']))
                                 major, minor = device.split()[1].split(':')
                                 avail_device = self.get_device_name(
-                                                   node, available, socket,
-                                                   major, minor)
+                                    node, available, socket,
+                                    major, minor)
                                 pbs.logmsg(pbs.EVENT_DEBUG3,
                                            "Returned device: %s" %
                                            (avail_device))
@@ -2661,19 +2669,24 @@ class CgroupUtils:
                 if 'memory' in self.subsystems and \
                         self.cfg['cgroup']['memory']['enabled']:
                     self.write_value(os.path.join(self.paths['memory'],
-                                     jobid, 'memory.limit_in_bytes'),
+                                                  jobid,
+                                                  'memory.limit_in_bytes'),
                                      size_as_int(value))
             elif resource == 'softmem':
                 if 'memory' in self.subsystems and \
                         self.cfg['cgroup']['memory']['enabled']:
                     self.write_value(os.path.join(self.paths['memory'],
-                                     jobid, 'memory.soft_limit_in_bytes'),
+                                                  jobid,
+                                                  ('memory.'
+                                                   'soft_limit_in_bytes')),
                                      size_as_int(value))
             elif resource == 'vmem':
                 if 'memsw' in self.subsystems and \
                         self.cfg['cgroup']['memsw']['enabled']:
                     self.write_value(os.path.join(self.paths['memsw'],
-                                     jobid, 'memory.memsw.limit_in_bytes'),
+                                                  jobid,
+                                                  ('memory.memsw.'
+                                                   'limit_in_bytes')),
                                      size_as_int(value))
             elif resource == 'hpmem':
                 if 'hugetlb' in self.subsystems and \
@@ -2693,7 +2706,7 @@ class CgroupUtils:
                     cpus = ','.join(map(str, cpus))
                     self.write_value(path, cpus)
                     self.__copy_from_parent(os.path.join(self.paths['cpuset'],
-                                            jobid, 'cpuset.mems'))
+                                                         jobid, 'cpuset.mems'))
             elif resource == 'cpuset.cpus':
                 if 'cpuset' in self.subsystems and \
                         self.cfg['cgroup']['cpuset']['enabled']:
@@ -2941,8 +2954,9 @@ class CgroupUtils:
                             (vmem_limit, vmem_requested))
                 if size_as_int(vmem_limit) > size_as_int(mem_limit):
                     # This job may utilize swap
-                    if size_as_int(vmem_avail) <= size_as_int(mem_avail) and \
-                      size_as_int(mem_avail) - size_as_int(vmem_avail) > 10240:
+                    if (size_as_int(vmem_avail) <= size_as_int(mem_avail) and
+                            (size_as_int(mem_avail) -
+                             size_as_int(vmem_avail) > 10240)):
                         # No swap available
                         raise CgroupLimitError(
                             ('Job might utilize swap ' +
@@ -3254,16 +3268,16 @@ class CgroupUtils:
                 # Make multiple attempts at killing tasks in cgroups on
                 # first subsystem encountered since it is "normal" for
                 # a cgroup.delete to encounter processes hard to kill
-                status = self.__remove_cgroup(os.path.join(self.paths[subsys],
-                                                           jobid),
-                                              tasks_kill_attempts=(
-                                              CGROUP_KILL_ATTEMPTS))
+                __path = os.path.join(self.paths[subsys], jobid)
+                __tka = (CGROUP_KILL_ATTEMPTS)
+                status = self.__remove_cgroup(__path,
+                                              tasks_kill_attempts=__tka)
                 tasks_kill_attempted = True
             else:
                 # We tried getting rid of job processes earlier,
                 # so don't try N times with sleeps
-                status = self.__remove_cgroup(os.path.join(self.paths[subsys],
-                                              jobid), tasks_kill_attempts=1)
+                __path = os.path.join(self.paths[subsys], jobid)
+                status = self.__remove_cgroup(__path, tasks_kill_attempts=1)
 
             pbs.logmsg(pbs.EVENT_DEBUG, "%s: Status: %s" %
                        (caller_name(), status))
@@ -3306,7 +3320,8 @@ class CgroupUtils:
     def __get_mem_failcnt(self, path):
         try:
             return int(open(os.path.join(path,
-                       "memory.failcnt"), 'r').read().strip())
+                                         "memory.failcnt"),
+                            'r').read().strip())
         except:
             return None
 
@@ -3314,7 +3329,8 @@ class CgroupUtils:
     def __get_memsw_failcnt(self, path):
         try:
             return int(open(os.path.join(path,
-                       "memory.memsw.failcnt"), 'r').read().strip())
+                                         "memory.memsw.failcnt"),
+                            'r').read().strip())
         except:
             return None
 
@@ -3322,7 +3338,8 @@ class CgroupUtils:
     def __get_hugetlb_failcnt(self, path):
         try:
             return int(open(glob.glob(os.path.join(path,
-                       "hugetlb.*MB.failcnt"))[0], 'r').read().strip())
+                                                   "hugetlb.*MB.failcnt"))[0],
+                            'r').read().strip())
         except:
             return None
 
@@ -3330,7 +3347,8 @@ class CgroupUtils:
     def __get_max_mem_usage(self, path):
         try:
             return int(open(os.path.join(path,
-                       "memory.max_usage_in_bytes"), 'r').read().strip())
+                                         "memory.max_usage_in_bytes"),
+                            'r').read().strip())
         except:
             return None
 
@@ -3338,7 +3356,8 @@ class CgroupUtils:
     def __get_max_memsw_usage(self, path):
         try:
             return int(open(os.path.join(path,
-                       "memory.memsw.max_usage_in_bytes"), 'r').read().strip())
+                                         "memory.memsw.max_usage_in_bytes"),
+                            'r').read().strip())
         except:
             return None
 
@@ -3346,7 +3365,8 @@ class CgroupUtils:
     def __get_max_hugetlb_usage(self, path):
         try:
             return int(open(glob.glob(os.path.join(path,
-                       "hugetlb.*MB.max_usage_in_bytes"))[0],
+                                                   ("hugetlb.*MB."
+                                                    "max_usage_in_bytes")))[0],
                             'r').read().strip())
         except:
             return None
@@ -3355,7 +3375,7 @@ class CgroupUtils:
     def __get_cpu_usage(self, path):
         try:
             return int(open(os.path.join(path,
-                       "cpuacct.usage"), 'r').read().strip())
+                                         "cpuacct.usage"), 'r').read().strip())
         except:
             return None
 
@@ -3373,7 +3393,7 @@ class CgroupUtils:
             base = os.path.dirname(path)
             parent = os.path.dirname(base)
             avail = cpus2list(open(os.path.join(parent, cpufile),
-                              'r').read().strip())
+                                   'r').read().strip())
             if len(avail) < 1:
                 raise CgroupProcessingError("No CPUs avaialble in cgroup.")
             pbs.logmsg(pbs.EVENT_DEBUG, "%s: Available CPUs: %s" %
@@ -3448,11 +3468,11 @@ class CgroupUtils:
         # Write out assigned_resources
         try:
             json_str = json.dumps(self.host_assigned_resources)
-            outfile = open(self.hook_storage_dir+os.sep+jobid, "w")
+            outfile = open(self.hook_storage_dir + os.sep + jobid, "w")
             outfile.write(json_str)
             outfile.close()
             pbs.logmsg(pbs.EVENT_DEBUG3, "Wrote out file: %s" %
-                       (self.hook_storage_dir+os.sep+jobid))
+                       (self.hook_storage_dir + os.sep + jobid))
             pbs.logmsg(pbs.EVENT_DEBUG3, "Data: %s" % (json_str))
             return True
         except:
@@ -3463,10 +3483,10 @@ class CgroupUtils:
         jobid = str(jobid)
         pbs.logmsg(pbs.EVENT_DEBUG3, "Host assigned resources: %s" %
                    (self.host_assigned_resources))
-        if os.path.isfile(self.hook_storage_dir+os.sep+jobid):
+        if os.path.isfile(self.hook_storage_dir + os.sep + jobid):
             # Write out assigned_resources
             try:
-                infile = open(self.hook_storage_dir+os.sep+jobid, 'r')
+                infile = open(self.hook_storage_dir + os.sep + jobid, 'r')
                 json_data = json.load(infile, object_hook=decode_dict)
                 self.host_assigned_resources = json_data
                 pbs.logmsg(pbs.EVENT_DEBUG3,

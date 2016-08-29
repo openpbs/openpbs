@@ -34,39 +34,66 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 
+checkdir="$(readlink -f $(dirname $0))"
+errors=0
 
-if [ "${TRAVIS_PULL_REQUEST}" == "false" ]; then
-    echo "no pull request found"
-    exit 0
+if [ "x${CI}" == "xtrue" -a "x${TRAVIS}" == "xtrue" -a "x${TRAVIS_REPO_SLUG}" != "x" ]; then
+    sudo apt-get update
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
+
+    sudo apt-get install pep8 -yq
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
 fi
 
-gem install octokit
+which pep8 1>/dev/null 2>/dev/null
 if [ $? -ne 0 ]; then
+    echo "Could not find pep8 command" 1>&2
     exit 1
 fi
 
-cat >check_sign.rb <<-EOF
-require 'octokit'
-client = Octokit::Client.new
-commits = client.pull_request_commits(ENV['TRAVIS_REPO_SLUG'], ENV['TRAVIS_PULL_REQUEST'], :accept => "application/vnd.github.cryptographer-preview")
-is_verified = true
-commits.each do |commit|
-    unless commit[:commit][:verification][:verified]
-        is_verified = false
-    end
-end
+cd ${checkdir}/..
 
-unless is_verified
-    exit 1
-else
-    exit 0
-end
+is_python_file() {
+    if [ "x$(file --mime-type -b ${1})" == "xtext/x-python" ]; then
+        return 0
+    fi
+    
+    # special case
+    # if __init__.py does not contain any code then file
+    # command will consider it as plain text file
+    if [ "x$(basename ${1})" == "x__init__.py" ]; then
+        return 0
+    fi
+    return 1
+}
 
-EOF
-ruby check_sign.rb
+check_pep8() {
+    pep8 --show-source ${1} >out_check_pep8 2>&1
+    return $?
+}
 
-if [ $? -ne 0 ]; then
-    echo "unsigned commits found in this pull request!" 1>&2
+for f in $(find test -type f)
+do
+    if is_python_file ${f}
+    then
+        if ! check_pep8 ${f}
+        then
+            cat out_check_pep8 1>&2
+            rm -f out_check_pep8
+            errors=$((errors + 1))
+        fi
+        if [ -x "${f}" ]; then
+            echo "${f}: executable bit set" 1>&2
+            errors=$((errors + 1))
+        fi
+    fi
+done
+
+if [ ${errors} -ne 0 ]; then
     exit 1
 else
     exit 0

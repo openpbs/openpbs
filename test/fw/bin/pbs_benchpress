@@ -3,36 +3,38 @@
 
 # Copyright (C) 1994-2016 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
-# 
+#
 # This file is part of the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
-# 
+#
 # PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free 
-# Software Foundation, either version 3 of the License, or (at your option) any 
+# terms of the GNU Affero General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
 # later version.
-# 
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-# PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
-# 
-# You should have received a copy of the GNU Affero General Public License along 
-# with this program.  If not, see <http://www.gnu.org/licenses/>.
-# 
-# Commercial License Information: 
 #
-# The PBS Pro software is licensed under the terms of the GNU Affero General 
-# Public License agreement ("AGPL"), except where a separate commercial license 
-# agreement for PBS Pro version 14 or later has been executed in writing with Altair.
-# 
-# Altair’s dual-license business model allows companies, individuals, and 
-# organizations to create proprietary derivative works of PBS Pro and distribute 
-# them - whether embedded or bundled with other software - under a commercial 
-# license agreement.
+# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+# A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+# details.
 #
-# Use of Altair’s trademarks, including but not limited to "PBS™", 
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# Commercial License Information:
+#
+# The PBS Pro software is licensed under the terms of the GNU Affero General
+# Public License agreement ("AGPL"), except where a separate commercial license
+# agreement for PBS Pro version 14 or later has been executed in writing with
+# Altair.
+#
+# Altair’s dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of PBS Pro and
+# distribute them - whether embedded or bundled with other software - under
+# a commercial license agreement.
+#
+# Use of Altair’s trademarks, including but not limited to "PBS™",
+# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 
 import sys
@@ -53,7 +55,7 @@ from ptl.utils.plugins.ptl_test_runner import PTLTestRunner
 from ptl.utils.plugins.ptl_test_db import PTLTestDb
 from ptl.utils.plugins.ptl_test_info import PTLTestInfo
 from ptl.utils.plugins.ptl_test_tags import PTLTestTags
-#from ptl.utils.plugins.ptl_test_data import PTLTestData
+# from ptl.utils.plugins.ptl_test_data import PTLTestData
 
 
 # trap SIGINT and SIGPIPE
@@ -62,7 +64,7 @@ def trap_exceptions(etype, value, tb):
     if issubclass(etype, IOError) and value.errno == errno.EPIPE:
         pass
     else:
-        #if not only_info:
+        # if not only_info:
         #    data.finalize(None)
         sys.__excepthook__(etype, value, tb)
 sys.excepthook = trap_exceptions
@@ -70,7 +72,7 @@ sys.excepthook = trap_exceptions
 
 def sighandler(signum, frames):
     signal.alarm(0)
-    #if not only_info:
+    # if not only_info:
     #    data.finalize(None)
     raise KeyboardInterrupt('Signal %d received' % (signum))
 
@@ -145,10 +147,12 @@ def usage():
     msg += [' has "priority" tag and its value is >4\n']
     msg += ['--tags-info: List all selected test suite (or test cases if ']
     msg += ['--verbose applied)\n']
-    msg += ['            used with --tags or --eval-tags (also -t or --exclude']
+    msg += [
+        '            used with --tags or --eval-tags (also -t or --exclude']
     msg += [' can be applied to limit selection)\n']
     msg += ['--list-tags: List all currenlty used tags\n']
-    msg += ['--verbose: show verbose output (used with -i, -L or --tag-info)\n']
+    msg += [
+        '--verbose: show verbose output (used with -i, -L or --tag-info)\n']
     msg += ['--version: show version number and exit\n']
 
     print ''.join(msg)
@@ -332,7 +336,8 @@ if __name__ == '__main__':
         sys.exit(1)
 
     if showinfo and testsuites is None:
-        logging.error('Testsuites names require (see -t) along with -i option!')
+        logging.error(
+            'Testsuites names require (see -t) along with -i option!')
         sys.exit(1)
 
     if outfile is not None and not os.path.isdir(os.path.dirname(outfile)):
@@ -357,7 +362,8 @@ if __name__ == '__main__':
 
     if only_info:
         testinfo = PTLTestInfo()
-        testinfo.set_data(testsuites, list_test, showinfo, verbose, gen_ts_tree)
+        testinfo.set_data(testsuites, list_test,
+                          showinfo, verbose, gen_ts_tree)
         plugins = (testinfo,)
     elif (tags_info or list_tags):
         loader = PTLTestLoader()
@@ -370,14 +376,14 @@ if __name__ == '__main__':
         testtags = PTLTestTags()
         runner = PTLTestRunner()
         db = PTLTestDb()
-        #data = PTLTestData()
+        # data = PTLTestData()
         loader.set_data(testgroup, testsuites, excludes, follow)
         testtags.set_data(tags, eval_tags)
         runner.set_data(paramfile, testparam, lcov_bin, lcov_data, lcov_out,
                         genhtml_bin, lcov_nosrc, lcov_baseurl)
         db.set_data(dbtype, dbname, dbaccess)
-        #data.set_data(sharedpath)
-        #plugins = (loader, testtags, runner, db, data)
+        # data.set_data(sharedpath)
+        # plugins = (loader, testtags, runner, db, data)
         plugins = (loader, testtags, runner, db)
     test_regex = r'(^(?:[\w]+|^)Test|pbs_|^test_[\(]*)'
     os.environ['NOSE_TESTMATCH'] = test_regex

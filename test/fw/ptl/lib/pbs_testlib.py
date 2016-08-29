@@ -2,36 +2,38 @@
 
 # Copyright (C) 1994-2016 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
-# 
+#
 # This file is part of the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
-# 
+#
 # PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free 
-# Software Foundation, either version 3 of the License, or (at your option) any 
+# terms of the GNU Affero General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
 # later version.
-# 
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-# PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
-# 
-# You should have received a copy of the GNU Affero General Public License along 
-# with this program.  If not, see <http://www.gnu.org/licenses/>.
-# 
-# Commercial License Information: 
 #
-# The PBS Pro software is licensed under the terms of the GNU Affero General 
-# Public License agreement ("AGPL"), except where a separate commercial license 
-# agreement for PBS Pro version 14 or later has been executed in writing with Altair.
-# 
-# Altair’s dual-license business model allows companies, individuals, and 
-# organizations to create proprietary derivative works of PBS Pro and distribute 
-# them - whether embedded or bundled with other software - under a commercial 
-# license agreement.
+# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+# A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+# details.
 #
-# Use of Altair’s trademarks, including but not limited to "PBS™", 
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# Commercial License Information:
+#
+# The PBS Pro software is licensed under the terms of the GNU Affero General
+# Public License agreement ("AGPL"), except where a separate commercial license
+# agreement for PBS Pro version 14 or later has been executed in writing with
+# Altair.
+#
+# Altair’s dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of PBS Pro and
+# distribute them - whether embedded or bundled with other software - under
+# a commercial license agreement.
+#
+# Use of Altair’s trademarks, including but not limited to "PBS™",
+# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 
 """
@@ -425,11 +427,14 @@ class PbsQstopError(PtlException):
 class PtlExpectError(PtlException):
     pass
 
+
 class PbsInitServicesError(PtlException):
     pass
 
+
 class PbsQtermError(PtlException):
     pass
+
 
 class PbsTypeSize(str):
 
@@ -2996,7 +3001,7 @@ class PbsAnonymizer(object):
                                                   attr, None)
 
                     if ((attr in ('job_sort_formula', 'schedselect',
-                       'select')) and self.resc_key):
+                                  'select')) and self.resc_key):
                         for r in self.resc_key:
                             if r in val:
                                 if r not in self.gmap_resc_key:
@@ -4676,7 +4681,8 @@ class Server(PBSService):
         ignore_attrs += [ATTR_pbs_license_info]
         unsetlist = []
         setdict = {}
-        self.logger.info(self.logprefix + 'reverting configuration to defaults')
+        self.logger.info(self.logprefix +
+                         'reverting configuration to defaults')
         self.cleanup_jobs_and_reservations()
         if server_stat is None:
             server_stat = self.status(SERVER, level=logging.DEBUG)[0]
@@ -7144,7 +7150,7 @@ class Server(PBSService):
         if resources is None:
             resources = self.resources
         if isinstance(resources, Resource):
-            resources = {resources.name:resources}
+            resources = {resources.name: resources}
         fn = self.du.mkstemp()[1]
         f = open(fn, 'w+')
         for r in resources.values():
@@ -7176,7 +7182,7 @@ class Server(PBSService):
         """
         if file is None:
             file = os.path.join(self.pbs_conf['PBS_HOME'], 'server_priv',
-                                    'resourcedef')
+                                'resourcedef')
         ret = self.du.cat(self.hostname, file, logerr=False, sudo=True)
         if ret['rc'] != 0 or len(ret['out']) == 0:
             # Most probable error is that file does not exist, we'll let it
@@ -7801,10 +7807,12 @@ class Server(PBSService):
 
         if bslist is None:
             try:
+                _a = resolve_indirectness
                 tmp_bsl = self.status(obj_type, attrib, id,
                                       level=logging.DEBUG, extend=extend,
                                       db_access=db_access, runas=runas,
-                                      resolve_indirectness=resolve_indirectness)
+                                      resolve_indirectness=_a)
+                del _a
             except PbsStatusError:
                 return None
 
@@ -9278,7 +9286,8 @@ class Server(PBSService):
                             svr.manager(MGR_CMD_SET, SCHED, {k: v},
                                         logerr=False)
                         except PbsManagerError:
-                            self.logger.warning('Skipping sched attribute ' + k)
+                            self.logger.warning(
+                                'Skipping sched attribute ' + k)
             sched.signal('-HUP')
 
             if os.path.isfile(nodes):
@@ -9569,7 +9578,7 @@ class Scheduler(PBSService):
         self.resource_group = None
         self.server = None
         self.server_dyn_res = None
-	self.deletable_files = ['usage']
+        self.deletable_files = ['usage']
 
         self.logger = logging.getLogger(__name__)
 
@@ -9990,7 +9999,8 @@ class Scheduler(PBSService):
 
         Return True on success, False otherwise
         """
-        self.logger.info(self.logprefix + "reverting configuration to defaults")
+        self.logger.info(self.logprefix +
+                         "reverting configuration to defaults")
         self.server.manager(MGR_CMD_LIST, SCHED)
         ignore_attrs = ['id', 'pbs_version', 'sched_host']
         unsetattrs = []
@@ -11469,7 +11479,8 @@ class MoM(PBSService):
 
         Return True on success and False otherwise
         """
-        self.logger.info(self.logprefix + 'reverting configuration to defaults')
+        self.logger.info(self.logprefix +
+                         'reverting configuration to defaults')
         restart = False
         if not self.has_diag:
             self.delete_pelog()
@@ -12464,10 +12475,10 @@ class PBSInitServices(object):
                 raise PbsInitServicesError(rc=1, rv=False, msg=msg)
             if init_script is None:
                 init_script = os.path.join(c['PBS_EXEC'], 'libexec',
-                                            'pbs_init.d')
+                                           'pbs_init.d')
             else:
                 init_script = os.path.join(c['PBS_EXEC'], 'etc',
-                                            init_script)
+                                           init_script)
             if not self.du.isfile(hostname, path=init_script, sudo=True):
                 # Could be Type 3 installation where we will not have
                 # PBS_EXEC/libexec/pbs_init.d

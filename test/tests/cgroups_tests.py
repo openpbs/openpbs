@@ -13,22 +13,24 @@
 # later version.
 #
 # PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-# PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+# A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+# details.
 #
-# You should have received a copy of the GNU Affero General Public License along
-# with this program.  If not, see <http://www.gnu.org/licenses/>.
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 # Commercial License Information:
 #
 # The PBS Pro software is licensed under the terms of the GNU Affero General
 # Public License agreement ("AGPL"), except where a separate commercial license
-# agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+# agreement for PBS Pro version 14 or later has been executed in writing with
+# Altair.
 #
 # Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and distribute
-# them - whether embedded or bundled with other software - under a commercial
-# license agreement.
+# organizations to create proprietary derivative works of PBS Pro and
+# distribute them - whether embedded or bundled with other software - under
+# a commercial license agreement.
 #
 # Use of Altair’s trademarks, including but not limited to "PBS™",
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
@@ -48,6 +50,7 @@ test_job_scripts = ["eatmem.py",
                     "eatmem2.py",
                     "eatmem3.py",
                     "eatmem.c"]
+
 
 class CgroupsTests(PBSTestSuite):
 
@@ -83,10 +86,10 @@ class CgroupsTests(PBSTestSuite):
         u = "root"
         attr = {'type': 'long', 'flag': 'nh'}
         rc = self.server.manager(
-                MGR_CMD_CREATE, RSC, attr, id='nmics', runas=u, logerr=False)
+            MGR_CMD_CREATE, RSC, attr, id='nmics', runas=u, logerr=False)
 
         rc = self.server.manager(
-                MGR_CMD_CREATE, RSC, attr, id='ngpus', runas=u, logerr=False)
+            MGR_CMD_CREATE, RSC, attr, id='ngpus', runas=u, logerr=False)
 
         # setup a user and group
         self.TSTGRP0 = PbsGroup('tstgrp00', gid=1900)
@@ -706,8 +709,8 @@ class CgroupsTests(PBSTestSuite):
         mem2 = PbsTypeSize(mem[0]['resources_available.mem'])
         self.logger.info("Mem-2: %s" % mem2)
         self.logger.info("Swap-2: %s" % swap2)
-        mem_resv = mem1-mem2
-        swap_resv = swap1-swap2
+        mem_resv = mem1 - mem2
+        swap_resv = swap1 - swap2
         self.assertEqual(mem_resv.value, 51200)
         self.assertEqual(swap_resv.value, 46080)
         self.assertTrue(mem_resv.unit, 'kb')

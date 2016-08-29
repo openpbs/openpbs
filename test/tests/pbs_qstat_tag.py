@@ -13,22 +13,24 @@
 # later version.
 #
 # PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-# PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+# A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+# details.
 #
-# You should have received a copy of the GNU Affero General Public License along
-# with this program.  If not, see <http://www.gnu.org/licenses/>.
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 # Commercial License Information:
 #
 # The PBS Pro software is licensed under the terms of the GNU Affero General
 # Public License agreement ("AGPL"), except where a separate commercial license
-# agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+# agreement for PBS Pro version 14 or later has been executed in writing with
+# Altair.
 #
 # Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and distribute
-# them - whether embedded or bundled with other software - under a commercial
-# license agreement.
+# organizations to create proprietary derivative works of PBS Pro and
+# distribute them - whether embedded or bundled with other software - under
+# a commercial license agreement.
 #
 # Use of Altair’s trademarks, including but not limited to "PBS™",
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
@@ -36,23 +38,26 @@
 
 from ptl.utils.pbs_testsuite import *
 
+
 class Test_qstat_tag(PBSTestSuite):
     """
-    Test <jsdl-hpcpa:Executable> tag is dispalyed with "Executable" while doing qstat -f
+    Test <jsdl-hpcpa:Executable> tag is dispalyed with "Executable"
+    while doing qstat -f
     """
+
     def test_qstat_tag(self):
-		"""
-		Test <jsdl-hpcpa:Executable> tag is dispalyed with "Executable" while doing qstat -f
-		"""
-		ret = True
-		j = Job(TEST_USER)
-		j.set_sleep_time(10)
-		jid = self.server.submit(j)
-		qstat_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin',
-                             'qstat') + ' -f ' + str(jid)
-		ret = self.du.run_cmd(self.server.hostname, cmd=qstat_cmd, sudo=True)
-		if -1 != str(ret).find('Executable'):
-			if -1 == str(ret).find('<jsdl-hpcpa:Executable>'):
-				ret = False		
-		self.assertTrue(ret)
-    
+        """
+        Test <jsdl-hpcpa:Executable> tag is dispalyed with "Executable"
+        while doing qstat -f
+        """
+        ret = True
+        j = Job(TEST_USER)
+        j.set_sleep_time(10)
+        jid = self.server.submit(j)
+        qstat_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin',
+                                 'qstat') + ' -f ' + str(jid)
+        ret = self.du.run_cmd(self.server.hostname, cmd=qstat_cmd, sudo=True)
+        if -1 != str(ret).find('Executable'):
+            if -1 == str(ret).find('<jsdl-hpcpa:Executable>'):
+                ret = False
+        self.assertTrue(ret)

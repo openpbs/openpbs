@@ -13,22 +13,24 @@
 # later version.
 #
 # PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-# PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+# A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+# details.
 #
-# You should have received a copy of the GNU Affero General Public License along
-# with this program.  If not, see <http://www.gnu.org/licenses/>.
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 # Commercial License Information:
 #
 # The PBS Pro software is licensed under the terms of the GNU Affero General
 # Public License agreement ("AGPL"), except where a separate commercial license
-# agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+# agreement for PBS Pro version 14 or later has been executed in writing with
+# Altair.
 #
 # Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and distribute
-# them - whether embedded or bundled with other software - under a commercial
-# license agreement.
+# organizations to create proprietary derivative works of PBS Pro and
+# distribute them - whether embedded or bundled with other software - under
+# a commercial license agreement.
 #
 # Use of Altair’s trademarks, including but not limited to "PBS™",
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
@@ -53,9 +55,9 @@ class Test_strict_ordering_without_backfill(PBSTestSuite):
         self.server.create_vnodes('vn', a, 1, self.mom, usenatvnode=True)
 
         rv = self.scheduler.set_sched_config(
-            {'round_robin': 'false all', 'by_queue': 'false prime', 
-	     'by_queue': 'false non_prime', 'strict_ordering': 'true all', 
-	     'help_starving_jobs': 'false all'})
+            {'round_robin': 'false all', 'by_queue': 'false prime',
+             'by_queue': 'false non_prime', 'strict_ordering': 'true all',
+             'help_starving_jobs': 'false all'})
         self.assertTrue(rv)
 
         a = {'backfill_depth': 0}
@@ -82,8 +84,9 @@ class Test_strict_ordering_without_backfill(PBSTestSuite):
         j3.set_sleep_time(9999)
         j3.set_attributes(a)
         j3 = self.server.submit(j3)
-	try:
-	    rv = self.server.expect(JOB, {'comment': 'Not Running: Job would break strict sorted order'}, id=j3,
-                           offset=2, max_attempts=2, interval=2)
-	except PtlExpectError, e:
-	    self.assertTrue(False)
+        try:
+            _comment = 'Not Running: Job would break strict sorted order'
+            rv = self.server.expect(JOB, {'comment': _comment}, id=j3,
+                                    offset=2, max_attempts=2, interval=2)
+        except PtlExpectError, e:
+            self.assertTrue(False)

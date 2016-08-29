@@ -2,36 +2,38 @@
 
 # Copyright (C) 1994-2016 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
-# 
+#
 # This file is part of the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
-# 
+#
 # PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free 
-# Software Foundation, either version 3 of the License, or (at your option) any 
+# terms of the GNU Affero General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
 # later version.
-# 
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-# PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
-# 
-# You should have received a copy of the GNU Affero General Public License along 
-# with this program.  If not, see <http://www.gnu.org/licenses/>.
-# 
-# Commercial License Information: 
 #
-# The PBS Pro software is licensed under the terms of the GNU Affero General 
-# Public License agreement ("AGPL"), except where a separate commercial license 
-# agreement for PBS Pro version 14 or later has been executed in writing with Altair.
-# 
-# Altair’s dual-license business model allows companies, individuals, and 
-# organizations to create proprietary derivative works of PBS Pro and distribute 
-# them - whether embedded or bundled with other software - under a commercial 
-# license agreement.
+# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+# A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+# details.
 #
-# Use of Altair’s trademarks, including but not limited to "PBS™", 
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# Commercial License Information:
+#
+# The PBS Pro software is licensed under the terms of the GNU Affero General
+# Public License agreement ("AGPL"), except where a separate commercial license
+# agreement for PBS Pro version 14 or later has been executed in writing with
+# Altair.
+#
+# Altair’s dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of PBS Pro and
+# distribute them - whether embedded or bundled with other software - under
+# a commercial license agreement.
+#
+# Use of Altair’s trademarks, including but not limited to "PBS™",
+# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 
 from ptl.utils.pbs_testsuite import *
@@ -108,7 +110,7 @@ class SmokeTest(PBSTestSuite):
              ATTR_resv_timezone: tzone,
              ATTR_resv_standing: '1',
              'reserve_start': time.time() + 20,
-             'reserve_end': time.time() + 30,}
+             'reserve_end': time.time() + 30, }
         r = Reservation(TEST_USER, a)
         rid = self.server.submit(r)
         a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
@@ -706,7 +708,7 @@ class SmokeTest(PBSTestSuite):
         Examples to demonstrate how to add a server dynamic resource script
         """
         attr = {}
-        attr['type']='long'
+        attr['type'] = 'long'
         self.server.manager(MGR_CMD_CREATE, RSC, attr, id='foo')
         body = "echo 10"
         self.scheduler.add_server_dyn_res("foo", script_body=body)
@@ -716,7 +718,6 @@ class SmokeTest(PBSTestSuite):
         j1id = self.server.submit(j1)
         a = {'job_state': 'R', 'Resource_List.foo': '5'}
         self.server.expect(JOB, a, id=j1id)
-
 
     def test_schedlog_preempted_info(self):
         """
@@ -1269,6 +1270,7 @@ class SmokeTest(PBSTestSuite):
                         self.delete_resource_helper(
                             self.resc_name, t, f, c, k, v)
                         self.logger.info("")
+
     def setup_fs(self):
 
         self.scheduler.set_sched_config({'log_filter': '0'})
@@ -1326,15 +1328,17 @@ class SmokeTest(PBSTestSuite):
         self.server.expect(
             JOB, {'job_state': 'Q'}, id=j1id, max_attempts=30, interval=2)
 
-        self.logger.info(
-            "Checking the job state of " + j2id + ", runs after " + j3id + " completes")
+        msg = "Checking the job state of " + j2id + ", runs after "
+        msg += j3id + " completes"
+        self.logger.info(msg)
         self.server.expect(
             JOB, {'job_state': 'R'}, id=j2id, max_attempts=30, interval=2)
         self.server.expect(
             JOB, {'job_state': 'Q'}, id=j1id, max_attempts=30, interval=2)
 
-        self.logger.info(
-            "Checking the job state of " + j1id + ", runs after " + j2id + " completes")
+        msg = "Checking the job state of " + j1id + ", runs after "
+        msg += j2id + " completes"
+        self.logger.info(msg)
         self.server.expect(
             JOB, {'job_state': 'R'}, id=j1id, max_attempts=30, interval=2)
 
@@ -1385,15 +1389,17 @@ class SmokeTest(PBSTestSuite):
         self.server.expect(
             JOB, {'job_state': 'Q'}, id=j3id, max_attempts=30, interval=2)
 
-        self.logger.info(
-            "Checking the job state of " + j3id + ", runs after " + j1id + " completes")
+        msg = "Checking the job state of " + j3id + ", runs after "
+        msg += j1id + " completes"
+        self.logger.info(msg)
         self.server.expect(
             JOB, {'job_state': 'R'}, id=j3id, max_attempts=30, interval=2)
         self.server.expect(
             JOB, {'job_state': 'Q'}, id=j2id, max_attempts=30, interval=2)
 
-        self.logger.info(
-            "Checking the job state of " + j2id + ", runs after " + j1id + " completes")
+        msg = "Checking the job state of " + j2id + ", runs after "
+        msg += j1id + " completes"
+        self.logger.info(msg)
         self.server.expect(
             JOB, {'job_state': 'R'}, id=j2id, max_attempts=30, interval=2)
 

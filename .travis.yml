@@ -6,7 +6,6 @@ env:
     - OS_TYPE=centos:7
     - OS_TYPE=opensuse:13.2
 before_install:
-    - gem install octokit
     - .github/runchecks
     - sudo apt-get update
     - sudo apt-get remove docker-engine -yq

@@ -13,22 +13,24 @@
 # later version.
 #
 # PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-# PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+# A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+# details.
 #
-# You should have received a copy of the GNU Affero General Public License along
-# with this program.  If not, see <http://www.gnu.org/licenses/>.
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 # Commercial License Information:
 #
 # The PBS Pro software is licensed under the terms of the GNU Affero General
 # Public License agreement ("AGPL"), except where a separate commercial license
-# agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+# agreement for PBS Pro version 14 or later has been executed in writing with
+# Altair.
 #
 # Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and distribute
-# them - whether embedded or bundled with other software - under a commercial
-# license agreement.
+# organizations to create proprietary derivative works of PBS Pro and
+# distribute them - whether embedded or bundled with other software - under
+# a commercial license agreement.
 #
 # Use of Altair’s trademarks, including but not limited to "PBS™",
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
@@ -75,9 +77,10 @@ class TestHookDebugNoCrash(PBSTestSuite):
         open_files_limit = ret['out'][0]
         if (open_files_limit == "unlimited") or (
                 int(open_files_limit) > self.open_files_limit_expected):
-            self.skipTest(
-                "\n'This test requires 'open files' system limit to be <= %d (current value=%s)." %
-                (self.open_files_limit_expected, open_files_limit))
+            msg = "\n'This test requires 'open files' system limit"
+            msg += " to be <= %d " % self.open_files_limit_expected
+            msg += "(current value=%s)." % open_files_limit
+            self.skipTest(msg)
         PBSTestSuite.setUp(self)
 
     def test_hook_debug_no_crash(self):
