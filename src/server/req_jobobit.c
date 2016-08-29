@@ -1405,6 +1405,42 @@ setrerun(job *pjob)
 
 /**
  * @brief
+ *		Concatenate the resources used to the buffer provided.
+ *
+ * @param[in]		buffer - the buffer to add information to
+ * @param[in]		patlist - a pointer to the attribute list
+ * @param[in,out]	total_left - the total amount left in the buffer
+ * @param[in]		delim - a pointer to the delimiter to use
+ */
+static void
+concat_rescused_to_buffer(char *buffer, svrattrl *patlist, int *total_left, char *delim)
+{
+	int amt_needed;
+
+	/*
+	 * To calculate length of the string of the form "resources_used.<resource>=<value>".
+	 * Additional length of 3 is required to accommodate the characters '.', '=' and '\n'.
+	 */
+	amt_needed = strlen(patlist->al_name) + strlen(patlist->al_resc) + strlen(patlist->al_value) + 3;
+	if (amt_needed < *total_left) {
+		/*
+		 * adding '\n' first for mailbuf which is used while sending mail
+		 * this '\n' will be replaced by ' ' before writing to acct. log
+		 */
+		(void)strcat(buffer, delim);
+		(void)strcat(buffer, patlist->al_name);
+		if (patlist->al_resc) {
+			(void)strcat(buffer, ".");
+			(void)strcat(buffer, patlist->al_resc);
+		}
+		(void)strcat(buffer, "=");
+		(void)strcat(buffer, patlist->al_value);
+		*total_left -= amt_needed;
+	}
+}
+
+/**
+ * @brief
  *		Process the Job Obituary Notice (request) from MOM for a job which has.
  *		terminated.  The Obit contains the exit status and final resource
  *		usage for the job.
@@ -1476,6 +1512,7 @@ job_obit(struct resc_used_update *pruu, int	stream)
 	DOID("job_obit")
 	int		  alreadymailed = 0;
 	int		  amt;
+	int		  mailbuf_amt;
 	char 		  acctbuf[RESC_USED_BUF_SIZE];
 	int		  accttail;
 	int		  dummy;
@@ -1708,31 +1745,27 @@ job_obit(struct resc_used_update *pruu, int	stream)
 	 * information in job struct
 	 */
 	amt = RESC_USED_BUF_SIZE - accttail - 1;
+	mailbuf_amt = RESC_USED_BUF_SIZE - strlen(mailbuf) - 1;
 	while (patlist) {
 		/*
-		 * To calculate length of the string of the form "resources_used.<resource>=<value>".
-		 * Additional length of 3 is required to accommodate the characters '.', '=' and '\n'.
+		 * Don't save off information about invisible resources.
+		 * Find the resource definition and check the flags of the resource.
+		 * The ATR_DFLAG_USRD flag will not be set on invisible resources.
 		 */
-		need = strlen(patlist->al_name) + strlen(patlist->al_resc) + strlen(patlist->al_value) + 3;
-		if (need < amt) {
-			/*
-			 * adding '\n' first for mailbuf which is used while sending mail
-			 * this '\n' will be replaced by ' ' before writing to acct. log
-			 */
-			(void)strcat(acctbuf, "\n");
-			(void)strcat(acctbuf, patlist->al_name);
-			if (patlist->al_resc) {
-				(void)strcat(acctbuf, ".");
-				(void)strcat(acctbuf, patlist->al_resc);
-			}
-			(void)strcat(acctbuf, "=");
-			(void)strcat(acctbuf, patlist->al_value);
-			amt -= need;
+		resource_def *tmpdef;
+		tmpdef = find_resc_def(svr_resc_def, patlist->al_resc, svr_resc_size);
+		/* 
+		 * Copy all resources to the accounting buffer.
+		 * But save resource information to the mail buffer only when 
+		 * the resource is not invisible.
+		 */
+		concat_rescused_to_buffer(acctbuf, patlist, &amt, " ");
+
+		if (tmpdef->rs_flags & ATR_DFLAG_USRD) {
+			concat_rescused_to_buffer(mailbuf, patlist, &mailbuf_amt, "\n");
 		}
 		patlist = (svrattrl *)GET_NEXT(patlist->al_link);
 	}
-	(void)strncat(mailbuf, (acctbuf + accttail),
-		RESC_USED_BUF_SIZE-strlen(mailbuf)-1);
 	mailbuf[RESC_USED_BUF_SIZE-1] = '\0';
 
 	/* make sure ji_momhandle is -1 to force new connection to mom */
@@ -2000,11 +2033,6 @@ RetryJob:
 			svr_mailowner(pjob, MAIL_END, MAIL_NORMAL, mailbuf);
 
 	}
-	/* replace new-lines with blanks for log message */
-
-	for (pc = acctbuf; *pc; ++pc)
-		if (*pc == '\n')
-			*pc = ' ';
 
 	/* save record accounting for later */
 
