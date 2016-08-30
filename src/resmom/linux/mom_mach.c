@@ -1,36 +1,36 @@
 /*
  * Copyright (C) 1994-2016 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
- *  
+ *
  * This file is part of the PBS Professional ("PBS Pro") software.
- * 
+ *
  * Open Source License Information:
- *  
+ *
  * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free 
- * Software Foundation, either version 3 of the License, or (at your option) any 
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
  * later version.
- *  
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+ *
+ * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
  * PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
- *  
- * You should have received a copy of the GNU Affero General Public License along 
+ *
+ * You should have received a copy of the GNU Affero General Public License along
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
- *  
- * Commercial License Information: 
- * 
- * The PBS Pro software is licensed under the terms of the GNU Affero General 
- * Public License agreement ("AGPL"), except where a separate commercial license 
+ *
+ * Commercial License Information:
+ *
+ * The PBS Pro software is licensed under the terms of the GNU Affero General
+ * Public License agreement ("AGPL"), except where a separate commercial license
  * agreement for PBS Pro version 14 or later has been executed in writing with Altair.
- *  
- * Altair’s dual-license business model allows companies, individuals, and 
- * organizations to create proprietary derivative works of PBS Pro and distribute 
- * them - whether embedded or bundled with other software - under a commercial 
+ *
+ * Altair’s dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of PBS Pro and distribute
+ * them - whether embedded or bundled with other software - under a commercial
  * license agreement.
- * 
- * Use of Altair’s trademarks, including but not limited to "PBS™", 
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+ *
+ * Use of Altair’s trademarks, including but not limited to "PBS™",
+ * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
  * trademark licensing policies.
  *
  */
@@ -129,6 +129,13 @@ static char	procfs[] = "/proc";
 static DIR	*pdir = NULL;
 static int	pagesize;
 static long	hz;
+
+/* convert between jiffies and seconds */
+#define	JTOS(x)	(((x) + (hz/2)) / hz)
+
+static char	*choose_procflagsfmt(void);
+
+
 proc_stat_t	*proc_info = NULL;
 int		nproc = 0;
 int		max_proc = 0;
@@ -221,7 +228,7 @@ static unsigned int 	pidcache_bitsper = sizeof(pidcachetype_t) * NBBY;
 static int		pidcache_check(pid_t, pidcachetype_t *);
 static pidcachetype_t	*pidcache_create(void);
 static void		pidcache_destroy(void);
-static int		pidcache_eligible(proc_stat_t *, char *, char *, ulong);
+static int		pidcache_eligible(proc_stat_t *, char *, char *, unsigned long long);
 static pidcachetype_t *	pidcache_getarena(void);
 static int		pidcache_insert(pid_t p, pidcachetype_t *set);
 static int		pidcache_needed(void);
@@ -513,7 +520,7 @@ resume_job(job *pjob)
  * @brief
  *	sets values for cpuset
  *
- * @param[in] cptr - config info 
+ * @param[in] cptr - config info
  * @param[in] suff - suffix for val
  * @param[in] val - value for cpuset
  *
@@ -602,7 +609,7 @@ logprocinfo(pid_t pid, int errnum, const char *jid)
  * @return Void
  *
  */
- 
+
 void
 del_cpusetfile(char *qname, job *pjob)
 {
@@ -665,7 +672,7 @@ del_cpusetfile(char *qname, job *pjob)
  *	delete the cpuset.
  *	Don't bother with retries right now, see if we need them.
  *
- * @param[in] pjob - pointer to job 
+ * @param[in] pjob - pointer to job
  *
  * @return Void
  *
@@ -1314,16 +1321,16 @@ equal_string_list_end:
 
 /**
  * @brief
- *	compares 2 string lists, strl1 and strl2  
+ *	compares 2 string lists, strl1 and strl2
  *
  * @param[in] strl1 - string list 1
  * @param[in] strl2 - string list 2
  *
  * @return      int
  * @retval      1       Success	if at least one element from each list match
- * @retval      0       Failed  they don't overlap.             
+ * @retval      0       Failed  they don't overlap.
  *
- * NOTE:A string_list passed as a NULL value is considered an error.     
+ * NOTE:A string_list passed as a NULL value is considered an error.
  */
 
 static int
@@ -1365,12 +1372,12 @@ overlap_string_list_end:
 
 /**
  * @brief
- *	like strdup() except this one appends 'str_val' to existing   
- *	str_src' string, doing a reallocs on 'str_src' as needed.           
- * 	str_src' is a comma-separated list with a leading space introducing   
- *	a list value.                                                           
+ *	like strdup() except this one appends 'str_val' to existing
+ *	str_src' string, doing a reallocs on 'str_src' as needed.
+ * 	str_src' is a comma-separated list with a leading space introducing
+ *	a list value.
  *
- * @param[in] str_src - source string 
+ * @param[in] str_src - source string
  * @param[in] str_val - string with value
  *
  * @return 	int
@@ -1497,7 +1504,7 @@ bgl_vnode_get_state(struct bgl_vnode *head, char *vnode_name)
  *	Returns the number of cpu available on node
  *
  * @param[in] head - pointer to bgl_vnode structure
- * @param[in] vnode_name - vnode name 
+ * @param[in] vnode_name - vnode name
  *
  * @return 	int
  * @retval	number of cpus		Success
@@ -1590,11 +1597,11 @@ bgl_vnode_get_part_list(struct bgl_vnode *head, char *vnode_name)
 
 /**
  * @brief
- *	bgl_vnode_get_part_list_spanning_vnode: returns a list of partitions that 
- * 	contains the given vnode (vnode_name=bpid#qcard#ncard), or the base       
- * 	partition (bpid) that the vnode  belongs to. 'bpid' can be NULL if vnode  
- * 	is a base partition. 						     
- * NOTE:  This returns a malloced array that needs to be  freed.	     
+ *	bgl_vnode_get_part_list_spanning_vnode: returns a list of partitions that
+ * 	contains the given vnode (vnode_name=bpid#qcard#ncard), or the base
+ * 	partition (bpid) that the vnode  belongs to. 'bpid' can be NULL if vnode
+ * 	is a base partition.
+ * NOTE:  This returns a malloced array that needs to be  freed.
  *
  * @param[in] head - pointer to bgl_vnode structure
  * @param[in] vnode_name - vnode name
@@ -1604,7 +1611,7 @@ bgl_vnode_get_part_list(struct bgl_vnode *head, char *vnode_name)
  * @retval	plist_ret	partition list
  * @retval	NULL		Error
  *
- */ 
+ */
 
 char *
 bgl_vnode_get_part_list_spanning_vnode(struct bgl_vnode *head, char *vnode_name,
@@ -1634,18 +1641,18 @@ bgl_vnode_get_part_list_spanning_vnode(struct bgl_vnode *head, char *vnode_name,
 
 /**
  * @brief
- *	Returns the head of list - if bgl_vnode_create() is not called first,   
- * 	be sure to call this with a NULL head 				   
+ *	Returns the head of list - if bgl_vnode_create() is not called first,
+ * 	be sure to call this with a NULL head
  *
  * @param[in] head - pointer to bgl_vnode structure
  * @param[in] vnode_name - vnode name
  * @param[in] state - state of vnode
  *
- * @return 	structure handle 
+ * @return 	structure handle
  * @retval	structure handle to bgl_vnode	Success
- * 
+ *
  */
-	
+
 struct bgl_vnode *
 bgl_vnode_put_state(struct bgl_vnode *head, char *vnode_name, bgl_vnstate state)
 {
@@ -1678,8 +1685,8 @@ bgl_vnode_put_state(struct bgl_vnode *head, char *vnode_name, bgl_vnstate state)
 
 /**
  * @brief
- *	Returns the head of list - if bgl_vnode_create() is not called first,   
- * 	be sure to call this with a NULL head 				   
+ *	Returns the head of list - if bgl_vnode_create() is not called first,
+ * 	be sure to call this with a NULL head
  *
  * @param[in] head - pointer to bgl_vnode structure
  * @param[in] vnode_name - vnode name
@@ -1690,7 +1697,7 @@ bgl_vnode_put_state(struct bgl_vnode *head, char *vnode_name, bgl_vnstate state)
  * @retval	creates one entry for bgl_vnode		if doesn exist
  *
  */
-  
+
 struct bgl_vnode *
 bgl_vnode_put_num_cnodes(struct bgl_vnode *head, char *vnode_name,
 	int num_cnodes)
@@ -1724,8 +1731,8 @@ bgl_vnode_put_num_cnodes(struct bgl_vnode *head, char *vnode_name,
 
 /**
  * @brief
- *	Returns the head of list - if bgl_vnode_create() is not called first,   
- * 	be sure to call this with a NULL head 				   
+ *	Returns the head of list - if bgl_vnode_create() is not called first,
+ * 	be sure to call this with a NULL head
  *
  * @param[in] head - pointer to bgl_vnode structure
  * @param[in] vnode_name - vnode name
@@ -1769,8 +1776,8 @@ bgl_vnode_put_amt_mem(struct bgl_vnode *head, char *vnode_name, ulong amt_mem)
 
 /**
  * @brief
- *	Returns the head of list - if bgl_vnode_create() is not called first,   
- * 	be sure to call this with a NULL head 				   
+ *	Returns the head of list - if bgl_vnode_create() is not called first,
+ * 	be sure to call this with a NULL head
  *
  * @param[in] head - pointer to bgl_vnode structure
  * @param[in] vnode_name - vnode name
@@ -1882,7 +1889,7 @@ bgl_vnode_print(struct bgl_vnode *head)
 /************* bgl_job functions *************************************/
 /*********************************************************************/
 
-/** 
+/**
  * @brief
  *	creates job id for bgl job
  *
@@ -2027,7 +2034,7 @@ bgl_job_get_partition_given_pbs_jobid(struct bgl_job *head, char *pbs_jobid)
  *	returns the gbl jobid in partition
  *
  * @param[in] head - pointer to bgl_job structure
- * @param[in] part - partition 
+ * @param[in] part - partition
  *
  * @return	db_job_id_t
  * @retval	bgl jobid	Success
@@ -2088,13 +2095,13 @@ bgl_job_get_pbs_jobid(struct bgl_job *head, char *part)
 
 /**
  * @brief
- *	Returns the head of list - if bgl_job_create_given_jobid() is not called  
- * 	first. Be sure to call this with a NULL head 			     
+ *	Returns the head of list - if bgl_job_create_given_jobid() is not called
+ * 	first. Be sure to call this with a NULL head
  *
  * @param[in] head - pointer to bgl_job structure
  * @param[in] bgl_jobid - bgl jobid
  * @param[in]  part - partition
- * 
+ *
  * @return	structure handle
  * @retval	structure handle to bgl_job				if exists
  * @retval	create and return structure handle to bgl_job		if not exists
@@ -2138,9 +2145,9 @@ bgl_job_put_partition_given_bgl_jobid(struct bgl_job *head,
 
 /**
  * @brief
- *	Returns the head of list - if bgl_job_create_given_jobid() is not called  
- * 	first. Be sure to call this with a NULL head 			     
- * 
+ *	Returns the head of list - if bgl_job_create_given_jobid() is not called
+ * 	first. Be sure to call this with a NULL head
+ *
  * @param[in] head - pointer to bgl_job structure
  * @param[in] pbs_jobid - pbs jobid
  * @param[in]  part - partition
@@ -2191,8 +2198,8 @@ bgl_job_put_partition_given_pbs_jobid(struct bgl_job *head, char *pbs_jobid,
 
 /**
  * @brief
- *	Returns the head of list - if bgl_job_create_given_jobid() is not called  
- * 	first. Be sure to call this with a NULL head 			     
+ *	Returns the head of list - if bgl_job_create_given_jobid() is not called
+ * 	first. Be sure to call this with a NULL head
  *
  * @param[in] head - pointer to bgl_job structure
  * @param[in] pbs_jobid - pbs jobid
@@ -2255,11 +2262,11 @@ bgl_job_put_pbs_jobid(struct bgl_job *head, char *part, char *pbs_jobid)
  *	frees the job from list
  *
  * @param[in] head - pointer to bgl_job structure
- * 
+ *
  * @return	Void
  *
  */
- 
+
 void
 bgl_job_free(struct bgl_job *head)
 {
@@ -2283,7 +2290,7 @@ bgl_job_free(struct bgl_job *head)
  *      prints the job list
  *
  * @param[in] head - pointer to bgl_job structure
- * 
+ *
  * @return      Void
  *
  */
@@ -2353,8 +2360,8 @@ bgl_partition_create(char *part_name)
 
 /**
  * @brief
- *	Returns the head of list - if bgl_partition_create() is not called first,  
- * 	be sure to call this with a NULL head 				      
+ *	Returns the head of list - if bgl_partition_create() is not called first,
+ * 	be sure to call this with a NULL head
  *
  * @param[in] head - pointer to bgl_partition structure
  * @param[in] part_name - partition name
@@ -2454,7 +2461,7 @@ bgl_partition_free(struct bgl_partition *head)
  *	prints the partitions in list
  *
  * @param[in] head - pointer to bgl_partition structure
- * 
+ *
  * @return	Void
  *
  */
@@ -2653,9 +2660,9 @@ ncstate_to_txt(rm_nodecard_state_t state)
 }
 /************ end of bgl_partition functions **********************************/
 
-/** 
+/**
  * @brief
- *	generate_bglvnodes_from_partitions: returns the list of vnodes found 
+ *	generate_bglvnodes_from_partitions: returns the list of vnodes found
  *	when canvassing the partitions existing on the system.
  *
  * @retrun 	structure handle
@@ -2785,12 +2792,12 @@ generate_bglvnodes_from_partitions(void)
 /**
  * @brief
  *	generate_bglvnodes_from_system: generates the list of vnodes and their
- *	properties (# of cnodes, mem, list of partitions spanning the vnode)  
- *	found in the   system (what the real hardware provides). 
+ *	properties (# of cnodes, mem, list of partitions spanning the vnode)
+ *	found in the   system (what the real hardware provides).
  *
  * @return	structure handle
  * @retval	pointer to struct bgl_vnode
- * 
+ *
  */
 
 struct bgl_vnode *
@@ -3025,7 +3032,7 @@ generate_bglvnodes_from_system(void)
 
 /**
  * @brief
- *	uniquify_part_list: given a list of real partition names,"part1, part2, ..., partN",   
+ *	uniquify_part_list: given a list of real partition names,"part1, part2, ..., partN",
  *
  * @param[in] part_list - partition list
  *
@@ -3034,7 +3041,7 @@ generate_bglvnodes_from_system(void)
  *		"<mom_short_name>-part1,<mom_short_name>-part2,...,<mom_short_name>-partN"
  * @retval	NULL	Error
  *
- */ 
+ */
 static char *
 uniquify_part_list(char *part_list)
 {
@@ -3100,7 +3107,7 @@ uniquify_part_list(char *part_list)
  * @brief
  *	returns the real partition name
  *	given a "uniquified" partition name of the form:
- *	<mom_short_name>-partN  
+ *	<mom_short_name>-partN
  *
  * @param[in] part_name - partition name
  *
@@ -3126,10 +3133,10 @@ get_real_part_name(char *part_name)
 
 /**
  * @brief
- *	vn_create_bglvnodes: generates the list of vnodes and attributes 
+ *	vn_create_bglvnodes: generates the list of vnodes and attributes
  * 	in *p_vnlp, taking values from 'bglvns',  to be sent over to the server
- *	on the next state_to_server() call.  
- * 
+ *	on the next state_to_server() call.
+ *
  * @param[in] p_vnlp - pointer to pointer to vnl_t structure
  * @param[in] bglvns - pointer to bgl_vnode structure
  * @param[in] callback - call back function
@@ -3145,8 +3152,6 @@ int
 vn_create_bglvnodes(vnl_t **p_vnlp, struct bgl_vnode *bglvns,
 	callfunc_t callback)
 {
-
-	static char		id[] = "bgl_vn_create";
 	struct bgl_vnode	*iptr;
 	char			pname_attrib[80];
 	int			i;
@@ -3159,7 +3164,7 @@ vn_create_bglvnodes(vnl_t **p_vnlp, struct bgl_vnode *bglvns,
 
 	}
 	if (vnl_alloc(p_vnlp) == NULL) {
-		log_err(errno, id, "vnl_alloc failed!");
+		log_err(errno, __func__, "vnl_alloc failed!");
 		return (-1);
 	}
 
@@ -3193,7 +3198,7 @@ vn_create_bglvnodes(vnl_t **p_vnlp, struct bgl_vnode *bglvns,
 			(iptr->part_list[0] == '\0')) {
 			sprintf(log_buffer,
 				"Not reporting vnode %s since it is not part of any partition", iptr->vnode_name);
-			log_event(PBSEVENT_SYSTEM, 0, LOG_DEBUG, id, log_buffer)
+			log_event(PBSEVENT_SYSTEM, 0, LOG_DEBUG, __func__, log_buffer)
 			;
 			continue;
 		}
@@ -3256,12 +3261,12 @@ bgl_vn_create_exit:
 
 /**
  * @brief
- *	bgl_read_machine_serial: finds out the serial number  of the BGL machine 
- * 	by consulting the BRIDGE_CONFIG_FILE.				    
+ *	bgl_read_machine_serial: finds out the serial number  of the BGL machine
+ * 	by consulting the BRIDGE_CONFIG_FILE.
  *
  * @return 	string
  * @retval	serial number	if found
- * @retval	NULL 		if not found or error.			    
+ * @retval	NULL 		if not found or error.
  *
  */
 char *
@@ -3298,9 +3303,9 @@ bgl_read_machine_serial(void)
 
 /**
  * @brief
- *	get_vnode_list_spanned_bypartition: returns a comma-separated  
- *	string containing the list of vnodes in  
- *	"vns" who are spanned by the given 'partition'.    
+ *	get_vnode_list_spanned_bypartition: returns a comma-separated
+ *	string containing the list of vnodes in
+ *	"vns" who are spanned by the given 'partition'.
  *
  * @param[in] vns - pointer to bgl_vnode structure
  * @param[in] partition - partition name
@@ -3333,8 +3338,8 @@ get_vnode_list_spanned_bypartition(struct bgl_vnode *vns, char *partition)
 
 /**
  * @brief
- *	set_bgl_vnodes_state: set state to 'state' in *p_bglvns structure of all 
- *	vnodes in 'vn_list' string (a comma-separated list)  
+ *	set_bgl_vnodes_state: set state to 'state' in *p_bglvns structure of all
+ *	vnodes in 'vn_list' string (a comma-separated list)
  *
  * @param[in] p_bglvns - pointer to pointer to bgl_vnode  structure
  * @param[in] vn_list - vnode list
@@ -3366,9 +3371,9 @@ set_bgl_vnodes_state(struct bgl_vnode **p_bglvns, char *vn_list,
 /**
  * @brief
  *	cancel_bgl_job: return 0 if job has been cancelled; non-zero otherwise.
- *	If a job could not be cancelled, then this function automatically 
- *	adds the job to the list of "stuck" jobs in the global variable 
- *	"stuck_bgljobs". 
+ *	If a job could not be cancelled, then this function automatically
+ *	adds the job to the list of "stuck" jobs in the global variable
+ *	"stuck_bgljobs".
  *
  * @param[in] bjid - bgl jobid
  * @param[in] part - partition name
@@ -3436,7 +3441,7 @@ cancel_bgl_job(db_job_id_t bjid, char *part)
 
 /**
  * @brief
- *	job_bgl_partitions: returns the name of the BGL partition that has been 
+ *	job_bgl_partitions: returns the name of the BGL partition that has been
  * 	"pre-assigned" to the job 'pjob'.
  *
  * @param[in] pjob - pointer to job structure
@@ -3499,7 +3504,7 @@ job_bgl_partition(job *pjob)
 
 /**
  * @brief
- *	job_bgl_delete: free up of any job the BGL partition that pjob belongs to 
+ *	job_bgl_delete: free up of any job the BGL partition that pjob belongs to
  *
  * @param[in] pjob - pointer to job structure
  *
@@ -3571,14 +3576,14 @@ job_bgl_delete(job *pjob)
 	return (ret);
 }
 
-/** 
+/**
  * @brief
  *	Given a partition name 'part_name', returns its current status.
  *	If error getting partitions listing from the system, or partition
  *	not found, return RM_PARTITION_NAV; otherwise, return the current
  *	partition state.
  * WARNING: Somehow, calling this in the child process causes failure
- * in API! Don't know why.   
+ * in API! Don't know why.
  *
  * @param[in] part_name - parition name
  *
@@ -3612,10 +3617,10 @@ get_bgl_partition_state(char *part_name)
 
 /**
  * @brief
- *	Given a partition name 'part_name', returns number of compute nodes 
+ *	Given a partition name 'part_name', returns number of compute nodes
  *	making up the partition.
- * WARNING: Somehow, calling this in the child process causes failure 
- * in API! Don't know why.   
+ * WARNING: Somehow, calling this in the child process causes failure
+ * in API! Don't know why.
  *
  * @param[in] part_name - partition name
  * @param[in] cnodes_per_bp - number of cpu per base partition
@@ -3662,13 +3667,13 @@ get_bgl_partition_size(char *part_name, int cnodes_per_bp, int cnodes_per_ncard)
  * @brief
  *	returns the list of BGL jobs that are currently running
  *	on the system. If it finds a BGL job belonging to a partition that is
- *	assigned to a PBS job, that PBS jobid is also added to the 
+ *	assigned to a PBS job, that PBS jobid is also added to the
  *	bgl_job entry.
  *
  * NOTE: It is possible that a partition has been assigned a PBS job,
  * but no BGL job has been instantiated yet. Instantiation takes place
- * when PBS job calls "mpirun". If so, only a pbs_jobid entry in bgl_job 
- * would be returned without a BGL job.                       
+ * when PBS job calls "mpirun". If so, only a pbs_jobid entry in bgl_job
+ * would be returned without a BGL job.
  *
  * @return	structure handle
  * @retval	the bgl_job structure that must be later freed. 	Success
@@ -3748,8 +3753,8 @@ get_bgl_jobs(void)
  * @brief
  *	evaluate_vnodes_phys_state: any non-RESERVE vnodes in the comma-separated
  *	'vn_list' found to not have a physical state of "UP" in the system
- *	will get marked as having a BGLVN_DOWN state in '*p_bglvns'; any vnodes 
- *	in 'vn_list' found to have a physical state of "UP" and yet shows as 
+ *	will get marked as having a BGLVN_DOWN state in '*p_bglvns'; any vnodes
+ *	in 'vn_list' found to have a physical state of "UP" and yet shows as
  *	BGLVN_DOWN in '*p_bglvns' will get marked as BGLVN_FREE in '*p_bglvns'
  *
  * @param[in] p_bglvns - pointer to pointer to bgl_vnode structure
@@ -3939,27 +3944,27 @@ evaluate_vnodes_phys_state(struct bgl_vnode **p_bglvns, char *vn_list,
 /**
  * @brief
  *	verify_job_bgl_partition: verifies that the pre-assigned partition
- *	to 'pjob' is ok and returns 0 for success.    
+ *	to 'pjob' is ok and returns 0 for success.
  *
  * @param[in] pjob - pointer to job structure
  * @param[in] job_error_code - error code
  *
- * @return 	int	
+ * @return 	int
  * @retval	0	Success
- * @retval	-1  	bad pjob 
- * @retval	-2  	job was not pre-assigned any partition by the scheduler 
+ * @retval	-1  	bad pjob
+ * @retval	-2  	job was not pre-assigned any partition by the scheduler
  * @retval	-3  	job's pre-assigned partition is not empty (not cleared due to
- *			restrict_user is OFF 
- * @retval	-4  	job's pre-assigned partition owned by another PBS job  
+ *			restrict_user is OFF
+ * @retval	-4  	job's pre-assigned partition owned by another PBS job
  * @retval	-5  	job's pre-assigned partition (not owned by PBS) could not be
- *			cleared 
- * @retval	-6  	job's pre-assigned partition had an unexpected state!       
+ *			cleared
+ * @retval	-6  	job's pre-assigned partition had an unexpected state!
  * @retval	-7   	job's pre-assigned partition has vnodes that are not
  *			physically up.
  * @retval	-8  	partition is READY but PBS failed to reset state to FREE
  * @retval	-9  	vnodes in chosen partition not match job's assigned vnodes
- * @retval 	-10 	job's pre-assigned partition has vnodes overlapping with  
- * 			  an active partition not assigned by PBS.     
+ * @retval 	-10 	job's pre-assigned partition has vnodes overlapping with
+ * 			  an active partition not assigned by PBS.
  *
  */
 int
@@ -4281,13 +4286,13 @@ verifyexit:
 /**
  * @brief
  *	if mode is 0, then calls "putenv(env_var=env_val)" if env_var
- *	is not defined in the current environment. 
+ *	is not defined in the current environment.
  *	if mode is 1, then calls "putenv(env_var=env_val)" if env_var
- *	is not defined in the current environment, and env_val is an existent 
+ *	is not defined in the current environment, and env_val is an existent
  *	file path.
  *	if mode is 2, then if env_var is not defined in the current environment,
- *	then execute 'cmd_get_val' to get the value for env_val, and call 
- *	putenv(env_var=env_val). Any passed env_val in this case will be ignored 
+ *	then execute 'cmd_get_val' to get the value for env_val, and call
+ *	putenv(env_var=env_val). Any passed env_val in this case will be ignored
  *	and should just be set to NULL.
  *
  * @param[in] env_var - environment variable
@@ -4453,7 +4458,7 @@ add_restrict_user_exceptions(char *user)
 
 /**
  * @brief
- *	set_bgl_environment: 
+ *	set_bgl_environment:
  *
  * @return	int
  * @retval	0	Success
@@ -4537,46 +4542,32 @@ proc_get_btime(void)
 	return;
 }
 
-static char	stat_str[] =
-	"%d "		/* 1  pid %d The process id */
-"(%[^)]) "	/* 2  comm %s The filename of the executable */
-"%c "		/* 3  state %c "RSDZTW" */
-"%d "		/* 4  ppid %d The PID of the parent */
-"%d "		/* 5  pgrp %d The process group ID */
-"%d "		/* 6  session %d The session ID */
-"%*d "		/* 7  tty_nr %d The tty */
-"%*d "		/* 8  tpgid %d The process group that owns the tty */
-"%lu "		/* 9  flags %lu The flags of the process */
-"%*lu "		/* 10 minflt %lu minor faults */
-"%*lu "		/* 11 cminflt %lu minor faults proc + children */
-"%*lu "		/* 12 majflt %lu major faults */
-"%*lu "		/* 13 cmajflt %lu major faults proc + children */
-"%lu "		/* 14 utime %lu jiffies user mode */
-"%lu "		/* 15 stime %lu jiffies kernel mode */
-"%lu "		/* 16 cutime %ld jiffies proc + children user mode */
-"%lu "		/* 17 cstime %ld jiffies proc + children kernel mode */
-"%*ld "		/* 18 priority %ld nice value + 15 */
-"%*ld "		/* 19 nice %ld nice value */
-"%*ld "		/* 20 hard coded to 0 */
-"%*ld "		/* 21 itrealvalue %ld jiffies before next SIGALRM */
-"%lu "		/* 22 starttime %lu jiffies proc started after boot */
-"%lu "		/* 23 vsize %lu Virtual memory size in bytes */
-"%lu "		/* 24 rss %ld Resident Set Size */
-"%*lu "		/* 25 rlim %lu rss limit in bytes */
-"%*lu "		/* 26 startcode %lu program text start */
-"%*lu "		/* 27 endcode %lu program text end */
-"%*lu "		/* 28 startstack %lu start of stack */
-"%*lu "		/* 29 kstkesp %lu current stack pointer */
-"%*lu "		/* 30 kstkeip %lu current instruction pointer */
-"%*lu "		/* 31 signal %lu bitmap of pending signals */
-"%*lu "		/* 32 blocked %lu bitmap of blocked signals */
-"%*lu "		/* 33 sigignore %lu bitmap of ignored signals */
-"%*lu "		/* 34 sigcatch %lu bitmap of catched signals */
-"%*lu "		/* 35 wchan %lu wait channel */
-"%*lu "		/* 36 nswap %lu pages swapped */
-"%*lu "		/* 37 cnswap %lu Cumulative nswap for child procs */
-"%*d "		/* 38 exit_signal %d Signal to be sent to parent */
-"%*d";		/* 39 processor %d CPU number last executed on */
+static char	stat_str_pre[] =
+"%%d "		/* 1  pid %d The process id */
+"(%%[^)]) "	/* 2  comm %s The filename of the executable */
+"%%c "		/* 3  state %c "RSDZTW" */
+"%%d "		/* 4  ppid %d The PID of the parent */
+"%%d "		/* 5  pgrp %d The process group ID */
+"%%d "		/* 6  session %d The session ID */
+"%%*d "		/* 7  ignored:  tty_nr */
+"%%*d "		/* 8  ignored:  tpgid */
+"%s "		/* 9  flags - %u or %lu */
+"%%*lu "	/* 10 ignored:  minflt */
+"%%*lu "	/* 11 ignored:  cminflt */
+"%%*lu "	/* 12 ignored:  majflt */
+"%%*lu "	/* 13 ignored:  cmajflt */
+"%%lu "		/* 14 utime %lu */
+"%%lu "		/* 15 stime %lu */
+"%%ld "		/* 16 cutime %ld */
+"%%ld "		/* 17 cstime %ld */
+"%%*ld "	/* 18 ignored:  priority %ld */
+"%%*ld "	/* 19 ignored:  nice %ld */
+"%%*ld "	/* 20 ignored:  num_threads %ld */
+"%%*ld "	/* 21 ignored:  itrealvalue %ld - no longer maintained */
+"%%llu "	/* 22 starttime (was %lu before Linux 2.6 - see proc(5) for conversion details */
+"%%lu "		/* 23 vsize (bytes) */
+"%%ld "		/* 24 rss (number of pages) */
+  ;
 
 /**
  * @brief
@@ -4660,7 +4651,7 @@ vnlp_has_topology_info(void) {
 }
 
 
-/** 
+/**
  * @brief
  * 	dep_topology - compute and export platform-dependent topology information
  *
@@ -5061,7 +5052,7 @@ end_proc(void)
  * @param[in] sid - session id
  *
  * @return	Bool
- * @retval	TRUE	
+ * @retval	TRUE
  * @retval	FALSE	Error
  *
  */
@@ -5085,12 +5076,12 @@ injob(job *pjob, pid_t sid)
  * @brief
  * 	Internal session cpu time decoding routine.
  *
- * @param[in] job - a job pointer.  
- * 
+ * @param[in] job - a job pointer.
+ *
  * @return	ulong
  * @retval	sum of all cpu time consumed for all tasks executed by the job, in seconds,
  *		adjusted by cputfactor.
- * 
+ *
  */
 static ulong
 cput_sum(job *pjob)
@@ -5155,13 +5146,13 @@ cput_sum(job *pjob)
 			}
 
 			DBPRT(("%s: task %8.8X ses %d pid %d cputime %lu\n",
-				id, ptask->ti_qs.ti_task,
+				__func__, ptask->ti_qs.ti_task,
 				ps->session, ps->pid, tcput))
 		}
 		if (tcput > ptask->ti_cput)
 			ptask->ti_cput = tcput;
 		cputime += ptask->ti_cput;
-		DBPRT(("%s: task %8.8X cput %lu total %lu\n", id,
+		DBPRT(("%s: task %8.8X cput %lu total %lu\n", __func__,
 			ptask->ti_qs.ti_task, ptask->ti_cput, cputime))
 
 		if (taskprocs == 0) {
@@ -5288,7 +5279,7 @@ mem_sum(job *pjob)
  * @param[in] pjob - job pointer
  *
  * @return	ulong
- * @retval	new resident set size 	Success 
+ * @retval	new resident set size 	Success
  * @retval	old resident set size	Error
  *
  */
@@ -5465,7 +5456,7 @@ mom_set_limits(job *pjob, int set_mode)
  *
  * @return	int
  * @retval	TRUE	if polling is necessary
- * @retval	FALSE 	otherwise.  
+ * @retval	FALSE 	otherwise.
  *
  * NOTE: Actual polling is done using the mom_over_limit machine-dependent function.
  *
@@ -5537,21 +5528,22 @@ mom_open_poll(void)
 int
 mom_get_sample(void)
 {
-	struct dirent	*dent;
-	FILE		*fd;
-	ulong		jiffies;
-	static char	path[1024];
-	char		procname[256];
-	struct stat	sb;
-	proc_stat_t	*ps;
-	int		maxexcludedPID = 0;
-	pidcachetype_t	*pidcache;
-	int		nprocs = 0;
-	int		ncached = 0;
-	int		ncantstat = 0;
-	int		nnomem = 0;
-	int		nskipped = 0;
-	extern time_t	time_last_sample;
+	struct dirent		*dent;
+	FILE			*fd;
+	static char		path[1024];
+	char			procname[256];
+	struct stat		sb;
+	proc_stat_t		*ps;
+	int			maxexcludedPID = 0;
+	pidcachetype_t		*pidcache;
+	int			nprocs = 0;
+	int			ncached = 0;
+	int			ncantstat = 0;
+	int			nnomem = 0;
+	unsigned long long 	starttime;
+	int			nskipped = 0;
+	extern time_t		time_last_sample;
+	char			*stat_str;
 
 	DBPRT(("%s: entered\n", __func__))
 	if (pdir == NULL)
@@ -5599,17 +5591,43 @@ mom_get_sample(void)
 		}
 
 		ps = &proc_info[nproc];
-		if (fscanf(fd, stat_str, &ps->pid, path, &ps->state,
-			&ps->ppid, &ps->pgrp, &ps->session,
-			&ps->flags, &ps->utime, &ps->stime,
-			&ps->cutime, &ps->cstime, &jiffies,
-			&ps->vsize, &ps->rss) != 14) {
+		stat_str = choose_procflagsfmt();
+		if (stat_str == NULL) {
+			log_err(errno, __func__, "choose_procflagsfmt allocation failed");
+			return PBSE_INTERNAL;
+		}
+		if (fscanf(fd, stat_str,
+			   &ps->pid,		/* "%d "	1  pid %d The process id */
+			   path,		/* "(%[^)]) "	2  comm %s The filename of the executable */
+			   &ps->state,		/* "%c "	3  state %c "RSDZTW" */
+			   &ps->ppid,		/* "%d "	4  ppid %d The PID of the parent */
+			   &ps->pgrp,		/* "%d "	5  pgrp %d The process group ID */
+			   &ps->session,	/* "%d "	6  session %d The session ID */
+				   		/* "%*d "	7  ignored:  tty_nr */
+	 		   			/* "%*d "	8  ignored:  tpgid */
+			   &ps->flags,		/* "%u or %lu"	9  flags */
+					   	/* "%*lu "	10 ignored:  minflt */
+					   	/* "%*lu "	11 ignored:  cminflt */
+					   	/* "%*lu "	12 ignored:  majflt */
+					   	/* "%*lu "	13 ignored:  cmajflt */
+			   &ps->utime,		/* "%lu "	14 utime %lu */
+			   &ps->stime,		/* "%lu "	15 stime %lu */
+			   &ps->cutime,		/* "%ld "	16 cutime %ld */
+			   &ps->cstime,		/* "%ld "	17 cstime %ld */
+				   		/* "%*ld "	18 ignored:  priority %ld */
+			   			/* "%*ld "	19 ignored:  nice %ld */
+			   			/* "%*ld "	20 ignored:  num_threads %ld */
+			   			/* "%*ld "	21 ignored:  itrealvalue %ld - no longer maintained */
+			   &starttime,		/* "%llu "	22 starttime (was %lu before Linux 2.6 - see proc(5) for conversion details */
+			   &ps->vsize,		/* "%lu "	23 vsize (bytes) */
+			   &ps->rss		/* "%ld "	24 rss (number of pages) */
+			) != 14) {
 			ncantstat++;
 			fclose(fd);
 			continue;
 		}
 		if ((pidcache != NULL) && pidcache_eligible(ps, procname,
-			path, jiffies)) {
+			path, starttime)) {
 			if (pidcache_insert(p, pidcache))
 				ncached++;
 			fclose(fd);
@@ -5631,18 +5649,14 @@ mom_get_sample(void)
 			ps->rss = 0;
 		}
 
-		ps->start_time = linux_time + (jiffies / hz);
+		ps->start_time = linux_time + (starttime / hz);
 		memset(ps->comm, 0, COMSIZE);
 		strncpy(ps->comm, path, COMSIZE-1);
 
-		/* Convert jiffies to seconds. */
-#define	JTOS(x)	 (x) = (((x) + (hz/2)) / hz)
-			JTOS(ps->utime);
-		JTOS(ps->stime);
-		JTOS(ps->cutime);
-		JTOS(ps->cstime);
-#undef	JTOS
-
+		ps->utime = JTOS(ps->utime);
+		ps->stime = JTOS(ps->stime);
+		ps->cutime = JTOS(ps->cutime);
+		ps->cstime = JTOS(ps->cstime);
 		if (++nproc == max_proc) {
 			void	*hold;
 			DBPRT(("%s: alloc more proc table space %d\n", __func__, nproc))
@@ -5820,7 +5834,7 @@ mom_set_use(job *pjob)
  *	to refer to the correct machine dependent table.
  *	Linkage scope changed from static to default as this gets referred
  *	from scan_for_terminated(), declaration	added in the mom_mach.h.
- * 
+ *
  * @param[in] sid - session id
  *
  * @return	int
@@ -6470,7 +6484,7 @@ resi(struct rm_attribute *attrib)
  * @retval	sessions	Success
  * @retval	NULL		error
  *
- */	
+ */
 char *
 sessions(struct rm_attribute *attrib)
 {
@@ -6577,7 +6591,7 @@ nsessions(struct rm_attribute *attrib)
  * @retval      process        Success
  * @retval      NULL            error
  *
- */    
+ */
 char *
 pids(struct rm_attribute *attrib)
 {
@@ -6646,7 +6660,7 @@ pids(struct rm_attribute *attrib)
  * @retval      users        Success
  * @retval      NULL            error
  *
- */    
+ */
 char *
 nusers(struct rm_attribute *attrib)
 {
@@ -6770,7 +6784,7 @@ totmem(struct rm_attribute *attrib)
 
 /**
  * @brief
- *      returns available free process memory 
+ *      returns available free process memory
  *
  * @return      string
  * @retval      avbl free process memory		Success
@@ -6796,6 +6810,138 @@ availmem(struct rm_attribute *attrib)
 	DBPRT(("%s: free mem=%lu\n", __func__, mm->free))
 	sprintf(ret_string, "%lukb", (ulong)mm->free >> 10); /* KB */
 	return ret_string;
+}
+
+/**
+ * @brief	find and remember the current Linux release number
+ * @param[in]	struct utsname *
+ *
+ * @return	value returned by uname(2)'s utsname release[] member
+ */
+static char *
+uname2release(struct utsname *u)
+{
+	static char	*u_release = NULL;
+
+	if (u_release != NULL)
+		return (u_release);
+	else if ((u_release = malloc(strlen(u->release) + 1)) != NULL) {
+		memcpy(u_release, u->release, strlen(u->release) + 1);
+		sprintf(log_buffer, "uname release:  %s", u_release);
+		log_event(PBSEVENT_DEBUG4, 0, LOG_DEBUG, __func__, log_buffer);
+		return (u_release);
+	} else
+		return (NULL);
+}
+
+/**
+ * @brief	choose the format for the /proc "flags" field
+ * @param[in]	release
+ * @param[out]	stdio format string
+ *
+ * @return	"%lu" for /proc before Linux version 2.6.22
+ * @return	"%u" for  /proc Linux version 2.6.22 and later
+ * *
+ * @note	To derive release information, we're at the mercy of whoever
+ *		configures the kernel's UTS_RELEASE value when it's built.
+ *		We hope that the version information is in the format
+ *		<major>.<minor>.<micro>, or - if not - that at least we can
+ *		depend on sscanf() to throw away extraneous characters and
+ *		derive a number for the "micro" version that can be used to
+ *		leverage proc(5)'s "%u (%lu before Linux 2.6.22)" flags
+ *		field format specification.
+ *
+ *		This code is not designed to work for Linux versions < 2.
+ *
+ * @par MT-Safe:	yes
+ */
+static char *
+procflagsfmt(char *release)
+{
+	char	*p;
+	char	*ver_begin = release;
+	char	rfseparator_dot = '.';
+	char	rfseparator_dash = '-';
+	int	nseparators_seen = 0;
+	int	major, minor, micro, ver;
+	static char	before[] = "%lu";
+	static char	after[] = "%u";
+
+	for (p = release; *p != '\0'; p++) {
+		if ((*p == rfseparator_dot) || (*p == rfseparator_dash)) {
+			p++;
+			if (sscanf(ver_begin, "%d", &ver) == 1) {
+				if (nseparators_seen == 0) {
+					major = ver;
+					if (major > 2)
+						return (after);
+				} else if (nseparators_seen == 1) {
+					minor = ver;
+					if (minor > 6)
+						return (after);
+				} else {
+					micro = ver;
+					 /* "flags %u (%lu before Linux 2.6.22)" */
+					if ((minor == 6) && (micro >= 22))
+						return (after);
+					else
+						return (before);
+				}
+			}
+			ver_begin = p;
+			nseparators_seen++;
+		}
+	}
+
+	return ((char *) NULL);
+}
+
+/**
+ * @brief	return the stdio format directive for the /proc flags field
+ *
+ * @param[out]	format string for the /proc flags field
+ *
+ * @return	static char *
+ *
+ * @see	procflagsfmt
+ * @see	uname2release
+ */
+static char *
+choose_procflagsfmt(void)
+{
+	char		buf[1024];
+	static char	*fmtstr = NULL;
+	static int	initialized = 0;
+	struct utsname	u;
+
+	if (initialized)
+		return (fmtstr);
+
+	if (uname(&u) == -1) {
+		log_err(errno, __func__, "uname");
+		return (NULL);
+	} else {
+		char	*release;
+		char	*fffs;		/* the flags field format string */
+
+		if ((release = uname2release(&u)) == NULL) {
+			log_err(-1, __func__, "uname2release returned NULL");
+			return (NULL);
+		}
+		else if ((fffs = procflagsfmt(release)) == NULL) {
+			log_err(-1, __func__, "procflagsfmt returned NULL");
+			return (NULL);
+		} else {
+			sprintf(buf, stat_str_pre, fffs);
+			if ((fmtstr = strdup(buf)) == NULL) {
+				log_err(-1, __func__, "strdup returned NULL");
+				return (NULL);
+			} else {
+				initialized = 1;
+				return (fmtstr);
+			}
+		}
+	}
 }
 
 #else	/* PBSMOM_HTUNIT */
@@ -6885,7 +7031,7 @@ main()
  * @retval	processed string	Success
  *
  */
- 
+
 char *
 skipstr(char *str, char *skip)
 {
@@ -6923,7 +7069,7 @@ warning(void)
 
 /**
  * @brief
- *	converts and return the string value 
+ *	converts and return the string value
  *
  * @param[in] str - string to be processed
  *
@@ -7162,7 +7308,7 @@ ncpus(struct rm_attribute *attrib)
 
 /**
  * @brief
- *	returns the total physical memory 
+ *	returns the total physical memory
  *
  * @param[in] attrib - pointer to rm_attribute structure
  *
@@ -7405,7 +7551,7 @@ walltime(struct rm_attribute *attrib)
  * @retval	0			Success
  * @retval	RM_ERR_SYSTEM(15205)	error
  *
- */ 
+ */
 int
 get_la(double *rv)
 {
@@ -7921,7 +8067,7 @@ pidcache_truncate(pidcachetype_t *cur_set, pid_t pidmax)
 	return (new_set);
 }
 
-/** 
+/**
  * @brief	add value to PID set
  *
  * @param[in]	p	PID to add
@@ -8113,7 +8259,7 @@ pidcache_needed(void)
  *
  */
 static int
-pidcache_eligible(proc_stat_t *ps, char *procst, char *proc_name, ulong j)
+pidcache_eligible(proc_stat_t *ps, char *procst, char *proc_name, unsigned long long j)
 {
 	struct stat	sb;
 	static pid_t	kthread_pid = 0;
