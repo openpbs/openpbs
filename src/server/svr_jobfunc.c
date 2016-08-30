@@ -1513,7 +1513,11 @@ check_block(job *pjob, char *message)
 			inet_ntoa(remote.sin_addr), port, strerror(errno));
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE,
 			jobid, log_buffer);
+#ifdef WIN32
+		closesocket(sock);
+#else
 		close(sock);
+#endif
 		return;
 	}
 
@@ -1564,7 +1568,11 @@ done:
 		log_joberr(-1, __func__, log_buffer, jobid);
 	}
 
+#ifdef WIN32
+	closesocket(sock);
+#else
 	close(sock);
+#endif
 
 	return;
 }
