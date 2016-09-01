@@ -406,7 +406,7 @@ parse_comma_string(char *start)
 	/* go find comma or end of line */
 
 	while (*pc) {
-		if (((*pc == ',') && ((rv == pc) || (*(pc - 1) != '\\'))) || (*pc == '\n'))
+		if (((*pc == ',') && ((rv == pc) || (*(pc - 1) != ESC_CHAR))) || (*pc == '\n'))
 			break;
 		++pc;
 	}
@@ -453,7 +453,7 @@ count_substrings(char *val, int *pcnt)
 
 	ns = 1;
 	for (pc = val; *pc; pc++) {
-		if (((*pc == ',') && ((pc == val) || (*(pc - 1) != '\\'))) || (*pc == '\n'))
+		if (((*pc == ',') && ((pc == val) || (*(pc - 1) != ESC_CHAR))) || (*pc == '\n'))
 			++ns;
 	}
 	pc--;
@@ -974,12 +974,12 @@ str_array_to_svrattrl(char **str_array, pbs_list_head *to_head, char *name_str)
  * @brief
  * 	Given a string array 'str_array', return a malloc-ed
  * 	string, containing the entries of 'str_array' separated
- *	by 'delimeters'.
+ *	by 'delimiter'.
  * @note
  *	Need to free() returned value.
  *
  * @param[in]	str_array - the array of strings to dump
- * @param[in]	delimeters  - the separator char(s) used in the resultant
+ * @param[in]	delimiter  - the separator character used in the resultant
  *				string.
  *
  * @return	char *
@@ -990,23 +990,21 @@ str_array_to_svrattrl(char **str_array, pbs_list_head *to_head, char *name_str)
  *
  */
 char	*
-str_array_to_str(char **str_array, char *delimeters)
+str_array_to_str(char **str_array, char delimiter)
 {
-	int	i, len;
+	int	i, j, len;
 	char	*ret_string = NULL;
-	int	sep_len = 0;
 
-	if ((str_array == NULL) || (delimeters == NULL))
+	if (str_array == NULL)
 		return (NULL);
 
 	len=0;
 	i=0;
-	sep_len = strlen(delimeters);
 
 	while (str_array[i]) {
 
 		len += strlen(str_array[i]);
-		len += sep_len;	/* for 'delimeters' */
+		len++;	/* for 'delimiter' */
 		i++;
 	}
 	len++;	/* for trailing '\0' */
@@ -1023,7 +1021,9 @@ str_array_to_str(char **str_array, char *delimeters)
 			if (i == 0) {
 				strcpy(ret_string, str_array[i]);
 			} else {
-				strcat(ret_string, delimeters);
+				j = strlen(ret_string);
+				ret_string[j] = delimiter;
+				ret_string[j+1] = '\0';
 				strcat(ret_string, str_array[i]);
 			}
 			i++;
@@ -1035,15 +1035,14 @@ str_array_to_str(char **str_array, char *delimeters)
 
 /**
  * @brief
- * 	Given a 'delimeters'-separated string 'str', store the
+ * 	Given a 'delimiter'-separated string 'str', store the
  * 	the string entities into
  * 	a string array, and return that array.
  * @note
  *	Need to free() returned value.
  *
  * @param[in]	str_array - the array of strings to dump
- * @param[in]	delimeters  - each element in this string represents 
- *				the delimeter to match.
+ * @param[in]	delimiter  - the delimiter to match.
  *
  * @return	char *
  * @retval	<string>	- pointer to a malloced area holding
@@ -1052,7 +1051,7 @@ str_array_to_str(char **str_array, char *delimeters)
  *
  */
 char	**
-str_to_str_array(char *str, char *delimeters)
+str_to_str_array(char *str, char delimiter)
 {
 	int	i;
 	int	len;
@@ -1060,7 +1059,7 @@ str_to_str_array(char *str, char *delimeters)
 	char	*str1;
 	char	*p;
 
-	if ((str == NULL) || (delimeters == NULL))
+	if (str == NULL)
 		return (NULL);
 
 	/* calculate the list size */
@@ -1071,10 +1070,10 @@ str_to_str_array(char *str, char *delimeters)
 		return (NULL);
 
 	len=0;
-	p = strtok_quoted(str1, delimeters);
+	p = strtok_quoted(str1, delimiter);
 	while (p) {
 		len++;
-		p = strtok_quoted(NULL, delimeters);
+		p = strtok_quoted(NULL, delimiter);
 	}
 	(void)free(str1);
 
@@ -1087,7 +1086,7 @@ str_to_str_array(char *str, char *delimeters)
 	if (str1 == NULL) {
 		return (NULL);
 	}
-	p = strtok_quoted(str1, delimeters);
+	p = strtok_quoted(str1, delimiter);
 	i = 0;
 	while (p) {
 		str_array[i] = strdup(p);
@@ -1097,7 +1096,7 @@ str_to_str_array(char *str, char *delimeters)
 			return (NULL);
 		}
 		i++;
-		p = strtok_quoted(NULL, delimeters);
+		p = strtok_quoted(NULL, delimiter);
 	}
 	free(str1);
 
@@ -1111,21 +1110,21 @@ str_to_str_array(char *str, char *delimeters)
  * 	Given a environment string array 'env_array' where there are
  *	<var>=<value> entries, return a malloc-ed
  * 	string, containing the entries of 'env_array' separated
- *	by 'delimeters'.
+ *	by 'delimiter'.
  *
  * @note
  *	Need to free() returned value.
- *	If 'env_array' has a <value> entry that contains a character in 'delimeters',
- *	then each of the matched character is escaped ('\').
- *	Ex:  env_array_to_str(envstr, ",")
- *		where   envstr[0]='HOME=/home/bayucan'
+ *	If 'env_array' has a <value> entry containing the 'delimiter' character,
+ *	then it is escaped (using ESC_CHAR). Similarly, if <value> contains the escape
+ *	character, then that is also escaped.
+ *	Ex:  env_array_to_str(envstr, ',')
+ *		where   envstr[0]='HOME=/home/somebody'
  *			envstr[1]='G_FILENAME_ENCODING=@locale,UTF-8,ISO-8859-15,CP1252'
  *	then string returned will be:
- *		'HOME=/home/bayucan,G_FILENAME_ENCODING="@locale\,UTF-8\,ISO-8859-15\,CP1252"'
+ *		'HOME=/home/somebody,G_FILENAME_ENCODING="@locale\,UTF-8\,ISO-8859-15\,CP1252"'
  *
  * @param[in]	env_array - the environment array of strings to dump
- * @param[in]	delimeters  - the separator char(s) used in the resultant
- *				string.
+ * @param[in]	delimiter  - the separator character
  *
  * @return	char *
  * @retval	<string>	- pointer to a malloced area holding
@@ -1135,46 +1134,40 @@ str_to_str_array(char *str, char *delimeters)
  *
  */
 char	*
-env_array_to_str(char **env_array, char *delimeters)
+env_array_to_str(char **env_array, char delimiter)
 {
-	int	i, len;
+	int	i, j, len;
 	char	*ret_string = NULL;
-	int	sep_len = 0;
 	int	escape = 0;
 	char	*var = NULL;
 	char	*val = NULL;
 	char	*pc = NULL;
 	char	*pc2 = NULL;
 
-	if ((env_array == NULL) || (delimeters == NULL))
+	if (env_array == NULL)
 		return (NULL);
 
 	len=0;
 	i=0;
-	sep_len = strlen(delimeters);
 
 	while (env_array[i]) {
-
 		val  = strchr(env_array[i], '=');
 		if (val != NULL) {
 			val++;
-			pc2 = val;
 			escape = 0;
-			while (*pc2 != '\0') {
-				if (strchr(delimeters, *pc2) != NULL) {
-					/* escape it if delimeter is found in sub-string */
-					escape++; 
+			for (pc2 = val; *pc2 != 0; pc2++) {
+				if ((*pc2 == delimiter) || (*pc2 == ESC_CHAR)) {
+					escape++;
 				}
-				pc2++;
 			}
 
 		}
 
 		len += strlen(env_array[i]);
 		if (escape > 0) {
-			len += escape;	/* an escape is a \\ */
+			len += escape;	/* the ESC_CHAR */
 		}
-		len += sep_len;	/* for 'delimeters' */
+		len++;	/* for delimiter */
 		i++;
 	}
 	len++;	/* for trailing '\0' */
@@ -1187,7 +1180,6 @@ env_array_to_str(char **env_array, char *delimeters)
 			return (NULL);
 		i=0;
 		while (env_array[i]) {
-		
 			var = env_array[i];
 			pc = strchr(env_array[i], '=');
 			val = NULL;
@@ -1199,20 +1191,21 @@ env_array_to_str(char **env_array, char *delimeters)
 			if (i == 0) {
 				sprintf(ret_string, "%s=", var);
 			} else {
-				strcat(ret_string, delimeters);
+				j = strlen(ret_string);
+				ret_string[j] = delimiter;
+				ret_string[j+1] = '\0';
 				strcat(ret_string, var);
 				strcat(ret_string, "=");
 			}
 			if (val != NULL) {
 				pc2 = ret_string + strlen(ret_string);
 				while (*val != '\0') {
-					if (strchr(delimeters, *val) != NULL) {
-						*pc2 = '\\';
+					if (( *val == delimiter) ||
+					    		(*val == ESC_CHAR)) {
+						*pc2 = ESC_CHAR;
 						pc2++;
 					}
-					*pc2 = *val;
-					pc2++;
-					val++;
+					*pc2++ = *val++;
 				}
 				*pc2 = '\0';
 			}
@@ -1227,27 +1220,20 @@ env_array_to_str(char **env_array, char *delimeters)
 }
 
 /* @brief
- * 	Simple function that takes a string 'str', and
- * 	modifies it "in-place", removing any quotes
- * 	(single quotes or double quotes).
+ * 	Function that takes a string 'str', and modifies it "in-place",
+ *	removing each escape backslash preceding the character being
+ *	escaped.
  *
- * 	Examples:
- * 	given:		foo_stra="elated,happy"
- * 	returns:	foo_stra=elated,happy
- *
- *	given:		foo_stra="elated,happy",sad"
- *	returns:	foo_stra=elated,happy,sad
- *
- * @param[in]	str	- input string.
+ * @param[in,out]	str	- input string.
  *
  * @return void
  *
  */
 static void
-prune_quotes(char *str)
+prune_esc_backslash(char *str)
 {
 
-	int s, d;
+	int s, d, skip_idx;
 
 	if (str == NULL)
 		return;
@@ -1255,37 +1241,44 @@ prune_quotes(char *str)
 	s = 0;	/* source */
 	d = 0;  /* dest */
 
+	/* initialize to an index that cannot be matched at the start */
+	skip_idx = -2;
+
 	do {
-		while ((str[s] == '\"') || (str[s] == '\''))
+		while ((str[s] == ESC_CHAR) && (skip_idx != (s - 1))) {
+			skip_idx = s;
 			s++;
+		}
 		str[d++] = str[s++];
 	} while (str[s-1] != '\0');
 }
 
 /**
  * @brief
- * 	Like strtok, except this understands quoted substrings
- * 	(single quotes, or double quotes) and treats them as a single value.
- *	 For instance, given_str: 'foo_float=1.5,foo_stra="glad,elated",foo_size=10mb'
+ * 	Like strtok, except this understands quoted (unescaped) substrings
+ * 	(single quotes, or double quotes) and include the value as is.
+ *	 For instance, given_str: 'foo_float=1.5,foo_stra="glad,elated"some,squote=',foo_size=10mb,dquote="'
  *	string, this would return tokens:
- *		strtok_quoted(given_str, ",")=foo_float=1.5
- *		strtok_quoted(NULL,",")=foo_stra=glad,elated
- * 		trtok_quoted(NULL,",")=foo_size=10mb
+ *		strtok_quoted(given_str, ',')=foo_float=1.5
+ *		strtok_quoted(NULL,',')=foo_stra="glad,elated"some
+ *		strtok_quoted(NULL,',')=squote='
+ * 		strtok_quoted(NULL,',')=foo_size=10mb
+ *		strtok_quoted(NULL,',')=dquote="
  *
  * @param[in]	source - input string
- * @param[in]	delimieters  - each element in this string represents the delimeter to match.
+ * @param[in]	delimiter  - each element in this string represents the delimeter to match.
  *
  * @return	char *
  * @retval	<string token>
  * @retval	NULL if end of processing, or problem found with quoted string.
  */
 char *
-strtok_quoted(char *source, const char *delimiters)
+strtok_quoted(char *source, char delimiter)
 {
 	static char *pc = NULL;	/* save pointer position */
 	char *stok = NULL;  	/* token to return */
 	char *quoted = NULL;
-	int  i, deli_len;
+	int  i, j;
 
 	if (source != NULL) {
 		pc = source;
@@ -1294,45 +1287,76 @@ strtok_quoted(char *source, const char *delimiters)
 	if ((pc == NULL) || (*pc == '\0'))
 		return (NULL);
 
-	deli_len = (int)strlen(delimiters);
-	for (stok=pc; *pc != 0; pc++) {
+	for (stok = pc; *pc != 0; pc++) {
 
-		for (i=0; i < deli_len; i++) {
-			if (*pc == delimiters[i]) {
-				break;
-			}
-		}
-		if (i < deli_len) { /* found a match */
+		/* must not match <ESC_CHAR><delim> or <ESC_CHAR><ESC_CHAR><delim>
+		 * the latter means <ESC_CHAR> is the one escaped not <delim>
+		 */
+		if ((*pc == delimiter) &&
+			(((pc - 1) < stok) || (*(pc - 1) != ESC_CHAR) ||
+			 ((pc - 2) < stok) || (*(pc - 2) == ESC_CHAR))) {
 			*pc = '\0';
 			pc++;
-			prune_quotes(stok);
+			prune_esc_backslash(stok);
 			return (stok);
 		}
 
-		/* check for a quoted value and advance */
-		/* pointer up to the closing quote. */
-
-		/* if a delimiter apears inside the */
-		/* quote, ex. "apple,bee", this will */
-		/* advance past the delimiter until */
-		/* until the matching quote is found. */
+		/* check for a quoted value and advance
+		 * pointer up to the closing quote. If a non-escaped
+		 * delimiter appears first, ex. "apple,bee", this will
+		 * return the token string just before the delimiter
+		 * (ex. "apple).
+		 */
 		if ((*pc == '\'') || (*pc == '"')) {
+
+			/* if immediately following the quote, try to match
+			 * one of:
+			 * 	'<null>
+			 *	'<delimiter>
+			 * 	"<null>
+			 *	"<delimiter>
+			 */
+			if ((*(pc+1) == '\0') || (*(pc+1) == delimiter)) {
+				pc++;
+				if (*pc != '\0') {
+					*pc = '\0';
+					pc++;
+				}
+				prune_esc_backslash(stok);
+				return (stok);
+			}
+			/* Otherwise, look for the matching endquote<delimiter>
+			 * or <endquote<null>
+			 * if not, just use the value as is, up to but not
+			 * including the non-escaped <delimiter>.
+			 */
 			quoted = pc;
 			while (*++pc) {
 				if (*pc == *quoted) {
-					quoted = NULL;
-					break;
+					if ((*(pc+1) == '\0') ||
+						(*(pc+1) == delimiter)) {
+						quoted = NULL;
+						break;
+					}
+				} else if ((*pc == delimiter) &&
+					(((pc-1) < stok) || (*(pc-1) != ESC_CHAR) ||
+			 		((pc-2) < stok) || (*(pc-2) == ESC_CHAR))) {
+					*pc = '\0';
+					pc++;
+					prune_esc_backslash(stok);
+					return (stok);
 				}
 			}
 
 			if (quoted != NULL) { /* didn't find a close quote */
-				pc = NULL;	/* stop future processing */
-				return (NULL);
+				pc = NULL;	/* use quote value as is */
+				prune_esc_backslash(stok);
+				return (stok);
 			}
 		}
 	}
 
-	prune_quotes(stok);
+	prune_esc_backslash(stok);
 	return (stok);
 }
 

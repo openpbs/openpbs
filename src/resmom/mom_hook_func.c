@@ -175,8 +175,13 @@ fprintf_job_struct(FILE *fp, job *pjob)
 			fprintf(fp, "%s.%s[%s]=%s\n", EVENT_JOB_OBJECT,
 				ps->al_name, ps->al_resc, ps->al_value);
 		} else {
-			fprintf(fp, "%s.%s=%s\n", EVENT_JOB_OBJECT,
-				ps->al_name, ps->al_value);
+			if (strcmp(ps->al_name, ATTR_v) == 0) {
+				fprintf(fp, "%s.%s=\"\"\"%s\"\"\"\n", EVENT_JOB_OBJECT,
+					ps->al_name, ps->al_value);
+			} else {
+				fprintf(fp, "%s.%s=%s\n", EVENT_JOB_OBJECT,
+					ps->al_name, ps->al_value);
+			}
 		}
 	}
 
@@ -1089,10 +1094,10 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 					}
 				}
 
-				env_str = env_array_to_str(env, ",");
+				env_str = env_array_to_str(env, ',');
 				if (env_str != NULL) {
 					if (env_str[0] != '\0') {
-						fprintf(fp, "%s.%s=%s\n",
+						fprintf(fp, "%s.%s=\"\"\"%s\"\"\"\n",
 							EVENT_OBJECT,
 							PY_EVENT_PARAM_ENV,
 							env_str);
@@ -1852,8 +1857,7 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 	char	hook_job_outfile[MAXPATHLEN+1];
 	FILE	*fp2 = NULL;
 	char	*line_data = NULL;
-	size_t	line_data_sz;
-	long int curpos;
+	int	line_data_sz;
 	long int endpos;
 	char	*tmp_data = NULL;
 	int	start_new_vnl = 1;
@@ -1866,6 +1870,9 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 	int	found_deletejob_action = 0;
 	int	found_joblist = 0;
 	int	arg_list_entries = 0;
+	int	b_triple_quotes = 0;
+	int	e_triple_quotes = 0;
+	char	buf_data[STRBUF];
 
 	/* Preset hook_euser for later.  If we are reading a job related     */
 	/* copy of hook results, there will be one or more (one per hook)    */
@@ -1941,12 +1948,13 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 
 
 	line_data_sz = STRBUF;
-	line_data = (char *)malloc(line_data_sz);
+	line_data = (char *)malloc((size_t)line_data_sz);
 	if (line_data == NULL) {
 		log_err(errno, __func__, "malloc failed");
 		rc = 1;
 		goto get_hook_results_end;
 	}
+	line_data[0] = '\0';
 
 	if (fseek(fp, 0, SEEK_END) != 0) {
 		log_err(errno, __func__, "fseek to end failed");
@@ -1962,8 +1970,13 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 	}
 
 	pjob2 = pjob;
-	curpos = ftell(fp);
-	while (fgets(line_data, line_data_sz, fp) != NULL) {
+	while (fgets(buf_data, STRBUF, fp) != NULL) {
+		b_triple_quotes = 0;
+		e_triple_quotes = 0;
+
+		if (pbs_strcat(&line_data, &line_data_sz, buf_data) == NULL) {
+			goto get_hook_results_end;
+		}
 		if (in_data != NULL) {
 			free(in_data);
 		}
@@ -1974,37 +1987,83 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 			goto get_hook_results_end;
 		}
 
+		if ((p = strchr(in_data, '=')) != NULL) {
+			b_triple_quotes = starts_with_triple_quotes(p+1);
+		}
+
 		ll = strlen(in_data);
 		if (in_data[ll-1] == '\n') {
-			/* remove newline */
-			in_data[ll-1] = '\0';
+			e_triple_quotes = ends_with_triple_quotes(in_data, 0);
+
+			if (b_triple_quotes && !e_triple_quotes) {
+				int	jj;
+
+				while (fgets(buf_data, STRBUF, fp) != NULL) {
+					if (pbs_strcat(&line_data, &line_data_sz,
+						buf_data) == NULL) {
+						goto get_hook_results_end;
+					}
+
+					jj = strlen(line_data);
+					if ((line_data[jj - 1] != '\n') &&
+					    (ftell(fp) != endpos)) {
+						/* get more input for
+						 * current item.
+						 */
+						continue;
+					}
+					e_triple_quotes =
+					  ends_with_triple_quotes(line_data, 0);
+
+					if (e_triple_quotes) {
+						break;
+					}
+				}
+
+				if ((!b_triple_quotes && e_triple_quotes) ||
+					(b_triple_quotes && !e_triple_quotes)) {
+					snprintf(log_buffer, sizeof(log_buffer),
+						"unmatched triple quotes! Skipping  line %s",
+						in_data);
+					log_err(PBSE_INTERNAL, __func__, log_buffer);
+					/* process a new line */
+					line_data[0] = '\0';
+					continue;
+				}
+				free(in_data);
+				in_data = strdup(line_data); /* preserve line_data */
+				if (in_data == NULL) {
+					log_err(errno, __func__, "strdup failed");
+					rc = 1;
+					goto get_hook_results_end;
+				}
+				/* remove newline */
+				in_data[strlen(in_data)-1] = '\0';
+			} else {
+				/* remove newline */
+				in_data[ll-1] = '\0';
+			}
 
 		} else if (ftell(fp) != endpos) { /* continued on next line */
-
-			line_data_sz = 2*line_data_sz;
-			tmp_data = (char *)realloc(line_data, line_data_sz);
-			if (tmp_data == NULL) {
-				log_err(errno, __func__, "realloc failed");
-				rc = 1;
-				goto get_hook_results_end;
-			}
-			line_data = tmp_data;
-			if (fseek(fp, curpos, SEEK_SET) != 0) {
-				log_err(errno, __func__, "failed to fseek");
-				rc = 1;
-				goto get_hook_results_end;
-			}
+			/* get more input for current item.  */
 			continue;
 		}
 
-		curpos = ftell(fp);
 		data_value = NULL;
 		if ((p=strchr(in_data, '=')) != NULL) {
 			*p = '\0';
 			p++;
 			while (isspace(*p))
 				p++;
+
+			if (b_triple_quotes) {
+				/* strip triple quotes */
+				p += 3;
+			}
 			data_value = p;
+			if (e_triple_quotes) {
+				ends_with_triple_quotes(p, 1);
+			}
 		}
 
 		obj_name = in_data;
@@ -2123,7 +2182,7 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 					if (hook_output->env != NULL) {
 						free_str_array(hook_output->env);
 					}
-					hook_output->env = str_to_str_array(data_value, ",");
+					hook_output->env = str_to_str_array(data_value, ',');
 				}
 			}
 		} else if ((strcmp(obj_name, EVENT_JOB_OBJECT) == 0) || \
@@ -2166,6 +2225,8 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 						"object '%s' does not have a job id!",
 						obj_name);
 					log_err(-1, __func__, log_buffer);
+					/* process a new line */
+					in_data[0] = '\0';
 					continue;
 				}
 
@@ -2199,8 +2260,10 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 					}
 					pjob2 = find_job(jobid_str);
 					pjob2_prev = pjob2;
-					*reject_rerunjob = 0;
-					*reject_deletejob = 0;
+					if (reject_rerunjob != NULL)
+						*reject_rerunjob = 0;
+					if (reject_deletejob != NULL)
+						*reject_deletejob = 0;
 					found_rerunjob_action = 0;
 					found_deletejob_action = 0;
 				}
@@ -2221,16 +2284,22 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 
 			if (strcmp(name_str, "_rerun") == 0) {
 				found_rerunjob_action = 1;
-				if (reject_rerunjob == NULL)
+				if (reject_rerunjob == NULL) {
+					/* process a new line */
+					line_data[0] = '\0';
 					continue;
+				}
 				if (strcmp(data_value, "True") == 0)
 					*reject_rerunjob = 1;
 				else
 					*reject_rerunjob = 0;
 			} else if (strcmp(name_str, "_delete") == 0) {
 				found_deletejob_action = 1;
-				if (reject_deletejob == NULL)
+				if (reject_deletejob == NULL) {
+					/* process a new line */
+					line_data[0] = '\0';
 					continue;
+				}
 				if (strcmp(data_value, "True") == 0)
 					*reject_deletejob = 1;
 				else
@@ -2253,6 +2322,8 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 						"object '%s' unrecognized attrbute name %s!",
 						obj_name, name_str);
 					log_err(-1, __func__, log_buffer);
+					/* process new line */
+					line_data[0] = '\0';
 					continue;
 				}
 				if ((index == JOB_ATR_runcount) && ((pjob2->ji_wattr[(int)JOB_ATR_run_version].at_flags & ATR_VFLAG_SET) == 0)) {
@@ -2261,6 +2332,8 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 						" talking to a server that does not allow %s modification, ",
 						obj_name, name_str, name_str);
 					log_err(-1, __func__, log_buffer);
+					/* process new line */
+					line_data[0] = '\0';
 					continue;
 				}
 
@@ -2276,6 +2349,8 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 							" executing hook has user=pbsuser",
 							obj_name, name_str);
 						log_err(-1, __func__, log_buffer);
+						/* process a new line */
+						line_data[0] = '\0';
 						continue;
 					} else if ((index == JOB_ATR_runcount) && (pjob2->ji_wattr[index].at_flags & ATR_VFLAG_SET) && (dval < pjob2->ji_wattr[index].at_val.at_long)) {
 						snprintf(log_buffer, sizeof(log_buffer),
@@ -2286,6 +2361,8 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 							pjob2->ji_wattr[index].at_val.at_long,
 							dval);
 						log_err(-1, __func__, log_buffer);
+						/* process a new line */
+						line_data[0] = '\0';
 						continue;
 					}
 				}
@@ -2304,6 +2381,8 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 						obj_name, name_str, resc_str?resc_str:"",
 						data_value, errcode);
 					log_err(-1, __func__, log_buffer);
+					/* process a new line */
+					line_data[0] = '\0';
 					continue;
 				}
 				if (errcode == PBSE_UNKRESC) {
@@ -2318,6 +2397,8 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 
 					if ((prdef == NULL) || (prsc == NULL)) {
 						log_err(-1, __func__, "bad unknown resc");
+						/* process a new line */
+						line_data[0] = '\0';
 						continue;
 					}
 
@@ -2415,6 +2496,8 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 					"object '%s' does not have a vnode name!",
 					obj_name);
 				log_err(-1, __func__, log_buffer);
+				/* process a new line */
+				line_data[0] = '\0';
 				continue;
 			}
 
@@ -2527,8 +2610,11 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 				(copy_file == 0)) {
 				/* ask Server to tell Scheduler to restart a */
 				/* scheduling cycle; only done from main Mom */
-				if (send_sched_recycle(hook_euser) != 0)
+				if (send_sched_recycle(hook_euser) != 0) {
+					/* process a new line */
+					line_data[0] = '\0';
 					continue;
+				}
 			}
 
 		} else if (strcmp(obj_name, PBS_OBJ) == 0) {
@@ -2554,15 +2640,15 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 			rc = 1;
 			goto get_hook_results_end;
 		}
-
+		line_data[0] = '\0';
 	}
 
 	if (found_joblist && (found_rerunjob_action || found_deletejob_action)) {
-		if (*reject_deletejob) {
+		if ((reject_deletejob != NULL) && (*reject_deletejob)) {
 			/* deletejob takes precedence */
 			new_job_action_req(pjob2,
 				phook?phook->user:HOOK_PBSADMIN, JOB_ACT_REQ_DELETE);
-		} else if (*reject_rerunjob) {
+		} else if ((reject_rerunjob != NULL) && (*reject_rerunjob)) {
 			new_job_action_req(pjob2,
 				phook?phook->user:HOOK_PBSADMIN, JOB_ACT_REQ_REQUEUE);
 		}

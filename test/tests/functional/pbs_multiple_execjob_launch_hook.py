@@ -50,6 +50,7 @@ e=pbs.event()
 e.progname = "/usr/bin/echo"
 e.argv=[]
 e.argv.append("launch 1")
+pbs.logmsg(pbs.LOG_DEBUG, "environment var from execjob_hook1 is %s" % (e.env))
         """,
         "execjob_hook2":
         """
@@ -63,6 +64,7 @@ if (e.progname != "/usr/bin/echo"):
 else:
     pbs.logmsg(pbs.LOG_DEBUG,
         "Modified progname value got updated from launch1")
+pbs.logmsg(pbs.LOG_DEBUG, "environment var from execjob_hook2 is %s" % (e.env))
         """,
     }
 
@@ -95,3 +97,13 @@ else:
         self.mom.log_match(
             "Modified progname value got updated from launch1",
             max_attempts=3, interval=3)
+
+        hook1 = ["execjob_hook1", "execjob_hook2"]
+
+        for hk in hook1:
+            msg = "environment var from " + hk
+            rv = self.mom.log_match(msg, starttime=self.server.ctime,
+                                    max_attempts=10)
+            val = rv[1] + ','  # appending comma at the end
+            self.assertTrue("PBS_TASKNUM=1," in val,
+                            "Message not found for hook " + hk)

@@ -13258,7 +13258,12 @@ class InteractiveJob(threading.Thread):
             _st = self.pexpect_sleep_time
             _to = self.pexpect_timeout
             _sc = job.interactive_script
-            cmd = ['sudo', '-u', job.username] + cmd
+            current_user = pwd.getpwuid(os.getuid())[0]
+            if current_user != job.username:
+                if hasattr(job, 'preserve_env') and job.preserve_env is True:
+                    cmd = ['sudo', '-E', '-u', job.username] + cmd
+                else:
+                    cmd = ['sudo', '-u', job.username] + cmd
 
             self.logger.debug(cmd)
 

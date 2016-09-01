@@ -1092,15 +1092,17 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 	char *pc, *pc1, *pc2, *pc3, *pc4;
 	char *in_data = NULL;
 	char *tmp_data = NULL;
-	long int curpos;
 	long int endpos;
-	size_t   in_data_sz;
+	int in_data_sz;
 	char *data_value;
 	size_t ll;
 	FILE *fp = NULL;
 	char *p;
 	int   vn_obj_len = strlen(EVENT_VNODELIST_OBJECT);
 	int   job_obj_len = strlen(EVENT_JOBLIST_OBJECT);
+	int   b_triple_quotes = 0;
+	int   e_triple_quotes = 0;
+	char  buf_data[STRBUF];
 
 	if ((default_svrattrl == NULL) || (event_svrattrl == NULL) ||
 		(event_job_svrattrl == NULL) || (event_job_o_svrattrl == NULL) ||
@@ -1146,6 +1148,7 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 		rc = -1;
 		goto populate_svrattrl_fail;
 	}
+	in_data[0] = '\0';
 
 	if (fseek(fp, 0, SEEK_END) != 0) {
 		log_err(errno, __func__, "fseek to end failed");
@@ -1158,8 +1161,14 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 		rc = 1;
 		goto populate_svrattrl_fail;
 	}
-	curpos = ftell(fp);
-	while (fgets(in_data, in_data_sz, fp) != NULL) {
+	while (fgets(buf_data, STRBUF, fp) != NULL) {
+
+		b_triple_quotes = 0;
+		e_triple_quotes = 0;
+
+		if (pbs_strcat(&in_data, &in_data_sz, buf_data) == NULL) {
+			goto populate_svrattrl_fail;
+		}
 
 		ll = strlen(in_data);
 #ifdef WIN32
@@ -1173,26 +1182,58 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 			}
 		}
 #endif
+		if ((p = strchr(in_data, '=')) != NULL) {
+			b_triple_quotes = starts_with_triple_quotes(p+1);
+		}
+
 		if (in_data[ll-1] == '\n') {
-			/* remove newline */
-			in_data[ll-1] = '\0';
+			e_triple_quotes = ends_with_triple_quotes(in_data, 0);
+
+			if (b_triple_quotes && !e_triple_quotes) {
+				int	jj;
+
+				while (fgets(buf_data, STRBUF, fp) != NULL) {
+					if (pbs_strcat(&in_data, &in_data_sz,
+						buf_data) == NULL) {
+						goto populate_svrattrl_fail;
+					}
+
+					jj = strlen(in_data);
+					if ((in_data[jj-1] != '\n') && \
+					    (ftell(fp) != endpos)) {
+						/* get more input for
+						 * current item.
+						 */
+						continue;
+					}
+					e_triple_quotes =
+					   ends_with_triple_quotes(in_data, 0);
+
+					if (e_triple_quotes) {
+						break;
+					}
+				}
+
+				if ((!b_triple_quotes && e_triple_quotes) ||
+					(b_triple_quotes && !e_triple_quotes)) {
+					snprintf(log_buffer, sizeof(log_buffer),
+						"unmatched triple quotes! Skipping  line %s",
+						in_data);
+					log_err(PBSE_INTERNAL, __func__, log_buffer);
+					/* process a new line */
+					in_data[0] = '\0';
+					continue;
+				}
+				in_data[strlen(in_data)-1] = '\0';
+
+			} else {
+				/* remove newline */
+				in_data[ll-1] = '\0';
+			}
 		} else if (ftell(fp) != endpos) { /* continued on next line */
-			in_data_sz = 2*in_data_sz;
-			tmp_data = (char *)realloc(in_data, in_data_sz);
-			if (tmp_data == NULL) {
-				log_err(errno, __func__, "realloc failed");
-				rc = -1;
-				goto populate_svrattrl_fail;
-			}
-			in_data = tmp_data;
-			if (fseek(fp, curpos, SEEK_SET) != 0) {
-				log_err(errno, __func__, "failed to fseek");
-				rc = -1;
-				goto populate_svrattrl_fail;
-			}
+			/* get more input for current item.  */
 			continue;
 		}
-		curpos = ftell(fp);
 		data_value = NULL;
 		if ((p=strchr(in_data, '=')) != NULL) {
 			int i;
@@ -1202,8 +1243,15 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 			/* strip off leading spaces from <data_value> */
 			while (isspace(*p))
 				p++;
+			if (b_triple_quotes) {
+				/* strip triple quotes */
+				p += 3;
+			}
 			data_value = p;
-			/* and strip off trailing spaces from <data_value> */
+			if (e_triple_quotes) {
+				(void)ends_with_triple_quotes(p, 1);
+			}
+
 			i = strlen(p);
 			while (--i > 0) {	/* strip trailing blanks */
 				if (!isspace((int)*(p+i)))
@@ -1268,11 +1316,10 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 						/* With padding, then the order would be */
 						/* 000,001,002,003,...,010,011,... */
 						/* respecting natural order. */
-	
 						/* leading zeros added up to a length of 8 */
 						snprintf(argv_index, sizeof(argv_index)-1,
 							"%08d", atoi(resc_str));
-				
+
 						rc = add_to_svrattrl_list_sorted(event_argv_svrattrl, name_str, resc_str, val_str, 0, argv_index);
 					}
 				} else {
@@ -1348,6 +1395,8 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 					snprintf(log_buffer, sizeof(log_buffer),
 						"object '%s' does not have a vnode name!", obj_name);
 					log_err(-1, __func__, log_buffer);
+					/* process a new line */
+					in_data[0] = '\0';
 					continue;
 				}
 				rc = add_to_svrattrl_list_sorted(event_vnode_svrattrl,
@@ -1410,6 +1459,8 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 					snprintf(log_buffer, sizeof(log_buffer),
 						"object '%s' does not have a job name!", obj_name);
 					log_err(-1, __func__, log_buffer);
+					/* process a new line */
+					in_data[0] = '\0';
 					continue;
 				}
 				rc = add_to_svrattrl_list_sorted(event_jobs_svrattrl,
@@ -1440,6 +1491,7 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 				goto populate_svrattrl_fail;
 			}
 		}
+		in_data[0] = '\0';
 	}
 
 	if (fp != stdin)
@@ -2158,15 +2210,26 @@ fprint_svrattrl_list(FILE *fp, char *head_str, pbs_list_head *phead)
 						return_external_value(plist->al_name,
 						plist->al_value));
 			} else {
-				if (p != NULL)
+				if (p != NULL) {
 					fprintf(fp, "%s[\"%s\"].%s=%s\n", head_str,
 						plist->al_name, p,
 						return_external_value(p, plist->al_value));
-				else
-					fprintf(fp, "%s.%s=%s\n", head_str,
-						plist->al_name,
-						return_external_value(plist->al_name,
-						plist->al_value));
+				} else {
+					if (strcmp(plist->al_name, ATTR_v) == 0) {
+						fprintf(fp, "%s.%s=\"\"\"%s\"\"\"\n",
+							head_str,
+							plist->al_name,
+							return_external_value(
+							plist->al_name,
+							plist->al_value));
+					} else {
+						fprintf(fp, "%s.%s=%s\n", head_str,
+							plist->al_name,
+							return_external_value(
+							plist->al_name,
+							plist->al_value));
+					}
+				}
 			}
 			if (p0 != NULL)
 				*p0 = '.';
@@ -2723,6 +2786,11 @@ main(int argc, char *argv[], char *envp[])
 			strncpy(hook_script, argv2[optind],
 				sizeof(hook_script)-1);
 		}
+		if (log_open_main(logname, path_log, 1) != 0) {  /* use given name */
+			fprintf(stderr, "pbs_python: Unable to open logfile\n");
+			exit(1);
+		}
+
 
 		CLEAR_HEAD(default_list);
 		CLEAR_HEAD(event);
@@ -2848,11 +2916,6 @@ main(int argc, char *argv[], char *envp[])
 			}
 			snprintf(full_logname, sizeof(full_logname), "%s%c%s", curdir, slash, logname);
 			strncpy(logname, full_logname, sizeof(logname)-1);
-		}
-
-		if (log_open_main(logname, path_log, 1) != 0) {  /* use given name */
-			fprintf(stderr, "pbs_python: Unable to open logfile\n");
-			exit(1);
 		}
 
 		/* set python interp data */
@@ -3465,7 +3528,7 @@ main(int argc, char *argv[], char *envp[])
 					&event_vnode);
 				fprintf(fp_out, "%s=%s\n", EVENT_PROGNAME_OBJECT, progname);
 				fprint_svrattrl_list(fp_out, EVENT_OBJECT, &event_argv);
-				fprintf(fp_out, "%s=%s\n", EVENT_ENV_OBJECT, env_str);
+				fprintf(fp_out, "%s=\"\"\"%s\"\"\"\n", EVENT_ENV_OBJECT, env_str);
 				if (strcmp(progname_orig, progname) != 0) {
 					print_progname = 1;
 				}

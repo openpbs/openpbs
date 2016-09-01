@@ -440,7 +440,7 @@ comma_token(char *str)
 				}
 				break;	/* comma inside quotes, keep scanning */
 
-			case '\\':			/* pass over next char */
+			case ESC_CHAR:			/* pass over next char */
 				if (*(p+1) != 0)	/* check '\' is not last */
 					p++;
 				break;
@@ -1300,26 +1300,26 @@ recv_dyn_string(void *s, char **strp)
 static char *
 strdup_esc_commas(char *str_to_dup)
 {
-	char *roaming=str_to_dup;
+	char *roaming = str_to_dup;
 	char *endstr, *returnstr;
 
 	if (str_to_dup == NULL)
 		return NULL;
 
-	returnstr=endstr=malloc(strlen(str_to_dup)*2+2);
+	returnstr = endstr = malloc(strlen(str_to_dup)*2 + 2);
 	/* even for an all-comma string, this should suffice */
-	if (returnstr==NULL)
+	if (returnstr == NULL)
 		return (returnstr); /* just return null on malloc failure */
-	while (*roaming!='\0') {
-		while (*roaming!='\0' && *roaming!=',')
-			*(endstr++)=*(roaming++);
+	while (*roaming != '\0') {
+		while (*roaming != '\0' && *roaming != ',')
+			*(endstr++) = *(roaming++);
 		if (*roaming==',') {
-			*(endstr++)='\\';
-			*(endstr++)=',';
+			*(endstr++) = ESC_CHAR;
+			*(endstr++) = ',';
 			roaming++;
 		}
 	}
-	*endstr='\0';
+	*endstr = '\0';
 	return (returnstr);
 }
 
@@ -3804,7 +3804,7 @@ make_argv(int *argc, char *argv[], char *line)
 				exit_qsub(1);
 			}
 			c++;
-		} else if (*c == '\\') {
+		} else if (*c == ESC_CHAR) {
 			c++;
 			*b++ = *c++;
 		} else if (isspace(*c)) {
@@ -3966,7 +3966,7 @@ get_script(FILE *file, char *script, char *prefix)
 	s[0] = '\0';
 	while ((in = fgets(s, MAX_LINE_LEN, file)) != NULL) {
 		if (!exec && ((sopt = pbs_ispbsdir(s, prefix)) != NULL)) {
-			while ((*(cont = in + strlen(in) - 2) == '\\') &&
+			while ((*(cont = in + strlen(in) - 2) == ESC_CHAR) &&
 				(*(cont+1) == '\n')) {
 				/* next line is continuation of this line */
 				*cont = '\0';	/* clear newline from our copy */
@@ -4064,25 +4064,25 @@ copy_env_value(char *dest, /* destination  */
 					if (q_ch == (int)*pv) {
 						q_ch = 0;	/* end quote */
 					} else {
-						*dest++ = '\\';	/* escape quote */
+						*dest++ = ESC_CHAR;	/* escape quote */
 						*dest++ = *pv;
 					}
 				} else if (quote_flg) {	  /* global quoting is on */
-					*dest++ = '\\';	  /* escape quote */
+					*dest++ = ESC_CHAR;	  /* escape quote */
 					*dest++ = *pv;
 				} else {
 					q_ch = (int)*pv;  /* turn local quoting on */
 				}
 				break;
 
-			case '\\':			/* backslash in value, escape it */
+			case ESC_CHAR:			/* backslash in value, escape it */
 				*dest++ = *pv;
 				*dest++ = *pv;
 				break;
 
 			case ',':
 				if (q_ch || quote_flg) {
-					*dest++ = '\\';
+					*dest++ = ESC_CHAR;
 					*dest++ = *pv;
 				} else {
 					go = 0;		/* end of value string */

@@ -1142,3 +1142,94 @@ convert_duration_to_str(time_t duration, char* buf, int bufsize)
 	sec = duration;
 	snprintf(buf, bufsize, "%02ld:%02ld:%02ld", hour, min, sec);
 }
+
+/*
+ * @brief
+ *	Determines if 'str' ends with three consecutive double quotes,
+ *	before a newline (if it exists).
+ *
+ * @param[in]	str - input string
+ * @param[in]	strip_quotes - if set to 1, then modify 'str' so that
+ *				the triple quotes are not part of the string.
+ *
+ * @return int
+ * @retval 1 - if string ends with triple quotes.
+ * @retval 0 - if string does not end with triple quotes.
+ *
+ */
+int
+ends_with_triple_quotes(char *str, int strip_quotes)
+{
+	int	ct;
+	char	*p = NULL;
+	int	ll = 0;
+
+	if (str == NULL)
+		return (0);
+
+	ll = strlen(str);
+	if (ll < 3) {
+		return (0);
+	}
+
+	p = str + (ll-1);
+
+	if (*p == '\n') {
+		p--;
+#ifdef WIN32
+		if (*p  == '\r') {
+			p--;
+		}
+#endif
+	}
+
+	ct = 0;
+	while ((p >= str) && (*p == '"')) {
+		ct++;
+		p--;
+		if (ct == 3)
+			break;
+	}
+	if (ct == 3) {
+		if (strip_quotes == 1) {
+			/* null terminate the first double quote */
+			*(p+1) = '\0';
+		}
+		return (1);
+	}
+	return (0);
+}
+
+/*
+ * @brief
+ *	Determines if 'str' begins with three consecutive double quotes.
+ *
+ * @param[in]	str - input string
+ *
+ * @return int
+ * @retval 1 - if string starts with triple quotes.
+ * @retval 0 - if string does not start with triple quotes.
+ *
+ */
+int
+starts_with_triple_quotes(char *str)
+{
+	char *p;
+	int  ct;
+
+	if (str == NULL)
+		return (0);
+
+	p = str;
+	ct = 0;
+	while ((*p != '\0') && (*p == '"')) {
+		ct++;
+		p++;
+		if (ct == 3)
+			break;
+	}
+	if (ct == 3) {
+		return (1);
+	}
+	return (0);
+}

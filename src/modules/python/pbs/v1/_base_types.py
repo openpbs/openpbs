@@ -631,7 +631,7 @@ class pbs_env(dict):
         # are allowed to be modified.
         self._generic = generic
         if isinstance(value,(str,)):
-            # temporarily replace "\," with something we
+            # temporarily replace "<esc_char>," with something we
             # don't expect to see: two etx <ascii code 3>
             # since ',' is used as a separator among env variables.
             # NOTE: We take care here of also catching "\\," which is
@@ -639,15 +639,18 @@ class pbs_env(dict):
             #       which must break down to:
             #           v['DPATH'] = "\\a\\b\\"
             #	       v['MP_MSG_API'] = "MPI\,LAPI"
+            if (sys.platform == "win32"):
+                 esc_char = "^"
+            else: 
+                 esc_char = "\\"
             double_stx="\x02\x02"
             double_etx="\x03\x03"
-            value1 = value.replace("\\\\", double_stx).replace("\\,", double_etx)
-	 
+            value1 = value.replace(esc_char + esc_char, double_stx).replace(esc_char + ",", double_etx)
             vals = value1.split(",")
             ev = {}
             for v in vals:
-                # now restore "\,"
-                v1 = v.replace(double_etx, "\\,").replace(double_stx, "\\\\")
+                # now restore "<esc_char>,"
+                v1 = v.replace(double_etx, esc_char + ",").replace(double_stx, esc_char + esc_char)
                 e = v1.split("=",1)
 
                 if len(e) == 2:
@@ -1485,4 +1488,3 @@ class exec_vnode(_generic_attr):
         for v in vals:
             self.chunks.append(vchunk(v.strip("(").strip(")")))
 #: --------         EXPORTED TYPES DICTIONARY                      ---------
-

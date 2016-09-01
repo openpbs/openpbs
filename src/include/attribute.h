@@ -336,10 +336,10 @@ extern int compare_svrattrl_list(pbs_list_head *l1, pbs_list_head *l2);
 extern void free_str_array(char **);
 extern char **svrattrl_to_str_array(pbs_list_head *);
 extern int str_array_to_svrattrl(char **str_array, pbs_list_head *to_head, char *header_str);
-extern char *str_array_to_str(char **str_array, char *delimeters);
-extern char *env_array_to_str(char **env_array, char *delimeters);
-extern char **str_to_str_array(char *str, char *delimeters);
-extern char *strtok_quoted(char *source, const char *delimiters);
+extern char *str_array_to_str(char **str_array, char delimiter);
+extern char *env_array_to_str(char **env_array, char delimiter);
+extern char **str_to_str_array(char *str, char delimiter);
+extern char *strtok_quoted(char *source, char delimiter);
 
 extern int  decode_b  (attribute *patr, char *name, char *rn, char *val);
 extern int  decode_c  (attribute *patr, char *name, char *rn, char *val);

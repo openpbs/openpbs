@@ -659,7 +659,7 @@ parse_comma_string_bs(char *start)
 
 	/* find comma */
 	while (*pc) {
-		if (*pc == '\\') {
+		if (*pc == ESC_CHAR) {
 			/*
 			 * Both copy_env_value() and encode_arst_bs() escape certain
 			 * characters. Unescape them here.
@@ -668,12 +668,12 @@ parse_comma_string_bs(char *start)
 			if (*pc == '\0') {
 				/* should not happen, but handle it */
 				break;
-			} else if ((*pc == '"') || (*pc == '\'') || (*pc == ',') || (*pc == '\\')) {
-				/* omit the backslash preceding these characters */
+			} else if ((*pc == '"') || (*pc == '\'') || (*pc == ',') || (*pc == ESC_CHAR)) {
+				/* omit the ESC_CHAR preceding these characters */
 				*dest = *pc;
 			} else {
 				/* unrecognized escape sequence, just copy it */
-				*dest++ = '\\';
+				*dest++ = ESC_CHAR;
 				*dest = *pc;
 			}
 		} else if (*pc == ',') {
@@ -727,7 +727,7 @@ int	*pcnt;		/*where to return the value*/
 
 	ns = 1;
 	for (pc = val; *pc; pc++) {
-		if (*pc == '\\') {
+		if (*pc == ESC_CHAR) {
 			if (*(pc+1))
 				pc++;
 		} else {
@@ -957,19 +957,13 @@ encode_arst_bs(attribute *attr, pbs_list_head *phead, char *atname, char *rsname
 
 
 	i = (int)(attr->at_val.at_arst->as_next - attr->at_val.at_arst->as_buf);
-	if (mode == ATR_ENCODE_SAVE) {
-		separator = '\n';	/* new-line for encode_acl  */
-		/* allow one extra byte for final new-line */
-		j = i + 1;
-	} else {
-		separator = ',';	/* normally a comma is the separator */
-		j = i;
-	}
+	separator = ',';	/* normally a comma is the separator */
+	j = i;
 
 	/* how many back-slashes are required */
 
 	for (pc = attr->at_val.at_arst->as_buf; pc < attr->at_val.at_arst->as_next; ++pc) {
-		if ((*pc == '"') || (*pc == '\'') || (*pc == ',') || (*pc == '\\'))
+		if ((*pc == '"') || (*pc == '\'') || (*pc == ',') || (*pc == ESC_CHAR))
 			++j;
 	}
 	pal = attrlist_create(atname, rsname, j);
@@ -991,8 +985,8 @@ encode_arst_bs(attribute *attr, pbs_list_head *phead, char *atname, char *rsname
 
 	end = attr->at_val.at_arst->as_next;
 	while (pfrom < end) {
-		if ((*pfrom == '"') || (*pfrom == '\'') || (*pfrom == ',') || (*pfrom == '\\')) {
-			*pc++ = '\\';
+		if ((*pfrom == '"') || (*pfrom == '\'') || (*pfrom == ',') || (*pfrom == ESC_CHAR)) {
+			*pc++ = ESC_CHAR;
 			*pc   = *pfrom;
 		} else if (*pfrom == '\0') {
 			*pc = separator;
@@ -1005,10 +999,7 @@ encode_arst_bs(attribute *attr, pbs_list_head *phead, char *atname, char *rsname
 
 	/* convert the last null to separator only if going to new-lines */
 
-	if (mode == ATR_ENCODE_SAVE)
-		*pc = '\0';	/* terminate string */
-	else
-		*(pc-1) = '\0';
+	*(pc-1) = '\0';
 	append_link(phead, &pal->al_link, pal);
 	if (rtnl)
 		*rtnl = pal;

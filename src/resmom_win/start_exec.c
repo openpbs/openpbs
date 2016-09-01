@@ -565,7 +565,7 @@ rmtmpdir(char *jobid)
 
 #ifdef WIN32	/* WIN32 ------------------------------------------------- */
 #define ENV_BUFSIZE	8192
-static	char	**env_array = NULL;
+static	char	**env_array = NULL;  /* this array must have a NULL sentinel */
 static	int	curenv = 0;
 static	int	numenv = 0;
 
@@ -577,36 +577,47 @@ compare(const void *arg1, const void *arg2)
 
 /**
  * @brief
- * 	init_envp: initializes the storage that stores set environment variables 
- * 
+ * 	initializes the storage that stores set environment variables. 
+ *
+ * @par MT-safe: no
  */
 void
-init_envp()
+init_envp(void)
 {
 	int	i;
 
 	if ((env_array == NULL) || curenv == 0)
 		return;
 
-	for (i=0; i<curenv; i++) {
-		if (env_array[i])
-			(void)free(env_array[i]);
+	for (i = 0; i < curenv; i++) {
+		if (env_array[i]) {
+			free(env_array[i]);
+			env_array[i] = NULL;
+		}
 	}
-
-	env_array = NULL;
 	curenv = 0; /* no variables in the env_array */
-
 	return;
 }
 
+/**
+ * @brief
+ *	Returns an environment array containing the set variables
+ *	in the 'env_array' global variable.
+ *
+ * @return	char **
+ *	!NULL	the environment array
+ *	NULL	if an error occurred.
+ *
+ * @par MT-safe: no
+ */
 char	*
-make_envp()
+make_envp(void)
 {
 	int	i;
 	size_t	len = 0;
 	char	*envp, *cp;
 
-	if (curenv == 0)
+	if ((env_array == NULL) || (curenv == 0))
 		return NULL;
 
 	qsort((void *)env_array, (size_t)curenv, sizeof(char *), compare);
@@ -626,8 +637,42 @@ make_envp()
 		*cp++ = '\0';
 	}
 	*cp = '\0';
-	curenv = 0;
 	return envp;
+}
+
+/**
+ * @brief
+ *	Add to global 'env_array' the entries in 'envp'.
+ *
+ * @param[in]	envp - environment array to duplicate
+ *
+ * @return	none
+ * @par MT-safe: no
+ */
+void
+add_envp(char **envp)
+{
+	char	*e_var, *e_val, *p;
+	int	i;
+
+	if (envp == NULL) {
+		log_err(-1, __func__, "unexpected input");
+		return;
+	}
+	i = 0;
+	while((e_var = envp[i]) != NULL) {
+		if ((p = strchr(e_var, '=')) != NULL) {
+			*p = '\0';
+			p++;
+			e_val = p;
+		} else {
+			e_val = NULL; /* can be NULL */
+		}
+		bld_wenv_variables(e_var, e_val);
+		if (e_val != NULL)
+			*(p-1) = '=';	/* restore */
+		i++;
+	}
 }
 
 /**
@@ -687,7 +732,8 @@ bld_wenv_variables(char *name, char *value)
 
 	if (env_array == NULL) {
 		numenv = 32;
-		env_array = (char **)malloc(sizeof(char *) * numenv);
+		env_array = (char **)malloc(sizeof(char *) * (numenv+1));
+					 /* +1 for the sentinel (end) entry */
 		if (env_array == NULL) {
 			log_err(errno, "bld_wenv_variables", "failed to malloc");
 			return;
@@ -695,15 +741,16 @@ bld_wenv_variables(char *name, char *value)
 		/* initialize the unused entries to NULL */
 		for (i=0; i < numenv; i++)
 			env_array[i] = NULL;
+		env_array[i] = NULL; /* sentinel (end) entry */
 	}
 	/* curenv is the index to th next slot that can be used in env_array. */
 	/* numenv is the number of elements currently allocated in env_array. */
-	if (curenv == numenv) {		/* none left */
+	if (curenv >= numenv) {		/* none left */
 		int	numenv_tmp = 0;
-		char	**env_array_tmp = NULL;
+		char	**env_array_tmp;
 
 		numenv_tmp = numenv * 2;
-		env_array_tmp = (char **)realloc(env_array, sizeof(char *)*numenv_tmp);
+		env_array_tmp = (char **)realloc(env_array, sizeof(char *) * (numenv_tmp + 1));	/* +1 for sentinel (end) entry */
 		if (env_array_tmp == NULL) {
 			log_err(errno, "bld_wenv_variables",
 				"failed to realloc");
@@ -716,6 +763,7 @@ bld_wenv_variables(char *name, char *value)
 		for (i=curenv; i < numenv; i++) {
 			env_array[i] = NULL;
 		}
+		env_array[i] = NULL; /* sentinel (end) entry */
 	}
 
 	amt = strlen(name) + 1;			/* plus 1 for nul */
@@ -1457,7 +1505,6 @@ finish_exec(job *pjob)
 	char			**argv_out = NULL;
 	char			*argv_str = NULL;
 	char			**env = NULL;
-	char			*env_str = NULL;
 	SECURITY_ATTRIBUTES     sa;
 	HANDLE                  hReadPipe_dummy = INVALID_HANDLE_VALUE;	/* dummy pipe read handle */
 	HANDLE                  hWritePipe_dummy = INVALID_HANDLE_VALUE; /* dummy pipe write handle */
@@ -1552,6 +1599,7 @@ finish_exec(job *pjob)
 	}
 	(void)strcat(buf, JOB_SCRIPT_SUFFIX);
 
+	init_envp(); /* first environment var set is TMPDIR */
 	/* Add TMPDIR to environment */
 	j = mktmpdir(pjob->ji_qs.ji_jobid, pjob->ji_user->pw_name);
 	if (j != 0) {
@@ -2102,7 +2150,7 @@ finish_exec(job *pjob)
 
 	if (pwdp->pw_userlogin != INVALID_HANDLE_VALUE) { /* ENTERPRISE  MODE */
 
-		argv_in = str_to_str_array(cmdline, " ");
+		argv_in = str_to_str_array(cmdline, ' ');
 		if ((argv_in == NULL) || (argv_in[0] == NULL)) {
 
 			if (argv_in != NULL) {
@@ -2145,17 +2193,14 @@ finish_exec(job *pjob)
 				free_str_array(argv_in);
 				free(progname_out);
 				free_attrlist(&argv_list);
-				free(env_str);
-
-
+				free_str_array(hook_output.env);
 				exec_bail(pjob, JOB_EXEC_FAIL2, NULL);
 				return;
 			case 1:   /* explicit accept */
 				if (progname_out == NULL) {
 					free_str_array(argv_in);
 					free_attrlist(&argv_list);
-					free(env_str);
-
+					free_str_array(hook_output.env);
 					exec_bail(pjob, JOB_EXEC_FAIL2,
 						"execjob_launch hook returned NULL progname!");
 					return;
@@ -2178,8 +2223,7 @@ finish_exec(job *pjob)
 				/* free progname_out */
 				free(argv_out[0]);
 				argv_out[0] = progname_out;
-				argv_str = str_array_to_str(argv_out,
-								" ");
+				argv_str = str_array_to_str(argv_out, ' ');
 				if (argv_str == NULL) {
 
 					free_str_array(argv_in);
@@ -2211,28 +2255,16 @@ finish_exec(job *pjob)
 					return;
 				}
 
-				/* numenv is the total # of */
-				/* slots in env_array including */
-				/*  unused slots */
-				/* curenv is the total # of used */
-				/* slots */
-				curenv = numenv;
 				init_envp(); /* free up all entries */
-				/* in env_array */
+					     /* in env_array */
 				free(env_block);/* since values from */
-				/* previous env_array */
+						/* previous env_array */
 
-				env_array = env;
-				curenv = 0;
-				while(env_array[curenv] != NULL)
-					curenv++;
-
-				numenv = curenv;
+				add_envp(env);
 				/* re-populate env_block */
 				/* with entries from */
 				/* new env_array */
 				env_block = make_envp();
-
 				break;
 			case 2:	  /* no hook script executed - go ahead and accept event */
 				break;
@@ -2550,7 +2582,6 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 	char			**argv_out = NULL;
 	char			*argv_str = NULL;
 	char			**env;
-	char			*env_str = NULL;
 	char			*p = NULL;
 	char			cmd_shell[MAX_PATH + 1] = {'\0'};
 
@@ -2886,7 +2917,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 	
 	if (pwdp->pw_userlogin != INVALID_HANDLE_VALUE) { /* ENTERPRISE MODE */
 	
-		argv_in = str_to_str_array(cmdline, " ");
+		argv_in = str_to_str_array(cmdline, ' ');
 		if ((argv_in == NULL) || (argv_in[0] == NULL)) {
 	
 			if (argv_in != NULL) {
@@ -2919,7 +2950,6 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 		hook_output.progname = &progname_out;
 		CLEAR_HEAD(argv_list);
 		hook_output.argv = &argv_list;
-		hook_output.env = &env_str;
 	
 		switch (mom_process_hooks(HOOK_EVENT_EXECJOB_LAUNCH,
 				PBS_MOM_SERVICE_NAME,
@@ -2930,17 +2960,14 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 				free_str_array(argv_in);
 				free(progname_out);
 				free_attrlist(&argv_list);
-				free(env_str);
-	
-	
+				free_str_array(hook_output.env);	
 				exec_bail(pjob, JOB_EXEC_FAIL1, NULL);
 				return PBSE_SYSTEM;
 			case 1:   /* explicit accept */
 				if (progname_out == NULL) {
 					free_str_array(argv_in);
 					free_attrlist(&argv_list);
-					free(env_str);
-	
+					free_str_array(hook_output.env);
 					exec_bail(pjob, JOB_EXEC_FAIL2,
 						"execjob_launch hook returned NULL progname!");
 					return PBSE_SYSTEM;
@@ -2951,8 +2978,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 					free_str_array(argv_in);
 					free(progname_out);
 					free_attrlist(&argv_list);
-					free(env_str);
-	
+					free_str_array(hook_output.env);
 					exec_bail(pjob, JOB_EXEC_FAIL2,
 						"execjob_launch hook returned NULL argv!");
 					return PBSE_SYSTEM;
@@ -2964,15 +2990,13 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 				free(argv_out[0]);
 				argv_out[0] = progname_out;	
 	
-				argv_str = str_array_to_str(argv_out,
-								" ");
+				argv_str = str_array_to_str(argv_out, ' ');
 				if (argv_str == NULL) {
 	
 					free_str_array(argv_in);
 					free_attrlist(&argv_list);
-					free(env_str);
+					free_str_array(hook_output.env);
 					free_str_array(argv_out);
-	
 					exec_bail(pjob, JOB_EXEC_FAIL2,
 						"execjob_launch hook returned NULL argv_str!");
 					return PBSE_SYSTEM;
@@ -2984,42 +3008,26 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 							cmdline);
 				free(argv_str);
 				free_str_array(argv_out);
-	
-				if (env_str != NULL) {
-					env = str_to_str_array(env_str, ",");
-					if (env == NULL) {
-						free_str_array(argv_in);
-						free_attrlist(&argv_list);
-						free(env_str);
-						exec_bail(pjob, JOB_EXEC_FAIL2,
-							"execjob_launch hook NULL env!");
-						return PBSE_SYSTEM;
-					}
-	
-					/* numenv is the total # of */
-					/* slots in env_array including */
-					/*  unused slots */
-					/* curenv is the total # of used */
-					/* slots */
-					curenv = numenv;
-					init_envp(); /* free up all entries */
-						     /* in env_array */
-					free(env_block);/* since values from */
-							/* previous env_array */
-	
-					env_array = env;
-					curenv = 0;
-					while(env_array[curenv] != NULL)
-						curenv++;
-	
-					numenv = curenv;
-						;
-					/* re-populate env_block */
-					/* with entries from */
-					/* new env_array */
-					env_block = make_envp();
-					
+
+				env = hook_output.env;
+				if (env == NULL) {
+					free_str_array(argv_in);
+					free_attrlist(&argv_list);
+					exec_bail(pjob, JOB_EXEC_FAIL2,
+						"execjob_launch hook NULL env!");
+					return PBSE_SYSTEM;
 				}
+	
+				init_envp(); /* free up all entries */
+					     /* in env_array */
+				free(env_block);/* since values from */
+						/* previous env_array */
+				add_envp(env);
+				/* re-populate env_block */
+				/* with entries from */
+				/* new env_array */
+				env_block = make_envp();
+					
 				break;
 			case 2:	  /* no hook script executed - go ahead and accept event */
 				break;
@@ -3031,7 +3039,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 	
 		free_str_array(argv_in);
 		free_attrlist(&argv_list);
-		free(env_str);
+		free_str_array(hook_output.env);
 	
 		if (!impersonate_user(pwdp->pw_userlogin)) {
 			sprintf(log_buffer,

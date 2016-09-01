@@ -213,6 +213,10 @@ char *pbs_get_munge_auth_data(int fromsvr, char *ebuf, int ebufsz);
 void *get_ext_auth_data(int auth_type, int *data_len, char *ebuf, int ebufsz);
 int validate_ext_auth_data(int auth_type, void *data, int data_len, char *ebuf, int ebufsz);
 
+/* Various helper functions in hooks processing */
+int starts_with_triple_quotes(char *str);
+int ends_with_triple_quotes(char *str, int strip_quotes);
+
 /* Special symbols for copy_file_internal() */
 
 #define COPY_FILE_BAD_INPUT	1
