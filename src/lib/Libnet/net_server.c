@@ -607,6 +607,16 @@ accept_conn(int sd)
 	}
 #endif
 
+	/*
+	 * Disable Nagle's algorithm on this TCP connection to server.
+	 * Nagle's algorithm is hurting cmd-server communication.
+	 */
+	if (set_nodelay(newsock) == -1) {
+		(void)close(newsock);
+		log_err(errno, "accept_conn", "set_nodelay failed");
+		return;		/* set_nodelay failed */
+	}
+
 	/* add the new socket to the select set and connection structure */
 
 	(void)add_conn(newsock, FromClientDIS,
