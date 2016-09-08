@@ -4235,8 +4235,7 @@ class Comm(PBSService):
     logger = logging.getLogger(__name__)
     logprefix = 'pbs_comm: '
 
-    conf_to_cmd_map = {'PBS_COMM_NAME': '-n', 'PBS_COMM_ROUTERS': '-r',
-                       'PBS_COMM_THREADS': '-t'}
+    conf_to_cmd_map = {'PBS_COMM_ROUTERS': '-r', 'PBS_COMM_THREADS': '-t'}
 
     def isUp(self):
         return super(Comm, self)._isUp(self)
