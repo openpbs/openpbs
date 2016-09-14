@@ -91,6 +91,7 @@
  * 	set_entity_ct_sum_max()
  * 	set_entity_resc_sum_queued()
  * 	set_entity_resc_sum_max()
+ *	revert_entity_resources()
  * 	add_prov_record()
  * 	remove_prov_record()
  * 	prov_track_save()
@@ -3047,8 +3048,11 @@ set_single_entity_res(enum lim_keytypes kt, char *ename,
 		return PBSE_NONE;
 
 	kstr = entlim_mk_reskey(kt, ename, rescn);
-	if (kstr == NULL)
+	if (kstr == NULL) {
+		snprintf(log_buffer, LOG_BUF_SIZE-1, "Error in entlim_mk_reskey for rescn %s", rescn);
+		log_err(-1, __func__, log_buffer);
 		return (PBSE_SYSTEM);
+	}
 	ctx = patr->at_val.at_enty.ae_tree;
 	plf = (svr_entlim_leaf_t *)entlim_get(kstr, ctx);
 
@@ -3062,6 +3066,8 @@ set_single_entity_res(enum lim_keytypes kt, char *ename,
 				return (rc);
 			}
 			if (entlim_add(kstr, plf, ctx) == -1) {
+				snprintf(log_buffer, LOG_BUF_SIZE-1, "Error in entlim_add for reskey %s", kstr);
+				log_err(-1, __func__, log_buffer);
 				free(kstr);
 				free(plf);
 				return (PBSE_SYSTEM);
@@ -3079,6 +3085,8 @@ set_single_entity_res(enum lim_keytypes kt, char *ename,
 		/* decrement resource by newval, adding oldval if there */
 		if (plf == NULL) {
 			/* Do not decrement what isn't there */
+			snprintf(log_buffer, LOG_BUF_SIZE-1, "decrementing resource for reskey %s: isn't found in attribute tree", kstr);
+			log_err(-1, __func__, log_buffer);
 			free(kstr);
 			return (PBSE_INTERNAL);
 		}
@@ -3101,7 +3109,19 @@ set_single_entity_res(enum lim_keytypes kt, char *ename,
 				DBPRT(("...adjusting Entity resc for %s \n", kstr))
 #endif	/* DEBUG */
 
-				free(kstr);
+	if (plf->slf_rescd->rs_type == ATR_TYPE_SIZE) {
+		snprintf(log_buffer, LOG_BUF_SIZE-1, "...adjusting Entity resc for reskey %s to %ldkb ", kstr, 
+		         (long) plf->slf_sum.at_val.at_size.atsv_num << (plf->slf_sum.at_val.at_size.atsv_shift - 10));
+		log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_ERR, msg_daemonname, log_buffer);
+	} else if (plf->slf_rescd->rs_type == ATR_TYPE_LONG) {
+		snprintf(log_buffer, LOG_BUF_SIZE-1, "...adjusting Entity resc for reskey %s to %ld ", 
+		         kstr, plf->slf_sum.at_val.at_long);
+		log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_ERR, msg_daemonname, log_buffer);
+	} else {
+		snprintf(log_buffer, LOG_BUF_SIZE-1, "...adjusting Entity resc for reskey %s ", kstr);
+		log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_ERR, msg_daemonname, log_buffer);
+	}
+	free(kstr);
 	return PBSE_NONE;
 }
 
@@ -3296,6 +3316,64 @@ set_entity_ct_sum_max(job *pjob, pbs_queue *pque, enum batch_op op)
 	return 0;	/* within all count limits */
 }
 
+
+/**
+ * @brief
+ *		revert_entity_resources - unset prior entity resource count, if any failure occurs.
+ *
+ *
+ * @param[in]  pmaxqresc    -   pointer to queue attribute structure
+ * @param[in]  pattr_old    -   pointer to job attribute
+ * @param[in]  presc_new    -   pointer to current processing resource 
+ * @param[in]  presc_old    -   pointer to old resource before alter
+ * @param[in]  presc_first  -   pointer to first resource, used to reach the starting of resource list
+ * @param[in]  egroup       -   effective group name
+ * @param[in]  euser        -   effective user name
+ * @param[in]  project      -   project name
+ * @param[in]  op           -   operator example- INCR, DECR
+ *
+ * @return      int
+ * @retval      zero        -   all went ok
+ * @retval      -1          -   error in input parameters  
+ */
+
+int revert_entity_resources(attribute *pmaxqresc, attribute *pattr_old, 
+	resource *presc_new, resource *presc_old, resource *presc_first, 
+	char *egroup, char *euser, char *project, enum batch_op op) 
+{
+
+	int res_flag=1;
+	if ( pmaxqresc && presc_new && presc_first && euser && egroup && project ) {
+
+		for (presc_new = (resource *)GET_PRIOR(presc_new->rs_link);
+			( presc_new != (resource *)0 ) && res_flag;
+			presc_new = (resource *)GET_PRIOR(presc_new->rs_link)) {
+
+		if (presc_new == presc_first)
+			res_flag=0;
+		if (!(presc_new->rs_value.at_flags & ATR_VFLAG_SET) || ((presc_new->rs_defin->rs_entlimflg & PBS_ENTLIM_LIMITSET)==0))
+			continue;
+
+		/* If this is from qalter where presc_old is set, see if    */
+		/* corresponding resource is in presc_old, had a pior value */
+
+		if (pattr_old)
+			presc_old = find_resc_entry(pattr_old, presc_new->rs_defin);
+		else
+			presc_old = NULL;
+
+		(void)set_single_entity_res(LIM_OVERALL, PBS_ALL_ENTITY, pmaxqresc, presc_new, presc_old, op);
+		(void)set_single_entity_res(LIM_USER, euser, pmaxqresc, presc_new, presc_old, op);
+		(void)set_single_entity_res(LIM_GROUP, egroup, pmaxqresc, presc_new, presc_old, op);
+		(void)set_single_entity_res(LIM_PROJECT, project, pmaxqresc, presc_new, presc_old, op);
+		}
+
+		return(0);
+	} else 
+		return(-1);
+	
+}
+
 /**
  * @brief
  * 		set_entity_resc_sum_queued() - set entity resource usage
@@ -3320,15 +3398,16 @@ int
 set_entity_resc_sum_queued(job *pjob, pbs_queue *pque, attribute *altered_resc,
 	enum batch_op op)
 {
-	char	    *egroup;
-	char	    *project;
-	char	    *euser;
-	int		rc;
-	attribute   *pmaxqresc;
-	attribute   *pattr_new;
-	attribute   *pattr_old;
-	resource    *presc_new;
-	resource    *presc_old;
+	char	    *egroup=NULL;
+	char	    *project=NULL;
+	char	    *euser=NULL;
+	int	     rc, rc_final;
+	attribute   *pmaxqresc=NULL;
+	attribute   *pattr_new=NULL;
+	attribute   *pattr_old=NULL;
+	resource    *presc_new=NULL;
+	resource    *presc_old=NULL;
+	resource    *presc_first=NULL;
 	enum batch_op rev_op;
 
 	/* if the job is in states JOB_STATE_MOVED or JOB_STATE_FINISHED, */
@@ -3370,9 +3449,33 @@ set_entity_resc_sum_queued(job *pjob, pbs_queue *pque, attribute *altered_resc,
 	egroup = pjob->ji_wattr[(int)JOB_ATR_egroup].at_val.at_str;
 	project = pjob->ji_wattr[(int)JOB_ATR_project].at_val.at_str;
 
-	for (presc_new = (resource *)GET_NEXT(pattr_new->at_val.at_list);
+
+	if (!euser) {
+		log_err(PBSE_INTERNAL, __func__, "EMPTY USER");
+		return PBSE_INTERNAL;
+	}
+	if (!egroup) {
+		log_err(PBSE_INTERNAL, __func__, "EMPTY GROUP");
+                return PBSE_INTERNAL;
+	}
+	if (!project) {
+		log_err(PBSE_INTERNAL, __func__, "EMPTY PROJECT");
+		return PBSE_INTERNAL;
+	}
+
+	snprintf(log_buffer, LOG_BUF_SIZE-1, "Adjusting entity resource sums at %s for euser %s", 
+		        pque ? pque->qu_qs.qu_name : "server", euser);
+		 
+	log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_INFO,
+		pjob->ji_qs.ji_jobid, log_buffer);
+
+	rc_final = 0;
+
+	for (presc_new = (resource *)GET_NEXT(pattr_new->at_val.at_list), presc_first=presc_new;
 		presc_new != (resource *)0;
 		presc_new = (resource *)GET_NEXT(presc_new->rs_link)) {
+
+		char *rescn;
 		if (!(presc_new->rs_value.at_flags & ATR_VFLAG_SET)
 			|| ((presc_new->rs_defin->rs_entlimflg & PBS_ENTLIM_LIMITSET)==0))
 			continue;
@@ -3385,12 +3488,32 @@ set_entity_resc_sum_queued(job *pjob, pbs_queue *pque, attribute *altered_resc,
 		else
 			presc_old = NULL;
 
+		rescn = presc_new->rs_defin->rs_name;
+		if (rescn == NULL) {
+			if (presc_new != presc_first)
+				if(revert_entity_resources(pmaxqresc, pattr_old, presc_new, presc_old, presc_first, egroup, euser, project, rev_op) != 0)
+					log_err(PBSE_INTERNAL, __func__, "Error in revert_entity_resources");
+			log_err(PBSE_INTERNAL, __func__, "EMPTY RESOURCE");
+			return PBSE_INTERNAL;
+		}
+
 		/* 1. set overall limit o:PBS_ALL */
 		rc = set_single_entity_res(LIM_OVERALL, PBS_ALL_ENTITY,
 			pmaxqresc,
 			presc_new, presc_old, op);
 		if (rc) {
-			return rc;
+			snprintf(log_buffer, LOG_BUF_SIZE-1, 
+				"Error in LIM_OVERALL for resource %s", rescn); 
+			log_err(rc ,__func__, log_buffer);
+			if (op == INCR) {
+				if (presc_new != presc_first)
+					if(revert_entity_resources(pmaxqresc, pattr_old, presc_new, presc_old, presc_first, egroup, euser, project, rev_op) != 0)	
+						log_err(PBSE_INTERNAL, __func__, "Error in revert_entity_resources");
+				return rc;
+			} else { 
+				if (!rc_final) 
+					rc_final = rc;
+			}	continue;
 		}
 
 		/* 2. sets user limit */
@@ -3398,11 +3521,23 @@ set_entity_resc_sum_queued(job *pjob, pbs_queue *pque, attribute *altered_resc,
 			pmaxqresc,
 			presc_new, presc_old, op);
 		if (rc) {
+			snprintf(log_buffer, LOG_BUF_SIZE-1, 
+				"Error in LIM_USER for euser %s for resource %s", euser, rescn); 
+			log_err(rc, __func__, log_buffer);
 			/* reverse change made above */
 			(void)set_single_entity_res(LIM_OVERALL, PBS_ALL_ENTITY,
 				pmaxqresc,
 				presc_new, presc_old, rev_op);
-			return rc;
+			if (op == INCR) {
+				if (presc_new != presc_first)
+					if(revert_entity_resources(pmaxqresc, pattr_old, presc_new, presc_old, presc_first, egroup, euser, project, rev_op) != 0)
+						log_err(PBSE_INTERNAL, __func__, "Error in revert_entity_resources");
+				return rc;
+			} else {
+				if (!rc_final) 
+					rc_final = rc;
+				continue;
+			}
 		}
 
 		/* 3. set specific group limit */
@@ -3410,6 +3545,11 @@ set_entity_resc_sum_queued(job *pjob, pbs_queue *pque, attribute *altered_resc,
 			pmaxqresc,
 			presc_new, presc_old, op);
 		if (rc) {
+
+			snprintf(log_buffer, LOG_BUF_SIZE-1, 
+				"Error in LIM_GROUP for egroup %s for resource %s", egroup, rescn); 
+			log_err(rc, __func__, log_buffer);
+
 			/* reverse changes made above */
 			(void)set_single_entity_res(LIM_OVERALL, PBS_ALL_ENTITY,
 				pmaxqresc,
@@ -3417,7 +3557,16 @@ set_entity_resc_sum_queued(job *pjob, pbs_queue *pque, attribute *altered_resc,
 			(void)set_single_entity_res(LIM_USER, euser,
 				pmaxqresc,
 				presc_new, presc_old, rev_op);
-			return rc;
+			if (op == INCR) {
+				if (presc_new != presc_first)
+                                        if(revert_entity_resources(pmaxqresc, pattr_old, presc_new, presc_old, presc_first, egroup, euser, project, rev_op) != 0)
+                                                log_err(PBSE_INTERNAL, __func__, "Error in revert_entity_resources");
+				return rc;
+			} else {
+				if (!rc_final) 
+					rc_final = rc;
+				continue;
+			}
 		}
 
 
@@ -3426,6 +3575,10 @@ set_entity_resc_sum_queued(job *pjob, pbs_queue *pque, attribute *altered_resc,
 			pmaxqresc,
 			presc_new, presc_old, op);
 		if (rc) {
+			snprintf(log_buffer, LOG_BUF_SIZE-1, 
+				"Error in LIM_USER for project %s for resource %s", project, rescn); 
+			log_err(rc, __func__, log_buffer);
+
 			/* reverse changes made above */
 			(void)set_single_entity_res(LIM_OVERALL, PBS_ALL_ENTITY,
 				pmaxqresc,
@@ -3436,9 +3589,21 @@ set_entity_resc_sum_queued(job *pjob, pbs_queue *pque, attribute *altered_resc,
 			(void)set_single_entity_res(LIM_GROUP, egroup,
 				pmaxqresc,
 				presc_new, presc_old, rev_op);
-			return rc;
+			if (op == INCR) {
+				if (presc_new != presc_first)
+					if(revert_entity_resources(pmaxqresc, pattr_old, presc_new, presc_old, presc_first, egroup, euser, project, rev_op) != 0)
+						log_err(PBSE_INTERNAL, __func__, "Error in revert_entity_resources");
+				return rc;
+			} else {
+				if (!rc_final) 
+					rc_final = rc;
+				continue;
+			}
 		}
 	}
+
+	if (rc_final)
+		return rc_final;
 
 	if (op == INCR)
 		pjob->ji_entity_limit_set = 1;
@@ -3446,6 +3611,7 @@ set_entity_resc_sum_queued(job *pjob, pbs_queue *pque, attribute *altered_resc,
 		pjob->ji_entity_limit_set = 0;
 
 	return 0;
+
 }
 
 /**
@@ -3472,15 +3638,16 @@ int
 set_entity_resc_sum_max(job *pjob, pbs_queue *pque, attribute *altered_resc,
 	enum batch_op op)
 {
-	char	    *egroup;
-	char	    *project;
-	char	    *euser;
-	int		rc;
-	attribute   *pmaxqresc;
-	attribute   *pattr_new;
-	attribute   *pattr_old;
-	resource    *presc_new;
-	resource    *presc_old;
+	char	    *egroup=NULL;
+	char	    *project=NULL;
+	char	    *euser=NULL;
+	int	    rc, rc_final;
+	attribute   *pmaxqresc=NULL;
+	attribute   *pattr_new=NULL;
+	attribute   *pattr_old=NULL;
+	resource    *presc_new=NULL;
+	resource    *presc_old=NULL;
+	resource    *presc_first=NULL;
 	enum batch_op rev_op;
 
 	/* if the job is in states JOB_STATE_MOVED or JOB_STATE_FINISHED, */
@@ -3518,12 +3685,35 @@ set_entity_resc_sum_max(job *pjob, pbs_queue *pque, attribute *altered_resc,
 	egroup = pjob->ji_wattr[(int)JOB_ATR_egroup].at_val.at_str;
 	project = pjob->ji_wattr[(int)JOB_ATR_project].at_val.at_str;
 
-	for (presc_new = (resource *)GET_NEXT(pattr_new->at_val.at_list);
+	if (!euser) {
+		log_err(PBSE_INTERNAL, __func__, "EMPTY USER");
+		return PBSE_INTERNAL;
+	}
+	if (!egroup) {
+		log_err(PBSE_INTERNAL, __func__, "EMPTY GROUP");
+                return PBSE_INTERNAL;
+	}
+	if (!project) {
+		log_err(PBSE_INTERNAL, __func__, "EMPTY PROJECT");
+		return PBSE_INTERNAL;
+	}
+
+	snprintf(log_buffer, LOG_BUF_SIZE-1, "Adjusting entity resource sums at %s for euser %s", 
+			pque ? pque->qu_qs.qu_name : "server", euser);
+		 
+	log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_INFO,
+		pjob->ji_qs.ji_jobid, log_buffer);
+
+	rc_final = 0;
+
+	for (presc_new = (resource *)GET_NEXT(pattr_new->at_val.at_list), presc_first=presc_new;
 		presc_new != (resource *)0;
 		presc_new = (resource *)GET_NEXT(presc_new->rs_link)) {
+		char *rescn;
 		if (!(presc_new->rs_value.at_flags & ATR_VFLAG_SET)
 			|| ((presc_new->rs_defin->rs_entlimflg & PBS_ENTLIM_LIMITSET)==0))
 			continue;
+
 
 		/* If this is from qalter where presc_old is set, see if    */
 		/* corresponding resource is in presc_old, had a pior value */
@@ -3533,12 +3723,33 @@ set_entity_resc_sum_max(job *pjob, pbs_queue *pque, attribute *altered_resc,
 		else
 			presc_old = NULL;
 
+		rescn = presc_new->rs_defin->rs_name;
+		if (rescn == NULL) {
+			if (presc_new != presc_first)
+				if(revert_entity_resources(pmaxqresc, pattr_old, presc_new, presc_old, presc_first, egroup, euser, project, rev_op) != 0)
+					log_err(PBSE_INTERNAL, __func__, "Error in revert_entity_resources");
+			log_err(PBSE_INTERNAL, __func__, "EMPTY RESOURCE");
+			return PBSE_INTERNAL;
+		}
+
 		/* 1. set overall limit o:PBS_ALL */
 		rc = set_single_entity_res(LIM_OVERALL, PBS_ALL_ENTITY,
 			pmaxqresc,
 			presc_new, presc_old, op);
 		if (rc) {
-			return rc;
+			snprintf(log_buffer, LOG_BUF_SIZE-1, 
+				"Error in  LIM_OVERALL for resource %s", rescn); 
+			log_err(rc ,__func__, log_buffer);
+			if (op == INCR) {
+				if (presc_new != presc_first)
+                                        if(revert_entity_resources(pmaxqresc, pattr_old, presc_new, presc_old, presc_first, egroup, euser, project, rev_op) != 0)
+                                                log_err(PBSE_INTERNAL, __func__, "Error in revert_entity_resources");
+				return rc;
+			} else {
+				if (!rc_final)
+					rc_final = rc;
+				continue;
+			}
 		}
 
 		/* 2. sets user limit */
@@ -3547,10 +3758,22 @@ set_entity_resc_sum_max(job *pjob, pbs_queue *pque, attribute *altered_resc,
 			presc_new, presc_old, op);
 		if (rc) {
 			/* reverse change made above */
+			snprintf(log_buffer, LOG_BUF_SIZE-1, 
+				"Error in  LIM_USER for euser %s for resource %s", euser, rescn); 
+			log_err(rc ,__func__, log_buffer);
 			(void)set_single_entity_res(LIM_OVERALL, PBS_ALL_ENTITY,
 				pmaxqresc,
 				presc_new, presc_old, rev_op);
-			return rc;
+			if (op == INCR) {
+				if (presc_new != presc_first)
+					if(revert_entity_resources(pmaxqresc, pattr_old, presc_new, presc_old, presc_first, egroup, euser, project, rev_op) != 0)
+						log_err(PBSE_INTERNAL, __func__, "Error in revert_entity_resources");
+				return rc;
+			} else {
+				if (!rc_final)
+					rc_final = rc;
+				continue;
+			}
 		}
 
 		/* 3. set specific group limit */
@@ -3558,6 +3781,9 @@ set_entity_resc_sum_max(job *pjob, pbs_queue *pque, attribute *altered_resc,
 			pmaxqresc,
 			presc_new, presc_old, op);
 		if (rc) {
+			snprintf(log_buffer, LOG_BUF_SIZE-1, 
+				"Error in  LIM_GROUP for egroup %s for resource %s", egroup, rescn); 
+			log_err(rc ,__func__, log_buffer);
 			/* reverse changes made above */
 			(void)set_single_entity_res(LIM_OVERALL, PBS_ALL_ENTITY,
 				pmaxqresc,
@@ -3565,7 +3791,16 @@ set_entity_resc_sum_max(job *pjob, pbs_queue *pque, attribute *altered_resc,
 			(void)set_single_entity_res(LIM_USER, euser,
 				pmaxqresc,
 				presc_new, presc_old, rev_op);
-			return rc;
+			if (op == INCR) {
+				if (presc_new != presc_first)
+					if((revert_entity_resources(pmaxqresc, pattr_old, presc_new, presc_old, presc_first, egroup, euser, project, rev_op)) != 0)
+						log_err(PBSE_INTERNAL, __func__, "Error in revert_entity_resources");
+				return rc;
+			} else {
+				if (!rc_final)
+					rc_final = rc;
+				continue;
+			}
 		}
 
 		/* 4. set specific project limit */
@@ -3573,6 +3808,10 @@ set_entity_resc_sum_max(job *pjob, pbs_queue *pque, attribute *altered_resc,
 			pmaxqresc,
 			presc_new, presc_old, op);
 		if (rc) {
+
+			snprintf(log_buffer, LOG_BUF_SIZE-1, 
+				"Error in LIM_PROJECT for project %s for resource %s", project, rescn); 
+			log_err(rc ,__func__, log_buffer);
 			/* reverse changes made above */
 			(void)set_single_entity_res(LIM_OVERALL, PBS_ALL_ENTITY,
 				pmaxqresc,
@@ -3583,10 +3822,21 @@ set_entity_resc_sum_max(job *pjob, pbs_queue *pque, attribute *altered_resc,
 			(void)set_single_entity_res(LIM_GROUP, egroup,
 				pmaxqresc,
 				presc_new, presc_old, rev_op);
-			return rc;
+			if (op == INCR) {
+				if (presc_new != presc_first)
+					if(revert_entity_resources(pmaxqresc, pattr_old, presc_new, presc_old, presc_first, egroup, euser, project, rev_op) != 0)
+						log_err(PBSE_INTERNAL, __func__, "Error in revert_entity_resources");
+				return rc;
+			} else {
+				if (!rc_final)
+					rc_final = rc;
+				continue;
+			}
 		}
 	}
 
+	if (rc_final)
+		return rc_final;
 	return 0;
 }
 

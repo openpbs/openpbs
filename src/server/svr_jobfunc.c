@@ -531,16 +531,27 @@ svr_dequejob(job *pjob)
 
 		/* update any entity count and entity resources usage at que */
 
-		if (((rc = set_entity_ct_sum_max(pjob, pque, DECR)) != 0) ||
-			((rc = set_entity_ct_sum_queued(pjob, pque, DECR)) != 0) ||
-			((rc = set_entity_resc_sum_max(pjob, pque, (attribute *)0, DECR)) != 0) ||
-			((rc = set_entity_resc_sum_queued(pjob, pque, (attribute*)0, DECR)) != 0)) {
-			sprintf(log_buffer,
-				"set entity failed with %d for dequeue in %s",
-				rc, pque->qu_qs.qu_name);
-			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB,
-				LOG_NOTICE, pjob->ji_qs.ji_jobid, log_buffer);
+		if ((rc=set_entity_ct_sum_max(pjob, pque, DECR)) != 0) {
+			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_ct_sum_max on queue failed with %d for dequeue in %s", rc, pque->qu_qs.qu_name);
+			log_err(rc, __func__, log_buffer);
 		}
+
+		if ((rc=set_entity_ct_sum_queued(pjob, pque, DECR)) != 0) {
+			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_ct_sum_queued on queue failed with %d for dequeue in %s", rc, pque->qu_qs.qu_name);
+			log_err(rc, __func__, log_buffer);
+		}
+
+		if ((rc=set_entity_resc_sum_max(pjob, pque, (attribute *)0, DECR)) != 0) {
+			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_resc_sum_max on queue failed with %d for dequeue in %s", rc, pque->qu_qs.qu_name);
+			log_err(rc, __func__, log_buffer);
+		}
+
+		if ((rc=set_entity_resc_sum_queued(pjob, pque, (attribute*)0, DECR)) != 0) {
+			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_resc_sum_queued on queue failed with %d for dequeue in %s", rc, pque->qu_qs.qu_name);
+			log_err(rc, __func__, log_buffer);
+		}
+
+
 		if (is_linked(&pque->qu_jobs, &pjob->ji_jobque)) {
 			delete_link(&pjob->ji_jobque);
 			if (--pque->qu_numjobs < 0)
@@ -5462,17 +5473,44 @@ svr_setjob_histinfo(job *pjob, histjob_type type)
 	if ((pjob->ji_qs.ji_state != JOB_STATE_MOVED) &&
 		(pjob->ji_qs.ji_state != JOB_STATE_FINISHED)) {
 		int rc;
-		if (((rc=set_entity_ct_sum_max(pjob, (pbs_queue *)0, DECR)) != 0) ||
-			((rc=set_entity_resc_sum_max(pjob, (pbs_queue *)0, (attribute *)0, DECR)) != 0) ||
-			((rc=set_entity_ct_sum_max(pjob, pjob->ji_qhdr, DECR)) != 0)  ||
-			((rc=set_entity_resc_sum_max(pjob, pjob->ji_qhdr, (attribute *)0, DECR)) != 0) ||
-			((rc=set_entity_ct_sum_queued(pjob, (pbs_queue *)0, DECR)) != 0) ||
-			((rc=set_entity_resc_sum_queued(pjob, (pbs_queue *)0, (attribute *)0, DECR)) != 0) ||
-			((rc=set_entity_ct_sum_queued(pjob, pjob->ji_qhdr, DECR)) != 0) ||
-			((rc=set_entity_resc_sum_queued(pjob, pjob->ji_qhdr, (attribute *)0, DECR)) != 0)) {
-			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB,
-				LOG_NOTICE, pjob->ji_qs.ji_jobid,
-				"set entity failed with %d for finished job");
+		if ((rc=set_entity_ct_sum_max(pjob, (pbs_queue *)0, DECR)) != 0) {
+			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_ct_sum_max on server failed with %d for finished job", rc);
+			log_err(rc, __func__, log_buffer);
+		}
+
+		if ((rc=set_entity_resc_sum_max(pjob, (pbs_queue *)0, (attribute *)0, DECR)) != 0) {
+			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_resc_sum_max on server failed with %d for finished job", rc);
+			log_err(rc, __func__, log_buffer);
+		}
+
+		if ((rc=set_entity_ct_sum_max(pjob, pjob->ji_qhdr, DECR)) != 0) {
+			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_ct_sum_max on queue failed with %d for finished job", rc);
+			log_err(rc, __func__, log_buffer);
+		}
+
+		if ((rc=set_entity_resc_sum_max(pjob, pjob->ji_qhdr, (attribute *)0, DECR)) != 0) {
+			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_resc_sum_max on queue failed with %d for finished job", rc);
+			log_err(rc, __func__, log_buffer);
+		}
+
+		if ((rc=set_entity_ct_sum_queued(pjob, (pbs_queue *)0, DECR)) != 0) {
+			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_ct_sum_queued on server failed with %d for finished job", rc);
+			log_err(rc, __func__, log_buffer);
+		}
+
+		if ((rc=set_entity_resc_sum_queued(pjob, (pbs_queue *)0, (attribute *)0, DECR)) != 0) {
+			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_resc_sum_queued on server failed with %d for finished job", rc);
+			log_err(rc, __func__, log_buffer);
+		}
+
+		if ((rc=set_entity_ct_sum_queued(pjob, pjob->ji_qhdr, DECR)) != 0) {
+			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_ct_sum_queued on queue failed with %d for finished job", rc);
+			log_err(rc, __func__, log_buffer);
+		}
+
+		if ((rc=set_entity_resc_sum_queued(pjob, pjob->ji_qhdr, (attribute *)0, DECR)) != 0) {
+			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_resc_sum_queued on queue failed with %d for finished job", rc);
+			log_err(rc, __func__, log_buffer);
 		}
 	}
 

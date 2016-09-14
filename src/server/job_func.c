@@ -848,6 +848,10 @@ job_purge(job *pjob)
 		}
 	}
 
+	/* Clearing purge job info from svr_newjobs list */
+        if(pjob == (job *)GET_NEXT(svr_newjobs))
+                delete_link(&pjob->ji_alljobs);
+
 	job_free(pjob);
 	return;
 }
