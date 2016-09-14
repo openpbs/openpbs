@@ -103,6 +103,8 @@ cnt2server_extend(char *server, char *extend)
 			}
 		} else if (errno != 0)
 			perror(NULL);
+
+		return (connect);
 	}
 
 	/*
