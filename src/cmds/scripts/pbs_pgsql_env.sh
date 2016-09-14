@@ -42,8 +42,13 @@
 PGSQL_LIBSTR=""
 if [ -d "$PBS_EXEC/pgsql" ]; then
 	# Using PostgreSQL packaged with PBS
-	PGSQL_DIR="$PBS_EXEC/pgsql"
-	PGSQL_BIN="$PBS_EXEC/pgsql/bin"
+	if [ -n "$PGSQL_INST_DIR" ]; then
+		PGSQL_DIR="$PGSQL_INST_DIR"
+        	PGSQL_BIN="$PGSQL_INST_DIR/bin"
+	else
+		PGSQL_DIR="$PBS_EXEC/pgsql"
+		PGSQL_BIN="$PBS_EXEC/pgsql/bin"
+	fi
 	if [ ! -d "$PGSQL_BIN" ]; then
 		echo "\*\*\* $PGSQL_BIN directory does not exist"
 		exit 1

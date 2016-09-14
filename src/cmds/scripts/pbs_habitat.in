@@ -178,7 +178,7 @@ utf8_to_sql_ascii() {
 	# are working with old database.
 	#
 
-	PGSQL_INST_DIR="${PBS_EXEC}/pgsql.old"
+	PGSQL_INST_DIR="${PBS_HOME}/pgsql.old"
 	export PGSQL_INST_DIR
 
 	${PBS_EXEC}/sbin/pbs_dataservice start > /dev/null
@@ -236,7 +236,7 @@ upgrade_pbs_database() {
 	user="${PBS_DATA_SERVICE_USER}"
 	inst_dir="${PBS_EXEC}/pgsql"
 	data_dir="${PBS_HOME}/datastore"
-	old_inst_dir="${PBS_EXEC}/pgsql.old"
+	old_inst_dir="${PBS_HOME}/pgsql.old"
 	old_data_dir="${PBS_HOME}/datastore.old"
 
 	if [ ! -f "${data_dir}/PG_VERSION" ]; then
@@ -407,12 +407,6 @@ upgrade_db() {
 		fi
 	fi
 
-	${PBS_EXEC}/sbin/pbs_ds_password -r > /dev/null
-	ret=$?
-	if [ $ret -ne 0 ]; then
-		return $ret
-	fi
-
 	# stop the dataservice
 	${server_ctl} stop > /dev/null
 	if [ $? -ne 0 ]; then
@@ -455,7 +449,6 @@ upgrade_pbs_schema() {
 		fi
 	fi
 
-	set_db_trust_login "${PBS_HOME}/datastore"
 	ret=$?
 	if [ $ret -ne 0 ]; then
 		return $ret
@@ -470,7 +463,6 @@ upgrade_pbs_schema() {
 	if [ $? -ne 0 ]; then
 		cat ${outfile}
 		rm -f ${outfile}
-		revoke_db_trust_login "${PBS_HOME}/datastore"
 		ret=$?
 		if [ $ret -ne 0 ]; then
 			return $ret
@@ -481,7 +473,6 @@ upgrade_pbs_schema() {
 
 	ver=`${PBS_EXEC}/pgsql/bin/psql -A -t -p ${PBS_DATA_SERVICE_PORT} -d pbs_datastore -U ${PBS_DATA_SERVICE_USER} -c "select pbs_schema_version from pbs.info"`
 	if [ "$ver" = "${PBS_CURRENT_SCHEMA_VER}" ]; then
-		revoke_db_trust_login "${PBS_HOME}/datastore"
 		ret=$?
 		if [ $ret -ne 0 ]; then
 			return $ret
@@ -493,7 +484,6 @@ upgrade_pbs_schema() {
 		upgrade_pbs_schema_from_v1_0_0
 		ret=$?
 		if [ $ret -ne 0 ]; then
-			revoke_db_trust_login "${PBS_HOME}/datastore"
 			ret=$?
 			if [ $ret -ne 0 ]; then
 				return $ret
@@ -509,7 +499,6 @@ upgrade_pbs_schema() {
 		if [ $? -ne 0 ]; then
 			cat ${outfile}
 			rm -f ${outfile}
-			revoke_db_trust_login "${PBS_HOME}/datastore"
 			ret=$?
 			if [ $ret -ne 0 ]; then
 				return $ret
@@ -523,12 +512,10 @@ upgrade_pbs_schema() {
 		upgrade_pbs_schema_from_v1_1_0
 		ret=$?
 		if [ $ret -ne 0 ]; then
-			revoke_db_trust_login "${PBS_HOME}/datastore"
 			return $ret
 		fi
 	else
 		echo "Cannot upgrade PBS datastore version $ver"
-		revoke_db_trust_login "${PBS_HOME}/datastore"
 		ret=$?
 		if [ $ret -ne 0 ]; then
 			return $ret
@@ -543,7 +530,6 @@ upgrade_pbs_schema() {
 		if [ $? -ne 0 ]; then
 			cat ${outfile}
 			rm -f ${outfile}
-			revoke_db_trust_login "${PBS_HOME}/datastore"
 			ret=$?
 			if [ $ret -ne 0 ]; then
 				return $ret
@@ -559,7 +545,6 @@ upgrade_pbs_schema() {
 
 	${PBS_EXEC}/sbin/pbs_dataservice stop > /dev/null
 
-	revoke_db_trust_login "${PBS_HOME}/datastore"
 	ret=$?
 	return $ret
 }
@@ -880,9 +865,11 @@ if [ "${PBS_START_SERVER:-0}" != 0 ] ; then
 			fi
 		fi
 		# do schema upgrade activities
+		set_db_trust_login "${PBS_HOME}/datastore"
 		upgrade_pbs_schema
 		ret=$?
 		if [ $ret -ne 0 ]; then
+			revoke_db_trust_login "${PBS_HOME}/datastore"
 			echo "Failed to upgrade PBS Datastore"
 			exit $ret
 		fi
@@ -896,10 +883,11 @@ if [ "${PBS_START_SERVER:-0}" != 0 ] ; then
 				echo $err
 				echo "Error setting password for PBS Data Service"
 				${server_ctl} stop > /dev/null 2>&1
-				cleanup
+				revoke_db_trust_login "${PBS_HOME}/datastore"
 				exit 1
 			fi
 		fi
+		revoke_db_trust_login "${PBS_HOME}/datastore"
 	else
 		# Upgrade from FS version to DB
 		if [ -f ${PBS_HOME}/server_priv/serverdb ] ; then

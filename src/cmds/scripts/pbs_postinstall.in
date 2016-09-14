@@ -145,6 +145,7 @@ create_conf() {
 		oldpbs_exec=''
 		oldpbs_home=''
 	fi
+	oldpbs_exec=`readlink -f "$oldpbs_exec"`
 	
 	case $INSTALL_METHOD in
 	rpm)
@@ -274,26 +275,7 @@ perform_checks() {
 		echo "***"
 		exit 1
 	fi
-	
-	# Set defaultdir based on the installed location of PBS Pro. It controls whether
-	# a symbolic link named "default" will be created or updated.
-	defaultdir=0
-	[ `basename "$PBS_EXEC"` = "$PBS_VERSION" ] && defaultdir=1
-	
-	# Adjust PBS_EXEC defaultdir is enabled
-	if [ $defaultdir -ne 0 ]; then
-		realexec="${PBS_EXEC}"
-		PBS_EXEC=`dirname ${PBS_EXEC}`/default
-		eval "sed 's;\(^[[:space:]]*PBS_EXEC=\)[^[:space:]]*;\1$PBS_EXEC;' \"$newconf\" > ${newconf}.$$"
-		mv -f "${newconf}.$$" "$newconf"
-		if [ -h "${PBS_EXEC}" ] ; then
-			echo "*** Removing old symbolic link ${PBS_EXEC}"
-			rm -f ${PBS_EXEC}
-		fi
-		echo "*** Creating new symbolic link ${realexec} pointing to ${PBS_EXEC}"
-		ln -s "${realexec}" "${PBS_EXEC}"
-	fi
-	
+
 	# Issue a warning if PBS_EXEC has changed.
 	if [ -n "$oldpbs_exec" -a "$PBS_EXEC" != "$oldpbs_exec" ]; then
 		echo "***"
@@ -675,7 +657,7 @@ create_home() {
 			chmod 0600 "${dbuser_fl}"
 		fi
 		# Backup old pgsql directory for overlay upgrade
-		if [ "${oldpbs_exec}" != "$PBS_EXEC" -a -d "${oldpbs_exec}/pgsql" ]; then
+		if [ "${oldpbs_home}" = "$PBS_HOME" -a -d "${oldpbs_exec}/pgsql" ]; then
 			pgsql_old="$PBS_HOME/pgsql.old"
 			if [ -d "$pgsql_old" ]; then
 				backupdir "$pgsql_old" "$PBS_HOME"
@@ -911,6 +893,24 @@ if [ -z "$6" -o "$6" != "sameconf" ]; then
 	# Create newconf for the rpm install method.
 	create_conf
 	
+	# Set defaultdir based on the installed location of PBS Pro. It controls whether
+        # a symbolic link named "default" will be created or updated.
+        defaultdir=0
+        [ `basename "$PBS_EXEC"` = "$PBS_VERSION" ] && defaultdir=1
+
+        # Adjust PBS_EXEC defaultdir is enabled
+        if [ $defaultdir -ne 0 ]; then
+                realexec="${PBS_EXEC}"
+                PBS_EXEC=`dirname ${PBS_EXEC}`/default
+                eval "sed -i 's;\(^[[:space:]]*PBS_EXEC=\)[^[:space:]]*;\1$PBS_EXEC;' \"$newconf\""
+                if [ -h "${PBS_EXEC}" ] ; then
+                        echo "*** Removing old symbolic link ${PBS_EXEC}"
+                        rm -f ${PBS_EXEC}
+                fi
+                echo "*** Creating new symbolic link ${realexec} pointing to ${PBS_EXEC}"
+                ln -s "${realexec}" "${PBS_EXEC}"
+        fi
+
 	# Perform some sanity checks.
 	perform_checks
 	
