@@ -1843,11 +1843,11 @@ finish_exec(job *pjob)
 	hook			*last_phook = NULL;
 	unsigned int		hook_fail_action = 0;
 	int			hook_errcode = 0;
-	mom_hook_input_t	hook_input;	
-	mom_hook_output_t	hook_output;	
+	mom_hook_input_t	hook_input;
+	mom_hook_output_t	hook_output;
 	int			job_has_executable;
 	FILE			*temp_stderr = stderr;
-	
+
 	ptc = -1; /* No current master pty */
 
 	memset(&sjr, 0, sizeof(sjr));
@@ -2962,7 +2962,6 @@ finish_exec(job *pjob)
 	hook_output.progname = &progname;
 	CLEAR_HEAD(argv_list);
 	hook_output.argv = &argv_list;
-	hook_output.env = &env_str;
 
 	switch (mom_process_hooks(HOOK_EVENT_EXECJOB_LAUNCH,
 			PBS_MOM_SERVICE_NAME,
@@ -2973,7 +2972,7 @@ finish_exec(job *pjob)
 		case 0:	/* explicit reject */
 			free(progname);
 			free_attrlist(&argv_list);
-			free(env_str);
+			free_str_array(hook_output.env);
 			starter_return(upfds, downfds,
 				JOB_EXEC_FAILHOOK_DELETE, &sjr);
 		case 1:   /* explicit accept */
@@ -2987,50 +2986,46 @@ finish_exec(job *pjob)
 					"execjob_launch hook returned NULL argv!");
 				free(progname);
 				free_attrlist(&argv_list);
-				free(env_str);
+				free_str_array(hook_output.env);
 				starter_return(upfds, downfds,
 					JOB_EXEC_FAILHOOK_DELETE, &sjr);
 			}
-			if (env_str != NULL) {
-				res_env = str_to_str_array(env_str, ",");
+			res_env = hook_output.env;
 
-				if (res_env == NULL) {
-					log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-						LOG_INFO, "",
-						"execjob_launch hook NULL env!");
-					free(progname);
-					free_attrlist(&argv_list);
-					free_str_array(the_argv);
-					free(env_str);
-					starter_return(upfds, downfds,
-						JOB_EXEC_FAILHOOK_DELETE, &sjr);
+			if (res_env == NULL) {
+				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
+					  LOG_INFO, "",
+					  "execjob_launch hook NULL env!");
+				free(progname);
+				free_attrlist(&argv_list);
+				free_str_array(the_argv);
+				starter_return(upfds, downfds,
+					       JOB_EXEC_FAILHOOK_DELETE, &sjr);
+			}
+
+			/* clear the env array */
+			vtable.v_used = 0;
+			vtable.v_envp[0] = (char *)0;
+
+			/* need to also set vtable as that would */
+			/* get appended to later in the code */
+			/* vtable holds the environmnent variables */
+			/* and their values that are going to be */
+			/* part of the job. */
+			k = 0;
+			while(res_env[k]) {
+				char	*n, *v, *p;
+				if ((p=strchr(res_env[k], '=')) != NULL) {
+					*p = '\0';
+					n = res_env[k];
+					v = p+1;
+					bld_env_variables(&vtable,
+							  n, v);
+					*p = '=';
 				}
-
-				/* clear the env array */
-				vtable.v_used = 0;
-				vtable.v_envp[0] = (char *)0;
-
-				/* need to also set vtable as that would */
-				/* get appended to later in the code */
-				/* vtable holds the environmnent variables */
-			        /* and their values that are going to be */
-				/* part of the job. */
-				k = 0;
-				while(res_env[k]) {
-					char	*n, *v, *p;
-					if ((p=strchr(res_env[k], '=')) != 
-									NULL) {
-						*p = '\0';
-						n = res_env[k];
-						v = p+1;
-						bld_env_variables(&vtable,
-									n, v);
-						*p = '=';
-					}
-					k++;
+				k++;
 			}
-				the_env = vtable.v_envp;
-			}
+			the_env = vtable.v_envp;
 
 			break;
 		case 2:	  /* no hook script executed - go ahead and accept event */
@@ -3211,7 +3206,7 @@ finish_exec(job *pjob)
 		free_attrlist(&argv_list);
 		free_str_array(the_argv);
 		the_argv = NULL;
-		free(env_str);
+		free_str_array(hook_output.env);
 		free_str_array(the_env);
 		the_env = NULL;
 	} else if (cpid == 0) { /* child does demux */
@@ -3257,7 +3252,7 @@ finish_exec(job *pjob)
  * @param[in] ptask - pointer to task structure
  * @param[in] argv - argument list
  * @param[in] envp - pointer to environment variable list
- * @param[in]	nodemux - false if the task process needs demux, true otherwise 
+ * @param[in] nodemux - false if the task process needs demux, true otherwise
 
  *
  * @return	int
@@ -3265,7 +3260,6 @@ finish_exec(job *pjob)
  * @retval	PBSE_* on error.
  *
  */
-
 int
 start_process(task *ptask, char **argv, char **envp, bool nodemux)
 {
@@ -5067,7 +5061,7 @@ create_file_securely(char *path, uid_t exuid, gid_t exgid)
 /**
  * @brief
  *	Generate the fully qualified path name for a job's standard stream
- * 
+ *
  * @par Functionality:
  *	Creates a fully qualified path name for the output/error file for the following cases:
  *	1.  Interactive PBS job, just return the output attribute value,  it won't be used.

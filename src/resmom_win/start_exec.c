@@ -2069,7 +2069,6 @@ finish_exec(job *pjob)
 		hook_output.progname = &progname_out;
 		CLEAR_HEAD(argv_list);
 		hook_output.argv = &argv_list;
-		hook_output.env = &env_str;
 
 		switch (mom_process_hooks(HOOK_EVENT_EXECJOB_LAUNCH,
 				PBS_MOM_SERVICE_NAME,
@@ -2101,7 +2100,7 @@ finish_exec(job *pjob)
 					free_str_array(argv_in);
 					free(progname_out);
 					free_attrlist(&argv_list);
-					free(env_str);
+					free_str_array(hook_output.env);
 
 					exec_bail(pjob, JOB_EXEC_FAIL2,
 						"execjob_launch hook returned NULL argv!");
@@ -2112,15 +2111,14 @@ finish_exec(job *pjob)
 				/* freeing argv_out[] will automatically */
 				/* free progname_out */
 				free(argv_out[0]);
-				argv_out[0] = progname_out;	
-	
+				argv_out[0] = progname_out;
 				argv_str = str_array_to_str(argv_out,
 								" ");
 				if (argv_str == NULL) {
 
 					free_str_array(argv_in);
 					free_attrlist(&argv_list);
-					free(env_str);
+					free_str_array(hook_output.env);
 					free_str_array(argv_out);
 
 					exec_bail(pjob, JOB_EXEC_FAIL2,
@@ -2137,41 +2135,38 @@ finish_exec(job *pjob)
 				free(argv_str);
 				free_str_array(argv_out);
 
-				if (env_str != NULL) {
-					env = str_to_str_array(env_str, ",");
-					if (env == NULL) {
-						free_str_array(argv_in);
-						free_attrlist(&argv_list);
-						free(env_str);
-						exec_bail(pjob, JOB_EXEC_FAIL2,
-							"execjob_launch hook NULL env!");
-						return;
-					}
 
-					/* numenv is the total # of */
-					/* slots in env_array including */
-					/*  unused slots */
-					/* curenv is the total # of used */
-					/* slots */
-					curenv = numenv;
-					init_envp(); /* free up all entries */
-						     /* in env_array */
-					free(env_block);/* since values from */
-							/* previous env_array */
-
-					env_array = env;
-					curenv = 0;
-					while(env_array[curenv] != NULL)
-						curenv++;
-
-					numenv = curenv;
-						;
-					/* re-populate env_block */
-					/* with entries from */
-					/* new env_array */
-					env_block = make_envp();
-					
+				env = hook_output.env;
+				if (env == NULL) {
+					free_str_array(argv_in);
+					free_attrlist(&argv_list);
+					exec_bail(pjob, JOB_EXEC_FAIL2,
+						  "execjob_launch hook NULL env!");
+					return;
 				}
+
+				/* numenv is the total # of */
+				/* slots in env_array including */
+				/*  unused slots */
+				/* curenv is the total # of used */
+				/* slots */
+				curenv = numenv;
+				init_envp(); /* free up all entries */
+				/* in env_array */
+				free(env_block);/* since values from */
+				/* previous env_array */
+
+				env_array = env;
+				curenv = 0;
+				while(env_array[curenv] != NULL)
+					curenv++;
+
+				numenv = curenv;
+				/* re-populate env_block */
+				/* with entries from */
+				/* new env_array */
+				env_block = make_envp();
+
 				break;
 			case 2:	  /* no hook script executed - go ahead and accept event */
 				break;
@@ -2183,8 +2178,8 @@ finish_exec(job *pjob)
 
 		free_str_array(argv_in);
 		free_attrlist(&argv_list);
-		free(env_str);
-		
+		free_str_array(hook_output.env);
+
 		/*
 		 * In case of Interactive job, we need not collect std output and error into files.
 		 * For normal batch jobs, if it is a multinode job and since this is mother superior

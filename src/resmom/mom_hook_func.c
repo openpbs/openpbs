@@ -1076,7 +1076,7 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 						EVENT_OBJECT, PY_EVENT_PARAM_PROGNAME,
 						progname);
 				}
-	
+
 				if (argv != NULL) {
 					k=0;
 					while (argv[k]) {
@@ -1087,7 +1087,7 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 						k++;
 					}
 				}
-	
+
 				env_str = env_array_to_str(env, ",");
 				if (env_str != NULL) {
 					if (env_str[0] != '\0') {
@@ -2118,13 +2118,11 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 									data_value, 0, NULL);
 				}
 			} else if (strcmp(name_str, PY_EVENT_PARAM_ENV) == 0) {
-				char	**env;
 				if (hook_output != NULL) {
-					env = hook_output->env;
-					if (*env != NULL) {
-						free(*env);
+					if (hook_output->env != NULL) {
+						free_str_array(hook_output->env);
 					}
-					*env = strdup(data_value);
+					hook_output->env = str_to_str_array(data_value, ",");
 				}
 			}
 		} else if ((strcmp(obj_name, EVENT_JOB_OBJECT) == 0) || \
