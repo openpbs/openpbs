@@ -2,38 +2,36 @@
 
 # Copyright (C) 1994-2016 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
-#
+# 
 # This file is part of the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
-#
+# 
 # PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
+# terms of the GNU Affero General Public License as published by the Free 
+# Software Foundation, either version 3 of the License, or (at your option) any 
 # later version.
+# 
+# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+# PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+# 
+# You should have received a copy of the GNU Affero General Public License along 
+# with this program.  If not, see <http://www.gnu.org/licenses/>.
+# 
+# Commercial License Information: 
 #
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-# A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
-# details.
+# The PBS Pro software is licensed under the terms of the GNU Affero General 
+# Public License agreement ("AGPL"), except where a separate commercial license 
+# agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+# 
+# Altair’s dual-license business model allows companies, individuals, and 
+# organizations to create proprietary derivative works of PBS Pro and distribute 
+# them - whether embedded or bundled with other software - under a commercial 
+# license agreement.
 #
-# You should have received a copy of the GNU Affero General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-#
-# Commercial License Information:
-#
-# The PBS Pro software is licensed under the terms of the GNU Affero General
-# Public License agreement ("AGPL"), except where a separate commercial license
-# agreement for PBS Pro version 14 or later has been executed in writing with
-# Altair.
-#
-# Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and
-# distribute them - whether embedded or bundled with other software - under
-# a commercial license agreement.
-#
-# Use of Altair’s trademarks, including but not limited to "PBS™",
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
+# Use of Altair’s trademarks, including but not limited to "PBS™", 
+# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
 # trademark licensing policies.
 
 MGR_OBJ_NONE = -1
@@ -303,16 +301,14 @@ ATTR_NODE_LicenseInfo = 'license_info'
 ATTR_NODE_TopologyInfo = 'topology_info'
 ATTR_RESC_TYPE = 'type'
 ATTR_RESC_FLAG = 'flag'
-
-SHUT_IMMEDIATE = 0x0
-SHUT_DELAY = 0x01
-SHUT_QUICK = 0x02
-SHUT_WHO_SCHED = 0x10
-SHUT_WHO_MOM = 0x20
-SHUT_WHO_SECDRY = 0x40
-SHUT_WHO_IDLESECDRY = 0x80
-SHUT_WHO_SECDONLY = 0x100
-
+SHUT_QUICK = 'quick'
+SHUT_DELAY = 'delay'
+SHUT_IMMEDIATE = 'immediate'
+SHUT_WHO_SCHED = 'sched'
+SHUT_WHO_MOM = 'mom'
+SHUT_WHO_SECDRY = 'secdry'
+SHUT_WHO_IDLESECDRY = 'idlesecdry'
+SHUT_WHO_SECDONLY = 'sedonly'
 USER_HOLD = 'u'
 OTHER_HOLD = 'o'
 SYSTEM_HOLD = 's'

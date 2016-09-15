@@ -2,38 +2,36 @@
 
 # Copyright (C) 1994-2016 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
-#
+# 
 # This file is part of the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
-#
+# 
 # PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
+# terms of the GNU Affero General Public License as published by the Free 
+# Software Foundation, either version 3 of the License, or (at your option) any 
 # later version.
+# 
+# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+# PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+# 
+# You should have received a copy of the GNU Affero General Public License along 
+# with this program.  If not, see <http://www.gnu.org/licenses/>.
+# 
+# Commercial License Information: 
 #
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-# A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
-# details.
+# The PBS Pro software is licensed under the terms of the GNU Affero General 
+# Public License agreement ("AGPL"), except where a separate commercial license 
+# agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+# 
+# Altair’s dual-license business model allows companies, individuals, and 
+# organizations to create proprietary derivative works of PBS Pro and distribute 
+# them - whether embedded or bundled with other software - under a commercial 
+# license agreement.
 #
-# You should have received a copy of the GNU Affero General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-#
-# Commercial License Information:
-#
-# The PBS Pro software is licensed under the terms of the GNU Affero General
-# Public License agreement ("AGPL"), except where a separate commercial license
-# agreement for PBS Pro version 14 or later has been executed in writing with
-# Altair.
-#
-# Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and
-# distribute them - whether embedded or bundled with other software - under
-# a commercial license agreement.
-#
-# Use of Altair’s trademarks, including but not limited to "PBS™",
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
+# Use of Altair’s trademarks, including but not limited to "PBS™", 
+# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
 # trademark licensing policies.
 
 import logging
@@ -42,9 +40,19 @@ import re
 
 
 class CliUtils(object):
+    """
+    Command line interface utility 
+
+    """
 
     @classmethod
     def get_logging_level(cls, level):
+        """
+        Get the logging levels
+
+        :param level: Name of the logging level
+ 
+        """
 
         logging.DEBUG2 = logging.DEBUG - 1
         logging.INFOCLI = logging.INFO - 1
@@ -73,6 +81,13 @@ class CliUtils(object):
 
     @staticmethod
     def check_bin(bin_name):
+        """
+        Check for command exist
+        
+        :param bin_name: Command to be checked
+        :returns: True if command exist else return False
+ 
+        """
         ec = os.system("/usr/bin/which " + bin_name + " > /dev/null")
         if ec == 0:
             return True
@@ -91,17 +106,24 @@ class CliUtils(object):
 
     @staticmethod
     def expand_abs_path(path):
+        """
+        Expand the path to absolute path
+
+        """
         if path.startswith('~'):
             return os.path.expanduser(path)
         return os.path.abspath(path)
 
     @staticmethod
     def priv_ports_info(hostname=None):
-        """
+        """priv_ports_info([hostname=None])
+
         Return a list of privileged ports in use on a given host
 
-        hostname - The host on which to query privilege ports usage. Defaults
-        to the local host
+        :param hostname: The host on which to query privilege ports usage. Defaults
+                         to the local host
+        :type hostname: str or None
+      
         """
         from ptl.utils.pbs_dshutils import DshUtils
 

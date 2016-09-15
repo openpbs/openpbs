@@ -2,38 +2,36 @@
 
 # Copyright (C) 1994-2016 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
-#
+# 
 # This file is part of the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
-#
+# 
 # PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
+# terms of the GNU Affero General Public License as published by the Free 
+# Software Foundation, either version 3 of the License, or (at your option) any 
 # later version.
+# 
+# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+# PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+# 
+# You should have received a copy of the GNU Affero General Public License along 
+# with this program.  If not, see <http://www.gnu.org/licenses/>.
+# 
+# Commercial License Information: 
 #
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-# A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
-# details.
+# The PBS Pro software is licensed under the terms of the GNU Affero General 
+# Public License agreement ("AGPL"), except where a separate commercial license 
+# agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+# 
+# Altair’s dual-license business model allows companies, individuals, and 
+# organizations to create proprietary derivative works of PBS Pro and distribute 
+# them - whether embedded or bundled with other software - under a commercial 
+# license agreement.
 #
-# You should have received a copy of the GNU Affero General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-#
-# Commercial License Information:
-#
-# The PBS Pro software is licensed under the terms of the GNU Affero General
-# Public License agreement ("AGPL"), except where a separate commercial license
-# agreement for PBS Pro version 14 or later has been executed in writing with
-# Altair.
-#
-# Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and
-# distribute them - whether embedded or bundled with other software - under
-# a commercial license agreement.
-#
-# Use of Altair’s trademarks, including but not limited to "PBS™",
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
+# Use of Altair’s trademarks, including but not limited to "PBS™", 
+# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
 # trademark licensing policies.
 
 import sys
@@ -49,6 +47,7 @@ TAGKEY = '__PTL_TAGS_LIST__'
 def tags(*args, **kwargs):
     """
     Decorator that adds tags to classes or functions or methods
+
     """
     def wrap_obj(obj):
         tagobj = getattr(obj, TAGKEY, [])
@@ -66,10 +65,12 @@ def tags(*args, **kwargs):
 
 
 def get_tag_value(method, cls, tag_name, default=False):
-    """
-    Look up an tag on a method/function.
+    """get_tag_value(method, cls, tag_name[, default=False])
+
+    Look up an tag on a ``method/function``.
     If the tag isn't found there, looking it up in the
     method's class, if any.
+     
     """
     Missing = object()
     value = getattr(method, tag_name, Missing)
@@ -82,9 +83,11 @@ def get_tag_value(method, cls, tag_name, default=False):
 
 class EvalHelper(object):
 
-    """
+    """EvalHelper(method, cls)
+
     Object that can act as context dictionary for eval and looks up
     names as attributes on a method/function and its class.
+
     """
 
     def __init__(self, method, cls):
@@ -122,6 +125,7 @@ class PTLTestTags(Plugin):
 
     """
     Load test cases from given parameter
+
     """
     name = 'PTLTestTags'
     score = sys.maxint - 3
@@ -142,11 +146,15 @@ class PTLTestTags(Plugin):
     def options(self, parser, env):
         """
         Register command line options
+
         """
         pass
 
     def set_data(self, tags, eval_tags, tags_info=False, list_tags=False,
                  verbose=False):
+        """set_data(tags, eval_tags[, tags_info=False[, list_tags=False[, verbose=False]]])
+
+        """
         self.tags.extend(tags)
         self.eval_tags.extend(eval_tags)
         self.tags_info = tags_info
@@ -161,6 +169,7 @@ class PTLTestTags(Plugin):
         self.attribs will be a list of lists of tuples. In that list, each
         list is a group of attributes, all of which must match for the rule to
         match.
+
         """
         self.tags_to_check = []
         for tag in self.eval_tags:
@@ -188,10 +197,12 @@ class PTLTestTags(Plugin):
             self.enabled = True
 
     def is_tags_matching(self, method, cls=None):
-        """
+        """is_tags_matching(method[, cls=None])
+
         Verify whether a method has the required tags
         The method is considered a match if it matches all tags
         for any tag group.
+
         """
         any_matched = False
         for group in self.tags_to_check:
@@ -225,6 +236,10 @@ class PTLTestTags(Plugin):
             return False
 
     def prepareTestRunner(self, runner):
+        """
+        Prepare test runner
+
+        """
         if (self.tags_info or self.list_tags):
             return FakeRunner(self.matched, self.tags_list, self.list_tags,
                               self.verbose)
@@ -233,6 +248,7 @@ class PTLTestTags(Plugin):
         """
         Accept the class if its subclass of TestCase and has at-least one
         test case
+
         """
         if not issubclass(cls, unittest.TestCase):
             return False
@@ -247,12 +263,14 @@ class PTLTestTags(Plugin):
     def wantFunction(self, function):
         """
         Accept the function if its tags match.
+
         """
         return False
 
     def wantMethod(self, method):
         """
         Accept the method if its tags match.
+
         """
         try:
             cls = method.im_class

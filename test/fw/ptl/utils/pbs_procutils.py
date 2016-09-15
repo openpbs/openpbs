@@ -2,38 +2,36 @@
 
 # Copyright (C) 1994-2016 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
-#
+# 
 # This file is part of the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
-#
+# 
 # PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
+# terms of the GNU Affero General Public License as published by the Free 
+# Software Foundation, either version 3 of the License, or (at your option) any 
 # later version.
+# 
+# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+# PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+# 
+# You should have received a copy of the GNU Affero General Public License along 
+# with this program.  If not, see <http://www.gnu.org/licenses/>.
+# 
+# Commercial License Information: 
 #
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-# A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
-# details.
+# The PBS Pro software is licensed under the terms of the GNU Affero General 
+# Public License agreement ("AGPL"), except where a separate commercial license 
+# agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+# 
+# Altair’s dual-license business model allows companies, individuals, and 
+# organizations to create proprietary derivative works of PBS Pro and distribute 
+# them - whether embedded or bundled with other software - under a commercial 
+# license agreement.
 #
-# You should have received a copy of the GNU Affero General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-#
-# Commercial License Information:
-#
-# The PBS Pro software is licensed under the terms of the GNU Affero General
-# Public License agreement ("AGPL"), except where a separate commercial license
-# agreement for PBS Pro version 14 or later has been executed in writing with
-# Altair.
-#
-# Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and
-# distribute them - whether embedded or bundled with other software - under
-# a commercial license agreement.
-#
-# Use of Altair’s trademarks, including but not limited to "PBS™",
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
+# Use of Altair’s trademarks, including but not limited to "PBS™", 
+# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
 # trademark licensing policies.
 
 import sys
@@ -50,6 +48,7 @@ class ProcUtils(object):
 
     """
     Utilities to query process information
+
     """
 
     logger = logging.getLogger(__name__)
@@ -61,6 +60,14 @@ class ProcUtils(object):
         self.__h2ps = {}
 
     def get_ps_cmd(self, hostname=None):
+        """get_ps_cmd([hostname=None])
+
+        Get the ps command
+
+        :param hostname: hostname of the machine
+        :type hostname: str or None
+
+        """
         if hostname is None:
             hostname = socket.gethostname()
 
@@ -94,8 +101,10 @@ class ProcUtils(object):
 
     def _get_proc_info_unix(self, hostname=None, name=None,
                             pid=None, regexp=False):
-        """
-        Helper function to get_proc_info for Unix only system
+        """_get_proc_info_unix([hostname=None[, name=None[, pid=None[, regexp=False]]]])
+
+        Helper function to ``get_proc_info`` for Unix only system
+
         """
         (ps_cmd, ps_arg) = self.get_ps_cmd(hostname)
         if name is not None:
@@ -143,32 +152,34 @@ class ProcUtils(object):
         return self.processes
 
     def get_proc_info(self, hostname=None, name=None, pid=None, regexp=False):
-        """
+        """get_proc_info([hostname=None[, name=None[, pid=None[, regexp=False]]]])
+
         Return process information from a process name, or pid,
         on a given host
 
-        hostname - The hostname on which to query the process info. On Windows,
-        only localhost is queried.
+        :param hostname: The hostname on which to query the process info. On Windows,
+                         only localhost is queried.
+        :type hostname: str or none
+        :param name: The name of the process to query.
+        :type name: str or None
+        :param pid: The pid of the process to query
+        :param regexp: Match processes by regular expression. Defaults to True. Does
+                       not apply to matching by PID.
+        :returns: A list of ProcInfo objects, one for each matching process.
 
-        name - The name of the process to query.
+        .. note:: If both, name and pid, are specified, name is used.
 
-        pid - The pid of the process to query
-
-        regexp - Match processes by regular expression. Defaults to True. Does
-        not apply to matching by PID.
-
-        If both, name and pid, are specified, name is used.
-
-        Returns a list of ProcInfo objects, one for each matching process.
         """
         self._init_processes()
         return self._get_proc_info_unix(hostname, name, pid, regexp)
 
     def get_proc_state(self, hostname=None, pid=None):
-        """
-        Return PID's process state on host hostname
+        """get_proc_state([hostname=None[, pid=None]])
 
+        :returns: PID's process state on host hostname
+        
         On error the empty string is returned.
+
         """
         if not self.du.is_localhost(hostname):
             platform = self.du.get_platform(hostname)
@@ -193,10 +204,12 @@ class ProcUtils(object):
             return ''
 
     def get_proc_children(self, hostname=None, ppid=None):
-        """
-        Return a list of children PIDs associated to PPID on host hostname.
+        """get_proc_children([hostname=None[, ppid=None]])
+
+        :returns: A list of children PIDs associated to ``PPID`` on host hostname.
 
         On error, an empty list is returned.
+
         """
         try:
             if not isinstance(ppid, str):
@@ -242,9 +255,11 @@ class ProcUtils(object):
 
 class ProcInfo(object):
 
-    """
-    Process information reports PID, RSS, VSZ, Command and Time at which
+    """ProcInfo([name=None[, pid=None]])
+
+    Process information reports ``PID``, ``RSS``, ``VSZ``, Command and Time at which
     process information is collected
+
     """
 
     def __init__(self, name=None, pid=None):
@@ -264,8 +279,10 @@ class ProcInfo(object):
 
 class ProcMonitor(threading.Thread):
 
-    """
+    """ProcMonitor([name=None[, regexp=False[, frequency=60]]])
+
     A background process monitoring tool
+
     """
 
     def __init__(self, name=None, regexp=False, frequency=60):
@@ -278,10 +295,21 @@ class ProcMonitor(threading.Thread):
         self.db_proc_info = []
 
     def set_frequency(self, value=60):
+        """set_frequency([value=60])
+
+        Set the frequency
+        
+        :param value: Frequency value
+
+        """
         self.logger.debug('procmonitor: set frequency to ' + str(value))
         self.frequency = value
 
     def run(self):
+        """
+        Run the process monitoring
+
+        """
         while self._go:
             self._pu.get_proc_info(name=self.name, regexp=self.regexp)
             for _p in self._pu.processes.values():
@@ -296,6 +324,10 @@ class ProcMonitor(threading.Thread):
             time.sleep(self.frequency)
 
     def stop(self):
+        """
+        Stop the process monitoring
+
+        """
         self._go = False
         self._Thread__stop()
 

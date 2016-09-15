@@ -2,38 +2,36 @@
 
 # Copyright (C) 1994-2016 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
-#
+# 
 # This file is part of the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
-#
+# 
 # PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
+# terms of the GNU Affero General Public License as published by the Free 
+# Software Foundation, either version 3 of the License, or (at your option) any 
 # later version.
+# 
+# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+# PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+# 
+# You should have received a copy of the GNU Affero General Public License along 
+# with this program.  If not, see <http://www.gnu.org/licenses/>.
+# 
+# Commercial License Information: 
 #
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-# A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
-# details.
+# The PBS Pro software is licensed under the terms of the GNU Affero General 
+# Public License agreement ("AGPL"), except where a separate commercial license 
+# agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+# 
+# Altair’s dual-license business model allows companies, individuals, and 
+# organizations to create proprietary derivative works of PBS Pro and distribute 
+# them - whether embedded or bundled with other software - under a commercial 
+# license agreement.
 #
-# You should have received a copy of the GNU Affero General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-#
-# Commercial License Information:
-#
-# The PBS Pro software is licensed under the terms of the GNU Affero General
-# Public License agreement ("AGPL"), except where a separate commercial license
-# agreement for PBS Pro version 14 or later has been executed in writing with
-# Altair.
-#
-# Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and
-# distribute them - whether embedded or bundled with other software - under
-# a commercial license agreement.
-#
-# Use of Altair’s trademarks, including but not limited to "PBS™",
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
+# Use of Altair’s trademarks, including but not limited to "PBS™", 
+# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
 # trademark licensing policies.
 
 import os
@@ -49,6 +47,7 @@ class PTLTestLoader(Plugin):
 
     """
     Load test cases from given parameter
+
     """
     name = 'PTLTestLoader'
     score = sys.maxint - 2
@@ -71,10 +70,19 @@ class PTLTestLoader(Plugin):
     def options(self, parser, env):
         """
         Register command line options
+
         """
         pass
 
     def set_data(self, testgroup, suites, excludes, follow):
+        """
+        Set the data required for loading test data
+
+        :param testgroup: Test group
+        :param suites: Test suites to load
+        :param excludes: Tests to exclude while running
+         
+        """
         if os.access(str(testgroup), os.R_OK):
             f = open(testgroup, 'r')
             self.suites_list.extend(f.readline().strip().split(','))
@@ -87,7 +95,8 @@ class PTLTestLoader(Plugin):
 
     def configure(self, options, config):
         """
-        Configure the plugin and system, based on selected options
+        Configure the ``plugin`` and ``system``, based on selected options
+
         """
         tl = self._tests_list
         tlc = self.__tests_list_copy
@@ -155,6 +164,10 @@ class PTLTestLoader(Plugin):
         del self.excludes
 
     def check_unknown(self):
+        """
+        Check for unknown test suite and test case
+
+        """
         log.debug('check_unknown called')
         only_ts = self.__tests_list_copy.pop(self._only_ts)
         only_tc = self.__tests_list_copy.pop(self._only_tc)
@@ -175,6 +188,10 @@ class PTLTestLoader(Plugin):
             sys.exit(1)
 
     def prepareTestLoader(self, loader):
+        """
+        Prepare test loader
+
+        """
         old_loadTestsFromNames = loader.loadTestsFromNames
 
         def check_loadTestsFromNames(names, module=None):
@@ -185,6 +202,9 @@ class PTLTestLoader(Plugin):
         return loader
 
     def check_follow(self, cls, method=None):
+        """check_follow(cls[, method=None])
+
+        """
         cname = cls.__name__
         if not issubclass(cls, PBSTestSuite):
             return False
@@ -226,6 +246,12 @@ class PTLTestLoader(Plugin):
             return False
 
     def is_already_allowed(self, cls, method=None):
+        """is_already_allowed(cls[, method=None])
+
+        :param method: Method to check
+        :returns: True if method is already allowed else False
+
+        """
         name = cls.__name__
         if method is not None:
             name += '.' + method.__name__
@@ -244,6 +270,7 @@ class PTLTestLoader(Plugin):
     def wantClass(self, cls):
         """
         Is the class wanted?
+
         """
         has_test = False
         for t in dir(cls):
@@ -261,12 +288,14 @@ class PTLTestLoader(Plugin):
     def wantFunction(self, function):
         """
         Is the function wanted?
+
         """
         return self.wantMethod(function)
 
     def wantMethod(self, method):
         """
         Is the method wanted?
+
         """
         try:
             cls = method.im_class
