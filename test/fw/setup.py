@@ -60,7 +60,7 @@ setup(
     url='http://www.pbspro.com',
     license='AGPLv3 with exceptions',
     description='PBS Pro Testing and Benchmarking Framework',
-    long_description=open('README.txt').read(),
+    long_description=open(os.path.abspath('./doc/intro.rst')).read(),
     install_requires=get_reqs(),
     keywords='PbsTestLab ptl pbspro',
     zip_safe=False,

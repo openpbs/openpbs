@@ -2,38 +2,36 @@
 
 # Copyright (C) 1994-2016 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
-#
+# 
 # This file is part of the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
-#
+# 
 # PBS Pro is free software. You can redistribute it and/or modify it under the
-# terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
+# terms of the GNU Affero General Public License as published by the Free 
+# Software Foundation, either version 3 of the License, or (at your option) any 
 # later version.
+# 
+# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+# PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+# 
+# You should have received a copy of the GNU Affero General Public License along 
+# with this program.  If not, see <http://www.gnu.org/licenses/>.
+# 
+# Commercial License Information: 
 #
-# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-# A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
-# details.
+# The PBS Pro software is licensed under the terms of the GNU Affero General 
+# Public License agreement ("AGPL"), except where a separate commercial license 
+# agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+# 
+# Altair’s dual-license business model allows companies, individuals, and 
+# organizations to create proprietary derivative works of PBS Pro and distribute 
+# them - whether embedded or bundled with other software - under a commercial 
+# license agreement.
 #
-# You should have received a copy of the GNU Affero General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-#
-# Commercial License Information:
-#
-# The PBS Pro software is licensed under the terms of the GNU Affero General
-# Public License agreement ("AGPL"), except where a separate commercial license
-# agreement for PBS Pro version 14 or later has been executed in writing with
-# Altair.
-#
-# Altair’s dual-license business model allows companies, individuals, and
-# organizations to create proprietary derivative works of PBS Pro and
-# distribute them - whether embedded or bundled with other software - under
-# a commercial license agreement.
-#
-# Use of Altair’s trademarks, including but not limited to "PBS™",
-# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
+# Use of Altair’s trademarks, including but not limited to "PBS™", 
+# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
 # trademark licensing policies.
 
 from subprocess import PIPE, Popen
@@ -60,6 +58,11 @@ logging.INFOCLI2 = logging.INFOCLI - 1
 
 
 class PbsConfigError(Exception):
+    """PbsConfigError([message=None[, rv=None[, rc=None[, msg=None]]]])
+
+    Initialize PBS configuration error
+
+    """
 
     def __init__(self, message=None, rv=None, rc=None, msg=None):
         self.message = message
@@ -77,7 +80,11 @@ class PbsConfigError(Exception):
 
 
 class PtlUtilError(Exception):
+    """PtlUtilError([message=None[, rv=None[, rc=None[, msg=None]]]])
 
+    Initialize PTL Util error
+
+    """
     def __init__(self, message=None, rv=None, rc=None, msg=None):
         self.message = message
         self.rv = rv
@@ -100,6 +107,7 @@ class DshUtils(object):
 
     A set of tools to run commands, copy files, get process information and
     parse a PBS configuration on an arbitrary host
+
     """
 
     logger = logging.getLogger(__name__)
@@ -146,17 +154,18 @@ class DshUtils(object):
         self.platform = self.get_platform()
 
     def get_platform(self, hostname=None, pyexec=None):
-        """
+        """get_platform([hostname=None[, pyexec=None]])
+
         Get a local or remote platform info, essentially the value of
         Python's sys.platform
 
-        hostname - The hostname to query for platform info
-
-        pyexec - A path to a Python interpreter to use to query a remote host
-        for platform info
+        :param hostname: The hostname to query for platform info
+        :param pyexec: A path to a Python interpreter to use to query a remote host
+                       for platform info
 
         For efficiency the value is cached and retrieved from the cache upon
         subsequent request
+        
         """
         if hostname is None:
             return sys.platform
@@ -187,7 +196,8 @@ class DshUtils(object):
     def _parse_file(self, hostname, file):
         """
          helper function to parse a file containing entries of the form
-         <key>=<value> into a Python dictionary format
+         ``<key>=<value>`` into a Python dictionary format
+
         """
         if hostname is None:
             hostname = socket.gethostname()
@@ -214,16 +224,13 @@ class DshUtils(object):
         Create a file out of a set of dictionaries, possibly parsed from an
         input file. @see _parse_file.
 
-        hostname - the name of the host on which to operate. Defaults to
-        localhost
+        :param hostname: the name of the host on which to operate. Defaults to
+                         localhost
+        :param fin: the input file to read from
+        :param fout: the output file to write to
+        :param append: If true, append to the output file.
+        :param vars: The ``key/value`` pairs to write to fout
 
-        fin - the input file to read from
-
-        fout - the output file to write to
-
-        append - If true, append to the output file.
-
-        vars - The key/value pairs to write to fout
         """
         if hostname is None:
             hostname = socket.gethostname()
@@ -252,9 +259,15 @@ class DshUtils(object):
         return conf
 
     def get_pbs_conf_file(self, hostname=None):
-        """
-        Get the path of the pbs conf file. Defaults back to /etc/pbs.conf
+        """get_pbs_conf_file([hostname=None])
+
+        Get the path of the pbs conf file. Defaults back to ``/etc/pbs.conf``
         if unsuccessful
+
+        :param hostname: Hostname of the machine
+        :type hostname: str or None
+        :returns: Path to pbs conf file
+
         """
         dflt_conf = '/etc/pbs.conf'
 
@@ -280,25 +293,34 @@ class DshUtils(object):
         return dflt_conf
 
     def parse_pbs_config(self, hostname=None, file=None):
-        " initialize pbs_conf dictionary by parsing pbs config file "
+        """parse_pbs_config([hostname=None[, file=None]])
+ 
+        initialize ``pbs_conf`` dictionary by parsing pbs config file 
+        
+        :param file: PBS conf file
+
+        """
         if file is None:
             file = self.get_pbs_conf_file(hostname)
         return self._parse_file(hostname, file)
 
     def set_pbs_config(self, hostname=None, fin=None, fout=None,
                        append=True, confs={}):
-        """
-        Set environment/configuration variables in a pbs.conf file
+        """set_pbs_config([hostname=None[, fin=None[, fout=None[, append=True[, confs]]]]])
 
-        hostname - the name of the host on which to operate
+        Set ``environment/configuration`` variables in a ``pbs.conf`` file
 
-        fin - the input pbs.conf file
+        :param hostname: the name of the host on which to operate
+        :type hostname: str or None
+        :param fin: the input pbs.conf file
+        :type fin: str or None
+        :param fout: the name of the output pbs.conf file, defaults to ``/etc/pbs.conf``
+        :type fout: str or None
+        :param append: whether to append to fout or not, defaults to True
+        :type append: boolean
+        :param confs: The ``key/value`` pairs to create
+        :type confs: Dictionary
 
-        fout - the name of the output pbs.conf file, defaults to /etc/pbs.conf
-
-        append - whether to append to fout or not, defaults to True
-
-        confs - The key/value pairs to create
         """
         if fin is None:
             fin = self.get_pbs_conf_file(hostname)
@@ -310,16 +332,19 @@ class DshUtils(object):
 
     def unset_pbs_config(self, hostname=None, fin=None, fout=None,
                          confs=[]):
-        """
-        Unset environment/configuration variables in a pbs.conf file
+        """unset_pbs_config([hostname=None[, fin=None[, fout=None[, confs]]]])
 
-        hostname - the name of the host on which to operate
+        Unset ``environment/configuration`` variables in a pbs.conf file
 
-        fin - the input pbs.conf file
+        :param hostname: the name of the host on which to operate
+        :type hostname: str or None
+        :param fin: the input pbs.conf file
+        :type fin: str or None
+        :param fout: the name of the output pbs.conf file, defaults to ``/etc/pbs.conf``
+        :type fout: str or None
+        :param confs: The configuration keys to unset
+        :type confs: List
 
-        fout - the name of the output pbs.conf file, defaults to /etc/pbs.conf
-
-        confs - The configuration keys to unset
         """
         if fin is None:
             fin = self.get_pbs_conf_file(hostname)
@@ -344,10 +369,12 @@ class DshUtils(object):
                               vars=cur_confs)
 
     def get_pbs_server_name(self, pbs_conf=None):
-        """
-        Return the name of the server which may be different than PBS_SERVER,
-        in order, this method looks at PBS_PRIMARY, PBS_SERVER_HOST_NAME, and
-        PBS_LEAF_NAME, and PBS_SERVER
+        """get_pbs_server_name([pbs_conf=None])
+
+        Return the name of the server which may be different than ``PBS_SERVER``,
+        in order, this method looks at ``PBS_PRIMARY``, ``PBS_SERVER_HOST_NAME``, and
+        ``PBS_LEAF_NAME``, and ``PBS_SERVER``
+
         """
         if pbs_conf is None:
             pbs_conf = self.parse_pbs_config()
@@ -363,19 +390,33 @@ class DshUtils(object):
 
     def parse_pbs_environment(self, hostname=None,
                               file='/var/spool/PBS/pbs_environment'):
-        """
+        """parse_pbs_environment([hostname=None[, file='/var/spool/PBS/pbs_environment']])
+
         Initialize pbs_conf dictionary by parsing pbs config file
+
         """
         return self._parse_file(hostname, file)
 
     def set_pbs_environment(self, hostname=None,
                             fin='/var/spool/PBS/pbs_environment', fout=None,
                             append=True, vars={}):
+        """set_pbs_environment([hostname=None[, fin='/var/spool/PBS/pbs_environment'[, fout=None[, append=True[, vars]]]]])
+
+        Set the PBS environment
+
+        :param vars: Dictionary
+
+        """
         if fout is None and fin is not None:
             fout = fin
         return self._set_file(hostname, fin, fout, append, vars)
 
     def parse_rhosts(self, hostname=None, user=None):
+        """parse_rhosts([hostname=None[, user=None]])
+
+        Parse remote host
+ 
+        """
         if hostname is None:
             hostname = socket.gethostname()
         if user is None:
@@ -410,6 +451,16 @@ class DshUtils(object):
         return props
 
     def set_rhosts(self, hostname=None, user=None, entry={}, append=True):
+        """set_rhosts([hostname=None[, user=None[, entry[, append=True]]]])
+
+        Set the remote host attributes
+
+        :param entry: remote hostname user dictionary
+        :type entry: Dictionary
+        :param append: If true append key value else not
+        :type append: boolean
+
+        """
         if hostname is None:
             hostname = socket.gethostname()
         if user is None:
@@ -472,6 +523,16 @@ class DshUtils(object):
         return conf
 
     def map_pbs_conf_to_cmd(self, cmd_map={}, pconf={}):
+        """map_pbs_conf_to_cmd([cmd_map[, pconf]])
+
+        Map PBS configuration parameter to command
+
+        :param cmd_map: command mapping
+        :type cmd_map: Dictionary
+        :param pconf: PBS conf parameter dictionary
+        :type pconf: Dictionary
+
+        """
         cmd = []
         for k, v in pconf.items():
             if k in cmd_map:
@@ -481,6 +542,7 @@ class DshUtils(object):
     def get_current_user(self):
         """
         helper function to return the name of the current user
+
         """
         if self._current_user is not None:
             return self._current_user
@@ -488,6 +550,17 @@ class DshUtils(object):
         return self._current_user
 
     def check_user_exists(self, username=None, hostname=None):
+        """check_user_exists([username=None[, hostname=None]])
+
+        Check if user exist  or not
+
+        :param username: Username to check
+        :type username: str or None
+        :param hostname: Machine hostname
+        :type hostname: str or None
+        :returns: True if exist else return False
+
+        """
         if hostname is None:
             hostname = socket.gethostname()
 
@@ -498,18 +571,19 @@ class DshUtils(object):
 
     def check_group_membership(self, username=None, uid=None, grpname=None,
                                gid=None):
-        """
+        """check_group_membership([username=None[, uid=None[, grpname=None[, gid=None]]]])
+
         Checks whether a user, passed in as username or uid, is a member of a
         group, passed in as group name or group id.
 
-        username - The username to inquire about
+        :param username: The username to inquire about
+        :type username: str or None
+        :param uid: The uid of the user to inquire about (alternative to username)
+        :param grpname: The groupname to check for user membership
+        :type grpname: str or None
+        :param gid: The group id to check for user membership (alternative to
+                    grpname)
 
-        uid - The uid of the user to inquire about (alternative to username)
-
-        grpname - The groupname to check for user membership
-
-        gid - The group id to check for user membership (alternative to
-        grpname)
         """
         if username is None and uid is None:
             self.logger.warning('A username or uid was expected')
@@ -531,7 +605,8 @@ class DshUtils(object):
         return False
 
     def group_memberships(self, group_list=[]):
-        """
+        """group_memberships([group_list])
+
         Returns all group memberships as a dictionary of group names and
         associated memberships
         """
@@ -565,18 +640,26 @@ class DshUtils(object):
     def get_id_info(self, user):
         """
         Return user info in dic format
-        obtained by "id -a <user>" command for given user
+        obtained by ``"id -a <user>"`` command for given user
 
-        user - The username to inquire about
+        :param user: The username to inquire about
+        :type user: str 
+        :returns: dic format:
 
-        Returned dic format:
-            {
-                "uid": <uid of given user>,
-                "gid": <gid of given user's primary group>,
-                "name": <name of given user>,
-                "pgroup": <name of primary group of given user>,
-                "groups": <list of names of groups of given user>
-            }
+                  {
+
+                        "uid": <uid of given user>,
+
+                        "gid": <gid of given user's primary group>,
+
+                        "name": <name of given user>,
+
+                        "pgroup": <name of primary group of given user>,
+
+                        "groups": <list of names of groups of given user>
+
+                  }
+
         """
         info = {'uid': None, 'gid': None, 'name': None, 'pgroup': None,
                 'groups': None}
@@ -596,9 +679,10 @@ class DshUtils(object):
         return info
 
     def get_tempdir(self, hostname=None):
-        """
-        Return the temporary directory on the given host
-        Default host is localhost.
+        """get_tempdir([hostname=None])
+
+        :returns: The temporary directory on the given host
+                  Default host is localhost.
         """
         # return the cached value whenever possible
 
@@ -623,44 +707,39 @@ class DshUtils(object):
 
     def run_cmd(self, hosts=None, cmd=None, sudo=False, stdin=None,
                 stdout=PIPE, stderr=PIPE, input=None, cwd=None, env=None,
-                runas=None, logerr=True, as_script=False, wait_on_script=True,
+                runas=None, logerr=True, as_script=False, wait_on_script=True, 
                 level=logging.INFOCLI2):
-        """
+        """run_cmd([hosts=None[, cmd=None[, sudo=False[, stdin=None[, stdout[, stderr[, input=None[, cwd=None[, env=None[, runas=None[, logerr=True[, as_script=False[, wait_on_script=True[, level]]]]]]]]]]]]]])
+
         Run a command on a host or list of hosts.
 
-        hosts - the name of hosts on which to run the command, can be a comma-
-        separated string or a list. Defaults to localhost
+        :param hosts: the name of hosts on which to run the command, can be a comma-
+                      separated string or a list. Defaults to localhost
+        :type hosts: str or None
+        :param cmd: the command to run
+        :type cmd: str or None
+        :param sudo: whether to run the command as root or not. Defaults to False.
+        :type sudo: boolean
+        :param stdin: custom stdin. Defaults to PIPE
+        :param stdout: custom stdout. Defaults to PIPE
+        :param stderr: custom stderr. Defaults to PIPE
+        :param input: input to pass to the pipe on target host, e.g. PBS answer file
+        :param cwd: working directory on local host from which command is run
+        :param env: environment variables to set on local host
+        :param runas: run command as given user. Defaults to calling user
+        :param logerr: whether to log error messages or not. Defaults to True
+        :type logerr: boolean
+        :param as_script: if True, run the command in a script created as a
+                          temporary file that gets deleted after being run. This is used mainly
+                          to circumvent some implementations of sudo that prevent passing
+                          environment variables through sudo.
+        :type as_script: boolean
+        :param wait_on_script: If True (default) waits on process launched as script
+                               to return.
+        :type wait_on_script: boolean
+        :returns: error, output, and return code as a dictionary
+                  ``{'out':...,'err':...,'rc':...}``
 
-        cmd - the command to run
-
-        sudo - whether to run the command as root or not. Defaults to False.
-
-        stdin - custom stdin. Defaults to PIPE
-
-        stdout - custom stdout. Defaults to PIPE
-
-        stderr - custom stderr. Defaults to PIPE
-
-        input - input to pass to the pipe on target host, e.g. PBS answer file
-
-        cwd - working directory on local host from which command is run
-
-        env - environment variables to set on local host
-
-        runas - run command as given user. Defaults to calling user
-
-        logerr - whether to log error messages or not. Defaults to True
-
-        as_script - if True, run the command in a script created as a
-        temporary file that gets deleted after being run. This is used mainly
-        to circumvent some implementations of sudo that prevent passing
-        environment variables through sudo.
-
-        wait_on_script - If True (default) waits on process launched as script
-        to return.
-
-        Returns error, output, and return code as a dictionary
-        {'out':...,'err':...,'rc':...}
         """
 
         rshcmd = []
@@ -819,40 +898,35 @@ class DshUtils(object):
     def run_copy(self, hosts=None, src=None, dest=None, sudo=False, uid=None,
                  gid=None, mode=None, env=None, logerr=True,
                  recursive=False, runas=None, level=logging.INFOCLI2):
-        """
+        """run_copy([hosts=None[, src=None[, dest=None[, sudo=False[, uid=None[, gid=None[, mode=None[, env=None[, logerr=True[, recursive=False[, runas=None[, level]]]]]]]]]]]])
+
         copy a file or directory to specified target hosts.
 
-        hosts - the host(s) to which to copy the data. Can be a comma-
-        separated string or a list
+        :param hosts: the host(s) to which to copy the data. Can be a comma-
+                      separated string or a list
+        :type hosts: str or None
+        :param src: the path to the file or directory to copy. If src is remote,
+                    it must be prefixed by the hostname. ``e.g. remote1:/path,remote2:/path``
+        :type src: str or None
+        :param dest: the destination path.
+        :type dest: str or None
+        :param sudo: whether to copy as root or not. Defaults to False
+        :type sudo: boolean
+        :param uid: optionally change ownership of dest to the specified user id,
+                    referenced by uid number or username
+        :param gid: optionally change ownership of dest to the specified
+                    group ``name/id``
+        :param mode: optinoally set mode bits of dest
+        :param env: environment variables to set on the calling host
+        :param logerr: whether to log error messages or not. Defaults to True.
+        :param recursive: whether to copy a directory (when true) or a file.
+                          Defaults to False.
+        :type recursive: boolean
+        :param runas: run command as user
+        :param level: logging level, defaults to DEBUG
+        :returns: {'out':<outdata>, 'err': <errdata>, 'rc':<retcode>} upon
+                  and None if no source file specified
 
-        src - the path to the file or directory to copy. If src is remote,
-        it must be prefixed by the hostname. e.g. remote1:/path,remote2:/path
-
-        dest - the destination path.
-
-        sudo - whether to copy as root or not. Defaults to False
-
-        uid - optionally change ownership of dest to the specified user id,
-        referenced by uid number or username
-
-        gid - optionally change ownership of dest to the specified
-        group name/id
-
-        mode - optinoally set mode bits of dest
-
-        env - environment variables to set on the calling host
-
-        logerr - whether to log error messages or not. Defaults to True.
-
-        recursive - whether to copy a directory (when true) or a file.
-        Defaults to False.
-
-        runas - run command as user
-
-        level - logging level, defaults to DEBUG
-
-        returns {'out':<outdata>, 'err': <errdata>, 'rc':<retcode>} upon
-        and None if no source file specified
         """
         if src is None:
             self.logger.warning('no source file specified')
@@ -948,8 +1022,10 @@ class DshUtils(object):
                     stderr=PIPE, input=None, cwd=None, env=None, runas=None,
                     logerr=True, as_script=False, wait_on_script=True,
                     level=logging.INFOCLI2):
-        """
+        """run_ptl_cmd(hostname, cmd[, sudo=False[, stdin=None[, stdout[, stderr[, input=None[, cwd=None[, env=None[, runas=None[, logerr=True[, as_script=False[, wait_on_script=True[, level]]]]]]]]]]]])
+
         Wrapper method of run_cmd to run PTL command
+
         """
         # Add absolute path of command also add log level to command
         self.logger.infocli('running command "%s" on %s' % (' '.join(cmd),
@@ -960,7 +1036,7 @@ class DshUtils(object):
         cmd = _cmd
         self.logger.debug(' '.join(cmd))
         dest = None
-        if ('PYTHONPATH' in os.environ.keys() and
+        if (os.environ.has_key('PYTHONPATH') and
                 not self.is_localhost(hostname)):
             body = ['#!/bin/bash']
             body += ['PYTHONPATH=%s exec %s' % (os.environ['PYTHONPATH'],
@@ -991,6 +1067,7 @@ class DshUtils(object):
     def set_sudo_cmd(cls, cmd):
         """
         set the sudo command
+
         """
         cls.logger.infocli('setting sudo command to ' + cmd)
         cls.sudo_cmd = cmd.split()
@@ -999,6 +1076,7 @@ class DshUtils(object):
     def set_copy_cmd(cls, cmd):
         """
         set the copy command
+
         """
         cls.logger.infocli('setting copy command to ' + cmd)
         cls.copy_cmd = cmd.split()
@@ -1007,14 +1085,16 @@ class DshUtils(object):
     def set_rsh_cmd(cls, cmd):
         """
         set the remote shell command
+
         """
         cls.logger.infocli('setting remote shell command to ' + cmd)
         cls.rsh_cmd = cmd.split()
 
     def is_localhost(self, host=None):
-        """
-        returns true if specified host (by name) is the localhost
-        all aliases matching the hostname are searched
+        """is_localhost([host=None])
+
+        :returns: true if specified host (by name) is the localhost
+                  all aliases matching the hostname are searched
         """
         if host is None:
             return True
@@ -1045,18 +1125,18 @@ class DshUtils(object):
 
     def isdir(self, hostname=None, path=None, sudo=False, runas=None,
               level=logging.INFOCLI2):
-        """
-        Returns True if directory pointed to by path exists and False otherwise
+        """isdir([hostname=None[, path=None[, sudo=False[, runas=None[, level]]]]])
+ 
+        :param hostname: The name of the host on which to check for directory
+        :type hostname: str or None
+        :param path: The path to the directory to check
+        :type path: str or None
+        :param sudo: Whether to run the command as a privileged user
+        :type sudo: boolean
+        :param runas: run command as user
+        :param level: Logging level
+        :returns: True if directory pointed to by path exists and False otherwise
 
-        hostname - The name of the host on which to check for directory
-
-        path - The path to the directory to check
-
-        sudo - Whether to run the command as a privileged user
-
-        runas - run command as user
-
-        level - Logging level
         """
         if path is None:
             return False
@@ -1084,18 +1164,18 @@ class DshUtils(object):
 
     def isfile(self, hostname=None, path=None, sudo=False, runas=None,
                level=logging.INFOCLI2):
-        """
-        Returns True if file pointed to by path exists, and False otherwise
+        """isfile([hostname=None[, path=None[, sudo=False[, runas=None[, level]]]]])
 
-        hostname - The name of the host on which to check for file
+        :param hostname: The name of the host on which to check for file
+        :type hostname: str or None
+        :param path: The path to the file to check
+        :type path: str or None
+        :param sudo: Whether to run the command as a privileged user
+        :type sudo: boolean
+        :param runas: run command as user
+        :param level: Logging level
+        :returns: True if file pointed to by path exists, and False otherwise
 
-        path - The path to the file to check
-
-        sudo - Whether to run the command as a privileged user
-
-        runas - run command as user
-
-        level - Logging level
         """
 
         if path is None:
@@ -1119,18 +1199,18 @@ class DshUtils(object):
 
     def getmtime(self, hostname=None, path=None, sudo=False, runas=None,
                  level=logging.INFOCLI2):
-        """
-        Returns Modified time of given file
+        """getmtime([hostname=None[, path=None[, sudo=False[, runas=None[, level]]]]])
 
-        hostname - The name of the host on which file exists
+        :param hostname: The name of the host on which file exists
+        :type hostname: str or None
+        :param path: The path to the file to get mtime
+        :type path: str or None
+        :param sudo: Whether to run the command as a privileged user
+        :type sudo: boolean
+        :param runas: run command as user
+        :param level: Logging level
+        :returns: Modified time of given file
 
-        path - The path to the file to get mtime
-
-        sudo - Whether to run the command as a privileged user
-
-        runas - run command as user
-
-        level - Logging level
         """
 
         if path is None:
@@ -1153,17 +1233,18 @@ class DshUtils(object):
 
     def listdir(self, hostname=None, path=None, sudo=False, runas=None,
                 level=logging.INFOCLI2):
-        """
-        Return a list containing the names of the entries in the directory
+        """listdir([hostname=None[, path=None[, sudo=False[, runas=None[, level]]]]])
 
-        hostname - The name of the host on which to list for directory
-        path - The path to directory to list
+        :param hostname: The name of the host on which to list for directory
+        :type hostname: str or None
+        :param path: The path to directory to list
+        :type path: str or None
+        :param sudo: Whether to chmod as root or not. Defaults to False
+        :type sudo: boolean
+        :param runas: run command as user
+        :param level: Logging level.
+        :returns: A list containing the names of the entries in the directory        
 
-        sudo - Whether to chmod as root or not. Defaults to False
-
-        runas - run command as user
-
-        level - Logging level.
         """
 
         if path is None:
@@ -1181,29 +1262,27 @@ class DshUtils(object):
         return map(lambda p: os.path.join(path, p.strip()), files)
 
     def chmod(self, hostname=None, path=None, mode=None, sudo=False,
-              runas=None, recursive=False, logerr=True,
-              level=logging.INFOCLI2):
-        """
+              runas=None, recursive=False, logerr=True, level=logging.INFOCLI2):
+        """chmod([hostname=None[, path=None[, mode=None[, sudo=False[, runas=None[, recursive=False[, logerr=True[, level]]]]]]]])
+
         Generic function of chmod with remote host support
 
-        hostname - hostname (default current host)
+        :param hostname: hostname (default current host)
+        :type hostname: str or None
+        :param path: the path to the file or directory to chmod
+        :type path: str or None
+        :param mode: mode to apply as octal number like 0777, 0666 etc.
+        :param sudo: whether to chmod as root or not. Defaults to False
+        :type sudo: boolean
+        :param runas: run command as user
+        :param recursive: whether to chmod a directory (when true) or a file.
+                          Defaults to False.
+        :type recursive: boolean
+        :param logerr: whether to log error messages or not. Defaults to True.
+        :type logerr: boolean
+        :param level: logging level, defaults to INFOCLI2
+        :returns: True on success otherwise False
 
-        path - the path to the file or directory to chmod
-
-        mode - mode to apply as octal number like 0777, 0666 etc.
-
-        sudo - whether to chmod as root or not. Defaults to False
-
-        runas - run command as user
-
-        recursive - whether to chmod a directory (when true) or a file.
-        Defaults to False.
-
-        logerr - whether to log error messages or not. Defaults to True.
-
-        level - logging level, defaults to INFOCLI2
-
-        Return - True on success otherwise False
         """
         if (path is None) or (mode is None):
             return False
@@ -1220,29 +1299,27 @@ class DshUtils(object):
     def chown(self, hostname=None, path=None, uid=None, gid=None, sudo=False,
               recursive=False, runas=None, logerr=True,
               level=logging.INFOCLI2):
-        """
+        """chown([hostname=None[, path=None[, uid=None[, gid=None[, sudo=False[, recursive=False[, runas=None[, logerr=True[, level]]]]]]]]])
+
         Generic function of chown with remote host support
 
-        hostname - hostname (default current host)
+        :param hostname: hostname (default current host)
+        :type hostname: str or None
+        :param path: the path to the file or directory to chown
+        :type path: str or None
+        :param uid: uid to apply (must be either user name or uid or -1)
+        :param gid: gid to apply (must be either group name or gid or -1)
+        :param sudo: whether to chown as root or not. Defaults to False
+        :type sudo: boolean
+        :param recursive: whether to chmod a directory (when true) or a file.
+                          Defaults to False.
+        :type recursive: boolean
+        :param runas: run command as user
+        :param logerr: whether to log error messages or not. Defaults to True.
+        :type logerr: boolean
+        :param level: logging level, defaults to INFOCLI2
+        :returns: True on success otherwise False
 
-        path - the path to the file or directory to chown
-
-        uid - uid to apply (must be either user name or uid or -1)
-
-        gid - gid to apply (must be either group name or gid or -1)
-
-        sudo - whether to chown as root or not. Defaults to False
-
-        recursive - whether to chmod a directory (when true) or a file.
-        Defaults to False.
-
-        runas - run command as user
-
-        logerr - whether to log error messages or not. Defaults to True.
-
-        level - logging level, defaults to INFOCLI2
-
-        Return - True on success otherwise False
         """
         if path is None or (uid is None and gid is None):
             return False
@@ -1276,27 +1353,26 @@ class DshUtils(object):
     def chgrp(self, hostname=None, path=None, gid=None, sudo=False,
               recursive=False, runas=None, logerr=True,
               level=logging.INFOCLI2):
-        """
+        """chgrp([hostname=None[, path=None[, gid=None[, sudo=False[, recursive=False[, runas=None[, logerr=True[, level]]]]]]]])
+
         Generic function of chgrp with remote host support
 
-        hostname - hostname (default current host)
+        :param hostname: hostname (default current host)
+        :type hostname: str or None
+        :param path: the path to the file or directory to chown
+        :type path: str or None
+        :param gid: gid to apply (must be either group name or gid or -1)
+        :param sudo: whether to chgrp as root or not. Defaults to False
+        :type sudo: boolean
+        :param recursive: whether to chmod a directory (when true) or a file.
+                          Defaults to False.
+        :type recursive: boolean
+        :param runas: run command as user
+        :param logerr: whether to log error messages or not. Defaults to True.
+        :type logerr: boolean
+        :param level: logging level, defaults to INFOCLI2
+        :returns: True on success otherwise False
 
-        path - the path to the file or directory to chown
-
-        gid - gid to apply (must be either group name or gid or -1)
-
-        sudo - whether to chgrp as root or not. Defaults to False
-
-        recursive - whether to chmod a directory (when true) or a file.
-        Defaults to False.
-
-        runas - run command as user
-
-        logerr - whether to log error messages or not. Defaults to True.
-
-        level - logging level, defaults to INFOCLI2
-
-        Return - True on success otherwise False
         """
         if path is None or gid is None:
             return False
@@ -1327,15 +1403,17 @@ class DshUtils(object):
         return False
 
     def which(self, hostname=None, exe=None, level=logging.INFOCLI2):
-        """
+        """which([hostname=None[, exe=None[, level]]])
+
         Generic function of which with remote host support
 
-        hostname - hostname (default current host)
+        :param hostname: hostname (default current host)
+        :type hostname: str or None
+        :param exe: executable to locate (can be full path also)
+                    (if exe is full path then only basename will be used to locate)
+        :type exe: str or None
+        :param level: logging level, defaults to INFOCLI2
 
-        exe - executable to locate (can be full path also)
-        (if exe is full path then only basename will be used to locate)
-
-        level - logging level, defaults to INFOCLI2
         """
         if exe is None:
             return None
@@ -1375,35 +1453,34 @@ class DshUtils(object):
     def rm(self, hostname=None, path=None, sudo=False, runas=None,
            recursive=False, force=False, cwd=None, logerr=True,
            as_script=False, level=logging.INFOCLI2):
-        """
+        """rm([hostname=None[, path=None[, sudo=False[, runas=None[, recursive=False[, force=False[, cwd=None[, logerr=True[, as_script=False[, level]]]]]]]]]])
+
         Generic function of rm with remote host support
 
-        hostname - hostname (default current host)
+        :param hostname: hostname (default current host)
+        :type hostname: str or None
+        :param path: the path to the files or directories to remove
+                     for more than one files or directories pass as list
+        :type path: str or None
+        :param sudo: whether to remove files or directories as root or not.
+                     Defaults to False
+        :type sudo: boolean
+        :param runas: remove files or directories as given user.
+                      Defaults to calling user
+        :param recursive: remove files or directories and their contents recursively
+        :type recursive: boolean
+        :param force: force remove files or directories
+        :type force: boolean
+        :param cwd: working directory on local host from which command is run
+        :param logerr: whether to log error messages or not. Defaults to True.
+        :type logerr: boolean
+        :param as_script: if True, run the rm in a script created as a
+                          temporary file that gets deleted after being run. This is used mainly
+                          to handle wildcard in path list. Defaults to False.
+        :type as_script: boolean
+        :param level: logging level, defaults to INFOCLI2
+        :returns: True on success otherwise False
 
-        path - the path to the files or directories to remove
-        for more than one files or directories pass as list
-
-        sudo - whether to remove files or directories as root or not.
-        Defaults to False
-
-        runas - remove files or directories as given user.
-        Defaults to calling user
-
-        recursive - remove files or directories and their contents recursively
-
-        force - force remove files or directories
-
-        cwd - working directory on local host from which command is run
-
-        logerr - whether to log error messages or not. Defaults to True.
-
-        as_script - if True, run the rm in a script created as a
-        temporary file that gets deleted after being run. This is used mainly
-        to handle wildcard in path list. Defaults to False.
-
-        level - logging level, defaults to INFOCLI2
-
-        Return - True on success otherwise False
         """
         if (path is None) or (len(path) == 0):
             return True
@@ -1441,34 +1518,33 @@ class DshUtils(object):
     def mkdir(self, hostname=None, path=None, mode=None, sudo=False,
               runas=None, parents=True, cwd=None, logerr=True,
               as_script=False, level=logging.INFOCLI2):
-        """
+        """mkdir([hostname=None[, path=None[, mode=None[, sudo=False[, runas=None[, parents=True[, cwd=None[, logerr=True[, as_script=False[, level]]]]]]]]]])
+
         Generic function of mkdir with remote host support
 
-        hostname - hostname (default current host)
+        :param hostname: hostname (default current host)
+        :type hostname: str or None
+        :param path: the path to the directories to create
+                     for more than one directories pass as list
+        :type path: str or None
+        :param mode: mode to use while creating directories
+                     (must be octal like 0777)
+        :param sudo: whether to create directories as root or not. Defaults to False
+        :type sudo: boolean
+        :param runas: create directories as given user. Defaults to calling user
+        :param parents: create parent directories as needed. Defaults to True
+        :type parents: boolean
+        :param cwd: working directory on local host from which command is run
+        :type cwd: str or None
+        :param logerr: whether to log error messages or not. Defaults to True.
+        :type logerr: boolean
+        :param as_script: if True, run the command in a script created as a
+                          temporary file that gets deleted after being run. This is used mainly
+                          to handle wildcard in path list. Defaults to False.
+        :type as_script: boolean
+        :param level: logging level, defaults to INFOCLI2
+        :returns: True on success otherwise False
 
-        path - the path to the directories to create
-        for more than one directories pass as list
-
-        mode - mode to use while creating directories
-        (must be octal like 0777)
-
-        sudo - whether to create directories as root or not. Defaults to False
-
-        runas - create directories as given user. Defaults to calling user
-
-        parents - create parent directories as needed. Defaults to True
-
-        cwd - working directory on local host from which command is run
-
-        logerr - whether to log error messages or not. Defaults to True.
-
-        as_script - if True, run the command in a script created as a
-        temporary file that gets deleted after being run. This is used mainly
-        to handle wildcard in path list. Defaults to False.
-
-        level - logging level, defaults to INFOCLI2
-
-        Return - True on success otherwise False
         """
         if (path is None) or (len(path) == 0):
             return True
@@ -1491,20 +1567,21 @@ class DshUtils(object):
 
     def cat(self, hostname=None, filename=None, sudo=False, runas=None,
             logerr=True, level=logging.INFOCLI2):
-        """
+        """cat([hostname=None[, filename=None[, sudo=False[, runas=None[, logerr=True[, level]]]]]])
+
         Generic function of cat with remote host support
 
-        hostname - hostname (default current host)
+        :param hostname: hostname (default current host)
+        :type hostname: str or None
+        :param filename: the path to the filename to cat
+        :type filename: str or None
+        :param sudo: whether to create directories as root or not. Defaults to False
+        :type sudo: boolean
+        :param runas: create directories as given user. Defaults to calling user
+        :param logerr: whether to log error messages or not. Defaults to True.
+        :type logerr: boolean
+        :returns: output of run_cmd
 
-        filename - the path to the filename to cat
-
-        sudo - whether to create directories as root or not. Defaults to False
-
-        runas - create directories as given user. Defaults to calling user
-
-        logerr - whether to log error messages or not. Defaults to True.
-
-        Return - output of run_cmd
         """
         cmd = [self.which(hostname, 'cat'), filename]
         return self.run_cmd(hostname, cmd=cmd, sudo=sudo,
@@ -1512,21 +1589,23 @@ class DshUtils(object):
 
     def cmp(self, hostname=None, fileA=None, fileB=None, sudo=False,
             runas=None, logerr=True):
-        """
+        """cmp([hostname=None[, fileA=None[, fileB=None[, sudo=False[, runas=None[, logerr=True]]]]]])
+
         Compare two files and return 0 if they are identical or non-zero if
         not
 
-        hostname - the name of the host to operate on
+        :param hostname: the name of the host to operate on
+        :type hostname: str or None
+        :param fileA: the first file to compare
+        :type fileA: str or None
+        :param fileB: the file to compare fileA to
+        :type fileB: str or None
+        :param sudo: run the command as a privileged user
+        :type sudo: boolean
+        :param runas: run the cmp command as given user
+        :param logerr: whether to log error messages or not. Defaults to True.
+        :type logerr: boolean
 
-        fileA - the first file to compare
-
-        fileB - the file to compare fileA to
-
-        sudo - run the command as a privileged user
-
-        runas - run the cmp command as given user
-
-        logerr - whether to log error messages or not. Defaults to True.
         """
 
         if fileA is None and fileB is None:
@@ -1543,6 +1622,20 @@ class DshUtils(object):
     def useradd(self, name, uid=None, gid=None, shell='/bin/bash',
                 create_home_dir=True, home_dir=None, groups=None, logerr=True,
                 level=logging.INFOCLI2):
+        """useradd(name[, uid=None[, gid=None[, shell='/bin/bash'[, create_home_dir=True[, home_dir=None[, groups=None[, logerr=True[, level]]]]]]]])
+
+        Add the user
+ 
+        :param name: User name
+        :type name: str
+        :param shell: shell to use
+        :param create_home_dir: If true then create home directory
+        :type create_home_dir: boolean
+        :param home_dir: path to home directory
+        :type home_dir: str or None
+        :param groups: User groups
+
+        """
         self.logger.info('adding user ' + str(name))
         cmd = ['useradd']
         if uid is not None:
@@ -1566,6 +1659,16 @@ class DshUtils(object):
 
     def userdel(self, name, del_home=True, force=True, logerr=True,
                 level=logging.INFOCLI2):
+        """userdel(name[, del_home=True[, force=True[, logerr=True[, level]]]])
+
+        Delete the user
+ 
+        :param del_home: If true then delete user home
+        :type del_home: boolean
+        :param force: If true then delete forcefully
+        :type force: boolean
+
+        """
         try:
             uinfo = pwd.getpwnam(str(name))
         except:
@@ -1590,6 +1693,11 @@ class DshUtils(object):
             raise PtlUtilError(rc=ret['rc'], rv=False, msg=ret['err'])
 
     def groupadd(self, name, gid=None, logerr=True, level=logging.INFOCLI2):
+        """groupadd(name[, gid=None[, logerr=True[, level]]])
+
+        Add a group
+
+        """
         self.logger.info('adding group ' + str(name))
         cmd = ['groupadd']
         if gid is not None:
@@ -1600,6 +1708,10 @@ class DshUtils(object):
             raise PtlUtilError(rc=ret['rc'], rv=False, msg=ret['err'])
 
     def groupdel(self, name, logerr=True, level=logging.INFOCLI2):
+        """groupdel(name[, logerr=True[, level]])
+
+        Delete the group
+        """
         self.logger.info('deleting group ' + str(name))
         cmd = ['groupdel', str(name)]
         ret = self.run_cmd(cmd=cmd, sudo=True, logerr=logerr, level=level)
@@ -1609,29 +1721,25 @@ class DshUtils(object):
     def mkstemp(self, hostname=None, suffix='', prefix='PtlPbs', dir=None,
                 text=False, uid=None, gid=None, mode=None, body=None,
                 level=logging.INFOCLI2):
-        """
+        """mkstemp([hostname=None[, suffix=''[, prefix='PtlPbs'[, dir=None[, text=False[, uid=None[, gid=None[, mode=None[, body=None[, level]]]]]]]]]])
+
         Create a temp file by calling tempfile.mkstemp
 
-        hostname - the hostname on which to query tempdir from
+        :param hostname: the hostname on which to query tempdir from
+        :type hostname: str or None
+        :param suffix: the file name will end with this suffix
+        :param prefix: the file name will begin with this prefix
+        :param dir: the file will be created in this directory
+        :type dir: str or None
+        :param text: the file is opened in text mode is this is true else in binary
+                     mode
+        :type text: boolean
+        :param uid: Optional username or uid of temp file owner
+        :param gid: Optional group name or gid of temp file group owner
+        :param mode: Optional mode bits to assign to the temporary file
+        :param body: Optional content to write to the temporary file
+        :param level: logging level, defaults to INFOCLI2
 
-        suffix - the file name will end with this suffix
-
-        prefix - the file name will begin with this prefix
-
-        dir - the file will be created in this directory
-
-        text - the file is opened in text mode is this is true else in binary
-        mode
-
-        uid - Optional username or uid of temp file owner
-
-        gid - Optional group name or gid of temp file group owner
-
-        mode - Optional mode bits to assign to the temporary file
-
-        body - Optional content to write to the temporary file
-
-        level - logging level, defaults to INFOCLI2
         """
 
         if not self.is_localhost(hostname):
@@ -1667,24 +1775,21 @@ class DshUtils(object):
 
     def mkdtemp(self, hostname=None, suffix='', prefix='PtlPbs', dir=None,
                 uid=None, gid=None, mode=None, level=logging.INFOCLI2):
-        """
-        Create a temp dir by calling tempfile.mkdtemp
+        """mkdtemp([hostname=None[, suffix=''[, prefix='PtlPbs'[, dir=None[, uid=None[, gid=None[, mode=None[, level]]]]]]]])
 
-        hostname - the hostname on which to query tempdir from
+        Create a temp dir by calling ``tempfile.mkdtemp``
 
-        suffix - the directory name will end with this suffix
+        :param hostname: the hostname on which to query tempdir from
+        :type hostname: str or None
+        :param suffix: the directory name will end with this suffix
+        :param prefix: the directory name will begin with this prefix
+        :param dir: the directory will be created in this directory
+        :type dir: str or None
+        :param uid: Optional username or uid of temp directory owner
+        :param gid: Optional group name or gid of temp directory group owner
+        :param mode: Optional mode bits to assign to the temporary directory
+        :param level: logging level, defaults to INFOCLI2
 
-        prefix - the directory name will begin with this prefix
-
-        dir - the directory will be created in this directory
-
-        uid - Optional username or uid of temp directory owner
-
-        gid - Optional group name or gid of temp directory group owner
-
-        mode - Optional mode bits to assign to the temporary directory
-
-        level - logging level, defaults to INFOCLI2
         """
         if not self.is_localhost(hostname):
             tmp_args = []
@@ -1713,7 +1818,8 @@ class DshUtils(object):
 
     def parse_strace(self, lines):
         """
-        strace parsing. Just the regular expressions for now (thanks to Carl)
+        strace parsing. Just the regular expressions for now 
+
         """
         timestamp_pat = r'(^(\d{2}:\d{2}:\d{2})(.\d+){0,1} |^(\d+.\d+) ){0,1}'
         exec_pat = r'execve\(("[^"]+"), \[([^]]+)\], [^,]+ = (\d+)$'
