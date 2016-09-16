@@ -39,6 +39,7 @@ if [ $# -eq 1 ] && [ $1 = "--version" ]; then
    exit 0
 fi
 
+PBS_VERSION=@PBS_VERSION@
 tmpdir=${PBS_TMPDIR:-${TMPDIR:-"/var/tmp"}}
 PBS_CURRENT_SCHEMA_VER='1.2.0'
 PBS_AES_SWITCH_VER='14.0'
@@ -721,9 +722,16 @@ if [ -z "$PBS_HOME" ]; then
 	exit 1
 fi
 if [ ! -d "$PBS_HOME" ]; then
-	echo "*** $PBS_HOME directory does not exist"
-	echo "*** Run pbs_postinstall to create it"
-	exit 1
+	echo "*** WARNING: PBS_HOME not found in $PBS_HOME"
+	if [ -x "$PBS_EXEC/sbin/pbs_server" ]; then
+		component="server"
+	elif [ -x "$PBS_EXEC/sbin/pbs_mom" ]; then
+		component="execution"
+	else
+		echo "*** Error Trying to execute pbs_habitat in client installation."
+		exit 1
+	fi
+	${PBS_EXEC}/libexec/pbs_postinstall $component $PBS_VERSION $PBS_EXEC $PBS_HOME "" "sameconf"
 fi
 
 # Store the old PBS VERSION for later use
@@ -738,9 +746,9 @@ if [ -x "$PBS_EXEC/bin/qstat" ]; then
 		echo "*** Could not obtain PBS Pro version from qstat"
 		exit 1
 	fi
-	if [ "$pbs_version" != '@PBS_VERSION@' ]; then
+	if [ "$pbs_version" != "$PBS_VERSION" ]; then
 		echo "*** Version mismatch."
-		echo "*** Build version is @PBS_VERSION@"
+		echo "*** Build version is $PBS_VERSION"
 		echo "*** qstat version is $pbs_version"
 		exit 1
 	fi
