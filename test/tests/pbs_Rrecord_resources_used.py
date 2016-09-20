@@ -134,9 +134,9 @@ class Test_Rrecord_with_resources_used(PBSTestSuite):
         jid3s1 = subjobs[1]['id']
 
         # Wait for the jobs to start running.
-        self.server.expect(JOB, {ATTR_state: 'R'}, jid1)
-        self.server.expect(JOB, {ATTR_state: 'R'}, jid2)
-        self.server.expect(JOB, {ATTR_state: 'R'}, jid3s1)
+        self.server.expect(JOB, {ATTR_substate: '42'}, jid1)
+        self.server.expect(JOB, {ATTR_substate: '42'}, jid2)
+        self.server.expect(JOB, {ATTR_substate: '42'}, jid3s1)
 
         # Verify that accounting logs have Resource_List.<resource> value
         m = self.server.accounting_match(
@@ -314,9 +314,9 @@ class Test_Rrecord_with_resources_used(PBSTestSuite):
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'},
                             expect=True)
 
-        self.server.expect(JOB, {ATTR_state: 'R'}, jid1)
-        self.server.expect(JOB, {ATTR_state: 'R'}, jid2)
-        self.server.expect(JOB, {ATTR_state: 'R'}, jid3s1)
+        self.server.expect(JOB, {ATTR_substate: '42'}, jid1)
+        self.server.expect(JOB, {ATTR_substate: '42'}, jid2)
+        self.server.expect(JOB, {ATTR_substate: '42'}, jid3s1)
 
         # qrerun the jobs and wait for them to start running.
         self.server.rerunjob(jobid=jid1)
@@ -371,10 +371,10 @@ class Test_Rrecord_with_resources_used(PBSTestSuite):
         jid3s1 = subjobs[1]['id']
 
         # Verify that the jobs have started running.
-        self.server.expect(JOB, {ATTR_state: 'R', 'run_count': 1}, jid1)
-        self.server.expect(JOB, {ATTR_state: 'R', 'run_count': 1}, jid2)
+        self.server.expect(JOB, {ATTR_substate: '42', 'run_count': 1}, jid1)
+        self.server.expect(JOB, {ATTR_substate: '42', 'run_count': 1}, jid2)
         self.server.expect(JOB, {ATTR_state: 'B'}, jid3)
-        self.server.expect(JOB, {ATTR_state: 'R', 'run_count': 1}, jid3s1)
+        self.server.expect(JOB, {ATTR_substate: '42', 'run_count': 1}, jid3s1)
 
         # Verify that the accounting logs have Resource_List.<resource> but no
         # R records.
@@ -475,8 +475,8 @@ class Test_Rrecord_with_resources_used(PBSTestSuite):
         jid2 = self.server.submit(j2)
 
         # Verify that the jobs have started running.
-        self.server.expect(JOB, {ATTR_state: 'R', 'run_count': 1}, jid1)
-        self.server.expect(JOB, {ATTR_state: 'R', 'run_count': 1}, jid2)
+        self.server.expect(JOB, {ATTR_substate: '42', 'run_count': 1}, jid1)
+        self.server.expect(JOB, {ATTR_substate: '42', 'run_count': 1}, jid2)
 
         # Verify that the accounting logs have Resource_List.<resource> but no
         # R records.
@@ -562,10 +562,10 @@ class Test_Rrecord_with_resources_used(PBSTestSuite):
         jid3s1 = subjobs[1]['id']
 
         # Verify that the jobs have started running.
-        self.server.expect(JOB, {ATTR_state: 'R', 'run_count': 1}, jid1)
-        self.server.expect(JOB, {ATTR_state: 'R', 'run_count': 1}, jid2)
+        self.server.expect(JOB, {ATTR_substate: '42', 'run_count': 1}, jid1)
+        self.server.expect(JOB, {ATTR_substate: '42', 'run_count': 1}, jid2)
         self.server.expect(JOB, {ATTR_state: 'B'}, jid3)
-        self.server.expect(JOB, {ATTR_state: 'R', 'run_count': 1}, jid3s1)
+        self.server.expect(JOB, {ATTR_substate: '42', 'run_count': 1}, jid3s1)
 
         # Verify that the accounting logs have Resource_List.<resource> but no
         # R records.
