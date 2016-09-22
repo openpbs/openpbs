@@ -38,10 +38,10 @@
 
 import os
 import time
-from ptl.utils.pbs_testsuite import *
+from tests.functional import *
 
 
-class TestCpusetDestroyDelay(PBSTestSuite):
+class TestCpusetDestroyDelay(TestFunctional):
 
     """
     Testing function kill_cpuset_procs() on SGI systems

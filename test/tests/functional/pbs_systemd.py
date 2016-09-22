@@ -36,11 +36,11 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 
-from ptl.utils.pbs_testsuite import *
+from tests.functional import *
 import socket
 
 
-class Test_systemd(PBSTestSuite):
+class Test_systemd(TestFunctional):
     """
     Test whether you are able to control pbs using systemd
     """

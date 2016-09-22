@@ -36,10 +36,10 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 
-from ptl.utils.pbs_testsuite import *
+from tests.functional import *
 
 
-class ExecJobHookTest(PBSTestSuite):
+class TestExecJobHook(TestFunctional):
 
     hooks = {
         "execjob_hook1":
@@ -67,7 +67,7 @@ else:
     }
 
     def setUp(self):
-        PBSTestSuite.setUp(self)
+        TestFunctional.setUp(self)
         self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047},
                             expect=True)
 

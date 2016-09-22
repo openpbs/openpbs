@@ -38,10 +38,10 @@
 
 import os
 
-from ptl.utils.pbs_testsuite import *
+from tests.performance import *
 
 
-class TestQstatPerformance(PBSTestSuite):
+class TestQstatPerformance(TestPerformance):
 
     """
     Testing Qstat Performance
@@ -54,7 +54,7 @@ class TestQstatPerformance(PBSTestSuite):
             Base class method overridding
             builds absolute path of commands to execute
         """
-        PBSTestSuite.setUp(self)
+        TestPerformance.setUp(self)
         self.time_command = self.du.which(exe="time")
         if self.time_command == "time":
             self.skipTest("Time command not found")

@@ -36,13 +36,13 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 
-from ptl.utils.pbs_testsuite import *
+from tests.functional import *
 
 
-class TestNodesQueues(PBSTestSuite):
+class TestNodesQueues(TestFunctional):
 
     def setUp(self):
-        PBSTestSuite.setUp(self)
+        TestFunctional.setUp(self)
         self.server.add_resource('foo', 'string', 'h')
 
         a = {'resources_available.ncpus': 4}
@@ -73,11 +73,11 @@ class TestNodesQueues(PBSTestSuite):
         return dict(attrib.items() + a.items())
 
     def tearDown(self):
-        PBSTestSuite.tearDown(self)
         self.server.manager(MGR_CMD_UNSET, NODE, 'queue', id='vnode[0]')
         self.server.manager(MGR_CMD_UNSET, NODE, 'queue', id='vnode[1]')
         self.server.manager(MGR_CMD_UNSET, NODE, 'queue', id='vnode[2]')
         self.server.manager(MGR_CMD_UNSET, NODE, 'queue', id='vnode[3]')
+        TestFunctional.tearDown(self)
 
     def test_node_queue_assoc_ignored(self):
         """

@@ -39,25 +39,8 @@
 from ptl.utils.pbs_testsuite import *
 
 
-class Test_qstat_tag(PBSTestSuite):
+class TestStress(PBSTestSuite):
     """
-    Test <jsdl-hpcpa:Executable> tag is dispalyed with "Executable"
-    while doing qstat -f
+    Base test suite for Stress, Load, Endurance tests
     """
-
-    def test_qstat_tag(self):
-        """
-        Test <jsdl-hpcpa:Executable> tag is dispalyed with "Executable"
-        while doing qstat -f
-        """
-        ret = True
-        j = Job(TEST_USER)
-        j.set_sleep_time(10)
-        jid = self.server.submit(j)
-        qstat_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin',
-                                 'qstat') + ' -f ' + str(jid)
-        ret = self.du.run_cmd(self.server.hostname, cmd=qstat_cmd, sudo=True)
-        if -1 != str(ret).find('Executable'):
-            if -1 == str(ret).find('<jsdl-hpcpa:Executable>'):
-                ret = False
-        self.assertTrue(ret)
+    pass

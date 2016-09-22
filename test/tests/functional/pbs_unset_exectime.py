@@ -36,48 +36,35 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 
-from ptl.utils.pbs_testsuite import *
+from tests.functional import *
 
 
-class TestPp276(PBSTestSuite):
-
+class Testunset_exectime(TestFunctional):
     """
-    This test suite contains hook test to verify that the internal,
-    swig-generated 'pbs_ifl.py' does not cause an exception.
+    Test that unsetting execution time through hooks does not throw parse error
     """
 
-    def test_hook(self):
+    def test_unset_exectime(self):
         """
-        Create a hook, import a hook content that test pbs.server() call.
+        Create a hook to unset execution time and check after submitting
+        a job no error messages are logged
         """
-        hook_name = "testhook"
+        hook_name = "exechook"
         hook_body = """
 import pbs
 e = pbs.event()
-s = pbs.server()
-if e.job.id:
-    jid = e.job.id
+if (e.type is pbs.QUEUEJOB):
+        o = e.job
+        o.Execution_Time = None
 else:
-    jid = "newjob"
-pbs.logjobmsg(jid, "server is %s" % (s.name,))
+        e.reject("unmatched event type!")
 """
-        a = {'event': 'queuejob,execjob_begin', 'enabled': 'True'}
+        a = {'event': 'queuejob', 'enabled': 'True'}
         self.server.create_import_hook(hook_name, a, hook_body)
-
+        self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047},
+                            expect=True)
         j = Job(TEST_USER)
-        a = {'Resource_List.select': '1:ncpus=1', 'Resource_List.walltime': 30}
-
-        j.set_attributes(a)
-        j.set_sleep_time(10)
-
-        try:
-            jid = self.server.submit(j)
-        except PbsSubmitError:
-            pass
-        rv = self.server.log_match("Job;%s;server is %s" % (
-            "newjob", self.server.shortname), max_attempts=3)
-        self.assertTrue(rv)
-
-        rv = self.mom.log_match("Job;%s;server is %s" % (
-            jid, self.server.shortname), max_attempts=3)
-        self.assertTrue(rv)
+        self.server.submit(j)
+        msg = "Error evaluating Python script, exec_time could not be parsed"
+        rv = self.server.log_match(msg, max_attempts=5)
+        self.assertFalse(rv)

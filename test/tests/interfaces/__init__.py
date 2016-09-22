@@ -36,29 +36,11 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 
-
 from ptl.utils.pbs_testsuite import *
-import os
-import subprocess
-from subprocess import Popen, PIPE
 
 
-class Test_pbs_python(PBSTestSuite):
+class TestInterfaces(PBSTestSuite):
     """
-    This test suite tests pbs_python executable
-    and makes sure it works fine.
+    Base test suite for Interfaces related tests
     """
-
-    def test_pbs_python(self):
-        """
-        Thi method spawns a python process using
-        pbs_python and checks for the result
-        """
-        fd, fn = tempfile.mkstemp(prefix='test', suffix='.py', text=True)
-        os.write(fd, "print \"Hello\"")
-        os.close(fd)
-        pbs_python = self.server.pbs_conf['PBS_EXEC'] + "/bin/pbs_python"
-        msg = ['Hello']
-        cmd = [pbs_python] + [fn]
-        rc = self.du.run_cmd(cmd=cmd, sudo=True)
-        self.assertEqual(rc['out'], msg)
+    pass

@@ -36,7 +36,7 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 
-from ptl.utils.pbs_testsuite import *
+from tests.functional import *
 
 import os
 import time
@@ -52,7 +52,7 @@ test_job_scripts = ["eatmem.py",
                     "eatmem.c"]
 
 
-class CgroupsTests(PBSTestSuite):
+class TestCgroups(TestFunctional):
 
     """
     This tests Linux Cgroups functionality.
@@ -64,7 +64,7 @@ class CgroupsTests(PBSTestSuite):
 
     def setUp(self):
 
-        PBSTestSuite.setUp(self)
+        TestFunctional.setUp(self)
         self.server.set_op_mode(PTL_CLI)
         self.server.expect(SERVER, {'pbs_version': (MATCH_RE, '.*14.*')})
         self.clean_hooks()
@@ -721,7 +721,7 @@ class CgroupsTests(PBSTestSuite):
         self.server.manager(MGR_CMD_SET, SERVER, a, expect=True)
         self.clean_hooks()
         self.clean_job_scripts()
-        PBSTestSuite.tearDown(self)
+        TestFunctional.tearDown(self)
 
 script_1 = """#!/bin/bash
 if [ -d /cgroup/cpuset/pbspro/$PBS_JOBID ]; then

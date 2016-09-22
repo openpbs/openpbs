@@ -39,32 +39,8 @@
 from ptl.utils.pbs_testsuite import *
 
 
-class Testunset_exectime(PBSTestSuite):
+class TestUpgrades(PBSTestSuite):
     """
-    Test that unsetting execution time through hooks does not throw parse error
+    Base test suite for Upgrades tests
     """
-
-    def test_unset_exectime(self):
-        """
-        Create a hook to unset execution time and check after submitting
-        a job no error messages are logged
-        """
-        hook_name = "exechook"
-        hook_body = """
-import pbs
-e = pbs.event()
-if (e.type is pbs.QUEUEJOB):
-        o = e.job
-        o.Execution_Time = None
-else:
-        e.reject("unmatched event type!")
-"""
-        a = {'event': 'queuejob', 'enabled': 'True'}
-        self.server.create_import_hook(hook_name, a, hook_body)
-        self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047},
-                            expect=True)
-        j = Job(TEST_USER)
-        self.server.submit(j)
-        msg = "Error evaluating Python script, exec_time could not be parsed"
-        rv = self.server.log_match(msg, max_attempts=5)
-        self.assertFalse(rv)
+    pass

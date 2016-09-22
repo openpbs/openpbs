@@ -36,11 +36,11 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 
-from ptl.utils.pbs_testsuite import *
+from tests.functional import *
 import re
 
 
-class Test_Rrecord_with_resources_used(PBSTestSuite):
+class Test_Rrecord_with_resources_used(TestFunctional):
 
     """
     This test suite tests whether the 'R' record in accounting logs has
@@ -53,7 +53,7 @@ class Test_Rrecord_with_resources_used(PBSTestSuite):
     """
 
     def setUp(self):
-        PBSTestSuite.setUp(self)
+        TestFunctional.setUp(self)
 
         if len(self.moms) != 2:
             self.skipTest('test requires two MoMs as input, ' +
@@ -636,4 +636,4 @@ class Test_Rrecord_with_resources_used(PBSTestSuite):
         self.assertNotEqual(m, None)
 
     def tearDown(self):
-        PBSTestSuite.tearDown(self)
+        TestFunctional.tearDown(self)

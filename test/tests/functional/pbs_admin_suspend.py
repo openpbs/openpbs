@@ -37,16 +37,16 @@
 # trademark licensing policies.
 
 import time
-from ptl.utils.pbs_testsuite import *
+from tests.functional import *
 
 
-class TestAdminSuspend(PBSTestSuite):
+class TestAdminSuspend(TestFunctional):
     """
     Test the admin-suspend/admin-resume feature for node maintenance
     """
 
     def setUp(self):
-        PBSTestSuite.setUp(self)
+        TestFunctional.setUp(self)
         a = {'resources_available.ncpus': 4, 'resources_available.mem': '4gb'}
         self.server.create_vnodes('vn', a, 1, self.mom)
 

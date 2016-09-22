@@ -36,17 +36,17 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 
-from ptl.utils.pbs_testsuite import *
+from tests.functional import *
 
 
-class TestOnlySmallFilesOverTPP(PBSTestSuite):
+class TestOnlySmallFilesOverTPP(TestFunctional):
     """
     This test suite is for testing that only smaller spool files (size < 2MB)
     are sent over TPP and larger files are sent by forking.
     """
 
     def setUp(self):
-        PBSTestSuite.setUp(self)
+        TestFunctional.setUp(self)
 
         if len(self.moms) != 2:
             self.logger.error('test requires two MoMs as input, ' +

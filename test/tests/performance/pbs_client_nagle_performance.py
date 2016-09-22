@@ -38,10 +38,10 @@
 
 import os
 
-from ptl.utils.pbs_testsuite import *
+from tests.performance import *
 
 
-class TestClientNagles(PBSTestSuite):
+class TestClientNagles(TestPerformance):
 
     """
     Testing the effect of Nagles algorithm on CLI Performance
@@ -53,7 +53,7 @@ class TestClientNagles(PBSTestSuite):
             Base class method overridding
             builds absolute path of commands to execute
         """
-        PBSTestSuite.setUp(self)
+        TestPerformance.setUp(self)
         self.time_command = self.du.which(exe="time")
         if self.time_command == "time":
             self.skipTest("Time command not found")

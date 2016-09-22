@@ -36,7 +36,7 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 
-from ptl.utils.pbs_testsuite import *
+from tests.functional import *
 
 hook_body = """
 import pbs
@@ -49,7 +49,7 @@ j.comment = "Modified this job"
 """
 
 
-class TestPp352(PBSTestSuite):
+class TestHookUnsetRes(TestFunctional):
 
     def test_modifyjob_hook(self):
         """

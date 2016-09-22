@@ -36,57 +36,62 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 
-import os
-import string
+from tests.functional import *
 import time
 
-from ptl.utils.pbs_testsuite import *
 
+class TestReservations(TestFunctional):
 
-class Test_strict_ordering_without_backfill(PBSTestSuite):
-
-    """
-    Test strict ordering when backfilling is truned off
-    """
-    @timeout(1800)
-    def test_t1(self):
+    def test_not_honoring_resvs(self):
+        """
+        PBS schedules jobs on nodes without accounting
+        for the reservation on the node
+        """
 
         a = {'resources_available.ncpus': 4}
         self.server.create_vnodes('vn', a, 1, self.mom, usenatvnode=True)
 
-        rv = self.scheduler.set_sched_config(
-            {'round_robin': 'false all', 'by_queue': 'false prime',
-             'by_queue': 'false non_prime', 'strict_ordering': 'true all',
-             'help_starving_jobs': 'false all'})
-        self.assertTrue(rv)
+        r1 = Reservation(TEST_USER)
+        a = {'Resource_List.select': '1:ncpus=1', 'reserve_start': int(
+            time.time() + 5), 'reserve_end': int(time.time() + 15)}
+        r1.set_attributes(a)
+        r1id = self.server.submit(r1)
+        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, a, r1id)
 
-        a = {'backfill_depth': 0}
-        rv = self.server.manager(MGR_CMD_SET, SERVER, a, expect=True)
-        self.assertTrue(rv)
+        r2 = Reservation(TEST_USER)
+        a = {'Resource_List.select': '1:ncpus=4', 'reserve_start': int(
+            time.time() + 600), 'reserve_end': int(time.time() + 7800)}
+        r2.set_attributes(a)
+        r2id = self.server.submit(r2)
+        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, a, r2id)
+
+        r1_que = r1id.split('.')[0]
+        for i in range(20):
+            j = Job(TEST_USER)
+            a = {'Resource_List.select': '1:ncpus=1',
+                 'Resource_List.walltime': 10, 'queue': r1_que}
+            j.set_attributes(a)
+            self.server.submit(j)
 
         j1 = Job(TEST_USER)
-        a = {'Resource_List.select': '1:ncpus=2',
-             'Resource_List.walltime': 9999}
-        j1.set_sleep_time(9999)
+        a = {'Resource_List.select': '1:ncpus=1',
+             'Resource_List.walltime': 7200}
         j1.set_attributes(a)
-        j1 = self.server.submit(j1)
+        j1id = self.server.submit(j1)
 
         j2 = Job(TEST_USER)
-        a = {'Resource_List.select': '1:ncpus=3',
-             'Resource_List.walltime': 9999}
-        j2.set_sleep_time(9999)
+        a = {'Resource_List.select': '1:ncpus=1',
+             'Resource_List.walltime': 7200}
         j2.set_attributes(a)
-        j2 = self.server.submit(j2)
+        j2id = self.server.submit(j2)
 
-        j3 = Job(TEST_USER)
-        a = {'Resource_List.select': '1:ncpus=2',
-             'Resource_List.walltime': 9999}
-        j3.set_sleep_time(9999)
-        j3.set_attributes(a)
-        j3 = self.server.submit(j3)
-        try:
-            _comment = 'Not Running: Job would break strict sorted order'
-            rv = self.server.expect(JOB, {'comment': _comment}, id=j3,
-                                    offset=2, max_attempts=2, interval=2)
-        except PtlExpectError, e:
-            self.assertTrue(False)
+        a = {'reserve_state': (MATCH_RE, "RESV_BEING_DELETED|7")}
+        self.server.expect(RESV, a, id=r1id, interval=1)
+
+        a = {'scheduling': 'True'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        self.server.expect(JOB, {'job_state': 'Q'}, id=j1id)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=j2id)
