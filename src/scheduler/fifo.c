@@ -1216,8 +1216,7 @@ run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int throughput, schd_e
 				rjob->server->name);
 		}
 
-		if (pbs_sd != SIMULATE_SD)
-			rc = pbs_movejob(rjob->job->peer_sd, rjob->name, buf, NULL);
+		rc = pbs_movejob(rjob->job->peer_sd, rjob->name, buf, NULL);
 
 		/*
 		 * After successful transfer of the peer job to local server,
@@ -1229,33 +1228,32 @@ run_job(int pbs_sd, resource_resv *rjob, char *execvnode, int throughput, schd_e
 	}
 
 	if (!rc) {
-		if (pbs_sd != SIMULATE_SD) {
-			if (rjob->is_shrink_to_fit) {
-				char timebuf[TIMEBUF_SIZE] = {0};
-				rc = 1;
-				/* The job is set to run, update it's walltime only if it is not a foerever job */
-				if (rjob->duration != JOB_INFINITY) {
-					convert_duration_to_str(rjob->duration, timebuf, TIMEBUF_SIZE);
-					rc = update_job_attr(pbs_sd, rjob, ATTR_l, "walltime", timebuf, NULL, UPDATE_NOW);
+		if ((pbs_sd == SIMULATE_SD) ||
+			!(rjob->is_shrink_to_fit)) {
+			if (throughput)
+				rc = pbs_asyrunjob(pbs_sd, rjob->name, execvnode, NULL);
+			else
+				rc = pbs_runjob(pbs_sd, rjob->name, execvnode, NULL);
+		} else {
+			char timebuf[TIMEBUF_SIZE] = {0};
+			rc = 1;
+			/* The job is set to run, update it's walltime only if it is not a foerever job */
+			if (rjob->duration != JOB_INFINITY) {
+				convert_duration_to_str(rjob->duration, timebuf, TIMEBUF_SIZE);
+				rc = update_job_attr(pbs_sd, rjob, ATTR_l, "walltime", timebuf, NULL, UPDATE_NOW);
+			}
+			if (rc > 0) {
+				if (strlen(timebuf) > 0) {
+					char logbuf[MAX_LOG_SIZE];
+					snprintf(logbuf, MAX_LOG_SIZE, "Job will run for duration=%s", timebuf);
+					schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_NOTICE, rjob->name, logbuf);
 				}
-				if (rc > 0) {
-					if (strlen(timebuf) > 0) {
-						char logbuf[MAX_LOG_SIZE];
-						snprintf(logbuf, MAX_LOG_SIZE, "Job will run for duration=%s", timebuf);
-						schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_NOTICE, rjob->name, logbuf);
-					}
-					if (throughput)
-						rc = pbs_asyrunjob(pbs_sd, rjob->name, execvnode, NULL);
-					else
-						rc = pbs_runjob(pbs_sd, rjob->name, execvnode, NULL);
-				}
-			} else {
 				if (throughput)
 					rc = pbs_asyrunjob(pbs_sd, rjob->name, execvnode, NULL);
 				else
 					rc = pbs_runjob(pbs_sd, rjob->name, execvnode, NULL);
 			}
-		} 
+		}
 	}
 
 	if (rc) {
@@ -1383,12 +1381,8 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 
 	pbs_errno = PBSE_NONE;
 	if (resresv->is_job && resresv->job->is_suspended) {
-		if (pbs_sd != SIMULATE_SD) {
-			pbsrc = pbs_sigjob(pbs_sd, resresv->name, "resume", NULL);
-			if (!pbsrc)
-				ret = 1;
-		}
-		else 
+		pbsrc = pbs_sigjob(pbs_sd, resresv->name, "resume", NULL);
+		if (!pbsrc)
 			ret = 1;
 		
 		rr = resresv;
