@@ -57,7 +57,7 @@ pbs_encrypt_data(char *uncrypted, int *credtype, size_t len, char **crypted, siz
 
         *crypted = cblk;
         *outlen = plen + len2;
-        *credtype = 1;
+        *credtype = PBS_CREDTYPE_AES;
 
         return 0;
 }

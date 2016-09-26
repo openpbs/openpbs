@@ -293,7 +293,7 @@ main(int argc, char *argv[])
 		}
 
 
-		ret = PBSD_ucred(con, the_user, PBS_CREDTYPE_NONE, NULL, 0);
+		ret = PBSD_ucred(con, the_user, PBS_CREDTYPE_AES, NULL, 0);
 
 		if (ret != 0) {
 
