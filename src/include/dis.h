@@ -204,6 +204,8 @@ extern void DIS_tcp_funcs(void);
 extern void DIS_tcp_reset(int fd, int rw);
 extern void DIS_tcp_setup(int fd);
 extern int  DIS_tcp_wflush(int fd);
+extern void DIS_tcp_release(int fd);
+extern void DIS_tcp_release(int fd);
 
 int diswull(int stream, u_Long value);
 u_Long disrull(int stream, int *retval);

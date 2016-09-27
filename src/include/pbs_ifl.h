@@ -168,6 +168,8 @@ extern "C" {
 #define ATTR_sample_starttime	"sample_starttime"
 #define ATTR_job_kill_delay	"job_kill_delay"
 #define ATTR_topjob_ineligible "topjob_ineligible"
+#define ATTR_krb_princ "krb_princ"
+#define ATTR_job_host "Job_Host"
 #define ATTR_history_timestamp	"history_timestamp"
 /* Added for finished jobs RFE */
 #define ATTR_stageout_status    "Stageout_status"
@@ -222,6 +224,9 @@ extern "C" {
 #define ATTR_count	"state_count"
 #define ATTR_number	"number_jobs"
 #define ATTR_jobscript_max_size "jobscript_max_size"
+#define ATTR_acl_krb_realm_enable "acl_krb_realm_enable"
+#define ATTR_acl_krb_realms "acl_krb_realms"
+#define ATTR_krb_realm_submit_acl "krb_realm_submit_acl"
 #ifdef NAS
 /* localmod 046 */
 #define	ATTR_maxstarve	"max_starve"

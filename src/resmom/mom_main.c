@@ -115,6 +115,8 @@
 #include	"pbs_share.h"
 #include	"mom_server.h"
 
+#include	"renew.h"
+
 #define STATE_UPDATE_TIME 10
 #ifndef	PRIO_MAX
 #define		PRIO_MAX	20
@@ -6189,8 +6191,14 @@ kill_job(job *pjob, int sig)
 			ptask->ti_qs.ti_task, ptask->ti_qs.ti_status))
 		if (ptask->ti_qs.ti_status != TI_STATE_RUNNING)
 			continue;
-		tsk_ct = kill_task(ptask, sig, 0);
+		tsk_ct = kill_task(ptask, sig, 0);	
 		ct += tsk_ct;
+		
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+		// only stop renewal when the task is finally dying
+		if (sig == SIGKILL)
+			stop_renewal(ptask);
+#endif
 
 		/*
 		 ** If this is an orphan task, force it to be EXITED
@@ -6213,6 +6221,10 @@ kill_job(job *pjob, int sig)
 			 */
 			if (ptask->ti_qs.ti_parenttask == TM_NULL_TASK)
 				exiting_tasks = 1;
+
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)			
+			stop_renewal(ptask);
+#endif
 		}
 	}
 	DBPRT(("%s: done %s killed %d\n", __func__, pjob->ji_qs.ji_jobid, ct))

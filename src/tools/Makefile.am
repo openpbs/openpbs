@@ -57,10 +57,11 @@ EXTRA_PROGRAMS = \
 common_libs = \
 	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
 	-lpthread \
-	@socket_lib@
+	@socket_lib@ \
+	@KRB5_LIBS@
 
 chk_tree_CPPFLAGS = -I$(top_srcdir)/src/include
-chk_tree_LDADD = ${common_libs}
+chk_tree_LDADD = ${common_libs} 
 chk_tree_SOURCES = chk_tree.c
 
 pbs_ds_monitor_CPPFLAGS = -I$(top_srcdir)/src/include
@@ -74,7 +75,8 @@ pbs_ds_monitor_LDADD = \
 	@database_ldflags@ \
 	@database_lib@ \
 	-lssl \
-	-lcrypto
+	-lcrypto \
+	@KRB5_LIBS@
 
 pbs_ds_monitor_SOURCES = pbs_ds_monitor.c
 
@@ -97,6 +99,7 @@ pbs_probe_SOURCES = pbs_probe.c
 pbs_python_CPPFLAGS =  \
 	-I$(top_srcdir)/src/include \
 	@PYTHON_INCLUDES@
+	
 pbs_python_LDADD = \
 	$(top_builddir)/src/lib/Libpython/libpbspython.a \
 	$(top_builddir)/src/lib/Libpython/libpbspython_svr.a \
@@ -108,7 +111,9 @@ pbs_python_LDADD = \
 	-lpthread \
 	@socket_lib@ \
 	@PYTHON_LDFLAGS@ \
-	@PYTHON_LIBS@
+	@PYTHON_LIBS@ \
+	@KRB5_LIBS@
+	
 pbs_python_SOURCES = \
 	$(top_builddir)/src/server/job_attr_def.c \
 	$(top_builddir)/src/server/node_attr_def.c \
@@ -134,7 +139,9 @@ pbs_tclsh_LDADD = \
 	$(top_builddir)/src/lib/Libutil/libutil.a \
 	-lpthread \
 	@socket_lib@ \
-	@tcl_lib@
+	@tcl_lib@ \
+	@KRB5_LIBS@
+	
 pbs_tclsh_SOURCES = \
 	pbs_tclWrap.c \
 	site_tclWrap.c \
@@ -153,7 +160,9 @@ pbs_wish_LDADD = \
 	$(top_builddir)/src/lib/Libnet/libnet.a \
 	-lpthread \
 	@socket_lib@ \
-	@tk_lib@
+	@tk_lib@ \
+	@KRB5_LIBS@
+	
 pbs_wish_SOURCES = \
 	pbs_tclWrap.c \
 	site_tclWrap.c \
@@ -177,7 +186,8 @@ printjob_svr_bin_LDADD = \
 	@database_ldflags@ \
 	@database_lib@ \
 	-lssl \
-	-lcrypto
+	-lcrypto \
+	@KRB5_LIBS@
 
 printjob_svr_bin_SOURCES = printjob.c
 

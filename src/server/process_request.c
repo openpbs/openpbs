@@ -142,6 +142,8 @@ static void freebr_cpyfile(struct rq_cpyfile *);
 static void freebr_cpyfile_cred(struct rq_cpyfile_cred *);
 static void close_quejob(int sfds);
 
+int req_gssauthenuser (struct batch_request *preq, int sock);
+
 #ifdef	PBS_CRED_DCE_KRB5
 
 /* helper function: convert flags to necessary KDC options */
@@ -543,9 +545,8 @@ process_request(int sfds)
 		req_reject(PBSE_BADHOST, 0, request);
 		return;
 	}
-
+        
 #ifndef PBS_MOM
-
 	if (svr_conn[conn_idx].cn_active == FromClientDIS) {
 		rc = dis_request_read(sfds, request);
 	} else {
@@ -585,6 +586,28 @@ process_request(int sfds)
 		close_client(sfds);
 		return;
 	}
+        
+#ifndef PBS_MOM
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	strcpy(svr_conn[sfds].cn_physhost,request->rq_host);
+	
+        if (request->rq_type == PBS_BATCH_GSSAuthenUser) {
+                log_event(PBSEVENT_DEBUG | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__,"Received GSSAuthenUser.");
+            
+                if (req_gssauthenuser(request,sfds) < 0) {
+                        log_event(PBSEVENT_DEBUG | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__,"Authentication failed.");
+                        req_reject(PBSE_BADCRED, 0, request);
+                        return;
+                }
+            
+                log_event(PBSEVENT_DEBUG | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__,"Authentication succeeded.");
+        } else if ((svr_conn[sfds].cn_authen & PBS_NET_CONN_GSSAPIAUTH) != 0) {
+		strcpy(request->rq_user,svr_conn[sfds].cn_username);
+		strcpy(request->rq_host,svr_conn[sfds].cn_hostname);
+		
+	}
+#endif
+#endif
 
 #ifndef PBS_MOM
 	/* If the request is coming on the socket we opened to the  */
@@ -612,8 +635,28 @@ process_request(int sfds)
 			req_reject(PBSE_BADCRED, 0, request);
 		return;
 	}
-
+        
 #ifndef PBS_MOM
+	int access_by_krb = 0;
+	
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	if ((svr_conn[sfds].cn_authen & PBS_NET_CONN_GSSAPIAUTH) != 0) {
+		
+		if (server.sv_attr[(int)SRV_ATR_acl_krb_realm_enable].at_val.at_long) {
+			
+			if (acl_check(&server.sv_attr[(int)SRV_ATR_acl_krb_realms], svr_conn[sfds].cn_principal,ACL_Host) == 0) {
+				req_reject(PBSE_BADHOST, 0, request);
+				close_client(sfds);
+				return;
+			}
+		}
+		
+		// this principal is allowed to access the server
+		access_by_krb = 1;
+	}
+#endif
+	
+	if (access_by_krb == 0)
 	if (server.sv_attr[(int)SRV_ATR_acl_host_enable].at_val.at_long) {
 		/* acl enabled, check it; always allow myself	*/
 		
@@ -663,7 +706,7 @@ process_request(int sfds)
 			req_connect(request);
 			return;
 		}
-
+       
 		if ((svr_conn[conn_idx].cn_authen & PBS_NET_CONN_AUTHENTICATED) ==0) {
 			rc = PBSE_BADCRED;
 		} else {
@@ -720,6 +763,9 @@ process_request(int sfds)
 	 * The processing function must call reply_send() to free
 	 * the request struture.
 	 */
+        
+        if (request->rq_type == PBS_BATCH_GSSAuthenUser)
+            return;
 
 	dispatch_request(sfds, request);
 	return;

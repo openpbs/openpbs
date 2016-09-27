@@ -583,7 +583,7 @@ issue_Drequest(int conn,
 			rc=encode_DIS_CopyFiles(sock, request);
 			if (rc != 0)
 				break;
-			rc=encode_DIS_ReqExtend(sock, 0);
+			rc=encode_DIS_ReqExtend(sock, get_job_principal(request->rq_ind.rq_cpyfile.rq_jobid));
 			if (rc != 0)
 				break;
 			rc = DIS_wflush(sock, rpp);

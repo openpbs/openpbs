@@ -37,7 +37,7 @@
 
 lib_LTLIBRARIES = libpbs.la
 
-libpbs_la_CPPFLAGS = -I$(top_srcdir)/src/include
+libpbs_la_CPPFLAGS = -I$(top_srcdir)/src/include @KRB5_CFLAGS@
 
 #
 # There are specific rules that must be followed when updating the library
@@ -45,7 +45,7 @@ libpbs_la_CPPFLAGS = -I$(top_srcdir)/src/include
 # to the following article prior to modifying the library version:
 # https://autotools.io/libtool/version.html
 #
-libpbs_la_LDFLAGS = -version-info 0:0:0
+libpbs_la_LDFLAGS = -version-info 0:0:0 @KRB5_LIBS@
 
 libpbs_la_SOURCES = \
 	../Libattr/attr_fn_arst.c \
@@ -244,6 +244,7 @@ libpbs_la_SOURCES = \
 	../Libifl/pbsD_confirmresv.c \
 	../Libifl/pbsD_defschreply.c \
 	../Libifl/pbsD_statrsc.c \
+	../Libifl/pbsgss.c \
 	../Libifl/rpp.c \
 	../Libifl/strsep.c \
 	../Libifl/tcp_dis.c \

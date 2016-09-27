@@ -127,4 +127,7 @@ ATTR_resv_post_processing,
 ATTR_backfill_depth,
 ATTR_job_requeue_timeout,
 ATTR_jobscript_max_size,
+ATTR_acl_krb_realm_enable,
+ATTR_acl_krb_realms,
+ATTR_krb_realm_submit_acl,
 #endif	/* _QMGR_SVR_PUBLIC_H */

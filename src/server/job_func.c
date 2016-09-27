@@ -210,6 +210,25 @@ tasks_free(job *pj)
 	}
 }
 #else	/* PBS_MOM */
+
+char *get_job_principal(char *jobid)
+  {
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+  job *pjob;
+
+  if ((pjob = find_job(jobid)) == NULL)
+    return NULL;
+
+  if ((pjob->ji_wattr[(int)JOB_ATR_krb_princ].at_flags & ATR_VFLAG_SET) != 0)
+    {
+    return pjob->ji_wattr[(int)JOB_ATR_krb_princ].at_val.at_str;
+    }
+#endif
+  
+  return NULL;
+  }
+
+
 /**
  * @brief
  * 		job_abt - abort a job

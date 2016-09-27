@@ -61,6 +61,7 @@ typedef unsigned long pbs_net_t;        /* for holding host addresses */
 #define PBS_NET_CONN_NOTIMEOUT	   0x04
 #define PBS_NET_CONN_FROM_QSUB_DAEMON	0x08
 #define PBS_NET_CONN_FORCE_QSUB_UPDATE	0x10
+#define PBS_NET_CONN_GSSAPIAUTH 0x20
 
 #define	QSUB_DAEMON	"qsub-daemon"
 
@@ -190,6 +191,10 @@ int connection_init(void);
 char *build_addr_string(pbs_net_t);
 int set_nodelay(int fd);
 
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+#include <gssapi.h>
+#endif
+
 struct connection {
 	int		cn_sock;	/* socket descriptor */
 	pbs_net_t	cn_addr;	/* internet address of client */
@@ -207,5 +212,10 @@ struct connection {
 	void 		*cn_data;         /* pointer to some data for cn_func */
 	char		cn_username[PBS_MAXUSER];
 	char		cn_hostname[PBS_MAXHOSTNAME+1];
+
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+        char            *cn_principal;
+        char            cn_physhost[PBS_MAXHOSTNAME+1];
+#endif
 };
 #endif	/* _NET_CONNECT_H */

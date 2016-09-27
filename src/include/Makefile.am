@@ -71,6 +71,7 @@ noinst_HEADERS = \
 	mom_server.h \
 	mom_vnode.h \
 	net_connect.h \
+	pbsgss.h \
 	pbs_array_list.h \
 	pbs_assert.h \
 	pbs_client_thread.h \

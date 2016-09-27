@@ -95,6 +95,8 @@
 #include "placementsets.h"
 #include "pbs_internal.h"
 
+#include "renew.h"
+
 
 #define EXTRA_ENV_PTRS	       32
 
@@ -2188,6 +2190,11 @@ finish_exec(job *pjob)
 		log_err(ENOMEM, __func__, "out of memory");
 		starter_return(upfds, downfds, JOB_EXEC_FAIL1, &sjr);
 	}
+	
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+        if (start_renewal(ptask,pipe_script[0],pipe_script[1]) != PBSGSS_OK)
+            starter_return(upfds, downfds, JOB_EXEC_FAIL_KRB5, &sjr);
+#endif
 
 	/*  First variables from the local environment */
 
@@ -3419,6 +3426,11 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 	if (vtable.v_envp == NULL) {
 		return PBSE_SYSTEM;
 	}
+	
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	if (start_renewal(ptask,kid_write,kid_read) != PBSGSS_OK)
+		starter_return(kid_write, kid_read, JOB_EXEC_FAIL_KRB5, &sjr);
+#endif
 
 	/* First variables from the local environment */
 	for (j = 0; j < num_var_env; ++j)
