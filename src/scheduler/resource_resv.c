@@ -343,12 +343,22 @@ dup_resource_resv(resource_resv *oresresv,
 	server_info *nsinfo, queue_info *nqinfo)
 {
 	resource_resv *nresresv;
+	static schd_error *err;
 
 	if (oresresv == NULL || nsinfo == NULL)
 		return NULL;
+	
+	if (err == NULL) {
+		err = new_schd_error();
+		if (err == NULL)
+			return NULL;
+	} else
+		clear_schd_error(err);
 
-	if (!is_resource_resv_valid(oresresv, NULL))
+	if (!is_resource_resv_valid(oresresv, err)) {
+		schdlogerr(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SCHED, LOG_DEBUG, oresresv->name, "Can't dup resresv", err);
 		return NULL;
+	}
 
 	nresresv = new_resource_resv();
 
@@ -458,7 +468,8 @@ dup_resource_resv(resource_resv *oresresv,
 	nresresv->share_type = oresresv->share_type;
 #endif /* localmod 034 */
 
-	if (!is_resource_resv_valid(nresresv, NULL)) {
+	if (!is_resource_resv_valid(nresresv, err)) {
+		schdlogerr(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SCHED, LOG_DEBUG, oresresv->name, "Failed to dup resresv", err);
 		free_resource_resv(nresresv);
 		return NULL;
 	}
@@ -899,8 +910,6 @@ find_alloc_resource_req(resource_req *reqlist, resdef *def)
 	if (def == NULL)
 		return NULL;
 
-	req = reqlist;
-
 	for (req = reqlist; req != NULL && req->def != def; req = req->next) {
 		prev = req;
 	}
@@ -939,8 +948,6 @@ find_alloc_resource_req_by_str(resource_req *reqlist, char *name)
 
 	if (name == NULL)
 		return NULL;
-
-	req = reqlist;
 
 	for (req = reqlist; req != NULL && strcmp(req->name, name); req = req->next) {
 		prev = req;
@@ -1526,7 +1533,7 @@ copy_resresv_array(resource_resv **resresv_arr,
 		;
 
 	new_resresv_arr =
-		(resource_resv **) malloc((size + 1) * sizeof(resource_resv **));
+		(resource_resv **) malloc((size + 1) * sizeof(resource_resv *));
 	if (new_resresv_arr == NULL) {
 		schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 			"copy_resresv_array",  "not enough memory.");
@@ -1967,11 +1974,13 @@ compare_non_consumable(schd_resource *res, resource_req *req)
 	if (!req->type.is_non_consumable)
 		return 0;
 
-	if (res != NULL && !res->type.is_non_consumable)
-		return 0;
+	if (res != NULL) {
+		if (!res->type.is_non_consumable)
+			return 0;
 
-	if (res->type.is_string && res->str_avail ==NULL)
-		return 0;
+		if (res->type.is_string && res->str_avail == NULL)
+			return 0;
+	}
 
 	/* successful boolean match: (req = request res = resource on object)
 	 * req: True  res: True
@@ -2019,7 +2028,7 @@ create_select_from_nspec(nspec **nspec_array)
 	resource_req *req;
 	int i;
 
-	if (nspec_array == NULL)
+	if (nspec_array == NULL || nspec_array[0] == NULL)
 		return NULL;
 
 	/* convert form (node:foo=X:bar=Y) into 1:vnode=node:foo=X:bay=Y*/

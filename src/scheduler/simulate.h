@@ -440,6 +440,18 @@ int
 generic_sim(event_list *calendar, unsigned int event_mask, time_t end, int default_ret,
 	int (*func)(timed_event*, void*, void*), void *arg1, void *arg2);
 
+
+te_list *new_te_list();
+
+te_list *dup_te_list(te_list *ote, timed_event *new_timed_event_list);
+te_list *dup_te_lists(te_list *ote, timed_event *new_timed_event_list);
+
+void free_te_list(te_list *tel);
+
+int add_te_list(te_list **tel, timed_event *te);
+int remove_te_list(te_list **tel, timed_event *e);
+
+
 #ifdef	__cplusplus
 }
 #endif

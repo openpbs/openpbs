@@ -148,6 +148,7 @@
 #include "pbs_internal.h"
 #include "server_info.h"
 #include "pbs_share.h"
+#include "pbs_bitmap.h"
 #ifdef NAS
 #include "site_code.h"
 #endif
@@ -386,6 +387,10 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 					ninfo = NULL;
 					break;
 				}
+
+				/* Round memory off to the nearest megabyte */
+				if(res->def == getallres(RES_MEM))
+					res->avail -= (long) res->avail % 1024;
 #ifdef NAS /* localmod 034 */
 				site_set_node_share(ninfo, res);
 #endif /* localmod 034 */
@@ -531,6 +536,10 @@ new_node_info()
 
 	new->svr_node = NULL;
 	new->hostset = NULL;
+	
+	new->node_events = NULL;
+	new->bucket_ind = -1;
+	new->node_ind = -1;
 
 	memset(&new->nscr, 0, sizeof(node_scratch));
 
@@ -615,6 +624,9 @@ free_node_info(node_info *ninfo)
 
 		if (ninfo->nodesig != NULL)
 			free(ninfo->nodesig);
+		
+		if(ninfo->node_events != NULL)
+			free_te_list(ninfo->node_events);
 
 		if (ninfo->partition != NULL)
 			free(ninfo->partition);
@@ -1299,6 +1311,9 @@ dup_node_info(node_info *onode, server_info *nsinfo,
 		nnode->hostset = find_node_partition_by_rank(nsinfo->hostsets,
 			onode->hostset->rank);
 
+	nnode->bucket_ind = onode->bucket_ind;
+	nnode->node_ind = onode->node_ind;
+	
 	nnode->nscr = onode->nscr;
 
 #ifdef NAS /* localmod 049 */
@@ -1361,7 +1376,7 @@ copy_node_ptr_array(node_info  **oarr, node_info  **narr)
 			ninfo = sinfo->nodes_by_NASrank[oarr[i]->NASrank];
 		else
 #endif /* localmod 049 */
-		ninfo = find_node_by_rank(narr, oarr[i]->rank);
+		ninfo = find_node_by_indrank(narr, oarr[i]->node_ind, oarr[i]->rank);
 
 		if (ninfo == NULL) {
 			free(ninfo_arr);
@@ -1554,13 +1569,13 @@ collect_jobs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int si
 void
 update_node_on_run(nspec *ns, resource_resv *resresv, char *job_state)
 {
-	resource_req *resreq = NULL;
-	schd_resource *res = NULL;
+	resource_req *resreq;
 	schd_resource *ncpusres = NULL;
 	counts *cts;
 	resource_resv **tmp_arr;
 	node_info *ninfo;
-
+	timed_event *te;
+	
 	if (ns == NULL || resresv == NULL)
 		return;
 
@@ -1602,6 +1617,8 @@ update_node_on_run(nspec *ns, resource_resv *resresv, char *job_state)
 	}
 	while (resreq != NULL) {
 		if (resreq->type.is_consumable) {
+			schd_resource *res;
+
 			res = find_resource(ninfo->res, resreq->def);
 
 			if (res != NULL) {
@@ -1676,6 +1693,33 @@ update_node_on_run(nspec *ns, resource_resv *resresv, char *job_state)
 			}
 		}
 	}
+	
+	for(te = resresv->server->calendar->next_event; te != NULL; te = te->next) {
+		if(te->event_type & TIMED_RUN_EVENT) {
+			if(te->event_ptr == resresv)
+				break;
+		}
+	}
+	
+	remove_te_list(&ninfo->node_events, te);
+
+	if (ninfo->bucket_ind != -1) {
+		node_bucket *bkt = ninfo->server->buckets[ninfo->bucket_ind];
+		int ind = ninfo->node_ind;
+
+		if (pbs_bitmap_get_bit(bkt->free_pool->truth, ind)) {
+			pbs_bitmap_bit_off(bkt->free_pool->truth, ind);
+			bkt->free_pool->truth_ct--;
+		} else {
+			pbs_bitmap_bit_off(bkt->busy_later_pool->truth, ind);
+			bkt->busy_later_pool->truth_ct--;
+		}
+
+		pbs_bitmap_bit_on(bkt->busy_pool->truth, ind);
+		bkt->busy_pool->truth_ct++;
+	}
+
+
 }
 
 /**
@@ -1700,6 +1744,7 @@ update_node_on_end(node_info *ninfo, resource_resv *resresv, char *job_state)
 	counts *cts;
 	nspec *ns;		/* nspec from resresv for this node */
 	char logbuf[MAX_LOG_SIZE];
+	int ind;
 	int i;
 
 	if (ninfo == NULL || resresv == NULL || resresv->nspec_arr == NULL)
@@ -1787,6 +1832,23 @@ update_node_on_end(node_info *ninfo, resource_resv *resresv, char *job_state)
 			}
 		}
 	}
+	
+	ind = ninfo->node_ind;
+	if (ind != -1) {
+		node_bucket *bkt = ninfo->server->buckets[ninfo->bucket_ind];
+
+		if (ninfo->node_events == NULL) {
+			pbs_bitmap_bit_on(bkt->free_pool->truth, ind);
+			bkt->free_pool->truth_ct++;
+		} else {
+			pbs_bitmap_bit_on(bkt->busy_later_pool->truth, ind);
+			bkt->busy_later_pool->truth_ct++;
+		}
+		pbs_bitmap_bit_off(bkt->busy_pool->truth, ind);
+		bkt->busy_pool->truth_ct--;
+	}
+
+
 }
 
 /**
@@ -1934,7 +1996,7 @@ dup_nspec(nspec *ons, node_info **ninfo_arr)
 		nns->ninfo = sinfo->nodes_by_NASrank[ons->ninfo->NASrank];
 	else
 #endif /* localmod 049 */
-	nns->ninfo = find_node_by_rank(ninfo_arr, ons->ninfo->rank);
+	nns->ninfo = find_node_by_indrank(ninfo_arr, ons->ninfo->node_ind, ons->ninfo->rank);
 	nns->resreq = dup_resource_req_list(ons->resreq);
 
 	return nns;
@@ -1969,7 +2031,7 @@ dup_nspecs(nspec **onspecs, node_info **ninfo_arr)
 	for (num_ns = 0; onspecs[num_ns] != NULL; num_ns++)
 		;
 
-	if ((nnspecs = (nspec **) malloc(sizeof(nspec) * (num_ns+1))) == NULL)
+	if ((nnspecs = (nspec **) malloc(sizeof(nspec *) * (num_ns + 1))) == NULL)
 		return NULL;
 
 	for (i = 0; onspecs[i] != NULL; i++)
@@ -2179,6 +2241,9 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 		}
 		if (pass_flags & EVAL_EXCLSET)
 			alloc_rest_nodepart(*nspec_arr, ninfo_arr);
+
+		if (err->status_code == SCHD_UNKWN && failerr->status_code != SCHD_UNKWN)
+			move_schd_error(err, failerr);
 
 		return rc;
 	}
@@ -2476,8 +2541,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 						}
 					}
 					else {
-						rc = 0;
-						if (hostsets[i]->free_nodes ==0) {
+						if (hostsets[i]->free_nodes == 0) {
 							strncpy(reason, "No free nodes available", MAX_LOG_SIZE - 1);
 							reason[MAX_LOG_SIZE - 1] = '\0';
 						}
@@ -3453,7 +3517,7 @@ is_powerok(node_info *node, resource_resv *resresv, schd_error *err)
  *		Note: This function will allocate <= 1 chunk
  *
  * @param[in][out] specreq_cons - IN : requested consumable resources
- *				 				  OUT: requested - allocated resources
+ *				  OUT: requested - allocated resources
  * @param[in]	node	-	the node to evaluate
  * @param[in]	pl	-	place spec for request
  * @param[in]	resresv	-	resource resv which is requesting
@@ -4598,7 +4662,7 @@ create_node_array_from_nspec(nspec **nspec_arr)
 	ninfo_arr[0] = NULL;
 
 	for (i = 0, j = 0; nspec_arr[i] != NULL; i++) {
-		if (find_node_by_rank(ninfo_arr, nspec_arr[i]->ninfo->rank) ==NULL) {
+		if (find_node_by_rank(ninfo_arr, nspec_arr[i]->ninfo->rank) == NULL) {
 			ninfo_arr[j] = nspec_arr[i]->ninfo;
 			j++;
 		}
@@ -4676,7 +4740,7 @@ reorder_nodes(node_info **nodes, resource_resv *resresv)
 		int		i = 0;
 		node_info	*temp = NULL;
 
-		memcpy(nptr, nodes, (nsize+1) * sizeof(node_info *));
+		memcpy(nptr, nodes, (nsize + 1) * sizeof(node_info *));
 		for (i = 0; nptr[i] != NULL; i++) {
 			temp = find_node_by_rank(resresv->ninfo_arr, nptr[i]->rank);
 			if (temp != NULL)
@@ -5193,8 +5257,12 @@ is_provisionable(node_info *node, resource_resv *resresv, schd_error *err)
 			return NOT_PROVISIONABLE;
 		}
 
+		/* PROV_DISABLE_ON_SERVER is NOT_RUN instead of NEVER RUN.
+		 * Even though we can't provision any nodes, there might be
+		 * enough nodes in the correct aoe to run the job.
+		 */
 		if (!resresv->server->provision_enable) {
-			set_schd_error_codes(err, NEVER_RUN, PROV_DISABLE_ON_SERVER);
+			set_schd_error_codes(err, NOT_RUN, PROV_DISABLE_ON_SERVER);
 			return NOT_PROVISIONABLE;
 		}
 
@@ -5236,7 +5304,7 @@ is_provisionable(node_info *node, resource_resv *resresv, schd_error *err)
 	if (resresv->is_resv && resresv->aoename == NULL &&
 		node->job_arr) {
 		for (i = 0; node->job_arr[i]; i++) {
-			if (node->job_arr[i]->aoename !=NULL) {
+			if (node->job_arr[i]->aoename != NULL) {
 				set_schd_error_codes(err, NOT_RUN, PROV_RESRESV_CONFLICT);
 				return NOT_PROVISIONABLE;
 			}
@@ -5278,12 +5346,15 @@ node_up_event(node_info *node, void *arg)
 		set_node_info_state(node, ND_free);
 
 	sinfo = node->server;
-	if (sinfo->node_group_enable && sinfo->node_group_key !=NULL) {
-		node_partition_update_array(sinfo->policy, sinfo->nodepart);
+	if (sinfo->node_group_enable && sinfo->node_group_key != NULL) {
+		node_info *arr[2];
+		arr[0] = node;
+		arr[1] = NULL;
+		node_partition_update_array(sinfo->policy, sinfo->nodepart, (node_info **) arr);
 		qsort(sinfo->nodepart, sinfo->num_parts,
 			sizeof(node_partition *), cmp_placement_sets);
 	}
-	update_all_nodepart(sinfo->policy, sinfo, NULL);
+	update_all_nodepart(sinfo->policy, sinfo, NULL, NO_ALLPART);
 
 	return 1;
 }
@@ -5320,18 +5391,21 @@ node_down_event(node_info *node, void *arg)
 				job_state = "Q";
 			else
 				job_state = "X";
-			update_universe_on_end(sinfo->policy, node->job_arr[i], job_state);
+			update_universe_on_end(sinfo->policy, node->job_arr[i], job_state, NO_ALLPART);
 		}
 	}
 
 	set_node_info_state(node, ND_down);
 
-	if (sinfo->node_group_enable && sinfo->node_group_key !=NULL) {
-		node_partition_update_array(sinfo->policy, sinfo->nodepart);
+	if (sinfo->node_group_enable && sinfo->node_group_key != NULL) {
+		node_info *arr[2];
+		arr[0] = node;
+		arr[1] = NULL;
+		node_partition_update_array(sinfo->policy, sinfo->nodepart, (node_info **) arr);
 		qsort(sinfo->nodepart, sinfo->num_parts,
 			sizeof(node_partition *), cmp_placement_sets);
 	}
-	update_all_nodepart(sinfo->policy, sinfo, NULL);
+	update_all_nodepart(sinfo->policy, sinfo, NULL, NO_ALLPART);
 
 	return 1;
 }
@@ -5408,6 +5482,29 @@ create_node_array_from_str(node_info **nodes, char **strnodes)
 }
 
 /**
+ * @brief find a node in the array and return its index
+ * @param ninfo_arr - node array
+ * @param rank - rank of node to search for
+ * @return int
+ * @retval 0+ - index in array of node
+ * @retval -1 - node not found
+ */
+int
+find_node_ind(node_info **ninfo_arr, int rank) {
+	int i;
+	if(ninfo_arr == NULL)
+		return -1;
+	
+	for (i = 0; ninfo_arr[i] != NULL && ninfo_arr[i]->rank != rank; i++)
+		;
+
+	if(ninfo_arr[i] == NULL)
+		return -1;
+	
+	return i;
+}
+
+/**
  * @brief
  * 		find a node by its unique rank
  *
@@ -5421,14 +5518,36 @@ create_node_array_from_str(node_info **nodes, char **strnodes)
 node_info *
 find_node_by_rank(node_info **ninfo_arr, int rank)
 {
-	int i;
+	int ind;
 	if (ninfo_arr == NULL)
 		return NULL;
 
-	for (i = 0; ninfo_arr[i] != NULL && ninfo_arr[i]->rank != rank; i++)
-		;
+	ind = find_node_ind(ninfo_arr, rank);
+	if(ind == -1)
+		return NULL;
+	return ninfo_arr[ind];
+}
 
-	return ninfo_arr[i];
+/**
+ * @brief find a node by indexing into sinfo->unordered_nodes O(1) or
+ * 	  by searching for its unique rank O(N) if sinfo->unordered_nodes is unavailable
+ *
+ * @param[in] ninfo_arr - array of nodes to search
+ * @param[in] ind - index into sinfo->unordered_nodes
+ * @param[in] rank - node's unique rank
+ *
+ * @return node_info *
+ * @retval found node
+ * @retval NULL if node is not found
+ */
+node_info *find_node_by_indrank(node_info **ninfo_arr, int ind, int rank) {
+	if(ninfo_arr == NULL || *ninfo_arr == NULL)
+		return NULL;
+	
+	if(ninfo_arr[0] == NULL || ninfo_arr[0]->server == NULL || ninfo_arr[0]->server->unordered_nodes == NULL)
+		return find_node_by_rank(ninfo_arr, rank);
+	
+	return ninfo_arr[0]->server->unordered_nodes[ind];
 }
 
 /**
@@ -5740,3 +5859,53 @@ node_partition_cmp(node_info *ninfo, void *arg)
 	return 0;
 }
 
+/**
+ * @brief add an event to all the nodes associated to a calendar event
+ * @param te - event
+ * @param nspecs - nspecs[i]->node is the node to add the event to
+ * @return int
+ * @retval 1 success
+ * @retval 0 error
+ */
+int add_event_to_nodes(timed_event *te, nspec **nspecs) {
+	int i;
+
+	if (te == NULL || nspecs == NULL)
+		return 0;
+
+	for(i = 0; nspecs[i] != NULL; i++) {
+		te_list *tel;
+		te_list *pre_tel = NULL;
+		te_list *cur_tel;
+		tel = new_te_list();
+		if(tel == NULL)
+			return 0;
+		tel->event = te;
+		for(cur_tel = nspecs[i]->ninfo->node_events; cur_tel != NULL && cur_tel->event->event_time <= te->event_time; cur_tel = cur_tel->next)
+			pre_tel = cur_tel;
+		if (pre_tel != NULL)
+			pre_tel->next = tel;
+		else
+			nspecs[i]->ninfo->node_events = tel;
+	}
+	return 1;
+}
+
+/**
+ * @brief function pointer argument to generic_sim() to add an event to nodes
+ * @param te - event
+ * @param arg1 - unused
+ * @param arg2 - unused
+ * @return @see generic_sim()
+ */
+int add_node_events(timed_event *te, void *arg1, void *arg2) {
+	if (!te->disabled) {
+		nspec **nspecs;
+		nspecs = ((resource_resv *) te->event_ptr)->nspec_arr;
+
+		if (add_event_to_nodes(te, nspecs) == 0)
+			return -1;
+	}
+	
+	return 0;
+}

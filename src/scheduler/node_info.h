@@ -287,6 +287,9 @@ node_info *dup_node_info(node_info *onode, server_info *nsinfo, unsigned int fla
  */
 nspec *find_nspec_by_rank(nspec **nspec_arr, unsigned int rank);
 
+/* find node by unique rank and return index into ninfo_arr */
+int find_node_ind(node_info **ninfo_arr, int rank);
+
 /*
  *
  *      update_nodes_for_running_resvs - update resource_assigned values for
@@ -619,6 +622,9 @@ node_info **create_node_array_from_str(node_info **nodes, char **strnodes);
  */
 node_info *find_node_by_rank(node_info **ninfo_arr, int rank);
 
+/* find node by index into sinfo->unordered_nodes or by unique rank */
+node_info *find_node_by_indrank(node_info **ninfo_arr, int ind, int rank);
+
 /*
  * node scratch constructor
  */
@@ -658,7 +664,12 @@ void set_current_eoe(node_info *node, char *eoe);
 void check_node_array_eligibility(node_info **ninfo_arr, resource_resv *resresv, place *pl, schd_error *err);
 
 int node_in_partition(node_info *ninfo, char **partitions);
+/* add a node to a node array*/
+node_info **add_node_to_array(node_info **ninfo_arr, node_info *node);
 
+int add_event_to_nodes(timed_event *te, nspec **nspecs);
+
+int add_node_events(timed_event *te, void *arg1, void *arg2);
 
 #ifdef	__cplusplus
 }

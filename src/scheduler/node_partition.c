@@ -87,6 +87,7 @@
 #include "check.h"
 #include "globals.h"
 #include "sort.h"
+#include "buckets.h"
 
 
 /**
@@ -116,6 +117,7 @@ new_node_partition()
 	np->free_nodes = 0;
 	np->res = NULL;
 	np->ninfo_arr = NULL;
+	np->bkts = NULL;
 
 	np->rank = -1;
 
@@ -169,8 +171,11 @@ free_node_partition(node_partition *np)
 	if (np->res != NULL)
 		free_resource_list(np->res);
 
-	if (np->ninfo_arr)
+	if (np->ninfo_arr != NULL)
 		free(np->ninfo_arr);
+
+	if (np->bkts != NULL)
+		free_node_bucket_array(np->bkts);
 
 	free(np);
 }
@@ -259,6 +264,8 @@ dup_node_partition(node_partition *onp, server_info *nsinfo)
 #else
 	nnp->ninfo_arr = copy_node_ptr_array(onp->ninfo_arr, nsinfo->nodes);
 #endif
+
+	nnp->bkts = dup_node_bucket_array(onp->bkts, nsinfo);
 	nnp->rank = onp->rank;
 
 	/* validity check */
@@ -542,6 +549,7 @@ create_node_partitions(status *policy, node_info **nodes, char **resnames, unsig
 		 * recalculating tot_nodes for each node partition.
 		 */
 		np_arr[np_i]->tot_nodes = count_array((void **) np_arr[np_i]->ninfo_arr);
+		np_arr[np_i]->bkts = create_node_buckets(policy, np_arr[np_i]->ninfo_arr, NULL, 0);
 		node_partition_update(policy, np_arr[np_i]);
 	}
 
@@ -550,11 +558,61 @@ create_node_partitions(status *policy, node_info **nodes, char **resnames, unsig
 }
 
 /**
+ * @brief update the node buckets associated with a node partition on
+ *        job/resv run/end
+ *
+ *  @param[in] bkts - the buckets to update
+ *  @param[in] ninfo_arr - the nodes of the job/resv
+ */
+void
+update_buckets_for_node_array(node_bucket **bkts, node_info **ninfo_arr) {
+	int i, j;
+
+	if (bkts == NULL || ninfo_arr == NULL)
+		return;
+
+	for (i = 0; ninfo_arr[i] != NULL; i++) {
+		for (j = 0; bkts[j] != NULL; j++) {
+			int node_ind = ninfo_arr[i]->node_ind;
+			if (pbs_bitmap_get_bit(bkts[j]->bkt_nodes, node_ind)) {
+				if (ninfo_arr[i]->num_jobs > 0 || ninfo_arr[i]->num_run_resv > 0) {
+					if (pbs_bitmap_get_bit(bkts[j]->free_pool->truth, node_ind)) {
+						pbs_bitmap_bit_off(bkts[j]->free_pool->truth, node_ind);
+						bkts[j]->free_pool->truth_ct--;
+					} else if(pbs_bitmap_get_bit(bkts[j]->busy_later_pool->truth, node_ind)) {
+						pbs_bitmap_bit_off(bkts[j]->busy_later_pool->truth, node_ind);
+						bkts[j]->busy_later_pool->truth_ct--;
+					}
+					pbs_bitmap_bit_on(bkts[j]->busy_pool->truth, node_ind);
+					bkts[j]->busy_pool->truth_ct++;
+				} else if (pbs_bitmap_get_bit(bkts[j]->busy_pool->truth, node_ind)) {
+					pbs_bitmap_bit_off(bkts[j]->busy_pool->truth, node_ind);
+					bkts[j]->busy_pool->truth_ct--;
+
+					if (ninfo_arr[i]->node_events != NULL) {
+						pbs_bitmap_bit_on(bkts[j]->busy_later_pool->truth, node_ind);
+						bkts[j]->busy_later_pool->truth_ct++;
+					}
+					else {
+						pbs_bitmap_bit_on(bkts[j]->free_pool->truth, node_ind);
+						bkts[j]->free_pool->truth_ct++;
+					}
+				}
+
+				break;
+			}
+		}
+	}
+
+}
+
+/**
  * @brief
  * 		update metadata for an entire array of node partitions
  *
  * @param[in] policy	-	policy info
  * @param[in] nodepart	-	partition array to update
+ * @param[in] ninfo_arr - 	nodes being updated (may be NULL)
  *
  * @return	int
  * @retval	1	: on all success
@@ -562,25 +620,25 @@ create_node_partitions(status *policy, node_info **nodes, char **resnames, unsig
  *
  * @note
  * 		This is not an atomic operation -- this means that if this
- *	      function fails, some node partitions may have been updated and
- *	      others not.
+ *		function fails, some node partitions may have been updated and
+ *		others not.
  *
  */
 int
-node_partition_update_array(status *policy, node_partition **nodepart)
+node_partition_update_array(status *policy, node_partition **nodepart, node_info **ninfo_arr)
 {
 	int i;
 	int cur_rc = 0;
 	int rc = 1;
 
-	if (nodepart == NULL)
+	if (policy == NULL || nodepart == NULL)
 		return 0;
 
 	for (i = 0; nodepart[i] != NULL; i++) {
 		cur_rc = node_partition_update(policy, nodepart[i]);
-
 		if (cur_rc == 0)
 			rc = 0;
+		update_buckets_for_node_array(nodepart[i]->bkts, ninfo_arr);
 	}
 
 	return rc;
@@ -607,7 +665,7 @@ node_partition_update(status *policy, node_partition *np)
 	int i;
 	int rc = 1;
 	schd_resource *res;
-	unsigned int arl_flags = USE_RESOURCE_LIST;
+	unsigned int arl_flags = USE_RESOURCE_LIST | ADD_ALL_BOOL;
 
 	if (np == NULL)
 		return 0;
@@ -1081,8 +1139,7 @@ create_placement_sets(status *policy, server_info *sinfo)
 	char *resstr[] = {"host", NULL};
 	int num;
 
-	sinfo->allpart = create_specific_nodepart(policy, "all",
-		sinfo->unassoc_nodes);
+	sinfo->allpart = create_specific_nodepart(policy, "all", sinfo->unassoc_nodes);
 	if (sinfo->has_multi_vnode) {
 		sinfo->hostsets = create_node_partitions(policy, sinfo->nodes,
 			resstr, policy->only_explicit_psets ? NO_FLAGS : NP_CREATE_REST, &num);
@@ -1112,7 +1169,7 @@ create_placement_sets(status *policy, server_info *sinfo)
 		}
 	}
 
-	if (sinfo->node_group_enable && sinfo->node_group_key !=NULL) {
+	if (sinfo->node_group_enable && sinfo->node_group_key != NULL) {
 		sinfo->nodepart = create_node_partitions(policy, sinfo->unassoc_nodes,
 			sinfo->node_group_key,
 			policy->only_explicit_psets ? NO_FLAGS : NP_CREATE_REST,
@@ -1175,53 +1232,71 @@ create_placement_sets(status *policy, server_info *sinfo)
  *	  @param[in] policy - policy info
  *	  @param[in] sinfo - server info
  *	  @param[in] resresv- the job that was just run
+ *	  @param[in] flags - flags to modify behavior
+ *	  			NO_ALLPART - do not update the metadata in the allpart.
+ *	  				     There are circumstances (e.g., calendaring) where
+ *	  				     the allpart provides limited use and will constantly
+ *	  				     be updated.  It is best to just skip it.
  *
  *	@return nothing
  *
  */
 void
-update_all_nodepart(status *policy, server_info *sinfo, resource_resv *resresv)
+update_all_nodepart(status *policy, server_info *sinfo, resource_resv *resresv, unsigned int flags)
 {
 	queue_info *qinfo;
 	int update_allpart = 1;
 	int i;
 
-	if (sinfo == NULL || sinfo->queues == NULL)
+	if (sinfo == NULL || sinfo->queues == NULL || resresv == NULL)
 		return;
 
 	if(sinfo->allpart == NULL)
 		return;
 
-	if (resresv != NULL && resresv ->is_job) {
-		if (resresv->job != NULL) {
-			queue_info *job_queue;
-			job_queue = resresv->job->queue;
-			if (job_queue->has_nodes) {
-				update_allpart = 0;
-				node_partition_update(policy, job_queue->allpart);
-			}
+	if (sinfo->node_group_enable && sinfo->node_group_key != NULL) {
+		node_partition_update_array(policy, sinfo->nodepart, resresv->ninfo_arr);
+		qsort(sinfo->nodepart, sinfo->num_parts,
+			sizeof(node_partition *), cmp_placement_sets);
+	}
+
+	/* Update and resort the placement sets on the queues */
+	for (i = 0; sinfo->queues[i] != NULL; i++) {
+		qinfo = sinfo->queues[i];
+
+		if (sinfo->node_group_enable && qinfo->node_group_key != NULL) {
+			node_partition_update_array(policy, qinfo->nodepart, resresv->ninfo_arr);
+
+			qsort(qinfo->nodepart, qinfo->num_parts,
+			   sizeof(node_partition *), cmp_placement_sets);
+		}
+		if ((flags & NO_ALLPART) == 0) {
+			if(qinfo->allpart != NULL && qinfo->allpart->res == NULL)
+				node_partition_update(policy, qinfo->allpart);
 		}
 	}
-	if (update_allpart || sinfo->allpart->res == NULL)
-		node_partition_update(policy, sinfo->allpart);
 
-	node_partition_update_array(policy, sinfo->hostsets);
+	/* Update and resort the hostsets */
+	node_partition_update_array(policy, sinfo->hostsets, NULL);
 	if (policy->node_sort[0].res_name != NULL &&
 	    conf.node_sort_unused && sinfo->hostsets != NULL) {
 		/* Resort the nodes in host sets to correctly reflect unused resources */
 		qsort(sinfo->hostsets, sinfo->num_hostsets, sizeof(node_partition*), multi_nodepart_sort);
 	}
 
-	for (i = 0; sinfo->queues[i] != NULL; i++) {
-		qinfo = sinfo->queues[i];
-
-		if (qinfo->node_group_key) {
-			node_partition_update_array(policy, qinfo->nodepart);
-
-			qsort(qinfo->nodepart, qinfo->num_parts,
-			   sizeof(node_partition *), cmp_placement_sets);
+	if ((flags & NO_ALLPART) == 0) {
+		/* If the job is in a queue with nodes, we only need to update
+		 * the allpart of that queue.  This has already happened above.
+		 * */
+		if (resresv != NULL && resresv ->is_job) {
+			if (resresv->job != NULL)
+				if (resresv->job->queue->has_nodes)
+					update_allpart = 0;
 		}
-		if(qinfo->allpart != NULL && qinfo->allpart->res == NULL)
-			node_partition_update(policy, qinfo->allpart);
+
+		/* Otherwise, update the server's allpart */
+		if (update_allpart || sinfo->allpart->res == NULL)
+			node_partition_update(policy, sinfo->allpart);
 	}
+
 }

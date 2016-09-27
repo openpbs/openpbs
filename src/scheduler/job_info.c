@@ -2459,7 +2459,7 @@ create_resresv_sets(status *policy, server_info *sinfo)
 	resresvs = sinfo->jobs;
 
 	len = count_array((void **) resresvs);
-	rsets = malloc((len + 1) * sizeof(resresv_set));
+	rsets = malloc((len + 1) * sizeof(resresv_set *));
 	if (rsets == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
@@ -2477,7 +2477,7 @@ create_resresv_sets(status *policy, server_info *sinfo)
 				free_resresv_set_array(rsets);
 				return NULL;
 			}
-			cur_rset->resresv_arr = malloc((len + 1) * sizeof(resource_resv));
+			cur_rset->resresv_arr = malloc((len + 1) * sizeof(resource_resv *));
 			if (cur_rset->resresv_arr == NULL) {
 				log_err(errno, __func__, MEM_ERR_MSG);
 				free_resresv_set_array(rsets);
@@ -2797,7 +2797,7 @@ preempt_job(status *policy, int pbs_sd, resource_resv *pjob, server_info *sinfo)
 			}
 
 			if ((!ret) && (histjob != 1)) {
-				update_universe_on_end(policy, pjob, "S");
+				update_universe_on_end(policy, pjob, "S", NO_FLAGS);
 				pjob->job->is_susp_sched = 1;
 				schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
 					pjob->name, "Job preempted by suspension");
@@ -2820,7 +2820,7 @@ preempt_job(status *policy, int pbs_sd, resource_resv *pjob, server_info *sinfo)
 					/* if the job has been requeued, it was successfully checkpointed */
 					if (status->attribs->value[0] =='H') {
 						pjob->job->is_checkpointed = 1;
-						update_universe_on_end(policy, pjob, "Q");
+						update_universe_on_end(policy, pjob, "Q", NO_FLAGS);
 						schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
 							pjob->name, "Job preempted by checkpointing");
 						job_preempted = 1;
@@ -2847,7 +2847,7 @@ preempt_job(status *policy, int pbs_sd, resource_resv *pjob, server_info *sinfo)
 				ret = 0;  /* in simulation, assume success */
 
 			if ((!ret) && (histjob != 1)){
-			    update_universe_on_end(policy, pjob, "Q");
+			    update_universe_on_end(policy, pjob, "Q", NO_FLAGS);
 				schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
 				    pjob->name, "Job preempted by requeuing");
 
@@ -2857,10 +2857,9 @@ preempt_job(status *policy, int pbs_sd, resource_resv *pjob, server_info *sinfo)
 	}
 
 	if (histjob == 1) {
-		update_universe_on_end(policy, pjob, "E");
+		update_universe_on_end(policy, pjob, "E", NO_FLAGS);
 		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
 				pjob->name, "Job already finished");
-		histjob = 0;
 	}
 	if (ret) {
 		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->name, "Job failed to be preempted");
@@ -2911,7 +2910,7 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
 	int done = 0;
 	int rc = 1;
 	int *preempted_list;
-	int preempted_count=0;
+	int preempted_count = 0;
 	int *fail_list = NULL;
 	int fail_count=0;
 	int num_tries=0;
@@ -2969,8 +2968,11 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
 		if (!ret) {
 			schd_error *serr;
 			serr = new_schd_error();
-			if(serr == NULL)
+			if(serr == NULL) {
+				free(preempted_list);
+				free(fail_list);
 				return -1;
+			}
 			schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, hjob->name,
 				"Preempted work didn't run job - rerun it");
 			for (i = 0; i < preempted_count; i++) {
@@ -3109,7 +3111,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 		return NULL;
 	}
 
-	ns_arr = is_ok_to_run(policy, -1, sinfo, hjob->job->queue, hjob, RETURN_ALL_ERR, full_err);
+	ns_arr = is_ok_to_run(policy, sinfo, hjob->job->queue, hjob, RETURN_ALL_ERR, full_err);
 
 	/* This should be NULL, but just in case */
 	free_nspecs(ns_arr);
@@ -3263,7 +3265,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 			pjob->job->resreleased = create_res_released_array(npolicy, pjob);
 			pjob->job->resreq_rel = create_resreq_rel_list(npolicy, pjob);
 
-			update_universe_on_end(npolicy, pjob,  "S");
+			update_universe_on_end(policy, pjob,  "S", NO_ALLPART);
 			if ( nsinfo->calendar != NULL ) {
 				te = find_timed_event(nsinfo->calendar->events, pjob->name, TIMED_END_EVENT, 0);
 				if (te != NULL) {
@@ -3307,8 +3309,8 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 
 
 			clear_schd_error(err);
-			if ((ns_arr = is_ok_to_run(npolicy, -1, nsinfo,
-				njob->job->queue, njob, NO_FLAGS, err)) != NULL) {
+			if ((ns_arr = is_ok_to_run(npolicy, nsinfo,
+				njob->job->queue, njob, NO_ALLPART, err)) != NULL) {
 
 				/* Normally when running a subjob, we do not care about the subjob. We just care that it successfully runs.
 				 * We allow run_update_resresv() to enqueue and run the subjob.  In this case, we need to act upon the
@@ -3333,7 +3335,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 
 				schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, njob->name,
 					"Simulation: Preempted enough work to run job");
-				rc = sim_run_update_resresv(npolicy, njob, ns_arr, RURR_NO_FLAGS);
+				rc = sim_run_update_resresv(policy, njob, ns_arr, NO_ALLPART);
 				break;
 			}
 
@@ -3421,11 +3423,10 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 			clear_schd_error(err);
 			if (preemption_similarity(njob, pjobs[j], full_err) == 0) {
 				remove_job = 1;
-				ns_arr = pjobs[j]->nspec_arr;
-			} else if ((ns_arr = is_ok_to_run(npolicy, SIMULATE_SD, nsinfo,
-				pjobs[j]->job->queue, pjobs[j], NO_FLAGS, err)) != NULL) {
+			} else if ((ns_arr = is_ok_to_run(policy, nsinfo,
+				pjobs[j]->job->queue, pjobs[j], NO_ALLPART, err)) != NULL) {
 				remove_job = 1;
-				rc = sim_run_update_resresv(npolicy, pjobs[j], ns_arr, RURR_NO_FLAGS);
+				sim_run_update_resresv(npolicy, pjobs[j], ns_arr, NO_ALLPART);
 			}
 
 
@@ -3445,7 +3446,6 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 		if (i == 0) {
 			schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, njob->name,
 				"Simulation Error: All jobs removed from preemption list");
-			rc = 0;
 		}
 	}
 
@@ -3772,7 +3772,7 @@ select_index_to_preempt(status *policy, resource_resv *hjob,
 								svr_res_good = 1;
 						}
 					}
-					if ( svr_res_good == 1)
+					if (svr_res_good == 1)
 						certainlygood = 1;
 				} else
 					/* we'll have to consider this, since it's sitting on vnodes this suspended job lives on */

@@ -373,7 +373,7 @@ preload_tree()
 	head->root = root;
 
 	if ((root->name = string_dup(FAIRSHARE_ROOT_NAME)) == NULL) {
-		free_fairshare_tree(root);
+		free_fairshare_head(head);
 		return NULL;
 	}
 
@@ -386,6 +386,7 @@ preload_tree()
 		return NULL;
 	}
 	if ((unknown->name = string_dup(UNKNOWN_GROUP_NAME)) == NULL) {
+		free_fairshare_node(unknown);
 		free_fairshare_head(head);
 		return NULL;
 	}

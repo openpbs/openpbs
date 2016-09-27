@@ -142,6 +142,7 @@
 #include "check.h"
 #include "pbs_sched.h"
 #include "fifo.h"
+#include "buckets.h"
 #ifdef NAS
 #include "site_code.h"
 #endif
@@ -322,7 +323,7 @@ query_server(status *pol, int pbs_sd)
 			}
 		}
 	}
-
+	
 	/* get reservations, if any - NOTE: will set sinfo -> num_resvs */
 	sinfo->resvs = query_reservations(sinfo, bs_resvs);
 
@@ -421,18 +422,28 @@ query_server(status *pol, int pbs_sd)
 	free(jobs_not_in_reservations);
 
 	collect_resvs_on_nodes(sinfo->nodes, sinfo->resvs, sinfo->num_resvs);
-	/* Create the node equivalence classes*/
+
+	sinfo->unordered_nodes = malloc((sinfo->num_nodes+1) * sizeof(node_info*));
+	if(sinfo->unordered_nodes == NULL) {
+		sinfo->fairshare = NULL;
+		free_server(sinfo, 1);
+		return NULL;
+	}
+
 	for (i = 0; sinfo->nodes[i] != NULL; i++) {
 		node_info *ninfo = sinfo->nodes[i];
 		ninfo->nodesig = create_resource_signature(ninfo  ->res,
-			policy->resdef_to_check_no_hostvnode, CHECK_ALL_BOOLS);
+			policy->resdef_to_check_no_hostvnode, ADD_ALL_BOOL);
 		ninfo->nodesig_ind = add_str_to_unique_array(&(sinfo->nodesigs),
 			ninfo->nodesig);
 
 		if(ninfo->has_ghost_job)
 			create_resource_assn_for_node(ninfo);
 
+		sinfo->nodes[i]->node_ind = i;
+		sinfo->unordered_nodes[i] = ninfo;
 	}
+	sinfo->unordered_nodes[i] = NULL;
 
 	adjust_alter_resv_nodes(sinfo->resvs, sinfo->nodes);
 
@@ -440,6 +451,16 @@ query_server(status *pol, int pbs_sd)
 	 * we don't want to account for resources consumed by ghost jobs
 	 */
 	create_placement_sets(policy, sinfo);
+	
+	generic_sim(sinfo->calendar, TIMED_RUN_EVENT, 0, 0, add_node_events, NULL, NULL);
+	
+	sinfo->buckets = create_node_buckets(policy, sinfo->nodes, sinfo->queues, 1);
+
+	if (sinfo->buckets != NULL) {
+		int ct;
+		ct = count_array((void **) sinfo->buckets);
+		qsort(sinfo->buckets, ct, sizeof(node_bucket *), multi_bkt_sort);
+	}
 
 	pbs_statfree(server);
 
@@ -822,7 +843,8 @@ query_sched_obj(status *policy, struct batch_status *sched, server_info *sinfo)
 		} else if (!strcmp(attrp->name, ATTR_opt_backfill_fuzzy)) {
 			if (!strcasecmp(attrp->value, "off"))
 				sinfo->opt_backfill_fuzzy_time = BF_OFF;
-			else if (!strcasecmp(attrp->value, "low")) sinfo->opt_backfill_fuzzy_time = BF_LOW;
+			else if (!strcasecmp(attrp->value, "low"))
+				sinfo->opt_backfill_fuzzy_time = BF_LOW;
 			else if (!strcasecmp(attrp->value, "med") || !strcasecmp(attrp->value, "medium"))
 				sinfo->opt_backfill_fuzzy_time = BF_MED;
 			else if (!strcasecmp(attrp->value, "high"))
@@ -858,7 +880,6 @@ find_alloc_resource(schd_resource *resplist, resdef *def)
 	if (def == NULL)
 		return NULL;
 
-	resp = resplist;
 	for (resp = resplist; resp != NULL && resp->def != def; resp = resp->next) {
 		prev = resp;
 	}
@@ -1044,6 +1065,11 @@ free_server_info(server_info *sinfo)
 		free_resresv_set_array(sinfo->equiv_classes);
 	if (sinfo->partitions != NULL)
 		free_string_array(sinfo->partitions);
+	if(sinfo->buckets != NULL)
+		free_node_bucket_array(sinfo->buckets);
+	
+	if(sinfo->unordered_nodes != NULL)
+		free(sinfo->unordered_nodes);
 
 	free_resource_list(sinfo->res);
 #ifdef NAS
@@ -1157,6 +1183,7 @@ new_server_info(int limallocflag)
 	sinfo->enforce_prmptd_job_resumption = 0;
 	sinfo->use_hard_duration = 0;
 	sinfo->sched_cycle_len = 0;
+	sinfo->num_parts = 0;
 	sinfo->partitions = NULL;
 	sinfo->opt_backfill_fuzzy_time = conf.dflt_opt_backfill_fuzzy;
 	sinfo->name = NULL;
@@ -1191,6 +1218,8 @@ new_server_info(int limallocflag)
 	sinfo->policy = NULL;
 	sinfo->fairshare = NULL;
 	sinfo->equiv_classes = NULL;
+	sinfo->buckets = NULL;
+	sinfo->unordered_nodes = NULL;
 	sinfo->num_queues = 0;
 	sinfo->num_nodes = 0;
 	sinfo->num_resvs = 0;
@@ -1324,18 +1353,13 @@ add_resource_list(status *policy, schd_resource *r1, schd_resource *r2, unsigned
 {
 	schd_resource *cur_r1;
 	schd_resource *cur_r2;
-	schd_resource *end_r1;
+	schd_resource *end_r1 = NULL;
 	schd_resource *nres;
 	sch_resource_t assn;
 	int i;
 
 	if (r1 == NULL || r2 == NULL)
 		return 0;
-
-	end_r1 = r1;
-
-	while (end_r1->next != NULL)
-		end_r1 = end_r1->next;
 
 	for (cur_r2 = r2; cur_r2 != NULL; cur_r2 = cur_r2->next) {
 		if ((flags & USE_RESOURCE_LIST)) {
@@ -1347,6 +1371,9 @@ add_resource_list(status *policy, schd_resource *r1, schd_resource *r2, unsigned
 		cur_r1 = find_resource(r1, cur_r2->def);
 		if (cur_r1 == NULL) { /* resource in r2 which is not in r1 */
 			if (!(flags & NO_UPDATE_NON_CONSUMABLE) || cur_r2->type.is_consumable) {
+				if(end_r1 == NULL)
+					for (end_r1 = r1; end_r1->next != NULL; end_r1 = end_r1->next)
+						;
 				end_r1->next = dup_resource(cur_r2);
 				if (end_r1->next == NULL)
 					return 0;
@@ -1387,6 +1414,9 @@ add_resource_list(status *policy, schd_resource *r1, schd_resource *r2, unsigned
 						if (nres == NULL)
 							return 0;
 
+						if (end_r1 == NULL)
+							for (end_r1 = r1; end_r1->next != NULL; end_r1 = end_r1->next)
+								;
 						end_r1->next = nres;
 						end_r1 = nres;
 					} else {
@@ -1646,14 +1676,6 @@ update_server_on_run(status *policy, server_info *sinfo,
 			sinfo->npc_arr = NULL;
 		}
 
-		/* should probably be in update_all_nodepart() for consistency
-		 * when moved, this copy and update_node_on_end() must be moved
-		 */
-		if (sinfo->node_group_enable && sinfo->node_group_key !=NULL) {
-			node_partition_update_array(policy, sinfo->nodepart);
-			qsort(sinfo->nodepart, sinfo->num_parts,
-				sizeof(node_partition *), cmp_placement_sets);
-		}
 
 		/* a new job has been run, recreate running jobs array */
 		free(sinfo->running_jobs);
@@ -1773,15 +1795,6 @@ update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
 	if (sinfo->npc_arr != NULL) {
 		free_np_cache_array(sinfo->npc_arr);
 		sinfo->npc_arr = NULL;
-	}
-
-	/* should probably be in update_all_nodepart() for consistency -
-	 * when moved, both this and update_node_on_run most be moved
-	 */
-	if (sinfo->node_group_enable && sinfo->node_group_key !=NULL) {
-		node_partition_update_array(policy, sinfo->nodepart);
-		qsort(sinfo->nodepart, sinfo->num_parts,
-			sizeof(node_partition *), cmp_placement_sets);
 	}
 
 	if (sinfo->has_soft_limit || sinfo->has_hard_limit) {
@@ -2126,13 +2139,14 @@ dup_server_info(server_info *osinfo)
 #else
 	nsinfo->nodes = dup_nodes(osinfo->nodes, nsinfo, NO_FLAGS);
 #endif /* localmod 049 */
-
+	
 	if (nsinfo->has_nodes_assoc_queue) {
 		nsinfo->unassoc_nodes =
 			node_filter(nsinfo->nodes, nsinfo->num_nodes, is_unassoc_node, NULL, 0);
 	} else
 		nsinfo->unassoc_nodes = nsinfo->nodes;
-
+	
+	nsinfo->unordered_nodes = dup_unordered_nodes(osinfo->unordered_nodes, nsinfo->nodes);
 
 	/* dup the reservations */
 	nsinfo->resvs = dup_resource_resv_array(osinfo->resvs, nsinfo, NULL);
@@ -2246,10 +2260,15 @@ dup_server_info(server_info *osinfo)
 	/* the running resvs are not dupped when we dup the nodes, so we need to copy
 	 * the node's running resvs arrays now
 	 */
-	for (i = 0; osinfo->nodes[i] != NULL; i++)
+	for (i = 0; osinfo->nodes[i] != NULL; i++) {
 		nsinfo->nodes[i]->run_resvs_arr =
 			copy_resresv_array(osinfo->nodes[i]->run_resvs_arr,
 			nsinfo->resvs);
+		if(nsinfo->calendar != NULL)
+			nsinfo->nodes[i]->node_events = dup_te_lists(osinfo->nodes[i]->node_events, nsinfo->calendar->next_event);
+
+	}
+	nsinfo->buckets = dup_node_bucket_array(osinfo->buckets, nsinfo);
 
 	return nsinfo;
 }
@@ -2309,7 +2328,7 @@ dup_selective_resource_list(schd_resource *res, resdef **deflist, unsigned flags
 	int i;
 
 	for (pres = res; pres != NULL; pres = pres->next) {
-		if (pres->type.is_boolean ||
+		if (((flags & ADD_ALL_BOOL) && pres->type.is_boolean) ||
 			resdef_exists_in_array(deflist, pres->def)) {
 			nres = dup_resource(pres);
 			if (nres == NULL) {
@@ -2829,17 +2848,20 @@ counts_max(counts *cmax, counts *new)
  * @param[in]   policy 		- policy info
  * @param[in]	resresv 	- the resresv itself which is ending
  * @param[in]	job_state 	- the new state of a job if resresv is a job
+ * @param[in]	flags		- flags to modify behavior of the function
+ * 					NO_ALLPART - do not update most of the metadata of the allpart
  *
  * @return	void
  *
  * @par MT-Safe:	no
  */
 void
-update_universe_on_end(status *policy, resource_resv *resresv, char *job_state)
+update_universe_on_end(status *policy, resource_resv *resresv, char *job_state, unsigned int flags)
 {
 	int i;
 	server_info *sinfo = NULL;
 	queue_info *qinfo = NULL;
+
 
 	if (resresv == NULL)
 		return;
@@ -2855,7 +2877,7 @@ update_universe_on_end(status *policy, resource_resv *resresv, char *job_state)
 	if (resresv->is_job) {
 		qinfo = resresv->job->queue;
 		if (resresv->job != NULL && resresv->execselect != NULL &&
-			resresv->execselect->defs != NULL) {
+		    resresv->execselect->defs != NULL) {
 			int need_metadata_update = 0;
 			for (i = 0; resresv->execselect->defs[i] != NULL;i++) {
 				if (!resdef_exists_in_array(policy->resdef_to_check, resresv->execselect->defs[i])) {
@@ -2883,9 +2905,10 @@ update_universe_on_end(status *policy, resource_resv *resresv, char *job_state)
 		}
 	}
 
-	if (resresv->ninfo_arr != NULL)
+	if (resresv->ninfo_arr != NULL) {
 		for (i = 0; resresv->ninfo_arr[i] != NULL; i++)
 			update_node_on_end(resresv->ninfo_arr[i], resresv, job_state);
+	}
 
 
 	update_server_on_end(policy, sinfo, qinfo, resresv, job_state);
@@ -2893,7 +2916,10 @@ update_universe_on_end(status *policy, resource_resv *resresv, char *job_state)
 	if (qinfo != NULL)
 		update_queue_on_end(qinfo, resresv, job_state);
 
-	update_all_nodepart(policy, sinfo, resresv);
+	if (flags & NO_ALLPART)
+		update_all_nodepart(policy, sinfo, resresv, NO_ALLPART);
+	else
+		update_all_nodepart(policy, sinfo, resresv, NO_FLAGS);
 
 	update_resresv_on_end(resresv, job_state);
 
@@ -3760,4 +3786,101 @@ create_resource_assn_for_node(node_info *ninfo)
 	}
 
 	return 1;
+}
+
+/**
+ * @brief compares two schd_resource structs for equality
+ *
+ * @return int
+ * @retval 1 if equal
+ * @retval 0 if not equal
+ */
+int
+compare_resource_avail(schd_resource *r1, schd_resource *r2) {
+	if (r1 == NULL && r2 == NULL)
+		return 1;
+	if (r1 == NULL || r2 == NULL)
+		return 0;
+	
+	if (r1->def->type.is_string) {
+		if(match_string_array(r1->str_avail, r2->str_avail) == SA_FULL_MATCH)
+			return 1;
+		else
+			return 0;
+	}
+	if (r1->avail == r2->avail)
+		return 1;
+	
+	return 0;
+}
+
+/**
+ * @brief compare two schd_resource lists for equality
+ * @return int
+ * @retval 1 if equal
+ * @retval 0 if not equal
+ */
+int
+compare_resource_avail_list(schd_resource *r1, schd_resource *r2) {
+	schd_resource *cur;
+	
+	if (r1 == NULL && r2 == NULL)
+		return 1;
+	if (r1 == NULL || r2 == NULL)
+		return 0;
+	
+	for (cur = r1; cur != NULL; cur = cur->next) {
+		schd_resource *res;
+
+		res = find_resource(r2, cur->def);
+		if(res != NULL) {
+			if(compare_resource_avail(cur, res) == 0)
+				return 0;
+		} else if (cur->type.is_boolean) { /* Unset boolean == False */
+			if (cur->avail != 0)
+				return 0;
+		} else
+			return 0;
+	}
+	
+	return 1;
+}
+
+/**
+ * @brief dup sinfo->unordered_nodes from the nnodes array.
+ * @param[in] old_unordered_nodes - unordered_nodes array to dup
+ * @param[in] nnodes - nodes from new universe.  Nodes are references into this
+ * 		array
+ *
+ * @return new unordered_nodes
+ */
+node_info **
+dup_unordered_nodes(node_info **old_unordered_nodes, node_info **nnodes)
+{
+	int i;
+	int ct1;
+	int ct2;
+	node_info **new_unordered_nodes;
+
+	if (old_unordered_nodes == NULL || nnodes == NULL)
+		return NULL;
+
+	ct1 = count_array((void **) nnodes);
+	ct2 = count_array((void **) old_unordered_nodes);
+
+	if(ct1 != ct2)
+		return NULL;
+
+	new_unordered_nodes = calloc((ct1 + 1), sizeof(node_info *));
+	if (new_unordered_nodes == NULL) {
+		log_err(errno, __func__, MEM_ERR_MSG);
+		return NULL;
+	}
+
+	for (i = 0; i < ct1; i++)
+		new_unordered_nodes[nnodes[i]->node_ind] = nnodes[i];
+
+	new_unordered_nodes[ct1] = NULL;
+
+	return new_unordered_nodes;
 }

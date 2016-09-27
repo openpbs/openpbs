@@ -1136,7 +1136,6 @@ scan(char *str, char target)
 			start = ++ptr;
 			while (*ptr != '\0' && *ptr != quote)
 				ptr++;
-			quote = 0;
 		}
 		else {
 			while (*ptr != '\0' && !isspace(*ptr) && *ptr != target)

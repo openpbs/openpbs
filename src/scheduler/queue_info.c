@@ -54,7 +54,6 @@
  * 	dup_queue_info()
  * 	find_queue_info()
  * 	node_queue_cmp()
- * 	update_all_nodepart()
  *
  */
 #include <pbs_config.h>

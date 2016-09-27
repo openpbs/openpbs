@@ -101,6 +101,8 @@
 #include "limits_if.h"
 #include "simulate.h"
 #include "resource.h"
+#include "buckets.h"
+#include "pbs_bitmap.h"
 
 
 /**
@@ -180,10 +182,11 @@ time_to_ded_boundary(status *policy, resource_resv *njob)
 	duration = njob->duration;
 	ded_time = find_next_dedtime(njob->server->server_time);
 	ded = is_ded_time(njob->server->server_time);
+	time_left = calc_time_left_STF(njob, &min_time_left);
+
 	if (!ded) {
 		if (njob->start == UNSPECIFIED && njob->end ==UNSPECIFIED) {
 			start = njob->server->server_time;
-			time_left = calc_time_left_STF(njob, &min_time_left);
 			min_end = start + min_time_left;
 			end = start + time_left;
 		}
@@ -195,13 +198,12 @@ time_to_ded_boundary(status *policy, resource_resv *njob)
 			end = njob->end;
 			min_end = njob->start + njob->min_duration;
 		}
-		/* Currently not dedicated time,Job can not complete it's
+		/* Currently not dedicated time, Job can not complete its
 		 * maximum duration before dedicated time would start,
 		 * See if it can complete it's minimum duration before the start of
 		 * dedicated time. If yes, set duration upto start of the dedicated time.
 		 */
 		if (end > ded_time.from && end < ded_time.to) {
-			time_left = calc_time_left_STF(njob, &min_time_left);
 			min_end = start + min_time_left;
 			if (min_end > ded_time.from && min_end < ded_time.to)
 				duration = UNSPECIFIED;
@@ -221,8 +223,7 @@ time_to_ded_boundary(status *policy, resource_resv *njob)
 				duration = ded_time.from - start;
 		}
 	}
-	else /*Dedicated time */  {
-		time_left = calc_time_left_STF(njob, &min_time_left);
+	else /* Dedicated time */  {
 		min_end = njob->server->server_time + min_time_left;
 		end = njob->server->server_time + time_left;
 		/* See if job's minimum duration can be completed without hitting
@@ -292,10 +293,10 @@ time_to_prime_boundary(status *policy, resource_resv *njob)
  *		to keep track of the earlier value of job duration  if needed.
  *
  *	@param[in]	policy	-	policy structure
- *	@param[in]	pbs_sd  -	the connection descriptor to the pbs_server
  *	@param[in]	sinfo	-	server info
  *	@param[in]	qinfo	-	queue info
  *	@param[in]	resresv -	resource resv
+ *	@param[in]	flags		flags for is_ok_to_run() @see is_ok_to_run()
  *	@param[in,out]	err	-	error reply structure
  *
  *	@par NOTE
@@ -307,8 +308,8 @@ time_to_prime_boundary(status *policy, resource_resv *njob)
  *
  */
 nspec **
-shrink_to_boundary(status *policy, int pbs_sd, server_info *sinfo,
-	queue_info *qinfo, resource_resv *njob, schd_error *err)
+shrink_to_boundary(status *policy, server_info *sinfo,
+	queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err)
 {
 	nspec** ns_arr = NULL;
 	sch_resource_t time_to_dedboundary = 0;
@@ -334,7 +335,7 @@ shrink_to_boundary(status *policy, int pbs_sd, server_info *sinfo,
 		 * shrink job to the nearest of the two
 		 */
 		njob->duration = time_to_dedboundary < time_to_primeboundary ? time_to_dedboundary : time_to_primeboundary;
-		ns_arr = is_ok_to_run(policy, pbs_sd, sinfo, qinfo, njob, NO_FLAGS, err);
+		ns_arr = is_ok_to_run(policy, sinfo, qinfo, njob, flags, err);
 		if (ns_arr && orig_duration > njob->duration) {
 			char logbuf[MAX_LOG_SIZE];
 			char timebuf[TIMEBUF_SIZE];
@@ -355,11 +356,11 @@ shrink_to_boundary(status *policy, int pbs_sd, server_info *sinfo,
  *		to keep track of the earlier value of job duration  if needed.
  *
  *	@param[in]	policy	-	policy structure
- *	@param[in]	pbs_sd	-	the connection descriptor to the pbs_server
  *	@param[in]	sinfo	-	server info
- *	@param[in]	qinfo   -	queue info
- *	@param[in]	resresv -	resource resv
- *	@param[out]	err     -	error reply structure
+ *	@param[in]	qinfo	-	queue info
+ *	@param[in]	resresv	-	resource resv
+ *	@param[in]	flags		flags for is_ok_to_run() @see is_ok_to_run()
+ *	@param[out]	err	-	error reply structure
  *	@par NOTE
  *		return value is required to be freed by caller
  *	@return	node solution of where job will run - more info in err
@@ -367,14 +368,14 @@ shrink_to_boundary(status *policy, int pbs_sd, server_info *sinfo,
  *	@retval NULL	: if job/resv can not run/error
  **/
 nspec **
-shrink_to_minwt(status *policy, int pbs_sd, server_info *sinfo,
-	queue_info *qinfo, resource_resv *njob, schd_error *err)
+shrink_to_minwt(status *policy, server_info *sinfo,
+	queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err)
 {
 	nspec** ns_arr = NULL;
 	if (njob == NULL || policy == NULL || sinfo == NULL || err == NULL)
 		return NULL;
 	njob->duration = njob->min_duration;
-	ns_arr = is_ok_to_run(policy, pbs_sd, sinfo, qinfo, njob, NO_FLAGS, err);
+	ns_arr = is_ok_to_run(policy, sinfo, qinfo, njob, flags, err);
 	return (ns_arr);
 }
 
@@ -438,10 +439,10 @@ shrink_to_minwt(status *policy, int pbs_sd, server_info *sinfo,
  *		If job still can't run, indicate failure.
  *
  *	@param[in]	policy	-	policy structure
- *	@param[in]	pbs_sd	-	the connection descriptor to the pbs_server
  *	@param[in]	sinfo	-	server info
  *	@param[in]	qinfo   -	queue info
  *	@param[in]	resresv -	resource resv
+ *	@param[in]	flags		flags for is_ok_to_run() @see is_ok_to_run()
  *	@param[in,out]	err	-	error reply structure
  *
  *	@par NOTE:
@@ -453,8 +454,8 @@ shrink_to_minwt(status *policy, int pbs_sd, server_info *sinfo,
  *
  */
 nspec **
-shrink_to_run_event(status *policy, int pbs_sd, server_info *sinfo,
-	queue_info *qinfo, resource_resv *njob, schd_error *err)
+shrink_to_run_event(status *policy, server_info *sinfo,
+	queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err)
 {
 	time_t orig_duration = UNSPECIFIED;
 	time_t possible_shrink_duration = UNSPECIFIED;
@@ -474,7 +475,6 @@ shrink_to_run_event(status *policy, int pbs_sd, server_info *sinfo,
 		return NULL;
 
 	orig_duration = njob->duration;
-	possible_shrink_duration = njob->duration - njob->min_duration;
 	servertime_now = sinfo->server_time;
 	end_time = servertime_now + njob->duration;
 	min_end_time = servertime_now + njob->min_duration;
@@ -492,7 +492,7 @@ shrink_to_run_event(status *policy, int pbs_sd, server_info *sinfo,
 	clear_schd_error(err);
 	/* If no events between job's min and max duration, try running with complete duration */
 	if (farthest_event == NULL || farthest_event->event_time < min_end_time)
-		ns_arr = is_ok_to_run(policy, pbs_sd, sinfo, qinfo, njob, NO_FLAGS, err);
+		ns_arr = is_ok_to_run(policy, sinfo, qinfo, njob, flags, err);
 	else {
 		/* try shrinking upto the farthest event */
 		end_time = farthest_event->event_time;
@@ -522,7 +522,7 @@ shrink_to_run_event(status *policy, int pbs_sd, server_info *sinfo,
 			/* Shrink job to the start of this event */
 			njob->duration = te->event_time - servertime_now;
 			clear_schd_error(err);
-			ns_arr = is_ok_to_run(policy, pbs_sd, sinfo, qinfo, njob, NO_FLAGS, err);
+			ns_arr = is_ok_to_run(policy, sinfo, qinfo, njob, flags, err);
 			/* break if success */
 			if (ns_arr != NULL)
 				break;
@@ -559,6 +559,7 @@ shrink_to_run_event(status *policy, int pbs_sd, server_info *sinfo,
  *	@param[in]	sinfo	-	server info
  *	@param[in]	qinfo	-	queue info
  *	@param[in]	resresv	-	resource resv
+ *	@param[in]	flags		flags for is_ok_to_run() @see is_ok_to_run()
  *	@param[in,out]	err	-	error reply structure
  *
  *	@par NOTE:
@@ -569,8 +570,8 @@ shrink_to_run_event(status *policy, int pbs_sd, server_info *sinfo,
  *	@retval NULL	: if job/resv can not run/error
  **/
 nspec **
-shrink_job_algorithm(status *policy, int pbs_sd, server_info *sinfo,
-	queue_info *qinfo, resource_resv *njob, schd_error *err)
+shrink_job_algorithm(status *policy, server_info *sinfo,
+	queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err)
 {
 	nspec **ns_arr = NULL;/* node solution for job */
 	nspec **ns_arr_minwt = NULL;/* node solution for job if run for min_duration */
@@ -578,7 +579,6 @@ shrink_job_algorithm(status *policy, int pbs_sd, server_info *sinfo,
 
 	if (njob == NULL || policy == NULL || sinfo == NULL || err == NULL)
 		return NULL;
-	transient_duration = njob->duration;
 	/* We are here because job could not run with full duration, check the error code
 	 * and see if dedicated/prime conflict was found, if yes, try shrinking to boundary
 	 */
@@ -589,7 +589,7 @@ shrink_job_algorithm(status *policy, int pbs_sd, server_info *sinfo,
 		 * prime/dedicated boundary. If min walltime is still hitting prime/dedicated
 		 * boundary, the err will not be cleared.
 		 */
-		if ((ns_arr = shrink_to_boundary(policy, pbs_sd, sinfo, qinfo, njob, err)) != NULL)
+		if ((ns_arr = shrink_to_boundary(policy, sinfo, qinfo, njob, flags, err)) != NULL)
 			return ns_arr;
 	}
 	/* Inside shrink_to_boundary(), job's duration would be set to time upto the
@@ -605,14 +605,14 @@ shrink_job_algorithm(status *policy, int pbs_sd, server_info *sinfo,
 		/* Try with lesser time durations */
 		/* Clear any scheduling errors we got during earlier shrink attempts. */
 		clear_schd_error(err);
-		ns_arr_minwt = shrink_to_minwt(policy, pbs_sd, sinfo, qinfo, njob, err);
+		ns_arr_minwt = shrink_to_minwt(policy, sinfo, qinfo, njob, flags, err);
 		/* Return NULL if job can't run at all */
 		if (ns_arr_minwt == NULL)
 			return NULL;
 		else { /* If success with min walltime, try running with a bigger walltime possible */
 			njob->duration = transient_duration;
 			clear_schd_error(err);
-			ns_arr = shrink_to_run_event(policy, pbs_sd, sinfo, qinfo, njob, err);
+			ns_arr = shrink_to_run_event(policy, sinfo, qinfo, njob, flags, err);
 			/* If job still could not be run, should be run with min_duration */
 			if (ns_arr == NULL) {
 				ns_arr = ns_arr_minwt;
@@ -630,11 +630,11 @@ shrink_job_algorithm(status *policy, int pbs_sd, server_info *sinfo,
  *	@brief
  *		check to see if the STF job is OK to run.
  *
- *	@param[in]	pbs_sd	-	the connection descriptor to the pbs_server
  *	@param[in]	policy	-	policy structure
  *	@param[in]	sinfo	-	server info
  *	@param[in]	qinfo	-	queue info
  *	@param[in]	resresv	-	resource resv
+ *	@param[in]	flags		flags for is_ok_to_run() @see is_ok_to_run()
  *	@param[out]	err	-	error reply structure
  *	@par NOTE:
  *		return value is required to be freed by caller
@@ -644,10 +644,10 @@ shrink_job_algorithm(status *policy, int pbs_sd, server_info *sinfo,
  *	@retval NULL	: if job/resv can not run/error
  */
 nspec **
-is_ok_to_run_STF(status *policy, int pbs_sd, server_info *sinfo,
-	queue_info *qinfo, resource_resv *njob, schd_error *err,
-	nspec **(*shrink_heuristic)(status *policy, int pbs_sd, server_info *sinfo,
-	queue_info *qinfo, resource_resv *njob, schd_error *err))
+is_ok_to_run_STF(status *policy, server_info *sinfo,
+	queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err,
+	nspec **(*shrink_heuristic)(status *policy, server_info *sinfo,
+	queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err))
 {
 	nspec **ns_arr = NULL; /* node solution for job */
 	sch_resource_t orig_duration;
@@ -658,7 +658,7 @@ is_ok_to_run_STF(status *policy, int pbs_sd, server_info *sinfo,
 	orig_duration = njob->duration;
 
 	/* First see if it can run with full walltime */
-	ns_arr = is_ok_to_run(policy, pbs_sd, sinfo, qinfo, njob, NO_FLAGS, err);
+	ns_arr = is_ok_to_run(policy, sinfo, qinfo, njob, flags, err);
 	/* If the job can not run for non-calender reasons, return NULL*/
 	if (ns_arr != NULL)
 		return (ns_arr);
@@ -668,7 +668,7 @@ is_ok_to_run_STF(status *policy, int pbs_sd, server_info *sinfo,
 		err->error_code == NONPRIME_ONLY)
 		return NULL;
 	/* Apply the shrink heuristic  and try running the job after shrinking it */
-	ns_arr = shrink_heuristic(policy, pbs_sd, sinfo, qinfo, njob, err);
+	ns_arr = shrink_heuristic(policy, sinfo, qinfo, njob, flags, err);
 	/* Reset the job duration on failure */
 	if (ns_arr == NULL)
 		njob->duration = orig_duration;
@@ -692,7 +692,6 @@ is_ok_to_run_STF(status *policy, int pbs_sd, server_info *sinfo,
  *	  a list of error structures.
  *
  * @param[in] policy	-	policy info
- * @param[in] pbs_sd	-	the connection descriptor to the pbs_server
  * @param[in] sinfo	-	server info
  * @param[in] qinfo	-	queue info
  * @param[in] resresv	-	resource resv
@@ -702,6 +701,9 @@ is_ok_to_run_STF(status *policy, int pbs_sd, server_info *sinfo,
  *				IGNORE_EQUIV_CLASS - Ignore job equivalence class feature.
  *					If a job equivalence class has been seen before and marked
  *					can_not_run, the job will still be evaluated normally.
+ *				USE_BUCKETS - use bucket code path
+ *				NO_ALLPART - do not use the allpart
+ * @param[in,out]	perr	-	pointer to error structure or NULL.
  *
  * @par NOTE:
  *		return value is required to be freed by caller (using free_nspecs())
@@ -713,7 +715,7 @@ is_ok_to_run_STF(status *policy, int pbs_sd, server_info *sinfo,
  *
  */
 nspec **
-is_ok_to_run(status *policy, int pbs_sd, server_info *sinfo,
+is_ok_to_run(status *policy, server_info *sinfo,
 	queue_info *qinfo, resource_resv *resresv, unsigned int flags, schd_error *perr)
 {
 	int		rc = 0;			/* Return Code */
@@ -731,7 +733,7 @@ is_ok_to_run(status *policy, int pbs_sd, server_info *sinfo,
 	err = perr;
 
 	if(resresv->is_job && sinfo->equiv_classes != NULL &&
-	   !(flags & (IGNORE_EQUIV_CLASS|RETURN_ALL_ERR)) &&
+	   !(flags & (IGNORE_EQUIV_CLASS | RETURN_ALL_ERR)) &&
 	   resresv->ec_index != UNSPECIFIED &&
 	   sinfo->equiv_classes[resresv->ec_index]->can_not_run) {
 		copy_schd_error(err, sinfo->equiv_classes[resresv->ec_index]->err);
@@ -788,7 +790,9 @@ is_ok_to_run(status *policy, int pbs_sd, server_info *sinfo,
 	 * This check is bypassed for jobs in reservations.  They have their own
 	 * universe of nodes
 	 */
-	if (resresv->is_job && resresv->job != NULL &&
+	if (flags & NO_ALLPART)
+		allpart = NULL;
+	else if (resresv->is_job && resresv->job != NULL &&
 			resresv->job->resv != NULL)
 		allpart = NULL;
 	else if (qinfo != NULL && qinfo->has_nodes)
@@ -1062,8 +1066,12 @@ is_ok_to_run(status *policy, int pbs_sd, server_info *sinfo,
 		}
 	}
 
-	ns_arr = check_nodes(policy, sinfo, qinfo, resresv, flags, err);
 
+	if (flags & USE_BUCKETS)
+		ns_arr = check_node_buckets(policy, sinfo, qinfo, resresv, err);
+	else 
+		ns_arr = check_nodes(policy, sinfo, qinfo, resresv, flags, err);
+	
 	if (err->error_code != SUCCESS)
 		add_err(&prev_err, err);
 
@@ -1989,4 +1997,3 @@ void get_resresv_spec(resource_resv *resresv, selspec **spec, place **pl)
 		*pl = &place_spec;
 	}
 }
-

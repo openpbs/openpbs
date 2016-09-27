@@ -195,7 +195,6 @@ static int	 cvt_overflow(size_t, size_t);
 static int	 cvt_realloc(char **, size_t *, char **, size_t *);
 
 extern time_t	 time_now;
-extern time_t	 jan1_yr2038;
 extern int	 server_init_type;
 
 extern int	ctnodes(char *);

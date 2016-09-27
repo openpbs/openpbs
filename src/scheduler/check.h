@@ -55,7 +55,7 @@ int is_ok_to_run_queue(status *policy, queue_info *qinfo);
  *	is_ok_to_run - check to see if it ok to run a job on the server
  */
 nspec **
-is_ok_to_run(status *policy, int pbs_sd, server_info *sinfo,
+is_ok_to_run(status *policy, server_info *sinfo,
 	queue_info *qinfo, resource_resv *resresv, unsigned int flags, schd_error *perr);
 
 /**
@@ -64,37 +64,37 @@ is_ok_to_run(status *policy, int pbs_sd, server_info *sinfo,
  *
  */
 nspec **
-is_ok_to_run_STF(status *policy, int pbs_sd, server_info *sinfo,
-	queue_info *qinfo, resource_resv *njob, schd_error *err,
-	nspec **(*shrink_heuristic)(status *policy, int pbs_sd, server_info *sinfo,
-	queue_info *qinfo, resource_resv *njob, schd_error *err));
+is_ok_to_run_STF(status *policy, server_info *sinfo,
+	queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err,
+	nspec **(*shrink_heuristic)(status *policy, server_info *sinfo,
+	queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err));
 /*
  * shrink_job_algorithm - generic algorithm for shrinking a job
  */
 nspec **
-shrink_job_algorithm(status *policy, int pbs_sd, server_info *sinfo,
-	queue_info *qinfo, resource_resv *njob, schd_error *err);/* Generic shrinking heuristic */
+shrink_job_algorithm(status *policy, server_info *sinfo,
+	queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err);/* Generic shrinking heuristic */
 
 /*
  * shrink_to_boundary - Shrink job to dedicated/prime time boundary
  */
 nspec **
-shrink_to_boundary(status *policy, int pbs_sd, server_info *sinfo,
-	queue_info *qinfo, resource_resv *njob, schd_error *err);
+shrink_to_boundary(status *policy, server_info *sinfo,
+	queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err);
 
 /*
  * shrink_to_minwt - Shrink job to it's minimum walltime
  */
 nspec **
-shrink_to_minwt(status *policy, int pbs_sd, server_info *sinfo,
-	queue_info *qinfo, resource_resv *njob, schd_error *err);
+shrink_to_minwt(status *policy, server_info *sinfo,
+	queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err);
 
 /*
  * shrink_to_run_event - Shrink job before reservation or top job.
  */
 nspec **
-shrink_to_run_event(status *policy, int pbs_sd, server_info *sinfo,
-	queue_info *qinfo, resource_resv *njob, schd_error *err);
+shrink_to_run_event(status *policy, server_info *sinfo,
+	queue_info *qinfo, resource_resv *njob, unsigned int flags, schd_error *err);
 
 /*
  *      check_avail_resources - This function will calculate the number of

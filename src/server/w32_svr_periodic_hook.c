@@ -185,7 +185,6 @@ pbs_list_head	task_list_event;
 pbs_list_head   	svr_deferred_req;
 pbs_list_head   	svr_unlicensedjobs;	/* list of jobs to license */
 time_t		time_now;
-time_t		jan1_yr2038;
 time_t          secondary_delay = 30;
 int		do_sync_mom_hookfiles;
 struct batch_request    *saved_takeover_req;

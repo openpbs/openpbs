@@ -944,8 +944,6 @@ log_record(int eventtype, int objclass, int sev, const char *objname, const char
 			     eventtype & ~PBSEVENT_FORCE, msg_daemonname,
 			     class_names[objclass], objname, text);
 
-
-
 		(void)fflush(logfile);
 		if (rc < 0) {
 			rc = errno;

@@ -130,6 +130,9 @@ sch_resource_t find_node_amount(node_info *ninfo, char *res, resdef *def, enum r
 /* return resource values based on res_type for node partition */
 sch_resource_t find_nodepart_amount(node_partition *np, char *res, resdef *def, enum resource_fields res_type);
 
+sch_resource_t find_bucket_amount(node_bucket *bkt, char *res, resdef *def, enum resource_fields res_type);
+
+
 /*
  * Compares either two nodes or node_partitions based on a resource,
  * Ascending/Descending, and what part of the resource to use (total, unused, etc)
@@ -151,7 +154,8 @@ int multi_node_sort(const void *n1, const void *n2);
 /* qsort() compare function for multi-resource node partition sorting */
 int multi_nodepart_sort(const void *n1, const void *n2);
 
-
+/* qsort() compare function for multi-resource bucket sorting */
+int multi_bkt_sort(const void *b1, const void *b2);
 
 /*
  *	cmp_events - sort jobs/resvs into a timeline of the next even to

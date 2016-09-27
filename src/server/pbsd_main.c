@@ -306,7 +306,6 @@ pbs_list_head	svr_exechost_startup_hooks;
 pbs_list_head	svr_execjob_attach_hooks;
 pbs_list_head	svr_allscheds;
 time_t		time_now;
-time_t		jan1_yr2038;
 struct batch_request	*saved_takeover_req=NULL;
 struct python_interpreter_data  svr_interp_data;
 int svr_unsent_qrun_req = 0;	/* Set to 1 for scheduling unsent qrun requests */

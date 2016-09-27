@@ -537,7 +537,7 @@ dup_string_array(char **ostrs)
 	if (ostrs != NULL) {
 		for (i = 0; ostrs[i] != NULL; i++);
 
-		if ((nstrs = (char **)malloc((i + 1) * sizeof(char**))) == NULL) {
+		if ((nstrs = (char **)malloc((i + 1) * sizeof(char *))) == NULL) {
 			log_err(errno, "dup_string_array", "Error allocating memory");
 			return NULL;
 		}

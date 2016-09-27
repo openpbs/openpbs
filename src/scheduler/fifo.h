@@ -167,7 +167,7 @@ void end_cycle_tasks(server_info *sinfo);
  *	add_job_to_calendar - find the most top job and init all the
  *		correct variables in sinfo to correctly backfill around it
  */
-int add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo, resource_resv *topjob);
+int add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo, resource_resv *topjob, int use_buckets);
 
 /*
  * 	run_job - handle the running of a pbs job.  If it's a peer job

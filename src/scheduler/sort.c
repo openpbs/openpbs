@@ -547,8 +547,8 @@ cmp_job_sort_formula(const void *j1, const void *j2)
  * @brief
  *		multi_node_sort - a multi keyed sorting compare function for nodes
  *
- * @param[in] vp1 - the node/parts to compare
- * @param[in] vp2 - the node/parts to compare
+ * @param[in] n1 - node1 to compare
+ * @param[in] n2 - node2 to compare
  *
  * @return int
  *	@retval -1, 0, 1 - standard qsort() cmp
@@ -570,8 +570,8 @@ multi_node_sort(const void *n1, const void *n2)
  * @brief
  * 		qsort() compare function for multi-resource node partition sorting
  *
- * @param[in] n1 - the node/parts to compare
- * @param[in] n2 - the node/parts to compare
+ * @param[in] n1 - nodepart 1 to compare
+ * @param[in] n2 - nodepart 2 to compare
  *
  * @return int
  *	@retval -1, 0, 1 - standard qsort() cmp
@@ -584,6 +584,28 @@ multi_nodepart_sort(const void *n1, const void *n2)
 
 	for (i = 0; i <= MAX_SORTS && ret == 0 && cstat.node_sort[i].res_name != NULL; i++)
 		ret = node_sort_cmp(n1, n2, &cstat.node_sort[i], SOBJ_PARTITION);
+	return ret;
+}
+
+/**
+ * @brief
+ *		multi_bkt_sort - a multi keyed sorting compare function for node buckets
+ *
+ * @param[in] b1 - bkt1 to compare
+ * @param[in] b2 - bkt2 to compare
+ *
+ * @return int
+ *	@retval -1, 0, 1 - standard qsort() cmp
+ */
+int
+multi_bkt_sort(const void *b1, const void *b2)
+{
+	int ret = 0;
+	int i;
+
+	for (i = 0; i <= MAX_SORTS && ret == 0 && cstat.node_sort[i].res_name != NULL; i++)
+		ret = node_sort_cmp(b1, b2, &cstat.node_sort[i], SOBJ_BUCKET);
+
 	return ret;
 }
 
@@ -641,8 +663,8 @@ resresv_sort_cmp(resource_resv *r1, resource_resv *r2, struct sort_info *si)
  * 		compares either two nodes or node_partitions based on a resource,
  *              Ascending/Descending, and what part of the resource to use (total, unused, etc)
  *
- * @param[in] vp1 		- the node/parts to compare
- * @param[in] vp2 		- the node/parts to compare
+ * @param[in] vp1 		- the node/parts/bkts to compare
+ * @param[in] vp2 		- the node/parts/bkts to compare
  * @param[in] si 		- sort info describing how to sort nodes
  * @param[in] obj_type 	- node or node_partition
  *
@@ -657,6 +679,8 @@ node_sort_cmp(const void *vp1, const void *vp2, struct sort_info *si, enum sort_
 	node_info **n2 = NULL;
 	node_partition **np1 = NULL;
 	node_partition **np2 = NULL;
+	node_bucket **b1 = NULL;
+	node_bucket **b2 = NULL;
 	int rank1, rank2;
 
 	if (vp1 != NULL && vp2 == NULL)
@@ -689,6 +713,15 @@ node_sort_cmp(const void *vp1, const void *vp2, struct sort_info *si, enum sort_
 			rank1 = (*np1)->rank;
 			rank2 = (*np2)->rank;
 			break;
+		case SOBJ_BUCKET:
+			b1 = (node_bucket **) vp1;
+			b2 = (node_bucket **) vp2;
+			v1 = find_bucket_amount(*b1, si->res_name, si->def, si->res_type);
+			v2 = find_bucket_amount(*b2, si->res_name, si->def, si->res_type);
+			rank1 = 0;
+			rank2 = 0;
+			break;
+
 		default:
 			return 0;
 			break;
@@ -821,7 +854,7 @@ cmp_sort(const void *v1, const void *v2)
  *
  * @note
  * 		special case sorting "resource" SORT_PRIORITY is not meaningful for
- *       node partitions.  0 will always be returned
+ *       	node partitions.  0 will always be returned
  *
  * @return	sch_resource_t
  */
@@ -847,6 +880,43 @@ find_nodepart_amount(node_partition *np, char *res, resdef *def,
 			return 0;
 	}
 
+	return 0;
+}
+
+/**
+ * @brief
+ * 		return resource values based on res_type for node bucket
+ *
+ * @param[in] bkt 		- node bucket
+ * @param[in] res 		- resource name
+ * @param[in] def 		- resource definition of res
+ * @param[in] res_type 	- type of resource value to use
+ *
+ * @return	sch_resource_t
+ */
+sch_resource_t
+find_bucket_amount(node_bucket *bkt, char *res, resdef *def,
+	enum resource_fields res_type)
+{
+	schd_resource *nres;
+
+	if (def != NULL)
+		nres = find_resource(bkt->res_spec, def);
+	else if (!strcmp(res, SORT_PRIORITY))
+		return bkt->priority;
+	else
+		nres = find_resource_by_str(bkt->res_spec, res);
+
+	if (nres != NULL) {
+		if (res_type == RF_AVAIL)
+			return nres->avail;
+		else if (res_type == RF_ASSN)
+			return nres->assigned;
+		else if (res_type == RF_UNUSED)
+			return nres->avail - nres->assigned;
+		else /* error */
+			return 0;
+	}
 
 	return 0;
 }

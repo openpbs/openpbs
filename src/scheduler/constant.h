@@ -343,8 +343,9 @@ enum add_resource_list_flags
 	NO_UPDATE_NON_CONSUMABLE = 1,
 	USE_RESOURCE_LIST = 2,
 	ADD_UNSET_BOOLS_FALSE = 4,
-	ADD_AVAIL_ASSIGNED = 8
-	/* next flag 16 */
+	ADD_AVAIL_ASSIGNED = 8,
+	ADD_ALL_BOOL = 16
+	/* next flag 32 */
 };
 
 /* run update resresv flags is a bitfield = 0, 1, 2, 4, 8, ...*/
@@ -514,6 +515,7 @@ enum sort_obj_type
 	SOBJ_JOB,
 	SOBJ_NODE,
 	SOBJ_PARTITION,
+	SOBJ_BUCKET
 };
 
 enum update_sort_defs
@@ -564,8 +566,10 @@ enum check_flags {
 	COMPARE_TOTAL = 32,
 	ONLY_COMP_NONCONS = 64,
 	ONLY_COMP_CONS = 128,
-	IGNORE_EQUIV_CLASS = 256
-	/* next flag 512 */
+	IGNORE_EQUIV_CLASS = 256,
+	USE_BUCKETS = 512,
+	NO_ALLPART = 1024
+	/* next flag 2048 */
 };
 
 enum schd_error_args {

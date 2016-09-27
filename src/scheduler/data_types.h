@@ -59,6 +59,7 @@ extern "C" {
 #include <libutil.h>
 #include "constant.h"
 #include "config.h"
+#include "pbs_bitmap.h"
 #ifdef NAS
 #include "site_queue.h"
 #endif
@@ -89,6 +90,12 @@ struct event_list;
 struct status;
 struct fairshare_head;
 struct node_scratch;
+struct te_list;
+struct node_bucket;
+struct bucket_bitpool;
+struct chunk_map;
+struct node_bucket_count;
+
 
 typedef struct state_count state_count;
 typedef struct server_info server_info;
@@ -118,6 +125,11 @@ typedef struct status status;
 typedef struct fairshare_head fairshare_head;
 typedef struct node_scratch node_scratch;
 typedef struct resresv_set resresv_set;
+typedef struct te_list te_list;
+typedef struct node_bucket node_bucket;
+typedef struct bucket_bitpool bucket_bitpool;
+typedef struct chunk_map chunk_map;
+typedef struct node_bucket_count node_bucket_count;
 
 #ifdef NAS
 /* localmod 034 */
@@ -354,6 +366,8 @@ struct server_info
 	status *policy;
 	fairshare_head *fairshare;	/* root of fairshare tree */
 	resresv_set **equiv_classes;
+	node_bucket **buckets;		/* node bucket array */
+	node_info **unordered_nodes;
 #ifdef NAS
 	/* localmod 049 */
 	node_info **nodes_by_NASrank;	/* nodes indexed by NASrank */
@@ -364,7 +378,7 @@ struct server_info
 
 struct queue_info
 {
-	unsigned is_started:1;	/* is queue started */
+	unsigned is_started:1;		/* is queue started */
 	unsigned is_exec:1;		/* is the queue an execution queue */
 	unsigned is_route:1;		/* is the queue a routing queue */
 	unsigned is_ok_to_run:1;	/* is it ok to run jobs in this queue */
@@ -392,14 +406,14 @@ struct queue_info
 	unsigned ignore_nodect_sort:1; /* job_sort_key nodect ignored in this queue */
 #endif
 	int num_nodes;		/* number of nodes associated with queue */
-	struct schd_resource *qres;        /* list of resources on the queue */
+	struct schd_resource *qres;	/* list of resources on the queue */
 	resource_resv *resv;		/* the resv if this is a resv queue */
 	resource_resv **jobs;		/* array of jobs that reside in queue */
 	resource_resv **running_jobs;	/* array of jobs in the running state */
 	node_info **nodes;		/* array of nodes associated with the queue */
 	node_info **nodes_in_partition; /* array of nodes associated with the queue's partition */
 	counts *group_counts;		/* group resource and running counts */
-	counts *project_counts;	/* project resource and running counts */
+	counts *project_counts;		/* project resource and running counts */
 	counts *user_counts;		/* user resource and running counts */
 	counts *alljobcounts;		/* overall resource and running counts */
 	/*
@@ -411,7 +425,7 @@ struct queue_info
 	counts *total_user_counts;
 	counts *total_alljobcounts;
 
-	char **node_group_key;	/* node grouping resources */
+	char **node_group_key;		/* node grouping resources */
 	struct node_partition **nodepart; /* array pointers to node partitions */
 	struct node_partition *allpart;   /* partition w/ all nodes assoc with queue*/
 	int num_parts;		/* number of node partitions(node_group_key) */
@@ -611,6 +625,9 @@ struct node_info
 	char *partition;	      /* partition to which node belongs to */
 	time_t last_state_change_time;	/* Node state change at time stamp */
 	time_t last_used_time;		/* Node was last active at this time */
+	te_list *node_events;		/* list of events that affect the node */
+	int bucket_ind;			/* index in server's bucket array */
+	int node_ind;			/* node's index into sinfo->unordered_nodes */
 };
 
 struct resv_info
@@ -848,6 +865,7 @@ struct node_partition
 	int free_nodes;		/* the number of nodes in state Free  */
 	schd_resource *res;		/* total amount of resources in node part */
 	node_info **ninfo_arr;	/* array of pointers to node structures  */
+	node_bucket **bkts;	/* node buckets for node part */
 	int rank;		/* unique numeric identifier for node partition */
 };
 
@@ -1055,7 +1073,7 @@ struct config
 	struct timegap ded_time[MAX_DEDTIME_SIZE];/* dedicated times */
 	int unknown_shares;			/* unknown group shares */
 	int log_filter;				/* what events to filter out */
-	int preempt_queue_prio;			/* Queue priority that defines an express queue */
+	int preempt_queue_prio;			/* Queue prio that defines an express queue */
 	int max_preempt_attempts;		/* max num of preempt attempts per cyc*/
 	int max_jobs_to_check;			/* max number of jobs to check in cyc*/
 	long dflt_opt_backfill_fuzzy;		/* default time for the fuzzy backfill optimization */
@@ -1122,6 +1140,41 @@ struct timed_event
 	void *event_func_arg;		/* optional argument to function - not freed */
 	timed_event *next;
 	timed_event *prev;
+};
+
+struct te_list {
+	te_list *next;
+	timed_event *event;
+};
+
+struct bucket_bitpool {
+	pbs_bitmap *truth;		/* The actual bits.  This only changes if the bitmaps are changing */
+	int truth_ct;			/* number of 1 bits in truth bitmap*/
+	pbs_bitmap *working;		/* Used for short lived operations.  Usually truth is copied into working. */
+	int working_ct;			/* number of 1 bits in working bitmap */
+};
+
+struct node_bucket {
+	char *name;			/* Name of bucket: resource spec + queue + priority */
+	schd_resource *res_spec;	/* resources that describe the bucket */
+	queue_info *queue;		/* queue that nodes in the bucket are associated with */
+	int priority;			/* priority of nodes in the bucket */
+	pbs_bitmap *bkt_nodes;		/* bitmap of the nodes in the bucket */
+	bucket_bitpool *free_pool;	/* bit pool of free_pool nodes*/
+	bucket_bitpool *busy_later_pool;/* bit pool of nodes that are free now, but are busy_pool later */
+	bucket_bitpool *busy_pool;	/* bit pool of nodes that are busy now */
+	int total;			/* total number of nodes in bucket */
+};
+
+struct node_bucket_count {
+	node_bucket *bkt;		/* node bucket */
+	int chunk_count;		/* number of chunks bucket can satisfy */
+};
+
+struct chunk_map {
+	chunk *chunk;
+	node_bucket_count **bkt_cnts;	/* buckets job can run in and chunk counts */
+	pbs_bitmap *node_bits;		/* assignment of nodes from buckets */
 };
 
 #ifdef	__cplusplus

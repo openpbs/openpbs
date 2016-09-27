@@ -694,7 +694,7 @@ create_resource_signature(schd_resource *reslist, resdef **resources, unsigned i
 		}
 	}
 
-	if ((flags & CHECK_ALL_BOOLS)) {
+	if ((flags & ADD_ALL_BOOL)) {
 		for (i = 0; boolres[i] != NULL; i++) {
 			if (!resdef_exists_in_array(resources, boolres[i])) {
 				res = find_resource(reslist, boolres[i]);
@@ -810,7 +810,7 @@ resstr_to_resdef(char **resstr)
 		return NULL;
 
 	cnt = count_array((void **) resstr);
-	if ((tmparr = malloc((cnt + 1) * sizeof(char *))) == NULL) {
+	if ((tmparr = malloc((cnt + 1) * sizeof(resdef *))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
@@ -841,8 +841,6 @@ resstr_to_resdef(char **resstr)
 resdef *
 getallres(enum resource_index ind)
 {
-	if (ind < 0)
-		return NULL;
 	if (allres == NULL)
 		return NULL;
 	return allres[ind];

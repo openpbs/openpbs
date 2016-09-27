@@ -1048,7 +1048,7 @@ validate_ext_auth_data(int auth_type, void *data, int data_len, char *ebuf, int 
 char **
 break_delimited_str(char *strlist, char delim)
 {
-	char sep[2] = "\0";
+	char sep[2] = {0};
 	int num_words = 1; /* number of words delimited by commas*/
 	char **arr = NULL; /* the array of words */
 	char *list;
@@ -1066,13 +1066,13 @@ break_delimited_str(char *strlist, char delim)
 	list = strdup(strlist);
 
 	if (list != NULL) {
-		char* saveptr = NULL;
+		char *saveptr = NULL;
 
 		for (i = 0; list[i] != '\0'; i++)
 			if (list[i] == delim)
 				num_words++;
 
-		if ((arr = (char **) malloc(sizeof(char*) * (num_words + 1))) == NULL) {
+		if ((arr = (char **) malloc(sizeof(char *) * (num_words + 1))) == NULL) {
 			pbs_errno = PBSE_SYSTEM;
 			free(list);
 			return NULL;
@@ -1092,6 +1092,12 @@ break_delimited_str(char *strlist, char delim)
 			}
 
 			arr[i] = strdup(tok);
+			if (arr[i] == NULL) {
+				pbs_errno = PBSE_SYSTEM;
+				free(list);
+				free_string_array(arr);
+				return NULL;
+			}
 			tok = strtok_r(NULL, sep, &saveptr);
 		}
 		arr[i] = NULL;

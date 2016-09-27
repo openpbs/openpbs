@@ -308,6 +308,54 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath="..\..\src\scheduler\buckets.c"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="0"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+						BasicRuntimeChecks="3"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\..\src\scheduler\pbs_bitmap.c"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="0"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+						BasicRuntimeChecks="3"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+			</File>
+			<File
 				RelativePath="..\..\src\scheduler\get_4byte.c"
 				>
 				<FileConfiguration
@@ -793,6 +841,10 @@
 			Filter="h;hpp;hxx;hm;inl"
 			>
 			<File
+				RelativePath="..\..\src\scheduler\buckets.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\src\scheduler\check.h"
 				>
 			</File>
@@ -849,7 +901,7 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\src\scheduler\parse_qstat.h"
+				RelativePath="..\..\src\scheduler\pbs_bitmap.h"
 				>
 			</File>
 			<File

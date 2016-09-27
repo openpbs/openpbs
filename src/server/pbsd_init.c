@@ -190,7 +190,6 @@ extern pbs_list_head svr_alljobs;
 extern pbs_list_head svr_allresvs;
 extern pbs_list_head task_list_event;
 extern time_t	 time_now;
-extern time_t	 jan1_yr2038;
 
 extern struct server server;
 extern struct attribute attr_jobscript_max_size;
@@ -378,7 +377,6 @@ pbsd_init(int type)
 	struct sigaction act;
 	struct sigaction oact;
 #endif
-	struct tm	 jan1_yr2038_tm;
 	struct tm	*ptm;
 	pbs_db_svr_info_t	dbsvr;
 	pbs_db_job_info_t	dbjob;
@@ -627,12 +625,6 @@ pbsd_init(int type)
 #endif	/* not DEBUG and not NO_SECURITY_CHECK */
 
 	time_now = time(NULL);
-
-	(void)memset(&jan1_yr2038_tm, (int)0, sizeof(jan1_yr2038_tm));
-	jan1_yr2038_tm.tm_mday = 1;
-	jan1_yr2038_tm.tm_mon = 0;
-	jan1_yr2038_tm.tm_year = 138;
-	jan1_yr2038 = mktime(&jan1_yr2038_tm);
 
 	rc = setup_resc(1);
 	if (rc != 0) {

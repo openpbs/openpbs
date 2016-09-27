@@ -302,7 +302,7 @@ int check_run_job(resource_resv *job, void *arg);
 /*
  *      update_universe_on_end - update a pbs universe when a job/resv ends
  */
-void update_universe_on_end(status *policy, resource_resv *resresv, char *job_state);
+void update_universe_on_end(status *policy, resource_resv *resresv, char *job_state, unsigned int flags);
 
 /*
  *
@@ -464,6 +464,13 @@ void free_queue_list(queue_info *** queue_list);
 void add_req_list_to_assn(schd_resource *, resource_req *);
 
 int create_resource_assn_for_node(node_info *);
+
+int compare_resource_avail_list(schd_resource *r1, schd_resource *r2);
+int compare_resource_avail(schd_resource *r1, schd_resource *r2);
+
+node_info **dup_unordered_nodes(node_info **old_unordered_nodes, node_info **nnodes);
+
+
 
 #ifdef	__cplusplus
 }

@@ -105,6 +105,8 @@
 #include "misc.h"
 #include "prime.h"
 #include "globals.h"
+#include "check.h"
+#include "buckets.h"
 #ifdef NAS /* localmod 030 */
 #include "site_code.h"
 #endif /* localmod 030 */
@@ -550,13 +552,13 @@ perform_event(status *policy, timed_event *event)
 	switch (event->event_type) {
 		case TIMED_END_EVENT:	/* event_ptr type: (resource_resv *) */
 			resresv = (resource_resv *) event->event_ptr;
-			update_universe_on_end(policy, resresv, "X");
+			update_universe_on_end(policy, resresv, "X", NO_ALLPART);
 
 			sprintf(logbuf, "%s end point", resresv->is_job ? "job":"reservation");
 			break;
 		case TIMED_RUN_EVENT:	/* event_ptr type: (resource_resv *) */
 			resresv = (resource_resv *) event->event_ptr;
-			if (sim_run_update_resresv(policy, resresv, NULL, RURR_NO_FLAGS) <= 0) {
+			if (sim_run_update_resresv(policy, resresv, NULL, NO_ALLPART) <= 0) {
 				schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
 					event->name, "Simulation: Event failed to be run");
 				ret = 0;
@@ -702,6 +704,7 @@ calc_run_time(char *name, server_info *sinfo, int flags)
 	timed_event *te_end;
 	int desc;
 	nspec **ns = NULL;
+	unsigned int ok_flags = NO_ALLPART;
 
 	if (name == NULL || sinfo == NULL)
 		return (time_t) -1;
@@ -713,6 +716,11 @@ calc_run_time(char *name, server_info *sinfo, int flags)
 
 	if (!is_resource_resv_valid(resresv, NULL))
 		return (time_t) -1;
+
+	if (flags & USE_BUCKETS)
+		ok_flags |= USE_BUCKETS;
+	if (resresv->is_job)
+		ok_flags |= IGNORE_EQUIV_CLASS;
 
 	err = new_schd_error();
 	if(err == NULL)
@@ -726,10 +734,7 @@ calc_run_time(char *name, server_info *sinfo, int flags)
 		desc = describe_simret(ret);
 		if (desc > 0 || (desc == 0 && policy_change_info(sinfo, resresv))) {
 			clear_schd_error(err);
-			if (resresv->is_job)
-				ns = is_ok_to_run(sinfo->policy, -1, sinfo, resresv->job->queue, resresv, IGNORE_EQUIV_CLASS, err);
-			else
-				ns = is_ok_to_run(sinfo->policy, -1, sinfo, NULL, resresv, IGNORE_EQUIV_CLASS, err);
+			ns = is_ok_to_run(sinfo->policy, sinfo, resresv->job->queue, resresv, ok_flags, err);
 		}
 
 		if (ns == NULL) /* event can not run */
@@ -792,7 +797,7 @@ calc_run_time(char *name, server_info *sinfo, int flags)
 	add_event(calendar, te_end);
 
 	if (flags & SIM_RUN_JOB)
-		sim_run_update_resresv(sinfo->policy, resresv, ns, RURR_NO_FLAGS);
+		sim_run_update_resresv(sinfo->policy, resresv, ns, NO_ALLPART);
 	else
 		free_nspecs(ns);
 
@@ -1067,6 +1072,169 @@ dup_timed_event(timed_event *ote, server_info *nsinfo)
 	}
 
 	return nte;
+}
+
+/*
+ * @brief constructor for te_list
+ * @return new te_list structure
+ */
+te_list *
+new_te_list() {
+	te_list *tel;
+	tel = malloc(sizeof(te_list));
+	
+	if(tel == NULL) {
+		log_err(errno, __func__, MEM_ERR_MSG);
+		return NULL;
+	}
+	
+	tel->event = NULL;
+	tel->next = NULL;
+	
+	return tel;
+}
+
+/*
+ * @brief te_list destructor
+ * @param[in] tel - te_list to free
+ * 
+ * @return void
+ */
+void
+free_te_list(te_list *tel) {
+	if(tel == NULL)
+		return;
+	free_te_list(tel->next);
+	free(tel);
+}
+
+/*
+ * @brief te_list copy constructor
+ * @param[in] ote - te_list to copy
+ * @param[in] new_timed_even_list - new timed events
+ * 
+ * @return copied te_list
+ */
+te_list *
+dup_te_list(te_list *ote, timed_event *new_timed_event_list)
+{
+	te_list *nte;
+
+	if(ote == NULL || new_timed_event_list == NULL)
+		return NULL;
+
+	nte = new_te_list();
+	if(nte == NULL)
+		return NULL;
+	
+	nte->event = find_timed_event(new_timed_event_list, ote->event->name, ote->event->event_type, ote->event->event_time);
+	
+	return nte;
+}
+
+/*
+ * @brief copy constructor for a list of te_list structures
+ * @param[in] ote - te_list to copy
+ * @param[in] new_timed_even_list - new timed events
+ * 
+ * @return copied te_list list
+ */
+
+te_list *
+dup_te_lists(te_list *ote, timed_event *new_timed_event_list) {
+	te_list *nte;
+	te_list *end_te = NULL;
+	te_list *cur;
+	te_list *nte_head = NULL;
+
+	if (ote == NULL || new_timed_event_list == NULL)
+		return NULL;
+	
+	for(cur = ote; cur != NULL; cur = cur->next) {
+		nte = dup_te_list(cur, new_timed_event_list);
+		if (nte == NULL) {
+			free_te_list(nte_head);
+			return NULL;
+		}
+		if(end_te != NULL) 
+			end_te->next = nte;
+		else
+			nte_head = nte;
+			
+		end_te = nte;
+	}
+	return nte_head;
+}
+
+/*
+ * @brief add a te_list for a timed_event to a list sorted by the event's time
+ * @param[in,out] tel - te_list to add to
+ * @param[in] te - timed_event to add
+ * 
+ * @return success/failure
+ * @retval 1 success
+ * @retbal 0 failure
+ */
+int
+add_te_list(te_list **tel, timed_event *te) {
+	te_list *cur_te;
+	te_list *prev = NULL;
+	te_list *ntel;
+	
+	if(tel == NULL || te == NULL)
+		return 0;
+	
+	for(cur_te = *tel; cur_te != NULL && cur_te->event->event_time < te->event_time; prev = cur_te, cur_te = cur_te->next)
+		;
+	
+	ntel = new_te_list();
+	if(ntel == NULL)
+		return 0;
+	ntel->event = te;
+	
+	if(prev == NULL) {
+		ntel->next = *tel;
+		(*tel) = ntel;
+	} else {
+		prev->next = ntel;
+		ntel->next = cur_te;
+	}
+	return 1;
+}
+
+/*
+ * @brief remove a te_list from a list by timed_event
+ * @param[in,out] tel - te_list to remove event from
+ * @param[in] te - timed_event to remove
+ * 
+ * @return success/failure
+ * @retval 1 success
+ * @retval 0 failure
+ */
+int
+remove_te_list(te_list **tel, timed_event *e)
+{
+	te_list *prev_tel;
+	te_list *cur_tel;
+	
+	if(tel == NULL || *tel == NULL || e == NULL)
+		return 0;
+	
+	prev_tel = NULL;
+	for (cur_tel = *tel; cur_tel != NULL && cur_tel->event != e; prev_tel = cur_tel, cur_tel = cur_tel->next)
+		;
+	if (prev_tel == NULL) {
+		*tel = cur_tel->next;
+		free(cur_tel);
+	}
+	else if (cur_tel != NULL) {
+		prev_tel -> next = cur_tel -> next;
+		free(cur_tel);
+	}
+	else
+		return 0;
+	
+	return 1;
 }
 
 /**
@@ -1600,7 +1768,7 @@ simulate_resmin(schd_resource *reslist, time_t end, event_list *calendar,
 	for (te = find_init_timed_event(te, IGNORE_DISABLED_EVENTS, event_mask);
 		te != NULL && (end == 0 || te->event_time < end);
 		te = find_next_timed_event(te, IGNORE_DISABLED_EVENTS, event_mask)) {
-		resresv = (resource_resv*) te->event_ptr;
+		resresv = (resource_resv *) te->event_ptr;
 		if (incl_arr == NULL || find_resource_resv_by_rank(incl_arr, resresv->rank) !=NULL) {
 			if (resresv != exclude) {
 				req = resresv->resreq;

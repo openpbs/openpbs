@@ -91,7 +91,6 @@ void resv_revert_alter_times(resc_resv *presv);
 
 extern int     svr_totnodes;
 extern time_t  time_now;
-extern time_t  jan1_yr2038;
 
 extern int cnvrt_local_move(job *, struct batch_request *);
 
