@@ -5072,6 +5072,8 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 				PY_TYPE_EVENT, PY_EVENT_PARAM_AOE);
 			goto event_set_exit;
 		}
+	} else if (hook_event == HOOK_EVENT_PERIODIC) {
+		/* for now we don't want to set anything for this event */
 	} else if (hook_event == HOOK_EVENT_RUNJOB) {
 		struct rq_runjob	*rqj = req_params->rq_run;
 

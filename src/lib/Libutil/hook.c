@@ -69,6 +69,8 @@
 #include "hook.h"
 #include "rpp.h"
 #include <signal.h>
+#include "hook_func.h"
+
 
 /**
  * @file	hook.c
@@ -93,6 +95,7 @@ extern pbs_list_head svr_resvsub_hooks;
 extern pbs_list_head svr_movejob_hooks;
 extern pbs_list_head svr_runjob_hooks;
 extern pbs_list_head svr_provision_hooks;
+extern pbs_list_head svr_periodic_hooks;
 extern pbs_list_head svr_execjob_begin_hooks;
 extern pbs_list_head svr_execjob_prologue_hooks;
 extern pbs_list_head svr_execjob_epilogue_hooks;
@@ -120,6 +123,7 @@ clear_hook_links(hook *phook)
 	delete_link(&phook->hi_movejob_hooks);
 	delete_link(&phook->hi_runjob_hooks);
 	delete_link(&phook->hi_provision_hooks);
+	delete_link(&phook->hi_periodic_hooks);
 	delete_link(&phook->hi_allhooks);
 
 	/* mom hooks below */
@@ -186,6 +190,13 @@ hook_event_as_string(unsigned int event)
 		if (ev_ct > 0)
 			strcat(eventstr, ",");
 		strcat(eventstr, HOOKSTR_RUNJOB);
+		ev_ct++;
+	}
+
+	if (event & HOOK_EVENT_PERIODIC) {
+		if (ev_ct > 0)
+			strcat(eventstr, ",");
+		strcat(eventstr, HOOKSTR_PERIODIC);
 		ev_ct++;
 	}
 
@@ -754,12 +765,17 @@ set_hook_user(hook *phook, char *newval, char *msg, size_t msg_len, int strict)
 		return (1);
 	}
 
-	if( (strcmp(newval, HOOKSTR_ADMIN) != 0) && \
-			(strcmp(newval, HOOKSTR_USER) != 0) ) {
-		snprintf(msg, msg_len-1,
-			"user value of a hook must be %s,%s", HOOKSTR_ADMIN,
-			HOOKSTR_USER);
-		return (1);
+	if (strcmp(newval, HOOKSTR_ADMIN) != 0) {
+		if (phook->event & HOOK_EVENT_PERIODIC) {
+			snprintf (msg, msg_len-1,"user value of a server periodic hook must be %s", HOOKSTR_ADMIN);
+			return (1);
+		}
+		else if	(strcmp(newval, HOOKSTR_USER) != 0) {
+			snprintf(msg, msg_len-1,
+				"user value of a hook must be %s,%s", HOOKSTR_ADMIN,
+				HOOKSTR_USER);
+			return (1);
+		}
 	}
 
 	if (strcmp(newval, HOOKSTR_ADMIN) == 0) {
@@ -816,6 +832,8 @@ insert_hook_sort_order(unsigned int event, pbs_list_head *phook_head, hook *phoo
 		plink_elem = &phook->hi_runjob_hooks;
 	} else if (event == HOOK_EVENT_PROVISION) {
 		plink_elem = &phook->hi_provision_hooks;
+	} else if (event == HOOK_EVENT_PERIODIC) {
+		plink_elem = &phook->hi_periodic_hooks;
 	} else if (event == HOOK_EVENT_EXECJOB_BEGIN) {
 		plink_elem = &phook->hi_execjob_begin_hooks;
 	} else if (event == HOOK_EVENT_EXECJOB_PROLOGUE) {
@@ -860,6 +878,8 @@ insert_hook_sort_order(unsigned int event, pbs_list_head *phook_head, hook *phoo
 			plink_cur = &phook_cur->hi_runjob_hooks;
 		} else if (event == HOOK_EVENT_PROVISION) {
 			plink_cur = &phook_cur->hi_provision_hooks;
+		} else if (event == HOOK_EVENT_PERIODIC) {
+			plink_cur = &phook_cur->hi_periodic_hooks;
 		} else if (event == HOOK_EVENT_EXECJOB_BEGIN) {
 			plink_cur = &phook_cur->hi_execjob_begin_hooks;
 		} else if (event == HOOK_EVENT_EXECJOB_PROLOGUE) {
@@ -1221,6 +1241,7 @@ set_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 		delete_link(&phook->hi_movejob_hooks);
 		delete_link(&phook->hi_runjob_hooks);
 		delete_link(&phook->hi_provision_hooks);
+		delete_link(&phook->hi_periodic_hooks);
 		delete_link(&phook->hi_execjob_begin_hooks);
 		delete_link(&phook->hi_execjob_prologue_hooks);
 		delete_link(&phook->hi_execjob_epilogue_hooks);
@@ -1334,6 +1355,13 @@ add_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 			phook->event 	|= HOOK_EVENT_PROVISION;
 			insert_hook_sort_order(HOOK_EVENT_PROVISION,
 				&svr_provision_hooks, phook);
+		} else if (strcmp(val, HOOKSTR_PERIODIC) == 0) {
+			if (phook->event & HOOK_EVENT_PROVISION)
+				goto err;
+			delete_link(&phook->hi_periodic_hooks);
+			phook->event 	|= HOOK_EVENT_PERIODIC;
+			insert_hook_sort_order(HOOK_EVENT_PERIODIC,
+				&svr_periodic_hooks, phook);
 		} else if (strcmp(val, HOOKSTR_EXECJOB_BEGIN) == 0) {
 			if (phook->event & HOOK_EVENT_PROVISION)
 				goto err;
@@ -1400,12 +1428,12 @@ add_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 		} else if (strcmp(val, HOOKSTR_NONE) != 0) {
 			snprintf(msg, msg_len-1,
 				"invalid argument (%s) to event. "
-				"Should be one or more of: %s,%s,%s,%s,%s,%s,"
+				"Should be one or more of: %s,%s,%s,%s,%s,%s,%s,"
 				"%s,%s,%s,%s,%s,%s,%s,%s,%s "
 				"or %s for no event",
 				newval, HOOKSTR_QUEUEJOB, HOOKSTR_MODIFYJOB,
 				HOOKSTR_RESVSUB, HOOKSTR_MOVEJOB,
-				HOOKSTR_RUNJOB, HOOKSTR_PROVISION,
+				HOOKSTR_RUNJOB, HOOKSTR_PROVISION, HOOKSTR_PERIODIC,
 				HOOKSTR_EXECJOB_BEGIN, HOOKSTR_EXECJOB_PROLOGUE,
 				HOOKSTR_EXECJOB_EPILOGUE, HOOKSTR_EXECJOB_PRETERM,
 				HOOKSTR_EXECJOB_END, HOOKSTR_EXECHOST_PERIODIC, HOOKSTR_EXECJOB_LAUNCH,
@@ -1493,6 +1521,10 @@ del_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 		} else if (strcmp(val, HOOKSTR_PROVISION) == 0) {
 			delete_link(&phook->hi_provision_hooks);
 			phook->event 	&= ~HOOK_EVENT_PROVISION;
+		} else if (strcmp(val, HOOKSTR_PERIODIC) == 0) {
+			delete_link(&phook->hi_periodic_hooks);
+			phook->event 	&= ~HOOK_EVENT_PERIODIC;
+			delete_task_by_parm1(phook, DELETE_ALL);
 		} else if (strcmp(val, HOOKSTR_EXECJOB_BEGIN) == 0) {
 			delete_link(&phook->hi_execjob_begin_hooks);
 			phook->event 	&= ~HOOK_EVENT_EXECJOB_BEGIN;
@@ -1523,12 +1555,12 @@ del_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 		} else if (strcmp(val, HOOKSTR_NONE) != 0) {
 			snprintf(msg, msg_len-1,
 				"invalid argument (%s) to event. "
-				"Should be one or more of: %s,%s,%s,%s,%s,%s,"
+				"Should be one or more of: %s,%s,%s,%s,%s,%s,%s,"
 				"%s,%s,%s,%s,%s,%s,%s,%s,%s "
 				"or %s for no event.",
 				newval, HOOKSTR_QUEUEJOB, HOOKSTR_MODIFYJOB,
 				HOOKSTR_RESVSUB, HOOKSTR_MOVEJOB,
-				HOOKSTR_RUNJOB, HOOKSTR_PROVISION,
+				HOOKSTR_RUNJOB, HOOKSTR_PERIODIC, HOOKSTR_PROVISION,
 				HOOKSTR_EXECJOB_BEGIN, HOOKSTR_EXECJOB_PROLOGUE,
 				HOOKSTR_EXECJOB_EPILOGUE, HOOKSTR_EXECJOB_END,
 				HOOKSTR_EXECJOB_PRETERM, HOOKSTR_EXECHOST_PERIODIC,
@@ -1711,22 +1743,20 @@ set_hook_alarm(hook *phook, char *newval, char *msg, size_t msg_len)
 {
 	int	alarm;
 
-	static char	*id = "set_hook_alarm";
-
 	if (msg == NULL) { /* should not happen */
-		log_err(PBSE_INTERNAL, id, "'msg' buffer is NULL");
+		log_err(PBSE_INTERNAL, __func__, "'msg' buffer is NULL");
 		return (1);
 	}
 	memset(msg, '\0', msg_len);
 
 	if (phook  == NULL) {
 		snprintf(msg, msg_len-1,
-			"%s: hook parameter is NULL!", id);
+			"%s: hook parameter is NULL!", __func__);
 		return (1);
 	}
 	if (newval == NULL) {
 		snprintf(msg, msg_len-1,
-			"%s: hook's alarm is NULL!", id);
+			"%s: hook's alarm is NULL!", __func__);
 		return (1);
 	}
 
@@ -1734,10 +1764,11 @@ set_hook_alarm(hook *phook, char *newval, char *msg, size_t msg_len)
 
 	if (alarm <= 0) {
 		snprintf(msg, msg_len-1,
-			"%s: alarm value '%s' of a hook must be > 0", id,
+			"%s: alarm value '%s' of a hook must be > 0", __func__,
 			newval);
 		return (1);
 	}
+
 	phook->alarm = alarm;
 	return (0);
 
@@ -1762,23 +1793,22 @@ set_hook_freq(hook *phook, char *newval, char *msg, size_t msg_len)
 {
 	int	freq;
 
-	static char	*id = "set_hook_freq";
 	char		*pc = NULL;
 
 	if (msg == NULL) { /* should not happen */
-		log_err(PBSE_INTERNAL, id, "'msg' buffer is NULL");
+		log_err(PBSE_INTERNAL, __func__, "'msg' buffer is NULL");
 		return (1);
 	}
 	memset(msg, '\0', msg_len);
 
 	if (phook  == NULL) {
 		snprintf(msg, msg_len-1,
-			"%s: hook parameter is NULL!", id);
+			"%s: hook parameter is NULL!", __func__);
 		return (1);
 	}
 	if (newval == NULL) {
 		snprintf(msg, msg_len-1,
-			"%s: hook's freq is NULL!", id);
+			"%s: hook's freq is NULL!", __func__);
 		return (1);
 	}
 
@@ -1792,7 +1822,7 @@ set_hook_freq(hook *phook, char *newval, char *msg, size_t msg_len)
 	if (*pc != '\0') {
 		snprintf(msg, msg_len-1,
 			"%s: encountered a non-digit freq value: %c",
-			id, *pc);
+			__func__, *pc);
 		return (1);
 	}
 
@@ -1800,16 +1830,18 @@ set_hook_freq(hook *phook, char *newval, char *msg, size_t msg_len)
 
 	if (freq <= 0) {
 		snprintf(msg, msg_len-1,
-			"%s: freq value '%s' of a hook must be > 0", id,
+			"%s: freq value '%s' of a hook must be > 0", __func__,
 			newval);
 		return (1);
 	}
 
-	if ((phook->event & HOOK_EVENT_EXECHOST_PERIODIC) == 0) {
+	if (((phook->event & HOOK_EVENT_EXECHOST_PERIODIC) == 0) && ((phook->event & HOOK_EVENT_PERIODIC) == 0)) {
 		snprintf(msg, msg_len-1,
-			"%s: Can't set hook freq value: hook event must contain at least'%s'", id, HOOKSTR_EXECHOST_PERIODIC);
+			"%s: Can't set hook freq value: hook event must contain at least'%s' or '%s'", __func__,
+			HOOKSTR_EXECHOST_PERIODIC, HOOKSTR_PERIODIC);
 		return (1);
 	}
+
 	phook->freq = freq;
 	return (0);
 
@@ -2013,6 +2045,9 @@ unset_hook_event(hook *phook, char *msg, size_t msg_len)
 
 	if (phook->event & HOOK_EVENT_PROVISION)
 		delete_link(&phook->hi_provision_hooks);
+
+	if (phook->event & HOOK_EVENT_PERIODIC)
+		delete_link(&phook->hi_periodic_hooks);
 
 	if (phook->event & HOOK_EVENT_EXECJOB_BEGIN) {
 		delete_link(&phook->hi_execjob_begin_hooks);
@@ -2449,6 +2484,8 @@ hook_purge(hook	*phook, void (*pyfree_func)(struct python_script *))
 
 		snprintf(namebuf, MAXPATHLEN, "%s%s%s", path_hooks,
 			phook->hook_name, HOOK_CONFIG_SUFFIX);
+		if ((phook->event & HOOK_EVENT_PERIODIC) && (phook->enabled == TRUE))
+			delete_task_by_parm1(phook, DELETE_ALL);
 
 #ifdef WIN32
 		/* in case file permission got corrupted */
@@ -3224,6 +3261,9 @@ print_hooks(unsigned int event)
 	} else if (event == HOOK_EVENT_RUNJOB) {
 		l_elem = svr_runjob_hooks;
 		strcpy(ev_str, HOOKSTR_RUNJOB);
+	} else if (event == HOOK_EVENT_PERIODIC) {
+		l_elem = svr_periodic_hooks;
+		strcpy(ev_str, HOOKSTR_PERIODIC);
 	} else if (event == HOOK_EVENT_PROVISION) {
 		l_elem = svr_provision_hooks;
 		strcpy(ev_str, HOOKSTR_PROVISION);
@@ -3277,6 +3317,8 @@ print_hooks(unsigned int event)
 			phook = (hook *)GET_NEXT(phook->hi_runjob_hooks);
 		else if (event == HOOK_EVENT_PROVISION)
 			phook = (hook *)GET_NEXT(phook->hi_provision_hooks);
+		else if (event == HOOK_EVENT_PERIODIC)
+			phook = (hook *)GET_NEXT(phook->hi_periodic_hooks);
 		else if (event == HOOK_EVENT_EXECJOB_BEGIN)
 			phook = (hook *)GET_NEXT(phook->hi_execjob_begin_hooks);
 		else if (event == HOOK_EVENT_EXECJOB_PROLOGUE)

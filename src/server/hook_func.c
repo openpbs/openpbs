@@ -206,6 +206,7 @@ extern pbs_list_head svr_modifyjob_hooks;
 extern pbs_list_head svr_resvsub_hooks;
 extern pbs_list_head svr_movejob_hooks;
 extern pbs_list_head svr_runjob_hooks;
+extern pbs_list_head svr_periodic_hooks;
 extern pbs_list_head svr_provision_hooks;
 extern pbs_list_head svr_execjob_begin_hooks;
 extern pbs_list_head svr_execjob_prologue_hooks;
@@ -1015,6 +1016,9 @@ mgr_hook_delete(struct batch_request *preq)
 	if (phook->event & HOOK_EVENT_PROVISION)
 		disable_svr_prov();
 
+	if (phook->event & HOOK_EVENT_PERIODIC)
+		(void)delete_task_by_parm1(phook, DELETE_ALL);
+
 	if (phook->event & MOM_EVENTS) {
 
 		phook->pending_delete = 1;
@@ -1456,6 +1460,14 @@ mgr_hook_import(struct batch_request *preq)
 		add_pending_mom_hook_action(NULL, phook->hook_name,
 			MOM_HOOK_ACTION_SEND_SCRIPT);
 
+	if (phook->event & HOOK_EVENT_PERIODIC)
+	{
+		if ((phook->enabled == TRUE) && (phook->freq > 0)) {
+			/* Search and delete all already existing periodic hook task */
+			delete_task_by_parm1 (phook, DELETE_ALL);
+			(void)set_task(WORK_Timed, time_now+phook->freq, run_periodic_hook, phook);
+		}
+	}
 	return;
 
 mgr_hook_import_error:
@@ -1814,6 +1826,30 @@ mgr_hook_set(struct batch_request *preq)
 			if (set_hook_enabled(phook, plx->al_value,
 				hook_msg, sizeof(hook_msg)) != 0)
 				goto mgr_hook_set_error;
+			if (phook->event & HOOK_EVENT_PERIODIC) {
+				if ((phook->enabled == TRUE) && (phook->freq > 0)) {
+					/* Delete all existing work tasks
+					 * There might be two of them:
+					 *  1 - related to running the next occurance
+					 *  2 - related to running the post processing function
+					 */
+					delete_task_by_parm1(phook, DELETE_ALL);
+					if ((phook->freq > 0) && (phook->script != NULL))
+						(void)set_task(WORK_Timed, time_now + phook->freq,
+								run_periodic_hook, phook);
+					else {
+						sprintf(log_buffer, "periodic hook is missing information, check hook frequency and script");
+						log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_HOOK, LOG_INFO,
+							    hookname, log_buffer);
+						snprintf(hook_msg, HOOK_MSG_SIZE-1,
+							"periodic hook is missing information, check hook frequency and script");
+						goto mgr_hook_set_error;
+					}
+				}
+				else
+					/* Delete any existing work task */
+					delete_task_by_parm1(phook, DELETE_ALL);
+			}
 			num_set++;
 		} else if (strcasecmp(plx->al_name, HOOKATT_DEBUG) == 0) {
 			if (plx->al_op != SET)
@@ -1921,7 +1957,12 @@ mgr_hook_set(struct batch_request *preq)
 		} else if (strcasecmp(plx->al_name, HOOKATT_ORDER) == 0) {
 			if (plx->al_op != SET)
 				goto opnotequal;
-			if (set_hook_order(phook, plx->al_value,
+			if (phook->event & HOOK_EVENT_PERIODIC) {
+				sprintf(log_buffer, "Setting order for a periodic hook has no effect");
+				log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_HOOK, LOG_INFO,
+					    hookname, log_buffer);
+			}
+			else if (set_hook_order(phook, plx->al_value,
 				hook_msg, sizeof(hook_msg)) != 0)
 				goto mgr_hook_set_error;
 			num_set++;
@@ -2351,7 +2392,8 @@ status_hook(hook *phook, struct batch_request *preq, pbs_list_head *pstathd, cha
 			} else if (strcmp(pal->al_name, HOOKATT_ALARM) == 0) {
 				strcpy(val_str, hook_alarm_as_string(phook->alarm));
 			} else if ((strcmp(pal->al_name, HOOKATT_FREQ) == 0) &&
-				((phook->event & HOOK_EVENT_EXECHOST_PERIODIC) != 0)) {
+				(((phook->event & HOOK_EVENT_EXECHOST_PERIODIC) != 0) ||
+				 ((phook->event & HOOK_EVENT_PERIODIC) != 0))) {
 				strcpy(val_str, hook_freq_as_string(phook->freq));
 			} else if (strcmp(pal->al_name, HOOKATT_DEBUG) == 0) {
 				strcpy(val_str, hook_debug_as_string(phook->debug));
@@ -2382,7 +2424,8 @@ status_hook(hook *phook, struct batch_request *preq, pbs_list_head *pstathd, cha
 			hook_user_as_string(phook->user)) != 0) ||
 			(attrlist_add(&pstat->brp_attr, HOOKATT_ALARM,
 			hook_alarm_as_string(phook->alarm)) != 0) ||
-			(((phook->event & HOOK_EVENT_EXECHOST_PERIODIC) != 0) &&
+			((((phook->event & HOOK_EVENT_EXECHOST_PERIODIC) != 0) ||
+			  ((phook->event & HOOK_EVENT_PERIODIC) != 0))&&
 			(attrlist_add(&pstat->brp_attr, HOOKATT_FREQ,
 			hook_freq_as_string(phook->freq)) != 0)) ||
 			(attrlist_add(&pstat->brp_attr, HOOKATT_ORDER,
@@ -3704,28 +3747,14 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 {
 	hook			*phook;
 	hook			*phook_next = NULL;
-	int			rc;
 	unsigned int		hook_event;
 	hook_input_param_t	req_ptr;
 	pbs_list_head		*head_ptr;
-	int			num_run = 0;
-	int			event_initialized = 0; /* event object set?*/
 	job			*pjob = NULL;
 	int			t;
 	char			*jobid = NULL;
-	struct	stat		sbuf;
-	struct	python_script	*py_script = NULL;
-	char			hook_config_path[MAXPATHLEN+1];
-	static char		env_pbs_hook_config[2*MAXPATHLEN+1];
-	char			*p;
-	FILE			*fp_debug = NULL;
-	FILE			*fp2_debug = NULL;
-	FILE			*fp_debug_out = NULL;
-	FILE			*fp_debug_out_save = NULL;
-	char			hook_inputfile[MAXPATHLEN+1];
-	char			hook_datafile[MAXPATHLEN+1];
-	char			hook_outfile[MAXPATHLEN+1];
-	size_t			suffix_sz;
+	int			num_run = 0;
+	int			rc = 1;
 
 	if (!svr_interp_data.interp_started) {
 		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
@@ -3775,6 +3804,10 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 				"Did not find a job tied to runjob request!");
 			return (-1);
 		}
+	} else if (preq->rq_type == PBS_BATCH_HookPeriodic) {
+		hook_event = HOOK_EVENT_PERIODIC;
+		head_ptr = &svr_periodic_hooks;
+		/* TODO: Assign lists in req_ptr, lists which we wish to use in periodic hooks */
 	} else {
 		return (-1); /* unexpected event encountered */
 	}
@@ -3784,11 +3817,6 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 	/* initialize global flags */
 	pbs_python_event_accept();
 
-	suffix_sz = strlen(HOOK_SCRIPT_SUFFIX);
-
-	/* initialize various hook_debug_* instance */
-	pbs_python_set_hook_debug_output_fp(NULL);
-	pbs_python_set_hook_debug_output_file("");
 
 	for (phook = (hook *)GET_NEXT(*head_ptr); phook; phook = phook_next) {
 
@@ -3802,7 +3830,9 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 			phook_next = (hook *)GET_NEXT(phook->hi_movejob_hooks);
 		} else if (preq->rq_type == PBS_BATCH_RunJob || preq->rq_type == PBS_BATCH_AsyrunJob) {
 			phook_next = (hook *)GET_NEXT(phook->hi_runjob_hooks);
-		} else {
+		} else if (preq->rq_type == PBS_BATCH_HookPeriodic) {
+			phook_next = (hook *)GET_NEXT(phook->hi_periodic_hooks);
+		}else {
 			return (-1); /* should not get here */
 		}
 
@@ -3820,553 +3850,617 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 			continue;
 		}
 
-		if (phook->debug) {
-			snprintf(hook_inputfile, MAXPATHLEN, FMT_HOOK_INFILE, path_hooks_workdir, hook_event_as_string(hook_event), phook->hook_name, (int)time(0));
+		if (phook->event == HOOK_EVENT_PERIODIC) {
+			(void)set_task(WORK_Timed, time_now+phook->freq, run_periodic_hook, phook);
+			num_run++;
+			continue;
+		}
+		rc = server_process_hooks(preq->rq_type, preq->rq_user, preq->rq_host, phook,
+					  hook_event, pjob, &req_ptr, hook_msg, msg_len, pyinter_func, &num_run);
+		if ((rc == 0) || (rc == 1))
+			return (rc);
+	}
 
-			fp_debug = fopen(hook_inputfile, "w");
-			if (fp_debug == NULL) {
-				sprintf(log_buffer,
-					"warning: open of debug input file %s failed!",
-					hook_inputfile);
-				log_event(PBSEVENT_DEBUG3,
-					PBS_EVENTCLASS_HOOK, LOG_ERR,
-					phook->hook_name, log_buffer);
-			} else {
-				pbs_python_set_hook_debug_input_fp(fp_debug);
-				pbs_python_set_hook_debug_input_file(hook_inputfile);
-			}
+	if (num_run == 0)
+		return (2);
+	return 1;
+}
+/**
+ * @brief
+ *
+ *		This function executes the hook script passed to it in
+ *		hook structure.
+ *
+ * @param[in] 	rq_type	    - batch request type
+ * @param[in] 	rq_user	    - batch request user
+ * @param[in] 	rq_host	    - request host
+ * @param[in]	phook	    - structure of the hook that needs to execute
+ * @param[in]	pjob	    - structure of job corresponding to which hook needs to run
+ *			      It is null when used with periodic hook.
+ * @param[in]	req_ptr	    - Input parameters to be passed to the hook.
+ * @param[in] 	hook_msg  - upon failure, fill this buffer with the actual error
+ *			    message.
+ * @param[in]   msg_len  - the size of 'hook_msg' buffer.
+ * @param[in]   pyinter_func - the interrupt function used when hook has reached
+ *			its execution time limit (alarm). This function raises
+ *			some signal to the calling process.
+ *		      Ex. pbs_python_set_interrupt() which sends an
+ *			  an INT signal (ctrl-C)
+ * @param[out]	num_run	    - reference of an integer which is incremented when
+ *			      hook runs successfully.
+ * @return	int
+ * @retval	1 means all the executed hooks have agreed to accept the request
+ * @retval 	0 means at least one hook was encountered to have rejected the
+ request.
+ * @retval	2 means no hook script executed (special case).
+ * @retval	-1 an internal error occurred
+ *
+ * @par MT-safe: No
+ */
+int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
+				int hook_event, job *pjob, hook_input_param_t *req_ptr,
+				char *hook_msg, int msg_len, void (*pyinter_func)(void),
+				int *num_run)
+{
 
-			snprintf(hook_datafile, MAXPATHLEN, FMT_HOOK_DATAFILE,
-				path_hooks_workdir, hook_event_as_string(hook_event),
-				phook->hook_name, (int)time(0));
+	char			hook_inputfile[MAXPATHLEN+1];
+	char			hook_datafile[MAXPATHLEN+1];
+	char			hook_outfile[MAXPATHLEN+1];
+	int			event_initialized = 0; /* event object set?*/
+	FILE			*fp_debug = NULL;
+	FILE			*fp2_debug = NULL;
+	FILE			*fp_debug_out = NULL;
+	FILE			*fp_debug_out_save = NULL;
+	static char		env_pbs_hook_config[2*MAXPATHLEN+1];
+	char			hook_config_path[MAXPATHLEN+1];
+	struct	python_script	*py_script = NULL;
+	struct	stat		sbuf;
+	int			rc;
+	char			*p;
+	static size_t		suffix_sz;
 
-			fp2_debug = fopen(hook_datafile, "w");
-			if (fp2_debug == NULL) {
-				sprintf(log_buffer,
-					"warning: open of debug data file %s failed!",
-					hook_datafile);
-				log_event(PBSEVENT_DEBUG3,
-					PBS_EVENTCLASS_HOOK, LOG_ERR,
-					phook->hook_name, log_buffer);
-			} else {
-				pbs_python_set_hook_debug_data_fp(fp2_debug);
-				pbs_python_set_hook_debug_data_file(hook_datafile);
-			}
+	if (suffix_sz == 0)
+		suffix_sz = strlen(HOOK_SCRIPT_SUFFIX);
+
+	/* initialize various hook_debug_* instance */
+	pbs_python_set_hook_debug_output_fp(NULL);
+	pbs_python_set_hook_debug_output_file("");
+
+	if (phook->debug) {
+		snprintf(hook_inputfile, MAXPATHLEN, FMT_HOOK_INFILE, path_hooks_workdir, 
+			hook_event_as_string(hook_event), phook->hook_name, (int)time(0));
+
+		fp_debug = fopen(hook_inputfile, "w");
+		if (fp_debug == NULL) {
+			sprintf(log_buffer,
+				"warning: open of debug input file %s failed!",
+				hook_inputfile);
+			log_event(PBSEVENT_DEBUG3,
+				PBS_EVENTCLASS_HOOK, LOG_ERR,
+				phook->hook_name, log_buffer);
+		} else {
+			pbs_python_set_hook_debug_input_fp(fp_debug);
+			pbs_python_set_hook_debug_input_file(hook_inputfile);
 		}
 
-		/* optimization here - create an event object only if there's */
-		/* at least one enabled hook */
-		if (!event_initialized) { /* only once for all hooks */
-			rc = pbs_python_event_set(hook_event, preq->rq_user,
-				preq->rq_host, &req_ptr);
+		snprintf(hook_datafile, MAXPATHLEN, FMT_HOOK_DATAFILE,
+			path_hooks_workdir, hook_event_as_string(hook_event),
+			phook->hook_name, (int)time(0));
 
-			if (rc == -1) { /* internal server code failure */
-				log_event(PBSEVENT_DEBUG2,
-					PBS_EVENTCLASS_HOOK, LOG_ERR,
-					phook->hook_name,
-					"Encountered an error while setting event");
-			}
-			event_initialized = 1;
-
-		} else if (phook->debug && (fp_debug != NULL)) {
-			/* If we have several hooks attached to the same*/
-			/* hook event, the first hook that runs */
-			/* will call pbs_python_event_set() (above if case), */
-			/* which will generate the hook input */
-			/* debug file. On the next hook and succeeding hooks */
-			/* that execute, we'll need to generate the */
-			/* intermediate hook input debug file (based on */
-			/* changes made by the previous hooks), by calling */
-			/* recreate_request() on a 'temp_req' structure */
-			/* that will be discarded (not acted upon). */
-			struct	batch_request	*temp_req;
-			int			do_recreate = 0;
-
-			temp_req = (struct batch_request *)malloc(
-					sizeof(struct batch_request));
-			if (temp_req != NULL) {
-				memset((void *)temp_req, (int)0,
-						sizeof(struct batch_request));
-				temp_req->rq_type = preq->rq_type;
-
-				switch (preq->rq_type) {
-					case PBS_BATCH_QueueJob:
-					case PBS_BATCH_SubmitResv:
-						CLEAR_HEAD(temp_req->rq_ind.rq_queuejob.rq_attr);
-						do_recreate = 1;
-						break;
-					case PBS_BATCH_ModifyJob:
-						CLEAR_HEAD(temp_req->rq_ind.rq_modify.rq_attr);
-						do_recreate = 1;
-						break;
-					default:
-						do_recreate = 0;
-				}
-				if (do_recreate) {
-					fp_debug_out_save = pbs_python_get_hook_debug_output_fp();
-					pbs_python_set_hook_debug_output_fp(fp_debug);
-					/* recreate_request() appends */
-					/* pbs.event().job or */
-					/* pbs.event().resv values from */
-					/* previous hooks execution into */
-					/* 'temp_req' structure, which */
-					/* results also in the values being */
-					/* written into the file represented */
-					/* by 'fp_debug'. */
-					(void)recreate_request(temp_req);
-					pbs_python_set_hook_debug_output_fp(fp_debug_out_save);
-				}
-				free_br(temp_req);
-			} else {
-				log_event(PBSEVENT_DEBUG3,
-				PBS_EVENTCLASS_HOOK, LOG_WARNING,
-					phook->hook_name,
-					"warning: can't generate complete hook input file due to malloc failure.");
-			}
+		fp2_debug = fopen(hook_datafile, "w");
+		if (fp2_debug == NULL) {
+			sprintf(log_buffer,
+				"warning: open of debug data file %s failed!",
+				hook_datafile);
+			log_event(PBSEVENT_DEBUG3,
+				PBS_EVENTCLASS_HOOK, LOG_ERR,
+				phook->hook_name, log_buffer);
+		} else {
+			pbs_python_set_hook_debug_data_fp(fp2_debug);
+			pbs_python_set_hook_debug_data_file(hook_datafile);
 		}
-		/* hook_name changes for each hook */
-		/* This sets Python event object's hook_name value */
-		rc = pbs_python_event_set_attrval(PY_EVENT_HOOK_NAME,
-			phook->hook_name);
+	}
 
-		if (rc == -1) {
-			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-				LOG_ERR, phook->hook_name,
-				"Failed to set event 'hook_name'.");
-			if (fp_debug != NULL) {
-				fclose(fp_debug);
-				fp_debug = NULL;
-				pbs_python_set_hook_debug_input_fp(NULL);
-				pbs_python_set_hook_debug_input_file("");
-			}
-			if (fp2_debug != NULL) {
-				fclose(fp2_debug);
-				fp2_debug = NULL;
-				pbs_python_set_hook_debug_data_fp(NULL);
-				pbs_python_set_hook_debug_data_file("");
-			}
-			if (fp_debug_out != NULL) {
-				fclose(fp_debug_out);
-				fp_debug_out = NULL;
-				pbs_python_set_hook_debug_output_fp(NULL);
-				pbs_python_set_hook_debug_output_file("");
-			}
-			return (-1);
-		}
+	/* optimization here - create an event object only if there's */
+	/* at least one enabled hook */
+	if (!event_initialized) { /* only once for all hooks */
+		rc = pbs_python_event_set(hook_event, rq_user,
+			rq_host, req_ptr);
 
-		/* hook_type needed for internal processing; */
-		/* hook_type changes for each hook.	     */
-		/* This sets Python event object's hook_type value */
-		rc = pbs_python_event_set_attrval(PY_EVENT_HOOK_TYPE,
-			hook_type_as_string(phook->type));
-
-		if (rc == -1) {
-			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-				LOG_ERR, phook->hook_name,
-				"Failed to set event 'hook_type'.");
-			if (fp_debug != NULL) {
-				fclose(fp_debug);
-				fp_debug = NULL;
-				pbs_python_set_hook_debug_input_fp(NULL);
-				pbs_python_set_hook_debug_input_file("");
-			}
-			if (fp2_debug != NULL) {
-				fclose(fp2_debug);
-				fp2_debug = NULL;
-				pbs_python_set_hook_debug_data_fp(NULL);
-				pbs_python_set_hook_debug_data_file("");
-			}
-			if (fp_debug_out != NULL) {
-				fclose(fp_debug_out);
-				fp_debug_out = NULL;
-				pbs_python_set_hook_debug_output_fp(NULL);
-				pbs_python_set_hook_debug_output_file("");
-			}
-			return (-1);
-		}
-		set_alarm(phook->alarm, pyinter_func);
-
-		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
-			LOG_INFO, phook->hook_name, "started");
-
-		pbs_python_set_mode(PY_MODE); /* hook script mode */
-
-		/* hook script may create files, and we don't want it to */
-		/* be littering server's private directory. */
-		/* NOTE: path_hooks_workdir is periodically cleaned up */
-		if (chdir(path_hooks_workdir) != 0) {
+		if (rc == -1) { /* internal server code failure */
 			log_event(PBSEVENT_DEBUG2,
-				PBS_EVENTCLASS_HOOK, LOG_WARNING, phook->hook_name,
-				"unable to go to hooks tmp directory");
+				PBS_EVENTCLASS_HOOK, LOG_ERR,
+				phook->hook_name,
+				"Encountered an error while setting event");
 		}
-		pbs_python_set_os_environ(PBS_HOOK_CONFIG_FILE, NULL);
-		(void)pbs_python_set_pbs_hook_config_filename(NULL);
+		event_initialized = 1;
 
-		strncpy(env_pbs_hook_config, PBS_HOOK_CONFIG_FILE,
-			sizeof(env_pbs_hook_config)-1);
-		py_script = phook->script;
-		if (py_script->path != NULL) {
-			strncpy(hook_config_path, py_script->path, sizeof(hook_config_path)-1);
-			p = strstr(hook_config_path, HOOK_SCRIPT_SUFFIX);
-			if (p != NULL) {
-				/* replace <HOOK_SCRIPT_SUFFIX> with */
-				/* <HOOK_CONFIG_SUFFIX>. suffix_sz is */
-				/* length of <HOOK_SCRIPT_SUFFIX> so as */
-				/* to not overflow. */
-				strncpy(p, HOOK_CONFIG_SUFFIX, suffix_sz);
+	} else if (phook->debug && (fp_debug != NULL)) {
+		/* If we have several hooks attached to the same*/
+		/* hook event, the first hook that runs */
+		/* will call pbs_python_event_set() (above if case), */
+		/* which will generate the hook input */
+		/* debug file. On the next hook and succeeding hooks */
+		/* that execute, we'll need to generate the */
+		/* intermediate hook input debug file (based on */
+		/* changes made by the previous hooks), by calling */
+		/* recreate_request() on a 'temp_req' structure */
+		/* that will be discarded (not acted upon). */
+		struct	batch_request	*temp_req;
+		int			do_recreate = 0;
 
-				if (stat(hook_config_path, &sbuf) == 0) {
-					pbs_python_set_os_environ(
-						PBS_HOOK_CONFIG_FILE,
-						hook_config_path);
-					(void)pbs_python_set_pbs_hook_config_filename(hook_config_path);
-				}
+		temp_req = (struct batch_request *)malloc(
+				sizeof(struct batch_request));
+		if (temp_req != NULL) {
+			memset((void *)temp_req, (int)0,
+					sizeof(struct batch_request));
+			temp_req->rq_type = rq_type;
+
+			switch (rq_type) {
+				case PBS_BATCH_QueueJob:
+				case PBS_BATCH_SubmitResv:
+					CLEAR_HEAD(temp_req->rq_ind.rq_queuejob.rq_attr);
+					do_recreate = 1;
+					break;
+				case PBS_BATCH_ModifyJob:
+					CLEAR_HEAD(temp_req->rq_ind.rq_modify.rq_attr);
+					do_recreate = 1;
+					break;
+				default:
+					do_recreate = 0;
 			}
-		}
-
-		rc=pbs_python_check_and_compile_script(&svr_interp_data,
-			phook->script);
-
-		/* reset global flag to allow modification of */
-		/* attributes and resources for every new hook execution. */
-		pbs_python_event_param_mod_allow();
-
-		/* Reset flag to restart scheduling cycle */
-		pbs_python_no_scheduler_restart_cycle();
-
-		if (preq->rq_type == PBS_BATCH_RunJob || preq->rq_type == PBS_BATCH_AsyrunJob) {
-			/* Clear dictionary that remembers previously */
-			/* set ATTR_l resources in a hook script */
-			/* Currently, only job ATTR_l resources can be */
-			/* modified in a runjob hook. */
-			if (pbs_python_event_jobresc_clear_hookset(ATTR_l) != 0) {
-				log_event(PBSEVENT_DEBUG2,
-					PBS_EVENTCLASS_HOOK,
-					LOG_ERR, phook->hook_name,
-					"Failed to clear jobresc hookset dictionary.");
-				if (fp_debug != NULL) {
-					fclose(fp_debug);
-					fp_debug = NULL;
-					pbs_python_set_hook_debug_input_fp(NULL);
-					pbs_python_set_hook_debug_input_file("");
-				}
-				if (fp2_debug != NULL) {
-					fclose(fp2_debug);
-					fp2_debug = NULL;
-					pbs_python_set_hook_debug_data_fp(NULL);
-					pbs_python_set_hook_debug_data_file("");
-				}
-			
-				if (fp_debug_out != NULL) {
-					fclose(fp_debug_out);
-					fp_debug_out = NULL;
-					pbs_python_set_hook_debug_output_fp(NULL);
-					pbs_python_set_hook_debug_output_file("");
-				}
-				return (-1);
+			if (do_recreate) { 
+				fp_debug_out_save = pbs_python_get_hook_debug_output_fp();
+				pbs_python_set_hook_debug_output_fp(fp_debug);
+				/* recreate_request() appends */
+				/* pbs.event().job or */
+				/* pbs.event().resv values from */
+				/* previous hooks execution into */
+				/* 'temp_req' structure, which */
+				/* results also in the values being */
+				/* written into the file represented */
+				/* by 'fp_debug'. */
+				(void)recreate_request(temp_req);
+				pbs_python_set_hook_debug_output_fp(fp_debug_out_save);
 			}
+			free_br(temp_req);
+		} else {
+			log_event(PBSEVENT_DEBUG3,
+			PBS_EVENTCLASS_HOOK, LOG_WARNING,
+				phook->hook_name,
+				"warning: can't generate complete hook input file due to malloc failure.");
 		}
+	}
+	/* hook_name changes for each hook */
+	/* This sets Python event object's hook_name value */
+	rc = pbs_python_event_set_attrval(PY_EVENT_HOOK_NAME,
+		phook->hook_name);
 
-		if (fp_debug != NULL) {
-			fprintf(fp_debug, "%s.%s=%s\n", PBS_OBJ, GET_NODE_NAME_FUNC,
-				(char *)server_host);
-			fprintf(fp_debug, "%s.%s=%s\n", EVENT_OBJECT, PY_EVENT_TYPE,
-				hook_event_as_string(hook_event));
-			fprintf(fp_debug, "%s.%s=%s\n", EVENT_OBJECT, PY_EVENT_HOOK_NAME,
-				phook->hook_name);
-			fprintf(fp_debug, "%s.%s=%s\n", EVENT_OBJECT, PY_EVENT_HOOK_TYPE,
-				hook_type_as_string(phook->type));
-			fprintf(fp_debug, "%s.%s=%s\n", EVENT_OBJECT, "requestor",
-				preq->rq_user);
-			fprintf(fp_debug, "%s.%s=%s\n", EVENT_OBJECT, "requestor_host",
-				preq->rq_host);
-			fprintf(fp_debug, "%s.%s=%s\n", EVENT_OBJECT, "user", hook_user_as_string(phook->user));
-			fprintf(fp_debug, "%s.%s=%d\n", EVENT_OBJECT, "alarm", phook->alarm);
-		}
-
-		/* let rc pass through */
-		if (rc==0)
-			rc=pbs_python_run_code_in_namespace(&svr_interp_data,
-				phook->script, 0);
-
+	if (rc == -1) {
+		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
+			LOG_ERR, phook->hook_name,
+			"Failed to set event 'hook_name'.");
 		if (fp_debug != NULL) {
 			fclose(fp_debug);
 			fp_debug = NULL;
 			pbs_python_set_hook_debug_input_fp(NULL);
 			pbs_python_set_hook_debug_input_file("");
-
 		}
-
-		/* set hook_debug_output_file for recreate_request(), set_* calls */
-		/* to dump any hook results in the file. */
-		if (phook->debug) {
-			snprintf(hook_outfile, MAXPATHLEN, FMT_HOOK_OUTFILE,
-			path_hooks_workdir, hook_event_as_string(hook_event),
-			phook->hook_name, (int)time(0));
-
-			pbs_python_set_hook_debug_output_file(hook_outfile);
-			fp_debug_out = fopen(hook_outfile, "w");
-			if (fp_debug_out != NULL) {
-				fp_debug_out_save = pbs_python_get_hook_debug_output_fp();
-				if (fp_debug_out_save != NULL) {
-					fclose(fp_debug_out_save);
-				}
-				pbs_python_set_hook_debug_output_fp(fp_debug_out);
-			}
-		} else {
-			fp_debug_out_save = pbs_python_get_hook_debug_output_fp();
-			if (fp_debug_out_save != NULL) {
-				fclose(fp_debug_out_save);
-			}
-			pbs_python_set_hook_debug_output_fp(NULL);
-			/* NOTE: don't call */
-			/* pbs_python_set_hook_debug_output_file() as */
-			/* we still need a file to dump any remaining */
-			/* debug output in case all hooks end */
-			/* up accepting the current event with some */
-			/* hooks with debug=true and some that are */
-			/* debug=false */
-
-		}
-
 		if (fp2_debug != NULL) {
 			fclose(fp2_debug);
 			fp2_debug = NULL;
 			pbs_python_set_hook_debug_data_fp(NULL);
 			pbs_python_set_hook_debug_data_file("");
 		}
+		return (-1);
+	}
 
-		/* go back to server's private directory */
-		if (chdir(path_priv) != 0) {
+	/* hook_type needed for internal processing; */
+	/* hook_type changes for each hook.	     */
+	/* This sets Python event object's hook_type value */
+	rc = pbs_python_event_set_attrval(PY_EVENT_HOOK_TYPE,
+		hook_type_as_string(phook->type));
+
+	if (rc == -1) {
+		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
+			LOG_ERR, phook->hook_name,
+			"Failed to set event 'hook_type'.");
+		if (fp_debug != NULL) {
+			fclose(fp_debug);
+			fp_debug = NULL;
+			pbs_python_set_hook_debug_input_fp(NULL);
+			pbs_python_set_hook_debug_input_file("");
+		}
+		if (fp2_debug != NULL) {
+			fclose(fp2_debug);
+			fp2_debug = NULL;
+			pbs_python_set_hook_debug_data_fp(NULL);
+			pbs_python_set_hook_debug_data_file("");
+		}
+		if (fp_debug_out != NULL) {
+			fclose(fp_debug_out);
+			fp_debug_out = NULL;
+			pbs_python_set_hook_debug_output_fp(NULL);
+			pbs_python_set_hook_debug_output_file("");
+		}
+		return (-1);
+	}
+	set_alarm(phook->alarm, pyinter_func);
+
+	log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
+		LOG_INFO, phook->hook_name, "started");
+
+	pbs_python_set_mode(PY_MODE); /* hook script mode */
+
+	/* hook script may create files, and we don't want it to */
+	/* be littering server's private directory. */
+	/* NOTE: path_hooks_workdir is periodically cleaned up */
+	if (chdir(path_hooks_workdir) != 0) {
+		log_event(PBSEVENT_DEBUG2,
+			PBS_EVENTCLASS_HOOK, LOG_WARNING, phook->hook_name,
+			"unable to go to hooks tmp directory");
+	}
+	pbs_python_set_os_environ(PBS_HOOK_CONFIG_FILE, NULL);
+	(void)pbs_python_set_pbs_hook_config_filename(NULL);
+
+	strncpy(env_pbs_hook_config, PBS_HOOK_CONFIG_FILE,
+		sizeof(env_pbs_hook_config)-1);
+	py_script = phook->script;
+	if (py_script->path != NULL) {
+		strncpy(hook_config_path, py_script->path, sizeof(hook_config_path)-1);
+		p = strstr(hook_config_path, HOOK_SCRIPT_SUFFIX);
+		if (p != NULL) {
+			/* replace <HOOK_SCRIPT_SUFFIX> with */
+			/* <HOOK_CONFIG_SUFFIX>. suffix_sz is */
+			/* length of <HOOK_SCRIPT_SUFFIX> so as */
+			/* to not overflow. */
+			strncpy(p, HOOK_CONFIG_SUFFIX, suffix_sz);
+
+			if (stat(hook_config_path, &sbuf) == 0) {
+				pbs_python_set_os_environ(
+					PBS_HOOK_CONFIG_FILE,
+					hook_config_path);
+				(void)pbs_python_set_pbs_hook_config_filename(hook_config_path);
+			}
+		}
+	}
+
+	rc=pbs_python_check_and_compile_script(&svr_interp_data,
+		phook->script);
+
+	/* reset global flag to allow modification of */
+	/* attributes and resources for every new hook execution. */
+	pbs_python_event_param_mod_allow();
+
+	/* Reset flag to restart scheduling cycle */
+	pbs_python_no_scheduler_restart_cycle();
+
+	if (rq_type == PBS_BATCH_RunJob || rq_type == PBS_BATCH_AsyrunJob) {
+		/* Clear dictionary that remembers previously */
+		/* set ATTR_l resources in a hook script */
+		/* Currently, only job ATTR_l resources can be */
+		/* modified in a runjob hook. */
+		if (pbs_python_event_jobresc_clear_hookset(ATTR_l) != 0) {
 			log_event(PBSEVENT_DEBUG2,
-				PBS_EVENTCLASS_HOOK, LOG_WARNING, phook->hook_name,
-				"unable to go back server private directory");
+				PBS_EVENTCLASS_HOOK,
+				LOG_ERR, phook->hook_name,
+				"Failed to clear jobresc hookset dictionary.");
+			if (fp_debug != NULL) {
+				fclose(fp_debug);
+				fp_debug = NULL;
+				pbs_python_set_hook_debug_input_fp(NULL);
+				pbs_python_set_hook_debug_input_file("");
+			}
+			if (fp2_debug != NULL) {
+				fclose(fp2_debug);
+				fp2_debug = NULL;
+				pbs_python_set_hook_debug_data_fp(NULL);
+				pbs_python_set_hook_debug_data_file("");
+			}
+			if (fp_debug_out != NULL) {
+				fclose(fp_debug_out);
+				fp_debug_out = NULL;
+				pbs_python_set_hook_debug_output_fp(NULL);
+				pbs_python_set_hook_debug_output_file("");
+			}
+			return (-1);
 		}
+	}
 
-		pbs_python_set_mode(C_MODE); /* PBS C mode - flexible */
-		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
-			LOG_INFO, phook->hook_name, "finished");
-		set_alarm(0, NULL);
+	if (fp_debug != NULL) {
+		fprintf(fp_debug, "%s.%s=%s\n", PBS_OBJ, GET_NODE_NAME_FUNC,
+			(char *)server_host);
+		fprintf(fp_debug, "%s.%s=%s\n", EVENT_OBJECT, PY_EVENT_TYPE,
+			hook_event_as_string(hook_event));
+		fprintf(fp_debug, "%s.%s=%s\n", EVENT_OBJECT, PY_EVENT_HOOK_NAME,
+			phook->hook_name);
+		fprintf(fp_debug, "%s.%s=%s\n", EVENT_OBJECT, PY_EVENT_HOOK_TYPE,
+			hook_type_as_string(phook->type));
+		fprintf(fp_debug, "%s.%s=%s\n", EVENT_OBJECT, "requestor",
+			rq_user);
+		fprintf(fp_debug, "%s.%s=%s\n", EVENT_OBJECT, "requestor_host",
+			rq_host);
+		fprintf(fp_debug, "%s.%s=%s\n", EVENT_OBJECT, "user", hook_user_as_string(phook->user));
+		fprintf(fp_debug, "%s.%s=%d\n", EVENT_OBJECT, "alarm", phook->alarm);
+	}
 
-		switch (rc) {
-			case -1:	/* internal error */
-				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-					LOG_ERR, phook->hook_name,
-					"Internal server error encountered. Skipping hook.");
-				if (fp_debug_out != NULL) {
-					fclose(fp_debug_out);
-					fp_debug_out = NULL;
-					pbs_python_set_hook_debug_output_fp(NULL);
-					pbs_python_set_hook_debug_output_file("");
-				}
-				return (-1); /* should not happen */
-			case -2:	/* unhandled exception */
-				pbs_python_event_reject(NULL);
-				pbs_python_event_param_mod_disallow();
+	/* let rc pass through */
+	if (rc==0)
+		rc=pbs_python_run_code_in_namespace(&svr_interp_data,
+			phook->script, 0);
 
-				snprintf(log_buffer, LOG_BUF_SIZE-1,
-					"%s hook '%s' encountered an exception, "
-					"request rejected",
-					hook_event_as_string(hook_event), phook->hook_name);
-				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-					LOG_ERR, phook->hook_name, log_buffer);
-				snprintf(hook_msg, msg_len-1,
-					"request rejected as filter hook '%s' encountered an "
-					"exception. Please inform Admin", phook->hook_name);
-				write_hook_reject_debug_output_and_close(hook_msg);
-				return (0);
-			case -3:	/* alarm timeout */
-				pbs_python_event_reject(NULL);
-				pbs_python_event_param_mod_disallow();
+	if (fp_debug != NULL) {
+		fclose(fp_debug);
+		fp_debug = NULL;
+		pbs_python_set_hook_debug_input_fp(NULL);
+		pbs_python_set_hook_debug_input_file("");
 
-				snprintf(log_buffer, LOG_BUF_SIZE-1,
-					"alarm call while running %s hook '%s', "
-					"request rejected",
-					hook_event_as_string(hook_event), phook->hook_name);
-				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-					LOG_ERR, phook->hook_name, log_buffer);
-				snprintf(hook_msg, msg_len-1,
-					"request rejected as filter hook '%s' got an "
-					"alarm call. Please inform Admin", phook->hook_name);
-				write_hook_reject_debug_output_and_close(hook_msg);
-				return (0);
+	}
+
+	/* set hook_debug_output_file for recreate_request(), set_* calls */
+	/* to dump any hook results in the file. */
+	if (phook->debug) {
+		snprintf(hook_outfile, MAXPATHLEN, FMT_HOOK_OUTFILE,
+		path_hooks_workdir, hook_event_as_string(hook_event),
+		phook->hook_name, (int)time(0));
+
+		pbs_python_set_hook_debug_output_file(hook_outfile);
+		fp_debug_out = fopen(hook_outfile, "w");
+		if (fp_debug_out != NULL) {
+			fp_debug_out_save = pbs_python_get_hook_debug_output_fp();
+			if (fp_debug_out_save != NULL) {
+				fclose(fp_debug_out_save);
+			}
+			pbs_python_set_hook_debug_output_fp(fp_debug_out);
 		}
+	} else {
+		fp_debug_out_save = pbs_python_get_hook_debug_output_fp();
+		if (fp_debug_out_save != NULL) {
+			fclose(fp_debug_out_save);
+		}
+		pbs_python_set_hook_debug_output_fp(NULL);
+		/* NOTE: don't call */
+		/* pbs_python_set_hook_debug_output_file() as */
+		/* we still need a file to dump any remaining */
+		/* debug output in case all hooks end */
+		/* up accepting the current event with some */
+		/* hooks with debug=true and some that are */
+		/* debug=false */
+	}
 
-		num_run++;
+	if (fp2_debug != NULL) {
+		fclose(fp2_debug);
+		fp2_debug = NULL;
+		pbs_python_set_hook_debug_data_fp(NULL);
+		pbs_python_set_hook_debug_data_file("");
+	}
 
-		if (pbs_python_get_scheduler_restart_cycle_flag() == TRUE) {
+	/* go back to server's private directory */
+	if (chdir(path_priv) != 0) {
+		log_event(PBSEVENT_DEBUG2,
+			PBS_EVENTCLASS_HOOK, LOG_WARNING, phook->hook_name,
+			"unable to go back server private directory");
+	}
 
-			set_scheduler_flag(SCH_SCHEDULE_RESTART_CYCLE);
+	pbs_python_set_mode(C_MODE); /* PBS C mode - flexible */
+	log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
+		LOG_INFO, phook->hook_name, "finished");
+	set_alarm(0, NULL);
+
+	switch (rc) {
+		case -1:	/* internal error */
 			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-				LOG_INFO, phook->hook_name,
-				"requested for scheduler to restart cycle");
-		}
+				LOG_ERR, phook->hook_name,
+				"Internal server error encountered. Skipping hook.");
+			if (fp_debug_out != NULL) {
+				fclose(fp_debug_out);
+				fp_debug_out = NULL;
+				pbs_python_set_hook_debug_output_fp(NULL);
+				pbs_python_set_hook_debug_output_file("");
+			}
+			return (-1); /* should not happen */
+		case -2:	/* unhandled exception */
+			pbs_python_event_reject(NULL);
+			pbs_python_event_param_mod_disallow();
 
-		/* reject if at least one hook script rejects */
-		if (pbs_python_event_get_accept_flag() == FALSE) {
-			char *emsg = NULL;
+			snprintf(log_buffer, LOG_BUF_SIZE-1,
+				"%s hook '%s' encountered an exception, "
+				"request rejected",
+				hook_event_as_string(hook_event), phook->hook_name);
+			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
+				LOG_ERR, phook->hook_name, log_buffer);
+			snprintf(hook_msg, msg_len-1,
+				"request rejected as filter hook '%s' encountered an "
+				"exception. Please inform Admin", phook->hook_name);
+			write_hook_reject_debug_output_and_close(hook_msg);
+			return (0);
+		case -3:	/* alarm timeout */
+			pbs_python_event_reject(NULL);
+			pbs_python_event_param_mod_disallow();
 
-			if (preq->rq_type == PBS_BATCH_RunJob || preq->rq_type == PBS_BATCH_AsyrunJob) {
-				char	*new_error_path_str = NULL;
-				char	*new_output_path_str = NULL;
+			snprintf(log_buffer, LOG_BUF_SIZE-1,
+				"alarm call while running %s hook '%s', "
+				"request rejected",
+				hook_event_as_string(hook_event), phook->hook_name);
+			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
+				LOG_ERR, phook->hook_name, log_buffer);
+			snprintf(hook_msg, msg_len-1,
+				"request rejected as filter hook '%s' got an "
+				"alarm call. Please inform Admin", phook->hook_name);
+			write_hook_reject_debug_output_and_close(hook_msg);
+			return (0);
+	}
+	*num_run += 1;
+	if (pbs_python_get_scheduler_restart_cycle_flag() == TRUE) {
 
-				new_error_path_str =
-					pbs_python_event_job_getval_hookset(ATTR_e,
-					NULL, 0, NULL, 0);
+		set_scheduler_flag(SCH_SCHEDULE_RESTART_CYCLE);
+		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
+			LOG_INFO, phook->hook_name,
+			"requested for scheduler to restart cycle");
+	}
 
-				if (new_error_path_str != NULL) {
-					sprintf(log_buffer,
-						"cannot modify job attribute '%s' after runjob "
-						"request has been rejected.", ATTR_e);
-					log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-						LOG_ERR, phook->hook_name, log_buffer);
+	/* reject if at least one hook script rejects */
+	if (pbs_python_event_get_accept_flag() == FALSE) {
+		char *emsg = NULL;
 
-				}
+		if (rq_type == PBS_BATCH_RunJob || rq_type == PBS_BATCH_AsyrunJob) {
+			char	*new_error_path_str = NULL;
+			char	*new_output_path_str = NULL;
 
-				new_output_path_str =
-					pbs_python_event_job_getval_hookset(ATTR_o,
-					NULL, 0, NULL, 0);
+			new_error_path_str =
+				pbs_python_event_job_getval_hookset(ATTR_e,
+				NULL, 0, NULL, 0);
 
-				if (new_output_path_str != NULL) {
-					sprintf(log_buffer,
-						"cannot modify job attribute '%s' after runjob "
-						"request has been rejected.", ATTR_o);
-					log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-						LOG_ERR, phook->hook_name, log_buffer);
-				}
+			if (new_error_path_str != NULL) {
+				sprintf(log_buffer,
+					"cannot modify job attribute '%s' after runjob "
+					"request has been rejected.", ATTR_e);
+				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
+					LOG_ERR, phook->hook_name, log_buffer);
 
-
-				if (do_runjob_reject_actions(pjob, phook->hook_name) != 0)
-					attribute_jobmap_restore(pjob, runjob_reject_attrlist);
 			}
 
-			snprintf(hook_msg, msg_len-1,
-				"%s request rejected by '%s'",
-				hook_event_as_string(hook_event),
-				phook->hook_name);
+			new_output_path_str =
+				pbs_python_event_job_getval_hookset(ATTR_o,
+				NULL, 0, NULL, 0);
+
+			if (new_output_path_str != NULL) {
+				sprintf(log_buffer,
+					"cannot modify job attribute '%s' after runjob "
+					"request has been rejected.", ATTR_o);
+				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
+					LOG_ERR, phook->hook_name, log_buffer);
+			}
+
+
+			if (do_runjob_reject_actions(pjob, phook->hook_name) != 0)
+				attribute_jobmap_restore(pjob, runjob_reject_attrlist);
+		}
+
+		snprintf(hook_msg, msg_len-1,
+			"%s request rejected by '%s'",
+			hook_event_as_string(hook_event),
+			phook->hook_name);
+		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
+			LOG_ERR, phook->hook_name, hook_msg);
+		if ((emsg=pbs_python_event_get_reject_msg()) != NULL) {
+			snprintf(hook_msg, msg_len-1, "%s", emsg);
+			/* log also the custom reject message */
 			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
 				LOG_ERR, phook->hook_name, hook_msg);
-			if ((emsg=pbs_python_event_get_reject_msg()) != NULL) {
-				snprintf(hook_msg, msg_len-1, "%s", emsg);
-				/* log also the custom reject message */
-				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
-					LOG_ERR, phook->hook_name, hook_msg);
+		}
+
+		pbs_python_do_vnode_set();
+		write_hook_reject_debug_output_and_close(emsg);
+		return (0);
+	} else { 	/* hook request has been accepted */
+
+		if (rq_type == PBS_BATCH_RunJob || rq_type == PBS_BATCH_AsyrunJob) {
+			char	*new_exec_time_str = NULL;
+			char	*new_hold_types_str = NULL;
+			char	*new_project_str = NULL;
+			char	*new_depend_str = NULL;
+			char	hold_opval[HOOK_BUF_SIZE];
+			char	hold_delval[HOOK_BUF_SIZE];
+			int	job_modified = 0;
+			int	vnode_modified = 0;
+
+			new_exec_time_str =
+				pbs_python_event_job_getval_hookset(ATTR_a,
+				NULL, 0, NULL, 0);
+
+			if (new_exec_time_str != NULL) {
+				job_modified = 1;
+				snprintf(log_buffer, sizeof(log_buffer),
+					"Found job '%s' attribute flagged to be set",
+					ATTR_a);
+				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_ERR, phook->hook_name, log_buffer);
+
 			}
 
-			pbs_python_do_vnode_set();
-			write_hook_reject_debug_output_and_close(emsg);
-			return (0);
-		} else { 	/* hook request has been accepted */
+			if (job_modified != 1) {
+				new_hold_types_str =
+					pbs_python_event_job_getval_hookset(ATTR_h,
+					hold_opval, HOOK_BUF_SIZE, hold_delval,
+					HOOK_BUF_SIZE);
 
-			if (preq->rq_type == PBS_BATCH_RunJob || preq->rq_type == PBS_BATCH_AsyrunJob) {
-				char	*new_exec_time_str = NULL;
-				char	*new_hold_types_str = NULL;
-				char	*new_project_str = NULL;
-				char	*new_depend_str = NULL;
-				char	hold_opval[HOOK_BUF_SIZE];
-				char	hold_delval[HOOK_BUF_SIZE];
-				int	job_modified = 0;
-				int	vnode_modified = 0;
+				if (new_hold_types_str != NULL) {
+					job_modified = 1;
+					snprintf(log_buffer, sizeof(log_buffer),
+						"Found job '%s' attribute flagged to be set", ATTR_h);
+					log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_ERR, phook->hook_name, log_buffer);
+				}
+			}
 
-				new_exec_time_str =
-					pbs_python_event_job_getval_hookset(ATTR_a,
-					NULL, 0, NULL, 0);
+			if (job_modified != 1) {
+				new_project_str =
+					pbs_python_event_job_getval_hookset(
+					ATTR_project, NULL, 0, NULL, 0);
 
-				if (new_exec_time_str != NULL) {
+				if (new_project_str != NULL) {
 					job_modified = 1;
 					snprintf(log_buffer, sizeof(log_buffer),
 						"Found job '%s' attribute flagged to be set",
-						ATTR_a);
+						ATTR_project);
 					log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_ERR, phook->hook_name, log_buffer);
 
-				}
-
-				if (job_modified != 1) {
-					new_hold_types_str =
-						pbs_python_event_job_getval_hookset(ATTR_h,
-						hold_opval, HOOK_BUF_SIZE, hold_delval,
-						HOOK_BUF_SIZE);
-
-					if (new_hold_types_str != NULL) {
-						job_modified = 1;
-						snprintf(log_buffer, sizeof(log_buffer),
-							"Found job '%s' attribute flagged to be set", ATTR_h);
-						log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_ERR, phook->hook_name, log_buffer);
-					}
-				}
-
-				if (job_modified != 1) {
-					new_project_str =
-						pbs_python_event_job_getval_hookset(
-						ATTR_project, NULL, 0, NULL, 0);
-
-					if (new_project_str != NULL) {
-						job_modified = 1;
-						snprintf(log_buffer, sizeof(log_buffer),
-							"Found job '%s' attribute flagged to be set",
-							ATTR_project);
-						log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_ERR, phook->hook_name, log_buffer);
-
-					}
-				}
-
-				if (job_modified != 1) {
-					new_depend_str =
-						pbs_python_event_job_getval_hookset(
-						ATTR_depend, NULL, 0, NULL, 0);
-
-					if (new_depend_str != NULL) {
-						job_modified = 1;
-						snprintf(log_buffer, sizeof(log_buffer),
-							"Found job '%s' attribute flagged to be set",
-							ATTR_depend);
-						log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_ERR, phook->hook_name, log_buffer);
-
-					}
-				}
-
-				vnode_modified = pbs_python_has_vnode_set();
-
-				if (job_modified || vnode_modified) {
-					sprintf(log_buffer,
-						"runjob request rejected by '%s': "
-						"cannot modify %s after runjob "
-						"request has been accepted.",
-						phook->hook_name,
-						(vnode_modified?PY_EVENT_PARAM_VNODE:PY_EVENT_PARAM_JOB));
-					log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-						LOG_ERR, phook->hook_name, log_buffer);
-					/* The following message will appear when */
-					/* calling pbs_geterrmsg():		  */
-					snprintf(hook_msg, msg_len-1,
-						"request rejected by filter hook '%s': "
-						"cannot modify %s after runjob "
-						"request has been accepted.",
-						phook->hook_name,
-						(vnode_modified?PY_EVENT_PARAM_VNODE:PY_EVENT_PARAM_JOB));
-
-					write_hook_reject_debug_output_and_close(hook_msg);
-					return (0);
-				}
-
-				hook_msg[0] = '\0';
-				if (do_runjob_accept_actions(pjob, phook->hook_name, hook_msg, msg_len-1) != 0) {
-					snprintf(log_buffer, sizeof(log_buffer),
-						"runjob request rejected: %s", hook_msg);
-					log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_ERR, phook->hook_name, log_buffer);
-					snprintf(log_buffer, sizeof(log_buffer),
-						"request rejected by filter hook: %s", hook_msg);
-					strncpy(hook_msg, log_buffer, msg_len-1);
-					attribute_jobmap_restore(pjob, runjob_accept_attrlist);
-					write_hook_reject_debug_output_and_close(hook_msg);
-					return (0);
 				}
 			}
-		}
 
+			if (job_modified != 1) {
+					new_depend_str =
+					pbs_python_event_job_getval_hookset(
+					ATTR_depend, NULL, 0, NULL, 0);
+
+				if (new_depend_str != NULL) {
+					job_modified = 1;
+					snprintf(log_buffer, sizeof(log_buffer),
+						"Found job '%s' attribute flagged to be set",
+						ATTR_depend);
+					log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_ERR, phook->hook_name, log_buffer);
+
+				}
+			}
+
+			vnode_modified = pbs_python_has_vnode_set();
+
+			if (job_modified || vnode_modified) {
+				sprintf(log_buffer,
+					"runjob request rejected by '%s': "
+					"cannot modify %s after runjob "
+					"request has been accepted.",
+					phook->hook_name,
+					(vnode_modified?PY_EVENT_PARAM_VNODE:PY_EVENT_PARAM_JOB));
+				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
+					LOG_ERR, phook->hook_name, log_buffer);
+				/* The following message will appear when */
+				/* calling pbs_geterrmsg():		  */
+				snprintf(hook_msg, msg_len-1,
+					"request rejected by filter hook '%s': "
+					"cannot modify %s after runjob "
+					"request has been accepted.",
+					phook->hook_name,
+					(vnode_modified?PY_EVENT_PARAM_VNODE:PY_EVENT_PARAM_JOB));
+
+				write_hook_reject_debug_output_and_close(hook_msg);
+				return (0);
+			}
+
+			hook_msg[0] = '\0';
+			if (do_runjob_accept_actions(pjob, phook->hook_name, hook_msg, msg_len-1) != 0) {
+				snprintf(log_buffer, sizeof(log_buffer),
+					"runjob request rejected: %s", hook_msg);
+				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_ERR, phook->hook_name, log_buffer);
+				snprintf(log_buffer, sizeof(log_buffer),
+					"request rejected by filter hook: %s", hook_msg);
+				strncpy(hook_msg, log_buffer, msg_len-1);
+				attribute_jobmap_restore(pjob, runjob_accept_attrlist);
+				write_hook_reject_debug_output_and_close(hook_msg);
+				return (0);
+			}
+		}
 	}
-	if (num_run == 0)
-		return (2);
+
 
 	write_hook_accept_debug_output_and_close();
 	return (1);
@@ -6612,3 +6706,125 @@ get_hook_rescdef_checksum(void)
 {
 	return (hook_rescdef_checksum);
 }
+
+
+/**
+ * @brief
+ *		Callback function for reaping server periodic hook child.
+ * @param[in]	ptask	- work task pointer
+ *
+ * @return	void
+ */
+static
+void post_server_periodic_hook(struct work_task *ptask) {
+
+	int	stat = ptask->wt_aux;
+	hook *phook = (hook *)ptask->wt_parm1;
+
+	if (WIFEXITED(stat)) {
+		(void)sprintf(log_buffer, "Server periodic hook ran successfully");
+	} else {
+		(void)sprintf(log_buffer, "Server periodic hook encountered errors", stat);
+	}
+	log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_INFO,
+		__func__, log_buffer);
+
+	if (phook == NULL) {
+		log_err(-1, __func__, "A periodic hook disappeared");
+		return;
+	}
+	return;
+}
+
+/**
+ * @brief
+ *		Callback function for Timed work tasks to run periodic hooks
+ * @param[in]	ptask	- work task pointer
+ *
+ * @return  void
+ */
+void
+run_periodic_hook(struct work_task *ptask)
+{
+	static struct batch_request *preq;
+	char hook_msg[HOOK_MSG_SIZE] = {'\0'};
+	int ret;
+	int num_run = 0;
+	hook *phook;
+	hook_input_param_t req_ptr;
+	pid_t	pid;
+#ifdef WIN32
+	TCHAR	  hkFileName[MAX_PATH];
+	STARTUPINFO             si = { 0 };
+	PROCESS_INFORMATION     pi = { 0 };
+	int	flags = CREATE_DEFAULT_ERROR_MODE|
+		CREATE_NEW_CONSOLE|CREATE_NEW_PROCESS_GROUP;
+#endif
+
+	phook = (hook *)ptask->wt_parm1;
+	hook_input_param_init(&req_ptr);
+	if (phook == NULL) {
+		log_err(-1, __func__, "A periodic hook disappeared");
+		return;
+	}
+
+	if (phook->enabled == 0 || phook->script == NULL || phook->freq < 1) {
+		sprintf(log_buffer, "periodic hook is missing information, check hook frequency and script");
+		log_err(-1,__func__,log_buffer);
+	}
+
+	if (has_task_by_parm1(phook) == 1) {
+		/* There is already a task present related to
+		 * post processing for previously running hook.
+		 * Don't run hook this time, just register a
+		 * timed task for it's next occurance
+		 */
+		(void)set_task(WORK_Timed, time_now + phook->freq, run_periodic_hook, phook);
+		return;
+	}
+
+#ifndef WIN32
+	pid = fork();
+
+	if (pid == -1) {	/* Error on fork */
+		log_err(errno, __func__, "fork failed\n");
+		pbs_errno = PBSE_SYSTEM;
+		return;
+	}
+#else
+	snprintf(hkFileName, sizeof(hkFileName), "%s/sbin/pbs_run_periodic_hook %s %s",pbs_conf.pbs_exec_path, 
+						phook->hook_name, path_priv);
+	ret = CreateProcess(NULL, hkFileName, NULL, NULL, TRUE, flags , NULL, NULL, &si, &pi);
+	if (ret == 0) {
+		log_err(-1, "run_periodic_hook", "Failed to create server periodic hook");
+		return;
+	}
+	pid = (long)pi.hProcess;
+	addpid(pid);
+#endif
+	if (pid != 0) {		/* The parent (main server) */
+		/* Set a task for post processing of the running hook */
+		(void)set_task(WORK_Deferred_Child, (long)pid,
+			post_server_periodic_hook, phook);
+		/* Set a timed task for next occurance of this hook */
+		(void)set_task(WORK_Timed, time_now + phook->freq, 
+			run_periodic_hook, phook);
+	}
+#ifndef WIN32
+	else {
+		/* Close all server connections */
+		rpp_terminate();
+		net_close(-1);
+		/* Unprotect child from being killed by kernel */
+		daemon_protect(0, PBS_DAEMON_PROTECT_OFF);
+		ret = server_process_hooks(PBS_BATCH_HookPeriodic, NULL, NULL, phook, 
+					   HOOK_EVENT_PERIODIC, NULL, &req_ptr, hook_msg,
+					   sizeof(hook_msg), pbs_python_set_interrupt, &num_run);
+		if (ret == 0)
+			log_event(PBSE_HOOKERROR, PBS_EVENTCLASS_HOOK, LOG_ERR, __func__, hook_msg);
+		exit(ret);
+	}
+#endif
+	return;
+}
+

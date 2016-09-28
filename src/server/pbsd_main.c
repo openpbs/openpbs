@@ -296,6 +296,7 @@ pbs_list_head	svr_resvsub_hooks;
 pbs_list_head	svr_movejob_hooks;
 pbs_list_head	svr_runjob_hooks;
 pbs_list_head	svr_provision_hooks;
+pbs_list_head	svr_periodic_hooks;
 pbs_list_head	svr_execjob_begin_hooks;
 pbs_list_head	svr_execjob_prologue_hooks;
 pbs_list_head	svr_execjob_epilogue_hooks;
@@ -898,6 +899,9 @@ main(int argc, char **argv)
 	char			*servicename;
 	time_t			svrlivetime;
 	struct stat 		sb_sa;
+	struct batch_request	*periodic_req;
+	char			hook_msg[HOOK_MSG_SIZE];
+	int			ret;
 #ifndef WIN32
 	pid_t			sid = -1;
 #endif
@@ -1307,6 +1311,7 @@ main(int argc, char **argv)
 	CLEAR_HEAD(svr_resvsub_hooks);
 	CLEAR_HEAD(svr_movejob_hooks);
 	CLEAR_HEAD(svr_runjob_hooks);
+	CLEAR_HEAD(svr_periodic_hooks);
 	CLEAR_HEAD(svr_provision_hooks);
 	CLEAR_HEAD(svr_execjob_begin_hooks);
 	CLEAR_HEAD(svr_execjob_prologue_hooks);
@@ -1969,6 +1974,14 @@ try_db_again:
 
 	/* check and enable the prov attributes */
 	set_srv_prov_attributes();
+
+	periodic_req = alloc_br(PBS_BATCH_HookPeriodic);
+	if (periodic_req == NULL) {
+		log_err(errno, msg_daemonname, "Out of memory!");
+		stop_db();
+		return (1);
+	}
+	process_hooks(periodic_req, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
 
 	/*
 	 * main loop of server

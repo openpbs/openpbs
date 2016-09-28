@@ -757,6 +757,7 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 
 	if ((phook->user == HOOK_PBSUSER) && (event_type & USER_MOM_EVENTS))
 		runas_jobuser = 1;
+
 #ifndef WIN32
 	child = fork();
 	if (child > 0) {	/* parent */

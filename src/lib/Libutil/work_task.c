@@ -166,41 +166,51 @@ delete_task(struct work_task *ptask)
  *	task_list_timed that has a wt_parm1 field of value 'parm1'.
  *
  * @param[in]	parm1	- parameter being matched.
+ * @param[in]	option  - option is used to decide whether the
+ *			  caller wants to delete all tasks that
+ *			  matches parm1 values or just one.
  *
  * @return none
  */
 void
-delete_task_by_parm1(void *parm1)
+delete_task_by_parm1(void *parm1, enum wtask_delete_option option)
 {
 	struct work_task  *ptask;
+	struct work_task  *ptask_next;
 
 
 	/* only 1 ptask can be possibly matched */
 	ptask = (struct work_task *)GET_NEXT(task_list_event);
 	while (ptask) {
+		ptask_next = (struct work_task *)GET_NEXT(ptask->wt_linkall);
 		if ((ptask->wt_parm1 != NULL) && (ptask->wt_parm1 == parm1)) {
 			delete_task(ptask);
-			return;
+			if (option == DELETE_ONE)
+				return;
 		}
-		ptask = (struct work_task *)GET_NEXT(ptask->wt_linkall);
+		ptask = ptask_next;
 	}
 
 	ptask = (struct work_task *)GET_NEXT(task_list_timed);
 	while (ptask) {
+		ptask_next = (struct work_task *)GET_NEXT(ptask->wt_linkall);
 		if ((ptask->wt_parm1 != NULL) && (ptask->wt_parm1 == parm1)) {
 			delete_task(ptask);
-			return;
+			if (option == DELETE_ONE)
+				return;
 		}
-		ptask = (struct work_task *)GET_NEXT(ptask->wt_linkall);
+		ptask = ptask_next;
 	}
 
 	ptask = (struct work_task *)GET_NEXT(task_list_immed);
 	while (ptask) {
+		ptask_next = (struct work_task *)GET_NEXT(ptask->wt_linkall);
 		if ((ptask->wt_parm1 != NULL) && (ptask->wt_parm1 == parm1)) {
 			delete_task(ptask);
-			return;
+			if (option == DELETE_ONE)
+				return;
 		}
-		ptask = (struct work_task *)GET_NEXT(ptask->wt_linkall);
+		ptask = ptask_next;
 	}
 
 }

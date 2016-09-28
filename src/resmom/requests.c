@@ -4898,7 +4898,7 @@ req_del_hookfile(struct batch_request *preq) /* ptr to the decoded request   */
 			MAXPATHLEN);
 		strcat(p, HOOK_FILE_SUFFIX);
 		if ((phook = find_hook(hook_name)) != NULL) {
-			delete_task_by_parm1(phook);
+			delete_task_by_parm1(phook, DELETE_ONE);
 			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
 				LOG_INFO, phook->hook_name,
 				"deleted any hook task entry");

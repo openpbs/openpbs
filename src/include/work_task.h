@@ -67,6 +67,11 @@ enum work_type {
 	                        */
 };
 
+enum wtask_delete_option {
+    DELETE_ONE,
+    DELETE_ALL
+};
+
 struct work_task  {
 	pbs_list_link	 wt_linkall;	/* link to event type work list */
 	pbs_list_link	 wt_linkobj;	/* link to others of same object */
@@ -86,7 +91,7 @@ extern struct work_task *set_task(enum work_type, long event, void (*func)(), vo
 extern void clear_task(struct work_task *ptask);
 extern void dispatch_task(struct work_task *);
 extern void delete_task(struct work_task *);
-extern void delete_task_by_parm1(void *parm1);
+extern void delete_task_by_parm1(void *parm1, enum wtask_delete_option option);
 extern int  has_task_by_parm1(void *parm1);
 extern time_t default_next_task(void);
 

@@ -40,6 +40,8 @@
 extern "C" {
 #endif
 
+#include "work_task.h"
+#include "job.h"
 
 /*
  * hook_func.h - structure definitions for hook objects
@@ -120,8 +122,15 @@ extern void mgr_hook_delete(struct batch_request *);
 extern void req_stat_hook(struct batch_request *);
 
 /* Hook script processing */
+extern int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
+				int hook_event, job *pjob, hook_input_param_t *req_ptr,
+				char *hook_msg, int msg_len, void (*pyinter_func)(void),
+				int *num_run);
 extern int process_hooks(struct batch_request *, char *, size_t, void (*)(void));
 extern int recreate_request(struct batch_request *);
+
+/* Server periodic hook call-back */
+extern void run_periodic_hook (struct work_task *ptask);
 #endif
 
 #ifdef	__cplusplus

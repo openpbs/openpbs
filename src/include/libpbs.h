@@ -277,6 +277,7 @@ struct batch_reply {
 #define PBS_BATCH_DelHookFile	86
 #define PBS_BATCH_MomRestart	87
 #define PBS_BATCH_AuthExternal	88
+#define PBS_BATCH_HookPeriodic  89
 
 #define PBS_BATCH_FileOpt_Default	0
 #define PBS_BATCH_FileOpt_OFlg		1

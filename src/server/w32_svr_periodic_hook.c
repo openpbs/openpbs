@@ -34,12 +34,10 @@
  * trademark licensing policies.
  *
  */
-/**
- * @file	w32_start_provision.c
- * @brief
+/*
  * The entry point function for pbs_daemon.
  *
- * @par	Included public functions are:
+ * Included public functions re:
  *
  *	main	initialization and main loop of pbs_daemon
  */
@@ -243,22 +241,156 @@ panic_stop_db(char *txt)
 
 /**
  * @brief
- * 	main - the initialization and main loop of pbs_daemon
+ *		Executes server periodic hook script.
+ *
+ * @par Functionality:
+ *      This function initializes python environment and runs python top level
+ *		script..
+ *
+ * @param[in]	phook	-	pointer to periodic hook
+ *
+ * @return	int
+ * @retval	>0	: error code as returned by periodic hook script
+ * @retval	0	: success if running periodic hook
+ * @retval	-1	: failure
+ *
+ */
+
+int
+execute_python_periodic_hook(hook  *phook)
+{
+	int 			rc = 255;
+	int			exit_code=255;
+#ifdef PYTHON
+	unsigned int		hook_event;
+	char 			*emsg = NULL;
+	char			username[MAXPATHLEN];
+	int			len;
+	hook_input_param_t	req_ptr;
+
+	if (!phook)
+		return rc;
+
+	hook_event = HOOK_EVENT_PERIODIC;
+
+	if (phook->user != HOOK_PBSADMIN)
+		return rc;
+
+	if (GetUserName((LPSTR) &username, &len) == 0) {
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_INFO,
+			__func__, "unable to fetch the user name");
+		return rc;
+	}
+
+	rc = pbs_python_event_set(hook_event, username,
+		"server", &req_ptr);
+	if (rc == -1) { /* internal server code failure */
+		log_event(PBSEVENT_DEBUG2,
+			PBS_EVENTCLASS_HOOK, LOG_ERR, __func__,
+			"Failed to set event; request accepted by default");
+		return (-1);
+	}
+
+	/* hook_name changes for each hook */
+	/* This sets Python event object's hook_name value */
+	rc = pbs_python_event_set_attrval(PY_EVENT_HOOK_NAME,
+		phook->hook_name);
+
+	if (rc == -1) {
+		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
+			LOG_ERR, phook->hook_name,
+			"Failed to set event 'hook_name'.");
+		return (-1);
+	}
+
+	/* hook_type needed for internal processing; */
+	/* hook_type changes for each hook.	     */
+	/* This sets Python event object's hook_type value */
+	rc = pbs_python_event_set_attrval(PY_EVENT_HOOK_TYPE,
+		hook_type_as_string(phook->type));
+
+	if (rc == -1) {
+		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
+			LOG_ERR, phook->hook_name,
+			"Failed to set event 'hook_type'.");
+		return (-1);
+	}
+
+	log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
+		LOG_INFO, phook->hook_name, "started");
+
+	pbs_python_set_mode(PY_MODE); /* hook script mode */
+
+	/* let rc pass through */
+	rc=pbs_python_run_code_in_namespace(&svr_interp_data,
+		phook->script,
+		&exit_code);
+
+	/* go back to server's private directory */
+	if (chdir(path_priv) != 0) {
+		log_event(PBSEVENT_DEBUG2,
+			PBS_EVENTCLASS_HOOK, LOG_WARNING, phook->hook_name,
+			"unable to go back server private directory");
+	}
+
+	pbs_python_set_mode(C_MODE);  /* PBS C mode - flexible */
+	log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
+		LOG_INFO, phook->hook_name, "finished");
+
+	switch (rc) {
+		case 0:
+			/* reject if hook script rejects */
+			if (pbs_python_event_get_accept_flag() == FALSE) { /* a reject occurred */
+				snprintf(log_buffer, LOG_BUF_SIZE-1,
+					"%s request rejected by '%s'",
+					hook_event_as_string(hook_event),
+					phook->hook_name);
+				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
+					LOG_ERR, phook->hook_name, log_buffer);
+				if ((emsg=pbs_python_event_get_reject_msg()) != NULL) {
+					snprintf(log_buffer, LOG_BUF_SIZE-1, "%s", emsg);
+					/* log also the custom reject message */
+					log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
+						LOG_ERR, phook->hook_name, log_buffer);
+				}
+
+			}
+			return (exit_code);
+
+		case -1:	/* internal error */
+			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
+				LOG_ERR, phook->hook_name,
+				"Internal server error encountered. Skipping hook.");
+			return (rc); /* should not happen */
+
+		case -2:	/* unhandled exception */
+			pbs_python_event_reject(NULL);
+			pbs_python_event_param_mod_disallow();
+
+			snprintf(log_buffer, LOG_BUF_SIZE-1,
+				"%s hook '%s' encountered an exception, "
+				"request rejected",
+				hook_event_as_string(hook_event), phook->hook_name);
+			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
+				LOG_ERR, phook->hook_name, log_buffer);
+			return (rc);
+	}
+#endif
+	return rc;
+}
+
+/**
+ * @brief
+ * 	main - the initialization and main loop of svr_periodic_hook binary
  */
 int
 main(int argc, char *argv[])
 {
-	char	*id = "start_provision";
-	int	i, j, ret;
+	char	*id = "pbs_run_periodic_hook";
+	int	i;
 	int		rc;
 	hook	*phook;
-	struct prov_vnode_info prov_info;
 	char	output_path[MAXPATHLEN + 1];
-	struct	stat	sb;
-	char	path_hooks_dir[MAXPATHLEN+1];
-	char	path_hooks_workdir_dir[MAXPATHLEN+1];
-	char	path_hooks_tracking_file[MAXPATHLEN+1];
-	char	path_hooks_rescdef_file[MAXPATHLEN+1];
 
 	/* python externs */
 	extern void pbs_python_svr_initialize_interpreter_data(
@@ -266,10 +398,7 @@ main(int argc, char *argv[])
 	extern void pbs_python_svr_destroy_interpreter_data(
 		struct python_interpreter_data *interp_data);
 
-	extern int execute_python_prov_script(hook  *phook,
-		struct prov_vnode_info * prov_vnode_info);
-
-	if(set_msgdaemonname("PBS_start_provision")) {
+	if(set_msgdaemonname("pbs_run_periodic_hook")) {
 		fprintf(stderr, "Out of memory\n");
 		return 1;
 	}
@@ -281,33 +410,24 @@ main(int argc, char *argv[])
 	svr_interp_data.destroy_interpreter_data =
 		pbs_python_svr_destroy_interpreter_data;
 
-	if (argc != 7) {
-		log_err(PBSE_INTERNAL, id, "start_provision"
-			" <vnode-name> <aoe-requested>");
-		exit(2);
-	}
-
-	path_priv = strdup(argv[5]);
-	if (path_priv == NULL) {
-		log_err(errno, argv[5], "strdup failed!");
-		exit(2);
-	}
-
-	svr_interp_data.daemon_name = strdup(argv[3]);
-	if (svr_interp_data.daemon_name == NULL) { /* should not happen */
-		log_err(errno, argv[3], "strdup failed!");
+	if (argc != 3) {
+		log_err(PBSE_INTERNAL, id, "pbs_run_periodic_hook"
+			" <hook_name> <server home path>");
 		exit(2);
 	}
 
 	pbs_loadconf(0);
 	/* initialize the pointers in the resource_def array */
 
+	(void)snprintf(path_log, MAXPATHLEN, "%s/%s", pbs_conf.pbs_home_path, PBS_LOGFILES);
+	(void)log_open_main(log_file, path_log, 1); /* silent open */
+
 	for (i = 0; i < (svr_resc_size - 1); ++i)
 		svr_resc_def[i].rs_next = &svr_resc_def[i+1];
 
 	pbs_python_ext_start_interpreter(&svr_interp_data);
 
-	/* Find the provision hook info */
+	/* Find the periodic hook info */
 	phook = (hook *)malloc(sizeof(hook));
 	if (phook == (hook *)0) {
 		log_err(errno, id, "no memory");
@@ -315,22 +435,23 @@ main(int argc, char *argv[])
 	}
 	(void)memset((char *)phook, (int)0, (size_t)sizeof(hook));
 
-	phook->hook_name = strdup(argv[4]);
-	if (phook->hook_name == NULL) {
-		log_err(errno, argv[4], "strdup failed!");
+	phook->hook_name = strdup(argv[1]);
+	path_priv = strdup(argv[2]);
+	if ((phook->hook_name == NULL) || (path_priv == NULL)) {
+		log_err(errno, argv[1], "strdup failed!");
 		exit(2);
 	}
 	phook->type = HOOK_TYPE_DEFAULT;
 	phook->user = HOOK_PBSADMIN;
-	phook->event = HOOK_EVENT_PROVISION;
+	phook->event = HOOK_EVENT_PERIODIC;
 	phook->script = (struct python_script *)NULL;
 	/* get script */
 	snprintf(output_path, MAXPATHLEN,
-		"%s/server_priv/hooks/%s%s", argv[6], phook->hook_name, ".PY");
+		"%s/hooks/%s%s", path_priv, phook->hook_name, ".PY");
 
 	if (pbs_python_ext_alloc_python_script(output_path,
 		(struct python_script **)&phook->script) == -1) {
-		log_err(errno, argv[3], "provision hook script allocation failed!");
+		log_err(errno, argv[1], "Periodic hook script allocation failed!");
 		exit(2);
 	}
 
@@ -339,79 +460,12 @@ main(int argc, char *argv[])
 		phook->script)) != 0) {
 		DBPRT(("%s: Recompilation failed\n", id))
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_INFO,
-			argv[3], "Provisioning script recompilation failed");
+			argv[1], "Periodic hook script recompilation failed");
 		exit(2);
 	}
 
-	(void)memset(&prov_info, 0, sizeof(prov_info));
-	prov_info.pvnfo_vnode = malloc(strlen(argv[1]+1));
-	if (prov_info.pvnfo_vnode == NULL) {
-		log_err(ENOMEM, id, "out of memory");
-		exit(2);
-	}
-	prov_info.pvnfo_aoe_req = malloc(strlen(argv[2]+1));
-	if (prov_info.pvnfo_aoe_req == NULL) {
-		log_err(ENOMEM, id, "out of memory");
-		free(prov_info.pvnfo_vnode);
-		exit(2);
-	}
-	strcpy(prov_info.pvnfo_vnode, argv[1]);
-	strcpy(prov_info.pvnfo_aoe_req, argv[2]);
-
-	rc = execute_python_prov_script(phook, &prov_info);
+	rc = execute_python_periodic_hook(phook);
 	pbs_python_ext_shutdown_interpreter(&svr_interp_data);
 
-	snprintf(path_hooks_dir,  MAXPATHLEN,
-		"%s/server_priv/%s/", argv[6], PBS_HOOKDIR);
-	path_hooks = (char *)path_hooks_dir;
-
-	snprintf(path_hooks_workdir_dir,  MAXPATHLEN,
-		"%s/server_priv/%s/", argv[6], PBS_HOOK_WORKDIR);
-	path_hooks_workdir = (char *)path_hooks_workdir_dir;
-
-	snprintf(path_hooks_rescdef_file,  MAXPATHLEN,
-		"%s%s", path_hooks, PBS_RESCDEF);
-	path_hooks_rescdef = (char *)path_hooks_rescdef_file;
-
-	snprintf(path_hooks_tracking_file,  MAXPATHLEN, "%s%s_%s_%s%s",
-		path_hooks_workdir, PBS_TRACKING, prov_info.pvnfo_vnode,
-		prov_info.pvnfo_aoe_req, HOOK_TRACKING_SUFFIX);
-	path_hooks_tracking = (char *)path_hooks_tracking_file;
-
-	if ((rc == 0) && (stat(path_hooks_tracking, &sb) == 0)) {
-
-		winsock_init();
-		connection_init();
-		(void)snprintf(path_log, MAXPATHLEN, "%s/%s", argv[6], PBS_LOGFILES);
-		(void)log_open_main(log_file, path_log, 1); /* silent open */
-		hook_track_recov();
-
-		for (j=0; j < SEND_HOOKS_RETRY;j++) {
-			ret = sync_mom_hookfiles(NULL);
-			if ((ret == SYNC_HOOKFILES_SUCCESS_ALL) |
-				(ret == SYNC_HOOKFILES_NONE)) {
-				break;
-			}
-			sleep(1<<j);
-		}
-		if (j == SEND_HOOKS_RETRY) {
-
-			snprintf(log_buffer, sizeof(log_buffer),
-				"vnode %s's parent mom %s:%d failed on a copy hook or delete hook request",
-				prov_info.pvnfo_vnode,
-				(mominfo_array_size > 0)?mominfo_array[0]->mi_host:"",
-				(mominfo_array_size > 0)?mominfo_array[0]->mi_port:0);
-			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE,
-				LOG_WARNING, prov_info.pvnfo_vnode, log_buffer);
-			rc = 13;
-		}
-		(void)unlink(path_hooks_tracking);
-		log_close(0);	/* silent close */
-		net_close(-1);
-	}
-
-
-	free(prov_info.pvnfo_vnode);
-	free(prov_info.pvnfo_aoe_req);
 	exit(rc);
 }
