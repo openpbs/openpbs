@@ -1381,8 +1381,12 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 
 	pbs_errno = PBSE_NONE;
 	if (resresv->is_job && resresv->job->is_suspended) {
-		pbsrc = pbs_sigjob(pbs_sd, resresv->name, "resume", NULL);
-		if (!pbsrc)
+		if (pbs_sd != SIMULATE_SD) {
+			pbsrc = pbs_sigjob(pbs_sd, resresv->name, "resume", NULL);
+			if (!pbsrc)
+				ret = 1;
+		}
+		else 
 			ret = 1;
 		
 		rr = resresv;
