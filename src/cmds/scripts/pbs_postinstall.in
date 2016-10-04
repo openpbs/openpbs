@@ -149,12 +149,27 @@ create_conf() {
 	
 	case $INSTALL_METHOD in
 	rpm)
-		[ -f "$newconf" ] && newconf="${newconf}.`date +%Y%m%d%H%M%S`"
-		# If an existing configuration file is present, adapt it by
-		# substituting the new value of PBS_EXEC.
-		[ -f "$conf" ] && \
-			eval "sed 's;\(^[[:space:]]*PBS_EXEC=\)[^[:space:]]*;\1$newpbs_exec;' \"$conf\"" >"$newconf"
-		;;
+                [ -f "$newconf" ] && newconf="${newconf}.`date +%Y%m%d%H%M%S`"
+                # If an existing configuration file is present, adapt it.
+                if [ -f "$conf" ]; then
+                        eval "sed 's;\(^[[:space:]]*PBS_EXEC=\)[^[:space:]]*;\1$newpbs_exec;' \"$conf\" >$newconf"
+                        update_pbs_conf() {
+                        	unset env_var env_value
+                        	env_var=$1;
+                        	env_value=$(eval echo \$$env_var)
+                        	grep -q "^[[:space:]]*$env_var=[^[:space:]]*" "$newconf" \
+					&& sed -i "s;\(^[[:space:]]*${env_var}=\)[^[:space:]]*;\1${env_value};" "$newconf" \
+                                	|| echo "$env_var=${env_value}" >>"$newconf"
+                        }
+                        [ -n "$PBS_HOME" ] && update_pbs_conf PBS_HOME
+                        [ -n "$PBS_SERVER" ] && update_pbs_conf PBS_SERVER
+                else
+                        [ -n "$newpbs_exec" ] && echo "PBS_EXEC=$newpbs_exec" >>"$newconf"
+                        [ -n "$PBS_HOME" ] && echo "PBS_HOME=$PBS_HOME" >>"$newconf"
+                        [ -n "$PBS_SERVER" ] && echo "PBS_SERVER=$PBS_SERVER" >>"$newconf"
+                fi
+                ;;
+
 	script)
         # Need to set INSTALL_PACKAGE for script method.
         if [ -f "$newpbs_exec/sbin/pbs_server.bin" ]; then
@@ -821,9 +836,15 @@ conf="${PBS_CONF_FILE:-/etc/pbs.conf}"
 oldconfdir=`dirname "${conf}"`
 ostype=`uname 2>/dev/null`
 unset PBS_EXEC
-unset PBS_HOME
+unset preset_dbuser
 umask 022
-
+if [ -z "${PBS_DATA_SERVICE_USER}" ]; then
+        if [ -s ${conf} ]; then
+       	       preset_dbuser=`grep "PBS_DATA_SERVICE_USER" ${conf} | awk -F"=" '{print $2}'`
+       	fi
+else
+       preset_dbuser="${PBS_DATA_SERVICE_USER}"
+fi
 
 # Define the location of a file that the INSTALL script may have created.
 # This file will be used regardless of installation method.
@@ -836,7 +857,7 @@ server)
 	PBS_VERSION="${2:-@PBS_VERSION@}"
 	newpbs_exec="${3:-@prefix@}"
 	newpbs_home="${4:-@PBS_SERVER_HOME@}"
-	dbuser="${5:-@database_user@}"
+	dbuser="${preset_dbuser:-${5:-@database_user@}}"
 	if [ ! -x "$newpbs_exec/sbin/pbs_server" ]; then
 		echo "***"
 		echo "*** Unable to locate PBS Pro executables!"
@@ -874,8 +895,8 @@ client)
             newpbs_exec=`grep '^[[:space:]]*PBS_EXEC=' "$newconf" | tail -1 | sed 's/^[[:space:]]*PBS_EXEC=\([^[:space:]]*\)[[:space:]]*/\1/'`
             newpbs_home=`grep '^[[:space:]]*PBS_HOME=' "$newconf" | tail -1 | sed 's/^[[:space:]]*PBS_HOME=\([^[:space:]]*\)[[:space:]]*/\1/'`
     else
-            newpbs_exec='/usr/pbs'
-            newpbs_home='/var/spool/pbs'
+            newpbs_exec=@prefix@
+            newpbs_home=@PBS_SERVER_HOME@
     fi
     ;;
 esac

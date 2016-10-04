@@ -89,11 +89,6 @@ export PGPORT
 # set the variable again
 export PGSQL_LIBSTR
 
-# Check if old variable PBS_DATA_SERVICE_USER is exported in env or pbs.conf
-if [ ! -z "${PBS_DATA_SERVICE_USER}" ]; then
-  echo "WARNING! Obsolete variable PBS_DATA_SERVICE_USER is being ignored"
-  unset PBS_DATA_SERVICE_USER
-fi
 
 PGUSR=`get_db_user`
 if [ $? -ne 0 ]; then
