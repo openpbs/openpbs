@@ -160,6 +160,10 @@ connection_find_actual_index(int sock)
 
 	int     i, j;
 
+	if (sock < 0) {
+		return (-1); /* Invalid socket! */
+	}
+
 	j = (sock % max_connection); /* hash against socket */
 
 	i = j;

@@ -353,21 +353,20 @@ static void
 timeout_rerun_request(struct work_task *pwt)
 {
 	job     *pjob = (job *)pwt->wt_parm1;
-	int      conn_idx;
+	int      conn_idx = -1;
 
 	if ((pjob == NULL) || (pjob->ji_rerun_preq == NULL)) {
 		return;	/* nothing to timeout */
 	}
-
+	if (pjob->ji_rerun_preq->rq_conn != PBS_LOCAL_CONNECTION) {
+		conn_idx = connection_find_actual_index(pjob->ji_rerun_preq->rq_conn);
+	}
 	reply_text(pjob->ji_rerun_preq, PBSE_INTERNAL,
 		"rerunning job has timed out");
 
 	/* clear no-timeout flag on connection */
-	if (pjob->ji_rerun_preq->rq_conn != PBS_LOCAL_CONNECTION) {
-		conn_idx = connection_find_actual_index(pjob->ji_rerun_preq->rq_conn);
-		if (conn_idx != -1)
-			svr_conn[conn_idx].cn_authen &= ~PBS_NET_CONN_NOTIMEOUT;
-	}
+	if (conn_idx != -1)
+		svr_conn[conn_idx].cn_authen &= ~PBS_NET_CONN_NOTIMEOUT;
 
 	pjob->ji_rerun_preq = NULL;
 
