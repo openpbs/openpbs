@@ -84,6 +84,13 @@ class PTLTestInfo(Plugin):
         pass
 
     def set_data(self, suites, list_test, showinfo, verbose, gen_ts_tree):
+        """
+        Set the data required for running the tests
+
+        :param suites: Test suites to run
+        :param list_test: List of test to run
+        :param gen_ts_tree: Generate test suite tree
+        """
         self.suites = suites.split(',')
         self.list_test = list_test
         self.showinfo = showinfo
@@ -93,6 +100,8 @@ class PTLTestInfo(Plugin):
     def configure(self, options, config):
         """
         Configure the plugin and system, based on selected options
+
+        :param options: Options to configure plugin and system
         """
         self.config = config
         self.enabled = True
