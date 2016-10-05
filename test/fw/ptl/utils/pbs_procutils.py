@@ -61,6 +61,12 @@ class ProcUtils(object):
         self.__h2ps = {}
 
     def get_ps_cmd(self, hostname=None):
+        """
+        Get the ps command
+
+        :param hostname: hostname of the machine
+        :type hostname: str or None
+        """
         if hostname is None:
             hostname = socket.gethostname()
 
@@ -95,7 +101,7 @@ class ProcUtils(object):
     def _get_proc_info_unix(self, hostname=None, name=None,
                             pid=None, regexp=False):
         """
-        Helper function to get_proc_info for Unix only system
+        Helper function to ``get_proc_info`` for Unix only system
         """
         (ps_cmd, ps_arg) = self.get_ps_cmd(hostname)
         if name is not None:
@@ -147,26 +153,27 @@ class ProcUtils(object):
         Return process information from a process name, or pid,
         on a given host
 
-        hostname - The hostname on which to query the process info. On Windows,
-        only localhost is queried.
+        :param hostname: The hostname on which to query the process
+                         info. On Windows,only localhost is queried.
+        :type hostname: str or none
+        :param name: The name of the process to query.
+        :type name: str or None
+        :param pid: The pid of the process to query
+        :type pid: int or None
+        :param regexp: Match processes by regular expression. Defaults
+                       to True. Does not apply to matching by PID.
+        :type regexp: bool
+        :returns: A list of ProcInfo objects, one for each matching
+                  process.
 
-        name - The name of the process to query.
-
-        pid - The pid of the process to query
-
-        regexp - Match processes by regular expression. Defaults to True. Does
-        not apply to matching by PID.
-
-        If both, name and pid, are specified, name is used.
-
-        Returns a list of ProcInfo objects, one for each matching process.
+        .. note:: If both, name and pid, are specified, name is used.
         """
         self._init_processes()
         return self._get_proc_info_unix(hostname, name, pid, regexp)
 
     def get_proc_state(self, hostname=None, pid=None):
         """
-        Return PID's process state on host hostname
+        :returns: PID's process state on host hostname
 
         On error the empty string is returned.
         """
@@ -194,7 +201,8 @@ class ProcUtils(object):
 
     def get_proc_children(self, hostname=None, ppid=None):
         """
-        Return a list of children PIDs associated to PPID on host hostname.
+        :returns: A list of children PIDs associated to ``PPID`` on
+                  host hostname.
 
         On error, an empty list is returned.
         """
@@ -243,8 +251,8 @@ class ProcUtils(object):
 class ProcInfo(object):
 
     """
-    Process information reports PID, RSS, VSZ, Command and Time at which
-    process information is collected
+    Process information reports ``PID``, ``RSS``, ``VSZ``, Command
+    and Time at which process information is collected
     """
 
     def __init__(self, name=None, pid=None):
@@ -278,10 +286,19 @@ class ProcMonitor(threading.Thread):
         self.db_proc_info = []
 
     def set_frequency(self, value=60):
+        """
+        Set the frequency
+
+        :param value: Frequency value
+        :type value: int
+        """
         self.logger.debug('procmonitor: set frequency to ' + str(value))
         self.frequency = value
 
     def run(self):
+        """
+        Run the process monitoring
+        """
         while self._go:
             self._pu.get_proc_info(name=self.name, regexp=self.regexp)
             for _p in self._pu.processes.values():
@@ -296,6 +313,9 @@ class ProcMonitor(threading.Thread):
             time.sleep(self.frequency)
 
     def stop(self):
+        """
+        Stop the process monitoring
+        """
         self._go = False
         self._Thread__stop()
 

@@ -51,9 +51,9 @@ from ptl.lib.pbs_testlib import ResourceResv
 from ptl.utils.pbs_fileutils import FileUtils, FILE_TAIL
 
 """
-Analyze server, scheduler, MoM, and accounting logs.
+Analyze ``server``, ``scheduler``, ``MoM``, and ``accounting`` logs.
 
-Scheduler log analysis:
+- Scheduler log analysis:
 
     Extraction of per cycle information including:
         cycle start time
@@ -71,7 +71,7 @@ Scheduler log analysis:
         time spent in scheduler solver
     Summary of all cycles information
 
-Server log analysis:
+- Server log analysis:
     job submit rate
     number of jobs ended
     number of jobs run
@@ -83,7 +83,7 @@ Server log analysis:
     node up rate
     wait time
 
-Mom log analysis:
+- Mom log analysis:
     job submit rate
     number of jobs ended
     number of jobs run
@@ -92,7 +92,7 @@ Mom log analysis:
     job end rate
     PBS versions
 
-Accounting log analysis:
+- Accounting log analysis:
     job submit rate
     number of jobs ended
     number of jobs run
@@ -226,8 +226,12 @@ class PBSLogUtils(object):
         """
         convert a date time string of the form given by fmt into
         number of seconds since epoch
-        datetime - the datetime string to convert
-        Returns None if conversion fails
+
+        :param datetime: the datetime string to convert
+        :type datetime: str or None
+        :param fmt: Format to which datetime is to be converted
+        :type fmt: str
+        :returns: None if conversion fails
         """
         if datetime is None:
             return None
@@ -242,6 +246,12 @@ class PBSLogUtils(object):
         return tm
 
     def get_num_lines(self, log, hostname=None, sudo=False):
+        """
+        Get the number of lines of particular log
+
+        :param log: the log file name
+        :type log: str
+        """
         f = self.open_log(log, hostname, sudo=sudo)
         nl = sum([1 for _ in f])
         f.close()
@@ -249,13 +259,13 @@ class PBSLogUtils(object):
 
     def open_log(self, log, hostname=None, sudo=False):
         """
-        log - the log file name to read from
-
-        hostname - the hostname from which to read the file
-
-        sudo - Whether to access log file as a privileged user.
-
-        Returns a file instance
+        :param log: the log file name to read from
+        :type log: str
+        :param hostname: the hostname from which to read the file
+        :type hostname: str or None
+        :param sudo: Whether to access log file as a privileged user.
+        :type sudo: boolean
+        :returns: A file instance
         """
         try:
             if hostname is None or self.du.is_localhost(hostname):
@@ -283,8 +293,9 @@ class PBSLogUtils(object):
 
     def get_timestamps(self, logfile=None, hostname=None, num=None):
         """
-        Helper function to parse logfile and return each timestamp in a list
-        as number of seconds since epoch
+        Helper function to parse logfile
+
+        :returns: Each timestamp in a list as number of seconds since epoch
         """
         if logfile is None:
             return
@@ -310,17 +321,19 @@ class PBSLogUtils(object):
     def match_msg(self, lines, msg, allmatch=False, regexp=False,
                   starttime=None, endtime=None):
         """
-        Returns (x,y) where x is the matching line y, or None if nothing is
-        found.
-        If allmatch is True (False by default), return a list of matching
-        tuples.
+        Returns (x,y) where x is the matching line y, or None if
+        nothing is found.
 
-        regexp - If True, msg is a Python regular expression. Defaults to
-        False.
-
-        starttime - If set ignore matches that occur before specified time
-
-        endtime - If set ignore matches that occur after specified time
+        :param allmatch: If True (False by default), return a list
+                         of matching tuples.
+        :type allmatch: boolean
+        :param regexp: If True, msg is a Python regular expression.
+                       Defaults to False.
+        :type regexp: bool
+        :param starttime: If set ignore matches that occur before
+                          specified time
+        :param endtime: If set ignore matches that occur after
+                        specified time
         """
         linecount = 0
         ret = []
@@ -350,6 +363,9 @@ class PBSLogUtils(object):
 
     @staticmethod
     def convert_resv_date_time(date_time):
+        """
+        Convert reservation datetime to seconds
+        """
         try:
             t = time.strptime(date_time, "%a %b %d %H:%M:%S %Y")
         except:
@@ -358,6 +374,9 @@ class PBSLogUtils(object):
 
     @staticmethod
     def convert_hhmmss_time(tm):
+        """
+        Convert datetime in hhmmss format to seconds
+        """
         if ':' not in tm:
             return tm
 
@@ -366,8 +385,8 @@ class PBSLogUtils(object):
 
     def get_rate(self, l=[]):
         """
-        Return the frequency of occurrences of array l
-        The array is expected to be sorted
+        :returns: The frequency of occurrences of array l
+                  The array is expected to be sorted
         """
         if len(l) > 0:
             duration = l[len(l) - 1] - l[0]
@@ -393,6 +412,12 @@ class PBSLogUtils(object):
         return 0
 
     def in_range(self, tm, start=None, end=None):
+        """
+        :param tm: time to check within a provided range
+        :param start: Lower limit for the time range
+        :param end: Higer limit for the time range
+        :returns: True if time is in the range else return False
+        """
         if start is None and end is None:
             return True
 
@@ -419,6 +444,9 @@ class PBSLogUtils(object):
 
     @staticmethod
     def get_day(tm=None):
+        """
+        :param tm: Time for which to get a day
+        """
         if tm is None:
             tm = time.time()
         return time.strftime("%Y%m%d", time.localtime(tm))
@@ -427,9 +455,12 @@ class PBSLogUtils(object):
     def percentile(N, percent):
         """
         Find the percentile of a list of values.
-        N - is a list of values. Note N MUST BE already sorted.
-        percent - a float value from 0.0 to 1.0.
-        return the percentile of the values
+
+        :param N: A list of values. Note N MUST BE already sorted.
+        :type N: List
+        :param percent: A float value from 0.0 to 1.0.
+        :type percent: Float
+        :returns: The percentile of the values
         """
         if not N:
             return None
@@ -444,6 +475,9 @@ class PBSLogUtils(object):
 
     @staticmethod
     def process_intervals(intervals, groups, frequency=60):
+        """
+        Process the intervals
+        """
         info = {}
         if not intervals:
             return info
@@ -472,6 +506,14 @@ class PBSLogUtils(object):
         return info
 
     def get_log_files(self, hostname, path, start, end, sudo=False):
+        """
+        :param hostname: Hostname of the machine
+        :type hostname: str
+        :param path: Path for the log file
+        :type path: str
+        :param start: Start time for the log file
+        :param end: End time for the log file
+        """
         if self.du.isdir(hostname, path, sudo=sudo):
             paths = []
             logs = self.du.listdir(hostname, path, sudo=sudo)
@@ -496,7 +538,9 @@ class PBSLogUtils(object):
 
 
 class PBSLogAnalyzer(object):
-
+    """
+    Utility to analyze the PBS logs
+    """
     logger = logging.getLogger(__name__)
     logutils = PBSLogUtils()
 
@@ -549,10 +593,23 @@ class PBSLogAnalyzer(object):
                                                show_progress)
 
     def set_custom_match(self, pattern, frequency=None):
+        """
+        Set the custome matching
+
+        :param pattern: Matching pattern
+        :type pattern: str
+        :param frequency: Frequency of match
+        :type frequency: int
+        """
         self._custom_tag = re.compile(tm_re + ".*" + pattern + ".*")
         self._custom_freq = frequency
 
     def set_conditional_match(self, conditions):
+        """
+        Set the conditional match
+
+        :param conditions: Conditions for macthing
+        """
         if not isinstance(conditions, list):
             return False
         self.re_conditional = conditions
@@ -562,6 +619,18 @@ class PBSLogAnalyzer(object):
 
     def analyze_scheduler_log(self, filename=None, start=None, end=None,
                               hostname=None, summarize=True):
+        """
+        Analyze the scheduler log
+
+        :param filename: Scheduler log file name
+        :type filename: str or None
+        :param start: Time from which log to be analyzed
+        :param end: Time till which log to be analyzed
+        :param hostname: Hostname of the machine
+        :type hostname: str or None
+        :param summarize: Summarize data parsed if True else not
+        :type summarize: bool
+        """
         if self.scheduler is None:
             self.scheduler = PBSSchedulerLog(filename, hostname=hostname)
         return self.scheduler.analyze(filename, start, end, hostname,
@@ -569,6 +638,9 @@ class PBSLogAnalyzer(object):
 
     def analyze_server_log(self, filename=None, start=None, end=None,
                            hostname=None, summarize=True):
+        """
+        Analyze the server log
+        """
         if self.server is None:
             self.server = PBSServerLog(filename, hostname=hostname)
 
@@ -577,6 +649,9 @@ class PBSLogAnalyzer(object):
 
     def analyze_accounting_log(self, filename=None, start=None, end=None,
                                hostname=None, summarize=True):
+        """
+        Analyze the accounting log
+        """
         if self.accounting is None:
             self.accounting = PBSAccountingLog(filename, hostname=hostname)
 
@@ -585,6 +660,9 @@ class PBSLogAnalyzer(object):
 
     def analyze_mom_log(self, filename=None, start=None, end=None,
                         hostname=None, summarize=True):
+        """
+        Analyze the mom log
+        """
         if self.mom is None:
             self.mom = PBSMoMLog(filename, hostname=hostname)
 
@@ -592,18 +670,19 @@ class PBSLogAnalyzer(object):
 
     def parse_conditional(self, rec, start, end):
         """
-        Match a sequence of regular expressions against multiple consecutive
-        lines in a generic log. Calculate the number of conditional matching
-        lines.
+        Match a sequence of regular expressions against multiple
+        consecutive lines in a generic log. Calculate the number
+        of conditional matching lines.
 
-        Example usage: to find the number of times the scheduler stat'ing the
-        server causes the scheduler to miss jobs ending, which could possibly
-        indicate a race condition between the view of resources assigned to
-        nodes and the actual jobs running, one would call this function by
-        setting re_conditional to
-        ['Type 20 request received from Scheduler', 'Exit_status']
-        Which can be read as counting the number of times that the Type 20
-        message is preceded by an Exit_status message
+        Example usage: to find the number of times the scheduler
+        stat'ing the server causes the scheduler to miss jobs ending,
+        which could possibly indicate a race condition between the
+        view of resources assigned to nodes and the actual jobs
+        running, one would call this function by setting
+        re_conditional to
+        ``['Type 20 request received from Scheduler', 'Exit_status']``
+        Which can be read as counting the number of times that the
+        Type 20 message is preceded by an ``Exit_status`` message
         """
         match = True
         for rc in range(self.num_conditionals):
@@ -653,20 +732,21 @@ class PBSLogAnalyzer(object):
     def analyze(self, path=None, start=None, end=None, hostname=None,
                 summarize=True, sudo=False):
         """
-        Parse any log file. This method is not context-specific to each log
-        file type.
+        Parse any log file. This method is not ``context-specific``
+        to each log file type.
 
-        path - name of file/dir to parse
-
-        start - optional record time at which to start analyzing
-
-        end - optional record time after which to stop analyzing
-
-        hostname - name of host on which to operate. Defaults to localhost
-
-        summarize - if True, summarize data parsed. Defaults to True.
-
-        sudo - If True, access log file(s) as privileged user.
+        :param path: name of ``file/dir`` to parse
+        :type path: str or None
+        :param start: optional record time at which to start analyzing
+        :param end: optional record time after which to stop analyzing
+        :param hostname: name of host on which to operate. Defaults to
+                         localhost
+        :type hostname: str or None
+        :param summarize: if True, summarize data parsed. Defaults to
+                          True.
+        :type summarize: bool
+        :param sudo: If True, access log file(s) as privileged user.
+        :type sudo: bool
         """
         if hostname is None and self.hostname is not None:
             hostname = self.hostname
@@ -720,6 +800,9 @@ class PBSLogAnalyzer(object):
     def analyze_logs(self, schedlog=None, serverlog=None, momlog=None,
                      acctlog=None, genericlog=None, start=None, end=None,
                      hostname=None, showjob=False):
+        """
+        Analyze logs
+        """
         if hostname is None and self.hostname is not None:
             hostname = self.hostname
 
@@ -809,7 +892,12 @@ class PBSLogAnalyzer(object):
 
 
 class PBSServerLog(PBSLogAnalyzer):
-
+    """
+    :param filename: Server log filename
+    :type filename: str or None
+    :param hostname: Hostname of the machine
+    :type hostname: str or None
+    """
     tm_tag = re.compile(tm_re)
     server_run_tag = re.compile(tm_re + ".*" + job_re + ".*;Job Run at.*")
     server_nodeup_tag = re.compile(tm_re + ".*Node;.*;node up.*")
@@ -843,7 +931,8 @@ class PBSServerLog(PBSLogAnalyzer):
     def parse_runjob(self, line):
         """
         Parse server log for run job records.
-        For each record keep track of the job id, and time in a dedicated array
+        For each record keep track of the job id, and time in a
+        dedicated array
         """
         m = self.server_run_tag.match(line)
         if m:
@@ -860,7 +949,8 @@ class PBSServerLog(PBSLogAnalyzer):
     def parse_endjob(self, line):
         """
         Parse server log for run job records.
-        For each record keep track of the job id, and time in a dedicated array
+        For each record keep track of the job id, and time in a
+        dedicated array
         """
         m = self.server_endjob_tag.match(line)
         if m:
@@ -875,12 +965,18 @@ class PBSServerLog(PBSLogAnalyzer):
                 self.run_time.append(tm - self.server_job_run[jobid][-1:][0])
 
     def parse_nodeup(self, line):
+        """
+        Parse server log for nodes that are up
+        """
         m = self.server_nodeup_tag.match(line)
         if m:
             tm = self.logutils.convert_date_time(m.group('datetime'))
             self.nodeup.append(tm)
 
     def parse_enquejob(self, line):
+        """
+        Parse server log for enqued jobs
+        """
         m = self.server_enquejob_tag.match(line)
         if m:
             tm = self.logutils.convert_date_time(m.group('datetime'))
@@ -950,7 +1046,9 @@ class PBSServerLog(PBSLogAnalyzer):
 
 
 class JobEstimatedStartTimeInfo(object):
-
+    """
+    Information regarding Job estimated start time
+    """
     def __init__(self, jobid):
         self.jobid = jobid
         self.started_at = None
@@ -962,12 +1060,13 @@ class JobEstimatedStartTimeInfo(object):
     def add_estimate(self, tm):
         """
         Add a job's new estimated start time
-        If the new estimate is now later than any preivous one, we add that
-        difference to the drift time. If the new drift time is pulled earlier
-        it is not added to the drift time.
+        If the new estimate is now later than any preivous one, we
+        add that difference to the drift time. If the new drift time
+        is pulled earlier it is not added to the drift time.
 
-        drift time is a measure of "negative perception" that comes along a job
-        being estimated to run at a later date than earlier "advertised".
+        drift time is a measure of ``"negative perception"`` that
+        comes along a job being estimated to run at a later date than
+        earlier ``"advertised"``.
         """
         if self.estimated_at:
             prev_tm = self.estimated_at[len(self.estimated_at) - 1]
@@ -1031,7 +1130,8 @@ class PBSSchedulerLog(PBSLogAnalyzer):
     def _parse_line(self, line):
         """
         Parse scheduling cycle Starting, Leaving, and alarm records
-        From each record, keep track of the record time in a dedicated array
+        From each record, keep track of the record time in a
+        dedicated array
         """
         m = self.startcycle_tag.match(line)
         if m:
@@ -1141,6 +1241,13 @@ class PBSSchedulerLog(PBSLogAnalyzer):
             return PARSER_OK_CONTINUE
 
     def get_cycles(self, start=None, end=None):
+        """
+        Get the scheduler cycles
+
+        :param start: Start time
+        :param end: End time
+        :returns: Scheduling cycles
+        """
         if start is None and end is None:
             return self.cycles
 
@@ -1178,6 +1285,9 @@ class PBSSchedulerLog(PBSLogAnalyzer):
         return PARSER_OK_CONTINUE
 
     def estimated_info_parsing(self, line):
+        """
+        Parse Estimated start time information for a job
+        """
         m = self.sched_job_run_tag.match(line)
         if m is not None:
             jid = str(m.group('jobid'))
@@ -1220,6 +1330,9 @@ class PBSSchedulerLog(PBSLogAnalyzer):
                     m.group('datetime'))
 
     def summarize_estimated_analysis(self, estimated_jobs=None):
+        """
+        Summarize estimated job analysis
+        """
         if estimated_jobs is None and self.estimated_jobs is not None:
             estimated_jobs = self.estimated_jobs
 
@@ -1281,6 +1394,9 @@ class PBSSchedulerLog(PBSLogAnalyzer):
         return einfo
 
     def summary(self, cycles=None, showjobs=False):
+        """
+        Scheduler log summary
+        """
         if self.estimated_parsing_enabled:
             self.info[EST] = self.summarize_estimated_analysis()
             if self.parse_estimated_only:
@@ -1414,7 +1530,9 @@ class PBSCycleInfo(object):
         self.lastjob = None
 
     def summary(self, showjobs=False):
-
+        """
+        Summary regarding cycle
+        """
         self.info[CST] = time.strftime(
             "%Y-%m-%d %H:%M:%S", time.localtime(self.start))
         self.info[CD] = PBSLogUtils._duration(self.end - self.start)
@@ -1454,7 +1572,7 @@ class PBSCycleInfo(object):
 class PBSMoMLog(PBSLogAnalyzer):
 
     """
-    Container and Parser of a PBS MoM log
+    Container and Parser of a PBS ``MoM`` log
     """
     tm_tag = re.compile(tm_re)
     mom_run_tag = re.compile(tm_re + ".*" + job_re + ".*;Started, pid.*")
@@ -1514,6 +1632,9 @@ class PBSMoMLog(PBSLogAnalyzer):
         return PARSER_OK_CONTINUE
 
     def summary(self):
+        """
+        Mom log summary
+        """
         run_rate = self.logutils.get_rate(self.start)
         queue_rate = self.logutils.get_rate(self.queued)
         end_rate = self.logutils.get_rate(self.end)
@@ -1635,32 +1756,60 @@ class PBSAccountingLog(PBSLogAnalyzer):
         self.info = {}
 
     def enable_running_jobs_parsing(self):
+        """
+        Enable parsing for running jobs
+        """
         self.running_jobs_parsing = True
 
     def enable_utilization_parsing(self, hostname=None, nodesfile=None,
                                    jobsfile=None):
+        """
+        Enable utilization parsing
+
+        :param hostname: Hostname of the machine
+        :type hostname: str or None
+        :param nodesfile: optional file containing output of
+                          pbsnodes -av
+        :type nodesfile: str or None
+        :param jobsfile: optional file containing output of
+                         qstat -f
+        :type jobsfile: str or None
+        """
         self.utilization_parsing = True
         self.process_nodes_data(hostname, nodesfile, jobsfile)
 
     def enable_job_info_parsing(self):
+        """
+        Enable job information parsing
+        """
         self.job_info_res = {}
         self.job_info_parsing = True
 
     def enable_accounting_workload_parsing(self):
+        """
+        Enable accounting workload parsing
+        """
         self.accounting_workload_parsing = True
 
     def process_nodes_data(self, hostname=None, nodesfile=None, jobsfile=None):
         """
-        Get job and node information by stat'ing and parsing node data from
-        the server.
-        Compute the number of nodes and populate a list of running job ids on
-        those nodes .
-        hostname - the host to query
-        nodesfile - optional file containing output of pbsnodes -av
-        jobsfile - optional file containing output of qstat -f
+        Get job and node information by stat'ing and parsing node
+        data from the server.
+        Compute the number of nodes and populate a list of running
+        job ids on those nodes.
+
+        :param hostname: The host to query
+        :type hostname: str or None
+        :param nodesfile: optional file containing output of
+                          pbsnodes -av
+        :type nodesfile: str or None
+        :param jobsfile: optional file containing output of
+                         qstat -f
+        :type jobsfile: str or None
 
         The node data is needed to compute counts of nodes and cpus
-        The job data is needed to compute the amount of resources requested
+        The job data is needed to compute the amount of resources
+        requested
         """
         if nodesfile or jobsfile:
             self._server = Server(diagmap={NODE: nodesfile, JOB: jobsfile})
@@ -1693,6 +1842,9 @@ class PBSAccountingLog(PBSLogAnalyzer):
             return self.accounting_parsing(rec, start, end)
 
     def accounting_parsing(self, rec, start, end):
+        """
+        Parsing accounting log
+        """
         r = self.record_tag.match(rec)
         if not r:
             return PARSER_ERROR_CONTINUE
@@ -1864,6 +2016,9 @@ class PBSAccountingLog(PBSLogAnalyzer):
                 self.used_nph += nodes * (last_record_tm - stime)
 
     def job_info(self, rec):
+        """
+        PBS Job information
+        """
         m = self.record_tag.match(rec)
         if m:
             d = {}
@@ -1881,13 +2036,15 @@ class PBSAccountingLog(PBSLogAnalyzer):
 
     def finished_jobs_nodes(self, last=None, tm_range=None):
         """
-        Return a dictionary of jobs that ended in the time range as keys,
-        and nodes (hostnames) on which those jobs were running as values.
-
-        tm_range - a tuple of time where the first item is the start time
-        last - If tm_range is None and last is specified, a time range from now
-        till 'last' seconds from now is used as a range of time
-        to consider and the second item is the end time to consider
+        :param tm_range: a tuple of time where the first item is the
+                         start time
+        :param last: If tm_range is None and last is specified, a
+                     time range from now till 'last' seconds from
+                     now is used as a range of time to consider and
+                     the second item is the end time to consider
+        :returns: A dictionary of jobs that ended in the time range
+                  as keys,and nodes (hostnames) on which those jobs
+                  were running as values.
         """
         if self.filename is None:
             self.logger.error('A filename is required, exiting')
@@ -1931,6 +2088,9 @@ class PBSAccountingLog(PBSLogAnalyzer):
         return job_nodes
 
     def summary(self):
+        """
+        Accounting log summary
+        """
         if self.running_jobs_parsing or self.accounting_workload_parsing:
             return
 

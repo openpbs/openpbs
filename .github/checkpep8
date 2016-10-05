@@ -58,17 +58,27 @@ fi
 cd ${checkdir}/..
 
 is_python_file() {
-    if [ "x$(file --mime-type -b ${1})" == "xtext/x-python" ]; then
-        return 0
+    name=$(basename ${1})
+
+    # special case
+    # if .rst file then it will be considered
+    # as a  plain text file
+    if [ "x${name##*.}" == "xrst" ]; then
+        return 1
     fi
     
     # special case
     # if __init__.py does not contain any code then file
     # command will consider it as plain text file
-    if [ "x$(basename ${1})" == "x__init__.py" ]; then
+    if [ "x${name}" == "x__init__.py" ]; then
+        return 0
+    fi
+
+    if [ "x$(file --mime-type -b ${1})" == "xtext/x-python" ]; then
         return 0
     fi
     return 1
+
 }
 
 check_pep8() {

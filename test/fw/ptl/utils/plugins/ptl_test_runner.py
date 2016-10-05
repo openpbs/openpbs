@@ -91,6 +91,9 @@ class _PtlTestResult(unittest.TestResult):
         self.timedout = []
 
     def getDescription(self, test):
+        """
+        Get the test result description
+        """
         if hasattr(test, 'test'):
             return str(test.test)
         elif type(test.context) == ModuleType:
@@ -105,6 +108,9 @@ class _PtlTestResult(unittest.TestResult):
             return str(test)
 
     def getTestDoc(self, test):
+        """
+        Get test document
+        """
         if hasattr(test, 'test'):
             if hasattr(test.test, '_testMethodDoc'):
                 return test.test._testMethodDoc
@@ -117,6 +123,12 @@ class _PtlTestResult(unittest.TestResult):
                 return None
 
     def startTest(self, test):
+        """
+        Start the test
+
+        :param test: Test to start
+        :type test: str
+        """
         unittest.TestResult.startTest(self, test)
         test.start_time = datetime.datetime.now()
         if self.showAll:
@@ -128,6 +140,9 @@ class _PtlTestResult(unittest.TestResult):
             self.logger.info('test docstring: %s' % (tdoc))
 
     def addSuccess(self, test):
+        """
+        Add success to the test result
+        """
         unittest.TestResult.addSuccess(self, test)
         if self.showAll:
             self.logger.info('ok\n')
@@ -142,6 +157,14 @@ class _PtlTestResult(unittest.TestResult):
             self.logger.info('E')
 
     def addError(self, test, err):
+        """
+        Add error to the test result
+
+        :param test: Test for which to add error
+        :type test: str
+        :param error: Error message to add
+        :type error: str
+        """
         if isclass(err[0]) and issubclass(err[0], SkipTest):
             self.addSkip(test, err[1])
             return
@@ -162,6 +185,9 @@ class _PtlTestResult(unittest.TestResult):
         self._addError(test, err)
 
     def addFailure(self, test, err):
+        """
+        Indicate failure
+        """
         unittest.TestResult.addFailure(self, test, err)
         if self.showAll:
             self.logger.info('FAILED\n')
@@ -169,6 +195,14 @@ class _PtlTestResult(unittest.TestResult):
             self.logger.info('F')
 
     def addSkip(self, test, reason):
+        """
+        Indicate skipping of test
+
+        :param test: Test to skip
+        :type test: str
+        :param reason: Reason fot the skip
+        :type reason: str
+        """
         self.skipped.append((test, reason))
         if self.showAll:
             self.logger.info('SKIPPED')
@@ -176,6 +210,14 @@ class _PtlTestResult(unittest.TestResult):
             self.logger.info('S')
 
     def addTimedOut(self, test, err):
+        """
+        Indicate timeout
+
+        :param test: Test for which timeout happened
+        :type test: str
+        :param err: Error for timeout
+        :type err: str
+        """
         self.timedout.append((test, self._exc_info_to_string(err, test)))
         if self.showAll:
             self.logger.info('TIMEDOUT')
@@ -183,6 +225,9 @@ class _PtlTestResult(unittest.TestResult):
             self.logger.info('T')
 
     def printErrors(self):
+        """
+        Print the errors
+        """
         _blank_line = False
         if ((len(self.errors) > 0) or (len(self.failures) > 0) or
                 (len(self.timedout) > 0)):
@@ -202,6 +247,11 @@ class _PtlTestResult(unittest.TestResult):
         self.config.plugins.report(self.stream)
 
     def printErrorList(self, flavour, errors):
+        """
+        Print the error list
+
+        :param errors: Errors to print
+        """
         for test, err in errors:
             self.logger.info(self.separator1)
             self.logger.info('%s: %s\n' % (flavour, self.getDescription(test)))
@@ -209,6 +259,14 @@ class _PtlTestResult(unittest.TestResult):
             self.logger.info('%s\n' % err)
 
     def printLabel(self, label, err=None):
+        """
+        Print the label for the error
+
+        :param label: Label to print
+        :type label: str
+        :param err: Error for which label to be printed
+        :type err: str
+        """
         if self.showAll:
             message = [label]
             if err:
@@ -223,6 +281,12 @@ class _PtlTestResult(unittest.TestResult):
             self.logger.info(label[:1])
 
     def wasSuccessful(self):
+        """
+        Check whether the test successful or not
+
+        :returns: True if no ``errors`` or no ``failures`` or no ``timeout``
+                  else return False
+        """
         if self.errors or self.failures or self.timedout:
             return False
         for cls in self.errorClasses.keys():
@@ -237,6 +301,9 @@ class _PtlTestResult(unittest.TestResult):
         """
         Called by the test runner to print the final summary of test
         run results.
+
+        :param start: Time at which test begins
+        :param stop:  Time at which test ends
         """
         self.printErrors()
         msg = ['=' * 80]
@@ -304,7 +371,7 @@ class _PtlTestResult(unittest.TestResult):
 class PtlTestRunner(TextTestRunner):
 
     """
-    Test runner that uses PtlTestResult to enable errorClasses,
+    Test runner that uses ``PtlTestResult`` to enable errorClasses,
     as well as providing hooks for plugins to override or replace the test
     output stream, results, and the test case itself.
     """
@@ -403,9 +470,15 @@ class PTLTestRunner(Plugin):
         self.enabled = True
 
     def prepareTestRunner(self, runner):
+        """
+        Prepare test runner
+        """
         return PtlTestRunner(verbosity=3, config=self.config)
 
     def prepareTestResult(self, result):
+        """
+        Prepare test result
+        """
         self.result = result
 
     def startContext(self, context):
@@ -443,6 +516,9 @@ class PTLTestRunner(Plugin):
         test.duration = test.end_time - test.start_time
 
     def startTest(self, test):
+        """
+        Start the test
+        """
         timeout = self.__get_timeout(test)
 
         def timeout_handler(signum, frame):
@@ -452,16 +528,28 @@ class PTLTestRunner(Plugin):
         signal.alarm(timeout)
 
     def stopTest(self, test):
+        """
+        Stop the test
+        """
         signal.signal(signal.SIGALRM, getattr(test, 'old_sigalrm_handler'))
         signal.alarm(0)
 
     def addError(self, test, err):
+        """
+        Add error
+        """
         self.__set_test_end_data(test, err)
 
     def addFailure(self, test, err):
+        """
+        Add failure
+        """
         self.__set_test_end_data(test, err)
 
     def addSuccess(self, test):
+        """
+        Add success
+        """
         self.__set_test_end_data(test)
 
     def _cleanup(self):
