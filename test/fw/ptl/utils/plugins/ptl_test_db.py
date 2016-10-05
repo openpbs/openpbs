@@ -88,6 +88,10 @@ class PTLDbError(Exception):
 
     """
     PTL database error class
+
+    :param rv: Return value for the database error
+    :param rc: Return code for the database error
+    :param msg: Error message
     """
 
     def __init__(self, rv=None, rc=None, msg=None, post=None, *args, **kwargs):
@@ -111,6 +115,10 @@ class DBType(object):
     """
     Base class for each database type
     Any type of database must inherit from me
+
+    :param dbtype: Database type
+    :param dbpath: Path to database
+    :param dbaccess: Path to a file that defines db options
     """
 
     def __init__(self, dbtype, dbpath, dbaccess):
@@ -131,11 +139,19 @@ class DBType(object):
         self.dbaccess = dbaccess
 
     def write(self, data, logfile=None):
+        """
+        :param data: Data to write
+        :param logfile: Can be one of ``server``, ``scheduler``, ``mom``,
+                        ``accounting`` or ``procs``
+        """
         _msg = 'write method must be implemented in'
         _msg += ' %s' % (str(self.__class__.__name__))
         raise PTLDbError(rc=1, rv=False, msg=_msg)
 
     def close(self):
+        """
+        Close the database
+        """
         _msg = 'close method must be implemented in'
         _msg += ' %s' % (str(self.__class__.__name__))
         raise PTLDbError(rc=1, rv=False, msg=_msg)
@@ -1589,6 +1605,9 @@ class PTLTestDb(Plugin):
         pass
 
     def set_data(self, dbtype, dbpath, dbaccess):
+        """
+        Set the data
+        """
         self.__dbtype = dbtype
         self.__dbpath = dbpath
         self.__dbaccess = dbaccess
@@ -1596,6 +1615,8 @@ class PTLTestDb(Plugin):
     def configure(self, options, config):
         """
         Configure the plugin and system, based on selected options
+
+        :param options: Configuration options for ``plugin`` and ``system``
         """
         if self.__dbconn is not None:
             return
@@ -1677,20 +1698,18 @@ class PTLTestDb(Plugin):
         Send analyzed log information to either the screen or to a database
         file.
 
-        info - A dictionary of log analysis metrics.
-
-        dbout - The name of the database file to send output to
-
-        dbtype - Type of database
-
-        dbaccess - Path to a file that defines db options (PostreSQL only)
-
-        name - The name of the log file being analyzed
-
-        logtype - The log type, one of accounting, schedsummary, scheduler,
-        server, or mom
-
-        summary - If True output summary only
+        :param info: A dictionary of log analysis metrics.
+        :type info: Dictionary
+        :param dbout: The name of the database file to send output to
+        :type dbout: str or None
+        :param dbtype: Type of database
+        :param dbaccess: Path to a file that defines db options
+                         (PostreSQL only)
+        :param name: The name of the log file being analyzed
+        :type name: str or None
+        :param logtype: The log type, one of ``accounting``, ``schedsummary``,
+                        ``scheduler``, ``server``, or ``mom``
+        :param summary: If True output summary only
         """
         if dbout is not None:
             try:

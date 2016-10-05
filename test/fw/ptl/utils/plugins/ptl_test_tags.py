@@ -67,7 +67,7 @@ def tags(*args, **kwargs):
 
 def get_tag_value(method, cls, tag_name, default=False):
     """
-    Look up an tag on a method/function.
+    Look up an tag on a ``method/function``.
     If the tag isn't found there, looking it up in the
     method's class, if any.
     """
@@ -154,7 +154,8 @@ class PTLTestTags(Plugin):
         self.verbose = verbose
 
     def configure(self, options, config):
-        """Configure the plugin and system, based on selected options.
+        """
+        Configure the plugin and system, based on selected options.
 
         attr and eval_attr may each be lists.
 
@@ -225,6 +226,9 @@ class PTLTestTags(Plugin):
             return False
 
     def prepareTestRunner(self, runner):
+        """
+        Prepare test runner
+        """
         if (self.tags_info or self.list_tags):
             return FakeRunner(self.matched, self.tags_list, self.list_tags,
                               self.verbose)

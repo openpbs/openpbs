@@ -42,14 +42,27 @@ import time
 import logging
 import tempfile
 from stat import S_IWOTH
-from BeautifulSoup import BeautifulSoup
 from urlparse import urljoin
 from ptl.utils.pbs_dshutils import DshUtils
 from ptl.utils.pbs_cliutils import CliUtils
 
+try:
+    from BeautifulSoup import BeautifulSoup
+except:
+    pass
+
 
 class LcovUtils(object):
+    """
+    Coverage Utils
 
+    :param cov_bin: Coverage binary
+    :param html_bin: Coverage html binary
+    :param cov_out: Coverage output directory
+    :param data_dir: Coverage data directory
+    :param html_nosrc: HTML reports without PBS source
+    :param html_baseurl: HTML base url
+    """
     du = DshUtils()
     logger = logging.getLogger(__name__)
 
@@ -64,14 +77,25 @@ class LcovUtils(object):
         self.coverage_traces = []
 
     def set_html_baseurl(self, baseurl):
+        """
+        Set ``HTML`` base url
+        """
         self.logger.info('coverage baseurl set to ' + str(baseurl))
         self.html_baseurl = baseurl
 
     def set_html_nosource(self, nosource=False):
+        """
+        Set HTML nosource parameter to False.
+        """
         self.logger.info('coverage no-source set to ' + str(nosource))
         self.html_nosrc = nosource
 
     def set_coverage_bin(self, cov_bin=None):
+        """
+        Set the coverage binary
+
+        :param cov_binary: Coverage bin to set
+        """
         if cov_bin is None:
             cov_bin = 'lcov'
         rv = CliUtils.check_bin(cov_bin)
@@ -84,6 +108,11 @@ class LcovUtils(object):
         return rv
 
     def set_genhtml_bin(self, html_bin=None):
+        """
+        Set HTML generation utility.
+
+        :param html_bin: HTML bin to set
+        """
         if html_bin is None:
             html_bin = 'genhtml'
         rv = CliUtils.check_bin(html_bin)
@@ -96,6 +125,11 @@ class LcovUtils(object):
         return rv
 
     def set_coverage_out(self, cov_out=None):
+        """
+        Set the coverage output directory
+
+        :param cov_out: Coverage output directory path.
+        """
         if cov_out is None:
             d = 'pbscov-' + time.strftime('%Y%m%d_%H%M%S', time.localtime())
             cov_out = os.path.join(tempfile.gettempdir(), d)
@@ -105,6 +139,12 @@ class LcovUtils(object):
         self.cov_out = cov_out
 
     def set_coverage_data_dir(self, data=None):
+        """
+        Set the coverage data directory
+
+        :param data: Data directory path
+        :returns: True if file name ends with .gcno else return False
+        """
         self.data_dir = data
         if self.data_dir is not None:
             walker = os.walk(self.data_dir)
@@ -115,6 +155,11 @@ class LcovUtils(object):
         return False
 
     def add_trace(self, trace):
+        """
+        Add coverage trace
+
+        :param trace: Coverage trace
+        """
         if trace not in self.coverage_traces:
             self.logger.info('Adding coverage trace: %s' % (trace))
             self.coverage_traces.append(trace)
@@ -143,6 +188,14 @@ class LcovUtils(object):
                                         level=logging.DEBUG, sudo=True)
 
     def initialize_coverage(self, out=None, name=None):
+        """
+        Initialize coverage
+
+        :param out: Output path
+        :type out: str or None
+        :param name: name of the command
+        :type name: str or None
+        """
         if self.data_dir is not None:
             if out is None:
                 out = os.path.join(self.cov_out, 'baseline.info')
@@ -156,6 +209,9 @@ class LcovUtils(object):
             self.add_trace(out)
 
     def capture_coverage(self, out=None, name=None):
+        """
+        Capture the coverage parameters
+        """
         if self.data_dir is not None:
             if out is None:
                 out = os.path.join(self.cov_out, 'tests.info')
@@ -170,7 +226,7 @@ class LcovUtils(object):
     def zero_coverage(self):
         """
         Zero the data counters. Note that a process would need to be restarted
-        in order to collect data again, running --initialize will not get
+        in order to collect data again, running ``--initialize`` will not get
         populate the data counters
         """
         if self.data_dir is not None:
@@ -179,6 +235,9 @@ class LcovUtils(object):
             self.du.run_cmd(cmd=cmd, logerr=False)
 
     def merge_coverage_traces(self, out=None, name=None, exclude=None):
+        """
+        Merge the coverage traces
+        """
         if not self.coverage_traces:
             return
         if out is None:
@@ -204,6 +263,9 @@ class LcovUtils(object):
             self.du.rm(path=tmpout, logerr=False)
 
     def generate_html(self, out=None, html_out=None, html_nosrc=False):
+        """
+        Generate the ``HTML`` report
+        """
         if self.html_bin is None:
             self.logger.warn('No genhtml bin is defined')
             return
@@ -226,6 +288,9 @@ class LcovUtils(object):
             self.du.run_cmd(cmd=cmd, logerr=False)
 
     def change_baseurl(self, html_out=None, html_baseurl=None):
+        """
+        Change the ``HTML`` base url
+        """
         if html_baseurl is None:
             html_baseurl = self.html_baseurl
         if html_baseurl is None:
@@ -270,6 +335,9 @@ class LcovUtils(object):
                 fd.close()
 
     def summarize_coverage(self, out=None):
+        """
+        Summarize the coverage output
+        """
         if out is None:
             out = os.path.join(self.cov_out, 'total.info')
         if not os.path.isfile(out):
