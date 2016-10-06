@@ -39,8 +39,9 @@
 from ptl.utils.pbs_testsuite import *
 
 
-class TestStress(PBSTestSuite):
+class TestResilience(PBSTestSuite):
     """
-    Base test suite for Stress, Load, Endurance tests
+    Base test suite for all kinds of resilience tests
+    like Failover, stress, load, endurance etc.
     """
     pass
