@@ -1344,7 +1344,6 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 	node_partition **nodepart = NULL;	/* node partitions to serach */
 	node_partition *np = NULL;		/* node partition to run resresv on */
 	char buf[COMMENT_BUF_SIZE] = {'\0'};		/* generic buffer - comments & logging*/
-	char timebuf[128];			/* buffer to hold the time and date */
 	int num_nspec;			/* number of nspecs in node solution */
 
 	/* used for jobs with nodes resource */
@@ -1540,8 +1539,6 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 #else
 	if (ret != 0) { /* resresv has successfully been started */
 #endif /* localmod 125 */
-		strftime(timebuf, 128, "%a %b %d at %H:%M",
-			localtime(&sinfo->server_time));
 		/* any resresv marked can_not_run will be ignored by the scheduler
 		 * so just incase we run by this resresv again, we want to ignore it
 		 * since it is already running
@@ -1556,39 +1553,9 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 		combine_nspec_array(ns);
 		rr->nspec_arr = ns;
 
-		if (array != NULL && array->job->is_queued) {
-			sprintf(buf, "Job Array Began at %s", timebuf);
-			update_job_comment(pbs_sd, array, buf);
-		}
-
-		if (rr->is_job) {
-			sprintf(buf, "Job run at %s", timebuf);
-			if (execvnode != NULL) {
-				/* Job run at <timespec> is about 35 characters, 80 is about all we get
-				 * on a qstat -s line.
-				 * With qstat -ws, the line can take upto 120 chars. Hence, taking
-				 * all of the comment string and handling it in qstat.c
-				 * Remark: the buffer is zero'd at initialization time, so we don't need
-				 * to worry about the strncat not null terminiating the string
-				 */
-				strcat(buf, " on ");
-				if (strlen(execvnode) > MAXCOMMENTSCOPE) {
-					strncat(buf, execvnode, MAXCOMMENTLEN);
-					strcat(buf, "...");;
-					buf[strlen(buf)] = '\0';
-				}
-				else
-					strcat(buf, execvnode);
-			}
-
-			if (!(flags & RURR_NOPRINT)) {
+		if (rr->is_job && !(flags & RURR_NOPRINT)) {
 				schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB,
 					LOG_INFO, rr->name, "Job run");
-			}
-
-			/* array subresresvs can not be altered */
-			if (array == NULL)
-				update_job_comment(pbs_sd, rr, buf);
 		}
 
 

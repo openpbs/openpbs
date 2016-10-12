@@ -1736,6 +1736,7 @@ req_jobcredential(struct batch_request *preq)
 		return;
 	}
 	if (pj->ji_qs.ji_substate != JOB_SUBSTATE_TRANSIN) {
+		delete_link(&pj->ji_alljobs);
 		req_reject(PBSE_IVALREQ, 0, preq);
 		return;
 	}
@@ -1755,27 +1756,34 @@ req_jobcredential(struct batch_request *preq)
 	switch (type) {
 
 		case PBS_CREDTYPE_DCE_KRB5:
-			if (save_kerb_cred(pj, cred, len, TRUE, preq->rq_conn) == -1)
+			if (save_kerb_cred(pj, cred, len, TRUE, preq->rq_conn) == -1) {
+				delete_link(&pj->ji_alljobs);
 				req_reject(PBSE_SYSTEM, 0, preq);
+			}
 			else
 				reply_ack(preq);
 			break;
 
 		case PBS_CREDTYPE_GRIDPROXY:
 			if (unseal_gridproxy(pj, &cred, &len) == -1) {
+				delete_link(&pj->ji_alljobs);
 				req_reject(PBSE_SYSTEM, 0, preq);
 				break;
 			}
-			if (write_cred(pj, cred, len) == -1)
+			if (write_cred(pj, cred, len) == -1) {
+				delete_link(&pj->ji_alljobs);
 				req_reject(PBSE_SYSTEM, 0, preq);
+			}
 			else
 				reply_ack(preq);
 			free(cred);
 			break;
 
 		default:
-			if (write_cred(pj, cred, len) == -1)
+			if (write_cred(pj, cred, len) == -1) {
+				delete_link(&pj->ji_alljobs);
 				req_reject(PBSE_SYSTEM, 0, preq);
+			}
 			else
 				reply_ack(preq);
 			break;
@@ -1899,6 +1907,7 @@ req_jobscript(struct batch_request *preq)
 		return;
 	}
 	if (pj->ji_qs.ji_substate != JOB_SUBSTATE_TRANSIN) {
+		delete_link(&pj->ji_alljobs);
 		req_reject(PBSE_IVALREQ, 0, preq);
 		return;
 	}
@@ -1939,6 +1948,7 @@ req_jobscript(struct batch_request *preq)
 
 				log_err(-1, "req_jobscript",
 					msg_mom_reject_root_scripts);
+				delete_link(&pj->ji_alljobs);
 				req_reject(PBSE_MOM_REJECT_ROOT_SCRIPTS, 0, preq);
 				return;
 			}
@@ -1959,6 +1969,7 @@ req_jobscript(struct batch_request *preq)
 	}
 	if (fds < 0) {
 		log_err(errno, "req_jobscript", msg_script_open);
+		delete_link(&pj->ji_alljobs);
 		req_reject(PBSE_INTERNAL, 0, preq);
 		return;
 	}
@@ -1972,6 +1983,7 @@ req_jobscript(struct batch_request *preq)
 		(unsigned)preq->rq_ind.rq_jobfile.rq_size) !=
 		preq->rq_ind.rq_jobfile.rq_size) {
 		log_err(errno, "req_jobscript", msg_script_write);
+		delete_link(&pj->ji_alljobs);
 		req_reject(PBSE_SYSTEM, 0, preq);
 		(void)close(fds);
 		return;

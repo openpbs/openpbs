@@ -840,6 +840,38 @@ svr_stagein(job *pjob, struct batch_request *preq, int state, int substate)
 
 /**
  * @brief
+ * 		form_attr_comment - Creates and return attribute comment in the given template
+ * 		by appending time and execvnode
+ *
+ * @param[in]	template	-	template of the string
+ * @param[in]	execvnode	-	execution node, NULL if this field is not required in the output
+ *
+ * @return	string
+ * @retval	new attribute comment with time and execnode appended.
+ *
+ * @note
+ * 		Do not copy the output of this function into log_buffer. It is used internally.
+ */
+char *
+form_attr_comment(const char *template, const char *execvnode)
+{
+	char timebuf[128];
+	strftime(timebuf, 128, "%a %b %d at %H:%M", localtime(&time_now));
+	sprintf(log_buffer, template, timebuf);
+	if (execvnode != NULL) {
+		strcat(log_buffer, " on ");
+		if (strlen(execvnode) > COMMENT_BUF_SIZE-strlen(log_buffer)-1) {
+			strncat(log_buffer, execvnode, COMMENT_BUF_SIZE-strlen(log_buffer)-1-3);
+			strcat(log_buffer, "...");
+			log_buffer[COMMENT_BUF_SIZE-1] = '\0';
+		} else
+			strcat(log_buffer, execvnode);
+	}
+	return log_buffer;
+}
+
+/**
+ * @brief
  * 		svr_startjob - place a job into running state by shipping it to MOM
  *
  * @param[in,out]	pjob	-	job to run
@@ -984,6 +1016,15 @@ svr_strtjob2(job *pjob, struct batch_request *preq)
 	}
 
 	/* send the job to MOM */
+	if (!(pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob))
+	{
+		job_attr_def[(int) JOB_ATR_Comment].at_decode(
+				&pjob->ji_wattr[(int) JOB_ATR_Comment],
+				(char *) 0,
+				(char *) 0,
+				form_attr_comment("Job was sent for execution at %s",
+						pjob->ji_wattr[(int) JOB_ATR_exec_vnode].at_val.at_str));
+	}
 
 	if (old_subst != JOB_SUBSTATE_PROVISION)
 		(void)svr_setjobstate(pjob, JOB_STATE_RUNNING,
@@ -1060,10 +1101,24 @@ complete_running(job *jobp)
 		if (parent->ji_qs.ji_state == JOB_STATE_QUEUED) {
 			svr_setjobstate(parent, JOB_STATE_BEGUN, JOB_SUBSTATE_BEGUN);
 			account_jobstr(parent);
+			job_attr_def[(int) JOB_ATR_Comment].at_decode(
+					&parent->ji_wattr[(int) JOB_ATR_Comment], (char *) 0,
+					(char *) 0,
+					form_attr_comment("Job Array Began at %s", NULL));
 			/* if any dependencies, see if action required */
 			if (parent->ji_wattr[(int)JOB_ATR_depend].at_flags&ATR_VFLAG_SET)
 				(void)depend_on_exec(parent);
 		}
+	}
+	/* Job started ATR_Comment is set in server since scheduler cannot read	*/
+	/* the reply in case of error in asynchronous communication.	*/
+	else {
+		job_attr_def[(int) JOB_ATR_Comment].at_decode(
+				&jobp->ji_wattr[(int) JOB_ATR_Comment],
+				(char *) 0,
+				(char *) 0,
+				form_attr_comment("Job run at %s",
+						jobp->ji_wattr[(int) JOB_ATR_exec_vnode].at_val.at_str));
 	}
 
 	jobp->ji_qs.ji_svrflags &= ~JOB_SVFLG_HOTSTART;
@@ -1310,6 +1365,16 @@ post_sendmom(struct work_task *pwt)
 				        "send of job to %s failed error = %d",
 				        jobp->ji_qs.ji_destin, pbs_errno);
 			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, jobp->ji_qs.ji_jobid, log_buffer);
+			snprintf(log_buffer, LOG_BUF_SIZE,
+					"Not Running: PBS Error: %s", pbse_to_txt(PBSE_MOMREJECT));
+			if (jobp->ji_qs.ji_svrflags & JOB_SVFLG_SubJob)
+				job_attr_def[(int) JOB_ATR_Comment].at_decode(
+						&jobp->ji_parentaj->ji_wattr[(int) JOB_ATR_Comment],
+						(char *) 0, (char *) 0, log_buffer);
+			else
+				job_attr_def[(int) JOB_ATR_Comment].at_decode(
+						&jobp->ji_wattr[(int) JOB_ATR_Comment], (char *) 0,
+						(char *) 0, log_buffer);
 		}
 
 		/* in the case of hook error we parse the hook_name and hook msg */
@@ -1339,8 +1404,8 @@ post_sendmom(struct work_task *pwt)
 
 			if (preq)
 				reply_ack(preq);
-			if ((jobp->ji_qs.ji_substate == JOB_SUBSTATE_PRERUN)   ||
-				(jobp->ji_qs.ji_substate == JOB_SUBSTATE_PROVISION))
+			if ((jobp->ji_qs.ji_substate == JOB_SUBSTATE_PRERUN)	||
+					(jobp->ji_qs.ji_substate == JOB_SUBSTATE_PROVISION))
 				complete_running(jobp);
 			break;
 
