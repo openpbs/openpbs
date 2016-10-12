@@ -9480,7 +9480,7 @@ class Scheduler(PBSService):
         "sort_queues": "true     ALL",
         "by_queue": "True                ALL",
         "preemptive_sched": "true        ALL",
-        "resources": "\"ncpus, mem, arch, host, vnode, netwins, aoe\"",
+        "resources": "\"ncpus, mem, arch, host, vnode, aoe\"",
         "log_filter": "3328 ",
 
     }

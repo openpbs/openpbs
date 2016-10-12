@@ -272,7 +272,7 @@ sort_queues:	true	ALL
 #
 #	NO PRIME OPTION
 
-resources: "ncpus, mem, arch, host, vnode, netwins, aoe"
+resources: "ncpus, mem, arch, host, vnode, aoe"
 
 #
 # load_balancing 

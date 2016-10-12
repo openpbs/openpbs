@@ -4149,8 +4149,6 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 			for (j=0; j<snelma; ++j) {
 				if (strcmp(skv[j].kv_keyw, "ncpus") == 0)
 					need.rl_ncpus= atol(skv[j].kv_val);
-				else if (strcmp(skv[j].kv_keyw, "netwins") == 0)
-					need.rl_netwins = atol(skv[j].kv_val);
 				else if (strcmp(skv[j].kv_keyw, "mem") == 0)
 					need.rl_mem= to_kbsize(skv[j].kv_val);
 				else if (strcmp(skv[j].kv_keyw, "vmem") == 0)
@@ -4422,11 +4420,6 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 						vnncpus = atoi(enkv[j].kv_val);
 						have.rl_ncpus += vnncpus;
 						hp->hn_nrlimit.rl_ncpus += vnncpus;
-					} else if (strcmp(enkv[j].kv_keyw, "netwins") == 0) {
-						int	wins = atoi(enkv[j].kv_val);
-
-						have.rl_netwins += wins;
-						hp->hn_nrlimit.rl_netwins += wins;
 					} else if (strcmp(enkv[j].kv_keyw, "mem") == 0) {
 						ndmem = to_kbsize(enkv[j].kv_val);
 						have.rl_mem += ndmem;
