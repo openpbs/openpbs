@@ -138,8 +138,7 @@ host1
      resources_assigned.accelerator_memory = 0kb
      resources_assigned.mem = 0kb
      resources_assigned.naccelerators = 0
-     resources_assigned.ncpus = 0
-     resources_assigned.netwins = 0
+     resources_assigned.ncpus = 0     
      resources_assigned.vmem = 0kb
      resv_enable = True
      sharing = default_shared

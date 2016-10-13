@@ -53,8 +53,6 @@ pbsv1module_PYTHON = \
 pbshooksdir = $(libdir)/@PBS_PYTHON_DESTLIB@/pbs_hooks
 
 dist_pbshooks_DATA = \
-	pbs_hooks/PBS_ibwins.HK \
-	pbs_hooks/PBS_ibwins.PY \
 	pbs_hooks/PBS_translate_mpp.HK \
 	pbs_hooks/PBS_translate_mpp.PY
 

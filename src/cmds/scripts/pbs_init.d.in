@@ -759,27 +759,6 @@ site_mom_startup()
 	then
 		sgi_ice_startup cpuset
 	fi
-    else
-	if cmp -s ${PBS_EXEC}/sbin/pbs_mom.ib ${PBS_EXEC}/sbin/pbs_mom ;then
-	    rm -f $vnodedefs
-	elif type nrt_status > /dev/null 2>&1 ;then
-	    # If IB MOM is not in use and InfiniBand is configured
-	    # setup MOM to report the number of windows
-	    nrt_file="$tmpdir/nrt$$"
-	    if nrt_status > $nrt_file 2> /dev/null ;then
-		wins=`wc -l < $nrt_file`
-		if [ "$wins" -gt 1 ]; then
-		    vnodedefsdir=`dirname $vnodedefs`
-		    [ -d $vnodedefsdir ] || mkdir -p -m 0700 $vnodedefsdir
-		    wins=`expr $wins - 1`
-		    echo '$configversion 2' > $vnodedefs
-		    echo "${my_hostname}:  resources_available.netwins = $wins" >> $vnodedefs
-		fi
-	    fi
-	    rm -f $nrt_file
-	else
-	    rm -f $vnodedefs
-	fi
     fi
     find_bgl_environment
 }

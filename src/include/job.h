@@ -306,7 +306,6 @@ typedef enum histjob_type {
 typedef struct resc_limit {		/* per node limits for Mom	*/
 	int	  rl_ncpus;		/* number of cpus		*/
 	int	  rl_ssi;		/* ssinodes (for irix cpusets	*/
-	int	  rl_netwins;		/* network windows		*/
 	long long rl_mem;		/* working set size (real mem)	*/
 	long long rl_vmem;		/* total mem space (virtual)	*/
 	int	  rl_naccels;		/* number of accelerators	*/

@@ -2036,12 +2036,7 @@ aixib_status(job *pjob, hnodent *np)
 			sprintf(log_buffer, "InfiniBand adapter %s has no "
 				"network spigots configured", adap);
 			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB,
-				LOG_WARNING, jobid, log_buffer);
-			/*
-			 ** Do a fake SIGHUP so mom will reread the adapter info
-			 ** and send a new netwins value to the server.
-			 */
-			call_hup = HUP_INIT;
+				LOG_WARNING, jobid, log_buffer);			
 			continue;
 		}
 
@@ -2724,11 +2719,9 @@ aixib_setup(job *pjob, int stream)
 
 		/* Count the total number of processes across all nodes. */
 		jobprocs += np->hn_nprocs;
-		jobwins += np->hn_nrlimit.rl_netwins;
-
-		DBPRT(("%s: node %d netwins %d wins/proc %d\n", __func__,
-			np->hn_node, np->hn_nrlimit.rl_netwins,
-			np->hn_nrlimit.rl_netwins / np->hn_nprocs))
+		
+		DBPRT(("%s: node %d \n", __func__,
+			np->hn_node )
 
 		for (i=0; i<ANUM; i++) {
 			/* info for adapter i */
@@ -3277,11 +3270,6 @@ dep_initialize()
 			if (vn_addvnr(vnlp, mom_short_name, attr, count, 0, 0, NULL) == -1)
 				goto bad_vnl;
 		}
-
-		sprintf(count, "%d", win_cnt);
-		if (vn_addvnr(vnlp, mom_short_name, "resources_available.netwins",
-			count, 0, 0, NULL) == -1)
-			goto bad_vnl;
 
 		vnlp->vnl_modtime = time(NULL);
 		rerr = 0;
