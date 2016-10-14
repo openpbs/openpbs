@@ -99,31 +99,6 @@ createpath() {
 	done
 }
 
-backupdir() {
-	if [ ! -d "$1" -o ! -d "$2" ]; then
-		echo "*** Failed to backup $1 to $2"
-		return 1
-	fi
-	dir=`basename $1`
-	# Try using the timestamp from the directory itself
-	stamp=`date -r "$1" +%Y%m%d%H%M%S`
-	# If it exists, try the current time
-	[ -d "${2}/${dir}.${stamp}" ] && stamp=`date +%Y%m%d%H%M%S`
-	# If that exists, start from 000000 and work up
-	if [ -d "${2}/${dir}.${stamp}" ]; then
-		let i=0
-		while [ $i -lt 10000 ]; do
-			stamp=`printf '%04d' $i`
-			[ ! -d "${2}/${dir}.${stamp}" ] && break
-			let i+=1
-		done
-	fi
-	echo "*** Backing up $1 to ${2}/${dir}.$stamp"
-	echo "*** ${2}/${dir}.$stamp may need to be manually removed"
-	cp -pr "$1" "${2}/${dir}.$stamp" 2>&1
-	return 0
-}
-
 
 
 create_conf() {
@@ -176,38 +151,38 @@ create_conf() {
 		;;
 
 	script)
-	# Need to set INSTALL_PACKAGE for script method.
-	if [ -f "$newpbs_exec/sbin/pbs_server.bin" ]; then
-		INSTALL_PACKAGE=server
-	elif [ -f "$newpbs_exec/sbin/pbs_mom" ]; then
-		INSTALL_PACKAGE=execution
-	elif [ -f "$newpbs_exec/bin/qstat" ]; then
-		INSTALL_PACKAGE=client
-		newpbs_home=''
-	else
-		echo "***"
-		echo "*** Unable to locate PBS Pro executables!"
-		echo "***"
-		exit 1
-	fi
-	# if both conf files are present merge the files but precedence should be given to newconf
-	if [ -f "$newconf" -a -f "$conf" ]; then
-		while IFS='=' read -r key value
-		do
-			if [ -z `grep -q "$key" "$newconf" && echo $?` ]; then
-			echo "$key=$value" >> "$newconf"
-			fi
-		done < "$conf"
-	fi
-	# The INSTALL script may have already created newconf. If it
-	# did, leave it alone. If not, and an existing configuration
-	# file is present, adapt it by substituting the new value
-	# of PBS_EXEC.
-	[ ! -f "$newconf" -a -f "$conf" ] && \
-		# If an existing configuration file is present, adapt it by
-		# substituting the new value of PBS_EXEC.
-		eval "sed 's;\(^[[:space:]]*PBS_EXEC=\)[^[:space:]]*;\1$newpbs_exec;' \"$conf\"" >"$newconf"
-	;;
+		# Need to set INSTALL_PACKAGE for script method.
+		if [ -f "$newpbs_exec/sbin/pbs_server.bin" ]; then
+			INSTALL_PACKAGE=server
+		elif [ -f "$newpbs_exec/sbin/pbs_mom" ]; then
+			INSTALL_PACKAGE=execution
+		elif [ -f "$newpbs_exec/bin/qstat" ]; then
+			INSTALL_PACKAGE=client
+			newpbs_home=''
+		else
+			echo "***"
+			echo "*** Unable to locate PBS Pro executables!"
+			echo "***"
+			exit 1
+		fi
+		# if both conf files are present merge the files but precedence should be given to newconf
+		if [ -f "$newconf" -a -f "$conf" ]; then
+			while IFS='=' read -r key value
+			do
+				if [ -z `grep -q "$key" "$newconf" && echo $?` ]; then
+				echo "$key=$value" >> "$newconf"
+				fi
+			done < "$conf"
+		fi
+		# The INSTALL script may have already created newconf. If it
+		# did, leave it alone. If not, and an existing configuration
+		# file is present, adapt it by substituting the new value
+		# of PBS_EXEC.
+		[ ! -f "$newconf" -a -f "$conf" ] && \
+			# If an existing configuration file is present, adapt it by
+			# substituting the new value of PBS_EXEC.
+			eval "sed 's;\(^[[:space:]]*PBS_EXEC=\)[^[:space:]]*;\1$newpbs_exec;' \"$conf\"" >"$newconf"
+		;;
 	esac
 	
 	# Ensure newconf exists.
@@ -682,18 +657,6 @@ create_home() {
 			printf "${dbuser:-@database_user@}" >"${dbuser_fl}"
 			chmod 0600 "${dbuser_fl}"
 		fi
-		# Backup old pgsql directory for overlay upgrade
-		if [ "${oldpbs_home}" = "$PBS_HOME" -a -d "${oldpbs_exec}/pgsql" ]; then
-			pgsql_old="$PBS_HOME/pgsql.old"
-			if [ -d "$pgsql_old" ]; then
-				backupdir "$pgsql_old" "$PBS_HOME"
-				rm -rf "$pgsql_old"
-			fi
-			cp -pr "${oldpbs_exec}/pgsql" "$pgsql_old" 2>&1
-		fi
-		# Backup existing datastore directory
-		[ -d "$PBS_HOME/datastore" ] && backupdir "$PBS_HOME/datastore" "$PBS_HOME"
-		echo "***"
 	fi
 	
 	# Configure PBS_HOME for scheduler
