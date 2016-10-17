@@ -228,8 +228,16 @@ oom_protect() {
 # to start the data service by calling pg_ctl.
 # This function also protects the database and the monitoring script from the 
 # OOM on linux.
+# This function checks whether systemd (i.e. systemctl) is available on system or not?
+# If systemctl is available then register database processes with pbs.service
 #
 start_dataservice() {
+	is_systemd=0
+	systemctl --version >/dev/null 2>&1
+	if [ $? -eq 0 ] ; then
+		is_systemd=1
+	fi
+
 	cd ${PBS_HOME}/datastore
 	if [ $? -ne 0 ]; then
 		echo "Could not change directory to ${PBS_HOME}/datastore"
@@ -256,6 +264,37 @@ start_dataservice() {
 			fi
 		fi
 		ret=$?
+
+		if [ $ret -eq 0 -a $is_systemd -eq 1 ] ; then
+			SYSTEMD_CGROUP=`grep ^cgroup /proc/mounts | grep systemd | head -1 | cut -d ' ' -f2`
+			if [ ! -d $SYSTEMD_CGROUP/system.slice/pbs.service ] ; then
+				mkdir -p $SYSTEMD_CGROUP/system.slice/pbs.service
+			fi
+
+			pstmstr_pid_found=0
+			try=0
+			while [ $try -lt 10 -a $pstmstr_pid_found -ne 1 ]
+			do
+				sleep 1
+				if [ -f ${PBS_HOME}/datastore/postmaster.pid ] ; then
+					pstmstr_pid_found=1
+				fi
+				try=`expr $try + 1`
+			done
+
+			if [ $pstmstr_pid_found -eq 1 ] ; then
+				P_PID=`head -n 1 ${PBS_HOME}/datastore/postmaster.pid`
+				if [ -n "$P_PID" ] ; then
+					echo $P_PID >> $SYSTEMD_CGROUP/system.slice/pbs.service/tasks
+					pidlist=`pgrep -P $P_PID`
+					if [ -n "$pidlist" ] ; then
+						for PID in $pidlist; do
+							echo $PID >> $SYSTEMD_CGROUP/system.slice/pbs.service/tasks
+						done
+					fi
+				fi
+			fi
+		fi
 	fi
 	cd ${CWD}
 

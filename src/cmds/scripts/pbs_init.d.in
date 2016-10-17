@@ -68,7 +68,6 @@ fi
 
 tmpdir=${PBS_TMPDIR:-${TMPDIR:-"/var/tmp"}}
 ostype=`uname 2>/dev/null`
-is_systemd=0
 #
 # check for special system setup
 case "$ostype" in
@@ -458,24 +457,7 @@ start_pbs() {
 		return 1
 	    fi
 	 fi
-         if [ $is_systemd -eq 1 ] ; then
-             SYSTEMD_CGROUP=`grep ^cgroup /proc/mounts | grep systemd | head -1 | cut -d ' ' -f2`
-             if [ ! -d $SYSTEMD_CGROUP/system.slice/pbs.service ] ; then
-               mkdir -p $SYSTEMD_CGROUP/system.slice/pbs.service
-             fi
-           if [ -f ${PBS_HOME}/datastore/postmaster.pid ] ; then
-             P_PID=`head -n 1 ${PBS_HOME}/datastore/postmaster.pid`
-            if [ -n "$P_PID" ] ; then
-               echo $P_PID >> $SYSTEMD_CGROUP/system.slice/pbs.service/tasks
-               pidlist=`pgrep -P $P_PID`
-               if [ -n "$pidlist" ] ; then
-                 for PID in $pidlist; do
-                   echo $PID >> $SYSTEMD_CGROUP/system.slice/pbs.service/tasks
-                 done
-              fi
-             fi
-           fi
-         fi
+
          if [ -r "${PBS_HOME}/server_priv/qmgr_startup" ]; then
            echo "pbs_server evaluating ${PBS_HOME}/server_priv/qmgr_startup"
            ${PBS_EXEC}/bin/qmgr <"${PBS_HOME}/server_priv/qmgr_startup"
@@ -825,32 +807,22 @@ is_boottime()
 
 pre_start_pbs()
 {
-	# Check whether systemd (i.e. systemctl) is available on system or not?
-	# If systemctl is available then start PBS using the regular mechanism
-	# because systemd will start PBS in the background
-	systemctl --version >/dev/null 2>&1
-	if [ $? -ne 0 ] ; then
-		if is_boottime
-		then
-                        case "$ostype" in
-                                Linux) echo -e "\nStarting PBS in background\c" ;;
-                                *)  echo "\nStarting PBS in background\c" ;;
-                        esac
-			(
-				TEMP_DIR=${PBS_TMPDIR:-${TMPDIR:-"/var/tmp"}}
-				TEMPFILE=${TEMP_DIR}/start_pbs_logs_tmp_$$
-				start_pbs > ${TEMPFILE} 2>&1
-				ret=$?
-				logger -i -t PBS -f ${TEMPFILE}
-				rm -f ${TEMPFILE}
-				exit ${ret}
-			) &
-		else
-			start_pbs
-			exit $?
-		fi
+	if is_boottime
+	then
+		case "$ostype" in
+			Linux) echo -e "\nStarting PBS in background\c" ;;
+			*)  echo "\nStarting PBS in background\c" ;;
+		esac
+		(
+			TEMP_DIR=${PBS_TMPDIR:-${TMPDIR:-"/var/tmp"}}
+			TEMPFILE=${TEMP_DIR}/start_pbs_logs_tmp_$$
+			start_pbs > ${TEMPFILE} 2>&1
+			ret=$?
+			logger -i -t PBS -f ${TEMPFILE}
+			rm -f ${TEMPFILE}
+			exit ${ret}
+		) &
 	else
-		is_systemd=1
 		start_pbs
 		exit $?
 	fi
