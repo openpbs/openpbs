@@ -61,7 +61,7 @@
  *
  */
 char *
-pbs_geterrmsg(int connect)
+__pbs_geterrmsg(int connect)
 {
 	struct pbs_client_thread_connect_context * con =
 		pbs_client_thread_find_connect_context(connect);

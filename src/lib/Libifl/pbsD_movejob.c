@@ -63,7 +63,7 @@
  */
 
 int
-pbs_movejob(int c, char *jobid, char *destin, char *extend)
+__pbs_movejob(int c, char *jobid, char *destin, char *extend)
 {
 	int		    rc;
 	struct batch_reply *reply;

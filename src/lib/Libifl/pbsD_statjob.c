@@ -61,7 +61,7 @@
  *
  */
 struct batch_status *
-pbs_statjob(int c, char *id, struct attrl *attrib, char *extend)
+__pbs_statjob(int c, char *id, struct attrl *attrib, char *extend)
 {
 	struct batch_status *ret = NULL;
 

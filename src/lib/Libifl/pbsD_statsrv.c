@@ -61,7 +61,7 @@
  */
 
 struct batch_status *
-pbs_statserver(int c, struct attrl *attrib, char *extend)
+__pbs_statserver(int c, struct attrl *attrib, char *extend)
 {
 	struct batch_status *ret = NULL;
 	int                  rc;

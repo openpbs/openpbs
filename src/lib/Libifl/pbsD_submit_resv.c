@@ -62,7 +62,7 @@
  * @retval ERROR NULL
  */
 char *
-pbs_submit_resv(int c, struct attropl *attrib, char *extend)
+__pbs_submit_resv(int c, struct attropl *attrib, char *extend)
 {
 	struct attropl *pal;
 	int rc;

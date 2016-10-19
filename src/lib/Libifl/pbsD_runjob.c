@@ -63,7 +63,7 @@
  */
 
 int
-pbs_runjob(int c, char *jobid, char *location, char *extend)
+__pbs_runjob(int c, char *jobid, char *location, char *extend)
 {
 	int	rc;
 	struct batch_reply   *reply;

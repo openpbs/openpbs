@@ -63,7 +63,7 @@
  */
 
 int
-pbs_orderjob(int c, char *job1, char *job2, char *extend)
+__pbs_orderjob(int c, char *job1, char *job2, char *extend)
 {
 	struct batch_reply *reply;
 	int rc;

@@ -62,7 +62,7 @@
  *
  */
 struct batch_status *
-pbs_stathook(int c, char *id, struct attrl *attrib, char *extend)
+__pbs_stathook(int c, char *id, struct attrl *attrib, char *extend)
 {
 	struct batch_status *ret = NULL;
 	int                  rc;

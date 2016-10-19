@@ -66,7 +66,7 @@
  */
 
 int
-pbs_msgjob(int c, char *jobid, int fileopt, char *msg, char *extend)
+__pbs_msgjob(int c, char *jobid, int fileopt, char *msg, char *extend)
 {
 	struct batch_reply *reply;
 	int	rc;

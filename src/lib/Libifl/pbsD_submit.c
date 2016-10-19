@@ -152,7 +152,7 @@ pbs_submit_with_cred(int c, struct attropl  *attrib, char *script,
  *
  */
 char *
-pbs_submit(int c, struct attropl  *attrib, char *script, char *destination, char *extend)
+__pbs_submit(int c, struct attropl  *attrib, char *script, char *destination, char *extend)
 {
 	struct attropl		*pal;
 	char			*return_jobid = (char *)NULL;

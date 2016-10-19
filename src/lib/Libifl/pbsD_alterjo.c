@@ -64,7 +64,7 @@
  *
  */
 int
-pbs_alterjob(int c, char *jobid, struct attrl *attrib, char *extend)
+__pbs_alterjob(int c, char *jobid, struct attrl *attrib, char *extend)
 {
 	struct attropl *ap = (struct attropl *)NULL;
 	struct attropl *ap1 = (struct attropl *)NULL;

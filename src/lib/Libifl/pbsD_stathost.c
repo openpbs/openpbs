@@ -884,7 +884,8 @@ struct batch_status *build_return_status(struct batch_status *bstatus,
  *	This function, like most in PBS, is NOT thread safe.
  */
 
-struct batch_status *pbs_stathost(int con, char *hid, struct attrl *attrib, char *extend)
+struct batch_status *
+__pbs_stathost(int con, char *hid, struct attrl *attrib, char *extend)
 {
 	struct batch_status *breturn;	/* the list returned to the caller */
 	struct batch_status *bstatus;	/* used internally		   */

@@ -63,7 +63,7 @@
  */
 
 int
-pbs_deljob(int c, char *jobid, char *extend)
+__pbs_deljob(int c, char *jobid, char *extend)
 {
 	struct attropl *aoplp = (struct attropl *)NULL;
 

@@ -63,7 +63,7 @@
  *
  */
 char *
-pbs_locjob(int c, char *jobid, char *extend)
+__pbs_locjob(int c, char *jobid, char *extend)
 {
 	int	rc;
 	struct batch_reply *reply;

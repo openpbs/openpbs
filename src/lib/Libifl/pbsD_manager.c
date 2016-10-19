@@ -62,7 +62,7 @@
  *
  */
 int
-pbs_manager(int c, int command, int objtype, char *objname, 
+__pbs_manager(int c, int command, int objtype, char *objname,
 		struct attropl *attrib, char *extend)
 {
 	return PBSD_manager(c,

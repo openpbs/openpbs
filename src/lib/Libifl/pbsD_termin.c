@@ -61,7 +61,7 @@
  *
  */
 int
-pbs_terminate(int c, int manner, char *extend)
+__pbs_terminate(int c, int manner, char *extend)
 {
 	struct batch_reply *reply;
 	int rc = 0;

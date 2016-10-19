@@ -63,7 +63,7 @@
  *
  */
 int
-pbs_delresv(int c, char *resv_id, char *extend)
+__pbs_delresv(int c, char *resv_id, char *extend)
 {
 	struct attropl *aoplp = (struct attropl *)NULL;
 

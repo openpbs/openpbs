@@ -85,7 +85,7 @@ extern struct connect_handle connection[NCONNECTS];
  *
  */
 char *
-pbs_default()
+__pbs_default()
 {
 	char dflt_server[PBS_MAXSERVERNAME+1];
 	struct pbs_client_thread_context *p;
@@ -550,7 +550,7 @@ get_hostsockaddr(char *host, struct sockaddr_in *sap)
  * @retval -1	error encountered setting up the connection.
  */
 int
-pbs_connect_extend(char *server, char *extend_data)
+__pbs_connect_extend(char *server, char *extend_data)
 {
 	struct sockaddr_in server_addr;
 	struct sockaddr_in my_sockaddr;
@@ -881,7 +881,7 @@ pbs_connection_set_nodelay(int connect)
  * @retval int	- return value of pbs_connect_extend().
  */
 int
-pbs_connect(char *server)
+__pbs_connect(char *server)
 {
 	return (pbs_connect_extend(server, (char *)0));
 }
@@ -898,7 +898,7 @@ pbs_connect(char *server)
  *
  */
 int
-pbs_disconnect(int connect)
+__pbs_disconnect(int connect)
 {
 	int  sock;
 	char x;

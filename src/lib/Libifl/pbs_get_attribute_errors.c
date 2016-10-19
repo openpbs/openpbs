@@ -57,8 +57,8 @@
  * @retval	NULL						error
  *
  */
-struct ecl_attribute_errors * 
-pbs_get_attributes_in_error(int connect)
+struct ecl_attribute_errors *
+__pbs_get_attributes_in_error(int connect)
 {
 	struct ecl_attribute_errors *err_list = NULL;
 	struct pbs_client_thread_context *ptr = pbs_client_thread_get_context_data();

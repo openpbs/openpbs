@@ -74,7 +74,7 @@ static char **PBSD_select_get(int);
  *
  */
 char **
-pbs_selectjob(int c, struct attropl *attrib, char *extend)
+__pbs_selectjob(int c, struct attropl *attrib, char *extend)
 {
 	char **ret = NULL;
 
@@ -120,8 +120,8 @@ pbs_selectjob(int c, struct attropl *attrib, char *extend)
  *
  */
 
-struct batch_status * 
-pbs_selstat(int c, struct attropl *attrib, struct attrl   *rattrib, char *extend)
+struct batch_status *
+__pbs_selstat(int c, struct attropl *attrib, struct attrl   *rattrib, char *extend)
 {
 	struct batch_status *ret = NULL;
 	extern struct batch_status *PBSD_status_get(int c);

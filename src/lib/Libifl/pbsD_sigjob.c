@@ -62,7 +62,7 @@
  *
  */
 int
-pbs_sigjob(int c, char *jobid, char *signal, char *extend)
+__pbs_sigjob(int c, char *jobid, char *signal, char *extend)
 {
 	int rc = 0;
 	struct batch_reply *reply;

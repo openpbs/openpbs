@@ -57,7 +57,7 @@
  *
  */
 void
-pbs_statfree(struct batch_status *bsp)
+__pbs_statfree(struct batch_status *bsp)
 {
 	struct attrl        *atnxt;
 	struct batch_status *bsnxt;

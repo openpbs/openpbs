@@ -64,7 +64,7 @@
  */
 
 int
-pbs_rlsjob(int c, char *jobid, char *holdtype, char *extend)
+__pbs_rlsjob(int c, char *jobid, char *holdtype, char *extend)
 {
 	struct attropl aopl;
 

@@ -64,7 +64,7 @@
  */
 
 int
-pbs_rerunjob(int c, char *jobid, char *extend)
+__pbs_rerunjob(int c, char *jobid, char *extend)
 {
 	int	rc;
 	struct batch_reply *reply;

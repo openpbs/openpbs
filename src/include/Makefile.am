@@ -56,6 +56,7 @@ noinst_HEADERS = \
 	grunt.h \
 	hook_func.h \
 	hook.h \
+	ifl_internal.h \
 	job.h \
 	libpbs.h \
 	libsec.h \

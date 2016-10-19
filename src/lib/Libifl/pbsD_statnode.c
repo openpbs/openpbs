@@ -62,14 +62,14 @@
  *
  */
 struct batch_status *
-pbs_statnode(int c, char *id, struct attrl *attrib, char *extend)
+__pbs_statnode(int c, char *id, struct attrl *attrib, char *extend)
 {
 	return pbs_stathost(c, id, attrib, extend);
 }
 
 /**
  * @brief
- * 	-pbs_statvnode() - returns information about virtual nodes (vnodes)
+ * 	-__pbs_statvnode() - returns information about virtual nodes (vnodes)
  *
  * @param[in] c - communication handle
  * @param[in] id - object id
@@ -82,7 +82,7 @@ pbs_statnode(int c, char *id, struct attrl *attrib, char *extend)
  *
  */
 struct batch_status *
-pbs_statvnode(int c, char *id, struct attrl *attrib, char *extend)
+__pbs_statvnode(int c, char *id, struct attrl *attrib, char *extend)
 {
 	int                   rc;
 	struct batch_status  *ret = NULL;

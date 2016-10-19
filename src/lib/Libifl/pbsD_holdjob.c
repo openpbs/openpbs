@@ -65,7 +65,7 @@
 
 
 int
-pbs_holdjob(int c, char *jobid, char *holdtype, char *extend)
+__pbs_holdjob(int c, char *jobid, char *holdtype, char *extend)
 {
 	struct attropl aopl;
 
