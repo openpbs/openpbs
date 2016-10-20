@@ -85,7 +85,7 @@ poe_interactive() {
 
 createdir() {
 	if [ ! -d $1 ]; then
-		if ! mkdir $1 ;then
+		if ! mkdir -p $1 ;then
 			echo "*** Could not create $1"
 			exit 1
 		fi
@@ -149,60 +149,65 @@ create_conf() {
 	
 	case $INSTALL_METHOD in
 	rpm)
-                [ -f "$newconf" ] && newconf="${newconf}.`date +%Y%m%d%H%M%S`"
-                # If an existing configuration file is present, adapt it.
-                if [ -f "$conf" ]; then
-                        eval "sed 's;\(^[[:space:]]*PBS_EXEC=\)[^[:space:]]*;\1$newpbs_exec;' \"$conf\" >$newconf"
-                        update_pbs_conf() {
-                        	unset env_var env_value
-                        	env_var=$1;
-                        	env_value=$(eval echo \$$env_var)
-                        	grep -q "^[[:space:]]*$env_var=[^[:space:]]*" "$newconf" \
+		[ -f "$newconf" ] && newconf="${newconf}.`date +%Y%m%d%H%M%S`"
+		# If an existing configuration file is present, adapt it.
+		declare -a env_array=("PBS_HOME" "PBS_SERVER" "PBS_MOM_HOME" "PBS_PRIMARY" "PBS_SECONDARY" "PBS_LEAF_ROUTERS")
+		if [ -f "$conf" ]; then
+			eval "sed 's;\(^[[:space:]]*PBS_EXEC=\)[^[:space:]]*;\1$newpbs_exec;' \"$conf\" >$newconf"
+			update_pbs_conf() {
+				unset env_var env_value
+				env_var=$1;
+				env_value=$(eval echo \$$env_var)
+				grep -q "^[[:space:]]*$env_var=[^[:space:]]*" "$newconf" \
 					&& sed -i "s;\(^[[:space:]]*${env_var}=\)[^[:space:]]*;\1${env_value};" "$newconf" \
-                                	|| echo "$env_var=${env_value}" >>"$newconf"
-                        }
-                        [ -n "$PBS_HOME" ] && update_pbs_conf PBS_HOME
-                        [ -n "$PBS_SERVER" ] && update_pbs_conf PBS_SERVER
-                else
-                        [ -n "$newpbs_exec" ] && echo "PBS_EXEC=$newpbs_exec" >>"$newconf"
-                        [ -n "$PBS_HOME" ] && echo "PBS_HOME=$PBS_HOME" >>"$newconf"
-                        [ -n "$PBS_SERVER" ] && echo "PBS_SERVER=$PBS_SERVER" >>"$newconf"
-                fi
-                ;;
+					|| echo "$env_var=${env_value}" >>"$newconf"
+			}
+			for var in "${env_array[@]}"
+			do
+				[ "${!var:+set}" ] && update_pbs_conf ${var} 
+			done
+		else
+			[ ${newpbs_exec:+set} ] && echo "PBS_EXEC=$newpbs_exec" >"$newconf"
+			for var in "${env_array[@]}"
+			do
+				[ "${!var:+set}" ] && echo "${var}=${!var}" >>"$newconf"
+			done	
+		fi
+		;;
 
 	script)
-        # Need to set INSTALL_PACKAGE for script method.
-        if [ -f "$newpbs_exec/sbin/pbs_server.bin" ]; then
-                INSTALL_PACKAGE=server
-        elif [ -f "$newpbs_exec/sbin/pbs_mom" ]; then
-                INSTALL_PACKAGE=execution
-        elif [ -f "$newpbs_exec/bin/qstat" ]; then
-                INSTALL_PACKAGE=client
-                newpbs_home=''
-        else
-                echo "***"
-                echo "*** Unable to locate PBS Pro executables!"
-                echo "***"
-                exit 1
-        fi
-        # if both conf files are present merge the files but precedence should be given to newconf
-        if [ -f "$newconf" -a -f "$conf" ]; then
-                while IFS='=' read -r key value
-                do
-                    if [ -z `grep -q "$key" "$newconf" && echo $?` ]; then
-                        echo "$key=$value" >> "$newconf"
-                    fi
-                done < "$conf"
-        fi
-        # The INSTALL script may have already created newconf. If it
-        # did, leave it alone. If not, and an existing configuration
-        # file is present, adapt it by substituting the new value
-        # of PBS_EXEC.
-        [ ! -f "$newconf" -a -f "$conf" ] && \
-                # If an existing configuration file is present, adapt it by
-                # substituting the new value of PBS_EXEC.
-                eval "sed 's;\(^[[:space:]]*PBS_EXEC=\)[^[:space:]]*;\1$newpbs_exec;' \"$conf\"" >"$newconf"
-        ;;
+	# Need to set INSTALL_PACKAGE for script method.
+	if [ -f "$newpbs_exec/sbin/pbs_server.bin" ]; then
+		INSTALL_PACKAGE=server
+	elif [ -f "$newpbs_exec/sbin/pbs_mom" ]; then
+		INSTALL_PACKAGE=execution
+	elif [ -f "$newpbs_exec/bin/qstat" ]; then
+		INSTALL_PACKAGE=client
+		newpbs_home=''
+	else
+		echo "***"
+		echo "*** Unable to locate PBS Pro executables!"
+		echo "***"
+		exit 1
+	fi
+	# if both conf files are present merge the files but precedence should be given to newconf
+	if [ -f "$newconf" -a -f "$conf" ]; then
+		while IFS='=' read -r key value
+		do
+			if [ -z `grep -q "$key" "$newconf" && echo $?` ]; then
+			echo "$key=$value" >> "$newconf"
+			fi
+		done < "$conf"
+	fi
+	# The INSTALL script may have already created newconf. If it
+	# did, leave it alone. If not, and an existing configuration
+	# file is present, adapt it by substituting the new value
+	# of PBS_EXEC.
+	[ ! -f "$newconf" -a -f "$conf" ] && \
+		# If an existing configuration file is present, adapt it by
+		# substituting the new value of PBS_EXEC.
+		eval "sed 's;\(^[[:space:]]*PBS_EXEC=\)[^[:space:]]*;\1$newpbs_exec;' \"$conf\"" >"$newconf"
+	;;
 	esac
 	
 	# Ensure newconf exists.
@@ -215,7 +220,7 @@ create_conf() {
 	# Add some additional required fields if not present.
 	case $INSTALL_PACKAGE in
 	server)
-		if [ -z "$PBS_SERVER" -a -z "$PBS_PRIMARY" -a -z "$PBS_LEAF_NAME" ]; then
+		if [ -z "$PBS_SERVER" ]; then
 			PBS_SERVER=`hostname | awk -F. '{print $1}'`
 			echo "PBS_SERVER=$PBS_SERVER" >>"$newconf"
 		fi
@@ -225,7 +230,7 @@ create_conf() {
 		[ -z "$PBS_START_MOM" ] && echo "PBS_START_MOM=0" >>"$newconf"
 		;;
 	execution)
-		if [ -z "$PBS_SERVER" -a -z "$PBS_PRIMARY" -a -z "$PBS_LEAF_NAME" ]; then
+		if [ -z "$PBS_SERVER" ]; then
 			PBS_SERVER='CHANGE_THIS_TO_PBS_PRO_SERVER_HOSTNAME'
 			echo "PBS_SERVER=$PBS_SERVER" >>"$newconf"
 		fi
@@ -235,7 +240,7 @@ create_conf() {
 		[ -z "$PBS_START_MOM" ] && echo "PBS_START_MOM=1" >>"$newconf"
 		;;
 	client)
-		if [ -z "$PBS_SERVER" -a -z "$PBS_PRIMARY" -a -z "$PBS_LEAF_NAME" ]; then
+		if [ -z "$PBS_SERVER" ]; then
 			PBS_SERVER='CHANGE_THIS_TO_PBS_PRO_SERVER_HOSTNAME'
 			echo "PBS_SERVER=$PBS_SERVER" >>"$newconf"
 		fi
@@ -411,8 +416,14 @@ install_pbsinitd() {
 				[ -f $unitfilepath/pbs.service ] || cp ${PBS_EXEC}/libexec/pbs.service $unitfilepath
 				chmod 644 $unitfilepath/pbs.service
 				eval "sed -i 's;\(^[[:space:]]*SourcePath=\)[^[:space:]]*;\1${PBS_EXEC}/libexec/pbs_init.d;' \"$unitfilepath/pbs.service\""
-	                        eval "sed -i 's;\(^[[:space:]]*ExecStart=\)[^[:space:]]*;\1${PBS_EXEC}/libexec/pbs_init.d start;' \"$unitfilepath/pbs.service\""
-	                        eval "sed -i 's;\(^[[:space:]]*ExecStop=\)[^[:space:]]*;\1${PBS_EXEC}/libexec/pbs_init.d stop;' \"$unitfilepath/pbs.service\""
+				eval "sed -i 's;\(^[[:space:]]*ExecStart=\)[^[:space:]]*;\1${PBS_EXEC}/libexec/pbs_init.d start;' \"$unitfilepath/pbs.service\""
+				eval "sed -i 's;\(^[[:space:]]*ExecStop=\)[^[:space:]]*;\1${PBS_EXEC}/libexec/pbs_init.d stop;' \"$unitfilepath/pbs.service\""
+				if [ -x /bin/systemctl ] ; then
+					/bin/systemctl daemon-reload && /bin/systemctl enable pbs
+					[ $? != 0 ] && echo "Failed to register PBS Pro as a service in systemd"
+				else
+					echo "Systemctl binary is not available in standard location; Failed to register PBS Pro as a service"
+				fi
 			fi
 			;;
 		AIX)
@@ -840,12 +851,8 @@ ostype=`uname 2>/dev/null`
 unset PBS_EXEC
 unset preset_dbuser
 umask 022
-if [ -z "${PBS_DATA_SERVICE_USER}" ]; then
-        if [ -s ${conf} ]; then
-       	       preset_dbuser=`grep "PBS_DATA_SERVICE_USER" ${conf} | awk -F"=" '{print $2}'`
-       	fi
-else
-       preset_dbuser="${PBS_DATA_SERVICE_USER}"
+if [ "${PBS_DATA_SERVICE_USER:+set}" ]; then
+	preset_dbuser="${PBS_DATA_SERVICE_USER}"
 fi
 
 # Define the location of a file that the INSTALL script may have created.
@@ -958,6 +965,14 @@ fi
 # This is not necessary for a client installation.
 create_home
 
+# Now need to save the license information into PBS_HOME for pbs_habitat
+	if [ ${PBS_LICENSE_INFO:+set} ] ; then
+		if is_cray_xt ; then
+			xtopview -e "[ -d ${PBS_HOME}/server_priv/ ] && echo ${PBS_LICENSE_INFO} > ${PBS_HOME}/server_priv/PBS_licensing_loc"
+		else
+			[ -d ${PBS_HOME}/server_priv/ ] && echo ${PBS_LICENSE_INFO} > ${PBS_HOME}/server_priv/PBS_licensing_loc
+		fi
+	fi
 echo "*** End of ${0}"
 exit 0
 
