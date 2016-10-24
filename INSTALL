@@ -23,8 +23,8 @@ How to install PBS Pro using the configure script.
 
   For Debian systems you should run the following command as root:
 
-    sudo apt-get install gcc make libtool libhwloc-dev libX11-dev \
-      libXt-dev libedit-dev libical-dev ncurses-dev perl \
+    sudo apt-get install gcc make libtool libhwloc-dev libx11-dev \
+      libxt-dev libedit-dev libical-dev ncurses-dev perl \
       postgresql-server-dev-all python-dev tcl-dev tk-dev swig \
       libexpat-dev libssl-dev libxext-dev libxft-dev autoconf \
       automake
