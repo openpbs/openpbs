@@ -93,6 +93,7 @@ class JobRerunFileTransferPerf(TestPerformance):
         self.logger.info("Job %s took %d seconds to start\n",
                          jid, (now2 - now1))
 
+        # give a few seconds to job to create large spool file
         time.sleep(5)
 
         now1 = int(time.time())
