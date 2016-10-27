@@ -78,15 +78,15 @@ class JobRerunFileTransferPerf(TestPerformance):
         test += ['cat file\n']
         test += ['sleep 10000\n']
 
-        j.create_script(test, hostname=self.server.client)
+	j.create_script(test, hostname=self.server.client)
 
 	now1 = int(time.time())
-        jid = self.server.submit(j)
-        self.server.expect(JOB, {'job_state': 'R', 'substate': 42}, id=jid, max_attempts=30, interval=5)
+	jid = self.server.submit(j)
+	self.server.expect(JOB, {'job_state': 'R', 'substate': 42}, id=jid, max_attempts=30, interval=5)
 	now2 = int(time.time())
 	self.logger.info("Job %s took %d seconds to start\n", jid, (now2 - now1))
 
-        time.sleep(5)
+	time.sleep(5)
 
 	now1 = int(time.time())
 	self.server.rerunjob(jid)
