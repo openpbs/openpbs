@@ -63,34 +63,40 @@ class JobRerunFileTransferPerf(TestPerformance):
         self.hostA = self.momA.shortname
         self.hostB = self.momB.shortname
 
-        rv = self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 4095}, expect=True)
+        rv = self.server.manager(MGR_CMD_SET, SERVER, {
+                                 'log_events': 4095}, expect=True)
         self.assertTrue(rv)
 
-        rv = self.server.manager(MGR_CMD_SET, SERVER, {'job_requeue_timeout': 1000}, expect=True)
+        rv = self.server.manager(MGR_CMD_SET, SERVER, {
+                                 'job_requeue_timeout': 1000}, expect=True)
         self.assertTrue(rv)
 
-    @timeout(600) 
+    @timeout(600)
     def test_huge_job_file(self):
-        j = Job(TEST_USER, attrs={ATTR_N: 'huge_job_file', 'Resource_List.select': '1:host=%s' % self.momB.shortname})
+        j = Job(TEST_USER, attrs={
+                ATTR_N: 'huge_job_file', 'Resource_List.select': '1:host=%s' % self.momB.shortname})
 
         test = []
         test += ['dd if=/dev/zero of=file bs=1024 count=0 seek=250000\n']
         test += ['cat file\n']
         test += ['sleep 10000\n']
 
-	j.create_script(test, hostname=self.server.client)
+        j.create_script(test, hostname=self.server.client)
 
-	now1 = int(time.time())
-	jid = self.server.submit(j)
-	self.server.expect(JOB, {'job_state': 'R', 'substate': 42}, id=jid, max_attempts=30, interval=5)
-	now2 = int(time.time())
-	self.logger.info("Job %s took %d seconds to start\n", jid, (now2 - now1))
+        now1 = int(time.time())
+        jid = self.server.submit(j)
+        self.server.expect(
+            JOB, {'job_state': 'R', 'substate': 42}, id=jid, max_attempts=30, interval=5)
+        now2 = int(time.time())
+        self.logger.info("Job %s took %d seconds to start\n",
+                         jid, (now2 - now1))
 
-	time.sleep(5)
+        time.sleep(5)
 
-	now1 = int(time.time())
-	self.server.rerunjob(jid)
-	self.server.expect(JOB, {'job_state': 'R', 'substate': 42}, id=jid, max_attempts=500, interval=5)
-	now2 = int(time.time())
-	self.logger.info("Job %s took %d seconds to rerun\n", jid, (now2 - now1))
-
+        now1 = int(time.time())
+        self.server.rerunjob(jid)
+        self.server.expect(
+            JOB, {'job_state': 'R', 'substate': 42}, id=jid, max_attempts=500, interval=5)
+        now2 = int(time.time())
+        self.logger.info("Job %s took %d seconds to rerun\n",
+                         jid, (now2 - now1))
