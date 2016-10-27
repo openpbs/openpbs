@@ -445,7 +445,7 @@ PBSD_jscript_direct(int c, char *script, int rpp, char **msgid)
 
 	len = strlen(script);
 	do {
-		tosend = (len > LARGE_SCRIPT_CHUNK_Z) ? LARGE_SCRIPT_CHUNK_Z : len;
+		tosend = (len > SCRIPT_CHUNK_Z) ? SCRIPT_CHUNK_Z : len;
 		rc = PBSD_scbuf(c, PBS_BATCH_jobscript, i, p, tosend, (char *)0, JScript, rpp, msgid);
 		i++;
 		p += tosend;
