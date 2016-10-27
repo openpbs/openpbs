@@ -41,7 +41,7 @@ from tests.performance import *
 
 class JobRerunFileTransferPerf(TestPerformance):
     """
-    This test suite is for testing the performance of job script 
+    This test suite is for testing the performance of job script
     and job output (stdout) transfers in case of rerun
     """
 
@@ -74,7 +74,8 @@ class JobRerunFileTransferPerf(TestPerformance):
     @timeout(600)
     def test_huge_job_file(self):
         j = Job(TEST_USER, attrs={
-                ATTR_N: 'huge_job_file', 'Resource_List.select': '1:host=%s' % self.momB.shortname})
+                ATTR_N: 'huge_job_file', 'Resource_List.select': '1:host=%s'
+                % self.momB.shortname})
 
         test = []
         test += ['dd if=/dev/zero of=file bs=1024 count=0 seek=250000\n']
@@ -86,7 +87,8 @@ class JobRerunFileTransferPerf(TestPerformance):
         now1 = int(time.time())
         jid = self.server.submit(j)
         self.server.expect(
-            JOB, {'job_state': 'R', 'substate': 42}, id=jid, max_attempts=30, interval=5)
+            JOB, {'job_state': 'R', 'substate': 42}, id=jid,
+            max_attempts=30, interval=5)
         now2 = int(time.time())
         self.logger.info("Job %s took %d seconds to start\n",
                          jid, (now2 - now1))
@@ -96,7 +98,8 @@ class JobRerunFileTransferPerf(TestPerformance):
         now1 = int(time.time())
         self.server.rerunjob(jid)
         self.server.expect(
-            JOB, {'job_state': 'R', 'substate': 42}, id=jid, max_attempts=500, interval=5)
+            JOB, {'job_state': 'R', 'substate': 42}, id=jid,
+            max_attempts=500, interval=5)
         now2 = int(time.time())
         self.logger.info("Job %s took %d seconds to rerun\n",
                          jid, (now2 - now1))
