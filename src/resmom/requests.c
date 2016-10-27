@@ -737,7 +737,7 @@ cleanup_cred(struct batch_request *preq)
 	return;
 }
 
-#define RT_BLK_SZ 4096
+#define RT_BLK_SZ 65536
 /**
  * @brief
  * 	Called when a job is rerun (qrerun) to copy the job's standard out/error
