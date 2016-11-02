@@ -346,6 +346,7 @@ Default: False
 Python type: bool
 
 .IP job_requeue_timeout
+.B Obsolete
 Specifies the length of time that can be taken while requeueing a job.
 .br
 Minimum allowed value: 1 second

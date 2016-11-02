@@ -362,7 +362,7 @@ timeout_rerun_request(struct work_task *pwt)
 		conn_idx = connection_find_actual_index(pjob->ji_rerun_preq->rq_conn);
 	}
 	reply_text(pjob->ji_rerun_preq, PBSE_INTERNAL,
-		"rerunning job has timed out");
+		"Response timed out. Job rerun request still in progress for");
 
 	/* clear no-timeout flag on connection */
 	if (conn_idx != -1)
