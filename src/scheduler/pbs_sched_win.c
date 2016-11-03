@@ -979,7 +979,7 @@ main(int argc, char *argv[])
 	fd_set		fdset;
 	int             opt_no_restart = 0;
 	char	       *runjobid = NULL;
-	int		schedinit(int argc, char **argv);
+	int		schedinit(void);
 	int		schedule(int com, int connector, char *runjid);
 #ifdef _POSIX_MEMLOCK
 	int		do_mlockall = 0;
@@ -1425,7 +1425,7 @@ main(int argc, char *argv[])
 	/*
 	 *  Local initialization stuff
 	 */
-	if (schedinit(argc, argv)) {
+	if (schedinit()) {
 		(void)sprintf(log_buffer,
 			"local initialization failed, terminating");
 		log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO,

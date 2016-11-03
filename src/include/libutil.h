@@ -230,6 +230,13 @@ lock_file(FILE *fp, int op, char *filename, int lock_retry,
 /* Size of the buffer used in communication with rshd deamon */
 #define RCP_BUFFER_SIZE 65536
 
+
+/*
+ *      break_comma_list - break apart a comma delemetd string into an arary
+ *                         of strings
+ */
+char **break_comma_list(char *list);
+
 #ifdef  __cplusplus
 }
 #endif

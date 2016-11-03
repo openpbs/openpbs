@@ -42,7 +42,6 @@
  * 		state_count.c - This file contains functions related to state_count struct
  *
  * Functions included are:
- * 	print_state_count()
  * 	init_state_count()
  * 	count_states()
  * 	total_states()
@@ -60,30 +59,6 @@
 #include "state_count.h"
 #include "constant.h"
 #include "misc.h"
-
-
-/**
- * @brief
- *		print_state_count - print out a state_count struct
- *
- * @param[in]	sc - the struct to print
- *
- * @return	nothing
- *
- */
-void
-print_state_count(state_count *sc)
-{
-	printf("running: %d\n", sc->running);
-	printf("queued: %d\n", sc->queued);
-	printf("transit: %d\n", sc->transit);
-	printf("exiting: %d\n", sc->exiting);
-	printf("held: %d\n", sc->held);
-	printf("waiting: %d\n", sc->waiting);
-	printf("suspended: %d\n", sc->suspended);
-	printf("userbusy: %d\n", sc->userbusy);
-	printf("total: %d\n", sc->total);
-}
 
 /**
  * @brief

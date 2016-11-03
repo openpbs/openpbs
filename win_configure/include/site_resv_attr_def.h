@@ -36,7 +36,7 @@
  */
 /*
  * Place holder for site supplied additions to the array of
- * site resc_resv attribute definitions, see server/resv_attr_def.c
+ * site resc_resv attribute definitions, see resv_attr_def.c
  *
  * Array elements must be of the form:
  *	    {	"name",

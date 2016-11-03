@@ -63,11 +63,6 @@ queue_info *query_queue_info(struct batch_status *queue, struct server_info *sin
 queue_info *new_queue_info(int limallocflag);
 
 /*
- *      print_queue_info - print all information in a queue_info struct
- */
-void print_queue_info(queue_info *qinfo, char brief, char deep);
-
-/*
  *      free_queues - frees the memory for an array
  */
 void free_queues(queue_info **qinfo, char free_jobs_too);

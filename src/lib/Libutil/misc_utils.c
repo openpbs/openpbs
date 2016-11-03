@@ -964,3 +964,66 @@ validate_ext_auth_data(int auth_type, void *data, int data_len, char *ebuf, int 
 	return -1;
 }
 
+/**
+ *
+ *	@brief break apart a comma delimited string into an array of strings
+ *
+ *	  @param[in] strlist - the comma delimited string
+ *
+ *	@return char **
+ *
+ */
+char **
+break_comma_list(char *strlist)
+{
+	static char id[] = "break_comma_list";
+	int num_words = 1; /* number of words delimited by commas*/
+	char **arr = NULL; /* the array of words */
+	char *list;
+	char *tok; /* used with strtok() */
+	char *end;
+	int i;
+
+	if (strlist == NULL) {
+		pbs_errno = PBSE_BADATVAL;
+		return NULL;
+	}
+
+	list = strdup(strlist);
+
+	if (list != NULL) {
+		char* saveptr = NULL;
+
+		for (i = 0; list[i] != '\0'; i++)
+			if (list[i] == ',')
+				num_words++;
+
+		if ((arr = (char **) malloc(sizeof(char*) * (num_words + 1))) == NULL) {
+			pbs_errno = PBSE_SYSTEM;
+			free(list);
+			return NULL;
+		}
+
+		tok = strtok_r(list, ",", &saveptr);
+
+		for (i = 0; tok != NULL; i++) {
+			while (isspace((int) *tok))
+				tok++;
+
+			end = &tok[strlen(tok) - 1];
+
+			while (isspace((int) *end)) {
+				*end = '\0';
+				end--;
+			}
+
+			arr[i] = strdup(tok);
+			tok = strtok_r(NULL, ",", &saveptr);
+		}
+		arr[i] = NULL;
+	}
+	if (list != NULL)
+		free(list);
+
+	return arr;
+}

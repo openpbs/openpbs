@@ -48,7 +48,7 @@
  * 	free_nodes()
  * 	free_node_info()
  * 	set_node_type()
- * 	set_node_state()
+ * 	set_node_info_state()
  * 	remove_node_state()
  * 	add_node_state()
  * 	talk_with_mom()
@@ -87,7 +87,6 @@
  * 	node_state_to_str()
  * 	combine_nspec_array()
  * 	create_node_array_from_nspec()
- * 	calc_nodes_needed()
  * 	reorder_nodes()
  * 	ok_break_chunk()
  * 	is_excl()
@@ -266,7 +265,7 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 {
 	node_info *ninfo;		/* the new node_info */
 	struct attrl *attrp;		/* used to cycle though attribute list */
-	resource *res;		/* used to set resources in res list */
+	schd_resource *res;		/* used to set resources in res list */
 	sch_resource_t count;		/* used to convert str -> num */
 	char *endp;			/* end pointer for strtol */
 	char logbuf[256];		/* log buffer */
@@ -286,7 +285,7 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 	while (attrp != NULL) {
 		/* Node State... i.e. offline down free etc */
 		if (!strcmp(attrp->name, ATTR_NODE_state))
-			set_node_state(ninfo, attrp->value);
+			set_node_info_state(ninfo, attrp->value);
 
 		/* Host name */
 		else if (!strcmp(attrp->name, ATTR_NODE_Mom)) {
@@ -628,7 +627,7 @@ set_node_type(node_info *ninfo, char *ntype)
  * @retval	1	: on failure
  */
 int
-set_node_state(node_info *ninfo, char *state)
+set_node_info_state(node_info *ninfo, char *state)
 {
 	char errbuf[256];
 	char statebuf[256];			/* used to strtok() node states */
@@ -814,7 +813,7 @@ talk_with_mom(node_info *ninfo)
 	char *mom_ans = NULL;		/* the answer from mom - getreq() */
 	char *endp;			/* used with strtol() */
 	double testd;			/* used to convert string -> double */
-	resource *res;                /* used for dynamic resources from mom */
+	schd_resource *res;                /* used for dynamic resources from mom */
 	int ncpus = 1;		/* used as a default for loads */
 	char errbuf[MAX_LOG_SIZE];
 	int i;
@@ -1012,7 +1011,7 @@ node_info *
 find_node_by_host(node_info **ninfo_arr, char *host)
 {
 	int i;
-	resource *res;
+	schd_resource *res;
 
 	if (ninfo_arr == NULL || host == NULL)
 		return NULL;
@@ -1054,9 +1053,9 @@ dup_nodes(node_info **onodes, server_info *nsinfo,
 	node_info **nnodes;
 	int num_nodes;
 	int i, j;
-	resource *nres = NULL;
-	resource *ores = NULL;
-	resource *tres = NULL;
+	schd_resource *nres = NULL;
+	schd_resource *ores = NULL;
+	schd_resource *tres = NULL;
 	node_info *ninfo = NULL;
 	char namebuf[1024];
 
@@ -1490,8 +1489,8 @@ void
 update_node_on_run(nspec *ns, resource_resv *resresv)
 {
 	resource_req *resreq;
-	resource *res;
-	resource *ncpusres = NULL;
+	schd_resource *res;
+	schd_resource *ncpusres = NULL;
 	counts *cts;
 	resource_resv **tmp_arr;
 	node_info *ninfo;
@@ -1573,17 +1572,17 @@ update_node_on_run(nspec *ns, resource_resv *resresv)
 
 		if (ncpusres != NULL) {
 			if (dynamic_avail(ncpusres) == 0)
-				set_node_state(ninfo, ND_jobbusy);
+				set_node_info_state(ninfo, ND_jobbusy);
 		}
 
 		/* if node selected for provisioning, this node is no longer available */
 		if (ns->go_provision == 1) {
-			set_node_state(ninfo, ND_prov);
+			set_node_info_state(ninfo, ND_prov);
 
 			/* for jobs inside reservation, update the server's node info as well */
 			if (resresv->job != NULL && resresv->job->resv != NULL &&
 				ninfo->svr_node != NULL) {
-				set_node_state(ninfo->svr_node, ND_prov);
+				set_node_info_state(ninfo->svr_node, ND_prov);
 			}
 
 
@@ -1616,7 +1615,7 @@ update_node_on_end(node_info *ninfo, resource_resv *resresv)
 {
 	resource_req *resreq;
 	resource_req *ncpus;
-	resource *res;
+	schd_resource *res;
 	counts *cts;
 	nspec *ns;		/* nspec from resresv for this node */
 	char logbuf[MAX_LOG_SIZE];
@@ -1650,7 +1649,7 @@ update_node_on_end(node_info *ninfo, resource_resv *resresv)
 	 * has lowered.  This will take time.
 	 */
 	if (!ninfo->is_busy) {
-		set_node_state(ninfo, ND_free);
+		set_node_info_state(ninfo, ND_free);
 	}
 	else if (is_excl(resresv->place_spec, ninfo->sharing)) {
 		if (resresv->is_adv_resv) {
@@ -1725,7 +1724,7 @@ update_node_on_end(node_info *ninfo, resource_resv *resresv)
 int
 should_talk_with_mom(node_info *ninfo)
 {
-	resource *res;
+	schd_resource *res;
 	int talk = 0;
 
 	if (ninfo == NULL)
@@ -2219,7 +2218,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 	char logbuf[MAX_LOG_SIZE];
 	char reason[MAX_LOG_SIZE];
 	resource_req *req;
-	resource *res;
+	schd_resource *res;
 	selspec *dselspec = NULL;
 	int do_exclhost = 0;
 	node_info **nptr = NULL;
@@ -2673,7 +2672,7 @@ eval_complex_selspec(status *policy, selspec *spec, node_info **ninfo_arr, place
 	int n;
 	int c;
 	resource_req *req;
-	resource *res;
+	schd_resource *res;
 
 	if (spec == NULL || ninfo_arr == NULL)
 		return 0;
@@ -3303,7 +3302,7 @@ resources_avail_on_vnode(resource_req *specreq_cons, node_info *node,
 	resource_req tmpreq = {0};
 	resource_req *req;
 	resource_req *newreq, *aoereq;
-	resource *res;
+	schd_resource *res;
 	sch_resource_t num;
 	sch_resource_t amount;
 	int allocated = 0;
@@ -3500,11 +3499,11 @@ check_resources_for_node(resource_req *resreq, node_info *ninfo,
 	long long chunks = UNSPECIFIED;   /*number of chunks which can be satisfied*/
 	int resresv_excl = 0;
 	resource_req *req;
-	resource *nres;
-	resource *cur_res;
+	schd_resource *nres;
+	schd_resource *cur_res;
 	event_list *calendar;
 
-	resource *noderes;
+	schd_resource *noderes;
 
 	time_t event_time = 0;
 	time_t cur_time;
@@ -4307,44 +4306,6 @@ create_node_array_from_nspec(nspec **nspec_arr)
 
 /**
  * @brief
- *		calc_nodes_needed - calculate the number of nodes needed in a nodespec
- *
- * @param[in]	spec	-	the spec
- *
- * @return number of nodes needed
- * @retval	-1	: on error
- *
- */
-int
-calc_nodes_needed(char *spec)
-{
-	char *str;
-	char *endp;
-	int nodes_needed = 0;
-
-	if (spec == NULL)
-		return -1;
-
-	str = spec;
-	do {
-		/* get rid of the '+' and any whitespace */
-		while (isspace(*str) || *str == '+')
-			str++;
-
-		/* if no number, default is 1 node */
-		if (!isdigit(*str))
-			nodes_needed++;
-		else
-			nodes_needed += strtol(str, &endp, 10);
-
-		str = strstr(str, "+");
-	} while (str != NULL);
-
-	return nodes_needed;
-}
-
-/**
- * @brief
  *		reorder the nodes for the avoid_provision or smp_cluster_dist policies
  *      without changing the source array.  We do so by holding our own
  *      static array of node pointers that we will sort for the different policies
@@ -4375,8 +4336,8 @@ reorder_nodes(node_info **nodes, resource_resv *resresv)
 	static int node_array_size = 0;
 	node_info **nptr;
 	node_info **tmparr;
-	resource *hostres;
-	resource *cur_hostres;
+	schd_resource *hostres;
+	schd_resource *cur_hostres;
 	int nsize;
 	int i, j, k;
 	char errbuf[MAX_LOG_SIZE];
@@ -4502,8 +4463,8 @@ int
 ok_break_chunk(resource_resv *resresv, node_info **nodes)
 {
 	int i;
-	resource *hostres = NULL;
-	resource *res;
+	schd_resource *hostres = NULL;
+	schd_resource *res;
 	if (resresv == NULL || nodes == NULL)
 		return 0;
 
@@ -4653,8 +4614,8 @@ set_res_on_host(char *res_name, char *res_value,
 	char *host, node_info *exclude, node_info **ninfo_arr)
 {
 	int i;
-	resource *hostres;
-	resource *res;
+	schd_resource *hostres;
+	schd_resource *res;
 	int rc = 1;
 
 	if (res_name == NULL || res_value == NULL || host == NULL || ninfo_arr == NULL)
@@ -4796,7 +4757,7 @@ can_fit_on_vnode(resource_req *req, node_info **ninfo_arr)
 int
 is_aoe_avail_on_vnode(node_info *ninfo, resource_resv *resresv)
 {
-	resource *resp;
+	schd_resource *resp;
 
 	if (ninfo == NULL || resresv == NULL)
 		return 0;
@@ -4949,9 +4910,9 @@ node_up_event(node_info *node, void *arg)
 
 	/* Preserve the resv-exclusive state when previously set */
 	if (node->is_resv_exclusive)
-		set_node_state(node, ND_resv_exclusive);
+		set_node_info_state(node, ND_resv_exclusive);
 	else
-		set_node_state(node, ND_free);
+		set_node_info_state(node, ND_free);
 
 	sinfo = node->server;
 	if (sinfo->node_group_enable && sinfo->node_group_key !=NULL) {
@@ -5000,7 +4961,7 @@ node_down_event(node_info *node, void *arg)
 		}
 	}
 
-	set_node_state(node, ND_down);
+	set_node_info_state(node, ND_down);
 
 	if (sinfo->node_group_enable && sinfo->node_group_key !=NULL) {
 		node_partition_update_array(sinfo->policy, sinfo->nodepart);

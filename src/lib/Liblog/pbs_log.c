@@ -405,7 +405,8 @@ log_open_main(char *filename, char *directory, int silent)
 
 		/* open PBS local logging */
 
-		(void)strncpy(log_directory, directory, _POSIX_PATH_MAX/2-1);
+		if (strcmp(log_directory, directory) != 0)
+			(void)strncpy(log_directory, directory, _POSIX_PATH_MAX/2-1);
 
 		if ((filename == (char *)0) || (*filename == '\0')) {
 			filename = mk_log_name(buf, _POSIX_PATH_MAX);

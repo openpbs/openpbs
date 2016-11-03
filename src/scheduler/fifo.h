@@ -40,10 +40,12 @@
 extern "C" {
 #endif
 
+#include "data_types.h"
+
 /*
  *      schedinit - initialize conf struct and parse conf files
  */
-int schedinit(int argc, char *argv[]);
+int schedinit(void);
 
 /*
  *      schedule - this function gets called to start each scheduling cycle

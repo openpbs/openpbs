@@ -63,8 +63,6 @@
  * 	find_susp_job()
  * 	scheduler_simulation_task()
  * 	next_job()
- * 	my_malloc()
- * 	my_realloc()
  */
 #include <pbs_config.h>
 
@@ -139,13 +137,13 @@ extern int	get_sched_cmd_noblk(int sock, int *val, char **jobid);
  * @retval	!= 0	: failure
  */
 int
-schedinit(int argc, char *argv[])
+schedinit(void)
 {
 	char zone_dir[MAXPATHLEN];
 	struct tm *tmptr;
 
 #ifdef PYTHON
-	char errMsg[MAX_BUF_SIZE];
+	char errMsg[LOG_BUF_SIZE];
 	char buf[MAXPATHLEN];
 	char *errstr;
 	
@@ -514,7 +512,7 @@ schedule(int cmd, int sd, char *runjobid)
 			reset_global_resource_ptrs();
 			free(conf.prime_sort);
 			free(conf.non_prime_sort);
-			if(schedinit(0, NULL) != 0)
+			if(schedinit() != 0)
 				return 0;
 			break;
 		case SCH_QUIT:
@@ -1356,7 +1354,6 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 	resource_req *req;
 	unsigned int eval_flags = NO_FLAGS;	/* flags to pass to eval_selspec() */
 	timed_event *te;			/* used to create timed events */
-	sim_info *sim;			/* simulation event trace */
 	resource_resv *rr;
 
 	if (resresv == NULL || sinfo == NULL)
@@ -2253,61 +2250,3 @@ next_job(status *policy, server_info *sinfo, int flag)
 	}
 	return rjob;
 }
-
-
-#ifdef DEBUG
-
-/**
- * @brief
- * 		to test debug malloc messages -
- * 		set '#define malloc my_malloc' in a place which is included in all the
- * 		files you want to test.  The target tree's pbs_config. is a fine place
- * @par
- * 		run scheduler in debugger and set break points near the mallocs you want
- * 		to fail.  Set the debug_malloc_null to 1 and continue stepping through
- * 		the code.
- *
- * @param[in]	bytes	-	No. of bytes want to allocate.
- *
- * @return	return value from calloc
- * @retval	NULL	: if debug_malloc_null is set.
- */
-
-int debug_malloc_null = 0;
-void *
-my_malloc(size_t bytes)
-{
-	if (debug_malloc_null)
-		return NULL;
-
-	return calloc(1, bytes);
-}
-
-/**
- * @brief
- *  	does not work - when debug_malloc_null is 0, it crashes
- *
- * @param[in]	ptr	-	  pointer to the memory which needs to be reallocated.
- * @param[in]	size	-	size of memory which needs to be reallocated.
- *
- * @return	pointer to the reallocated memory.
- * @retval	NULL	: if debug_malloc_null is set.
- */
-void *
-my_realloc(void *ptr, size_t size)
-{
-	void *p;
-	if (debug_malloc_null) {
-		free(ptr);
-		return NULL;
-	}
-
-	p = calloc(1, size);
-	if (p != NULL)
-		memcpy(p, ptr, size);
-
-	free(ptr);
-	return p;
-}
-
-#endif

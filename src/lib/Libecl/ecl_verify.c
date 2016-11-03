@@ -77,7 +77,7 @@ __pbs_verify_attributes_dummy(int connect, int batch_request,
 static struct ecl_attribute_def * ecl_findattr(int, struct attropl *);
 static struct ecl_attribute_def * ecl_find_attr_in_def(
 	struct ecl_attribute_def *, char *, int);
-
+static int get_attr_type(struct ecl_attribute_def attr_def);
 
 /* default function pointer assignments */
 int (*pfn_pbs_verify_attributes)(int connect, int batch_request,
@@ -630,12 +630,49 @@ static struct ecl_attribute_def * ecl_find_attr_in_def(
 
 	if (attr_def) {
 		for (index = 0; index < limit; index++) {
-			if (!strcasecmp(attr_def[index].at_name, name))
-				return (&attr_def[index]);
+			char *pc = NULL;
+
+			if (strncasecmp(name, attr_def[index].at_name,
+					strlen(attr_def[index].at_name)) == 0) {
+				pc = name + strlen(attr_def[index].at_name);
+				if ((*pc == '\0') || (*pc == '.') || (*pc == ','))
+					return &(attr_def[index]);
+			}
 		}
 	}
 	return NULL;
 }
+
+/**
+ * @brief 	Return the type of attribute (public, invisible or read-only)
+ *
+ * @param[in]	attr_def	-	the attribute to check
+ *
+ * @return	int
+ * @retval	TYPE_ATTR_PUBLIC if the attribute is public
+ * @retval	TYPE_ATTR_INVISIBLE if the attribute is a SvWR or SvRD (invisible)
+ * @retval	TYPE_ATTR_READONLY otherwise
+ *
+ * @par Side Effects:
+ *	None
+ *
+ * @par MT-safe: Yes
+ */
+static int
+get_attr_type(struct ecl_attribute_def attr_def)
+{
+	/*
+	 * Consider an attr def public if it has any of the write flags set
+	 */
+	if (attr_def.at_flags & (ATR_DFLAG_USWR | ATR_DFLAG_OPWR | ATR_DFLAG_MGWR))
+		return TYPE_ATTR_PUBLIC;
+	else if (attr_def.at_flags & (ATR_DFLAG_MGRD | ATR_DFLAG_OPRD | ATR_DFLAG_OTHRD | ATR_DFLAG_USRD))
+		return TYPE_ATTR_READONLY;
+	else
+		return TYPE_ATTR_INVISIBLE;
+
+}
+
 
 /**
  * @brief
@@ -667,3 +704,63 @@ struct ecl_attribute_def *ecl_find_resc_def(
 	}
 	return NULL;
 }
+
+/**
+ * @brief
+ * 	Returns TRUE if the name passed in is an attribute.
+ *
+ * @note
+ * 	This must not be called with object of type MGR_OBJ_SITE_HOOK or MGR_OBJ_PBS_HOOK.
+ *
+ * @param[in]	object - type of object
+ * @param[in]	name  - name of the attribute
+ * @param[in]	attr_type  - type of the attribute
+ *
+ * @eturn int
+ * @retval	TRUE - means if the input is an attribute of the given 'object' type
+ *        	    and 'attr_type'.
+ * @retval	FALSE - otherwise.
+ *
+ */
+int
+is_attr(int object, char *name, int attr_type)
+{
+	struct ecl_attribute_def *attr_def = NULL;
+
+	if ((object == MGR_OBJ_SITE_HOOK) || (object == MGR_OBJ_PBS_HOOK)) {
+		return FALSE;
+	}
+
+	else if (object == MGR_OBJ_RSC) {
+		return TRUE;
+	}
+
+	if ((attr_def = ecl_find_attr_in_def(ecl_svr_attr_def, name, ecl_svr_attr_size)) != NULL) {
+		/* Make sure that the attribute types match */
+		if (get_attr_type(*attr_def) & attr_type)
+			return TRUE;
+		else
+			return FALSE;
+	} else if ((attr_def = ecl_find_attr_in_def(ecl_node_attr_def, name, ecl_node_attr_size)) != NULL) {
+		/* Make sure that the attribute types match */
+		if (get_attr_type(*attr_def) & attr_type)
+			return TRUE;
+		else
+			return FALSE;
+	} else if ((attr_def = ecl_find_attr_in_def(ecl_que_attr_def, name, ecl_que_attr_size)) != NULL) {
+		/* Make sure that the attribute types match */
+		if (get_attr_type(*attr_def) & attr_type)
+			return TRUE;
+		else
+			return FALSE;
+	} else if ((attr_def = ecl_find_attr_in_def(ecl_sched_attr_def, name, ecl_sched_attr_size)) != NULL) {
+		/* Make sure that the attribute types match */
+		if (get_attr_type(*attr_def) & attr_type)
+			return TRUE;
+		else
+			return FALSE;
+	}
+
+	return FALSE;
+}
+

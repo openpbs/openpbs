@@ -106,12 +106,6 @@ void release_nodes(resource_resv *resc_resv);
  */
 node_info **create_resv_nodes(nspec **nspec_arr, server_info *sinfo);
 
-/*
- *	create_resv_from_job - create a job reservation from a job_info struct
- */
-resv_info *
-create_resv_from_job(job_info *jinfo,
-	server_info *sinfo, char *exec_vnode);
 #ifdef	__cplusplus
 }
 #endif

@@ -49,6 +49,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <pbs_ifl.h>
+#include "attribute.h"
 
 /* prototypes */
 static struct attrl *read_attrs(FILE *fp);
@@ -174,7 +175,7 @@ static struct attrl *read_attrs(FILE *fp)
 		return NULL;
 
 	while (fgets(buf, 1024, fp) != NULL) {
-		if ((cur = (struct attrl *) malloc(sizeof(struct attrl))) == NULL)
+		if ((cur = new_attrl()) == NULL)
 			return NULL;
 
 		/* chop the \n */

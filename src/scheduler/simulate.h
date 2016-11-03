@@ -339,13 +339,6 @@ create_event(enum timed_event_types event_type,
 time_t calc_run_time(char *job_name, server_info *sinfo, int flags);
 
 /*
- *	check_events_overlap - checks if two events overlap
- *
- *	returns 1 if event overlaps else 0
- */
-int check_events_overlap(time_t e1_start, time_t e1_end, time_t e2_start, time_t e2_end);
-
-/*
  *
  *	find_event_ptr - find the correct event pointer for the duplicated
  *			 event based on event type
@@ -403,8 +396,8 @@ int add_dedtime_events(event_list *elist, struct status *policy);
  *	return static pointer to amount of resources available during
  *	return the entire length from now to end
  */
-resource *
-simulate_resmin(resource *reslist, time_t end, event_list *calendar,
+schd_resource *
+simulate_resmin(schd_resource *reslist, time_t end, event_list *calendar,
 	resource_resv **incl_arr, resource_resv *exclude);
 
 /*
@@ -434,61 +427,6 @@ int describe_simret(unsigned int simret);
  *       adds event(s) for bringing the node back up after we provision a node
  */
 int add_prov_event(event_list *calendar, time_t event_time, node_info *node);
-
-/*
- * constructor for sim_info
- */
-#ifdef NAS /* localmod 005 */
-sim_info *new_sim_info(void);
-#else
-sim_info *new_sim_info();
-#endif /* localmod 005 */
-
-/*
- * copy constructor for a list of sim_info
- */
-sim_info *dup_sim_info_list(sim_info *osim_list, server_info *nsinfo);
-
-/*
- * copy constructor for sim_info
- */
-sim_info *dup_sim_info(sim_info *osim, server_info *nsinfo);
-
-/*
- * destructor for sim_info list
- */
-void free_sim_info_list(sim_info *sim_list);
-
-/*
- * destructor for sim_info
- */
-void free_sim_info(sim_info *sim);
-
-/*
- * find an simobj ptr in a server_info
- *
- *	sim - sim object whose obj ptr we need to find
- *	nsinfo - the server to find it from
- *
- * return new simobj ptr
- */
-void *find_simobj_ptr(sim_info *sim, server_info *nsinfo);
-
-/*
- * create and add sim_info to list
- *
- *	 sim_list - list to add sim_info to
- *	 id - id of sim event
- *	 info     - inf of sim event
- *
- * return new sim_info
- */
-sim_info *
-create_add_sim_info(sim_info *sim_list,
-	enum sim_info_id simid, char *info, void *simobj);
-
-/* convert a sim_id to a string for printing */
-char *sim_id_to_str(enum sim_info_id sid);
 
 /*
  * generic simulation function which will call a function pointer over

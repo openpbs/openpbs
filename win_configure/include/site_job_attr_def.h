@@ -38,7 +38,7 @@
 
 /*
  * Place holder for site supplied additions to the array of
- * site job attribute definitions, see server/job_attr_def.c
+ * site job attribute definitions, see job_attr_def.c
  *
  * Array elements must be of the form:
  *	    {	"name",

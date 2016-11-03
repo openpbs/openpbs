@@ -52,9 +52,6 @@
 extern "C" {
 #endif
 
-
-#include <pbs_config.h>
-
 #include <time.h>
 #include <pbs_ifl.h>
 #include <libutil.h>
@@ -69,7 +66,7 @@ struct state_count;
 struct queue_info;
 struct node_info;
 struct job_info;
-struct resource;
+struct schd_resource;
 struct resource_req;
 struct holiday;
 struct prev_job_info;
@@ -89,7 +86,6 @@ struct resdef;
 struct event_list;
 struct status;
 struct fairshare_head;
-struct sim_info;
 struct node_scratch;
 
 typedef struct state_count state_count;
@@ -97,7 +93,7 @@ typedef struct server_info server_info;
 typedef struct queue_info queue_info;
 typedef struct job_info job_info;
 typedef struct node_info node_info;
-typedef struct resource resource;
+typedef struct schd_resource schd_resource;
 typedef struct resource_req resource_req;
 typedef struct usage_info usage_info;
 typedef struct group_info group_info;
@@ -118,7 +114,6 @@ typedef struct timed_event timed_event;
 typedef struct event_list event_list;
 typedef struct status status;
 typedef struct fairshare_head fairshare_head;
-typedef struct sim_info sim_info;
 typedef struct node_scratch node_scratch;
 #ifdef NAS
 /* localmod 034 */
@@ -206,14 +201,6 @@ struct selspec
 	chunk **chunks;
 };
 
-struct sim_info
-{
-	enum sim_info_id id;		/* what we are doing */
-	char info[1024];		/* extra information about that call */
-	void *simobj;			/* the object which was acted upon */
-	sim_info *next;
-};
-
 /* for description of these bits, check the PBS admin guide or scheduler IDS */
 struct status
 {
@@ -285,7 +272,7 @@ struct server_info
 	unsigned enforce_prmptd_job_resumption:1;/* If set, preempted jobs will resume after the preemptor finishes */
 	unsigned preempt_targets_enable:1;/* if preemptable limit targets are enabled */
 	char *name;			/* name of server */
-	struct resource *res;		/* list of resources */
+	struct schd_resource *res;		/* list of resources */
 	void *liminfo;			/* limit storage information */
 	int flt_lic;			/* number of free floating licences */
 	int num_queues;			/* number of queues that reside on the server */
@@ -388,7 +375,7 @@ struct queue_info
 	unsigned ignore_nodect_sort:1; /* job_sort_key nodect ignored in this queue */
 #endif
 	int num_nodes;		/* number of nodes associated with queue */
-	struct resource *qres;        /* list of resources on the queue */
+	struct schd_resource *qres;        /* list of resources on the queue */
 	resource_resv *resv;		/* the resv if this is a resv queue */
 	resource_resv **jobs;		/* array of jobs that reside in queue */
 	resource_resv **running_jobs;	/* array of jobs in the running state */
@@ -576,7 +563,7 @@ struct node_info
 	int max_user_run;		/* max number of jobs running by a user */
 	int max_group_run;		/* max number of jobs running by a UNIX group */
 
-	resource *res;		/* list of resources max/current usage */
+	schd_resource *res;		/* list of resources max/current usage */
 
 	int rank;			/* unique numeric identifier for node */
 
@@ -685,7 +672,7 @@ struct resource_type
 };
 
 
-struct resource
+struct schd_resource
 {
 	char *name;			/* name of the resource - reference to the definition name */
 	struct resource_type type;	/* resource type */
@@ -693,7 +680,7 @@ struct resource
 	char *orig_str_avail;		/* original resources_available string */
 
 	char *indirect_vnode_name;	/* name of vnode where to get value */
-	resource *indirect_res;	/* ptr to indirect resource */
+	schd_resource *indirect_res;	/* ptr to indirect resource */
 
 	sch_resource_t avail;		/* availble amount of the resource */
 	char **str_avail;		/* the string form of avail */
@@ -702,7 +689,7 @@ struct resource
 
 	resdef *def;                  /* resource definition */
 
-	struct resource *next;	/* next resource in list */
+	struct schd_resource *next;	/* next resource in list */
 };
 
 struct resource_req
@@ -795,7 +782,7 @@ struct node_partition
 	char *res_val;
 	int tot_nodes;		/* the total number of nodes  */
 	int free_nodes;		/* the number of nodes in state Free  */
-	resource *res;		/* total amount of resources in node part */
+	schd_resource *res;		/* total amount of resources in node part */
 	node_info **ninfo_arr;	/* array of pointers to node structures  */
 	int rank;		/* unique numeric identifier for node partition */
 };

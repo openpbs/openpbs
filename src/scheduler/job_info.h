@@ -354,15 +354,6 @@ int is_finished_job(int error);
  */
 int preemption_similarity(resource_resv *hjob, resource_resv *pjob, schd_error *full_err);
 
-/* struct attrl constructors/destructors */
-struct batch_status *new_batch_status(void);
-struct attrl *new_attrl(void);
-struct attrl *dup_attrl(struct attrl *oattr);
-struct attrl *dup_attrl_list(struct attrl *oattr_list);
-
-void free_attrl(struct attrl *at);
-void free_attrl_list(struct attrl *at_list);
-
 
 #ifdef	__cplusplus
 }

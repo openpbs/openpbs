@@ -110,12 +110,12 @@ pbs_python_LDADD = \
 	@PYTHON_LDFLAGS@ \
 	@PYTHON_LIBS@
 pbs_python_SOURCES = \
-	$(top_builddir)/src/server/job_attr_def.c \
-	$(top_builddir)/src/server/node_attr_def.c \
-	$(top_builddir)/src/server/queue_attr_def.c \
-	$(top_builddir)/src/server/resc_def_all.c \
-	$(top_builddir)/src/server/resv_attr_def.c \
-	$(top_builddir)/src/server/svr_attr_def.c \
+	$(top_builddir)/src/lib/Libattr/job_attr_def.c \
+	$(top_builddir)/src/lib/Libattr/node_attr_def.c \
+	$(top_builddir)/src/lib/Libattr/queue_attr_def.c \
+	$(top_builddir)/src/lib/Libattr/resc_def_all.c \
+	$(top_builddir)/src/lib/Libattr/resv_attr_def.c \
+	$(top_builddir)/src/lib/Libattr/svr_attr_def.c \
 	$(top_srcdir)/src/server/svr_attr.c \
 	$(top_srcdir)/src/server/resv_attr.c \
 	$(top_srcdir)/src/server/resc_attr.c \

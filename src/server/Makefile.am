@@ -76,21 +76,18 @@ pbs_server_bin_SOURCES = \
 	geteusernam.c \
 	hook_func.c \
 	issue_request.c \
-	job_attr_def.c \
 	job_func.c \
 	job_recov.c \
 	job_recov_db.c \
 	job_route.c \
 	license_client.c \
 	mom_info.c \
-	node_attr_def.c \
 	node_func.c \
 	node_manager.c \
 	node_recov_db.c \
 	pbsd_init.c \
 	pbsd_main.c \
 	process_request.c \
-	queue_attr_def.c \
 	queue_func.c \
 	queue_recov.c \
 	queue_recov_db.c \
@@ -115,15 +112,11 @@ pbs_server_bin_SOURCES = \
 	req_stat.c \
 	req_track.c \
 	resc_attr.c \
-	resc_def_all.c \
 	resv_attr.c \
-	resv_attr_def.c \
 	run_sched.c \
-	sched_attr_def.c \
 	setup_resc.c \
 	stat_job.c \
 	svr_attr.c \
-	svr_attr_def.c \
 	svr_chk_owner.c \
 	svr_connect.c \
 	svr_func.c \
@@ -150,64 +143,4 @@ pbs_comm_LDADD = \
 	@socket_lib@
 
 pbs_comm_SOURCES = pbs_comm.c
-
-EXTRA_DIST = \
-	master_job_attr_def.xml \
-	master_node_attr_def.xml \
-	master_queue_attr_def.xml \
-	master_resc_def_all.xml \
-	master_resv_attr_def.xml \
-	master_sched_attr_def.xml \
-	master_svr_attr_def.xml
-
-CLEANFILES = \
-	job_attr_def.c \
-	node_attr_def.c \
-	queue_attr_def.c \
-	resc_def_all.c \
-	resv_attr_def.c \
-	sched_attr_def.c \
-	svr_attr_def.c
-
-job_attr_def.c: $(top_srcdir)/src/server/master_job_attr_def.xml
-	@echo Generating $@ from $< ; \
-	$(PYTHON) $(top_srcdir)/buildutils/attr_parser.py \
-		-m $(top_srcdir)/src/server/master_job_attr_def.xml \
-		-e /dev/null -s $@ -a job
-
-svr_attr_def.c: $(top_srcdir)/src/server/master_svr_attr_def.xml
-	@echo Generating $@ from $< ; \
-	$(PYTHON) $(top_srcdir)/buildutils/attr_parser.py \
-		-m $(top_srcdir)/src/server/master_svr_attr_def.xml \
-		-e /dev/null -s $@ -a server
-
-queue_attr_def.c: $(top_srcdir)/src/server/master_queue_attr_def.xml
-	@echo Generating $@ from $< ; \
-	$(PYTHON) $(top_srcdir)/buildutils/attr_parser.py \
-		-m $(top_srcdir)/src/server/master_queue_attr_def.xml \
-		-e /dev/null -s $@ -a queue
-
-node_attr_def.c: $(top_srcdir)/src/server/master_node_attr_def.xml
-	@echo Generating $@ from $< ; \
-	$(PYTHON) $(top_srcdir)/buildutils/attr_parser.py \
-		-m $(top_srcdir)/src/server/master_node_attr_def.xml \
-		-e /dev/null -s $@ -a node
-
-sched_attr_def.c: $(top_srcdir)/src/server/master_sched_attr_def.xml
-	@echo Generating $@ from $< ; \
-	$(PYTHON) $(top_srcdir)/buildutils/attr_parser.py \
-		-m $(top_srcdir)/src/server/master_sched_attr_def.xml \
-		-e /dev/null -s $@ -a sched
-
-resv_attr_def.c: $(top_srcdir)/src/server/master_resv_attr_def.xml
-	@echo Generating $@ from $< ; \
-	$(PYTHON) $(top_srcdir)/buildutils/attr_parser.py \
-		-m $(top_srcdir)/src/server/master_resv_attr_def.xml \
-		-e /dev/null -s $@ -a resv
-
-resc_def_all.c: $(top_srcdir)/src/server/master_resc_def_all.xml
-	@echo Generating $@ from $< ; \
-	$(PYTHON) $(top_srcdir)/buildutils/attr_parser.py \
-		-m $(top_srcdir)/src/server/master_resc_def_all.xml \
-		-e /dev/null -s $@ -a resc
 

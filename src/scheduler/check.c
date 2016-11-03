@@ -715,7 +715,7 @@ is_ok_to_run(status *policy, int pbs_sd, server_info *sinfo,
 	int rc;				/* Return Code */
 	node_partition **nodepart;	/* node partitions to pass to check_nodes() */
 	node_info **ninfo_arr;		/* node array to pass to check_nodes() */
-	resource *res;			/* resource list to check */
+	schd_resource *res;			/* resource list to check */
 	int endtime;			/* end time of job if started now */
 	nspec **ns_arr;			/* node solution of where request will run */
 	node_partition *allpart;	/* all partition to use (queue's or servers) */
@@ -1099,7 +1099,7 @@ is_ok_to_run(status *policy, int pbs_sd, server_info *sinfo,
  *
  */
 long long
-check_avail_resources(resource *reslist, resource_req *reqlist,
+check_avail_resources(schd_resource *reslist, resource_req *reqlist,
 	unsigned int flags, resdef **checklist,
 	enum sched_error fail_code, schd_error *perr)
 {
@@ -1108,7 +1108,7 @@ check_avail_resources(resource *reslist, resource_req *reqlist,
 	 * results
 	 */
 	resource_req *resreq;
-	resource *res;
+	schd_resource *res;
 	long long num_chunk = SCHD_INFINITY;
 	long long cur_chunk = 0;
 	int fail = 0;
@@ -1116,9 +1116,9 @@ check_avail_resources(resource *reslist, resource_req *reqlist,
 	schd_error *prev_err = NULL;
 	schd_error *err;
 	sch_resource_t avail;			/* amount of available resource */
-	resource *fres = false_res();
-	resource *zres = zero_res();
-	resource *ustr = unset_str_res();
+	schd_resource *fres = false_res();
+	schd_resource *zres = zero_res();
+	schd_resource *ustr = unset_str_res();
 	char resbuf1[MAX_LOG_SIZE];
 	char resbuf2[MAX_LOG_SIZE];
 	char resbuf3[MAX_LOG_SIZE];
@@ -1273,7 +1273,7 @@ check_avail_resources(resource *reslist, resource_req *reqlist,
  */
 
 sch_resource_t
-dynamic_avail(resource *res)
+dynamic_avail(schd_resource *res)
 {
 	if (res->avail == SCHD_INFINITY)
 		return SCHD_INFINITY;
@@ -1754,14 +1754,14 @@ check_prime_boundary(status *policy, resource_resv  *resresv, struct schd_error 
  * 		return a boolean resource that is False
  *         It is up to the caller to set the name and def fields
  *
- * @return	resource * (set to False)
+ * @return	schd_resource * (set to False)
  *
  * @par MT-safe: No
  */
-resource *
+schd_resource *
 false_res()
 {
-	static resource *res = NULL;
+	static schd_resource *res = NULL;
 
 	if (res == NULL) {
 		res = new_resource();
@@ -1786,15 +1786,15 @@ false_res()
  * 		return a string resource that is "unset" (set to "")
  *         It is up to the caller to set the name and def fields
  *
- * @return	resource *
+ * @return	schd_resource *
  * @retval	NULL	: fail
  *
  * @par MT-safe: No
  */
-resource *
+schd_resource *
 unset_str_res()
 {
-	static resource *res = NULL;
+	static schd_resource *res = NULL;
 
 	if (res == NULL) {
 		res = new_resource();
@@ -1827,13 +1827,13 @@ unset_str_res()
  * 		return a numeric resource that is 0
  *         It is up to the caller to set the name and def fields
  *
- * @return	resource *
+ * @return	schd_resource *
  * @retval	NULL	: fail
  */
-resource *
+schd_resource *
 zero_res()
 {
-	static resource *res = NULL;
+	static schd_resource *res = NULL;
 
 	if (res == NULL) {
 		res = new_resource();

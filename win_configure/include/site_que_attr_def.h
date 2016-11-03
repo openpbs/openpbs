@@ -38,7 +38,7 @@
 
 /*
  * Place holder for site supplied additions to the array of
- * site queue attribute definitions, see server/queue_attr_def.c
+ * site queue attribute definitions, see queue_attr_def.c
  *
  * Array elements must be of the form:
  *	    {	"name",

@@ -213,7 +213,7 @@
 			Filter="cpp;c;cxx;rc;def;r;odl;idl;hpj;bat"
 			>
 			<File
-				RelativePath="..\..\src\server\sched_attr_def.c"
+				RelativePath="..\..\src\lib\Libattr\sched_attr_def.c"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"

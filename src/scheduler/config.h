@@ -187,7 +187,6 @@
 #define MAX_RES_RET_SIZE 256
 #define NUM_PPRIO 20
 #define NUM_PEERS 50
-#define MAX_BUF_SIZE 2048
 #define MAX_DEF_REPLY 5
 #define MAX_PTIME_SIZE 64
 

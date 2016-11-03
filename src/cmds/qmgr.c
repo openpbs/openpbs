@@ -1580,52 +1580,6 @@ next:
 	}
 }
 
-/*
- *
- *	attropl2attrl - convert an attropl struct to an attrl struct
- *
- *	  from - the attropl struct to convert
- *
- *	returns newly converted attrl struct
- *
- */
-struct attrl *
-attropl2attrl(struct attropl *from)
-{
-	struct attrl *ap = NULL, *rattrl = NULL;
-
-	while (from != NULL) {
-		if (ap == NULL) {
-			Mstruct(ap, struct attrl);
-			rattrl = ap;
-		}
-		else  {
-			Mstruct(ap->next, struct attrl);
-			ap = ap->next;
-		}
-
-		ap->name = NULL;
-		ap->resource = NULL;
-		ap->value = NULL;
-		ap->next = NULL;
-		if (from->name != NULL) {
-			Mstring(ap->name, strlen(from->name) + 1);
-			strcpy(ap->name, from->name);
-		}
-		if (from->resource != NULL) {
-			Mstring(ap->resource, strlen(from->resource) + 1);
-			strcpy(ap->resource, from->resource);
-		}
-		if (from->value != NULL) {
-			Mstring(ap->value, strlen(from->value) + 1);
-			strcpy(ap->value, from->value);
-		}
-		from = from->next;
-	}
-
-	return rattrl;
-}
-
 
 /**
  * @brief
@@ -2686,7 +2640,7 @@ execute(int aopt, int oper, int type, char *names, struct attropl *attribs)
 						ss = pbs_statrsc(sp->s_connect, pname->obj_name, sa, "p");
 						break;
 				}
-				freeattrl(sa);
+				free_attrl_list(sa);
 				perr = (ss == NULL);
 				if (! perr)
 					display(type, type, pname->obj_name, ss, FALSE, sp);
@@ -2743,7 +2697,7 @@ execute(int aopt, int oper, int type, char *names, struct attropl *attribs)
 						break;
 				}
 
-				freeattrl(sa);
+				free_attrl_list(sa);
 				perr = (ss == NULL);
 				if (! perr) {
 					display(type, type, pname->obj_name, ss, TRUE, sp);
@@ -2991,30 +2945,6 @@ execute(int aopt, int oper, int type, char *names, struct attropl *attribs)
 	if (name != NULL)
 		free_objname_list(name);
 	return error;
-}
-
-/**
- * @brief
- * 	frees the attribute list
- *
- * @param[in]  attr     Pointer to the linked list of attrls to clean up.
- *
- * @return Void
- *
- */
-void
-freeattrl(struct attrl *attr)
-{
-	struct attrl *ap;
-
-	while (attr != NULL) {
-		if (attr->name != NULL) free(attr->name);
-		if (attr->resource != NULL) free(attr->resource);
-		if (attr->value != NULL) free(attr->value);
-		ap = attr->next;
-		free(attr);
-		attr = ap;
-	}
 }
 
 /**
@@ -3557,134 +3487,6 @@ get_request(char **request)
 			/* Null terminated appropriately. */
 
 	return 0;
-}
-
-/**
- * @brief
- * 	Returns TRUE if the name passed in is an attribute.
- *
- * @note
- * 	This must not be called with object of type MGR_OBJ_SITE_HOOK or MGR_OBJ_PBS_HOOK.
- *
- * @param[in]	object - type of object
- * @param[in]	name  - name of the attribute
- * @param[in]	attr_type  - type of the attribute
- *
- * @eturn int
- * @retval	TRUE - means if the input is an attribute of the given 'object' type
- *        	    and 'attr_type'.
- * @retval	FALSE - otherwise.
- *
- */
-int
-is_attr(int object, char *name, int attr_type)
-{
-	static char *svr_public_attrs[] =
-		{
-#include "qmgr_svr_public.h"
-#include "site_qmgr_svr_print.h"
-		NULL
-	};
-
-	static char *svr_readonly_attrs[] =
-		{
-#include "qmgr_svr_readonly.h"
-		NULL
-	};
-
-	static char *que_public_attrs[] =
-		{
-#include "qmgr_que_public.h"
-#include "site_qmgr_que_print.h"
-		NULL
-	};
-
-	static char *que_readonly_attrs[] =
-		{
-#include "qmgr_que_readonly.h"
-		NULL
-	};
-
-	static char *node_public_attrs[] =
-		{
-#include "qmgr_node_public.h"
-#include "site_qmgr_node_print.h"
-		NULL
-	};
-
-	static char *node_readonly_attrs[] =
-		{
-#include "qmgr_node_readonly.h"
-		NULL
-	};
-
-	static char *sched_public_attrs[] =
-		{
-#include "qmgr_sched_public.h"
-#include "site_qmgr_sched_print.h"
-		NULL
-	};
-
-	static char *sched_readonly_attrs[] =
-		{
-#include "qmgr_sched_readonly.h"
-		NULL
-	};
-
-	char **attr_public = NULL;
-	char **attr_readonly = NULL;
-	char  *pc;
-	int ret = FALSE;
-
-	if ((object == MGR_OBJ_SITE_HOOK) || (object == MGR_OBJ_PBS_HOOK)) {
-		return FALSE;
-	}
-
-	if (object == MGR_OBJ_SERVER) {
-		attr_public = svr_public_attrs;
-		attr_readonly = svr_readonly_attrs;
-	}
-	else if (object == MGR_OBJ_QUEUE) {
-		attr_public = que_public_attrs;
-		attr_readonly = que_readonly_attrs;
-	}
-	else if (object == MGR_OBJ_NODE) {
-		attr_public = node_public_attrs;
-		attr_readonly = node_readonly_attrs;
-	}
-	else if (object == MGR_OBJ_SCHED) {
-		attr_public = sched_public_attrs;
-		attr_readonly = sched_readonly_attrs;
-	}
-	else if (object == MGR_OBJ_RSC) {
-		ret = TRUE;
-	}
-
-	if (attr_public != NULL && (attr_type & TYPE_ATTR_PUBLIC)) {
-		while (*attr_public != NULL && ret == FALSE) {
-			if (strncasecmp(name, *attr_public, strlen(*attr_public)) == 0) {
-				pc = name + strlen(*attr_public);
-				if ((*pc == '\0') || (*pc == '.') || (*pc == ','))
-					ret =  TRUE;
-			}
-
-			attr_public++;
-		}
-	}
-
-	if (attr_readonly != NULL && (attr_type & TYPE_ATTR_READONLY)) {
-		while (*attr_readonly != NULL && ret == FALSE) {
-			if (strncasecmp(name, *attr_readonly, strlen(*attr_readonly)) == 0) {
-				pc = name + strlen(*attr_readonly);
-				if ((*pc == '\0') || (*pc == '.') || (*pc == ','))
-					ret = TRUE;
-			}
-
-			attr_readonly++;
-		}
-	}
-
-	return ret;
 }
 
 /**

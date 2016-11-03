@@ -287,7 +287,7 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\src\server\job_attr_def.c"
+				RelativePath="..\..\src\lib\Libattr\job_attr_def.c"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
@@ -712,7 +712,7 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\src\server\resc_def_all.c"
+				RelativePath="..\..\src\lib\Libattr\resc_def_all.c"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"

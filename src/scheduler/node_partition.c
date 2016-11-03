@@ -49,7 +49,6 @@
  * 	dup_node_partition()
  * 	find_node_partition()
  * 	find_node_partition_by_rank()
- * 	need_to_partition()
  * 	create_node_partitions()
  * 	node_partition_update_array()
  * 	node_partition_update()
@@ -58,7 +57,6 @@
  * 	free_np_cache()
  * 	find_alloc_np_cache()
  * 	add_np_cache()
- * 	remove_noncomplete_sets()
  * 	resresv_can_fit_nodepart()
  * 	create_specific_nodepart()
  * 	create_placement_sets()
@@ -322,37 +320,6 @@ find_node_partition_by_rank(node_partition **np_arr, int rank)
 
 /**
  * @brief
- *		need_to_partition - determine if we need to partition the nodes
- *			    criteria: if any node has partitioning resource
- *
- * @param[in]	ninfo_arr	-	node info array to determine if we need to partition
- * @param[in]	resname	-	resource name to partition on
- *
- * @return	1	: need to partition
- * @return	0	: no need to partition
- *
- */
-int
-need_to_partition(node_info **ninfo_arr, char *resname)
-{
-	int i;
-	resource *res = NULL;
-
-	if (ninfo_arr == NULL || resname == NULL)
-		return 0;
-
-	for (i = 0; ninfo_arr[i] != NULL && res == NULL; i++)
-		res = find_resource_by_str(ninfo_arr[i]->res, resname);
-
-	/* we searched the entire list and didn't find any resource resname */
-	if (ninfo_arr[i] == NULL)
-		return 0;
-
-	return 1;
-}
-
-/**
- * @brief
  * 		break apart nodes into partitions
  *		A possible side-effect of this function when multiple identical
  *		resources are defined on an attribute, is that the node
@@ -387,21 +354,21 @@ create_node_partitions(status *policy, node_info **nodes, char **resnames, unsig
 	char *str;
 	int free_str = 0;
 	int np_arr_size = 0;
-	resource *res;
+	schd_resource *res;
 
 	int num_nodes;
 	int reslen;
 	int i;
 
-	resource *hostres;
-	resource *tmpres;
+	schd_resource *hostres;
+	schd_resource *tmpres;
 
 	int res_i;		/* index of placement set resource name (resnames) */
 	int val_i;		/* index of placement set resource value */
 	int node_i;		/* index into nodes array */
 	int np_i;		/* index into node partition array we are creating */
 
-	resource unset_res;
+	schd_resource unset_res;
 	char *unsetarr[] = {"\"\"", NULL};
 
 	resdef *def;
@@ -638,7 +605,7 @@ node_partition_update(status *policy, node_partition *np)
 {
 	int i;
 	int rc = 1;
-	resource *res;
+	schd_resource *res;
 	unsigned int arl_flags = USE_RESOURCE_LIST;
 
 	if (np == NULL)
@@ -900,43 +867,6 @@ add_np_cache(np_cache ***npc_arr, np_cache *npc)
 
 /**
  * @brief
- *		remove_noncomplete_sets - remove placement sets from a pool which do
- *				  not contain all the nodes from the global
- *				  pool.
- *
- * @param[in]	global_pool	-	global pool of placement sets
- * @param[in]	pool	-	pool to modify
- *
- * @return	the number of placement sets removed
- *
- */
-int
-remove_noncomplete_sets(node_partition **global_pool, node_partition **pool)
-{
-	int i;
-	int num = 0;
-	node_partition *np;
-
-	if (global_pool == NULL || pool == NULL)
-		return 0;
-
-	for (i = 0; global_pool[i] != NULL; i++) {
-		np = find_node_partition(pool, global_pool[i]->name);
-
-		if (np != NULL) {
-			if (np->tot_nodes != global_pool[i]->tot_nodes) {
-				remove_ptr_from_array((void **)pool, (void *) np);
-				free_node_partition(np);
-				num++;
-			}
-		}
-	}
-
-	return num;
-}
-
-/**
- * @brief
  * 		do an initial check to see if a resresv can fit into a node partition
  *        based on the meta data we keep.
  *
@@ -1144,7 +1074,7 @@ create_placement_sets(status *policy, server_info *sinfo)
 		if (sinfo->hostsets != NULL) {
 			sinfo->num_hostsets = num;
 			for (i = 0; sinfo->nodes[i] != NULL; i++) {
-				resource *hostres;
+				schd_resource *hostres;
 				char hostbuf[256];
 
 				hostres = find_resource(sinfo->nodes[i]->res, getallres(RES_HOST));

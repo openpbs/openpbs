@@ -62,8 +62,8 @@ pbs_mom_LDADD = \
 	-lcrypto
 
 pbs_mom_SOURCES = \
-	$(top_builddir)/src/server/job_attr_def.c \
-	$(top_builddir)/src/server/resc_def_all.c \
+	$(top_builddir)/src/lib/Libattr/job_attr_def.c \
+	$(top_builddir)/src/lib/Libattr/resc_def_all.c \
 	$(top_srcdir)/src/server/mom_info.c \
 	$(top_srcdir)/src/server/attr_recov.c \
 	$(top_srcdir)/src/server/dis_read.c \

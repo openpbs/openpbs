@@ -473,19 +473,6 @@ enum timed_event_types
 	TIMED_NODE_UP_EVENT = 256
 };
 
-enum sim_info_id
-{
-	SIMID_NONE,
-	SIMID_RUN_JOB,
-	SIMID_RESUME_JOB,
-	SIMID_MOVE_JOB,
-	SIMID_MODIFY_JOB,
-	SIMID_SUSPEND_JOB,
-	SIMID_CHKP_JOB,
-	SIMID_REQUEUE_JOB,
-	SIMID_HIGH
-};
-
 enum resource_fields
 {
 	RF_NONE,

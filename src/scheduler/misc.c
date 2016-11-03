@@ -523,65 +523,6 @@ filter_array(void **ptrarr, int (*filter_func)(void*, void*),
 
 /**
  * @brief
- * 		break apart a comma delimited string into an array of strings
- *
- * @param[in]	strlist	-	the comma delimited string
- *
- * @return	char **
- *
- */
-char **
-break_comma_list(char *strlist)
-{
-	int num_words = 1;			/* number of words delimited by commas*/
-	char **arr = NULL;			/* the array of words */
-	char *list;
-	char *tok;				/* used with strtok() */
-	char *end;
-	int i;
-
-	if (strlist == NULL)
-		return NULL;
-
-	list = string_dup(strlist);
-
-	if (list != NULL) {
-		for (i = 0; list[i] != '\0'; i++)
-			if (list[i] == ',')
-				num_words++;
-
-		if ((arr = (char **) malloc(sizeof(char*)  * (num_words + 1))) == NULL) {
-			log_err(errno, __func__, MEM_ERR_MSG);
-			free(list);
-			return NULL;
-		}
-
-		tok = strtok(list, ",");
-
-		for (i = 0; tok != NULL; i++) {
-			while (isspace((int) *tok))
-				tok++;
-
-			end = &tok[strlen(tok)-1];
-
-			while (isspace((int) *end)) {
-				*end = '\0';
-				end--;
-			}
-
-			arr[i] = string_dup(tok);
-			tok = strtok(NULL, ",");
-		}
-		arr[i] = NULL;
-	}
-	if (list != NULL)
-		free(list);
-
-	return arr;
-}
-
-/**
- * @brief
  *		free_string_array - free an array of strings with a NULL as a sentinal
  *
  * @param[in,out]	arr	-	the array to free
@@ -1542,7 +1483,7 @@ char *
 res_to_str_c(sch_resource_t amount, resdef *def, enum resource_fields fld,
 	char *buf, int bufsize)
 {
-	resource res = {0};
+	schd_resource res = {0};
 	resource_req req = {0};
 	char *unknown[] = {"unknown", NULL};
         
@@ -1619,7 +1560,7 @@ char *
 res_to_str_re(void *p, enum resource_fields fld, char **buf,
 	int *bufsize, unsigned int flags)
 {
-	resource *res = NULL;
+	schd_resource *res = NULL;
 	resource_req *req = NULL;
 	struct resource_type *rt;
 	char *str;
@@ -1663,7 +1604,7 @@ res_to_str_re(void *p, enum resource_fields fld, char **buf,
 			break;
 
 		case RF_DIRECT_AVAIL:
-			res = (resource *) p;
+			res = (schd_resource *) p;
 			if (res->indirect_res != NULL) {
 				if (flags & NOEXPAND)
 					snprintf(*buf, *bufsize, "@");
@@ -1682,7 +1623,7 @@ res_to_str_re(void *p, enum resource_fields fld, char **buf,
 			}
 			/* if not indirect, fall through normally */
 		case RF_AVAIL:
-			res = (resource *) p;
+			res = (schd_resource *) p;
 			if (res->indirect_res != NULL)
 				res = res->indirect_res;
 			rt = &(res->type);
@@ -1691,7 +1632,7 @@ res_to_str_re(void *p, enum resource_fields fld, char **buf,
 			break;
 
 		case RF_ASSN:
-			res = (resource *) p;
+			res = (schd_resource *) p;
 			rt = &(res->type);
 			str = res->str_assigned;
 			amount = res->assigned;

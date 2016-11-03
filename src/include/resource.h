@@ -39,7 +39,8 @@
 #ifdef	__cplusplus
 extern "C" {
 #endif
-
+#include "attribute.h"
+#include "list_link.h"
 
 
 /*

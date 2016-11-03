@@ -38,7 +38,7 @@
 
 /*
  * Place holder for site supplied additions to the array of site
- * server attribute definitions, see server/svr_attr_def.c
+ * server attribute definitions, see svr_attr_def.c
  *
  * Array elements must be of the form:
  *	    {	"name",

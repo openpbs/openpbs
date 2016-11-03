@@ -596,7 +596,7 @@ reset_global_resource_ptrs(void)
  * @retval	0	: not set
  */
 int
-is_res_avail_set(resource *res)
+is_res_avail_set(schd_resource *res)
 {
 	if (res == NULL)
 		return 0;
@@ -624,7 +624,7 @@ is_res_avail_set(resource *res)
  * @retval	0	: failure
  */
 int
-add_resource_sig(char **sig, int *sig_size, resource *res)
+add_resource_sig(char **sig, int *sig_size, schd_resource *res)
 {
 	if (sig == NULL || res == NULL)
 		return 0;
@@ -658,12 +658,12 @@ add_resource_sig(char **sig, int *sig_size, resource *res)
  * @par	it is the responsibility of the caller to free string returned
  */
 char *
-create_resource_signature(resource *reslist, resdef **resources, unsigned int flags)
+create_resource_signature(schd_resource *reslist, resdef **resources, unsigned int flags)
 {
 	char *sig = NULL;
 	int sig_size = 0;
 	int i;
-	resource *res;
+	schd_resource *res;
 
 	if (reslist == NULL || resources == NULL)
 		return NULL;

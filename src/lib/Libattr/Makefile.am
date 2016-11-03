@@ -59,10 +59,77 @@ libattr_a_SOURCES = \
 	attr_func.c \
 	attr_node_func.c \
 	attr_resc_func.c \
+	job_attr_def.c \
 	Long_.c \
 	LTostr.c \
+	node_attr_def.c \
+	queue_attr_def.c \
+	resc_def_all.c \
 	resc_map.c \
+	resv_attr_def.c \
+	sched_attr_def.c \
 	strToL.c \
 	strTouL.c \
+	svr_attr_def.c \
 	uLTostr.c
+
+EXTRA_DIST = \
+	master_job_attr_def.xml \
+	master_node_attr_def.xml \
+	master_queue_attr_def.xml \
+	master_resc_def_all.xml \
+	master_resv_attr_def.xml \
+	master_sched_attr_def.xml \
+	master_svr_attr_def.xml
+
+CLEANFILES = \
+	job_attr_def.c \
+	node_attr_def.c \
+	queue_attr_def.c \
+	resc_def_all.c \
+	resv_attr_def.c \
+	sched_attr_def.c \
+	svr_attr_def.c
+
+job_attr_def.c: $(top_srcdir)/src/lib/Libattr/master_job_attr_def.xml
+	@echo Generating $@ from $< ; \
+	python $(top_srcdir)/buildutils/attr_parser.py \
+		-m $(top_srcdir)/src/lib/Libattr/master_job_attr_def.xml \
+		-e /dev/null -s $@ -a job
+
+svr_attr_def.c: $(top_srcdir)/src/lib/Libattr/master_svr_attr_def.xml
+	@echo Generating $@ from $< ; \
+	python $(top_srcdir)/buildutils/attr_parser.py \
+		-m $(top_srcdir)/src/lib/Libattr/master_svr_attr_def.xml \
+		-e /dev/null -s $@ -a server
+
+queue_attr_def.c: $(top_srcdir)/src/lib/Libattr/master_queue_attr_def.xml
+	@echo Generating $@ from $< ; \
+	python $(top_srcdir)/buildutils/attr_parser.py \
+		-m $(top_srcdir)/src/lib/Libattr/master_queue_attr_def.xml \
+		-e /dev/null -s $@ -a queue
+
+node_attr_def.c: $(top_srcdir)/src/lib/Libattr/master_node_attr_def.xml
+	@echo Generating $@ from $< ; \
+	python $(top_srcdir)/buildutils/attr_parser.py \
+		-m $(top_srcdir)/src/lib/Libattr/master_node_attr_def.xml \
+		-e /dev/null -s $@ -a node
+
+sched_attr_def.c: $(top_srcdir)/src/lib/Libattr/master_sched_attr_def.xml
+	@echo Generating $@ from $< ; \
+	python $(top_srcdir)/buildutils/attr_parser.py \
+		-m $(top_srcdir)/src/lib/Libattr/master_sched_attr_def.xml \
+		-e /dev/null -s $@ -a sched
+
+resv_attr_def.c: $(top_srcdir)/src/lib/Libattr/master_resv_attr_def.xml
+	@echo Generating $@ from $< ; \
+	python $(top_srcdir)/buildutils/attr_parser.py \
+		-m $(top_srcdir)/src/lib/Libattr/master_resv_attr_def.xml \
+		-e /dev/null -s $@ -a resv
+
+resc_def_all.c: $(top_srcdir)/src/lib/Libattr/master_resc_def_all.xml
+	@echo Generating $@ from $< ; \
+	python $(top_srcdir)/buildutils/attr_parser.py \
+		-m $(top_srcdir)/src/lib/Libattr/master_resc_def_all.xml \
+		-e /dev/null -s $@ -a resc
 

@@ -70,14 +70,6 @@ int cmp_placement_sets(const void *v1, const void *v2);
  */
 int cmp_low_load(const void *v1, const void *v2);
 
-
-/*
- *
- *      cmp_sch_prio_dsc - sort jobs decending by sch_priority
- *
- */
-int cmp_sch_prio_dsc(const void *j1, const void *j2);
-
 /*
  * cmp_fairshare - compare based on extract_fairshare()
  * note: extract_fairshare() returns 1 or -1 , there is no equal
@@ -95,82 +87,9 @@ int cmp_fairshare(const void *j1, const void *j2);
 int cmp_queue_prio_dsc(const void *q1, const void *q2);
 
 /*
- *
- *      cmp_queue_prio_asc - compare function used by qsort to sort queues
- *                           by ascending priority
- *
- */
-int cmp_queue_prio_asc(const void *q1, const void *q2);
-
-/*
- *
- *      cmp_node_prio_dsc - sort nodes in decending priority
- *
- */
-int cmp_node_prio_dsc(const void *n1, const void *n2);
-
-
-/*
- *      cmp_job_walltime_asc - sort jobs by requested walltime
- *                                      in ascending order.
- */
-int cmp_job_walltime_asc(const void *j1, const void *j2);
-
-/*
- *      cmp_job_walltime_dsc - sort jobs by requested walltime
- *                                      in ascending order.
- */
-int cmp_job_walltime_dsc(const void *j1, const void *j2);
-
-/*
- *
- *      cmp_time_left - sort jobs by time remaining to run - decending
- *
- */
-int cmp_time_left(const void *j1, const void *j2);
-
-/*
- *
- *      cmp_job_cput_asc - compare function used by qsort to sort the jobs by
- *                         requested cput time in ascending order.
- *
- */
-int cmp_job_cput_asc(const void *j1, const void *j2);
-
-/*
- *
- *      cmp_job_cput_dsc - compare function used by qsort to sort the jobs by
- *                         requested cput time in descending order.
- *
- */
-int cmp_job_cput_dsc(const void *j1, const void *j2);
-
-/*
- *
- *      cmp_job_mem_asc -  compare function used by qsort to sort the jobs by
- *                         requested mem time in ascending order.
- *
- */
-int cmp_job_mem_asc(const void *j1, const void *j2);
-
-/*
- *
- *      cmp_job_mem_dsc -  compare function used by qsort to sort the jobs by
- *                         requested mem time in descending order.
- *
- */
-int cmp_job_mem_dsc(const void *j1, const void *j2);
-
-/*
  *      cmp_fair_share - compare function for the fair share algorithm
  */
 int cmp_fair_share(const void *j1, const void *j2);
-
-/*
- *      cmp_preempt_priority_dsc - used to sort jobs in decending preemption
- *                                 priority
- */
-int cmp_preempt_priority_dsc(const void *j1, const void *j2);
 
 /*
  *      cmp_preempt_priority_asc - used to sort jobs in decending preemption

@@ -98,10 +98,10 @@ int update_resource_defs(int pbs_sd);
 void reset_global_resource_ptrs(void);
 
 /* checks if a resource avail is set. */
-int is_res_avail_set(resource *res);
+int is_res_avail_set(schd_resource *res);
 
 /* create a resource signature for a set of resources */
-char *create_resource_signature(resource *reslist, resdef **resources, unsigned int flags);
+char *create_resource_signature(schd_resource *reslist, resdef **resources, unsigned int flags);
 
 /* collect a unique list of resources from an array of requests */
 resdef **collect_resources_from_requests(resource_resv **resresv_arr);

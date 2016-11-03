@@ -51,6 +51,7 @@
 #include	"resmon.h"
 #include	"rm.h"
 #include	"cmds.h"
+#include	"attribute.h"
 
 
 char	badparm[] = "%s: bad parameter";
@@ -1097,7 +1098,7 @@ Tcl_Obj	*CONST	objv[];
 			ret = TCL_ERROR;
 			goto done;
 		}
-		atp = (struct attrl *)malloc(sizeof(struct attrl));
+		atp = new_attrl();
 		if (atp == NULL) {
 			sprintf(log_buffer, "Unable to allocate memory (malloc error)");
 			#ifdef NAS

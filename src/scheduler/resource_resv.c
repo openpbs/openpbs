@@ -1767,7 +1767,7 @@ free_selspec(selspec *spec)
  *
  */
 int
-compare_res_to_str(resource *res, char *str , enum resval_cmpflag cmpflag)
+compare_res_to_str(schd_resource *res, char *str , enum resval_cmpflag cmpflag)
 {
 	int i;
 
@@ -1809,7 +1809,7 @@ compare_res_to_str(resource *res, char *str , enum resval_cmpflag cmpflag)
  *
  */
 int
-compare_non_consumable(resource *res, resource_req *req)
+compare_non_consumable(schd_resource *res, resource_req *req)
 {
 
 	if (res == NULL && req == NULL)

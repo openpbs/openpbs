@@ -47,20 +47,9 @@
  * 	cmp_placement_sets()
  * 	cmp_nspec()
  * 	cmp_low_load()
- * 	cmp_sch_prio_dsc()
- * 	cmp_node_prio_dsc()
  * 	cmp_queue_prio_dsc()
- * 	cmp_queue_prio_asc()
- * 	cmp_time_left()
  * 	cmp_events()
- * 	cmp_job_walltime_asc()
- * 	cmp_job_walltime_dsc()
- * 	cmp_job_cput_asc()
- * 	cmp_job_cput_dsc()
- * 	cmp_job_mem_asc()
- * 	cmp_job_mem_dsc()
  * 	cmp_fairshare()
- * 	cmp_preempt_priority_dsc()
  * 	cmp_preempt_priority_asc()
  * 	cmp_preempt_stime_asc()
  * 	cmp_preemption()
@@ -160,8 +149,8 @@ int
 cmp_placement_sets(const void *v1, const void *v2)
 {
 	node_partition *np1, *np2;
-	resource *ncpus1, *ncpus2;
-	resource *mem1, *mem2;
+	schd_resource *ncpus1, *ncpus2;
+	schd_resource *mem1, *mem2;
 	int rc = 0;
 
 
@@ -286,53 +275,6 @@ cmp_low_load(const void *v1, const void *v2)
 
 /**
  * @brief
- *		cmp_sch_prio_dsc - sort jobs decending by sch_priority
- *
- * @param[in]	j1	-	resource_resv 1
- * @param[in]	j2	-	resource_resv 2
- *
- * @return	int
- * @retval	1	: if j1 < j2
- * @retval	0 	: if j1 == j2
- * @retval	-1  : if j1 > j2
- */
-int
-cmp_sch_prio_dsc(const void *j1, const void *j2)
-{
-	if ((*(resource_resv **) j1)->sch_priority < (*(resource_resv **) j2)->sch_priority)
-		return 1;
-	else if ((*(resource_resv **) j1)->sch_priority > (*(resource_resv **) j2)->sch_priority)
-		return -1;
-	else
-		return 0;
-}
-
-/**
- * @brief
- *		cmp_node_prio_dsc - sort nodes in decending priority
- *
- * @param[in]	n1	-	node_info 1
- * @param[in]	n2	-	node_info 2
- *
- * @return	int
- * @retval	1	: if n1 < n2
- * @retval	0 	: if n1 == n2
- * @retval	-1  : if n1 > n2
- */
-int
-cmp_node_prio_dsc(const void *n1, const void *n2)
-{
-	if ((*(node_info **) n1)->priority < (*(node_info **) n2)->priority)
-		return 1;
-	else if ((*(node_info **) n1)->priority > (*(node_info **) n2)->priority)
-		return -1;
-	else
-		return 0;
-}
-
-
-/**
- * @brief
  *      cmp_queue_prio_dsc - sort queues in decending priority
  *
  * @param[in]	q1	-	queue_info 1
@@ -353,65 +295,6 @@ cmp_queue_prio_dsc(const void *q1, const void *q2)
 	else
 		return 0;
 }
-
-/**
- * @brief
- * 		cmp_queue_prio_asc - sort queues by ascending priority
- *
- * @param[in]	q1	-	queue_info 1
- * @param[in]	q2	-	queue_info 2
- *
- * @return	int
- * @retval	-1	: if q1 < q2
- * @retval	0 	: if q1 == q2
- * @retval	1  : if q1 > q2
- */
-int
-cmp_queue_prio_asc(const void *q1, const void *q2)
-{
-	if ((*(queue_info **) q1)->priority < (*(queue_info **) q2)->priority)
-		return -1;
-	else if ((*(queue_info **) q1)->priority > (*(queue_info **) q2)->priority)
-		return 1;
-	else
-		return -1;
-}
-
-/**
- * @brief
- *      cmp_time_left - sort jobs by time remaining to run - descending
- *		 sort any job w/o walltime to the end
- *
- * @param[in]	j1	-	resource_resv 1
- * @param[in]	j2	-	resource_resv 2
- *
- * @return	int
- * @retval	1	: if j1 < j2
- * @retval	0 	: if j1 == j2
- * @retval	-1  : if j1 > j2
- */
-int
-cmp_time_left(const void *j1, const void *j2)
-{
-	int t1, t2;
-
-	t1 = calc_time_left((*(resource_resv**) j1));
-	t2 = calc_time_left((*(resource_resv**) j2));
-
-	if (t1 >= 0 && t2 < 0)
-		return -1;
-
-	if (t2 >= 0 && t1 < 0)
-		return 1;
-
-	if (t1 < t2)
-		return 1;
-	if (t1 == t2)
-		return 0;
-	else
-		return -1;
-}
-
 
 /**
  * @brief
@@ -484,201 +367,6 @@ cmp_events(const void *v1, const void *v2)
 		return 1;
 }
 
-
-/**
- * @brief
- *      cmp_job_walltime_asc - sort jobs by requested walltime
- *		in ascending order.
- *
- * @param[in]	j1	-	resource_resv 1
- * @param[in]	j2	-	resource_resv 2
- *
- * @return	int
- * @retval	-1	: if j1 < j2
- * @retval	0 	: if j1 == j2
- * @retval	1  : if j1 > j2
- */
-int
-cmp_job_walltime_asc(const void *j1, const void *j2)
-{
-	resource_req *req1, *req2;
-
-	req1 = find_resource_req((*(resource_resv**) j1)->resreq, getallres(RES_WALLTIME));
-	req2 = find_resource_req((*(resource_resv**) j2)->resreq, getallres(RES_WALLTIME));
-
-	if (req1 != NULL && req2 != NULL) {
-		if (req1->amount < req2->amount)
-			return -1;
-		else if (req1->amount == req2->amount)
-			return 0;
-		else
-			return 1;
-	}
-	else
-		return 0;
-}
-
-/**
- * @brief
- *      cmp_job_walltime_dsc - sort jobs by requested walltime
- *		in ascending order.
- *
- * @param[in]	j1	-	resource_resv 1
- * @param[in]	j2	-	resource_resv 2
- *
- * @return	int
- * @retval	1	: if j1 < j2
- * @retval	0 	: if j1 == j2
- * @retval	-1  : if j1 > j2
- */
-int
-cmp_job_walltime_dsc(const void *j1, const void *j2)
-{
-	resource_req *req1, *req2;
-
-	req1 = find_resource_req((*(resource_resv**) j1)->resreq, getallres(RES_WALLTIME));
-	req2 = find_resource_req((*(resource_resv**) j2)->resreq, getallres(RES_WALLTIME));
-
-	if (req1 != NULL && req2 != NULL) {
-		if (req1->amount < req2->amount)
-			return 1;
-		else if (req1->amount == req2->amount)
-			return 0;
-		else
-			return -1;
-	}
-	else
-		return 0;
-}
-
-/**
- * @brief
- *      cmp_job_cput_asc - sort jobs by requested cput time in ascending order.
- *
- * @param[in]	j1	-	resource_resv 1
- * @param[in]	j2	-	resource_resv 2
- *
- * @return	int
- * @retval	-1	: if j1 < j2
- * @retval	0 	: if j1 == j2
- * @retval	1  : if j1 > j2
- */
-int
-cmp_job_cput_asc(const void *j1, const void *j2)
-{
-	resource_req *req1, *req2;
-
-	req1 = find_resource_req((*(resource_resv**) j1)->resreq, getallres(RES_CPUT));
-	req2 = find_resource_req((*(resource_resv**) j2)->resreq, getallres(RES_CPUT));
-
-	if (req1 != NULL && req2 != NULL) {
-		if (req1->amount < req2->amount)
-			return -1;
-		else if (req1->amount == req2->amount)
-			return 0;
-		else
-			return 1;
-	}
-	else
-		return 0;
-}
-
-/**
- * @brief
- *      cmp_job_cput_dsc - sort jobs by requested cput time in descending order.
- *
- * @param[in]	j1	-	resource_resv 1
- * @param[in]	j2	-	resource_resv 2
- *
- * @return	int
- * @retval	1	: if j1 < j2
- * @retval	0 	: if j1 == j2
- * @retval	-1  : if j1 > j2
- */
-int
-cmp_job_cput_dsc(const void *j1, const void *j2)
-{
-	resource_req *req1, *req2;
-
-	req1 = find_resource_req((*(resource_resv**) j1)->resreq, getallres(RES_CPUT));
-	req2 = find_resource_req((*(resource_resv**) j2)->resreq, getallres(RES_CPUT));
-
-	if (req1 != NULL && req2 != NULL) {
-		if (req1->amount < req2->amount)
-			return 1;
-		else if (req1->amount == req2->amount)
-			return 0;
-		else
-			return -1;
-	}
-	else
-		return 0;
-}
-
-/**
- * @brief
- *      cmp_job_mem_asc - sort jobs by requested mem time in ascending order.
- *
- * @param[in]	j1	-	resource_resv 1
- * @param[in]	j2	-	resource_resv 2
- *
- * @return	int
- * @retval	-1	: if j1 < j2
- * @retval	0 	: if j1 == j2
- * @retval	1  	: if j1 > j2
- */
-int
-cmp_job_mem_asc(const void *j1, const void *j2)
-{
-	resource_req *req1, *req2;
-
-	req1 = find_resource_req((*(resource_resv**) j1)->resreq, getallres(RES_MEM));
-	req2 = find_resource_req((*(resource_resv**) j2)->resreq, getallres(RES_MEM));
-
-	if (req1 != NULL && req2 != NULL) {
-		if (req1->amount < req2->amount)
-			return -1;
-		else if (req1->amount == req2->amount)
-			return 0;
-		else
-			return 1;
-	}
-	else
-		return 0;
-}
-
-/**
- * @brief
- *      cmp_job_mem_dsc - sort jobs by requested mem time in descending order.
- *
- * @param[in]	j1	-	resource_resv 1
- * @param[in]	j2	-	resource_resv 2
- *
- * @return	int
- * @retval	1	: if j1 < j2
- * @retval	0 	: if j1 == j2
- * @retval	-1  	: if j1 > j2
- */
-int
-cmp_job_mem_dsc(const void *j1, const void *j2)
-{
-	resource_req *req1, *req2;
-
-	req1 = find_resource_req((*(resource_resv**) j1)->resreq, getallres(RES_MEM));
-	req2 = find_resource_req((*(resource_resv**) j2)->resreq, getallres(RES_MEM));
-
-	if (req1 != NULL && req2 != NULL) {
-		if (req1->amount < req2->amount)
-			return 1;
-		else if (req1->amount == req2->amount)
-			return 0;
-		else
-			return -1;
-	}
-	else
-		return 0;
-}
-
 /**
  * @brief
  *		cmp_fair_share - compare on fair share percentage only.
@@ -700,54 +388,6 @@ cmp_fairshare(const void *j1, const void *j2)
 	if (r1->job != NULL && r1->job->ginfo != NULL &&
 		r2->job != NULL && r2->job->ginfo != NULL)
 		return compare_path(r1->job->ginfo->gpath , r2->job->ginfo->gpath);
-
-	return 0;
-}
-
-/**
- * @brief
- *		cmp_preempt_priority_dsc - used to sort high priority preempting jobs
- *				by descending preemption priority first.
- *				followed by the normal job_sort_key sort
- *				The final sort is to stabilize qsort() by
- *				sorting on the order we query the jobs from
- *				the server.
- *
- * @param[in]	j1	-	resource_resv 1
- * @param[in]	j2	-	resource_resv 2
- *
- * @return	int
- * @retval	1	: if j1 < j2
- * @retval	0 	: if j1 == j2
- * @retval	-1  : if j1 > j2
- */
-int
-cmp_preempt_priority_dsc(const void *j1, const void *j2)
-{
-	int cmp;
-	resource_resv *r1;
-	resource_resv *r2;
-
-	r1 = (*(resource_resv **) j1);
-	r2 = (*(resource_resv **) j2);
-
-	if (r1->job->preempt < r2->job->preempt)
-		return 1;
-	else if (r1->job->preempt > r2->job->preempt)
-		return -1;
-	else {
-		cmp = cmp_job_sort_formula(&r1, &r2);
-		if (cmp != 0)
-			return cmp;
-
-		cmp = multi_sort(r1, r2);
-		if (cmp == 0) {
-			if (r1->rank < r2->rank)
-				return -1;
-			else if (r1->rank > r2->rank)
-				return 1;
-		}
-	}
 
 	return 0;
 }
@@ -1188,7 +828,7 @@ sch_resource_t
 find_nodepart_amount(node_partition *np, char *res, resdef *def,
 	enum resource_fields res_type) 
 {
-	resource *nres;
+	schd_resource *nres;
 
 	if (def != NULL)
 		nres = find_resource(np->res, def);
@@ -1228,7 +868,7 @@ find_node_amount(node_info *ninfo, char *res, resdef *def,
 {
 	/* def is NULL on special case sort keys */
 	if(def != NULL) {
-		resource*nres;
+		schd_resource*nres;
 		nres = find_resource(ninfo->res, def);
 
 		if (nres != NULL) {
@@ -1314,8 +954,8 @@ find_resresv_amount(resource_resv *resresv, char *res, resdef *def)
 int
 cmp_node_host(const void *v1, const void *v2)
 {
-	resource *res1;
-	resource *res2;
+	schd_resource *res1;
+	schd_resource *res2;
 	node_info **n1;
 	node_info **n2;
 	int rc = 0;

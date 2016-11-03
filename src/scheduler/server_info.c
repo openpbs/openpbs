@@ -60,7 +60,6 @@
  * 	add_resource_value()
  * 	add_resource_str_arr()
  * 	add_resource_bool()
- * 	print_server_info()
  * 	free_server()
  * 	update_server_on_run()
  * 	update_server_on_end()
@@ -441,7 +440,7 @@ query_server_info(status *pol, struct batch_status *server)
 {
 	struct attrl *attrp;	/* linked list of attributes */
 	server_info *sinfo;	/* internal scheduler structure for server info */
-	resource *resp;	/* a resource to help create the resource list */
+	schd_resource *resp;	/* a resource to help create the resource list */
 	sch_resource_t count;	/* used to convert string -> integer */
 	char *endp;		/* used with strtol() */
 	status *policy;
@@ -615,7 +614,7 @@ query_server_dyn_res(server_info *sinfo)
 	int pipe_err;
 	char res_zero[] = "0";	/* dynamic res failure implies resource <-0 */
 	char buf[256];		/* buffer for reading from pipe */
-	resource *res;		/* used for updating node resources */
+	schd_resource *res;		/* used for updating node resources */
 	FILE *fp;			/* for popen() for res_assn */
 #ifdef WIN32
 	struct  pio_handles	  pio;  /* for win_popen() for res_assn */
@@ -779,16 +778,16 @@ query_sched_obj(status *policy, struct batch_status *sched, server_info *sinfo)
  * @param[in]	resplist	- 	the resource list
  * @param[in]	name 		-	the name of the resource
  *
- * @return	resource
+ * @return	schd_resource
  * @retval	NULL	: error
  *
  * @par MT-Safe:	no
  */
-resource *
-find_alloc_resource(resource *resplist, resdef *def)
+schd_resource *
+find_alloc_resource(schd_resource *resplist, resdef *def)
 {
-	resource *resp;		/* used to search through list of resources */
-	resource *prev = NULL;	/* the previous resources in the list */
+	schd_resource *resp;		/* used to search through list of resources */
+	schd_resource *prev = NULL;	/* the previous resources in the list */
 
 	if (def == NULL)
 		return NULL;
@@ -821,16 +820,16 @@ find_alloc_resource(resource *resplist, resdef *def)
  * @param[in]	resplist 	- 	the resource list
  * @param[in]	name 		- 	the name of the resource
  *
- * @return	resource
+ * @return	schd_resource
  * @retval	NULL :	Error
  *
  * @par MT-Safe:	no
  */
-resource *
-find_alloc_resource_by_str(resource *resplist, char *name)
+schd_resource *
+find_alloc_resource_by_str(schd_resource *resplist, char *name)
 {
-	resource *resp;		/* used to search through list of resources */
-	resource *prev = NULL;	/* the previous resources in the list */
+	schd_resource *resp;		/* used to search through list of resources */
+	schd_resource *prev = NULL;	/* the previous resources in the list */
 
 	if (name == NULL)
 		return NULL;
@@ -858,15 +857,15 @@ find_alloc_resource_by_str(resource *resplist, char *name)
  * @param[in]	reslist - 	the resource list
  * @param[in]	name	- 	the name of the resource
  *
- * @return	resource
+ * @return	schd_resource
  * @retval	NULL	: if not found
  *
  * @par MT-Safe:	no
  */
-resource *
-find_resource_by_str(resource *reslist, const char *name)
+schd_resource *
+find_resource_by_str(schd_resource *reslist, const char *name)
 {
-	resource *resp;	/* used to search through list of resources */
+	schd_resource *resp;	/* used to search through list of resources */
 
 	if (reslist == NULL || name == NULL)
 		return NULL;
@@ -888,10 +887,10 @@ find_resource_by_str(resource *reslist, const char *name)
  * @return	the found resource
  * @retval	NULL	: if not found
  */
-resource *
-find_resource(resource *reslist, resdef *def)
+schd_resource *
+find_resource(schd_resource *reslist, resdef *def)
 {
-	resource *resp;
+	schd_resource *resp;
 
 	if (reslist == NULL || def == NULL)
 		return NULL;
@@ -999,9 +998,9 @@ free_server_info(server_info *sinfo)
  * @par MT-Safe:	no
  */
 void
-free_resource_list(resource *reslist)
+free_resource_list(schd_resource *reslist)
 {
-	resource *resp, *tmp;
+	schd_resource *resp, *tmp;
 
 	resp = reslist;
 	while (resp != NULL) {
@@ -1023,7 +1022,7 @@ free_resource_list(resource *reslist)
  * @par MT-Safe:	no
  */
 void
-free_resource(resource *resp)
+free_resource(schd_resource *resp)
 {
 	if (resp == NULL)
 		return;
@@ -1141,17 +1140,17 @@ new_server_info(int limallocflag)
  * @brief
  * 		new_resource - allocate and initialize new resource struct
  *
- * @return	resource
+ * @return	schd_resource
  * @retval	NULL	: Error
  *
  * @par MT-Safe:	yes
  */
-resource *
+schd_resource *
 new_resource()
 {
-	resource *resp;		/* the new resource */
+	schd_resource *resp;		/* the new resource */
 
-	if ((resp = calloc(1,  sizeof(resource))) == NULL) {
+	if ((resp = calloc(1,  sizeof(schd_resource))) == NULL) {
 		log_err(errno, "new_resource", MEM_ERR_MSG);
 		return NULL;
 	}
@@ -1182,14 +1181,14 @@ new_resource()
  *
  * @see	set_resource()
  *
- * @return resource *
+ * @return schd_resource *
  * @retval newly created resource
  * @retval NULL	: on error
  */
-resource *
+schd_resource *
 create_resource(char *name, char *value, enum resource_fields field)
 {
-	resource *nres = NULL;
+	schd_resource *nres = NULL;
 	resdef *rdef;
 
 	if (name == NULL)
@@ -1244,12 +1243,12 @@ create_resource(char *name, char *value, enum resource_fields field)
  * @par MT-Safe:	no
  */
 int
-add_resource_list(status *policy, resource *r1, resource *r2, unsigned int flags)
+add_resource_list(status *policy, schd_resource *r1, schd_resource *r2, unsigned int flags)
 {
-	resource *cur_r1;
-	resource *cur_r2;
-	resource *end_r1;
-	resource *nres;
+	schd_resource *cur_r1;
+	schd_resource *cur_r2;
+	schd_resource *end_r1;
+	schd_resource *nres;
 	sch_resource_t assn;
 	int i;
 
@@ -1371,7 +1370,7 @@ add_resource_value(sch_resource_t *val1, sch_resource_t *val2,
  * @par MT-Safe:	no
  */
 int
-add_resource_str_arr(resource *res, char **str_arr, int allow_dup)
+add_resource_str_arr(schd_resource *res, char **str_arr, int allow_dup)
 {
 	int i;
 
@@ -1401,7 +1400,7 @@ add_resource_str_arr(resource *res, char **str_arr, int allow_dup)
  * @retval	0	: Error
  */
 int
-add_resource_bool(resource *r1, resource *r2)
+add_resource_bool(schd_resource *r1, schd_resource *r2)
 {
 	int r1val, r2val;
 	if (r1 == NULL)
@@ -1435,44 +1434,6 @@ add_resource_bool(resource *r1, resource *r2)
 		r1->avail = TRUE_FALSE;
 
 	return 1;
-}
-
-
-/**
- * @brief
- * 		print_server_info - print server_info structure
- *
- * @param[in]	sinfo	-	server_info struct to print
- * @param[in]	brief	-	if zero, only print the name of the server
- *
- * @return	void
- *
- * @par MT-Safe:	no
- */
-void
-print_server_info(server_info *sinfo, char brief)
-{
-	resource *resp;	/* used in printing the resources */
-
-	if (sinfo == NULL)
-		return;
-	if (sinfo->name != NULL)
-		printf("Server name: %s\n", sinfo->name);
-
-	if (!brief) {
-		printf("liminfo: %p\n", sinfo->liminfo);
-		printf("num_nodes: %d\n", sinfo->num_nodes);
-		printf("num_queues: %d\n", sinfo->num_queues);
-		print_state_count(&sinfo->sc);
-
-		resp = sinfo->res;
-		while (resp != NULL) {
-			printf("res %s avail: %-10f assigned: %-10f\n",
-				resp->name, resp->avail, resp->assigned);
-
-			resp = resp->next;
-		}
-	}
 }
 
 /**
@@ -1525,7 +1486,7 @@ update_server_on_run(status *policy, server_info *sinfo,
 	queue_info *qinfo, resource_resv *resresv)
 {
 	resource_req *resreq;		/* used to cycle through resources to update */
-	resource *res;		/* used in finding a resource to update */
+	schd_resource *res;		/* used in finding a resource to update */
 	counts *cts;			/* used in updating project/group/user counts */
 	int num_unassoc;		/* number of unassociated nodes */
 	counts *allcts;		/* used in updating counts for all jobs */
@@ -1674,7 +1635,7 @@ update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
 	resource_resv *resresv, char *job_state)
 {
 	resource_req *req;		/* resource request from job */
-	resource *res;		/* resource on server */
+	schd_resource *res;		/* resource on server */
 	counts *cts;                          /* update user/group/project counts */
 	int i;
 
@@ -2204,13 +2165,13 @@ dup_server_info(server_info *osinfo)
  *
  * @par MT-Safe:	no
  */
-resource *
-dup_resource_list(resource *res)
+schd_resource *
+dup_resource_list(schd_resource *res)
 {
-	resource *pres;
-	resource *nres;
-	resource *prev = NULL;
-	resource *head = NULL;
+	schd_resource *pres;
+	schd_resource *nres;
+	schd_resource *prev = NULL;
+	schd_resource *head = NULL;
 
 	for (pres = res; pres != NULL; pres = pres->next) {
 		nres = dup_resource(pres);
@@ -2238,13 +2199,13 @@ dup_resource_list(resource *res)
  *
  * @par MT-Safe:	no
  */
-resource *
-dup_selective_resource_list(resource *res, resdef **deflist, unsigned flags)
+schd_resource *
+dup_selective_resource_list(schd_resource *res, resdef **deflist, unsigned flags)
 {
-	resource *pres;
-	resource *nres;
-	resource *prev = NULL;
-	resource *head = NULL;
+	schd_resource *pres;
+	schd_resource *nres;
+	schd_resource *prev = NULL;
+	schd_resource *head = NULL;
 	int i;
 
 	for (pres = res; pres != NULL; pres = pres->next) {
@@ -2300,13 +2261,13 @@ dup_selective_resource_list(resource *res, resdef **deflist, unsigned flags)
  *
  * @par MT-Safe:	no
  */
-resource *
-dup_ind_resource_list(resource *res)
+schd_resource *
+dup_ind_resource_list(schd_resource *res)
 {
-	resource *pres;
-	resource *nres;
-	resource *prev = NULL;
-	resource *head = NULL;
+	schd_resource *pres;
+	schd_resource *nres;
+	schd_resource *prev = NULL;
+	schd_resource *head = NULL;
 
 	for (pres = res; pres != NULL; pres = pres->next) {
 		if (pres->indirect_res != NULL)
@@ -2341,10 +2302,10 @@ dup_ind_resource_list(resource *res)
  *
  * @par MT-Safe:	no
  */
-resource *
-dup_resource(resource *res)
+schd_resource *
+dup_resource(schd_resource *res)
 {
-	resource *nres;
+	schd_resource *nres;
 
 	if ((nres = new_resource()) == NULL)
 		return NULL;
@@ -2865,7 +2826,7 @@ update_universe_on_end(status *policy, resource_resv *resresv, char *job_state)
  * @par MT-Safe:	no
  */
 int
-set_resource(resource *res, char *val, enum resource_fields field)
+set_resource(schd_resource *res, char *val, enum resource_fields field)
 {
 	resdef *rdef;
 
@@ -2956,11 +2917,11 @@ set_resource(resource *res, char *val, enum resource_fields field)
  *
  * @par MT-Safe:	no
  */
-resource *
-find_indirect_resource(resource *res, node_info **nodes)
+schd_resource *
+find_indirect_resource(schd_resource *res, node_info **nodes)
 {
 	node_info *ninfo;
-	resource *cur_res = NULL;
+	schd_resource *cur_res = NULL;
 	char logbuf[MAX_LOG_SIZE];
 	int i;
 	int error = 0;
@@ -3027,7 +2988,7 @@ int
 resolve_indirect_resources(node_info **nodes)
 {
 	int i;
-	resource *cur_res;
+	schd_resource *cur_res;
 	int error = 0;
 
 	if (nodes == NULL)
@@ -3620,9 +3581,9 @@ struct queue_info** append_to_queue_list(queue_info ***list, queue_info *add)
  * @return 
  */
 void
-add_req_list_to_assn(resource *reslist, resource_req *reqlist)
+add_req_list_to_assn(schd_resource *reslist, resource_req *reqlist)
 {
-	resource *r;
+	schd_resource *r;
 	resource_req *req;
 	
 	if(reslist == NULL || reqlist == NULL)
@@ -3645,7 +3606,7 @@ add_req_list_to_assn(resource *reslist, resource_req *reqlist)
 int
 create_resource_assn_for_node(node_info *ninfo)
 {
-	resource *r;
+	schd_resource *r;
 	int i;
 	
 	if(ninfo == NULL)

@@ -43,11 +43,6 @@ extern "C" {
 #include "data_types.h"
 
 /*
- *	print_state_count - print out a state_count struct
- */
-void print_state_count(state_count *sc);
-
-/*
  *	init_state_count - initalize state count struct
  */
 void init_state_count(state_count *sc);

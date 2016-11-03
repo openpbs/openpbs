@@ -119,6 +119,7 @@
 #include "simulate.h"
 #include "resource.h"
 #include "server_info.h"
+#include "attribute.h"
 
 #ifdef NAS
 #include "site_code.h"
@@ -4248,7 +4249,7 @@ preemption_similarity(resource_resv *hjob, resource_resv *pjob, schd_error *full
 {
 	schd_error *cur_err;
 	int match = 0;
-	resource *res;
+	schd_resource *res;
 	int j;
 
 	for (cur_err = full_err; match == 0 && cur_err != NULL; cur_err = cur_err->next) {
@@ -4369,113 +4370,4 @@ preemption_similarity(resource_resv *hjob, resource_resv *pjob, schd_error *full
 	}
 	return match;
 }
-
-/**
- *	@brief create a new attrl structure and initialize it
- */
-struct attrl *new_attrl()
-{
-	struct attrl *at;
-
-	if ((at = malloc(sizeof(struct attrl))) == NULL  )
-		return NULL;
-
-	at->next = NULL;
-	at->name = NULL;
-	at->resource = NULL;
-	at->value = NULL;
-	at->op = SET;
-
-	return at;
-}
-
-/**
- * @brief frees attrl structure
- * 
- * @param [in] at - attrl to free
- * @return nothing
- */
-void free_attrl(struct attrl *at)
-{
-        if(at == NULL)
-                return;
-
-        free(at->name);
-        free(at->resource);
-        free(at->value);
-        free(at);
-}
-
-
-/**
- * @brief frees attrl list
- * 
- * @param[in] at_list - attrl list to free
- * @return nothing
- */
-void free_attrl_list(struct attrl *at_list)
-{
-	struct attrl *cur, *tmp;
-	if(at_list == NULL )
-		return;
-	
-	for(cur = at_list; cur != NULL; cur = tmp) {
-		tmp = cur->next;
-		free_attrl(cur);
-	}
-	
-}
-
-/**
- *  @brief attrl copy constructor 
- *  
- *  @param[in] oattr - attrl to dup
- * 
- *  @return dup'd attrl
- */
-
-struct attrl *dup_attrl(struct attrl *oattr) {
-	struct attrl *nattr;
-	
-	if(oattr == NULL)
-		return NULL;
-	
-	nattr = new_attrl();
-	if(nattr == NULL)
-		return NULL;
-	
-	nattr->name = string_dup(oattr->name);
-	nattr->resource = string_dup(oattr->resource);
-	nattr->value = string_dup(oattr->value);
-	
-	return nattr;
-}
-
-/**
- * @brief copy constructor for attrl list
- * @param oattr_list - list to dup
- * @return dup'd attrl list
- */
-
-struct attrl *dup_attrl_list(struct attrl *oattr_list) {
-	struct attrl *nattr_head = NULL;
-	struct attrl *nattr;
-	struct attrl *nattr_prev = NULL;
-	struct attrl *oattr;
-	
-	if(oattr_list == NULL)
-		return NULL;
-	
-	for(oattr = oattr_list; oattr != NULL; oattr = oattr->next) {
-		nattr = dup_attrl(oattr);
-		if(nattr_prev == NULL)
-			nattr_head = nattr;
-		else {
-			nattr_prev->next = nattr;
-			nattr_prev = nattr;
-		}
-	}
-	return nattr_head;
-}
-
 

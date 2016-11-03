@@ -40,6 +40,8 @@
 extern "C" {
 #endif
 
+#include "list_link.h"
+#include "attribute.h"
 /*
  * job.h - structure definations for job objects
  *

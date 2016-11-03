@@ -60,12 +60,6 @@
 #include "sched_cmds.h"
 #include "log.h"
 
-
-
-/* to make references happy */
-int pbs_rm_port;
-int got_sigpipe;
-
 /* prototypes */
 void print_fairshare_entity(group_info *ginfo);
 
@@ -80,7 +74,6 @@ void print_fairshare_entity(group_info *ginfo);
 #define FS_TRIM_TREE 128
 #define FS_WRITE_FILE 256
 
-int	second_connection;
 /**
  * @brief
  * 		The entry point of pbsfs

@@ -107,13 +107,13 @@ shrink_to_run_event(status *policy, int pbs_sd, server_info *sinfo,
  *
  */
 long long
-check_avail_resources(resource *reslist, resource_req *reqlist,
+check_avail_resources(schd_resource *reslist, resource_req *reqlist,
 	unsigned int flags, resdef **res_to_check,
 	enum sched_error fail_code, schd_error *err);
 /*
  *	dynamic_avail - find out how much of a resource is available on a
  */
-sch_resource_t dynamic_avail(resource *res);
+sch_resource_t dynamic_avail(schd_resource *res);
 
 /*
  *	find_counts_elm - find a element of a counts structure by name.
@@ -205,7 +205,7 @@ int should_check_resvs(server_info *sinfo, node_info *ninfo, resource_resv *resr
  *	false_res - return a static struct of resource which is a boolean
  *		    set to false
  */
-resource *false_res(void);
+schd_resource *false_res(void);
 
 /*
  *
@@ -214,7 +214,7 @@ resource *false_res(void);
  *	returns zero resource ptr
  *
  */
-resource *zero_res(void);
+schd_resource *zero_res(void);
 
 /*
  *	unset_str_res - return a static struct of resource which is a string
@@ -222,7 +222,7 @@ resource *zero_res(void);
  *	returns unset string resource ptr
  *
  */
-resource *unset_str_res(void);
+schd_resource *unset_str_res(void);
 
 /*
  *	find_correct_nodes - find the correct node_info and node partition

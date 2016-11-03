@@ -43,6 +43,7 @@
 #include <stdlib.h>
 #include "libpbs.h"
 #include "dis.h"
+#include "attribute.h"
 
 
 /**
@@ -97,14 +98,9 @@ decode_DIS_attrl(int sock, struct attrl **ppatt)
 		(void) disrui(sock, &rc);
 		if (rc) break;
 
-		pat = malloc(sizeof(struct attrl));
+		pat = new_attrl();
 		if (pat == 0)
 			return DIS_NOMALLOC;
-
-		pat->next     = (struct attrl *)0;
-		pat->name     = (char *)0;
-		pat->resource = (char *)0;
-		pat->value    = (char *)0;
 
 		pat->name = disrst(sock, &rc);
 		if (rc)	break;

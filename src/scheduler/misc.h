@@ -111,12 +111,6 @@ void **
 filter_array(void **ptrarr, int (*filter_func)(void*, void*),
 	void *arg, int flags);
 
-/*
- *      break_comma_list - break apart a comma delemetd string into an arary
- *                         of strings
- */
-char **break_comma_list(char *list);
-
 /**
  * 	calc_time_left_STF - calculate the amount of time left
  *  for minimum duration and maximum duration of a STF resource resv

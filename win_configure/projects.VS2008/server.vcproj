@@ -422,7 +422,7 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\src\server\job_attr_def.c"
+				RelativePath="..\..\src\lib\Libattr\job_attr_def.c"
 				>
 				<FileConfiguration
 					Name="Release|Win32"
@@ -580,7 +580,7 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\src\server\node_attr_def.c"
+				RelativePath="..\..\src\lib\Libattr\node_attr_def.c"
 				>
 				<FileConfiguration
 					Name="Release|Win32"
@@ -734,7 +734,7 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\src\server\queue_attr_def.c"
+				RelativePath="..\..\src\lib\Libattr\queue_attr_def.c"
 				>
 				<FileConfiguration
 					Name="Release|Win32"
@@ -1317,7 +1317,7 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\src\server\resc_def_all.c"
+				RelativePath="..\..\src\lib\Libattr\resc_def_all.c"
 				>
 				<FileConfiguration
 					Name="Release|Win32"
@@ -1367,7 +1367,7 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\src\server\resv_attr_def.c"
+				RelativePath="..\..\src\lib\Libattr\resv_attr_def.c"
 				>
 				<FileConfiguration
 					Name="Release|Win32"
@@ -1417,7 +1417,7 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\src\server\sched_attr_def.c"
+				RelativePath="..\..\src\lib\Libattr\sched_attr_def.c"
 				>
 				<FileConfiguration
 					Name="Release|Win32"
@@ -1517,7 +1517,7 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\src\server\svr_attr_def.c"
+				RelativePath="..\..\src\lib\Libattr\svr_attr_def.c"
 				>
 				<FileConfiguration
 					Name="Release|Win32"

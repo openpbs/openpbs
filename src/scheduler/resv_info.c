@@ -55,7 +55,6 @@
  *	check_vnodes_down()
  *	release_nodes()
  *	create_resv_nodes()
- *	create_resv_from_job()
  *
  */
 #include <pbs_config.h>
@@ -153,7 +152,7 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 	resource_resv *rjob;
 
 	/* used to calculate the resources assigned per node */
-	resource *res;
+	schd_resource *res;
 	resource_req *req;
 	nspec *ns;
 	node_info *resvnode;
@@ -1684,7 +1683,7 @@ node_info **
 create_resv_nodes(nspec **nspec_arr, server_info *sinfo)
 {
 	node_info **nodes = NULL;
-	resource *res;
+	schd_resource *res;
 	resource_req *req;
 	int i;
 
@@ -1729,86 +1728,3 @@ create_resv_nodes(nspec **nspec_arr, server_info *sinfo)
 	}
 	return nodes;
 }
-
-#if 0
-/**
- * @brief
- *		create_resv_from_job - create a job reservation from a job_info struct
- *
- * @param[in,out]	jinfo	-	the job to create a resv from
- * @param[in]	sinfo 	- 	the server the job belongs too
- * @param[in]	exec_vnode	-	the exec host for the reservation
- *
- * @note
- *		REQUIRED: jinfo -> runtime is set and jinfo has a requested walltime
- *
- * @return	new reservation
- * @retval	NULL	: on error
- *
- */
-resv_info *
-create_resv_from_job(job_info *jinfo,
-	server_info *sinfo, char *exec_vnode)
-{
-	resv_info *rinfo;
-	char namebuf[256];
-	resource_req *req;
-
-	if (jinfo == NULL || sinfo == NULL || exec_vnode == NULL || jinfo->run_time == SCHD_INFINITY)
-		return NULL;
-
-	req = find_resource_req(jinfo->resreq, getallres(RES_WALLTIME));
-
-	if (req == NULL)
-		return NULL;
-
-	if ((rinfo = new_resv_info()) == NULL)
-		return NULL;
-
-	rinfo->resreq = dup_resource_req_list(jinfo->resreq);
-
-	if (rinfo->resreq == NULL) {
-		free(rinfo);
-		return NULL;
-	}
-
-	rinfo->nspec_arr = parse_execvnode(exec_vnode, sinfo);
-
-	if (rinfo->nspec_arr == NULL) {
-		free_resv_info(rinfo);
-		return NULL;
-	}
-
-	rinfo->ninfo_arr = create_resv_nodes(rinfo->nspec_arr, sinfo);
-
-	if (rinfo->ninfo_arr == NULL) {
-		free_resv_info(rinfo);
-		return NULL;
-	}
-
-	sprintf(namebuf, "R%s", jinfo->name);
-	rinfo->name = string_dup(namebuf);
-
-	rinfo->owner = string_dup(jinfo->account);
-	rinfo->start = jinfo->run_time;
-	rinfo->duration = req->amount;
-	rinfo->end = jinfo->run_time + req->amount;
-
-	/* reservation type for job reservation */
-	rinfo->type = 3;
-
-	rinfo->state = RESV_CONFIRMED;
-
-	rinfo->server = sinfo;
-	rinfo->job = jinfo;
-
-	/* we need to cross reference the reservation from the job */
-	jinfo->resv = rinfo;
-	jinfo->is_job_resv = 1;
-	jinfo->can_not_run = 1;
-	rinfo->job->can_not_preempt = 1;
-
-	return rinfo;
-}
-
-#endif

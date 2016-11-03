@@ -47,6 +47,7 @@
 #include "list_link.h"
 #include "attribute.h"
 #include "pbs_error.h"
+#include "libpbs.h"
 
 /**
  * @file	attr_func.c
@@ -1334,3 +1335,182 @@ strtok_quoted(char *source, const char *delimiters)
 	prune_quotes(stok);
 	return (stok);
 }
+
+/**
+ * @brief	Convert an attropl struct to an attrl struct
+ *
+ * @param[in]	from - the attropl struct to convert
+ *
+ * @return struct attrl*
+ * @retval a newly converted attrl struct
+ * @retval NULL on error
+ */
+struct attrl *
+attropl2attrl(struct attropl *from)
+{
+	struct attrl *ap = NULL, *rattrl = NULL;
+
+	while (from != NULL) {
+		if (ap == NULL) {
+			if ((ap = new_attrl()) == NULL) {
+				perror("Out of memory");
+				return NULL;
+			}
+			rattrl = ap;
+		}
+		else  {
+			if ((ap->next = new_attrl()) == NULL) {
+				perror("Out of memory");
+				return NULL;
+			}
+			ap = ap->next;
+		}
+
+		if (from->name != NULL) {
+			if ((ap->name = (char*) malloc(strlen(from->name) + 1)) == NULL) {
+				perror("Out of memory");
+				free_attrl(ap);
+				return NULL;
+			}
+			strcpy(ap->name, from->name);
+		}
+		if (from->resource != NULL) {
+			if ((ap->resource = (char*) malloc(strlen(from->resource) + 1)) == NULL) {
+				perror("Out of memory");
+				free_attrl(ap);
+				return NULL;
+			}
+			strcpy(ap->resource, from->resource);
+		}
+		if (from->value != NULL) {
+			if ((ap->value = (char*) malloc(strlen(from->value) + 1)) == NULL) {
+				perror("Out of memory");
+				free_attrl(ap);
+				return NULL;
+			}
+			strcpy(ap->value, from->value);
+		}
+		from = from->next;
+	}
+
+	return rattrl;
+}
+
+/**
+ *  @brief attrl copy constructor
+ *
+ *  @param[in] oattr - attrl to dup
+ *
+ *  @return dup'd attrl
+ */
+
+struct attrl *
+dup_attrl(struct attrl *oattr)
+{
+	struct attrl *nattr;
+
+	if (oattr == NULL)
+		return NULL;
+
+	nattr = new_attrl();
+	if (nattr == NULL)
+		return NULL;
+	if (oattr->name != NULL)
+		nattr->name = strdup(oattr->name);
+	if (oattr->resource != NULL)
+		nattr->resource = strdup(oattr->resource);
+	if (oattr->value != NULL)
+		nattr->value = strdup(oattr->value);
+
+	nattr->op = oattr->op;
+	return nattr;
+}
+
+/**
+ * @brief copy constructor for attrl list
+ * @param oattr_list - list to dup
+ * @return dup'd attrl list
+ */
+
+struct attrl *
+dup_attrl_list(struct attrl *oattr_list)
+{
+	struct attrl *nattr_head = NULL;
+	struct attrl *nattr;
+	struct attrl *nattr_prev = NULL;
+	struct attrl *oattr;
+
+	if (oattr_list == NULL)
+		return NULL;
+
+	for (oattr = oattr_list; oattr != NULL; oattr = oattr->next) {
+		nattr = dup_attrl(oattr);
+		if (nattr_prev == NULL) {
+			nattr_head = nattr;
+			nattr_prev = nattr_head;
+		} else {
+			nattr_prev->next = nattr;
+			nattr_prev = nattr;
+		}
+	}
+	return nattr_head;
+}
+
+/**
+ *	@brief create a new attrl structure and initialize it
+ */
+struct attrl *
+new_attrl()
+{
+	struct attrl *at;
+
+	if ((at = malloc(sizeof(struct attrl))) == NULL)
+		return NULL;
+
+	at->next = NULL;
+	at->name = NULL;
+	at->resource = NULL;
+	at->value = NULL;
+	at->op = SET;
+
+	return at;
+}
+
+/**
+ * @brief frees attrl structure
+ *
+ * @param [in] at - attrl to free
+ * @return nothing
+ */
+void
+free_attrl(struct attrl *at)
+ {
+	if (at == NULL)
+		return;
+
+	free(at->name);
+	free(at->resource);
+	free(at->value);
+
+	free(at);
+}
+
+/**
+ * @brief frees attrl list
+ *
+ * @param[in] at_list - attrl list to free
+ * @return nothing
+ */
+void free_attrl_list(struct attrl *at_list)
+{
+	struct attrl *cur, *tmp;
+	if(at_list == NULL )
+		return;
+
+	for(cur = at_list; cur != NULL; cur = tmp) {
+		tmp = cur->next;
+		free_attrl(cur);
+	}
+
+}
+

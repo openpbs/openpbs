@@ -936,7 +936,7 @@ main(int argc, char *argv[])
 	time_t		now;
 #endif /* localmod 031 */
 	int		stalone = 0;
-	int		schedinit(int argc, char **argv);
+	int		schedinit();
 #ifdef _POSIX_MEMLOCK
 	int		do_mlockall = 0;
 #endif	/* _POSIX_MEMLOCK */
@@ -1278,7 +1278,7 @@ main(int argc, char *argv[])
 	/*
 	 *  Local initialization stuff
 	 */
-	if (schedinit(argc, argv)) {
+	if (schedinit()) {
 		(void) sprintf(log_buffer,
 			"local initialization failed, terminating");
 		log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO,

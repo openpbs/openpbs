@@ -230,14 +230,14 @@ place *dup_place(place *pl);
  *	compare_res_to_str - compare a resource structure of type string to
  *			     a character array string
  */
-int compare_res_to_str(resource *res, char *str, enum resval_cmpflag);
+int compare_res_to_str(schd_resource *res, char *str, enum resval_cmpflag);
 
 /*
  *	compare_non_consumable - perform the == operation on a non consumable
  *				resource and resource_req
  *	returns 1 for a match or 0 for not a match
  */
-int compare_non_consumable(resource *res, resource_req *req);
+int compare_non_consumable(schd_resource *res, resource_req *req);
 
 /*
  *	new_chunk - constructor for chunk

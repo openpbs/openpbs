@@ -48,6 +48,7 @@
 #include <pbs_ifl.h>
 #include "cmds.h"
 #include "net_connect.h"
+#include "attribute.h"
 
 #define DEFAULT_INTERACTIVE "-10"
 
@@ -445,7 +446,7 @@ cnvrt_proc_attrib(int connect, struct attrl **attrp, char *dest)
 								}
 							}
 							if (ap->next == NULL && setflag == FALSE) {
-								attr = (struct attrl *) malloc(sizeof(struct attrl));
+								attr = new_attrl();
 								if (attr == NULL) {
 									fprintf(stderr, "pbs_rsub: Out of memory\n");
 									exit(2);

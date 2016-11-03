@@ -138,6 +138,12 @@ const int num_resget = sizeof(res_to_get) / sizeof(char *);
 struct config conf;
 struct status cstat;
 
+/* to make references happy */
+int pbs_rm_port;
+int got_sigpipe;
+
+int	second_connection;
+
 /* resource definitions from the server */
 
 /* all resources */

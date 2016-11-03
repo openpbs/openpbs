@@ -40,7 +40,6 @@ lib_LIBRARIES = libpbs_sched.a
 libpbs_sched_a_CPPFLAGS = \
 	-I$(top_srcdir)/src/include \
 	@PYTHON_INCLUDES@
-
 libpbs_sched_a_SOURCES = \
 	check.c \
 	check.h \

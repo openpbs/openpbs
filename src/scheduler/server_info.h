@@ -78,18 +78,18 @@ int query_server_dyn_res(server_info *sinfo);
  *                                     add it to the resource list
  */
 
-resource *find_alloc_resource(resource *resplist, resdef *def);
-resource *find_alloc_resource_by_str(resource *resplist, char *name);
+schd_resource *find_alloc_resource(schd_resource *resplist, resdef *def);
+schd_resource *find_alloc_resource_by_str(schd_resource *resplist, char *name);
 
 
 /*  finds a resource in a resource list by string resource name */
 
-resource *find_resource_by_str(resource *reslist, const char *name);
+schd_resource *find_resource_by_str(schd_resource *reslist, const char *name);
 
 /*
  *	find resource by resource definition
  */
-resource *find_resource(resource *reslist, resdef *def);
+schd_resource *find_resource(schd_resource *reslist, resdef *def);
 
 /*
  *	free_server_info - free the space used by a server_info structure
@@ -99,12 +99,12 @@ void free_server_info(server_info *sinfo);
 /*
  *      free_resource - free a resource struct
  */
-void free_resource(resource *res);
+void free_resource(schd_resource *res);
 
 /*
  *      free_resource_list - free a resource list
  */
-void free_resource_list(resource *res_list);
+void free_resource_list(schd_resource *res_list);
 
 /*
  *      new_server_info - allocate and initalize a new server_info struct
@@ -114,18 +114,12 @@ server_info *new_server_info(int limallocflag);
 /*
  *      new_resource - allocate and initialize new resoruce struct
  */
-resource *new_resource(void);
+schd_resource *new_resource(void);
 
 /*
  * Create new resource with given data
  */
-resource *create_resource(char *name, char *value, enum resource_fields field);
-
-/*
- *      print_server_info - print server_info structure
- */
-void print_server_info(server_info *sinfo, char brief);
-
+schd_resource *create_resource(char *name, char *value, enum resource_fields field);
 
 /*
  *	free_server - free a list of server_info structs
@@ -190,22 +184,22 @@ server_info *dup_server_info(server_info *osinfo);
 /*
  *      dup_resource_list - dup a resource list
  */
-resource *dup_resource_list(resource *res);
+schd_resource *dup_resource_list(schd_resource *res);
 
 /* dup a resource list selectively only duping specific resources */
 
-resource *dup_selective_resource_list(resource *res, resdef **deflist, unsigned flags);
+schd_resource *dup_selective_resource_list(schd_resource *res, resdef **deflist, unsigned flags);
 
 /*
  *	dup_ind_resource_list - dup a resource list - if a resource is indirect
  *				dup the pointed to resource instead
  */
-resource *dup_ind_resource_list(resource *res);
+schd_resource *dup_ind_resource_list(schd_resource *res);
 
 /*
  *      dup_resource - duplicate a resource struct
  */
-resource *dup_resource(resource *res);
+schd_resource *dup_resource(schd_resource *res);
 
 /*
  *      check_resv_job - finds if a job has a reservation
@@ -216,13 +210,13 @@ int check_resv_job(resource_resv *job, void *unused);
 /*
  *      free_resource_list - frees the memory used by a resource list
  */
-void free_resource_list(resource *reslist);
+void free_resource_list(schd_resource *reslist);
 
 
 /*
  *      free_resource - frees the memory used by a resource structure
  */
-void free_resource(resource *resp);
+void free_resource(schd_resource *resp);
 
 /*
  *      update_server_on_end - update a server structure when a job has
@@ -328,7 +322,7 @@ void update_universe_on_end(status *policy, resource_resv *resresv, char *job_st
  *	returns 1 on success 0 on failure/error
  *
  */
-int set_resource(resource *res, char *val, enum resource_fields field);
+int set_resource(schd_resource *res, char *val, enum resource_fields field);
 
 /*
  *	update_preemption_on_run - update preemption status when a
@@ -343,7 +337,7 @@ void update_preemption_on_run(server_info *sinfo, resource_resv *resresv);
  *	returns 1 on success
  *		0 on failure
  */
-int add_resource_list(status *policy, resource *r1, resource *r2, unsigned int flags);
+int add_resource_list(status *policy, schd_resource *r1, schd_resource *r2, unsigned int flags);
 
 /*
  *	add_resource_value - add a resource value to another
@@ -358,20 +352,20 @@ add_resource_value(sch_resource_t *val1, sch_resource_t *val2,
  *                             a string resource.  Only add values if
  *                             they do not exist unless specified by allow_dup
  */
-int add_resource_str_arr(resource *res, char **str_arr, int allow_dup);
+int add_resource_str_arr(schd_resource *res, char **str_arr, int allow_dup);
 
 /*
  *      accumulate two boolean resources together (r1 += r2)
  *        T + T = True | F + F = False | T + F = TRUE_FALSE
  */
-int add_resource_bool(resource *r1, resource *r2);
+int add_resource_bool(schd_resource *r1, schd_resource *r2);
 
 /*
  *	find_indirect_resource - follow the indirect resource pointers to
  *				 find the real resource at the end
  *	returns the indirect resource or NULL on error
  */
-resource *find_indirect_resource(resource *res, node_info **nodes);
+schd_resource *find_indirect_resource(schd_resource *res, node_info **nodes);
 
 /*
  *	resolve_indirect_resources - resource indirect resources for node array
@@ -466,7 +460,7 @@ struct queue_info *** find_queue_list_by_priority(queue_info ***list_head, int p
  */
 void free_queue_list(queue_info *** queue_list);
 
-void add_req_list_to_assn(resource *, resource_req *);
+void add_req_list_to_assn(schd_resource *, resource_req *);
 
 int create_resource_assn_for_node(node_info *);
 

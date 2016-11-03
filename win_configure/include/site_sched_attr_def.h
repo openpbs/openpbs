@@ -38,7 +38,7 @@
 
 /*
  * Place holder for site supplied additions to the array of site
- * scheduler attribute definitions, see server/svr_attr_def.c
+ * scheduler attribute definitions, see sched_attr_def.c
  *
  * Array elements must be of the form:
  *	    {	"name",

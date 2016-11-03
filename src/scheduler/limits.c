@@ -416,7 +416,7 @@ struct limit_info {
  *		the AVL limit fetching code is sufficiently fast that this isn't an
  *		issue.
  */
-static resource	*limres;	/* list of resources that have limits */
+static schd_resource	*limres;	/* list of resources that have limits */
 /**
  * @brief
  * 		We currently store both resource and run limits in a
@@ -1681,7 +1681,7 @@ check_queue_max_res(server_info *si, queue_info *qi, resource_resv *rr,
 	char		*reskey;
 	sch_resource_t	max_res;
 	sch_resource_t	used;
-	resource	*res;
+	schd_resource	*res;
 	resource_req	*used_res;
 	resource_req	*req;
 	counts		*c;
@@ -1761,7 +1761,7 @@ check_server_max_res(server_info *si, queue_info *qi, resource_resv *rr,
 	char		*reskey;
 	sch_resource_t	max_res;
 	sch_resource_t	used;
-	resource	*res;
+	schd_resource	*res;
 	resource_req	*used_res;
 	resource_req	*req;
 	counts		*c;
@@ -2387,7 +2387,7 @@ check_server_max_res_soft(server_info *si, queue_info *qi, resource_resv *rr)
 	char		*reskey;
 	sch_resource_t	max_res_soft;
 	sch_resource_t	used;
-	resource	*res;
+	schd_resource	*res;
 	resource_req	*used_res;
 	resource_req	*req;
 	counts		*c;
@@ -2455,7 +2455,7 @@ check_queue_max_res_soft(server_info *si, queue_info *qi, resource_resv *rr)
 	char		*reskey;
 	sch_resource_t	max_res_soft;
 	sch_resource_t	used;
-	resource	*res;
+	schd_resource	*res;
 	resource_req	*used_res;
 	resource_req	*req;
 	counts		*c;
@@ -2528,7 +2528,7 @@ check_max_group_res(resource_resv *rr, counts *cts_list,
 	char		*gengroupreskey;
 	char		*group = rr->group;
 	resource_req	*req;
-	resource	*res;
+	schd_resource	*res;
 	sch_resource_t	max_group_res;
 	sch_resource_t	max_gengroup_res;
 	sch_resource_t	used = 0;
@@ -2611,7 +2611,7 @@ check_max_group_res_soft(resource_resv *rr, counts *cts_list, void *limitctx)
 	char		*gengroupreskey;
 	char		*group = rr->group;
 	resource_req	*req;
-	resource	*res;
+	schd_resource	*res;
 	sch_resource_t	max_group_res_soft;
 	sch_resource_t	max_gengroup_res_soft;
 	sch_resource_t	used = 0;
@@ -2695,7 +2695,7 @@ check_max_user_res(resource_resv *rr, counts *cts_list, char **resname,
 	char		*genuserreskey;
 	char		*user = rr->user;
 	resource_req	*req;
-	resource	*res;
+	schd_resource	*res;
 	sch_resource_t	max_user_res;
 	sch_resource_t	max_genuser_res;
 	sch_resource_t	used = 0;
@@ -2781,7 +2781,7 @@ check_max_user_res_soft(resource_resv **rr_arr, resource_resv *rr,
 	char		*genuserreskey;
 	char		*user = rr->user;
 	resource_req	*req;
-	resource	*res;
+	schd_resource	*res;
 	sch_resource_t	max_user_res_soft;
 	sch_resource_t	max_genuser_res_soft;
 	sch_resource_t	used = 0;
@@ -2859,7 +2859,7 @@ check_max_user_res_soft(resource_resv **rr_arr, resource_resv *rr,
 static int
 lim_setreslimits(const struct attrl *a, void *ctx)
 {
-	resource	*r;
+	schd_resource	*r;
 
 	/* remember resources that appear in a limit */
 	r = find_alloc_resource_by_str(limres, a->resource);
@@ -2964,7 +2964,7 @@ lim_setoldlimits(const struct attrl *a, void *ctx)
 			/* e is PBS_GENERIC_ENTITY or PBS_ALL_ENTITY */
 			e = p + 2;
 			if (avalue->lim_isreslim) {
-				resource *r;
+				schd_resource *r;
 
 				/* remember resources that appear in a limit */
 				r = find_alloc_resource_by_str(limres, a->resource);
@@ -3001,7 +3001,7 @@ lim_setoldlimits(const struct attrl *a, void *ctx)
 			/* e is PBS_GENERIC_ENTITY or PBS_ALL_ENTITY */
 			e = p + 2;
 			if (avalue->lim_isreslim) {
-				resource *r;
+				schd_resource *r;
 
 				/* remember resources that appear in a limit */
 				r = find_alloc_resource_by_str(limres, a->resource);
@@ -3341,7 +3341,7 @@ check_max_project_res(resource_resv *rr, counts *cts_list,
 	char		*projectreskey;
 	char		*genprojectreskey;
 	resource_req	*req;
-	resource	*res;
+	schd_resource	*res;
 	char		*project;
 	sch_resource_t	max_project_res;
 	sch_resource_t	max_genproject_res;
@@ -3426,7 +3426,7 @@ check_max_project_res_soft(resource_resv *rr, counts *cts_list, void *limitctx)
 	char		*genprojectreskey;
 	char		*project;
 	resource_req	*req;
-	resource	*res;
+	schd_resource	*res;
 	sch_resource_t	max_project_res_soft;
 	sch_resource_t	max_genproject_res_soft;
 	sch_resource_t	used = 0;

@@ -38,7 +38,7 @@
 
 /*
  * Place holder for site supplied additions to the array of
- * resource definitions, see server/resc_def_all.c
+ * resource definitions, see resc_def_all.c
  *
  * Array elements must be of the form:
  *	    {	"name",

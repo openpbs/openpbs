@@ -462,8 +462,6 @@ extern int pbs_connection_getsocket(int);
 
 extern int pbs_connect_noblk(char *, int);
 
-extern int pbs_query_max_connections(void);
-
 extern int pbs_connection_set_nodelay(int);
 
 extern int pbs_geterrno(void);
@@ -479,6 +477,8 @@ extern char *pbs_submit_with_cred(int, struct attropl *, char *,
 
 
 extern int pbs_loadconf(int);
+
+extern int pbs_query_max_connections(void);
 
 extern char *pbs_get_tmpdir(void);
 

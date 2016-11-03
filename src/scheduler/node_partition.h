@@ -118,19 +118,6 @@ node_partition *dup_node_partition(node_partition *onp, server_info *nsinfo);
 node_partition **
 create_node_partitions(status *policy, node_info **nodes, char **resnames,
 	unsigned int flags, int *num_parts);
-/*
- *
- *	need_to_partition - determine if we need to partition the nodes
- *			    criteria: if any node has partitioning resource
- *
- *	  ninfo_arr - node info array to determine if we need to partition
- *	  resname   - resource name to partition on
- *
- *	returns 1: need to partition
- *		0: no need to partition
- *
- */
-int need_to_partition(node_info **ninfo_arr, char *resname);
 
 /*
  *
@@ -212,19 +199,6 @@ find_alloc_np_cache(status *policy, np_cache ***pnpc_arr,
  *	returns 1 on success - 0 on failure
  */
 int add_np_cache(np_cache ***npc_arr, np_cache *npc);
-
-/*
- *	remove_noncomplete_sets - remove placement sets from a pool which do
- *				  not contain all the nodes from the global
- *				  pool.
- *
- *	  global_pool - global pool of placement sets
- *	  pool - pool to modify
- *
- *	returns the number of placement sets removed
- */
-int remove_noncomplete_sets(node_partition **global_pool, node_partition **pool);
-
 
 /*
  * do an inital check to see if a resresv can fit into a node partition

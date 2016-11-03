@@ -55,7 +55,6 @@
  * 	perform_event()
  * 	exists_run_event()
  * 	calc_run_time()
- * 	check_events_overlap()
  * 	create_event_list()
  * 	create_events()
  * 	new_event_list()
@@ -77,18 +76,8 @@
  * 	simulate_resmin()
  * 	policy_change_to_str()
  * 	policy_change_info()
- * 	check_node_issues()
- * 	calendar_test()
  * 	describe_simret()
  * 	add_prov_event()
- * 	new_sim_info()
- * 	dup_sim_info_list()
- * 	dup_sim_info()
- * 	free_sim_info_list()
- * 	free_sim_info()
- * 	find_simobj_ptr()
- * 	create_add_sim_info()
- * 	sim_id_to_str()
  * 	generic_sim()
  *
  */
@@ -776,48 +765,6 @@ calc_run_time(char *name, server_info *sinfo, int flags)
 	return event_time;
 }
 
-/**
- * @brief
- *		Checks if two resource reservations overlap in time.
- *
- * @see
- *		check_resources_for_node
- *
- * @param[in]	e1_start - start time of event 1
- * @param[in]	e1_end   - end time of event 1
- * @param[in]	e2_start - start time of event 2
- * @param[in]	e2_end   - end time of event 2
- *
- * @return	int
- * @retval	0	: events don't overlap
- * @retval	1	: events overlap
- *
- * @par Side Effects:	Unknown
- *
- * @par Reentrancy:	MT-safe
- *
- */
-int
-check_events_overlap(time_t e1_start, time_t e1_end, time_t e2_start, time_t e2_end)
-{
-	/*
-	 * check: [e2_start <= e1_start < e2_end]
-	 * e2 starts at or before e1 and ends after e1 started,
-	 * hence overlap each other.
-	 */
-	if ((e1_start >= e2_start) && (e1_start < e2_end))
-		return 1;
-
-	/*
-	 * check: [e1_start <= e2_start < e1_end]
-	 * e2 starts at or after e1 but before e1 ends, hence
-	 * overlap each other.
-	 */
-	if ((e2_start >= e1_start) && (e2_start < e1_end))
-		return 1;
-
-	return 0;
-}
 /**
  * @brief
  * 		create an event_list from running jobs and confirmed resvs
@@ -1558,17 +1505,17 @@ add_dedtime_events(event_list *elist, status *policy)
  *
  * @par MT-safe: No
  */
-resource *
-simulate_resmin(resource *reslist, time_t end, event_list *calendar,
+schd_resource *
+simulate_resmin(schd_resource *reslist, time_t end, event_list *calendar,
 	resource_resv **incl_arr, resource_resv *exclude)
 {
-	static resource *retres = NULL;	/* return pointer */
+	static schd_resource *retres = NULL;	/* return pointer */
 
-	resource *cur_res;
-	resource *cur_resmin;
+	schd_resource *cur_res;
+	schd_resource *cur_resmin;
 	resource_req *req;
-	resource *res;
-	resource *resmin = NULL;
+	schd_resource *res;
+	schd_resource *resmin = NULL;
 	timed_event *te;
 	resource_resv *resresv;
 	unsigned int event_mask = (TIMED_RUN_EVENT | TIMED_END_EVENT);
@@ -1750,105 +1697,6 @@ policy_change_info(server_info *sinfo, resource_resv *resresv)
 
 /**
  * @brief
- * 		debug function to check a list of nodes if any
- *		consumable resources are over subscribed
- *
- * @param[in] nodes - the nodes to check
- * @param[in] quiet - if true, don't print to stderr
- *
- * @return	int
- * @retval	1	: no issues
- * @retval 	0 	: node issues (print issues to stderr)
- * @retval -1 	: error
- */
-int
-check_node_issues(node_info **nodes, int quiet)
-{
-	int i;
-	resource *res;
-	sch_resource_t dyn_avail;
-	int rc = 1;
-
-	if (nodes == NULL)
-		return -1;
-
-	for (i = 0; nodes[i] != NULL; i++) {
-		for (res = nodes[i]->res; res != NULL; res = res->next) {
-			if (res->type.is_consumable) {
-				dyn_avail = res->avail == SCHD_INFINITY ? 0 :
-					(res->avail - res->assigned);
-				if (dyn_avail < 0) {
-					fprintf(stderr, "Node %s: resource %s: %.0lf\n", nodes[i]->name,
-						res->name, dyn_avail);
-					rc = 0;
-				}
-			}
-		}
-	}
-	return rc;
-}
-
-/**
- * @brief
- * 		debug function to test a calendar.  It will run a
- *		calendar from the current point to the end and report
- *
- * @param[in]	sinfo - server which contains the calendar
- * @param[in]	quiet - true to not print anything to stderr
- *
- * @retval	1 : no errors
- * @retval 	0 : calendar errors (with text printed to stderr)
- * @retval -1 : error
- */
-int
-calendar_test(server_info *sinfo, int quiet)
-{
-
-	server_info *nsinfo;
-	unsigned int ret = 0;
-	time_t event_time;
-	int rc = 1;
-	int i;
-
-
-	nsinfo = dup_server_info(sinfo);
-
-	if (nsinfo == NULL)
-		return -1;
-
-	while (!(ret & (TIMED_ERROR | TIMED_NOEVENT)) && rc) {
-		ret = simulate_events(nsinfo->policy, nsinfo, SIM_NEXT_EVENT, NULL, &event_time);
-
-		rc = check_node_issues(nsinfo->nodes, quiet);
-		if (rc == 0) {
-			if (!quiet)
-				fprintf(stderr, "time: %s", ctime(&sinfo->server_time));
-		}
-	}
-
-	if (nsinfo->running_jobs[0] != NULL) {
-		if (!quiet) {
-			fprintf(stderr, "Running Jobs: ");
-			for (i = 0; nsinfo->running_jobs[i] != NULL; i++)
-				fprintf(stderr, "%s ", nsinfo->running_jobs[i]->name);
-			fprintf(stderr, "\n");
-		}
-		rc = 0;
-	}
-
-	if (ret & TIMED_ERROR) {
-		if (!quiet)
-			fprintf(stderr, "Simulation Error.\n");
-		rc = 0;
-	}
-
-	free_server(nsinfo, 0);
-
-	return rc;
-}
-
-/**
- * @brief
  * 		takes a bitfield returned by simulate_events and will determine if
  *      the amount resources have gone up down, or are unchanged.  If events
  *	  	caused resources to be both freed and used, we err on the side of
@@ -1914,190 +1762,6 @@ add_prov_event(event_list *calendar, time_t event_time, node_info *node)
 	return 1;
 }
 
-/**
- * @brief
- * 		constructor for sim_info
- *
- * @return	newly created sim_info
- */
-sim_info *
-new_sim_info()
-{
-	sim_info *sim;
-
-	if ((sim = malloc(sizeof(sim_info))) == NULL) {
-		log_err(errno, __func__, MEM_ERR_MSG);
-		return NULL;
-	}
-
-	sim->id = SIMID_NONE;
-	sim->info[0] = '\0';
-	sim->simobj = NULL;
-	sim->next = NULL;
-
-	return sim;
-}
-
-/**
- * @brief
- * 		copy constructor for a list of sim_info
- *
- * @param[in]	sim 	- sim object whose obj needs to be copied
- * @param[in] 	nsinfo 	- the server info
- *
- * @return	new sim_info which contains copied values.
- */
-sim_info *
-dup_sim_info_list(sim_info *osim_list, server_info *nsinfo)
-{
-	sim_info *nsim_list = NULL;
-	sim_info *osim;
-	sim_info *nsim;
-	sim_info *prev_nsim = NULL;
-
-	for (osim = osim_list; osim != NULL; osim = osim->next, prev_nsim = nsim) {
-		nsim = dup_sim_info(osim, nsinfo);
-		if (nsim == NULL) {
-			free_sim_info_list(nsim_list);
-			return NULL;
-		}
-		if (nsim_list == NULL)
-			nsim_list = nsim;
-
-		if (prev_nsim != NULL)
-			prev_nsim->next = nsim;
-	}
-	return nsim_list;
-}
-/**
- * @brief
- * 		copy constructor for sim_info
- *
- * @param[in]	osim 	- sim object whose obj needs to be copied
- * @param[in] 	nsinfo 	- the server info
- *
- * @return	new sim_info which contains copied values.
- */
-sim_info *
-dup_sim_info(sim_info *osim, server_info *nsinfo)
-{
-	sim_info *nsim;
-
-	if (osim == NULL)
-		return NULL;
-
-	nsim = new_sim_info();
-	if (nsim == NULL)
-		return NULL;
-
-	nsim->id = osim->id;
-	strcpy(nsim->info, osim->info);
-
-	nsim->simobj = find_simobj_ptr(osim, nsinfo);
-
-	return nsim;
-}
-
-/**
- * @brief
- * 		destructor for sim_info list
- *
- * @param[in]	sim_list	-	sim list which needs to be destroyed.
- */
-void
-free_sim_info_list(sim_info *sim_list)
-{
-	sim_info *sim;
-	sim_info *next_sim;
-
-	for (sim = sim_list; sim != NULL; sim = next_sim) {
-		next_sim = sim->next;
-		free_sim_info(sim);
-	}
-}
-
-/**
- * @brief
- * 		destructor for sim_info
- *
- * @param[in]	sim	-	sim object which needs to be destroyed.
- */
-void
-free_sim_info(sim_info *sim)
-{
-	free(sim);
-}
-
-/**
- * @brief
- * 		find an simobj ptr in a server_info
- *
- * @param[in] sim 		- sim object whose obj ptr we need to find
- * @param[in] nsinfo 	- the server to find it from
- *
- * @return	new simobj ptr
- */
-void *
-find_simobj_ptr(sim_info *sim, server_info *nsinfo)
-{
-	if (sim == NULL || nsinfo == NULL)
-		return NULL;
-
-	switch (sim->id) {
-			/* job events */
-		case SIMID_RUN_JOB:
-		case SIMID_MOVE_JOB:
-		case SIMID_MODIFY_JOB:
-		case SIMID_SUSPEND_JOB:
-		case SIMID_CHKP_JOB:
-		case SIMID_REQUEUE_JOB:
-			return find_resource_resv(nsinfo->jobs, ((resource_resv*)(sim->simobj))->name);
-		case SIMID_NONE:
-			return NULL;
-		case SIMID_HIGH:
-		default:
-			schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_WARNING, __func__, "Unknown SIMID event type");
-	}
-	return NULL;
-}
-
-
-/**
- * @brief
- * 		create and add sim_info to list
- *
- * @param[in] sim_list 	- list to add sim_info to
- * @param[in] id 		- id of sim event
- * @param[in] info     	- inf of sim event
- *
- * @return	new sim_info
- * @retval	newly created sim_info
- * @retval	NULL	: on error
- */
-sim_info *
-create_add_sim_info(sim_info *sim_list,
-	enum sim_info_id simid, char *info, void *simobj)
-{
-	sim_info *sim;
-	sim_info *nsim;
-
-	nsim = new_sim_info();
-	if (nsim == NULL)
-		return NULL;
-
-	nsim->id = simid;
-	if (info != NULL)
-		strcpy(nsim->info, info);
-	nsim->simobj = simobj;
-
-	for (sim = sim_list; sim != NULL && sim->next != NULL; sim = sim->next)
-		;
-
-	if (sim != NULL)
-		sim->next = nsim;
-
-	return nsim;
-}
 /**
  * @brief
  * 		generic simulation function which will call a function pointer over

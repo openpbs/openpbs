@@ -57,13 +57,6 @@
 #define IND_FIRST       IND_CMD
 #define IND_LAST        IND_NAME
 
-/* types of attributes: read only, public, all */
-#define TYPE_ATTR_READONLY      1
-#define TYPE_ATTR_PUBLIC        2
-#define TYPE_ATTR_ALL           TYPE_ATTR_READONLY | TYPE_ATTR_PUBLIC
-
-
-
 
 /* Macros */
 
@@ -149,7 +142,6 @@ struct objname *default_server_name();
 struct objname *temp_objname(char *, char *, struct server *);
 int parse_request(char *, char ***);
 void clean_up_and_exit(int);
-void freeattrl(struct attrl *);
 void freeattropl(struct attropl *);
 void pstderr(const char *);
 void pstderr_big(char *, char *, char *);
@@ -162,7 +154,6 @@ int set_active(int, struct objname *);
 int get_request(char **);
 int parse(char *, int *, int *, char **, struct attropl **);
 int execute(int, int, int, char *, struct attropl *);
-int is_attr(int, char *, int);
 int is_valid_object(struct objname *, int);
 void disconnect_from_server();
 
