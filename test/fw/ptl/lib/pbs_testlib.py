@@ -4203,16 +4203,6 @@ class PBSService(PBSObject):
             return True
         return False
 
-    def is_cray(self):
-        """
-        Returns True if the version of PBS used was built for Cray platforms
-        """
-        rv = self.log_match("--enable-alps", tail=False, n=10, max_attempts=1,
-                            level=logging.DEBUG)
-        if rv:
-            return True
-        return False
-
     def get_tempdir(self):
         " platform independent call to get a temporary directory "
         return self.du.get_tempdir(self.hostname)
@@ -11546,6 +11536,15 @@ class MoM(PBSService):
     def load_configuration(self, infile):
         " load configuration from saved file infile "
         self._load_configuration(infile, MGR_OBJ_NODE)
+
+    def is_cray(self):
+        """
+        Returns True if the version of PBS used was built for Cray platforms
+        """
+        rv = self.log_match("alps_client", tail=False, max_attempts=10)
+        if rv:
+            return True
+        return False
 
     def is_cpuset_mom(self):
         e = self.pbs_conf['PBS_EXEC']

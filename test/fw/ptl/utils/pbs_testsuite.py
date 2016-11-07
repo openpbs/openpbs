@@ -172,7 +172,7 @@ def skipOnCray(function):
     """
 
     def wrapper(self, *args, **kwargs):
-        if self.server.is_cray():
+        if self.mom.is_cray():
             self.skipTest(reason='capability not supported on Cray')
         else:
             function(self, *args, **kwargs)

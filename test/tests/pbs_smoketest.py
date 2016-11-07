@@ -172,6 +172,7 @@ class SmokeTest(PBSTestSuite):
         self.server.alterjob(jid, {'comment': 'job comment altered'})
         self.server.expect(JOB, {'comment': 'job comment altered'}, id=jid)
 
+    @skipOnCray
     def test_sigjob(self):
         """
         Test to signal job
@@ -352,6 +353,7 @@ class SmokeTest(PBSTestSuite):
         self.server.expect(JOB, {'estimated.start_time': 5},
                            count=True, op=SET)
 
+    @skipOnCray
     def test_preemption(self):
         """
         Test for preemption
@@ -466,6 +468,8 @@ class SmokeTest(PBSTestSuite):
         4 hours. Expect the job's walltime to be greater or equal than the
         minimum set.
         """
+        a = {'resources_available.ncpus': 1}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
         now = time.time()
         self.scheduler.add_dedicated_time(start=now + 3600, end=now + 7200)
         j = Job(TEST_USER)
@@ -719,6 +723,7 @@ class SmokeTest(PBSTestSuite):
         a = {'job_state': 'R', 'Resource_List.foo': '5'}
         self.server.expect(JOB, a, id=j1id)
 
+    @skipOnCray
     def test_schedlog_preempted_info(self):
         """
         Demonstrate how to retrieve a list of jobs that had to be preempted in
@@ -735,6 +740,7 @@ class SmokeTest(PBSTestSuite):
                 self.logger.info('Preemption info: ' +
                                  str(cycle.preempted_jobs))
 
+    @skipOnCray
     def test_basic(self):
         """
         basic express queue preemption test
@@ -768,6 +774,7 @@ class SmokeTest(PBSTestSuite):
         self.server.expect(SERVER, {'total_jobs': 0})
         self.server.manager(MGR_CMD_DELETE, QUEUE, id="expressq")
 
+    @skipOnCray
     def test_basic_ja(self):
         """
         basic express queue preemption test with job array
@@ -824,6 +831,8 @@ class SmokeTest(PBSTestSuite):
         its walltime to less than or equal to 3 hours and greater than or
         equal to 10 mins.
         """
+        a = {'resources_available.ncpus': 1}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
         now = time.time()
         resv_dur = 7200
         resv_start = now + 10800
@@ -975,7 +984,7 @@ class SmokeTest(PBSTestSuite):
         else:
             a = {'resources_available.ncpus': 1}
         self.server.create_vnodes(self.server.shortname, a, 1,
-                                  mom=self.mom, usenatvnode=True)
+                                  mom=self.mom)
         if isWithPreemt:
             self.do_preempt_config()
         j1 = Job(TEST_USER, attrs={'Resource_List.walltime': 100})
@@ -1016,12 +1025,14 @@ class SmokeTest(PBSTestSuite):
         else:
             return j1id
 
+    @skipOnCray
     def test_suspend_job_with_preempt(self):
         """
         Test Suspend of Job using Scheduler Preemption
         """
         self.common_stuff(isWithPreemt=True)
 
+    @skipOnCray
     def test_resume_job_with_preempt(self):
         """
         Test Resume of Job using Scheduler Preemption
@@ -1037,12 +1048,14 @@ class SmokeTest(PBSTestSuite):
                                    {'session_id': (NOT, self.isSuspended)},
                                    id=job['id'])
 
+    @skipOnCray
     def test_suspend_job_array_with_preempt(self):
         """
         Test Suspend of Job array using Scheduler Preemption
         """
         self.common_stuff(isJobArray=True, isWithPreemt=True)
 
+    @skipOnCray
     def test_resume_job_array_with_preempt(self):
         """
         Test Resume of Job array using Scheduler Preemption
