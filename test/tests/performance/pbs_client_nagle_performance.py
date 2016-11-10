@@ -66,7 +66,7 @@ class TestClientNagles(TestPerformance):
 
         TestPerformance.tearDown(self)
         self.server.cleanup_jobs(runas=ROOT_USER)
-        
+ 
     def compute_qdel_time(self):
         """
         Computes qdel time in secs"
