@@ -37,6 +37,7 @@
 # trademark licensing policies.
 
 import os
+import timeit
 
 from tests.performance import *
 
@@ -50,21 +51,29 @@ class TestClientNagles(TestPerformance):
 
     def setUp(self):
         """
-            Base class method overridding
-            builds absolute path of commands to execute
+        Base class method overriding
+        builds absolute path of commands to execute
         """
         TestPerformance.setUp(self)
         self.time_command = self.du.which(exe="time")
         if self.time_command == "time":
             self.skipTest("Time command not found")
 
+    def tearDown(self):
+        """
+        cleanup jobs
+        """
+
+        TestPerformance.tearDown(self)
+        self.server.cleanup_jobs(runas=ROOT_USER)
+ 
     def compute_qdel_time(self):
         """
         Computes qdel time in secs"
         return :
               -1 on qdel fail
         """
-        command = self.time_command
+        command = self.time_command + " "
         command += " -f \"%e\" "
         command += os.path.join(
             self.server.client_conf['PBS_EXEC'],
@@ -75,11 +84,12 @@ class TestClientNagles(TestPerformance):
         qdel_perf = self.du.run_cmd(self.server.hostname,
                                     command,
                                     as_script=True,
+                                    runas=TEST_USER1,
                                     logerr=False)
         if qdel_perf['rc'] != 0:
             return -1
 
-        return float(qdel_perf['err'][0])
+        return qdel_perf['err'][0]
 
     def submit_jobs(self, user, num_jobs):
         """
@@ -130,6 +140,37 @@ class TestClientNagles(TestPerformance):
         self.logger.info(
             "qdel performance after setting manager: " + str(qdel_perf2))
 
-        # Check that the two timings are pretty close to each other
-        self.assertTrue((qdel_perf2 - qdel_perf) < 5,
-                        "qdel performance differs too much!")
+    @timeout(600)
+    def test_qsub_perf(self):
+        """
+        Test that qsub performance have improved when run
+        with -f option
+        """
+
+        # Restart server again
+        self.server.restart()
+
+        # Submit a job for 500 times and timeit
+        cmd = os.path.join(
+              self.server.client_conf['PBS_EXEC'],
+              'bin',
+              'qsub -- /bin/true >/dev/null')
+        start_time = timeit.default_timer()
+        for x in range(1, 500):
+            rv = self.du.run_cmd(self.server.hostname, cmd)
+            self.assertTrue(rv['rc'] == 0)
+        end_time1 = timeit.default_timer() - float(start_time)
+
+        # submit a job with -f for 500 times and timeit
+        cmd = os.path.join(
+              self.server.client_conf['PBS_EXEC'],
+              'bin',
+              'qsub -f -- /bin/true >/dev/null >/dev/null')
+        start_time = timeit.default_timer()
+        for x in range(1, 500):
+            rv = self.du.run_cmd(self.server.hostname,
+                                 cmd)
+            self.assertTrue(rv['rc'] == 0)
+        end_time2 = timeit.default_timer() - float(start_time)
+        self.logger.info("Time taken by qsub -f is " + str(end_time2) +
+                         " and time taken by qsub is " + str(end_time1))
