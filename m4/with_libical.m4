@@ -50,7 +50,9 @@ AC_DEFUN([PBS_AC_WITH_LIBICAL],
   AS_IF([test -r "$libical_dir/include/ical.h"],
     AS_IF([test "$libical_dir" != "/usr"],
       [libical_inc="-I$libical_dir/include"]),
-    AC_MSG_ERROR([libical headers not found.]))
+    AS_IF([test -r "$libical_dir/include/libical/ical.h"],
+      [libical_inc="-I$libical_dir/include/libical"],
+      AC_MSG_ERROR([libical headers not found.])))    
   AS_IF([test "$libical_dir" = "/usr"],
     # Using system installed libical
     AS_IF([test -r "/usr/lib64/libical.so" -o -r "/usr/lib/libical.so" -o -r "/usr/lib/x86_64-linux-gnu/libical.so"],
