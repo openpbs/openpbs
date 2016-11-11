@@ -171,43 +171,43 @@ CLEANFILES = \
 
 job_attr_def.c: $(top_srcdir)/src/server/master_job_attr_def.xml
 	@echo Generating $@ from $< ; \
-	python $(top_srcdir)/buildutils/attr_parser.py \
+	$(PYTHON) $(top_srcdir)/buildutils/attr_parser.py \
 		-m $(top_srcdir)/src/server/master_job_attr_def.xml \
 		-e /dev/null -s $@ -a job
 
 svr_attr_def.c: $(top_srcdir)/src/server/master_svr_attr_def.xml
 	@echo Generating $@ from $< ; \
-	python $(top_srcdir)/buildutils/attr_parser.py \
+	$(PYTHON) $(top_srcdir)/buildutils/attr_parser.py \
 		-m $(top_srcdir)/src/server/master_svr_attr_def.xml \
 		-e /dev/null -s $@ -a server
 
 queue_attr_def.c: $(top_srcdir)/src/server/master_queue_attr_def.xml
 	@echo Generating $@ from $< ; \
-	python $(top_srcdir)/buildutils/attr_parser.py \
+	$(PYTHON) $(top_srcdir)/buildutils/attr_parser.py \
 		-m $(top_srcdir)/src/server/master_queue_attr_def.xml \
 		-e /dev/null -s $@ -a queue
 
 node_attr_def.c: $(top_srcdir)/src/server/master_node_attr_def.xml
 	@echo Generating $@ from $< ; \
-	python $(top_srcdir)/buildutils/attr_parser.py \
+	$(PYTHON) $(top_srcdir)/buildutils/attr_parser.py \
 		-m $(top_srcdir)/src/server/master_node_attr_def.xml \
 		-e /dev/null -s $@ -a node
 
 sched_attr_def.c: $(top_srcdir)/src/server/master_sched_attr_def.xml
 	@echo Generating $@ from $< ; \
-	python $(top_srcdir)/buildutils/attr_parser.py \
+	$(PYTHON) $(top_srcdir)/buildutils/attr_parser.py \
 		-m $(top_srcdir)/src/server/master_sched_attr_def.xml \
 		-e /dev/null -s $@ -a sched
 
 resv_attr_def.c: $(top_srcdir)/src/server/master_resv_attr_def.xml
 	@echo Generating $@ from $< ; \
-	python $(top_srcdir)/buildutils/attr_parser.py \
+	$(PYTHON) $(top_srcdir)/buildutils/attr_parser.py \
 		-m $(top_srcdir)/src/server/master_resv_attr_def.xml \
 		-e /dev/null -s $@ -a resv
 
 resc_def_all.c: $(top_srcdir)/src/server/master_resc_def_all.xml
 	@echo Generating $@ from $< ; \
-	python $(top_srcdir)/buildutils/attr_parser.py \
+	$(PYTHON) $(top_srcdir)/buildutils/attr_parser.py \
 		-m $(top_srcdir)/src/server/master_resc_def_all.xml \
 		-e /dev/null -s $@ -a resc
 
