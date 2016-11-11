@@ -110,7 +110,7 @@ get_num_occurrences(char *rrule, time_t dtstart, char *tz)
 	icalerror_clear_errno();
 
 	icalerror_set_error_state(ICAL_PARSE_ERROR, ICAL_ERROR_NONFATAL);
-	icalerror_errors_are_fatal = 0;
+	icalerror_set_errors_are_fatal(0);
 	localzone = icaltimezone_get_builtin_timezone(tz);
 
 	if (localzone == NULL)
@@ -190,7 +190,7 @@ get_occurrence(char *rrule, time_t dtstart, char *tz, int idx)
 	icalerror_clear_errno();
 
 	icalerror_set_error_state(ICAL_PARSE_ERROR, ICAL_ERROR_NONFATAL);
-	icalerror_errors_are_fatal = 0;
+	icalerror_set_errors_are_fatal(0);
 	localzone = icaltimezone_get_builtin_timezone(tz);
 
 	if (localzone == NULL)
@@ -275,7 +275,7 @@ check_rrule(char *rrule, time_t dtstart, time_t dtend, char *tz, int *err_code)
 	icalerror_clear_errno();
 
 	icalerror_set_error_state(ICAL_PARSE_ERROR, ICAL_ERROR_NONFATAL);
-	icalerror_errors_are_fatal = 0;
+	icalerror_set_errors_are_fatal(0);
 
 	if (tz == NULL || rrule == NULL)
 		return 0;
