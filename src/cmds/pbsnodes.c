@@ -1315,7 +1315,7 @@ main(int argc, char *argv[])
 			/* list any node that is marked DOWN or OFF_LINE	*/
 			for (bstat = bstat_head; bstat; bstat = bstat->next) {
 				if (is_down(bstat) || is_offline(bstat)) {
-					printf("%-20.20s %s %s\n", bstat->name,
+					printf("%-20s %s %s\n", bstat->name,
 						get_nstate(bstat), get_comment(bstat));
 				}
 			}
