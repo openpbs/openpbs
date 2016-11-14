@@ -69,5 +69,10 @@ AC_DEFUN([PBS_AC_WITH_LIBICAL],
   AC_SUBST(libical_inc)
   AC_SUBST(libical_lib)
   AC_DEFINE([LIBICAL], [], [Defined when libical is available])
+  PKG_CHECK_MODULES([libical_api2],
+    [libical >= 2],
+    AC_DEFINE([LIBICAL_API2], [], [Defined when libical version >= 2]),
+    []
+  )
 ])
 

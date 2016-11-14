@@ -110,7 +110,11 @@ get_num_occurrences(char *rrule, time_t dtstart, char *tz)
 	icalerror_clear_errno();
 
 	icalerror_set_error_state(ICAL_PARSE_ERROR, ICAL_ERROR_NONFATAL);
-	icalerror_errors_are_fatal = 0;
+#ifdef LIBICAL_API2
+    icalerror_set_errors_are_fatal(0);
+#else
+    icalerror_errors_are_fatal = 0;
+#endif
 	localzone = icaltimezone_get_builtin_timezone(tz);
 
 	if (localzone == NULL)
@@ -190,8 +194,12 @@ get_occurrence(char *rrule, time_t dtstart, char *tz, int idx)
 	icalerror_clear_errno();
 
 	icalerror_set_error_state(ICAL_PARSE_ERROR, ICAL_ERROR_NONFATAL);
-	icalerror_errors_are_fatal = 0;
-	localzone = icaltimezone_get_builtin_timezone(tz);
+#ifdef LIBICAL_API2
+    icalerror_set_errors_are_fatal(0);
+#else
+    icalerror_errors_are_fatal = 0;
+#endif
+    localzone = icaltimezone_get_builtin_timezone(tz);
 
 	if (localzone == NULL)
 		return -1;
@@ -275,7 +283,11 @@ check_rrule(char *rrule, time_t dtstart, time_t dtend, char *tz, int *err_code)
 	icalerror_clear_errno();
 
 	icalerror_set_error_state(ICAL_PARSE_ERROR, ICAL_ERROR_NONFATAL);
-	icalerror_errors_are_fatal = 0;
+#ifdef LIBICAL_API2
+    icalerror_set_errors_are_fatal(0);
+#else
+    icalerror_errors_are_fatal = 0;
+#endif
 
 	if (tz == NULL || rrule == NULL)
 		return 0;
