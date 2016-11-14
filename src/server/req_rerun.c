@@ -142,7 +142,7 @@ force_reque(job *pjob)
 	rel_resc(pjob);
 
 	/* note in accounting file */
-	account_jobend(pjob, (char *)0, PBS_ACCT_RERUN);
+	account_jobend(pjob, pjob->ji_acctrec, PBS_ACCT_RERUN);
 
 	/* if a subjob,  we set substate to RERUN3 to cause trktbl entry */
 	/* to be reset to Qeued, and then blow away the job struct       */

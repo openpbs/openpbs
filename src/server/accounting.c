@@ -1147,56 +1147,60 @@ account_jobend(job *pjob, char *used, int type)
 	len -= i;
 
 	/* finally add on resources used from req_jobobit() */
-	if (((used == NULL) && (pjob->ji_acctrec == NULL) && (type == PBS_ACCT_END)) ||
-		!(used && strstr(used, "resources_used") && (type == PBS_ACCT_RERUN))) {
-		/* If pbs_server is restarted during the end of job processing then used maybe NULL.
-		 * So we try to derive the resource usage information from resources_used attribute of
-		 * the job and then reconstruct the resources usage information into resc_used buffer.
-		 */
-		if (pjob->ji_wattr[(int)JOB_ATR_resc_used].at_user_encoded != NULL)
-			patlist = pjob->ji_wattr[(int)JOB_ATR_resc_used].at_user_encoded;
-		else if (pjob->ji_wattr[(int)JOB_ATR_resc_used].at_priv_encoded != NULL)
-			patlist = pjob->ji_wattr[(int)JOB_ATR_resc_used].at_priv_encoded;
-		else
-			encode_resc(&pjob->ji_wattr[(int)JOB_ATR_resc_used],
-				&temp_head, job_attr_def[(int)JOB_ATR_resc_used].at_name,
-				(char *)0, ATR_ENCODE_CLIENT, &patlist);
+	if (type == PBS_ACCT_END || type == PBS_ACCT_RERUN) {
+		if ((used == NULL && pjob->ji_acctrec == NULL) || (used != NULL && strstr(used, "resources_used") == NULL)) {
+			/* If pbs_server is restarted during the end of job processing then used maybe NULL.
+			 * So we try to derive the resource usage information from resources_used attribute of
+			 * the job and then reconstruct the resources usage information into resc_used buffer.
+			 */
+			if (pjob->ji_wattr[(int) JOB_ATR_resc_used].at_user_encoded != NULL)
+				patlist = pjob->ji_wattr[(int) JOB_ATR_resc_used].at_user_encoded;
+			else if (pjob->ji_wattr[(int) JOB_ATR_resc_used].at_priv_encoded != NULL)
+				patlist = pjob->ji_wattr[(int) JOB_ATR_resc_used].at_priv_encoded;
+			else
+				encode_resc(&pjob->ji_wattr[(int) JOB_ATR_resc_used],
+					    &temp_head, job_attr_def[(int) JOB_ATR_resc_used].at_name,
+					    (char *) 0, ATR_ENCODE_CLIENT, &patlist);
 
-		/* Allocate initial space for resc_used.  Future space will be allocated by pbs_strcat(). */
-		resc_used = malloc(RESC_USED_BUF_SIZE);
-		if(resc_used == NULL)
-			goto writeit;
-		resc_used_size = RESC_USED_BUF_SIZE;
+			/* Allocate initial space for resc_used.  Future space will be allocated by pbs_strcat(). */
+			resc_used = malloc(RESC_USED_BUF_SIZE);
+			if (resc_used == NULL)
+				goto writeit;
+			resc_used_size = RESC_USED_BUF_SIZE;
 
 
-		/* strlen(msg_job_end_stat) == 12 characters plus a number.  This should be plenty big */
-		(void)snprintf(resc_used, resc_used_size, msg_job_end_stat,
-			       pjob->ji_qs.ji_un.ji_exect.ji_exitstat);
+			/* strlen(msg_job_end_stat) == 12 characters plus a number.  This should be plenty big */
+			(void) snprintf(resc_used, resc_used_size, msg_job_end_stat,
+					pjob->ji_qs.ji_un.ji_exect.ji_exitstat);
 
-		/*
-		 * NOTE:
-		 * Following code for constructing resources used information is same as job_obit()
-		 * with minor difference that to traverse patlist in this code
-		 * we have to use patlist->al_sister since it is encoded information in job struct
-		 * where in job_obit() we are using GET_NEXT(patlist->al_link) which is part of batch
-		 * request.
-		 */
+			/*
+			 * NOTE:
+			 * Following code for constructing resources used information is same as job_obit()
+			 * with minor different that to traverse patlist in this code
+			 * we have to use patlist->al_sister since it is encoded information in job struct
+			 * where in job_obit() we are using GET_NEXT(patlist->al_link) which is part of batch
+			 * request.
+			 * ji_acctrec is lost on server restart.  Recreate it here if needed.
+			 */
 
-		while (patlist) {
-			/* log to accounting_logs only if there's a value */
-			if (strlen(patlist->al_value) > 0) {
-				if(concat_rescused_to_buffer(&resc_used, &resc_used_size, patlist, " ") != 0) {
-					free(resc_used);
-					goto writeit;
+			while(patlist) {
+				/* log to accounting_logs only if there's a value */
+				if (strlen(patlist->al_value) > 0) {
+					if (concat_rescused_to_buffer(&resc_used, &resc_used_size, patlist, " ") != 0) {
+						free(resc_used);
+						goto writeit;
+					}
+
 				}
+
+				patlist = patlist->al_sister;
 			}
 
-			patlist = patlist->al_sister;
+			used = resc_used;
+			free(pjob->ji_acctrec);
+			pjob->ji_acctrec = used;
+			free_attrlist(&temp_head);
 		}
-
-		used = resc_used;
-		pjob->ji_acctrec = used;
-		free_attrlist(&temp_head);
 	}
 
 	if (used != NULL) {
