@@ -98,9 +98,6 @@
 
 #define EXTRA_ENV_PTRS	       32
 
-/**
- * @file
- */
 /* Global Variables */
 
 extern	vnl_t		*vnlp;
@@ -1835,7 +1832,6 @@ finish_exec(job *pjob)
 	int			prolo_hooks = 0;/*# of runnable prologue hooks*/
 	char			*progname = NULL;
 	pbs_list_head		argv_list;
-	char			*env_str = NULL;
 	char			*the_progname;
 	char			**the_argv;
 	char			**the_env;
@@ -3280,7 +3276,6 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 	char			hook_msg[HOOK_MSG_SIZE+1];
 	char			*progname = NULL;
 	pbs_list_head		argv_list;
-	char			*env_str = NULL;
 	mom_hook_input_t	hook_input;
 	mom_hook_output_t	hook_output;
 	char			*the_progname;
@@ -3566,7 +3561,6 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 	hook_output.progname = &progname;
 	CLEAR_HEAD(argv_list);
 	hook_output.argv = &argv_list;
-	hook_output.env = &env_str;
 
 	switch (mom_process_hooks(HOOK_EVENT_EXECJOB_LAUNCH,
 			PBS_MOM_SERVICE_NAME,
@@ -3577,7 +3571,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 		case 0:	/* explicit reject */
 			free(progname);
 			free_attrlist(&argv_list);
-			free(env_str);
+			free_str_array(hook_output.env);
 			starter_return(kid_write, kid_read,
 					JOB_EXEC_FAILHOOK_DELETE, &sjr);
 		case 1:   /* explicit accept */
@@ -3591,49 +3585,45 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 					"execjob_launch hook returned NULL argv!");
 				free(progname);
 				free_attrlist(&argv_list);
-				free(env_str);
+				free_str_array(hook_output.env);
 				starter_return(kid_write, kid_read,
 					JOB_EXEC_FAILHOOK_DELETE, &sjr);
 			}
-			if (env_str != NULL) {
-				res_env = str_to_str_array(env_str, ",");
-				if (res_env == NULL) {
-					log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-						LOG_INFO, "",
-						"execjob_launch hook NULL env!");
-					free(progname);
-					free_attrlist(&argv_list);
-					free_str_array(the_argv);
-					free(env_str);
-					starter_return(kid_write, kid_read,
+			res_env = hook_output.env;
+			if (res_env == NULL) {
+				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
+					LOG_INFO, "",
+					"execjob_launch hook NULL env!");
+				free(progname);
+				free_attrlist(&argv_list);
+				free_str_array(the_argv);
+				starter_return(kid_write, kid_read,
 						JOB_EXEC_FAILHOOK_DELETE, &sjr);
-				}
-
-				/* clear the env array */
-				vtable.v_used = 0;
-				vtable.v_envp[0] = (char *)0;
-
-				/* need to also set vtable as that would */
-				/* get appended to later in the code */
-				/* vtable holds the environmnent variables */
-			        /* and their values that are going to be */
-				/* part of the job. */
-				k = 0;
-				while(res_env[k]) {
-					char	*n, *v, *p;
-					if ((p=strchr(res_env[k], '=')) != 
-									NULL) {
-						*p = '\0';
-						n = res_env[k];
-						v = p+1;
-						bld_env_variables(&vtable,
-									n, v);
-						*p = '=';
-					}
-					k++;
-				}
-				the_env = vtable.v_envp;
 			}
+
+			/* clear the env array */
+			vtable.v_used = 0;
+			vtable.v_envp[0] = (char *)0;
+
+			/* need to also set vtable as that would */
+			/* get appended to later in the code */
+			/* vtable holds the environmnent variables */
+			/* and their values that are going to be */
+			/* part of the job. */
+			k = 0;
+			while(res_env[k]) {
+				char	*n, *v, *p;
+				if ((p=strchr(res_env[k], '=')) != NULL) {
+					*p = '\0';
+					n = res_env[k];
+					v = p+1;
+					bld_env_variables(&vtable,
+								n, v);
+					*p = '=';
+				}
+				k++;
+			}
+			the_env = vtable.v_envp;
 
 			break;
 		case 2:	  /* no hook script executed - go ahead and accept event */
@@ -3763,7 +3753,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 	free(progname);
 	free_attrlist(&argv_list);
 	free_str_array(the_argv);
-	free(env_str);
+	free_str_array(hook_output.env);
 	free_str_array(the_env);
 #if 0
 	/*
@@ -5067,7 +5057,7 @@ create_file_securely(char *path, uid_t exuid, gid_t exgid)
  *	    create the file in its final destination directory and set the "keeping" flag so it will not be staged.
  *	5.  Else, the file path is created to put the file in PBS_HOME/spool
  #else
- *	4.  Else, the file path is created to put the file in PBS_HOME/spool
+ *	6.  Else, the file path is created to put the file in PBS_HOME/spool
  #endif localmod 118
  * @param[in]  pjob - pointer to job structure
  * @param[in]  which - identifies which file: StdOut, StdErr, or Chkpt.
