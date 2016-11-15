@@ -7407,6 +7407,23 @@ class Server(PBSService):
                 d[l] = ''
             attrib = d
 
+        # Add check for substate=42 for jobstate=R, if not added explicitly.
+        if obj_type == JOB:
+            add_attribs = {'substate': False}
+            substate = False
+            for k, v in attrib.items():
+                if k == 'job_state' and ((isinstance(v, tuple) and
+                                          'R' in v[-1]) or v == 'R'):
+                    add_attribs['substate'] = 42
+                elif k == 'job_state=R':
+                    add_attribs['substate=42'] = v
+                elif 'substate' in k:
+                    substate = True
+            if add_attribs['substate'] and not substate:
+                attrib['substate'] = add_attribs['substate']
+                attrop = PTL_AND
+            del add_attribs, substate
+
         prefix = 'expect on ' + self.logprefix
         msg = []
         for k, v in attrib.items():
