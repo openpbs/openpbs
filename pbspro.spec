@@ -45,7 +45,7 @@
 %define pbs_home /var/spool/pbs
 %define pbs_dbuser postgres
 %define pbs_dist %{pbs_name}-%{pbs_version}.tar.gz
-%if 0%{?suse_version} >= 1210 || 0%{?rhel} >= 7
+%if 0%{?suse_version} >= 1210 || 0%{?rhel} >= 7 || 0%{?debian_version} >= 8
 %define have_systemd 1
 %endif
 

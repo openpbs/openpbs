@@ -389,8 +389,10 @@ install_pbsinitd() {
 			fi
 			cp ${PBS_EXEC}/libexec/pbs_init.d $initscript
 			rm -f /etc/rc.d/rc?.d/*pbs
-			if [ -x /sbin/chkconfig ] ; then 
+			if [ -x /sbin/chkconfig ] ; then
 				/sbin/chkconfig --add pbs
+			elif [ -x /usr/sbin/update-rc.d ] ; then
+				/usr/sbin/update-rc.d pbs enable
 			else
 				ln -sf $initscript /etc/rc.d/rc0.d/K10pbs
 				ln -sf $initscript /etc/rc.d/rc1.d/K10pbs

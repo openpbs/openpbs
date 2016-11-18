@@ -5,11 +5,9 @@ services:
 env:
     - OS_TYPE=centos:7
     - OS_TYPE=opensuse:13.2
+    - OS_TYPE=debian:8
 before_install:
     - .github/runchecks
-    - sudo apt-get update
-    - sudo apt-get remove docker-engine -yq
-    - sudo apt-get install docker-engine="1.9.1-0~trusty" -yq --no-install-suggests --no-install-recommends --force-yes -o Dpkg::Options::="--force-confnew"
     - docker pull ${OS_TYPE}
     - docker run -it -d -h testdev.pbspro.com --name testdev -v `pwd`:`pwd` --privileged -w `pwd` ${OS_TYPE} /bin/sh
     - docker ps -a
@@ -18,26 +16,7 @@ before_install:
     - ${DOCKER_EXEC} /bin/sh -c "echo '${DOCKER_TESTDEV_IP}     testdev' >> /etc/hosts"
     - ${DOCKER_EXEC} cat /etc/hosts
 install:
-    - '[ "${OS_TYPE}" == "centos:7" ] && travis_retry ${DOCKER_EXEC} yum -y update || true'
-    - '[ "${OS_TYPE}" == "centos:7" ] && travis_retry ${DOCKER_EXEC} yum -y install yum-utils epel-release rpmdevtools || true'
-    - '[ "${OS_TYPE}" == "opensuse:13.2" ] && travis_retry ${DOCKER_EXEC} zypper -n ar -f -G http://download.opensuse.org/repositories/devel:/tools/openSUSE_13.2/devel:tools.repo || true'
-    - '[ "${OS_TYPE}" == "centos:7" ] && travis_retry ${DOCKER_EXEC} yum -y install time.x86_64 || true'
-    - '[ "${OS_TYPE}" == "opensuse:13.2" ] && travis_retry ${DOCKER_EXEC} zypper -n install time.x86_64 || true'
-    - '[ "${OS_TYPE}" == "opensuse:13.2" ] && travis_retry ${DOCKER_EXEC} zypper -n ref || true'
-    - '[ "${OS_TYPE}" == "opensuse:13.2" ] && travis_retry ${DOCKER_EXEC} zypper -n install rpmdevtools || true'
-    - ${DOCKER_EXEC} rpmdev-setuptree
-    - '[ "${OS_TYPE}" == "centos:7" ] && travis_retry ${DOCKER_EXEC} yum-builddep -y ./pbspro.spec || true'
-    - '[ "${OS_TYPE}" == "opensuse:13.2" ] && travis_retry ${DOCKER_EXEC} /bin/sh -c "zypper -n install \$(rpmspec --buildrequires -q pbspro.spec)" || true'
-    - ${DOCKER_EXEC} ./autogen.sh
-    - ${DOCKER_EXEC} ./configure
-    - ${DOCKER_EXEC} make dist
-    - ${DOCKER_EXEC} /bin/sh -c 'cp -fv pbspro-*.tar.gz /root/rpmbuild/SOURCES/'
-    - ${DOCKER_EXEC} rpmbuild -bb pbspro.spec
-    - '[ "${OS_TYPE}" == "centos:7" ] && travis_retry ${DOCKER_EXEC} /bin/sh -c ''yum -y install /root/rpmbuild/RPMS/x86_64/pbspro-server-*.x86_64.rpm'' || true'
-    - '[ "${OS_TYPE}" == "opensuse:13.2" ] && travis_retry ${DOCKER_EXEC} /bin/sh -c ''zypper -n install /root/rpmbuild/RPMS/x86_64/pbspro-server-*.x86_64.rpm'' || true'
-    - ${DOCKER_EXEC} /etc/init.d/pbs start
-    - '[ "${OS_TYPE}" == "centos:7" ] && travis_retry ${DOCKER_EXEC} yum -y install python-pip sudo which net-tools || true'
-    - '[ "${OS_TYPE}" == "opensuse:13.2" ] && travis_retry ${DOCKER_EXEC} zypper -n install python-pip sudo which net-tools || true'
+    - travis_retry ./.travis/${OS_TYPE//:/_}.sh
     - ${DOCKER_EXEC} /bin/sh -c "cd test/fw; pip install -r requirements.txt ."
     - ${DOCKER_EXEC} pbs_config --make-ug
     - ${DOCKER_EXEC} /bin/sh -c "cd test/tests; pbs_benchpress -l INFOCLI2 -o ../../ptl.txt --tags=smoke"
