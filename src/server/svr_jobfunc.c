@@ -414,15 +414,27 @@ svr_enquejob(job *pjob)
 
 	/* update any entity count and entity resources usage for the queue */
 
-	if (((rc = set_entity_ct_sum_max(pjob, pque, INCR)) != 0) ||
-		((rc = set_entity_ct_sum_queued(pjob, pque, INCR)) != 0) ||
-		((rc = set_entity_resc_sum_max(pjob, pque, (attribute*)0, INCR)) != 0) ||
-		((rc = set_entity_resc_sum_queued(pjob, pque, (attribute *)0, INCR)) != 0)) {
-		sprintf(log_buffer, "set entity failed with %d for enque in %s",
-			rc, pque->qu_qs.qu_name);
-		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE,
-			pjob->ji_qs.ji_jobid, log_buffer);
+	
+	if ((rc=set_entity_ct_sum_max(pjob, pque, INCR)) != 0) {
+		snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_ct_sum_max on queue failed with %d for enqueue in %s", rc, pque->qu_qs.qu_name);
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE, pjob->ji_qs.ji_jobid, log_buffer);
 	}
+
+	if ((rc=set_entity_ct_sum_queued(pjob, pque, INCR)) != 0) {
+		snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_ct_sum_queued on queue failed with %d for enqueue in %s", rc, pque->qu_qs.qu_name);
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE, pjob->ji_qs.ji_jobid, log_buffer);
+	}
+
+	if ((rc=set_entity_resc_sum_max(pjob, pque, (attribute *)0, INCR)) != 0) {
+		snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_resc_sum_max on queue failed with %d for enqueue in %s", rc, pque->qu_qs.qu_name);
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE, pjob->ji_qs.ji_jobid, log_buffer);
+	}
+
+	if ((rc=set_entity_resc_sum_queued(pjob, pque, (attribute*)0, INCR)) != 0) {
+		snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_resc_sum_queued on queue failed with %d for enqueue in %s", rc, pque->qu_qs.qu_name);
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE, pjob->ji_qs.ji_jobid, log_buffer);
+	}
+
 
 	/*
 	 * See if we need to do anything special based on type of queue
