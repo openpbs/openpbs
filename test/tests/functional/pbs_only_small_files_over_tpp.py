@@ -53,6 +53,8 @@ class TestOnlySmallFilesOverTPP(TestFunctional):
                               '  use -p moms=<mom1>:<mom2>')
             self.assertEqual(len(self.moms), 2)
 
+        self.server.set_op_mode(PTL_CLI)
+
         # PBSTestSuite returns the moms passed in as parameters as dictionary
         # of hostname and MoM object
         self.momA = self.moms.values()[0]
@@ -66,11 +68,21 @@ class TestOnlySmallFilesOverTPP(TestFunctional):
         rc = self.server.manager(MGR_CMD_DELETE, NODE, None, "")
         self.assertEqual(rc, 0)
 
-        rc = self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostB)
-        self.assertEqual(rc, 0)
+        islocal = self.du.is_localhost(self.hostA)
+        if islocal is False:
+            rc = self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostA)
+            self.assertEqual(rc, 0)
+        else:
+            rc = self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostB)
+            self.assertEqual(rc, 0)
 
-        self.server.manager(MGR_CMD_SET, SERVER, {
-                            'log_events': 4095}, expect=True)
+        rc = self.server.manager(MGR_CMD_SET, SERVER, {
+                                 'job_requeue_timeout': 175}, expect=True)
+        self.assertTrue(rc)
+
+        rc = self.server.manager(MGR_CMD_SET, SERVER, {
+            'log_events': 4095}, expect=True)
+        self.assertTrue(rc)
 
     def test_small_job_file(self):
         j = Job(TEST_USER, attrs={ATTR_N: 'small_job_file'})
@@ -83,10 +95,14 @@ class TestOnlySmallFilesOverTPP(TestFunctional):
         j.create_script(test, hostname=self.server.client)
         jid = self.server.submit(j)
 
-        self.server.expect(JOB, {'job_state': 'R'},
+        self.server.expect(JOB, {'job_state': 'R', 'substate': 42},
                            id=jid, max_attempts=30, interval=2)
         time.sleep(5)
-        self.server.rerunjob(jid)
+        try:
+            self.server.rerunjob(jid)
+        except PbsRerunError as e:
+            self.assertTrue('qrerun: Response timed out. Job rerun request ' +
+                            'still in progress for' in e.msg[0])
 
         msg = "small job files on rerun, sending through TPP"
         rv = self.server.log_match(msg, max_attempts=10, interval=2)
@@ -103,10 +119,14 @@ class TestOnlySmallFilesOverTPP(TestFunctional):
         j.create_script(test, hostname=self.server.client)
         jid = self.server.submit(j)
 
-        self.server.expect(JOB, {'job_state': 'R'},
+        self.server.expect(JOB, {'job_state': 'R', 'substate': 42},
                            id=jid, max_attempts=30, interval=2)
         time.sleep(5)
-        self.server.rerunjob(jid)
+        try:
+            self.server.rerunjob(jid)
+        except PbsRerunError as e:
+            self.assertTrue('qrerun: Response timed out. Job rerun request ' +
+                            'still in progress for' in e.msg[0])
 
         rv = self.server.log_match("big job files on rerun, need to fork",
                                    max_attempts=30, interval=2)
