@@ -152,8 +152,8 @@ void
 init_license(struct license_block *licenses)
 {
 	licenses->lb_trial = 0;
-	licenses->lb_glob_floating = 1000000;
-	licenses->lb_aval_floating = 1000000;
+	licenses->lb_glob_floating = 10000000;
+	licenses->lb_aval_floating = 10000000;
 	licenses->lb_used_floating = 0;
 	licenses->lb_high_used_floating = 0;
 	licenses->lb_do_task = 0;
@@ -212,5 +212,5 @@ clear_and_populate_svr_unlicensedjobs(void)
 void
 relicense_svr_unlicensedjobs(void)
 {
-}
 
+}

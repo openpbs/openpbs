@@ -45,8 +45,8 @@
 #define	LICSTATE_SOCKETS_UNCONF	0x4	/* no socket license file configured */
 #define	LICSTATE_HAS_SOCKETS	0x8	/* nonzero number of socket licenses */
 
-static unsigned int	total_sockets = 1000000;
-static unsigned int	avail_sockets = 1000000;
+static unsigned int	total_sockets = 10000000;
+static unsigned int	avail_sockets = 10000000;
 
 int			pbs_licensing_checkin(void);
 int			pbs_checkout_licensing(int);
