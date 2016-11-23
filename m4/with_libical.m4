@@ -73,8 +73,8 @@ AC_DEFUN([PBS_AC_WITH_LIBICAL],
   AC_DEFINE([LIBICAL], [], [Defined when libical is available])
   PKG_CHECK_MODULES([libical_api2],
     [libical >= 2],
-    AC_DEFINE([LIBICAL_API2], [], [Defined when libical version >= 2]),
-    []
-  )
+    [AC_DEFINE([LIBICAL_API2], [], [Defined when libical version >= 2])],
+    [echo "libical version 2 is not available"]
+    )
 ])
 
