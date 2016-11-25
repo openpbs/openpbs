@@ -266,7 +266,6 @@ char	       *pbs_server_name;
 char		server_name[PBS_MAXSERVERNAME+1]; /* host_name[:service|port] */
 char		server_host[PBS_MAXHOSTNAME+1];	  /* host_name of this svr */
 char	       *pbs_server_id;
-int		queue_rank = 0;
 int		reap_child_flag = 0;
 time_t		secondary_delay = 30;
 struct server	server;		/* the server structure */

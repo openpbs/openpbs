@@ -128,7 +128,6 @@ extern int     h_errno;
 extern char	*path_jobs;
 extern char	*path_spool;
 extern attribute_def job_attr_def[];
-extern int	 queue_rank;
 extern char	*msg_badexit;
 extern char	*msg_routebad;
 extern char	*msg_routexceed;
@@ -274,14 +273,14 @@ local_move(job *jobp, struct batch_request *req)
 	}
 
 	/* dequeue job from present queue, update destination and	*/
-	/* queue_rank for new queue and enqueue into destination	*/
+	/* queue rank for new queue and enqueue into destination	*/
 
 	svr_dequejob(jobp);
 	jobp->ji_myResv = NULL;
 	strncpy(jobp->ji_qs.ji_queue, qp->qu_qs.qu_name, PBS_MAXQUEUENAME);
 	jobp->ji_qs.ji_queue[PBS_MAXQUEUENAME] = '\0';
 
-	jobp->ji_wattr[(int)JOB_ATR_qrank].at_val.at_long = ++queue_rank;
+	jobp->ji_wattr[(int)JOB_ATR_qrank].at_val.at_long = time_now;
 	jobp->ji_wattr[(int)JOB_ATR_qrank].at_flags |= ATR_VFLAG_MODCACHE;
 
 	pattr = &jobp->ji_wattr[(int)JOB_ATR_reserve_ID];

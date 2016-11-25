@@ -952,6 +952,13 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 			else
 				resresv->qtime = -1;
 		}
+		else if (!strcmp(attrp->name, ATTR_qrank)) { /* queue rank */
+			count = strtol(attrp->value, &endp, 10);
+			if (*endp != '\0')
+				resresv->qrank = count;
+			else
+				resresv->qrank = -1;
+		}
 		else if (!strcmp(attrp->name, ATTR_etime)) { /* eligible time */
 			count = strtol(attrp->value, &endp, 10);
 			if (*endp != '\n')

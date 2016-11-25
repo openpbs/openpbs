@@ -1155,18 +1155,14 @@ cmp_sort(const void *v1, const void *v2)
 
 		/* stabilize the sort */
 		else {
-			if (r1->qtime < r2->qtime)
+			if (r1->qrank < r2->qrank)
 				return -1;
-			else if (r1->qtime > r2->qtime)
+			else if (r1->qrank > r2->qrank)
 				return 1;
-			else if ((r1->job != NULL) && (r2->job != NULL)) {
-				if (r1->job->job_id < r2->job->job_id)
-					return -1;
-				else if (r1->job->job_id > r2->job->job_id)
-					return 1;
-			else
-				return 0;
-		}
+			if (r1->rank < r2->rank)
+				return -1;
+			else if (r1->rank > r2->rank)
+				return 1;
 			else {
 				return 0;
 			}

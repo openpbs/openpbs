@@ -157,7 +157,6 @@ extern char *path_spool;
 extern struct server server;
 extern struct attribute attr_jobscript_max_size;
 extern char  server_name[];
-extern int   queue_rank;
 extern char *resc_in_err;
 #endif	/* PBS_MOM */
 
@@ -2393,7 +2392,7 @@ req_commit(struct batch_request *preq)
 
 	/* set the queue rank attribute */
 
-	pj->ji_wattr[(int)JOB_ATR_qrank].at_val.at_long = ++queue_rank;
+	pj->ji_wattr[(int)JOB_ATR_qrank].at_val.at_long = time_now;
 	pj->ji_wattr[(int)JOB_ATR_qrank].at_flags |=
 		ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
 

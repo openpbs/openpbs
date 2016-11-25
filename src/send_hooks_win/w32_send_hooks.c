@@ -125,7 +125,6 @@ pbs_net_t	pbs_scheduler_addr = 0;
 unsigned int	pbs_scheduler_port = 0;
 struct python_interpreter_data  svr_interp_data;
 
-int		queue_rank = 0;
 struct server	server;		/* the server structure */
 struct sched	scheduler;	/* the sched structure */
 char	        server_host[PBS_MAXHOSTNAME+1];	/* host_name  */

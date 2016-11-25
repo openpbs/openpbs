@@ -642,6 +642,7 @@ struct resource_resv
 	int rank;			/* unique numeric identifier for resource_resv */
 
 	time_t qtime;			/* time res resv was submitted */
+	time_t qrank;			/* time on which we might need to stabilize the sort */
 	time_t start;			/* start time (UNDEFINED means no start time */
 	time_t end;			/* end time (UNDEFINED means no end time */
 	time_t duration;		/* duration of resource resv request */

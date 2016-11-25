@@ -157,6 +157,7 @@ new_resource_resv()
 	resresv->sch_priority = 0;
 	resresv->rank = 0;
 	resresv->qtime = 0;
+	resresv->qrank = 0;
 
 	resresv->start = UNSPECIFIED;
 	resresv->end = UNSPECIFIED;
@@ -362,6 +363,7 @@ dup_resource_resv(resource_resv *oresresv,
 	nresresv->sch_priority = oresresv->sch_priority;
 	nresresv->rank = oresresv->rank;
 	nresresv->qtime = oresresv->qtime;
+	nresresv->qrank = oresresv->qrank;
 
 	nresresv->start = oresresv->start;
 	nresresv->end = oresresv->end;

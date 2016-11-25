@@ -180,7 +180,6 @@ extern char	*path_nodes;
 extern char	*path_nodes_new;
 extern char	*path_nodestate;
 extern long	 new_log_event_mask;
-extern int	 queue_rank;
 extern char	 server_host[];
 extern char	 server_name[];
 extern int	 svr_delay_entry;
@@ -1099,21 +1098,6 @@ pbsd_init(int type)
 
 	cnvrt_timer_init(); /* !! */
 
-	/* If queue_rank has gone negative, renumber all jobs and reset rank */
-
-	if (queue_rank < 0) {
-		queue_rank = 0;
-		pjob = (job *)GET_NEXT(svr_alljobs);
-		while (pjob) {
-			pjob->ji_wattr[(int)JOB_ATR_qrank].at_val.at_long =
-				++queue_rank;
-			pjob->ji_wattr[(int)JOB_ATR_qrank].at_flags |=
-				ATR_VFLAG_MODCACHE;
-			(void)job_save(pjob, SAVEJOB_FULL);
-			pjob = (job *)GET_NEXT(pjob->ji_alljobs);
-		}
-	}
-
 	/* Put us back in the Server's Private directory */
 
 	if (chdir(path_priv) != 0) {
@@ -1627,13 +1611,6 @@ pbsd_init_job(job *pjob, int type)
 	job_attr_def[(int)JOB_ATR_at_server].at_decode(
 		&pjob->ji_wattr[(int)JOB_ATR_at_server],
 		(char *)0, (char *)0, server_name);
-
-	/* update queue_rank if this job is higher than current */
-
-	if ((unsigned long)pjob->ji_wattr[(int)JOB_ATR_qrank].at_val.at_long >
-		(unsigned long)queue_rank)
-		queue_rank = pjob->ji_wattr[(int)JOB_ATR_qrank].at_val.at_long;
-
 
 	/* now based on the initialization type */
 
