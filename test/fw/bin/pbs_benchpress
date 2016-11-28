@@ -55,7 +55,7 @@ from ptl.utils.plugins.ptl_test_runner import PTLTestRunner
 from ptl.utils.plugins.ptl_test_db import PTLTestDb
 from ptl.utils.plugins.ptl_test_info import PTLTestInfo
 from ptl.utils.plugins.ptl_test_tags import PTLTestTags
-# from ptl.utils.plugins.ptl_test_data import PTLTestData
+from ptl.utils.plugins.ptl_test_data import PTLTestData
 
 
 # trap SIGINT and SIGPIPE
@@ -64,16 +64,12 @@ def trap_exceptions(etype, value, tb):
     if issubclass(etype, IOError) and value.errno == errno.EPIPE:
         pass
     else:
-        # if not only_info:
-        #    data.finalize(None)
         sys.__excepthook__(etype, value, tb)
 sys.excepthook = trap_exceptions
 
 
 def sighandler(signum, frames):
     signal.alarm(0)
-    # if not only_info:
-    #    data.finalize(None)
     raise KeyboardInterrupt('Signal %d received' % (signum))
 
 # join process group of caller makes it possible to programmatically interrupt
@@ -120,6 +116,19 @@ def usage():
     msg += ['--min-pyver=<version>: minimum Python version\n']
     msg += ['--max-pyver=<version>: maximum Python version\n']
     msg += ['--param-file=<file>: get params from file. Overrides -p\n']
+    msg += ['--post-analysis-data=<dir>: path to post analysis data' +
+            ' directory\n']
+    msg += ['--max-postdata-threshold=<count>: max post analysis data' +
+            ' threshold per testsuite. Defaults to 10. <count>=0 will' +
+            ' disable this threshold\n']
+    msg += ['--tc-failure-threshold=<count>: test case failure threshold' +
+            ' per testsuite. Defaults to 10. <count>=0 will disable this' +
+            ' threshold\n']
+    msg += ['--cumulative-tc-failure-threshold=<count>: cumulative test' +
+            ' case failure threshold. Defaults to 100. <count>=0 will' +
+            ' disable this threshold.\n                              ' +
+            '             Must be greater or equal to' +
+            ' \'tc-failure-threshold\'\n']
     msg += ['--stop-on-failure: if set, stop when one of multiple tests ' +
             'fails\n']
     msg += ['--timeout=<seconds>: duration after which no test suites are '
@@ -196,9 +205,11 @@ if __name__ == '__main__':
     eval_tags = []
     tags_info = False
     list_tags = False
-    sharedpath = None
+    post_data_dir = None
     gen_ts_tree = False
-
+    tc_failure_threshold = 10
+    cumulative_tc_failure_threshold = 100
+    max_postdata_threshold = 10
     PtlConfig()
 
     largs = ['exclude=', 'log-conf=', 'timeout=']
@@ -208,7 +219,9 @@ if __name__ == '__main__':
     largs += ['lcov-baseurl=', 'tags=', 'eval-tags=', 'tags-info', 'list-tags']
     largs += ['version', 'verbose', 'follow-child']
     largs += ['stop-on-failure', 'enable-nose-debug']
-    largs += ['shared-path=', 'gen-ts-tree']
+    largs += ['post-analysis-data=', 'gen-ts-tree']
+    largs += ['tc-failure-threshold=', 'cumulative-tc-failure-threshold=']
+    largs += ['max-postdata-threshold=']
 
     try:
         opts, args = getopt.getopt(
@@ -294,8 +307,14 @@ if __name__ == '__main__':
             nosedebug = True
         elif o == '--verbose':
             verbose = True
-        elif o == '--shared-path':
-            sharedpath = CliUtils.expand_abs_path(val)
+        elif o == '--post-analysis-data':
+            post_data_dir = CliUtils.expand_abs_path(val)
+        elif o == '--tc-failure-threshold':
+            tc_failure_threshold = val
+        elif o == '--cumulative-tc-failure-threshold':
+            cumulative_tc_failure_threshold = val
+        elif o == '--max-postdata-threshold':
+            max_postdata_threshold = val
         elif o == '-h':
             usage()
             sys.exit(0)
@@ -340,6 +359,42 @@ if __name__ == '__main__':
             'Testsuites names require (see -t) along with -i option!')
         sys.exit(1)
 
+    try:
+        tc_failure_threshold = int(tc_failure_threshold)
+        if tc_failure_threshold < 0:
+            raise ValueError
+    except:
+        _msg = 'Invalid value provided for testcase failure threshold, '
+        _msg += 'please provide integer'
+        logging.error(_msg)
+        sys.exit(1)
+
+    try:
+        cumulative_tc_failure_threshold = int(cumulative_tc_failure_threshold)
+        if cumulative_tc_failure_threshold < 0:
+            raise ValueError
+    except:
+        _msg = 'Invalid value provided for cumulative-tc-failure-threshold, '
+        _msg += 'please provide integer'
+        logging.error(_msg)
+        sys.exit(1)
+
+    if cumulative_tc_failure_threshold < tc_failure_threshold:
+        _msg = 'Value for cumulative-tc-failure-threshould should'
+        _msg += ' be greater or equal to \'tc-failure-threshold\''
+        logging.error(_msg)
+        sys.exit(1)
+
+    try:
+        max_postdata_threshold = int(max_postdata_threshold)
+        if max_postdata_threshold < 0:
+            raise ValueError
+    except:
+        _msg = 'Invalid value provided for max-postdata-threshold, '
+        _msg += 'please provide integer'
+        logging.error(_msg)
+        sys.exit(1)
+
     if outfile is not None and not os.path.isdir(os.path.dirname(outfile)):
         os.mkdir(os.path.dirname(outfile))
 
@@ -376,15 +431,15 @@ if __name__ == '__main__':
         testtags = PTLTestTags()
         runner = PTLTestRunner()
         db = PTLTestDb()
-        # data = PTLTestData()
+        data = PTLTestData()
         loader.set_data(testgroup, testsuites, excludes, follow)
         testtags.set_data(tags, eval_tags)
         runner.set_data(paramfile, testparam, lcov_bin, lcov_data, lcov_out,
-                        genhtml_bin, lcov_nosrc, lcov_baseurl)
+                        genhtml_bin, lcov_nosrc, lcov_baseurl,
+                        tc_failure_threshold, cumulative_tc_failure_threshold)
         db.set_data(dbtype, dbname, dbaccess)
-        # data.set_data(sharedpath)
-        # plugins = (loader, testtags, runner, db, data)
-        plugins = (loader, testtags, runner, db)
+        data.set_data(post_data_dir, max_postdata_threshold)
+        plugins = (loader, testtags, runner, db, data)
     test_regex = r'(^(?:[\w]+|^)Test|pbs_|^test_[\(]*)'
     os.environ['NOSE_TESTMATCH'] = test_regex
     if nosedebug:

@@ -35,16 +35,17 @@
 # Use of Altair’s trademarks, including but not limited to "PBS™",
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
-
-import sys
-import logging
-from nose.plugins.base import Plugin
-from ptl.utils.pbs_dshutils import DshUtils
-import time
 import os
+import sys
 import socket
-import threading
-import Queue
+import logging
+import signal
+import re
+from nose.util import isclass
+from nose.plugins.base import Plugin
+from nose.plugins.skip import SkipTest
+from ptl.utils.plugins.ptl_test_runner import TimeOut
+from ptl.utils.pbs_dshutils import DshUtils
 
 log = logging.getLogger('nose.plugins.PTLTestData')
 
@@ -55,14 +56,16 @@ class PTLTestData(Plugin):
     Save post analysis data on test cases failure or error
     """
     name = 'PTLTestData'
-    score = sys.maxint - 3
+    score = sys.maxint - 6
     logger = logging.getLogger(__name__)
 
     def __init__(self):
-        self.sharedpath = None
+        Plugin.__init__(self)
+        self.post_data_dir = None
+        self.max_postdata_threshold = None
+        self.__save_data_count = 0
+        self.__priv_sn = ''
         self.du = DshUtils()
-        self.__syncth = None
-        self.__queue = Queue.Queue()
 
     def options(self, parser, env):
         """
@@ -70,17 +73,21 @@ class PTLTestData(Plugin):
         """
         pass
 
-    def set_data(self, sharedpath):
-        self.sharedpath = sharedpath
+    def set_data(self, post_data_dir, max_postdata_threshold):
+        self.post_data_dir = post_data_dir
+        self.max_postdata_threshold = max_postdata_threshold
 
     def configure(self, options, config):
         """
         Configure the plugin and system, based on selected options
         """
         self.config = config
-        self.enabled = True
+        if self.post_data_dir is not None:
+            self.enabled = True
+        else:
+            self.enabled = False
 
-    def __get_sntnbi_name(self, test):
+    def __save_home(self, test, status, err=None):
         if hasattr(test, 'test'):
             _test = test.test
             sn = _test.__class__.__name__
@@ -88,207 +95,221 @@ class PTLTestData(Plugin):
             _test = test.context
             sn = _test.__name__
         else:
-            return ('unknown', 'unknown', 'unknown')
+            # test does not have any PBS Objects, so just return
+            return
+        if self.__priv_sn != sn:
+            self.__save_data_count = 0
+            self.__priv_sn = sn
+        # Saving home might take time so disable timeout
+        # handler set by runner
         tn = getattr(_test, '_testMethodName', 'unknown')
-        if (hasattr(_test, 'server') and
-                (getattr(_test, 'server', None) is not None)):
-            bi = _test.server.attributes['pbs_version']
-        else:
-            bi = 'unknown'
-        return (sn, tn, bi)
-
-    def __save_home(self, test, status):
-        if hasattr(test, 'test'):
-            _test = test.test
-        elif hasattr(test, 'context'):
-            _test = test.context
-        else:
-            # test does not have any PBS Objects, so just return
+        testlogs = getattr(test, 'captured_logs', '')
+        datadir = os.path.join(self.post_data_dir, sn, tn)
+        if os.path.exists(datadir):
+            _msg = 'Old post analysis data exists at %s' % datadir
+            _msg += ', skipping saving data for this test case'
+            self.logger.warn(_msg)
+            _msg = 'Please remove old directory or'
+            _msg += ' provide different directory'
+            self.logger.warn(_msg)
             return
-        if not hasattr(_test, 'server'):
-            # test does not have any PBS Objects, so just return
-            return
-        st = getattr(test, 'start_time', None)
-        if st is not None:
-            st = time.mktime(st.timetuple())
-        else:
-            st = time.time()
-        st -= 180  # starttime - 3 min
-        et = getattr(test, 'end_time', None)
-        if et is not None:
-            et = time.mktime(et.timetuple())
-        else:
-            et = time.time()
-        hostname = socket.gethostname().split('.')[0]
-        lp = os.environ.get('PBS_JOBID', time.strftime("%Y%b%d_%H_%m_%S",
-                                                       time.localtime()))
-        sn, tn, bi = self.__get_sntnbi_name(test)
-        if getattr(_test, 'servers', None) is not None:
-            shosts = map(lambda x: x.split('.')[0], _test.servers.host_keys())
-        else:
-            shosts = []
-        if getattr(_test, 'schedulers', None) is not None:
-            schosts = map(lambda x: x.split('.')[0],
-                          _test.schedulers.host_keys())
-        else:
-            schosts = []
-        if getattr(_test, 'moms', None) is not None:
-            mhosts = map(lambda x: x.split('.')[0], _test.moms.host_keys())
-        else:
-            mhosts = []
-        hosts = []
-        hosts.extend(shosts)
-        hosts.extend(schosts)
-        hosts.extend(mhosts)
-        hosts.append(hostname)
-        hosts = sorted(set(hosts))
-        for host in hosts:
-            confpath = self.du.get_pbs_conf_file(host)
-            tmpdir = self.du.get_tempdir(host)
-            datadir = os.path.join(tmpdir, bi, sn, hostname, tn, lp)
-            _s = ['#!/bin/bash']
-            _s += ['. %s' % (confpath)]
-            _s += ['mkdir -p %s' % (datadir)]
-            _s += ['chmod -R 0755 %s' % (datadir)]
-            if host == _test.server.shortname:
-                _l = '${PBS_EXEC}/bin/qstat -tf > %s/qstat_tf &' % (datadir)
-                _s += [_l]
-                _l = '${PBS_EXEC}/bin/pbsnodes -av > %s/pbsnodes &' % (datadir)
-                _s += [_l]
-                _l = '${PBS_EXEC}/bin/qmgr -c "p s"'
-                _l += ' > %s/print_server &' % (datadir)
-                _s += [_l]
-            _s += ['echo "%s" >> %s/uptime' % ('*' * 80, datadir)]
-            _s += ['echo "On host : %s" >> %s/uptime' % (host, datadir)]
-            _s += ['uptime >> %s/uptime' % (datadir)]
-            _s += ['echo "" >> %s/uptime' % (datadir)]
-            _s += ['echo "%s" >> %s/netstat' % ('*' * 80, datadir)]
-            _s += ['echo "On host : %s" >> %s/netstat' % (host, datadir)]
-            _cmd = self.du.which(host, 'netstat')
-            if _cmd == 'netstat':
-                _cmd = 'ss'
-            if sys.platform.startswith('linux'):
-                _cmd += ' -ap'
+        if getattr(test, 'old_sigalrm_handler', None) is not None:
+            _h = getattr(test, 'old_sigalrm_handler')
+            signal.signal(signal.SIGALRM, _h)
+            signal.alarm(0)
+        self.logger.log(logging.DEBUG2, 'Saving post analysis data...')
+        current_host = socket.gethostname().split('.')[0]
+        self.du.mkdir(current_host, path=datadir, mode=0755,
+                      parents=True, logerr=False, level=logging.DEBUG2)
+        if err is not None:
+            if isclass(err[0]) and issubclass(err[0], SkipTest):
+                status = 'SKIP'
+                status_data = 'Reason = %s' % (err[1])
             else:
-                _cmd += ' -an'
-            _s += ['%s >> %s/netstat' % (_cmd, datadir)]
-            _s += ['echo "" >> %s/netstat' % (datadir)]
-            _s += ['echo "%s" >> %s/ps' % ('*' * 80, datadir)]
-            _s += ['echo "On host : %s" >> %s/ps' % (host, datadir)]
-            _s += ['ps -ef | grep pbs_ >> %s/ps' % (datadir)]
-            _s += ['echo "" >> %s/ps' % (datadir)]
-            _s += ['echo "%s" >> %s/df' % ('*' * 80, datadir)]
-            _s += ['echo "On host : %s" >> %s/df' % (host, datadir)]
-            _s += ['df -h >> %s/df' % (datadir)]
-            _s += ['echo "" >> %s/df' % (datadir)]
-            _s += ['echo "%s" >> %s/vmstat' % ('*' * 80, datadir)]
-            _s += ['echo "On host : %s" >> %s/vmstat' % (host, datadir)]
-            _s += ['vmstat >> %s/vmstat' % (datadir)]
-            _s += ['echo "" >> %s/vmstat' % (datadir)]
-            _dst = os.path.join(datadir, 'PBS_' + host)
-            _s += ['cp -rp ${PBS_HOME} %s' % (_dst)]
-            _s += ['tar -cf %s/datastore.tar %s/datastore' % (_dst, _dst)]
-            _s += ['gzip -rf %s/datastore.tar' % (_dst)]
-            _s += ['rm -rf %s/datastore' % (_dst)]
-            _s += ['rm -rf %s/*_logs' % (_dst)]
-            _s += ['rm -rf %s/server_priv/accounting' % (_dst)]
-            _s += ['cp %s %s/pbs.conf.%s' % (confpath, _dst, host)]
-            if host == hostname:
-                _s += ['cat > %s/logfile_%s <<EOF' % (datadir, status)]
-                _s += ['%s' % (getattr(test, 'err_in_string', ''))]
-                _s += ['']
-                _s += ['EOF']
-            _s += ['wait']
-            fd, fn = self.du.mkstemp(hostname, mode=0755, body='\n'.join(_s))
-            os.close(fd)
-            self.du.run_cmd(hostname, cmd=fn, sudo=True, logerr=False)
-            self.du.rm(hostname, fn, force=True, sudo=True)
-            svr = _test.servers[host]
-            if svr is not None:
-                self.__save_logs(svr, _dst, 'server_logs', st, et)
-                _adst = os.path.join(_dst, 'server_priv')
-                self.__save_logs(svr, _adst, 'accounting', st, et)
-            if getattr(_test, 'moms', None) is not None:
-                self.__save_logs(_test.moms[host], _dst, 'mom_logs', st, et)
-            if getattr(_test, 'schedulers', None) is not None:
-                self.__save_logs(_test.schedulers[host], _dst, 'sched_logs',
-                                 st, et)
-            if ((self.sharedpath is not None) and (self.__syncth is not None)):
-                self.__queue.put((host, datadir, bi, sn, hostname, tn, lp))
-
-    def __save_logs(self, obj, dst, name, st, et, jid=None):
-        if name == 'accounting':
-            logs = obj.log_lines('accounting', n='ALL', starttime=st,
-                                 endtime=et)
-            logs = map(lambda x: x + '\n', logs)
-        elif name == 'tracejob':
-            logs = obj.log_lines('tracejob', id=jid, n='ALL')
-            name += '_' + jid
+                if isclass(err[0]) and issubclass(err[0], TimeOut):
+                    status = 'TIMEDOUT'
+                status_data = getattr(test, 'err_in_string', '')
         else:
-            logs = obj.log_lines(obj, n='ALL', starttime=st, endtime=et)
-        f = open(os.path.join(dst, name), 'w+')
-        f.writelines(logs)
+            status_data = ''
+        logfile = os.path.join(datadir, 'logfile_' + status)
+        f = open(logfile, 'w+')
+        f.write(testlogs + '\n')
+        f.write(status_data + '\n')
+        f.write('test duration: %s\n' % str(getattr(test, 'duration', '0')))
+        if status in ('PASS', 'SKIP'):
+            # Test case passed or skipped, no need to save post analysis data
+            f.close()
+            return
+        if ((self.max_postdata_threshold != 0) and
+                (self.__save_data_count > self.max_postdata_threshold)):
+            _msg = 'Total number of saved post analysis data for this'
+            _msg += ' testsuite is exceeded max postdata threshold'
+            _msg += ' (%d)' % self.max_postdata_threshold
+            f.write(_msg + '\n')
+            self.logger.error(_msg)
+            f.close()
+            return
+        svr = getattr(_test, 'server', None)
+        if svr is not None:
+            svr_host = svr.hostname
+        else:
+            _msg = 'Could not find Server Object in given test object'
+            _msg += ', skipping saving post analysis data'
+            f.write(_msg + '\n')
+            self.logger.warning(_msg)
+            f.close()
+            return
+        pbs_diag = os.path.join(svr.pbs_conf['PBS_EXEC'],
+                                'unsupported', 'pbs_diag')
+        cmd = [pbs_diag, '-f', '-d', '2']
+        if len(svr.jobs) > 0:
+            cmd += ['-j', ','.join(svr.jobs.keys())]
+        ret = self.du.run_cmd(svr_host, cmd, sudo=True, level=logging.DEBUG2)
+        if ret['rc'] != 0:
+            _msg = 'Failed to get diag information for '
+            _msg += 'on %s:' % svr_host
+            _msg += '\n\n' + '\n'.join(ret['err']) + '\n\n'
+            f.write(_msg + '\n')
+            self.logger.error(_msg)
+            f.close()
+            return
+        else:
+            diag_re = r"(?P<path>\/.*\/pbs_diag_[\d]+_[\d]+\.tar\.gz).*"
+            m = re.search(diag_re, '\n'.join(ret['out']))
+            if m is not None:
+                diag_out = m.group('path')
+            else:
+                _msg = 'Failed to find generated diag path in below output:'
+                _msg += '\n\n' + '-' * 80 + '\n'
+                _msg += '\n'.join(ret['out']) + '\n'
+                _msg += '-' * 80 + '\n\n'
+                f.write(_msg)
+                self.logger.error(_msg)
+                f.close()
+                return
+        diag_out_dest = os.path.join(datadir, os.path.basename(diag_out))
+        if not self.du.is_localhost(svr_host):
+            diag_out_r = svr_host + ':' + diag_out
+        else:
+            diag_out_r = diag_out
+        ret = self.du.run_copy(current_host, diag_out_r, diag_out_dest,
+                               sudo=True, level=logging.DEBUG2)
+        if ret['rc'] != 0:
+            _msg = 'Failed to copy generated diag from'
+            _msg += ' %s to %s' % (diag_out_r, diag_out_dest)
+            f.write(_msg + '\n')
+            self.logger.error(_msg)
+            f.close()
+            return
+        else:
+            self.du.rm(svr_host, path=diag_out, sudo=True, force=True,
+                       level=logging.DEBUG2)
+        cores = []
+        dir_list = ['server_priv', 'sched_priv', 'mom_priv']
+        for d in dir_list:
+            path = os.path.join(svr.pbs_conf['PBS_HOME'], d)
+            files = self.du.listdir(hostname=svr_host, path=path, sudo=True,
+                                    level=logging.DEBUG2)
+            for _f in files:
+                if os.path.basename(_f).startswith('core'):
+                    cores.append(_f)
+        cores = list(set(cores))
+        if len(cores) > 0:
+            cmd = ['gunzip', diag_out_dest]
+            ret = self.du.run_cmd(current_host, cmd, sudo=True,
+                                  level=logging.DEBUG2)
+            if ret['rc'] != 0:
+                _msg = 'Failed unzip generated diag at %s:' % diag_out_dest
+                _msg += '\n\n' + '\n'.join(ret['err']) + '\n\n'
+                f.write(_msg + '\n')
+                self.logger.error(_msg)
+                f.close()
+                return
+            diag_out_dest = diag_out_dest.rstrip('.gz')
+            cmd = ['tar', '-xf', diag_out_dest, '-C', datadir]
+            ret = self.du.run_cmd(current_host, cmd, sudo=True,
+                                  level=logging.DEBUG2)
+            if ret['rc'] != 0:
+                _msg = 'Failed extract generated diag %s' % diag_out_dest
+                _msg += ' to %s:' % datadir
+                _msg += '\n\n' + '\n'.join(ret['err']) + '\n\n'
+                f.write(_msg + '\n')
+                self.logger.error(_msg)
+                f.close()
+                return
+            self.du.rm(hostname=current_host, path=diag_out_dest,
+                       force=True, sudo=True, level=logging.DEBUG2)
+            diag_out_dest = diag_out_dest.rstrip('.tar')
+            for c in cores:
+                cmd = [pbs_diag, '-g', c]
+                ret = self.du.run_cmd(svr_host, cmd, sudo=True,
+                                      level=logging.DEBUG2)
+                if ret['rc'] != 0:
+                    _msg = 'Failed to get core file information for '
+                    _msg += '%s on %s:' % (c, svr_host)
+                    _msg += '\n\n' + '\n'.join(ret['err']) + '\n\n'
+                    f.write(_msg + '\n')
+                    self.logger.error(_msg)
+                else:
+                    of = os.path.join(diag_out_dest,
+                                      os.path.basename(c) + '.out')
+                    _f = open(of, 'w+')
+                    _f.write('\n'.join(ret['out']) + '\n')
+                    _f.close()
+                    self.du.rm(hostname=svr_host, path=c, force=True,
+                               sudo=True, level=logging.DEBUG2)
+            cmd = ['tar', '-cf', diag_out_dest + '.tar']
+            cmd += [os.path.basename(diag_out_dest)]
+            ret = self.du.run_cmd(current_host, cmd, sudo=True, cwd=datadir,
+                                  level=logging.DEBUG2)
+            if ret['rc'] != 0:
+                _msg = 'Failed generate tarball of diag directory'
+                _msg += ' %s' % diag_out_dest
+                _msg += ' after adding core(s) information in it:'
+                _msg += '\n\n' + '\n'.join(ret['err']) + '\n\n'
+                f.write(_msg + '\n')
+                self.logger.error(_msg)
+                f.close()
+                return
+            cmd = ['gzip', diag_out_dest + '.tar']
+            ret = self.du.run_cmd(current_host, cmd, sudo=True,
+                                  level=logging.DEBUG2)
+            if ret['rc'] != 0:
+                _msg = 'Failed compress tarball of diag %s' % diag_out_dest
+                _msg += '.tar after adding core(s) information in it:'
+                _msg += '\n\n' + '\n'.join(ret['err']) + '\n\n'
+                f.write(_msg + '\n')
+                self.logger.error(_msg)
+                f.close()
+                return
+            self.du.rm(current_host, diag_out_dest, sudo=True,
+                       recursive=True, force=True, level=logging.DEBUG2)
+        else:
+            diag_out_dest = diag_out_dest.rstrip('.tar.gz')
+        dest = os.path.join(datadir,
+                            'PBS_' + current_host.split('.')[0] + '.tar.gz')
+        ret = self.du.run_copy(current_host, diag_out_dest + '.tar.gz',
+                               dest, sudo=True, level=logging.DEBUG2)
+        if ret['rc'] != 0:
+            _msg = 'Failed rename tarball of diag from %s' % diag_out_dest
+            _msg += '.tar.gz to %s:' % dest
+            _msg += '\n\n' + '\n'.join(ret['err']) + '\n\n'
+            f.write(_msg + '\n')
+            self.logger.error(_msg)
+            f.close()
+            return
+        self.du.rm(current_host, path=diag_out_dest + '.tar.gz',
+                   force=True, sudo=True, level=logging.DEBUG2)
         f.close()
-
-    def begin(self):
-        if self.sharedpath is not None:
-            self.__syncth = SyncData(self.sharedpath, self.__queue)
-            self.__syncth.daemon = True
-            self.__syncth.start()
+        self.__save_data_count += 1
+        _msg = 'Successfully saved post analysis data'
+        self.logger.log(logging.DEBUG2, _msg)
 
     def addError(self, test, err):
-        self.__save_home(test, 'ERROR')
+        self.__save_home(test, 'ERROR', err)
 
     def addFailure(self, test, err):
-        self.__save_home(test, 'FAIL')
+        self.__save_home(test, 'FAIL', err)
 
-    def finalize(self, result):
-        if ((self.sharedpath is not None) and (self.__syncth is not None)):
-            while not self.__queue.empty():
-                pass
-            self.__syncth.stop()
-            self.__syncth.join()
-
-
-class SyncData(threading.Thread):
-
-    """
-    Sync thread
-    """
-
-    def __init__(self, sharedpath, queue):
-        threading.Thread.__init__(self)
-        self.sharedpath = sharedpath
-        self.queue = queue
-        self._go = True
-        self.du = DshUtils()
-
-    def run(self):
-        while self._go:
-            try:
-                host, datadir, bi, sn, hostname, tn, lp = self.queue.get(False,
-                                                                         1.0)
-            except Queue.Empty:
-                continue
-            destdatadir = os.path.join(self.sharedpath, bi, sn, hostname, tn,
-                                       lp)
-            homedir = os.path.join(datadir, 'PBS_' + host)
-            _s = ['#!/bin/bash']
-            _s += ['mkdir -p %s' % (destdatadir)]
-            _s += ['chmod -R 0755 %s' % (destdatadir)]
-            _s += ['cp -rp %s %s' % (homedir, destdatadir)]
-            _s += ['cp %s/qstat_tf %s' % (datadir, destdatadir)]
-            _s += ['cp %s/pbsnodes %s' % (datadir, destdatadir)]
-            _s += ['cp %s/print_server %s' % (datadir, destdatadir)]
-            _s += ['cp %s/logfile_* %s' % (datadir, destdatadir)]
-            _s += ['cat %s/uptime >> %s/uptime' % (datadir, destdatadir)]
-            _s += ['cat %s/vmstat >> %s/vmstat' % (datadir, destdatadir)]
-            _s += ['cat %s/netstat >> %s/netstat' % (datadir, destdatadir)]
-            _s += ['cat %s/ps >> %s/ps' % (datadir, destdatadir)]
-            _s += ['cat %s/df >> %s/df' % (datadir, destdatadir)]
-            fd, fn = self.du.mkstemp(host, mode=0755, body='\n'.join(_s))
-            os.close(fd)
-            self.du.run_cmd(host, cmd=fn, sudo=True)
-
-    def stop(self):
-        self._go = False
+    def addSuccess(self, test):
+        self.__save_home(test, 'PASS')

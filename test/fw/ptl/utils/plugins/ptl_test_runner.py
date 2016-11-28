@@ -46,6 +46,7 @@ import platform
 import pwd
 import signal
 import ptl
+from logging import StreamHandler
 from traceback import format_exception
 from types import ModuleType
 from nose.core import TextTestRunner
@@ -58,6 +59,10 @@ from ptl.utils.pbs_testsuite import TIMEOUT_KEY
 from ptl.utils.pbs_dshutils import DshUtils
 from ptl.lib.pbs_testlib import PBSInitServices
 from ptl.utils.pbs_covutils import LcovUtils
+try:
+    from cStringIO import StringIO
+except ImportError:
+    from StringIO import StringIO
 
 log = logging.getLogger('nose.plugins.PTLTestRunner')
 
@@ -68,6 +73,29 @@ class TimeOut(Exception):
     Raise this exception to mark a test as timed out.
     """
     pass
+
+
+class TCThresholdReached(Exception):
+    """
+    Raise this exception to tell that tc-failure-threshold reached
+    """
+
+
+class TestLogCaptureHandler(StreamHandler):
+    """
+    Log handler for capturing logs which test case print
+    using logging module
+    """
+
+    def __init__(self):
+        self.buffer = StringIO()
+        StreamHandler.__init__(self, self.buffer)
+        self.setLevel(logging.DEBUG2)
+        fmt = '%(asctime)-15s %(levelname)-8s %(message)s'
+        self.setFormatter(logging.Formatter(fmt))
+
+    def get_logs(self):
+        return self.buffer.getvalue()
 
 
 class _PtlTestResult(unittest.TestResult):
@@ -89,6 +117,7 @@ class _PtlTestResult(unittest.TestResult):
         self.config = config
         self.skipped = []
         self.timedout = []
+        self.handler = TestLogCaptureHandler()
 
     def getDescription(self, test):
         """
@@ -122,6 +151,9 @@ class _PtlTestResult(unittest.TestResult):
             else:
                 return None
 
+    def clear_stop(self):
+        self.shouldStop = False
+
     def startTest(self, test):
         """
         Start the test
@@ -129,6 +161,10 @@ class _PtlTestResult(unittest.TestResult):
         :param test: Test to start
         :type test: str
         """
+        ptl_logger = logging.getLogger('ptl')
+        if self.handler not in ptl_logger.handlers:
+            ptl_logger.addHandler(self.handler)
+        self.handler.buffer.truncate(0)
         unittest.TestResult.startTest(self, test)
         test.start_time = datetime.datetime.now()
         if self.showAll:
@@ -165,6 +201,8 @@ class _PtlTestResult(unittest.TestResult):
         :param error: Error message to add
         :type error: str
         """
+        if isclass(err[0]) and issubclass(err[0], TCThresholdReached):
+            return
         if isclass(err[0]) and issubclass(err[0], SkipTest):
             self.addSkip(test, err[1])
             return
@@ -408,7 +446,7 @@ class PtlTestRunner(TextTestRunner):
         result.printSummary(start, stop)
         self.config.plugins.finalize(result)
         if do_exit:
-            sys.exit(0)
+            sys.exit(1)
         return result
 
 
@@ -428,7 +466,16 @@ class PTLTestRunner(Plugin):
         self.lcov_data = None
         self.lcov_out = None
         self.lcov_utils = None
+        self.lcov_nosrc = None
+        self.lcov_baseurl = None
         self.genhtml_bin = None
+        self.config = None
+        self.result = None
+        self.tc_failure_threshold = None
+        self.cumulative_tc_failure_threshold = None
+        self.__failed_tc_count = 0
+        self.__tf_count = 0
+        self.__failed_tc_count_msg = False
 
     def options(self, parser, env):
         """
@@ -438,7 +485,8 @@ class PTLTestRunner(Plugin):
 
     def set_data(self, paramfile, testparam,
                  lcov_bin, lcov_data, lcov_out, genhtml_bin, lcov_nosrc,
-                 lcov_baseurl):
+                 lcov_baseurl, tc_failure_threshold,
+                 cumulative_tc_failure_threshold):
         if paramfile is not None:
             _pf = open(paramfile, 'r')
             _params_from_file = _pf.readlines()
@@ -461,6 +509,8 @@ class PTLTestRunner(Plugin):
         self.genhtml_bin = genhtml_bin
         self.lcov_nosrc = lcov_nosrc
         self.lcov_baseurl = lcov_baseurl
+        self.tc_failure_threshold = tc_failure_threshold
+        self.cumulative_tc_failure_threshold = cumulative_tc_failure_threshold
 
     def configure(self, options, config):
         """
@@ -491,7 +541,8 @@ class PTLTestRunner(Plugin):
             if doc is not None:
                 self.result.logger.info('suite docstring: \n' + doc + '\n')
             self.result.logger.info(self.result.separator1)
-            context.start_time = datetime.datetime.now()
+            self.__failed_tc_count = 0
+            self.__failed_tc_count_msg = False
 
     def __get_timeout(self, test):
         try:
@@ -504,8 +555,14 @@ class PTLTestRunner(Plugin):
         if not hasattr(test, 'start_time'):
             test = test.context
         if err is not None:
+            is_skip = issubclass(err[0], SkipTest)
+            is_tctr = issubclass(err[0], TCThresholdReached)
+            if not (is_skip or is_tctr):
+                self.__failed_tc_count += 1
+                self.__tf_count += 1
             try:
-                test.err_in_string = self.result._exc_info_to_string(err, test)
+                test.err_in_string = self.result._exc_info_to_string(err,
+                                                                     test)
             except:
                 etype, value, tb = err
                 test.err_in_string = ''.join(format_exception(etype, value,
@@ -514,15 +571,33 @@ class PTLTestRunner(Plugin):
             test.err_in_string = 'None'
         test.end_time = datetime.datetime.now()
         test.duration = test.end_time - test.start_time
+        test.captured_logs = self.result.handler.get_logs()
 
     def startTest(self, test):
         """
         Start the test
         """
+        if ((self.cumulative_tc_failure_threshold != 0) and
+                (self.__tf_count >= self.cumulative_tc_failure_threshold)):
+            _msg = 'Total testcases failure count exceeded cumulative'
+            _msg += ' testcase failure threshold '
+            _msg += '(%d)' % self.cumulative_tc_failure_threshold
+            self.logger.error(_msg)
+            raise KeyboardInterrupt
+        if ((self.tc_failure_threshold != 0) and
+                (self.__failed_tc_count >= self.tc_failure_threshold)):
+            if self.__failed_tc_count_msg:
+                raise TCThresholdReached
+            _msg = 'Testcases failure for this testsuite count exceeded'
+            _msg += ' testcase failure threshold '
+            _msg += '(%d)' % self.tc_failure_threshold
+            self.logger.error(_msg)
+            self.__failed_tc_count_msg = True
+            raise TCThresholdReached
         timeout = self.__get_timeout(test)
 
         def timeout_handler(signum, frame):
-            raise TimeOut('Timed out after %s second' % (timeout))
+            raise TimeOut('Timed out after %s second' % timeout)
         old_handler = signal.signal(signal.SIGALRM, timeout_handler)
         setattr(test, 'old_sigalrm_handler', old_handler)
         signal.alarm(timeout)
@@ -531,13 +606,17 @@ class PTLTestRunner(Plugin):
         """
         Stop the test
         """
-        signal.signal(signal.SIGALRM, getattr(test, 'old_sigalrm_handler'))
-        signal.alarm(0)
+        old_sigalrm_handler = getattr(test, 'old_sigalrm_handler', None)
+        if old_sigalrm_handler is not None:
+            signal.signal(signal.SIGALRM, old_sigalrm_handler)
+            signal.alarm(0)
 
     def addError(self, test, err):
         """
         Add error
         """
+        if isclass(err[0]) and issubclass(err[0], TCThresholdReached):
+            return True
         self.__set_test_end_data(test, err)
 
     def addFailure(self, test, err):

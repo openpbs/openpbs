@@ -85,6 +85,9 @@ pip-delete-this-directory.txt
 # Build directory
 target/
 
+#PyCharm project directory
+.idea/
+
 # From automake/autoconf
 autom4te.cache/
 autoscan.log

@@ -174,7 +174,7 @@ class DshUtils(object):
             return sys.platform
 
         if pyexec is None:
-            pyexec = self.which(hostname, 'python')
+            pyexec = self.which(hostname, 'python', level=logging.DEBUG2)
 
         cmd = [pyexec, '-c', '"import sys; print sys.platform"']
         ret = self.run_cmd(hostname, cmd=cmd)
@@ -248,7 +248,7 @@ class DshUtils(object):
                 os.write(fd, str(k) + '=' + str(v) + '\n')
             os.close(fd)
             self.chown(path=fn, uid=0, gid=0, sudo=True)
-            self.run_copy(hostname, fn, fout, sudo=True)
+            self.run_copy(hostname, fn, fout, sudo=True, level=logging.DEBUG2)
             self.rm(path=fn, sudo=True)
         except:
             raise PbsConfigError(rc=1, rv=None,
@@ -499,7 +499,9 @@ class DshUtils(object):
             (fd, fn) = self.mkstemp(hostname, mode=0755)
             os.write(fd, '#!/bin/bash\n')
             os.write(fd, 'cd %s\n' % (home))
-            os.write(fd, '%s -rf %s\n' % (self.which(hostname, 'rm'), rhost))
+            os.write(fd, '%s -rf %s\n' % (self.which(hostname, 'rm',
+                                                     level=logging.DEBUG2),
+                                          rhost))
             os.write(fd, 'touch %s\n' % (rhost))
             for k, v in conf.items():
                 if isinstance(v, list):
@@ -511,7 +513,8 @@ class DshUtils(object):
                 else:
                     l = 'echo "%s %s" >> %s\n' % (str(k), str(v), rhost)
                     os.write(fd, l)
-            os.write(fd, '%s 0600 %s\n' % (self.which(hostname, 'chmod'),
+            os.write(fd, '%s 0600 %s\n' % (self.which(hostname, 'chmod',
+                                                      level=logging.DEBUG2),
                                            rhost))
             os.close(fd)
             ret = self.run_cmd(hostname, cmd=fn, runas=uid)
@@ -811,7 +814,7 @@ class DshUtils(object):
                     # TODO: get a valid remote temporary file rather than
                     # assume that the remote host has a similar file
                     # system layout
-                    self.run_copy(hostname, _script, _script)
+                    self.run_copy(hostname, _script, _script, level=level)
                     os.remove(_script)
                 runcmd = rshcmd + sudocmd + [_script]
             else:
@@ -866,7 +869,8 @@ class DshUtils(object):
 
             if as_script:
                 # must pass as_script=False otherwise it will loop infinite
-                self.rm(hostname, path=_script, as_script=False)
+                self.rm(hostname, path=_script, as_script=False,
+                        level=level)
 
             # handle the case where stdout is not a PIPE
             if o is not None:
@@ -979,7 +983,8 @@ class DshUtils(object):
             if ((not islocal) or (':' in src)):
                 copy_cmd = copy.deepcopy(self.copy_cmd)
                 if copy_cmd[0][0] != '/':
-                    copy_cmd[0] = self.which(targethost, copy_cmd[0])
+                    copy_cmd[0] = self.which(targethost, copy_cmd[0],
+                                             level=level)
                 cmd += copy_cmd
                 if recursive:
                     cmd += ['-r']
@@ -989,7 +994,8 @@ class DshUtils(object):
                 else:
                     cmd += [targethost + ':' + dest]
             else:
-                cmd += [self.which(targethost, 'cp'), '-p']
+                cmd += [self.which(targethost, 'cp', level=level)]
+                cmd += ['-p']
                 if recursive:
                     cmd += ['-r']
                 cmd += [src]
@@ -1001,7 +1007,7 @@ class DshUtils(object):
             if ret['rc'] != 0:
                 self.logger.error(ret['err'])
             elif sudo_save_dest:
-                cmd = [self.which(targethost, 'mv')]
+                cmd = [self.which(targethost, 'mv', level=level)]
                 cmd += [dest, sudo_save_dest]
                 ret = self.run_cmd(targethost, cmd=cmd, sudo=True, level=level)
                 dest = sudo_save_dest
@@ -1028,7 +1034,7 @@ class DshUtils(object):
         # Add absolute path of command also add log level to command
         self.logger.infocli('running command "%s" on %s' % (' '.join(cmd),
                                                             hostname))
-        _cmd = [self.which(exe=cmd[0])]
+        _cmd = [self.which(exe=cmd[0], level=level)]
         _cmd += ['-l', logging.getLevelName(self.logger.parent.level)]
         _cmd += cmd[1:]
         cmd = _cmd
@@ -1046,7 +1052,7 @@ class DshUtils(object):
             dest = os.path.join(tmpdir, os.path.basename(fn))
             oldc = self.copy_cmd[:]
             self.set_copy_cmd('scp -p')
-            self.run_copy(hostname, fn, dest, mode=0777)
+            self.run_copy(hostname, fn, dest, mode=0777, level=level)
             self.set_copy_cmd(' '.join(oldc))
             self.rm(None, path=fn, sudo=True, force=True, logerr=False)
             cmd = dest
@@ -1220,7 +1226,7 @@ class DshUtils(object):
             if not self.is_localhost(hostname):
                 py_cmd = '\"' + py_cmd + '\"'
 
-            cmd = [self.which(hostname, 'python'), '-c', py_cmd]
+            cmd = [self.which(hostname, 'python', level=level), '-c', py_cmd]
             ret = self.run_cmd(hostname, cmd=cmd, sudo=sudo, runas=runas,
                                logerr=False, level=level)
             if ((ret['rc'] == 0) and (len(ret['out']) == 1) and
@@ -1288,7 +1294,7 @@ class DshUtils(object):
         """
         if (path is None) or (mode is None):
             return False
-        cmd = [self.which(hostname, 'chmod')]
+        cmd = [self.which(hostname, 'chmod', level=level)]
         if recursive:
             cmd += ['-R']
         cmd += [oct(mode), path]
@@ -1339,7 +1345,7 @@ class DshUtils(object):
                 _u = str(uid)
         if _u == '':
             return False
-        cmd = [self.which(hostname, 'chown')]
+        cmd = [self.which(hostname, 'chown', level=level)]
         if recursive:
             cmd += ['-R']
         cmd += [_u, path]
@@ -1397,7 +1403,7 @@ class DshUtils(object):
         if _g == '':
             return False
 
-        cmd = [self.which(hostname, 'chgrp')]
+        cmd = [self.which(hostname, 'chgrp', level=level)]
         if recursive:
             cmd += ['-R']
         cmd += [_g, path]
@@ -1494,7 +1500,7 @@ class DshUtils(object):
         if (path is None) or (len(path) == 0):
             return True
 
-        cmd = [self.which(hostname, 'rm')]
+        cmd = [self.which(hostname, 'rm', level=level)]
         if recursive and force:
             cmd += ['-rf']
         else:
@@ -1563,7 +1569,7 @@ class DshUtils(object):
         if (path is None) or (len(path) == 0):
             return True
 
-        cmd = [self.which(hostname, 'mkdir')]
+        cmd = [self.which(hostname, 'mkdir', level=level)]
         if parents:
             cmd += ['-p']
         if mode is not None:
@@ -1599,7 +1605,7 @@ class DshUtils(object):
         :type logerr: boolean
         :returns: output of run_cmd
         """
-        cmd = [self.which(hostname, 'cat'), filename]
+        cmd = [self.which(hostname, 'cat', level=level), filename]
         return self.run_cmd(hostname, cmd=cmd, sudo=sudo,
                             runas=runas, logerr=logerr, level=level)
 
@@ -1775,8 +1781,7 @@ class DshUtils(object):
             else:
                 os.write(fd, body)
         if mode is not None:
-            self.chmod(hostname, fn, mode=mode,
-                       level=logging.INFOCLI2, sudo=True)
+            self.chmod(hostname, fn, mode=mode, level=level, sudo=True)
         if ((uid is not None) or (gid is not None)):
             self.chown(hostname, fn, uid=uid, gid=gid, sudo=True)
         return (fd, fn)
@@ -1819,8 +1824,8 @@ class DshUtils(object):
         else:
             fn = tempfile.mkdtemp(suffix, prefix, dir)
         if mode is not None:
-            self.chmod(hostname, fn, mode=mode, recursive=True,
-                       level=logging.INFOCLI2, sudo=True)
+            self.chmod(hostname, fn, mode=mode, recursive=True, level=level,
+                       sudo=True)
         if ((uid is not None) or (gid is not None)):
             self.chown(hostname, fn, uid=uid, gid=gid, recursive=True,
                        sudo=True)
