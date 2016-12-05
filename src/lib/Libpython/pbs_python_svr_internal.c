@@ -1,36 +1,36 @@
 /*
  * Copyright (C) 1994-2016 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
- *  
+ *
  * This file is part of the PBS Professional ("PBS Pro") software.
- * 
+ *
  * Open Source License Information:
- *  
+ *
  * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free 
- * Software Foundation, either version 3 of the License, or (at your option) any 
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
  * later version.
- *  
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+ *
+ * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
  * PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
- *  
- * You should have received a copy of the GNU Affero General Public License along 
+ *
+ * You should have received a copy of the GNU Affero General Public License along
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
- *  
- * Commercial License Information: 
- * 
- * The PBS Pro software is licensed under the terms of the GNU Affero General 
- * Public License agreement ("AGPL"), except where a separate commercial license 
+ *
+ * Commercial License Information:
+ *
+ * The PBS Pro software is licensed under the terms of the GNU Affero General
+ * Public License agreement ("AGPL"), except where a separate commercial license
  * agreement for PBS Pro version 14 or later has been executed in writing with Altair.
- *  
- * Altair’s dual-license business model allows companies, individuals, and 
- * organizations to create proprietary derivative works of PBS Pro and distribute 
- * them - whether embedded or bundled with other software - under a commercial 
+ *
+ * Altair’s dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of PBS Pro and distribute
+ * them - whether embedded or bundled with other software - under a commercial
  * license agreement.
- * 
- * Use of Altair’s trademarks, including but not limited to "PBS™", 
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+ *
+ * Use of Altair’s trademarks, including but not limited to "PBS™",
+ * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
  * trademark licensing policies.
  *
  */
@@ -214,7 +214,7 @@ static pbs_list_head pbs_vnode_set_list;      /* list of vnode set requests */
  * @param[in]	py_resource_str_value - a Python string object representing
  * 					the values in 'value_list'.
  * @param[in]	attr_def_p - the resource definition for the resource list
- * 			     represented by 'py_resource'.	
+ * 			     represented by 'py_resource'.
  * @param[in]	value_list - list of values cached for the 'py_resource' object
  * @param[in]	all_resc - links various pbs_resource_value structures.
  */
@@ -2521,18 +2521,29 @@ pbs_python_populate_svrattrl_from_python_class(PyObject *py_instance,
 	PyObject	*py_resc_hookset_dict0 = (PyObject *)NULL;
 	PyObject	*py_attr_keys = (PyObject *)NULL;
 	PyObject 	*py_val = (PyObject *)NULL;
-	char	*name_str_dup = NULL;
-	char	*val_str_dup = NULL;
+	char		*name_str_dup = NULL;
+	char		*val_str_dup = NULL;
 	int		num_attrs, i;
 	pbs_list_head	svrattrl_list2;
-	int         rc = -1;
+	int		rc = -1;
 	int		hook_set_flag = 0;
 	int		has_resv_duration;
-	char            the_resc[HOOK_BUF_SIZE];
-	char            the_val[HOOK_BUF_SIZE];
+	char		the_resc[HOOK_BUF_SIZE];
+	static char     *the_val = NULL;
+	static int 	val_buf_size = HOOK_BUF_SIZE;
 	PyObject	*py_resc = (PyObject *)NULL;
 	long		val_sec;
 	char		*objname = NULL;
+
+	if (the_val == NULL) {
+		the_val = (char *)malloc(val_buf_size);
+		if (the_val == NULL) {
+			snprintf(log_buffer, LOG_BUF_SIZE-1, "malloc failure (errno %d)",
+				 errno);
+			log_err(PBSE_SYSTEM, __func__, log_buffer);
+			return rc;
+		}
+	}
 
 	if (hook_debug.output_fp != NULL) {
 
@@ -2726,8 +2737,15 @@ pbs_python_populate_svrattrl_from_python_class(PyObject *py_instance,
 					continue;
 				}
 
+				the_val[0]='\0';
+				if (pbs_strcat(&the_val, &val_buf_size, val) == NULL){
+					snprintf(log_buffer, LOG_BUF_SIZE-1, "malloc failure (errno %d)",
+						 errno);
+					log_err(PBSE_SYSTEM, __func__, log_buffer);
+					goto svrattrl_exit;
+				}
+
 				strncpy(the_resc, resc, sizeof(the_resc)-1);
-				strncpy(the_val, val, sizeof(the_val)-1);
 				if (IS_PBS_PYTHON_CMD(pbs_python_daemon_name)) {
 
 					if ((rescdef=find_resc_def(svr_resc_def, resc, svr_resc_size)) == NULL) {
@@ -2747,7 +2765,7 @@ pbs_python_populate_svrattrl_from_python_class(PyObject *py_instance,
 							snprintf(the_resc, sizeof(the_resc), "%s,long", resc);
 							if (val != NULL) {
 								val_sec = duration_to_secs(val);
-								snprintf(the_val, sizeof(the_val), "%ld", val_sec);
+								snprintf(the_val, val_buf_size, "%ld", val_sec);
 							}
 						} else if (PyLong_Check(py_resc) || PyInt_Check(py_resc)) {
 							snprintf(the_resc, sizeof(the_resc), "%s,long", resc);
@@ -2787,7 +2805,7 @@ pbs_python_populate_svrattrl_from_python_class(PyObject *py_instance,
 							snprintf(the_resc, sizeof(the_resc), "%s,long", resc);
 							if (val != NULL) {
 								val_sec = duration_to_secs(val);
-								snprintf(the_val, sizeof(the_val), "%ld", val_sec);
+								snprintf(the_val, val_buf_size, "%ld", val_sec);
 							}
 						} else {
 							snprintf(the_resc, sizeof(the_resc), "%s,string", resc);
