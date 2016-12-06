@@ -1756,35 +1756,32 @@ class DshUtils(object):
         :param level: logging level, defaults to INFOCLI2
         """
 
+        (fd1, fn1) = tempfile.mkstemp(suffix, prefix, dir, text)
         if not self.is_localhost(hostname):
-            tmp_args = []
-            if suffix:
-                tmp_args += ['suffix=\'' + suffix + '\'']
-            if prefix:
-                tmp_args += ['prefix=\'' + prefix + '\'']
-            if dir is not None:
-                tmp_args += ['dir=\'' + str(dir) + '\'']
-            if text:
-                tmp_args += ['text=\'' + str(text) + '\'']
-            args = ",".join(tmp_args)
-            ret = self.run_cmd(hostname,
-                               ['python', '-c', '"import tempfile; ' +
-                                'print tempfile.mkstemp(' + args + ')"'],
-                               level=level)
-            if ret['rc'] == 0 and ret['out']:
-                (fd, fn) = eval(ret['out'][0])
-        else:
-            (fd, fn) = tempfile.mkstemp(suffix, prefix, dir, text)
+            _close = getattr(os, 'close')
+
+            def __close(fd):
+                if fd != fd1:
+                    _close(fd)
+                else:
+                    setattr(os, 'close', _close)
+                    os.close(fd)
+                    self.run_copy(hostname, fn1, fn1, sudo=True, uid=uid,
+                                  gid=gid, mode=mode)
+                    os.remove(fn1)
+            setattr(os, 'close', __close)
         if body is not None:
             if isinstance(body, list):
-                os.write(fd, "\n".join(body))
+                os.write(fd1, "\n".join(body))
             else:
-                os.write(fd, body)
+                os.write(fd1, body)
+        if not self.is_localhost(hostname):
+            return (fd1, fn1)
         if mode is not None:
-            self.chmod(hostname, fn, mode=mode, level=level, sudo=True)
+            self.chmod(hostname, fn1, mode=mode, level=level, sudo=True)
         if ((uid is not None) or (gid is not None)):
-            self.chown(hostname, fn, uid=uid, gid=gid, sudo=True)
-        return (fd, fn)
+            self.chown(hostname, fn1, uid=uid, gid=gid, sudo=True)
+        return (fd1, fn1)
 
     def mkdtemp(self, hostname=None, suffix='', prefix='PtlPbs', dir=None,
                 uid=None, gid=None, mode=None, level=logging.INFOCLI2):

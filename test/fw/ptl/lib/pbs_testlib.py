@@ -4089,8 +4089,9 @@ class PBSService(PBSObject):
             try:
                 self.fqdn = socket.gethostbyaddr(self.hostname)[0]
                 if self.hostname != self.fqdn:
-                    self.logger.debug('FQDN name ' + self.fqdn + ' differs '
-                                      'from name provided ' + self.hostname)
+                    self.logger.info('FQDN name ' + self.fqdn + ' differs '
+                                     'from name provided ' + self.hostname)
+                    self.hostname = self.fqdn
             except:
                 pass
         else:
@@ -4866,6 +4867,8 @@ class Comm(PBSService):
             'PBS_COMM_ROUTERS': '-r',
             'PBS_COMM_THREADS': '-t'
         }
+        self.pi = PBSInitServices(hostname=self.hostname,
+                                  conf=self.pbs_conf_file)
 
     def isUp(self):
         """
@@ -4897,30 +4900,47 @@ class Comm(PBSService):
         Start the comm
 
         :param args: Argument required to start the comm
+        :type args: str
+        :param launcher: Optional utility to invoke the launch of the service
+        :type launcher: str or list
         """
-        return super(Comm, self)._start(inst=self, args=args,
-                                        cmd_map=self.conf_to_cmd_map,
-                                        launcher=launcher)
+        if args is not None or launcher is not None:
+            return super(Comm, self)._start(inst=self, args=args,
+                                            cmd_map=self.conf_to_cmd_map,
+                                            launcher=launcher)
+        else:
+            try:
+                rv = self.pi.start_comm()
+            except PbsInitServicesError as e:
+                raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
+            return rv
 
-    def stop(self, sig='-TERM'):
+    def stop(self, sig=None):
         """
         Stop the comm.
 
         :param sig: Signal to stop the comm
         :type sig: str
         """
-        self.logger.info(self.logprefix + 'stopping Comm on host ' +
-                         self.hostname)
-        rv = super(Comm, self)._stop(sig, inst=self)
-        return rv
+        if sig is not None:
+            self.logger.info(self.logprefix + 'stopping Comm on host ' +
+                             self.hostname)
+            return super(Comm, self)._stop(sig, inst=self)
+        else:
+            try:
+                self.pi.stop_comm()
+            except PbsInitServicesError as e:
+                raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
+            return True
 
     def restart(self):
         """
         Restart the comm.
         """
-        if self.stop():
-            return self.start()
-        return False
+        if self.isUp():
+            if not self.stop():
+                return False
+        return self.start()
 
     def log_match(self, msg=None, id=None, n=50, tail=True, allmatch=False,
                   regexp=False, day=None, max_attempts=1, interval=1,
@@ -5064,7 +5084,8 @@ class Server(PBSService):
             _m += ['@', pbsconf_file]
         _m += [': ']
         self.logprefix = "".join(_m)
-
+        self.pi = PBSInitServices(hostname=self.hostname,
+                                  conf=self.pbs_conf_file)
         self.set_client(client)
 
         if client_pbsconf_file is None:
@@ -5342,24 +5363,44 @@ class Server(PBSService):
     def start(self, args=None, launcher=None):
         """
         Start the PBS server
+
+        :param args: Argument required to start the server
+        :type args: str
+        :param launcher: Optional utility to invoke the launch of the service
+        :type launcher: str or list
         """
-        rv = super(Server, self)._start(inst=self, args=args,
-                                        launcher=launcher)
+        if args is not None or launcher is not None:
+            rv = super(Server, self)._start(inst=self, args=args,
+                                            launcher=launcher)
+        else:
+            try:
+                rv = self.pi.start_server()
+            except PbsInitServicesError as e:
+                raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
         if self.isUp():
             return rv
         else:
-            raise PbsServiceError(rv=False, rc=1, msg=rv)
+            raise PbsServiceError(rv=False, rc=1, msg=rv['err'])
 
-    def stop(self, sig='-TERM'):
+    def stop(self, sig=None):
         """
         Stop the PBS server
 
         :param sig: Signal to stop PBS server
         :type sig: str
         """
-        self.logger.info(self.logprefix + 'stopping Server on host ' +
-                         self.hostname)
-        rc = super(Server, self)._stop(sig, inst=self)
+        if sig is not None:
+            self.logger.info(self.logprefix + 'stopping Server on host ' +
+                             self.hostname)
+            rc = super(Server, self)._stop(sig, inst=self)
+        else:
+            try:
+                self.pi.stop_server()
+            except PbsInitServicesError as e:
+                raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg,
+                                      post=self._disconnect, conn=self._conn,
+                                      force=True)
+            rc = True
         self._disconnect(self._conn, force=True)
         return rc
 
@@ -5368,7 +5409,8 @@ class Server(PBSService):
         Terminate and start a PBS server.
         """
         if self.isUp():
-            self.stop()
+            if not self.stop():
+                return False
         return self.start()
 
     def log_match(self, msg=None, id=None, n=50, tail=True, allmatch=False,
@@ -5884,6 +5926,8 @@ class Server(PBSService):
                 pcmd += ['-s', self.hostname]
                 if obj_type in (NODE, VNODE):
                     pcmd += ['-v']
+                if obj_type == HOST:
+                    pcmd += ['-H']
                 if id:
                     pcmd += [id]
                 else:
@@ -6912,8 +6956,11 @@ class Server(PBSService):
             self._disconnect(c)
 
         if expect:
+            offset = None
             if obj_type in (NODE, HOST):
                 obj_type = VNODE
+            if obj_type in (VNODE, QUEUE):
+                offset = 0.5
             if cmd in PBS_CMD_TO_OP:
                 op = PBS_CMD_TO_OP[cmd]
             else:
@@ -6921,10 +6968,10 @@ class Server(PBSService):
 
             if oid is None:
                 return self.expect(obj_type, attrib, oid, op=op,
-                                   max_attempts=max_attempts)
+                                   max_attempts=max_attempts, offset=offset)
             for i in oid:
                 rc = self.expect(obj_type, attrib, i, op=op,
-                                 max_attempts=max_attempts)
+                                 max_attempts=max_attempts, offset=offset)
                 if not rc:
                     break
         return rc
@@ -10576,14 +10623,13 @@ class Scheduler(PBSService):
         self.server = None
         self.server_dyn_res = None
         self.deletable_files = ['usage']
-
         self.logger = logging.getLogger(__name__)
 
         if server is not None:
             self.server = server
             if diag is None and self.server.diag is not None:
                 diag = self.server.diag
-            if ((len(diagmap) == 0) and (len(self.server.diagmap) != 0)):
+            if (len(diagmap) == 0) and (len(self.server.diagmap) != 0):
                 diagmap = self.server.diagmap
         else:
             self.server = Server(hostname, pbsconf_file=pbsconf_file,
@@ -10602,7 +10648,8 @@ class Scheduler(PBSService):
             _m += ['@', pbsconf_file]
         _m += [': ']
         self.logprefix = "".join(_m)
-
+        self.pi = PBSInitServices(hostname=self.hostname,
+                                  conf=self.pbs_conf_file)
         self.pbs_conf = self.server.pbs_conf
 
         self.sched_config_file = os.path.join(self.pbs_conf['PBS_HOME'],
@@ -10671,46 +10718,46 @@ class Scheduler(PBSService):
         Start the scheduler
 
         :param args: Arguments required to start the scheduler
+        :type args: str
+        :param launcher: Optional utility to invoke the launch of the service
+        :type launcher: str or list
         """
-        return super(Scheduler, self)._start(inst=self, args=args,
-                                             launcher=launcher)
+        if args is not None or launcher is not None:
+            return super(Scheduler, self)._start(inst=self, args=args,
+                                                 launcher=launcher)
+        else:
+            try:
+                rv = self.pi.start_sched()
+            except PbsInitServicesError as e:
+                raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
+            return rv
 
-    def stop(self, sig='-TERM'):
+    def stop(self, sig=None):
         """
         Stop the PBS scheduler
 
         :param sig: Signal to stop the PBS scheduler
         :type sig: str
         """
-        self.logger.info(self.logprefix + 'stopping Scheduler on host ' +
-                         self.hostname)
-        rv = super(Scheduler, self)._stop(sig, inst=self)
-        return rv
-
-        self.signal(sig)
-
-        pid = self.get_pid()
-        chk_pid = self.all_instance_pids()
-        if pid is None or chk_pid is None:
+        if sig is not None:
+            self.logger.info(self.logprefix + 'stopping Scheduler on host ' +
+                             self.hostname)
+            return super(Scheduler, self)._stop(sig, inst=self)
+        else:
+            try:
+                self.pi.stop_sched()
+            except PbsInitServicesError as e:
+                raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
             return True
-
-        num_seconds = 0
-        while pid in chk_pid:
-            if num_seconds > 10:
-                self.logger.error(self.logprefix + 'could not stop Scheduler')
-                return False
-            time.sleep(1)
-            num_seconds += 1
-            chk_pid = self.all_instance_pids()
-        return True
 
     def restart(self):
         """
         Restart the PBS scheduler
         """
-        if self.stop():
-            return self.start()
-        return False
+        if self.isUp():
+            if not self.stop():
+                return False
+        return self.start()
 
     def log_match(self, msg=None, id=None, n=50, tail=True, allmatch=False,
                   regexp=False, day=None, max_attempts=1, interval=1,
@@ -11069,7 +11116,7 @@ class Scheduler(PBSService):
         for f in self.deletable_files:
             fn = os.path.join(self.pbs_conf['PBS_HOME'], 'sched_priv', f)
             if fn is not None:
-                self.du.rm(self.hostname, fn, sudo=True)
+                self.du.rm(self.hostname, fn, sudo=True, force=True)
         self.parse_sched_config()
         self.fairshare_tree = None
         self.resource_group = None
@@ -12491,7 +12538,7 @@ class MoM(PBSService):
             self.server = server
             if diag is None and self.server.diag is not None:
                 diag = self.server.diag
-            if ((len(diagmap) == 0) and (len(self.server.diagmap) != 0)):
+            if (len(diagmap) == 0) and (len(self.server.diagmap) != 0):
                 diagmap = self.server.diagmap
         else:
             self.server = Server(name, pbsconf_file=pbsconf_file,
@@ -12505,12 +12552,14 @@ class MoM(PBSService):
             _m += ['@', pbsconf_file]
         _m += [': ']
         self.logprefix = "".join(_m)
-
+        self.pi = PBSInitServices(hostname=self.hostname,
+                                  conf=self.pbs_conf_file)
         self.configd = os.path.join(self.pbs_conf['PBS_HOME'], 'mom_priv',
                                     'config.d')
         self.config = {}
-        self.dflt_config = {'$clienthost': self.hostname}
+        self.dflt_config = {'$clienthost': self.server.hostname}
         self.version = None
+        self._is_cpuset_mom = None
 
     def isUp(self):
         """
@@ -12542,30 +12591,47 @@ class MoM(PBSService):
         Start the PBS mom
 
         :param args: Arguments to start the mom
+        :type args: str or None
+        :param launcher: Optional utility to invoke the launch of the service
+        :type launcher: str or list or None
         """
-        return super(MoM, self)._start(inst=self, args=args,
-                                       cmd_map=self.conf_to_cmd_map,
-                                       launcher=launcher)
+        if args is not None or launcher is not None:
+            return super(MoM, self)._start(inst=self, args=args,
+                                           cmd_map=self.conf_to_cmd_map,
+                                           launcher=launcher)
+        else:
+            try:
+                rv = self.pi.start_mom()
+            except PbsInitServicesError as e:
+                raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
+            return rv
 
-    def stop(self, sig='-TERM'):
+    def stop(self, sig=None):
         """
         Stop the PBS mom
 
         :param sig: Signal to stop the PBS mom
         :type sig: str
         """
-        self.logger.info(self.logprefix + 'stopping MoM on host ' +
-                         self.hostname)
-        rv = super(MoM, self)._stop(sig, inst=self)
-        return rv
+        if sig is not None:
+            self.logger.info(self.logprefix + 'stopping MoM on host ' +
+                             self.hostname)
+            return super(MoM, self)._stop(sig, inst=self)
+        else:
+            try:
+                self.pi.stop_mom()
+            except PbsInitServicesError as e:
+                raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
+            return True
 
     def restart(self):
         """
         Restart the PBS mom
         """
-        if self.stop():
-            return self.start()
-        return False
+        if self.isUp():
+            if not self.stop():
+                return False
+        return self.start()
 
     def log_match(self, msg=None, id=None, n=50, tail=True, allmatch=False,
                   regexp=False, day=None, max_attempts=1, interval=1,
@@ -12605,6 +12671,27 @@ class MoM(PBSService):
 
         return self.version
 
+    def delete_vnodes(self):
+        rah = ATTR_rescavail + '.host'
+        rav = ATTR_rescavail + '.vnode'
+        a = {rah: self.hostname, rav: None}
+        try:
+            _vs = self.server.status(HOST, a, id=self.hostname)
+        except PbsStatusError:
+            try:
+                _vs = self.server.status(HOST, a, id=self.shortname)
+            except PbsStatusError as e:
+                if e.msg[0].endswith('Server has no node list'):
+                    _vs = []
+                else:
+                    raise e
+        vs = []
+        for v in _vs:
+            if v[rav].split('.')[0] != v[rah].split('.')[0]:
+                vs.append(v['id'])
+        if len(vs) > 0:
+            self.server.manager(MGR_CMD_DELETE, VNODE, id=vs)
+
     def revert_to_defaults(self, delvnodedefs=True):
         """
         1. ``Revert MoM configuration to defaults.``
@@ -12627,21 +12714,9 @@ class MoM(PBSService):
             self.delete_pelog()
             if delvnodedefs and self.has_vnode_defs():
                 restart = True
-                self.delete_vnode_defs()
-                rah = ATTR_rescavail + '.host'
-                rav = ATTR_rescavail + '.vnode'
-                a = {rah: self.hostname, rav: None}
-                try:
-                    _vs = self.server.status(VNODE, a, id=self.hostname)
-                except:
-                    _vs = self.server.status(VNODE, a, id=self.shortname)
-                vs = []
-                for v in _vs:
-                    if v[rav].split('.')[0] != v[rah].split('.')[0]:
-                        vs.append(v['id'])
-                if len(vs) > 0:
-                    self.server.manager(MGR_CMD_DELETE, VNODE, id=vs,
-                                        expect=True)
+                if not self.delete_vnode_defs():
+                    return False
+                self.delete_vnodes()
             if cmp(self.config, self.dflt_config) != 0:
                 self.apply_config(self.dflt_config, hup=False, restart=False)
             if restart:
@@ -12706,32 +12781,25 @@ class MoM(PBSService):
         """
         Check for cpuset mom
         """
-        e = self.pbs_conf['PBS_EXEC']
-        sbin = os.path.join(e, 'sbin')
-        m1 = os.path.join(sbin, 'pbs_mom')
-        m2 = os.path.join(sbin, 'pbs_mom.cpuset')
-        ret = self.du.cmp(self.hostname, m1, m2, sudo=True, logerr=False)
-        if ret == 0:
-            return True
-        return False
-
-    def switch_to_standard_mom(self):
-        """
-        Switch to standard mom
-        """
-        if not self.is_cpuset_mom():
-            return False
-
-        rv = self.stop()
-        if not rv:
-            return False
-        e = self.pbs_conf['PBS_EXEC']
-        sbin = os.path.join(e, 'sbin')
-        m1 = os.path.join(sbin, 'pbs_mom')
-        m2 = os.path.join(sbin, 'pbs_mom.standard')
-        ret = self.du.run_cmd(self.hostname, cmd=['cp', m2, m1], sudo=True)
-        if ret['rc'] == 0:
-            return True
+        if self._is_cpuset_mom is not None:
+            return self._is_cpuset_mom
+        raa = ATTR_rescavail + '.arch'
+        a = {raa: None}
+        try:
+            rv = self.server.status(NODE, a, id=self.shortname)
+        except PbsStatusError:
+            try:
+                rv = self.server.status(NODE, a, id=self.hostname)
+            except PbsStatusError as e:
+                if e.msg[0].endswith('Server has no node list'):
+                    return False
+                else:
+                    raise e
+        if rv[0][raa] == 'linux_cpuset':
+            self._is_cpuset_mom = True
+        else:
+            self._is_cpuset_mom = False
+        return self._is_cpuset_mom
 
     def create_vnode_def(self, name, attrs={}, numnodes=1, sharednode=True,
                          pre='[', post=']', usenatvnode=False, attrfunc=None,
@@ -12945,18 +13013,14 @@ class MoM(PBSService):
                 else:
                     f.write(str(k) + ' ' + str(v) + '\n')
             f.close()
-
             dest = os.path.join(
-                self.pbs_conf['PBS_HOME'],
-                'mom_priv',
-                'config')
+                self.pbs_conf['PBS_HOME'], 'mom_priv', 'config')
             self.du.run_copy(self.hostname, fn, dest, mode=0644, sudo=True)
             self.du.chown(self.hostname, path=dest, uid=0, gid=0, sudo=True)
             os.remove(fn)
         except:
             raise PbsMomConfigError(rc=1, rv=False,
                                     msg='error processing add_config')
-
         if restart:
             return self.restart()
         elif hup:
@@ -12995,27 +13059,26 @@ class MoM(PBSService):
         :type restart: bool
         """
         try:
-            (fd, fn) = self.du.mkstemp()
+            (fd, fn) = self.du.mkstemp(self.hostname)
             os.write(fd, vdef)
             os.close(fd)
         except:
-            logging.error("Failed to insert vnode definition")
-            return
+            raise PbsMomConfigError(rc=1, rv=False,
+                                    msg="Failed to insert vnode definition")
         if fname is None:
             fname = 'pbs_vnode.def'
-
         if not additive:
             self.delete_vnode_defs()
-
-        self.du.mkdir(self.hostname, path=self.configd, logerr=False,
-                      sudo=True)
-        self.du.run_copy(self.hostname, fn, os.path.join(self.configd, fname),
-                         sudo=True)
-
-        msg = self.logprefix + 'inserted vnode definition file ' + fname + \
-            ' on host: ' + self.hostname
+        cmd = [os.path.join(self.pbs_conf['PBS_EXEC'], 'sbin', 'pbs_mom')]
+        cmd += ['-s', 'insert', fname, fn]
+        ret = self.du.run_cmd(self.hostname, cmd, sudo=True, logerr=False,
+                              level=logging.INFOCLI)
+        self.du.rm(hostname=self.hostname, path=fn, force=True)
+        if ret['rc'] != 0:
+            raise PbsMomConfigError(rc=1, rv=False, msg="\n".join(ret['err']))
+        msg = self.logprefix + 'inserted vnode definition file '
+        msg += fname + ' on host: ' + self.hostname
         self.logger.info(msg)
-        os.remove(fn)
         if restart:
             self.restart()
 
@@ -13023,10 +13086,16 @@ class MoM(PBSService):
         """
         Check for vnode definition(s)
         """
-        cmd = ['ls', self.configd]
-        ret = self.du.run_cmd(self.hostname, cmd, sudo=True, logerr=False)
-        if ret['rc'] == 0 and len(ret['out']) > 0:
-            return True
+        cmd = [os.path.join(self.pbs_conf['PBS_EXEC'], 'sbin', 'pbs_mom')]
+        cmd += ['-s', 'list']
+        ret = self.du.run_cmd(self.hostname, cmd, sudo=True, logerr=False,
+                              level=logging.INFOCLI)
+        if ret['rc'] == 0:
+            files = [x for x in ret['out'] if not x.startswith('PBS')]
+            if len(files) > 0:
+                return True
+            else:
+                return False
         else:
             return False
 
@@ -13039,12 +13108,29 @@ class MoM(PBSService):
         :type vdefname: str
         :returns: True if delete succeed otherwise False
         """
-        if vdefname is None:
-            vdefname = self.configd
-        else:
-            vdefname = os.path.join(self.configd, vdefname)
-        return self.du.rm(self.hostname, vdefname, recursive=True, force=True,
-                          sudo=True)
+        cmd = [os.path.join(self.pbs_conf['PBS_EXEC'], 'sbin', 'pbs_mom')]
+        cmd += ['-s', 'list']
+        ret = self.du.run_cmd(self.hostname, cmd, sudo=True, logerr=False,
+                              level=logging.INFOCLI)
+        if ret['rc'] != 0:
+            return False
+        rv = True
+        if len(ret['out']) > 0:
+            for vnodedef in ret['out']:
+                vnodedef = vnodedef.strip()
+                if (vnodedef == vdefname) or vdefname is None:
+                    if vnodedef.startswith('PBS'):
+                        continue
+                    cmd = [os.path.join(self.pbs_conf['PBS_EXEC'], 'sbin',
+                                        'pbs_mom')]
+                    cmd += ['-s', 'remove', vnodedef]
+                    ret = self.du.run_cmd(self.hostname, cmd, sudo=True,
+                                          logerr=False, level=logging.INFOCLI)
+                    if ret['rc'] != 0:
+                        return False
+                    else:
+                        rv = True
+        return rv
 
     def has_pelog(self, filename=None):
         """
@@ -13671,7 +13757,7 @@ class PBSInitServices(object):
         self.is_linux = sys.platform.startswith('linux')
 
     def initd(self, hostname=None, op='status', conf_file=None,
-              init_script=None):
+              init_script=None, daemon='all'):
         """
         Run the init script for a given operation
 
@@ -13683,12 +13769,15 @@ class PBSInitServices(object):
         :type conf_file: str or None
         :param init_script: optional path to a PBS init script
         :type init_script: str or None
+        :param daemon: name of daemon to operate on. one of server, mom,
+                       sched, comm or all
+        :type daemon: str
         """
         if hostname is None:
             hostname = self.hostname
         if conf_file is None:
             conf_file = self.conf_file
-        return self._unix_initd(hostname, op, conf_file, init_script)
+        return self._unix_initd(hostname, op, conf_file, init_script, daemon)
 
     def restart(self, hostname=None, init_script=None):
         """
@@ -13701,6 +13790,54 @@ class PBSInitServices(object):
         """
         return self.initd(hostname, op='restart', init_script=init_script)
 
+    def restart_server(self, hostname=None, init_script=None):
+        """
+        Run the init script for a restart server
+
+        :param hostname: hostname on which to restart server
+        :type hostname: str or None
+        :param init_script: optional path to a PBS init script
+        :type init_script: str or None
+        """
+        return self.initd(hostname, op='restart', init_script=init_script,
+                          daemon='server')
+
+    def restart_mom(self, hostname=None, init_script=None):
+        """
+        Run the init script for a restart mom
+
+        :param hostname: hostname on which to restart mom
+        :type hostname: str or None
+        :param init_script: optional path to a PBS init script
+        :type init_script: str or None
+        """
+        return self.initd(hostname, op='restart', init_script=init_script,
+                          daemon='mom')
+
+    def restart_sched(self, hostname=None, init_script=None):
+        """
+        Run the init script for a restart sched
+
+        :param hostname: hostname on which to restart sched
+        :type hostname: str or None
+        :param init_script: optional path to a PBS init script
+        :type init_script: str or None
+        """
+        return self.initd(hostname, op='restart', init_script=init_script,
+                          daemon='sched')
+
+    def restart_comm(self, hostname=None, init_script=None):
+        """
+        Run the init script for a restart comm
+
+        :param hostname: hostname on which to restart comm
+        :type hostname: str or None
+        :param init_script: optional path to a PBS init script
+        :type init_script: str or None
+        """
+        return self.initd(hostname, op='restart', init_script=init_script,
+                          daemon='comm')
+
     def start(self, hostname=None, init_script=None):
         """
         Run the init script for a start operation
@@ -13711,6 +13848,54 @@ class PBSInitServices(object):
         :type init_script: str or None
         """
         return self.initd(hostname, op='start', init_script=init_script)
+
+    def start_server(self, hostname=None, init_script=None):
+        """
+        Run the init script for a start server
+
+        :param hostname: hostname on which to start server
+        :type hostname: str or None
+        :param init_script: optional path to a PBS init script
+        :type init_script: str or None
+        """
+        return self.initd(hostname, op='start', init_script=init_script,
+                          daemon='server')
+
+    def start_mom(self, hostname=None, init_script=None):
+        """
+        Run the init script for a start mom
+
+        :param hostname: hostname on which to start mom
+        :type hostname: str or None
+        :param init_script: optional path to a PBS init script
+        :type init_script: str or None
+        """
+        return self.initd(hostname, op='start', init_script=init_script,
+                          daemon='mom')
+
+    def start_sched(self, hostname=None, init_script=None):
+        """
+        Run the init script for a start sched
+
+        :param hostname: hostname on which to start sched
+        :type hostname: str or None
+        :param init_script: optional path to a PBS init script
+        :type init_script: str or None
+        """
+        return self.initd(hostname, op='start', init_script=init_script,
+                          daemon='sched')
+
+    def start_comm(self, hostname=None, init_script=None):
+        """
+        Run the init script for a start comm
+
+        :param hostname: hostname on which to start comm
+        :type hostname: str or None
+        :param init_script: optional path to a PBS init script
+        :type init_script: str or None
+        """
+        return self.initd(hostname, op='start', init_script=init_script,
+                          daemon='comm')
 
     def stop(self, hostname=None, init_script=None):
         """
@@ -13723,6 +13908,54 @@ class PBSInitServices(object):
         """
         return self.initd(hostname, op='stop', init_script=init_script)
 
+    def stop_server(self, hostname=None, init_script=None):
+        """
+        Run the init script for a stop server
+
+        :param hostname: hostname on which to stop server
+        :type hostname: str or None
+        :param init_script: optional path to a PBS init script
+        :type init_script: str or None
+        """
+        return self.initd(hostname, op='stop', init_script=init_script,
+                          daemon='server')
+
+    def stop_mom(self, hostname=None, init_script=None):
+        """
+        Run the init script for a stop mom
+
+        :param hostname: hostname on which to stop mom
+        :type hostname: str or None
+        :param init_script: optional path to a PBS init script
+        :type init_script: str or None
+        """
+        return self.initd(hostname, op='stop', init_script=init_script,
+                          daemon='mom')
+
+    def stop_sched(self, hostname=None, init_script=None):
+        """
+        Run the init script for a stop sched
+
+        :param hostname: hostname on which to stop sched
+        :type hostname: str or None
+        :param init_script: optional path to a PBS init script
+        :type init_script: str or None
+        """
+        return self.initd(hostname, op='stop', init_script=init_script,
+                          daemon='sched')
+
+    def stop_comm(self, hostname=None, init_script=None):
+        """
+        Run the init script for a stop comm
+
+        :param hostname: hostname on which to stop comm
+        :type hostname: str or None
+        :param init_script: optional path to a PBS init script
+        :type init_script: str or None
+        """
+        return self.initd(hostname, op='stop', init_script=init_script,
+                          daemon='comm')
+
     def status(self, hostname=None, init_script=None):
         """
         Run the init script for a status operation
@@ -13734,26 +13967,110 @@ class PBSInitServices(object):
         """
         return self.initd(hostname, op='status', init_script=init_script)
 
-    def _unix_initd(self, hostname, op, conf_file, init_script):
+    def status_server(self, hostname=None, init_script=None):
+        """
+        Run the init script for a status server
+
+        :param hostname: hostname on which to status server
+        :type hostname: str or None
+        :param init_script: optional path to a PBS init script
+        :type init_script: str or None
+        """
+        return self.initd(hostname, op='status', init_script=init_script,
+                          daemon='server')
+
+    def status_mom(self, hostname=None, init_script=None):
+        """
+        Run the init script for a status mom
+
+        :param hostname: hostname on which to status mom
+        :type hostname: str or None
+        :param init_script: optional path to a PBS init script
+        :type init_script: str or None
+        """
+        return self.initd(hostname, op='status', init_script=init_script,
+                          daemon='mom')
+
+    def status_sched(self, hostname=None, init_script=None):
+        """
+        Run the init script for a status sched
+
+        :param hostname: hostname on which to status sched
+        :type hostname: str or None
+        :param init_script: optional path to a PBS init script
+        :type init_script: str or None
+        """
+        return self.initd(hostname, op='status', init_script=init_script,
+                          daemon='sched')
+
+    def status_comm(self, hostname=None, init_script=None):
+        """
+        Run the init script for a status comm
+
+        :param hostname: hostname on which to status comm
+        :type hostname: str or None
+        :param init_script: optional path to a PBS init script
+        :type init_script: str or None
+        """
+        return self.initd(hostname, op='status', init_script=init_script,
+                          daemon='comm')
+
+    def _unix_initd(self, hostname, op, conf_file, init_script, daemon):
         """
         Helper function for initd ``(*nix version)``
+
+        :param hostname: hostname on which init script should run
+        :type hostname: str
+        :param op: Operation on daemons - start, stop, restart or status
+        :op type: str
+        :param conf_file: Optional path to the pbs configuration file
+        :type conf_file: str or None
+        :param init_script: optional path to a PBS init script
+        :type init_script: str or None
+        :param daemon: name of daemon to operate on. one of server, mom,
+                       sched, comm or all
+        :type daemon: str
         """
-        if ((conf_file is not None) and (conf_file != self.dflt_conf_file)):
-            init_cmd = ['PBS_CONF_FILE=' + conf_file]
+        if daemon is not None and daemon != 'all':
+            conf = self.du.parse_pbs_config(hostname, conf_file)
+            dconf = {
+                'PBS_START_SERVER': 0,
+                'PBS_START_MOM': 0,
+                'PBS_START_SCHED': 0,
+                'PBS_START_COMM': 0
+            }
+            if daemon == 'server' and conf.get('PBS_START_SERVER', 0) != 0:
+                dconf['PBS_START_SERVER'] = 1
+            elif daemon == 'mom' and conf.get('PBS_START_MOM', 0) != 0:
+                dconf['PBS_START_MOM'] = 1
+            elif daemon == 'sched' and conf.get('PBS_START_SCHED', 0) != 0:
+                dconf['PBS_START_SCHED'] = 1
+            elif daemon == 'comm' and conf.get('PBS_START_COMM', 0) != 0:
+                dconf['PBS_START_COMM'] = 1
+            (fd, fn) = self.du.mkstemp(hostname)
+            os.close(fd)
+            self.du.set_pbs_config(hostname, fin=conf_file, fout=fn,
+                                   confs=dconf)
+            init_cmd = ['PBS_CONF_FILE=' + fn]
             _as = True
         else:
-            init_cmd = []
-            _as = False
-        if ((init_script is None) or (not init_script.startswith('/'))):
-            c = self.du.parse_pbs_config(hostname, conf_file)
-            if 'PBS_EXEC' not in c:
+            fn = None
+            if (conf_file is not None) and (conf_file != self.dflt_conf_file):
+                init_cmd = ['PBS_CONF_FILE=' + conf_file]
+                _as = True
+            else:
+                init_cmd = []
+                _as = False
+            conf = self.du.parse_pbs_config(hostname, conf_file)
+        if (init_script is None) or (not init_script.startswith('/')):
+            if 'PBS_EXEC' not in conf:
                 msg = 'Missing PBS_EXEC setting in pbs config'
                 raise PbsInitServicesError(rc=1, rv=False, msg=msg)
             if init_script is None:
-                init_script = os.path.join(c['PBS_EXEC'], 'libexec',
+                init_script = os.path.join(conf['PBS_EXEC'], 'libexec',
                                            'pbs_init.d')
             else:
-                init_script = os.path.join(c['PBS_EXEC'], 'etc',
+                init_script = os.path.join(conf['PBS_EXEC'], 'etc',
                                            init_script)
             if not self.du.isfile(hostname, path=init_script, sudo=True):
                 # Could be Type 3 installation where we will not have
@@ -13761,6 +14078,8 @@ class PBSInitServices(object):
                 return []
         init_cmd += [init_script, op]
         msg = 'running init script to ' + op + ' pbs'
+        if daemon is not None and daemon != 'all':
+            msg += ' ' + daemon
         msg += ' on ' + hostname
         if conf_file is not None:
             msg += ' using ' + conf_file
@@ -13772,7 +14091,7 @@ class PBSInitServices(object):
             raise PbsInitServicesError(rc=ret['rc'], rv=False,
                                        msg='\n'.join(ret['err']))
         else:
-            return ret['out']
+            return ret
 
     def switch_version(self, hostname=None, version=None):
         """

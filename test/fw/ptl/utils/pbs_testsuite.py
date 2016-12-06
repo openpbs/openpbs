@@ -134,7 +134,6 @@ SMOKE = 'smoke'
 REGRESSION = 'regression'
 NUMNODES = 'numnodes'
 TIMEOUT_KEY = '__testcase_timeout__'
-DEFAULT_TC_TIMEOUT = 180
 
 
 def timeout(val):
@@ -174,6 +173,21 @@ def skipOnCray(function):
     def wrapper(self, *args, **kwargs):
         if self.mom.is_cray():
             self.skipTest(reason='capability not supported on Cray')
+        else:
+            function(self, *args, **kwargs)
+    wrapper.__doc__ = function.__doc__
+    wrapper.__name__ = function.__name__
+    return wrapper
+
+
+def skipOnCpuSet(function):
+    """
+    Decorator to skip a test on a CpuSet system
+    """
+
+    def wrapper(self, *args, **kwargs):
+        if self.mom.is_cpuset_mom():
+            self.skipTest(reason='capability not supported on Cpuset')
         else:
             function(self, *args, **kwargs)
     wrapper.__doc__ = function.__doc__
@@ -353,6 +367,7 @@ class PBSTestSuite(unittest.TestCase):
     :param test-users: colon-separated list of users to use as test users.
                        The users specified override the default users in the
                        order in which they appear in the ``PBS_USERS`` list.
+    :param default-testcase-timeout: Default test case timeout value.
     :param data-users: colon-separated list of data users.
     :param oper-users: colon-separated list of operator users.
     :param mgr-users: colon-separated list of manager users.
@@ -526,6 +541,11 @@ class PBSTestSuite(unittest.TestCase):
         cls._validate_param('del-vnodes')
         cls._validate_param('revert-queues')
         cls._validate_param('revert-resources')
+        if 'default-testcase-timeout' not in cls.conf.keys():
+            cls.conf['default_testcase_timeout'] = 180
+        else:
+            cls.conf['default_testcase_timeout'] = int(
+                cls.conf['default-testcase-timeout'])
 
     @classmethod
     def is_server_licensed(cls, server):
@@ -869,9 +889,12 @@ class PBSTestSuite(unittest.TestCase):
     def revert_mom(self, mom, force=False):
         """
         Revert the values set for mom
+
+        :param mom: the MoM object whose values are to be reverted
+        :type mom: MoM object
+        :param force: Option to reverse forcibly
+        :type force: bool
         """
-        # below call is a Noop if no switching is needed
-        mom.switch_to_standard_mom()
         rv = mom.isUp()
         if not rv:
             self.logger.error('mom ' + mom.hostname + ' is down')
@@ -895,12 +918,10 @@ class PBSTestSuite(unittest.TestCase):
                 except:
                     pass
                 mom.delete_vnode_defs()
+                mom.delete_vnodes()
                 mom.restart()
                 self.logger.info('server: no nodes defined, creating one')
                 self.server.manager(MGR_CMD_CREATE, NODE, None, mom.shortname)
-                a = {'resources_available.ncpus': 8}
-                self.server.manager(MGR_CMD_SET, NODE, a, mom.shortname,
-                                    expect=True)
         name = mom.shortname
         try:
             self.server.status(NODE, id=name)

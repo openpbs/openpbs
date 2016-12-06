@@ -64,6 +64,7 @@ class SmokeTest(PBSTestSuite):
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
+    @skipOnCpuSet
     def test_submit_job_array(self):
         """
         Test to submit a job array
@@ -118,6 +119,7 @@ class SmokeTest(PBSTestSuite):
         if _m == PTL_API:
             self.server.set_op_mode(PTL_API)
 
+    @skipOnCpuSet
     def test_degraded_advance_reservation(self):
         """
         Make reservations more fault tolerant
@@ -186,6 +188,7 @@ class SmokeTest(PBSTestSuite):
         self.server.sigjob(jid, 'resume')
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
+    @skipOnCpuSet
     def test_backfilling(self):
         """
         Test for backfilling
@@ -224,6 +227,7 @@ class SmokeTest(PBSTestSuite):
         self.server.rlsjob(jid, USER_HOLD)
         self.server.expect(JOB, {'Hold_Types': 'n'}, jid)
 
+    @skipOnCpuSet
     def test_create_vnode(self):
         """
         Test to create vnodes
@@ -263,6 +267,7 @@ class SmokeTest(PBSTestSuite):
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, qname, expect=True)
         self.server.manager(MGR_CMD_DELETE, QUEUE, id=qname)
 
+    @skipOnCpuSet
     def test_fgc_limits(self):
         """
         Test for limits
@@ -283,6 +288,7 @@ class SmokeTest(PBSTestSuite):
         self.server.expect(JOB, 'comment', op=SET, id=j3id)
         self.server.expect(JOB, {'job_state': 'Q'}, id=j3id)
 
+    @skipOnCpuSet
     def test_limits(self):
         """
         Test for limits
@@ -299,6 +305,7 @@ class SmokeTest(PBSTestSuite):
         a = {'job_state=R': 1, 'euser=' + str(TEST_USER): 1}
         self.server.expect(JOB, a, attrop=PTL_AND)
 
+    @skipOnCpuSet
     def test_finished_jobs(self):
         """
         Test for finished jobs
@@ -328,6 +335,7 @@ class SmokeTest(PBSTestSuite):
         self.server.expect(SERVER, {'server_state': 'Scheduling'}, op=NE)
         self.server.expect(JOB, {'job_state=R': 1})
 
+    @skipOnCpuSet
     def test_job_scheduling_order(self):
         """
         Test for job scheduling order
@@ -354,6 +362,7 @@ class SmokeTest(PBSTestSuite):
                            count=True, op=SET)
 
     @skipOnCray
+    @skipOnCpuSet
     def test_preemption(self):
         """
         Test for preemption
@@ -380,6 +389,7 @@ class SmokeTest(PBSTestSuite):
         self.server.expect(JOB, {'job_state': 'R'}, id=j2id)
         self.server.expect(JOB, {'job_state': 'S'}, id=jid)
 
+    @skipOnCpuSet
     def test_fairshare(self):
         """
         Test for fairshare
@@ -461,6 +471,7 @@ class SmokeTest(PBSTestSuite):
                                 starttime=self.server.ctime)
         self.assertTrue(rv)
 
+    @skipOnCpuSet
     def test_shrink_to_fit(self):
         """
         Smoke test shrink to fit by setting a dedicated time to start in an
@@ -491,6 +502,7 @@ class SmokeTest(PBSTestSuite):
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
+    @skipOnCpuSet
     def test_formula_match(self):
         """
         Test for job sort formula
@@ -568,6 +580,7 @@ class SmokeTest(PBSTestSuite):
         self.server.expect(JOB, {ATTR_queue: 'solverq', 'job_state': 'R'},
                            attrop=PTL_AND)
 
+    @skipOnCpuSet
     def test_by_queue(self):
         """
         Test by_queue scheduling policy
@@ -624,6 +637,7 @@ class SmokeTest(PBSTestSuite):
         self.logger.info('Expected order: ' + ','.join(job_order))
         self.assertTrue(cycle.political_order == job_order)
 
+    @skipOnCpuSet
     def test_round_robin(self):
         """
         Test round_robin scheduling policy
@@ -724,6 +738,7 @@ class SmokeTest(PBSTestSuite):
         self.server.expect(JOB, a, id=j1id)
 
     @skipOnCray
+    @skipOnCpuSet
     def test_schedlog_preempted_info(self):
         """
         Demonstrate how to retrieve a list of jobs that had to be preempted in
@@ -741,6 +756,7 @@ class SmokeTest(PBSTestSuite):
                                  str(cycle.preempted_jobs))
 
     @skipOnCray
+    @skipOnCpuSet
     def test_basic(self):
         """
         basic express queue preemption test
@@ -775,6 +791,7 @@ class SmokeTest(PBSTestSuite):
         self.server.manager(MGR_CMD_DELETE, QUEUE, id="expressq")
 
     @skipOnCray
+    @skipOnCpuSet
     def test_basic_ja(self):
         """
         basic express queue preemption test with job array
@@ -823,6 +840,7 @@ class SmokeTest(PBSTestSuite):
             d = e.rv
         return d
 
+    @skipOnCpuSet
     def test_shrink_to_fit_resv_barrier(self):
         """
         Test shrink to fit by creating one reservation having ncpus=1,
@@ -854,6 +872,7 @@ class SmokeTest(PBSTestSuite):
         attr = {'Resource_List.walltime': (GE, '00:10:00')}
         self.server.expect(JOB, attr, id=jid2)
 
+    @skipOnCpuSet
     def test_job_sort_formula_threshold(self):
         """
         Test job_sort_formula_threshold basic behavior
@@ -1026,6 +1045,7 @@ class SmokeTest(PBSTestSuite):
             return j1id
 
     @skipOnCray
+    @skipOnCpuSet
     def test_suspend_job_with_preempt(self):
         """
         Test Suspend of Job using Scheduler Preemption
@@ -1033,6 +1053,7 @@ class SmokeTest(PBSTestSuite):
         self.common_stuff(isWithPreemt=True)
 
     @skipOnCray
+    @skipOnCpuSet
     def test_resume_job_with_preempt(self):
         """
         Test Resume of Job using Scheduler Preemption
@@ -1049,6 +1070,7 @@ class SmokeTest(PBSTestSuite):
                                    id=job['id'])
 
     @skipOnCray
+    @skipOnCpuSet
     def test_suspend_job_array_with_preempt(self):
         """
         Test Suspend of Job array using Scheduler Preemption
@@ -1056,6 +1078,7 @@ class SmokeTest(PBSTestSuite):
         self.common_stuff(isJobArray=True, isWithPreemt=True)
 
     @skipOnCray
+    @skipOnCpuSet
     def test_resume_job_array_with_preempt(self):
         """
         Test Resume of Job array using Scheduler Preemption
@@ -1299,6 +1322,7 @@ class SmokeTest(PBSTestSuite):
              'fairshare_decay_factor': 0.5}
         self.scheduler.set_sched_config(a)
 
+    @skipOnCpuSet
     def test_fairshare_enhanced(self):
         """
         Test the basic fairshare behavior with custom resources for math module

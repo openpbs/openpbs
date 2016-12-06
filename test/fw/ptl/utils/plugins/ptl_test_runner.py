@@ -54,7 +54,7 @@ from nose.util import isclass
 from nose.plugins.base import Plugin
 from nose.plugins.skip import SkipTest
 from nose.suite import ContextSuite
-from ptl.utils.pbs_testsuite import PBSTestSuite, DEFAULT_TC_TIMEOUT
+from ptl.utils.pbs_testsuite import PBSTestSuite
 from ptl.utils.pbs_testsuite import TIMEOUT_KEY
 from ptl.utils.pbs_dshutils import DshUtils
 from ptl.lib.pbs_testlib import PBSInitServices
@@ -549,7 +549,11 @@ class PTLTestRunner(Plugin):
             method = getattr(test.test, getattr(test.test, '_testMethodName'))
             return getattr(method, TIMEOUT_KEY)
         except:
-            return DEFAULT_TC_TIMEOUT
+            if hasattr(test, 'test'):
+                __conf = getattr(test.test, 'conf')
+            else:
+                __conf = getattr(test.context, 'conf')
+            return __conf['default_testcase_timeout']
 
     def __set_test_end_data(self, test, err=None):
         if not hasattr(test, 'start_time'):
