@@ -890,7 +890,7 @@ client)
 	INSTALL_PACKAGE=$1
 	PBS_VERSION="${2:-@PBS_VERSION@}"
 	newpbs_exec="${3:-@prefix@}"
-	newpbs_home=''
+	newpbs_home='@PBS_SERVER_HOME@'
 	if [ ! -x "$newpbs_exec/bin/qstat" ]; then
 		echo "***"
 		echo "*** Unable to locate PBS Pro executables!"
