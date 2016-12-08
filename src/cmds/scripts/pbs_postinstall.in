@@ -254,11 +254,9 @@ create_conf() {
 	[ -z "$PBS_EXEC" ] && echo "PBS_EXEC=$newpbs_exec" >>"$newconf"
 	[ -z "$PBS_HOME" -a -n "$newpbs_home" ] && echo "PBS_HOME=$newpbs_home" >>"$newconf"
 	[ -z "${PBS_CORE_LIMIT}" ] && echo "PBS_CORE_LIMIT=@PBS_CORE_LIMIT@" >>"$newconf"
-	if [ -z "${PBS_SCP}" ] ; then
-		if type scp >/dev/null 2>&1; then
-			PBS_SCP=`type scp | cut -d' ' -f3`
-			echo "PBS_SCP=$PBS_SCP" >>"$newconf"
-		fi
+	if ! [ -d "$oldpbs_exec" ]; then
+		PBS_SCP=`type -P scp`
+		[ -n "$PBS_SCP" ] && echo "PBS_SCP=$PBS_SCP" >>"$newconf"
 	fi
 	
 	
