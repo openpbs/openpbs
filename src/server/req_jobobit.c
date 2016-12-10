@@ -1775,11 +1775,15 @@ job_obit(struct resc_used_update *pruu, int stream)
 		 * information in job struct.
 		 * This collects all resources_used information returned from the mom.
 		 */
-		while (patlist) {
+		for (; patlist; patlist = (svrattrl *) GET_NEXT(patlist->al_link)) {
+
 			resource_def *tmpdef;
 			tmpdef = find_resc_def(svr_resc_def, patlist->al_resc, svr_resc_size);
 
-			/*
+			if (tmpdef == NULL) {
+				continue;
+			}
+			/* 
 			 * Copy all resources to the accounting buffer.
 			 * Copy all but invisible resources into the mail buffer.
 			 * The ATR_DFLAG_USRD flag will not be set on invisible resources.
@@ -1791,7 +1795,6 @@ job_obit(struct resc_used_update *pruu, int stream)
 				if (concat_rescused_to_buffer(&mailbuf, &mailbuf_size, patlist, "\n") != 0)
 					break;
 			}
-			patlist = (svrattrl *) GET_NEXT(patlist->al_link);
 		}
 	}
 
