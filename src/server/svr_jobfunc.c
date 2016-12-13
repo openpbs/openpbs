@@ -3176,8 +3176,10 @@ Time4resv(struct work_task *ptask)
 		set_scheduler_flag(SCH_SCHEDULE_JOBRESV);
 
 		/*notify the relevant persons that the reservation time has arrived*/
-		svr_mailownerResv(presv, MAIL_BEGIN, MAIL_NORMAL, "");
-		account_resvstart(presv);
+		if(presv->ri_qs.ri_tactive == time_now){
+			svr_mailownerResv(presv, MAIL_BEGIN, MAIL_NORMAL, "");
+			account_resvstart(presv);
+		}
 
 		if ((ptask = set_task(WORK_Timed, time_now + 60,
 			Time4resv1, presv)) != 0) {
@@ -3810,6 +3812,11 @@ eval_resvState(resc_resv *presv, enum resvState_discrim s, int relVal,
 				else
 					*psub = RESV_RUNNING;
 				*pstate = RESV_RUNNING;
+				if (presv->ri_qs.ri_tactive < 
+					presv->ri_wattr[RESV_ATR_start].at_val.at_long)
+					/*Assigning time_now to indicate when reservation become active
+ 					 *to help in fend off accounting on server restart*/
+					presv->ri_qs.ri_tactive = time_now;
 			}
 		}
 	} else if (s == RESVSTATE_req_deleteReservation) {
