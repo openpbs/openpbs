@@ -78,10 +78,12 @@
 #ifdef WIN32
 #include  <io.h>
 #include "win.h"
+#include <sys/timeb.h>
 #else
 #include <unistd.h>
 #include <sys/param.h>
 #include <netinet/in.h>
+#include <sys/time.h>
 #endif
 
 #include "libpbs.h"
@@ -2286,6 +2288,12 @@ req_commit(struct batch_request *preq)
 	int			rc;
 	pbs_db_jobscr_info_t	jobscr;
 	pbs_db_obj_info_t	obj;
+	long			time_msec;
+#ifdef	WIN32
+	struct	_timeb		tval;
+#else
+	struct timeval		tval;
+#endif
 	pbs_db_conn_t		*conn = (pbs_db_conn_t *) svr_db_conn;
 #endif
 
@@ -2390,9 +2398,15 @@ req_commit(struct batch_request *preq)
 	pj->ji_modified = 0; /* don't save from svr_setjobstate, we will save soon after */
 	(void)svr_setjobstate(pj, newstate, newsub);
 
+#ifdef WIN32
+	_ftime_s(&tval);
+	time_msec = (tval.time * 1000L) + tval.millitm;
+#else
+	gettimeofday(&tval, NULL);
+	time_msec = (tval.tv_sec * 1000L) + (tval.tv_usec/1000L);
+#endif
 	/* set the queue rank attribute */
-
-	pj->ji_wattr[(int)JOB_ATR_qrank].at_val.at_long = time_now;
+	pj->ji_wattr[(int)JOB_ATR_qrank].at_val.at_long = time_msec;
 	pj->ji_wattr[(int)JOB_ATR_qrank].at_flags |=
 		ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
 

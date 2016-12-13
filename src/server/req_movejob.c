@@ -190,7 +190,7 @@ req_orderjob(struct batch_request *req)
 	job	*pjob;
 	job	*pjob1;
 	job	*pjob2;
-	int	 rank;
+	long	 rank;
 	int	 rc;
 	char	 tmpqn[PBS_MAXQUEUENAME+1];
 
