@@ -5447,8 +5447,8 @@ bld_env_variables(struct var_table *vtable, char *name, char *value)
 
 /**
  * @brief
- * 	catchinter = catch death of writer child and/or shell child of interactive
- *	When one dies, kill off the other; there is no mercy in this family.
+ *	catchinter = catch death of writer child of interactive job
+ *	and kill off the shell child.
  *
  * @param[in] sig - signal number
  *
@@ -5468,12 +5468,9 @@ catchinter(int sig)
 	if (pid == writerpid) {
 		kill(shellpid, SIGKILL);
 		(void)wait(&status);
-	} else {
-		kill(writerpid, SIGKILL);
-		(void)wait(&status);
+		mom_reader_go = 0;
+		x11_reader_go = 0;
 	}
-	mom_reader_go = 0;
-	x11_reader_go = 0;
 }
 /**
  * @brief
