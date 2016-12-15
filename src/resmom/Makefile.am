@@ -135,7 +135,7 @@ pbs_mom_CPPFLAGS += -DIBM_AIXIB=1
 pbs_mom_LDADD += -lnrt
 endif
 
-EXTRA_DIST = \	
+EXTRA_DIST = \
 	bsd/mom_mach.c \
 	bsd/mom_mach.h \
 	bsd/mom_start.c \
