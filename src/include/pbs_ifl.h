@@ -294,6 +294,9 @@ extern "C" {
 #define ATTR_resv_post_processing "resv_post_processing_time"
 #define ATTR_backfill_depth     "backfill_depth"
 #define ATTR_job_requeue_timeout "job_requeue_timeout"
+#define ATTR_python_restart_max_hooks "python_restart_max_hooks"
+#define ATTR_python_restart_max_objects "python_restart_max_objects"
+#define ATTR_python_restart_min_interval "python_restart_min_interval"
 
 /* additional scheduler "attribute" names */
 

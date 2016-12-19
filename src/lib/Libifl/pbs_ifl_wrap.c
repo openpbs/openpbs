@@ -7305,6 +7305,9 @@ SWIG_init(void) {
   SWIG_Python_SetConstant(d, "ATTR_backfill_depth",SWIG_FromCharPtr("backfill_depth"));
   SWIG_Python_SetConstant(d, "ATTR_est_start_time_freq",SWIG_FromCharPtr("est_start_time_freq"));
   SWIG_Python_SetConstant(d, "ATTR_job_requeue_timeout",SWIG_FromCharPtr("job_requeue_timeout"));
+  SWIG_Python_SetConstant(d, "ATTR_python_restart_max_hooks",SWIG_FromCharPtr("python_restart_max_hooks"));
+  SWIG_Python_SetConstant(d, "ATTR_python_restart_max_objects",SWIG_FromCharPtr("python_restart_max_objects"));
+  SWIG_Python_SetConstant(d, "ATTR_python_restart_min_interval",SWIG_FromCharPtr("python_restart_min_interval"));
   SWIG_Python_SetConstant(d, "ATTR_SchedHost",SWIG_FromCharPtr("sched_host"));
   SWIG_Python_SetConstant(d, "ATTR_sched_cycle_len",SWIG_FromCharPtr("sched_cycle_length"));
   SWIG_Python_SetConstant(d, "ATTR_do_not_span_psets",SWIG_FromCharPtr("do_not_span_psets"));

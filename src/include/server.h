@@ -80,7 +80,6 @@ enum srv_atr {
 	SVR_ATR_PNames,
 	SRV_ATR_TotalJobs,
 	SRV_ATR_JobsByState,
-
 	SRV_ATR_acl_host_enable,
 	SRV_ATR_acl_hosts,
 	SRV_ATR_acl_Resvhost_enable,
@@ -142,6 +141,9 @@ enum srv_atr {
 	SVR_ATR_resv_post_processing,
 	SRV_ATR_BackfillDepth,
 	SRV_ATR_JobRequeTimeout,
+	SRV_ATR_PythonRestartMaxHooks,
+	SRV_ATR_PythonRestartMaxObjects,
+	SRV_ATR_PythonRestartMinInterval,
 #include "site_svr_attr_enum.h"
 	SRV_ATR_queued_jobs_threshold,
 	SRV_ATR_queued_jobs_threshold_res,

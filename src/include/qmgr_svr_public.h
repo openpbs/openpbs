@@ -127,4 +127,7 @@ ATTR_resv_post_processing,
 ATTR_backfill_depth,
 ATTR_job_requeue_timeout,
 ATTR_jobscript_max_size,
+ATTR_python_restart_max_hooks,
+ATTR_python_restart_max_objects,
+ATTR_python_restart_min_interval,
 #endif	/* _QMGR_SVR_PUBLIC_H */

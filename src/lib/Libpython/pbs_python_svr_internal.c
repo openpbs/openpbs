@@ -271,6 +271,22 @@ static int      hook_scheduler_restart_cycle = FALSE; 	/* flag to tell local */
 /* scheduler to */
 /* restart sched cycle*/
 
+/*
+ * The following limit and counter declarations are intended
+ * to reduce the amount of memory consumed by the Python
+ * interpreter so that the server process does not become
+ * bloated. Python is able to garbage collect builtin
+ * types (e.g. string, dict, etc.), but the PBS types are
+ * not created such that their memory can be released.
+ */
+/* Max hook events to service before restarting the interpreter */
+#define PBS_PYTHON_RESTART_MAX_HOOKS 100
+/* Max objects created before restarting the interpreter */
+#define PBS_PYTHON_RESTART_MAX_OBJECTS 1000
+/* Minimum interval between interpreter restarts */
+#define PBS_PYTHON_RESTART_MIN_INTERVAL 30
+/* count of Python objects created */
+static long	object_counter = 0;
 
 typedef struct hook_debug_t {
 	FILE	*input_fp;
@@ -3172,6 +3188,7 @@ _pps_helper_get_queue(pbs_queue *pque, const char *que_name)
 		goto ERROR_EXIT;
 	}
 
+	object_counter++;
 
 	if (server.sv_qs.sv_numque > 0) {
 
@@ -3317,6 +3334,7 @@ _pps_helper_get_server(void)
 		goto ERROR_EXIT;
 	}
 
+	object_counter++;
 	py_hook_pbsserver = py_svr;
 	return py_svr;
 ERROR_EXIT:
@@ -3462,6 +3480,7 @@ _pps_helper_get_job(job *pjob_o, const char *jobid, const char *qname)
 		goto ERROR_EXIT;
 	}
 
+	object_counter++;
 	return py_job;
 ERROR_EXIT:
 	if (PyErr_Occurred())
@@ -3593,6 +3612,7 @@ _pps_helper_get_resv(resc_resv *presv_o, const char *resvid)
 		goto GR_ERROR_EXIT;
 	}
 
+	object_counter++;
 	return py_resv;
 
 GR_ERROR_EXIT:
@@ -3717,6 +3737,7 @@ _pps_helper_get_vnode(struct pbsnode *pvnode_o, const char *vname)
 		goto GR_ERROR_EXIT;
 	}
 
+	object_counter++;
 	return py_vnode;
 
 GR_ERROR_EXIT:
@@ -4448,6 +4469,37 @@ py_strlist_to_svrattrl(PyObject *py_strlist, pbs_list_head *to_head, char *name_
 
 /**
  * @brief
+ *	Read data from /proc/self/statm if available.
+ *
+ * @return char *
+ * @retval NULL: No data
+ * @retval !NULL: Memory usage data
+ */
+static char *
+read_statm(void)
+{
+	static char buf[128] = {'\0'};
+	long vmsize, vmrss;
+	int rc;
+	FILE *fp;
+
+	fp = fopen("/proc/self/statm", "r");
+	if (!fp)
+		return NULL;
+	/* Only fetch the first two entries. */
+	rc = fscanf(fp, "%ld %ld", &vmsize, &vmrss);
+	fclose(fp);
+	if (rc != 2)
+		return NULL;
+	/* Convert to KB. */
+	vmsize *= 4;
+	vmrss *= 4;
+	snprintf(buf, sizeof(buf), "VmSize=%ldkB, VmRSS=%ldkB", vmsize, vmrss);
+	return(buf);
+}
+
+/**
+ * @brief
  *      Creates a PBS Python event object that can be accessed in a hook
  *	script as: pbs.event().
  *
@@ -4497,13 +4549,20 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 	PyObject *py_env = (PyObject *) NULL;
 	PyObject *py_pid = (PyObject *) NULL;
 
+	static long hook_counter = 0; /* for tracking interpreter restart */
+	static long min_restart_interval = 0; /* prevents frequent restarts */
 	static int init_iters = 0;  /* 1 to initialize the PBS iterarators list */
 	static int init_vnode_set = 0;  /* 1 to initialize the vnode set opers */
 
 	static int init_resource_values = 0;  /* 1 to initialize the */
 					      /* list of pbs_resource values */
 					      /* to instantiate. */
+	static long max_hooks = 0;
+	static long max_objects = 0;
+	static time_t previous_restart = (time_t)0;
 
+	long lval;
+	int restart_python;
 	int rc = -1;
 	int i;
 
@@ -4593,6 +4652,68 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 		}
 	}
 
+	lval = max_hooks;
+	if (server.sv_attr[(int)SRV_ATR_PythonRestartMaxHooks].at_flags & ATR_VFLAG_SET)
+		max_hooks = server.sv_attr[(int)SRV_ATR_PythonRestartMaxHooks].at_val.at_long;
+	else
+		max_hooks = PBS_PYTHON_RESTART_MAX_HOOKS;
+	if (lval != max_hooks) {
+		snprintf(log_buffer, sizeof(log_buffer),
+			"python_restart_max_hooks is now %ld", max_hooks);
+		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK, LOG_INFO, __func__, log_buffer);
+	}
+
+	lval = max_objects;
+	if (server.sv_attr[(int)SRV_ATR_PythonRestartMaxObjects].at_flags & ATR_VFLAG_SET)
+		max_objects = server.sv_attr[(int)SRV_ATR_PythonRestartMaxObjects].at_val.at_long;
+	else
+		max_objects = PBS_PYTHON_RESTART_MAX_OBJECTS;
+	if (lval != max_objects) {
+		snprintf(log_buffer, sizeof(log_buffer),
+			"python_restart_max_objects is now %ld", max_objects);
+		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK, LOG_INFO, __func__, log_buffer);
+	}
+
+	lval = min_restart_interval;
+	if (server.sv_attr[(int)SRV_ATR_PythonRestartMinInterval].at_flags & ATR_VFLAG_SET)
+		min_restart_interval = server.sv_attr[(int)SRV_ATR_PythonRestartMinInterval].at_val.at_long;
+	else
+		min_restart_interval = PBS_PYTHON_RESTART_MIN_INTERVAL;
+	if (lval != min_restart_interval) {
+		snprintf(log_buffer, sizeof(log_buffer),
+			"python_restart_min_interval is now %ld", min_restart_interval);
+		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK, LOG_INFO, __func__, log_buffer);
+	}
+
+	hook_counter++;
+	restart_python = 0;
+	if (hook_counter >= max_hooks)
+		restart_python = 1;
+	if (object_counter >= max_objects)
+		restart_python = 1;
+	if ((time(NULL) - previous_restart) < min_restart_interval)
+		restart_python = 0;
+	if (restart_python) {
+		char *line;
+		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_INFO, __func__,
+			"Restarting Python interpreter to reduce mem usage");
+		pbs_python_ext_shutdown_interpreter(&svr_interp_data);
+		pbs_python_ext_start_interpreter(&svr_interp_data);
+		if (!svr_interp_data.interp_started) {
+			log_err(PBSE_INTERNAL, __func__, "Failed to restart interpreter");
+			goto event_set_exit;
+		}
+		/* Reset counters for the next interpreter restart. */
+		hook_counter = 0;
+		object_counter = 0;
+		previous_restart = time(NULL);
+		/* Log current memory usage. */
+		line = read_statm();
+		snprintf(log_buffer, sizeof(log_buffer),
+			"Current memory usage: %s",
+			(line?line:"unknown"));
+		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_INFO, __func__, log_buffer);
+	}
 
 	hook_set_mode = C_MODE;
 
@@ -9613,6 +9734,7 @@ py_get_server_static(void)
 		goto server_static_error_exit;
 	}
 
+	object_counter++;
 	return py_svr;
 server_static_error_exit:
 	if (PyErr_Occurred())

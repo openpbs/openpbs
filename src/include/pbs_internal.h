@@ -226,7 +226,7 @@ struct pbs_config
 	unsigned int pbs_comm_threads;	/* number of threads for router, default 4 */
 	char *pbs_mom_node_name;	/* mom short name used for natural node, default NULL */
 #ifdef WIN32
-	char *pbs_conf_remote_viewer; /* Remote viewer client executable for PBS GUI jobs, alongwith launch options */
+	char *pbs_conf_remote_viewer; /* Remote viewer client executable for PBS GUI jobs, along with launch options */
 #endif
 };
 

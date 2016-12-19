@@ -831,6 +831,35 @@ To unset pbs_license_min:
 .br
 Qmgr> unset server pbs_license_min)
 
+.IP python_restart_max_hooks
+Restart the Python interpreter after the specified number of hooks
+have been run.
+.br
+Format: Integer
+.br
+Default: unset (100 when unset)
+.br
+Python type: int
+
+.IP python_restart_max_objects
+Restart the Python interpreter after the specified number of objects
+have been created.
+.br
+Format: Integer
+.br
+Default: unset (1000 when unset)
+.br
+Python type: int
+
+.IP python_restart_min_interval
+The minimum number of seconds between Python interpreter restarts.
+.br
+Format: pbs.duration
+.br
+Default: unset (30 seconds when unset)
+.br
+Python type: int
+
 .IP query_other_jobs
 The setting of this attribute controls whether general users, other than the
 job owner, are allowed to query the status of or select the job.
