@@ -5963,8 +5963,9 @@ class Server(PBSService):
                    PBS_CMD_MAP[cmd] + ' ', obj_type, attrib, oid, level=level)
 
         c = None  # connection handle
-
-        if (self.get_op_mode() == PTL_CLI or
+        op_mode = self.get_op_mode()
+        
+        if (op_mode == PTL_CLI or
             sudo is not None or
             obj_type in (HOOK, PBS_HOOK) or
             (attrib is not None and ('job_sort_formula' in attrib or
@@ -6041,8 +6042,15 @@ class Server(PBSService):
 
             if as_script:
                 pcmd = ['PBS_CONF_FILE=' + self.client_pbs_conf_file] + pcmd
-
-            ret = self.du.run_cmd(self.hostname, pcmd, sudo=sudo, runas=runas,
+                
+            
+            if op_mode == PTL_CLI:
+                pcmd += [self.hostname]
+                ret = self.du.run_cmd(self.client, pcmd, sudo=sudo, runas=runas,
+                                  level=logging.INFOCLI, as_script=as_script,
+                                  logerr=logerr)
+            else:
+                ret = self.du.run_cmd(self.hostname, pcmd, sudo=sudo, runas=runas,
                                   level=logging.INFOCLI, as_script=as_script,
                                   logerr=logerr)
             rc = ret['rc']
