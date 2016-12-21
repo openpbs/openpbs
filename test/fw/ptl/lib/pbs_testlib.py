@@ -6037,14 +6037,15 @@ class Server(PBSService):
                 else:
                     sudo = False
 
-            pcmd = [os.path.join(self.pbs_conf['PBS_EXEC'], 'bin', 'qmgr'),
-                    '-c', execcmd]
+            pcmd = [os.path.join(self.pbs_conf['PBS_EXEC'], 'bin', 'qmgr')]
+            if op_mode == PTL_CLI:
+                pcmd += [self.hostname]
+            pcmd += ['-c', execcmd]
 
             if as_script:
                 pcmd = ['PBS_CONF_FILE=' + self.client_pbs_conf_file] + pcmd
 
             if op_mode == PTL_CLI:
-                pcmd += [self.hostname]
                 ret = self.du.run_cmd(self.client, pcmd, sudo=sudo,
                                       runas=runas, level=logging.INFOCLI,
                                       as_script=as_script, logerr=logerr)
