@@ -1,36 +1,36 @@
 /*
  * Copyright (C) 1994-2016 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
- *  
+ *
  * This file is part of the PBS Professional ("PBS Pro") software.
- * 
+ *
  * Open Source License Information:
- *  
+ *
  * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free 
- * Software Foundation, either version 3 of the License, or (at your option) any 
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
  * later version.
- *  
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+ *
+ * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
  * PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
- *  
- * You should have received a copy of the GNU Affero General Public License along 
+ *
+ * You should have received a copy of the GNU Affero General Public License along
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
- *  
- * Commercial License Information: 
- * 
- * The PBS Pro software is licensed under the terms of the GNU Affero General 
- * Public License agreement ("AGPL"), except where a separate commercial license 
+ *
+ * Commercial License Information:
+ *
+ * The PBS Pro software is licensed under the terms of the GNU Affero General
+ * Public License agreement ("AGPL"), except where a separate commercial license
  * agreement for PBS Pro version 14 or later has been executed in writing with Altair.
- *  
- * Altair’s dual-license business model allows companies, individuals, and 
- * organizations to create proprietary derivative works of PBS Pro and distribute 
- * them - whether embedded or bundled with other software - under a commercial 
+ *
+ * Altair’s dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of PBS Pro and distribute
+ * them - whether embedded or bundled with other software - under a commercial
  * license agreement.
- * 
- * Use of Altair’s trademarks, including but not limited to "PBS™", 
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+ *
+ * Use of Altair’s trademarks, including but not limited to "PBS™",
+ * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
  * trademark licensing policies.
  *
  */
@@ -1053,7 +1053,7 @@ account_resvstart(resc_resv *presv)
  * @par	Functionality:
  *	Takes various information from the job structure, start time, owner,
  *	Resource_List, etc., and the resource usage information (see
- *	ji_acctresc) if prsent and formats the record type requested.
+ *	ji_acctresc) if present and formats the record type requested.
  *	Currently, this is used for 'E' and 'R' records.  The record is then
  *	written to the accounting log.
  *
@@ -1062,7 +1062,7 @@ account_resvstart(resc_resv *presv)
  *
  * @param[in]	pjob	- pointer to job structure
  * @param[in]	used	- resource usage information from Mom,  this is a string
- *			  consisting of space separated keywork=value pairs,
+ *			  consisting of space separated keyword=value pairs,
  *			  may be null pointer
  * @param[in]	type	- record type, PBS_ACCT_END ('E') or
  *			  PBS_ACCT_RERUN ('R')
@@ -1080,9 +1080,8 @@ account_jobend(job *pjob, char *used, int type)
 	char *str = NULL;
 	char errtime[] = "00:00:00";
 	struct svrattrl *patlist = NULL;
-	char tmp_resc_used[RESC_USED_BUF_SIZE] = {0};
-	int amt = 0;
-	int need = 0;
+	char *resc_used;
+	int resc_used_size = 0;
 	pbs_list_head temp_head;
 
 	CLEAR_HEAD(temp_head);
@@ -1092,17 +1091,17 @@ account_jobend(job *pjob, char *used, int type)
 	len = acct_bufsize - (pb - acct_buf);
 
 	/*
-	 * for each keywork=value pair added, the following steps should be
+	 * for each keyword=value pair added, the following steps should be
 	 * followed:
 	 * a. calculate (or over-estimate) the size of the date to be added
-	 * b. check that there is sufficent room in the buffer, "len" is the
+	 * b. check that there is sufficient room in the buffer, "len" is the
 	 *    current unused amount.
-	 * c. If neccessary, grow the buffer by calling grow_acct_buf().
+	 * c. If necessary, grow the buffer by calling grow_acct_buf().
 	 *    If this function fails,  just write out what we already have.
 	 * d. Append the new datum to the buffer at "pb".  Each new item should
 	 *    have a single leading space.  The variable "pb" is maintained
 	 *    to point to the end to save "strcat" time.
-	 * e. Advance "pb" by the lenth of the datum added and decrement
+	 * e. Advance "pb" by the length of the datum added and decrement
 	 *    "len" by the same amount.
 	 */
 
@@ -1148,54 +1147,54 @@ account_jobend(job *pjob, char *used, int type)
 	len -= i;
 
 	/* finally add on resources used from req_jobobit() */
-	if (((used == NULL) && (pjob->ji_acctrec == NULL) && (type == PBS_ACCT_END)) || 
+	if (((used == NULL) && (pjob->ji_acctrec == NULL) && (type == PBS_ACCT_END)) ||
 		!(used && strstr(used, "resources_used") && (type == PBS_ACCT_RERUN))) {
 		/* If pbs_server is restarted during the end of job processing then used maybe NULL.
 		 * So we try to derive the resource usage information from resources_used attribute of
-		 * the job and then reconstruct the resources usage information into tmp_resc_used buffer.
+		 * the job and then reconstruct the resources usage information into resc_used buffer.
 		 */
 		if (pjob->ji_wattr[(int)JOB_ATR_resc_used].at_user_encoded != NULL)
 			patlist = pjob->ji_wattr[(int)JOB_ATR_resc_used].at_user_encoded;
 		else if (pjob->ji_wattr[(int)JOB_ATR_resc_used].at_priv_encoded != NULL)
 			patlist = pjob->ji_wattr[(int)JOB_ATR_resc_used].at_priv_encoded;
-		else 
-			encode_resc(&pjob->ji_wattr[(int)JOB_ATR_resc_used], 
-				&temp_head, job_attr_def[(int)JOB_ATR_resc_used].at_name, 
+		else
+			encode_resc(&pjob->ji_wattr[(int)JOB_ATR_resc_used],
+				&temp_head, job_attr_def[(int)JOB_ATR_resc_used].at_name,
 				(char *)0, ATR_ENCODE_CLIENT, &patlist);
-		(void)snprintf(tmp_resc_used, sizeof(tmp_resc_used), msg_job_end_stat,
-			pjob->ji_qs.ji_un.ji_exect.ji_exitstat);
+
+		/* Allocate initial space for resc_used.  Future space will be allocated by pbs_strcat(). */
+		resc_used = malloc(RESC_USED_BUF_SIZE);
+		if(resc_used == NULL)
+			goto writeit;
+		resc_used_size = RESC_USED_BUF_SIZE;
+
+
+		/* strlen(msg_job_end_stat) == 12 characters plus a number.  This should be plenty big */
+		(void)snprintf(resc_used, resc_used_size, msg_job_end_stat,
+			       pjob->ji_qs.ji_un.ji_exect.ji_exitstat);
 
 		/*
 		 * NOTE:
 		 * Following code for constructing resources used information is same as job_obit()
-		 * with minor different that to traverse patlist in this code
+		 * with minor difference that to traverse patlist in this code
 		 * we have to use patlist->al_sister since it is encoded information in job struct
 		 * where in job_obit() we are using GET_NEXT(patlist->al_link) which is part of batch
-		 * request
+		 * request.
 		 */
-		amt = RESC_USED_BUF_SIZE - strlen(tmp_resc_used) - 1;
+
 		while (patlist) {
-			/*
-			 * To calculate length of the string of the form "resources_used.<resource>=<value>".
-			 * Additional length of 3 is required to accommodate the characters '.', '=' and ' '.
-			 */
-			need = strlen(patlist->al_name) + strlen(patlist->al_resc) + strlen(patlist->al_value) + 3;
-			if (need < amt) {
-				(void)strcat(tmp_resc_used, " ");
-				(void)strcat(tmp_resc_used, patlist->al_name);
-				if (patlist->al_resc) {
-					(void)strcat(tmp_resc_used, ".");
-					(void)strcat(tmp_resc_used, patlist->al_resc);
+			/* log to accounting_logs only if there's a value */
+			if (strlen(patlist->al_value) > 0) {
+				if(concat_rescused_to_buffer(&resc_used, &resc_used_size, patlist, " ") != 0) {
+					free(resc_used);
+					goto writeit;
 				}
-				(void)strcat(tmp_resc_used, "=");
-				(void)strcat(tmp_resc_used, patlist->al_value);
-				amt -= need;
 			}
+
 			patlist = patlist->al_sister;
 		}
 
-		if ((used = strdup(tmp_resc_used)) == NULL)
-			goto writeit;
+		used = resc_used;
 		pjob->ji_acctrec = used;
 		free_attrlist(&temp_head);
 	}
@@ -1230,7 +1229,7 @@ account_jobend(job *pjob, char *used, int type)
 		len -= i;
 	}
 
-	/* Add in runcount */
+	/* Add in run count */
 
 	i = 34;		/* sort of max size for "run_count=<value>" */
 	if (i > len)

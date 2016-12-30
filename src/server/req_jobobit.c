@@ -1,36 +1,36 @@
 /*
  * Copyright (C) 1994-2016 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
- *  
+ *
  * This file is part of the PBS Professional ("PBS Pro") software.
- * 
+ *
  * Open Source License Information:
- *  
+ *
  * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free 
- * Software Foundation, either version 3 of the License, or (at your option) any 
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
  * later version.
- *  
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+ *
+ * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
  * PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
- *  
- * You should have received a copy of the GNU Affero General Public License along 
+ *
+ * You should have received a copy of the GNU Affero General Public License along
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
- *  
- * Commercial License Information: 
- * 
- * The PBS Pro software is licensed under the terms of the GNU Affero General 
- * Public License agreement ("AGPL"), except where a separate commercial license 
+ *
+ * Commercial License Information:
+ *
+ * The PBS Pro software is licensed under the terms of the GNU Affero General
+ * Public License agreement ("AGPL"), except where a separate commercial license
  * agreement for PBS Pro version 14 or later has been executed in writing with Altair.
- *  
- * Altair’s dual-license business model allows companies, individuals, and 
- * organizations to create proprietary derivative works of PBS Pro and distribute 
- * them - whether embedded or bundled with other software - under a commercial 
+ *
+ * Altair’s dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of PBS Pro and distribute
+ * them - whether embedded or bundled with other software - under a commercial
  * license agreement.
- * 
- * Use of Altair’s trademarks, including but not limited to "PBS™", 
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+ *
+ * Use of Altair’s trademarks, including but not limited to "PBS™",
+ * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
  * trademark licensing policies.
  *
  */
@@ -1407,37 +1407,53 @@ setrerun(job *pjob)
  * @brief
  *		Concatenate the resources used to the buffer provided.
  *
- * @param[in]		buffer - the buffer to add information to
- * @param[in]		patlist - a pointer to the attribute list
- * @param[in,out]	total_left - the total amount left in the buffer
+ * @param[in,out]buffer - pointer to buffer to add info to.  May grow/change due to pbs_strcat() (realloc)
+ * @param[in,out]buffer_size - size of buffer - may increase through pbs_strcat()
  * @param[in]		delim - a pointer to the delimiter to use
  */
-static void
-concat_rescused_to_buffer(char *buffer, svrattrl *patlist, int *total_left, char *delim)
+concat_rescused_to_buffer(char **buffer, int *buffer_size, svrattrl *patlist, char *delim)
 {
-	int amt_needed;
+	int val_len;
 
+	if(buffer == NULL || buffer_size == NULL || patlist == NULL || delim == NULL)
+		return 1;
 	/*
 	 * To calculate length of the string of the form "resources_used.<resource>=<value>".
 	 * Additional length of 3 is required to accommodate the characters '.', '=' and '\n'.
 	 */
-	amt_needed = strlen(patlist->al_name) + strlen(patlist->al_resc) + strlen(patlist->al_value) + 3;
-	if (amt_needed < *total_left) {
-		/*
-		 * adding '\n' first for mailbuf which is used while sending mail
-		 * this '\n' will be replaced by ' ' before writing to acct. log
-		 */
-		(void)strcat(buffer, delim);
-		(void)strcat(buffer, patlist->al_name);
-		if (patlist->al_resc) {
-			(void)strcat(buffer, ".");
-			(void)strcat(buffer, patlist->al_resc);
+	val_len = strlen(patlist->al_value);
+	/* log to accounting_logs only if there's a value */
+	if (val_len > 0) {
+		if(pbs_strcat(buffer, buffer_size, delim) == NULL) {
+			log_err(errno, __func__, "Failed to allocate memory.");
+			return 1;
 		}
-		(void)strcat(buffer, "=");
-		(void)strcat(buffer, patlist->al_value);
-		*total_left -= amt_needed;
+		if(pbs_strcat(buffer, buffer_size, patlist->al_name) == NULL) {
+			log_err(errno, __func__, "Failed to allocate memory.");
+			return 1;
+		}
+		if (patlist->al_resc) {
+			if(pbs_strcat(buffer, buffer_size, ".") == NULL) {
+				log_err(errno, __func__, "Failed to allocate memory.");
+				return 1;
+			}
+			if(pbs_strcat(buffer, buffer_size, patlist->al_resc) == NULL) {
+				log_err(errno, __func__, "Failed to allocate memory.");
+				return 1;
+			}
+		}
+		if(pbs_strcat(buffer, buffer_size, "=") == NULL) {
+			log_err(errno, __func__, "Failed to allocate memory.");
+			return 1;
+		}
+		if(pbs_strcat(buffer, buffer_size, patlist->al_value) == NULL) {
+			log_err(errno, __func__, "Failed to allocate memory.");
+			return 1;
+		}
 	}
+	return 0;
 }
+
 
 /**
  * @brief
@@ -1507,19 +1523,18 @@ concat_rescused_to_buffer(char *buffer, svrattrl *patlist, int *total_left, char
  */
 
 void
-job_obit(struct resc_used_update *pruu, int	stream)
+job_obit(struct resc_used_update *pruu, int stream)
 {
 	DOID("job_obit")
 	int		  alreadymailed = 0;
-	int		  amt;
-	int		  mailbuf_amt;
-	char 		  acctbuf[RESC_USED_BUF_SIZE];
-	int		  accttail;
+	char		 *acctbuf = NULL;
+	int  		  acctbuf_size = 0;
 	int		  dummy;
 	int		  num;
 	int		  exitstatus;
 	int		  local_exitstatus = 0;
-	char		  mailbuf[RESC_USED_BUF_SIZE];
+	char		 *mailbuf = NULL;
+	int		  mailbuf_size = 0;
 	int		  need;
 	int		  newstate;
 	int		  newsubst;
@@ -1528,8 +1543,8 @@ job_obit(struct resc_used_update *pruu, int	stream)
 	svrattrl	 *patlist;
 	struct work_task *ptask;
 	void		(*eojproc)();
-	char             *mailmsg = NULL;
-	char             *msg = NULL;
+	char		 *mailmsg = NULL;
+	char		 *msg = NULL;
 
 	time_now = time(0);
 
@@ -1672,7 +1687,7 @@ job_obit(struct resc_used_update *pruu, int	stream)
 
 	/*
 	 * have hit a race condition where the send_job child's process
-	 * may not yet have been reaped.  Update accouting for job start
+	 * may not yet have been reaped.  Update accounting for job start
 	 */
 
 	if ((pjob->ji_qs.ji_substate == JOB_SUBSTATE_PRERUN) ||
@@ -1728,45 +1743,58 @@ job_obit(struct resc_used_update *pruu, int	stream)
 			LOG_NOTICE, pjob->ji_qs.ji_jobid, log_buffer);
 	}
 
-	(void)sprintf(acctbuf, msg_job_end_stat,
-		pjob->ji_qs.ji_un.ji_exect.ji_exitstat);
-	if (exitstatus < 10000) {
-		(void)strcpy(mailbuf, acctbuf);
-	} else {
-		(void)sprintf(mailbuf, msg_job_end_sig, exitstatus - 10000);
-	}
-	accttail = strlen(acctbuf);
-	/*
-	 * NOTE:
-	 * Following code for constructing resources used information is same as account_jobend()
-	 * with minor different that to traverse patlist in this code
-	 * we have to use GET_NEXT(patlist->al_link) since it is part of batch request
-	 * and in account_jobend() we are using patlist->al_sister which is encoded
-	 * information in job struct
-	 */
-	amt = RESC_USED_BUF_SIZE - accttail - 1;
-	mailbuf_amt = RESC_USED_BUF_SIZE - strlen(mailbuf) - 1;
-	while (patlist) {
-		/*
-		 * Don't save off information about invisible resources.
-		 * Find the resource definition and check the flags of the resource.
-		 * The ATR_DFLAG_USRD flag will not be set on invisible resources.
-		 */
-		resource_def *tmpdef;
-		tmpdef = find_resc_def(svr_resc_def, patlist->al_resc, svr_resc_size);
-		/* 
-		 * Copy all resources to the accounting buffer.
-		 * But save resource information to the mail buffer only when 
-		 * the resource is not invisible.
-		 */
-		concat_rescused_to_buffer(acctbuf, patlist, &amt, " ");
+	/* Allocate initial space for acctbuf/mailbuf.  Future space will be allocated by pbs_strcat(). */
+	acctbuf = malloc(RESC_USED_BUF_SIZE);
+	mailbuf = malloc(RESC_USED_BUF_SIZE);
 
-		if (tmpdef->rs_flags & ATR_DFLAG_USRD) {
-			concat_rescused_to_buffer(mailbuf, patlist, &mailbuf_amt, "\n");
-		}
-		patlist = (svrattrl *)GET_NEXT(patlist->al_link);
+	if (acctbuf == NULL || mailbuf == NULL) {
+		log_err(errno, __func__, "Failed to allocate memory");
+		/* Just incase one of the buffers got allocated */
+		free(acctbuf);
+		acctbuf = NULL;
+		free(mailbuf);
+		mailbuf = NULL;
 	}
-	mailbuf[RESC_USED_BUF_SIZE-1] = '\0';
+	else {
+		acctbuf_size = RESC_USED_BUF_SIZE;
+		mailbuf_size = RESC_USED_BUF_SIZE;
+
+		(void) snprintf(acctbuf,acctbuf_size, msg_job_end_stat,
+				pjob->ji_qs.ji_un.ji_exect.ji_exitstat);
+		if (exitstatus < 10000) {
+			 (void) strncpy(mailbuf, acctbuf, mailbuf_size);
+		} else {
+			(void) snprintf(mailbuf, mailbuf_size, msg_job_end_sig, exitstatus - 10000);
+		}
+		/*
+		 * NOTE:
+		 * Following code for constructing resources used information is same as account_jobend()
+		 * with minor difference that to traverse patlist in this code
+		 * we have to use GET_NEXT(patlist->al_link) since it is part of batch request
+		 * and in account_jobend() we are using patlist->al_sister which is encoded
+		 * information in job struct.
+		 * This collects all resources_used information returned from the mom.
+		 */
+		while (patlist) {
+			resource_def *tmpdef;
+			tmpdef = find_resc_def(svr_resc_def, patlist->al_resc, svr_resc_size);
+
+			/*
+			 * Copy all resources to the accounting buffer.
+			 * Copy all but invisible resources into the mail buffer.
+			 * The ATR_DFLAG_USRD flag will not be set on invisible resources.
+			 */
+			if (concat_rescused_to_buffer(&acctbuf, &acctbuf_size, patlist, " ") != 0)
+				break;
+
+			if (tmpdef->rs_flags & ATR_DFLAG_USRD) {
+				if (concat_rescused_to_buffer(&mailbuf, &mailbuf_size, patlist, "\n") != 0)
+					break;
+			}
+			patlist = (svrattrl *) GET_NEXT(patlist->al_link);
+		}
+	}
+
 
 	/* make sure ji_momhandle is -1 to force new connection to mom */
 
@@ -1865,7 +1893,7 @@ job_obit(struct resc_used_update *pruu, int	stream)
 
 				msg = (pruu->ru_comment ? pruu->ru_comment:"");
 				mailmsg = (char *)malloc( strlen(msg) + 1 + \
-                                       strlen(msg_bad_password) + 1 );
+							  strlen(msg_bad_password) + 1 );
 				if (mailmsg) {
 					sprintf(mailmsg, "%s:%s", msg, msg_bad_password);
 
@@ -2029,21 +2057,16 @@ RetryJob:
 
 		(void)svr_setjobstate(pjob, JOB_STATE_EXITING,
 			JOB_SUBSTATE_EXITING);
-		if (alreadymailed == 0)
+		if (alreadymailed == 0 && mailbuf != NULL)
 			svr_mailowner(pjob, MAIL_END, MAIL_NORMAL, mailbuf);
+		free(mailbuf);
 
 	}
 
 	/* save record accounting for later */
 
-	if (pjob->ji_acctrec)
-		free(pjob->ji_acctrec);
-	pjob->ji_acctrec = strdup(acctbuf);
-	if (pjob->ji_acctrec == NULL) {
-		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB,
-			LOG_CRIT, pjob->ji_qs.ji_jobid,
-			"malloc failed, accounting data lost");
-	}
+	free(pjob->ji_acctrec);
+	pjob->ji_acctrec = acctbuf;
 
 	/* Now, what do we do with the job... */
 
