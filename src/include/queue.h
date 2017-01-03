@@ -87,6 +87,7 @@ enum queueattr {
 	QA_ATR_ReqCredEnable,
 	QA_ATR_ReqCred,
 	QA_ATR_maxarraysize,
+	QA_ATR_Comment,
 	QE_ATR_AclGroupEnabled,
 	QE_ATR_AclGroup,
 
