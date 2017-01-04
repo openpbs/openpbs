@@ -129,12 +129,15 @@ static char	procfs[] = "/proc";
 static DIR	*pdir = NULL;
 static int	pagesize;
 static long	hz;
+#if	MOM_CPUSET
+static char 	cpusetfs[] = PBS_CPUSETDIR;
+static DIR	*cpusetdir = NULL;
+#endif	/* MOM_CPUSET */
 
 /* convert between jiffies and seconds */
 #define	JTOS(x)	(((x) + (hz/2)) / hz)
 
 static char	*choose_procflagsfmt(void);
-
 
 proc_stat_t	*proc_info = NULL;
 int		nproc = 0;
@@ -222,20 +225,20 @@ pbs_plinks	*Proc_lnks = NULL;	/* process links table head */
 static time_t	sampletime_ceil;
 static time_t	sampletime_floor;
 
+#if	MOM_CPUSET
 typedef int		pidcachetype_t;		/* type of allocatable unit */
 static pidcachetype_t	*pidcache_arena;	/* cache storage area */
 static unsigned int 	pidcache_bitsper = sizeof(pidcachetype_t) * NBBY;
 static int		pidcache_check(pid_t, pidcachetype_t *);
 static pidcachetype_t	*pidcache_create(void);
+static int		pidcache_reset(pidcachetype_t *);
 static void		pidcache_destroy(void);
-static int		pidcache_eligible(proc_stat_t *, char *, char *, unsigned long long);
 static pidcachetype_t *	pidcache_getarena(void);
 static int		pidcache_insert(pid_t p, pidcachetype_t *set);
 static int		pidcache_needed(void);
 static pid_t		pidcache_pidmax;	/* zero value implies no limit */
-static time_t		pidcache_starttime;	/* cache time cutoff */
 static int		pidcache_test = 0;	/* say PID cache always needed */
-static pidcachetype_t	*pidcache_truncate(pidcachetype_t *, pid_t);
+#endif	/* MOM_CPUSET */
 
 /*
  ** local resource array
@@ -5528,14 +5531,15 @@ mom_open_poll(void)
 int
 mom_get_sample(void)
 {
-	struct dirent		*dent;
-	FILE			*fd;
+	struct dirent		*dent = NULL;
+	FILE			*fd = NULL;
 	static char		path[1024];
 	char			procname[256];
 	struct stat		sb;
-	proc_stat_t		*ps;
-	int			maxexcludedPID = 0;
-	pidcachetype_t		*pidcache;
+	proc_stat_t		*ps = NULL;
+#if MOM_CPUSET
+	pidcachetype_t		*pidcache = NULL;
+#endif	/* MOM_CPUSET */
 	int			nprocs = 0;
 	int			ncached = 0;
 	int			ncantstat = 0;
@@ -5543,15 +5547,22 @@ mom_get_sample(void)
 	unsigned long long 	starttime;
 	int			nskipped = 0;
 	extern time_t		time_last_sample;
-	char			*stat_str;
+	char			*stat_str = NULL;
 
 	DBPRT(("%s: entered\n", __func__))
 	if (pdir == NULL)
 		return PBSE_INTERNAL;
 
-	if (((pidcache = pidcache_getarena()) == NULL) && pidcache_needed())
+#if MOM_CPUSET
+	if (((pidcache = pidcache_getarena()) == NULL) && pidcache_needed()) {
 		if ((pidcache = pidcache_create()) == NULL)
 			log_err(errno, __func__, "PID cache create");
+		if ((pidcache != NULL) && (ncached = pidcache_reset(pidcache)) == -1) {
+			ncached = 0;
+			log_err(errno, __func__, "PID cache reset");
+		}
+	}
+#endif /* MOM_CPUSET */
 	rewinddir(pdir);
 	nproc = 0;
 	fd = NULL;
@@ -5576,13 +5587,12 @@ mom_get_sample(void)
 				continue;
 		}
 		p = strtol(dent->d_name, NULL, 10);
-		if ((pidcache != NULL) && pidcache_check(p, pidcache)) {
+#if MOM_CPUSET
+		if ((pidcache != NULL) && pidcache_check(p, pidcache) == 0) {
 			nskipped++;
-			if (p > maxexcludedPID)
-				maxexcludedPID = p;
 			continue;
 		}
-
+#endif	/* MOM_CPUSET */
 		sprintf(procname, "/proc/%s/stat", dent->d_name);
 
 		if ((fd = fopen(procname, "r")) == NULL) {
@@ -5626,13 +5636,7 @@ mom_get_sample(void)
 			fclose(fd);
 			continue;
 		}
-		if ((pidcache != NULL) && pidcache_eligible(ps, procname,
-			path, starttime)) {
-			if (pidcache_insert(p, pidcache))
-				ncached++;
-			fclose(fd);
-			continue;
-		}
+
 		if (fstat(fileno(fd), &sb) == -1) {
 			fclose(fd);
 			continue;
@@ -5672,12 +5676,14 @@ mom_get_sample(void)
 	sampletime_ceil = time_last_sample;
 	sprintf(log_buffer,
 		"nprocs:  %d, cantstat:  %d, nomem:  %d, skipped:  %d, "
-		"cached:  %d, max excluded PID:  %d",
+		"cached:  %d",
 		nprocs - 2, ncantstat, nnomem, nskipped,
-		ncached, maxexcludedPID);
+		ncached);
 	log_event(PBSEVENT_DEBUG4, 0, LOG_DEBUG, __func__, log_buffer);
-	if (maxexcludedPID > 0)
-		pidcache = pidcache_truncate(pidcache, maxexcludedPID);
+#if MOM_CPUSET
+	if (pidcache != NULL)
+		pidcache_destroy();
+#endif	/* MOM_CPUSET */
 	return (PBSE_NONE);
 }
 
@@ -6034,7 +6040,6 @@ mom_close_poll(void)
 		proc_info = NULL;
 		max_proc = 0;
 	}
-	pidcache_destroy();
 
 	return (PBSE_NONE);
 }
@@ -7965,6 +7970,7 @@ get_wm(pid_t pid)
 		return (wm / pagesize);		/* convert bytes to pages */
 }
 
+#if	MOM_CPUSET
 /** @fn pidcache_create
  * @brief	create space to hold a set of PIDs
  *
@@ -7997,8 +8003,64 @@ pidcache_create(void)
 		((unsigned long long) 1 << (sizeof(pidcachetype_t) * NBBY)));
 	assert(pidcache_arena == NULL);
 	pidcache_arena = calloc(1, (size_t) setsize);
-	pidcache_starttime = time((time_t *) 0);
 	return (pidcache_arena);
+}
+
+/** @fn pidcache_reset
+ * @brief	reset pidcache with new set of PIDs from /dev/cpuset/PBSPro
+ *
+ * @return	int
+ * @retval	nprocs	- number of processes cached
+ *		-1	- when stat fails to open a cpuset tasks file
+ *
+ * @par MT-Safe:	yes
+ * @par Side Effects:
+ *	None
+ */
+static int
+pidcache_reset(pidcachetype_t *pidcache)
+{
+	struct dirent		*dent = NULL;
+	pid_t			pid = 0;
+	char			taskname[256] = {0};
+	int			ncantstat = 0;
+	FILE			*fd = NULL;
+	char			line[25] = {0};
+	char			*p = NULL;
+	int			i = 0;
+	int			nprocs = 0;
+
+	if (cpusetdir == NULL) {
+		if ((cpusetdir = opendir(cpusetfs)) == NULL) {
+			log_err(errno, __func__, "opendir");
+			return -1;
+		}
+	} else
+		rewinddir(cpusetdir);
+
+	while (errno = 0, (dent = readdir(cpusetdir)) != NULL) {
+		if (!isdigit(dent->d_name[0]))
+			continue;
+
+		sprintf(taskname, "%s/%s/tasks", cpusetfs, dent->d_name);
+
+		if ((fd = fopen(taskname, "r")) == NULL) {
+			ncantstat++;
+			continue;
+		}
+
+		for (i=0; (p = fgets(line, sizeof(line), fd)) != NULL; i++) {
+			pid = strtol(p, NULL, 10);
+			if (pidcache_insert(pid, pidcache))
+				nprocs++;
+		}
+		fclose(fd);
+	}
+
+	if (!nprocs && ncantstat)
+		return -1;
+	else
+		return nprocs;
 }
 
 /** @fn pidcache_destroy
@@ -8036,35 +8098,6 @@ static pidcachetype_t *
 pidcache_getarena(void)
 {
 	return (pidcache_arena);
-}
-
-/** @fn pidcache_truncate
- * @brief	shrink the cache
- *
- * @param[in]	cur_set		pointer to current allocation
- * @param[in]	pidmax		maximum PID that needs be stored in the cache
- *
- * @return	pidcachetype_t *
- *
- * @par MT-Safe:	yes
- * @par Side Effects:
- *	None
- */
-static pidcachetype_t *
-pidcache_truncate(pidcachetype_t *cur_set, pid_t pidmax)
-{
-	unsigned int	word = pidmax / pidcache_bitsper;
-	pidcachetype_t	*new_set;
-	unsigned int	new_set_size;
-
-	assert((pidcache_pidmax == 0) || (pidmax <= pidcache_pidmax));
-	new_set_size = (char *) &cur_set[word + 1] - (char *)cur_set;
-
-	if ((new_set = realloc(cur_set, new_set_size)) != NULL) {
-		pidcache_arena = new_set;
-		pidcache_pidmax = pidmax;
-	}
-	return (new_set);
 }
 
 /**
@@ -8164,163 +8197,5 @@ pidcache_needed(void)
 	else
 		return (0);
 }
-
-/** @fn
- * @brief	is this entry eligible for the cache?
- *
- * @param[in]	ps	pointer to proc_stat entry for process being considered
- * @param[in]	procst	path to this process's stat file
- * @param[in]	pidname	name of process, stripped of ()s, from mom_get_sample()
- * @param[in]	j	process start time (jiffies since system boot)
- *
- * @return	int
- * @retval	0	ineligible (i.e. we can't ignore this process)
- * @retval	1	eligible (this process may be safely ignored)
- *
- * @par MT-Safe:	yes
- * @par Side Effects:
- *	None
- *
- * @par Note:	the initial attempt at cache-eligible criteria was very
- *		simple - does the process have zero virtual memory size?
- *		On any correctly-functioning OS, this should be false for
- *		any user process, and is true for the OS-spawned threads
- *		that so predominate large systems (e.g. an SGI Ultraviolet
- *		with 3000+ CPUs).  Unfortunately, Linux is apparently not
- *		a correctly-functioning OS:  instances of user processes
- *		with zero reported vsize were abundant.
- *
- *		Several other possibilities have been suggested for our
- *		next attempt, most of which didn't make the cut:
- *			processes with parent process ID 1 - these cannot be
- *			used because any orphaned job process (one that's
- *			spawned and whose parent exits) is owned by init.
- *
- *			processes with parent process ID 2, which (it is
- *			theorized) equate to either
- *				those where all /proc/<PID>/statm fields are 0
- *			or
- *				those whose proc/<PID>/cmdline is zero length
- *				when read
- *
- *			processes with /proc/<PID>/exe is a symbolic link whose
- *			target does not exist - this does not work since defunct
- *			user processes can have nonexistent exe link targets
- *			(and to add such an entry to the cache would cause any
- *			subsequent processes with the same PID to be excluded,
- *			a problem when the PID range is small (e.g. <= 30000).
- *
- *			processes with /proc/<PID>/maps is zero-length when read
- *
- *			processes with UID zero - this one doesn't work because
- *			we would need to detect the case where a process that
- *			was spawned by a job had either a real or effective UID
- *			of zero;  effective UID is easy to detect but real UID
- *			is not:  there is no /proc interface to that information
- *			although it turns out that ps can get the information by
- *			reading the /proc/<PID>/status file.  Problem is that
- *			this file is described in the Linux proc(5) man page as
- *
- *				Provides  much  of  the  information  in
- *				/proc/[number]/stat and /proc/[number]/statm
- *				in a format that's  easier  for  humans  to
- *				parse.
- *			but gives no interface for a program to use.
- *
- *			All the /proc cases (all statm fields 0, cmdline zero
- *			length when read, exe symbolic link does not exist)
- *			fail.  Specifically, user processes may match each
- *			of those criteria at some point during their lifetimes
- *			(either during birth or death).
- *
- *		Only a couple possibilities remain:
- *			-  recognizing the kernel thread that is responsible
- *			   for spawning other kernel threads
- *			-  recognizing processes that were started ``near''
- *			   system boot time
- *		Two problems have been seen with the first of these:
- *			-  its PID is not always 2, and
- *			-  its name isn't always "kthreadd"
- *		A name that does not start with "kthread" has not been observed,
- *		though, so for the moment we're going to assume it's sufficient
- *		to look for the first process whose name begins with "kthread"
- *		and whose UID is zero.
- *
- *		What makes the second of these problematic is that we don't
- *		know how close to system boot time a process should be in
- *		order to decide to cache it.  Certainly one for which the
- *		time is zero would suffice.  We've arbitrarily decided that
- *		one second is a safe cutoff.
- *
- *		One more theory has been put forward by Michel Bourget from SGI:
- *			-  a process with pgrp 0 is a kernel thread
- *		and after some promising preliminary testing, it has been
- *		incorporated.
- *
- */
-static int
-pidcache_eligible(proc_stat_t *ps, char *procst, char *proc_name, unsigned long long j)
-{
-	struct stat	sb;
-	static pid_t	kthread_pid = 0;
-	static char	kthread_comm[] = "kthread";
-
-	if (ps->vsize != 0)	/* let's hope this always works */
-		return (0);
-
-	if (ps->pgrp == 0) {
-		sprintf(log_buffer, "%d (%s, pgrp 0)", ps->pid,
-			proc_name);
-		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER,
-			LOG_DEBUG, __func__, log_buffer);
-		return (1);
-	}
-	if (stat(procst, &sb) == -1) {
-		sprintf(log_buffer, "%d (%s stat failure)", ps->pid, procst);
-		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER,
-			LOG_DEBUG, __func__, log_buffer);
-		return (0);
-	}
-	if (sb.st_ctime > pidcache_starttime) {
-		sprintf(log_buffer, "%d (%s ctime too new)", ps->pid, procst);
-		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER,
-			LOG_DEBUG, __func__, log_buffer);
-		return (0);
-	}
-
-	/*
-	 *	If this is the kthread process itself, remember its process ID.
-	 *	Note that the ()s normally present in names from /proc/<PID>/stat
-	 *	have been removed by the fscanf %[...] pattern in stat_str[].
-	 */
-	if ((kthread_pid == 0) &&
-		(strncmp(proc_name, kthread_comm, sizeof(kthread_comm) - 1) == 0) &&
-		(sb.st_uid == 0)) {
-		kthread_pid = ps->pid;
-		sprintf(log_buffer, "%d (%s, kthread process)", ps->pid,
-			proc_name);
-		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER,
-			LOG_DEBUG, __func__, log_buffer);
-		return (1);
-	}
-
-	if ((kthread_pid != 0) && (ps->ppid == kthread_pid) &&
-		(sb.st_uid == 0)) {
-		sprintf(log_buffer, "%d (%s, kthread child)", ps->pid,
-			proc_name);
-		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER,
-			LOG_DEBUG, __func__, log_buffer);
-		return (1);
-	}
-
-	if (j < hz) {
-		/* process started within one second of system boot */
-		sprintf(log_buffer, "%d (%s, starttime < %ld)", ps->pid,
-			proc_name, hz);
-		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER,
-			LOG_DEBUG, __func__, log_buffer);
-		return (1);
-	}
-	return (0);
-}
+#endif	/* MOM_CPUSET */
 #endif	/* PBSMOM_HTUNIT */
