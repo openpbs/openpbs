@@ -384,18 +384,21 @@ install_pbsinitd() {
 				[ -f /etc/profile.d/pbs.csh ] || cp ${PBS_EXEC}/etc/pbs.csh /etc/profile.d
 				[ -f /etc/profile.d/pbs.sh ] || cp ${PBS_EXEC}/etc/pbs.sh /etc/profile.d
 			fi
-			if [[ 1 == `pidof systemd` ]]; then
-				unitfilepath="/usr/lib/systemd/system/"
-				[ -f $unitfilepath/pbs.service ] || cp ${PBS_EXEC}/libexec/pbs.service $unitfilepath
-				chmod 644 $unitfilepath/pbs.service
-				eval "sed -i 's;\(^[[:space:]]*SourcePath=\)[^[:space:]]*;\1${PBS_EXEC}/libexec/pbs_init.d;' \"$unitfilepath/pbs.service\""
-				eval "sed -i 's;\(^[[:space:]]*ExecStart=\)[^[:space:]]*;\1${PBS_EXEC}/libexec/pbs_init.d start;' \"$unitfilepath/pbs.service\""
-				eval "sed -i 's;\(^[[:space:]]*ExecStop=\)[^[:space:]]*;\1${PBS_EXEC}/libexec/pbs_init.d stop;' \"$unitfilepath/pbs.service\""
-				if [ -x /bin/systemctl ] ; then
-					/bin/systemctl daemon-reload && /bin/systemctl enable pbs
-					[ $? != 0 ] && echo "Failed to register PBS Pro as a service in systemd"
+
+			pbs_unitfile="/usr/lib/systemd/system/pbs.service"
+			if [ -f "${pbs_unitfile}" ]; then
+				presetdir="/usr/lib/systemd/system-preset"
+				eval "sed -i 's;\(^[[:space:]]*SourcePath=\)[^[:space:]]*;\1${PBS_EXEC}/libexec/pbs_init.d;' \"$pbs_unitfile\""
+				eval "sed -i 's;\(^[[:space:]]*ExecStart=\)[^[:space:]]*;\1${PBS_EXEC}/libexec/pbs_init.d;' \"$pbs_unitfile\""
+				eval "sed -i 's;\(^[[:space:]]*ExecStop=\)[^[:space:]]*;\1${PBS_EXEC}/libexec/pbs_init.d;' \"$pbs_unitfile\""
+				if command -v systemctl >/dev/null 2>&1; then
+					systemctl daemon-reload && systemctl enable pbs
+					if [ $? != 0 -a -d "${presetdir}" ]; then
+						echo "*** Creating preset file ${presetdir}/95-pbs.preset"
+						echo "enable pbs.service" > "${presetdir}/95-pbs.preset"
+					fi
 				else
-					echo "Systemctl binary is not available in standard location; Failed to register PBS Pro as a service"
+					echo "*** Systemctl binary is not available; Failed to register PBS Pro as a service"
 				fi
 			fi
 			;;

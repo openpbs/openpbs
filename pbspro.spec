@@ -47,6 +47,8 @@
 %define pbs_dist %{pbs_name}-%{pbs_version}.tar.gz
 %if 0%{?suse_version} >= 1210 || 0%{?rhel} >= 7 || 0%{?debian_version} >= 8
 %define have_systemd 1
+%else
+%define _unitdir /usr/lib/systemd/system
 %endif
 
 Name: %{pbs_name}
@@ -283,6 +285,10 @@ if [ `basename ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}` = %{version} ]; then
 	fi
 fi
 rm -f /etc/init.d/pbs
+%if %{defined have_systemd}
+	systemctl disable pbs
+	rm -f /usr/lib/systemd/system-preset/95-pbs.preset
+%endif
 
 %preun %{pbs_execution}
 if [ -x /sbin/chkconfig -a -x /sbin/service ]; then
@@ -313,6 +319,10 @@ if [ `basename ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}` = %{version} ]; then
 	fi
 fi
 rm -f /etc/init.d/pbs
+%if %{defined have_systemd}
+	systemctl disable pbs
+	rm -f /usr/lib/systemd/system-preset/95-pbs.preset
+%endif
 
 %preun %{pbs_client}
 if [ `basename ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}` = %{version} ]; then
@@ -348,6 +358,8 @@ echo
 %{_sysconfdir}/profile.d/pbs.sh
 %if %{defined have_systemd}
 %attr(644, root, root) %{_unitdir}/pbs.service
+%else
+%exclude %{_unitdir}/pbs.service
 %endif
 # %{_sysconfdir}/init.d/pbs
 %exclude %{pbs_prefix}/unsupported/*.pyc
@@ -363,6 +375,8 @@ echo
 %{_sysconfdir}/profile.d/pbs.sh
 %if %{defined have_systemd}
 %attr(644, root, root) %{_unitdir}/pbs.service
+%else
+%exclude %{_unitdir}/pbs.service
 %endif
 # %{_sysconfdir}/init.d/pbs
 %exclude %{pbs_prefix}/bin/printjob_svr.bin
@@ -426,7 +440,5 @@ echo
 %exclude %{pbs_prefix}/sbin/pbsfs
 %exclude %{pbs_prefix}/unsupported/*.pyc
 %exclude %{pbs_prefix}/unsupported/*.pyo
-%if %{defined have_systemd}
 %exclude %{_unitdir}/pbs.service
-%endif
 
