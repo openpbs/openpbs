@@ -44,6 +44,10 @@
 #endif
 #include <stdlib.h>
 #include <string.h>
+#ifndef WIN32
+#include <pwd.h>
+#include <grp.h>
+#endif
 #include "pbs_ifl.h"
 #include "list_link.h"
 #include "attribute.h"
@@ -83,6 +87,7 @@
 /* Private Functions */
 
 static int hacl_match(const char *can, const char *master);
+static int gacl_match(const char *can, const char *master);
 static int user_match(const char *can, const char *master);
 static int host_order(char *old, char *new);
 static int user_order(char *old, char *new);
@@ -215,6 +220,8 @@ acl_check(attribute *pattr, char *name, int type)
 			match_func = user_match;
 			break;
 		case ACL_Group:
+			match_func = gacl_match;
+			break;
 		default:
 			match_func = (int (*)())strcmp;
 			break;
@@ -663,6 +670,56 @@ hacl_match(const char *can, const char *master)
 			return (0);
 	}
 	return (1);
+}
+
+/**
+ * @brief
+ * 	group acl order match - match two strings when user is in group
+ *
+ * @param[in] can - Canidate string (first parameter) is a euser string (egroup on Windows).
+ * @param[in] master -  Master string (2nd parameter) is an entry from a group acl.
+ *
+ * Strings match if can is a member of master (strings are equal on windows).
+ *
+ * @return	int
+ * @retval	0	if strings match
+ * @retval	1	if not
+ *
+ */
+
+static int
+gacl_match(const char *can, const char *master)
+{
+#ifdef WIN32
+	return(strcmp(can, master));
+#else
+	int i, ng = 0;
+	struct passwd *pw;
+	struct group *gr;
+	gid_t *groups = NULL;
+
+	if ((pw = getpwnam(can)) == NULL)
+		return(1);
+
+	if (getgrouplist(can, pw->pw_gid, NULL, &ng) < 0) {
+		if ((groups = (gid_t *) malloc(ng * sizeof (gid_t))) == NULL)
+			return(1);
+		getgrouplist(can, pw->pw_gid, groups, &ng);
+	}
+
+	for (i = 0; i < ng; i++) {
+		if ((gr = getgrgid(groups[i])) != NULL) {
+			if (!strcmp(gr->gr_name, master)) {
+				free(groups);
+				return (0);
+			}
+		}
+	}
+
+	free(groups);
+
+	return (1);
+#endif
 }
 
 /**

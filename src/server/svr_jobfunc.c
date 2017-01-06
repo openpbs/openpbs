@@ -1373,7 +1373,11 @@ svr_chkque(job *pjob, pbs_queue *pque, char *hostname, int mtype)
 
 	if (pque->qu_attr[QE_ATR_AclGroupEnabled].at_val.at_long)
 		if (acl_check(&pque->qu_attr[QE_ATR_AclGroup],
+#ifdef WIN32
 			pjob->ji_wattr[(int)JOB_ATR_egroup].at_val.at_str,
+#else
+			pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str,
+#endif
 			ACL_Group) == 0)
 			if (mtype != MOVE_TYPE_MgrMv) /* ok if mgr */
 				return (PBSE_PERM);
