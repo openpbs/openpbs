@@ -113,6 +113,7 @@ char	mpphost[BASIL_STRING_LONG];
  */
 
 extern char *alps_client;
+extern int vnode_per_numa_node;
 extern char *ret_string;
 extern vnl_t	*vnlp;
 
@@ -3050,6 +3051,7 @@ inventory_to_vnodes(basil_response_t *brp)
 	char	*attr;
 	vnl_t	*nv = NULL;
 	int	ret;
+	char	vname[128];
 	hwloc_topology_t	topology;
 	char			*xmlbuf;
 	int			xmllen;
@@ -3057,20 +3059,20 @@ inventory_to_vnodes(basil_response_t *brp)
 	if (!brp)
 		return;
 	if (brp->method != basil_method_query) {
-		sprintf(log_buffer, "Wrong method: %d", brp->method);
+		snprintf(log_buffer, sizeof(log_buffer), "Wrong method: %d", brp->method);
 		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG,
 			__func__, log_buffer);
 		return;
 	}
 	if (brp->data.query.type != basil_query_inventory) {
-		sprintf(log_buffer, "Wrong query type: %d",
+		snprintf(log_buffer, sizeof(log_buffer), "Wrong query type: %d",
 			brp->data.query.type);
 		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG,
 			__func__, log_buffer);
 		return;
 	}
 	if (*brp->error != '\0') {
-		sprintf(log_buffer, "Error in BASIL response: %s", brp->error);
+		snprintf(log_buffer, sizeof(log_buffer), "Error in BASIL response: %s", brp->error);
 		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG,
 			__func__, log_buffer);
 		return;
@@ -3110,20 +3112,20 @@ inventory_to_vnodes(basil_response_t *brp)
 		 *	enough to hold it
 		 */
 		if ((lbuf = malloc(lbuflen)) == NULL) {
-			sprintf(log_buffer, "malloc logbuf (%d) failed",
+			snprintf(log_buffer, sizeof(log_buffer), "malloc logbuf (%d) failed",
 				lbuflen);
 			hwloc_free_xmlbuffer(topology, xmlbuf);
 			hwloc_topology_destroy(topology);
 			return;
 		} else {
-			sprintf(lbuf, "allocated log buffer, len %d", lbuflen);
+			snprintf(lbuf, sizeof(lbuf), "allocated log buffer, len %d", lbuflen);
 			log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_NODE,
 				LOG_DEBUG, __func__, lbuf);
 		}
 		log_event(PBSEVENT_DEBUG4,
 			PBS_EVENTCLASS_NODE,
 			LOG_DEBUG, __func__, "topology exported");
-		sprintf(lbuf, "%s%s", NODE_TOPOLOGY_TYPE_HWLOC, xmlbuf);
+		snprintf(lbuf, sizeof(lbuf), "%s%s", NODE_TOPOLOGY_TYPE_HWLOC, xmlbuf);
 		if (vn_addvnr(nv, mom_short_name, ATTR_NODE_TopologyInfo,
 			lbuf, ATR_TYPE_STR, READ_ONLY, NULL) == -1) {
 			hwloc_free_xmlbuffer(topology, xmlbuf);
@@ -3131,7 +3133,7 @@ inventory_to_vnodes(basil_response_t *brp)
 			free(lbuf);
 			goto bad_vnl;
 		} else {
-			sprintf(lbuf, "attribute '%s = %s%s' added",
+			snprintf(lbuf, sizeof(lbuf), "attribute '%s = %s%s' added",
 				ATTR_NODE_TopologyInfo,
 				NODE_TOPOLOGY_TYPE_HWLOC, xmlbuf);
 			log_event(PBSEVENT_DEBUG4,
@@ -3143,13 +3145,13 @@ inventory_to_vnodes(basil_response_t *brp)
 		}
 	}
 	attr = "resources_available.ncpus";
-	sprintf(utilBuffer, "%d", num_acpus);
+	snprintf(utilBuffer, sizeof(utilBuffer), "%d", num_acpus);
 	/* already exists so don't define type */
 	if (vn_addvnr(nv, mom_short_name, attr, utilBuffer, 0, 0, NULL) == -1)
 		goto bad_vnl;
 
 	attr = "resources_available.mem";
-	sprintf(utilBuffer, "%lu", totalmem);
+	snprintf(utilBuffer, sizeof(utilBuffer), "%lu", totalmem);
 	/* already exists so don't define type */
 	if (vn_addvnr(nv, mom_short_name, attr, utilBuffer, 0, 0, NULL) == -1)
 		goto bad_vnl;
@@ -3187,18 +3189,38 @@ inventory_to_vnodes(basil_response_t *brp)
 			default:
 				continue;
 		}
-		for (seg=node->segments; seg; seg=seg->next) {
-			char	vname[128];
 
-			snprintf(vname, sizeof(vname), "%s_%ld_%d",
-				mpphost, node->node_id, seg->ordinal);
-			vname[sizeof(vname)-1]='\0';
+		/* Only do this for nodes that have accelerators. */
+		if (node->accelerators) {
+			for (accel=node->accelerators, totaccel=0;
+				accel; accel=accel->next) {
+				if (accel->state == basil_accel_state_up)
+					/* Only count them if the state is UP */
+					totaccel++;
+			}
+		}
+
+		/*
+		 * Initializing these outside the loop for the normal case where
+		 * vnode_per_numa_node is not set (or is False)
+		 */
+		totcpus = 0;
+		totmem = 0;
+
+		for (seg=node->segments; seg; seg=seg->next) {
+			if (vnode_per_numa_node) {
+				snprintf(vname, sizeof(vname), "%s_%ld_%d",
+					mpphost, node->node_id, seg->ordinal);
+			} else if (seg->ordinal == 0) {
+				snprintf(vname, sizeof(vname), "%s_%ld",
+					mpphost, node->node_id);
+			}
 
 			if (basil_inventory != NULL) {
 				if (first_compute_node) {
 					first_compute_node = 0;
 					attr = ATTR_NODE_TopologyInfo;
-					sprintf(utilBuffer, "%ld", order);
+					snprintf(utilBuffer, sizeof(utilBuffer), "%ld", order);
 					if (vn_addvnr(nv, vname, attr,
 						(char *) basil_inventory,
 						ATR_TYPE_STR, READ_ONLY,
@@ -3206,7 +3228,7 @@ inventory_to_vnodes(basil_response_t *brp)
 						goto bad_vnl;
 				}
 			} else {
-				sprintf(log_buffer, "no saved basil_inventory");
+				snprintf(log_buffer, sizeof(log_buffer), "no saved basil_inventory");
 				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE,
 					LOG_DEBUG, __func__, log_buffer);
 			}
@@ -3219,15 +3241,9 @@ inventory_to_vnodes(basil_response_t *brp)
 				goto bad_vnl;
 
 			attr = "resources_available.PBScrayorder";
-			sprintf(utilBuffer, "%ld", order);
+			snprintf(utilBuffer, sizeof(utilBuffer), "%ld", order);
 			if (vn_addvnr(nv, vname, attr, utilBuffer,
 				ATR_TYPE_LONG, atype,
-				NULL) == -1)
-				goto bad_vnl;
-
-			attr = "resources_available.PBScrayhost";
-			if (vn_addvnr(nv, vname, attr, mpphost,
-				ATR_TYPE_STR, atype,
 				NULL) == -1)
 				goto bad_vnl;
 
@@ -3237,24 +3253,26 @@ inventory_to_vnodes(basil_response_t *brp)
 				goto bad_vnl;
 
 			attr = "resources_available.host";
-			sprintf(utilBuffer, "%s_%ld", mpphost, node->node_id);
+			snprintf(utilBuffer, sizeof(utilBuffer), "%s_%ld", mpphost, node->node_id);
 			if (vn_addvnr(nv, vname, attr, utilBuffer,
 				0, 0, NULL) == -1)
 				goto bad_vnl;
 
 			attr = "resources_available.PBScraynid";
-			sprintf(utilBuffer, "%ld", node->node_id);
+			snprintf(utilBuffer, sizeof(utilBuffer), "%ld", node->node_id);
 			if (vn_addvnr(nv, vname, attr, utilBuffer,
 				ATR_TYPE_STR, atype,
 				NULL) == -1)
 				goto bad_vnl;
 
-			attr = "resources_available.PBScrayseg";
-			sprintf(utilBuffer, "%d", seg->ordinal);
-			if (vn_addvnr(nv, vname, attr, utilBuffer,
-				ATR_TYPE_STR, atype,
-				NULL) == -1)
-				goto bad_vnl;
+			if (vnode_per_numa_node) {
+				attr = "resources_available.PBScrayseg";
+				snprintf(utilBuffer, sizeof(utilBuffer), "%d",
+					seg->ordinal);
+				if (vn_addvnr(nv, vname, attr, utilBuffer,
+					ATR_TYPE_STR, atype, NULL) == -1)
+					goto bad_vnl;
+			}
 
 			attr = "resources_available.vntype";
 			if (vn_addvnr(nv, vname, attr, CRAY_COMPUTE,
@@ -3267,42 +3285,66 @@ inventory_to_vnodes(basil_response_t *brp)
 				NULL) == -1)
 				goto bad_vnl;
 
-			attr = "resources_available.ncpus";
-			totcpus = 0;
-			for (proc=seg->processors; proc; proc=proc->next)
-				totcpus++;
-			sprintf(utilBuffer, "%d", totcpus);
-			if (vn_addvnr(nv, vname, attr, utilBuffer,
-				0, 0, NULL) == -1)
-				goto bad_vnl;
-
-			attr = "resources_available.mem";
-			totmem = 0;
-			for (mem=seg->memory; mem; mem=mem->next)
-				totmem += mem->page_size_kb * mem->page_count;
-			sprintf(utilBuffer, "%ldkb", totmem);
-			if (vn_addvnr(nv, vname, attr, utilBuffer,
-				0, 0, NULL) == -1)
-				goto bad_vnl;
-
-			for (label=seg->labels; label; label=label->next) {
-				sprintf(utilBuffer,
-					"resources_available.PBScraylabel_%s",
-					label->name);
-				if (vn_addvnr(nv, vname, utilBuffer, "true",
-					ATR_TYPE_BOOL, atype,
-					NULL) == -1)
+			if (vnode_per_numa_node) {
+				attr = "resources_available.ncpus";
+				totcpus = 0;
+				for (proc=seg->processors; proc; proc=proc->next)
+					totcpus++;
+				snprintf(utilBuffer, sizeof(utilBuffer), "%d",
+					totcpus);
+				if (vn_addvnr(nv, vname, attr, utilBuffer,
+					0, 0, NULL) == -1)
 					goto bad_vnl;
+
+				attr = "resources_available.mem";
+				totmem = 0;
+				for (mem=seg->memory; mem; mem=mem->next)
+					totmem += mem->page_size_kb * mem->page_count;
+				snprintf(utilBuffer, sizeof(utilBuffer), "%ldkb",
+					totmem);
+				if (vn_addvnr(nv, vname, attr, utilBuffer,
+					0, 0, NULL) == -1)
+					goto bad_vnl;
+
+				for (label=seg->labels; label; label=label->next) {
+					snprintf(utilBuffer, sizeof(utilBuffer),
+						"resources_available.PBScraylabel_%s",
+						label->name);
+					if (vn_addvnr(nv, vname, utilBuffer, "true",
+						ATR_TYPE_BOOL, atype,
+						NULL) == -1)
+						goto bad_vnl;
+				}
+			} else {
+				/*
+ 				 * vnode_per_numa_node is false, which
+ 				 * means we need to compress all the segment info
+ 				 * into only one vnode.  We need to 
+ 				 * total up the cpus and memory for each of the
+ 				 * segments and report it as part of the
+ 				 * whole vnode. Add/set labels only once.
+ 				 * All labels are assumed to be the same on
+ 				 * all segments.
+ 				 */
+				for (proc=seg->processors; proc; proc=proc->next)
+					totcpus++;
+				for (mem=seg->memory; mem; mem=mem->next)
+					totmem += mem->page_size_kb * mem->page_count;
+				if (seg->ordinal == 0) {
+					for (label=seg->labels; label; label=label->next) {
+						snprintf(utilBuffer, sizeof(utilBuffer),
+							"resources_available.PBScraylabel_%s",
+							label->name);
+						if (vn_addvnr(nv, vname, utilBuffer, "true",
+							ATR_TYPE_BOOL, atype,
+							NULL) == -1)
+							goto bad_vnl;
+					}
+				}
 			}
 
 			/* Only do this for nodes that have accelerators */
 			if (node->accelerators) {
-				for (accel=node->accelerators, totaccel=0;
-					accel; accel=accel->next) {
-					if (accel->state == basil_accel_state_up)
-						/* Only count them if the state is UP */
-						totaccel++;
-				}
 				attr = "resources_available.naccelerators";
 				if (seg->ordinal == 0) {
 					/*
@@ -3312,18 +3354,28 @@ inventory_to_vnodes(basil_response_t *brp)
 					 */
 					snprintf(utilBuffer, sizeof(utilBuffer),
 						"%d", totaccel);
-				} else {
+				} else if (vnode_per_numa_node) {
 					/*
-					 * share the accelerator count with
-					 * segment 0 vnodes
+ 					 * When there is a vnode being created
+ 					 * per numa node, only the first
+ 					 * (segment 0) vnode gets the accelerator.
+ 					 * The other vnodes must share the
+ 					 * accelerator count with segment 0 vnodes.
 					 */
 					snprintf(utilBuffer, sizeof(utilBuffer),
 						"@%s_%ld_0",
 						mpphost, node->node_id);
 				}
-				if (vn_addvnr(nv, vname, attr, utilBuffer,
-					0, 0, NULL) == -1)
-					goto bad_vnl;
+
+				/*
+ 				 * Avoid calling vn_addvnr() repeatedly when
+ 				 * creating only one vnode per compute node.
+ 				 */
+				if (vnode_per_numa_node || (seg->ordinal == 0)) {
+					if (vn_addvnr(nv, vname, attr, utilBuffer,
+						0, 0, NULL) == -1)
+						goto bad_vnl;
+				}
 
 				attr = "resources_available.accelerator";
 				if (totaccel > 0) {
@@ -3352,7 +3404,7 @@ inventory_to_vnodes(basil_response_t *brp)
 					accel=node->accelerators;
 					if (accel->data.gpu) {
 						if (strcmp(accel->data.gpu->family, BASIL_VAL_UNKNOWN) == 0) {
-							sprintf(log_buffer, "The GPU family "
+							snprintf(log_buffer, sizeof(log_buffer), "The GPU family "
 								"value is 'UNKNOWN'.  Check "
 								"your Cray GPU inventory.");
 							log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG, __func__, log_buffer);
@@ -3372,7 +3424,7 @@ inventory_to_vnodes(basil_response_t *brp)
 									sizeof(utilBuffer),
 									"%umb",
 									accel->data.gpu->memory);
-							} else {
+							} else if (vnode_per_numa_node) {
 								snprintf(utilBuffer,
 									sizeof(utilBuffer),
 									"@%s_%ld_0",
@@ -3386,6 +3438,27 @@ inventory_to_vnodes(basil_response_t *brp)
 					}
 				}
 			}
+		}
+		if (!vnode_per_numa_node) {
+			/*
+ 			 * Since we're creating one vnode that combines
+ 			 * the info for all the numa nodes,
+ 			 * we've now cycled through all the numa nodes, so
+ 			 * we need to set the total number of cpus and total
+ 			 * memory before moving on to the next node 
+ 			 */
+			attr = "resources_available.ncpus";
+			snprintf(utilBuffer, sizeof(utilBuffer), "%d", totcpus);
+			if (vn_addvnr(nv, vname, attr, utilBuffer,
+				0, 0, NULL) == -1)
+				goto bad_vnl;
+
+			attr = "resources_available.mem";
+			snprintf(utilBuffer, sizeof(utilBuffer), "%ldkb",
+				totmem);
+			if (vn_addvnr(nv, vname, attr, utilBuffer,
+				0, 0, NULL) == -1)
+				goto bad_vnl;
 		}
 	}
 	internal_state_update = UPDATE_MOM_STATE;
@@ -3401,7 +3474,7 @@ inventory_to_vnodes(basil_response_t *brp)
 	return;
 
 bad_vnl:
-	sprintf(log_buffer, "creation of cray vnodes failed at %ld", order);
+	snprintf(log_buffer, sizeof(log_buffer), "creation of cray vnodes failed at %ld", order);
 	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG,
 		__func__, log_buffer);
 	/*
@@ -4196,7 +4269,7 @@ alps_create_reserve_request(job *pjob, basil_request_reserve_t **req)
 		char		*vntype, *vnt;
 		char		*sharing;
 		long		nid;
-		int			seg;
+		int		seg;
 		long long	mem;
 		char		*arch;
 		enum vnode_sharing_state	share;
@@ -4207,14 +4280,26 @@ alps_create_reserve_request(job *pjob, basil_request_reserve_t **req)
 			continue;
 
 		/*
-		 * Only match vnodes that begin with mpphost and have
-		 * a following "_<num>_<num>".
+		 * Skip over vnodes where the name does not begin with the
+		 * expected mpphost string
 		 */
 		if (strncmp(vp->vn_vname, mpphost, len) != 0)
 			continue;
 		cp = &vp->vn_vname[len];
-		if (sscanf(cp, "_%ld_%d", &nid, &seg) != 2)
-			continue;
+
+		/*
+		 * The remainder of the vnode name must match "_<num>_<num>"
+		 * (when vnode_per_numa_node is enabled) otherwise,
+		 * "_<num>" when disabled.
+		 */
+
+		if (vnode_per_numa_node) {
+			if (sscanf(cp, "_%ld_%d", &nid, &seg) != 2)
+				continue;
+		} else {
+			if (sscanf(cp, "_%ld", &nid) != 1)
+				continue;
+		}
 
 		/* check that vnode exists */
 		vnp = vn_vnode(vnlp, vp->vn_vname);
@@ -4698,8 +4783,9 @@ alps_create_reservation(basil_request_reserve_t *bresvp, long *rsvn_id,
 				param->nppn);
 			add_alps_req(utilBuffer);
 		}
-		if (param->segments[0] != '\0') {
-			sprintf(utilBuffer, " " BASIL_ATR_SEGMENTS "=\"%s\"",
+		if (vnode_per_numa_node && (param->segments[0] != '\0')) {
+			snprintf(utilBuffer, sizeof(utilBuffer),
+				" " BASIL_ATR_SEGMENTS "=\"%s\"",
 				param->segments);
 			add_alps_req(utilBuffer);
 		}

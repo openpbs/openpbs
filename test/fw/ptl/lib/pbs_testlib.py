@@ -12860,6 +12860,24 @@ class MoM(PBSService):
 
         return self.apply_config(conf, hup)
 
+    def unset_mom_config(self, name, hup=True):
+        """
+        Delete a mom_config entry
+
+        :param name: The entry to remove from ``mom_priv/config``
+        :type name: String
+        :param hup: if True (default) ``HUP`` the MoM
+        :type hup: bool
+        :returns: True on success and False otherwise
+        """
+        mc = self.parse_config()
+        if mc is None or name not in mc:
+            return True
+        self.logger.info(self.logprefix + "unsetting config " + name)
+        del mc[name]
+
+        return self.apply_config(mc, hup)
+
     def apply_config(self, conf={}, hup=True, restart=False):
         """
         Apply configuration options to MoM.
