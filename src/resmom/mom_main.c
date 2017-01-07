@@ -261,6 +261,7 @@ extern struct var_table vtable;	/* see start_exec.c */
 char	       *alps_client = (char *)NULL;
 int		alps_release_interval_max = 30;
 int		alps_release_timeout = 600;
+int		vnode_per_numa_node = FALSE;
 #endif /* MOM_ALPS */
 char	       *path_checkpoint = (char *)NULL;
 static		resource_def *rdcput;
@@ -444,6 +445,7 @@ static handler_ret_t	set_alien_kill(char *);
 static handler_ret_t	set_alps_client(char *);
 static handler_ret_t	set_alps_release_interval_max(char *);
 static handler_ret_t	set_alps_release_timeout(char *);
+static handler_ret_t	set_vnode_per_numa_node(char *);
 #endif	/* MOM_ALPS */
 static handler_ret_t	set_attach_allow(char *);
 static handler_ret_t	set_checkpoint_path(char *);
@@ -504,6 +506,7 @@ static struct	specials {
 	{ "alien_kill",			set_alien_kill },
 #if	MOM_ALPS
 	{ "alps_client",		set_alps_client },
+	{ "vnode_per_numa_node", 	set_vnode_per_numa_node },
 	{ "alps_release_interval_max",	set_alps_release_interval_max },
 	{ "alps_release_timeout",	set_alps_release_timeout },
 #endif	/* MOM_ALPS */
@@ -3830,6 +3833,31 @@ set_alps_client(char *value)
 
 /**
  * @brief
+ * Set the configuration flag that defines vnode creation behavior
+ * on a Cray.  
+ *
+ * @par
+ * If vnode_per_numa_node is set to TRUE, then
+ * PBS will create one vnode per NUMA node (i.e. per segment).  
+ * Thus there will be multiple vnodes per host.
+ *
+ * If vnode_per_numa_node is set to FALSE, then
+ * PBS will create one vnode for the compute node (i.e. it will
+ * cover all segment information in one vnode).
+ *
+ * @retval 0 failure
+ * @retval 1 success
+ */
+static handler_ret_t
+set_vnode_per_numa_node(char *value)
+{
+	static char id[] = "set_vnode_per_numa_node";
+
+	return (set_boolean(id, value, &vnode_per_numa_node));
+}
+
+/**
+ * @brief
  * 	Set the maximum time in seconds to wait between ALPS release
  * 	reservation requests
  *
@@ -4698,6 +4726,7 @@ read_config(char *file)
 
 #if MOM_ALPS
 	alps_release_interval_max = 30;		/* 30 seconds */
+	vnode_per_numa_node = FALSE;
 	alps_release_timeout      = 600;	/* 10 min */
 	set_alps_client(NULL);
 #endif /* MOM_ALPS */
