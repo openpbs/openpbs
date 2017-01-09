@@ -427,9 +427,16 @@ update_ajob_status_using_cmd(job *pjob, int cmd)
 		}
 	}
 
-	/* now append resources used */
 
-	encode_used(pjob, &rused.ru_attr);
+	/* if cmd is IS_RESCUSED_FROM_HOOK, send resources_used info
+	 * to the server if coming from mother superior of job.
+	 */
+	if ((cmd != IS_RESCUSED_FROM_HOOK) ||
+		((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) != 0)) {
+		/* now append resources used */
+
+		encode_used(pjob, &rused.ru_attr);
+	}
 
 	/* now send info to server via rpp */
 

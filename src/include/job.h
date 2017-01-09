@@ -552,6 +552,7 @@ struct job {
 	struct ajtrkhd *ji_ajtrk;	/* ArrayJob: index tracking table */
 	int		ji_subjindx;	/* subjob:   its index into the table */
 	struct jbdscrd *ji_discard;	/* see discard_job() */
+	int		ji_jdcd_waiting;/* set if waiting on a mom for a response to discard job request */
 	char	       *ji_acctrec;	/* holder for accounting info */
 	char	       *ji_clterrmsg;	/* error message to return to client */
 

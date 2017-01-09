@@ -718,8 +718,8 @@ node_down_requeue(struct work_task *pwt)
 						/* notify all sisters to discard the job */
 						discard_job(pj, "on node down requeue", 0);
 
-						/* Clear "resources_used" */
-						if ((pj->ji_qs.ji_svrflags & (JOB_SVFLG_CHKPT | JOB_SVFLG_ChkptMig)) == 0) {
+						/* Clear "resources_used" only if not waiting on any mom */
+						if (!pj->ji_jdcd_waiting && ((pj->ji_qs.ji_svrflags & (JOB_SVFLG_CHKPT | JOB_SVFLG_ChkptMig)) == 0)) {
 							job_attr_def[(int)JOB_ATR_resc_used].at_free(
 								&pj->ji_wattr[(int)JOB_ATR_resc_used]);
 						}
@@ -779,6 +779,7 @@ post_discard_job(job *pjob, mominfo_t *pmom, int newstate)
 		if (pdsc->jdcd_state == JDCD_WAITING)
 			return; /* need to wait some more */
 	}
+	pjob->ji_jdcd_waiting = 0;
 
 	/* not waiting on any Mom to reply to an IS_DISCARD_JOB */
 	/* so can now deal with the job                         */
@@ -828,6 +829,12 @@ post_discard_job(job *pjob, mominfo_t *pmom, int newstate)
 			pjob->ji_acctrec = NULL;
 		}
 		force_reque(pjob);
+
+		/* free resc_used */
+		if ((pjob->ji_wattr[(int)JOB_ATR_resc_used].at_flags & ATR_VFLAG_SET) &&
+			((pjob->ji_qs.ji_svrflags & (JOB_SVFLG_CHKPT | JOB_SVFLG_ChkptMig)) == 0))
+			job_attr_def[(int)JOB_ATR_resc_used].at_free(&pjob->ji_wattr[(int)JOB_ATR_resc_used]);
+
 		return;
 	}
 
@@ -2518,8 +2525,10 @@ discard_job(job *pjob, char *txt, int noack)
 				(pdsc+nmom)->jdcd_mom = pnode->nd_moms[0];
 				if (((mom_svrinfo_t *)(pnode->nd_moms[0]->mi_data))->msr_state & INUSE_DOWN)
 					(pdsc+nmom)->jdcd_state = JDCD_DOWN;
-				else
+				else {
 					(pdsc+nmom)->jdcd_state = JDCD_WAITING;
+					pjob->ji_jdcd_waiting = 1;
+				}
 				nmom++;
 			}
 		}
