@@ -76,6 +76,7 @@
 #include "pbs_nodes.h"
 #include "job.h"
 #include "reservation.h"
+#include "log.h"
 #include <sys/stat.h>
 #include <errno.h>
 #include <assert.h>
@@ -183,7 +184,7 @@ main(int argc, char *argv[])
 	char	*usercred_buf = NULL;
 	size_t	usercred_len = 0;
 	struct  passwd *pwdp = NULL;
-	char	msg[CMDLINE_LEN];
+	char	msg[LOG_BUF_SIZE];
 	int     flags = CREATE_DEFAULT_ERROR_MODE|CREATE_NEW_PROCESS_GROUP|CREATE_UNICODE_ENVIRONMENT;
 	LPVOID  user_env = NULL;
 	STARTUPINFO             si = { 0 };

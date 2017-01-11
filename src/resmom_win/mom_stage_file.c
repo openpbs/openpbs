@@ -61,6 +61,7 @@
 #include "net_connect.h"
 #include  "pbs_nodes.h"
 #include "mom_func.h"
+#include "log.h"
 
 /**
  * @file	mom_stage_file.c

@@ -4814,20 +4814,21 @@ logon_pw(char *username,
 	size_t credl,
 	int (*decrypt_func)(char *, int, size_t, char **),
 	int use_winsta,
-	char msg[4096])
+	char *msg)
 {
-	static  char	*id = "logon_pw";
-	int		i;
-	struct	passwd *pwdp;
-	SID	*usid;
-	char	*homedir;
-	char  	thepass[PWLEN+1];
-	char 	realname[UNLEN+1];
-	char	domain[PBS_MAXHOSTNAME+1] = "";
-	char	*p;
-	char	msg2[4096];
+	int		i = 0;
+	struct	passwd *pwdp = NULL;
+	SID	*usid = NULL;
+	char	*homedir = NULL;
+	char  	thepass[PWLEN+1] = {'\0'};
+	char 	realname[UNLEN+1] = {'\0'};
+	char	domain[PBS_MAXHOSTNAME+1] = {'\0'};
+	char	*p = {'\0'};
+	char	msg2[LOG_BUF_SIZE] = {'\0'};
 
-	strcpy(msg, "");
+	if(!msg)
+		return NULL;
+	*msg = '\0';
 
 	usid = getusersid2(username, realname);
 	if (usid == NULL) {
@@ -4922,7 +4923,8 @@ logon_pw(char *username,
 		strcpy(domain, ".");
 		if (p=strrchr(realname, '\\')) {
 			*p = '\0';
-			strcpy(domain, realname);
+			strncpy(domain, realname, sizeof(domain)- 1);
+			domain[sizeof(domain) - 1] = '\0';
 			*p = '\\';
 		}
 		if (LogonUser(pwdp->pw_name, domain, thepass,
