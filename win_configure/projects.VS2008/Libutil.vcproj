@@ -260,6 +260,10 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath="..\..\src\lib\Libutil\hnls.c"
+				>
+			</File>
+			<File
 				RelativePath="..\..\src\lib\Libutil\hook.c"
 				>
 				<FileConfiguration

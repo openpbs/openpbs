@@ -53,4 +53,5 @@ libutil_a_SOURCES = \
 	pbs_array_list.c \
 	pbs_secrets.c \
 	pbs_aes_encrypt.c \
-	munge_supp.c
+	munge_supp.c \
+	hnls.c
