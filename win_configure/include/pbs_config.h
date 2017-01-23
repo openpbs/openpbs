@@ -66,7 +66,7 @@
  * 0x0603 = Windows 8.1
  * 0x0A00 = Windows 10
  */
-#define _WIN32_WINNT 0x0500	/* so we get extensions like winsock2.h */
+#define _WIN32_WINNT 0x0600	/* so we get extensions like winsock2.h */
 
 #include <winsock2.h>
 #include <Ws2tcpip.h>  /* added for getaddrinfo and getnameinfo */

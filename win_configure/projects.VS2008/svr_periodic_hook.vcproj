@@ -3,7 +3,7 @@
 	ProjectType="Visual C++"
 	Version="9.00"
 	Name="svr_periodic_hook"
-	ProjectGUID="{BF2A5A2C-AA2A-4F42-9A3E-FE97E02A4B2E}"
+	ProjectGUID="{4BA7EB6D-B059-4B39-84F0-66057499EE6D}"
 	RootNamespace="svr_periodic_hook"
 	TargetFrameworkVersion="131072"
 	>

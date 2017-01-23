@@ -47,6 +47,8 @@
  *	log_joberr()
  *	log_record()
  *	log_close()
+ *	log_add_debug_info()
+ *	log_add_if_info()
  */
 
 
@@ -334,6 +336,115 @@ log_init(void)
 #endif
 }
 
+/** 
+ * @brief
+ *      Add general debugging information in log
+ *
+ * @par Side Effects:
+ * 	None
+ * 
+ * @par MT-safe: Yes
+ *
+ */
+void
+log_add_debug_info()
+{
+	char tbuf[LOG_BUF_SIZE];
+	char temp[LOG_BUF_SIZE];
+	/* Temporary buffers to create log entry string for leaf name and mom node name */
+	char host[PBS_MAXHOSTNAME+1];
+
+	if (!gethostname(host, (sizeof(host) - 1))) {
+		strncpy(temp, host, LOG_BUF_SIZE);
+		if (!get_fullhostname(host, host, (sizeof(host) - 1)))
+			strncpy(temp, host, LOG_BUF_SIZE);  /* if full hostname is available, then overwrite */
+	}
+	else
+		strcpy(temp, "N/A");
+	snprintf(tbuf, LOG_BUF_SIZE, "hostname=%s;", temp);
+
+
+	/* To add leaf node name, if set */
+	strcpy(temp, "pbs_leaf_name=");
+	if(pbs_conf.pbs_leaf_name){ 
+		strncat(temp, pbs_conf.pbs_leaf_name, LOG_BUF_SIZE);
+		strncat(temp, ";", LOG_BUF_SIZE);
+	}
+	else
+		strcat(temp, "N/A;");
+	strncat(tbuf, temp, LOG_BUF_SIZE);
+
+	
+	/* To add mom node name, if set */
+	strcpy(temp, "pbs_mom_node_name=");
+	if(pbs_conf.pbs_mom_node_name)
+		strncat(temp, pbs_conf.pbs_mom_node_name, LOG_BUF_SIZE);
+	else
+		strncat(temp, "N/A", LOG_BUF_SIZE);
+	strncat(tbuf, temp, LOG_BUF_SIZE);
+	log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, tbuf);
+	
+	return;	
+
+}
+
+/**
+ * @brief
+ *      Add interface information to log
+ *
+ * @par Side Effects:
+ *      None
+ *
+ * @par MT-safe: Yes
+ *
+ */
+
+int
+log_add_if_info()
+{
+	char tbuf[LOG_BUF_SIZE];
+	char inet_family[10], msg[LOG_BUF_SIZE], temp[LOG_BUF_SIZE];
+	int i;
+	struct log_net_info *ni, *curr;
+	
+	ni = (struct log_net_info*)malloc(sizeof(struct log_net_info));
+
+	memset(msg, '\0', sizeof(msg));
+	memset(temp, '\0', sizeof(temp));
+
+	get_if_info(ni, msg);
+
+	curr = ni;
+
+	if(strlen(msg)){ /* Adding error message to log */
+		strncpy(tbuf, msg, LOG_BUF_SIZE);
+		log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, tbuf);
+		return 1;
+	}
+	while(curr){ /* Adding info to log */
+		snprintf(tbuf, LOG_BUF_SIZE, "%s interface %s: ", curr->iffamily, curr->ifname);
+		
+		for(i=0;curr->ifhostnames[i];i++){
+			snprintf(temp, LOG_BUF_SIZE, "%s ", curr->ifhostnames[i]);
+			strncat(tbuf, temp, LOG_BUF_SIZE);
+			log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, tbuf);
+		}
+		curr = curr->next;
+	}
+	curr = ni;
+	while (curr){ /* Freeing memory from malloc */
+	    struct log_net_info* temp = curr; 
+	    curr = curr -> next;
+		free(temp->iffamily);
+		free(temp->ifname);
+		for(i=0;temp->ifhostnames[i];i++)
+			free(temp->ifhostnames[i]);
+		free(temp->ifhostnames);
+	    free(temp);
+		temp = NULL;
+	}
+	return 0;
+}
 
 /**
  *
@@ -464,6 +575,13 @@ log_open_main(char *filename, char *directory, int silent)
 			log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, tbuf);
 			snprintf(tbuf, LOG_BUF_SIZE, "pbs_build=%s", pbs_build);
 			log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, tbuf);
+
+			log_add_debug_info();
+
+			if(!log_add_if_info()){
+				snprintf(tbuf, LOG_BUF_SIZE, "Interface info could not be added");
+				log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, tbuf);
+			}
 		}
 	}
 #if SYSLOG

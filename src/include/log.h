@@ -34,6 +34,8 @@
  * trademark licensing policies.
  *
  */
+#ifndef	_LOG_H
+#define	_LOG_H
 #if SYSLOG
 #include <syslog.h>
 #else
@@ -72,12 +74,21 @@
 #define	DOID(x)
 #endif
 
+struct log_net_info { /* interface info for logging */
+	struct log_net_info *next;
+	char *ifname;
+	char *iffamily;
+	char **ifhostnames;
+};
+
 extern char *msg_daemonname;
 
 extern long *log_event_mask;
 
 extern void set_logfile(FILE *fp);
 extern int set_msgdaemonname(char *ch);
+
+extern void get_if_info(struct log_net_info *ni, char *msg);
 
 extern void log_close(int close_msg);
 extern void log_err(int err, const char *func, const char *text);
@@ -136,3 +147,5 @@ extern int  setup_env(char *filename);
 /* Logging Masks */
 
 #define PBSEVENT_MASK	0x01ff
+#endif /* _LOG_H */
+

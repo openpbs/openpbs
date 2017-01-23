@@ -197,6 +197,10 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath="..\..\src\lib\Libnet\hnls.c"
+				>
+			</File>
+			<File
 				RelativePath="..\..\src\lib\Libnet\net_client.c"
 				>
 				<FileConfiguration
