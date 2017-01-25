@@ -93,6 +93,9 @@
 #	that belong to CPU sets not claimed by PBS.
 
 BEGIN {
+	# Sort cpus, mems, and vnodes numerically
+	PROCINFO["sorted_in"] = "@ind_num_asc";
+
 	nas_mode = 0;			#	enable NAS mod 80
 	deftype = "m";			#	by default, output for pbs_mom
 	exitval = 0;			#	used to elide END actions
@@ -111,8 +114,11 @@ BEGIN {
 	#	command to find "cpus" and "mems" files that do not belong to
 	#	PBS (CPU sets that are not the root, and not under /PBSPro)
 	#	in the "cpuset" file system
-	findcmd = "find /dev/cpuset -name cpus -print -o -name mems -print | \
-		egrep -v '/dev/cpuset/cpus|/dev/cpuset/mems|/PBSPro/'";
+	findcmd = "find /dev/cpuset -name cpus -o -name cpuset.cpus \
+		-o -name mems -o -name cpuset.mems | \
+		egrep -v -e '/dev/cpuset/cpus$' -e '/dev/cpuset/cpuset.cpus$' \
+		-e '/dev/cpuset/mems$' -e '/dev/cpuset/cpuset.mems$' \
+		-e '/PBSPro/'";
 
 	topology_version_min = 1;	#	the versions we understand
 	topology_version_max = 2;	#	the versions we understand
@@ -299,11 +305,11 @@ function read_excludelist(listfile)
 {
 	if (debug)
 		printf("read_excludelist:  listfile %s\n", listfile);
-	if (listfile ~ "/cpus$") {
+	if (listfile ~ "/cpus$" || listfile ~ "/cpuset.cpus$") {
 		while ((getline cpumemlist < listfile) > 0)
 			parse_CPUs(cpumemlist);
 		close(listfile);
-	} else if (listfile ~ "/mems$") {
+	} else if (listfile ~ "/mems$" || listfile ~ "/cpuset.mems$") {
 		while ((getline cpumemlist < listfile) > 0)
 			parse_mems(cpumemlist);
 		close(listfile);
