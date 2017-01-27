@@ -3857,7 +3857,7 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 		}
 		rc = server_process_hooks(preq->rq_type, preq->rq_user, preq->rq_host, phook,
 					  hook_event, pjob, &req_ptr, hook_msg, msg_len, pyinter_func, &num_run);
-		if ((rc == 0) || (rc == 1))
+		if ((rc == 0) || (rc == -1))
 			return (rc);
 	}
 
@@ -3889,7 +3889,7 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
  * @param[out]	num_run	    - reference of an integer which is incremented when
  *			      hook runs successfully.
  * @return	int
- * @retval	1 means all the executed hooks have agreed to accept the request
+ * @retval	1 means the executed hook has agreed to accept the request
  * @retval 	0 means at least one hook was encountered to have rejected the
  request.
  * @retval	2 means no hook script executed (special case).
