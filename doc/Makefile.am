@@ -94,8 +94,8 @@ notrans_dist_man3_MANS = \
 	man3/pbs_tclapi.3B \
 	man3/pbs_terminate.3B \
 	man3/rm.3B \
-	man3/rpp.3B \
-	man3/tm.3B
+	man3/rpp.3 \
+	man3/tm.3
 
 noinst_man3_MANS = \
 	man3/pbs_rescquery.3B \

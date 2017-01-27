@@ -91,7 +91,7 @@ List of events that trigger the hook.  Can be operated on with
 the "=", "+=", and "-=" operators.
 .br
 Valid events: "queuejob", "modifyjob", "movejob", "resvsub", "runjob",
-"provision", "execjob_begin", "execjob_end", execjob_prologue",
+"periodic", "provision", "execjob_begin", "execjob_end", execjob_prologue",
 "execjob_epilogue", "execjob_preterm", "execjob_launch", "execjob_attach", 
 "exechost_startup", "exechost_periodic", "" (meaning
 no event)
@@ -111,7 +111,7 @@ See the Hooks chapter in the PBS Professional Administrator's Guide.
 Format: string_array.  Default value: "none".
 
 .IP "freq"
-Number of seconds between exechost_periodic triggers.
+Number of seconds between periodic or exechost_periodic triggers.
 .br 
 Format: integer
 .br
@@ -122,6 +122,7 @@ Indicates relative order of hook execution, for hooks sharing a trigger.
 Hooks with lower values for 
 .I n
 execute before those with higher values.
+Does not apply to periodic or exechost_periodic hooks.
 .br
 Format: integer
 .br

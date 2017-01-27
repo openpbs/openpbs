@@ -897,16 +897,6 @@ Consumable.
 .br
 Type: integer.
 
-.IP netwins 10
-Number of network windows on a high performance switch. Can be
-requested only inside of a select statement. 
-.br
-Read-only. 
-.br
-Type: integer. 
-.br
-Python type: int
-
 .IP nice 10
 Nice value under which the job is to be run.  Host-dependent.
 Can be requested only outside of a select statement.

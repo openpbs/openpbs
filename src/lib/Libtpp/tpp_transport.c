@@ -2207,8 +2207,7 @@ send_data(phy_conn_t *conn)
 				if (curr > (conn->td->nas_last_time_C + conn->td->NAS_TPP_LOG_PERIOD_C)) {
 					if (conn->td->nas_tpp_log_enabled) {
 						snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ,
-							 "tpp_instr period_C %d last %d secs (mb=%.3f, mb/
-							 min = % .3f) lrg send over % d(sends = % d, qualified = % d, minbytes = % d, maxbytes = % d, avgkb = % .1f)",
+							 "tpp_instr period_C %d last %d secs (mb=%.3f, mb/min=%.3f) lrg send over %d (sends=%d, qualified=%d, minbytes=%d, maxbytes=%d, avgkb=%.1f)",
 							conn->td->NAS_TPP_LOG_PERIOD_C,
 							(int) (curr - conn->td->nas_last_time_C),
 							conn->td->nas_kb_sent_C / 1024.0,

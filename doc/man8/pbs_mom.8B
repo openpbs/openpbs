@@ -640,14 +640,6 @@ Runs
 in place of SIGTERM or SIGKILL when MOM terminates a job.
 .RE
 
-.IP "$aix_largepagemode <true|false>" 5
-Controls whether large page mode is available for PBS jobs on AIX.
-Settable by root only.  
-.br
-Format: Boolean.
-.br
-Default: False.
-
 .IP "$alps_client <path>" 5
 Cray only.  MoM runs this command to get the ALPS inventory.  Must 
 be full path to command.  

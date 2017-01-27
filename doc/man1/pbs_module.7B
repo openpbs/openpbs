@@ -225,6 +225,16 @@ Represents
 .I free 
 vnode state. 
 
+.IP pbs.ND_GLOBUS
+PBS no longer supports Globus.  The Globus functionality has been 
+.B removed 
+from PBS.
+
+Represents
+.I globus 
+vnode 
+.I ntype.
+
 .IP pbs.ND_IGNORE_EXCL
 Represents 
 .I ignore_excl sharing 

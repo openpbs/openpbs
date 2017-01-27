@@ -44,7 +44,7 @@
 Default format:
 .br
 .B qstat 
-[-p] [-J] [-t] [-x]
+[-E] [-p] [-J] [-t] [-x]
 .RS 6
 [ [job_identifier | destination] ...]
 .RE
@@ -52,7 +52,7 @@ Default format:
 Long format:
 .br
 .B qstat 
--f [-p] [-J] [-t] [-x]
+[-E] -f [-p] [-J] [-t] [-x] [-1]
 .RS 6
 [ [job_identifier | destination] ...]
 .RE
@@ -60,7 +60,7 @@ Long format:
 Alternate format:
 .br
 .B qstat 
-[-a [-w]| -H | -i | -r ] [-G | -M] [-J] [-n [-1][-w]]   
+[-a [-w]| -H | -i | -r ] [-E] [-G | -M] [-J] [-n [-1][-w]]   
 .RS 6
 [-s [-1][-w]] [-t] [-T [-w]] [-u user_list] 
 [ [job_identifier | destination] ...]
@@ -76,7 +76,7 @@ Default format:
 Long format:
 .br
 .B qstat 
--Q -f [\^destination ...\^]
+-Q -f [-1] [\^destination ...\^]
 .sp
 Alternate format:
 .br
@@ -94,7 +94,7 @@ Default format:
 Long format:
 .br
 .B qstat 
--B -f [\^server_name ...\^]
+-B -f [-1] [\^server_name ...\^]
 
 .B Version Information
 .br
@@ -491,6 +491,11 @@ pairs. PBS version information is listed.
 .SH OPTIONS
 
 .B Job Status
+.IP "-E" 10
+Groups jobs by server and displays jobs sorted by ascending ID.  When
+.B qstat
+is presented with a list of jobs, jobs are grouped by server and each 
+group is displayed by ascending ID.
 .IP "-J" 10
 Limits status information to job arrays.
 .IP "-t" 10
@@ -656,19 +661,11 @@ is shown as a question mark ("?").
 
 This option can be made unavailable to unprivileged users.  
 
-
-
 .IP "-w" 10
 Allows display of wider fields.  User name, Queue and Job name can be
 up to 15 characters wide.  Session ID can be up to 8 characters wide
 and NDS can be up to 4 characters wide.  
 
-.IP "-1" 10
-Reformats qstat output to a single line.  Can only be used in conjunction with the 
-.I -n
-and/or 
-.I -s
-options.
 
 .LP
 .B Queue Status
@@ -700,6 +697,19 @@ Show size in gigabytes.  Alternate format is used.
 .IP "-M" 10
 Show size in megawords.  A word is considered to be 8 bytes.  
 Alternate format is used.
+
+.IP "-1" 10
+For server, queue, or job long format: when used with the 
+.I -f
+option, each long format attribute is printed on one unbroken line.
+
+For job alternate format: when used with the 
+.I -n
+and/or 
+.I -s
+options, 
+reformats job's alternate qstat output to a single line.  
+
 .LP
 
 .B Version Information

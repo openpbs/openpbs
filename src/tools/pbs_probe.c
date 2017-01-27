@@ -555,8 +555,8 @@ static char exman3[][80] = {
 	/* 23 */ "man/man3/pbs_statserver.3B",
 	/* 24 */ "man/man3/pbs_submit.3B",
 	/* 25 */ "man/man3/pbs_terminate.3B",
-	/* 26 */ "man/man3/rpp.3B",
-	/* 27 */ "man/man3/tm.3B",
+	/* 26 */ "man/man3/rpp.3",
+	/* 27 */ "man/man3/tm.3",
 	/* 28 */ "man/man3/pbs_tclapi.3B",
 	/* 29 */ "man/man3/pbs_delresv.3B",
 	/* 30 */ "man/man3/pbs_locjob.3B",
@@ -971,8 +971,8 @@ static MPUG	man_mpugs[] = {
 	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[23], NULL }, /* pbs_statserver.3B */
 	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[24], NULL }, /* pbs_submit.3B */
 	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[25], NULL }, /* pbs_terminate.3B */
-	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[26], NULL }, /* rpp.3B */
-	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[27], NULL }, /* tm.3B */
+	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[26], NULL }, /* rpp.3 */
+	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[27], NULL }, /* tm.3 */
 	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[28], NULL }, /* pbs_tclapi.3B */
 	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[29], NULL }, /* pbs_delresv.3B */
 	{1, 0, 0,      frwrr,  xsgswxowx, &dflt_pbs_ug, exman3[30], NULL }, /* pbs_locjob.3B */

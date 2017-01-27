@@ -291,6 +291,7 @@ Default: False.
 Python type: bool
 
 .IP est_start_time_freq
+.B Obsolete.  
 Interval at which PBS estimates start times and vnodes for all jobs.
 When set to >0, PBS estimates start times and vnodes for all jobs at 
 the specified interval.  When set to 0, PBS estimates start times and
@@ -346,7 +347,6 @@ Default: False
 Python type: bool
 
 .IP job_requeue_timeout
-.B Obsolete
 Specifies the length of time that can be taken while requeueing a job.
 .br
 Minimum allowed value: 1 second
@@ -832,33 +832,45 @@ To unset pbs_license_min:
 Qmgr> unset server pbs_license_min)
 
 .IP python_restart_max_hooks
-Restart the Python interpreter after the specified number of hooks
-have been run.
+The maximum number of hooks to be serviced before the Python
+interpreter is restarted.  If this number is exceeded, and the time
+limit set in python_restart_min_interval has elapsed, the Python
+interpreter is restarted.
 .br
-Format: Integer
+Format: integer
 .br
-Default: unset (100 when unset)
+Default value: 100
 .br
 Python type: int
+
 
 .IP python_restart_max_objects
-Restart the Python interpreter after the specified number of objects
-have been created.
+The maximum number of objects to be created before the Python
+interpreter is restarted.  If this number is exceeded, and the time
+limit set in python_restart_min_interval has elapsed, the Python
+interpreter is restarted.
 .br
-Format: Integer
+Format: integer
 .br
-Default: unset (1000 when unset)
+Default value: 1000
 .br
 Python type: int
 
+
 .IP python_restart_min_interval
-The minimum number of seconds between Python interpreter restarts.
+The minimum time interval before the Python interpreter is restarted.
+If this interval has elapsed, and either the maximum number of hooks
+to be serviced (set in python_restart_max_hooks) has been exceeded or
+the maximum number of objects to be created (set in
+python_restart_max_objects) has been exceeded, the Python interpreter
+is restarted.
 .br
-Format: pbs.duration
+Format: integer seconds or [[HH:]MM:]SS (duration)
 .br
-Default: unset (30 seconds when unset)
-.br
-Python type: int
+Default value: 30
+.br 
+Python type: pbs.duration
+
 
 .IP query_other_jobs
 The setting of this attribute controls whether general users, other than the

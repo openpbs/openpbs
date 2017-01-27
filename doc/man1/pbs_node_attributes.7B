@@ -71,6 +71,49 @@ Default: unset
 .br
 Python attribute value type: str
 
+.IP hpcbp_enable
+Enables HPCBP features in MOM, creating HPCBP MOM.
+.br
+Format: Boolean.
+.br
+Default: False
+.br
+Python attribute value type: bool
+
+.IP hpcbp_stage_protocol
+Protocol and optional port for staging files used by
+HPC Basic Profile Server.
+.br
+Format: String.  
+.br
+Default: none
+.br
+Python attribute value type: str
+
+.IP hpcbp_user_name
+Service account used by HPCBP MOM for retrieving job
+and node status from HPC Basic Profile Server.
+.br
+Format: String.
+.br
+Default: none
+.br
+Python attribute value type: str
+
+.IP hpcbp_webservice_address
+URL used by HPCBP MOM to connect to HPC Basic 
+Profile Server.  Must start with "https://".
+.br
+Format: String.  
+.br
+Default: none
+.br
+Python attribute value type: str
+
+.IP lictype
+.B Deprecated.  
+No longer used.
+
 .IP max_group_run
 The maximum number of jobs owned by any users in a single group that are
 allowed to be run on this vnode at one time.
@@ -137,6 +180,10 @@ of vnodes supported:
 PBS vnodes are the default type and are assumed to run multiple jobs. The
 placement of the jobs
 among them is controlled by the site policy defined in the Job Scheduler.
+.IP globus
+PBS no longer supports Globus.  The Globus functionality has been
+.B removed
+from PBS.
 .RE
 .IP
 .br

@@ -760,7 +760,7 @@ the job will run on any host.
 .br
 Format: String.
 .br
-Default: ncpus, mem, arch, host, vnode, aoe, netwins
+Default: ncpus, mem, arch, host, vnode, aoe
 .RE
 
 .IP resource_unset_infinite 13

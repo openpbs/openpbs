@@ -43,6 +43,7 @@
 .B pbs_probe
 --version
 .SH DESCRIPTION
+.B Deprecated.
 The
 .B pbs_probe
 command reports post-installation information that is useful for PBS
