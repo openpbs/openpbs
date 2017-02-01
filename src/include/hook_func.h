@@ -125,7 +125,7 @@ extern void req_stat_hook(struct batch_request *);
 extern int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 				int hook_event, job *pjob, hook_input_param_t *req_ptr,
 				char *hook_msg, int msg_len, void (*pyinter_func)(void),
-				int *num_run);
+				int *num_run, int *event_initialized);
 extern int process_hooks(struct batch_request *, char *, size_t, void (*)(void));
 extern int recreate_request(struct batch_request *);
 

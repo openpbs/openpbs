@@ -3755,6 +3755,7 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 	char			*jobid = NULL;
 	int			num_run = 0;
 	int			rc = 1;
+	int			event_initialized = 0;
 
 	if (!svr_interp_data.interp_started) {
 		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
@@ -3856,7 +3857,8 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 			continue;
 		}
 		rc = server_process_hooks(preq->rq_type, preq->rq_user, preq->rq_host, phook,
-					  hook_event, pjob, &req_ptr, hook_msg, msg_len, pyinter_func, &num_run);
+					  hook_event, pjob, &req_ptr, hook_msg, msg_len, pyinter_func, 
+					  &num_run, &event_initialized);
 		if ((rc == 0) || (rc == -1))
 			return (rc);
 	}
@@ -3900,13 +3902,12 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 				int hook_event, job *pjob, hook_input_param_t *req_ptr,
 				char *hook_msg, int msg_len, void (*pyinter_func)(void),
-				int *num_run)
+				int *num_run, int *event_initialized)
 {
 
 	char			hook_inputfile[MAXPATHLEN+1];
 	char			hook_datafile[MAXPATHLEN+1];
 	char			hook_outfile[MAXPATHLEN+1];
-	int			event_initialized = 0; /* event object set?*/
 	FILE			*fp_debug = NULL;
 	FILE			*fp2_debug = NULL;
 	FILE			*fp_debug_out = NULL;
@@ -3963,7 +3964,7 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 
 	/* optimization here - create an event object only if there's */
 	/* at least one enabled hook */
-	if (!event_initialized) { /* only once for all hooks */
+	if (!(*event_initialized)) { /* only once for all hooks */
 		rc = pbs_python_event_set(hook_event, rq_user,
 			rq_host, req_ptr);
 
@@ -3973,7 +3974,7 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 				phook->hook_name,
 				"Encountered an error while setting event");
 		}
-		event_initialized = 1;
+		*event_initialized = 1;
 
 	} else if (phook->debug && (fp_debug != NULL)) {
 		/* If we have several hooks attached to the same*/
@@ -6760,6 +6761,7 @@ run_periodic_hook(struct work_task *ptask)
 	int	flags = CREATE_DEFAULT_ERROR_MODE|
 		CREATE_NEW_CONSOLE|CREATE_NEW_PROCESS_GROUP;
 #endif
+	int event_initialized = 0;
 
 	phook = (hook *)ptask->wt_parm1;
 	hook_input_param_init(&req_ptr);
@@ -6819,7 +6821,7 @@ run_periodic_hook(struct work_task *ptask)
 		daemon_protect(0, PBS_DAEMON_PROTECT_OFF);
 		ret = server_process_hooks(PBS_BATCH_HookPeriodic, NULL, NULL, phook, 
 					   HOOK_EVENT_PERIODIC, NULL, &req_ptr, hook_msg,
-					   sizeof(hook_msg), pbs_python_set_interrupt, &num_run);
+					   sizeof(hook_msg), pbs_python_set_interrupt, &num_run, &event_initialized);
 		if (ret == 0)
 			log_event(PBSE_HOOKERROR, PBS_EVENTCLASS_HOOK, LOG_ERR, __func__, hook_msg);
 		exit(ret);
@@ -6827,4 +6829,3 @@ run_periodic_hook(struct work_task *ptask)
 #endif
 	return;
 }
-
