@@ -40,6 +40,7 @@ from tests.functional import *
 
 
 class TestAcctlogRescUsedWithTwoMomHooks(TestFunctional):
+
     """
     This test suite tests the accounting logs to have non-zero resources_used
     in the scenario where we have execjob_begin and execjob_end hooks.
@@ -54,7 +55,7 @@ class TestAcctlogRescUsedWithTwoMomHooks(TestFunctional):
         self.assertTrue(rv)
 
         a = {'event': 'execjob_end', 'enabled': 'True'}
-        rv = self.server.create_import_hook("test", a, hook_body)
+        rv = self.server.create_import_hook("test2", a, hook_body)
         self.assertTrue(rv)
 
         a = {ATTR_nodefailrq: 5}
@@ -92,7 +93,7 @@ class TestAcctlogRescUsedWithTwoMomHooks(TestFunctional):
         test = []
         test += ['#PBS -N NodeFailRequeueTest\n']
         test += ['echo Starting test at `date`\n']
-        test += ['sleep 20\n']
+        test += ['sleep 5\n']
 
         select = "vnode=" + self.hostA + "+vnode=" + self.hostB
         j1 = Job(TEST_USER, attrs={
@@ -101,8 +102,9 @@ class TestAcctlogRescUsedWithTwoMomHooks(TestFunctional):
         jid1 = self.server.submit(j1)
 
         # Wait for the job to start running.
-        self.server.expect(JOB, {ATTR_substate: '42'}, jid1)
+        self.server.expect(JOB, {ATTR_state: 'R'}, jid1)
         # Kill the MoM process on the MS.
+
         self.momA.signal('-KILL')
         # Wait for the job to be requeued.
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid1)
@@ -122,19 +124,33 @@ class TestAcctlogRescUsedWithTwoMomHooks(TestFunctional):
 
         test = []
         test += ['#PBS -N JobEndTest\n']
-        test += ['#PBS -lselect=2:ncpus=1 -lplace=scatter\n']
         test += ['echo Starting test at `date`\n']
         test += ['sleep 1\n']
 
-        j1 = Job(TEST_USER)
+        select = "vnode=" + self.hostA + "+vnode=" + self.hostB
+        j1 = Job(TEST_USER, attrs={
+            'Resource_List.select': select})
         j1.create_script(body=test)
         jid1 = self.server.submit(j1)
 
         # Wait for the job to start running.
-        self.server.expect(JOB, {ATTR_substate: '42'}, jid1)
+        self.server.expect(JOB, {ATTR_state: 'R'}, jid1)
 
         # Wait for the job to finish running.
         self.server.expect(JOB, {'job_state': 'F'}, id=jid1, extend='x')
+
+        rv = 0
+        # Check if resources_used.walltime is zero or not.
+        try:
+            rv = self.server.expect(JOB, {'resources_used.walltime': '0'},
+                                    id=jid1, max_attempts=2, extend='x')
+        except PtlExpectError, e:
+            # resources_used.walltime is non-zero.
+            self.assertFalse(rv)
+        else:
+            # resources_used.walltime is zero, test case fails.
+            self.logger.info("resources_used.walltime reported to be zero")
+            self.assertFalse(True)
 
         # Check for the E record to NOT have zero walltime.
         msg = '.*E;' + str(jid1) + '.*resources_used.walltime=\"00:00:00.*'
