@@ -4842,8 +4842,14 @@ req_copy_hookfile(struct batch_request *preq) /* ptr to the decoded request   */
 			free_str_array(new_resources);
 			free_str_array(prev_resources);
 
-			path_rescdef = (char *)namebuf;
-			if (setup_resc(1) != 0) {
+			/* Call setup_resc() only if received
+			 * resourcedef file is the one for path_rescdef,
+ 			 * which is set up at mom startup and used when
+			 * HUP-ed.
+			 */
+			if ((path_rescdef != NULL) &&
+				(strcmp(path_rescdef, namebuf) == 0) &&
+							(setup_resc(1) != 0)) {
 				/* log_buffer set in setup_resc */
 				log_err(-1, "setup_resc",
 					"warning: failed to setup resourcedef");

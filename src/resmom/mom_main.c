@@ -7973,13 +7973,12 @@ main(int argc, char *argv[])
 #endif /* _POSIX_MEMLOCK */
 	mom_hook_input_t	hook_input;
 	char			path_hooks_rescdef[MAXPATHLEN+1];
-
-#ifdef WIN32
-
 #ifdef PYTHON
 	PyObject		*path;
 	char			buf[MAXPATHLEN];
 #endif
+
+#ifdef WIN32
 	_fcloseall(); 	/* Close any inherited extra files, leaving stdin-err open */
 #else
 	/* Close any inherited extra files, leaving stdin-err open */
@@ -9157,14 +9156,33 @@ main(int argc, char *argv[])
 	Py_FrozenFlag = 1;
 	Py_Initialize();
 
-#ifdef WIN32
 	path = PySys_GetObject("path");
+#ifdef WIN32
 	snprintf(buf, sizeof(buf), "%s/python/Lib", pbs_conf.pbs_exec_path);
 
 	PyList_Append(path, PyString_FromString(buf));
 
-	PySys_SetObject("path", path);
+#else
+	/* list of possible paths to Python modules (mom imports json) */
+	snprintf(buf, sizeof(buf), "%s/python/lib/python2.7", pbs_conf.pbs_exec_path);
+	PyList_Append(path, PyString_FromString(buf));
+
+	snprintf(buf, sizeof(buf), "%s/python/lib/python2.7/lib-dynload", pbs_conf.pbs_exec_path);
+	PyList_Append(path, PyString_FromString(buf));
+
+	snprintf(buf, sizeof(buf), "/usr/lib/python/python2.7");
+	PyList_Append(path, PyString_FromString(buf));
+
+	snprintf(buf, sizeof(buf), "/usr/lib/python/python2.7/lib-dynload");
+	PyList_Append(path, PyString_FromString(buf));
+
+	snprintf(buf, sizeof(buf), "/usr/lib64/python/python2.7");
+	PyList_Append(path, PyString_FromString(buf));
+
+	snprintf(buf, sizeof(buf), "/usr/lib64/python/python2.7/lib-dynload");
+	PyList_Append(path, PyString_FromString(buf));
 #endif
+	PySys_SetObject("path", path);
 #endif
 
 #ifndef	WIN32
