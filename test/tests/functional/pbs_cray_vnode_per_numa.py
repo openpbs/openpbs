@@ -66,6 +66,10 @@ class TestVnodePerNumaNode(TestFunctional):
             - ncpus is a total from all NUMA nodes of that node
             - mem is a total from all NUMA nodes of that node
             - the naccelerators value is correct
+
+        Set $vnode_per_numa_node to FALSE.
+        Compare the pbsnodes output when vnode_per_numa_node was unset
+        versus when vnode_per_numa_node was set to False.
         """
         dncpus = {}
         dmem = {}
@@ -127,6 +131,31 @@ class TestVnodePerNumaNode(TestFunctional):
             if 'resources_available.naccelerators' in n:
                 self.assertEqual(int(n['resources_available.naccelerators']),
                                  dacc[n['resources_available.host']])
+
+        # Set vnode_per_numa_node to FALSE and re-read the vnodes
+        rv = self.mom.add_config({'$vnode_per_numa_node': False}, False)
+        self.assertTrue(rv)
+        self.reset_nodes(momname)
+
+        vnodes_combined1 = self.server.status(NODE)
+
+        # Compare the pbsnodes output when vnode_per_numa_node was unset
+        # versus when vnode_per_numa_node was set to False.
+
+        if (len(vnodes_combined) == len(vnodes_combined1)):
+            self.logger.info(
+                "pbsnodes outputs are equal in length.")
+            for n in vnodes_combined:
+                if n not in vnodes_combined1:
+                    self.logger.error(
+                        "ERROR vnode %s has differing element." % n['id'])
+                    self.assertTrue(False)
+            self.logger.info(
+                "pbsnodes outputs are the same.")
+        else:
+            self.logger.error(
+                "ERROR pbsnodes outputs differ in length.")
+            self.assertTrue(False)
 
     def restartPBS(self):
         try:
