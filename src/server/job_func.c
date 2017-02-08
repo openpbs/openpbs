@@ -150,6 +150,7 @@ static int  set_resvAttrs_off_jobAttrs(resc_resv*, job*);
 /* Global Data items */
 #ifndef PBS_MOM
 extern struct server   server;
+extern int scheduler_sock;
 #endif	/* PBS_MOM */
 extern char *msg_abt_err;
 extern char *path_jobs;
@@ -493,6 +494,7 @@ job_free(job *pj)
 
 		struct work_task	*pwt;
 		badplace		*bp;
+		struct batch_request	*tbr = NULL;
 
 		/*
 		 * Delete any work task entries associated with the job.
@@ -502,11 +504,23 @@ job_free(job *pj)
 		 */
 		while ((pwt = (struct work_task *)GET_NEXT(pj->ji_svrtask)) != NULL) {
 			if (pwt->wt_type == WORK_Deferred_Reply) {
-				/*
-				 * free batch request from task struct
-				 * if task is deferred reply
-				 */
-				free_br(pwt->wt_parm1);
+				tbr = (struct batch_request *)pwt->wt_parm1;
+				if (tbr != NULL) {
+					/* Check if the reply is for scheduler
+					 * If so, then reject the request.
+					 */
+					if ((tbr->rq_orgconn != -1) &&
+						(tbr->rq_orgconn == scheduler_sock)) {
+						tbr->rq_conn = tbr->rq_orgconn;
+						req_reject(PBSE_HISTJOBID, 0, tbr);
+					}
+					/*
+					* free batch request from task struct
+					* if task is deferred reply
+					*/
+					else
+					        free_br(tbr);
+				}
 			}
 			delete_task(pwt);
 		}

@@ -1355,6 +1355,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 	unsigned int eval_flags = NO_FLAGS;	/* flags to pass to eval_selspec() */
 	timed_event *te;			/* used to create timed events */
 	resource_resv *rr;
+	char *err_txt = NULL;
 
 	if (resresv == NULL || sinfo == NULL)
 		ret = -1;
@@ -1380,10 +1381,21 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 			pbsrc = pbs_sigjob(pbs_sd, resresv->name, "resume", NULL);
 			if (!pbsrc)
 				ret = 1;
+			else {
+				err_txt = pbse_to_txt(pbsrc);
+				if (err_txt == NULL)
+					err_txt = "";
+				clear_schd_error(err);
+				set_schd_error_codes(err, NOT_RUN, RUN_FAILURE);
+				set_schd_error_arg(err, ARG1, err_txt);
+				snprintf(buf, sizeof(buf), "%d", pbsrc);
+				set_schd_error_arg(err, ARG2, buf);
+
+			}
 		}
-		else 
+		else
 			ret = 1;
-		
+
 		rr = resresv;
 		ns = resresv->nspec_arr;
 		/* we didn't use nspec_arr, we need to free it */
@@ -1395,7 +1407,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 			array = resresv->job->parent_job;
 			rr = resresv;
 		}
-		
+
 		else if(resresv->is_job && resresv->job->is_array) {
 			array = resresv;
 			rr = queue_subjob(resresv, sinfo, qinfo);
@@ -1633,7 +1645,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 		}
 	}
 	
-	if (rr->is_job && rr->job->is_preempted) {
+	if (rr->is_job && rr->job->is_preempted && (ret != 0)) {
 		unset_job_attr(pbs_sd, rr, ATTR_sched_preempted, UPDATE_LATER);
 		rr->job->is_preempted = 0;
 		rr->job->time_preempted = UNSPECIFIED;
