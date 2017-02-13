@@ -51,8 +51,6 @@
  * 		schdlog()
  * 		schdlogerr()
  * 		filter_array()
- * 		break_comma_list()
- * 		free_string_array()
  * 		dup_string_array()
  * 		find_string()
  * 		find_string_ind()
@@ -521,27 +519,6 @@ filter_array(void **ptrarr, int (*filter_func)(void*, void*),
 }
 
 
-/**
- * @brief
- *		free_string_array - free an array of strings with a NULL as a sentinal
- *
- * @param[in,out]	arr	-	the array to free
- *
- * @return	nothing
- *
- */
-void
-free_string_array(char **arr)
-{
-	int i;
-
-	if (arr != NULL) {
-		for (i = 0; arr[i] != NULL; i++)
-			free(arr[i]);
-
-		free(arr);
-	}
-}
 
 /**
  * @brief

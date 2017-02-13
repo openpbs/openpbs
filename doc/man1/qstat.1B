@@ -52,7 +52,7 @@ Default format:
 Long format:
 .br
 .B qstat 
-[-E] -f [-p] [-J] [-t] [-x] [-1]
+[-E] -f [-p] [-J] [-t] [-x] [-w] [-F json|dsv] [-D delim]
 .RS 6
 [ [job_identifier | destination] ...]
 .RE
@@ -76,7 +76,7 @@ Default format:
 Long format:
 .br
 .B qstat 
--Q -f [-1] [\^destination ...\^]
+-Q -f [-w] [-F json|dsv] [-D delim] [\^destination ...\^]
 .sp
 Alternate format:
 .br
@@ -94,7 +94,7 @@ Default format:
 Long format:
 .br
 .B qstat 
--B -f [-1] [\^server_name ...\^]
+-B -f [-w] [-F json|dsv] [-D delim] [\^server_name ...\^]
 
 .B Version Information
 .br
@@ -666,6 +666,13 @@ Allows display of wider fields.  User name, Queue and Job name can be
 up to 15 characters wide.  Session ID can be up to 8 characters wide
 and NDS can be up to 4 characters wide.  
 
+.IP "-1" 10
+For job alternate format: when used with the 
+.I -n
+and/or 
+.I -s
+options, 
+reformats job's alternate qstat output to a single line.  
 
 .LP
 .B Queue Status
@@ -698,17 +705,17 @@ Show size in gigabytes.  Alternate format is used.
 Show size in megawords.  A word is considered to be 8 bytes.  
 Alternate format is used.
 
-.IP "-1" 10
+.IP "-w" 10
 For server, queue, or job long format: when used with the 
 .I -f
 option, each long format attribute is printed on one unbroken line.
 
-For job alternate format: when used with the 
-.I -n
-and/or 
-.I -s
-options, 
-reformats job's alternate qstat output to a single line.  
+.IP "-D <delimiter>" 10
+Specifies delimiter for dsv format output.  Default delimiter is a 
+vertical bar ("|").
+
+.IP "-F <json|dsv>" 10
+Specifies output format.  Format can be json or dsv.
 
 .LP
 

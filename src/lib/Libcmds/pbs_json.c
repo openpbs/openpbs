@@ -1,4 +1,5 @@
-#include"pbs_json.h"
+#include "pbs_json.h"
+#include "libutil.h"
 #define ARRAY_NESTING_LEVEL 500 /* describes the nesting level of a JSON array*/
 
 typedef struct JsonLink JsonLink;
@@ -73,31 +74,112 @@ link_node(JsonNode *node) {
 JsonNode*
 add_json_node(JsonNodeType ntype, JsonValueType vtype, char *key, void *value) {
 	int 	  rc = 0;
-	char	 *ptr = NULL;
-	JsonNode *node;
+	int       i = 0;
+	int       len = 0;
+	char	  *ptr = NULL;
+	char 	  *pc  = NULL;
+	char      *buf = NULL;
+	char      *temp = NULL;
+	double    val  = 0;
+	long int  ivalue = 0;
+	JsonNode  *node = NULL;
+
 	node = create_json_node();
 	if (node == NULL) {
 		fprintf(stderr, "Json Node: out of memory\n");
 		return NULL;
 	}
 	node->node_type = ntype;
-	node->value_type = vtype;
-	node->key = key;
+	if (key != NULL) {
+		ptr = strdup((char *)key);
+		if (ptr == NULL) {
+			fprintf(stderr, "Json Node: out of memory\n");
+			return NULL;
+		}
+		node->key = ptr;
+	}
+	if (vtype == JSON_NULL && value != NULL) {
+		val = strtod(value, &pc);
+		while (pc) {
+			if (isspace(*pc))
+				pc++;
+			else
+				break;
+		}
+		if (strcmp(pc, "") == 0) {
+			ivalue = (long int) val;
+			if (val == ivalue) {/* This checks if value have any non zero fractional part after decimal. If not then value has to be represented as integer otherwise as float. */
+				node->value_type = JSON_INT;
+				node->value.inumber = ivalue;
+			} else {
+				node->value_type = JSON_FLOAT;
+				node->value.fnumber = val;
+			}
+		} else
+			node->value_type = JSON_STRING;
+	}
+	else {
+		node->value_type = vtype;
+		if (node->value_type == JSON_INT)
+			node->value.inumber = *((long int *)value);
+		else if (node->value_type == JSON_FLOAT)
+			node->value.fnumber = *((double *)value);
+	}
+
 
 	if (node->value_type == JSON_STRING) {
 		if (value != NULL) {
-			ptr = strdup((char *)value);
-			if (ptr == NULL) {
-				fprintf(stderr, "Json Node: out of memory\n");
+			ptr = value;
+			i = 0;
+			len = MAXBUFLEN;
+			buf = (char *) malloc(len);
+			if (buf == NULL)
 				return NULL;
+			while (*ptr) {
+				switch (*ptr) {
+				case '\b':
+					buf[i++] = '\\';
+					buf[i++] = 'b';
+					ptr++;
+					break;
+				case '\f':
+					buf[i++] = '\\';
+					buf[i++] = 'f';
+					ptr++;
+					break;
+				case '\n':
+					buf[i++] = '\\';
+					buf[i++] = 'n';
+					ptr++;
+					break;
+				case '\r':
+					buf[i++] = '\\';
+					buf[i++] = 'r';
+					ptr++;
+					break;
+				case '\t':
+					buf[i++] = '\\';
+					buf[i++] = 't';
+					ptr++;
+					break;
+				default:
+					buf[i++] = *ptr++;
+				}
+				if (i >= len - 2) {
+					len *= BUFFER_GROWTH_RATE;
+					temp = (char *) realloc(buf, len);
+					if (temp == NULL) {
+						free(buf);
+						return NULL;
+					}
+					buf = temp;
+				}
 			}
+			buf[i] = '\0';
+			ptr = buf;
 		}
 		node->value.string = ptr;
 	}
-	else if (node->value_type == JSON_INT)
-		node->value.inumber = *((long int *)value);
-	else if (node->value_type == JSON_FLOAT)
-		node->value.fnumber = *((double *)value);
 	rc = link_node(node);
 	if (rc) {
 		free(node);
@@ -123,6 +205,8 @@ free_json_node() {
 			if (link->node->value.string != NULL)
 				free(link->node->value.string);
 		}
+		if (link->node->key != NULL)
+			free(link->node->key);
 		free(link->node);
 		head = link->next;
 		free(link);

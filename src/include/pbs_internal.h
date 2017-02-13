@@ -163,6 +163,12 @@ extern "C" {
 #define ATR_TRUE	"True"
 #define ATR_FALSE	"False"
 
+#ifdef WIN32
+#define	ESC_CHAR	'^'	/* commonly used in windows cmd shell */
+#else
+#define	ESC_CHAR	'\\'
+#endif
+
 /* set of characters that are not allowed in a queue name */
 #define INVALID_QUEUE_NAME_CHARS "`~!$%^&*()+=<>?;'\"|"
 

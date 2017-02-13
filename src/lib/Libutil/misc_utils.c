@@ -80,7 +80,7 @@
 #endif
 #include "pbs_error.h"
 
-
+#define ISESCAPED(ch) (ch == '\'' || ch == '\"' || ch == ',')
 
 /** @brief conversion array for vnode sharing attribute between str and enum */
 struct {
@@ -715,6 +715,74 @@ replace(char *str, char	*sub, char *repl, char	*retstr)
 	strncpy(retstr, rstr, i + 1);
 }
 
+
+/**
+ * @brief
+ *	Escape every occurrence of 'delim' in 'str' with 'esc'
+ *
+ * @param[in]	str     - input string
+ * @param[in]	delim   - delimiter to be searched in str
+ * @param[in]	esc     - escape character to be added if delim found in str
+ *
+ * @return	string
+ * @retval	NULL	- memory allocation failed or str is NULL
+ * @retval	retstr	- output string, with every occurrence of delim escaped with 'esc'
+ *
+ * @note
+ * 	The string returned should be freed by the caller.
+ */
+
+char *
+escape_delimiter(char *str, char *delim, char esc)
+{
+	int     i = 0;
+	int     j = 0;
+	int     delim_len = 0;
+	int     retstrlen = 0;
+	char    *retstr = NULL;
+	char    *temp = NULL;
+
+	if (str == NULL)
+		return NULL;
+
+	if (*str == '\0' || (delim == NULL || *delim == '\0') || esc == '\0') {
+		return strdup((char *)str);
+	}
+	delim_len = strlen(delim);
+	retstr = (char *) malloc(MAXBUFLEN);
+	if (retstr == NULL)
+		return NULL;
+	retstrlen = MAXBUFLEN;
+
+	while (*str != '\0') {
+		/* We dont want to use strncmp function if delimiter is a character. */
+		if ((*str == esc && !ISESCAPED(*(str+1))) || (delim_len == 1
+				&& *str == *delim)) {
+			retstr[i++] = esc;
+			retstr[i++] = *str++;
+		} else if (strncmp(str, delim, delim_len) == 0 && ((i + 1 + delim_len)
+				< retstrlen)) {
+			retstr[i++] = esc;
+			for (j = 0; j < delim_len; j++, i++)
+				retstr[i] = *str++;
+		} else if ((i + 1 + delim_len) < retstrlen)
+			retstr[i++] = *str++;
+
+		if (i >= (retstrlen - (1 + delim_len))) {
+			retstrlen *= BUFFER_GROWTH_RATE;
+			temp = (char *) realloc(retstr, retstrlen);
+			if (temp == NULL) {
+				free(retstr);
+				return NULL;
+			}
+			retstr = temp;
+		}
+	}
+	retstr[i] = '\0';
+	return retstr;
+}
+
+
 /**
  *
  * @brief
@@ -976,7 +1044,6 @@ validate_ext_auth_data(int auth_type, void *data, int data_len, char *ebuf, int 
 char **
 break_comma_list(char *strlist)
 {
-	static char id[] = "break_comma_list";
 	int num_words = 1; /* number of words delimited by commas*/
 	char **arr = NULL; /* the array of words */
 	char *list;
@@ -1026,4 +1093,27 @@ break_comma_list(char *strlist)
 		free(list);
 
 	return arr;
+}
+
+
+/**
+ * @brief
+ *		free_string_array - free an array of strings with a NULL as a sentinel
+ *
+ * @param[in,out]	arr	-	the array to free
+ *
+ * @return	nothing
+ *
+ */
+void
+free_string_array(char **arr)
+{
+	int i;
+
+	if (arr != NULL) {
+		for (i = 0; arr[i] != NULL; i++)
+			free(arr[i]);
+
+		free(arr);
+	}
 }

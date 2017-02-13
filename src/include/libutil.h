@@ -231,11 +231,25 @@ lock_file(FILE *fp, int op, char *filename, int lock_retry,
 #define RCP_BUFFER_SIZE 65536
 
 
+#define MAXBUFLEN 1024
+#define BUFFER_GROWTH_RATE 2
+
+
 /*
  *      break_comma_list - break apart a comma delemetd string into an arary
  *                         of strings
  */
 char **break_comma_list(char *list);
+
+/*
+ *      free_string_array - free an array of strings with NULL as sentinel
+ */
+void free_string_array(char **arr);
+
+/*
+ *      Escape every occurrence of 'delim' in 'str' with 'esc'
+ */
+char * escape_delimiter(char *str, char *delim, char esc);
 
 #ifdef  __cplusplus
 }

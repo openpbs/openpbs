@@ -125,10 +125,6 @@ int calc_time_left_STF(resource_resv *resresv, sch_resource_t* min_time_left);
  */
 void convert_duration_to_str(time_t duration, char* buf, int bufsize);
 
-/*
- *      free_string_array - free an array of strings with a NULL as a sentinal
- */
-void free_string_array(char **arr);
 
 /*
  *      dup_string_array - duplicate an array of strings

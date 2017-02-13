@@ -57,6 +57,9 @@
 #include "pbs_share.h"
 #include <pwd.h>
 #include <stdlib.h>
+#include "pbs_json.h"
+#include "pbs_internal.h"
+#include "libutil.h"
 
 #if	TCL_QSTAT
 #include	<sys/stat.h>
@@ -89,11 +92,12 @@ char *cnvt_est_start_time(char *start_time, int shortform);
 #define ALT_DISPLAY_Mb	0x100	/* show sizes in MB */
 #define ALT_DISPLAY_Mw	0x200	/* -M option - show sizes in MW */
 #define ALT_DISPLAY_G	0x400	/* -G option - show sizes in GB */
-#define ALT_DISPLAY_1l  0x800	/* -n -s on line line */
+#define ALT_DISPLAY_1l  0x800	/* -n -s -f on line line */
 #define ALT_DISPLAY_w   0x1000	/* -[a|s|n]w - wide output */
 #define ALT_DISPLAY_T   0x2000  /* -T option - estimated start times */
 #endif /* not PBS_NO_POSIX_VIOLATION */
 #define HPCBP_EXEC_TAG  "jsdl-hpcpa:Executable"
+#define CHAR_LINE_LIMIT 78 /* maximum number of characters which can be printed on a line */
 
 static struct attrl basic_attribs[] = {
 	{	&basic_attribs[1],
@@ -135,6 +139,21 @@ static struct attrl alt_attribs[] = {
 		"",
 		SET		}
 };
+
+enum output_format_enum {
+	FORMAT_DEFAULT = 0,
+	FORMAT_DSV,
+	FORMAT_JSON,
+	FORMAT_MAX
+};
+
+/* This array contains the names users may specify for output format. */
+static char *output_format_names[] = {"default", "dsv", "json", NULL};
+
+static int output_format = FORMAT_DEFAULT;
+static char *dsv_delim = "|";
+static char *delimiter = "\n";
+static char *prev_resc_name = NULL;
 
 static struct attrl *display_attribs = &basic_attribs[0];
 
@@ -294,55 +313,221 @@ states(char *string, char *q, char *r, char *h, char *w, char *t, char *e, int l
 	}
 }
 
+/**
+ * @brief
+ *	Convert special characters, line feed and form feed into '\\'+n and '\\'+f respectively.
+ *
+ * @param[in]   val - input string
+ *
+ * @return string
+ * @retval NULL     - if memory allocation failed.
+ * @retval string   - string with feed characters escaped.
+ *
+ * @note
+ *	The string returned should be freed by the caller.
+ */
+char *
+convert_feed_chars(char *val) {
+	int i = 0;
+	int len = MAXBUFLEN;
+	char *temp = NULL;
+	char *buf = (char *) malloc(MAXBUFLEN);
+	if (buf == NULL)
+		return NULL;
+	while (*val != '\0') {
+		if (*val == '\n') {
+			buf[i++] = '\\';
+			buf[i++] = 'n';
+			val++;
+		} else if (*val == '\f') {
+			buf[i++] = '\\';
+			buf[i++] = 'f';
+			val++;
+		} else
+			buf[i++] = *val++;
+		if (i >= len - 2) {
+			len *= BUFFER_GROWTH_RATE;
+			temp = (char *) realloc(buf, len);
+			if (temp == NULL) {
+				free(buf);
+				return NULL;
+			}
+			buf = temp;
+		}
+	}
+	buf[i] = '\0';
+	return buf;
+}
 
 /**
  * @brief
  *	print a attribute value string, formating to break at a comma if possible
  *
- * @param[in] n - attribute name
- * @param[in] r - resource name
- * @param[in] v - value for the attribute
+ * @param[in] name - attribute name
+ * @param[in] resource - resource name
+ * @param[in] value - value for the attribute
+ * @param[in] one_line - one line per attribute
  *
- * @return Void
+ * @return void
  *
  */
 void
-prt_attr(char *n, char *r, char *v)
-{
-	char *c;
+prt_attr(char *name, char *resource, char *value, int one_line) {
+	int first = 1;
+	int len = 0;
+	int start = 0;
 	char *comma = ",";
-	int   first = 1;
-	int   l;
-	int   start;
+	char *key = NULL;
+	char *val = NULL;
+	char *buf = NULL;
+	char *temp = NULL;
 
-	start = strlen(n) + 7;	/* 4 spaces + ' = ' is 7 */
-	printf("    %s", n);
-	if (r) {
-		start += strlen(r) + 1;
-		printf(".%s", r);
-	}
-	printf(" = ");
-	c = strtok(v, comma);
-	while (c) {
-		if ((l = strlen(c)) + start < 78) {
-			printf("%s", c);
-			start += l;
-		} else {
-			if (! first) {
-				printf("\n\t");
-				start = 9;
+	if (value == NULL)
+		return;
+	switch (output_format) {
+	case FORMAT_JSON:
+		if (strcmp(name, ATTR_v) == 0) {
+			if (add_json_node(JSON_OBJECT, JSON_NULL, name, NULL) == NULL) {
+				fprintf(stderr, "qstat: out of memory\n");
+				exit(1);
 			}
-			while (*c) {
-				putchar(*c++);
-				if (++start > 78) {
-					start = 8;
-					printf("\n\t");
+			buf = strdup(value);
+			temp = buf;
+			if (buf == NULL) {
+				fprintf(stderr, "qstat: out of memory\n");
+				exit(1);
+			}
+			while (*value) {
+				/* value is split based on comma and each key-value is stored in keyvalpair.
+				 * If the value contains an escaped comma, only the comma is copied to keyvalpair.
+				 * Then separated into key and value based on the first '=' */
+				key = buf;
+				val = NULL;
+				while (!(*value == *comma || *value == '\0')) {
+					if (*value == ESC_CHAR && *(value + 1) == *comma)
+						value++;
+					if (!val && *value == '=') {
+						*buf++ = '\0';
+						val = buf;
+						value++;
+					}
+					*buf++ = *value++;
+				}
+				*buf = '\0';
+				if (add_json_node(JSON_VALUE, JSON_NULL, key, val) == NULL) {
+					fprintf(stderr, "qstat: out of memory\n");
+					exit(1);
+				}
+				if (*value != '\0')
+					value++;
+			}
+			if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL) == NULL) {
+				fprintf(stderr, "qstat: out of memory\n");
+				exit(1);
+			}
+			free(temp);
+		} else {
+			if (resource) {
+				if (prev_resc_name && strcmp(prev_resc_name, name) != 0) {
+					if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL)
+							== NULL) {
+						fprintf(stderr, "qstat: out of memory\n");
+						exit(1);
+					}
+					prev_resc_name = NULL;
+				}
+				if (prev_resc_name == NULL || strcmp(prev_resc_name, name) != 0) {
+					if (add_json_node(JSON_OBJECT, JSON_NULL, name, NULL)
+							== NULL) {
+						fprintf(stderr, "qstat: out of memory\n");
+						exit(1);
+					}
+					prev_resc_name = name;
+				}
+				if (add_json_node(JSON_VALUE, JSON_NULL, resource, value)
+						== NULL) {
+					fprintf(stderr, "qstat: out of memory\n");
+					exit(1);
+				}
+			} else {
+				if (prev_resc_name) {
+					if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL)
+							== NULL) {
+						fprintf(stderr, "qstat: out of memory\n");
+						exit(1);
+					}
+					prev_resc_name = NULL;
+				}
+				if (add_json_node(JSON_VALUE, JSON_NULL, name, value) == NULL) {
+					fprintf(stderr, "qstat: out of memory\n");
+					exit(1);
 				}
 			}
 		}
-		if ((c = strtok((char *)0, comma)) != NULL) {
-			first = 0;
-			putchar(',');
+		break;
+
+	case FORMAT_DSV:
+		buf = escape_delimiter(value, delimiter, ESC_CHAR);
+		if (buf == NULL) {
+			fprintf(stderr, "qstat: out of memory\n");
+			exit(1);
+		}
+		buf = convert_feed_chars(buf);
+		if (buf == NULL) {
+			fprintf(stderr, "qstat: out of memory\n");
+			exit(1);
+		}
+		if (resource)
+			printf("%s.%s=%s", name, resource, buf);
+		else
+			printf("%s=%s", name, buf);
+		free(buf);
+		break;
+
+	default:
+		if (one_line) {
+			buf = convert_feed_chars(value);
+			if (buf == NULL) {
+				fprintf(stderr, "qstat: out of memory\n");
+				exit(1);
+			}
+			if (resource)
+				printf("    %s.%s = %s", name, resource, buf);
+			else
+				printf("    %s = %s", name, buf);
+			free(buf);
+		} else {
+			start = strlen(name) + 7; /* 4 spaces + ' = ' is 7 */
+			printf("    %s", name);
+			if (resource) {
+				start += strlen(resource) + 1; /* 1 for dot */
+				printf(".%s", resource);
+			}
+			printf(" = ");
+			buf = NULL;
+			buf = strtok(value, comma);
+			while (buf) {
+				if ((len = strlen(buf)) + start < CHAR_LINE_LIMIT) {
+					printf("%s", buf);
+					start += len;
+				} else {
+					if (!first) {
+						printf("\n\t");
+						start = 9; /* tab + 1 */
+					}
+					while (*buf) {
+						putchar(*buf++);
+						if (++start > CHAR_LINE_LIMIT) {
+							start = 8; /* tab */
+							printf("\n\t");
+						}
+					}
+				}
+				if ((buf = strtok((char *) 0, comma)) != NULL) {
+					first = 0;
+					putchar(',');
+				}
+			}
 		}
 	}
 }
@@ -564,11 +749,12 @@ altdsp_statjob(struct batch_status *pstat, struct batch_status *prtheader, int a
 			printf("\n");
 			if (alt_opt & ALT_DISPLAY_T) {
 				printf("%*.*s %*.*s %*.*s %*.*s %*.*s %*.*s %*.*s ", SIZEJOBID, SIZEJOBID, STR_SPACE,
-					SIZEUSER, SIZEUSER, STR_SPACE, PBS_MAXQUEUENAME, PBS_MAXQUEUENAME, STR_SPACE,
-					PBS_MAXJOBNAME, PBS_MAXJOBNAME, STR_SPACE,
-					SIZESESSID, SIZESESSID, STR_SPACE,
-					SIZENDS, SIZENDS, STR_SPACE,
-					SIZETSK, SIZETSK, STR_SPACE);
+				SIZEUSER, SIZEUSER, STR_SPACE,
+				PBS_MAXQUEUENAME, PBS_MAXQUEUENAME, STR_SPACE,
+				SIZEJOBNAME, SIZEJOBNAME, STR_SPACE,
+				SIZESESSID, SIZESESSID, STR_SPACE,
+				SIZENDS, SIZENDS, STR_SPACE,
+				SIZETSK, SIZETSK, STR_SPACE);
 				printf("               Est\n");
 			}
 
@@ -989,12 +1175,14 @@ percent_cal(char *state, char *timeu, char *timer, char *wtimu, char *wtimr, cha
 /** @fn display_statjob
  * @brief	display job status in specific format.
  *
- * returns nothing
+ * @return int
+ * @retval	0	- success
+ * @retval	1	- failure
  *
  */
 
-void
-display_statjob(struct batch_status *status, struct batch_status *prtheader, int full, int p_opt)
+int
+display_statjob(struct batch_status *status, struct batch_status *prtheader, int full, int p_opt, int alt_opt)
 {
 	struct batch_status *p;
 	struct attrl *a;
@@ -1018,7 +1206,7 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 	sprintf(format, "%%-%ds %%-%ds %%-%ds  %%%ds %%%ds %%-%ds\n",
 		PBS_MAXSEQNUM+10, NAMEL, OWNERL, TIMEUL, STATEL, LOCL);
 
-	if (! full && prtheader) {
+	if (! full && prtheader && output_format == FORMAT_DEFAULT) {
 		c = get_attr(prtheader->attribs, ATTR_comment, NULL);
 		if (c)
 			printf("%s\n", c);
@@ -1029,6 +1217,9 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 		printf    ("----------------  ---------------- ----------------  -------- - -----\n");
 	}
 
+	if(output_format == FORMAT_JSON)
+		if (add_json_node(JSON_OBJECT, JSON_NULL, "Jobs", NULL) == NULL)
+			return 1;
 	p = status;
 	while (p != NULL) {
 		jid = NULL;
@@ -1038,13 +1229,16 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 		timer = NULL;
 		wtimu = NULL;
 		wtimr = NULL;
-		timeu = NULL;
 		arsct = NULL;
 		state = NULL;
 		location = NULL;
 		hpcbp_executable = NULL;
 		if (full) {
-			printf("Job Id: %s\n", p->name);
+			if (output_format == FORMAT_DSV || output_format == FORMAT_DEFAULT)
+				printf("Job Id: %s%s", p->name, delimiter);
+			else if (output_format == FORMAT_JSON)
+				if (add_json_node(JSON_OBJECT, JSON_NULL, p->name, NULL) == NULL)
+					return 1;
 			a = p->attribs;
 			while (a != NULL) {
 				if (a->name != NULL) {
@@ -1070,17 +1264,19 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 							 * Use a stack variable instead.
 							 */
 							char noval[] = "UNKNOWN";
-							prt_attr(a->name, a->resource, noval);
-							printf("\n");
+							prt_attr(a->name, a->resource, noval, alt_opt & ALT_DISPLAY_w);
 						} else
-							prt_attr(a->name, a->resource, ctime(&epoch));
+						{
+							char time_buffer[32];
+							strcpy(time_buffer,ctime(&epoch));
+							time_buffer[strlen(time_buffer)-1]='\0';
+							prt_attr(a->name, a->resource, time_buffer, alt_opt & ALT_DISPLAY_w);
+						}
 					} else if (strcmp(a->name, ATTR_resv_state) == 0) {
-						prt_attr(a->name, a->resource, cvtResvstate(a->value));
-						printf("\n");
+						prt_attr(a->name, a->resource, cvtResvstate(a->value), alt_opt & ALT_DISPLAY_w);
 					} else if (strcmp(a->name, ATTR_submit_arguments) == 0) {
 						(void)decode_xml_arg_list_str((a->value),  &cmdargs);
-						prt_attr(a->name, a->resource, cmdargs);
-						printf("\n");
+						prt_attr(a->name, a->resource, cmdargs, alt_opt & ALT_DISPLAY_w);
 					} else if (strcmp(a->name, ATTR_executable) == 0) {
 						/*
 						 * Prefix and suffix attribute value with
@@ -1095,14 +1291,24 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 						}
 						(void)sprintf(hpcbp_executable, "<%s>%s</%s>",
 								HPCBP_EXEC_TAG, a->value, HPCBP_EXEC_TAG);
-						prt_attr(a->name, a->resource, hpcbp_executable);
-						printf("\n");
+						prt_attr(a->name, a->resource, hpcbp_executable, alt_opt & ALT_DISPLAY_w);
+						free(hpcbp_executable);
 					} else {
-						prt_attr(a->name, a->resource, a->value);
-						printf("\n");
+						prt_attr(a->name, a->resource, a->value, alt_opt & ALT_DISPLAY_w);
 					}
 				}
 				a = a->next;
+				if ((a || output_format == FORMAT_DEFAULT))
+					printf("%s", delimiter);
+				else if (output_format == FORMAT_JSON) {
+					if (prev_resc_name != NULL)
+						if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL,
+								NULL) == NULL)
+							return 1;
+					if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL)
+							== NULL)
+						return 1;
+				}
 			}
 		} else {
 			if (p->name != NULL) {
@@ -1200,10 +1406,11 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 			} else
 				printf(format, jid, name, owner, timeu, state, location);
 		}
-		if (full) printf("\n");
+		if (full && output_format != FORMAT_JSON)
+			printf("\n");
 		p = p->next;
 	}
-	return;
+	return 0;
 }
 
 
@@ -1219,11 +1426,13 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
  * @param[in] prtheader - true or false
  * @param[in] full - server full name
  *
- * @return	Void
+ * @return	int
+ * @retval	0	- success
+ * @retval	1	- failure
  *
  */
-void
-display_statque(struct batch_status *status, int prtheader, int full)
+int
+display_statque(struct batch_status *status, int prtheader, int full, int alt_opt)
 {
 	struct batch_status *p;
 	struct attrl *a;
@@ -1247,11 +1456,14 @@ display_statque(struct batch_status *status, int prtheader, int full)
 		NAMEL, NUML, NUML, 3, 3, NUML,
 		NUML, NUML, NUML, NUML, NUML, TYPEL);
 
-	if (! full && prtheader) {
+	if (! full && prtheader && output_format == FORMAT_DEFAULT) {
 		printf("Queue              Max   Tot Ena Str   Que   Run   Hld   Wat   Trn   Ext Type\n");
 		printf("---------------- ----- ----- --- --- ----- ----- ----- ----- ----- ----- ----\n");
 	}
 
+	if (output_format == FORMAT_JSON)
+		if (add_json_node(JSON_OBJECT, JSON_NULL, "Queue", NULL) == NULL)
+			return 1;
 	p = status;
 	while (p != NULL) {
 		name = NULL;
@@ -1267,14 +1479,30 @@ display_statque(struct batch_status *status, int prtheader, int full)
 		strcpy(ext, "0");
 		type = "not defined";
 		if (full) {
-			printf("Queue: %s\n", p->name);
+			if(output_format == FORMAT_DSV || output_format == FORMAT_DEFAULT)
+				printf("Queue: %s%s", p->name, delimiter);
+			else if (output_format == FORMAT_JSON) {
+				if (prev_resc_name != NULL)
+					if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL)
+							== NULL)
+						return 1;
+				if (add_json_node(JSON_OBJECT, JSON_NULL, p->name, NULL)
+						== NULL)
+					return 1;
+			}
 			a = p->attribs;
 			while (a != NULL) {
 				if (a->name != NULL) {
-					prt_attr(a->name, a->resource, a->value);
-					printf("\n");
+					prt_attr(a->name, a->resource, a->value,
+							alt_opt & ALT_DISPLAY_w);
 				}
 				a = a->next;
+				if ((a || output_format == FORMAT_DEFAULT))
+					printf("%s", delimiter);
+				else if (output_format == FORMAT_JSON)
+					if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL)
+							== NULL)
+						return 1;
 			}
 		} else {
 			if (p->name != NULL) {
@@ -1327,10 +1555,12 @@ display_statque(struct batch_status *status, int prtheader, int full)
 			}
 			printf(format, name, max, tot, ena, str, que, run, hld, wat, trn, ext, type);
 		}
-		if (full) printf("\n");
+		if (full && output_format != FORMAT_JSON)
+			printf("\n");
 		p = p->next;
+
 	}
-	return;
+	return 0;
 }
 
 
@@ -1345,12 +1575,14 @@ display_statque(struct batch_status *status, int prtheader, int full)
  * @param[in] prtheader - true or false
  * @param[in] full - server full name
  *
- * @return      Void
+ * @return  int
+ * @retval	0	- success
+ * @retval	1	- failure
  *
  */
 
-void
-display_statserver(struct batch_status *status, int prtheader, int full)
+int
+display_statserver(struct batch_status *status, int prtheader, int full, int alt_opt)
 {
 	struct batch_status *p;
 	struct attrl *a;
@@ -1371,11 +1603,14 @@ display_statserver(struct batch_status *status, int prtheader, int full)
 	sprintf(format, "%%-%ds %%%ds %%%ds %%%ds %%%ds %%%ds %%%ds %%%ds %%%ds %%-%ds\n",
 		NAMEL, NUML, NUML, NUML, NUML, NUML, NUML, NUML, NUML, STATUSL);
 
-	if (! full && prtheader) {
+	if (! full && prtheader && output_format == FORMAT_DEFAULT) {
 		printf("Server             Max   Tot   Que   Run   Hld   Wat   Trn   Ext Status\n");
 		printf("---------------- ----- ----- ----- ----- ----- ----- ----- ----- -----------\n");
 	}
 
+	if(output_format == FORMAT_JSON)
+		if (add_json_node(JSON_OBJECT, JSON_NULL, "Server", NULL) == NULL)
+			return 1;
 	p = status;
 	while (p != NULL) {
 		name = NULL;
@@ -1389,14 +1624,29 @@ display_statserver(struct batch_status *status, int prtheader, int full)
 		strcpy(ext, "0");
 		stats = "";
 		if (full) {
-			printf("Server: %s\n", p->name);
+			if (output_format == FORMAT_DSV || output_format == FORMAT_DEFAULT)
+				printf("Server: %s%s", p->name, delimiter);
+			else if (output_format == FORMAT_JSON)
+				if (add_json_node(JSON_OBJECT, JSON_NULL, p->name, NULL)
+						== NULL)
+					return 1;
 			a = p->attribs;
 			while (a != NULL) {
 				if (a->name != NULL) {
-					prt_attr(a->name, a->resource, a->value);
-					printf("\n");
+					prt_attr(a->name, a->resource, a->value, alt_opt & ALT_DISPLAY_w);
 				}
 				a = a->next;
+				if((a || output_format == FORMAT_DEFAULT))
+					printf("%s", delimiter);
+				else if (output_format == FORMAT_JSON) {
+					if (prev_resc_name != NULL)
+						if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL,
+								NULL) == NULL)
+							return 1;
+					if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL)
+							== NULL)
+						return 1;
+				}
 			}
 		} else {
 			if (p->name != NULL) {
@@ -1439,10 +1689,11 @@ display_statserver(struct batch_status *status, int prtheader, int full)
 			}
 			printf(format, name, max, tot, que, run, hld, wat, trn, ext, stats);
 		}
-		if (full) printf("\n");
+		if (full && output_format != FORMAT_JSON)
+			printf("\n");
 		p = p->next;
 	}
-	return;
+	return 0;
 }
 
 #if	TCL_QSTAT
@@ -1889,6 +2140,8 @@ main(int argc, char **argv, char **envp) /* qstat */
 	int located = FALSE;
 	char extend[4];
 	int wide=0;
+	int format = 0;
+	time_t timenow;
 
 #if TCL_QSTAT
 	char option[3];
@@ -1930,7 +2183,7 @@ main(int argc, char **argv, char **envp) /* qstat */
 #ifdef NAS /* localmod 071 */
 #define GETOPT_ARGS "aeinpqrstwxu:fGHJMQEBW:T1"
 #else
-#define GETOPT_ARGS "ainpqrstwxu:fGHJMQEBW:T1"
+#define GETOPT_ARGS "ainpqrstwxu:fGHJMQEBW:T1F:D:"
 #endif /* localmod 071 */
 #else
 #define GETOPT_ARGS "fQBW:"
@@ -2106,7 +2359,7 @@ main(int argc, char **argv, char **envp) /* qstat */
 			case 'B':
 				B_opt = 1;
 				mode = SERVERS;
-				if (Q_opt || alt_opt) {
+				if (Q_opt || (alt_opt && !wide)) {
 					fprintf(stderr, "%s", conflict);
 					errflg++;
 				}
@@ -2115,13 +2368,31 @@ main(int argc, char **argv, char **envp) /* qstat */
 			case 'Q':
 				Q_opt = 1;
 				mode = QUEUES;
-				if (B_opt || alt_opt) {
+				if (B_opt || (alt_opt && !wide)) {
 					fprintf(stderr, "%s", conflict);
 					errflg++;
 				}
 				break;
 			case 'E':
 				E_opt = 1;
+				break;
+
+			case 'D':
+				if (output_format == FORMAT_DSV)
+					dsv_delim = optarg;
+				else
+					errflg++;
+				break;
+
+			case 'F':
+				for (format = FORMAT_DEFAULT; format < FORMAT_MAX; format++) {
+					if (strcasecmp(optarg, output_format_names[format]) == 0) {
+						output_format = format;
+						break;
+					}
+				}
+				if (format >= FORMAT_MAX)
+					errflg++;
 				break;
 
 			case 'W':
@@ -2235,6 +2506,10 @@ main(int argc, char **argv, char **envp) /* qstat */
 		fprintf(stderr, "%s", conflict);
 		errflg++;
 	}
+	if(!(output_format == FORMAT_DEFAULT || f_opt)) {
+		fprintf(stderr, "%s", conflict);
+		errflg++;
+	}
 #ifndef NAS /* localmod 071 */
 	if ((alt_opt & ALT_DISPLAY_q) && (f_opt == 1)) {
 		fprintf(stderr, "%s", conflict);
@@ -2247,8 +2522,8 @@ main(int argc, char **argv, char **envp) /* qstat */
 	}
 	if (wide) {
 		if (!((alt_opt & ALT_DISPLAY_a) || (alt_opt & ALT_DISPLAY_n) || (alt_opt & ALT_DISPLAY_s) ||
-			(alt_opt && ALT_DISPLAY_T))) {
-			fprintf(stderr, "qstat: option w can be used only with option a, n, T or s\n");
+			(alt_opt & ALT_DISPLAY_T) || f_opt == 1)) {
+			fprintf(stderr, "qstat: option w can be used only with option a, n, T, s or f\n");
 			errflg++;
 		}
 	}
@@ -2257,12 +2532,12 @@ main(int argc, char **argv, char **envp) /* qstat */
 	if (errflg) {
 		static char usag2[]="qstat --version\n";
 		static char usage[]="usage: \n\
-qstat [-f] [-J] [-p] [-t] [-x] [-E] [ job_identifier... | destination... ]\n\
+qstat [-f] [-J] [-p] [-t] [-x] [-E] [-F format] [-D delim] [ job_identifier... | destination... ]\n\
 qstat [-a|-i|-r|-H|-T] [-J] [-t] [-u user] [-n] [-s] [-G|-M] [-1] [-w]\n\
 \t[ job_identifier... | destination... ]\n\
-qstat -Q [-f] [ destination... ]\n\
+qstat -Q [-f] [-F format] [-D delim] [ destination... ]\n\
 qstat -q [-G|-M] [ destination... ]\n\
-qstat -B [-f] [ server_name... ]\n";
+qstat -B [-f] [-F format] [-D delim] [ server_name... ]\n";
 		fprintf(stderr, "%s", usage);
 		fprintf(stderr, "%s", usag2);
 		exit(2);
@@ -2283,6 +2558,26 @@ qstat -B [-f] [ server_name... ]\n";
 	/* in case a queue_name is added to front of list */
 	added_queue = 0;
 	new_atropl = p_atropl;
+
+	if(output_format == FORMAT_DSV)
+		delimiter = dsv_delim;
+	else if(output_format == FORMAT_JSON) {
+		delimiter = "";
+		/* adding prologue to json output. */
+		timenow = time(0);
+		if (add_json_node(JSON_VALUE, JSON_INT, "timestamp", &timenow) == NULL) {
+			fprintf(stderr, "qstat: out of memory\n");
+			exit(1);
+		}
+		if (add_json_node(JSON_VALUE, JSON_STRING, "pbs_version", pbs_version) == NULL) {
+			fprintf(stderr, "qstat: out of memory\n");
+			exit(1);
+		}
+		if (add_json_node(JSON_VALUE, JSON_STRING, "pbs_server", def_server) == NULL) {
+			fprintf(stderr, "qstat: out of memory\n");
+			exit(1);
+		}
+	}
 
 	if (optind >= argc) { /* If no arguments, then set defaults */
 		switch (mode) {
@@ -2525,14 +2820,20 @@ job_no_args:
 						if (alt_opt != 0) {
 							altdsp_statjob(p_status, p_server, alt_opt, wide);
 						} else
-							display_statjob(p_status, p_server, f_opt,
-								p_opt);
+							if(display_statjob(p_status, p_server, f_opt,
+								p_opt)) {
+								fprintf(stderr, "qstat: out of memory\n");
+								exit(1);
+							}
 					}
 #else
-					if (alt_opt != 0) {
+					if (alt_opt != 0 && !(wide && f_opt)) {
 						altdsp_statjob(p_status, p_server, alt_opt, wide);
 					} else if (f_opt == 0 || tcl_stat("job", p_status, f_opt))
-						display_statjob(p_status, p_server, f_opt, p_opt);
+						if(display_statjob(p_status, p_server, f_opt, p_opt, alt_opt)) {
+							fprintf(stderr, "qstat: out of memory\n");
+							exit(1);
+						}
 #endif /* localmod 071 */
 					p_header = FALSE;
 					pbs_statfree(p_status);
@@ -2624,7 +2925,10 @@ que_no_args:
 #else
 					} else if (tcl_stat("queue", p_status, f_opt)) {
 #endif /* localmod 071 */
-						display_statque(p_status, p_header, f_opt);
+						if(display_statque(p_status, p_header, f_opt, alt_opt)) {
+							fprintf(stderr, "qstat: out of memory\n");
+							exit(1);
+						}
 					}
 					p_header = FALSE;
 					pbs_statfree(p_status);
@@ -2669,7 +2973,10 @@ svr_no_args:
 #else
 					if (tcl_stat("server", p_status, f_opt))
 #endif /* localmod 071 */
-						display_statserver(p_status, p_header, f_opt);
+						if(display_statserver(p_status, p_header, f_opt, alt_opt)) {
+							fprintf(stderr, "qstat: out of memory\n");
+							exit(1);
+						}
 					p_header = FALSE;
 					pbs_statfree(p_status);
 				}
@@ -2677,6 +2984,14 @@ svr_no_args:
 				break;
 
 		} /* switch */
+	}
+	if(output_format == FORMAT_JSON) {
+		if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL) == NULL) {
+			fprintf(stderr, "qstat : out of memory");
+			exit(1);
+		}
+		generate_json(stdout);
+		free_json_node();
 	}
 #ifdef NAS /* localmod 071 */
 	tcl_run(tcl_opt);

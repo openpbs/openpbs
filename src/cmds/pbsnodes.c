@@ -221,7 +221,7 @@ encode_to_json(struct batch_status *bstat) {
 						break;
 				}
 				if (strcmp(pc, "") == 0) {
-					ivalue = (int)value;
+					ivalue = (long int)value;
 					if (value == ivalue) { /* This checks if value have any non zero fractional part after decimal. If not then value has to be represented as integer otherwise as float. */ 
 						node->value_type = JSON_INT;
 						node->value.inumber = ivalue;
@@ -264,7 +264,7 @@ encode_to_json(struct batch_status *bstat) {
 				}
 				/* Adding only non zero values.*/
 				if (value) {
-					ivalue = (int)value;
+					ivalue = (long int)value;
 					if (strcmp(pc, "") == 0) {
 						if (value == ivalue)
 							node = add_json_node(JSON_VALUE, JSON_INT, next->resource, &ivalue);
@@ -327,7 +327,7 @@ encode_to_json(struct batch_status *bstat) {
 					break;
 			}
 			if (strcmp(pc, "") == 0) {
-				ivalue = (int)value;
+				ivalue = (long int)value;
 				if (value == ivalue) {
 					node->value_type = JSON_INT;
 					node->value.inumber = ivalue;
