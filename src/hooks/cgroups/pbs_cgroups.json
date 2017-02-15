@@ -40,7 +40,8 @@
                         "default"               : "256MB",
                         "reserve_memory"        : "1GB",
                         "exclude_hosts"         : [],
-                        "exclude_vntypes"       : []
+                        "exclude_vntypes"       : [],
+                        "soft_limit"            : true
                 },
                 "memsw":
                 {
