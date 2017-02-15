@@ -4736,7 +4736,7 @@ req_copy_hookfile(struct batch_request *preq) /* ptr to the decoded request   */
 
 	if (fds < 0) {
 		log_err(errno, __func__, msg_hookfile_open);
-		req_reject(PBSE_INTERNAL, 0, preq);
+		req_reject(PBSE_SYSTEM, 0, preq);
 		free_str_array(prev_resources);
 		return;
 	}

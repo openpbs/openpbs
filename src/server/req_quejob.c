@@ -1971,7 +1971,7 @@ req_jobscript(struct batch_request *preq)
 	if (fds < 0) {
 		log_err(errno, "req_jobscript", msg_script_open);
 		delete_link(&pj->ji_alljobs);
-		req_reject(PBSE_INTERNAL, 0, preq);
+		req_reject(PBSE_SYSTEM, 0, preq);
 		return;
 	}
 
@@ -2150,7 +2150,7 @@ req_mvjobfile(struct batch_request *preq)
 
 	if (fds < 0) {
 		log_err(errno, "req_mvjobfile", msg_script_open);
-		req_reject(PBSE_INTERNAL, 0, preq);
+		req_reject(PBSE_SYSTEM, 0, preq);
 		return;
 	}
 #ifdef WIN32
