@@ -3430,10 +3430,17 @@ inventory_to_vnodes(basil_response_t *brp)
 									"@%s_%ld_0",
 									mpphost, node->node_id);
 							}
-							if (vn_addvnr(nv, vname, attr,
-								utilBuffer, 0,
-								0, NULL) == -1)
-								goto bad_vnl;
+							/* Avoid calling vn_addvnr() repeatedly
+							 * when creating only one vnode per 
+							 * compute node.
+							 */
+							if ((seg->ordinal == 0) ||
+							     vnode_per_numa_node) {
+								if (vn_addvnr(nv, vname, attr,
+									utilBuffer, 0,
+									0, NULL) == -1)
+									goto bad_vnl;
+							}
 						}
 					}
 				}

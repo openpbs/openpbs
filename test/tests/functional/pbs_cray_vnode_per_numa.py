@@ -66,6 +66,7 @@ class TestVnodePerNumaNode(TestFunctional):
             - ncpus is a total from all NUMA nodes of that node
             - mem is a total from all NUMA nodes of that node
             - the naccelerators value is correct
+            - the accelerator_memory value is correct
 
         Set $vnode_per_numa_node to FALSE.
         Compare the pbsnodes output when vnode_per_numa_node was unset
@@ -74,6 +75,7 @@ class TestVnodePerNumaNode(TestFunctional):
         dncpus = {}
         dmem = {}
         dacc = {}
+        daccmem = {}
 
         # First we mimic old behavior by setting vnode_per_numa_node to TRUE
         # Do not HUP now, we will do so when we reset the nodes
@@ -108,6 +110,14 @@ class TestVnodePerNumaNode(TestFunctional):
                     else:
                         dacc[n['resources_available.host']
                              ] += int(n['resources_available.naccelerators'])
+            if 'resources_available.accelerator_memory' in n.keys():
+                if n['resources_available.accelerator_memory'][0] != '@':
+                    if n['resources_available.host'] not in daccmem.keys():
+                        daccmem[n['resources_available.host']] = int(
+                            n['resources_available.accelerator_memory'][0:-2])
+                    else:
+                        daccmem[n['resources_available.host']] += int(n[
+                            'resources_available.accelerator_memory'][0:-2])
 
         # Remove the configuration setting and re-read the vnodes
         rv = self.mom.unset_mom_config('$vnode_per_numa_node', False)
@@ -131,6 +141,10 @@ class TestVnodePerNumaNode(TestFunctional):
             if 'resources_available.naccelerators' in n:
                 self.assertEqual(int(n['resources_available.naccelerators']),
                                  dacc[n['resources_available.host']])
+            if 'resources_available.accelerator_memory' in n:
+                self.assertEqual(int(n['resources_available.accelerator_memory'
+                                       ][0:-2]),
+                                 daccmem[n['resources_available.host']])
 
         # Set vnode_per_numa_node to FALSE and re-read the vnodes
         rv = self.mom.add_config({'$vnode_per_numa_node': False}, False)
