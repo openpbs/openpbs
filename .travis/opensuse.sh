@@ -1,5 +1,8 @@
 #!/bin/bash -xe
-${DOCKER_EXEC} zypper -n ar -f -G http://download.opensuse.org/repositories/devel:/tools/openSUSE_13.2/devel:tools.repo
+OS_NAME=$(${DOCKER_EXEC} cat /etc/os-release | awk -F[=\"] '/^NAME=/ {print $3}')
+OS_VERSION=$(${DOCKER_EXEC} cat /etc/os-release | awk -F[=\"] '/VERSION=/ {print $3}')
+OS_NAME_VERSION=${OS_NAME// /_}_${OS_VERSION// /_}
+${DOCKER_EXEC} zypper -n ar -f -G http://download.opensuse.org/repositories/devel:/tools/${OS_NAME_VERSION}/devel:tools.repo
 ${DOCKER_EXEC} zypper -n install time.x86_64
 ${DOCKER_EXEC} zypper -n ref
 ${DOCKER_EXEC} zypper -n install rpmdevtools
