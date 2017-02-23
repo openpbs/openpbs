@@ -980,14 +980,6 @@ j.resources_used["stra2"] = '"glad"'
         self.server.expect(JOB, a, extend='x',
                            offset=30, interval=1,
                            max_attempts=20, id=jid)
-        # 02/22/2017
-        # 16:05:09;0010;Server@x16-64-rhel6;Job;13.x16-64-rhel6;Exit_status=271
-        # resources_used.cpupercent=0 resources_used.cput=00:00:00
-        # resources_used.foo_f=3.06 resources_used.foo_f2=2.01
-        # resources_used.foo_i=6 resources_used.foo_i2=1000b
-        # resources_used.mem=976kb resources_used.ncpus=3
-        # resources_used.stra="happy" resources_used.stra2="glad"
-        # resources_used.vmem=16864kb resources_used.walltime=00:00:20
 
         # Restart server and verifies that the values are still the same
         self.server.restart()
