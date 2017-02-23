@@ -117,6 +117,7 @@ typedef unsigned long pbs_net_t;        /* for holding host addresses */
 #define IS_HOOK_ACTION_ACK      27 /* acknowledge a request of the above 2    */
 #define IS_HOOK_SCHEDULER_RESTART_CYCLE  29 /* hook wish scheduler to recycle */
 #define IS_HOOK_CHECKSUMS		 30 /* mom reports about hooks seen */
+#define IS_HELLO_NO_INVENTORY	31 /* send info about the mom node only */
 
 #define IS_CMD          40
 #define IS_CMD_REPLY    41

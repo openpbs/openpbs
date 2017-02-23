@@ -377,7 +377,7 @@ extern void  scan_for_terminated(void);
 extern int   setwinsize(int);
 extern void  set_termcc(int);
 extern int   conn_qsub(char *host, long port);
-extern void  state_to_server(void);
+extern void  state_to_server(int);
 extern int   send_hook_vnl(void *vnl);
 extern int hook_requests_to_server(pbs_list_head *);
 extern void  set_job_toexited(char *);
@@ -411,6 +411,10 @@ extern int pbs_pclose(FILE *);
 
 /* max length of the error message generated due to database issues */
 #define PBS_MAX_DB_ERR  500
+
+/* Defines for state_to_server */
+#define UPDATE_VNODES 0
+#define UPDATE_MOM_ONLY 1
 #ifdef	__cplusplus
 }
 #endif

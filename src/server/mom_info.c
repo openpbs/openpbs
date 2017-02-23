@@ -378,6 +378,7 @@ create_svrmom_entry(char *hostname, unsigned int port, unsigned long *pul)
 	psvrmom->msr_jobindx = NULL;
 	psvrmom->msr_numvnds = 0;
 	psvrmom->msr_numvslots = 1;
+	psvrmom->msr_vnode_pool = 0;
 	psvrmom->msr_children =
 		(struct pbsnode **)calloc((size_t)(psvrmom->msr_numvslots),
 		sizeof(struct pbsnode *));

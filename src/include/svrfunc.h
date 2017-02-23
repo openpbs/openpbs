@@ -96,7 +96,6 @@ extern void  mark_node_offline_by_mom(char *, char *);
 extern void  clear_node_offline_by_mom(char *, char *);
 extern void  mark_which_queues_have_nodes(void);
 extern void  set_sched_sock(int);
-extern int   save_nodes_db(int);
 extern void  pbs_close_stdfiles(void);
 extern int   is_job_array(char *id);
 extern char *get_index_from_jid(char *newjid);

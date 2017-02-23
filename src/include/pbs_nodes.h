@@ -97,6 +97,7 @@ enum nodeattr {
 	ND_ATR_License,
 	ND_ATR_LicenseInfo,
 	ND_ATR_TopologyInfo,
+	ND_ATR_vnode_pool,
 	ND_ATR_LAST	/* WARNING: Must be the highest valued enum */
 };
 
@@ -145,11 +146,21 @@ struct mom_svrinfo {
 	struct pbsnode **msr_children;  /* array of vnodes supported by Mom */
 	int	      msr_jbinxsz;  /* size of job index array */
 	struct job  **msr_jobindx;  /* index array of jobs on this Mom */
+	long	      msr_vnode_pool;/* the pool of vnodes that belong to this Mom */
 #ifdef PBS_CRED_GRIDPROXY
 	gss_ctx_id_t  msr_gsscontext; /* gss context */
 #endif /* PBS_CRED_GRIDPROXY */
 };
 typedef struct mom_svrinfo mom_svrinfo_t;
+
+struct vnpool_mom {
+	long			vnpm_vnode_pool;
+	int			vnpm_nummoms;
+	mominfo_t	       *vnpm_inventory_mom;
+	mominfo_t	      **vnpm_moms;
+	struct vnpool_mom      *vnpm_next;
+};
+typedef struct vnpool_mom vnpool_mom_t;
 
 #ifdef	PBS_MOM
 
@@ -259,6 +270,7 @@ struct	pbsnode {
 	int			 nd_nummoms;	/* number of Moms */
 	int			 nd_nummslots;	/* number of slots in nd_moms */
 	int			 nd_index;	/* global node index */
+	int			 nd_arr_index;	/* index of myself in the svr node array, only in mem, not db */
 	char			*nd_hostname;	/* ptr to hostname */
 	struct pbssubn		*nd_psn;	/* ptr to list of virt cpus */
 	struct resvinfo		*nd_resvp;
@@ -310,9 +322,8 @@ enum	part_flags { PART_refig, PART_add, PART_rmv };
 #define INUSE_RESVEXCL	0x2000	/* Node is exclusive to a reservation	*/
 #define INUSE_OFFLINE_BY_MOM 0x4000 /* Node is offlined by mom */
 #define INUSE_MARKEDDOWN 0x8000 /* TPP layer marked node down */
-#define INUSE_NEEDS_UPDATE	0x10000	/* Node needs to be informed of a cluster information update */
+#define INUSE_NEED_ADDRS	0x10000	/* Needs to be sent IP addrs */
 #define INUSE_MAINTENANCE	0x20000 /* Node has a job in the admin suspended state */
-
 
 #define VNODE_AVAILABLE (INUSE_FREE | INUSE_JOB | INUSE_JOBEXCL | \
 			 INUSE_RESVEXCL | INUSE_BUSY)
@@ -376,6 +387,7 @@ enum vnode_degraded_op {
 #define NODE_UPDATE_OTHERS          0x4  /* other attributes need to be updated */
 #define NODE_UPDATE_VNL             0x8  /* this vnode updated in vnl by Mom  */
 #define NODE_UPDATE_CURRENT_AOE     0x10  /* current_aoe attribute to be updated */
+#define NODE_UPDATE_MOM             0x20 /* update only the mom attribute */
 
 
 #define NODE_SAVE_FULL  0
@@ -450,6 +462,9 @@ extern  int	legal_vnode_char(char, int);
 extern 	char	*parse_node_token(char *, int, int *, char *);
 extern  int	cross_link_mom_vnode(struct pbsnode *, mominfo_t *);
 extern 	int	fix_indirectness(resource *, struct pbsnode *, int);
+extern	int	chk_vnode_pool(attribute *, void *, int);
+extern	void	free_pnode(struct pbsnode *);
+extern	int	save_nodes_db(int, void *);
 
 extern char *msg_daemonname;
 
@@ -472,6 +487,10 @@ typedef enum node_topology_type ntt_t;
 #ifndef PBS_MOM
 extern struct pbsnode * node_recov_db(void *nd);
 extern int node_save_db(struct pbsnode *pnode, int mode);
+extern int add_mom_to_pool(mominfo_t *);
+extern void remove_mom_from_pool(mominfo_t *);
+extern void reset_pool_inventory_mom(mominfo_t *);
+extern int  send_ip_addrs_to_mom(int);
 #endif
 
 #ifdef	PBS_MOM

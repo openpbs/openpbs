@@ -158,6 +158,7 @@ char *msg_license_bad_action = "Action not allowed with license server scheme.";
 char *msg_prov_script_notfound = "Provision hook script not found";
 char *msg_jobscript_max_size= "jobscript size exceeded the jobscript_max_size";
 char *msg_badjobscript_max_size= "jobscript max size exceeds 2GB";
+char *msg_new_inventory_mom = "Setting inventory_mom for vnode_pool %d to %s";
 /*
  * This next set of messages are returned to the client on an error.
  * They may also be logged.

@@ -243,7 +243,7 @@ svr_chk_history_conf(void)
 }
 
 int
-save_nodes_db(int flag)
+save_nodes_db(int flag, void *pmom)
 {
 	return (0);
 }
@@ -888,6 +888,12 @@ int
 set_node_topology(attribute *pattr, void *pobject, int actmode)
 {
 
+	return (PBSE_NONE);
+}
+
+int
+chk_vnode_pool(attribute *pattr, void *pobject, int actmode)
+{
 	return (PBSE_NONE);
 }
 

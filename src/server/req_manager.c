@@ -113,6 +113,7 @@
 #include "provision.h"
 #include "pbs_db.h"
 #include "assert.h"
+#include "avltree.h"
 #include "sched_cmds.h"
 
 
@@ -121,6 +122,9 @@
 
 struct work_task *global_ping_task = NULL;
 pntPBS_IP_LIST pbs_iplist = NULL;
+
+AVL_IX_DESC *node_tree = NULL;
+AVL_IX_DESC *hostaddr_tree = NULL;
 
 /* Global Data Items: */
 
@@ -150,9 +154,11 @@ extern unsigned int pbs_mom_port;
 extern char server_host[];
 extern char *path_hooks;
 extern 	int max_concurrent_prov;
+extern char *msg_new_inventory_mom;
 
 extern int check_req_aoe_available(struct pbsnode *, char *);
 int resize_prov_table(int);
+vnpool_mom_t    *vnode_pool_mom_list = NULL;
 
 /* private data */
 
@@ -177,6 +183,16 @@ extern int delete_attr_db(pbs_db_conn_t *conn,
 	pbs_db_attr_info_t *p_attr_info,
 	struct svrattrl *pal);
 #endif /* localmod 005 */
+
+/*
+ * This structure used as part of the avl tree 
+ * to do a faster lookup of hostnames.
+ * It is stored against pname in make_host_addresses_list()
+ */
+struct pul_store {
+	u_long *pul;	/* list of ipaddresses */
+	int len;		/* length */
+};
 
 #ifdef WIN32
 #if (_WIN32_WINNT < 0x0600)
@@ -1766,6 +1782,205 @@ mgr_queue_unset(struct batch_request *preq)
 	reply_ack(preq);
 }
 
+/**
+ * @brief
+ *	Find the pool that matches what is set on the node
+ *
+ * @param[in]	pmom - pointer to the mom
+ * @param[out]	ppool - pointer to the matching pool structure
+ * 
+ * @return	vnpool_mom_t *
+ * @retval	pointer to the matching pool structure
+ * @retval	NULL - if there is no match
+ */
+vnpool_mom_t *
+find_vnode_pool(mominfo_t *pmom)
+{
+	mom_svrinfo_t *psvrmom = (mom_svrinfo_t *)(pmom->mi_data);
+	vnpool_mom_t *ppool = vnode_pool_mom_list;
+
+	if (psvrmom->msr_vnode_pool != 0) {
+		while (ppool != NULL) {
+			if (ppool->vnpm_vnode_pool == psvrmom->msr_vnode_pool) {
+				return(ppool);
+			}
+			ppool = ppool->vnpm_next;
+		}
+	}
+	return (NULL);
+}
+
+/**
+ * @brief
+ *	Reset the "inventory Mom" for a vnode_pool if the specified Mom is the
+ *	current inventory Mom.  Done when she is down or deleted from the pool.
+ *
+ * @param[in] pmom - Pointer to the Mom (mominfo_t) structure of the Mom
+ *	being removed/marked down.
+ */
+void 
+reset_pool_inventory_mom(mominfo_t *pmom)
+{
+	mom_svrinfo_t *psvrmom = (mom_svrinfo_t *)(pmom->mi_data);
+	vnpool_mom_t  *ppool;
+	mominfo_t     *pxmom;
+	mom_svrinfo_t *pxsvrmom;
+	int           i;
+
+	/* If this Mom is in a vnode pool and is the inventory Mom for that */
+	/* pool remove her from that role and if another Mom in the pool and */
+	/* is up, make that Mom the new inventory Mom */
+
+	if (psvrmom->msr_vnode_pool != 0) {
+		ppool = find_vnode_pool(pmom);
+		if (ppool != NULL) {
+			if (ppool->vnpm_inventory_mom != pmom) 
+				return;	/* in the pool but is not the inventory mom */
+
+			/* this newly down/deleted Mom was the inventory Mom, */
+			/* clear her as the inventory mom in the pool */
+			ppool->vnpm_inventory_mom = NULL;
+
+			/* see if another Mom is up to become "the one" */
+			for (i=0; i<ppool->vnpm_nummoms; ++i) {
+				pxmom = ppool->vnpm_moms[i];
+				pxsvrmom = (mom_svrinfo_t *)pxmom->mi_data;
+				if ((pxsvrmom->msr_state & INUSE_DOWN) == 0) {
+					ppool->vnpm_inventory_mom = pxmom;
+					sprintf(log_buffer, msg_new_inventory_mom,
+						ppool->vnpm_vnode_pool, pxmom->mi_host);
+					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER,
+						LOG_DEBUG, msg_daemonname, log_buffer);
+				}
+			}
+		}
+	}
+}
+
+/**
+ * @brief
+ *	Add a Mom (mominfo_t) to the list of Moms associated with managing
+ *	a vnode pool.  Create the pool if need be (not yet exists).
+ *
+ * @param[in] pmom - Pointer to the mominfo_t for the Mom
+ * @return Error code
+ * @retval - 0 - Success
+ * @retval - pbs_errno - Failure code
+ *
+ * @par MT-safe: No
+ */
+int 
+add_mom_to_pool(mominfo_t *pmom)
+{
+	vnpool_mom_t *ppool;
+	mom_svrinfo_t *psvrmom = (mom_svrinfo_t *)pmom->mi_data;
+	int		added_pool = 0;
+	int		i;
+	mominfo_t    **tmplst;
+
+	if (psvrmom->msr_vnode_pool == 0)
+		return PBSE_NONE;	/* Mom not in a pool */
+
+	ppool = find_vnode_pool(pmom);
+	if (ppool != NULL) {
+		/* Found existing pool. Is Mom already in it? */
+		for (i = 0; i < ppool->vnpm_nummoms; ++i) {
+			if (ppool->vnpm_moms[i] == pmom) {
+				sprintf(log_buffer, "POOL: add_mom_to_pool - "
+					"Mom already in pool %ld",
+					psvrmom->msr_vnode_pool);
+				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE,
+					LOG_INFO, pmom->mi_host,log_buffer); 
+				return PBSE_NONE; /* she is already there */
+			}
+		}
+	}
+
+	/* The pool doesn't exist yet, we need to add a pool entry */
+	if (ppool == NULL) {
+		ppool = (vnpool_mom_t *)calloc(1, (size_t)sizeof(struct vnpool_mom));
+		if (ppool == NULL) {
+			/* no memory */
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_NODE, LOG_ERR,
+				  pmom->mi_host,
+				  "Failed to expand vnode_pool_mom_list");
+			return PBSE_SYSTEM;
+		}
+		added_pool = 1;
+		ppool->vnpm_vnode_pool = psvrmom->msr_vnode_pool;
+	}
+
+	/* now add Mom to pool list, expanding list if need be */
+
+	/* expand the array, perhaps from nothingness */
+	tmplst = (mominfo_t **)realloc(ppool->vnpm_moms, (ppool->vnpm_nummoms+1)*sizeof(mominfo_t *));
+	if (tmplst == NULL) {
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_NODE,
+			  LOG_ERR, pmom->mi_host,
+			  "unable to add mom to pool, no memory");
+		
+		if (added_pool)
+			free(ppool);
+		return PBSE_SYSTEM;
+	}
+	ppool->vnpm_moms = tmplst;
+	ppool->vnpm_moms[ppool->vnpm_nummoms++] = pmom;
+
+	sprintf(log_buffer, "Mom %s added to vnode_pool %ld", pmom->mi_host, psvrmom->msr_vnode_pool);
+	log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_DEBUG, msg_daemonname, log_buffer); 
+	if (ppool->vnpm_inventory_mom == NULL) {
+		ppool->vnpm_inventory_mom = pmom;
+		sprintf(log_buffer, msg_new_inventory_mom, psvrmom->msr_vnode_pool, pmom->mi_host);
+		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, msg_daemonname, log_buffer); 
+	}
+
+
+	if (vnode_pool_mom_list == NULL) {
+		vnode_pool_mom_list = ppool;
+	} else if (added_pool == 1) {
+		ppool->vnpm_next = vnode_pool_mom_list;
+		vnode_pool_mom_list = ppool;
+	}
+	return PBSE_NONE;
+}
+
+/**
+ * @brief
+ *	remove a Mom (mominfo_t) from the list of Moms associated with managing
+ *	a vnode pool.  
+ *
+ * @param[in] pmom - Pointer to the mominfo_t for the Mom
+ *
+ * @par MT-safe: No
+ */
+void remove_mom_from_pool(mominfo_t *pmom)
+{
+	vnpool_mom_t *ppool;
+	mom_svrinfo_t *psvrmom = (mom_svrinfo_t *)pmom->mi_data;
+	int			   i;
+	int			   j;
+
+	if (psvrmom->msr_vnode_pool == 0)
+		return;	/* Mom not in a pool */
+
+	ppool = find_vnode_pool(pmom);
+	if (ppool != NULL) {
+		/* found existing pool, if Mom is in it remove her */
+		/* from it.  If not, nothing to do. */
+		for (i = 0; i < ppool->vnpm_nummoms; ++i) {
+			if (ppool->vnpm_moms[i] == pmom) {
+				ppool->vnpm_moms[i] = NULL;
+				for (j = i+1; j < ppool->vnpm_nummoms; ++j) {
+					ppool->vnpm_moms[j-1] = ppool->vnpm_moms[j];
+				}
+				--ppool->vnpm_nummoms;
+				/* find someone else to be the inventory Mom if need be */
+				reset_pool_inventory_mom(pmom);
+				psvrmom->msr_vnode_pool = 0;
+			}
+		}
+	}
+}
 
 /**
  * @brief
@@ -1961,7 +2176,7 @@ mgr_node_set(struct batch_request *preq)
 	 */
 	if (need_todo & WRITE_NEW_NODESFILE) {
 		/*create/delete/prop/ntype change*/
-		if (!save_nodes_db(0)) {
+		if (!save_nodes_db(0, NULL)) {
 			need_todo &= ~(WRITE_NEW_NODESFILE); /*successful on update*/
 			need_todo &= ~(WRITENODE_STATE);
 		}
@@ -2125,10 +2340,11 @@ mgr_node_unset(struct batch_request *preq)
 	while (plist) {
 		bad++;
 
-		/* check that state, ntype and resources_available.host */
-		/* are not being unset				 	*/
+		/* check that state, vnode_pool, ntype and	*/
+		/* resources_available.host are not being unset	*/
 		if ((strcasecmp(plist->al_name, astate) == 0) ||
 			(strcasecmp(plist->al_name, antype) == 0) ||
+			(strcasecmp(plist->al_name, ATTR_NODE_VnodePool)==0) ||
 			((strcasecmp(plist->al_name, ra) ==0)   &&
 			((plist->al_resc == NULL) ||
 			(strcasecmp(plist->al_resc, "host") == 0)))) {
@@ -2281,7 +2497,7 @@ mgr_node_unset(struct batch_request *preq)
 	 */
 	if (need_todo & WRITE_NEW_NODESFILE) {
 		/*create/delete/prop/ntype change*/
-		if (!save_nodes_db(0)) {
+		if (!save_nodes_db(0, NULL)) {
 			need_todo &= ~(WRITE_NEW_NODESFILE);	/*successful on update*/
 			need_todo &= ~(WRITENODE_STATE);
 		}
@@ -2354,7 +2570,10 @@ mgr_node_unset(struct batch_request *preq)
 static int
 make_host_addresses_list(char *phost, u_long **pul)
 {
-	int		 i;
+	int		i;
+	int		err;
+	struct pul_store *tpul = NULL;
+	int		len;
 #if defined(__hpux)
 	static struct in_addr  addr;
 	struct hostent *hp;
@@ -2366,10 +2585,24 @@ make_host_addresses_list(char *phost, u_long **pul)
 #ifdef WIN32
 	int		num_ip;
 #endif
-	int	err;
 
 	if ((phost == 0) || (*phost == '\0'))
 		return (PBSE_SYSTEM);
+
+	/* search for the address list in the address list tree
+	 * so that we do not hit NS for everything
+	 */
+	if (hostaddr_tree != NULL) {
+		if ((tpul = (struct pul_store *) find_tree(hostaddr_tree, phost)) != NULL) {
+			*pul = (u_long *)malloc(tpul->len);
+			if (!*pul) {
+				strcat(log_buffer, "out of  memory ");
+				return (PBSE_SYSTEM);
+			}
+			memmove(*pul, tpul->pul, tpul->len);
+			return 0;
+		}
+	}
 
 #if defined(__hpux)
 		hp = gethostbyname(phost);
@@ -2384,7 +2617,8 @@ make_host_addresses_list(char *phost, u_long **pul)
 		for (i=0; hp->h_addr_list[i]; i++);
 
 		/* null end it */
-		*pul = (u_long *)malloc(sizeof(u_long) * (i+1));
+		len = sizeof(u_long) * (i + 1);
+		*pul = (u_long *)malloc(len);
 		if (*pul == (u_long *)0) {
 			strcat(log_buffer, "out of  memory ");
 			return (PBSE_SYSTEM);
@@ -2399,7 +2633,6 @@ make_host_addresses_list(char *phost, u_long **pul)
 		}
 
 		(*pul)[i] = 0; /* null term array ip adrs */
-		return 0;
 #else
 		/* non-hpux part (even windows) */
 		memset(&hints, 0, sizeof(struct addrinfo));
@@ -2429,7 +2662,8 @@ make_host_addresses_list(char *phost, u_long **pul)
 		}
 
 		/* null end it */
-		*pul = (u_long *) malloc(sizeof(u_long) * (i + 1));
+		len = sizeof(u_long) * (i + 1);
+		*pul = (u_long *)malloc(len);
 		if (*pul == (u_long *) 0) {
 			strcat(log_buffer, "out of  memory ");
 			return (PBSE_SYSTEM);
@@ -2449,10 +2683,37 @@ make_host_addresses_list(char *phost, u_long **pul)
 		(*pul)[i] = 0; /* null term array ip adrs */
 
 		freeaddrinfo( pai);
-		return 0;
 #endif
-}
+		tpul = malloc(sizeof(struct pul_store));
+		if (!tpul) {
+			strcat(log_buffer, "out of  memory");
+			return (PBSE_SYSTEM);
+		}
+		tpul->len = len;
+		tpul->pul = (u_long *) malloc(tpul->len);
+		if (!tpul->pul) {
+			free(tpul);
+			strcat(log_buffer, "out of  memory");
+			return (PBSE_SYSTEM);
+		}
+		memmove(tpul->pul, *pul, tpul->len);
 
+		if (hostaddr_tree == NULL ) {
+			hostaddr_tree = create_tree(AVL_NO_DUP_KEYS, 0);
+			if (hostaddr_tree == NULL ) {
+				free(tpul->pul);
+				free(tpul);
+				strcat(log_buffer, "out of  memory");
+				return (PBSE_SYSTEM);
+			}
+		}
+		if (tree_add_del(hostaddr_tree, phost, tpul, TREE_OP_ADD) != 0) {
+			free(tpul->pul);
+			free(tpul);
+			return (PBSE_SYSTEM);
+		}
+		return 0;
+}
 
 /**
  * @brief
@@ -2478,6 +2739,7 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 {
 	struct pbsnode	*pnode;
 	struct pbsnode **tmpndlist;
+	struct pbsnode	*child;
 	int		ntype;		/* node type, always PBS */
 	char		*pc;
 	char		*phost;		/* trial host name */
@@ -2521,49 +2783,58 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 
 		/* need to create the pbs_node entry */
 
-		/* find an empty slot or make a new one */
-		for (iht=0; iht<svr_totnodes; iht++) {
-			if (pbsndlist[iht]->nd_state & INUSE_DELETED) {
-				/*available, use*/
-				pnode = pbsndlist[iht];
-				break;
-			}
+		pnode =(struct pbsnode *)malloc(sizeof(struct pbsnode));
+		if (pnode == (struct pbsnode *)0) {
+			free(pname);
+			return (PBSE_SYSTEM);
 		}
 
-		if (iht == svr_totnodes) {    /*no unused entry, make an entry*/
+		/* expand pbsndlist array exactly svr_totnodes long*/
+		tmpndlist = (struct pbsnode **)realloc(pbsndlist,
+			sizeof(struct pbsnode*) * (svr_totnodes + 1));
 
-			pnode =(struct pbsnode *)malloc(sizeof(struct pbsnode));
-			if (pnode == (struct pbsnode *)0) {
-				free(pname);
-				return (PBSE_SYSTEM);
-			}
-
-			/* expand pbsndlist array exactly svr_totnodes long*/
-			tmpndlist = (struct pbsnode **)realloc(pbsndlist,
-				sizeof(struct pbsnode*) * (svr_totnodes + 1));
-
-			if (tmpndlist != (struct pbsnode **)0) {
-				/*add in the new entry etc*/
-				pbsndlist = tmpndlist;
-				pnode->nd_index = svr_totnodes;
-				pbsndlist[svr_totnodes++] = pnode;
-			} else {
-				free(pnode);
-				free(pname);
-				return (PBSE_SYSTEM);
-			}
+		if (tmpndlist != (struct pbsnode **)0) {
+			/*add in the new entry etc*/
+			pbsndlist = tmpndlist;
+			pnode->nd_index = svr_totnodes;
+			pnode->nd_arr_index = svr_totnodes; /* this is only in mem, not from db */
+			pbsndlist[svr_totnodes++] = pnode;
+		} else {
+			free_pnode(pnode);
+			free(pname);
+			return (PBSE_SYSTEM);
 		}
 		if (initialize_pbsnode(pnode, pname, ntype) != PBSE_NONE) {
-			set_vnode_state(pnode, INUSE_DELETED, Nd_State_Set);
+			svr_totnodes--;
+			free_pnode(pnode);
 			free(pname);
 			return (PBSE_SYSTEM);
 		}
 
 		/* create and initialize the first subnode to go with */
 		/* the parent node */
-
 		if (create_subnode(pnode, NULL) == NULL) {
-			set_vnode_state(pnode, INUSE_DELETED, Nd_State_Set);
+			svr_totnodes--;
+			free_pnode(pnode);
+			free(pname);
+			return (PBSE_SYSTEM);
+		}
+
+		/* create node tree if not already done */
+		if (node_tree == NULL ) {
+			node_tree = create_tree(AVL_NO_DUP_KEYS, 0);
+			if (node_tree == NULL ) {
+				svr_totnodes--;
+				free_pnode(pnode);
+				free(pname);
+				return (PBSE_SYSTEM);
+			}
+		}
+
+		/* add to node tree */
+		if (tree_add_del(node_tree, pname, pnode, TREE_OP_ADD) != 0) {
+			svr_totnodes--;
+			free_pnode(pnode);
 			free(pname);
 			return (PBSE_SYSTEM);
 		}
@@ -2774,11 +3045,17 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 
 		}
 
-
 		/* cross link the vnode (pnode) and its Mom (pmom) */
 
 		if ((rc = cross_link_mom_vnode(pnode, pmom)) != 0)
 			return (rc);
+
+		/* If this is the "natural vnode" (i.e. 0th entry) */
+		if (pnode->nd_nummoms == 1) {
+			if (pnode->nd_attr[(int)ND_ATR_vnode_pool].at_val.at_long > 0) {
+				smp->msr_vnode_pool = pnode->nd_attr[(int)ND_ATR_vnode_pool].at_val.at_long;
+			}
+		}
 	}
 
 	/*
@@ -2792,6 +3069,7 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 		*rtnpnode = pnode;
 	return (ret);	    /*create completely successful*/
 }
+
 /**
  * @brief
  * 		Wrapper function to create_pbs_node() but without the 'allow_unkresc'
@@ -2983,6 +3261,8 @@ struct batch_request *preq;
 			save_characteristic(pnode);
 			nodename = strdup(pnode->nd_name);
 			effective_node_delete(pnode);
+			pnode = NULL; /* pnode has been freed, set it to NULL */
+			i--; /* the array has been coalesced, so reset i to the earlier position */
 
 			(void)chk_characteristic(pnode, &need_todo);
 
@@ -3002,7 +3282,7 @@ struct batch_request *preq;
 	 * being called
 	 */
 	if (need_todo & WRITE_NEW_NODESFILE) {	/*create/delete/attr change*/
-		if (!save_nodes_db(1)) {
+		if (!save_nodes_db(1, NULL)) {
 			need_todo &= ~(WRITE_NEW_NODESFILE); /*successful on update*/
 			need_todo &= ~(WRITENODE_STATE);
 		}
@@ -3101,6 +3381,9 @@ struct batch_request *preq;
 	svrattrl	*plist;
 	int		 rc;
 	char 		*vnp; /* Temp storage to validate (v)node name */
+	long		 vn_pool;
+	struct pbsnode	*pnode;
+	mominfo_t	*mymom;
 
 	/*
 	 * Before creating the (v)node, validate the (v)node name using
@@ -3127,7 +3410,7 @@ struct batch_request *preq;
 	}
 	plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_manager.rq_attr);
 	rc = create_pbs_node(preq->rq_ind.rq_manager.rq_objname,
-		plist, preq->rq_perm, &bad, NULL, TRUE);
+		plist, preq->rq_perm, &bad, &pnode, TRUE);
 
 	if (rc != 0) {
 
@@ -3149,13 +3432,41 @@ struct batch_request *preq;
 		return;
 	}
 
+	mymom   = pnode->nd_moms[0];
+	vn_pool = pnode->nd_attr[(int)ND_ATR_vnode_pool].at_val.at_long;
+	if (vn_pool > 0) {
+		if (add_mom_to_pool(mymom) == PBSE_NONE) {
+			/* cross link any vnodes of an existing Mom in pool */
+			int i;
+			mom_svrinfo_t *ppoolm = NULL;
+			vnpool_mom_t *ppool = vnode_pool_mom_list;
+			while (ppool) {
+				if (ppool->vnpm_vnode_pool == vn_pool) {
+					if (ppool->vnpm_inventory_mom) {
+						ppoolm = (mom_svrinfo_t *)(ppool->vnpm_inventory_mom->mi_data);
+					}
+					break;
+				}
+				ppool = ppool->vnpm_next;
+			}
+			if (ppoolm) {
+				sprintf(log_buffer, "POOL: cross linking %d vnodes from %s",
+					ppoolm->msr_numvnds-1, ppool->vnpm_inventory_mom->mi_host);
+				log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_NODE, LOG_INFO,
+					mymom->mi_host, log_buffer);
+				for (i=1; i<ppoolm->msr_numvnds; ++i) {
+					cross_link_mom_vnode(ppoolm->msr_children[i], mymom);
+				}
+			}
+		}
+	}
 	mgr_log_attr(msg_man_set, plist,
 		PBS_EVENTCLASS_NODE, preq->rq_ind.rq_manager.rq_objname, NULL);
 
 	setup_notification();	    /*set mechanism for notifying */
 	/*other nodes of new member   */
 
-	if (save_nodes_db(1)) { /*if update fails now (odd)   */
+	if (save_nodes_db(1, NULL)) { /*if update fails now (odd)   */
 		svr_chngNodesfile = 1;  /*try it when server shutsdown*/
 	}
 	else

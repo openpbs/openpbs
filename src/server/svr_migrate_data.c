@@ -249,7 +249,7 @@ svr_migrate_data()
 			pbsndlist[i]->nd_modified = NODE_UPDATE_OTHERS;
 		}
 
-		if (save_nodes_db(0) != 0) {
+		if (save_nodes_db(0, NULL) != 0) {
 			log_err(errno, "svr_migrate_data", "save_nodes_db failed!");
 			return -1;
 		}
@@ -658,7 +658,7 @@ svr_migrate_data_from_fs(void)
 		}
 	}
 
-	if (save_nodes_db(0) != 0) {
+	if (save_nodes_db(0, NULL) != 0) {
 		fprintf(stderr, "Could not save nodes\n");
 		if (svr_db_conn->conn_db_err)
 			fprintf(stderr, "[%s]\n", (char*)svr_db_conn->conn_db_err);

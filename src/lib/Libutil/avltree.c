@@ -130,6 +130,8 @@ typedef struct {
 static pthread_once_t avl_init_once = PTHREAD_ONCE_INIT;
 static pthread_key_t avl_tls_key;
 
+#define MAX_AVLKEY_LEN 100
+
 /**
  * @brief
  *	initializes avl tls by creating a key.
@@ -912,4 +914,164 @@ avl_find_exact(AVL_IX_REC *pe, AVL_IX_DESC *pix)
 	if (ix_dupkeys != AVL_NO_DUP_KEYS  &&  pe->recptr!=ptr->recptr)
 		return AVL_IX_FAIL;
 	return AVL_IX_OK;
+}
+
+/**
+ * @brief
+ *	Create an AVL key based on the string provided
+ *
+ * @param[in] - key - String to be used as the key
+ *
+ * @return	The AVL key
+ * @retval	NULL - Failure (out of memory)
+ * @retval	!NULL - Success - The AVL key
+ *
+ * @par Side Effects:
+ *	None
+ *
+ * @par MT-safe: Yes
+ *
+ */
+AVL_IX_REC *
+avlkey_create(AVL_IX_DESC *tree, void *key)
+{
+	size_t keylen;
+	AVL_IX_REC *pkey;
+
+	if (tree->keylength != 0)
+		keylen = sizeof(AVL_IX_REC) - AVL_DEFAULTKEYLEN + tree->keylength;
+	else {
+		if (key == NULL ) {
+			keylen = sizeof(AVL_IX_REC) + MAX_AVLKEY_LEN + 1;
+		} else {
+			keylen = sizeof(AVL_IX_REC) + strlen(key) + 1;
+		}		
+	}
+	pkey = calloc(1, keylen);
+	if (pkey == NULL)
+		return (NULL);
+
+	if (key != NULL) {
+		if (tree->keylength != 0)
+			memcpy(pkey->key, key, tree->keylength);
+		else
+			strcpy(pkey->key, (char *) key);
+	}
+
+	return (pkey);
+}
+		
+/**
+ * @brief
+ *	Create an empty AVL tree
+ *
+ * @param[in] - dups - Whether duplicates are allowed or not
+ *
+ * @return	The AVL trees root
+ * @retval	NULL - Failure (out of memory)
+ * @retval	!NULL - Success - The AVL tree root
+ *
+ * @par Side Effects:
+ *	None
+ *
+ * @par MT-safe: Yes
+ *
+ */
+AVL_IX_DESC *
+create_tree(int dups, int keylen)
+{
+	AVL_IX_DESC *AVL_p = NULL;
+
+	AVL_p = (AVL_IX_DESC *) malloc(sizeof(AVL_IX_DESC));
+	if (AVL_p == NULL)
+		return (NULL);
+
+	avl_create_index(AVL_p, dups, keylen);
+	return AVL_p;
+}
+
+/**
+ * @brief
+ *	Find a node from the AVL tree based on the supplied key
+ *
+ * @param[in] - root   - The root of the AVL tree to search
+ * @param[in] - key - String to be used as the key
+ *
+ * @return	The data part of the node if found
+ * @retval	NULL - Failure (no node found matching key)
+ * @retval	!NULL - Success - The record pointer (data) from the node
+ *
+ * @par Side Effects:
+ *	None
+ *
+ * @par MT-safe: Yes
+ *
+ */
+void *
+find_tree(AVL_IX_DESC *root, void *key)
+{
+	AVL_IX_REC *pkey;
+	void *p = NULL;
+
+	pkey = (AVL_IX_REC *) avlkey_create(root, key);
+	if (pkey == NULL)
+		return NULL;
+
+	/* find leaf in the leaf tree */
+	if (avl_find_key(pkey, root) == AVL_IX_OK)
+		p = pkey->recptr;
+
+	free(pkey);
+	return p;
+}
+
+/**
+ * @brief
+ *	Add or delete a key (and record) to a AVL tree
+ *
+ * @param[in] - root   - Root ptr identifying the AVL tree
+ * @param[in] - key - String to be used as the key
+ * @param[in] - data   - Data to add to the record (not required for delete)
+ * @param[in] - op     - Operation to be performed
+ *		 0 - TREE_OP_ADD
+ *		 1 - TREE_OP_DEL
+ *
+ * @return	Error code
+ * @retval	-1    - Failure
+ * @retval	 0    - Success
+ * @retval	 1    - Not found (in case of delete)
+ *
+ * @par Side Effects:
+ *	None
+ *
+ * @par MT-safe: Yes
+ *
+ */
+int
+tree_add_del(AVL_IX_DESC *root, void *key, void *data, int op)
+{
+	AVL_IX_REC *pkey;
+	int rc = 0;
+
+	pkey = (AVL_IX_REC *) avlkey_create(root, key);
+	if (pkey == NULL) {
+		return -1;
+	}
+
+	pkey->recptr = data;
+	if (op == TREE_OP_ADD) {
+		rc = avl_add_key((AVL_IX_REC *) pkey, (AVL_IX_DESC *) root);
+		if (rc != AVL_IX_OK)
+			rc = -1;
+		else
+			rc = 0;
+	} else {
+		rc = avl_delete_key(pkey, root);
+		if (rc != AVL_IX_OK)
+			rc = 1;
+		else
+			rc = 0;
+	}
+	free(pkey);
+	return rc;
 }

@@ -8733,7 +8733,7 @@ _pbs_python_do_vnode_set(void)
 	 */
 	if (need_todo & WRITE_NEW_NODESFILE) {
 		/*create/delete/prop/ntype change*/
-		(void)save_nodes_db(0);
+		(void)save_nodes_db(0, NULL);
 	} else if (need_todo & WRITENODE_STATE) {  /*nodes "offline"/comment changed*/
 		write_node_state();
 	}

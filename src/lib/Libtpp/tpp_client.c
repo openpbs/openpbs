@@ -695,7 +695,7 @@ tpp_init(struct tpp_config *cnf)
 	TPP_QUE_CLEAR(&strm_action_queue);
 	TPP_QUE_CLEAR(&freed_sd_queue);
 
-	AVL_streams = tpp_create_tree(AVL_DUP_KEYS_OK, sizeof(tpp_addr_t));
+	AVL_streams = create_tree(AVL_DUP_KEYS_OK, sizeof(tpp_addr_t));
 	if (AVL_streams == NULL) {
 		tpp_log_func(LOG_CRIT, __func__, "Failed to create AVL tree for leaves");
 		return -1;
@@ -842,7 +842,7 @@ tpp_open(char *dest_host, unsigned int port)
 	 * comes to such a half open stream
 	 */
 
-	if ((pkey = tpp_avlkey_create(AVL_streams, &dest_addr))) {
+	if ((pkey = avlkey_create(AVL_streams, &dest_addr))) {
 		if (avl_find_key(pkey, AVL_streams) == AVL_IX_OK) {
 			while (1) {
 				strm = pkey->recptr;
@@ -1400,7 +1400,7 @@ alloc_stream(tpp_addr_t *src_addr, tpp_addr_t *dest_addr)
 
 	if (dest_addr) {
 		/* also add stream to the AVL_streams with the dest as key */
-		if (tpp_tree_add_del(AVL_streams, &strm->dest_addr, strm, TPP_OP_ADD) != 0) {
+		if (tree_add_del(AVL_streams, &strm->dest_addr, strm, TREE_OP_ADD) != 0) {
 			sprintf(tpp_get_logbuf(), "Failed to add strm with sd=%u to streams", strm->sd);
 			tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
 			free(strm);
@@ -2576,7 +2576,7 @@ find_stream_with_dest(tpp_addr_t *dest_addr, unsigned int dest_sd, unsigned int 
 	AVL_IX_REC *pkey;
 	stream_t *strm;
 
-	pkey = tpp_avlkey_create(AVL_streams, dest_addr);
+	pkey = avlkey_create(AVL_streams, dest_addr);
 	if (pkey == NULL)
 		return NULL;
 
@@ -3661,7 +3661,7 @@ find_stream_tree_key(stream_t *strm)
 	AVL_IX_REC *pkey;
 	stream_t *t_strm;
 
-	pkey = tpp_avlkey_create(AVL_streams, &strm->dest_addr);
+	pkey = avlkey_create(AVL_streams, &strm->dest_addr);
 	if (pkey == NULL) {
 		sprintf(tpp_get_logbuf(), "Out of memory allocating avlkey for sd=%u", strm->sd);
 		tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
@@ -4239,7 +4239,7 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx)
 			/* go past the header and point to the list of addresses following it */
 			addrs = (tpp_addr_t *) (((char *) data) + sizeof(tpp_leave_pkt_hdr_t));
 			for(i = 0; i < hdr->num_addrs; i++) {
-				if ((pkey = tpp_avlkey_create(AVL_streams, &addrs[i]))) {
+				if ((pkey = avlkey_create(AVL_streams, &addrs[i]))) {
 
 					/*
 					 * An avl tree, that allows duplicates, keeps nodes with same

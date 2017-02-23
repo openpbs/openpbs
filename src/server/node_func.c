@@ -45,7 +45,7 @@
  *	initialize_pbsnode - Initialize a new pbs node structure
  *
  * Included functions are:
- *	find_nodehbyname()   	-     given a node host name, search pbsndlist
+ *	find_nodebyname()   	-     given a node host name, search pbsndlist
  * 	save_characteristic() 	- save the the characteristics of the node along with
  *							the address of the node
  * 	chk_characteristic() 	-  check for changes to the node's set of
@@ -148,6 +148,7 @@
 #include "net_connect.h"
 #include "cmds.h"
 #include "pbs_license.h"
+#include "avltree.h"
 #if !defined(H_ERRNO_DECLARED) && !defined(WIN32)
 extern int h_errno;
 #endif
@@ -167,6 +168,9 @@ extern unsigned int pbs_rm_port;
 extern mominfo_time_t  mominfo_time;
 extern char	*resc_in_err;
 extern char	server_host[];
+extern AVL_IX_DESC *node_tree;
+extern int write_single_node_mom_attr(struct pbsnode *np);
+static AVL_IX_DESC *momfqdn_tree = NULL;
 
 extern struct python_interpreter_data  svr_interp_data;
 
@@ -182,7 +186,7 @@ static void	remove_node_topology(char *);
 
 /**
  * @brief
- * 		find_nodehbyname() - find a node host by its name
+ * 		find_nodebyname() - find a node host by its name
  * @param[in]	nodename	- node being searched
  *
  * @return	pbsnode
@@ -192,12 +196,7 @@ static void	remove_node_topology(char *);
 struct pbsnode	  *find_nodebyname(nodename)
 char *nodename;
 {
-	int		i;
-#ifdef	WIN32
-	short 		is_localhost = 0;
-#endif
 	char		*pslash;
-	struct pbsnode *pnode = (struct pbsnode *)0;
 
 	if (nodename == (char *)0)
 		return (struct pbsnode *)0;
@@ -205,39 +204,10 @@ char *nodename;
 		nodename++;	/* skip over leading paren */
 	if ((pslash = strchr(nodename, (int)'/')) != NULL)
 		*pslash = '\0';
-#ifdef WIN32
-	if (is_local_host(nodename))
-		is_localhost = 1;
-#endif
-	for (i=0; i<svr_totnodes; i++) {
-		if (pbsndlist[i]->nd_state & INUSE_DELETED)
-			continue;
-#ifdef WIN32
-		/*
-		 * Just check if the node being searched is a local host and
-		 * return the information corresponding to the local host.
-		 * Comparing host name is not enough, as local host can have
-		 * any of the following names:
-		 * "localhost"
-		 * "localhost.localdomain"
-		 * standard host name returned from hostname
-		 * command/gethostbyname() call.
-		 */
-		if (is_localhost == 1) {
-			if (is_local_host(pbsndlist[i]->nd_name)) {
-				pnode = pbsndlist[i];
-				break;
-			}
-		}
-#endif
-		if (strcasecmp(nodename, pbsndlist[i]->nd_name) == 0) {
-			pnode = pbsndlist[i];
-			break;
-		}
-	}
-	if (pslash)
-		*pslash = '/';	/* restore the slash */
-	return (pnode);
+	if (node_tree == NULL)
+		return NULL;
+
+	return ((struct pbsnode *) find_tree(node_tree, nodename));
 }
 
 
@@ -455,8 +425,6 @@ free_prop_list(struct prop *prop)
 	}
 }
 
-
-
 /**
  * @brief
  *		initialize_pbsnode - carries out initialization on a new
@@ -527,6 +495,10 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 
 	pnode->nd_attr[(int)ND_ATR_Sharing].at_val.at_long = (long)VNS_DFLT_SHARED;
 	pnode->nd_attr[(int)ND_ATR_Sharing].at_flags =
+		ATR_VFLAG_SET|ATR_VFLAG_DEFLT;
+
+	pnode->nd_attr[(int)ND_ATR_vnode_pool].at_val.at_long = 0;
+	pnode->nd_attr[(int)ND_ATR_vnode_pool].at_flags =
 		ATR_VFLAG_SET|ATR_VFLAG_DEFLT;
 
 	pat1 = &pnode->nd_attr[(int)ND_ATR_ResourceAvail];
@@ -682,6 +654,24 @@ remove_mom_from_vnodes(mominfo_t *pmom)
 }
 
 /**
+ * @brief Free a pbsnode structure
+ *
+ * @param[in] pnode - ptr to pnode to delete
+ *
+ * @par MT-safe: No
+ **/
+void
+free_pnode(struct pbsnode *pnode)
+{
+	if (pnode) {
+		(void)free(pnode->nd_name);
+		(void)free(pnode->nd_hostname);
+		(void)free(pnode->nd_moms);
+		(void)free(pnode); /* delete the pnode from memory */
+	}
+}
+
+/**
  * @brief
  * 		effective_node_delete - physically delete a vnode, including its
  *		pbsnode structure, associated attribute, etc and free the licenses.
@@ -697,7 +687,8 @@ effective_node_delete(struct pbsnode *pnode)
 	int		 i, j;
 	struct pbssubn  *psubn;
 	struct pbssubn  *pnxt;
-	mom_svrinfo_t *psvrmom;
+	mom_svrinfo_t	*psvrmom;
+	int		 iht;
 
 	psubn = pnode->nd_psn;
 	while (psubn) {
@@ -718,17 +709,24 @@ effective_node_delete(struct pbsnode *pnode)
 	} else if (pnode->nd_nummoms == 1) {
 		psvrmom = (mom_svrinfo_t *)(pnode->nd_moms[0]->mi_data);
 		if (psvrmom->msr_children[0] == pnode) {
-			/* this is the "natural" vnode for a Mom */
-			/* must mean for the Mom to go away also */
-			remove_mom_from_vnodes(pnode->nd_moms[0]);
-			/* then delete the Mom */
+			/* 
+			 * This is the "natural" vnode for a Mom
+			 * must mean for the Mom to go away also
+			 * first remove from any vnode pool
+			 */
+			remove_mom_from_pool(pnode->nd_moms[0]);
 
+			/* Then remove this MoM from any other vnode she manages */
+			remove_mom_from_vnodes(pnode->nd_moms[0]);
+
+			/* then delete the Mom */
 			for (j=0; psvrmom->msr_addrs[j]; j++) {
 				u_long	ipaddr = psvrmom->msr_addrs[j];
 				if (ipaddr)
 					delete_iplist_element(pbs_iplist, ipaddr);
 			}
 			delete_svrmom_entry(pnode->nd_moms[0]);
+			pnode->nd_moms[0] = NULL; /* since we deleted the mom */
 		} else {
 			/* unlink from mominfo of parent Moms */
 			remove_vnode_from_moms(pnode);
@@ -745,46 +743,32 @@ effective_node_delete(struct pbsnode *pnode)
 
 	remove_node_topology(pnode->nd_name);
 
-	/* Reset values in the order they are defined for pbsnode structure. */
-	(void)free(pnode->nd_name);
-	pnode->nd_name = NULL;
-	pnode->nd_nummoms = 0;
-	pnode->nd_nummslots = 0;
-	/* Don't alter pnode->nd_index here. */
-	(void)free(pnode->nd_hostname);
-	pnode->nd_hostname = NULL;
-	pnode->nd_psn = NULL;
-	pnode->nd_resvp = NULL;
-	pnode->nd_nsn = 0;
-	pnode->nd_nsnfree = 0;
-	pnode->nd_ncpus = 1;
-	pnode->nd_written = 0;
-	/* Set pnode->nd_state last by calling set_vnode_state() last. */
-	pnode->nd_ntype = NTYPE_PBS;
-	pnode->nd_accted = 0;
-	pnode->nd_pque = NULL;
-	pnode->nd_modified = 0;
-	for (i=0; i<(int)ND_ATR_LAST; i++)
-		clear_attr(&pnode->nd_attr[i], &node_attr_def[i]);
+	/* delete the node from the node tree as well as the node array */
+	if (node_tree != NULL) {
+		tree_add_del(node_tree, pnode->nd_name, NULL, TREE_OP_DEL);
+	}
 
-	set_vnode_state(pnode, INUSE_DELETED, Nd_State_Set);
+	for (iht=pnode->nd_arr_index + 1; iht < svr_totnodes; iht++) {
+		pbsndlist[iht - 1] = pbsndlist[iht];
+		/* adjust the arr_index since we are coalescing elements */
+		pbsndlist[iht - 1]->nd_arr_index--;
+	}
+	svr_totnodes--;
+	free_pnode(pnode);
 }
-
-
 
 /**
  * @brief
- *		setup_notification -  Sets up the  mechanism for notifying
- *			      other members of the server's node
- *			      pool that a new node was added manually
- *			      via qmgr.  Actual notification occurs some
- *			      time later through the ping_nodes mechanism
+ *	setup_notification -  Sets up the  mechanism for notifying
+ *	other members of the server's node pool that a new node was added
+ *	manually via qmgr.  Actual notification occurs some time later through
+ *	the ping_nodes mechanism.
+ *	The IS_CLUSTER_ADDRS2 message is only sent to the existing Moms.
  * @see
  * 		mgr_node_create
  *
  * @return	void
  */
-
 void
 setup_notification()
 {
@@ -798,8 +782,7 @@ setup_notification()
 		set_vnode_state(pbsndlist[i], INUSE_DOWN, Nd_State_Or);
 		pbsndlist[i]->nd_attr[(int)ND_ATR_state].at_flags |= ATR_VFLAG_MODCACHE;
 		for (nmom = 0; nmom < pbsndlist[i]->nd_nummoms; ++nmom) {
-			((mom_svrinfo_t *)(pbsndlist[i]->nd_moms[nmom]->mi_data))->msr_state |= INUSE_NEEDS_HELLO_PING;
-			((mom_svrinfo_t *)(pbsndlist[i]->nd_moms[nmom]->mi_data))->msr_state |= INUSE_NEEDS_UPDATE;
+			((mom_svrinfo_t *)(pbsndlist[i]->nd_moms[nmom]->mi_data))->msr_state |= INUSE_NEED_ADDRS;
 		}
 	}
 }
@@ -869,10 +852,12 @@ static char *nodeerrtxt = "Node description file update failed";
 
 /**
  * @brief
- *		Static function to update all the nodes in the db, which have
- *		the NODE_UPDATE_OTHERS flag set. For each node, it also calls
+ *		Static function to update the specified mom in the db. If the
+ *		NODE_UPDATE_OTHERS flag is set: for each node, it also calls
  *		the "write_single_node_state" function to update the state and
- *		comment of the node.
+ *		comment of the node.  If the NODE_UPDATE_MOM flag is set, it
+ *		calls write_single_node_mom_attr to update the attribute of
+ *		the node.
  *
  *		We don't need to write the nodes in any particular order anymore. The
  *		nodes (while reading) will be read sorted on the nd_index column, which
@@ -881,72 +866,100 @@ static char *nodeerrtxt = "Node description file update failed";
  *		the nodes with multi moms are loaded later.
  *
  * @see
- * 		save_nodes_db
+ * 		save_nodes_db, save_nodes_db_inner
  *
  * @return	error code
  * @retval	-1 - Failure
- * @retval	- 0 - Success
+ * @retval	 0 - Success
  *
  */
 static int
-save_nodes_db_inner()
+save_nodes_db_mom(mominfo_t *pmom)
 {
 	struct pbsnode *np;
-	int i;
 	pbs_list_head wrtattr;
-	mominfo_t *pmom;
 	mom_svrinfo_t *psvrm;
-	int     isoff;
-	int     hascomment;
-	/* for each Mom ... */
+	int	isoff;
+	int	hascomment;
+	int	nchild;
 
 	CLEAR_HEAD(wrtattr);
 
+	if (pmom == NULL)
+		return -1;
+
+	psvrm = (mom_svrinfo_t *) pmom->mi_data;
+	for (nchild = 0; nchild < psvrm->msr_numvnds; ++nchild) {
+		np = psvrm->msr_children[nchild];
+		if (np == NULL)
+			continue;
+
+		if (np->nd_state & INUSE_DELETED) {
+			/* this shouldn't happen, if it does, ignore it */
+			continue;
+		}
+
+		if (np->nd_modified & NODE_UPDATE_OTHERS) {
+			DBPRT(("Saving node %s into the database\n", np->nd_name))
+			if (node_save_db(np, NODE_SAVE_FULL) != 0) {
+				log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+					LOG_WARNING, "nodes", nodeerrtxt);
+				return (-1);
+			}
+			/*
+			 * node record were deleted
+			 * so add state and comments only if set
+			 */
+			isoff = np->nd_state &
+				(INUSE_OFFLINE | INUSE_OFFLINE_BY_MOM);
+
+			hascomment = (np->nd_attr[(int) ND_ATR_Comment].at_flags &
+				(ATR_VFLAG_SET | ATR_VFLAG_DEFLT)) == ATR_VFLAG_SET;
+
+			if (isoff)
+				np->nd_modified |= NODE_UPDATE_STATE;
+
+			if (hascomment)
+				np->nd_modified |= NODE_UPDATE_COMMENT;
+
+			write_single_node_state(np);
+		} else if (np->nd_modified & NODE_UPDATE_MOM) {
+			write_single_node_mom_attr(np);
+		}
+	}
+
+	return 0;
+}
+
+/**
+ * @brief
+ *		Static function to update all the nodes in the db
+ *
+ * @see
+ * 		save_nodes_db_mom
+ *
+ * @return	error code
+ * @retval	-1 - Failure
+ * @retval	 0 - Success
+ *
+ */
+static int
+save_nodes_db_inner(void)
+{
+	int i;
+	pbs_list_head wrtattr;
+	mominfo_t *pmom;
+
+	/* for each Mom ... */
+	CLEAR_HEAD(wrtattr);
+
 	for (i = 0; i < mominfo_array_size; ++i) {
-
-		int nchild;
-
 		pmom = mominfo_array[i];
 		if (pmom == NULL)
 			continue;
 
-		psvrm = (mom_svrinfo_t *) pmom->mi_data;
-		for (nchild = 0; nchild < psvrm->msr_numvnds; ++nchild) {
-			np = psvrm->msr_children[nchild];
-			if (np == NULL)
-				continue;
-
-			if (np->nd_state & INUSE_DELETED) {
-				/* this shouldn't happen, if it does, ignore it */
-				continue;
-			}
-
-			if (np->nd_modified & NODE_UPDATE_OTHERS) {
-				DBPRT(("Saving node %s into the database\n", np->nd_name))
-				if (node_save_db(np, 0) != 0) {
-					log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-						LOG_WARNING, "nodes", nodeerrtxt);
-					return (-1);
-				}
-				/*
-				 * node record were deleted
-				 * so add state and comments only if set
-				 */
-				isoff = np->nd_state &
-					(INUSE_OFFLINE | INUSE_OFFLINE_BY_MOM);
-
-				hascomment = (np->nd_attr[(int) ND_ATR_Comment].at_flags &
-					(ATR_VFLAG_SET | ATR_VFLAG_DEFLT)) == ATR_VFLAG_SET;
-
-				if (isoff)
-					np->nd_modified |= NODE_UPDATE_STATE;
-
-				if (hascomment)
-					np->nd_modified |= NODE_UPDATE_COMMENT;
-
-				write_single_node_state(np);
-			}
-		}
+		if(save_nodes_db_mom(pmom) == -1)
+			return -1;
 	}
 	return 0;
 }
@@ -962,14 +975,16 @@ save_nodes_db_inner()
  *  	Upon successful conclusion the transaction is commited.
  *
  * @param[in]	changemodtime - flag to change the mom modification time or not
+ * @param[in]	p - when p is set, save the specific mom to the db
+ *		    when p is unset, save all the nodes to the db
  *
  * @return	error code
  * @retval	-1 - Failure
- * @retval	- 0 - Success
+ * @retval	 0 - Success
  *
  */
 int
-save_nodes_db(int changemodtime)
+save_nodes_db(int changemodtime, void *p)
 {
 	struct pbsnode  *np;
 	pbs_db_mominfo_time_t mom_tm;
@@ -980,6 +995,7 @@ save_nodes_db(int changemodtime)
 	char         *rname;
 	resource_def *rscdef;
 	int	i;
+	mominfo_t    *pmom = (mominfo_t *) p;
 
 	DBPRT(("%s: entered\n", __func__))
 
@@ -1014,8 +1030,12 @@ save_nodes_db(int changemodtime)
 			goto db_err;
 	}
 
-	if (save_nodes_db_inner() == -1) {
-		goto db_err;
+	if (pmom) {
+		if (save_nodes_db_mom(pmom) == -1)
+			goto db_err;
+	} else {
+		if (save_nodes_db_inner() == -1)
+			goto db_err;
 	}
 
 	if (pbs_db_end_trx(svr_db_conn, PBS_DB_COMMIT) != 0)
@@ -1158,8 +1178,8 @@ struct pbssubn *create_subnode(struct pbsnode *pnode, struct pbssubn *lstsn)
  * 		svr_migrate_data_from_fs
  *
  * @param[in]	preprocess	- arg set for first call to just scan for old style properties
- * 								and create matching boolean resources. On second call,
- * 								"preprocess" is zero, makes the node entries.
+ * 					and create matching boolean resources. On second call,
+ * 					"preprocess" is zero, makes the node entries.
  * @return	void
  * @retval	-1	- error
  * @retval	0	- success
@@ -1580,6 +1600,16 @@ setup_nodes()
 			/* a vnode pointer will be returned */
 			if (np)
 				np->nd_moms[0]->mi_modtime = mom_modtime;
+		}
+		if (np) {
+			if (np->nd_attr[(int)ND_ATR_vnode_pool].at_val.at_long > 0) {
+				mominfo_t *pmom = np->nd_moms[0];
+				if (pmom &&
+				    (np == ((mom_svrinfo_t *)(pmom->mi_data))->msr_children[0])) {
+					/* natural vnode being recovered, add to pool */
+					(void)add_mom_to_pool(np->nd_moms[0]);
+				}
+			}
 		}
 	}
 
@@ -2249,14 +2279,15 @@ is_vnode_up(char *nodename)
 int
 decode_Mom_list(struct attribute *patr, char *name, char *rescn, char *val)
 {
-	int			rc;
-	int			ns;
-	int			i = 0;
-	char			*p;
-	char			buf[PBS_MAXHOSTNAME+1];
+	int			  rc;
+	int			  ns;
+	int			  i = 0;
+	char			 *p;
+	char			  buf[PBS_MAXHOSTNAME+1];
 	static char		**str_arr = NULL;
-	static long int		str_arr_len = 0;
-	attribute		new;
+	static long int		  str_arr_len = 0;
+	attribute		  new;
+	char			 *tmp_fqdn;
 
 	if ((val == (char *)0) || (strlen(val) == 0) || count_substrings(val, &ns)) {
 		node_attr_def[(int)ND_ATR_Mom].at_free(patr);
@@ -2289,13 +2320,34 @@ decode_Mom_list(struct attribute *patr, char *name, char *rescn, char *val)
 
 	for (i = 0; p=str_arr[i]; i++) {
 		clear_attr(&new, &node_attr_def[(int)ND_ATR_Mom]);
-		if (get_fullhostname(p, buf, (sizeof(buf) - 1)) != 0)
-			strncpy(buf, p, (sizeof(buf) - 1));
+		/* try the cache first */
+		tmp_fqdn = NULL;
+		if ((momfqdn_tree == NULL) || ((tmp_fqdn = (char *) find_tree(momfqdn_tree, p)) == NULL)) {
+			/* cache miss, do name resolution */
+			if (get_fullhostname(p, buf, (sizeof(buf) - 1)) != 0)
+				strncpy(buf, p, (sizeof(buf) - 1));
+		} else {
+			/* found it in the cache */
+			strncpy(buf, tmp_fqdn, (sizeof(buf) - 1));
+		}
 		rc = decode_arst(&new, ATTR_NODE_Mom, NULL, buf);
 		if (rc != 0)
 			continue;
 		set_arst(patr, &new, INCR);
 		free_arst(&new);
+		if (tmp_fqdn == NULL) {
+			/* there was a cache miss, add resolved name to cache.
+			 * Ignore all errors while adding to the cache.
+			 */
+			if (momfqdn_tree == NULL)
+				momfqdn_tree = create_tree(AVL_NO_DUP_KEYS, 0);
+
+			if (momfqdn_tree != NULL) {
+				if ((tmp_fqdn = strdup(buf)) != NULL)
+					tree_add_del(momfqdn_tree, p,
+						tmp_fqdn, TREE_OP_ADD);
+			}
+		}
 	}
 
 	return (0);
@@ -2780,4 +2832,51 @@ set_node_topology(attribute *new, void *pobj, int op)
 	}
 	return rc;
 #endif /* localmod 035 */
+}
+
+/**
+ * @brief chk_vnode_pool - action routine for a node's vnode_pool attribute
+ *      Does several things:
+ *      1. Verifies that there is only one Mom being pointed to
+ *      2. Verifies in the Mom structure that this is the zero-th node
+ *
+ * @param[in] new - ptr to attribute being modified with new value
+ * @param[in] pobj - ptr to parent object (pbs_node)
+ * @param[in] actmode - type of action: recovery, new node, or altering
+ *
+ * @return error code
+ * @retval PBSE_NONE  (zero) - on success
+ * @retval PBSE_*  (non zero) - on error
+ */
+int
+chk_vnode_pool (attribute *new, void *pobj, int actmode)
+{
+	static char     id[] = "chk_vnode_pool";
+	int             pool = -1;
+
+	switch (actmode) {
+		case ATR_ACTION_NEW:
+		case ATR_ACTION_RECOV:
+
+			pool = new->at_val.at_long;
+			sprintf(log_buffer, "vnode_pool value is = %d", pool);
+			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG, id, log_buffer);
+			if (pool <= 0) {
+				log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+					LOG_WARNING, id, "invalid vnode_pool provided");
+				return (PBSE_BADATVAL);
+			}
+			break;
+
+		case ATR_ACTION_ALTER:
+			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+				LOG_DEBUG, id, "Unsupported actions for vnode_pool");
+			return (PBSE_IVALREQ);
+
+		default:
+			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER,
+				LOG_DEBUG, id, "Unsupported actions for vnode_pool");
+			return (PBSE_INTERNAL);
+	}
+	return PBSE_NONE;
 }

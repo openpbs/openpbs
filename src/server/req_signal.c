@@ -522,7 +522,7 @@ void set_admin_suspend(job *pjob, int set_remove_nstate) {
 		}
 		chunk = parse_plus_spec_r(last, &last, &hasprn);
 	}
-	save_nodes_db(0);
+	save_nodes_db(0, NULL);
 	free_arst(&new);
 	free(execvncopy);
 }

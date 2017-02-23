@@ -334,6 +334,7 @@ extern "C" {
 #define ATTR_NODE_LicenseInfo	"license_info"
 #define ATTR_NODE_TopologyInfo	"topology_info"
 #define ATTR_NODE_MaintJobs	"maintenance_jobs"
+#define ATTR_NODE_VnodePool	"vnode_pool"
 
 /* Resource "attribute" names */
 #define ATTR_RESC_TYPE		"type"

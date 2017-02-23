@@ -932,8 +932,21 @@ is_request(int stream, int version)
 			next_sample_time = min_check_poll;
 			reply_hello4(stream);
 			internal_state_update = UPDATE_MOM_STATE;
-			state_to_server();
+			state_to_server(UPDATE_VNODES);
 			sprintf(log_buffer, "Hello from server at %s", netaddr(addr));
+			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER,  LOG_DEBUG,
+				msg_daemonname, log_buffer);
+			break;
+
+		case IS_HELLO_NO_INVENTORY:
+			DBPRT(("%s: IS_HELLO_NO_INVENTORY, state=0x%x stream=%d\n", __func__,
+				internal_state, stream))
+			server_stream = stream;         /* save stream to server */
+			next_sample_time = min_check_poll;
+			reply_hello4(stream);
+			internal_state_update = UPDATE_MOM_STATE;
+			state_to_server(UPDATE_MOM_ONLY);
+			sprintf(log_buffer, "Hello (no inventory required) from server at %s", netaddr(addr));
 			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER,  LOG_DEBUG,
 				msg_daemonname, log_buffer);
 			break;
@@ -1430,6 +1443,10 @@ hook_requests_to_server_err:
  * 	state_to_server() - if UPDATE_MOM_STATE is set, send state update message to
  *	the server.
  *
+ * @param[in]	what_to_update - defines what to update
+ * 		UPDATE_VNODES - update all the vnodes
+ *		UPDATE_MOM_ONLY - update only the info about the mom
+ *
  *	If we have placement set information to send, we use IS_UPDATE2;
  *	otherwise, we fall back to IS_UPDATE.
  *
@@ -1437,7 +1454,7 @@ hook_requests_to_server_err:
  *
  */
 void
-state_to_server(void)
+state_to_server(int what_to_update)
 {
 	int			i, ret;
 	int			use_UPDATE2;
@@ -1462,7 +1479,7 @@ state_to_server(void)
 
 	DBPRT(("updating state 0x%x to server\n", i))
 
-	if (vnlp != NULL)
+	if ((vnlp != NULL) && (what_to_update == UPDATE_VNODES))
 		use_UPDATE2 = 1;
 	else
 		use_UPDATE2 = 0;

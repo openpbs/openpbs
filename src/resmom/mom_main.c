@@ -9451,7 +9451,7 @@ main(int argc, char *argv[])
 		/* can be changed in check_busy() or query_adp() */
 
 		if (internal_state_update) {
-			state_to_server();
+			state_to_server(UPDATE_VNODES);
 
 			(void)send_hook_vnl(vnlp_from_hook);
 			/* send_hook_vnl() saves 'vnlp_from_hook' internally, */

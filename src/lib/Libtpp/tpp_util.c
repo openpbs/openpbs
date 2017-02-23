@@ -611,161 +611,6 @@ tpp_parse_hostname(char *full, int *port)
 
 /**
  * @brief
- *	Create an AVL key based on the string provided
- *
- * @param[in] - key - String to be used as the key
- *
- * @return	The AVL key
- * @retval	NULL - Failure (out of memory)
- * @retval	!NULL - Success - The AVL key
- *
- * @par Side Effects:
- *	None
- *
- * @par MT-safe: Yes
- *
- */
-AVL_IX_REC *
-tpp_avlkey_create(AVL_IX_DESC *tree, void *key)
-{
-	size_t keylen;
-	AVL_IX_REC *pkey;
-
-	if (tree->keylength != 0)
-		keylen = sizeof(AVL_IX_REC) - AVL_DEFAULTKEYLEN + tree->keylength;
-	else
-		keylen = sizeof(AVL_IX_REC) + strlen((char *) key) + 1;
-
-	pkey = calloc(1, keylen);
-	if (pkey == NULL)
-		return (NULL);
-
-	if (key != NULL) {
-		if (tree->keylength != 0)
-			memcpy(pkey->key, key, tree->keylength);
-		else
-			strcpy(pkey->key, (char *) key);
-	}
-
-	return (pkey);
-}
-
-/**
- * @brief
- *	Create an empty AVL tree
- *
- * @param[in] - dups - Whether duplicates are allowed or not
- *
- * @return	The AVL trees root
- * @retval	NULL - Failure (out of memory)
- * @retval	!NULL - Success - The AVL tree root
- *
- * @par Side Effects:
- *	None
- *
- * @par MT-safe: Yes
- *
- */
-AVL_IX_DESC *
-tpp_create_tree(int dups, int keylen)
-{
-	AVL_IX_DESC *AVL_p = NULL;
-
-	AVL_p = (AVL_IX_DESC *) malloc(sizeof(AVL_IX_DESC));
-	if (AVL_p == NULL)
-		return (NULL);
-
-	avl_create_index(AVL_p, dups, keylen);
-	return AVL_p;
-}
-
-/**
- * @brief
- *	Find a node from the AVL tree based on the supplied key
- *
- * @param[in] - root   - The root of the AVL tree to search
- * @param[in] - key - String to be used as the key
- *
- * @return	The data part of the node if found
- * @retval	NULL - Failure (no node found matching key)
- * @retval	!NULL - Success - The record pointer (data) from the node
- *
- * @par Side Effects:
- *	None
- *
- * @par MT-safe: Yes
- *
- */
-void *
-tpp_find_tree(AVL_IX_DESC *root, void *key)
-{
-	AVL_IX_REC *pkey;
-	void *p = NULL;
-
-	pkey = (AVL_IX_REC *) tpp_avlkey_create(root, key);
-	if (pkey == NULL)
-		return NULL;
-
-	/* find leaf in the leaf tree */
-	if (avl_find_key(pkey, root) == AVL_IX_OK)
-		p = pkey->recptr;
-
-	free(pkey);
-	return p;
-}
-
-/**
- * @brief
- *	Add or delete a key (and record) to a AVL tree
- *
- * @param[in] - root   - Root ptr identifying the AVL tree
- * @param[in] - key - String to be used as the key
- * @param[in] - data   - Data to add to the record (not required for delete)
- * @param[in] - op     - Operation to be performed
- *
- * @return	Error code
- * @retval	-1    - Failure
- * @retval	 0    - Success
- * @retval	 1    - Not found (in case of delete)
- *
- * @par Side Effects:
- *	None
- *
- * @par MT-safe: Yes
- *
- */
-int
-tpp_tree_add_del(AVL_IX_DESC *root, void *key, void *data, int op)
-{
-	AVL_IX_REC *pkey;
-	int rc = 0;
-
-	pkey = (AVL_IX_REC *) tpp_avlkey_create(root, key);
-	if (pkey == NULL) {
-		tpp_log_func(LOG_CRIT, __func__, "Out of memory creating avlkey");
-		return -1;
-	}
-
-	pkey->recptr = data;
-	if (op == TPP_OP_ADD) {
-		rc = avl_add_key((AVL_IX_REC *) pkey, (AVL_IX_DESC *) root);
-		if (rc != AVL_IX_OK)
-			rc = -1;
-		else
-			rc = 0;
-	} else {
-		rc = avl_delete_key(pkey, root);
-		if (rc != AVL_IX_OK)
-			rc = 1;
-		else
-			rc = 0;
-	}
-	free(pkey);
-	return rc;
-}
-
-/**
- * @brief
  *	Enqueue a node to a queue
  *
  * Linked List is from right to left
@@ -1555,7 +1400,7 @@ tpp_validate_hdr(int tfd, char *pkt_start)
 int
 tpp_addr_cache_init()
 {
-	AVL_addrcache = tpp_create_tree(AVL_NO_DUP_KEYS, 0);
+	AVL_addrcache = create_tree(AVL_NO_DUP_KEYS, 0);
 	if (AVL_addrcache == NULL)
 		return -1;
 	tpp_init_lock(&addrcache_lock);
@@ -1586,12 +1431,12 @@ tpp_lookup_addr_cache(char *host, int *count)
 	*count = 0;
 
 	tpp_lock(&addrcache_lock);
-	rec = (struct cache_rec *) tpp_find_tree(AVL_addrcache, host);
+	rec = (struct cache_rec *) find_tree(AVL_addrcache, host);
 
 	if (rec) {
 		if ((now - rec->update_time) > TPP_CACHE_EXPIRY_SECS) {
 			/* delete the expired record from cache */
-			if (tpp_tree_add_del(AVL_addrcache, host, rec, TPP_OP_DEL) == 0) {
+			if (tree_add_del(AVL_addrcache, host, rec, TREE_OP_DEL) == 0) {
 				free(rec->addrs);
 				free(rec);
 			}
@@ -1665,7 +1510,7 @@ tpp_set_addr_cache(char *host, tpp_addr_t *addrs, int count)
 	rec->update_time = time(0); /* record the update time */
 
 	tpp_lock(&addrcache_lock);
-	if ((rc = tpp_tree_add_del(AVL_addrcache, host, rec, TPP_OP_ADD)) == -1) {
+	if ((rc = tree_add_del(AVL_addrcache, host, rec, TREE_OP_ADD)) == -1) {
 		free(rec->addrs);
 		free(rec);
 	}

@@ -90,10 +90,6 @@ extern "C" {
 
 #endif
 
-/* define macros for delete and add operations */
-#define	TPP_OP_ADD 0
-#define TPP_OP_DEL 1
-
 #define MAX_SEQ_NUMBER          (UINT_MAX - 10)
 #define UNINITIALIZED_INT       (MAX_SEQ_NUMBER + 1)
 #define TPP_LOGBUF_SZ        	1024
@@ -287,7 +283,6 @@ enum TPP_MSG_TYPES {
 #define TPP_CMD_WAKEUP          11
 
 #define TPP_DEF_ROUTER_PORT     17001
-#define MAX_AVLKEY_LEN          100
 #define TPP_SCRATCHSIZE         8192
 
 #define TPP_ROUTER_STATE_DISCONNECTED	0   /* Leaf not connected to router */
@@ -408,11 +403,6 @@ int tpp_ready_fds(int *sds, int len);
 void *tpp_get_user_data(int sd);
 int tpp_set_user_data(int sd, void *user_data);
 char* convert_to_ip_port(char *host_port, int port);
-
-int tpp_tree_add_del(AVL_IX_DESC *root, void *key, void *data, int op);
-void *tpp_find_tree(AVL_IX_DESC *root, void *key);
-AVL_IX_DESC *tpp_create_tree(int dups, int keylen);
-AVL_IX_REC *tpp_avlkey_create(AVL_IX_DESC *tree, void *key);
 
 int tpp_init_tls_key(void);
 tpp_tls *tpp_get_tls(void);

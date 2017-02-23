@@ -336,6 +336,15 @@ node_save_db(struct pbsnode *pnode, int mode)
 	obj.pbs_db_obj_type = PBS_DB_NODE;
 	obj.pbs_db_un.pbs_db_node = &dbnode;
 
+	if (mode == NODE_SAVE_QUICK) {
+		/* quick save - save only the node row
+		 * no deletion, no attributes to update
+		 */
+		if (pbs_db_update_obj(conn, &obj) != 0)
+			goto db_err;
+		return (0);
+	}
+
 	if (pbs_db_begin_trx(conn, 0, 0) !=0)
 		goto db_err;
 

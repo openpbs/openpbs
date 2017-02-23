@@ -94,6 +94,17 @@ extern int	avl_next_key(AVL_IX_REC *pe, AVL_IX_DESC *pix);
 extern int	avl_prev_key(AVL_IX_REC *pe, AVL_IX_DESC *pix);
 extern int	avl_find_exact(AVL_IX_REC *pe, AVL_IX_DESC *pix);
 
+/* Added by Altair */
+int tree_add_del(AVL_IX_DESC *root, void *key, void *data, int op);
+void *find_tree(AVL_IX_DESC *root, void *key);
+AVL_IX_DESC *create_tree(int dups, int keylen);
+AVL_IX_REC *avlkey_create(AVL_IX_DESC *tree, void *key);
+
+/* Operation types for addition/deletion from AVL tree */
+#define TREE_OP_ADD	0
+#define TREE_OP_DEL	1
+
+
 #ifdef  __cplusplus
 }
 #endif

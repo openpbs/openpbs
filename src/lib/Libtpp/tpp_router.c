@@ -149,14 +149,14 @@ alloc_router(char *name, tpp_addr_t *address)
 	}
 
 	/* initialize the routers leaf tree */
-	r->AVL_my_leaves = tpp_create_tree(AVL_NO_DUP_KEYS, sizeof(tpp_addr_t));
+	r->AVL_my_leaves = create_tree(AVL_NO_DUP_KEYS, sizeof(tpp_addr_t));
 	if (r->AVL_my_leaves == NULL) {
 		tpp_log_func(LOG_CRIT, __func__, "Failed to create AVL tree for my leaves");
 		free_router(r);
 		return NULL;
 	}
 
-	if (tpp_find_tree(AVL_routers, &r->router_addr)) {
+	if (find_tree(AVL_routers, &r->router_addr)) {
 		snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ,
 				 "Duplicate router %s in router list", r->router_name);
 		tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
@@ -164,7 +164,7 @@ alloc_router(char *name, tpp_addr_t *address)
 		return NULL;
 	}
 
-	if (tpp_tree_add_del(AVL_routers, &r->router_addr, r, TPP_OP_ADD) != 0) {
+	if (tree_add_del(AVL_routers, &r->router_addr, r, TREE_OP_ADD) != 0) {
 		tpp_log_func(LOG_CRIT, __func__, "Out of memory adding to avltree");
 		free_router(r);
 		return NULL;
@@ -222,7 +222,7 @@ send_leaves_to_router(tpp_router_t *parent, tpp_router_t *target)
 		void *addrs;
 	} *lf_data = NULL;
 
-	pkey = tpp_avlkey_create(parent->AVL_my_leaves, NULL);
+	pkey = avlkey_create(parent->AVL_my_leaves, NULL);
 	if (pkey == NULL) {
 		tpp_log_func(LOG_CRIT, __func__, "Out of memory allocating avlkey");
 		goto err;
@@ -334,7 +334,7 @@ broadcast_to_my_routers(tpp_chunk_t *chunks, int count, int origin_tfd)
 	int max_cons = 0;
 	int i;
 
-	pkey = tpp_avlkey_create(AVL_routers, NULL);
+	pkey = avlkey_create(AVL_routers, NULL);
 	if (pkey == NULL) {
 		tpp_unlock(&router_lock);
 		tpp_log_func(LOG_CRIT, __func__, "Out of memory creating avlkey");
@@ -410,7 +410,7 @@ broadcast_to_my_leaves(tpp_chunk_t *chunks, int count, int origin_tfd, int type)
 	if (!list)
 		return -1;
 
-	pkey = tpp_avlkey_create(AVL_traverse_tree, NULL);
+	pkey = avlkey_create(AVL_traverse_tree, NULL);
 	if (pkey == NULL) {
 		free(list);
 		return -1;
@@ -665,7 +665,7 @@ router_close_handler_inner(int tfd, int error, void *c, int hop)
 		}
 
 		/* we had only the first address record stored in the my_leaves tree */
-		rc = tpp_tree_add_del(r->AVL_my_leaves, &l->leaf_addrs[0], NULL, TPP_OP_DEL);
+		rc = tree_add_del(r->AVL_my_leaves, &l->leaf_addrs[0], NULL, TREE_OP_DEL);
 		if (rc != 0) {
 			snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "tfd=%d, Failed to delete address from my_leaves %s", tfd,
 						tpp_netaddr(&l->leaf_addrs[0]));
@@ -688,7 +688,7 @@ router_close_handler_inner(int tfd, int error, void *c, int hop)
 
 		/* delete all of this leaf's addresses from the search tree */
 		for (i = 0; i < l->num_addrs; i++) {
-			rc = tpp_tree_add_del(AVL_cluster_leaves, &l->leaf_addrs[i], NULL, TPP_OP_DEL);
+			rc = tree_add_del(AVL_cluster_leaves, &l->leaf_addrs[i], NULL, TREE_OP_DEL);
 			if (rc != 0) {
 				snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "tfd=%d, Failed to delete address %s from cluster leaves", tfd, tpp_netaddr(&l->leaf_addrs[i]));
 				tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
@@ -702,7 +702,7 @@ router_close_handler_inner(int tfd, int error, void *c, int hop)
 			 * if it is a notification leaf,
 			 * then remove from this tree also
 			 */
-			tpp_tree_add_del(AVL_my_leaves_notify, &l->leaf_addrs[0], NULL, TPP_OP_DEL);
+			tree_add_del(AVL_my_leaves_notify, &l->leaf_addrs[0], NULL, TREE_OP_DEL);
 		}
 
 		tpp_unlock(&router_lock);
@@ -739,7 +739,7 @@ router_close_handler_inner(int tfd, int error, void *c, int hop)
 
 			tpp_lock(&router_lock);
 
-			pkey = tpp_avlkey_create(r->AVL_my_leaves, NULL);
+			pkey = avlkey_create(r->AVL_my_leaves, NULL);
 			if (pkey == NULL) {
 				tpp_unlock(&router_lock);
 				return -1;
@@ -783,11 +783,11 @@ router_close_handler_inner(int tfd, int error, void *c, int hop)
 				l = (tpp_leaf_t *) TPP_QUE_DATA(n);
 
 				if (l->leaf_type  == TPP_LEAF_NODE_LISTEN) {
-					tpp_tree_add_del(AVL_my_leaves_notify, &l->leaf_addrs[0], NULL, TPP_OP_DEL);
+					tree_add_del(AVL_my_leaves_notify, &l->leaf_addrs[0], NULL, TREE_OP_DEL);
 				}
 
 				for (i = 0; i < l->num_addrs; i++) {
-					rc = tpp_tree_add_del(AVL_cluster_leaves, &l->leaf_addrs[i], NULL, TPP_OP_DEL);
+					rc = tree_add_del(AVL_cluster_leaves, &l->leaf_addrs[i], NULL, TREE_OP_DEL);
 					if (rc != 0) {
 						snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "tfd=%d, Failed to delete address %s",
 									tfd, tpp_netaddr(&l->leaf_addrs[i]));
@@ -807,7 +807,7 @@ router_close_handler_inner(int tfd, int error, void *c, int hop)
 			r->AVL_my_leaves = NULL;
 			if (r->initiator == 1) {
 				/* initialize the routers leaf tree */
-				r->AVL_my_leaves = tpp_create_tree(AVL_NO_DUP_KEYS, sizeof(tpp_addr_t));
+				r->AVL_my_leaves = create_tree(AVL_NO_DUP_KEYS, sizeof(tpp_addr_t));
 				if (r->AVL_my_leaves == NULL) {
 					tpp_log_func(LOG_CRIT, __func__, "Failed to create AVL tree for my leaves");
 					free_router(r);
@@ -891,7 +891,7 @@ router_close_handler_inner(int tfd, int error, void *c, int hop)
 			 * ie, remove from AVL_routers tree
 			 **/
 			tpp_lock(&router_lock);
-			tpp_tree_add_del(AVL_routers, &r->router_addr, NULL, TPP_OP_DEL);
+			tree_add_del(AVL_routers, &r->router_addr, NULL, TREE_OP_DEL);
 			tpp_unlock(&router_lock);
 
 			/*
@@ -1160,7 +1160,7 @@ router_pkt_handler(int tfd, void *data, int len, void *c)
 				tpp_lock(&router_lock);
 
 				/* find associated router */
-				r = (tpp_router_t *) tpp_find_tree(AVL_routers, &connected_host);
+				r = (tpp_router_t *) find_tree(AVL_routers, &connected_host);
 				if (r) {
 					if (r->conn_fd != -1) {
 						/* this router had not yet disconnected,
@@ -1236,7 +1236,7 @@ router_pkt_handler(int tfd, void *data, int len, void *c)
 					/* must be a router forwarding leaves from its database to me */
 
 					/* find associated router */
-					r = (tpp_router_t *) tpp_find_tree(AVL_routers, &connected_host);
+					r = (tpp_router_t *) find_tree(AVL_routers, &connected_host);
 					if (!r) {
 						char rname[TPP_MAXADDRLEN + 1];
 
@@ -1251,7 +1251,7 @@ router_pkt_handler(int tfd, void *data, int len, void *c)
 
 				/* find the leaf */
 				found = 1;
-				l = (tpp_leaf_t *) tpp_find_tree(AVL_cluster_leaves, &addrs[0]);
+				l = (tpp_leaf_t *) find_tree(AVL_cluster_leaves, &addrs[0]);
 				if (!l) {
 					found = 0;
 					l = (tpp_leaf_t *) calloc(1, sizeof(tpp_leaf_t));
@@ -1325,7 +1325,7 @@ router_pkt_handler(int tfd, void *data, int len, void *c)
 					return 0;
 				}
 
-				if (tpp_tree_add_del(r->AVL_my_leaves, &l->leaf_addrs[0], l, TPP_OP_ADD) != 0) {
+				if (tree_add_del(r->AVL_my_leaves, &l->leaf_addrs[0], l, TREE_OP_ADD) != 0) {
 					sprintf(tpp_get_logbuf(), "tfd=%d, Failed to add address %s to my-leaves tree", tfd,
 							tpp_netaddr(&l->leaf_addrs[0]));
 					tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
@@ -1338,7 +1338,7 @@ router_pkt_handler(int tfd, void *data, int len, void *c)
 					 * since this is the primary "routing table"
 					 */
 					for (i = 0; i < l->num_addrs; i++) {
-						if (tpp_tree_add_del(AVL_cluster_leaves, &l->leaf_addrs[i], l, TPP_OP_ADD) != 0) {
+						if (tree_add_del(AVL_cluster_leaves, &l->leaf_addrs[i], l, TREE_OP_ADD) != 0) {
 							sprintf(tpp_get_logbuf(), "tfd=%d, Failed to add address %s to cluster-leaves tree",
 									tfd, tpp_netaddr(&l->leaf_addrs[i]));
 							tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
@@ -1350,7 +1350,7 @@ router_pkt_handler(int tfd, void *data, int len, void *c)
 
 				if (r == this_router) {
 					if (l->leaf_type == TPP_LEAF_NODE_LISTEN) {
-						if (tpp_tree_add_del(AVL_my_leaves_notify, &l->leaf_addrs[0], l, TPP_OP_ADD) != 0) {
+						if (tree_add_del(AVL_my_leaves_notify, &l->leaf_addrs[0], l, TREE_OP_ADD) != 0) {
 							sprintf(tpp_get_logbuf(), "tfd=%d, Failed to add address %s to notify-leaves tree",
 									tfd, tpp_netaddr(&l->leaf_addrs[0]));
 							tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
@@ -1428,7 +1428,7 @@ router_pkt_handler(int tfd, void *data, int len, void *c)
 				tpp_lock(&router_lock);
 
 				/* find the leaf context to pass to close handler */
-				l = tpp_find_tree(AVL_cluster_leaves, src_addr);
+				l = find_tree(AVL_cluster_leaves, src_addr);
 				if (!l) {
 					TPP_DBPRT(("No leaf %s found", tpp_netaddr(src_addr)));
 					tpp_unlock(&router_lock);
@@ -1534,7 +1534,7 @@ router_pkt_handler(int tfd, void *data, int len, void *c)
 				TPP_DBPRT(("MCAST data on fd=%d", src_sd));
 
 				tpp_lock(&router_lock);
-				l = tpp_find_tree(AVL_cluster_leaves, dest_host);
+				l = find_tree(AVL_cluster_leaves, dest_host);
 				if (l == NULL) {
 					char msg[TPP_LOGBUF_SZ];
 					tpp_unlock(&router_lock);
@@ -1662,7 +1662,7 @@ router_pkt_handler(int tfd, void *data, int len, void *c)
 
 			tpp_lock(&router_lock);
 
-			l = tpp_find_tree(AVL_cluster_leaves, dest_host);
+			l = find_tree(AVL_cluster_leaves, dest_host);
 			if (l == NULL) {
 				char msg[TPP_LOGBUF_SZ];
 				tpp_unlock(&router_lock);
@@ -1725,7 +1725,7 @@ router_pkt_handler(int tfd, void *data, int len, void *c)
 				/* find the fd to forward to via the associated router */
 				tpp_lock(&router_lock);
 
-				l = tpp_find_tree(AVL_cluster_leaves, dest_host);
+				l = find_tree(AVL_cluster_leaves, dest_host);
 				if (l == NULL) {
 					tpp_unlock(&router_lock);
 					return 0;
@@ -1994,19 +1994,19 @@ tpp_init_router(struct tpp_config *cnf)
 
 	tpp_init_lock(&router_lock);
 
-	AVL_routers = tpp_create_tree(AVL_NO_DUP_KEYS, sizeof(tpp_addr_t));
+	AVL_routers = create_tree(AVL_NO_DUP_KEYS, sizeof(tpp_addr_t));
 	if (AVL_routers == NULL) {
 		tpp_log_func(LOG_CRIT, __func__, "Failed to create AVL tree for pbs comms");
 		return -1;
 	}
 
-	AVL_cluster_leaves = tpp_create_tree(AVL_NO_DUP_KEYS, sizeof(tpp_addr_t));
+	AVL_cluster_leaves = create_tree(AVL_NO_DUP_KEYS, sizeof(tpp_addr_t));
 	if (AVL_cluster_leaves == NULL) {
 		tpp_log_func(LOG_CRIT, __func__, "Failed to create AVL tree for cluster leaves");
 		return -1;
 	}
 
-	AVL_my_leaves_notify = tpp_create_tree(AVL_NO_DUP_KEYS, sizeof(tpp_addr_t));
+	AVL_my_leaves_notify = create_tree(AVL_NO_DUP_KEYS, sizeof(tpp_addr_t));
 	if (AVL_my_leaves_notify == NULL) {
 		tpp_log_func(LOG_CRIT, __func__, "Failed to create AVL tree for leaves requiring notification");
 		return -1;

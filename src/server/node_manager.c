@@ -214,6 +214,7 @@ extern int   have_blue_gene_nodes;
 extern char *msg_noloopbackif;
 extern char *msg_job_end_stat;
 extern char *msg_daemonname;
+extern char *msg_new_inventory_mom;
 extern pbs_list_head	svr_allhooks;
 
 extern void is_vnode_prov_done(char *); /* for provisioning */
@@ -221,9 +222,11 @@ extern void free_prov_vnode(struct pbsnode *);
 extern void fail_vnode_job(struct prov_vnode_info *, int);
 extern struct prov_tracking * get_prov_record_by_vnode(char *);
 extern int parse_prov_vnode(char *,exec_vnode_listtype *);
+extern vnpool_mom_t *vnode_pool_mom_list;
 
 static void check_and_set_multivnode(struct pbsnode *);
 static void propagate_socket_licensing(mominfo_t *);
+int write_single_node_mom_attr(struct pbsnode *np);
 void stream_eof(int stream, int ret, char *msg);
 
 static char *hook_privilege = "Not allowed to update vnodes or to request scheduler restart cycle, if run as a non-manager/operator user %s@%s";
@@ -999,6 +1002,14 @@ momptr_down(mominfo_t *pmom, char *why)
 
 	}
 
+	/* If this Mom is in a vnode pool and is the inventory Mom for that pool */
+	/* remove her from that role and if another Mom in the pool is up make   */
+	/* that one the new inventory Mom */
+
+	if (psvrmom->msr_vnode_pool != 0) {
+		reset_pool_inventory_mom(pmom);
+	}
+
 	if (((sec=node_fail_requeue) != 0) &&
 		(setwktask != 0) && (psvrmom->msr_wktask == NULL)) {
 
@@ -1015,6 +1026,46 @@ momptr_down(mominfo_t *pmom, char *why)
 }
 
 /**
+ * @brief Send the IS_CLUSTER_ADDRS2 message to Mom so she has the
+ *      latest list of IP addresses of the all the Moms in the complex.
+ *
+ * @param[in] stream - the open stream to the Mom
+ *
+ * @return int
+ * @retval DIS_SUCCESS (0) for success
+ * @retval != 0 otherwise.
+ */
+int
+send_ip_addrs_to_mom(int stream)
+{
+	int		j;
+	int		ret;
+	unsigned long	ipaddr;
+
+	ret = is_compose(stream, IS_CLUSTER_ADDRS2);
+	if (ret != DIS_SUCCESS)
+		return (ret);
+	for (j = 0; j < pbs_iplist->li_nrowsused; j++) {
+
+		ipaddr = IPLIST_GET_LOW(pbs_iplist, j);
+		DBPRT(("%s: ip %d\t%ld.%ld.%ld.%ld\n", __func__, j,
+			(ipaddr & 0xff000000) >> 24,
+			(ipaddr & 0x00ff0000) >> 16,
+			(ipaddr & 0x0000ff00) >> 8,
+			(ipaddr & 0x000000ff)))
+
+		DBPRT(("%s: depth %d\n", __func__, IPLIST_GET_HIGH(pbs_iplist, j)))
+		ret = diswul(stream, IPLIST_GET_LOW(pbs_iplist, j));
+		if (ret != DIS_SUCCESS)
+			return (ret);
+		ret = diswul(stream, IPLIST_GET_HIGH(pbs_iplist, j));
+		if (ret != DIS_SUCCESS)
+			return (ret);
+	}
+	return (rpp_flush(stream));
+}
+
+/**
  * @brief Find out whether a mom needs a ping, and if so,
  * 		which message to send (IS_HELLO, or IS_NULL)
  *
@@ -1024,6 +1075,8 @@ momptr_down(mominfo_t *pmom, char *why)
  *
  * @return - The msg to send to the mom
  * @retval  IS_HELLO - mom needs a hello message
+ * @retval  IS_HELLO_NO_INVENTORY - mom needs a hello message telling
+ * 		her not to report her inventory
  * @retval  IS_NULL  - mom has established communications, send only a heartbeat (IS_NULL)
  * @retval  -1       - mom does not need to be sent any ping messages yet
  *
@@ -1038,6 +1091,7 @@ mom_ping_need(mominfo_t *pmom, int force_hello)
 	int             do_ping = 0;
 	int             nchild;
 	int             com;
+	vnpool_mom_t	*ppool;
 
 	if (psvrmom->msr_state & INUSE_INIT) {
 		/* Mom has been sent IS_CLUSTER_KEY/IS_HOST_TO_VNODE */
@@ -1113,15 +1167,32 @@ mom_ping_need(mominfo_t *pmom, int force_hello)
 
 	if (psvrmom->msr_state & INUSE_NEEDS_HELLO_PING)
 		com = IS_HELLO;
-
-	if (psvrmom->msr_state & INUSE_NEEDS_UPDATE) {
-		com = IS_HELLO;
-		/* Set INUSE_NEEDS_HELLO_PING since we are doing a hello */
-		psvrmom->msr_state |= INUSE_NEEDS_HELLO_PING;
-
-		/* reset this flag since we are now all set to fire a UPDATE to the mom */
-		psvrmom->msr_state &= ~INUSE_NEEDS_UPDATE;
+	else if (psvrmom->msr_state & INUSE_NEED_ADDRS) {
+		/* just need to send IP_CLUSTER_ADDRS2 */
+		if (send_ip_addrs_to_mom(psvrmom->msr_stream) != DIS_SUCCESS) {
+			sprintf(log_buffer, "Unable to send IP addresses on stream %d",
+				psvrmom->msr_stream);
+			log_err(-1, __func__, log_buffer);
+		}
+		psvrmom->msr_stream &= ~INUSE_NEED_ADDRS;
 	}
+
+	if (com == IS_HELLO) {
+		/* know that a HELLO is needed, but with or without inventory? */
+		if (psvrmom->msr_vnode_pool != 0) {
+			ppool = find_vnode_pool(pmom);
+			if (ppool != NULL) {
+				/* We found the vnode_pool matching this mom.
+				 * Now check if she's the inventory_mom
+				 */
+				if (ppool->vnpm_inventory_mom != pmom) {
+					/* not the "one" Mom that sends inventory */
+					com = IS_HELLO_NO_INVENTORY;
+				}
+			}
+		}
+	}
+
 	return com;
 }
 
@@ -1138,7 +1209,8 @@ ping_a_mom(mominfo_t *pmom, int force_hello)
 {
 	mom_svrinfo_t *psvrmom = (mom_svrinfo_t *)(pmom->mi_data);
 	struct	sockaddr_in	*addr;
-	int	ret, com;
+	int	ret;
+	int	com;
 
 	com = mom_ping_need(pmom, force_hello);
 	if (com == -1)
@@ -1275,24 +1347,28 @@ err:
  * @param[in] force_hello - Whether to force a HELLO message to this mom
  * @param[in] mtfd_ishello - The TPP channel to add moms as members for those that need IS_HELLO
  * @param[in] mtfd_isnull  - The TPP channel to add moms as members for those that need IS_NULL
+ * @param[in] mtfd_ishello_no_inv - The TPP channel to add moms as members for
+ *		those that need IS_HELLO_NO_INVENTORY
  *
  * @see ping_nodes
  * @see ping_flush_mcast
  *
  */
 static void
-ping_a_mom_mcast(mominfo_t *pmom, int force_hello, int mtfd_ishello, int mtfd_isnull)
+ping_a_mom_mcast(mominfo_t *pmom, int force_hello, int mtfd_ishello, int mtfd_isnull, int mtfd_ishello_no_inv)
 {
 	mom_svrinfo_t *psvrmom = (mom_svrinfo_t *)(pmom->mi_data);
-	int	com;
 	int rc;
+	int com;
 
 	com = mom_ping_need(pmom, force_hello);
 	if (com == -1)
 		return; /* this mom does not need a ping */
 
-	if (com == IS_NULL)
+	if (com == IS_NULL) 
 		rc = tpp_mcast_add_strm(mtfd_isnull, psvrmom->msr_stream);
+	else if (com == IS_HELLO_NO_INVENTORY)
+		rc = tpp_mcast_add_strm(mtfd_ishello_no_inv, psvrmom->msr_stream);
 	else
 		rc = tpp_mcast_add_strm(mtfd_ishello, psvrmom->msr_stream);
 
@@ -2715,6 +2791,8 @@ ping_nodes(struct work_task *ptask)
 	int	i;
 	int	mtfd_ishello;
 	int	mtfd_isnull;
+	int	mtfd_ishello_no_inv;
+	int	com;
 
 	DOID("ping_nodes")
 	DBPRT(("%s: entered\n", id))
@@ -2740,21 +2818,35 @@ ping_nodes(struct work_task *ptask)
 				return;
 			}
 
+			/* open the tpp mcast channel here */
+			if ((mtfd_ishello_no_inv = tpp_mcast_open()) == -1) {
+				tpp_mcast_close(mtfd_ishello);
+				tpp_mcast_close(mtfd_isnull);
+				log_err(-1, __func__, "Failed to open TPP mcast channel for mom pings");
+				return;
+			}
+
 			for (i=0; i<mominfo_array_size; i++) {
-				if (mominfo_array[i])
-					ping_a_mom_mcast(mominfo_array[i], 0, mtfd_ishello, mtfd_isnull);
+				if (mominfo_array[i]) {
+					ping_a_mom_mcast(mominfo_array[i], 0,
+						mtfd_ishello, mtfd_isnull,
+						mtfd_ishello_no_inv);
+				}
 			}
 
 			ping_flush_mcast(mtfd_ishello, IS_HELLO);
+			ping_flush_mcast(mtfd_ishello_no_inv, IS_HELLO_NO_INVENTORY);
 			ping_flush_mcast(mtfd_isnull, IS_NULL);
 
 			tpp_mcast_close(mtfd_ishello);
 			tpp_mcast_close(mtfd_isnull);
+			tpp_mcast_close(mtfd_ishello_no_inv);
 		}
 	} else {
 		for (i = 0; i < mominfo_array_size; i++) {
-			if (mominfo_array[i])
+			if (mominfo_array[i]) {
 				ping_a_mom(mominfo_array[i], 0);
+			}
 		}
 	}
 
@@ -3013,6 +3105,9 @@ cross_link_mom_vnode(struct pbsnode *pnode, mominfo_t *pmom)
 	mom_svrinfo_t *prmomsvr;
 	attribute      tmpmom;
 
+	if ((pnode == NULL) || (pmom == NULL))
+		return (PBSE_NONE);
+
 	/* see if the node already has this Mom listed,if not add her */
 
 	for (i=0; i<pnode->nd_nummoms; ++i) {
@@ -3040,7 +3135,6 @@ cross_link_mom_vnode(struct pbsnode *pnode, mominfo_t *pmom)
 			pnode->nd_nummslots = n;
 		}
 		pnode->nd_moms[pnode->nd_nummoms++] = pmom;
-		pnode->nd_modified = NODE_UPDATE_OTHERS; /* since we modified nd_nummoms, save it */
 
 		/* also add Mom's name to this vnode's Mom attribute */
 		clear_attr(&tmpmom, &node_attr_def[(int) ND_ATR_Mom]);
@@ -3050,6 +3144,10 @@ cross_link_mom_vnode(struct pbsnode *pnode, mominfo_t *pmom)
 		node_attr_def[(int) ND_ATR_Mom].at_set(
 			&pnode->nd_attr[(int) ND_ATR_Mom],
 			&tmpmom, INCR);
+
+		if (pnode->nd_modified != NODE_UPDATE_OTHERS)
+			pnode->nd_modified = NODE_UPDATE_MOM; /* since we modified nd_nummoms, save it */
+
 		node_attr_def[(int) ND_ATR_Mom].at_free(&tmpmom);
 	}
 
@@ -3113,6 +3211,8 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 	int bad;
 	int i;
 	int j;
+	int localmadenew = 0;
+	int ret;
 	struct pbsnode *pnode;
 	pbs_list_head atrlist;
 	svrattrl *pal;
@@ -3126,6 +3226,8 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 	resource_def *prdef;
 	resource_def *prdefhost;
 	resource_def *prdefvnode;
+	mom_svrinfo_t *pcursvrm;
+	vnpool_mom_t *ppool;
 	static char *cannot_def_resc = "error: resource %s for vnode %s cannot be defined";
 	int	pnode_has_mom = 0;
 	char	*p;
@@ -3192,6 +3294,7 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 			return bad;
 		}
 		*madenew = 1;
+		localmadenew = 1;
 		snprintf(log_buffer, sizeof(log_buffer),
 			"autocreated vnode %s", pvnal->vnal_id);
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE,
@@ -3207,6 +3310,27 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 			pmom->mi_host);
 		log_err(PBSE_UNKNODE, from_hook?UPDATE_FROM_HOOK:UPDATE2, log_buffer);
 		return PBSE_UNKNODE;
+	}
+
+	/* if mom has a vnode_pool value */
+	pcursvrm = (mom_svrinfo_t *)(pmom->mi_data);
+	if ((localmadenew == 1) && (pcursvrm->msr_vnode_pool > 0)) {
+		ppool = find_vnode_pool(pmom);
+		if (ppool != NULL) {
+			for (j=0; j<ppool->vnpm_nummoms; ++j) {
+				if (ppool->vnpm_moms[j] != NULL) {
+					if ((ret = cross_link_mom_vnode(pnode, ppool->vnpm_moms[j])) != 0) {
+						/* deal with error */
+						return (ret);
+					}
+				}
+			}
+		}
+	} else {
+		/* cross link the vnode and its Mom */
+		if ((i = cross_link_mom_vnode(pnode, pmom)) != 0) {
+			return (i);
+		}
 	}
 
 	if (from_hook) {
@@ -3225,11 +3349,6 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 				LOG_INFO, pmom->mi_host, log_buffer);
 			return (PBSE_BADHOST);
 		}
-	}
-
-	/* cross link the vnode and its Mom */
-	if ((i = cross_link_mom_vnode(pnode, pmom)) != 0) {
-		return (i);
 	}
 
 	/*
@@ -3552,6 +3671,19 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 
 				} else {
 					pattr->at_flags |= ATR_VFLAG_DEFLT;
+				}
+				if (strcasecmp(psrp->vna_name, ATTR_NODE_VnodePool) == 0) {
+					if ((bad = node_attr_def[j].at_action(pattr,
+					     pnode, ATR_ACTION_ALTER)) == 0) {
+						pattr->at_flags |= ATR_VFLAG_DEFLT;
+					} else {
+						snprintf(log_buffer, sizeof(log_buffer),
+							"Error %d setting attribute %s "
+							"in update for vnode %s", bad,
+							psrp->vna_name, pnode->nd_name);
+						log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE,
+							LOG_WARNING, pmom->mi_host, log_buffer);
+					}
 				}
 			}
 			if ((strcasecmp(psrp->vna_name,
@@ -3967,6 +4099,7 @@ is_request(int stream, int version)
 	char			*hname = NULL;
 	unsigned long		hook_rescdef_checksum;
 	unsigned long		chksum_rescdef;
+	int			com;
 
 	CLEAR_HEAD(reported_hooks);
 	DBPRT(("%s: stream %d version %d\n", __func__, stream, version))
@@ -4018,6 +4151,26 @@ is_request(int stream, int version)
 		}
 		((mom_svrinfo_t *)(pmom->mi_data))->msr_state |=
 			INUSE_NEEDS_HELLO_PING|INUSE_UNKNOWN;
+
+		if (((mom_svrinfo_t *)(pmom->mi_data))->msr_vnode_pool != 0) {
+			/*
+			 * Mom has a pool, see if the pool has an
+			 * inventory Mom already, if not make this Mom the one
+			 */
+			vnpool_mom_t *ppool;
+			ppool = find_vnode_pool(pmom);
+			if (ppool != NULL) {
+				if (ppool->vnpm_inventory_mom == NULL) {
+					ppool->vnpm_inventory_mom = pmom;
+					sprintf(log_buffer,
+						msg_new_inventory_mom,
+						ppool->vnpm_vnode_pool,
+						pmom->mi_host);
+					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER,
+						LOG_DEBUG, msg_daemonname, log_buffer);
+				}
+			}
+		}
 
 		/* do not need to tdelete2() this stream, it was never inserted */
 		rpp_close(stream);
@@ -4086,7 +4239,8 @@ found:
 			/* and set initializing and the time		     */
 
 			set_all_state(pmom, 0,
-				INUSE_UNKNOWN|INUSE_NEEDS_HELLO_PING, NULL,
+				INUSE_UNKNOWN|INUSE_NEEDS_HELLO_PING|
+				INUSE_NEED_ADDRS, NULL,
 				Set_All_State_Regardless);
 			set_all_state(pmom, 1, INUSE_DOWN|INUSE_INIT, NULL,
 				Set_ALL_State_All_Down);
@@ -4131,36 +4285,15 @@ found:
 			/* Send the Mom addresses		    */
 			/* Mom will respond when she receives these */
 
-			ret = is_compose(stream, IS_CLUSTER_ADDRS2);
+			ret = send_ip_addrs_to_mom(stream);
 			if (ret != DIS_SUCCESS)
 				goto err;
-			for (j = 0; j < pbs_iplist->li_nrowsused; j++) {
-
-				ipaddr = IPLIST_GET_LOW(pbs_iplist, j);
-				DBPRT(("%s: ip %d\t%ld.%ld.%ld.%ld\n", __func__, j,
-					(ipaddr & 0xff000000) >> 24,
-					(ipaddr & 0x00ff0000) >> 16,
-					(ipaddr & 0x0000ff00) >> 8,
-					(ipaddr & 0x000000ff)))
-
-				DBPRT(("%s: depth %d\n", __func__, IPLIST_GET_HIGH(pbs_iplist, j)))
-				ret = diswul(stream, IPLIST_GET_LOW(pbs_iplist, j));
-				if (ret != DIS_SUCCESS)
-					goto err;
-				ret = diswul(stream, IPLIST_GET_HIGH(pbs_iplist, j));
-				if (ret != DIS_SUCCESS)
-					goto err;
-			}
-			ret = rpp_flush(stream);
-			if (ret != DIS_SUCCESS) {
-				ret = DIS_NOCOMMIT;
-				goto err;
-			}
 
 			if (command == IS_HELLO) {
 				/* pre-8.0 Mom - should delete this in a release or 2 */
 				set_all_state(pmom, 0, INUSE_DOWN|INUSE_UNKNOWN|
-					INUSE_NEEDS_HELLO_PING|INUSE_INIT,
+					INUSE_NEEDS_HELLO_PING|INUSE_INIT|
+					INUSE_NEED_ADDRS,
 					NULL, Set_All_State_Regardless);
 				psvrmom->msr_timedown = 0;
 				psvrmom->msr_timeinit = 0;
@@ -4173,6 +4306,13 @@ found:
 
 		case IS_UPDATE:
 		case IS_UPDATE2:
+			if (psvrmom->msr_vnode_pool != 0) {
+				sprintf(log_buffer, "POOL: IS_UPDATE%c received", 
+					(command == IS_UPDATE)?' ':'2');
+				log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_NODE,
+					LOG_INFO, pmom->mi_host, log_buffer);
+			}
+
 			cr_node = 0;
 			made_new_vnodes = 0;
 			if (command == IS_UPDATE) {
@@ -4281,9 +4421,12 @@ found:
 
 					/* mark all vnodes under this Mom stale, then because    */
 					/* this is non-vnoded update, un-stale the natural vnode */
-					set_all_state(pmom, 1, INUSE_STALE, NULL,
-						Set_All_State_Regardless);
-					set_vnode_state(np, ~INUSE_STALE, Nd_State_And);
+					/* EXCEPT when the Mom is in a vnode_pool 		 */
+					if (psvrmom->msr_vnode_pool <= 0) {
+						set_all_state(pmom, 1, INUSE_STALE, NULL,
+							Set_All_State_Regardless);
+						set_vnode_state(np, ~INUSE_STALE, Nd_State_And);
+					}
 
 					pala = &np->nd_attr[(int)ND_ATR_ResourceAvail];
 
@@ -4382,6 +4525,8 @@ found:
 								setup_pnames(psrp->vna_val);
 							}
 						}
+						if (pbs_conf.pbs_use_tcp == 0)
+							(void)rpp_io();
 					}
 					/* clear the NODE_UPDATE_VNL on all vnodes for this Mom */
 					/* It was set in update2_to_vnode() */
@@ -4561,7 +4706,7 @@ found:
 			}
 
 			if (made_new_vnodes || cr_node) {
-				save_nodes_db(1); /* update the node database */
+				save_nodes_db(1, pmom); /* update the node database */
 			}
 			break;
 
@@ -4606,7 +4751,8 @@ found:
 				psvrmom->msr_state &= ~INUSE_MARKEDDOWN;
 
 			set_all_state(pmom, 0, INUSE_DOWN|INUSE_UNKNOWN|
-				INUSE_NEEDS_HELLO_PING|INUSE_INIT,
+				INUSE_NEEDS_HELLO_PING|INUSE_INIT|
+				INUSE_NEED_ADDRS,
 				NULL, Set_All_State_Regardless);
 
 			/* log a node up message only if it was not marked
@@ -4811,7 +4957,7 @@ found:
 				goto err;
 			}
 			if (made_new_vnodes || cr_node) {
-				save_nodes_db(1); /* update the node database */
+				save_nodes_db(1, pmom); /* update the node database */
 			}
 			break;
 
@@ -5152,6 +5298,68 @@ write_single_node_state(struct pbsnode *np)
 	return 0;
 }
 
+/**
+ * @brief Save a single node's mom attribute to the database.
+ *
+ * @par
+ *
+ *  This function updates a single node's
+ *  mom attribute in the DB.
+ *
+ * @param[in] np - Pointer to the node whose mom attribute is to be saved
+ *
+ * @retval  0 if okay
+ * @retval -1 on error
+ *
+ */
+int
+write_single_node_mom_attr(struct pbsnode *np)
+{
+	pbs_db_attr_info_t attr;
+	pbs_db_obj_info_t obj;
+	pbs_list_head     wrtattr;
+	svrattrl     *psvrl;
+
+	obj.pbs_db_obj_type = PBS_DB_ATTR;
+	obj.pbs_db_un.pbs_db_attr = &attr;
+	attr.parent_obj_type = PARENT_TYPE_NODE;
+
+	if (np->nd_state & INUSE_DELETED)
+		return 0;
+
+	attr.parent_id = np->nd_name;
+	attr.attr_resc[0] = 0;
+	attr.attr_flags = 0;
+
+	/* work on node state */
+	if (np->nd_modified & NODE_UPDATE_MOM) {
+		/* Write node state / comment to database */
+		strcpy(attr.attr_name, ATTR_NODE_Mom);
+
+		CLEAR_HEAD(wrtattr);
+
+		(void) node_attr_def[(int) ND_ATR_Mom].at_encode(&np->nd_attr[(int) ND_ATR_Mom],
+					&wrtattr, node_attr_def[(int) ND_ATR_Mom].at_name,
+					NULL, ATR_ENCODE_SVR, NULL);
+
+		if ((psvrl = (svrattrl *) GET_NEXT(wrtattr)) != NULL) {
+			attr.attr_value = psvrl->al_value;
+
+			if (pbs_db_update_obj(svr_db_conn, &obj) == 1) {
+				if (pbs_db_insert_obj(svr_db_conn, &obj) != 0) {
+					log_err(errno, "write_single_node_mom_attr",
+							"Failed to update 'Mom' attribute");
+					return -1;
+				}
+			}
+			delete_link(&psvrl->al_link);
+			(void)free(psvrl);
+		}
+		node_save_db(np, NODE_SAVE_QUICK); /* save node qs so that nd_index is updated as well */
+		np->nd_modified &= ~NODE_UPDATE_MOM;
+	}
+	return 0;
+}
 /**
  * @brief
  * 		Save node states/comments to the database.

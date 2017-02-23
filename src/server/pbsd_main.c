@@ -2163,7 +2163,7 @@ try_db_again:
 
 	if (svr_chngNodesfile) {/*nodes created/deleted, or props changed and*/
 		/*update in req_manager failed; try again    */
-		(void)save_nodes_db(0);
+		(void)save_nodes_db(0, NULL);
 	}
 
 	/* if brought up the Secondary Scheduler, take it down */
