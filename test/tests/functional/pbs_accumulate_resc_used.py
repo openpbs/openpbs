@@ -998,7 +998,7 @@ j.resources_used["stra2"] = '"glad"'
     def test_server_restart(self):
         """
         Test that resource accumulation will not get
-        impacted if sever is restarted during job execution
+        impacted if server is restarted during job execution
         """
 
         # Create a prologue hook
