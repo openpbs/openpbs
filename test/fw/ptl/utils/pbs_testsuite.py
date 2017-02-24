@@ -589,7 +589,11 @@ class PBSTestSuite(unittest.TestCase):
                 n = name + '@' + objconf
             else:
                 n = name
-            objs[n] = func(name, pbsconf_file=objconf)
+            if getattr(cls, "server", None) is not None:
+                objs[n] = func(name, pbsconf_file=objconf,
+                               server=cls.server.hostname)
+            else:
+                objs[n] = func(name, pbsconf_file=objconf)
             if objs[n] is None:
                 _msg = 'Failed %s(%s, %s)' % (func.__name__, name, objconf)
                 raise setUpClassError(_msg)
@@ -696,7 +700,7 @@ class PBSTestSuite(unittest.TestCase):
         return server
 
     @classmethod
-    def init_comm(cls, hostname, pbsconf_file=None):
+    def init_comm(cls, hostname, pbsconf_file=None, server=None):
         """
         Initialize a Comm instance associated to the given hostname.
 
@@ -707,11 +711,18 @@ class PBSTestSuite(unittest.TestCase):
         :param pbsconf_file: Optional path to an alternate pbs config file
         :type pbsconf_file: str or None
         :returns: The instantiated Comm upon success and None on failure.
+        :param server: The server name associated to the Comm
+        :type server: str
+        Return the instantiated Comm upon success and None on failure.
         """
-        return Comm(hostname, pbsconf_file=pbsconf_file)
+        try:
+            server = cls.servers[server]
+        except:
+            server = None
+        return Comm(hostname, pbsconf_file=pbsconf_file, server=server)
 
     @classmethod
-    def init_scheduler(cls, server, pbsconf_file=None):
+    def init_scheduler(cls, hostname, pbsconf_file=None, server=None):
         """
         Initialize a Scheduler instance associated to the given server.
         This method must be called after ``init_server``
@@ -720,13 +731,16 @@ class PBSTestSuite(unittest.TestCase):
         :type server: str
         :param pbsconf_file: Optional path to an alternate config file
         :type pbsconf_file: str or None
+        :param hostname: The host on which Sched is running
+        :type hostname: str
         :returns: The instantiated scheduler upon success and None on failure
         """
         try:
             server = cls.servers[server]
         except:
             server = None
-        return Scheduler(server=server, pbsconf_file=pbsconf_file)
+        return Scheduler(hostname=hostname, server=server,
+                         pbsconf_file=pbsconf_file)
 
     @classmethod
     def init_mom(cls, hostname, pbsconf_file=None, server=None):

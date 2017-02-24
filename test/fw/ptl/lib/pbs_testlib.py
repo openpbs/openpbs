@@ -4819,10 +4819,53 @@ class Comm(PBSService):
     PBS ``Comm`` configuration and control
     """
 
-    logger = logging.getLogger(__name__)
-    logprefix = 'pbs_comm: '
+    """
+    :param name: The hostname of the Comm. Defaults to current hostname.
+    :type name: str
+    :param attrs: Dictionary of attributes to set, these will override
+                  defaults.
+    :type attrs: dictionary
+    :param pbsconf_file: path to config file to parse for PBS_HOME,
+                         PBS_EXEC, etc
+    :type pbsconf_file: str or None
+    :param diagmap: A dictionary of PBS objects (node,server,etc) to
+                    mapped files from PBS diag directory
+    :type diagmap: dictionary
+    :param diag: path to PBS diag directory (This will override diagmap)
+    :type diag: str or None
+    :param server: A PBS server instance to which this Comm is associated
+    :type server: str
+    :param db_access: set to either file containing credentials to DB access or
+                      dictionary containing {'dbname':...,'user':...,
+                      'port':...}
+    :type db_access: str or dictionary
+        """
+    dflt_attributes = {}
 
-    conf_to_cmd_map = {'PBS_COMM_ROUTERS': '-r', 'PBS_COMM_THREADS': '-t'}
+    def __init__(self, name=None, attrs={}, pbsconf_file=None, diagmap={},
+                 diag=None, server=None, db_access=None):
+        self.logger = logging.getLogger(__name__)
+        if server is not None:
+            self.server = server
+            if diag is None and self.server.diag is not None:
+                diag = self.server.diag
+            if (len(diagmap) == 0) and (len(self.server.diagmap) != 0):
+                diagmap = self.server.diagmap
+        else:
+            self.server = Server(name, pbsconf_file=pbsconf_file,
+                                 db_access=db_access, diag=diag,
+                                 diagmap=diagmap)
+        PBSService.__init__(self, name, attrs, self.dflt_attributes,
+                            pbsconf_file, diagmap, diag)
+        _m = ['Comm ', self.shortname]
+        if pbsconf_file is not None:
+            _m += ['@', pbsconf_file]
+        _m += [': ']
+        self.logprefix = "".join(_m)
+        self.conf_to_cmd_map = {
+            'PBS_COMM_ROUTERS': '-r',
+            'PBS_COMM_THREADS': '-t'
+        }
 
     def isUp(self):
         """
@@ -8515,7 +8558,8 @@ class Server(PBSService):
                 if id in self.nodes:
                     self.nodes[id].attributes.update(binfo)
                 else:
-                    self.nodes[id] = MoM(id, binfo, diagmap={NODE: None})
+                    self.nodes[id] = MoM(id, binfo, diagmap={NODE: None},
+                                         server=self)
                 obj = self.nodes[id]
             elif obj_type == SERVER:
                 self.attributes.update(binfo)
