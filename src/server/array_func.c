@@ -87,6 +87,11 @@
 #include "pbs_nodes.h"
 #include "svrfunc.h"
 #include "acct.h"
+#ifdef WIN32
+#include <sys/timeb.h>
+#else
+#include <sys/time.h>
+#endif
 
 
 /* External data */
@@ -776,6 +781,13 @@ create_subjob(job *parent, char *newjid, int *rc)
 	svrattrl  *psatl;
 	job 	  *subj;
 	long	   eligibletime;
+	long	    time_msec;
+#ifdef	WIN32
+	struct	_timeb	    tval;
+#else
+	struct timeval	    tval;
+#endif
+
 
 	if ((parent->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) == 0) {
 		*rc = PBSE_IVALREQ;
@@ -877,7 +889,16 @@ create_subjob(job *parent, char *newjid, int *rc)
 		subj->ji_wattr[(int)JOB_ATR_eligible_time].at_flags |= ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 
 	}
-
+#ifdef WIN32
+	_ftime_s(&tval);
+	time_msec = (tval.time * 1000L) + tval.millitm;
+#else
+	gettimeofday(&tval, NULL);
+	time_msec = (tval.tv_sec * 1000L) + (tval.tv_usec/1000L);
+#endif
+	/* set the queue rank attribute */
+	subj->ji_wattr[(int)JOB_ATR_qrank].at_val.at_long = time_msec;
+	subj->ji_wattr[(int)JOB_ATR_qrank].at_flags |= ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
 	if (svr_enquejob(subj) != 0) {
 		job_purge(subj);
 		*rc = PBSE_IVALREQ;

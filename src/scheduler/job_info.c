@@ -3589,6 +3589,9 @@ queue_subjob(resource_resv *array, server_info *sinfo,
 				free(subjob_name);
 				/* Set tmparr to something so we're not considered an error */
 				tmparr = sinfo->jobs;
+				/* check of array parent is not set then set that here */
+				if (rresv->job->parent_job == NULL)
+					rresv->job->parent_job = array;
 			}
 			else if ((rresv = create_subjob_from_array(array, subjob_index,
 				subjob_name)) != NULL) {

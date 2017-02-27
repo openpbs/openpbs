@@ -1404,6 +1404,10 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 	}
 	else {
 		if (resresv->is_job && resresv->job->is_subjob) {
+			if (resresv->job->parent_job == NULL) {
+				resresv->job->parent_job = 
+				find_resource_resv(sinfo->jobs, resresv->job->array_id);
+			}
 			array = resresv->job->parent_job;
 			rr = resresv;
 		}

@@ -585,6 +585,7 @@ req_runjob2(struct batch_request *preq, job *pjob)
 	int 		  prov_rc=0;
 	int		  need_prov;
 	char		 *dest;
+	int		 rq_type = 0;
 
 	/* Check if prov is required, if so, reply_ack and let prov finish */
 	/* else follow normal flow */
@@ -630,21 +631,25 @@ req_runjob2(struct batch_request *preq, job *pjob)
 
 	/* If async run, reply now; otherwise reply is handled in */
 	/* post_sendmom or post_stagein				  */
-
-	if (preq && (preq->rq_type == PBS_BATCH_AsyrunJob)) {
+	rq_type = preq->rq_type;
+	if (preq && (rq_type == PBS_BATCH_AsyrunJob)) {
 		reply_ack(preq);
 		preq = 0;	/* cleared so we don't try to reuse */
 	}
 
-	if (((rc = svr_startjob(pjob, preq)) != 0) && preq) {
+	if (((rc = svr_startjob(pjob, preq)) != 0) && 
+		((rq_type == PBS_BATCH_AsyrunJob) || preq)) {
 		free_nodes(pjob);
 		if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
 			/* requeue subjob */
 			pjob->ji_qs.ji_substate = JOB_SUBSTATE_RERUN3;
 			job_purge(pjob);
 		}
-		req_reject(rc, 0, preq);
+		if (preq)
+			req_reject(rc, 0, preq);
 	}
+	(void)sprintf(log_buffer, "return value of svr_startjob is %d", rc);
+	log_err(errno, __func__, log_buffer);
 }
 
 
