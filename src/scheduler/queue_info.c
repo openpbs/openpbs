@@ -176,7 +176,7 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 
 	for (i = 0; cur_queue != NULL && !err; i++) {
 		/* convert queue information from batch_status to queue_info */
-		if ((qinfo = query_queue_info(cur_queue, sinfo)) == NULL) {
+		if ((qinfo = query_queue_info(policy, cur_queue, sinfo)) == NULL) {
 			free_schd_error(sch_err);
 			pbs_statfree(queues);
 			free_queues(qinfo_arr, 1);
@@ -329,6 +329,7 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
  *		query_queue_info - collects information from a batch_status and
  *			   puts it in a queue_info struct for easier access
  *
+ * @param[in]	policy	-	policy info
  * @param[in]	queue	-	batch_status struct to get queue information from
  * @param[in]	sinfo	-	server where queue resides
  *
@@ -338,7 +339,7 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
  */
 
 queue_info *
-query_queue_info(struct batch_status *queue, server_info *sinfo)
+query_queue_info(status *policy, struct batch_status *queue, server_info *sinfo)
 {
 	struct attrl *attrp;		/* linked list of attributes from server */
 	struct queue_info *qinfo;	/* queue_info being created */
@@ -374,8 +375,11 @@ query_queue_info(struct batch_status *queue, server_info *sinfo)
 			else
 				qinfo->has_nodes = 0;
 		}
-		else if(!strcmp(attrp->name, ATTR_backfill_depth)) 
+		else if(!strcmp(attrp->name, ATTR_backfill_depth)) {
 			qinfo->backfill_depth = strtol(attrp->value, NULL, 10);
+			if(qinfo->backfill_depth > 0)
+				policy->backfill = 1;
+		}
 		else if (is_reslimattr(attrp))
 			(void) lim_setlimits(attrp, LIM_RES, qinfo->liminfo);
 		else if (is_runlimattr(attrp))

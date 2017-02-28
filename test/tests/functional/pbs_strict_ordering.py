@@ -43,7 +43,7 @@ import time
 from tests.functional import *
 
 
-class Test_strict_ordering_without_backfill(TestFunctional):
+class TestStrictOrderingAndBackfilling(TestFunctional):
 
     """
     Test strict ordering when backfilling is truned off
@@ -84,9 +84,96 @@ class Test_strict_ordering_without_backfill(TestFunctional):
         j3.set_sleep_time(9999)
         j3.set_attributes(a)
         j3 = self.server.submit(j3)
-        try:
-            _comment = 'Not Running: Job would break strict sorted order'
-            rv = self.server.expect(JOB, {'comment': _comment}, id=j3,
-                                    offset=2, max_attempts=2, interval=2)
-        except PtlExpectError, e:
-            self.assertTrue(False)
+        rv = self.server.expect(
+            JOB,
+            {'comment': 'Not Running: Job would break strict sorted order'},
+            id=j3,
+            offset=2,
+            max_attempts=2,
+            interval=2)
+        self.assertTrue(rv)
+    """
+    Test strict ordering when queue backilling is enabled and server
+    backfilling is off
+    """
+
+    def test_t2(self):
+        rv = self.scheduler.set_sched_config(
+            {'by_queue': 'false prime', 'by_queue': 'false non_prime',
+             'strict_ordering': 'true all'})
+        self.assertTrue(rv)
+        a = {'backfill_depth': 2}
+        rv = self.server.manager(
+            MGR_CMD_SET, QUEUE, a, id='workq', expect=True)
+        self.assertTrue(rv)
+        a = {
+            'queue_type': 'execution',
+            'started': 't',
+            'enabled': 't',
+            'backfill_depth': 1}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='wq2')
+        self.assertTrue(rv)
+        a = {
+            'queue_type': 'execution',
+            'started': 't',
+            'enabled': 't',
+            'backfill_depth': 0}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='wq3')
+        self.assertTrue(rv)
+        a = {'backfill_depth': 0}
+        rv = self.server.manager(MGR_CMD_SET, SERVER, a, expect=True)
+        self.assertTrue(rv)
+        a = {'resources_available.ncpus': 5}
+        rv = self.server.manager(
+            MGR_CMD_SET,
+            NODE,
+            a,
+            self.mom.shortname,
+            expect=True)
+        self.assertTrue(rv)
+        rv = self.server.manager(
+            MGR_CMD_SET, SERVER, {
+                'scheduling': 'False'}, expect=True)
+        self.assertTrue(rv)
+        a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'workq'}
+        j = Job(TEST_USER, a)
+        j.set_sleep_time(100)
+        j1id = self.server.submit(j)
+        j2id = self.server.submit(j)
+        j3id = self.server.submit(j)
+        a = {'Resource_List.select': '1:ncpus=1', ATTR_queue: 'wq2'}
+        j = Job(TEST_USER, a)
+        j.set_sleep_time(100)
+        j4id = self.server.submit(j)
+        a = {'Resource_List.select': '1:ncpus=1', ATTR_queue: 'wq3'}
+        j = Job(TEST_USER, a)
+        j.set_sleep_time(100)
+        j5id = self.server.submit(j)
+        rv = self.server.manager(
+            MGR_CMD_SET, SERVER, {
+                'scheduling': 'True'}, expect=True)
+        self.assertTrue(rv)
+        rv = self.server.expect(JOB,
+                                {'job_state': 'R'},
+                                id=j1id,
+                                max_attempts=30,
+                                interval=2)
+        self.assertTrue(rv)
+        rv = self.server.expect(JOB,
+                                {'job_state': 'R'},
+                                id=j2id,
+                                max_attempts=30,
+                                interval=2)
+        self.assertTrue(rv)
+        rv = self.server.expect(JOB,
+                                {'job_state': 'R'},
+                                id=j4id,
+                                max_attempts=30,
+                                interval=2)
+        self.assertTrue(rv)
+        rv = self.server.expect(JOB,
+                                {'job_state': 'Q'},
+                                id=j5id,
+                                max_attempts=30,
+                                interval=2)
+        self.assertTrue(rv)
