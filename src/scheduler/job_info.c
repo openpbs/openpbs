@@ -1,36 +1,36 @@
 /*
  * Copyright (C) 1994-2017 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
- *  
+ *
  * This file is part of the PBS Professional ("PBS Pro") software.
- * 
+ *
  * Open Source License Information:
- *  
+ *
  * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free 
- * Software Foundation, either version 3 of the License, or (at your option) any 
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
  * later version.
- *  
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+ *
+ * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
  * PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
- *  
- * You should have received a copy of the GNU Affero General Public License along 
+ *
+ * You should have received a copy of the GNU Affero General Public License along
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
- *  
- * Commercial License Information: 
- * 
- * The PBS Pro software is licensed under the terms of the GNU Affero General 
- * Public License agreement ("AGPL"), except where a separate commercial license 
+ *
+ * Commercial License Information:
+ *
+ * The PBS Pro software is licensed under the terms of the GNU Affero General
+ * Public License agreement ("AGPL"), except where a separate commercial license
  * agreement for PBS Pro version 14 or later has been executed in writing with Altair.
- *  
- * Altair’s dual-license business model allows companies, individuals, and 
- * organizations to create proprietary derivative works of PBS Pro and distribute 
- * them - whether embedded or bundled with other software - under a commercial 
+ *
+ * Altair’s dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of PBS Pro and distribute
+ * them - whether embedded or bundled with other software - under a commercial
  * license agreement.
- * 
- * Use of Altair’s trademarks, including but not limited to "PBS™", 
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+ *
+ * Use of Altair’s trademarks, including but not limited to "PBS™",
+ * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
  * trademark licensing policies.
  *
  */
@@ -549,9 +549,6 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 
 	schd_error *err;
 
-	/* path to simulated PBS input */
-	char simpath[MAXPATHLEN];
-
 	char logbuf[MAX_LOG_SIZE];
 
 	int i;
@@ -587,7 +584,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 	}
 
 	/* if there are previous jobs, count those too */
-	num_prev_jobs = count_array((void**)pjobs);
+	num_prev_jobs = count_array((void **)pjobs);
 	num_jobs += num_prev_jobs;
 
 
@@ -610,7 +607,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 	err = new_schd_error();
 	if(err == NULL)
 		return NULL;
-	
+
 	for (i = num_prev_jobs; cur_job != NULL; i++) {
 		if ((resresv = query_job(cur_job, qinfo->server, err)) ==NULL) {
 			free_schd_error(err);
@@ -686,7 +683,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 		 */
 		if(resresv->job->array_id != NULL)
 			resresv->job->parent_job = find_resource_resv(resresv_arr, resresv->job->array_id);
-		
+
 		/* Find out if it is a shrink-to-fit job.
 		 * If yes, set the duration to max walltime.
 		 */
@@ -756,7 +753,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 		}
 
 		/* if fairshare_ent is invalid or the job doesn't have one, give a default
-		 * of something most likily unique - egroup:euser
+		 * of something most likely unique - egroup:euser
 		 */
 
 		if (resresv->job->ginfo ==NULL) {
@@ -835,7 +832,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 
 #ifdef RESC_SPEC
 		/* search_for_rescspec() sets jinfo -> rspec */
-		if (!search_for_rescspec(resresv, qinfo->server->nodes)) 
+		if (!search_for_rescspec(resresv, qinfo->server->nodes))
 			set_schd_error_codes(err, NOT_RUN, NO_NODE_RESOURCES);
 #endif
 
@@ -1074,6 +1071,18 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 
 			if (resresv->resreq == NULL)
 				resresv->resreq = resreq;
+#ifdef NAS
+			if (!strcmp(attrp->resource, "nodect")) { /* nodect for sort */
+				/* localmod 040 */
+				count = strtol(attrp->value, &endp, 10);
+				if (*endp != '\n')
+					resresv->job->nodect = count;
+				else
+					resresv->job->nodect = 0;
+				/* localmod 034 */
+				resresv->job->accrue_rate = resresv->job->nodect; /* XXX should be SBU rate */
+			}
+#endif
 			if (!strcmp(attrp->resource, "place")) {
 				resresv->place_spec = parse_placespec(attrp->value);
 				if (resresv->place_spec == NULL) {
@@ -1082,18 +1091,6 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 					resresv->is_invalid = 1;
 
 				}
-#ifdef NAS
-				if (!strcmp(attrp->resource, "nodect")) { /* nodect for sort */
-					/* localmod 040 */
-					count = strtol(attrp->value, &endp, 10);
-					if (*endp != '\n')
-						resresv->job->nodect = count;
-					else
-						resresv->job->nodect = 0;
-					/* localmod 034 */
-					resresv->job->accrue_rate = resresv->job->nodect; /* XXX should be SBU rate */
-				}
-#endif
 			}
 		}
 		else if (!strcmp(attrp->name, ATTR_used)) { /* resources used */
@@ -1435,7 +1432,7 @@ update_job_attr(int pbs_sd, resource_resv *resresv, char *attr_name,
 				;
 		}
 	}
-	
+
 	if(flags & UPDATE_LATER) {
 		end->next = resresv->job->attr_updates;
 		resresv->job->attr_updates = pattr;
@@ -1448,7 +1445,7 @@ update_job_attr(int pbs_sd, resource_resv *resresv, char *attr_name,
 		free_attrl_list(pattr);
 		return rc;
 	}
-		
+
 	return 0;
 }
 
@@ -1458,24 +1455,24 @@ update_job_attr(int pbs_sd, resource_resv *resresv, char *attr_name,
  *
  * @par
  * 		The main reason to use this function over a direct send_attr_update()
- *      call is so that the job's attr_updates list gets free'd and NULL'd.  
+ *      call is so that the job's attr_updates list gets free'd and NULL'd.
  *      We don't want to send the attr updates multiple times
- * 
+ *
  * @param[in]	pbs_sd	-	server connection descriptor
  * @param[in]	job	-	job to send attributes to
- * 
+ *
  * @return	int(ret val from send_attr_updates)
  * @retval	1	- success
  * @retval	0	- failure to update
  */
 int send_job_updates(int pbs_sd, resource_resv *job) {
 	int rc;
-	
+
 	if(job == NULL)
 		return 0;
-	
+
 	rc = send_attr_updates(pbs_sd, job->name, job->job->attr_updates) ;
-	
+
 	free_attrl_list(job->job->attr_updates);
 	job->job->attr_updates = NULL;
 	return rc;
@@ -1483,11 +1480,11 @@ int send_job_updates(int pbs_sd, resource_resv *job) {
 /**
  * @brief
  * 		send delayed attributes to the server for a job
- * 
+ *
  * @param[in]	pbs_sd	-	server connection descriptor
  * @param[in]	job_name	-	name of job for pbs_alterjob()
  * @param[in]	pattr	-	attrl list to update on the server
- * 
+ *
  * @return	int
  * @retval	1	success
  * @retval	0	failure to update
@@ -1678,7 +1675,7 @@ translate_fail_code(schd_error *err, char *comment_msg, char *log_msg)
 			log_msg[0] = '\0';
 		return 0;
 	}
-	
+
 	if (err->error_code < RET_BASE) {
 		if (err->specmsg != NULL)
 			pbse = err->specmsg;
@@ -1706,7 +1703,7 @@ translate_fail_code(schd_error *err, char *comment_msg, char *log_msg)
 		arg3 = "";
 	if(spec == NULL)
 		spec = "";
-	
+
 	switch (err->error_code) {
 		case ERR_SPECIAL:
 
@@ -1893,6 +1890,487 @@ translate_fail_code(schd_error *err, char *comment_msg, char *log_msg)
 	}
 
 	return rc;
+}
+
+/**
+ * @brief resresv_set constructor
+ */
+resresv_set *
+new_resresv_set(void)
+{
+	resresv_set *rset;
+
+	rset = malloc(sizeof(resresv_set));
+	if (rset == NULL) {
+		log_err(errno, __func__, MEM_ERR_MSG);
+		return NULL;
+	}
+
+	rset->can_not_run = 0;
+	rset->err = NULL;
+	rset->user = NULL;
+	rset->group = NULL;
+	rset->project = NULL;
+	rset->place_spec = NULL;
+	rset->req = NULL;
+	rset->select_spec = NULL;
+	rset->qinfo = NULL;
+	rset->resresv_arr = NULL;
+	rset->num_resresvs = 0;
+
+	return rset;
+}
+/**
+ * @brief resresv_set destructor
+ */
+void
+free_resresv_set(resresv_set *rset) {
+	if(rset == NULL)
+		return;
+
+	free_schd_error(rset->err);
+	free(rset->user);
+	free(rset->group);
+	free(rset->project);
+	free_selspec(rset->select_spec);
+	free_place(rset->place_spec);
+	free_resource_req_list(rset->req);
+	free(rset->resresv_arr);
+	free(rset);
+}
+/**
+ *  @brief resresv_set array destructor
+ */
+void
+free_resresv_set_array(resresv_set **rsets) {
+	int i;
+
+	if (rsets == NULL)
+		return;
+
+	for(i = 0; rsets[i] != NULL; i++)
+		free_resresv_set(rsets[i]);
+
+	free(rsets);
+}
+
+/**
+ * @brief resresv_set copy constructor
+ */
+resresv_set *
+dup_resresv_set(resresv_set *oset, server_info *nsinfo)
+{
+	resresv_set *rset;
+
+	if (oset == NULL || nsinfo == NULL)
+		return NULL;
+
+	rset = new_resresv_set();
+	if (rset == NULL)
+		return NULL;
+
+	rset->can_not_run = oset->can_not_run;
+
+	rset->err = dup_schd_error(oset->err);
+	if (oset->err != NULL && oset->err == NULL) {
+		free_resresv_set(rset);
+		return NULL;
+	}
+
+	rset->user = string_dup(oset->user);
+	if (oset->user != NULL && rset->user == NULL) {
+		free_resresv_set(rset);
+		return NULL;
+	}
+	rset->group = string_dup(oset->group);
+	if (oset->group != NULL && rset->group == NULL) {
+		free_resresv_set(rset);
+		return NULL;
+	}
+	rset->project = string_dup(oset->project);
+	if (oset->project != NULL && rset->project == NULL) {
+		free_resresv_set(rset);
+		return NULL;
+	}
+	rset->select_spec = dup_selspec(oset->select_spec);
+	if (rset->select_spec == NULL) {
+		free_resresv_set(rset);
+		return NULL;
+	}
+	rset->place_spec = dup_place(oset->place_spec);
+	if (rset->place_spec == NULL) {
+		free_resresv_set(rset);
+		return NULL;
+	}
+	rset->req = dup_resource_req_list(oset->req);
+	if (oset->req != NULL && rset->req == NULL) {
+		free_resresv_set(rset);
+		return NULL;
+	}
+	rset->resresv_arr = copy_resresv_array(oset->resresv_arr, nsinfo->all_resresv);
+	if (rset->resresv_arr == NULL) {
+		free_resresv_set(rset);
+		return NULL;
+	}
+	if(oset->qinfo != NULL)
+		rset->qinfo = find_queue_info(nsinfo->queues, oset->qinfo->name);
+
+	rset->num_resresvs = oset->num_resresvs;
+
+	return rset;
+}
+/**
+ * @brief resresv_set array copy constructor
+ */
+resresv_set **
+dup_resresv_set_array(resresv_set **osets, server_info *nsinfo)
+{
+	int i;
+	int len;
+	resresv_set **rsets;
+	if (osets == NULL || nsinfo == NULL)
+		return NULL;
+
+	len = count_array((void **) osets);
+
+	rsets = malloc((len + 1) * sizeof(resresv_set *));
+	if (rsets == NULL) {
+		log_err(errno, __func__, MEM_ERR_MSG);
+		return NULL;
+	}
+
+	for (i = 0; osets[i] != NULL; i++) {
+		rsets[i] = dup_resresv_set(osets[i], nsinfo);
+		if (rsets[i] == NULL) {
+			free_resresv_set_array(rsets);
+			return NULL;
+		}
+	}
+	rsets[i] = NULL;
+	return rsets;
+
+}
+
+/**
+ * @brief should a resresv_set use the user
+ * @param sinfo - server info
+ * @retval 1 - yes
+ * @retval 0 - no
+ */
+int resresv_set_use_user(server_info *sinfo)
+{
+	if (sinfo == NULL)
+		return 0;
+	if (sinfo->has_user_limit)
+		return 1;
+
+
+	return 0;
+}
+
+/**
+ * @brief should a resresv_set use the group
+ * @param sinfo - server info
+ * @retval 1 - yes
+ * @retval 0 - no
+ */
+int resresv_set_use_grp(server_info *sinfo)
+{
+	if (sinfo == NULL)
+		return 0;
+	if (sinfo->has_grp_limit)
+		return 1;
+
+
+	return 0;
+}
+
+/**
+ * @brief should a resresv_set use the project
+ * @param sinfo - server info
+ * @retval 1 - yes
+ * @retval 0 - no
+ */
+int resresv_set_use_proj(server_info *sinfo)
+{
+	if (sinfo == NULL)
+		return 0;
+	if (sinfo->has_proj_limit)
+		return 1;
+
+
+	return 0;
+}
+
+/**
+ * @brief should a resresv_set use the queue
+ * @param qinfo - the queue
+ * @retval 1 - yes
+ * @retval 0 - no
+ */
+int resresv_set_use_queue(queue_info *qinfo)
+{
+	if (qinfo == NULL)
+		return 0;
+
+	if (qinfo->has_hard_limit || qinfo->has_soft_limit || qinfo->has_nodes ||
+	    qinfo->is_ded_queue || qinfo->is_prime_queue || qinfo->is_nonprime_queue)
+		return 1;
+
+	return 0;
+}
+
+/**
+ * @brief create the list of resources to consider when creating the resresv sets
+ * @param policy[in] - policy info
+ * @param sinfo[in] - server universe
+ * @return resdef **
+ * @retval array of resdefs for creating resresv_set's resources.
+ * @retval NULL on error
+ */
+resdef **
+create_resresv_sets_resdef(status *policy, server_info *sinfo) {
+	resdef **defs;
+	int ct;
+	int i;
+	if (policy == NULL || sinfo == NULL)
+		return NULL;
+
+	ct = count_array((void **) policy->resdef_to_check);
+	/* 6 for ctime, walltime, max_walltime, min_walltime, preempt_targets (maybe), and NULL*/
+	defs = malloc((ct+6) * sizeof(resdef *));
+
+	for (i = 0; i < ct; i++)
+		defs[i] = policy->resdef_to_check[i];
+	defs[i++] = getallres(RES_CPUT);
+	defs[i++] = getallres(RES_WALLTIME);
+	defs[i++] = getallres(RES_MAX_WALLTIME);
+	defs[i++] = getallres(RES_MIN_WALLTIME);
+	if(sinfo->preempt_targets_enable)
+		defs[i++] = getallres(RES_PREEMPT_TARGETS);
+	defs[i] = NULL;
+
+	return defs;
+}
+
+/**
+ * @brief create a resresv_set based on a resource_resv
+ *
+ * @param[in] policy - policy info
+ * @param[in] sinfo - server info
+ * @param[in] resresv - resresv to create resresv set from
+ *
+ * @return resresv_set **
+ * @retval newly created resresv_set
+ * @retval NULL on error
+ */
+resresv_set *
+create_resresv_set_by_resresv(status *policy, server_info *sinfo, resource_resv *resresv)
+{
+	resresv_set *rset;
+	if (policy == NULL || resresv == NULL)
+		return NULL;
+
+	rset = new_resresv_set();
+	if (rset == NULL)
+		return NULL;
+
+	if (resresv_set_use_user(sinfo))
+		rset->user = string_dup(resresv->user);
+	if (resresv_set_use_grp(sinfo))
+		rset->group = string_dup(resresv->group);
+	if (resresv_set_use_proj(sinfo))
+		rset->project = string_dup(resresv->project);
+	rset->select_spec = dup_selspec(resresv->select);
+	if (rset->select_spec == NULL) {
+		free_resresv_set(rset);
+		return NULL;
+	}
+	rset->place_spec = dup_place(resresv->place_spec);
+	if (rset->place_spec == NULL) {
+		free_resresv_set(rset);
+		return NULL;
+	}
+	/* rset->req may be NULL if the intersection of resresv->resreq and policy->equiv_class_resdef is the NULL set */
+	rset->req = dup_selective_resource_req_list(resresv->resreq, policy->equiv_class_resdef);
+
+	if (resresv->is_job && resresv->job != NULL) {
+		if (resresv_set_use_queue(resresv->job->queue))
+			rset->qinfo = resresv->job->queue;
+	}
+
+	return rset;
+}
+
+/**
+ * @brief find the index of a resresv_set by its component parts
+ * @par qinfo, user, group, project, or req can be NULL if the resresv_set does not have one
+ * @param[in] policy - policy info
+ * @param[in] rsets - resresv_sets to search
+ * @param[in] user - user name
+ * @param[in] group - group name
+ * @param[in] project - project name
+ * @param[in] sel - select spec
+ * @param[in] req - list of resources (i.e., qsub -l)
+ * @param[in] qinfo - queue
+ * @return int
+ * @retval index of resresv if found
+ * @retval -1 if not found or on error
+ */
+int
+find_resresv_set(status *policy, resresv_set **rsets, char *user, char *group, char *project, selspec *sel, place *pl, resource_req *req, queue_info *qinfo)
+{
+	int i;
+
+	if (rsets == NULL)
+		return -1;
+
+	for (i = 0; rsets[i] != NULL; i++) {
+		if ((qinfo != NULL && rsets[i]->qinfo == NULL) || (qinfo == NULL && rsets[i]->qinfo != NULL))
+			continue;
+		if ((qinfo != NULL && rsets[i]->qinfo != NULL) && cstrcmp(qinfo->name, rsets[i]->qinfo->name) != 0)
+
+			continue;
+		if ((user != NULL && rsets[i]->user == NULL) || (user == NULL && rsets[i]->user != NULL))
+			continue;
+		if (user != NULL && cstrcmp(user, rsets[i]->user) != 0)
+			continue;
+
+		if ((group != NULL && rsets[i]->group == NULL) || (group == NULL && rsets[i]->group != NULL))
+			continue;
+		if (group != NULL && cstrcmp(group, rsets[i]->group) != 0)
+			continue;
+
+		if ((project != NULL && rsets[i]->project == NULL) || (project == NULL && rsets[i]->project != NULL))
+			continue;
+		if (project != NULL && cstrcmp(project, rsets[i]->project) != 0)
+			continue;
+
+		if (sel != NULL && compare_selspec(rsets[i]->select_spec, sel) == 0)
+			continue;
+		if (pl != NULL && compare_place(rsets[i]->place_spec, pl) == 0)
+			continue;
+		if (req != NULL && compare_resource_req_list(rsets[i]->req, req, policy->equiv_class_resdef) == 0)
+			continue;
+		/* If we got here, we have found our set */
+		return i;
+	}
+	return -1;
+
+}
+
+/**
+ * @brief find the index of a resresv_set by a resresv inside it
+ * @param[in] policy - policy info
+ * @param[in] rsets - resresv_set array to search
+ * @param[in] resresv - resresv to search for
+ * @return index of resresv
+ */
+int
+find_resresv_set_by_resresv(status *policy, resresv_set **rsets, resource_resv *resresv)
+{
+	char *user = NULL;
+	char *grp = NULL;
+	char *proj = NULL;
+	queue_info *qinfo = NULL;
+
+	if (policy == NULL || rsets == NULL || resresv == NULL)
+		return -1;
+
+	if (resresv_set_use_user(resresv->server))
+		user = resresv->user;
+
+	if (resresv_set_use_grp(resresv->server))
+		grp = resresv->group;
+
+	if (resresv_set_use_proj(resresv->server))
+		proj = resresv->project;
+
+	if (resresv->is_job && resresv->job != NULL)
+		if (resresv_set_use_queue(resresv->job->queue))
+			qinfo = resresv->job->queue;
+
+	return find_resresv_set(policy, rsets, user, grp, proj, resresv->select, resresv->place_spec, resresv->resreq, qinfo);
+}
+
+/**
+ * @brief create equivalence classes based on an array of resresvs
+ * @param[in] policy - policy info
+ * @param[in] sinfo - server universe
+ * @return array of equivalence classes (resresv_sets)
+ */
+resresv_set **
+create_resresv_sets(status *policy, server_info *sinfo)
+{
+	int i;
+	int j = 0;
+	int cur_ind;
+	int len;
+	resource_resv **resresvs;
+	resresv_set **rsets;
+	resresv_set **tmp_rset_arr;
+	resresv_set *cur_rset;
+
+	if (policy == NULL || sinfo == NULL)
+		return NULL;
+
+	resresvs = sinfo->jobs;
+
+	len = count_array((void **) resresvs);
+	rsets = malloc((len + 1) * sizeof(resresv_set));
+	if (rsets == NULL) {
+		log_err(errno, __func__, MEM_ERR_MSG);
+		return NULL;
+	}
+
+	rsets[0] = NULL;
+
+	for (i = 0; resresvs[i] != NULL; i++) {
+		cur_ind = find_resresv_set_by_resresv(policy, rsets, resresvs[i]);
+
+		/* Didn't find the set, create it.*/
+		if (cur_ind == -1) {
+			cur_rset = create_resresv_set_by_resresv(policy, sinfo, resresvs[i]);
+			if (cur_rset == NULL) {
+				free_resresv_set_array(rsets);
+				return NULL;
+			}
+			cur_rset->resresv_arr = malloc((len + 1) * sizeof(resource_resv));
+			if (cur_rset->resresv_arr == NULL) {
+				log_err(errno, __func__, MEM_ERR_MSG);
+				free_resresv_set_array(rsets);
+				free_resresv_set(cur_rset);
+				return NULL;
+			}
+			cur_ind = j;
+			rsets[j++] = cur_rset;
+			rsets[j] = NULL;
+		} else
+			cur_rset = rsets[cur_ind];
+
+		cur_rset->resresv_arr[cur_rset->num_resresvs] = resresvs[i];
+		cur_rset->resresv_arr[++cur_rset->num_resresvs] = NULL;
+		resresvs[i]->ec_index = cur_ind;
+	}
+
+	/* tidy up */
+	for (i = 0; rsets[i] != NULL; i++) {
+		resource_resv **tmp_arr;
+		tmp_arr = realloc(rsets[i]->resresv_arr, (rsets[i]->num_resresvs + 1) * sizeof(resource_resv *));
+		if (tmp_arr != NULL)
+			rsets[i]->resresv_arr = tmp_arr;
+	}
+
+	tmp_rset_arr = realloc(rsets,(j + 1) * sizeof(resresv_set *));
+	if (tmp_rset_arr != NULL)
+		rsets = tmp_rset_arr;
+
+	if (i > 0) {
+		snprintf(log_buffer, sizeof(log_buffer), "Number of job equivalence classes: %d", i);
+		schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__, log_buffer);
+	}
+
+	return rsets;
 }
 
 /**
@@ -2459,11 +2937,11 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 
 	schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, hjob->name,
 		"Employing preemption to try and run high priority job.");
-	
-	/* Let's get all the reasons the job won't run now.  
+
+	/* Let's get all the reasons the job won't run now.
 	 * This will help us find the set of jobs to preempt
 	 */
-	
+
 	full_err = new_schd_error();
 	if(full_err == NULL) {
 		return NULL;
@@ -2539,7 +3017,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 	if (nsinfo->preempt_targets_enable) {
 		if (preempt_targets_req != NULL) {
 			prjobs = resource_resv_filter(nsinfo->running_jobs,
-				count_array((void**) nsinfo->running_jobs),
+				count_array((void **) nsinfo->running_jobs),
 				preempt_job_set_filter,
 				(void *) preempt_targets_list, NO_FLAGS);
 			free_string_array(preempt_targets_list);
@@ -2548,7 +3026,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 
 	if (prjobs != NULL) {
 		rjobs = prjobs;
-		rjobs_count = count_array((void**)prjobs);
+		rjobs_count = count_array((void **)prjobs);
 		if (rjobs_count > 0) {
 			sprintf(log_buf, "Limited running jobs used for preemption from %d to %d",
 				nsinfo->sc.running, rjobs_count);
@@ -2679,7 +3157,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 				rc = sim_run_update_resresv(policy, njob, ns_arr, RURR_NO_FLAGS);
 				break;
 			}
- 
+
 			if (old_errorcode == err->error_code) {
 				switch(old_errorcode)
 				{
@@ -2714,7 +3192,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 				}
 			} else {
 				/* error changed, so we need to revisit jobs discarded as preemption candidates earlier */
-				skipto = 0; 
+				skipto = 0;
 			}
 
 		}
@@ -2817,7 +3295,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
  * @return long
  * @retval index of the job to preempt
  * @retval NO_JOB_FOUND nothing can be selected for preemption
- * @retval ERR_IN_SELECT error 
+ * @retval ERR_IN_SELECT error
  */
 long
 select_index_to_preempt(status *policy, resource_resv *hjob,
@@ -2836,7 +3314,7 @@ select_index_to_preempt(status *policy, resource_resv *hjob,
 
 	int rc;
 
-	if ( err == NULL || hjob == NULL || hjob->job == NULL || 
+	if ( err == NULL || hjob == NULL || hjob->job == NULL ||
 		rjobs == NULL || rjobs[0] == NULL)
 		return NO_JOB_FOUND;
 
@@ -3167,7 +3645,7 @@ select_index_to_preempt(status *policy, resource_resv *hjob,
 					clear_schd_error(err);
 					num_chunks_returned = check_avail_resources(node->res, hjob->select->chunks[k]->req,
 								COMPARE_TOTAL | CHECK_ALL_BOOLS | UNSET_RES_ZERO,
-								rdtc_here, INSUFFICIENT_RESOURCE, err); 
+								rdtc_here, INSUFFICIENT_RESOURCE, err);
 					if ( (num_chunks_returned > 0) || (num_chunks_returned == SCHD_INFINITY) ) {
 						node_good = 1;
 						break;
@@ -3401,7 +3879,7 @@ create_subjob_from_array(resource_resv *array, int index, char *subjob_name)
 		subjob->name = subjob_name;
 	else
 		subjob->name = create_subjob_name(array->name, index);
-	
+
 	subjob->job->parent_job = array;
 
 	subjob->rank =  get_sched_rank();
@@ -3727,7 +4205,7 @@ formula_evaluate(char *formula, resource_resv *resresv, resource_req *resreq)
 	free(globals);
 
 	/* now that we've set all the values, let's calculate the answer */
-	snprintf(formula_buf, formula_buf_len, 
+	snprintf(formula_buf, formula_buf_len,
 		"_PBS_PYTHON_EXCEPTIONSTR_=\"\"\n"
 		"ex = None\n"
 		"try:\n"
@@ -3746,7 +4224,7 @@ formula_evaluate(char *formula, resource_resv *resresv, resource_req *resreq)
 		ans = PyFloat_AsDouble(obj);
 		Py_XDECREF(obj);
 	}
-	
+
 	obj = PyMapping_GetItemString(dict, "_PBS_PYTHON_EXCEPTIONSTR_");
 	if (obj != NULL) {
 		str = PyString_AsString(obj);
@@ -4241,9 +4719,9 @@ is_finished_job(int error)
  *			overlap.  Overlap is defined in terms of preemption.
  *			Can pre-emptee pjob help in running hjob.  In doing this
  *			we look at the full list of reasons hjob can not run and
- *			run a similarity heuristic against the two jobs to see if 
+ *			run a similarity heuristic against the two jobs to see if
  *			they are alike.
- *		
+ *
  * @param[in]	hjob	-	high priority job
  * @param[in]	pjob	-	job to see if it is similar to the high priority job
  * @param[in]	full_err	-	list of reasons why hjob can not run right now.  It gets

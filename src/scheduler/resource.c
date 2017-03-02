@@ -1,36 +1,36 @@
 /*
  * Copyright (C) 1994-2017 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
- *  
+ *
  * This file is part of the PBS Professional ("PBS Pro") software.
- * 
+ *
  * Open Source License Information:
- *  
+ *
  * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free 
- * Software Foundation, either version 3 of the License, or (at your option) any 
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
  * later version.
- *  
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+ *
+ * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
  * PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
- *  
- * You should have received a copy of the GNU Affero General Public License along 
+ *
+ * You should have received a copy of the GNU Affero General Public License along
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
- *  
- * Commercial License Information: 
- * 
- * The PBS Pro software is licensed under the terms of the GNU Affero General 
- * Public License agreement ("AGPL"), except where a separate commercial license 
+ *
+ * Commercial License Information:
+ *
+ * The PBS Pro software is licensed under the terms of the GNU Affero General
+ * Public License agreement ("AGPL"), except where a separate commercial license
  * agreement for PBS Pro version 14 or later has been executed in writing with Altair.
- *  
- * Altair’s dual-license business model allows companies, individuals, and 
- * organizations to create proprietary derivative works of PBS Pro and distribute 
- * them - whether embedded or bundled with other software - under a commercial 
+ *
+ * Altair’s dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of PBS Pro and distribute
+ * them - whether embedded or bundled with other software - under a commercial
  * license agreement.
- * 
- * Use of Altair’s trademarks, including but not limited to "PBS™", 
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+ *
+ * Use of Altair’s trademarks, including but not limited to "PBS™",
+ * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
  * trademark licensing policies.
  *
  */
@@ -379,7 +379,7 @@ dup_resdef_array(resdef **odef_arr)
 	if (odef_arr == NULL)
 		return NULL;
 
-	ct = count_array((void**) odef_arr);
+	ct = count_array((void **) odef_arr);
 
 	ndef_arr = malloc((ct + 1) * sizeof(resdef*));
 	if (ndef_arr == NULL) {
@@ -470,7 +470,7 @@ copy_resdef_array(resdef **deflist)
 	if (deflist == NULL)
 		return NULL;
 
-	cnt = count_array((void**)deflist);
+	cnt = count_array((void **)deflist);
 	new_deflist = malloc((cnt+1) * sizeof(resdef*));
 	if (new_deflist == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
@@ -737,13 +737,13 @@ update_resource_defs(int pbs_sd)
 	allres = query_resources(pbs_sd);
 
 	if (allres != NULL) {
-		consres = (resdef**) filter_array((void**) allres,
+		consres = (resdef**) filter_array((void **) allres,
 			def_is_consumable, NULL, NO_FLAGS);
 		if (consres == NULL)
 			error = 1;
 
 		if (!error) {
-			boolres = (resdef**) filter_array((void**) allres,
+			boolres = (resdef**) filter_array((void **) allres,
 				def_is_bool, NULL, NO_FLAGS);
 			if (boolres == NULL)
 				error = 1;
@@ -806,7 +806,7 @@ resstr_to_resdef(char **resstr)
 	if (resstr == NULL)
 		return NULL;
 
-	cnt = count_array((void**) resstr);
+	cnt = count_array((void **) resstr);
 	if ((tmparr = malloc((cnt + 1) * sizeof(char *))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
@@ -954,7 +954,7 @@ filter_noncons(void *v, void *arg)
 
 /**
  * @brief update the resource definition pointers in the sort_info structures
- * 
+ *
  * @par	We parse our config file when we start.  We do not have the resource
  *      definitions at that time.  They also can change over time if the server
  *      sends us a SCH_CONFIGURE command.

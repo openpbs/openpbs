@@ -1,36 +1,36 @@
 /*
  * Copyright (C) 1994-2017 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
- *  
+ *
  * This file is part of the PBS Professional ("PBS Pro") software.
- * 
+ *
  * Open Source License Information:
- *  
+ *
  * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free 
- * Software Foundation, either version 3 of the License, or (at your option) any 
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
  * later version.
- *  
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+ *
+ * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
  * PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
- *  
- * You should have received a copy of the GNU Affero General Public License along 
+ *
+ * You should have received a copy of the GNU Affero General Public License along
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
- *  
- * Commercial License Information: 
- * 
- * The PBS Pro software is licensed under the terms of the GNU Affero General 
- * Public License agreement ("AGPL"), except where a separate commercial license 
+ *
+ * Commercial License Information:
+ *
+ * The PBS Pro software is licensed under the terms of the GNU Affero General
+ * Public License agreement ("AGPL"), except where a separate commercial license
  * agreement for PBS Pro version 14 or later has been executed in writing with Altair.
- *  
- * Altair’s dual-license business model allows companies, individuals, and 
- * organizations to create proprietary derivative works of PBS Pro and distribute 
- * them - whether embedded or bundled with other software - under a commercial 
+ *
+ * Altair’s dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of PBS Pro and distribute
+ * them - whether embedded or bundled with other software - under a commercial
  * license agreement.
- * 
- * Use of Altair’s trademarks, including but not limited to "PBS™", 
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+ *
+ * Use of Altair’s trademarks, including but not limited to "PBS™",
+ * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
  * trademark licensing policies.
  *
  */
@@ -651,18 +651,18 @@ is_ok_to_run_STF(status *policy, int pbs_sd, server_info *sinfo,
 {
 	nspec **ns_arr = NULL; /* node solution for job */
 	sch_resource_t orig_duration;
-	
+
 	if (njob == NULL || policy == NULL || sinfo == NULL || err == NULL)
 		return NULL;
-	
+
 	orig_duration = njob->duration;
-	
+
 	/* First see if it can run with full walltime */
 	ns_arr = is_ok_to_run(policy, pbs_sd, sinfo, qinfo, njob, NO_FLAGS, err);
 	/* If the job can not run for non-calender reasons, return NULL*/
 	if (ns_arr != NULL)
 		return (ns_arr);
-		
+
 	if (err->error_code == DED_TIME ||
 		err->error_code == PRIME_ONLY ||
 		err->error_code == NONPRIME_ONLY)
@@ -681,11 +681,11 @@ is_ok_to_run_STF(status *policy, int pbs_sd, server_info *sinfo,
  *  @brief
  *  	Check to see if the resresv can fit within the system limits
  *	  	Used for both job to run and confirming/running of reservations.
- * 
- *  @par the err structure can be set in two ways: 
+ *
+ *  @par the err structure can be set in two ways:
  *	1. For simple check functions, the error code comes from the function.
  *	   We set the error code into err within is_ok_to_run()
- *	2. For more complex check functions, we pass in err by reference.  
+ *	2. For more complex check functions, we pass in err by reference.
  *	   The err will be completed inside the check function.
  *	* As an extension of #2, even more complex check functions may construct
  *	  a list of error structures.
@@ -695,9 +695,12 @@ is_ok_to_run_STF(status *policy, int pbs_sd, server_info *sinfo,
  * @param[in] sinfo	-	server info
  * @param[in] qinfo	-	queue info
  * @param[in] resresv	-	resource resv
- * @param[in] flags	-	RETURN_ALL_ERR - return all reasons why the job
- * 							can not run, not just the first.  @warning: may be expensive.
- * @param[in,out]	perr	-	pointer to error structure or NULL.
+ * @param[in] flags	-	RETURN_ALL_ERR - Return all reasons why the job
+ * 					can not run, not just the first.  @warning: may be expensive.
+ *					This flag will ignore equivalence classes
+ *				IGNORE_EQUIV_CLASS - Ignore job equivalence class feature.
+ *					If a job equivalence class has been seen before and marked
+ *					can_not_run, the job will still be evaluated normally.
  *
  * @par NOTE:
  *		return value is required to be freed by caller (using free_nspecs())
@@ -721,12 +724,19 @@ is_ok_to_run(status *policy, int pbs_sd, server_info *sinfo,
 	node_partition *allpart;	/* all partition to use (queue's or servers) */
 	schd_error *prev_err = NULL;
 	schd_error *err;
-	
+
 
 	if (sinfo == NULL || resresv == NULL || perr == NULL)
 		return NULL;
-	
+
 	err = perr;
+
+	if(resresv->is_job && sinfo->equiv_classes != NULL &&
+	   !(flags & (IGNORE_EQUIV_CLASS|RETURN_ALL_ERR)) &&
+	   sinfo->equiv_classes[resresv->ec_index]->can_not_run) {
+		copy_schd_error(err, sinfo->equiv_classes[resresv->ec_index]->err);
+		return NULL;
+	}
 
 	if (resresv->is_job && qinfo == NULL) {
 		set_schd_error_codes(err, NOT_RUN, SCHD_ERROR);
@@ -751,7 +761,7 @@ is_ok_to_run(status *policy, int pbs_sd, server_info *sinfo,
 
 			if (!(flags & RETURN_ALL_ERR))
 				return NULL;
-			
+
 			err = new_schd_error();
 			if (err == NULL)
 				return NULL;
@@ -765,7 +775,7 @@ is_ok_to_run(status *policy, int pbs_sd, server_info *sinfo,
 
 			if (!(flags & RETURN_ALL_ERR))
 				return NULL;
-			
+
 			err = new_schd_error();
 			if (err == NULL)
 				return NULL;
@@ -907,7 +917,7 @@ is_ok_to_run(status *policy, int pbs_sd, server_info *sinfo,
 				return NULL;
 		}
 	}
-	
+
 
 	if ((sinfo->has_nonCPU_licenses == 0) &&
 		(resresv->select->total_cpus  >  sinfo->flt_lic)) {
@@ -927,9 +937,9 @@ is_ok_to_run(status *policy, int pbs_sd, server_info *sinfo,
 			set_schd_error_arg(err, SPECMSG, errbuf);
 
 		}
-		else 
+		else
 			set_schd_error_codes(err, NOT_RUN, SCHD_ERROR);
-		
+
 		add_err(&prev_err, err);
 
 		if (!(flags & RETURN_ALL_ERR))
@@ -1051,20 +1061,20 @@ is_ok_to_run(status *policy, int pbs_sd, server_info *sinfo,
 	}
 
 	ns_arr = check_nodes(policy, resresv, ninfo_arr, nodepart, flags, err);
-	
+
 	if (err->error_code != SUCCESS)
 		add_err(&prev_err, err);
-	
-	/* If any more checks are added after check_nodes(), 
+
+	/* If any more checks are added after check_nodes(),
 	 * the RETURN_ALL_ERR case must be added here */
-	
-	/* This is the case where we allocated a error structure for use, but 
+
+	/* This is the case where we allocated a error structure for use, but
 	 * didn't end up using it.  We have to check against perr, so we don't
 	 * free the caller's memory.
 	 */
 	if(err->status_code == SCHD_UNKWN && err != perr)
 		free_schd_error(err);
-	
+
 	return ns_arr;
 }
 
@@ -1133,7 +1143,7 @@ check_avail_resources(schd_resource *reslist, resource_req *reqlist,
 
 	if (fres == NULL || zres == NULL || ustr == NULL)
 		return -1;
-	
+
 	err = perr;
 
 	/*
@@ -1241,7 +1251,7 @@ check_avail_resources(schd_resource *reslist, resource_req *reqlist,
 			}
 		}
 	}
-	
+
 	if(fail)
 		any_fail = 1;
 
@@ -1514,7 +1524,7 @@ check_nodes(status *policy, resource_resv *resresv, node_info **ninfo_arr,
 		spec = resresv->select;
 		pl = resresv->place_spec;
 	}
-	
+
 	err->status_code = NOT_RUN;
 	rc = eval_selspec(policy, spec, pl, ninfo_arr, nodepart, resresv,
 		flags, &nspec_arr, err);
@@ -1524,18 +1534,18 @@ check_nodes(status *policy, resource_resv *resresv, node_info **ninfo_arr,
 		return nspec_arr;
 
 	/* We were not told why the resresv can't run: Use generic reason */
-	if (err->status_code == SCHD_UNKWN) 
+	if (err->status_code == SCHD_UNKWN)
 		set_schd_error_codes(err, NOT_RUN, NO_NODE_RESOURCES);
 
 	free_nspecs(nspec_arr);
-	
+
 	return NULL;
 }
 
 /**
  * @brief
- *		check_ded_time_queue - check if it is the approprate time to run jobs
- *			       in a dedtime queue
+ *		check_ded_time_queue - check if it is the appropriate time to run jobs
+ *					in a dedtime queue
  *
  * @param[in]	qinfo	-	the queue
  *
@@ -1775,7 +1785,7 @@ false_res()
 			return NULL;
 	}
 
-        res->def = NULL;
+	res->def = NULL;
 	res->name = NULL;
 
 	return res;

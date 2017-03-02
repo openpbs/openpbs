@@ -1,36 +1,36 @@
 /*
  * Copyright (C) 1994-2017 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
- *  
+ *
  * This file is part of the PBS Professional ("PBS Pro") software.
- * 
+ *
  * Open Source License Information:
- *  
+ *
  * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free 
- * Software Foundation, either version 3 of the License, or (at your option) any 
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
  * later version.
- *  
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+ *
+ * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
  * PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
- *  
- * You should have received a copy of the GNU Affero General Public License along 
+ *
+ * You should have received a copy of the GNU Affero General Public License along
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
- *  
- * Commercial License Information: 
- * 
- * The PBS Pro software is licensed under the terms of the GNU Affero General 
- * Public License agreement ("AGPL"), except where a separate commercial license 
+ *
+ * Commercial License Information:
+ *
+ * The PBS Pro software is licensed under the terms of the GNU Affero General
+ * Public License agreement ("AGPL"), except where a separate commercial license
  * agreement for PBS Pro version 14 or later has been executed in writing with Altair.
- *  
- * Altair’s dual-license business model allows companies, individuals, and 
- * organizations to create proprietary derivative works of PBS Pro and distribute 
- * them - whether embedded or bundled with other software - under a commercial 
+ *
+ * Altair’s dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of PBS Pro and distribute
+ * them - whether embedded or bundled with other software - under a commercial
  * license agreement.
- * 
- * Use of Altair’s trademarks, including but not limited to "PBS™", 
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+ *
+ * Use of Altair’s trademarks, including but not limited to "PBS™",
+ * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
  * trademark licensing policies.
  *
  */
@@ -581,9 +581,36 @@ is_runlimattr(const struct attrl *a)
 }
 /**
  * @brief
- * 		check attribute has run limit as name
+ * 		convert an old limit attribute name to the new one
+ *		@see old2new[]
+ *		@see old2new_soft[]
  *
  * @param[in]	a	-	attribute list structure
+ *
+ * @return char *
+ * @retval !NULL	: old limit attribute name
+ * @retval NULL		: attribute value is not an old limit attribute
+ *
+ */
+char *
+convert_oldlim_to_new(const struct attrl *a)
+{
+	int	i;
+
+	for (i = 0; i < sizeof(old2new)/sizeof(old2new[0]); i++)
+		if (!strcmp(a->name, old2new[i].lim_attr))
+			return old2new[i].lim_attr;
+	for (i = 0; i < sizeof(old2new_soft)/sizeof(old2new_soft[0]); i++)
+		if (!strcmp(a->name, old2new_soft[i].lim_attr))
+			return old2new_soft[i].lim_attr;
+
+	return NULL;
+}
+
+/*
+ * @brief
+ *		Return true if attribute is an old limit attribute
+ * @param[in] a		attribute list structure
  *
  * @return	int
  * @retval	1	: Yes
@@ -592,17 +619,9 @@ is_runlimattr(const struct attrl *a)
 int
 is_oldlimattr(const struct attrl *a)
 {
-	int	i;
-
-	for (i = 0; i < sizeof(old2new)/sizeof(old2new[0]); i++)
-		if (!strcmp(a->name, old2new[i].lim_attr))
-			return (1);
-	for (i = 0; i < sizeof(old2new_soft)/sizeof(old2new_soft[0]); i++)
-		if (!strcmp(a->name, old2new_soft[i].lim_attr))
-			return (1);
-
-	return (0);
+	return (convert_oldlim_to_new(a) != NULL);
 }
+
 /**
  * @brief
  * 		assign the resource-limits to the limit context based on the limit type.
@@ -1108,14 +1127,14 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
 
 	free_limcounts(server_lim);
 	free_limcounts(queue_lim);
-	
+
 	if (flags & RETURN_ALL_ERR) {
 		if (prev_err != NULL) {
 			free_schd_error(err);
 			prev_err->next = NULL;
 		}
 	}
-	
+
 	if (any_fail_rc)
 		return any_fail_rc;
 

@@ -1,36 +1,36 @@
 /*
  * Copyright (C) 1994-2017 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
- *  
+ *
  * This file is part of the PBS Professional ("PBS Pro") software.
- * 
+ *
  * Open Source License Information:
- *  
+ *
  * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free 
- * Software Foundation, either version 3 of the License, or (at your option) any 
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
  * later version.
- *  
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+ *
+ * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
  * PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
- *  
- * You should have received a copy of the GNU Affero General Public License along 
+ *
+ * You should have received a copy of the GNU Affero General Public License along
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
- *  
- * Commercial License Information: 
- * 
- * The PBS Pro software is licensed under the terms of the GNU Affero General 
- * Public License agreement ("AGPL"), except where a separate commercial license 
+ *
+ * Commercial License Information:
+ *
+ * The PBS Pro software is licensed under the terms of the GNU Affero General
+ * Public License agreement ("AGPL"), except where a separate commercial license
  * agreement for PBS Pro version 14 or later has been executed in writing with Altair.
- *  
- * Altair’s dual-license business model allows companies, individuals, and 
- * organizations to create proprietary derivative works of PBS Pro and distribute 
- * them - whether embedded or bundled with other software - under a commercial 
+ *
+ * Altair’s dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of PBS Pro and distribute
+ * them - whether embedded or bundled with other software - under a commercial
  * license agreement.
- * 
- * Use of Altair’s trademarks, including but not limited to "PBS™", 
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+ *
+ * Use of Altair’s trademarks, including but not limited to "PBS™",
+ * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
  * trademark licensing policies.
  *
  */
@@ -146,12 +146,12 @@ schedinit(void)
 	char errMsg[LOG_BUF_SIZE];
 	char buf[MAXPATHLEN];
 	char *errstr;
-	
+
 	PyObject *module;
 	PyObject *obj;
 	PyObject *dict;
 	PyObject *path;
-#endif 
+#endif
 
 	init_config();
 	parse_config(CONFIG_FILE);
@@ -217,10 +217,10 @@ schedinit(void)
 			"\tfrom math import *\n"
 		"except ImportError, ex:\n"
 			"\t_err = str(ex)");
-	
+
 	module = PyImport_AddModule("__main__");
 	dict = PyModule_GetDict(module);
-	
+
 	errstr = NULL;
 	obj = PyMapping_GetItemString(dict, "_err");
 	if (obj != NULL) {
@@ -422,16 +422,21 @@ init_scheduling_cycle(status *policy, server_info *sinfo)
 	 */
 
 	if (policy->preempting) {
-		for (i = 0; sinfo->jobs[i] != NULL; i++) {
-			if (sinfo->jobs[i]->job !=NULL)
-				set_preempt_prio(sinfo->jobs[i],
-					sinfo->jobs[i]->job->queue, sinfo);
-		}
-		/* now that we've set all the preempt levels, we need to count them */
-		for (i = 0; sinfo->running_jobs[i] != NULL; i++) {
-			if (sinfo->running_jobs[i]->job != NULL) {
-				if (!sinfo->running_jobs[i]->job->can_not_preempt) {
-					sinfo->preempt_count[preempt_level(sinfo->running_jobs[i]->job->preempt)]++;
+		if (sinfo->jobs != NULL) {
+			for (i = 0; sinfo->jobs[i] != NULL; i++) {
+				if (sinfo->jobs[i]->job != NULL)
+					set_preempt_prio(sinfo->jobs[i],
+							 sinfo->jobs[i]->job->queue, sinfo);
+			}
+
+			if (sinfo->running_jobs != NULL) {
+				/* now that we've set all the preempt levels, we need to count them */
+				for (i = 0; sinfo->running_jobs[i] != NULL; i++) {
+					if (sinfo->running_jobs[i]->job != NULL) {
+						if (!sinfo->running_jobs[i]->job->can_not_preempt) {
+							sinfo->preempt_count[preempt_level(sinfo->running_jobs[i]->job->preempt)]++;
+						}
+					}
 				}
 			}
 		}
@@ -615,7 +620,7 @@ scheduling_cycle(int sd, char *jobid)
 		return 0;
 	}
 	policy = sinfo->policy;
-	
+
 
 	/* don't confirm reservations if we're handling a qrun request */
 	if (jobid == NULL) {
@@ -716,7 +721,7 @@ scheduling_cycle(int sd, char *jobid)
 	site_list_shares(stdout, sinfo, "eoc_", 1);
 #endif
 	end_cycle_tasks(sinfo);
-	
+
 	free_schd_error(err);
 	if (rc < 0)
 		return -1;
@@ -773,7 +778,7 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 	time(&cycle_start_time);
 	/* calculate the time which we've been in the cycle too long */
 	cycle_end_time = cycle_start_time + sinfo->sched_cycle_len;
-	
+
 	chk_lim_err = new_schd_error();
 	if(chk_lim_err == NULL)
 		return -1;
@@ -804,7 +809,7 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 		comment[0] = '\0';
 		log_msg[0] = '\0';
 		qinfo = njob->job->queue;
-		
+
 		clear_schd_error(err);
 		err->status_code = NOT_RUN;
 
@@ -817,7 +822,7 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 		}
 		else
 			ns_arr = is_ok_to_run(policy, sd, sinfo, qinfo, njob, NO_FLAGS, err);
-		
+
 		if (err->status_code == NEVER_RUN)
 			njob->can_never_run = 1;
 
@@ -879,7 +884,7 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 			if ((bf_rc = site_should_backfill_with_job(policy, sinfo, njob, num_topjobs, num_topjobs_per_queues, err)))
 #else
 			sort_again = SORTED;
-			if (should_backfill_with_job(policy, sinfo, njob, num_topjobs)) {
+			if (should_backfill_with_job(policy, sinfo, njob, num_topjobs) != 0) {
 #endif
 				cal_rc = add_job_to_calendar(sd, policy, sinfo, njob);
 
@@ -959,6 +964,15 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 			if (log_msg[0] != '\0')
 				schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB,
 					LOG_INFO, njob->name, log_msg);
+
+			/* If this job couldn't run, the mark the equiv class so the rest of the jobs are discarded quickly.*/
+			if(sinfo->equiv_classes != NULL && njob->ec_index != UNSPECIFIED ) {
+				resresv_set *ec = sinfo->equiv_classes[njob->ec_index];
+				if (rc != RUN_FAILURE &&  !ec->can_not_run) {
+					ec->can_not_run = 1;
+					ec->err = dup_schd_error(err);
+				}
+			}
 		}
 
 		if (njob->can_never_run) {
@@ -1028,7 +1042,7 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 	}
 
 	*rerr = err;
-		
+
 	free_schd_error(chk_lim_err);
 	return rc;
 }
@@ -1128,7 +1142,6 @@ update_job_can_not_run(int pbs_sd, resource_resv *job, schd_error *err)
 {
 	char comment_buf[MAX_LOG_SIZE];	/* buffer for comment message */
 	char log_buf[MAX_LOG_SIZE];		/* buffer for log message */
-	char del_buf[MAX_LOG_SIZE];		/* log buffer for deletion message */
 	int ret = 1;				/* return code for function */
 
 
@@ -1143,21 +1156,17 @@ update_job_can_not_run(int pbs_sd, resource_resv *job, schd_error *err)
 			update_job_comment(pbs_sd, job, comment_buf);
 
 		/* not attempting to update accrue type on a remote job */
-		if (!job->is_peer_ob)
+		if (!job->is_peer_ob) {
+			if (job->job != NULL)
+				set_preempt_prio(job, job->job->queue, job->server);
 			update_accruetype(pbs_sd, job->server, ACCRUE_CHECK_ERR, err->error_code, job);
+		}
 
 		if (log_buf[0] != '\0')
 			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
 				job->name, log_buf);
 
-		if (job->can_never_run && !job->is_peer_ob) {
-			snprintf(del_buf, MAX_LOG_SIZE, "Job Deleted because it would never run: %s", log_buf);
-			schdlog(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
-				job->name, del_buf);
-			pbs_deljob(pbs_sd, job->name, del_buf);
-		}
-		
-		/* We won't be looking at this job in main_sched_loop()  
+		/* We won't be looking at this job in main_sched_loop()
 		 * and we just updated some attributes just above.  Send Now.
 		 */
 		send_job_updates(pbs_sd, job);
@@ -1405,7 +1414,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 	else {
 		if (resresv->is_job && resresv->job->is_subjob) {
 			if (resresv->job->parent_job == NULL) {
-				resresv->job->parent_job = 
+				resresv->job->parent_job =
 				find_resource_resv(sinfo->jobs, resresv->job->array_id);
 			}
 			array = resresv->job->parent_job;
@@ -1432,7 +1441,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 			ns_arr = NULL;
 		}
 		/* 2) if we were told by our caller through ns_arr, run the resresv there */
-		else if (ns_arr != NULL) 
+		else if (ns_arr != NULL)
 			ns = ns_arr;
 		/* 3) calculate where to run the resresv ourselves */
 		else {
@@ -1648,7 +1657,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 			return -1;
 		}
 	}
-	
+
 	if (rr->is_job && rr->job->is_preempted && (ret != 0)) {
 		unset_job_attr(pbs_sd, rr, ATTR_sched_preempted, UPDATE_LATER);
 		rr->job->is_preempted = 0;
@@ -1679,7 +1688,7 @@ sim_run_update_resresv(status *policy, resource_resv *resresv, nspec **ns_arr, u
 	server_info *sinfo = NULL;
 	queue_info *qinfo = NULL;
 	static schd_error *err = NULL;
-	
+
 	if(err == NULL)
 		err = new_schd_error();
 
@@ -1692,7 +1701,7 @@ sim_run_update_resresv(status *policy, resource_resv *resresv, nspec **ns_arr, u
 	sinfo = resresv->server;
 	if (resresv->is_job)
 		qinfo = resresv->job->queue;
-	
+
 	clear_schd_error(err);
 
 	return run_update_resresv(policy, SIMULATE_SD, sinfo, qinfo,
@@ -1988,6 +1997,7 @@ resource_resv *
 find_ready_resv_job(resource_resv **resvs)
 {
 	int i;
+	int ind;
 	resource_resv *rjob = NULL;
 
 	if (resvs == NULL)
@@ -1996,8 +2006,13 @@ find_ready_resv_job(resource_resv **resvs)
 	for (i = 0; resvs[i] != NULL && rjob == NULL; i++) {
 		if (resvs[i]->resv != NULL) {
 			if (resvs[i]->resv->resv_state ==RESV_RUNNING) {
-				if (resvs[i]->resv->resv_queue !=NULL)
-					rjob = find_runnable_resresv(resvs[i]->resv->resv_queue->jobs);
+				if (resvs[i]->resv->resv_queue !=NULL) {
+					ind = find_runnable_resresv_ind(resvs[i]->resv->resv_queue->jobs, 0);
+					if (ind != -1)
+						rjob = resvs[i]->resv->resv_queue->jobs[ind];
+					else
+						rjob = NULL;
+				}
 			}
 		}
 	}
@@ -2007,16 +2022,17 @@ find_ready_resv_job(resource_resv **resvs)
 
 /**
  * @brief
- *		find_runnable_resresv - find the next runnable resouce resv in an array
+ *		find the index of the next runnable resouce resv in an array
  *
  * @param[in]	resresv_arr	-	array of resource resvs to search
+ * @param[in]	start_index		index of array to start from
  *
- * @return	the next resource resv to run
+ * @return	the index of the next resource resv to run
  * @retval	NULL	: if there are not any
  *
  */
-resource_resv *
-find_runnable_resresv(resource_resv **resresv_arr)
+int
+find_runnable_resresv_ind(resource_resv **resresv_arr, int start_index)
 {
 #ifdef NAS      /* localmod 034 */
 	return site_find_runnable_res(resresv_arr);
@@ -2024,47 +2040,48 @@ find_runnable_resresv(resource_resv **resresv_arr)
 	int i;
 
 	if (resresv_arr == NULL)
-		return NULL;
+		return -1;
 
-	for (i = 0; resresv_arr[i] != NULL; i++) {
+	for (i = start_index; resresv_arr[i] != NULL; i++) {
 		if (!resresv_arr[i]->can_not_run && in_runnable_state(resresv_arr[i]))
-			return resresv_arr[i];
+			return i;
 	}
-	return NULL;
+	return -1;
 #endif /* localmod 034 */
 
 }
 
 /**
  * @brief
- *		find_non_normal_job - find a runable sched job which is not a normal job in the list of jobs.
+ *		find the index of the next runnable express,preempted,starving job.
  * @par
- * 		ASSUMPTION: express jobs will be sorted to the front of the list, followed by preempted job, followed by starving job
+ * 		ASSUMPTION: express jobs will be sorted to the front of the list, followed by preempted jobs, followed by starving jobs
  *
  * @param[in]	jobs	-	the array of jobs
+ * @param[in]	start_index	the index to start from
  *
- * @return	first runnable job
- * @retval	NULL	: if there aren't any
+ * @return	the index of the first runnable job
+ * @retval	-1	: if there aren't any
  *
  */
-resource_resv *
-find_non_normal_job(resource_resv **jobs) {
+int
+find_non_normal_job_ind(resource_resv **jobs, int start_index) {
 	int i;
 
 	if (jobs == NULL)
-		return NULL;
+		return -1;
 
-	for (i = 0; jobs[i] != NULL; i++) {
+	for (i = start_index; jobs[i] != NULL; i++) {
 		if (jobs[i]->job != NULL) {
 			if ((jobs[i]->job->preempt_status & PREEMPT_TO_BIT(PREEMPT_EXPRESS)) ||
 			(jobs[i]->job->is_preempted) || (jobs[i]->job->is_starving)) {
 				if (!jobs[i]->can_not_run)
-					return jobs[i];
+					return i;
 			} else if (jobs[i]->job->preempt_status & PREEMPT_TO_BIT(PREEMPT_NORMAL))
-				return NULL;
+				return -1;
 		}
 	}
-	return NULL;
+	return -1;
 }
 
 #ifdef NAS
@@ -2119,7 +2136,8 @@ next_job(status *policy, server_info *sinfo, int flag)
 	 * the function was called
 	 */
 	static int last_queue;
-	static int last_index;
+	static int last_queue_index;
+	static int last_job_index;
 
 	/* skip is used to mark that we're done looking for qrun, reservation jobs and
 	 * preempted jobs (while using by_queue policy).
@@ -2140,6 +2158,7 @@ next_job(status *policy, server_info *sinfo, int flag)
 	int queues_finished = 0;
 	int queue_index_size = 0;
 	int j = 0;
+	int ind;
 
 	if ((policy == NULL) || (sinfo == NULL))
 		return NULL;
@@ -2147,8 +2166,8 @@ next_job(status *policy, server_info *sinfo, int flag)
 	if (flag == INITIALIZE) {
 		if (policy->round_robin) {
 			last_queue = 0;
-			last_index = 0;
-			queue_list_size = count_array((void**)sinfo->queue_list);
+			last_queue_index = 0;
+			queue_list_size = count_array((void **)sinfo->queue_list);
 
 		}
 		else if (policy->by_queue)
@@ -2156,6 +2175,7 @@ next_job(status *policy, server_info *sinfo, int flag)
 		skip = SKIP_NOTHING;
 		sort_jobs(policy, sinfo);
 		sort_status = SORTED;
+		last_job_index = 0;
 		return NULL;
 	}
 
@@ -2179,6 +2199,7 @@ next_job(status *policy, server_info *sinfo, int flag)
 		|| (flag == MUST_RESORT_JOBS)) {
 		sort_jobs(policy, sinfo);
 		sort_status = SORTED;
+		last_job_index = 0;
 	}
 	if (policy->round_robin) {
 		/* Below is a pictorial representation of how queue_list
@@ -2209,12 +2230,16 @@ next_job(status *policy, server_info *sinfo, int flag)
 		/* last_index refers to a priority level as shown in diagram
 		 * above.
 		 */
-		i = last_index;
+		i = last_queue_index;
 		while((rjob == NULL) && (i < queue_list_size)) {
 			/* Calculating number of queues at this priority level */
 			queue_index_size = count_array((void **) sinfo->queue_list[i]);
 			for (j = last_queue; j < queue_index_size; j++) {
-				rjob = find_runnable_resresv(sinfo->queue_list[i][j]->jobs);
+				ind = find_runnable_resresv_ind(sinfo->queue_list[i][j]->jobs, 0);
+				if(ind != -1)
+					rjob = sinfo->queue_list[i][j]->jobs[ind];
+				else
+					rjob = NULL;
 				last_queue++;
 				/*If all queues are traversed, move back to first queue */
 				if (last_queue == queue_index_size)
@@ -2240,29 +2265,44 @@ next_job(status *policy, server_info *sinfo, int flag)
 			 * start from the first queue of the next index
 			 */
 			if (queues_finished == queue_index_size) {
-							last_queue = 0;
-				last_index++;
+				last_queue = 0;
+				last_queue_index++;
 				i++;
-						}
+			}
 			queues_finished = 0;
-					}
-				}
-				else if (policy->by_queue) {
+		}
+	} else if (policy->by_queue) {
 		if (skip != SKIP_NON_NORMAL_JOBS) {
-			rjob = find_non_normal_job(sinfo->jobs);
-			if (rjob == NULL)
+			ind = find_non_normal_job_ind(sinfo->jobs, last_job_index);
+			if (ind == -1) {
 				/* No more preempted jobs */
 				skip = SKIP_NON_NORMAL_JOBS;
+				last_job_index = 0;
+			} else {
+				rjob = sinfo->jobs[ind];
+				last_job_index = ind;
+			}
 		}
 		if (skip == SKIP_NON_NORMAL_JOBS) {
-					while (last_queue < sinfo->num_queues &&
-			    (rjob = find_runnable_resresv(sinfo->queues[last_queue]->jobs)) == NULL) {
-						last_queue++;
-					}
-				}
-	}
-				else	 { /* treat the entire system as one large queue */
-		rjob = find_runnable_resresv(sinfo->jobs);
+			while(last_queue < sinfo->num_queues &&
+			     ((ind = find_runnable_resresv_ind(sinfo->queues[last_queue]->jobs, last_job_index)) == -1)) {
+				last_queue++;
+				last_job_index = 0;
+			}
+			if (last_queue < sinfo->num_queues && ind != -1) {
+				rjob = sinfo->queues[last_queue]->jobs[ind];
+				last_job_index = ind;
+			} else
+				rjob = NULL;
+		}
+	} else { /* treat the entire system as one large queue */
+		ind = find_runnable_resresv_ind(sinfo->jobs, last_job_index);
+		if(ind != -1) {
+			rjob = sinfo->jobs[ind];
+			last_job_index = ind;
+		}
+		else
+			rjob = NULL;
 	}
 	return rjob;
 }

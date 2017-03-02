@@ -1,36 +1,36 @@
 /*
  * Copyright (C) 1994-2017 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
- *  
+ *
  * This file is part of the PBS Professional ("PBS Pro") software.
- * 
+ *
  * Open Source License Information:
- *  
+ *
  * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free 
- * Software Foundation, either version 3 of the License, or (at your option) any 
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
  * later version.
- *  
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+ *
+ * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
  * PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
- *  
- * You should have received a copy of the GNU Affero General Public License along 
+ *
+ * You should have received a copy of the GNU Affero General Public License along
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
- *  
- * Commercial License Information: 
- * 
- * The PBS Pro software is licensed under the terms of the GNU Affero General 
- * Public License agreement ("AGPL"), except where a separate commercial license 
+ *
+ * Commercial License Information:
+ *
+ * The PBS Pro software is licensed under the terms of the GNU Affero General
+ * Public License agreement ("AGPL"), except where a separate commercial license
  * agreement for PBS Pro version 14 or later has been executed in writing with Altair.
- *  
- * Altair’s dual-license business model allows companies, individuals, and 
- * organizations to create proprietary derivative works of PBS Pro and distribute 
- * them - whether embedded or bundled with other software - under a commercial 
+ *
+ * Altair’s dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of PBS Pro and distribute
+ * them - whether embedded or bundled with other software - under a commercial
  * license agreement.
- * 
- * Use of Altair’s trademarks, including but not limited to "PBS™", 
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+ *
+ * Use of Altair’s trademarks, including but not limited to "PBS™",
+ * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
  * trademark licensing policies.
  *
  */
@@ -259,7 +259,7 @@ query_server(status *pol, int pbs_sd)
 			multi_node_sort);
 
 	/* get the queues */
-	if ((sinfo->queues = query_queues(policy, pbs_sd, sinfo)) ==NULL) {
+	if ((sinfo->queues = query_queues(policy, pbs_sd, sinfo)) == NULL) {
 		pbs_statfree(server);
 		sinfo->fairshare = NULL;
 		free_server(sinfo, 0);
@@ -331,7 +331,7 @@ query_server(status *pol, int pbs_sd)
 		filter_array((void **) policy->resdef_to_check,
 		no_hostvnode, NULL, NO_FLAGS);
 	policy->resdef_to_check_rassn = (resdef **)
-		filter_array((void**) policy->resdef_to_check,
+		filter_array((void **) policy->resdef_to_check,
 		def_rassn, NULL, NO_FLAGS);
 
 	sinfo->calendar = create_event_list(sinfo);
@@ -388,6 +388,9 @@ query_server(status *pol, int pbs_sd)
 		create_total_counts(sinfo, NULL, NULL, SERVER);
 	}
 
+	policy->equiv_class_resdef = create_resresv_sets_resdef(policy, sinfo);
+	sinfo->equiv_classes = create_resresv_sets(policy, sinfo);
+
 	size = sinfo->sc.running + sinfo->sc.exiting + sinfo->sc.suspended
 		+ sinfo->sc.userbusy;
 	/* To avoid duplicate accounting of jobs on nodes, we are only interested in
@@ -408,7 +411,7 @@ query_server(status *pol, int pbs_sd)
 			policy->resdef_to_check_no_hostvnode, CHECK_ALL_BOOLS);
 		ninfo->nodesig_ind = add_str_to_unique_array(&(sinfo->nodesigs),
 			ninfo->nodesig);
-		
+
 		if(ninfo->has_ghost_job)
 			create_resource_assn_for_node(ninfo);
 
@@ -469,12 +472,34 @@ query_server_info(status *pol, struct batch_status *server)
 	attrp = server->attribs;
 
 	while (attrp != NULL) {
-		if (is_reslimattr(attrp))
+		if (is_reslimattr(attrp)) {
 			(void) lim_setlimits(attrp, LIM_RES, sinfo->liminfo);
-		else if (is_runlimattr(attrp))
+			if(strstr(attrp->value, "u:") != NULL)
+				sinfo->has_user_limit = 1;
+			if(strstr(attrp->value, "g:") != NULL)
+				sinfo->has_grp_limit = 1;
+			if(strstr(attrp->value, "p:") != NULL)
+				sinfo->has_proj_limit = 1;
+		}
+		else if (is_runlimattr(attrp)) {
 			(void) lim_setlimits(attrp, LIM_RUN, sinfo->liminfo);
-		else if (is_oldlimattr(attrp))
+			if(strstr(attrp->value, "u:") != NULL)
+				sinfo->has_user_limit = 1;
+			if(strstr(attrp->value, "g:") != NULL)
+				sinfo->has_grp_limit = 1;
+			if(strstr(attrp->value, "p:") != NULL)
+				sinfo->has_proj_limit = 1;
+		}
+		else if (is_oldlimattr(attrp)) {
+			char *limname = convert_oldlim_to_new(attrp);
 			(void) lim_setlimits(attrp, LIM_OLD, sinfo->liminfo);
+
+			if(strstr(limname, "u:") != NULL)
+				sinfo->has_user_limit = 1;
+			if(strstr(limname, "g:") != NULL)
+				sinfo->has_grp_limit = 1;
+			/* no need to check for project limits because there were no old style project limits */
+		}
 		else if (!strcmp(attrp->name, ATTR_FLicenses)) {
 			count = strtol(attrp->value, &endp, 10);
 			if (*endp != '\0')
@@ -498,21 +523,19 @@ query_server_info(status *pol, struct batch_status *server)
 					"Job sorting formula and job_sort_key are incompatible.  "
 					"The job sorting formula will be used.");
 
-		}
-		else if (!strcmp(attrp->name, ATTR_rescavail)) { /* resources_available*/
+		} else if (!strcmp(attrp->name, ATTR_rescavail)) { /* resources_available*/
 			resp = find_alloc_resource_by_str(sinfo->res, attrp->resource);
 
 			if (resp != NULL) {
 				if (sinfo->res == NULL)
 					sinfo->res = resp;
 
-				if (set_resource(resp, attrp->value, RF_AVAIL) ==0) {
+				if (set_resource(resp, attrp->value, RF_AVAIL) == 0) {
 					free_server_info(sinfo);
 					return NULL;
 				}
 			}
-		}
-		else if (!strcmp(attrp->name, ATTR_rescassn)) { /* resources_assigned */
+		} else if (!strcmp(attrp->name, ATTR_rescassn)) { /* resources_assigned */
 			resp = find_alloc_resource_by_str(sinfo->res, attrp->resource);
 			if (sinfo->res == NULL)
 				sinfo->res = resp;
@@ -522,8 +545,7 @@ query_server_info(status *pol, struct batch_status *server)
 					return NULL;
 				}
 			}
-		}
-		else if (!strcmp(attrp->name, ATTR_rpp_retry)) { /* rpp_retry */
+		} else if (!strcmp(attrp->name, ATTR_rpp_retry)) { /* rpp_retry */
 			count = strtol(attrp->value, &endp, 10);
 			if (*endp != '\0')
 				count = RPP_RETRY;
@@ -977,6 +999,8 @@ free_server_info(server_info *sinfo)
 	}
 	if (sinfo->queue_list != NULL)
 		free_queue_list(sinfo->queue_list);
+	if(sinfo->equiv_classes != NULL)
+		free_resresv_set_array(sinfo->equiv_classes);
 
 	free_resource_list(sinfo->res);
 #ifdef NAS
@@ -1071,6 +1095,9 @@ new_server_info(int limallocflag)
 
 	sinfo->has_soft_limit = 0;
 	sinfo->has_hard_limit = 0;
+	sinfo->has_user_limit = 0;
+	sinfo->has_grp_limit = 0;
+	sinfo->has_proj_limit = 0;
 	sinfo->has_mult_express = 0;
 	sinfo->has_multi_vnode = 0;
 	sinfo->has_prime_queue = 0;
@@ -1117,6 +1144,7 @@ new_server_info(int limallocflag)
 	sinfo->job_formula = NULL;
 	sinfo->policy = NULL;
 	sinfo->fairshare = NULL;
+	sinfo->equiv_classes = NULL;
 	sinfo->num_queues = 0;
 	sinfo->num_nodes = 0;
 	sinfo->num_resvs = 0;
@@ -1196,7 +1224,7 @@ create_resource(char *name, char *value, enum resource_fields field)
 
 	if (name == NULL)
 		return NULL;
-	
+
 	if(value == NULL && field != RF_NONE)
 		return NULL;
 
@@ -1949,7 +1977,7 @@ int
 check_resv_running_on_node(resource_resv *resv, void *arg)
 {
 	if (resv->is_adv_resv && resv->resv !=NULL) {
-		if (resv->resv->resv_state ==RESV_RUNNING || resv->resv->resv_state == RESV_BEING_DELETED)
+		if (resv->resv->resv_state == RESV_RUNNING || resv->resv->resv_state == RESV_BEING_DELETED)
 			if (find_node_info(resv->ninfo_arr, (char *) arg))
 				return 1;
 	}
@@ -1990,6 +2018,9 @@ dup_server_info(server_info *osinfo)
 	nsinfo->has_mult_express = osinfo->has_mult_express;
 	nsinfo->has_soft_limit = osinfo->has_soft_limit;
 	nsinfo->has_hard_limit = osinfo->has_hard_limit;
+	nsinfo->has_user_limit = osinfo->has_user_limit;
+	nsinfo->has_grp_limit = osinfo->has_grp_limit;
+	nsinfo->has_proj_limit = osinfo->has_proj_limit;
 	nsinfo->has_multi_vnode = osinfo->has_multi_vnode;
 	nsinfo->has_prime_queue = osinfo->has_prime_queue;
 	nsinfo->has_nonprime_queue = osinfo->has_nonprime_queue;
@@ -2078,6 +2109,8 @@ dup_server_info(server_info *osinfo)
 #else
 	create_server_arrays(nsinfo);
 #endif /* localmod 054 */
+
+	nsinfo->equiv_classes = dup_resresv_set_array(osinfo->equiv_classes, nsinfo);
 
 	/* the event list is created dynamically during the evaluation of resource
 	 * reservations. It is a sorted list of all_resresv, initialized to NULL to
@@ -2316,8 +2349,8 @@ dup_resource(schd_resource *res)
 	nres->def = res->def;
 	if(nres->def != NULL);
 		nres->name = nres->def->name;
-	
-	
+
+
 	if (res->indirect_vnode_name != NULL)
 		nres->indirect_vnode_name = string_dup(res->indirect_vnode_name);
 
@@ -2899,7 +2932,7 @@ set_resource(schd_resource *res, char *val, enum resource_fields field)
 		rdef = res->def;
 	else {
 		rdef = find_resdef(allres, res->name);
-		res->def = rdef;		
+		res->def = rdef;
 	}
 	if (rdef != NULL)
 		res->type = rdef->type;
@@ -3189,6 +3222,7 @@ dup_status(status *ost)
 		copy_resdef_array(ost->resdef_to_check_no_hostvnode);
 	nst->resdef_to_check_rassn = copy_resdef_array(ost->resdef_to_check_rassn);
 	nst->resdef_to_check_noncons = copy_resdef_array(ost->resdef_to_check_noncons);
+	nst->equiv_class_resdef = copy_resdef_array(ost->equiv_class_resdef);
 
 
 	return nst;
@@ -3581,17 +3615,17 @@ struct queue_info** append_to_queue_list(queue_info ***list, queue_info *add)
  * @brief basically do a reslist->assigned += reqlist->amount for all of reqlist
  * @param reslist - resource list
  * @param reqlist - resource_req list
- * @return 
+ * @return
  */
 void
 add_req_list_to_assn(schd_resource *reslist, resource_req *reqlist)
 {
 	schd_resource *r;
 	resource_req *req;
-	
+
 	if(reslist == NULL || reqlist == NULL)
 		return;
-	
+
 	for(req = reqlist; req != NULL; req = req->next) {
 		r = find_resource(reslist, req->def);
 		if(r != NULL && r->type.is_consumable)
@@ -3601,7 +3635,7 @@ add_req_list_to_assn(schd_resource *reslist, resource_req *reqlist)
 
 /**
  * @brief create the ninfo->res->assigned values for the node
- * @param ninfo - the node 
+ * @param ninfo - the node
  * @return int
  * @retval 1 success
  * @retval 0 failure
@@ -3611,10 +3645,10 @@ create_resource_assn_for_node(node_info *ninfo)
 {
 	schd_resource *r;
 	int i;
-	
+
 	if(ninfo == NULL)
 		return 0;
-		
+
 	for (r = ninfo->res; r != NULL; r = r->next)
 		if(r->type.is_consumable)
 			r->assigned = 0;
@@ -3647,6 +3681,6 @@ create_resource_assn_for_node(node_info *ninfo)
 			}
 		}
 	}
-	
+
 	return 1;
 }

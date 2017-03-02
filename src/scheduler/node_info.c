@@ -1,36 +1,36 @@
 /*
  * Copyright (C) 1994-2017 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
- *  
+ *
  * This file is part of the PBS Professional ("PBS Pro") software.
- * 
+ *
  * Open Source License Information:
- *  
+ *
  * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free 
- * Software Foundation, either version 3 of the License, or (at your option) any 
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
  * later version.
- *  
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+ *
+ * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
  * PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
- *  
- * You should have received a copy of the GNU Affero General Public License along 
+ *
+ * You should have received a copy of the GNU Affero General Public License along
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
- *  
- * Commercial License Information: 
- * 
- * The PBS Pro software is licensed under the terms of the GNU Affero General 
- * Public License agreement ("AGPL"), except where a separate commercial license 
+ *
+ * Commercial License Information:
+ *
+ * The PBS Pro software is licensed under the terms of the GNU Affero General
+ * Public License agreement ("AGPL"), except where a separate commercial license
  * agreement for PBS Pro version 14 or later has been executed in writing with Altair.
- *  
- * Altair’s dual-license business model allows companies, individuals, and 
- * organizations to create proprietary derivative works of PBS Pro and distribute 
- * them - whether embedded or bundled with other software - under a commercial 
+ *
+ * Altair’s dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of PBS Pro and distribute
+ * them - whether embedded or bundled with other software - under a commercial
  * license agreement.
- * 
- * Use of Altair’s trademarks, including but not limited to "PBS™", 
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+ *
+ * Use of Altair’s trademarks, including but not limited to "PBS™",
+ * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
  * trademark licensing policies.
  *
  */
@@ -360,15 +360,14 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 					schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO,
 						ninfo->name, logbuf);
 			}
-		}
-		else if (!strcmp(attrp->name, ATTR_rescavail)) {
+		} else if (!strcmp(attrp->name, ATTR_rescavail)) {
 			res = find_alloc_resource_by_str(ninfo->res, attrp->resource);
 
 			if (res != NULL) {
 				if (ninfo->res == NULL)
 					ninfo->res = res;
 
-				if (set_resource(res, attrp->value, RF_AVAIL) ==0) {
+				if (set_resource(res, attrp->value, RF_AVAIL) == 0) {
 					free_node_info(ninfo);
 					ninfo = NULL;
 					break;
@@ -377,21 +376,19 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 				site_set_node_share(ninfo, res);
 #endif /* localmod 034 */
 			}
-		}
-		else if (!strcmp(attrp->name, ATTR_rescassn)) {
+		} else if (!strcmp(attrp->name, ATTR_rescassn)) {
 			res = find_alloc_resource_by_str(ninfo->res, attrp->resource);
 
 			if (ninfo->res == NULL)
 				ninfo->res = res;
 			if (res != NULL) {
-				if (set_resource(res, attrp->value, RF_ASSN) ==0) {
+				if (set_resource(res, attrp->value, RF_ASSN) == 0) {
 					free_node_info(ninfo);
 					ninfo = NULL;
 					break;
 				}
 			}
-		}
-		else if (!strcmp(attrp->name, ATTR_NODE_NoMultiNode)) {
+		} else if (!strcmp(attrp->name, ATTR_NODE_NoMultiNode)) {
 			if (!strcmp(attrp->value, ATR_TRUE))
 				ninfo->no_multinode_jobs = 1;
 		}
@@ -580,7 +577,6 @@ free_node_info(node_info *ninfo)
 
 		if (ninfo->nodesig != NULL)
 			free(ninfo->nodesig);
-
 
 		free(ninfo);
 	}
@@ -945,7 +941,7 @@ node_filter(node_info **nodes, int size,
 	int i, j;
 
 	if (size < 0)
-		size = count_array((void**) nodes);
+		size = count_array((void **) nodes);
 
 	if ((new_nodes = (node_info **) malloc((size + 1) * sizeof(node_info *))) == NULL) {
 		log_err(errno, "node_filter", "Error allocating memory");
@@ -1423,7 +1419,7 @@ collect_jobs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int si
 					}
 				} else {
 					/* Race Condition occurred: nodes were queried when a job existed.
-					 * Jobs were queried when the job no longer existed.  Make note 
+					 * Jobs were queried when the job no longer existed.  Make note
 					 * of it on the job so the node's resources_assigned values can be
 					 * recalculated later.
 					 */
@@ -2052,7 +2048,7 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 			set_schd_error_codes(err, NOT_RUN, SCHD_ERROR);
 			return 0;
 		}
-	} else 
+	} else
 		clear_schd_error(failerr);
 
 	/* clear the node scratch space for use for node searching */
@@ -2176,7 +2172,7 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 		free_nspecs(*nspec_arr);
 		*nspec_arr = NULL;
 	}
-	
+
 	if (err->status_code == SCHD_UNKWN && failerr->status_code != SCHD_UNKWN)
 		move_schd_error(err, failerr);
 
@@ -2241,7 +2237,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 			set_schd_error_codes(err, NOT_RUN, SCHD_ERROR);
 			return 0;
 		}
-	} else 
+	} else
 		clear_schd_error(failerr);
 
 
@@ -2317,7 +2313,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 			sprintf(logbuf, "Evaluating host %s", hostsets[i]->res_val);
 			schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG,
 				resresv->name, logbuf);
-			
+
 			/* Pack on One Host Placement:
 			 * place all chunks on one host.  This is done with a call to
 			 * to eval_complex_selspec().
@@ -2455,7 +2451,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 							}
 							else {
 								empty_nspec_array(nsa);
-								
+
 								if (failerr->status_code == SCHD_UNKWN)
 									move_schd_error(failerr, err);
 								clear_schd_error(err);
@@ -2475,7 +2471,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 							"Insufficient host-level resources %s", reason);
 						schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 							resresv->name, logbuf);
-						
+
 						if (failerr->status_code == SCHD_UNKWN)
 							move_schd_error(failerr, err);
 						clear_schd_error(err);
@@ -2498,7 +2494,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 			 * We do this by duplicating both the nodes and the select spec.  The
 			 * resources and chunks counts are decremented in the duplicated select
 			 * when they are allocated.  The assigned resources on the nodes are
-			 * increased when resources are allocated.  When the select spec has no	
+			 * increased when resources are allocated.  When the select spec has no
 			 *  more resources left, we've successfully fulfilled the request.  If we
 			 * run out of nodes to search, then we've failed to fulfill the request.
 			 */
@@ -2596,7 +2592,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 #endif /* localmod 998 */
 						set_schd_error_arg(err, ARG1, "Host");
 						set_schd_error_arg(err, ARG2, hostsets[i]->name);
-						
+
 						if (failerr->status_code != SCHD_UNKWN)
 							move_schd_error(failerr, err);
 						clear_schd_error(err);
@@ -2621,7 +2617,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 					resresv->name, logbuf);
 			}
 		}
-	} else 
+	} else
 		set_schd_error_codes(err, NOT_RUN, SCHD_ERROR);
 
 	if (dselspec != NULL)
@@ -2629,7 +2625,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 
 	if (tot == spec->total_chunks)
 		return 1;
-	
+
 	if (err->status_code == SCHD_UNKWN && failerr->status_code != SCHD_UNKWN)
 		move_schd_error(err, failerr);
 
@@ -2694,7 +2690,7 @@ eval_complex_selspec(status *policy, selspec *spec, node_info **ninfo_arr, place
 	 * This makes things more complicated now... we can make a single pass
 	 * through our nodes and will possibly come up with a solution... but
 	 * there is always the chance we could swap out nodes depending on one
-	 * node being able to satisfy multiple simple specs.  
+	 * node being able to satisfy multiple simple specs.
 	 * This resursion could take very long to finish.
 	 *
 	 * We'll go through the nodes once since it'll probably be fine for most
@@ -2855,7 +2851,7 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 #ifdef NAS /* localmod 005 */
 	ns = NULL;			/* quiet compiler warnings */
 #endif /* localmod 005 */
-	
+
 	if (failerr == NULL) {
 		failerr = new_schd_error();
 		if(failerr == NULL) {
@@ -2911,10 +2907,10 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 	 */
 	specreq_noncons = dup_resource_req_list(chk->req);
 	clear_schd_error(failerr);
-	
+
 	if (specreq_noncons == NULL) {
 		set_schd_error_codes(err, NOT_RUN, SCHD_ERROR);
-		
+
 		if (flags & EVAL_OKBREAK)
 			free_nodes(ninfo_arr);
 		return 0;
@@ -3540,7 +3536,7 @@ check_resources_for_node(resource_req *resreq, node_info *ninfo,
 			chunks = ceil(loadcmp / req->amount);
 		}
 
-		if (chunks == 0) 
+		if (chunks == 0)
 			set_schd_error_codes(err, NOT_RUN, NODE_HIGH_LOAD);
 	}
 
@@ -3667,6 +3663,50 @@ check_resources_for_node(resource_req *resreq, node_info *ninfo,
 	}
 
 	return min_chunks;
+}
+
+/**
+ * @brief compare two place specs to see if they are equal
+ * @param[in] pl1 - place spec 1
+ * @param[in] pl2 - place spec 2
+ * @return  1 if equal 0 if not
+ */
+int
+compare_place(place *pl1, place *pl2)
+{
+	if (pl1 == NULL && pl2 == NULL)
+		return 1;
+	else if (pl1 == NULL || pl2 == NULL)
+		return 0;
+
+	if (pl1->excl != pl2->excl)
+		return 0;
+
+	if (pl1->exclhost != pl2->exclhost)
+		return 0;
+
+	if (pl1->share != pl2->share)
+		return 0;
+
+	if (pl1->free != pl2->free)
+		return 0;
+
+	if (pl1->pack != pl2->pack)
+		return 0;
+
+	if (pl1->scatter != pl2->scatter)
+		return 0;
+
+	if (pl1->vscatter != pl2->vscatter)
+		return 0;
+
+	if (pl1->group != NULL && pl2->group != NULL) {
+		if (strcmp(pl1->group, pl2->group))
+			return 0;
+	} else if (pl1->group != NULL || pl2->group != NULL)
+		return 0;
+
+	return 1;
 }
 
 /**
@@ -3909,6 +3949,62 @@ parse_selspec(char *select_spec)
 	}
 
 	return spec;
+}
+
+/**
+ *	@brief compare two chunks for equality
+ *	@param[in] c1 - first chunk
+ * 	@param[in] c2 - second chunk
+ *
+ *	@return int
+ *	@retval 1 if chunks are equal
+ *	@retval 0 if chunks are not equal
+ */
+int compare_chunk(chunk *c1, chunk *c2) {
+	if (c1 == NULL && c2 == NULL)
+		return 1;
+	if (c1 == NULL || c2 == NULL)
+		return 0;
+
+	if (c1->num_chunks != c2->num_chunks)
+		return 0;
+	if(compare_resource_req_list(c1->req, c2->req, NULL) == 0)
+		return 0;
+	if(c1->seq_num != c2->seq_num)
+		return 0;
+
+	return 1;
+}
+
+/**
+ *	@brief compare two selspecs for equality
+ *	@param[in] s1 - first selspec
+ *	@param[in] s2 - second selspec
+ *
+ *	@returns int
+ *	@retval 1 if selspecs are equal
+ *	@retval 0 if not equal
+ */
+int compare_selspec(selspec *s1, selspec *s2) {
+	int i;
+	int ret = 1;
+
+	if(s1 == NULL && s2 == NULL)
+		return 1;
+	else if(s1 == NULL || s2 == NULL)
+		return 0;
+
+	if(s1->total_chunks != s2->total_chunks)
+		return 0;
+
+	if (s1->chunks != NULL && s2->chunks != NULL) {
+		for (i = 0; ret && s1->chunks[i] != NULL; i++) {
+			if (compare_chunk(s1->chunks[i], s2->chunks[i]) == 0)
+				ret = 0;
+		}
+	} else
+		ret = 0;
+	return ret;
 }
 
 /**
@@ -4726,7 +4822,7 @@ can_fit_on_vnode(resource_req *req, node_info **ninfo_arr)
 
 	for (i = 0; ninfo_arr[i] != NULL; i++) {
 		clear_schd_error(dumperr);
-		
+
 		if (is_vnode_eligible_chunk(req, ninfo_arr[i], NULL, dumperr)) {
 			if (check_avail_resources(ninfo_arr[i]->res, req,
 				UNSET_RES_ZERO, NULL, INSUFFICIENT_RESOURCE, NULL))
@@ -5239,11 +5335,11 @@ is_exclhost(place *placespec, enum vnode_sharing sharing)
  * @param[in]	ninfo_arr	-	array to check
  * @param[in]	resresv	-	resresv to check to place on nodes
  * @param[out]	err	-	error structure
- * 
+ *
  * @warning
  * 		If an error occurs in this function, no indication will be returned.
  *		This is not a huge concern because, it will just cause more work to be done.
- * 
+ *
  * @return	void
  */
 void

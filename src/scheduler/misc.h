@@ -1,36 +1,36 @@
 /*
  * Copyright (C) 1994-2017 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
- *  
+ *
  * This file is part of the PBS Professional ("PBS Pro") software.
- * 
+ *
  * Open Source License Information:
- *  
+ *
  * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free 
- * Software Foundation, either version 3 of the License, or (at your option) any 
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
  * later version.
- *  
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+ *
+ * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
  * PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
- *  
- * You should have received a copy of the GNU Affero General Public License along 
+ *
+ * You should have received a copy of the GNU Affero General Public License along
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
- *  
- * Commercial License Information: 
- * 
- * The PBS Pro software is licensed under the terms of the GNU Affero General 
- * Public License agreement ("AGPL"), except where a separate commercial license 
+ *
+ * Commercial License Information:
+ *
+ * The PBS Pro software is licensed under the terms of the GNU Affero General
+ * Public License agreement ("AGPL"), except where a separate commercial license
  * agreement for PBS Pro version 14 or later has been executed in writing with Altair.
- *  
- * Altair’s dual-license business model allows companies, individuals, and 
- * organizations to create proprietary derivative works of PBS Pro and distribute 
- * them - whether embedded or bundled with other software - under a commercial 
+ *
+ * Altair’s dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of PBS Pro and distribute
+ * them - whether embedded or bundled with other software - under a commercial
  * license agreement.
- * 
- * Use of Altair’s trademarks, including but not limited to "PBS™", 
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+ *
+ * Use of Altair’s trademarks, including but not limited to "PBS™",
+ * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
  * trademark licensing policies.
  *
  */
@@ -254,7 +254,7 @@ res_to_str_re(void *p, enum resource_fields fld, char **buf,
 /*
  * clear schd_error structure for reuse
  */
-void 
+void
 clear_schd_error(schd_error *err);
 
 /* schd_error constructor */
@@ -266,7 +266,7 @@ schd_error *
 dup_schd_error(schd_error *oerr);
 
 /* does a shallow copy err = oerr safely moving all argument data to err */
-void 
+void
 move_schd_error(schd_error *err, schd_error *oerr);
 
 /* safely set the schd_config arg buffers without worrying about leaking */
@@ -276,9 +276,9 @@ void set_schd_error_arg(schd_error *err, int arg_field, char *arg);
 void set_schd_error_codes(schd_error *err, enum schd_err_status status_code, enum sched_error error_code);
 
 /* schd_error destuctor */
-void 
+void
 free_schd_error(schd_error *err);
-void 
+void
 free_schd_error_list(schd_error *err_list);
 
 /* helper functions to create schd_errors*/
@@ -288,20 +288,20 @@ schd_error *
 create_schd_error_complex(int error_code, int status_code, char *arg1, char *arg2, char *arg3, char *errbuf);
 
 /* add schd_errors to linked list */
-void 
+void
 add_err(schd_error **prev_err, schd_error *err);
 
 
 /*
  * add string to NULL terminated string array
  */
-int 
+int
 add_str_to_array(char ***str_arr, char *str);
 
 /*
  * add a string to a string array only if it is unique
  */
-int 
+int
 add_str_to_unique_array(char ***str_arr, char *str);
 
 #ifdef	__cplusplus

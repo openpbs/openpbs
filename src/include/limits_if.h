@@ -135,6 +135,20 @@ extern int	is_runlimattr(const struct attrl *);
  */
 extern int	is_oldlimattr(const struct attrl *);
 
+/**
+ * @brief
+ * 		convert an old limit attribute name to the new one
+ *
+ * @param[in]	a	-	attribute list structure
+ * 
+ * @return char *
+ * @retval !NULL	: old limit attribute name
+ * @retval NULL		: attribute value is not an old limit attribute
+ *
+ */
+char *
+convert_oldlim_to_new(const struct attrl *a);
+
 /**	@fn int lim_setlimits(const struct attrl *a, enum limtype lt, void *p)
  *	@brief set resource or run-time limits
  *

@@ -1,36 +1,36 @@
 /*
  * Copyright (C) 1994-2017 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
- *  
+ *
  * This file is part of the PBS Professional ("PBS Pro") software.
- * 
+ *
  * Open Source License Information:
- *  
+ *
  * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free 
- * Software Foundation, either version 3 of the License, or (at your option) any 
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
  * later version.
- *  
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+ *
+ * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
  * PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
- *  
- * You should have received a copy of the GNU Affero General Public License along 
+ *
+ * You should have received a copy of the GNU Affero General Public License along
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
- *  
- * Commercial License Information: 
- * 
- * The PBS Pro software is licensed under the terms of the GNU Affero General 
- * Public License agreement ("AGPL"), except where a separate commercial license 
+ *
+ * Commercial License Information:
+ *
+ * The PBS Pro software is licensed under the terms of the GNU Affero General
+ * Public License agreement ("AGPL"), except where a separate commercial license
  * agreement for PBS Pro version 14 or later has been executed in writing with Altair.
- *  
- * Altair’s dual-license business model allows companies, individuals, and 
- * organizations to create proprietary derivative works of PBS Pro and distribute 
- * them - whether embedded or bundled with other software - under a commercial 
+ *
+ * Altair’s dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of PBS Pro and distribute
+ * them - whether embedded or bundled with other software - under a commercial
  * license agreement.
- * 
- * Use of Altair’s trademarks, including but not limited to "PBS™", 
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+ *
+ * Use of Altair’s trademarks, including but not limited to "PBS™",
+ * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
  * trademark licensing policies.
  *
  */
@@ -679,7 +679,7 @@ calc_run_time(char *name, server_info *sinfo, int flags)
 
 	if (!is_resource_resv_valid(resresv, NULL))
 		return (time_t) -1;
-	
+
 	err = new_schd_error();
 	if(err == NULL)
 		return (time_t) 0;
@@ -693,9 +693,9 @@ calc_run_time(char *name, server_info *sinfo, int flags)
 		if (desc > 0 || (desc == 0 && policy_change_info(sinfo, resresv))) {
 			clear_schd_error(err);
 			if (resresv->is_job)
-				ns = is_ok_to_run(sinfo->policy, -1, sinfo, resresv->job->queue, resresv, NO_FLAGS, err);
+				ns = is_ok_to_run(sinfo->policy, -1, sinfo, resresv->job->queue, resresv, IGNORE_EQUIV_CLASS, err);
 			else
-				ns = is_ok_to_run(sinfo->policy, -1, sinfo, NULL, resresv, NO_FLAGS, err);
+				ns = is_ok_to_run(sinfo->policy, -1, sinfo, NULL, resresv, IGNORE_EQUIV_CLASS, err);
 		}
 
 		if (ns == NULL) /* event can not run */
@@ -726,7 +726,7 @@ calc_run_time(char *name, server_info *sinfo, int flags)
 		free_schd_error(err);
 		return 0;
 	}
-	
+
 	/* err is no longer needed, we've reported it. */
 	free_schd_error(err);
 	err = NULL;

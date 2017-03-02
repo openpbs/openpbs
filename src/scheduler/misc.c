@@ -1,36 +1,36 @@
 /*
  * Copyright (C) 1994-2017 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
- *  
+ *
  * This file is part of the PBS Professional ("PBS Pro") software.
- * 
+ *
  * Open Source License Information:
- *  
+ *
  * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free 
- * Software Foundation, either version 3 of the License, or (at your option) any 
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
  * later version.
- *  
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+ *
+ * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
  * PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
- *  
- * You should have received a copy of the GNU Affero General Public License along 
+ *
+ * You should have received a copy of the GNU Affero General Public License along
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
- *  
- * Commercial License Information: 
- * 
- * The PBS Pro software is licensed under the terms of the GNU Affero General 
- * Public License agreement ("AGPL"), except where a separate commercial license 
+ *
+ * Commercial License Information:
+ *
+ * The PBS Pro software is licensed under the terms of the GNU Affero General
+ * Public License agreement ("AGPL"), except where a separate commercial license
  * agreement for PBS Pro version 14 or later has been executed in writing with Altair.
- *  
- * Altair’s dual-license business model allows companies, individuals, and 
- * organizations to create proprietary derivative works of PBS Pro and distribute 
- * them - whether embedded or bundled with other software - under a commercial 
+ *
+ * Altair’s dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of PBS Pro and distribute
+ * them - whether embedded or bundled with other software - under a commercial
  * license agreement.
- * 
- * Use of Altair’s trademarks, including but not limited to "PBS™", 
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+ *
+ * Use of Altair’s trademarks, including but not limited to "PBS™",
+ * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
  * trademark licensing policies.
  *
  */
@@ -406,9 +406,9 @@ schdlog(int event, int class, int sev, const char *name, const char *text)
 		log_record(event, class, sev, name, text);
 		if (conf.logstderr) {
 			time_t logtime;
-			
+
 			logtime = cstat.current_time + (time(NULL) - cstat.cycle_start);
-				
+
 			ptm = localtime(&logtime);
 			if (ptm != NULL) {
 				fprintf(stderr, "%02d/%02d/%04d %02d:%02d:%02d;%s;%s\n",
@@ -492,7 +492,7 @@ filter_array(void **ptrarr, int (*filter_func)(void*, void*),
 	if (ptrarr == NULL || filter_func == NULL)
 		return NULL;
 
-	size = count_array((void**) ptrarr);
+	size = count_array((void **) ptrarr);
 
 	if ((new_arr = (void **) malloc((size + 1) * sizeof(void *))) == NULL) {
 		log_err(errno, __func__, "Error allocating memory");
@@ -646,7 +646,7 @@ enum match_string_array_ret match_string_array(char **strarr1, char **strarr2)
 	if (strarr1 == NULL || strarr2 == NULL)
 		return SA_NO_MATCH;
 
-	strarr2_len = count_array((void**)strarr2);
+	strarr2_len = count_array((void **)strarr2);
 
 	for (i = 0; strarr1[i] != NULL; i++) {
 		if (find_string(strarr2, strarr1[i]))
@@ -1041,16 +1041,16 @@ clear_schd_error(schd_error *err)
 
 	set_schd_error_codes(err, SCHD_UNKWN, SUCCESS);
 	err->rdef = NULL;
-	
+
 	free(err->arg1);
 	err->arg1 = NULL;
-	
+
 	free(err->arg2);
 	err->arg2 = NULL;
-	
+
 	free(err->arg3);
 	err->arg3 = NULL;
-	
+
 	free(err->specmsg);
 	err->specmsg = NULL;
 }
@@ -1093,14 +1093,14 @@ dup_schd_error(schd_error *oerr) {
 	schd_error *nerr;
 	if(oerr == NULL)
 		return NULL;
-	
+
 	nerr = new_schd_error();
 	if(nerr == NULL)
 		return NULL;
-	
+
 	/* Do shallow copy, dup pointers later */
 	memcpy(nerr, oerr, sizeof(schd_error));
-	
+
 	nerr->arg1 = NULL;
 	nerr->arg2 = NULL;
 	nerr->arg3 = NULL;
@@ -1135,7 +1135,7 @@ dup_schd_error(schd_error *oerr) {
 			return NULL;
 		}
 	}
-	
+
 	return nerr;
 }
 
@@ -1162,8 +1162,8 @@ void move_schd_error(schd_error *err, schd_error *oerr)
 	free_schd_error_list(err->next);
 
 	memcpy(err, oerr, sizeof(schd_error));
-	
-	/* Now that err has taken over the memory for the points, 
+
+	/* Now that err has taken over the memory for the points,
 	 * NULL them on the original so we don't accidentally free them
 	 */
 	oerr->arg1 = NULL;
@@ -1175,19 +1175,37 @@ void move_schd_error(schd_error *err, schd_error *oerr)
 
 /**
  * @brief
+ *		deep copy oerr into err.  This will allocate memory
+ *		for members of err, but not a new structure itself (like
+ *		dup_schd_error() would.
+ * @param[out] err
+ * @param[in] oerr
+ */
+void copy_schd_error(schd_error *err, schd_error *oerr)
+{
+	set_schd_error_codes(err, oerr->status_code, oerr->error_code);
+	set_schd_error_arg(err, ARG1, oerr->arg1);
+	set_schd_error_arg(err, ARG2, oerr->arg2);
+	set_schd_error_arg(err, ARG3, oerr->arg3);
+	set_schd_error_arg(err, SPECMSG, oerr->specmsg);
+	err->rdef = oerr->rdef;
+}
+
+/**
+ * @brief
  * 		safely set the schd_config arg buffers without worrying about leaking
- * 
+ *
  * @param[in,out]	err	-	object to set
  * @param[in]	arg_field	-	arg buffer to set
  * @param[in]	arg	-	string to set arg to
- * 
+ *
  * @return	nothing
  */
 void set_schd_error_arg(schd_error *err, int arg_field, char *arg) {
-	
+
 	if(err == NULL || arg == NULL)
 		return;
-	
+
 	switch(arg_field) {
 		case ARG1:
 			free(err->arg1);
@@ -1208,7 +1226,7 @@ void set_schd_error_arg(schd_error *err, int arg_field, char *arg) {
 		default:
 			schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG, __func__, "Invalid schd_error arg message type");
 	}
-		
+
 }
 
 /**
@@ -1217,11 +1235,11 @@ void set_schd_error_arg(schd_error *err, int arg_field, char *arg) {
  *
  *	@note
  *		this ensures both codes are set together
- * 
+ *
  * @param[in,out]	err	-	error structure to set
  * @param[in]	status_code	-	status code
  * @param[in]	error_code	-	error code
- * 
+ *
  * @return	nothing
  */
 void set_schd_error_codes(schd_error *err, enum schd_err_status status_code, enum sched_error error_code)
@@ -1232,7 +1250,7 @@ void set_schd_error_codes(schd_error *err, enum schd_err_status status_code, enu
 		return;
 	if(error_code < PBSE_NONE || error_code > ERR_SPECIAL)
 		return;
-	
+
 	err->status_code = status_code;
 	err->error_code = error_code;
 }
@@ -1248,14 +1266,14 @@ free_schd_error(schd_error *err)
 {
 	if(err == NULL)
 		return;
-	
+
 	free(err->arg1);
 	free(err->arg2);
 	free(err->arg3);
 	free(err->specmsg);
-	
+
 	err->next = NULL; /* just incase people try and access freed memory */
-	
+
 	free(err);
 }
 
@@ -1281,13 +1299,13 @@ free_schd_error_list(schd_error *err_list) {
 /**
  * @brief
  * 		create a simple schd_error with no arguments
- * 
+ *
  * @param[in]	error_code	-	error code for new schd_error
  * @param[in]	status_code -	status code for new schd_error
- * 
+ *
  * @return	new schd_error
  */
-schd_error *create_schd_error(int error_code, int status_code) 
+schd_error *create_schd_error(int error_code, int status_code)
 {
 	schd_error *new;
 	new = new_schd_error();
@@ -1315,25 +1333,25 @@ schd_error *create_schd_error(int error_code, int status_code)
 schd_error *create_schd_error_complex(int error_code, int status_code, char *arg1, char *arg2, char *arg3, char *specmsg)
 {
 	schd_error *new;
-	
+
 	new = create_schd_error(error_code, status_code);
 	if(new == NULL)
 		return NULL;
-	
-	if(arg1 != NULL) 
+
+	if(arg1 != NULL)
 		set_schd_error_arg(new, ARG1, arg1);
 
-	if(arg2 != NULL) 
+	if(arg2 != NULL)
 		set_schd_error_arg(new, ARG2, arg2);
-	
-	if(arg3 != NULL) 
+
+	if(arg3 != NULL)
 		set_schd_error_arg(new, ARG3, arg3);
 
 	if(specmsg != NULL)
 		set_schd_error_arg(new, SPECMSG, specmsg);
 
 	return new;
-} 
+}
 /**
  * @brief
  * 		add a schd_error to a linked list of schd_errors.
@@ -1342,7 +1360,7 @@ schd_error *create_schd_error_complex(int error_code, int status_code, char *arg
  *		a 'prev_err' pointer.  The address of the prev_err(i.e., &prev_err) is passed into this function.
  *		The first call, we add the head.  Each additional call, we set up the next pointers.
  *		If err-> next is not NULL, we assume we're adding a sublist of schd_error's to the main list.
- * 
+ *
  *	@example
  *		main_sched_loop(): foo_err = new_schd_error()
  *		main_sched_loop(): is_ok_to_run(..., foo_err)
@@ -1352,12 +1370,12 @@ schd_error *create_schd_error_complex(int error_code, int status_code, char *arg
  *		is_ok_to_run() add_err(&prev_err, err)
  *		Note: main_sched_loop() did not pass the address of foo_err into is_ok_to_run()
  *		Note2: main_sched_loop() holds the head of the list, so we don't return the list
- * 
+ *
  * @param[in]	prev_err	-	address of the pointer previous to the end of the list (i.e. (*prev_err)->next->next == NULL
  * @param[in]	err	-	schd_error to add to the list (may be a list of schd_error's)
  *
  * @return	nothing
- * 
+ *
  * @note	nothing stops duplicate entries from being added
  */
 void add_err(schd_error **prev_err, schd_error *err)
@@ -1366,18 +1384,18 @@ void add_err(schd_error **prev_err, schd_error *err)
 
 	if (err == NULL || prev_err == NULL)
 		return;
-	
+
 	if(*prev_err == NULL)
 		(*prev_err) = err;
 	else
 		(*prev_err)->next = err;
-	
-	
+
+
 	if(err->next != NULL) {
 		for (cur = err; cur->next != NULL; cur = cur->next)
 			;
 		(*prev_err) = cur;
-	} else 
+	} else
 		(*prev_err) = err;
 }
 
@@ -1463,15 +1481,15 @@ res_to_str_c(sch_resource_t amount, resdef *def, enum resource_fields fld,
 	schd_resource res = {0};
 	resource_req req = {0};
 	char *unknown[] = {"unknown", NULL};
-        
+
         if (buf == NULL)
           return "";
-        
+
         buf[0] = '\0';
-          
+
 	if (def == NULL)
 		return "";
-                
+
 	switch (fld) {
 		case RF_REQUEST:
 			req.amount = amount;

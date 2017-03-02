@@ -1,36 +1,36 @@
 /*
  * Copyright (C) 1994-2017 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
- *  
+ *
  * This file is part of the PBS Professional ("PBS Pro") software.
- * 
+ *
  * Open Source License Information:
- *  
+ *
  * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free 
- * Software Foundation, either version 3 of the License, or (at your option) any 
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
  * later version.
- *  
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+ *
+ * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
  * PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
- *  
- * You should have received a copy of the GNU Affero General Public License along 
+ *
+ * You should have received a copy of the GNU Affero General Public License along
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
- *  
- * Commercial License Information: 
- * 
- * The PBS Pro software is licensed under the terms of the GNU Affero General 
- * Public License agreement ("AGPL"), except where a separate commercial license 
+ *
+ * Commercial License Information:
+ *
+ * The PBS Pro software is licensed under the terms of the GNU Affero General
+ * Public License agreement ("AGPL"), except where a separate commercial license
  * agreement for PBS Pro version 14 or later has been executed in writing with Altair.
- *  
- * Altair’s dual-license business model allows companies, individuals, and 
- * organizations to create proprietary derivative works of PBS Pro and distribute 
- * them - whether embedded or bundled with other software - under a commercial 
+ *
+ * Altair’s dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of PBS Pro and distribute
+ * them - whether embedded or bundled with other software - under a commercial
  * license agreement.
- * 
- * Use of Altair’s trademarks, including but not limited to "PBS™", 
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+ *
+ * Use of Altair’s trademarks, including but not limited to "PBS™",
+ * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
  * trademark licensing policies.
  *
  */
@@ -540,7 +540,7 @@ create_node_partitions(status *policy, node_info **nodes, char **resnames, unsig
 		/* if multiple resource values are present, tot_nodes may be incorrect.
 		 * recalculating tot_nodes for each node partition.
 		 */
-		np_arr[np_i]->tot_nodes = count_array((void**) np_arr[np_i]->ninfo_arr);
+		np_arr[np_i]->tot_nodes = count_array((void **) np_arr[np_i]->ninfo_arr);
 		node_partition_update(policy, np_arr[np_i]);
 	}
 
@@ -636,9 +636,7 @@ node_partition_update(status *policy, node_partition *np)
 		if (np->res == NULL)
 			np->res = dup_selective_resource_list(np->ninfo_arr[i]->res,
 				policy->resdef_to_check, arl_flags);
-		else if (!add_resource_list(policy, np->res, np->ninfo_arr[i]->res,
-			arl_flags)) {
-			log_err(errno, __func__, MEM_ERR_MSG);
+		else if (!add_resource_list(policy, np->res, np->ninfo_arr[i]->res, arl_flags)) {
 			rc = 0;
 			break;
 		}
@@ -893,13 +891,13 @@ resresv_can_fit_nodepart(status *policy, node_partition *np, resource_resv *resr
 	schd_error *prev_err = NULL;
 	int can_fit = 1;
 	int pass_flags;
-	
-	
+
+
 	if (policy == NULL || np == NULL || resresv == NULL || err == NULL)
 		return -1;
-	
+
 	pass_flags = flags|UNSET_RES_ZERO;
-	
+
 	/* Check 1: is there at least 1 node in the free state */
 	if (!(flags & COMPARE_TOTAL) && np->free_nodes == 0) {
 		set_schd_error_codes(err, NOT_RUN, NO_FREE_NODES);
@@ -1012,7 +1010,7 @@ create_specific_nodepart(status *policy, char *name, node_info **nodes)
 	if (np == NULL)
 		return NULL;
 
-	cnt = count_array((void**) nodes);
+	cnt = count_array((void **) nodes);
 
 	np->name = string_dup(name);
 	np->def = NULL;
@@ -1129,7 +1127,7 @@ create_placement_sets(status *policy, server_info *sinfo)
 				ngroup_nodes = qinfo->nodes;
 			else
 				ngroup_nodes = sinfo->unassoc_nodes;
-			
+
 			if(qinfo->node_group_key)
 				ngkey = qinfo->node_group_key;
 			else
@@ -1175,7 +1173,7 @@ update_all_nodepart(status *policy, server_info *sinfo, resource_resv *resresv)
 
 	if (sinfo == NULL || sinfo->queues == NULL)
 		return;
-	
+
 	if(sinfo->allpart == NULL)
 		return;
 

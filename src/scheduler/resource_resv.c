@@ -1,36 +1,36 @@
 /*
  * Copyright (C) 1994-2017 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
- *  
+ *
  * This file is part of the PBS Professional ("PBS Pro") software.
- * 
+ *
  * Open Source License Information:
- *  
+ *
  * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free 
- * Software Foundation, either version 3 of the License, or (at your option) any 
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
  * later version.
- *  
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+ *
+ * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
  * PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
- *  
- * You should have received a copy of the GNU Affero General Public License along 
+ *
+ * You should have received a copy of the GNU Affero General Public License along
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
- *  
- * Commercial License Information: 
- * 
- * The PBS Pro software is licensed under the terms of the GNU Affero General 
- * Public License agreement ("AGPL"), except where a separate commercial license 
+ *
+ * Commercial License Information:
+ *
+ * The PBS Pro software is licensed under the terms of the GNU Affero General
+ * Public License agreement ("AGPL"), except where a separate commercial license
  * agreement for PBS Pro version 14 or later has been executed in writing with Altair.
- *  
- * Altair’s dual-license business model allows companies, individuals, and 
- * organizations to create proprietary derivative works of PBS Pro and distribute 
- * them - whether embedded or bundled with other software - under a commercial 
+ *
+ * Altair’s dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of PBS Pro and distribute
+ * them - whether embedded or bundled with other software - under a commercial
  * license agreement.
- * 
- * Use of Altair’s trademarks, including but not limited to "PBS™", 
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+ *
+ * Use of Altair’s trademarks, including but not limited to "PBS™",
+ * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
  * trademark licensing policies.
  *
  */
@@ -158,6 +158,8 @@ new_resource_resv()
 	resresv->rank = 0;
 	resresv->qtime = 0;
 	resresv->qrank = 0;
+
+	resresv->ec_index = UNSPECIFIED;
 
 	resresv->start = UNSPECIFIED;
 	resresv->end = UNSPECIFIED;
@@ -359,6 +361,8 @@ dup_resource_resv(resource_resv *oresresv,
 	nresresv->is_peer_ob = oresresv->is_peer_ob;
 	nresresv->is_shrink_to_fit = oresresv->is_shrink_to_fit;
 	nresresv->will_use_multinode = oresresv->will_use_multinode;
+
+	nresresv->ec_index = oresresv->ec_index;
 
 	nresresv->sch_priority = oresresv->sch_priority;
 	nresresv->rank = oresresv->rank;
@@ -589,7 +593,7 @@ cmp_job_arrays(resource_resv *resresv, void *arg)
  *	@param[in] resresv - the resource_resv to do check
  *	@param[out] err - error struct to return why resource_resv is invalid
  *
- *	@returns int 
+ *	@returns int
  *	@retva1 1 if valid
  *	@retval 0 if invalid (err returns reason why)
  */
@@ -720,6 +724,42 @@ dup_resource_req_list(resource_req *oreq)
 
 /**
  * @brief
+ *		dup_selective_resource_req_list - duplicate a resource_req list
+ *
+ * @param[in]	oreq	-	resource_req list to duplicate
+ * @paral[in]	deflist		only duplicate resources in this list - if NULL, dup all
+ *
+ * @return	duplicated resource_req list
+ *
+ */
+resource_req *
+dup_selective_resource_req_list(resource_req *oreq, resdef **deflist)
+{
+	resource_req *req;
+	resource_req *nreq;
+	resource_req *head;
+	resource_req *prev;
+
+	head = NULL;
+	prev = NULL;
+
+	for (req = oreq; req != NULL; req = req->next) {
+		if (deflist == NULL || resdef_exists_in_array(deflist, req->def)) {
+			if ((nreq = dup_resource_req(req)) != NULL) {
+				if (head == NULL)
+					head = nreq;
+				else
+					prev->next = nreq;
+				prev = nreq;
+			}
+		}
+	}
+
+	return head;
+}
+
+/**
+ * @brief
  *		dup_resource_req - duplicate a resource_req struct
  *
  * @param[in]	oreq	-	the resource_req to duplicate
@@ -737,9 +777,9 @@ dup_resource_req(resource_req *oreq)
 	if ((nreq = new_resource_req()) == NULL)
 		return NULL;
 
-	
+
 	nreq->def = oreq->def;
-	if(nreq->def) 
+	if(nreq->def)
 		nreq->name = nreq->def->name;
 
 	memcpy(&(nreq->type), &(oreq->type), sizeof(struct resource_type));
@@ -820,8 +860,8 @@ create_resource_req(char *name, char *value)
 
 /**
  * @brief
- * 		find resource_req by resource definition or allocate and
- *              initialize a new resource_req also adds new one to the list
+ *		find resource_req by resource definition or allocate and
+ *		initialize a new resource_req also adds new one to the list
  *
  * @param[in]	reqlist	-	list to search
  * @param[in]	name	-	resource_req to find
@@ -862,7 +902,7 @@ find_alloc_resource_req(resource_req *reqlist, resdef *def)
 /**
  * @brief
  * 		find resource_req by name or allocate and initialize a new
- *              resource_req also adds new one to the list
+ *		resource_req also adds new one to the list
  *
  * @param[in]	reqlist	-	list to search
  * @param[in]	name	-	resource_req to find
@@ -1014,6 +1054,82 @@ free_resource_req(resource_req *req)
 		free(req->res_str);
 
 	free(req);
+}
+
+/**
+ * @brief compare two resource_req structures
+ * @return equal or not
+ * @retval 1 two structures are equal
+ * @retval 0 two strictures are not equal
+ */
+int
+compare_resource_req(resource_req *req1, resource_req *req2) {
+
+	if (req1 == NULL && req2 == NULL)
+		return 1;
+	else if (req1 == NULL || req1 == NULL)
+		return 0;
+
+	if (req1->type.is_consumable || req1->type.is_boolean)
+		return (req1->amount == req2->amount);
+
+	if (req1->type.is_string)
+		if (strcmp(req1->res_str, req2->res_str) == 0)
+			return 1;
+
+	return 0;
+
+}
+
+/**
+ * @brief compare two resource_req lists possibly excluding certain resources
+ * @param[in] req1 - list1
+ * @param[in] req2 - list2
+ * @param[in] comparr - list of resources to compare or NULL for all resources
+ * @return int
+ * @retval 1 two lists are equal
+ * @retval 0 two lists are not equal
+ */
+int
+compare_resource_req_list(resource_req *req1, resource_req *req2, resdef **comparr) {
+	resource_req *cur_req1;
+	resource_req *cur_req2;
+	resource_req *cur;
+	int ret1 = 1;
+	int ret2 = 1;
+
+
+	if (req1 == NULL && req2 == NULL)
+		return 1;
+
+	if (req1 == NULL || req2 == NULL)
+		return 0;
+
+	for (cur_req1 = req1; ret1 && cur_req1 != NULL; cur_req1 = cur_req1->next) {
+		if (comparr == NULL || resdef_exists_in_array(comparr, cur_req1->def)) {
+			cur = find_resource_req(req2, cur_req1->def);
+			if (cur == NULL)
+				ret1 = 0;
+			else
+				ret1 = compare_resource_req(cur_req1, cur);
+		}
+	}
+
+	for (cur_req2 = req2; ret2 && cur_req2 != NULL; cur_req2 = cur_req2->next) {
+		if (comparr == NULL || resdef_exists_in_array(comparr, cur_req2->def)) {
+			cur = find_resource_req(req1, cur_req2->def);
+			if (cur == NULL)
+				ret2 = 0;
+			else
+				ret2 = compare_resource_req(cur_req2, cur);
+		}
+	}
+
+	/* Either we found a not-match or one list is larger than the other*/
+	if (!ret1 || !ret2)
+		return 0;
+
+	return 1;
 }
 
 /**
@@ -1722,7 +1838,7 @@ dup_selspec(selspec *oldspec)
 	newspec->chunks = dup_chunk_array(oldspec->chunks);
 	newspec->defs = copy_resdef_array(oldspec->defs);
 
-	if (newspec->chunks == NULL) {
+	if (newspec->chunks == NULL || newspec->defs == NULL) {
 		free_selspec(newspec);
 		return NULL;
 	}

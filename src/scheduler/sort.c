@@ -1,36 +1,36 @@
 /*
  * Copyright (C) 1994-2017 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
- *  
+ *
  * This file is part of the PBS Professional ("PBS Pro") software.
- * 
+ *
  * Open Source License Information:
- *  
+ *
  * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free 
- * Software Foundation, either version 3 of the License, or (at your option) any 
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
  * later version.
- *  
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+ *
+ * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
  * PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
- *  
- * You should have received a copy of the GNU Affero General Public License along 
+ *
+ * You should have received a copy of the GNU Affero General Public License along
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
- *  
- * Commercial License Information: 
- * 
- * The PBS Pro software is licensed under the terms of the GNU Affero General 
- * Public License agreement ("AGPL"), except where a separate commercial license 
+ *
+ * Commercial License Information:
+ *
+ * The PBS Pro software is licensed under the terms of the GNU Affero General
+ * Public License agreement ("AGPL"), except where a separate commercial license
  * agreement for PBS Pro version 14 or later has been executed in writing with Altair.
- *  
- * Altair’s dual-license business model allows companies, individuals, and 
- * organizations to create proprietary derivative works of PBS Pro and distribute 
- * them - whether embedded or bundled with other software - under a commercial 
+ *
+ * Altair’s dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of PBS Pro and distribute
+ * them - whether embedded or bundled with other software - under a commercial
  * license agreement.
- * 
- * Use of Altair’s trademarks, including but not limited to "PBS™", 
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+ *
+ * Use of Altair’s trademarks, including but not limited to "PBS™",
+ * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
  * trademark licensing policies.
  *
  */
@@ -594,7 +594,7 @@ multi_nodepart_sort(const void *n1, const void *n2)
  * @param[in] r1	-	first job to compare
  * @param[in] r2 	-	second job to compare
  * @param[in] si 	- 	sort_info describing how to sort the jobs
- * 
+ *
  * @returns -1, 0, 1 : standard qsort()) cmp
  *
  */
@@ -611,10 +611,10 @@ resresv_sort_cmp(resource_resv *r1, resource_resv *r2, struct sort_info *si)
 
 	if (r1 == NULL && r2 != NULL)
 		return 1;
-	
+
 	if(si == NULL)
 		return 0;
-	
+
 	v1 = find_resresv_amount(r1, si->res_name, si->def);
 	v2 = find_resresv_amount(r2, si->res_name, si->def);
 
@@ -724,7 +724,7 @@ node_sort_cmp(const void *vp1, const void *vp2, struct sort_info *si, enum sort_
 /**
  * @brief
  * 		entrypoint into job sort used by qsort
- *		
+ *
  *		1. Sort all preemption priority jobs in the front
  *		2. Sort all preempted jobs in ascending order of their preemption time
  *		3. Sort all starving jobs after the high priority jobs
@@ -812,7 +812,7 @@ cmp_sort(const void *v1, const void *v2)
 /**
  * @brief
  * 		return resource values based on res_type for node partition
- * 
+ *
  * @param[in] np 		- node partition
  * @param[in] res 		- resource name
  * @param[in] def 		- resource definition of res
@@ -826,7 +826,7 @@ cmp_sort(const void *v1, const void *v2)
  */
 sch_resource_t
 find_nodepart_amount(node_partition *np, char *res, resdef *def,
-	enum resource_fields res_type) 
+	enum resource_fields res_type)
 {
 	schd_resource *nres;
 
@@ -893,11 +893,11 @@ find_node_amount(node_info *ninfo, char *res, resdef *def,
 /**
  * @brief
  * 		find resource or special case sorting values for jobs
- * 
+ *
  * @param[in] resresv 	- the job
  * @param[in] res 		- the resource/special case name
  * @param[in] def 		- the resource definition of res (NULL for special case)
- * 
+ *
  * @return	sch_resource_t
  * @retval	0	: on error
  */
@@ -919,7 +919,7 @@ find_resresv_amount(resource_resv *resresv, char *res, resdef *def)
 		return(sch_resource_t) resresv->job->NAS_pri;
 #else
 		return(sch_resource_t) resresv->job->priority;
-#endif /* localmod 045 */		
+#endif /* localmod 045 */
 	else if (!strcmp(res, SORT_FAIR_SHARE) && resresv->job->ginfo != NULL)
 		return(sch_resource_t) resresv->job->ginfo->percentage;
 	else if (!strcmp(res, SORT_PREEMPT))
@@ -1182,27 +1182,27 @@ sort_jobs(status *policy, server_info *sinfo)
 		}
 		/** Sort on entire complex **/
 		else if (!policy->by_queue && !policy->round_robin) {
-			qsort(sinfo->jobs, count_array((void**)sinfo->jobs),
+			qsort(sinfo->jobs, count_array((void **)sinfo->jobs),
 				sizeof(resource_resv *), cmp_sort);
 		}
 	}
 	else if (policy->by_queue) {
 		for (i = 0; i < sinfo->num_queues; i++) {
-			qsort(sinfo->queues[i]->jobs, count_array((void**)sinfo->queues[i]->jobs),
+			qsort(sinfo->queues[i]->jobs, count_array((void **)sinfo->queues[i]->jobs),
 				sizeof(resource_resv *), cmp_sort);
 		}
-		qsort(sinfo->jobs, count_array((void**)sinfo->jobs), sizeof(resource_resv*), cmp_sort);
+		qsort(sinfo->jobs, count_array((void **)sinfo->jobs), sizeof(resource_resv*), cmp_sort);
 	}
 	else if (policy->round_robin) {
 		if (sinfo -> queue_list != NULL) {
-			int queue_list_size = count_array((void**)sinfo->queue_list);
+			int queue_list_size = count_array((void **)sinfo->queue_list);
 			int i,j;
 			for (i = 0; i < queue_list_size; i++)
 			{
 				int queue_index_size = count_array((void **)sinfo->queue_list[i]);
 				for (j = 0; j < queue_index_size; j++)
 				{
-				    qsort(sinfo->queue_list[i][j]->jobs, count_array((void**)sinfo->queue_list[i][j]->jobs),
+				    qsort(sinfo->queue_list[i][j]->jobs, count_array((void **)sinfo->queue_list[i][j]->jobs),
 					    sizeof(resource_resv *), cmp_sort);
 				}
 			}
@@ -1210,7 +1210,7 @@ sort_jobs(status *policy, server_info *sinfo)
 		}
 	}
 	else
-		qsort(sinfo->jobs, count_array((void**)sinfo->jobs), sizeof(resource_resv*), cmp_sort);
+		qsort(sinfo->jobs, count_array((void **)sinfo->jobs), sizeof(resource_resv*), cmp_sort);
 }
 
 /*

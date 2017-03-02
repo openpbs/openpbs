@@ -1,36 +1,36 @@
 /*
  * Copyright (C) 1994-2017 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
- *  
+ *
  * This file is part of the PBS Professional ("PBS Pro") software.
- * 
+ *
  * Open Source License Information:
- *  
+ *
  * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free 
- * Software Foundation, either version 3 of the License, or (at your option) any 
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
  * later version.
- *  
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+ *
+ * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
  * PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
- *  
- * You should have received a copy of the GNU Affero General Public License along 
+ *
+ * You should have received a copy of the GNU Affero General Public License along
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
- *  
- * Commercial License Information: 
- * 
- * The PBS Pro software is licensed under the terms of the GNU Affero General 
- * Public License agreement ("AGPL"), except where a separate commercial license 
+ *
+ * Commercial License Information:
+ *
+ * The PBS Pro software is licensed under the terms of the GNU Affero General
+ * Public License agreement ("AGPL"), except where a separate commercial license
  * agreement for PBS Pro version 14 or later has been executed in writing with Altair.
- *  
- * Altair’s dual-license business model allows companies, individuals, and 
- * organizations to create proprietary derivative works of PBS Pro and distribute 
- * them - whether embedded or bundled with other software - under a commercial 
+ *
+ * Altair’s dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of PBS Pro and distribute
+ * them - whether embedded or bundled with other software - under a commercial
  * license agreement.
- * 
- * Use of Altair’s trademarks, including but not limited to "PBS™", 
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+ *
+ * Use of Altair’s trademarks, including but not limited to "PBS™",
+ * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
  * trademark licensing policies.
  *
  */
@@ -140,9 +140,9 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 
 	if (policy == NULL || sinfo == NULL)
 		return NULL;
-	
+
 	sch_err = new_schd_error();
-	
+
 	if(sch_err == NULL)
 		return NULL;
 
@@ -343,7 +343,7 @@ query_queue_info(status *policy, struct batch_status *queue, server_info *sinfo)
 {
 	struct attrl *attrp;		/* linked list of attributes from server */
 	struct queue_info *qinfo;	/* queue_info being created */
-	schd_resource *resp;               /* resource in resource qres list */
+	schd_resource *resp;		/* resource in resource qres list */
 	char *endp;			/* used with strtol() */
 	sch_resource_t count;		/* used to convert string -> num */
 
@@ -380,12 +380,35 @@ query_queue_info(status *policy, struct batch_status *queue, server_info *sinfo)
 			if(qinfo->backfill_depth > 0)
 				policy->backfill = 1;
 		}
-		else if (is_reslimattr(attrp))
+		else if (is_reslimattr(attrp)) {
 			(void) lim_setlimits(attrp, LIM_RES, qinfo->liminfo);
-		else if (is_runlimattr(attrp))
+			if(strstr(attrp->value, "u:") != NULL)
+				sinfo->has_user_limit = 1;
+			if(strstr(attrp->value, "g:") != NULL)
+				sinfo->has_grp_limit = 1;
+			if(strstr(attrp->value, "p:") != NULL)
+				sinfo->has_proj_limit = 1;
+		}
+		else if (is_runlimattr(attrp)) {
 			(void) lim_setlimits(attrp, LIM_RUN, qinfo->liminfo);
-		else if (is_oldlimattr(attrp))
+			if(strstr(attrp->value, "u:") != NULL)
+				sinfo->has_user_limit = 1;
+			if(strstr(attrp->value, "g:") != NULL)
+				sinfo->has_grp_limit = 1;
+			if(strstr(attrp->value, "p:") != NULL)
+				sinfo->has_proj_limit = 1;
+
+		}
+		else if (is_oldlimattr(attrp)) {
+			char *limname = convert_oldlim_to_new(attrp);
 			(void) lim_setlimits(attrp, LIM_OLD, qinfo->liminfo);
+
+			if(strstr(limname, "u:") != NULL)
+				sinfo->has_user_limit = 1;
+			if(strstr(limname, "g:") != NULL)
+				sinfo->has_grp_limit = 1;
+			/* no need to check for project limits because there were no old style project limits */
+		}
 		else if (!strcmp(attrp->name, ATTR_p)) { /* priority */
 			count = strtol(attrp->value, &endp, 10);
 			if (*endp != '\0')
@@ -414,8 +437,7 @@ query_queue_info(status *policy, struct batch_status *queue, server_info *sinfo)
 					qinfo->ignore_nodect_sort = 0;
 
 				resp = NULL;
-			}
-			/* localmod 038 */
+			}/* localmod 038 */
 			else if (!strcmp(attrp->resource, ATTR_topjob_setaside)) {
 				if (!strcmp(attrp->value, ATR_TRUE))
 					qinfo->is_topjob_set_aside = 1;
@@ -423,21 +445,19 @@ query_queue_info(status *policy, struct batch_status *queue, server_info *sinfo)
 					qinfo->is_topjob_set_aside = 0;
 
 				resp = NULL;
-			}
-			else
+			} else
 #endif
-			resp = find_alloc_resource_by_str(qinfo->qres, attrp->resource);
+				resp = find_alloc_resource_by_str(qinfo->qres, attrp->resource);
 			if (resp != NULL) {
 				if (qinfo->qres == NULL)
 					qinfo->qres = resp;
 
-				if (set_resource(resp, attrp->value, RF_AVAIL) ==0) {
+				if (set_resource(resp, attrp->value, RF_AVAIL) == 0) {
 					free_queue_info(qinfo);
 					return NULL;
 				}
 			}
-		}
-		else if (!strcmp(attrp->name, ATTR_rescassn)) { /* resources_assigned */
+		} else if (!strcmp(attrp->name, ATTR_rescassn)) { /* resources_assigned */
 			resp = find_alloc_resource_by_str(qinfo->qres, attrp->resource);
 			if (qinfo->qres == NULL)
 				qinfo->qres = resp;

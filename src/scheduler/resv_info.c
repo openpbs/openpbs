@@ -1,36 +1,36 @@
 /*
  * Copyright (C) 1994-2017 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
- *  
+ *
  * This file is part of the PBS Professional ("PBS Pro") software.
- * 
+ *
  * Open Source License Information:
- *  
+ *
  * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free 
- * Software Foundation, either version 3 of the License, or (at your option) any 
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
  * later version.
- *  
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+ *
+ * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
  * PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
- *  
- * You should have received a copy of the GNU Affero General Public License along 
+ *
+ * You should have received a copy of the GNU Affero General Public License along
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
- *  
- * Commercial License Information: 
- * 
- * The PBS Pro software is licensed under the terms of the GNU Affero General 
- * Public License agreement ("AGPL"), except where a separate commercial license 
+ *
+ * Commercial License Information:
+ *
+ * The PBS Pro software is licensed under the terms of the GNU Affero General
+ * Public License agreement ("AGPL"), except where a separate commercial license
  * agreement for PBS Pro version 14 or later has been executed in writing with Altair.
- *  
- * Altair’s dual-license business model allows companies, individuals, and 
- * organizations to create proprietary derivative works of PBS Pro and distribute 
- * them - whether embedded or bundled with other software - under a commercial 
+ *
+ * Altair’s dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of PBS Pro and distribute
+ * them - whether embedded or bundled with other software - under a commercial
  * license agreement.
- * 
- * Use of Altair’s trademarks, including but not limited to "PBS™", 
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+ *
+ * Use of Altair’s trademarks, including but not limited to "PBS™",
+ * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
  * trademark licensing policies.
  *
  */
@@ -160,14 +160,14 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 	int k;
 	int idx = 0; /* index of the server info's resource reservation array */
 	int num_resv = 0;
-	
+
 	schd_error *err;
 
 	char logmsg[MAX_LOG_SIZE];
 
 	if (resvs == NULL)
 		return NULL;
-	
+
 	err = new_schd_error();
 	if(err == NULL)
 		return NULL;
@@ -227,7 +227,7 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 			cur_resv = cur_resv->next;
 			continue;
 		}
-		
+
 		resresv->duration = resresv->resv->req_duration;
 		if (resresv->resv->resv_state !=RESV_UNCONFIRMED) {
 			resresv->start = resresv->resv->req_start;
@@ -237,7 +237,7 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 			} else
 				resresv->end = resresv->resv->req_end;
 		}
-	
+
 		/* Skip all but general reservations. */
 		if (resresv->resv->resv_type ==2) {
 			if (resresv->node_set_str != NULL) {
@@ -560,10 +560,10 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 resource_resv *
 query_resv(struct batch_status *resv, server_info *sinfo)
 {
-	struct attrl *attrp;          /* linked list of attributes from server */
-	resource_resv *advresv;	/* resv_info to be created */
+	struct attrl *attrp;		/* linked list of attributes from server */
+	resource_resv *advresv;		/* resv_info to be created */
 	resource_req *resreq;		/* used for the ATTR_l resources */
-	char *endp;                   /* used with strtol() */
+	char *endp;			/* used with strtol() */
 	long count; 			/* used to convert string -> num */
 
 	if ((advresv = new_resource_resv()) == NULL)
@@ -637,8 +637,7 @@ query_resv(struct batch_status *resv, server_info *sinfo)
 			if (*endp != '\0')
 				count = -1;
 			advresv->resv->resv_substate = (enum resv_states) count;
-		}
-		else if (!strcmp(attrp->name, ATTR_l)) { /* resources requested*/
+		} else if (!strcmp(attrp->name, ATTR_l)) { /* resources requested*/
 			resreq = find_alloc_resource_req_by_str(advresv->resreq, attrp->resource);
 			if (resreq == NULL) {
 				free_resource_resv(advresv);
@@ -647,11 +646,13 @@ query_resv(struct batch_status *resv, server_info *sinfo)
 
 			set_resource_req(resreq, attrp->value);
 
-			if (!strcmp(resreq->name, "place"))
-				advresv->place_spec = parse_placespec(attrp->value);
-
 			if (advresv->resreq == NULL)
 				advresv->resreq = resreq;
+			if (!strcmp(attrp->resource, "place")) {
+				advresv->place_spec = parse_placespec(attrp->value);
+				if (advresv->place_spec == NULL)
+					advresv->is_invalid = 1;
+			}
 		}
 		else if (!strcmp(attrp->name, ATTR_resv_nodes)) {
 			/* parse the execvnode and create an nspec array with ninfo ptrs pointing

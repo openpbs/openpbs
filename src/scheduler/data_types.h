@@ -1,36 +1,36 @@
 /*
  * Copyright (C) 1994-2017 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
- *  
+ *
  * This file is part of the PBS Professional ("PBS Pro") software.
- * 
+ *
  * Open Source License Information:
- *  
+ *
  * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free 
- * Software Foundation, either version 3 of the License, or (at your option) any 
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
  * later version.
- *  
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+ *
+ * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
  * PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
- *  
- * You should have received a copy of the GNU Affero General Public License along 
+ *
+ * You should have received a copy of the GNU Affero General Public License along
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
- *  
- * Commercial License Information: 
- * 
- * The PBS Pro software is licensed under the terms of the GNU Affero General 
- * Public License agreement ("AGPL"), except where a separate commercial license 
+ *
+ * Commercial License Information:
+ *
+ * The PBS Pro software is licensed under the terms of the GNU Affero General
+ * Public License agreement ("AGPL"), except where a separate commercial license
  * agreement for PBS Pro version 14 or later has been executed in writing with Altair.
- *  
- * Altair’s dual-license business model allows companies, individuals, and 
- * organizations to create proprietary derivative works of PBS Pro and distribute 
- * them - whether embedded or bundled with other software - under a commercial 
+ *
+ * Altair’s dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of PBS Pro and distribute
+ * them - whether embedded or bundled with other software - under a commercial
  * license agreement.
- * 
- * Use of Altair’s trademarks, including but not limited to "PBS™", 
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+ *
+ * Use of Altair’s trademarks, including but not limited to "PBS™",
+ * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
  * trademark licensing policies.
  *
  */
@@ -115,6 +115,8 @@ typedef struct event_list event_list;
 typedef struct status status;
 typedef struct fairshare_head fairshare_head;
 typedef struct node_scratch node_scratch;
+typedef struct resresv_set resresv_set;
+
 #ifdef NAS
 /* localmod 034 */
 /*
@@ -158,17 +160,17 @@ struct schd_error
 
 struct state_count
 {
-	int running;                  /* number of jobs in the running state*/
-	int queued;                   /* number of jobs in the queued state */
-	int held;                     /* number of jobs in the held state */
-	int transit;                  /* number of jobs in the transit state */
-	int waiting;                  /* number of jobs in the waiting state */
-	int exiting;                  /* number of jobs in the exiting state */
-	int suspended;		/* number of jobs in the suspended state */
+	int running;			/* number of jobs in the running state*/
+	int queued;			/* number of jobs in the queued state */
+	int held;			/* number of jobs in the held state */
+	int transit;			/* number of jobs in the transit state */
+	int waiting;			/* number of jobs in the waiting state */
+	int exiting;			/* number of jobs in the exiting state */
+	int suspended;			/* number of jobs in the suspended state */
 	int userbusy;			/* number of jobs in the userbusy state */
 	int begin;			/* number of job arrays in begin state */
 	int expired;			/* expired jobs which are no longer running */
-	int invalid;                  /* number of invalid jobs */
+	int invalid;			/* number of invalid jobs */
 	int total;			/* total number of jobs in all states */
 };
 
@@ -176,7 +178,7 @@ struct place
 {
 	unsigned int free:1;		/* free placement */
 	unsigned int pack:1;		/* pack placement */
-	unsigned int scatter:1;	/* scatter placement */
+	unsigned int scatter:1;		/* scatter placement */
 	unsigned int vscatter:1;	/* scatter by vnode */
 	unsigned int excl:1;		/* need nodes exclusively */
 	unsigned int exclhost:1;	/* need whole hosts exclusively */
@@ -188,7 +190,7 @@ struct place
 struct chunk
 {
 	char *str_chunk;		/* chunk in string form */
-	int num_chunks;		/* the number of chunks needed */
+	int num_chunks;			/* the number of chunks needed */
 	int seq_num;			/* the chunk sequence number */
 	resource_req *req;		/* the resources in resource_req form */
 };
@@ -196,17 +198,17 @@ struct chunk
 struct selspec
 {
 	int total_chunks;
-	int total_cpus;		/* # of cpus requested in this select spec */
-	resdef **defs;                /* the resources requested by this select spec*/
+	int total_cpus;			/* # of cpus requested in this select spec */
+	resdef **defs;			/* the resources requested by this select spec*/
 	chunk **chunks;
 };
 
 /* for description of these bits, check the PBS admin guide or scheduler IDS */
 struct status
 {
-	unsigned round_robin:1;			/* Round robin around queues */
-	unsigned by_queue:1;			/* scheudle per-queue */
-	unsigned strict_fifo:1;			/* deprecated */
+	unsigned round_robin:1;		/* Round robin around queues */
+	unsigned by_queue:1;		/* schedule per-queue */
+	unsigned strict_fifo:1;		/* deprecated */
 	unsigned strict_ordering:1;
 	unsigned fair_share:1;
 	unsigned load_balancing:1;
@@ -216,7 +218,7 @@ struct status
 	unsigned sort_nodes:1;
 	unsigned backfill_prime:1;
 	unsigned preempting:1;
-	unsigned only_explicit_psets:1;         /* control if psets with unset resource are created */
+	unsigned only_explicit_psets:1;		/* control if psets with unset resource are created */
 #ifdef NAS /* localmod 034 */
 	unsigned shares_track_only:1;
 #endif /* localmod 034 */
@@ -236,10 +238,11 @@ struct status
 	double job_form_threshold;		/* threshold in which jobs won't run */
 
 
-	resdef **resdef_to_check;     /* resources to match as definitions */
-	resdef **resdef_to_check_no_hostvnode; /* resdef_to_check without host/vnode*/
-	resdef **resdef_to_check_rassn; /* resdef_to_check intersects res_rassn */
-	resdef **resdef_to_check_noncons; /* non-consumable resources to match */
+	resdef **resdef_to_check;		/* resources to match as definitions */
+	resdef **resdef_to_check_no_hostvnode;	/* resdef_to_check without host/vnode*/
+	resdef **resdef_to_check_rassn;		/* resdef_to_check intersects res_rassn */
+	resdef **resdef_to_check_noncons;	/* non-consumable resources to match */
+	resdef **equiv_class_resdef;		/* resources to consider for job equiv classes */
 
 
 	time_t prime_status_end;		/* the end of prime or nonprime */
@@ -259,6 +262,9 @@ struct server_info
 	unsigned has_soft_limit:1;	/* server has a soft user/grp limit set */
 	unsigned has_hard_limit:1;	/* server has a hard user/grp limit set */
 	unsigned has_mult_express:1;	/* server has multiple express queues */
+	unsigned has_user_limit:1;	/* server has user hard or soft limit */
+	unsigned has_grp_limit:1;	/* server has group hard or soft limit */
+	unsigned has_proj_limit:1;	/* server has project hard or soft limit */
 	unsigned has_prime_queue:1;	/* server has a primetime queue */
 	unsigned has_ded_queue:1;	/* server has a dedtime queue */
 	unsigned has_nonprime_queue:1;	/* server has a non primetime queue */
@@ -339,6 +345,7 @@ struct server_info
 	 */
 	status *policy;
 	fairshare_head *fairshare;	/* root of fairshare tree */
+	resresv_set **equiv_classes;
 #ifdef NAS
 	/* localmod 049 */
 	node_info **nodes_by_NASrank;	/* nodes indexed by NASrank */
@@ -360,10 +367,10 @@ struct queue_info
 	unsigned has_soft_limit:1;	/* queue has a soft user/grp limit set */
 	unsigned has_hard_limit:1;	/* queue has a hard user/grp limit set */
 	unsigned is_peer_queue:1;	/* queue is a peer queue */
-	struct server_info *server;   /* server where queue resides */
-	char *name;                   /* queue name */
-	state_count sc;               /* number of jobs in different states */
-	void *liminfo;		/* limit storage information */
+	struct server_info *server;	/* server where queue resides */
+	char *name;			/* queue name */
+	state_count sc;			/* number of jobs in different states */
+	void *liminfo;			/* limit storage information */
 	int priority;			/* priority of queue */
 #ifdef NAS
 	/* localmod 046 */
@@ -460,7 +467,7 @@ struct job_info
 
 	int accrue_type;		/* type of time job should accrue */
 	time_t eligible_time;		/* eligible time accrued until last cycle */
-	
+
 	struct attrl *attr_updates;	/* used to federate all attr updates to server*/
 	float formula_value;		/* evaluated job sort formula value */
 
@@ -628,6 +635,7 @@ struct resource_resv
 
 	long sch_priority;		/* scheduler priority of res resv */
 	int rank;			/* unique numeric identifier for resource_resv */
+	int ec_index;			/* Index into server's job_set array*/
 
 	time_t qtime;			/* time res resv was submitted */
 	long qrank;			/* time on which we might need to stabilize the sort */
@@ -688,7 +696,7 @@ struct schd_resource
 	sch_resource_t assigned;	/* amount of the resource assigned */
 	char *str_assigned;		/* the string form of assigned */
 
-	resdef *def;                  /* resource definition */
+	resdef *def;			/* resource definition */
 
 	struct schd_resource *next;	/* next resource in list */
 };
@@ -698,9 +706,9 @@ struct resource_req
 	char *name;			/* name of the resource - reference to the definition name */
 	struct resource_type type;	/* resource type information */
 
-	sch_resource_t amount;	/* numeric value of resource */
-	char *res_str;		/* string value of resource */
-	resdef *def;                  /* definition of resource */
+	sch_resource_t amount;		/* numeric value of resource */
+	char *res_str;			/* string value of resource */
+	resdef *def;			/* definition of resource */
 	struct resource_req *next;	/* next resource_req in list */
 };
 
@@ -771,6 +779,28 @@ struct group_info
 	group_info *parent;			/* parent node */
 	group_info *sibling;			/* sibling node */
 	group_info *child;			/* child node */
+};
+
+/**
+ * Set of equivalent resresvs.  It is used to keep track if one can't run, the rest cannot.
+ * The set is defined by a number of attributes of the resresv.  If the attributes do
+ * not matter, they won't be used and set to NULL
+ * @see create_resresv_set_by_resresv() for reasons why members can be NULL
+ */
+struct resresv_set
+{
+	unsigned can_not_run:1;		/* set can not run */
+	schd_error *err;		/* reason why set can not run*/
+	char *user;			/* user of set, can be NULL */
+	char *group;			/* group of set, can be NULL */
+	char *project;			/* project of set, can be NULL */
+	selspec *select_spec;		/* select spec of set */
+	place *place_spec;		/* place spec of set */
+	resource_req *req;		/* ATTR_L (qsub -l) resources of set.  Only contains resources on the resources line */
+	queue_info *qinfo;		/* The queue the resresv is in if the queue has nodes associated */
+
+	resource_resv **resresv_arr;	/* The resresvs in the set */
+	int num_resresvs;		/* The number of resresvs in the set */
 };
 
 struct node_partition
@@ -979,38 +1009,38 @@ struct config
 	enum smp_cluster_dist prime_smp_dist;	/* how to dist jobs during prime*/
 	enum smp_cluster_dist non_prime_smp_dist;/* how do dist jobs during nonprime*/
 	time_t prime_spill;			/* the amount of time a job can
-						 * spill int primetime
+						 * spill into primetime
 						 */
-	time_t nonprime_spill;		/* vise versa for prime_spill */
+	time_t nonprime_spill;			/* vice versa for prime_spill */
 	fairshare_head *fairshare;		/* fairshare tree */
 	time_t decay_time;			/*  time in seconds for the decay period*/
 	time_t sync_time;			/* time between syncing usage to disk */
 	struct t prime[HIGH_DAY][HIGH_PRIME];	/* prime time start and prime time end*/
-	int holidays[MAX_HOLIDAY_SIZE];	/* holidays in julian date */
+	int holidays[MAX_HOLIDAY_SIZE];		/* holidays in Julian date */
 	int holiday_year;			/* the year the holidays are for */
-	int num_holidays;                   /* number of acuall holidays */
-	struct timegap ded_time[MAX_DEDTIME_SIZE];  /* dedicated times */
+	int num_holidays;			/* number of actual holidays */
+	struct timegap ded_time[MAX_DEDTIME_SIZE];/* dedicated times */
 	int unknown_shares;			/* unknown group shares */
-	int log_filter;			/* what events to filter out */
-	int preempt_queue_prio;		/* *HIGH* prio... jobs prempt */
+	int log_filter;				/* what events to filter out */
+	int preempt_queue_prio;			/* Queue priority that defines an express queue */
 	int max_preempt_attempts;		/* max num of preempt attempts per cyc*/
-	int max_jobs_to_check;		/* max number of jobs to check in cyc*/
-	long dflt_opt_backfill_fuzzy;	/* default time for the fuzzy backfill optimization */
+	int max_jobs_to_check;			/* max number of jobs to check in cyc*/
+	long dflt_opt_backfill_fuzzy;		/* default time for the fuzzy backfill optimization */
 	char ded_prefix[PBS_MAXQUEUENAME +1];	/* prefix to dedicated queues */
 	char pt_prefix[PBS_MAXQUEUENAME +1];	/* prefix to primetime queues */
 	char npt_prefix[PBS_MAXQUEUENAME +1];	/* prefix to non primetime queues */
 	char *fairshare_res;			/* resource to calc fairshare usage */
-	float fairshare_decay_factor;			/* decay factor used when decaying fairshare tree */
+	float fairshare_decay_factor;		/* decay factor used when decaying fairshare tree */
 	char *fairshare_ent;			/* job attribute to use as fs entity */
-	char **dyn_res_to_get;		/* dynamic resources to get from moms */
+	char **dyn_res_to_get;			/* dynamic resources to get from moms */
 	char **res_to_check;			/* the resources schedule on */
-	resdef **resdef_to_check;             /* the res to schedule on in def form */
+	resdef **resdef_to_check;		/* the res to schedule on in def form */
 	char **ignore_res;			/* resources - unset implies infinite */
 	int num_res_to_check;			/* the size of res_to_check */
 	time_t max_starve;			/* starving threshold */
 	int pprio[NUM_PPRIO][2];		/* premption priority levels */
 	int preempt_low;			/* lowest preemption level */
-	int preempt_normal;                   /* preempt priority of normal_jobs */
+	int preempt_normal;			/* preempt priority of normal_jobs */
 	/* order to preempt jobs */
 	struct preempt_ordering preempt_order[PREEMPT_ORDER_MAX+1];
 	struct sort_info *prime_node_sort;	/* node sorting primetime */

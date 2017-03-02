@@ -1,36 +1,36 @@
 /*
  * Copyright (C) 1994-2017 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
- *  
+ *
  * This file is part of the PBS Professional ("PBS Pro") software.
- * 
+ *
  * Open Source License Information:
- *  
+ *
  * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free 
- * Software Foundation, either version 3 of the License, or (at your option) any 
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
  * later version.
- *  
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+ *
+ * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
  * PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
- *  
- * You should have received a copy of the GNU Affero General Public License along 
+ *
+ * You should have received a copy of the GNU Affero General Public License along
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
- *  
- * Commercial License Information: 
- * 
- * The PBS Pro software is licensed under the terms of the GNU Affero General 
- * Public License agreement ("AGPL"), except where a separate commercial license 
+ *
+ * Commercial License Information:
+ *
+ * The PBS Pro software is licensed under the terms of the GNU Affero General
+ * Public License agreement ("AGPL"), except where a separate commercial license
  * agreement for PBS Pro version 14 or later has been executed in writing with Altair.
- *  
- * Altair’s dual-license business model allows companies, individuals, and 
- * organizations to create proprietary derivative works of PBS Pro and distribute 
- * them - whether embedded or bundled with other software - under a commercial 
+ *
+ * Altair’s dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of PBS Pro and distribute
+ * them - whether embedded or bundled with other software - under a commercial
  * license agreement.
- * 
- * Use of Altair’s trademarks, including but not limited to "PBS™", 
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+ *
+ * Use of Altair’s trademarks, including but not limited to "PBS™",
+ * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
  * trademark licensing policies.
  *
  */
@@ -79,7 +79,7 @@ int
 update_job_attr(int pbs_sd, resource_resv *resresv, char *attr_name,
 	char *attr_resc, char *attr_value, struct attrl *extra, unsigned int flags );
 
-/* send delayed job attribute updates for job using send_attr_updates() */ 
+/* send delayed job attribute updates for job using send_attr_updates() */
 int send_job_updates(int pbs_sd, resource_resv *job);
 
 /* send delayed attributes to the server for a job */
@@ -94,7 +94,7 @@ int send_attr_updates(int pbs_sd, char *job_name, struct attrl *pattr);
  *	  resresv    - job to update
  *	  attr_name  - the name of the attribute to unset
  *	  flags - UPDATE_NOW - call send_attr_updates() to update the attribute now
- *		  UPDATE_LATER - attach attribute change to job to be sent all at once 
+ *		  UPDATE_LATER - attach attribute change to job to be sent all at once
  *				for the job.  NOTE: Only the jobs that are part
  *				of the server in main_sched_loop() will be updated in this way.
  *
@@ -354,6 +354,27 @@ int is_finished_job(int error);
  */
 int preemption_similarity(resource_resv *hjob, resource_resv *pjob, schd_error *full_err);
 
+/* Equivalence class functions*/
+resresv_set *new_resresv_set(void);
+void free_resresv_set(resresv_set *rset);
+void free_resresv_set_array(resresv_set **rsets);
+resresv_set *dup_resresv_set(resresv_set *oset, server_info *nsinfo);
+resresv_set **dup_resresv_set_array(resresv_set **osets, server_info *nsinfo);
+
+/* create a resresv_set with a resresv as a template */
+resresv_set *create_resresv_set_by_resresv(status *policy, server_info *sinfo, resource_resv *resresv);
+
+/* find a resresv_set by its internal components */
+int find_resresv_set(status *policy, resresv_set **rsets, char *user, char *group, char *project, selspec *sel, place *pl, resource_req *req, queue_info *qinfo);
+
+/* find a resresv_set with a resresv as a template */
+int find_resresv_set_by_resresv(status *policy, resresv_set **rsets, resource_resv *resresv);
+
+/* create the array of resdef's to use to create resresv->req*/
+resdef **create_resresv_sets_resdef(status *policy, server_info *sinfo);
+
+/* Create an array of resresv_sets based on sinfo*/
+resresv_set **create_resresv_sets(status *policy, server_info *sinfo);
 
 #ifdef	__cplusplus
 }
