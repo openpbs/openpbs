@@ -35,11 +35,11 @@
 # Use of Altair’s trademarks, including but not limited to "PBS™",
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
-import time
+
 from tests.functional import *
 
 
-class TestPbsAccumulateRescUsed(PBSTestSuite):
+class TestPbsAccumulateRescUsed(TestFunctional):
 
     """
     This tests the feature in PBS that enables mom hooks to accumulate
@@ -62,7 +62,7 @@ class TestPbsAccumulateRescUsed(PBSTestSuite):
 
     def setUp(self):
 
-        PBSTestSuite.setUp(self)
+        TestFunctional.setUp(self)
         self.logger.info("len moms = %d" % (len(self.moms)))
         if len(self.moms) != 3:
             self.logger.error('test requires 3 MoMs as input, ' +
@@ -232,6 +232,9 @@ else:
             overwrite=True)
         self.assertTrue(rv)
 
+        a = {'job_history_enable': 'True'}
+        self.server.manager(MGR_CMD_SET, SERVER, a, expect=True)
+
         a = {'Resource_List.select': '3:ncpus=1',
              'Resource_List.walltime': 10,
              'Resource_List.place': "scatter"}
@@ -379,6 +382,9 @@ e.job.resources_used["foo_str2"] = "seven"
             overwrite=True)
         self.assertTrue(rv)
 
+        a = {'job_history_enable': 'True'}
+        self.server.manager(MGR_CMD_SET, SERVER, a, expect=True)
+
         a = {'Resource_List.select': '1:ncpus=1',
              'Resource_List.walltime': 10,
              'Resource_List.place': 'scatter'}
@@ -506,9 +512,15 @@ else:
             overwrite=True)
         self.assertTrue(rv)
 
-        a = {'Resource_List.select': '3:ncpus=1', 'Resource_List.walltime': 10}
+        a = {'job_history_enable': 'True'}
+        self.server.manager(MGR_CMD_SET, SERVER, a, expect=True)
+
+        a = {'Resource_List.select': '3:ncpus=1',
+             'Resource_List.walltime': 10,
+             'Resource_List.place': 'scatter'}
         j = Job(TEST_USER)
         j.set_attributes(a)
+        j.set_sleep_time("10")
 
         # The pbsdsh call is what allows a first task to get spawned on
         # on a sister mom, causing the execjob_prologue hook to execute.
@@ -544,7 +556,7 @@ else:
             'resources_used.ncpus': '3'},
             extend='x', offset=10, id=jid)
 
-        foo_str_dict_in = {"eight": 8, "seven": 7, "nine": 9}
+        foo_str_dict_in = eval('{"eight": 8, "seven": 7, "nine": 9}')
         qstat = self.server.status(
             JOB, 'resources_used.foo_str', id=jid, extend='x')
         foo_str_dict_out_str = eval(qstat[0]['resources_used.foo_str'])
@@ -690,6 +702,9 @@ for jk in e.job_list.keys():
             hook_body,
             overwrite=True)
         self.assertTrue(rv)
+
+        a = {'job_history_enable': 'True'}
+        self.server.manager(MGR_CMD_SET, SERVER, a, expect=True)
 
         a = {'resources_available.ncpus': '2'}
         self.server.manager(MGR_CMD_SET, NODE, a, self.hostA,
@@ -894,7 +909,7 @@ else:
         a = {'resources_used.foo_f': '8.606'}
         self.server.expect(JOB, a, extend='x', offset=5, id=jid)
 
-        foo_str_dict_in = {"one": 1, "two": 2, "three": 3}
+        foo_str_dict_in = eval('{"one":1, "two":2, "three":3}')
         qstat = self.server.status(
             JOB, 'resources_used.foo_str', id=jid, extend='x')
         foo_str_dict_out_str = eval(qstat[0]['resources_used.foo_str'])
@@ -910,44 +925,12 @@ else:
         attr['type'] = 'size'
         self.server.manager(
             MGR_CMD_CREATE, RSC, attr, id='foo_i2', runas=ROOT_USER)
-        # Ensure the new resource is seen by all moms.
-        m = self.momA.log_match(
-            "resourcedef;copy hook-related file", max_attempts=3)
-        self.assertTrue(m)
-        m = self.momB.log_match(
-            "resourcedef;copy hook-related file", max_attempts=3)
-        self.assertTrue(m)
-        m = self.momC.log_match(
-            "resourcedef;copy hook-related file", max_attempts=3)
-        self.assertTrue(m)
-
         attr['type'] = 'float'
         self.server.manager(
             MGR_CMD_CREATE, RSC, attr, id='foo_f2', runas=ROOT_USER)
-        # Ensure the new resource is seen by all moms.
-        m = self.momA.log_match(
-            "resourcedef;copy hook-related file", max_attempts=3)
-        self.assertTrue(m)
-        m = self.momB.log_match(
-            "resourcedef;copy hook-related file", max_attempts=3)
-        self.assertTrue(m)
-        m = self.momC.log_match(
-            "resourcedef;copy hook-related file", max_attempts=3)
-        self.assertTrue(m)
-
         attr['type'] = 'string_array'
         self.server.manager(
             MGR_CMD_CREATE, RSC, attr, id='stra2', runas=ROOT_USER)
-        # Ensure the new resource is seen by all moms.
-        m = self.momA.log_match(
-            "resourcedef;copy hook-related file", max_attempts=3)
-        self.assertTrue(m)
-        m = self.momB.log_match(
-            "resourcedef;copy hook-related file", max_attempts=3)
-        self.assertTrue(m)
-        m = self.momC.log_match(
-            "resourcedef;copy hook-related file", max_attempts=3)
-        self.assertTrue(m)
 
         # Create an epilogue hook
         hook_body = """
@@ -971,6 +954,7 @@ j.resources_used["stra2"] = '"glad"'
 
         # Submit a reservation
         a = {'Resource_List.select': '3:ncpus=1',
+             'Resource_List.place': 'scatter',
              'reserve_start': time.time() + 10,
              'reserve_end': time.time() + 30, }
         r = Reservation(TEST_USER, a)
@@ -1040,17 +1024,18 @@ else:
             overwrite=True)
 
         a = {'Resource_List.select': '3:ncpus=1',
-             'Resource_List.walltime': 20,
+             'Resource_List.walltime': 10,
              'Resource_List.place': 'scatter'}
         j = Job(TEST_USER)
         j.set_attributes(a)
+        j.set_sleep_time("5")
 
         # The pbsdsh call is what allows a first task to get spawned on
         # on a sister mom, causing the execjob_prologue hook to execute.
         j.create_script(
             "pbsdsh -n 1 hostname\n" +
             "pbsdsh -n 2 hostname\n" +
-            "sleep 10\n")
+            "sleep 300\n")
 
         jid = self.server.submit(j)
 
@@ -1071,7 +1056,7 @@ else:
         self.server.expect(JOB, a, extend='x',
                            offset=5, id=jid, interval=1)
 
-        foo_str_dict_in = {"eight": 8, "seven": 7, "nine": 9}
+        foo_str_dict_in = eval('{"eight": 8, "seven": 7, "nine": 9}')
         qstat = self.server.status(
             JOB, 'resources_used.foo_str', id=jid, extend='x')
         foo_str_dict_out_str = eval(qstat[0]['resources_used.foo_str'])
@@ -1313,7 +1298,8 @@ e.job.resources_used["cput"] = 10
             "epi", a, hook_body,
             overwrite=True)
 
-        a = {'Resource_List.select': '3:ncpus=1'}
+        a = {'Resource_List.select': '3:ncpus=1',
+             'Resource_List.place': 'scatter'}
         j = Job(TEST_USER)
         j.set_attributes(a)
         j.create_script(
