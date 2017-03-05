@@ -39,7 +39,7 @@ import time
 from tests.functional import *
 
 
-class TestPbsAccumulateRescUsed(PBSTestSuite):
+class TestPbsAccumulateRescUsed(TestFunctional):
 
     """
     This tests the feature in PBS that enables mom hooks to accumulate
@@ -62,7 +62,7 @@ class TestPbsAccumulateRescUsed(PBSTestSuite):
 
     def setUp(self):
 
-        PBSTestSuite.setUp(self)
+        TestFunctional.setUp(self)
         self.logger.info("len moms = %d" % (len(self.moms)))
         if len(self.moms) != 3:
             self.logger.error('test requires 3 MoMs as input, ' +
@@ -506,7 +506,9 @@ else:
             overwrite=True)
         self.assertTrue(rv)
 
-        a = {'Resource_List.select': '3:ncpus=1', 'Resource_List.walltime': 10}
+        a = {'Resource_List.select': '3:ncpus=1',
+             'Resource_List.walltime': 10,
+             'Resource_List.place': 'scatter'}
         j = Job(TEST_USER)
         j.set_attributes(a)
 
@@ -971,6 +973,7 @@ j.resources_used["stra2"] = '"glad"'
 
         # Submit a reservation
         a = {'Resource_List.select': '3:ncpus=1',
+             'Resource_List.place': 'scatter',
              'reserve_start': time.time() + 10,
              'reserve_end': time.time() + 30, }
         r = Reservation(TEST_USER, a)
@@ -1141,6 +1144,7 @@ for jj in e.job_list.keys():
         # Bring sister mom up
         self.momB.start()
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1, interval=1)
 
         # Verify that value of foo_i for job1 is set back
         self.server.expect(JOB, {'resources_used.foo_i': '3'},
@@ -1313,7 +1317,8 @@ e.job.resources_used["cput"] = 10
             "epi", a, hook_body,
             overwrite=True)
 
-        a = {'Resource_List.select': '3:ncpus=1'}
+        a = {'Resource_List.select': '3:ncpus=1',
+             'Resource_List.place': 'scatter'}
         j = Job(TEST_USER)
         j.set_attributes(a)
         j.create_script(
@@ -1402,7 +1407,7 @@ time.sleep(15)
              'resources_used.foo_str':
              "\'{\"eight\": 8, \"seven\": 7, \"nine\": 9}\'"}
         self.server.expect(JOB, a, extend='x',
-                           offset=5, id=jid)
+                           offset=5, id=jid, interval=1)
 
         # Restart server while hook is still executing
         self.server.restart()
