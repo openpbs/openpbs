@@ -75,6 +75,44 @@
 #include <syslog.h>
 #endif
 
+/* Headers for obtaining interface information */
+#if defined(linux)
+
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <ifaddrs.h>
+#include <netdb.h>
+
+#elif defined(WIN32)
+
+#include <Winsock2.h>
+#include <Ws2tcpip.h>
+#include <Iphlpapi.h>
+
+#pragma comment(lib,"Ws2_32.lib")
+#pragma comment(lib,"Iphlpapi.lib")
+
+#else
+
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <net/if.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/socketvar.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
+#include <stropts.h>
+#include <netdb.h>
+#ifdef sun
+#include <sys/sockio.h>
+#endif
+
+#endif
+
+
 /* Default to no locking. */
 
 /* Global Data */
@@ -334,6 +372,261 @@ log_init(void)
 #endif
 }
 
+/** 
+ * @brief
+ *      Add general debugging information in log
+ *
+ * @par Side Effects:
+ * 	None
+ * 
+ * @par MT-safe: Yes
+ *
+ */
+void
+log_add_debug_info()
+{
+	char tbuf[LOG_BUF_SIZE];
+	char temp[LOG_BUF_SIZE];
+	/* Temporary buffers to create log entry string for leaf name and mom node name */
+
+	char host[PBS_MAXHOSTNAME+1];
+
+	if (!gethostname(host, (sizeof(host) - 1))) {
+		strcpy(temp, host);
+	        if (!get_fullhostname(host, host, (sizeof(host) - 1)))
+        		strcpy(temp, host);  /* if full hostname is available, then overwrite */
+	}
+	else
+	      	strcpy(temp, "N/A");
+	snprintf(tbuf, LOG_BUF_SIZE, "hostname=%s;", temp);
+
+
+	/* To add leaf node name, if set */
+	strcpy(temp, "pbs_leaf_name=");
+        if(pbs_conf.pbs_leaf_name){ 
+        	strcat(temp, pbs_conf.pbs_leaf_name);
+                strcat(temp, ";");
+	}
+	else
+		strcat(temp, "N/A;");
+	strncat(tbuf, temp, LOG_BUF_SIZE);
+
+	
+	/* To add mom node name, if set */
+	strcpy(temp, "pbs_mom_node_name=");
+	if(pbs_conf.pbs_mom_node_name)
+        	strcat(temp, pbs_conf.pbs_mom_node_name);
+	else
+		strcat(temp, "N/A");
+	strncat(tbuf, temp, LOG_BUF_SIZE);
+        log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, tbuf);
+	
+	return;	
+
+}
+
+/**
+ * @brief
+ *      Add interface information to log
+ *
+ * @par Side Effects:
+ *      None
+ *
+ * @par MT-safe: Yes
+ *
+ */
+
+int
+log_add_if_info()
+{
+	char tbuf[LOG_BUF_SIZE];
+	char inet_family[10];
+#if defined(linux)
+
+	int i, ret;
+	char **hostnames;
+	struct ifaddrs *ifp, *listp;
+
+	ret = getifaddrs(&ifp);
+	if ((ret != 0) || (ifp == NULL)) {
+		fprintf(stderr, "ERROR: Failed to obtain interface names.\n");
+		return 1;
+	}
+	for (listp = ifp; listp; listp = listp->ifa_next) {
+		hostnames = get_if_hostnames(listp->ifa_addr);
+
+		get_sa_family(listp->ifa_addr, inet_family);
+		snprintf(tbuf, LOG_BUF_SIZE, "%s interface ", inet_family);
+
+		if (!hostnames)
+			continue;
+		strcat(tbuf, listp->ifa_name);
+		strcat(tbuf, ": ");
+		for (i = 0; hostnames[i]; i++){
+			strcat(tbuf, hostnames[i]);
+			strcat(tbuf, " ");
+		}
+		log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, tbuf);
+		free_if_hostnames(hostnames);
+	}
+	freeifaddrs(ifp);
+
+#elif defined(WIN32)
+
+	int i;
+	char **hostnames;
+	PIP_ADAPTER_ADDRESSES addrlistp, addrp;
+	PIP_ADAPTER_UNICAST_ADDRESS ucp;
+	DWORD size = 8192;
+	DWORD ret;
+	WSADATA wsadata;
+
+	addrlistp = (IP_ADAPTER_ADDRESSES *)malloc(size);
+	if (!addrlistp) {
+		fprintf(stderr, "ERROR: Out of memory.\n");
+		return 1;
+	}
+	ret = GetAdaptersAddresses(AF_UNSPEC, GAA_FLAG_INCLUDE_PREFIX, NULL, addrlistp, &size);
+	if (ret == ERROR_BUFFER_OVERFLOW) {
+		addrlistp = realloc(addrlistp, size);
+		if (!addrlistp) {
+			fprintf(stderr, "ERROR: Out of memory.\n");
+			return 1;
+		}
+	}
+	ret = GetAdaptersAddresses(AF_UNSPEC, GAA_FLAG_INCLUDE_PREFIX, NULL, addrlistp, &size);
+	if (ret == ERROR_NO_DATA) {
+		/* No addresses found. */
+		free(addrlistp);
+		return 0;
+	}
+	if (ret != NO_ERROR) {
+		fprintf(stderr, "ERROR: Failed to obtain adapter addresses.\n");
+		free(addrlistp);
+		return 1;
+	}
+	if (WSAStartup(MAKEWORD(2, 2), &wsadata) != 0) {
+		fprintf(stderr, "ERROR: Failed to initialize network.\n");
+		free(addrlistp);
+		return 1;
+	}
+	for (addrp = addrlistp; addrp; addrp = addrp->Next) {
+		for (ucp = addrp->FirstUnicastAddress; ucp; ucp = ucp->Next) {
+			hostnames = get_if_hostnames((struct sockaddr *)ucp->Address.lpSockaddr);
+			
+			if(addrlistp->Ipv6IfIndex != 0)
+				strcpy(inet_family, "ipv6");
+			else
+				strcpy(inet_family, "ipv4");
+
+			snprintf(tbuf, LOG_BUF_SIZE, "%s interface ", inet_family);
+
+			if (!hostnames)
+				continue;
+			strcat(tbuf, addrp->AdapterName);
+			strcat(tbuf, ": ");
+			for (i = 0; hostnames[i]; i++){
+				strcat(tbuf, hostnames[i]);
+				strcat(tbuf, " ");
+			}
+			log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, tbuf);
+			free_if_hostnames(hostnames);
+		}
+	}
+	WSACleanup();
+	free(addrlistp);
+
+#else /* AIX, Solaris, etc. */
+
+	int i, ret;
+	char **hostnames;
+	int sock;
+	struct ifconf ifc;
+	struct ifreq *ifrp;
+
+	memset(&ifc, 0, sizeof(ifc));
+	sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+	if (sock < 0) {
+		fprintf(stderr, "ERROR: Failed to create socket.\n");
+		return 1;
+	}
+	ifc.ifc_req = NULL;
+
+#ifdef _AIX
+	ret = ioctl(sock, SIOCGSIZIFCONF, (caddr_t)&ifc.ifc_len);
+	if (ret != 0) {
+		fprintf(stderr, "ERROR: %s\n", strerror(errno));
+		close(sock);
+		return 1;
+	}
+	if (ifc.ifc_len < 1) {
+		fprintf(stderr, "ERROR: Invalid interface data size.\n");
+		close(sock);
+		return 1;
+	}
+	ifc.ifc_req = malloc(ifc.ifc_len);
+	if (!ifc.ifc_req) {
+		fprintf(stderr, "ERROR: Out of memory.\n");
+		close(sock);
+		return 1;
+	}
+	memset(ifc.ifc_req, 0, ifc.ifc_len);
+#else
+	ifc.ifc_len = sizeof(struct ifreq) * 64;
+	ifc.ifc_req = (struct ifreq *)calloc((ifc.ifc_len / sizeof(struct ifreq)), sizeof(struct ifreq));
+	if (!ifc.ifc_req) {
+		fprintf(stderr, "ERROR: Out of memory.\n");
+		close(sock);
+		return 1;
+	}
+#endif
+
+	ret = ioctl(sock, SIOCGIFCONF, (caddr_t)&ifc);
+	if (ret != 0) {
+		fprintf(stderr, "ERROR: %s\n", strerror(errno));
+		free(ifc.ifc_req);
+		close(sock);
+		return 1;
+	}
+
+	ifrp = ifc.ifc_req;
+	while (ifrp < (struct ifreq *)((caddr_t)ifc.ifc_req + ifc.ifc_len)) {
+		hostnames = get_if_hostnames(&ifrp->ifr_addr);
+		
+		get_sa_family(listp->ifa_addr, inet_family);
+                snprintf(tbuf, LOG_BUF_SIZE, "%s interface ", inet_family);
+
+		if (hostnames) {
+			strcat(tbuf,  ifrp->ifr_name);
+			strcat(tbuf, ": ");
+			for (i = 0; hostnames[i]; i++){
+				strcat(tbuf, hostnames[i]);
+				strcat(tbuf, " ");
+			}
+			log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, tbuf);
+			free_if_hostnames(hostnames);
+		}
+#ifdef _AIX
+		{
+			caddr_t p = (caddr_t)ifrp;
+			p += sizeof(ifrp->ifr_name);
+			if (sizeof(ifrp->ifr_addr) > ifrp->ifr_addr.sa_len)
+				p += sizeof(ifrp->ifr_addr);
+			else
+				p += ifrp->ifr_addr.sa_len;
+			ifrp = (struct ifreq *)p;
+		}
+#else
+		ifrp++;
+#endif
+	}
+	free(ifc.ifc_req);
+	close(sock);
+
+#endif /* AIX, Solaris, etc. */
+
+	return 0;
+}
 
 /**
  *
@@ -383,7 +676,7 @@ int
 log_open_main(char *filename, char *directory, int silent)
 {
 	char  buf[_POSIX_PATH_MAX];
-	int   fds;
+	int   fds, ret;
 
 	/*providing temporary buffer, tbuf, for forming pbs_version
 	 *and pbs_build messages that get written on logfile open.
@@ -464,6 +757,13 @@ log_open_main(char *filename, char *directory, int silent)
 			log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, tbuf);
 			snprintf(tbuf, LOG_BUF_SIZE, "pbs_build=%s", pbs_build);
 			log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, tbuf);
+
+			log_add_debug_info();
+
+			if((ret = log_add_if_info()) == 1){
+				snprintf(tbuf, LOG_BUF_SIZE, "interface info could not be added");
+				log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, tbuf);
+			}
 		}
 	}
 #if SYSLOG
