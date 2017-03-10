@@ -34,7 +34,7 @@
 #  "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
 #  trademark licensing policies.
 
-if [ $# -eq 1 ] && [ $1 = "--version" ]; then
+if [ $# -eq 1 -a "$1" = "--version" ]; then
    echo pbs_version = @PBS_VERSION@
    exit 0
 fi
@@ -45,13 +45,14 @@ PBS_CURRENT_SCHEMA_VER='1.2.0'
 PBS_AES_SWITCH_VER='14.0'
 
 get_db_user() {
+	[ -f "${dbuser_fl}" ] && dbuser_name=`cat "${dbuser_fl}" | tr -d '[:space:]'`
+	[ -z "${dbuser_name}" ] && dbuser_name="${PBS_DATA_SERVICE_USER:-@database_user@}"
 	if [ ! -f "${dbuser_fl}" ]; then
-		echo "@database_user@"
-		return 0
-	else
-		cat "${dbuser_fl}"
-		return $?
+		printf "%s" "$dbuser_name" >"${dbuser_fl}"
+		chmod 0600 "${dbuser_fl}"
 	fi
+	cat "${dbuser_fl}"
+	return $?
 }
 
 chk_dataservice_user() {
@@ -101,12 +102,6 @@ is_cray_xt() {
 		return 0
 	fi
 	return 1
-}
-
-createpath() {
-	while read mode dir ;do
-		createdir ${PBS_HOME}/${dir} $mode
-	done
 }
 
 set_db_trust_login() {
@@ -648,13 +643,21 @@ chkenv() {
 }
 
 createdir() {
-	if [ ! -d $1 ]; then
-		if ! mkdir $1 ;then
+	if [ -n "$1" -a ! -d "$1" ]; then
+		if ! mkdir -p "$1"; then
 			echo "*** Could not create $1"
 			exit 1
 		fi
 	fi
-	chmod $2 $1
+	if [ -n "$1" -a -n "$2" ]; then
+		chmod "$2" "$1"
+	fi
+}
+
+createpath() {
+	while read mode dir ;do
+		createdir "${PBS_HOME}/${dir}" $mode
+	done
 }
 
 # Return the name of the PBS server host
@@ -713,8 +716,8 @@ if [ ! -d "$PBS_HOME" ]; then
 	elif [ -x "$PBS_EXEC/sbin/pbs_mom" ]; then
 		component="execution"
 	else
-		echo "*** Error Trying to execute pbs_habitat in client installation."
-		exit 1
+		echo "*** No need to execute pbs_habitat in client installation."
+		exit 0
 	fi
 	${PBS_EXEC}/libexec/pbs_postinstall $component $PBS_VERSION $PBS_EXEC $PBS_HOME "" "sameconf"
 fi

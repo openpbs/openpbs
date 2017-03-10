@@ -335,6 +335,7 @@ AC_CONFIG_FILES([
 	src/cmds/pbsrun
 	src/cmds/scripts/Makefile
 	src/cmds/scripts/au-nodeupdate
+	src/cmds/scripts/modulefile
 	src/cmds/scripts/pbs_habitat
 	src/cmds/scripts/pbs_init.d
 	src/cmds/scripts/pbs_poerun

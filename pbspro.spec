@@ -256,97 +256,83 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_postinstall client \
 	%{version} ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}
 
 %preun %{pbs_server}
-if [ -x /sbin/chkconfig -a -x /sbin/service ]; then
-	out=`/sbin/chkconfig --list pbs 2>/dev/null`
-	if [ $? -eq 0 ]; then
-		if [ -x /etc/init.d/pbs ]; then
-			/etc/init.d/pbs stop
-		else
-			/sbin/service pbs stop
-		fi
-		/sbin/chkconfig --del pbs
-	fi
-else
+if [ "$1" != "1" ]; then
+	# This is an uninstall, not an upgrade.
 	[ -x /etc/init.d/pbs ] && /etc/init.d/pbs stop
-	rm -f /etc/rc.d/rc0.d/K10pbs
-	rm -f /etc/rc.d/rc1.d/K10pbs
-	rm -f /etc/rc.d/rc2.d/K10pbs
-	rm -f /etc/rc.d/rc3.d/S90pbs
-	rm -f /etc/rc.d/rc4.d/K10pbs
-	rm -f /etc/rc.d/rc5.d/S90pbs
-	rm -f /etc/rc.d/rc6.d/K10pbs
-fi
-rm -f ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/etc/db_user.new
-if [ `basename ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}` = %{version} ]; then
-	top_level=`dirname ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}`
-	if [ -h $top_level/default ]; then
-		link_target=`readlink $top_level/default`
-		[ `basename "$link_target"` = %{version} ] && rm -f $top_level/default
+	[ -x /sbin/chkconfig ] && /sbin/chkconfig --del pbs >/dev/null 2>&1
+	rm -f /etc/rc.d/rc?.d/[KS]??pbs
+	if [ `basename ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}` = %{version} ]; then
+		top_level=`dirname ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}`
+		if [ -h $top_level/default ]; then
+			link_target=`readlink $top_level/default`
+			[ `basename "$link_target"` = %{version} ] && rm -f $top_level/default
+		fi
 	fi
+	rm -f /etc/init.d/pbs
+	rm -f /opt/modulefiles/pbs/%{version}
+	%if %{defined have_systemd}
+		systemctl disable pbs
+		rm -f /usr/lib/systemd/system-preset/95-pbs.preset
+	%endif
 fi
-rm -f /etc/init.d/pbs
-%if %{defined have_systemd}
-	systemctl disable pbs
-	rm -f /usr/lib/systemd/system-preset/95-pbs.preset
-%endif
 
 %preun %{pbs_execution}
-if [ -x /sbin/chkconfig -a -x /sbin/service ]; then
-	out=`/sbin/chkconfig --list pbs 2>/dev/null`
-	if [ $? -eq 0 ]; then
-		if [ -x /etc/init.d/pbs ]; then
-			/etc/init.d/pbs stop
-		else
-			/sbin/service pbs stop
-		fi
-		/sbin/chkconfig --del pbs
-	fi
-else
+if [ "$1" != "1" ]; then
+	# This is an uninstall, not an upgrade.
 	[ -x /etc/init.d/pbs ] && /etc/init.d/pbs stop
-	rm -f /etc/rc.d/rc0.d/K10pbs
-	rm -f /etc/rc.d/rc1.d/K10pbs
-	rm -f /etc/rc.d/rc2.d/K10pbs
-	rm -f /etc/rc.d/rc3.d/S90pbs
-	rm -f /etc/rc.d/rc4.d/K10pbs
-	rm -f /etc/rc.d/rc5.d/S90pbs
-	rm -f /etc/rc.d/rc6.d/K10pbs
-fi
-if [ `basename ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}` = %{version} ]; then
-	top_level=`dirname ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}`
-	if [ -h $top_level/default ]; then
-		link_target=`readlink $top_level/default`
-		[ `basename "$link_target"` = %{version} ] && rm -f $top_level/default
+	[ -x /sbin/chkconfig ] && /sbin/chkconfig --del pbs >/dev/null 2>&1
+	rm -f /etc/rc.d/rc?.d/[KS]??pbs
+	if [ `basename ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}` = %{version} ]; then
+		top_level=`dirname ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}`
+		if [ -h $top_level/default ]; then
+			link_target=`readlink $top_level/default`
+			[ `basename "$link_target"` = %{version} ] && rm -f $top_level/default
+		fi
 	fi
+	rm -f /etc/init.d/pbs
+	rm -f /opt/modulefiles/pbs/%{version}
+	%if %{defined have_systemd}
+		systemctl disable pbs
+		rm -f /usr/lib/systemd/system-preset/95-pbs.preset
+	%endif
 fi
-rm -f /etc/init.d/pbs
-%if %{defined have_systemd}
-	systemctl disable pbs
-	rm -f /usr/lib/systemd/system-preset/95-pbs.preset
-%endif
 
 %preun %{pbs_client}
-if [ `basename ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}` = %{version} ]; then
-	top_level=`dirname ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}`
-	if [ -h $top_level/default ]; then
-		link_target=`readlink $top_level/default`
-		[ `basename "$link_target"` = %{version} ] && rm -f $top_level/default
+if [ "$1" != "1" ]; then
+	# This is an uninstall, not an upgrade.
+	if [ `basename ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}` = %{version} ]; then
+		top_level=`dirname ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}`
+		if [ -h $top_level/default ]; then
+			link_target=`readlink $top_level/default`
+			[ `basename "$link_target"` = %{version} ] && rm -f $top_level/default
+		fi
 	fi
+	rm -f /opt/modulefiles/pbs/%{version}
 fi
 
 %postun %{pbs_server}
-echo
-echo "NOTE: /etc/pbs.conf and the PBS_HOME directory must be deleted manually"
-echo
+if [ "$1" != "1" ]; then
+	# This is an uninstall, not an upgrade.
+	echo
+	echo "NOTE: /etc/pbs.conf and the PBS_HOME directory must be deleted manually"
+	echo
+fi
 
 %postun %{pbs_execution}
-echo
-echo "NOTE: /etc/pbs.conf and the PBS_HOME directory must be deleted manually"
-echo
+if [ "$1" != "1" ]; then
+	# This is an uninstall, not an upgrade.
+	echo
+	echo "NOTE: /etc/pbs.conf and the PBS_HOME directory must be deleted manually"
+	echo
+fi
 
 %postun %{pbs_client}
-echo
-echo "NOTE: /etc/pbs.conf must be deleted manually"
-echo
+if [ "$1" != "1" ]; then
+	# This is an uninstall, not an upgrade.
+	echo
+	echo "NOTE: /etc/pbs.conf must be deleted manually"
+	echo
+fi
 
 %files %{pbs_server}
 %defattr(-,root,root, -)

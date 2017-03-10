@@ -42,7 +42,7 @@
 # by pbs_habitat.
 #
 
-if [ $# -eq 1 ] && [ $1 = "--version" ]; then
+if [ $# -eq 1 -a "$1" = "--version" ]; then
 	echo pbs_version = @PBS_VERSION@
 	exit 0
 fi
@@ -84,18 +84,20 @@ poe_interactive() {
 }
 
 createdir() {
-	if [ ! -d $1 ]; then
-		if ! mkdir -p $1 ;then
+	if [ -n "$1" -a ! -d "$1" ]; then
+		if ! mkdir -p "$1"; then
 			echo "*** Could not create $1"
 			exit 1
 		fi
 	fi
-	chmod $2 $1
+	if [ -n "$1" -a -n "$2" ]; then
+		chmod "$2" "$1"
+	fi
 }
 
 createpath() {
-	while read mode dir ;do
-		createdir ${PBS_HOME}/${dir} $mode
+	while read mode dir; do
+		createdir "${PBS_HOME}/${dir}" $mode
 	done
 }
 
@@ -121,7 +123,7 @@ create_conf() {
 		oldpbs_home=''
 	fi
 	oldpbs_exec=`readlink -f "$oldpbs_exec"`
-	
+
 	case $INSTALL_METHOD in
 	rpm)
 		[ -f "$newconf" ] && newconf="${newconf}.`date +%Y%m%d%H%M%S`"
@@ -139,14 +141,14 @@ create_conf() {
 			}
 			for var in "${env_array[@]}"
 			do
-				[ "${!var:+set}" ] && update_pbs_conf ${var} 
+				[ "${!var:+set}" ] && update_pbs_conf ${var}
 			done
 		else
 			[ ${newpbs_exec:+set} ] && echo "PBS_EXEC=$newpbs_exec" >"$newconf"
 			for var in "${env_array[@]}"
 			do
 				[ "${!var:+set}" ] && echo "${var}=${!var}" >>"$newconf"
-			done	
+			done
 		fi
 		;;
 
@@ -167,10 +169,9 @@ create_conf() {
 		fi
 		# if both conf files are present merge the files but precedence should be given to newconf
 		if [ -f "$newconf" -a -f "$conf" ]; then
-			while IFS='=' read -r key value
-			do
+			while IFS='=' read -r key value; do
 				if [ -z `grep -q "$key" "$newconf" && echo $?` ]; then
-				echo "$key=$value" >> "$newconf"
+					echo "$key=$value" >> "$newconf"
 				fi
 			done < "$conf"
 		fi
@@ -178,43 +179,23 @@ create_conf() {
 		# did, leave it alone. If not, and an existing configuration
 		# file is present, adapt it by substituting the new value
 		# of PBS_EXEC.
-		[ ! -f "$newconf" -a -f "$conf" ] && \
+		if [ ! -f "$newconf" -a -f "$conf" ]; then
 			# If an existing configuration file is present, adapt it by
 			# substituting the new value of PBS_EXEC.
 			eval "sed 's;\(^[[:space:]]*PBS_EXEC=\)[^[:space:]]*;\1$newpbs_exec;' \"$conf\"" >"$newconf"
+		fi
 		;;
 	esac
-	
+
 	# Ensure newconf exists.
 	touch "$newconf"
 	chmod 644 "$newconf"
-	
+
 	# Source the new configuration file.
 	. "$newconf"
-	
+
 	# Add some additional required fields if not present.
-	case $INSTALL_PACKAGE in
-	server)
-		if [ -z "$PBS_SERVER" ]; then
-			PBS_SERVER=`hostname | awk -F. '{print $1}'`
-			echo "PBS_SERVER=$PBS_SERVER" >>"$newconf"
-		fi
-		[ -z "$PBS_START_SERVER" ] && echo "PBS_START_SERVER=1" >>"$newconf"
-		[ -z "$PBS_START_SCHED" ] && echo "PBS_START_SCHED=1" >>"$newconf"
-		[ -z "$PBS_START_COMM" ] && echo "PBS_START_COMM=1" >>"$newconf"
-		[ -z "$PBS_START_MOM" ] && echo "PBS_START_MOM=0" >>"$newconf"
-		;;
-	execution)
-		if [ -z "$PBS_SERVER" ]; then
-			PBS_SERVER='CHANGE_THIS_TO_PBS_PRO_SERVER_HOSTNAME'
-			echo "PBS_SERVER=$PBS_SERVER" >>"$newconf"
-		fi
-		[ -z "$PBS_START_SERVER" ] && echo "PBS_START_SERVER=0" >>"$newconf"
-		[ -z "$PBS_START_SCHED" ] && echo "PBS_START_SCHED=0" >>"$newconf"
-		[ -z "$PBS_START_COMM" ] && echo "PBS_START_COMM=0" >>"$newconf"
-		[ -z "$PBS_START_MOM" ] && echo "PBS_START_MOM=1" >>"$newconf"
-		;;
-	client)
+	if is_cray_xt ; then
 		if [ -z "$PBS_SERVER" ]; then
 			PBS_SERVER='CHANGE_THIS_TO_PBS_PRO_SERVER_HOSTNAME'
 			echo "PBS_SERVER=$PBS_SERVER" >>"$newconf"
@@ -223,18 +204,49 @@ create_conf() {
 		[ -z "$PBS_START_SCHED" ] && echo "PBS_START_SCHED=0" >>"$newconf"
 		[ -z "$PBS_START_COMM" ] && echo "PBS_START_COMM=0" >>"$newconf"
 		[ -z "$PBS_START_MOM" ] && echo "PBS_START_MOM=0" >>"$newconf"
-		;;
-	esac
-	
+	else
+		case $INSTALL_PACKAGE in
+		server)
+			if [ -z "$PBS_SERVER" ]; then
+				PBS_SERVER=`hostname | awk -F. '{print $1}'`
+				echo "PBS_SERVER=$PBS_SERVER" >>"$newconf"
+			fi
+			[ -z "$PBS_START_SERVER" ] && echo "PBS_START_SERVER=1" >>"$newconf"
+			[ -z "$PBS_START_SCHED" ] && echo "PBS_START_SCHED=1" >>"$newconf"
+			[ -z "$PBS_START_COMM" ] && echo "PBS_START_COMM=1" >>"$newconf"
+			[ -z "$PBS_START_MOM" ] && echo "PBS_START_MOM=0" >>"$newconf"
+			;;
+		execution)
+			if [ -z "$PBS_SERVER" ]; then
+				PBS_SERVER='CHANGE_THIS_TO_PBS_PRO_SERVER_HOSTNAME'
+				echo "PBS_SERVER=$PBS_SERVER" >>"$newconf"
+			fi
+			[ -z "$PBS_START_SERVER" ] && echo "PBS_START_SERVER=0" >>"$newconf"
+			[ -z "$PBS_START_SCHED" ] && echo "PBS_START_SCHED=0" >>"$newconf"
+			[ -z "$PBS_START_COMM" ] && echo "PBS_START_COMM=0" >>"$newconf"
+			[ -z "$PBS_START_MOM" ] && echo "PBS_START_MOM=1" >>"$newconf"
+			;;
+		client)
+			if [ -z "$PBS_SERVER" ]; then
+				PBS_SERVER='CHANGE_THIS_TO_PBS_PRO_SERVER_HOSTNAME'
+				echo "PBS_SERVER=$PBS_SERVER" >>"$newconf"
+			fi
+			[ -z "$PBS_START_SERVER" ] && echo "PBS_START_SERVER=0" >>"$newconf"
+			[ -z "$PBS_START_SCHED" ] && echo "PBS_START_SCHED=0" >>"$newconf"
+			[ -z "$PBS_START_COMM" ] && echo "PBS_START_COMM=0" >>"$newconf"
+			[ -z "$PBS_START_MOM" ] && echo "PBS_START_MOM=0" >>"$newconf"
+			;;
+		esac
+	fi
+
 	[ -z "$PBS_EXEC" ] && echo "PBS_EXEC=$newpbs_exec" >>"$newconf"
 	[ -z "$PBS_HOME" -a -n "$newpbs_home" ] && echo "PBS_HOME=$newpbs_home" >>"$newconf"
 	[ -z "${PBS_CORE_LIMIT}" ] && echo "PBS_CORE_LIMIT=@PBS_CORE_LIMIT@" >>"$newconf"
-	if ! [ -d "$oldpbs_exec" ]; then
+	if ! grep "^PBS_SCP=" $newconf>/dev/null 2>&1; then
 		PBS_SCP=`type -P scp`
 		[ -n "$PBS_SCP" ] && echo "PBS_SCP=$PBS_SCP" >>"$newconf"
 	fi
-	
-	
+
 	# Source the new configuation file again to pick up any changes
 	. "$newconf"
 }
@@ -283,7 +295,7 @@ perform_checks() {
 		echo "*** the new files in /etc/profile.d."
 		echo "***"
 	fi
-	
+
 	# Issue warning if PBS_HOME has changed.
 	if [ -n "$oldpbs_home" -a "$PBS_HOME" != "$oldpbs_home" ]; then
 		echo "***"
@@ -300,7 +312,7 @@ perform_checks() {
 		echo "*** 3. ln -s $oldpbshome $PBS_HOME"
 		echo "***"
 	fi
-	
+
 	# Issue a warning if PBS_SERVER is invalid
 	if [ -z "$PBS_SERVER" -o "$PBS_SERVER" = 'CHANGE_THIS_TO_PBS_PRO_SERVER_HOSTNAME' ]; then
 		echo "*** ======="
@@ -327,7 +339,7 @@ install_pbsinitd() {
 		# For now, for Cray XT only, install "modulefile" in hard location
 		if [ -d /opt/modulefiles -a -f ${PBS_EXEC}/etc/modulefile ]; then
 			if [ ! -d /opt/modulefiles/pbs ] ; then
-				mkdir -m 755 /opt/modulefiles/pbs
+				createdir /opt/modulefiles/pbs 0755
 			fi
 			cp ${PBS_EXEC}/etc/modulefile /opt/modulefiles/pbs/${PBS_VERSION}
 			chmod 0644 /opt/modulefiles/pbs/${PBS_VERSION}
@@ -458,7 +470,7 @@ install_pbsinitd() {
 		Darwin)
 			dir="/Library/StartupItems/PBS"
 			initscript="$dir/PBS"
-			mkdir -p -m 755 $dir
+			createdir "$dir" 0755
 			cp ${PBS_EXEC}/libexec/pbs_init.d $initscript
 			cat <<-EOF > $dir/StartupParameters.plist
 				{
@@ -483,7 +495,7 @@ install_pbsinitd() {
 		fi
 	fi
 	echo "***"
-	
+
 	if [ "$conf" != "/etc/pbs.conf" ]; then
 		echo "*** ======="
 		echo "*** NOTICE:"
@@ -509,11 +521,11 @@ create_home() {
 		echo "*** End of ${0}"
 		exit 0
 	fi
-	
+
 	# This is not a client install. Create PBS_HOME.
 	echo "*** PBS_HOME is $PBS_HOME"
-	createdir $PBS_HOME 0755
-	
+	createdir "$PBS_HOME" 0755
+
 	# Create the pbs_environment file if it does not exist
 	envfile="${PBS_HOME}/pbs_environment"
 	if [ ! -f "$envfile" ]; then
@@ -537,7 +549,7 @@ create_home() {
 			echo "*** Setting TZ from \$TZ"
 			newtz="TZ=${TZ}"
 		fi
-	
+
 		euilibus="us"
 		if [ -f $envfile ] ; then
 			echo "*** Found existing $envfile"
@@ -548,7 +560,7 @@ create_home() {
 				mv -f $envfile ${envfile}.old
 				mv -f ${envfile}.new $envfile
 			fi
-		
+
 			if [ "$ostype" = "AIX" -a ! -z "$switch" ]; then
 				chkenv PBS_MP_EUILIB $euilibus
 				if [ "$switch" = "InfiniBand" ]; then
@@ -568,12 +580,12 @@ create_home() {
 			else
 				echo "*** WARNING: TZ not set in $envfile"
 			fi
-		
+
 			case "$ostype" in
 			AIX)
 				echo PATH="/bin:/usr/bin" >> $envfile
 				echo ODMDIR=$ODMDIR >> $envfile
-		
+
 				aixfile="/etc/environment"
 				if [ -z "$NLSPATH" ]; then
 					line=`grep -s '^NLSPATH=' $aixfile`
@@ -599,7 +611,7 @@ create_home() {
 				fi
 				line=`grep '^LANG=' $envfile`
 				echo "*** setting $line"
-		
+
 				if [ ! -z "$switch" ]; then
 					echo "*** setting PBS_MP_EUILIB=$euilibus"
 					echo "PBS_MP_EUILIB=$euilibus" >> $envfile
@@ -627,7 +639,7 @@ create_home() {
 		echo "*** Existing environment file left unmodified: $envfile"
 	fi
 	echo "***"
-	
+
 	# Configure PBS_HOME for server
 	if [ -x "$PBS_EXEC/sbin/pbs_server" ]; then
 		echo "*** The PBS Pro server has been installed in ${PBS_EXEC}/sbin."
@@ -650,7 +662,7 @@ create_home() {
 		fi
 		# special for cray
 		if is_cray_xt; then
-			tmp_mpp="$tmpdir/PBS_translate_mpp.HK.$$"
+			tmp_mpp="/tmp/PBS_translate_mpp.HK.$$"
 			sed "s/enabled=false/enabled=true/g" $PBS_HOME/server_priv/hooks/PBS_translate_mpp.HK > $tmp_mpp
 			mv $tmp_mpp $PBS_HOME/server_priv/hooks/PBS_translate_mpp.HK
 		fi
@@ -661,9 +673,9 @@ create_home() {
 			chmod 0600 "${dbuser_fl}"
 		fi
 	fi
-	
+
 	# Configure PBS_HOME for scheduler
-	if [ -x "$PBS_EXEC/sbin/pbs_sched" ] ;then
+	if [ -x "$PBS_EXEC/sbin/pbs_sched" ]; then
 		echo "*** The PBS Pro scheduler has been installed in ${PBS_EXEC}/sbin."
 		createpath <<-EOF
 			0755 sched_logs
@@ -680,18 +692,16 @@ create_home() {
 		if is_cray_xt; then
 			sconfig="${PBS_HOME}/sched_priv/sched_config"
 			grep '^[[:space:]]*resources:.*vntype' $sconfig > /dev/null
-			if [ $? -ne 0 ] ; then
+			if [ $? -ne 0 ]; then
 				echo "*** Added vntype to sched_config resources"
-				tmp_config="$tmpdir/config.$$"
+				tmp_config="/tmp/config.$$"
 				sed '/^[[:space:]]*resources:/ s/\"$/, vntype\"/' $sconfig > $tmp_config
 				mv $tmp_config $sconfig
-			else
-				echo "*** Found vntype in sched_config resources"
 			fi
 		fi
 		echo "***"
 	fi
-	
+
 	# Configure PBS_HOME for pbs_comm
 	if [ -x "$PBS_EXEC/sbin/pbs_comm" ]; then
 		echo "*** The PBS Pro communication agent has been installed in ${PBS_EXEC}/sbin."
@@ -702,7 +712,7 @@ create_home() {
 		EOF
 		echo "***"
 	fi
-	
+
 	# Configure PBS_HOME for MOM
 	if [ -x "$PBS_EXEC/sbin/pbs_mom" ] ;then
 		echo "*** The PBS Pro MOM has been installed in ${PBS_EXEC}/sbin."
@@ -734,7 +744,7 @@ create_home() {
 				largepage=false
 				;;
 			esac
-	
+
 			if [ -n "$bugid" ]; then
 				if instfix -ik $bugid ;then
 					largepage=true
@@ -782,6 +792,10 @@ create_home() {
 			if [ $? -ne 0 ] ; then
 				echo "\$vnodedef_additive 0" >> $momconfig
 			fi
+			grep "^\$alps_client" "$momconfig" >/dev/null
+			if [ $? -ne 0 ] ; then
+				echo "\$alps_client /opt/cray/alps/default/bin/apbasil" >> $momconfig
+			fi
 		fi
 		# Remove any old CPU set remnants from previous releases
 		if [ -d /dev/cpuset/PBSPro ]; then
@@ -789,7 +803,7 @@ create_home() {
 		fi
 		echo "***"
 	fi
-	
+
 	if [ -x "${PBS_EXEC}/bin/qstat" ] ;then
 		echo "*** The PBS commands have been installed in ${PBS_EXEC}/bin."
 		echo "***"
@@ -798,7 +812,7 @@ create_home() {
 		echo "***"
 		exit 1
 	fi
-	
+
 	# Do not update PBS_HOME/pbs_version here, pbs_habitat will do that.
 
 }
@@ -806,7 +820,7 @@ create_home() {
 echo "*** PBS Installation Summary"
 echo "***"
 echo "*** Postinstall script called as follows:"
-echo "*** $0 $*"
+printf "*** $0 "; printf "%q " "$@"; printf "\n"
 echo "***"
 PBS_VERSION='@PBS_VERSION@'
 conf="${PBS_CONF_FILE:-/etc/pbs.conf}"
@@ -831,6 +845,11 @@ server)
 	newpbs_exec="${3:-@prefix@}"
 	newpbs_home="${4:-@PBS_SERVER_HOME@}"
 	dbuser="${preset_dbuser:-${5:-@database_user@}}"
+	if [ "$6" = "sameconf" ]; then
+		sameconf="true"
+	else
+		sameconf="false"
+	fi
 	if [ ! -x "$newpbs_exec/sbin/pbs_server" ]; then
 		echo "***"
 		echo "*** Unable to locate PBS Pro executables!"
@@ -843,6 +862,11 @@ execution)
 	PBS_VERSION="${2:-@PBS_VERSION@}"
 	newpbs_exec="${3:-@prefix@}"
 	newpbs_home="${4:-@PBS_SERVER_HOME@}"
+	if [ "$5" = "sameconf" ]; then
+		sameconf="true"
+	else
+		sameconf="false"
+	fi
 	if [ ! -x "$newpbs_exec/sbin/pbs_mom" ]; then
 		echo "***"
 		echo "*** Unable to locate PBS Pro executables!"
@@ -855,6 +879,11 @@ client)
 	PBS_VERSION="${2:-@PBS_VERSION@}"
 	newpbs_exec="${3:-@prefix@}"
 	newpbs_home='@PBS_SERVER_HOME@'
+	if [ "$4" = "sameconf" ]; then
+		sameconf="true"
+	else
+		sameconf="false"
+	fi
 	if [ ! -x "$newpbs_exec/bin/qstat" ]; then
 		echo "***"
 		echo "*** Unable to locate PBS Pro executables!"
@@ -863,15 +892,16 @@ client)
 	fi
 	;;
 *)
-    INSTALL_METHOD="script"
-    if [ -f "$newconf" ]; then
-            newpbs_exec=`grep '^[[:space:]]*PBS_EXEC=' "$newconf" | tail -1 | sed 's/^[[:space:]]*PBS_EXEC=\([^[:space:]]*\)[[:space:]]*/\1/'`
-            newpbs_home=`grep '^[[:space:]]*PBS_HOME=' "$newconf" | tail -1 | sed 's/^[[:space:]]*PBS_HOME=\([^[:space:]]*\)[[:space:]]*/\1/'`
-    else
-            newpbs_exec=@prefix@
-            newpbs_home=@PBS_SERVER_HOME@
-    fi
-    ;;
+	INSTALL_METHOD="script"
+	sameconf="false"
+	if [ -f "$newconf" ]; then
+		newpbs_exec=`grep '^[[:space:]]*PBS_EXEC=' "$newconf" | tail -1 | sed 's/^[[:space:]]*PBS_EXEC=\([^[:space:]]*\)[[:space:]]*/\1/'`
+		newpbs_home=`grep '^[[:space:]]*PBS_HOME=' "$newconf" | tail -1 | sed 's/^[[:space:]]*PBS_HOME=\([^[:space:]]*\)[[:space:]]*/\1/'`
+	else
+		newpbs_exec=@prefix@
+		newpbs_home=@PBS_SERVER_HOME@
+	fi
+	;;
 esac
 
 # Ensure newpbs_exec exists.
@@ -882,35 +912,35 @@ if [ ! -d "$newpbs_exec" ]; then
 	exit 1
 fi
 
-if [ -z "$6" -o "$6" != "sameconf" ]; then
+if [ "$sameconf" != "true" ]; then
 	# Edit the new configuration file based on the install method.
 	# Create newconf for the rpm install method.
 	create_conf
-	
-	# Set defaultdir based on the installed location of PBS Pro. It controls whether
-        # a symbolic link named "default" will be created or updated.
-        defaultdir=0
-        [ `basename "$PBS_EXEC"` = "$PBS_VERSION" ] && defaultdir=1
 
-        # Adjust PBS_EXEC defaultdir is enabled
-        if [ $defaultdir -ne 0 ]; then
-                realexec="${PBS_EXEC}"
-                PBS_EXEC=`dirname ${PBS_EXEC}`/default
-                eval "sed -i 's;\(^[[:space:]]*PBS_EXEC=\)[^[:space:]]*;\1$PBS_EXEC;' \"$newconf\""
-                if [ -h "${PBS_EXEC}" ] ; then
-                        echo "*** Removing old symbolic link ${PBS_EXEC}"
-                        rm -f ${PBS_EXEC}
-                fi
-                echo "*** Creating new symbolic link ${realexec} pointing to ${PBS_EXEC}"
-                ln -s "${realexec}" "${PBS_EXEC}"
-        fi
+	# Set defaultdir based on the installed location of PBS Pro. It controls whether
+	# a symbolic link named "default" will be created or updated.
+	defaultdir=0
+	[ `basename "$PBS_EXEC"` = "$PBS_VERSION" ] && defaultdir=1
+
+	# Adjust PBS_EXEC defaultdir is enabled
+	if [ $defaultdir -ne 0 ]; then
+		realexec="${PBS_EXEC}"
+		PBS_EXEC=`dirname ${PBS_EXEC}`/default
+		eval "sed -i 's;\(^[[:space:]]*PBS_EXEC=\)[^[:space:]]*;\1$PBS_EXEC;' \"$newconf\""
+		if [ -h "${PBS_EXEC}" ] ; then
+			echo "*** Removing old symbolic link ${PBS_EXEC}"
+			rm -f ${PBS_EXEC}
+		fi
+		echo "*** Creating new symbolic link ${realexec} pointing to ${PBS_EXEC}"
+		ln -s "${realexec}" "${PBS_EXEC}"
+	fi
 
 	# Perform some sanity checks.
 	perform_checks
-	
+
 	echo "*** Replacing $conf with $newconf"
 	mv -f "$newconf" "$conf"
-	
+
 	if [ -n "$conforig" ]; then
 		echo "*** $conf has been modified."
 		echo "*** The original contents have been saved to $conforig"
@@ -918,7 +948,7 @@ if [ -z "$6" -o "$6" != "sameconf" ]; then
 		echo "*** $conf has been created."
 	fi
 	echo "***"
-	
+
 	# If any daemon is to be started, we need to install the init.d script
 	# also if installing on Cray XT; but for Cray don't do chkconfig, see AG
 	install_pbsinitd
