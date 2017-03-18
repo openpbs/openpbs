@@ -1460,13 +1460,16 @@ collect_jobs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int si
 		return 0;
 
 	for (i = 0; susp_jobs[i] != NULL; i++) {
-		for (j = 0; susp_jobs[i]->ninfo_arr[j] != NULL; j++) {
-			/* resresv -> ninfo_arr is merely a new list with pointers to server nodes.
-			 * resresv -> resv -> resv_nodes is a new list with pointers to resv nodes
-			 */
-			node = find_node_info(ninfo_arr, susp_jobs[i]->ninfo_arr[j]->name);
-			if (node != NULL)
-				node->num_susp_jobs++;
+		if (susp_jobs[i]->ninfo_arr != NULL) {
+			for (j = 0; susp_jobs[i]->ninfo_arr[j] != NULL; j++) {
+				/* resresv -> ninfo_arr is merely a new list with pointers to server nodes.
+				 * resresv -> resv -> resv_nodes is a new list with pointers to resv nodes
+				 */
+				node = find_node_info(ninfo_arr,
+						susp_jobs[i]->ninfo_arr[j]->name);
+				if (node != NULL)
+					node->num_susp_jobs++;
+			}
 		}
 	}
 	free(susp_jobs);
