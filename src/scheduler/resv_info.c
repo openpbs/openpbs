@@ -186,6 +186,7 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 		free_schd_error(err);
 		return NULL;
 	}
+	resresv_arr[0] = NULL;
 	sinfo->num_resvs = num_resv;
 
 	cur_resv = resvs;
@@ -532,11 +533,10 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 				continue;
 			}
 		}
-		resresv_arr[idx] = resresv;
-		idx++;
+		resresv_arr[idx++] = resresv;
+		resresv_arr[idx] = NULL;
 		cur_resv = cur_resv->next;
 	}
-	resresv_arr[idx] = NULL;
 
 	pbs_statfree(resvs);
 	free_schd_error(err);
@@ -639,8 +639,12 @@ query_resv(struct batch_status *resv, server_info *sinfo)
 		}
 		else if (!strcmp(attrp->name, ATTR_l)) { /* resources requested*/
 			resreq = find_alloc_resource_req_by_str(advresv->resreq, attrp->resource);
-			if (resreq != NULL)
-				set_resource_req(resreq, attrp->value);
+			if (resreq == NULL) {
+				free_resource_resv(advresv);
+				return NULL;
+			}
+
+			set_resource_req(resreq, attrp->value);
 
 			if (!strcmp(resreq->name, "place"))
 				advresv->place_spec = parse_placespec(attrp->value);

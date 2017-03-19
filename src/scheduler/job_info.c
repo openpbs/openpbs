@@ -1065,8 +1065,13 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 		}
 		else if (!strcmp(attrp->name, ATTR_l)) { /* resources requested*/
 			resreq = find_alloc_resource_req_by_str(resresv->resreq, attrp->resource);
-			if (resreq != NULL)
-				set_resource_req(resreq, attrp->value);
+			if (resreq == NULL) {
+				free_resource_resv(resresv);
+				return NULL;
+			}
+
+			set_resource_req(resreq, attrp->value);
+
 			if (resresv->resreq == NULL)
 				resresv->resreq = resreq;
 			if (!strcmp(attrp->resource, "place")) {
