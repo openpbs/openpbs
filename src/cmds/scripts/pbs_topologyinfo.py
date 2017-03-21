@@ -3,36 +3,36 @@
 
 #  Copyright (C) 1994-2016 Altair Engineering, Inc.
 #  For more information, contact Altair at www.altair.com.
-#   
+#
 #  This file is part of the PBS Professional ("PBS Pro") software.
-#  
+#
 #  Open Source License Information:
-#   
+#
 #  PBS Pro is free software. You can redistribute it and/or modify it under the
-#  terms of the GNU Affero General Public License as published by the Free 
-#  Software Foundation, either version 3 of the License, or (at your option) any 
+#  terms of the GNU Affero General Public License as published by the Free
+#  Software Foundation, either version 3 of the License, or (at your option) any
 #  later version.
-#   
-#  PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+#
+#  PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
 #  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
 #  PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
-#   
-#  You should have received a copy of the GNU Affero General Public License along 
+#
+#  You should have received a copy of the GNU Affero General Public License along
 #  with this program.  If not, see <http://www.gnu.org/licenses/>.
-#   
-#  Commercial License Information: 
-#  
-#  The PBS Pro software is licensed under the terms of the GNU Affero General 
-#  Public License agreement ("AGPL"), except where a separate commercial license 
+#
+#  Commercial License Information:
+#
+#  The PBS Pro software is licensed under the terms of the GNU Affero General
+#  Public License agreement ("AGPL"), except where a separate commercial license
 #  agreement for PBS Pro version 14 or later has been executed in writing with Altair.
-#   
-#  Altair’s dual-license business model allows companies, individuals, and 
-#  organizations to create proprietary derivative works of PBS Pro and distribute 
-#  them - whether embedded or bundled with other software - under a commercial 
+#
+#  Altair’s dual-license business model allows companies, individuals, and
+#  organizations to create proprietary derivative works of PBS Pro and distribute
+#  them - whether embedded or bundled with other software - under a commercial
 #  license agreement.
-#  
-#  Use of Altair’s trademarks, including but not limited to "PBS™", 
-#  "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+#
+#  Use of Altair’s trademarks, including but not limited to "PBS™",
+#  "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 #  trademark licensing policies.
 
 import errno
@@ -44,10 +44,12 @@ import sys
 try:
     import xml.parsers.expat
     from xml.parsers.expat import ExpatError
+
     def reportsockets(dir, files):
         """
-        Look for and report the number of "Socket" elements in a string
-        produced by hwloc_topology_export_xmlbuffer().
+        Look for and report the number of "Package" elements in a string
+        produced by hwloc_topology_export_xmlbuffer(). Socket is renamed
+        to Package from hwloc version greater than 1.11.
 
         This version of reportsockets uses expat to parse the XML.
         If the PBS version of Python does not allow import of expat,
@@ -55,6 +57,7 @@ try:
         """
         global nsockets
         global isCray
+
         def socketXMLstart(name, attrs):
             global nsockets
             global isCray
@@ -65,7 +68,7 @@ try:
                 if name == "Node":
                     nsockets += 2
             else:
-                if name == "object" and attrs.get("type") == "Socket":
+                if name == "object" and attrs.get("type") == "Package":
                     nsockets += 1
 
         if files == None:
@@ -109,14 +112,15 @@ try:
 except ImportError:
     def reportsockets(dir, files):
         """
-        Look for and report the number of "Socket" elements in a string
-        produced by hwloc_topology_export_xmlbuffer().
+        Look for and report the number of "Package" elements in a string
+        produced by hwloc_topology_export_xmlbuffer().Socket is renamed
+        to Package from hwloc version greater than 1.11.
 
         This is a backup version of reportsockets which we use when an
         import of the xml.parsers.expat module fails.  In this version,
-        we simply count occurrences of "Socket" objects.
+        we simply count occurrences of "Package" objects.
         """
-        socketpattern = r'<\s*object\s+type="Socket"'
+        socketpattern = r'<\s*object\s+type="Package"'
         if files == None:
             compute_socket_nodelist = True
             try:
@@ -148,16 +152,16 @@ except ImportError:
 
 if __name__ == "__main__":
     usagestr = "usage:  %prog [ -a -s ]\n\t%prog -s node1 [ node2 ... ]"
-    parser = OptionParser(usage = usagestr)
-    parser.add_option("-a", "--all", action="store_true", dest="allnodes", \
-        help="report on all nodes")
-    parser.add_option("-s", "--sockets", action="store_true", dest="sockets", \
-        help="report node socket count")
+    parser = OptionParser(usage=usagestr)
+    parser.add_option("-a", "--all", action="store_true", dest="allnodes",
+                      help="report on all nodes")
+    parser.add_option("-s", "--sockets", action="store_true", dest="sockets",
+                      help="report node socket count")
     (options, progargs) = parser.parse_args()
 
     try:
         topology_dir = os.sep.join((os.environ["PBS_HOME"], "server_priv",
-                                "topology"))
+                                    "topology"))
     except KeyError:
         print "PBS_HOME must be present in the caller's environment"
         sys.exit(1)
@@ -167,4 +171,3 @@ if __name__ == "__main__":
     else:
         if options.sockets:
             reportsockets(topology_dir, progargs)
-

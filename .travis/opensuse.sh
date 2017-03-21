@@ -7,6 +7,8 @@ ${DOCKER_EXEC} zypper -n install time.x86_64
 ${DOCKER_EXEC} zypper -n ref
 ${DOCKER_EXEC} zypper -n install rpmdevtools
 ${DOCKER_EXEC} rpmdev-setuptree
+${DOCKER_EXEC} zypper -n ar -f -G http://download.opensuse.org/repositories/Virtualization/${OS_NAME_VERSION}/Virtualization.repo
+${DOCKER_EXEC} zypper -n ref
 ${DOCKER_EXEC} /bin/sh -c "zypper -n install \$(rpmspec --buildrequires -q pbspro.spec)"
 ${DOCKER_EXEC} ./autogen.sh
 ${DOCKER_EXEC} ./configure
