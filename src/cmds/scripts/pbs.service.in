@@ -55,7 +55,8 @@ DefaultDependencies=true
 [Service]
 Type=forking
 Restart=no
-TimeoutSec=5min
+TimeoutStartSec=0
+TimeoutStopSec=5min
 IgnoreSIGPIPE=no
 GuessMainPID=no
 ExecStart=@prefix@/libexec/pbs_init.d start
