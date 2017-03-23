@@ -114,7 +114,7 @@ int  local_move(job *, struct batch_request *);
 
 static void post_movejob(struct work_task *);
 static void post_routejob(struct work_task *);
-static int small_spool_files(job* pjob);
+static int small_job_files(job* pjob);
 extern int should_retry_route(int err);
 extern int move_job_file(int con, job *pjob, enum job_file which, int rpp, char **msgid);
 extern void post_sendmom(struct work_task *pwt);
@@ -491,17 +491,19 @@ post_movejob(struct work_task *pwt)
 }
 
 /**
+ *
  * @brief
- * 		Send execution job on connected rpp stream.
+ * 	Send execution job on connected rpp stream.
+ *	Note: Job structure has been loaded with the script by now (ji_script populated)
  *
- * @param[in]	jobp	-	pointer to the job being sent
- * @param[in]	hostaddr	-	the address of host to send job to, host byte order
- * @param[in]	port	-	the destination port, host byte order
- * @param[in]	request	-	The batch request associated with this send job call
+ * @param[in]	jobp - pointer to the job being sent
+ * @param[in]	hostaddr - the address of host to send job to, host byte order
+ * @param[in]	port - the destination port, host byte order
+ * @param[in]	request - The batch request associated with this send job call
  *
- * @return	int
- * @retval  2	: success
- * @retval  -1	: failure (pbs_errno set to error number)
+ * @return int
+ * @retval  2 	success
+ * @retval  -1 	failure (pbs_errno set to error number)
  *
  */
 int
@@ -521,27 +523,9 @@ send_job_exec(job *jobp, pbs_net_t hostaddr, int port, struct batch_request *req
 	int rc;
 	int rpp = 1;
 	char *jobid = NULL;
-	char *script = NULL;
 	char *msgid = NULL;
 	char *dup_msgid = NULL;
 	struct work_task *ptask = NULL;
-
-	/* if job has a script read it from database */
-	if (jobp->ji_qs.ji_svrflags & JOB_SVFLG_SCRIPT) {
-		/*
-		 * copy the job script from database to a temp file
-		 * PBSD_jscript works with a file
-		 * delete it at the end of the send
-		 */
-		if ((script = svr_load_jobscript(jobp)) == NULL) {
-			pbs_errno = PBSE_SYSTEM;
-			snprintf(log_buffer, sizeof(log_buffer),
-				"Failed to load job script for job %s",
-				jobp->ji_qs.ji_jobid);
-			log_err(pbs_errno, "send_job", log_buffer);
-			goto send_err;
-		}
-	}
 
 	stream = svr_connect(hostaddr, port, NULL, ToServerDIS, rpp);
 	if (stream < 0) {
@@ -605,11 +589,13 @@ send_job_exec(job *jobp, pbs_net_t hostaddr, int port, struct batch_request *req
 	 * and we will be hanging off one request to be answered to finally
 	 */
 	if (jobp->ji_qs.ji_svrflags & JOB_SVFLG_SCRIPT) {
-		if (PBSD_jscript_direct(stream, script, rpp, &dup_msgid) != 0)
+		if (PBSD_jscript_direct(stream, jobp->ji_script, rpp, &dup_msgid) != 0)
 			goto send_err;
 	}
-	free(script);
-	script = NULL;
+	if (jobp->ji_script) {
+		free(jobp->ji_script);
+		jobp->ji_script = NULL;
+	}
 
 	if (credlen > 0) {
 		rc = PBSD_jcred(stream, jobp->ji_extended.ji_ext.ji_credtype, credbuf, credlen, rpp, &dup_msgid);
@@ -638,8 +624,10 @@ send_err:
 	if (dup_msgid)
 		free(dup_msgid);
 
-	if (script)
-		free(script);
+	if (jobp->ji_script) {
+		free(jobp->ji_script);
+		jobp->ji_script = NULL;
+	}
 
 	if (ptask) {
 		if (ptask->wt_event2)
@@ -699,9 +687,25 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 		gridproxy_cred = 1;
 #endif
 
-	if (pbs_conf.pbs_use_tcp == 1 && move_type == MOVE_TYPE_Exec && gridproxy_cred == 0) {
+	/* if job has a script read it from database */
+	if (jobp->ji_qs.ji_svrflags & JOB_SVFLG_SCRIPT) {
+		if (svr_load_jobscript(jobp) == NULL) {
+			pbs_errno = PBSE_SYSTEM;
+			snprintf(log_buffer, sizeof(log_buffer),
+					"Failed to load job script for job %s",
+					jobp->ji_qs.ji_jobid);
+			log_err(pbs_errno, __func__, log_buffer);
+			win_pclose2(&pio);
+			return (-1);
+		}
+	}
+
+	if (pbs_conf.pbs_use_tcp == 1 && move_type == MOVE_TYPE_Exec && gridproxy_cred == 0 && small_job_files(jobp)) {
 		return (send_job_exec(jobp, hostaddr, port, preq));
 	}
+
+	(void)snprintf(log_buffer, sizeof(log_buffer), "big job files, sending via subprocess");
+	log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_INFO, jobp->ji_qs.ji_jobid, log_buffer);
 
 	sprintf(cmdline, "%s/sbin/pbs_send_job", pbs_conf.pbs_exec_path);
 
@@ -714,6 +718,11 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 		/* force re-eval of job state out of Transit */
 		svr_evaljobstate(jobp, &newstate, &newsub, 1);
 		svr_setjobstate(jobp, newstate, newsub);
+
+		if (jobp->ji_script) {
+			free(jobp->ji_script);
+			jobp->ji_script = NULL;
+		}
 
 		win_pclose(&pio);
 		return (-1);
@@ -728,6 +737,10 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 		/* force re-eval of job state out of Transit */
 		svr_evaljobstate(jobp, &newstate, &newsub, 1);
 		svr_setjobstate(jobp, newstate, newsub);
+		if (jobp->ji_script) {
+			free(jobp->ji_script);
+			jobp->ji_script = NULL;
+		}
 		return (-1);
 	} else {
 		ptask->wt_parm2 = jobp;
@@ -737,20 +750,27 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 	script_name[0] = '\0';
 	/* if job has a script read it from database */
 	if (jobp->ji_qs.ji_svrflags & JOB_SVFLG_SCRIPT) {
-		/*
-		 * copy the job script from database to a temp file
-		 * PBSD_jscript works with a file
-		 * delete it at the end of the send
-		 */
+		/* write the job script to a temporary file */
 		if (svr_create_tmp_jobscript(jobp, &script_name) != 0) {
 			pbs_errno = PBSE_SYSTEM;
 			snprintf(log_buffer, sizeof(log_buffer),
 				"Failed to create temporary job script for job %s",
 				jobp->ji_qs.ji_jobid);
-			log_err(pbs_errno, "send_job", log_buffer);
+			log_err(pbs_errno, __func__, log_buffer);
+
+			if (jobp->ji_script) {
+				free(jobp->ji_script);
+				jobp->ji_script = NULL;
+			}
 			win_pclose2(&pio);
 			return (-1);
 		}
+	}
+
+	/* written the script, so free memory */
+	if (jobp->ji_script) {
+		free(jobp->ji_script);
+		jobp->ji_script = NULL;
 	}
 
 	addpid(pio.pi.hProcess);
@@ -875,35 +895,48 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 		gridproxy_cred = 1;
 #endif
 
-	if (pbs_conf.pbs_use_tcp == 1 && move_type == MOVE_TYPE_Exec && gridproxy_cred == 0 && small_spool_files(jobp)) {
-		if (jobp->ji_qs.ji_svrflags & JOB_SVFLG_HASRUN) {
-			(void)sprintf(log_buffer, "small job files on rerun, sending through TPP");
-			log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_INFO, jobp->ji_qs.ji_jobid, log_buffer);
+	/* if job has a script read it from database */
+	if (jobp->ji_qs.ji_svrflags & JOB_SVFLG_SCRIPT) {
+		if (svr_load_jobscript(jobp) == NULL) {
+			pbs_errno = PBSE_SYSTEM;
+			snprintf(log_buffer, sizeof(log_buffer),
+					"Failed to load job script for job %s",
+					jobp->ji_qs.ji_jobid);
+			log_err(pbs_errno, __func__, log_buffer);
+			return (-1);
 		}
+	}
+
+	if (pbs_conf.pbs_use_tcp == 1 && move_type == MOVE_TYPE_Exec && gridproxy_cred == 0 && small_job_files(jobp)) {
 		return (send_job_exec(jobp, hostaddr, port, preq));
 	}
-	
-	if (jobp->ji_qs.ji_svrflags & JOB_SVFLG_HASRUN) {
-		(void)sprintf(log_buffer, "big job files on rerun, need to fork()");
-		log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_INFO, jobp->ji_qs.ji_jobid, log_buffer);
-	}
+
+	(void)snprintf(log_buffer, sizeof(log_buffer), "big job files, sending via subprocess");
+	log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_INFO, jobp->ji_qs.ji_jobid, log_buffer);
 
 	script_name[0] = '\0';
 	/* if job has a script read it from database */
 	if (jobp->ji_qs.ji_svrflags & JOB_SVFLG_SCRIPT) {
-		/*
-		 * copy the job script from database to a temp file
-		 * PBSD_jscript works with a file
-		 * delete it at the end of the send
-		 */
+		/* write the job script to a temporary file */
 		if (svr_create_tmp_jobscript(jobp, script_name) != 0) {
 			pbs_errno = PBSE_SYSTEM;
 			snprintf(log_buffer, sizeof(log_buffer),
 				"Failed to create temporary job script for job %s",
 				jobp->ji_qs.ji_jobid);
-			log_err(pbs_errno, "send_job", log_buffer);
+			log_err(pbs_errno, __func__, log_buffer);
+
+			if (jobp->ji_script) {
+				free(jobp->ji_script);
+				jobp->ji_script = NULL;
+			}
+
 			return -1;
 		}
+	}
+
+	if (jobp->ji_script) {
+		free(jobp->ji_script);
+		jobp->ji_script = NULL;
 	}
 
 	pid = fork();
@@ -1369,23 +1402,28 @@ cnvrt_local_move(job *jobp, struct batch_request *req)
 	return (local_move(jobp, req));
 }
 
+
 /**
  * @brief
- * 		small_spool_files - check size of job files
+ * 		check size of job files
  * @par
- * 		Checks the size of the output/error/checkpoint files for a job.
+ * 		Checks the size of the job-script/output/error/checkpoint files for a job.
  * 		If the job is not being rerun, simply returns 1.
  *
  * @return	int
  * @retval	0	: at least one file is larger than 2MB.
- * @retval	1	: all spool files are smaller than 2MB.
+ * @retval	1	: all job files are smaller than 2MB.
  */
-static int small_spool_files(job* pjob)
+static int
+small_job_files(job* pjob)
 {
 	int  		max_bytes_over_tpp = 2*1024*1024;
 	char 		path[MAXPATHLEN+1] = {0};
 	struct stat 	sb;
 	int		have_file_prefix = 0;
+
+	if (pjob->ji_script && (strlen(pjob->ji_script) > max_bytes_over_tpp))
+		return 0;
 
 	/* 
 	 * If the job is not being rerun, we need not check

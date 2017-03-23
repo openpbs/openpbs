@@ -6495,13 +6495,16 @@ extern char *path_spool;
 
 /*
  * @brief
- *  	Loads the jobscript associated to the job from the database
+ *  	Loads the job-script associated to the job from the database.
+ *  	It populates the ji_script field of the job as well as returns
+ *      a pointer to the script
  *
- * @param[in]	pj	-	Job pointer
+ * @param[in, out] pj - Job pointer. pj->ji_script has the script loaded into it.
  *
- * @return	Text buffer containing the job script
- * @retval	NULL	: Failed to load job script
- * @retval	!NULL	: Job script
+ * @return Text buffer containing the job script
+ * @retval NULL  - Failed to load job script
+ * @retval !NULL - Job script
+ *
  */
 char *
 svr_load_jobscript(job *pj)
@@ -6511,6 +6514,11 @@ svr_load_jobscript(job *pj)
 	pbs_db_obj_info_t obj;
 	char *script = NULL;
 
+	if (pj->ji_script) {
+		free(pj->ji_script);
+		pj->ji_script = NULL;
+	}
+
 	if (pj->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
 		strcpy(jobscr.ji_jobid, pj->ji_parentaj->ji_qs.ji_jobid);
 	} else {
@@ -6523,33 +6531,39 @@ svr_load_jobscript(job *pj)
 		snprintf(log_buffer, sizeof(log_buffer),
 			"Failed to load job script for job %s from PBS datastore",
 			pj->ji_qs.ji_jobid);
-		log_err(-1, "svr_load_jobscript", log_buffer);
+		log_err(-1, __func__, log_buffer);
 		return NULL;
 	}
 	script = strdup(jobscr.script);
 	pbs_db_cleanup_resultset(conn);
+
+	if (script == NULL) {
+		snprintf(log_buffer, sizeof(log_buffer),
+			"Out of memory loading script for job %s from PBS datastore",
+			pj->ji_qs.ji_jobid);
+		log_err(-1, __func__, log_buffer);
+		return NULL;
+	}
+
+	pj->ji_script = script;
 
 	return script;
 }
 
 /*
  * @brief
- *  	Read the job script from the database and write it to a temporary
- *  	file
+ *  	Write the job script from the job structure into a temporary file
  *
- * @param[in]	pj	-	Job pointer
- * @param[in]	script_name	-	The name of the script file to be created in tmpdir
+ * @param[in] pj - Job pointer
+ * @param[in] script_name - The name of the script file to be created in tmpdir
  *
- * @return	Error code
- * @retval	-1	: Failure
- * @retval	0	: Success
+ * @return Error code
+ * @retval -1 - Failure
+ * @retval  0 - Success
  */
 int
 svr_create_tmp_jobscript(job *pj, char *script_name)
 {
-	pbs_db_conn_t *conn = (pbs_db_conn_t *) svr_db_conn;
-	pbs_db_jobscr_info_t jobscr;
-	pbs_db_obj_info_t obj;
 	int fds;
 	int filemode = 0600;
 	int len;
@@ -6559,19 +6573,9 @@ svr_create_tmp_jobscript(job *pj, char *script_name)
 	char str_buf[MAXPATHLEN+1] = {0};
 #endif
 
-	if (pj->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
-		strcpy(jobscr.ji_jobid, pj->ji_parentaj->ji_qs.ji_jobid);
-	} else {
-		strcpy(jobscr.ji_jobid, pj->ji_qs.ji_jobid);
-	}
-	obj.pbs_db_obj_type = PBS_DB_JOBSCR;
-	obj.pbs_db_un.pbs_db_jobscr = &jobscr;
-
-	if (pbs_db_load_obj(conn, &obj) != 0) {
-		snprintf(log_buffer, sizeof(log_buffer),
-			"Failed to load job script for job %s from PBS datastore",
-			pj->ji_qs.ji_jobid);
-		log_err(-1, "svr_create_tmp_jobscript", log_buffer);
+	if (pj->ji_script == NULL) {
+		(void)snprintf(log_buffer, sizeof(log_buffer), "Job has no script loaded!! Can't write temp job script");
+		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_INFO, pj->ji_qs.ji_jobid, log_buffer);
 		return -1;
 	}
 
@@ -6600,7 +6604,7 @@ svr_create_tmp_jobscript(job *pj, char *script_name)
 
 	fds = open(script_name, O_WRONLY | O_CREAT, filemode);
 	if (fds < 0) {
-		log_err(errno, "svr_create_tmp_jobscript", msg_script_open);
+		log_err(errno, __func__, msg_script_open);
 		return -1;
 	}
 
@@ -6613,15 +6617,14 @@ svr_create_tmp_jobscript(job *pj, char *script_name)
 	setmode(fds, O_BINARY);
 #endif /* WIN32 */
 
-	len = strlen(jobscr.script);
-	if (write(fds, jobscr.script, len) != len) {
-		log_err(errno, "req_jobscript", msg_script_write);
+	len = strlen(pj->ji_script);
+	if (write(fds, pj->ji_script, len) != len) {
+		log_err(errno, __func__, msg_script_write);
 		(void) close(fds);
-		pbs_db_cleanup_resultset(conn);
 		return -1;
 	}
+
 	(void) close(fds);
-	pbs_db_cleanup_resultset(conn);
 	return 0;
 }
 

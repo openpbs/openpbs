@@ -41,8 +41,9 @@ from tests.functional import *
 
 class TestOnlySmallFilesOverTPP(TestFunctional):
     """
-    This test suite is for testing that only smaller spool files (size < 2MB)
-    are sent over TPP and larger files are sent by forking.
+    This test suite is for testing that only smaller job files (.OU/.ER/.CK)
+    and scripts (size < 2MB) are sent over TPP and larger files are sent by
+    forking.
     """
 
     def setUp(self):
@@ -85,6 +86,9 @@ class TestOnlySmallFilesOverTPP(TestFunctional):
         self.assertTrue(rc)
 
     def test_small_job_file(self):
+        """
+        This test case tests that small output files are sent over TPP.
+        """
         j = Job(TEST_USER, attrs={ATTR_N: 'small_job_file'})
 
         test = []
@@ -104,11 +108,14 @@ class TestOnlySmallFilesOverTPP(TestFunctional):
             self.assertTrue('qrerun: Response timed out. Job rerun request ' +
                             'still in progress for' in e.msg[0])
 
-        msg = "small job files on rerun, sending through TPP"
+        msg = jid + ";big job files, sending via subprocess"
         rv = self.server.log_match(msg, max_attempts=10, interval=2)
-        self.assertTrue(rv)
+        self.assertFalse(rv)
 
     def test_big_job_file(self):
+        """
+        This test case tests that large output files are not sent over TPP.
+        """
         j = Job(TEST_USER, attrs={ATTR_N: 'big_job_file'})
 
         test = []
@@ -128,6 +135,30 @@ class TestOnlySmallFilesOverTPP(TestFunctional):
             self.assertTrue('qrerun: Response timed out. Job rerun request ' +
                             'still in progress for' in e.msg[0])
 
-        rv = self.server.log_match("big job files on rerun, need to fork",
-                                   max_attempts=30, interval=2)
+        msg = jid + ";big job files, sending via subprocess"
+        rv = self.server.log_match(msg, max_attempts=30, interval=2)
+        self.assertTrue(rv)
+
+    def test_big_job_script(self):
+        """
+        This test case tests that large job scripts are not sent over TPP.
+        """
+        j = Job(TEST_USER, attrs={
+            ATTR_N: 'big_job_script'})
+
+        # Create a big job script.
+        test = []
+        for i in range(105000):
+            test += ['echo hey > /dev/null']
+            test += ['sleep 5']
+
+        j.create_script(test, hostname=self.server.client)
+        jid = self.server.submit(j)
+
+        self.server.expect(JOB, {'job_state': 'R', 'substate': 42},
+                           id=jid, max_attempts=30, interval=2)
+
+        msg = jid + ";big job files, sending via subprocess"
+        rv = self.server.log_match(
+            msg, max_attempts=30, interval=2)
         self.assertTrue(rv)
