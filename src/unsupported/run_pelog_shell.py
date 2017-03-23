@@ -6,7 +6,7 @@ epilogue, if it exists, while still being able to use execjob_prologue or
 execjob_epilogue hooks. Also adds the capability of running parallel prologue 
 or epilogue shell scripts and Torque compatibility.
 
-Copyright (c) 2013, 2015 Altair Engineering, Inc. All rights reserved.
+Copyright (C) 2013-2017 Altair Engineering, Inc. All rights reserved.
 
 This code is provided "as is" without any warranty, express or implied, or 
 indemnification of any kind. All other terms and conditions are as specified 

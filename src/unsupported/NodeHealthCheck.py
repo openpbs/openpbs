@@ -4,7 +4,7 @@
 # Purpose: To create a class for preforming node disk checks 
 # Date: 20141114
 '''
-© Copyright 2014 Altair Engineering, Inc. All rights reserved.
+© Copyright (C) 2014-2017 Altair Engineering, Inc. All rights reserved.
 This code is provided "as is" without any warranty, express or implied, or
 indemnification of any kind. All other terms and conditions are as specified
 in the Altair PBS Works EULA.
