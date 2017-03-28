@@ -694,8 +694,20 @@ log_err(int errnum, const char *routine, const char *text)
 	if (log_opened == 0) {
 		(void)log_open("/dev/console", log_directory);
 
-		if (log_opened < 1)
+		if (log_opened < 1) {
+#if SYSLOG
+			char slogbuf[LOG_BUF_SIZE] = {0};
+			if (syslogopen != 0) {
+				snprintf(slogbuf, LOG_BUF_SIZE,
+					"%s;%s;%s\n",
+					class_names[PBS_EVENTCLASS_SERVER],
+					msg_daemonname,
+					buf);
+				syslog(LOG_ERR, "%s", slogbuf);
+			}
+#endif  /* SYSLOG */
 			return;
+		}
 	}
 
 	if (isatty(2))
@@ -772,9 +784,20 @@ log_joberr(int errnum, const char *routine, const char *text, const char *pjid)
 	if (log_opened == 0) {
 		(void)log_open("/dev/console", log_directory);
 
-		if (log_opened < 1)
+		if (log_opened < 1) {
+#if SYSLOG
+			char slogbuf[LOG_BUF_SIZE] = {0};
+			if (syslogopen != 0) {
+				snprintf(slogbuf, LOG_BUF_SIZE,
+					"%s;%s;%s\n",
+					class_names[PBS_EVENTCLASS_JOB],
+					msg_daemonname,
+					buf);
+				syslog(LOG_ERR, "%s", slogbuf);
+			}
+#endif  /* SYSLOG */
 			return;
-
+		}
 	}
 	if (isatty(2))
 		(void)fprintf(stderr, "%s: %s\n", msg_daemonname, buf);
