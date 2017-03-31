@@ -7311,6 +7311,7 @@ SWIG_init(void) {
   SWIG_Python_SetConstant(d, "ATTR_SchedHost",SWIG_FromCharPtr("sched_host"));
   SWIG_Python_SetConstant(d, "ATTR_sched_cycle_len",SWIG_FromCharPtr("sched_cycle_length"));
   SWIG_Python_SetConstant(d, "ATTR_do_not_span_psets",SWIG_FromCharPtr("do_not_span_psets"));
+  SWIG_Python_SetConstant(d, "ATTR_only_explicit_psets",SWIG_FromCharPtr("only_explicit_psets"));
   SWIG_Python_SetConstant(d, "ATTR_sched_preempt_enforce_resumption",SWIG_FromCharPtr("sched_preempt_enforce_resumption"));
   SWIG_Python_SetConstant(d, "ATTR_preempt_targets_enable",SWIG_FromCharPtr("preempt_targets_enable"));
   SWIG_Python_SetConstant(d, "ATTR_job_sort_formula_threshold",SWIG_FromCharPtr("job_sort_formula_threshold"));

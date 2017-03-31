@@ -216,6 +216,7 @@ struct status
 	unsigned sort_nodes:1;
 	unsigned backfill_prime:1;
 	unsigned preempting:1;
+	unsigned only_explicit_psets:1;         /* control if psets with unset resource are created */
 #ifdef NAS /* localmod 034 */
 	unsigned shares_track_only:1;
 #endif /* localmod 034 */

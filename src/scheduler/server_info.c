@@ -736,6 +736,9 @@ query_sched_obj(status *policy, struct batch_status *sched, server_info *sinfo)
 		else if (!strcmp(attrp->name, ATTR_do_not_span_psets)) {
 			sinfo->dont_span_psets = res_to_num(attrp->value, NULL);
 		}
+		else if (!strcmp(attrp->name, ATTR_only_explicit_psets)) {
+			policy->only_explicit_psets = res_to_num(attrp->value, NULL);
+		}
 		else if (!strcmp(attrp->name, ATTR_sched_preempt_enforce_resumption)) {
 			if (!strcasecmp(attrp->value, ATR_FALSE))
 				sinfo->enforce_prmptd_job_resumption = 0;

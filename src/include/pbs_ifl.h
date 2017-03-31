@@ -303,6 +303,7 @@ extern "C" {
 #define ATTR_SchedHost	"sched_host"
 #define ATTR_sched_cycle_len "sched_cycle_length"
 #define ATTR_do_not_span_psets "do_not_span_psets"
+#define ATTR_only_explicit_psets "only_explicit_psets"
 #define ATTR_sched_preempt_enforce_resumption "sched_preempt_enforce_resumption"
 #define ATTR_preempt_targets_enable "preempt_targets_enable"
 #define ATTR_job_sort_formula_threshold "job_sort_formula_threshold"
