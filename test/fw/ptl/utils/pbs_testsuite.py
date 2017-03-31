@@ -558,11 +558,15 @@ class PBSTestSuite(unittest.TestCase):
             lic = server.status(SERVER, 'license_count', level=logging.INFOCLI)
             if lic and 'license_count' in lic[0]:
                 lic = PbsTypeLicenseCount(lic[0]['license_count'])
-                if int(lic['Avail_Sockets']) > 0:
+                if ('Avail_Nodes' in lic) and (int(lic['Avail_Nodes']) > 0):
                     return True
-                elif int(lic['Avail_Global']) > 0:
+                elif (('Avail_Sockets' in lic) and
+                        (int(lic['Avail_Sockets']) > 0)):
                     return True
-                elif int(lic['Avail_Local']) > 0:
+                elif (('Avail_Global' in lic) and
+                        (int(lic['Avail_Global']) > 0)):
+                    return True
+                elif ('Avail_Local' in lic) and (int(lic['Avail_Local']) > 0):
                     return True
             time.sleep(i)
         return False

@@ -38,7 +38,7 @@
 . ${PBS_CONF_FILE:-/etc/pbs.conf}
 export PBS_HOME
 
-pbslibdir="${PBS_PREFIX}/lib64"
-[ -d "${pbslibdir}" ] || pbslibdir="${PBS_PREFIX}/lib"
+pbslibdir="${PBS_EXEC}/lib64"
+[ -d "${pbslibdir}" ] || pbslibdir="${PBS_EXEC}/lib"
 exec $PBS_EXEC/bin/pbs_python $pbslibdir/python/pbs_topologyinfo.py ${1+"$@"}
 

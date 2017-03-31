@@ -816,6 +816,10 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath="..\..\src\resmom_win\topology.c"
+				>
+			</File>
+			<File
 				RelativePath="..\..\src\resmom\vnode_storage.c"
 				>
 				<FileConfiguration

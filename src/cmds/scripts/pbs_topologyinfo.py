@@ -41,10 +41,20 @@ from optparse import OptionParser
 import os
 import re
 import sys
+import platform
+
+
+def reportsockets_win(f):
+    temp = f.read().split(',')[0]
+    if temp.find('sockets:') != -1:
+        return int(temp.replace('sockets:', ''))
+    return 0
+
 
 try:
     import xml.parsers.expat
     from xml.parsers.expat import ExpatError
+
     def reportsockets(dir, files):
         """
         Look for and report the number of "Socket" elements in a string
@@ -54,22 +64,25 @@ try:
         If the PBS version of Python does not allow import of expat,
         we go on to try a simpler approach (below).
         """
-        global nsockets
-        global isCray
         def socketXMLstart(name, attrs):
-            global nsockets
-            global isCray
             if name == "BasilResponse":
-                isCray = True
+                socketXMLstart.isCray = True
                 return
-            if isCray:
+            if (name == "info" and attrs.get("name") == "hwlocVersion" and
+                    re.search(r'1.11.*', attrs.get("value"))):
+                socketXMLstart.hwloclatest = 1
+                return
+            if socketXMLstart.isCray:
                 if name == "Node":
-                    nsockets += 2
+                    socketXMLstart.nsockets += 2
             else:
-                if name == "object" and attrs.get("type") == "Socket":
-                    nsockets += 1
+                if (name == "object" and (
+                    (socketXMLstart.hwloclatest == 1 and attrs.get("type") ==
+                        "Package") or (socketXMLstart.hwloclatest == 0 and
+                                       attrs.get("type") == "Socket"))):
+                    socketXMLstart.nsockets += 1
 
-        if files == None:
+        if files is None:
             compute_socket_nodelist = True
             try:
                 files = os.listdir(dir)
@@ -80,28 +93,33 @@ try:
             compute_socket_nodelist = False
         try:
             maxwidth = max(map(len, files))
-        except:
+        except StandardError, e:
+            print 'max/map failed: %s' % e
             return
         for name in files:
             pathname = os.sep.join((dir, name))
             try:
-                nsockets = 0
-                f = open(pathname, "r")
-                try:
-                    isCray = False
-                    p = xml.parsers.expat.ParserCreate()
-                    p.StartElementHandler = socketXMLstart
-                    p.ParseFile(f)
-                except ExpatError, e:
-                    print "%s:  parsing error at line %d, column %d" % (name,
-                                                                        e.lineno,
-                                                                        e.offset)
-                f.close()
-                print "%-*s%d" % (maxwidth + 1, name, nsockets)
+                socketXMLstart.nsockets = 0
+                socketXMLstart.hwloclatest = 0
+                with open(pathname, "r") as f:
+                    if platform.system() == "Windows":
+                        socketXMLstart.nsockets = reportsockets_win(f)
+                    else:
+                        try:
+                            socketXMLstart.isCray = False
+                            p = xml.parsers.expat.ParserCreate()
+                            p.StartElementHandler = socketXMLstart
+                            p.ParseFile(f)
+                        except ExpatError, e:
+                            print "%s:  parsing error at line %d, column %d" \
+                                % (name, e.lineno, e.offset)
+                    print "%-*s%d" % (maxwidth + 1, name,
+                                      socketXMLstart.nsockets)
             except IOError, (e, strerror):
                 if e == errno.ENOENT:
-                    if compute_socket_nodelist == False:
-                        print "no socket information available for node %s" % name
+                    if compute_socket_nodelist is False:
+                        print "no socket information available for node %s" \
+                            % name
                     continue
                 else:
                     print "%s:  %s (%s)" % (pathname, strerror, e)
@@ -118,7 +136,9 @@ except ImportError:
         we simply count occurrences of "Socket" objects.
         """
         socketpattern = r'<\s*object\s+type="Socket"'
-        if files == None:
+        packagepattern = r'<\s*object\s+type="Package"'
+        hwloclatestpattern = r'<\s*info\s+name="hwlocVersion"\s+value="1.11.*'
+        if files is None:
             compute_socket_nodelist = True
             try:
                 files = os.listdir(dir)
@@ -129,19 +149,29 @@ except ImportError:
             compute_socket_nodelist = False
         try:
             maxwidth = max(map(len, files))
-        except:
+        except StandardError, e:
+            print 'max/map failed: %s' % e
             return
         for name in files:
             pathname = os.sep.join((dir, name))
             try:
-                f = open(pathname, "r")
-                print "%-*s%d" % (maxwidth + 1, name,
-                                  len(re.findall(socketpattern, f.read())))
-                f.close()
+                with open(pathname, "r") as f:
+                    if platform.system() == "Windows":
+                        nsockets = reportsockets_win(f)
+                    else:
+                        data = f.read()
+                        if re.search(hwloclatestpattern, data):
+                            hwloclatest = 1
+                        if hwloclatest == 1:
+                            nsockets = len(re.findall(packagepattern, data))
+                        else:
+                            nsockets = len(re.findall(socketpattern, data))
+                    print "%-*s%d" % (maxwidth + 1, name, nsockets)
             except IOError, (e, strerror):
                 if e == errno.ENOENT:
-                    if compute_socket_nodelist == False:
-                        print "no socket information available for node %s" % name
+                    if compute_socket_nodelist is False:
+                        print "no socket information available for node %s" \
+                            % name
                     continue
                 else:
                     print "%s:  %s (%s)" % (pathname, strerror, e)
@@ -149,16 +179,16 @@ except ImportError:
 
 if __name__ == "__main__":
     usagestr = "usage:  %prog [ -a -s ]\n\t%prog -s node1 [ node2 ... ]"
-    parser = OptionParser(usage = usagestr)
-    parser.add_option("-a", "--all", action="store_true", dest="allnodes", \
-        help="report on all nodes")
-    parser.add_option("-s", "--sockets", action="store_true", dest="sockets", \
-        help="report node socket count")
+    parser = OptionParser(usage=usagestr)
+    parser.add_option("-a", "--all", action="store_true", dest="allnodes",
+                      help="report on all nodes")
+    parser.add_option("-s", "--sockets", action="store_true", dest="sockets",
+                      help="report node socket count")
     (options, progargs) = parser.parse_args()
 
     try:
         topology_dir = os.sep.join((os.environ["PBS_HOME"], "server_priv",
-                                "topology"))
+                                    "topology"))
     except KeyError:
         print "PBS_HOME must be present in the caller's environment"
         sys.exit(1)
@@ -168,4 +198,3 @@ if __name__ == "__main__":
     else:
         if options.sockets:
             reportsockets(topology_dir, progargs)
-

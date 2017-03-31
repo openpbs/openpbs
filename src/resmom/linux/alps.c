@@ -4010,8 +4010,10 @@ inventory_to_vnodes(basil_response_t *brp)
 	ret = 0;
 	if (hwloc_topology_init(&topology) == -1)
 		ret = -1;
-	else if ((hwloc_topology_load(topology) == -1) ||
-		(hwloc_topology_export_xmlbuffer(topology, &xmlbuf, &xmllen) == -1)) {
+	else if ((hwloc_topology_set_flags(topology,
+							HWLOC_TOPOLOGY_FLAG_WHOLE_SYSTEM | HWLOC_TOPOLOGY_FLAG_IO_DEVICES)
+					== -1) || (hwloc_topology_load(topology) == -1) ||
+			(hwloc_topology_export_xmlbuffer(topology, &xmlbuf, &xmllen) == -1)) {
 		hwloc_topology_destroy(topology);
 		ret = -1;
 	}

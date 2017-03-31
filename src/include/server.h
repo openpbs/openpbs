@@ -267,6 +267,7 @@ extern int			have_socket_licensed_nodes(void);
 extern void			unlicense_socket_licensed_nodes(void);
 extern void			set_sched_default(pbs_sched *, int unset_flag);
 extern void			set_attr_svr(attribute *pattr, attribute_def *pdef, char *value);
+extern int			license_sanity_check(void);
 
 #ifdef	__cplusplus
 }

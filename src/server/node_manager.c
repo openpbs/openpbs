@@ -112,7 +112,6 @@
  * 	set_old_subUniverse()
  * 	degrade_offlined_nodes_reservations()
  * 	degrade_downed_nodes_reservations()]
- * 	propagate_socket_licensing()
  * 	req_momrestart()
  */
 
@@ -226,10 +225,10 @@ extern void free_prov_vnode(struct pbsnode *);
 extern void fail_vnode_job(struct prov_vnode_info *, int);
 extern struct prov_tracking * get_prov_record_by_vnode(char *);
 extern int parse_prov_vnode(char *,exec_vnode_listtype *);
+extern void propagate_socket_licensing(mominfo_t *);
 extern vnpool_mom_t *vnode_pool_mom_list;
 
 static void check_and_set_multivnode(struct pbsnode *);
-static void propagate_socket_licensing(mominfo_t *);
 int write_single_node_mom_attr(struct pbsnode *np);
 void stream_eof(int stream, int ret, char *msg);
 
@@ -8453,109 +8452,6 @@ degrade_downed_nodes_reservations(void)
 			 */
 			vnode_unavailable(pn, 0);
 		}
-	}
-}
-
-/**
- * @brief
- * 		propagate the ND_ATR_License == ND_LIC_TYPE_locked value to
- *		subsidiary vnodes
- *
- * @param[in]	pointer to mom_svrinfo_t
- *
- * @return	void
- *
- * @par MT-Safe:	no
- * @par Side Effects:
- * 		socket license attribute modifications
- *
- * @par Note:
- * 		Normally, a natural vnode's socket licensing state propagates
- *		to the subsidary vnodes.  However, this is not the case when
- *		the natural vnode is representing a Cray login node:  Cray login
- *		and compute nodes are licensed separately;  the socket licensing
- *		state propagates freely among a MoM's compute nodes but not from
- *		a login node to any compute node.
- */
-static void
-propagate_socket_licensing(mominfo_t *pmom)
-{
-	struct pbsnode	*ptmp =	/* pointer to natural vnode */
-		((mom_svrinfo_t *) pmom->mi_data)->msr_children[0];
-	resource_def *prdefvntype;
-	resource *prc;		/* vntype resource pointer */
-	struct array_strings *as;
-	pbsnode *pfrom_Lic;	/* source License pointer */
-	attribute *pfrom_RA;	/* source ResourceAvail pointer */
-	int has_socket_licenses;/* any socket licenses needing propagation? */
-	int node_index_start;	/* where we begin looking for socket licenses */
-	int i;
-
-	/* Any other vnodes? If not, no work to do */
-	if (((mom_svrinfo_t *) pmom->mi_data)->msr_numvnds < 2)
-		return;
-
-	prdefvntype = find_resc_def(svr_resc_def, "vntype", svr_resc_size);
-
-	/*
-	 * Determine where to begin looking for socket licensed nodes:  if
-	 * the natural vnode is for a Cray login node, the important nodes
-	 * are those for Cray compute nodes, which begin after the
-	 * login node (which is always the natural vnode and therefore
-	 * always first);  otherwise, we start looking at the beginning.
-	 */
-	pfrom_RA = &ptmp->nd_attr[(int) ND_ATR_ResourceAvail];
-	if (((pfrom_RA->at_flags & ATR_VFLAG_SET) != 0) &&
-		((prc = find_resc_entry(pfrom_RA, prdefvntype)) != NULL) &&
-		((prc->rs_value.at_flags & ATR_VFLAG_SET) != 0)) {
-		/*
-		 * Node has a ResourceAvail vntype entry;  see whether it
-		 * contains CRAY_LOGIN.
-		 */
-		as = prc->rs_value.at_val.at_arst;
-		for (i = 0; i < as->as_usedptr; i++)
-			if (strcmp(as->as_string[i], CRAY_LOGIN) == 0) {
-				node_index_start = 1;
-				break;
-			} else
-				node_index_start = 0;
-	} else
-		node_index_start = 0;
-
-	/*
-	 * Make a pass over the subsidiary vnodes to see whether any have socket
-	 * licenses;  if not, no work to do.
-	 */
-	for (i = node_index_start, has_socket_licenses = 0;
-		i < ((mom_svrinfo_t *) pmom->mi_data)->msr_numvnds; i++) {
-		pbsnode *n = ((mom_svrinfo_t *) pmom->mi_data)->msr_children[i];
-
-		if ((n->nd_attr[(int) ND_ATR_License].at_flags & ATR_VFLAG_SET) &&
-			(n->nd_attr[(int) ND_ATR_License].at_val.at_char == ND_LIC_TYPE_locked)) {
-			pfrom_Lic = n;
-			has_socket_licenses = 1;
-			break;
-		}
-	}
-	if (has_socket_licenses == 0)
-		return;
-
-	/*
-	 * Now make another pass, this time updating the other vnodes'
-	 * ND_ATR_License attribute.
-	 */
-	for (i = node_index_start;
-		i < ((mom_svrinfo_t *) pmom->mi_data)->msr_numvnds; i++) {
-		pbsnode *n = ((mom_svrinfo_t *) pmom->mi_data)->msr_children[i];
-
-		n->nd_attr[(int) ND_ATR_License] = pfrom_Lic->nd_attr[(int) ND_ATR_License];
-		n->nd_attr[(int) ND_ATR_License].at_flags |=
-			ATR_VFLAG_SET|ATR_VFLAG_MODIFY|ATR_VFLAG_MODCACHE;
-		snprintf(log_buffer, sizeof(log_buffer),
-			"nd_attr[ND_ATR_License] copied from %s to %s",
-			pfrom_Lic->nd_name, n->nd_name);
-		log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_NODE,
-			LOG_DEBUG, pmom->mi_host, log_buffer);
 	}
 }
 

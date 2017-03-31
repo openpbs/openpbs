@@ -10665,8 +10665,7 @@ check_busy(double mla)
 	}
 }
 
-#ifndef	WIN32
-/**
+/** 
  * @fn mom_topology
  * @brief
  *	compute and export platform-dependent topology information
@@ -10685,6 +10684,8 @@ check_busy(double mla)
  *		contain a different type of information, this function will need
  *		to change.
  *
+ *		On Windows we use native Windows API's to discover the topology
+ *
  * @see	dep_topology()
  *
  */
@@ -10692,19 +10693,24 @@ void
 mom_topology(void)
 {
 #ifndef NAS /* localmod 113 */
-	extern char		mom_short_name[];
-	extern callfunc_t	vn_callback;
-	int			ret;
-	hwloc_topology_t	topology;
-	char			*xmlbuf;
-	int			xmllen;
-	vnl_t			*vtp = NULL;
+	extern char mom_short_name[];
+	extern callfunc_t vn_callback;
+	int ret;
+	char *xmlbuf = NULL;
+	int xmllen = 0;
+	vnl_t *vtp = NULL;
+	char *topology_type;
 
+#ifndef	WIN32
+	hwloc_topology_t topology;
 	ret = 0;
 	if (hwloc_topology_init(&topology) == -1)
 		ret = -1;
-	else if ((hwloc_topology_load(topology) == -1) ||
-		(hwloc_topology_export_xmlbuffer(topology, &xmlbuf, &xmllen) == -1)) {
+	else if ((hwloc_topology_set_flags(topology,
+			HWLOC_TOPOLOGY_FLAG_WHOLE_SYSTEM | HWLOC_TOPOLOGY_FLAG_IO_DEVICES)
+			== -1) || (hwloc_topology_load(topology) == -1)
+			|| (hwloc_topology_export_xmlbuffer(topology, &xmlbuf, &xmllen)
+					== -1)) {
 		hwloc_topology_destroy(topology);
 		ret = -1;
 	}
@@ -10712,9 +10718,14 @@ mom_topology(void)
 		/* on any failure above, issue log message */
 		log_err(PBSE_SYSTEM, __func__, "topology init/load/export failed");
 		return;
-	} else {
+	} else
+#endif
+	{ 
 		char	*lbuf;
 		int	lbuflen = xmllen + 1024;
+#ifdef WIN32
+		int no_of_sockets = 0;
+#endif
 
 		/*
 		 *	xmlbuf is almost certain to overflow log_buffer's size,
@@ -10724,9 +10735,7 @@ mom_topology(void)
 		if ((lbuf = malloc(lbuflen)) == NULL) {
 			sprintf(log_buffer, "malloc logbuf (%d) failed",
 				lbuflen);
-			hwloc_free_xmlbuffer(topology, xmlbuf);
-			hwloc_topology_destroy(topology);
-			return;
+			goto bad;
 		} else {
 			sprintf(lbuf, "allocated log buffer, len %d", lbuflen);
 			log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_NODE,
@@ -10737,28 +10746,38 @@ mom_topology(void)
 			LOG_DEBUG, __func__, "topology exported");
 		if (vnl_alloc(&vtp) == NULL) {
 			log_err(PBSE_SYSTEM, __func__, "vnl_alloc failed");
-			hwloc_free_xmlbuffer(topology, xmlbuf);
-			hwloc_topology_destroy(topology);
 			free(lbuf);
-			return;
+			goto bad;
 		}
-		sprintf(lbuf, "%s%s", NODE_TOPOLOGY_TYPE_HWLOC, xmlbuf);
+#ifndef	WIN32
+		topology_type = NODE_TOPOLOGY_TYPE_HWLOC;
+		sprintf(lbuf, "%s%s", topology_type, xmlbuf);
+#else
+		topology_type = NODE_TOPOLOGY_TYPE_WIN;
+		no_of_sockets = count_sockets();
+		if (no_of_sockets == -1)
+			goto bad;
+		sprintf(lbuf, "%ssockets:%d,gpus:%d,mics:%d", topology_type,
+			no_of_sockets, count_gpus(), count_mics());
+#endif
 		if ((ret = vn_addvnr(vtp, mom_short_name, ATTR_NODE_TopologyInfo,
 			lbuf, ATR_TYPE_STR, READ_ONLY,
 			NULL)) != 0) {
 			log_err(PBSE_SYSTEM, __func__, "vnl_addvnr failed");
 			vnl_free(vtp);
-			hwloc_free_xmlbuffer(topology, xmlbuf);
-			hwloc_topology_destroy(topology);
 			free(lbuf);
-			return;
+			goto bad;
 		} else {
-			sprintf(lbuf, "attribute '%s = %s%s' added",
-				ATTR_NODE_TopologyInfo,
-				NODE_TOPOLOGY_TYPE_HWLOC, xmlbuf);
-			log_event(PBSEVENT_DEBUG4,
-				PBS_EVENTCLASS_NODE,
-				LOG_DEBUG, __func__, lbuf);
+#ifndef WIN32
+			sprintf(lbuf, "attribute '%s = %s%s' added", ATTR_NODE_TopologyInfo,
+				topology_type, xmlbuf);
+			log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_NODE, LOG_DEBUG, __func__, lbuf);
+#else
+			sprintf(log_buffer, "attribute '%s = %s' added", ATTR_NODE_TopologyInfo, 
+				lbuf);
+			log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_NODE, LOG_DEBUG, __func__,
+				log_buffer);
+#endif
 		}
 		if (vnlp == NULL) {
 			/*
@@ -10775,10 +10794,8 @@ mom_topology(void)
 			if  (vnl_alloc(&vnlp) == NULL) {
 				log_err(PBSE_SYSTEM, __func__, "vnl_alloc failed");
 				vnl_free(vtp);
-				hwloc_free_xmlbuffer(topology, xmlbuf);
-				hwloc_topology_destroy(topology);
 				free(lbuf);
-				return;
+				goto bad;
 			}
 
 			sprintf(attrbuf, "%s.%s", ATTR_rescavail, "mem");
@@ -10787,10 +10804,8 @@ mom_topology(void)
 				valbuf, 0, 0, NULL)) != 0) {
 				log_err(PBSE_SYSTEM, __func__, "vnl_alloc failed");
 				vnl_free(vtp);
-				hwloc_free_xmlbuffer(topology, xmlbuf);
-				hwloc_topology_destroy(topology);
 				free(lbuf);
-				return;
+				goto bad;
 			} else {
 				sprintf(lbuf, "resource '%s = %s' added",
 					attrbuf, valbuf);
@@ -10805,10 +10820,8 @@ mom_topology(void)
 				valbuf, 0, 0, NULL)) != 0) {
 				log_err(PBSE_SYSTEM, __func__, "vnl_alloc failed");
 				vnl_free(vtp);
-				hwloc_free_xmlbuffer(topology, xmlbuf);
-				hwloc_topology_destroy(topology);
 				free(lbuf);
-				return;
+				goto bad;
 			} else {
 				sprintf(lbuf, "resource '%s = %s' added",
 					attrbuf, valbuf);
@@ -10825,9 +10838,12 @@ mom_topology(void)
 		}
 		free(lbuf);
 	}
+bad:
+#ifndef WIN32
 	hwloc_free_xmlbuffer(topology, xmlbuf);
 	hwloc_topology_destroy(topology);
+#else
+	;
+#endif
 #endif /* localmod 113 */
 }
-#endif	/* !WIN32 */
-

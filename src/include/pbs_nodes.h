@@ -374,6 +374,13 @@ enum vnode_degraded_op {
 	Set_Degraded_Time,
 };
 
+enum node_topology_type {
+	tt_hwloc,
+	tt_Cray,
+	tt_Win
+};
+typedef enum node_topology_type ntt_t;
+
 /*
  * NTYPE_* values are used in "node.nd_type"
  */
@@ -409,16 +416,17 @@ struct tree {
 	struct tree	  *left, *right;
 };
 
-extern	struct attribute_def  node_attr_def[];	/* node attributes defs */
-extern	struct pbsnode	**pbsndlist;		/* array of ptr to nodes  */
-extern	int		svr_totnodes;		/* number of nodes (hosts) */
-extern	struct tree	*ipaddrs;
-extern	struct tree	*streams;
-extern  mominfo_t **mominfo_array;
-extern  pntPBS_IP_LIST pbs_iplist;
-extern  int         mominfo_array_size;
-extern	int	    mom_send_vnode_map;
-extern	int	    svr_num_moms;
+extern struct attribute_def node_attr_def[]; /* node attributes defs */
+extern struct pbsnode **pbsndlist;           /* array of ptr to nodes  */
+extern int svr_totnodes;                     /* number of nodes (hosts) */
+extern struct tree *ipaddrs;
+extern struct tree *streams;
+extern mominfo_t **mominfo_array;
+extern pntPBS_IP_LIST pbs_iplist;
+extern int mominfo_array_size;
+extern int mom_send_vnode_map;
+extern int svr_num_moms;
+extern int svr_chngNodesfile;
 
 /* Handlers for vnode state changing.for degraded reservations */
 extern	void vnode_unavailable(struct pbsnode *, int);
@@ -471,16 +479,13 @@ extern 	int	fix_indirectness(resource *, struct pbsnode *, int);
 extern	int	chk_vnode_pool(attribute *, void *, int);
 extern	void	free_pnode(struct pbsnode *);
 extern	int	save_nodes_db(int, void *);
+extern	int	nsockets_from_topology(char *topology_str, ntt_t type);
 
 extern char *msg_daemonname;
 
 #define	NODE_TOPOLOGY_TYPE_HWLOC	"hwloc:"
 #define	NODE_TOPOLOGY_TYPE_CRAY		"Cray-v1:"
-enum node_topology_type {
-	tt_hwloc,
-	tt_Cray
-};
-typedef enum node_topology_type ntt_t;
+#define	NODE_TOPOLOGY_TYPE_WIN		"Windows:"
 
 #define	CRAY_COMPUTE	"cray_compute"	/* vntype for a Cray compute node */
 #define	CRAY_LOGIN	"cray_login"	/* vntype for a Cray login node */

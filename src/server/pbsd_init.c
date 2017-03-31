@@ -387,16 +387,10 @@ pbsd_init(int type)
 	pbs_db_obj_info_t	obj;
 	void		*state = NULL;
 	pbs_db_conn_t	*conn = (pbs_db_conn_t *) svr_db_conn;
-	int	nslneed;
 	char *buf = NULL;
 	int buf_len = 0;
 	pbs_sched *psched;
 
-	char msg_bad_socket_failover[] = "invalid failover configuration - "
-		"socket-licensed nodes but no valid "
-	"socket license file";
-	char msg_bad_socket_init[] = "insufficient licenses for nodes with "
-		"existing socket licenses";
 #ifndef WIN32
 #ifdef  RLIMIT_CORE
 	int      char_in_cname = 0;
@@ -748,7 +742,7 @@ pbsd_init(int type)
 
 	/* 4. Check License information */
 
-	init_license(&licenses);
+	init_fl_license_attrs(&licenses);
 
 	fd = open(path_usedlicenses, O_RDONLY, 0400);
 
@@ -788,14 +782,18 @@ pbsd_init(int type)
 		if (ext_license_server) {
 			sprintf(log_buffer, "Using license server at %s",
 				PBS_LICENSE_LOCATION);
-		} else {
+			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
+				msg_daemonname, log_buffer);
+			printf("%s\n", log_buffer);
+		} 
+		if (licenses.lb_aval_floating > 0) {
 			sprintf(log_buffer,
 				"Licenses valid for %d Floating hosts",
 				licenses.lb_aval_floating);
+			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
+				msg_daemonname, log_buffer);
+			printf("%s\n", log_buffer);
 		}
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
-			msg_daemonname, log_buffer);
-		printf("%s\n", log_buffer);
 	}
 	/* start a timed-event every hour to long the number of floating used */
 	if ((licenses.lb_aval_floating > 0) || ext_license_server)
@@ -885,51 +883,7 @@ pbsd_init(int type)
 		return (-1);
 	}
 	mark_which_queues_have_nodes();
-
-	/*
-	 * Sanity check for a server coming up with nodes that claim to have
-	 * been allocated socket licenses by a previous server incarnation.
-	 */
-	nslneed = have_socket_licensed_nodes();
-	if (nslneed > 0) {
-		if (licstate_is_up(LIC_SOCKETS)) {
-			/*
-			 * We have nodes already marked as consuming socket
-			 * licenses, plus a valid socket license file.  There
-			 * should be sufficient licenses for all nodes already
-			 * marked as using them (this is also checked in
-			 * set_node_topology());  if not, complain and unlicense
-			 * the nodes.
-			 */
-			if (sockets_consume(nslneed) != 0) {	/* failure */
-				sprintf(log_buffer, "%s", msg_bad_socket_init);
-				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER,
-					LOG_ERR, msg_daemonname, log_buffer);
-				unlicense_socket_licensed_nodes();
-			}
-		} else {
-			if (are_we_primary() != FAILOVER_NONE) {
-				/*
-				 * We're in a failover configuration but this
-				 * server doesn't have a valid socket license
-				 * file - complain and unlicense the nodes.
-				 */
-				sprintf(log_buffer, "%s", msg_bad_socket_failover);
-				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER,
-					LOG_ERR, msg_daemonname, log_buffer);
-				unlicense_socket_licensed_nodes();
-			} else
-				/*
-				 * Not in a failover configuration:  we assume
-				 * the server was restarted in a different
-				 * license configuration and clear the nodes'
-				 * "license" attribute.  In this case, we can
-				 * attempt to proceed after unlicening nodes
-				 * that previosly had socket licenses.
-				 */
-				unlicense_socket_licensed_nodes();
-		}
-	}
+	(void) license_sanity_check();
 
 	/* at this point, we know all the resource types have been defined,        */
 	/* build the resource summation table for validating the Select directives */

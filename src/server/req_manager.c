@@ -149,7 +149,6 @@ extern struct server server;
 extern pbs_list_head     svr_queues;
 extern attribute_def que_attr_def[];
 extern attribute_def svr_attr_def[];
-extern int  svr_chngNodesfile;
 extern char *msg_attrtype;
 extern char *msg_daemonname;
 extern char *msg_manager;

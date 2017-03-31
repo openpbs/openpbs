@@ -104,6 +104,9 @@ typedef  NTSTATUS(NTAPI	*NtOpenThread_t)
 extern	int	nice_val;
 extern	struct	config		*search(struct config *, char *);
 extern	struct	rm_attribute	*momgetattr(char *);
+extern int count_sockets(void);
+extern int count_gpus(void);
+extern int count_mics(void);
 extern	int			rm_errno;
 extern	unsigned	int	reqnum;
 extern	double	cputfactor;
@@ -512,6 +515,9 @@ dep_initialize()
 		log_err(-1, "dep_initialize", "init_profile failed!");
 		return;
 	}
+
+	mom_topology();
+
 }
 
 /**

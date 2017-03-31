@@ -77,8 +77,9 @@ AC_DEFUN([PBS_AC_WITH_HWLOC],
       [hwloc_flags="-D__inline= -U__hwloc_inline -Dfabsf=fabs"]
       [hwloc_lib="$hwloc_lib -lkstat -llgrp"],
     [xlinux*],
-      AC_CHECK_LIB([numa], [mbind],
-        [hwloc_lib="$hwloc_lib -lnuma"])
+      AC_CHECK_LIB([numa], [mbind], [hwloc_lib="$hwloc_lib -lnuma"])
+      AC_CHECK_LIB([udev], [udev_new], [hwloc_lib="$hwloc_lib -ludev"])
+      AC_CHECK_LIB([pciaccess], [pci_system_init], [hwloc_lib="$hwloc_lib -lpciaccess"])
   )
   AC_SUBST(hwloc_flags)
   AC_SUBST(hwloc_inc)

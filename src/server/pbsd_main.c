@@ -48,7 +48,6 @@
  * 	do_rpp()
  * 	rpp_request()
  * 	build_path()
- * 	are_we_primary()
  * 	pbs_close_stdfiles()
  * 	clear_exec_vnode()
  * 	log_rppfail()
@@ -162,7 +161,6 @@ extern int put_sched_cmd(int sock, int cmd, char *jobid);
 extern void setup_ping(int delay);
 
 /* External data items */
-extern	int	svr_chngNodesfile;
 extern  pbs_list_head svr_requests;
 extern char     *msg_err_malloc;
 extern int       pbs_failover_active;
@@ -270,8 +268,7 @@ char	       *pbs_server_id;
 int		reap_child_flag = 0;
 time_t		secondary_delay = 30;
 struct server	server;		/* the server structure */
-pbs_sched	*dflt_scheduler = NULL;	/* the default scheduler */
-char	        primary_host[PBS_MAXHOSTNAME+1];   /* host_name of primary */
+pbs_sched	*dflt_scheduler = NULL; /* the default scheduler */
 int		shutdown_who;		/* see req_shutdown() */
 char	       *mom_host = server_host;
 long		new_log_event_mask = 0;
@@ -565,45 +562,6 @@ build_path(char *parent, char *name, char *sufix)
 		exit(3);
 	}
 	/*NOTREACHED*/
-}
-
-/**
- * @brief
- *		are_we_primary - determines the failover role, are we the Primary
- *		Server, the Secondary Server or the only Server (no failover)
- *
- * @return	int	- failover server role
- * @retval  FAILOVER_NONE	- failover not configured
- * @retval  FAILOVER_PRIMARY	- Primary Server
- * @retval  FAILOVER_SECONDARY	- Secondary Server
- * @retval	FAILOVER_CONFIG_ERROR	- error in pbs.conf configuration
- */
-enum failover_state are_we_primary(void)
-{
-	char hn1[PBS_MAXHOSTNAME+1];
-
-	/* both secondary and primary should be set or neither set */
-	if ((pbs_conf.pbs_secondary == NULL) && (pbs_conf.pbs_primary == NULL))
-		return FAILOVER_NONE;
-	if ((pbs_conf.pbs_secondary == NULL) || (pbs_conf.pbs_primary == NULL))
-		return FAILOVER_CONFIG_ERROR;
-
-	if (get_fullhostname(pbs_conf.pbs_primary, primary_host, (sizeof(primary_host) - 1))==-1) {
-		log_err(-1, "pbsd_main", "Unable to get full host name of primary");
-		return FAILOVER_CONFIG_ERROR;
-	}
-
-	if (strcmp(primary_host, server_host) == 0)
-		return FAILOVER_PRIMARY;   /* we are the listed primary */
-
-	if (get_fullhostname(pbs_conf.pbs_secondary, hn1, (sizeof(hn1) - 1))==-1) {
-		log_err(-1, "pbsd_main", "Unable to get full host name of secondary");
-		return FAILOVER_CONFIG_ERROR;
-	}
-	if (strcmp(hn1, server_host) == 0)
-		return FAILOVER_SECONDARY;  /* we are the secondary */
-
-	return FAILOVER_CONFIG_ERROR;	    /* cannot be neither */
 }
 
 #ifndef DEBUG

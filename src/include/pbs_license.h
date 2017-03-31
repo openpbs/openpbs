@@ -78,11 +78,13 @@ enum  fl_feature_type {
 enum licensing_backend {
 	LIC_SERVER,	/* reachable license server (to license CPUs) */
 	LIC_SOCKETS,	/* nonzero number of sockets (to license nodes) */
+	LIC_NODES,	/* nonzero number of nodes (to license nodes) */
+	LIC_UNKNOWN  /* used to hold the value of previous lb */
 };
 
 extern struct license_block licenses;
 extern struct attribute *pbs_float_lic;
-extern void   init_license(struct license_block *);
+extern void   init_fl_license_attrs(struct license_block *);
 extern int    check_license(struct license_block *);
 extern void   log_licenses(struct license_used *pu);
 extern void   init_licensing(void);
@@ -98,9 +100,11 @@ extern void   init_socket_licenses(char *);
 extern int    sockets_available(void);
 extern int    sockets_total(void);
 extern int    sockets_consume(int);
+extern void   sockets_release(int);
+extern void   sockets_reset(void);
 extern void   inspect_license_path(void);
 extern int    licstate_is_up(enum licensing_backend);
-extern void   licstate_down(enum licensing_backend);
+extern void   licstate_down(void);
 extern void   licstate_unconfigured(enum licensing_backend);
 
 /* Licensing-related variables */
@@ -110,9 +114,9 @@ extern long   pbs_min_licenses;
 extern long   pbs_max_licenses;
 extern int    pbs_licensing_linger;
 extern int    ping_license_server;	/* returns 0 if last manual  */
-/* ping to license server    */
-/* is ok; otherwise, returns */
-/* 1 for not ok.             */
+/* ping to license server is ok; otherwise, returns 1 for not ok. */
+extern enum   licensing_backend prev_lb;
+extern enum   licensing_backend last_valid_attempt;
 #ifdef	__cplusplus
 }
 #endif
