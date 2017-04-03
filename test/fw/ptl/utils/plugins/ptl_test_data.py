@@ -141,7 +141,7 @@ class PTLTestData(Plugin):
             f.close()
             return
         if ((self.max_postdata_threshold != 0) and
-                (self.__save_data_count > self.max_postdata_threshold)):
+                (self.__save_data_count >= self.max_postdata_threshold)):
             _msg = 'Total number of saved post analysis data for this'
             _msg += ' testsuite is exceeded max postdata threshold'
             _msg += ' (%d)' % self.max_postdata_threshold
