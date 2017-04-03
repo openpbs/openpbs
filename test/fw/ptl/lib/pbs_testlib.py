@@ -455,7 +455,7 @@ class PbsQstopError(PtlException):
     pass
 
 
-class PtlExpectError(PtlException):
+class PtlExpectError(PtlfailureException):
     pass
 
 
