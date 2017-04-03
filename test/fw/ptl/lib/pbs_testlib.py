@@ -295,7 +295,45 @@ class PtlException(Exception):
     :type rc: int or None.
     :param msg: Message set for the error occured during PTL operation
     :type msg: str or None.
-    :param post: Execute necessary cleanup if not None
+    :param post: Execute given post callable function if not None.
+    :type post: callable or None.
+    :raises: PTL exceptions
+    """
+
+    def __init__(self, rv=None, rc=None, msg=None, post=None, *args, **kwargs):
+        self.rv = rv
+        self.rc = rc
+        self.msg = msg
+        if post is not None:
+            post(*args, **kwargs)
+
+    def __str__(self):
+        return ('rc=' + str(self.rc) + ', rv=' + str(self.rv) +
+                ', msg=' + str(self.msg))
+
+    def __repr__(self):
+        return (self.__class__.__name__ + '(rc=' + str(self.rc) + ', rv=' +
+                str(self.rv) + ', msg=' + str(self.msg) + ')')
+
+
+class PtlFailureException(AssertionError):
+
+    """
+    Generic failure exception raised by PTL operations.
+    Sets a ``return value``, a ``return code``, and a ``message``
+    A post function and associated positional and named arguments
+    are available to perform any necessary cleanup.
+
+    :param rv: Return value set for the failure occured during PTL
+               operation
+    :type rv: int or None.
+    :param rc: Return code set for the failure occured during PTL
+               operation
+    :type rc: int or None.
+    :param msg: Message set for the failure occured during PTL operation
+    :type msg: str or None.
+    :param post: Execute given post callable function if not None.
+    :type post: callable or None.
     :raises: PTL exceptions
     """
 
@@ -419,7 +457,7 @@ class PbsQstopError(PtlException):
     pass
 
 
-class PtlExpectError(PtlException):
+class PtlExpectError(PtlFailureException):
     pass
 
 
