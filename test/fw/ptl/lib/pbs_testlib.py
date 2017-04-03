@@ -315,6 +315,42 @@ class PtlException(Exception):
                 str(self.rv) + ', msg=' + str(self.msg) + ')')
 
 
+class PtlfailureException(AssertionError):
+
+    """
+    Generic failure exception raised by PTL operations.
+    Sets a ``return value``, a ``return code``, and a ``message``
+    A post function and associated positional and named arguments
+    are available to perform any necessary cleanup.
+
+    :param rv: Return value set for the failure occured during PTL
+               operation
+    :type rv: int or None.
+    :param rc: Return code set for the failure occured during PTL
+               operation
+    :type rc: int or None.
+    :param msg: Message set for the failure occured during PTL operation
+    :type msg: str or None.
+    :param post: Execute necessary cleanup if not None
+    :raises: PTL exceptions
+    """
+
+    def __init__(self, rv=None, rc=None, msg=None, post=None, *args, **kwargs):
+        self.rv = rv
+        self.rc = rc
+        self.msg = msg
+        if post is not None:
+            post(*args, **kwargs)
+
+    def __str__(self):
+        return ('rc=' + str(self.rc) + ', rv=' + str(self.rv) +
+                ', msg=' + str(self.msg))
+
+    def __repr__(self):
+        return (self.__class__.__name__ + '(rc=' + str(self.rc) + ', rv=' +
+                str(self.rv) + ', msg=' + str(self.msg) + ')')
+
+
 class PbsServiceError(PtlException):
     pass
 
@@ -428,6 +464,10 @@ class PbsInitServicesError(PtlException):
 
 
 class PbsQtermError(PtlException):
+    pass
+
+
+class PtlLogMatchError(PtlfailureException):
     pass
 
 
@@ -4630,14 +4670,15 @@ class PBSService(PBSObject):
         try:
             from ptl.utils.pbs_logutils import PBSLogUtils
         except:
-            self.logger.error('error loading ptl.utils.pbs_logutils')
-            return None
+            _msg = 'error loading ptl.utils.pbs_logutils'
+            raise PtlLogMatchError(rc=1, rv=False, msg=_msg)
 
         if self.logutils is None:
             self.logutils = PBSLogUtils()
 
         rv = (None, None)
         attempt = 1
+        lines = None
         name = self._instance_to_servicename(logtype)
         infomsg = (name + ' ' + self.shortname +
                    ' log match: searching for "' + msg + '"')
@@ -4677,7 +4718,11 @@ class PBSService(PBSObject):
             lines.close()
         except:
             pass
-        return rv
+        if rv is None:
+            _msg = infomsg + attemptmsg
+            raise PtlLogMatchError(rc=1, rv=False, msg=_msg)
+        else:
+            return rv
 
     def accounting_match(self, msg, id=None, n=50, tail=True,
                          allmatch=False, regexp=False, day=None,
@@ -10935,14 +10980,15 @@ class Scheduler(PBSService):
 
         if validate:
             self.signal('-HUP')
-
-            m = self.log_match("Error reading line", n=10,
+            try:
+                self.log_match("Error reading line", n=10,
                                starttime=reconfig_time)
-            if m is None:
-                # no match, successful config
+            except PtlLogMatchError:
                 return True
-            raise PbsSchedConfigError(rc=1, rv=False, msg=str(m))
-
+            else:
+                _msg = 'Error in validating sched_config changes'
+                raise PbsSchedConfigError(rc=1, rv=False,
+                                          msg=_msg)
         return True
 
     def set_sched_config(self, confs={}, apply=True, validate=True):
@@ -12697,10 +12743,12 @@ class MoM(PBSService):
         """
         Returns True if the version of PBS used was built for Cray platforms
         """
-        rv = self.log_match("alps_client", tail=False, max_attempts=10)
-        if rv:
+        try:
+            self.log_match("alps_client", tail=False, max_attempts=1)
+        except PtlLogMatchError:
+            return False
+        else:
             return True
-        return False
 
     def is_cpuset_mom(self):
         """
