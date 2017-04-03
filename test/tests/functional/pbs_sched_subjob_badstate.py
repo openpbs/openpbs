@@ -72,8 +72,7 @@ class TestSchedSubjobBadstate(TestFunctional):
         attr = {'scheduling': 'True'}
         self.server.manager(MGR_CMD_SET, SERVER, attr, expect=True)
 
-        rv = self.scheduler.log_match("Leaving Scheduling Cycle",
-                                      starttime=now,
-                                      max_attempts=3, interval=1)
+        self.scheduler.log_match("Leaving Scheduling Cycle",
+                                 starttime=now,
+                                 max_attempts=3, interval=1)
         self.server.delete(j1id)
-        self.assertTrue(rv)

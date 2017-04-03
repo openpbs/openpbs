@@ -58,5 +58,4 @@ class TestDupAccLogForResv(TestFunctional):
         self.server.restart()
         m = self.server.accounting_match(
             msg='.*B;' + r1id, id=r1id, n='ALL', allmatch=True, regexp=True)
-        self.assertNotEqual(m, None)
         self.assertEqual(len(m), 1)

@@ -139,15 +139,12 @@ class Test_Rrecord_with_resources_used(TestFunctional):
         self.server.expect(JOB, {ATTR_substate: '42'}, jid3s1)
 
         # Verify that accounting logs have Resource_List.<resource> value
-        m = self.server.accounting_match(
+        self.server.accounting_match(
             msg='.*Resource_List.*', id=jid1, regexp=True)
-        self.assertNotEqual(m, None)
-        m = self.server.accounting_match(
+        self.server.accounting_match(
             msg='.*Resource_List.*', id=jid2, regexp=True)
-        self.assertNotEqual(m, None)
-        m = self.server.accounting_match(
+        self.server.accounting_match(
             msg='.*Resource_List.*', id=jid3s1, regexp=True)
-        self.assertNotEqual(m, None)
 
         # Bring both moms down using kill -9 <mom pid>
         self.momA.signal('-KILL')
@@ -169,31 +166,26 @@ class Test_Rrecord_with_resources_used(TestFunctional):
             self.server.expect(JOB, {ATTR_state: 'F'}, jid2, extend='x')
 
         # tracejob should show "Job requeued, execution node <node name> down"
-        m = self.server.tracejob_match(
+        self.server.tracejob_match(
             msg='Job requeued, execution node .* down', id=jid1, regexp=True)
-        self.assertNotEqual(m, None)
-
-        m = self.server.tracejob_match(
-            msg='Job requeued, execution node .* down', id=jid2, regexp=True)
 
         if is_nonrerunnable is False:
-            self.assertNotEqual(m, None)
+            e = True
         else:
-            self.assertIsNone(m)
+            e = False
+        msg = 'Job requeued, execution node .* down'
+        self.server.tracejob_match(msg=msg, id=jid2, regexp=True,
+                                   existence=e)
 
-        m = self.server.tracejob_match(
+        self.server.tracejob_match(
             msg='Job requeued, execution node .* down', id=jid3s1, regexp=True)
-        self.assertNotEqual(m, None)
 
-        m = self.server.accounting_match(
+        self.server.accounting_match(
             msg='.*Resource_List.*', id=jid1, regexp=True)
-        self.assertNotEqual(m, None)
-        m = self.server.accounting_match(
+        self.server.accounting_match(
             msg='.*Resource_List.*', id=jid2, regexp=True)
-        self.assertNotEqual(m, None)
-        m = self.server.accounting_match(
+        self.server.accounting_match(
             msg='.*Resource_List.*', id=jid3s1, regexp=True)
-        self.assertNotEqual(m, None)
 
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'},
                             expect=True)
@@ -210,7 +202,6 @@ class Test_Rrecord_with_resources_used(TestFunctional):
         return jid1, jid2, jid3s1
 
     def test_t1(self):
-
         """
         Scenario: The node on which the job was running goes down and
                   node_fail_requeue time-out is hit.
@@ -220,19 +211,15 @@ class Test_Rrecord_with_resources_used(TestFunctional):
 
         jid1, jid2, jid3s1 = self.common(False, False)
 
-        m = self.server.accounting_match(
+        self.server.accounting_match(
             msg='.*R;' + jid1 + '.*resources_used.*', id=jid1, regexp=True)
-        self.assertNotEqual(m, None)
-        m = self.server.accounting_match(
+        self.server.accounting_match(
             msg='.*R;' + jid2 + '.*resources_used.*', id=jid2, regexp=True)
-        self.assertNotEqual(m, None)
-        m = self.server.accounting_match(
+        self.server.accounting_match(
             msg='.*R;' + re.escape(jid3s1) + '.*resources_used.*',
             id=jid3s1, regexp=True)
-        self.assertNotEqual(m, None)
 
     def test_t2(self):
-
         """
         Scenario: The node on which the job was running goes down and
                   node_fail_requeue time-out is hit and mom is restarted
@@ -243,20 +230,17 @@ class Test_Rrecord_with_resources_used(TestFunctional):
 
         jid1, jid2, jid3s1 = self.common(False, 'r')
 
-        m = self.server.accounting_match(
+        self.server.accounting_match(
             msg='.*R;' + jid1 + '.*resources_used.*run_count=1', id=jid1,
             regexp=True)
-        self.assertNotEqual(m, None)
-        m = self.server.accounting_match(
+        self.server.accounting_match(
             msg='.*R;' + jid2 + '.*resources_used.*run_count=1', id=jid2,
             regexp=True)
-        self.assertNotEqual(m, None)
-        m = self.server.accounting_match(
+        self.server.accounting_match(
             msg='.*R;' + re.escape(jid3s1) + '.*resources_used.*run_count=1',
             id=jid3s1, regexp=True)
 
     def test_t3(self):
-
         """
         Scenario: One non-rerunnable job. The node on which the job was
                   running goes down and node_fail_requeue time-out is hit.
@@ -269,21 +253,17 @@ class Test_Rrecord_with_resources_used(TestFunctional):
 
         jid1, jid2, jid3s1 = self.common(True, 'r')
 
-        m = self.server.accounting_match(
+        self.server.accounting_match(
             msg='.*R;' + jid1 + '.*resources_used.*run_count=1', id=jid1,
             regexp=True)
-        self.assertNotEqual(m, None)
-        m = self.server.accounting_match(
+        self.server.accounting_match(
             msg='.*R;' + jid2 + '.*resources_used.*run_count=1', id=jid2,
             regexp=True)
-        self.assertEqual(m, None)
-        m = self.server.accounting_match(
+        self.server.accounting_match(
             msg='.*R;' + re.escape(jid3s1) + '.*resources_used.*run_count=1',
             id=jid3s1, regexp=True)
-        self.assertNotEqual(m, None)
 
     def test_t4(self):
-
         """
         Scenario: Mom restarted without '-r' option and jobs are requeued
                    using qrerun.
@@ -293,18 +273,15 @@ class Test_Rrecord_with_resources_used(TestFunctional):
 
         jid1, jid2, jid3s1 = self.common(False, 's')
 
-        m = self.server.accounting_match(
+        self.server.accounting_match(
             msg='.*R;' + jid1 + '.*resources_used.*run_count=1', id=jid1,
             regexp=True)
-        self.assertNotEqual(m, None)
-        m = self.server.accounting_match(
+        self.server.accounting_match(
             msg='.*R;' + jid2 + '.*resources_used.*run_count=1', id=jid2,
             regexp=True)
-        self.assertNotEqual(m, None)
-        m = self.server.accounting_match(
+        self.server.accounting_match(
             msg='.*R;' + re.escape(jid3s1) + '.*resources_used.*run_count=1',
             id=jid3s1, regexp=True)
-        self.assertNotEqual(m, None)
 
         # Verify that the jobs are in 'Q' state.
         self.server.expect(JOB, {ATTR_state: 'Q'}, jid1)
@@ -324,19 +301,16 @@ class Test_Rrecord_with_resources_used(TestFunctional):
         self.server.rerunjob(jobid=jid3s1)
 
         # Confirm that the 'R' record is generated and the run_count is 2.
-        m = self.server.accounting_match(
+        self.server.accounting_match(
             msg='.*R;' + jid1 + '.*resources_used.*run_count=2', id=jid1,
             regexp=True)
-        self.assertNotEqual(m, None)
-        m = self.server.accounting_match(
+        self.server.accounting_match(
             msg='.*R;' + jid2 + '.*resources_used.*run_count=2', id=jid2,
             regexp=True)
-        self.assertNotEqual(m, None)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'},
                             expect=True)
 
     def test_t5(self):
-
         """
         Scenario: Job is rerun multiple times.
         Expected outcome: Server should record last known resource usage
@@ -378,26 +352,21 @@ class Test_Rrecord_with_resources_used(TestFunctional):
 
         # Verify that the accounting logs have Resource_List.<resource> but no
         # R records.
-        m = self.server.accounting_match(
+        self.server.accounting_match(
             msg='.*Resource_List.*', id=jid1, regexp=True)
-        self.assertNotEqual(m, None)
-        m = self.server.accounting_match(
-            msg='.*R;' + jid1 + '.*resources_used.*', id=jid1, regexp=True)
-        self.assertIsNone(m)
-        m = self.server.accounting_match(
+        msg = '.*R;' + jid1 + '.*resources_used.*'
+        self.server.accounting_match(msg=msg, id=jid1, regexp=True,
+                                     existence=False)
+        self.server.accounting_match(
             msg='.*Resource_List.*', id=jid2, regexp=True)
-        self.assertNotEqual(m, None)
-        m = self.server.accounting_match(
-            msg='.*R;' + jid2 + '.*resources_used.*', id=jid2, regexp=True)
-        self.assertIsNone(m)
-        m = self.server.accounting_match(
+        msg = '.*R;' + jid2 + '.*resources_used.*'
+        self.server.accounting_match(msg=msg, id=jid2, regexp=True,
+                                     existence=False)
+        self.server.accounting_match(
             msg='.*Resource_List.*', id=jid3s1, regexp=True)
-        self.assertNotEqual(m, None)
-
-        m = self.server.accounting_match(msg='.*R;' + re.escape(jid3s1) +
+        self.server.accounting_match(msg='.*R;' + re.escape(jid3s1) +
                                          '.*resources_used.*', id=jid3s1,
-                                         regexp=True)
-        self.assertIsNone(m)
+                                         regexp=True, existence=False)
 
         # sleep for 5 seconds so the jobs use some resources.
         time.sleep(5)
@@ -408,20 +377,18 @@ class Test_Rrecord_with_resources_used(TestFunctional):
         # Verify that the accounting logs have R logs with last known resource
         # usage. No R logs for J2.
 
-        m = self.server.accounting_match(
+        self.server.accounting_match(
             msg='.*R;' + jid1 +
             '.*Exit_status=-11.*.*resources_used.*.*run_count=1.*',
             id=jid1, regexp=True)
-        self.assertNotEqual(m, None)
 
-        m = self.server.accounting_match(
-            msg='.*R;' + jid2 + '.*resources_used.*', id=jid2, regexp=True)
-        self.assertIsNone(m)
+        msg = '.*R;' + jid2 + '.*resources_used.*'
+        self.server.accounting_match(msg=msg, id=jid2, regexp=True,
+                                     existence=False)
 
-        m = self.server.accounting_match(msg='.*R;' + re.escape(
+        self.server.accounting_match(msg='.*R;' + re.escape(
             jid3s1) + '.*Exit_status=-11.*.*resources_used.*.*run_count=1.*',
             id=jid3s1, regexp=True)
-        self.assertNotEqual(m, None)
 
         # sleep for 5 seconds so the jobs use some resources.
         time.sleep(5)
@@ -432,22 +399,19 @@ class Test_Rrecord_with_resources_used(TestFunctional):
         # Verify that the accounting logs should R logs with last known
         # resource usage Resource_used and run_count should be 3 for J1.
         # No R logs in accounting for J2.
-        m = self.server.accounting_match(
+        self.server.accounting_match(
             msg='.*R;' + jid1 +
             '.*Exit_status=-11.*.*resources_used.*.*run_count=2.*',
             id=jid1, regexp=True)
-        self.assertNotEqual(m, None)
-        m = self.server.accounting_match(
-            msg='.*R;' + jid2 + '.*resources_used.*', id=jid2, regexp=True)
-        self.assertIsNone(m)
-        m = self.server.accounting_match(
+        msg = '.*R;' + jid2 + '.*resources_used.*'
+        self.server.accounting_match(msg=msg, id=jid2, regexp=True,
+                                     existence=False)
+        self.server.accounting_match(
             msg='.*R;' + re.escape(jid3s1) +
             '.*Exit_status=-11.*.*resources_used.*.*run_count=1.*',
             id=jid3s1, regexp=True)
-        self.assertNotEqual(m, None)
 
     def test_t6(self):
-
         """
         Scenario: Jobs submitted with select cput and ncpus. Job is rerun
                   multiple times.
@@ -480,18 +444,16 @@ class Test_Rrecord_with_resources_used(TestFunctional):
 
         # Verify that the accounting logs have Resource_List.<resource> but no
         # R records.
-        m = self.server.accounting_match(
+        self.server.accounting_match(
             msg='.*Resource_List.*', id=jid1, regexp=True)
-        self.assertNotEqual(m, None)
-        m = self.server.accounting_match(
-            msg='.*R;' + jid1 + '.*resources_used.*', id=jid1, regexp=True)
-        self.assertIsNone(m)
-        m = self.server.accounting_match(
+        msg = '.*R;' + jid1 + '.*resources_used.*'
+        self.server.accounting_match(msg=msg, id=jid1, regexp=True,
+                                     existence=False)
+        self.server.accounting_match(
             msg='.*Resource_List.*', id=jid2, regexp=True)
-        self.assertNotEqual(m, None)
-        m = self.server.accounting_match(
-            msg='.*R;' + jid2 + '.*resources_used.*', id=jid2, regexp=True)
-        self.assertIsNone(m)
+        msg = '.*R;' + jid2 + '.*resources_used.*'
+        self.server.accounting_match(msg=msg, id=jid2, regexp=True,
+                                     existence=False)
 
         time.sleep(5)
 
@@ -501,35 +463,30 @@ class Test_Rrecord_with_resources_used(TestFunctional):
         # Verify that the accounting logs have R record with last known
         # resource usage and run_count should be 2 for J1 and J2.
 
-        m = self.server.accounting_match(
+        self.server.accounting_match(
             msg='.*R;' + jid1 +
             '.*.*resources_used.cput=[0-9]*:[0-9]*:[0-9]*.*.*run_count=1.*',
             id=jid1, regexp=True)
-        self.assertNotEqual(m, None)
-        m = self.server.accounting_match(
+        self.server.accounting_match(
             msg='.*R;' + jid2 +
             '.*.*resources_used.cput=[0-9]*:[0-9]*:[0-9]*.*.*run_count=1.*',
             id=jid2, regexp=True)
-        self.assertNotEqual(m, None)
 
         time.sleep(5)
 
         jids = self.server.select()
         self.server.rerunjob(jids)
 
-        m = self.server.accounting_match(
+        self.server.accounting_match(
             msg='.*R;' + jid1 +
             '.*.*resources_used.cput=[0-9]*:[0-9]*:[0-9]*.*.*run_count=2.*',
             id=jid1, regexp=True)
-        self.assertNotEqual(m, None)
-        m = self.server.accounting_match(
+        self.server.accounting_match(
             msg='.*R;' + jid2 +
             '.*.*resources_used.cput=[0-9]*:[0-9]*:[0-9]*.*.*run_count=2.*',
             id=jid2, regexp=True)
-        self.assertNotEqual(m, None)
 
     def test_t7(self):
-
         """
         Scenario: Job is forcefully rerun.
         Expected outcome: server should record last known resource usage in
@@ -569,26 +526,23 @@ class Test_Rrecord_with_resources_used(TestFunctional):
 
         # Verify that the accounting logs have Resource_List.<resource> but no
         # R records.
-        m = self.server.accounting_match(
+        self.server.accounting_match(
             msg='.*Resource_List.*', id=jid1, regexp=True)
-        self.assertNotEqual(m, None)
-        m = self.server.accounting_match(
-            msg='.*R;' + jid1 + '.*resources_used.*', id=jid1, regexp=True)
-        self.assertIsNone(m)
-        m = self.server.accounting_match(
+        msg = '.*R;' + jid1 + '.*resources_used.*'
+        self.server.accounting_match(msg=msg, id=jid1, regexp=True,
+                                     existence=False)
+        self.server.accounting_match(
             msg='.*Resource_List.*', id=jid2, regexp=True)
-        self.assertNotEqual(m, None)
-        m = self.server.accounting_match(
-            msg='.*R;' + jid2 + '.*resources_used.*', id=jid2, regexp=True)
-        self.assertIsNone(m)
-        m = self.server.accounting_match(
+        msg = '.*R;' + jid2 + '.*resources_used.*'
+        self.server.accounting_match(msg=msg, id=jid2, regexp=True,
+                                     existence=False)
+        self.server.accounting_match(
             msg='.*Resource_List.*', id=jid3s1, regexp=True)
-        self.assertNotEqual(m, None)
-        m = self.server.accounting_match(msg='.*R;' +
+        self.server.accounting_match(msg='.*R;' +
                                          re.escape(jid3s1) +
                                          '.*resources_used.*',
-                                         id=jid3s1, regexp=True)
-        self.assertIsNone(m)
+                                         id=jid3s1, regexp=True,
+                                     existence=False)
 
         time.sleep(5)
 
@@ -598,20 +552,17 @@ class Test_Rrecord_with_resources_used(TestFunctional):
         # Verify that the accounting logs have R record with last known
         # resource usage and run_count should be 2 for J1 and J2
 
-        m = self.server.accounting_match(
+        self.server.accounting_match(
             msg='.*R;' + jid1 +
             '.*Exit_status=0.*.*resources_used.*.*run_count=1.*',
             id=jid1, regexp=True)
-        self.assertNotEqual(m, None)
-        m = self.server.accounting_match(
+        self.server.accounting_match(
             msg='.*R;' + jid2 +
             '.*Exit_status=0.*.*resources_used.*.*run_count=1.*',
             id=jid2, regexp=True)
-        self.assertNotEqual(m, None)
-        m = self.server.accounting_match(msg='.*R;' + re.escape(
+        self.server.accounting_match(msg='.*R;' + re.escape(
             jid3s1) + '.*Exit_status=0.*.*resources_used.*.*run_count=1.*',
             id=jid3s1, regexp=True)
-        self.assertNotEqual(m, None)
         time.sleep(5)
 
         jids = self.server.select(extend='T')
@@ -619,21 +570,18 @@ class Test_Rrecord_with_resources_used(TestFunctional):
 
         # Verify that the accounting logs have R record with last known
         # usage and run_count should be 3 for J1 and J2.
-        m = self.server.accounting_match(
+        self.server.accounting_match(
             msg='.*R;' + jid1 +
             '.*Exit_status=0.*.*resources_used.*.*run_count=2.*',
             id=jid1, regexp=True)
-        self.assertNotEqual(m, None)
-        m = self.server.accounting_match(
+        self.server.accounting_match(
             msg='.*R;' + jid2 +
             '.*Exit_status=0.*.*resources_used.*.*run_count=2.*',
             id=jid2, regexp=True)
-        self.assertNotEqual(m, None)
-        m = self.server.accounting_match(msg='.*R;' + re.escape(
+        self.server.accounting_match(msg='.*R;' + re.escape(
             jid3s1) +
             '.*Exit_status=0.*.*resources_used.*.*run_count=1.*',
             id=jid3s1, regexp=True)
-        self.assertNotEqual(m, None)
 
     def tearDown(self):
         TestFunctional.tearDown(self)

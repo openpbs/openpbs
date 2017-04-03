@@ -51,6 +51,7 @@ class TestVerifyLogOutput(TestFunctional):
     Test that hostname and interface information
     is added to all logs at log open
     """
+
     def setUp(self):
         TestFunctional.setUp(self)
 
@@ -77,34 +78,31 @@ class TestVerifyLogOutput(TestFunctional):
                 break
         namestr = names.tostring()
         for i in range(0, outbytes, struct_size):
-            yield namestr[i:i+16].split('\0', 1)[0]
+            yield namestr[i:i + 16].split('\0', 1)[0]
 
     def test_hostname_add(self):
         """
         Test for hostname presence in log files
         """
         log_val = socket.gethostname()
-        rv = self.scheduler.log_match(
+        self.scheduler.log_match(
             log_val,
             regexp=False,
             starttime=self.server.ctime,
             max_attempts=5,
             interval=2)
-        self.assertTrue(rv)
-        rv = self.server.log_match(
+        self.server.log_match(
             log_val,
             regexp=False,
             starttime=self.server.ctime,
             max_attempts=5,
             interval=2)
-        self.assertTrue(rv)
-        rv = self.mom.log_match(
+        self.mom.log_match(
             log_val,
             regexp=False,
             starttime=self.server.ctime,
             max_attempts=5,
             interval=2)
-        self.assertTrue(rv)
 
     def test_if_info_add(self):
         """
@@ -116,24 +114,21 @@ class TestVerifyLogOutput(TestFunctional):
             log_val = "[( interface: )]" + name
             # Workaround for PTL regex to match
             # entire word once using () inside []
-            rv = self.scheduler.log_match(
+            self.scheduler.log_match(
                 log_val,
                 regexp=True,
                 starttime=self.server.ctime,
                 max_attempts=5,
                 interval=2)
-            self.assertTrue(rv)
-            rv = self.server.log_match(
+            self.server.log_match(
                 log_val,
                 regexp=True,
                 starttime=self.server.ctime,
                 max_attempts=5,
                 interval=2)
-            self.assertTrue(rv)
-            rv = self.mom.log_match(
+            self.mom.log_match(
                 log_val,
                 regexp=True,
                 starttime=self.server.ctime,
                 max_attempts=5,
                 interval=2)
-            self.assertTrue(rv)

@@ -171,21 +171,18 @@ class TestPythonRestartSettings(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'python_restart_max_hooks': 200},
                             runas=ROOT_USER, logerr=True)
-        rv = self.server.log_match("python_restart_max_hooks = 200",
-                                   max_attempts=5)
-        self.assertTrue(rv)
+        self.server.log_match("python_restart_max_hooks = 200",
+                              max_attempts=5)
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'python_restart_max_objects': 2000},
                             runas=ROOT_USER, logerr=True)
-        rv = self.server.log_match("python_restart_max_objects = 2000",
-                                   max_attempts=5)
-        self.assertTrue(rv)
+        self.server.log_match("python_restart_max_objects = 2000",
+                              max_attempts=5)
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'python_restart_min_interval': "00:01:00"},
                             runas=ROOT_USER, logerr=True)
-        rv = self.server.log_match("python_restart_min_interval = 00:01:00",
-                                   max_attempts=5)
-        self.assertTrue(rv)
+        self.server.log_match("python_restart_min_interval = 00:01:00",
+                              max_attempts=5)
 
     def test_long_values(self):
         """
@@ -322,20 +319,16 @@ pbs.event().accept()
         self.assertTrue(diff >= 3 and diff <= 5)
         # This message only gets printed if /proc/self/statm is present
         if os.path.isfile("/proc/self/statm"):
-            rv = self.server.log_match("Current memory usage:",
-                                       starttime=self.server.ctime,
-                                       max_attempts=5)
-            self.assertTrue(rv)
+            self.server.log_match("Current memory usage:",
+                                  starttime=self.server.ctime,
+                                  max_attempts=5)
         else:
-            rv = self.server.log_match("unknown", max_attempts=5)
-            self.assertTrue(rv)
+            self.server.log_match("unknown", max_attempts=5)
         # Verify other log messages
-        rv = self.server.log_match("python_restart_max_hooks is now 1",
-                                   starttime=stime, max_attempts=5)
-        self.assertTrue(rv)
-        rv = self.server.log_match("python_restart_min_interval is now 3",
-                                   starttime=stime, max_attempts=5)
-        self.assertTrue(rv)
+        self.server.log_match("python_restart_max_hooks is now 1",
+                              starttime=stime, max_attempts=5)
+        self.server.log_match("python_restart_min_interval is now 3",
+                              starttime=stime, max_attempts=5)
 
     def test_max_objects(self):
         """
@@ -380,29 +373,24 @@ pbs.event().accept()
             self.server.expect(JOB, {'job_state': "H"}, id=jid)
             self.server.alterjob(jid, {ATTR_N: "yaya"})
         # Verify that python is restarted
-        rv = self.server.log_match(
+        self.server.log_match(
             "Restarting Python interpreter to reduce mem usage",
             starttime=self.server.ctime, max_attempts=5)
-        self.assertTrue(rv)
         # This message only gets printed if
         # /proc/self/statm presents
         if os.path.isfile("/proc/self/statm"):
-            rv = self.server.log_match(
+            self.server.log_match(
                 "Current memory usage:",
                 starttime=self.server.ctime, max_attempts=5)
-            self.assertTrue(rv)
         else:
-            rv = self.server.log_match("unknown", max_attempts=5)
-            self.assertTrue(rv)
+            self.server.log_match("unknown", max_attempts=5)
         # Verify other log messages
-        rv = self.server.log_match(
+        self.server.log_match(
             "python_restart_max_objects is now 1",
             starttime=stime, max_attempts=5)
-        self.assertTrue(rv)
-        rv = self.server.log_match(
+        self.server.log_match(
             "python_restart_min_interval is now 1",
             starttime=stime, max_attempts=5)
-        self.assertTrue(rv)
 
     def test_no_restart(self):
         """
@@ -433,7 +421,6 @@ pbs.event().accept()
             j.set_sleep_time(1)
             jid = self.server.submit(j)
         # Verify no restart message
-        rv = self.server.log_match(
-            "Restarting Python interpreter to reduce mem usage",
-            starttime=stime, max_attempts=8)
-        self.assertFalse(rv)
+        msg = "Restarting Python interpreter to reduce mem usage"
+        self.server.log_match(msg, starttime=stime, max_attempts=8,
+                              existence=False)

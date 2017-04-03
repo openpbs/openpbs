@@ -447,8 +447,7 @@ class SmokeTest(PBSTestSuite):
             self.server.submit(j)
         except PbsSubmitError:
             pass
-        rv = self.server.log_match("my custom message")
-        self.assertTrue(rv)
+        self.server.log_match("my custom message")
 
     def test_mom_hook(self):
         """
@@ -460,16 +459,14 @@ class SmokeTest(PBSTestSuite):
         a = {'event': 'execjob_begin', 'enabled': 'True'}
         self.server.create_import_hook(hook_name, a, hook_body)
         # Asynchronous copy of hook content, we wait for the copy to occur
-        rv = self.server.log_match(".*successfully sent hook file.*" +
-                                   hook_name + ".PY" + ".*", regexp=True,
-                                   max_attempts=100, interval=5)
-        self.assertTrue(rv)
+        self.server.log_match(".*successfully sent hook file.*" +
+                              hook_name + ".PY" + ".*", regexp=True,
+                              max_attempts=100, interval=5)
         j = Job(TEST_USER)
         jid = self.server.submit(j)
         self.server.expect(JOB, {ATTR_state: 'H'}, id=jid)
-        rv = self.mom.log_match("my custom message", max_attempts=10,
-                                starttime=self.server.ctime)
-        self.assertTrue(rv)
+        self.mom.log_match("my custom message", max_attempts=10,
+                           starttime=self.server.ctime)
 
     @skipOnCpuSet
     def test_shrink_to_fit(self):
@@ -922,42 +919,34 @@ class SmokeTest(PBSTestSuite):
                            interval=2)
         self.server.expect(JOB, {'job_state': 'Q'}, id=j1id, max_attempts=30,
                            interval=2)
-        rv = self.scheduler.log_match(j1id + ";Formula Evaluation = 7",
-                                      regexp=True, starttime=self.server.ctime,
-                                      max_attempts=10, interval=2)
-        self.assertTrue(rv)
+        self.scheduler.log_match(j1id + ";Formula Evaluation = 7",
+                                 regexp=True, starttime=self.server.ctime,
+                                 max_attempts=10, interval=2)
         m = ";Job's formula value 7 is under threshold 7"
-        rv = self.scheduler.log_match(j1id + m,
-                                      regexp=True, starttime=self.server.ctime,
-                                      max_attempts=10, interval=2)
-        self.assertTrue(rv)
+        self.scheduler.log_match(j1id + m,
+                                 regexp=True, starttime=self.server.ctime,
+                                 max_attempts=10, interval=2)
         m = ";Job is under job_sort_formula threshold value"
-        rv = self.scheduler.log_match(j1id + m,
-                                      regexp=True, starttime=self.server.ctime,
-                                      max_attempts=10, interval=2)
-        self.assertTrue(rv)
-        rv = self.scheduler.log_match(j2id + ";Formula Evaluation = 7",
-                                      regexp=True, starttime=self.server.ctime,
-                                      max_attempts=10, interval=2)
-        self.assertTrue(rv)
+        self.scheduler.log_match(j1id + m,
+                                 regexp=True, starttime=self.server.ctime,
+                                 max_attempts=10, interval=2)
+        self.scheduler.log_match(j2id + ";Formula Evaluation = 7",
+                                 regexp=True, starttime=self.server.ctime,
+                                 max_attempts=10, interval=2)
         m = ";Job's formula value 7 is under threshold 7"
-        rv = self.scheduler.log_match(j2id + m,
-                                      regexp=True, starttime=self.server.ctime,
-                                      max_attempts=10, interval=2)
-        self.assertTrue(rv)
+        self.scheduler.log_match(j2id + m,
+                                 regexp=True, starttime=self.server.ctime,
+                                 max_attempts=10, interval=2)
         m = ";Job is under job_sort_formula threshold value"
-        rv = self.scheduler.log_match(j1id + m,
-                                      regexp=True, starttime=self.server.ctime,
-                                      max_attempts=10, interval=2)
-        self.assertTrue(rv)
-        rv = self.scheduler.log_match(j3id + ";Formula Evaluation = 8",
-                                      regexp=True, starttime=self.server.ctime,
-                                      max_attempts=10, interval=2)
-        self.assertTrue(rv)
-        rv = self.scheduler.log_match(j4id + ";Formula Evaluation = 9",
-                                      regexp=True, starttime=self.server.ctime,
-                                      max_attempts=10, interval=2)
-        self.assertTrue(rv)
+        self.scheduler.log_match(j1id + m,
+                                 regexp=True, starttime=self.server.ctime,
+                                 max_attempts=10, interval=2)
+        self.scheduler.log_match(j3id + ";Formula Evaluation = 8",
+                                 regexp=True, starttime=self.server.ctime,
+                                 max_attempts=10, interval=2)
+        self.scheduler.log_match(j4id + ";Formula Evaluation = 9",
+                                 regexp=True, starttime=self.server.ctime,
+                                 max_attempts=10, interval=2)
 
     def isSuspended(self, ppid):
         """
@@ -1379,9 +1368,8 @@ class SmokeTest(PBSTestSuite):
         self.server.expect(
             JOB, {'job_state': 'R'}, id=j1id, max_attempts=30, interval=2)
 
-        rv = self.server.log_match(
+        self.server.log_match(
             j1id + ";Exit_status", max_attempts=30, interval=2)
-        self.assertTrue(rv)
 
         time.sleep(1)
 
@@ -1440,9 +1428,8 @@ class SmokeTest(PBSTestSuite):
         self.server.expect(
             JOB, {'job_state': 'R'}, id=j2id, max_attempts=30, interval=2)
 
-        rv = self.server.log_match(
+        self.server.log_match(
             j2id + ";Exit_status", max_attempts=30, interval=2)
-        self.assertTrue(rv)
 
         time.sleep(1)
 

@@ -84,14 +84,12 @@ class TestAcctlogTrunc(TestFunctional):
 
         # Make sure the accounting log hasn't been truncated
         log_match = 'resources_used.foo_str=' + hstr
-        m = self.server.accounting_match(
+        self.server.accounting_match(
             "E;%s;.*%s.*" % (jid, log_match), regexp=True)
-        self.assertTrue(m)
 
         # Make sure the server log hasn't been truncated
         log_match = 'resources_used.foo_str=' + hstr
-        m = self.server.log_match("%s;.*%s.*" % (jid, log_match), regexp=True)
-        self.assertTrue(m)
+        self.server.log_match("%s;.*%s.*" % (jid, log_match), regexp=True)
 
         # Make sure emails are not truncated
         mailfile = os.environ['MAIL']
@@ -142,6 +140,5 @@ class TestAcctlogTrunc(TestFunctional):
 
         # Make sure the accounting log hasn't been truncated
         acctlog_match = 'resources_used.foo_str=' + hstr
-        m = self.server.accounting_match(
+        self.server.accounting_match(
             "R;%s;.*%s.*" % (jid, acctlog_match), regexp=True)
-        self.assertTrue(m)

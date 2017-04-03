@@ -111,10 +111,8 @@ class TestJobRouting(TestFunctional):
                            id=jid, extend='t')
 
         # No errors should be in server logs
-        m = self.server.log_match(
-            msg='(job_route) Request invalid for state of job, state=7',
-            id=jid)
-        self.assertEqual(m, None)
+        msg = '(job_route) Request invalid for state of job, state=7'
+        self.server.log_match(msg, id=jid, existence=False)
 
         # Start routing queue and verify job array queue set to default queue
         a = {ATTR_start: 'True'}

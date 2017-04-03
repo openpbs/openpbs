@@ -75,5 +75,4 @@ class TestUnknownResourceHookUpdate(TestFunctional):
         # update
         log_match = 'unable to update attribute resources_used.foo_str '
         log_match += 'in job_obit'
-        m = self.server.log_match("%s;.*%s.*" % (jid, log_match), regexp=True)
-        self.assertTrue(m)
+        self.server.log_match("%s;.*%s.*" % (jid, log_match), regexp=True)

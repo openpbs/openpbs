@@ -135,15 +135,12 @@ e.vnode_list[localnode].resources_available['foo_str'] = "seventyseven"
         self.assertEqual(rc, 0)
 
         # Ensure the new resource is seen by all moms.
-        m = self.momA.log_match(
+        self.momA.log_match(
             "resourcedef;copy hook-related file", max_attempts=3)
-        self.assertTrue(m)
-        m = self.momB.log_match(
+        self.momB.log_match(
             "resourcedef;copy hook-related file", max_attempts=3)
-        self.assertTrue(m)
-        m = self.momC.log_match(
+        self.momC.log_match(
             "resourcedef;copy hook-related file", max_attempts=3)
-        self.assertTrue(m)
 
         attr['type'] = 'string'
         attr['flag'] = 'h'
@@ -153,12 +150,9 @@ e.vnode_list[localnode].resources_available['foo_str'] = "seventyseven"
         self.assertEqual(rc, 0)
 
         # Ensure the new resource is seen by all moms.
-        m = self.momA.log_match("resourcedef;copy hook-related file")
-        self.assertTrue(m)
-        m = self.momB.log_match("resourcedef;copy hook-related file")
-        self.assertTrue(m)
-        m = self.momC.log_match("resourcedef;copy hook-related file")
-        self.assertTrue(m)
+        self.momA.log_match("resourcedef;copy hook-related file")
+        self.momB.log_match("resourcedef;copy hook-related file")
+        self.momC.log_match("resourcedef;copy hook-related file")
 
         attr['type'] = 'string'
         attr['flag'] = 'h'
@@ -168,12 +162,9 @@ e.vnode_list[localnode].resources_available['foo_str'] = "seventyseven"
         self.assertEqual(rc, 0)
 
         # Ensure the new resource is seen by all moms.
-        m = self.momA.log_match("resourcedef;copy hook-related file")
-        self.assertTrue(m)
-        m = self.momB.log_match("resourcedef;copy hook-related file")
-        self.assertTrue(m)
-        m = self.momC.log_match("resourcedef;copy hook-related file")
-        self.assertTrue(m)
+        self.momA.log_match("resourcedef;copy hook-related file")
+        self.momB.log_match("resourcedef;copy hook-related file")
+        self.momC.log_match("resourcedef;copy hook-related file")
 
         attr['type'] = 'string_array'
         attr['flag'] = 'h'
@@ -184,12 +175,9 @@ e.vnode_list[localnode].resources_available['foo_str'] = "seventyseven"
 
         # Give the moms a chance to receive the updated resource.
         # Ensure the new resource is seen by all moms.
-        m = self.momA.log_match("resourcedef;copy hook-related file")
-        self.assertTrue(m)
-        m = self.momB.log_match("resourcedef;copy hook-related file")
-        self.assertTrue(m)
-        m = self.momC.log_match("resourcedef;copy hook-related file")
-        self.assertTrue(m)
+        self.momA.log_match("resourcedef;copy hook-related file")
+        self.momB.log_match("resourcedef;copy hook-related file")
+        self.momC.log_match("resourcedef;copy hook-related file")
 
     def test_epilogue(self):
         """
@@ -279,74 +267,62 @@ else:
         self.server.expect(JOB, 'resources_used.foo_str3',
                            op=UNSET, extend='x', id=jid)
 
-        m = self.momA.log_match(
+        self.momA.log_match(
             "Job %s resources_used.foo_str3 cannot be " % (jid,) +
             "accumulated: value '\"vn1\":4,\"vn2\":5,\"vn3\":6' " +
             "from mom %s not JSON-format" % (self.hostB,))
-        self.assertTrue(m)
 
         # resources_used.foo_str2 must not be set.
         self.server.expect(JOB, 'resources_used.foo_str2', op=UNSET, id=jid)
-        m = self.momA.log_match(
+        self.momA.log_match(
             "Job %s resources_used.foo_str2 cannot be " % (jid,) +
             "accumulated: value 'seven' from mom %s " % (self.hostA,) +
             "not JSON-format")
-        self.assertTrue(m)
 
         # Match accounting_logs entry
 
         acctlog_match = 'resources_used.foo_f=0.29'
-        s = self.server.accounting_match(
+        self.server.accounting_match(
             "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
-        self.assertTrue(s)
 
         acctlog_match = 'resources_used.foo_i=29'
-        s = self.server.accounting_match(
+        self.server.accounting_match(
             "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
-        self.assertTrue(s)
 
         acctlog_match = "resources_used.foo_str='%s'" % (foo_str_dict_out_str,)
-        s = self.server.accounting_match(
+        self.server.accounting_match(
             "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
-        self.assertTrue(s)
 
         acctlog_match = 'resources_used.vmem=29gb'
-        s = self.server.accounting_match(
+        self.server.accounting_match(
             "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
-        self.assertTrue(s)
 
         acctlog_match = 'resources_used.cput=00:00:50'
-        s = self.server.accounting_match(
+        self.server.accounting_match(
             "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
-        self.assertTrue(s)
 
-        acctlog_match = 'resources_used.foo_str2='
-        s = self.server.accounting_match(
-            "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
         # ensure resources_foo_str2 is not reported in accounting_logs since
         # it's unset due to non-JSON-format value.
-        self.assertFalse(s)
+        acctlog_match = 'resources_used.foo_str2='
+        self.server.accounting_match("E;%s;.*%s.*" % (jid, acctlog_match),
+                                     regexp=True, n=100, existence=False)
 
         acctlog_match = 'resources_used.foo_str4=eight'
-        s = self.server.accounting_match(
+        self.server.accounting_match(
             "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
-        self.assertTrue(s)
 
         acctlog_match = 'resources_used.ncpus=3'
-        s = self.server.accounting_match(
+        self.server.accounting_match(
             "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
-        self.assertTrue(s)
 
-        acctlog_match = 'resources_used.foo_str3=',
-        s = self.server.accounting_match(
-            "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
         # resources_used.foo_str3 must not show up in accounting_logs
-        self.assertFalse(s)
+        acctlog_match = 'resources_used.foo_str3=',
+        self.server.accounting_match("E;%s;.*%s.*" % (jid, acctlog_match),
+                                     regexp=True, n=100, existence=False)
 
         acctlog_match = 'resources_used.stra=\"glad\,elated\"\,\"happy\"'
-        s = self.server.accounting_match(
+        self.server.accounting_match(
             "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
-        self.assertTrue(s)
 
     def test_prologue(self):
         """
@@ -441,15 +417,14 @@ else:
         self.server.expect(JOB, 'resources_used.foo_str3',
                            op=UNSET, extend='x', id=jid)
 
-        m1 = self.momA.log_match(
+        self.momA.log_match(
             "Job %s resources_used.foo_str3 cannot be " % (jid,) +
             "accumulated: value '\"vn1\":4,\"vn2\":5,\"vn3\":6' " +
             "from mom %s not JSON-format" % (self.hostB,))
-        m2 = self.momA.log_match(
+        self.momA.log_match(
             "Job %s resources_used.foo_str3 cannot be " % (jid,) +
             "accumulated: value '\"vn1\":4,\"vn2\":5,\"vn3\":6' " +
             "from mom %s not JSON-format" % (self.hostC,))
-        self.assertTrue(m1 or m2)
 
         # Ensure resources_used.foo_str3 is not set since it has a
         # non-JSON format value.
@@ -458,65 +433,54 @@ else:
 
         # resources_used.foo_str2 must not be set.
         self.server.expect(JOB, 'resources_used.foo_str2', op=UNSET, id=jid)
-        m = self.momA.log_match(
+        self.momA.log_match(
             "Job %s resources_used.foo_str2 cannot be " % (jid,) +
             "accumulated: value 'seven' from " +
             "mom %s not JSON-format" % (self.hostA,))
-        self.assertTrue(m)
 
         # Match accounting_logs entry
 
         acctlog_match = 'resources_used.foo_f=0.35'
-        s = self.server.accounting_match(
+        self.server.accounting_match(
             "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
-        self.assertTrue(s)
 
         acctlog_match = 'resources_used.foo_i=35'
-        s = self.server.accounting_match(
+        self.server.accounting_match(
             "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
-        self.assertTrue(s)
 
         acctlog_match = "resources_used.foo_str='%s'" % (foo_str_dict_out_str,)
-        s = self.server.accounting_match(
+        self.server.accounting_match(
             "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
-        self.assertTrue(s)
 
         acctlog_match = 'resources_used.vmem=35gb'
-        s = self.server.accounting_match(
+        self.server.accounting_match(
             "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
-        self.assertTrue(s)
 
         acctlog_match = 'resources_used.cput=00:00:35'
-        s = self.server.accounting_match(
+        self.server.accounting_match(
             "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
-        self.assertTrue(s)
 
-        acctlog_match = 'resources_used.foo_str2='
-        s = self.server.accounting_match(
-            "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
         # resources_used.foo_str2 should not be reported in accounting_logs.
-        self.assertFalse(s)
+        acctlog_match = 'resources_used.foo_str2='
+        self.server.accounting_match("E;%s;.*%s.*" % (jid, acctlog_match),
+                                     regexp=True, n=100, existence=False)
 
         acctlog_match = 'resources_used.ncpus=3'
-        s = self.server.accounting_match(
+        self.server.accounting_match(
             "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
-        self.assertTrue(s)
 
-        acctlog_match = 'resources_used.foo_str3='
-        s = self.server.accounting_match(
-            "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
         # resources_used.foo_str3 must not show up in accounting_logs
-        self.assertFalse(s)
+        acctlog_match = 'resources_used.foo_str3='
+        self.server.accounting_match("E;%s;.*%s.*" % (jid, acctlog_match),
+                                     regexp=True, n=100, existence=False)
 
         acctlog_match = 'resources_used.foo_str4=eight'
-        s = self.server.accounting_match(
+        self.server.accounting_match(
             "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
-        self.assertTrue(s)
 
         acctlog_match = 'resources_used.stra=\"glad\,elated\"\,\"happy\"'
-        s = self.server.accounting_match(
+        self.server.accounting_match(
             "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
-        self.assertTrue(s)
 
     def test_periodic(self):
         """
@@ -643,52 +607,43 @@ for jk in e.job_list.keys():
             # Match accounting_logs entry
 
             acctlog_match = 'resources_used.foo_f=0.36'
-            s = self.server.accounting_match(
+            self.server.accounting_match(
                 "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
-            self.assertTrue(s)
 
             acctlog_match = 'resources_used.foo_i=36'
-            s = self.server.accounting_match(
+            self.server.accounting_match(
                 "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
-            self.assertTrue(s)
 
             acctlog_match = "resources_used.foo_str='%s'" % (
                 foo_str_dict_out_str,)
-            s = self.server.accounting_match(
+            self.server.accounting_match(
                 "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
-            self.assertTrue(s)
 
             acctlog_match = 'resources_used.vmem=36gb'
-            s = self.server.accounting_match(
+            self.server.accounting_match(
                 "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
-            self.assertTrue(s)
 
             acctlog_match = 'resources_used.cput=00:00:36'
-            s = self.server.accounting_match(
+            self.server.accounting_match(
                 "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
-            self.assertTrue(s)
 
-            acctlog_match = 'resources_used.foo_str2=',
-            s = self.server.accounting_match(
-                "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
             # resources_used.foo_str2 must not show in accounting_logs
-            self.assertFalse(s)
+            acctlog_match = 'resources_used.foo_str2=',
+            self.server.accounting_match("E;%s;.*%s.*" % (jid, acctlog_match),
+                                         regexp=True, n=100, existence=False)
 
             acctlog_match = 'resources_used.ncpus=3'
-            s = self.server.accounting_match(
+            self.server.accounting_match(
                 "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
-            self.assertTrue(s)
 
             acctlog_match = "resources_used.foo_str3='%s'" % (
                 foo_str3_dict_out_str.replace('.', '\.').
                 replace("#$%^&*@", "\#\$\%\^\&\*\@"))
-            s = self.server.accounting_match(
+            self.server.accounting_match(
                 "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
-            self.assertTrue(s)
             acctlog_match = 'resources_used.stra=\"glad\,elated\"\,\"happy\"'
-            s = self.server.accounting_match(
+            self.server.accounting_match(
                 "E;%s;.*%s.*" % (jid, acctlog_match), regexp=True, n=100)
-            self.assertTrue(s)
 
     def test_resource_bool(self):
         """
@@ -796,43 +751,34 @@ else:
         self.server.manager(
             MGR_CMD_CREATE, RSC, attr, id='foo_i2', runas=ROOT_USER)
         # Ensure the new resource is seen by all moms.
-        m = self.momA.log_match(
+        self.momA.log_match(
             "resourcedef;copy hook-related file", max_attempts=3)
-        self.assertTrue(m)
-        m = self.momB.log_match(
+        self.momB.log_match(
             "resourcedef;copy hook-related file", max_attempts=3)
-        self.assertTrue(m)
-        m = self.momC.log_match(
+        self.momC.log_match(
             "resourcedef;copy hook-related file", max_attempts=3)
-        self.assertTrue(m)
 
         attr['type'] = 'float'
         self.server.manager(
             MGR_CMD_CREATE, RSC, attr, id='foo_f2', runas=ROOT_USER)
         # Ensure the new resource is seen by all moms.
-        m = self.momA.log_match(
+        self.momA.log_match(
             "resourcedef;copy hook-related file", max_attempts=3)
-        self.assertTrue(m)
-        m = self.momB.log_match(
+        self.momB.log_match(
             "resourcedef;copy hook-related file", max_attempts=3)
-        self.assertTrue(m)
-        m = self.momC.log_match(
+        self.momC.log_match(
             "resourcedef;copy hook-related file", max_attempts=3)
-        self.assertTrue(m)
 
         attr['type'] = 'string_array'
         self.server.manager(
             MGR_CMD_CREATE, RSC, attr, id='stra2', runas=ROOT_USER)
         # Ensure the new resource is seen by all moms.
-        m = self.momA.log_match(
+        self.momA.log_match(
             "resourcedef;copy hook-related file", max_attempts=3)
-        self.assertTrue(m)
-        m = self.momB.log_match(
+        self.momB.log_match(
             "resourcedef;copy hook-related file", max_attempts=3)
-        self.assertTrue(m)
-        m = self.momC.log_match(
+        self.momC.log_match(
             "resourcedef;copy hook-related file", max_attempts=3)
-        self.assertTrue(m)
 
         # Create an epilogue hook
         hook_body = """

@@ -111,9 +111,7 @@ class TestAcctlogRescUsedWithTwoMomHooks(TestFunctional):
 
         # Check for resources_used value in the 'R' record.
         msg = '.*R;' + str(jid1) + '.*resources_used.ncpus=2.*'
-        m = self.server.accounting_match(
-            msg, tail=True, regexp=True)
-        self.assertNotEqual(m, None)
+        self.server.accounting_match(msg, tail=True, regexp=True)
 
     def test_Erecord(self):
         """
@@ -154,12 +152,9 @@ class TestAcctlogRescUsedWithTwoMomHooks(TestFunctional):
 
         # Check for the E record to NOT have zero walltime.
         msg = '.*E;' + str(jid1) + '.*resources_used.walltime=\"00:00:00.*'
-        m = self.server.accounting_match(
-            msg, tail=True, regexp=True)
-        self.assertEqual(m, None)
+        self.server.accounting_match(msg, tail=True, regexp=True,
+                                     existence=False)
 
         # Check for the E record to have non-zero ncpus.
         msg = '.*E;' + str(jid1) + '.*resources_used.ncpus=2.*'
-        m = self.server.accounting_match(
-            msg, tail=True, regexp=True)
-        self.assertNotEqual(m, None)
+        self.server.accounting_match(msg, tail=True, regexp=True)

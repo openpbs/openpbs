@@ -74,10 +74,8 @@ pbs.logjobmsg(jid, "server is %s" % (s.name,))
             jid = self.server.submit(j)
         except PbsSubmitError:
             pass
-        rv = self.server.log_match("Job;%s;server is %s" % (
+        self.server.log_match("Job;%s;server is %s" % (
             "newjob", self.server.shortname), max_attempts=3)
-        self.assertTrue(rv)
 
-        rv = self.mom.log_match("Job;%s;server is %s" % (
+        self.mom.log_match("Job;%s;server is %s" % (
             jid, self.server.shortname), max_attempts=3)
-        self.assertTrue(rv)

@@ -92,7 +92,6 @@ else:
                                      ATTR_o: '/tmp/'})
         job.set_sleep_time(1)
         jid = self.server.submit(job)
-        retval = self.mom.log_match(
+        self.mom.log_match(
             "Modified progname value got updated from launch1",
             max_attempts=3, interval=3)
-        self.assertTrue(retval)

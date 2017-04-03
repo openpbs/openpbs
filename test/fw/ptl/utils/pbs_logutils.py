@@ -1049,6 +1049,7 @@ class JobEstimatedStartTimeInfo(object):
     """
     Information regarding Job estimated start time
     """
+
     def __init__(self, jobid):
         self.jobid = jobid
         self.started_at = None

@@ -63,6 +63,7 @@ class PbsConfigError(Exception):
     """
     Initialize PBS configuration error
     """
+
     def __init__(self, message=None, rv=None, rc=None, msg=None):
         self.message = message
         self.rv = rv
@@ -82,6 +83,7 @@ class PtlUtilError(Exception):
     """
     Initialize PTL Util error
     """
+
     def __init__(self, message=None, rv=None, rc=None, msg=None):
         self.message = message
         self.rv = rv

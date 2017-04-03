@@ -469,6 +469,10 @@ class PbsQtermError(PtlException):
     pass
 
 
+class PtlLogMatchError(PtlFailureException):
+    pass
+
+
 class PbsTypeSize(str):
 
     """
@@ -4627,7 +4631,7 @@ class PBSService(PBSObject):
     def _log_match(self, logtype, msg, id=None, n=50, tail=True,
                    allmatch=False, regexp=False, day=None, max_attempts=1,
                    interval=1, starttime=None, endtime=None,
-                   level=logging.INFO):
+                   level=logging.INFO, existence=True):
         """
         If ``'msg'`` found in the ``'n'`` lines of the log file,
         returns a ``tupe (x,y)`` where x is the matching line
@@ -4653,6 +4657,7 @@ class PBSService(PBSObject):
                        Defaults to False
         :type regex: bool
         :param day: Optional day in YYYMMDD format.
+        :type day: str or None
         :param max_attempts: the number of attempts to make to find
                              a matching entry
         :type max_attemps: int
@@ -4660,8 +4665,14 @@ class PBSService(PBSObject):
         :type interval: int
         :param starttime: If set ignore matches that occur before
                           specified time
+        :type starttime: str or None
         :param endtime: If set ignore matches that occur after
                         specified time
+        :type endtime: str or None
+        :param existence: If True (default), check for existence of
+                        given msg, else check for non-existence of
+                        given msg.
+        :type existence: bool
 
         .. note:: The matching line number is relative to the record
                   number, not the absolute line number in the file.
@@ -4669,14 +4680,15 @@ class PBSService(PBSObject):
         try:
             from ptl.utils.pbs_logutils import PBSLogUtils
         except:
-            self.logger.error('error loading ptl.utils.pbs_logutils')
-            return None
+            _msg = 'error loading ptl.utils.pbs_logutils'
+            raise PtlLogMatchError(rc=1, rv=False, msg=_msg)
 
         if self.logutils is None:
             self.logutils = PBSLogUtils()
 
         rv = (None, None)
         attempt = 1
+        lines = None
         name = self._instance_to_servicename(logtype)
         infomsg = (name + ' ' + self.shortname +
                    ' log match: searching for "' + msg + '"')
@@ -4716,12 +4728,15 @@ class PBSService(PBSObject):
             lines.close()
         except:
             pass
+        if (rv is None and existence) or (rv is not None and not existence):
+            _msg = infomsg + attemptmsg
+            raise PtlLogMatchError(rc=1, rv=False, msg=_msg)
         return rv
 
     def accounting_match(self, msg, id=None, n=50, tail=True,
                          allmatch=False, regexp=False, day=None,
                          max_attempts=1, interval=1, starttime=None,
-                         endtime=None):
+                         endtime=None, level=logging.INFO, existence=True):
         """
         Find msg in accounting log.
 
@@ -4762,16 +4777,19 @@ class PBSService(PBSObject):
         """
         return self._log_match('accounting', msg, id, n, tail, allmatch,
                                regexp, day, max_attempts, interval, starttime,
-                               endtime)
+                               endtime, level, existence)
 
-    def tracejob_match(self, msg, id=None, n=50, tail=True, allmatch=False,
-                       regexp=False, **kwargs):
+    def tracejob_match(self, msg, id=None, n=50, tail=True,
+                       allmatch=False, regexp=False, day=None,
+                       max_attempts=1, interval=1, starttime=None,
+                       endtime=None, level=logging.INFO, existence=True):
         """
         Find msg in tracejob log. See _log_match for details
 
         """
         return self._log_match('tracejob', msg, id, n, tail, allmatch,
-                               regexp, kwargs)
+                               regexp, day, max_attempts, interval, starttime,
+                               endtime, level, existence)
 
     def _save_config_file(self, dict_conf, fname):
         ret = self.du.cat(self.hostname, fname, sudo=True)
@@ -4982,13 +5000,14 @@ class Comm(PBSService):
 
     def log_match(self, msg=None, id=None, n=50, tail=True, allmatch=False,
                   regexp=False, day=None, max_attempts=1, interval=1,
-                  starttime=None, endtime=None, level=logging.INFO):
+                  starttime=None, endtime=None, level=logging.INFO,
+                  existence=True):
         """
         Match the comm logs
         """
         return self._log_match(self, msg, id, n, tail, allmatch, regexp,
                                day, max_attempts, interval, starttime, endtime,
-                               level=level)
+                               level=level, existence=existence)
 
 
 class Server(PBSService):
@@ -5453,13 +5472,14 @@ class Server(PBSService):
 
     def log_match(self, msg=None, id=None, n=50, tail=True, allmatch=False,
                   regexp=False, day=None, max_attempts=1, interval=1,
-                  starttime=None, endtime=None, level=logging.INFO):
+                  starttime=None, endtime=None, level=logging.INFO,
+                  existence=True):
         """
         Match the PBS server logs
         """
         return self._log_match(self, msg, id, n, tail, allmatch, regexp,
                                day, max_attempts, interval, starttime, endtime,
-                               level=level)
+                               level=level, existence=existence)
 
     def revert_to_defaults(self, reverthooks=True, revertqueues=True,
                            revertresources=True, delhooks=True,
@@ -10799,13 +10819,14 @@ class Scheduler(PBSService):
 
     def log_match(self, msg=None, id=None, n=50, tail=True, allmatch=False,
                   regexp=False, day=None, max_attempts=1, interval=1,
-                  starttime=None, endtime=None, level=logging.INFO):
+                  starttime=None, endtime=None, level=logging.INFO,
+                  existence=True):
         """
         Match the scheduler logs
         """
         return self._log_match(self, msg, id, n, tail, allmatch, regexp, day,
                                max_attempts, interval, starttime, endtime,
-                               level=level)
+                               level=level, existence=existence)
 
     def pbs_version(self):
         """
@@ -11020,14 +11041,13 @@ class Scheduler(PBSService):
 
         if validate:
             self.signal('-HUP')
-
-            m = self.log_match("Error reading line", n=10,
-                               starttime=reconfig_time)
-            if m is None:
-                # no match, successful config
-                return True
-            raise PbsSchedConfigError(rc=1, rv=False, msg=str(m))
-
+            try:
+                self.log_match("Error reading line", n=10,
+                               starttime=reconfig_time, existence=False)
+            except PtlLogMatchError:
+                _msg = 'Error in validating sched_config changes'
+                raise PbsSchedConfigError(rc=1, rv=False,
+                                          msg=_msg)
         return True
 
     def set_sched_config(self, confs={}, apply=True, validate=True):
@@ -12673,12 +12693,14 @@ class MoM(PBSService):
 
     def log_match(self, msg=None, id=None, n=50, tail=True, allmatch=False,
                   regexp=False, day=None, max_attempts=1, interval=1,
-                  starttime=None, endtime=None):
+                  starttime=None, endtime=None, level=logging.INFO,
+                  existence=True):
         """
         Match the PBS mom logs
         """
         return self._log_match(self, msg, id, n, tail, allmatch, regexp, day,
-                               max_attempts, interval, starttime, endtime)
+                               max_attempts, interval, starttime, endtime,
+                               level, existence)
 
     def pbs_version(self):
         """
@@ -12810,10 +12832,12 @@ class MoM(PBSService):
         """
         Returns True if the version of PBS used was built for Cray platforms
         """
-        rv = self.log_match("alps_client", tail=False, max_attempts=10)
-        if rv:
+        try:
+            self.log_match("alps_client", tail=False, max_attempts=1)
+        except PtlLogMatchError:
+            return False
+        else:
             return True
-        return False
 
     def is_cpuset_mom(self):
         """

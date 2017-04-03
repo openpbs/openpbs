@@ -109,8 +109,8 @@ class TestOnlySmallFilesOverTPP(TestFunctional):
                             'still in progress for' in e.msg[0])
 
         msg = jid + ";big job files, sending via subprocess"
-        rv = self.server.log_match(msg, max_attempts=10, interval=2)
-        self.assertFalse(rv)
+        self.server.log_match(msg, max_attempts=10, interval=2,
+                              existence=False)
 
     def test_big_job_file(self):
         """
@@ -136,8 +136,7 @@ class TestOnlySmallFilesOverTPP(TestFunctional):
                             'still in progress for' in e.msg[0])
 
         msg = jid + ";big job files, sending via subprocess"
-        rv = self.server.log_match(msg, max_attempts=30, interval=2)
-        self.assertTrue(rv)
+        self.server.log_match(msg, max_attempts=30, interval=2)
 
     def test_big_job_script(self):
         """
@@ -159,6 +158,5 @@ class TestOnlySmallFilesOverTPP(TestFunctional):
                            id=jid, max_attempts=30, interval=2)
 
         msg = jid + ";big job files, sending via subprocess"
-        rv = self.server.log_match(
+        self.server.log_match(
             msg, max_attempts=30, interval=2)
-        self.assertTrue(rv)
