@@ -162,6 +162,7 @@ class PTLTestData(Plugin):
         pbs_diag = os.path.join(svr.pbs_conf['PBS_EXEC'],
                                 'unsupported', 'pbs_diag')
         cmd = [pbs_diag, '-f', '-d', '2']
+        cmd += ['-u', self.du.get_current_user()]
         if len(svr.jobs) > 0:
             cmd += ['-j', ','.join(svr.jobs.keys())]
         ret = self.du.run_cmd(svr_host, cmd, sudo=True, level=logging.DEBUG2)
