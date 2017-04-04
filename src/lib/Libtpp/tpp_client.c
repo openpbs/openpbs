@@ -4027,6 +4027,7 @@ leaf_pkt_postsend_handler(int tfd, tpp_packet_t *pkt)
 			payload_len = len - sizeof(tpp_mcast_pkt_hdr_t) - info_len;
 			payload = ((char *) mcast_hdr) + sizeof(tpp_mcast_pkt_hdr_t) + info_len;
 		}
+
 		if (tpp_fault_tolerant_mode == 1) {
 			shlvd_pkt = tpp_cr_pkt(payload, payload_len, 1);
 			if (!shlvd_pkt) {
@@ -4048,7 +4049,11 @@ leaf_pkt_postsend_handler(int tfd, tpp_packet_t *pkt)
 					free(d->strms);
 				if (d->seqs)
 					free(d->seqs);
-				tpp_free_pkt(shlvd_pkt);
+
+				/* in fault_tolerant mode, free the shared packet only if not shelved even once yet */
+				if (tpp_fault_tolerant_mode == 1 && i == 0)
+					tpp_free_pkt(shlvd_pkt);
+
 				tpp_free_pkt(pkt);
 				return -1;
 			}
@@ -4059,12 +4064,16 @@ leaf_pkt_postsend_handler(int tfd, tpp_packet_t *pkt)
 				TPP_DBPRT(("Shelving MCAST packet for strm=%d, seq=%d, mcast_hdr=%p, shlvd_pkt=%p",
 						d->strms[i], d->seqs[i], mcast_hdr, shlvd_pkt));
 				if (shelve_mcast_pkt(mcast_hdr, d->strms[i], d->seqs[i], shlvd_pkt) != 0) {
-					tpp_free_pkt(shlvd_pkt);
+					/* free the shared packet only if not shelved even once yet */
+					if (i == 0)
+						tpp_free_pkt(shlvd_pkt);
+
 					tpp_free_pkt(pkt);
 					return -1;
 				}
 			}
 		}
+
 		if (d->strms)
 			free(d->strms);
 		if (d->seqs)
