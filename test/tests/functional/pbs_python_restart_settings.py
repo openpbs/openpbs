@@ -433,7 +433,11 @@ pbs.event().accept()
             j.set_sleep_time(1)
             jid = self.server.submit(j)
         # Verify no restart message
-        rv = self.server.log_match(
-            "Restarting Python interpreter to reduce mem usage",
-            starttime=stime, max_attempts=8)
-        self.assertFalse(rv)
+        try:
+            self.server.log_match(
+                "Restarting Python interpreter to reduce mem usage",
+                starttime=stime, max_attempts=8)
+        except PtlLogMatchError:
+            pass
+        else:
+            self.assertFalse(True)
