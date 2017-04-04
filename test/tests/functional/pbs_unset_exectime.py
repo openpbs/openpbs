@@ -66,7 +66,8 @@ else:
         j = Job(TEST_USER)
         self.server.submit(j)
         try:
-            msg = "Error evaluating Python script, exec_time could not be parsed"
+            msg = "Error evaluating Python script, "
+            msg += "exec_time could not be parsed"
             self.server.log_match(msg, max_attempts=5)
         except PtlLogMatchError:
             pass
