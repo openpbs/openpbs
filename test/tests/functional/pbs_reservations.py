@@ -42,6 +42,84 @@ import time
 
 class TestReservations(TestFunctional):
 
+    """
+    Various tests to verify behavior of PBS scheduler in handling
+    reservations
+    """
+
+    def submit_standing_reservation(self, user, select, rrule, start, end):
+        """
+        helper method to submit a standing reservation
+        """
+        if 'PBS_TZID' in self.conf:
+            tzone = self.conf['PBS_TZID']
+        elif 'PBS_TZID' in os.environ:
+            tzone = os.environ['PBS_TZID']
+        else:
+            self.logger.info('Missing timezone, using America/Los_Angeles')
+            tzone = 'America/Los_Angeles'
+
+        a = {'Resource_List.select': select,
+             ATTR_resv_rrule: rrule,
+             ATTR_resv_timezone: tzone,
+             'reserve_start': start,
+             'reserve_end': end,
+             }
+        r = Reservation(user, a)
+
+        return self.server.submit(r)
+
+    def test_degraded_standing_reservations(self):
+        """
+        Verify that degraded standing reservations are reconfirmed on
+        other avaialable vnodes
+        """
+
+        a = {'reserve_retry_init': 5, 'reserve_retry_cutoff': 1}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        a = {'resources_available.ncpus': 4}
+        self.server.create_vnodes('vn', a, num=2, mom=self.mom)
+
+        now = int(time.time())
+
+        # submitting 25 seconds from now to allow some of the older testbed
+        # systems time to process (discovered empirically)
+        rid = self.submit_standing_reservation(user=TEST_USER,
+                                               select='1:ncpus=4',
+                                               rrule='FREQ=HOURLY;COUNT=3',
+                                               start=now + 25,
+                                               end=now + 45)
+
+        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, a, id=rid)
+
+        self.server.status(RESV, 'resv_nodes', id=rid)
+        resv_node = self.server.reservations[rid].get_vnodes()[0]
+
+        a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+        offset = 25 - (int(time.time()) - now)
+        self.server.expect(RESV, a, id=rid, offset=offset, interval=1)
+
+        a = {'state': 'offline'}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=resv_node)
+
+        a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5'),
+             'reserve_substate': 10}
+        self.server.expect(RESV, a, attrop=PTL_AND, id=rid)
+
+        a = {'resources_available.ncpus': (GT, 0)}
+        free_nodes = self.server.filter(NODE, a)
+        nodes = free_nodes.values()[0]
+
+        other_node = [nodes[0], nodes[1]][resv_node == nodes[0]]
+
+        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2'),
+             'resv_nodes': (MATCH_RE, re.escape(other_node))}
+        offset = 45 - (int(time.time()) - now)
+        self.server.expect(RESV, a, id=rid, interval=1, offset=offset,
+                           attrop=PTL_AND)
+
     def test_not_honoring_resvs(self):
         """
         PBS schedules jobs on nodes without accounting

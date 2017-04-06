@@ -502,8 +502,8 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 					resresv_ocr->resv->resv_idx = occr_idx;
 
 					/* Add the occurrence to the global array of reservations */
-					resresv_arr[idx] = resresv_ocr;
-					idx++;
+					resresv_arr[idx++] = resresv_ocr;
+					resresv_arr[idx] = NULL;
 
 					loc_time = localtime(&resresv_ocr->start);
 
@@ -531,10 +531,11 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 				free(execvnode_ptr);
 
 				continue;
+			} else {
+				resresv_arr[idx++] = resresv;
+				resresv_arr[idx] = NULL;
 			}
 		}
-		resresv_arr[idx++] = resresv;
-		resresv_arr[idx] = NULL;
 		cur_resv = cur_resv->next;
 	}
 
