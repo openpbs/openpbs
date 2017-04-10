@@ -59,7 +59,7 @@
  * 	preempt_job()
  * 	find_and_preempt_jobs()
  * 	find_jobs_to_preempt()
- * 	select_job_to_preempt()
+ * 	select_index_to_preempt()
  * 	preempt_level()
  * 	set_preempt_prio()
  * 	create_subjob_name()
@@ -609,6 +609,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 		return NULL;
 
 	for (i = num_prev_jobs; cur_job != NULL; i++) {
+		char *selectspec = NULL;
 		if ((resresv = query_job(cur_job, qinfo->server, err)) ==NULL) {
 			free_schd_error(err);
 			pbs_statfree(jobs);
@@ -684,6 +685,23 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 		if(resresv->job->array_id != NULL)
 			resresv->job->parent_job = find_resource_resv(resresv_arr, resresv->job->array_id);
 
+		/* For jobs that have an exec_vnode, we create a "select" based
+		 * on its exec_vnode.  We do this so if we ever need to run the job 
+		 * again, we will replace the job on the exact vnodes/resources it originally used.
+		 */
+		if (resresv->job->is_suspended && resresv->job->resreleased != NULL)
+			/* For jobs that are suspended and have resource_released, the "select" 
+			* we create is based off of resources_released instead of the exec_vnode.
+			*/
+			selectspec = create_select_from_nspec(resresv->job->resreleased);
+		else if (resresv->nspec_arr != NULL)
+			selectspec = create_select_from_nspec(resresv->nspec_arr);
+
+		if (resresv->nspec_arr != NULL) {
+			resresv->job->execselect = parse_selspec(selectspec);
+			free(selectspec);
+		}
+
 		/* Find out if it is a shrink-to-fit job.
 		 * If yes, set the duration to max walltime.
 		 */
@@ -709,7 +727,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 			}
 #endif /* localmod 026 */
 		}
-		if ((req == NULL ) || (resresv -> job -> is_running == 1))
+		if ((req == NULL ) || (resresv->job->is_running == 1))
 			req = find_resource_req(resresv->resreq, getallres(RES_WALLTIME));
 
 		if (req != NULL)
@@ -831,7 +849,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 		}
 
 #ifdef RESC_SPEC
-		/* search_for_rescspec() sets jinfo -> rspec */
+		/* search_for_rescspec() sets jinfo->rspec */
 		if (!search_for_rescspec(resresv, qinfo->server->nodes))
 			set_schd_error_codes(err, NOT_RUN, NO_NODE_RESOURCES);
 #endif
@@ -873,7 +891,7 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 {
 	resource_resv *resresv;		/* converted job */
 	struct attrl *attrp;		/* list of attributes returned from server */
-	int count;			/* int used in string -> int conversion */
+	int count;			/* int used in string->int conversion */
 	char *endp;			/* used for strtol() */
 	resource_req *resreq;		/* resource_req list for resources requested  */
 
@@ -918,8 +936,8 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 				 */
 				if (strchr(attrp->value, ':') != NULL) {
 					/* moved to query_jobs() in order to include the queue name
-					 resresv -> job -> ginfo = find_alloc_ginfo( attrp -> value,
-					 sinfo -> fairshare -> root );
+					 resresv->job->ginfo = find_alloc_ginfo( attrp->value,
+					 sinfo->fairshare->root );
 					 */
 					/* localmod 034 */
 					resresv->job->sh_info = site_find_alloc_share(sinfo,
@@ -995,6 +1013,8 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 		}
 		else if (!strcmp(attrp->name, ATTR_comment))	/* job comment */
 			resresv->job->comment = string_dup(attrp->value);
+		else if (!strcmp(attrp->name, ATTR_released)) /* resources_released */
+			resresv->job->resreleased = parse_execvnode(attrp->value, sinfo);
 		else if (!strcmp(attrp->name, ATTR_euser))	/* account name */
 			resresv->user = string_dup(attrp->value);
 		else if (!strcmp(attrp->name, ATTR_egroup))	/* group name */
@@ -1092,6 +1112,13 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 
 				}
 			}
+		}
+		else if (!strcmp(attrp->name, ATTR_rel_list)) {
+			resreq = find_alloc_resource_req_by_str(resresv->job->resreq_rel, attrp->resource);
+			if (resreq != NULL)
+				set_resource_req(resreq, attrp->value);
+			if (resresv->job->resreq_rel == NULL)
+				resresv->job->resreq_rel = resreq;
 		}
 		else if (!strcmp(attrp->name, ATTR_used)) { /* resources used */
 			resreq =
@@ -1201,6 +1228,9 @@ new_job_info()
 	jinfo->queued_subjobs = NULL;
 	jinfo->parent_job = NULL;
 	jinfo->attr_updates = NULL;
+	jinfo->resreleased = NULL;
+	jinfo->resreq_rel = NULL;
+
 
 	jinfo->formula_value = 0.0;
 
@@ -1263,6 +1293,10 @@ free_job_info(job_info *jinfo)
 	free_resource_req_list(jinfo->resused);
 
 	free_attrl_list(jinfo->attr_updates);
+
+	free_resource_req_list(jinfo->resreq_rel);
+
+	free_nspecs(jinfo->resreleased);
 
 #ifdef RESC_SPEC
 	free_rescspec(jinfo->rspec);
@@ -1392,10 +1426,6 @@ update_job_attr(int pbs_sd, resource_resv *resresv, char *attr_name,
 	/* if running in simulation then don't update but simulate that we have*/
 	if (pbs_sd == SIMULATE_SD)
 		return 1;
-
-	/* can not alter subjobs */
-	if (resresv->job->is_subjob)
-		return 0;
 
 	/* don't try and update attributes for jobs on peer servers */
 	if (resresv->is_peer_ob)
@@ -2378,10 +2408,15 @@ create_resresv_sets(status *policy, server_info *sinfo)
  * 		job_info copy constructor
  *
  * @param[in]	ojinfo	-	Pointer to JobInfo structure
- * @param[in]	nqinfo	-	Queue Info.
+ * @param[in]	nqinfo	-	Queue Info
+ * @param[in]	sinfo	-	Server Info
+ *
+ * @return	job_info *
+ * @retval	NULL	:	when function fails to duplicate job_info
+ * @retval	!NULL	:	duplicated job_info structure pointer
  */
 job_info *
-dup_job_info(job_info *ojinfo, queue_info *nqinfo)
+dup_job_info(job_info *ojinfo, queue_info *nqinfo, server_info *nsinfo)
 {
 	job_info *njinfo;
 
@@ -2440,6 +2475,9 @@ dup_job_info(job_info *ojinfo, queue_info *nqinfo)
 	if(njinfo->parent_job != NULL )
 		njinfo->parent_job = find_resource_resv_by_rank(nqinfo->jobs, ojinfo->parent_job->rank);
 	njinfo->queued_subjobs = dup_range_list(ojinfo->queued_subjobs);
+
+	njinfo->resreleased = dup_nspecs(ojinfo->resreleased, nsinfo->nodes);
+	njinfo->resreq_rel = dup_resource_req_list(ojinfo->resreq_rel);
 
 	if (nqinfo->server->fairshare !=NULL) {
 		njinfo->ginfo = find_group_info(ojinfo->ginfo->name,
@@ -2611,6 +2649,7 @@ preempt_job(status *policy, int pbs_sd, resource_resv *pjob, server_info *sinfo)
 	int i;
 	int histjob = 0;
 	int job_preempted = 0;
+	char *res_released = NULL;
 
 	/* used for stating job state */
 	struct attrl state = {NULL, ATTR_state, NULL, ""};
@@ -2629,6 +2668,7 @@ preempt_job(status *policy, int pbs_sd, resource_resv *pjob, server_info *sinfo)
 	po = get_preemption_order(pjob, sinfo);
 	for (i = 0; i < PREEMPT_METHOD_HIGH && pjob->job->is_running; i++) {
 		if (po->order[i] == PREEMPT_METHOD_SUSPEND) {
+			res_released = create_res_released(policy, pjob);
 			ret = pbs_sigjob(pbs_sd, pjob->name, "suspend", NULL);
 			if ((ret != 0) && (is_finished_job(pbs_errno) == 1)) {
 				histjob = 1;
@@ -3085,8 +3125,11 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 			schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->name,
 				"Simulation: preempting job");
 
+			pjob->job->resreleased = create_res_released_array(policy, pjob);
+			pjob->job->resreq_rel = create_resreq_rel_list(policy, pjob->job->resreleased);
+
 			update_universe_on_end(policy, pjob,  "S");
-			if ( nsinfo -> calendar != NULL ) {
+			if ( nsinfo->calendar != NULL ) {
 				te = find_timed_event(nsinfo->calendar->events, pjob->name, TIMED_END_EVENT, 0);
 				if (te != NULL) {
 					if (delete_event(nsinfo, te, DE_NO_FLAGS) == 0)
@@ -4194,7 +4237,7 @@ formula_evaluate(char *formula, resource_resv *resresv, resource_req *resreq)
 		FORMULA_QUEUE_PRIO, resresv->job->queue->priority,
 		FORMULA_JOB_PRIO, resresv->job->priority,
 		FORMULA_FSPERC, resresv->job->ginfo->percentage,
-		FORMULA_ACCRUE_TYPE, resresv -> job -> accrue_type);
+		FORMULA_ACCRUE_TYPE, resresv->job->accrue_type);
 	if (pbs_strcat(&globals, &globals_size, buf) == NULL) {
 		free(globals);
 		free(formula_buf);
@@ -4501,7 +4544,7 @@ job_starving(status *policy, resource_resv *sjob)
 		/* localmod 045 */
 		if (max_starve == 0)
 			max_starve = conf.max_starve;
-		/* Large-enough setting for max_starve -> never starve */
+		/* Large-enough setting for max_starve->never starve */
 		if (max_starve < Q_SITE_STARVE_NEVER)
 #endif
 		if (in_runnable_state(sjob) || sjob->job->is_running) {
@@ -4598,7 +4641,7 @@ mark_job_preempted(int pbs_sd, resource_resv *rjob, time_t server_time)
  * @param[in]	job	-	job to update
  * @param[in]	start_time	-	start time of job
  * @param[in]	exec_vnode	-	exec_vnode of job or NULL to create it from
- *			      				job -> nspec_arr
+ *			      				job->nspec_arr
  * @param[in]	force	-	forces attributes to update now -- no checks
  *
  * @return	int
@@ -4857,3 +4900,96 @@ preemption_similarity(resource_resv *hjob, resource_resv *pjob, schd_error *full
 	return match;
 }
 
+/**
+ * @brief Create the resources_released and resource_released_list for a job 
+ *	    and return the resources_released in exec_vnode string form
+ *
+ * @param[in] policy - policy object
+ * @param[in] pjob - Job structure using which resources_released string is created
+ *
+ * @retval - char* 
+ * @return - string of resources released similar to exec_vnode format
+ */
+char *create_res_released(status *policy, resource_resv *pjob)
+{
+	if (pjob->job->resreleased == NULL) {
+		pjob->job->resreleased = create_res_released_array(policy, pjob);
+		if (pjob->job->resreleased == NULL) {
+			return NULL;
+		}
+		pjob->job->resreq_rel = create_resreq_rel_list(policy, pjob->job->resreleased);
+	}
+	return create_execvnode(pjob->job->resreleased);
+}
+
+/**
+ * @brief This function populates resreleased job structure for a particular job.
+ *	  It does so by duplicating the job's exec_vnode and only keeping the 
+ *	  consumable resources in policy->rel_on_susp
+ *
+ * @param[in] policy - policy object
+ * @param[in] resresv - Job to create resources_released
+ *
+ * @return nspec **
+ * @retval nspec array of released resources
+ * @retval NULL
+ *
+ */
+nspec **create_res_released_array(status *policy, resource_resv *resresv)
+{
+	nspec **nspec_arr = NULL;
+	int i = 0;
+	resource_req *req;
+
+	if ((resresv == NULL) || (resresv->nspec_arr == NULL) || (resresv->ninfo_arr == NULL))
+		return NULL;
+
+	nspec_arr = dup_nspecs(resresv->nspec_arr, resresv->ninfo_arr);
+	if (nspec_arr == NULL)
+		return NULL;
+	if (policy->rel_on_susp != NULL) {
+		for (i = 0; nspec_arr[i] != NULL; i++) {
+			for (req = nspec_arr[i]->resreq; req != NULL; req = req->next) {
+				if (req->type.is_consumable == 1 && resdef_exists_in_array(policy->rel_on_susp, req->def) ==  0)
+					req->amount = 0;
+			}
+		}
+	}
+	return nspec_arr;
+}
+
+/**
+ * @brief create a resource_rel array for a job by accumulating all of the RASSN
+ *	    resources in a resources_released nspec array.
+ * 
+ * @note only uses RASSN resources on the sched_config resources line
+ * 
+ * @param policy - policy info
+ * @param res_released - resources_released array to accumulate
+ * @return resource_req *
+ * @retval newly created resreq_rel array
+ * @retval NULL on error
+ */
+resource_req *create_resreq_rel_list(status *policy, nspec **res_released)
+{
+	int i;
+	resource_req *resreq_rel = NULL;
+	resource_req *rel;
+	resource_req *req;
+	if(policy == NULL || res_released == NULL)
+		return NULL;
+
+	for(i = 0; res_released[i] != NULL; i++) {
+		for(req = res_released[i]->resreq; req != NULL; req = req->next) {
+			if(resdef_exists_in_array(policy->resdef_to_check_rassn, req->def)) {
+				rel = find_alloc_resource_req(resreq_rel, req->def);
+				if(rel != NULL) {
+					rel->amount += req->amount;
+					if(resreq_rel == NULL)
+						resreq_rel = rel;
+				}
+			}
+		}
+	}
+	return resreq_rel;
+}

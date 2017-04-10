@@ -363,6 +363,7 @@ enum accrue_types {
 #define ATTR_provision_timeout	"provision_timeout" /* server attribute */
 #define ATTR_node_set		"node_set"	    /* job attribute */
 #define ATTR_sched_preempted    "ptime"   /* job attribute */
+#define ATTR_restrict_res_to_release_on_suspend "restrict_res_to_release_on_suspend"	    /* server attr */
 
 #ifndef IN_LOOPBACKNET
 #define IN_LOOPBACKNET	127

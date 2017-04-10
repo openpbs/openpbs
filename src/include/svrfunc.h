@@ -277,6 +277,8 @@ extern int is_valid_resource(attribute *pattr, void *pobject, int actmode);
 extern int   queuestart_action(attribute *pattr, void *pobject, int actmode);
 extern int   alter_eligibletime(attribute *pattr, void *pobject, int actmode);
 extern int   set_chunk_sum(attribute  *pselectattr, attribute *pattr);
+extern int   update_resources_rel(job *, attribute *, enum batch_op);
+
 
 /* Functions below exposed as they are now accessed by the Python hooks */
 extern void update_state_ct(attribute *, int *, char *);

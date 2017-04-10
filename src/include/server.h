@@ -149,6 +149,7 @@ enum srv_atr {
 	SRV_ATR_queued_jobs_threshold,
 	SRV_ATR_queued_jobs_threshold_res,
 	SVR_ATR_jobscript_max_size,
+	SVR_ATR_restrict_res_to_release_on_suspend,
 	/* This must be last */
 	SRV_ATR_LAST
 };

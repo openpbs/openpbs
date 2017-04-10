@@ -247,6 +247,8 @@ struct status
 
 	time_t prime_status_end;		/* the end of prime or nonprime */
 
+	resdef **rel_on_susp;	    /* resources to release on suspend */
+
 	/* not really policy... but kinda just left over here */
 	time_t current_time;			/* current time in the cycle */
 	time_t cycle_start;			/* cycle start in real time */
@@ -470,6 +472,8 @@ struct job_info
 
 	struct attrl *attr_updates;	/* used to federate all attr updates to server*/
 	float formula_value;		/* evaluated job sort formula value */
+	nspec **resreleased;		/* list of resources released by the job on each node */
+	resource_req *resreq_rel;	/* list of resources released */
 
 #ifdef NAS
 	/* localmod 045 */

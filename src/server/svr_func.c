@@ -374,8 +374,33 @@ set_resc_assigned(void *pobj, int objtype, enum batch_op op)
 			return;			/* invalid op */
 		}
 
-		rescp = (resource *)GET_NEXT(pjob->ji_wattr[(int)JOB_ATR_resource]
-			.at_val.at_list);
+		rescp = (resource *) GET_NEXT(pjob->ji_wattr[(int) JOB_ATR_resource].at_val.at_list);
+		if ((pjob->ji_qs.ji_substate == JOB_SUBSTATE_SUSPEND) ||
+			(pjob->ji_qs.ji_substate == JOB_SUBSTATE_SCHSUSP)) {
+			/* If resources_released attribute is not set for this suspended job then use release all
+			 * resources assigned to the job */
+			if ((pjob->ji_wattr[(int) JOB_ATR_resc_released].at_flags & ATR_VFLAG_SET) == 0)
+				rescp = (resource *) GET_NEXT(pjob->ji_wattr[(int) JOB_ATR_resource].at_val.at_list);
+			else {
+				/* Use resource_released_list for updating queue/server resources,
+				 * If resource_released_list is not present then create it by
+				 * using resources_released attribute.
+				 */
+				if (pjob->ji_wattr[(int) JOB_ATR_resc_released_list].at_flags & ATR_VFLAG_SET)
+					rescp = (resource *) GET_NEXT(pjob->ji_wattr[(int) JOB_ATR_resc_released_list].at_val.at_list);
+				else {
+					if (update_resources_rel(pjob, &pjob->ji_wattr[(int) JOB_ATR_resc_released], INCR) != 0)
+						rescp = (resource *) GET_NEXT(pjob->ji_wattr[(int) JOB_ATR_resource].at_val.at_list);
+					else
+						rescp = (resource *) GET_NEXT(pjob->ji_wattr[(int) JOB_ATR_resc_released_list].at_val.at_list);
+				}
+			}
+		} else {
+			/* If job is not suspended then just release all resources assigned to the job */
+			rescp = (resource *) GET_NEXT(pjob->ji_wattr[(int) JOB_ATR_resource].at_val.at_list);
+			if (pjob->ji_wattr[(int) JOB_ATR_resc_released_list].at_flags & ATR_VFLAG_SET)
+				rescp = (resource *) GET_NEXT(pjob->ji_wattr[(int) JOB_ATR_resc_released_list].at_val.at_list);
+		}
 		sysru = &server.sv_attr[(int)SRV_ATR_resource_assn];
 		queru = &pjob->ji_qhdr->qu_attr[(int)QE_ATR_ResourceAssn];
 
@@ -442,7 +467,6 @@ set_resc_assigned(void *pobj, int objtype, enum batch_op op)
 		rscdef = rescp->rs_defin;
 
 		/* if resource usage is to be tracked */
-
 		if ((rscdef->rs_flags & ATR_DFLAG_RASSN) &&
 			(rescp->rs_value.at_flags & ATR_VFLAG_SET)) {
 
@@ -479,7 +503,12 @@ set_resc_assigned(void *pobj, int objtype, enum batch_op op)
 	if (objtype == 1)
 		update_node_rassn(&presv->ri_wattr[(int)RESV_ATR_resv_nodes], op);
 	else if ((objtype == 0) && (pjob->ji_myResv == NULL))
-		update_node_rassn(&pjob->ji_wattr[(int)JOB_ATR_exec_vnode], op);
+		if (pjob->ji_wattr[(int) JOB_ATR_resc_released].at_flags & ATR_VFLAG_SET)
+			/* This is just the normal case when job was not suspended but trying to run| end */
+			update_node_rassn(&pjob->ji_wattr[(int) JOB_ATR_resc_released], op);
+		else
+			/* updating all resources from exec vnode attribute */
+			update_node_rassn(&pjob->ji_wattr[(int) JOB_ATR_exec_vnode], op);
 }
 
 /**
@@ -6418,7 +6447,7 @@ action_backfill_depth(attribute *pattr, void *pobj, int actmode) {
 
 /**
  * @brief
- *	-action_jobscript_max_size - action function for jobscript_max_size 
+ *	action_jobscript_max_size - action function for jobscript_max_size 
  *	valid input range is >=1 to <=2GB
  *
  * @param[in] pattr - server attributes (jobscript_max_size)
@@ -6442,6 +6471,40 @@ action_jobscript_max_size(attribute *pattr, void *pobj, int actmode)
 	if (actmode == ATR_ACTION_ALTER || actmode == ATR_ACTION_RECOV) {
 		if (comp_size(pattr,&attrib) > 0)
 			return PBSE_BADJOBSCRIPTMAXSIZE;
+	}
+	return PBSE_NONE;
+}
+
+/**
+ * @brief
+ *	action_check_res_to_release - action function for restrict_res_to_release_on_suspend
+ *	it validates that input is a list of legitimate resource names
+ *
+ * @param[in] pattr - server attribute
+ * @param[in] pobj  - object being considered
+ * @param[in] actmode - action mode
+ *
+ * @return Whether function completed successfully or not
+ * @retval PBSE_NONE when no errors are encountered
+ * @retval PBSE_UNKRESC when any of the resource is not known
+ *
+ */
+
+int
+action_check_res_to_release(attribute *pattr, void *pobj, int actmode)
+{
+	struct attribute attrib;
+	int i;
+	if (pattr == NULL)
+		return PBSE_NONE;
+
+	if (actmode == ATR_ACTION_ALTER || actmode == ATR_ACTION_NEW) {
+		for (i = 0; i < pattr->at_val.at_arst->as_usedptr; i++) {
+			if (find_resc_def(svr_resc_def,
+				    pattr->at_val.at_arst->as_string[i],
+				    svr_resc_size) == NULL)
+				return PBSE_UNKRESC;
+		}
 	}
 	return PBSE_NONE;
 }

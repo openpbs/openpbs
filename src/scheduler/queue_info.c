@@ -602,19 +602,26 @@ free_queues(queue_info **qarr, char free_jobs_too  )
  *
  * @param[in,out]	qinfo	-	the queue to update
  * @param[in]	resresv	-	the resource resv that was run
+ * @param[in]  job_state -	the old state of a job if resresv is a job
+ *				If the old_state is found to be suspended
+ *				then only resources that were released
+ *				during suspension will be accounted.
  *
  * @return	nothing
  *
  */
 void
-update_queue_on_run(queue_info *qinfo, resource_resv *resresv)
+update_queue_on_run(queue_info *qinfo, resource_resv *resresv, char *job_state)
 {
-	resource_req *resreq;
+	resource_req *req;
 	schd_resource *res;
 	counts *cts;
 	counts *allcts;
 
 	if (qinfo == NULL || resresv == NULL)
+		return;
+
+	if (resresv->is_job &&  resresv->job == NULL)
 		return;
 
 	if (resresv->is_job) {
@@ -633,14 +640,18 @@ update_queue_on_run(queue_info *qinfo, resource_resv *resresv)
 			multi_node_sort);
 
 
-	resreq = resresv->resreq;
-	while (resreq != NULL) {
-		res = find_resource(qinfo->qres, resreq->def);
+	if ((job_state != NULL) && (*job_state == 'S'))
+		req = resresv->job->resreq_rel;
+	else
+		req = resresv->resreq;
 
-		if (res)
-			res->assigned += resreq->amount;
+	while (req != NULL) {
+		res = find_resource(qinfo->qres, req->def);
 
-		resreq = resreq->next;
+		if (res != NULL)
+			res->assigned += req->amount;
+
+		req = req->next;
 	}
 	free(qinfo->running_jobs);
 	qinfo->running_jobs = resource_resv_filter(qinfo->jobs, qinfo->sc.total,
@@ -691,7 +702,10 @@ update_queue_on_run(queue_info *qinfo, resource_resv *resresv)
  *
  * @param[in,out]	qinfo	-	the queue to update
  * @param[in]	resresv	-	the resource resv which is no longer running
- * @param[in]	job_state	-	state job will be in after it has ended
+ * @param[in]  job_state -	the old state of a job if resresv is a job
+ *				If the old_state is found to be suspended
+ *				then only resources that were released
+ *				during suspension will be accounted.
  *
  * @return	nothing
  *
@@ -700,9 +714,9 @@ void
 update_queue_on_end(queue_info *qinfo, resource_resv *resresv,
 	char *job_state)
 {
-	schd_resource *res;			/* resource from queue */
-	resource_req *req;			/* resource request from job */
-	counts *cts;				/* update user/group counts */
+	schd_resource *res = NULL;			/* resource from queue */
+	resource_req *req = NULL;			/* resource request from job */
+	counts *cts;					/* update user/group counts */
 
 	if (qinfo == NULL || resresv == NULL)
 		return;
@@ -721,7 +735,11 @@ update_queue_on_end(queue_info *qinfo, resource_resv *resresv,
 		state_count_add(&(qinfo->sc), job_state, 1);
 	}
 
-	req = resresv->resreq;
+	if ((job_state != NULL) && (*job_state == 'S'))
+		req = resresv->job->resreq_rel;
+	else
+		req = resresv->resreq;
+
 	while (req != NULL) {
 		res = find_resource(qinfo->qres, req->def);
 

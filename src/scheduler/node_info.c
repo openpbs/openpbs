@@ -266,7 +266,7 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 	node_info *ninfo;		/* the new node_info */
 	struct attrl *attrp;		/* used to cycle though attribute list */
 	schd_resource *res;		/* used to set resources in res list */
-	sch_resource_t count;		/* used to convert str -> num */
+	sch_resource_t count;		/* used to convert str->num */
 	char *endp;			/* end pointer for strtol */
 	char logbuf[256];		/* log buffer */
 
@@ -808,7 +808,7 @@ talk_with_mom(node_info *ninfo)
 	int ret = 0;			/* return code of this function */
 	char *mom_ans = NULL;		/* the answer from mom - getreq() */
 	char *endp;			/* used with strtol() */
-	double testd;			/* used to convert string -> double */
+	double testd;			/* used to convert string->double */
 	schd_resource *res;                /* used for dynamic resources from mom */
 	int ncpus = 1;		/* used as a default for loads */
 	char errbuf[MAX_LOG_SIZE];
@@ -1458,8 +1458,8 @@ collect_jobs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int si
 	for (i = 0; susp_jobs[i] != NULL; i++) {
 		if (susp_jobs[i]->ninfo_arr != NULL) {
 			for (j = 0; susp_jobs[i]->ninfo_arr[j] != NULL; j++) {
-				/* resresv -> ninfo_arr is merely a new list with pointers to server nodes.
-				 * resresv -> resv -> resv_nodes is a new list with pointers to resv nodes
+				/* resresv->ninfo_arr is merely a new list with pointers to server nodes.
+				 * resresv->resv->resv_nodes is a new list with pointers to resv nodes
 				 */
 				node = find_node_info(ninfo_arr,
 						susp_jobs[i]->ninfo_arr[j]->name);
@@ -1480,15 +1480,19 @@ collect_jobs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int si
  *
  * @param[in]	nspec	-	the nspec for the node allocation
  * @param[in]	resresv -	the resource rev which ran
+ * @param[in]  job_state -	the old state of a job if resresv is a job
+ *				If the old_state is found to be suspended
+ *				then only resources that were released
+ *				during suspension will be accounted.
  *
  * @return	nothing
  *
  */
 void
-update_node_on_run(nspec *ns, resource_resv *resresv)
+update_node_on_run(nspec *ns, resource_resv *resresv, char *job_state)
 {
-	resource_req *resreq;
-	schd_resource *res;
+	resource_req *resreq = NULL;
+	schd_resource *res = NULL;
 	schd_resource *ncpusres = NULL;
 	counts *cts;
 	resource_resv **tmp_arr;
@@ -1526,7 +1530,13 @@ update_node_on_run(nspec *ns, resource_resv *resresv)
 	}
 
 	resreq = ns->resreq;
-
+	if ((job_state != NULL) && (*job_state == 'S')) {
+		if (resresv->job->resreleased != NULL) {
+			nspec *temp = find_nspec_by_rank(resresv->job->resreleased, ninfo->rank);
+			if (temp != NULL)
+				resreq = temp->resreq;
+		}
+	}
 	while (resreq != NULL) {
 		if (resreq->type.is_consumable) {
 			res = find_resource(ninfo->res, resreq->def);
@@ -1537,7 +1547,7 @@ update_node_on_run(nspec *ns, resource_resv *resresv)
 
 				res->assigned += resreq->amount;
 
-				if (!strcmp(res->name, "ncpus")) {
+				if (res->def  == getallres(RES_NCPUS)) {
 					ncpusres = res;
 					ninfo->loadave += resreq->amount;
 					if (!ninfo->lic_lock)
@@ -1605,16 +1615,20 @@ update_node_on_run(nspec *ns, resource_resv *resresv)
  *
  * @param[in]	ninfo	-	the node where the job was running
  * @param[in]	resresv -	the resource resv which is ending
+ * @param[in]  job_state -	the old state of a job if resresv is a job
+ *				If the old_state is found to be suspended
+ *				then only resources that were released
+ *				during suspension will be accounted.
  *
  * @return	nothing
  *
  */
 void
-update_node_on_end(node_info *ninfo, resource_resv *resresv)
+update_node_on_end(node_info *ninfo, resource_resv *resresv, char *job_state)
 {
-	resource_req *resreq;
-	resource_req *ncpus;
-	schd_resource *res;
+	resource_req *resreq = NULL;
+	resource_req *ncpus = NULL;
+	schd_resource *res = NULL;
 	counts *cts;
 	nspec *ns;		/* nspec from resresv for this node */
 	char logbuf[MAX_LOG_SIZE];
@@ -1661,10 +1675,17 @@ update_node_on_end(node_info *ninfo, resource_resv *resresv)
 	}
 
 	for (i = 0; resresv->nspec_arr[i] != NULL; i++) {
-		if (resresv->nspec_arr[i]->ninfo ==ninfo) {
+		if (resresv->nspec_arr[i]->ninfo == ninfo) {
 			ns = resresv->nspec_arr[i];
 
 			resreq = ns->resreq;
+			if ((job_state != NULL) && (*job_state == 'S')) {
+				if (resresv->job->resreleased != NULL) {
+					nspec * temp = find_nspec_by_rank(resresv->job->resreleased, ninfo->rank);
+					if (temp != NULL)
+						resreq = temp->resreq;
+				}
+			}
 			while (resreq != NULL) {
 				if (resreq->type.is_consumable) {
 					res = find_resource(ninfo->res, resreq->def);
@@ -1678,21 +1699,18 @@ update_node_on_end(node_info *ninfo, resource_resv *resresv)
 							schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE,
 								LOG_DEBUG, ninfo->name, logbuf);
 						}
+						if (res->def == getallres(RES_NCPUS)) {
+							ninfo->loadave -= resreq->amount;
+							if (ninfo->loadave < 0)
+								ninfo->loadave = 0;
+
+							if (!ninfo->lic_lock)
+								ninfo->server->flt_lic += resreq->amount;
+						}
 					}
 				}
 				resreq = resreq->next;
 			}
-
-			ncpus = find_resource_req(ns->resreq, getallres(RES_NCPUS));
-			if (ncpus != NULL) {
-				ninfo->loadave -= ncpus->amount;
-				if (ninfo->loadave < 0)
-					ninfo->loadave = 0;
-
-				if (!ninfo->lic_lock)
-					ninfo->server->flt_lic += ncpus->amount;
-			}
-
 			/* no soft limits on nodes... just hard limits */
 			if (ninfo->has_hard_limit && resresv->is_job) {
 				cts = find_counts(ninfo->group_counts, resresv->group);
@@ -5391,7 +5409,7 @@ check_node_array_eligibility(node_info **ninfo_arr, resource_resv *resresv, plac
 			}
 		}
 	}
-	/* If the last node we checked was eligible, err -> error_code will be 0.
+	/* If the last node we checked was eligible, err->error_code will be 0.
 	 * If a node was previously ineligible, we want to make note of that and
 	 * return that err
 	 */

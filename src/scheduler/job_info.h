@@ -198,7 +198,7 @@ int update_array_on_run(job_info *array, job_info *subjob);
 /*
  *	dup_job_info - duplicate the information in a job_info structure
  */
-job_info *dup_job_info(job_info *ojinfo, queue_info *nqinfo);
+job_info *dup_job_info(job_info *ojinfo, queue_info *nqinfo, server_info * nsinfo);
 
 /*
  *	is_job_array - is a job name a job array range
@@ -375,6 +375,24 @@ resdef **create_resresv_sets_resdef(status *policy, server_info *sinfo);
 
 /* Create an array of resresv_sets based on sinfo*/
 resresv_set **create_resresv_sets(status *policy, server_info *sinfo);
+/*
+ * This function creates a string and update resources_released job 
+ *  attribute.
+ *  The string created will be similar to how exec_vnode is presented
+ *  example: (node1:ncpus=8)+(node2:ncpus=8)
+ */
+char *create_res_released( status *policy, resource_resv *pjob);
+
+/*
+ *This function populates resreleased job structure for a particular job.
+ */
+nspec **create_res_released_array( status *policy, resource_resv *resresv);
+
+/*
+ * @brief create a resource_rel array for a job by accumulating all of the RASSN
+ *	    resources in a resources_released nspec array.
+ */
+resource_req *create_resreq_rel_list(status *policy, nspec **res_released);
 
 #ifdef	__cplusplus
 }

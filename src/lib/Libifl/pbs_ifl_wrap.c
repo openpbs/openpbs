@@ -7339,6 +7339,9 @@ SWIG_init(void) {
   SWIG_Python_SetConstant(d, "ATTR_NODE_TopologyInfo",SWIG_FromCharPtr("topology_info"));
   SWIG_Python_SetConstant(d, "ATTR_RESC_TYPE",SWIG_FromCharPtr("type"));
   SWIG_Python_SetConstant(d, "ATTR_RESC_FLAG",SWIG_FromCharPtr("flag"));
+  SWIG_Python_SetConstant(d, "ATTR_restrict_res_to_release_on_suspend",SWIG_FromCharPtr("restrict_res_to_release_on_suspend"));
+  SWIG_Python_SetConstant(d, "ATTR_released",SWIG_FromCharPtr("resources_released"));
+  SWIG_Python_SetConstant(d, "ATTR_rel_list",SWIG_FromCharPtr("resource_released_list"));
   SWIG_Python_SetConstant(d, "CHECKPOINT_UNSPECIFIED",SWIG_FromCharPtr("u"));
   SWIG_Python_SetConstant(d, "NO_HOLD",SWIG_FromCharPtr("n"));
   SWIG_Python_SetConstant(d, "NO_JOIN",SWIG_FromCharPtr("n"));

@@ -681,6 +681,21 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 			return;
 		}
 
+		if (((pjob->ji_qs.ji_substate == JOB_SUBSTATE_SUSPEND) ||
+			(pjob->ji_qs.ji_substate == JOB_SUBSTATE_SCHSUSP)) &&
+			(pjob->ji_wattr[(int) JOB_ATR_resc_released].at_flags & ATR_VFLAG_SET)) {
+			set_resc_assigned(pjob, 0, INCR);
+			job_attr_def[(int) JOB_ATR_resc_released].at_free(
+					&pjob->ji_wattr[(int) JOB_ATR_resc_released]);
+			pjob->ji_wattr[(int) JOB_ATR_resc_released].at_flags &= ~ATR_VFLAG_SET;
+			if (pjob->ji_wattr[(int) JOB_ATR_resc_released_list].at_flags & ATR_VFLAG_SET) {
+				job_attr_def[(int) JOB_ATR_resc_released_list].at_free(
+						&pjob->ji_wattr[(int) JOB_ATR_resc_released_list]);
+				pjob->ji_wattr[(int) JOB_ATR_resc_released_list].at_flags &= ~ATR_VFLAG_SET;
+			}
+		}
+
+
 		if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_PROVISION) {
 			if (forcedel) {
 				/*

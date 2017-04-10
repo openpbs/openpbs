@@ -76,6 +76,7 @@
 static void post_signal_req(struct work_task *);
 static void req_signaljob2(struct batch_request *preq, job *pjob);
 void set_admin_suspend(job *pjob, int set_remove_nstate);
+int create_resreleased (job *pjob);
 
 /* Global Data Items: */
 
@@ -447,11 +448,19 @@ post_signal_req(struct work_task *pwt)
 					ss = JOB_SUBSTATE_SCHSUSP;
 				else
 					ss = JOB_SUBSTATE_SUSPEND;
+				if ((server.sv_attr[(int) SVR_ATR_restrict_res_to_release_on_suspend].at_flags & ATR_VFLAG_SET)) {
+					if (create_resreleased(pjob) == 1) {
+						sprintf(log_buffer, "Unable to create resource released list");
+						log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
+							  pjob->ji_qs.ji_jobid, log_buffer);
+					}
+				}
 				pjob->ji_qs.ji_svrflags |= JOB_SVFLG_Suspend;
-				rel_resc(pjob);  /* release resc and nodes */
 				if(strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_ADMIN_SUSPEND) == 0)
 					set_admin_suspend(pjob, 1);
+				/* update all released resources */
 				svr_setjobstate(pjob, JOB_STATE_RUNNING, ss);
+				rel_resc(pjob); /* release resc and nodes */
 			}
 
 		} else if (resume && pjob && (pjob->ji_qs.ji_state == JOB_STATE_RUNNING)) {
@@ -459,12 +468,103 @@ post_signal_req(struct work_task *pwt)
 			pjob->ji_qs.ji_svrflags &= ~JOB_SVFLG_Suspend;
 			if(strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_ADMIN_RESUME) == 0)
 				set_admin_suspend(pjob, 0);
+
+			job_attr_def[(int) JOB_ATR_resc_released].at_free(&pjob->ji_wattr[(int) JOB_ATR_resc_released]);
+			pjob->ji_wattr[(int) JOB_ATR_resc_released].at_flags &= ~ATR_VFLAG_SET;
+
+			job_attr_def[(int) JOB_ATR_resc_released_list].at_free(&pjob->ji_wattr[(int) JOB_ATR_resc_released_list]);
+			pjob->ji_wattr[(int) JOB_ATR_resc_released_list].at_flags &= ~ATR_VFLAG_SET;
+
 			svr_setjobstate(pjob, JOB_STATE_RUNNING, JOB_SUBSTATE_RUNNING);
 		}
 
 		reply_ack(preq);
 	}
 }
+
+
+/**
+ * @brief  Create the job's resources_released and Resource_Rel_List 
+ *	    attributes based on its exec_vnode 
+ * @param[in/out] pjob - Job structure
+ *
+ * @return int
+ * @retval 1 - In case of failure
+ * @retval 0 - In case of success
+ */
+int
+create_resreleased(job *pjob)
+{
+	char *chunk;
+	int j;
+	int nelem;
+	char *noden;
+	int rc;
+	struct key_value_pair *pkvp;
+	char *resreleased;
+	attribute reqrel;
+	char buf[1024] = {0};
+
+	attribute *pexech = &pjob->ji_wattr[(int) JOB_ATR_exec_vnode];
+	resreleased = (char *) calloc(1, strlen(pexech->at_val.at_str));
+	if (resreleased == NULL)
+		return 1;
+	resreleased[0] = '\0';
+
+	chunk = parse_plus_spec(pexech->at_val.at_str, &rc);
+	if (rc != 0) {
+		free(resreleased);
+		return 1;
+	}
+	while(chunk) {
+		strcat(resreleased, "(");
+		if (parse_node_resc(chunk, &noden, &nelem, &pkvp) == 0) {
+			strcat(resreleased, noden);
+			if (server.sv_attr[SVR_ATR_restrict_res_to_release_on_suspend].at_flags & ATR_VFLAG_SET) {
+				for (j = 0; j < nelem; ++j) {
+					int k;
+					int np;
+					np = server.sv_attr[SVR_ATR_restrict_res_to_release_on_suspend].at_val.at_arst->as_usedptr;
+					for (k = 0; np != 0 && k < np; k++) {
+						char *res;
+						res = server.sv_attr[SVR_ATR_restrict_res_to_release_on_suspend].at_val.at_arst->as_string[k];
+						if ((res != NULL) && (strcmp(pkvp[j].kv_keyw,res) == 0)) {
+							sprintf(buf, ":%s=%s", res, pkvp[j].kv_val);
+							strcat(resreleased, buf);
+							break;
+						}
+					}
+				}
+			}
+			else {
+				free(resreleased);
+				return 1;
+			}
+		} else {
+			free(resreleased);
+			return 1;
+		}
+		strcat(resreleased, ")");
+		chunk = parse_plus_spec(NULL, &rc);
+		if (rc != 0) {
+			free(resreleased);
+			return 1;
+		}
+		if (chunk)
+			strcat(resreleased, "+");
+	}
+	if (resreleased[0] != '\0') {
+		clear_attr(&reqrel, &job_attr_def[(int) JOB_ATR_resc_released]);
+		job_attr_def[(int) JOB_ATR_resc_released].at_decode(&reqrel, NULL, NULL, resreleased);
+		job_attr_def[(int) JOB_ATR_resc_released].at_set(&pjob->ji_wattr[(int) JOB_ATR_resc_released], &reqrel, SET);
+		job_attr_def[(int) JOB_ATR_resc_released].at_free(&reqrel);
+		pjob->ji_modified = 1;
+	}
+	free(resreleased);
+	return 0;
+}
+
+
 /**
  *	@brief Handle admin-suspend/admin-resume on the job and nodes
  *		set or remove the JOB_SVFLG_AdmSuspd flag on the job

@@ -3784,6 +3784,17 @@ mgr_resource_delete(struct batch_request *preq)
 	if (rc == 1)
 		return;
 
+	/* check if resource is set in restrict_res_to_release_on_suspend */
+	if (server.sv_attr[(int)SVR_ATR_restrict_res_to_release_on_suspend].at_flags & ATR_VFLAG_SET) {
+		for (i = 0; i < server.sv_attr[(int)SVR_ATR_restrict_res_to_release_on_suspend].at_val.at_arst->as_usedptr; i++ ) {
+			if (strcmp(server.sv_attr[(int)SVR_ATR_restrict_res_to_release_on_suspend].at_val.at_arst->as_string[i],
+				    prdef->rs_name) == 0) {
+				reply_text(preq, PBSE_RESCBUSY, "Resource busy on server");
+				return;
+			}
+		}
+	}
+
 	rc = update_resource_def_file(resc, RESDEF_DELETE, prdef->rs_type, prdef->rs_flags);
 	if (rc != 0) {
 		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_RESC, LOG_ERR, msg_daemonname, "Error updating resource definitions");

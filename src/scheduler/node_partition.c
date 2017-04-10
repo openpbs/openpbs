@@ -764,7 +764,7 @@ find_np_cache(np_cache **npc_arr,
  * @param[in]	policy	-	policy info
  * @param[in,out]	pnpc_arr	-	pointer to np_cache array -- if *npc_arr == NULL
  *		 	           				a np_cache will be created and it will be set
- *			           				Example: you pass &(sinfo -> npc_arr)
+ *			           				Example: you pass &(sinfo->npc_arr)
  * @param[in]	resnames	-	the names used to create the pool of node parts
  * @param[in]	ninfo_arr	-	the node array used to create the pool of node_parts
  * @param[in]	sort_func	-	sort function to sort placement sets.
@@ -891,6 +891,9 @@ resresv_can_fit_nodepart(status *policy, node_partition *np, resource_resv *resr
 	schd_error *prev_err = NULL;
 	int can_fit = 1;
 	int pass_flags;
+	resource_req *req;
+	selspec *spec = NULL;
+	place *pl = NULL;
 
 
 	if (policy == NULL || np == NULL || resresv == NULL || err == NULL)
@@ -943,7 +946,11 @@ resresv_can_fit_nodepart(status *policy, node_partition *np, resource_resv *resr
 	 * know these came from the nodes so should be checked on the nodes.  Other
 	 * resources are for server/queue and so we ignore them here
 	 */
-	if (check_avail_resources(np->res, resresv->resreq,
+	if (resresv->is_job && resresv->job != NULL && resresv->job->resreq_rel != NULL)
+		req = resresv->job->resreq_rel;
+	else
+		req = resresv->resreq;
+	if (check_avail_resources(np->res, req,
 				pass_flags, policy->resdef_to_check_rassn,
 				INSUFFICIENT_RESOURCE, err) == 0) {
 		if ((flags & RETURN_ALL_ERR)) {
@@ -960,8 +967,15 @@ resresv_can_fit_nodepart(status *policy, node_partition *np, resource_resv *resr
 	 *	      on nodes regardless if they are in the resources line.  This is a
 	 *	      grandfathering in from the old nodespec properties.
 	 */
-	for (i = 0; resresv->select->chunks[i] != NULL; i++) {
-		if (check_avail_resources(np->res, resresv->select->chunks[i]->req,
+	/* The call to get_job_spec is needed here because we are checking for resources on each
+	 * chunk. For jobs that already have execselect specification defined we only need to
+	 * traverse through those chunks.
+	 * get_job_spec sets the spec value to execselect/select depending on whether execselect
+	 * was set or not.
+	 */
+	get_job_spec(resresv, &spec, &pl);
+	for (i = 0; spec->chunks[i] != NULL; i++) {
+		if (check_avail_resources(np->res, spec->chunks[i]->req,
 					pass_flags | CHECK_ALL_BOOLS, policy->resdef_to_check,
 					INSUFFICIENT_RESOURCE, err) == 0) {
 			if ((flags & RETURN_ALL_ERR)) {

@@ -269,6 +269,8 @@ enum job_atr {
 	JOB_ATR_run_version,
 	JOB_ATR_GUI,
 	JOB_ATR_topjob_ineligible,
+	JOB_ATR_resc_released,
+	JOB_ATR_resc_released_list,
 #include "site_job_attr_enum.h"
 
 	JOB_ATR_UNKN,		/* the special "unknown" type		  */
@@ -872,6 +874,7 @@ task_find	(job		*pjob,
  * 0x100000 bit set. Refer SPM229744
  */
 #define JOB_SVFLG_AdmSuspd 0x200000 /* Job is suspended for maintenance */
+
 
 /*
  * Related defines

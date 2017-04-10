@@ -71,7 +71,7 @@ void free_queues(queue_info **qinfo, char free_jobs_too);
  *      update_queue_on_run - update the information kept in a qinfo structure
  *                              when a job is run
  */
-void update_queue_on_run(queue_info *qinfo, resource_resv *resresv);
+void update_queue_on_run(queue_info *qinfo, resource_resv *resresv, char *job_state);
 
 /*
  *      free_queue_info - free space used by a queue info struct

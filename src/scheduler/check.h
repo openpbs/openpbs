@@ -239,6 +239,12 @@ schd_resource *unset_str_res(void);
  */
 int find_correct_nodes(status *policy, server_info *sinfo, queue_info *qinfo, resource_resv *resresv, node_info ***ninfo_arr, node_partition ***nodepart);
 
+/*
+ *	get_job_spec - gets the correct select and placement specification
+ *
+ *	returns void
+ */
+void get_job_spec( resource_resv *resresv, selspec **spec, place **pl );
 #ifdef	__cplusplus
 }
 #endif

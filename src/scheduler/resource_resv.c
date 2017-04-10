@@ -389,7 +389,7 @@ dup_resource_resv(resource_resv *oresresv,
 
 	if (oresresv->is_job) {
 		nresresv->is_job = 1;
-		nresresv->job = dup_job_info(oresresv->job, nqinfo);
+		nresresv->job = dup_job_info(oresresv->job, nqinfo, nsinfo);
 		if (nresresv->job != NULL) {
 			if (nresresv->job->resv !=NULL) {
 #ifdef NAS /* localmod 049 */

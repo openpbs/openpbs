@@ -2326,8 +2326,7 @@ stat_update(int stream)
 
 				pjob->ji_wattr[(int)JOB_ATR_session_id].at_flags &= ~ATR_VFLAG_MODIFY;
 				for (i=0; i<JOB_ATR_LAST; ++i) {
-					if ((i != JOB_ATR_resc_used) &&
-						(pjob->ji_wattr[i].at_flags & ATR_VFLAG_MODIFY)) {
+					if (pjob->ji_wattr[i].at_flags & ATR_VFLAG_MODIFY) {
 						job_save(pjob, SAVEJOB_FULL);
 						break;
 					}
@@ -8005,5 +8004,57 @@ req_momrestart(struct batch_request *preq)
 		INUSE_NEEDS_HELLO_PING | INUSE_UNKNOWN;
 	reply_ack(preq);
 	ping_a_mom(pmom, 1);
+}
+/**
+ * @brief update_resource_rel - This function creates JOB_ATR_resc_released_list job attribute
+ *		    and add RASSN resources reported in ATTR_released attribute to it.
+ * @param[out] pjob - job structure
+ * @param[in] attrib - attribute which contains list of resources to be released
+ * @param[in] op - kind of operation to be performed while setting the resource value.
+ *
+ * @return int
+ * @retval 0  - SUCCESS
+ * @retval > 0 - FAILURE
+ */
+int update_resources_rel(job *pjob, attribute *attrib, enum batch_op op)
+{
+	char * chunk;
+	int j;
+	int rc;
+	int nelem;
+	char *noden;
+	struct key_value_pair *pkvp;
+	resource_def *prdef;
+	resource *presc;
+	attribute tmpattr;
+
+	if (attrib == NULL || pjob == NULL)
+		return 1;
+
+	chunk = parse_plus_spec(attrib->at_val.at_str, &rc);
+	if (rc != 0)
+		return 1;
+	while(chunk) {
+		if (parse_node_resc(chunk, &noden, &nelem, &pkvp) == 0) {
+			for (j = 0; j < nelem; j++) {
+				prdef = find_resc_def(svr_resc_def, pkvp[j].kv_keyw, svr_resc_size);
+				if (prdef == NULL)
+					return 1;
+				if (prdef -> rs_flags & ATR_DFLAG_RASSN) {
+					presc = add_resource_entry(&pjob->ji_wattr[(int) JOB_ATR_resc_released_list], prdef);
+					if (presc == NULL)
+						return 1;
+					if ((rc = prdef->rs_decode(&tmpattr, ATTR_rel_list, prdef->rs_name, pkvp[j].kv_val)) != 0)
+						return rc;
+					prdef->rs_set(&presc->rs_value, &tmpattr, op);
+				}
+			}
+			chunk = parse_plus_spec(NULL, &rc);
+			if (rc != 0)
+				return 1;
+		} else
+			return 1;
+	}
+	return 0;
 }
 

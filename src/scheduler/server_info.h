@@ -131,7 +131,7 @@ void free_server(server_info *sinfo, int free_queues_too);
  */
 void
 update_server_on_run(status *policy, server_info *sinfo, queue_info *qinfo,
-	resource_resv *resresv);
+	resource_resv *resresv, char *job_state);
 
 /*
  *

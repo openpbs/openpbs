@@ -599,6 +599,14 @@ query_server_info(status *pol, struct batch_status *server)
 			if (count == 0)
 				sinfo->policy->backfill = 0;
 		}
+		else if(!strcmp(attrp->name, ATTR_restrict_res_to_release_on_suspend)) {
+			char **resl;
+			resl = break_comma_list(attrp->value);
+			if(resl != NULL) {
+				policy->rel_on_susp = resstr_to_resdef(resl);
+				free_string_array(resl);
+			}
+		}
 
 		attrp = attrp->next;
 	}
@@ -1507,6 +1515,10 @@ free_server(server_info *sinfo, int free_objs_too)
  * @param[in]	qinfo 	- 	queue_info the job is in
  *							(if resresv is a job)
  * @param[in]	resresv - 	resource_resv that was run
+ * @param[in]  job_state -	the old state of a job if resresv is a job
+ *				If the old_state is found to be suspended
+ *				then only resources that were released
+ *				during suspension will be accounted.
  *
  * @return	void
  *
@@ -1514,13 +1526,15 @@ free_server(server_info *sinfo, int free_objs_too)
  */
 void
 update_server_on_run(status *policy, server_info *sinfo,
-	queue_info *qinfo, resource_resv *resresv)
+	queue_info *qinfo, resource_resv *resresv, char * job_state)
 {
-	resource_req *resreq;		/* used to cycle through resources to update */
+	resource_req *req;		/* used to cycle through resources to update */
 	schd_resource *res;		/* used in finding a resource to update */
 	counts *cts;			/* used in updating project/group/user counts */
 	int num_unassoc;		/* number of unassociated nodes */
-	counts *allcts;		/* used in updating counts for all jobs */
+	counts *allcts;			/* used in updating counts for all jobs */
+	int i;
+	resource_req *used;		/* resources used by suspended job */
 
 	if (sinfo == NULL || resresv == NULL)
 		return;
@@ -1534,22 +1548,24 @@ update_server_on_run(status *policy, server_info *sinfo,
 
 
 	/*
-	 * Update the server level resources
+	 * Update the server level resources 
 	 *   -- if a job is in a reservation, the resources have already been
 	 *      accounted for and assigned to the reservation.  We don't want to
 	 *      double count them
 	 */
-	if (resresv->is_adv_resv || qinfo->resv ==NULL) {
-		resreq = resresv->resreq;
-
-		while (resreq != NULL) {
-			if (resreq->type.is_consumable) {
-				res = find_resource(sinfo->res, resreq->def);
+	if (resresv->is_adv_resv || (qinfo != NULL && qinfo->resv == NULL)) {
+		if (resresv->is_job && (job_state != NULL) && (*job_state == 'S'))
+			req = resresv->job->resreq_rel;
+		else
+			req = resresv->resreq;
+		while (req != NULL) {
+			if (req->type.is_consumable) {
+				res = find_resource(sinfo->res, req->def);
 
 				if (res)
-					res->assigned += resreq->amount;
+					res->assigned += req->amount;
 			}
-			resreq = resreq->next;
+			req = req->next;
 		}
 	}
 
@@ -1653,6 +1669,10 @@ update_server_on_run(status *policy, server_info *sinfo,
  * @param[in]	sinfo	- server_info to update
  * @param[in]	qinfo 	- queue_info the job is in
  * @param[in]	resresv - resource_resv that finished running
+ * @param[in]  job_state -	the old state of a job if resresv is a job
+ *				If the old_state is found to be suspended
+ *				then only resources that were released
+ *				during suspension will be accounted.
  *
  * @return	void
  *
@@ -1672,12 +1692,12 @@ update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
 
 	if (sinfo == NULL ||  resresv == NULL)
 		return;
-
-	if (qinfo == NULL && resresv->is_job)
-		return;
-
-	if (resresv->is_job && (resresv->job == NULL || job_state == NULL))
-		return;
+	if (resresv->is_job) {
+		if (resresv->job == NULL)
+			return;
+		if (qinfo == NULL)
+			return;
+	}
 
 	if (resresv->is_job) {
 		if (resresv->job->is_running) {
@@ -1696,7 +1716,11 @@ update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
 	 *	the server
 	 */
 	if (resresv->is_adv_resv || (qinfo != NULL && qinfo->resv ==NULL)) {
-		req = resresv->resreq;
+
+		if (resresv->is_job && (job_state != NULL) && (*job_state == 'S'))
+			req = resresv->job->resreq_rel;
+		else
+			req = resresv->resreq;
 
 		while (req != NULL) {
 			res = find_resource(sinfo->res, req->def);
@@ -2821,7 +2845,7 @@ update_universe_on_end(status *policy, resource_resv *resresv, char *job_state)
 
 	if (resresv->ninfo_arr != NULL)
 		for (i = 0; resresv->ninfo_arr[i] != NULL; i++)
-			update_node_on_end(resresv->ninfo_arr[i], resresv);
+			update_node_on_end(resresv->ninfo_arr[i], resresv, job_state);
 
 
 	update_server_on_end(policy, sinfo, qinfo, resresv, job_state);
@@ -3223,6 +3247,7 @@ dup_status(status *ost)
 	nst->resdef_to_check_rassn = copy_resdef_array(ost->resdef_to_check_rassn);
 	nst->resdef_to_check_noncons = copy_resdef_array(ost->resdef_to_check_noncons);
 	nst->equiv_class_resdef = copy_resdef_array(ost->equiv_class_resdef);
+	nst->rel_on_susp = copy_resdef_array(ost->rel_on_susp);
 
 
 	return nst;
@@ -3247,6 +3272,8 @@ free_status(status *st)
 		free(st->resdef_to_check_rassn);
 	if (st->resdef_to_check_noncons != NULL)
 		free(st->resdef_to_check_noncons);
+	if (st->rel_on_susp != NULL)
+		free(st->rel_on_susp);
 	free(st);
 }
 

@@ -137,6 +137,8 @@ extern "C" {
 #define ATTR_name	"Job_Name"
 #define ATTR_owner	"Job_Owner"
 #define ATTR_used	"resources_used"
+#define ATTR_released	"resources_released"
+#define ATTR_rel_list	"resource_released_list"
 #define ATTR_state	"job_state"
 #define ATTR_queue	"queue"
 #define ATTR_server	"server"

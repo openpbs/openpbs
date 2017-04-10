@@ -136,6 +136,25 @@ force_reque(job *pjob)
 	pjob->ji_momhandle = -1;
 	pjob->ji_mom_prot = PROT_INVALID;
 
+	if ((pjob->ji_wattr[(int) JOB_ATR_resc_released].at_flags & ATR_VFLAG_SET)) {
+		/* If JOB_ATR_resc_released attribute is set and we are trying to rerun a job
+		 * then we need to reassign resources first because
+		 * when we suspend a job we don't decrement all the resources.
+		 * So we need to set partially released resources
+		 * back again to release all other resources
+		 */
+		set_resc_assigned(pjob, 0, INCR);
+		job_attr_def[(int) JOB_ATR_resc_released].at_free(
+			&pjob->ji_wattr[(int) JOB_ATR_resc_released]);
+		pjob->ji_wattr[(int) JOB_ATR_resc_released].at_flags &= ~ATR_VFLAG_SET;
+		if (pjob->ji_wattr[(int) JOB_ATR_resc_released_list].at_flags & ATR_VFLAG_SET) {
+			job_attr_def[(int) JOB_ATR_resc_released_list].at_free(
+				&pjob->ji_wattr[(int) JOB_ATR_resc_released_list]);
+			pjob->ji_wattr[(int) JOB_ATR_resc_released_list].at_flags &= ~ATR_VFLAG_SET;
+		}
+
+	}
+
 	/* simulate rerun: free nodes, clear checkpoint flag, and */
 	/* clear exec_vnode string				  */
 

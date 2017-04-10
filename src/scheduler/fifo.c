@@ -1365,6 +1365,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 	timed_event *te;			/* used to create timed events */
 	resource_resv *rr;
 	char *err_txt = NULL;
+	char old_state = 0;
 
 	if (resresv == NULL || sinfo == NULL)
 		ret = -1;
@@ -1576,7 +1577,8 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 				schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB,
 					LOG_INFO, rr->name, "Job run");
 		}
-
+		if ((resresv->is_job) && (resresv->job->is_suspended ==1))
+			old_state = 'S';
 
 		update_resresv_on_run(rr, ns);
 
@@ -1597,7 +1599,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 
 		if (ns != NULL) {
 			for (i = 0; ns[i] != NULL; i++) {
-				update_node_on_run(ns[i], rr);
+				update_node_on_run(ns[i], rr, &old_state);
 				/* if the node is being provisioned, it's brought down in
 				 * update_node_on_run().  We need to add an event in the calendar to
 				 * bring it back up.
@@ -1611,9 +1613,9 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 			}
 		}
 
-		update_queue_on_run(qinfo, rr);
+		update_queue_on_run(qinfo, rr, &old_state);
 		update_all_nodepart(policy, sinfo, rr);
-		update_server_on_run(policy, sinfo, qinfo, rr);
+		update_server_on_run(policy, sinfo, qinfo, rr, &old_state);
 
 		/* update_preemption_on_run() must be called post queue/server update */
 		update_preemption_on_run(sinfo, rr);

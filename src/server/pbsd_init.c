@@ -233,6 +233,7 @@ static void  stop_me(int);
 static int   Rmv_if_resv_not_possible(job *);
 static int   attach_queue_to_reservation(resc_resv *);
 static void  call_log_license(struct work_task *);
+extern int create_resreleased(job *pjob);
 
 /* private data */
 
@@ -1524,6 +1525,7 @@ reassign_resc(job *pjob)
 {
 	int   set_exec_vnode;
 	int   rc;
+	int unset_resc_released = 0;
 	char *hoststr  = pjob->ji_wattr[(int)JOB_ATR_exec_host].at_val.at_str;
 	char *hoststr2 = pjob->ji_wattr[(int)JOB_ATR_exec_host2].at_val.at_str;
 	char *vnodein;
@@ -1578,7 +1580,30 @@ reassign_resc(job *pjob)
 			hoststr);
 		pjob->ji_modified = 1;
 	}
+	if ( (pjob->ji_qs.ji_substate == JOB_SUBSTATE_SCHSUSP || pjob->ji_qs.ji_substate == JOB_SUBSTATE_SUSPEND) && 
+		(pjob->ji_wattr[(int) JOB_ATR_resc_released].at_flags & ATR_VFLAG_SET) ) {
+		/*
+		 * Allocating resources back to a suspended job is tricky.  
+		 * Suspended jobs only hold part of their resources 
+		 * If set_resc_assigned() is called by a job with the JOB_ATR_resc_released set, 
+		 * only some of the resources will be acted upon.  Since this 
+		 * is a fresh job from disk, we need to allocate all of
+		 * its resources to it before we partially release some.
+		 * We do this by temporarily unsetting JOB_ATR_resc_released attribute while
+		 * restoring the job's resources.  This will allocate all of the 
+		 * requested resources to the job.  We add the flag back to the job 
+		 * and then decrement the resources released when the job was originally suspended.
+		 */
+		pjob->ji_wattr[(int) JOB_ATR_resc_released].at_flags &= ~ATR_VFLAG_SET;
+		unset_resc_released = 1;
+	}
+
 	set_resc_assigned((void *)pjob, 0, INCR);
+
+	if (unset_resc_released == 1) {
+		pjob->ji_wattr[(int) JOB_ATR_resc_released].at_flags |= ATR_VFLAG_SET;
+		set_resc_assigned((void *) pjob, 0, DECR);
+	}
 	return;
 }
 
@@ -1729,7 +1754,10 @@ pbsd_init_job(job *pjob, int type)
 			case JOB_SUBSTATE_BEGUN:
 				if (pbsd_init_reque(pjob, KEEP_STATE) == -1)
 					return -1;
-				if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_RUNNING) {
+				if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_RUNNING ||
+					((pjob->ji_wattr[(int) JOB_ATR_resc_released].at_flags & ATR_VFLAG_SET)
+					 && (pjob->ji_qs.ji_substate ==  JOB_SUBSTATE_SCHSUSP ||
+					pjob->ji_qs.ji_substate == JOB_SUBSTATE_SUSPEND))) {
 
 					reassign_resc(pjob);
 					if (type == RECOV_HOT)

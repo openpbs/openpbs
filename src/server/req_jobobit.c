@@ -1344,7 +1344,26 @@ on_job_rerun(struct work_task *ptask)
 					free(pjob->ji_acctrec);	/* logged, so clear it */
 					pjob->ji_acctrec = NULL;
 				}
+				if ((pjob->ji_wattr[(int) JOB_ATR_resc_released].at_flags & ATR_VFLAG_SET)) {
+					/* If JOB_ATR_resc_released attribute is set and we are trying
+					 * to rerun a job then we need to reassign resources first because
+					 * when we suspend a job we don't decrement all of the resources.
+					 * So we need to set partially released resources
+					 * back again to release all other resources
+					 */
+					set_resc_assigned(pjob, 0, INCR);
+					job_attr_def[(int) JOB_ATR_resc_released].at_free(
+						&pjob->ji_wattr[(int) JOB_ATR_resc_released]);
+					pjob->ji_wattr[(int) JOB_ATR_resc_released].at_flags &= ~ATR_VFLAG_SET;
+					if (pjob->ji_wattr[(int) JOB_ATR_resc_released_list].at_flags & ATR_VFLAG_SET) {
+						job_attr_def[(int) JOB_ATR_resc_released_list].at_free(
+							&pjob->ji_wattr[(int) JOB_ATR_resc_released_list]);
+						pjob->ji_wattr[(int) JOB_ATR_resc_released_list].at_flags &= ~ATR_VFLAG_SET;
+					}
+
+				}
 				rel_resc(pjob);		/* free resc assigned to job */
+
 
 				/* Now  if not a Sub Job, then re-queue the job */
 

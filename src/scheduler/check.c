@@ -724,6 +724,7 @@ is_ok_to_run(status *policy, int pbs_sd, server_info *sinfo,
 	node_partition *allpart;	/* all partition to use (queue's or servers) */
 	schd_error *prev_err = NULL;
 	schd_error *err;
+	resource_req *resreq = NULL;
 
 
 	if (sinfo == NULL || resresv == NULL || perr == NULL)
@@ -980,8 +981,14 @@ is_ok_to_run(status *policy, int pbs_sd, server_info *sinfo,
 #ifdef NAS /* localmod 036 */
 		}
 #endif /* localmod 036 */
-
-		if (check_avail_resources(res, resresv->resreq,
+		/* If job already has a list of resources released, use that list
+		 * check for available resources
+		 */
+		if ((resresv->job != NULL) && (resresv->job->resreq_rel != NULL))
+			resreq = resresv->job->resreq_rel;
+		else
+			resreq = resresv->resreq;
+		if (check_avail_resources(res, resreq,
 			flags, policy->resdef_to_check, INSUFFICIENT_QUEUE_RESOURCE, err) == 0) {
 			struct schd_error *toterr;
 			toterr = new_schd_error();
@@ -991,7 +998,7 @@ is_ok_to_run(status *policy, int pbs_sd, server_info *sinfo,
 				return NULL;
 			}
 			/* We can't fit now, lets see if we can ever fit */
-			if (check_avail_resources(res, resresv->resreq,
+			if (check_avail_resources(res, resreq,
 				flags|COMPARE_TOTAL, policy->resdef_to_check, INSUFFICIENT_QUEUE_RESOURCE, toterr) == 0) {
 				move_schd_error(err , toterr);
 				err->status_code = NEVER_RUN;
@@ -1016,8 +1023,11 @@ is_ok_to_run(status *policy, int pbs_sd, server_info *sinfo,
 	if (resresv->is_adv_resv ||
 	(resresv->is_job && resresv->job->resv == NULL)) {
 		res = simulate_resmin(sinfo->res, endtime, sinfo->calendar, NULL, resresv);
-
-		if (check_avail_resources(res, resresv->resreq, flags,
+		if ((resresv->job != NULL) && (resresv->job->resreq_rel != NULL))
+			resreq = resresv->job->resreq_rel;
+		else
+			resreq = resresv->resreq;
+		if (check_avail_resources(res, resreq, flags,
 					  policy->resdef_to_check, INSUFFICIENT_SERVER_RESOURCE, err) == 0) {
 			struct schd_error *toterr;
 			toterr = new_schd_error();
@@ -1027,7 +1037,7 @@ is_ok_to_run(status *policy, int pbs_sd, server_info *sinfo,
 				return NULL;
 			}
 			/* We can't fit now, lets see if we can ever fit */
-			if (check_avail_resources(res, resresv->resreq,
+			if (check_avail_resources(res, resreq,
 						  flags | COMPARE_TOTAL, policy->resdef_to_check,
 						  INSUFFICIENT_SERVER_RESOURCE, toterr) == 0) {
 				toterr->status_code = NEVER_RUN;
@@ -1493,8 +1503,8 @@ check_nodes(status *policy, resource_resv *resresv, node_info **ninfo_arr,
 	node_partition **nodepart, unsigned int flags, schd_error *err)
 {
 	nspec **nspec_arr = NULL;
-	selspec *spec;
-	place *pl;
+	selspec *spec = NULL;
+	place *pl = NULL;
 	place place_spec;
 
 	int rc;
@@ -1505,25 +1515,7 @@ check_nodes(status *policy, resource_resv *resresv, node_info **ninfo_arr,
 		return NULL;
 	}
 
-	if (resresv->is_job && resresv->job !=NULL) {
-		if (resresv->job->execselect !=NULL) {
-			spec = resresv->job->execselect;
-			place_spec = *resresv->place_spec;
-
-			/* Placement was handled the first time.  Don't let it get in the way */
-			place_spec.scatter = place_spec.vscatter = place_spec.pack = 0;
-			place_spec.free = 1;
-			pl = &place_spec;
-		}
-		else {
-			pl = resresv->place_spec;
-			spec = resresv->select;
-		}
-	}
-	else {
-		spec = resresv->select;
-		pl = resresv->place_spec;
-	}
+	get_job_spec(resresv, &spec, &pl);
 
 	err->status_code = NOT_RUN;
 	rc = eval_selspec(policy, spec, pl, ninfo_arr, nodepart, resresv,
@@ -1975,3 +1967,36 @@ find_correct_nodes(status *policy, server_info *sinfo, queue_info *qinfo, resour
 
 	return 1;
 }
+
+/**
+ * @brief get_job_spec - this function returns the correct value of select and
+ *	    place to be used for node searching.
+ * @param[in]  *resresv resources reservation object
+ * @param[out] **spec output select specification
+ * @param[out] **pl  output placement specification
+ *
+ * @par MT-Safe: No
+ * @return void
+ */
+void get_job_spec(resource_resv *resresv, selspec **spec, place **pl)
+{
+	static place place_spec;
+	if (resresv->is_job && resresv->job != NULL) {
+		if (resresv->job->execselect != NULL) {
+			*spec = resresv->job->execselect;
+			place_spec = *resresv->place_spec;
+
+			/* Placement was handled the first time.  Don't let it get in the way */
+			place_spec.scatter = place_spec.vscatter = place_spec.pack = 0;
+			place_spec.free = 1;
+			*pl = &place_spec;
+		} else {
+			*pl = resresv->place_spec;
+			*spec = resresv->select;
+		}
+	} else {
+		*spec = resresv->select;
+		*pl = resresv->place_spec;
+	}
+}
+

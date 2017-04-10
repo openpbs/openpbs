@@ -664,6 +664,12 @@ action_jobscript_max_size(attribute *pattr, void *pobj, int actmode) {
 }
 
 int
+action_check_res_to_release(attribute *pattr, void *pobj, int actmode) {
+
+	return PBSE_NONE;
+}
+
+int
 queuestart_action(attribute *pattr, void *pobject, int actmode)
 {
 	return 0;

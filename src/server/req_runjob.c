@@ -1157,6 +1157,18 @@ complete_running(job *jobp)
 	/* may have already been done for provisioning, but    */
 	/* that will be detected inside of set_resc_assigned() */
 	set_resc_assigned((void *)jobp, 0, INCR);
+	/* These attributes need to be cleared/freed now that the job has been resumed */
+	if (jobp->ji_wattr[(int) JOB_ATR_resc_released].at_flags & ATR_VFLAG_SET) {
+		job_attr_def[(int) JOB_ATR_resc_released].at_free(
+			&jobp->ji_wattr[(int) JOB_ATR_resc_released]);
+		jobp->ji_wattr[(int) JOB_ATR_resc_released].at_flags &= ~ATR_VFLAG_SET;
+	}
+
+	if (jobp->ji_wattr[(int) JOB_ATR_resc_released_list].at_flags & ATR_VFLAG_SET) {
+		job_attr_def[(int) JOB_ATR_resc_released_list].at_free(
+			&jobp->ji_wattr[(int) JOB_ATR_resc_released_list]);
+		jobp->ji_wattr[(int) JOB_ATR_resc_released_list].at_flags &= ~ATR_VFLAG_SET;
+	}
 
 	/* accounting log for start or restart */
 	if (jobp->ji_qs.ji_svrflags & JOB_SVFLG_CHKPT)
