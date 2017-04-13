@@ -300,6 +300,7 @@ extern "C" {
 #define ATTR_python_restart_max_hooks "python_restart_max_hooks"
 #define ATTR_python_restart_max_objects "python_restart_max_objects"
 #define ATTR_python_restart_min_interval "python_restart_min_interval"
+#define ATTR_power_provisioning "power_provisioning"
 
 /* additional scheduler "attribute" names */
 
@@ -343,6 +344,8 @@ extern "C" {
 #define ATTR_NODE_TopologyInfo	"topology_info"
 #define ATTR_NODE_MaintJobs	"maintenance_jobs"
 #define ATTR_NODE_VnodePool	"vnode_pool"
+#define ATTR_NODE_current_eoe   "current_eoe"
+#define ATTR_NODE_power_provisioning   "power_provisioning"
 
 /* Resource "attribute" names */
 #define ATTR_RESC_TYPE		"type"

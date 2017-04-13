@@ -7334,6 +7334,8 @@ SWIG_init(void) {
   SWIG_Python_SetConstant(d, "ATTR_NODE_Sharing",SWIG_FromCharPtr("sharing"));
   SWIG_Python_SetConstant(d, "ATTR_NODE_ProvisionEnable",SWIG_FromCharPtr("provision_enable"));
   SWIG_Python_SetConstant(d, "ATTR_NODE_current_aoe",SWIG_FromCharPtr("current_aoe"));
+  SWIG_Python_SetConstant(d, "ATTR_NODE_power_provisioning",SWIG_FromCharPtr("power_provisioning"));
+  SWIG_Python_SetConstant(d, "ATTR_NODE_current_eoe",SWIG_FromCharPtr("current_eoe"));
   SWIG_Python_SetConstant(d, "ATTR_NODE_in_multivnode_host",SWIG_FromCharPtr("in_multivnode_host"));
   SWIG_Python_SetConstant(d, "ATTR_NODE_License",SWIG_FromCharPtr("license"));
   SWIG_Python_SetConstant(d, "ATTR_NODE_LicenseInfo",SWIG_FromCharPtr("license_info"));

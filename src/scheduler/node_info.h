@@ -570,6 +570,16 @@ int can_fit_on_vnode(resource_req *req,  node_info **ninfo_arr);
 int is_aoe_avail_on_vnode(node_info *ninfo, resource_resv *resresv);
 
 /*
+ *      is_eoe_avail_on_vnode - it first finds if eoe is available in node's
+ *                              available list
+ *
+ *      return : 0 if eoe not available on node
+ *             : 1 if eoe available
+ *
+ */
+int is_eoe_avail_on_vnode(node_info *ninfo, resource_resv *resresv);
+
+/*
  *      is_provisionable - it checks if a vnode is eligible to be provisioned
  *
  *      return NO_PROVISIONING_NEEDED : resresv doesn't doesn't request aoe
@@ -631,6 +641,11 @@ int sim_exclhost_func(timed_event *te, void *arg1, void *arg2);
  * set current_aoe on a node.  Free existing value if set
  */
 void set_current_aoe(node_info *node, char *aoe);
+
+/**
+ * set current_eoe on a node.  Free existing value if set
+ */
+void set_current_eoe(node_info *node, char *eoe);
 
 /* check nodes for eligibility and mark them ineligible if not */
 void check_node_array_eligibility(node_info **ninfo_arr, resource_resv *resresv, place *pl, schd_error *err);

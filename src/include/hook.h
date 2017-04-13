@@ -241,7 +241,7 @@ typedef struct hook hook;
 
 /* for PBS hooks */
 #define HOOK_PBS_ORDER_MIN	-1000
-#define HOOK_PBS_ORDER_MAX	1000
+#define HOOK_PBS_ORDER_MAX	2000
 
 /* For cleanup_hooks_workdir() parameters */
 #define	HOOKS_TMPFILE_MAX_AGE	1200  /* a temp hooks file's maximum age (in  */

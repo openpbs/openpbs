@@ -98,6 +98,8 @@ enum nodeattr {
 	ND_ATR_LicenseInfo,
 	ND_ATR_TopologyInfo,
 	ND_ATR_vnode_pool,
+	ND_ATR_Power_Provisioning,
+	ND_ATR_current_eoe,     /* current EOE instantiated */
 	ND_ATR_LAST	/* WARNING: Must be the highest valued enum */
 };
 

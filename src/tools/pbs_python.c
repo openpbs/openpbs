@@ -704,6 +704,12 @@ queuestart_action(attribute *pattr, void *pobject, int actmode)
 {
 	return 0;
 }
+
+int
+action_power_provisioning(attribute *pattr, void *pobj, int actmode) {
+	return PBSE_NONE;
+}
+
 /**
  * @brief
  * 		encode_svrstate - encode string into svrstate value

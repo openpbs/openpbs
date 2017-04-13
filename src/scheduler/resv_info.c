@@ -208,6 +208,7 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 		resresv->rank = get_sched_rank();
 
 		resresv->aoename = getaoename(resresv->select);
+		resresv->eoename = geteoename(resresv->select);
 
 		/* reservations requesting AOE mark nodes as exclusive */
 		if (resresv->aoename) {

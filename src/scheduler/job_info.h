@@ -272,6 +272,18 @@ void update_accruetype(int pbs_sd, server_info *sinfo, enum update_accruetype_mo
 char * getaoename(selspec *select);
 
 /**
+ *  * @brief
+ *	return eoe from select spec
+ *
+ * @param[in]	select - select spec of job/reservation
+ *
+ * @return	char*
+ * @retval	NULL - no eoe found or failure encountered
+ * @retval	eoe name string
+ */
+char * geteoename(selspec *select);
+
+/**
  *	job_starving - returns if a job is starving, and if the job is
  *		       starving, it returns a notion of how starving the
  *		       job is.  The higher the number, the more starving.

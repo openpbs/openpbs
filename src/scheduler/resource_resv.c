@@ -175,6 +175,7 @@ new_resource_resv()
 	resresv->resv = NULL;
 
 	resresv->aoename = NULL;
+	resresv->eoename = NULL;
 
 #ifdef NAS /* localmod 034 */
 	resresv->share_type = J_TYPE_ignore;
@@ -262,6 +263,9 @@ free_resource_resv(resource_resv *resresv)
 
 	if (resresv->aoename != NULL)
 		free(resresv->aoename);
+
+	if (resresv->eoename != NULL)
+		free(resresv->eoename);
 
 	if (resresv->node_set_str != NULL)
 		free_string_array(resresv->node_set_str);
@@ -379,6 +383,7 @@ dup_resource_resv(resource_resv *oresresv,
 	nresresv->place_spec = dup_place(oresresv->place_spec);
 
 	nresresv->aoename = string_dup(oresresv->aoename);
+	nresresv->eoename = string_dup(oresresv->eoename);
 
 	nresresv->node_set_str = dup_string_array(oresresv->node_set_str);
 #ifdef NAS /* localmod 049 */
@@ -1240,7 +1245,7 @@ update_resresv_on_end(resource_resv *resresv, char *job_state)
 	resresv->start = UNSPECIFIED;
 	resresv->end = UNSPECIFIED;
 
-	if (resresv->is_job && resresv->job !=NULL) {
+	if (resresv->is_job && resresv->job != NULL) {
 		set_job_state(job_state, resresv->job);
 		if (resresv->job->is_suspended) {
 #ifndef NAS /* localmod 005 */

@@ -52,6 +52,8 @@
  *	apply_aoe_inchunk_rules()
  *	zero_or_positive_action()
  *	apply_select_inchunk_rules()
+ *	select_search
+ *      apply_eoe_inchunk_rules
  *
  *
  */
@@ -521,6 +523,118 @@ host_action(resource *presc, attribute *pattr, void *pobj, int type, int actmode
 
 /**
  * @brief
+ *		Check select string for key
+ * @par
+ *		We can't just use strstr because it could match something with
+ *		key as the last part of a longer string.  For example, looking
+ *		for "eoe=" in "1:cooleoe=3" would match with strstr but would
+ *		be a false positive.
+ * @param[in]	str		string from select to search
+ * @param[in]	key		string to search for
+ *
+ * @return	char*
+ * @retval	NULL	key not found
+ * @retval	!NULL	location of key
+ */
+char *
+select_search(char *str, char *key)
+{
+	char	*loc = strstr(str, key);
+	char	*prev;
+
+	if (loc == NULL)	/* not found at all */
+		return NULL;
+	if (str == loc)		/* key is initial string */
+		return loc;
+	prev = loc-1;		/* look at char before key */
+	if (*prev == ':' || *prev == '+')	/* key is really there */
+		return loc;
+	return NULL;		/* some other string like "1:xeoe=42" */
+}
+
+/**
+ * @brief
+ *      Wrapper routine for resc_select_action
+ *
+ * @par Functionality:
+ *      It applies rules to validate eoe in the chunks. Rules are:
+ *      (a) either all chunks request eoe or none request eoe
+ *      (b) all chunks request same eoe
+ *
+ * @param[in]   presc    -       pointer to resource
+ * @param[in]   pattr    -       pointer to attribute
+ * @param[in]   pobj     -       pointer to job or reservation
+ * @param[in]   type     -       if job or reservation
+ *
+ * @return		int
+ * @retval		PBSE_NONE : success if no provisioning needed
+ * @retval		PBSE_IVAL_AOECHUNK : if rules not met, the message for
+ *						this EOE define is what is needed here as well
+ * @retval		PBSE_SYSTEM : if error
+ *
+ * @par Side Effects:
+ *	None
+ *
+ * @par MT-safe: Yes
+ *
+ */
+static int
+apply_eoe_inchunk_rules(resource *presc, attribute *pattr, void *pobj,
+	int type)
+{
+	int		c = 1, i;             /* # of chunks, len of aoename */
+	int		ret = PBSE_NONE;
+	static	char	key[] = "eoe=";
+	char	*name;
+	char	*peoe = NULL;          /* stores addr of eoe */
+	char	*eoename = NULL;       /* 1st eoe found in select */
+	char	*tmpptr;               /* store temp addr */
+
+
+	if ((name = presc->rs_value.at_val.at_str) == NULL)
+		return PBSE_NONE;
+
+	/* eoe is requested? */
+	if ((peoe = select_search(name, key)) == NULL)
+		return PBSE_NONE;
+
+	/* count # of chunks; ignore chunk multiplier */
+	for (tmpptr=name; *tmpptr; tmpptr++)
+		if (*tmpptr == '+')
+			c++;
+
+	/* find key ; reduce c each time pattern is found. */
+	for (; peoe; c--, (peoe = select_search(peoe, key))) {
+		/* point to eoe name. */
+		peoe += strlen(key);
+		tmpptr = peoe;
+		/* get length of eoe name in i */
+		for (i = 0; *tmpptr && *tmpptr != ':' && *tmpptr != '+';
+					i++, tmpptr++);
+		/* if first appearance of eoe, store it. */
+		if (eoename == NULL) {
+			eoename = malloc(i+1);
+			if (eoename == NULL)
+				return PBSE_SYSTEM;
+			strncpy(eoename, peoe, i);
+			eoename[i] = '\0';
+		}
+		/* compare previously stored eoe and this eoe  */
+		if (strncmp(peoe, eoename, i)) {
+			ret = PBSE_IVAL_AOECHUNK;	/* rule (b)*/
+			break;
+		}
+	}
+	/* there were chunks without eoe */
+	if (c)
+		ret = PBSE_IVAL_AOECHUNK;		/* rule (a) */
+
+	if (eoename)
+		free(eoename);
+	return ret;
+}
+/**
+ * @brief
  *      Action routine for resource 'select'
  *
  * @param[in]   presc    -       pointer to resource
@@ -549,6 +663,9 @@ resc_select_action(resource *presc, attribute *pattr, void *pobj,
 	if ((actmode != ATR_ACTION_NEW) && (actmode != ATR_ACTION_ALTER))
 		return PBSE_NONE;
 	rc = apply_select_inchunk_rules(presc, pattr, pobj, type, actmode);
+	if (rc != PBSE_NONE)
+	    	return rc;
+	rc = apply_eoe_inchunk_rules(presc, pattr, pobj, type);
 	if (rc != PBSE_NONE)
 	    	return rc;
 

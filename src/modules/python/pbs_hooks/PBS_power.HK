@@ -1,0 +1,7 @@
+type=pbs
+enabled=false
+user=pbsadmin
+event=execjob_prologue,execjob_epilogue,exechost_periodic,exechost_startup,execjob_begin,execjob_end
+order=2000
+alarm=180
+freq=300

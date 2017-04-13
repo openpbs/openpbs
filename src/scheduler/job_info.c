@@ -80,6 +80,7 @@
  * 	check_preempt_targets_for_none()
  * 	is_finished_job()
  * 	preemption_similarity()
+ * 	geteoename()
  *
  */
 #include <pbs_config.h>
@@ -395,9 +396,9 @@ static struct fc_translation_table fctt[] = {
 		"Cannot provision, requested AOE %s not available on vnode",
 		"Cannot provision, requested AOE %s not available on vnode"
 	},
-	{	/* VNODE_HAS_RUNJOBS */
-		"Cannot provision, vnode has job or reservation running",
-		"Cannot provision, vnode has job or reservation running"
+	{	/* EOE_NOT_AVALBL */
+		"Cannot provision, requested EOE %s not available on vnode",
+		"Cannot provision, requested EOE %s not available on vnode"
 	},
 	{	/* PROV_BACKFILL_CONFLICT */
 		"Provisioning for job would interfere with backfill job",
@@ -650,6 +651,11 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 #endif /* localmod 040 */
 
 		resresv->aoename = getaoename(resresv->select);
+		if ((resresv->eoename = geteoename(resresv->select)) != NULL) {
+			/* job with a power profile can't be checkpointed or suspended */
+			resresv->job->can_checkpoint = 0;
+			resresv->job->can_suspend = 0;
+		}
 
 		if (resresv->select != NULL && resresv->select->chunks != NULL) {
 			/*
@@ -901,6 +907,7 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 
 	resresv->job->can_checkpoint = 1;	/* default can be checkpointed */
 	resresv->job->can_requeue = 1;		/* default can be requeued */
+	resresv->job->can_suspend = 1;		/* default can be suspended */
 
 	/* A Job identifier must be of the form <numeric>.<alpha> or
 	 * <numeric>[<numeric>].<alpha> in the case of job arrays, any other
@@ -1185,7 +1192,8 @@ new_job_info()
 	jinfo->is_subjob = 0;
 
 	jinfo->can_checkpoint = 1; /* default can be checkpointed */
-	jinfo->can_requeue     = 1; /* default can be reuqued */
+	jinfo->can_requeue = 1;	   /* default can be reuqued */
+	jinfo->can_suspend = 1;    /* default can be suspended */
 
 	jinfo->is_provisioning = 0;
 	jinfo->is_preempted = 0;
@@ -1775,11 +1783,11 @@ translate_fail_code(schd_error *err, char *comment_msg, char *log_msg)
 		case STRICT_ORDERING:
 		case PROV_DISABLE_ON_SERVER:
 		case PROV_DISABLE_ON_NODE:
-		case VNODE_HAS_RUNJOBS:
 		case PROV_BACKFILL_CONFLICT:
 		case CANT_SPAN_PSET:
 		case IS_MULTI_VNODE:
 		case AOE_NOT_AVALBL:
+		case EOE_NOT_AVALBL:
 		case PROV_RESRESV_CONFLICT:
 		case CROSS_PRIME_BOUNDARY:
 		case NO_FREE_NODES:
@@ -2445,6 +2453,7 @@ dup_job_info(job_info *ojinfo, queue_info *nqinfo, server_info *nsinfo)
 
 	njinfo->can_checkpoint = ojinfo->can_checkpoint;
 	njinfo->can_requeue    = ojinfo->can_requeue;
+	njinfo->can_suspend    = ojinfo->can_suspend;
 
 	njinfo->priority = ojinfo->priority;
 	njinfo->etime = ojinfo->etime;
@@ -2666,7 +2675,8 @@ preempt_job(status *policy, int pbs_sd, resource_resv *pjob, server_info *sinfo)
 
 	po = get_preemption_order(pjob, sinfo);
 	for (i = 0; i < PREEMPT_METHOD_HIGH && pjob->job->is_running; i++) {
-		if (po->order[i] == PREEMPT_METHOD_SUSPEND) {
+		if (po->order[i] == PREEMPT_METHOD_SUSPEND  &&
+				pjob->job->can_suspend) {
 			res_released = create_res_released(policy, pjob);
 			ret = pbs_sigjob(pbs_sd, pjob->name, "suspend", NULL);
 			if ((ret != 0) && (is_finished_job(pbs_errno) == 1)) {
@@ -3494,7 +3504,8 @@ select_index_to_preempt(status *policy, resource_resv *hjob,
 
 			/* check whether chosen order is enabled for this job */
 			for (j = 0; j < PREEMPT_METHOD_HIGH; j++) {
-				if (po->order[j] == PREEMPT_METHOD_SUSPEND)
+				if (po->order[j] == PREEMPT_METHOD_SUSPEND  &&
+					rjobs[i]->job->can_suspend)
 					break; /* suspension is always allowed */
 
 				if (po->order[j] == PREEMPT_METHOD_CHECKPOINT &&
@@ -4504,6 +4515,44 @@ getaoename(selspec *select)
 
 /**
  * @brief
+ *	Get EOE name from select of job/reservation.
+ *
+ * @see
+ *	query_jobs
+ *	query_reservations
+ *
+ * @param[in]	select	  -	select of job/reservation
+ *
+ * @return	char *
+ * @retval	NULL : no EOE requested
+ * @retval	eoe  : EOE requested
+ *
+ * @par Side Effects:
+ *	None
+ *
+ * @par MT-safe: Yes
+ *
+ */
+char*
+geteoename(selspec *select)
+{
+	resource_req *req;
+
+	if (select == NULL)
+		return NULL;
+
+	/* we only need to look at 1st chunk since either all request eoe
+	 * or none request eoe.
+	 */
+	req = find_resource_req(select->chunks[0]->req, getallres(RES_EOE));
+	if (req != NULL)
+		return string_dup(req->res_str);
+
+	return NULL;
+}
+
+/**
+ * @brief
  * 		returns if a job is starving, and if the job is
  *		       starving, it returns a notion of how starving the
  *		       job is.  The higher the number, the more starving.
@@ -4866,7 +4915,6 @@ preemption_similarity(resource_resv *hjob, resource_resv *pjob, schd_error *full
 			case NODE_NOT_EXCL:
 			case CANT_SPAN_PSET:
 			case IS_MULTI_VNODE:
-			case VNODE_HAS_RUNJOBS:
 			case RESERVATION_CONFLICT:
 			case SET_TOO_SMALL:
 

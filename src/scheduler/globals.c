@@ -125,6 +125,7 @@ const struct enum_conv resind[] =
 	{RES_HOST, "host"},
 	{RES_VNODE, "vnode"},
 	{RES_AOE, "aoe"},
+	{RES_EOE, "eoe"},
 	{RES_MIN_WALLTIME, "min_walltime"},
 	{RES_MAX_WALLTIME, "max_walltime"},
 	{RES_PREEMPT_TARGETS, "preempt_targets"},

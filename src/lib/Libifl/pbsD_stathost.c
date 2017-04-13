@@ -557,6 +557,8 @@ static struct attr_names {
 	{ ATTR_NODE_LicenseInfo, NULL},
 	{ ATTR_NODE_TopologyInfo, NULL},
 	{ ATTR_NODE_VnodePool, NULL},
+	{ ATTR_NODE_power_provisioning, NULL},
+	{ ATTR_NODE_current_eoe, NULL},
 	{(char *)0, NULL }
 };
 

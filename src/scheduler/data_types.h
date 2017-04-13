@@ -275,6 +275,7 @@ struct server_info
 	unsigned has_multi_vnode:1;	/* server has at least one multi-vnoded MOM  */
 	unsigned eligible_time_enable:1;/* controls if we accrue eligible_time  */
 	unsigned provision_enable:1;	/* controls if provisioning occurs */
+	unsigned power_provisioning:1;	/* controls if power provisioning occurs */
 	unsigned dont_span_psets:1;	/* dont_span_psets sched object attribute */
 	unsigned throughput_mode:1;	/* scheduler set to throughput mode */
 	unsigned has_nonCPU_licenses:1;	/* server has non-CPU (e.g. socket-based) licenses */
@@ -430,6 +431,7 @@ struct job_info
 
 	unsigned can_checkpoint:1;    /* this job can be checkpointed */
 	unsigned can_requeue:1;       /* this job can be requeued */
+	unsigned can_suspend:1;       /* this job can be suspended */
 
 	unsigned is_starving:1;	/* job has waited passed starvation time */
 	unsigned is_array:1;		/* is the job a job array object */
@@ -535,6 +537,7 @@ struct node_info
 	 * either free or provisioning, then, the case is clear.
 	 */
 	unsigned is_multivnoded:1;	/* multi vnode */
+	unsigned power_provisioning:1;	/* can this node can power provision */
 	unsigned has_ghost_job:1;	/* race condition occurred: recalculate resources_assigned */
 
 	/* sharing */
@@ -588,6 +591,7 @@ struct node_info
 #endif
 
 	char *current_aoe;		/* AOE name instantiated on node */
+	char *current_eoe;		/* EOE name instantiated on node */
 	char *nodesig;                /* resource signature */
 	int nodesig_ind;              /* resource signature index in server array */
 	node_info *svr_node;		/* ptr to svr's node if we're a resv node */
@@ -660,6 +664,7 @@ struct resource_resv
 	resv_info *resv;		/* pointer to reservation specific structure */
 
 	char *aoename;		/* store name of aoe if requested */
+	char *eoename;		/* store name of eoe if requested */
 	char **node_set_str;		/* user specified node string */
 	node_info **node_set;		/* node array specified by node_set_str */
 #ifdef NAS /* localmod 034 */

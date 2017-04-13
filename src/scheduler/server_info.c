@@ -593,6 +593,12 @@ query_server_info(status *pol, struct batch_status *server)
 			else
 				sinfo->provision_enable = 0;
 		}
+		else if (!strcmp(attrp->name, ATTR_power_provisioning)) {
+			if (!strcmp(attrp->value, ATR_TRUE))
+				sinfo->power_provisioning = 1;
+			else
+				sinfo->power_provisioning = 0;
+		}
 		else if (!strcmp(attrp->name, ATTR_backfill_depth)) {
 			count = strtol(attrp->value, &endp, 10);
 			if (*endp == '\0')
@@ -1116,6 +1122,7 @@ new_server_info(int limallocflag)
 	sinfo->node_group_enable = 0;
 	sinfo->eligible_time_enable = 0;
 	sinfo->provision_enable = 0;
+	sinfo->power_provisioning = 0;
 	sinfo->dont_span_psets = 0;
 	sinfo->throughput_mode = 0;
 	sinfo->has_nonCPU_licenses = 0;
@@ -2054,6 +2061,7 @@ dup_server_info(server_info *osinfo)
 	nsinfo->node_group_enable = osinfo->node_group_enable;
 	nsinfo->eligible_time_enable = osinfo->eligible_time_enable;
 	nsinfo->provision_enable = osinfo->provision_enable;
+	nsinfo->power_provisioning = osinfo->power_provisioning;
 	nsinfo->dont_span_psets = osinfo->dont_span_psets;
 	nsinfo->has_nonCPU_licenses = osinfo->has_nonCPU_licenses;
 	nsinfo->enforce_prmptd_job_resumption= osinfo->enforce_prmptd_job_resumption;

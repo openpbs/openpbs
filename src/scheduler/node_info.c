@@ -108,6 +108,9 @@
  * 	set_current_aoe()
  * 	is_exclhost()
  * 	check_node_array_eligibility()
+ * 	is_powerok()
+ * 	is_eoe_avail_on_vnode()
+ * 	set_current_eoe()
  *
  */
 #include <pbs_config.h>
@@ -404,6 +407,14 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 			if (attrp->value != NULL)
 				set_current_aoe(ninfo, attrp->value);
 		}
+		else if (!strcmp(attrp->name, ATTR_NODE_power_provisioning)) {
+			if (!strcmp(attrp->value, ATR_TRUE))
+				ninfo->power_provisioning = 1;
+		}
+		else if (!strcmp(attrp->name, ATTR_NODE_current_eoe)) {
+			if (attrp->value != NULL)
+				set_current_eoe(ninfo, attrp->value);
+		}
 		else if (!strcmp(attrp->name, ATTR_NODE_in_multivnode_host)) {
 			if (attrp->value != NULL) {
 				count = strtol(attrp->value, &endp, 10);
@@ -457,6 +468,7 @@ new_node_info()
 	new->no_multinode_jobs = 0;
 	new->resv_enable = 0;
 	new->provision_enable = 0;
+	new->power_provisioning = 0;
 
 	new->sharing = VNS_DFLT_SHARED;
 
@@ -493,6 +505,7 @@ new_node_info()
 	new->max_group_run = SCHD_INFINITY;
 
 	new->current_aoe = NULL;
+	new->current_eoe = NULL;
 	new->nodesig = NULL;
 
 	new->svr_node = NULL;
@@ -574,6 +587,9 @@ free_node_info(node_info *ninfo)
 
 		if (ninfo->current_aoe != NULL)
 			free(ninfo->current_aoe);
+
+		if (ninfo->current_eoe != NULL)
+			free(ninfo->current_eoe);
 
 		if (ninfo->nodesig != NULL)
 			free(ninfo->nodesig);
@@ -1198,6 +1214,7 @@ dup_node_info(node_info *onode, server_info *nsinfo,
 	nnode->no_multinode_jobs = onode->no_multinode_jobs;
 	nnode->resv_enable = onode->resv_enable;
 	nnode->provision_enable = onode->provision_enable;
+	nnode->power_provisioning = onode->power_provisioning;
 
 	nnode->num_jobs = onode->num_jobs;
 	nnode->num_run_resv = onode->num_run_resv;
@@ -1223,6 +1240,7 @@ dup_node_info(node_info *onode, server_info *nsinfo,
 	nnode->user_counts = dup_counts_list(onode->user_counts);
 
 	set_current_aoe(nnode, onode->current_aoe);
+	set_current_eoe(nnode, onode->current_eoe);
 	nnode->nodesig = string_dup(onode->nodesig);
 	nnode->nodesig_ind = onode->nodesig_ind;
 
@@ -1597,6 +1615,10 @@ update_node_on_run(nspec *ns, resource_resv *resresv, char *job_state)
 
 			set_current_aoe(ninfo, resresv->aoename);
 		}
+
+		/* if job has eoe setting this node gets current_eoe set */
+		if (resresv->is_job && resresv->eoename != NULL)
+			set_current_eoe(ninfo, resresv->eoename);
 
 		if (is_excl(resresv->place_spec, ninfo->sharing)) {
 			if (resresv->is_adv_resv) {
@@ -3191,6 +3213,15 @@ is_vnode_eligible(node_info *node, resource_resv *resresv,
 		}
 	}
 
+	/* Does this chunk have EOE? */
+	if (resresv->eoename != NULL) {
+		if (!is_eoe_avail_on_vnode(node, resresv)) {
+			set_schd_error_codes(err, NOT_RUN, EOE_NOT_AVALBL);
+			set_schd_error_arg(err, ARG1, resresv->eoename);
+			return 0;
+		}
+	}
+
 	if (!node->is_free) {
 		set_schd_error_codes(err, NOT_RUN, INVALID_NODE_STATE);
 		set_schd_error_arg(err, ARG1, (char*) node_state_to_str(node));
@@ -3292,6 +3323,84 @@ is_vnode_eligible_chunk(resource_req *specreq, node_info *node,
 
 /**
  * @brief
+ *	Checks if a vnode is eligible for power operations.
+ *  Based on is_provisionable.
+ *
+ * @par Functionality:
+ *	This function checks if a vnode is eligible to be provisioned.
+ *	A vnode is eligible for power operations if it satisfies all of the
+ *	following conditions:-
+ *	(1) Server has power_provisioning True,
+ *	(2) Vnode has power_provisioning True,
+ *	(3) No conflicts with reservations already running on the Vnode
+ *	(4) No conflicts with jobs already running on the Vnode
+ *
+ * @param[in]		node	-	pointer to node_info
+ * @param[in]		resresv	-	pointer to resource_resv
+ * @param[in,out]	err		-	pointer to schd_error
+ *
+ * @return	int
+ * @retval	 NO_PROVISIONING_NEEDED : resresv doesn't request eoe
+ *			or resresv is not a job
+ * @retval	 PROVISIONING_NEEDED : vnode doesn't have current_eoe set
+ *          or it doesn't match job eoe
+ * @retval	 NOT_PROVISIONABLE  : vnode is not provisionable
+ *			(see err for more details)
+ *
+ * @par Side Effects:
+ *	Unknown
+ *
+ * @par MT-safe: No
+ *
+ */
+int
+is_powerok(node_info *node, resource_resv *resresv, schd_error *err)
+{
+	int i;
+	int ret = NO_PROVISIONING_NEEDED;
+
+	if (!resresv->is_job)
+		return NO_PROVISIONING_NEEDED;
+	if (resresv->eoename == NULL)
+		return NO_PROVISIONING_NEEDED;
+	if (!resresv->server->power_provisioning) {
+		err->error_code = PROV_DISABLE_ON_SERVER;
+		return NOT_PROVISIONABLE;
+	}
+	if (!node->power_provisioning) {
+		err->error_code = PROV_DISABLE_ON_NODE;
+		return NOT_PROVISIONABLE;
+	}
+
+	/* node doesn't have eoe or it doesn't match job eoe */
+	if (node->current_eoe == NULL ||
+			strcmp(resresv->eoename, node->current_eoe) != 0) {
+		ret = PROVISIONING_NEEDED;
+
+		/* there can't be any jobs on the node */
+		if ((node->num_susp_jobs > 0) || (node->num_jobs > 0)) {
+			err->error_code = PROV_RESRESV_CONFLICT;
+			return NOT_PROVISIONABLE;
+		}
+	}
+
+	/* node cannot be shared between running reservation without EOE
+	 * and job with EOE
+	 */
+	if (node->run_resvs_arr) {
+		for (i = 0; node->run_resvs_arr[i]; i++) {
+			if (node->run_resvs_arr[i]->eoename == NULL) {
+				err->error_code = PROV_RESRESV_CONFLICT;
+				return NOT_PROVISIONABLE;
+			}
+		}
+	}
+
+	return ret;
+}
+
+/**
+ * @brief
  * 		check to see if there are enough
  *		consumable resources on a vnode to make it
  *		eligible for a request
@@ -3375,6 +3484,25 @@ resources_avail_on_vnode(resource_req *specreq_cons, node_info *node,
 						}
 					}
 
+					/* check if power eoe needs to be considered */
+					is_p = is_powerok(node, resresv, err);
+					if (is_p == NOT_PROVISIONABLE) {
+						allocated = 0;
+						break;
+					}
+					else if (is_p == PROVISIONING_NEEDED) {
+						if (resresv->select->total_chunks > 1)
+							set_current_eoe(node, resresv->eoename);
+
+						if (resresv->is_job) {
+							snprintf(logbuf, sizeof(logbuf),
+								"Vnode %s selected for power with EOE %s",
+								node->name, resresv->eoename);
+							schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB,
+								LOG_NOTICE, resresv->name, logbuf);
+						}
+					}
+
 					if (num_chunks > num)
 						num_chunks = num;
 
@@ -3444,6 +3572,15 @@ resources_avail_on_vnode(resource_req *specreq_cons, node_info *node,
 					ns->go_provision = 1;
 				if (resresv->select->total_chunks >1) {
 					set_current_aoe(node, resresv->aoename);
+				}
+			}
+
+			is_p = is_powerok(node, resresv, err);
+			if (is_p == NOT_PROVISIONABLE)
+				return 0;
+			else if (is_p == PROVISIONING_NEEDED) {
+				if (resresv->select->total_chunks > 1) {
+					set_current_eoe(node, resresv->eoename);
 				}
 			}
 		}
@@ -4890,6 +5027,45 @@ is_aoe_avail_on_vnode(node_info *ninfo, resource_resv *resresv)
 
 /**
  * @brief
+ *	Checks if an EOE is available on a vnode
+ *
+ * @par Functionality:
+ *	This function checks if an EOE is available on a vnode.
+ *
+ * @see
+ *
+ * @param[in]	ninfo		-	pointer to node_info
+ * @param[in]	resresv		-	pointer to resource_resv
+ *
+ * @return	int
+ * @retval	 0 : EOE not available
+ * @retval	 1 : EOE available
+ *
+ * @par Side Effects:
+ *	Unknown
+ *
+ * @par MT-safe: No
+ *
+ */
+int
+is_eoe_avail_on_vnode(node_info *ninfo, resource_resv *resresv)
+{
+	schd_resource *resp;
+
+	if (ninfo == NULL || resresv == NULL)
+		return 0;
+
+	if (resresv->eoename == NULL)
+		return 0;
+
+	if ((resp = find_resource(ninfo->res, getallres(RES_EOE))) != NULL)
+		return find_string(resp->str_avail, resresv->eoename);
+
+	return 0;
+}
+
+/**
+ * @brief
  *		Checks if a vnode is eligible to be provisioned
  *
  * @par Functionality:
@@ -5305,6 +5481,25 @@ set_current_aoe(node_info *node, char *aoe)
 		node->current_aoe = NULL;
 	else
 		node->current_aoe = string_dup(aoe);
+}
+
+/**
+ * @brief set current_eoe on a node.  Free existing value if set
+ * @param[in] node - node to set
+ * @paran[in] eoe - eoe to set on ode
+ * @return void
+ */
+void
+set_current_eoe(node_info *node, char *eoe)
+{
+	if (node == NULL)
+		return;
+	if (node->current_eoe != NULL)
+		free(node->current_eoe);
+	if (eoe == NULL)
+		node->current_eoe = NULL;
+	else
+		node->current_eoe = string_dup(eoe);
 }
 
 /**

@@ -142,6 +142,7 @@ extern pbs_sched *sched_alloc(char *sched_name);
 extern pbs_sched *find_scheduler(char *sched_name);
 extern void sched_free(pbs_sched *psched);
 extern sched_delete(pbs_sched *psched);
+extern  void unset_power_provisioning(void);
 
 extern struct server server;
 extern pbs_list_head     svr_queues;
@@ -1496,38 +1497,34 @@ mgr_server_unset(struct batch_request *preq)
 		} else if (strcasecmp(plist->al_name,
 			ATTR_license_linger) == 0) {
 			unset_license_linger();
-		}
-		else if (strcasecmp(plist->al_name,
+		} else if (strcasecmp(plist->al_name,
 			ATTR_resv_retry_cutoff) == 0) {
 			reserve_retry_cutoff = RESV_RETRY_CUTOFF;
-		}
-		else if (strcasecmp(plist->al_name,
+		} else if (strcasecmp(plist->al_name,
 			ATTR_resv_retry_init) == 0) {
 			reserve_retry_init = RESV_RETRY_INIT;
-		}
-		else if (strcasecmp(plist->al_name,
+		} else if (strcasecmp(plist->al_name,
 			ATTR_JobHistoryEnable) == 0) {
 			unset_job_history_enable();
-		}
-		else if (strcasecmp(plist->al_name,
+		} else if (strcasecmp(plist->al_name,
 			ATTR_JobHistoryDuration) == 0) {
 			unset_job_history_duration();
-		}
-		else if (strcasecmp(plist->al_name,
+		} else if (strcasecmp(plist->al_name,
 			ATTR_max_concurrent_prov) == 0) {
 			max_concurrent_prov = PBS_MAX_CONCURRENT_PROV;
 			resize_prov_table(max_concurrent_prov);
-		}
-		else if (strcasecmp(plist->al_name,
+		} else if (strcasecmp(plist->al_name,
 			ATTR_dfltqsubargs) == 0) {
 			force_qsub_daemons_update();
-		}
-		else if (strcasecmp(plist->al_name,
+		} else if (strcasecmp(plist->al_name,
 			ATTR_nodefailrq) == 0) {
 			unset_node_fail_requeue();
-		}else if (strcasecmp(plist->al_name,
+		} else if (strcasecmp(plist->al_name,
 			ATTR_jobscript_max_size) == 0) {
 			unset_jobscript_max_size();
+		} else if (strcasecmp(plist->al_name,
+			ATTR_power_provisioning) == 0) {
+			unset_power_provisioning();
 		}
 
 		plist = (struct svrattrl *)GET_NEXT(plist->al_link);

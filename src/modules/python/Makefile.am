@@ -48,11 +48,19 @@ pbsv1module_PYTHON = \
 	pbs/v1/_base_types.py \
 	pbs/v1/_exc_types.py \
 	pbs/v1/_export_types.py \
-	pbs/v1/_svr_types.py
+	pbs/v1/_svr_types.py \
+	pbs/v1/_pmi_types.py \
+	pbs/v1/_pmi_sgi.py \
+	pbs/v1/_pmi_none.py \
+	pbs/v1/_pmi_utils.py
+
+
 
 pbshooksdir = $(libdir)/@PBS_PYTHON_DESTLIB@/pbs_hooks
 
 dist_pbshooks_DATA = \
 	pbs_hooks/PBS_translate_mpp.HK \
-	pbs_hooks/PBS_translate_mpp.PY
+	pbs_hooks/PBS_translate_mpp.PY \
+	pbs_hooks/PBS_power.HK \
+	pbs_hooks/PBS_power.PY
 

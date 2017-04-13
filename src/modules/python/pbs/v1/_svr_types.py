@@ -39,7 +39,7 @@
  */
 """
 
-__doc__ = r"""
+__doc__ = """
 
 This module captures all the python types representing the PBS Server objects
 (server,queue,job,resv, etc.)

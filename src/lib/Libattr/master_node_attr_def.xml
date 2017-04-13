@@ -562,6 +562,40 @@
 	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
 	<member_verify_function>
 	<ECL>verify_datatype_long</ECL>
+	<ECL>NULL_VERIFY_DATATYPE_FUNC </ECL>
+	</member_verify_function>
+   </attributes>
+   <attributes>
+   /* ND_ATR_Power_Provisioning */
+   <member_name><both>ATTR_NODE_power_provisioning </both></member_name>          <!-- "power_provisioning" --> 
+	<member_at_decode>decode_b </member_at_decode>
+	<member_at_encode>encode_b </member_at_encode>
+	<member_at_set>set_b </member_at_set>
+	<member_at_comp>comp_b </member_at_comp>
+	<member_at_free>free_null </member_at_free>
+	<member_at_action>node_prov_enable_action </member_at_action>
+	<member_at_flags><both>MGR_ONLY_SET | ATR_DFLAG_SSET </both></member_at_flags>
+	<member_at_type><both>ATR_TYPE_BOOL </both></member_at_type>
+	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
+	<member_verify_function>
+	<ECL>verify_datatype_bool </ECL>
+	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+	</member_verify_function>
+   </attributes>
+   <attributes>
+   /* ND_ATR_current_eoe */
+	<member_name><both>ATTR_NODE_current_eoe </both></member_name>          <!-- "current_eoe" --> 
+	<member_at_decode>decode_str </member_at_decode>
+	<member_at_encode>encode_str </member_at_encode>
+	<member_at_set>set_str </member_at_set>
+	<member_at_comp>comp_str </member_at_comp>
+	<member_at_free>free_str </member_at_free>
+	<member_at_action>NULL_FUNC </member_at_action>
+	<member_at_flags><both>MGR_ONLY_SET | ATR_DFLAG_SSET </both></member_at_flags>
+	<member_at_type><both>ATR_TYPE_STR </both></member_at_type>
+	<member_at_parent>PARENT_TYPE_NODE</member_at_parent>
+	<member_verify_function>
+	<ECL>NULL_VERIFY_DATATYPE_FUNC </ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
    </attributes>
