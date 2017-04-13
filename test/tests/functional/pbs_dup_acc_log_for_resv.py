@@ -27,16 +27,17 @@
 # agreement for PBS Pro version 14 or later has been executed in writing with
 # Altair.
 #
-# Altair�s dual-license business model allows companies, individuals, and
+# Altair’s dual-license business model allows companies, individuals, and
 # organizations to create proprietary derivative works of PBS Pro and
 # distribute them - whether embedded or bundled with other software - under a
 # commercial license agreement.
 #
-# Use of Altair�s trademarks, including but not limited to "PBS",�
-# "PBS Professional®", and "PBS Pro�" and Altair�s logos is subject
-# to Altair's trademark licensing policies.
+# Use of Altair’s trademarks, including but not limited to "PBS™",
+# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
+# trademark licensing policies.
 
 from tests.functional import *
+import time
 
 
 class TestDupAccLogForResv(TestFunctional):
@@ -50,6 +51,52 @@ class TestDupAccLogForResv(TestFunctional):
         if len(self.moms) != 2:
             self.skipTest('test requires two MoMs as input, ' +
                           'use -p moms=<mom1>:<mom2>')
+
+    def check_log_resv_time(self, accounting_log_msg, start_tup,
+                            end_tup, check_status):
+        """
+        This is a helper function to reterive start and end time
+        of standing rervation from accounting log.
+        """
+        find_start = m[start_tup][end_tup].find("start=")
+        find_end = m[start_tup][end_tup].find("end=")
+        find_duration = m[start_tup][end_tup].find("duration=")
+        if check_status == "start":
+            time_str = m[start_tup][end_tup][
+                find_start:find_start + (find_end - find_start - 1)]
+            new_time_str = time_str.replace("\'", "")
+            actual_reservation_time = new_time_str.split("=")[1]
+        elif check_status == "end":
+            time_str = m[start_tup][end_tup][
+                find_end:find_end + (find_duration - find_end - 1)]
+            newstr = time_str.replace("\'", "")
+            actual_reservation_time = newstr.split("=")[1]
+        return int(actual_reservation_time)
+
+    def differentiate_resv_instance(self, expected_start, expected_end,
+                                    got_start, got_end, reserve_index):
+        """
+        This function to differentiate log match
+        for each instance of standing reservation
+        on basis of comparing expected and got start and end time
+        of standing reservation of each instance(reserve_index)
+        """
+
+        self.assertTrue(((expected_start == got_start) and
+                         (expected_end == got_end)),
+                        'Got time not matched with exepected time in'
+                        'accounting log time for standing reservation  ')
+        if reserve_index == '1':
+            self.logger.info(
+                'Matched accounting log for reserve_index instance1')
+        elif reserve_index == '2':
+            self.logger.info(
+                'Matched accounting log for reserve_index instance2')
+        elif reserve_index == '3':
+            self.logger.info(
+                'Matched  accounting log for reserve_index instance3')
+        else:
+            self.logger.info('Unknown instance')
 
     def test_accounting_logs(self):
         """
@@ -85,7 +132,7 @@ class TestDupAccLogForResv(TestFunctional):
             time.time() + 5), 'reserve_end': int(time.time() + 120)}
         r.set_attributes(a)
         rid = self.server.submit(r)
-        a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED")}
+        a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
         self.server.expect(RESV, a, id=rid, max_attempts=30)
         rname = rid.split('.')
 
@@ -109,7 +156,8 @@ class TestDupAccLogForResv(TestFunctional):
         # Restart server
         self.server.restart()
 
-        # Verify accounting log after server restart
+        # Verify accounting log,no duplicate log after server restart
+
         m = self.server.accounting_match(
             msg='.*B;' + rid, id=rid, n='ALL', allmatch=True, regexp=True)
         self.assertNotEqual(m, None)
@@ -117,8 +165,11 @@ class TestDupAccLogForResv(TestFunctional):
 
         a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
         self.server.expect(RESV, a, id=rid, max_attempts=30, offset=8)
-        # Repeating step 5 and 6
+
+        # Restart server second time
         self.server.restart()
+
+        # Verify accounting log,no duplicate log  after server restart
         m = self.server.accounting_match(
             msg='.*B;' + rid, id=rid, n='ALL', allmatch=True, regexp=True)
         self.assertNotEqual(m, None)
@@ -142,46 +193,82 @@ class TestDupAccLogForResv(TestFunctional):
         else:
             self.logger.info('Missing timezone, using America/Los_Angeles')
             tzone = 'America/Los_Angeles'
+        if _m == PTL_API:
+            self.server.set_op_mode(PTL_API)
+        instance1_start = int(time.time() + 5)
+        instance1_end = int(time.time() + 35)
         a = {'Resource_List.select': '1:ncpus=1',
              ATTR_resv_rrule: 'FREQ=MINUTELY;COUNT=2',
              ATTR_resv_timezone: tzone,
-             ATTR_resv_standing: '1',
-             'reserve_start': time.time() + 5,
-             'reserve_end': time.time() + 60, }
+             'reserve_start': instance1_start,
+             'reserve_end': instance1_end}
         r = Reservation(TEST_USER, a)
         rid = self.server.submit(r)
-        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
-        self.server.expect(RESV, a, id=rid, max_attempts=30, offset=6)
-        if _m == PTL_API:
-            self.server.set_op_mode(PTL_API)
+        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5"),
+             'reserve_index': (MATCH_RE, "1")}
+        self.server.expect(RESV, a, id=rid, offset=6)
+
+        ret = self.server.status(RESV, id=rid)
+        rid_instance1 = ret[0]['reserve_index']
 
         # Verify accounting log before server restart
+        global m
         m = self.server.accounting_match(
             msg='.*B;' + rid, id=rid, n='ALL', allmatch=True, regexp=True)
         self.assertNotEqual(m, None)
         self.assertEqual(len(m), 1)
+        # getting startime and endtime of first instance of standin reservation
+        got_instance1_start = self.check_log_resv_time(
+            accounting_log_msg=m, start_tup=0, end_tup=1, check_status="start")
+        got_instance1_end = self.check_log_resv_time(
+            accounting_log_msg=m, start_tup=0, end_tup=1, check_status="end")
+
+        self.differentiate_resv_instance(got_start=got_instance1_start,
+                                         got_end=got_instance1_end,
+                                         expected_start=instance1_start,
+                                         expected_end=instance1_end,
+                                         reserve_index=rid_instance1)
         # Restart server
         self.server.restart()
 
-        # Verify accounting log after server restart
+        # Verify accounting log,no duplicate log  after server restart
         m = self.server.accounting_match(
             msg='.*B;' + rid, id=rid, n='ALL', allmatch=True, regexp=True)
         self.assertNotEqual(m, None)
         self.assertEqual(len(m), 1)
 
-        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
-        self.server.expect(RESV, a, id=rid, max_attempts=30, offset=60)
+        a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2"),
+             'reserve_index': (MATCH_RE, "2")}
+        self.server.expect(RESV, a, id=rid, max_attempts=5, offset=37)
+        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5"),
+             'reserve_index': (MATCH_RE, "2")}
+        self.server.expect(RESV, a, id=rid, max_attempts=5, offset=24)
 
-        # Verify accounting log for standing reservation starting second time
+        ret = self.server.status(RESV, id=rid)
+        rid_instance2 = ret[0]['reserve_index']
+        # Verify accounting log for start of second instance of the standing
+        # reservation
         m = self.server.accounting_match(
             msg='.*B;' + rid, id=rid, n='ALL', allmatch=True, regexp=True)
         self.assertNotEqual(m, None)
         self.assertEqual(len(m), 2)
 
-        # Restart server
+        # getting startime and endtime of second instance of standing
+        # reservation
+        got_instance2_start = self.check_log_resv_time(
+            accounting_log_msg=m, start_tup=1, end_tup=1, check_status="start")
+        got_instance2_end = self.check_log_resv_time(
+            accounting_log_msg=m, start_tup=1, end_tup=1, check_status="end")
+
+        self.differentiate_resv_instance(got_start=got_instance2_start,
+                                         got_end=got_instance2_end,
+                                         expected_start=(instance1_start + 60),
+                                         expected_end=(instance1_start + 90),
+                                         reserve_index=rid_instance2)
+        # Restart server second time
         self.server.restart()
 
-        # Verify accounting log after server restart
+        # Verify accounting log,no duplicate log after server restart
         m = self.server.accounting_match(
             msg='.*B;' + rid, id=rid, n='ALL', allmatch=True, regexp=True)
         self.assertNotEqual(m, None)
@@ -190,7 +277,7 @@ class TestDupAccLogForResv(TestFunctional):
     def test_multinode_advance_reservation(self):
         """
         Test for duplicate records in accounting log for advance reservations
-        on restart of server requesting multi node
+        on restart of server requesting multiple nodes
         """
         # Submit a advance reservation requesting multinode
         r = Reservation(TEST_USER)
@@ -201,7 +288,7 @@ class TestDupAccLogForResv(TestFunctional):
         r.set_attributes(a)
         rid = self.server.submit(r)
         a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
-        self.server.expect(RESV, a, id=rid, max_attempts=30, offset=6)
+        self.server.expect(RESV, a, id=rid, offset=6)
 
         # Verify accounting log before server restart
         m = self.server.accounting_match(
@@ -212,7 +299,7 @@ class TestDupAccLogForResv(TestFunctional):
         # Restart server
         self.server.restart()
 
-        # Verify accounting log after server restart
+        # Verify accounting log, no duplicate log after server restart
         m = self.server.accounting_match(
             msg='.*B;' + rid, id=rid, n='ALL', allmatch=True, regexp=True)
         self.assertNotEqual(m, None)
@@ -221,8 +308,9 @@ class TestDupAccLogForResv(TestFunctional):
         a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
         self.server.expect(RESV, a, id=rid)
 
-        # Repeating step 5 and 6
+        # Restart server second time
         self.server.restart()
+        # Verify accounting log, no duplicate log  after server restart
         m = self.server.accounting_match(
             msg='.*B;' + rid, id=rid, n='ALL', allmatch=True, regexp=True)
         self.assertNotEqual(m, None)
@@ -246,26 +334,86 @@ class TestDupAccLogForResv(TestFunctional):
         else:
             self.logger.info('Missing timezone, using America/Los_Angeles')
             tzone = 'America/Los_Angeles'
+        if _m == PTL_API:
+            self.server.set_op_mode(PTL_API)
+        instance1_start = int(time.time() + 5)
+        instance1_end = int(time.time() + 35)
         a = {'Resource_List.select': '2:ncpus=1',
              'Resource_List.place': 'scatter',
              ATTR_resv_rrule: 'FREQ=MINUTELY;COUNT=3',
              ATTR_resv_timezone: tzone,
-             ATTR_resv_standing: '1',
-             'reserve_start': time.time() + 5,
-             'reserve_end': time.time() + 60, }
+             'reserve_start': instance1_start,
+             'reserve_end': instance1_end}
         r = Reservation(TEST_USER, a)
         rid = self.server.submit(r)
-        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
-        self.server.expect(RESV, a, id=rid, max_attempts=30, offset=6)
-        if _m == PTL_API:
-            self.server.set_op_mode(PTL_API)
+        a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2"),
+             'reserve_index': (MATCH_RE, "1")}
+        self.server.expect(RESV, a, id=rid)
+        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5"),
+             'reserve_index': (MATCH_RE, "1")}
+        self.server.expect(RESV, a, id=rid, offset=6)
+
+        ret = self.server.status(RESV, id=rid)
+        rid_instance1 = ret[0]['reserve_index']
 
         # Verify accounting log before server restart
+        global m
         m = self.server.accounting_match(
             msg='.*B;' + rid, id=rid, n='ALL', allmatch=True, regexp=True)
         self.assertNotEqual(m, None)
         self.assertEqual(len(m), 1)
 
+        # getting startime and endtime of first instance of standing
+        # reservation
+        got_instance1_start = self.check_log_resv_time(
+            accounting_log_msg=m, start_tup=0, end_tup=1, check_status="start")
+        got_instance1_end = self.check_log_resv_time(
+            accounting_log_msg=m, start_tup=0, end_tup=1, check_status="end")
+
+        self.differentiate_resv_instance(got_start=got_instance1_start,
+                                         got_end=got_instance1_end,
+                                         expected_start=instance1_start,
+                                         expected_end=instance1_end,
+                                         reserve_index=rid_instance1)
+        # Restart server
+        self.server.restart()
+
+        # Verify accounting log,no duplicate log  after server restart
+        m = self.server.accounting_match(
+            msg='.*B;' + rid, id=rid, n='ALL', allmatch=True, regexp=True)
+        self.assertNotEqual(m, None)
+        self.assertEqual(len(m), 1)
+
+        a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2"),
+             'reserve_index': (MATCH_RE, "2")}
+        self.server.expect(RESV, a, id=rid, max_attempts=5, offset=37)
+
+        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5"),
+             'reserve_index': (MATCH_RE, "2")}
+        self.server.expect(RESV, a, id=rid, max_attempts=5, offset=24)
+
+        ret = self.server.status(RESV, id=rid)
+        rid_instance2 = ret[0]['reserve_index']
+
+        # Verify accounting log for start of second instance of the standing
+        # reservation
+        m = self.server.accounting_match(
+            msg='.*B;' + rid, id=rid, n='ALL', allmatch=True, regexp=True)
+        self.assertNotEqual(m, None)
+        self.assertEqual(len(m), 2)
+
+        # getting startime and endtime of second instance of standing
+        # reservation
+        got_instance2_start = self.check_log_resv_time(
+            accounting_log_msg=m, start_tup=1, end_tup=1, check_status="start")
+        got_instance2_end = self.check_log_resv_time(
+            accounting_log_msg=m, start_tup=1, end_tup=1, check_status="end")
+
+        self.differentiate_resv_instance(got_start=got_instance2_start,
+                                         got_end=got_instance2_end,
+                                         expected_start=(instance1_start + 60),
+                                         expected_end=(instance1_start + 90),
+                                         reserve_index=rid_instance2)
         # Restart server
         self.server.restart()
 
@@ -273,35 +421,41 @@ class TestDupAccLogForResv(TestFunctional):
         m = self.server.accounting_match(
             msg='.*B;' + rid, id=rid, n='ALL', allmatch=True, regexp=True)
         self.assertNotEqual(m, None)
-        self.assertEqual(len(m), 1)
-
-        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
-        self.server.expect(RESV, a, id=rid, max_attempts=30, offset=60)
-
-        # Verify accounting log for standing reservation starting second time
-        m = self.server.accounting_match(
-            msg='.*B;' + rid, id=rid, n='ALL', allmatch=True, regexp=True)
-        self.assertNotEqual(m, None)
         self.assertEqual(len(m), 2)
 
-        # Restart server
-        self.server.restart()
+        a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2"),
+             'reserve_index': (MATCH_RE, "3")}
+        self.server.expect(RESV, a, id=rid, max_attempts=5, offset=37)
 
-        # Verify accounting log after server restart
-        m = self.server.accounting_match(
-            msg='.*B;' + rid, id=rid, n='ALL', allmatch=True, regexp=True)
-        self.assertNotEqual(m, None)
-        self.assertEqual(len(m), 2)
+        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5"),
+             'reserve_index': (MATCH_RE, "3")}
+        self.server.expect(RESV, a, id=rid, max_attempts=5, offset=24)
 
-        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
-        self.server.expect(RESV, a, id=rid, max_attempts=30, offset=60)
+        ret = self.server.status(RESV, id=rid)
+        rid_instance3 = ret[0]['reserve_index']
 
-        # Verify accounting log for standing reservation starting third time
+        # Verify accounting log for start of third instance of the standing
+        # reservation
         m = self.server.accounting_match(
             msg='.*B;' + rid, id=rid, n='ALL', allmatch=True, regexp=True)
         self.assertNotEqual(m, None)
         self.assertEqual(len(m), 3)
+        ret = self.server.status(RESV, id=rid)
+        rid_instance3 = ret[0]['reserve_index']
 
+        # getting startime and endtime of second instance of standing
+        # reservation
+        got_instance3_start = self.check_log_resv_time(
+            accounting_log_msg=m, start_tup=2, end_tup=1, check_status="start")
+        got_instance3_end = self.check_log_resv_time(
+            accounting_log_msg=m, start_tup=2, end_tup=1, check_status="end")
+
+        self.differentiate_resv_instance(got_start=got_instance3_start,
+                                         got_end=got_instance3_end,
+                                         expected_start=(
+                                             instance1_start + 120),
+                                         expected_end=(instance1_start + 150),
+                                         reserve_index=rid_instance3)
         # Restart server
         self.server.restart()
 
@@ -313,8 +467,8 @@ class TestDupAccLogForResv(TestFunctional):
 
     def test_accounting_logs_after_qterm(self):
         """
-        Test for duplicate records in accounting log for reservationsWhen
-        when server stopped using qterm and start again.
+        Test for duplicate records in accounting log for reservations
+        when the server is stopped using qterm and started again.
         """
         # Submit a advance reservation
         r = Reservation(TEST_USER)
