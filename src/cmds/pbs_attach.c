@@ -251,8 +251,15 @@ main(int argc, char *argv[])
 	extern char	*optarg;
 	extern int	optind;
 	pid_t		pid = 0;
-	char	*end;
+	char		*end;
 	int		doparent = 0;
+
+	/* Variables for setting environment variables with pbs_attach */
+	char	jobenvfile[MAXPATHLEN];
+	char	line[MAX_LINE_LEN];
+	FILE	*fp;
+	int	 i;
+	char	 *p;
 
 	/*test for real deal or just version and exit*/
 
@@ -331,8 +338,9 @@ main(int argc, char *argv[])
 	if (err)
 		usage(argv[0]);
 
+	/* we need pbs_home later, so lets load conf always */
+	pbs_loadconf(0);
 	if (port == 0) {
-		pbs_loadconf(0);
 		port = pbs_conf.manager_service_port;
 	}
 #ifdef WIN32 /* Windows - attach */
@@ -398,6 +406,35 @@ main(int argc, char *argv[])
 		 ** the new task.
 		 */
 		(void)putenv("MPICH_PROCESS_GROUP=no");
+
+		/*
+		 ** Load in the job environment variables needed for cgroups
+		 ** Check to see the file $jobid.env exists
+		 */
+		snprintf(jobenvfile, sizeof(jobenvfile), "%s/mom_priv/jobs/%s.env", pbs_conf.pbs_home_path, jobid);
+		jobenvfile[sizeof(jobenvfile) - 1] = '\0';
+		if ((fp = fopen(jobenvfile, "r"))) {
+			while(fgets(line, sizeof(line), fp)) {
+				p = line + strlen(line);
+				while (--p >= line) {
+					if (!(*p == '\n' || *p == '\r' || *p == ' ' || *p == '\t'))
+						break;
+					*p = '\0';
+				}
+				if (strlen(line) > 0) {
+					p = strdup(line);
+					if (p) {
+						(void) putenv(p);
+						i++;
+					}
+				}
+			}
+			fclose(fp);
+			fprintf(stderr, "%s.env: contains %d entries", jobid, i);
+		}
+		/*
+		 ** End of add for job environment variables needed for cgroups
+		 */
 
 		argv += optind;
 		argc -= optind;
