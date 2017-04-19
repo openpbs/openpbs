@@ -272,6 +272,7 @@ job_route(job *jobp)
 		case JOB_STATE_TRANSIT:
 			return (0);		/* already going, ignore it */
 
+		case JOB_STATE_BEGUN:
 		case JOB_STATE_QUEUED:
 			break;			/* ok to try */
 
