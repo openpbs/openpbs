@@ -399,7 +399,7 @@ log_add_debug_info()
  *
  */
 
-int
+void
 log_add_if_info()
 {
 	char tbuf[LOG_BUF_SIZE];
@@ -419,7 +419,7 @@ log_add_if_info()
 	if(strlen(msg)){ /* Adding error message to log */
 		strncpy(tbuf, msg, LOG_BUF_SIZE);
 		log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, tbuf);
-		return 1;
+		return;
 	}
 	while(curr){ /* Adding info to log */
 		snprintf(tbuf, LOG_BUF_SIZE, "%s interface %s: ", curr->iffamily, curr->ifname);
@@ -427,23 +427,23 @@ log_add_if_info()
 		for(i=0;curr->ifhostnames[i];i++){
 			snprintf(temp, LOG_BUF_SIZE, "%s ", curr->ifhostnames[i]);
 			strncat(tbuf, temp, LOG_BUF_SIZE);
-			log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, tbuf);
 		}
+		log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, tbuf);
 		curr = curr->next;
 	}
 	curr = ni;
 	while (curr){ /* Freeing memory from malloc */
-	    struct log_net_info* temp = curr; 
-	    curr = curr -> next;
+		struct log_net_info* temp = curr; 
+		curr = curr -> next;
 		free(temp->iffamily);
 		free(temp->ifname);
 		for(i=0;temp->ifhostnames[i];i++)
 			free(temp->ifhostnames[i]);
 		free(temp->ifhostnames);
-	    free(temp);
+		free(temp);
 		temp = NULL;
 	}
-	return 0;
+	return;
 }
 
 /**
@@ -577,11 +577,7 @@ log_open_main(char *filename, char *directory, int silent)
 			log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, tbuf);
 
 			log_add_debug_info();
-
-			if(!log_add_if_info()){
-				snprintf(tbuf, LOG_BUF_SIZE, "Interface info could not be added");
-				log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, tbuf);
-			}
+			log_add_if_info();
 		}
 	}
 #if SYSLOG

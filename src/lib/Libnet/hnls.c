@@ -322,6 +322,7 @@ get_if_info(struct log_net_info *ni, char *msg)
 		strncpy(msg, "No addresses found", 2048);
 		free(addrlistp);
 		free(ni);
+		ni = NULL;
 		return;
 	}
 	if (ret != NO_ERROR) {
@@ -494,6 +495,5 @@ get_if_info(struct log_net_info *ni, char *msg)
 
 #endif /* AIX, Solaris, etc. */
 
-	ni->next = NULL;
 	return;
 }
