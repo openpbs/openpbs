@@ -222,3 +222,8 @@ src/lib/Libecl/ecl_svr_attr_def.c
 win_configure/projects.VS2008/pbs_ifl.i
 win_configure/projects.VS2008/pbs_ifl.py
 win_configure/projects.VS2008/pbs_ifl_wrap.c
+
+# Generated scripts
+src/cmds/scripts/modulefile
+src/cmds/scripts/pbs.service
+
