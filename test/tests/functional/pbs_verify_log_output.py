@@ -76,68 +76,64 @@ class TestVerifyLogOutput(TestFunctional):
             else:
                 break
         namestr = names.tostring()
-        return [(namestr[i:i+16].split('\0', 1)[0],
-                 socket.inet_ntoa(namestr[i+20:i+24]))
-                for i in range(0, outbytes, struct_size)]
+        for i in range(0, outbytes, struct_size):
+            yield namestr[i:i+16].split('\0', 1)[0]
 
     def test_hostname_add(self):
         """
         Test for hostname presence in log files
         """
-        hostname = socket.gethostname()
-        log_val = "[(hostname="+hostname+")]"
-        rv1 = self.scheduler.log_match(
+        log_val = socket.gethostname()
+        rv = self.scheduler.log_match(
             log_val,
-            regexp=True,
+            regexp=False,
             starttime=self.server.ctime,
             max_attempts=5,
             interval=2)
-        rv2 = self.server.log_match(
+        self.assertTrue(rv)
+        rv = self.server.log_match(
             log_val,
-            regexp=True,
+            regexp=False,
             starttime=self.server.ctime,
             max_attempts=5,
             interval=2)
-        rv3 = self.mom.log_match(
+        self.assertTrue(rv)
+        rv = self.mom.log_match(
             log_val,
-            regexp=True,
+            regexp=False,
             starttime=self.server.ctime,
             max_attempts=5,
             interval=2)
-
-        self.assertTrue(rv1)
-        self.assertTrue(rv2)
-        self.assertTrue(rv3)
+        self.assertTrue(rv)
 
     def test_if_info_add(self):
         """
         Test for interface info presence in log files
         """
-        names = "["
-        for name in [x[0] for x in self.all_interfaces()]:
-            names += "(" + name + ")"
-        names += "]"
-
-        log_val = "[(ipv4)(ipv6)(ipv4/ipv6)] [(interface: )]" + names
-
-        rv1 = self.scheduler.log_match(
-            log_val,
-            regexp=True,
-            starttime=self.server.ctime,
-            max_attempts=5,
-            interval=2)
-        rv2 = self.server.log_match(
-            log_val,
-            regexp=True,
-            starttime=self.server.ctime,
-            max_attempts=5,
-            interval=2)
-        rv3 = self.mom.log_match(
-            log_val,
-            regexp=True,
-            starttime=self.server.ctime,
-            max_attempts=5,
-            interval=2)
-        self.assertTrue(rv1)
-        self.assertTrue(rv2)
-        self.assertTrue(rv3)
+        interfaceGenerator = self.all_interfaces()
+        for ifname in interfaceGenerator:
+            name = "[(" + ifname + ")]"
+            log_val = "[( interface: )]" + name
+            # Workaround for PTL regex to match
+            # entire word once using () inside []
+            rv = self.scheduler.log_match(
+                log_val,
+                regexp=True,
+                starttime=self.server.ctime,
+                max_attempts=5,
+                interval=2)
+            self.assertTrue(rv)
+            rv = self.server.log_match(
+                log_val,
+                regexp=True,
+                starttime=self.server.ctime,
+                max_attempts=5,
+                interval=2)
+            self.assertTrue(rv)
+            rv = self.mom.log_match(
+                log_val,
+                regexp=True,
+                starttime=self.server.ctime,
+                max_attempts=5,
+                interval=2)
+            self.assertTrue(rv)
