@@ -58,19 +58,16 @@ class TestDupAccLogForResv(TestFunctional):
         This is a helper function to reterive start and end time
         of standing rervation from accounting log.
         """
-        find_start = m[start_tup][end_tup].find("start=")
-        find_end = m[start_tup][end_tup].find("end=")
-        find_duration = m[start_tup][end_tup].find("duration=")
+        loglist_value = accounting_log_msg[start_tup][end_tup]
+        log_value = loglist_value.split(" ")
         if check_status == "start":
-            time_str = m[start_tup][end_tup][
-                find_start:find_start + (find_end - find_start - 1)]
-            new_time_str = time_str.replace("\'", "")
-            actual_reservation_time = new_time_str.split("=")[1]
+            for i in log_value:
+                if i.startswith("start="):
+                    actual_reservation_time = i.replace("start=", "")
         elif check_status == "end":
-            time_str = m[start_tup][end_tup][
-                find_end:find_end + (find_duration - find_end - 1)]
-            newstr = time_str.replace("\'", "")
-            actual_reservation_time = newstr.split("=")[1]
+            for i in log_value:
+                if i.startswith("end="):
+                    actual_reservation_time = i.replace("end=", "")
         return int(actual_reservation_time)
 
     def differentiate_resv_instance(self, expected_start, expected_end,
@@ -84,8 +81,8 @@ class TestDupAccLogForResv(TestFunctional):
 
         self.assertTrue(((expected_start == got_start) and
                          (expected_end == got_end)),
-                        'Got time not matched with exepected time in'
-                        'accounting log time for standing reservation  ')
+                        'Time in the accounting log does not match with'
+                        'the expected time for the standing reservation')
         if reserve_index == '1':
             self.logger.info(
                 'Matched accounting log for reserve_index instance1')
@@ -169,7 +166,7 @@ class TestDupAccLogForResv(TestFunctional):
         # Restart server second time
         self.server.restart()
 
-        # Verify accounting log,no duplicate log  after server restart
+        # Verify accounting log,no duplicate log after server restart
         m = self.server.accounting_match(
             msg='.*B;' + rid, id=rid, n='ALL', allmatch=True, regexp=True)
         self.assertNotEqual(m, None)
@@ -204,15 +201,13 @@ class TestDupAccLogForResv(TestFunctional):
              'reserve_end': instance1_end}
         r = Reservation(TEST_USER, a)
         rid = self.server.submit(r)
-        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5"),
-             'reserve_index': (MATCH_RE, "1")}
+        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
         self.server.expect(RESV, a, id=rid, offset=6)
 
         ret = self.server.status(RESV, id=rid)
         rid_instance1 = ret[0]['reserve_index']
 
         # Verify accounting log before server restart
-        global m
         m = self.server.accounting_match(
             msg='.*B;' + rid, id=rid, n='ALL', allmatch=True, regexp=True)
         self.assertNotEqual(m, None)
@@ -231,17 +226,15 @@ class TestDupAccLogForResv(TestFunctional):
         # Restart server
         self.server.restart()
 
-        # Verify accounting log,no duplicate log  after server restart
+        # Verify accounting log,no duplicate log after server restart
         m = self.server.accounting_match(
             msg='.*B;' + rid, id=rid, n='ALL', allmatch=True, regexp=True)
         self.assertNotEqual(m, None)
         self.assertEqual(len(m), 1)
 
-        a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2"),
-             'reserve_index': (MATCH_RE, "2")}
+        a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
         self.server.expect(RESV, a, id=rid, max_attempts=5, offset=37)
-        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5"),
-             'reserve_index': (MATCH_RE, "2")}
+        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
         self.server.expect(RESV, a, id=rid, max_attempts=5, offset=24)
 
         ret = self.server.status(RESV, id=rid)
@@ -346,18 +339,15 @@ class TestDupAccLogForResv(TestFunctional):
              'reserve_end': instance1_end}
         r = Reservation(TEST_USER, a)
         rid = self.server.submit(r)
-        a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2"),
-             'reserve_index': (MATCH_RE, "1")}
+        a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
         self.server.expect(RESV, a, id=rid)
-        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5"),
-             'reserve_index': (MATCH_RE, "1")}
+        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
         self.server.expect(RESV, a, id=rid, offset=6)
 
         ret = self.server.status(RESV, id=rid)
         rid_instance1 = ret[0]['reserve_index']
 
         # Verify accounting log before server restart
-        global m
         m = self.server.accounting_match(
             msg='.*B;' + rid, id=rid, n='ALL', allmatch=True, regexp=True)
         self.assertNotEqual(m, None)
@@ -378,18 +368,16 @@ class TestDupAccLogForResv(TestFunctional):
         # Restart server
         self.server.restart()
 
-        # Verify accounting log,no duplicate log  after server restart
+        # Verify accounting log,no duplicate log after server restart
         m = self.server.accounting_match(
             msg='.*B;' + rid, id=rid, n='ALL', allmatch=True, regexp=True)
         self.assertNotEqual(m, None)
         self.assertEqual(len(m), 1)
 
-        a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2"),
-             'reserve_index': (MATCH_RE, "2")}
+        a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
         self.server.expect(RESV, a, id=rid, max_attempts=5, offset=37)
 
-        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5"),
-             'reserve_index': (MATCH_RE, "2")}
+        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
         self.server.expect(RESV, a, id=rid, max_attempts=5, offset=24)
 
         ret = self.server.status(RESV, id=rid)
@@ -423,12 +411,10 @@ class TestDupAccLogForResv(TestFunctional):
         self.assertNotEqual(m, None)
         self.assertEqual(len(m), 2)
 
-        a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2"),
-             'reserve_index': (MATCH_RE, "3")}
+        a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
         self.server.expect(RESV, a, id=rid, max_attempts=5, offset=37)
 
-        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5"),
-             'reserve_index': (MATCH_RE, "3")}
+        a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
         self.server.expect(RESV, a, id=rid, max_attempts=5, offset=24)
 
         ret = self.server.status(RESV, id=rid)
