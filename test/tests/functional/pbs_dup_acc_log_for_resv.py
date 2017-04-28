@@ -59,15 +59,17 @@ class TestDupAccLogForResv(TestFunctional):
         of standing rervation from accounting log.
         """
         loglist_value = accounting_log_msg[start_tup][end_tup]
-        log_value = loglist_value.split(" ")
+        log_value = loglist_value.split()
         if check_status == "start":
-            for i in log_value:
-                if i.startswith("start="):
-                    actual_reservation_time = i.replace("start=", "")
+            for attribute in log_value:
+                attribute_value = attribute.split("=")
+                if attribute_value[0] == 'start':
+                    actual_reservation_time = attribute_value[1]
         elif check_status == "end":
-            for i in log_value:
-                if i.startswith("end="):
-                    actual_reservation_time = i.replace("end=", "")
+            for attribute in log_value:
+                attribute_value = attribute.split("=")
+                if attribute_value[0] == 'end':
+                    actual_reservation_time = attribute_value[1]
         return int(actual_reservation_time)
 
     def differentiate_resv_instance(self, expected_start, expected_end,
@@ -170,7 +172,7 @@ class TestDupAccLogForResv(TestFunctional):
         m = self.server.accounting_match(
             msg='.*B;' + rid, id=rid, n='ALL', allmatch=True, regexp=True)
         self.assertNotEqual(m, None)
-        self.assertEqual(len(m), 1)
+        self.assertEqual(	len(m), 1)
 
     def test_standing_reservation(self):
         """
