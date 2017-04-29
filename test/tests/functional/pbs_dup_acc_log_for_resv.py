@@ -172,7 +172,7 @@ class TestDupAccLogForResv(TestFunctional):
         m = self.server.accounting_match(
             msg='.*B;' + rid, id=rid, n='ALL', allmatch=True, regexp=True)
         self.assertNotEqual(m, None)
-        self.assertEqual(	len(m), 1)
+        self.assertEqual(len(m), 1)
 
     def test_standing_reservation(self):
         """
