@@ -188,6 +188,7 @@ enum sched_atr {
 	SCHED_ATR_version,
 	SCHED_ATR_sched_cycle_len,
 	SCHED_ATR_dont_span_psets,
+	SCHED_ATR_only_explicit_psets,
 	SCHED_ATR_sched_preempt_enforce_resumption,
 	SCHED_ATR_preempt_targets_enable,
 	SCHED_ATR_job_sort_formula_threshold,
