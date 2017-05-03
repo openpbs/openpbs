@@ -144,7 +144,7 @@ extern int mom_do_poll(job *pjob);		/* Should limits be polled? */
 extern int mom_does_chkpnt;                     /* see if mom does chkpnt */
 extern int mom_open_poll();		/* Initialize poll ability */
 extern int mom_get_sample();		/* Sample kernel poll data */
-extern int mom_over_limit(job *pjob);	/* Is polled job over limit? */
+extern int mom_over_limit(job *pjob, int enforce_job_wide);	/* Is polled job over limit? */
 extern int mom_set_use(job *pjob);		/* Set resource_used list */
 extern int mom_close_poll();		/* Terminate poll ability */
 extern int mach_checkpoint(struct task *, char *path, int abt);
