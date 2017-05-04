@@ -115,6 +115,7 @@ class _PtlTestResult(unittest.TestResult):
         self.descriptions = descriptions
         self.errorClasses = {}
         self.config = config
+        self.success = []
         self.skipped = []
         self.timedout = []
         self.handler = TestLogCaptureHandler()
@@ -179,6 +180,7 @@ class _PtlTestResult(unittest.TestResult):
         """
         Add success to the test result
         """
+        self.success.append(test)
         unittest.TestResult.addSuccess(self, test)
         if self.showAll:
             self.logger.info('ok\n')
@@ -350,6 +352,7 @@ class _PtlTestResult(unittest.TestResult):
         fail = 0
         skip = 0
         timedout = 0
+        success = len(self.success)
         if len(self.failures) > 0:
             for failedtest in self.failures:
                 fail += 1
@@ -389,12 +392,7 @@ class _PtlTestResult(unittest.TestResult):
             _msg = 'Test suites with failures: '
             _msg += ','.join(suites)
             msg += [_msg]
-        if self.testsRun > 0:
-            runned = self.testsRun
-            success = self.testsRun - (fail + error + skip + timedout)
-        else:
-            runned = fail + error + skip + timedout
-            success = 0
+        runned = success + fail + error + skip + timedout
         _msg = 'run: ' + str(runned)
         _msg += ', succeeded: ' + str(success)
         _msg += ', failed: ' + str(fail)

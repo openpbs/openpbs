@@ -141,7 +141,7 @@ class PTLTestData(Plugin):
             f.close()
             return
         if ((self.max_postdata_threshold != 0) and
-                (self.__save_data_count > self.max_postdata_threshold)):
+                (self.__save_data_count >= self.max_postdata_threshold)):
             _msg = 'Total number of saved post analysis data for this'
             _msg += ' testsuite is exceeded max postdata threshold'
             _msg += ' (%d)' % self.max_postdata_threshold
@@ -162,6 +162,7 @@ class PTLTestData(Plugin):
         pbs_diag = os.path.join(svr.pbs_conf['PBS_EXEC'],
                                 'unsupported', 'pbs_diag')
         cmd = [pbs_diag, '-f', '-d', '2']
+        cmd += ['-u', self.du.get_current_user()]
         if len(svr.jobs) > 0:
             cmd += ['-j', ','.join(svr.jobs.keys())]
         ret = self.du.run_cmd(svr_host, cmd, sudo=True, level=logging.DEBUG2)

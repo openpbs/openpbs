@@ -210,7 +210,6 @@ class Test_Rrecord_with_resources_used(TestFunctional):
         return jid1, jid2, jid3s1
 
     def test_t1(self):
-
         """
         Scenario: The node on which the job was running goes down and
                   node_fail_requeue time-out is hit.
@@ -232,7 +231,6 @@ class Test_Rrecord_with_resources_used(TestFunctional):
         self.assertNotEqual(m, None)
 
     def test_t2(self):
-
         """
         Scenario: The node on which the job was running goes down and
                   node_fail_requeue time-out is hit and mom is restarted
@@ -256,7 +254,6 @@ class Test_Rrecord_with_resources_used(TestFunctional):
             id=jid3s1, regexp=True)
 
     def test_t3(self):
-
         """
         Scenario: One non-rerunnable job. The node on which the job was
                   running goes down and node_fail_requeue time-out is hit.
@@ -283,7 +280,6 @@ class Test_Rrecord_with_resources_used(TestFunctional):
         self.assertNotEqual(m, None)
 
     def test_t4(self):
-
         """
         Scenario: Mom restarted without '-r' option and jobs are requeued
                    using qrerun.
@@ -336,7 +332,6 @@ class Test_Rrecord_with_resources_used(TestFunctional):
                             expect=True)
 
     def test_t5(self):
-
         """
         Scenario: Job is rerun multiple times.
         Expected outcome: Server should record last known resource usage
@@ -447,7 +442,6 @@ class Test_Rrecord_with_resources_used(TestFunctional):
         self.assertNotEqual(m, None)
 
     def test_t6(self):
-
         """
         Scenario: Jobs submitted with select cput and ncpus. Job is rerun
                   multiple times.
@@ -529,7 +523,6 @@ class Test_Rrecord_with_resources_used(TestFunctional):
         self.assertNotEqual(m, None)
 
     def test_t7(self):
-
         """
         Scenario: Job is forcefully rerun.
         Expected outcome: server should record last known resource usage in
