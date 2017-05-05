@@ -211,6 +211,33 @@ char *nodename;
 }
 
 
+/**
+ * @brief
+ * 		find_nodebyaddr() - find a node host by its addr
+ * @param[in]	addr	- addr being searched
+ *
+ * @return	pbsnode
+ * @retval	NULL	- failure
+ */
+
+struct pbsnode	  *find_nodebyaddr(addr)
+pbs_net_t addr;
+{
+	int i, j;
+	mom_svrinfo_t *psvrmom;
+
+	for (i=0; i<svr_totnodes; i++) {
+		psvrmom = (mom_svrinfo_t *)pbsndlist[i]->nd_moms[0]->mi_data;
+		for (j = 0; psvrmom->msr_addrs[j]; j++) {
+			if (addr == psvrmom->msr_addrs[j]) {
+				return (pbsndlist[i]);
+			}
+		}
+	}
+	return (NULL);
+}
+
+
 static struct pbsnode	*old_address = 0;			/*node in question */
 static unsigned long	old_state = 0;				/*node's   state   */
 

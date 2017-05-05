@@ -194,6 +194,7 @@ extern "C" {
 #define ATTR_aclgroup	"acl_groups"
 #define ATTR_aclhten	"acl_host_enable"
 #define ATTR_aclhost	"acl_hosts"
+#define ATTR_aclhostmomsen	"acl_host_moms_enable"
 #define ATTR_acluren	"acl_user_enable"
 #define ATTR_acluser	"acl_users"
 #define ATTR_altrouter	"alt_router"

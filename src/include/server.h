@@ -82,6 +82,7 @@ enum srv_atr {
 	SRV_ATR_JobsByState,
 	SRV_ATR_acl_host_enable,
 	SRV_ATR_acl_hosts,
+	SRV_ATR_acl_host_moms_enable,
 	SRV_ATR_acl_Resvhost_enable,
 	SRV_ATR_acl_Resvhosts,
 	SRV_ATR_acl_ResvGroup_enable,

@@ -434,6 +434,7 @@ extern	void	effective_node_delete(struct pbsnode*);
 extern	void	setup_notification(void);
 extern  struct	pbssubn  *find_subnodebyname(char *);
 extern	struct	pbsnode  *find_nodebyname(char *);
+extern	struct	pbsnode  *find_nodebyaddr(pbs_net_t);
 extern	void	free_prop_list(struct prop*);
 extern	void	recompute_ntype_cnts(void);
 extern	int	process_host_name_part(char*, svrattrl*, char**, int*);

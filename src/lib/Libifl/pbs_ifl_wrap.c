@@ -7214,6 +7214,7 @@ SWIG_init(void) {
   SWIG_Python_SetConstant(d, "ATTR_aclgroup",SWIG_FromCharPtr("acl_groups"));
   SWIG_Python_SetConstant(d, "ATTR_aclhten",SWIG_FromCharPtr("acl_host_enable"));
   SWIG_Python_SetConstant(d, "ATTR_aclhost",SWIG_FromCharPtr("acl_hosts"));
+  SWIG_Python_SetConstant(d, "ATTR_aclhostmomsen",SWIG_FromCharPtr("acl_host_moms_enable"));
   SWIG_Python_SetConstant(d, "ATTR_acluren",SWIG_FromCharPtr("acl_user_enable"));
   SWIG_Python_SetConstant(d, "ATTR_acluser",SWIG_FromCharPtr("acl_users"));
   SWIG_Python_SetConstant(d, "ATTR_altrouter",SWIG_FromCharPtr("alt_router"));

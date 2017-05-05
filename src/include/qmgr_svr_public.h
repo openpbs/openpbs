@@ -50,6 +50,7 @@
 
 ATTR_aclhten,
 ATTR_aclhost,
+ATTR_aclhostmomsen,
 ATTR_acluren,
 ATTR_acluser,
 ATTR_aclroot,

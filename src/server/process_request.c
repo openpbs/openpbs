@@ -617,13 +617,24 @@ process_request(int sfds)
 	if (server.sv_attr[(int)SRV_ATR_acl_host_enable].at_val.at_long) {
 		/* acl enabled, check it; always allow myself	*/
 		
-		if ((acl_check(&server.sv_attr[(int)SRV_ATR_acl_hosts],
-			request->rq_host, ACL_Host) == 0) &&
-			(strcasecmp(server_host, request->rq_host) != 0)) {
-				req_reject(PBSE_BADHOST, 0, request);
-				close_client(sfds);
-				return;
+		struct pbsnode *isanode = NULL;
+		if ((server.sv_attr[SRV_ATR_acl_host_moms_enable].at_flags & ATR_VFLAG_SET) &&
+			(server.sv_attr[(int)SRV_ATR_acl_host_moms_enable].at_val.at_long == 1)) {
+			isanode = find_nodebyaddr(get_connectaddr(sfds));
+
+			if ((isanode != NULL) && (isanode->nd_state & INUSE_DELETED))
+				isanode = NULL;
 		}
+
+		if (isanode == NULL) {
+			if ((acl_check(&server.sv_attr[(int)SRV_ATR_acl_hosts],
+				request->rq_host, ACL_Host) == 0) &&
+				(strcasecmp(server_host, request->rq_host) != 0)) {
+					req_reject(PBSE_BADHOST, 0, request);
+					close_client(sfds);
+					return;
+			}
+                }
 	}
 
 	/*
