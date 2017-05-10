@@ -1209,9 +1209,7 @@ class BatchUtils(object):
     pbsobjattrval_re = re.compile(r"""
                             [\s]*(?P<attribute>[\w\d\.-]+)
                             [\s]*=[\s]*
-                            (?P<value>.*)
-                            [\s]*""",
-                                  re.VERBOSE)
+                            (?P<value>[\s\S]*)""", re.VERBOSE)
     dt_re = '(?P<dt_from>\d\d/\d\d/\d\d\d\d \d\d:\d\d)' + \
             '[\s]+' + \
             '(?P<dt_to>\d\d/\d\d/\d\d\d\d \d\d:\d\d)'
@@ -5984,16 +5982,32 @@ class Server(PBSService):
             else:
                 as_script = False
 
+            if obj_type in (JOB, SERVER, QUEUE, NODE, VNODE):
+                #PBS status(which includes qstat) delimiter is \n with 4
+                #spaces and delimiter between records is \n\n
+                split_lines, record_d, attr_d = False, '\n\n', '\n    '
+            else:
+                split_lines = True
+
             ret = self.du.run_cmd(tgt, pcmd, runas=runas, as_script=as_script,
-                                  level=logging.INFOCLI, logerr=logerr)
+                                  level=logging.INFOCLI, logerr=logerr,
+                                  split_lines=split_lines)
             o = ret['out']
             if ret['err'] != ['']:
                 self.last_error = ret['err']
             self.last_rc = ret['rc']
             if ret['rc'] != 0:
                 raise PbsStatusError(rc=ret['rc'], rv=[], msg=self.geterrmsg())
+            mergelines = True
+            if not split_lines:
+                o = o.replace(record_d, attr_d).split(attr_d)
+                #removing whitespace characters between attribute values
+                #added by PBS
+                o = [line.replace('\n\t', '') for line in o]
+                mergelines = False
 
-            bsl = self.utils.convert_to_dictlist(o, attrib, mergelines=True)
+            bsl = self.utils.convert_to_dictlist(o, attrib,
+                                                 mergelines=mergelines)
 
         # 7- Stat with impersonation over PBS IFL swig-wrapped API
         elif runas is not None:

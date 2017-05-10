@@ -703,7 +703,7 @@ class DshUtils(object):
     def run_cmd(self, hosts=None, cmd=None, sudo=False, stdin=None,
                 stdout=PIPE, stderr=PIPE, input=None, cwd=None, env=None,
                 runas=None, logerr=True, as_script=False, wait_on_script=True,
-                level=logging.INFOCLI2):
+                level=logging.INFOCLI2, split_lines=True):
         """
         Run a command on a host or list of hosts.
 
@@ -874,7 +874,7 @@ class DshUtils(object):
 
             # handle the case where stdout is not a PIPE
             if o is not None:
-                ret['out'] = o.splitlines()
+                ret['out'] = split_lines and o.splitlines() or o
             else:
                 ret['out'] = []
             # Some output can be very verbose, for example listing many lines
