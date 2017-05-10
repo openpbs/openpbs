@@ -6798,8 +6798,9 @@ class Server(PBSService):
                    PBS_CMD_MAP[cmd] + ' ', obj_type, attrib, oid, level=level)
 
         c = None  # connection handle
+        op_mode = self.get_op_mode()
 
-        if (self.get_op_mode() == PTL_CLI or
+        if (op_mode == PTL_CLI or
             sudo is not None or
             obj_type in (HOOK, PBS_HOOK) or
             (attrib is not None and ('job_sort_formula' in attrib or
@@ -6871,15 +6872,22 @@ class Server(PBSService):
                 else:
                     sudo = False
 
-            pcmd = [os.path.join(self.pbs_conf['PBS_EXEC'], 'bin', 'qmgr'),
-                    '-c', execcmd]
+            pcmd = [os.path.join(self.pbs_conf['PBS_EXEC'], 'bin', 'qmgr')]
+            if op_mode == PTL_CLI:
+                pcmd += [self.hostname]
+            pcmd += ['-c', execcmd]
 
             if as_script:
                 pcmd = ['PBS_CONF_FILE=' + self.client_pbs_conf_file] + pcmd
 
-            ret = self.du.run_cmd(self.hostname, pcmd, sudo=sudo, runas=runas,
-                                  level=logging.INFOCLI, as_script=as_script,
-                                  logerr=logerr)
+            if op_mode == PTL_CLI:
+                ret = self.du.run_cmd(self.client, pcmd, sudo=sudo,
+                                      runas=runas, level=logging.INFOCLI,
+                                      as_script=as_script, logerr=logerr)
+            else:
+                ret = self.du.run_cmd(self.hostname, pcmd, sudo=sudo,
+                                      runas=runas, level=logging.INFOCLI,
+                                      as_script=as_script, logerr=logerr)
             rc = ret['rc']
             # NOTE: workaround the fact that qmgr overloads the return code in
             # cases where the list returned is empty an error flag is set even
