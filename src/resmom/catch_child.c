@@ -1,36 +1,36 @@
 /*
  * Copyright (C) 1994-2016 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
- *  
+ *
  * This file is part of the PBS Professional ("PBS Pro") software.
- * 
+ *
  * Open Source License Information:
- *  
+ *
  * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free 
- * Software Foundation, either version 3 of the License, or (at your option) any 
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
  * later version.
- *  
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+ *
+ * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
  * PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
- *  
- * You should have received a copy of the GNU Affero General Public License along 
+ *
+ * You should have received a copy of the GNU Affero General Public License along
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
- *  
- * Commercial License Information: 
- * 
- * The PBS Pro software is licensed under the terms of the GNU Affero General 
- * Public License agreement ("AGPL"), except where a separate commercial license 
+ *
+ * Commercial License Information:
+ *
+ * The PBS Pro software is licensed under the terms of the GNU Affero General
+ * Public License agreement ("AGPL"), except where a separate commercial license
  * agreement for PBS Pro version 14 or later has been executed in writing with Altair.
- *  
- * Altair’s dual-license business model allows companies, individuals, and 
- * organizations to create proprietary derivative works of PBS Pro and distribute 
- * them - whether embedded or bundled with other software - under a commercial 
+ *
+ * Altair’s dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of PBS Pro and distribute
+ * them - whether embedded or bundled with other software - under a commercial
  * license agreement.
- * 
- * Use of Altair’s trademarks, including but not limited to "PBS™", 
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+ *
+ * Use of Altair’s trademarks, including but not limited to "PBS™",
+ * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
  * trademark licensing policies.
  *
  */
@@ -578,7 +578,7 @@ json_dumps_fail:
 	return (NULL);
 
 }
-#endif
+#endif /* PYTHON */
 
 /**
  * @brief
@@ -595,20 +595,23 @@ encode_used(job *pjob, pbs_list_head *phead)
 {
 	unsigned long	 lnum;
 	int		 i;
+	int		 rc;
+	int		 k = 0;
 	attribute	*at;
 	attribute	*at2;
-	attribute_def	*ad;
-	int		 rc;
-	resource_def	*rd;
-	resource_def	*rd2;
-	resource	*rs;
-	resource	*rs2;
 	attribute	 val;
 	attribute	 val2;
-	int		k = 0;
-	struct  attribute tmpatr = {0};
+	attribute	 tmpatr = {0};
+	attribute_def	*ad;
+	resource	*rs;
+	resource	*rs2;
+	resource_def	*rd;
+	resource_def	*rd2;
 	char		*sval;
-	char emsg[HOOK_BUF_SIZE];
+	char		 emsg[HOOK_BUF_SIZE];
+	char		*dumps = NULL;
+	PyObject 	*py_jvalue = (PyObject *)NULL;
+	PyObject 	*py_accum = (PyObject *)NULL;
 
 	/* append resources_used */
 
@@ -656,15 +659,15 @@ encode_used(job *pjob, pbs_list_head *phead)
 				val.at_val.at_long += lnum;
 #ifdef PYTHON
 			} else if ((strcmp(rd->rs_name,
-			RESOURCE_UNKNOWN) != 0) &&
+				    RESOURCE_UNKNOWN) != 0) &&
 				   ((val.at_type == ATR_TYPE_LONG)  ||
 				(val.at_type == ATR_TYPE_FLOAT) ||
 				(val.at_type == ATR_TYPE_SIZE)  ||
 				(val.at_type == ATR_TYPE_STR))) {
 
 				int	fail = 0;
-				PyObject *py_jvalue = (PyObject *)NULL;
-				PyObject *py_accum = (PyObject *)NULL;
+				py_jvalue = (PyObject *)NULL;
+				py_accum = (PyObject *)NULL;
 
 				(void)memset((char *)&tmpatr, 0, sizeof(struct attribute));
 				tmpatr.at_type  = val.at_type;
@@ -766,8 +769,8 @@ encode_used(job *pjob, pbs_list_head *phead)
 							ATTR_used, rd->rs_name,
 							sval);
 						Py_CLEAR(py_accum);
-					} else if ((py_jvalue=json_loads(sval,
-						emsg, HOOK_BUF_SIZE-1)) == NULL) {
+					} else if ((py_jvalue = json_loads(sval,
+						emsg, HOOK_BUF_SIZE - 1)) == NULL) {
 						snprintf(log_buffer,
 							sizeof(log_buffer),
 							"Job %s resources_used.%s cannot be accumulated: value '%s' from mom %s not JSON-format: %s",
@@ -807,8 +810,6 @@ encode_used(job *pjob, pbs_list_head *phead)
 						/* go to next resource to encode */
 						continue;
 					} else {
-						char *dumps = NULL;
-
 						dumps = json_dumps(py_accum, emsg, HOOK_BUF_SIZE-1);
 						if (dumps == NULL) {
 							snprintf(log_buffer,
@@ -835,6 +836,7 @@ encode_used(job *pjob, pbs_list_head *phead)
 						Py_CLEAR(py_jvalue);
 						Py_CLEAR(py_accum);
 						free(dumps);
+						dumps = NULL;
 					}
 				}
 				val = tmpatr;
@@ -844,16 +846,35 @@ encode_used(job *pjob, pbs_list_head *phead)
 		}
 		if ((val.at_type != ATR_TYPE_STR) ||
 			(pjob->ji_numnodes == 1)  ||
-				(pjob->ji_resources != NULL)) {
+			(pjob->ji_resources != NULL)) {
 			/* for string values, set value if single node job
-			 * (i.e. pjob->ji_numnodes == 1), or 
+			 * (i.e. pjob->ji_numnodes == 1), or
 			 * if the value is accumulated from the various
 			 * values obtained from sister nodes
 			 * (i.e. pjob->ji_resources != NULL).
 			 */
-			rc = rd->rs_encode(&val, phead,
-				ad->at_name, rd->rs_name,
-				ATR_ENCODE_CLIENT, NULL);
+			if (val.at_type == ATR_TYPE_STR && pjob->ji_numnodes == 1) {
+				/* check if string value is a valid json string,
+				 * if it is then set the resource string within
+				 * single quotes.
+				 */
+
+				sval = val.at_val.at_str;
+				if ((py_jvalue=json_loads(sval, emsg, HOOK_BUF_SIZE - 1)) != NULL) {
+					dumps = json_dumps(py_jvalue, emsg, HOOK_BUF_SIZE - 1);
+					if (dumps == NULL)
+						Py_CLEAR(py_jvalue);
+					else {
+						rd->rs_decode(&tmpatr, ATTR_used, rd->rs_name, dumps);
+						val = tmpatr;
+						Py_CLEAR(py_jvalue);
+						free(dumps);
+						dumps = NULL;
+					}
+				}
+			}
+			rc = rd->rs_encode(&val, phead, ad->at_name, rd->rs_name,
+					   ATR_ENCODE_CLIENT, NULL);
 		}
 
 		if (((tmpatr.at_flags & ATR_VFLAG_SET) != 0) &&
@@ -1755,7 +1776,7 @@ end_loop:
 }
 
 /**
- * @brief 
+ * @brief
  * 	send old style IS_RESTART message to Server.
  *	Used when Server is older & does not recognize the TCP Restart message.
  *
@@ -1765,7 +1786,7 @@ end_loop:
  *
  * @param[in]	svr  - name of Server to which to send the restart
  * @param[in]	port - port Server would be expecting to receive IM messages
- * 
+ *
  * @return	void
  *
  */
@@ -1799,7 +1820,7 @@ send_restart_rpp(char *svr, unsigned int port)
 }
 
 /**
- * @brief 
+ * @brief
  * 	send PBS_BATCH_MomRestart message to Server via tcp.
  * @par
  *	Open an TCP connection to the Server/port specified.
@@ -1881,12 +1902,12 @@ send_restart_tcp(char *svr, unsigned int port)
 
 /**
  * @brief	Send a restart message to the Server.
- * 
+ *
  * @par
  *	Close any existing rpp streams to the server, it is unlikely that
  *	there is one.  Parse the server name from pbs.conf;
- *  Use PBS_SERVER_HOST_NAME if defined, else use PBS_SERVER.
- *	Try sending message via TCP first 
+ *	Use PBS_SERVER_HOST_NAME if defined, else use PBS_SERVER.
+ *	Try sending message via TCP first
  *
  * @see send_restart_tcp()
  *	If that returns 1 or -1, fall back to useing rpp
@@ -2151,7 +2172,7 @@ init_abort_jobs(int recover)
 }
 
 /**
- * @brief 
+ * @brief
  * 	static handler function to be called by deferred child exit work task
  * 	for alps cancel reservation child of mom
  *
