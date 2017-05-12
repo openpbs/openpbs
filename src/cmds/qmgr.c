@@ -3472,7 +3472,7 @@ get_request(char **request)
 				lp++;
 			if (!EOL(*lp)) {
 				i = strlen(lp);
-				memmove(rp, lp, i); /* By using memmove() we avoid strcpy's overlapping buffer issue. */
+				memmove(rp, lp, (size_t)i); /* By using memmove() we avoid strcpy's overlapping buffer issue. */
 				empty = FALSE;	    /* Note: memmove() doesn't Null terminate; so we take care of this by */
 			}			    /* nullifying 'line', at the end of this function, by setting line[i] to '\0'. */
 			else  {

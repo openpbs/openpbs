@@ -2006,7 +2006,7 @@ req_jobscript(struct batch_request *preq)
 	pj->ji_script = temp;
 	memmove(pj->ji_script + pj->ji_qs.ji_un.ji_newt.ji_scriptsz,
 		preq->rq_ind.rq_jobfile.rq_data,
-		preq->rq_ind.rq_jobfile.rq_size);
+		(size_t)preq->rq_ind.rq_jobfile.rq_size);
 #endif
 	pj->ji_qs.ji_un.ji_newt.ji_scriptsz += preq->rq_ind.rq_jobfile.rq_size;
 

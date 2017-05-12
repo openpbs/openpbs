@@ -2016,7 +2016,7 @@ add_pkts(phy_conn_t *conn)
 		count++;
 		/* coalesce before next packet to maintain alignment */
 		avl_len = avl_len - pkt_len;
-		memmove(conn->scratch.data, conn->scratch.data + pkt_len, avl_len); /* area OVERLAP - use memmove */
+		memmove(conn->scratch.data, conn->scratch.data + pkt_len, (size_t)avl_len); /* area OVERLAP - use memmove */
 		conn->scratch.pos = conn->scratch.data + avl_len;
 	}
 
