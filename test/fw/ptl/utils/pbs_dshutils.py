@@ -48,6 +48,7 @@ import copy
 import tempfile
 import pwd
 import grp
+import platform
 
 DFLT_RSYNC_CMD = ['rsync', '-e', 'ssh', '--progress', '--partial', '-ravz']
 DFLT_COPY_CMD = ['scp', '-p']
@@ -109,6 +110,7 @@ class DshUtils(object):
     """
 
     logger = logging.getLogger(__name__)
+    _h2osinfo = {}  # host to OS info cache
     _h2p = {}  # host to platform cache
     _h2c = {}  # host to pbs_conf file cache
     _h2l = {}  # host to islocal cache
@@ -163,7 +165,6 @@ class DshUtils(object):
         :param pyexec: A path to a Python interpreter to use to query
                        a remote host for platform info
         :type pyexec: str or None
-
         For efficiency the value is cached and retrieved from the
         cache upon subsequent request
         """
@@ -195,6 +196,42 @@ class DshUtils(object):
                 platform = ret['out'][0]
         self._h2p[hostname] = platform
         return platform
+
+    def get_os_info(self, hostname=None, pyexec=None):
+        """
+        Get a local or remote OS info
+
+        :param hostname: The hostname to query for platform info
+        :type hostname: str or None
+        :param pyexec: A path to a Python interpreter to use to query
+                       a remote host for platform info
+        :type pyexec: str or None
+
+        :returns: a 'str' object containing os info
+        """
+
+        local_info = platform.platform()
+
+        if hostname is None or self.is_localhost(hostname):
+            return local_info
+        if hostname in self._h2osinfo:
+            return self._h2osinfo[hostname]
+
+        if pyexec is None:
+            pyexec = self.which(hostname, 'python', level=logging.DEBUG2)
+
+        cmd = [pyexec, '-c',
+               '"import platform; print platform.platform()"']
+        ret = self.run_cmd(hostname, cmd=cmd)
+        if ret['rc'] != 0 or len(ret['out']) == 0:
+            self.logger.warning("Unable to retrieve OS info, defaulting "
+                                "to local")
+            ret_info = local_info
+        else:
+            ret_info = ret['out'][0]
+
+        self._h2osinfo[hostname] = ret_info
+        return ret_info
 
     def _parse_file(self, hostname, file):
         """
@@ -746,7 +783,7 @@ class DshUtils(object):
         :param wait_on_script: If True (default) waits on process
                                launched as script to return.
         :type wait_on_script: boolean
-        :returns: error, output, and return code as a dictionary
+        :returns: error, output, return code as a dictionary:
                   ``{'out':...,'err':...,'rc':...}``
         """
 
@@ -1023,7 +1060,7 @@ class DshUtils(object):
 
             if mode is not None:
                 self.chmod(targethost, path=dest, mode=mode, sudo=sudo,
-                           runas=runas)
+                           recursive=recursive, runas=runas)
             if ((uid is not None and uid != self.get_current_user()) or
                     gid is not None):
                 self.chown(targethost, path=dest, uid=uid, gid=gid, sudo=True,
@@ -1242,7 +1279,7 @@ class DshUtils(object):
         return None
 
     def listdir(self, hostname=None, path=None, sudo=False, runas=None,
-                level=logging.INFOCLI2):
+                fullpath=True, level=logging.INFOCLI2):
         """
         :param hostname: The name of the host on which to list for
                          directory
@@ -1251,10 +1288,13 @@ class DshUtils(object):
         :type path: str or None
         :param sudo: Whether to chmod as root or not. Defaults to
                      False
-        :type sudo: boolean
+        :type sudo: bool
         :param runas: run command as user
         :type runas: str or None
+        :param fullpath: Return full paths?
+        :type fullpath: bool
         :param level: Logging level.
+        :type level: int
         :returns: A list containing the names of the entries in
                   the directory
         """
@@ -1263,7 +1303,10 @@ class DshUtils(object):
             return None
 
         if (self.is_localhost(hostname) and (not sudo) and (runas is None)):
-            files = os.listdir(path)
+            try:
+                files = os.listdir(path)
+            except OSError:
+                return None
         else:
             ret = self.run_cmd(hostname, cmd=['ls', path], sudo=sudo,
                                runas=runas, logerr=False, level=level)
@@ -1271,7 +1314,10 @@ class DshUtils(object):
                 files = ret['out']
             else:
                 return None
-        return map(lambda p: os.path.join(path, p.strip()), files)
+        if fullpath is True:
+            return map(lambda p: os.path.join(path, p.strip()), files)
+        else:
+            return map(lambda p: p.strip(), files)
 
     def chmod(self, hostname=None, path=None, mode=None, sudo=False,
               runas=None, recursive=False, logerr=True,

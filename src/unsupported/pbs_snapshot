@@ -1,4 +1,4 @@
-
+#!/bin/bash
 #
 #  Copyright (C) 1994-2017 Altair Engineering, Inc.
 #  For more information, contact Altair at www.altair.com.
@@ -33,43 +33,21 @@
 #  Use of Altair’s trademarks, including but not limited to "PBS™", 
 #  "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
 #  trademark licensing policies.
-#
 
-unsupporteddir = ${exec_prefix}/unsupported
+pbs_conf=${PBS_CONF_FILE:-/etc/pbs.conf}
+if [ -r "${pbs_conf}" ]; then
+	. ${pbs_conf}
+else
+	echo "***" >&2
+	echo "*** No PBS_CONF_FILE found, exiting" >&2
+	echo "***" >&2
+	exit 1
+fi
 
-unsupported_PROGRAMS = pbs_rmget
+export PYTHONPATH=${PBS_EXEC}/unsupported/fw:${PYTHONPATH}
 
-dist_unsupported_SCRIPTS = \
-	pbs_diag \
-	pbs_dtj \
-	pbs_loganalyzer \
-	pbs_stat \
-	pbs_snapshot
-
-
-# Marking all *.py files as data as these files are meant to be used as hooks and 
-# need no compilation.
-dist_unsupported_DATA = \
-	NodeHealthCheck.py \
-	load_balance.py \
-	mom_dyn_res.py \
-	pbs-alps-inventory-check.py \
-	rapid_inter.py \
-	run_pelog_shell.py \
-	NodeHealthCheck.json \
-	README \
-	pbs_dtj.8B \
-	pbs_jobs_at.8B \
-	pbs_rescquery.3B \
-	run_pelog_shell.ini
-
-pbs_rmget_CPPFLAGS = -I$(top_srcdir)/src/include
-pbs_rmget_LDADD = \
-	$(top_builddir)/src/lib/Libtpp/libtpp.a \
-	$(top_builddir)/src/lib/Liblog/liblog.a \
-	$(top_builddir)/src/lib/Libnet/libnet.a \
-	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
-	$(top_builddir)/src/lib/Libutil/libutil.a \
-	-lpthread
-pbs_rmget_SOURCES = pbs_rmget.c
-
+if [ -x "${PBS_EXEC}/python/bin/python" ]; then
+	${PBS_EXEC}/python/bin/python ${PBS_EXEC}/unsupported/fw/bin/pbs_snapshot.py "${@}"
+else
+	python ${PBS_EXEC}/unsupported/fw/bin/pbs_snapshot.py "${@}"
+fi

@@ -513,9 +513,10 @@ class PBSLogUtils(object):
         :type path: str
         :param start: Start time for the log file
         :param end: End time for the log file
+        :returns: list of files or None if 'path' is not found
         """
+        paths = []
         if self.du.isdir(hostname, path, sudo=sudo):
-            paths = []
             logs = self.du.listdir(hostname, path, sudo=sudo)
             for f in sorted(logs):
                 if start is not None or end is not None:
@@ -532,8 +533,7 @@ class PBSLogUtils(object):
                         if d1 > d2:
                             continue
                 paths.append(f)
-        else:
-            paths = [path]
+
         return paths
 
 

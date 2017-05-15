@@ -420,16 +420,17 @@ class SmokeTest(PBSTestSuite):
         self.server.expect(SERVER, a, op=NE)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
         cycle = self.scheduler.cycles(start=self.server.ctime, lastN=10)
-        i = len(cycle) - 1
-        while len(cycle[i].political_order) == 0:
-            i -= 1
-        cycle = cycle[i]
-        firstconsidered = cycle.political_order[0]
-        lastsubmitted = jid.split('.')[0]
-        msg = 'testinfo: first job considered [' + str(firstconsidered) + \
-              '] == last submitted [' + str(lastsubmitted) + ']'
-        self.logger.info(msg)
-        self.assertEqual(firstconsidered, lastsubmitted)
+        if len(cycle) > 0:
+            i = len(cycle) - 1
+            while len(cycle[i].political_order) == 0:
+                i -= 1
+            cycle = cycle[i]
+            firstconsidered = cycle.political_order[0]
+            lastsubmitted = jid.split('.')[0]
+            msg = 'testinfo: first job considered [' + str(firstconsidered) + \
+                  '] == last submitted [' + str(lastsubmitted) + ']'
+            self.logger.info(msg)
+            self.assertEqual(firstconsidered, lastsubmitted)
 
     def test_server_hook(self):
         """
@@ -622,17 +623,19 @@ class SmokeTest(PBSTestSuite):
         # j4id j1id and j3id
         self.server.expect(JOB, {'job_state=R': 3})
         cycle = self.scheduler.cycles(start=self.server.ctime, lastN=2)
-        i = len(cycle) - 1
-        while len(cycle[i].political_order) == 0:
-            i -= 1
-        cycle = cycle[i]
-        p1jobs = [j1id, j2id, j3id]
-        p2jobs = [j4id, j5id, j6id]
-        jobs = [j1id, j2id, j3id, j4id, j5id, j6id]
-        job_order = map(lambda j: j.split('.')[0], p2jobs + p1jobs)
-        self.logger.info('Political order: ' + ','.join(cycle.political_order))
-        self.logger.info('Expected order: ' + ','.join(job_order))
-        self.assertTrue(cycle.political_order == job_order)
+        if len(cycle) > 0:
+            i = len(cycle) - 1
+            while len(cycle[i].political_order) == 0:
+                i -= 1
+            cycle = cycle[i]
+            p1jobs = [j1id, j2id, j3id]
+            p2jobs = [j4id, j5id, j6id]
+            jobs = [j1id, j2id, j3id, j4id, j5id, j6id]
+            job_order = map(lambda j: j.split('.')[0], p2jobs + p1jobs)
+            self.logger.info(
+                'Political order: ' + ','.join(cycle.political_order))
+            self.logger.info('Expected order: ' + ','.join(job_order))
+            self.assertTrue(cycle.political_order == job_order)
 
     @skipOnCpuSet
     def test_round_robin(self):
@@ -669,18 +672,20 @@ class SmokeTest(PBSTestSuite):
         self.server.manager(MGR_CMD_SET, SERVER, a)
         self.server.expect(JOB, {'job_state=R': 9})
         cycle = self.scheduler.cycles(start=start_time, end=int(time.time()))
-        i = len(cycle) - 1
-        while ((i >= 0) and (len(cycle[i].political_order) == 0)):
-            i -= 1
-        if i < 0:
-            self.assertTrue(False, 'failed to found political order')
-        cycle = cycle[i]
-        jobs = [jids[0], jids[3], jids[6], jids[1], jids[4], jids[7], jids[2],
-                jids[5], jids[8]]
-        job_order = map(lambda j: j.split('.')[0], jobs)
-        self.logger.info('Political order: ' + ','.join(cycle.political_order))
-        self.logger.info('Expected order: ' + ','.join(job_order))
-        self.assertTrue(cycle.political_order == job_order)
+        if len(cycle) > 0:
+            i = len(cycle) - 1
+            while ((i >= 0) and (len(cycle[i].political_order) == 0)):
+                i -= 1
+            if i < 0:
+                self.assertTrue(False, 'failed to found political order')
+            cycle = cycle[i]
+            jobs = [jids[0], jids[3], jids[6], jids[1], jids[4], jids[7],
+                    jids[2], jids[5], jids[8]]
+            job_order = map(lambda j: j.split('.')[0], jobs)
+            self.logger.info(
+                'Political order: ' + ','.join(cycle.political_order))
+            self.logger.info('Expected order: ' + ','.join(job_order))
+            self.assertTrue(cycle.political_order == job_order)
 
     def test_pbs_probe(self):
         """

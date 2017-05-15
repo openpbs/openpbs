@@ -65,12 +65,15 @@ def trap_exceptions(etype, value, tb):
         pass
     else:
         sys.__excepthook__(etype, value, tb)
+
+
 sys.excepthook = trap_exceptions
 
 
 def sighandler(signum, frames):
     signal.alarm(0)
     raise KeyboardInterrupt('Signal %d received' % (signum))
+
 
 # join process group of caller makes it possible to programmatically interrupt
 # when run in a subshell
@@ -165,6 +168,7 @@ def usage():
     msg += ['--version: show version number and exit\n']
 
     print ''.join(msg)
+
 
 if __name__ == '__main__':
 

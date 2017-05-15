@@ -1,0 +1,198 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# Copyright (C) 1994-2016 Altair Engineering, Inc.
+# For more information, contact Altair at www.altair.com.
+#
+# This file is part of the PBS Professional ("PBS Pro") software.
+#
+# Open Source License Information:
+#
+# PBS Pro is free software. You can redistribute it and/or modify it under the
+# terms of the GNU Affero General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+# A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# Commercial License Information:
+#
+# The PBS Pro software is licensed under the terms of the GNU Affero General
+# Public License agreement ("AGPL"), except where a separate commercial license
+# agreement for PBS Pro version 14 or later has been executed in writing with
+# Altair.
+#
+# Altair’s dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of PBS Pro and
+# distribute them - whether embedded or bundled with other software - under
+# a commercial license agreement.
+#
+# Use of Altair’s trademarks, including but not limited to "PBS™",
+# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
+# trademark licensing policies.
+
+import os
+import sys
+import getopt
+import errno
+import logging
+import ptl
+
+from getopt import GetoptError
+from ptl.lib.pbs_testlib import PtlConfig
+from ptl.utils.pbs_snaputils import PBSSnapUtils
+from ptl.utils.pbs_cliutils import CliUtils
+
+
+def trap_exceptions(etype, value, tb):
+    """
+    Trap SIGINT and SIGPIPE
+    """
+    # This is done so that any exceptions created by this method itself
+    # are caught by the default excepthook to prevent endless recursion
+    sys.excepthook = sys.__excepthook__
+
+    if issubclass(etype, KeyboardInterrupt):
+        pass
+    elif issubclass(etype, IOError) and value.errno == errno.EPIPE:
+        pass
+    else:
+        sys.__excepthook__(etype, value, tb)
+
+    # Set sys.excepthook back to trap_exceptions to catch future exceptions
+    sys.excepthook = trap_exceptions
+
+
+sys.excepthook = trap_exceptions
+
+
+def usage():
+    msg = """
+Usage: pbs_snapshot -o <path to output tar file> [OPTION]
+
+    Take snapshot of a PBS system and optionally capture logs for diagnostics
+
+    -H <hostname>                     hostname to operate on
+                                      Defaults to value of PBS_SERVER
+    -l <loglevel>                     set log level to one of INFO, INFOCLI,
+                                      INFOCLI2, DEBUG, DEBUG2, WARNING, ERROR
+                                      or FATAL
+    -h, --help                        display this usage message
+    --daemon-logs=<num days>          number of daemon logs to collect
+    --accounting-logs=<num days>      number of accounting logs to collect
+    --additional-hosts=<hostname>     collect data from additional hosts
+                                      'hostname' is a comma separated list
+    --map=<file>                      file to store the map of obfuscated data
+    --obfuscate                       obfuscates sensitive data
+    --version                         print version number and exit
+"""
+
+    print msg
+
+
+if __name__ == '__main__':
+
+    # Arguments to PBSSnapUtils
+    out_dir = None
+    diag_path = None
+    server_host = None
+    log_level = "INFOCLI2"
+    acct_logs = 30  # Capture 30 days of accounting logs by default
+    daemon_logs = 5   # Capture 5 days of daemon logs by default
+    additional_hosts = None
+    map_file = None
+    anonymize = False
+    create_tar = True
+
+    log_file = "pbs_snapshot.log"
+
+    PtlConfig()
+
+    # Parse the options provided to pbs_snapshot
+    try:
+        sopt = "d:H:l:o:h"
+        lopt = ["accounting-logs=", "daemon-logs=", "help",
+                "additional-hosts=", "map=", "obfuscate", "version"]
+        opts, args = getopt.getopt(sys.argv[1:], sopt, lopt)
+    except GetoptError:
+        usage()
+        sys.exit(1)
+
+    for o, val in opts:
+        if o == "-d":
+            diag_path = CliUtils.expand_abs_path(val)
+        elif o == "-o":
+            out_dir = val
+        elif o == "-H":
+            server_host = val
+        elif o == "-l":
+            log_level = val
+        elif o == "-h" or o == "--help":
+            usage()
+            sys.exit(0)
+        elif o == "--accounting-logs":
+            try:
+                acct_logs = int(val)
+            except ValueError:
+                raise ValueError("Invalid value for --accounting-logs" +
+                                 "option, should be an integer")
+        elif o == "--daemon-logs":
+            try:
+                daemon_logs = int(val)
+            except ValueError:
+                raise ValueError("Invalid value for --daemon-logs" +
+                                 "option, should be an integer")
+        elif o == "--additional-hosts":
+            additional_hosts = val
+        elif o == "--map":
+            map_file = val
+        elif o == "--obfuscate":
+            anonymize = True
+        elif o == "--version":
+            print ptl.__version__
+            sys.exit(0)
+        else:
+            sys.stderr.write("Unrecognized option")
+            usage()
+            sys.exit(1)
+
+    fmt = '%(asctime)-15s %(levelname)-8s %(message)s'
+    level_int = CliUtils.get_logging_level(log_level)
+    log_path = os.path.abspath(log_file)
+    logging.basicConfig(filename=log_path, filemode='w+',
+                        level=level_int, format=fmt)
+    stream_hdlr = logging.StreamHandler()
+    stream_hdlr.setLevel(level_int)
+    stream_hdlr.setFormatter(logging.Formatter(fmt))
+    ptl_logger = logging.getLogger('ptl')
+    ptl_logger.addHandler(stream_hdlr)
+    ptl_logger.setLevel(level_int)
+
+    # -o is a mandatory option, so make sure that it was provided
+    if out_dir is None:
+        sys.stderr.write("-o option not provided")
+        usage()
+        sys.exit(1)
+
+    if anonymize is True:
+        # find the parent directory of the snapshot
+        # This will be used to store the map file
+        out_abspath = os.path.abspath(out_dir)
+        map_file = os.path.join(out_abspath, "obfuscate.map")
+
+    # Capture the snapshot
+    with PBSSnapUtils(out_dir, diag_path=diag_path, server_host=server_host,
+                      acct_logs=acct_logs, daemon_logs=daemon_logs,
+                      additional_hosts=additional_hosts, map_file=map_file,
+                      anonymize=anonymize,
+                      create_tar=create_tar, log_path=log_path) as snap_utils:
+        outtar = snap_utils.capture_all()
+
+    if outtar is not None:
+        print "Snapshot available at: " + outtar
