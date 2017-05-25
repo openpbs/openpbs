@@ -152,7 +152,9 @@ class DshUtils(object):
     def get_platform(self, hostname=None, pyexec=None):
         """
         Get a local or remote platform info, essentially the value of
-        Python's sys.platform
+        Python's sys.platform, in case of Cray it will return a string
+        as "cray" for actual Cray cluster and "craysim" for Cray ALPS
+        simulator
 
         :param hostname: The hostname to query for platform info
         :type hostname: str or None
@@ -163,30 +165,33 @@ class DshUtils(object):
         For efficiency the value is cached and retrieved from the
         cache upon subsequent request
         """
+        platform = sys.platform
+        found_already = False
         if hostname is None:
-            return sys.platform
-
+            hostname = socket.gethostname()
         if hostname in self._h2p:
             return self._h2p[hostname]
-
-        if self.is_localhost(hostname):
-            self._h2p[hostname] = sys.platform
-            return sys.platform
-
-        if pyexec is None:
-            pyexec = self.which(hostname, 'python', level=logging.DEBUG2)
-
-        cmd = [pyexec, '-c', '"import sys; print sys.platform"']
-        ret = self.run_cmd(hostname, cmd=cmd)
-        if ret['rc'] != 0 or len(ret['out']) == 0:
-            self.logger.warning('Unable to retrieve platform info, defaulting '
-                                'to local platform')
-            platform = sys.platform
-        else:
-            platform = ret['out'][0]
-
+        if self.isfile(hostname=hostname, path='/etc/xthostname',
+                       level=logging.DEBUG2):
+            if self.isfile(hostname=hostname, path='/proc/cray_xt/cname',
+                           level=logging.DEBUG2):
+                platform = 'cray'
+            else:
+                platform = 'craysim'
+            found_already = True
+        if not self.is_localhost(hostname) and not found_already:
+            if pyexec is None:
+                pyexec = self.which(hostname, 'python', level=logging.DEBUG2)
+            cmd = [pyexec, '-c', '"import sys; print sys.platform"']
+            ret = self.run_cmd(hostname, cmd=cmd)
+            if ret['rc'] != 0 or len(ret['out']) == 0:
+                _msg = 'Unable to retrieve platform info,'
+                _msg += 'defaulting to local platform'
+                self.logger.warning(_msg)
+                platform = sys.platform
+            else:
+                platform = ret['out'][0]
         self._h2p[hostname] = platform
-
         return platform
 
     def _parse_file(self, hostname, file):
