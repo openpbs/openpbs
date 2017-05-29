@@ -2367,7 +2367,7 @@ hwlocXMLstart(void *data, const char *elem, const char **attr)
 	for (i = 0; attr[i] != NULL; i += 2) {
 		if (!strcmp(elem, "object") &&
 			!strcmp(attr[i], "type") &&
-			!strcmp(attr[i + 1], "Socket"))
+			!strcmp(attr[i + 1], "Package"))
 			nsockets++;
 	}
 }
@@ -2400,7 +2400,7 @@ XMLend(void *data, const char *elem)
  * @param[in]	type			-	node topology type indicator
  *
  * @return	int
- * @retval	number of "Socket" elements
+ * @retval	number of "Package" elements, Socket is renamed to Package from hwloc version grater than 1.11
  * @retval	0	error
  *
  * @par MT-Safe:	no
