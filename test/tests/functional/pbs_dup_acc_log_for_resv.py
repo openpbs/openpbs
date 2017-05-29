@@ -52,50 +52,45 @@ class TestDupAccLogForResv(TestFunctional):
             self.skipTest('test requires two MoMs as input, ' +
                           'use -p moms=<mom1>:<mom2>')
 
-    def check_log_resv_time(self, accounting_log_msg, start_tup,
-                            end_tup, check_status):
+    def check_log_resv_time(self, accounting_log_msg, start_tup):
         """
-        This is a helper function to reterive start and end time
-        of standing rervation from accounting log.
+        This is a helper function to retrieve start and end time
+        of standing reservation from accounting log.
         """
-        loglist_value = accounting_log_msg[start_tup][end_tup]
+        loglist_value = accounting_log_msg[start_tup][1]
         log_value = loglist_value.split()
-        if check_status == "start":
+        actual_reservation_time = []
+        check_status = ['start', 'end']
+        for status in check_status:
             for attribute in log_value:
                 attribute_value = attribute.split("=")
-                if attribute_value[0] == 'start':
-                    actual_reservation_time = attribute_value[1]
-        elif check_status == "end":
-            for attribute in log_value:
-                attribute_value = attribute.split("=")
-                if attribute_value[0] == 'end':
-                    actual_reservation_time = attribute_value[1]
-        return int(actual_reservation_time)
+                if attribute_value[0] == status:
+                    actual_reservation_time.append(int(attribute_value[1]))
+
+        return actual_reservation_time
 
     def differentiate_resv_instance(self, expected_start, expected_end,
                                     got_start, got_end, reserve_index):
         """
-        This function to differentiate log match
-        for each instance of standing reservation
-        on basis of comparing expected and got start and end time
-        of standing reservation of each instance(reserve_index)
+        This is a helper function to differentiate log match for each
+        instance(reserve_index) of standing reservation.
+        As input function accept expected_start,expected_end,got _start,
+        got_end time value and reserve_ index.
+        By comparison of expected_start & got_start and expected_end &
+        got_end time value,function will log info for specific
+        instance(reserve_index) of standing reservation.
         """
 
         self.assertTrue(((expected_start == got_start) and
                          (expected_end == got_end)),
                         'Time in the accounting log does not match with'
                         'the expected time for the standing reservation')
-        if reserve_index == '1':
-            self.logger.info(
-                'Matched accounting log for reserve_index instance1')
-        elif reserve_index == '2':
-            self.logger.info(
-                'Matched accounting log for reserve_index instance2')
-        elif reserve_index == '3':
-            self.logger.info(
-                'Matched  accounting log for reserve_index instance3')
+
+        match_string = 'Matched accounting log for instance' + reserve_index
+        if reserve_index in ('1', '2', '3'):
+            self.logger.info(match_string)
         else:
-            self.logger.info('Unknown instance')
+            self.assertTrue(False, "Unknown Instance")
 
     def test_accounting_logs(self):
         """
@@ -142,7 +137,7 @@ class TestDupAccLogForResv(TestFunctional):
         j.create_script(body=test)
         jid = self.server.submit(j)
 
-        # Wait to job to be in running R state
+        # Verify job in running R state
         self.server.expect(
             JOB, {ATTR_state: 'R', ATTR_substate: '42'}, jid, max_attempts=30)
 
@@ -214,14 +209,13 @@ class TestDupAccLogForResv(TestFunctional):
             msg='.*B;' + rid, id=rid, n='ALL', allmatch=True, regexp=True)
         self.assertNotEqual(m, None)
         self.assertEqual(len(m), 1)
-        # getting startime and endtime of first instance of standin reservation
-        got_instance1_start = self.check_log_resv_time(
-            accounting_log_msg=m, start_tup=0, end_tup=1, check_status="start")
-        got_instance1_end = self.check_log_resv_time(
-            accounting_log_msg=m, start_tup=0, end_tup=1, check_status="end")
+        # getting startime and endtime of first instance of standing
+        # reservation
+        got_time_instance1 = self.check_log_resv_time(
+            accounting_log_msg=m, start_tup=0)
 
-        self.differentiate_resv_instance(got_start=got_instance1_start,
-                                         got_end=got_instance1_end,
+        self.differentiate_resv_instance(got_start=got_time_instance1[0],
+                                         got_end=got_time_instance1[1],
                                          expected_start=instance1_start,
                                          expected_end=instance1_end,
                                          reserve_index=rid_instance1)
@@ -235,8 +229,13 @@ class TestDupAccLogForResv(TestFunctional):
         self.assertEqual(len(m), 1)
 
         a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        # Offset of 37 secs being used in server_expect()for reservation,
+        # second instance to be in Confirmed state
         self.server.expect(RESV, a, id=rid, max_attempts=5, offset=37)
+
         a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
+        # Offset of 24 secs being used in server_expect()for reservation,
+        # second instance to be in Runninng state
         self.server.expect(RESV, a, id=rid, max_attempts=5, offset=24)
 
         ret = self.server.status(RESV, id=rid)
@@ -250,16 +249,15 @@ class TestDupAccLogForResv(TestFunctional):
 
         # getting startime and endtime of second instance of standing
         # reservation
-        got_instance2_start = self.check_log_resv_time(
-            accounting_log_msg=m, start_tup=1, end_tup=1, check_status="start")
-        got_instance2_end = self.check_log_resv_time(
-            accounting_log_msg=m, start_tup=1, end_tup=1, check_status="end")
+        got_time_instance2 = self.check_log_resv_time(
+            accounting_log_msg=m, start_tup=1)
 
-        self.differentiate_resv_instance(got_start=got_instance2_start,
-                                         got_end=got_instance2_end,
+        self.differentiate_resv_instance(got_start=got_time_instance2[0],
+                                         got_end=got_time_instance2[1],
                                          expected_start=(instance1_start + 60),
                                          expected_end=(instance1_start + 90),
                                          reserve_index=rid_instance2)
+
         # Restart server second time
         self.server.restart()
 
@@ -274,7 +272,7 @@ class TestDupAccLogForResv(TestFunctional):
         Test for duplicate records in accounting log for advance reservations
         on restart of server requesting multiple nodes
         """
-        # Submit a advance reservation requesting multinode
+        # Submit a advance reservation requesting multiple nodes
         r = Reservation(TEST_USER)
         a = {'Resource_List.select': '2:ncpus=1',
              'Resource_List.place': 'scatter',
@@ -357,16 +355,15 @@ class TestDupAccLogForResv(TestFunctional):
 
         # getting startime and endtime of first instance of standing
         # reservation
-        got_instance1_start = self.check_log_resv_time(
-            accounting_log_msg=m, start_tup=0, end_tup=1, check_status="start")
-        got_instance1_end = self.check_log_resv_time(
-            accounting_log_msg=m, start_tup=0, end_tup=1, check_status="end")
+        got_time_instance1 = self.check_log_resv_time(
+            accounting_log_msg=m, start_tup=0)
 
-        self.differentiate_resv_instance(got_start=got_instance1_start,
-                                         got_end=got_instance1_end,
+        self.differentiate_resv_instance(got_start=got_time_instance1[0],
+                                         got_end=got_time_instance1[1],
                                          expected_start=instance1_start,
                                          expected_end=instance1_end,
                                          reserve_index=rid_instance1)
+
         # Restart server
         self.server.restart()
 
@@ -377,9 +374,13 @@ class TestDupAccLogForResv(TestFunctional):
         self.assertEqual(len(m), 1)
 
         a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        # Offset of 37 secs being used in server_expect()for reservation,
+        # second instance to be in Confirmed state
         self.server.expect(RESV, a, id=rid, max_attempts=5, offset=37)
 
         a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
+        # Offset of 24 secs being used in server_expect()for reservation,
+        # second instance to be in Runninng state
         self.server.expect(RESV, a, id=rid, max_attempts=5, offset=24)
 
         ret = self.server.status(RESV, id=rid)
@@ -394,13 +395,11 @@ class TestDupAccLogForResv(TestFunctional):
 
         # getting startime and endtime of second instance of standing
         # reservation
-        got_instance2_start = self.check_log_resv_time(
-            accounting_log_msg=m, start_tup=1, end_tup=1, check_status="start")
-        got_instance2_end = self.check_log_resv_time(
-            accounting_log_msg=m, start_tup=1, end_tup=1, check_status="end")
+        got_time_instance2 = self.check_log_resv_time(
+            accounting_log_msg=m, start_tup=0)
 
-        self.differentiate_resv_instance(got_start=got_instance2_start,
-                                         got_end=got_instance2_end,
+        self.differentiate_resv_instance(got_start=got_time_instance2[0],
+                                         got_end=got_time_instance2[1],
                                          expected_start=(instance1_start + 60),
                                          expected_end=(instance1_start + 90),
                                          reserve_index=rid_instance2)
@@ -414,9 +413,13 @@ class TestDupAccLogForResv(TestFunctional):
         self.assertEqual(len(m), 2)
 
         a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        # Offset of 37 secs being used in server_expect()for reservation,
+        # third instance to be in Confirmed state
         self.server.expect(RESV, a, id=rid, max_attempts=5, offset=37)
 
         a = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
+        # Offset of 24 secs being used in server_expect()for reservation,
+        # third instance to be in Runninng state
         self.server.expect(RESV, a, id=rid, max_attempts=5, offset=24)
 
         ret = self.server.status(RESV, id=rid)
@@ -431,15 +434,13 @@ class TestDupAccLogForResv(TestFunctional):
         ret = self.server.status(RESV, id=rid)
         rid_instance3 = ret[0]['reserve_index']
 
-        # getting startime and endtime of second instance of standing
+        # getting startime and endtime of third instance of standing
         # reservation
-        got_instance3_start = self.check_log_resv_time(
-            accounting_log_msg=m, start_tup=2, end_tup=1, check_status="start")
-        got_instance3_end = self.check_log_resv_time(
-            accounting_log_msg=m, start_tup=2, end_tup=1, check_status="end")
+        got_time_instance3 = self.check_log_resv_time(
+            accounting_log_msg=m, start_tup=0)
 
-        self.differentiate_resv_instance(got_start=got_instance3_start,
-                                         got_end=got_instance3_end,
+        self.differentiate_resv_instance(got_start=got_time_instance3[0],
+                                         got_end=got_time_instance3[1],
                                          expected_start=(
                                              instance1_start + 120),
                                          expected_end=(instance1_start + 150),
