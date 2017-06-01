@@ -823,6 +823,7 @@ class PBSTestSuite(unittest.TestCase):
         """
         Revert the values set for moms
         """
+        self.del_all_nodes = True
         for mom in self.moms.values():
             self.revert_mom(mom, force)
 
@@ -923,19 +924,31 @@ class PBSTestSuite(unittest.TestCase):
                 self.logger.info('server: no nodes defined, creating one')
                 self.server.manager(MGR_CMD_CREATE, NODE, None, mom.shortname)
         name = mom.shortname
-        try:
-            self.server.status(NODE, id=name)
-        except PbsStatusError:
-            # server doesn't have node with shortname
-            # check with hostname
-            name = mom.hostname
+        if mom.platform == 'cray' or mom.platform == 'craysim':
+            # delete all nodes(@default) on first call of revert_mom
+            # and create all nodes specified by self.moms one by one
+            try:
+                if self.del_all_nodes:
+                    self.server.manager(MGR_CMD_DELETE, NODE, None, '')
+                    self.del_all_nodes = False
+            except:
+                pass
+            self.server.manager(MGR_CMD_CREATE, NODE, None, name)
+        else:
             try:
                 self.server.status(NODE, id=name)
             except PbsStatusError:
-                # server doesn't have node for this mom yet
-                # so create with shortname
-                name = mom.shortname
-                self.server.manager(MGR_CMD_CREATE, NODE, None, mom.shortname)
+                # server doesn't have node with shortname
+                # check with hostname
+                name = mom.hostname
+                try:
+                    self.server.status(NODE, id=name)
+                except PbsStatusError:
+                    # server doesn't have node for this mom yet
+                    # so create with shortname
+                    name = mom.shortname
+                    self.server.manager(MGR_CMD_CREATE, NODE, None,
+                                        mom.shortname)
         self.server.expect(NODE, {ATTR_NODE_state: 'free'}, id=name,
                            interval=1)
         return mom

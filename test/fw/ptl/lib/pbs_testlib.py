@@ -3471,6 +3471,7 @@ class PBSService(PBSObject):
             self.fqdn = self.hostname
 
         self.shortname = self.hostname.split('.')[0]
+        self.platform = self.du.get_platform()
 
         self.logutils = None
         self.logfile = None
@@ -4858,6 +4859,13 @@ class Server(PBSService):
         self.logger.info(self.logprefix +
                          'reverting configuration to defaults')
         self.cleanup_jobs_and_reservations()
+        self.mpp_hook = os.path.join(self.pbs_conf['PBS_HOME'],
+                                     'server_priv', 'hooks',
+                                     'PBS_translate_mpp.HK')
+        self.dflt_mpp_hook = os.path.join(self.pbs_conf['PBS_EXEC'],
+                                          'lib', 'python', 'altair',
+                                          'pbs_hooks',
+                                          'PBS_translate_mpp.HK')
         if server_stat is None:
             server_stat = self.status(SERVER, level=logging.DEBUG)[0]
         for k in server_stat.keys():
@@ -4874,7 +4882,10 @@ class Server(PBSService):
                self.attributes[k] != self.dflt_attributes[k]):
                 setdict[k] = self.dflt_attributes[k]
         if delhooks:
-            reverthooks = False
+            if self.platform == 'cray' or self.platform == 'craysim':
+                reverthooks = True
+            else:
+                reverthooks = False
             hooks = self.status(HOOK, level=logging.DEBUG)
             hooks = [h['id'] for h in hooks]
             if len(hooks) > 0:
@@ -4891,11 +4902,21 @@ class Server(PBSService):
             self.manager(MGR_CMD_CREATE, QUEUE, a, id='workq', expect=True)
             setdict.update({ATTR_dfltque: 'workq'})
         if reverthooks:
+            if self.platform == 'cray' or self.platform == 'craysim':
+                if self.du.cmp(self.hostname, self.dflt_mpp_hook,
+                               self.mpp_hook, sudo=True) != 0:
+                    self.du.run_copy(self.hostname, self.dflt_mpp_hook,
+                                     self.mpp_hook, mode=0644, sudo=True)
+                    self.signal('-HUP')
+                a = {'enabled': 'true'}
+                self.manager(MGR_CMD_SET, MGR_OBJ_PBS_HOOK, a,
+                             'PBS_translate_mpp')
             hooks = self.status(HOOK, level=logging.DEBUG)
             hooks = [h['id'] for h in hooks]
             a = {ATTR_enable: 'false'}
             if len(hooks) > 0:
-                self.manager(MGR_CMD_SET, MGR_OBJ_HOOK, a, hooks, expect=True)
+                self.manager(MGR_CMD_SET, MGR_OBJ_HOOK, a, hooks,
+                             expect=True)
         if revertqueues:
             self.status(QUEUE, level=logging.DEBUG)
             queues = []
@@ -10512,6 +10533,8 @@ class Scheduler(PBSService):
         cmd = [os.path.join(self.pbs_conf['PBS_EXEC'], 'sbin', 'pbsfs'), '-e']
         self.du.run_cmd(cmd=cmd, sudo=True)
         self.parse_sched_config()
+        if self.platform == 'cray' or self.platform == 'craysim':
+            self.add_resource('vntype')
         self.fairshare_tree = None
         self.resource_group = None
         return self.isUp()
@@ -11962,7 +11985,21 @@ class MoM(PBSService):
         self.configd = os.path.join(self.pbs_conf['PBS_HOME'], 'mom_priv',
                                     'config.d')
         self.config = {}
-        self.dflt_config = {'$clienthost': self.server.hostname}
+        if self.platform == 'cray' or self.platform == 'craysim':
+            usecp = os.path.realpath('/home')
+            if self.platform == 'cray':
+                if os.path.exists('/opt/cray/alps/default/bin/apbasil'):
+                    alps_client = '/opt/cray/alps/default/bin/apbasil'
+                else:
+                    alps_client = self.du.which(exe='apbasil')
+            else:
+                alps_client = "/opt/alps/apbasil.sh"
+            self.dflt_config = {'$clienthost': self.server.hostname,
+                                '$vnodedef_additive': 0,
+                                '$alps_client': alps_client,
+                                '$usecp': '*:%s %s' % (usecp, usecp)}
+        else:
+            self.dflt_config = {'$clienthost': self.server.hostname}
         self.version = None
         self._is_cpuset_mom = None
 
