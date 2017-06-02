@@ -40,6 +40,7 @@ import sys
 import socket
 import logging
 import signal
+import pwd
 import re
 from nose.util import isclass
 from nose.plugins.base import Plugin
@@ -161,8 +162,10 @@ class PTLTestData(Plugin):
             return
         pbs_diag = os.path.join(svr.pbs_conf['PBS_EXEC'],
                                 'unsupported', 'pbs_diag')
+        cur_user = self.du.get_current_user()
         cmd = [pbs_diag, '-f', '-d', '2']
-        cmd += ['-u', self.du.get_current_user()]
+        cmd += ['-u', cur_user]
+        cmd += ['-o', pwd.getpwnam(cur_user).pw_dir]
         if len(svr.jobs) > 0:
             cmd += ['-j', ','.join(svr.jobs.keys())]
         ret = self.du.run_cmd(svr_host, cmd, sudo=True, level=logging.DEBUG2)
