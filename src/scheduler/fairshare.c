@@ -222,9 +222,11 @@ new_group_info()
 	new->resgroup = UNSPECIFIED;
 	new->cresgroup = UNSPECIFIED;
 	new->shares = UNSPECIFIED;
-	new->percentage = 0.0;
+	new->tree_percentage = 0.0;
+	new->group_percentage = 0.0;
 	new->usage = 1;
 	new->temp_usage = 1;
+	new->usage_factor = 0.0;
 	new->gpath = NULL;
 	new->parent = NULL;
 	new->sibling = NULL;
@@ -375,13 +377,13 @@ preload_tree()
 
 	root->resgroup = -1;
 	root->cresgroup = 0;
-	root->percentage = 1.0;
+	root->tree_percentage = 1.0;
 
 	if ((unknown = new_group_info()) == NULL) {
 		free_fairshare_head(head);
 		return NULL;
 	}
-	if ((unknown->name = string_dup("unknown")) ==NULL) {
+	if ((unknown->name = string_dup(UNKNOWN_GROUP_NAME)) == NULL) {
 		free_fairshare_head(head);
 		return NULL;
 	}
@@ -445,36 +447,19 @@ calc_fair_share_perc(group_info *root, int shares)
 	else
 		cur_shares = shares;
 
-	if (cur_shares * root->parent->percentage ==0)
-		root->percentage = 0;
-	else
-		root->percentage = (float) root->shares / (float) cur_shares *
-			root->parent->percentage;
+	if (cur_shares * root->parent->tree_percentage == 0) {
+		root->group_percentage = 0;
+		root->tree_percentage = 0;
+	}
+	else {
+		root->group_percentage = (float) root->shares / cur_shares;
+		root->tree_percentage = root->group_percentage  * root->parent->tree_percentage;
+	}
 
 	calc_fair_share_perc(root->sibling, cur_shares);
 	calc_fair_share_perc(root->child, UNSPECIFIED);
 	return 1;
 }
-
-/**
- * @brief
- *		test_perc - a debugging function to check if the fair_share
- *		    percentanges calculated add up to 100%
- *
- * @param[in]	root	-	root of the current subtree
- *
- * @return	total percentage (hopefully 1.0)
- *
- */
-float
-test_perc(group_info *root)
-{
-	if (root == NULL)
-		return 0;
-
-	return (root->child == NULL ? root->percentage :0) + test_perc(root->sibling) + test_perc(root->child);
-}
-
 
 /**
  * @brief
@@ -677,15 +662,15 @@ compare_path(struct group_path *gp1, struct group_path *gp2)
 
 	while (cur1 != NULL && cur2 != NULL && rc == 0  ) {
 		if (cur1 != cur2) {
-			if (cur1->ginfo->percentage <= 0 && cur2->ginfo->percentage> 0)
+			if (cur1->ginfo->tree_percentage <= 0 && cur2->ginfo->tree_percentage> 0)
 				return 1;
-			if (cur1->ginfo->percentage > 0 && cur2->ginfo->percentage<= 0)
+			if (cur1->ginfo->tree_percentage > 0 && cur2->ginfo->tree_percentage<= 0)
 				return -1;
-			if (cur1->ginfo->percentage <= 0 && cur2->ginfo->percentage<= 0)
+			if (cur1->ginfo->tree_percentage <= 0 && cur2->ginfo->tree_percentage<= 0)
 				return 0;
 
-			curval1 = cur1->ginfo->temp_usage / cur1->ginfo->percentage;
-			curval2 = cur2->ginfo->temp_usage / cur2->ginfo->percentage;
+			curval1 = cur1->ginfo->temp_usage / cur1->ginfo->tree_percentage;
+			curval2 = cur2->ginfo->temp_usage / cur2->ginfo->tree_percentage;
 
 			if (curval1 < curval2)
 				rc = -1;
@@ -698,39 +683,6 @@ compare_path(struct group_path *gp1, struct group_path *gp2)
 	}
 
 	return rc;
-}
-
-
-/**
- * @brief
- *		print_fairshare - print out the fair share tree
- *
- * @param[in]	root	-	root of subtree
- * @param[in]	level	-	-1	: print long version
- *	           				0	: print brief but hierarchical tree
- *
- * @return nothing
- *
- */
-void
-print_fairshare(group_info *root, int level)
-{
-	if (root == NULL)
-		return;
-
-	if (level < 0) {
-		printf(
-			"%-10s: Grp: %-5d  cgrp: %-5d"
-			"Shares: %-6d Usage: %-6.0lf Perc: %6.3f%%\n",
-			root->name,
-			root->resgroup, root->cresgroup, root->shares,
-			root->usage, (root->percentage * 100));
-	}
-	else
-		printf("%*s%s(%d)\n", level, " ", root->name, root->cresgroup);
-
-	print_fairshare(root->child, level >= 0 ? level + 5 : -1);
-	print_fairshare(root->sibling, level);
 }
 
 /**
@@ -801,11 +753,12 @@ rec_write_usage(group_info *root, FILE *fp)
 
 	/* only write out leaves of the tree (fairshare entities)
 	 * usage defaults to 1 so don't bother writing those out either
+	 * It is possible that the unknown group is empty.  Don't want to write it out
 	 */
 #ifdef NAS /* localmod 043 */
 	if (root->child == NULL) {
 #else
-	if (root->usage != 1 && root->child ==NULL) {
+	if (root->usage != 1 && root->child == NULL && strcmp(root->name, UNKNOWN_GROUP_NAME) != 0) {
 #endif /* localmod 043 */
 		strncpy(grp.name, root->name, USAGE_NAME_MAX);
 		grp.usage = root->usage;
@@ -826,19 +779,19 @@ rec_write_usage(group_info *root, FILE *fp)
  * @param[in]	flags	-	flags to check whether to trim or not.
  * @param[in]	fhead	-	pointer to fairshare_head struct.
  *
- * @return success/failure
+ * @return void
  *
  */
-int
+void
 read_usage(char *filename, int flags, fairshare_head *fhead)
 {
 	FILE *fp;				/* file pointer to usage file */
-	struct group_node_header head;	/* usage file header */
-	time_t last;			/* read the last sync from the file */
-	int error = 0;		/* error reading in usage header */
+	struct group_node_header head;		/* usage file header */
+	time_t last;				/* read the last sync from the file */
+	int error = 0;				/* error reading in usage header */
 
 	if (fhead == NULL || fhead->root == NULL)
-		return 0;
+		return;
 
 	if (filename == NULL)
 		filename = USAGE_FILE;
@@ -847,7 +800,7 @@ read_usage(char *filename, int flags, fairshare_head *fhead)
 		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_WARNING, "fairshare usage",
 			"Creating usage database for fairshare");
 		fprintf(stderr, "Creating usage database for fairshare.\n");
-		return 1;
+		return;
 	}
 
 	/* read header */
@@ -869,8 +822,7 @@ read_usage(char *filename, int flags, fairshare_head *fhead)
 
 			if (error)
 				schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_WARNING,
-					"fairshare usage",
-					"Invalid usage file header");
+					"fairshare usage", "Invalid usage file header");
 		}
 		else	 { /* original headerless usage file */
 			rewind(fp);
@@ -879,7 +831,6 @@ read_usage(char *filename, int flags, fairshare_head *fhead)
 	}
 
 	fclose(fp);
-	return 1;
 }
 
 /**
@@ -944,7 +895,7 @@ read_usage_v1(FILE *fp, group_info *root)
 int
 read_usage_v2(FILE *fp, int flags, group_info *root)
 {
-	struct group_node_usage_v2 grp;
+	struct group_node_usage_v2 grp = {0};
 	group_info *ginfo;
 	struct group_path *gpath;
 
@@ -1084,7 +1035,7 @@ struct group_path *create_group_path(group_info *ginfo)
 int
 over_fs_usage(group_info *ginfo)
 {
-	return ginfo->gpath->ginfo->usage * ginfo->percentage < ginfo->usage;
+	return ginfo->gpath->ginfo->usage * ginfo->tree_percentage < ginfo->usage;
 }
 
 /**
@@ -1112,8 +1063,10 @@ dup_fairshare_tree(group_info *root, group_info *nparent)
 	nroot->resgroup = root->resgroup;
 	nroot->cresgroup = root->cresgroup;
 	nroot->shares = root->shares;
-	nroot->percentage = root->percentage;
+	nroot->tree_percentage = root->tree_percentage;
+	nroot->group_percentage = root->group_percentage;
 	nroot->usage = root->usage;
+	nroot->usage_factor = root->usage_factor;
 	nroot->temp_usage = root->temp_usage;
 	nroot->name = string_dup(root->name);
 
@@ -1251,4 +1204,71 @@ reset_temp_usage(group_info *head)
 	head->temp_usage = head->usage;
 	reset_temp_usage(head->sibling);
 	reset_temp_usage(head->child);
+}
+
+/**
+ * @brief
+ *		recursive helper function to calc_usage_factor()
+ * @param root	- parent fairshare tree node
+ * @param ginfo	- child fairshare tree node
+ *
+ * @return void
+ */
+static void
+calc_usage_factor_rec(group_info *root, group_info *ginfo)
+{
+	float usage;
+
+	if (root == NULL || ginfo == NULL)
+		return;
+
+	usage = ginfo->usage / root->usage;
+	ginfo->usage_factor = usage + ((ginfo->parent->usage_factor - usage) * ginfo->group_percentage);
+
+	calc_usage_factor_rec(root, ginfo->sibling);
+	calc_usage_factor_rec(root, ginfo->child);
+}
+
+/**
+ * @brief
+ *		calculate usage_factor numbers for entire tree.
+ *		The usage_factor is a number that takes the node's usage
+ *		plus part of its parent's usage_factor into account.  This
+ *		will give a number that is comparable across the tree.
+ *
+ * @param[in] tree - fairshare tree
+ *
+ * @return void
+ */
+void
+calc_usage_factor(fairshare_head *tree)
+{
+	group_info *ginfo;
+	group_info *root;
+
+	if (tree == NULL)
+		return;
+
+	root = tree->root;
+	/* Root's children use their real usage as their arbitrary usage */
+	for (ginfo = root->child; ginfo != NULL; ginfo = ginfo->sibling) {
+		ginfo->usage_factor = ginfo->usage / root->usage;
+		calc_usage_factor_rec(root, ginfo->child);
+	}
+
+}
+
+/**
+ * @brief reset the usage of the fairshare tree so the usage can be reread.
+ *	If the usage is not reset first, any entity that is no longer in the
+ *	fairshare usage file will retain their original usage.
+ * @param node - the fairshare node
+ */
+void reset_usage(group_info *node) {
+	if(node == NULL)
+		return;
+	reset_usage(node->sibling);
+	reset_usage(node->child);
+	node->usage = 1;
+	node->temp_usage = 1;
 }

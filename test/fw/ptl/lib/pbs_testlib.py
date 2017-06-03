@@ -10685,7 +10685,6 @@ class Scheduler(PBSService):
         self.resource_group = None
         self.server = None
         self.server_dyn_res = None
-        self.deletable_files = ['usage']
         self.logger = logging.getLogger(__name__)
 
         if server is not None:
@@ -11178,10 +11177,9 @@ class Scheduler(PBSService):
             self.du.run_copy(self.hostname, self.dflt_sched_config_file,
                              self.sched_config_file, mode=0644, sudo=True)
         self.signal('-HUP')
-        for f in self.deletable_files:
-            fn = os.path.join(self.pbs_conf['PBS_HOME'], 'sched_priv', f)
-            if fn is not None:
-                self.du.rm(self.hostname, fn, sudo=True, force=True)
+        # Revert fairshare usage
+        cmd = [os.path.join(self.pbs_conf['PBS_EXEC'], 'sbin', 'pbsfs'), '-e']
+        self.du.run_cmd(cmd=cmd, sudo=True)
         self.parse_sched_config()
         self.fairshare_tree = None
         self.resource_group = None
@@ -12172,7 +12170,7 @@ class Scheduler(PBSService):
         Set the fairshare usage associated to a given entity.
 
         :param name: The entity to set the fairshare usage of
-        :type name: str or None
+        :type name: str or :py:class:`~ptl.lib.pbs_testlib.PbsUser` or None
         :param usage: The usage value to set
         """
         if self.has_diag:
@@ -12182,15 +12180,16 @@ class Scheduler(PBSService):
             self.logger.error(self.logprefix + ' an entity name required')
             return False
 
+        if isinstance(name, PbsUser):
+            name = str(name)
+
         if usage is None:
             self.logger.error(self.logprefix + ' a usage is required')
             return False
 
-        self.stop()
         pbsfs = os.path.join(self.pbs_conf['PBS_EXEC'], 'sbin', 'pbsfs')
         cmd = [pbsfs, '-s', name, str(usage)]
         ret = self.du.run_cmd(self.hostname, cmd, sudo=True)
-        self.start()
         if ret['rc'] == 0:
             return True
         return False
@@ -12216,9 +12215,9 @@ class Scheduler(PBSService):
         Compare two fairshare entities. Wrapper of ``pbsfs -c e1 e2``
 
         :param name1: name of first entity to compare
-        :type name1: str or None
+        :type name1: str or :py:class:`~ptl.lib.pbs_testlib.PbsUser` or None
         :param name2: name of second entity to compare
-        :type name1: str or None
+        :type name2: str or :py:class:`~ptl.lib.pbs_testlib.PbsUser` or None
         :returns: the name of the entity of higher priority or None on error
         """
         if self.has_diag:
@@ -12228,6 +12227,12 @@ class Scheduler(PBSService):
             self.logger.erro(self.logprefix + 'two fairshare entity names ' +
                              'required')
             return None
+
+        if isinstance(name1, PbsUser):
+            name1 = str(name1)
+
+        if isinstance(name2, PbsUser):
+            name2 = str(name2)
 
         pbsfs = os.path.join(self.pbs_conf['PBS_EXEC'], 'sbin', 'pbsfs')
         cmd = [pbsfs, '-c', name1, name2]
@@ -12277,7 +12282,7 @@ class Scheduler(PBSService):
         Add an entry to the resource group file
 
         :param name: The name of the entity to add
-        :type name: str
+        :type name: str or :py:class:`~ptl.lib.pbs_testlib.PbsUser`
         :param id: The numeric identifier of the entity to add
         :type id: int
         :param parent: The name of the parent group
@@ -12291,6 +12296,8 @@ class Scheduler(PBSService):
         if not self.resource_group:
             self.resource_group = FairshareTree(
                 self.hostname, self.resource_group_file)
+        if isinstance(name, PbsUser):
+            name = str(name)
         return self.resource_group.create_node(name, id, parent_name=parent,
                                                nshares=nshares)
 
@@ -12525,6 +12532,8 @@ class FairshareNode(object):
     Object representation of the fairshare data as queryable through
     the command ``pbsfs``.
 
+    :param name: Name of fairshare node
+    :type name: str or None
     :param nshares: Number of shares
     :type nshares: int or None
     :param usage: Fairshare usage

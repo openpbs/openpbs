@@ -51,6 +51,7 @@
 /* name of config file */
 #define CONFIG_FILE "sched_config"
 #define USAGE_FILE "usage"
+#define USAGE_TOUCH USAGE_FILE ".touch"
 #define HOLIDAYS_FILE "holidays"
 #define RESGROUP_FILE "resource_group"
 #define DEDTIME_FILE "dedicated_time"
@@ -59,6 +60,8 @@
 #define USAGE_MAGIC "PBS_MAG!"
 #define USAGE_VERSION 2
 #define USAGE_NAME_MAX 50
+
+#define UNKNOWN_GROUP_NAME "unknown"
 
 /* preempt priority values */
 #define PREEMPT_PRIORITY_HIGH 100000

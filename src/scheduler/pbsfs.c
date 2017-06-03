@@ -54,6 +54,7 @@
 #include <pbs_ifl.h>
 #include "data_types.h"
 #include "constant.h"
+#include "config.h"
 #include "fairshare.h"
 #include "parse.h"
 #include "pbs_version.h"
@@ -61,7 +62,8 @@
 #include "log.h"
 
 /* prototypes */
-void print_fairshare_entity(group_info *ginfo);
+static void print_fairshare_entity(group_info *ginfo);
+static void print_fairshare(group_info *root, int level);
 
 /* flags */
 #define FS_GET 1
@@ -168,15 +170,13 @@ main(int argc, char *argv[])
 	if (parse_group(RESGROUP_FILE, conf.fairshare->root) == 0)
 		return 1;
 
-	if (flags & FS_TRIM_TREE) {
-		if (!read_usage(USAGE_FILE, FS_TRIM, conf.fairshare))
-			return 1;
-	}
+	if (flags & FS_TRIM_TREE)
+		read_usage(USAGE_FILE, FS_TRIM, conf.fairshare);
 	else
-		if (!read_usage(USAGE_FILE, 0, conf.fairshare))
-			return 1;
+		read_usage(USAGE_FILE, 0, conf.fairshare);
 
 	calc_fair_share_perc(conf.fairshare->root->child, UNSPECIFIED);
+	calc_usage_factor(conf.fairshare);
 
 	if (flags & FS_PRINT_TREE)
 		print_fairshare(conf.fairshare->root, 0);
@@ -229,11 +229,14 @@ main(int argc, char *argv[])
 	}
 
 	if (flags & FS_WRITE_FILE) {
+		FILE *fp;
 		/* make backup of database file */
 		remove(USAGE_FILE ".bak");
 		if (rename(USAGE_FILE, USAGE_FILE ".bak") < 0)
 			perror("Could not backup usage database.");
 		write_usage(USAGE_FILE, conf.fairshare);
+		if ((fp = fopen(USAGE_TOUCH, "w")) != NULL)
+			fclose(fp);
 	}
 
 	return 0;
@@ -244,34 +247,65 @@ main(int argc, char *argv[])
  *
  * @param[in]	ginfo	-	group info structure.
  */
-void
+static void
 print_fairshare_entity(group_info *ginfo)
 {
 	struct group_path *gp;
 	printf(
 		"fairshare entity: %s\n"
-		"Resgroup        : %d\n"
-		"cresgroup       : %d\n"
-		"Shares          : %d\n"
-		"Percentage      : %f%%\n"
-		"usage           : %.0lf (%s)\n"
-		"usage/perc      : %.0lf\n",
+		"Resgroup		: %d\n"
+		"cresgroup		: %d\n"
+		"Shares			: %d\n"
+		"Percentage		: %f%%\n"
+		"fairshare_tree_usage	: %f\n"
+		"usage			: %.0lf (%s)\n"
+		"usage/perc		: %.0lf\n",
 		ginfo->name,
 		ginfo->resgroup,
 		ginfo->cresgroup,
 		ginfo->shares,
-		ginfo->percentage * 100,
+		ginfo->tree_percentage * 100,
+		ginfo->usage_factor,
 		ginfo->usage, conf.fairshare_res,
-		ginfo->percentage == 0 ? -1 : ginfo->usage / ginfo->percentage);
+		ginfo->tree_percentage == 0 ? -1 : ginfo->usage / ginfo->tree_percentage);
 
 	printf("Path from root: \n");
-	gp = ginfo->gpath;
-	while (gp != NULL) {
+	for (gp = ginfo->gpath; gp != NULL; gp = gp->next) {
 		printf("%-10s: %5d %10.0f / %5.3f = %.0f\n",
 			gp->ginfo->name, gp->ginfo->cresgroup,
-			gp->ginfo->usage, gp->ginfo->percentage,
-			gp->ginfo->percentage == 0 ? -1 :
-			gp->ginfo->usage / gp->ginfo->percentage);
-		gp = gp->next;
+			gp->ginfo->usage, gp->ginfo->tree_percentage,
+			gp->ginfo->tree_percentage == 0 ? -1 :
+			gp->ginfo->usage / gp->ginfo->tree_percentage);
 	}
+}
+
+/**
+ * @brief
+ *		print_fairshare - print out the fair share tree
+ *
+ * @param[in]	root	-	root of subtree
+ * @param[in]	level	-	-1	: print long version
+ *				 0	: print brief but hierarchical tree
+ *
+ * @return nothing
+ *
+ */
+static void
+print_fairshare(group_info *root, int level)
+{
+	if (root == NULL)
+		return;
+
+	if (level < 0) {
+		printf(
+			"%-10s: Grp: %-5d  cgrp: %-5d"
+			"Shares: %-6d Usage: %-6.0lf Perc: %6.3f%%\n",
+			root->name, root->resgroup, root->cresgroup, root->shares,
+			root->usage, (root->tree_percentage * 100));
+	}
+	else
+		printf("%*s%s(%d)\n", level, " ", root->name, root->cresgroup);
+
+	print_fairshare(root->child, level >= 0 ? level + 5 : -1);
+	print_fairshare(root->sibling, level);
 }

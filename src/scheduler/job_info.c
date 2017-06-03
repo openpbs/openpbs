@@ -95,6 +95,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <math.h>
 #include <pbs_ifl.h>
 #include <log.h>
 #include <libutil.h>
@@ -802,7 +803,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 		 */
 		if (policy->fair_share && conf.enforce_no_shares) {
 			if (resresv->job->ginfo != NULL &&
-			resresv->job->ginfo->percentage == 0) {
+			resresv->job->ginfo->tree_percentage == 0) {
 				set_schd_error_codes(err, NEVER_RUN, NO_FAIRSHARES);
 			}
 		}
@@ -833,20 +834,6 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 		/* Don't consider a job not in a queued state as runnable */
 		if (!in_runnable_state(resresv))
 			resresv->can_not_run = 1;
-
-		if (qinfo->server->job_formula != NULL) {
-			double threshold = policy->job_form_threshold;
-			resresv->job->formula_value = formula_evaluate(qinfo->server->job_formula, resresv, resresv->resreq);
-			sprintf(logbuf, "Formula Evaluation = %.*f",
-				float_digits(resresv->job->formula_value, FLOAT_NUM_DIGITS), resresv->job->formula_value);
-			schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name, logbuf);
-			if (!resresv->can_not_run && policy->job_form_threshold_set && resresv->job->formula_value <= threshold) {
-				set_schd_error_codes(err, NOT_RUN, JOB_UNDER_THRESHOLD);
-				snprintf(logbuf, sizeof(logbuf), "Job's formula value %.*f is under threshold %.*f",
-					float_digits(resresv->job->formula_value, FLOAT_NUM_DIGITS), resresv->job->formula_value, float_digits(threshold, 2), threshold);
-				schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name, logbuf);
-			}
-		}
 
 #ifdef RESC_SPEC
 		/* search_for_rescspec() sets jinfo->rspec */
@@ -1078,7 +1065,7 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 			}
 
 			if (resresv->nspec_arr != NULL)
-				resresv->ninfo_arr=create_node_array_from_nspec(resresv->nspec_arr);
+				resresv->ninfo_arr = create_node_array_from_nspec(resresv->nspec_arr);
 		}
 		else if (!strcmp(attrp->name, ATTR_l)) { /* resources requested*/
 			resreq = find_alloc_resource_req_by_str(resresv->resreq, attrp->resource);
@@ -4232,12 +4219,16 @@ formula_evaluate(char *formula, resource_resv *resresv, resource_req *resreq)
 	}
 
 	/* special cases */
-	sprintf(buf, "\'%s\':%ld,\'%s\':%d,\'%s\':%d,\'%s\':%lf, \'%s\':%d}",
+	sprintf(buf, "\'%s\':%ld,\'%s\':%d,\'%s\':%d,\'%s\':%f, \'%s\': %f, \'%s\': %f, \'%s\': %f, \'%s\':%d}",
 		FORMULA_ELIGIBLE_TIME, resresv->job->eligible_time,
 		FORMULA_QUEUE_PRIO, resresv->job->queue->priority,
 		FORMULA_JOB_PRIO, resresv->job->priority,
-		FORMULA_FSPERC, resresv->job->ginfo->percentage,
-		FORMULA_ACCRUE_TYPE, resresv->job->accrue_type);
+		FORMULA_FSPERC, resresv->job->ginfo->tree_percentage,
+		FORMULA_FSPERC_DEP, resresv->job->ginfo->tree_percentage,
+		FORMULA_TREE_USAGE, resresv->job->ginfo->usage_factor,
+		FORMULA_FSFACTOR, resresv->job->ginfo->tree_percentage == 0 ? 0 : 
+			pow(2, -(resresv->job->ginfo->usage_factor/resresv->job->ginfo->tree_percentage)),
+		FORMULA_ACCRUE_TYPE, resresv -> job -> accrue_type);
 	if (pbs_strcat(&globals, &globals_size, buf) == NULL) {
 		free(globals);
 		free(formula_buf);

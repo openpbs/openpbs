@@ -44,7 +44,10 @@
 
 /* Formula special case constants */
 
-#define FORMULA_FSPERC 		"fair_share_perc"
+#define FORMULA_FSPERC 		"fairshare_perc"
+#define FORMULA_FSPERC_DEP	"fair_share_perc"
+#define FORMULA_TREE_USAGE	"fairshare_tree_usage"
+#define FORMULA_FSFACTOR	"fairshare_factor"
 #define FORMULA_QUEUE_PRIO 	"queue_priority"
 #define FORMULA_JOB_PRIO 	"job_priority"
 #define FORMULA_ELIGIBLE_TIME 	"eligible_time"

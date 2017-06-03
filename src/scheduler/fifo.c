@@ -176,12 +176,10 @@ schedinit(void)
 	if (conf.fairshare != NULL) {
 		parse_group(RESGROUP_FILE, conf.fairshare->root);
 		calc_fair_share_perc(conf.fairshare->root->child, UNSPECIFIED);
-		if (conf.prime_fs || conf.non_prime_fs) {
-			read_usage(USAGE_FILE, 0, conf.fairshare);
+		read_usage(USAGE_FILE, 0, conf.fairshare);
 
-			if (conf.fairshare->last_decay == 0)
-				conf.fairshare->last_decay = cstat.current_time;
-		}
+		if (conf.fairshare->last_decay == 0)
+			conf.fairshare->last_decay = cstat.current_time;
 	}
 #ifdef NAS /* localmod 034 */
 	site_parse_shares(SHARE_FILE);
@@ -243,8 +241,8 @@ schedinit(void)
 /**
  * @brief
  *		update global status structure which holds
- *		      status information used by the scheduler which
- *		      can change from cycle to cycle
+ *		status information used by the scheduler which
+ *		can change from cycle to cycle
  *
  * @param[in]	policy	-	status structure to update
  * @param[in]	current_time	-	current time or 0 to call time()
@@ -327,12 +325,12 @@ update_cycle_status(struct status *policy, time_t current_time)
 /**
  * @brief
  * 		prep the scheduling cycle.  Do tasks that have to happen prior
- *		 to the consideration of the first job.  This includes any
- *		 periodic upkeep (like fairshare), or any prep to the queried
- *		 data that needed to happen post query_server()
- *		 (like preemption)
+ *		to the consideration of the first job.  This includes any
+ *		periodic upkeep (like fairshare), or any prep to the queried
+ *		data that needed to happen post query_server() (like preemption)
  *
  * @param[in]	policy	-	policy info
+ * @param[in]	pbs_sd		connection descriptor to pbs_server
  * @param[in]	sinfo	-	the server
  *
  * @return	int
@@ -344,16 +342,34 @@ update_cycle_status(struct status *policy, time_t current_time)
  */
 
 int
-init_scheduling_cycle(status *policy, server_info *sinfo)
+init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
 {
-	group_info *user = NULL; /* the user for the running jobs of the last cycle */
-	char decayed = 0;	/* boolean: have we decayed usage? */
-	time_t t;		/* used in decaying fair share */
-	usage_t delta;	/* the usage between last sch cycle and now */
+	group_info *user = NULL;	/* the user for the running jobs of the last cycle */
+	char decayed = 0;		/* boolean: have we decayed usage? */
+	time_t t;			/* used in decaying fair share */
+	usage_t delta;			/* the usage between last sch cycle and now */
 	struct group_path *gpath;	/* used to update usage with delta */
+	static schd_error *err;
 	int i, j;
 
-	if (policy->fair_share && sinfo->fairshare !=NULL) {
+	if (err == NULL) {
+		err = new_schd_error();
+		if (err == NULL)
+			return 0;
+	}
+
+	if ((policy->fair_share || sinfo->job_formula != NULL) && sinfo->fairshare != NULL) {
+		FILE *fp;
+		int resort = 0;
+		if ((fp = fopen(USAGE_TOUCH, "r")) != NULL) {
+			fclose(fp);
+			reset_usage(conf.fairshare->root);
+			read_usage(USAGE_FILE, NO_FLAGS, conf.fairshare);
+			if (conf.fairshare->last_decay == 0)
+				conf.fairshare->last_decay = policy->current_time;
+			remove(USAGE_TOUCH);
+			resort = 1;
+		}
 		if (last_running != NULL) {
 			/* add the usage which was accumulated between the last cycle and this
 			 * one and calculate a new value
@@ -368,7 +384,7 @@ init_scheduling_cycle(status *policy, server_info *sinfo)
 					;
 
 				if (sinfo->running_jobs[j] != NULL &&
-					sinfo->running_jobs[j]->job !=NULL) {
+					sinfo->running_jobs[j]->job != NULL) {
 					/* just incase the delta is negative just add 0 */
 					delta = formula_evaluate(conf.fairshare_res, sinfo->running_jobs[j], sinfo->running_jobs[j]->job->resused) -
 						formula_evaluate(conf.fairshare_res, sinfo->running_jobs[j], last_running[i].resused);
@@ -380,6 +396,7 @@ init_scheduling_cycle(status *policy, server_info *sinfo)
 						gpath->ginfo->usage += delta;
 						gpath = gpath->next;
 					}
+					resort = 1;
 				}
 			}
 		}
@@ -398,6 +415,7 @@ init_scheduling_cycle(status *policy, server_info *sinfo)
 				decay_fairshare_tree(sinfo->fairshare->root);
 			t -= conf.decay_time;
 			decayed = 1;
+			resort = 1;
 		}
 
 		if (decayed) {
@@ -413,35 +431,52 @@ init_scheduling_cycle(status *policy, server_info *sinfo)
 				"Fairshare", "Usage Sync");
 		}
 		reset_temp_usage(sinfo->fairshare->root);
+		calc_usage_factor(sinfo->fairshare);
+		if (resort)
+			sort_jobs(policy, sinfo);
 	}
 
-	/* set all the job's preempt priorities.  It is done here instead of when
+	/* set all the jobs' preempt priorities.  It is done here instead of when
 	 * the jobs were created for several reasons.
 	 * 1. fairshare usage is not updated
 	 * 2. we need all the jobs to be created and up to date for soft run limits
 	 */
 
-	if (policy->preempting) {
-		if (sinfo->jobs != NULL) {
-			for (i = 0; sinfo->jobs[i] != NULL; i++) {
-				if (sinfo->jobs[i]->job != NULL)
-					set_preempt_prio(sinfo->jobs[i],
-							 sinfo->jobs[i]->job->queue, sinfo);
-			}
+	if (sinfo->jobs != NULL) {
+		for (i = 0; sinfo->jobs[i] != NULL; i++) {
+			resource_resv *resresv = sinfo->jobs[i];
+			if (resresv->job != NULL) {
+				if (policy->preempting) {
+					set_preempt_prio(resresv, resresv->job->queue, sinfo);
+					if (resresv->job->is_running)
+						if (!resresv->job->can_not_preempt)
+							sinfo->preempt_count[preempt_level(resresv->job->preempt)]++;
 
-			if (sinfo->running_jobs != NULL) {
-				/* now that we've set all the preempt levels, we need to count them */
-				for (i = 0; sinfo->running_jobs[i] != NULL; i++) {
-					if (sinfo->running_jobs[i]->job != NULL) {
-						if (!sinfo->running_jobs[i]->job->can_not_preempt) {
-							sinfo->preempt_count[preempt_level(sinfo->running_jobs[i]->job->preempt)]++;
+
+				}
+				if (sinfo->job_formula != NULL) {
+					double threshold = policy->job_form_threshold;
+					resresv->job->formula_value = formula_evaluate(sinfo->job_formula, resresv, resresv->resreq);
+					sprintf(log_buffer, "Formula Evaluation = %.*f",
+						float_digits(resresv->job->formula_value, FLOAT_NUM_DIGITS), resresv->job->formula_value);
+					schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name, log_buffer);
+
+					if (!resresv->can_not_run && policy->job_form_threshold_set && resresv->job->formula_value <= threshold) {
+						set_schd_error_codes(err, NOT_RUN, JOB_UNDER_THRESHOLD);
+						snprintf(log_buffer, sizeof(log_buffer), "Job's formula value %.*f is under threshold %.*f",
+							float_digits(resresv->job->formula_value, FLOAT_NUM_DIGITS), resresv->job->formula_value, float_digits(threshold, 2), threshold);
+						schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name, log_buffer);
+						if (err->error_code != SUCCESS) {
+							update_job_can_not_run(pbs_sd, resresv, err);
+							clear_schd_error(err);
 						}
 					}
 				}
+
 			}
 		}
-
 	}
+
 	next_job(policy, sinfo, INITIALIZE);
 #ifdef NAS /* localmod 034 */
 	(void)site_pick_next_job(NULL);
@@ -511,8 +546,6 @@ schedule(int cmd, int sd, char *runjobid)
 		case SCH_CONFIGURE:
 			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_INFO,
 				"reconfigure", "Scheduler is reconfiguring");
-			if (conf.prime_fs || conf.non_prime_fs)
-				write_usage(USAGE_FILE, conf.fairshare);
 			free_fairshare_head(conf.fairshare);
 			reset_global_resource_ptrs();
 			free(conf.prime_sort);
@@ -521,8 +554,6 @@ schedule(int cmd, int sd, char *runjobid)
 				return 0;
 			break;
 		case SCH_QUIT:
-			if (conf.prime_fs || conf.non_prime_fs)
-				write_usage(USAGE_FILE, conf.fairshare);
 #ifdef PYTHON
 			Py_Finalize();
 #endif
@@ -599,8 +630,8 @@ scheduling_cycle(int sd, char *jobid)
 	server_info *sinfo;		/* ptr to the server/queue/job/node info */
 	int rc = SUCCESS;		/* return code from main_sched_loop() */
 	char log_msg[MAX_LOG_SIZE];	/* used to log the message why a job can't run*/
-	int error = 0;                /* error happened, don't run main loop */
-	status *policy;		/* policy structure used for cycle */
+	int error = 0;			/* error happened, don't run main loop */
+	status *policy;			/* policy structure used for cycle */
 	schd_error *err = NULL;
 
 	schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_DEBUG,
@@ -661,7 +692,7 @@ scheduling_cycle(int sd, char *jobid)
 		}
 	}
 
-	if (init_scheduling_cycle(policy, sinfo) == 0) {
+	if (init_scheduling_cycle(policy, sd, sinfo) == 0) {
 		schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
 			sinfo->name, "init_scheduling_cycle failed.");
 		end_cycle_tasks(sinfo);
@@ -2308,3 +2339,4 @@ next_job(status *policy, server_info *sinfo, int flag)
 	}
 	return rjob;
 }
+

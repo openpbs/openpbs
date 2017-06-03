@@ -921,7 +921,7 @@ find_resresv_amount(resource_resv *resresv, char *res, resdef *def)
 		return(sch_resource_t) resresv->job->priority;
 #endif /* localmod 045 */
 	else if (!strcmp(res, SORT_FAIR_SHARE) && resresv->job->ginfo != NULL)
-		return(sch_resource_t) resresv->job->ginfo->percentage;
+		return(sch_resource_t) resresv->job->ginfo->tree_percentage;
 	else if (!strcmp(res, SORT_PREEMPT))
 		return(sch_resource_t) resresv->job->preempt;
 #ifdef NAS

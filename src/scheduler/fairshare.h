@@ -144,17 +144,6 @@ void decay_fairshare_tree(group_info *root);
 resource_resv *extract_fairshare(resource_resv **jobs);
 
 /*
- *
- *      print_fairshare - print out the usage for all the users
- *
- *        root - root of subtree
- *
- *      returns nothing
- *
- */
-void print_fairshare(group_info *root, int level);
-
-/*
  *      write_usage - write the usage information to the usage file
  *                    This fuction uses a recursive helper function
  */
@@ -170,7 +159,7 @@ void rec_write_usage(group_info *root, FILE *fp);
  *      read_usage - read the usage information and load it into the
  *                   resgroup tree.
  */
-int read_usage(char *filename, int flags, fairshare_head *fhead);
+void read_usage(char *filename, int flags, fairshare_head *fhead);
 
 /*
  *      read_usage_v1 - read version 1 usage file
@@ -279,6 +268,13 @@ void add_unknown(group_info *ginfo, group_info *root);
  * 	return nothing
  */
 void reset_temp_usage(group_info *head);
+
+/* reset the tree to 1 usage */
+void reset_usage(group_info *node);
+
+/* Calculate the arbitrary usage of the tree */
+void calc_usage_factor(fairshare_head *tree);
+
 
 
 #ifdef	__cplusplus

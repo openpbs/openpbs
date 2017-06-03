@@ -72,7 +72,7 @@ int scheduling_cycle(int sd, char *jobid);
  *				scheduling cycle
  *	NOTE: failure of this function will cause schedule() to exit
  */
-int init_scheduling_cycle(status *policy, server_info *sinfo);
+int init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo);
 
 /*
  *

@@ -766,17 +766,19 @@ struct group_info
 {
 	char *name;				/* name of user/group */
 	int resgroup;				/* resgroup the group is in */
-	int cresgroup;			/* resgroup of the children of group */
+	int cresgroup;				/* resgroup of the children of group */
 	int shares;				/* number of shares this group has */
-	float percentage;			/* overall percentage the group has */
+	float tree_percentage;			/* overall percentage the group has */
+	float group_percentage;			/* percentage within fairshare group (i.e., shares/group_shares) */
 
 	/* There are two usage element per entity.  The usage element is used to
 	 * hold the real usage for the entity.  The temp_usage is more of a sractch
 	 * variable.  At the beginning of the cycle, usage is copied into temp_usage
 	 * and from then on, only temp_usage is consulted for fairshare usage
 	 */
-	usage_t usage;			/* calculated usage info */
+	usage_t usage;				/* calculated usage info */
 	usage_t temp_usage;			/* usage plus any temporary usage */
+	float usage_factor;			/* usage calculation taking parent's usage into account: number between 0 and 1 */
 
 	struct group_path *gpath;		/* path from the root of the tree */
 

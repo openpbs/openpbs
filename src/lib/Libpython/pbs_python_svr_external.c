@@ -637,9 +637,9 @@ int validate_job_formula(attribute *pattr, void *pobject, int actmode) {
 		}
 	}
 
-	snprintf(buf, sizeof(buf), "\'%s\':1, '%s':1, \'%s\':1,\'%s\':1, \'%s\':1}\n",
-		FORMULA_ELIGIBLE_TIME, FORMULA_QUEUE_PRIO,
-		FORMULA_JOB_PRIO, FORMULA_FSPERC, FORMULA_ACCRUE_TYPE);
+	snprintf(buf, sizeof(buf), "\'%s\':1, '%s':1, \'%s\':1,\'%s\':1, \'%s\':1, \'%s\':1, \'%s\':1, \'%s\': 1}\n",
+		FORMULA_ELIGIBLE_TIME, FORMULA_QUEUE_PRIO, FORMULA_JOB_PRIO,
+		FORMULA_FSPERC, FORMULA_FSPERC_DEP, FORMULA_TREE_USAGE, FORMULA_FSFACTOR, FORMULA_ACCRUE_TYPE);
 	if (pbs_strcat(&globals1, &globals_size1, buf) == NULL) {
 		rc = PBSE_SYSTEM;
 		goto validate_job_formula_exit;
