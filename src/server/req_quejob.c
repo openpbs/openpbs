@@ -3030,7 +3030,11 @@ req_resvSub(struct batch_request *preq)
 		server.sv_attr[(int)SRV_ATR_acl_ResvGroup_enable].at_val.at_long) {
 
 		if (acl_check(&server.sv_attr[(int)SRV_ATR_acl_ResvGroups],
+#ifdef WIN32
 			presv->ri_wattr[RESV_ATR_egroup].at_val.at_str,
+#else
+			presv->ri_wattr[RESV_ATR_euser].at_val.at_str,
+#endif
 			ACL_Group) == 0) {
 
 			resv_purge(presv);
