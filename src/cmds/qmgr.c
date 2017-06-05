@@ -2211,25 +2211,29 @@ display(int otype, int ptype, char *oname, struct batch_status *status,
 				}
 			}
 			else  {
+				indent_len = 4;
 				if (otype == MGR_OBJ_RSC) {
 					if ((attr != NULL) && (strcmp(attr->name, "type") == 0)) {
 						struct resc_type_map *rtm = find_resc_type_map_by_typev(atoi(attr->value));
 						if (rtm) {
-							printf("\ttype = %s\n", rtm->rtm_rname);
+							printf("%*s", indent_len, " ");
+							printf("type = %s\n", rtm->rtm_rname);
 						}
-					}
-					else if ((attr != NULL) && (strcmp(attr->name, "flag") == 0)) {
+					} else if ((attr != NULL) && (strcmp(attr->name, "flag") == 0)) {
 						char *rfm = find_resc_flag_map(atoi(attr->value));
 						if ((rfm != NULL)  && (strcmp(rfm, "") != 0)) {
-							printf("\tflag = %s\n", rfm);
+							printf("%*s", indent_len, " ");
+							printf("flag = %s\n", rfm);
 						}
 					}
 					attr = attr->next;
 					continue;
 				}
 
-				if (attr->name != NULL)
-					printf("\t%s", attr->name);
+				if (attr->name != NULL) {
+					printf("%*s", indent_len, " ");
+					printf("%s", attr->name);
+				}
 
 				if (attr->resource != NULL)
 					printf(".%s", attr->resource);
@@ -2240,8 +2244,7 @@ display(int otype, int ptype, char *oname, struct batch_status *status,
 					if (attr->resource!=NULL)
 						l += strlen(attr->resource)+1;
 
-					l += 3;
-					indent_len = l;
+					l += 3; /* length of " = " */
 					printf(" = ");
 					c = attr->value;
 					e = c;
@@ -2255,9 +2258,8 @@ display(int otype, int ptype, char *oname, struct batch_status *status,
 						*e = '\0';
 						l += strlen(c) + 1;
 
-						if (!first && (l >= 80)) {
-							printf("\n%*s", indent_len, " ");
-							l = strlen(c) + indent_len;
+						if (!first && (l >= 80)) { /* line extension */
+							printf("\n\t");
 							while (White(*c))
 								c++;
 						}
