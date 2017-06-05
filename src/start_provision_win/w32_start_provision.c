@@ -250,16 +250,11 @@ int
 main(int argc, char *argv[])
 {
 	char	*id = "start_provision";
-	int	i, j, ret;
-	int		rc;
+	int	i;
+	int	rc;
 	hook	*phook;
 	struct prov_vnode_info prov_info;
 	char	output_path[MAXPATHLEN + 1];
-	struct	stat	sb;
-	char	path_hooks_dir[MAXPATHLEN+1];
-	char	path_hooks_workdir_dir[MAXPATHLEN+1];
-	char	path_hooks_tracking_file[MAXPATHLEN+1];
-	char	path_hooks_rescdef_file[MAXPATHLEN+1];
 
 	/* python externs */
 	extern void pbs_python_svr_initialize_interpreter_data(
@@ -361,56 +356,6 @@ main(int argc, char *argv[])
 
 	rc = execute_python_prov_script(phook, &prov_info);
 	pbs_python_ext_shutdown_interpreter(&svr_interp_data);
-
-	snprintf(path_hooks_dir,  MAXPATHLEN,
-		"%s/server_priv/%s/", argv[6], PBS_HOOKDIR);
-	path_hooks = (char *)path_hooks_dir;
-
-	snprintf(path_hooks_workdir_dir,  MAXPATHLEN,
-		"%s/server_priv/%s/", argv[6], PBS_HOOK_WORKDIR);
-	path_hooks_workdir = (char *)path_hooks_workdir_dir;
-
-	snprintf(path_hooks_rescdef_file,  MAXPATHLEN,
-		"%s%s", path_hooks, PBS_RESCDEF);
-	path_hooks_rescdef = (char *)path_hooks_rescdef_file;
-
-	snprintf(path_hooks_tracking_file,  MAXPATHLEN, "%s%s_%s_%s%s",
-		path_hooks_workdir, PBS_TRACKING, prov_info.pvnfo_vnode,
-		prov_info.pvnfo_aoe_req, HOOK_TRACKING_SUFFIX);
-	path_hooks_tracking = (char *)path_hooks_tracking_file;
-
-	if ((rc == 0) && (stat(path_hooks_tracking, &sb) == 0)) {
-
-		winsock_init();
-		connection_init();
-		(void)snprintf(path_log, MAXPATHLEN, "%s/%s", argv[6], PBS_LOGFILES);
-		(void)log_open_main(log_file, path_log, 1); /* silent open */
-		hook_track_recov();
-
-		for (j=0; j < SEND_HOOKS_RETRY;j++) {
-			ret = sync_mom_hookfiles(NULL);
-			if ((ret == SYNC_HOOKFILES_SUCCESS_ALL) |
-				(ret == SYNC_HOOKFILES_NONE)) {
-				break;
-			}
-			sleep(1<<j);
-		}
-		if (j == SEND_HOOKS_RETRY) {
-
-			snprintf(log_buffer, sizeof(log_buffer),
-				"vnode %s's parent mom %s:%d failed on a copy hook or delete hook request",
-				prov_info.pvnfo_vnode,
-				(mominfo_array_size > 0)?mominfo_array[0]->mi_host:"",
-				(mominfo_array_size > 0)?mominfo_array[0]->mi_port:0);
-			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE,
-				LOG_WARNING, prov_info.pvnfo_vnode, log_buffer);
-			rc = 13;
-		}
-		(void)unlink(path_hooks_tracking);
-		log_close(0);	/* silent close */
-		net_close(-1);
-	}
-
 
 	free(prov_info.pvnfo_vnode);
 	free(prov_info.pvnfo_aoe_req);

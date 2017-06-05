@@ -153,11 +153,11 @@ extern	char server_host[PBS_MAXHOSTNAME+1];
 /* Local Private Functions */
 
 /* Global Data items */
+int	do_sync_mom_hookfiles = 1;
+int	sync_mom_hookfiles_proc_running = 0;
 
 /* Local Data */
 static char merr[] = "malloc failed";
-static	int	do_sync_mom_hookfiles = 1;
-static	int	sync_mom_hookfiles_proc_running = 0;
 static	int	mom_hooks_seen = 0;	/* # of mom hooks seen */
 static	long long int hook_action_tid = 0LL; /* transaction id of the next */
 static  int g_hook_replies_expected = 0; /* used only in TPP mode */

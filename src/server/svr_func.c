@@ -216,8 +216,6 @@ extern char *path_hooks_workdir;
 extern char *path_priv;
 extern char *pbs_server_id;
 extern char *pbs_server_name;
-extern char *path_hooks_tracking;
-extern char *path_hooks_rescdef;
 
 char *path_prov_track;
 int max_concurrent_prov = PBS_MAX_CONCURRENT_PROV;
@@ -232,6 +230,7 @@ static int  is_runnable(job *, struct prov_vnode_info *);
 extern void set_srv_prov_attributes();
 static void del_prov_vnode_entry(job *);
 extern int resize_prov_table(int);
+static void prov_startjob(struct work_task *ptask);
 
 /*
  * Added for History jobs.
@@ -249,6 +248,9 @@ long	node_fail_requeue = PBS_NODE_FAIL_REQUEUE_DEFAULT; /* default value for nod
  * Added for jobscript_max_size 
  */
 struct attribute attr_jobscript_max_size; /* to store default size value for jobscript_max_size */
+
+extern int do_sync_mom_hookfiles;
+extern int sync_mom_hookfiles_proc_running;
 
 /*
  * Miscellaneous server functions
@@ -4728,7 +4730,6 @@ is_runnable(job *ptr, struct prov_vnode_info *pvnfo)
 			}
 		}
 	}
-
 label1:
 
 	if (num_of_prov_vnodes > 0)
@@ -5088,6 +5089,7 @@ check_and_run_jobs(struct prov_vnode_info * prov_vnode_info)
 {
 	job			*pjob;
 	int			rc;
+	struct 			work_task task;
 	DOID("check_and_run_jobs")
 
 	if (!prov_vnode_info) {
@@ -5111,45 +5113,11 @@ check_and_run_jobs(struct prov_vnode_info * prov_vnode_info)
 		return;
 
 	rc = is_runnable(pjob, prov_vnode_info);
+
+
 	if (rc == 0) {
-		/*  accounting log about prov for job over */
-		set_job_ProvAcctRcd(pjob, time_now,
-			PROVISIONING_SUCCESS);
-
-		/* log msg about prov for job over */
-		sprintf(log_buffer,
-			"Provisioning for Job %s succeeded, running job",
-			pjob->ji_qs.ji_jobid);
-		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB,
-			LOG_INFO, pjob->ji_qs.ji_jobid,
-			log_buffer);
-
-		DBPRT(("%s: Jobid: %s about to run after prov success\n",
-			id,  pjob->ji_qs.ji_jobid))
-
-		/* now prov_vnode is stale, remove it */
-		if (pjob->ji_wattr[(int)JOB_ATR_prov_vnode].at_flags &
-			ATR_VFLAG_SET) {
-			job_attr_def[(int)JOB_ATR_prov_vnode].at_free(
-				&pjob->ji_wattr[(int)JOB_ATR_prov_vnode]);
-		}
-
-		/* Move the job to MOM */
-		pjob->ji_modified = 1;
-		if ((rc = svr_startjob(pjob, 0))!=0) {
-			DBPRT(("%s: Jobid: %s - startjob failed - rc:%d\n",
-				id, pjob->ji_qs.ji_jobid, rc))
-			free_nodes(pjob);
-			if (pjob->ji_qs.ji_svrflags &
-				JOB_SVFLG_SubJob) {
-				/* requeue subjob */
-				pjob->ji_qs.ji_substate =
-					JOB_SUBSTATE_RERUN3;
-				job_purge(pjob);
-			}
-		}
-		DBPRT(("%s: Jobid: %s, startjob returned: %d\n",
-			id, pjob->ji_qs.ji_jobid, rc))
+		task.wt_parm1 = (void *)pjob;
+		prov_startjob(&task);
 
 	} else if (rc == -2 || rc == -3) {
 		/*
@@ -5247,7 +5215,6 @@ is_vnode_prov_done(char * vnode)
 		return;
 	}
 
-
 	DBPRT(("%s: node:%s is up - cancelling timeout task\n",
 		id, prov_vnode_info->pvnfo_vnode))
 	/* delete the timeout task */
@@ -5287,6 +5254,88 @@ is_vnode_prov_done(char * vnode)
 	set_task(WORK_Immed, 0, do_provisioning, (void *) NULL);
 }
 
+/**
+ * @brief
+ * 	This function ensures that the hooks are synced with the
+ * 	provisioned node before starting the job on it.
+ *
+ * @param[in,out]
+ * 	ptask - work task structure contains prov_vnode_info
+ *
+ * @return	void
+ *
+ */
+
+static void 
+prov_startjob(struct work_task *ptask)
+{
+	job			*pjob;
+	int			rc;
+
+	assert(ptask->wt_parm1 != NULL);
+	pjob = (job *) ptask->wt_parm1;
+	if (do_sync_mom_hookfiles || sync_mom_hookfiles_proc_running) {
+
+		/**
+		 * If mom hook files sync is in process then create
+		 * a time task where you perform this check again,
+		 * and start the job once it is done
+		 */
+
+                DBPRT(("%s: setting the time task as sync mom"
+			"hookfiles is not completed\n"
+			, __func__))
+
+                /* set a work task to run after 5 sec from now */
+                if (!set_task(WORK_Timed, time_now + 5,
+                        prov_startjob, pjob)){
+                        log_err(errno, __func__,
+				"Unable to set task for prov_startjob; requeuing the job");
+			(void)force_reque(pjob);
+                }
+		return;
+        }
+
+	/*  accounting log about prov for job over */
+	set_job_ProvAcctRcd(pjob, time_now,
+		PROVISIONING_SUCCESS);
+
+	/* log msg about prov for job over */
+	sprintf(log_buffer,
+		"Provisioning for Job %s succeeded, running job",
+		pjob->ji_qs.ji_jobid);
+	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB,
+		LOG_INFO, pjob->ji_qs.ji_jobid,
+		log_buffer);
+
+	DBPRT(("%s: Jobid: %s about to run after prov success\n",
+		__func__,  pjob->ji_qs.ji_jobid))
+
+	/* now prov_vnode is stale, remove it */
+	if (pjob->ji_wattr[(int)JOB_ATR_prov_vnode].at_flags &
+		ATR_VFLAG_SET) {
+		job_attr_def[(int)JOB_ATR_prov_vnode].at_free(
+			&pjob->ji_wattr[(int)JOB_ATR_prov_vnode]);
+	}
+
+	DBPRT(("%s: calling [svr_startjob] from prov_startjob\n", __func__))
+	/* Move the job to MOM */
+	pjob->ji_modified = 1;
+	if ((rc = svr_startjob(pjob, 0))!=0) {
+		DBPRT(("%s: Jobid: %s - startjob failed - rc:%d\n",
+			__func__, pjob->ji_qs.ji_jobid, rc))
+		free_nodes(pjob);
+		if (pjob->ji_qs.ji_svrflags &
+			JOB_SVFLG_SubJob) {
+			/* requeue subjob */
+			pjob->ji_qs.ji_substate =
+				JOB_SUBSTATE_RERUN3;
+			job_purge(pjob);
+		}
+	}
+	DBPRT(("%s: Jobid: %s, startjob returned: %d\n",
+		__func__, pjob->ji_qs.ji_jobid, rc))
+}
 
 /**
  * @brief
@@ -5793,10 +5842,6 @@ start_vnode_provisioning(struct prov_vnode_info * prov_vnode_info)
 	struct 			sigaction act;
 #endif
 	hook 			*phook;
-	struct stat		sbuf;
-	int			send_rescdef = 0;
-	int			i, j;
-	char			path_hooks_tracking_tmp[MAXPATHLEN+1];
 
 #ifdef 	WIN32
 	char    cmdline[LOG_BUF_SIZE];
@@ -5806,8 +5851,6 @@ start_vnode_provisioning(struct prov_vnode_info * prov_vnode_info)
 		CREATE_NEW_CONSOLE|CREATE_NEW_PROCESS_GROUP;
 	SECURITY_ATTRIBUTES sa = { sizeof(SECURITY_ATTRIBUTES),
 		NULL, TRUE};
-	char			*path_hooks_tracking_save;
-	mominfo_t		minfo;
 #endif	/* WIN32 */
 
 	DBPRT(("%s: Provisioning vnode: %s with aoe: %s\n", id,
@@ -5836,74 +5879,7 @@ start_vnode_provisioning(struct prov_vnode_info * prov_vnode_info)
 		return rc;
 	}
 
-	if (stat(path_hooks_rescdef, &sbuf) == 0)
-		send_rescdef = 1;
-
 #ifdef WIN32
-
-	if (mom_hooks_seen_count() > 0) {
-
-		/* Point path_hooks_tracking file to some private file */
-		/* for storing the hooks tracking information. The file */
-		/* will be read by pbs_start_provision.exe */
-		/* command, which will call sync_mom_hookfiles(). */
-		snprintf(path_hooks_tracking_tmp,  MAXPATHLEN,
-			"%s%s_%s_%s%s", path_hooks_workdir, PBS_TRACKING,
-			prov_vnode_info->pvnfo_vnode,
-			prov_vnode_info->pvnfo_aoe_req, HOOK_TRACKING_SUFFIX);
-		if (stat(path_hooks_tracking_tmp, &sbuf) == 0) {
-			if ((unlink(path_hooks_tracking_tmp) < 0) &&
-				(errno != ENOENT)) {
-				snprintf(log_buffer, sizeof(log_buffer),
-					"Failed to unlink old %s",
-					path_hooks_tracking_tmp);
-				log_err(-1, "start_vnode_provisioning",
-					log_buffer);
-				return (PBSE_SYSTEM);
-			}
-		}
-		path_hooks_tracking_save = path_hooks_tracking;
-		path_hooks_tracking = (char *)path_hooks_tracking_tmp;
-
-		for (i=0; i<pnode->nd_nummoms; ++i) {
-
-			if (pnode->nd_moms[i] == NULL)
-				continue;
-			/* we'll work on a copy of pnode->nd_moms[i] so as */
-			/* to not interfere with the main server's tracking */
-			/* of mom hook files. */
-			strncpy(minfo.mi_host, pnode->nd_moms[i]->mi_host, PBS_MAXHOSTNAME);
-			minfo.mi_port = pnode->nd_moms[i]->mi_port;
-			minfo.mi_rmport = pnode->nd_moms[i]->mi_rmport;
-			minfo.mi_modtime = pnode->nd_moms[i]->mi_modtime;
-			minfo.mi_data = NULL;
-			minfo.mi_action = NULL;
-			minfo.mi_num_action = 0;
-
-			/* The add_pending_mom* calls below store info */
-			/* into path_hooks_tracking file. */
-
-			if (send_rescdef) {
-				add_pending_mom_hook_action(&minfo,
-					PBS_RESCDEF, MOM_HOOK_ACTION_SEND_RESCDEF);
-			}
-
-			add_pending_mom_allhooks_action(&minfo,
-				MOM_HOOK_ACTION_SEND_ATTRS|MOM_HOOK_ACTION_SEND_CONFIG|MOM_HOOK_ACTION_SEND_SCRIPT);
-			for (j=0; j < minfo.mi_num_action; j++) {
-				if (minfo.mi_action[j] != NULL) {
-					free(minfo.mi_action[j]);
-				}
-			}
-			free(minfo.mi_action);
-			minfo.mi_num_action = 0;
-			minfo.mi_action = NULL;
-		}
-
-		/* restore old path_hooks_tracking file for the main server */
-		/* to pick up during sync_mom_hookfiles(). */
-		path_hooks_tracking = path_hooks_tracking_save;
-	}
 
 	/* In Windows, do not need to unprotect the process created as */
 	/* it will not inherit the protection value from the parent    */
@@ -5961,73 +5937,6 @@ start_vnode_provisioning(struct prov_vnode_info * prov_vnode_info)
 		/* exit with the return code from the script */
 		rc = execute_python_prov_script(phook, prov_vnode_info);
 
-#ifndef NAS /* localmod 156 */
-		if ((rc == 0) && (mom_hooks_seen_count() > 0)) {
-			int 	ret;
-			/* Point path_hooks_tracking file to some private   */
-			/* file for storing the hooks tracking information. */
-			/* This allows the sending of hooks to be done */
-			/* privately here in this child server process, and */
-			/* not interfere with the main server's */
-			/* task of sending mom hooks. */
-			snprintf(path_hooks_tracking_tmp,  MAXPATHLEN,
-				"%s%s_%s_%s%s", path_hooks_workdir,
-				PBS_TRACKING, prov_vnode_info->pvnfo_vnode,
-				prov_vnode_info->pvnfo_aoe_req,
-				HOOK_TRACKING_SUFFIX);
-
-			if (stat(path_hooks_tracking_tmp, &sbuf) == 0) {
-				if ((unlink(path_hooks_tracking_tmp) < 0) &&
-					(errno != ENOENT)) {
-					snprintf(log_buffer, sizeof(log_buffer),
-						"Failed to unlink old %s",
-						path_hooks_tracking_tmp);
-					log_err(-1, "start_vnode_provisioning",
-						log_buffer);
-					exit(13);
-				}
-			}
-
-			path_hooks_tracking = (char *)path_hooks_tracking_tmp;
-
-			/* send out hooks */
-			for (i=0; i<pnode->nd_nummoms; ++i) {
-
-				if (pnode->nd_moms[i] == NULL)
-					continue;
-
-				if (send_rescdef)
-					add_pending_mom_hook_action(pnode->nd_moms[i], PBS_RESCDEF,
-						MOM_HOOK_ACTION_SEND_RESCDEF);
-
-				add_pending_mom_allhooks_action(pnode->nd_moms[i],
-					MOM_HOOK_ACTION_SEND_ATTRS|MOM_HOOK_ACTION_SEND_CONFIG|MOM_HOOK_ACTION_SEND_SCRIPT);
-
-				for (j=0; j < SEND_HOOKS_RETRY;j++) {
-					ret = sync_mom_hookfiles(pnode->nd_moms[i]);
-					if ((ret == SYNC_HOOKFILES_SUCCESS_ALL) ||
-						(ret == SYNC_HOOKFILES_NONE)) {
-						break;
-					}
-					sleep(1<<j);
-				}
-				if (j == SEND_HOOKS_RETRY) {
-
-					snprintf(log_buffer, sizeof(log_buffer),
-						"vnode %s's parent mom %s:%d failed on a copy hook or delete hook request",
-						pnode->nd_name,
-						pnode->nd_moms[i]->mi_host,
-						pnode->nd_moms[i]->mi_port);
-					log_event(PBSEVENT_DEBUG,
-						PBS_EVENTCLASS_NODE,
-						LOG_WARNING, pnode->nd_name,
-						log_buffer);
-					rc = 13;
-					break;
-				}
-			}
-		}
-#endif /* localmod 156 */
 		/* if python did sys.exit we wont be here */
 		exit(rc);
 	}

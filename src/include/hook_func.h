@@ -76,8 +76,6 @@ enum sync_hookfiles_result {
 	SYNC_HOOKFILES_FAIL
 };
 
-#define	SEND_HOOKS_RETRY	8
-
 typedef	struct mom_hook_action mom_hook_action_t;
 
 extern	int add_mom_hook_action(mom_hook_action_t ***,

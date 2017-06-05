@@ -103,7 +103,6 @@ char		*path_hooks_workdir = NULL;
 char		path_log[MAXPATHLEN+1];
 unsigned int      pbs_server_port_dis = 0;
 pbs_net_t       pbs_server_addr = 0;
-int		do_sync_mom_hookfiles = 1;
 char		*path_priv;
 char		*path_hooks_rescdef;
 char	       *acct_file = (char *)0;

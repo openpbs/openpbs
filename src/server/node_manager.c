@@ -1439,11 +1439,6 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 	}
 
 	if (pnode->nd_state & INUSE_PROV) {
-		if (!(pnode->nd_state & VNODE_UNAVAILABLE) ||
-			(pnode->nd_state == INUSE_PROV)) { /* INUSE_FREE is 0 */
-			DBPRT(("%s: calling [is_vnode_prov_done] from set_vnode_state, type = %d\n", id, type))
-			is_vnode_prov_done(pnode->nd_name);
-		}
 		/* while node is provisioning, we don't want the reservation
 		 * to degrade, hence returning.
 		 */
@@ -5513,6 +5508,12 @@ found:
 			}
 
 			free_attrlist(&reported_hooks);
+			np = psvrmom->msr_children[0];
+			if (np->nd_state == INUSE_PROV) {
+				DBPRT(("%s: calling [is_vnode_prov_done] from is_request\n", __func__))
+				is_vnode_prov_done(np->nd_name);
+                }
+
 			break;
 
 
