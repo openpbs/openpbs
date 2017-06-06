@@ -41,6 +41,8 @@
 .cproject
 .pydevproject
 .settings/
+.autotools
+.csettings/
 
 # Files used by cscope
 cscope.files

@@ -687,32 +687,14 @@ log_err(int errnum, const char *routine, const char *text)
 	(void)strncat(buf, text, i);
 	buf[LOG_BUF_SIZE -1] = '\0';
 
-	if (log_opened == 0) {
+	if (log_opened == 0)
 		(void)log_open("/dev/console", log_directory);
-
-		if (log_opened < 1) {
-#if SYSLOG
-			char slogbuf[LOG_BUF_SIZE] = {0};
-			if (syslogopen != 0) {
-				snprintf(slogbuf, LOG_BUF_SIZE,
-					"%s;%s;%s\n",
-					class_names[PBS_EVENTCLASS_SERVER],
-					msg_daemonname,
-					buf);
-				syslog(LOG_ERR, "%s", slogbuf);
-			}
-#endif  /* SYSLOG */
-			return;
-		}
-	}
 
 	if (isatty(2))
 		(void)fprintf(stderr, "%s: %s\n", msg_daemonname, buf);
 
 	(void)log_record(PBSEVENT_ERROR | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
 		LOG_ERR, msg_daemonname, buf);
-
-	return;
 }
 
 /**
@@ -777,31 +759,14 @@ log_joberr(int errnum, const char *routine, const char *text, const char *pjid)
 	(void)strncat(buf, text, i);
 	buf[LOG_BUF_SIZE -1] = '\0';
 
-	if (log_opened == 0) {
+	if (log_opened == 0)
 		(void)log_open("/dev/console", log_directory);
 
-		if (log_opened < 1) {
-#if SYSLOG
-			char slogbuf[LOG_BUF_SIZE] = {0};
-			if (syslogopen != 0) {
-				snprintf(slogbuf, LOG_BUF_SIZE,
-					"%s;%s;%s\n",
-					class_names[PBS_EVENTCLASS_JOB],
-					msg_daemonname,
-					buf);
-				syslog(LOG_ERR, "%s", slogbuf);
-			}
-#endif  /* SYSLOG */
-			return;
-		}
-	}
 	if (isatty(2))
 		(void)fprintf(stderr, "%s: %s\n", msg_daemonname, buf);
 
 	(void)log_record(PBSEVENT_ERROR | PBSEVENT_FORCE, PBS_EVENTCLASS_JOB,
 		LOG_ERR, pjid, buf);
-
-	return;
 }
 
 /**
