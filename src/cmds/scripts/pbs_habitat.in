@@ -229,7 +229,7 @@ utf8_to_sql_ascii() {
 upgrade_pbs_database() {
 
 	user="${PBS_DATA_SERVICE_USER}"
-	inst_dir="${PBS_EXEC}/pgsql"
+	inst_dir="${PGSQL_DIR}"
 	data_dir="${PBS_HOME}/datastore"
 	old_inst_dir="${PBS_HOME}/pgsql.old"
 	old_data_dir="${PBS_HOME}/datastore.old"
@@ -238,14 +238,17 @@ upgrade_pbs_database() {
 		echo "Database version file: ${data_dir}/PG_VERSION not found, cannot continue"
 		return 1
 	fi
-
+	
+	sys_pgsql_ver=$(echo `${PGSQL_DIR}/bin/psql -V` | awk '{print $NF}' | cut -d '.' -f 1,2)
 	ver=`cat ${data_dir}/PG_VERSION`
-	result=`echo ${ver} | awk '{ if ($0 < 9.3) {print 1} else {print 0} }'`
+
+	result=1
+	[[ $ver -ge $sys_pgsql_ver ]] && result=0
 	if [ ${result} -eq 1 ]; then
 		#Start upgrade process of datastore
 		upgrade_db
 		return $?
-	elif [ "${ver}" = "9.3" ]; then
+	elif [ "${ver}" = "${sys_pgsql_ver}" ]; then
 		return 0
 	fi
 
@@ -273,11 +276,11 @@ upgrade_db() {
 	fi
 
 	if [ ! -x "${inst_dir}/bin/pg_upgrade" ]; then
-		echo "${inst_dir}/pg_upgrade not found"
+		echo "${inst_dir}/bin/pg_upgrade not found"
 		return 1
 	fi
 
-	# Check for existnace of old data service directory.
+	# Check for existence of old data service directory.
 	if [ ! -d "${old_inst_dir}" ]; then
 		echo "Data service directory from previous PBS installation not found,"
 		echo "Datastore upgrade cannot continue"
@@ -466,7 +469,7 @@ upgrade_pbs_schema() {
 	fi
 	rm -f ${outfile}
 
-	ver=`${PBS_EXEC}/pgsql/bin/psql -A -t -p ${PBS_DATA_SERVICE_PORT} -d pbs_datastore -U ${PBS_DATA_SERVICE_USER} -c "select pbs_schema_version from pbs.info"`
+	ver=`${PGSQL_DIR}/bin/psql -A -t -p ${PBS_DATA_SERVICE_PORT} -d pbs_datastore -U ${PBS_DATA_SERVICE_USER} -c "select pbs_schema_version from pbs.info"`
 	if [ "$ver" = "${PBS_CURRENT_SCHEMA_VER}" ]; then
 		ret=$?
 		if [ $ret -ne 0 ]; then
@@ -534,7 +537,7 @@ upgrade_pbs_schema() {
 	fi
 	rm -f ${outfile}
 
-	${PBS_EXEC}/pgsql/bin/psql -p ${PBS_DATA_SERVICE_PORT} -d pbs_datastore -U ${PBS_DATA_SERVICE_USER} <<-EOF > /dev/null
+	${PGSQL_DIR}/bin/psql -p ${PBS_DATA_SERVICE_PORT} -d pbs_datastore -U ${PBS_DATA_SERVICE_USER} <<-EOF > /dev/null
 		update pbs.info set pbs_schema_version='1.2.0';
 	EOF
 
@@ -547,7 +550,7 @@ upgrade_pbs_schema() {
 
 upgrade_pbs_schema_from_v1_0_0() {
 
-	${PBS_EXEC}/pgsql/bin/psql -p ${PBS_DATA_SERVICE_PORT} -d pbs_datastore -U ${PBS_DATA_SERVICE_USER} <<-EOF > /dev/null
+	${PGSQL_DIR}/bin/psql -p ${PBS_DATA_SERVICE_PORT} -d pbs_datastore -U ${PBS_DATA_SERVICE_USER} <<-EOF > /dev/null
 		alter table pbs.node alter column nd_index drop default;
 		alter table pbs.node drop constraint node_nd_index_key;
 		create index job_src_idx on pbs.job_scr (ji_jobid);
@@ -576,7 +579,7 @@ upgrade_pbs_schema_from_v1_0_0() {
 
 upgrade_pbs_schema_from_v1_1_0() {
 
-	${PBS_EXEC}/pgsql/bin/psql -p ${PBS_DATA_SERVICE_PORT} -d pbs_datastore -U ${PBS_DATA_SERVICE_USER} <<-EOF > /dev/null
+	${PGSQL_DIR}/bin/psql -p ${PBS_DATA_SERVICE_PORT} -d pbs_datastore -U ${PBS_DATA_SERVICE_USER} <<-EOF > /dev/null
 		ALTER TABLE pbs.info ALTER COLUMN pbs_schema_version TYPE text;
 		ALTER TABLE pbs.job ALTER COLUMN ji_jobid TYPE text;
 		ALTER TABLE pbs.job ALTER COLUMN ji_sv_name TYPE text;
@@ -876,7 +879,6 @@ if [ "${PBS_START_SERVER:-0}" != 0 ] ; then
 			echo "Failed to upgrade PBS Datastore"
 			exit $ret
 		fi
-
 		# We need to regenerate the db_password file since we have changed encryption/decryption
 		# library from DES to AES in PBS Version PBS_AES_SWITCH_VER
 		if [ "$old_pbs_version" \< "${PBS_AES_SWITCH_VER}" ] ;then
