@@ -382,21 +382,36 @@ void
 parse_log(FILE *fp, char *job, int ind)
 {
 	struct log_entry tmp;	/* temporary log entry */
-	char buf[16384];	/* buffer to read in from file */
+	char *buf;		/* buffer to read in from file */
+	char *tbuf;		/* temporarily hold realloc's for main buffer */
 	char job_buf[128];	/* hold the jobid and the . */
 	char *p;		/* pointer to use for strtok */
 	int field_count;	/* which field in log entry */
 	int j = 0;
-	struct tm tms;	/* used to convert date to unix date */
-	int lineno		= 0;
+	struct tm tms;		/* used to convert date to unix date */
+	int lineno = 0;
 	int slen;
 	char *pdot;
+	int buf_size = 16384;	/* initial buffer size */
+	int break_fl = 0;
+
+	buf = (char*)malloc(buf_size * sizeof(char));
 
 	tms.tm_isdst = -1;	/* mktime() will attempt to figure it out */
 
 	strcpy(job_buf, job);
 
-	while (fgets(buf, 16384, fp) != NULL) {
+	while (fgets(buf, buf_size, fp) != NULL) {
+		while(buf_size == strlen(buf) + 1) {
+			buf_size *= 2;
+			tbuf = (char*)realloc(buf, (buf_size + 1) * sizeof(char));
+			if(tbuf == NULL || (buf = tbuf) && fgets(buf + strlen(buf), buf_size/2 + 1, fp) == NULL){
+				break_fl = 1;
+				break;
+			}
+		}
+		if(break_fl)
+			break;
 		lineno++;
 		j++;
 		buf[strlen(buf)-1] = '\0';
@@ -510,6 +525,7 @@ parse_log(FILE *fp, char *job, int ind)
 			ll_cur_amm++;
 		}
 	}
+	free(buf);
 }
 
 /**
