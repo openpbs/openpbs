@@ -1540,6 +1540,7 @@ reassign_resc(job *pjob)
 	char *hoststr2 = pjob->ji_wattr[(int)JOB_ATR_exec_host2].at_val.at_str;
 	char *vnodein;
 	char *vnodeout;
+	attribute deallocated_attr;
 
 	/* safety check: if no hoststr, no node (hosts) assigned, just return */
 	if (hoststr == NULL)
@@ -1590,6 +1591,24 @@ reassign_resc(job *pjob)
 			hoststr);
 		pjob->ji_modified = 1;
 	}
+	deallocated_attr = pjob->ji_wattr[(int)JOB_ATR_exec_vnode_deallocated];
+
+	if ((rc == 0) && (deallocated_attr.at_flags & ATR_VFLAG_SET)) {
+		char	*hstr = NULL;
+		char	*hstr2 = NULL;
+		char	*vnalloc = NULL;
+		char	*new_exec_vnode_deallocated;
+
+	 	new_exec_vnode_deallocated = deallocated_attr.at_val.at_str;
+
+		rc = set_nodes((void *)pjob, JOB_OBJECT, new_exec_vnode_deallocated,
+			 &vnalloc, &hstr, &hstr2, 1, TRUE);
+		if (rc != 0) {
+			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_WARNING,
+				pjob->ji_qs.ji_jobid, "warning: Failed to make some nodes aware of a deleted job");
+		}
+	}
+
 	if ( (pjob->ji_qs.ji_substate == JOB_SUBSTATE_SCHSUSP || pjob->ji_qs.ji_substate == JOB_SUBSTATE_SUSPEND) && 
 		(pjob->ji_wattr[(int) JOB_ATR_resc_released].at_flags & ATR_VFLAG_SET) ) {
 		/*
@@ -1614,8 +1633,8 @@ reassign_resc(job *pjob)
 		pjob->ji_wattr[(int) JOB_ATR_resc_released].at_flags |= ATR_VFLAG_SET;
 		set_resc_assigned((void *) pjob, 0, DECR);
 	}
-	return;
 }
+
 
 /**
  * @brief
@@ -1865,6 +1884,7 @@ pbsd_init_job(job *pjob, int type)
 	}
 	return 0;
 }
+
 /**
  * @brief
  * 		pbsd_init_reque - re-enqueue the job into the queue it was in
@@ -1899,6 +1919,7 @@ pbsd_init_reque(job *pjob, int change_state)
 
 	if (change_state) {
 		/* update the state, typically to some form of QUEUED */
+		unset_extra_attributes(pjob);
 		svr_evaljobstate(pjob, &newstate, &newsubstate, 1);
 		(void)svr_setjobstate(pjob, newstate, newsubstate);
 		if (newstate == JOB_STATE_QUEUED)

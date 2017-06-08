@@ -195,6 +195,7 @@ pbs_python_modify_syspath(const char *dirname, int pos)
 		snprintf(log_buffer, LOG_BUF_SIZE-1, "--> Python module path is now: %s <--", str);
 		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER,
 			LOG_DEBUG, pbs_python_daemon_name, log_buffer);
+		Py_CLEAR(obj_repr);
 	}
 
 	Py_CLEAR(pystr_dirname);

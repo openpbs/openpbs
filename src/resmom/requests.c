@@ -1259,6 +1259,8 @@ req_modifyjob(struct batch_request *preq)
 	svrattrl	*psatl;
 #endif
 	int		 rc;
+	int		 recreate_nodes = 0;	
+	char		*new_peh = NULL;
 
 	pjob = find_job(preq->rq_ind.rq_modify.rq_objname);
 	if (pjob == (job *)0) {
@@ -1306,7 +1308,57 @@ req_modifyjob(struct batch_request *preq)
 				*(pattr+i) = newattr[i];
 			}
 			(pattr+i)->at_flags = newattr[i].at_flags;
+			if ((i == JOB_ATR_exec_vnode) ||
+			    (i == JOB_ATR_exec_host)  ||
+			    (i == JOB_ATR_exec_host2) ||
+			    (i == JOB_ATR_SchedSelect) ||
+			    (i == JOB_ATR_resource)) {
+			    	/* all of the above attributes must */
+				/*  be received (recreate_nodes == 5) */
+				/*  in order to trigger recreation of */
+				/*  job nodes and PBS_NODEFILE */
+				recreate_nodes++;
+				if (recreate_nodes == 5)
+					break;
+			}
 		}
+	}
+
+	if (pjob->ji_wattr[(int)JOB_ATR_exec_host2].at_val.at_str != NULL) {
+		/* Mom got information from new server */
+		new_peh = pjob->ji_wattr[(int)JOB_ATR_exec_host2].at_val.at_str;
+	} else {
+		new_peh = pjob->ji_wattr[(int)JOB_ATR_exec_host].at_val.at_str;
+	}
+
+	if (recreate_nodes == 5) {
+
+		/* Send IM_DELETE_JOB2 request to the sister moms not in */
+		/* 'new_peh', to kill the job on that sister and */
+		/* report resources_used info. */
+		(void)send_sisters_inner(pjob, IM_DELETE_JOB2,
+							NULL, new_peh);
+
+		if ((rc = job_nodes(pjob)) != 0) {
+			snprintf(log_buffer, sizeof(log_buffer)-1,
+			   "failed updating internal nodes data (rc=%d)", rc);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB,
+				LOG_NOTICE, pjob->ji_qs.ji_jobid,
+							log_buffer);
+			reply_text(preq, rc, log_buffer);
+			return;
+		}
+
+
+		if (generate_pbs_nodefile(pjob, NULL, 0,
+			log_buffer, LOG_BUF_SIZE-1) != 0) {
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB,
+			 LOG_NOTICE, pjob->ji_qs.ji_jobid, log_buffer);
+			reply_text(preq, rc, log_buffer);
+			return;
+		}
+		send_sisters_job_update(pjob);
+		pjob->ji_updated = 1;
 	}
 	/* note, the newattr[] attributes are on the stack, they goaway auto */
 

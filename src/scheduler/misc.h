@@ -118,14 +118,6 @@ filter_array(void **ptrarr, int (*filter_func)(void*, void*),
  */
 int calc_time_left_STF(resource_resv *resresv, sch_resource_t* min_time_left);
 
-/**
- *
- * 	convert_duration_to_str - Convert a duration to HH:MM:SS format string
- *
- */
-void convert_duration_to_str(time_t duration, char* buf, int bufsize);
-
-
 /*
  *      dup_string_array - duplicate an array of strings
  */

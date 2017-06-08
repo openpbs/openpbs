@@ -182,3 +182,56 @@ pbs_py_spawn(int c, char *jobid, char **argv, char **envp)
 
 	return rc;
 }
+
+int
+pbs_relnodesjob(c, jobid, node_list, extend)
+int c;
+char *jobid;
+char *node_list;
+char *extend;
+{
+	struct batch_reply *reply;
+	int	rc;
+
+	if ((jobid == (char *)0) || (*jobid == '\0') ||
+					(node_list == (char *)0))
+		return (pbs_errno = PBSE_IVALREQ);
+
+	/* initialize the thread context data, if not already initialized */
+	if (pbs_client_thread_init_thread_context() != 0)
+		return pbs_errno;
+
+	/* lock pthread mutex here for this connection */
+	/* blocking call, waits for mutex release */
+	if (pbs_client_thread_lock_connection(c) != 0)
+		return pbs_errno;
+
+	/* setup DIS support routines for following DIS calls */
+
+	DIS_tcp_setup(connection[c].ch_socket);
+
+	if ((rc = PBSD_relnodes_put(c, jobid, node_list, extend, 0, NULL)) != 0) {
+		connection[c].ch_errtxt = strdup(dis_emsg[rc]);
+		if (connection[c].ch_errtxt == NULL) {
+			pbs_errno = PBSE_SYSTEM;
+		} else {
+			pbs_errno = PBSE_PROTOCOL;
+		}
+		(void)pbs_client_thread_unlock_connection(c);
+		return pbs_errno;
+	}
+
+	/* read reply */
+
+	reply = PBSD_rdrpy(c);
+	rc = connection[c].ch_errno;
+
+	PBSD_FreeReply(reply);
+
+	/* unlock the thread lock and update the thread context data */
+	if (pbs_client_thread_unlock_connection(c) != 0)
+		return pbs_errno;
+
+	return rc;
+}
+

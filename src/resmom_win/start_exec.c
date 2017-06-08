@@ -1299,6 +1299,93 @@ conn_qsub(char *hostname, long port)
 #endif
 
 /**
+ * @brief
+ *	Regenerate the PBS_NODEFILE of a job based on internal 
+ *	nodes-related data.
+ * @param[in]	pjob	- the job whose PBS_NODEFILE is to be generated.
+ * @param[out]	nodefile- buffer to hold the path to PBS_NODEFILE
+ *			  that got regenerated.		 
+ *			  NOTE: Ok for this to be NULL, which means
+ *			  don't save nodefile path.
+ *
+ * @param[in] nodefile_sz - size of the 'nodefile' buffer.
+ * @param[out] err_msg	- buffer to hold the error message if this
+ *			 functions returns a failure.
+ * @param[in]	err_msg_sz - size of the 'err_msg' buffer.
+ *
+ * @return int
+ * @retval  0	success
+ * @retval < 0	failure
+ *
+ */
+int
+generate_pbs_nodefile(job *pjob, char *nodefile, int nodefile_sz,
+					char *err_msg, int err_msg_sz)
+{
+	
+	FILE			*nhow;
+	int	   		j, vnodenum;
+	char			pbs_nodefile[MAXPATHLEN+1];
+
+	if (pjob == NULL) {
+		snprintf(err_msg, err_msg_sz, "bad pjob param");
+		return (-1);
+	}
+
+	if ((err_msg != NULL) && (err_msg_sz > 0)) {
+		err_msg[0] = '\0';
+	}
+	snprintf(pbs_nodefile, sizeof(pbs_nodefile)-1, "%s/auxiliary/%s",
+		pbs_conf.pbs_home_path, pjob->ji_qs.ji_jobid);
+
+	/* In Windows, we'll create the nodes file in text mode to allow */
+	/* applications like MPI to treat it as a native Windows file    */
+	/* with terminating linefeed-carriage return characters.         */
+	/*                                                               */
+	/* This change is needed for proper parsing of nodes file by     */
+	/* applications like  MPI. */
+	if ((nhow = fopen(pbs_nodefile, "wt")) == NULL) {
+		if ((err_msg != NULL) && (err_msg_sz > 0)) {
+			snprintf(err_msg, err_msg_sz,
+					"cannot open %s", pbs_nodefile);
+		}
+		return (-1);
+	}
+
+	/* write each node name out once per vnod and entry */
+	vnodenum = pjob->ji_numvnod;
+	for (j = 0; j < vnodenum; j++) {
+		if (pjob->ji_vnods[j].vn_hname == NULL) {
+			size_t len;
+			char  *pdot;
+
+			/* we want to write just the short name of the host */
+			if ((pdot = strchr(pjob->ji_vnods[j].vn_host->hn_host, '.')) != NULL)
+				len = (size_t)(pdot - pjob->ji_vnods[j].vn_host->hn_host);
+			else
+				len = strlen(pjob->ji_vnods[j].vn_host->hn_host);
+			fprintf(nhow, "%.*s\n", (int)len,
+				pjob->ji_vnods[j].vn_host->hn_host);
+		} else
+			fprintf(nhow, "%s\n", pjob->ji_vnods[j].vn_hname);
+	}
+	fclose(nhow);
+
+
+	secure_file2(pbs_nodefile,
+		"Administrators", READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
+		"\\Everyone", READS_MASK | READ_CONTROL);
+
+
+	if ((nodefile != NULL) && (nodefile_sz > 0)) { 
+		strncpy(nodefile, pbs_nodefile, nodefile_sz);
+		nodefile[nodefile_sz-1] = '\0';
+	}
+
+	return (0);
+}
+
+/**
  *
  * @brief
  *	Used by MOM superior to start the cmd process for 'pjob'.
@@ -1733,45 +1820,13 @@ finish_exec(job *pjob)
 	bld_wenv_variables("NCPUS", buf);
 
 	/* PBS_NODEFILE */
-
-	sprintf(buf, "%s/auxiliary/%s", pbs_conf.pbs_home_path,
-		pjob->ji_qs.ji_jobid);
-	bld_wenv_variables(variables_else[11], buf);
-
-	/* In Windows, we'll create the nodes file in text mode to allow */
-	/* applications like MPI treat it as a native Windows file with  */
-	/* terminating linefeed-carriage return characters.              */
-	/*                                                               */
-	/* This change is needed in bug 3490 for proper parsing of nodes */
-	/* file by applications like  MPI. */
-	if ((nhow = fopen(buf, "wt")) == NULL) {
-		sprintf(log_buffer, "cannot open %s", buf);
+	if (generate_pbs_nodefile(pjob, buf, sizeof(buf)-1, log_buffer,
+						LOG_BUF_SIZE-1) == 0) {
+		bld_wenv_variables(variables_else[11], buf);
+	} else {
 		log_err(errno, __func__, log_buffer);
 		exec_bail(pjob, JOB_EXEC_FAIL1, NULL);
-		return;
 	}
-	/* write each node name out once per vnod and entry */
-	vnodenum = pjob->ji_numvnod;
-	for (j=0; j<vnodenum; j++) {
-		if (pjob->ji_vnods[j].vn_hname == NULL) {
-			size_t len;
-			char  *pdot;
-
-			/* we want to write just the short name of the host */
-			if (pdot = strchr(pjob->ji_vnods[j].vn_host->hn_host, '.'))
-				len = (size_t)(pdot - pjob->ji_vnods[j].vn_host->hn_host);
-			else
-				len = strlen(pjob->ji_vnods[j].vn_host->hn_host);
-			fprintf(nhow, "%.*s\n", len, pjob->ji_vnods[j].vn_host->hn_host);
-		} else
-			fprintf(nhow, "%s\n", pjob->ji_vnods[j].vn_hname);
-	}
-	fclose(nhow);
-
-	secure_file2(buf,
-		"Administrators", READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
-		"\\Everyone", READS_MASK | READ_CONTROL);
-
 	umask(077);
 
 	/* PBS_ACCOUNT */
@@ -3568,7 +3623,7 @@ finish_exec(job *pjob)
 	char                    buf[2*MAXPATHLEN+5];
 	pid_t                   cpid;
 	struct passwd           *pwdp;          /* for uid, shell, home dir */
-	int                     i, j, vnodenum;
+	int                     i, j;
 	pbs_socklen_t           len;
 	int                     is_interactive = 0;
 	int                     numthreads;
@@ -3593,7 +3648,6 @@ finish_exec(job *pjob)
 	pbs_task                        *ptask;
 	struct  array_strings   *vstrs;
 	struct  sockaddr_in     saddr;
-	FILE                    *nhow;
 	int                     nodemux = 0;
 	char                    *pbs_jobdir; /* staging and execution directory of this job */
 
@@ -5963,6 +6017,7 @@ start_exec(job *pjob)
 		pjob->ji_resources = (noderes *)calloc(nodenum-1,
 			sizeof(noderes));
 		assert(pjob->ji_resources != NULL);
+		pjob->ji_numrescs = nodenum-1;
 		CLEAR_HEAD(phead);
 		pattr = pjob->ji_wattr;
 		for (i=0; i < (int)JOB_ATR_LAST; i++) {

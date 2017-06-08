@@ -825,14 +825,419 @@ is_comm_up(int maturity_time)
 
 /**
  * @brief
+ *	Send to sister nodes updates to exec_vnode, exec_host2,
+ *	and schedselect job attributes. 
+ *
+ * @param[in]	pjob - job to update
+ *
+ * @return int
+ * @retval <num>	- # of successfully sent requests to sis moms.
+ * @retval -1		- for failure.
+*/
+int
+send_sisters_job_update(job *pjob)
+{
+	pbs_list_head	phead;
+	int		mtfd = -1;
+	int		com;
+	svrattrl	*psatl;
+	char		*cookie;
+	int		num = 0;
+	hnodent		*np;	
+	eventent	*ep;	
+	int		i;
+	int		ret;
+
+
+	if (pjob == NULL) {
+		log_err(-1, __func__, "bad pjob parameter");
+		return (-1);
+	}
+	if (pjob->ji_numnodes <= 1) {
+		return (0);
+	}
+	if ( !(pjob->ji_wattr[(int)JOB_ATR_Cookie].at_flags & \
+				ATR_VFLAG_SET) ) {
+		log_err(-1, __func__, "job cookie not set");
+		return (-1);
+	}
+
+	cookie = pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str;
+
+	CLEAR_HEAD(phead);
+
+	(void)job_attr_def[(int)JOB_ATR_exec_vnode].at_encode(
+		&pjob->ji_wattr[(int)JOB_ATR_exec_vnode],
+		&phead,
+		ATTR_execvnode,
+		(char *)0,
+		ATR_ENCODE_MOM,
+		NULL);
+
+	(void)job_attr_def[(int)JOB_ATR_exec_host2].at_encode(
+		&pjob->ji_wattr[(int)JOB_ATR_exec_host2],
+		&phead,
+		ATTR_exechost2,
+		(char *)0,
+		ATR_ENCODE_MOM,
+		NULL);
+
+	(void)job_attr_def[(int)JOB_ATR_SchedSelect].at_encode(
+		&pjob->ji_wattr[(int)JOB_ATR_SchedSelect],
+		&phead,
+		ATTR_SchedSelect,
+		(char *)0,
+		ATR_ENCODE_MOM,
+		NULL);
+
+	attrl_fixlink(&phead);
+	/* Open streams to the sisterhood.  */
+	if (pbs_conf.pbs_use_mcast == 1) {
+		/* open the tpp mcast channel here */
+		if ((mtfd = tpp_mcast_open()) == -1) {
+			sprintf(log_buffer, "mcast open failed");
+			log_err(errno, __func__, log_buffer);
+			return (-1);
+		}
+	}
+
+	psatl = (svrattrl *)GET_NEXT(phead);
+	com = IM_UPDATE_JOB;
+	num = 0;
+	for (i = 1; i < pjob->ji_numnodes; i++) {
+		np = &pjob->ji_hosts[i];
+
+		if (np->hn_stream == -1)
+			np->hn_stream = rpp_open(np->hn_host, np->hn_port);
+		if (np->hn_stream < 0) {
+			snprintf(log_buffer, sizeof(log_buffer),
+				"rpp_open failed on %s:%d", np->hn_host, np->hn_port);
+			log_err(errno, __func__, log_buffer);
+			free_attrlist(&phead);
+			if (pbs_conf.pbs_use_mcast == 1)
+				tpp_mcast_close(mtfd);
+			return (-1);
+		}
+
+		if (i == 1)
+			ep = event_alloc(pjob, com, -1, np,
+				TM_NULL_EVENT, TM_NULL_TASK);
+		else
+			ep = event_dup(ep, pjob, np);
+
+		if (ep == NULL) {
+			sprintf(log_buffer,
+				"failed to create event for %s",
+					 np->hn_host?np->hn_host:"node");
+			log_err(errno, __func__, log_buffer);
+			rpp_close(np->hn_stream);
+			np->hn_stream = -1;
+			if (pbs_conf.pbs_use_mcast == 1)
+				tpp_mcast_close(mtfd);
+			free_attrlist(&phead);
+			return (-1);
+		}
+		if (pbs_conf.pbs_use_mcast == 1) {
+			/* add each of the rpp streams to the tpp mcast channel */
+			if ((tpp_mcast_add_strm(mtfd, np->hn_stream)) == -1) {
+				snprintf(log_buffer,
+					sizeof(log_buffer),
+					"mcast add to %s failed",
+					 np->hn_host?np->hn_host:"node");
+				log_err(errno, __func__, log_buffer);
+				rpp_close(np->hn_stream);
+				np->hn_stream = -1;
+				tpp_mcast_close(mtfd);
+				free_attrlist(&phead);
+				return (-1);
+			}
+		} else {
+			/* send message header */
+			ret = im_compose(np->hn_stream,
+				pjob->ji_qs.ji_jobid, cookie,
+				com, ep->ee_event, TM_NULL_TASK,
+				IM_OLD_PROTOCOL_VER);
+			if (ret != DIS_SUCCESS) {
+				snprintf(log_buffer, sizeof(log_buffer),
+					"failed to send job update to %s",
+					np->hn_host?np->hn_host:"node");
+				log_err(errno, __func__, log_buffer);
+				free_attrlist(&phead);
+				continue;
+			}
+			(void)encode_DIS_svrattrl(np->hn_stream,
+							psatl);
+			(void)rpp_flush(np->hn_stream);
+		}
+		num++;
+
+	}
+
+	if (pbs_conf.pbs_use_mcast == 1) {
+		if (num > 0) {
+			ret = im_compose(mtfd, pjob->ji_qs.ji_jobid,
+			cookie, com, ep->ee_event, TM_NULL_TASK,
+						IM_OLD_PROTOCOL_VER);
+
+			if (ret != DIS_SUCCESS) {
+				log_err(errno, __func__, "compose mcast header failed");
+				tpp_mcast_close(mtfd);
+				free_attrlist(&phead);
+				return (-1);
+			}
+			(void)encode_DIS_svrattrl(mtfd, psatl);
+
+			ret = rpp_flush(mtfd);
+			if (ret != DIS_SUCCESS) {
+				log_err(errno, __func__, "flush mcast stream failed");
+				tpp_mcast_close(mtfd);
+				free_attrlist(&phead);
+				return (-1);
+			}
+		}
+		tpp_mcast_close(mtfd);
+	}
+
+	free_attrlist(&phead);
+	return (num);
+}
+/**
+ *
+ * @brief
+ *	Receive job updates to exec_vnode, exec_host2, and
+ *	schedselect from mother superior via 'stream'.
+ *	This would cause job_nodes() to get called to
+ *	re-populate nodes info (i.e. ji_vnods)
+ *
+ * @return int
+ * @retval 0	- successs
+ * retval  -1	- failure
+ */
+int
+receive_job_update(int stream, job *pjob)
+{
+	pbs_list_head	lhead;
+	int		found_exechost = 0;
+	int		found_execvnode = 0;
+	int		found_schedselect = 0;
+	int		index;
+	int		errcode;
+	int		rc;
+	int		i;
+	svrattrl		*psatl;
+	attribute_def		*pdef;
+
+	CLEAR_HEAD(lhead);
+	if (decode_DIS_svrattrl(stream, &lhead) != DIS_SUCCESS) {
+		log_err(-1, __func__, "decode_DIS_svrattrl failed");
+		return (-1);
+	}
+	for (psatl = (svrattrl *)GET_NEXT(lhead);
+		psatl; psatl = (svrattrl *)GET_NEXT(psatl->al_link)) {
+
+		/* identify the attribute by name */
+		index = find_attr(job_attr_def, psatl->al_name, JOB_ATR_LAST);
+		if (index < 0) { /* didn`t recognize the name */
+			snprintf(log_buffer, sizeof(log_buffer),
+				"did not recognize attribute name %s", psatl->al_name);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE,
+                                 pjob->ji_qs.ji_jobid, log_buffer);
+			free_attrlist(&lhead);
+			return (-1);
+		}
+
+		if (strcmp(psatl->al_name, ATTR_execvnode) == 0) {
+			found_execvnode = 1;
+		} else if (strcmp(psatl->al_name, ATTR_SchedSelect) == 0) {
+			found_schedselect = 1;
+		} else if (strcmp(psatl->al_name, ATTR_exechost2) == 0) {
+			found_exechost = 1;
+		} else {
+			snprintf(log_buffer, sizeof(log_buffer),
+				"warning: ignoring attribute name %s", psatl->al_name);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE,
+                                 pjob->ji_qs.ji_jobid, log_buffer);
+			continue;
+		}
+
+		/* decode attribute */
+		pdef = &job_attr_def[index];
+		errcode = pdef->at_decode(&pjob->ji_wattr[index], psatl->al_name,
+                                         psatl->al_resc, psatl->al_value);
+		/* Unknown resources still get decoded */
+		/* under "unknown" resource def */
+		if ((errcode != 0) && (errcode != PBSE_UNKRESC)) {
+			snprintf(log_buffer, sizeof(log_buffer),
+				"failed to decode attribute name %s", psatl->al_name);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE,
+                                 pjob->ji_qs.ji_jobid, log_buffer);
+			free_attrlist(&lhead);
+			return (-1);
+		}
+
+		if (psatl->al_op == DFLT) {
+			pjob->ji_wattr[index].at_flags |= ATR_VFLAG_DEFLT;
+		}
+	}
+	free_attrlist(&lhead);
+	for (i=0; i<pjob->ji_numvnod; i++) {
+		snprintf(log_buffer, sizeof(log_buffer),
+		        "before: ji_vnods[%d].vn_node=%d phy node %d host=%s",
+			i, pjob->ji_vnods[i].vn_node,
+			pjob->ji_vnods[i].vn_host->hn_node,
+			pjob->ji_vnods[i].vn_host->hn_host?pjob->ji_vnods[i].vn_host->hn_host:"");
+		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG,
+                         pjob->ji_qs.ji_jobid, log_buffer);
+	}
+
+	if (found_execvnode && found_schedselect && found_exechost) {
+
+		if ((rc=job_nodes(pjob)) != 0) {
+			snprintf(log_buffer, sizeof(log_buffer),
+			   	"failed updating internal nodes data (rc=%d)", rc);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE,
+                                 pjob->ji_qs.ji_jobid, log_buffer);
+			return (-1);
+		}
+		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
+			 pjob->ji_qs.ji_jobid, "updated nodes info");
+
+
+		pjob->ji_updated = 1;
+		pjob->ji_modified = 1;
+		(void)job_save(pjob, SAVEJOB_FULL);
+
+		for (i=0; i<pjob->ji_numvnod; i++) {
+			snprintf(log_buffer, sizeof(log_buffer),
+				"after: ji_vnods[%d].vn_node=%d phy node %d "
+				"host=%s", i,
+				pjob->ji_vnods[i].vn_node,
+				pjob->ji_vnods[i].vn_host->hn_node,
+				pjob->ji_vnods[i].vn_host->hn_host?pjob->ji_vnods[i].vn_host->hn_host:"");
+				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB,
+				 	 LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
+		}
+
+	}
+	return (0);
+}
+
+/**
+ * @brief
+ *	Returns 1 if mom entry ('mname', 'port')  is listed
+ *	as one of the entries in '+' separated 'exechost' string.
+ *
+ * @param[in]	exechost - a string of the form:
+ *		  exec_host2: <host1>:<port1>/...+<host2>:<port2>/...	
+ *		  - or -
+ *		  exec_host: <host1>/...+<host2>/...
+ * @param[in]	mname - mom  hostname to match.
+ * @param[in]	port - mom  port number to match.
+ *
+ * @return int
+ * @retval 1	- for a match.
+ * @retval 0	- for a non-match or error. 	
+ */
+static int
+in_exechost(char *exechost, char *mname, int port)
+{
+	char	*ehost = NULL;
+	char	*str = NULL;
+	char	*hname = NULL;
+	int	hport;
+	char	*pc, *pc2 = NULL;
+	momvmap_t *pnat = NULL;
+	int	match_short = 0;
+	char	*save_ptr;	/* posn for strtok_r() */
+
+	if ((exechost == NULL) || (mname == NULL)) {
+		log_err(PBSE_INTERNAL, __func__, "bad input parameter");
+		return 0;
+	}
+
+	ehost = strdup(exechost);	
+	if (ehost == NULL) {
+		log_err(errno, __func__, "strdup failed");
+		return 0;
+	}
+
+	str = strtok_r(ehost, "+", &save_ptr);
+	while (str != NULL) {
+		hname = str;
+		hport = -1;
+		pc = strchr(str, ':');
+		match_short = 0;
+		if (pc != NULL) {
+			*pc = '\0';
+			pc++;
+			pc2 = strchr(pc, '/');
+			if (pc2 != NULL)
+				*pc2 = '\0';
+			hport = atoi(pc);
+		} else {	/* no port info...not exechost2 format*/
+			pc2 = strchr(hname, '/');
+			if (pc2 != NULL)
+				*pc2 = '\0';
+			pnat = find_vmap_entry(hname);
+			if (pnat != NULL) {
+				/* found a map entry */
+				hport = pnat->mvm_mom->mi_port;
+			} else {
+				/* no map entry, use standard port */
+				/* and match up to short names */
+				hport = pbs_mom_port;
+				match_short = 1;
+			}
+		}
+
+		if (match_short) {
+			pc = strchr(hname, '.');
+			if (pc != NULL)
+				*pc = '\0';
+
+			pc2 = strchr(mname, '.');
+			if (pc2 != NULL)
+				*pc2 = '\0';
+
+			if ((strcmp(hname, mname) == 0) && (hport == port)) {
+				if (pc != NULL)
+					*pc = '.';
+				if (pc2 != NULL)
+					*pc2 = '.';
+
+				free(ehost);
+				return 1;
+			}
+			if (pc != NULL)
+				*pc = '.';
+			if (pc2 != NULL)
+				*pc2 = '.';
+
+		} else {
+			if ((strcmp(hname, mname) == 0) && (hport == port)) {
+				free(ehost);
+				return 1;
+			}
+		}
+		str = strtok_r(NULL, "+", &save_ptr);
+	}
+
+	free(ehost);
+	return 0;
+
+}
+/**
+ * @brief
  *	Send a message (command = com) to all the other MOMs in
- *	the job -> pjob.  Set ji_nodekill if there is a problem
+ *	'pjob'.  Set ji_nodekill if there is a problem
  *	with a node.  Call the function command_func if it is
  *	not NULL.  It can be used to send extra information.
  *
  * @param[in] pjob - structure handle to job
  * @param[in] com  - command for task
  * @param[in] command_func - function 
+ * @param[in] exclude_exec_host - if sister host match one of these,
+ *			then ignore sending mcast message to that host.
  * 
  * @return int
  * @retval num - number of nodes without problem
@@ -840,7 +1245,8 @@ is_comm_up(int maturity_time)
  *
  */
 int
-send_sisters_mcast(job *pjob, int com, pbs_jobndstm_t command_func)
+send_sisters_mcast_inner(job *pjob, int com, pbs_jobndstm_t command_func,
+			char *exclude_exec_host)
 {
 	int		i, num, ret;
 	eventent	*ep, *nep = NULL;
@@ -870,9 +1276,31 @@ send_sisters_mcast(job *pjob, int com, pbs_jobndstm_t command_func)
 		if (np->hn_sister != SISTER_OKAY)	/* sis is gone? */
 			continue;
 
+		/*
+		 ** 'np' holds the RM port number in np->hn_port
+		 ** while exclude_exec_host stores the MOM port
+		 ** number. So we need to compare against
+		 ** np->hn_port-1, for PBS mom expects RM port =
+                 ** MOM port + 1.
+		 */
+		if ((exclude_exec_host != NULL) &&
+			in_exechost(exclude_exec_host, np->hn_host,
+						np->hn_port-1)) {
+			/*
+			 ** ensure current node (which is managed by an
+			 ** excluded mom host) is not flagged as a problem 
+			 */
+			if (pjob->ji_nodekill == np->hn_node)
+				pjob->ji_nodekill = TM_ERROR_NODE;
+			continue;
+		}
+
 		if (np->hn_stream == -1)
 			np->hn_stream = rpp_open(np->hn_host, np->hn_port);
 		np->hn_sister = SISTER_EOF;
+
+		if (np->hn_stream == -1)
+			continue;
 
 		/* add each of the rpp streams to the tpp mcast channel */
 		if ((tpp_mcast_add_strm(mtfd, np->hn_stream)) == -1) {
@@ -936,22 +1364,34 @@ send_sisters_mcast(job *pjob, int com, pbs_jobndstm_t command_func)
 
 /**
  * @brief
- *	Send a message (command = com) to all the other MOMs in
- *	the job -> pjob.  Set ji_nodekill if there is a problem
+ *	Send a message (command = com) to all the other MOMs not
+ *	in 'exclude_exec_host' list attached to 'pjob'.
+ *	Set ji_nodekill if there is a problem
  *	with a node.  Call the function command_func if it is
  *	not NULL.  It can be used to send extra information.
  *
  * @param[in] pjob - structure handle to job
  * @param[in] com  - command for task
  * @param[in] command_func - function
+ * @param[in] exclude_exec_host - if not NULL, do not
+ *				send command 'com' to MOM hostnames
+ *				appearing in this list, which has the
+ *				form:
+ *				 <host1>:<port1>/...+<host2>:<port2>/...
+ *				 - or -
+ *				<host1>/...+<host2>/...
  *
  * @return int
- * @retval num - number of nodes without problem
+ * @retval num - number of command requests sent out.
  * @retval 0   - Failure
+ *
+ * @note
+ *	Set pjob->ji_nodekill if there is a problem with a node. 
  *
  */
 int
-send_sisters(job *pjob, int com, pbs_jobndstm_t command_func)
+send_sisters_inner(job *pjob, int com, pbs_jobndstm_t command_func,
+						char *exclude_exec_host)
 {
 	int		i, num, ret;
 	eventent	*ep, *nep = NULL;
@@ -959,7 +1399,8 @@ send_sisters(job *pjob, int com, pbs_jobndstm_t command_func)
 	char		*cookie;
 
 	if (pbs_conf.pbs_use_mcast == 1)
-		return send_sisters_mcast(pjob, com, command_func);
+		return send_sisters_mcast_inner(pjob, com, command_func,
+						exclude_exec_host);
 
 	DBPRT(("send_sisters: command %d\n", com))
 	if (!(pjob->ji_wattr[(int)JOB_ATR_Cookie].at_flags & ATR_VFLAG_SET))
@@ -978,8 +1419,25 @@ send_sisters(job *pjob, int com, pbs_jobndstm_t command_func)
 
 		if (np->hn_sister != SISTER_OKAY)	/* sis is gone? */
 			continue;
+		/* 'np' holds the RM port number in np->hn_port */
+		/* while exclude_exec_host stores the MOM port */
+		/* number. So we need to compare against */
+		/* np->hn_port-1 */
+		if ((exclude_exec_host != NULL) &&
+			in_exechost(exclude_exec_host, np->hn_host,
+						np->hn_port-1)) {
+			/* ensure current node (which is managed by an */
+			/* excluded mom host) is not flagged as a problem */
+			if (pjob->ji_nodekill == np->hn_node)
+				pjob->ji_nodekill = TM_ERROR_NODE;
+			continue;
+		}
 		if (np->hn_stream == -1)
 			np->hn_stream = rpp_open(np->hn_host, np->hn_port);
+
+		if (np->hn_stream == -1)
+			continue;
+
 		np->hn_sister = SISTER_EOF;
 
 		if (com == IM_DELETE_JOB)
@@ -1022,6 +1480,14 @@ send_sisters(job *pjob, int com, pbs_jobndstm_t command_func)
 	return num;
 }
 
+/**
+ * @brief
+ *	This is the wrapper function to 'send_sisters_inner()'.
+ */
+send_sisters(job *pjob, int com, pbs_jobndstm_t command_func)
+{
+	return (send_sisters_inner(pjob, com, command_func, NULL));
+}
 #define	SEND_ERR(err) \
 if (reply) { \
 	(void)im_compose(stream, jobid, cookie, IM_ERROR, event, fromtask, IM_OLD_PROTOCOL_VER); \
@@ -1533,14 +1999,14 @@ im_eof(int stream, int ret)
 	}
 
 	/*
-	 ** Search though all the jobs looking for this stream.
+	 ** Search through all the jobs looking for this stream.
 	 ** We want to find if any events are being waited for
 	 ** from the "dead" stream and do something with them.
 	 */
 	for (pjob = (job *)GET_NEXT(svr_alljobs);
 		pjob != NULL;
 		pjob = (job *)GET_NEXT(pjob->ji_alljobs)) {
-		for (num=0, np = pjob->ji_hosts;
+		for (num = 0, np = pjob->ji_hosts;
 			num<pjob->ji_numnodes;
 			num++, np++) {
 			if (np->hn_stream != stream)
@@ -2030,6 +2496,9 @@ recv_resc_used_from_sister(int stream, char *jobid, int nodeidx)
 		sprintf(log_buffer, "decode_DIS_svrattrl failed");
 		return (-1);
 	}
+	if  ((pjob->ji_resources[nodeidx].nr_used.at_flags & ATR_VFLAG_SET) != 0) {
+		pdef->at_free(&pjob->ji_resources[nodeidx].nr_used);
+	}
 	/* decode attributes from request into job structure */
 	errcode = 0;
 	clear_attr(&pjob->ji_resources[nodeidx].nr_used,
@@ -2111,7 +2580,9 @@ im_request(int stream, int version)
 	infoent			*ip;
 	struct	sockaddr_in	*addr;
 	u_long			ipaddr;
-	int			i, errcode, nodeidx = 0;
+	int			i, errcode;
+	int			nodeidx =0;
+	int			resc_idx = 0;
 	int			reply;
 	int			exitval;
 	tm_node_id		pvnodeid;
@@ -2142,6 +2613,9 @@ im_request(int stream, int version)
 	int			hook_rc = 0;	
 	hook			*last_phook = NULL;
 	unsigned int		hook_fail_action = 0;
+	char			*nodehost = NULL;
+	char			timebuf[TIMEBUF_SIZE] = {0};
+  	char			*delete_job_msg = NULL;
 
 	DBPRT(("%s: stream %d version %d\n", __func__, stream, version))
 	if (version != IM_PROTOCOL_VER && version !=IM_OLD_PROTOCOL_VER) {
@@ -2644,9 +3118,16 @@ join_err:
 			ep = (eventent *)GET_NEXT(ep->ee_next);
 		}
 		if (ep == NULL) {
-			sprintf(log_buffer, "event %d taskid %8.8X not found",
-				event, fromtask);
-			goto err;
+			if (pjob->ji_updated)  {
+				/* some of job's vnodes have been released early
+				 * along with their associated tm_spawn events
+				 */
+				goto done;
+			} else {
+				sprintf(log_buffer, "event %d taskid %8.8X not found",
+					event, fromtask);
+				goto err;
+			}
 		}
 
 		efd = ep->ee_fd;
@@ -2722,6 +3203,7 @@ join_err:
 			break;
 
 		case	IM_DELETE_JOB:
+		case	IM_DELETE_JOB2:
 		case	IM_DELETE_JOB_REPLY:
 			/*
 			 ** Sender is (must be) mom superior commanding me to delete a
@@ -2736,8 +3218,21 @@ join_err:
 
 			if (check_ms(stream, pjob))
 				goto fini;
-			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-				jobid, "DELETE_JOB received");
+
+ 			if ((command == IM_DELETE_JOB) || (command == IM_DELETE_JOB_REPLY))
+				/* For IM_DELETE_JOB_REPLY, it should be
+				 * 'DELETE_JOB_REPLY received'
+				 * but there are QA tests out there that
+				 * already depend on the current message.
+				 */
+ 				delete_job_msg = "DELETE_JOB received";
+			else if (command == IM_DELETE_JOB2)
+				delete_job_msg = "DELETE_JOB2 received";
+
+			if (delete_job_msg != NULL)
+				log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_DEBUG,
+				jobid, delete_job_msg);
+
 			kill_job(pjob, SIGKILL);	/* just in case */
 
 			/* NULL value passed to hook_input.vnl 				*/
@@ -2751,16 +3246,69 @@ join_err:
 			hook_output.last_phook = &last_phook;
 			hook_output.fail_action = &hook_fail_action;
 
-			(void)mom_process_hooks(HOOK_EVENT_EXECJOB_END,
+			(void)mom_process_hooks(
+				(command == IM_DELETE_JOB2)?
+					HOOK_EVENT_EXECJOB_EPILOGUE:
+					HOOK_EVENT_EXECJOB_END,
 				PBS_MOM_SERVICE_NAME, mom_host, &hook_input,
 				&hook_output, hook_msg, sizeof(hook_msg), 1);
 
-			mom_deljob(pjob);
 			if (command == IM_DELETE_JOB_REPLY) {
+				mom_deljob(pjob);
 				ret = im_compose(stream, jobid, cookie, IM_ALL_OKAY,
 					event, fromtask, IM_OLD_PROTOCOL_VER);
 				reply = 1;
+			} else if (command == IM_DELETE_JOB2) {
+				job *pjob2 = NULL;
+				long runver;
+
+				ret = im_compose(stream, jobid, cookie, IM_SEND_RESC,
+					event, fromtask, IM_OLD_PROTOCOL_VER);
+		
+				/* Send the information tallied for the job. */
+				ret = diswst(stream, mom_host);
+				BAIL("mom_host")
+				ret = diswul(stream, resc_used(pjob, "cput",
+								gettime));
+				BAIL("resources_used.cput")
+				ret = diswul(stream, resc_used(pjob, "mem",
+								getsize));
+				BAIL("resources_used.mem")
+				ret = diswul(stream, resc_used(pjob,
+						"cpupercent", gettime));
+				BAIL("resources_used.cpupercent")
+				if (pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags & ATR_VFLAG_SET) {
+					runver = pjob->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long;
+				} else {
+					runver = pjob->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long;
+				}
+				mom_deljob(pjob);
+
+				/* Needed to create a lightweight copy of the job to
+				 * contain only the jobid info, so I can just call
+				 * new_job_action() to create a JOB_ACT_REQ_DEALLOCATE
+				 * request. Can't use the original 'pjob' structure as 
+				 * before creating the request, the real job should have
+				 * been deleted already.
+				 */
+				if ((pjob2 = job_alloc()) != (job *)0) {
+					(void)strncpy(pjob2->ji_qs.ji_jobid, jobid, PBS_MAXSVRJOBID);
+					pjob2->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long =
+								runver;
+					pjob2->ji_wattr[(int)JOB_ATR_run_version].at_flags |= ATR_VFLAG_SET;
+				 	/* JOB_ACT_REQ_DEALLOCATE request will tell the
+				 	 * the server that this mom has completely deleted the
+				 	 * job and now the server can officially free up the
+					 * job from the nodes managed by this mom, allowing
+					 * other jobs to run.
+				 	 */
+					new_job_action_req(pjob2, HOOK_PBSADMIN, JOB_ACT_REQ_DEALLOCATE);
+					job_free(pjob2);
+				}
+
+				reply = 1;
 			} else {
+				mom_deljob(pjob);
 				reply = 0;
 			}
 			break;
@@ -3403,6 +3951,12 @@ join_err:
 					 **	optional;
 					 ** )
 					 */
+					if ((nodeidx > 0) &&
+					    (nodeidx < pjob->ji_numnodes) &&
+					    ((nodeidx-1) < pjob->ji_numrescs) &&
+  					    (pjob->ji_resources[nodeidx-1].nodehost == NULL))
+						pjob->ji_resources[nodeidx-1].nodehost = strdup(pjob->ji_hosts[nodeidx].hn_host);
+
 					if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) == 0) {
 						sprintf(log_buffer,
 							"got JOIN_JOB OKAY and I'm not MS");
@@ -3826,6 +4380,26 @@ join_err:
 						pjob->ji_nodekill = np->hn_node;
 					break;
 
+				case	IM_UPDATE_JOB:
+					for (i = 0; i < pjob->ji_numnodes; i++) {
+						hnodent *xp = &pjob->ji_hosts[i];
+						ep = (eventent *)GET_NEXT(xp->hn_events);
+  						if (ep != NULL)
+							break;
+					}
+
+					if ((nodeidx > 0) && (nodeidx < pjob->ji_numnodes)) {
+						char *hn;
+
+						hn  = pjob->ji_hosts[nodeidx].hn_host;
+						snprintf(log_buffer, sizeof(log_buffer),
+						"received IM_ALL_OK job update from host %s", hn?hn:"");
+						log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
+					}
+
+					break;
+
+
 				default:
 					sprintf(log_buffer, "unknown request type %d saved",
 						event_com);
@@ -4058,6 +4632,102 @@ join_err:
 			}
 			break;
 
+		case	IM_SEND_RESC:
+			/*
+			 ** I must be Mother Superior for the job and
+			 ** this is a reply with job resources to
+			 ** tally up.
+			 **
+			 */
+			if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) == 0) {
+				sprintf(log_buffer,
+					"got IM_SEND_RESC and I'm not MS");
+				goto err;
+			}
+
+			nodehost = disrst(stream, &ret);
+			BAIL("nodehost")
+			resc_idx = -1;
+			for (i=0; i < pjob->ji_numrescs; i++) {
+				if ((pjob->ji_resources[i].nodehost != NULL) &&
+				    (strcmp(pjob->ji_resources[i].nodehost, nodehost) == 0)) {
+					resc_idx = i;
+					break;
+				}
+			}
+			if (resc_idx == -1) {
+				noderes *tmparr = NULL;
+				/* add an entry to pjob->ji_resources */
+				/* for this incoming resource report */
+
+				tmparr = (noderes *)realloc(
+						pjob->ji_resources,
+				 (pjob->ji_numrescs+1)*sizeof(noderes));
+
+				if (tmparr == NULL) {
+					snprintf(log_buffer,
+						sizeof(log_buffer),
+				 	 	"realloc failure extending"
+					 	"  pjob->ji_resources");
+					goto err;
+				}
+				pjob->ji_resources = tmparr;
+				resc_idx = pjob->ji_numrescs;
+				pjob->ji_resources[resc_idx].nodehost =
+					strdup(nodehost);
+				if (pjob->ji_resources[resc_idx].nodehost == NULL) {
+					snprintf(log_buffer, sizeof(log_buffer),
+				 	 	"strdup failure setting nodehost");
+					goto err;
+				}
+				pjob->ji_numrescs++;
+				
+			}
+			pjob->ji_resources[resc_idx].nr_cput =
+				disrul(stream, &ret);
+			BAIL("resources_used.cput")
+			convert_duration_to_str(pjob->ji_resources[resc_idx].nr_cput, timebuf, TIMEBUF_SIZE);
+
+			pjob->ji_resources[resc_idx].nr_mem =
+				disrul(stream, &ret);
+			BAIL("resources_used.mem")
+			pjob->ji_resources[resc_idx].nr_cpupercent =
+				disrul(stream, &ret);
+			BAIL("resources_used.cpupercent")
+			DBPRT(("%s: SEND_RESC %s OKAY nodeidx %d cpu %lu mem %lu\n",
+				id, jobid, resc_idx,
+				pjob->ji_resources[nodeidx-1].nr_cput,
+				pjob->ji_resources[nodeidx-1].nr_mem))
+
+			pjob->ji_resources[resc_idx].nr_status = PBS_NODERES_DELETE;
+
+			sprintf(log_buffer,
+				"%s cput=%s mem=%lukb", nodehost, timebuf,
+				pjob->ji_resources[resc_idx].nr_mem);
+			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB,
+				LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
+
+			free(nodehost);
+			nodehost = NULL;
+			update_ajob_status(pjob);
+			break;
+
+		case	IM_UPDATE_JOB:
+			if (check_ms(stream, NULL))
+				goto fini;
+			if (receive_job_update(stream, pjob) != 0) {
+				snprintf(log_buffer,
+					sizeof(log_buffer),
+					"receive_job_update failed");
+				break;
+			}
+			ret = im_compose(stream, jobid, cookie,
+				IM_ALL_OKAY,
+				event, fromtask, IM_OLD_PROTOCOL_VER);
+			if (ret != DIS_SUCCESS)
+				goto err;
+			break;
+
 		default:
 			sprintf(log_buffer, "unknown command %d sent", command);
 			goto err;
@@ -4091,14 +4761,11 @@ err:
 	im_eof(stream, ret);
 
 fini:
-	if (jobid)
-		free(jobid);
-	if (cookie)
-		free(cookie);
-	if (info)
-		free(info);
-	if (errmsg)
-		free(errmsg);
+	free(jobid);
+	free(cookie);
+	free(info);
+	free(errmsg);
+	free(nodehost);
 }
 
 /**
@@ -5372,6 +6039,9 @@ send_join_job_restart(int com, eventent *ep, int nth, job *pjob, pbs_list_head *
 	svrattrl  *psatl;
 	int	   stream;
 
+	if (pjob->ji_hosts == NULL)
+		return;
+
 	/* find the "nth" hnodent (host entry) of the job and stream to it */
 	np = &pjob->ji_hosts[nth];
 	stream = np->hn_stream;
@@ -5435,6 +6105,9 @@ send_join_job_restart_mcast(int mtfd, int com, eventent *ep, int nth, job *pjob,
 	hnodent	  *np;
 	svrattrl  *psatl;
 	int	   stream;
+
+	if (pjob->ji_hosts == NULL)
+		return;
 
 	/* find the "nth" hnodent (host entry) of the job and stream to it */
 	np = &pjob->ji_hosts[nth];

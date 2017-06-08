@@ -524,6 +524,13 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "svr_periodic_hook", "projec
 		{1CE3EDF8-7001-4756-A85B-DF7D0BFF4C52} = {1CE3EDF8-7001-4756-A85B-DF7D0BFF4C52}
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "pbs_release_nodes", "projects.VS2008\pbs_release_nodes.vcproj", "{AA00D215-116C-406D-82C5-32E894A1D0D9}"
+	ProjectSection(ProjectDependencies) = postProject
+		{5885BB13-6D58-4EE3-94C8-A8928F1EAB00} = {5885BB13-6D58-4EE3-94C8-A8928F1EAB00}
+		{17F70B8B-9669-4F98-95B0-E98ECA3D6039} = {17F70B8B-9669-4F98-95B0-E98ECA3D6039}
+		{684975BF-D264-4429-83F2-6FB31DD36366} = {684975BF-D264-4429-83F2-6FB31DD36366}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -829,6 +836,10 @@ Global
 		{4BA7EB6D-B059-4B39-84F0-66057499EE6D}.Debug|Win32.Build.0 = Debug|Win32
 		{4BA7EB6D-B059-4B39-84F0-66057499EE6D}.Release|Win32.ActiveCfg = Release|Win32
 		{4BA7EB6D-B059-4B39-84F0-66057499EE6D}.Release|Win32.Build.0 = Release|Win32
+		{AA00D215-116C-406D-82C5-32E894A1D0D9}.Debug|Win32.ActiveCfg = Debug|Win32
+		{AA00D215-116C-406D-82C5-32E894A1D0D9}.Debug|Win32.Build.0 = Debug|Win32
+		{AA00D215-116C-406D-82C5-32E894A1D0D9}.Release|Win32.ActiveCfg = Release|Win32
+		{AA00D215-116C-406D-82C5-32E894A1D0D9}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

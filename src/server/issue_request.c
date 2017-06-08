@@ -90,8 +90,21 @@ extern struct  connection *svr_conn;
 extern int max_connection;
 
 /**
+ *
  * @brief
- * 		relay_to_mom - relay a (typically existing) batch_request to MOM
+ *	Wrapper program to relay_to_mom2() with the 'pwt' argument
+ *	passed as NULL.
+ */
+int
+relay_to_mom(job *pjob, struct batch_request *request,
+	     void (*func)(struct work_task *))
+{
+	return (relay_to_mom2(pjob, request, func, NULL));
+}
+
+/**
+ * @brief
+ * 		Relay a (typically existing) batch_request to MOM
  *
  *		Make connection to MOM and issue the request.  Called with
  *		network address rather than name to save look-ups.
@@ -102,6 +115,8 @@ extern int max_connection;
  * @param[in,out]	pjob - pointer to job
  * @param[in]	request - the request to send
  * @param[in]	func - function pointer taking work_task structure as argument.
+ * @param[out]  ppwt - the work task maintained by server
+ *			to handle deferred replies from request.
  *
  * @return	int
  * @retval	0	- success
@@ -109,7 +124,8 @@ extern int max_connection;
  */
 
 int
-relay_to_mom(job *pjob, struct batch_request *request, void (*func)(struct work_task *))
+relay_to_mom2(job *pjob, struct batch_request *request,
+	     void (*func)(struct work_task *), struct work_task **ppwt)
 {
 	int	rc;
 	int	conn;	/* a client style connection handle */
@@ -149,6 +165,9 @@ relay_to_mom(job *pjob, struct batch_request *request, void (*func)(struct work_
 		if (prot == PROT_RPP)
 			append_link(mom_tasklist_ptr, &pwt->wt_linkobj2, pwt); /* if rpp, link to mom list as well */
 	}
+
+	if (ppwt != NULL)
+		*ppwt = pwt;
 
 	/*
 	 * We do not want req_reject() to send non PBSE error numbers.
@@ -467,6 +486,15 @@ issue_Drequest(int conn,
 				request->rq_ind.rq_message.rq_jid,
 				request->rq_ind.rq_message.rq_file,
 				request->rq_ind.rq_message.rq_text,
+				(char *)0,
+				rpp,
+				&msgid);
+			break;
+
+		case PBS_BATCH_RelnodesJob:
+			rc =  PBSD_relnodes_put(conn,
+				request->rq_ind.rq_relnodes.rq_jid,
+				request->rq_ind.rq_relnodes.rq_node_list,
 				(char *)0,
 				rpp,
 				&msgid);

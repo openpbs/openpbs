@@ -648,8 +648,6 @@ req_runjob2(struct batch_request *preq, job *pjob)
 		if (preq)
 			req_reject(rc, 0, preq);
 	}
-	(void)sprintf(log_buffer, "return value of svr_startjob is %d", rc);
-	log_err(errno, __func__, log_buffer);
 }
 
 

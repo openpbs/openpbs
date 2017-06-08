@@ -503,13 +503,17 @@ set_resc_assigned(void *pobj, int objtype, enum batch_op op)
 	/* if a job, update resource_assigned at the node level */
 	if (objtype == 1)
 		update_node_rassn(&presv->ri_wattr[(int)RESV_ATR_resv_nodes], op);
-	else if ((objtype == 0) && (pjob->ji_myResv == NULL))
+	else if ((objtype == 0) && (pjob->ji_myResv == NULL)) {
 		if (pjob->ji_wattr[(int) JOB_ATR_resc_released].at_flags & ATR_VFLAG_SET)
 			/* This is just the normal case when job was not suspended but trying to run| end */
 			update_node_rassn(&pjob->ji_wattr[(int) JOB_ATR_resc_released], op);
 		else
 			/* updating all resources from exec vnode attribute */
 			update_node_rassn(&pjob->ji_wattr[(int) JOB_ATR_exec_vnode], op);
+		if (pjob->ji_wattr[(int)JOB_ATR_exec_vnode_deallocated].at_flags & ATR_VFLAG_SET) {
+			update_job_node_rassn(pjob, &pjob->ji_wattr[(int) JOB_ATR_exec_vnode_deallocated], op);
+		}
+	}
 }
 
 /**

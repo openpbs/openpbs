@@ -482,9 +482,10 @@ typedef enum node_topology_type ntt_t;
 #define	CRAY_COMPUTE	"cray_compute"	/* vntype for a Cray compute node */
 #define	CRAY_LOGIN	"cray_login"	/* vntype for a Cray login node */
 
-/* Mom Hooks defines */
+/* Mom Job defines */
 #define JOB_ACT_REQ_REQUEUE 0
 #define JOB_ACT_REQ_DELETE  1
+#define JOB_ACT_REQ_DEALLOCATE	2
 
 
 #ifndef PBS_MOM

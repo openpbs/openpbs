@@ -166,6 +166,16 @@ typedef struct	vnode_attr {
  */
 #define	VNATTR_HOOK_OFFLINE_VNODES "offline_vnodes"
 
+/**
+ * @brief
+ *	An attribute named VNATTR_SCHEDULER_RESTART_CYCLE
+ *	attached to a `special' vnode
+ *	will have a "1,<hook_name>" value to mean a hook named
+ *	<hook_name> has requested that a message be sent to the
+ *	scheduler to restart its scheduling cycle.
+ */
+#define	VNATTR_HOOK_SCHEDULER_RESTART_CYCLE "scheduler_restart_cycle"
+
 typedef		int (callfunc_t)(char *, char *, char *);
 
 /**

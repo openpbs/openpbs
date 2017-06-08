@@ -158,10 +158,11 @@ static void running_jobs_count(struct work_task *);
 static void svr_avljob_oper(job *pjob, int delkey);
 
 /* Global Data Items: */
-extern char* msg_noloopbackif;
+extern char *msg_noloopbackif;
+extern char *msg_mombadmodify;
 
 extern struct server server;
-
+extern int  pbs_mom_port;
 extern pbs_list_head svr_alljobs;
 extern pbs_list_head svr_unlicensedjobs;
 extern char  *msg_badwait;		/* error message */
@@ -2158,10 +2159,11 @@ set_chunk_sum(attribute  *pselectattr, attribute *pattr)
 		return rc;
 	while (chunk) {
 #ifdef NAS /* localmod 082 */
-		if (parse_chunk(chunk, 0, &nchk, &nelem, &pkvp, NULL) == 0) {
+		if (parse_chunk(chunk, 0, &nchk, &nelem, &pkvp, NULL) == 0)
 #else
-		if (parse_chunk(chunk, &nchk, &nelem, &pkvp, NULL) == 0) {
+		if (parse_chunk(chunk, &nchk, &nelem, &pkvp, NULL) == 0)
 #endif /* localmod 082 */
+		{
 			total_chunks += nchk;
 			for (j=0; j<nelem; ++j) {
 				for (i=0; svr_resc_sum[i].rs_def; ++i) {
@@ -2227,9 +2229,7 @@ set_chunk_sum(attribute  *pselectattr, attribute *pattr)
 			presc = add_resource_entry(pattr, pdef);
 		if (presc) {
 			presc->rs_value.at_val.at_long = total_chunks;
-			presc->rs_value.at_flags |= ATR_VFLAG_SET |
-				ATR_VFLAG_DEFLT |
-			ATR_VFLAG_MODCACHE;
+			presc->rs_value.at_flags |= ATR_VFLAG_SET | ATR_VFLAG_DEFLT | ATR_VFLAG_MODCACHE;
 		}
 	}
 	return 0;
@@ -2242,8 +2242,8 @@ set_chunk_sum(attribute  *pselectattr, attribute *pattr)
  * @par Functionality:
  *		If the buffer, buf, whose size is lenbuf is too small to cat source,
  *		increase the size of buf by the length of "source" plus an extra
- *		PBS_STRCAT_GROW_INCR (512) bytes.
- *		Makes sure there is at least PBS_STRCAT_GROW_MIN (16) free bytes
+ *		PBS_STRCAT_GROW_INCR bytes.
+ *		Makes sure there is at least PBS_STRCAT_GROW_MIN free bytes
  *		in "buff" for those simple one or two byte direct additions..
  *		Assumes both current string in buf and source are null terminated.
  *
@@ -2262,7 +2262,7 @@ set_chunk_sum(attribute  *pselectattr, attribute *pattr)
  * @par Side-effect:	If buffer is increased in size, "buf", "curr" and "lenbuf"
  *						are updated.
  *
- * @par MT-safe:	depends on how buf is managed by caller
+ * @par MT-safe:	No
  *
  * @par	Future extension	- This function is currently designed as a drop in
  *	for make_schedselect().  It could be simplified for more general use
@@ -2276,9 +2276,13 @@ strcat_grow(char **buf, char **curr, size_t *lenbuf, char *source)
 {
 
 	size_t  add;
-	size_t  currsize = *lenbuf;
-	ssize_t delta = *curr - *buf;	/* offset in buffer */
+	size_t  currsize;
+	ssize_t delta;
+	if ((lenbuf == NULL) || (curr == NULL) || (buf == NULL) || (source == NULL))
+		return -1;
 
+	currsize = *lenbuf;
+	delta = *curr - *buf;	/* offset in buffer */
 	add = strlen(source);
 	if ((delta + strlen(*curr) + add + PBS_STRCAT_GROW_MIN) >= currsize) {
 		/* need to grow buffer */
@@ -2388,10 +2392,11 @@ make_schedselect(attribute *patrl, resource *pselect,
 
 #ifdef NAS /* localmod 082 */
 		j = server.sv_nseldft + (pque ? pque->qu_nseldft : 0);
-		if (parse_chunk(chunk, j, &nchk, &nelem, &pkvp, &nchunk_internally_set) == 0) {
+		if (parse_chunk(chunk, j, &nchk, &nelem, &pkvp, &nchunk_internally_set) == 0)
 #else
-		if (parse_chunk(chunk, &nchk, &nelem, &pkvp, &nchunk_internally_set) == 0) {
+		if (parse_chunk(chunk, &nchk, &nelem, &pkvp, &nchunk_internally_set) == 0)
 #endif /* localmod 082 */
+		{
 
 			/* first check for any invalid resources in the select */
 			for (j=0; j<nelem; ++j) {
@@ -5723,3 +5728,1642 @@ AVL_OP_FAIL:
 	}
 }
 
+/**
+ * @brief
+ *	Look into a job's exec_host2 or exec_host attribute
+ *	for the first entry which is considered the MS host and its
+ *	port. 'exec_host2' is consulted first if it exists, then 'exec_hostt'.
+ * @param[in]	pjob	- job structure
+ * @param[out]  port	- where the corresponding port is returned.
+ *
+ * @return char *
+ * @retval	!= NULL - mother superior full hostname
+ * @retval	NULL - if error obtaining hostname.
+ *
+ * @note
+ *	Returned string is in a malloc-ed area which must be freed
+ *	outside after use.
+ */
+static char *
+find_ms_full_host_and_port(job *pjob, int *port)
+{
+	char	*ms_exec_host = NULL;
+	char	*p;
+
+	if ((pjob == NULL) || (port == NULL)) {
+		log_err(PBSE_INTERNAL, __func__, "bad input parameter");
+		return (NULL);
+	}
+
+	*port = pbs_mom_port;
+
+	if (pjob->ji_wattr[(int)JOB_ATR_exec_host2].at_flags & ATR_VFLAG_SET) {
+		ms_exec_host = strdup(pjob->ji_wattr[(int)JOB_ATR_exec_host2].at_val.at_str);
+		if (ms_exec_host == NULL) {
+			log_err(errno, __func__, "strdup failed");
+			return (NULL);
+			
+		}
+		if ((p=strchr(ms_exec_host, '/')) != NULL)
+			*p = '\0';
+
+			if ((p=strchr(ms_exec_host, ':')) != NULL) {
+				*p = '\0';
+				*port = atoi(p+1);
+			}
+	} else if (pjob->ji_wattr[(int)JOB_ATR_exec_host].at_flags & ATR_VFLAG_SET) {
+		ms_exec_host = strdup(pjob->ji_wattr[(int)JOB_ATR_exec_host].at_val.at_str);
+		if (ms_exec_host == NULL) {
+			log_err(errno, __func__, "strdup failed");
+			return (NULL);
+			
+		}
+		if ((p=strchr(ms_exec_host, '/')) != NULL)
+			*p = '\0';
+	}
+	return (ms_exec_host);
+}
+
+/**
+ * @brief
+ *	Put 'msg' into 'err_msg' buffer of size 'err_msg_sz',
+ *	then logs 'err_msg' value along with 'errno' info and
+ *	'header_msg' into daemon_log.
+ *
+ * @param[in,out]	err_msg - holds error message 
+ * @param[in]		err_msg_sz - size of the 'err_msg' buffer
+ * @param[in]		msg - actual message to log
+ * @param[in]		errno - error number to log
+ * @param[in]		header_msg - some heading message to log
+ *
+ * @return none
+ *
+ */
+#define	LOG_ERR_BUF(err_msg, err_msg_sz, msg, errno, header_msg) \
+if ((err_msg != NULL) && (err_msg_sz > 0)) { \
+	snprintf(err_msg, err_msg_sz, msg); \
+	log_err(errno, header_msg, err_msg); \
+}
+
+/**
+ * @brief
+ *	Put 'msg' into 'err_msg' buffer of size 'err_msg_sz',
+ *	then logs 'err_msg' value and 'id' string into
+ *	daemon_logs with 'arg' mapping to the
+ *	only positional parameter in 'msg'
+ *
+ * @param[in,out]	err_msg - holds error message
+ * @param[in]		err_msg_sz - size of the 'err_msg' buffer
+ * @param[in]		msg - actual message to log
+ * @param[in]		arg - maps to 'msg's '%' parameter
+ * @param[in]		id - some calling function namee to log 
+ *
+ * @return none
+ *
+ */
+#define	LOG_EVENT_BUF_ARG1(err_msg, err_msg_sz, msg, arg, id) \
+if ((err_msg != NULL) && (err_msg_sz > 0)) { \
+	snprintf(err_msg, err_msg_sz, msg, arg); \
+	log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, \
+					id, err_msg); \
+}
+
+/**
+ * @brief
+ *	Put 'msg' into 'err_msg' buffer of size 'err_msg_sz',
+ *	then logs 'err_msg' value and 'id' string into
+ *	daemon_log with 'arg1', 'arg2', 'arg3'
+ *	mapping to the positional parameters in 'msg'.
+ *
+ * @param[in,out]	err_msg - holds error message
+ * @param[in]		err_msg_sz - size of the 'err_msg' buffer
+ * @param[in]		msg - actual message to log
+ * @param[in]		arg1 - Maps to 'msg's '%' 1st parameter
+ * @param[in]		arg2 - Maps to 'msg's '%' 2nd parameter
+ * @param[in]		arg3 - Maps to 'msg's '%' 3nd parameter
+ * @param[in]		id - some calling function namee to log
+ *
+ * @return none
+ *
+ */
+#define	LOG_EVENT_BUF_ARG3(err_msg, err_msg_sz, msg, arg1, arg2, arg3, id) \
+if ((err_msg != NULL) && (err_msg_sz > 0)) { \
+	snprintf(err_msg, err_msg_sz, msg, arg1, arg2, arg3); \
+	log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, \
+					id, err_msg); \
+}
+
+/**
+ * @brief
+ * 	Finish the request to mom to update a job's exec_* values.
+ *	Both the mom request and the originating client request are acknowledged.
+ *
+ * @param[in,out]	pwt -	work_task structure, containing info
+ *				about the mom request and the client request.
+ * @return none
+ */
+static void
+post_send_job_exec_update_req(struct work_task *pwt)
+{
+	struct batch_request *mom_preq;
+	struct batch_request *cli_preq;
+	char   err_msg[LOG_BUF_SIZE];
+
+	if (pwt == NULL)
+		return;
+
+	if (pwt->wt_aux2 != 1) /* not rpp */
+		svr_disconnect(pwt->wt_event);  /* close connection to MOM */
+	mom_preq = pwt->wt_parm1;
+	mom_preq->rq_conn = mom_preq->rq_orgconn;  /* restore socket to client */
+
+	cli_preq = pwt->wt_parm2;
+
+	if (mom_preq->rq_reply.brp_code) {
+
+		/* also take note of the reject msg if any */
+		if (mom_preq->rq_reply.brp_choice ==
+					BATCH_REPLY_CHOICE_Text) {
+			(void)snprintf(err_msg, sizeof(err_msg), "%s",
+			    mom_preq->rq_reply.brp_un.brp_txt.brp_str);
+		} else {
+			(void)snprintf(err_msg, sizeof(err_msg),
+					msg_mombadmodify,
+					mom_preq->rq_reply.brp_code);
+		}
+		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
+			mom_preq->rq_ind.rq_modify.rq_objname, err_msg);
+		req_reject(mom_preq->rq_reply.brp_code, 0, mom_preq);
+		reply_text(cli_preq, mom_preq->rq_reply.brp_code,
+						err_msg);
+	} else {
+		reply_ack(mom_preq);
+		if (cli_preq != NULL) {
+			if (cli_preq->rq_extend == NULL) {
+				reply_ack(cli_preq);
+			} else {
+				reply_text(cli_preq, PBSE_NONE,
+					cli_preq->rq_extend);
+			}
+		}
+	}
+}
+
+/**
+ * @brief
+ *	
+ * Communicate to the MS mom pjob's exec_vnode, exec_host,
+ * exec_host2, and schedselect attributes.
+ *
+ * @param[in]	pjob - job structure
+ * @param[out]  err_msg - a buffer of size 'err_msg_sz' supplied by the
+ *       		  caller and upon a failure will contain an appropriate
+ *       		  error message
+ * @param[in]	err_msg_sz - size of 'err_msg' buf
+ * @param[in]	reply_req - the batch request to reply to if any
+ *
+ * @return int
+ * @retrval	0	- sucess
+ * @retrval	1	- fail
+ */
+
+int
+send_job_exec_update_to_mom(job *pjob, char *err_msg, int err_msg_sz,
+				struct batch_request *reply_req) 
+{
+	struct batch_request *newreq;
+	char		*new_exec_vnode = NULL;
+	char		*new_exec_host = NULL;
+	char		*new_exec_host2 = NULL;
+	attribute	*psched = (attribute *)0;
+	int		rc = 1;
+	int		num_updates = 0;
+	struct	work_task	*pwt = NULL;
+
+	if (pjob == NULL) {
+		LOG_ERR_BUF(err_msg, err_msg_sz, "bad job parameter",
+					PBSE_INTERNAL, __func__)
+		return (1);
+	}
+
+	if ((err_msg[0] != '\0') && (reply_req != NULL)) {
+		/*
+		 * be sure to save/send this extra info in
+		 * 'err_msg' buf
+		 */
+		reply_req->rq_extend = strdup(err_msg);
+		if (reply_req->rq_extend == NULL) {
+			LOG_ERR_BUF(err_msg, err_msg_sz, "strdup failed",
+					PBSE_INTERNAL, __func__)
+			return (1);
+		}
+
+	}
+
+	newreq = alloc_br(PBS_BATCH_ModifyJob);
+
+	if (newreq == (struct batch_request *) 0) {
+		LOG_ERR_BUF(err_msg, err_msg_sz,
+			"failed to alloc_br for PBS_MATCH_modifyjob",
+					errno, __func__)
+		return (1);
+	}
+	CLEAR_HEAD(newreq->rq_ind.rq_modify.rq_attr);
+
+	(void)strcpy(newreq->rq_ind.rq_modify.rq_objname,
+                                        pjob->ji_qs.ji_jobid);
+
+	if (pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_flags & ATR_VFLAG_SET) {
+	 	new_exec_vnode =
+		  pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_val.at_str;
+
+		if (add_to_svrattrl_list(
+			&(newreq->rq_ind.rq_modify.rq_attr),
+			ATTR_execvnode, NULL, new_exec_vnode, 0,
+							NULL) == -1) {
+			LOG_EVENT_BUF_ARG3(err_msg,err_msg_sz-1,
+			   "failed to add_to_svrattrl_list(%s,%s,%s)",
+				ATTR_execvnode, "", new_exec_vnode,
+						pjob->ji_qs.ji_jobid)
+			goto send_job_exec_update_exit;
+		}
+		num_updates++;
+	}
+
+	if (pjob->ji_wattr[(int)JOB_ATR_exec_host].at_flags & ATR_VFLAG_SET) {
+		new_exec_host =
+		   pjob->ji_wattr[(int)JOB_ATR_exec_host].at_val.at_str;
+
+		if (add_to_svrattrl_list(
+			&(newreq->rq_ind.rq_modify.rq_attr),
+			ATTR_exechost, NULL, new_exec_host, 0, NULL) == -1) {
+			LOG_EVENT_BUF_ARG3(err_msg,err_msg_sz,
+			   "failed to add_to_svrattrl_list(%s,%s,%s)",
+				ATTR_exechost, "", new_exec_host,
+						pjob->ji_qs.ji_jobid)
+			goto send_job_exec_update_exit;
+		}
+		num_updates++;
+	}
+
+	if (pjob->ji_wattr[(int)JOB_ATR_exec_host2].at_flags & ATR_VFLAG_SET) {
+		new_exec_host2 = 
+		  pjob->ji_wattr[(int)JOB_ATR_exec_host2].at_val.at_str;
+
+		if (add_to_svrattrl_list(
+			&(newreq->rq_ind.rq_modify.rq_attr),
+			ATTR_exechost2, NULL, new_exec_host2, 0, NULL) == -1) {
+			LOG_EVENT_BUF_ARG3(err_msg,err_msg_sz,
+			   "failed to add_to_svrattrl_list(%s,%s,%s)",
+				ATTR_exechost2, "", new_exec_host2,
+						pjob->ji_qs.ji_jobid)
+			goto send_job_exec_update_exit;
+		}
+		num_updates++;
+	}
+
+	psched = &pjob->ji_wattr[(int)JOB_ATR_SchedSelect];
+	if ((psched->at_flags & ATR_VFLAG_SET) != 0) {
+		if (add_to_svrattrl_list(
+			&(newreq->rq_ind.rq_modify.rq_attr),
+			ATTR_SchedSelect, NULL,
+			psched->at_val.at_str, 0, NULL) == -1) {
+			LOG_EVENT_BUF_ARG3(err_msg,err_msg_sz,
+			   "failed to add_to_svrattrl_list(%s,%s,%s)",
+				ATTR_SchedSelect, "", 
+				psched->at_val.at_str,
+				pjob->ji_qs.ji_jobid)
+			goto send_job_exec_update_exit;
+		}
+		num_updates++;
+	}
+
+
+	if ((pjob->ji_wattr[JOB_ATR_resource].at_flags & ATR_VFLAG_SET) != 0) {
+		resource	*pr, *next;
+		pbs_list_head    collectresc;
+		svrattrl 	*psvrl;
+		attribute_def	*objatrdef;
+		extern  int	resc_access_perm;
+	
+		objatrdef = &job_attr_def[(int)JOB_ATR_resource];
+		CLEAR_HEAD(collectresc);
+		resc_access_perm = READ_ONLY;
+		if (objatrdef->at_encode(&pjob->ji_wattr[(int)JOB_ATR_resource], &collectresc, objatrdef->at_name, NULL, ATR_ENCODE_CLIENT, NULL) > 0) {
+
+			psvrl = (svrattrl *)GET_NEXT(collectresc);
+			while (psvrl) {
+				if (add_to_svrattrl_list(
+				    &(newreq->rq_ind.rq_modify.rq_attr),
+				    objatrdef->at_name, psvrl->al_resc,
+				      psvrl->al_value, 0, NULL) == -1) {
+					free_attrlist(&collectresc);
+					LOG_EVENT_BUF_ARG3(err_msg,
+							err_msg_sz,
+			   			"failed to add_to_svrattrl_list(%s,%s,%s)",
+			      			objatrdef->at_name,
+						psvrl->al_resc,
+						psvrl->al_value,
+						pjob->ji_qs.ji_jobid)
+					goto send_job_exec_update_exit;
+				}
+				num_updates++;
+				psvrl = (svrattrl *)GET_NEXT(psvrl->al_link);
+			}
+			free_attrlist(&collectresc);
+		}
+	}
+
+	/* pass the request on to MOM */
+
+	if (num_updates > 0) {
+		rc = relay_to_mom2(pjob, newreq,
+				post_send_job_exec_update_req, &pwt);
+		if (rc != 0) {
+			LOG_ERR_BUF(err_msg, err_msg_sz,
+				"failed telling mom of the request",
+							rc, __func__)
+		} else {
+			pwt->wt_parm2 = reply_req;
+		}
+	} else {
+		/* no updates, ok */
+		rc = 0;
+	}
+
+send_job_exec_update_exit:
+
+	if ((rc != 0) || (num_updates == 0)) {
+		free_br(newreq);
+	}
+
+	return (rc);
+}
+
+
+enum resc_sum_action {
+	RESC_SUM_ADD,
+	RESC_SUM_GET_CLEAR
+};
+
+/**
+ * @brief
+ *	resc_sum_values_action: perform some 'action' on the internal resc_sum_values
+ *	array.
+ *
+ * @param[in]	action	- can either be 'RESC_SUM_ADD' to add an entry (resc_def,
+ *			  keyw, value) into the internal resc_sum_values array,
+ *			  or 'RESC_SUM_GET_CLEAR' to return the contents of the
+ *			  resc_sum_values array.
+ * @param[in]	resc_def- resource definition of the resource to be added to the array.
+ *			- must be non-NULL if 'action' is 'RESC_SUM_ADD'.
+ * @param[in]	keyw	- resource name of the resource to be added to the array.
+ *			- must be non-NULL if 'action' is 'RESC_SUM_ADD'.
+ * @param[in]	value	- value of the resource to be added to the array.
+ *			  must be non-NULL if 'action' is 'RESC_SUM_ADD'.
+ * @param[in]	err_msg	- error message buffer filled in if there's an error executing
+ *			  this function.
+ * @param[in]	err_msg_sz - size of 'err_msg' buffer.  
+ *
+ * @return 	char *
+ * @retval	<string> If 'action' is RESC_SUM_ADD, then this returns the 'keyw' to
+ *			 signal success adding the <resc_def, keyw, value>.
+ *			 If 'action' is RESC_SUM_GET_CLEAR, then this returns the
+ *			 <res>=<value> entries in the internal resc_sum_values
+ *			 array, as well as clear/initialize entries in the resc_sum_values
+ *			 array. The returned string is of the form:
+ *				":<res>=<value>:<res1>=(value1>:<res2>=<value2>..."
+ * @retval	NULL	 If an error has occurred, filling in the 'err_msg' with the error
+ *			 message.
+ * @par	MT-safe: No.
+ */
+static char *
+resc_sum_values_action(enum resc_sum_action action, resource_def *resc_def, char *keyw, char *value,
+	char *err_msg, int err_msg_sz)
+{
+	static	struct resc_sum	*resc_sum_values = NULL;
+	static	int	resc_sum_values_size = 0;
+	struct	resc_sum *rs;
+	int		k;
+
+	if ((action == RESC_SUM_ADD) && ((resc_def == NULL) || (keyw == NULL) || (value == NULL))) {
+		LOG_ERR_BUF(err_msg, err_msg_sz,
+				"RESC_SUM_ADD: resc_def, keyw, or value is NULL", -1, __func__)
+		return (NULL);
+	}
+
+	if (resc_sum_values_size == 0) {
+		resc_sum_values = (struct resc_sum *)calloc(20,
+						sizeof(struct resc_sum));
+		if (resc_sum_values == NULL) {
+			LOG_ERR_BUF(err_msg, err_msg_sz,
+				"resc_sum_values calloc error", -1, __func__)
+			return (NULL);
+		}
+		resc_sum_values_size = 20;
+		for (k = 0; k < resc_sum_values_size; k++) {
+			rs = resc_sum_values;
+			rs[k].rs_def = NULL;
+			memset(&rs[k].rs_attr, 0, sizeof(struct attribute));
+		}
+	}
+
+	if (action == RESC_SUM_ADD) {
+		int	l, r;
+		struct	resc_sum *tmp_rs;
+		int	found_match = 0;
+		struct	attribute tmpatr;	
+
+		found_match = 0; 
+		for (k = 0; k < resc_sum_values_size; k++) {
+			rs = resc_sum_values;
+			if (rs[k].rs_def == NULL) {
+				break;
+			}
+			if (strcmp(rs[k].rs_def->rs_name, keyw) == 0) {
+				r=rs[k].rs_def->rs_decode(&tmpatr, keyw, NULL, value);
+				if (r == 0) {
+					rs[k].rs_def->rs_set(&rs[k].rs_attr, &tmpatr,
+					 		INCR);
+				}
+				found_match = 1;
+				break;
+			}
+		}
+	
+		if (k == resc_sum_values_size) {
+			/* add a new entry */
+	
+			l = resc_sum_values_size + 5;
+			tmp_rs = (struct resc_sum *)realloc(resc_sum_values,
+				  		l* sizeof(struct resc_sum));
+			if (tmp_rs == NULL) {
+				LOG_ERR_BUF(err_msg, err_msg_sz,
+				"resc_sum_values realloc error", -1, __func__)
+				return (NULL);
+			}
+			resc_sum_values = tmp_rs;
+			for (k = resc_sum_values_size; k < l; k++) {
+				rs = resc_sum_values;
+				rs[k].rs_def = NULL;
+				memset(&rs[k].rs_attr, 0, sizeof(struct attribute));
+			}
+			/* k becomes  the index to the new netry */
+			k = resc_sum_values_size;
+			resc_sum_values_size = l;
+		}
+	
+		if (!found_match) {
+			rs = resc_sum_values;
+			rs[k].rs_def = resc_def;
+			rs[k].rs_def->rs_decode(&rs[k].rs_attr, keyw, NULL,
+								value);
+		}
+		return (keyw);
+
+	} else if (action == RESC_SUM_GET_CLEAR) {
+		svrattrl *val = NULL;
+		static	char	*buf = NULL;
+		static	int	buf_size = 0;
+		int		len_entry = 0;
+		int		new_len = 0;
+		int		rc;
+		char		*tmp_buf = NULL;
+
+		if (buf_size == 0) {
+			buf = (char *)malloc(LOG_BUF_SIZE);
+
+			if (buf == NULL) {
+				LOG_ERR_BUF(err_msg, err_msg_sz,
+	 				"local buf malloc error", -1, __func__)
+				return (NULL);
+			}
+			buf_size = LOG_BUF_SIZE;
+		}
+		buf[0] = '\0';
+
+		for (k = 0; k < resc_sum_values_size; k++) {
+
+			rs = resc_sum_values;
+			if (rs[k].rs_def == NULL)
+				break;
+
+			rc = rs[k].rs_def->rs_encode(&rs[k].rs_attr,
+				NULL, ATTR_l, rs[k].rs_def->rs_name,
+				ATR_ENCODE_CLIENT, &val);
+			if (rc > 0) {
+
+				/* '1's below are for ':', '=', and '\0'. */
+				len_entry = 1 + strlen(val->al_resc) + 1 +
+					strlen(val->al_value) + 1;
+				new_len = strlen(buf) + len_entry; 
+
+				if (new_len > buf_size) {
+					tmp_buf = (char *)realloc(buf,  new_len);
+					if (tmp_buf == NULL) {
+			   			LOG_ERR_BUF(err_msg, err_msg_sz,
+	 						"local buf realloc error", -1, __func__)
+						return (NULL);
+					}
+					buf = tmp_buf;
+					buf_size = new_len;
+				}
+				strcat(buf, ":");
+				strcat(buf, val->al_resc);
+				strcat(buf,  "=");
+				strcat(buf, val->al_value);
+			}
+			free(val);
+
+			rs[k].rs_def->rs_free(&rs[k].rs_attr);
+			rs[k].rs_def = NULL;
+			memset(&rs[k].rs_attr, 0, sizeof(struct attribute));
+		}
+		return (buf);	
+	}
+}
+
+/**
+ * @brief
+ *	Given a select string specification of the form:
+ *		<num>:<resA>=<valA>:<resB>=<valB>+<resN>=<valN>
+ *	expand the spec to write out the repeated chunks
+ *	completely. For example, given:
+ *		2:ncpus=1:mem=3gb:mpiprocs=5
+ *	this expands to:
+ *	   ncpus=1:mem=3gb:mpiprocs=5+ncpus=1:mem=3gb:mpiprocs=5
+ * @param[in]	select_str - the select/schedselect specification 
+ *
+ * @return char *
+ * @retval	!= NULL - the expanded select string
+ * @retval	NULL - if unexpected encountered during processing.
+ *
+ * @note
+ *	Returned string is in a malloc-ed area which must be freed
+ *	outside after use.
+ */
+static char *
+expand_select_spec(char *select_str) 
+{
+	char		*selbuf = NULL;
+	int		hasprn3;
+	char		*last3 = NULL;
+	int		snc;
+	int		snelma;
+	static int	snelmt = 0; /* must be static per parse_chunk_r() */
+	static key_value_pair *skv = NULL; /* must be static per parse_chunk_r() */
+	int		rc = 0;
+	int		i, j;
+	char		*psubspec;
+	char		buf[LOG_BUF_SIZE+1];
+	int		ns_malloced = 0;
+	char		*new_sel = NULL;
+
+        if (select_str == NULL) {
+                log_err(-1, __func__, "bad param passed");
+		return (NULL);
+        }
+
+	selbuf = strdup(select_str);
+        if (selbuf == NULL) {
+                log_err(errno, __func__, "strdup fail");
+		return (NULL);
+        }
+
+	/* parse chunk from select spec */
+	psubspec = parse_plus_spec_r(selbuf, &last3, &hasprn3);
+	while (psubspec) {
+#ifdef NAS /* localmod 082 */
+		rc = parse_chunk_r(psubspec, 0, &snc, &snelma, &snelmt, &skv, NULL);
+#else
+		rc = parse_chunk_r(psubspec, &snc, &snelma, &snelmt, &skv, NULL);
+#endif /* localmod 082 */
+		/* snc = number of chunks */
+		if (rc != 0) {
+			free(selbuf);
+			free(new_sel);
+			return (NULL);
+		}
+
+		for (i = 0; i < snc; ++i) {	   /* for each chunk in select.. */
+
+			for (j = 0; j < snelma; ++j) {
+				if (j == 0) {
+					snprintf(buf, sizeof(buf), "1:%s=%s",
+							skv[j].kv_keyw, skv[j].kv_val);
+				} else {
+					snprintf(buf, sizeof(buf), ":%s=%s",
+							skv[j].kv_keyw, skv[j].kv_val);
+				}
+				if ((new_sel != NULL) && (new_sel[0] != '\0') && (j == 0)) {
+					if (pbs_strcat(&new_sel, &ns_malloced, "+") == NULL) {
+						if (ns_malloced > 0) {
+							free(new_sel);
+						}
+						log_err(-1, __func__, "pbs_strcat failed");	
+						free(selbuf);
+						return (NULL);
+					}
+				
+				}
+				if (pbs_strcat(&new_sel, &ns_malloced, buf) == NULL) {
+					if (ns_malloced > 0) {
+						free(new_sel);
+					}
+					log_err(-1, __func__, "pbs_strcat failed");	
+					free(selbuf);
+					return (NULL);
+				}
+			}
+		}
+
+		/* do next section of select */
+		psubspec = parse_plus_spec_r(last3, &last3, &hasprn3);
+	}
+	free(selbuf);
+	return (new_sel);
+
+}
+
+/**
+ *
+ * @brief
+ *	Return a comma-separated list of resource names
+ *	used/assigned in the given 'exec_vnode' string.
+ *
+ * @param[in]	exec_vnode - the master exec_vnode to search on.
+ * @return char *
+ * @retval != NULL	the resources from 'exec_vnode'.
+ * @retval == NULL	if error encountered.
+ *
+ * @note
+ *	The returned string can have duplicate resource 
+ *	names in them.
+ *	The returned string points to a malloced area that
+ *	must be freed when not needed.
+ *
+ */
+static char *
+resources_seen(char *exec_vnode)
+{
+ 	int		rc = 0;
+	char		*selbuf = NULL;
+	int		hasprn;
+	char		*last = NULL;
+	int		snelma;
+	static key_value_pair *skv = NULL; /* must be static */
+	int		j;
+	char		*psubspec;
+	char		*res_list = NULL;
+	char		*noden = NULL;
+	size_t		ssize = 0;
+	size_t		slen = 0;	
+
+	if (exec_vnode == NULL) {
+		log_err(-1, __func__, "bad params passed");
+		return (NULL);
+	}
+
+	selbuf = strdup(exec_vnode);
+	if (selbuf == NULL) {
+		log_err(-1, __func__, "strdup failed on exec_vnode");
+		return (NULL);
+	}
+	ssize = strlen(exec_vnode)+1;
+	res_list = (char *) calloc(1, strlen(exec_vnode)+1);
+	if (res_list == NULL) {
+		log_err(-1, __func__, "calloc failed on exec_vnode");
+		free(selbuf);
+		return (NULL);
+	}
+
+	psubspec = parse_plus_spec_r(selbuf, &last, &hasprn);
+	while (psubspec) {
+		rc = parse_node_resc(psubspec, &noden, &snelma, &skv);
+		if (rc != 0) {
+			free(selbuf);
+			free(res_list);
+			return (NULL);
+		}
+
+		for (j=0; j<snelma; ++j) {
+			if (res_list[0] == '\0') {
+				strncpy(res_list, skv[j].kv_keyw, ssize-1);
+			} else {
+				slen = strlen(res_list);
+				strncat(res_list, ",", ssize-slen-1);
+				slen += 1;
+				strncat(res_list, skv[j].kv_keyw, ssize-slen-1);
+			}
+		}
+
+		/* do next section of select */
+		psubspec = parse_plus_spec_r(last, &last, &hasprn);
+	}
+	free(selbuf);
+	return (res_list);
+}
+
+/**
+ *
+ * @brief
+ *	Return <resource>=<value> entries in 'chunk' where
+ *	<resource> does not appear in the comma-separated
+ *	list 'res_list'.
+ * @par
+ *	For example, suppposed:
+ *		res_list = <resA>,<resB>
+ *	and
+ *		chunk = <resB>=<valB>:<resC>=<valC>:<resD>=<valD>
+ *
+ *	then this function returns:
+ *		<resC>=<valC>:<resD>=<valD>
+ *
+ * @param[in]	res_list - the resources list
+ * @param[in]	chunk - the chunk to check for new resources.
+ *
+ * @return char *
+ * @retval != NULL	the resources that are used in 'chunk',
+ *			but not in 'res_list'.
+ * @retval == NULL	if error encountered.
+ *
+ * @note
+ *	The returned string points to a statically allocated buffer
+ *	that must not be freed, and will get overwritten on the
+ *	next call to this function.
+ *
+ */
+static char *
+return_missing_resources(char *chunk, char *res_list)
+{
+	int             snc;
+ 	int             snelma;
+	static int	snelmt = 0;       /* must be static per parse_chunk_r() */
+	static key_value_pair *skv = NULL; /* must be static per parse_chunk_r() */
+	int		rc = 0;
+	static char	*ret_buf = NULL;
+	static int	ret_buf_size = 0;
+	int		l, p;
+	char		*chunk_dup = NULL;
+
+	if ((res_list == NULL) || (chunk == NULL)) {
+		log_err(-1, __func__, "bad params passed");
+		return (NULL);
+	}
+
+	if (ret_buf == NULL) {
+		int chunk_len;
+
+		chunk_len = strlen(chunk);
+		ret_buf = malloc(chunk_len+1);
+		if (ret_buf == NULL) {
+			log_err(-1, __func__, "malloc failed");
+			return NULL;
+		}
+		ret_buf_size = chunk_len;
+	}
+
+	chunk_dup = strdup(chunk);
+	if (chunk_dup == NULL) {
+		log_err(errno, __func__, "strdup failed on chunk");
+		return (NULL);
+	}
+#ifdef NAS /* localmod 082 */
+	rc = parse_chunk_r(chunk_dup, 0, &snc, &snelma,
+		&snelmt, &skv, NULL);
+#else
+	rc = parse_chunk_r(chunk_dup, &snc, &snelma,
+		&snelmt, &skv, NULL);
+#endif /* localmod 082 */
+	if (rc != 0) {
+		snprintf(log_buffer,  sizeof(log_buffer)-1,
+			"bad parse of %s", chunk_dup);
+		log_err(-1, __func__, log_buffer);
+		free(chunk_dup);
+		return (NULL);
+	}
+	ret_buf[0] = '\0';
+	for (l = 0; l < snelma; ++l) {
+		if (!in_string_list(skv[l].kv_keyw, ',', res_list)) {
+			/* not seen in exec_vnode */
+			if (ret_buf[0] != '\0') {
+				if (pbs_strcat(&ret_buf, &ret_buf_size, ":") == NULL)
+					return NULL;
+			}
+
+			if (pbs_strcat(&ret_buf, &ret_buf_size, skv[l].kv_keyw) == NULL)
+				return NULL;
+			if (pbs_strcat(&ret_buf, &ret_buf_size, "=") == NULL)
+				return NULL;
+			if (pbs_strcat(&ret_buf, &ret_buf_size, skv[l].kv_val) == NULL)
+				return NULL;
+
+		}
+	}
+	free(chunk_dup);
+	return (ret_buf);
+}
+
+/**
+ * @brief
+ *	This return 1 if the given 'host' and 'part' matches the
+ *	parent mom of node 'pnode'.
+ *
+ * @param[in]	pnode - the node to match host against
+ * @param[in]	host - hostname to match
+ * @param[in]	port - port to match
+ *
+ * @return int
+ * @retval 1	- if true
+ * @retval 0 	- if  false
+ */
+static int
+is_parent_host_of_node(pbsnode *pnode, char *host, int port)
+{
+	int	i;
+
+	if ((pnode == NULL) || (host == NULL)) {
+		return (0);
+	}
+
+	for (i = 0; i < pnode->nd_nummoms; i++) {
+		if ((strcmp(pnode->nd_moms[i]->mi_host, host) == 0) &&
+		    (pnode->nd_moms[i]->mi_port == port)) {
+			return (1);
+		}
+	}
+	return (0);
+}
+
+/**
+ * @brief
+ *	Recreates the pjob's exec_vnode, updating at the same time
+ *	its corresponding exec_host and exec_host2 attributes
+ *	by taking out the vnodes managed by sister moms.
+ *
+ * @param[in,out]	pjob - job structure
+ * @param[in]		vnodelist - if non-NULL, lists the vnodes to be
+ *				freed whose parent mom is a sister mom.
+ *				if NULL, releases all the sister
+ *				vnodes assigned to 'pjob'
+ * @param[out]  err_msg - if function returns != 0 (failure), return
+ *			  any error message in this buffer.
+ * @param[int]	err_msg_sz - size of 'err_msg' buf.
+ * @return int
+ * @retval 0	for success
+ * @reval 1	for error
+*/
+int
+recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
+						int err_msg_sz)
+{
+	char	*exec_vnode = NULL;
+	char	*exec_host = NULL;
+	char	*exec_host2 = NULL;
+	char	*new_exec_vnode = NULL;
+	char	*new_exec_vnode_deallocated = NULL;
+	char	*new_exec_host = NULL;
+	char	*new_exec_host2 = NULL;
+	char	*new_select = NULL;
+	char	*schedselect = NULL;
+	char	*chunk_buf = NULL;
+	int	chunk_buf_sz = 0;
+	char	*chunk = NULL;
+	char	*chunk1 = NULL;
+	char	*chunk2 = NULL;
+	char	*chunk3 = NULL;
+	char	*last = NULL;
+	char	*last1 = NULL;
+	char	*last2 = NULL;
+	char	*last3 = NULL;
+        int	hasprn = 0;
+	int	hasprn1 = 0;
+	int	hasprn2 = 0;
+	int	hasprn3 = 0;
+	int	entry0 = 0;
+	int	entry = 0;
+	int	f_entry = 0;
+	int	h_entry = 0;
+	int	sel_entry = 0;
+	int	i,j,k,np;
+	int	nelem;
+	char	*noden;
+	struct	key_value_pair *pkvp;
+	char	*ms_fullhost = NULL;
+	char	buf[LOG_BUF_SIZE] = {0};
+	attribute *pexech;
+	attribute *pexech1;
+	attribute *pexech2;
+	resource	*presc;
+	int		ms_port = 0;
+	struct	pbsnode *pnode = NULL;
+	resource_def	*prdefsl = NULL;
+	int		rc = 1;
+	resource_def	*pdef;
+	int		nodect = 0;
+	int		ns_malloced = 0;
+	char		*tmp_str = NULL;
+	char		*buf_sum = NULL;
+	int		paren = 0;
+	int		parend = 0;
+	int		parend1 = 0;
+	resource_def	*resc_def = NULL;
+	char		*deallocated_execvnode = NULL;
+	int		deallocated_execvnode_sz = 0;
+	char		*extra_res = NULL;
+	char		*res_in_exec_vnode = NULL;
+	resource	*prs;
+	resource_def	*prdefvntype;
+	resource_def	*prdefarch;
+
+	if (pjob == NULL) {
+		LOG_ERR_BUF(err_msg, err_msg_sz, "bad job parameter", -1, __func__)
+		return (1);
+	}
+
+	if ((pjob->ji_qs.ji_state != JOB_STATE_RUNNING) &&
+	    (pjob->ji_qs.ji_state != JOB_STATE_EXITING)) {
+		LOG_ERR_BUF(err_msg, err_msg_sz,
+			"job not in running or exiting state", -1, __func__)
+		return (1);
+
+	}
+
+
+	if ((pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_flags & ATR_VFLAG_SET) == 0) {
+		LOG_ERR_BUF(err_msg, err_msg_sz,
+			"exec_vnode is not set", -1, __func__)
+		return (1);
+	}
+
+	if ((pjob->ji_wattr[(int)JOB_ATR_exec_host].at_flags & ATR_VFLAG_SET) == 0) {
+		LOG_ERR_BUF(err_msg, err_msg_sz,
+			"exec_host is not set", -1, __func__)
+		return (1);
+	}
+
+	if ((pjob->ji_wattr[(int)JOB_ATR_exec_host2].at_flags & ATR_VFLAG_SET) == 0) {
+		LOG_ERR_BUF(err_msg, err_msg_sz,
+			"exec_host2 is not set", -1, __func__)
+		return (1);
+	}
+
+	if ((pjob->ji_wattr[(int)JOB_ATR_SchedSelect].at_flags & ATR_VFLAG_SET) == 0) {
+		LOG_ERR_BUF(err_msg, err_msg_sz,
+			"schedselect is not set", -1, __func__)
+		return (1);
+	}
+
+	ms_fullhost = find_ms_full_host_and_port(pjob, &ms_port);
+	if (ms_fullhost == NULL) {
+		LOG_ERR_BUF(err_msg, err_msg_sz,
+			"can't determine primary execution host and port", -1, __func__)
+		goto recreate_exec_vnode_exit;
+	}
+
+	res_in_exec_vnode =
+ 	 resources_seen(pjob->ji_wattr[(int) JOB_ATR_exec_vnode].at_val.at_str);
+
+	exec_vnode =
+	 strdup(pjob->ji_wattr[(int) JOB_ATR_exec_vnode].at_val.at_str);
+
+	if (exec_vnode == NULL) {
+		LOG_ERR_BUF(err_msg, err_msg_sz,
+			"exec_vnode strdup error", -1, __func__)
+		goto recreate_exec_vnode_exit;
+	}
+
+	new_exec_vnode = (char *) calloc(1, strlen(exec_vnode)+1);
+	if (new_exec_vnode == NULL) {
+		LOG_ERR_BUF(err_msg, err_msg_sz,
+			"new_exec_vnode calloc error", -1, __func__)
+		goto recreate_exec_vnode_exit;
+	}
+
+	chunk_buf_sz = strlen(exec_vnode)+1;
+	chunk_buf = (char *) calloc(1, chunk_buf_sz);
+	if (chunk_buf == NULL) {
+		LOG_ERR_BUF(err_msg, err_msg_sz,
+			"chunk_buf calloc error", -1, __func__)
+		goto recreate_exec_vnode_exit;
+	}
+
+	deallocated_execvnode_sz = strlen(exec_vnode)+1;
+	deallocated_execvnode = (char *) calloc(1, deallocated_execvnode_sz);
+	if (deallocated_execvnode == NULL) {
+		LOG_ERR_BUF(err_msg, err_msg_sz,
+			"deallocated_execvnode calloc error", -1, __func__)
+		goto recreate_exec_vnode_exit;
+	}
+
+	exec_host = 
+	   strdup(pjob->ji_wattr[(int)JOB_ATR_exec_host].at_val.at_str);
+
+	if (exec_host == NULL) {
+		LOG_ERR_BUF(err_msg, err_msg_sz,
+			"exec_host strdup error", -1, __func__)
+		goto recreate_exec_vnode_exit;
+	}
+
+	new_exec_host =
+		(char *) calloc(1, strlen(exec_host)+1);
+	if (new_exec_host == NULL) {
+		LOG_ERR_BUF(err_msg, err_msg_sz,
+			"new_exec_host calloc error", -1, __func__)
+		goto recreate_exec_vnode_exit;
+	}
+
+	exec_host2 = 
+	  strdup(pjob->ji_wattr[(int)JOB_ATR_exec_host2].at_val.at_str);
+	if (exec_host2 == NULL) {
+		LOG_ERR_BUF(err_msg, err_msg_sz,
+			"exec_host2 strdup error", -1, __func__)
+		goto recreate_exec_vnode_exit;
+	}
+
+	new_exec_host2 = (char *) calloc(1, strlen(exec_host2)+1);
+	if (new_exec_host2 == NULL) {
+		LOG_ERR_BUF(err_msg, err_msg_sz,
+			"new_exec_host2 calloc error", -1, __func__)
+		goto recreate_exec_vnode_exit;
+	}
+
+	pdef = find_resc_def(svr_resc_def, "nodect", svr_resc_size);
+	if (pdef) {
+		presc = find_resc_entry(
+			&pjob->ji_wattr[(int)JOB_ATR_resource], pdef);
+		if (presc && ((presc->rs_value.at_flags & ATR_VFLAG_SET) != 0)) {
+			nodect = presc->rs_value.at_val.at_long;
+		}
+	}
+
+	schedselect = expand_select_spec(pjob->ji_wattr[\
+			JOB_ATR_SchedSelect].at_val.at_str);
+
+	if (schedselect == NULL) {
+		LOG_ERR_BUF(err_msg, err_msg_sz,
+			"schedselect expand error", -1, __func__)
+		goto recreate_exec_vnode_exit;
+	}
+
+	new_exec_vnode[0] = '\0';
+	new_exec_host[0] = '\0';
+	new_exec_host2[0] = '\0';
+	deallocated_execvnode[0] = '\0';
+
+	prdefvntype = find_resc_def(svr_resc_def, "vntype", svr_resc_size);
+	prdefarch = find_resc_def(svr_resc_def, "arch", svr_resc_size);
+	/* There's a 1:1:1 mapping among exec_vnode parenthesized entries, exec_host, */
+	/* and exec_host2,  */
+	entry0 = 0;	/* exec_vnode_deallocated entries */
+	entry = 0;	/* exec_vnode entries */
+	h_entry = 0;	/* exec_host* entries */
+	sel_entry = 0;	/* select and schedselect entries */
+	f_entry = 0;	/* number of freed sister nodes */
+	paren = 0;
+	for (	chunk = parse_plus_spec_r(exec_vnode, &last, &hasprn),
+	     	chunk1 = parse_plus_spec_r(exec_host, &last1, &hasprn1),
+	     	chunk2 = parse_plus_spec_r(exec_host2,&last2, &hasprn2),
+	     	chunk3 = parse_plus_spec_r(schedselect, &last3, &hasprn3);
+		(chunk != NULL) && (chunk1 != NULL) && (chunk2 != NULL) && (chunk3 != NULL);
+		chunk = parse_plus_spec_r(last, &last, &hasprn) ) {
+
+		paren += hasprn;
+		strncpy(chunk_buf, chunk, chunk_buf_sz-1);
+		if (parse_node_resc(chunk, &noden, &nelem, &pkvp) == 0) {
+
+			/* see if previous entry already matches this */
+			if ((pnode == NULL) || 
+				(strcmp(pnode->nd_name, noden) != 0)) {
+				pnode = find_nodebyname(noden);
+			}
+
+			if (pnode == NULL) { /* should not happen */
+				LOG_EVENT_BUF_ARG1(err_msg,err_msg_sz,
+					"no node entry for %s", noden,
+					pjob->ji_qs.ji_jobid)
+				goto recreate_exec_vnode_exit;
+			}
+
+			if (is_parent_host_of_node(pnode, ms_fullhost, ms_port) &&
+			     (vnodelist != NULL) &&	
+			      in_string_list(noden, '+', vnodelist)) {
+				LOG_EVENT_BUF_ARG1(err_msg,err_msg_sz,
+				 "Can't free '%s' since it's on a "
+				"primary execution host", noden, pjob->ji_qs.ji_jobid);
+				goto recreate_exec_vnode_exit;
+			}
+
+			if ((vnodelist != NULL) &&
+			      in_string_list(noden, '+', vnodelist) &&
+				(pnode->nd_attr[ND_ATR_ResourceAvail].at_flags & ATR_VFLAG_SET) != 0) {
+				prs = (resource *)GET_NEXT(pnode->nd_attr[ND_ATR_ResourceAvail].at_val.at_list);
+				while (prs) {
+					if ((prdefvntype != NULL) &&
+						(prs->rs_defin == prdefvntype) &&
+						(prs->rs_value.at_flags & ATR_VFLAG_SET) != 0) {
+						struct array_strings *as;
+						int	l;
+						as = prs->rs_value.at_val.at_arst;
+						for (l = 0; l < as->as_usedptr; l++) {
+							if (strncmp(as->as_string[l], "cray_", 5) == 0)  {
+								LOG_EVENT_BUF_ARG1(err_msg,err_msg_sz,
+				 				"not currently supported on Cray X* series nodes: %s",
+								noden, pjob->ji_qs.ji_jobid);
+								goto recreate_exec_vnode_exit;
+							}
+						}
+					} else if ( (prdefarch != NULL) &&
+							(prs->rs_defin == prdefarch) &&
+							((prs->rs_value.at_flags & ATR_VFLAG_SET) != 0) &&
+							(strcmp(prs->rs_value.at_val.at_str, "linux_cpuset") == 0) ) {
+						LOG_EVENT_BUF_ARG1(err_msg,err_msg_sz,
+							"not currently supported on nodes whose resources "
+							"are part of a cpuset: %s",
+							noden, pjob->ji_qs.ji_jobid);
+						goto recreate_exec_vnode_exit;
+					}
+					prs = (resource *)GET_NEXT(prs->rs_link);
+				}
+			}
+
+			if (is_parent_host_of_node(pnode, ms_fullhost, ms_port) ||
+			     ((vnodelist != NULL) && !in_string_list(noden, '+', vnodelist))) {
+
+				if (entry > 0) { /* there's something */
+						 /* put in previously */
+					strcat(new_exec_vnode, "+");
+				}
+
+				if (((hasprn > 0) && (paren > 0)) ||
+				     ((hasprn == 0) && (paren == 0))) {
+						 /* at the beginning */
+						 /* of chunk for current host */
+					if (!parend) {
+						strcat(new_exec_vnode, "(");
+						parend = 1;
+
+						if (h_entry > 0) {
+							/* there's already previous */
+							/* exec_host entry */
+							strcat(new_exec_host, "+");
+							strcat(new_exec_host2, "+");
+						}
+
+						strcat(new_exec_host, chunk1);
+						strcat(new_exec_host2, chunk2);
+						h_entry++;
+					}
+				}
+
+				if (!parend) {
+					strcat(new_exec_vnode, "(");
+					parend = 1;
+
+					if (h_entry > 0) {
+						/* there's already previous */
+						/* exec_host entry */
+						strcat(new_exec_host, "+");
+						strcat(new_exec_host2, "+");
+					}
+
+					strcat(new_exec_host, chunk1);
+					strcat(new_exec_host2, chunk2);
+					h_entry++;
+				}
+				strcat(new_exec_vnode, noden);
+				entry++;
+
+				for (j = 0; j < nelem; ++j) {
+					attribute   tmpatr;
+					int r;
+
+					resc_def = find_resc_def(svr_resc_def, pkvp[j].kv_keyw,
+										svr_resc_size);
+
+					if (resc_def == NULL) {
+						continue;
+					}
+
+					if (resc_sum_values_action(RESC_SUM_ADD, resc_def,
+							pkvp[j].kv_keyw, pkvp[j].kv_val, err_msg,
+							err_msg_sz) == NULL) {
+						log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
+											__func__, err_msg);
+						goto recreate_exec_vnode_exit;
+						
+					}
+
+					snprintf(buf, sizeof(buf),
+						":%s=%s", pkvp[j].kv_keyw, pkvp[j].kv_val);
+					strcat(new_exec_vnode, buf);
+				}
+
+				if (paren == 0) { /* have all chunks for */
+						  /* current host */
+			
+					if (parend) {
+						strcat(new_exec_vnode, ")");
+						parend = 0;
+					}
+
+					if (parend1) {
+						strcat(deallocated_execvnode, ")");
+						parend1 = 0;
+					}
+		
+
+					buf_sum = resc_sum_values_action(RESC_SUM_GET_CLEAR,
+							NULL, NULL, NULL, err_msg, err_msg_sz);
+
+					if (buf_sum == NULL) {
+						log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
+							__func__, err_msg);
+						goto recreate_exec_vnode_exit;
+					}
+
+					if (buf_sum[0] != '\0') {
+						extra_res = return_missing_resources(chunk3,
+								res_in_exec_vnode);
+
+						if (sel_entry > 0) {
+						/* there's already previous select/schedselect entry */
+							if (pbs_strcat(
+								&new_select,
+								&ns_malloced,
+								"+") == NULL) {
+								log_err(-1, __func__, "pbs_strcat failed");	
+								goto recreate_exec_vnode_exit;
+							}
+						}
+						if (pbs_strcat(&new_select, &ns_malloced, "1") == NULL) {
+							log_err(-1, __func__, "pbs_strcat failed");
+							goto recreate_exec_vnode_exit;
+						}
+						if (pbs_strcat(&new_select, &ns_malloced, buf_sum) == NULL) {
+							log_err(-1, __func__, "pbs_strcat failed");
+							goto recreate_exec_vnode_exit;
+						}
+						if ((extra_res != NULL) && (extra_res[0] != '\0')) {
+							if (pbs_strcat(&new_select, &ns_malloced, ":") == NULL) {
+								log_err(-1, __func__, "pbs_strcat failed");	
+								goto recreate_exec_vnode_exit;
+							}
+							if (pbs_strcat(&new_select, &ns_malloced, extra_res) == NULL) {
+								log_err(-1, __func__, "pbs_strcat failed");	
+								goto recreate_exec_vnode_exit;
+							}
+						}
+						sel_entry++;
+					}
+				}
+			} else {
+				if (!is_parent_host_of_node(pnode, ms_fullhost, ms_port)) {
+					if (f_entry > 0) { /* there's something put in previously */
+						strcat(deallocated_execvnode, "+");
+					}
+
+					if (((hasprn > 0) && (paren > 0)) ||
+				     	    ((hasprn == 0) && (paren == 0)) ) {
+						 /* at the beginning of chunk for current host */
+						if (!parend1) {
+							strcat(deallocated_execvnode, "(");
+							parend1 = 1;
+						}
+					}
+
+					if (!parend1) {
+						strcat(deallocated_execvnode, "(");
+						parend1 = 1;
+					}
+					strcat(deallocated_execvnode, chunk_buf);
+					f_entry++;
+
+					if (paren == 0) { /* have all chunks for current host */
+
+						if (parend) {
+							strcat(new_exec_vnode, ")");
+							parend = 0;
+						}
+			
+						if (parend1) {
+							strcat(deallocated_execvnode, ")");
+							parend1 = 0;
+						}
+					}
+		
+				}
+
+				if (hasprn < 0) {
+					/* matched ')' in chunk, so need to */
+					/* balance the parenthesis */
+					if (parend) {
+						strcat(new_exec_vnode, ")");
+						parend = 0;
+					}
+					if (parend1) {
+						strcat(deallocated_execvnode, ")");
+						parend1 = 0;
+					}
+
+					buf_sum = resc_sum_values_action(RESC_SUM_GET_CLEAR,
+							NULL, NULL, NULL, err_msg, err_msg_sz);
+
+					if (buf_sum == NULL) {
+						log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
+							__func__, err_msg);
+						goto recreate_exec_vnode_exit;
+					}
+
+					if (buf_sum[0] != '\0') {
+						extra_res = return_missing_resources(chunk3,
+								res_in_exec_vnode);
+				
+						if (sel_entry > 0) {
+							/* there's already previous */
+							/* select/schedselect entry */
+							if (pbs_strcat(&new_select, &ns_malloced, "+") == NULL) {
+								log_err(-1, __func__, "pbs_strcat failed");	
+								goto recreate_exec_vnode_exit;
+							}
+						}
+						if (pbs_strcat(&new_select, &ns_malloced, "1") == NULL) {
+							log_err(-1, __func__, "pbs_strcat failed");
+							goto recreate_exec_vnode_exit;
+						}
+						if (pbs_strcat(&new_select, &ns_malloced, buf_sum) == NULL) {
+							log_err(-1, __func__, "pbs_strcat failed");
+							goto recreate_exec_vnode_exit;
+						}
+						if ((extra_res != NULL) && (extra_res[0] != '\0')) {
+							if (pbs_strcat(&new_select, &ns_malloced, ":") == NULL) {
+								log_err(-1, __func__, "pbs_strcat failed");	
+								goto recreate_exec_vnode_exit;
+							}
+							if (pbs_strcat( &new_select, &ns_malloced, extra_res) == NULL) {
+								log_err(-1, __func__, "pbs_strcat failed");	
+								goto recreate_exec_vnode_exit;
+							}
+						}
+						sel_entry++;
+
+					}
+		
+				}
+			}
+		} else {
+			LOG_ERR_BUF(err_msg, err_msg_sz,
+				"parse_node_resc error", -1, __func__)
+			goto recreate_exec_vnode_exit;
+		}
+
+		if (paren == 0) {
+			chunk1 = parse_plus_spec_r(last1, &last1,
+							&hasprn1),
+			chunk2 = parse_plus_spec_r(last2, &last2,
+							&hasprn2);
+			chunk3 = parse_plus_spec_r(last3, &last3,
+							&hasprn3);
+		}
+	}
+
+	entry = strlen(new_exec_vnode)-1;
+	if (new_exec_vnode[entry] == '+')
+		new_exec_vnode[entry] = '\0';
+
+	entry = strlen(new_exec_host)-1;
+	if (new_exec_host[entry] == '+')
+		new_exec_host[entry] = '\0';
+
+	entry = strlen(new_exec_host2)-1;
+	if (new_exec_host2[entry] == '+')
+		new_exec_host2[entry] = '\0';
+
+	entry = strlen(new_select)-1;
+	if (new_select[entry] == '+')
+		new_select[entry] = '\0';
+
+	entry = strlen(deallocated_execvnode)-1;
+	if (deallocated_execvnode[entry] == '+')
+		deallocated_execvnode[entry] = '\0';
+
+	if (deallocated_execvnode[0] != '\0') {
+		attribute	deallocated_execvnode_attr;
+
+		deallocated_execvnode_attr =
+			pjob->ji_wattr[(int)JOB_ATR_exec_vnode_deallocated];
+
+		if (deallocated_execvnode_attr.at_flags & ATR_VFLAG_SET) {
+			if (pbs_strcat(&deallocated_execvnode,
+				&deallocated_execvnode_sz, "+") == NULL) {
+				log_err(-1, __func__,
+					"pbs_strcat deallocated_execvnode failed");
+				goto recreate_exec_vnode_exit;
+			}
+			if (pbs_strcat(&deallocated_execvnode, &deallocated_execvnode_sz,
+				deallocated_execvnode_attr.at_val.at_str) == NULL) {
+				log_err(-1, __func__,
+					"pbs_strcat deallocated_execvnode failed");
+				goto recreate_exec_vnode_exit;
+			}
+		}
+	}
+
+	/* output message about nodes to be freed but no part of job */	
+	if ((vnodelist != NULL) && (err_msg != NULL) &&
+					(err_msg_sz > 0)) {
+		char	*tmpbuf = NULL;
+		char	*tmpbuf2 = NULL;
+		char	*pc = NULL;
+		char	*pc1 = NULL;
+		char	*save_ptr;	/* posn for strtok_r() */
+
+		tmpbuf = strdup(vnodelist);
+		tmpbuf2 = strdup(vnodelist); 	/* will contain nodes that are in */
+						/* 'vnodelist' but not in deallocated_execvnode */
+		if ((tmpbuf != NULL) && (tmpbuf2 != NULL)) {
+
+			tmpbuf2[0] = '\0';
+
+			pc = strtok_r(tmpbuf, "+", &save_ptr);
+			while (pc != NULL) {
+				/* trying to match '(<vnode_name>:'
+				 *  or '+<vnode_name>:'
+				 */
+				snprintf(chunk_buf, chunk_buf_sz, "(%s:", pc);
+				pc1 = strstr(deallocated_execvnode, chunk_buf);
+				if (pc1 == NULL) {
+					snprintf(chunk_buf, chunk_buf_sz,
+								"+%s:", pc);
+					pc1 = strstr(deallocated_execvnode, chunk_buf);
+				}
+				if (pc1 == NULL) {
+					if (tmpbuf2[0] != '\0') {
+						strcat(tmpbuf2, " ");	
+					}
+					strcat(tmpbuf2, pc);
+				}
+				pc = strtok_r(NULL, "+", &save_ptr);
+			}
+
+			if (tmpbuf2[0] != '\0') {
+				snprintf(err_msg, err_msg_sz,
+					"node(s) requested to be released not part of the job: %s", tmpbuf2);
+				free(tmpbuf);
+				free(tmpbuf2);
+				goto recreate_exec_vnode_exit;
+			}
+		}
+		free(tmpbuf);
+		free(tmpbuf2);
+	}
+
+	if (new_exec_vnode[0] != '\0') {
+
+		if (strcmp(pjob->ji_wattr[(int) JOB_ATR_exec_vnode].at_val.at_str,
+						 new_exec_vnode) == 0) {
+			/* no change */
+			LOG_EVENT_BUF_ARG1(err_msg,err_msg_sz,
+				"node(s) requested to be released not part of the job: %s",
+				vnodelist?vnodelist:"", pjob->ji_qs.ji_jobid)
+			goto recreate_exec_vnode_exit;
+		}
+		(void)job_attr_def[(int)JOB_ATR_exec_vnode_acct].at_decode(
+			&pjob->ji_wattr[(int)JOB_ATR_exec_vnode_acct],
+			(char *)0,
+			(char *)0,
+		pjob->ji_wattr[(int) JOB_ATR_exec_vnode].at_val.at_str);
+
+		/* save original value which will be used later in the accounting end record */
+		if ((pjob->ji_wattr[JOB_ATR_exec_vnode_orig].at_flags & ATR_VFLAG_SET) == 0) {
+			(void)job_attr_def[(int)JOB_ATR_exec_vnode_orig].at_decode(
+				&pjob->ji_wattr[(int)JOB_ATR_exec_vnode_orig],
+				(char *)0,
+				(char *)0,
+				pjob->ji_wattr[(int) JOB_ATR_exec_vnode].at_val.at_str);
+		}
+
+		if ((pjob->ji_wattr[JOB_ATR_resource_acct].at_flags & ATR_VFLAG_SET) != 0) {
+			job_attr_def[JOB_ATR_resource_acct].at_free(&pjob->ji_wattr[JOB_ATR_resource_acct]);
+			pjob->ji_wattr[JOB_ATR_resource_acct].at_flags &= ~ATR_VFLAG_SET;
+		}
+		job_attr_def[JOB_ATR_resource_acct].at_set(&pjob->ji_wattr[JOB_ATR_resource_acct], &pjob->ji_wattr[JOB_ATR_resource], INCR);
+
+
+		(void)job_attr_def[(int)JOB_ATR_exec_vnode].at_decode(
+			&pjob->ji_wattr[(int)JOB_ATR_exec_vnode],
+			(char *)0,
+			(char *)0,
+			new_exec_vnode);
+		pjob->ji_modified = 1;
+
+		(void)update_resources_list(pjob, ATTR_l,
+			JOB_ATR_resource, new_exec_vnode, INCR, 0,
+				JOB_ATR_resource_orig);
+	}
+
+	if (deallocated_execvnode[0] != '\0') {
+		(void)job_attr_def[(int)JOB_ATR_exec_vnode_deallocated].at_decode(
+			&pjob->ji_wattr[(int)JOB_ATR_exec_vnode_deallocated],
+			(char *)0,
+			(char *)0,
+			deallocated_execvnode);
+		pjob->ji_modified = 1;
+	}
+
+	if (new_exec_host[0] != '\0') {
+
+		(void)job_attr_def[(int)JOB_ATR_exec_host_acct].at_decode(
+			&pjob->ji_wattr[(int)JOB_ATR_exec_host_acct],
+			(char *)0,
+			(char *)0,
+		  pjob->ji_wattr[(int)JOB_ATR_exec_host].at_val.at_str);
+
+		/* save original value which will be used later in the accounting end record */
+		if ((pjob->ji_wattr[JOB_ATR_exec_host_orig].at_flags & ATR_VFLAG_SET) == 0) {
+			(void)job_attr_def[(int)JOB_ATR_exec_host_orig].at_decode(
+				&pjob->ji_wattr[(int)JOB_ATR_exec_host_orig],
+				(char *)0,
+				(char *)0,
+		  	pjob->ji_wattr[(int)JOB_ATR_exec_host].at_val.at_str);
+		}
+
+		(void)job_attr_def[(int)JOB_ATR_exec_host].at_decode(
+			&pjob->ji_wattr[(int)JOB_ATR_exec_host],
+			(char *)0,
+			(char *)0,
+			new_exec_host);
+		pjob->ji_modified = 1;
+	}
+
+	if (new_exec_host2[0] != '\0') {
+
+		(void)job_attr_def[(int)JOB_ATR_exec_host2].at_decode(
+			&pjob->ji_wattr[(int)JOB_ATR_exec_host2],
+			(char *)0,
+			(char *)0,
+			new_exec_host2);
+		pjob->ji_modified = 1;
+	}
+
+
+	if (new_select[0] != '\0') {
+		prdefsl = find_resc_def(svr_resc_def, "select",
+							svr_resc_size);
+		/* re-generate "select" resource */
+		if (prdefsl != NULL) {
+			presc = find_resc_entry(
+			  	&pjob->ji_wattr[(int)JOB_ATR_resource], prdefsl);
+			if (presc == NULL) {
+				presc = add_resource_entry(
+			  	 &pjob->ji_wattr[(int)JOB_ATR_resource], prdefsl);
+			}
+			if (presc != NULL) {
+				(void)prdefsl->rs_decode(
+					&presc->rs_value, NULL, "select", new_select);
+			}
+		}
+		/* re-generate "schedselect" attribute */
+
+
+		if ((pjob->ji_wattr[JOB_ATR_SchedSelect].\
+				at_flags & ATR_VFLAG_SET) != 0) {
+			/* Save current SchedSelect value if not */
+			/* already saved in *_orig */
+			if ((pjob->ji_wattr[JOB_ATR_SchedSelect_orig].at_flags & ATR_VFLAG_SET) == 0) {
+				(void)decode_str(
+                         		&pjob->ji_wattr[(int)JOB_ATR_SchedSelect_orig],
+					NULL,
+                                        NULL, 
+					pjob->ji_wattr[JOB_ATR_SchedSelect].at_val.at_str);
+
+			}
+		}
+		(void)decode_str(
+			&pjob->ji_wattr[(int)JOB_ATR_SchedSelect], NULL,
+						NULL, new_select);
+		/* re-generate nodect */
+		(void)set_chunk_sum(&pjob->ji_wattr[(int)JOB_ATR_SchedSelect],
+					&pjob->ji_wattr[(int)JOB_ATR_resource]);
+
+	}
+	rc = 0;
+recreate_exec_vnode_exit:
+	free(chunk_buf);
+	free(ms_fullhost);
+	free(exec_vnode);
+	free(new_exec_vnode);
+	free(exec_host);
+	free(new_exec_host);
+	free(exec_host2);
+	free(new_exec_host2);
+	free(schedselect);
+	free(new_select);
+	free(deallocated_execvnode);
+	free(res_in_exec_vnode);
+	/* clear the summation buffer */
+	(void)resc_sum_values_action(RESC_SUM_GET_CLEAR, NULL, NULL, NULL, buf, sizeof(buf));
+
+	return (rc);
+
+}

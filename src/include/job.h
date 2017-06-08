@@ -174,6 +174,8 @@ enum job_atr {
 	JOB_ATR_jobname,	/* this set appears first as they show */
 	JOB_ATR_job_owner,	/* in a basic job status display       */
 	JOB_ATR_resc_used,
+	JOB_ATR_resc_used_acct,
+	JOB_ATR_resc_used_update,
 	JOB_ATR_state,
 	JOB_ATR_in_queue,
 	JOB_ATR_at_server,
@@ -185,7 +187,12 @@ enum job_atr {
 	JOB_ATR_errpath,
 	JOB_ATR_exec_host,
 	JOB_ATR_exec_host2,
+	JOB_ATR_exec_host_acct,
+	JOB_ATR_exec_host_orig,
 	JOB_ATR_exec_vnode,
+	JOB_ATR_exec_vnode_acct,
+	JOB_ATR_exec_vnode_deallocated,
+	JOB_ATR_exec_vnode_orig,
 	JOB_ATR_exectime,
 	JOB_ATR_grouplst,
 	JOB_ATR_hold,
@@ -201,7 +208,10 @@ enum job_atr {
 	JOB_ATR_qtime,
 	JOB_ATR_rerunable,
 	JOB_ATR_resource,
+	JOB_ATR_resource_orig,
+	JOB_ATR_resource_acct,
 	JOB_ATR_SchedSelect,
+	JOB_ATR_SchedSelect_orig,
 	JOB_ATR_stime,
 	JOB_ATR_session_id,
 	JOB_ATR_shell,
@@ -271,6 +281,7 @@ enum job_atr {
 	JOB_ATR_topjob_ineligible,
 	JOB_ATR_resc_released,
 	JOB_ATR_resc_released_list,
+	JOB_ATR_relnodes_on_stageout,
 #include "site_job_attr_enum.h"
 
 	JOB_ATR_UNKN,		/* the special "unknown" type		  */
@@ -314,6 +325,9 @@ typedef struct resc_limit {		/* per node limits for Mom	*/
 	long long rl_vmem;		/* total mem space (virtual)	*/
 	int	  rl_naccels;		/* number of accelerators	*/
 	long long rl_accel_mem;		/* accelerator mem (real mem)	*/
+	char	  *chunkstr;		/* chunk represented */
+	char	  *h_chunkstr;		/* chunk representing exec_host */
+	char	  *h2_chunkstr;		/* chunk representing exec_host2  */
 } resc_limit;
 
 /*
@@ -373,15 +387,24 @@ typedef struct vmpiprocs {
 	long long	vn_accel_mem;	/* amt of accelerator memory wanted */
 } vmpiprocs;
 
+/* the following enum defines if a node resource is to be reported */
+/* by Mom */
+enum PBS_NodeRes_Status {
+	PBS_NODERES_ACTIVE,	/* resource reported from a non-released node */
+	PBS_NODERES_DELETE	/* resource reported from a released node */
+};
+
 /*
  **	Mother Superior gets to hold an array of information from each
  **	of the other nodes for resource usage.
  */
 typedef struct	noderes {
+	char		*nodehost;	/* corresponding node name */
 	long		nr_cput;	/* cpu time */
 	long		nr_mem;		/* memory */
 	long		nr_cpupercent;  /* cpu percent */
 	attribute	nr_used;	/* node resources used */
+	enum PBS_NodeRes_Status nr_status;
 } noderes;
 
 /* State for a sister */
@@ -510,6 +533,7 @@ struct job {
 	time_t		ji_overlmt_timestamp;	/*time the job exceeded limit*/
 	int		ji_jsmpipe;	/* pipe from child starter process */
 	int		ji_mjspipe;	/* pipe to   child starter for ack */
+	int		ji_updated;	/* set to 1 if job's node assignment was updated */
 #ifdef WIN32
 	HANDLE		ji_momsubt;	/* process HANDLE to mom subtask */
 #else	/* not WIN32 */
@@ -519,6 +543,7 @@ struct job {
 	void	      (*ji_mompost)(struct job *, int);
 	tm_event_t	ji_postevent;	/* event waiting on mompost */
 	int		ji_numnodes;	/* number of nodes (at least 1) */
+	int		ji_numrescs;	/* number of entries in ji_resources*/
 	int		ji_numvnod;	/* number of virtual nodes */
 	int		ji_numvnod0;	/* number of entries in ji_vnods0 */
 	tm_event_t	ji_obit;	/* event for end-of-job */
@@ -826,6 +851,9 @@ typedef struct	infoent {
 #define IM_REQUEUE		18
 #define	IM_DELETE_JOB_REPLY	19
 #define IM_SETUP_JOB		20
+#define IM_DELETE_JOB2		21	/* sent by sister mom to delete job early */
+#define IM_SEND_RESC		22
+#define IM_UPDATE_JOB		23
 #define IM_ERROR		99
 #define IM_ERROR2		100
 
@@ -1029,6 +1057,9 @@ task_find	(job		*pjob,
 #define JOB_EXEC_HOOK_DELETE   -19 /* a hook requested for job to be deleted */
 #define JOB_EXEC_RERUN_MS_FAIL -20 /* Mother superior connection failed */
 #define JOB_EXEC_FAIL_SECURITY -21 /* Security breach in PBS directory */
+#define JOB_EXEC_HOOKERROR	-22 /* job exec failed due to */
+				    /* unexpected exception or */
+				    /* hook execution timed out */
 
 
 /* Fake "random" number added onto the end of the staging */
@@ -1139,6 +1170,10 @@ extern int   issue_signal(job *, char *, void(*)(struct work_task *), void *);
 extern void   on_job_exit(struct work_task *);
 #endif	/* _WORK_TASK_H */
 
+#ifdef _PBS_IFL_H
+extern int   update_resources_list(job *, char *, int, char *, enum batch_op op, int, int);
+#endif
+
 extern int   Mystart_end_dur_wall(void*, int);
 extern int   get_wall(job*);
 extern void  remove_deleted_resvs(void);
@@ -1148,6 +1183,7 @@ extern void  relicense_svr_unlicensedjobs(void);
 extern int   set_cpu_licenses_need(job *, char *);
 extern void  allocate_cpu_licenses(job *);
 extern void  deallocate_cpu_licenses(job *);
+extern void  deallocate_cpu_licenses2(job *, int);
 #ifdef	__cplusplus
 }
 #endif

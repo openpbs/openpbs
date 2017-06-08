@@ -335,6 +335,7 @@ job_alloc(void)
 	CLEAR_HEAD(pj->ji_tasks);
 	pj->ji_taskid = TM_INIT_TASK;
 	pj->ji_numnodes = 0;
+	pj->ji_numrescs = 0;
 	pj->ji_numvnod  = 0;
 	pj->ji_numvnod0  = 0;
 	pj->ji_hosts = NULL;
@@ -348,6 +349,7 @@ job_alloc(void)
 	pj->ji_flags = 0;
 	pj->ji_jsmpipe = -1;
 	pj->ji_mjspipe = -1;
+	pj->ji_updated = 0;
 #ifdef WIN32
 	pj->ji_hJob = NULL;
 	pj->ji_user = NULL;
@@ -558,15 +560,18 @@ job_free(job *pj)
 	nodes_free(pj);
 	tasks_free(pj);
 	if (pj->ji_resources) {
-		int j;
-		for (j=0; j < (pj->ji_numnodes-1); j++) {
-			if  ((pj->ji_resources[j].nr_used.at_flags & ATR_VFLAG_SET) != 0) {
-				job_attr_def[(int)JOB_ATR_resc_used].at_free(&pj->ji_resources[j].nr_used);
+		for (i=0; i < pj->ji_numrescs; i++) {
+			free(pj->ji_resources[i].nodehost);
+			pj->ji_resources[i].nodehost = NULL;
+			if  ((pj->ji_resources[i].nr_used.at_flags & ATR_VFLAG_SET) != 0) {
+				job_attr_def[(int)JOB_ATR_resc_used].at_free(&pj->ji_resources[i].nr_used);
 			}
 		}
+		pj->ji_numrescs = 0;
 		free(pj->ji_resources);
 		pj->ji_resources = NULL;
 	}
+
 	/*
 	 ** This gets rid of any dependent job structure(s) from ji_setup.
 	 */
@@ -1190,6 +1195,176 @@ decode_project(struct attribute *patr, char *name, char *rescn, char *val)
 
 	return (decode_str(patr, name, rescn,
 		(*val == '\0')?PBS_DEFAULT_PROJECT:val));
+}
+
+/**
+ * @brief
+ *	This function updates/creates the resource list named
+ *	'res_list_name' and indexed in pjob as
+ *	'res_list_index', using resources assigned values specified
+ *	in 'exec_vnode'. This also saves the previous values in
+ *	pjob's 'backup_res_list_index' attribute if not already
+ *	set.
+ *
+ * @param[in,out] pjob - job structure
+ * @param[in]	  res_list_name - resource list name
+ * @param[in]	  rel_list_index - attribute index in job structure
+ * @param[in]	  exec_vnode - string containing  the various resource
+ *			assignments
+ * @param[in]	  op - kind of operation to be performed while setting
+ *		     the resource value.
+ * @param[in]	  always_set  - if set, even if there is no resulting
+ *			resource list, try to have at least one entry
+ *			(e.g., ncpus=0) to keep the list set.
+ * @param[in]	  backup_res_list_index - index to  job's attribute
+ *			resource list to hold original values.
+ *
+ * @return int
+ * @retval 0  - success
+ * @retval 1 - failure
+ */
+
+int
+update_resources_list(job *pjob, char *res_list_name,
+		int res_list_index, char *exec_vnode, enum batch_op op,
+		int always_set, int backup_res_list_index)
+{
+	char *chunk;
+	int j;
+	int rc;
+	int nelem;
+	char *noden;
+	struct key_value_pair *pkvp;
+	resource_def *prdef;
+	resource *presc, *pr, *next;
+	attribute tmpattr;
+
+	if (exec_vnode == NULL || pjob == NULL) {
+		log_err(PBSE_INTERNAL, __func__, "bad input parameter");
+		
+		return (1);
+	}
+
+	/* Save current resource values in backup resource list */
+	/* if backup resources list is not already set */
+	if (pjob->ji_wattr[res_list_index].at_flags & ATR_VFLAG_SET) {
+
+		if ((pjob->ji_wattr[backup_res_list_index].at_flags & ATR_VFLAG_SET) == 0) {
+			job_attr_def[backup_res_list_index].at_free(&pjob->ji_wattr[backup_res_list_index]);
+			job_attr_def[backup_res_list_index].at_set(&pjob->ji_wattr[backup_res_list_index], &pjob->ji_wattr[res_list_index], INCR);
+
+		}
+
+		pr = (resource *)GET_NEXT(pjob->ji_wattr[res_list_index].at_val.at_list);
+		while (pr != (resource *)0) {
+			next = (resource *)GET_NEXT(pr->rs_link);
+			if (pr->rs_defin->rs_flags & (ATR_DFLAG_RASSN | ATR_DFLAG_FNASSN | ATR_DFLAG_ANASSN)) {
+				delete_link(&pr->rs_link);
+				if (pr->rs_value.at_flags & ATR_VFLAG_INDIRECT)
+					free_str(&pr->rs_value);
+				else
+					pr->rs_defin->rs_free(&pr->rs_value);
+				(void)free(pr);
+			}
+			pr = next;
+		}
+		pjob->ji_modified = 1;
+	}
+
+	rc = 0;
+	for (chunk = parse_plus_spec(exec_vnode, &rc); chunk && (rc == 0);
+	     chunk = parse_plus_spec(NULL, &rc)) {
+
+		if ((rc = parse_node_resc(chunk, &noden, &nelem, &pkvp)) != 0) {
+			log_err(rc, __func__, "parse of exec_vnode failed");
+			goto update_resources_list_error;
+		}
+		for (j = 0; j < nelem; j++) {
+			prdef = find_resc_def(svr_resc_def,
+					pkvp[j].kv_keyw, svr_resc_size);
+			if (prdef == NULL) {
+				snprintf(log_buffer, sizeof(log_buffer),
+				  "unknown resource %s in exec_vnode",
+					pkvp[j].kv_keyw);
+				log_err(PBSE_INTERNAL, __func__, log_buffer);
+				goto update_resources_list_error;
+			}
+
+			if (prdef->rs_flags & (ATR_DFLAG_RASSN | ATR_DFLAG_FNASSN | ATR_DFLAG_ANASSN)) {
+				presc = add_resource_entry(
+					&pjob->ji_wattr[res_list_index],
+								prdef);
+				if (presc == NULL) {
+					snprintf(log_buffer,
+						sizeof(log_buffer),
+				  		"failed to add resource"
+						"  %s",prdef->rs_name);
+					log_err(PBSE_INTERNAL, __func__,
+							log_buffer);
+					goto update_resources_list_error;
+				}
+				if ((rc = prdef->rs_decode( &tmpattr,
+					res_list_name, prdef->rs_name,
+						pkvp[j].kv_val)) != 0) {
+					snprintf(log_buffer,
+						  sizeof(log_buffer),
+						  "decode of %s failed",
+						 prdef->rs_name);
+						  
+					log_err(PBSE_INTERNAL, __func__,
+							log_buffer);
+					goto update_resources_list_error;
+				}
+				(void)prdef->rs_set( &presc->rs_value,
+							&tmpattr, op);
+			}
+		}
+	}
+
+	if (rc != 0) {
+		log_err(PBSE_INTERNAL, __func__, "error parsing exec_vnode");
+		goto update_resources_list_error;
+	}
+
+	if (always_set &&
+	   ((pjob->ji_wattr[res_list_index].at_flags & ATR_VFLAG_SET) == 0)) {
+		/* this means no resources got freed during suspend */
+		/* let's put a dummy entry for ncpus=0 */
+		prdef = find_resc_def(svr_resc_def, "ncpus",
+							svr_resc_size);
+		if (prdef == NULL) {
+			log_err(PBSE_INTERNAL, __func__,
+				"no ncpus in svr_resc_def!");
+			return (1);
+		}
+		presc = add_resource_entry(
+				&pjob->ji_wattr[res_list_index], prdef);
+		if (presc == NULL) {
+			log_err(PBSE_INTERNAL, __func__,
+				"failed to add ncpus in resource list");
+			return (1);
+		}
+		if ((rc = prdef->rs_decode(&tmpattr, res_list_name,
+					prdef->rs_name, "0")) != 0) {
+			log_err(rc, __func__,
+				"decode of ncpus=0 failed");
+			return (1);
+		}
+		(void)prdef->rs_set(&presc->rs_value, &tmpattr, op);
+	}
+
+
+	return (0);
+
+update_resources_list_error:
+	job_attr_def[backup_res_list_index].at_free(
+			&pjob->ji_wattr[backup_res_list_index]);
+	pjob->ji_wattr[backup_res_list_index].at_flags &= ~ATR_VFLAG_SET;
+	job_attr_def[res_list_index].at_set(
+			&pjob->ji_wattr[res_list_index],
+			&pjob->ji_wattr[backup_res_list_index], INCR);
+	pjob->ji_modified = 1;
+	return (1);
 }
 
 #ifndef PBS_MOM		/*SERVER ONLY*/

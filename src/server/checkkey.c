@@ -205,6 +205,11 @@ deallocate_cpu_licenses(job *pjob)
 }
 
 void
+deallocate_cpu_licenses2(job *pjob, int totcpus)
+{
+}
+
+void
 clear_and_populate_svr_unlicensedjobs(void)
 {
 }

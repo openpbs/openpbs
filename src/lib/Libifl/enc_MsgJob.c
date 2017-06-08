@@ -126,3 +126,15 @@ encode_DIS_PySpawn(int sock, char *jobid, char **argv, char **envp)
 
 	return rc;
 }
+
+int
+encode_DIS_RelnodesJob(int sock, char *jobid, char *node_list)
+{
+	int   rc;
+
+	if ((rc = diswst(sock, jobid) != 0) ||
+		(rc = diswst(sock, node_list) != 0))
+			return rc;
+
+	return 0;
+}

@@ -847,6 +847,7 @@ post_discard_job(job *pjob, mominfo_t *pmom, int newstate)
 		char *pc;
 
 		/* fairly normal job exit, record accounting info */
+		account_job_update(pjob, PBS_ACCT_LAST);
 		account_jobend(pjob, pjob->ji_acctrec, PBS_ACCT_END);
 
 		if (server.sv_attr[(int)SRV_ATR_log_events].at_val.at_long &
@@ -1365,7 +1366,7 @@ ping_a_mom_mcast(mominfo_t *pmom, int force_hello, int mtfd_ishello, int mtfd_is
 	if (com == -1)
 		return; /* this mom does not need a ping */
 
-	if (com == IS_NULL) 
+	if (com == IS_NULL)
 		rc = tpp_mcast_add_strm(mtfd_isnull, psvrmom->msr_stream);
 	else if (com == IS_HELLO_NO_INVENTORY)
 		rc = tpp_mcast_add_strm(mtfd_ishello_no_inv, psvrmom->msr_stream);
@@ -2688,6 +2689,350 @@ recv_wk_job_idle(int stream)
 	free(jobid);
 }
 
+/** 
+ * @brief
+ *	Clears job 'pjob' from the pnode's list of jobs.
+ *
+ * @param[in]	pjob	- job structure
+ * @param[in]	pnode	- node structure
+ *
+ * @return int
+ * @retval	<val> - # of cpus freed as a result of removing 'pjob'.
+ *
+ */
+static int
+deallocate_job_from_node(job *pjob, struct pbsnode *pnode)
+{
+	int              numcpus = 0;	/* for floating licensing */
+	int		 still_has_jobs; /* still jobs on this vnode */
+	struct	pbssubn	*np;
+	struct	jobinfo	*jp, *prev, *next;
+	mom_svrinfo_t	*psvrmom;
+	int		 i;
+	int		 j;
+	int		 ivnd;
+
+
+	if ((pjob == NULL) || (pnode == NULL)) {
+		return (0);
+	}
+	
+	still_has_jobs = 0;
+	for (np = pnode->nd_psn; np; np = np->next) {
+
+		for (prev = NULL, jp = np->jobs; jp; jp = next) {
+			next = jp->next;
+			if (jp->job != pjob) {
+				prev = jp;
+				still_has_jobs = 1; /* another job still here */
+				continue;
+			}
+
+			if (prev == NULL)
+				np->jobs = next;
+			else
+				prev->next = next;
+			if (jp->has_cpu) {
+				pnode->nd_nsnfree++;	/* up count of free */
+				numcpus++;
+				if (pnode->nd_nsnfree > pnode->nd_nsn) {
+					log_event(PBSEVENT_SYSTEM,
+						PBS_EVENTCLASS_NODE, LOG_ALERT,
+						pnode->nd_name,
+						"CPU count incremented free more than total");
+				}
+			}
+			free(jp);
+			jp = NULL;
+		}
+		if (np->jobs == NULL) {
+			np->inuse &= ~(INUSE_JOB|INUSE_JOBEXCL);
+		}
+	}
+	if (still_has_jobs) {
+		/* if the vnode still has jobs, then don't clear */
+		/* JOBEXCL */
+		if (pnode->nd_nsnfree > 0) {
+			/* some cpus free, clear "job-busy" state */
+			set_vnode_state(pnode, ~INUSE_JOB, Nd_State_And);
+		}
+	} else {
+		/* no jobs at all, clear both JOBEXCL and "job-busy" */
+		set_vnode_state(pnode,
+			~(INUSE_JOB|INUSE_JOBEXCL),
+			Nd_State_And);
+
+		/* call function to check and free the node from the */
+		/* prov list and reset wait_prov flag, if set */
+		if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_PROVISION)
+			free_prov_vnode(pnode);
+	}
+
+	return (numcpus);
+}
+
+
+/**
+ *
+ * @brief
+ *	Given a string of exec_vnode format, remove the vnode entries
+ *	that are found in 'vnodelist'.
+ *
+ * @param[in]	execvnode 	- the input exec_vnode string
+ * @param[in]	vnodelist 	- list of vnodes, plus-separated, that are to be deleted from the
+ *			    		'execvnode' entry.
+ * @param[in]	err_msg		- if there's any failure, put appropriate message here.
+ * @param[in]	err_msg_sz 	- size of the 'err_msg' buffer.
+ *
+ * @return char *
+ * @retaval <string>	- a new version of 'execvnode' string with entries
+ *			  containing the vnodes in 'vnodelist' taken out.
+ * @retval  NULL	- if an error has occurred. 	
+ *
+ * @note
+ *	returned string is a malloced value that must be freed.
+ */
+static char *
+delete_from_exec_vnode(char *execvnode, char *vnodelist, char *err_msg,
+						int err_msg_sz)
+{
+	char	*exec_vnode = NULL;
+	char	*new_exec_vnode = NULL;
+	char	*chunk = NULL;
+	char	*last = NULL;
+	int	hasprn = 0;
+	int	entry = 0;
+	int	nelem;
+	char	*noden;
+	struct	key_value_pair *pkvp;
+	char	buf[LOG_BUF_SIZE] = {0};
+	struct	pbsnode *pnode = NULL;
+	int	j;
+	int	rc = 1;
+	int	paren = 0;
+	int	parend = 0;
+
+	if (execvnode == NULL) {
+		snprintf(err_msg, err_msg_sz, "bad parameter");
+		return (NULL);
+	}
+
+	exec_vnode = strdup(execvnode);
+	if (exec_vnode == NULL) {
+		snprintf(err_msg, err_msg_sz, "execvnode strdup error");
+		goto delete_from_exec_vnode_exit;
+	}
+
+	new_exec_vnode = (char *) calloc(1, strlen(exec_vnode)+1);
+	if (new_exec_vnode == NULL) {
+		snprintf(err_msg, err_msg_sz,
+			"new_exec_vnode calloc error");
+		goto delete_from_exec_vnode_exit;
+	}
+
+	new_exec_vnode[0] = '\0';
+	entry = 0;	/* exec_vnode entries */
+	paren = 0;
+	for (chunk = parse_plus_spec_r(exec_vnode, &last, &hasprn);
+		chunk != NULL;
+		chunk = parse_plus_spec_r(last, &last, &hasprn)) {
+		paren += hasprn;
+		if (parse_node_resc(chunk, &noden, &nelem, &pkvp) == 0) {
+			if ((vnodelist != NULL) &&	
+			      !in_string_list(noden, '+', vnodelist)) {
+
+				/* there's something put in previously */
+				if (entry > 0) {
+					strcat(new_exec_vnode, "+");
+				}
+
+				if (((hasprn > 0) && (paren > 0)) ||
+				     ((hasprn == 0) && (paren == 0))) {
+					/* at the beginning of chunk for current host */
+					if (!parend) {
+						strcat(new_exec_vnode, "(");
+						parend = 1;
+					}
+				}
+				if (!parend) {
+					strcat(new_exec_vnode, "(");
+					parend = 1;
+				}
+				strcat(new_exec_vnode, noden);
+				entry++;
+
+				for (j = 0; j < nelem; ++j) {
+					snprintf(buf, sizeof(buf), ":%s=%s",
+						pkvp[j].kv_keyw, pkvp[j].kv_val);
+					strcat(new_exec_vnode, buf);
+				}
+
+				/* have all chunks for current host */
+				if (paren == 0) {
+			
+					if (parend) {
+						strcat(new_exec_vnode, ")");
+						parend = 0;
+					}
+				}
+			} else {
+
+				if (hasprn < 0) {
+					/* matched ')' in chunk, so need to */
+					/* balance the parenthesis */
+					if (parend) {
+						strcat(new_exec_vnode, ")");
+						parend = 0;
+					}
+				}
+			}
+		} else {
+			snprintf(err_msg, err_msg_sz,
+					"parse_node_resc error");
+			goto delete_from_exec_vnode_exit;
+		}
+
+	}
+
+	entry = strlen(new_exec_vnode)-1;
+	if (new_exec_vnode[entry] == '+')
+		new_exec_vnode[entry] = '\0';
+
+	rc = 0;
+	free(exec_vnode);
+	return (new_exec_vnode);
+
+delete_from_exec_vnode_exit:
+	free(exec_vnode);
+	free(new_exec_vnode);
+	return (NULL);
+
+}
+
+/**
+ * @brief
+ *	This return 1 if the given 'pmom' is a parent mom of
+ *	node 'pnode'.
+ *
+ * @param[in]	pmom - the parent mom
+ * @param[in]	pnode - the node to match against.
+ *
+ * @return int
+ * @retval 1	- if true
+ * @retval 0	- if  false
+ */
+static int
+is_parent_mom_of_node(mominfo_t *pmom, pbsnode *pnode)
+{
+	int	i;
+
+	if ((pmom == NULL) || (pnode == NULL) ||
+	    (pnode->nd_moms == NULL)) {
+		return (0);
+	}
+
+	for (i = 0; i < pnode->nd_nummoms; i++) {
+		if (pnode->nd_moms[i] == pmom) {
+			return (1);
+		}
+	}
+	return (0);
+}
+
+/**
+ * @brief
+ *	This removes 'pjob' from vnodes managed by parent mom 'pmom'.
+ *	Also, if pjob's 'exec_vnode_deallocated' attribute is set,
+ *	then remove entries in 'exec_vnode_deallocated' that match
+ *	the vnodes where 'pjob' has already been taken out.
+ *
+ * @param[in]	pmom - the parent mom who sent the request.
+ * @param[in]	pjob - job in question
+ *
+ * @return void
+ */
+static void
+deallocate_job(mominfo_t *pmom, job *pjob)
+{
+	int   rc;
+	pbsnode *pnode;
+	int	i;
+	int	totcpus = 0;
+	int	totcpus0 = 0;
+	char	*freed_vnode_list = NULL;
+	int	freed_sz = 0;
+	char	*new_exec_vnode = NULL;
+	attribute deallocated_attr;
+	char	*jobid;
+
+	if ((pmom == NULL) || (pjob == NULL)) {
+		return;
+	}
+
+	jobid = pjob->ji_qs.ji_jobid;
+	if ((jobid == NULL) || (*jobid == '\0'))
+		return;
+
+	for (i = 0; i < svr_totnodes; i++) {
+		pnode = pbsndlist[i];
+
+		if ((pnode != NULL) && !(pnode->nd_state & INUSE_DELETED)
+			&& is_parent_mom_of_node(pmom, pnode)) {
+			totcpus0 = totcpus;
+			totcpus += deallocate_job_from_node(pjob, pnode);
+			if (totcpus > totcpus0) {
+				snprintf(log_buffer, sizeof(log_buffer),
+					"clearing job %s from node %s", jobid, pnode->nd_name);
+				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_DEBUG,
+								pmom->mi_host, log_buffer);
+			}
+			if (i != 0) {
+				if (pbs_strcat(&freed_vnode_list, &freed_sz, "+") == NULL) {
+					log_err(-1, __func__, "pbs_strcat failed");
+					free(freed_vnode_list);
+					return;
+				}
+			}
+			if (pbs_strcat(&freed_vnode_list, &freed_sz, pnode->nd_name) == NULL) {
+				log_err(-1, __func__, "pbs_strcat failed");	
+				free(freed_vnode_list);
+				return;
+			}
+		}
+	}
+	deallocate_cpu_licenses2(pjob, totcpus);
+	if (totcpus > 0) {
+		snprintf(log_buffer, sizeof(log_buffer),  "deallocating %d cpu(s) from job %s", totcpus, jobid);
+		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_DEBUG,
+						pmom->mi_host, log_buffer);
+	}
+
+	deallocated_attr = pjob->ji_wattr[(int)JOB_ATR_exec_vnode_deallocated];
+	if ((freed_vnode_list != NULL) && (deallocated_attr.at_flags & ATR_VFLAG_SET)) {
+		char   err_msg[LOG_BUF_SIZE];
+
+		new_exec_vnode = delete_from_exec_vnode(
+				deallocated_attr.at_val.at_str,
+				freed_vnode_list, err_msg, LOG_BUF_SIZE);
+
+		if (new_exec_vnode == NULL) {
+			log_err(-1, __func__, err_msg);
+			free(freed_vnode_list);
+			return;
+		}
+
+		(void)job_attr_def[(int)JOB_ATR_exec_vnode_deallocated].at_decode(
+			&pjob->ji_wattr[(int)JOB_ATR_exec_vnode_deallocated],
+			(char *)0,
+			(char *)0,
+			new_exec_vnode);
+		pjob->ji_modified = 1;
+		free(new_exec_vnode);
+
+	}
+	set_scheduler_flag(SCH_SCHEDULE_TERM);
+	free(freed_vnode_list);
+}
 /**
  * @brief
  * 		We got an EOF on a stream.
@@ -3143,10 +3488,8 @@ cross_link_mom_vnode(struct pbsnode *pnode, mominfo_t *pmom)
 		node_attr_def[(int) ND_ATR_Mom].at_set(
 			&pnode->nd_attr[(int) ND_ATR_Mom],
 			&tmpmom, INCR);
-
 		if (pnode->nd_modified != NODE_UPDATE_OTHERS)
 			pnode->nd_modified = NODE_UPDATE_MOM; /* since we modified nd_nummoms, save it */
-
 		node_attr_def[(int) ND_ATR_Mom].at_free(&tmpmom);
 	}
 
@@ -3600,6 +3943,33 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 					mark_node_offline_by_mom(pnode->nd_name, hook_buf);
 				} else if (strcmp(psrp->vna_val, "0") == 0) {
 					clear_node_offline_by_mom(pnode->nd_name, NULL);
+				}
+				if (p != NULL)
+					*p = ','; /* restore psrp->vna_val */
+			}
+
+		} else if (strcasecmp(psrp->vna_name, VNATTR_HOOK_SCHEDULER_RESTART_CYCLE) == 0) {
+
+			if (from_hook) {
+				p = strchr(psrp->vna_val, ',');
+				hook_name[0] = '\0';
+				if (p != NULL) {
+					*p = '\0';
+					p++;
+					strncpy(hook_name, p, HOOK_BUF_SIZE);
+				}
+				if (strcmp(psrp->vna_val, "1") == 0) {
+
+					set_scheduler_flag(SCH_SCHEDULE_RESTART_CYCLE);
+					snprintf(log_buffer,
+					   sizeof(log_buffer),
+					   "hook '%s' requested for "
+					   "scheduler to restart cycle",
+						hook_name);
+					log_event(PBSEVENT_DEBUG2,
+						PBS_EVENTCLASS_NODE,
+						LOG_INFO, pmom->mi_host,
+							log_buffer);
 				}
 				if (p != NULL)
 					*p = ','; /* restore psrp->vna_val */
@@ -4827,21 +5197,37 @@ found:
 					/* to be later checked in job_obit() */
 					if (hact == JOB_ACT_REQ_REQUEUE) {
 						pjob->ji_wattr[(int)JOB_ATR_exit_status].\
-					at_val.at_long = JOB_EXEC_HOOK_RERUN;
+						at_val.at_long = JOB_EXEC_HOOK_RERUN;
+						pjob->ji_wattr[(int)JOB_ATR_exit_status].at_flags |= (ATR_VFLAG_SET | ATR_VFLAG_MODCACHE);
 						snprintf(log_buffer, sizeof(log_buffer),
 							"hook request rerun %s", jid);
+						log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE,
+								LOG_INFO, pmom->mi_host, log_buffer);
 					} else if (hact == JOB_ACT_REQ_DELETE) {
 						pjob->ji_wattr[(int)JOB_ATR_exit_status].\
-					at_val.at_long = JOB_EXEC_HOOK_DELETE;
+						at_val.at_long = JOB_EXEC_HOOK_DELETE;
+						pjob->ji_wattr[(int)JOB_ATR_exit_status].at_flags |= (ATR_VFLAG_SET | ATR_VFLAG_MODCACHE);
 						snprintf(log_buffer, sizeof(log_buffer),
 							"hook request delete %s", jid);
+						log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE,
+								LOG_INFO, pmom->mi_host, log_buffer);
+					} else if (hact == JOB_ACT_REQ_DEALLOCATE) {
+
+						/* decrement everything found in exec_vnode/exec_vnode_deallocated  */
+						if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend) == 0) {
+							/* don't update resources_assigned if job is suspended */
+							set_resc_assigned((void *)pjob, 0,  DECR);
+						}
+
+						deallocate_job(pmom, pjob);
+
+						/* increment everything found in new exec_vnode/exec_vnode_deallocated  */
+						if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend) == 0) {
+							/* don't update resources_assigned if job is suspended */
+							set_resc_assigned((void *)pjob, 0,  INCR);
+						}
 					}
 
-					pjob->ji_wattr[(int)JOB_ATR_exit_status].\
-				 				 at_flags |= \
-					   (ATR_VFLAG_SET | ATR_VFLAG_MODCACHE);
-					log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE,
-						LOG_INFO, pmom->mi_host, log_buffer);
 				}
 				free(jid);
 				jid = NULL;
@@ -5359,6 +5745,7 @@ write_single_node_mom_attr(struct pbsnode *np)
 	}
 	return 0;
 }
+
 /**
  * @brief
  * 		Save node states/comments to the database.
@@ -6543,6 +6930,8 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 	static char   *ehbuf = NULL;
 	static char   *ehbuf2 = NULL;
 	int		cpu_licenses_needed = 0;
+	int		cur_licneed = 0;
+	attribute	deallocated_attr;
 
 	if (ehbufsz == 0) {
 		/* allocate the basic buffer for exec_host string */
@@ -6836,9 +7225,34 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 			}
 		}
 
+		cur_licneed = pjob->ji_licneed;
 		/* If not server initialization.... */
 		/* if it is we ignore licensing, because the nodes are not yet up */
 		cpu_licenses_needed = set_cpu_licenses_need(pjob, execvnod);
+		deallocated_attr = pjob->ji_wattr[(int)JOB_ATR_exec_vnode_deallocated];
+
+		if (deallocated_attr.at_flags & ATR_VFLAG_SET) {
+			if (strcmp(deallocated_attr.at_val.at_str, execvnod_in) == 0) {
+				if (pjob->ji_licneed > 0) {
+					/* special case:
+					 * set_nodes() can be called to assign back
+					 * the exec_vnode_deallocated vnodes
+					 * (matches job's deallocated_exec_vnode's value).
+					 * This happens during job startup and also
+					 * when it is resumed from being suspended.
+					 * The deallocated vnodes are those that have been
+					 * released early from the job, for which the parent
+					 * mom has not fully given up the job, as there are
+					 * other of its vnodes still assigned to the job.
+					 * So cpu licenses assigned to the deallocated
+					 * vnodes still need to be accounted for, adding to
+					 * job's ji_licneed.
+					 */
+					pjob->ji_licneed += cur_licneed;
+				}
+			}
+		}
+
 		if (svr_init == FALSE) {
 			if (cpu_licenses_needed > 0) {
 				allocate_cpu_licenses(pjob);
@@ -7268,6 +7682,67 @@ free_resvNodes(resc_resv *presv)
 	presv->ri_qs.ri_svrflags &= ~RESV_SVFLG_HasNodes;
 }
 
+/**
+ * @brief
+ *	Does a check to make sure a resource value  in 'presc'
+ *	has not gone negative, and if so, reset value to 0, and
+ *	log a message.
+ *
+ * @param[in]	prdef	- resource definition of 'presc'
+ * @param[in]	presc	- resource in question
+ * @param[in]	noden	- non-NULL if resources coming from a vnode
+ *
+ * @return void
+ */ 
+static void
+check_for_negative_resource(resource_def *prdef, resource *presc, char *noden)
+{
+	int nerr = 0;
+
+	if ((prdef == NULL) || (presc == NULL)) {
+		return;
+	}
+	/* make sure nothing in resources_assigned goes negative */
+	switch (prdef->rs_type) {
+		case ATR_TYPE_LONG:
+			if (presc->rs_value.at_val.at_long < 0) {
+				presc->rs_value.at_val.at_long = 0;
+				nerr = 1;
+			}
+			break;
+		case ATR_TYPE_LL:
+			if (presc->rs_value.at_val.at_ll < 0) {
+				presc->rs_value.at_val.at_ll = 0;
+				nerr = 1;
+			}
+			break;
+		case ATR_TYPE_SHORT:
+			if (presc->rs_value.at_val.at_short < 0) {
+				presc->rs_value.at_val.at_short = 0;
+				nerr = 1;
+			}
+			break;
+		case ATR_TYPE_FLOAT:
+			if (presc->rs_value.at_val.at_float < 0.0) {
+				presc->rs_value.at_val.at_float = 0.0;
+				nerr = 1;
+			}
+			break;
+	}
+
+	if (nerr) {
+		snprintf(log_buffer, sizeof(log_buffer),
+			"resource %s went negative on node",
+			prdef->rs_name);
+		if (noden) { 
+			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE,
+					LOG_ALERT, noden, log_buffer);
+		} else {
+			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER,
+					LOG_ALERT, msg_daemonname, log_buffer);
+		}
+	}
+}
 
 /**
  * @brief
@@ -7348,40 +7823,7 @@ adj_resc_on_node(char *noden, int aflag, enum batch_op op, resource_def *prdef, 
 		return rc;
 	rc = prdef->rs_set(&presc->rs_value, &tmpattr, op);
 	if (op == DECR) {
-		/* make sure nothing in rsources_assigned goes negative */
-		switch (prdef->rs_type) {
-			case ATR_TYPE_LONG:
-				if (presc->rs_value.at_val.at_long < 0) {
-					presc->rs_value.at_val.at_long = 0;
-					nerr = 1;
-				}
-				break;
-			case ATR_TYPE_LL:
-				if (presc->rs_value.at_val.at_ll < 0) {
-					presc->rs_value.at_val.at_ll = 0;
-					nerr = 1;
-				}
-				break;
-			case ATR_TYPE_SHORT:
-				if (presc->rs_value.at_val.at_short < 0) {
-					presc->rs_value.at_val.at_short = 0;
-					nerr = 1;
-				}
-				break;
-			case ATR_TYPE_FLOAT:
-				if (presc->rs_value.at_val.at_float < 0.0) {
-					presc->rs_value.at_val.at_float = 0.0;
-					nerr = 1;
-				}
-				break;
-		}
-		if (nerr) {
-			snprintf(log_buffer, sizeof(log_buffer),
-				"resource %s went negative on node",
-				prdef->rs_name);
-			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE,
-				LOG_ALERT, noden, log_buffer);
-		}
+		check_for_negative_resource(prdef, presc, noden);
 	}
 	return rc;
 }
@@ -7401,13 +7843,14 @@ adj_resc_on_node(char *noden, int aflag, enum batch_op op, resource_def *prdef, 
  *		resource, the corresponding resource (if present) in the vnodes's
  *		resources_assigned is adjusted.
  *
+ * @param[in]	pjob	- job to update
  * @param[in]	pexech	- exec_vnode string
  * @param[in]	op	- operator of type enum batch_op.
  *
  * @return	void
  */
 void
-update_node_rassn(attribute *pexech, enum batch_op op)
+update_job_node_rassn(job *pjob, attribute *pexech, enum batch_op op)
 {
 	int	  asgn = ATR_DFLAG_ANASSN | ATR_DFLAG_FNASSN;
 	char     *chunk;
@@ -7417,6 +7860,11 @@ update_node_rassn(attribute *pexech, enum batch_op op)
 	int	  rc;
 	resource_def	      *prdef;
 	struct key_value_pair *pkvp;
+	attribute	*queru = (attribute *)0;
+	attribute	*sysru = (attribute *)0;
+	resource	*pr = (resource *)0;
+	attribute	tmpattr;
+	int		nchunk = 0;
 
 	/* Parse the exec_vnode string */
 
@@ -7424,6 +7872,25 @@ update_node_rassn(attribute *pexech, enum batch_op op)
 		return;
 	}
 
+	if ((pjob != NULL) &&
+		(pexech == &pjob->ji_wattr[(int) JOB_ATR_exec_vnode_deallocated])) {
+		char *pc;
+		sysru = &server.sv_attr[(int)SRV_ATR_resource_assn];
+		queru = &pjob->ji_qhdr->qu_attr[(int)QE_ATR_ResourceAssn];
+
+		pc = pexech->at_val.at_str;
+		while (*pc != '\0') {
+			/* given exec_vnode format: (<chunk1>+<chunk2>)+(<chunk3), 	*/
+			/* <chunk1> and <chunk2> belong to the same node host,      	*/
+			/* while  <chunk3> belongs to another node host. 		*/
+			/* The number of node host chunks can be determined by # of     */
+			/* left parentheses */
+			if (*pc == '(') {
+				nchunk++;
+			}
+			pc++;
+		}
+	}
 	chunk = parse_plus_spec(pexech->at_val.at_str, &rc);
 	if (rc != 0)
 		return;
@@ -7433,8 +7900,52 @@ update_node_rassn(attribute *pexech, enum batch_op op)
 				prdef = find_resc_def(svr_resc_def, pkvp[j].kv_keyw, svr_resc_size);
 				if (prdef == NULL)
 					return;
+	
+				/* skip all non-consumable resources (e.g. aoe) */
+				if ((prdef->rs_flags & asgn) == 0) {
+					continue;
+				}
+
 				if ((rc = adj_resc_on_node(noden, asgn, op, prdef, pkvp[j].kv_val, 0)) != 0)
 					return;
+				/* update system attribute of resources assigned */
+
+				if (sysru || queru) {
+					if ((rc = prdef->rs_decode(&tmpattr, ATTR_rescassn, pkvp[j].kv_keyw,
+											pkvp[j].kv_val)) != 0)
+						return;
+				}
+
+				if (sysru) {
+					pr = find_resc_entry(sysru, prdef);
+					if (pr == (resource *)0) {
+						pr = add_resource_entry(sysru, prdef);
+						if (pr == (resource *)0)
+							return;
+					}
+					prdef->rs_set(&pr->rs_value, &tmpattr, op);
+					if (op == DECR) {
+						check_for_negative_resource(prdef, pr, NULL);
+					}
+					sysru->at_flags |= ATR_VFLAG_MODCACHE;
+				}
+
+				/* update queue attribute of resources assigned */
+
+				if (queru) {
+					pr = find_resc_entry(queru, prdef);
+					if (pr == (resource *)0) {
+						pr = add_resource_entry(queru, prdef);
+						if (pr == (resource *)0)
+							return;
+					}
+					prdef->rs_set(&pr->rs_value, &tmpattr, op);
+					if (op == DECR) {
+						check_for_negative_resource(prdef, pr, NULL);
+					}
+					queru->at_flags |= ATR_VFLAG_MODCACHE;
+				}
+
 			}
 		} else {
 			return;
@@ -7443,6 +7954,45 @@ update_node_rassn(attribute *pexech, enum batch_op op)
 		chunk = parse_plus_spec(NULL, &rc);
 		if (rc != 0)
 			return;
+	}
+
+	if (sysru || queru) {
+		/* set pseudo-resource "nodect" to the number of chunks */
+		prdef = find_resc_def(svr_resc_def, "nodect", svr_resc_size);
+		if (prdef == NULL) {
+			return;
+		}
+	}
+	if (sysru) {
+		pr = find_resc_entry(sysru, prdef);
+		if (pr == (resource *)0)
+			pr = add_resource_entry(sysru, prdef);
+		if (pr) {
+
+			if (op == DECR) {
+				pr->rs_value.at_val.at_long -= nchunk;
+				check_for_negative_resource(prdef, pr, NULL);
+			} else {
+				pr->rs_value.at_val.at_long += nchunk;
+			}
+			pr->rs_value.at_flags |= ATR_VFLAG_SET |
+				ATR_VFLAG_DEFLT | ATR_VFLAG_MODCACHE;
+		}
+	}
+	if (queru) {
+		pr = find_resc_entry(queru, prdef);
+		if (pr == (resource *)0)
+			pr = add_resource_entry(queru, prdef);
+		if (pr) {
+			if (op == DECR) {
+				pr->rs_value.at_val.at_long -= nchunk;
+				check_for_negative_resource(prdef, pr, NULL);
+			} else {
+				pr->rs_value.at_val.at_long += nchunk;
+			}
+			pr->rs_value.at_flags |= ATR_VFLAG_SET |
+				ATR_VFLAG_DEFLT | ATR_VFLAG_MODCACHE;
+		}
 	}
 	return;
 }
@@ -8083,3 +8633,72 @@ int update_resources_rel(job *pjob, attribute *attrib, enum batch_op op)
 	return 0;
 }
 
+/**
+ * @brief
+ *	Free pjob's vnodes whose parent mom is a sister mom.
+ *
+ * @param[in,out] pjob - Job structure
+ * @param[in]	vnodelist - non-NULL means it's the list of vnode names
+ *			to free. If NULL, free all the vnodes assigned
+ *			to 'pjob' whose parent mom is a sister mom.
+ * @param[out]  err_msg - if function returns != 0 (failure), return
+ *			  any error message in this buffer.
+ * @param[int]	err_msg_sz - size of 'err_msg' buf.
+ * @param[int]	reply_req - the batch request to reply to if any.
+ * @return int
+ * @retval 0 - success
+ * @retval != 0  - failure error code.
+ */
+int
+free_sister_vnodes(job *pjob, char *vnodelist, char *err_msg,
+			int err_msg_sz, struct batch_request *reply_req)
+{
+	int		rc = 0;
+
+	if (pjob == NULL) {
+		log_err(PBSE_INTERNAL, __func__, "bad pjob parameter");
+		return (1);
+	}
+
+	if ((pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_flags & ATR_VFLAG_SET) == 0) {
+		return (0);	/* nothing to free up */
+	}
+
+	if (err_msg_sz > 0)
+		err_msg[0] =  '\0';
+
+
+	/* decrements everything found in exec_vnode */
+	set_resc_assigned((void *)pjob, 0,  DECR);
+
+	/* re-create the job's exec_vnode based on free vnodes specs */
+	if ((rc = recreate_exec_vnode(pjob, vnodelist, err_msg,
+						err_msg_sz)) != 0) {
+		set_resc_assigned((void *)pjob, 0,  INCR);
+		return (rc);
+	}
+	/* increment everything found in new exec_vnode */
+	set_resc_assigned((void *)pjob, 0,  INCR);
+						
+	set_scheduler_flag(SCH_SCHEDULE_TERM);
+	rc = send_job_exec_update_to_mom(pjob, err_msg, err_msg_sz,
+							reply_req);
+
+	if (rc == 0) {
+		account_job_update(pjob, PBS_ACCT_UPDATE);
+		account_jobstr2(pjob, PBS_ACCT_NEXT);
+	}
+
+	return (rc);
+}
+
+/**
+ * @brief
+ *	Wrapper function to update_job_node_rassn() function.
+ *
+ */
+void
+update_node_rassn(attribute *pexech, enum batch_op op)
+{
+	update_job_node_rassn(NULL, pexech, op);
+}

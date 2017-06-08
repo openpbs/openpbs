@@ -131,4 +131,5 @@ ATTR_jobscript_max_size,
 ATTR_python_restart_max_hooks,
 ATTR_python_restart_max_objects,
 ATTR_python_restart_min_interval,
+ATTR_show_hidden_attribs,
 #endif	/* _QMGR_SVR_PUBLIC_H */

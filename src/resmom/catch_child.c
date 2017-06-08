@@ -578,7 +578,7 @@ json_dumps_fail:
 	return (NULL);
 
 }
-#endif /* PYTHON */
+#endif
 
 /**
  * @brief
@@ -594,24 +594,30 @@ static void
 encode_used(job *pjob, pbs_list_head *phead)
 {
 	unsigned long	 lnum;
+	unsigned long	 lnum3;
 	int		 i;
-	int		 rc;
-	int		 k = 0;
 	attribute	*at;
 	attribute	*at2;
-	attribute	 val;
-	attribute	 val2;
-	attribute	 tmpatr = {0};
 	attribute_def	*ad;
-	resource	*rs;
-	resource	*rs2;
+	int		 rc;
 	resource_def	*rd;
 	resource_def	*rd2;
+	resource	*rs;
+	resource	*rs2;
+	attribute	 val;	/* holds the final accumulated resources_used values from Moms including those released from the job */
+	attribute	 val2;	/* temp variable for accumulating resources_used from sis Moms */
+	attribute	 val3;	/* holds the final accumulated resources_used values from Moms, which does not include the released moms from job */
+	int		k = 0;
+	struct  attribute tmpatr = {0};
+	struct  attribute tmpatr3 = {0};
 	char		*sval;
-	char		 emsg[HOOK_BUF_SIZE];
-	char		*dumps = NULL;
-	PyObject 	*py_jvalue = (PyObject *)NULL;
-	PyObject 	*py_accum = (PyObject *)NULL;
+	char emsg[HOOK_BUF_SIZE];
+	char *dumps = NULL;
+	attribute	*at3;
+	attribute_def	*ad3;
+	PyObject *py_jvalue = (PyObject *)NULL;
+	PyObject *py_accum = (PyObject *)NULL; /* holds accum resources_used values from all moms (including the released sister moms from job) */
+	PyObject *py_accum3 = (PyObject *)NULL; /* holds accum resources_used values from all moms (NOT including the released sister moms from job) */
 
 	/* append resources_used */
 
@@ -619,6 +625,9 @@ encode_used(job *pjob, pbs_list_head *phead)
 	ad = &job_attr_def[JOB_ATR_resc_used];
 	if ((at->at_flags & ATR_VFLAG_SET) == 0)
 		return;
+
+	at3 = &pjob->ji_wattr[JOB_ATR_resc_used_update];
+	ad3 = &job_attr_def[JOB_ATR_resc_used_update];
 
 	for (rs = (resource *)GET_NEXT(at->at_val.at_list);
 		rs != (resource *)0;
@@ -629,69 +638,105 @@ encode_used(job *pjob, pbs_list_head *phead)
 		if ((rd->rs_flags & resc_access_perm) == 0)
 			continue;
 
-		val = rs->rs_value;	/* copy resource attribute */
+		val = val3 = rs->rs_value;	/* copy resource attribute */
 
 		/* count up sisterhood too */
 		lnum = 0;
+		lnum3 = 0;
 		if (pjob->ji_resources != NULL) {
 			/* NOTE: presence of pjob->ji_resources means a
 			 *       multinode job (i.e. pjob->ji_numnodes > 1)
 			 */
 			if (strcmp(rd->rs_name, "cput") == 0) {
-				for (i=0; i<pjob->ji_numnodes-1; i++) {
+				for (i=0; i<pjob->ji_numrescs; i++) {
 					noderes	*nr = &pjob->ji_resources[i];
 					lnum += nr->nr_cput;
+					if (nr->nr_status != PBS_NODERES_DELETE) {
+						lnum3 += nr->nr_cput;
+					}
 				}
 				val.at_val.at_long += lnum;
+				val3.at_val.at_long += lnum3;
 			}
 			else if (strcmp(rd->rs_name, "mem") == 0) {
-				for (i=0; i<pjob->ji_numnodes-1; i++) {
+				for (i=0; i<pjob->ji_numrescs; i++) {
 					noderes	*nr = &pjob->ji_resources[i];
 					lnum += nr->nr_mem;
+					if (nr->nr_status != PBS_NODERES_DELETE) {
+						lnum3 += nr->nr_mem;
+					}
 				}
 				val.at_val.at_long += lnum;
+				val3.at_val.at_long += lnum3;
 			}
 			else if (strcmp(rd->rs_name, "cpupercent") == 0) {
-				for (i=0; i<pjob->ji_numnodes-1; i++) {
+				for (i=0; i<pjob->ji_numrescs; i++) {
 					noderes	*nr = &pjob->ji_resources[i];
 					lnum += nr->nr_cpupercent;
+					if (nr->nr_status != PBS_NODERES_DELETE) {
+						lnum3 += nr->nr_cpupercent;
+					}
 				}
 				val.at_val.at_long += lnum;
+				val3.at_val.at_long += lnum3;
 #ifdef PYTHON
-			} else if ((strcmp(rd->rs_name,
-				    RESOURCE_UNKNOWN) != 0) &&
+			} else if ((strcmp(rd->rs_name, RESOURCE_UNKNOWN) != 0) &&
 				   ((val.at_type == ATR_TYPE_LONG)  ||
 				(val.at_type == ATR_TYPE_FLOAT) ||
 				(val.at_type == ATR_TYPE_SIZE)  ||
 				(val.at_type == ATR_TYPE_STR))) {
 
+				/* The following 2 temp variables will be set to 1
+				 * if there's an error accuumlating resources_used
+				 * values from all sister moms including those that
+				 * have been released from the job (fail) or from
+				 * all sister moms NOT including the released nodes
+				 * from job (fail2).
+				 */
 				int	fail = 0;
+				int	fail2 = 0;
+
+				py_accum3 = (PyObject *)NULL;
 				py_jvalue = (PyObject *)NULL;
 				py_accum = (PyObject *)NULL;
 
-				(void)memset((char *)&tmpatr, 0, sizeof(struct attribute));
-				tmpatr.at_type  = val.at_type;
+				(void)memset(&tmpatr, 0, sizeof(struct attribute));
+				(void)memset(&tmpatr3, 0, sizeof(struct attribute));
+				tmpatr.at_type  = tmpatr3.at_type  = val.at_type;
 
 				if (val.at_type != ATR_TYPE_STR) {
 					rd->rs_set(&tmpatr, &val, SET);
+					rd->rs_set(&tmpatr3, &val, SET);
 				} else {
 
 					py_accum = PyDict_New();
 					if (py_accum == NULL) {
-						log_err(-1, __func__,
-							"error creating accumulation dictionary");
+						log_err(-1, __func__, "error creating accumulation dictionary");
+						continue;
+					}
+					py_accum3 = PyDict_New();
+					if (py_accum3 == NULL) {
+						log_err(-1, __func__, "error creating accumulation dictionary 3");
+						Py_CLEAR(py_accum);
 						continue;
 					}
 				}
 
-				for (i=0; i < (pjob->ji_numnodes-1); i++) {
+				/* accumulating resources_used values from sister
+				 * moms into tmpatr (from all sisters including released
+				 * moms) and tmpatr3 (from sisters that have not been
+				 * released from the job).
+				 */
+				for (i=0; i < pjob->ji_numrescs; i++) {
 					char mom_hname[PBS_MAXHOSTNAME+1];
 					char *p = NULL;
 
-					if (pjob->ji_hosts[i+1].hn_host == NULL)
+					if (pjob->ji_resources[i].nodehost == NULL)
 						continue;
 
-					strncpy(mom_hname, pjob->ji_hosts[i+1].hn_host, PBS_MAXHOSTNAME);
+					strncpy(mom_hname,
+						pjob->ji_resources[i].nodehost,
+							PBS_MAXHOSTNAME);
 					mom_hname[PBS_MAXHOSTNAME] = '\0';
 					p = strchr(mom_hname, '.');
 					if (p != NULL)
@@ -702,7 +747,7 @@ encode_used(job *pjob, pbs_list_head *phead)
 						continue;
 					}
 
-					fail=0;
+					fail = fail2 = 0;
 					for (rs2 = (resource *)GET_NEXT(at2->at_val.at_list);
 						rs2 != (resource *)0;
 						rs2 = (resource *)GET_NEXT(rs2->rs_link)) {
@@ -719,40 +764,61 @@ encode_used(job *pjob, pbs_list_head *phead)
 							if (py_jvalue == NULL) {
 
 								snprintf(log_buffer, sizeof(log_buffer), "Job %s resources_used.%s cannot be accumulated: value '%s' from mom %s not JSON-format: %s", pjob->ji_qs.ji_jobid, rd2->rs_name, sval, mom_hname, emsg);
-								log_err(-1,
-									__func__,
-									log_buffer);
+								log_err(-1, __func__, log_buffer);
 								fail = 1;
 							} else if (PyDict_Merge(py_accum, py_jvalue, 1) != 0) {
 								snprintf(log_buffer, sizeof(log_buffer), "Job %s resources_used.%s cannot be accumulated: value '%s' from mom %s: error merging values", pjob->ji_qs.ji_jobid, rd2->rs_name, sval, mom_hname);
-								log_err(-1,
-									__func__,
-									log_buffer);
+								log_err(-1, __func__, log_buffer);
 								Py_CLEAR(py_jvalue);
 								fail = 1;
 							} else {
-								Py_CLEAR(py_jvalue);
+								if (pjob->ji_resources[i].nr_status != PBS_NODERES_DELETE) {
+									if (PyDict_Merge(py_accum3, py_jvalue, 1) != 0) {
+										snprintf(log_buffer, sizeof(log_buffer), "Job %s resources_used.%s cannot be accumulated: value '%s' from mom %s: error merging values", pjob->ji_qs.ji_jobid, rd2->rs_name, sval, mom_hname);
+										log_err(-1, __func__, log_buffer);
+										fail2 = 1;
+									}
+									Py_CLEAR(py_jvalue);
+								} else {
+									Py_CLEAR(py_jvalue);
+								}
 							}
 
 						} else  {
 							rd->rs_set(&tmpatr, &val2, INCR);
+							if (pjob->ji_resources[i].nr_status != PBS_NODERES_DELETE) {
+								rd->rs_set(&tmpatr3, &val2, INCR);
+							}
 						}
-						break;
-					}
-					if (fail) {
 						break;
 					}
 				}
 
+				/* accumulating the resources_used values from MS mom */
 
 				if (val.at_type == ATR_TYPE_STR) {
 
 					if (fail) {
 						Py_CLEAR(py_accum);
+						Py_CLEAR(py_accum3);
 						/* unset resc */
 						(void)add_to_svrattrl_list(
 							phead,
 							ad->at_name,
+							rd->rs_name,
+							"",
+							SET, NULL);
+						/* go to next resource to encode_used */
+						continue;
+					}
+
+					if (fail2) {
+						Py_CLEAR(py_accum);
+						Py_CLEAR(py_accum3);
+						/* unset resc */
+						(void)add_to_svrattrl_list(
+							phead,
+							ad3->at_name,
 							rd->rs_name,
 							"",
 							SET, NULL);
@@ -769,17 +835,17 @@ encode_used(job *pjob, pbs_list_head *phead)
 							ATTR_used, rd->rs_name,
 							sval);
 						Py_CLEAR(py_accum);
-					} else if ((py_jvalue = json_loads(sval,
-						emsg, HOOK_BUF_SIZE - 1)) == NULL) {
+						Py_CLEAR(py_accum3);
+					} else if ((py_jvalue = json_loads(sval, emsg, HOOK_BUF_SIZE - 1)) == NULL) {
 						snprintf(log_buffer,
 							sizeof(log_buffer),
 							"Job %s resources_used.%s cannot be accumulated: value '%s' from mom %s not JSON-format: %s",
 							pjob->ji_qs.ji_jobid,
 							rd->rs_name, sval,
 							mom_short_name, emsg);
-						log_err(-1, __func__,
-							log_buffer);
+						log_err(-1, __func__, log_buffer);
 						Py_CLEAR(py_accum);
+						Py_CLEAR(py_accum3);
 						/* unset resc */
 						(void)add_to_svrattrl_list(
 							phead,
@@ -796,10 +862,10 @@ encode_used(job *pjob, pbs_list_head *phead)
 							pjob->ji_qs.ji_jobid,
 							rd->rs_name, sval,
 							mom_short_name);
-						log_err(-1, __func__,
-							log_buffer);
+						log_err(-1, __func__, log_buffer);
 						Py_CLEAR(py_jvalue);
 						Py_CLEAR(py_accum);
+						Py_CLEAR(py_accum3);
 						/* unset resc */
 						(void)add_to_svrattrl_list(
 							phead,
@@ -817,11 +883,10 @@ encode_used(job *pjob, pbs_list_head *phead)
 								"Job %s resources_used.%s cannot be accumulated: %s",
 								pjob->ji_qs.ji_jobid,
 								rd->rs_name, emsg);
-							log_err(-1,
-								__func__,
-								log_buffer);
+							log_err(-1, __func__, log_buffer);
 							Py_CLEAR(py_jvalue);
 							Py_CLEAR(py_accum);
+							Py_CLEAR(py_accum3);
 							/* unset resc */
 							(void)add_to_svrattrl_list(
 								phead,
@@ -833,17 +898,60 @@ encode_used(job *pjob, pbs_list_head *phead)
 						}
 
 						rd->rs_decode(&tmpatr, ATTR_used, rd->rs_name, dumps);
-						Py_CLEAR(py_jvalue);
 						Py_CLEAR(py_accum);
 						free(dumps);
-						dumps = NULL;
+
+						if (PyDict_Merge(py_accum3, py_jvalue, 1) != 0) {
+							snprintf(log_buffer,
+								sizeof(log_buffer),
+								"Job %s resources_used_update.%s cannot be accumulated: value '%s' from mom %s: error merging values",
+								pjob->ji_qs.ji_jobid,
+								rd->rs_name, sval,
+								mom_short_name);
+								log_err(-1, __func__, log_buffer);
+								Py_CLEAR(py_jvalue);
+								Py_CLEAR(py_accum3);
+								/* unset resc */
+								(void)add_to_svrattrl_list(
+									phead,
+									ad3->at_name,
+									rd->rs_name,
+									"",
+									SET, NULL);
+								/* go to next resource to encode */
+								continue;
+						} else if ((dumps=json_dumps(py_accum3, emsg, HOOK_BUF_SIZE-1)) == NULL) {
+							snprintf(log_buffer,
+								sizeof(log_buffer),
+								"Job %s resources_used_update.%s cannot be accumulated: %s",
+								pjob->ji_qs.ji_jobid,
+								rd->rs_name, emsg);
+							log_err(-1, __func__, log_buffer);
+							Py_CLEAR(py_jvalue);
+							Py_CLEAR(py_accum3);
+							/* unset resc */
+							(void)add_to_svrattrl_list(
+								phead,
+								ad3->at_name,
+								rd->rs_name,
+								"",
+								SET, NULL);
+							continue;
+						}   else {
+							rd->rs_decode(&tmpatr3, ATTR_used_update, rd->rs_name, dumps);
+							Py_CLEAR(py_jvalue);
+							Py_CLEAR(py_accum3);
+							free(dumps);
+						}
 					}
 				}
 				val = tmpatr;
+				val3 = tmpatr3;
 #endif
 			}
 			/* no resource to accumulate and yet a multinode job */
 		}
+
 		if ((val.at_type != ATR_TYPE_STR) ||
 			(pjob->ji_numnodes == 1)  ||
 			(pjob->ji_resources != NULL)) {
@@ -860,7 +968,7 @@ encode_used(job *pjob, pbs_list_head *phead)
 				 */
 
 				sval = val.at_val.at_str;
-				if ((py_jvalue=json_loads(sval, emsg, HOOK_BUF_SIZE - 1)) != NULL) {
+				if ((py_jvalue = json_loads(sval, emsg, HOOK_BUF_SIZE - 1)) != NULL) {
 					dumps = json_dumps(py_jvalue, emsg, HOOK_BUF_SIZE - 1);
 					if (dumps == NULL)
 						Py_CLEAR(py_jvalue);
@@ -873,19 +981,40 @@ encode_used(job *pjob, pbs_list_head *phead)
 					}
 				}
 			}
-			rc = rd->rs_encode(&val, phead, ad->at_name, rd->rs_name,
-					   ATR_ENCODE_CLIENT, NULL);
+			rc = rd->rs_encode(&val, phead,
+				ad->at_name, rd->rs_name,
+				ATR_ENCODE_CLIENT, NULL);
+			if (rc < 0) {
+				goto encode_used_exit;
+			}
+	
+			rc = rd->rs_encode(&val3, phead,
+				ad3->at_name, rd->rs_name,
+				ATR_ENCODE_CLIENT, NULL);
+			if (rc < 0) {
+				goto encode_used_exit;
+			}
 		}
 
 		if (((tmpatr.at_flags & ATR_VFLAG_SET) != 0) &&
-			(tmpatr.at_type == ATR_TYPE_STR)) {
+					(tmpatr.at_type == ATR_TYPE_STR)) {
 			rd->rs_free(&tmpatr);
 		}
+		if (((tmpatr3.at_flags & ATR_VFLAG_SET) != 0) &&
+					(tmpatr3.at_type == ATR_TYPE_STR)) {
+			rd->rs_free(&tmpatr3);
+		}
 
-		if (rc < 0)
-			break;
 	}
-	return;
+encode_used_exit:
+	if (((tmpatr.at_flags & ATR_VFLAG_SET) != 0) &&
+				(tmpatr.at_type == ATR_TYPE_STR)) {
+		rd->rs_free(&tmpatr);
+	}
+	if (((tmpatr3.at_flags & ATR_VFLAG_SET) != 0) &&
+				(tmpatr3.at_type == ATR_TYPE_STR)) {
+		rd->rs_free(&tmpatr3);
+	}
 }
 
 /**
@@ -1629,7 +1758,7 @@ end_loop:
 			LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
 
 		/* summary for other nodes */
-		for (i=0; i<pjob->ji_numnodes-1; i++) {
+		for (i=0; i<pjob->ji_numrescs; i++) {
 			noderes	*nr = &pjob->ji_resources[i];
 			secs = nr->nr_cput;
 
@@ -1644,7 +1773,8 @@ end_loop:
 			 */
 			sprintf(log_buffer,
 				"%s cput=%2lu:%2.2lu:%2.2lu mem=%lukb",
-				pjob->ji_hosts[i+1].hn_host,
+				pjob->ji_resources[i].nodehost?
+				pjob->ji_resources[i].nodehost:"",
 				hours, mins, secs, nr->nr_mem);
 			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB,
 				LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
@@ -1776,7 +1906,7 @@ end_loop:
 }
 
 /**
- * @brief
+ * @brief 
  * 	send old style IS_RESTART message to Server.
  *	Used when Server is older & does not recognize the TCP Restart message.
  *
@@ -1907,7 +2037,7 @@ send_restart_tcp(char *svr, unsigned int port)
  *	Close any existing rpp streams to the server, it is unlikely that
  *	there is one.  Parse the server name from pbs.conf;
  *	Use PBS_SERVER_HOST_NAME if defined, else use PBS_SERVER.
- *	Try sending message via TCP first
+ *	Try sending message via TCP first 
  *
  * @see send_restart_tcp()
  *	If that returns 1 or -1, fall back to useing rpp
@@ -2053,6 +2183,7 @@ init_abort_jobs(int recover)
 				log_err(ENOMEM, "init_abort_jobs", "out of memory");
 				continue;
 			}
+			pj->ji_numrescs = sisters;
 		}
 
 		/*

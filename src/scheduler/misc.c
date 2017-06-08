@@ -77,7 +77,6 @@
  * 		create_schd_error()
  * 		create_schd_error_complex()
  * 		add_err()
- * 		convert_duration_to_str()
  * 		res_to_str()
  * 		res_to_str_c()
  * 		res_to_str_r()
@@ -1397,32 +1396,6 @@ void add_err(schd_error **prev_err, schd_error *err)
 		(*prev_err) = cur;
 	} else
 		(*prev_err) = err;
-}
-
-
-
-/**
- * @brief
- * 		Convert a duration to HH:MM:SS format string
- *
- * @param[in]	duration	-	the duration
- * @param[out]	buf	-	the buffer to be filled
- * @param[in]	bufsize	-	size of the buffer
- *
- * @return	void
- */
-void
-convert_duration_to_str(time_t duration, char* buf, int bufsize)
-{
-	long 	hour, min, sec;
-	if (buf == NULL || bufsize == 0)
-		return;
-	hour = duration / 3600;
-	duration = duration % 3600;
-	min = duration / 60;
-	duration = duration % 60;
-	sec = duration;
-	snprintf(buf, bufsize, "%ld:%02ld:%02ld", hour, min, sec);
 }
 
 /**

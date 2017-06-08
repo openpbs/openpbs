@@ -4589,7 +4589,7 @@ do_addconfigs(void)
 {
 	struct stat	sb;
 	long		pathlen;
-	char		*namebuf;
+	char		*namebuf = NULL;
 	char		**list;			/* ... of config files */
 	char		**listhead;
 	unsigned int	i;
@@ -4607,8 +4607,10 @@ do_addconfigs(void)
 		return HANDLER_FAIL;
 	}
 
-	if ((listhead = do_readdir(path_addconfigs, &modtime)) == NULL)
+	if ((listhead = do_readdir(path_addconfigs, &modtime)) == NULL) {
+		free(namebuf);
 		return HANDLER_SUCCESS;			/* no work to do */
+	}
 	for (list = listhead; list != NULL &&  *list != NULL; list++) {
 		if (strstr(*list, path_addconfigs_reserved_prefix) == *list) {
 			if (snprintf(namebuf, pathlen, "%s/%s", path_addconfigs,

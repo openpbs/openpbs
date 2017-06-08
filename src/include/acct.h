@@ -60,6 +60,9 @@ extern "C" {
 #define PBS_ACCT_ABT	(int)'A'	/* Job Abort by server */
 #define PBS_ACCT_LIC	(int)'L'	/* Floating License Usage */
 #define PBS_ACCT_MOVED	(int)'M'	/* Job moved to other server */
+#define PBS_ACCT_UPDATE	(int)'u'	/* phased job update record */
+#define PBS_ACCT_NEXT	(int)'c'	/* phased job next record */
+#define PBS_ACCT_LAST	(int)'e'	/* phased job last usage record */
 
 /* for RESERVATION accounting */
 
@@ -85,11 +88,13 @@ extern void account_resvstart(resc_resv *presv);
 #endif
 
 extern void account_jobstr(job *pjob);
+extern void account_jobstr2(job *pjob, int type);
+extern void account_job_update(job *pjob, int type);
 extern void account_jobend(job *pjob, char * used, int type);
 
 extern void set_job_ProvAcctRcd(job *pjob, long time_se, int type);
 
-extern int concat_rescused_to_buffer(char **buffer, int *buffer_size, svrattrl *patlist, char *delim);
+extern int concat_rescused_to_buffer(char **buffer, int *buffer_size, svrattrl *patlist, char *delim, job *pjob);
 
 #define PROVISIONING_STARTED 1
 #define PROVISIONING_SUCCESS 2
