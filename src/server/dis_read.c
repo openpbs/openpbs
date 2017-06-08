@@ -604,6 +604,10 @@ dis_request_read(int sfds, struct batch_request *request)
 			break;
 
 #ifndef PBS_MOM
+		case PBS_BATCH_RelnodesJob:
+			rc = decode_DIS_RelnodesJob(sfds, request);
+			break;
+
 		case PBS_BATCH_LocateJob:
 			rc = decode_DIS_JobId(sfds, request->rq_ind.rq_locate);
 			break;

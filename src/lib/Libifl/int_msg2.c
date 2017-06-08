@@ -141,3 +141,44 @@ PBSD_py_spawn_put(int c, char *jobid, char **argv, char **envp, int rpp, char **
 
 	return rc;
 }
+
+/*
+ *	PBS_relnodes_put.c
+ *
+ *	Send the RelnodesJob request, does not read the reply.
+ */
+
+int
+PBSD_relnodes_put(c, jobid, node_list, extend, rpp, msgid)
+int    c;
+char   *jobid;
+char   *node_list;
+char   *extend;
+int    rpp;
+char   **msgid;
+{
+	int rc = 0;
+	int sock;
+
+	if (!rpp) {
+		sock = connection[c].ch_socket;
+		DIS_tcp_setup(sock);
+	} else {
+		sock = c;
+		if ((rc = is_compose_cmd(sock, IS_CMD, msgid)) != DIS_SUCCESS)
+			return rc;
+	}
+
+	if ((rc = encode_DIS_ReqHdr(sock, PBS_BATCH_RelnodesJob,
+		pbs_current_user)) ||
+		(rc = encode_DIS_RelnodesJob(sock, jobid, node_list)) ||
+		(rc = encode_DIS_ReqExtend(sock, extend))) {
+		return (pbs_errno = PBSE_PROTOCOL);
+	}
+	if (DIS_wflush(sock, rpp)) {
+		pbs_errno = PBSE_PROTOCOL;
+		rc	  = pbs_errno;
+	}
+
+	return rc;
+}

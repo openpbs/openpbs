@@ -408,6 +408,7 @@ chk_array_doneness(job *parent)
 		if (parent->ji_qs.ji_state == JOB_STATE_BEGUN) {
 			/* if BEGUN, issue 'E' account record */
 			sprintf(acctbuf, msg_job_end_stat, e);
+			account_job_update(parent, PBS_ACCT_LAST);
 			account_jobend(parent, acctbuf, PBS_ACCT_END);
 		}
 		if (parent->ji_wattr[(int)JOB_ATR_depend].at_flags & ATR_VFLAG_SET)

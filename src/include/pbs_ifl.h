@@ -67,6 +67,8 @@ extern "C" {
 #define ATTR_J "array_indices_submitted"
 #define ATTR_k "Keep_Files"
 #define ATTR_l "Resource_List"
+#define ATTR_l_orig "Resource_List_orig"
+#define ATTR_l_acct "Resource_List_acct"
 #define ATTR_m "Mail_Points"
 #define ATTR_o "Output_Path"
 #define ATTR_p "Priority"
@@ -118,8 +120,13 @@ extern "C" {
 #define ATTR_ctime	"ctime"
 #define ATTR_estimated  "estimated"
 #define ATTR_exechost	"exec_host"
+#define ATTR_exechost_acct	"exec_host_acct"
+#define ATTR_exechost_orig	"exec_host_orig"
 #define ATTR_exechost2  "exec_host2"
 #define ATTR_execvnode	"exec_vnode"
+#define ATTR_execvnode_acct	"exec_vnode_acct"
+#define ATTR_execvnode_deallocated	"exec_vnode_deallocated"
+#define ATTR_execvnode_orig	"exec_vnode_orig"
 #define ATTR_resv_nodes	"resv_nodes"
 #define ATTR_mtime	"mtime"
 #define ATTR_qtime	"qtime"
@@ -133,10 +140,15 @@ extern "C" {
 #define ATTR_security	"security"
 #define ATTR_sched_hint	"sched_hint"
 #define ATTR_SchedSelect "schedselect"
+#define ATTR_SchedSelect_orig "schedselect_orig"
+#define ATTR_SchedSelect_master "schedselect_master"
 #define ATTR_substate	"substate"
 #define ATTR_name	"Job_Name"
 #define ATTR_owner	"Job_Owner"
 #define ATTR_used	"resources_used"
+#define ATTR_used_acct	"resources_used_acct"
+#define ATTR_used_update	"resources_used_update"
+#define ATTR_relnodes_on_stageout	"release_nodes_on_stageout"
 #define ATTR_released	"resources_released"
 #define ATTR_rel_list	"resource_released_list"
 #define ATTR_state	"job_state"
@@ -297,6 +309,7 @@ extern "C" {
 #define ATTR_resv_post_processing "resv_post_processing_time"
 #define ATTR_backfill_depth     "backfill_depth"
 #define ATTR_job_requeue_timeout "job_requeue_timeout"
+#define ATTR_show_hidden_attribs "show_hidden_attribs"
 #define ATTR_python_restart_max_hooks "python_restart_max_hooks"
 #define ATTR_python_restart_max_objects "python_restart_max_objects"
 #define ATTR_python_restart_min_interval "python_restart_min_interval"
@@ -560,6 +573,8 @@ DECLDIR int pbs_movejob(int, char *, char *, char *);
 
 DECLDIR int pbs_msgjob(int, char *, int, char *, char *);
 
+DECLDIR int pbs_relnodesjob(int, char *, char *, char *);
+
 DECLDIR int pbs_orderjob(int, char *, char *, char *);
 
 DECLDIR int pbs_rerunjob(int, char *, char *);
@@ -646,6 +661,8 @@ extern char *pbs_locjob(int, char *, char *);
 extern int pbs_movejob(int, char *, char *, char *);
 
 extern int pbs_msgjob(int, char *, int, char *, char *);
+
+extern int pbs_relnodesjob(int, char *,  char *, char *);
 
 extern int pbs_orderjob(int, char *, char *, char *);
 

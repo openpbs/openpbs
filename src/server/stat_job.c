@@ -80,15 +80,19 @@ extern char	     statechars[];
 /**
  * @brief
  * 		svrcached - either link in (to phead) a cached svrattrl struct which is
- *		pointed to by the attribute;  or if the cached struct isn't there or
+ *		pointed to by the attribute, or if the cached struct isn't there or
  *		is out of date, then replace it with a new svrattrl structure.
  * @par
  *		When replacing, unlink and delete old one if the reference count goes
  *		to zero.
  *
  * @par[in,out]	pat	-	attribute structure which contains a cached svrattrl struct
- * @par[in,out]	phead	-	pbs_list_head
+ * @par[in,out]	phead	-	list of new attribute values
  * @par[in]	pdef	-	attribute for any parent object.
+ *
+ * @note
+ *	If an attribute has the ATR_DFLAG_HIDDEN flag set, then no
+ *	need to obtain and cache new svrattrl values.
  */
 
 static void
@@ -97,6 +101,14 @@ svrcached(attribute *pat, pbs_list_head *phead, attribute_def *pdef)
 	svrattrl *working = NULL;
 	svrattrl *wcopy;
 	svrattrl *encoded;
+
+	if (pdef == NULL)
+		return;
+
+	if ((pdef->at_flags & ATR_DFLAG_HIDDEN) &&
+		(server.sv_attr[(int)SRV_ATR_show_hidden_attribs].at_val.at_long == 0)) {
+		return;
+	}
 
 	if (resc_access_perm & PRIV_READ)
 		encoded = pat->at_priv_encoded;
@@ -130,7 +142,8 @@ svrcached(attribute *pat, pbs_list_head *phead, attribute_def *pdef)
 		if (working->al_refct < 2) {
 			while (working) {
 				CLEAR_LINK(working->al_link);
-				append_link(phead, &working->al_link, working);
+				if (phead != NULL)
+					append_link(phead, &working->al_link, working);
 				working->al_refct++;	/* incr ref count */
 				working = working->al_sister;
 			}
@@ -148,7 +161,8 @@ svrcached(attribute *pat, pbs_list_head *phead, attribute_def *pdef)
 					*wcopy = *working;
 					working = working->al_sister;
 					CLEAR_LINK(wcopy->al_link);
-					append_link(phead, &wcopy->al_link, wcopy);
+					if (phead != NULL)
+						append_link(phead, &wcopy->al_link, wcopy);
 					wcopy->al_refct = 1;
 					wcopy->al_sister = NULL;
 				}

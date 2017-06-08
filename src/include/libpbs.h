@@ -278,6 +278,7 @@ struct batch_reply {
 #define PBS_BATCH_MomRestart	87
 #define PBS_BATCH_AuthExternal	88
 #define PBS_BATCH_HookPeriodic  89
+#define PBS_BATCH_RelnodesJob	90
 
 #define PBS_BATCH_FileOpt_Default	0
 #define PBS_BATCH_FileOpt_OFlg		1
@@ -319,6 +320,8 @@ extern int PBSD_manager  (int connect, int func, int cmd,
 	int objtype, char *objname, struct attropl *al, char *extend);
 extern int PBSD_msg_put(int connect, char *jobid, int fileopt,
 	char *msg, char *extend, int rpp, char **msgid);
+extern int PBSD_relnodes_put(int connect, char *jobid,
+	char *node_list, char *extend, int rpp, char **msgid);
 extern int PBSD_py_spawn_put(int connect, char *jobid,
 	char **argv, char **envp, int rpp, char **msgid);
 extern int PBSD_sig_put(int connect, char *jobid, char *signal, char *extend, int rpp, char **msgid);
@@ -352,6 +355,7 @@ extern int encode_DIS_Manage(int socket, int cmd, int objt,
 	char *, struct attropl *);
 extern int encode_DIS_MoveJob(int socket, char *jid, char *dest);
 extern int encode_DIS_MessageJob(int socket, char *jid, int fopt, char *m);
+extern int encode_DIS_RelnodesJob(int socket, char *jid, char *node_list);
 extern int encode_DIS_PySpawn(int socket, char *jid, char **argv, char **envp);
 extern int encode_DIS_QueueJob(int socket, char *jid,
 	char *dest, struct attropl *);

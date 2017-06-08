@@ -459,6 +459,12 @@ delete_svrmom_entry(mominfo_t *pmom)
 		if (psvrmom->msr_children)
 			free(psvrmom->msr_children);
 
+		if (psvrmom->msr_jobindx) {
+			free(psvrmom->msr_jobindx);
+			psvrmom->msr_jbinxsz = 0;
+			psvrmom->msr_jobindx = NULL;
+		}
+
 		/* take stream out of tree */
 		(void)rpp_close(psvrmom->msr_stream);
 		tdelete2((unsigned long)psvrmom->msr_stream , 0, &streams);

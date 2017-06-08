@@ -47,6 +47,7 @@ bin_PROGRAMS = \
 	pbs_rstat \
 	pbs_rsub \
 	pbs_migrate_users \
+	pbs_release_nodes \
 	qalter \
 	qdel \
 	qdisable \
@@ -141,6 +142,10 @@ pbs_rsub_SOURCES = pbs_rsub.c
 pbs_migrate_users_CPPFLAGS = -I$(top_srcdir)/src/include
 pbs_migrate_users_LDADD = ${common_libs}
 pbs_migrate_users_SOURCES = pbs_migrate_users.c
+
+pbs_release_nodes_CPPFLAGS = -I$(top_srcdir)/src/include
+pbs_release_nodes_LDADD = ${common_libs}
+pbs_release_nodes_SOURCES = pbs_release_nodes.c
 
 qalter_CPPFLAGS = -I$(top_srcdir)/src/include
 qalter_LDADD = ${common_libs}

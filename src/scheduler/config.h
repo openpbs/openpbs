@@ -93,8 +93,6 @@
  */
 #define SHRINK_MAX_RETRY 5
 
-/* Size of time buffer */
-#define TIMEBUF_SIZE 128
 /* parsing -
  * names that appear on the left hand side in the sched config file
  */

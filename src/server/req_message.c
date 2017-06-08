@@ -66,7 +66,7 @@
 #include "log.h"
 #include "pbs_nodes.h"
 #include "svrfunc.h"
-
+#include "acct.h"
 
 /* Private Function local to this file */
 
@@ -251,4 +251,97 @@ req_py_spawn(struct batch_request *preq)
 	rc = relay_to_mom(pjob, preq, post_py_spawn_req);
 	if (rc)
 		req_reject(rc, 0, preq);	/* unable to get to MOM */
+}
+
+/**
+ * @brief
+ * 	Service the PBS_BATCH_RelnodesJob Request.
+ *
+ * @param[in]	preq - the request structure.
+ *
+ * @rerturn void
+ *
+ */
+
+void
+req_relnodesjob(struct batch_request *preq)
+{
+	int             jt;		/* job type */
+	job		*pjob;
+	int		rc;
+	char		*jid;
+	int		i, offset;
+	char		*nodeslist = NULL;
+	char		msg[LOG_BUF_SIZE];
+
+ 
+	if (preq == NULL)
+		return;
+
+	jid = preq->rq_ind.rq_relnodes.rq_jid;
+	if (jid == NULL)
+		return;
+
+	/*
+	 ** Returns job pointer for singleton job or "parent" of
+	 ** an array job.
+	 */
+	pjob = chk_job_request(jid, preq, &jt);
+	if (pjob == NULL) {
+		return;
+	}
+
+	if (jt == IS_ARRAY_NO) {		/* a regular job is okay */
+		/* the job must be running */
+		if ((pjob->ji_qs.ji_state != JOB_STATE_RUNNING) ||
+			(pjob->ji_qs.ji_substate !=
+			JOB_SUBSTATE_RUNNING)) {
+			req_reject(PBSE_BADSTATE, 0, preq);
+			return;
+		}
+	}
+	else if (jt == IS_ARRAY_Single) {	/* a single subjob is okay */
+
+		offset = subjob_index_to_offset(pjob,
+			get_index_from_jid(jid));
+		if (offset == -1) {
+			req_reject(PBSE_UNKJOBID, 0, preq);
+			return;
+		}
+
+		i = get_subjob_state(pjob, offset);
+		if (i == -1) {
+			req_reject(PBSE_IVALREQ, 0, preq);
+			return;
+		}
+
+		if (i != JOB_STATE_RUNNING) {
+			req_reject(PBSE_BADSTATE, 0, preq);
+			return;
+		}
+		pjob = find_job(jid);	/* get ptr to the subjob */
+		if (pjob == NULL) {
+			req_reject(PBSE_UNKJOBID, 0, preq);
+			return;
+		}
+		if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING) {
+			req_reject(PBSE_BADSTATE, 0, preq);
+			return;
+		}
+	} else {
+		reply_text(preq, PBSE_NOSUP,
+			"not supported for Array Jobs or multiple sub-jobs");
+		return;
+	}
+
+	nodeslist = preq->rq_ind.rq_relnodes.rq_node_list;
+
+	if ((nodeslist != NULL) && (nodeslist[0] == '\0')) {
+		nodeslist = NULL;
+	}
+	rc = free_sister_vnodes(pjob, nodeslist, msg, LOG_BUF_SIZE, preq);
+
+	if (rc != 0) {
+		reply_text(preq, PBSE_SYSTEM, msg);
+	}
 }

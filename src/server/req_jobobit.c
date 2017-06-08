@@ -93,6 +93,7 @@
 #include "mom_server.h"
 #include "dis.h"
 #include "rpp.h"
+#include "libutil.h"
 
 
 /* External Global Data Items */
@@ -122,6 +123,7 @@ extern time_t time_now;
 /* External Functions called */
 
 extern void set_resc_assigned(void *, int,  enum batch_op);
+extern long get_walltime(job *, int);
 
 /* Local public functions  */
 
@@ -718,6 +720,7 @@ on_job_exit(struct work_task *ptask)
 	long   t;
 	pbs_list_head	*mom_tasklist_ptr;
 	mominfo_t *pmom = 0;
+	int	release_nodes_on_stageout = 0;
 
 	if (ptask->wt_type != WORK_Deferred_Reply) {
 		preq = (struct batch_request *)0;
@@ -725,6 +728,11 @@ on_job_exit(struct work_task *ptask)
 	} else {
 		preq = (struct batch_request *)ptask->wt_parm1;
 		pjob = (job *)preq->rq_extra;
+	}
+
+	if ((pjob->ji_wattr[(int)JOB_ATR_relnodes_on_stageout].at_flags & ATR_VFLAG_SET) &&
+	   (pjob->ji_wattr[(int)JOB_ATR_relnodes_on_stageout].at_val.at_long != 0)) {
+		release_nodes_on_stageout = 1;
 	}
 
 	/* minor check on validity of pjob */
@@ -773,6 +781,11 @@ on_job_exit(struct work_task *ptask)
 				preq = cpy_stage(preq, pjob, JOB_ATR_stageout, STAGE_DIR_OUT);
 
 				if (preq) {		/* have files to copy 		*/
+					if (release_nodes_on_stageout) {
+						if (free_sister_vnodes(pjob, NULL, log_buffer, LOG_BUF_SIZE, NULL) != 0) {
+							log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_WARNING, pjob->ji_qs.ji_jobid, log_buffer);
+						}	
+					}
 					preq->rq_extra = (void *)pjob;
 					rc = issue_Drequest(handle, preq, on_job_exit, &pt, pjob->ji_mom_prot);
 					if (rc == 0) {
@@ -790,7 +803,6 @@ on_job_exit(struct work_task *ptask)
 					}
 
 				} else {		/* no files to copy, any to delete? */
-
 					(void)svr_setjobstate(pjob, JOB_STATE_EXITING,
 						JOB_SUBSTATE_STAGEDEL);
 					ptask = set_task(WORK_Immed, 0, on_job_exit, pjob);
@@ -1008,6 +1020,7 @@ on_job_exit(struct work_task *ptask)
 					svr_disconnect(handle);
 				rel_resc(pjob); /* free any resc assigned to the job */
 
+				account_job_update(pjob, PBS_ACCT_LAST);
 				account_jobend(pjob, pjob->ji_acctrec, PBS_ACCT_END);
 
 				if (pjob->ji_acctrec)
@@ -1040,6 +1053,72 @@ on_job_exit(struct work_task *ptask)
 				svr_saveorpurge_finjobhist(pjob);
 			}
 
+	}
+}
+
+/**
+ * @brief
+ *	Unset values of various attributes of 'pjob'
+ *	specifically for node ramp down feature.
+ *
+ * @param[in]	pjob - job in question
+ *
+ * @return void
+ *
+ */
+void
+unset_extra_attributes(job *pjob)
+{
+	if (pjob == NULL)
+		return;
+
+	if (pjob->ji_wattr[(int) JOB_ATR_resource_orig].at_flags & ATR_VFLAG_SET) {
+		job_attr_def[(int) JOB_ATR_resource].at_free( &pjob->ji_wattr[(int) JOB_ATR_resource]);
+		pjob->ji_wattr[(int) JOB_ATR_resource].at_flags &= ~ATR_VFLAG_SET;
+		job_attr_def[(int) JOB_ATR_resource].at_set( &pjob->ji_wattr[(int) JOB_ATR_resource], &pjob->ji_wattr[(int) JOB_ATR_resource_orig], INCR);
+
+		job_attr_def[(int) JOB_ATR_resource_orig].at_free( &pjob->ji_wattr[(int) JOB_ATR_resource_orig]);
+		pjob->ji_wattr[(int) JOB_ATR_resource_orig].at_flags &= ~ATR_VFLAG_SET;
+		pjob->ji_modified = 1;
+	}
+
+	if (pjob->ji_wattr[(int) JOB_ATR_resc_used_update].at_flags & ATR_VFLAG_SET) {
+		job_attr_def[(int) JOB_ATR_resc_used_update].at_free( &pjob->ji_wattr[(int) JOB_ATR_resc_used_update]);
+		pjob->ji_wattr[(int) JOB_ATR_resc_used_update].at_flags &= ~ATR_VFLAG_SET;
+	}
+
+
+	if (pjob->ji_wattr[(int) JOB_ATR_exec_vnode_acct].at_flags & ATR_VFLAG_SET) {
+		job_attr_def[(int) JOB_ATR_exec_vnode_acct].at_free( &pjob->ji_wattr[(int) JOB_ATR_exec_vnode_acct]);
+		pjob->ji_wattr[(int) JOB_ATR_exec_vnode_acct].at_flags &= ~ATR_VFLAG_SET;
+	}
+
+	if (pjob->ji_wattr[(int) JOB_ATR_exec_vnode_orig].at_flags & ATR_VFLAG_SET) {
+		job_attr_def[(int) JOB_ATR_exec_vnode_orig].at_free( &pjob->ji_wattr[(int) JOB_ATR_exec_vnode_orig]);
+		pjob->ji_wattr[(int) JOB_ATR_exec_vnode_orig].at_flags &= ~ATR_VFLAG_SET;
+	}
+
+	if (pjob->ji_wattr[(int) JOB_ATR_exec_host_acct].at_flags & ATR_VFLAG_SET) {
+		job_attr_def[(int) JOB_ATR_exec_host_acct].at_free( &pjob->ji_wattr[(int) JOB_ATR_exec_host_acct]);
+		pjob->ji_wattr[(int) JOB_ATR_exec_host_acct].at_flags &= ~ATR_VFLAG_SET;
+	}
+
+	if (pjob->ji_wattr[(int) JOB_ATR_exec_host_orig].at_flags & ATR_VFLAG_SET) {
+		job_attr_def[(int) JOB_ATR_exec_host_orig].at_free( &pjob->ji_wattr[(int) JOB_ATR_exec_host_orig]);
+		pjob->ji_wattr[(int) JOB_ATR_exec_host_orig].at_flags &= ~ATR_VFLAG_SET;
+	}
+
+	if (pjob->ji_wattr[JOB_ATR_SchedSelect_orig].at_flags & ATR_VFLAG_SET) {
+
+		(void)decode_str(
+		     &pjob->ji_wattr[(int)JOB_ATR_SchedSelect], NULL, NULL, pjob->ji_wattr[JOB_ATR_SchedSelect_orig].at_val.at_str);
+		job_attr_def[(int) JOB_ATR_SchedSelect_orig].at_free( &pjob->ji_wattr[(int) JOB_ATR_SchedSelect_orig]);
+		pjob->ji_wattr[(int) JOB_ATR_SchedSelect_orig].at_flags &= ~ATR_VFLAG_SET;
+	}
+
+	if (pjob->ji_wattr[(int) JOB_ATR_exec_vnode_deallocated].at_flags & ATR_VFLAG_SET) {
+		job_attr_def[(int) JOB_ATR_exec_vnode_deallocated].at_free( &pjob->ji_wattr[(int) JOB_ATR_exec_vnode_deallocated]);
+		pjob->ji_wattr[(int) JOB_ATR_exec_vnode_deallocated].at_flags &= ~ATR_VFLAG_SET;
 	}
 }
 
@@ -1187,7 +1266,6 @@ on_job_rerun(struct work_task *ptask)
 					/* we will "fall" into the post reply side */
 
 				} else {		/* no files to copy, any to delete? */
-
 					(void)svr_setjobstate(pjob, JOB_STATE_EXITING,
 						JOB_SUBSTATE_RERUN2);
 					ptask = set_task(WORK_Immed, 0, on_job_rerun, pjob);
@@ -1363,6 +1441,7 @@ on_job_rerun(struct work_task *ptask)
 
 				}
 				rel_resc(pjob);		/* free resc assigned to job */
+				unset_extra_attributes(pjob);
 
 
 				/* Now  if not a Sub Job, then re-queue the job */
@@ -1429,8 +1508,9 @@ setrerun(job *pjob)
  * @param[in,out]buffer - pointer to buffer to add info to.  May grow/change due to pbs_strcat() (realloc)
  * @param[in,out]buffer_size - size of buffer - may increase through pbs_strcat()
  * @param[in]		delim - a pointer to the delimiter to use
+ * @param[in]		pjob - job structure for additional info
  */
-concat_rescused_to_buffer(char **buffer, int *buffer_size, svrattrl *patlist, char *delim)
+concat_rescused_to_buffer(char **buffer, int *buffer_size, svrattrl *patlist, char *delim, job *pjob)
 {
 	int val_len;
 
@@ -1465,7 +1545,33 @@ concat_rescused_to_buffer(char **buffer, int *buffer_size, svrattrl *patlist, ch
 			log_err(errno, __func__, "Failed to allocate memory.");
 			return 1;
 		}
-		if(pbs_strcat(buffer, buffer_size, patlist->al_value) == NULL) {
+		if ( (pjob != NULL) &&
+			patlist->al_resc && (strcmp(patlist->al_resc,
+							WALLTIME) == 0) ) {
+			long	j, k;
+
+			k = get_walltime(pjob, JOB_ATR_resc_used_acct);
+			j = get_walltime(pjob, JOB_ATR_resc_used);
+			if ((k >= 0) && (j >= k)) {
+				char timebuf[TIMEBUF_SIZE] = {0};
+
+				convert_duration_to_str(j-k, timebuf, TIMEBUF_SIZE);
+				if(pbs_strcat(buffer, buffer_size, timebuf) == NULL) {
+					log_err(errno, __func__,
+						"Failed to allocate memory.");
+					return 1;
+				}
+			} else {
+				if(pbs_strcat(buffer, buffer_size,
+						patlist->al_value) == NULL) {
+					log_err(errno, __func__,
+						"Failed to allocate memory.");
+					return 1;
+				}
+
+			}
+		} else if(pbs_strcat(buffer, buffer_size,
+						patlist->al_value) == NULL) {
 			log_err(errno, __func__, "Failed to allocate memory.");
 			return 1;
 		}
@@ -1529,6 +1635,9 @@ concat_rescused_to_buffer(char **buffer, int *buffer_size, svrattrl *patlist, ch
  *	  	instructed the server to requeue the job once reaching the end.
  *		- JOB_EXEC_HOOK_DELETE - returned by a job that ran a mom hook that
  *	  	instructed the server to delete the job  once reaching the end.
+ *		- JOB_EXEC_HOOKERROR: returned by a job rejected by a mom hook
+ *		due to an exception, or hook alarm was raised,
+ *		and the next action is to requeue/rerun the job.
  * @par
  *		Otherwise record the accounting information to be recorded later in the
  *		processing.  Now, the job is moved into "exiting" processing or "rerun"
@@ -1797,21 +1906,25 @@ job_obit(struct resc_used_update *pruu, int stream)
 		for (; patlist; patlist = (svrattrl *) GET_NEXT(patlist->al_link)) {
 
 			resource_def *tmpdef;
+
+			if (strcmp(patlist->al_name, ATTR_used_update) == 0)
+				continue;
+
 			tmpdef = find_resc_def(svr_resc_def, patlist->al_resc, svr_resc_size);
 
-			if (tmpdef == NULL) {
+			if (tmpdef == NULL)
 				continue;
-			}
+
 			/* 
 			 * Copy all resources to the accounting buffer.
 			 * Copy all but invisible resources into the mail buffer.
 			 * The ATR_DFLAG_USRD flag will not be set on invisible resources.
 			 */
-			if (concat_rescused_to_buffer(&acctbuf, &acctbuf_size, patlist, " ") != 0)
+			if (concat_rescused_to_buffer(&acctbuf, &acctbuf_size, patlist, " ", pjob) != 0)
 				break;
 
 			if (tmpdef->rs_flags & ATR_DFLAG_USRD) {
-				if (concat_rescused_to_buffer(&mailbuf, &mailbuf_size, patlist, "\n") != 0)
+				if (concat_rescused_to_buffer(&mailbuf, &mailbuf_size, patlist, "\n", pjob) != 0)
 					break;
 			}
 		}
@@ -1936,7 +2049,9 @@ job_obit(struct resc_used_update *pruu, int stream)
 			case JOB_EXEC_RETRY:
 			case JOB_EXEC_FAILHOOK_RERUN:
 			case JOB_EXEC_HOOK_RERUN:
-				if (exitstatus == JOB_EXEC_FAILHOOK_RERUN) {
+			case JOB_EXEC_HOOKERROR:
+				if ((exitstatus == JOB_EXEC_FAILHOOK_RERUN) ||
+					   (exitstatus == JOB_EXEC_HOOKERROR)) {
 					log_event(PBSEVENT_ERROR|PBSEVENT_JOB,
 						PBS_EVENTCLASS_JOB, LOG_INFO,
 						pjob->ji_qs.ji_jobid,
@@ -2013,6 +2128,7 @@ RetryJob:
 					pjob->ji_mom_prot = PROT_INVALID;
 
 				FREE_RUU(pruu)
+				free(mailbuf);
 				return;
 
 			case JOB_EXEC_INITRMG:
@@ -2054,6 +2170,7 @@ RetryJob:
 					ack_obit(stream, pjob->ji_qs.ji_jobid);
 					svr_setjobstate(pjob, JOB_STATE_HELD, JOB_SUBSTATE_HELD);
 					FREE_RUU(pruu)
+					free(mailbuf);
 					return;
 		}
 	}
@@ -2081,9 +2198,10 @@ RetryJob:
 			JOB_SUBSTATE_EXITING);
 		if (alreadymailed == 0 && mailbuf != NULL)
 			svr_mailowner(pjob, MAIL_END, MAIL_NORMAL, mailbuf);
-		free(mailbuf);
 
 	}
+        /* can free this now since no need to use it */
+	free(mailbuf);
 
 	/* save record accounting for later */
 

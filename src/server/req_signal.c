@@ -328,6 +328,23 @@ req_signaljob2(struct batch_request *preq, job *pjob)
 							return;
 						}
 					}
+					if (pjob->ji_wattr[(int)JOB_ATR_exec_vnode_deallocated].at_flags & ATR_VFLAG_SET) {
+
+						char	*hoststr = NULL;
+						char	*hoststr2 = NULL;
+						char	*vnodestoalloc = NULL;
+						char	*new_exec_vnode_deallocated;
+	 					new_exec_vnode_deallocated =
+		  					pjob->ji_wattr[(int)JOB_ATR_exec_vnode_deallocated].at_val.at_str;
+
+						rc = set_nodes((void *)pjob, JOB_OBJECT, new_exec_vnode_deallocated, &vnodestoalloc, &hoststr, &hoststr2,
+		1, FALSE);
+						if (rc != 0) {
+							req_reject(rc, 0, preq);
+							log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_WARNING,
+							  pjob->ji_qs.ji_jobid, "Warning: Failed to make some nodes aware of deleted job");
+						}
+					}
 				} else {
 					/* not from scheduler, change substate so the  */
 					/* scheduler will resume the job when possible */

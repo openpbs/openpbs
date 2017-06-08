@@ -130,7 +130,7 @@ extern "C" {
 #define ATR_DFLAG_FNASSN 0x10000 /* resource in 1st node resources_assigned  */
 #define ATR_DFLAG_CVTSLT 0x20000 /* used in or converted to select directive */
 #define ATR_DFLAG_SCGALT 0x40000 /* if altered during sched cycle dont run job*/
-
+#define ATR_DFLAG_HIDDEN  0x80000 /* if set, keep attribute hidden to client */
 
 #define SHUT_MASK	0xf
 #define SHUT_WHO_MASK   0x1f0

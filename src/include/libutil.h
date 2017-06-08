@@ -251,6 +251,17 @@ void free_string_array(char **arr);
  */
 char * escape_delimiter(char *str, char *delim, char esc);
 
+/* Size of time buffer */
+#define TIMEBUF_SIZE 128
+
+/**
+ *
+ * 	convert_duration_to_str - Convert a duration to HH:MM:SS format string
+ *
+ */
+void convert_duration_to_str(time_t duration, char* buf, int bufsize);
+
+
 #ifdef  __cplusplus
 }
 #endif
