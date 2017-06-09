@@ -490,6 +490,7 @@ extern int node_save_db(struct pbsnode *pnode, int mode);
 extern int add_mom_to_pool(mominfo_t *);
 extern void remove_mom_from_pool(mominfo_t *);
 extern void reset_pool_inventory_mom(mominfo_t *);
+extern vnpool_mom_t *find_vnode_pool(mominfo_t *pmom);
 extern int  send_ip_addrs_to_mom(int);
 #endif
 
