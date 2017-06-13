@@ -15,4 +15,6 @@ ${DOCKER_EXEC} /bin/sh -c 'cp -fv pbspro-*.tar.gz /root/rpmbuild/SOURCES/'
 ${DOCKER_EXEC} rpmbuild -bb pbspro.spec
 ${DOCKER_EXEC} /bin/sh -c 'zypper -n install /root/rpmbuild/RPMS/x86_64/pbspro-server-*.x86_64.rpm'
 ${DOCKER_EXEC} /etc/init.d/pbs start
-${DOCKER_EXEC} zypper -n install python-pip sudo which net-tools
+${DOCKER_EXEC} zypper -n install python-pip sudo which net-tools git
+${DOCKER_EXEC} ./.travis/run_tests.sh ${TRAVIS_PULL_REQUEST}
+

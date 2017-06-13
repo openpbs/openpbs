@@ -19,8 +19,5 @@ before_install:
     - ${DOCKER_EXEC} cat /etc/hosts
 install:
     - ./.travis/${OS_TYPE//:/_}.sh
-    - ${DOCKER_EXEC} /bin/sh -c "cd test/fw; pip install -r requirements.txt ."
-    - ${DOCKER_EXEC_TTY} pbs_config --make-ug
-    - ${DOCKER_EXEC_TTY} /bin/sh -c "cd test/tests; pbs_benchpress -l INFOCLI2 -o ../../ptl.txt --tags=smoke"
 script: true
 
