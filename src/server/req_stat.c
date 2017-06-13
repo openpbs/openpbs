@@ -85,6 +85,7 @@
 #include "net_connect.h"
 #include "pbs_license.h"
 #include "resource.h"
+#include "pbs_sched.h"
 
 
 /* Global Data Items: */
@@ -120,7 +121,7 @@ static int bad;
 static int  status_que(pbs_queue *, struct batch_request *, pbs_list_head *);
 static int status_node(struct pbsnode *, struct batch_request *, pbs_list_head *);
 static int status_resv(resc_resv *, struct batch_request *, pbs_list_head *);
-
+extern pbs_sched *find_scheduler(char *sched_name);
 /**
  * @brief
  * 		Support function for req_stat_job() and stat_a_jobidname().
@@ -748,6 +749,47 @@ req_stat_svr(struct batch_request *preq)
 		(void)reply_send(preq);
 }
 
+/**
+ * @brief
+ * 		status_sched - Build the status reply for single scheduler
+ *
+ * @param[in]	psched	-	ptr to sched receiving status query
+ * @param[in]	preq	-	ptr to the decoded request
+ * @param[out]	pstathd	-	head of list to append status to
+ *
+ * @return	int
+ * @retval	0	: success
+ * @retval	!0	: PBSE error code
+ */
+static int
+status_sched(pbs_sched *psched, struct batch_request *preq, pbs_list_head *pstathd)
+{
+	int		   rc = 0;
+	struct brp_status *pstat;
+	svrattrl	  *pal;
+
+	pstat = (struct brp_status *)malloc(sizeof(struct brp_status));
+	if (pstat == (struct brp_status *)0)
+		return (PBSE_SYSTEM);
+
+	pstat->brp_objtype = MGR_OBJ_SCHED;
+	(void)strncpy(pstat->brp_objname, psched->sc_name, (PBS_MAXSVRJOBID > PBS_MAXDEST ?
+			PBS_MAXSVRJOBID : PBS_MAXDEST) -1);
+	pstat->brp_objname[(PBS_MAXSVRJOBID > PBS_MAXDEST ? PBS_MAXSVRJOBID : PBS_MAXDEST) - 1] = '\0';
+
+	CLEAR_LINK(pstat->brp_stlink);
+	CLEAR_HEAD(pstat->brp_attr);
+	append_link(pstathd, &pstat->brp_stlink, pstat);
+
+
+	bad = 0;
+	pal = (svrattrl *)GET_NEXT(preq->rq_ind.rq_status.rq_attr);
+	if (status_attrib(pal, sched_attr_def, psched->sch_attr, SCHED_ATR_LAST,
+		preq->rq_perm, &pstat->brp_attr, &bad))
+		reply_badattr(PBSE_NOATTR, bad, pal, preq);
+
+	return (rc);
+}
 
 
 /**
@@ -767,8 +809,7 @@ req_stat_sched(struct batch_request *preq)
 	svrattrl	   *pal;
 	struct batch_reply *preply;
 	struct brp_status  *pstat;
-	static char objname[] = "scheduler@";
-
+	int rc = 0;
 
 	/* allocate a reply structure and a status sub-structure */
 
@@ -776,32 +817,36 @@ req_stat_sched(struct batch_request *preq)
 	preply->brp_choice = BATCH_REPLY_CHOICE_Status;
 	CLEAR_HEAD(preply->brp_un.brp_status);
 
-	pstat = (struct brp_status *)malloc(sizeof(struct brp_status));
-	if (pstat == (struct brp_status *)0) {
-		reply_free(preply);
-		req_reject(PBSE_SYSTEM, 0, preq);
-		return;
+	pbs_sched *psched = NULL;
+	if(strlen(preq->rq_ind.rq_status.rq_id) != 0) {
+		psched = find_scheduler(preq->rq_ind.rq_status.rq_id);
+		if(psched) {
+			rc = status_sched(psched, preq, &preply->brp_un.brp_status);
+		} else {
+			req_reject(PBSE_UNKSCHED, 0, preq);
+			return;
+		}
+	} else {
+		psched = (pbs_sched *) GET_NEXT(svr_allscheds);
+		while (psched != (pbs_sched *) 0) {
+			rc = status_sched(psched, preq, &preply->brp_un.brp_status);
+			if (rc != 0) {
+				break;
+			}
+			psched = (pbs_sched *) GET_NEXT(psched->sc_link);
+		}
 	}
-	CLEAR_LINK(pstat->brp_stlink);
-	(void)strcpy(pstat->brp_objname, objname);
-	(void)strncat(pstat->brp_objname, server_name,
-		sizeof(pstat->brp_objname) - sizeof(objname));
-
-	pstat->brp_objname[sizeof(pstat->brp_objname) - 1] = '\0';
-
-	pstat->brp_objtype = MGR_OBJ_SCHED;
-	CLEAR_HEAD(pstat->brp_attr);
-	append_link(&preply->brp_un.brp_status, &pstat->brp_stlink, pstat);
-
-	/* add attributes to the status reply */
-
-	bad = 0;
-	pal = (svrattrl *)GET_NEXT(preq->rq_ind.rq_status.rq_attr);
-	if (status_attrib(pal, sched_attr_def, scheduler.sch_attr, SCHED_ATR_LAST,
-		preq->rq_perm, &pstat->brp_attr, &bad))
-		reply_badattr(PBSE_NOATTR, bad, pal, preq);
-	else
+	if (!rc) {
 		(void)reply_send(preq);
+	} else {
+		if (rc != PBSE_NOATTR)
+			req_reject(rc, 0, preq);
+		else {
+			pal = (svrattrl *)GET_NEXT(preq->rq_ind.
+				rq_status.rq_attr);
+			reply_badattr(rc, bad, pal, preq);
+		}
+	}
 }
 
 

@@ -79,7 +79,8 @@
 #include "svrfunc.h"
 #include "log.h"
 #include "pbs_db.h"
-
+#include "pbs_sched.h"
+#include "pbs_share.h"
 
 /* Global Data Items: */
 
@@ -112,7 +113,7 @@ extern int recov_attr_db(pbs_db_conn_t *conn,
 	int unknown);
 extern int utimes(const char *path, const struct timeval *times);
 #endif /* localmod 005 */
-
+extern pbs_sched *sched_alloc(char *sched_name);
 
 /**
  * @brief
@@ -187,9 +188,9 @@ db_to_svr_svr(struct server *ps, pbs_db_svr_info_t *pdbsvr)
  *
  */
 static void
-svr_to_db_sched(struct sched *ps, pbs_db_sched_info_t *pdbsched)
+svr_to_db_sched(pbs_sched *ps, pbs_db_sched_info_t *pdbsched)
 {
-	strcpy(pdbsched->sched_name, pbs_server_id);
+	strcpy(pdbsched->sched_name, ps->sc_name);
 	strcpy(pdbsched->sched_sv_name, pbs_server_id);
 }
 
@@ -202,9 +203,9 @@ svr_to_db_sched(struct sched *ps, pbs_db_sched_info_t *pdbsched)
  *
  */
 static void
-db_to_svr_sched(struct sched *ps, pbs_db_sched_info_t *pdbsched)
+db_to_svr_sched(pbs_sched *ps, pbs_db_sched_info_t *pdbsched)
 {
-	/* none for the time being */
+	strcpy(ps->sc_name,pdbsched->sched_name);
 }
 
 /**
@@ -360,27 +361,16 @@ db_err:
 static char *schedemsg = "unable to save scheddb ";
 
 /**
- * @brief
- *		Recover Scheduler attributes from file scheddb
- *
- * @par Functionality:
- *		This function is only called on Server initialization at start up.
- *		Opens and reads from the file "scheddb".
- *		As there is no fixed binary quick save for the scheduler structure
- *		which only consists of attributes, uses recov_attr_db() to read in each
- *		attribute which has been saved.
- *
- * @par	Note:
- *		scheduler structure, extern struct sched scheduler, must be
- *		preallocated and all default values should already be set.
+ * @brief Recover Schedulers
  *
  * @see	pbsd_init.c
  *
  *
  * @return	Error code
  * @retval	 0 :	On successful recovery and creation of server structure
- * @retval	-1 :	On failutre to open or read file.
- */
+ * @retval	-1 :	On failure to open or read file.
+ * @retval	-2 :	No schedulers found.
+ * */
 
 int
 sched_recov_db(void)
@@ -391,41 +381,61 @@ sched_recov_db(void)
 	pbs_db_obj_info_t obj;
 	int rc;
 	int index;
+	int count;
+	void *state = NULL;
+	pbs_sched *psched;
 
-	/* load server_qs */
-	strcpy(dbsched.sched_name, pbs_server_id);
+	/* start a transaction */
+	if (pbs_db_begin_trx(conn, 0, 0) != 0)
+		return (-1);
 
-	if (pbs_db_begin_trx(conn, 0, 0) !=0)
-		goto db_err;
-
+	/* get scheds from DB */
 	obj.pbs_db_obj_type = PBS_DB_SCHED;
 	obj.pbs_db_un.pbs_db_sched = &dbsched;
 
-	/* read in job fixed sub-structure */
-	if ((rc = pbs_db_load_obj(conn, &obj)) == -1) /* error */
-		goto db_err;
+	state = pbs_db_cursor_init(conn, &obj, NULL);
+	if (state == NULL) {
+		snprintf(log_buffer, LOG_BUF_SIZE,
+				"%s", (char *) conn->conn_db_err);
+		log_err(-1, __func__, log_buffer);
+		pbs_db_cursor_close(conn, state);
+		(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
+		return -1;
+	}
+	count = pbs_db_get_rowcount(state);
+	if (count <= 0) {
+		/* no schedulers found in DB*/
+		pbs_db_cursor_close(conn, state);
+		(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
+		return -2;
+	}
+	while ((rc = pbs_db_cursor_next(conn, state, &obj)) == 0) {
+		/* recover sched */
+		psched = sched_alloc(dbsched.sched_name);
+		if(!strncmp(dbsched.sched_name, PBS_DFLT_SCHED_NAME,
+						strlen(PBS_DFLT_SCHED_NAME))) {
+			dflt_scheduler = psched;
+		}
+		db_to_svr_sched(psched, &dbsched);
 
-	if (rc == 0) {
-		db_to_svr_sched(&scheduler, &dbsched);
-
-		attr_info.parent_id = pbs_server_id;
+		attr_info.parent_id = psched->sc_name;
 		attr_info.parent_obj_type = PARENT_TYPE_SCHED; /* svr attr */
 
-		/* read in server attributes */
-		if (recov_attr_db(conn, &scheduler, &attr_info, sched_attr_def, scheduler.sch_attr,
+		/* read in attributes */
+		if (recov_attr_db(conn, psched, &attr_info, sched_attr_def, psched->sch_attr,
 			(int)SCHED_ATR_LAST, 0) != 0)
 			goto db_err;
+
+		if (pbs_conf.pbs_use_tcp == 0) {
+			/* check if throughput mode is visible in non-TPP mode, if so make it invisible */
+			psched->sch_attr[SCHED_ATR_throughput_mode].at_flags = 0;
+		}
 	}
+	pbs_db_cursor_close(conn, state);
 	if (pbs_db_end_trx(conn, PBS_DB_COMMIT) != 0)
 		goto db_err;
 
-	if (pbs_conf.pbs_use_tcp == 0) {
-		/* check if throughput mode is visible in non-TPP mode, if so make it invisible */
-		index = find_attr(sched_attr_def, ATTR_throughput_mode, SCHED_ATR_LAST);
-		scheduler.sch_attr[index].at_flags = 0;
-	}
-
-	return (0);
+	return 0;
 
 db_err:
 	log_err(-1, "sched_recov", "read of scheduler db failed");
@@ -454,7 +464,7 @@ db_err:
  */
 
 int
-sched_save_db(struct sched *ps, int mode)
+sched_save_db(pbs_sched *ps, int mode)
 {
 	pbs_db_conn_t *conn = (pbs_db_conn_t *) svr_db_conn;
 	pbs_db_sched_info_t dbsched;
@@ -489,7 +499,7 @@ sched_save_db(struct sched *ps, int mode)
 
 		/* svr_attrs */
 		attr_info.parent_obj_type = PARENT_TYPE_SCHED; /* svr attr */
-		attr_info.parent_id = pbs_server_id;
+		attr_info.parent_id = ps->sc_name;
 
 		if (save_attr_db(conn, &attr_info, sched_attr_def, ps->sch_attr, (int)SCHED_ATR_LAST, flag) !=0)
 			goto db_err;

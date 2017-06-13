@@ -107,7 +107,7 @@
 #include	"rpp.h"
 #include	"libsec.h"
 #include	"pbs_ecl.h"
-
+#include	"pbs_share.h"
 
 struct		connect_handle connection[NCONNECTS];
 int		connector;
@@ -776,7 +776,7 @@ update_svr_schedobj(int cmd, int alarm_time)
 
 	err = pbs_manager(connector,
 		MGR_CMD_SET, MGR_OBJ_SCHED,
-		"scheduler", attribs, NULL);
+		PBS_DFLT_SCHED_NAME, attribs, NULL);
 	if (err == 0 && svr_knows_me == 0)
 		svr_knows_me = 1;
 

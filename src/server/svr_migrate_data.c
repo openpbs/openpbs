@@ -366,14 +366,14 @@ svr_migrate_data_from_fs(void)
 		return (-1);
 	}
 
-	if (sched_save_db(&scheduler, SVR_SAVE_NEW) != 0) {
+	if (sched_save_db(dflt_scheduler, SVR_SAVE_NEW) != 0) {
 		fprintf(stderr, "Could not save scheduler db\n");
 		if (svr_db_conn->conn_db_err)
 			fprintf(stderr, "[%s]\n", (char*)svr_db_conn->conn_db_err);
 		(void) pbs_db_end_trx(svr_db_conn, PBS_DB_ROLLBACK);
 		return (-1);
 	}
-
+	set_sched_default(dflt_scheduler);
 	/* save current working dir before any chdirs */
 	if (getcwd(origdir, MAXPATHLEN) == NULL) {
 		fprintf(stderr, "getcwd failed\n");

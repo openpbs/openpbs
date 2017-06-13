@@ -57,6 +57,8 @@ extern "C" {
 #ifndef	_GRUNT_H
 #include "grunt.h"
 #endif
+#include "pbs_sched.h"
+#include "server_limits.h"
 
 enum srv_atr {
 	SRV_ATR_State,
@@ -184,36 +186,8 @@ struct server {
 					 currently running */
 };
 
-/*attributes for the server's sched object*/
-enum sched_atr {
-	SCHED_ATR_SchedHost,
-	SCHED_ATR_version,
-	SCHED_ATR_sched_cycle_len,
-	SCHED_ATR_dont_span_psets,
-	SCHED_ATR_only_explicit_psets,
-	SCHED_ATR_sched_preempt_enforce_resumption,
-	SCHED_ATR_preempt_targets_enable,
-	SCHED_ATR_job_sort_formula_threshold,
-	SCHED_ATR_throughput_mode,
-	SCHED_ATR_opt_backfill_fuzzy,
-#include "site_sched_attr_enum.h"
-	/* This must be last */
-	SCHED_ATR_LAST
-};
-extern attribute_def sched_attr_def[];
-
-struct sched {
-	/* for now structure consists of only attributes.
-	 * In the future if a binary substructure is added that must be
-	 * saved, need to update sched_recov() and sched_save().
-	 */
-
-	/* sched object's attributes  */
-	attribute sch_attr[SCHED_ATR_LAST];
-};
 
 extern struct server	server;
-extern struct sched	scheduler;
 extern	pbs_list_head	svr_alljobs;
 extern	pbs_list_head	svr_newresvs;	/* incomming new reservations */
 extern	pbs_list_head	svr_allresvs;	/* all reservations in server */
@@ -250,7 +224,6 @@ extern	long	reserve_retry_cutoff;
 #define SVR_HOT_CYCLE	15	/* retry mom every n sec on hot start     */
 #define SVR_HOT_LIMIT	300	/* after n seconds, drop out of hot start */
 
-#define PBS_SCHED_CYCLE_LEN_DEFAULT 1200
 #define PBS_SCHED_DAEMON_NAME "Scheduler"
 #define WALLTIME "walltime"
 #define MIN_WALLTIME "min_walltime"
@@ -277,7 +250,7 @@ enum failover_state {
 extern int			svr_recov_db(void);
 extern int			svr_save_db(struct server *, int mode);
 extern int			sched_recov_db(void);
-extern int			sched_save_db(struct sched *, int mode);
+extern int			sched_save_db(pbs_sched *, int mode);
 extern enum failover_state	are_we_primary(void);
 extern int			have_socket_licensed_nodes(void);
 extern void			unlicense_socket_licensed_nodes(void);

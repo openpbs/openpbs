@@ -90,6 +90,16 @@ pg_db_prepare_sched_sqls(pbs_db_conn_t *conn)
 	if (pg_prepare_stmt(conn, STMT_SELECT_SCHED, conn->conn_sql, 1) != 0)
 		return -1;
 
+	sprintf(conn->conn_sql, "select "
+		"sched_name, "
+		"sched_sv_name, "
+		"extract(epoch from sched_savetm)::bigint as sched_savetm, "
+		"extract(epoch from sched_creattm)::bigint as sched_creattm "
+		"from "
+		"pbs.scheduler ");
+	if (pg_prepare_stmt(conn, STMT_SELECT_SCHED_ALL, conn->conn_sql, 1) != 0)
+		return -1;
+
 	sprintf(conn->conn_sql, "insert into "
 		"pbs.scheduler_attr "
 		"(sched_name, "
@@ -148,6 +158,10 @@ pg_db_prepare_sched_sqls(pbs_db_conn_t *conn)
 	if (pg_prepare_stmt(conn, STMT_SELECT_SCHEDATTR, conn->conn_sql, 1) != 0)
 		return -1;
 
+	sprintf(conn->conn_sql, "delete from pbs.scheduler where sched_name = $1");
+	if (pg_prepare_stmt(conn, STMT_DELETE_SCHED, conn->conn_sql, 1) != 0)
+		return -1;
+
 	return 0;
 }
 
@@ -202,10 +216,36 @@ pg_db_update_sched(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj)
 
 /**
  * @brief
+ *	Load scheduler data from the row into the scheduler object
+ *
+ * @param[in]	res - Resultset from a earlier query
+ * @param[out]	psch  - Scheduler object to load data into
+ * @param[in]	row - The current row to load within the resultset
+ *
+ */
+static void
+load_sched(PGresult *res, pbs_db_sched_info_t *psch, int row)
+{
+
+	strncpy(psch->sched_name, PQgetvalue(res, row,
+		PQfnumber(res, "sched_name")), PBS_MAXSCHEDNAME);
+	psch->sched_name[PBS_MAXSCHEDNAME] = '\0';
+	strncpy(psch->sched_sv_name, PQgetvalue(res, row,
+		PQfnumber(res, "sched_sv_name")), PBS_MAXSCHEDNAME);
+	psch->sched_sv_name[PBS_MAXSCHEDNAME] = '\0';
+	psch->sched_savetm = strtoll(PQgetvalue(res, row,
+		PQfnumber(res, "sched_savetm")), NULL, 10);
+	psch->sched_creattm = strtoll(PQgetvalue(res, row,
+		PQfnumber(res, "sched_creattm")), NULL, 10);
+
+}
+
+/**
+ * @brief
  *	Load scheduler data from the database
  *
  * @param[in]	conn - Connection handle
- * @param[in]	obj  - Load scheduler information into this object
+ * @param[out]	obj  - Load scheduler information into this object
  *
  * @return      Error code
  * @retval	-1 - Failure
@@ -224,16 +264,92 @@ pg_db_load_sched(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj)
 	if ((rc = pg_db_query(conn, STMT_SELECT_SCHED,  1, &res)) != 0)
 		return rc;
 
-	/* get the other fields */
-	strcpy(psch->sched_name, PQgetvalue(res, 0,
-		PQfnumber(res, "sched_name")));
-	strcpy(psch->sched_sv_name, PQgetvalue(res, 0,
-		PQfnumber(res, "sched_sv_name")));
-	psch->sched_savetm = strtoll(PQgetvalue(res, 0,
-		PQfnumber(res, "sched_savetm")), NULL, 10);
-	psch->sched_creattm = strtoll(PQgetvalue(res, 0,
-		PQfnumber(res, "sched_creattm")), NULL, 10);
+	load_sched(res, psch, 0);
 
 	PQclear(res);
 	return 0;
+}
+
+/**
+ * @brief
+ *	Find scheduler
+ *
+ * @param[in]	conn - Connection handle
+ * @param[out]	st   - The cursor state variable updated by this query
+ * @param[in]	obj  - Information of sched to be found
+ * @param[in]	opts - Any other options (like flags, timestamp)
+ *
+ * @return      Error code
+ * @retval	-1 - Failure
+ * @retval	 0 - Success
+ * @retval	 1 -  Success but no rows found
+ *
+ */
+int
+pg_db_find_sched(pbs_db_conn_t *conn, void *st, pbs_db_obj_info_t *obj,
+	pbs_db_query_options_t *opts)
+{
+	PGresult *res;
+	pg_query_state_t *state = (pg_query_state_t *) st;
+	int rc;
+	int params;
+
+	if (!state)
+		return -1;
+	strncpy(conn->conn_sql, STMT_SELECT_SCHED_ALL, (MAX_SQL_LENGTH-1));
+	conn->conn_sql[MAX_SQL_LENGTH-1] = '\0';
+	params = 0;
+
+	if ((rc = pg_db_query(conn, conn->conn_sql, params, &res)) != 0)
+		return rc;
+
+	state->row = 0;
+	state->res = res;
+	state->count = PQntuples(res);
+
+	return 0;
+}
+
+/**
+ * @brief
+ *	Get the next scheduler from the cursor
+ *
+ * @param[in]	conn - Connection handle
+ * @param[out]	st   - The cursor state
+ * @param[in]	obj  - Scheduler information is loaded into this object
+ *
+ * @return      Error code
+ * @retval	-1 - Failure
+ * @retval	 0 - Success
+ *
+ */
+int
+pg_db_next_sched(pbs_db_conn_t *conn, void *st, pbs_db_obj_info_t *obj)
+{
+	pg_query_state_t *state = (pg_query_state_t *) st;
+
+	load_sched(state->res, obj->pbs_db_un.pbs_db_sched, state->row);
+
+	return 0;
+}
+
+/**
+ * @brief
+ *	Delete the scheduler from the database
+ *
+ * @param[in]	conn - Connection handle
+ * @param[in]	obj  - scheduler information
+ *
+ * @return      Error code
+ * @retval	-1 - Failure
+ * @retval	 0 - Success
+ * @retval	 1 -  Success but no rows deleted
+ *
+ */
+int
+pg_db_delete_sched(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj)
+{
+	pbs_db_sched_info_t *sc = obj->pbs_db_un.pbs_db_sched;
+	LOAD_STR(conn, sc->sched_name, 0);
+	return (pg_db_cmd(conn, STMT_DELETE_SCHED, 1));
 }

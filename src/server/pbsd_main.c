@@ -137,6 +137,7 @@
 #include "pbs_ecl.h"
 #include "provision.h"
 #include "pbs_db.h"
+#include "pbs_sched.h"
 
 #include <pbs_python.h>  /* for python interpreter */
 
@@ -269,7 +270,7 @@ char	       *pbs_server_id;
 int		reap_child_flag = 0;
 time_t		secondary_delay = 30;
 struct server	server;		/* the server structure */
-struct sched	scheduler;	/* the scheduler structure */
+pbs_sched	*dflt_scheduler;	/* the default scheduler */
 char	        primary_host[PBS_MAXHOSTNAME+1];   /* host_name of primary */
 int		shutdown_who;		/* see req_shutdown() */
 char	       *mom_host = server_host;
@@ -306,6 +307,7 @@ pbs_list_head	svr_execjob_end_hooks;
 pbs_list_head	svr_exechost_periodic_hooks;
 pbs_list_head	svr_exechost_startup_hooks;
 pbs_list_head	svr_execjob_attach_hooks;
+pbs_list_head	svr_allscheds;
 time_t		time_now;
 time_t		jan1_yr2038;
 struct batch_request	*saved_takeover_req=NULL;
@@ -1322,6 +1324,7 @@ main(int argc, char **argv)
 	CLEAR_HEAD(svr_exechost_periodic_hooks);
 	CLEAR_HEAD(svr_exechost_startup_hooks);
 	CLEAR_HEAD(svr_execjob_attach_hooks);
+	CLEAR_HEAD(svr_allscheds);
 
 	/* initialize paths that we will need */
 	path_priv       = build_path(pbs_conf.pbs_home_path, PBS_SVR_PRIVATE,

@@ -181,6 +181,8 @@ extern "C" {
 #define STMT_DELETE_SCHEDATTR "delete_schedattr"
 #define STMT_DELETE_SCHEDATTR_RESC "delete_schedattr_resc"
 #define STMT_SELECT_SCHEDATTR "select_schedattr"
+#define STMT_SELECT_SCHED_ALL "select_sched_all"
+#define STMT_DELETE_SCHED "sched_delete"
 
 #define POSTGRES_QUERY_MAX_PARAMS 30
 
@@ -432,6 +434,10 @@ int pg_db_delete_attr(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
 int pg_db_insert_sched(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
 int pg_db_update_sched(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
 int pg_db_load_sched(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
+int pg_db_find_sched(pbs_db_conn_t *conn, void *st, pbs_db_obj_info_t *obj,
+	pbs_db_query_options_t *opts);
+int pg_db_next_sched(pbs_db_conn_t *conn, void *st, pbs_db_obj_info_t *obj);
+int pg_db_delete_sched(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
 
 #ifdef	__cplusplus
 }

@@ -556,6 +556,11 @@ extern int decode_formula(attribute *patr,  char *name,  char *rn,  char *val);
 extern int action_backfill_depth(attribute *pattr,  void *pobj,  int actmode);
 extern int action_est_start_time_freq(attribute *pattr,  void *pobj,  int actmode);
 extern int check_for_bgl_nodes(attribute *patr,  void *pobject,  int actmode);
+extern int action_sched_iteration(attribute *pattr, void *pobj, int actmode);
+extern int action_sched_priv(attribute *pattr, void *pobj, int actmode);
+extern int action_sched_log(attribute *pattr, void *pobj, int actmode);
+extern int action_sched_user(attribute *pattr, void *pobj, int actmode);
+extern int action_sched_port(attribute *pattr, void *pobj, int actmode);
 /* Extern functions from queue_attr_def */
 extern int decode_null(attribute *patr, char *name, char *rn, char *val);
 extern int set_null(attribute *patr, attribute *new, enum batch_op op);

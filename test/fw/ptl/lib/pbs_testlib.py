@@ -10542,7 +10542,7 @@ class Scheduler(PBSService):
         self.logger.info(self.logprefix +
                          "reverting configuration to defaults")
         self.server.manager(MGR_CMD_LIST, SCHED)
-        ignore_attrs = ['id', 'pbs_version', 'sched_host']
+        ignore_attrs = ['id', 'pbs_version', 'sched_host', 'state']
         unsetattrs = []
         for k in self.attributes.keys():
             if k not in ignore_attrs:

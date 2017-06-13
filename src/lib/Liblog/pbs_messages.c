@@ -393,6 +393,14 @@ char *msg_corelimit = "invalid value for PBS_CORE_LIMIT in pbs.conf, continuing 
 char *msg_resc_busy = "Resource busy";
 
 char *msg_job_moved = "Job moved to remote server";
+char *msg_init_recovsched = "Recovered scheduler %s";
+char *msg_sched_exist = "Scheduler already exists";
+char *msg_sched_name_big = "Scheduler name is too long";
+char *msg_unknown_sched = "Unknown Scheduler";
+char *msg_no_del_sched = "Can not delete Scheduler";
+char *msg_sched_priv_exists = "Another Sched object also has same value for its sched_priv directory";
+char *msg_sched_logs_exists = "Another Sched object also has same value for its sched_log directory";
+
 
 /*
  * The following table connects error numbers with text
@@ -554,6 +562,12 @@ struct pbs_err_to_txt pbs_err_to_txt[] = {
 	{PBSE_JOBSCRIPTMAXSIZE, &msg_jobscript_max_size},
 	{PBSE_BADJOBSCRIPTMAXSIZE,&msg_badjobscript_max_size},
 	{PBSE_WRONG_RESUME, &msg_wrong_resume},
+	{PBSE_SCHEDEXIST, &msg_sched_exist},
+	{PBSE_SCHED_NAME_BIG, &msg_sched_name_big},
+	{PBSE_UNKSCHED, &msg_unknown_sched},
+	{PBSE_SCHED_NO_DEL, &msg_no_del_sched},
+	{PBSE_SCHED_PRIV_EXIST, &msg_sched_priv_exists},
+	{PBSE_SCHED_LOG_EXIST, &msg_sched_logs_exists},
 	{ 0, (char **)0 }		/* MUST be the last entry */
 };
 

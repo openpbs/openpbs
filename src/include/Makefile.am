@@ -108,6 +108,7 @@ noinst_HEADERS = \
 	resv_node.h \
 	rpp.h \
 	sched_cmds.h \
+	pbs_sched.h \
 	server.h \
 	server_limits.h \
 	site_queue.h \

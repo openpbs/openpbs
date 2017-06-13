@@ -875,7 +875,7 @@
    </attributes>
    <attributes>	
    /* SRV_ATR_scheduler_iteration */	
-	<member_name><both>ATTR_schedit</both></member_name>		<!-- "scheduler_iteration" -->
+	<member_name><both>ATTR_schediteration</both></member_name>		<!-- "scheduler_iteration" -->
 	<member_at_decode>decode_l</member_at_decode>
 	<member_at_encode>encode_l</member_at_encode>
 	<member_at_set>set_l</member_at_set>

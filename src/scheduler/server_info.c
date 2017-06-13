@@ -139,6 +139,7 @@
 #include "simulate.h"
 #include "fairshare.h"
 #include "check.h"
+#include "pbs_sched.h"
 #ifdef NAS
 #include "site_code.h"
 #endif
@@ -221,7 +222,7 @@ query_server(status *pol, int pbs_sd)
 	}
 
 
-	if ((sched = pbs_statsched(pbs_sd, NULL, NULL)) == NULL) {
+	if ((sched = pbs_statsched(pbs_sd, PBS_DFLT_SCHED_NAME, NULL, NULL)) == NULL) {
 		errmsg = pbs_geterrmsg(pbs_sd);
 		if (errmsg == NULL)
 			errmsg = "";

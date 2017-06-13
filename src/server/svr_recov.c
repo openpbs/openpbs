@@ -72,6 +72,7 @@
 #include "pbs_nodes.h"
 #include "svrfunc.h"
 #include "log.h"
+#include "pbs_share.h"
 
 
 /* Global Data Items: */
@@ -89,6 +90,7 @@ extern char	*msg_svdbopen;
 extern char	*msg_svdbnosv;
 extern char	pbs_recov_filename[];
 
+extern pbs_sched *sched_alloc(char *sched_name);
 /**
  * @brief
  *		Recover server information and attributes from server database
@@ -597,12 +599,14 @@ sched_recov_fs(char *svrfile)
 #endif
 
 	/* read in server attributes */
-
-	if (recov_attr_fs(sdb, &scheduler, sched_attr_def, scheduler.sch_attr,
-		(int)SCHED_ATR_LAST, 0) != 0) {
-		log_err(errno, __func__, "error on recovering sched attr");
-		(void)close(sdb);
-		return (-1);
+	/* create default */
+	if((dflt_scheduler = sched_alloc(PBS_DFLT_SCHED_NAME))) {
+		if (recov_attr_fs(sdb, dflt_scheduler, sched_attr_def, dflt_scheduler->sch_attr,
+			(int)SCHED_ATR_LAST, 0) != 0) {
+			log_err(errno, __func__, "error on recovering sched attr");
+			(void)close(sdb);
+			return (-1);
+		}
 	}
 	(void)close(sdb);
 
@@ -635,7 +639,7 @@ sched_recov_fs(char *svrfile)
  */
 
 int
-sched_save_fs(struct sched *ps, int mode)
+sched_save_fs(struct pbs_sched *ps, int mode)
 {
 	int sdb;
 	int save_acl(attribute *, attribute_def *, char *, char *);

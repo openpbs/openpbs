@@ -2967,6 +2967,7 @@ static swig_module_info swig_module = {swig_types, 8, 0, 0, 0, 0};
 
 
 #include "pbs_ifl.h"
+#include <pbs_config.h>
 
 
 SWIGINTERN swig_type_info*
@@ -5765,7 +5766,7 @@ SWIGINTERN PyObject *_wrap_pbs_statsched(PyObject *SWIGUNUSEDPARM(self), PyObjec
     SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "pbs_statsched" "', argument " "3"" of type '" "char *""'");
   }
   arg3 = (char *)(buf3);
-  result = (struct batch_status *)pbs_statsched(arg1,arg2,arg3);
+  result = (struct batch_status *)pbs_statsched(arg1,PBS_DFLT_SCHED_NAME,arg2,arg3);
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_batch_status, 0 |  0 );
   if (alloc3 == SWIG_NEWOBJ) free((char*)buf3);
   return resultobj;
@@ -7269,7 +7270,7 @@ SWIG_init(void) {
   SWIG_Python_SetConstant(d, "ATTR_maxgroupressoft",SWIG_FromCharPtr("max_group_res_soft"));
   SWIG_Python_SetConstant(d, "ATTR_maxarraysize",SWIG_FromCharPtr("max_array_size"));
   SWIG_Python_SetConstant(d, "ATTR_PNames",SWIG_FromCharPtr("pnames"));
-  SWIG_Python_SetConstant(d, "ATTR_schedit",SWIG_FromCharPtr("scheduler_iteration"));
+  SWIG_Python_SetConstant(d, "ATTR_schediteration",SWIG_FromCharPtr("scheduler_iteration"));
   SWIG_Python_SetConstant(d, "ATTR_scheduling",SWIG_FromCharPtr("scheduling"));
   SWIG_Python_SetConstant(d, "ATTR_status",SWIG_FromCharPtr("server_state"));
   SWIG_Python_SetConstant(d, "ATTR_syscost",SWIG_FromCharPtr("system_cost"));

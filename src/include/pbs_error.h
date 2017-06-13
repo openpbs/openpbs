@@ -274,6 +274,12 @@ extern "C" {
 #define PBSE_ALPSRELERR	15209		/* ALPS failed to release the resv */
 
 #define PBSE_JOB_MOVED	15210		/* Job moved to another server */
+#define PBSE_SCHEDEXIST	15211		/* Scheduler already exists */
+#define PBSE_SCHED_NAME_BIG 15212	/* Scheduler name too long */
+#define PBSE_UNKSCHED 15213		/* sched not in the list */
+#define PBSE_SCHED_NO_DEL 15214		/* can not delete scheduler */
+#define PBSE_SCHED_PRIV_EXIST 15215	/* Scheduler sched_priv directory already exists */
+#define PBSE_SCHED_LOG_EXIST 15216	/* Scheduler sched_log directory already exists */
 
 
 /* the following structure is used to tie error number      */

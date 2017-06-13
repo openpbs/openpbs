@@ -57,7 +57,6 @@
 #define IND_FIRST       IND_CMD
 #define IND_LAST        IND_NAME
 
-
 /* Macros */
 
 /* This macro will determine if the char it is passed is a qmgr operator. */

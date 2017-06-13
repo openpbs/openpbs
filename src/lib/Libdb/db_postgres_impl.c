@@ -117,10 +117,10 @@ pg_db_fn_t db_fn_arr[PBS_DB_NUM_TYPES] =
 	{ /* PBS_DB_SCHED */
 		pg_db_insert_sched,
 		pg_db_update_sched,
-		NULL,
+		pg_db_delete_sched,
 		pg_db_load_sched,
-		NULL,
-		NULL
+		pg_db_find_sched,
+		pg_db_next_sched
 	},
 	{ /* PBS_DB_SUBJOB */
 		pg_db_insert_subjob,

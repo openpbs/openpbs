@@ -59,6 +59,8 @@
 #include "pbs_share.h"
 #include "pbs_error.h"
 
+extern struct server server;
+
 /* Functions */
 #ifdef PYTHON
 extern void _pbs_python_set_mode(int mode);

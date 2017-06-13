@@ -642,30 +642,6 @@ cred_name_okay(attribute *pattr, void *pobj, int actmode)
 
 /**
  * @brief
- * 		poke_scheduler - action routine for the server's "scheduling" attribute.
- *		Call the scheduler whenever the attribute is set (or reset) to true.
- *
- * @param[in]	pattr	-	pointer to attribute structure
- * @param[in]	pobj	-	not used
- * @param[in]	actmode	-	action mode
- *
- * @return	int
- * @retval	zero	: success
- */
-
-int
-poke_scheduler(attribute *pattr, void *pobj, int actmode)
-{
-	if (actmode == ATR_ACTION_ALTER) {
-		if (pattr->at_val.at_long)
-			set_scheduler_flag(SCH_SCHEDULE_CMD);
-	}
-	server.sv_attr[(int)SRV_ATR_State].at_flags |= ATR_VFLAG_MODCACHE;
-	return PBSE_NONE;
-}
-
-/**
- * @brief
  * 		set_reserve_retry_init - action routine for the server's
  * 		"reserve_retry_init" attribute.
  *

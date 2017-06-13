@@ -328,6 +328,36 @@ int	   actmode;
 }
 
 int
+action_sched_port(attribute *pattr, void *pobj, int actmode)
+{
+	return 0;
+}
+
+int
+action_sched_priv(attribute *pattr, void *pobj, int actmode)
+{
+	return 0;
+}
+
+int
+action_sched_log(attribute *pattr, void *pobj, int actmode)
+{
+	return 0;
+}
+
+int
+action_sched_iteration(attribute *pattr, void *pobj, int actmode)
+{
+	return 0;
+}
+
+int
+action_sched_user(attribute *pattr, void *pobj, int actmode)
+{
+	return 0;
+}
+
+int
 set_reserve_retry_init(pattr, pobj, actmode)
 attribute *pattr;
 void      *pobj;

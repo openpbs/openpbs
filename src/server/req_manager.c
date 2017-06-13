@@ -115,6 +115,8 @@
 #include "assert.h"
 #include "avltree.h"
 #include "sched_cmds.h"
+#include "pbs_sched.h"
+#include "pbs_share.h"
 
 
 #define PERM_MANAGER (ATR_DFLAG_MGWR | ATR_DFLAG_MGRD)
@@ -136,6 +138,10 @@ extern	void unset_job_history_enable(void);
 extern	void unset_job_history_duration(void);
 extern	void force_qsub_daemons_update(void);
 extern  void unset_node_fail_requeue(void);
+extern pbs_sched *sched_alloc(char *sched_name);
+extern pbs_sched *find_scheduler(char *sched_name);
+extern void sched_free(pbs_sched *psched);
+extern sched_delete(pbs_sched *psched);
 
 extern struct server server;
 extern pbs_list_head     svr_queues;
@@ -1059,7 +1065,7 @@ mgr_unset_attr(attribute *pattr, attribute_def *pdef, int limit, svrattrl *plist
 		else if (ptype == PARENT_TYPE_RESV)
 			attr_info.parent_id = ((resc_resv *) pobj)->ri_qs.ri_resvID;
 		else if (ptype == PARENT_TYPE_SCHED)
-			attr_info.parent_id = pbs_server_id;
+			attr_info.parent_id = ((pbs_sched *) pobj)->sc_name;
 
 		delete_attr_db(conn, &attr_info, plist);
 
@@ -1561,18 +1567,25 @@ mgr_sched_set(struct batch_request *preq)
 	int	  bad_attr = 0;
 	svrattrl *plist;
 	int	  rc;
+	pbs_sched *psched;
+
+	psched = find_scheduler(preq->rq_ind.rq_manager.rq_objname);
+	if (!psched) {
+		req_reject(PBSE_UNKSCHED, 0, preq);
+		return;
+	}
 
 	plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_manager.rq_attr);
-	rc = mgr_set_attr(scheduler.sch_attr, sched_attr_def,
+	rc = mgr_set_attr(psched->sch_attr, sched_attr_def,
 		SCHED_ATR_LAST, plist, preq->rq_perm,
-		&bad_attr, (void *)&scheduler, ATR_ACTION_ALTER);
+		&bad_attr, (void *)psched, ATR_ACTION_ALTER);
 	if (rc != 0)
 		reply_badattr(rc, bad_attr, plist, preq);
 	else {
 
 		/* save the attributes to disk */
-		(void)sched_save_db(&scheduler, SVR_SAVE_FULL);
-
+		(void)sched_save_db(psched, SVR_SAVE_FULL);
+		set_sched_default(psched);
 		(void)sprintf(log_buffer, msg_manager, msg_man_set,
 			preq->rq_user, preq->rq_host);
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SCHED, LOG_INFO,
@@ -1598,29 +1611,28 @@ mgr_sched_unset(struct batch_request *preq)
 	int	  bad_attr = 0;
 	svrattrl *plist;
 	int	  rc;
-
+	pbs_sched *psched = find_scheduler(preq->rq_ind.rq_manager.rq_objname);
+	if (!psched) {
+		req_reject(PBSE_UNKSCHED, 0, preq);
+		return;
+	}
 	plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_manager.rq_attr);
 
-	rc = mgr_unset_attr(scheduler.sch_attr, sched_attr_def, SCHED_ATR_LAST, plist,
-		preq->rq_perm, &bad_attr, (void *)&scheduler, PARENT_TYPE_SCHED, INDIRECT_RES_CHECK);
+	rc = mgr_unset_attr(psched->sch_attr, sched_attr_def, SCHED_ATR_LAST, plist,
+		preq->rq_perm, &bad_attr, (void *)psched, PARENT_TYPE_SCHED, INDIRECT_RES_CHECK);
 	if (rc != 0)
 		reply_badattr(rc, bad_attr, plist, preq);
 	else {
 
 		/* save the attributes to disk */
-		(void)sched_save_db(&scheduler, SVR_SAVE_FULL);
-
+		(void)sched_save_db(psched, SVR_SAVE_FULL);
+		set_sched_default(psched);
 		(void)sprintf(log_buffer, msg_manager, msg_man_uns,
 			preq->rq_user, preq->rq_host);
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SCHED, LOG_INFO,
 			msg_daemonname, log_buffer);
 		mgr_log_attr(msg_man_uns, plist, PBS_EVENTCLASS_SCHED, msg_daemonname, NULL);
 		reply_ack(preq);
-	}
-	if ((scheduler.sch_attr[(int)SCHED_ATR_sched_cycle_len].at_flags & ATR_VFLAG_SET) == 0) {
-		/* unset, reset to default of 20 minutes */
-		scheduler.sch_attr[(int)SCHED_ATR_sched_cycle_len].at_val.at_long = PBS_SCHED_CYCLE_LEN_DEFAULT;
-		scheduler.sch_attr[(int)SCHED_ATR_sched_cycle_len].at_flags = ATR_VFLAG_DEFLT|ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
 	}
 }
 
@@ -3109,6 +3121,55 @@ check_sister_vnodes_for_delete(mom_svrinfo_t *psvrmom)
 	return (ct);
 }
 
+/**
+ *  @brief delete a scheduler object
+ *
+ *  @param[in] preq - Pointer to a batch request structure
+ *
+ */
+static void
+mgr_sched_delete(struct batch_request *preq)
+{
+	pbs_sched *psched;
+	pbs_sched *tmpsched;
+
+	if ((*preq->rq_ind.rq_manager.rq_objname == '\0')
+			|| (*preq->rq_ind.rq_manager.rq_objname == '@')) {
+		/* Delete all except default */
+		psched = (pbs_sched *) GET_NEXT(svr_allscheds);
+		while (psched != (pbs_sched *) 0) {
+			tmpsched = psched;
+			psched = (pbs_sched *) GET_NEXT(psched->sc_link);
+			if (tmpsched != dflt_scheduler) {
+				if (sched_delete(tmpsched) == PBSE_OBJBUSY) {
+					snprintf(log_buffer, sizeof(log_buffer),
+							"Scheduler %s is busy", tmpsched->sc_name);
+					log_err(PBSE_OBJBUSY, __func__, log_buffer);
+				}
+			}
+		}
+	} else {
+		psched = find_scheduler(preq->rq_ind.rq_manager.rq_objname);
+		if (!psched) {
+			req_reject(PBSE_UNKSCHED, 0, preq);
+			return;
+		} else if (psched == dflt_scheduler) {
+			req_reject(PBSE_SCHED_NO_DEL, 0, preq);
+			return;
+		}
+
+		if (sched_delete(psched) == PBSE_OBJBUSY) {
+			snprintf(log_buffer, sizeof(log_buffer),
+					"Scheduler %s is busy", psched->sc_name);
+			log_err(PBSE_OBJBUSY, __func__, log_buffer);
+			(void) reply_text(preq, PBSE_OBJBUSY, preq->rq_ind.rq_manager.rq_objname);
+			return;
+		}
+	}
+	reply_ack(preq); /*request completely successful*/
+	return;
+}
+
 /*
  * mgr_node_delete - mark a node (or all nodes) in the server's node list
  *                   as being "deleted".  It (they) will no longer get
@@ -3360,6 +3421,58 @@ setup_ping(int delay)
 		delete_task(global_ping_task);
 
 	global_ping_task = set_task(WORK_Timed, time_now + delay, ping_nodes, NULL);
+}
+
+/**
+ * @brief
+ *		mgr_sched_create - process request to create a sched
+ *
+ *		Creates sched
+ *
+ *  @param[in]	preq	- Pointer to a batch request structure
+ */
+static void
+mgr_sched_create(struct batch_request *preq)
+{
+	int bad;
+	char *badattr;
+	svrattrl *plist;
+	pbs_sched *psched;
+	int rc;
+
+	if (strlen(preq->rq_ind.rq_manager.rq_objname) > PBS_MAXSCHEDNAME) {
+		req_reject(PBSE_SCHED_NAME_BIG, 0, preq);
+		return;
+	}
+	if (find_scheduler(preq->rq_ind.rq_manager.rq_objname)) {
+		req_reject(PBSE_SCHEDEXIST, 0, preq);
+		return;
+	}
+
+	psched = sched_alloc(preq->rq_ind.rq_manager.rq_objname);
+	if (!psched)
+		req_reject(PBSE_SYSTEM, 0, preq);
+
+	/* set the scheduler attributes */
+
+	plist = (svrattrl *) GET_NEXT(preq->rq_ind.rq_manager.rq_attr);
+	rc = mgr_set_attr(psched->sch_attr, sched_attr_def, SCHED_ATR_LAST, plist,
+			preq->rq_perm, &bad, (void *) psched, ATR_ACTION_NEW);
+	if (rc != 0) {
+		reply_badattr(rc, bad, plist, preq);
+		sched_free(psched);
+		psched = NULL;
+	} else {
+
+		/* save the attributes to disk */
+		(void) sched_save_db(psched, SVR_SAVE_FULL);
+		set_sched_default(psched);
+		snprintf(log_buffer, LOG_BUF_SIZE, msg_manager, msg_man_set,
+				preq->rq_user, preq->rq_host);
+		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SCHED, LOG_INFO, msg_daemonname, log_buffer);
+		mgr_log_attr(msg_man_set, plist, PBS_EVENTCLASS_SCHED, msg_daemonname, NULL);
+		reply_ack(preq);
+	}
 }
 
 /**
@@ -4420,6 +4533,9 @@ mgr_resource_unset(struct batch_request *preq)
 void
 req_manager(struct batch_request *preq)
 {
+	int obj_name_len;
+
+	obj_name_len = strlen(preq->rq_ind.rq_manager.rq_objname);
 
 	switch (preq->rq_ind.rq_manager.rq_cmd) {
 
@@ -4471,6 +4587,18 @@ req_manager(struct batch_request *preq)
 						mgr_resource_delete(preq);
 					break;
 
+				case MGR_OBJ_SCHED:
+					if (preq->rq_ind.rq_manager.rq_cmd == MGR_CMD_CREATE) {
+						if (obj_name_len == 0) {
+							strncpy(preq->rq_ind.rq_manager.rq_objname,
+									PBS_DFLT_SCHED_NAME, PBS_MAXSVRJOBID);
+							preq->rq_ind.rq_manager.rq_objname[PBS_MAXSVRJOBID] = '\0';
+						}
+						mgr_sched_create(preq);
+					}
+					else
+						mgr_sched_delete(preq);
+					break;
 
 				default:
 					req_reject(PBSE_IVALREQ, 0, preq);
@@ -4494,6 +4622,11 @@ req_manager(struct batch_request *preq)
 					mgr_server_set(preq);
 					break;
 				case MGR_OBJ_SCHED:
+					if (obj_name_len == 0) {
+						strncpy(preq->rq_ind.rq_manager.rq_objname,
+								PBS_DFLT_SCHED_NAME, PBS_MAXSVRJOBID);
+						preq->rq_ind.rq_manager.rq_objname[PBS_MAXSVRJOBID] = '\0';
+					}
 					mgr_sched_set(preq);
 					break;
 				case MGR_OBJ_QUEUE:
@@ -4558,6 +4691,11 @@ req_manager(struct batch_request *preq)
 					mgr_hook_unset(preq);
 					break;
 				case MGR_OBJ_SCHED:
+					if (obj_name_len == 0) {
+						strncpy(preq->rq_ind.rq_manager.rq_objname,
+								PBS_DFLT_SCHED_NAME, PBS_MAXSVRJOBID);
+						preq->rq_ind.rq_manager.rq_objname[PBS_MAXSVRJOBID] = '\0';
+					}
 					mgr_sched_unset(preq);
 					break;
 				case MGR_OBJ_RSC:

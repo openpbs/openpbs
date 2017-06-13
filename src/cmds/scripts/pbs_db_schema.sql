@@ -53,7 +53,7 @@ CREATE TABLE pbs.info (
     pbs_schema_version TEXT 		NOT NULL
 );
 
-INSERT INTO pbs.info values('1.2.0'); /* schema version */
+INSERT INTO pbs.info values('1.3.0'); /* schema version */
 
 /*
  * Sequence pbs.svr_id_seq is used to create svr_ids for new server entries.

@@ -250,7 +250,151 @@
         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
         </member_verify_function>
    </attributes>
-   <tail>
+   <attributes> /* sched_port */
+        <member_name><both>ATTR_sched_port</both></member_name>         <!-- "Port" - port to which scheduler binds to --> 
+        <member_at_decode>decode_l</member_at_decode>
+        <member_at_encode>encode_l</member_at_encode>
+        <member_at_set>set_l</member_at_set>
+        <member_at_comp>comp_l</member_at_comp>
+        <member_at_free>free_null</member_at_free>
+        <member_at_action>action_sched_port</member_at_action>
+        <member_at_flags><both>MGR_ONLY_SET</both></member_at_flags>
+        <member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
+        <member_at_parent>PARENT_TYPE_SCHED</member_at_parent>
+        <member_verify_function>
+        <ECL>verify_datatype_long</ECL>
+        <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+        </member_verify_function>
+   </attributes>
+   <attributes>	/* partition */	
+	<member_name><both>ATTR_partition</both></member_name>		<!-- "partition" -->
+	<member_at_decode>decode_arst</member_at_decode>
+	<member_at_encode>encode_arst</member_at_encode>
+	<member_at_set>set_arst</member_at_set>
+	<member_at_comp>comp_arst</member_at_comp>
+	<member_at_free>free_arst</member_at_free>
+	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_flags><both>MGR_ONLY_SET</both></member_at_flags>
+	<member_at_type><both>ATR_TYPE_ARST</both></member_at_type>
+	<member_at_parent>PARENT_TYPE_SCHED</member_at_parent>
+	<member_verify_function>
+	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+	</member_verify_function>
+   </attributes>
+   <attributes>	/* sched_priv */	
+	<member_name><both>ATTR_sched_priv</both></member_name>		<!-- "sched_priv" -->
+	<member_at_decode>decode_str</member_at_decode>
+	<member_at_encode>encode_str</member_at_encode>
+	<member_at_set>set_str</member_at_set>
+	<member_at_comp>comp_str</member_at_comp>
+	<member_at_free>free_str</member_at_free>
+	<member_at_action>action_sched_priv</member_at_action>
+	<member_at_flags><both>MGR_ONLY_SET</both></member_at_flags>
+	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
+	<member_at_parent>PARENT_TYPE_SCHED</member_at_parent>
+	<member_verify_function>
+	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+	</member_verify_function>
+   </attributes>
+   <attributes>	/* sched_log */	
+	<member_name><both>ATTR_sched_log</both></member_name>		<!-- "sched_log" -->
+	<member_at_decode>decode_str</member_at_decode>
+	<member_at_encode>encode_str</member_at_encode>
+	<member_at_set>set_str</member_at_set>
+	<member_at_comp>comp_str</member_at_comp>
+	<member_at_free>free_str</member_at_free>
+	<member_at_action>action_sched_log</member_at_action>
+	<member_at_flags><both>MGR_ONLY_SET</both></member_at_flags>
+	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
+	<member_at_parent>PARENT_TYPE_SCHED</member_at_parent>
+	<member_verify_function>
+	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+	</member_verify_function>
+   </attributes>
+   <attributes> /* scheduling */
+        <member_name><both>ATTR_scheduling</both></member_name>
+        <member_at_decode>decode_b</member_at_decode>
+        <member_at_encode>encode_b</member_at_encode>
+        <member_at_set>set_b</member_at_set>
+        <member_at_comp>comp_b</member_at_comp>
+        <member_at_free>free_null</member_at_free>
+        <member_at_action>poke_scheduler</member_at_action>
+        <member_at_flags><both>MGR_ONLY_SET</both></member_at_flags>
+        <member_at_type><both>ATR_TYPE_BOOL</both></member_at_type>
+        <member_at_parent>PARENT_TYPE_SCHED</member_at_parent>
+        <member_verify_function>
+        <ECL>verify_datatype_bool</ECL>
+        <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+        </member_verify_function>
+   </attributes>
+   <attributes> /* schedit */
+        <member_name><both>ATTR_schediteration</both></member_name>            <!-- "scheduler_iteration" -->
+        <member_at_decode>decode_l</member_at_decode>
+        <member_at_encode>encode_l</member_at_encode>
+        <member_at_set>set_l</member_at_set>
+        <member_at_comp>comp_l</member_at_comp>
+        <member_at_free>free_null</member_at_free>
+        <member_at_action>action_sched_iteration</member_at_action>
+        <member_at_flags><both>MGR_ONLY_SET</both></member_at_flags>
+        <member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
+        <member_at_parent>PARENT_TYPE_SCHED</member_at_parent>
+        <member_verify_function>
+        <ECL>verify_datatype_long</ECL>
+        <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+        </member_verify_function>
+   </attributes>
+   <attributes>	/* sched_user */	
+	<member_name><both>ATTR_sched_user</both></member_name>		<!-- "sched_user" -->
+	<member_at_decode>decode_str</member_at_decode>
+	<member_at_encode>encode_str</member_at_encode>
+	<member_at_set>set_str</member_at_set>
+	<member_at_comp>comp_str</member_at_comp>
+	<member_at_free>free_str</member_at_free>
+	<member_at_action>action_sched_user</member_at_action>
+	<member_at_flags><both>MGR_ONLY_SET</both></member_at_flags>
+	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
+	<member_at_parent>PARENT_TYPE_SCHED</member_at_parent>
+	<member_verify_function>
+	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+	</member_verify_function>
+   </attributes>
+   <attributes> /* comment */
+        <member_name><both>ATTR_comment</both></member_name>                   <!-- "comment" --> 
+        <member_at_decode>decode_str</member_at_decode>
+        <member_at_encode>encode_str</member_at_encode>
+        <member_at_set>set_str</member_at_set>
+        <member_at_comp>comp_str</member_at_comp>
+        <member_at_free>free_str</member_at_free>
+        <member_at_action>NULL_FUNC</member_at_action>
+        <member_at_flags><both>MGR_ONLY_SET</both></member_at_flags>
+        <member_at_type><both>ATR_TYPE_STR</both></member_at_type>
+        <member_at_parent>PARENT_TYPE_SCHED</member_at_parent>
+        <member_verify_function>
+        <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+        <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+        </member_verify_function>
+    </attributes>
+    <attributes> /* state */
+	<member_name><both>ATTR_sched_state</both></member_name>	<!-- "state" --> 
+	<member_at_decode>decode_str</member_at_decode>
+	<member_at_encode>encode_str</member_at_encode>
+	<member_at_set>set_str</member_at_set>
+	<member_at_comp>comp_str</member_at_comp>
+	<member_at_free>free_str</member_at_free>
+	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_flags><both>READ_ONLY</both></member_at_flags>
+	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
+	<member_at_parent>PARENT_TYPE_SCHED</member_at_parent>
+	<member_verify_function>
+	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+	</member_verify_function>
+   </attributes>
+    <tail>
      <SVR>
          #include "site_sched_attr_def.h"
 	};

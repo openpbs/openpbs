@@ -317,8 +317,8 @@ req_runjob(struct batch_request *preq)
 		int index = find_attr(sched_attr_def, ATTR_throughput_mode, SCHED_ATR_LAST);
 		/* do not blacklist altered/moved jobs when throughput_mode is enabled */
 		if ((index == -1) ||
-			((scheduler.sch_attr[index].at_flags & ATR_VFLAG_SET) &&
-			 (scheduler.sch_attr[index].at_val.at_long == 0))) {
+			((dflt_scheduler->sch_attr[index].at_flags & ATR_VFLAG_SET) &&
+			 (dflt_scheduler->sch_attr[index].at_val.at_long == 0))) {
 			req_reject(PBSE_NORUNALTEREDJOB, 0, preq);
 			set_scheduler_flag(SCH_SCHEDULE_NEW);
 			return;

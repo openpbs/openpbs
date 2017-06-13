@@ -121,6 +121,7 @@
 #include "pbs_python.h"
 #include "hook.h"
 #include "hook_func.h"
+#include "pbs_share.h"
 
 #ifndef SIGKILL
 /* there is some weid stuff in gcc include files signal.h & sys/params.h */
@@ -235,6 +236,7 @@ static int   attach_queue_to_reservation(resc_resv *);
 static void  call_log_license(struct work_task *);
 extern int create_resreleased(job *pjob);
 
+extern pbs_sched *sched_alloc(char *sched_name);
 /* private data */
 
 #define CHANGE_STATE 1
@@ -314,12 +316,6 @@ init_server_attrs()
 	attr_jobscript_max_size.at_type  |= ATR_TYPE_SIZE;  /* get_bytes_from_attr() is checking for at_type */
 	set_size(&attr_jobscript_max_size,&attrib,SET);
 
-	scheduler.sch_attr[(int)SCHED_ATR_sched_cycle_len].at_val.at_long =
-		PBS_SCHED_CYCLE_LEN_DEFAULT; /* 1200 seconds */
-	scheduler.sch_attr[(int)SCHED_ATR_sched_cycle_len].at_flags =
-		ATR_VFLAG_DEFLT|ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
-
-	/* must be initialized before call to svr_recov() which may call  */
 	/* an update_to FLicenses()  and pbs_float_lic must already exist */
 	pbs_float_lic = &server.sv_attr[(int)SVR_ATR_FLicenses];
 
@@ -392,6 +388,7 @@ pbsd_init(int type)
 	int	nslneed;
 	char *buf = NULL;
 	int buf_len = 0;
+	pbs_sched *psched;
 
 	char msg_bad_socket_failover[] = "invalid failover configuration - "
 		"socket-licensed nodes but no valid "
@@ -702,9 +699,22 @@ pbsd_init(int type)
 		}
 
 		/* now do sched db */
-
-		if ((rc = sched_recov_db()) == -1) {
+		rc = sched_recov_db();
+		if (rc == -1) {
 			log_err(rc, "pbsd_init", "unable to recover scheddb");
+		} else if(rc == -2) {
+			/* No Schedulers found in DB */
+			/* Create and save default to DB*/
+			dflt_scheduler = sched_alloc(PBS_DFLT_SCHED_NAME);
+			(void)sched_save_db(dflt_scheduler, SVR_SAVE_NEW);
+			set_sched_default(dflt_scheduler);
+		} else {
+			/* set default values for all schedulers */
+			psched = (pbs_sched *) GET_NEXT(svr_allscheds);
+			while (psched != (pbs_sched *) 0) {
+				set_sched_default(psched);
+				psched = (pbs_sched *) GET_NEXT(psched->sc_link);
+			}
 		}
 	} else {	/* init type is "create" */
 		if (rc == 0) {		/* server was loaded */

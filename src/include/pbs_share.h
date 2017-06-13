@@ -88,3 +88,6 @@
  * converted into kilobytes with this constant
  */
 #define SIZEOF_WORD 8
+
+/* Default scheduler name */
+#define PBS_DFLT_SCHED_NAME "default"

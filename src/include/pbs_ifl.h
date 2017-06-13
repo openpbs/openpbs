@@ -261,7 +261,7 @@ extern "C" {
 #define ATTR_maxgroupressoft "max_group_res_soft"
 #define ATTR_maxarraysize "max_array_size"
 #define ATTR_PNames	"pnames"
-#define ATTR_schedit	"scheduler_iteration"
+#define ATTR_schediteration	"scheduler_iteration"
 #define ATTR_scheduling	"scheduling"
 #define ATTR_status	"server_state"
 #define ATTR_syscost	"system_cost"
@@ -312,7 +312,12 @@ extern "C" {
 #define ATTR_job_sort_formula_threshold "job_sort_formula_threshold"
 #define ATTR_throughput_mode "throughput_mode"
 #define ATTR_opt_backfill_fuzzy "opt_backfill_fuzzy"
-
+#define ATTR_sched_port "sched_port"
+#define ATTR_partition "partition"
+#define ATTR_sched_priv "sched_priv"
+#define ATTR_sched_log "sched_log"
+#define ATTR_sched_user "sched_user"
+#define ATTR_sched_state  "state"
 
 /* additional node "attributes" names */
 
@@ -406,7 +411,7 @@ enum mgr_obj {
 #ifndef MAXNAMLEN
 #define MAXNAMLEN		255
 #endif
-
+#define PBS_MAXSCHEDNAME 	15
 #define PBS_MAXUSER		256	/* max user name length */
 #define PBS_MAXPWLEN		256	/* max password length */
 #define PBS_MAXGRPN		256	/* max group name length */
@@ -663,7 +668,7 @@ extern struct batch_status *pbs_statque(int, char *, struct attrl *, char *);
 
 extern struct batch_status *pbs_statserver(int, struct attrl *, char *);
 
-extern struct batch_status *pbs_statsched(int, struct attrl *, char *);
+extern struct batch_status *pbs_statsched(int, char *, struct attrl *, char *);
 
 extern struct batch_status *pbs_stathost(int, char *, struct attrl *, char *);
 
