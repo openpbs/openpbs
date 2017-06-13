@@ -36,7 +36,7 @@
 #
 
 AC_PREREQ([2.63])
-AC_INIT([pbspro], [14.0.1], [pbssupport@altair.com])
+AC_INIT([pbspro], [17.1.0], [pbssupport@altair.com])
 AC_CONFIG_HEADERS([src/include/pbs_config.h])
 AC_CONFIG_SRCDIR([src/cmds/qmgr.c])
 AC_CONFIG_AUX_DIR([buildutils])
@@ -321,6 +321,8 @@ AC_CONFIG_FILES([
 	doc/Makefile
 	test/Makefile
 	test/fw/Makefile
+	test/fw/setup.py
+	test/fw/ptl/__init__.py
 	src/Makefile
 	src/cmds/Makefile
 	src/cmds/mpiexec

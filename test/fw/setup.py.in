@@ -52,12 +52,12 @@ def get_scripts():
 
 setup(
     name='PbsTestLab',
-    version='1.0.0',
+    version='@PBS_VERSION@',
     author='Vincent Matossian',
-    author_email='pbspro@groups.io',
+    author_email='pbspro@discoursemail.com',
     packages=find_packages(),
     scripts=get_scripts(),
-    url='http://www.pbspro.com',
+    url='http://pbspro.org/',
     license='AGPLv3 with exceptions',
     description='PBS Pro Testing and Benchmarking Framework',
     long_description=open(os.path.abspath('./doc/intro.rst')).read(),
