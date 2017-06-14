@@ -240,19 +240,19 @@ upgrade_pbs_database() {
 	fi
 	
 	sys_pgsql_ver=$(echo `${PGSQL_DIR}/bin/psql -V` | awk '{print $NF}' | cut -d '.' -f 1,2)
-	ver=`cat ${data_dir}/PG_VERSION`
+	old_pgsql_ver=`cat ${data_dir}/PG_VERSION`
 
-	result=1
-	[[ $ver -ge $sys_pgsql_ver ]] && result=0
-	if [ ${result} -eq 1 ]; then
+	[ ${sys_pgsql_ver%.*} -eq ${old_pgsql_ver%.*} ] && [ ${sys_pgsql_ver#*.} \> ${old_pgsql_ver#*.} ] || [ ${sys_pgsql_ver%.*} -gt ${old_pgsql_ver%.*} ];
+	result=$?
+	if [ ${result} -eq 0 ]; then
 		#Start upgrade process of datastore
 		upgrade_db
 		return $?
-	elif [ "${ver}" = "${sys_pgsql_ver}" ]; then
+	elif [ "${old_pgsql_ver}" = "${sys_pgsql_ver}" ]; then
 		return 0
 	fi
 
-	echo "Upgrade from version ${ver} unsupported"
+	echo "Upgrade from version ${old_pgsql_ver} unsupported"
 	return 1
 }
 
