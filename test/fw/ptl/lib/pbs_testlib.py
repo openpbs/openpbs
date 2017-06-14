@@ -4414,6 +4414,21 @@ class PBSService(PBSObject):
             self.pid = None
         return self.pid
 
+    def _update_pid(self, inst):
+        """
+        update pid of given inst
+
+        :param inst: inst to update pid
+        :type inst: object
+        """
+        for i in range(30):
+            live_pids = self._all_instance_pids(inst)
+            inst.pid = self._get_pid(inst)
+            if live_pids is not None and inst.pid in live_pids:
+                return
+            time.sleep(1)
+        inst.pid = None
+
     def _start(self, inst=None, args=None, cmd_map=None, launcher=None):
         """
         Generic service startup
@@ -4494,22 +4509,8 @@ class PBSService(PBSObject):
         ret_msg = True
         if ret['err']:
             ret_msg = ret['err']
-
-        self.pid = self._get_pid(inst)
-        # get_pid gets information from a lock file that may not have been
-        # removed when the daemon stopped so we verify that the PID is
-        # actually alive in the list of pids returned by ps
-        live_pids = self._all_instance_pids(inst)
-        i = 0
-        while ((self.pid is None) or
-               (live_pids is None or self.pid not in live_pids)) and (i < 30):
-            time.sleep(1)
-            i += 1
-            live_pids = self._all_instance_pids(inst)
-            self.pid = self._get_pid(inst)
-            if live_pids is not None and self.pid in live_pids:
-                return ret_msg
-        if i == 30:
+        self._update_pid(inst)
+        if inst.pid is None:
             raise PbsServiceError(rv=False, rc=-1, msg="Could not find PID")
         return ret_msg
 
@@ -4967,6 +4968,7 @@ class Comm(PBSService):
         else:
             try:
                 rv = self.pi.start_comm()
+                self._update_pid(self)
             except PbsInitServicesError as e:
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
             return rv
@@ -4985,6 +4987,7 @@ class Comm(PBSService):
         else:
             try:
                 self.pi.stop_comm()
+                self.pid = None
             except PbsInitServicesError as e:
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
             return True
@@ -5432,6 +5435,7 @@ class Server(PBSService):
         else:
             try:
                 rv = self.pi.start_server()
+                self._update_pid(self)
             except PbsInitServicesError as e:
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
         if self.isUp():
@@ -5453,6 +5457,7 @@ class Server(PBSService):
         else:
             try:
                 self.pi.stop_server()
+                self.pid = None
             except PbsInitServicesError as e:
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg,
                                       post=self._disconnect, conn=self._conn,
@@ -10786,6 +10791,7 @@ class Scheduler(PBSService):
         else:
             try:
                 rv = self.pi.start_sched()
+                self._update_pid(self)
             except PbsInitServicesError as e:
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
             return rv
@@ -10804,6 +10810,7 @@ class Scheduler(PBSService):
         else:
             try:
                 self.pi.stop_sched()
+                self.pid = None
             except PbsInitServicesError as e:
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
             return True
@@ -12660,6 +12667,7 @@ class MoM(PBSService):
         else:
             try:
                 rv = self.pi.start_mom()
+                self._update_pid(self)
             except PbsInitServicesError as e:
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
             return rv
@@ -12678,6 +12686,7 @@ class MoM(PBSService):
         else:
             try:
                 self.pi.stop_mom()
+                self.pid = None
             except PbsInitServicesError as e:
                 raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
             return True
