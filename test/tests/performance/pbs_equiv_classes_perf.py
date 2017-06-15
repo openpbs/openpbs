@@ -42,17 +42,43 @@ from tests.performance import *
 
 
 class TestJobEquivClassPerf(TestPerformance):
+
     """
     Test job equivalence class performance
     """
 
     def setUp(self):
         TestPerformance.setUp(self)
+        self.scheduler.set_sched_config({'log_filter': 2048})
+
+        # Create vnodes
         a = {'resources_available.ncpus': 1, 'resources_available.mem': '8gb'}
         self.server.create_vnodes('vnode', a, 10000, self.mom,
                                   sharednode=False)
 
-    @timeout(1000)
+    def run_n_get_cycle_time(self):
+        """
+        Run a scheduling cycle and calculate its duration
+        """
+
+        t = int(time.time())
+
+        # Run only one cycle
+        self.server.manager(MGR_CMD_SET, MGR_OBJ_SERVER,
+                            {'scheduling': 'True'})
+        self.server.manager(MGR_CMD_SET, MGR_OBJ_SERVER,
+                            {'scheduling': 'False'})
+
+        # Wait for cycle to finish
+        self.scheduler.log_match("Leaving Scheduling Cycle", starttime=t,
+                                 max_attempts=300)
+
+        c = self.scheduler.cycles(lastN=1)[0]
+        cycle_time = c.end - c.start
+
+        return cycle_time
+
+    @timeout(2000)
     def test_basic(self):
         """
         Test basic functionality of job equivalence classes.
@@ -76,21 +102,7 @@ class TestJobEquivClassPerf(TestPerformance):
             jid = self.server.submit(J)
             jids += [jid]
 
-        t = time.time()
-
-        # run only one cycle
-        self.server.manager(MGR_CMD_SET, MGR_OBJ_SERVER,
-                            {'scheduling': 'True'})
-        self.server.manager(MGR_CMD_SET, MGR_OBJ_SERVER,
-                            {'scheduling': 'False'})
-
-        # wait for cycle to finish
-        m = self.scheduler.log_match("Leaving Scheduling Cycle", starttime=t,
-                                     max_attempts=120)
-        self.assertTrue(m)
-
-        c = self.scheduler.cycles(lastN=1)[0]
-        cycle1_time = c.end - c.start
+        cycle1_time = self.run_n_get_cycle_time()
 
         # Make all jobs into one equivalence class
         a = {'Resource_List.select': str(num_jobs) + ":ncpus=2",
@@ -98,22 +110,159 @@ class TestJobEquivClassPerf(TestPerformance):
         for n in range(num_jobs):
             self.server.alterjob(jids[n], a)
 
-        t = time.time()
-
-        # run only one cycle
-        self.server.manager(MGR_CMD_SET, MGR_OBJ_SERVER,
-                            {'scheduling': 'True'})
-        self.server.manager(MGR_CMD_SET, MGR_OBJ_SERVER,
-                            {'scheduling': 'False'})
-
-        # wait for cycle to finish
-        m = self.scheduler.log_match("Leaving Scheduling Cycle", starttime=t,
-                                     max_attempts=120)
-        self.assertTrue(m)
-
-        c = self.scheduler.cycles(lastN=1)[0]
-        cycle2_time = c.end - c.start
+        cycle2_time = self.run_n_get_cycle_time()
 
         self.logger.info('Cycle 1: %d Cycle 2: %d Cycle time difference: %d' %
                          (cycle1_time, cycle2_time, cycle1_time - cycle2_time))
-        self.assertTrue(cycle1_time > cycle2_time)
+        self.assertGreaterEqual(cycle1_time, cycle2_time)
+
+    @timeout(10000)
+    def test_server_queue_limit(self):
+        """
+        Test the performance with hard and soft limits
+        on resources
+        """
+
+        # Create workq2
+        self.server.manager(MGR_CMD_CREATE, QUEUE,
+                            {'queue_type': 'e', 'started': 'True',
+                             'enabled': 'True'}, id='workq2')
+
+        # Set queue limit
+        a = {
+            'max_run': '[o:PBS_ALL=100],[g:PBS_GENERIC=20],\
+                       [u:PBS_GENERIC=20],[g:tstgrp01 = 8],[u:pbsuser1=10]'}
+        self.server.manager(MGR_CMD_SET, QUEUE,
+                            a, id='workq2')
+
+        a = {'max_run_res.ncpus':
+             '[o:PBS_ALL=100],[g:PBS_GENERIC=50],\
+             [u:PBS_GENERIC=20],[g:tstgrp01=13],[u:pbsuser1=12]'}
+        self.server.manager(MGR_CMD_SET, QUEUE, a, id='workq2')
+
+        a = {'max_run_res_soft.ncpus':
+             '[o:PBS_ALL=100],[g:PBS_GENERIC=30],\
+             [u:PBS_GENERIC=10],[g:tstgrp01=10],[u:pbsuser1=10]'}
+        self.server.manager(MGR_CMD_SET, QUEUE, a, id='workq2')
+
+        # Set server limits
+        a = {
+            'max_run': '[o:PBS_ALL=100],[g:PBS_GENERIC=50],\
+            [u:PBS_GENERIC=20],[g:tstgrp01=13],[u:pbsuser1=13]'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        a = {'max_run_soft':
+             '[o:PBS_ALL=50],[g:PBS_GENERIC=25],[u:PBS_GENERIC=10],\
+             [g:tstgrp01=10],[u:pbsuser1=10]'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        # Turn scheduling off
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'false'})
+
+        # Submit jobs as pbsuser1 from group tstgrp01 in workq2
+        for x in range(100):
+            a = {'Resource_List.select': '1:ncpus=2',
+                 'Resource_List.walltime': int(x),
+                 'group_list': TSTGRP1, ATTR_q: 'workq2'}
+            J = Job(TEST_USER1, attrs=a)
+            for y in range(100):
+                self.server.submit(J)
+
+        # Get time for ~100 classes
+        cyc1 = self.run_n_get_cycle_time()
+
+        # Submit jobs as pbsuser1 from group tstgrp02 in workq2
+        for x in range(100):
+            a = {'Resource_List.select': '1:ncpus=2',
+                 'Resource_List.walltime': int(x),
+                 'group_list': TSTGRP2, ATTR_q: 'workq2'}
+            J = Job(TEST_USER1, attrs=a)
+            for y in range(100):
+                self.server.submit(J)
+
+        # Get time for ~200 classes
+        cyc2 = self.run_n_get_cycle_time()
+
+        # Submit jobs as pbsuser2 from tstgrp01 in workq2
+        for x in range(100):
+            a = {'Resource_List.select': '1:ncpus=2',
+                 'Resource_List.walltime': int(x),
+                 'group_list': TSTGRP1, ATTR_q: 'workq2'}
+            J = Job(TEST_USER2, attrs=a)
+            for y in range(100):
+                self.server.submit(J)
+
+        # Get time for ~300 classes
+        cyc3 = self.run_n_get_cycle_time()
+
+        # Submit jobs as pbsuser2 from tstgrp03 in workq2
+        for x in range(100):
+            a = {'Resource_List.select': '1:ncpus=2',
+                 'Resource_List.walltime': int(x),
+                 'group_list': TSTGRP3, ATTR_q: 'workq2'}
+            J = Job(TEST_USER2, attrs=a)
+            for y in range(100):
+                self.server.submit(J)
+
+        # Get time for ~400 classes
+        cyc4 = self.run_n_get_cycle_time()
+
+        # Submit jobs as pbsuser1 from tstgrp01 in workq
+        for x in range(100):
+            a = {'Resource_List.select': '1:ncpus=2',
+                 'Resource_List.walltime': int(x),
+                 'group_list': TSTGRP1, ATTR_q: 'workq'}
+            J = Job(TEST_USER1, attrs=a)
+            for y in range(100):
+                self.server.submit(J)
+
+        # Get time for ~500 classes
+        cyc5 = self.run_n_get_cycle_time()
+
+        # Submit jobs as pbsuser1 from tstgrp02 in workq
+        for x in range(100):
+            a = {'Resource_List.select': '1:ncpus=2',
+                 'Resource_List.walltime': int(x),
+                 'group_list': TSTGRP2, ATTR_q: 'workq'}
+            J = Job(TEST_USER1, attrs=a)
+            for y in range(100):
+                self.server.submit(J)
+
+        # Get time for 60k jobs for ~600 classes
+        cyc6 = self.run_n_get_cycle_time()
+
+        # Submit jobs as pbsuser2 from tstgrp01 in workq
+        for x in range(100):
+            a = {'Resource_List.select': '1:ncpus=2',
+                 'Resource_List.walltime': int(x),
+                 'group_list': TSTGRP1, ATTR_q: 'workq'}
+            J = Job(TEST_USER2, attrs=a)
+            for y in range(100):
+                self.server.submit(J)
+
+        # Get time for 70k jobs for ~700 classes
+        cyc7 = self.run_n_get_cycle_time()
+
+        # Submit jobs as pbsuser2 from tstgrp03 in workq
+        for x in range(100):
+            a = {'Resource_List.select': '1:ncpus=2',
+                 'Resource_List.walltime': int(x),
+                 'group_list': TSTGRP3, ATTR_q: 'workq'}
+            J = Job(TEST_USER2, attrs=a)
+            for y in range(100):
+                self.server.submit(J)
+
+        # Get time for 80k jobs for ~800 classes
+        cyc8 = self.run_n_get_cycle_time()
+
+        # Print the time taken for all the classes and compare
+        # it against previous releases
+        self.logger.info("time taken for \n100 classes is %d"
+                         "\n200 classes is %d,"
+                         "\n300 classes is %d,"
+                         "\n400 classes is %d,"
+                         "\n500 classes is %d,"
+                         "\n600 classes is %d,"
+                         "\n700 classes is %d,"
+                         "\n800 classes is %d"
+                         % (cyc1, cyc2, cyc3, cyc4, cyc5, cyc6, cyc7, cyc8))
