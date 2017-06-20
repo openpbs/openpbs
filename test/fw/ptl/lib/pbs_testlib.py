@@ -5604,7 +5604,42 @@ class Server(PBSService):
         rc = None
 
         if isinstance(obj, Job):
-            if script is None and obj.script is not None:
+            if self.platform == 'cray' or self.platform == 'craysim':
+                m = False
+                vncompute = False
+                if 'Resource_List.select' in obj.attributes:
+                    select = obj.attributes['Resource_List.select']
+                    start = select.startswith('vntype=cray_compute')
+                    m = start or ':vntype=cray_compute' in select
+                if 'Resource_List.vntype' in obj.attributes:
+                    vn_type = obj.attributes['Resource_List.vntype']
+                    if vn_type == 'cray_compute':
+                        vncompute = True
+                if obj.script is not None:
+                    script = obj.script
+                elif m or vncompute:
+                    aprun_cmd = "aprun -B"
+                    executable = obj.attributes[ATTR_executable]
+                    start = executable.startswith('aprun ')
+                    aprun_exist = start or '/aprun' in executable
+                    if script:
+                        aprun_cmd += " " + script
+                    else:
+                        if aprun_exist:
+                            aprun_cmd = executable
+                        else:
+                            aprun_cmd += " " + executable
+                        arg_list = obj.attributes[ATTR_Arglist]
+                        aprun_cmd += " " + self.utils.convert_arglist(arg_list)
+                    usr_id = pwd.getpwnam(obj.username)[2]
+                    grp_id = pwd.getpwnam(obj.username)[3]
+                    (fd, fn) = self.du.mkstemp(hostname=None,
+                                               prefix='PtlPbsJobScript',
+                                               uid=usr_id, gid=grp_id,
+                                               mode=0755, body=aprun_cmd)
+                    os.close(fd)
+                    script = fn
+            elif script is None and obj.script is not None:
                 script = obj.script
             if ATTR_inter in obj.attributes:
                 _interactive_job = True
@@ -5618,7 +5653,7 @@ class Server(PBSService):
             return None
 
         if submit_dir is None:
-            submit_dir = tempfile.gettempdir()
+            submit_dir = pwd.getpwnam(obj.username)[5]
 
         cwd = os.getcwd()
         os.chdir(submit_dir)
@@ -12826,8 +12861,10 @@ class Job(ResourceResv):
     }
     runtime = 100
     logger = logging.getLogger(__name__)
+    du = DshUtils()
 
     def __init__(self, username=None, attrs={}, jobname=None):
+        self.platform = self.du.get_platform()
         self.server = {}
         self.script = None
         self.script_body = None
@@ -12837,6 +12874,15 @@ class Job(ResourceResv):
             self.username = None
         self.du = None
         self.interactive_handle = None
+        if self.platform == 'cray' or self.platform == 'craysim':
+            if 'Resource_List.select' in attrs:
+                select = attrs['Resource_List.select']
+                m = select.startswith('vntype=') or ':vntype=' in select
+                if not m:
+                    select = select + ":vntype=cray_compute"
+                    attrs['Resource_List.select'] = select
+            elif 'Resource_List.vntype' not in attrs:
+                attrs['Resource_List.vntype'] = 'cray_compute'
 
         PBSObject.__init__(self, None, attrs, self.dflt_attributes)
 
