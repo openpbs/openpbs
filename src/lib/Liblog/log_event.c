@@ -76,6 +76,27 @@ long	    *log_event_mask = &log_event_lvl_priv;
 
 /**
  * @brief
+ * 	Checks whether or not the given event type is being recorded into
+ *	log file.
+ *
+ * @param[in] eventtype - event type
+ *
+ * @return int
+ *	1 - if the given event type gets logged,
+ *	0 - otherwise, it's not recorded.
+ *
+ */
+int
+will_log_event(int eventtype)
+{
+	if (((eventtype & PBSEVENT_FORCE) != 0) ||
+	    ((*log_event_mask & eventtype) != 0))
+		return (1);
+
+	return (0);
+}
+/**
+ * @brief
  * 	log_event - log a server event to the log file
  *
  *	Checks to see if the event type is being recorded.  If they are,
@@ -97,9 +118,6 @@ long	    *log_event_mask = &log_event_lvl_priv;
 void
 log_event(int eventtype, int objclass, int sev, const char *objname, const char *text)
 {
-	if (((eventtype & PBSEVENT_FORCE) == 0) &&
-		((*log_event_mask & eventtype) == 0))
-		return;		/* not logging this type of event */
-	else
+	if (will_log_event(eventtype))
 		log_record(eventtype, objclass, sev, objname, text);
 }

@@ -328,11 +328,29 @@ typedef struct server_vnodes_t {
 } server_vnodes_t;
 static	server_vnodes_t server_vnodes;
 
+/**
+ * @brief
+ * 	This is a function that logs the contents of the list
+ *	headed by 'phead'.
+ *
+ * @param[in] head_str - some string that gets printed spearheading the list.
+ * @param[in] phead - header of the list to be printed.
+ *
+ * @return	void
+ *
+ */
 void
 print_svrattrl_list(char *head_str, pbs_list_head *phead)
 {
 	svrattrl *plist = NULL;
 	int i;
+
+	if ((head_str == NULL) || (phead == NULL)) {
+		return;
+	}
+
+	if (!will_log_event(PBSEVENT_DEBUG3))
+		return;
 
 	plist = (svrattrl *)GET_NEXT(*phead);
 	i = 0;
@@ -3083,9 +3101,6 @@ pbs_python_populate_svrattrl_from_python_class(PyObject *py_instance,
 		name_str_dup = NULL;
 
 	} /* for loop */
-
-	print_svrattrl_list("pbs_populate_svrattrl_from_python_class==>",
-		svrattrl_list);
 	rc = 0;
 svrattrl_exit:
 	Py_CLEAR(py_attr_dict);
@@ -5831,6 +5846,7 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 				&((struct rq_queuejob *)(req_params->rq_job))->rq_attr, NULL, 0) == -1) {
 				return -1;
 			}
+			print_svrattrl_list("pbs_populate_svrattrl_from_python_class==>",  &((struct rq_queuejob *)(req_params->rq_job))->rq_attr);
 			break;
 		case HOOK_EVENT_EXECJOB_LAUNCH:
 			py_progname = _pbs_python_event_get_param(PY_EVENT_PARAM_PROGNAME);
@@ -5900,6 +5916,7 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 					"Failed to populate request structure!");
 				return -1;
 			}
+			print_svrattrl_list("pbs_populate_svrattrl_from_python_class==>", &((struct rq_queuejob *)(req_params->rq_job))->rq_attr);
 			/* fall through here */
 		case HOOK_EVENT_EXECHOST_PERIODIC:
 		case HOOK_EVENT_EXECHOST_STARTUP:
@@ -5975,6 +5992,7 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 				}
 				free(key_str);
 			}
+			print_svrattrl_list("pbs_populate_svrattrl_from_python_class==>", (pbs_list_head *)(req_params->vns_list));
 			Py_CLEAR(py_attr_keys);
 
 			if (hook_event == HOOK_EVENT_EXECHOST_PERIODIC) {
@@ -6095,6 +6113,7 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 					}
 				}
 				Py_CLEAR(py_attr_keys);
+				print_svrattrl_list("pbs_populate_svrattrl_from_python_class==>", (pbs_list_head *)(req_params->jobs_list));
 			}
 
 			break;
@@ -6110,6 +6129,8 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 				&((struct rq_queuejob *)(req_params->rq_job))->rq_attr, NULL, 0) == -1) {
 				return -1;
 			}
+
+			print_svrattrl_list("pbs_populate_svrattrl_from_python_class==>", &((struct rq_queuejob *)(req_params->rq_job))->rq_attr);
 			break;
 		case HOOK_EVENT_MODIFYJOB:
 
@@ -6150,6 +6171,7 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 				&((struct rq_manage *)(req_params->rq_manage))->rq_attr, NULL, 0) == -1) {
 				return -1;
 			}
+			print_svrattrl_list("pbs_populate_svrattrl_from_python_class==>", &((struct rq_manage *)(req_params->rq_manage))->rq_attr);
 			break;
 		case HOOK_EVENT_MOVEJOB:
 
