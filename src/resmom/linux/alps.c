@@ -1,36 +1,36 @@
 /*
  * Copyright (C) 1994-2017 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
- *  
+ *
  * This file is part of the PBS Professional ("PBS Pro") software.
- * 
+ *
  * Open Source License Information:
- *  
+ *
  * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free 
- * Software Foundation, either version 3 of the License, or (at your option) any 
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
  * later version.
- *  
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+ *
+ * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
  * PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
- *  
- * You should have received a copy of the GNU Affero General Public License along 
+ *
+ * You should have received a copy of the GNU Affero General Public License along
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
- *  
- * Commercial License Information: 
- * 
- * The PBS Pro software is licensed under the terms of the GNU Affero General 
- * Public License agreement ("AGPL"), except where a separate commercial license 
+ *
+ * Commercial License Information:
+ *
+ * The PBS Pro software is licensed under the terms of the GNU Affero General
+ * Public License agreement ("AGPL"), except where a separate commercial license
  * agreement for PBS Pro version 14 or later has been executed in writing with Altair.
- *  
- * Altair’s dual-license business model allows companies, individuals, and 
- * organizations to create proprietary derivative works of PBS Pro and distribute 
- * them - whether embedded or bundled with other software - under a commercial 
+ *
+ * Altair’s dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of PBS Pro and distribute
+ * them - whether embedded or bundled with other software - under a commercial
  * license agreement.
- * 
- * Use of Altair’s trademarks, including but not limited to "PBS™", 
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+ *
+ * Use of Altair’s trademarks, including but not limited to "PBS™",
+ * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
  * trademark licensing policies.
  *
  */
@@ -102,7 +102,6 @@ extern pid_t getsid(pid_t);
 #include "resmon.h"
 #include "hwloc.h"
 
-
 /**
  * Remember the PBScrayhost (mpphost) reported by ALPS.
  */
@@ -122,12 +121,12 @@ extern vnl_t	*vnlp;
  * This specifies the how many levels deep the BASIL can go.
  * Need to increase this for each XML level indentation addition.
  */
-#define MAX_BASIL_STACK (14)
+#define MAX_BASIL_STACK (16)
 
 /**
  * Maintain counts on elements that are limited to one instance per context.
  * These counters help keep track of the XML structure that is imposed
- * by ALPS.  The counter is checked to be sure they are not nested or
+ * by ALPS. The counter is checked to be sure they are not nested or
  * get jumbled in any way.
  */
 typedef struct element_counts {
@@ -138,6 +137,7 @@ typedef struct element_counts {
 	int released;
 	int inventory;
 	int node_array;
+	int socket_array;
 	int segment_array;
 	int processor_array;
 	int memory_array;
@@ -146,11 +146,12 @@ typedef struct element_counts {
 	int application_array;
 	int command_array;
 	int accelerator_array;
-	/*
-	 The following entries are not needed now because we are just
-	 ignoring the corresponding XML tags.  If they become nesessary
-	 in the future, here they are.
-	 */
+	int computeunit_array;
+/*
+	The following entries are not needed now because we are just
+	ignoring the corresponding XML tags. If they become nesessary
+	in the future, here they are.
+*/
 #if 0
 	int reserved_node_array;
 	int reserved_segment_array;
@@ -162,10 +163,11 @@ typedef struct element_counts {
 /**
  * Pointers for node data used when parsing inventory.
  * These provide a place to hang lists of any possible result from an
- * ALPS inventory.  Additionally, counters for node states are kept here.
+ * ALPS inventory. Additionally, counters for node states are kept here.
  */
 typedef struct inventory_data {
 	basil_node_t *node;
+	basil_node_socket_t *socket;
 	basil_node_segment_t *segment;
 	basil_node_processor_t *processor;
 	basil_processor_allocation_t *processor_allocation;
@@ -173,6 +175,7 @@ typedef struct inventory_data {
 	basil_memory_allocation_t *memory_allocation;
 	basil_label_t *label;
 	basil_rsvn_t *reservation;
+	basil_node_computeunit_t *cu;
 	int	role_int;
 	int	role_batch;
 	int	role_unknown;
@@ -190,6 +193,7 @@ typedef struct inventory_data {
 	int	accel_state_up;
 	int	accel_state_down;
 	int	accel_state_unknown;
+	int	socket_count;
 } inventory_data_t;
 
 /**
@@ -236,6 +240,8 @@ static size_t	requestSize = 0;
 #define UTIL_BUFFER_LEN (4096)
 static char utilBuffer[(UTIL_BUFFER_LEN * sizeof(char))];
 
+#define VNODE_NAME_LEN	255
+
 #define BASIL_ERR_ID "BASIL"
 
 /**
@@ -249,6 +255,28 @@ static	int	basil11orig	= 0;
 static char	basilversion[BASIL_STRING_SHORT];
 
 /**
+ * Variable that keeps track of the numeric value related to the basil version.
+ * It is used to do specific validation per basil version.
+ */
+static basil_version_t basilver = 0;
+
+/**
+ * Versions of BASIL that PBS supports.
+ * It is a smaller subset that what ALPS likely provides in
+ * basil_supported_versions.
+ * PBS no longer supports version 1.0.
+ * As ALPS adds BASIL versions, once PBS supports them, they should
+ * be added here.
+ */
+static const char *pbs_supported_basil_versions[] __attribute__((unused)) = {
+	BASIL_VAL_VERSION_1_4,
+	BASIL_VAL_VERSION_1_3,
+	BASIL_VAL_VERSION_1_2,
+	BASIL_VAL_VERSION_1_1,
+	(char *) 0
+};
+
+/**
  * String to use for mpp_host in vnode names when basil11orig
  * is true.
  */
@@ -256,12 +284,11 @@ static char	basilversion[BASIL_STRING_SHORT];
 
 /**
  * @brief
- * 	When DEBUG is defined, log XML parsing messages to MOM log file.
+ *	When DEBUG is defined, log XML parsing messages to MOM log file.
  *
  * @param[in] fmt - format of msg
  *
  * @return Void
- *
  */
 static void
 xml_dbg(char *fmt, ...)
@@ -366,7 +393,7 @@ parse_err_out_of_memory(ud_t *d)
  * 	and message pointers in the expat user data structure.
  *
  * @param[in] d - pointer to user data structure
- * 
+ *
  * @return Void
  *
  */
@@ -412,7 +439,7 @@ parse_err_illegal_start(ud_t *d)
  * @return Void
  *
  */
- 
+
 static void
 parse_err_multiple_elements(ud_t *d)
 {
@@ -582,7 +609,7 @@ parse_err_illegal_end(ud_t *d, const char *el)
  * This function enforces the structure of the XML elements. Since
  * messages can occur in any element, they are not part of the check.
  *
- * Check that the depth is okay then look at the top element.  Make
+ * Check that the depth is okay then look at the top element. Make
  * sure that what comes before the top is legal in the XML structure
  * we are parsing.
  *
@@ -673,20 +700,67 @@ stack_busted(ud_t *d)
 				parse_err_illegal_start(d);
 				return (1);
 			}
-		} else if (strcmp(BASIL_ELM_SEGMENTARRAY, top) == 0) {
+		} else if (strcmp(BASIL_ELM_SOCKETARRAY, top) == 0) {
+			/* socket XML was introduced in BASIL 1.3*/
 			if (strcmp(BASIL_ELM_NODE, prev) != 0) {
 				parse_err_illegal_start(d);
 				return (1);
+			}
+		} else if (strcmp(BASIL_ELM_SOCKET, top) == 0) {
+			if (strcmp(BASIL_ELM_SOCKETARRAY, prev) != 0) {
+				parse_err_illegal_start(d);
+				return (1);
+			}
+		} else if (strcmp(BASIL_ELM_SEGMENTARRAY, top) == 0) {
+			switch (basilver) {
+				case basil_1_1:
+				case basil_1_2:
+					if (strcmp(BASIL_ELM_NODE, prev) != 0) {
+						parse_err_illegal_start(d);
+						return (1);
+					}
+					break;
+				case basil_1_3:
+				case basil_1_4:
+					if (strcmp(BASIL_ELM_SOCKET, prev) != 0) {
+						parse_err_illegal_start(d);
+						return (1);
+					}
+					break;
 			}
 		} else if (strcmp(BASIL_ELM_SEGMENT, top) == 0) {
 			if (strcmp(BASIL_ELM_SEGMENTARRAY, prev) != 0) {
 				parse_err_illegal_start(d);
 				return (1);
 			}
-		} else if (strcmp(BASIL_ELM_PROCESSORARRAY, top) == 0) {
+		} else if (strcmp(BASIL_ELM_CUARRAY, top) == 0) {
+			/* ComputeUnit Array XML was introduced in BASIL 1.3*/
 			if (strcmp(BASIL_ELM_SEGMENT, prev) != 0) {
 				parse_err_illegal_start(d);
 				return (1);
+			}
+		} else if (strcmp(BASIL_ELM_COMPUTEUNIT, top) == 0) {
+			/* Compute Unit XML was introduced in BASIL 1.3*/
+			if (strcmp(BASIL_ELM_CUARRAY, prev) != 0) {
+				parse_err_illegal_start(d);
+				return (1);
+			}
+		} else if (strcmp(BASIL_ELM_PROCESSORARRAY, top) == 0) {
+			switch (basilver) {
+				case basil_1_1:
+				case basil_1_2:
+					if (strcmp(BASIL_ELM_SEGMENT, prev) != 0) {
+						parse_err_illegal_start(d);
+						return (1);
+					}
+					break;
+				case basil_1_3:
+				case basil_1_4:
+					if (strcmp(BASIL_ELM_COMPUTEUNIT, prev) != 0) {
+						parse_err_illegal_start(d);
+						return (1);
+					}
+					break;
 			}
 		} else if (strcmp(BASIL_ELM_PROCESSOR, top) == 0) {
 			if (strcmp(BASIL_ELM_PROCESSORARRAY, prev) != 0) {
@@ -857,14 +931,15 @@ response_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 	 * value pointer with each loop. The somewhat complex loop control
 	 * syntax is just a fancy way of stepping through the pairs.
 	 */
-	for (np=vp=atts, vp++; np && *np && vp && *vp; np=++vp, vp++) {
+	for (np = vp = atts, vp++; np && *np && vp && *vp; np = ++vp, vp++) {
 		xml_dbg("%s: %s = %s", __func__, *np, *vp);
 		if (strcmp(BASIL_ATR_PROTOCOL, *np) == 0) {
 			BASIL_STRSET_SHORT(protocol, *vp);
-			if ((strcmp(BASIL_VAL_VERSION_1_2, *vp) != 0) &&
+			if ((strcmp(BASIL_VAL_VERSION_1_4, *vp) != 0) &&
+				(strcmp(BASIL_VAL_VERSION_1_3, *vp) != 0) &&
+				(strcmp(BASIL_VAL_VERSION_1_2, *vp) != 0) &&
 				(strcmp(BASIL_VAL_VERSION_1_1, *vp) != 0)) {
-				parse_err_version_mismatch(d, *vp,
-					basilversion);
+				parse_err_version_mismatch(d, *vp, basilversion);
 				return;
 			}
 		}
@@ -882,8 +957,6 @@ response_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
  * 	It checks to make sure there is a valid method type so we know
  * 	what elements to expect later on.
  *
- * Change from basil 1.0: admin_cookie is renamed to pagg_id
- * and alloc_cookie is deprecated as of 1.1.
  *
  * The standard Expat start handler function prototype is used.
  *
@@ -913,7 +986,7 @@ response_data_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 	 * value pointer with each loop. The somewhat complex loop control
 	 * syntax is just a fancy way of stepping through the pairs.
 	 */
-	for (np=vp=atts, vp++; np && *np && vp && *vp; np=++vp, vp++) {
+	for (np = vp = atts, vp++; np && *np && vp && *vp; np = ++vp, vp++) {
 		xml_dbg("%s: %s = %s", __func__, *np, *vp);
 		if (strcmp(BASIL_ATR_METHOD, *np) == 0) {
 			if (brp->method != basil_method_none) {
@@ -950,7 +1023,7 @@ response_data_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 			strcpy(d->error_class, *vp);
 			/*
 			 * The existence of a PERMENENT error used to
-			 * reset the BASIL_ERR_TRANSIENT flag.  This
+			 * reset the BASIL_ERR_TRANSIENT flag. This
 			 * is no longer done since the error_flags
 			 * field is initialized to zero.
 			 */
@@ -967,7 +1040,7 @@ response_data_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 			 * to create an ALPS reservation.
 			 * It was found that a node being changed from
 			 * batch to interactive would cause a PERMANENT,
-			 * BACKEND error when a job was run on it.  We
+			 * BACKEND error when a job was run on it. We
 			 * want this to not result in the job being deleted.
 			 */
 			if (brp->method == basil_method_reserve) {
@@ -1004,7 +1077,6 @@ response_data_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
  * @param[in] atts array of name/value pairs
  *
  * @retval Void
- *
  */
 static void
 message_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
@@ -1020,7 +1092,7 @@ message_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 	 * value pointer with each loop. The somewhat complex loop control
 	 * syntax is just a fancy way of stepping through the pairs.
 	 */
-	for (np=vp=atts, vp++; np && *np && vp && *vp; np=++vp, vp++) {
+	for (np = vp = atts, vp++; np && *np && vp && *vp; np = ++vp, vp++) {
 		xml_dbg("%s: %s = %s", __func__, *np, *vp);
 		if (strcmp(BASIL_ATR_SEVERITY, *np) == 0) {
 			if (strcmp(BASIL_VAL_DEBUG, *vp) == 0) {
@@ -1093,7 +1165,10 @@ message_end(ud_t *d, const XML_Char *el)
  * 	This function is registered to handle the reserved element in
  * 	response to a reservation creation request.
  *
- * 	The standard Expat start handler function prototype is used.
+ * Change from basil 1.0: admin_cookie is renamed to pagg_id
+ * and alloc_cookie is deprecated as of 1.1.
+ *
+ * The standard Expat start handler function prototype is used.
  *
  * @param[in] d pointer to user data structure
  * @param[in] el unused in this function
@@ -1121,7 +1196,7 @@ reserved_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 	 * value pointer with each loop. The somewhat complex loop control
 	 * syntax is just a fancy way of stepping through the pairs.
 	 */
-	for (np=vp=atts, vp++; np && *np && vp && *vp; np=++vp, vp++) {
+	for (np = vp = atts, vp++; np && *np && vp && *vp; np = ++vp, vp++) {
 		xml_dbg("%s: %s = %s", __func__, *np, *vp);
 		if (strcmp(BASIL_ATR_RSVN_ID, *np) == 0) {
 			brp->data.reserve.rsvn_id = strtol(*vp, NULL, 10);
@@ -1129,7 +1204,7 @@ reserved_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 			/*
 			 * Basil 1.1+ doesn't have any other elements
 			 * but Basil 1.1 orig has dummy entries for
-			 * "admin_cookie" and "alloc_cookie".  Just
+			 * "admin_cookie" and "alloc_cookie". Just
 			 * ignore them.
 			 */
 			parse_err_unrecognized_attr(d, *np);
@@ -1170,9 +1245,9 @@ confirmed_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 		parse_err_multiple_elements(d);
 		return;
 	}
-	for (np=vp=atts, vp++; np && *np && vp && *vp; np=++vp, vp++) {
+	for (np = vp = atts, vp++; np && *np && vp && *vp; np = ++vp, vp++) {
 		/*
-		 * These keywords do not need to be saved.  The CONFIRM
+		 * These keywords do not need to be saved. The CONFIRM
 		 * reply is just sending back the same values given in
 		 * the CONFIRM request.
 		 */
@@ -1215,9 +1290,9 @@ released_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 	}
 	brp = d->brp;
 
-	for (np=vp=atts, vp++; np && *np && vp && *vp; np=++vp, vp++) {
+	for (np = vp = atts, vp++; np && *np && vp && *vp; np = ++vp, vp++) {
 		/*
-		 * This keyword does not need to be saved.  The
+		 * This keyword does not need to be saved. The
 		 * RELEASE reply is just sending back the same value
 		 * given in the RELEASE request.
 		 */
@@ -1251,10 +1326,10 @@ released_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 static void
 engine_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 {
-	const XML_Char **np;
-	const XML_Char **vp;
-	basil_response_t *brp;
-	basil_response_query_engine_t        *eng;
+	const XML_Char		**np;
+	const XML_Char		**vp;
+	basil_response_t 	*brp;
+	basil_response_query_engine_t *eng;
 	int	len = 0;
 
 	if (stack_busted(d))
@@ -1264,7 +1339,7 @@ engine_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 	brp->data.query.type = basil_query_engine;
 	eng = &brp->data.query.data.engine;
 
-	for (np=vp=atts, vp++; np && *np && vp && *vp; np=++vp, vp++) {
+	for (np = vp = atts, vp++; np && *np && vp && *vp; np = ++vp, vp++) {
 		if (strcmp(BASIL_ATR_NAME, *np) == 0) {
 			/* This keyword does not have to be saved */
 			xml_dbg("%s: %s = %s", __func__, *np, *vp);
@@ -1297,6 +1372,14 @@ engine_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 			}
 			snprintf(eng->basil_support, len, "%s", *vp);
 		}
+	}
+	if (!eng->version) {
+		parse_err_unspecified_attr(d, BASIL_ATR_VERSION);
+		return;
+	}
+	if (!eng->basil_support) {
+		parse_err_unspecified_attr(d, BASIL_ATR_SUPPORTED);
+		return;
 	}
 }
 
@@ -1333,7 +1416,7 @@ inventory_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 	brp->data.query.type = basil_query_inventory;
 	inv = &brp->data.query.data.inventory;
 
-	for (np=vp=atts, vp++; np && *np && vp && *vp; np=++vp, vp++) {
+	for (np = vp = atts, vp++; np && *np && vp && *vp; np = ++vp, vp++) {
 		xml_dbg("%s: %s = %s", __func__, *np, *vp);
 		if (strcmp(BASIL_ATR_TIMESTAMP, *np) == 0) {
 			if (inv->timestamp != 0) {
@@ -1356,7 +1439,7 @@ inventory_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 
 	/*
 	 * The mpp_host and timestamp fields will be filled in
-	 * for BASIL_VAL_VERSION_1_1 "plus" and higher.  There is no other
+	 * for BASIL_VAL_VERSION_1_1 "plus" and higher. There is no other
 	 * way to tell BASIL_VAL_VERSION_1_1 from 1.1+.
 	 */
 	if (inv->timestamp == 0) {
@@ -1372,6 +1455,9 @@ inventory_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 	d->count.node_array = 0;
 	d->count.reservation_array = 0;
 	d->count.accelerator_array = 0;
+	d->count.socket_array = 0;
+	d->count.segment_array = 0;
+	d->count.computeunit_array = 0;
 
 	/* set interesting counts to zero */
 	d->current.role_int = 0;
@@ -1389,6 +1475,7 @@ inventory_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 	d->current.accel_state_up = 0;
 	d->current.accel_state_down = 0;
 	d->current.accel_state_unknown = 0;
+	d->current.socket_count = 0;
 	return;
 }
 
@@ -1418,7 +1505,7 @@ node_array_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 		parse_err_multiple_elements(d);
 		return;
 	}
-	for (np=vp=atts, vp++; np && *np && vp && *vp; np=++vp, vp++) {
+	for (np = vp = atts, vp++; np && *np && vp && *vp; np = ++vp, vp++) {
 		xml_dbg("%s: %s = %s", __func__, *np, *vp);
 		if (strcmp(BASIL_ATR_CHANGECOUNT, *np) == 0) {
 			/*
@@ -1427,6 +1514,10 @@ node_array_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 			 * requesting inventory more frequently.
 			 * changecount could help reduce the amount of data
 			 * returned if the inventory has not changed.
+			 */
+		} else if (strcmp(BASIL_ATR_SCHEDCOUNT, *np) == 0) {
+			/*
+			 * Currently unused.
 			 */
 		} else {
 			parse_err_unrecognized_attr(d, *np);
@@ -1442,12 +1533,17 @@ node_array_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
  * 	This function is registered to handle the node element within an
  * 	inventory response.
  *
- * The standard Expat start handler function prototype is used.
+ * Due to the new response format introduced in BASIL 1.3, and
+ * continuing in BASIL 1.4, the count for different arrays need to be
+ * reset at different places.
+ * For example, since BASIL 1.1 and BASIL 1.2 have segments but no sockets
+ * we need to reset the segment_array as part of node_start, however in
+ * BASIL 1.3 and 1.4 segment_array count will be reset in socket_start.
  *
  * @param d pointer to user data structure
  * @param[in] el unused in this function
  * @param[in] atts array of name/value pairs
- * 
+ *
  * @retval Void
  *
  */
@@ -1480,7 +1576,7 @@ node_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 	 * value pointer with each loop. The somewhat complex loop control
 	 * syntax is just a fancy way of stepping through the pairs.
 	 */
-	for (np=vp=atts, vp++; np && *np && vp && *vp; np=++vp, vp++) {
+	for (np = vp = atts, vp++; np && *np && vp && *vp; np = ++vp, vp++) {
 		xml_dbg("%s: %s = %s", __func__, *np, *vp);
 		if (strcmp(BASIL_ATR_NODE_ID, *np) == 0) {
 			if (node->node_id >= 0) {
@@ -1488,7 +1584,7 @@ node_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 				return;
 			}
 			node->node_id = atol(*vp);
-			if (*vp < 0) {
+			if (node->node_id < 0) {
 				parse_err_illegal_attr_val(d, *np, *vp);
 				return;
 			}
@@ -1585,7 +1681,19 @@ node_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 		return;
 	}
 	/* Reset the array counters. */
-	d->count.segment_array = 0;
+	switch (basilver) {
+	case basil_1_1:
+	case basil_1_2:
+		d->count.segment_array = 0;
+		break;
+	case basil_1_3:
+	case basil_1_4:
+		/* segment_array is reset in socket_start() for these
+		 * BASIL versions.
+		 */
+		break;
+	}
+	d->count.socket_array = 0;
 	d->count.accelerator_array = 0;
 	return;
 }
@@ -1600,8 +1708,153 @@ node_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
  * @param d pointer to user data structure
  * @param[in] el unused in this function
  * @param[in] atts array of name/value pairs
- *
  * @retval Void
+ *
+ */
+static void
+socket_array_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
+{
+	const XML_Char **np;
+	const XML_Char **vp;
+
+	if (stack_busted(d))
+		return;
+	if (++(d->count.socket_array) > 1) {
+		parse_err_multiple_elements(d);
+		return;
+	}
+	for (np = vp = atts, vp++; np && *np && vp && *vp; np = ++vp, vp++) {
+		parse_err_unrecognized_attr(d, *np);
+		return;
+	}
+	d->current.socket = NULL;
+	return;
+}
+
+/**
+ * @brief
+ *	 This function is registered to handle the socket element within an inventory response.
+ * Starting with BASIL 1.3 the socket array has the architecture and clock_mhz of the processors.
+ * However, this information is not used by PBS.
+ *
+ * The standard Expat start handler function prototype is used.
+ *
+ * @param d pointer to user data structure
+ * @param[in] el unused in this function
+ * @param[in] atts array of name/value pairs
+ *
+ * @return Void
+ *
+ */
+static void
+socket_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
+{
+	const XML_Char **np;
+	const XML_Char **vp;
+	basil_node_socket_t *socket;
+	basil_response_t *brp;
+
+	if (stack_busted(d))
+		return;
+	brp = d->brp;
+	socket = malloc(sizeof(basil_node_socket_t));
+	if (!socket) {
+		parse_err_out_of_memory(d);
+		return;
+	}
+	memset(socket, 0, sizeof(basil_node_socket_t));
+	socket->ordinal = -1;
+	socket->clock_mhz = -1;
+	if (d->current.socket) {
+		(d->current.socket)->next = socket;
+	} else {
+		if (!d->current.node) {
+			parse_err_internal(d);
+			free(socket);
+			return;
+		}
+		(d->current.node)->sockets = socket;
+	}
+	d->current.socket = socket;
+
+	/*
+	 * Work through the attribute pairs updating the name pointer and
+	 * value pointer with each loop. The somewhat complex loop control
+	 * syntax is just a fancy way of stepping through the pairs.
+	 */
+	for (np = vp = atts, vp++; np && *np && vp && *vp; np = ++vp, vp++) {
+		xml_dbg("%s: %s = %s", __func__, *np, *vp);
+		if (strcmp(BASIL_ATR_ORDINAL, *np) == 0) {
+			if (socket->ordinal >= 0) {
+				parse_err_multiple_attrs(d, *np);
+				return;
+			}
+			socket->ordinal = atoi(*vp);
+			if (socket->ordinal < 0) {
+				parse_err_illegal_attr_val(d, *np, *vp);
+				return;
+			}
+		} else if (strcmp(BASIL_ATR_ARCH, *np) == 0) {
+			if (socket->arch) {
+				parse_err_multiple_attrs(d, *np);
+				return;
+			}
+			if (strcmp(BASIL_VAL_X86_64, *vp) == 0) {
+				socket->arch = basil_processor_x86_64;
+			} else if (strcmp(BASIL_VAL_CRAY_X2, *vp) == 0) {
+				socket->arch = basil_processor_cray_x2;
+			} else {
+				parse_err_illegal_attr_val(d, *np, *vp);
+				return;
+			}
+		} else if (strcmp(BASIL_ATR_CLOCK_MHZ, *np) == 0) {
+			if (socket->clock_mhz >= 0) {
+				parse_err_multiple_attrs(d, *np);
+				return;
+			}
+			socket->clock_mhz = atoi(*vp);
+			if (socket->clock_mhz < 0) {
+				parse_err_illegal_attr_val(d, *np, *vp);
+				return;
+			}
+		} else {
+			parse_err_unrecognized_attr(d, *np);
+			return;
+		}
+	}
+
+	if (socket->ordinal < 0) {
+		parse_err_unspecified_attr(d, BASIL_ATR_ORDINAL);
+		return;
+	}
+	if (!socket->arch) {
+		parse_err_unspecified_attr(d, BASIL_ATR_ARCH);
+		return;
+	}
+	if (socket->clock_mhz < 0) {
+		parse_err_unspecified_attr(d, BASIL_ATR_CLOCK_MHZ);
+		return;
+	}
+	/* Increase the socket count */
+	d->current.socket_count++;
+
+	/* Reset the array counters */
+	d->count.segment_array = 0;
+	return;
+}
+
+/**
+ * @brief
+ *	This function is registered to handle the segment array element
+ * within an inventory response.
+ *
+ * The standard Expat start handler function prototype is used.
+ *
+ * @param d pointer to user data structure
+ * @param[in] el unused in this function
+ * @param[in] atts array of name/value pairs
+ *
+ * @return Void
  *
  */
 static void
@@ -1616,7 +1869,7 @@ segment_array_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 		parse_err_multiple_elements(d);
 		return;
 	}
-	for (np=vp=atts, vp++; np && *np && vp && *vp; np=++vp, vp++) {
+	for (np = vp = atts, vp++; np && *np && vp && *vp; np = ++vp, vp++) {
 		parse_err_unrecognized_attr(d, *np);
 		return;
 	}
@@ -1626,11 +1879,19 @@ segment_array_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 
 /**
  * @brief
- *	 This function is registered to handle the segment element within an
- * 	inventory response.
+ *	This function is registered to handle the segment element within an
+ * inventory response.
+ *
+ * Due to the new XML format introduced in BASIL 1.3, and
+ * continuing in BASIL 1.4, the count for different arrays need to be
+ * reset at different places.
+ * For example, since BASIL 1.1 and BASIL 1.2 have no compute units we don't
+ * need to reset the count here. Also for BASIL 1.1 and 1.2, the processor
+ * count will be reset in processor_array_start.
+ * For BASIL 1.3 and BASIL 1.4 we need to reset the count for compute unit
+ * arrays here.
  *
  * The standard Expat start handler function prototype is used.
- *
  * @param d pointer to user data structure
  * @param[in] el unused in this function
  * @param[in] atts array of name/value pairs
@@ -1644,11 +1905,9 @@ segment_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 	const XML_Char **np;
 	const XML_Char **vp;
 	basil_node_segment_t *segment;
-	basil_response_t *brp;
 
 	if (stack_busted(d))
 		return;
-	brp = d->brp;
 	segment = malloc(sizeof(basil_node_segment_t));
 	if (!segment) {
 		parse_err_out_of_memory(d);
@@ -1661,6 +1920,7 @@ segment_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 	} else {
 		if (!d->current.node) {
 			parse_err_internal(d);
+			free(segment);
 			return;
 		}
 		(d->current.node)->segments = segment;
@@ -1671,7 +1931,7 @@ segment_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 	 * value pointer with each loop. The somewhat complex loop control
 	 * syntax is just a fancy way of stepping through the pairs.
 	 */
-	for (np=vp=atts, vp++; np && *np && vp && *vp; np=++vp, vp++) {
+	for (np = vp = atts, vp++; np && *np && vp && *vp; np =++vp, vp++) {
 		xml_dbg("%s: %s = %s", __func__, *np, *vp);
 		if (strcmp(BASIL_ATR_ORDINAL, *np) == 0) {
 			if (segment->ordinal >= 0) {
@@ -1679,7 +1939,7 @@ segment_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 				return;
 			}
 			segment->ordinal = atol(*vp);
-			if (*vp < 0) {
+			if (segment->ordinal < 0) {
 				parse_err_illegal_attr_val(d, *np, *vp);
 				return;
 			}
@@ -1693,6 +1953,19 @@ segment_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 		return;
 	}
 	/* Reset the array counters. */
+	switch (basilver) {
+	case basil_1_3:
+	case basil_1_4:
+		d->count.computeunit_array = 0;
+		d->current.processor = NULL;
+		break;
+	case basil_1_1:
+	case basil_1_2:
+		/* There are no compute units, and the processor
+		 * count was initialized as part of processor_array_start()
+		 */
+		break;
+	}
 	d->count.processor_array = 0;
 	d->count.memory_array = 0;
 	d->count.label_array = 0;
@@ -1701,8 +1974,38 @@ segment_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 
 /**
  * @brief
- * 	This function is registered to handle the processor array element
- * 	within an inventory response.
+ *	This function is registered to handle the computeunit array element
+ * within an inventory response.
+ *
+ * The standard Expat start handler function prototype is used.
+ * @param d pointer to user data structure
+ * @param[in] el unused in this function
+ * @param[in] atts array of name/value pairs
+ */
+static void
+computeunit_array_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
+{
+	const XML_Char **np;
+	const XML_Char **vp;
+
+	if (stack_busted(d))
+		return;
+	if (++(d->count.computeunit_array) > 1) {
+		parse_err_multiple_elements(d);
+		return;
+	}
+	for (np = vp = atts, vp++; np && *np && vp && *vp; np = ++vp, vp++) {
+		parse_err_unrecognized_attr(d, *np);
+		return;
+	}
+	d->current.cu = NULL;
+	return;
+}
+
+/**
+ * @brief
+ *	This function is registered to handle the computeunit element within an
+ * inventory response.
  *
  * The standard Expat start handler function prototype is used.
  *
@@ -1710,6 +2013,85 @@ segment_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
  * @param[in] el unused in this function
  * @param[in] atts array of name/value pairs
  *
+ * @return Void
+ *
+ */
+static void
+computeunit_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
+{
+	const XML_Char **np;
+	const XML_Char **vp;
+	basil_node_computeunit_t *cu;
+
+	if (stack_busted(d))
+		return;
+	cu = malloc(sizeof(basil_node_computeunit_t));
+	if (!cu) {
+		parse_err_out_of_memory(d);
+		return;
+	}
+	memset(cu, 0, sizeof(basil_node_computeunit_t));
+	cu->ordinal = -1;
+	cu->proc_per_cu_count = 0;
+
+	if (d->current.cu) {
+		(d->current.cu)->next = cu;
+	} else {
+		if (!d->current.segment) {
+			parse_err_internal(d);
+			free(cu);
+			return;
+		}
+		(d->current.segment)->computeunits = cu;
+	}
+	d->current.cu = cu;
+
+	/*
+	 * Work through the attribute pairs updating the name pointer and
+	 * value pointer with each loop. The somewhat complex loop control
+	 * syntax is just a fancy way of stepping through the pairs.
+	 */
+	for (np = vp = atts, vp++; np && *np && vp && *vp; np = ++vp, vp++) {
+		xml_dbg("%s: %s = %s", __func__, *np, *vp);
+		if (strcmp(BASIL_ATR_ORDINAL, *np) == 0) {
+			if (cu->ordinal >= 0) {
+				parse_err_multiple_attrs(d, *np);
+				return;
+			}
+			cu->ordinal = atol(*vp);
+			if (cu->ordinal < 0) {
+				parse_err_illegal_attr_val(d, *np, *vp);
+				return;
+			}
+		} else {
+			parse_err_unrecognized_attr(d, *np);
+			return;
+		}
+	}
+	if (cu->ordinal < 0) {
+		parse_err_unspecified_attr(d, BASIL_ATR_ORDINAL);
+		return;
+	}
+	/* Reset the array counter */
+	d->count.processor_array = 0;
+}
+
+/**
+ * @brief
+ *	This function is registered to handle the processor array element
+ * within an inventory response.
+ *
+ * Due to the new response format introduced in BASIL 1.3, and
+ * continuing in BASIL 1.4, the count for different arrays need to be
+ * reset at different times.
+ * For example, for BASIL 1.1 and 1.2, the processor pointer will be
+ * set to NULL.
+ * Whereas, for BASIL 1.3 and BASIL 1.4 we reset it in segment_start.
+ *
+ * The standard Expat start handler function prototype is used.
+ * @param d pointer to user data structure
+ * @param[in] el unused in this function
+ * @param[in] atts array of name/value pairs
  * @return Void
  *
  */
@@ -1725,18 +2107,35 @@ processor_array_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 		parse_err_multiple_elements(d);
 		return;
 	}
-	for (np=vp=atts, vp++; np && *np && vp && *vp; np=++vp, vp++) {
+	for (np = vp = atts, vp++; np && *np && vp && *vp; np = ++vp, vp++) {
 		parse_err_unrecognized_attr(d, *np);
 		return;
 	}
-	d->current.processor = NULL;
+	switch (basilver) {
+	case basil_1_1:
+	case basil_1_2:
+		d->current.processor = NULL;
+		break;
+	case basil_1_3:
+	case basil_1_4:
+		/* processor is reset in segment_start()
+		 * for these BASIL versions
+		 */
+		break;
+	}
 	return;
 }
 
 /**
  * @brief
- * 	This function is registered to handle the processor element within an
- * 	inventory response.
+ *	This function is registered to handle the processor element within an
+ * inventory response.
+ *
+ * Due to the new response format introduced in BASIL 1.3, and
+ * continuing in BASIL 1.4, the information attached to different XML
+ * sections has changed. For example, processor arch and MHz info is
+ * no longer part of the processor XML for BASIL 1.3 and 1.4. Thus that
+ * information is not verified here.
  *
  * The standard Expat start handler function prototype is used.
  *
@@ -1745,7 +2144,6 @@ processor_array_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
  * @param[in] atts array of name/value pairs
  *
  * @return Void
- *
  */
 static void
 processor_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
@@ -1753,6 +2151,7 @@ processor_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 	const XML_Char **np;
 	const XML_Char **vp;
 	basil_node_processor_t *processor;
+	basil_node_computeunit_t *cu = NULL;
 
 	if (stack_busted(d))
 		return;
@@ -1769,17 +2168,33 @@ processor_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 	} else {
 		if (!d->current.segment) {
 			parse_err_internal(d);
+			free(processor);
 			return;
 		}
 		(d->current.segment)->processors = processor;
 	}
 	d->current.processor = processor;
+	switch (basilver) {
+		case basil_1_3:
+		case basil_1_4:
+			cu = (d->current.segment)->computeunits;
+			if (!cu) {
+				parse_err_internal(d);
+				return;
+			}
+			break;
+		case basil_1_1:
+		case basil_1_2:
+			/* There are no computeunits for these BASIL versions */
+			break;
+	}
+
 	/*
 	 * Work through the attribute pairs updating the name pointer and
 	 * value pointer with each loop. The somewhat complex loop control
 	 * syntax is just a fancy way of stepping through the pairs.
 	 */
-	for (np=vp=atts, vp++; np && *np && vp && *vp; np=++vp, vp++) {
+	for (np = vp = atts, vp++; np && *np && vp && *vp; np = ++vp, vp++) {
 		xml_dbg("%s: %s = %s", __func__, *np, *vp);
 		if (strcmp(BASIL_ATR_ORDINAL, *np) == 0) {
 			if (processor->ordinal >= 0) {
@@ -1790,6 +2205,9 @@ processor_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 			if (processor->ordinal < 0) {
 				parse_err_illegal_attr_val(d, *np, *vp);
 				return;
+			}
+			if (cu) {
+				cu->proc_per_cu_count = processor->ordinal+1;
 			}
 		} else if (strcmp(BASIL_ATR_ARCH, *np) == 0) {
 			if (processor->arch) {
@@ -1823,31 +2241,37 @@ processor_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 		parse_err_unspecified_attr(d, BASIL_ATR_ORDINAL);
 		return;
 	}
-	if (!processor->arch) {
-		parse_err_unspecified_attr(d, BASIL_ATR_ARCH);
-		return;
-	}
-	if (processor->clock_mhz < 0) {
-		parse_err_unspecified_attr(d, BASIL_ATR_CLOCK_MHZ);
-		return;
+	switch (basilver) {
+		case basil_1_1:
+		case basil_1_2:
+			if (!processor->arch) {
+				parse_err_unspecified_attr(d, BASIL_ATR_ARCH);
+				return;
+			}
+			if (processor->clock_mhz < 0) {
+				parse_err_unspecified_attr(d, BASIL_ATR_CLOCK_MHZ);
+				return;
+			}
+			break;
+		case basil_1_3:
+		case basil_1_4:
+			/* The arch and mhz info is no longer part of the
+			 * processor XML for these BASIL versions
+			 */
+			break;
 	}
 	d->current.processor_allocation = NULL;
 	return;
 }
 
 /**
- * @brief
- *	 This function is registered to handle the processor allocation element
- * 	within an inventory response.
+ * This function is registered to handle the processor allocation element
+ * within an inventory response.
  *
  * The standard Expat start handler function prototype is used.
- *
  * @param d pointer to user data structure
  * @param[in] el unused in this function
  * @param[in] atts array of name/value pairs
- *
- * @return Void
- *
  */
 static void
 processor_allocation_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
@@ -1870,6 +2294,7 @@ processor_allocation_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 	} else {
 		if (!d->current.processor) {
 			parse_err_internal(d);
+			free(procalloc);
 			return;
 		}
 		(d->current.processor)->allocations = procalloc;
@@ -1880,7 +2305,7 @@ processor_allocation_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 	 * value pointer with each loop. The somewhat complex loop control
 	 * syntax is just a fancy way of stepping through the pairs.
 	 */
-	for (np=vp=atts, vp++; np && *np && vp && *vp; np=++vp, vp++) {
+	for (np = vp = atts, vp++; np && *np && vp && *vp; np = ++vp, vp++) {
 		xml_dbg("%s: %s = %s", __func__, *np, *vp);
 		if (strcmp(BASIL_ATR_RSVN_ID, *np) == 0) {
 			if (procalloc->rsvn_id >= 0) {
@@ -1907,7 +2332,7 @@ processor_allocation_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 /**
  * @brief
  * 	This function is registered to handle the memory array element within
- * 	an inventory response.
+ * an inventory response.
  *
  * The standard Expat start handler function prototype is used.
  *
@@ -1915,7 +2340,7 @@ processor_allocation_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
  * @param[in] el unused in this function
  * @param[in] atts array of name/value pairs
  *
- * @return  Void
+ * @return Void
  *
  */
 static void
@@ -1930,7 +2355,7 @@ memory_array_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 		parse_err_multiple_elements(d);
 		return;
 	}
-	for (np=vp=atts, vp++; np && *np && vp && *vp; np=++vp, vp++) {
+	for (np = vp = atts, vp++; np && *np && vp && *vp; np = ++vp, vp++) {
 		parse_err_unrecognized_attr(d, *np);
 		return;
 	}
@@ -1940,8 +2365,8 @@ memory_array_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 
 /**
  * @brief
- *	 This function is registered to handle the memory element within an
- * 	inventory response.
+ *	This function is registered to handle the memory element within an
+ * inventory response.
  *
  * The standard Expat start handler function prototype is used.
  *
@@ -1950,7 +2375,6 @@ memory_array_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
  * @param[in] atts array of name/value pairs
  *
  * @return Void
- *
  */
 static void
 memory_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
@@ -1974,6 +2398,7 @@ memory_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 	} else {
 		if (!d->current.segment) {
 			parse_err_internal(d);
+			free(memory);
 			return;
 		}
 		(d->current.segment)->memory = memory;
@@ -1984,7 +2409,7 @@ memory_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 	 * value pointer with each loop. The somewhat complex loop control
 	 * syntax is just a fancy way of stepping through the pairs.
 	 */
-	for (np=vp=atts, vp++; np && *np && vp && *vp; np=++vp, vp++) {
+	for (np = vp = atts, vp++; np && *np && vp && *vp; np = ++vp, vp++) {
 		xml_dbg("%s: %s = %s", __func__, *np, *vp);
 		if (strcmp(BASIL_ATR_TYPE, *np) == 0) {
 			if (memory->type != 0) {
@@ -2052,7 +2477,7 @@ memory_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
  * @param d pointer to user data structure
  * @param[in] el unused in this function
  * @param[in] atts array of name/value pairs
- * 
+ *
  * @return Void
  *
  */
@@ -2078,6 +2503,7 @@ memory_allocation_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 	} else {
 		if (!d->current.memory) {
 			parse_err_internal(d);
+			free(memalloc);
 			return;
 		}
 		(d->current.memory)->allocations = memalloc;
@@ -2088,7 +2514,7 @@ memory_allocation_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 	 * value pointer with each loop. The somewhat complex loop control
 	 * syntax is just a fancy way of stepping through the pairs.
 	 */
-	for (np=vp=atts, vp++; np && *np && vp && *vp; np=++vp, vp++) {
+	for (np = vp = atts, vp++; np && *np && vp && *vp; np = ++vp, vp++) {
 		xml_dbg("%s: %s = %s", __func__, *np, *vp);
 		if (strcmp(BASIL_ATR_RSVN_ID, *np) == 0) {
 			if (memalloc->rsvn_id >= 0) {
@@ -2152,7 +2578,7 @@ label_array_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 		parse_err_multiple_elements(d);
 		return;
 	}
-	for (np=vp=atts, vp++; np && *np && vp && *vp; np=++vp, vp++) {
+	for (np = vp = atts, vp++; np && *np && vp && *vp; np = ++vp, vp++) {
 		parse_err_unrecognized_attr(d, *np);
 		return;
 	}
@@ -2204,7 +2630,7 @@ label_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 	 * value pointer with each loop. The somewhat complex loop control
 	 * syntax is just a fancy way of stepping through the pairs.
 	 */
-	for (np=vp=atts, vp++; np && *np && vp && *vp; np=++vp, vp++) {
+	for (np = vp = atts, vp++; np && *np && vp && *vp; np = ++vp, vp++) {
 		xml_dbg("%s: %s = %s", __func__, *np, *vp);
 		if (strcmp(BASIL_ATR_NAME, *np) == 0) {
 			if (*label->name) {
@@ -2284,7 +2710,7 @@ accelerator_array_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 		parse_err_multiple_elements(d);
 		return;
 	}
-	for (np=vp=atts, vp++; np && *np && vp && *vp; np=++vp, vp++) {
+	for (np = vp = atts, vp++; np && *np && vp && *vp; np = ++vp, vp++) {
 		parse_err_unrecognized_attr(d, *np);
 		return;
 	}
@@ -2345,7 +2771,7 @@ accelerator_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 	 * value pointer with each loop. The somewhat complex loop control
 	 * syntax is just a fancy way of stepping through the pairs.
 	 */
-	for (np=vp=atts, vp++; np && *np && vp && *vp; np=++vp, vp++) {
+	for (np = vp = atts, vp++; np && *np && vp && *vp; np = ++vp, vp++) {
 		xml_dbg("%s: %s = %s", __func__, *np, *vp);
 		int len = 0;
 		if (strcmp(BASIL_ATR_ORDINAL, *np) == 0) {
@@ -2484,7 +2910,7 @@ accelerator_allocation_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 	 * value pointer with each loop. The somewhat complex loop control
 	 * syntax is just a fancy way of stepping through the pairs.
 	 */
-	for (np=vp=atts, vp++; np && *np && vp && *vp; np=++vp, vp++) {
+	for (np = vp = atts, vp++; np && *np && vp && *vp; np = ++vp, vp++) {
 		xml_dbg("%s: %s = %s", __func__, *np, *vp);
 		if (strcmp(BASIL_ATR_RSVN_ID, *np) == 0) {
 			if (accelalloc->rsvn_id >= 0) {
@@ -2535,7 +2961,7 @@ reservation_array_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 		parse_err_multiple_elements(d);
 		return;
 	}
-	for (np=vp=atts, vp++; np && *np && vp && *vp; np=++vp, vp++) {
+	for (np = vp = atts, vp++; np && *np && vp && *vp; np = ++vp, vp++) {
 		parse_err_unrecognized_attr(d, *np);
 		return;
 	}
@@ -2544,18 +2970,13 @@ reservation_array_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 }
 
 /**
- * @brief
- * 	This function is registered to handle the reservation element within an
- * 	inventory response.
+ * This function is registered to handle the reservation element within an
+ * inventory response.
  *
  * The standard Expat start handler function prototype is used.
- *
  * @param d pointer to user data structure
  * @param[in] el unused in this function
  * @param[in] atts array of name/value pairs
- * 
- * @return Void
- *
  */
 static void
 reservation_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
@@ -2581,6 +3002,7 @@ reservation_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 		brp->data.query.data.inventory.rsvns = rsvn;
 	}
 	d->current.reservation = rsvn;
+
 	/*
 	 * Work through the attribute pairs updating the name pointer and
 	 * value pointer with each loop. The somewhat complex loop control
@@ -2604,42 +3026,42 @@ reservation_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 				return;
 			}
 			snprintf(rsvn->user_name, BASIL_STRING_SHORT,
-				"%s", *vp);
+				 "%s", *vp);
 		} else if (strcmp(BASIL_ATR_ACCOUNT_NAME, *np) == 0) {
 			if (*rsvn->account_name != '\0') {
 				parse_err_multiple_attrs(d, *np);
 				return;
 			}
 			snprintf(rsvn->account_name, BASIL_STRING_SHORT,
-				"%s", *vp);
+				 "%s", *vp);
 		} else if (strcmp(BASIL_ATR_TIME_STAMP, *np) == 0) {
 			if (*rsvn->time_stamp != '\0') {
 				parse_err_multiple_attrs(d, *np);
 				return;
 			}
 			snprintf(rsvn->time_stamp, BASIL_STRING_SHORT,
-				"%s", *vp);
+				 "%s", *vp);
 		} else if (strcmp(BASIL_ATR_BATCH_ID, *np) == 0) {
 			if (*rsvn->batch_id != '\0') {
 				parse_err_multiple_attrs(d, *np);
 				return;
 			}
 			snprintf(rsvn->batch_id, BASIL_STRING_SHORT,
-				"%s", *vp);
+				 "%s", *vp);
 		} else if (strcmp(BASIL_ATR_RSVN_MODE, *np) == 0) {
 			if (*rsvn->rsvn_mode != '\0') {
 				parse_err_multiple_attrs(d, *np);
 				return;
 			}
 			snprintf(rsvn->rsvn_mode, BASIL_STRING_SHORT,
-				"%s", *vp);
+				 "%s", *vp);
 		} else if (strcmp(BASIL_ATR_GPC_MODE, *np) == 0) {
 			if (*rsvn->gpc_mode != '\0') {
 				parse_err_multiple_attrs(d, *np);
 				return;
 			}
 			snprintf(rsvn->gpc_mode, BASIL_STRING_SHORT,
-				"%s", *vp);
+				 "%s", *vp);
 		} else {
 			parse_err_unrecognized_attr(d, *np);
 			return;
@@ -2657,7 +3079,6 @@ reservation_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 		parse_err_unspecified_attr(d, BASIL_ATR_ACCOUNT_NAME);
 		return;
 	}
-
 	d->count.application_array = 0;
 	return;
 }
@@ -2691,7 +3112,7 @@ application_array_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 		parse_err_multiple_elements(d);
 		return;
 	}
-	for (np=vp=atts, vp++; np && *np && vp && *vp; np=++vp, vp++) {
+	for (np = vp = atts, vp++; np && *np && vp && *vp; np = ++vp, vp++) {
 		parse_err_unrecognized_attr(d, *np);
 		return;
 	}
@@ -2753,7 +3174,7 @@ command_array_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 		parse_err_multiple_elements(d);
 		return;
 	}
-	for (np=vp=atts, vp++; np && *np && vp && *vp; np=++vp, vp++) {
+	for (np = vp = atts, vp++; np && *np && vp && *vp; np = ++vp, vp++) {
 		parse_err_unrecognized_attr(d, *np);
 		return;
 	}
@@ -2770,7 +3191,7 @@ command_array_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
  * @param d pointer to user data structure
  * @param[in] el unused in this function
  * @param[in] atts array of name/value pairs
- * 
+ *
  * @return Void
  *
  */
@@ -2785,8 +3206,8 @@ ignore_element(ud_t *d, const XML_Char *el, const XML_Char **atts)
 		return;
 
 	id = handler[d->stack[d->depth]].element;
-	for (np=vp=atts, vp++; np && *np && vp && *vp; np=++vp, vp++) {
-		xml_dbg("%s: %s = %s", id, *np, *vp);
+	for (np = vp = atts, vp++; np && *np && vp && *vp; np = ++vp, vp++) {
+		xml_dbg("%s: %s = %s", __func__, *np, *vp);
 	}
 	return;
 }
@@ -2811,7 +3232,7 @@ disallow_char_data(ud_t *d, const XML_Char *s, int len)
 {
 	int i;
 
-	for (i=0; i<len; i++) {
+	for (i = 0; i < len; i++) {
 		if (!isspace(*(s+i)))
 			break;
 	}
@@ -2890,6 +3311,9 @@ inventory_end(ud_t *d, const XML_Char *el)
 		d->current.accel_state_unknown);
 	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG,
 		"accelerator state", log_buffer);
+	sprintf(log_buffer, "%d sockets", d->current.socket_count);
+	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG,
+		"inventory", log_buffer);
 	return;
 }
 
@@ -2910,7 +3334,7 @@ handler_find_index(const XML_Char *el)
 {
 	int i;
 
-	for (i=1; handler[i].element; i++) {
+	for (i = 1; handler[i].element; i++) {
 		if (strcmp(handler[i].element, el) == 0)
 			return (i);
 	}
@@ -3022,39 +3446,359 @@ parse_char_data(void *ud, const XML_Char *s, int len)
 
 /**
  * @brief
- * 	After the Cray inventory XML is parsed, use the resulting structures
- * 	to generate vnodes for the compute nodes and send them to the server.
+ *	This function walks all the segments and fills in the information needed to
+ * generate the vnodes. It is called directly when PBS is using BASIL 1.2 or
+ * prior XML inventories. It is called from within the socket loop when PBS
+ * gets BASIL 1.3 and BASIL 1.4 XML inventory.
+ * @param[in] node	information about the node
+ * @param[in] nv	vnode list information
+ * @param[in] arch	the architecture of the vnode
+ * @param[in/out] total_seg	latest count of the segments, to increase
+ *				across sockets
+ * @param[in] order	order number of the vnode
+ * @param[in/out] name_buf	upon exiting it contains the name of the vnode
+ * @param[in/out] total_cpu	keeps a running count of cpus for the whole node
+ * @param[in/out] total_mem	keeps a running count of mem for the whole node
  *
- * @param brp ALPS inventory responce
+ * These last three parameters are used for the vnode_per_numa_node = 0 case.
+ * Where we only create one PBS vnode per Cray compute node
  *
  * @return Void
+ */
+void
+inventory_loop_on_segments(basil_node_t *node, vnl_t *nv, char *arch,
+	int *total_seg, long order, char *name_buf, int *total_cpu, long *total_mem)
+{
+	basil_node_segment_t	*seg = NULL;
+	basil_node_processor_t	*proc = NULL;
+	basil_node_memory_t *mem = NULL;
+	basil_label_t *label = NULL;
+	basil_node_accelerator_t *accel = NULL;
+	basil_node_computeunit_t *cu = NULL;
+	int	aflag = READ_WRITE | ATR_DFLAG_CVTSLT;
+	long	totmem;
+	int	totcpus;
+	int	totaccel = 0;
+	int	first_seg = 0;
+	char	vname[VNODE_NAME_LEN];
+	char	*attr;
+	int	totseg;
+
+	/* Proceed only if we have valid pointers */
+	if (node == NULL) {
+		sprintf(log_buffer, "Bad pointer to node info");
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_NODE,
+			LOG_ERR, __func__, log_buffer);
+		return;
+	}
+	if (nv == NULL) {
+		sprintf(log_buffer, "Bad pointer to node list info");
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_NODE,
+			LOG_ERR, __func__, log_buffer);
+		return;
+	}
+
+	totseg = *total_seg;
+	totcpus = *total_cpu;
+	totmem = *total_mem;
+	for (seg = node->segments; seg; seg = seg->next, totseg++) {
+		if (totseg == 0) {
+			/* The first segment is different and important
+			 * because some information is only attached to the
+			 * very first segment of a vnode.
+			 */
+			first_seg = 1;
+		}
+		if (vnode_per_numa_node) {
+			snprintf(vname, sizeof(vname), "%s_%ld_%d",
+				mpphost, node->node_id, totseg);
+			vname[sizeof(vname)-1]='\0';
+		} else if (first_seg) {
+			/* When concatenating the segments into
+			 * one vnode, we don't put any segment info
+			 * in the name.
+			 */
+			snprintf(vname, sizeof(vname), "%s_%ld",
+				 mpphost, node->node_id);
+			vname[sizeof(vname)-1] = '\0';
+		}
+
+		attr = "sharing";
+		/* already exists so don't define type */
+		if (vn_addvnr(nv, vname, attr,
+			      ND_Force_Exclhost,
+			      0, 0, NULL) == -1)
+			goto bad_vnl;
+
+		attr = "resources_available.PBScrayorder";
+		sprintf(utilBuffer, "%ld", order);
+		if (vn_addvnr(nv, vname, attr, utilBuffer,
+			      ATR_TYPE_LONG, aflag,
+			      NULL) == -1)
+			goto bad_vnl;
+
+		attr = "resources_available.arch";
+		if (vn_addvnr(nv, vname, attr, arch,
+			      0, 0, NULL) == -1)
+			goto bad_vnl;
+
+		attr = "resources_available.host";
+		sprintf(utilBuffer, "%s_%ld", mpphost, node->node_id);
+		if (vn_addvnr(nv, vname, attr, utilBuffer,
+			      0, 0, NULL) == -1)
+			goto bad_vnl;
+
+		attr = "resources_available.PBScraynid";
+		sprintf(utilBuffer, "%ld", node->node_id);
+		if (vn_addvnr(nv, vname, attr, utilBuffer,
+			      ATR_TYPE_STR, aflag,
+			      NULL) == -1)
+			goto bad_vnl;
+
+		if (vnode_per_numa_node) {
+			attr = "resources_available.PBScrayseg";
+			sprintf(utilBuffer, "%d", totseg);
+			if (vn_addvnr(nv, vname, attr, utilBuffer,
+				      ATR_TYPE_STR, aflag,
+				      NULL) == -1)
+				goto bad_vnl;
+		}
+
+		attr = "resources_available.vntype";
+		if (vn_addvnr(nv, vname, attr, CRAY_COMPUTE,
+			      0, 0, NULL) == -1)
+			goto bad_vnl;
+
+		attr = "resources_available.PBScrayhost";
+		if (vn_addvnr(nv, vname, attr, mpphost,
+			      ATR_TYPE_STR, aflag,
+			      NULL) == -1)
+			goto bad_vnl;
+
+		if (vnode_per_numa_node) {
+			totcpus = 0;
+			cu = seg->computeunits;
+			if (cu) {
+				for (cu = seg->computeunits; cu; cu = cu->next) {
+					totcpus++;
+				}
+			} else {
+				for (proc = seg->processors; proc; proc = proc->next)
+					totcpus++;
+			}
+
+			attr = "resources_available.ncpus";
+			sprintf(utilBuffer, "%d", totcpus);
+			if (vn_addvnr(nv, vname, attr, utilBuffer,
+				      0, 0, NULL) == -1)
+				goto bad_vnl;
+
+			attr = "resources_available.mem";
+			totmem = 0;
+			for (mem = seg->memory; mem; mem = mem->next)
+				totmem += (mem->page_size_kb * mem->page_count);
+			sprintf(utilBuffer, "%ldkb", totmem);
+			if (vn_addvnr(nv, vname, attr, utilBuffer,
+				0, 0, NULL) == -1)
+				goto bad_vnl;
+
+			for (label = seg->labels; label; label = label->next) {
+				sprintf(utilBuffer,
+					"resources_available.PBScraylabel_%s",
+					label->name);
+				if (vn_addvnr(nv, vname, utilBuffer, "true",
+					ATR_TYPE_BOOL, aflag,
+					NULL) == -1)
+					goto bad_vnl;
+			}
+		} else {
+			/*
+			 * vnode_per_numa_node is false, which
+			 * means we need to compress all the segment info (and
+			 * in the case of BASIl 1.3 and higher the socket
+			 * info too) into only one vnode. We need to
+			 * total up the cpus and memory for each of the
+			 * segments and report it as part of the
+			 * whole vnode. Add/set labels only once.
+			 * All labels are assumed to be the same on
+			 * all segments.
+			 */
+			for (mem = seg->memory; mem; mem = mem->next)
+				totmem += mem->page_size_kb * mem->page_count;
+
+			cu = seg->computeunits;
+			if (cu) {
+				for (cu = seg->computeunits; cu; cu = cu->next) {
+					totcpus++;
+				}
+			} else {
+				for (proc = seg->processors; proc; proc = proc->next)
+					totcpus++;
+			}
+
+			if (totseg == 0) {
+				for (label = seg->labels; label; label = label->next) {
+					sprintf(utilBuffer,
+						"resources_available.PBScraylabel_%s",
+						label->name);
+					if (vn_addvnr(nv, vname, utilBuffer, "true",
+						ATR_TYPE_BOOL, aflag,
+						NULL) == -1)
+						goto bad_vnl;
+				}
+			}
+		}
+
+		/* Only do this for nodes that have accelerators */
+		if (node->accelerators) {
+			for (accel = node->accelerators, totaccel = 0;
+				accel; accel = accel->next) {
+				if (accel->state == basil_accel_state_up)
+					/* Only count them if the state is UP */
+					totaccel++;
+			}
+
+			attr = "resources_available.naccelerators";
+			if (totseg == 0) {
+				/*
+				 * add the naccelerators count only to
+				 * the first vnode of a compute node
+				 * all other vnodes will share the count
+				 */
+				snprintf(utilBuffer, sizeof(utilBuffer),
+					"%d", totaccel);
+			} else if (vnode_per_numa_node) {
+					/*
+					 * When there is a vnode being created
+					 * per numa node, only the first
+					 * (segment 0) vnode gets the accelerator.
+					 * The other vnodes must
+					 * share the accelerator count with
+					 * segment 0 vnodes
+					 */
+					snprintf(utilBuffer, sizeof(utilBuffer),
+						 "@%s_%ld_0",
+						 mpphost, node->node_id);
+			}
+
+			if ( vnode_per_numa_node || totseg == 0) {
+				if (vn_addvnr(nv, vname, attr, utilBuffer,
+					      0, 0, NULL) == -1)
+					goto bad_vnl;
+			}
+
+			attr = "resources_available.accelerator";
+			if (totaccel > 0) {
+				/* set to 'true' if the accelerator
+				 * is in state=up, totaccel is only
+				 * incremented if state=up
+				 */
+				snprintf(utilBuffer, sizeof(utilBuffer), "true");
+			} else {
+				/* set to 'false' to show that the
+				 * vnode has accelerator(s) but they
+				 * are not currently state=up
+				 */
+				snprintf(utilBuffer, sizeof(utilBuffer), "false");
+			}
+
+			if (vn_addvnr(nv, vname, attr, utilBuffer,
+				0, 0, NULL) == -1)
+				goto bad_vnl;
+
+			/*
+			 * Only set accelerator_model and
+			 * accelerator_memory if the accelerator is UP
+			 */
+			if (totaccel > 0) {
+				accel = node->accelerators;
+				if (accel->data.gpu) {
+					if (strcmp(accel->data.gpu->family, BASIL_VAL_UNKNOWN) == 0) {
+						sprintf(log_buffer, "The GPU family "
+							"value is 'UNKNOWN'. Check "
+							"your Cray GPU inventory.");
+						log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG, __func__, log_buffer);
+					}
+					attr = "resources_available.accelerator_model";
+					snprintf(utilBuffer, sizeof(utilBuffer),
+						"%s",
+						accel->data.gpu->family);
+					if (vn_addvnr(nv, vname, attr,
+						utilBuffer, 0,
+						0, NULL) == -1)
+						goto bad_vnl;
+					if (accel->data.gpu->memory) {
+						attr = "resources_available.accelerator_memory";
+						if (totseg == 0) {
+							snprintf(utilBuffer,
+								sizeof(utilBuffer),
+								"%umb",
+								accel->data.gpu->memory);
+						} else if (vnode_per_numa_node) {
+								snprintf(utilBuffer,
+									 sizeof(utilBuffer),
+									 "@%s_%ld_0",
+									 mpphost, node->node_id);
+						}
+
+						if (vnode_per_numa_node || totseg == 0) {
+							if (vn_addvnr(nv, vname, attr,
+								      utilBuffer, 0,
+								      0, NULL) == -1)
+								goto bad_vnl;
+						}
+					}
+				}
+			}
+		}
+	}
+	strncpy(name_buf, vname, VNODE_NAME_LEN);
+	*total_cpu = totcpus;
+	*total_mem = totmem;
+	*total_seg = totseg;
+
+	return;
+
+bad_vnl:
+	sprintf(log_buffer, "creation of Cray vnodes failed at %ld, with vname %s", order, vname);
+	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG,
+		__func__, log_buffer);
+	/*
+	 * don't free nv since it might be important in the dump
+	 */
+	abort();
+}
+
+/**
+ * @brief
+ * 	After the Cray inventory XML response is parsed, use the resulting structures
+ * to generate vnodes for the compute nodes and send them to the server.
  *
+ * @param brp ALPS inventory response
+ *
+ * @return Void
  */
 static void
 inventory_to_vnodes(basil_response_t *brp)
 {
-	basil_response_query_inventory_t *inv;
-	basil_node_t *node;
-	basil_node_segment_t *seg;
-	basil_node_processor_t *proc;
-	basil_node_memory_t *mem;
-	basil_label_t *label;
-	basil_node_accelerator_t *accel;
 	extern	int	internal_state_update;
-	extern  int	num_acpus;
+	extern	int	num_acpus;
 	extern	ulong	totalmem;
-	int	atype = READ_WRITE | ATR_DFLAG_CVTSLT;
-	int	totaccel = 0;
-	int	totcpus;
-	long	totmem;
-	long	order = 0;
-	char	*attr;
-	vnl_t	*nv = NULL;
-	int	ret;
-	char	vname[128];
-	hwloc_topology_t	topology;
-	char			*xmlbuf;
-	int			xmllen;
+	int		aflag = READ_WRITE | ATR_DFLAG_CVTSLT;
+	long		order = 0;
+	char		*attr;
+	vnl_t		*nv = NULL;
+	int		ret = 0;
+	char		*xmlbuf;
+	int		xmllen;
+	int		seg_num;
+	int		cpu_ct;
+	long		mem_ct;
+	char		name[VNODE_NAME_LEN];
+	basil_node_t 	*node = NULL;
+	basil_node_socket_t *sock = NULL;
+	basil_response_query_inventory_t *inv = NULL;
+	hwloc_topology_t topology;
 
 	if (!brp)
 		return;
@@ -3094,7 +3838,7 @@ inventory_to_vnodes(basil_response_t *brp)
 	if (hwloc_topology_init(&topology) == -1)
 		ret = -1;
 	else if ((hwloc_topology_load(topology) == -1) ||
-	         (hwloc_topology_export_xmlbuffer(topology, &xmlbuf, &xmllen) == -1)) {
+		(hwloc_topology_export_xmlbuffer(topology, &xmlbuf, &xmllen) == -1)) {
 		hwloc_topology_destroy(topology);
 		ret = -1;
 	}
@@ -3149,7 +3893,6 @@ inventory_to_vnodes(basil_response_t *brp)
 	/* already exists so don't define type */
 	if (vn_addvnr(nv, mom_short_name, attr, utilBuffer, 0, 0, NULL) == -1)
 		goto bad_vnl;
-
 	attr = "resources_available.mem";
 	snprintf(utilBuffer, sizeof(utilBuffer), "%lu", totalmem);
 	/* already exists so don't define type */
@@ -3163,17 +3906,18 @@ inventory_to_vnodes(basil_response_t *brp)
 
 	attr = "resources_available.PBScrayhost";
 	if (vn_addvnr(nv, mom_short_name, attr, mpphost,
-		ATR_TYPE_STR, atype, NULL) == -1)
+		ATR_TYPE_STR, aflag, NULL) == -1)
 		goto bad_vnl;
 
 	/*
 	 * now create the compute nodes
 	 */
 	inv = &brp->data.query.data.inventory;
-	for (order=1, node=inv->nodes; node; node=node->next, order++) {
+	for (order = 1, node = inv->nodes; node; node = node->next, order++) {
 		char		*arch;
 		static int	first_compute_node = 1;
 
+		(void)memset(name, '\0', VNODE_NAME_LEN);
 		if (node->role != basil_node_role_batch)
 			continue;
 		if (node->state != basil_node_state_up)
@@ -3190,280 +3934,73 @@ inventory_to_vnodes(basil_response_t *brp)
 				continue;
 		}
 
-		/* Only do this for nodes that have accelerators. */
-		if (node->accelerators) {
-			for (accel=node->accelerators, totaccel=0;
-				accel; accel=accel->next) {
-				if (accel->state == basil_accel_state_up)
-					/* Only count them if the state is UP */
-					totaccel++;
-			}
-		}
-
-		/*
-		 * Initializing these outside the loop for the normal case where
-		 * vnode_per_numa_node is not set (or is False)
-		 */
-		totcpus = 0;
-		totmem = 0;
-
-		for (seg=node->segments; seg; seg=seg->next) {
-			if (vnode_per_numa_node) {
-				snprintf(vname, sizeof(vname), "%s_%ld_%d",
-					mpphost, node->node_id, seg->ordinal);
-			} else if (seg->ordinal == 0) {
-				snprintf(vname, sizeof(vname), "%s_%ld",
-					mpphost, node->node_id);
-			}
-
-			if (basil_inventory != NULL) {
-				if (first_compute_node) {
-					first_compute_node = 0;
-					attr = ATTR_NODE_TopologyInfo;
-					snprintf(utilBuffer, sizeof(utilBuffer), "%ld", order);
-					if (vn_addvnr(nv, vname, attr,
-						(char *) basil_inventory,
-						ATR_TYPE_STR, READ_ONLY,
-						NULL) == -1)
-						goto bad_vnl;
-				}
-			} else {
-				snprintf(log_buffer, sizeof(log_buffer), "no saved basil_inventory");
-				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE,
-					LOG_DEBUG, __func__, log_buffer);
-			}
-
-			attr = "sharing";
-			/* already exists so don't define type */
-			if (vn_addvnr(nv, vname, attr,
-				ND_Force_Exclhost,
-				0, 0, NULL) == -1)
-				goto bad_vnl;
-
-			attr = "resources_available.PBScrayorder";
-			snprintf(utilBuffer, sizeof(utilBuffer), "%ld", order);
-			if (vn_addvnr(nv, vname, attr, utilBuffer,
-				ATR_TYPE_LONG, atype,
-				NULL) == -1)
-				goto bad_vnl;
-
-			attr = "resources_available.arch";
-			if (vn_addvnr(nv, vname, attr, arch,
-				0, 0, NULL) == -1)
-				goto bad_vnl;
-
-			attr = "resources_available.host";
-			snprintf(utilBuffer, sizeof(utilBuffer), "%s_%ld", mpphost, node->node_id);
-			if (vn_addvnr(nv, vname, attr, utilBuffer,
-				0, 0, NULL) == -1)
-				goto bad_vnl;
-
-			attr = "resources_available.PBScraynid";
-			snprintf(utilBuffer, sizeof(utilBuffer), "%ld", node->node_id);
-			if (vn_addvnr(nv, vname, attr, utilBuffer,
-				ATR_TYPE_STR, atype,
-				NULL) == -1)
-				goto bad_vnl;
-
-			if (vnode_per_numa_node) {
-				attr = "resources_available.PBScrayseg";
-				snprintf(utilBuffer, sizeof(utilBuffer), "%d",
-					seg->ordinal);
-				if (vn_addvnr(nv, vname, attr, utilBuffer,
-					ATR_TYPE_STR, atype, NULL) == -1)
-					goto bad_vnl;
-			}
-
-			attr = "resources_available.vntype";
-			if (vn_addvnr(nv, vname, attr, CRAY_COMPUTE,
-				0, 0, NULL) == -1)
-				goto bad_vnl;
-
-			attr = "resources_available.PBScrayhost";
-			if (vn_addvnr(nv, vname, attr, mpphost,
-				ATR_TYPE_STR, atype,
-				NULL) == -1)
-				goto bad_vnl;
-
-			if (vnode_per_numa_node) {
-				attr = "resources_available.ncpus";
-				totcpus = 0;
-				for (proc=seg->processors; proc; proc=proc->next)
-					totcpus++;
-				snprintf(utilBuffer, sizeof(utilBuffer), "%d",
-					totcpus);
-				if (vn_addvnr(nv, vname, attr, utilBuffer,
-					0, 0, NULL) == -1)
-					goto bad_vnl;
-
-				attr = "resources_available.mem";
-				totmem = 0;
-				for (mem=seg->memory; mem; mem=mem->next)
-					totmem += mem->page_size_kb * mem->page_count;
-				snprintf(utilBuffer, sizeof(utilBuffer), "%ldkb",
-					totmem);
-				if (vn_addvnr(nv, vname, attr, utilBuffer,
-					0, 0, NULL) == -1)
-					goto bad_vnl;
-
-				for (label=seg->labels; label; label=label->next) {
-					snprintf(utilBuffer, sizeof(utilBuffer),
-						"resources_available.PBScraylabel_%s",
-						label->name);
-					if (vn_addvnr(nv, vname, utilBuffer, "true",
-						ATR_TYPE_BOOL, atype,
-						NULL) == -1)
-						goto bad_vnl;
-				}
-			} else {
-				/*
- 				 * vnode_per_numa_node is false, which
- 				 * means we need to compress all the segment info
- 				 * into only one vnode.  We need to 
- 				 * total up the cpus and memory for each of the
- 				 * segments and report it as part of the
- 				 * whole vnode. Add/set labels only once.
- 				 * All labels are assumed to be the same on
- 				 * all segments.
- 				 */
-				for (proc=seg->processors; proc; proc=proc->next)
-					totcpus++;
-				for (mem=seg->memory; mem; mem=mem->next)
-					totmem += mem->page_size_kb * mem->page_count;
-				if (seg->ordinal == 0) {
-					for (label=seg->labels; label; label=label->next) {
-						snprintf(utilBuffer, sizeof(utilBuffer),
-							"resources_available.PBScraylabel_%s",
-							label->name);
-						if (vn_addvnr(nv, vname, utilBuffer, "true",
-							ATR_TYPE_BOOL, atype,
-							NULL) == -1)
-							goto bad_vnl;
-					}
-				}
-			}
-
-			/* Only do this for nodes that have accelerators */
-			if (node->accelerators) {
-				attr = "resources_available.naccelerators";
-				if (seg->ordinal == 0) {
-					/*
-					 * add the naccelerators count only to
-					 * the first vnode of a compute node
-					 * all other vnodes will share the count
-					 */
-					snprintf(utilBuffer, sizeof(utilBuffer),
-						"%d", totaccel);
-				} else if (vnode_per_numa_node) {
-					/*
- 					 * When there is a vnode being created
- 					 * per numa node, only the first
- 					 * (segment 0) vnode gets the accelerator.
- 					 * The other vnodes must share the
- 					 * accelerator count with segment 0 vnodes.
-					 */
-					snprintf(utilBuffer, sizeof(utilBuffer),
-						"@%s_%ld_0",
-						mpphost, node->node_id);
-				}
-
-				/*
- 				 * Avoid calling vn_addvnr() repeatedly when
- 				 * creating only one vnode per compute node.
- 				 */
-				if (vnode_per_numa_node || (seg->ordinal == 0)) {
-					if (vn_addvnr(nv, vname, attr, utilBuffer,
-						0, 0, NULL) == -1)
-						goto bad_vnl;
-				}
-
-				attr = "resources_available.accelerator";
-				if (totaccel > 0) {
-					/* set to 'true' if the accelerator
-					 * is in state=up, totaccel is only
-					 * incremented if state=up
-					 */
-					snprintf(utilBuffer, sizeof(utilBuffer), "true");
-				} else {
-					/* set to 'false' to show that the
-					 * vnode has accelerator(s) but they
-					 * are not currently state=up
-					 */
-					snprintf(utilBuffer, sizeof(utilBuffer), "false");
-				}
-
-				if (vn_addvnr(nv, vname, attr, utilBuffer,
-					0, 0, NULL) == -1)
-					goto bad_vnl;
-
-				/*
-				 * Only set accelerator_model and
-				 * accelerator_memory if the accelerator is UP
+		if (basil_inventory != NULL) {
+			if (first_compute_node) {
+				/* Create the name of the very first vnode
+				 * so we can attach topology info to it
 				 */
-				if (totaccel > 0) {
-					accel=node->accelerators;
-					if (accel->data.gpu) {
-						if (strcmp(accel->data.gpu->family, BASIL_VAL_UNKNOWN) == 0) {
-							snprintf(log_buffer, sizeof(log_buffer), "The GPU family "
-								"value is 'UNKNOWN'.  Check "
-								"your Cray GPU inventory.");
-							log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG, __func__, log_buffer);
-						}
-						attr = "resources_available.accelerator_model";
-						snprintf(utilBuffer, sizeof(utilBuffer),
-							"%s",
-							accel->data.gpu->family);
-						if (vn_addvnr(nv, vname, attr,
-							utilBuffer, 0,
-							0, NULL) == -1)
-							goto bad_vnl;
-						if (accel->data.gpu->memory) {
-							attr = "resources_available.accelerator_memory";
-							if (seg->ordinal == 0) {
-								snprintf(utilBuffer,
-									sizeof(utilBuffer),
-									"%umb",
-									accel->data.gpu->memory);
-							} else if (vnode_per_numa_node) {
-								snprintf(utilBuffer,
-									sizeof(utilBuffer),
-									"@%s_%ld_0",
-									mpphost, node->node_id);
-							}
-							/* Avoid calling vn_addvnr() repeatedly
-							 * when creating only one vnode per 
-							 * compute node.
-							 */
-							if ((seg->ordinal == 0) ||
-							     vnode_per_numa_node) {
-								if (vn_addvnr(nv, vname, attr,
-									utilBuffer, 0,
-									0, NULL) == -1)
-									goto bad_vnl;
-							}
-						}
-					}
+				if (vnode_per_numa_node) {
+					snprintf(name, VNODE_NAME_LEN, "%s_%ld_0",
+						mpphost, node->node_id);
+					name[VNODE_NAME_LEN-1]='\0';
+				} else {
+					/* When concatenating the segments into
+					 * one vnode, we don't put any segment info
+					 * in the name.
+					 */
+					snprintf(name, VNODE_NAME_LEN, "%s_%ld",
+						mpphost, node->node_id);
+					name[VNODE_NAME_LEN-1] = '\0';
 				}
+				first_compute_node = 0;
+				attr = ATTR_NODE_TopologyInfo;
+				if (vn_addvnr(nv, name, attr,
+					(char *) basil_inventory,
+					ATR_TYPE_STR, READ_ONLY,
+					NULL) == -1)
+					goto bad_vnl;
 			}
+		} else {
+			sprintf(log_buffer, "no saved basil_inventory");
+			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE,
+				LOG_DEBUG, __func__, log_buffer);
 		}
+		seg_num = 0;
+		cpu_ct = 0;
+		mem_ct = 0;
+
+		switch (basilver) {
+			case basil_1_1:
+			case basil_1_2:
+				inventory_loop_on_segments(node, nv, arch, &seg_num, order, name, &cpu_ct, &mem_ct);
+				break;
+			case basil_1_3:
+			case basil_1_4:
+				/* loop on the sockets around the segments */
+				for (sock = node->sockets; sock; sock = sock->next) {
+					inventory_loop_on_segments(node, nv, arch, &seg_num, order,
+								   name, &cpu_ct, &mem_ct);
+
+				}
+				break;
+		}
+
 		if (!vnode_per_numa_node) {
-			/*
- 			 * Since we're creating one vnode that combines
- 			 * the info for all the numa nodes,
- 			 * we've now cycled through all the numa nodes, so
- 			 * we need to set the total number of cpus and total
- 			 * memory before moving on to the next node 
- 			 */
+			/* Since we're creating one vnode that combines
+			 * the info for all the numa nodes,
+			 * we've now cycled through all the numa nodes, so
+			 * we need to set the total number of cpus and total
+			 * memory before moving on to the next node
+			 */
 			attr = "resources_available.ncpus";
-			snprintf(utilBuffer, sizeof(utilBuffer), "%d", totcpus);
-			if (vn_addvnr(nv, vname, attr, utilBuffer,
+			sprintf(utilBuffer, "%d", cpu_ct);
+			if (vn_addvnr(nv, name, attr, utilBuffer,
 				0, 0, NULL) == -1)
 				goto bad_vnl;
 
 			attr = "resources_available.mem";
-			snprintf(utilBuffer, sizeof(utilBuffer), "%ldkb",
-				totmem);
-			if (vn_addvnr(nv, vname, attr, utilBuffer,
+			snprintf(utilBuffer, sizeof(utilBuffer), "%lukb", mem_ct);
+			if (vn_addvnr(nv, name, attr, utilBuffer,
 				0, 0, NULL) == -1)
 				goto bad_vnl;
 		}
@@ -3481,7 +4018,7 @@ inventory_to_vnodes(basil_response_t *brp)
 	return;
 
 bad_vnl:
-	snprintf(log_buffer, sizeof(log_buffer), "creation of cray vnodes failed at %ld", order);
+	snprintf(log_buffer, sizeof(log_buffer), "creation of cray vnodes failed at %ld, with name %s", order, name);
 	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG,
 		__func__, log_buffer);
 	/*
@@ -3588,7 +4125,7 @@ free_basil_label(basil_label_t *p)
  * @brief
  * 	Destructor function for BASIL accelerator gpu structure.
  *
- * @param p structure to free 
+ * @param p structure to free
  *
  * @return Void
  *
@@ -3646,6 +4183,39 @@ free_basil_accelerator(basil_node_accelerator_t *p)
 
 /**
  * @brief
+ * Destructor function for BASIL socket structure
+ * @param p structure to free
+ */
+static void
+free_basil_socket(basil_node_socket_t *p)
+{
+	basil_node_socket_t *nxtp;
+	if(!p)
+		return;
+	nxtp = p->next;
+	free(p);
+	free_basil_socket(nxtp);
+
+}
+
+/**
+ * @brief
+ * Destructor function for BASIL computeunit structure
+ * @param p structure to free
+ */
+static void
+free_basil_computeunit(basil_node_computeunit_t *p)
+{
+	basil_node_computeunit_t *nxtp;
+	if(!p)
+		return;
+	nxtp = p->next;
+	free(p);
+	free_basil_computeunit(nxtp);
+}
+
+/**
+ * @brief
  *	Destructor function for BASIL node segment structure.
  *
  * @param p structure to free
@@ -3656,14 +4226,16 @@ free_basil_accelerator(basil_node_accelerator_t *p)
 static void
 free_basil_segment(basil_node_segment_t *p)
 {
+	basil_node_segment_t *nxtp;
 	if (!p)
 		return;
-	free_basil_segment(p->next);
+	nxtp = p->next;
 	free_basil_processor(p->processors);
 	free_basil_memory(p->memory);
 	free_basil_label(p->labels);
+	free_basil_computeunit(p->computeunits);
 	free(p);
-	return;
+	free_basil_segment(nxtp);
 }
 
 /**
@@ -3674,13 +4246,15 @@ free_basil_segment(basil_node_segment_t *p)
 static void
 free_basil_node(basil_node_t *p)
 {
+	basil_node_t *nxtp;
 	if (!p)
 		return;
-	free_basil_node(p->next);
+	nxtp = p->next;
 	free_basil_segment(p->segments);
 	free_basil_accelerator(p->accelerators);
+	free_basil_socket(p->sockets);
 	free(p);
-	return;
+	free_basil_node(nxtp);
 }
 
 /**
@@ -3695,21 +4269,21 @@ free_basil_node(basil_node_t *p)
 static void
 free_basil_rsvn(basil_rsvn_t *p)
 {
+	basil_rsvn_t *nxtp;
 	if (!p)
 		return;
-	free_basil_rsvn(p->next);
+	nxtp = p->next;
 	free(p);
-	return;
+	free_basil_rsvn(nxtp);
 }
 
 /**
  * @brief
  * 	Destructor function for BASIL response structure.
- *
+
  * @param brp structure to free
  *
  * @return Void
- * 
  */
 static void
 free_basil_response_data(basil_response_t *brp)
@@ -3730,14 +4304,13 @@ free_basil_response_data(basil_response_t *brp)
 		}
 	}
 	free(brp);
-	return;
 }
 
 /**
  * @brief
  * 	The child side of the request handler that invokes the ALPS client.
  *
- * Setup stdin to map to infd and stdout to map to outfd.  Once that is
+ * Setup stdin to map to infd and stdout to map to outfd. Once that is
  * done, call exec to run the ALPS client.
  *
  * @param[in] infd input file descriptor
@@ -3745,9 +4318,6 @@ free_basil_response_data(basil_response_t *brp)
  *
  * @return exit value of ALPS client
  * @retval 127 failure to setup exec of ALPS client
- *
- * @return  Void
- *
  */
 static int
 alps_request_child(int infd, int outfd)
@@ -3850,7 +4420,8 @@ alps_request_parent(int fdin)
 	basil_response_t *brp;
 	FILE *in = NULL;
 	int status;
-	int len, eof;
+	int len;
+	int eof = 0;
 	int rc;
 	int inventory_size = 0;
 
@@ -4077,11 +4648,12 @@ done:
 static void
 alps_free_memory_param(basil_memory_param_t *p)
 {
+	basil_memory_param_t *nxtp;
 	if (!p)
 		return;
-	alps_free_memory_param(p->next);
+	nxtp = p->next;
 	free(p);
-	return;
+	alps_free_memory_param(nxtp);
 }
 
 /**
@@ -4089,18 +4661,19 @@ alps_free_memory_param(basil_memory_param_t *p)
  * 	Destructor function for BASIL label parameter structure.
  *
  * @param p structure to free
- * 
+ *
  * @return Void
  *
  */
 static void
 alps_free_label_param(basil_label_param_t *p)
 {
+	basil_label_param_t *nxtp;
 	if (!p)
 		return;
-	alps_free_label_param(p->next);
+	nxtp= p->next;
 	free(p);
-	return;
+	alps_free_label_param(nxtp);
 }
 
 /**
@@ -4115,13 +4688,14 @@ alps_free_label_param(basil_label_param_t *p)
 static void
 alps_free_nodelist_param(basil_nodelist_param_t *p)
 {
+	basil_nodelist_param_t *nxtp;
 	if (!p)
 		return;
-	alps_free_nodelist_param(p->next);
+	nxtp = p->next;
 	if (p->nodelist)
 		free(p->nodelist);
 	free(p);
-	return;
+	alps_free_nodelist_param(nxtp);
 }
 
 /**
@@ -4136,12 +4710,13 @@ alps_free_nodelist_param(basil_nodelist_param_t *p)
 static void
 alps_free_accelerator_param(basil_accelerator_param_t *p)
 {
+	basil_accelerator_param_t *nxtp;
 	if (!p)
 		return;
-	alps_free_accelerator_param(p->next);
+	nxtp = p->next;
 	free_basil_accelerator_gpu(p->data.gpu);
 	free(p);
-	return;
+	alps_free_accelerator_param(nxtp);
 }
 
 /**
@@ -4156,15 +4731,16 @@ alps_free_accelerator_param(basil_accelerator_param_t *p)
 static void
 alps_free_param(basil_reserve_param_t *p)
 {
+	basil_reserve_param_t *nxtp;
 	if (!p)
 		return;
-	alps_free_param(p->next);
+	nxtp = p->next;
 	alps_free_memory_param(p->memory);
 	alps_free_label_param(p->labels);
 	alps_free_nodelist_param(p->nodelists);
 	alps_free_accelerator_param(p->accelerators);
 	free(p);
-	return;
+	alps_free_param(nxtp);
 }
 
 /**
@@ -4218,17 +4794,17 @@ typedef	struct	nodesum {
  *
  * A loop goes through each element of the ji_vnods array for the job and
  * looks for entries that have cpus, the name matches mpphost, vntype is
- * CRAY_COMPUTE, and has a value for arch.  Each of these entries causes
- * an entry to be made in the nodes array.  If no vnodes are matched,
+ * CRAY_COMPUTE, and has a value for arch. Each of these entries causes
+ * an entry to be made in the nodes array. If no vnodes are matched,
  * we can return since no compute nodes are being allocated.
  *
  * An error check is done to be sure no entries in the nodes array have
- * a bad combination of ncpus and mpiprocs.  Then, a double loop is
+ * a bad combination of ncpus and mpiprocs. Then, a double loop is
  * entered that goes through each element of the of the nodes array
- * looking for matching entries.  A match is when depth, width, mem,
+ * looking for matching entries. A match is when depth, width, mem,
  * share, arch, need_accel, accelerator_model and accelerator_mem are
- * all the same.  All matches will be output to
- * a single ReserveParam XML section.  Each node array entry that
+ * all the same. All matches will be output to
+ * a single ReserveParam XML section. Each node array entry that
  * is represented in an ReserveParam section is marked done so it
  * can be skipped as the loops run through the entries.
  *
@@ -4254,6 +4830,7 @@ alps_create_reserve_request(job *pjob, basil_request_reserve_t **req)
 	vmpiprocs	*vp;
 	size_t		len, nsize;
 	char		*cp;
+	resource	*pres;
 
 	*req = NULL;
 
@@ -4265,13 +4842,13 @@ alps_create_reserve_request(job *pjob, basil_request_reserve_t **req)
 
 	/*
 	 * Go through the vnodes to consolidate the mpi ranks onto
-	 * the compute nodes.  The index into ji_vnods will be
+	 * the compute nodes. The index into ji_vnods will be
 	 * incremented by the value of vn_mpiprocs because the
 	 * entries in ji_vnods are replicated for each mpi rank.
 	 */
 	num = 0;
 	len = strlen(mpphost);
-	for (i=0; i<pjob->ji_numvnod; i += vp->vn_mpiprocs) {
+	for (i = 0; i < pjob->ji_numvnod; i += vp->vn_mpiprocs) {
 		vnal_t		*vnp;
 		char		*vntype, *vnt;
 		char		*sharing;
@@ -4287,19 +4864,14 @@ alps_create_reserve_request(job *pjob, basil_request_reserve_t **req)
 			continue;
 
 		/*
-		 * Skip over vnodes where the name does not begin with the
-		 * expected mpphost string
+		 * Only match vnodes that begin with mpphost and have
+		 * a following "_<num>_<num>" (when
+		 * vnode_per_numa_node is true) otherwise,
+		 * just plain "_<num>"..
 		 */
 		if (strncmp(vp->vn_vname, mpphost, len) != 0)
 			continue;
 		cp = &vp->vn_vname[len];
-
-		/*
-		 * The remainder of the vnode name must match "_<num>_<num>"
-		 * (when vnode_per_numa_node is enabled) otherwise,
-		 * "_<num>" when disabled.
-		 */
-
 		if (vnode_per_numa_node) {
 			if (sscanf(cp, "_%ld_%d", &nid, &seg) != 2)
 				continue;
@@ -4388,7 +4960,7 @@ alps_create_reserve_request(job *pjob, basil_request_reserve_t **req)
 		 ** to allocate another slot for it so a separate
 		 ** ReserveParam XML section is created.
 		 */
-		for (j=0; j<num; j++) {
+		for (j = 0; j < num; j++) {
 			nodesum_t	*ns = &nodes[j];
 
 			if (ns->nid == nid && ns->share == share &&
@@ -4470,7 +5042,7 @@ alps_create_reserve_request(job *pjob, basil_request_reserve_t **req)
 		sizeof(basil_req->batch_id)-1);
 	basil_req->batch_id[sizeof(basil_req->batch_id)-1] = '\0';
 
-	for (i=0; i<num; i++) {
+	for (i = 0; i < num; i++) {
 		nodesum_t	*ns = &nodes[i];
 
 		/*
@@ -4486,7 +5058,7 @@ alps_create_reserve_request(job *pjob, basil_request_reserve_t **req)
 
 	pend = NULL;
 
-	for (i=0; i<num ; i++) {
+	for (i = 0; i < num ; i++) {
 		basil_reserve_param_t		*p;
 		basil_nodelist_param_t		*n;
 		basil_accelerator_param_t	*a;
@@ -4531,7 +5103,7 @@ alps_create_reserve_request(job *pjob, basil_request_reserve_t **req)
 		p->depth = ns->depth;
 		p->nppn = width = ns->width;
 		p->rsvn_mode = (ns->share == isexcl) ?
-			basil_rsvn_mode_exclusive : basil_rsvn_mode_shared;
+		basil_rsvn_mode_exclusive : basil_rsvn_mode_shared;
 
 		if (ns->ncpus != ns->threads) {
 			sprintf(log_buffer, "ompthreads %ld does not match"
@@ -4542,19 +5114,19 @@ alps_create_reserve_request(job *pjob, basil_request_reserve_t **req)
 		}
 
 		/*
-		 ** Collapse matching entries.
+		 * Collapse matching entries.
 		 */
-		for (j=i+1; j<num; j++) {
+		for (j = i+1; j<num; j++) {
 			nodesum_t	*ns2 = &nodes[j];
 
 			/* Look for matching nid entries that have not
-			 *  yet been output.
+			 * yet been output.
 			 */
 			if (ns2->done)
 				continue;
 
 			/* If everthing matches, add in this entry
-			 *  and mark it done.
+			 * and mark it done.
 			 */
 			if (ns2->depth != ns->depth)
 				continue;
@@ -4647,7 +5219,7 @@ alps_create_reserve_request(job *pjob, basil_request_reserve_t **req)
 		/*
 		 * We don't include checking for ns->naccels here because
 		 * ALPS is currently unable to accept a specified count
-		 * of accelerators.  Also ALPS currently needs a width
+		 * of accelerators. Also ALPS currently needs a width
 		 * to be requested on every node, so an accelerator cannot
 		 * be the only thing requested on a node.
 		 */
@@ -4750,7 +5322,7 @@ alps_create_reservation(basil_request_reserve_t *bresvp, long *rsvn_id,
 		add_alps_req(utilBuffer);
 	}
 	add_alps_req(">\n");
-	for (param=bresvp->params; param; param=param->next) {
+	for (param = bresvp->params; param; param = param->next) {
 		add_alps_req("  <" BASIL_ELM_RESERVEPARAM);
 		switch (param->arch) {
 			case basil_node_arch_x2:
@@ -4790,9 +5362,12 @@ alps_create_reservation(basil_request_reserve_t *bresvp, long *rsvn_id,
 				param->nppn);
 			add_alps_req(utilBuffer);
 		}
-		if (vnode_per_numa_node && (param->segments[0] != '\0')) {
-			snprintf(utilBuffer, sizeof(utilBuffer),
-				" " BASIL_ATR_SEGMENTS "=\"%s\"",
+		if (param->nppcu > 0) {
+			sprintf(utilBuffer, " " BASIL_ATR_NPPCU "=\"0\"");
+			add_alps_req(utilBuffer);
+		}
+		if (vnode_per_numa_node && param->segments[0] != '\0') {
+			sprintf(utilBuffer, " " BASIL_ATR_SEGMENTS "=\"%s\"",
 				param->segments);
 			add_alps_req(utilBuffer);
 		}
@@ -4803,7 +5378,7 @@ alps_create_reservation(basil_request_reserve_t *bresvp, long *rsvn_id,
 		add_alps_req(">\n");
 		if (param->memory) {
 			add_alps_req("   <" BASIL_ELM_MEMPARAMARRAY ">\n");
-			for (mem=param->memory; mem; mem=mem->next) {
+			for (mem = param->memory; mem; mem = mem->next) {
 				add_alps_req("    <" BASIL_ELM_MEMPARAM " "
 					BASIL_ATR_TYPE "=\"");
 				switch (mem->type) {
@@ -4827,8 +5402,8 @@ alps_create_reservation(basil_request_reserve_t *bresvp, long *rsvn_id,
 		}
 		if (param->labels) {
 			add_alps_req("   <" BASIL_ELM_LABELPARAMARRAY ">\n");
-			for (label=param->labels; label && *label->name;
-				label=label->next) {
+			for (label = param->labels; label && *label->name;
+				label = label->next) {
 				add_alps_req("    <" BASIL_ELM_LABELPARAM " "
 					BASIL_ATR_NAME "=");
 				sprintf(utilBuffer, "\"%s\"", label->name);
@@ -4861,9 +5436,9 @@ alps_create_reservation(basil_request_reserve_t *bresvp, long *rsvn_id,
 		}
 		if (param->nodelists) {
 			add_alps_req("   <" BASIL_ELM_NODEPARMARRAY ">\n");
-			for (nl=param->nodelists;
+			for (nl = param->nodelists;
 				nl && nl->nodelist && *nl->nodelist;
-				nl=nl->next) {
+				nl = nl->next) {
 				add_alps_req("    <" BASIL_ELM_NODEPARAM ">");
 				add_alps_req(nl->nodelist);
 				add_alps_req("</" BASIL_ELM_NODEPARAM ">\n");
@@ -4873,7 +5448,7 @@ alps_create_reservation(basil_request_reserve_t *bresvp, long *rsvn_id,
 		if (param->accelerators) {
 			add_alps_req("   <" BASIL_ELM_ACCELPARAMARRAY ">\n");
 			for (accel = param->accelerators; accel;
-				accel=accel->next) {
+				accel = accel->next) {
 				add_alps_req("    <" BASIL_ELM_ACCELPARAM " "
 					BASIL_ATR_TYPE "=\"" BASIL_VAL_GPU "\"");
 				if (accel->data.gpu) {
@@ -5008,7 +5583,6 @@ alps_confirm_reservation(job *pjob)
  *
  * @param[in] pjob - pointer to job structure
  * @retval 0 success
- *
  * @retval 1 transient error (retry)
  * @retval -1 fatal error
  *
@@ -5059,7 +5633,7 @@ alps_cancel_reservation(job *pjob)
 		} else {
 			/*
 			 * check if it's a "No entry for resID"
-			 * error message.  If so, we will assume the ALPS
+			 * error message. If so, we will assume the ALPS
 			 * reservation went away due to a prior release
 			 * request and fall through to the successful exit
 			 * If for some reason Cray changes this error string
@@ -5074,7 +5648,7 @@ alps_cancel_reservation(job *pjob)
 				pjob->ji_extended.ji_ext.ji_reservation);
 			if (strstr(brp->error, buf) == NULL) {
 				sprintf(log_buffer, "Failed to cancel ALPS "
-					"reservation %ld.  BASIL response error: %s",
+					"reservation %ld. BASIL response error: %s",
 					pjob->ji_extended.ji_ext.ji_reservation,
 					brp->error);
 				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB,
@@ -5109,214 +5683,148 @@ alps_cancel_reservation(job *pjob)
 }
 
 /**
- * @brief
- *	 Issue an ENGINE query and determine which version of BASIL
- * 	we should use.
- *
- * @return Void
- *
+ * Issue an ENGINE query and determine which version of BASIL
+ * we should use.
  */
 static void
 alps_engine_query(void)
 {
-	basil_response_t *brp;
+	basil_response_t *brp = NULL;
 	char *ver = NULL;
 	char *tmp = NULL;
+	int 	i = 0;
+	int	found_ver = 0;
 
 	new_alps_req();
-	/* Try BASIL 1.2 first - it's the most recent BASIL version we understand */
-	sprintf(basilversion, BASIL_VAL_VERSION_1_2);
-	sprintf(requestBuffer, "<?xml version=\"1.0\"?>\n"
-		"<" BASIL_ELM_REQUEST " "
-		BASIL_ATR_PROTOCOL "=\"%s\" "
-		BASIL_ATR_METHOD "=\"" BASIL_VAL_QUERY "\" "
-		BASIL_ATR_TYPE "=\"" BASIL_VAL_ENGINE "\"/>", basilversion);
-	brp = alps_request(requestBuffer);
-	if (brp != NULL) {
-		if (*brp->error == '\0') {
-			/*
-			 * There are no errors in the response data.
-			 * Check the response method to ensure we have
-			 * the correct response.
-			 */
-			if (brp->method == basil_method_query) {
-				/* Check if 'basil_support' is set before trying to strdup.
-				 * If basil_support is not set, it's likely
-				 * CLE 2.2 which doesn't have 'basil_support' but we'll
-				 * check that later.
-				 */
-				if (brp->data.query.data.engine.basil_support != NULL) {
-					ver = strdup(brp->data.query.data.engine.basil_support);
-					if (ver != NULL) {
-						tmp = strtok(ver, ",");
-						while (tmp) {
-							if ((strcmp(basilversion, tmp)) == 0) {
-								/* Success!  ALPS and PBS speak BASIL 1.2 */
-								sprintf(log_buffer, "The basilversion is "
-									"set to %s", basilversion);
-								log_event(PBSEVENT_DEBUG,
-									PBS_EVENTCLASS_NODE,
-									LOG_DEBUG, __func__, log_buffer);
-								free(ver);
-								free_basil_response_data(brp);
-								return;
+	for (i = 0; (pbs_supported_basil_versions[i] != NULL); i++) {
+		sprintf(basilversion, pbs_supported_basil_versions[i]);
+		sprintf(requestBuffer, "<?xml version=\"1.0\"?>\n"
+			"<" BASIL_ELM_REQUEST " "
+			BASIL_ATR_PROTOCOL "=\"%s\" "
+			BASIL_ATR_METHOD "=\"" BASIL_VAL_QUERY "\" "
+			BASIL_ATR_TYPE "=\"" BASIL_VAL_ENGINE "\"/>",
+			basilversion);
+		brp = alps_request(requestBuffer);
+		if (brp != NULL) {
+			if (*brp->error == '\0') {
+				/*
+				 * There are no errors in the response data.
+				 * Check the response method to ensure we have
+				 * the correct response.
+	 			 */
+	 			if (brp->method == basil_method_query) {
+					/* Check if 'basil_support' is set before trying to strdup.
+					 * If basil_support is not set, it's likely
+	 				 * CLE 2.2 which doesn't have 'basil_support' but we'll
+	 				 * check that later.
+	 				 */
+					if (brp->data.query.data.engine.basil_support != NULL) {
+						ver = strdup(brp->data.query.data.engine.basil_support);
+						if (ver != NULL) {
+							tmp = strtok(ver, ",");
+							while (tmp) {
+								if ((strcmp(basilversion, tmp)) == 0) {
+									/* Success! We found a version to speak */
+									sprintf(log_buffer, "The basilversion is "
+										"set to %s", basilversion);
+									log_event(PBSEVENT_DEBUG,
+										PBS_EVENTCLASS_NODE,
+										LOG_DEBUG, __func__, log_buffer);
+									found_ver = 1;
+									break;
+								}
+								tmp = strtok(NULL, ",");
 							}
-							tmp = strtok(NULL, ",");
-						}
-						/* We didn't find "1.2" as a supported version  */
-						sprintf(log_buffer, "ALPS ENGINE query failed. "
-							"Supported BASIL versions returned: "
-							"'%s'", ver);
-						log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE,
-							LOG_NOTICE, __func__, log_buffer);
-					} else {
-						/* No memory */
-						sprintf(log_buffer, "ALPS ENGINE query failed.  No "
-							"memory");
-						log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_NODE,
-							LOG_NOTICE, __func__, log_buffer);
-					}
-				} /* basil_support isn't in the response fall through
-				   * to try the next basil version
-				   */
-			} else {
-				/* wrong method in the response */
-				sprintf(log_buffer, "Wrong method, expected: %d but "
-					"got: %d", basil_method_query, brp->method);
-				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE,
-					LOG_DEBUG, __func__, log_buffer);
-			}
-		} else {
-			/* There was an error in the BASIL response */
-			sprintf(log_buffer, "Error in BASIL response: %s", brp->error);
-			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG,
-				__func__, log_buffer);
-		}
-	} else {
-		sprintf(log_buffer, "ALPS ENGINE query failed with BASIL "
-			"version %s.", basilversion);
-		/*
-		 * We log this a DEBUG3 because BASIL 1.2 may be too new
-		 * for this ALPS, and we'll try other BASIL versions next
-		 */
-		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE,
-			LOG_NOTICE, __func__, log_buffer);
-	}
-
-	if (ver) {
-		free(ver);
-		ver = NULL;
-	}
-	free_basil_response_data(brp);
-
-	/* BASIL 1.2 didn't work, Try BASIL 1.1 */
-	sprintf(basilversion, BASIL_VAL_VERSION_1_1);
-	sprintf(requestBuffer, "<?xml version=\"1.0\"?>\n"
-		"<" BASIL_ELM_REQUEST " "
-		BASIL_ATR_PROTOCOL "=\"%s\" "
-		BASIL_ATR_METHOD "=\"" BASIL_VAL_QUERY "\" "
-		BASIL_ATR_TYPE "=\"" BASIL_VAL_ENGINE "\"/>",
-		basilversion);
-	brp = alps_request(requestBuffer);
-	if (brp != NULL) {
-		if (*brp->error == '\0') {
-			/*
-			 * There are no errors in the response data.
-			 * Check the response method to ensure we have
-			 * the correct response.
-			 */
-			if (brp->method == basil_method_query) {
-				/* Check if 'basil_support' is set before doing strdup.
-				 * If basil_support is not set, it's likely
-				 * CLE 2.2 which doesn't have 'basil_support'
-				 */
-				if (brp->data.query.data.engine.basil_support != NULL) {
-					ver = strdup(brp->data.query.data.engine.basil_support);
-					if (ver != NULL) {
-						tmp = strtok(ver, ",");
-						while (tmp) {
-							if ((strcmp(basilversion, tmp)) == 0) {
-								/* Success!  ALPS and PBS speak BASIL 1.1 */
-								sprintf(log_buffer, "The basilversion is "
-									"set to %s", basilversion);
-								log_event(PBSEVENT_DEBUG,
-									PBS_EVENTCLASS_NODE,
-									LOG_DEBUG, __func__, log_buffer);
-								free(ver);
-								free_basil_response_data(brp);
-								return;
+							/* We didn't find the version we were looking for
+							 * in basil_support, even though the engine query
+	 						 * itself succeeded. Something is wrong.
+	 						 */
+							if (found_ver == 0) {
+	 							sprintf(log_buffer, "ALPS ENGINE query failed. "
+									"Supported BASIL versions returned: "
+									"'%s'", ver);
+								log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE,
+									LOG_NOTICE, __func__, log_buffer);
 							}
-							tmp = strtok(NULL, ",");
+						} else {
+							/* No memory */
+							sprintf(log_buffer, "ALPS ENGINE query failed. No "
+								"memory");
+							log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_NODE,
+								LOG_NOTICE, __func__, log_buffer);
 						}
-						/* We didn't find "1.1" as a supported version  */
-						sprintf(log_buffer, "ALPS ENGINE query failed. "
-							"Supported BASIL versions returned: "
-							"'%s'", ver);
-						/*
-						 * Log this at PBSEVENT_DEBUG level because it
-						 * is the last attempt to find a match and we
-						 * want to give as much info as we can
-						 */
-						log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE,
-							LOG_NOTICE, __func__, log_buffer);
 					} else {
-						/* No memory */
-						sprintf(log_buffer, "ALPS ENGINE query failed.  No "
-							"memory");
-						log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_NODE,
-							LOG_NOTICE, __func__, log_buffer);
+						if ((strcmp(basilversion, BASIL_VAL_VERSION_1_1)) == 0) {
+							/* basil_support isn't in the XML response
+							 * and the XML wasn't junk, so
+							 * assume CLE 2.2 is running.
+							 */
+							sprintf(log_buffer, "Assuming CLE 2.2 is running, "
+								"setting the basilversion to %s", basilversion);
+							log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE,
+								LOG_DEBUG,__func__, log_buffer);
+							sprintf(log_buffer, "The basilversion is "
+								"set to %s", basilversion);
+							log_event(PBSEVENT_DEBUG,
+								PBS_EVENTCLASS_NODE,
+								LOG_DEBUG,__func__, log_buffer);
+							found_ver = 1;
+						}
 					}
 				} else {
-					/* basil_support isn't in the XML response
-					 * and the XML wasn't junk, so
-					 * assume CLE 2.2 is running.
-					 */
-					sprintf(log_buffer, "Assuming CLE 2.2 is running, "
-						"setting the basilversion to %s", basilversion);
-					log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE,
-						LOG_DEBUG, __func__, log_buffer);
-					sprintf(log_buffer, "The basilversion is "
-						"set to %s", basilversion);
-					log_event(PBSEVENT_DEBUG,
-						PBS_EVENTCLASS_NODE,
-						LOG_DEBUG, __func__, log_buffer);
-					free(ver);
-					free_basil_response_data(brp);
-					return;
-
+					/* wrong method in the response */
+					sprintf(log_buffer, "Wrong method, expected: %d but "
+						"got: %d", basil_method_query, brp->method);
+					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE,
+						LOG_DEBUG,__func__, log_buffer);
 				}
 			} else {
-				/* wrong method in the response */
-				sprintf(log_buffer, "Wrong method, expected: %d but "
-					"got: %d", basil_method_query, brp->method);
-				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE,
-					LOG_DEBUG, __func__, log_buffer);
+				/* There was an error in the BASIL response */
+				sprintf(log_buffer, "Error in BASIL response: %s", brp->error);
+				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG,
+					__func__, log_buffer);
 			}
 		} else {
-			/* There was an error in the BASIL response */
-			sprintf(log_buffer, "Error in BASIL response: %s", brp->error);
-			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG,
-				__func__, log_buffer);
+			sprintf(log_buffer, "ALPS ENGINE query failed with BASIL "
+				"version %s.", basilversion);
+			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE,
+				LOG_NOTICE,__func__, log_buffer);
 		}
-	} else {
-		sprintf(log_buffer, "ALPS ENGINE query failed with BASIL "
-			"version %s.", basilversion);
-		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE,
-			LOG_NOTICE, __func__, log_buffer);
+		free(ver);
+		ver = NULL;
+		free_basil_response_data(brp);
+		brp = NULL;
+		if (found_ver != 0) {
+			/* Found it, let's get outta here. */
+			break;
+		}
 	}
 
 	/*
-	 * If we are here, no other BASIL versions have worked
-	 * set basilversion to "UNDEFINED"
+	 * We didn't find the right BASIL version.
+	 * Set basilversion to "UNDEFINED"
 	 */
-	sprintf(basilversion, BASIL_VAL_UNDEFINED);
-	sprintf(log_buffer, "No BASIL versions are understood.");
-	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE,
-		LOG_NOTICE, __func__, log_buffer);
+	if (found_ver == 0) {
+		sprintf(basilversion, BASIL_VAL_UNDEFINED);
+		sprintf(log_buffer, "No BASIL versions are understood.");
+		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE,
+			LOG_NOTICE,__func__, log_buffer);
+	} else {
+		/* we found a BASIL version that works
+		 * Set basilver so the rest of the code can use switch
+		 * statements to choose the appropriate code path
+		 */
+		if ((strcmp(basilversion, BASIL_VAL_VERSION_1_4)) == 0) {
+			basilver = basil_1_4;
+		} else if ((strcmp(basilversion, BASIL_VAL_VERSION_1_3)) == 0) {
+			basilver = basil_1_3;
+		} else if ((strcmp(basilversion, BASIL_VAL_VERSION_1_2)) == 0) {
+			basilver = basil_1_2;
+		} else if ((strcmp(basilversion, BASIL_VAL_VERSION_1_1)) == 0) {
+			basilver = basil_1_1;
+		}
 
-	if (ver)
-		free(ver);
-	free_basil_response_data(brp);
+	}
 }
 
 /**
@@ -5368,7 +5876,7 @@ alps_inventory(void)
  * structure elements.
  */
 static element_handler_t handler[] =
-	{
+{
 	{
 		"UNDEFINED",
 		NULL,
@@ -5436,6 +5944,18 @@ static element_handler_t handler[] =
 		disallow_char_data
 	},
 	{
+		BASIL_ELM_SOCKETARRAY,
+		socket_array_start,
+		default_element_end,
+		disallow_char_data
+	},
+	{
+		BASIL_ELM_SOCKET,
+		socket_start,
+		default_element_end,
+		disallow_char_data
+	},
+	{
 		BASIL_ELM_SEGMENTARRAY,
 		segment_array_start,
 		default_element_end,
@@ -5444,6 +5964,18 @@ static element_handler_t handler[] =
 	{
 		BASIL_ELM_SEGMENT,
 		segment_start,
+		default_element_end,
+		disallow_char_data
+	},
+	{
+		BASIL_ELM_CUARRAY,
+		computeunit_array_start,
+		default_element_end,
+		disallow_char_data
+	},
+	{
+		BASIL_ELM_COMPUTEUNIT,
+		computeunit_start,
 		default_element_end,
 		disallow_char_data
 	},
