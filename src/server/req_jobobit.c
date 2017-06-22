@@ -415,9 +415,24 @@ static struct batch_request *cpy_stdfile(struct batch_request *preq, job *pjob, 
 
 	jkpattr = &pjob->ji_wattr[(int)JOB_ATR_keep];
 	if ((jkpattr->at_flags & ATR_VFLAG_SET) &&
-		(strchr(jkpattr->at_val.at_str, (int)key)))
+		strchr(jkpattr->at_val.at_str, key) && !strchr(jkpattr->at_val.at_str, 'd'))
 
 		return (preq);
+
+	/*
+	 * If the job has a remove file attribute and the job has succeeded,
+	 * std_files doesn't has to be copied.
+	 */
+	if ((pjob->ji_wattr[(int)JOB_ATR_exit_status].at_flags) &
+					ATR_VFLAG_SET) {
+		if (pjob->ji_wattr[(int) JOB_ATR_exit_status].at_val.at_long
+				== JOB_EXEC_OK) {
+			jkpattr = &pjob->ji_wattr[(int) JOB_ATR_remove];
+			if ((jkpattr->at_flags & ATR_VFLAG_SET)
+					&& (strchr(jkpattr->at_val.at_str, key)))
+				return (preq);
+		}
+	}
 
 	/* else go with the supplied name */
 
@@ -754,6 +769,7 @@ on_job_exit(struct work_task *ptask)
 
 		case JOB_SUBSTATE_EXITING:
 		case JOB_SUBSTATE_ABORT:
+
 
 			(void)svr_setjobstate(pjob, JOB_STATE_EXITING,
 				JOB_SUBSTATE_STAGEOUT);

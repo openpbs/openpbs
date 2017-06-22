@@ -175,6 +175,11 @@ prepare_path(char *path_in, char *path_out)
 	if (strlen(path_name) == 0 && strlen(host_name) == 0)
 		return 1;
 
+	/* appending a slash in the end to indicate that it is a directory */
+	if (path_name[strlen(path_name) - 1]
+			!= '/'&& path_name[strlen(path_name)-1] != '\\' && stat(path_name, &statbuf) == 0 && S_ISDIR(statbuf.st_mode))
+		strncat(path_name, "/", 1);
+
 #ifdef WIN32
 	if (IS_UNCPATH(path_name)) {
 		/*

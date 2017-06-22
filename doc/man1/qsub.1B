@@ -46,9 +46,9 @@
 .br
 [-I [-G [-- <GUI application>]] | [-X]] [-j join] 
 [-J range] [-k keep] [-l resource_list] [-m mail_events] 
-[-M user_list] [-N name] [-o path] 
-[-p priority] [-P project] [-q destination] [-r c] [-S path_list]
-[-u user_list] [-v variable_list] [-V] [-W additional_attributes] 
+[-M user_list] [-N name] [-o path] [-p priority] [-P project] 
+[-q destination] [-r c] [-R remove] [-S path_list] [-u user_list] 
+[-v variable_list] [-V] [-W additional_attributes] 
 [-z] [script | -- executable [arglist for executable]]
 .RE
 .B qsub
@@ -729,17 +729,18 @@ Z is the stepping factor.  For example,  2-7:2 will produce indices of 2, 4, and
 6.  If Z is not specified, it is taken to be 1.
 
 .IP "-k keep" 8
-Specifies whether and which of the standard output and standard error streams
-is retained on the execution host.  Overrides default path names for these
-streams.  Sets the job's 
+.br
+"k" specifies whether and which of the standard output and standard error streams
+is retained on the execution host.  direct_write can be enabled by passing
+"d" option (This will override "k" functionality). 
+Overrides default path names for these streams.  Sets the job's 
 .I Keep_Files 
-attribute to 
-.I keep.
-Default: neither is retained.  Overrides 
-.I -o
-and 
-.I -e
-options.
+attribute to the
+.I keep
+.br
+Format: Any combination of 'd','o','e' or 'n'. 'n' cannot be used with other options.
+.br
+Default: n
 
 In the case where output and/or error is retained on the execution host in
 a job-specific staging and execution directory created by PBS, these
@@ -749,29 +750,26 @@ The
 .I keep 
 argument can take on the following values:
 .RS
+.IP d 5
+direct_write option is used to output (stdout/stderr) files to the final destination, 
+instead of being staged, if the final destination is known to be writable 
+from the job execution node.
 .IP e 5
-The standard error stream is retained on the execution host, in the 
-job's staging and execution directory.  The filename is
+"k/d" option is applicable to stderr file. The filename is
 .RS
 .RS 5
 job_name.e<sequence number>
 .RE
 .RE
 .IP o  5
-The standard output stream is retained on the execution host, in the
-job's staging and execution directory.  The filename is
+"k/d" option is applicable to stdout file. The filename is
 .RS
 .RS 5
 job_name.o<sequence number>
 .RE
 .RE
-
-.IP "eo, oe"  5
-Both standard output and standard error streams are 
-retained on the execution host, in the
-job's staging and execution directory. 
 .IP n  5
-Neither stream is retained.
+"k/d" option is not applicable.
 .RE
 
 .IP "-l resource_list" 8
@@ -987,6 +985,22 @@ Job is not rerunnable.
 Interactive jobs are not rerunnable.
 Job arrays are automatically marked as rerunnable.
 
+.IP "-R remove" 8
+Declares whether the job stdout/err files should get deleted 
+if the job completes successfully. Sets job's
+.I Remove_Files
+attribute to 
+.I remove  
+.br
+Format: 'o' or 'e' or both of them.
+.br
+Default: "none".  (option will be disabled)
+.RS
+.IP o 5
+Job's stdout file will not be retained if job succeeds. 
+.IP e 5
+Job's stderr file will not be retained if job succeeds. 
+.RE
 
 .IP "-S path_list" 8
 Specifies the interpreter or shell path for the job script.  Sets job's 

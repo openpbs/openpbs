@@ -64,9 +64,12 @@
  *	 add_resc_resv_to_job		- adds a resc_resv structure to a job if the job is a "reservation job"
  *	 add_resc_resv_if_resvJob	- Checks to see if the job is a reservation job
  *	 								and if so attempts to attach a "resc_resv" structure to the job.
- *	 set_resvAttrs_off_jobAttrs	- set reservation attributes off those associated with the "resevation job"
- *	 resv_exclusive_handler		- Set node state to resv-exclusive
- *	 find_aoe_from_request		- Find aoe from the reservation request
+ *	 set_resvAttrs_off_jobAttrs - set reservation attributes off those associated with the "resevation job"
+ *	 resv_exclusive_handler     - Set node state to resv-exclusive
+ *	 find_aoe_from_request      - Find aoe from the reservation request
+ *	 spool_filename             - creates stdout/err file name in the spool area.
+ *	 remove_stdouter_files      - remove stdout/err files from the spool directory
+ *	 direct_write_requested     - checks whether direct_write is requested by the job.
  *
  * Include private function:
  *   job_init_wattr() initialize job working attribute array to "unspecified"
@@ -167,6 +170,7 @@ extern pbs_list_head svr_alljobs;
 
 extern void  rmtmpdir(char *);
 void nodes_free(job *);
+extern char* std_file_name(job *pjob, enum job_file which, int *keeping);
 /**
  * @brief
  * 		free up the tasks from the list of tasks associated with particular job, delete links and close connection.
@@ -622,6 +626,68 @@ job_init_wattr(job *pj)
 
 /**
  * @brief
+ *      spool_filename - formulate stdout/err file name in the spool area.
+ *
+ * @param[in]    pjob     - pointer to job structure.
+ * @param[out]   namebuf  - output/error file name.
+ * @param[in]    suffix   - output/error file name suffix.
+ *
+ * @return  void
+ */
+void
+spool_filename(job *pjob, char *namebuf, char *suffix) {
+    if (*pjob->ji_qs.ji_fileprefix != '\0')
+        (void) strcat(namebuf, pjob->ji_qs.ji_fileprefix);
+    else
+        (void) strcat(namebuf, pjob->ji_qs.ji_jobid);
+    (void) strcat(namebuf, suffix);
+}
+
+/**
+ * @brief
+ * 		remove_stdouter_files - remove stdout/err files from the spool directory
+ *
+ * @param[in]   pjob    - pointer to job structure
+ * @param[in]	suffix	- output/error file name suffix.
+ *
+ * @return	void
+ */
+void
+remove_stdouterr_files(job *pjob, char *suffix) {
+	char namebuf[MAXPATHLEN + 1];
+	extern char *msg_err_purgejob;
+
+	(void) strcpy(namebuf, path_spool);
+	spool_filename(pjob, namebuf, suffix);
+	if (unlink(namebuf) < 0)
+		if (errno != ENOENT)
+			log_joberr(errno, __func__, msg_err_purgejob, pjob->ji_qs.ji_jobid);
+}
+
+
+/**
+ * @brief
+ * 		direct_write_requested - checks whether direct_write is requested by the job.
+ *
+ * @param[in]	pjob	- pointer to job structure.
+ *
+ * @return	bool
+ * @retval 1 : direct write is requested by the job.
+ * @retval 0 : direct write is not requested by the job.
+ */
+int direct_write_requested(job *pjob) {
+	char *pj_attrk = NULL;
+	if ((pjob->ji_wattr[(int)JOB_ATR_keep].at_flags & ATR_VFLAG_SET)) {
+		pj_attrk = pjob->ji_wattr[(int)JOB_ATR_keep].at_val.at_str;
+		if (strchr(pj_attrk, 'd') && (strchr(pj_attrk, 'o') || (strchr(pj_attrk, 'e'))))
+			return 1;
+	}
+	return 0;
+}
+
+
+/**
+ * @brief
  * 		job_purge - purge job from system
  *
  * 		The job is dequeued; the job control file, script file and any spooled
@@ -642,6 +708,9 @@ job_purge(job *pjob)
 	conn_t		*connection = NULL;
 #ifdef	PBS_MOM
 	extern	char	*path_checkpoint;
+	int keeping = 0;
+	attribute *jrpattr = NULL;
+	char *pstr = NULL;
 #else
 	extern	char	*msg_err_purgejob_db;
 	pbs_db_obj_info_t obj;
@@ -770,6 +839,26 @@ job_purge(job *pjob)
 		(void)strcat(namebuf, ".old");
 		(void)remtree(namebuf);
 	}
+
+	jrpattr = &pjob->ji_wattr[(int) JOB_ATR_remove];
+	/* remove stdout/err files if remove_files is set. */
+	if ((jrpattr->at_flags & ATR_VFLAG_SET)
+			&& (pjob->ji_qs.ji_un.ji_momt.ji_exitstat == JOB_EXEC_OK)) {
+		if (strchr(jrpattr->at_val.at_str, 'o')) {
+			(void) strcpy(namebuf, std_file_name(pjob, StdOut, &keeping));
+			if (namebuf && unlink(namebuf) < 0)
+				if (errno != ENOENT)
+					log_err(errno, __func__, msg_err_purgejob);
+		}
+		if (strchr(jrpattr->at_val.at_str, 'e')) {
+			(void) strcpy(namebuf, std_file_name(pjob, StdErr, &keeping));
+			if (namebuf && unlink(namebuf) < 0)
+				if (errno != ENOENT)
+					log_err(errno, __func__, msg_err_purgejob);
+		}
+	}
+
+
 #ifdef WIN32
 	/* following introduced by fix to BZ 6363 for executing scripts */
 	/* directly on the command line */
@@ -788,30 +877,8 @@ job_purge(job *pjob)
 #else	/* PBS_MOM */
 
 	/* server code */
-	(void)strcpy(namebuf,  path_spool);	/* delete any spooled stdout */
-	if (*pjob->ji_qs.ji_fileprefix != '\0')
-		(void)strcat(namebuf, pjob->ji_qs.ji_fileprefix);
-	else
-		(void)strcat(namebuf, pjob->ji_qs.ji_jobid);
-	(void)strcat(namebuf, JOB_STDOUT_SUFFIX);
-	if (unlink(namebuf) < 0) {
-		if (errno != ENOENT) {
-			log_joberr(errno, __func__, msg_err_purgejob,
-				pjob->ji_qs.ji_jobid);
-		}
-	}
-	(void)strcpy(namebuf,  path_spool);	/* delete any spooled stderr */
-	if (*pjob->ji_qs.ji_fileprefix != '\0')
-		(void)strcat(namebuf, pjob->ji_qs.ji_fileprefix);
-	else
-		(void)strcat(namebuf, pjob->ji_qs.ji_jobid);
-	(void)strcat(namebuf, JOB_STDERR_SUFFIX);
-	if (unlink(namebuf) < 0) {
-		if (errno != ENOENT) {
-			log_joberr(errno, __func__, msg_err_purgejob,
-				pjob->ji_qs.ji_jobid);
-		}
-	}
+	remove_stdouterr_files(pjob, JOB_STDOUT_SUFFIX);
+	remove_stdouterr_files(pjob, JOB_STDERR_SUFFIX);
 #endif	/* PBS_MOM */
 
 #ifdef PBS_MOM

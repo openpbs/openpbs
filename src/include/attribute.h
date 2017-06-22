@@ -513,6 +513,8 @@ extern int setup_arrayjob_attrs(attribute *pattr, void *pobject, int actmode);
 extern int fixup_arrayindicies  (attribute *pattr, void *pobject, int actmode);
 extern int action_resc_job(attribute *pattr, void *pobject, int actmode);
 extern int ck_chkpnt(attribute *pattr, void *pobject, int actmode);
+extern int keepfiles_action(attribute *pattr, void *pobject, int actmode);
+extern int removefiles_action(attribute *pattr, void *pobject, int actmode);
 /*extern int depend_on_que(attribute *, void *, int);*/
 extern int comp_chkpnt(attribute *, attribute *);
 extern int alter_eligibletime(attribute *, void *, int);

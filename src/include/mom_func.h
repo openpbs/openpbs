@@ -296,6 +296,7 @@ struct cpy_files {
 	char	**file_list;		/* list of file name to be deleted later*/
 	int	sandbox_private;	/* for stageout with PRIVATE sandbox */
 	char	*bad_list;		/* list of failed stageout filename */
+	int	direct_write;	/* whether direct write has requested by the job */
 };
 typedef struct cpy_files cpy_files;
 

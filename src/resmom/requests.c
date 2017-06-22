@@ -126,9 +126,7 @@ extern unsigned long	hooks_rescdef_checksum;
 extern char *path_rescdef;
 
 /* External Functions */
-#ifdef NAS /* localmod 118 */
-extern int	is_direct_write(job *, enum job_file, char *);
-#endif /* localmod 118 */
+extern int	is_direct_write(job *, enum job_file, char *, int *);
 
 /* Local Data Items */
 char rcperr[MAXPATHLEN] = {'\0'};	/* file to contain rcp error */
@@ -767,26 +765,25 @@ return_file(job *pjob, enum job_file which, int sock)
 	struct batch_request *prq;
 	int		      rc = 0;
 	int		      seq = 0;
+	int direct_write_possible = 1;
 
-#ifdef NAS /* localmod 118 */
 	char                  path[MAXPATHLEN+1]; /* needed by is_direct_write */
-#endif /* localmod 118 */
 
 	if ((pjob->ji_wattr[(int)JOB_ATR_interactive].at_flags & ATR_VFLAG_SET)
 		&& (pjob->ji_wattr[(int)JOB_ATR_interactive].at_val.at_long > 0)) {
 		return (0);	/* interactive job, no file to copy */
 	}
 
-#ifdef NAS /* localmod 118 */
 	/* Check for direct write of this file - direct write files are */
 	/* not copied back to the server on rerun.                      */
-
-	if (is_direct_write(pjob, which, path)) {
-		sprintf(log_buffer, "Skipping copy of directly written %s file on rerun of job %s", (which==StdOut)?"STDOUT":"STDERR", pjob->ji_qs.ji_jobid);
-		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
-		return (0);       /* Direct write, no copy done */
+	if (is_direct_write(pjob, which, path, &direct_write_possible)) {
+		sprintf(log_buffer,
+				"Skipping copy of directly written %s file of job %s",
+				(which == StdOut) ? "STDOUT" : "STDERR", pjob->ji_qs.ji_jobid);
+		log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_INFO,
+				pjob->ji_qs.ji_jobid, log_buffer);
+		return (0); /* Direct write, no copy done */
 	}
-#endif /* localmod 118 */
 
 	fds = open_std_file(pjob, which, O_RDONLY,
 		pjob->ji_qs.ji_un.ji_momt.ji_exgid);
@@ -2777,6 +2774,7 @@ req_cpyfile(struct batch_request *preq)
 	extern pbs_list_head task_list_event;
 	int					is_network_drive = 0;
 	char				current_dir[MAX_PATH + 1] = {'\0'};
+	int 				direct_write = 0;
 
 
 	if (preq->rq_type == PBS_BATCH_CopyFiles_Cred)
@@ -2807,6 +2805,9 @@ req_cpyfile(struct batch_request *preq)
 
 	dir  = (rqcpf->rq_dir & STAGE_DIRECTION)? STAGE_DIR_OUT : STAGE_DIR_IN;
 	stage_inout.sandbox_private = (rqcpf->rq_dir & STAGE_JOBDIR)? TRUE : FALSE;
+	if (pjob != NULL && (dir == STAGE_DIR_OUT)) {
+		direct_write = direct_write_requested(pjob);
+	}
 
 	/*
 	 * In Windows, we need to be the user in order to call
@@ -2974,6 +2975,12 @@ req_cpyfile(struct batch_request *preq)
 	win_pwrite(&cpyinfo->pio, buf, strlen(buf));
 
 	snprintf(buf, sizeof(buf)-1, "log_file=%s\n", (log_file ? log_file : ""));
+	win_pwrite(&cpyinfo->pio, buf, strlen(buf));
+
+	snprintf(buf, sizeof(buf)-1, "log_event_mask=%ld\n", *log_event_mask);
+	win_pwrite(&cpyinfo->pio, buf, strlen(buf));
+
+	snprintf(buf, sizeof(buf)-1, "direct_write=%d\n", direct_write);
 	win_pwrite(&cpyinfo->pio, buf, strlen(buf));
 
 	send_pcphosts(&cpyinfo->pio, pcphosts);
@@ -3259,6 +3266,11 @@ req_cpyfile(struct batch_request *preq)
 			return;
 		}
 	}
+
+	if (dir == STAGE_DIR_OUT && direct_write_requested(pjob))
+		stage_inout.direct_write = 1;
+	else
+		stage_inout.direct_write = 0;
 
 	/* Become the user */
 	pid = fork_to_user(preq);

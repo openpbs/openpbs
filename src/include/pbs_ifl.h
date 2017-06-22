@@ -73,6 +73,7 @@ extern "C" {
 #define ATTR_o "Output_Path"
 #define ATTR_p "Priority"
 #define ATTR_q "destination"
+#define ATTR_R "Remove_Files"
 #define ATTR_r "Rerunable"
 #define ATTR_u "User_List"
 #define ATTR_v "Variable_List"

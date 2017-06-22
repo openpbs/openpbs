@@ -52,6 +52,7 @@ api_to_cli = {
     ATTR_o: 'o',
     ATTR_p: 'p',
     ATTR_q: 'q',
+    ATTR_R: 'R',
     ATTR_r: 'r',
     ATTR_u: 'u',
     ATTR_v: 'v',

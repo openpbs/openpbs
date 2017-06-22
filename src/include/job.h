@@ -206,6 +206,7 @@ enum job_atr {
 	JOB_ATR_outpath,
 	JOB_ATR_priority,
 	JOB_ATR_qtime,
+	JOB_ATR_remove,
 	JOB_ATR_rerunable,
 	JOB_ATR_resource,
 	JOB_ATR_resource_orig,
@@ -982,7 +983,7 @@ task_find	(job		*pjob,
 
 #define JOB_SUBSTATE_EXITING	50	/* Start of job exiting processing */
 #define JOB_SUBSTATE_STAGEOUT	51	/* job staging out (other) files   */
-#define JOB_SUBSTATE_STAGEDEL	52	/* job deleteing staged out files  */
+#define JOB_SUBSTATE_STAGEDEL	52	/* job deleting staged out files  */
 #define JOB_SUBSTATE_EXITED	53	/* job exit processing completed   */
 #define JOB_SUBSTATE_ABORT	54	/* job is being aborted by server  */
 #define JOB_SUBSTATE_KILLSIS	56	/* (MOM) job kill IM to sisters    */

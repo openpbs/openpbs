@@ -176,9 +176,8 @@ static	int num_var_else = sizeof(variables_else) / sizeof(char *);
 static	void catchinter(int);
 static int find_env_slot(struct var_table *, char *);
 
-#ifdef NAS /* localmod 118 */
-int is_direct_write(job *, enum job_file, char *);
-#endif /* localmod 118 */
+extern int is_direct_write(job *, enum job_file, char *, int *);
+static int direct_write_possible = 1;
 
 void
 starter_return(int upfds, int downfds, int code,
@@ -617,6 +616,7 @@ open_std_out_err(job *pjob)
 	int	   file_out = -2;
 	int	   file_err = -2;
 	int	   filemode = O_CREAT | O_WRONLY | O_APPEND;
+	direct_write_possible = 1;
 
 	/* if std out/err joined (set and !="n"),which file is first */
 
@@ -643,6 +643,14 @@ open_std_out_err(job *pjob)
 			"Unable to open standard output/error");
 		return -1;
 	}
+
+	if (!direct_write_possible && direct_write_requested(pjob)) {
+		sprintf(log_buffer,
+				"Direct write is requested for job: %s, but the destination is not usecp-able from %s\n",
+				pjob->ji_qs.ji_jobid, pjob->ji_hosts[pjob->ji_nodeid].hn_host);
+		write(file_err, log_buffer, strlen(log_buffer));
+	}
+
 
 	FDMOVE(file_out);	/* make sure descriptor > 2       */
 	FDMOVE(file_err);	/* so don't clobber stdin/out/err */
@@ -5119,13 +5127,9 @@ create_file_securely(char *path, uid_t exuid, gid_t exgid)
  *	    sandbox=PRIVATE, in which case it goes there.  The file name is the default of
  *	    job_name.a|eo<sequence number>
  *	3.  If sandbox=PRIVATE, the file is placed there.
- #ifdef NAS localmod 118
  *	4.  If direct_write is specified and the final destination of the file is mapped to a local directory by $usecp,
  *	    create the file in its final destination directory and set the "keeping" flag so it will not be staged.
  *	5.  Else, the file path is created to put the file in PBS_HOME/spool
- #else
- *	6.  Else, the file path is created to put the file in PBS_HOME/spool
- #endif localmod 118
  * @param[in]  pjob - pointer to job structure
  * @param[in]  which - identifies which file: StdOut, StdErr, or Chkpt.
  * @param[out] keeping - set true if file to reside in User's Home or sandbox, false if in spool.
@@ -5176,54 +5180,51 @@ std_file_name(job *pjob, enum job_file which, int *keeping)
 	if (pjob->ji_grpcache == NULL)
 		return (""); 	/* needs to be non-NULL for figuring out homedir path; otherwise, mom will crash! */
 
+	/* check if file is to be directly written to its final destination */
+	if (is_direct_write(pjob, which, path, &direct_write_possible)) {
+		*keeping = 1; /* inhibit staging */
+		return(path);
+	}
+
 	/* Is file to be kept?, if so use default name in Home directory */
-
-	if ((pjob->ji_wattr[(int)JOB_ATR_keep].at_flags & ATR_VFLAG_SET) &&
-		(strchr(pjob->ji_wattr[(int)JOB_ATR_keep].at_val.at_str, key))) {
-
-		/* yes, it is to be kept */
-
+	else if ((pjob->ji_wattr[(int)JOB_ATR_keep].at_flags & ATR_VFLAG_SET) &&
+		strchr(pjob->ji_wattr[(int) JOB_ATR_keep].at_val.at_str, key)
+			&& !strchr(pjob->ji_wattr[(int) JOB_ATR_keep].at_val.at_str, 'd')) {
 		/* sandbox=private mode set the path to be the path to the */
 		/* staging and execution directory			   */
-		if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) &&
-			(strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0)) {
-			strcpy(path, jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir));
+		if ((pjob->ji_wattr[(int) JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET)
+				&& (strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str,
+						"PRIVATE") == 0)) {
+			strcpy(path,
+					jobdirname(pjob->ji_qs.ji_jobid,
+							pjob->ji_grpcache->gc_homedir));
 			*keeping = 1;
 		} else {
-			(void)strcpy(path, pjob->ji_grpcache->gc_homedir);
+			(void) strcpy(path, pjob->ji_grpcache->gc_homedir);
 		}
 
-		pd = strrchr(pjob->ji_wattr[(int)JOB_ATR_jobname].at_val.at_str, '/');
-		if (pd == (char *)0) {
-			pd = pjob->ji_wattr[(int)JOB_ATR_jobname].at_val.at_str;
-			(void)strcat(path, "/");
+		pd = strrchr(pjob->ji_wattr[(int) JOB_ATR_jobname].at_val.at_str, '/');
+		if (pd == (char *) 0) {
+			pd = pjob->ji_wattr[(int) JOB_ATR_jobname].at_val.at_str;
+			(void) strcat(path, "/");
 		}
 
-		(void)strcat(path, pd);		/* start with the job name */
+		(void) strcat(path, pd); /* start with the job name */
 		len = strlen(path);
-		*(path + len++) = '.';          /* the dot        */
-		*(path + len++) = key;		/* the letter     */
-		pd = pjob->ji_qs.ji_jobid;      /* the seq_number */
-		while (isdigit((int)*pd))
+		*(path + len++) = '.'; /* the dot        */
+		*(path + len++) = key; /* the letter     */
+		pd = pjob->ji_qs.ji_jobid; /* the seq_number */
+		while (isdigit((int )*pd))
 			*(path + len++) = *pd++;
 		*(path + len) = '\0';
-		if (pjob->ji_wattr[(int)JOB_ATR_array_index].at_flags & ATR_VFLAG_SET) {
+		if (pjob->ji_wattr[(int) JOB_ATR_array_index].at_flags & ATR_VFLAG_SET) {
 			/* this is a sub job of an Array Job, append .index */
-			(void)strcat(path, ".");
-			(void)strcat(path, pjob->ji_wattr[(int)JOB_ATR_array_index].at_val.at_str);
+			(void) strcat(path, ".");
+			(void) strcat(path,
+					pjob->ji_wattr[(int) JOB_ATR_array_index].at_val.at_str);
 		}
 		*keeping = 1;
 	} else {
-#ifdef NAS /* localmod 118 */
-		/* check if file is to be directly written to its final destination */
-
-		if (is_direct_write(pjob, which, path)) {
-
-			*keeping = 1; /* inhibit staging */
-			return(path);
-		}
-#endif /* localmod 118 */
-
 		/* put into spool directory unless NO_SPOOL_OUTPUT is defined */
 
 #ifdef NO_SPOOL_OUTPUT
@@ -5232,14 +5233,6 @@ std_file_name(job *pjob, enum job_file which, int *keeping)
 			(strcasecmp(pjob->ji_wattr[(int)JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0)) {
 			strcpy(path, jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir));
 			strcat(path, "/");
-
-#ifdef NAS /* localmod 118 */
-			/* sandbox=PRIVATE mode puts output in job staging and execution directory */
-			if ((pjob->ji_wattr[(int) JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) &&
-			(strcasecmp(pjob->ji_wattr[(int) JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0)) {
-				strcpy(path, jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir));
-				strcat(path, "/");
-#endif /* localmod 118 */
 		} else {	/* force all output to user's HOME */
 			(void)strcpy(path, pjob->ji_grpcache->gc_homedir);
 		}
@@ -5342,35 +5335,28 @@ open_std_file(job *pjob, enum job_file which, int mode, gid_t exgid)
 		 * target of a link,  we make it using a more secure manner
 		 * using mkstemp().
 		 */
-		if (((lrc = lstat(path, &sb)) != -1)   &&
-			((sb.st_mode & S_IFMT) == S_IFREG) &&
-			(sb.st_nlink == 1)		   &&
-			(sb.st_uid   == exuid)             &&
-			(sb.st_gid   == exgid)) {
+		if (((lrc = lstat(path, &sb)) != -1) && ((sb.st_mode & S_IFMT) == S_IFREG)
+				&& (sb.st_nlink == 1) && (sb.st_uid == exuid)
+				&& (sb.st_gid == exgid)) {
 
 			/* at this point all is ok, go open it */
-			fds = open_file_as_user(path, mode, 0644, exuid,
-				exgid);
+			fds = open_file_as_user(path, mode, 0644, exuid, exgid);
 			if (fds == -1)
 				return (-1);
 
 			/* Recheck what is opened, it might have  */
 			/* changed between the check and the open */
 
-			if ((fstat(fds, &sb) == -1)	 	||
-				((sb.st_mode & S_IFMT) != S_IFREG) ||
-				(sb.st_nlink != 1)		||
-				(sb.st_uid   != exuid)            ||
-				(sb.st_gid   != exgid)) {
+			if ((fstat(fds, &sb) == -1) || ((sb.st_mode & S_IFMT) != S_IFREG)
+					|| (sb.st_nlink != 1) || (sb.st_uid != exuid)
+					|| (sb.st_gid != exgid)) {
 
 				/* Its bad now,  log it, leaving */
 				/* it in place as evidence       */
 				if (fds != -1)
 					close(fds);
 
-				log_suspect_file(__func__,
-					"bad type or owner",
-					path, &sb);
+				log_suspect_file(__func__, "bad type or owner", path, &sb);
 				return (-1);
 			}
 		} else {
@@ -5378,21 +5364,23 @@ open_std_file(job *pjob, enum job_file which, int mode, gid_t exgid)
 			if ((lrc != -1) || (errno != ENOENT)) {
 				/* file exists but is suspect */
 				log_suspect_file(__func__,
-					"bad type or owner, attempting to remove file",
-					path, &sb);
-				(void)unlink(path);
+						"bad type or owner, attempting to remove file", path, &sb);
+				(void) unlink(path);
 			}
 
 			/* file does not exist or is not correct */
 			/* create the file in a secure manner    */
 
 			if ((fds = create_file_securely(path, exuid, exgid)) == -1) {
-				sprintf(log_buffer, "secure create of file failed for job %s for user %u", pjob->ji_qs.ji_jobid, exuid);
+				sprintf(log_buffer,
+						"secure create of file failed for job %s for user %u",
+						pjob->ji_qs.ji_jobid, exuid);
 				if (stat(path, &sb) != -1) {
 					strcat(log_buffer, ", file exists");
 					log_suspect_file(__func__, log_buffer, path, &sb);
 				} else {
-					log_record(PBSEVENT_SECURITY, PBS_EVENTCLASS_FILE, LOG_CRIT, path, log_buffer);
+					log_record(PBSEVENT_SECURITY, PBS_EVENTCLASS_FILE, LOG_CRIT,
+							path, log_buffer);
 				}
 				return (-1);
 			}
@@ -5555,276 +5543,3 @@ log_mom_portfw_msg(char *msg)
 	strcpy(log_buffer, msg);
 	log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR, __func__, log_buffer);
 }
-
-#ifdef NAS /* localmod 118 */
-/* following three static routines copied from requests.c */
-
-/**
- * @brief
- * 	Wild card host name match.  Do a case insensitive compare since
- * 	hostnames are not case sensitive.
- *
- * @param can		stage request hostname
- * @param master	name from usecp list (may be wild carded at beginning)
- *
- * @return 	int
- * @retval 	1	can"idate" matches master name
- * @retval 	0	not a match
- *
- */
-static int
-wchost_match(const char *can, const char *master)
-{
-	const char *pc;
-	const char *pm;
-
-	pc = can + strlen(can) - 1;
-	pm = master + strlen(master) - 1;
-	while((pc > can) && (pm > master)) {
-		if (tolower(*pc) != tolower(*pm))
-			return 0;
-		pc--;
-		pm--;
-	}
-
-	/* comparison of one or both reached the start of the string */
-	if (pm == master) {
-		if (*pm == '*')
-			return 1;
-		else if ((pc == can) && (tolower(*pc) == tolower(*pm)))
-			return 1;
-	}
-	return 0;
-}
-
-/* start localmod 009 */
-/**
- * @brief
- * 	Wild card suffix host name match.  Do a case insensitive compare since
- * 	hostnames are not case sensitive.
- *
- * @param can		stage request hostname
- * @param master	name from usecp list (may be wild carded at end)
- *
- * @return	int
- * @retval 	1	candidate matches master name
- * @retval 	0	not a match
- *
- */
-static int
-wcsuffix_host_match(const char *can, const char *master)
-{
-	int cmp_length;
-	int master_length = strlen(master);
-
-	if (master[master_length - 1] == '*') {
-		cmp_length = master_length - 1;
-	} else {
-		cmp_length = master_length;
-	}
-
-	if (strncasecmp(can, master, cmp_length) == 0)
-		return 1;
-
-	return 0;
-}
-/* end localmod 009 */
-
-/**
- * A path in windows is not case sensitive so do a define
- * to do the right compare.
- */
-#ifdef	WIN32
-#define	PATHCMP	strncasecmp
-#else
-#define	PATHCMP	strncmp
-#endif
-
-/**
- * @brief
- * 	Check a stage file request against the saved set of "usecp" paths.
- *
- * @param[in]	host	stage request hostname
- * @param[in]	oldpath	stage request path
- * @param[out]	newpath	pointer to "usecp" path
- *
- * @return	int
- * @retval 	1	file matched, newpath is updated
- * @retval 	0	no match, newpath is unchanged
- *
- */
-static int
-told_to_cp_nas(char *host, char *oldpath, char **newpath)
-{
-	int i;
-	int nh;
-	static char newp[MAXPATHLEN + 1];
-	extern struct cphosts *pcphosts;
-
-/* start localmod 009 */
-	int match_found = 0;
-	for (nh = 0; nh < cphosts_num; nh++) {
-		if (wchost_match(host, (pcphosts + nh)->cph_hosts) ||
-		    wcsuffix_host_match(host, (pcphosts + nh)->cph_hosts)) {
-			i = strlen((pcphosts + nh)->cph_from);
-			if (PATHCMP((pcphosts + nh)->cph_from, oldpath, i) == 0) {
-				if ((pcphosts + nh)->cph_exclude)
-					return 0;
-
-				match_found = 1;
-				(void) strcpy(newp, (pcphosts + nh)->cph_to);
-				(void) strcat(newp, oldpath + i);
-			}
-		}
-	}
-
-	if (match_found) {
-		*newpath = newp;
-	}
-
-	return match_found;
-/* end localmod 009 */
-}
-
-/**
- * @brief
- * 	Decide if the specified path is to a local or remote file.
- *
- * @param	path	pointer to stage path string
- *
- * @retval	1 if remote
- * @retval	0 if local
- *
- * @par Side Effects:
- * Updates the path pointer to just the path name if local.
- *
- */
-static int
-local_or_remote_nas(char **path)
-{
-	int len;
-	char *pcolon;
-
-	pcolon = strchr(*path, (int) ':');
-	if (pcolon == (char *) 0)
-		return 0;
-
-	*pcolon = '\0';
-	len = strlen(*path);
-	if ((strcasecmp("localhost", *path) == 0) ||
-	    ((strncasecmp(mom_host, *path, len) == 0) &&
-	    ((mom_host[len] == '\0') || (mom_host[len] == '.')))) {
-		/* we have a host match, file is local */
-		*pcolon = ':';
-		*path = pcolon + 1;
-		return 0;
-	} else if (told_to_cp_nas(*path, pcolon + 1, path)) {
-		/* path updated in told_to_cp_nas() */
-		return 0;
-	} else {
-		/* remote file */
-		*pcolon = ':';
-		return 1;
-	}
-}
-
-/**
- * @brief
- *	Setup for direct write of spool file
- * @par
- *	Determines if a spool file is to be directly written to its final destination, i.e:
- *	1. Direct write of spool files has been requested by the job, and
- *      2. Final destination of the file maps to a locally-mounted directory, either because it is
- *	   explicitly mapped by $usecp, or the destination hostname is Mom's host.
- *
- * @param[in]  pjob - pointer to job structure
- * @param[in]  which - identifies which file: StdOut, StdErr, or Chkpt.
- * @param[in] path -  pointer to array of size MAPATHXLEN+1 into which the final path of the file is to be stored.
- *
- * @return int  
- *
- * @retval	0 if file is not to be directly written, 
- * @retval	1 otherwise.
- *
- * @par
- *	If the file is not to be directly written (return zero), the contents of *path are unchanged.
- * @par
- *	Direct write of checkpoint files is not currently supported.
- *
- * @par @par MT-safe: No
- *
- */
-int
-is_direct_write(job *pjob, enum job_file which, char *path)
-{
-	attribute *at;
-	resource_def *rd;
-	resource *dw;
-	char *oldpath;
-	char working_path[MAXPATHLEN + 1];
-	char *p = &working_path;
-
-	if (which == Chkpt) return(0); /* direct write of checkpoint not supported */
-
-	/*
-	 * Check if direct_write requested. Currently, this checks for a Boolean resource named "direct_write".
-	 * Eventually, this should probably be an attribute, instead.
-	 */
-	at = &pjob->ji_wattr[(int) JOB_ATR_resource];
-	assert(at->at_type == ATR_TYPE_RESC);
-
-	rd = find_resc_def(svr_resc_def, "direct_write", svr_resc_size);
-	if (rd == NULL) {
-
-		return(0);
-	}
-	dw = find_resc_entry(at, rd);
-
-	if (dw == NULL) {
-
-		return(0); /* direct_write not requested for this job */
-	}
-
-	if (dw->rs_value.at_val.at_long == 0) return(0); /* direct_write == false */
-
-	/*
-	 * Direct write has been requested. Determine if it's possible.
-	 * We'll use a local copy of the existing local_or_remote routine in
-	 * requests.c called local_or_remote_nas to do this. This means a
-	 * that we'll need to make a local copy of the destination path,
-	 * since local_or_remote_nas may modify the path it's been given and
-	 * we want to avoid having to modify code elsewhere to take that into
-	 * consideration.
-	 *
-	 * This does result in some otherwise unnecessary string copies, but
-	 * the performance impact should be minimal.
-	 */
-
-	/* Figure out what the final destination path is */
-
-	switch(which)
-	{ /* Ignore unintentional rhyme ;-) */
-
-		case StdOut:
-			oldpath = pjob->ji_wattr[JOB_ATR_outpath].at_val.at_str;
-			break;
-		case StdErr:
-			oldpath = pjob->ji_wattr[JOB_ATR_errpath].at_val.at_str;
-			break;
-		default:
-			return(0);
-	}
-
-	/* Make local working copy of path for call to local_or_remote_nas */
-
-	strncpy(working_path, oldpath, MAXPATHLEN);
-	if (local_or_remote_nas(&p) == 1) {
-		return(0);
-	}
-
-	/* Destination maps to local directory - final path is in working_path. */
-
-	strncpy(path, p, MAXPATHLEN); /* pass correct path back to caller */
-	return(1);
-}
-#endif /* localmod 118 */

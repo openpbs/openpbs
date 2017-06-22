@@ -622,15 +622,61 @@ verify_value_joinpath(int batch_request, int parent_object, int cmd,
 	return PBSE_NONE;
 }
 
+
+/**
+ * @brief
+ *  verify function for the attributes ATTR_k
+ *
+ * @par Functionality:
+ *  verify function for the attributes ATTR_k
+ *  Checks that the format of ATTR_k is proper
+ *
+ * @param[in]   value       -   string value to verify
+ *
+ * @return  int
+ * @retval  0   -   Attribute passed verification
+ * @retval  >0  -   Failed verification - pbs errcode is returned
+ *
+ * @par Side effects:
+ *  None
+ *
+ * @par Reentrancy
+ *  MT-safe
+ */
+int
+verify_keepfiles_common(char *value)
+{
+    char *ch;
+    int keep_files = 0;
+    int dont_keep = 0;
+    int direct_write = 0;
+    if ((value == NULL) || (value[0] == '\0'))
+        return PBSE_BADATVAL;
+
+    for (ch = value; *ch; ch++) {
+        if (*ch == 'o' || *ch == 'e')
+            keep_files = 1;
+        if (*ch == 'n')
+            dont_keep = 1;
+        if (*ch == 'd')
+            direct_write = 1;
+        if (*ch != 'o' && *ch != 'e' && *ch != 'd' && *ch != 'n')
+            return PBSE_BADATVAL;
+    }
+    if ((keep_files && dont_keep)
+            || (direct_write && !(keep_files || dont_keep)))
+        return PBSE_BADATVAL;
+    return PBSE_NONE;
+}
+
+
 /**
  * @brief
  *	verify function for the attributes ATTR_k
  *
  * @par Functionality:
- *	verify function for the attributes ATTR_k\n
+ *	verify function for the attributes ATTR_k
  *	Checks that the format of ATTR_k is proper
- *
- * @see
  *
  * @param[in]	batch_request	-	Batch Request Type
  * @param[in]	parent_object	-	Parent Object Type
@@ -652,18 +698,7 @@ int
 verify_value_keepfiles(int batch_request, int parent_object, int cmd,
 	struct attropl *pattr, char **err_msg)
 {
-	if ((pattr->value == NULL) || (pattr->value[0] == '\0'))
-		return PBSE_BADATVAL;
-
-	if ((strcmp(pattr->value, "o") != 0) &&
-		(strcmp(pattr->value, "e") != 0) &&
-		(strcmp(pattr->value, "oe") != 0) &&
-		(strcmp(pattr->value, "eo") != 0) &&
-		(strcmp(pattr->value, "n") != 0)) {
-
-		return PBSE_BADATVAL;
-	}
-	return PBSE_NONE;
+    return verify_keepfiles_common(pattr->value);
 }
 
 /**
@@ -844,6 +879,76 @@ verify_value_priority(int batch_request, int parent_object, int cmd,
 	}
 
 	return PBSE_NONE;
+}
+
+
+/**
+ * @brief
+ *  verify function for the attributes ATTR_R
+ *
+ * @par Functionality:
+ *  verify function for the attributes ATTR_R
+ *  Checks that the format of ATTR_R is proper
+ *
+ * @param[in]   value       -   string value to verify
+ *
+ * @return  int
+ * @retval  0   -   Attribute passed verification
+ * @retval  >0  -   Failed verification - pbs errcode is returned
+ *
+ * @par Side effects:
+ *  None
+ *
+ * @par Reentrancy
+ *  MT-safe
+ */
+
+int
+verify_removefiles_common(char *value)
+{
+    char *ch;
+    if ((value == NULL) || (value[0] == '\0'))
+        return PBSE_BADATVAL;
+
+    for (ch = value; *ch; ch++)
+        if (*ch != 'o' && *ch != 'e')
+            return PBSE_BADATVAL;
+
+    return PBSE_NONE;
+}
+
+
+/**
+ * @brief
+ *	verify function for the attributes ATTR_R
+ *
+ * @par Functionality:
+ *	verify function for the attributes ATTR_R
+ *	Checks that the format of ATTR_R is proper
+ *
+ * @see
+ *
+ * @param[in]	batch_request	-	Batch Request Type
+ * @param[in]	parent_object	-	Parent Object Type
+ * @param[in]	cmd		-	Command Type
+ * @param[in]	pattr		-	address of attribute to verify
+ * @param[out]	err_msg		-	error message list
+ *
+ * @return	int
+ * @retval	0 	- 	Attribute passed verification
+ * @retval	>0 	- 	Failed verification - pbs errcode is returned
+ *
+ * @par	Side effects:
+ * 	None
+ *
+ * @par Reentrancy
+ *	MT-safe
+ */
+int
+verify_value_removefiles(int batch_request, int parent_object, int cmd,
+	struct attropl *pattr, char **err_msg)
+{
+	return verify_removefiles_common(pattr->value);
 }
 
 /**

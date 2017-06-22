@@ -257,6 +257,7 @@ int o_opt = FALSE;
 int p_opt = FALSE;
 int q_opt = FALSE;
 int r_opt = FALSE;
+int R_opt = FALSE;
 int u_opt = FALSE;
 int v_opt = FALSE;
 int z_opt = FALSE;
@@ -3207,12 +3208,12 @@ process_opts(int argc, char **argv, int passet)
 	int ddash_index = -1;
 
 #ifdef WIN32
-#define GETOPT_ARGS_ORIG "a:A:c:C:e:fGhIj:J:k:l:m:M:N:o:p:q:r:S:u:v:VW:zP:"
+#define GETOPT_ARGS_ORIG "a:A:c:C:e:fGhIj:J:k:l:m:M:N:o:p:q:r:R:S:u:v:VW:zP:"
 #else
 #if !defined(PBS_NO_POSIX_VIOLATION)
-#define GETOPT_ARGS_ORIG "a:A:c:C:e:fhIj:J:k:l:m:M:N:o:p:q:r:S:u:v:VW:XzP:"
+#define GETOPT_ARGS_ORIG "a:A:c:C:e:fhIj:J:k:l:m:M:N:o:p:q:r:R:S:u:v:VW:XzP:"
 #else
-#define GETOPT_ARGS_ORIG "a:A:c:C:e:fhj:J:k:l:m:M:N:o:p:q:r:S:u:v:VW:zP:"
+#define GETOPT_ARGS_ORIG "a:A:c:C:e:fhj:J:k:l:m:M:N:o:p:q:r:R:S:u:v:VW:zP:"
 #endif    /* PBS_NO_POSIX_VIOLATION */
 #endif	  /* WIN32 */
 
@@ -3461,6 +3462,12 @@ process_opts(int argc, char **argv, int passet)
 					}
 					roptarg = *optarg;
 					set_attr(&attrib, ATTR_r, optarg);
+				}
+				break;
+			case 'R':
+				if_cmd_line(R_opt) {
+					R_opt = passet;
+					set_attr(&attrib, ATTR_R, optarg);
 				}
 				break;
 			case 'S':
@@ -4562,17 +4569,18 @@ print_usage()
 	static char usage[]=
 		"usage: qsub [-a date_time] [-A account_string] [-c interval]\n"
 	"\t[-C directive_prefix] [-e path] [-f ] [-G] [-h ] [-j oe|eo] [-J X-Y[:Z]]\n"
-	"\t[-k o|e|oe] [-l resource_list] [-m mail_options] [-M user_list]\n"
+	"\t[-k keep] [-l resource_list] [-m mail_options] [-M user_list]\n"
 	"\t[-N jobname] [-o path] [-p priority] [-P project] [-q queue] [-r y|n]\n"
-	"\t[-S path] [-u user_list] [-W otherattributes=value...]\n"
+	"\t[-R o|e|oe] [-S path] [-u user_list] [-W otherattributes=value...]\n"
 	"\t[-v variable_list] [-V ] [-z] [script | -- command [arg1 ...]]\n";
 #else
 	static char usag2[]="       qsub --version\n";
 	static char usage[]=
 		"usage: qsub [-a date_time] [-A account_string] [-c interval]\n"
 	"\t[-C directive_prefix] [-e path] [-f ] [-h ] [-I [-X]] [-j oe|eo] [-J X-Y[:Z]]\n"
-	"\t[-k o|e|oe] [-l resource_list] [-m mail_options] [-M user_list]\n"
+	"\t[-k keep] [-l resource_list] [-m mail_options] [-M user_list]\n"
 	"\t[-N jobname] [-o path] [-p priority] [-P project] [-q queue] [-r y|n]\n"
+	"\t[-R o|e|oe] [-S path] [-u user_list] [-W otherattributes=value...]\n"
 	"\t[-S path] [-u user_list] [-W otherattributes=value...]\n"
 	"\t[-v variable_list] [-V ] [-z] [script | -- command [arg1 ...]]\n";
 #endif
@@ -4642,6 +4650,8 @@ handle_attribute_errors(struct ecl_attribute_errors *err_list,
 			opt = "p";
 		else if (strcmp(attribute->name, ATTR_r) == 0)
 			opt = "r";
+		else if (strcmp(attribute->name, ATTR_R) == 0)
+			opt = "R";
 		else if (strcmp(attribute->name, ATTR_S) == 0)
 			opt = "S";
 		else if (strcmp(attribute->name, ATTR_u) == 0)

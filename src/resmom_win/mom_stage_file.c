@@ -159,6 +159,10 @@ main(int argc, char *argv[])
 			strncpy_s(mom_host, sizeof(mom_host), param_val, _TRUNCATE);
 		} else if (strcmp(param_name, "log_file") == 0) {
 			log_file = strdup(param_val);
+		} else if (strcmp(param_name, "log_event_mask") == 0) {
+			*log_event_mask = atol(param_val);
+		} else if (strcmp(param_name, "direct_write") == 0) {
+			stage_inout.direct_write = atoi(param_val);
 		} else if (strcmp(param_name, "pcphosts") == 0) {
 			if (!recv_pcphosts()) {
 				printf("error while receiving pcphosts\n");

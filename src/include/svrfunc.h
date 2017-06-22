@@ -130,6 +130,8 @@ extern int apply_select_inchunk_rules(resource *, attribute *, void *, int, int)
 extern int svr_create_tmp_jobscript(job *, char *);
 extern void unset_jobscript_max_size(void);
 extern char *svr_load_jobscript(job *);
+extern int direct_write_requested(job *pjob);
+extern void spool_filename(job *pjob, char *namebuf, char *suffix);
 
 #ifdef	_PROVISION_H
 extern int find_prov_vnode_list(job *pjob, exec_vnode_listtype *prov_vnodes, char **aoe_name);
@@ -278,6 +280,8 @@ extern int   queuestart_action(attribute *pattr, void *pobject, int actmode);
 extern int   alter_eligibletime(attribute *pattr, void *pobject, int actmode);
 extern int   set_chunk_sum(attribute  *pselectattr, attribute *pattr);
 extern int   update_resources_rel(job *, attribute *, enum batch_op);
+extern int   keepfiles_action(attribute *pattr, void *pobject, int actmode);
+extern int   removefiles_action(attribute *pattr, void *pobject, int actmode);
 
 
 /* Functions below exposed as they are now accessed by the Python hooks */

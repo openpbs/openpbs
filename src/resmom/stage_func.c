@@ -200,7 +200,7 @@ is_child_path(char *dir, char *path)
  * @retval	0 - not a match
  *
  */
-static int
+int
 wchost_match(const char *can, const char *master)
 {
 	const char *pc;
@@ -278,7 +278,7 @@ const char *master;
  * @retval	0 - no match, newpath is unchanged
  *
  */
-static int
+int
 told_to_cp(char *host, char *oldpath, char **newpath)
 {
 	int i = 0;
@@ -381,6 +381,90 @@ local_or_remote(char **path)
 		*pcolon = ':';
 		return 1;
 	}
+}
+
+
+/**
+ * @brief
+ *	Setup for direct write of spool file
+ * @par
+ *	Determines if a spool file is to be directly written to its final destination, i.e:
+ *	1. Direct write of spool files has been requested by the job, and
+ *  2. Final destination of the file maps to a locally-mounted directory, either because it is
+ *	   explicitly mapped by $usecp, or the destination hostname is Mom's host.
+ *
+ * @param[in]  pjob - pointer to job structure
+ * @param[in]  which - identifies which file: StdOut, StdErr, or Chkpt.
+ * @param[out]  path -  pointer to array of size MAPATHXLEN+1 into which the final path of the file is to be stored.
+ * @param[out]  direct_write_possible -  Determines whether direct_write is possible.
+ *                                         Useful to decide whether to write warning message to stderr file
+ *                                          after multiple function invocation.
+ *
+ * @return int
+ *
+ * @retval	0 if file is not to be directly written,
+ * @retval	1 otherwise.
+ *
+ * @par
+ *	If the file is not to be directly written (return zero), the contents of *path are unchanged.
+ * @par
+ *	Direct write of checkpoint files is not currently supported.
+ *
+ * @par @par MT-safe: No
+ *
+ */
+int
+is_direct_write(job *pjob, enum job_file which, char *path, int *direct_write_possible)
+{
+	attribute *at;
+	resource_def *rd;
+	resource *dw;
+	char *oldpath;
+	char working_path[MAXPATHLEN + 1];
+	char *p = working_path;
+
+	if (which == Chkpt) return(0); /* direct write of checkpoint not supported */
+
+	/* Check if direct_write requested. */
+	if (!((pjob->ji_wattr[(int)JOB_ATR_keep].at_flags & ATR_VFLAG_SET) &&
+				(strchr(pjob->ji_wattr[(int)JOB_ATR_keep].at_val.at_str, 'd'))))
+		return(0);
+
+	/* Figure out what the final destination path is */
+	switch(which)
+	{
+		case StdOut:
+			if(!strchr(pjob->ji_wattr[(int)JOB_ATR_keep].at_val.at_str, 'o'))
+				return(0);
+			else
+				oldpath = pjob->ji_wattr[JOB_ATR_outpath].at_val.at_str;
+			break;
+		case StdErr:
+			if(!strchr(pjob->ji_wattr[(int)JOB_ATR_keep].at_val.at_str, 'e'))
+				return(0);
+			else
+				oldpath = pjob->ji_wattr[JOB_ATR_errpath].at_val.at_str;
+			break;
+		default:
+			return(0);
+	}
+
+	/* Make local working copy of path for call to local_or_remote */
+	strncpy(working_path, oldpath, MAXPATHLEN);
+	if (local_or_remote(&p) == 1) {
+		*direct_write_possible = 0;
+		sprintf(log_buffer,
+				"Direct write is requested for job: %s, but the destination: %s is not usecp-able from %s",
+				pjob->ji_qs.ji_jobid, p,
+				pjob->ji_hosts[pjob->ji_nodeid].hn_host);
+		log_event(PBSEVENT_DEBUG3,
+		PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
+		return (0);
+	}
+
+	/* Destination maps to local directory - final path is in working_path. */
+	strncpy(path, p, MAXPATHLEN); /* pass correct path back to caller */
+	return(1);
 }
 
 #ifdef WIN32
@@ -814,9 +898,7 @@ stage_file(int dir, int	rmtflag, char *owner, struct rqfpair *pair, int conn, cp
 	char matched[MAXPATHLEN+1] = {'\0'};
 	DIR *dirp = NULL;
 	struct dirent *pdirent = NULL;
-#ifdef NAS /* localmod 118 */
-        struct  stat    statbuf;
-#endif /* localmod 118 */
+	struct  stat    statbuf;
 
 	DBPRT(("%s: entered local %s remote %s\n", __func__, pair->fp_local, prmt))
 
@@ -847,25 +929,24 @@ stage_file(int dir, int	rmtflag, char *owner, struct rqfpair *pair, int conn, cp
 			strcpy(source, path_checkpoint);
 		}
 		strcat(source, pair->fp_local);
-#ifdef NAS /* localmod 118 */
-		/* *** SOG ***
-		 * Staging out. Check to see if file is being staged out from spool directory (i.e., is stdout or stderr). If so,
-		 * skip file if it doesn't exist in the spool directory, since it may have been directly written. Allow any other errors
-		 * to be caught by the staging process. This is a little kludgy, but is necessary to prevent issuing of spurious
-		 * "file previously deleted" messages.
+
+		 /* Staging out. Check to see if file is being staged out from spool directory (i.e., is stdout or stderr). If so,
+		 * skip file if it doesn't exist in the spool directory, since it may have been directly written.
 		 */
 
-		if (stage_inout->from_spool) {
+		if (stage_inout->from_spool && stage_inout->direct_write && !rmtflag) {
 			if (stat(source, &statbuf) == -1) {
 				if (errno == ENOENT) {
-					sprintf(log_buffer, "Skipping directly written/absent spool file %s", source);
-					log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_FILE,
-						  LOG_DEBUG, "stage_file", log_buffer);
+					sprintf(log_buffer,
+							"Skipping directly written/absent spool file %s",
+							source);
+					log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB,
+					LOG_DEBUG, __func__, log_buffer);
 					return 0;
 				}
 			}
 		}
-#endif /* localmod 118 */
+
 
 	} else {	/* in bound (stage-in) file */
 		/* take (remote) source name from request */

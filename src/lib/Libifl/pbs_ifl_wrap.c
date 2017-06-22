@@ -7107,6 +7107,7 @@ SWIG_init(void) {
   SWIG_Python_SetConstant(d, "ATTR_p",SWIG_FromCharPtr("Priority"));
   SWIG_Python_SetConstant(d, "ATTR_q",SWIG_FromCharPtr("destination"));
   SWIG_Python_SetConstant(d, "ATTR_r",SWIG_FromCharPtr("Rerunable"));
+  SWIG_Python_SetConstant(d, "ATTR_R",SWIG_FromCharPtr("Remove_Files"));
   SWIG_Python_SetConstant(d, "ATTR_u",SWIG_FromCharPtr("User_List"));
   SWIG_Python_SetConstant(d, "ATTR_v",SWIG_FromCharPtr("Variable_List"));
   SWIG_Python_SetConstant(d, "ATTR_A",SWIG_FromCharPtr("Account_Name"));

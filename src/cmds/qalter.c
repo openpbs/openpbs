@@ -70,7 +70,8 @@ print_usage()
 		"usage: qalter [-a date_time] [-A account_string] [-c interval] [-e path]\n"
 	"\t[-h hold_list] [-j y|n] [-k keep] [-J X-Y[:Z]] [-l resource_list]\n"
 	"\t[-m mail_options] [-M user_list] [-N jobname] [-o path] [-p priority]\n"
-	"\t[-r y|n] [-S path] [-u user_list] [-W dependency_list] [-P project_name] job_identifier...\n";
+	"\t[-R o|e|oe] [-r y|n] [-S path] [-u user_list] [-W dependency_list]\n"
+	"\t[-P project_name] job_identifier...\n";
 	fprintf(stderr, "%s", usage);
 	fprintf(stderr, "%s", usag2);
 }
@@ -130,6 +131,8 @@ handle_attribute_errors(int connect,
 			opt="p";
 		else if (strcmp(attribute->name, ATTR_r)==0)
 			opt="r";
+		else if (strcmp(attribute->name, ATTR_R)==0)
+			opt="R";
 		else if (strcmp(attribute->name, ATTR_S)==0)
 			opt="S";
 		else if (strcmp(attribute->name, ATTR_u)==0)
@@ -187,7 +190,7 @@ main(int argc, char **argv, char **envp) /* qalter */
 	char* temp_apvalue = NULL;
 #endif
 
-#define GETOPT_ARGS "a:A:c:e:h:j:k:l:m:M:N:o:p:r:S:u:W:P:"
+#define GETOPT_ARGS "a:A:c:e:h:j:k:l:m:M:N:o:p:r:R:S:u:W:P:"
 
 	/*test for real deal or just version and exit*/
 
@@ -277,6 +280,9 @@ main(int argc, char **argv, char **envp) /* qalter */
 					break;
 				}
 				set_attr(&attrib, ATTR_r, optarg);
+				break;
+			case 'R':
+				set_attr(&attrib, ATTR_R, optarg);
 				break;
 			case 'S':
 				set_attr(&attrib, ATTR_S, optarg);

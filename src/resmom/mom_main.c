@@ -2326,6 +2326,11 @@ usecp(char *value)
 	if (((pcphosts+cphosts_num)->cph_to = strdup(skipwhite(pnxt))) == NULL)
 		return HANDLER_FAIL;
 
+#ifdef	WIN32
+	back2forward_slash((pcphosts+cphosts_num)->cph_from);
+	back2forward_slash((pcphosts+cphosts_num)->cph_to);
+#endif
+
 	cphosts_num++;
 
 	return HANDLER_SUCCESS;

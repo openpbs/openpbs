@@ -828,6 +828,18 @@ alter_eligibletime(attribute *pattr, void *pobject, int actmode)
 }
 
 int
+keepfiles_action(attribute *pattr, void *pobject, int actmode)
+{
+    return PBSE_NONE;
+}
+
+int
+removefiles_action(attribute *pattr, void *pobject, int actmode)
+{
+    return PBSE_NONE;
+}
+
+int
 action_est_start_time_freq(attribute *pattr, void *pobj, int actmode)
 {
 	return PBSE_NONE;
