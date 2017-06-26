@@ -52,7 +52,7 @@ def get_scripts():
 
 setup(
     name='PbsTestLab',
-    version='1.0.0',
+    version='14.0.1',
     author='Vincent Matossian',
     author_email='pbspro@groups.io',
     packages=find_packages(),
