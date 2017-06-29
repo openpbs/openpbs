@@ -16,8 +16,8 @@
 	<Configurations>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory=".\..\..\..\win_build\src\lib\Libtpp\Debug"
-			IntermediateDirectory=".\..\..\..\win_build\src\lib\Libtpp\Debug"
+			OutputDirectory="..\..\..\win_build\src\lib\Libtpp\Debug"
+			IntermediateDirectory="..\..\..\win_build\src\lib\Libtpp\Debug"
 			ConfigurationType="4"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
@@ -42,15 +42,15 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\..\src\include;..\include;"
+				AdditionalIncludeDirectories="..\..\src\include;..\include"
 				PreprocessorDefinitions="WIN32;_DEBUG;_LIB;_USE_32BIT_TIME_T "
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="0"
 				UsePrecompiledHeader="0"
-				PrecompiledHeaderFile=".\..\..\..\win_build\src\lib\Libtpp\Debug/Libtpp.pch"
-				AssemblerListingLocation=".\..\..\..\win_build\src\lib\Libtpp\Debug/"
-				ObjectFile=".\..\..\..\win_build\src\lib\Libtpp\Debug/"
-				ProgramDataBaseFileName=".\..\..\..\win_build\src\lib\Libtpp\Debug/"
+				PrecompiledHeaderFile="..\..\..\win_build\src\lib\Libtpp\Debug\Libtpp.pch"
+				AssemblerListingLocation="..\..\..\win_build\src\lib\Libtpp\Debug\"
+				ObjectFile="..\..\..\win_build\src\lib\Libtpp\Debug\"
+				ProgramDataBaseFileName="..\..\..\win_build\src\lib\Libtpp\Debug\"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				DebugInformationFormat="4"
@@ -69,7 +69,7 @@
 			/>
 			<Tool
 				Name="VCLibrarianTool"
-				OutputFile=".\..\..\..\win_build\src\lib\Libtpp\Debug\Libtpp.lib"
+				OutputFile="..\..\..\win_build\src\lib\Libtpp\Debug\Libtpp.lib"
 				SuppressStartupBanner="true"
 			/>
 			<Tool
@@ -90,8 +90,8 @@
 		</Configuration>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory=".\..\..\..\win_build\src\lib\Libtpp\Release"
-			IntermediateDirectory=".\..\..\..\win_build\src\lib\Libtpp\Release"
+			OutputDirectory="..\..\..\win_build\src\lib\Libtpp\Release"
+			IntermediateDirectory="..\..\..\win_build\src\lib\Libtpp\Release"
 			ConfigurationType="4"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
@@ -117,16 +117,16 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				InlineFunctionExpansion="1"
-				AdditionalIncludeDirectories="..\..\src\include;..\include;"
+				AdditionalIncludeDirectories="..\..\src\include;..\include"
 				PreprocessorDefinitions="WIN32;NDEBUG;_LIB;_USE_32BIT_TIME_T "
 				StringPooling="true"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
-				PrecompiledHeaderFile=".\..\..\..\win_build\src\lib\Libtpp\Release/Libtpp.pch"
-				AssemblerListingLocation=".\..\..\..\win_build\src\lib\Libtpp\Release/"
-				ObjectFile=".\..\..\..\win_build\src\lib\Libtpp\Release/"
-				ProgramDataBaseFileName=".\..\..\..\win_build\src\lib\Libtpp\Release/"
+				PrecompiledHeaderFile="..\..\..\win_build\src\lib\Libtpp\Release\Libtpp.pch"
+				AssemblerListingLocation="..\..\..\win_build\src\lib\Libtpp\Release\"
+				ObjectFile="..\..\..\win_build\src\lib\Libtpp\Release\"
+				ProgramDataBaseFileName="..\..\..\win_build\src\lib\Libtpp\Release\"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				CompileAs="0"
@@ -144,7 +144,7 @@
 			/>
 			<Tool
 				Name="VCLibrarianTool"
-				OutputFile=".\..\..\..\win_build\src\lib\Libtpp\Release\Libtpp.lib"
+				OutputFile="..\..\..\win_build\src\lib\Libtpp\Release\Libtpp.lib"
 				SuppressStartupBanner="true"
 			/>
 			<Tool

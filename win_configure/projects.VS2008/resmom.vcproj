@@ -17,8 +17,8 @@
 	<Configurations>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory=".\..\..\..\win_build\src\resmom\Debug"
-			IntermediateDirectory=".\..\..\..\win_build\src\resmom\Debug"
+			OutputDirectory="..\..\..\win_build\src\resmom\Debug"
+			IntermediateDirectory="..\..\..\win_build\src\resmom\Debug"
 			ConfigurationType="1"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
@@ -39,21 +39,21 @@
 			/>
 			<Tool
 				Name="VCMIDLTool"
-				TypeLibraryName=".\..\..\..\win_build\src\resmom\Debug/resmom.tlb"
+				TypeLibraryName="..\..\..\win_build\src\resmom\Debug\resmom.tlb"
 				HeaderFileName=""
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\..\src\resmom\mom_hpcp;..\..\src\include;..\include;..\..\src\resmom;..\..\src\resmom_win;..\..\src\resmom_win\win;&quot;c:\Program Files\Openssl\include&quot;;&quot;C:\Program Files\Python-2.7.11\PC&quot;;&quot;C:\Program Files\Python-2.7.11\include&quot;"
-				PreprocessorDefinitions="_DEBUG;DEBUG;PBS_MOM=1;_WIN32_WINNT=0x0500;PBS_MOM;WIN32;_CONSOLE;_USE_32BIT_TIME_T;LINKS_PYTHON;Py_NO_ENABLE_SHARED "
+				AdditionalIncludeDirectories="..\..\src\resmom\mom_hpcp;..\..\src\include;..\include;..\..\src\resmom;..\..\src\resmom_win;..\..\src\resmom_win\win;..\..\..\binaries\openssl\include;..\..\..\binaries\python\include"
+				PreprocessorDefinitions="_DEBUG;DEBUG;PBS_MOM=1;_WIN32_WINNT=0x0500;PBS_MOM;WIN32;_CONSOLE;_USE_32BIT_TIME_T;LINKS_PYTHON"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
 				UsePrecompiledHeader="0"
-				PrecompiledHeaderFile=".\..\..\..\win_build\src\resmom\Debug/resmom.pch"
-				AssemblerListingLocation=".\..\..\..\win_build\src\resmom\Debug/"
-				ObjectFile=".\..\..\..\win_build\src\resmom\Debug/"
-				ProgramDataBaseFileName=".\..\..\..\win_build\src\resmom\Debug/"
+				PrecompiledHeaderFile="..\..\..\win_build\src\resmom\Debug\resmom.pch"
+				AssemblerListingLocation="..\..\..\win_build\src\resmom\Debug\"
+				ObjectFile="..\..\..\win_build\src\resmom\Debug\"
+				ProgramDataBaseFileName="..\..\..\win_build\src\resmom\Debug\"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				DebugInformationFormat="3"
@@ -73,14 +73,14 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalOptions="/SAFESEH /STACK:0x1000000"
-				AdditionalDependencies="secur32.lib Userenv.lib mpr.lib libeay32.lib winmm.lib pdh.lib ws2_32.lib netapi32.lib odbc32.lib odbccp32.lib Psapi.lib python27_d.lib"
+				AdditionalDependencies="secur32.lib Userenv.lib mpr.lib libcrypto.lib crypt32.lib winmm.lib pdh.lib ws2_32.lib netapi32.lib odbc32.lib odbccp32.lib Psapi.lib python27.lib"
 				OutputFile="..\..\..\win_build\src\resmom\Debug\pbs_mom.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="..\..\..\win_build\src\server\Release;..\..\src\server;&quot;c:\Program Files\Openssl\lib&quot;;&quot;C:\Program Files\Python-2.7.11\PC\VS9.0\Debug&quot;"
+				AdditionalLibraryDirectories="..\..\..\win_build\src\server\Release;..\..\src\server;..\..\..\binaries\openssl\lib;..\..\..\binaries\python\libs"
 				UACExecutionLevel="0"
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile=".\..\..\..\win_build\src\resmom\Debug/pbs_mom.pdb"
+				ProgramDatabaseFile="..\..\..\win_build\src\resmom\Debug\pbs_mom.pdb"
 				SubSystem="1"
 				RandomizedBaseAddress="2"
 				DataExecutionPrevention="2"
@@ -110,8 +110,8 @@
 		</Configuration>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory=".\..\..\..\win_build\src\resmom\Release"
-			IntermediateDirectory=".\..\..\..\win_build\src\resmom\Release"
+			OutputDirectory="..\..\..\win_build\src\resmom\Release"
+			IntermediateDirectory="..\..\..\win_build\src\resmom\Release"
 			ConfigurationType="1"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
@@ -132,23 +132,23 @@
 			/>
 			<Tool
 				Name="VCMIDLTool"
-				TypeLibraryName=".\..\..\..\win_build\src\resmom\Release/resmom.tlb"
+				TypeLibraryName="..\..\..\win_build\src\resmom\Release\resmom.tlb"
 				HeaderFileName=""
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				InlineFunctionExpansion="1"
-				AdditionalIncludeDirectories="..\..\src\resmom\mom_hpcp;..\..\src\include;..\include;..\..\src\resmom;..\..\src\resmom_win;..\..\src\resmom_win\win;&quot;c:\Program Files\Openssl\include&quot;;&quot;C:\Program Files\Python-2.7.11\PC&quot;;&quot;C:\Program Files\Python-2.7.11\include&quot;"
-				PreprocessorDefinitions="NDEBUG;_WIN32_WINNT=0x0500;PBS_MOM;WIN32;_CONSOLE;_USE_32BIT_TIME_T;LINKS_PYTHON;;Py_NO_ENABLE_SHARED"
+				AdditionalIncludeDirectories="..\..\src\resmom\mom_hpcp;..\..\src\include;..\include;..\..\src\resmom;..\..\src\resmom_win;..\..\src\resmom_win\win;..\..\..\binaries\openssl\include;..\..\..\binaries\python\include"
+				PreprocessorDefinitions="NDEBUG;_WIN32_WINNT=0x0500;PBS_MOM;WIN32;_CONSOLE;_USE_32BIT_TIME_T;LINKS_PYTHON"
 				StringPooling="true"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
-				PrecompiledHeaderFile=".\..\..\..\win_build\src\resmom\Release/resmom.pch"
-				AssemblerListingLocation=".\..\..\..\win_build\src\resmom\Release/"
-				ObjectFile=".\..\..\..\win_build\src\resmom\Release/"
-				ProgramDataBaseFileName=".\..\..\..\win_build\src\resmom\Release/"
+				PrecompiledHeaderFile="..\..\..\win_build\src\resmom\Release\resmom.pch"
+				AssemblerListingLocation="..\..\..\win_build\src\resmom\Release\"
+				ObjectFile="..\..\..\win_build\src\resmom\Release\"
+				ProgramDataBaseFileName="..\..\..\win_build\src\resmom\Release\"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				DebugInformationFormat="3"
@@ -168,14 +168,14 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalOptions="/SAFESEH /STACK:0x1000000"
-				AdditionalDependencies="secur32.lib Userenv.lib mpr.lib libeay32.lib winmm.lib pdh.lib ws2_32.lib netapi32.lib odbc32.lib odbccp32.lib Psapi.lib python27.lib"
+				AdditionalDependencies="secur32.lib Userenv.lib mpr.lib libcrypto.lib crypt32.lib winmm.lib pdh.lib ws2_32.lib netapi32.lib odbc32.lib odbccp32.lib Psapi.lib python27.lib"
 				OutputFile="..\..\..\win_build\src\resmom\Release\pbs_mom.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="..\..\..\win_build\src\server\Release;..\..\..\win_build\src\server;&quot;c:\Program Files\Openssl\lib&quot;;&quot;C:\Program Files\Python-2.7.11\PC\VS9.0\Release&quot;"
+				AdditionalLibraryDirectories="..\..\..\win_build\src\server\Release;..\..\..\binaries\openssl\lib;..\..\..\win_build\src\server;..\..\..\binaries\python\libs"
 				UACExecutionLevel="0"
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile=".\..\..\..\win_build\src\resmom\Release/pbs_mom.pdb"
+				ProgramDatabaseFile="..\..\..\win_build\src\resmom\Release\pbs_mom.pdb"
 				SubSystem="1"
 				RandomizedBaseAddress="2"
 				DataExecutionPrevention="2"
@@ -313,31 +313,6 @@
 			</File>
 			<File
 				RelativePath="..\..\src\server\job_func.c"
-				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						Optimization="0"
-						AdditionalIncludeDirectories=""
-						PreprocessorDefinitions=""
-						BasicRuntimeChecks="3"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						Optimization="2"
-						AdditionalIncludeDirectories=""
-						PreprocessorDefinitions=""
-					/>
-				</FileConfiguration>
-			</File>
-			<File
-				RelativePath="..\..\src\server\setup_resc.c"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
@@ -738,6 +713,31 @@
 			</File>
 			<File
 				RelativePath="..\..\src\lib\Libattr\resc_def_all.c"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="0"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+						BasicRuntimeChecks="3"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="2"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\..\src\server\setup_resc.c"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"

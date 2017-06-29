@@ -17,8 +17,8 @@
 	<Configurations>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory=".\..\..\..\win_build\src\lib\Libpbs\Release"
-			IntermediateDirectory=".\..\..\..\win_build\src\lib\Libpbs\Release"
+			OutputDirectory="..\..\..\win_build\src\lib\Libpbs\Release"
+			IntermediateDirectory="..\..\..\win_build\src\lib\Libpbs\Release"
 			ConfigurationType="4"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
@@ -45,16 +45,16 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				InlineFunctionExpansion="1"
-				AdditionalIncludeDirectories="..\..\src\include;..\include;&quot;c:\Program Files\Openssl\Include&quot;"
+				AdditionalIncludeDirectories="..\..\src\include;..\include;..\..\..\binaries\openssl\include"
 				PreprocessorDefinitions="WIN32;NDEBUG;_LIB;_USE_32BIT_TIME_T "
 				StringPooling="true"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
-				PrecompiledHeaderFile=".\..\..\..\win_build\src\lib\Libpbs\Release/Libpbs.pch"
-				AssemblerListingLocation=".\..\..\..\win_build\src\lib\Libpbs\Release/"
-				ObjectFile=".\..\..\..\win_build\src\lib\Libpbs\Release/"
-				ProgramDataBaseFileName=".\..\..\..\win_build\src\lib\Libpbs\Release/"
+				PrecompiledHeaderFile="..\..\..\win_build\src\lib\Libpbs\Release\Libpbs.pch"
+				AssemblerListingLocation="..\..\..\win_build\src\lib\Libpbs\Release\"
+				ObjectFile="..\..\..\win_build\src\lib\Libpbs\Release\"
+				ProgramDataBaseFileName="..\..\..\win_build\src\lib\Libpbs\Release\"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				CompileAs="0"
@@ -73,8 +73,8 @@
 			<Tool
 				Name="VCLibrarianTool"
 				AdditionalDependencies="Libpbspthread.lib"
-				OutputFile=".\..\..\..\win_build\src\lib\Libpbs\Release\Libpbs.lib"
-				AdditionalLibraryDirectories=".\..\..\..\win_build\src\lib\Liblog\Release;.\..\..\..\win_build\src\lib\Libpbspthread\Release"
+				OutputFile="..\..\..\win_build\src\lib\Libpbs\Release\Libpbs.lib"
+				AdditionalLibraryDirectories="..\..\..\win_build\src\lib\Liblog\Release;..\..\..\win_build\src\lib\Libpbspthread\Release"
 				SuppressStartupBanner="true"
 			/>
 			<Tool
@@ -95,8 +95,8 @@
 		</Configuration>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory=".\..\..\..\win_build\src\lib\Libpbs\Debug"
-			IntermediateDirectory=".\..\..\..\win_build\src\lib\Libpbs\Debug"
+			OutputDirectory="..\..\..\win_build\src\lib\Libpbs\Debug"
+			IntermediateDirectory="..\..\..\win_build\src\lib\Libpbs\Debug"
 			ConfigurationType="4"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
@@ -122,15 +122,15 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\..\src\include;..\include;&quot;c:\Program Files\Openssl\Include&quot;"
+				AdditionalIncludeDirectories="..\..\src\include;..\include;..\..\..\binaries\openssl\include"
 				PreprocessorDefinitions="WIN32;_DEBUG;_LIB;_USE_32BIT_TIME_T "
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="0"
 				UsePrecompiledHeader="0"
-				PrecompiledHeaderFile=".\..\..\..\win_build\src\lib\Libpbs\Debug/Libpbs.pch"
-				AssemblerListingLocation=".\..\..\..\win_build\src\lib\Libpbs\Debug/"
-				ObjectFile=".\..\..\..\win_build\src\lib\Libpbs\Debug/"
-				ProgramDataBaseFileName=".\..\..\..\win_build\src\lib\Libpbs\Debug/"
+				PrecompiledHeaderFile="..\..\..\win_build\src\lib\Libpbs\Debug\Libpbs.pch"
+				AssemblerListingLocation="..\..\..\win_build\src\lib\Libpbs\Debug\"
+				ObjectFile="..\..\..\win_build\src\lib\Libpbs\Debug\"
+				ProgramDataBaseFileName="..\..\..\win_build\src\lib\Libpbs\Debug\"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				DebugInformationFormat="4"
@@ -150,8 +150,8 @@
 			<Tool
 				Name="VCLibrarianTool"
 				AdditionalDependencies="Libpbspthread.lib"
-				OutputFile=".\..\..\..\win_build\src\lib\Libpbs\Debug\Libpbs.lib"
-				AdditionalLibraryDirectories=".\..\..\..\win_build\src\lib\Liblog\Debug;.\..\..\..\win_build\src\lib\Libpbspthread\Debug"
+				OutputFile="..\..\..\win_build\src\lib\Libpbs\Debug\Libpbs.lib"
+				AdditionalLibraryDirectories="..\..\..\win_build\src\lib\Liblog\Debug;..\..\..\win_build\src\lib\Libpbspthread\Debug"
 				SuppressStartupBanner="true"
 			/>
 			<Tool

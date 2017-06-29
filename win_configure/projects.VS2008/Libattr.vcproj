@@ -16,8 +16,8 @@
 	<Configurations>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory=".\..\..\..\win_build\src\lib\Libattr\Release"
-			IntermediateDirectory=".\..\..\..\win_build\src\lib\Libattr\Release"
+			OutputDirectory="..\..\..\win_build\src\lib\Libattr\Release"
+			IntermediateDirectory="..\..\..\win_build\src\lib\Libattr\Release"
 			ConfigurationType="4"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
@@ -49,10 +49,10 @@
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
-				PrecompiledHeaderFile=".\..\..\..\win_build\src\lib\Libattr\Release/Libattr.pch"
-				AssemblerListingLocation=".\..\..\..\win_build\src\lib\Libattr\Release/"
-				ObjectFile=".\..\..\..\win_build\src\lib\Libattr\Release/"
-				ProgramDataBaseFileName=".\..\..\..\win_build\src\lib\Libattr\Release/"
+				PrecompiledHeaderFile="..\..\..\win_build\src\lib\Libattr\Release\Libattr.pch"
+				AssemblerListingLocation="..\..\..\win_build\src\lib\Libattr\Release\"
+				ObjectFile="..\..\..\win_build\src\lib\Libattr\Release\"
+				ProgramDataBaseFileName="..\..\..\win_build\src\lib\Libattr\Release\"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				CompileAs="0"
@@ -70,7 +70,7 @@
 			/>
 			<Tool
 				Name="VCLibrarianTool"
-				OutputFile=".\..\..\..\win_build\src\lib\Libattr\Release\Libattr.lib"
+				OutputFile="..\..\..\win_build\src\lib\Libattr\Release\Libattr.lib"
 				SuppressStartupBanner="true"
 			/>
 			<Tool
@@ -91,8 +91,8 @@
 		</Configuration>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory=".\..\..\..\win_build\src\lib\Libattr\Debug"
-			IntermediateDirectory=".\..\..\..\win_build\src\lib\Libattr\Debug"
+			OutputDirectory="..\..\..\win_build\src\lib\Libattr\Debug"
+			IntermediateDirectory="..\..\..\win_build\src\lib\Libattr\Debug"
 			ConfigurationType="4"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
@@ -122,10 +122,10 @@
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="0"
 				UsePrecompiledHeader="0"
-				PrecompiledHeaderFile=".\..\..\..\win_build\src\lib\Libattr\Debug/Libattr.pch"
-				AssemblerListingLocation=".\..\..\..\win_build\src\lib\Libattr\Debug/"
-				ObjectFile=".\..\..\..\win_build\src\lib\Libattr\Debug/"
-				ProgramDataBaseFileName=".\..\..\..\win_build\src\lib\Libattr\Debug/"
+				PrecompiledHeaderFile="..\..\..\win_build\src\lib\Libattr\Debug\Libattr.pch"
+				AssemblerListingLocation="..\..\..\win_build\src\lib\Libattr\Debug\"
+				ObjectFile="..\..\..\win_build\src\lib\Libattr\Debug\"
+				ProgramDataBaseFileName="..\..\..\win_build\src\lib\Libattr\Debug\"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				DebugInformationFormat="4"
@@ -144,7 +144,7 @@
 			/>
 			<Tool
 				Name="VCLibrarianTool"
-				OutputFile=".\..\..\..\win_build\src\lib\Libattr\Debug\Libattr.lib"
+				OutputFile="..\..\..\win_build\src\lib\Libattr\Debug\Libattr.lib"
 				SuppressStartupBanner="true"
 			/>
 			<Tool

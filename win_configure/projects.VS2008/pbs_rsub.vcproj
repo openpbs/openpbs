@@ -16,8 +16,8 @@
 	<Configurations>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory=".\..\..\..\win_build\src\cmds\Debug"
-			IntermediateDirectory=".\..\..\..\win_build\src\cmds\Debug"
+			OutputDirectory="..\..\..\win_build\src\cmds\Debug"
+			IntermediateDirectory="..\..\..\win_build\src\cmds\Debug"
 			ConfigurationType="1"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
@@ -38,7 +38,7 @@
 			/>
 			<Tool
 				Name="VCMIDLTool"
-				TypeLibraryName=".\..\..\..\win_build\src\cmds\Debug/pbs_rsub.tlb"
+				TypeLibraryName="..\..\..\win_build\src\cmds\Debug\pbs_rsub.tlb"
 				HeaderFileName=""
 			/>
 			<Tool
@@ -49,10 +49,10 @@
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="0"
 				UsePrecompiledHeader="0"
-				PrecompiledHeaderFile=".\..\..\..\win_build\src\cmds\Debug/pbs_rsub.pch"
-				AssemblerListingLocation=".\..\..\..\win_build\src\cmds\Debug/"
-				ObjectFile=".\..\..\..\win_build\src\cmds\Debug/"
-				ProgramDataBaseFileName=".\..\..\..\win_build\src\cmds\Debug/"
+				PrecompiledHeaderFile="..\..\..\win_build\src\cmds\Debug\pbs_rsub.pch"
+				AssemblerListingLocation="..\..\..\win_build\src\cmds\Debug\"
+				ObjectFile="..\..\..\win_build\src\cmds\Debug\"
+				ProgramDataBaseFileName="..\..\..\win_build\src\cmds\Debug\"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				DebugInformationFormat="4"
@@ -73,12 +73,12 @@
 				Name="VCLinkerTool"
 				AdditionalOptions="/SAFESEH"
 				AdditionalDependencies="secur32.lib Userenv.lib mpr.lib ws2_32.lib netapi32.lib odbc32.lib odbccp32.lib"
-				OutputFile=".\..\..\..\win_build\src\cmds\Debug/pbs_rsub.exe"
+				OutputFile="..\..\..\win_build\src\cmds\Debug\pbs_rsub.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
 				UACExecutionLevel="0"
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile=".\..\..\..\win_build\src\cmds\Debug/pbs_rsub.pdb"
+				ProgramDatabaseFile="..\..\..\win_build\src\cmds\Debug\pbs_rsub.pdb"
 				SubSystem="1"
 				RandomizedBaseAddress="2"
 				DataExecutionPrevention="2"
@@ -108,8 +108,8 @@
 		</Configuration>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory=".\..\..\..\win_build\src\cmds\Release"
-			IntermediateDirectory=".\..\..\..\win_build\src\cmds\Release"
+			OutputDirectory="..\..\..\win_build\src\cmds\Release"
+			IntermediateDirectory="..\..\..\win_build\src\cmds\Release"
 			ConfigurationType="1"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
@@ -130,7 +130,7 @@
 			/>
 			<Tool
 				Name="VCMIDLTool"
-				TypeLibraryName=".\..\..\..\win_build\src\cmds\Release/pbs_rsub.tlb"
+				TypeLibraryName="..\..\..\win_build\src\cmds\Release\pbs_rsub.tlb"
 				HeaderFileName=""
 			/>
 			<Tool
@@ -143,10 +143,10 @@
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
-				PrecompiledHeaderFile=".\..\..\..\win_build\src\cmds\Release/pbs_rsub.pch"
-				AssemblerListingLocation=".\..\..\..\win_build\src\cmds\Release/"
-				ObjectFile=".\..\..\..\win_build\src\cmds\Release/"
-				ProgramDataBaseFileName=".\..\..\..\win_build\src\cmds\Release/"
+				PrecompiledHeaderFile="..\..\..\win_build\src\cmds\Release\pbs_rsub.pch"
+				AssemblerListingLocation="..\..\..\win_build\src\cmds\Release\"
+				ObjectFile="..\..\..\win_build\src\cmds\Release\"
+				ProgramDataBaseFileName="..\..\..\win_build\src\cmds\Release\"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				CompileAs="0"
@@ -166,11 +166,11 @@
 				Name="VCLinkerTool"
 				AdditionalOptions="/SAFESEH"
 				AdditionalDependencies="secur32.lib Userenv.lib mpr.lib ws2_32.lib netapi32.lib odbc32.lib odbccp32.lib"
-				OutputFile=".\..\..\..\win_build\src\cmds\Release/pbs_rsub.exe"
+				OutputFile="..\..\..\win_build\src\cmds\Release\pbs_rsub.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
 				UACExecutionLevel="0"
-				ProgramDatabaseFile=".\..\..\..\win_build\src\cmds\Release/pbs_rsub.pdb"
+				ProgramDatabaseFile="..\..\..\win_build\src\cmds\Release\pbs_rsub.pdb"
 				SubSystem="1"
 				RandomizedBaseAddress="2"
 				DataExecutionPrevention="2"

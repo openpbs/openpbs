@@ -16,8 +16,8 @@
 	<Configurations>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory=".\..\..\..\win_build\src\lib\Libnet\Release"
-			IntermediateDirectory=".\..\..\..\win_build\src\lib\Libnet\Release"
+			OutputDirectory="..\..\..\win_build\src\lib\Libnet\Release"
+			IntermediateDirectory="..\..\..\win_build\src\lib\Libnet\Release"
 			ConfigurationType="4"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
@@ -49,10 +49,10 @@
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
-				PrecompiledHeaderFile=".\..\..\..\win_build\src\lib\Libnet\Release/Libnet.pch"
-				AssemblerListingLocation=".\..\..\..\win_build\src\lib\Libnet\Release/"
-				ObjectFile=".\..\..\..\win_build\src\lib\Libnet\Release/"
-				ProgramDataBaseFileName=".\..\..\..\win_build\src\lib\Libnet\Release/"
+				PrecompiledHeaderFile="..\..\..\win_build\src\lib\Libnet\Release\Libnet.pch"
+				AssemblerListingLocation="..\..\..\win_build\src\lib\Libnet\Release\"
+				ObjectFile="..\..\..\win_build\src\lib\Libnet\Release\"
+				ProgramDataBaseFileName="..\..\..\win_build\src\lib\Libnet\Release\"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				CompileAs="0"
@@ -70,7 +70,7 @@
 			/>
 			<Tool
 				Name="VCLibrarianTool"
-				OutputFile=".\..\..\..\win_build\src\lib\Libnet\Release\Libnet.lib"
+				OutputFile="..\..\..\win_build\src\lib\Libnet\Release\Libnet.lib"
 				SuppressStartupBanner="true"
 			/>
 			<Tool
@@ -91,8 +91,8 @@
 		</Configuration>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory=".\..\..\..\win_build\src\lib\Libnet\Debug"
-			IntermediateDirectory=".\..\..\..\win_build\src\lib\Libnet\Debug"
+			OutputDirectory="..\..\..\win_build\src\lib\Libnet\Debug"
+			IntermediateDirectory="..\..\..\win_build\src\lib\Libnet\Debug"
 			ConfigurationType="4"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
@@ -122,10 +122,10 @@
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="0"
 				UsePrecompiledHeader="0"
-				PrecompiledHeaderFile=".\..\..\..\win_build\src\lib\Libnet\Debug/Libnet.pch"
-				AssemblerListingLocation=".\..\..\..\win_build\src\lib\Libnet\Debug/"
-				ObjectFile=".\..\..\..\win_build\src\lib\Libnet\Debug/"
-				ProgramDataBaseFileName=".\..\..\..\win_build\src\lib\Libnet\Debug/"
+				PrecompiledHeaderFile="..\..\..\win_build\src\lib\Libnet\Debug\Libnet.pch"
+				AssemblerListingLocation="..\..\..\win_build\src\lib\Libnet\Debug\"
+				ObjectFile="..\..\..\win_build\src\lib\Libnet\Debug\"
+				ProgramDataBaseFileName="..\..\..\win_build\src\lib\Libnet\Debug\"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				DebugInformationFormat="4"
@@ -144,7 +144,7 @@
 			/>
 			<Tool
 				Name="VCLibrarianTool"
-				OutputFile=".\..\..\..\win_build\src\lib\Libnet\Debug\Libnet.lib"
+				OutputFile="..\..\..\win_build\src\lib\Libnet\Debug\Libnet.lib"
 				SuppressStartupBanner="true"
 			/>
 			<Tool

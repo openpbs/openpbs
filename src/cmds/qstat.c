@@ -1845,7 +1845,7 @@ tcl_init()
 	interp = Tcl_CreateInterp();
 	if (Tcl_Init(interp) == TCL_ERROR) {
 		fprintf(stderr, "Tcl_Init error: %s",
-			interp->result);
+			Tcl_GetStringResult(interp));
 	}
 #if	TCLX
 #if	TCL_MINOR_VERSION < 5  && TCL_MAJOR_VERSION < 8
@@ -1896,7 +1896,7 @@ tcl_init()
 	interp = Tcl_CreateInterp();
 	if (Tcl_Init(interp) == TCL_ERROR) {
 		fprintf(stderr, "Tcl_Init error: %s",
-			interp->result);
+			Tcl_GetStringResult(interp));
 	}
 #if	TCLX
 #if	TCL_MINOR_VERSION < 5  && TCL_MAJOR_VERSION < 8
@@ -2107,10 +2107,10 @@ tcl_run(int f_opt)
 
 		trace = (char *)Tcl_GetVar(interp, "errorInfo", 0);
 		if (trace == NULL)
-			trace = interp->result;
+			trace = Tcl_GetStringResult(interp);
 
 		fprintf(stderr, "%s: TCL error @ line %d: %s\n",
-			script, interp->errorLine, trace);
+			script, Tcl_GetErrorLine(interp), trace);
 	}
 	Tcl_DeleteInterp(interp);
 }

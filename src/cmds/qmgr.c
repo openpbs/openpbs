@@ -107,7 +107,7 @@
 #ifndef WIN32
 #include "histedit.h"
 #else
-#include "readline.h"
+#include "editline\readline.h"
 #endif
 #endif
 

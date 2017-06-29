@@ -16,8 +16,8 @@
 	<Configurations>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory=".\..\..\..\win_build\src\lib\Liblog\Debug"
-			IntermediateDirectory=".\..\..\..\win_build\src\lib\Liblog\Debug"
+			OutputDirectory="..\..\..\win_build\src\lib\Liblog\Debug"
+			IntermediateDirectory="..\..\..\win_build\src\lib\Liblog\Debug"
 			ConfigurationType="4"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
@@ -47,10 +47,10 @@
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="0"
 				UsePrecompiledHeader="0"
-				PrecompiledHeaderFile=".\..\..\..\win_build\src\lib\Liblog\Debug/Liblog.pch"
-				AssemblerListingLocation=".\..\..\..\win_build\src\lib\Liblog\Debug/"
-				ObjectFile=".\..\..\..\win_build\src\lib\Liblog\Debug/"
-				ProgramDataBaseFileName=".\..\..\..\win_build\src\lib\Liblog\Debug/"
+				PrecompiledHeaderFile="..\..\..\win_build\src\lib\Liblog\Debug\Liblog.pch"
+				AssemblerListingLocation="..\..\..\win_build\src\lib\Liblog\Debug\"
+				ObjectFile="..\..\..\win_build\src\lib\Liblog\Debug\"
+				ProgramDataBaseFileName="..\..\..\win_build\src\lib\Liblog\Debug\"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				DebugInformationFormat="4"
@@ -69,7 +69,7 @@
 			/>
 			<Tool
 				Name="VCLibrarianTool"
-				OutputFile=".\..\..\..\win_build\src\lib\Liblog\Debug\Liblog.lib"
+				OutputFile="..\..\..\win_build\src\lib\Liblog\Debug\Liblog.lib"
 				SuppressStartupBanner="true"
 			/>
 			<Tool
@@ -90,8 +90,8 @@
 		</Configuration>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory=".\..\..\..\win_build\src\lib\Liblog\Release"
-			IntermediateDirectory=".\..\..\..\win_build\src\lib\Liblog\Release"
+			OutputDirectory="..\..\..\win_build\src\lib\Liblog\Release"
+			IntermediateDirectory="..\..\..\win_build\src\lib\Liblog\Release"
 			ConfigurationType="4"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
@@ -123,10 +123,10 @@
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
-				PrecompiledHeaderFile=".\..\..\..\win_build\src\lib\Liblog\Release/Liblog.pch"
-				AssemblerListingLocation=".\..\..\..\win_build\src\lib\Liblog\Release/"
-				ObjectFile=".\..\..\..\win_build\src\lib\Liblog\Release/"
-				ProgramDataBaseFileName=".\..\..\..\win_build\src\lib\Liblog\Release/"
+				PrecompiledHeaderFile="..\..\..\win_build\src\lib\Liblog\Release\Liblog.pch"
+				AssemblerListingLocation="..\..\..\win_build\src\lib\Liblog\Release\"
+				ObjectFile="..\..\..\win_build\src\lib\Liblog\Release\"
+				ProgramDataBaseFileName="..\..\..\win_build\src\lib\Liblog\Release\"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				CompileAs="0"
@@ -144,7 +144,7 @@
 			/>
 			<Tool
 				Name="VCLibrarianTool"
-				OutputFile=".\..\..\..\win_build\src\lib\Liblog\Release\Liblog.lib"
+				OutputFile="..\..\..\win_build\src\lib\Liblog\Release\Liblog.lib"
 				SuppressStartupBanner="true"
 			/>
 			<Tool

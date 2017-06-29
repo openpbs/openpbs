@@ -17,8 +17,8 @@
 	<Configurations>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory=".\..\..\..\win_build\src\resmom\Release"
-			IntermediateDirectory=".\..\..\..\win_build\src\resmom\Release"
+			OutputDirectory="..\..\..\win_build\src\resmom\Release"
+			IntermediateDirectory="..\..\..\win_build\src\resmom\Release"
 			ConfigurationType="1"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
@@ -39,7 +39,7 @@
 			/>
 			<Tool
 				Name="VCMIDLTool"
-				TypeLibraryName=".\..\..\..\win_build\src\resmom\Release/pbs_demux.tlb"
+				TypeLibraryName="..\..\..\win_build\src\resmom\Release\pbs_demux.tlb"
 				HeaderFileName=""
 			/>
 			<Tool
@@ -52,10 +52,10 @@
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
-				PrecompiledHeaderFile=".\..\..\..\win_build\src\resmom\Release/pbs_demux.pch"
-				AssemblerListingLocation=".\..\..\..\win_build\src\resmom\Release/"
-				ObjectFile=".\..\..\..\win_build\src\resmom\Release/"
-				ProgramDataBaseFileName=".\..\..\..\win_build\src\resmom\Release/"
+				PrecompiledHeaderFile="..\..\..\win_build\src\resmom\Release\pbs_demux.pch"
+				AssemblerListingLocation="..\..\..\win_build\src\resmom\Release\"
+				ObjectFile="..\..\..\win_build\src\resmom\Release\"
+				ProgramDataBaseFileName="..\..\..\win_build\src\resmom\Release\"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				DebugInformationFormat="3"
@@ -76,11 +76,11 @@
 				Name="VCLinkerTool"
 				AdditionalOptions="/SAFESEH"
 				AdditionalDependencies="secur32.lib Userenv.lib mpr.lib netapi32.lib ws2_32.lib odbc32.lib odbccp32.lib Winmm.lib"
-				OutputFile=".\..\..\..\win_build\src\resmom\Release/pbs_demux.exe"
+				OutputFile="..\..\..\win_build\src\resmom\Release\pbs_demux.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
 				UACExecutionLevel="0"
-				ProgramDatabaseFile=".\..\..\..\win_build\src\resmom\Release/pbs_demux.pdb"
+				ProgramDatabaseFile="..\..\..\win_build\src\resmom\Release\pbs_demux.pdb"
 				SubSystem="1"
 				RandomizedBaseAddress="2"
 				DataExecutionPrevention="2"
@@ -110,8 +110,8 @@
 		</Configuration>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory=".\..\..\..\win_build\src\resmom\Debug"
-			IntermediateDirectory=".\..\..\..\win_build\src\resmom\Debug"
+			OutputDirectory="..\..\..\win_build\src\resmom\Debug"
+			IntermediateDirectory="..\..\..\win_build\src\resmom\Debug"
 			ConfigurationType="1"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
@@ -132,7 +132,7 @@
 			/>
 			<Tool
 				Name="VCMIDLTool"
-				TypeLibraryName=".\..\..\..\win_build\src\resmom\Debug/pbs_demux.tlb"
+				TypeLibraryName="..\..\..\win_build\src\resmom\Debug\pbs_demux.tlb"
 				HeaderFileName=""
 			/>
 			<Tool
@@ -143,10 +143,10 @@
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="0"
 				UsePrecompiledHeader="0"
-				PrecompiledHeaderFile=".\..\..\..\win_build\src\resmom\Debug/pbs_demux.pch"
-				AssemblerListingLocation=".\..\..\..\win_build\src\resmom\Debug/"
-				ObjectFile=".\..\..\..\win_build\src\resmom\Debug/"
-				ProgramDataBaseFileName=".\..\..\..\win_build\src\resmom\Debug/"
+				PrecompiledHeaderFile="..\..\..\win_build\src\resmom\Debug\pbs_demux.pch"
+				AssemblerListingLocation="..\..\..\win_build\src\resmom\Debug\"
+				ObjectFile="..\..\..\win_build\src\resmom\Debug\"
+				ProgramDataBaseFileName="..\..\..\win_build\src\resmom\Debug\"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				DebugInformationFormat="4"
@@ -167,12 +167,12 @@
 				Name="VCLinkerTool"
 				AdditionalOptions="/SAFESEH"
 				AdditionalDependencies="secur32.lib Userenv.lib mpr.lib netapi32.lib ws2_32.lib odbc32.lib odbccp32.lib Winmm.lib"
-				OutputFile=".\..\..\..\win_build\src\resmom\Debug/pbs_demux.exe"
+				OutputFile="..\..\..\win_build\src\resmom\Debug\pbs_demux.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
 				UACExecutionLevel="0"
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile=".\..\..\..\win_build\src\resmom\Debug/pbs_demux.pdb"
+				ProgramDatabaseFile="..\..\..\win_build\src\resmom\Debug\pbs_demux.pdb"
 				SubSystem="1"
 				RandomizedBaseAddress="2"
 				DataExecutionPrevention="2"

@@ -16,8 +16,8 @@
 	<Configurations>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory=".\..\..\..\win_build\src\lib\Libwin\Release"
-			IntermediateDirectory=".\..\..\..\win_build\src\lib\Libwin\Release"
+			OutputDirectory="..\..\..\win_build\src\lib\Libwin\Release"
+			IntermediateDirectory="..\..\..\win_build\src\lib\Libwin\Release"
 			ConfigurationType="4"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
@@ -49,10 +49,10 @@
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
-				PrecompiledHeaderFile=".\..\..\..\win_build\src\lib\Libwin\Release/Libwin.pch"
-				AssemblerListingLocation=".\..\..\..\win_build\src\lib\Libwin\Release/"
-				ObjectFile=".\..\..\..\win_build\src\lib\Libwin\Release/"
-				ProgramDataBaseFileName=".\..\..\..\win_build\src\lib\Libwin\Release/"
+				PrecompiledHeaderFile="..\..\..\win_build\src\lib\Libwin\Release\Libwin.pch"
+				AssemblerListingLocation="..\..\..\win_build\src\lib\Libwin\Release\"
+				ObjectFile="..\..\..\win_build\src\lib\Libwin\Release\"
+				ProgramDataBaseFileName="..\..\..\win_build\src\lib\Libwin\Release\"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				CompileAs="0"
@@ -71,7 +71,7 @@
 			<Tool
 				Name="VCLibrarianTool"
 				AdditionalDependencies="WtsApi32.lib"
-				OutputFile=".\..\..\..\win_build\src\lib\Libwin\Release\Libwin.lib"
+				OutputFile="..\..\..\win_build\src\lib\Libwin\Release\Libwin.lib"
 				SuppressStartupBanner="true"
 			/>
 			<Tool
@@ -92,8 +92,8 @@
 		</Configuration>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory=".\..\..\..\win_build\src\lib\Libwin\Debug"
-			IntermediateDirectory=".\..\..\..\win_build\src\lib\Libwin\Debug"
+			OutputDirectory="..\..\..\win_build\src\lib\Libwin\Debug"
+			IntermediateDirectory="..\..\..\win_build\src\lib\Libwin\Debug"
 			ConfigurationType="4"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
@@ -123,10 +123,10 @@
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="0"
 				UsePrecompiledHeader="0"
-				PrecompiledHeaderFile=".\..\..\..\win_build\src\lib\Libwin\Debug/Libwin.pch"
-				AssemblerListingLocation=".\..\..\..\win_build\src\lib\Libwin\Debug/"
-				ObjectFile=".\..\..\..\win_build\src\lib\Libwin\Debug/"
-				ProgramDataBaseFileName=".\..\..\..\win_build\src\lib\Libwin\Debug/"
+				PrecompiledHeaderFile="..\..\..\win_build\src\lib\Libwin\Debug\Libwin.pch"
+				AssemblerListingLocation="..\..\..\win_build\src\lib\Libwin\Debug\"
+				ObjectFile="..\..\..\win_build\src\lib\Libwin\Debug\"
+				ProgramDataBaseFileName="..\..\..\win_build\src\lib\Libwin\Debug\"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				DebugInformationFormat="4"
@@ -146,7 +146,7 @@
 			<Tool
 				Name="VCLibrarianTool"
 				AdditionalDependencies="WtsApi32.lib"
-				OutputFile=".\..\..\..\win_build\src\lib\Libwin\Debug\Libwin.lib"
+				OutputFile="..\..\..\win_build\src\lib\Libwin\Debug\Libwin.lib"
 				SuppressStartupBanner="true"
 			/>
 			<Tool

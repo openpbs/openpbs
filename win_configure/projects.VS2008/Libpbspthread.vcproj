@@ -18,8 +18,8 @@
 	<Configurations>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory=".\..\..\..\win_build\src\lib\Libpbspthread\Debug"
-			IntermediateDirectory=".\..\..\..\win_build\src\lib\Libpbspthread\Debug"
+			OutputDirectory="..\..\..\win_build\src\lib\Libpbspthread\Debug"
+			IntermediateDirectory="..\..\..\win_build\src\lib\Libpbspthread\Debug"
 			ConfigurationType="2"
 			CharacterSet="1"
 			>
@@ -92,8 +92,8 @@
 		</Configuration>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory=".\..\..\..\win_build\src\lib\Libpbspthread\Release"
-			IntermediateDirectory=".\..\..\..\win_build\src\lib\Libpbspthread\Release"
+			OutputDirectory="..\..\..\win_build\src\lib\Libpbspthread\Release"
+			IntermediateDirectory="..\..\..\win_build\src\lib\Libpbspthread\Release"
 			ConfigurationType="2"
 			CharacterSet="1"
 			WholeProgramOptimization="1"

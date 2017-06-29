@@ -16,8 +16,8 @@
 	<Configurations>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory=".\..\..\..\win_build\src\lib\Libsite\Debug"
-			IntermediateDirectory=".\..\..\..\win_build\src\lib\Libsite\Debug"
+			OutputDirectory="..\..\..\win_build\src\lib\Libsite\Debug"
+			IntermediateDirectory="..\..\..\win_build\src\lib\Libsite\Debug"
 			ConfigurationType="4"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
@@ -47,10 +47,10 @@
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="0"
 				UsePrecompiledHeader="0"
-				PrecompiledHeaderFile=".\..\..\..\win_build\src\lib\Libsite\Debug/Libsite.pch"
-				AssemblerListingLocation=".\..\..\..\win_build\src\lib\Libsite\Debug/"
-				ObjectFile=".\..\..\..\win_build\src\lib\Libsite\Debug/"
-				ProgramDataBaseFileName=".\..\..\..\win_build\src\lib\Libsite\Debug/"
+				PrecompiledHeaderFile="..\..\..\win_build\src\lib\Libsite\Debug\Libsite.pch"
+				AssemblerListingLocation="..\..\..\win_build\src\lib\Libsite\Debug\"
+				ObjectFile="..\..\..\win_build\src\lib\Libsite\Debug\"
+				ProgramDataBaseFileName="..\..\..\win_build\src\lib\Libsite\Debug\"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				DebugInformationFormat="4"
@@ -69,7 +69,7 @@
 			/>
 			<Tool
 				Name="VCLibrarianTool"
-				OutputFile=".\..\..\..\win_build\src\lib\Libsite\Debug\Libsite.lib"
+				OutputFile="..\..\..\win_build\src\lib\Libsite\Debug\Libsite.lib"
 				SuppressStartupBanner="true"
 			/>
 			<Tool
@@ -90,8 +90,8 @@
 		</Configuration>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory=".\..\..\..\win_build\src\lib\Libsite\Release"
-			IntermediateDirectory=".\..\..\..\win_build\src\lib\Libsite\Release"
+			OutputDirectory="..\..\..\win_build\src\lib\Libsite\Release"
+			IntermediateDirectory="..\..\..\win_build\src\lib\Libsite\Release"
 			ConfigurationType="4"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
@@ -123,10 +123,10 @@
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
-				PrecompiledHeaderFile=".\..\..\..\win_build\src\lib\Libsite\Release/Libsite.pch"
-				AssemblerListingLocation=".\..\..\..\win_build\src\lib\Libsite\Release/"
-				ObjectFile=".\..\..\..\win_build\src\lib\Libsite\Release/"
-				ProgramDataBaseFileName=".\..\..\..\win_build\src\lib\Libsite\Release/"
+				PrecompiledHeaderFile="..\..\..\win_build\src\lib\Libsite\Release\Libsite.pch"
+				AssemblerListingLocation="..\..\..\win_build\src\lib\Libsite\Release\"
+				ObjectFile="..\..\..\win_build\src\lib\Libsite\Release\"
+				ProgramDataBaseFileName="..\..\..\win_build\src\lib\Libsite\Release\"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				CompileAs="0"
@@ -144,7 +144,7 @@
 			/>
 			<Tool
 				Name="VCLibrarianTool"
-				OutputFile=".\..\..\..\win_build\src\lib\Libsite\Release\Libsite.lib"
+				OutputFile="..\..\..\win_build\src\lib\Libsite\Release\Libsite.lib"
 				SuppressStartupBanner="true"
 			/>
 			<Tool

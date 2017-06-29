@@ -18,8 +18,8 @@
 	<Configurations>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory=".\..\..\..\win_build\src\tools\Debug"
-			IntermediateDirectory=".\..\..\..\win_build\src\tools\Debug"
+			OutputDirectory="..\..\..\win_build\src\tools\Debug"
+			IntermediateDirectory="..\..\..\win_build\src\tools\Debug"
 			ConfigurationType="1"
 			CharacterSet="2"
 			>
@@ -62,9 +62,9 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalOptions="/SAFESEH"
-				AdditionalDependencies="secur32.lib Userenv.lib mpr.lib ws2_32.lib netapi32.lib libpq.lib odbc32.lib odbccp32.lib libeay32.lib"
+				AdditionalDependencies="secur32.lib Userenv.lib mpr.lib ws2_32.lib netapi32.lib libpq.lib odbc32.lib odbccp32.lib libcrypto.lib crypt32.lib"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories="&quot;c:\Program Files\pgsql\lib&quot;;&quot;c:\Program Files\Openssl\lib&quot;"
+				AdditionalLibraryDirectories="..\..\..\binaries\pgsql\lib;..\..\..\binaries\openssl\lib"
 				UACExecutionLevel="0"
 				IgnoreDefaultLibraryNames=""
 				GenerateDebugInformation="true"
@@ -95,8 +95,8 @@
 		</Configuration>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory=".\..\..\..\win_build\src\tools\Release"
-			IntermediateDirectory=".\..\..\..\win_build\src\tools\Release"
+			OutputDirectory="..\..\..\win_build\src\tools\Release"
+			IntermediateDirectory="..\..\..\win_build\src\tools\Release"
 			ConfigurationType="1"
 			CharacterSet="2"
 			WholeProgramOptimization="1"
@@ -120,7 +120,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
-				AdditionalIncludeDirectories="..\..\src\include;..\include;"
+				AdditionalIncludeDirectories="..\..\src\include;..\include"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
@@ -140,10 +140,10 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalOptions="/SAFESEH"
-				AdditionalDependencies="secur32.lib Userenv.lib mpr.lib ws2_32.lib netapi32.lib libpq.lib odbc32.lib odbccp32.lib libeay32.lib"
-				OutputFile=".\..\..\..\win_build\src\tools\Release/pbs_ds_monitor.exe"
+				AdditionalDependencies="secur32.lib Userenv.lib mpr.lib ws2_32.lib netapi32.lib libpq.lib odbc32.lib odbccp32.lib libcrypto.lib crypt32.lib"
+				OutputFile="..\..\..\win_build\src\tools\Release\pbs_ds_monitor.exe"
 				LinkIncremental="1"
-				AdditionalLibraryDirectories="&quot;c:\Program Files\pgsql\lib&quot;;&quot;c:\Program Files\Openssl\lib&quot;"
+				AdditionalLibraryDirectories="..\..\..\binaries\pgsql\lib;..\..\..\binaries\openssl\lib"
 				UACExecutionLevel="0"
 				GenerateDebugInformation="true"
 				SubSystem="1"

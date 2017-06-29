@@ -17,8 +17,8 @@
 	<Configurations>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory=".\..\..\..\win_build\src\include\Release"
-			IntermediateDirectory=".\..\..\..\win_build\src\include\Release"
+			OutputDirectory="..\..\..\win_build\src\include\Release"
+			IntermediateDirectory="..\..\..\win_build\src\include\Release"
 			ConfigurationType="10"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
@@ -33,7 +33,7 @@
 			/>
 			<Tool
 				Name="VCMIDLTool"
-				TypeLibraryName=".\..\..\..\win_build\src\include\Release/include.tlb"
+				TypeLibraryName="..\..\..\win_build\src\include\Release\include.tlb"
 				HeaderFileName=""
 			/>
 			<Tool
@@ -42,8 +42,8 @@
 		</Configuration>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory=".\..\..\..\win_build\src\include\Debug"
-			IntermediateDirectory=".\..\..\..\win_build\src\include\Debug"
+			OutputDirectory="..\..\..\win_build\src\include\Debug"
+			IntermediateDirectory="..\..\..\win_build\src\include\Debug"
 			ConfigurationType="10"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
@@ -58,7 +58,7 @@
 			/>
 			<Tool
 				Name="VCMIDLTool"
-				TypeLibraryName=".\..\..\..\win_build\src\include\Debug/include.tlb"
+				TypeLibraryName="..\..\..\win_build\src\include\Debug\include.tlb"
 				HeaderFileName=""
 			/>
 			<Tool

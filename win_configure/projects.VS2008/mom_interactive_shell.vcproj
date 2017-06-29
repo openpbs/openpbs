@@ -17,8 +17,8 @@
 	<Configurations>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory=".\..\..\..\win_build\src\resmom\Debug"
-			IntermediateDirectory=".\..\..\..\win_build\src\resmom\Debug"
+			OutputDirectory="..\..\..\win_build\src\resmom\Debug"
+			IntermediateDirectory="..\..\..\win_build\src\resmom\Debug"
 			ConfigurationType="1"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC60.vsprops"
 			UseOfMFC="0"
@@ -39,7 +39,7 @@
 			/>
 			<Tool
 				Name="VCMIDLTool"
-				TypeLibraryName=".\..\..\..\win_build\src\resmom\Debug/mom_shell.tlb"
+				TypeLibraryName="..\..\..\win_build\src\resmom\Debug\mom_shell.tlb"
 				HeaderFileName=""
 			/>
 			<Tool
@@ -51,9 +51,9 @@
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="0"
 				PrecompiledHeaderFile=""
-				AssemblerListingLocation=".\..\..\..\win_build\src\resmom\Debug/"
-				ObjectFile=".\..\..\..\win_build\src\resmom\Debug/"
-				ProgramDataBaseFileName=".\..\..\..\win_build\src\resmom\Debug/"
+				AssemblerListingLocation="..\..\..\win_build\src\resmom\Debug\"
+				ObjectFile="..\..\..\win_build\src\resmom\Debug\"
+				ProgramDataBaseFileName="..\..\..\win_build\src\resmom\Debug\"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				DebugInformationFormat="4"
@@ -74,12 +74,12 @@
 				Name="VCLinkerTool"
 				AdditionalOptions="/SAFESEH"
 				AdditionalDependencies="secur32.lib Userenv.lib mpr.lib ws2_32.lib netapi32.lib odbc32.lib odbccp32.lib"
-				OutputFile="../../../win_build/src/resmom/Debug/mom_shell.exe"
+				OutputFile="..\..\..\win_build\src\resmom\Debug\mom_shell.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
 				UACExecutionLevel="0"
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile=".\..\..\..\win_build\src\resmom\Debug/mom_shell.pdb"
+				ProgramDatabaseFile="..\..\..\win_build\src\resmom\Debug\mom_shell.pdb"
 				SubSystem="1"
 				RandomizedBaseAddress="2"
 				DataExecutionPrevention="2"
@@ -97,7 +97,7 @@
 			<Tool
 				Name="VCBscMakeTool"
 				SuppressStartupBanner="true"
-				OutputFile="$(OutDir)/$(ProjectName).bsc"
+				OutputFile="$(OutDir)\$(ProjectName).bsc"
 			/>
 			<Tool
 				Name="VCFxCopTool"
@@ -111,8 +111,8 @@
 		</Configuration>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory=".\..\..\..\win_build\src\resmom\Release"
-			IntermediateDirectory=".\..\..\..\win_build\src\resmom\Release"
+			OutputDirectory="..\..\..\win_build\src\resmom\Release"
+			IntermediateDirectory="..\..\..\win_build\src\resmom\Release"
 			ConfigurationType="1"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC60.vsprops"
 			UseOfMFC="0"
@@ -133,7 +133,7 @@
 			/>
 			<Tool
 				Name="VCMIDLTool"
-				TypeLibraryName=".\..\..\..\win_build\src\resmom\Release/mom_shell.tlb"
+				TypeLibraryName="..\..\..\win_build\src\resmom\Release\mom_shell.tlb"
 				HeaderFileName=""
 			/>
 			<Tool
@@ -145,10 +145,10 @@
 				StringPooling="true"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
-				PrecompiledHeaderFile=".\..\..\..\win_build\src\resmom\Release/mom_shell.pch"
-				AssemblerListingLocation=".\..\..\..\win_build\src\resmom\Release/"
-				ObjectFile=".\..\..\..\win_build\src\resmom\Release/"
-				ProgramDataBaseFileName=".\..\..\..\win_build\src\resmom\Release/"
+				PrecompiledHeaderFile="..\..\..\win_build\src\resmom\Release\mom_shell.pch"
+				AssemblerListingLocation="..\..\..\win_build\src\resmom\Release\"
+				ObjectFile="..\..\..\win_build\src\resmom\Release\"
+				ProgramDataBaseFileName="..\..\..\win_build\src\resmom\Release\"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				DebugInformationFormat="0"
@@ -169,12 +169,12 @@
 				Name="VCLinkerTool"
 				AdditionalOptions="/SAFESEH"
 				AdditionalDependencies="secur32.lib Userenv.lib mpr.lib ws2_32.lib netapi32.lib odbc32.lib odbccp32.lib"
-				OutputFile="../../../win_build/src/resmom/Release/mom_shell.exe"
+				OutputFile="..\..\..\win_build\src\resmom\Release\mom_shell.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
 				UACExecutionLevel="0"
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile=".\..\..\..\win_build\src\resmom\Release/mom_shell.pdb"
+				ProgramDatabaseFile="..\..\..\win_build\src\resmom\Release\mom_shell.pdb"
 				SubSystem="1"
 				RandomizedBaseAddress="2"
 				DataExecutionPrevention="2"
@@ -192,7 +192,7 @@
 			<Tool
 				Name="VCBscMakeTool"
 				SuppressStartupBanner="true"
-				OutputFile="$(OutDir)/$(ProjectName).bsc"
+				OutputFile="$(OutDir)\$(ProjectName).bsc"
 			/>
 			<Tool
 				Name="VCFxCopTool"
