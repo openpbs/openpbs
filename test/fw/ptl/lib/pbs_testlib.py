@@ -13525,6 +13525,7 @@ class PBSInitServices(object):
                        sched, comm or all
         :type daemon: str
         """
+        init_cmd = ['sudo']
         if daemon is not None and daemon != 'all':
             conf = self.du.parse_pbs_config(hostname, conf_file)
             dconf = {
@@ -13545,15 +13546,14 @@ class PBSInitServices(object):
             os.close(fd)
             self.du.set_pbs_config(hostname, fin=conf_file, fout=fn,
                                    confs=dconf)
-            init_cmd = ['PBS_CONF_FILE=' + fn]
+            init_cmd += ['PBS_CONF_FILE=' + fn]
             _as = True
         else:
             fn = None
             if (conf_file is not None) and (conf_file != self.dflt_conf_file):
-                init_cmd = ['PBS_CONF_FILE=' + conf_file]
+                init_cmd += ['PBS_CONF_FILE=' + conf_file]
                 _as = True
             else:
-                init_cmd = []
                 _as = False
             conf = self.du.parse_pbs_config(hostname, conf_file)
         if (init_script is None) or (not init_script.startswith('/')):
@@ -13579,7 +13579,7 @@ class PBSInitServices(object):
             msg += ' using ' + conf_file
         msg += ' init_cmd=%s' % (str(init_cmd))
         self.logger.info(msg)
-        ret = self.du.run_cmd(hostname, init_cmd, sudo=True, as_script=_as,
+        ret = self.du.run_cmd(hostname, init_cmd, as_script=_as,
                               logerr=False)
         if ret['rc'] != 0:
             raise PbsInitServicesError(rc=ret['rc'], rv=False,
