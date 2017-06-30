@@ -734,6 +734,7 @@ is_ok_to_run(status *policy, int pbs_sd, server_info *sinfo,
 
 	if(resresv->is_job && sinfo->equiv_classes != NULL &&
 	   !(flags & (IGNORE_EQUIV_CLASS|RETURN_ALL_ERR)) &&
+	   resresv->ec_index != UNSPECIFIED &&
 	   sinfo->equiv_classes[resresv->ec_index]->can_not_run) {
 		copy_schd_error(err, sinfo->equiv_classes[resresv->ec_index]->err);
 		return NULL;

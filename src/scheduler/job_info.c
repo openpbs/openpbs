@@ -2198,7 +2198,19 @@ create_resresv_set_by_resresv(status *policy, server_info *sinfo, resource_resv 
 		rset->group = string_dup(resresv->group);
 	if (resresv_set_use_proj(sinfo))
 		rset->project = string_dup(resresv->project);
-	rset->select_spec = dup_selspec(resresv->select);
+	/* Jobs that have an execselect are either running or need to be placed
+	 * back on the nodes they were originally running on (e.g., suspended jobs).
+	 * We need to put them in their own set because they are no longer
+	 * requesting the same resources as jobs with the same select spec.
+	 * They are requesting the resources on each vnode they are running on.
+	 * We don't care about running jobs because the only time they will be
+	 * looked at is if they are requeued.  At that point they are back in
+	 * the queued state and have the same select spec as they originally did.
+	 */
+	if (resresv->job != NULL && !resresv->job->is_running && resresv->job->execselect != NULL)
+		rset->select_spec = dup_selspec(resresv->job->execselect);
+	else
+		rset->select_spec = dup_selspec(resresv->select);
 	if (rset->select_spec == NULL) {
 		free_resresv_set(rset);
 		return NULL;

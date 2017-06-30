@@ -1404,8 +1404,8 @@ else:
         # Delete job3
         self.server.delete(jid3, wait='true')
 
-        # Rerun scheduling cycle
         time.sleep(1)  # adding delay to avoid race condition
+        # Rerun scheduling cycle
         self.t = int(time.time())
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'scheduling': 'True'})
@@ -1416,7 +1416,7 @@ else:
                                  starttime=self.t,
                                  existence=False)
         self.logger.info(
-            "Number of job equivalence classes message" +
+            "Number of job equivalence classes message " +
             "not present when there are no jobs as expected")
 
     def test_server_queue_limit(self):
@@ -1513,3 +1513,44 @@ else:
         # users and groups
         self.scheduler.log_match("Number of job equivalence classes: 8",
                                  max_attempts=10, starttime=self.t)
+
+    def test_preemption(self):
+        """
+        Test preemption in two cycles.  The first cycle is to preempt a job.
+        The second cycle is to make sure jobs that were in the preempted job's
+        class are not affected by the fact that the preempted job can't run
+        """
+
+        a = {'resources_available.ncpus': 1}
+        self.server.create_vnodes('vnode', a, 4, self.mom, usenatvnode=True)
+
+        a = {'queue_type': 'e', 'started': 't',
+             'enabled': 't', 'priority': 150}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='expressq')
+
+        a = {'Resource_List.ncpus': 1}
+        J = Job(TEST_USER, attrs=a)
+        jid1 = self.server.submit(J)
+        jid2 = self.server.submit(J)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+
+        a = {'Resource_List.ncpus': 3, 'queue': 'expressq'}
+        Je = Job(TEST_USER, attrs=a)
+        jid3 = self.server.submit(Je)
+        self.server.expect(JOB, {'job_state': 'S'}, id=jid1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
+
+        jid4 = self.server.submit(J)
+        self.server.expect(JOB, 'comment', op=SET)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid4)
+
+        # 3 equivalence classes: 1 for jid2 and jid4; 1 for jid3; and 1 for
+        # jid1 by itself because it is suspended.
+        self.scheduler.log_match("Number of job equivalence classes: 3",
+                                 max_attempts=10, starttime=self.t)
+
+        self.server.deljob(jid2, wait=True)
+
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid4)
