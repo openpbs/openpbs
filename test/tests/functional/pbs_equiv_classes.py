@@ -282,6 +282,33 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 2",
                                  max_attempts=10, starttime=self.t)
 
+    def test_user_old(self):
+        """
+        Test to see that jobs from different users fall into different
+        equivalence classes with old style limits set
+        """
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'scheduling': 'False'})
+
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'max_user_run': 4})
+
+        # Eat up all the resources
+        a = {'Resource_List.select': '1:ncpus=8'}
+        J = Job(TEST_USER, attrs=a)
+        self.server.submit(J)
+
+        jids1 = self.submit_jobs(3, user=TEST_USER)
+        jids2 = self.submit_jobs(3, user=TEST_USER2)
+
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'scheduling': 'True'})
+
+        # Three equivalence classes.  One for the resource eating job
+        # and one for each user.
+        self.scheduler.log_match("Number of job equivalence classes: 3",
+                                 max_attempts=10, starttime=self.t)
+
     def test_user_server(self):
         """
         Test to see that jobs from different users fall into different
@@ -419,6 +446,37 @@ class TestEquivClass(TestFunctional):
         # one for the rest.  Since there are no limits, both groups are
         # in one class.
         self.scheduler.log_match("Number of job equivalence classes: 2",
+                                 max_attempts=10, starttime=self.t)
+
+    def test_group_old(self):
+        """
+        Test to see that jobs from different groups fall into different
+        equivalence class old style group limits set
+        """
+
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'scheduling': 'False'})
+
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'max_group_run': 4})
+
+        # Eat up all the resources
+        a = {'Resource_List.select': '1:ncpus=8'}
+        J = Job(TEST_USER1, attrs=a)
+        self.server.submit(J)
+
+        a = {'group_list': TSTGRP1}
+        jids1 = self.submit_jobs(3, a, TEST_USER1)
+
+        a = {'group_list': TSTGRP2}
+        jids2 = self.submit_jobs(3, a, TEST_USER1)
+
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'scheduling': 'True'})
+
+        # Three equivalence classes.  One for the resource eating job and
+        # one for each group.
+        self.scheduler.log_match("Number of job equivalence classes: 3",
                                  max_attempts=10, starttime=self.t)
 
     def test_group_server(self):
@@ -1347,8 +1405,8 @@ else:
         self.server.delete(jid3, wait='true')
 
         # Rerun scheduling cycle
-        self.t = int(time.time())
         time.sleep(1)  # adding delay to avoid race condition
+        self.t = int(time.time())
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'scheduling': 'True'})
 

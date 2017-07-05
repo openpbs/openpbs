@@ -599,10 +599,10 @@ convert_oldlim_to_new(const struct attrl *a)
 
 	for (i = 0; i < sizeof(old2new)/sizeof(old2new[0]); i++)
 		if (!strcmp(a->name, old2new[i].lim_attr))
-			return old2new[i].lim_attr;
+			return old2new[i].lim_param;
 	for (i = 0; i < sizeof(old2new_soft)/sizeof(old2new_soft[0]); i++)
 		if (!strcmp(a->name, old2new_soft[i].lim_attr))
-			return old2new_soft[i].lim_attr;
+			return old2new_soft[i].lim_param;
 
 	return NULL;
 }
