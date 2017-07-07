@@ -230,7 +230,17 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 			continue;
 		}
 
+		/*
+		 * Check to see if we can attempt to confirm this reservation.
+		 * If we can, then then all we will do in this cycle is attempt
+		 * to confirm reservations.  In that case, build the calendar
+		 * using the hard durations of jobs.
+		 */
+		if (will_confirm(resresv, sinfo->server_time))
+			sinfo->use_hard_duration = 1;
+
 		resresv->duration = resresv->resv->req_duration;
+		resresv->hard_duration = resresv->duration;
 		if (resresv->resv->resv_state !=RESV_UNCONFIRMED) {
 			resresv->start = resresv->resv->req_start;
 			if(resresv->resv->resv_state == RESV_BEING_DELETED ||
@@ -241,7 +251,7 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 		}
 
 		/* Skip all but general reservations. */
-		if (resresv->resv->resv_type ==2) {
+		if (resresv->resv->resv_type == 2) {
 			if (resresv->node_set_str != NULL) {
 				resresv->node_set = create_node_array_from_str(
 					resresv->server->unassoc_nodes, resresv->node_set_str);
@@ -253,7 +263,7 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 					resresv->ninfo_arr[j]->num_run_resv++;
 			}
 
-			if (resresv->resv->resv_queue !=NULL) {
+			if (resresv->resv->resv_queue != NULL) {
 				resresv->resv->resv_queue->resv = resresv;
 				if (resresv->resv->resv_queue->jobs != NULL) {
 					for (j = 0; resresv->resv->resv_queue->jobs[j] != NULL; j++) {
@@ -885,8 +895,8 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 	char		**occr_execvnodes_arr = NULL;
 	char		**tofree = NULL;
 	int		occr_count =1;
-	int		state = 0, substate = 0;
-	int		i = 0, j = 0;
+	int		i;
+	int		j;
 
 	if (sinfo == NULL)
 		return -1;
@@ -907,19 +917,11 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 			continue;
 		}
 
-		state = sinfo->resvs[i]->resv->resv_state;
-		substate = sinfo->resvs[i]->resv->resv_substate;
-
 		/* If the reservation is unconfirmed OR is degraded and not running, with a
 		 * retry time that is in the past, then the reservation has to be
 		 * respectively confirmed and reconfirmed.
 		 */
-		if (state == RESV_UNCONFIRMED || state == RESV_BEING_ALTERED ||
-			((state != RESV_RUNNING &&
-			substate == RESV_DEGRADED &&
-			sinfo->resvs[i]->resv->retry_time != UNSPECIFIED &&
-			sinfo->resvs[i]->resv->retry_time <= sinfo->server_time))) {
-
+		if (will_confirm(sinfo->resvs[i], sinfo->server_time)) {
 			/* Clone the real universe for simulation scratch work. This universe
 			 * will be garbage collected after simulation completes.
 			 */
@@ -1788,4 +1790,27 @@ adjust_alter_resv_nodes(resource_resv **all_resvs, node_info **all_nodes)
 			}
 		}
 	}
+}
+
+/**
+ * 	@brief determine if the scheduler will attempt to confirm a reservation
+ *
+ * 	@return int
+ * 	@retval 1 - will attempt confirmation
+ * 	@retval 0 - will not attempt confirmation
+ */
+int will_confirm(resource_resv *resv, time_t server_time) {
+	/* If the reservation is unconfirmed OR is degraded and not running, with a
+	 * retry time that is in the past, then the reservation has to be
+	 * respectively confirmed and reconfirmed.
+	 */
+	if (resv->resv->resv_state == RESV_UNCONFIRMED || 
+		resv->resv->resv_state == RESV_BEING_ALTERED ||
+		((resv->resv->resv_state != RESV_RUNNING &&
+		resv->resv->resv_substate == RESV_DEGRADED &&
+		resv->resv->retry_time != UNSPECIFIED &&
+		resv->resv->retry_time <= server_time)))
+		return 1;
+
+	return 0;
 }

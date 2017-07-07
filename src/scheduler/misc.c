@@ -756,7 +756,6 @@ unsigned string_array_verify(char **sa1, char **sa2)
  * @return	used amount of the resource resv
  * @retval	0	: if resresv starts in the future
  *					or if the resource used for walltime is NULL
- * @retval	NULL	: if the resource used for walltime is NULL
  */
 
 time_t
@@ -767,13 +766,8 @@ calc_used_walltime(resource_resv *resresv)
 
 	if (resresv == NULL)
 		return 0;
-	if (resresv->start != UNSPECIFIED) {
-		if (resresv->server->server_time > resresv->start)
-			used_amount = resresv->server->server_time - resresv->start;
-		else
-			used_amount = 0;
-	}
-	else if (resresv->is_job && resresv->job !=NULL) {
+
+	if (resresv->is_job && resresv->job !=NULL) {
 		used = find_resource_req(resresv->job->resused, getallres(RES_WALLTIME));
 
 		/* If we can't find the used structure, we will just assume no usage */
@@ -781,6 +775,11 @@ calc_used_walltime(resource_resv *resresv)
 			used_amount = 0;
 		else
 			used_amount = (time_t) used->amount;
+	} else {
+		if (resresv->server->server_time > resresv->start)
+			used_amount = resresv->server->server_time - resresv->start;
+		else
+			used_amount = 0;
 	}
 	return used_amount;
 }
@@ -789,7 +788,7 @@ calc_used_walltime(resource_resv *resresv)
  * 		calc_time_left_STF - calculate the amount of time left
  *  	for minimum duration and maximum duration of a STF resource resv
  *
- * 	@param[in]	resresv	-	the resource resv to calculate
+ * 	@param[in]	resresv		-	the resource resv to calculate
  * 	@param[out]	min_time_left	-	time left to complete minimum duration
  *
  * 	@return	time left to complete maximum duration of the job
@@ -814,22 +813,32 @@ calc_time_left_STF(resource_resv *resresv, sch_resource_t* min_time_left)
  *		calc_time_left - calculate the remaining time of a resource resv
  *
  * @param[in]	resresv	-	the resource resv to calculate
+ * @param[in]	use_hard_duration - use the resresv's hard_duration instead of normal duration
  *
  * @return	time left on job
  * @retval	-1	: on error
  *
  */
 int
-calc_time_left(resource_resv *resresv)
+calc_time_left(resource_resv *resresv, int use_hard_duration)
 {
 	time_t used_amount = 0;
+	long duration;
 
-	if (resresv->duration == UNSPECIFIED)
+	if (use_hard_duration && resresv->hard_duration == UNSPECIFIED)
 		return -1;
+
+	else if (!use_hard_duration && resresv->duration == UNSPECIFIED)
+		return -1;
+
+	if (use_hard_duration)
+		duration = resresv->hard_duration;
+	else
+		duration = resresv->duration;
 
 	used_amount = calc_used_walltime(resresv);
 
-	return IF_NEG_THEN_ZERO((resresv->duration - used_amount));
+	return IF_NEG_THEN_ZERO(duration - used_amount);
 }
 
 /**
@@ -843,7 +852,7 @@ calc_time_left(resource_resv *resresv)
  * @return	int
  * @retval	-1	: if s1 < s2
  * @retval	0	: if s1 == s2
- * @reval	1	: if s1 > s2
+ * @retval	1	: if s1 > s2
  *
  */
 int
@@ -1180,7 +1189,8 @@ void move_schd_error(schd_error *err, schd_error *oerr)
  * @param[out] err
  * @param[in] oerr
  */
-void copy_schd_error(schd_error *err, schd_error *oerr)
+void
+copy_schd_error(schd_error *err, schd_error *oerr)
 {
 	set_schd_error_codes(err, oerr->status_code, oerr->error_code);
 	set_schd_error_arg(err, ARG1, oerr->arg1);

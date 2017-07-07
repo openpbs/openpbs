@@ -74,6 +74,7 @@
 #include "svrfunc.h"
 #include "grunt.h"
 #include "pbs_share.h"
+#include "server.h"
 #ifndef PBS_MOM
 #include "queue.h"
 #endif /* PBS_MOM */
@@ -905,5 +906,205 @@ int apply_select_inchunk_rules(resource *presc, attribute *pattr, void *pobj, in
 		if (rc != 0)
 			return (rc);
 	} /* while */
+	return PBSE_NONE;
+}
+/**
+ * @brief action_soft_walltime - action function for the soft_walltime resource.
+ *
+ * 	returns int
+ * 	@retval PBSE_BADATVAL - soft_walltime > walltime
+ * 	@retval PBSE_SOFTWT_STF - min_walltime is set
+ * 	@retval PBSE_NONE - everything is fine
+ */
+int
+action_soft_walltime(resource *presc, attribute *pattr, void *pobject, int type, int actmode) {
+	job *pjob;
+
+	if ((actmode != ATR_ACTION_ALTER) && (actmode != ATR_ACTION_NEW))
+		return PBSE_NONE;
+
+	if (pobject != NULL) {
+		static resource_def *walltime_def = NULL;
+		static resource_def *min_walltime_def = NULL;
+		resource *entry;
+
+		if (type != PARENT_TYPE_JOB)
+			return PBSE_NONE;
+
+		pjob = (job *) pobject;
+
+		/* Make sure soft_walltime < walltime */
+		if (walltime_def == NULL)
+			walltime_def = find_resc_def(svr_resc_def, WALLTIME, svr_resc_size);
+		if (walltime_def != NULL) {
+			entry = find_resc_entry(&pjob->ji_wattr[(int)JOB_ATR_resource], walltime_def);
+			if (entry != NULL) {
+				if (entry->rs_value.at_flags & ATR_VFLAG_SET) {
+					if (walltime_def->rs_comp(&(entry->rs_value), &(presc->rs_value)) < 0)
+						return PBSE_BADATVAL;
+				}
+			}
+		}
+		/* soft_walltime and STF jobs are incompatible */
+		if (min_walltime_def == NULL)
+			min_walltime_def = find_resc_def(svr_resc_def, MIN_WALLTIME, svr_resc_size);
+		if (min_walltime_def != NULL) {
+			entry = find_resc_entry(&pjob->ji_wattr[(int)JOB_ATR_resource], min_walltime_def);
+			if (entry != NULL) {
+				if (entry->rs_value.at_flags & ATR_VFLAG_SET)
+					return PBSE_SOFTWT_STF;
+			}
+		}
+	}
+	return PBSE_NONE;
+}
+/**
+ * @brief action_walltime - action function for the soft_walltime resource.
+ *
+ * 	returns int
+ * 	@retval PBSE_BADATVAL - walltime < soft_walltime
+ * 	@retval PBSE_NONE - everything is fine
+ */
+
+int
+action_walltime(resource *presc, attribute *pattr, void *pobject, int type, int actmode) {
+	job *pjob;
+
+	if ((actmode != ATR_ACTION_ALTER) && (actmode != ATR_ACTION_NEW))
+		return PBSE_NONE;
+
+	if (pobject != NULL) {
+		static resource_def *soft_walltime_def = NULL;
+
+		if (type != PARENT_TYPE_JOB)
+			return PBSE_NONE;
+
+		pjob = (job *) pobject;
+
+		/* Make sure walltime > soft_walltime */
+		if (soft_walltime_def == NULL)
+			soft_walltime_def = find_resc_def(svr_resc_def, SOFT_WALLTIME, svr_resc_size);
+		if (soft_walltime_def != NULL) {
+			resource *entry;
+
+			entry = find_resc_entry(&pjob->ji_wattr[(int)JOB_ATR_resource], soft_walltime_def);
+			if (entry != NULL) {
+				if (entry->rs_value.at_flags & ATR_VFLAG_SET) {
+					if (soft_walltime_def->rs_comp(&(entry->rs_value), &(presc->rs_value)) > 0)
+						return PBSE_BADATVAL;
+				}
+			}
+		}
+	}
+	return PBSE_NONE;
+}
+
+/**
+ * @brief action_min_walltime - action function for min_walltime.
+ * @return int
+ * @retval PBSE_NOSTF_JOBARRAY - if min_walltime is on a job array
+ * @retval PBSE_SOFTWT_STF - if min_walltime is set with soft_walltime
+ * @retval PBSE_MIN_GT_MAXWT - if min_walltime > max_walltime
+ * @retval PBSE_NONE - all is fine
+ */
+int
+action_min_walltime(resource *presc, attribute *pattr, void *pobject, int type, int actmode)
+{
+	job *pjob;
+
+	if ((actmode != ATR_ACTION_ALTER) && (actmode != ATR_ACTION_NEW))
+		return PBSE_NONE;
+
+	if (pobject != NULL) {
+		static resource_def *soft_walltime_def = NULL;
+		static resource_def *max_walltime_def = NULL;
+		resource *entry;
+
+		if (type != PARENT_TYPE_JOB)
+			return PBSE_NONE;
+
+		pjob = (job *) pobject;
+
+#ifndef PBS_MOM /* MOM doesn't call the action functions and doesn't have access to is_job_array() */
+		/* Job arrays can't be STF jobs */
+		if (is_job_array(pjob->ji_qs.ji_jobid) != IS_ARRAY_NO)
+			return PBSE_NOSTF_JOBARRAY;
+#endif
+		/* STF jobs can't request soft_walltime */
+		if (soft_walltime_def == NULL)
+			soft_walltime_def = find_resc_def(svr_resc_def, SOFT_WALLTIME, svr_resc_size);
+		if (soft_walltime_def != NULL) {
+			entry = find_resc_entry(&pjob->ji_wattr[(int) JOB_ATR_resource], soft_walltime_def);
+			if (entry != NULL) {
+				if (entry->rs_value.at_flags & ATR_VFLAG_SET)
+					return PBSE_SOFTWT_STF;
+			}
+		}
+
+		/* max_walltime needs to be greater than min_walltime */
+		if (max_walltime_def == NULL)
+			max_walltime_def = find_resc_def(svr_resc_def, MAX_WALLTIME, svr_resc_size);
+		if (max_walltime_def != NULL) {
+			entry = find_resc_entry(&pjob->ji_wattr[(int) JOB_ATR_resource], max_walltime_def);
+			if (entry != NULL && (entry->rs_value.at_flags & ATR_VFLAG_SET))
+				if (max_walltime_def->rs_comp(&(entry->rs_value), &(presc->rs_value)) < 0)
+					return PBSE_MIN_GT_MAXWT;
+		}
+	}
+	return PBSE_NONE;
+}
+
+/**
+ * @brief action_max_walltime - action function for max_walltime.
+ * @return int
+ * @retval PBSE_SOFTWT_STF - if max_walltime is set with soft_walltime
+ * @retval PBSE_MIN_GT_MAXWT - if max_walltime < min_walltime
+ * @retval PBSE_MAX_NO_MINWT - max_walltime with no min_walltime
+ * @retval PBSE_NONE - all is fine
+ */
+
+int
+action_max_walltime(resource *presc, attribute *pattr, void *pobj, int type, int actmode)
+{
+	job *pjob;
+
+	if ((actmode != ATR_ACTION_ALTER) && (actmode != ATR_ACTION_NEW))
+		return PBSE_NONE;
+
+	if (pobj != NULL) {
+		static resource_def *soft_walltime_def = NULL;
+		static resource_def *min_walltime_def = NULL;
+		resource *entry;
+
+		if (type != PARENT_TYPE_JOB)
+			return PBSE_NONE;
+
+		pjob = (job *) pobj;
+
+		/* STF jobs can't request soft_walltime */
+		if (soft_walltime_def == NULL)
+			soft_walltime_def = find_resc_def(svr_resc_def, SOFT_WALLTIME, svr_resc_size);
+		if (soft_walltime_def != NULL) {
+			entry = find_resc_entry(&pjob->ji_wattr[(int) JOB_ATR_resource], soft_walltime_def);
+			if (entry != NULL) {
+				if (entry->rs_value.at_flags & ATR_VFLAG_SET)
+					return PBSE_SOFTWT_STF;
+			}
+		}
+
+		/* max_walltime needs to be greater than min_walltime */
+		if (min_walltime_def == NULL)
+			min_walltime_def = find_resc_def(svr_resc_def, MIN_WALLTIME, svr_resc_size);
+		if (min_walltime_def != NULL) {
+			entry = find_resc_entry(&pjob->ji_wattr[(int) JOB_ATR_resource], min_walltime_def);
+			if (entry != NULL) {
+				if (entry->rs_value.at_flags & ATR_VFLAG_SET) {
+					if (min_walltime_def->rs_comp(&(entry->rs_value), &(presc->rs_value)) > 0)
+						return PBSE_MIN_GT_MAXWT;
+				}
+			} else
+				return PBSE_MAX_NO_MINWT;
+		}
+	}
 	return PBSE_NONE;
 }

@@ -269,8 +269,7 @@ validate_perm_res_in_select(char *val)
 
 #define SET_RESC_SELECT	1
 #define SET_RESC_PLACE	2
-#define SET_RESC_MINWT  4
-#define SET_RESC_MAXWT  8
+
 /**
  * @brief
  *		Queue Job Batch Request processing routine
@@ -305,8 +304,6 @@ req_quejob(struct batch_request *preq)
 	resource_def	*prdefnod;
 	resource_def	*prdefsel;
 	resource_def	*prdefplc;
-	resource_def	*prdefminwt;
-	resource_def	*prdefmaxwt;
 	resource_def	*prdefbad;
 	resource	*presc;
 	conn_t		*conn;
@@ -388,8 +385,6 @@ req_quejob(struct batch_request *preq)
 	prdefsel = find_resc_def(svr_resc_def, "select", svr_resc_size);
 	prdefplc = find_resc_def(svr_resc_def, "place",  svr_resc_size);
 	prdefnod = find_resc_def(svr_resc_def, "nodes", svr_resc_size);
-	prdefminwt = find_resc_def(svr_resc_def, MIN_WALLTIME, svr_resc_size);
-	prdefmaxwt = find_resc_def(svr_resc_def, MAX_WALLTIME,  svr_resc_size);
 
 	/*
 	 * if the job id is supplied, the request had better be
@@ -1019,46 +1014,7 @@ req_quejob(struct batch_request *preq)
 		job_purge(pj);
 		return;
 	}
-	/* check min_walltime/max_walltime are valid job wide */
-	if (pj->ji_wattr[(int)JOB_ATR_resource].at_flags & ATR_VFLAG_SET) {
-		int have_minmaxwt = 0;
-		attribute minwt_val;
-		attribute maxwt_val;
-		presc = (resource *)GET_NEXT(pj->ji_wattr[(int)JOB_ATR_resource].at_val.at_list);
-		while (presc) {
-			if (presc->rs_defin == prdefminwt) {
-				have_minmaxwt |= SET_RESC_MINWT;
-				minwt_val = presc->rs_value;
-			} else if (presc->rs_defin == prdefmaxwt) {
-				have_minmaxwt |= SET_RESC_MAXWT;
-				maxwt_val = presc->rs_value;
-			}
-			presc = (resource *)GET_NEXT(presc->rs_link);
-		}
-		/* A Job Array can not be STF */
-		if ((is_job_array(pj->ji_qs.ji_jobid) == IS_ARRAY_ArrayJob) && have_minmaxwt != 0) {
-			job_purge(pj);
-			req_reject(PBSE_NOSTF_JOBARRAY, 0, preq);
-			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_REQUEST, LOG_ERR, "",  msg_nostf_jobarray);
-			return;
-		}
-		/* cannot have max_walltime without min_walltime */
-		if (have_minmaxwt == SET_RESC_MAXWT) {
-			job_purge(pj);
-			req_reject(PBSE_MAX_NO_MINWT, 0, preq);
-			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_REQUEST, LOG_ERR, "",  msg_max_no_minwt);
-			return;
-		} else if ((have_minmaxwt & SET_RESC_MINWT) &&
-			(have_minmaxwt & SET_RESC_MAXWT)) {
-			/* min_walltime should be <= max_walltime */
-			if (prdefminwt->rs_comp(&minwt_val, &maxwt_val) > 0) {
-				job_purge(pj);
-				req_reject(PBSE_MIN_GT_MAXWT, 0, preq);
-				log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_REQUEST, LOG_ERR, "",  msg_min_gt_maxwt);
-				return;
-			}
-		}
-	}
+
 
 	/*
 	 * if single, signon password scheme is in place, only allow submission
@@ -2057,7 +2013,6 @@ req_mvjobfile(struct batch_request *preq)
 	mode_t	 cur_mask;
 	char	 ntmpbuf[MAXPATHLEN+1];
 	struct stat sb;
-	static char id[] = "req_mvjobfile";
 #endif
 
 	pj = locate_new_job(preq, (char *)0);

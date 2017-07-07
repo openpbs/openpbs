@@ -143,7 +143,6 @@ extern int do_soft_cycle_interrupt;
 extern int do_hard_cycle_interrupt;
 #endif /* localmod 030 */
 
-int		schedreq();
 static int	engage_authentication(struct connect_handle *);
 
 extern char *msg_startup1;

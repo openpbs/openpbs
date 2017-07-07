@@ -282,25 +282,6 @@ int	   mode;	/* not used */
 }
 
 int
-decode_null(patr, name, rn, val)
-attribute *patr;
-char      *name;
-char      *rn;
-char      *val;
-{
-	return 0;
-}
-
-int
-set_null(pattr, new, op)
-attribute *pattr;
-attribute *new;
-enum batch_op op;
-{
-	return 0;
-}
-
-int
 cred_name_okay(pattr, pobj, actmode)
 attribute *pattr;
 void      *pobj;

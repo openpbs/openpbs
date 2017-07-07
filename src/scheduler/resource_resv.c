@@ -165,6 +165,7 @@ new_resource_resv()
 	resresv->start = UNSPECIFIED;
 	resresv->end = UNSPECIFIED;
 	resresv->duration = UNSPECIFIED;
+	resresv->hard_duration = UNSPECIFIED;
 	resresv->min_duration = UNSPECIFIED;
 
 	resresv->resreq = NULL;
@@ -381,6 +382,7 @@ dup_resource_resv(resource_resv *oresresv,
 	nresresv->start = oresresv->start;
 	nresresv->end = oresresv->end;
 	nresresv->duration = oresresv->duration;
+	nresresv->hard_duration = oresresv->hard_duration;
 	nresresv->min_duration = oresresv->min_duration;
 
 	nresresv->resreq = dup_resource_req_list(oresresv->resreq);
@@ -1172,7 +1174,7 @@ update_resresv_on_run(resource_resv *resresv, nspec **nspec_arr)
 		resresv->job->is_susp_sched = 0;
 		resresv->job->stime = resresv->server->server_time;
 		resresv->start = resresv->server->server_time;
-		resresv->end = resresv->start + calc_time_left(resresv);
+		resresv->end = resresv->start + calc_time_left(resresv, 0);
 		resresv->job->accrue_type = JOB_RUNNING;
 
 		if (resresv->aoename != NULL) {
@@ -1871,8 +1873,8 @@ free_selspec(selspec *spec)
 	if (spec->defs != NULL)
 		free(spec->defs);
 
-	if (spec->chunks != NULL);
-	free_chunk_array(spec->chunks);
+	if (spec->chunks != NULL)
+		free_chunk_array(spec->chunks);
 
 	free(spec);
 }

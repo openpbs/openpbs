@@ -622,42 +622,6 @@ removefiles_action(attribute *pattr, void *pobject, int mode) {
 
 /**
  * @brief
- * 		decode_null - Null attribute decode routine for Read Only (server
- *		and queue ) attributes.  It just returns 0.
- *
- * @param[in]	patr	-	not used
- * @param[in]	name	-	not used
- * @param[in]	rn	-	not used
- * @param[in]	val	-	not used
- *
- * @return	zero
- */
-
-int
-decode_null(attribute *patr, char *name, char *rn, char *val)
-{
-	return 0;
-}
-
-/**
- * @brief
- * 		set_null - Null set routine for Read Only attributes.
- *
- * @param[in]	pattr	-	not used
- * @param[in]	new	-	not used
- * @param[in]	op	-	not used
- *
- * @return	zero
- */
-
-int
-set_null(attribute *pattr, attribute *new, enum batch_op op)
-{
-	return 0;
-}
-
-/**
- * @brief
  * 		cred_name_okay - action routine for the "required_cred" attribute.
  *		Check to make sure the cred name is okay.
  *

@@ -139,19 +139,19 @@ main(int argc, char *argv[])
 		fprintf(stderr, "Usage: pbsfs --version\n");
 		exit(1);
 	}
-	if (flags & (FS_PRINT | FS_PRINT_TREE) && (argc - optind) != 0) {
+	if ((flags & (FS_PRINT | FS_PRINT_TREE)) && (argc - optind) != 0) {
 		fprintf(stderr, "Usage: pbsfs -[ptdgcs]\n");
 		exit(1);
 	}
-	else if (flags & FS_GET  && (argc - optind) != 1) {
+	else if ((flags & FS_GET)  && (argc - optind) != 1) {
 		fprintf(stderr, "Usage: pbsfs -g <fairshare_entity>\n");
 		exit(1);
 	}
-	else if (flags & FS_SET && (argc - optind) != 2) {
+	else if ((flags & FS_SET) && (argc - optind) != 2) {
 		fprintf(stderr, "Usage: pbsfs -s <fairshare_entity> <usage>\n");
 		exit(1);
 	}
-	else if (flags & FS_COMP && (argc - optind) != 2) {
+	else if ((flags & FS_COMP) && (argc - optind) != 2) {
 		fprintf(stderr, "Usage: pbsfs -c <entity1> <entity2>\n");
 		exit(1);
 	}

@@ -100,7 +100,6 @@ extern void  pbs_close_stdfiles(void);
 extern int   is_job_array(char *id);
 extern char *get_index_from_jid(char *newjid);
 extern int      parse_subjob_index(char *pc, char **ep, int *px, int *py, int *pz, int *pct);
-extern int      is_job_array(char *id);
 extern int expand_resc_array(char *rname, int rtype, int rflag);
 extern void cnvrt_timer_init(void);
 extern int validate_nodespec(char *str);

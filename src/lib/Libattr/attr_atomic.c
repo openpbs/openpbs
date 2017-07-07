@@ -138,6 +138,10 @@ attr_atomic_set(struct svrattrl *plist, attribute *old, attribute *new, attribut
 		clear_attr(&temp, pdef+index);
 		if ((rc = (pdef+index)->at_decode(&temp, plist->al_name,
 			plist->al_resc, plist->al_value)) != 0) {
+			/* Even if the decode failed, it is possible for list types to
+			 * have allocated some memory.  Call at_free() to free that.
+			 */
+			(pdef + index)->at_free(&temp);
 			if ((rc == PBSE_UNKRESC) && (unkn > 0)) {
 				rc = PBSE_NONE;	/* ignore the "error" */
 				continue;
@@ -148,9 +152,9 @@ attr_atomic_set(struct svrattrl *plist, attribute *old, attribute *new, attribut
 
 		/* duplicate current value, if set AND not already dup-ed */
 
-		if (((old+index)->at_flags & ATR_VFLAG_SET) &&
-			!((new+index)->at_flags & ATR_VFLAG_SET)) {
-			if ((rc = (pdef+index)->at_set(new+index,
+		if (((old + index)->at_flags & ATR_VFLAG_SET) &&
+			!((new + index)->at_flags & ATR_VFLAG_SET)) {
+			if ((rc = (pdef + index)->at_set(new+index,
 				old+index, SET)) != 0)
 				break;
 			/*
@@ -158,8 +162,8 @@ attr_atomic_set(struct svrattrl *plist, attribute *old, attribute *new, attribut
 			 * the next step, so clear MODIFY here; including
 			 * within resources.
 			 */
-			(new+index)->at_flags &= ~(ATR_VFLAG_MODIFY|ATR_VFLAG_MODCACHE);
-			if ((new+index)->at_type == ATR_TYPE_RESC) {
+			(new + index)->at_flags &= ~(ATR_VFLAG_MODIFY|ATR_VFLAG_MODCACHE);
+			if ((new + index)->at_type == ATR_TYPE_RESC) {
 				prc = (resource *)GET_NEXT((new+index)->at_val.at_list);
 				while (prc) {
 					prc->rs_value.at_flags &= ~(ATR_VFLAG_MODIFY|ATR_VFLAG_MODCACHE);
@@ -175,14 +179,14 @@ attr_atomic_set(struct svrattrl *plist, attribute *old, attribute *new, attribut
 			plist->al_op = SET;
 
 		if (temp.at_flags & ATR_VFLAG_SET) {
-			rc=(pdef+index)->at_set(new+index, &temp, plist->al_op);
+			rc=(pdef + index)->at_set(new + index, &temp, plist->al_op);
 			if (rc) {
-				(pdef+index)->at_free(&temp);
+				(pdef + index)->at_free(&temp);
 				break;
 			}
 		} else if (temp.at_flags & ATR_VFLAG_MODIFY) {
-			(pdef+index)->at_free(new+index);
-			(new+index)->at_flags |=ATR_VFLAG_MODIFY|ATR_VFLAG_MODCACHE;
+			(pdef + index)->at_free(new + index);
+			(new + index)->at_flags |=ATR_VFLAG_MODIFY|ATR_VFLAG_MODCACHE;
 		}
 
 		(pdef+index)->at_free(&temp);
@@ -191,7 +195,7 @@ attr_atomic_set(struct svrattrl *plist, attribute *old, attribute *new, attribut
 	if (rc != PBSE_NONE) {
 		*badattr = listidx;
 		for (index=0; index<limit; index++)
-			(pdef+index)->at_free(new+index);
+			(pdef + index)->at_free(new + index);
 	}
 
 	return rc;
@@ -219,7 +223,37 @@ attr_atomic_kill(attribute *temp, attribute_def *pdef, int limit)
 {
 	int i;
 
-	for (i=0; i<limit; i++)
-		(pdef+i)->at_free(temp+i);
-	(void)free(temp);
+	for (i = 0; i < limit; i++)
+		(pdef + i)->at_free(temp + i);
+	free(temp);
+}
+
+/**
+ * @brief
+ * 	attr_atomic_copy - make a copy of the attributes in attribute array 'from' to the attribute array 'to'.
+ * 				'to' must be preallocated.  Attributes that use set_null() as their set function
+ * 				are not meant to be set via the attribute framework.  Leave these attributes
+ * 				alone in 'to'
+ *
+ * 	@param[out] to - attribute array copied into
+ * 	@param[in] from - attribute array copied from
+ * 	@param[in] pdef - pointer to attribute_def structure
+ * 	@param[in] limit - Last attribute in the list
+ */
+
+void
+attr_atomic_copy(attribute *to, attribute *from, attribute_def *pdef, int limit)
+{
+	int i;
+	for (i = 0; i < limit; i++) {
+		if (((to + i)->at_flags & ATR_VFLAG_SET) && (pdef + i)->at_set != set_null)
+			(pdef + i)->at_free(to + i);
+
+		if ((pdef + i)->at_set != set_null)
+			clear_attr(to + i, pdef + i);
+		if ((from + i)->at_flags & ATR_VFLAG_SET) {
+			(pdef + i)->at_set((to + i), (from + i), SET);
+			(to + i)->at_flags = (from + i)->at_flags;
+		}
+	}
 }

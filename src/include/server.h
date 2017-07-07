@@ -231,6 +231,7 @@ extern	long	reserve_retry_cutoff;
 #define WALLTIME "walltime"
 #define MIN_WALLTIME "min_walltime"
 #define MAX_WALLTIME "max_walltime"
+#define SOFT_WALLTIME "soft_walltime"
 #define SVR_DEFAULT_PING_RATE 300
 
 /*

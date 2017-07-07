@@ -866,7 +866,11 @@ check_limits(server_info *si, queue_info *qi, resource_resv *rr, schd_error *err
 	 * We do not need to run into the same loop again.
 	 */
 	if (si->calendar != NULL && !(flags & CHECK_CUMULATIVE_LIMIT)) {
-		time_left = calc_time_left(rr);
+		if (rr->duration != rr->hard_duration &&
+		   exists_resv_event(si->calendar, si->server_time + rr->hard_duration))
+			time_left = calc_time_left(rr, 1);
+		else
+			time_left = calc_time_left(rr, 0);
 		end = si->server_time + time_left;
 		if (exists_run_event(si->calendar, end)) {
 			if (si->has_hard_limit) {

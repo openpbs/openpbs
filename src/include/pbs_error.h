@@ -257,6 +257,8 @@ extern "C" {
 #define PBSE_RESV_NOT_EMPTY	     15178 /* cannot change start time of a non-empty reservation */
 #define PBSE_STDG_RESV_OCCR_CONFLICT 15179 /* cannot change start time of a non-empty reservation */
 
+#define PBSE_SOFTWT_STF		     15180 /* soft_walltime is incompatible with STF jobs */
+
 /*
  ** 	Resource monitor specific
  */

@@ -2023,7 +2023,7 @@ fix_indirectness(resource *presc, struct pbsnode *pnode, int doit)
  *	   	update the subnode structures;
  *		3. For any modified resource, check if it is changing "indirectness"
  *
- * @param[in]	new	-		newly changed resources_available
+ * @param[in]	new	-	newly changed resources_available
  * @param[in]	pobj	-	pointer to a pbsnode struct
  * @param[in]	actmode	-	action mode: "NEW" or "ALTER"
  *

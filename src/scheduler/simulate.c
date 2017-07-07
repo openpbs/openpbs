@@ -625,7 +625,7 @@ exists_run_event(event_list *calendar, time_t end)
 
 	te = find_init_timed_event(te, IGNORE_DISABLED_EVENTS, TIMED_RUN_EVENT);
 
-	if (te == NULL  ) /* no run event */
+	if (te == NULL) /* no run event */
 		return 0;
 
 	/* there is a run event, but it's after end */
@@ -634,6 +634,39 @@ exists_run_event(event_list *calendar, time_t end)
 
 	/* if we got here, we have a happy run event */
 	return 1;
+}
+
+/**
+ * @brief finds if there is a reservation run event between now and 'end'
+ * @param[in] calendar - the calendar to search
+ * @param[in] end - when to stop searching
+ *
+ * @returns int
+ * @retval 1 found a reservation event
+ * @retval 0 did not find a reservation event
+ */
+int
+exists_resv_event(event_list *calendar, time_t end)
+{
+	timed_event *te;
+	timed_event *te_list;
+
+	if (calendar == NULL)
+		return 0;
+
+	te_list = get_next_event(calendar);
+	if (te_list == NULL) /* no events in our calendar */
+		return 0;
+
+	for (te = te_list; te != NULL && te->event_time <= end;
+		te = find_next_timed_event(te, 0, TIMED_RUN_EVENT)) {
+		if (te->event_type == TIMED_RUN_EVENT) {
+			resource_resv *resresv = (resource_resv *)te->event_ptr;
+			if(resresv->is_resv)
+				return 1;
+		}
+	}
+	return 0;
 }
 
 /**
@@ -810,6 +843,7 @@ create_events(server_info *sinfo)
 	resource_resv	**all = NULL;
 	int		errflag = 0;
 	int		i = 0;
+	time_t 		end = 0;
 
 	/* all_resresv is sorted such that the timed events are in the front of
 	 * the array.  Once the first non-timed event is reached, we're done
@@ -835,7 +869,11 @@ create_events(server_info *sinfo)
 			events = add_timed_event(events, te);
 		}
 
-		te = create_event(TIMED_END_EVENT, all[i]->end, all[i], NULL, NULL);
+		if (sinfo->use_hard_duration)
+			end = all[i]->start + all[i]->hard_duration;
+		else
+			end = all[i]->end;
+		te = create_event(TIMED_END_EVENT, end, all[i], NULL, NULL);
 		if (te == NULL) {
 			errflag++;
 			break;

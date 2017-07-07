@@ -82,6 +82,10 @@
       extern int set_node_ct(resource *, attribute *, void *, int, int actmode);
       extern int decode_place(struct attribute *, char *, char *, char *);
       extern int preempt_targets_action(resource *presc, attribute *pattr, void *pobject, int type, int actmode);
+      extern int action_soft_walltime(resource *presc, attribute *pattr, void *pobject, int type, int actmode);
+      extern int action_walltime(resource *presc, attribute *pattr, void *pobject, int type, int actmode);
+      extern int action_min_walltime(resource *presc, attribute *pattr, void *pobject, int type, int actmode);
+      extern int action_max_walltime(resource *presc, attribute *pattr, void *pobject, int type, int actmode);
       extern int zero_or_positive_action  (resource *, attribute *, void *, int, int actmode);
       #ifndef PBS_MOM
       extern int host_action(resource *, attribute *, void *, int, int actmode);
@@ -144,7 +148,7 @@
 	<member_at_set>set_l</member_at_set>
 	<member_at_comp>comp_l</member_at_comp>
 	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>action_walltime</member_at_action>
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_ALTRUN</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -155,6 +159,25 @@
 	</member_verify_function>
    </attributes>
    <attributes>		
+  /* soft_walltime */
+        <member_name><both>"soft_walltime"</both></member_name>        <!-- soft wall clock time limit for a job  -->
+        <member_at_decode>decode_time</member_at_decode>
+        <member_at_encode>encode_time</member_at_encode>
+        <member_at_set>set_l</member_at_set>
+        <member_at_comp>comp_l</member_at_comp>
+        <member_at_free>free_null</member_at_free>
+        <member_at_action>action_soft_walltime</member_at_action>
+        <member_at_flags><both>MGR_ONLY_SET | ATR_DFLAG_ALTRUN</both></member_at_flags>
+        <member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
+        <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+        <member_at_struct>(struct resource_def *)0</member_at_struct>
+        <member_verify_function>
+        <ECL>verify_datatype_time</ECL>
+        <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+        </member_verify_function>
+   </attributes>
+
+   <attributes>		
    /*min_walltime*/
 	<member_name><both>"min_walltime"</both></member_name>		<!-- min wall clock time limit for a job  -->
 	<member_at_decode>decode_time</member_at_decode>
@@ -162,7 +185,7 @@
 	<member_at_set>set_l</member_at_set>
 	<member_at_comp>comp_l</member_at_comp>
 	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>action_min_walltime</member_at_action>
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_ALTRUN</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
@@ -180,7 +203,7 @@
 	<member_at_set>set_l</member_at_set>
 	<member_at_comp>comp_l</member_at_comp>
 	<member_at_free>free_null</member_at_free>
-	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_action>action_max_walltime</member_at_action>
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_ALTRUN</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>

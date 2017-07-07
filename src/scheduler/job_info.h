@@ -44,14 +44,13 @@ extern "C" {
 #include "data_types.h"
 
 /*
- *      query_jobs - create an array of jobs in a specified queue
- */
-resource_resv **query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs, char *queue_name);
-
-/*
  *	query_job - takes info from a batch_status about a job and puts
  */
 resource_resv *query_job(struct batch_status *job, server_info *sinfo, schd_error *err);
+
+/* create an array of jobs for a particular queue */
+resource_resv **query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs, char *queue_name);
+
 
 /*
  *	new_job_info  - allocate and initialize new job_info structure
@@ -405,6 +404,10 @@ nspec **create_res_released_array( status *policy, resource_resv *resresv);
  *	    resources in a resources_released nspec array.
  */
 resource_req *create_resreq_rel_list(status *policy, nspec **res_released);
+
+/* Returns the extended duration of a job that has exceeded its soft_walltime */
+long extend_soft_walltime(resource_resv *resresv, time_t server_time);
+
 
 #ifdef	__cplusplus
 }

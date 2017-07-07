@@ -48,6 +48,7 @@
 
 #ifndef	_DATA_TYPES_H
 #define	_DATA_TYPES_H
+
 #ifdef	__cplusplus
 extern "C" {
 #endif
@@ -281,8 +282,9 @@ struct server_info
 	unsigned has_nonCPU_licenses:1;	/* server has non-CPU (e.g. socket-based) licenses */
 	unsigned enforce_prmptd_job_resumption:1;/* If set, preempted jobs will resume after the preemptor finishes */
 	unsigned preempt_targets_enable:1;/* if preemptable limit targets are enabled */
+	unsigned use_hard_duration:1;	/* use hard duration when creating the calendar */
 	char *name;			/* name of server */
-	struct schd_resource *res;		/* list of resources */
+	struct schd_resource *res;	/* list of resources */
 	void *liminfo;			/* limit storage information */
 	int flt_lic;			/* number of free floating licences */
 	int num_queues;			/* number of queues that reside on the server */
@@ -414,7 +416,7 @@ struct queue_info
 
 struct job_info
 {
-	unsigned is_queued:1;			/* state booleans */
+	unsigned is_queued:1;		/* state booleans */
 	unsigned is_running:1;
 	unsigned is_held:1;
 	unsigned is_waiting:1;
@@ -424,7 +426,7 @@ struct job_info
 	unsigned is_susp_sched:1;	/* job is suspended by scheduler */
 	unsigned is_userbusy:1;
 	unsigned is_begin:1;		/* job array 'B' state */
-	unsigned is_expired:1;	/* 'X' pseudo state for simulated job end */
+	unsigned is_expired:1;		/* 'X' pseudo state for simulated job end */
 	unsigned is_checkpointed:1;	/* job has been checkpointed */
 
 	unsigned can_not_preempt:1;	/* this job can not be preempted */
@@ -433,41 +435,41 @@ struct job_info
 	unsigned can_requeue:1;       /* this job can be requeued */
 	unsigned can_suspend:1;       /* this job can be suspended */
 
-	unsigned is_starving:1;	/* job has waited passed starvation time */
+	unsigned is_starving:1;		/* job has waited passed starvation time */
 	unsigned is_array:1;		/* is the job a job array object */
 	unsigned is_subjob:1;		/* is a subjob of a job array */
 
 	unsigned is_provisioning:1;	/* job is provisioning */
-	unsigned is_preempted:1;      /* job is preempted */
+	unsigned is_preempted:1;	/* job is preempted */
 	unsigned topjob_ineligible:1;	/* Job is ineligible to be a top job */
 
-	char *job_name;		/* job name attribute (qsub -N) */
-	char *comment;		/* comment field of job */
-	char *resv_id;		/* identifer of reservation job is in */
+	char *job_name;			/* job name attribute (qsub -N) */
+	char *comment;			/* comment field of job */
+	char *resv_id;			/* identifier of reservation job is in */
 	char *alt_id;			/* vendor assigned job identifier */
 	queue_info *queue;		/* queue where job resides */
 	resource_resv *resv;		/* the reservation the job is part of */
 	int priority;			/* PBS priority of job */
 	time_t etime;			/* the time the job went to the queued state */
 	time_t stime;			/* the time the job was started */
-	time_t est_start_time;	/* scheduler estimated start time of job */
+	time_t est_start_time;		/* scheduler estimated start time of job */
 	time_t time_preempted;		/* time when the job was preempted */
 	char *est_execvnode;		/* scheduler estimated execvnode of job */
 	unsigned int preempt_status;	/* preempt levels (bitfield) */
 	int preempt;			/* preempt priority */
 	int peer_sd;			/* connection descriptor to peer server */
 	int job_id;			/* numeric portion of the job id */
-	resource_req *resused;	/* a list of resources used */
+	resource_req *resused;		/* a list of resources used */
 	group_info *ginfo;		/* the fair share node for the owner */
-	selspec *execselect;            /* select spec from exec_vnode */
+	selspec *execselect;		/* select spec from exec_vnode */
 
 	/* subjob information */
-	char *array_id;		/* job id of job array if we are a subjob */
+	char *array_id;			/* job id of job array if we are a subjob */
 	int array_index;		/* array index if we are a subjob */
 	resource_resv *parent_job;	/* parent job if we are a subjob*/
 
 	/* job array information */
-	range *queued_subjobs;	/* a list of ranges of queued subjob indices */
+	range *queued_subjobs;		/* a list of ranges of queued subjob indices */
 
 	int accrue_type;		/* type of time job should accrue */
 	time_t eligible_time;		/* eligible time accrued until last cycle */
@@ -657,11 +659,12 @@ struct resource_resv
 	time_t		start;			/* start time (UNDEFINED means no start time */
 	time_t		end;			/* end time (UNDEFINED means no end time */
 	time_t		duration;		/* duration of resource resv request */
+	time_t		hard_duration;		/* hard duration of resource resv request */
 	time_t		min_duration;		/* minimum duration of STF job */
 
 	resource_req	*resreq;		/* list of resources requested */
 	selspec		*select;		/* select spec */
-	selspec		*execselect;            /* select spec from exec_vnode and resv_nodes */
+	selspec		*execselect;		/* select spec from exec_vnode and resv_nodes */
 	place		*place_spec;		/* placement spec */
 
 	server_info	*server;		/* pointer to server which owns res resv */

@@ -555,6 +555,14 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 	/* used for pbs_geterrmsg() */
 	char *errmsg;
 
+	/* Determine start, end, and duration */
+	resource_req *walltime_req = NULL;
+	resource_req *soft_walltime_req = NULL;
+	time_t start;
+	time_t end;
+	time_t server_time;
+	long duration;
+
 	if (policy == NULL || qinfo == NULL || queue_name == NULL)
 		return pjobs;
 
@@ -563,6 +571,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 	if (qinfo->is_peer_queue)
 		opl.next = &opl2[0];
 
+	server_time = qinfo->server->server_time;
 
 	/* get jobs from PBS server */
 	if ((jobs = pbs_selstat(pbs_sd, &opl, NULL, "S")) == NULL) {
@@ -680,7 +689,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 		 * The stime is set when the mom reports back to the server to say the job is running.
 		 */
 		if ((resresv->job->is_running) && (resresv->job->stime == UNSPECIFIED))
-			resresv->job->stime = qinfo->server->server_time + 1;
+			resresv->job->stime = server_time + 1;
 
 		/* Assumption: Parent job array will be queried before running subjobs.
 		 * This is because the subjobs do not become real jobs until after they are run
@@ -732,31 +741,60 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 			}
 #endif /* localmod 026 */
 		}
-		if ((req == NULL ) || (resresv->job->is_running == 1))
-			req = find_resource_req(resresv->resreq, getallres(RES_WALLTIME));
+
+		if ((req == NULL) || (resresv->job->is_running == 1)) {
+			soft_walltime_req = find_resource_req(resresv->resreq, getallres(RES_SOFT_WALLTIME));
+			walltime_req = find_resource_req(resresv->resreq, getallres(RES_WALLTIME));
+			if (soft_walltime_req != NULL)
+				req = soft_walltime_req;
+			else
+				req = walltime_req;
+		}
 
 		if (req != NULL)
-			resresv->duration = (time_t) req->amount;
+			duration = (long)req->amount;
 		else /* set to virtual job infinity: 5 years */
-			resresv->duration = JOB_INFINITY;
+			duration = JOB_INFINITY;
+
+
+		if (walltime_req != NULL)
+			resresv->hard_duration = (long)walltime_req->amount;
+		else if (resresv->min_duration != UNSPECIFIED)
+			resresv->hard_duration = resresv->min_duration;
+		else
+			resresv->hard_duration = JOB_INFINITY;
 
 		if (resresv->job->stime != UNSPECIFIED &&
 			!(resresv->job->is_queued || resresv->job->is_suspended) &&
 			resresv->ninfo_arr != NULL) {
-			resresv->start = resresv->job->stime;
+			start = resresv->job->stime;
 
 			/* if a job is exiting, then its end time can be more closely
 			 * estimated by setting it to now + EXITING_TIME
 			 */
 			if (resresv->job->is_exiting)
-				resresv->end = qinfo->server->server_time + EXITING_TIME;
-			else if (resresv->start + resresv->duration <
-				qinfo->server->server_time) {
-				resresv->end = qinfo->server->server_time + 1;
+				end = server_time + EXITING_TIME;
+			/* Normal Case: Job's end is start + duration and it ends in the future */
+			else if (start + duration >= server_time)
+				end = start + duration;
+			/* Duration has been exceeded - either extend soft_walltime or expect the job to be killed */
+			else {
+				if (soft_walltime_req != NULL) {
+					duration = extend_soft_walltime(resresv, server_time);
+					if (duration > soft_walltime_req->amount) {
+						char timebuf[128];
+						convert_duration_to_str(duration, timebuf, 128);
+						update_job_attr(pbs_sd, resresv, ATTR_estimated, "soft_walltime", timebuf, NULL, UPDATE_NOW);
+					}
+				} else /* Job has exceeded its walltime.  It'll soon be killed and be put into the exiting state */
+					duration += EXITING_TIME;
+				end = start + duration;
 			}
-			else
-				resresv->end = resresv->start + resresv->duration;
+			resresv->start = start;
+			resresv->end = end;
 		}
+		resresv->duration = duration;
+
 
 		if (qinfo->is_peer_queue) {
 			resresv->is_peer_ob = 1;
@@ -1052,7 +1090,6 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 		else if (!strcmp(attrp->name, ATTR_array_indices_remaining))
 			resresv->job->queued_subjobs = range_parse(attrp->value);
 		else if (!strcmp(attrp->name, ATTR_execvnode)) { /* where job is running*/
-			char *selectspec;
 			/*
 			 * An execvnode may have a vnode chunk in it multiple times.
 			 * parse_execvnode() will return us a nspec array with a nspec per
@@ -2601,14 +2638,11 @@ preempt_job_set_filter(resource_resv *job, void *arg)
  * @return	: struct preempt_ordering.  array containing preemption order
  *
  */
-struct preempt_ordering * get_preemption_order(resource_resv *pjob,
+struct preempt_ordering *get_preemption_order(resource_resv *pjob,
 	server_info *sinfo)
 {
-	resource_req *req;		/* the jobs requested walltime/cput */
-	resource_req *used;		/* the amount of the walltime/cput used */
 	/* the order to preempt jobs in */
 	struct preempt_ordering *po = &conf.preempt_order[0];
-	float percent_left;
 	int i;
 
 	if (pjob == NULL || pjob->job == NULL)
@@ -2620,7 +2654,13 @@ struct preempt_ordering * get_preemption_order(resource_resv *pjob,
 
 	/* check if we have more then one range... no need to choose if not */
 	if (conf.preempt_order[1].high_range != 0) {
-		req = find_resource_req(pjob->resreq, getallres(RES_WALLTIME));
+		resource_req *req;		/* the jobs requested soft_walltime/walltime/cput */
+		resource_req *used;		/* the amount of the walltime/cput used */
+
+		req = find_resource_req(pjob->resreq, getallres(RES_SOFT_WALLTIME));
+
+		if(req == NULL)
+			req = find_resource_req(pjob->resreq, getallres(RES_WALLTIME));
 
 		if (req == NULL) {
 			req = find_resource_req(pjob->resreq, getallres(RES_CPUT));
@@ -2635,7 +2675,11 @@ struct preempt_ordering * get_preemption_order(resource_resv *pjob,
 				"preempt order");
 		}
 		else {
-			percent_left = (int)(100 - (used->amount / req->amount) *100);
+			float percent_left;
+			percent_left = (int)(100 - (used->amount / req->amount) * 100);
+			/* if a job has exceeded its soft_walltime, percent_left will be less than 0 */
+			if (percent_left < 0)
+				percent_left = 1;
 
 			for (i = 0; i < PREEMPT_ORDER_MAX; i++) {
 				if (percent_left <= conf.preempt_order[i].high_range &&
@@ -2689,7 +2733,7 @@ preempt_job(status *policy, int pbs_sd, resource_resv *pjob, server_info *sinfo)
 
 	po = get_preemption_order(pjob, sinfo);
 	for (i = 0; i < PREEMPT_METHOD_HIGH && pjob->job->is_running; i++) {
-		if (po->order[i] == PREEMPT_METHOD_SUSPEND  &&
+		if (po->order[i] == PREEMPT_METHOD_SUSPEND &&
 				pjob->job->can_suspend) {
 			ret = pbs_sigjob(pbs_sd, pjob->name, "suspend", NULL);
 			if ((ret != 0) && (is_finished_job(pbs_errno) == 1)) {
@@ -5067,4 +5111,55 @@ resource_req *create_resreq_rel_list(status *policy, nspec **res_released)
 		}
 	}
 	return resreq_rel;
+}
+
+/**
+ * @brief extend the soft walltime of job.  A job's soft_walltime will be extended by 100% of its
+ * 		original soft_walltime.  If this extension would go past the job's normal walltime
+ * 		the soft_walltime is set to the normal walltime.
+ * @param[in] policy - policy info
+ * @param[in] resresv - job to extend soft walltime
+ * @param[in] server_time - current time on the sinfo
+ * @return extended soft walltime duration
+ */
+long
+extend_soft_walltime(resource_resv *resresv, time_t server_time)
+{
+	resource_req *walltime_req;
+	resource_req *soft_walltime_req;
+
+	int extension = 0;
+	int num_ext_over;
+
+	long job_duration = UNSPECIFIED;
+	long extended_duration = UNSPECIFIED;
+
+
+	if (resresv == NULL)
+		return UNSPECIFIED;
+
+	soft_walltime_req = find_resource_req(resresv->resreq, getallres(RES_SOFT_WALLTIME));
+	walltime_req = find_resource_req(resresv->resreq, getallres(RES_WALLTIME));
+
+	if (soft_walltime_req == NULL) { /* Nothing to extend */
+		if(walltime_req != NULL)
+			return walltime_req->amount;
+		else
+			return JOB_INFINITY;
+	}
+
+
+	job_duration = soft_walltime_req->amount;
+
+	/* number of times the job has been extended */
+	num_ext_over = (server_time - resresv->job->stime) / job_duration;
+
+	extension = num_ext_over * job_duration;
+	extended_duration = job_duration + extension;
+	if (walltime_req != NULL) {
+		if (extended_duration > walltime_req->amount) {
+			extended_duration = walltime_req->amount;
+		}
+	}
+	return extended_duration;
 }

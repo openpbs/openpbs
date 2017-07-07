@@ -1130,6 +1130,7 @@ new_server_info(int limallocflag)
 	sinfo->throughput_mode = 0;
 	sinfo->has_nonCPU_licenses = 0;
 	sinfo->enforce_prmptd_job_resumption = 0;
+	sinfo->use_hard_duration = 0;
 	sinfo->sched_cycle_len = 0;
 	sinfo->opt_backfill_fuzzy_time = conf.dflt_opt_backfill_fuzzy;
 	sinfo->name = NULL;
@@ -1696,7 +1697,6 @@ update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
 {
 	resource_req *req;		/* resource request from job */
 	schd_resource *res;		/* resource on server */
-	counts *cts;                          /* update user/group/project counts */
 	int i;
 
 	if (sinfo == NULL ||  resresv == NULL)
@@ -1760,6 +1760,8 @@ update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
 
 	if (sinfo->has_soft_limit || sinfo->has_hard_limit) {
 		if (resresv->is_job && resresv->job->is_running) {
+			counts *cts;			/* update user/group/project counts */
+
 			update_total_counts_on_end(sinfo, NULL, resresv, SERVER);
 			cts = find_counts(sinfo->group_counts, resresv->group);
 
@@ -2065,7 +2067,8 @@ dup_server_info(server_info *osinfo)
 	nsinfo->power_provisioning = osinfo->power_provisioning;
 	nsinfo->dont_span_psets = osinfo->dont_span_psets;
 	nsinfo->has_nonCPU_licenses = osinfo->has_nonCPU_licenses;
-	nsinfo->enforce_prmptd_job_resumption= osinfo->enforce_prmptd_job_resumption;
+	nsinfo->enforce_prmptd_job_resumption = osinfo->enforce_prmptd_job_resumption;
+	nsinfo->use_hard_duration = osinfo->use_hard_duration;
 	nsinfo->sched_cycle_len = osinfo->sched_cycle_len;
 	nsinfo->opt_backfill_fuzzy_time = osinfo->opt_backfill_fuzzy_time;
 	nsinfo->name = string_dup(osinfo->name);
@@ -2381,7 +2384,7 @@ dup_resource(schd_resource *res)
 		return NULL;
 
 	nres->def = res->def;
-	if(nres->def != NULL);
+	if (nres->def != NULL)
 		nres->name = nres->def->name;
 
 

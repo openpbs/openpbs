@@ -2287,7 +2287,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 	 */
 	if ((pl->pack && spec->total_chunks == 1 && nspec_arr != NULL) ||
 		(conf.provision_policy == AVOID_PROVISION && resresv->aoename != NULL) ||
-		resresv->is_resv && resresv->resv != NULL && resresv->resv->check_alternate_nodes)
+		(resresv->is_resv && resresv->resv != NULL && resresv->resv->check_alternate_nodes))
 		nptr = reorder_nodes(ninfo_arr, resresv);
 
 	if (nptr == NULL)
@@ -2901,10 +2901,10 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 		}
 	}
 
-	/* if it's OK to break across vnodes, but we can wholely fit on one
+	/* if it's OK to break across vnodes, but we can fully fit on one
 	 * vnode, then lets do that rather then possibly breaking across multiple
 	 */
-	if (flags & EVAL_OKBREAK &&
+	if ((flags & EVAL_OKBREAK) &&
 		can_fit_on_vnode(chk->req, pninfo_arr)) {
 		flags &= ~EVAL_OKBREAK;
 	}
@@ -3704,14 +3704,18 @@ check_resources_for_node(resource_req *resreq, node_info *ninfo,
 
 	calendar = ninfo->server->calendar;
 	cur_time = ninfo->server->server_time;
-	end_time = cur_time + calc_time_left(resresv);
+	if(resresv->duration != resresv->hard_duration &&
+	   exists_resv_event(calendar, cur_time + resresv->hard_duration))
+		end_time = cur_time + calc_time_left(resresv, 1);
+	else
+		end_time = cur_time + calc_time_left(resresv, 0);
 
 	/* check if there are any timed events to check for conflicts with. We do not
 	 * need to check for timed conflicts if the current object is a job inside a
 	 * reservation.
 	 */
 	if (min_chunks > 0 && calendar != NULL && exists_run_event(calendar, end_time)
-		&& !(resresv->job != NULL && resresv->job->resv !=NULL)) {
+		&& !(resresv->job != NULL && resresv->job->resv != NULL)) {
 		/* Check for possible conflicts with timed events by walking the sorted
 		 * event list that was created in eval_selspec. This runs a simulation
 		 * forward in time to account for timed events consuming and/or releasing
@@ -5419,7 +5423,7 @@ free_node_scratch(node_scratch *nscr)
 /**
  * @brief
  * 		determine if resresv conflicts based on exclhost state of the
- *        future events on this node.
+ *		future events on this node.
  *
  * @param	calendar - server's calendar of events
  * @param	resresv  - job or resv to check
@@ -5437,7 +5441,12 @@ sim_exclhost(event_list *calendar, resource_resv *resresv, node_info *ninfo)
 	if (calendar == NULL || resresv == NULL || ninfo == NULL)
 		return 1;
 
-	end = resresv->server->server_time + calc_time_left(resresv);
+	if (resresv->duration != resresv->hard_duration &&
+	    exists_resv_event(calendar, resresv->hard_duration))
+		end = resresv->server->server_time + calc_time_left(resresv, 1);
+	else
+		end = resresv->server->server_time + calc_time_left(resresv, 0);
+
 	return generic_sim(calendar, TIMED_RUN_EVENT,
 		end, 1, sim_exclhost_func, (void*)resresv, (void*)ninfo);
 }

@@ -120,6 +120,7 @@ const struct enum_conv resind[] =
 	{RES_CPUT, "cput"},
 	{RES_MEM, "mem"},
 	{RES_WALLTIME, "walltime"},
+	{RES_SOFT_WALLTIME, "soft_walltime"},
 	{RES_NCPUS, "ncpus"},
 	{RES_ARCH, "arch"},
 	{RES_HOST, "host"},

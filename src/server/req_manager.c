@@ -141,7 +141,8 @@ extern  void unset_node_fail_requeue(void);
 extern pbs_sched *sched_alloc(char *sched_name);
 extern pbs_sched *find_scheduler(char *sched_name);
 extern void sched_free(pbs_sched *psched);
-extern sched_delete(pbs_sched *psched);
+extern int sched_delete(pbs_sched *psched);
+extern void set_sched_default(pbs_sched* psched);
 extern  void unset_power_provisioning(void);
 
 extern struct server server;
@@ -601,7 +602,7 @@ check_que_enable(attribute *pattr, void *pque, int mode)
  *		route-only or execution-only attributes.
  *		This is the at_action() routine for QA_ATR_QType
  *
- * @param[in]	pattr - Address of the parent objects attribute array
+ * @param[in]	pattr - pointer to the attribute being set
  * @param[in]	pque  - pointer to parent object (queue)
  * @param[in]	mode  - mode of operation: set, recovery, ... unused here
  *
@@ -800,8 +801,10 @@ mgr_set_attr2(attribute *pattr, attribute_def *pdef, int limit, svrattrl *plist,
 {
 	int		 index;
 	attribute	*new;
+	attribute	*pre_copy;
 	attribute	*pnew;
 	attribute	*pold;
+	attribute	*attr_save;
 	int		 rc;
 	resource	*presc;
 	resource	*oldpresc;
@@ -810,51 +813,59 @@ mgr_set_attr2(attribute *pattr, attribute_def *pdef, int limit, svrattrl *plist,
 	if (plist == (struct svrattrl *)0)
 		return (PBSE_NONE);
 
+	/*
+	 * We have multiple attribute lists in play here.  pre_copy is used
+	 * to copy the attributes into pattr prior to calling the action functions.
+	 * This means the object passed to the action function is fully up to date.
+	 * new is attribute list which the action functions are called with.  new
+	 * may be modified by the action functions, so we need to copy these to pattr
+	 * a second time.  Lastly we have attr_save.  It is a copy of the object's
+	 * attributes prior to any change.  If any action function fails, we copy
+	 * attr_copy back to the real attributes before leaving the function.
+	 */
+
 	new = (attribute *)calloc((unsigned int)limit, sizeof(attribute));
 	if (new == (attribute *)0)
 		return (PBSE_SYSTEM);
-	/*
-	 * decode the new attribute values which are in the request,
-	 * copy the corresponding current attribute into a holding array
-	 * and update it with the newly decoded value
-	 */
 
-	/* Below says if 'allow_unkresc' is TRUE, then set 'unkn' param */
-	/* of attr_atomic_set() to '1'; otherwise, set it to '-1' meaning */
-	/* not to allow unknown resource. */
-	if ((rc =attr_atomic_set(plist, pattr, new, pdef, limit, (allow_unkresc?1:-1), privil, bad)) != 0) {
+	/* Below says if 'allow_unkresc' is TRUE, then set 'unkn' param
+	 * of attr_atomic_set() to '1'; otherwise, set it to '-1' meaning
+	 * not to allow unknown resource
+	 */
+	if ((rc = attr_atomic_set(plist, pattr, new, pdef, limit, (allow_unkresc?1:-1), privil, bad)) != 0) {
 		attr_atomic_kill(new, pdef, limit);
 		return (rc);
 	}
 
+	pre_copy = (attribute *)calloc((unsigned int)limit, sizeof(attribute));
+	if (pre_copy == (attribute *)0) {
+		attr_atomic_kill(new, pdef, limit);
+		return (PBSE_SYSTEM);
+	}
+
+	attr_atomic_copy(pre_copy, new, pdef, limit);
+
+	attr_save = calloc((unsigned int)limit, sizeof(attribute));
+	if (attr_save == (attribute *) 0) {
+		attr_atomic_kill(new, pdef, limit);
+		attr_atomic_kill(pre_copy, pdef, limit);
+		return (PBSE_SYSTEM);
+	}
+
+	attr_atomic_copy(attr_save, pattr, pdef, limit);
+
 	for (index = 0; index < limit; index++) {
-		pnew = new + index;
+		pnew = pre_copy + index;
 		pold = pattr + index;
 		if (pnew->at_flags & ATR_VFLAG_MODIFY) {
-
-			/*
-			 * for each attribute which is to be modified, call the
-			 * at_action routine for the attribute, if one exists, with the
-			 *  new value.  If the action fails, undo everything.
+			/* Special test, aka kludge, for entity-limits, make sure
+			 * not accepting an entity without an actual limit; i.e.
+			 * [u:user] instead of [u:user=limit].  The [u:user] form
+			 * is allowed in the "unset" attribute function in which
+			 * case the entry isn't present when it gets here
 			 */
 
-			if ((pdef+index)->at_action) {
-				rc = (pdef+index)->at_action(new+index, parent, mode);
-				if (rc) {
-					*bad = index + 1;
-					attr_atomic_kill(new, pdef, limit);
-					return (rc);
-				}
-			}
-
-			/* Special test, aka kludge, for entity-limits, make sure  */
-			/* not accepting an entity without an actual limit; i.e.   */
-			/* [u:user] instead of [u:user=limit].  The [u:user] form  */
-			/* is allowed in the "unset" attribute function in which   */
-			/* case the entry isn't present when it gets here	   */
-
 			if ((pdef+index)->at_type == ATR_TYPE_ENTITY) {
-
 				svr_entlim_leaf_t *pleaf;
 				pbs_entlim_key_t  *pkey = NULL;
 
@@ -862,12 +873,13 @@ mgr_set_attr2(attribute *pattr, attribute_def *pdef, int limit, svrattrl *plist,
 					(new+index)->at_val.at_enty.ae_tree);
 				while (pkey) {
 
-					/* entry that is Modified, and not Set meant it */
-					/* had a null value - illegal			*/
+					/* entry that is Modified, and not Set meant it had a null value - illegal */
 					pleaf = pkey->recptr;
 					if ((pleaf->slf_limit.at_flags & (ATR_VFLAG_SET|ATR_VFLAG_MODIFY)) == ATR_VFLAG_MODIFY) {
 						*bad = index + 1;
 						attr_atomic_kill(new, pdef, limit);
+						attr_atomic_kill(pre_copy, pdef, limit);
+						attr_atomic_kill(attr_save, pdef, limit);
 						return (PBSE_BADATVAL);
 					}
 					pkey = entlim_get_next(pkey,
@@ -887,14 +899,14 @@ mgr_set_attr2(attribute *pattr, attribute_def *pdef, int limit, svrattrl *plist,
 			} else if (pold->at_type == ATR_TYPE_RESC) {
 				set_resc(pold, pnew, INCR);
 				/* clear ATR_VFLAG_DEFLT on modified values */
-				for (presc=GET_NEXT(pold->at_val.at_list);
+				for (presc = GET_NEXT(pold->at_val.at_list);
 					presc;
 					presc = GET_NEXT(presc->rs_link)) {
 					if (presc->rs_value.at_flags & ATR_VFLAG_MODIFY) {
 						presc->rs_value.at_flags &= ~ATR_VFLAG_DEFLT;
 					}
 				}
-				for (presc=GET_NEXT(pnew->at_val.at_list);
+				for (presc = GET_NEXT(pnew->at_val.at_list);
 					presc;
 					presc = GET_NEXT(presc->rs_link)) {
 					if ((presc->rs_value.at_flags & ATR_VFLAG_MODIFY) == 0) {
@@ -921,11 +933,83 @@ mgr_set_attr2(attribute *pattr, attribute_def *pdef, int limit, svrattrl *plist,
 		}
 	}
 
+	for (index = 0; index < limit; index++) {
+		/*
+		 * for each attribute which is to be modified, call the
+		 * at_action routine for the attribute, if one exists, with the
+		 * new value.  If the action fails, undo everything.
+		 */
+		if ((new + index)->at_flags & ATR_VFLAG_MODIFY) {
+			if ((pdef + index)->at_action) {
+				rc = (pdef+index)->at_action((new+index), parent, mode);
+				if (rc) {
+					*bad = index + 1;
+					free(new);
+					free(pre_copy);
+					attr_atomic_copy(pattr, attr_save, pdef, limit);
+					attr_atomic_kill(attr_save, pdef, limit);
+					return (rc);
+				}
+			}
+		}
+
+	}
+
+	/* The action functions might have modified new.  Need to set pattr again */
+
+	for (index = 0; index < limit; index++) {
+		pnew = new + index;
+		pold = pattr + index;
+		if (pnew->at_flags & ATR_VFLAG_MODIFY) {
+			(pdef+index)->at_free(pold);
+			pold->at_flags = pnew->at_flags; /* includes MODIFY */
+
+			if (pold->at_type == ATR_TYPE_LIST) {
+				list_move(&pnew->at_val.at_list, &pold->at_val.at_list);
+			} else if (pold->at_type == ATR_TYPE_RESC) {
+				set_resc(pold, pnew, INCR);
+				/* clear ATR_VFLAG_DEFLT on modified values */
+				for (presc = GET_NEXT(pold->at_val.at_list);
+					presc;
+					presc = GET_NEXT(presc->rs_link)) {
+					if (presc->rs_value.at_flags & ATR_VFLAG_MODIFY) {
+						presc->rs_value.at_flags &= ~ATR_VFLAG_DEFLT;
+					}
+				}
+				for (presc = GET_NEXT(pnew->at_val.at_list);
+					presc;
+					presc = GET_NEXT(presc->rs_link)) {
+					if ((presc->rs_value.at_flags & ATR_VFLAG_MODIFY) == 0) {
+						if (presc->rs_value.at_flags & ATR_VFLAG_DEFLT) {
+							oldpresc = find_resc_entry(pold,
+										   presc->rs_defin);
+							if (oldpresc) {
+								oldpresc->rs_value.at_flags |= ATR_VFLAG_DEFLT;
+							}
+						}
+					}
+				}
+				(pdef+index)->at_free(pnew);
+			} else {
+				/*
+				 * copy value from new into old including pointers to
+				 * strings and array of strings, clear the
+				 * "new" attribute so those "pointers" are not freed
+				 * when "new" is freed later
+				 */
+				*pold = *pnew;
+				clear_attr(pnew, pdef+index);
+			}
+		}
+	}
+
 	/*
 	 * we have moved all the "external" values to the old array, thus
 	 * we just free the new array, NOT call at_free on each.
 	 */
-	(void)free(new);
+	free(new);
+	free(pre_copy);
+	attr_atomic_kill(attr_save, pdef, limit);
 	return (PBSE_NONE);
 }
 
@@ -2283,7 +2367,6 @@ void
 mgr_node_unset(struct batch_request *preq)
 
 {
-	static char id[] = "mgr_node_unset";
 	int		bad = 0;
 	char		hostname[PBS_MAXHOSTNAME+1];
 	int		numnodes = 1;	/* number of vnode to operate */
@@ -2768,7 +2851,6 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 {
 	struct pbsnode	*pnode;
 	struct pbsnode **tmpndlist;
-	struct pbsnode	*child;
 	int		ntype;		/* node type, always PBS */
 	char		*pc;
 	char		*phost;		/* trial host name */
@@ -3455,7 +3537,6 @@ static void
 mgr_sched_create(struct batch_request *preq)
 {
 	int bad;
-	char *badattr;
 	svrattrl *plist;
 	pbs_sched *psched;
 	int rc;

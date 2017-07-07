@@ -240,7 +240,7 @@ site_check_cpu_share(server_info *sinfo, status *policy, resource_resv *resv)
 	 */
 	if (sinfo->calendar == NULL)
 		return rc;
-	time_left = calc_time_left(resv);
+	time_left = calc_time_left(resv, 0);
 	end = sinfo->server_time + time_left;
 	if (!exists_run_event(sinfo->calendar, end))
 		return rc;

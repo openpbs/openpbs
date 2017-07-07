@@ -669,9 +669,10 @@ is_ok_to_run_STF(status *policy, int pbs_sd, server_info *sinfo,
 	/* Apply the shrink heuristic  and try running the job after shrinking it */
 	ns_arr = shrink_heuristic(policy, pbs_sd, sinfo, qinfo, njob, err);
 	/* Reset the job duration on failure */
-	if (ns_arr == NULL) {
+	if (ns_arr == NULL)
 		njob->duration = orig_duration;
-	}
+	else
+		njob->hard_duration = njob->duration;
 	return (ns_arr);
 }
 
@@ -749,8 +750,6 @@ is_ok_to_run(status *policy, int pbs_sd, server_info *sinfo,
 		}
 
 	}
-
-	endtime = sinfo->server_time + calc_time_left(resresv);
 
 	if (!in_runnable_state(resresv)) {
 		if (resresv->is_job) {
@@ -950,8 +949,13 @@ is_ok_to_run(status *policy, int pbs_sd, server_info *sinfo,
 			return NULL;
 	}
 
+	if (exists_resv_event(sinfo->calendar, sinfo->server_time + resresv->hard_duration))
+		endtime = sinfo->server_time + calc_time_left(resresv, 1);
+	else
+		endtime = sinfo->server_time + calc_time_left(resresv, 0);
+
 	if (resresv->is_job) {
-		if (resresv->job->resv ==NULL) {
+		if (resresv->job->resv == NULL) {
 			res = simulate_resmin(qinfo->qres, endtime, sinfo->calendar,
 				qinfo->jobs, resresv);
 		}
@@ -962,7 +966,7 @@ is_ok_to_run(status *policy, int pbs_sd, server_info *sinfo,
 				resource_req *req = find_resource_req(resresv->resreq, getallres(RES_MIN_WALLTIME));
 
 				if (req != NULL) {
-					int resv_time_left = calc_time_left(resresv->job->resv);
+					int resv_time_left = calc_time_left(resresv->job->resv, 0);
 					if (req->amount > resv_time_left) {
 						set_schd_error_codes(err, NOT_RUN, INSUFFICIENT_RESOURCE);
 						add_err(&prev_err, err);
@@ -1397,7 +1401,7 @@ check_ded_time_boundary(resource_resv *resresv)
 			return CROSS_DED_TIME_BOUNDRY;
 	}
 	else {
-		time_left = calc_time_left(resresv);
+		time_left = calc_time_left(resresv, 0);
 		finish_time = resresv->server->server_time + time_left;
 
 		if (finish_time > ded_time.to)
@@ -1430,7 +1434,7 @@ dedtime_conflict(resource_resv *resresv)
 		return -1;
 
 	if (resresv->start == UNSPECIFIED && resresv->end ==UNSPECIFIED) {
-		duration = calc_time_left(resresv);
+		duration = calc_time_left(resresv, 0);
 
 		start = resresv->server->server_time;
 		end = start + duration;
@@ -1816,22 +1820,22 @@ check_prime_boundary(status *policy, resource_resv  *resresv, struct schd_error 
 		return 0;
 
 	if (policy->backfill_prime) {
-		time_left = calc_time_left(resresv);
+		time_left = calc_time_left(resresv, 0);
 
 		/*
-		 *   Job has no walltime requested.  Lets be conservitive and assume the
+		 *   Job has no walltime requested.  Lets be conservative and assume the
 		 *   job will conflict with primetime.
 		 */
 		if (time_left < 0) {
 			set_schd_error_codes(err, NOT_RUN, CROSS_PRIME_BOUNDARY);
-			set_schd_error_arg(err, ARG1, policy->is_prime ? PRIMESTR : NONPRIMESTR);
+			set_schd_error_arg(err, ARG1, policy->is_prime ? NONPRIMESTR : PRIMESTR);
 			return CROSS_PRIME_BOUNDARY;
 		}
 
 		if (resresv->server->server_time + time_left >
 			policy->prime_status_end + policy->prime_spill) {
 			set_schd_error_codes(err, NOT_RUN, CROSS_PRIME_BOUNDARY);
-			set_schd_error_arg(err, ARG1, policy->is_prime ? PRIMESTR : NONPRIMESTR);
+			set_schd_error_arg(err, ARG1, policy->is_prime ? NONPRIMESTR : PRIMESTR);
 			return CROSS_PRIME_BOUNDARY;
 		}
 	}

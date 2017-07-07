@@ -112,6 +112,9 @@ node_info **create_resv_nodes(nspec **nspec_arr, server_info *sinfo);
  */
 void adjust_alter_resv_nodes(resource_resv **all_resvs, node_info **all_nodes);
 
+/* Will we try and confirm this reservation in this cycle */
+int will_confirm(resource_resv *resv, time_t server_time);
+
 #ifdef	__cplusplus
 }
 #endif

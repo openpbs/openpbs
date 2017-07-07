@@ -498,7 +498,7 @@ struct batch_status {
 	char		    *text;
 };
 
-/* structure to hold an attribute that failed vrification at ECL
+/* structure to hold an attribute that failed verification at ECL
  * and the associated errcode and errmsg
  */
 struct ecl_attrerr {

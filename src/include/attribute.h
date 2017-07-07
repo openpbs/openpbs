@@ -320,6 +320,7 @@ extern int  attr_atomic_node_set(svrattrl *plist, attribute *old,
 	attribute *new, attribute_def *pdef, int limit,
 	int unkn, int privil, int *badattr);
 extern void attr_atomic_kill(attribute *temp, attribute_def *pdef, int);
+extern void attr_atomic_copy(attribute *old, attribute *new, attribute_def *pdef, int limit);
 
 extern int copy_svrattrl_list(pbs_list_head *from_phead, pbs_list_head *to_head);
 extern int  compare_svrattrl_list(pbs_list_head *list1, pbs_list_head *list2);

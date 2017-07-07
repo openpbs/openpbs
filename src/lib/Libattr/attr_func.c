@@ -203,6 +203,42 @@ free_null(struct attribute *attr)
 
 /**
  * @brief
+ * 		decode_null - Null attribute decode routine for Read Only (server
+ *		and queue ) attributes.  It just returns 0.
+ *
+ * @param[in]	patr	-	not used
+ * @param[in]	name	-	not used
+ * @param[in]	rn	-	not used
+ * @param[in]	val	-	not used
+ *
+ * @return	zero
+ */
+
+int
+decode_null(attribute *patr, char *name, char *rn, char *val)
+{
+	return 0;
+}
+
+/**
+ * @brief
+ * 		set_null - Null set routine for Read Only attributes.
+ *
+ * @param[in]	pattr	-	not used
+ * @param[in]	new	-	not used
+ * @param[in]	op	-	not used
+ *
+ * @return	zero
+ */
+
+int
+set_null(attribute *pattr, attribute *new, enum batch_op op)
+{
+	return 0;
+}
+
+/**
+ * @brief
  * 	comp_null - A do nothing, except return 0, attribute comparison
  *	function.
  *
@@ -1278,7 +1314,6 @@ strtok_quoted(char *source, char delimiter)
 	static char *pc = NULL;	/* save pointer position */
 	char *stok = NULL;  	/* token to return */
 	char *quoted = NULL;
-	int  i, j;
 
 	if (source != NULL) {
 		pc = source;

@@ -181,6 +181,8 @@ event_list *create_event_list(server_info *sinfo);
  */
 int exists_run_event(event_list *calendar, time_t end_time);
 
+/* Checks if a reservation run event exists between now and 'end' */
+int exists_resv_event(event_list *calendar, time_t end);
 
 
 /*

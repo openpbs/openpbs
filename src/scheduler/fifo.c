@@ -375,28 +375,30 @@ init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
 			 * one and calculate a new value
 			 */
 
-			for (i = 0; i < last_running_size ; i++) {
+			for (i = 0; i < last_running_size; i++) {
 				user = find_alloc_ginfo(last_running[i].entity_name,
-					sinfo->fairshare->root);
+							sinfo->fairshare->root);
 
-				for (j = 0; sinfo->running_jobs[j] != NULL &&
-					strcmp(last_running[i].name, sinfo->running_jobs[j]->name); j++)
-					;
+				if (sinfo->running_jobs != NULL) {
+					for (j = 0; sinfo->running_jobs[j] != NULL &&
+						strcmp(last_running[i].name, sinfo->running_jobs[j]->name); j++)
+							;
 
-				if (sinfo->running_jobs[j] != NULL &&
-					sinfo->running_jobs[j]->job != NULL) {
-					/* just incase the delta is negative just add 0 */
-					delta = formula_evaluate(conf.fairshare_res, sinfo->running_jobs[j], sinfo->running_jobs[j]->job->resused) -
-						formula_evaluate(conf.fairshare_res, sinfo->running_jobs[j], last_running[i].resused);
+					if (sinfo->running_jobs[j] != NULL &&
+						sinfo->running_jobs[j]->job != NULL) {
+						/* just incase the delta is negative just add 0 */
+						delta = formula_evaluate(conf.fairshare_res, sinfo->running_jobs[j], sinfo->running_jobs[j]->job->resused) -
+							formula_evaluate(conf.fairshare_res, sinfo->running_jobs[j], last_running[i].resused);
 
-					delta = IF_NEG_THEN_ZERO(delta);
+						delta = IF_NEG_THEN_ZERO(delta);
 
-					gpath = user->gpath;
-					while (gpath != NULL) {
-						gpath->ginfo->usage += delta;
-						gpath = gpath->next;
+						gpath = user->gpath;
+						while (gpath != NULL) {
+							gpath->ginfo->usage += delta;
+							gpath = gpath->next;
+						}
+						resort = 1;
 					}
-					resort = 1;
 				}
 			}
 		}
@@ -1375,9 +1377,6 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 {
 	int ret = 0;				/* return code */
 	int pbsrc;				/* return codes from pbs IFL calls */
-	node_info **ninfo_arr = NULL;		/* the entire node array to search */
-	node_partition **nodepart = NULL;	/* node partitions to serach */
-	node_partition *np = NULL;		/* node partition to run resresv on */
 	char buf[COMMENT_BUF_SIZE] = {'\0'};		/* generic buffer - comments & logging*/
 	int num_nspec;			/* number of nspecs in node solution */
 
@@ -1473,32 +1472,15 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 		else if (ns_arr != NULL)
 			ns = ns_arr;
 		/* 3) calculate where to run the resresv ourselves */
-		else {
-			/* cached node partition -- use the nodes from that */
-			if (rr->nodepart_name != NULL) {
-				np = find_node_partition(nodepart, rr->nodepart_name);
-				if (np != NULL) {
-					ninfo_arr = np->ninfo_arr;
-					nodepart = NULL;
-					if (np->excl)
-						eval_flags |= EVAL_EXCLSET;
-				}
-				/* np should never be NULL -- if it is, something strange happened
-				 * but we can recover and just search for the solution again.
-				 * if we can't find one, that error condition is handled further down
-				 */
-			}
-
+		else
 			ns = check_nodes(policy, sinfo, qinfo, rr, eval_flags, err);
-		}
 
 		if (ns != NULL) {
 #ifdef RESC_SPEC /* Hack to make rescspec work with new select code */
 			if (rr->is_job && rr->job->rspec != NULL && ns[0] != NULL) {
-				struct batch_status *bs;		/* used for rescspec res assignment */
-				struct attrl *attrp;			/* used for rescspec res assignment */
+				struct batch_status *bs;	/* used for rescspec res assignment */
+				struct attrl *attrp;		/* used for rescspec res assignment */
 				resource_req *req;
-
 				bs = rescspec_get_assignments(rr->job->rspec);
 				if (bs != NULL) {
 					attrp = bs->attribs;

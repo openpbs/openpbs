@@ -167,7 +167,7 @@ char *string_array_to_str(char **strarr);
 /*
  *      calc_time_left - calculate the remaining time of a job
  */
-int calc_time_left(resource_resv *jinfo);
+int calc_time_left(resource_resv *jinfo, int use_hard_duration);
 
 /*
  *      cstrcmp - check string compare - compares two strings but doesn't bomb
@@ -246,23 +246,19 @@ res_to_str_re(void *p, enum resource_fields fld, char **buf,
 /*
  * clear schd_error structure for reuse
  */
-void
-clear_schd_error(schd_error *err);
+void clear_schd_error(schd_error *err);
 
 /* schd_error constructor */
-schd_error *
-new_schd_error(void);
+schd_error *new_schd_error(void);
 
 /* schd_error copy constructor */
-schd_error *
-dup_schd_error(schd_error *oerr);
-
-/* like copy constructor but don't dup error structure */
-void copy_schd_error(schd_error *err, schd_error *oerr);
+schd_error *dup_schd_error(schd_error *oerr);
 
 /* does a shallow copy err = oerr safely moving all argument data to err */
-void
-move_schd_error(schd_error *err, schd_error *oerr);
+void move_schd_error(schd_error *err, schd_error *oerr);
+
+/* do a deep copy of err, but don't dup the error itself. */
+void copy_schd_error(schd_error *err, schd_error *oerr);
 
 /* safely set the schd_config arg buffers without worrying about leaking */
 void set_schd_error_arg(schd_error *err, int arg_field, char *arg);

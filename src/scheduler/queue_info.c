@@ -67,6 +67,7 @@
 #include <pbs_ifl.h>
 #include <log.h>
 #include "queue_info.h"
+#include "job_info.h"
 #include "resv_info.h"
 #include "constant.h"
 #include "misc.h"
