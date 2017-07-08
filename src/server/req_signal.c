@@ -415,7 +415,7 @@ post_signal_req(struct work_task *pwt)
 	preq = pwt->wt_parm1;
 	preq->rq_conn = preq->rq_orgconn;  /* restore client socket */
 	pjob = preq->rq_extra;
-	
+
 	if(strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_SUSPEND)==0 ||
 			strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_ADMIN_SUSPEND) == 0)
 		suspend = 1;
@@ -456,11 +456,15 @@ post_signal_req(struct work_task *pwt)
 					}
 				}
 				pjob->ji_qs.ji_svrflags |= JOB_SVFLG_Suspend;
-				if(strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_ADMIN_SUSPEND) == 0)
-					set_admin_suspend(pjob, 1);
 				/* update all released resources */
 				svr_setjobstate(pjob, JOB_STATE_RUNNING, ss);
 				rel_resc(pjob); /* release resc and nodes */
+				/* Since our purpose is to put the node in maintenance state if "admin-suspend"
+				 * signal is used, be sure that rel_resc() is called before set_admin_suspend().
+				 * Otherwise, set_admin_suspend will move the node to maintenance state and
+				 * rel_resc() will pull it out of maintenance state */
+				if(strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_ADMIN_SUSPEND) == 0)
+					set_admin_suspend(pjob, 1);
 			}
 
 		} else if (resume && pjob && (pjob->ji_qs.ji_state == JOB_STATE_RUNNING)) {
@@ -623,6 +627,7 @@ void set_admin_suspend(job *pjob, int set_remove_nstate) {
 		chunk = parse_plus_spec_r(last, &last, &hasprn);
 	}
 	save_nodes_db(0, NULL);
+	job_save(pjob, SAVEJOB_QUICK);
 	free_arst(&new);
 	free(execvncopy);
 }
