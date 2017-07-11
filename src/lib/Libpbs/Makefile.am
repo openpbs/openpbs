@@ -47,6 +47,10 @@ libpbs_la_CPPFLAGS = -I$(top_srcdir)/src/include
 #
 libpbs_la_LDFLAGS = -version-info 0:0:0
 
+libpbs_la_LIBADD= \
+	-lcrypto \
+	-lpthread
+
 libpbs_la_SOURCES = \
 	../Libattr/attr_fn_arst.c \
 	../Libattr/attr_fn_b.c \
