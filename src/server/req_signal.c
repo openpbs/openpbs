@@ -508,9 +508,11 @@ create_resreleased(job *pjob)
 	char *resreleased;
 	attribute reqrel;
 	char buf[1024] = {0};
+	char *dflt_ncpus_rel = ":ncpus=0";
+	int no_res_rel = 1;
 
 	attribute *pexech = &pjob->ji_wattr[(int) JOB_ATR_exec_vnode];
-	resreleased = (char *) calloc(1, strlen(pexech->at_val.at_str));
+	resreleased = (char *) calloc(1, strlen(pexech->at_val.at_str)+1);
 	if (resreleased == NULL)
 		return 1;
 	resreleased[0] = '\0';
@@ -521,6 +523,7 @@ create_resreleased(job *pjob)
 		return 1;
 	}
 	while(chunk) {
+		no_res_rel = 1;
 		strcat(resreleased, "(");
 		if (parse_node_resc(chunk, &noden, &nelem, &pkvp) == 0) {
 			strcat(resreleased, noden);
@@ -535,6 +538,7 @@ create_resreleased(job *pjob)
 						if ((res != NULL) && (strcmp(pkvp[j].kv_keyw,res) == 0)) {
 							sprintf(buf, ":%s=%s", res, pkvp[j].kv_val);
 							strcat(resreleased, buf);
+							no_res_rel = 0;
 							break;
 						}
 					}
@@ -548,6 +552,12 @@ create_resreleased(job *pjob)
 			free(resreleased);
 			return 1;
 		}
+		/* If there are no resources released on this vnode then add a dummy "ncpus=0"
+		 * This is needed otherwise scheduler will not be able to assign this chunk to
+		 * the job while trying to resume it
+		 */
+		if (no_res_rel)
+			strcat(resreleased, dflt_ncpus_rel);
 		strcat(resreleased, ")");
 		chunk = parse_plus_spec(NULL, &rc);
 		if (rc != 0) {

@@ -200,7 +200,6 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         self.server.expect(JOB, {ATTR_state: 'S', ATTR_substate: 45}, id=jid1)
 
         job = self.server.status(JOB, id=jid1)
-        self.assertNotEqual(job, None)
 
         rr = "(%s:ncpus=4)" % self.mom.shortname
         self.assertEqual(job[0][ATTR_released], rr,
@@ -243,7 +242,6 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         self.server.expect(JOB, {ATTR_state: 'S', ATTR_substate: 45}, id=jid1)
 
         job = self.server.status(JOB, id=jid1)
-        self.assertNotEqual(job, None)
 
         rr = "(vnode1[0]:ncpus=8)+(vnode2[0]:ncpus=6)"
         print job[0][ATTR_released]
@@ -280,7 +278,6 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
                            id=sub_jid1)
 
         job = self.server.status(JOB, id=sub_jid1)
-        self.assertNotEqual(job, None)
 
         rr = "(%s:ncpus=4)" % self.mom.shortname
         self.assertEqual(job[0][ATTR_released], rr,
@@ -316,7 +313,6 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
                            id=sub_jid1)
 
         job = self.server.status(JOB, id=sub_jid1)
-        self.assertNotEqual(job, None)
 
         rr_l_ncpus = job[0][ATTR_rel_list + ".ncpus"]
         self.assertEqual(rr_l_ncpus, "4", msg="ncpus not released")
@@ -349,7 +345,6 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         self.server.expect(JOB, {ATTR_state: 'S', ATTR_substate: 45}, id=jid1)
 
         job = self.server.status(JOB, id=jid1)
-        self.assertNotEqual(job, None)
 
         rr_l_ncpus = job[0][ATTR_rel_list + ".ncpus"]
         self.assertEqual(rr_l_ncpus, "4", msg="ncpus not released")
@@ -393,7 +388,6 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         self.server.expect(JOB, {ATTR_state: 'S', ATTR_substate: 45}, id=jid1)
 
         job = self.server.status(JOB, id=jid1)
-        self.assertNotEqual(job, None)
 
         rr_l_ncpus = job[0][ATTR_rel_list + ".ncpus"]
         self.assertEqual(rr_l_ncpus, "14", msg="ncpus not released")
@@ -660,3 +654,105 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
 
         self.assertEqual(rv[0][ras_bar], "40",
                          msg="pbs should not release resource bar")
+
+    def test_resuming_with_no_res_released(self):
+        """
+        Set restrict_res_to_release_on_suspend to a resource that a job
+        does not request and then suspend this running job using qsig
+        check if such a job resumes when qsig -s resume is issued
+        """
+        # Set mem in restrict_res_to_release_on_suspend server attribute
+        a = {ATTR_restrict_res_to_release_on_suspend: 'mem'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        j1 = Job(TEST_USER)
+        j1.set_attributes({ATTR_l+'.ncpus': '4'})
+        jid1 = self.server.submit(j1)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
+
+        # suspend job
+        self.server.sigjob(jobid=jid1, signal="suspend")
+
+        job = self.server.status(JOB, id=jid1)
+
+        rr = "(%s:ncpus=0)" % self.mom.shortname
+        self.assertEqual(job[0][ATTR_released], rr,
+                         msg="resources_released incorrect")
+
+        # resume job
+        self.server.sigjob(jobid=jid1, signal="resume")
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
+
+    def test_resuming_with_no_res_released_multi_vnode(self):
+        """
+        Set restrict_res_to_release_on_suspend to a resource that multi-vnode
+        job does not request and then suspend this running job using qsig
+        check if such a job resumes when qsig -s resume is issued
+        """
+        # Set mem in restrict_res_to_release_on_suspend server attribute
+        a = {ATTR_restrict_res_to_release_on_suspend: 'mem'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        vn_attrs = {ATTR_rescavail + '.ncpus': 2,
+                    ATTR_rescavail + '.mem': '1024mb'}
+        self.server.create_vnodes("vnode1", vn_attrs, 1,
+                                  self.mom, fname="vnodedef1")
+        # Append a vnode
+        vn_attrs = {ATTR_rescavail + '.ncpus': 6,
+                    ATTR_rescavail + '.mem': '1024mb'}
+        self.server.create_vnodes("vnode2", vn_attrs, 1,
+                                  self.mom, additive=True, fname="vnodedef2")
+        j1 = Job(TEST_USER)
+        j1.set_attributes({ATTR_l+'.select':
+                           '1:ncpus=2+1:ncpus=6',
+                           ATTR_l+'.place': 'vscatter'})
+        jid1 = self.server.submit(j1)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
+
+        # suspend job
+        self.server.sigjob(jobid=jid1, signal="suspend")
+
+        job = self.server.status(JOB, id=jid1)
+
+        rr = "(vnode1[0]:ncpus=0)+(vnode2[0]:ncpus=0)"
+        self.assertEqual(job[0][ATTR_released], rr,
+                         msg="resources_released incorrect")
+
+        # resume job
+        self.server.sigjob(jobid=jid1, signal="resume")
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
+
+    def test_resuming_excljob_with_no_res_released(self):
+        """
+        Set restrict_res_to_release_on_suspend to a resource that an node excl
+        job does not request and then suspend this running job using peemption
+        check if such a job resumes when high priority job is deleted
+        """
+        # Set mem in restrict_res_to_release_on_suspend server attribute
+        a = {ATTR_restrict_res_to_release_on_suspend: 'mem'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        j1 = Job(TEST_USER)
+        j1.set_attributes({ATTR_l+'.select': '1:ncpus=1',
+                           ATTR_l+'.place': 'excl'})
+        jid1 = self.server.submit(j1)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
+
+        # Submit a high priority job
+        j2 = Job(TEST_USER)
+        j2.set_attributes(
+            {ATTR_l+'.select': '1:ncpus=2',
+             ATTR_q: 'expressq'})
+        jid2 = self.server.submit(j2)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
+        self.server.expect(JOB, {ATTR_state: 'S', ATTR_substate: 45}, id=jid1)
+
+        job = self.server.status(JOB, id=jid1)
+
+        rr = "(%s:ncpus=0)" % self.mom.shortname
+        self.assertEqual(job[0][ATTR_released], rr,
+                         msg="resources_released incorrect")
+
+        # resume job
+        self.server.deljob(jid2, wait=True)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
