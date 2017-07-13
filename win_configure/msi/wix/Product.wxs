@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+  <!-- 
+  Copyright (C) 1994-2017 Altair Engineering, Inc.
+  For more information, contact Altair at www.altair.com.
+   
+  This file is part of the PBS Professional ("PBS Pro") software.
+  
+  Open Source License Information:
+   
+  PBS Pro is free software. You can redistribute it and/or modify it under the
+  terms of the GNU Affero General Public License as published by the Free 
+  Software Foundation, either version 3 of the License, or (at your option) any 
+  later version.
+   
+  PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+  PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+   
+  You should have received a copy of the GNU Affero General Public License along 
+  with this program.  If not, see <http://www.gnu.org/licenses/>.
+   
+  Commercial License Information: 
+  
+  The PBS Pro software is licensed under the terms of the GNU Affero General 
+  Public License agreement ("AGPL"), except where a separate commercial license 
+  agreement for PBS Pro version 14 or later has been executed in writing with Altair.
+   
+  Altair’s dual-license business model allows companies, individuals, and 
+  organizations to create proprietary derivative works of PBS Pro and distribute 
+  them - whether embedded or bundled with other software - under a commercial 
+  license agreement.
+  
+  Use of Altair’s trademarks, including but not limited to "PBS™", 
+  "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+  trademark licensing policies.
+  -->
+
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
+ xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
+  <Product Id="*" Name="PBS Pro" Language="1033" Version="1.0.0.0" Manufacturer="PBS Pro" UpgradeCode="4bc6b7a2-d5e0-4ef5-a4e7-8cf241af146e">
+    <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" />
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+    <MediaTemplate EmbedCab="yes"/>
+    <!--<Media Id="1" Cabinet="CabFileName.cab" EmbedCab="yes" /> -->
+    <Icon Id="ProductIcon" SourceFile="resources\logo.ico"/>
+    <Property Id="ARPPRODUCTICON" Value="ProductIcon"/>
+    <WixVariable Id="WixUILicenseRtf" Value="resources\pbs_license.rtf" />
+    <WixVariable Id="WixUIBannerBmp" Value="resources\pbs_hq.bmp" />
+    <WixVariable Id="WixUIDialogBmp" Value="resources\setup.bmp" />
+ 
+    <Feature Id="PBSProFeature" Title="PBSPro" Level="1" ConfigurableDirectory="INSTALLFOLDER"> 
+      <ComponentGroupRef Id="pbsproexec" />
+	  <ComponentRef Id="DIRPERM" /> 
+	  <ComponentGroupRef Id="pbsprohome" />
+	  <ComponentRef Id="ENVIRON" />	  
+    </Feature>
+	
+	
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+    <UIRef Id="WixUI_InstallDir" />
+  	
+  </Product>
+  
+  <Fragment>
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFilesFolder" Name="PROGFILES" >
+        <Directory Id="INSTALLFOLDER" Name="PBS" >
+			<Directory Id="EXEC" Name="exec" />
+		</Directory>
+      </Directory>
+    </Directory>
+  </Fragment> 
+  
+  <Fragment>
+	  <DirectoryRef Id="TARGETDIR">
+			<Component Id="ENVIRON" Guid="1bc6b7a2-d5e0-4ef5-a4e7-8cf241af146e">  		
+				<Environment Id="PATHPYTHON64" Action="set" Part="first" Name="PATH" Permanent="no" System="yes" Value="[EXEC]python_x64"/>
+				<Environment Id="PATHPYTHON64libs" Action="set" Part="first" Name="PATH" Permanent="no" System="yes" Value="[EXEC]python_x64\libs"/>
+				<Environment Id="PYTHONPATH" Action="set" Part="first" Name="PYTHONPATH" Permanent="no" System="yes" Value="[EXEC]python\Lib"/>
+				<Environment Id="PYTHONPATHDLLS" Action="set" Part="first" Name="PYTHONPATH" Permanent="no" System="yes" Value="[EXEC]python_x64\DLLs"/>
+				<Environment Id="BIN" Action="set" Part="first" Name="PATH" Permanent="no" System="yes" Value="[EXEC]bin"/>
+				<Environment Id="SBIN" Action="set" Part="first" Name="PATH" Permanent="no" System="yes" Value="[EXEC]sbin"/>
+				<Environment Id="PGBIN" Action="set" Part="first" Name="PATH" Permanent="no" System="yes" Value="[EXEC]pgsql\bin"/>
+				<Environment Id="PGLIB" Action="set" Part="first" Name="PATH" Permanent="no" System="yes" Value="[EXEC]pgsql\lib"/>
+				<Environment Id="PBS_CONF_FILE" Action="set" Part="all" Name="PBS_CONF_FILE" Permanent="no" System="yes" Value="[INSTALLFOLDER]pbs.conf"/>
+				<Environment Id="PBS_EXEC" Action="set" Part="all" Name="PBS_EXEC" Permanent="no" System="yes" Value="[EXEC]"/>
+				<Environment Id="PBS_HOME" Action="set" Part="all" Name="PBS_HOME" Permanent="no" System="yes" Value="[INSTALLFOLDER]home"/>
+			</Component>
+	  </DirectoryRef>
+  </Fragment> 
+  
+  <Fragment>
+	  <DirectoryRef Id="INSTALLFOLDER">
+			<Directory Id="TEST" Name="home" >
+				<Component Id="DIRPERM" Guid="1cd6b7a2-d5e0-4ef5-a4e7-8cf241af146e">  		
+					<CreateFolder Directory="TEST">
+						<util:PermissionEx User="Everyone" GenericAll="yes" CreateFile="yes"/>					
+					</CreateFolder>
+				</Component>
+			</Directory>
+	  </DirectoryRef>
+  </Fragment> 
+  
+  
+</Wix>
