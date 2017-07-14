@@ -36,7 +36,7 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 
-from tests.functional import TestFunctional, SERVER
+from tests.functional import *
 from ptl.utils.pbs_snaputils import *
 
 
@@ -44,6 +44,16 @@ class TestPBSSnapshot(TestFunctional):
     """
     Test suit with unit tests for the pbs_snapshot tool
     """
+
+    def setUp(self):
+        TestFunctional.setUp(self)
+
+        # Create a custom resource called 'ngpus'
+        # This will help us test parts of PBSSnapUtils which handle resources
+        attr = {"type": "long", "flag": "nh"}
+        self.assertTrue(self.server.manager(MGR_CMD_CREATE, RSC, attr,
+                                            id="ngpus", expect=True,
+                                            sudo=True))
 
     def test_capture_server(self):
         """

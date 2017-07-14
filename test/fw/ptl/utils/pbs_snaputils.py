@@ -35,6 +35,7 @@
 # Use of Altair’s trademarks, including but not limited to "PBS™",
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
+
 import os
 import time
 import tarfile
@@ -49,8 +50,8 @@ from ptl.utils.pbs_logutils import PBSLogUtils
 from ptl.utils.pbs_anonutils import PBSAnonymizer
 
 BUILT_IN_RSCS = """Name: cput
-type = 1
-flag = 3135
+    type = 1
+    flag = 3135
 Name: mem
     type = 5
     flag = 181311
@@ -498,20 +499,6 @@ class _PBSSnapUtils(object):
             hosts_str = "".join(additional_hosts.split())  # remove whitespaces
             self.all_hosts.extend(hosts_str.split(","))
         self.mapfile = map_file
-        self.anonymize = anonymize
-        if self.anonymize:
-            # Create a PBSAnonymizer object
-            del_attrs = [ATTR_v, ATTR_e, ATTR_mailfrom, ATTR_m, ATTR_name,
-                         ATTR_jobdir, ATTR_submit_arguments, ATTR_o, ATTR_S]
-            obf_attrs = [ATTR_euser, ATTR_egroup, ATTR_project, ATTR_A,
-                         ATTR_operators, ATTR_managers, ATTR_g, ATTR_M,
-                         ATTR_u, ATTR_SvrHost, ATTR_aclgroup, ATTR_acluser,
-                         ATTR_aclResvgroup, ATTR_aclResvuser, ATTR_SchedHost,
-                         ATTR_aclResvhost, ATTR_aclhost, ATTR_owner,
-                         ATTR_exechost, ATTR_NODE_Host, ATTR_NODE_Mom,
-                         ATTR_rescavail + ".host", ATTR_rescavail + ".vnode"]
-            self.anon_obj = PBSAnonymizer(attr_delete=del_attrs,
-                                          attr_val=obf_attrs)
 
         # Initialize Server and Scheduler objects
         self.server = Server(server_host, diag=self.diag)
@@ -534,6 +521,28 @@ class _PBSSnapUtils(object):
 
         # Create the snapshot directory tree
         self.__initialize_snapshot()
+
+        # Create a PBSAnonymizer object
+        self.anonymize = anonymize
+        self.custom_rscs = self.server.parse_resources()
+        if self.anonymize:
+            del_attrs = [ATTR_v, ATTR_e, ATTR_mailfrom, ATTR_m, ATTR_name,
+                         ATTR_jobdir, ATTR_submit_arguments, ATTR_o, ATTR_S]
+            obf_attrs = [ATTR_euser, ATTR_egroup, ATTR_project, ATTR_A,
+                         ATTR_operators, ATTR_managers, ATTR_g, ATTR_M,
+                         ATTR_u, ATTR_SvrHost, ATTR_aclgroup, ATTR_acluser,
+                         ATTR_aclResvgroup, ATTR_aclResvuser, ATTR_SchedHost,
+                         ATTR_aclResvhost, ATTR_aclhost, ATTR_owner,
+                         ATTR_exechost, ATTR_NODE_Host, ATTR_NODE_Mom,
+                         ATTR_rescavail + ".host", ATTR_rescavail + ".vnode"]
+            obf_rsc_attrs = []
+            if self.custom_rscs is not None:
+                for rsc in self.custom_rscs.keys():
+                    obf_rsc_attrs.append(rsc)
+
+            self.anon_obj = PBSAnonymizer(attr_delete=del_attrs,
+                                          attr_val=obf_attrs,
+                                          resc_key=obf_rsc_attrs)
 
     def __init_cmd_path_map(self):
         """
@@ -1209,8 +1218,8 @@ class _PBSSnapUtils(object):
             for rsc in custom_rscs_names:
                 rsc_obj = resources[rsc]
                 rsc_str = "Name: " + rsc_obj.attributes['id']
-                rsc_str += "\n    type = " + rsc_obj.attributes['type']
-                rsc_str += "\n    flag = " + rsc_obj.attributes['flag']
+                rsc_str += "\n    type = " + str(rsc_obj.attributes['type'])
+                rsc_str += "\n    flag = " + str(rsc_obj.attributes['flag'])
                 rscfd.write(rsc_str + "\n")
 
         if self.create_tar:
