@@ -14,6 +14,5 @@ ${DOCKER_EXEC} /bin/sh -c 'cp -fv pbspro-*.tar.gz /root/rpmbuild/SOURCES/'
 ${DOCKER_EXEC} rpmbuild -bb pbspro.spec
 ${DOCKER_EXEC} /bin/sh -c 'yum -y install /root/rpmbuild/RPMS/x86_64/pbspro-server-*.x86_64.rpm'
 ${DOCKER_EXEC} /etc/init.d/pbs start
-${DOCKER_EXEC} yum -y install python-pip sudo which net-tools git
-${DOCKER_EXEC} ./.travis/run_tests.sh ${TRAVIS_PULL_REQUEST}
+${DOCKER_EXEC} yum -y install python-pip sudo which net-tools
 
