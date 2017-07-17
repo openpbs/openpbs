@@ -47,20 +47,11 @@ class TestSchedulerInterface(TestInterfaces):
     """
 
     def setUp(self):
-        # delete all schedulers except default
-        self.server.manager(MGR_CMD_DELETE,
-                            SCHED,
-                            id="@default")
+        TestInterfaces.setUp(self)
+
         self.server.manager(MGR_CMD_CREATE,
                             SCHED,
                             id="TestCommonSched")
-        TestInterfaces.setUp(self)
-
-    def test_list_schedulers(self):
-        """
-        List a scheduler object.
-        """
-        pass
 
     def test_duplicate_scheduler_name(self):
         """
@@ -130,7 +121,8 @@ class TestSchedulerInterface(TestInterfaces):
                             SCHED,
                             {'sched_cycle_length': 12000},
                             id="TestCommonSched",
-                            runas=ROOT_USER)
+                            runas=ROOT_USER,
+                            expect=True)
 
     def test_delete_default_sched(self):
         """
@@ -153,12 +145,20 @@ class TestSchedulerInterface(TestInterfaces):
         self.server.manager(MGR_CMD_SET,
                             SCHED,
                             {'sched_cycle_length': 1234},
-                            id="TestCommonSched")
+                            id="TestCommonSched",
+                            expect=True)
 
         # Unset an attribute of a scheduler object.
         self.server.manager(MGR_CMD_UNSET,
                             SCHED,
                             'sched_cycle_length',
                             id="TestCommonSched")
-        # rc = self.server.manager(MGR_CMD_LIST, SCHED, id="TestCommonSched")
-        # TODO call the list using qmgr and assert the default attribute value
+        self.server.manager(MGR_CMD_LIST,
+                            SCHED,
+                            id="TestCommonSched")
+        sched = None
+        sched = self.server.schedulers['TestCommonSched']
+        self.assertNotEqual(sched, None)
+        self.assertEqual(
+            sched.attributes['sched_cycle_length'],
+            '00:20:00')

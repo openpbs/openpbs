@@ -617,6 +617,7 @@ class PBSTestSuite(unittest.TestCase):
             if objs[n] is None:
                 _msg = 'Failed %s(%s, %s)' % (func.__name__, name, objconf)
                 raise setUpClassError(_msg)
+            objs[n].initialise_service()
         return objs
 
     @classmethod

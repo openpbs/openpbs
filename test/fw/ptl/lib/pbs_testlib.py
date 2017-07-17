@@ -3866,6 +3866,12 @@ class PBSService(PBSObject):
         inst.pid = None
         return True
 
+    def initialise_service(self):
+        """
+        Purpose of this method is to override and initialise
+        the service
+        """
+
     def log_lines(self, logtype, id=None, n=50, tail=True, day=None,
                   starttime=None, endtime=None):
         """
@@ -4427,6 +4433,8 @@ class Server(PBSService):
         ATTR_FlatUID: 'True',
     }
 
+    dflt_sched_name = 'default'
+
     ptl_conf = {
         'mode': PTL_API,
         'expect_max_attempts': 60,
@@ -4449,7 +4457,7 @@ class Server(PBSService):
         self.hooks = {}
         self.pbshooks = {}
         self.entities = {}
-        self.scheduler = None
+        self.schedulers = {}
         self.version = None
         self.default_queue = None
         self.last_error = []  # type: array. Set for CLI IFL errors. Not reset
@@ -5270,20 +5278,28 @@ class Server(PBSService):
                     (isinstance(attrib, str) and len(attrib.split(',')) == 1)):
                 bsl = self.status(
                     JOB, 'Resource_List.select', id=id, extend='t')
-            if self.scheduler is None:
-                self.scheduler = Scheduler(self.hostname)
-            if 'log_filter' in self.scheduler.sched_config:
-                _prev_filter = self.scheduler.sched_config['log_filter']
+            if self.schedulers[self.dflt_sched_name] is None:
+                self.schedulers[self.dflt_sched_name] = Scheduler(
+                    self.hostname)
+            if 'log_filter' in self.schedulers[
+                    self.dflt_sched_name].sched_config:
+                _prev_filter = self.schedulers[
+                    self.dflt_sched_name].sched_config[
+                    'log_filter']
                 if int(_prev_filter) & 2048:
-                    self.scheduler.set_sched_config(
+                    self.schedulers[self.dflt_sched_name].set_sched_config(
                         {'log_filter': 2048})
             self.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
             if id is None:
-                _formulas = self.scheduler.job_formula()
+                _formulas = self.schedulers[self.dflt_sched_name].job_formula()
             else:
-                _formulas = {id: self.scheduler.job_formula(jobid=id)}
+                _formulas = {
+                    id: self.schedulers[
+                        self.dflt_sched_name].job_formula(
+                        jobid=id)
+                }
             if not int(_prev_filter) & 2048:
-                self.scheduler.set_sched_config(
+                self.schedulers[self.dflt_sched_name].set_sched_config(
                     {'log_filter': int(_prev_filter)})
 
             if len(bsl) == 0:
@@ -5377,9 +5393,7 @@ class Server(PBSService):
                     elif obj_type == PBS_HOOK:
                         o = self.pbshooks
                     elif obj_type == SCHED:
-                        if self.scheduler is None:
-                            return []
-                        o = {'sched': self.scheduler}
+                        o = self.schedulers
                     elif obj_type == RSC:
                         o = self.resources
                     if id:
@@ -8088,19 +8102,27 @@ class Server(PBSService):
                     self.hooks[id] = Hook(id, binfo, server=self)
                 obj = self.hooks[id]
             elif obj_type == SCHED:
-                if self.scheduler:
-                    self.scheduler.attributes.update(binfo)
+                if id in self.schedulers:
+                    self.schedulers[id].attributes.update(binfo)
                 else:
+                    if 'sched_host' not in binfo:
+                        hostname = self.hostname
+                    else:
+                        hostname = binfo['sched_host']
                     if SCHED in self.diagmap:
                         diag = self.diag
                         diagmap = self.diagmap
                     else:
                         diag = None
-                        diagmap = None
-                    self.scheduler = Scheduler(server=self, diag=diag,
-                                               diagmap=diagmap)
-                    self.scheduler.attributes.update(binfo)
-                obj = self.scheduler
+                        diagmap = {}
+                    self.schedulers[id] = Scheduler(hostname=hostname,
+                                                    server=self,
+                                                    diag=diag,
+                                                    diagmap=diagmap,
+                                                    id=id)
+                    self.schedulers[id].attributes.update(binfo)
+                obj = self.schedulers[id]
+
             elif obj_type == RSC:
                 if id in self.resources:
                     self.resources[id].attributes.update(binfo)
@@ -8650,14 +8672,15 @@ class Server(PBSService):
 
         # if there is a dedicated time, move the availaility time up to that
         # time as necessary
-        if self.scheduler:
-            scheduler = self.scheduler
-        else:
-            scheduler = Scheduler(server=self)
-        scheduler.parse_dedicated_time()
+        if self.schedulers[self.dflt_sched_name] is None:
+            self.schedulers[self.dflt_sched_name] = Scheduler(server=self)
 
-        if scheduler.dedicated_time:
-            dedtime = scheduler.dedicated_time[0]['from'] - int(self.ctime)
+        self.schedulers[self.dflt_sched_name].parse_dedicated_time()
+
+        if self.schedulers[self.dflt_sched_name].dedicated_time:
+            dedtime = self.schedulers[
+                self.dflt_sched_name].dedicated_time[0]['from'] - int(
+                self.ctime)
             if dedtime <= int(time.time()):
                 dedtime = None
         else:
@@ -9205,11 +9228,16 @@ class Server(PBSService):
                     f_value['eligible_time'] = self.utils.convert_duration(
                         job['eligible_time'])
             if 'fair_share_perc' in fres:
-                if self.scheduler is None:
-                    self.scheduler = Scheduler(server=self)
+                if self.schedulers[self.dflt_sched_name] is None:
+                    self.schedulers[self.dflt_sched_name] = Scheduler(
+                        server=self)
 
-                if 'fairshare_entity' in self.scheduler.sched_config:
-                    entity = self.scheduler.sched_config['fairshare_entity']
+                if 'fairshare_entity' in self.schedulers[
+                    self.dflt_sched_name
+                ].sched_config:
+                    entity = self.schedulers[
+                        self.dflt_sched_name
+                    ].sched_config['fairshare_entity']
                 else:
                     self.logger.error(self.logprefix +
                                       ' no fairshare entity in sched config')
@@ -9219,7 +9247,10 @@ class Server(PBSService):
                                       ' job does not have property ' + entity)
                     continue
                 try:
-                    fs_info = self.scheduler.query_fairshare(name=job[entity])
+                    fs_info = self.schedulers[
+                        self.dflt_sched_name
+                    ].query_fairshare(
+                        name=job[entity])
                     if fs_info is not None and 'TREEROOT' in fs_info.perc:
                         f_value['fair_share_perc'] = \
                             (fs_info.perc['TREEROOT'] / 100)
@@ -10065,7 +10096,7 @@ class Scheduler(PBSService):
     fs_tag = re.compile(fs_re)
 
     def __init__(self, hostname=None, server=None, pbsconf_file=None,
-                 diagmap={}, diag=None, db_access=None):
+                 diagmap={}, diag=None, db_access=None, id='default'):
 
         self.sched_config_file = None
         self.dflt_holidays_file = None
@@ -10081,6 +10112,7 @@ class Scheduler(PBSService):
         self.server = None
         self.server_dyn_res = None
         self.logger = logging.getLogger(__name__)
+        self.db_access = None
 
         if server is not None:
             self.server = server
@@ -10131,18 +10163,27 @@ class Scheduler(PBSService):
         rg = self.parse_resource_group(self.hostname, self.resource_group_file)
         self.resource_group = rg
 
-        try:
-            attrs = self.server.status(SCHED, level=logging.DEBUG,
-                                       db_access=db_access)
-            if attrs is not None and len(attrs) > 0:
-                self.attributes = attrs[0]
-        except (PbsManagerError, PbsStatusError), e:
-            self.logger.error('Error querying scheduler %s' % e.msg)
+        self.sc_name = id
+        self.db_access = db_access
 
         self.version = None
 
         self.holidays_obj = Holidays()
         self.holidays_parse_file(level=logging.DEBUG)
+
+    def initialise_service(self):
+        """
+        initialise the scheduler object
+        """
+        PBSService.initialise_service(self)
+        try:
+            attrs = self.server.status(SCHED, level=logging.DEBUG,
+                                       db_access=self.db_access,
+                                       id=self.sc_name)
+            if attrs is not None and len(attrs) > 0:
+                self.attributes = attrs[0]
+        except (PbsManagerError, PbsStatusError), e:
+            self.logger.error('Error querying scheduler %s' % e.msg)
 
     def isUp(self):
         """
@@ -10549,6 +10590,9 @@ class Scheduler(PBSService):
         """
         self.logger.info(self.logprefix +
                          "reverting configuration to defaults")
+        self.server.manager(MGR_CMD_DELETE,
+                            SCHED,
+                            id="@default")
         self.server.manager(MGR_CMD_LIST, SCHED)
         ignore_attrs = ['id', 'pbs_version', 'sched_host', 'state']
         unsetattrs = []
