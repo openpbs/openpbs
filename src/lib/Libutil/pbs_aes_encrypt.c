@@ -37,7 +37,8 @@ pbs_encrypt_data(char *uncrypted, int *credtype, size_t len, char **crypted, siz
         int plen, len2 = 0;
         char *cblk;
 
-        EVP_CIPHER_CTX_init(ctx);
+//        EVP_CIPHER_CTX_init(&ctx);
+	ctx = EVP_CIPHER_CTX_new();
 
         if (EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, (const unsigned char *) pbs_aes_key, (const unsigned char *) pbs_aes_iv) == 0)
                 return -1;
@@ -53,7 +54,8 @@ pbs_encrypt_data(char *uncrypted, int *credtype, size_t len, char **crypted, siz
         if (EVP_EncryptFinal_ex(ctx, cblk + plen, &len2) == 0)
                 return -1;
 
-        EVP_CIPHER_CTX_cleanup(ctx);
+//        EVP_CIPHER_CTX_cleanup(ctx);
+        EVP_CIPHER_CTX_free(ctx);
 
         *crypted = cblk;
         *outlen = plen + len2;
@@ -93,9 +95,9 @@ pbs_decrypt_data(char *crypted, int credtype, size_t len, char **uncrypted, size
         EVP_CIPHER_CTX *ctx;
         char *cblk;
         int plen, len2 = 0;
+	ctx = EVP_CIPHER_CTX_new();
 
-
-        EVP_CIPHER_CTX_init(ctx);
+//        EVP_CIPHER_CTX_init(&ctx);
 
         if (EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, (const unsigned char *) pbs_aes_key, (const unsigned char *) pbs_aes_iv) == 0)
                 return -1;
@@ -110,7 +112,8 @@ pbs_decrypt_data(char *crypted, int credtype, size_t len, char **uncrypted, size
         if (EVP_DecryptFinal_ex(ctx, cblk + plen, &len2) == 0)
                 return -1;
 
-        EVP_CIPHER_CTX_cleanup(ctx);
+//        EVP_CIPHER_CTX_cleanup(&ctx);
+        EVP_CIPHER_CTX_free(ctx);
 
         *uncrypted = cblk;
         *outlen = plen + len2;
