@@ -551,8 +551,6 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 
 	schd_error *err;
 
-	char logbuf[MAX_LOG_SIZE];
-
 	int i;
 	/* used for pbs_geterrmsg() */
 	char *errmsg;
@@ -2082,7 +2080,8 @@ dup_resresv_set_array(resresv_set **osets, server_info *nsinfo)
  * @retval 1 - yes
  * @retval 0 - no
  */
-int resresv_set_use_user(server_info *sinfo)
+int
+resresv_set_use_user(server_info *sinfo)
 {
 	if (sinfo == NULL)
 		return 0;
@@ -2099,7 +2098,8 @@ int resresv_set_use_user(server_info *sinfo)
  * @retval 1 - yes
  * @retval 0 - no
  */
-int resresv_set_use_grp(server_info *sinfo)
+int
+resresv_set_use_grp(server_info *sinfo)
 {
 	if (sinfo == NULL)
 		return 0;
@@ -2116,7 +2116,8 @@ int resresv_set_use_grp(server_info *sinfo)
  * @retval 1 - yes
  * @retval 0 - no
  */
-int resresv_set_use_proj(server_info *sinfo)
+int
+resresv_set_use_proj(server_info *sinfo)
 {
 	if (sinfo == NULL)
 		return 0;
@@ -2133,7 +2134,8 @@ int resresv_set_use_proj(server_info *sinfo)
  * @retval 1 - yes
  * @retval 0 - no
  */
-int resresv_set_use_queue(queue_info *qinfo)
+int
+resresv_set_use_queue(queue_info *qinfo)
 {
 	if (qinfo == NULL)
 		return 0;
@@ -2143,6 +2145,34 @@ int resresv_set_use_queue(queue_info *qinfo)
 		return 1;
 
 	return 0;
+}
+
+/**
+ * @brief determine which selspec to use from a resource_resv for a resresv_set
+ *
+ * @par Jobs that have an execselect are either running or need to be placed
+ *	back on the nodes they were originally running on (e.g., suspended jobs).
+ *	We need to put them in their own set because they are no longer
+ *	requesting the same resources as jobs with the same select spec.
+ *	They are requesting the resources on each vnode they are running on.
+ *	We don't care about running jobs because the only time they will be
+ *	looked at is if they are requeued.  At that point they are back in
+ *	the queued state and have the same select spec as they originally did.
+ *
+ * @return selspec *
+ * @retval selspec to use
+ * @retval NULL on error
+ */
+selspec *
+resresv_set_which_selspec(resource_resv *resresv)
+{
+	if(resresv == NULL)
+		return NULL;
+
+	if (resresv->job != NULL && !resresv->job->is_running && resresv->job->execselect != NULL)
+		return resresv->job->execselect;
+
+	return resresv->select;
 }
 
 /**
@@ -2206,19 +2236,7 @@ create_resresv_set_by_resresv(status *policy, server_info *sinfo, resource_resv 
 		rset->group = string_dup(resresv->group);
 	if (resresv_set_use_proj(sinfo))
 		rset->project = string_dup(resresv->project);
-	/* Jobs that have an execselect are either running or need to be placed
-	 * back on the nodes they were originally running on (e.g., suspended jobs).
-	 * We need to put them in their own set because they are no longer
-	 * requesting the same resources as jobs with the same select spec.
-	 * They are requesting the resources on each vnode they are running on.
-	 * We don't care about running jobs because the only time they will be
-	 * looked at is if they are requeued.  At that point they are back in
-	 * the queued state and have the same select spec as they originally did.
-	 */
-	if (resresv->job != NULL && !resresv->job->is_running && resresv->job->execselect != NULL)
-		rset->select_spec = dup_selspec(resresv->job->execselect);
-	else
-		rset->select_spec = dup_selspec(resresv->select);
+	rset->select_spec = dup_selspec(resresv_set_which_selspec(resresv));
 	if (rset->select_spec == NULL) {
 		free_resresv_set(rset);
 		return NULL;
@@ -2248,6 +2266,7 @@ create_resresv_set_by_resresv(status *policy, server_info *sinfo, resource_resv 
  * @param[in] group - group name
  * @param[in] project - project name
  * @param[in] sel - select spec
+ * @param[in] pl - place spec
  * @param[in] req - list of resources (i.e., qsub -l)
  * @param[in] qinfo - queue
  * @return int
@@ -2283,11 +2302,11 @@ find_resresv_set(status *policy, resresv_set **rsets, char *user, char *group, c
 		if (project != NULL && cstrcmp(project, rsets[i]->project) != 0)
 			continue;
 
-		if (sel != NULL && compare_selspec(rsets[i]->select_spec, sel) == 0)
+		if (compare_selspec(rsets[i]->select_spec, sel) == 0)
 			continue;
-		if (pl != NULL && compare_place(rsets[i]->place_spec, pl) == 0)
+		if (compare_place(rsets[i]->place_spec, pl) == 0)
 			continue;
-		if (req != NULL && compare_resource_req_list(rsets[i]->req, req, policy->equiv_class_resdef) == 0)
+		if (compare_resource_req_list(rsets[i]->req, req, policy->equiv_class_resdef) == 0)
 			continue;
 		/* If we got here, we have found our set */
 		return i;
@@ -2310,6 +2329,7 @@ find_resresv_set_by_resresv(status *policy, resresv_set **rsets, resource_resv *
 	char *grp = NULL;
 	char *proj = NULL;
 	queue_info *qinfo = NULL;
+	selspec *sspec;
 
 	if (policy == NULL || rsets == NULL || resresv == NULL)
 		return -1;
@@ -2323,11 +2343,13 @@ find_resresv_set_by_resresv(status *policy, resresv_set **rsets, resource_resv *
 	if (resresv_set_use_proj(resresv->server))
 		proj = resresv->project;
 
+	sspec = resresv_set_which_selspec(resresv);
+
 	if (resresv->is_job && resresv->job != NULL)
 		if (resresv_set_use_queue(resresv->job->queue))
 			qinfo = resresv->job->queue;
 
-	return find_resresv_set(policy, rsets, user, grp, proj, resresv->select, resresv->place_spec, resresv->resreq, qinfo);
+	return find_resresv_set(policy, rsets, user, grp, proj, sspec, resresv->place_spec, resresv->resreq, qinfo);
 }
 
 /**
@@ -2657,7 +2679,6 @@ preempt_job(status *policy, int pbs_sd, resource_resv *pjob, server_info *sinfo)
 	int i;
 	int histjob = 0;
 	int job_preempted = 0;
-	char *res_released = NULL;
 
 	/* used for stating job state */
 	struct attrl state = {NULL, ATTR_state, NULL, ""};
@@ -2677,7 +2698,6 @@ preempt_job(status *policy, int pbs_sd, resource_resv *pjob, server_info *sinfo)
 	for (i = 0; i < PREEMPT_METHOD_HIGH && pjob->job->is_running; i++) {
 		if (po->order[i] == PREEMPT_METHOD_SUSPEND  &&
 				pjob->job->can_suspend) {
-			res_released = create_res_released(policy, pjob);
 			ret = pbs_sigjob(pbs_sd, pjob->name, "suspend", NULL);
 			if ((ret != 0) && (is_finished_job(pbs_errno) == 1)) {
 				histjob = 1;
@@ -2953,7 +2973,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 	 * express queues fall into the same preempt level but have different
 	 * preempt priorities.
 	 */
-	if (hjob->job->preempt_status & PREEMPT_TO_BIT(PREEMPT_EXPRESS) &&
+	if ((hjob->job->preempt_status & PREEMPT_TO_BIT(PREEMPT_EXPRESS)) &&
 		sinfo->has_mult_express) {
 		for (i = 0; sinfo->running_jobs[i] != NULL && !has_lower_jobs; i++)
 			if (sinfo->running_jobs[i]->job->preempt < hjob->job->preempt)
@@ -3356,12 +3376,12 @@ select_index_to_preempt(status *policy, resource_resv *hjob,
 {
 	int i, j, k;
 	resource_req *req;
-	int good=1, certainlygood=0;		/* good boolean: Is job eligible to be preempted */
+	int good = 1, certainlygood = 0;		/* good boolean: Is job eligible to be preempted */
 	struct preempt_ordering *po;
 	resource_req *req2;
 	resdef **rdtc_non_consumable = NULL;
 	char *limitres_name = NULL;
-	int limitres_injob=1;
+	int limitres_injob = 1;
 	resource_req *req_scan;
 
 	int rc;
@@ -3660,7 +3680,6 @@ select_index_to_preempt(status *policy, resource_resv *hjob,
 				return NO_JOB_FOUND;
 
 			for (j = 0; rjobs[i]->ninfo_arr[j] != NULL && !node_good; j++) {
-				resdef **check_resdef = NULL;
 				resdef **rdtc_here = NULL; /* at first assume all resources (including consumables) need to be checked */
 				node_info *node = rjobs[i]->ninfo_arr[j];
 				if (node->is_multivnoded) {
@@ -4182,7 +4201,6 @@ queue_subjob(resource_resv *array, server_info *sinfo,
 sch_resource_t
 formula_evaluate(char *formula, resource_resv *resresv, resource_req *resreq)
 {
-	static char id[] = "formula_evaluate";
 	char buf[1024];
 	char *globals;
 	int globals_size = 1024;  /* initial size... will grow if needed */

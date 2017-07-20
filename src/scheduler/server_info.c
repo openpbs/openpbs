@@ -1541,8 +1541,6 @@ update_server_on_run(status *policy, server_info *sinfo,
 	counts *cts;			/* used in updating project/group/user counts */
 	int num_unassoc;		/* number of unassociated nodes */
 	counts *allcts;			/* used in updating counts for all jobs */
-	int i;
-	resource_req *used;		/* resources used by suspended job */
 
 	if (sinfo == NULL || resresv == NULL)
 		return;

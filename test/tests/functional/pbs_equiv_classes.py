@@ -1513,9 +1513,13 @@ else:
 
     def test_preemption(self):
         """
-        Test preemption in two cycles.  The first cycle is to preempt a job.
-        The second cycle is to make sure jobs that were in the preempted job's
-        class are not affected by the fact that the preempted job can't run
+        Suspended jobs are placed into their own equivalence class.  If
+        they remain in the class they were in when they were queued, they
+        can stop other jobs in that class from running.
+
+        Equivalence classes are created in query-order.  Test to see if
+        suspended job which comes first in query-order is added to its own
+        class.
         """
 
         a = {'resources_available.ncpus': 1}
@@ -1525,21 +1529,18 @@ else:
              'enabled': 't', 'priority': 150}
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='expressq')
 
-        a = {'Resource_List.ncpus': 1}
-        J = Job(TEST_USER, attrs=a)
-        jid1 = self.server.submit(J)
-        jid2 = self.server.submit(J)
+        (jid1, jid2) = self.submit_jobs(2)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
 
         a = {'Resource_List.ncpus': 3, 'queue': 'expressq'}
-        Je = Job(TEST_USER, attrs=a)
-        jid3 = self.server.submit(Je)
+        (jid3,) = self.submit_jobs(1, a)
+
         self.server.expect(JOB, {'job_state': 'S'}, id=jid1)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
 
-        jid4 = self.server.submit(J)
+        (jid4,) = self.submit_jobs(1)
         self.server.expect(JOB, 'comment', op=SET)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid4)
 
@@ -1548,6 +1549,60 @@ else:
         self.scheduler.log_match("Number of job equivalence classes: 3",
                                  max_attempts=10, starttime=self.t)
 
+        # Make sure jid1 is in its own class.  If it is still in jid4's class
+        # jid4 will not run.  This is because jid1 will be considered first
+        # and mark the entire class as can not run.
         self.server.deljob(jid2, wait=True)
 
         self.server.expect(JOB, {'job_state': 'R'}, id=jid4)
+
+    def test_preemption2(self):
+        """
+        Suspended jobs are placed into their own equivalence class.  If
+        they remain in the class they were in when they were queued, they
+        can stop other jobs in that class from running.
+
+        Equivalence classes are created in query-order.  Test to see if
+        suspended job which comes later in query-order is added to its own
+        class instead of the class it was in when it was queued.
+        """
+
+        a = {'resources_available.ncpus': 1}
+        self.server.create_vnodes('vnode', a, 4, self.mom, usenatvnode=True)
+
+        a = {'queue_type': 'e', 'started': 't',
+             'enabled': 't', 'priority': 150}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='expressq')
+
+        (jid1,) = self.submit_jobs(1)
+        # Jobs most recently started are suspended first.
+        # Sleep for a second to force jid2 to be suspended.
+        time.sleep(1)
+        (jid2, jid3) = self.submit_jobs(2)
+
+        self.server.expect(JOB, {'job_state=R': 3})
+
+        a = {'Resource_List.ncpus': 2, 'queue': 'expressq'}
+        (jid4,) = self.submit_jobs(1, a)
+
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        self.server.expect(JOB, {'job_state': 'S'}, id=jid2)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid4)
+
+        (jid5,) = self.submit_jobs(1)
+        self.server.expect(JOB, 'comment', op=SET)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid5)
+
+        # 3 equivalence classes: 1 for jid1, jid3, and jid5; 1 for jid4;
+        # jid2 by itself because it is suspended.
+        self.scheduler.log_match("Number of job equivalence classes: 3",
+                                 max_attempts=10, starttime=self.t)
+
+        # Make sure jid2 is in its own class.  If it is still in jid5's class
+        # jid5 will not run.  This is because jid2 will be considered first
+        # and mark the entire class as can not run.
+
+        self.server.deljob(jid3, wait=True)
+
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid5)

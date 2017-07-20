@@ -895,7 +895,7 @@ read_usage_v1(FILE *fp, group_info *root)
 int
 read_usage_v2(FILE *fp, int flags, group_info *root)
 {
-	struct group_node_usage_v2 grp = {0};
+	struct group_node_usage_v2 grp;
 	group_info *ginfo;
 	struct group_path *gpath;
 

@@ -3186,7 +3186,6 @@ static int
 lim_callback(void *ctx, enum lim_keytypes kt, char *param, char *namestring,
 	char *res, char *val)
 {
-	static char	id[] = "lim_callback";
 	char		*key = (char *) NULL;
 	char		*v = (char *) NULL;
 
@@ -3918,7 +3917,6 @@ static int
 check_queue_max_project_run(server_info *si, queue_info *qi, resource_resv *rr,
 	limcounts *sc, limcounts *qc, schd_error *err)
 {
-	static char	id[] = "check_queue_max_project_run";
 	char		*key;
 	char		*project;
 	int		used;

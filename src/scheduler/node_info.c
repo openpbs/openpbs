@@ -1649,7 +1649,6 @@ void
 update_node_on_end(node_info *ninfo, resource_resv *resresv, char *job_state)
 {
 	resource_req *resreq = NULL;
-	resource_req *ncpus = NULL;
 	schd_resource *res = NULL;
 	counts *cts;
 	nspec *ns;		/* nspec from resresv for this node */
@@ -4585,7 +4584,6 @@ create_node_array_from_nspec(nspec **nspec_arr)
 node_info **
 reorder_nodes(node_info **nodes, resource_resv *resresv)
 {
-	static char id[] = "reorder_nodes";
 	static node_info **node_array = NULL;
 	static int node_array_size = 0;
 	node_info **nptr;

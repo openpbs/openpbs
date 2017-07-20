@@ -265,6 +265,9 @@ new_schd_error(void);
 schd_error *
 dup_schd_error(schd_error *oerr);
 
+/* like copy constructor but don't dup error structure */
+void copy_schd_error(schd_error *err, schd_error *oerr);
+
 /* does a shallow copy err = oerr safely moving all argument data to err */
 void
 move_schd_error(schd_error *err, schd_error *oerr);

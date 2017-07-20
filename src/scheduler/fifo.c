@@ -1389,9 +1389,6 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 	/* used for resresv array */
 	resource_resv *array = NULL;		/* used to hold array ptr */
 
-	struct batch_status *bs;		/* used for rescspec res assignment */
-	struct attrl *attrp;			/* used for rescspec res assignment */
-	resource_req *req;
 	unsigned int eval_flags = NO_FLAGS;	/* flags to pass to eval_selspec() */
 	timed_event *te;			/* used to create timed events */
 	resource_resv *rr;
@@ -1504,6 +1501,10 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 		if (ns != NULL) {
 #ifdef RESC_SPEC /* Hack to make rescspec work with new select code */
 			if (rr->is_job && rr->job->rspec != NULL && ns[0] != NULL) {
+				struct batch_status *bs;		/* used for rescspec res assignment */
+				struct attrl *attrp;			/* used for rescspec res assignment */
+				resource_req *req;
+
 				bs = rescspec_get_assignments(rr->job->rspec);
 				if (bs != NULL) {
 					attrp = bs->attribs;

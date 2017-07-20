@@ -1506,8 +1506,6 @@ check_nodes(status *policy, resource_resv *resresv, node_info **ninfo_arr,
 	nspec **nspec_arr = NULL;
 	selspec *spec = NULL;
 	place *pl = NULL;
-	place place_spec;
-
 	int rc;
 
 	if (resresv == NULL || ninfo_arr == NULL || err == NULL) {
