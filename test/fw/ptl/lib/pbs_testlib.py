@@ -4895,6 +4895,14 @@ class Server(PBSService):
             queues = self.status(QUEUE, level=logging.DEBUG)
             queues = [q['id'] for q in queues]
             if len(queues) > 0:
+                try:
+                    nodes = self.status(VNODE, logerr=False)
+                    for node in nodes:
+                        if 'queue' in node.keys():
+                            self.manager(MGR_CMD_UNSET, NODE, 'queue',
+                                         node['id'])
+                except:
+                    pass
                 self.manager(MGR_CMD_DELETE, QUEUE, id=queues, expect=True)
             a = {ATTR_qtype: 'Execution',
                  ATTR_enable: 'True',

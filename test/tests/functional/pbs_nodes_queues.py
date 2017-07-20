@@ -72,13 +72,6 @@ class TestNodesQueues(TestFunctional):
             a['resources_available.foo'] = 'B'
         return dict(attrib.items() + a.items())
 
-    def tearDown(self):
-        self.server.manager(MGR_CMD_UNSET, NODE, 'queue', id='vnode[0]')
-        self.server.manager(MGR_CMD_UNSET, NODE, 'queue', id='vnode[1]')
-        self.server.manager(MGR_CMD_UNSET, NODE, 'queue', id='vnode[2]')
-        self.server.manager(MGR_CMD_UNSET, NODE, 'queue', id='vnode[3]')
-        TestFunctional.tearDown(self)
-
     def test_node_queue_assoc_ignored(self):
         """
         Issue with node grouping and nodes associated with queues.  If

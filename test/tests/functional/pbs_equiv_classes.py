@@ -908,9 +908,6 @@ class TestEquivClass(TestFunctional):
         self.scheduler.log_match("Number of job equivalence classes: 3",
                                  max_attempts=10, starttime=self.t)
 
-        self.server.manager(MGR_CMD_UNSET, NODE, 'queue',
-                            id='vnode[0]')
-
     def test_prime_queue(self):
         """
         Test to see if a job in a primetime queue has its queue be part of
