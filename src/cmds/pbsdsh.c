@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1994-2017 Altair Engineering, Inc.
+ * Copyright (C) 1994-2016 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *  
  * This file is part of the PBS Professional ("PBS Pro") software.
@@ -367,11 +367,24 @@ main(int argc, char *argv[], char *envp[])
 	sigprocmask(SIG_BLOCK, &allsigs, NULL);
 #endif
 
+	char ** dados;
+	dados = (char**) calloc(1,sizeof(char*));
+
+	dados[0] = (char*)calloc(100,sizeof(char));
+	
+	
+
 	for (c = 0; c < (stop-start); ++c) {
 		nd = (start + c) % numnodes;
+		
+		char buffer[5];
+		sprintf (buffer,"%d",c);
+		strcpy(dados[0],"VNODENUM=");
+		strcat(dados[0],buffer);
 		if ((rc = tm_spawn(argc-optind,
 			argv+optind,
-			NULL,
+//			NULL,
+			dados,
 			*(nodelist + nd),
 			tid + c,
 			events_spawn + c)) != TM_SUCCESS) {
