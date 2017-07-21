@@ -202,6 +202,14 @@
 			>
 		</File>
 		<File
+			RelativePath="..\..\src\include\pbs_sched.h"
+			>
+		</File>
+		<File
+			RelativePath="..\..\src\include\pbs_share.h"
+			>
+		</File>
+		<File
 			RelativePath="..\..\src\include\pbs_version.h"
 			>
 		</File>

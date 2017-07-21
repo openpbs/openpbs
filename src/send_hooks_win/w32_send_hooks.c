@@ -126,7 +126,7 @@ unsigned int	pbs_scheduler_port = 0;
 struct python_interpreter_data  svr_interp_data;
 
 struct server	server;		/* the server structure */
-struct sched	scheduler;	/* the sched structure */
+struct pbs_sched	*dflt_scheduler;	/* the sched structure */
 char	        server_host[PBS_MAXHOSTNAME+1];	/* host_name  */
 char	        primary_host[PBS_MAXHOSTNAME+1]; /* host_name of primary */
 int		shutdown_who;		/* see req_shutdown() */
@@ -166,6 +166,7 @@ struct license_used  usedlicenses;
 struct resc_sum *svr_resc_sum;
 attribute      *pbs_float_lic;
 pbs_list_head	svr_queues;            /* list of queues                   */
+pbs_list_head	svr_allscheds;         /* list of schedulers               */
 pbs_list_head	svr_alljobs;           /* list of all jobs in server       */
 pbs_list_head	svr_newjobs;           /* list of incomming new jobs       */
 pbs_list_head	svr_allresvs;          /* all reservations in server */

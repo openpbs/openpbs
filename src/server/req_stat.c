@@ -810,6 +810,7 @@ req_stat_sched(struct batch_request *preq)
 	struct batch_reply *preply;
 	struct brp_status  *pstat;
 	int rc = 0;
+	pbs_sched *psched;
 
 	/* allocate a reply structure and a status sub-structure */
 
@@ -817,7 +818,7 @@ req_stat_sched(struct batch_request *preq)
 	preply->brp_choice = BATCH_REPLY_CHOICE_Status;
 	CLEAR_HEAD(preply->brp_un.brp_status);
 
-	pbs_sched *psched = NULL;
+	psched = NULL;
 	if(strlen(preq->rq_ind.rq_status.rq_id) != 0) {
 		psched = find_scheduler(preq->rq_ind.rq_status.rq_id);
 		if(psched) {
