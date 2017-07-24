@@ -165,6 +165,7 @@ libpbs_la_SOURCES = \
 	../Libifl/dec_attropl.c \
 	../Libifl/dec_rpyc.c \
 	../Libifl/dec_svrattrl.c \
+	../Libifl/dec_ModifyResv.c \
 	../Libifl/enc_CopyHookFile.c \
 	../Libifl/enc_CpyFil.c \
 	../Libifl/enc_DelHookFile.c \
@@ -188,6 +189,7 @@ libpbs_la_SOURCES = \
 	../Libifl/enc_attropl.c \
 	../Libifl/enc_reply.c \
 	../Libifl/enc_SubmitResv.c \
+	../Libifl/enc_ModifyResv.c \
 	../Libifl/enc_svrattrl.c \
 	../Libifl/entlim_parse.c \
 	../Libifl/execution_mode.c \
@@ -206,6 +208,7 @@ libpbs_la_SOURCES = \
 	../Libifl/int_submit_resv.c \
 	../Libifl/int_status.c \
 	../Libifl/int_ucred.c \
+	../Libifl/int_modify_resv.c \
 	../Libifl/list_link.c \
 	../Libifl/PBS_attr.c \
 	../Libifl/PBS_data.c \
@@ -248,6 +251,7 @@ libpbs_la_SOURCES = \
 	../Libifl/pbsD_confirmresv.c \
 	../Libifl/pbsD_defschreply.c \
 	../Libifl/pbsD_statrsc.c \
+	../Libifl/pbsD_modify_resv.c \
 	../Libifl/ifl_impl.c \
 	../Libifl/rpp.c \
 	../Libifl/strsep.c \

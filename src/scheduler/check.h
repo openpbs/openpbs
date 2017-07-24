@@ -132,7 +132,8 @@ sch_resource_t find_counts_elm(counts *cts_list, char *name, char *res);
  *      check_nodes - check to see if there is suficient nodes available to
  *                    run a job.
  */
-nspec **check_nodes(status *policy, resource_resv *resresv, node_info **ninfo_arr, node_partition **nodepart, unsigned int flags, schd_error *err);
+nspec **check_nodes(status *policy, server_info *sinfo, queue_info *qinfo, resource_resv *resresv, unsigned int flags, schd_error *err);
+
 
 /*
  *      is_node_available - determine that there is a node available to run
@@ -225,26 +226,11 @@ schd_resource *zero_res(void);
 schd_resource *unset_str_res(void);
 
 /*
- *	find_correct_nodes - find the correct node_info and node partition
- *			     arrays to use for satisfing a job/resv
- *
- *
- *	  IN : sinfo - server associated with job/resv
- *	  IN : qinfo - queue associated with job (NULL if resv)
- *	  IN : resresv - the job/resv
- *	  OUT: ninfo_arr - the correct node array
- *	  OUT: nodepart - the correct node partition array
- *
- *	returns 1 on success or 0 on failure/error
- */
-int find_correct_nodes(status *policy, server_info *sinfo, queue_info *qinfo, resource_resv *resresv, node_info ***ninfo_arr, node_partition ***nodepart);
-
-/*
- *	get_job_spec - gets the correct select and placement specification
+ *	get_resresv_spec - gets the correct select and placement specification
  *
  *	returns void
  */
-void get_job_spec( resource_resv *resresv, selspec **spec, place **pl );
+void get_resresv_spec(resource_resv *resresv, selspec **spec, place **pl);
 #ifdef	__cplusplus
 }
 #endif

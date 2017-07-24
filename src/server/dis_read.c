@@ -684,6 +684,10 @@ dis_request_read(int sfds, struct batch_request *request)
 			rc = decode_DIS_MomRestart(sfds, request);
 			break;
 
+		case PBS_BATCH_ModifyResv:
+			decode_DIS_ModifyResv(sfds, request);
+			break;
+
 #else	/* yes PBS_MOM */
 
 		case PBS_BATCH_CopyHookFile:

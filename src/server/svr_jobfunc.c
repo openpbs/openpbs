@@ -147,7 +147,7 @@ static void Time4reply(struct work_task  *);
 static void Time4resv(struct work_task*);
 static void Time4resv1(struct work_task*);
 static void resvFinishReply(struct work_task *);
-static int  change_enableORstart(resc_resv *, int, char *);
+int  change_enableORstart(resc_resv *, int, char *);
 static void handle_qmgr_reply_to_startORenable(struct work_task *);
 static void delete_occurrence_jobs(resc_resv *presv);
 static void Time4occurrenceFinish(resc_resv *);
@@ -3100,11 +3100,11 @@ static	void
 Time4reply(struct work_task *ptask)
 {
 	resc_resv	*presv = ptask->wt_parm1;
-	char		buf[256];
+	char		buf[256] = {0};
 
 	if (presv->ri_brp) {
-		buf[0] = '\0';
-		if (presv->ri_qs.ri_state == RESV_UNCONFIRMED)
+		if (presv->ri_qs.ri_state == RESV_UNCONFIRMED ||
+			presv->ri_qs.ri_state == RESV_BEING_ALTERED)
 			sprintf(buf, "%s UNCONFIRMED",  presv->ri_qs.ri_resvID);
 		else if (presv->ri_qs.ri_state == RESV_CONFIRMED) {
 			/*Remark: this part of the if is unlikely to happen*/
@@ -3191,6 +3191,7 @@ Time4resv(struct work_task *ptask)
 			account_resvstart(presv);
 		}
 
+		presv->resv_start_task = NULL;
 		if ((ptask = set_task(WORK_Timed, time_now + 60,
 			Time4resv1, presv)) != 0) {
 
@@ -3284,6 +3285,7 @@ Time4resvFinish(struct work_task *ptask)
 	 *    3.a) Determine if occurrences were missed
 	 *    3.b) Add the next occurrence start and end event on the work task 	 *
 	 */
+	presv->resv_end_task = NULL;
 	if (presv->ri_wattr[RESV_ATR_resv_count].at_val.at_long > 1) {
 		int ridx = presv->ri_wattr[RESV_ATR_resv_idx].at_val.at_long;
 		int rcount = presv->ri_wattr[RESV_ATR_resv_count].at_val.at_long;
@@ -3369,36 +3371,45 @@ Time4resvFinish(struct work_task *ptask)
 static void
 Time4occurrenceFinish(resc_resv *presv)
 {
-	time_t newend, newstart;
-	int state, sub;
-	int rc;
-	int ridx;
-	int rcount;
-	int rcount_adjusted;
-	char *execvnodes;
-	char *newxc;
-	char **short_xc;
-	char **tofree;
-	char *rrule;
-	char *tz;
-	time_t dtstart;
-	time_t dtend;
-	time_t next;
-	time_t now;
-	struct work_task *ptask;
-	pbsnode_list_t *pl;
-	char   start_time[9];	/* 9 = sizeof("%H:%M:%S")[=8] + 1('\0') */
+	time_t			newend;
+	time_t			newstart;
+	int			state = 0;
+	int			sub = 0;
+	int			rc = 0;
+	int			rcount_adjusted = 0;
+	char			*execvnodes = NULL;
+	char			*newxc = NULL;
+	char			**short_xc = NULL;
+	char			**tofree = NULL;
+	time_t			dtstart;
+	time_t			dtend;
+	time_t			next;
+	time_t			now;
+	struct work_task	*ptask = NULL;
+	pbsnode_list_t		*pl = NULL;
+	char			start_time[9] = {0};	/* 9 = sizeof("%H:%M:%S")[=8] + 1('\0') */
+	resource_def		*rscdef = NULL;
+	resource		*prsc = NULL;
+	attribute		atemp = {0};
+	int			j = 2;
+	int			ridx = presv->ri_wattr[RESV_ATR_resv_idx].at_val.at_long;
+	int			rcount = presv->ri_wattr[RESV_ATR_resv_count].at_val.at_long;
+	char			*rrule = presv->ri_wattr[RESV_ATR_resv_rrule].at_val.at_str;
+	char			*tz = presv->ri_wattr[RESV_ATR_resv_timezone].at_val.at_str;
 
 	/* the next occurrence returned by get_occurrence is counted from the current
 	 * one which is at index 1. */
-	int j = 2;
 
-	ridx = presv->ri_wattr[RESV_ATR_resv_idx].at_val.at_long;
-	rcount = presv->ri_wattr[RESV_ATR_resv_count].at_val.at_long;
-	rrule  = presv->ri_wattr[RESV_ATR_resv_rrule].at_val.at_str;
-	tz = presv->ri_wattr[RESV_ATR_resv_timezone].at_val.at_str;
-	dtstart = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
-	dtend = dtstart+ presv->ri_qs.ri_duration;
+	/* If the start time of the reservation was altered, copy from RESV_ATR_start
+ 	 * will make the next instance to have it's start time altered so take the start
+ 	 * time from the ri_alter_stime. */
+	if (presv->ri_alter_stime) {
+		dtstart = presv->ri_alter_stime;
+		presv->ri_alter_stime = 0;
+	} else
+		dtstart = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
+
+	dtend = presv->ri_wattr[RESV_ATR_end].at_val.at_long;
 	next = dtstart;
 	now = time((time_t *) 0);
 
@@ -3409,7 +3420,11 @@ Time4occurrenceFinish(resc_resv *presv)
 	while (dtend <= now && next != -1) {
 		/* get occurrence that is "j" numbers away from dtstart. */
 		next = get_occurrence(rrule, dtstart, tz, j);
-		dtend = next+ presv->ri_qs.ri_duration;
+		if (presv->ri_alter_standing_reservation_duration) {
+			presv->ri_qs.ri_duration = presv->ri_alter_standing_reservation_duration;
+			presv->ri_alter_standing_reservation_duration = 0;
+		}
+		dtend = next + presv->ri_qs.ri_duration;
 
 		/* Index of next occurrence from dtstart*/
 		j++;
@@ -3491,7 +3506,7 @@ Time4occurrenceFinish(resc_resv *presv)
 
 	/* Set the new start time, end time, and occurrence index */
 	newstart = next;
-	newend = (time_t)(newstart +presv->ri_qs.ri_duration);
+	newend = (time_t)(newstart + presv->ri_qs.ri_duration);
 
 	presv->ri_wattr[RESV_ATR_start].at_val.at_long = newstart;
 	presv->ri_wattr[RESV_ATR_start].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY
@@ -3507,6 +3522,17 @@ Time4occurrenceFinish(resc_resv *presv)
 	presv->ri_wattr[RESV_ATR_resv_idx].at_flags |= ATR_VFLAG_SET
 		| ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 
+	presv->ri_wattr[RESV_ATR_duration].at_val.at_long = presv->ri_qs.ri_duration;
+	presv->ri_wattr[RESV_ATR_duration].at_flags |= ATR_VFLAG_SET
+		| ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+
+	rscdef = find_resc_def(svr_resc_def, "walltime", svr_resc_size);
+	prsc = find_resc_entry(&presv->ri_wattr[RESV_ATR_resource], rscdef);
+	atemp.at_flags = ATR_VFLAG_SET;
+	atemp.at_type = ATR_TYPE_LONG;
+	atemp.at_val.at_long = presv->ri_qs.ri_duration;
+	rscdef->rs_set(&prsc->rs_value, &atemp, SET);
+	presv->ri_wattr[RESV_ATR_resource].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 
 	/* Assign the allocated resources to the reservation
 	 * and the reservation to the associated vnodes
@@ -3808,7 +3834,21 @@ eval_resvState(resc_resv *presv, enum resvState_discrim s, int relVal,
 
 	if (s == RESVSTATE_gen_task_Time4resv) {
 		if (relVal == 0) {
-			if (presv->ri_qs.ri_etime > time_now) {
+			if (*pstate == RESV_BEING_ALTERED) {
+				/*
+				 * Altering a reservation's start time after the current time
+				 * moves the reservation into the confirmed state.
+				 */
+				if (presv->ri_qs.ri_stime > time_now) {
+
+					*pstate = RESV_CONFIRMED;
+					*psub = RESV_CONFIRMED;
+				} else {
+					/* Altering a reservation after its start time */
+					*pstate = RESV_RUNNING;
+					*psub = RESV_RUNNING;
+				}
+			} else if (presv->ri_qs.ri_etime > time_now) {
 				*pstate = RESV_CONFIRMED;
 				*psub = RESV_CONFIRMED;
 			}
@@ -3854,7 +3894,9 @@ eval_resvState(resc_resv *presv, enum resvState_discrim s, int relVal,
 	} else if (s == RESVSTATE_req_resvSub) {
 		*pstate = RESV_UNCONFIRMED;
 		*psub = RESV_UNCONFIRMED;
-	}
+	} else if (s == RESVSTATE_alter_failed)
+		/* backup only the state, as substate was not modified. */
+		*pstate = presv->ri_alter_state;
 }
 
 
@@ -3980,6 +4022,9 @@ gen_task_Time4resv(resc_resv *presv)
 	if (ap->at_val.at_long == RESV_NONE)
 		return    PBSE_INTERNAL;
 
+	if (presv->resv_start_task)
+		delete_task(presv->resv_start_task);
+	presv->resv_start_task = NULL;
 	startTime = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
 	if ((ptask = set_task(WORK_Timed, startTime,
 		Time4resv, presv)) != 0) {
@@ -3993,6 +4038,7 @@ gen_task_Time4resv(resc_resv *presv)
 		 * a request to enable the reservation's queue
 		 */
 		rc = change_enableORstart(presv, Q_CHNG_ENABLE, "True");
+		presv->resv_start_task = ptask;
 
 	} else
 		rc = PBSE_SYSTEM;
@@ -4128,10 +4174,13 @@ gen_negI_deleteResv(resc_resv *presv, long fromNow)
 int
 gen_future_deleteResv(resc_resv *presv, long fromNow)
 {
-	struct work_task	*ptask;
+	struct work_task	*ptask = NULL;
 	int			rc = 0;		/*assume success*/
 	long			event = (long)time_now + fromNow;
 
+	if (presv->resv_end_task)
+		delete_task(presv->resv_end_task);
+	presv->resv_end_task = NULL;
 	if ((ptask = set_task(WORK_Timed, event,
 		Time4resvFinish, presv)) != 0) {
 
@@ -4142,6 +4191,7 @@ gen_future_deleteResv(resc_resv *presv, long fromNow)
 
 		append_link(&presv->ri_svrtask, &ptask->wt_linkobj, ptask);
 		presv->ri_futuredr = 1;
+		presv->resv_end_task = ptask;
 	} else
 		rc = PBSE_SYSTEM;
 
@@ -4213,7 +4263,7 @@ gen_future_reply(resc_resv *presv, long fromNow)
  * @retval	0	: if build and issuance successful
  * @retval	!=0	: error code if function fails
  */
-static int
+int
 change_enableORstart(resc_resv *presv, int which, char *value)
 {
 	extern char  *msg_internalReqFail;
@@ -4541,16 +4591,17 @@ uniq_nameANDfile(char *pname, char *psuffix, char *pdir)
 int
 start_end_dur_wall(void *pobj, int objtype)
 {
-	job		*pjob;
+	job		*pjob = NULL;
 	resc_resv	*presv = (resc_resv *)0;
-	resource_def	*rscdef;
-	resource	*prsc;
-	attribute	*pstime;
-	attribute	*petime;
-	attribute	*pduration;
-	attribute	*pattr;
-	attribute	atemp;
-	attribute_def	*pddef;
+	resource_def	*rscdef = NULL;
+	resource	*prsc = NULL;
+	attribute	*pstime = NULL;
+	attribute	*petime = NULL;
+	attribute	*pduration = NULL;
+	attribute	*pattr = NULL;
+	attribute	atemp = {0};
+	attribute_def	*pddef = NULL;
+	int		pstate = 0;
 
 	int	swcode = 0;	/*"switch code"*/
 	int	rc = 0;		/*return code, assume success*/
@@ -4581,6 +4632,7 @@ start_end_dur_wall(void *pobj, int objtype)
 	} else if (objtype == RESC_RESV_OBJECT) {
 		presv = (resc_resv *)pobj;
 		pstime = &presv->ri_wattr[RESV_ATR_start];
+		pstate = presv->ri_wattr[RESV_ATR_state].at_val.at_long;
 
 		petime = &presv->ri_wattr[RESV_ATR_end];
 
@@ -4606,23 +4658,27 @@ start_end_dur_wall(void *pobj, int objtype)
 	} else
 		return (-1);
 
-	if (pstime->at_flags & ATR_VFLAG_SET)
-		swcode += 1;			/*have start*/
-	if (petime->at_flags & ATR_VFLAG_SET)
-		swcode += 2;			/*have end  */
-	if (pduration->at_flags & ATR_VFLAG_SET)
-		swcode += 4;			/*have duration*/
-	if (prsc)
-		swcode += 8;			/*have walltime*/
-	else if (!(prsc = add_resource_entry(pattr, rscdef)))
-		return (-1);
-
+	if (pstate != RESV_BEING_ALTERED) {
+		if (pstime->at_flags & ATR_VFLAG_SET)
+			swcode += 1;			/*have start*/
+		if (petime->at_flags & ATR_VFLAG_SET)
+			swcode += 2;			/*have end  */
+		if (pduration->at_flags & ATR_VFLAG_SET)
+			swcode += 4;			/*have duration*/
+		if (prsc)
+			swcode += 8;			/*have walltime*/
+		else if (!(prsc = add_resource_entry(pattr, rscdef)))
+			return (-1);
+	}
+	else {
+		swcode = 3;
+	}
 
 	atemp.at_flags = ATR_VFLAG_SET;
 	atemp.at_type = ATR_TYPE_LONG;
 	switch (swcode) {
 		case  3:	/*start, end*/
-			if ((pstime->at_val.at_long < time_now) ||
+			if (((pstime->at_val.at_long < time_now) && (pstate != RESV_BEING_ALTERED)) ||
 				(petime->at_val.at_long <= pstime->at_val.at_long))
 				rc = -1;
 			else {

@@ -66,7 +66,6 @@
  *	false_res()
  *	unset_str_res()
  *	zero_res()
- *	find_correct_nodes()
  *
  */
 #include <pbs_config.h>
@@ -715,17 +714,14 @@ nspec **
 is_ok_to_run(status *policy, int pbs_sd, server_info *sinfo,
 	queue_info *qinfo, resource_resv *resresv, unsigned int flags, schd_error *perr)
 {
-	int rc;				/* Return Code */
-	node_partition **nodepart;	/* node partitions to pass to check_nodes() */
-	node_info **ninfo_arr;		/* node array to pass to check_nodes() */
-	schd_resource *res;			/* resource list to check */
-	int endtime;			/* end time of job if started now */
-	nspec **ns_arr;			/* node solution of where request will run */
-	node_partition *allpart;	/* all partition to use (queue's or servers) */
-	schd_error *prev_err = NULL;
-	schd_error *err;
-	resource_req *resreq = NULL;
-
+	int		rc = 0;			/* Return Code */
+	schd_resource	*res = NULL;		/* resource list to check */
+	int		endtime = 0;		/* end time of job if started now */
+	nspec		**ns_arr = NULL;	/* node solution of where request will run */
+	node_partition	*allpart = NULL;	/* all partition to use (queue's or servers) */
+	schd_error	*prev_err = NULL;
+	schd_error	*err;
+	resource_req	*resreq = NULL;
 
 	if (sinfo == NULL || resresv == NULL || perr == NULL)
 		return NULL;
@@ -769,9 +765,11 @@ is_ok_to_run(status *policy, int pbs_sd, server_info *sinfo,
 				return NULL;
 		}
 
-		/* if a reservation is unconfirmed, we can try and confirm it */
-		if (resresv->is_adv_resv &&
-			resresv->resv->resv_state != RESV_UNCONFIRMED) {
+		/* if a reservation is unconfirmed or being altered, we can try and confirm it */
+		if ((resresv->is_resv) && 
+			resresv->resv->resv_state != RESV_UNCONFIRMED &&
+			resresv->resv->resv_state != RESV_BEING_ALTERED) {
+
 			set_schd_error_codes(err, NOT_RUN, NOT_QUEUED);
 			add_err(&prev_err, err);
 
@@ -908,7 +906,7 @@ is_ok_to_run(status *policy, int pbs_sd, server_info *sinfo,
 #endif /* localmod 034 */
 		}
 	}
-	if (resresv->is_job || (resresv->is_adv_resv && !conf.resv_conf_ignore)) {
+	if (resresv->is_job || (resresv->is_resv && !conf.resv_conf_ignore)) {
 		if ((rc = check_ded_time_boundary(resresv))) {
 			set_schd_error_codes(err, NOT_RUN, rc);
 			add_err(&prev_err, err);
@@ -932,7 +930,7 @@ is_ok_to_run(status *policy, int pbs_sd, server_info *sinfo,
 				resresv->select->total_cpus, sinfo->flt_lic);
 			set_schd_error_arg(err, SPECMSG, errbuf);
 		}
-		else if (resresv->is_adv_resv && resresv->resv !=NULL) {
+		else if (resresv->is_resv && resresv->resv !=NULL) {
 			sprintf(errbuf,
 				"Could not confirm reservation - unable to obtain %d cpu licenses at requested time. avail_licenses=%d",
 				resresv->select->total_cpus, sinfo->flt_lic);
@@ -1021,7 +1019,7 @@ is_ok_to_run(status *policy, int pbs_sd, server_info *sinfo,
 	 * because the server resources_assigned will already reflect the entire
 	 * resource amount for the reservation
 	 */
-	if (resresv->is_adv_resv ||
+	if (resresv->is_resv ||
 	(resresv->is_job && resresv->job->resv == NULL)) {
 		res = simulate_resmin(sinfo->res, endtime, sinfo->calendar, NULL, resresv);
 		if ((resresv->job != NULL) && (resresv->job->resreq_rel != NULL))
@@ -1057,21 +1055,7 @@ is_ok_to_run(status *policy, int pbs_sd, server_info *sinfo,
 		}
 	}
 
-
-	if (!find_correct_nodes(policy, sinfo, qinfo, resresv, &ninfo_arr, &nodepart)) {
-		set_schd_error_codes(err, NOT_RUN, SCHD_ERROR);
-		add_err(&prev_err, err);
-
-		if (!(flags & RETURN_ALL_ERR)) {
-			return NULL;
-		} else {
-			err = new_schd_error();
-			if(err == NULL)
-				return NULL;
-		}
-	}
-
-	ns_arr = check_nodes(policy, resresv, ninfo_arr, nodepart, flags, err);
+	ns_arr = check_nodes(policy, sinfo, qinfo, resresv, flags, err);
 
 	if (err->error_code != SUCCESS)
 		add_err(&prev_err, err);
@@ -1485,36 +1469,140 @@ dedtime_conflict(resource_resv *resresv)
 }
 /**
  *	@brief
- *		check to see if there is sufficient nodes available to run a job.
+ *		check to see if there is sufficient nodes available to run a job/resv.
  *
  * @param[in]	policy	-	policy info
- * @param[in]	pbs_sd	-	communication descriptor to the pbs server
+ * @param[in]	sinfo	-	server associated with job/resv
+ * @param[in]	qinfo	-	queue associated with job (NULL if resv)
  * @param[in]	resresv	-	resource resv to check
- * @param[in]	nodes	-	the nodes available
- * @param[in]	nodepart	-	the node partitioning array
- * @param[out]	err	-	error structure on why job can't run
+ * @param[in]	flags   -	flags to change functions behavior
+ *					EVAL_OKBREAK - ok to break chunk up across vnodes
+ *					EVAL_EXCLSET - allocate entire nodelist exclusively
+ * @param[out]	err	-	error structure on why job/resv can't run
  *
  * @return	nspec **
- * @retval	node solution of where the job will run
- * @retval	NULL	: if the job can't run now
+ * @retval	node solution of where the job/resv will run
+ * @retval	NULL	: if the job/resv can't run now
  *
  */
 nspec **
-check_nodes(status *policy, resource_resv *resresv, node_info **ninfo_arr,
-	node_partition **nodepart, unsigned int flags, schd_error *err)
+check_nodes(status *policy, server_info *sinfo, queue_info *qinfo, resource_resv *resresv, unsigned int flags, schd_error *err)
 {
-	nspec **nspec_arr = NULL;
-	selspec *spec = NULL;
-	place *pl = NULL;
-	int rc;
+	nspec			**nspec_arr = NULL;
+	selspec			*spec = NULL;
+	place			*pl = NULL;
+	int			rc = 0;
+	char			*grouparr[2] = {0};
+	np_cache		*npc = NULL;
+	int			error = 0;
+	node_partition		**nodepart = NULL;
+	node_info		**ninfo_arr = NULL;
 
-	if (resresv == NULL || ninfo_arr == NULL || err == NULL) {
+	if (sinfo == NULL || resresv == NULL || err == NULL) {
 		if (err != NULL)
 			set_schd_error_codes(err, NOT_RUN, SCHD_ERROR);
 		return NULL;
 	}
 
-	get_job_spec(resresv, &spec, &pl);
+	if (resresv->is_job) {
+		if (qinfo == NULL)
+			return NULL;
+
+		if (resresv->job == NULL)
+			return NULL;
+
+		if (resresv->job->resv != NULL && resresv->job->resv->resv == NULL)
+			return NULL;
+	}
+
+	/* For a reservation alter, if the reservation has not started running
+	 * note that alternate nodes (that do not belong to the reservation)
+	 * should also be looked at if the alter cannot be confirmed on the
+	 * nodes belonging to the reservation.
+	 */
+	if (resresv->is_resv && resresv->resv &&
+		resresv->resv->resv_state == RESV_BEING_ALTERED &&
+		resresv->resv->resv_substate == RESV_CONFIRMED) {
+
+		resresv->resv->check_alternate_nodes = 1;
+	}
+
+	/* Sets of nodes:
+	   * 1. job is in a reservation - use reservation nodes
+	   * 2. job or reservation has nodes -- use them
+	   * 3. queue job is in has nodes associated with it - use queue's nodes
+	   * 4. catchall - either the job is being run on nodes not associated with
+	   * any queue, or we're node grouping and we the job can't fit into any
+	   * node partition, therefore it falls in here
+	   */
+
+	/* if we're in a reservation, only check nodes assigned to the resv
+	 * and not worry about node grouping since the nodes for the reservation
+	 * are already in a group
+	 */
+	if (resresv->is_job && resresv->job->resv != NULL) {
+		ninfo_arr = resresv->job->resv->resv->resv_nodes;
+		nodepart = NULL;
+	}
+	else if (resresv->is_resv && resresv->resv && resresv->resv->check_alternate_nodes) {
+		ninfo_arr = sinfo->unassoc_nodes;
+		nodepart = NULL;
+	}
+	/* if we have nodes, use them
+	 * don't care about node grouping because nodes are already assigned
+	 * to the job.  We won't need to search for them.
+	 */
+	else if (resresv->ninfo_arr != NULL) {
+		ninfo_arr = resresv->ninfo_arr;
+		nodepart = NULL;
+	} else {
+		if (resresv->is_job && qinfo->nodepart != NULL)
+			nodepart = qinfo->nodepart;
+		else if (sinfo->nodepart != NULL)
+			nodepart = sinfo->nodepart;
+		else
+			nodepart = NULL;
+
+		/* if there are nodes assigned to the queue, then check those */
+		if (resresv->is_job && qinfo->has_nodes)
+			ninfo_arr = qinfo->nodes;
+		/* last up we're not in a queue with nodes -- use the unassociated nodes */
+		else
+			ninfo_arr = sinfo->unassoc_nodes;
+	}
+
+	if (resresv->node_set_str != NULL) {
+		/* Note that jobs inside reservations have their node_set
+		 * created in query_reservations()
+		 */
+		if (resresv->node_set == NULL) {
+			resresv->node_set = create_node_array_from_str(
+				qinfo->num_nodes > 0 ? qinfo->nodes :
+				sinfo->unassoc_nodes,
+				resresv->node_set_str);
+		}
+		ninfo_arr = resresv->node_set;
+		nodepart = NULL;
+	}
+
+	/* job's place=group=res replaces server or queue node grouping
+	 * We'll search the node partition cache for the job's pool of node partitions
+	 * If it doesn't exist, we'll create it and add it to the cache
+	 */
+	if (resresv->place_spec->group != NULL) {
+		grouparr[0] = resresv->place_spec->group;
+		grouparr[1] = NULL;
+		npc = find_alloc_np_cache(policy, &(sinfo->npc_arr), grouparr, ninfo_arr, cmp_placement_sets);
+		if (npc != NULL)
+			nodepart = npc->nodepart;
+		else
+			error = 1;
+	}
+
+	if (ninfo_arr == NULL || error)
+		return NULL;
+
+	get_resresv_spec(resresv, &spec, &pl);
 
 	err->status_code = NOT_RUN;
 	rc = eval_selspec(policy, spec, pl, ninfo_arr, nodepart, resresv,
@@ -1855,120 +1943,7 @@ zero_res()
 }
 
 /**
- * @brief
- * 		find the correct node_info and node partition
- *			     arrays to use for satisfying a job/resv
- *
- * @param[in]	policy	-	policy info
- * @param[in]	sinfo	-	server associated with job/resv
- * @param[in]	qinfo	-	queue associated with job (NULL if resv)
- * @param[in]	resresv -	the job/resv
- * @param[out]	ninfo_arr	-	the correct node array
- * @param[out]	nodepart	-	the correct node partition array
- *
- * @return	int
- * @retval	1	: on success
- * @retval	0	: on failure/error
- *
- */
-int
-find_correct_nodes(status *policy, server_info *sinfo, queue_info *qinfo, resource_resv *resresv, node_info ***ninfo_arr, node_partition ***nodepart)
-{
-	char *grouparr[2];
-	np_cache *npc;
-	int error = 0;
-
-	if (sinfo == NULL || resresv == NULL || ninfo_arr == NULL || nodepart == NULL)
-		return 0;
-
-	if (resresv->is_job) {
-		if (qinfo == NULL)
-			return 0;
-
-		if (resresv->job == NULL)
-			return 0;
-
-		if (resresv->job->resv != NULL && resresv->job->resv->resv == NULL)
-			return 0;
-	}
-
-	/* Sets of nodes:
-	   * 1. job is in a reservation - use reservation nodes
-	   * 2. job has nodes -- use them
-	   * 3. queue job is in has nodes associated with it - use queue's nodes
-	   * 4. catchall - either the job is being run on nodes not associated with
-	   *    any queue, or we're node grouping and we the job can't fit into any
-	   *    node partition, therefore it falls in here
-	   */
-
-	/* if we're in a reservation, only check nodes assigned to the resv
-	 * and not worry about node grouping since the nodes for the reservation
-	 * are already in a group
-	 */
-	if (resresv->is_job && resresv->job->resv != NULL) {
-		*ninfo_arr = resresv->job->resv->resv->resv_nodes;
-		*nodepart = NULL;
-	}
-	/* if we have nodes, use them
-	 * don't care about node grouping because nodes are already assigned
-	 * to the job.  We won't need to search for them
-	 */
-	else if (resresv->ninfo_arr != NULL) {
-		*ninfo_arr = resresv->ninfo_arr;
-		*nodepart = NULL;
-	}
-	else {
-		if (resresv->is_job && qinfo->nodepart !=NULL)
-			*nodepart = qinfo->nodepart;
-		else if (sinfo->nodepart != NULL)
-			*nodepart = sinfo->nodepart;
-		else
-			*nodepart = NULL;
-
-		/* if there are nodes assigned to the queue, then check those */
-		if (resresv->is_job && qinfo->has_nodes)
-			*ninfo_arr = qinfo->nodes;
-		/* last up we're not in a queue with nodes -- use the unassociated nodes */
-		else
-			*ninfo_arr = sinfo->unassoc_nodes;
-	}
-
-	if (resresv->node_set_str != NULL) {
-		/* Note that jobs inside reservations have their node_set
-		 * created in query_reservations()
-		 */
-		if (resresv->node_set == NULL) {
-			resresv->node_set = create_node_array_from_str(
-				qinfo->num_nodes > 0 ? qinfo->nodes :
-				sinfo->unassoc_nodes,
-				resresv->node_set_str);
-		}
-		*ninfo_arr = resresv->node_set;
-		*nodepart = NULL;
-	}
-
-	/* job's place=group=res replaces server or queue node grouping
-	 * We'll search the node partition cache for the job's pool of node partitions
-	 * If it doesn't exist, we'll create it and add it to the cache
-	 */
-	if (resresv->place_spec->group !=NULL) {
-		grouparr[0] = resresv->place_spec->group;
-		grouparr[1] = NULL;
-		npc = find_alloc_np_cache(policy, &(sinfo->npc_arr), grouparr, *ninfo_arr, cmp_placement_sets);
-		if (npc != NULL)
-			*nodepart = npc->nodepart;
-		else
-			error = 1;
-	}
-
-	if (*ninfo_arr == NULL || error)
-		return 0;
-
-	return 1;
-}
-
-/**
- * @brief get_job_spec - this function returns the correct value of select and
+ * @brief get_resresv_spec - this function returns the correct value of select and
  *	    place to be used for node searching.
  * @param[in]  *resresv resources reservation object
  * @param[out] **spec output select specification
@@ -1977,12 +1952,12 @@ find_correct_nodes(status *policy, server_info *sinfo, queue_info *qinfo, resour
  * @par MT-Safe: No
  * @return void
  */
-void get_job_spec(resource_resv *resresv, selspec **spec, place **pl)
+void get_resresv_spec(resource_resv *resresv, selspec **spec, place **pl)
 {
 	static place place_spec;
 	if (resresv->is_job && resresv->job != NULL) {
-		if (resresv->job->execselect != NULL) {
-			*spec = resresv->job->execselect;
+		if (resresv->execselect != NULL) {
+			*spec = resresv->execselect;
 			place_spec = *resresv->place_spec;
 
 			/* Placement was handled the first time.  Don't let it get in the way */
@@ -1993,9 +1968,13 @@ void get_job_spec(resource_resv *resresv, selspec **spec, place **pl)
 			*pl = resresv->place_spec;
 			*spec = resresv->select;
 		}
-	} else {
-		*spec = resresv->select;
-		*pl = resresv->place_spec;
+	} else if (resresv->is_resv && resresv->resv != NULL) {
+		if (resresv->resv->resv_state == RESV_BEING_ALTERED && !resresv->resv->check_alternate_nodes)
+			*spec = resresv->execselect;
+		else
+			*spec = resresv->select;
+		place_spec = *resresv->place_spec;
+		*pl = &place_spec;
 	}
 }
 

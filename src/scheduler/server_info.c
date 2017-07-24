@@ -417,6 +417,9 @@ query_server(status *pol, int pbs_sd)
 			create_resource_assn_for_node(ninfo);
 
 	}
+
+	adjust_alter_resv_nodes(sinfo->resvs, sinfo->nodes);
+
 	/* Create placement sets  after collecting jobs on nodes because
 	 * we don't want to account for resources consumed by ghost jobs
 	 */
@@ -1559,7 +1562,7 @@ update_server_on_run(status *policy, server_info *sinfo,
 	 *      accounted for and assigned to the reservation.  We don't want to
 	 *      double count them
 	 */
-	if (resresv->is_adv_resv || (qinfo != NULL && qinfo->resv == NULL)) {
+	if (resresv->is_resv || (qinfo != NULL && qinfo->resv == NULL)) {
 		if (resresv->is_job && (job_state != NULL) && (*job_state == 'S'))
 			req = resresv->job->resreq_rel;
 		else
@@ -1721,7 +1724,7 @@ update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
 	 *	if the queue is a reservation then the resources belong to it and not
 	 *	the server
 	 */
-	if (resresv->is_adv_resv || (qinfo != NULL && qinfo->resv ==NULL)) {
+	if (resresv->is_resv || (qinfo != NULL && qinfo->resv ==NULL)) {
 
 		if (resresv->is_job && (job_state != NULL) && (*job_state == 'S'))
 			req = resresv->job->resreq_rel;
@@ -1946,7 +1949,7 @@ check_exit_job(resource_resv *job, void *arg)
 int
 check_run_resv(resource_resv *resv, void *arg)
 {
-	if (resv->is_adv_resv && resv->resv !=NULL)
+	if (resv->is_resv && resv->resv !=NULL)
 		return resv->resv->resv_state == RESV_RUNNING;
 
 	return 0;
@@ -2006,7 +2009,7 @@ check_job_not_in_reservation(resource_resv *job, void *arg)
 int
 check_resv_running_on_node(resource_resv *resv, void *arg)
 {
-	if (resv->is_adv_resv && resv->resv !=NULL) {
+	if (resv->is_resv && resv->resv !=NULL) {
 		if (resv->resv->resv_state == RESV_RUNNING || resv->resv->resv_state == RESV_BEING_DELETED)
 			if (find_node_info(resv->ninfo_arr, (char *) arg))
 				return 1;
@@ -2821,12 +2824,12 @@ update_universe_on_end(status *policy, resource_resv *resresv, char *job_state)
 
 	if (resresv->is_job) {
 		qinfo = resresv->job->queue;
-		if (resresv->job != NULL && resresv->job->execselect != NULL &&
-			resresv->job->execselect->defs != NULL) {
+		if (resresv->job != NULL && resresv->execselect != NULL &&
+			resresv->execselect->defs != NULL) {
 			int need_metadata_update = 0;
-			for (i = 0; resresv->job->execselect->defs[i] != NULL;i++) {
-				if (!resdef_exists_in_array(policy->resdef_to_check, resresv->job->execselect->defs[i])) {
-					add_resdef_to_array(&(policy->resdef_to_check), resresv->job->execselect->defs[i]);
+			for (i = 0; resresv->execselect->defs[i] != NULL;i++) {
+				if (!resdef_exists_in_array(policy->resdef_to_check, resresv->execselect->defs[i])) {
+					add_resdef_to_array(&(policy->resdef_to_check), resresv->execselect->defs[i]);
 					need_metadata_update = 1;
 				}
 			}

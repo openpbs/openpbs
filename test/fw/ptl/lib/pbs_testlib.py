@@ -106,7 +106,7 @@ PBS_HOOK = MGR_OBJ_PBS_HOOK
 (PTL_OR, PTL_AND) = [0, 1]
 
 (IFL_SUBMIT, IFL_SELECT, IFL_TERMINATE, IFL_ALTER,
- IFL_MSG, IFL_DELETE) = [0, 1, 2, 3, 4, 5]
+ IFL_MSG, IFL_DELETE, IFL_RALTER) = [0, 1, 2, 3, 4, 5, 6]
 
 (PTL_API, PTL_CLI) = ['api', 'cli']
 
@@ -214,7 +214,8 @@ CMD_ERROR_MAP = {
     'status': 'PbsStatusError',
     'manager': 'PbsManagerError',
     'submit': 'PbsSubmitError',
-    'terminate': 'PbsQtermError'
+    'terminate': 'PbsQtermError',
+    'alterresv': 'PbsResvAlterError'
 }
 
 
@@ -470,6 +471,10 @@ class PbsQtermError(PtlException):
 
 
 class PtlLogMatchError(PtlFailureException):
+    pass
+
+
+class PbsResvAlterError(PtlException):
     pass
 
 
@@ -4461,6 +4466,7 @@ class Server(PBSService):
         self.version = None
         self.default_queue = None
         self.last_error = []  # type: array. Set for CLI IFL errors. Not reset
+        self.last_out = []  # type: array. Set for CLI IFL output. Not reset
         self.last_rc = None  # Set for CLI IFL return code. Not thread-safe
 
         # default timeout on connect/disconnect set to 60s to mimick the qsub
@@ -7632,7 +7638,7 @@ class Server(PBSService):
         elif cmd in ('alterjob', 'holdjob', 'sigjob', 'msgjob', 'rlsjob',
                      'rerunjob', 'orderjob', 'runjob', 'movejob',
                      'select', 'delete', 'status', 'manager', 'terminate',
-                     'deljob', 'delresv'):
+                     'deljob', 'delresv', 'alterresv'):
             objid = obj
             if 'data' in kwargs:
                 _data = kwargs['data']
@@ -7710,7 +7716,7 @@ class Server(PBSService):
                 return None
         elif cmd in ('alterjob', 'holdjob', 'sigjob', 'msgjob', 'rlsjob',
                      'rerunjob', 'orderjob', 'runjob', 'movejob', 'delete',
-                     'terminate'):
+                     'terminate', 'alterresv'):
             if ret['out']:
                 return int(ret['out'][0])
             else:
@@ -7718,6 +7724,76 @@ class Server(PBSService):
 
         elif cmd in ('manager', 'select', 'status'):
             return eval(out[0])
+
+    def alterresv(self, resvid, attrib, extend=None, runas=None,
+                  logerr=True):
+        """
+        Alter attributes associated to a reservation. Raises
+        ``PbsResvAlterError`` on error.
+
+        :param resvid: identifier of the reservation.
+        :type resvid: str.
+        :param attrib: A dictionary of attributes to set.
+        :type attrib: dictionary.
+        :param extend: extend options.
+        :param runas: run as user.
+        :type runas: str or None.
+        :param logerr: If False, CLI commands do not log error,
+                       i.e. silent mode.
+        :type logerr: bool.
+        :raises: PbsResvAlterError.
+        """
+        prefix = 'reservation alter on ' + self.shortname
+        if runas is not None:
+            prefix += ' as ' + str(runas)
+        prefix += ': ' + resvid
+
+        if attrib is not None:
+            prefix += ' %s' % (str(attrib))
+        self.logger.info(prefix)
+
+        c = None
+        resvid = resvid.split()
+        if self.get_op_mode() == PTL_CLI:
+            pcmd = [os.path.join(self.client_conf['PBS_EXEC'], 'bin',
+                                 'pbs_ralter')]
+            if attrib is not None:
+                _conf = self.default_client_pbs_conf
+                pcmd += self.utils.convert_to_cli(attrib, op=IFL_RALTER,
+                                                  hostname=self.client,
+                                                  dflt_conf=_conf)
+            pcmd += resvid
+            if not self.default_client_pbs_conf:
+                pcmd = ['PBS_CONF_FILE=' + self.client_pbs_conf_file] + pcmd
+                as_script = True
+            else:
+                as_script = False
+            ret = self.du.run_cmd(self.client, pcmd, runas=runas,
+                                  as_script=as_script, level=logging.INFOCLI,
+                                  logerr=logerr)
+            rc = ret['rc']
+            if ret['err'] != ['']:
+                self.last_error = ret['err']
+            if ret['out'] != ['']:
+                self.last_out = ret['out']
+            self.last_rc = rc
+        elif runas is not None:
+            rc = self.pbs_api_as('alterresv', resvid, runas, data=attrib)
+        else:
+            c = self._connect(self.hostname)
+            if c < 0:
+                return c
+            a = self.utils.convert_to_attrl(attrib)
+            rc = pbs_modify_resv(c, resvid, a, extend)
+
+        if rc != 0:
+            raise PbsResvAlterError(rc=rc, rv=False, msg=self.geterrmsg(),
+                                    post=self._disconnect, conn=c)
+        else:
+            return rc
+
+        if c:
+            self._disconnect(c)
 
     def expect(self, obj_type, attrib=None, id=None, op=EQ, attrop=PTL_OR,
                attempt=0, max_attempts=None, interval=None, count=None,
@@ -12838,6 +12914,15 @@ class ResourceResv(PBSObject):
         """
         if 'exec_host' in self.attributes:
             return PbsTypeExecHost(self.attributes['exec_host'])
+        else:
+            return None
+
+    def resvnodes(self):
+        """
+        nodes assigned to a reservation
+        """
+        if 'resv_nodes' in self.attributes:
+            return self.attributes['resv_nodes']
         else:
             return None
 

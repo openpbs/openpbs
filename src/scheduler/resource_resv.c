@@ -139,6 +139,7 @@ new_resource_resv()
 	resresv->project = NULL;
 	resresv->nodepart_name = NULL;
 	resresv->select = NULL;
+	resresv->execselect = NULL;
 
 	resresv->place_spec = NULL;
 
@@ -150,7 +151,7 @@ new_resource_resv()
 
 	resresv->is_job = 0;
 	resresv->is_shrink_to_fit = 0;
-	resresv->is_adv_resv = 0;
+	resresv->is_resv = 0;
 
 	resresv->will_use_multinode = 0;
 
@@ -242,6 +243,9 @@ free_resource_resv(resource_resv *resresv)
 
 	if (resresv->select != NULL)
 		free_selspec(resresv->select);
+
+	if (resresv->execselect != NULL)
+		free_selspec(resresv->execselect);
 
 	if (resresv->place_spec != NULL)
 		free_place(resresv->place_spec);
@@ -357,6 +361,7 @@ dup_resource_resv(resource_resv *oresresv,
 
 	nresresv->nodepart_name = string_dup(oresresv->nodepart_name);
 	nresresv->select = dup_selspec(oresresv->select);
+	nresresv->execselect = dup_selspec(oresresv->execselect);
 
 	nresresv->is_invalid = oresresv->is_invalid;
 	nresresv->can_not_fit = oresresv->can_not_fit;
@@ -424,8 +429,8 @@ dup_resource_resv(resource_resv *oresresv,
 			}
 		}
 	}
-	else if (oresresv->is_adv_resv) {
-		nresresv->is_adv_resv = 1;
+	else if (oresresv->is_resv) {
+		nresresv->is_resv = 1;
 		nresresv->resv = dup_resv_info(oresresv->resv, nsinfo);
 
 #ifdef NAS /* localmod 049 */
@@ -620,7 +625,7 @@ is_resource_resv_valid(resource_resv *resresv, schd_error *err)
 		return 0;
 	}
 
-	if (resresv->is_adv_resv && resresv->resv == NULL) {
+	if (resresv->is_resv && resresv->resv == NULL) {
 		set_schd_error_codes(err, NEVER_RUN, ERR_SPECIAL);
 		set_schd_error_arg(err, SPECMSG, "Reservation has no resv sub-structure");
 		return 0;
@@ -656,7 +661,7 @@ is_resource_resv_valid(resource_resv *resresv, schd_error *err)
 		return 0;
 	}
 
-	if (!resresv->is_job && !resresv->is_adv_resv) {
+	if (!resresv->is_job && !resresv->is_resv) {
 		set_schd_error_codes(err, NEVER_RUN, ERR_SPECIAL);
 		set_schd_error_arg(err, SPECMSG, "Is neither job nor resv");
 		return 0;
@@ -1178,16 +1183,16 @@ update_resresv_on_run(resource_resv *resresv, nspec **nspec_arr)
 				}
 			}
 		}
-		if (resresv->job->execselect ==NULL) {
+		if (resresv->execselect == NULL) {
 			char *selectspec;
 			selectspec = create_select_from_nspec(nspec_arr);
 			if (selectspec != NULL) {
-				resresv->job->execselect = parse_selspec(selectspec);
+				resresv->execselect = parse_selspec(selectspec);
 				free(selectspec);
 			}
 		}
 	}
-	else if (resresv->is_adv_resv && resresv->resv !=NULL) {
+	else if (resresv->is_resv && resresv->resv !=NULL) {
 		resresv->resv->resv_state = RESV_RUNNING;
 
 		resv_queue = find_queue_info(resresv->server->queues,
@@ -1271,11 +1276,11 @@ update_resresv_on_end(resource_resv *resresv, char *job_state)
 				free(resresv->nodepart_name);
 				resresv->nodepart_name = NULL;
 			}
-			free_selspec(resresv->job->execselect);
-			resresv->job->execselect = NULL;
+			free_selspec(resresv->execselect);
+			resresv->execselect = NULL;
 		}
 	}
-	else if (resresv->is_adv_resv && resresv->resv !=NULL) {
+	else if (resresv->is_resv && resresv->resv !=NULL) {
 		resresv->resv->resv_state = RESV_DELETED;
 
 		resv_queue = find_queue_info(resresv->server->queues,
@@ -1549,7 +1554,7 @@ is_resresv_running(resource_resv *resresv)
 			return 1;
 	}
 
-	if (resresv->is_adv_resv) {
+	if (resresv->is_resv) {
 		if (resresv->resv == NULL)
 			return 0;
 
@@ -2070,7 +2075,7 @@ in_runnable_state(resource_resv *resresv)
 		if (resresv->job->is_susp_sched)
 			return 1;
 	}
-	else if (resresv->is_adv_resv && resresv->resv !=NULL) {
+	else if (resresv->is_resv && resresv->resv !=NULL) {
 		if (resresv->resv->resv_state ==RESV_CONFIRMED)
 			return 1;
 	}

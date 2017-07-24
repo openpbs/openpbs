@@ -1474,11 +1474,6 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 			ns = ns_arr;
 		/* 3) calculate where to run the resresv ourselves */
 		else {
-			if (!find_correct_nodes(policy, sinfo, qinfo, rr, &ninfo_arr, &nodepart)) {
-				set_schd_error_codes(err, NOT_RUN, SCHD_ERROR);
-				return -1;
-			}
-
 			/* cached node partition -- use the nodes from that */
 			if (rr->nodepart_name != NULL) {
 				np = find_node_partition(nodepart, rr->nodepart_name);
@@ -1494,8 +1489,7 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 				 */
 			}
 
-			eval_selspec(policy, rr->select, rr->place_spec,
-				ninfo_arr, nodepart, rr, eval_flags, &ns, err);
+			ns = check_nodes(policy, sinfo, qinfo, rr, eval_flags, err);
 		}
 
 		if (ns != NULL) {
@@ -1939,7 +1933,7 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 					create_node_array_from_nspec(bjob->nspec_arr);
 				selectspec = create_select_from_nspec(bjob->nspec_arr);
 				if (selectspec != NULL) {
-					bjob->job->execselect = parse_selspec(selectspec);
+					bjob->execselect = parse_selspec(selectspec);
 					free(selectspec);
 				}
 			}

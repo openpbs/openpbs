@@ -104,6 +104,7 @@
 #include "server.h"
 #include "resv_node.h"
 #include "queue.h"
+#include "sched_cmds.h"
 
 #ifdef WIN32
 #include <direct.h>
@@ -1608,6 +1609,7 @@ resv_purge(resc_resv *presv)
 
 	/*Release any nodes that were associated to this reservation*/
 	free_resvNodes(presv);
+	set_scheduler_flag(SCH_SCHEDULE_TERM);
 
 	strcpy(dbresv.ri_resvid, presv->ri_qs.ri_resvID);
 	obj.pbs_db_obj_type = PBS_DB_RESV;

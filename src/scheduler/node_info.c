@@ -88,6 +88,7 @@
  * 	combine_nspec_array()
  * 	create_node_array_from_nspec()
  * 	reorder_nodes()
+ * 	reorder_nodes_set()
  * 	ok_break_chunk()
  * 	is_excl()
  * 	alloc_rest_nodepart()
@@ -1536,7 +1537,7 @@ update_node_on_run(nspec *ns, resource_resv *resresv, char *job_state)
 		}
 
 	}
-	else if (resresv->is_adv_resv) {
+	else if (resresv->is_resv) {
 		ninfo->num_run_resv++;
 		if (find_resource_resv_by_rank(ninfo->run_resvs_arr, resresv->rank) ==NULL) {
 			tmp_arr = add_resresv_to_array(ninfo->run_resvs_arr, resresv);
@@ -1621,7 +1622,7 @@ update_node_on_run(nspec *ns, resource_resv *resresv, char *job_state)
 			set_current_eoe(ninfo, resresv->eoename);
 
 		if (is_excl(resresv->place_spec, ninfo->sharing)) {
-			if (resresv->is_adv_resv) {
+			if (resresv->is_resv) {
 				add_node_state(ninfo, ND_resv_exclusive);
 			}
 			else {
@@ -1669,7 +1670,7 @@ update_node_on_end(node_info *ninfo, resource_resv *resresv, char *job_state)
 
 		remove_resresv_from_array(ninfo->job_arr, resresv);
 	}
-	else if (resresv->is_adv_resv) {
+	else if (resresv->is_resv) {
 		ninfo->num_run_resv--;
 		if (ninfo->num_run_resv < 0)
 			ninfo->num_run_resv = 0;
@@ -1686,7 +1687,7 @@ update_node_on_end(node_info *ninfo, resource_resv *resresv, char *job_state)
 		set_node_info_state(ninfo, ND_free);
 	}
 	else if (is_excl(resresv->place_spec, ninfo->sharing)) {
-		if (resresv->is_adv_resv) {
+		if (resresv->is_resv) {
 			if (ninfo->svr_node != NULL)
 				remove_node_state(ninfo->svr_node, ND_resv_exclusive);
 		}
@@ -2039,22 +2040,22 @@ find_nspec_by_rank(nspec **nspec_arr, unsigned int rank)
  *	@brief
  *		eval a select spec to see if it is satisfiable
  *
- * @param[in]	policy	-	policy info
- * @param[in]	spec	-	the select spec
- * @param[in]	placespec	-	the placement spec (-l place)
- * @param[in]	ninfo_arr	- array of nodes to satisfy the spec
- * @param[in]	nodepart	-	the node partition array for node grouping
- *		 	 					if NULL, we're not doing node grouping
- * @param[in]	resresv	-	the resource resv the spec is from
- * @param[in]	flags	-	flags to change functions behavior
- *	      					EVAL_OKBREAK - ok to break chunk up across vnodes
- *	      					EVAL_EXCLSET - allocate entire nodelist exclusively
- * @param[out]	nspec_arr	-	the node solution
- * @param[out]	err	-	error structure to return error information
+ * @param[in]	policy	  -	policy info
+ * @param[in]	spec	  -	the select spec
+ * @param[in]	placespec -	the placement spec (-l place)
+ * @param[in]	ninfo_arr - 	array of nodes to satisfy the spec
+ * @param[in]	nodepart  -	the node partition array for node grouping
+ *		 	 	if NULL, we're not doing node grouping
+ * @param[in]	resresv	  -	the resource resv the spec is from
+ * @param[in]	flags	  -	flags to change functions behavior
+ *	      			EVAL_OKBREAK - ok to break chunk up across vnodes
+ *	      			EVAL_EXCLSET - allocate entire nodelist exclusively
+ * @param[out]	nspec_arr -	the node solution
+ * @param[out]	err	  -	error structure to return error information
  *
  * @return	int
- * @retval	1	: if the nodespec can be satisfied
- * @retval	0	: if not
+ * @retval	1	  : 	if the nodespec can be satisfied
+ * @retval	0	  : 	if not
  *
  */
 int
@@ -2062,15 +2063,15 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 	node_info **ninfo_arr, node_partition **nodepart, resource_resv *resresv,
 	unsigned int flags, nspec ***nspec_arr, schd_error *err)
 {
-	int tot_nodes = 0;
-	place *pl;
-	int can_fit = 0;
-	int rc = 0;		/* 1 if resources are available, 0 if not */
-	char logbuf[MAX_LOG_SIZE];
-	int pass_flags = NO_FLAGS;
-	char reason[MAX_LOG_SIZE];
-	int i;
-	static struct schd_error *failerr;
+	int				tot_nodes = 0;
+	place				*pl;
+	int				can_fit = 0;
+	int				rc = 0;		/* 1 if resources are available, 0 if not */
+	char				logbuf[MAX_LOG_SIZE] = {0};
+	int				pass_flags = NO_FLAGS;
+	char				reason[MAX_LOG_SIZE] = {0};
+	int				i = 0;
+	static struct schd_error	*failerr = NULL;
 
 	if (spec == NULL || ninfo_arr == NULL || resresv == NULL || placespec == NULL || nspec_arr == NULL)
 		return 0;
@@ -2243,24 +2244,24 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 	resource_resv *resresv, unsigned int flags,
 	nspec ***nspec_arr, schd_error *err)
 {
-	np_cache *npc;
-	node_partition **hostsets = NULL;
-	char *host_arr[2] = {"host", NULL};
-	int i;
-	int k;
-	int tot = 0;
-	int c = -1;
-	int cur_flt_lic;
-	nspec **nsa = NULL;
-	nspec **ns_head = NULL;
-	char logbuf[MAX_LOG_SIZE];
-	char reason[MAX_LOG_SIZE];
-	resource_req *req;
-	schd_resource *res;
-	selspec *dselspec = NULL;
-	int do_exclhost = 0;
-	node_info **nptr = NULL;
-	static schd_error *failerr = NULL;
+	np_cache		*npc = NULL;
+	node_partition		**hostsets = NULL;
+	char			*host_arr[2] = {"host", NULL};
+	int			i = 0;
+	int			k = 0;
+	int			tot = 0;
+	int			c = -1;
+	int			cur_flt_lic;
+	nspec			**nsa = NULL;
+	nspec			**ns_head = NULL;
+	char			logbuf[MAX_LOG_SIZE] = {0};
+	char			reason[MAX_LOG_SIZE] = {0};
+	resource_req		*req = NULL;
+	schd_resource		*res = NULL;
+	selspec			*dselspec = NULL;
+	int			do_exclhost = 0;
+	node_info		**nptr = NULL;
+	static schd_error	*failerr = NULL;
 
 
 	int rc = 0; /* true if current chunk was successfully allocated */
@@ -2279,14 +2280,14 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 	} else
 		clear_schd_error(failerr);
 
-
 	/* reorder nodes for smp_cluster_dist or avoid_provision.
 	 *
 	 * remark: reorder_nodes doesn't reorder in place, returns
 	 *         a ptr to a reordered static array
 	 */
 	if ((pl->pack && spec->total_chunks == 1 && nspec_arr != NULL) ||
-		(conf.provision_policy == AVOID_PROVISION && resresv->aoename != NULL))
+		(conf.provision_policy == AVOID_PROVISION && resresv->aoename != NULL) ||
+		resresv->is_resv && resresv->resv != NULL && resresv->resv->check_alternate_nodes)
 		nptr = reorder_nodes(ninfo_arr, resresv);
 
 	if (nptr == NULL)
@@ -2300,7 +2301,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 	 * chunk.
 	 */
 	if (!resresv->server->has_multi_vnode &&
-		(!resresv->place_spec->pack || spec->total_chunks ==1)) {
+		(!resresv->place_spec->pack || spec->total_chunks == 1)) {
 		return eval_complex_selspec(policy, spec, nptr, pl, resresv, flags, nspec_arr, err);
 	}
 
@@ -2315,7 +2316,6 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 		if (npc != NULL)
 			hostsets = npc->nodepart;
 	}
-
 
 	cur_flt_lic = resresv->server->flt_lic;
 
@@ -2415,7 +2415,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 
 								for (; *nsa != NULL; nsa++) {
 									node_info *vn;
-									vn =find_node_by_rank(dninfo_arr, (*nsa)->ninfo->rank);
+									vn = find_node_by_rank(dninfo_arr, (*nsa)->ninfo->rank);
 									if (vn != NULL)
 										vn->nscr.scattered = 1;
 								}
@@ -2857,33 +2857,35 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 	place *pl, resource_resv *resresv, unsigned int flags,
 	int flt_lic, nspec ***nspec_arr, schd_error *err)
 {
-	int chunks_found = 0;	/* number of nodes found to satisfy a subspec */
-	nspec *ns = NULL;	/* current nspec */
-	nspec **nsa = NULL;	/* the nspec array to hold node solution */
-	resource_req *specreq_noncons; /* non-consumable resources requested by spec */
-	resource_req *specreq_cons;	/* consumable resources requested by spec */
-	resource_req *req, *prevreq = NULL; /* used to determine if we're done */
-	resource_req *tmpreq;		/* used to unlink and free */
-	char logbuf[MAX_LOG_SIZE];
-	int need_new_nspec = 1; /* need to allocate a new nspec for node solution */
+	int		chunks_found = 0;	/* number of nodes found to satisfy a subspec */
+	nspec		*ns = NULL;		/* current nspec */
+	nspec		**nsa = NULL;		/* the nspec array to hold node solution */
+	resource_req	*specreq_noncons = NULL;/* non-consumable resources requested by spec */
+	resource_req	*specreq_cons = NULL;	/* consumable resources requested by spec */
+	resource_req	*req = NULL;		/* used to determine if we're done */
+	resource_req	*prevreq = NULL;	/* used to determine if we're done */
+	resource_req	*tmpreq = NULL;		/* used to unlink and free */
+	char		logbuf[MAX_LOG_SIZE];
+	int		need_new_nspec = 1;	/* need to allocate a new nspec for node solution */
 
-	int allocated;	/* did we allocate resources to a vnode */
-	int nspecs_allocated = 0; /* number of nodes allocated */
-	int i, j, k;
+	int		allocated = 0;		/* did we allocate resources to a vnode */
+	int		nspecs_allocated = 0;	/* number of nodes allocated */
+	int		i = 0;
+	int		j = 0;
+	int		k = 0;
 
-	char *str_chunk;	/* ptr to after the number of chunks in the str_chunk */
+	char		*str_chunk = NULL;	/* ptr to after the number of chunks in the str_chunk */
 
-	node_info **ninfo_arr;
+	node_info	**ninfo_arr = NULL;
 
 	static schd_error *failerr = NULL;
 
-
 	/* used for floating licensing */
-	int cur_flt_lic;		/* current number of floating licenses */
-	int cur_ncpus = 0;		/* current number of ncpus left to license */
-	int licenses_allocated;	/* licenses allocated to a job on a node */
-	resource_req *ncpusreq;
-	resdef *ncpusdef = find_resdef(consres, "ncpus");
+	int		cur_flt_lic = 0;	/* current number of floating licenses */
+	int		cur_ncpus = 0;		/* current number of ncpus left to license */
+	int		licenses_allocated = 0;	/* licenses allocated to a job on a node */
+	resource_req	*ncpusreq = NULL;
+	resdef		*ncpusdef = find_resdef(consres, "ncpus");
 
 	if (chk == NULL || pninfo_arr == NULL || resresv== NULL || pl == NULL || nspec_arr == NULL)
 		return 0;
@@ -3250,7 +3252,7 @@ is_vnode_eligible(node_info *node, resource_resv *resresv,
 		}
 	}
 
-	if (resresv->is_adv_resv && !node->resv_enable) {
+	if (resresv->is_resv && !node->resv_enable) {
 		set_schd_error_codes(err, NOT_RUN, NODE_RESV_ENABLE);
 		return 0;
 	}
@@ -4559,9 +4561,10 @@ create_node_array_from_nspec(nspec **nspec_arr)
 
 /**
  * @brief
- *		reorder the nodes for the avoid_provision or smp_cluster_dist policies
- *      without changing the source array.  We do so by holding our own
- *      static array of node pointers that we will sort for the different policies
+ *	reorder the nodes for the avoid_provision or smp_cluster_dist policies
+ *	or when the reservation is being altered without changing the source
+ * 	array. We do so by holding our own static array of node pointers that
+ * 	we will sort for the different policies.
  *
  * @param[in]	nodes	: nodes to reorder
  * @param[in]	resresv : job or reservation for which reorder is done
@@ -4584,15 +4587,17 @@ create_node_array_from_nspec(nspec **nspec_arr)
 node_info **
 reorder_nodes(node_info **nodes, resource_resv *resresv)
 {
-	static node_info **node_array = NULL;
-	static int node_array_size = 0;
-	node_info **nptr;
-	node_info **tmparr;
-	schd_resource *hostres;
-	schd_resource *cur_hostres;
-	int nsize;
-	int i, j, k;
-	char errbuf[MAX_LOG_SIZE];
+	static node_info	**node_array = NULL;
+	static int		node_array_size = 0;
+	node_info		**nptr = NULL;
+	node_info		**tmparr = NULL;
+	schd_resource		*hostres = NULL;
+	schd_resource		*cur_hostres = NULL;
+	int 			nsize = 0;
+	int			i = 0;
+	int			j = 0;
+	int			k = 0;
+	char			errbuf[MAX_LOG_SIZE] = {0};
 
 	if (nodes == NULL)
 		return NULL;
@@ -4616,6 +4621,22 @@ reorder_nodes(node_info **nodes, resource_resv *resresv)
 
 	node_array[0] = NULL;
 	nptr = node_array;
+
+	if (resresv != NULL && resresv->is_resv && resresv->resv != NULL && resresv->resv->check_alternate_nodes) {
+		int		i = 0;
+		node_info	*temp = NULL;
+
+		memcpy(nptr, nodes, (nsize+1) * sizeof(node_info *));
+		for (i = 0; nptr[i] != NULL; i++) {
+			temp = find_node_by_rank(resresv->ninfo_arr, nptr[i]->rank);
+			if (temp != NULL)
+				nptr[i]->nscr.to_be_sorted = 0;
+			else
+				nptr[i]->nscr.to_be_sorted = 1;
+		}
+		qsort(nptr, i, sizeof(node_info*), cmp_nodes_sort);
+		return nptr;
+	}
 
 	if (last_node_name[0] == '\0')
 		strcpy(last_node_name, nodes[0]->name);
@@ -5112,7 +5133,7 @@ is_provisionable(node_info *node, resource_resv *resresv, schd_error *err)
 	/* Perform checks if job is going to provision now or if reservation has aoe. */
 	if ((resresv->is_job && (node->current_aoe == NULL
 		|| strcmp(resresv->aoename, node->current_aoe))) ||
-		(resresv->is_adv_resv && resresv->aoename != NULL)) {
+		(resresv->is_resv && resresv->aoename != NULL)) {
 		/* we are inside, it means node requires provisioning... */
 		ret = PROVISIONING_NEEDED;
 
@@ -5161,7 +5182,7 @@ is_provisionable(node_info *node, resource_resv *resresv, schd_error *err)
 	/* node cannot be shared between running job with AOE
 	 * and reservation without AOE
 	 */
-	if (resresv->is_adv_resv && resresv->aoename == NULL &&
+	if (resresv->is_resv && resresv->aoename == NULL &&
 		node->job_arr) {
 		for (i = 0; node->job_arr[i]; i++) {
 			if (node->job_arr[i]->aoename !=NULL) {
@@ -5609,3 +5630,4 @@ check_node_array_eligibility(node_info **ninfo_arr, resource_resv *resresv, plac
 	if (err->status_code == SCHD_UNKWN && misc_err->status_code != SCHD_UNKWN)
 		move_schd_error(err, misc_err);
 }
+

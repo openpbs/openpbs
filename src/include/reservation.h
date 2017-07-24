@@ -56,9 +56,12 @@ extern "C" {
 #include "resv_node.h"
 #endif
 
-#define	JOB_OBJECT        1
-#define	RESC_RESV_OBJECT  2
-#define RESV_JOB_OBJECT	  3
+#define	JOB_OBJECT		1
+#define	RESC_RESV_OBJECT	2
+#define RESV_JOB_OBJECT		3
+
+#define RESV_START_TIME_MODIFIED	0x1
+#define RESV_END_TIME_MODIFIED		0x2
 
 /*
  * The following resv_atr enum provide an index into the array of
@@ -124,7 +127,8 @@ enum resvState_discrim {
 	RESVSTATE_req_deleteReservation,
 	RESVSTATE_add_resc_resv_to_job,
 	RESVSTATE_is_resv_window_in_future,
-	RESVSTATE_req_resvSub
+	RESVSTATE_req_resvSub,
+	RESVSTATE_alter_failed
 };
 
 /*
@@ -168,45 +172,64 @@ struct resc_resv {
 
 	/* Note: these members, upto ri_qs, are not saved to disk */
 
-	pbs_list_link	ri_allresvs;	/*links this resc_resv into the
-						 *server's global list*/
+	pbs_list_link		ri_allresvs;		/* links this resc_resv into the
+							 * server's global list
+							 */
 
-	struct pbs_queue *ri_qp;	/*pbs_queue that got created  */
-	/*to support this "reservation*/
-	/*note: for a "reservation job"*/
-	/*this value is (pbs_que *)0   */
+	struct pbs_queue	*ri_qp;			/* pbs_queue that got created
+							 * to support this "reservation
+							 * note: for a "reservation job"
+							 * this value is (pbs_que *)0
+							 */
 
-	int		ri_futuredr;	/*non-zero if future delete resv */
-	/*task placed on "task_list_timed*/
+	int			ri_futuredr;		/* non-zero if future delete resv
+							 * task placed on "task_list_timed
+							 */
 
-	job		*ri_jbp;	/*for a "reservation job" this*/
-	/*points to the associated job*/
-	resc_resv	*ri_parent;	/*reservation in a reservation */
+	job			*ri_jbp;		/* for a "reservation job" this
+							 * points to the associated job
+							 */
+	resc_resv		*ri_parent;		/* reservation in a reservation */
 
-	int		ri_modified;	/*struct changed, needs to be saved*/
-	int		ri_giveback;	/*flag, return resources to parent */
+	int			ri_modified;		/*struct changed, needs to be saved*/
+	int			ri_giveback;		/*flag, return resources to parent */
 
-	int		ri_vnodes_down;	/* the number of vnodes that are unavailable */
-	int		ri_vnodect;	/* the number of vnodes associated to an advance */
-	/* reservation or a standing reservation occurrence */
+	int			ri_vnodes_down;		/* the number of vnodes that are unavailable */
+	int			ri_vnodect;		/* the number of vnodes associated to an advance
+							 * reservation or a standing reservation occurrence
+							 */
 
-	pbs_list_head	ri_svrtask;	/*place to keep work_task struct that*/
-	/*are "attached" to this reservation */
+	pbs_list_head		ri_svrtask;		/* place to keep work_task struct that
+							 * are "attached" to this reservation
+							 */
 
-	pbs_list_head	ri_rejectdest;	/*place to keep badplace structs that*/
-	/*are "attached" to this reservation */
-	/*Will only be useful if we later make*/
+	pbs_list_head		ri_rejectdest;		/* place to keep badplace structs that
+							 * are "attached" to this reservation
+							 * Will only be useful if we later make
+							 */
 
-	struct batch_request *ri_brp;	/*NZ if choose interactive (I) mode*/
+	struct batch_request	*ri_brp;		/*NZ if choose interactive (I) mode*/
 
 	/*resource reservations routeable objs*/
-	int		ri_downcnt;	/*used when deleting the reservation*/
+	int			ri_downcnt;		/*used when deleting the reservation*/
 
-	long		ri_resv_retry;	/* time at which the reservation will be reconfirmed */
+	long			ri_resv_retry;		/* time at which the reservation will be reconfirmed */
 
-	long		ri_degraded_time;	/* a tentative time to reconfirm the reservation */
+	long			ri_degraded_time;	/* a tentative time to reconfirm the reservation */
 
-	pbsnode_list_t	*ri_pbsnode_list;	/* vnode list associated to the reservation */
+	pbsnode_list_t		*ri_pbsnode_list;	/* vnode list associated to the reservation */
+
+	/* objects used while altering a reservation. */
+	time_t			ri_alter_stime;		/* start time backup while altering a reservation. */
+	time_t			ri_alter_etime;		/*   end time backup while altering a reservation. */
+	time_t			ri_alter_state;		/* resv state backup while altering a reservation. */
+	time_t			ri_alter_standing_reservation_duration;
+							/* duration backup while altering a standing reservation. */
+	unsigned int		ri_alter_flags;		/* flags used while altering a reservation. */
+
+	/* Reservation start and end tasks */
+	struct work_task	*resv_start_task;
+	struct work_task	*resv_end_task;
 
 	/*
 	 * fixed size internal data - maintained via "quick save"
@@ -215,26 +238,26 @@ struct resc_resv {
 	 */
 
 	struct resvfix {
-		int	    ri_rsversion;	/* reservation struct verison#, see RSVERSION */
-		int	    ri_state;		/* internal copy of state */
-		int	    ri_substate;	/* substate of resv state */
-		int	    ri_type;		/* "reservation" or "reservation job"*/
-		time_t  ri_stime;		/* left window boundry  */
-		time_t  ri_etime;		/* right window boundry */
-		time_t  ri_duration;	/* reservation duration */
-		time_t  ri_tactive;		/* time reservation became active */
-		int	    ri_svrflags;	/* server flags */
-		int	    ri_numattr;		/* number of attributes in list */
+		int		ri_rsversion;		/* reservation struct verison#, see RSVERSION */
+		int		ri_state;		/* internal copy of state */
+		int		ri_substate;		/* substate of resv state */
+		int		ri_type;		/* "reservation" or "reservation job"*/
+		time_t		ri_stime;		/* left window boundry  */
+		time_t		ri_etime;		/* right window boundry */
+		time_t		ri_duration;		/* reservation duration */
+		time_t		ri_tactive;		/* time reservation became active */
+		int		ri_svrflags;		/* server flags */
+		int		ri_numattr;		/* number of attributes in list */
 #if 0
-		int	    ri_ordering;	/* special scheduling ordering */
-		int	    ri_priority;	/* internal priority */
+		int		ri_ordering;		/* special scheduling ordering */
+		int		ri_priority;		/* internal priority */
 #endif
-		long    ri_resvTag;		/* local numeric reservation ID */
-		char    ri_resvID[PBS_MAXSVRRESVID+1]; /* reservation identifier */
-		char    ri_fileprefix[PBS_RESVBASE+1]; /* reservation file prefix */
-		char    ri_queue[PBS_MAXQRESVNAME+1];  /* queue used by reservation */
+		long		ri_resvTag;		/* local numeric reservation ID */
+		char		ri_resvID[PBS_MAXSVRRESVID+1]; /* reservation identifier */
+		char		ri_fileprefix[PBS_RESVBASE+1]; /* reservation file prefix */
+		char		ri_queue[PBS_MAXQRESVNAME+1];  /* queue used by reservation */
 
-		int	    ri_un_type;		/* type of struct in "ri_un" area */
+		int		ri_un_type;		/* type of struct in "ri_un" area */
 
 		union   {
 
@@ -252,7 +275,7 @@ struct resc_resv {
 	 * The following array holds the decode	 format of the attributes.
 	 * Its presence is for rapid access to the attributes.
 	 */
-	attribute  ri_wattr[RESV_ATR_LAST];  /*reservation's attributes*/
+	attribute		ri_wattr[RESV_ATR_LAST];  /*reservation's attributes*/
 
 };
 

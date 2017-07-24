@@ -68,6 +68,8 @@
 #include "pbs_nodes.h"
 #include "svrfunc.h"
 #include "hook.h"
+#include "sched_cmds.h"
+#include "pbs_internal.h"
 
 
 /* Global Data Items: */
@@ -87,12 +89,13 @@ extern char *resc_in_err;
 static resource_def *pseldef = NULL;
 extern int scheduler_sock;
 extern int scheduler_jobs_stat;
+extern int resc_access_perm;
+extern char *msg_nostf_resv;
 
-/**
- * @brief
- * 		post_modify_req - clean up after sending modify request to MOM
- *
- * @param[in]	pwt	-	work task structure
+int modify_resv_attr(resc_resv *presv, svrattrl *plist, int perm, int *bad);
+
+/*
+ * post_modify_req - clean up after sending modify request to MOM
  */
 static void
 post_modify_req(struct work_task *pwt)
@@ -669,3 +672,298 @@ modify_job_attr(job *pjob, svrattrl *plist, int perm, int *bad)
 		pjob->ji_modified = 1;	/* an attr was modified, do full save */
 	return (0);
 }
+
+/**
+ * @brief Service the Modify Reservation Request from client such as pbs_ralter.
+ *
+ *	This request atomically modifies one or more of a reservation's attributes.
+ *	An error is returned to the client if the user does not have permission
+ *	to perform the modification, the attribute is read-only, the reservation is
+ *	running and the attribute is only modifiable when the reservation is not
+ *	running or is empty.
+ *
+ * @param[in] preq - pointer to batch request from client
+ */
+void
+req_modifyReservation(struct batch_request *preq)
+{
+	char		*rid = NULL;
+	svrattrl	*psatl = NULL;
+	int		index;
+	attribute_def	*pdef = NULL;
+	int		rc = 0;
+	int		bad = 0;
+	char		buf[256] = {0};
+	char		buf1[PBS_MAXUSER+ PBS_MAXHOSTNAME + 2] = {0};
+	int		sock = preq->rq_conn;
+	int		resc_access_perm_save = 0;
+	int		send_to_scheduler = 0;
+	int		log_len = 0;
+	char		*fmt = "%a %b %d %H:%M:%S %Y";
+	int		is_standing = 0;
+	int		next_occr_start = 0;
+	extern char	*msg_stdg_resv_occr_conflict;
+	resc_resv	*presv;
+
+	if (preq == NULL)
+		return;
+
+	presv = chk_rescResv_request(preq->rq_ind.rq_modify.rq_objname, preq);
+	/* Note: on failure, chk_rescResv_request invokes req_reject
+	 * appropriate reply is sent and batch_request is freed.
+	 */
+	if (presv == (resc_resv *) 0)
+		return;
+
+	rid = preq->rq_ind.rq_modify.rq_objname;
+	if ((presv = find_resv(rid)) == (resc_resv *)0) {
+		/* Not on "all_resvs" list try "new_resvs" list */
+		presv = (resc_resv *)GET_NEXT(svr_newresvs);
+		while (presv) {
+			if (!strcmp(presv->ri_qs.ri_resvID, rid))
+				break;
+			presv = (resc_resv *)GET_NEXT(presv->ri_allresvs);
+		}
+	}
+
+	if (presv == NULL) {
+		req_reject(PBSE_UNKRESVID, 0, preq);
+		return;
+	}
+
+	is_standing = presv->ri_wattr[RESV_ATR_resv_standing].at_val.at_long;
+	if (is_standing)
+		next_occr_start = get_occurrence(presv->ri_wattr[RESV_ATR_resv_rrule].at_val.at_str,
+					presv->ri_wattr[RESV_ATR_start].at_val.at_long,
+					presv->ri_wattr[RESV_ATR_resv_timezone].at_val.at_str, 2);
+
+	resc_access_perm_save = resc_access_perm;
+	psatl = (svrattrl *)GET_NEXT(preq->rq_ind.rq_modify.rq_attr);
+	presv->ri_alter_flags = 0;
+	while (psatl) {
+		long temp = 0;
+		char *end = NULL;
+		/* identify the attribute by name */
+		index = find_attr(resv_attr_def, psatl->al_name, RESV_ATR_LAST);
+		if (index < 0) {
+			/* didn`t recognize the name */
+			reply_badattr(PBSE_NOATTR, 1, psatl, preq);
+			return;
+		}
+		pdef = &resv_attr_def[index];
+
+		/* Does attribute's definition flags indicate that
+		 * we have sufficient permission to write the attribute?
+		 */
+
+		resc_access_perm = resc_access_perm_save; /* reset */
+		if (psatl->al_flags & ATR_VFLAG_HOOK) {
+			resc_access_perm = ATR_DFLAG_USWR | \
+					    ATR_DFLAG_OPWR | \
+					    ATR_DFLAG_MGWR | \
+				            ATR_DFLAG_SvWR | \
+					    ATR_DFLAG_Creat;
+		}
+		if ((pdef->at_flags & resc_access_perm) == 0) {
+			reply_badattr(PBSE_ATTRRO, 1, psatl, preq);
+			return;
+		}
+
+		switch (index) {
+			case RESV_ATR_start:
+				if ((presv->ri_wattr[RESV_ATR_state].at_val.at_long != RESV_RUNNING) ||
+					!(presv->ri_qp->qu_numjobs)) {
+					temp = strtol(psatl->al_value, &end, 10);
+					if ((temp > time(NULL)) &&
+						(temp != presv->ri_wattr[RESV_ATR_start].at_val.at_long)) {
+						if (!is_standing || (temp < next_occr_start)) {
+							send_to_scheduler = RESV_START_TIME_MODIFIED;
+							presv->ri_alter_stime = presv->ri_wattr[RESV_ATR_start].at_val.at_long;
+							presv->ri_alter_flags |= RESV_START_TIME_MODIFIED;
+						} else {
+							snprintf(log_buffer, sizeof(log_buffer), "%s", msg_stdg_resv_occr_conflict);
+							log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
+								preq->rq_ind.rq_modify.rq_objname, log_buffer);
+							req_reject(PBSE_STDG_RESV_OCCR_CONFLICT, 0, preq);
+							return;
+						}
+					} else {
+						req_reject(PBSE_BADTSPEC, 0, preq);
+						return;
+					}
+				} else {
+					if (presv->ri_qp->qu_numjobs)
+						req_reject(PBSE_RESV_NOT_EMPTY, 0, preq);
+					else
+						req_reject(PBSE_BADTSPEC, 0, preq);
+					return;
+				}
+				break;
+			case RESV_ATR_end:
+				temp = strtol(psatl->al_value, &end, 10);
+				if (temp == presv->ri_wattr[RESV_ATR_end].at_val.at_long) {
+					req_reject(PBSE_BADTSPEC, 0, preq);
+					return;
+				}
+				if (!is_standing || temp < next_occr_start) {
+					send_to_scheduler = RESV_END_TIME_MODIFIED;
+					presv->ri_alter_etime = presv->ri_wattr[RESV_ATR_end].at_val.at_long;
+					presv->ri_alter_flags |= RESV_END_TIME_MODIFIED;
+				} else {
+					snprintf(log_buffer, sizeof(log_buffer), "%s", msg_stdg_resv_occr_conflict);
+					log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
+						preq->rq_ind.rq_modify.rq_objname, log_buffer);
+					req_reject(PBSE_STDG_RESV_OCCR_CONFLICT, 0, preq);
+					return;
+				}
+				break;
+			default:
+				break;
+		}
+
+		/* decode attribute */
+		rc = pdef->at_decode(&presv->ri_wattr[index],
+			psatl->al_name, psatl->al_resc, psatl->al_value);
+
+		if (rc != 0) {
+			reply_badattr(rc, 1, psatl, preq);
+			return;
+		}
+
+		psatl = (svrattrl *)GET_NEXT(psatl->al_link);
+	}
+	resc_access_perm = resc_access_perm_save; /* restore perm */
+
+	if (send_to_scheduler) {
+		presv->ri_alter_state = presv->ri_wattr[RESV_ATR_state].at_val.at_long;
+		resv_setResvState(presv, RESV_BEING_ALTERED, presv->ri_qs.ri_substate);
+		/*"start", "end","duration", and "wall"; derive and check */
+		if (start_end_dur_wall(presv, RESC_RESV_OBJECT)) {
+			req_reject(PBSE_BADTSPEC, 0, preq);
+			resv_revert_alter_times(presv);
+			return;
+		}
+		presv->ri_wattr[RESV_ATR_resource].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+	}
+	bad = 0;
+	psatl = (svrattrl *)GET_NEXT(preq->rq_ind.rq_modify.rq_attr);
+	if (psatl)
+		rc = modify_resv_attr(presv, psatl, preq->rq_perm, &bad);
+
+	if (send_to_scheduler)
+		set_scheduler_flag(SCH_SCHEDULE_RESV_RECONFIRM);
+
+	(void)sprintf(log_buffer, "Attempting to modify reservation");
+	if (presv->ri_alter_flags & RESV_START_TIME_MODIFIED) {
+		strftime(buf, sizeof(buf), fmt, localtime((time_t *) &presv->ri_wattr[RESV_ATR_start].at_val.at_long));
+		log_len = strlen(log_buffer);
+		snprintf(log_buffer + log_len, sizeof(log_buffer) - log_len," start=%s", buf);
+	}
+	if (presv->ri_alter_flags & RESV_END_TIME_MODIFIED) {
+		strftime(buf, sizeof(buf), fmt, localtime((time_t *) &presv->ri_wattr[RESV_ATR_end].at_val.at_long));
+		log_len = strlen(log_buffer);
+		snprintf(log_buffer + log_len, sizeof(log_buffer) - log_len," end=%s", buf);
+	}
+	log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, preq->rq_ind.rq_modify.rq_objname, log_buffer);
+
+	if ((presv->ri_wattr[RESV_ATR_interactive].at_flags &
+		ATR_VFLAG_SET) == 0) {
+		/*Not "interactive" so don't wait on scheduler, reply now*/
+
+		sprintf(buf, "%s ALTER REQUESTED",  presv->ri_qs.ri_resvID);
+		sprintf(buf1, "requestor=%s@%s", preq->rq_user, preq->rq_host);
+
+		if ((rc = reply_text(preq, PBSE_NONE, buf))) {
+			/* reply failed,  close connection; DON'T purge resv */
+			close_client(sock);
+			return;
+		}
+	} else {
+		/*Don't reply back until scheduler decides*/
+		long dt;
+		presv->ri_brp = preq;
+		dt = presv->ri_wattr[RESV_ATR_interactive].at_val.at_long;
+		/*reply with id and state no decision in +dt secs*/
+		(void)gen_future_reply(presv, dt);
+		(void)snprintf(buf, sizeof(buf), "requestor=%s@%s Interactive=%ld",
+			preq->rq_user, preq->rq_host, dt);
+	}
+}
+
+
+/**
+ * @brief modify the attributes of a reservation atomically.
+ *
+ * @param[in]  presv - pointer to the reservation structure.
+ * @param[in]  plist - list of attributes to modify.
+ * @param[in]  perm  - permissions.
+ * @param[out] bad   - the index of the attribute which caused an error.
+ *
+ * @return 0 on success.
+ * @return PBS error code.
+ */
+int
+modify_resv_attr(resc_resv *presv, svrattrl *plist, int perm, int *bad)
+{
+	int	   allow_unkn = 0;
+	long	   i = 0;
+	int	   modified = 0;
+	attribute  newattr[(int)RESV_ATR_LAST] = {0};
+	attribute *pattr;
+	int	   rc = 0;
+
+	if (presv == NULL || plist == NULL)
+		return PBSE_INTERNAL;
+
+	allow_unkn = -1;
+	pattr = presv->ri_wattr;
+
+	/* call attr_atomic_set to decode and set a copy of the attributes */
+
+	rc = attr_atomic_set(plist, pattr, newattr, resv_attr_def, RESV_ATR_LAST,
+		allow_unkn, perm, bad);
+
+	if (rc == 0) {
+		for (i = 0; i < RESV_ATR_LAST; i++) {
+			if (newattr[i].at_flags & ATR_VFLAG_MODIFY) {
+				presv->ri_modified = 1;	/* an attr was modified, do full save */
+				if (resv_attr_def[i].at_action) {
+					rc = resv_attr_def[i].at_action(&newattr[i],
+						presv, ATR_ACTION_ALTER);
+					if (rc)
+						break;
+				}
+			}
+		}
+		if ((rc == 0) &&
+			((newattr[(int)RESV_ATR_userlst].at_flags & ATR_VFLAG_MODIFY) ||
+			(newattr[(int)RESV_ATR_grouplst].at_flags & ATR_VFLAG_MODIFY))) {
+			/* Need to reset execution uid and gid */
+			rc = set_objexid((void *)presv, JOB_OBJECT, newattr);
+		}
+
+	}
+	if (rc) {
+		for (i = 0; i < RESV_ATR_LAST; i++)
+			resv_attr_def[i].at_free(newattr+i);
+		return (rc);
+	}
+
+	/* Now copy the new values into the reservation attribute array */
+
+	for (i = 0; i < RESV_ATR_LAST; i++) {
+		if (newattr[i].at_flags & ATR_VFLAG_MODIFY) {
+			resv_attr_def[i].at_free(pattr+i);
+			if ((newattr[i].at_type == ATR_TYPE_LIST) || (newattr[i].at_type == ATR_TYPE_RESC)) {
+				list_move(&newattr[i].at_val.at_list, &(pattr+i)->at_val.at_list);
+			} else {
+				*(pattr+i) = newattr[i];
+			}
+			/* ATR_VFLAG_MODCACHE will be included if set */
+			(pattr+i)->at_flags = newattr[i].at_flags;
+		}
+	}
+
+	return (0);
+}
+

@@ -510,3 +510,7 @@ def pbs_delresv(c, id, extend):
 
 def pbs_terminate(c, manner, extend):
     pass
+
+
+def pbs_modify_resv(c, resvid, attrib, extend):
+    pass

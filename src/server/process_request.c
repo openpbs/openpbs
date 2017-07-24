@@ -936,6 +936,10 @@ dispatch_request(int sfds, struct batch_request *request)
 		case PBS_BATCH_DeleteResv:
 			req_deleteReservation(request);
 			break;
+
+		case PBS_BATCH_ModifyResv:
+			req_modifyReservation(request);
+			break;
 #endif
 
 		case PBS_BATCH_HoldJob:
@@ -1553,6 +1557,7 @@ free_br(struct batch_request *preq)
 			arrayfree(preq->rq_ind.rq_py_spawn.rq_envp);
 			break;
 		case PBS_BATCH_ModifyJob:
+		case PBS_BATCH_ModifyResv:
 			freebr_manage(&preq->rq_ind.rq_modify);
 			break;
 

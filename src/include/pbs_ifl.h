@@ -521,7 +521,8 @@ typedef int	pbs_resource_t;	/* resource reservation handle */
 
 enum resv_states { RESV_NONE, RESV_UNCONFIRMED, RESV_CONFIRMED, RESV_WAIT,
 	RESV_TIME_TO_RUN, RESV_RUNNING, RESV_FINISHED,
-	RESV_BEING_DELETED, RESV_DELETED, RESV_DELETING_JOBS, RESV_DEGRADED };
+	RESV_BEING_DELETED, RESV_DELETED, RESV_DELETING_JOBS, RESV_DEGRADED,
+	RESV_BEING_ALTERED };
 
 #ifdef _USRDLL		/* This is only for building Windows DLLs
 			 * and not their static libraries
@@ -621,6 +622,8 @@ DECLDIR int pbs_delresv(int, char *, char *);
 
 DECLDIR int pbs_terminate(int, int, char *);
 
+DECLDIR char *pbs_modify_resv(int, char*, struct attropl *, char *);
+
 #else
 
 #ifndef __PBS_ERRNO
@@ -709,6 +712,8 @@ extern char *pbs_submit_resv(int, struct attropl *, char *);
 extern int pbs_delresv(int, char *, char *);
 
 extern int pbs_terminate(int, int, char *);
+
+extern char *pbs_modify_resv(int, char*, struct attropl *, char *);
 #endif /* _USRDLL */
 #ifdef	__cplusplus
 }

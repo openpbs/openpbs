@@ -967,13 +967,13 @@ resresv_can_fit_nodepart(status *policy, node_partition *np, resource_resv *resr
 	 *	      on nodes regardless if they are in the resources line.  This is a
 	 *	      grandfathering in from the old nodespec properties.
 	 */
-	/* The call to get_job_spec is needed here because we are checking for resources on each
+	/* The call to get_resresv_spec is needed here because we are checking for resources on each
 	 * chunk. For jobs that already have execselect specification defined we only need to
 	 * traverse through those chunks.
-	 * get_job_spec sets the spec value to execselect/select depending on whether execselect
+	 * get_resresv_spec sets the spec value to execselect/select depending on whether execselect
 	 * was set or not.
 	 */
-	get_job_spec(resresv, &spec, &pl);
+	get_resresv_spec(resresv, &spec, &pl);
 	for (i = 0; spec->chunks[i] != NULL; i++) {
 		if (check_avail_resources(np->res, spec->chunks[i]->req,
 					pass_flags | CHECK_ALL_BOOLS, policy->resdef_to_check,

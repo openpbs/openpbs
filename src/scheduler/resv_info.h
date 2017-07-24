@@ -106,6 +106,12 @@ void release_nodes(resource_resv *resc_resv);
  */
 node_info **create_resv_nodes(nspec **nspec_arr, server_info *sinfo);
 
+/*
+ *	adjust_alter_resv_nodes - adjust nodes resources for reservations that
+ *				  that are being altered.
+ */
+void adjust_alter_resv_nodes(resource_resv **all_resvs, node_info **all_nodes);
+
 #ifdef	__cplusplus
 }
 #endif

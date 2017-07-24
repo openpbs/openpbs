@@ -3040,7 +3040,8 @@ cvtResvstate(char *pcode)
 		"RESV_CONFIRMED", "RESV_WAIT",
 		"RESV_TIME_TO_RUN", "RESV_RUNNING",
 		"RESV_FINISHED", "RESV_BEING_DELETED",
-		"RESV_DELETED", "RESV_DELETING_JOBS"};
+		"RESV_DELETED", "RESV_DELETING_JOBS",
+		"RESV_BEING_ALTERED"};
 
 	/*Remark: the static buffer below is used to get around a problem with
 	 *	the linux strtok() library function.  There is a "bugs" comment
@@ -3062,6 +3063,7 @@ cvtResvstate(char *pcode)
 		case RESV_BEING_DELETED:
 		case RESV_DELETED:
 		case RESV_DELETING_JOBS:
+		case RESV_BEING_ALTERED:
 			strcpy(acopy, resvStrings[i]);
 			return  acopy;
 

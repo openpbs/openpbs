@@ -298,8 +298,8 @@ cmp_queue_prio_dsc(const void *q1, const void *q2)
 
 /**
  * @brief
- *		cmp_events - sort jobs/resvs into a timeline of the next even to
- *		happen: running jobs ending, advanced reservations starting
+ *		cmp_events - sort jobs/resvs into a timeline of the next event
+ *		to happen: running jobs ending, advanced reservations starting
  *		or ending
  *
  * @param[in]	v1	-	resource_resv 1
@@ -1132,6 +1132,62 @@ cmp_starving_jobs(const void *j1, const void *j2)
 	if (r1->sch_priority < r2->sch_priority)
 		return 1;
 	return 0;
+}
+
+/**
+ * @brief
+ * cmp_nodes_sort	- compare nodes based on to_be_sorted's
+ * 			  value in the node scratch area.
+ *
+ * @param[in] n1	- node to compare.
+ * @param[in] n2	- node to compare.
+ *
+ * @return - int
+ * @retval  1: If n2's to_be_sorted is set and n1's is not.
+ *          0: If both the nodes have to_be_sorted equal.
+ *         -1: If n1's to_be_sorted is set and n2's is not.
+ */
+int
+cmp_nodes_sort(const void *n1, const void *n2)
+{
+	int n1_sort = (*(node_info **)n1)->nscr.to_be_sorted;
+	int n2_sort = (*(node_info **)n2)->nscr.to_be_sorted;
+
+	if (n1_sort && !n2_sort)
+		return 1;
+	if (!n1_sort && n2_sort)
+		return -1;
+	else
+		return 0;
+}
+
+/**
+ * @brief
+ * cmp_resv_state	- compare reservation state with RESV_BEING_ALTERED.
+ *
+ * @param[in] r1	- reservation to compare.
+ * @param[in] r2	- reservation to compare.
+ *
+ * @return - int
+ * @retval  1: If r2's state is RESV_BEING_ALTERED and r1's state is not.
+ *          0: If both the reservation's states are not RESV_BEING_ALTERED.
+ *         -1: If r1's state is RESV_BEING_ALTERED and r2's state is not.
+ */
+int
+cmp_resv_state(const void *r1, const void *r2)
+{
+	enum resv_states resv1_state;
+	enum resv_states resv2_state;
+
+	resv1_state = (*(resource_resv **)r1)->resv->resv_state;
+	resv2_state = (*(resource_resv **)r2)->resv->resv_state;
+
+	if (resv1_state != RESV_BEING_ALTERED && resv2_state == RESV_BEING_ALTERED)
+		return 1;
+	if (resv2_state != RESV_BEING_ALTERED && resv1_state == RESV_BEING_ALTERED)
+		return -1;
+	else
+		return 0;
 }
 
 /**

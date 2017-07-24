@@ -877,11 +877,13 @@ collect_resources_from_requests(resource_resv **resresv_arr)
 		 * the schedselect.  The exec_vnode is taken directly from the -H  argument
 		 * The qrun -H case is why we need to do this check.
 		 */
-		if (r->is_job && r->job != NULL && r->job->execselect != NULL &&
-			r->job->execselect->defs != NULL && in_runnable_state(r)) {
-			for (j = 0; r->job->execselect->defs[j] != NULL;j++) {
-				if (!resdef_exists_in_array(defarr, r->job->execselect->defs[j]))
-					add_resdef_to_array(&defarr, r->job->execselect->defs[j]);
+		if (r->execselect != NULL && r->execselect->defs != NULL) {
+			if ((r->is_job && r->job != NULL && in_runnable_state(r)) ||
+				(r->is_resv && r->resv != NULL && r->resv->resv_state == RESV_BEING_ALTERED)) {
+				for (j = 0; r->execselect->defs[j] != NULL;j++) {
+					if (!resdef_exists_in_array(defarr, r->execselect->defs[j]))
+						add_resdef_to_array(&defarr, r->execselect->defs[j]);
+				}
 			}
 		}
 		/* Resource_List: job wide resources: resources submitted with

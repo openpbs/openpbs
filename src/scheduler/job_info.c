@@ -703,7 +703,7 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 			selectspec = create_select_from_nspec(resresv->nspec_arr);
 
 		if (resresv->nspec_arr != NULL) {
-			resresv->job->execselect = parse_selspec(selectspec);
+			resresv->execselect = parse_selspec(selectspec);
 			free(selectspec);
 		}
 

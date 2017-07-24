@@ -805,11 +805,11 @@ create_event_list(server_info *sinfo)
 timed_event *
 create_events(server_info *sinfo)
 {
-	timed_event *events = NULL;
-	timed_event *te;
-	resource_resv **all;
-	int errflag = 0;
-	int i;
+	timed_event	*events = NULL;
+	timed_event	*te = NULL;
+	resource_resv	**all = NULL;
+	int		errflag = 0;
+	int		i = 0;
 
 	/* all_resresv is sorted such that the timed events are in the front of
 	 * the array.  Once the first non-timed event is reached, we're done
@@ -820,6 +820,9 @@ create_events(server_info *sinfo)
 	qsort(all, count_array((void **)all), sizeof(resource_resv *), cmp_events);
 
 	for (i = 0; all[i] != NULL && is_timed(all[i]); i++) {
+		if (all[i]->is_resv && all[i]->resv &&
+			all[i]->resv->resv_state == RESV_BEING_ALTERED)
+			continue;
 		/* only add a run event for a job or reservation if they're
 		 * in a runnable state (i.e. don't add it if they're running)
 		 */
@@ -1493,10 +1496,10 @@ add_dedtime_events(event_list *elist, status *policy)
  *		qmgr -c 's s resources_available.ncpus + =5' this function will
  *		will have to be revisited.
  *
- * @param[in] reslist  	- resource list to simulate
- * @param[in] end	  	- end time
- * @param[in] calendar 	- calendar to simulate
- * @param[in] incl_arr 	- only use events for resresvs in this array (can be NULL)
+ * @param[in] reslist	- resource list to simulate
+ * @param[in] end	- end time
+ * @param[in] calendar	- calendar to simulate
+ * @param[in] incl_arr	- only use events for resresvs in this array (can be NULL)
  * @param[in] exclude	- job/resv to ignore (possibly NULL)
  *
  * @return static pointer to amount of resources available during

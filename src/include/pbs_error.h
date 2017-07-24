@@ -225,7 +225,7 @@ extern "C" {
 #define PBSE_NODEPROV		     15147 /* Cannot change state of provisioning node */
 #define PBSE_NODEPROV_NODEL	     15148 /* Cannot del node if provisioning*/
 #define PBSE_NODE_BAD_CURRENT_AOE    15149 /* current aoe is not one of resources_available.aoe */
-#define PBSE_NOLOOPBACKIF	    15153 /* Local host does not have loopback interface configured. */
+#define PBSE_NOLOOPBACKIF	     15153 /* Local host does not have loopback interface configured. */
 #define PBSE_IVAL_AOECHUNK	     15155 /* aoe not following chunk rules */
 #define PBSE_JOBINRESV_CONFLICT      15156 /* job and reservation conflict */
 
@@ -252,6 +252,10 @@ extern "C" {
 #define PBSE_JOBSCRIPTMAXSIZE	     15175 /* job script max size exceeded */
 #define PBSE_BADJOBSCRIPTMAXSIZE     15176 /* user set size more than 2GB */
 #define PBSE_WRONG_RESUME	     15177 /* user tried to resume job with wrong resume signal*/
+
+/* Error code specific to altering reservation start and end times */
+#define PBSE_RESV_NOT_EMPTY	     15178 /* cannot change start time of a non-empty reservation */
+#define PBSE_STDG_RESV_OCCR_CONFLICT 15179 /* cannot change start time of a non-empty reservation */
 
 /*
  ** 	Resource monitor specific
@@ -285,7 +289,6 @@ extern "C" {
 #define PBSE_QUE_NOT_IN_PARTITION 15219  /* Queue does not belong to the partition */
 #define PBSE_PARTITION_NOT_IN_QUE 15220  /* Partition does not belong to the queue */
 #define PBSE_INVALID_PARTITION_QUE 15221 /* Invalid partition to the queue */
-
 
 /* the following structure is used to tie error number      */
 /* with text to be returned to a client, see svr_messages.c */

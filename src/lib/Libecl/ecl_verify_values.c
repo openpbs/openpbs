@@ -439,6 +439,7 @@ verify_value_jobname(int batch_request, int parent_object, int cmd,
 	if (batch_request == PBS_BATCH_QueueJob || 		/* for queuejob allow numeric first char */
 		batch_request == PBS_BATCH_ModifyJob || 	/* for alterjob allow numeric first char */
 		batch_request == PBS_BATCH_SubmitResv ||	/* for reservation submit allow numeric first char */
+		batch_request == PBS_BATCH_ModifyResv ||	/* for reservation modify allow numeric first char */
 		batch_request == PBS_BATCH_SelectJobs)		/* for selectjob allow numeric first char */
 		chk_alpha = 0; 
 
@@ -707,7 +708,7 @@ verify_value_mailpoints(int batch_request, int parent_object, int cmd,
 	if (strcmp(pattr->value, "n") != 0) {
 		pc = pattr->value;
 		while (*pc) {
-			if (batch_request == PBS_BATCH_SubmitResv) {
+			if (batch_request == PBS_BATCH_SubmitResv || batch_request == PBS_BATCH_ModifyResv) {
 				if (*pc != 'a' && *pc != 'b' && *pc != 'e'
 					&& *pc != 'c')
 					return PBSE_BADATVAL;

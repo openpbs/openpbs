@@ -2601,25 +2601,28 @@ void
 req_resvSub(struct batch_request *preq)
 {
 	char		 buf[256];
-	char		 buf1[PBS_MAXUSER+ PBS_MAXHOSTNAME + 2];
+	char		 buf1[PBS_MAXUSER+ PBS_MAXHOSTNAME + 2] = {0};
 	int		 created_here = 0;
-	int		 i;
-	int		 index;
-	char		*rid;
-	char		 ridbuf[PBS_MAXSVRRESVID+1];
-	char		 namebuf[MAXPATHLEN+1];
-	char		 qbuf[PBS_MAXSVRRESVID+1];
-	char		*pc;
-	attribute_def	*pdef;
-	resc_resv	*presv;
-	svrattrl	*psatl;
-	int		 rc;
-	int		resv_count = 1;
+	int		 i = 0;
+	int		 index = 0;
+	char		*rid = NULL;
+	char		 ridbuf[PBS_MAXSVRRESVID+1] = {0};
+	char		 namebuf[MAXPATHLEN+1] = {0};
+	char		 qbuf[PBS_MAXSVRRESVID+1] = {0};
+	char		*pc = NULL;
+	attribute_def	*pdef = NULL;
+	resc_resv	*presv = NULL;
+	svrattrl	*psatl = NULL;
+	int		 rc = 0;
+	int		 resv_count = 1;
 	int		 sock = preq->rq_conn;
-	char		hook_msg[HOOK_MSG_SIZE];
-	int		resc_access_perm_save;
-	int		qmove_requested = 0;
+	char		 hook_msg[HOOK_MSG_SIZE] = {0};
+	int		 resc_access_perm_save = 0;
+	int		 qmove_requested = 0;
 	pbs_db_conn_t	*conn = (pbs_db_conn_t *) svr_db_conn;
+	char		*fmt = "%a %b %d %H:%M:%S %Y";
+	char		 tbuf1[256] = {0};
+	char		 tbuf2[256] = {0};
 
 	switch (process_hooks(preq, hook_msg, sizeof(hook_msg),
 			pbs_python_set_interrupt)) {
@@ -2650,7 +2653,7 @@ req_resvSub(struct batch_request *preq)
 	if ((server.sv_attr[(int)SRV_ATR_ResvEnable].at_flags & ATR_VFLAG_SET) &&
 		(server.sv_attr[(int)SRV_ATR_ResvEnable].at_val.at_long == 0)) {
 
-		sprintf(buf, "reservations disallowed on %s", server_name);
+		snprintf(buf, sizeof(buf), "reservations disallowed on %s", server_name);
 		if ((rc = reply_text(preq, PBSE_RESVAUTH_U, buf))) {
 			/* reply failed,  close connection; purge resv */
 			close_client(sock);
@@ -2690,7 +2693,7 @@ req_resvSub(struct batch_request *preq)
 		/* Note: use server's job seq number generation mechanism */
 
 		created_here = RESV_SVFLG_HERE;
-		(void)sprintf(ridbuf, "%c%d.", PBS_RESV_ID_CHAR,
+		(void)snprintf(ridbuf, sizeof(ridbuf), "%c%d.", PBS_RESV_ID_CHAR,
 			server.sv_qs.sv_jobidnumber);
 		(void)strcat(ridbuf, server_name);
 		rid = ridbuf;
@@ -2705,7 +2708,7 @@ req_resvSub(struct batch_request *preq)
 	 * "quick save" area of the server - can't do
 	 */
 
-	(void)sprintf(qbuf, "%c%d", PBS_RESV_ID_CHAR,
+	(void)snprintf(qbuf, sizeof(qbuf), "%c%d", PBS_RESV_ID_CHAR,
 		server.sv_qs.sv_jobidnumber);
 	if (++server.sv_qs.sv_jobidnumber > PBS_SEQNUMTOP)
 		server.sv_qs.sv_jobidnumber = 0;	   /* wrap it */
@@ -2885,6 +2888,8 @@ req_resvSub(struct batch_request *preq)
 			req_reject(rc, 0, preq);
 			return;
 		}
+		presv->ri_alter_standing_reservation_duration =  presv->ri_qs.ri_duration;
+
 		/* If more than 1 occurrence are requested then alter the
 		 * reservation and queue first character
 		 */
@@ -2911,7 +2916,7 @@ req_resvSub(struct batch_request *preq)
 	 *as the values for those resources
 	 */
 
-	if ((rc=set_resc_deflt((void *)presv, RESC_RESV_OBJECT, NULL)) != 0) {
+	if ((rc = set_resc_deflt((void *)presv, RESC_RESV_OBJECT, NULL)) != 0) {
 		(void)resv_purge(presv);
 		req_reject(rc, 0, preq);
 		return;
@@ -3013,7 +3018,7 @@ req_resvSub(struct batch_request *preq)
 
 	/* determine values for the "euser" and "egroup" attributes */
 
-	if ((rc=set_objexid((void *)presv, RESC_RESV_OBJECT, presv->ri_wattr))) {
+	if ((rc = set_objexid((void *)presv, RESC_RESV_OBJECT, presv->ri_wattr))) {
 		resv_purge(presv);
 		req_reject(rc, 0, preq);
 		return;
@@ -3135,6 +3140,10 @@ req_resvSub(struct batch_request *preq)
 	presv->ri_wattr[(int)RESV_ATR_mtime].at_flags |= ATR_VFLAG_SET |
 		ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 
+	presv->ri_alter_stime = 0;
+	presv->ri_alter_etime = 0;
+	presv->ri_alter_flags = 0;
+
 	presv->ri_qs.ri_un_type = RESV_UNION_TYPE_NEW;
 	presv->ri_qs.ri_un.ri_newt.ri_fromsock = sock;
 	presv->ri_qs.ri_un.ri_newt.ri_fromaddr = get_connectaddr(sock);
@@ -3185,8 +3194,15 @@ req_resvSub(struct batch_request *preq)
 		ATR_VFLAG_SET) == 0) {
 		/*Not "interactive" so don't wait on scheduler, reply now*/
 
-		sprintf(buf, "%s UNCONFIRMED",  presv->ri_qs.ri_resvID);
-		sprintf(buf1, "requestor=%s@%s", preq->rq_user, preq->rq_host);
+		snprintf(buf, sizeof(buf), "%s UNCONFIRMED",  presv->ri_qs.ri_resvID);
+		if (presv->ri_wattr[RESV_ATR_resv_standing].at_val.at_long)
+			snprintf(buf1, sizeof(buf1), "requestor=%s@%s recurrence_rrule=%s timezone=%s",
+				preq->rq_user, preq->rq_host,
+				presv->ri_wattr[RESV_ATR_resv_rrule].at_val.at_str,
+				presv->ri_wattr[RESV_ATR_resv_timezone].at_val.at_str);
+		else
+			snprintf(buf1, sizeof(buf1), "requestor=%s@%s",
+				preq->rq_user, preq->rq_host);
 
 		if ((rc = reply_text(preq, PBSE_NONE, buf))) {
 			/* reply failed,  close connection; purge resv */
@@ -3207,10 +3223,31 @@ req_resvSub(struct batch_request *preq)
 			/*no decision in -dt seconds, delete with msg*/
 			(void)gen_negI_deleteResv(presv, -dt);
 		}
-		(void)sprintf(buf, "requestor=%s@%s Interactive=%ld",
-			preq->rq_user, preq->rq_host, dt);
+		if (presv->ri_wattr[RESV_ATR_resv_standing].at_val.at_long)
+			snprintf(buf, sizeof(buf), "requestor=%s@%s Interactive=%ld recurrence_rrule=%s timezone=%s",
+				preq->rq_user, preq->rq_host, dt,
+				presv->ri_wattr[RESV_ATR_resv_rrule].at_val.at_str,
+				presv->ri_wattr[RESV_ATR_resv_timezone].at_val.at_str);
+		else
+			snprintf(buf, sizeof(buf), "requestor=%s@%s Interactive=%ld",
+				preq->rq_user, preq->rq_host, dt);
 		account_recordResv(PBS_ACCT_UR, presv, buf);
 	}
+
+	strftime(tbuf1, sizeof(tbuf1), fmt, localtime((time_t *) &presv->ri_wattr[RESV_ATR_start].at_val.at_long));
+	strftime(tbuf2, sizeof(tbuf2), fmt, localtime((time_t *) &presv->ri_wattr[RESV_ATR_end].at_val.at_long));
+
+	if (!presv->ri_wattr[RESV_ATR_resv_standing].at_val.at_long) {
+		snprintf(log_buffer, sizeof(log_buffer), "New reservation submitted start=%s end=%s", tbuf1, tbuf2);
+	} else {
+		snprintf(log_buffer, sizeof(log_buffer), "New reservation submitted start=%s end=%s "
+                                    "recurrence_rrule=%s timezone=%s",
+				    tbuf1, tbuf2,
+				    presv->ri_wattr[RESV_ATR_resv_rrule].at_val.at_str,
+				    presv->ri_wattr[RESV_ATR_resv_timezone].at_val.at_str);
+	}
+	log_event(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
+		presv->ri_qs.ri_resvID, log_buffer);
 
 	/* link reservation into server's reservation list
 	 * and let the scheduler know that something new
@@ -3225,10 +3262,11 @@ static struct dont_set_in_max {
 	char	 *ds_name;		/* resource name */
 	resource *ds_rescp;		/* ptr to resource entry */
 } dont_set_in_max[] = {
-	{"nodes",  NULL},
-	{"nodect", NULL},
-	{"select", NULL},
-	{"place",  NULL}
+	{"nodes",  	NULL},
+	{"nodect", 	NULL},
+	{"select", 	NULL},
+	{"place",  	NULL},
+	{"walltime",	NULL}
 };
 
 /**

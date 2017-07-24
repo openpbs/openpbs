@@ -406,6 +406,8 @@ char *msg_queue_not_in_partition = "Queue %s is not part of partition for node";
 char *msg_partition_not_in_queue = "Partition %s is not part of queue for node";
 char *msg_invalid_partion_in_queue = "Invalid partition in queue";
 
+char *msg_resv_not_empty = "Reservation not empty";
+char *msg_stdg_resv_occr_conflict = "Requested time(s) will interfere with a later occurrence";
 
 /*
  * The following table connects error numbers with text
@@ -578,6 +580,8 @@ struct pbs_err_to_txt pbs_err_to_txt[] = {
 	{PBSE_QUE_NOT_IN_PARTITION, &msg_queue_not_in_partition},
 	{PBSE_PARTITION_NOT_IN_QUE, &msg_partition_not_in_queue},
 	{PBSE_INVALID_PARTITION_QUE, &msg_invalid_partion_in_queue},
+	{PBSE_RESV_NOT_EMPTY, &msg_resv_not_empty},
+	{PBSE_STDG_RESV_OCCR_CONFLICT, &msg_stdg_resv_occr_conflict},
 	{ 0, (char **)0 }		/* MUST be the last entry */
 };
 

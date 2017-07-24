@@ -43,6 +43,7 @@ bin_PROGRAMS = \
 	pbs_attach \
 	pbs_password \
 	pbs_tmrsh \
+	pbs_ralter \
 	pbs_rdel \
 	pbs_rstat \
 	pbs_rsub \
@@ -126,6 +127,10 @@ pbs_password_SOURCES = pbs_password.c
 pbs_tmrsh_CPPFLAGS = -I$(top_srcdir)/src/include
 pbs_tmrsh_LDADD = ${common_libs}
 pbs_tmrsh_SOURCES = pbs_tmrsh.c
+
+pbs_ralter_CPPFLAGS = -I$(top_srcdir)/src/include
+pbs_ralter_LDADD = ${common_libs}
+pbs_ralter_SOURCES = pbs_ralter.c
 
 pbs_rdel_CPPFLAGS = -I$(top_srcdir)/src/include
 pbs_rdel_LDADD = ${common_libs}

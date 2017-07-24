@@ -324,6 +324,21 @@ if __name__ == '__main__':
                 sys.stderr.write(repr(e))
                 sys.exit(e.rc)
 
+    """
+    elif cmd == 'alterresv':
+        if objid is None:
+            print '1'
+        else:
+            (s, attrib) = _load_data(objfile, servername, user)
+            try:
+                rc = s.alterresv(objid, attrib, extend=extend)
+                sys.stdout.write(str(rc))
+            except PbsAlterError, e:
+                sys.stdout.write(str(rc))
+                sys.stderr.write(repr(e))
+                sys.exit(e.rc)
+    """
+
     elif cmd == 'manager':
         (s, _data) = _load_data(objfile, servername, user)
         if 'cmd' in _data:

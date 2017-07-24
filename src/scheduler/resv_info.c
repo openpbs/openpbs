@@ -77,6 +77,7 @@
 #include "globals.h"
 #include "node_info.h"
 #include "resource_resv.h"
+#include "resource.h"
 #include "fifo.h"
 #include "check.h"
 #include "simulate.h"
@@ -348,7 +349,8 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 			 */
 			if (resresv->resv->is_standing &&
 				(resresv->resv->resv_state == RESV_CONFIRMED ||
-				resresv->resv->resv_state ==RESV_RUNNING)) {
+				resresv->resv->resv_state == RESV_BEING_ALTERED ||
+				resresv->resv->resv_state == RESV_RUNNING)) {
 				resource_resv *resresv_ocr = NULL; /* the occurrence's resource_resv */
 				char *execvnodes_seq = NULL; /* confirmed execvnodes sequence string */
 				char **execvnode_ptr = NULL;
@@ -468,7 +470,8 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 							free_schd_error(err);
 							return NULL;
 						}
-						if (resresv->resv->resv_state == RESV_RUNNING) {
+						if (resresv->resv->resv_state == RESV_RUNNING ||
+							resresv->resv->resv_state == RESV_BEING_ALTERED) {
 							/* Each occurrence will be added to the simulation framework and
 							 * should not be in running state. Their state should be
 							 * Confirmed instead of possibly inheriting the Running state
@@ -561,11 +564,12 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 resource_resv *
 query_resv(struct batch_status *resv, server_info *sinfo)
 {
-	struct attrl *attrp;		/* linked list of attributes from server */
-	resource_resv *advresv;		/* resv_info to be created */
-	resource_req *resreq;		/* used for the ATTR_l resources */
-	char *endp;			/* used with strtol() */
-	long count; 			/* used to convert string -> num */
+	struct attrl	*attrp = NULL;		/* linked list of attributes from server */
+	resource_resv	*advresv = NULL;	/* resv_info to be created */
+	resource_req	*resreq = NULL;		/* used for the ATTR_l resources */
+	char		*endp = NULL;		/* used with strtol() */
+	long		count = 0; 		/* used to convert string -> num */
+	char		*selectspec = NULL;	/* used for holding select specification. */
 
 	if ((advresv = new_resource_resv()) == NULL)
 		return NULL;
@@ -578,7 +582,7 @@ query_resv(struct batch_status *resv, server_info *sinfo)
 	attrp = resv->attribs;
 	advresv->name = string_dup(resv->name);
 	advresv->server = sinfo;
-	advresv->is_adv_resv = 1;
+	advresv->is_resv = 1;
 
 	while (attrp != NULL) {
 		if (!strcmp(attrp->name, ATTR_resv_owner))
@@ -667,6 +671,8 @@ query_resv(struct batch_status *resv, server_info *sinfo)
 			 */
 			advresv->resv->resv_nodes = create_resv_nodes(advresv->nspec_arr,
 				sinfo);
+			selectspec = create_select_from_nspec(advresv->nspec_arr);
+			advresv->execselect = parse_selspec(selectspec);
 		}
 		else if (!strcmp(attrp->name, ATTR_node_set))
 			advresv->node_set_str = break_comma_list(attrp->value);
@@ -865,19 +871,19 @@ dup_resv_info(resv_info *rinfo, server_info *sinfo)
 int
 check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server_info *sinfo)
 {
-	int count = 0;			/* new reservation count */
-	int pbsrc = 0;				/* return code from pbs_confirmresv() */
+	int		count = 0;	/* new reservation count */
+	int		pbsrc = 0;	/* return code from pbs_confirmresv() */
 
-	server_info *nsinfo = NULL;
-	resource_resv *nresv = NULL;
-	resource_resv *nresv_copy = NULL;
-	resource_resv **tmp_resresv = NULL;
+	server_info	*nsinfo = NULL;
+	resource_resv	*nresv = NULL;
+	resource_resv	*nresv_copy = NULL;
+	resource_resv	**tmp_resresv = NULL;
 
-	char **occr_execvnodes_arr = NULL;
-	char **tofree = NULL;
-	int occr_count =1;
-	int state, substate;
-	int i, j;
+	char		**occr_execvnodes_arr = NULL;
+	char		**tofree = NULL;
+	int		occr_count =1;
+	int		state = 0, substate = 0;
+	int		i = 0, j = 0;
 
 	if (sinfo == NULL)
 		return -1;
@@ -885,6 +891,8 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 	/* If no reservations to check then return, this is not an error */
 	if (resvs == NULL)
 		return 0;
+
+	qsort(sinfo->resvs, sinfo->num_resvs, sizeof(resource_resv*), cmp_resv_state);
 
 	for (i = 0; sinfo->resvs[i] != NULL; i++) {
 
@@ -903,7 +911,7 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 		 * retry time that is in the past, then the reservation has to be
 		 * respectively confirmed and reconfirmed.
 		 */
-		if (state == RESV_UNCONFIRMED ||
+		if (state == RESV_UNCONFIRMED || state == RESV_BEING_ALTERED ||
 			((state != RESV_RUNNING &&
 			substate == RESV_DEGRADED &&
 			sinfo->resvs[i]->resv->retry_time != UNSPECIFIED &&
@@ -1246,7 +1254,10 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 		 * number of occurrences to account only for the remaining occurrences and
 		 * not the original number at the time the reservation was first submitted
 		 */
-		occr_count -= ridx;
+		if (nresv->resv->resv_state != RESV_BEING_ALTERED)
+			occr_count -= ridx;
+		else
+			occr_count = 1;
 	}
 
 	if ((occr_start_arr = (time_t *) calloc(sizeof(time_t), occr_count))
@@ -1295,7 +1306,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 			 * real universe, so instead of duplicating the parent reservation, it
 			 * is retrieved from the duplicated real server universe
 			 */
-			if (nresv->resv->resv_substate ==RESV_DEGRADED) {
+			if (nresv->resv->resv_substate == RESV_DEGRADED) {
 				nresv_copy = find_resource_resv_by_time(nsinfo->all_resresv,
 					nresv->name, next);
 				if (nresv_copy == NULL) {
@@ -1734,4 +1745,44 @@ create_resv_nodes(nspec **nspec_arr, server_info *sinfo)
 		}
 	}
 	return nodes;
+}
+
+/**
+ * @brief - adjust resources on nodes belonging to a reservation that is
+ *	    being altered.
+ *
+ * @param[in] all_resvs - array of all the reservations.
+ * @param[in] all_nodes - array of all the nodes.
+ *
+ * @par - This routine will adjust the assigned resources on nodes that
+ *	  are being used by a reservation which is being altered. The
+ *	  need to do this is because a reservation if it is running and
+ *	  needs to be altered, will have resources assigned on its nodes.
+ *	  This may render check_avail_resources to reject the alter request
+ *	  Also, for the nodes that are reservation exclusive should also
+ *	  be seen as free nodes for this reservation in order to get altered
+ *	  successfully.
+ */
+
+void
+adjust_alter_resv_nodes(resource_resv **all_resvs, node_info **all_nodes)
+{
+	int i = 0;
+	int j = 0;
+	node_info **resv_nodes = NULL;
+	node_info *ninfo = NULL;
+
+	if (all_resvs == NULL || all_nodes == NULL )
+		return;
+	for (j = 0; all_resvs[j] != NULL; j++) {
+		if (all_resvs[j]->resv->resv_state == RESV_BEING_ALTERED) {
+			if (all_resvs[j]->resv->resv_substate == RESV_RUNNING) {
+				resv_nodes = all_resvs[j]->ninfo_arr;
+				for (i = 0; resv_nodes[i] != NULL; i++) {
+					ninfo = find_node_by_rank(all_nodes, resv_nodes[i]->rank);
+					update_node_on_end(ninfo, all_resvs[j], NULL);
+				}
+			}
+		}
+	}
 }

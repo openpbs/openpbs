@@ -64,18 +64,21 @@ void handle_resv(char *resv_id, char *server, int how);
 void
 display_single_reservation(struct batch_status *resv, int how)
 {
-	char *queue_name = NULL;
+	char		*queue_name = NULL;
 #ifdef NAS /* localmod 075 */
-	char *resv_name = NULL;
+	char		*resv_name = NULL;
 #endif /* localmod 075 */
-	char *user = NULL;
-	char *resv_state = NULL;
-	char *resv_start = NULL;
-	char *resv_end = NULL;
-	time_t resv_duration = 0;
-	char *str;
-	struct attrl *attrp = NULL;
-	time_t tmp_time;
+	char		*user = NULL;
+	char		*resv_state = NULL;
+	char		*resv_start = NULL;
+	char		*resv_end = NULL;
+	time_t		resv_duration = 0;
+	char		*str;
+	struct attrl	*attrp = NULL;
+	time_t		tmp_time;
+	char		tbuf[64];
+	struct tm	*ptm = NULL;
+	char		*fmt = "%a %b %d %H:%M:%S %Y";
 
 	attrp = resv->attribs;
 
@@ -130,10 +133,9 @@ display_single_reservation(struct batch_status *resv, int how)
 						strcmp(attrp->name, ATTR_ctime) == 0      ||
 						strcmp(attrp->name, ATTR_mtime) == 0      ||
 						strcmp(attrp->name, ATTR_resv_retry) == 0) {
-						tmp_time = atoi(attrp->value);
-						str = ctime(&tmp_time);
-						/* ctime puts in a newline at the end.  We don't want 2 newlines */
-						str[strlen(str)-1] = '\0';
+						tmp_time = atol(attrp->value);
+						strftime(tbuf, sizeof(tbuf), fmt, localtime((time_t *) &tmp_time));
+						str = tbuf;
 					}
 					else if (!strcmp(attrp->name, ATTR_resv_execvnodes)) {
 						attrp = attrp->next;
@@ -352,12 +354,12 @@ convert_resv_state(char *pcode, int long_str)
 {
 	int i;
 	static char *resv_strings_short[] =
-		{ "NO", "UN", "CO", "WT", "TR", "RN", "FN", "BD", "DE", "DJ", "DG" };
+		{ "NO", "UN", "CO", "WT", "TR", "RN", "FN", "BD", "DE", "DJ", "DG", "AL" };
 	static char *resv_strings_long[] =
 		{ "RESV_NONE", "RESV_UNCONFIRMED", "RESV_CONFIRMED",
 		"RESV_WAIT", "RESV_TIME_TO_RUN", "RESV_RUNNING",
 		"RESV_FINISHED", "RESV_BEING_DELETED", "RESV_DELETED",
-		"RESV_DELETING_JOBS", "RESV_DEGRADED"
+		"RESV_DELETING_JOBS", "RESV_DEGRADED", "RESV_BEING_ALTERED"
 	};
 
 	i = atoi(pcode);
@@ -373,6 +375,7 @@ convert_resv_state(char *pcode, int long_str)
 		case RESV_BEING_DELETED:
 		case RESV_DELETED:
 		case RESV_DELETING_JOBS:
+		case RESV_BEING_ALTERED:
 			if (long_str == 0)	/* short */
 				return resv_strings_short[i];
 			else
