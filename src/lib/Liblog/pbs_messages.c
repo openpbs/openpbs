@@ -400,6 +400,8 @@ char *msg_unknown_sched = "Unknown Scheduler";
 char *msg_no_del_sched = "Can not delete Scheduler";
 char *msg_sched_priv_exists = "Another Sched object also has same value for its sched_priv directory";
 char *msg_sched_logs_exists = "Another Sched object also has same value for its sched_log directory";
+char *msg_route_que_no_partition = "Can not assign a partition to route queue";
+char *msg_cannot_set_route_que = "Route queues are incompatible with the partition attribute";
 
 
 /*
@@ -568,6 +570,8 @@ struct pbs_err_to_txt pbs_err_to_txt[] = {
 	{PBSE_SCHED_NO_DEL, &msg_no_del_sched},
 	{PBSE_SCHED_PRIV_EXIST, &msg_sched_priv_exists},
 	{PBSE_SCHED_LOG_EXIST, &msg_sched_logs_exists},
+	{PBSE_ROUTE_QUE_NO_PARTITION, &msg_route_que_no_partition},
+	{PBSE_CANNOT_SET_ROUTE_QUE, &msg_cannot_set_route_que},
 	{ 0, (char **)0 }		/* MUST be the last entry */
 };
 

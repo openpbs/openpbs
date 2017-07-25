@@ -162,6 +162,7 @@ extern char server_host[];
 extern char *path_hooks;
 extern 	int max_concurrent_prov;
 extern char *msg_new_inventory_mom;
+extern char *msg_cannot_set_route_que;
 
 extern int check_req_aoe_available(struct pbsnode *, char *);
 int resize_prov_table(int);
@@ -651,6 +652,11 @@ set_queue_type(attribute *pattr, void *pque, int mode)
 				(((pbs_queue *)pque)->qu_attr[(int)QE_ATR_HasNodes].at_flags & ATR_VFLAG_SET) &&
 				(((pbs_queue *)pque)->qu_attr[(int)QE_ATR_HasNodes].at_val.at_long != 0)) {
 				return (PBSE_ATTRTYPE);
+			} else {
+				if (((pbs_queue *)pque)->qu_attr[(int)QA_ATR_partition].at_flags & ATR_VFLAG_SET &&
+						(spectype == QTYPE_RoutePush)) {
+					return PBSE_CANNOT_SET_ROUTE_QUE;
+				}
 			}
 			((pbs_queue *)pque)->qu_qs.qu_type = spectype;
 			(void)free(pattr->at_val.at_str);

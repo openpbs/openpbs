@@ -131,6 +131,7 @@ enum queueattr {
 	QA_ATR_Started,
 	QA_ATR_queued_jobs_threshold,
 	QA_ATR_queued_jobs_threshold_res,
+	QA_ATR_partition,
 	QA_ATR_LAST	/* WARNING: Must be the highest valued enum */
 };
 

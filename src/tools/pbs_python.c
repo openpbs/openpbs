@@ -358,6 +358,12 @@ action_sched_user(attribute *pattr, void *pobj, int actmode)
 }
 
 int
+action_queue_partition(attribute *pattr, void *pobj, int actmode)
+{
+	return 0;
+}
+
+int
 set_reserve_retry_init(pattr, pobj, actmode)
 attribute *pattr;
 void      *pobj;

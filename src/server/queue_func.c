@@ -407,3 +407,28 @@ queuestart_action(attribute *pattr, void *pobject, int actmode)
 
 	return 0;
 }
+
+
+/**
+ * @brief
+ * 		action routine for the queue's "partition" attribute
+ *
+ * @param[in]	pattr	-	attribute being set
+ * @param[in]	pobj	-	Object on which attribute is being set
+ * @param[in]	actmode	-	the mode of setting, recovery or just alter
+ *
+ * @return	error code
+ * @retval	PBSE_NONE	-	Success
+ * @retval	!PBSE_NONE	-	Failure
+ *
+ */
+int
+action_queue_partition(attribute *pattr, void *pobj, int actmode)
+{
+	if (((pbs_queue *)pobj)->qu_qs.qu_type  == QTYPE_RoutePush)
+		return PBSE_ROUTE_QUE_NO_PARTITION;
+
+	return PBSE_NONE;
+}
+
+

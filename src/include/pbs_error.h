@@ -280,6 +280,8 @@ extern "C" {
 #define PBSE_SCHED_NO_DEL 15214		/* can not delete scheduler */
 #define PBSE_SCHED_PRIV_EXIST 15215	/* Scheduler sched_priv directory already exists */
 #define PBSE_SCHED_LOG_EXIST 15216	/* Scheduler sched_log directory already exists */
+#define PBSE_ROUTE_QUE_NO_PARTITION  15217 /*Partition can not be assigned to route queue */
+#define PBSE_CANNOT_SET_ROUTE_QUE 15218 /*Can not set queue type to route */
 
 
 /* the following structure is used to tie error number      */

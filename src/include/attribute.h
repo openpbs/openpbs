@@ -566,6 +566,7 @@ extern int decode_null(attribute *patr, char *name, char *rn, char *val);
 extern int set_null(attribute *patr, attribute *new, enum batch_op op);
 extern int cred_name_okay(attribute *pattr, void *pobject, int actmode);
 extern int action_resc_dflt_queue(attribute *pattr, void *pobj, int actmode);
+extern int action_queue_partition(attribute *pattr, void *pobj, int actmode);
 /* Extern functions (at_action) called  from resv_attr_def */
 extern int action_resc_resv(attribute *pattr, void *pobject, int actmode);
 extern int is_attr(int, char *, int);
