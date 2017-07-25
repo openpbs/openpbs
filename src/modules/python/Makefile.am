@@ -62,5 +62,6 @@ dist_pbshooks_DATA = \
 	pbs_hooks/PBS_translate_mpp.HK \
 	pbs_hooks/PBS_translate_mpp.PY \
 	pbs_hooks/PBS_power.HK \
-	pbs_hooks/PBS_power.PY
-
+	pbs_hooks/PBS_power.PY \
+	pbs_hooks/PBS_alps_inventory_check.HK \
+	pbs_hooks/PBS_alps_inventory_check.PY

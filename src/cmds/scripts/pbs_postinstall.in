@@ -665,6 +665,7 @@ create_home() {
 			tmp_mpp="/tmp/PBS_translate_mpp.HK.$$"
 			sed "s/enabled=false/enabled=true/g" $PBS_HOME/server_priv/hooks/PBS_translate_mpp.HK > $tmp_mpp
 			mv $tmp_mpp $PBS_HOME/server_priv/hooks/PBS_translate_mpp.HK
+			sed --in-place "s/enabled=false/enabled=true/" $PBS_HOME/server_priv/hooks/PBS_alps_inventory_check.HK
 		fi
 		# create the database user file if it does not exist
 		dbuser_fl="${PBS_HOME}/server_priv/db_user"

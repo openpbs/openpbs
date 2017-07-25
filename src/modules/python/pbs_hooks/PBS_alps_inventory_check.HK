@@ -1,0 +1,6 @@
+type=pbs
+enabled=false
+user=pbsadmin
+event=exechost_periodic
+freq=300
+alarm=90
