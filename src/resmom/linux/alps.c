@@ -4830,6 +4830,9 @@ alps_create_reserve_request(job *pjob, basil_request_reserve_t **req)
 	vmpiprocs	*vp;
 	size_t		len, nsize;
 	char		*cp;
+	long		pstate = 0;
+	char		*pgov = NULL;
+	char		*pname = NULL;
 	resource	*pres;
 
 	*req = NULL;
@@ -5042,6 +5045,40 @@ alps_create_reserve_request(job *pjob, basil_request_reserve_t **req)
 		sizeof(basil_req->batch_id)-1);
 	basil_req->batch_id[sizeof(basil_req->batch_id)-1] = '\0';
 
+	/* check for pstate or pgov */
+	for (pres = (resource *)
+				GET_NEXT(pjob->ji_wattr[(int)JOB_ATR_resource].at_val.at_list);
+			pres != NULL;
+			pres = (resource *)GET_NEXT(pres->rs_link)) {
+
+		if ((pstate > 0) && (pgov != NULL))
+			break;
+
+		if (pres->rs_defin == NULL)
+			continue;
+		pname = pres->rs_defin->rs_name;
+		if (pname == NULL)
+			continue;
+
+		if (strcmp(pname, "pstate") == 0) {
+			pstate = atol(pres->rs_value.at_val.at_str);
+			if (pstate <= 0) {
+				snprintf(log_buffer, sizeof(log_buffer),
+					"pstate value \"%s\" could not be used for the reservation",
+					pres->rs_value.at_val.at_str);
+				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB,
+					LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
+				pstate = 0;
+			}
+			continue;
+		}
+		if (strcmp(pname, "pgov") == 0) {
+			pgov = pres->rs_value.at_val.at_str;
+			continue;
+		}
+	}
+
+
 	for (i = 0; i < num; i++) {
 		nodesum_t	*ns = &nodes[i];
 
@@ -5252,6 +5289,21 @@ alps_create_reserve_request(job *pjob, basil_request_reserve_t **req)
 		} else if (strcmp(BASIL_VAL_X2, arch) == 0) {
 			p->arch = basil_node_arch_x2;
 		}
+		if (pstate > 0) {
+			p->pstate = pstate;
+		}
+		if (pgov != NULL) {
+			if (strlen(pgov) < sizeof(p->pgovernor)) {
+				strcpy(p->pgovernor, pgov);
+			} else {
+				sprintf(log_buffer, "pgov value %s is too long,"
+					" length must be less than %ld",
+					pgov, sizeof(p->pgovernor));
+				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB,
+					LOG_DEBUG, pjob->ji_qs.ji_jobid,
+					log_buffer);
+			}
+		}
 	}
 	*req = basil_req;
 	free(nodes);
@@ -5362,8 +5414,18 @@ alps_create_reservation(basil_request_reserve_t *bresvp, long *rsvn_id,
 				param->nppn);
 			add_alps_req(utilBuffer);
 		}
+		if (param->pstate > 0) {
+			sprintf(utilBuffer, " " BASIL_ATR_PSTATE "=\"%ld\"",
+				param->pstate);
+			add_alps_req(utilBuffer);
+		}
 		if (param->nppcu > 0) {
 			sprintf(utilBuffer, " " BASIL_ATR_NPPCU "=\"0\"");
+			add_alps_req(utilBuffer);
+		}
+		if (param->pgovernor[0] != '\0') {
+			sprintf(utilBuffer, " " BASIL_ATR_PGOVERNOR "=\"%s\"",
+				param->pgovernor);
 			add_alps_req(utilBuffer);
 		}
 		if (vnode_per_numa_node && param->segments[0] != '\0') {

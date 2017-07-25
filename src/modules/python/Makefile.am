@@ -51,6 +51,7 @@ pbsv1module_PYTHON = \
 	pbs/v1/_svr_types.py \
 	pbs/v1/_pmi_types.py \
 	pbs/v1/_pmi_sgi.py \
+	pbs/v1/_pmi_cray.py \
 	pbs/v1/_pmi_none.py \
 	pbs/v1/_pmi_utils.py
 

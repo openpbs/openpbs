@@ -61,7 +61,9 @@ dist_unsupported_DATA = \
 	pbs_dtj.8B \
 	pbs_jobs_at.8B \
 	pbs_rescquery.3B \
-	run_pelog_shell.ini
+	run_pelog_shell.ini \
+	cray_readme \
+	pbs_output.py
 
 pbs_rmget_CPPFLAGS = -I$(top_srcdir)/src/include
 pbs_rmget_LDADD = \

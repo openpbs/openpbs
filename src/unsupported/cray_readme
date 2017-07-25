@@ -1,0 +1,20 @@
+Contents
+--------
+
+	pbs_output.py
+
+This script is not intended to be run by users or Administrators.
+It is run by the Cray RUR system as an "output plugin" that will
+write data specific to a PBS job to a well known path that PBS hooks
+can access:
+
+PBS_HOME/spool/<jobid>.rur
+
+The format of the file will be:
+
+pluginName : apid : pluginOutput
+
+See the Cray document: "Managing System Software for the Cray®
+Linux Environment" section 12.7 "RUR Plugins" for more
+information on the RUR plugin interface.
+http://docs.cray.com/books/S-2393-5101/S-2393-5101.pdf

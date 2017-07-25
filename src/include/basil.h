@@ -549,6 +549,8 @@ typedef struct basil_reserve_param {
 	long npps;
 	long nspn;
 	long nppcu;
+	long pstate;
+	char pgovernor[BASIL_STRING_SHORT];
 	basil_rsvn_mode_t rsvn_mode;
 	basil_gpc_mode_t gpc_mode;
 	char segments[BASIL_STRING_MEDIUM];

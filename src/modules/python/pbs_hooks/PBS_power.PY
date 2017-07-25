@@ -1,37 +1,38 @@
+# coding: utf-8
 """
-/* 
+/*
 #  Copyright (C) 1994-2017 Altair Engineering, Inc.
 #  For more information, contact Altair at www.altair.com.
-#   
+#
 #  This file is part of the PBS Professional ("PBS Pro") software.
-#  
+#
 #  Open Source License Information:
-#   
+#
 #  PBS Pro is free software. You can redistribute it and/or modify it under the
-#  terms of the GNU Affero General Public License as published by the Free 
-#  Software Foundation, either version 3 of the License, or (at your option) any 
+#  terms of the GNU Affero General Public License as published by the Free
+#  Software Foundation, either version 3 of the License, or (at your option) any
 #  later version.
-#   
-#  PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+#
+#  PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
 #  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
 #  PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
-#   
-#  You should have received a copy of the GNU Affero General Public License along 
+#
+#  You should have received a copy of the GNU Affero General Public License along
 #  with this program.  If not, see <http://www.gnu.org/licenses/>.
-#   
-#  Commercial License Information: 
-#  
-#  The PBS Pro software is licensed under the terms of the GNU Affero General 
-#  Public License agreement ("AGPL"), except where a separate commercial license 
+#
+#  Commercial License Information:
+#
+#  The PBS Pro software is licensed under the terms of the GNU Affero General
+#  Public License agreement ("AGPL"), except where a separate commercial license
 #  agreement for PBS Pro version 14 or later has been executed in writing with Altair.
-#   
-#  Altair’s dual-license business model allows companies, individuals, and 
-#  organizations to create proprietary derivative works of PBS Pro and distribute 
-#  them - whether embedded or bundled with other software - under a commercial 
+#
+#  Altair’s dual-license business model allows companies, individuals, and
+#  organizations to create proprietary derivative works of PBS Pro and distribute
+#  them - whether embedded or bundled with other software - under a commercial
 #  license agreement.
-#  
-#  Use of Altair’s trademarks, including but not limited to "PBS™", 
-#  "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+#
+#  Use of Altair’s trademarks, including but not limited to "PBS™",
+#  "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 #  trademark licensing policies.
  *
  */
@@ -46,6 +47,7 @@ in the 'eoe' value for a job.
 
 import pbs
 import os
+import socket
 from pbs.v1._pmi_utils import _get_vnode_names, _svr_vnode
 
 
@@ -68,7 +70,7 @@ def vnodes_enabled(job):
     for vn in _get_vnode_names(job):
         if not _svr_vnode(vn).power_provisioning:
             pbs.logjobmsg(job.id,
-                "power functionality is disabled on vnode %s" % vn)
+                          "power functionality is disabled on vnode %s" % vn)
             return False
     return True
 
@@ -79,7 +81,7 @@ if this_event.type not in [pbs.EXECJOB_PROLOGUE, pbs.EXECJOB_EPILOGUE,
                            pbs.EXECJOB_BEGIN, pbs.EXECJOB_END,
                            pbs.EXECHOST_STARTUP, pbs.EXECHOST_PERIODIC]:
     pbs.logmsg(pbs.LOG_WARNING,
-        "Event not serviceable for power provisioning.")
+               "Event not serviceable for power provisioning.")
     this_event.accept()
 
 
@@ -90,7 +92,7 @@ if this_event.type == pbs.EXECHOST_STARTUP:
     # Don't connect if the server or sched is running.
     if not _is_node_provisionable():
         pbs.logmsg(pbs.LOG_DEBUG,
-            "Provisioning cannot be enabled on this host")
+                   "Provisioning cannot be enabled on this host")
         this_event.accept()
     power = init_power(this_event)
     profiles = power.query(pbs.Power.QUERY_PROFILE)
@@ -112,9 +114,11 @@ if this_event.type == pbs.EXECHOST_PERIODIC:
     for jobid in this_event.job_list.keys():
         # set energy usage
         job = this_event.job_list[jobid]
-        if not job.in_ms_mom():		# skip any jobs that MOM is not MS
+        # skip any jobs that MOM is not MS
+        if not job.in_ms_mom():
             continue
-        if not vnodes_enabled(job):	# skip if vnodes have power_provisioning=0
+        # skip if vnodes have power_provisioning=0
+        if not vnodes_enabled(job):
             continue
 
         try:
@@ -131,8 +135,14 @@ this_job = this_event.job
 
 if this_event.type == pbs.EXECJOB_BEGIN:
     me = pbs.get_local_nodename()
-    if not _svr_vnode(me).power_provisioning:
-        this_event.accept()
+    try:
+        if not _svr_vnode(me).power_provisioning:
+            this_event.accept()
+    except:
+        # Try with different hostname
+        me = socket.getfqdn()
+        if not _svr_vnode(me).power_provisioning:
+            this_event.accept()
     requested_profile = str(this_job.schedselect).partition(
         'eoe=')[2].partition('+')[0].partition(':')[0]
     if requested_profile != "":
@@ -153,14 +163,17 @@ if this_event.type == pbs.EXECJOB_END:
 if not this_job.in_ms_mom():
     this_event.accept()
 
-if not vnodes_enabled(this_job):	# Don't do anything if power_provisioning=0
+# Don't do anything if power_provisioning=0
+if not vnodes_enabled(this_job):
+    this_event.accept()
+
+# Was an EOE requested?
+requested_profile = str(this_job.schedselect).partition(
+    'eoe=')[2].partition('+')[0].partition(':')[0]
+if requested_profile == "":
     this_event.accept()
 
 if this_event.type == pbs.EXECJOB_PROLOGUE:
-    # Was an EOE requested?
-    requested_profile = str(this_job.schedselect).partition(
-        'eoe=')[2].partition('+')[0].partition(':')[0]
-
     power = init_power(this_event)
     try:
         power.activate_profile(requested_profile, this_job)
