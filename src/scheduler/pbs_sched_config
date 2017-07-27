@@ -536,6 +536,9 @@ preempt_sort: min_time_since_start
 #
 # mom_resources
 #
+#	NOTE: The mom_resources option is deprecated and will likely go away in a future release. 
+#             Use exechost_periodic hook to set the resource values
+#
 #	Defines Dynamic Consumable Resources on a per node basis.
 #
 #	The mom_resources option is used to be able to query the MOMs to
