@@ -82,6 +82,10 @@ strict_ordering: false	ALL
 
 #
 # help_starving_jobs
+#
+#	NOTE: The help_starving_jobs option is deprecated and will likely go away in a future release. 
+#	      Use job_sort_formula specifying eligible_time to establish equivalent behavior.
+#
 #	When this option is turned on, jobs which have been waiting a long
 #	time are considered to be "starving".  The default amount of time for
 #	a job to wait before it is considered starving is 24 hours, but you can
