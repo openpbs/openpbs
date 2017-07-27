@@ -14,6 +14,14 @@
 extern unsigned char pbs_aes_key[];
 extern unsigned char pbs_aes_iv[];
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#define CIPHER_CONTEXT_INIT(v) EVP_CIPHER_CTX_init(v)
+#define CIPHER_CONTEXT_CLEAN(v) EVP_CIPHER_CTX_cleanup(v)
+#else
+#define CIPHER_CONTEXT_INIT(v) v = EVP_CIPHER_CTX_new(); if (!v) return -1;
+#define CIPHER_CONTEXT_CLEAN(v) EVP_CIPHER_CTX_free(v)
+#endif
+
 /**
  * @brief
  *	Encrypt the input string using AES encryption. The keys are rotated
@@ -37,31 +45,37 @@ pbs_encrypt_data(char *uncrypted, int *credtype, size_t len, char **crypted, siz
         char *cblk;
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
-#define CIPHER_CONTEXT_INIT(v) EVP_CIPHER_CTX_init(v)
-#define CIPHER_CONTEXT_CLEAN(v) EVP_CIPHER_CTX_cleanup(v)
         EVP_CIPHER_CTX real_ctx;
         EVP_CIPHER_CTX *ctx = &real_ctx;
 #else
-#define CIPHER_CONTEXT_INIT(v) v = EVP_CIPHER_CTX_new(); if (!v) return -1;
-#define CIPHER_CONTEXT_CLEAN(v) EVP_CIPHER_CTX_free(v)
         EVP_CIPHER_CTX *ctx = NULL;
 #endif
 
         CIPHER_CONTEXT_INIT(ctx);
 
-        if (EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, (const unsigned char *) pbs_aes_key, (const unsigned char *) pbs_aes_iv) == 0)
+        if (EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, (const unsigned char *) pbs_aes_key, (const unsigned char *) pbs_aes_iv) == 0) {
+                CIPHER_CONTEXT_CLEAN(ctx);
                 return -1;
+        }
 
         plen = len + EVP_CIPHER_CTX_block_size(ctx) + 1;
         cblk = malloc(plen);
-        if (!cblk)
+        if (!cblk) {
+                CIPHER_CONTEXT_CLEAN(ctx);
                 return -1;
+        }
 
-        if (EVP_EncryptUpdate(ctx, cblk, &plen, uncrypted, len) == 0)
+        if (EVP_EncryptUpdate(ctx, cblk, &plen, uncrypted, len) == 0) {
+                CIPHER_CONTEXT_CLEAN(ctx);
+                free(cblk);
                 return -1;
+        }
 
-        if (EVP_EncryptFinal_ex(ctx, cblk + plen, &len2) == 0)
+        if (EVP_EncryptFinal_ex(ctx, cblk + plen, &len2) == 0) {
+                CIPHER_CONTEXT_CLEAN(ctx);
+                free(cblk);
                 return -1;
+        }
 
         CIPHER_CONTEXT_CLEAN(ctx);
 
@@ -104,30 +118,36 @@ pbs_decrypt_data(char *crypted, int credtype, size_t len, char **uncrypted, size
         int plen, len2 = 0;
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
-#define CIPHER_CONTEXT_INIT(v) EVP_CIPHER_CTX_init(v)
-#define CIPHER_CONTEXT_CLEAN(v) EVP_CIPHER_CTX_cleanup(v)
         EVP_CIPHER_CTX real_ctx;
         EVP_CIPHER_CTX *ctx = &real_ctx;
 #else
-#define CIPHER_CONTEXT_INIT(v) v = EVP_CIPHER_CTX_new(); if (!v) return -1;
-#define CIPHER_CONTEXT_CLEAN(v) EVP_CIPHER_CTX_free(v)
         EVP_CIPHER_CTX *ctx = NULL;
 #endif
 
         CIPHER_CONTEXT_INIT(ctx);
 
-        if (EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, (const unsigned char *) pbs_aes_key, (const unsigned char *) pbs_aes_iv) == 0)
+        if (EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, (const unsigned char *) pbs_aes_key, (const unsigned char *) pbs_aes_iv) == 0) {
+                CIPHER_CONTEXT_CLEAN(ctx);
                 return -1;
+        }
 
         cblk = malloc(len + EVP_CIPHER_CTX_block_size(ctx) + 1);
-        if (!cblk)
+        if (!cblk) {
+                CIPHER_CONTEXT_CLEAN(ctx);
                 return -1;
+        }
 
-        if (EVP_DecryptUpdate(ctx, cblk, &plen, crypted, len) == 0)
+        if (EVP_DecryptUpdate(ctx, cblk, &plen, crypted, len) == 0) {
+                CIPHER_CONTEXT_CLEAN(ctx);
+                free(cblk);
                 return -1;
+        }
 
-        if (EVP_DecryptFinal_ex(ctx, cblk + plen, &len2) == 0)
+        if (EVP_DecryptFinal_ex(ctx, cblk + plen, &len2) == 0) {
+                CIPHER_CONTEXT_CLEAN(ctx);
+                free(cblk);
                 return -1;
+        }
 
         CIPHER_CONTEXT_CLEAN(ctx);
 
