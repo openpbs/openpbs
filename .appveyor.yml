@@ -4,10 +4,13 @@ pull_requests:
 configuration:
   - Release
 clone_depth: 5
-build_script:
+before_build:
   - cmd: call .appveyor\appveyor_helper.bat
+build_script:
   - cmd: call "%VS90COMNTOOLS%vsvars32.bat"
-  - cmd: msbuild /property:Configuration=Release /property:Platform=Win32 /maxcpucount:4 win_configure\pbs_windows_VS2008.sln
+  - cmd: vcbuild win_configure\pbs_windows_VS2008.sln "Release|Win32"
+after_build:
+  - cmd: call .appveyor\generate_installer.bat
 test: off
 deploy: off
 

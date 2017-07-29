@@ -36,60 +36,36 @@ REM trademark licensing policies.
 @echo on
 setlocal
 
-call "%~dp0set_paths.bat"
+1>nul 2>nul call "%~dp0set_paths.bat"
 
-cd "%BUILDDIR%"
-
-if not defined LIBICAL_VERSION (
-    echo "Please set LIBICAL_VERSION to libical version!"
-    exit /b 1
+if defined WIX (
+	set "PATH=%WIX%bin;%PATH%"
 )
 
-if exist "%BINARIESDIR%\libical" (
-    echo "%BINARIESDIR%\libical exist already!"
-    exit /b 0
-)
+cd "%~dp0..\..\pbspro\win_configure\msi\wix"
 
-if not exist "%BUILDDIR%\libical-%LIBICAL_VERSION%.zip" (
-    "%CURL_BIN%" -qkL -o "%BUILDDIR%\libical-%LIBICAL_VERSION%.zip" https://github.com/libical/libical/archive/v%LIBICAL_VERSION%.zip
-    if not exist "%BUILDDIR%\libical-%LIBICAL_VERSION%.zip" (
-        echo "Failed to download libical"
+call "%~dp0..\..\pbspro\win_configure\msi\wix\prep.bat" "binaries_path=%BINARIESDIR%"
+
+if not exist "%BUILDDIR%\vcredist_x86.exe" (
+    "%CURL_BIN%" -qkL -o "%BUILDDIR%\vcredist_x86.exe" https://download.microsoft.com/download/5/B/C/5BC5DBB3-652D-4DCE-B14A-475AB85EEF6E/vcredist_x86.exe
+    if not exist "%BUILDDIR%\vcredist_x86.exe" (
+        echo "Failed to download Microsoft Visual C++ 2010 Redistributable Package (x86)"
         exit /b 1
     )
 )
 
-2>nul rd /S /Q "%BUILDDIR%\libical-%LIBICAL_VERSION%"
-"%UNZIP_BIN%" -q "%BUILDDIR%\libical-%LIBICAL_VERSION%.zip"
-if not %ERRORLEVEL% == 0 (
-    echo "Failed to extract %BUILDDIR%\libical-%LIBICAL_VERSION%.zip"
-    exit /b 1
-)
-if not exist "%BUILDDIR%\libical-%LIBICAL_VERSION%" (
-    echo "Could not find %BUILDDIR%\libical-%LIBICAL_VERSION%"
+copy /B /Y "%BUILDDIR%\vcredist_x86.exe" "%~dp0..\..\PBS\exec\etc\vcredist_x86.exe"
+
+call "%~dp0..\..\pbspro\win_configure\msi\wix\build_wxs_source.bat"
+
+call "%~dp0..\..\pbspro\win_configure\msi\wix\create_msi.bat"
+
+if not exist "%~dp0..\..\pbspro\win_configure\msi\wix\PBSPro.msi" (
+    echo "Failed to generate PBSPro.msi"
     exit /b 1
 )
 
-2>nul rd /S /Q "%BUILDDIR%\libical-%LIBICAL_VERSION%\build"
-mkdir "%BUILDDIR%\libical-%LIBICAL_VERSION%\build"
-cd "%BUILDDIR%\libical-%LIBICAL_VERSION%\build"
-
-call "%VS90COMNTOOLS%vsvars32.bat"
-
-"%CMAKE_BIN%" -DCMAKE_INSTALL_PREFIX="%BINARIESDIR%\libical" -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DUSE_32BIT_TIME_T=True ..
-if not %ERRORLEVEL% == 0 (
-    echo "Failed to generate makefiles for libical"
-    exit /b 1
-)
-nmake
-if not %ERRORLEVEL% == 0 (
-    echo "Failed to compile libical"
-    exit /b 1
-)
-nmake install
-if not %ERRORLEVEL% == 0 (
-    echo "Failed to install libical"
-    exit /b 1
-)
+dir "%~dp0..\..\pbspro\win_configure\msi\wix\"
 
 exit /b 0
 
