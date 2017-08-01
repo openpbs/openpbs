@@ -799,12 +799,10 @@ stack_busted(ud_t *d)
 			}
 		} else if (strcmp(BASIL_ELM_RSVNARRAY, top) == 0) {
 			if (strcmp(BASIL_ELM_INVENTORY, prev) != 0) {
-				parse_err_illegal_start(d);
-				return (1);
-			}
-			if (brp->data.query.type != basil_query_inventory) {
-				parse_err_illegal_start(d);
-				return (1);
+				if (strcmp(BASIL_ELM_RESPONSEDATA, prev) != 0) {
+					parse_err_illegal_start(d);
+					return (1);
+				}
 			}
 		} else if (strcmp(BASIL_ELM_RESERVATION, top) == 0) {
 			if (strcmp(BASIL_ELM_RSVNARRAY, prev) != 0) {
@@ -1003,7 +1001,14 @@ response_data_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 				brp->data.release.claims = 0;
 			} else if (strcmp(BASIL_VAL_QUERY, *vp) == 0) {
 				brp->method = basil_method_query;
-				brp->data.query.type = basil_query_none;
+				/*
+				 * Set type to status, for the switch status
+				 * response. The other types can get set in
+				 * inventory_start and engine_start.
+				 */
+				brp->data.query.type = basil_query_status;
+			} else if (strcmp(BASIL_VAL_SWITCH, *vp) == 0) {
+				brp->method = basil_method_switch;
 			} else {
 				parse_err_illegal_attr_val(d, *np, *vp);
 				return;
@@ -1053,6 +1058,7 @@ response_data_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 			return;
 		}
 	}
+
 	if (brp->method == basil_method_none) {
 		parse_err_unspecified_attr(d, BASIL_ATR_METHOD);
 		return;
@@ -2970,8 +2976,8 @@ reservation_array_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 }
 
 /**
- * This function is registered to handle the reservation element within an
- * inventory response.
+ * This function is registered to handle the reservation element within a
+ * query response.  This is used for both status response and inventory response.
  *
  * The standard Expat start handler function prototype is used.
  * @param d pointer to user data structure
@@ -2985,101 +2991,236 @@ reservation_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 	const XML_Char **vp;
 	basil_rsvn_t *rsvn;
 	basil_response_t *brp;
+	basil_response_query_status_res_t 	*res_status = NULL;
+	basil_response_switch_res_t		*switch_res = NULL;
 
 	if (stack_busted(d))
 		return;
-	brp = d->brp;
-	rsvn = malloc(sizeof(basil_rsvn_t));
-	if (!rsvn) {
-		parse_err_out_of_memory(d);
-		return;
-	}
-	memset(rsvn, 0, sizeof(basil_rsvn_t));
-	rsvn->rsvn_id = -1;
-	if (d->current.reservation) {
-		(d->current.reservation)->next = rsvn;
-	} else {
-		brp->data.query.data.inventory.rsvns = rsvn;
-	}
-	d->current.reservation = rsvn;
 
 	/*
-	 * Work through the attribute pairs updating the name pointer and
-	 * value pointer with each loop. The somewhat complex loop control
-	 * syntax is just a fancy way of stepping through the pairs.
+	 * Which type of reservation line is this?  Is it for an INVENTORY response?
+	 * Or is it for a SWITCH STATUS response?
 	 */
-	for (np=vp=atts, vp++; np && *np && vp && *vp; np=++vp, vp++) {
-		xml_dbg("%s: %s = %s", __func__, *np, *vp);
-		if (strcmp(BASIL_ATR_RSVN_ID, *np) == 0) {
-			if (rsvn->rsvn_id >= 0) {
-				parse_err_multiple_attrs(d, *np);
-				return;
-			}
-			rsvn->rsvn_id = atol(*vp);
-			if (rsvn->rsvn_id < 0) {
-				parse_err_illegal_attr_val(d, *np, *vp);
-				return;
-			}
-		} else if (strcmp(BASIL_ATR_USER_NAME, *np) == 0) {
-			if (*rsvn->user_name != '\0') {
-				parse_err_multiple_attrs(d, *np);
-				return;
-			}
-			snprintf(rsvn->user_name, BASIL_STRING_SHORT,
-				 "%s", *vp);
-		} else if (strcmp(BASIL_ATR_ACCOUNT_NAME, *np) == 0) {
-			if (*rsvn->account_name != '\0') {
-				parse_err_multiple_attrs(d, *np);
-				return;
-			}
-			snprintf(rsvn->account_name, BASIL_STRING_SHORT,
-				 "%s", *vp);
-		} else if (strcmp(BASIL_ATR_TIME_STAMP, *np) == 0) {
-			if (*rsvn->time_stamp != '\0') {
-				parse_err_multiple_attrs(d, *np);
-				return;
-			}
-			snprintf(rsvn->time_stamp, BASIL_STRING_SHORT,
-				 "%s", *vp);
-		} else if (strcmp(BASIL_ATR_BATCH_ID, *np) == 0) {
-			if (*rsvn->batch_id != '\0') {
-				parse_err_multiple_attrs(d, *np);
-				return;
-			}
-			snprintf(rsvn->batch_id, BASIL_STRING_SHORT,
-				 "%s", *vp);
-		} else if (strcmp(BASIL_ATR_RSVN_MODE, *np) == 0) {
-			if (*rsvn->rsvn_mode != '\0') {
-				parse_err_multiple_attrs(d, *np);
-				return;
-			}
-			snprintf(rsvn->rsvn_mode, BASIL_STRING_SHORT,
-				 "%s", *vp);
-		} else if (strcmp(BASIL_ATR_GPC_MODE, *np) == 0) {
-			if (*rsvn->gpc_mode != '\0') {
-				parse_err_multiple_attrs(d, *np);
-				return;
-			}
-			snprintf(rsvn->gpc_mode, BASIL_STRING_SHORT,
-				 "%s", *vp);
-		} else {
-			parse_err_unrecognized_attr(d, *np);
+	brp = d->brp;
+	if (!brp)
+		return;
+
+	if ((brp->method == basil_method_query) && (brp->data.query.type == basil_query_status)) {
+		/* This is for a SWITCH status response */
+		res_status = malloc(sizeof(basil_response_query_status_res_t));
+		if (!res_status) {
+			parse_err_out_of_memory(d);
 			return;
 		}
+		memset(res_status, 0, sizeof(basil_response_query_status_res_t));
+		res_status->rsvn_id = -1;
+		res_status->status = basil_reservation_status_none;
+		if (d->brp->data.query.data.status.reservation) {
+			(d->brp->data.query.data.status.reservation)->next = res_status;
+		} else {
+			d->brp->data.query.data.status.reservation = res_status;
+		}
+
+		/*
+		 * work through the attribute pairs updating the name pointer
+		 * and value pointer with each loop.  The somewhat complex loop
+		 * control syntax is just a fancy way of stepping through
+		 * the pairs.
+		 */
+		for (np=vp=atts, vp++; np && *np && vp && *vp; np=++vp, vp++) {
+			xml_dbg("%s: %s = %s", (char *)__func__, *np, *vp);
+			if (strcmp(BASIL_ATR_RSVN_ID, *np) == 0) {
+				if (res_status->rsvn_id >= 0) {
+					parse_err_multiple_attrs(d, *np);
+					return;
+				}
+				res_status->rsvn_id = atol(*vp);
+				if (res_status->rsvn_id < 0) {
+					parse_err_illegal_attr_val(d, *np, *vp);
+					return;
+				}
+			} else if (strcmp(BASIL_ATR_STATUS, *np) == 0) {
+				if (res_status->status > 0) {
+					parse_err_multiple_attrs(d, *np);
+					return;
+				}
+				if (strcmp(BASIL_VAL_EMPTY, *vp) == 0) {
+					res_status->status = basil_reservation_status_empty;
+				} else if (strcmp(BASIL_VAL_INVALID, *vp) == 0) {
+					res_status->status = basil_reservation_status_invalid;
+				} else if (strcmp(BASIL_VAL_MIX, *vp) == 0) {
+					res_status->status = basil_reservation_status_mix;
+				} else if (strcmp(BASIL_VAL_RUN, *vp) == 0) {
+					res_status->status = basil_reservation_status_run;
+				} else if (strcmp(BASIL_VAL_SUSPEND, *vp) == 0) {
+					res_status->status = basil_reservation_status_suspend;
+				} else if (strcmp(BASIL_VAL_SWITCH, *vp) == 0) {
+					res_status->status = basil_reservation_status_switch;
+				} else if (strcmp(BASIL_VAL_UNKNOWN, *vp) == 0) {
+					res_status->status = basil_reservation_status_unknown;
+				} else {
+					parse_err_illegal_attr_val(d, *np, *vp);
+					return;
+				}
+			} else {
+				parse_err_unrecognized_attr(d, *np);
+				return;
+			}
+		}
+		if (res_status->rsvn_id < 0) {
+			parse_err_unspecified_attr(d, BASIL_ATR_RSVN_ID);
+			return;
+		}
+		if (res_status->status == basil_reservation_status_none) {
+			parse_err_unspecified_attr(d, BASIL_ATR_STATUS);
+			return;
+		}
+	} else if (brp->method == basil_method_switch) {
+		/* This is for a response to a SWITCH request */
+		switch_res = malloc(sizeof(basil_response_switch_res_t));
+		if (!switch_res) {
+			parse_err_out_of_memory(d);
+			return;
+		}
+		memset(switch_res, 0, sizeof(basil_response_switch_res_t));
+
+		switch_res->rsvn_id = -1;
+		switch_res->status = basil_reservation_status_none;
+		if (brp->data.swtch.reservation) {
+			(brp->data.swtch.reservation)->next = switch_res;
+		} else {
+			brp->data.swtch.reservation = switch_res;
+		}
+		/*
+		 * work through the attribute pairs updating the name pointer
+		 * and value pointer with each loop.  The somewhat complex loop
+		 * control syntax is just a fancy way of stepping through
+		 * the pairs.
+		 */
+		for (np=vp=atts, vp++; np && *np && vp && *vp; np=++vp, vp++) {
+			xml_dbg("%s: %s = %s", (char *)__func__, *np, *vp);
+			if (strcmp(BASIL_ATR_RSVN_ID, *np) == 0) {
+				if (switch_res->rsvn_id >= 0) {
+					parse_err_multiple_attrs(d, *np);
+					return;
+				}
+				switch_res->rsvn_id = atol(*vp);
+				if (switch_res->rsvn_id < 0) {
+					parse_err_illegal_attr_val(d, *np, *vp);
+					return;
+				}
+			} else if (strcmp(BASIL_ATR_STATUS, *np) == 0) {
+				if (switch_res->status > 0) {
+					parse_err_multiple_attrs(d, *np);
+					return;
+				}
+				if (strcmp(BASIL_VAL_SUCCESS, *vp) == 0) {
+					switch_res->status = basil_switch_status_success;
+				} else if (strcmp(BASIL_VAL_FAILURE, *vp) == 0) {
+					/* do nothing here, brp->error was set 	*/
+					/* in alps_request_parent 		*/
+				} else {
+					parse_err_illegal_attr_val(d, *np, *vp);
+					return;
+				}
+			} else {
+				parse_err_unrecognized_attr(d, *np);
+				return;
+			}
+		}
+	} else {
+		/* This is for an inventory response */
+		rsvn = malloc(sizeof(basil_rsvn_t));
+		if (!rsvn) {
+			parse_err_out_of_memory(d);
+			return;
+		}
+		memset(rsvn, 0, sizeof(basil_rsvn_t));
+		rsvn->rsvn_id = -1;
+		if (d->current.reservation) {
+			(d->current.reservation)->next = rsvn;
+		} else {
+			brp->data.query.data.inventory.rsvns = rsvn;
+		}
+		d->current.reservation = rsvn;
+		/*
+		 * Work through the attribute pairs updating the name pointer and
+		 * value pointer with each loop. The somewhat complex loop control
+		 * syntax is just a fancy way of stepping through the pairs.
+		 */
+		for (np=vp=atts, vp++; np && *np && vp && *vp; np=++vp, vp++) {
+			xml_dbg("%s: %s = %s", __func__, *np, *vp);
+			if (strcmp(BASIL_ATR_RSVN_ID, *np) == 0) {
+				if (rsvn->rsvn_id >= 0) {
+					parse_err_multiple_attrs(d, *np);
+					return;
+				}
+				rsvn->rsvn_id = atol(*vp);
+				if (rsvn->rsvn_id < 0) {
+					parse_err_illegal_attr_val(d, *np, *vp);
+					return;
+				}
+			} else if (strcmp(BASIL_ATR_USER_NAME, *np) == 0) {
+				if (*rsvn->user_name != '\0') {
+					parse_err_multiple_attrs(d, *np);
+					return;
+				}
+			snprintf(rsvn->user_name, BASIL_STRING_SHORT,
+					"%s", *vp);
+			} else if (strcmp(BASIL_ATR_ACCOUNT_NAME, *np) == 0) {
+				if (*rsvn->account_name != '\0') {
+					parse_err_multiple_attrs(d, *np);
+					return;
+				}
+			snprintf(rsvn->account_name, BASIL_STRING_SHORT,
+					"%s", *vp);
+			} else if (strcmp(BASIL_ATR_TIME_STAMP, *np) == 0) {
+				if (*rsvn->time_stamp != '\0') {
+					parse_err_multiple_attrs(d, *np);
+					return;
+				}
+			snprintf(rsvn->time_stamp, BASIL_STRING_SHORT,
+					"%s", *vp);
+			} else if (strcmp(BASIL_ATR_BATCH_ID, *np) == 0) {
+				if (*rsvn->batch_id != '\0') {
+					parse_err_multiple_attrs(d, *np);
+					return;
+				}
+			snprintf(rsvn->batch_id, BASIL_STRING_SHORT,
+					"%s", *vp);
+			} else if (strcmp(BASIL_ATR_RSVN_MODE, *np) == 0) {
+				if (*rsvn->rsvn_mode != '\0') {
+					parse_err_multiple_attrs(d, *np);
+					return;
+				}
+			snprintf(rsvn->rsvn_mode, BASIL_STRING_SHORT,
+					"%s", *vp);
+			} else if (strcmp(BASIL_ATR_GPC_MODE, *np) == 0) {
+				if (*rsvn->gpc_mode != '\0') {
+					parse_err_multiple_attrs(d, *np);
+					return;
+				}
+			snprintf(rsvn->gpc_mode, BASIL_STRING_SHORT,
+					"%s", *vp);
+			} else {
+				parse_err_unrecognized_attr(d, *np);
+				return;
+			}
+		}
+		if (rsvn->rsvn_id < 0) {
+			parse_err_unspecified_attr(d, BASIL_ATR_RSVN_ID);
+			return;
+		}
+		if (*rsvn->user_name == '\0') {
+			parse_err_unspecified_attr(d, BASIL_ATR_USER_NAME);
+			return;
+		}
+		if (*rsvn->account_name == '\0') {
+			parse_err_unspecified_attr(d, BASIL_ATR_ACCOUNT_NAME);
+			return;
+		}
+		d->count.application_array = 0;
 	}
-	if (rsvn->rsvn_id < 0) {
-		parse_err_unspecified_attr(d, BASIL_ATR_RSVN_ID);
-		return;
-	}
-	if (*rsvn->user_name == '\0') {
-		parse_err_unspecified_attr(d, BASIL_ATR_USER_NAME);
-		return;
-	}
-	if (*rsvn->account_name == '\0') {
-		parse_err_unspecified_attr(d, BASIL_ATR_ACCOUNT_NAME);
-		return;
-	}
-	d->count.application_array = 0;
 	return;
 }
 
@@ -3657,7 +3798,6 @@ inventory_loop_on_segments(basil_node_t *node, vnl_t *nv, char *arch,
 					/* Only count them if the state is UP */
 					totaccel++;
 			}
-
 			attr = "resources_available.naccelerators";
 			if (totseg == 0) {
 				/*
@@ -4279,7 +4419,23 @@ free_basil_rsvn(basil_rsvn_t *p)
 
 /**
  * @brief
- * 	Destructor function for BASIL response structure.
+ * Destructor function for BASIL query status reservation structure.
+ * @param p structure to free
+ */
+static void
+free_basil_query_status_res(basil_response_query_status_res_t *p)
+{
+	basil_response_query_status_res_t *nxtp;
+	if (!p)
+		return;
+	nxtp = p->next;
+	free(p);
+	free_basil_query_status_res(nxtp);
+}
+
+/**
+ * @brief
+ * Destructor function for BASIL response structure.
 
  * @param brp structure to free
  *
@@ -4301,6 +4457,8 @@ free_basil_response_data(basil_response_t *brp)
 				free(brp->data.query.data.engine.version);
 			if (brp->data.query.data.engine.basil_support)
 				free(brp->data.query.data.engine.basil_support);
+		} else if (brp->data.query.type == basil_query_status) {
+			free_basil_query_status_res(brp->data.query.data.status.reservation);
 		}
 	}
 	free(brp);
@@ -5139,9 +5297,13 @@ alps_create_reserve_request(job *pjob, basil_request_reserve_t **req)
 
 		p->depth = ns->depth;
 		p->nppn = width = ns->width;
-		p->rsvn_mode = (ns->share == isexcl) ?
-		basil_rsvn_mode_exclusive : basil_rsvn_mode_shared;
 
+		/*
+		 * If the user requested place=excl then we need to pass
+		 * that information into the ALPS reservation.
+		 * If not exclusive set it to shared by default
+		 */
+		p->rsvn_mode = (rpv == rlplace_excl)?basil_rsvn_mode_exclusive:basil_rsvn_mode_shared;
 		if (ns->ncpus != ns->threads) {
 			sprintf(log_buffer, "ompthreads %ld does not match"
 				" ncpus %ld", ns->threads, ns->ncpus);
@@ -5745,6 +5907,301 @@ alps_cancel_reservation(job *pjob)
 }
 
 /**
+ * @brief
+ * Issue a request to switch an existing reservation "OUT" (suspend it)
+ * or "IN" (resume it).
+ *
+ * Called by mother superior when a job needs to be suspended or resumed.
+ *
+ * @retval 0 success
+ * @retval 1 transient error (retry)
+ * @retval -1 fatal error
+ */
+int
+alps_suspend_resume_reservation(job *pjob, basil_switch_action_t switchval)
+{
+	basil_response_t *brp;
+	char actionstring[10] = "";
+	char switch_buf[10] = "";
+
+	if (switchval == basil_switch_action_out) {
+		strcpy(switch_buf, "suspend");
+		strcpy(actionstring, BASIL_VAL_OUT);
+	} else if (switchval == basil_switch_action_in) {
+		strcpy(switch_buf, "resume");
+		strcpy(actionstring, BASIL_VAL_IN);
+	} else {
+		snprintf(log_buffer, sizeof(log_buffer),
+			"Invalid switch action %d.", switchval);
+		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE, LOG_NOTICE,
+			(char *)__func__, log_buffer);
+		return (-1);
+	}
+
+	if (!pjob) {
+		snprintf(log_buffer, sizeof(log_buffer),
+			"Cannot %s (%d), invalid job.", switch_buf, switchval);
+		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE, LOG_NOTICE,
+			(char *)__func__, log_buffer);
+		return (-1);
+	}
+	snprintf(log_buffer, sizeof(log_buffer),
+		"Switching ALPS reservation %ld to %s",
+		pjob->ji_extended.ji_ext.ji_reservation, switch_buf);
+	log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
+		pjob->ji_qs.ji_jobid, log_buffer);
+	new_alps_req();
+	snprintf(utilBuffer, sizeof(utilBuffer),"<?xml version=\"1.0\"?>\n"
+		"<" BASIL_ELM_REQUEST " "
+		BASIL_ATR_PROTOCOL "=\"%s\" "
+		BASIL_ATR_METHOD "=\"" BASIL_VAL_SWITCH "\">\n", basilversion);
+	add_alps_req(utilBuffer);
+	add_alps_req( " <" BASIL_ELM_RSVNARRAY ">\n");
+	snprintf(utilBuffer, sizeof(utilBuffer),
+		"  <" BASIL_ELM_RESERVATION " "
+		BASIL_ATR_RSVN_ID "=\"%ld\" "
+		BASIL_ATR_ACTION "=\"%s\"/>\n",
+		pjob->ji_extended.ji_ext.ji_reservation,
+		actionstring);
+	add_alps_req(utilBuffer);
+	add_alps_req( " </" BASIL_ELM_RSVNARRAY ">\n");
+	add_alps_req( "</" BASIL_ELM_REQUEST ">");
+	brp = alps_request(requestBuffer);
+	if (!brp) {
+		snprintf(log_buffer, sizeof(log_buffer),
+			"Failed to switch %s ALPS reservation.", actionstring);
+		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE, LOG_NOTICE,
+			(char *)__func__, log_buffer);
+		return (-1);
+	}
+	if (*brp->error != '\0') {
+		/* A TRANSIENT error would mean the previous switch
+		 * method had not completed
+		 */
+		if (brp->error_flags & BASIL_ERR_TRANSIENT) {
+			free_basil_response_data(brp);
+			brp = NULL;
+			return (1);
+		} else {
+			free_basil_response_data(brp);
+			brp = NULL;
+			return (-1);
+		}
+	}
+	log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE, LOG_DEBUG,
+		(char *)__func__, "Made the ALPS SWITCH request.");
+	free_basil_response_data(brp);
+	return (0);
+}
+
+/**
+ * @brief
+ * Confirm that an ALPS reservation has been switched to either "SUSPEND"
+ * or "RUN" status.
+ * Confirm that an ALPS reservation has successfully finished switching in/out.
+ *
+ * @retval 0 success
+ * @retval 1 transient error (retry)
+ * @retval 2 transient error (retry) - When reservation is empty
+ * @retval -1 fatal error
+ */
+int
+alps_confirm_suspend_resume(job *pjob, basil_switch_action_t switchval)
+{
+	basil_response_t *brp = NULL;
+	basil_response_query_status_res_t *res = NULL;
+
+	if (!pjob) {
+		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB, LOG_ERR, (char *)__func__,
+			"Cannot confirm ALPS reservation, invalid job.");
+		return (-1);
+	}
+	/* If no reservation ID return an error */
+	if (pjob->ji_extended.ji_ext.ji_reservation < 0) {
+		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB, LOG_ERR,
+			pjob->ji_qs.ji_jobid,
+			"No ALPS reservation ID provided.  Can't confirm SWITCH status.");
+		return (-1);
+	}
+
+	if ((switchval != basil_switch_action_out) &&
+	    (switchval != basil_switch_action_in)) {
+		snprintf(log_buffer, sizeof(log_buffer),
+			"Invalid switch action %d.", switchval);
+		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE, LOG_ERR,
+			(char *)__func__, log_buffer);
+		return (-1);
+	}
+
+	sprintf(log_buffer, "Confirming ALPS reservation %ld SWITCH status.",
+		pjob->ji_extended.ji_ext.ji_reservation);
+	log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
+		pjob->ji_qs.ji_jobid, log_buffer);
+	new_alps_req();
+	sprintf(utilBuffer, "<?xml version=\"1.0\"?>\n"
+		"<" BASIL_ELM_REQUEST " "
+		BASIL_ATR_PROTOCOL "=\"%s\" "
+		BASIL_ATR_METHOD "=\"" BASIL_VAL_QUERY "\" "
+		BASIL_ATR_TYPE "=\"" BASIL_VAL_STATUS "\">\n",
+		basilversion);
+	add_alps_req(utilBuffer);
+	add_alps_req( " <"  BASIL_ELM_RSVNARRAY ">\n");
+	sprintf(utilBuffer,
+		"  <"  BASIL_ELM_RESERVATION " "
+		BASIL_ATR_RSVN_ID "=\"%ld\"/>\n",
+		pjob->ji_extended.ji_ext.ji_reservation);
+	add_alps_req(utilBuffer);
+	add_alps_req( " </" BASIL_ELM_RSVNARRAY ">\n");
+	add_alps_req( "</" BASIL_ELM_REQUEST ">");
+
+	brp = alps_request(requestBuffer);
+	if (!brp) {
+		sprintf(log_buffer, "Failed to confirm ALPS reservation %ld has been switched.",
+			pjob->ji_extended.ji_ext.ji_reservation);
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE,
+			pjob->ji_qs.ji_jobid, log_buffer);
+		return (-1);
+	}
+	if (*brp->error != '\0') {
+		if (brp->error_flags & BASIL_ERR_TRANSIENT) {
+			free_basil_response_data(brp);
+			return (1);
+		} else {
+			free_basil_response_data(brp);
+			return (-1);
+		}
+	}
+
+	/*
+	 * Now check for status of the suspend/resume
+	 * INVALID is considered a permanent error, just error out
+	 */
+	res = brp->data.query.data.status.reservation;
+	if (res->status == basil_reservation_status_invalid) {
+		snprintf(log_buffer, sizeof(log_buffer),
+			"ALPS SWITCH status is = 'INVALID'");
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE,
+			pjob->ji_qs.ji_jobid, log_buffer);
+		free_basil_response_data(brp);
+		return (-1);
+	}
+
+	/*
+	 * The MIX, SWITCH and UNKNOWN status response types are considered
+	 * transient, we will need to check the status again.
+	 */
+	if (res->status == basil_reservation_status_mix) {
+		snprintf(log_buffer, sizeof(log_buffer),
+			"ALPS SWITCH status is = 'MIX', keep checking "
+			"ALPS status.");
+		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG,
+			pjob->ji_qs.ji_jobid, log_buffer);
+		free_basil_response_data(brp);
+		return (1);
+	}
+	if (res->status == basil_reservation_status_switch) {
+		snprintf(log_buffer, sizeof(log_buffer),
+			"ALPS SWITCH status is = 'SWITCH', keep checking "
+			"ALPS status.");
+		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG,
+			pjob->ji_qs.ji_jobid, log_buffer);
+		free_basil_response_data(brp);
+		return (1);
+	}
+	if (res->status == basil_reservation_status_unknown) {
+		snprintf(log_buffer, sizeof(log_buffer),
+			"ALPS SWITCH status is = 'UNKNOWN', keep checking "
+			"ALPS status.");
+		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG,
+			pjob->ji_qs.ji_jobid, log_buffer);
+		free_basil_response_data(brp);
+		return (1);
+	}
+
+	/* What we expect for status depends on whether we are trying to SWITCH IN or OUT */
+	if (res->status == basil_reservation_status_run) {
+		if (switchval == basil_switch_action_out) {
+			/* We want to suspend the reservation's applications, so we
+			 * need to keep checking status
+			 */
+			snprintf(log_buffer, sizeof(log_buffer),
+				"ALPS SWITCH status is 'RUN', and "
+				"'SUSPEND' was requested, keep checking "
+				"ALPS status.");
+			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG,
+				pjob->ji_qs.ji_jobid, log_buffer);
+			free_basil_response_data(brp);
+			return (1);
+		 } else {
+			/* We are trying to run the application again, and it is running! */
+			snprintf(log_buffer, sizeof(log_buffer),
+				"ALPS reservation %ld has been successfully "
+				"switched to 'RUN'.",
+				pjob->ji_extended.ji_ext.ji_reservation);
+			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
+				pjob->ji_qs.ji_jobid, log_buffer);
+			free_basil_response_data(brp);
+			return (0);
+		}
+	}
+	if (res->status == basil_reservation_status_suspend) {
+		if (switchval == basil_switch_action_in) {
+			/* We want to run the reservation's applications, so we
+			 * need to keep checking status
+			 */
+			snprintf(log_buffer, sizeof(log_buffer),
+				"ALPS SWITCH status is 'SUSPEND', "
+				"and 'RUN' was requested, keep checking "
+				"ALPS status.");
+			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG,
+				pjob->ji_qs.ji_jobid, log_buffer);
+			free_basil_response_data(brp);
+			return (1);
+		} else {
+			/* We are trying to suspend the application, and it is! */
+			snprintf(log_buffer, sizeof(log_buffer),
+				"ALPS reservation %ld has been successfully "
+				"switched to 'SUSPEND'.",
+				pjob->ji_extended.ji_ext.ji_reservation);
+			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
+				pjob->ji_qs.ji_jobid, log_buffer);
+			free_basil_response_data(brp);
+			return (0);
+		}
+	}
+	/*
+	 * Due to a race condition in ALPS where ALPS wrongly returns "EMPTY"
+	 * (which means no claim on the ALPS resv) when there may be a claim 
+	 * on the reservation, PBS must work around this by polling for status
+	 * again when we get "EMPTY". Thus we will print at DEBUG2 level so
+	 * we can be aware of how often the race condition is encountered.
+	 */
+	if ((res->status == basil_reservation_status_empty) && 
+	   (switchval == basil_switch_action_out)) {
+		snprintf(log_buffer, sizeof(log_buffer),
+			"ALPS reservation %ld SWITCH status is = 'EMPTY'.",
+			pjob->ji_extended.ji_ext.ji_reservation);
+		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
+			pjob->ji_qs.ji_jobid, log_buffer);
+		free_basil_response_data(brp);
+		return (2);
+	}
+	/* Getting the status of EMPTY while SWITCH IN (resume) means
+	 * there was nothing to do, so consider the SWITCH done.
+	 */
+	if ((res->status == basil_reservation_status_empty) &&
+	   (switchval == basil_switch_action_in)) {
+		snprintf(log_buffer, sizeof(log_buffer),
+			"ALPS reservation %ld has been successfully switched.",
+			pjob->ji_extended.ji_ext.ji_reservation);
+		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
+			pjob->ji_qs.ji_jobid, log_buffer);
+	}
+	free_basil_response_data(brp);
+	return (0);
+}
+
+/**
  * Issue an ENGINE query and determine which version of BASIL
  * we should use.
  */
@@ -5773,13 +6230,13 @@ alps_engine_query(void)
 				 * There are no errors in the response data.
 				 * Check the response method to ensure we have
 				 * the correct response.
-	 			 */
-	 			if (brp->method == basil_method_query) {
+				 */
+				if (brp->method == basil_method_query) {
 					/* Check if 'basil_support' is set before trying to strdup.
 					 * If basil_support is not set, it's likely
-	 				 * CLE 2.2 which doesn't have 'basil_support' but we'll
-	 				 * check that later.
-	 				 */
+					 * CLE 2.2 which doesn't have 'basil_support' but we'll
+					 * check that later.
+					 */
 					if (brp->data.query.data.engine.basil_support != NULL) {
 						ver = strdup(brp->data.query.data.engine.basil_support);
 						if (ver != NULL) {

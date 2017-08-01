@@ -174,7 +174,6 @@ class SmokeTest(PBSTestSuite):
         self.server.alterjob(jid, {'comment': 'job comment altered'})
         self.server.expect(JOB, {'comment': 'job comment altered'}, id=jid)
 
-    @skipOnCray
     def test_sigjob(self):
         """
         Test to signal job
@@ -361,7 +360,6 @@ class SmokeTest(PBSTestSuite):
         self.server.expect(JOB, {'estimated.start_time': 5},
                            count=True, op=SET)
 
-    @skipOnCray
     @skipOnCpuSet
     def test_preemption(self):
         """
@@ -739,7 +737,6 @@ class SmokeTest(PBSTestSuite):
         a = {'job_state': 'R', 'Resource_List.foo': '5'}
         self.server.expect(JOB, a, id=j1id)
 
-    @skipOnCray
     @skipOnCpuSet
     def test_schedlog_preempted_info(self):
         """
@@ -757,7 +754,6 @@ class SmokeTest(PBSTestSuite):
                 self.logger.info('Preemption info: ' +
                                  str(cycle.preempted_jobs))
 
-    @skipOnCray
     @skipOnCpuSet
     def test_basic(self):
         """
@@ -792,7 +788,6 @@ class SmokeTest(PBSTestSuite):
         self.server.expect(SERVER, {'total_jobs': 0})
         self.server.manager(MGR_CMD_DELETE, QUEUE, id="expressq")
 
-    @skipOnCray
     @skipOnCpuSet
     def test_basic_ja(self):
         """
@@ -1038,7 +1033,6 @@ class SmokeTest(PBSTestSuite):
         else:
             return j1id
 
-    @skipOnCray
     @skipOnCpuSet
     def test_suspend_job_with_preempt(self):
         """
@@ -1046,7 +1040,6 @@ class SmokeTest(PBSTestSuite):
         """
         self.common_stuff(isWithPreemt=True)
 
-    @skipOnCray
     @skipOnCpuSet
     def test_resume_job_with_preempt(self):
         """
@@ -1063,7 +1056,6 @@ class SmokeTest(PBSTestSuite):
                                    {'session_id': (NOT, self.isSuspended)},
                                    id=job['id'])
 
-    @skipOnCray
     @skipOnCpuSet
     def test_suspend_job_array_with_preempt(self):
         """
@@ -1071,7 +1063,6 @@ class SmokeTest(PBSTestSuite):
         """
         self.common_stuff(isJobArray=True, isWithPreemt=True)
 
-    @skipOnCray
     @skipOnCpuSet
     def test_resume_job_array_with_preempt(self):
         """

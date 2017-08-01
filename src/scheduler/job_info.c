@@ -2931,17 +2931,17 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 	int has_lower_jobs = 0;	/* there are jobs of a lower preempt priority */
 	int prev_prio;		/* jinfo's preempt field before simulation */
 	server_info *nsinfo;
-	resource_resv **rjobs;	/* the running jobs to choose from */
+	resource_resv **rjobs = NULL;	/* the running jobs to choose from */
 	resource_resv **pjobs = NULL;	/* jobs to preempt */
 	int *pjobs_list = NULL;	/* list of job ids */
-	resource_resv *njob;
-	resource_resv *pjob;
+	resource_resv *njob = NULL;
+	resource_resv *pjob = NULL;
 	int rc = 0;
 	int retval = 0;
 	char buf[MAX_LOG_SIZE];
 	char log_buf[MAX_LOG_SIZE];
 	nspec **ns_arr = NULL;
-	schd_error *err;
+	schd_error *err = NULL;
 
 	enum sched_error old_errorcode = SUCCESS;
 	char *old_errorarg1 = NULL;
@@ -2949,7 +2949,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 	long skipto;
 
 	schd_error *full_err = NULL;
-	schd_error *cur_err;
+	schd_error *cur_err = NULL;
 	timed_event *te = NULL;
 
 	resource_req *preempt_targets_req = NULL;
@@ -3041,7 +3041,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 			translate_fail_code(cur_err, NULL, log_buf);
 			sprintf(buf, "Preempt: Can not preempt to run job: %s", log_buf);
 			schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB,
-				LOG_DEBUG, hjob->name, log_buf);
+				LOG_DEBUG, hjob->name, buf);
 			free_schd_error_list(full_err);
 			return NULL;
 		}
@@ -3049,6 +3049,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 
 	if ((pjobs = (resource_resv **) malloc(sizeof(resource_resv *) * (sinfo->sc.running + 1))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
+		free_schd_error_list(full_err);
 		return NULL;
 	}
 
@@ -3061,6 +3062,8 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 			if (retval == PREEMPT_NONE) {
 				schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, hjob->name,
 					"No preemption set specified for the job: Job will not preempt");
+				free_schd_error_list(full_err);
+				free(pjobs);
 				free_string_array(preempt_targets_list);
 				return NULL;
 			}
@@ -3068,6 +3071,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 	}
 
 	if ((nsinfo = dup_server_info(sinfo)) == NULL) {
+		free_schd_error_list(full_err);
 		free(pjobs);
 		free_string_array(preempt_targets_list);
 		return NULL;
@@ -3099,6 +3103,9 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 				nsinfo->sc.running);
 			schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, njob->name, log_buf);
 			free_server(nsinfo, 1);
+			free_schd_error_list(full_err);
+			free(pjobs);
+			free(prjobs);
 			return NULL;
 		}
 
@@ -3128,6 +3135,9 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 		free_schd_error_list(full_err);
 		free_server(nsinfo, 1);
 		free(pjobs);
+		free(prjobs);
+		log_err(errno, __func__, MEM_ERR_MSG);
+		return NULL;
 	}
 
 	skipto=0;
@@ -3136,6 +3146,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 			/* System error occurred, no need to proceed */
 			free_server(nsinfo, 1);
 			free(pjobs);
+			free(prjobs);
 			free(old_errorarg1);
 			free_schd_error_list(full_err);
 			free_schd_error(err);
@@ -3208,6 +3219,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 					if (nj == NULL) {
 						free_server(nsinfo, 1);
 						free(pjobs);
+						free(prjobs);
 						free_schd_error_list(full_err);
 						free_schd_error(err);
 						free(old_errorarg1);
@@ -3294,6 +3306,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 		if ((pjobs_list = calloc((j + 1), sizeof(int))) == NULL) {
 			free_server(nsinfo, 1);
 			free(pjobs);
+			free(prjobs);
 			free(old_errorarg1);
 			free_schd_error_list(full_err);
 			free_schd_error(err);

@@ -4895,6 +4895,8 @@ class Server(PBSService):
             if(k not in self.attributes or
                self.attributes[k] != self.dflt_attributes[k]):
                 setdict[k] = self.dflt_attributes[k]
+        if self.platform == 'cray' or self.platform == 'craysim':
+            setdict[ATTR_restrict_res_to_release_on_suspend] = 'ncpus'
         if delhooks:
             if self.platform == 'cray' or self.platform == 'craysim':
                 reverthooks = True

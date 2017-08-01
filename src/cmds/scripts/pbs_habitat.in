@@ -957,6 +957,11 @@ if [ "${PBS_START_SERVER:-0}" != 0 ] ; then
 			exit $ret
 		fi
 		server_started=1
+		if is_cray_xt; then
+			${PBS_EXEC}/bin/qmgr <<-EOF > /dev/null
+				set server restrict_res_to_release_on_suspend = ncpus
+			EOF
+		fi
 		${PBS_EXEC}/bin/qmgr <<-EOF > /dev/null
 			create queue workq
 			set queue workq queue_type = Execution
@@ -995,6 +1000,10 @@ if [ "${PBS_START_SERVER:-0}" != 0 ] ; then
 			EOF
 			if ! is_cray_xt; then
 				rm -f ${PBS_HOME}/server_priv/$PBS_licensing_loc_file	# clean up after INSTALL
+			else
+				${PBS_EXEC}/bin/qmgr <<-EOF > /dev/null
+					set server restrict_res_to_release_on_suspend += ncpus
+				EOF
 			fi
 			server_started=1
 		fi

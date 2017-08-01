@@ -124,6 +124,10 @@ extern char *msg_hookfile_open;
 extern char *msg_hookfile_write;
 extern unsigned long	hooks_rescdef_checksum;
 extern char *path_rescdef;
+#if MOM_ALPS
+extern int		alps_confirm_empty_timeout;
+extern int		alps_confirm_switch_timeout;
+#endif
 
 /* External Functions */
 extern int	is_direct_write(job *, enum job_file, char *, int *);
@@ -153,6 +157,8 @@ extern	char	*set_homedir_to_local_default(job *, char *);
 #endif
 
 #define STAGEOUT_FAILURE	65
+#define SUSPEND 1
+#define RESUME	0
 
 /**
  * @brief
@@ -1619,12 +1625,172 @@ post_resume(job *pjob, int err)
 		pjob->ji_flags &= ~MOM_SISTER_ERR;
 }
 
+#if MOM_ALPS 
+
+/*
+ * Try to minimize latency of suspend/resume. Wait half a second before
+ * the first check, and then poll every tenth of a second.
+ */
+
+#define ALPS_SWITCH_SLEEP_USECS_LONG (500000)
+#define ALPS_SWITCH_SLEEP_USECS_SHORT (100000)
+
+/**
+ * On a Cray, make the requested switch, and confirm it 
+ * @param[in]	pjob	job of interest
+ * @param[in]	which	SUSPEND/RESUME
+ * @retval	PBSE_NONE	no error
+ * @retval	PBSE_ALPS_SWITCH_ERR
+ */
+static int
+do_cray_susres_conf (job *pjob, int which)
+{ 
+	/**
+	 * On a Cray, we need to send an ALPS SWITCH request to move the jobs
+	 * to a suspend or resume state.
+	 */
+	basil_switch_action_t action;
+	int i;
+	int rc = 0;
+	time_t	total_time = 0;
+	time_t	begin_time = 0;
+	time_t	end_time = 0;
+	int	timeout_val = alps_confirm_switch_timeout;
+	int	first_status;
+	int	first_status_was_empty = 0;
+	int	first_sleep;
+	
+	/* Check if there is an ALPS reservation to act on.
+	 * If not, just return PBSE_NONE.  
+	 */
+	if (pjob->ji_extended.ji_ext.ji_reservation <= 0) {
+		return PBSE_NONE;
+	}
+
+	if (which == SUSPEND)
+		action = basil_switch_action_out;
+	else
+		action = basil_switch_action_in;
+
+	rc = alps_suspend_resume_reservation(pjob, action);
+	if (rc < 0) {
+		sprintf(log_buffer, "Fatal ALPS SWITCH request.");
+		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB, LOG_ERR,
+			  pjob->ji_qs.ji_jobid, log_buffer);
+		return (PBSE_ALPS_SWITCH_ERR);
+	}
+	if (rc > 0) {
+		sprintf(log_buffer, "Transient ALPS SWITCH error, the "
+			"prior SWITCH method has not yet completed.");
+		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_ERR,
+			  pjob->ji_qs.ji_jobid, log_buffer);
+		return (PBSE_ALPS_SWITCH_ERR);
+	}
+	
+	/* The call to ALPS SWITCH was successful
+	 * Now we have to poll to confirm the SWITCH happens 
+	 * We will assume that the ALPS suspend happens "relatively quickly"
+	 * as per the Cray ALPS folks, and we will poll for a successful 
+	 * suspend state here.  If the confirmation takes a while, then PBS
+	 * may need to somehow poll for the confirmation without tying up
+	 * the mom.
+	 *
+	 * Keep trying in this process (don't fork a child) until the SWITCH
+	 * completes, or a hard error is returned, or 
+	 * alps_confirm_switch_timeout is reached.
+	 * alps_confirm_switch_timeout is set by default to 
+	 * ALPS_CONF_SWITCH_TIMEOUT 
+	 * NOTE:  The MOM, server and scheduler are blocked while we poll
+	 * ALPS and wait for the SWITCH.
+	 */
+	first_status = 1;
+	first_sleep = 1;
+	begin_time = time(NULL);
+	end_time = begin_time;
+	i = 0;
+	do {
+		i++;
+		if ((rc = alps_confirm_suspend_resume(pjob, action)) <= 0)
+			break;
+		if (rc == 2) {
+			/* we got a response of "EMPTY" */
+			if (first_status) {
+				/* 
+				 * Alps may report EMPTY reservation for the first
+				 * time we query it. So for the first time we
+				 * need to poll for alps_confirm_empty_timeout
+				 * time in hopes of letting the Cray race 
+				 * condition work itself out.  Once we hit the 
+				 * timeout we assume that there are no ALPS
+				 * claims (i.e. apruns) on the reservation and
+				 * the suspend can proceed.
+				 */
+				timeout_val = alps_confirm_empty_timeout;
+				first_status_was_empty = 1;
+			} 
+			if (!first_status_was_empty) {
+				/* The first status response wasn't EMPTY and
+				 * the status is now EMPTY.  According to
+				 * Cray this means PBS can proceed
+				 * as if the switch request was successful.
+				 */
+				break;
+			}
+		} else {
+			/* Reset the timeout_val if we get anything besides
+			 * "EMPTY" 
+			 */
+			timeout_val = alps_confirm_switch_timeout;
+		}
+		/* Getting a transient error, sleep then retry */
+		if (first_sleep) {
+			usleep(ALPS_SWITCH_SLEEP_USECS_LONG);
+			first_sleep = 0;
+		} else {
+			usleep(ALPS_SWITCH_SLEEP_USECS_SHORT);
+		}
+		end_time = time(NULL);
+		first_status = 0;
+	} while ((total_time = end_time - begin_time) < timeout_val);
+	if (rc == 1) {
+		sprintf(log_buffer, "Timed out after %d attempts over %ld "
+			"seconds of attempting to confirm the ALPS "
+			"SWITCH completed.", i, total_time);
+		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_ERR,
+			  pjob->ji_qs.ji_jobid, log_buffer);
+		return (PBSE_ALPS_SWITCH_ERR);
+	} else if ((rc == 2) && first_status_was_empty) {
+		sprintf(log_buffer, "Timed out after %d attempts over "
+			"%ld seconds of waiting for a status of EMPTY "
+			"to change.  Proceeding as if the SWITCH "
+			"succeeded.", i, total_time);
+		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, 
+			LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
+		return (PBSE_NONE);
+	} else if (rc < 0) {
+		sprintf(log_buffer, "Fatal ALPS QUERY of status.");
+		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB, LOG_ERR,
+			  pjob->ji_qs.ji_jobid, log_buffer);
+		return (PBSE_ALPS_SWITCH_ERR);
+	} else {
+		/* the SWITCH has completed successfully */
+		sprintf(log_buffer, "The SWITCH was confirmed after a total "
+			"of %d attempts, and %ld seconds.", i, total_time);
+		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG,
+				pjob->ji_qs.ji_jobid, log_buffer);
+	}
+
+	return PBSE_NONE;
+}
+#endif /* MOM_ALPS */
+
+
 /**
  * @brief
  *	responsible for suspend/resume job.
  *
  * @param[in] pjob - pointer to job
- * @param[in] which - indication for whether suspend/resume
+ * @param[in] which - indication for whether SUSPEND/RESUME
  *
  * @return	int PBSE error number
  * @retval	PBSE_NONE	no error
@@ -1641,6 +1807,13 @@ do_susres(job *pjob, int which)
 	int	rc = 0;
 	int     err;
 
+	if (pjob == NULL) {
+		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB,
+			LOG_ERR, "do_susres", "The job information is NULL");
+		return (PBSE_SYSTEM);
+	}
+		
+
 #if     MOM_BGL
 	return (PBSE_NOSUP);     /* don't support suspend/resume as */
 	/* interferes with user running mpirun on a */
@@ -1648,7 +1821,7 @@ do_susres(job *pjob, int which)
 #endif  /* MOM_BGL */
 
 #if	MOM_CPUSET
-	if (which == 0) {		/* resume -- bring back cpuset */
+	if (which == RESUME) {		/* resume -- bring back cpuset */
 		if (resume_job(pjob) == -1) {
 			log_joberr(errno, __func__, log_buffer,
 				pjob->ji_qs.ji_jobid);
@@ -1656,20 +1829,34 @@ do_susres(job *pjob, int which)
 		}
 	}
 #endif	/* MOM_CPUSET */
+#if MOM_ALPS
+	/* if we're trying to suspend, then ask ALPS to suspend, before
+	 * we send the signal to the processes
+	 */
+	if (which == SUSPEND) {
+		if ((rc = do_cray_susres_conf(pjob, which)) != PBSE_NONE) {
+			/* We failed to do the suspend */
+			return PBSE_ALPS_SWITCH_ERR;
+		}
+	}
+
+	/* Continue on through the code.  Let the signal get sent to the job */
+		
+#endif /* MOM_ALPS */
 
 	for (ptask = (pbs_task *)GET_NEXT(pjob->ji_tasks);
 		ptask != NULL;
 		ptask = (pbs_task *)GET_NEXT(ptask->ti_jobtask)) {
 
-		rc = (which == 1) ?
+		rc = (which == SUSPEND) ?
 			kill_task(ptask, suspend_signal, 1) :
 			kill_task(ptask, resume_signal,  0);
 		DBPRT(("%s: %s of task %8.8X rc %d\n", __func__,
-			(which == 1) ? "suspend" : "resume",
+			(which == SUSPEND) ? "suspend" : "resume",
 			ptask->ti_qs.ti_task, rc))
 	}
 #if	MOM_CPUSET
-	if (rc >= 0 && which == 1)	/* suspend -- get rid of cpuset */
+	if (rc >= 0 && which == SUSPEND)	/* suspend -- get rid of cpuset */
 		rc = suspend_job(pjob);
 #endif	/* MOM_CPUSET */
 	if (rc < 0) {
@@ -1678,13 +1865,27 @@ do_susres(job *pjob, int which)
 		for (ptask = (pbs_task *)GET_NEXT(pjob->ji_tasks);
 			ptask != NULL;
 			ptask = (pbs_task *)GET_NEXT(ptask->ti_jobtask)) {
-			rc = (which == 1) ?	/* don't care about rc */
+			rc = (which == SUSPEND) ?	/* don't care about rc */
 				kill_task(ptask, resume_signal, 0) :
 				kill_task(ptask, suspend_signal, 1);
 		}
 		errno = err;
 		return PBSE_SYSTEM;
 	}
+
+#if MOM_ALPS
+	/* 
+	 * We're trying to resume, we already sent the signal to the processes
+	 * now we tell ALPS to resume the ALPS reservation
+	 */
+	if (which == RESUME) {
+		if ((rc = do_cray_susres_conf(pjob, which)) != PBSE_NONE) {
+			/* We failed to do the resume */
+			return PBSE_ALPS_SWITCH_ERR;
+		}
+	}
+#endif /* MOM_ALPS */
+
 	return PBSE_NONE;
 }
 
@@ -1694,7 +1895,7 @@ do_susres(job *pjob, int which)
  * 	for tasks that are local.
  *
  * @param[in]	pjob	job of interest
- * @param[in]	which	true on suspend, false on resume
+ * @param[in]	which	SUSPEND/RESUME
  * @param[in]	preq	batch request
  *
  * @return 	int
@@ -1708,7 +1909,7 @@ local_supres(job *pjob, int which, struct batch_request *preq)
 	int	rc;
 
 	DBPRT(("%s: %s %s %s request\n", __func__, pjob->ji_qs.ji_jobid,
-		which == 1 ? "suspend" : "resume",
+		which == SUSPEND ? "suspend" : "resume",
 		preq == NULL ? "no" : "with"))
 
 	/*
@@ -1728,7 +1929,7 @@ local_supres(job *pjob, int which, struct batch_request *preq)
  * 	susp_resum - the suspend/resume function
  *
  * @param[in] pjob - pointer to job
- * @param[in] which - indication for resume or suspend
+ * @param[in] which - SUSPEND/RESUME 
  * @param[in] preq - pointer to batch_request structure
  *
  * @return 	Void
@@ -1741,11 +1942,11 @@ susp_resum(job *pjob, int which, struct batch_request *preq)
 	int      rc;
 
 	DBPRT(("susp_resum: %s %s %s request\n", pjob->ji_qs.ji_jobid,
-		which == 1 ? "suspend" : "resume",
+		which == SUSPEND ? "suspend" : "resume",
 		preq == NULL ? "no" : "with"))
 
 	/* if already suspended for keyboard activity, just set/clear flag */
-	if (which == 1) {
+	if (which == SUSPEND) {
 		if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_Actsuspd) {
 			/* already suspended for keyboard activity */
 			pjob->ji_qs.ji_svrflags |= JOB_SVFLG_Suspend;
@@ -1777,10 +1978,10 @@ susp_resum(job *pjob, int which, struct batch_request *preq)
 		int	i;
 
 		i = send_sisters(pjob,
-			(which == 1) ? IM_SUSPEND : IM_RESUME, NULL);
+			(which == SUSPEND) ? IM_SUSPEND : IM_RESUME, NULL);
 
 		if (i > 0) {
-			pjob->ji_mompost = (which == 1) ?
+			pjob->ji_mompost = (which == SUSPEND) ?
 				post_suspend : post_resume;
 		}
 		if (i != (pjob->ji_numnodes - 1)) {
@@ -1794,7 +1995,7 @@ susp_resum(job *pjob, int which, struct batch_request *preq)
 	if (pjob->ji_mompost != NULL)	/* later action */
 		return;
 
-	if (which == 1)			/* local */
+	if (which == SUSPEND)			/* local */
 		post_suspend(pjob, 0);
 	else
 		post_resume(pjob, 0);
@@ -1959,7 +2160,10 @@ req_signaljob(struct batch_request *preq)
 	 */
 	if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_OBIT) {
 		send_obit(pjob, 0);
-		reply_ack(preq);
+		if (strcmp(sname, SIG_RESUME) == 0)
+			req_reject(PBSE_BADSTATE, 0, preq);
+		else
+			reply_ack(preq);
 		return;
 	} else if ((pjob->ji_qs.ji_substate == JOB_SUBSTATE_RUNEPILOG) &&
 		(strcmp(sname, "SIGKILL") != 0)) {
@@ -2041,17 +2245,8 @@ req_signaljob(struct batch_request *preq)
 				req_reject(PBSE_BADSTATE, 0, preq);
 				return;
 		}
-#if	MOM_ALPS
-		/*
-		 * Job suspension is unsupported on Cray systems because
-		 * aprun cannot be suspended (per its man page).
-		 */
-		req_reject(PBSE_NOSUP, 0, preq);
-		return;
-#else
 		susp_resum(pjob, 1, preq);
 		return;
-#endif
 	} else if (strcmp(sname, SIG_RESUME) == 0 || strcmp(sname, SIG_ADMIN_RESUME) == 0) {
 		/**
 		 *		PBS pseudo signal to resume a suspended job.

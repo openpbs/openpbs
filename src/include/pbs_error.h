@@ -289,6 +289,8 @@ extern "C" {
 #define PBSE_QUE_NOT_IN_PARTITION 15219  /* Queue does not belong to the partition */
 #define PBSE_PARTITION_NOT_IN_QUE 15220  /* Partition does not belong to the queue */
 #define PBSE_INVALID_PARTITION_QUE 15221 /* Invalid partition to the queue */
+#define PBSE_ALPS_SWITCH_ERR 15222	/* ALPS failed to do the suspend/resume */
+
 
 /* the following structure is used to tie error number      */
 /* with text to be returned to a client, see svr_messages.c */

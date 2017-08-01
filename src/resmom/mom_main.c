@@ -263,10 +263,16 @@ time_t		time_resc_updated = 0;
 extern pbs_list_head svr_requests;
 extern struct var_table vtable;	/* see start_exec.c */
 #if	MOM_ALPS
+#define	ALPS_REL_INTERVAL_MAX		30;	/* 30 sec */
+#define	ALPS_REL_TIMEOUT		600;	/* 10 min */
+#define	ALPS_CONF_EMPTY_TIMEOUT		10;	/* 10 sec */
+#define	ALPS_CONF_SWITCH_TIMEOUT	35;	/* 35 sec */
 char	       *alps_client = (char *)NULL;
-int		alps_release_interval_max = 30;
-int		alps_release_timeout = 600;
-int		vnode_per_numa_node = FALSE;
+int		alps_release_interval_max;
+int		vnode_per_numa_node;
+int		alps_release_timeout;
+int		alps_confirm_empty_timeout;
+int		alps_confirm_switch_timeout;
 #endif /* MOM_ALPS */
 char	       *path_checkpoint = (char *)NULL;
 static		resource_def *rdcput;
@@ -451,7 +457,9 @@ static handler_ret_t	set_alien_kill(char *);
 static handler_ret_t	set_alps_client(char *);
 static handler_ret_t	set_alps_release_interval_max(char *);
 static handler_ret_t	set_alps_release_timeout(char *);
+static handler_ret_t	set_alps_confirm_empty_timeout(char *);
 static handler_ret_t	set_vnode_per_numa_node(char *);
+static handler_ret_t	set_alps_confirm_switch_timeout(char *);
 #endif	/* MOM_ALPS */
 static handler_ret_t	set_attach_allow(char *);
 static handler_ret_t	set_checkpoint_path(char *);
@@ -512,9 +520,11 @@ static struct	specials {
 	{ "alien_kill",			set_alien_kill },
 #if	MOM_ALPS
 	{ "alps_client",		set_alps_client },
+	{ "alps_confirm_empty_timeout", set_alps_confirm_empty_timeout },
 	{ "alps_release_interval_max",	set_alps_release_interval_max },
 	{ "alps_release_timeout",	set_alps_release_timeout },
 	{ "vnode_per_numa_node", 	set_vnode_per_numa_node },
+	{ "alps_confirm_switch_timeout",set_alps_confirm_switch_timeout },
 #endif	/* MOM_ALPS */
 	{ "attach_allow",		set_attach_allow },
 #if	MOM_BGL
@@ -3849,6 +3859,44 @@ set_alps_client(char *value)
 
 /**
  * @brief
+ * 	Set the timeout value in seconds when we will stop checking for
+ * 	ALPS SWITCH response to change from "EMPTY". 
+ * 	In order to work around a situation where we must poll on "EMPTY" in
+ * 	case it changes.  After the timeout, we can proceed with the suspend.
+ *
+ * @par
+ * 	It is best if this value is not too large, since PBS will be
+ * 	blocked until the timeout is reached or the response changes from "EMPTY".
+ *
+ * @retval 0 failure
+ * @retval 1 success
+ */
+static handler_ret_t
+set_alps_confirm_empty_timeout(char *value)
+{
+	return (set_int(__func__, value, &alps_confirm_empty_timeout));
+}
+
+/**
+ * @brief
+ * 	Set the time out value in seconds when we will stop checking for
+ * 	ALPS SWITCH to complete.  PBS will basically give up trying.
+ *
+ * @par
+ * 	It is best if this value is not too large, since PBS will be
+ * 	blocked until the timeout is reached or the SWITCH completes.
+ *
+ * @retval 0 failure
+ * @retval 1 success
+ */
+static handler_ret_t
+set_alps_confirm_switch_timeout(char *value)
+{
+	return (set_int(__func__, value, &alps_confirm_switch_timeout));
+}
+
+/**
+ * @brief
  * Set the configuration flag that defines vnode creation behavior
  * on a Cray.  
  *
@@ -4742,9 +4790,11 @@ read_config(char *file)
 #endif /* localmod 015 */
 
 #if MOM_ALPS
-	alps_release_interval_max = 30;		/* 30 seconds */
+	alps_release_interval_max = ALPS_REL_INTERVAL_MAX;
 	vnode_per_numa_node = FALSE;
-	alps_release_timeout      = 600;	/* 10 min */
+	alps_release_timeout      = ALPS_REL_TIMEOUT;
+	alps_confirm_empty_timeout = ALPS_CONF_EMPTY_TIMEOUT;
+	alps_confirm_switch_timeout = ALPS_CONF_SWITCH_TIMEOUT;
 	set_alps_client(NULL);
 #endif /* MOM_ALPS */
 

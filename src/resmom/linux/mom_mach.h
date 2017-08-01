@@ -276,6 +276,8 @@ extern int	alps_create_reservation(
 extern int	alps_confirm_reservation(job *);
 extern int	alps_cancel_reservation(job *);
 extern void	alps_inventory(void);
+extern int	alps_suspend_resume_reservation(job *, basil_switch_action_t);
+extern int	alps_confirm_suspend_resume(job *, basil_switch_action_t);
 #endif	/* MOM_ALPS */
 
 #if 	MOM_BGL

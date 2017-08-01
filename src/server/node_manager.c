@@ -5714,7 +5714,7 @@ write_single_node_mom_attr(struct pbsnode *np)
 		return 0;
 
 	attr.parent_id = np->nd_name;
-	attr.attr_resc[0] = 0;
+	attr.attr_resc = "";
 	attr.attr_flags = 0;
 
 	/* work on node state */
