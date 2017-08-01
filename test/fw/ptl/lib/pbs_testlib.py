@@ -13173,7 +13173,9 @@ class InteractiveJob(threading.Thread):
             _p = pexpect.spawn(" ".join(cmd), timeout=_to)
             self.job.interactive_handle = _p
             time.sleep(_st)
-            _p.expect('qsub: waiting for job (?P<jobid>[\d\w.]+) to start.*')
+            expstr = "qsub: waiting for job "
+            expstr += "(?P<jobid>\d+.[0-9A-Za-z-]+) to start"
+            _p.expect(expstr)
             if _p.match:
                 self.jobid = _p.match.group('jobid')
             else:
@@ -13182,26 +13184,15 @@ class InteractiveJob(threading.Thread):
                 return None
             self.logger.debug(_p.after.decode())
             for _l in _sc:
-                self.logger.debug('sending: ' + _l[0])
-                _p.sendline(_l[0])
-                time.sleep(_st)
-                # only way I could figure out to catch a sleep command
-                # within a spawned pexpect child. Might need revisiting
-                if 'sleep' in _l[0]:
-                    _secs = _l[0].split()[1]
-                    self.logger.debug('sleeping ' + str(_secs))
-                    time.sleep(float(_secs))
-                if len(_l) > 1:
-                    for _r in range(1, len(_l)):
-                        self.logger.debug('expecting: ' + _l[_r])
-                        _p.expect(_l[_r])
-                        time.sleep(_st)
-                        self.logger.debug('received: ' + _p.after.decode())
-                    time.sleep(_st)
-                    self.logger.debug('received: ' + _p.after.decode())
-            self.logger.debug('sending Ctrl-D')
-            _p.sendcontrol('d')
-            time.sleep(_st)
+                (cmd, out) = _l
+                self.logger.info('sending: ' + cmd)
+                _p.sendline(cmd)
+                self.logger.info('expecting: ' + out)
+                _p.expect(out)
+            self.logger.info('sending exit')
+            _p.sendline("exit")
+            self.logger.info('waiting for the subprocess to finish')
+            _p.wait()
             _p.close()
             self.job.interactive_handle = None
             self.logger.debug(_p.exitstatus)

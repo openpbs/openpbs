@@ -153,9 +153,10 @@ def checkModule(modname):
     """
     def decorated(function):
         def wrapper(self, *args, **kwargs):
+            import imp
             try:
-                eval('import %s' % (modname))
-            except:
+                imp.find_module(modname)
+            except ImportError:
                 self.skipTest(reason='Module unavailable ' + modname)
             else:
                 function(self, *args, **kwargs)

@@ -1453,3 +1453,17 @@ class SmokeTest(PBSTestSuite):
         fs4 = self.scheduler.query_fairshare(name=str(TEST_USER4))
         self.logger.info('Checking ' + str(fs4.usage) + " == 3")
         self.assertEqual(fs4.usage, 3)
+
+    @checkModule("pexpect")
+    def test_interactive_job(self):
+        """
+        Submit an interactive job
+        """
+        cmd = 'sleep 10'
+        j = Job(TEST_USER, attrs={ATTR_inter: ''})
+        j.interactive_script = [('hostname', '.*'),
+                                (cmd, '.*')]
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        self.server.delete(jid)
+        self.server.expect(JOB, 'queue', op=UNSET, id=jid)
