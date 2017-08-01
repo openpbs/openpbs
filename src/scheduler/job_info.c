@@ -1062,13 +1062,6 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 			resresv->nspec_arr = parse_execvnode(attrp->value, sinfo);
 			combine_nspec_array(resresv->nspec_arr);
 
-			/* create a selspec from the exec_vnode so the job can be replaced */
-			selectspec = create_select_from_nspec(resresv->nspec_arr);
-			if (selectspec != NULL) {
-				resresv->job->execselect = parse_selspec(selectspec);
-				free(selectspec);
-			}
-
 			if (resresv->nspec_arr != NULL)
 				resresv->ninfo_arr = create_node_array_from_nspec(resresv->nspec_arr);
 		}
