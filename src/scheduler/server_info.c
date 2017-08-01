@@ -3283,6 +3283,8 @@ free_status(status *st)
 		free(st->resdef_to_check_noncons);
 	if (st->rel_on_susp != NULL)
 		free(st->rel_on_susp);
+	if (st->equiv_class_resdef != NULL)
+		free(st->equiv_class_resdef);
 	free(st);
 }
 
