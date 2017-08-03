@@ -513,7 +513,7 @@ class PBSLogUtils(object):
         :type path: str
         :param start: Start time for the log file
         :param end: End time for the log file
-        :returns: list of files or None if 'path' is not found
+        :returns: list of log file(s) found or an empty list
         """
         paths = []
         if self.du.isdir(hostname, path, sudo=sudo):
@@ -533,6 +533,8 @@ class PBSLogUtils(object):
                         if d1 > d2:
                             continue
                 paths.append(f)
+        elif self.du.isfile(hostname, path, sudo=sudo):
+            paths = [path]
 
         return paths
 

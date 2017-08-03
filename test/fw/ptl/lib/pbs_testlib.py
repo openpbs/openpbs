@@ -11514,8 +11514,13 @@ class Scheduler(PBSService):
             self.logger.error('error loading ptl.utils.pbs_logutils')
             return None
 
+        if start is not None or end is not None:
+            analyze_path = os.path.dirname(self.logfile)
+        else:
+            analyze_path = self.logfile
+
         sl = PBSSchedulerLog()
-        sl.analyze(self.logfile, start, end, self.hostname)
+        sl.analyze(analyze_path, start, end, self.hostname)
         cycles = sl.cycles
         if cycles is None or len(cycles) == 0:
             return []
