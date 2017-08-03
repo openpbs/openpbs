@@ -4862,9 +4862,10 @@ fork_me(int conn)
 		act.sa_flags   = 0;
 		act.sa_handler = SIG_DFL;
 		(void)sigaction(SIGCHLD, &act, (struct sigaction *)0);
-		(void)sigaction(SIGHUP, &act, (struct sigaction *)0);
 		(void)sigaction(SIGINT, &act, (struct sigaction *)0);
 		(void)sigaction(SIGTERM, &act, (struct sigaction *)0);
+		act.sa_handler = SIG_IGN;
+		(void)sigaction(SIGHUP, &act, (struct sigaction *)0);
 
 		/* Reset signal mask */
 		(void)sigprocmask(SIG_SETMASK, &act.sa_mask, NULL);
