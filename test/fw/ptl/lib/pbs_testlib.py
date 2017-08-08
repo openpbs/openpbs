@@ -12460,7 +12460,7 @@ class MoM(PBSService):
             self.config = {}
             lines = ret['out']
             for line in lines:
-                (k, v) = line.split()
+                (k, v) = line.split(' ', 1)
                 if k in self.config:
                     if isinstance(self.config[k], list):
                         self.config[k].append(v)
