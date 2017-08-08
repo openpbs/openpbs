@@ -116,7 +116,6 @@ extern char *msg_obitnodel;
 extern char *msg_bad_password;
 extern char *msg_hook_reject_deletejob;
 extern char *msg_hook_reject_rerunjob;
-extern struct connection *svr_conn;
 extern struct connect_handle connection[];
 extern time_t time_now;
 
@@ -608,7 +607,7 @@ mom_comm(job *pjob, void (*func)(struct work_task *))
 void
 rel_resc(job *pjob)
 {
-	int conn_idx;
+	conn_t *conn = NULL;
 
 	free_nodes(pjob);
 
@@ -623,10 +622,9 @@ rel_resc(job *pjob)
 
 		/* clear no-timeout flag on connection */
 		if (pjob->ji_rerun_preq->rq_conn != PBS_LOCAL_CONNECTION) {
-			conn_idx = connection_find_actual_index(pjob->ji_rerun_preq->rq_conn);
-			if (conn_idx != -1)
-				svr_conn[conn_idx].cn_authen &= ~PBS_NET_CONN_NOTIMEOUT;
-
+			conn = get_conn(pjob->ji_rerun_preq->rq_conn);
+			if (conn)
+				conn->cn_authen &= ~PBS_NET_CONN_NOTIMEOUT;
 		}
 
 		pjob->ji_rerun_preq = NULL;

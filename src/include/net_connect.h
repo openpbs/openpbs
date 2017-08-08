@@ -43,6 +43,9 @@
  *	<sys/types.h>
  *       "pbs_ifl.h"
  */
+#include <sys/types.h>
+#include <unistd.h>
+#include "list_link.h"
 #define PBS_NET_H
 #ifndef PBS_NET_TYPE
 typedef unsigned long pbs_net_t;        /* for holding host addresses */
@@ -157,6 +160,7 @@ typedef unsigned long pbs_net_t;        /* for holding host addresses */
  * additional authenication of the user making the request.
  */
 
+typedef struct connection conn_t;
 enum conn_type {
 	Primary = 0,
 	Secondary,
@@ -169,7 +173,10 @@ enum conn_type {
 
 /* functions available in libnet.a */
 
-int add_conn(int sock, enum conn_type, pbs_net_t, unsigned int port, void (*func)(int));
+conn_t *add_conn(int sock, enum conn_type, pbs_net_t, unsigned int port, void (*func)(int));
+int add_conn_data(int sock, void *data); /* Adds the data to the connection */
+void *get_conn_data(int sock); /* Gets the pointer to the data present with the connection */
+void close_socket(int sock);
 int  client_to_svr(pbs_net_t, unsigned int port, int);
 int  client_to_svr_extend(pbs_net_t, unsigned int port, int, char*);
 void set_client_to_svr_timeout(unsigned int);
@@ -178,16 +185,16 @@ pbs_net_t get_connectaddr(int sock);
 int  get_connecthost(int sock, char *namebuf, int size);
 pbs_net_t get_hostaddr(char *hostname);
 unsigned int  get_svrport(char *servicename, char *proto, unsigned int df);
-int  init_network(unsigned int port, void (*readfunc)(int));
+int  init_network(unsigned int port);
+int  init_network_add(int sock, void (*readfunc)(int));
 void net_close(int);
 int  wait_request(time_t waittime);
 void net_add_close_func(int, void(*)(int));
 extern  pbs_net_t  get_addr_of_nodebyname(char *name, unsigned int *port);
 
-int  connection_find_usable_index(int socket);
-int  connection_find_actual_index(int socket);
+conn_t *get_conn(int sock); /* gets the connection, for a given socket id */
 void connection_idlecheck(void);
-int connection_init(void);
+void connection_init(void);
 char *build_addr_string(pbs_net_t);
 int set_nodelay(int fd);
 
@@ -204,9 +211,11 @@ struct connection {
 	void		(*cn_oncl)(int); /* func to call on close */
 	/* following attributes are for */
 	/* credential checking */
-	time_t 		cn_timestamp;
-	void 		*cn_data;         /* pointer to some data for cn_func */
-	char		cn_username[PBS_MAXUSER];
-	char		cn_hostname[PBS_MAXHOSTNAME+1];
+	time_t          cn_timestamp;
+	void            *cn_data;         /* pointer to some data for cn_func */
+	char            cn_username[PBS_MAXUSER];
+	char            cn_hostname[PBS_MAXHOSTNAME+1];
+	pbs_list_link   cn_link;  /* link to the next connection in the linked list */
+	pid_t           cn_pid;  /* process id of the creator */
 };
 #endif	/* _NET_CONNECT_H */

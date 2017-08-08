@@ -340,13 +340,13 @@ failover_send_shutdown(int type)
 static void
 close_secondary(int sock)
 {
-	int     conn_idx;
+	conn_t *conn;
 
-	conn_idx = connection_find_actual_index(sock);
-	if (conn_idx == -1)
+	conn = get_conn(sock);
+	if (!conn)
 		return;
 
-	if (Secondary_connection == svr_conn[conn_idx].cn_handle)
+	if (Secondary_connection == conn->cn_handle)
 		Secondary_connection = -1;
 
 	DBPRT(("Failover: close secondary on socket %d\n", sock))
@@ -407,12 +407,12 @@ req_failover(struct batch_request *preq)
 {
 	int		 err = 0;
 	char		 hostbuf[PBS_MAXHOSTNAME+1];
-	int		 conn_idx;
+	conn_t		 *conn;
 
 	preq->rq_reply.brp_auxcode = 0;
 
-	conn_idx = connection_find_actual_index(preq->rq_conn);
-	if (conn_idx == -1) {
+	conn = get_conn(preq->rq_conn);
+	if (!conn) {
 		req_reject(PBSE_SYSTEM, 0, preq);
 		return;
 	}
@@ -447,10 +447,10 @@ req_failover(struct batch_request *preq)
 
 			/* Mark the connection as non-expiring */
 
-			svr_conn[conn_idx].cn_authen |= PBS_NET_CONN_NOTIMEOUT;
+			conn->cn_authen |= PBS_NET_CONN_NOTIMEOUT;
 
 			Secondary_connection = socket_to_handle(preq->rq_conn);
-			svr_conn[conn_idx].cn_func = process_Dreply;
+			conn->cn_func = process_Dreply;
 			net_add_close_func(preq->rq_conn, close_secondary);
 
 			/* return the host id as a text string */
@@ -704,10 +704,10 @@ read_reg_reply(int sock)
 			char   fn[MAXPATHLEN+1];
 			int    fd;
 			size_t s;
-			int    conn_idx;
+			conn_t    *conn;
 
-			conn_idx = connection_find_actual_index(sock);
-			if (conn_idx == -1) {
+			conn = get_conn(sock);
+			if (!conn) {
 				log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER,
 					LOG_CRIT, msg_daemonname,
 					"unable to socket in connection table");
@@ -722,7 +722,7 @@ read_reg_reply(int sock)
 			/* change function for reading socket from read_reg_reply to */
 			/* read_fo_request, and then wait for the handshakes	     */
 
-			svr_conn[conn_idx].cn_func = read_fo_request;
+			conn->cn_func = read_fo_request;
 			Secondary_state = SECONDARY_STATE_handsk;
 			hd_time = time(0);
 			(void)sprintf(fn, "%s/license.fo", path_priv);
@@ -828,7 +828,7 @@ takeover_from_secondary()
 	struct batch_request	*pfo_req;
 	pbs_net_t		 addr;
 	int			 sock;
-	int 			 idx;
+	conn_t 			 *conn;
 
 	/*
 	 * need to do a limited initialization of the network tables,
@@ -838,7 +838,8 @@ takeover_from_secondary()
 	 * wait a bit, and then clean up the network tables
 	 */
 
-	(void)init_network(0, 0);
+	(void)init_network(0);
+	(void)init_network_add(-1, NULL);
 
 	/* connect to active secondary if we can */
 	/* if connected, send take-over request */
@@ -852,15 +853,15 @@ takeover_from_secondary()
 	if (sock < 0)
 		return 0;
 
-	idx = add_conn(sock, ToServerDIS, addr, 0, read_reg_reply);
-	if (idx == -1) {
+	conn = add_conn(sock, ToServerDIS, addr, 0, read_reg_reply);
+	if (conn == NULL) {
 		/* path highly unlikely but theoretically possible */
 
 		fprintf(stderr, "Connection not found, abort takeover from secondary\n");
 		exit(1);
 	}
 
-	svr_conn[ idx ].cn_authen |= PBS_NET_CONN_AUTHENTICATED;
+	conn->cn_authen |= PBS_NET_CONN_AUTHENTICATED;
 
 	if ((pfo_req = alloc_br(PBS_BATCH_FailOver)) == NULL) {
 		fprintf(stderr, "Unable to allocate request structure, abort takeover from secondary\n");
@@ -912,7 +913,7 @@ be_secondary(time_t delay)
 	FILE			*secact;
 	time_t			 mytime = 0;
 	time_t			 takeov_on_nocontact;
-	int			 idx;
+	conn_t			 *conn;
 	int			 mode;
 
 	/*
@@ -921,7 +922,8 @@ be_secondary(time_t delay)
 	 * loop waiting for handshake
 	 */
 
-	(void)init_network(0, 0);
+	(void)init_network(0);
+	(void)init_network_add(-1, NULL);
 	hd_time = time(0);
 
 	/* connect to primary */
@@ -992,10 +994,10 @@ be_secondary(time_t delay)
 				} else {
 					/* made contact with primary, set to send registration */
 					Secondary_state = SECONDARY_STATE_conn;
-					idx = add_conn(sec_sock, ToServerDIS, primaddr, 0,
+					conn = add_conn(sec_sock, ToServerDIS, primaddr, 0,
 						read_reg_reply);
-					if (idx >= 0) {
-						svr_conn[ idx ].cn_authen |= PBS_NET_CONN_AUTHENTICATED;
+					if (conn) {
+						conn->cn_authen |= PBS_NET_CONN_AUTHENTICATED;
 						DBPRT(("Failover: reconnected to primary\n"))
 					} else {
 						/* a possible but unlikely case */
@@ -1091,10 +1093,10 @@ be_secondary(time_t delay)
 					/* once in a while to quickly reconnect */
 					if ((sec_sock = alt_conn(primaddr, 8)) >= 0) {
 						Secondary_state = SECONDARY_STATE_conn;
-						idx = add_conn(sec_sock, ToServerDIS, primaddr, 0,
+						conn = add_conn(sec_sock, ToServerDIS, primaddr, 0,
 							read_reg_reply);
-						if (idx >= 0) {
-							svr_conn[ idx ].cn_authen |= PBS_NET_CONN_AUTHENTICATED;
+						if (conn) {
+							conn->cn_authen |= PBS_NET_CONN_AUTHENTICATED;
 							DBPRT(("Failover: reconnected to primary\n"))
 						} else {
 							/* a possible but unlikely case */
@@ -1120,10 +1122,10 @@ be_secondary(time_t delay)
 					msg_daemonname, "Secondary attempting to connect with Primary one last time before taking over");
 				if ((sec_sock = alt_conn(primaddr, 8)) >= 0) {
 					Secondary_state = SECONDARY_STATE_conn;
-					idx = add_conn(sec_sock, ToServerDIS, primaddr, 0,
+					conn = add_conn(sec_sock, ToServerDIS, primaddr, 0,
 						read_reg_reply);
-					if (idx >= 0) {
-						svr_conn[ idx ].cn_authen |= PBS_NET_CONN_AUTHENTICATED;
+					if (conn) {
+						conn->cn_authen |= PBS_NET_CONN_AUTHENTICATED;
 						log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER,
 							LOG_NOTICE, msg_daemonname,
 							"Secondary reconnected with Primary");

@@ -633,7 +633,11 @@ int tpp_em_add_fd(void *em_ctx, int fd, int event_mask);
 int tpp_em_mod_fd(void *em_ctx, int fd, int event_mask);
 int tpp_em_del_fd(void *em_ctx, int fd);
 int tpp_em_wait(void *em_ctx, em_event_t **ev_array, int timeout);
-
+#ifndef WIN32
+int tpp_em_pwait(void *em_ctx, em_event_t **ev_array, int timeout, const sigset_t *sigmask);
+#else
+int tpp_em_wait_win(void *em_ctx, em_event_t **ev_array, int timeout);
+#endif
 /* platform independent functions that manipulate a mbox of a thread
  * Internally these functions may use a eventfd, signalfd, signals,
  * plain pipes etc.

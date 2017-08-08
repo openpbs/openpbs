@@ -199,7 +199,7 @@ extern pbs_list_head task_list_event;
 extern pbs_list_head task_list_timed;
 extern char   server_name[];
 
-extern struct connection *svr_conn;
+extern pbs_list_head svr_allconns;
 extern int max_connection;
 
 #define ERR_MSG_SIZE 256
@@ -6746,9 +6746,10 @@ void
 force_qsub_daemons_update(void)
 {
 	int s;
-	for (s=0; s<max_connection; ++s) {
-		if (svr_conn[s].cn_authen & PBS_NET_CONN_FROM_QSUB_DAEMON)
-			svr_conn[s].cn_authen |= PBS_NET_CONN_FORCE_QSUB_UPDATE;
+	conn_t *cp = NULL;
+	for (cp = (conn_t *)GET_NEXT(svr_allconns);cp; cp = GET_NEXT(cp->cn_link)) {
+		if (cp->cn_authen & PBS_NET_CONN_FROM_QSUB_DAEMON)
+			cp->cn_authen |= PBS_NET_CONN_FORCE_QSUB_UPDATE;
 	}
 }
 

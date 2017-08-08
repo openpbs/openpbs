@@ -67,6 +67,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <netdb.h>
+#include <signal.h>
 
 #include "rpp.h"
 #include "tpp_common.h"
@@ -77,8 +78,38 @@
 #endif
 
 /********************************** START OF MULTIPLEXING CODE *****************************************/
+/**
+ * @brief
+ *	Platform independent function to wait for a event to happen on the event context.
+ *	Waits for the specified timeout period. Does not care block/unblock signals.
+ *
+ * @param[in] -  em_ctx - The event monitor context
+ * @param[out] - ev_array - Array of events returned
+ * @param[in] - timeout - The timeout in milliseconds to wait for
+ *
+ * @return	Number of events returned
+ * @retval -1	Failure
+ * @retval  0	Timeout
+ * @retval >0   Success (some events occured)
+ *
+ * @par Side Effects:
+ *	None
+ *
+ * @par MT-safe: Yes
+ *
+ */
+int
+tpp_em_wait(void *em_ctx, em_event_t **ev_array, int timeout)
+{
+#ifndef WIN32
+	return tpp_em_pwait(em_ctx, ev_array, timeout, NULL);
+#else
+	return tpp_em_wait_win(em_ctx, ev_array, timeout);
+#endif
+}
 
 /****************************************** Linux EPOLL ************************************************/
+
 #if defined(PBS_USE_EPOLL)
 /**
  * @brief
@@ -283,6 +314,7 @@ tpp_em_del_fd(void *em_ctx, int fd)
  * @param[in] -  em_ctx - The event monitor context
  * @param[out] - ev_array - Array of events returned
  * @param[in] - timeout - The timeout in milliseconds to wait for
+ * @param[in] - sigmask - The signal mask to atomically unblock before sleeping
  *
  * @return	Number of events returned
  * @retval -1	Failure
@@ -295,14 +327,28 @@ tpp_em_del_fd(void *em_ctx, int fd)
  * @par MT-safe: Yes
  *
  */
+#ifdef PBS_HAVE_EPOLL_PWAIT
 int
-tpp_em_wait(void *em_ctx, em_event_t **ev_array, int timeout)
+tpp_em_pwait(void *em_ctx, em_event_t **ev_array, int timeout, const sigset_t *sigmask)
+{
+        epoll_context_t *ctx = (epoll_context_t *) em_ctx;
+        *ev_array = ctx->events;
+        return (epoll_pwait(ctx->epoll_fd, ctx->events, ctx->max_nfds, timeout, sigmask));
+}
+#else
+int
+tpp_em_pwait(void *em_ctx, em_event_t **ev_array, int timeout, const sigset_t *sigmask)
 {
 	epoll_context_t *ctx = (epoll_context_t *) em_ctx;
 	*ev_array = ctx->events;
-	return (epoll_wait(ctx->epoll_fd, ctx->events, ctx->max_nfds, timeout));
+	sigset_t origmask;
+	int n;
+	sigprocmask(SIG_SETMASK, sigmask, &origmask);
+	n = epoll_wait(ctx->epoll_fd, ctx->events, ctx->max_nfds, timeout);
+	sigprocmask(SIG_SETMASK, &origmask, NULL);
+	return n;
 }
-
+#endif
 /******************************************* AIX POLLSET ***********************************************/
 
 #elif defined (PBS_USE_POLLSET)
@@ -478,6 +524,7 @@ tpp_em_del_fd(void *em_ctx, int fd)
  * @param[in] -  em_ctx - The event monitor context
  * @param[out] - ev_array - Array of events returned
  * @param[in] - timeout - The timeout in milliseconds to wait for
+ *  @param[in] - sigmask - The signal mask to atomically unblock before sleeping
  *
  * @return	Number of events returned
  * @retval -1	Failure
@@ -491,11 +538,25 @@ tpp_em_del_fd(void *em_ctx, int fd)
  *
  */
 int
-tpp_em_wait(void *em_ctx, em_event_t **ev_array, int timeout)
+tpp_em_pwait(void *em_ctx, em_event_t **ev_array, int timeout, const sigset_t *sigmask)
 {
+	int rc;
+	sigset_t origmask;
 	pollset_context_t *ctx = (pollset_context_t *) em_ctx;
 	*ev_array = ctx->events;
-	return (pollset_poll(ctx->ps, ctx->events, ctx->max_nfds, timeout));
+
+	if (sigmask) {
+		if (sigprocmask(SIG_SETMASK, sigmask, &origmask) == -1)
+			return -1;
+	}
+
+	rc = pollset_poll(ctx->ps, ctx->events, ctx->max_nfds, timeout);
+
+	if (sigmask) {
+		sigprocmask(SIG_SETMASK, origmask, NULL);
+	}
+
+	return rc;
 }
 
 
@@ -678,6 +739,7 @@ tpp_em_del_fd(void *em_ctx, int fd)
  * @param[in] -  em_ctx - The event monitor context
  * @param[out] - ev_array - Array of events returned
  * @param[in] - timeout - The timeout in milliseconds to wait for
+ * @param[in] - sigmask - The signal mask to atomically unblock before sleeping
  *
  * @return	Number of events returned
  * @retval -1	Failure
@@ -691,14 +753,31 @@ tpp_em_del_fd(void *em_ctx, int fd)
  *
  */
 int
-tpp_em_wait(void *em_ctx, em_event_t **ev_array, int timeout)
+tpp_em_pwait(void *em_ctx, em_event_t **ev_array, int timeout, const sigset_t *sigmask)
 {
 	poll_context_t *ctx = (poll_context_t *) em_ctx;
 	int nready;
 	int i;
 	int ev_count;
+#ifndef PBS_HAVE_PPOLL
+	sigset_t origmask;
+#endif
+
+#ifdef PBS_HAVE_PPOLL
+	nready = ppoll(ctx->fds, ctx->curr_nfds, timeout, sigmask);
+#else
+	if (sigmask) {
+		if (sigprocmask(SIG_SETMASK, sigmask, &origmask) == -1)
+			return -1;
+	}
 
 	nready = poll(ctx->fds, ctx->curr_nfds, timeout);
+
+	if (sigmask) {
+		sigprocmask(SIG_SETMASK, &origmask, NULL);
+	}
+#endif
+
 	if (nready == -1 || nready == 0)
 		return nready;
 
@@ -719,6 +798,7 @@ tpp_em_wait(void *em_ctx, em_event_t **ev_array, int timeout)
 	}
 	return ev_count;
 }
+
 
 /*************************************** GENERIC SELECT ************************************************/
 
@@ -903,6 +983,7 @@ tpp_em_del_fd(void *em_ctx, int fd)
  * @param[in] -  em_ctx - The event monitor context
  * @param[out] - ev_array - Array of events returned
  * @param[in] - timeout - The timeout in milliseconds to wait for
+ * @param[in] - sigmask - The signal mask to atomically unblock before sleeping
  *
  * @return	Number of events returned
  * @retval -1	Failure
@@ -915,8 +996,9 @@ tpp_em_del_fd(void *em_ctx, int fd)
  * @par MT-safe: Yes
  *
  */
+#ifndef WIN32
 int
-tpp_em_wait(void *em_ctx, em_event_t **ev_array, int timeout)
+tpp_em_pwait(void *em_ctx, em_event_t **ev_array, int timeout, const sigset_t *sigmask)
 {
 	sel_context_t *ctx = (sel_context_t *) em_ctx;
 	int nready;
@@ -940,15 +1022,7 @@ tpp_em_wait(void *em_ctx, em_event_t **ev_array, int timeout)
 		ptv = &tv;
 	}
 
-	nready = select(ctx->maxfd, &ctx->read_fds, &ctx->write_fds, &ctx->err_fds, ptv);
-
-#ifdef WIN32
-	/* for windows select, translate the errno and return value */
-	if (nready == SOCKET_ERROR) {
-		errno = tr_2_errno(WSAGetLastError());
-		nready = -1;
-	}
-#endif
+	nready = pselect(ctx->maxfd, &ctx->read_fds, &ctx->write_fds, &ctx->err_fds, ptv, sigmask);
 
 	if (nready == -1 || nready == 0)
 		return nready;
@@ -976,6 +1050,66 @@ tpp_em_wait(void *em_ctx, em_event_t **ev_array, int timeout)
 	}
 	return ev_count;
 }
+#else
+int
+tpp_em_wait_win(void *em_ctx, em_event_t **ev_array, int timeout)
+{
+	sel_context_t *ctx = (sel_context_t *) em_ctx;
+	int nready;
+	int i;
+	int ev_count;
+	struct timeval tv;
+	struct timeval *ptv;
+	int event;
+
+	errno = 0;
+
+	memcpy(&ctx->read_fds, &ctx->master_read_fds, sizeof(ctx->master_read_fds));
+	memcpy(&ctx->write_fds, &ctx->master_write_fds, sizeof(ctx->master_read_fds));
+	memcpy(&ctx->err_fds, &ctx->master_err_fds, sizeof(ctx->master_read_fds));
+
+	if (timeout == -1) {
+		ptv = NULL;
+	} else {
+		tv.tv_sec = timeout / 1000;
+		tv.tv_usec = (timeout % 1000) * 1000;
+		ptv = &tv;
+	}
+
+	nready = select(ctx->maxfd, &ctx->read_fds, &ctx->write_fds, &ctx->err_fds, ptv);
+	/* for windows select, translate the errno and return value */
+	if (nready == SOCKET_ERROR) {
+		errno = tr_2_errno(WSAGetLastError());
+		nready = -1;
+	}
+
+	if (nready == -1 || nready == 0)
+		return nready;
+
+	ev_count = 0;
+	*ev_array = ctx->events;
+	for (i = 0; i <= ctx->maxfd; i++) {
+		event = 0;
+
+		if (FD_ISSET(i, &ctx->read_fds))
+			event |= EM_IN;
+		if (FD_ISSET(i, &ctx->write_fds))
+			event |= EM_OUT;
+		if (FD_ISSET(i, &ctx->err_fds))
+			event |= EM_ERR;
+
+		if (event != 0) {
+			ctx->events[ev_count].fd = i;
+			ctx->events[ev_count].events = event;
+			ev_count++;
+		}
+
+		if (ev_count > ctx->max_nfds)
+			break;
+	}
+	return ev_count;
+}
+#endif
 
 /********************************** HPUX/SOLARIS /dev/poll *********************************************/
 
@@ -1166,9 +1300,10 @@ tpp_em_del_fd(void *em_ctx, int fd)
  *
  */
 int
-tpp_em_wait(void *em_ctx, em_event_t **ev_array, int timeout)
+tpp_em_pwait(void *em_ctx, em_event_t **ev_array, int timeout, const sigset_t *sigmask)
 {
-
+	int rc;
+	sigset_t origmask;
 	struct dvpoll dvp;
 	int npoll;
 	devpoll_context_t *ctx = (devpoll_context_t *) em_ctx;
@@ -1178,7 +1313,17 @@ tpp_em_wait(void *em_ctx, em_event_t **ev_array, int timeout)
 	dvp.dp_timeout = timeout;
 
 	*ev_array = ctx->events;
+
+	if (sigmask) {
+		if (sigprocmask(SIG_SETMASK, &sigmask, &origmask) == -1)
+			return -1;
+	}
+
 	npoll = ioctl(ctx->devpoll_fd, DP_POLL, &dvp);
+
+	if (sigmask) {
+		sigprocmask(SIG_SETMASK, &origmask, NULL);
+	}
 
 	return npoll;
 }

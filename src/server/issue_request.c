@@ -86,7 +86,6 @@ extern char     *msg_norelytomom;
 extern char	*msg_err_malloc;
 extern unsigned int pbs_server_port_dis;
 
-extern struct  connection *svr_conn;
 extern int max_connection;
 
 /**
@@ -749,6 +748,11 @@ process_Dreply(int sock)
 	int                     i;
 #endif
 
+	conn_t *conn;
+	conn = get_conn(sock);
+	if(!conn)
+		return;
+
 	/* find the work task for the socket, it will point us to the request */
 
 	ptask = (struct work_task *)GET_NEXT(task_list_event);
@@ -762,7 +766,7 @@ process_Dreply(int sock)
 		}
 	}
 #else
-	handle = svr_conn[sock].cn_handle;
+	handle = conn->cn_handle;
 #endif
 
 	while (ptask) {

@@ -900,6 +900,7 @@ main(int argc, char **argv)
 	pbs_queue		*pque;
 	char			*servicename;
 	time_t			svrlivetime;
+	int			sock;
 	struct stat 		sb_sa;
 	struct batch_request	*periodic_req;
 	char			hook_msg[HOOK_MSG_SIZE];
@@ -1735,7 +1736,7 @@ try_db_again:
 
 	/* initialize the network interface */
 
-	if (init_network(pbs_server_port_dis, process_request) != 0) {
+	if ((sock = init_network(pbs_server_port_dis)) < 0) {
 		(void) sprintf(log_buffer,
 			"init_network failed using ports Server:%d Scheduler:%d MOM:%d RM:%d",
 			pbs_server_port_dis, pbs_scheduler_port, pbs_mom_port, pbs_rm_port);
@@ -1791,6 +1792,15 @@ try_db_again:
 	if (sigprocmask(SIG_BLOCK, &allsigs, NULL) == -1)
 		log_err(errno, msg_daemonname, "sigprocmask(BLOCK)");
 #endif /* WIN32 */
+
+	/* initialize the network interface */
+
+	if (init_network_add(sock, process_request) != 0) {
+		(void) sprintf(log_buffer, "add connection for init_network failed");
+		log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+			LOG_ERR, msg_daemonname, log_buffer);
+		stop_db();
+	}
 
 	if (pbs_conf.pbs_use_tcp == 1) {
 		char *nodename = NULL;

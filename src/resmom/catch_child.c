@@ -102,7 +102,6 @@ extern char		*mom_home;
 #ifndef	WIN32
 extern int		termin_child;
 #endif
-extern struct connection svr_conn[];
 extern int		resc_access_perm;
 extern int		server_stream;
 extern time_t		time_now;

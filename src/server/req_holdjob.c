@@ -78,8 +78,6 @@ static void post_hold(struct work_task *);
 
 extern struct server server;
 
-extern struct connection *svr_conn;
-
 extern char	*msg_jobholdset;
 extern char	*msg_jobholdrel;
 extern char	*msg_mombadhold;
@@ -384,7 +382,7 @@ post_hold(struct work_task *pwt)
 	int			code;
 	job			*pjob;
 	struct batch_request	*preq;
-	int			conn_idx;
+	conn_t			*conn;
 
 	if (pwt->wt_aux2 != 1)
 		svr_disconnect(pwt->wt_event);	/* close connection to MOM */
@@ -393,14 +391,14 @@ post_hold(struct work_task *pwt)
 	preq->rq_conn = preq->rq_orgconn;	/* restore client socket */
 
 	if (pwt->wt_aux2 != 1) { /* not rpp */
-		conn_idx = connection_find_actual_index(preq->rq_conn);
+		conn = get_conn(preq->rq_conn);
 
-		if (conn_idx == -1) {
+		if (!conn) {
 			req_reject(PBSE_SYSTEM, 0, preq);
 			return;
 		}
 
-		svr_conn[conn_idx].cn_authen &= ~PBS_NET_CONN_NOTIMEOUT;
+		conn->cn_authen &= ~PBS_NET_CONN_NOTIMEOUT;
 	}
 
 	pjob = find_job(preq->rq_ind.rq_hold.rq_orig.rq_objname);

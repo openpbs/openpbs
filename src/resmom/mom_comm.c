@@ -4935,8 +4935,6 @@ tm_request(int fd, int version)
 	tm_task_id			taskid, fromtask;
 	attribute			*at;
 	extern u_long			localaddr;
-	extern struct connection	*svr_conn;
-	int				conn_idx;
 	char				hook_msg[HOOK_MSG_SIZE+1];
 	int				hook_errcode = 0;
 	int				argc = 0;
@@ -4946,8 +4944,8 @@ tm_request(int fd, int version)
 	mom_hook_input_t		hook_input;
 	mom_hook_output_t		hook_output;
 
-	conn_idx = connection_find_actual_index(fd);
-	if (conn_idx == -1) {
+	conn_t 	*conn = get_conn(fd);
+	if (!conn) {
 		sprintf(log_buffer, "not found fd=%d in connection table", fd);
 #ifdef WIN32
 		(void)closesocket(fd);
@@ -4960,7 +4958,7 @@ tm_request(int fd, int version)
 	}
 
 
-	if (svr_conn[conn_idx].cn_addr != localaddr) {
+	if (conn->cn_addr != localaddr) {
 		sprintf(log_buffer, "non-local connect");
 		goto err;
 	}
@@ -5356,7 +5354,7 @@ aterr:
 		goto done;
 	}
 	myvnodeid = ptask->ti_qs.ti_myvnode;
-	svr_conn[conn_idx].cn_oncl = tm_eof;
+	conn->cn_oncl = tm_eof;
 
 	if (ptask->ti_protover != -1 && ptask->ti_protover != version) {
 		/* the protocol version should not change */
@@ -5396,7 +5394,7 @@ aterr:
 	}
 
 	/* set no timeout so connection is not closed for being idle */
-	svr_conn[conn_idx].cn_authen |= PBS_NET_CONN_NOTIMEOUT;
+	conn->cn_authen |= PBS_NET_CONN_NOTIMEOUT;
 
 	switch (command) {
 
@@ -5992,10 +5990,10 @@ err:
 	else
 		log_err(-1, __func__, log_buffer);
 
-	ipadd = svr_conn[conn_idx].cn_addr;
+	ipadd = conn->cn_addr;
 	sprintf(log_buffer,
 		"message refused from port %d addr %ld.%ld.%ld.%ld",
-		svr_conn[conn_idx].cn_port,
+		conn->cn_port,
 		(ipadd & 0xff000000) >> 24,
 		(ipadd & 0x00ff0000) >> 16,
 		(ipadd & 0x0000ff00) >> 8,

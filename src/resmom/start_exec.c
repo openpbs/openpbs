@@ -100,7 +100,6 @@
 
 /* Global Variables */
 
-extern	vnl_t		*vnlp;
 extern	char		mom_host[];
 extern  int		num_var_env;
 extern	char	      **environ;
@@ -120,7 +119,6 @@ extern	int		server_stream;
 extern	unsigned int	pbs_mom_port;
 extern	time_t		time_now;
 extern	time_t		time_resc_updated;
-extern struct connection *svr_conn;
 extern char		*path_hooks_workdir;
 
 #if  defined(_AIX)
@@ -129,8 +127,6 @@ int     aixlargepage = 0;
 
 int              mom_reader_go;		/* see catchinter() & mom_writer() */
 struct var_table vtable;		/* for building up Job's environ */
-
-extern unsigned int  default_server_port;
 
 extern int x11_reader_go;
 extern int enable_exechost2;
@@ -1551,19 +1547,19 @@ job_setup(job *pjob, struct passwd **pwdparm)
 static void
 record_finish_exec(int sd)
 {
-	int			conn_idx;
+	conn_t		*conn = NULL;
 	int			i;
 	int			j;
 	job			*pjob = NULL;
 	pbs_task		*ptask;
 	struct startjob_rtn	sjr;
 
-	if ((conn_idx = connection_find_actual_index(sd)) == -1) {
+	if ((conn = get_conn(sd)) == NULL) {
 		log_err(PBSE_INTERNAL, __func__, "unable to find pipe");
 		return;
 	}
 
-	ptask = (pbs_task *)svr_conn[conn_idx].cn_data;
+	ptask = (pbs_task *)conn->cn_data;
 	if (ptask != NULL)
 		pjob  = ptask->ti_job;
 	else {
@@ -1868,7 +1864,6 @@ finish_exec(job *pjob)
 {
 	char			**argv = NULL;
 	char	   		buf[2*MAXPATHLEN+5];
-	int			conn_idx;
 	pid_t      		cpid;
 	struct passwd		*pwdp;		/* for uid, shell, home dir */
 	int	   		i, j, k;
@@ -2098,6 +2093,7 @@ finish_exec(job *pjob)
 	 */
 	cpid = fork_me(-1);
 	if (cpid > 0) {
+		conn_t *conn = NULL;
 		char	*s, *d, holdbuf[2*MAXPATHLEN+5];
 
 		/* the parent side, still the main man, uhh that is MOM */
@@ -2107,23 +2103,23 @@ finish_exec(job *pjob)
 
 		/* add the pipe to the connection table so we can poll it */
 
-		if ((conn_idx = add_conn(jsmpipe[0], ChildPipe, (pbs_net_t)0,
-			(unsigned int)0, record_finish_exec)) == -1) {
+		if ((conn = add_conn(jsmpipe[0], ChildPipe, (pbs_net_t)0,
+				(unsigned int) 0, record_finish_exec)) == NULL) {
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
-				pjob->ji_qs.ji_jobid,
-				"Unable to start job, communication connection table is full");
-			(void)close(jsmpipe[0]);
-			(void)close(mjspipe[1]);
+					pjob->ji_qs.ji_jobid,
+					"Unable to start job, communication connection table is full");
+			(void) close(jsmpipe[0]);
+			(void) close(mjspipe[1]);
 #if SHELL_INVOKE == 1
 			if (pipe_script[0] != -1)
-				(void)close(pipe_script[0]);
+				(void) close(pipe_script[0]);
 			if (pipe_script[1] != -1)
-				(void)close(pipe_script[1]);
+				(void) close(pipe_script[1]);
 #endif
 			exec_bail(pjob, JOB_EXEC_RETRY, NULL);
 			return;
 		}
-		svr_conn[conn_idx].cn_data = ptask;
+		conn->cn_data = ptask;
 		pjob->ji_jsmpipe = jsmpipe[0];
 		pjob->ji_mjspipe = mjspipe[1];
 

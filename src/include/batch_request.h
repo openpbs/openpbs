@@ -397,7 +397,7 @@ extern void  req_rerunjob(struct batch_request *req);
 extern void  arrayfree(char **array);
 
 #ifdef	PBS_NET_H
-extern int   authenticate_user(struct batch_request *, struct connection *);
+extern int   authenticate_user(struct batch_request *, conn_t *);
 #endif
 
 #ifndef PBS_MOM

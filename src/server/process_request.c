@@ -114,7 +114,6 @@
 
 pbs_list_head svr_requests;
 
-extern struct    connection *svr_conn;
 
 extern struct server server;
 extern char      server_host[];
@@ -129,12 +128,6 @@ extern int    is_local_root(char *, char *);
 extern void   req_stat_hook(struct batch_request *);
 extern int    scheduler_sock;
 
-#ifndef WIN32
-extern void* munge_dlhandle;
-extern int (*munge_decode_ptr)(const char *cred, void *, void **, int *, uid_t *, gid_t *);
-extern char* (*munge_strerror_ptr)(int);
-extern const char libmunge[];
-#endif
 /* Private functions local to this file */
 
 static void freebr_manage(struct rq_manage *);
@@ -452,7 +445,7 @@ get_credential(char *remote, job *jobp, int from, char **data, size_t *dsize)
  *
  */
 int
-authenticate_external(int conn_idx, struct batch_request *request)
+authenticate_external(conn_t *conn, struct batch_request *request)
 {
 	int fromsvr = 0;
 	int rc = 0;
@@ -470,12 +463,12 @@ authenticate_external(int conn_idx, struct batch_request *request)
 			if (rc != 0)
 				goto err;
 
-			(void) strcpy(svr_conn[conn_idx].cn_username, request->rq_user);
-			(void) strcpy(svr_conn[conn_idx].cn_hostname, request->rq_host);
-			svr_conn[conn_idx].cn_timestamp = time_now;
-			svr_conn[conn_idx].cn_authen |= PBS_NET_CONN_AUTHENTICATED;
+			(void) strcpy(conn->cn_username, request->rq_user);
+			(void) strcpy(conn->cn_hostname, request->rq_host);
+			conn->cn_timestamp = time_now;
+			conn->cn_authen |= PBS_NET_CONN_AUTHENTICATED;
 			if (fromsvr == 1)
-				svr_conn[conn_idx].cn_authen |= PBS_NET_CONN_FROM_PRIVIL; /* set priv connection */
+				conn->cn_authen |= PBS_NET_CONN_FROM_PRIVIL; /* set priv connection */
 
 			return rc;
 #endif
@@ -505,13 +498,14 @@ process_request(int sfds)
 {
 	int		      rc;
 	struct batch_request *request;
-	int		      conn_idx;
+	conn_t		     *conn;
+
 
 	time_now = time((time_t *)0);
 
-	conn_idx = connection_find_actual_index(sfds);
+	conn = get_conn(sfds);
 
-	if (conn_idx == -1) {
+	if (!conn) {
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST, LOG_ERR,
 			"process_request", "did not find socket in connection table");
 #ifdef WIN32
@@ -546,7 +540,7 @@ process_request(int sfds)
 
 #ifndef PBS_MOM
 
-	if (svr_conn[conn_idx].cn_active == FromClientDIS) {
+	if (conn->cn_active == FromClientDIS) {
 		rc = dis_request_read(sfds, request);
 	} else {
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST, LOG_ERR,
@@ -603,7 +597,7 @@ process_request(int sfds)
 
 	/* is the request from a host acceptable to the server */
 	if (request->rq_type == PBS_BATCH_AuthExternal) {
-		rc = authenticate_external(conn_idx, request);
+		rc = authenticate_external(conn, request);
 		if (rc == 0)
 			reply_ack(request);
 		else if (rc == -2)
@@ -641,7 +635,7 @@ process_request(int sfds)
 	 * determine source (user client or another server) of request.
 	 * set the permissions granted to the client
 	 */
-	if (svr_conn[conn_idx].cn_authen & PBS_NET_CONN_FROM_PRIVIL) {
+	if (conn->cn_authen & PBS_NET_CONN_FROM_PRIVIL) {
 
 		/* request came from another server */
 
@@ -675,10 +669,10 @@ process_request(int sfds)
 			return;
 		}
 
-		if ((svr_conn[conn_idx].cn_authen & PBS_NET_CONN_AUTHENTICATED) ==0) {
+		if ((conn->cn_authen & PBS_NET_CONN_AUTHENTICATED) ==0) {
 			rc = PBSE_BADCRED;
 		} else {
-			rc = authenticate_user(request, &svr_conn[conn_idx]);
+			rc = authenticate_user(request, conn);
 		}
 		if (rc != 0) {
 			req_reject(rc, 0, request);
@@ -713,7 +707,7 @@ process_request(int sfds)
 #else	/* THIS CODE FOR MOM ONLY */
 
 	/* check connecting host against allowed list of ok clients */
-	if (!addrfind(svr_conn[conn_idx].cn_addr)) {
+	if (!addrfind(conn->cn_addr)) {
 		req_reject(PBSE_BADHOST, 0, request);
 		close_client(sfds);
 		return;
@@ -749,12 +743,7 @@ process_request(int sfds)
  *		clear_non_blocking().  The existing socket flags are saved in the
  *		connection table entry cn_sockflgs for use by clear_non_blocking().
  *
- * @param[in]	sfds	- the socket
- * @param[in]	conn_idx	- the index into the connection table
- *
- * @note
- *		both are passed in since the caller has both and it saves
- *		searching the connection table for the socket again.
+ * @param[in] conn - the connection structure.
  *
  * @return	success or failure
  * @retval	-l	- failure
@@ -762,22 +751,22 @@ process_request(int sfds)
  */
 
 static int
-set_to_non_blocking(int sfds, int conn_idx)
+set_to_non_blocking(conn_t *conn)
 {
 
-	if (sfds != PBS_LOCAL_CONNECTION) {
+	if (conn->cn_sock != PBS_LOCAL_CONNECTION) {
 
 #ifndef WIN32
 
 		int flg;
-		flg = fcntl(sfds, F_GETFL);
-		if (((flg = fcntl(sfds, F_GETFL)) == -1) ||
-			(fcntl(sfds, F_SETFL, flg|O_NONBLOCK) == -1)) {
+		flg = fcntl(conn->cn_sock, F_GETFL);
+		if (((flg = fcntl(conn->cn_sock, F_GETFL)) == -1) ||
+			(fcntl(conn->cn_sock, F_SETFL, flg|O_NONBLOCK) == -1)) {
 			log_err(errno, __func__,
 				"Unable to set client socking non-blocking");
 			return -1;
 		}
-		svr_conn[conn_idx].cn_sockflgs = flg;
+		conn->cn_sockflgs = flg;
 #endif	/* WIN32 */
 	}
 	return 0;
@@ -791,24 +780,21 @@ set_to_non_blocking(int sfds, int conn_idx)
  *		the prior socket flags in the connection table.  This function resets
  *		the socket flags to that value.
  *
- * @param[in]	sfds	- the socket
- * @param[in]	conn_idx	- the index into the connection table
- *
- * @note
- *		both are passed in since the caller has both and it saves
- *		searching the connection table for the socket again.
+ @param[in] conn - the connection structure.
  */
 
 static void
-clear_non_blocking(int sfds, int conn_idx)
+clear_non_blocking(conn_t *conn)
 {
-	if (sfds != PBS_LOCAL_CONNECTION) {
+	if(!conn)
+		return;
+	if (conn->cn_sock != PBS_LOCAL_CONNECTION) {
 #ifndef WIN32
 		int flg;
-		if ((flg = svr_conn[conn_idx].cn_sockflgs) != -1)
+		if ((flg = conn->cn_sockflgs) != -1)
 			/* reset socket flag to prior value */
-			(void)fcntl(sfds, F_SETFL, flg);
-		svr_conn[conn_idx].cn_sockflgs = 0;
+			(void)fcntl(conn->cn_sock, F_SETFL, flg);
+		conn->cn_sockflgs = 0;
 #endif /* WIN32 */
 	}
 }
@@ -831,13 +817,13 @@ void
 dispatch_request(int sfds, struct batch_request *request)
 {
 
-	int	conn_idx = -1;
+	conn_t *conn = NULL;
 	int rpp = request->isrpp;
 
 	if (!rpp) {
 		if (sfds != PBS_LOCAL_CONNECTION) {
-			conn_idx = connection_find_actual_index(sfds);
-			if (conn_idx == -1) {
+			conn = get_conn(sfds);
+			if (!conn) {
 				log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_REQUEST,
 				LOG_ERR,
 							"dispatch_request", "did not find socket in connection table");
@@ -954,7 +940,7 @@ dispatch_request(int sfds, struct batch_request *request)
 
 		case PBS_BATCH_HoldJob:
 			if (sfds != PBS_LOCAL_CONNECTION && !rpp)
-				svr_conn[conn_idx].cn_authen |= PBS_NET_CONN_NOTIMEOUT;
+				conn->cn_authen |= PBS_NET_CONN_NOTIMEOUT;
 			req_holdjob(request);
 			break;
 #ifndef PBS_MOM
@@ -977,7 +963,7 @@ dispatch_request(int sfds, struct batch_request *request)
 
 		case PBS_BATCH_PySpawn:
 			if (sfds != PBS_LOCAL_CONNECTION && !rpp)
-				svr_conn[conn_idx].cn_authen |= PBS_NET_CONN_NOTIMEOUT;
+				conn->cn_authen |= PBS_NET_CONN_NOTIMEOUT;
 			req_py_spawn(request);
 			break;
 
@@ -1011,7 +997,7 @@ dispatch_request(int sfds, struct batch_request *request)
 
 		case PBS_BATCH_ReleaseJob:
 			if (sfds != PBS_LOCAL_CONNECTION && !rpp)
-				svr_conn[conn_idx].cn_authen |= PBS_NET_CONN_NOTIMEOUT;
+				conn->cn_authen |= PBS_NET_CONN_NOTIMEOUT;
 			req_releasejob(request);
 			break;
 
@@ -1053,43 +1039,43 @@ dispatch_request(int sfds, struct batch_request *request)
 #ifndef PBS_MOM		/* Server Only Functions */
 
 		case PBS_BATCH_StatusJob:
-			if (set_to_non_blocking(sfds, conn_idx) == -1) {
+			if (set_to_non_blocking(conn) == -1) {
 				req_reject(PBSE_SYSTEM, 0, request);
 				close_client(sfds);
 				return;
 			}
 			req_stat_job(request);
-			clear_non_blocking(sfds, conn_idx);
+			clear_non_blocking(conn);
 			break;
 
 		case PBS_BATCH_StatusQue:
-			if (set_to_non_blocking(sfds, conn_idx) == -1) {
+			if (set_to_non_blocking(conn) == -1) {
 				req_reject(PBSE_SYSTEM, 0, request);
 				close_client(sfds);
 				return;
 			}
 			req_stat_que(request);
-			clear_non_blocking(sfds, conn_idx);
+			clear_non_blocking(conn);
 			break;
 
 		case PBS_BATCH_StatusNode:
-			if (set_to_non_blocking(sfds, conn_idx) == -1) {
+			if (set_to_non_blocking(conn) == -1) {
 				req_reject(PBSE_SYSTEM, 0, request);
 				close_client(sfds);
 				return;
 			}
 			req_stat_node(request);
-			clear_non_blocking(sfds, conn_idx);
+			clear_non_blocking(conn);
 			break;
 
 		case PBS_BATCH_StatusResv:
-			if (set_to_non_blocking(sfds, conn_idx) == -1) {
+			if (set_to_non_blocking(conn) == -1) {
 				req_reject(PBSE_SYSTEM, 0, request);
 				close_client(sfds);
 				return;
 			}
 			req_stat_resv(request);
-			clear_non_blocking(sfds, conn_idx);
+			clear_non_blocking(conn);
 			break;
 
 		case PBS_BATCH_StatusSvr:
@@ -1101,7 +1087,6 @@ dispatch_request(int sfds, struct batch_request *request)
 			break;
 
 		case PBS_BATCH_StatusHook:
-
 			if (!is_local_root(request->rq_user,
 				request->rq_host)) {
 				sprintf(log_buffer, "%s@%s is unauthorized to "
@@ -1115,13 +1100,13 @@ dispatch_request(int sfds, struct batch_request *request)
 				break;
 			}
 
-			if (set_to_non_blocking(sfds, conn_idx) == -1) {
+			if (set_to_non_blocking(conn) == -1) {
 				req_reject(PBSE_SYSTEM, 0, request);
 				close_client(sfds);
 				return;
 			}
 			req_stat_hook(request);
-			clear_non_blocking(sfds, conn_idx);
+			clear_non_blocking(conn);
 			break;
 
 		case PBS_BATCH_TrackJob:
@@ -1168,7 +1153,7 @@ dispatch_request(int sfds, struct batch_request *request)
 				"copy file request received");
 			/* don't time-out as copy may take long time */
 			if (sfds != PBS_LOCAL_CONNECTION && !rpp)
-				svr_conn[conn_idx].cn_authen |= PBS_NET_CONN_NOTIMEOUT;
+				conn->cn_authen |= PBS_NET_CONN_NOTIMEOUT;
 			req_cpyfile(request);
 			break;
 		case PBS_BATCH_CopyFiles_Cred:
@@ -1177,7 +1162,7 @@ dispatch_request(int sfds, struct batch_request *request)
 				"copy file cred request received");
 			/* don't time-out as copy may take long time */
 			if (sfds != PBS_LOCAL_CONNECTION && !rpp)
-				svr_conn[conn_idx].cn_authen |= PBS_NET_CONN_NOTIMEOUT;
+				conn->cn_authen |= PBS_NET_CONN_NOTIMEOUT;
 			req_cpyfile(request);
 			break;
 

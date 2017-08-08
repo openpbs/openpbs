@@ -59,7 +59,7 @@
 
 extern time_t time_now;
 
-extern struct connection *svr_conn;
+extern pbs_list_head svr_allconns;
 extern int max_connection;
 
 /* Global Data Home in this file */
@@ -75,19 +75,19 @@ extern int max_connection;
 void
 req_connect(struct batch_request *preq)
 {
-	int  conn_idx = connection_find_actual_index(preq->rq_conn);
+	conn_t *conn = get_conn(preq->rq_conn);
 
-	if (conn_idx == -1) {
+	if (!conn) {
 		req_reject(PBSE_SYSTEM, 0, preq);
 		return;
 	}
 
 	if ( (preq->rq_extend != NULL) && \
 		(strcmp(preq->rq_extend, QSUB_DAEMON) == 0) ) {
-		svr_conn[conn_idx].cn_authen |= PBS_NET_CONN_FROM_QSUB_DAEMON;
+		conn->cn_authen |= PBS_NET_CONN_FROM_QSUB_DAEMON;
 	}
 
-	if ((svr_conn[conn_idx].cn_authen &
+	if ((conn->cn_authen &
 		(PBS_NET_CONN_AUTHENTICATED|PBS_NET_CONN_FROM_PRIVIL))==0) {
 		reply_ack(preq);
 	} else
@@ -109,34 +109,34 @@ req_authenResvPort(struct batch_request *preq)
 {
 	int		s;
 	pbs_net_t	req_addr;
-	int		conn_idx;
+	conn_t		*cp;
 	uint		authrequest_port = preq->rq_ind.rq_authen_resvport.rq_port;
 
-	conn_idx = connection_find_actual_index(preq->rq_conn);
-	if (conn_idx == -1) {
+	cp = get_conn(preq->rq_conn);
+	if (!cp) {
 		req_reject(PBSE_SYSTEM, 0, preq);
 		return;
 	}
 
-	req_addr = svr_conn[conn_idx].cn_addr;
+	req_addr = cp->cn_addr;
 
 	/*
 	 * find the socket whose client side is bound to the port named
 	 * in the request
 	 */
 
-	for (s=0; s<max_connection; ++s) {
-		if (authrequest_port == svr_conn[s].cn_port &&
-			req_addr == svr_conn[s].cn_addr) {
+	for (cp = (conn_t *)GET_NEXT(svr_allconns);cp;cp = GET_NEXT(cp->cn_link)) {
+		if (authrequest_port == cp->cn_port &&
+			req_addr == cp->cn_addr) {
 
-			if ((svr_conn[s].cn_authen & (PBS_NET_CONN_AUTHENTICATED|PBS_NET_CONN_FROM_PRIVIL))==0) {
-				(void)strcpy(svr_conn[s].cn_username,
-					preq->rq_user);
-				(void)strcpy(svr_conn[s].cn_hostname,
-					preq->rq_host);
+			if ((cp->cn_authen
+					& (PBS_NET_CONN_AUTHENTICATED | PBS_NET_CONN_FROM_PRIVIL))
+					== 0) {
+				(void) strcpy(cp->cn_username, preq->rq_user);
+				(void)strcpy(cp->cn_hostname, preq->rq_host);
 				/* time stamp just for the record */
-				svr_conn[s].cn_timestamp = time_now;
-				svr_conn[s].cn_authen |= PBS_NET_CONN_AUTHENTICATED;
+				cp->cn_timestamp = time_now;
+				cp->cn_authen |= PBS_NET_CONN_AUTHENTICATED;
 			}
 			reply_ack(preq);
 			return;

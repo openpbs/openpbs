@@ -45,10 +45,6 @@
 #include "net_connect.h"
 
 
-/* global data */
-
-extern struct connection *svr_conn;
-
 /**
  * @brief
  * 	net_add_close_func - install a function to be called on close of
@@ -64,13 +60,10 @@ extern struct connection *svr_conn;
 void
 net_add_close_func(int sd, void (*func)(int))
 {
-	int	conn_idx = connection_find_actual_index(sd);
+	conn_t *conn = get_conn(sd);
 
-	if (conn_idx == -1)
+	if (!conn)
 		return;
 
-	if (svr_conn[conn_idx].cn_active == Idle)
-		return;
-
-	svr_conn[conn_idx].cn_oncl =  func;
+	conn->cn_oncl = func;
 }

@@ -43,7 +43,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				InlineFunctionExpansion="1"
-				AdditionalIncludeDirectories="..\..\src\include,..\include"
+				AdditionalIncludeDirectories="..\..\src\include,..\include,..\..\src\lib\Libtpp"
 				PreprocessorDefinitions="WIN32;NDEBUG;_LIB;_USE_32BIT_TIME_T "
 				StringPooling="true"
 				RuntimeLibrary="0"
@@ -117,7 +117,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\..\src\include,..\include"
+					AdditionalIncludeDirectories="..\..\src\include,..\include,..\..\src\lib\Libtpp"
 				PreprocessorDefinitions="WIN32;_DEBUG;_LIB;_USE_32BIT_TIME_T "
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="0"

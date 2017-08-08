@@ -337,6 +337,10 @@
 			RelativePath="..\..\src\include\work_task.h"
 			>
 		</File>
+		<File
+			RelativePath="..\..\src\lib\Libtpp\tpp_common.h"
+			>
+		</File>
 	</Files>
 	<Globals>
 	</Globals>

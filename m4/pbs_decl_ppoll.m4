@@ -35,16 +35,42 @@
 #  trademark licensing policies.
 #
 
-lib_LIBRARIES = libnet.a
 
-libnet_a_CPPFLAGS = -I$(top_srcdir)/src/include -I$(top_srcdir)/src/lib/Libtpp
+#
+# Prefix the macro names with PBS_ so they don't conflict with Python definitions
+#
 
-libnet_a_SOURCES = \
-	get_hostaddr.c \
-	net_client.c \
-	net_server.c \
-	net_set_clse.c \
-	port_forwarding.c \
-	rm.c \
-	hnls.c
+AC_DEFUN([PBS_AC_DECL_PPOLL],
+[
+  AS_CASE([x$target_os],
+    [xlinux*],
+     AC_MSG_CHECKING(whether ppoll API is supported)
+      AC_TRY_RUN(
+[
+#include <unistd.h>
+#include <poll.h>
+#include <signal.h>
+
+int main()
+{
+	sigset_t allsigs;       
+	int n;
+	int fd[2];
+	struct timespec timeoutspec;
+	timeoutspec.tv_nsec = 1000;
+	timeoutspec.tv_sec = 0;
+	struct   pollfd  pollfds[1];
+	pipe(fd);
+	pollfds[0].fd = fd[0];
+	sigemptyset(&allsigs);
+	n = ppoll(pollfds, 1, &timeoutspec, &allsigs);
+	return (n);
+}
+],
+	AC_DEFINE([PBS_HAVE_PPOLL], [], [Defined when ppoll is available])
+	AC_MSG_RESULT([yes]),
+	AC_MSG_RESULT([no])
+     )
+  )
+])
 

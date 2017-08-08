@@ -72,7 +72,6 @@ extern struct server server;
 extern pbs_net_t pbs_scheduler_addr;
 extern unsigned int pbs_scheduler_port;
 extern char      server_name[];
-extern struct connection *svr_conn;
 extern int	 svr_do_schedule;
 extern int	 svr_do_sched_high;
 extern char     *msg_sched_called;
@@ -169,7 +168,7 @@ int
 contact_sched(int cmd, char *jobid)
 {
 	int sock;
-	int conn_idx;
+	conn_t *conn;
 #ifndef WIN32
 	struct sigaction act, oact;
 #endif
@@ -205,14 +204,14 @@ contact_sched(int cmd, char *jobid)
 		log_err(errno, __func__, msg_sched_nocall);
 		return (-1);
 	}
-	conn_idx = add_conn(sock, FromClientDIS, pbs_scheduler_addr,
+	conn = add_conn(sock, FromClientDIS, pbs_scheduler_addr,
 		pbs_scheduler_port, process_request);
-	if (conn_idx == -1) {
+	if (!conn) {
 		log_err(errno, __func__, "could not find sock in connection table");
 		return (-1);
 	}
 
-	svr_conn[conn_idx].cn_authen |=
+	conn->cn_authen |=
 		PBS_NET_CONN_FROM_PRIVIL | PBS_NET_CONN_AUTHENTICATED;
 
 	net_add_close_func(sock, scheduler_close);

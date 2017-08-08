@@ -160,7 +160,6 @@ extern char  server_name[];
 extern char *pbs_server_name;
 extern pbs_list_head svr_newjobs;
 extern pbs_list_head svr_alljobs;
-extern struct connection *svr_conn;
 
 #ifdef PBS_MOM
 #include "mom_func.h"
@@ -639,6 +638,7 @@ job_purge(job *pjob)
 {
 	char		namebuf[MAXPATHLEN+1];
 	extern	char	*msg_err_purgejob;
+	conn_t		*connection = NULL;
 #ifdef	PBS_MOM
 	extern	char	*path_checkpoint;
 #else
@@ -676,13 +676,13 @@ job_purge(job *pjob)
 
 		if ((pjob->ji_wattr[(int)JOB_ATR_session_id].at_flags & ATR_VFLAG_SET) == 0 &&
 				!(pjob->ji_wattr[(int)JOB_ATR_session_id].at_val.at_long) &&
-				(conn_idx = connection_find_actual_index(pjob->ji_jsmpipe)) != -1) {
+				(connection = get_conn(pjob->ji_jsmpipe)) != NULL) {
 			/*
 			 * If session id for the job is not set, retain pjob->ji_jsmpipe.
 			 * Set cn_data to NULL so that we can kill the process when
 			 * record_finish_exec is called.
 			 */
-			svr_conn[conn_idx].cn_data = NULL;
+			connection->cn_data = NULL;
 		} else
 			(void)close_conn(pjob->ji_jsmpipe);
 	}

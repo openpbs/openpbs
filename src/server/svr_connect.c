@@ -98,7 +98,6 @@ extern unsigned int	 pbs_mom_port;
 extern char		*msg_daemonname;
 extern char		*msg_noloopbackif;
 
-extern struct connection *svr_conn;
 extern pbs_net_t	 pbs_server_addr;
 #ifndef WIN32
 extern sigset_t		 allsigs;		/* see pbsd_main.c */
@@ -134,7 +133,7 @@ svr_connect(pbs_net_t hostaddr, unsigned int port, void (*func)(int), enum conn_
 	int mode;
 	int sock;
 	mominfo_t *pmom = 0;
-	int conn_idx;
+	conn_t *conn = NULL;
 
 	/* First, determine if the request is to another server or ourselves */
 
@@ -205,13 +204,13 @@ svr_connect(pbs_net_t hostaddr, unsigned int port, void (*func)(int), enum conn_
 	/* add the connection to the server connection table and select list */
 
 	if (func) {
-		conn_idx = add_conn(sock, ToServerDIS, hostaddr, port, func);
+		conn = add_conn(sock, ToServerDIS, hostaddr, port, func);
 	} else {
-		conn_idx = connection_find_usable_index(sock); /* empty slot */
+		conn = add_conn(sock, ToServerDIS, 0, 0, NULL);/* empty slot */
 	}
 
 
-	if (conn_idx == -1) {
+	if (!conn) {
 #ifdef WIN32
 		(void)closesocket(sock);
 #else
@@ -222,8 +221,8 @@ svr_connect(pbs_net_t hostaddr, unsigned int port, void (*func)(int), enum conn_
 
 	/* add_conn() may have created an entry already. If not,        */
 	/* connection_find_usable_index() will give us an empty slot.   */
-	svr_conn[conn_idx].cn_sock = sock;
-	svr_conn[conn_idx].cn_authen |= PBS_NET_CONN_AUTHENTICATED;
+	conn->cn_sock = sock;
+	conn->cn_authen |= PBS_NET_CONN_AUTHENTICATED;
 
 	/* find a connect_handle entry we can use and pass to the PBS_*() */
 
@@ -292,7 +291,7 @@ svr_disconnect_with_wait_option(int handle, int wait)
 		sock = connection[handle].ch_socket;
 		DIS_tcp_setup(sock);
 		if ((encode_DIS_ReqHdr(sock, PBS_BATCH_Disconnect, pbs_current_user) == 0) && (DIS_tcp_wflush(sock) == 0)) {
-			int conn_idx = connection_find_actual_index(sock);
+			conn_t *conn = get_conn(sock);
 
 			/* if no error, will be closed when process_request */
 			/* sees the EOF					    */
@@ -315,9 +314,9 @@ svr_disconnect_with_wait_option(int handle, int wait)
 #else
 				(void)close(connection[handle].ch_socket);
 #endif
-			} else if (conn_idx != -1) {
-				svr_conn[conn_idx].cn_func = close_conn;
-				svr_conn[conn_idx].cn_oncl = 0;
+			} else if (conn) {
+				conn->cn_func = close_conn;
+				conn->cn_oncl = 0;
 			}
 		} else {
 			/* error sending disconnect, just close now */
@@ -351,9 +350,9 @@ int
 socket_to_handle(int sock)
 {
 	int	i;
-	int	conn_idx = connection_find_actual_index(sock);
+	conn_t	*conn = get_conn(sock);
 
-	if (conn_idx == -1)
+	if (!conn)
 		return (-1);
 
 	for (i=0; i<PBS_MAX_CONNECTIONS; i++) {
@@ -372,7 +371,7 @@ socket_to_handle(int sock)
 				return -1;
 			/* save handle for later close */
 
-			svr_conn[conn_idx].cn_handle = i;
+			conn->cn_handle = i;
 			return (i);
 		}
 	}

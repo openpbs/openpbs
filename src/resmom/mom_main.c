@@ -5691,7 +5691,6 @@ rm_request(int iochan, int version, int tcp)
 	u_short			port = 0;
 	void			(*close_io)	(int) = NULL;
 	int			(*flush_io)	(int);
-	extern	struct	connection	*svr_conn;
 
 	errno = 0;
 	if (!output) {
@@ -5704,9 +5703,9 @@ rm_request(int iochan, int version, int tcp)
 	}
 	(void)memset(output, 0, output_size);
 	if (tcp) {
-		int conn_idx = connection_find_actual_index(iochan);
+		conn_t *conn = get_conn(iochan);
 
-		if (conn_idx == -1) {
+		if (!conn) {
 			log_err(errno, __func__,
 				"not find iochan in connection table");
 #ifdef	WIN32
@@ -5716,8 +5715,8 @@ rm_request(int iochan, int version, int tcp)
 #endif	/* WIN32 */
 			return -1;
 		}
-		ipadd = svr_conn[conn_idx].cn_addr;
-		port = svr_conn[conn_idx].cn_port;
+		ipadd = conn->cn_addr;
+		port = conn->cn_port;
 		close_io = close_conn;
 		flush_io = DIS_tcp_wflush;
 	}
@@ -6127,11 +6126,8 @@ tcp_request(int fd)
 	int			c;
 	long			ipadd;
 	char			address[80];
-	extern	struct	connection	*svr_conn;
-	int			conn_idx;
-
-	conn_idx = connection_find_actual_index(fd);
-	if (conn_idx == -1) {
+	conn_t *conn = get_conn(fd);
+	if (!conn) {
 		sprintf(log_buffer, "could not find fd=%d in connection table",
 			fd);
 		log_err(-1, __func__, log_buffer);
@@ -6144,14 +6140,14 @@ tcp_request(int fd)
 	}
 
 
-	ipadd = svr_conn[conn_idx].cn_addr;
+	ipadd = conn->cn_addr;
 
 	sprintf(address, "%ld.%ld.%ld.%ld:%d",
 		(ipadd & 0xff000000) >> 24,
 		(ipadd & 0x00ff0000) >> 16,
 		(ipadd & 0x0000ff00) >> 8,
 		(ipadd & 0x000000ff),
-		ntohs(svr_conn[conn_idx].cn_port));
+		ntohs(conn->cn_port));
 	DBPRT(("%s: fd %d addr %s\n", __func__, fd, address))
 	DIS_tcp_setup(fd);
 	if (!addrfind(ipadd)) {
@@ -7975,6 +7971,8 @@ main(int argc, char *argv[])
 #endif /* _POSIX_MEMLOCK */
 	mom_hook_input_t	hook_input;
 	char			path_hooks_rescdef[MAXPATHLEN+1];
+	int			sock_bind_rm;
+	int			sock_bind_mom;
 #ifdef PYTHON
 	PyObject		*path;
 	char			buf[MAXPATHLEN];
@@ -8641,7 +8639,7 @@ main(int argc, char *argv[])
 
 	/* initialize the network interface */
 
-	if (init_network(pbs_mom_port, process_request) != 0) {
+	if ((sock_bind_mom = init_network(pbs_mom_port)) < 0) {
 #ifdef	WIN32
 		errno = WSAGetLastError();
 #endif
@@ -8667,7 +8665,7 @@ main(int argc, char *argv[])
 		return (3);
 	}
 
-	if (init_network(pbs_rm_port, tcp_request) != 0) {
+	if ((sock_bind_rm = init_network(pbs_rm_port)) < 0) {
 
 #ifdef	WIN32
 		errno = WSAGetLastError();
@@ -8919,6 +8917,62 @@ main(int argc, char *argv[])
 	}
 
 	rpp_fd = -1;
+	if (init_network_add(sock_bind_mom, process_request) != 0) {
+
+		c = ERRORNO;
+		(void)sprintf(log_buffer,
+			"server port = %u, errno = %d",
+			pbs_mom_port, c);
+
+		if (c == EADDRINUSE)
+			(void)strcat(log_buffer, ", already in use");
+		log_err(-1, msg_daemonname, log_buffer);
+		(void)strcat(log_buffer, "\n");
+#ifdef	WIN32
+		g_dwCurrentState = SERVICE_STOPPED;
+		ss.dwCurrentState = g_dwCurrentState;
+		ss.dwWin32ExitCode = ERROR_NETWORK_ACCESS_DENIED;
+		if (g_ssHandle != 0) SetServiceStatus(g_ssHandle, &ss);
+#endif
+		return (3);
+	}
+
+	if (init_network_add(sock_bind_rm, tcp_request) != 0) {
+
+		c = ERRORNO;
+		(void)sprintf(log_buffer,
+			"resource (tcp) port = %u, errno = %d",
+			pbs_rm_port, c);
+
+		if (c == EADDRINUSE)
+			(void)strcat(log_buffer, ", already in use");
+		log_err(-1, msg_daemonname, log_buffer);
+		(void)strcat(log_buffer, "\n");
+
+#ifdef	WIN32
+		g_dwCurrentState = SERVICE_STOPPED;
+		ss.dwCurrentState = g_dwCurrentState;
+		ss.dwWin32ExitCode = ERROR_NETWORK_ACCESS_DENIED;
+		if (g_ssHandle != 0) SetServiceStatus(g_ssHandle, &ss);
+#endif	/* WIN32 */
+		return (3);
+	}
+
+	/*Initialize security library's internal data structures*/
+
+	{
+		int	csret;
+
+		/* allow Libsec to log errors if part of PBS daemon code */
+		p_cslog = log_err;
+
+		if ((csret = CS_server_init()) != CS_SUCCESS) {
+			sprintf(log_buffer,
+				"Problem initializing security library (%d)", csret);
+			log_err(-1, "pbsd_main", log_buffer);
+			exit(3);
+		}
+	}
 	if (pbs_conf.pbs_use_tcp == 1) {
 		char *nodename;
 		if (pbs_conf.pbs_leaf_name)

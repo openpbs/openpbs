@@ -140,7 +140,6 @@ extern	char mom_host[PBS_MAXHOSTNAME+1];
 
 /* External Functions Called: */
 
-extern struct connection *svr_conn;
 #ifndef PBS_MOM
 extern int    remtree(char *);
 #ifdef NAS /* localmod 005 */
@@ -308,7 +307,7 @@ req_quejob(struct batch_request *preq)
 	resource_def	*prdefmaxwt;
 	resource_def	*prdefbad;
 	resource	*presc;
-	int		conn_idx;
+	conn_t		*conn;
 #else
 	mom_hook_input_t  hook_input;
 	mom_hook_output_t hook_output;
@@ -328,16 +327,16 @@ req_quejob(struct batch_request *preq)
 
 #ifndef PBS_MOM		/* server server server server */
 
-	conn_idx = connection_find_actual_index(sock);
+	conn = get_conn(sock);
 
-	if (conn_idx == -1) {
+	if (!conn) {
 		req_reject(PBSE_SYSTEM, 0, preq);
 		return;
 	}
 
-	if (svr_conn[conn_idx].cn_authen & PBS_NET_CONN_FORCE_QSUB_UPDATE) {
+	if (conn->cn_authen & PBS_NET_CONN_FORCE_QSUB_UPDATE) {
 		req_reject(PBSE_FORCE_QSUB_UPDATE, 0, preq);
-		svr_conn[conn_idx].cn_authen &= ~PBS_NET_CONN_FORCE_QSUB_UPDATE;
+		conn->cn_authen &= ~PBS_NET_CONN_FORCE_QSUB_UPDATE;
 		return;
 	}
 

@@ -79,7 +79,6 @@ static void req_rerunjob2(struct batch_request *preq, job *pjob);
 extern char *msg_manager;
 extern char *msg_jobrerun;
 extern time_t time_now;
-extern struct connection *svr_conn;
 
 
 /**
@@ -376,21 +375,21 @@ req_rerunjob(struct batch_request *preq)
 static void
 timeout_rerun_request(struct work_task *pwt)
 {
-	job     *pjob = (job *)pwt->wt_parm1;
-	int      conn_idx = -1;
+	job *pjob = (job *) pwt->wt_parm1;
+	conn_t *conn = NULL;
 
 	if ((pjob == NULL) || (pjob->ji_rerun_preq == NULL)) {
-		return;	/* nothing to timeout */
+		return; /* nothing to timeout */
 	}
 	if (pjob->ji_rerun_preq->rq_conn != PBS_LOCAL_CONNECTION) {
-		conn_idx = connection_find_actual_index(pjob->ji_rerun_preq->rq_conn);
+		conn = get_conn(pjob->ji_rerun_preq->rq_conn);
 	}
 	reply_text(pjob->ji_rerun_preq, PBSE_INTERNAL,
-		"Response timed out. Job rerun request still in progress for");
+			"Response timed out. Job rerun request still in progress for");
 
 	/* clear no-timeout flag on connection */
-	if (conn_idx != -1)
-		svr_conn[conn_idx].cn_authen &= ~PBS_NET_CONN_NOTIMEOUT;
+	if (conn)
+		conn->cn_authen &= ~PBS_NET_CONN_NOTIMEOUT;
 
 	pjob->ji_rerun_preq = NULL;
 
@@ -408,7 +407,7 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 	long	force = 0;
 	struct  work_task *ptask;
 	time_t  rerun_to;
-	int	conn_idx;
+	conn_t	*conn;
 	int rc;
 	int is_mgr = 0;
 	void *force_rerun = (void *)0;
@@ -513,9 +512,9 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 
 	/* set no-timeout flag on connection to client */
 	if (preq->rq_conn != PBS_LOCAL_CONNECTION) {
-		conn_idx = connection_find_actual_index(preq->rq_conn);
-		if (conn_idx != -1)
-			svr_conn[conn_idx].cn_authen |= PBS_NET_CONN_NOTIMEOUT;
+		conn = get_conn(preq->rq_conn);
+		if (conn)
+			conn->cn_authen |= PBS_NET_CONN_NOTIMEOUT;
 	}
 
 }
