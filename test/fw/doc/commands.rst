@@ -485,7 +485,10 @@ pbs_config is useful in the following cases, use:
 
 .. option:: --make-ug
 
-    To make users and groups as required for automated testing
+    To make users and groups as required for automated testing.This will create
+    user home directories with 755 permission.If test user is not using this command
+    for user creation then he/she has to make sure that the home directories
+    should have 755 permission.
 
 To setup, start, and add (to the server) multiple MoMs::
 

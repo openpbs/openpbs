@@ -1711,6 +1711,7 @@ class DshUtils(object):
         """
         self.logger.info('adding user ' + str(name))
         cmd = ['useradd']
+        cmd += ['-K', 'UMASK=0022']
         if uid is not None:
             cmd += ['-u', str(uid)]
         if shell is not None:
