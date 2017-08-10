@@ -36,6 +36,8 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 
+import time
+
 from tests.functional import *
 from ptl.utils.pbs_snaputils import *
 
@@ -44,6 +46,7 @@ class TestPBSSnapshot(TestFunctional):
     """
     Test suit with unit tests for the pbs_snapshot tool
     """
+    pbs_snapshot_exists = None  # Flag to check if pbs_snaphot binary exists
 
     def setUp(self):
         TestFunctional.setUp(self)
@@ -54,6 +57,24 @@ class TestPBSSnapshot(TestFunctional):
         self.assertTrue(self.server.manager(MGR_CMD_CREATE, RSC, attr,
                                             id="ngpus", expect=True,
                                             sudo=True))
+
+        # Check whether pbs_snapshot binary is accessible
+        try:
+            ret = self.du.run_cmd(cmd=["pbs_snapshot", "-h"])
+            if ret['rc'] == 0:
+                self.pbs_snapshot_exists = True
+            else:
+                self.pbs_snapshot_exists = False
+        except Exception:
+            self.pbs_snapshot_exists = False
+
+        # Check whether the user has root access or not
+        # pbs_snapshot only supports being run as root, so skip the entire
+        # testsuite if the user doesn't have root privileges
+        ret = self.du.run_cmd(
+            cmd=["ls", os.path.join(os.sep, "root")], sudo=True)
+        if ret['rc'] != 0:
+            self.skipTest("pbs_snapshot/PBSSnapUtils need root privileges")
 
     def test_capture_server(self):
         """
@@ -178,7 +199,7 @@ class TestPBSSnapshot(TestFunctional):
         """
         Test the 'capture_pbs_logs' interface of PBSSnapUtils
         """
-        target_dir = os.getcwd()
+        target_dir = self.du.get_tempdir()
         num_daemon_logs = 2
         num_acct_logs = 5
 
@@ -229,7 +250,10 @@ class TestPBSSnapshot(TestFunctional):
         """
         Test capturing a snapshot via the pbs_snapshot program
         """
-        target_dir = os.getcwd()
+        if not self.pbs_snapshot_exists:
+            self.skip_test("pbs_snapshot binary not found")
+
+        target_dir = self.du.get_tempdir()
         snap_cmd = ["pbs_snapshot", "-o", target_dir]
         ret = self.du.run_cmd(cmd=snap_cmd, sudo=True)
         self.assertEquals(ret['rc'], 0)
@@ -253,7 +277,10 @@ class TestPBSSnapshot(TestFunctional):
         Test capturing a snapshot via the pbs_snapshot program
         Capture no logs
         """
-        target_dir = os.getcwd()
+        if not self.pbs_snapshot_exists:
+            self.skip_test("pbs_snapshot binary not found")
+
+        target_dir = self.du.get_tempdir()
         snap_cmd = ["pbs_snapshot", "-o", target_dir, "--daemon-logs=0",
                     "--accounting-logs=0"]
         ret = self.du.run_cmd(cmd=snap_cmd, sudo=True)
@@ -272,7 +299,7 @@ class TestPBSSnapshot(TestFunctional):
 
         # Unwrap the tarball
         tar = tarfile.open(output_tar)
-        tar.extractall()
+        tar.extractall(path=target_dir)
         tar.close()
 
         # snapshot directory name = <snapshot>.tgz[:-4]
@@ -296,6 +323,68 @@ class TestPBSSnapshot(TestFunctional):
         # Check that 'accounting_logs' were not captured
         log_path = os.path.join(snap_dir, ACCT_LOGS_PATH)
         self.assertTrue(not os.path.isdir(log_path))
+
+        # Cleanup
+        self.du.rm(path=snap_dir, recursive=True, force=True)
+        self.du.rm(path=output_tar, sudo=True, force=True)
+
+    def test_obfuscate_resv_user_groups(self):
+        """
+        Test obfuscation of user & group related attributes while capturing
+        snapshots via pbs_snapshot
+        """
+        if not self.pbs_snapshot_exists:
+            self.skip_test("pbs_snapshot binary not found")
+
+        now = int(time.time())
+
+        # Let's submit a reservation with Authorized_Users and
+        # Authorized_Groups set
+        attribs = {ATTR_auth_u: TEST_USER1, ATTR_auth_g: TSTGRP0,
+                   ATTR_l + ".ncpus": 2, 'reserve_start': now + 25,
+                   'reserve_end': now + 45}
+        resv_obj = Reservation(attrs=attribs)
+        resv_id = self.server.submit(resv_obj)
+        attribs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, attribs, id=resv_id)
+
+        # Now, take a snapshot with --obfuscate
+        target_dir = self.du.get_tempdir()
+        snap_cmd = ["pbs_snapshot", "-o", target_dir, "--daemon-logs=0",
+                    "--accounting-logs=0", "--obfuscate"]
+        ret = self.du.run_cmd(cmd=snap_cmd, sudo=True)
+        self.assertEquals(ret['rc'], 0)
+
+        # Get the name of the tarball that was created
+        # pbs_snapshot prints to stdout only the following:
+        #     "Snapshot available at: <path to tarball>"
+        self.assertTrue(len(ret['out']) > 0)
+        snap_out = ret['out'][0]
+        output_tar = snap_out.split(":")[1]
+        output_tar = output_tar.strip()
+
+        # Check that the output tarball was created
+        self.assertTrue(os.path.isfile(output_tar))
+
+        # Unwrap the tarball
+        tar = tarfile.open(output_tar)
+        tar.extractall(path=target_dir)
+        tar.close()
+
+        # snapshot directory name = <snapshot>.tgz[:-4]
+        snap_dir = output_tar[:-4]
+
+        # Check that the directory exists
+        self.assertTrue(os.path.isdir(snap_dir))
+
+        # Make sure that the pbs_rstat -f output captured doesn't have the
+        # Authorized user and group names
+        pbsrstat_path = os.path.join(snap_dir, PBS_RSTAT_F_PATH)
+        self.assertTrue(os.path.isfile(pbsrstat_path))
+        with open(pbsrstat_path, "r") as rstatfd:
+            all_content = rstatfd.read()
+            self.assertFalse(str(TEST_USER1) in all_content)
+            self.assertFalse(str(TSTGRP0) in all_content)
 
         # Cleanup
         self.du.rm(path=snap_dir, recursive=True, force=True)

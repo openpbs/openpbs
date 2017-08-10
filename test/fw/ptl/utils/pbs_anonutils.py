@@ -169,7 +169,7 @@ class PBSAnonymizer(object):
 
         # Deal with attributes which have a list of values
         if key in (ATTR_u, ATTR_managers, ATTR_M, ATTR_g, ATTR_aclResvhost,
-                   ATTR_aclhost):
+                   ATTR_aclhost, ATTR_auth_g, ATTR_auth_u):
             value_temp = "".join(value.split())
             value_list = value_temp.split(",")
         elif key == ATTR_exechost:

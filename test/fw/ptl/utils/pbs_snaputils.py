@@ -534,7 +534,8 @@ class _PBSSnapUtils(object):
                          ATTR_aclResvgroup, ATTR_aclResvuser, ATTR_SchedHost,
                          ATTR_aclResvhost, ATTR_aclhost, ATTR_owner,
                          ATTR_exechost, ATTR_NODE_Host, ATTR_NODE_Mom,
-                         ATTR_rescavail + ".host", ATTR_rescavail + ".vnode"]
+                         ATTR_rescavail + ".host", ATTR_rescavail + ".vnode",
+                         ATTR_auth_u, ATTR_auth_g, ATTR_resv_owner]
             obf_rsc_attrs = []
             if self.custom_rscs is not None:
                 for rsc in self.custom_rscs.keys():
