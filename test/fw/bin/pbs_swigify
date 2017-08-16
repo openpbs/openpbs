@@ -305,9 +305,11 @@ if __name__ == '__main__':
         cmd = ['gcc', '-Wall', '-Wno-unused-variable', '-fPIC', '-shared',
                '-I' + pbsinclude]
         cmd += ['-I' + pythoninc]
-        cmd += ['pbs_ifl_wrap.c', pbs_conf['PBS_EXEC'] + '/lib/libpbs.a']
-        cmd += ['-lcrypto']
+        cmd += ['pbs_ifl_wrap.c']
+        cmd += ['-L' + os.path.join(pbs_conf['PBS_EXEC'], 'lib')]
+        cmd += ['-lpbs']
         cmd += ['-o', '_pbs_ifl.so']
+        cmd += ['-lcrypto', '-lssl']
         logging.debug(du.run_cmd(targethost, cmd))
 
     libdir = os.path.dirname(ptl.lib.__file__)
