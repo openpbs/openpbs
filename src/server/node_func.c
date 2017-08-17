@@ -2227,7 +2227,12 @@ node_queue_action(attribute *pattr, void *pobj, int actmode)
 			return (PBSE_UNKQUE);
 		} else if (pq->qu_qs.qu_type != QTYPE_Execution) {
 			return (PBSE_ATTRTYPE);
-		} else {
+		} else if ((pq->qu_attr[QA_ATR_partition].at_flags & ATR_VFLAG_SET) &&
+			(pnode->nd_attr[ND_ATR_partition].at_flags & ATR_VFLAG_SET) &&
+			strcmp(pq->qu_attr[QA_ATR_partition].at_val.at_str, pnode->nd_attr[ND_ATR_partition].at_val.at_str)) {
+			return PBSE_PARTITION_NOT_IN_QUE;
+		}
+		else {
 			pnode->nd_pque = pq;
 		}
 	} else {
@@ -2905,5 +2910,40 @@ chk_vnode_pool (attribute *new, void *pobj, int actmode)
 				LOG_DEBUG, id, "Unsupported actions for vnode_pool");
 			return (PBSE_INTERNAL);
 	}
+	return PBSE_NONE;
+}
+
+/**
+ * @brief
+ * 		action routine for the queue's "partition" attribute
+ *
+ * @param[in]	pattr	-	attribute being set
+ * @param[in]	pobj	-	Object on which attribute is being set
+ * @param[in]	actmode	-	the mode of setting, recovery or just alter
+ *
+ * @return	error code
+ * @retval	PBSE_NONE	-	Success
+ * @retval	!PBSE_NONE	-	Failure
+ *
+ */
+int
+action_node_partition(attribute *pattr, void *pobj, int actmode)
+{
+	struct pbsnode *pnode;
+	pbs_queue 	*pq;
+
+	pnode = (pbsnode *)pobj;
+
+	if (pnode->nd_attr[(int)ND_ATR_Queue].at_flags & ATR_VFLAG_SET) {
+		pq = find_queuebyname(pnode->nd_attr[(int)ND_ATR_Queue].at_val.at_str);
+		if (pq == 0)
+			return PBSE_UNKQUE;
+		if (pq->qu_attr[QA_ATR_partition].at_flags & ATR_VFLAG_SET &&
+				pattr->at_flags & ATR_VFLAG_SET) {
+			if (strcmp(pq->qu_attr[QA_ATR_partition].at_val.at_str, pattr->at_val.at_str) != 0)
+				return PBSE_QUE_NOT_IN_PARTITION;
+		}
+	}
+
 	return PBSE_NONE;
 }

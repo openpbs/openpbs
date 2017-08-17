@@ -74,6 +74,7 @@
 #include "pbs_error.h"
 #include "sched_cmds.h"
 #include "pbs_db.h"
+#include "pbs_nodes.h"
 #include <memory.h>
 
 
@@ -425,8 +426,22 @@ queuestart_action(attribute *pattr, void *pobject, int actmode)
 int
 action_queue_partition(attribute *pattr, void *pobj, int actmode)
 {
+	int i;
+
 	if (((pbs_queue *)pobj)->qu_qs.qu_type  == QTYPE_RoutePush)
 		return PBSE_ROUTE_QUE_NO_PARTITION;
+
+	for (i=0; i < svr_totnodes; i++) {
+		if (pbsndlist[i]->nd_pque) {
+			if (strcmp(pbsndlist[i]->nd_pque->qu_qs.qu_name, ((pbs_queue *) pobj)->qu_qs.qu_name) == 0) {
+				if ((pbsndlist[i]->nd_attr[ND_ATR_partition].at_flags) & ATR_VFLAG_SET &&
+						(pattr->at_flags) & ATR_VFLAG_SET)
+				if (strcmp(pbsndlist[i]->nd_attr[ND_ATR_partition].at_val.at_str,
+						pattr->at_val.at_str))
+					return PBSE_INVALID_PARTITION_QUE;
+			}
+		}
+	}
 
 	return PBSE_NONE;
 }

@@ -2016,6 +2016,8 @@ void remove_mom_from_pool(mominfo_t *pmom)
 static void
 mgr_node_set(struct batch_request *preq)
 {
+	extern char *msg_queue_not_in_partition;
+	extern char *msg_partition_not_in_queue;
 	int		bad = 0;
 	char		hostname[PBS_MAXHOSTNAME+1];
 	int		numnodes = 1;	/* number of vnodes to be operated on */
@@ -2149,6 +2151,18 @@ mgr_node_set(struct batch_request *preq)
 						case PBSE_MUTUALEX:
 						case PBSE_BADNDATVAL:
 							reply_badattr(rc, bad, plist, preq);
+							break;
+						case PBSE_QUE_NOT_IN_PARTITION:
+							(void)snprintf(log_buffer, LOG_BUF_SIZE, msg_queue_not_in_partition,
+								pnode->nd_attr[ND_ATR_Queue].at_val.at_str);
+							log_err(-1, __func__, log_buffer);
+							reply_text(preq, PBSE_QUE_NOT_IN_PARTITION, log_buffer);
+							break;
+						case PBSE_PARTITION_NOT_IN_QUE:
+							(void)snprintf(log_buffer, LOG_BUF_SIZE, msg_partition_not_in_queue,
+								pnode->nd_attr[ND_ATR_partition].at_val.at_str);
+							log_err(-1, __func__, log_buffer);
+							reply_text(preq, PBSE_PARTITION_NOT_IN_QUE, log_buffer);
 							break;
 
 						default:  req_reject(rc, 0, preq);

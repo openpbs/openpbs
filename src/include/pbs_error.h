@@ -282,6 +282,9 @@ extern "C" {
 #define PBSE_SCHED_LOG_EXIST 15216	/* Scheduler sched_log directory already exists */
 #define PBSE_ROUTE_QUE_NO_PARTITION  15217 /*Partition can not be assigned to route queue */
 #define PBSE_CANNOT_SET_ROUTE_QUE 15218 /*Can not set queue type to route */
+#define PBSE_QUE_NOT_IN_PARTITION 15219  /* Queue does not belong to the partition */
+#define PBSE_PARTITION_NOT_IN_QUE 15220  /* Partition does not belong to the queue */
+#define PBSE_INVALID_PARTITION_QUE 15221 /* Invalid partition to the queue */
 
 
 /* the following structure is used to tie error number      */

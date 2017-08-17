@@ -448,6 +448,12 @@ unset_node_fail_requeue(void)
 }
 
 int
+action_node_partition(attribute *pattr, void *pobject, int actmode)
+{
+	return (PBSE_NONE);
+}
+
+int
 set_license_min(attribute *pattr, void *pobject, int actmode)
 {
 	return (PBSE_NONE);
