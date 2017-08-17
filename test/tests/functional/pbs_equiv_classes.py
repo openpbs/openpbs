@@ -1606,3 +1606,237 @@ else:
         self.server.deljob(jid3, wait=True)
 
         self.server.expect(JOB, {'job_state': 'R'}, id=jid5)
+
+    def test_multiple_job_preemption_order(self):
+        """
+        Test that when multiple jobs from same eqivalence class are
+        preempted in reverse order they were created in and they are placed
+        into the same equivalence class
+        2) Test that for jobs of same type, suspended job which comes
+        later in query-order is in its own equivalence class, and can
+        be picked up to run along with the queued job in
+        the same scheduling cycle.
+        """
+
+        # Create 1 vnode with 3 ncpus
+        a = {'resources_available.ncpus': 3}
+        self.server.create_vnodes('vnode', a, 1, self.mom, usenatvnode=True)
+
+        # Create expressq
+        a = {'queue_type': 'execution', 'started': 'true',
+             'enabled': 'true', 'priority': 150}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='expressq')
+
+        # Submit 3 jobs with delay of 1 sec
+        # Delay of 1 sec will preempt jid3 and then jid2.
+        a = {'Resource_List.ncpus': 1}
+        J = Job(TEST_USER, attrs=a)
+        jid1 = self.server.submit(J)
+
+        time.sleep(1)
+
+        J2 = Job(TEST_USER, attrs=a)
+        jid2 = self.server.submit(J2)
+
+        time.sleep(1)
+        J3 = Job(TEST_USER, attrs=a)
+        jid3 = self.server.submit(J3)
+
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
+
+        # Preempt jid3 with expressq, check 1 equivalence class is created
+        a = {'Resource_List.ncpus': 1, 'queue': 'expressq'}
+        Je = Job(TEST_USER, attrs=a)
+        jid4 = self.server.submit(Je)
+
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        self.server.expect(JOB, {'job_state': 'S'}, id=jid3)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid4)
+
+        self.scheduler.log_match("Number of job equivalence classes: 2",
+                                 max_attempts=10, starttime=self.t)
+        self.t = int(time.time())
+
+        # Preempt jid2, check no new equivalence class is created
+        Je2 = Job(TEST_USER, attrs=a)
+        jid5 = self.server.submit(Je2)
+
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        self.server.expect(JOB, {'job_state': 'S'}, id=jid2)
+        self.server.expect(JOB, {'job_state': 'S'}, id=jid3)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid4)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid5)
+
+        # Only One equivalence class for jid2 and jid3 is present since both
+        # suspended jobs are of same type and running on same vnode
+
+        self.scheduler.log_match("Number of job equivalence classes: 2",
+                                 max_attempts=10, starttime=self.t)
+
+        # Add a job to Queue state
+        a = {'Resource_List.ncpus': 1}
+        J = Job(TEST_USER, attrs=a)
+        jid6 = self.server.submit(J)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        self.server.expect(JOB, {'job_state': 'S'}, id=jid2)
+        self.server.expect(JOB, {'job_state': 'S'}, id=jid3)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid4)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid5)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid6)
+
+        # Set scheduling to false before deleting jobs to free nodes, so that
+        # suspended and queued jobs do not run. These jobs will be picked up
+        # in the next scheduling cycle when scheduling is again set to true
+        self.server.manager(MGR_CMD_SET, MGR_OBJ_SERVER,
+                            {'scheduling': 'False'})
+
+        # Delete one running, one suspended job and one of high priority job
+        # This will leave 2 free nodes to pick up the suspended and queued job
+
+        self.server.deljob([jid1, jid2, jid5])
+
+        # if we use deljob(wait=True) starts the scheduling cycle if job
+        # takes more time to be deleted.
+        # The while loop below is to check that the jobs have been deleted
+        # without kicking off a new scheduling cycle.
+
+        deleted = False
+        for _ in range(20):
+            workq_dict = self.server.status(QUEUE, id='workq')[0]
+            expressq_dict = self.server.status(QUEUE, id='expressq')[0]
+
+            if workq_dict['total_jobs'] == '2'\
+                    and expressq_dict['total_jobs'] == '1':
+                deleted = True
+                break
+            else:
+                time.sleep(1)
+
+        self.assertTrue(deleted)
+
+        self.server.manager(MGR_CMD_SET, MGR_OBJ_SERVER,
+                            {'scheduling': 'True'})
+
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid6)
+
+    def test_multiple_equivalence_class_preemption(self):
+        """
+        This test is to test that -
+        1) Suspended jobs of different types go to different equiv classes
+        2) Different types of jobs suspended by qsig signal
+        go to different equivalence classes
+        3) Jobs of same type and same node on suspension by qsig
+        or preemption go to same equivalence classes
+        4) Same type of suspended jobs, when resumed after qsig
+        and jobs suspended by preemption both go to same equivalence classes
+        """
+
+        # Create vnode with 4 ncpus
+        a = {'resources_available.ncpus': 4}
+        self.server.create_vnodes('vnode', a, 1, self.mom, usenatvnode=True)
+
+        # Create a expressq
+        a = {'queue_type': 'execution', 'started': 'true',
+             'enabled': 'true', 'priority': 150}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='expressq')
+
+        # Submit regular job
+        a = {'Resource_List.ncpus': 1}
+        (jid1, jid2) = self.submit_jobs(2, a)
+
+        # Submit a job with walltime
+        a2 = {'Resource_List.ncpus': 1, 'Resource_List.walltime': 600}
+        (jid3, jid4) = self.submit_jobs(2, a2)
+
+        self.scheduler.log_match("Number of job equivalence classes: 2",
+                                 max_attempts=10, starttime=self.t)
+
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid4)
+
+        # Suspend 1 job from each equivalence class
+        self.server.sigjob(jobid=jid1, signal="suspend")
+        self.server.sigjob(jobid=jid3, signal="suspend")
+
+        self.server.expect(JOB, {'job_state': 'S'}, id=jid1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        self.server.expect(JOB, {'job_state': 'S'}, id=jid3)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid4)
+
+        # Check that both suspended jobs go to different equivalence class
+        # 1 for jid1, 1 for jid2, 1 for jid3, and 1 for jid4
+        self.scheduler.log_match("Number of job equivalence classes: 4",
+                                 max_attempts=10, starttime=self.t)
+
+        # Start a high priority job to preempt jid 2 and jid4
+        a = {'Resource_List.ncpus': 4, 'queue': 'expressq'}
+        Je = Job(TEST_USER, attrs=a)
+        jid5 = self.server.submit(Je)
+
+        self.server.expect(JOB, {'job_state': 'S'}, id=jid1)
+        self.server.expect(JOB, {'job_state': 'S'}, id=jid2)
+        self.server.expect(JOB, {'job_state': 'S'}, id=jid3)
+        self.server.expect(JOB, {'job_state': 'S'}, id=jid4)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid5)
+
+        # Check only 3 equivalence class are present,
+        # i.e 1 equivalence class for jid1 and jid2,1 equivalence class
+        # for jid3 and jid4 and 1 equivalence class for jid5
+
+        self.scheduler.log_match("Number of job equivalence classes: 3",
+                                 max_attempts=10, starttime=self.t)
+        self.t = int(time.time())
+
+        # Resume the jobs suspended by qsig
+        # 1 second delay is added so that time of next logging moves ahead.
+        # This will make sure log_match does not take previous entry.
+        time.sleep(1)
+        self.server.sigjob(jobid=jid1, signal="resume")
+        self.server.sigjob(jobid=jid3, signal="resume")
+
+        # On resume check that there are same number of equivalence classes
+        self.scheduler.log_match("Number of job equivalence classes: 3",
+                                 max_attempts=10, starttime=self.t)
+        self.t = int(time.time())
+
+        # delete the expressq jobs and check that the suspended jobs
+        # go back to running state. equivalence classes=2 again
+        self.server.deljob(jid5, wait=True)
+
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid4)
+
+        # Check equivalence classes =2
+        self.scheduler.log_match("Number of job equivalence classes: 2",
+                                 max_attempts=10, starttime=self.t)
+
+    def test_held_jobs_equiv_class(self):
+        """
+        1) Test that held jobs do not go into another equivalence class.
+        2) Running jobs do not go into a seperate equivalence class
+        """
+
+        a = {'resources_available.ncpus': 1}
+        self.server.create_vnodes('vnode', a, 1, self.mom, usenatvnode=True)
+
+        a = {'Resource_List.ncpus': 1, 'Hold_Types': 'u'}
+        J1 = Job(TEST_USER, attrs=a)
+        jid1 = self.server.submit(J1)
+
+        a = {'Resource_List.ncpus': 1}
+        J2 = Job(TEST_USER, attrs=a)
+        jid2 = self.server.submit(J2)
+
+        self.server.expect(JOB, {'job_state': 'H'}, id=jid1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+
+        self.scheduler.log_match("Number of job equivalence classes: 1",
+                                 max_attempts=10, starttime=self.t)
