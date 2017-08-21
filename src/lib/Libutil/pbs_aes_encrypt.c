@@ -18,8 +18,8 @@ extern unsigned char pbs_aes_iv[];
 #define CIPHER_CONTEXT_INIT(v) EVP_CIPHER_CTX_init(v)
 #define CIPHER_CONTEXT_CLEAN(v) EVP_CIPHER_CTX_cleanup(v)
 #else
-#define CIPHER_CONTEXT_INIT(v) v = EVP_CIPHER_CTX_new(); if (!v) return -1;
-#define CIPHER_CONTEXT_CLEAN(v) EVP_CIPHER_CTX_free(v);EVP_CIPHER_CTX_free(v)
+#define CIPHER_CONTEXT_INIT(v) v = EVP_CIPHER_CTX_new(); if (!v) return -1
+#define CIPHER_CONTEXT_CLEAN(v) EVP_CIPHER_CTX_cleanup(v);EVP_CIPHER_CTX_free(v)
 #endif
 
 /**
