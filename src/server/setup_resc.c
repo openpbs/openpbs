@@ -60,6 +60,7 @@
 #include "pbs_nodes.h"
 #include <sys/file.h>
 #include "libutil.h"
+#include "pbs_sched.h"
 
 extern char *msg_daemonname;
 #ifndef PBS_MOM
@@ -130,7 +131,7 @@ add_resource_def(char *name, int type, int perms)
 
 	}
 #ifndef PBS_MOM
-	set_scheduler_flag(SCH_CONFIGURE);
+	set_scheduler_flag(SCH_CONFIGURE, NULL);
 #endif
 
 	return 0;

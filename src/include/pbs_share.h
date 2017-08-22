@@ -92,3 +92,12 @@
 
 /* Default scheduler name */
 #define PBS_DFLT_SCHED_NAME "default"
+#define SC_DAEMON "scheduler"
+
+/* scheduler-attribute values (state) */
+#define SC_DOWN	"down"
+#define SC_IDLE "idle"
+#define SC_SCHEDULING "scheduling"
+
+#define MAX_INT_LEN 10
+

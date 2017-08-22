@@ -177,6 +177,7 @@ query_nodes(int pbs_sd, server_info *sinfo)
 	char *err;				/* used with pbs_geterrmsg() */
 	int num_nodes = 0;			/* the number of nodes */
 	int i;
+	int nidx;
 
 	/* get nodes from PBS server */
 	if ((nodes = pbs_statvnode(pbs_sd, NULL, NULL, NULL)) == NULL) {
@@ -209,7 +210,7 @@ query_nodes(int pbs_sd, server_info *sinfo)
 #endif /* localmod 049 */
 
 	cur_node = nodes;
-	for (i = 0; cur_node != NULL; i++) {
+	for (i = 0, nidx = 0; cur_node != NULL; i++) {
 		/* get node info from server */
 		if ((ninfo = query_node_info(cur_node, sinfo)) == NULL) {
 			pbs_statfree(nodes);
@@ -222,22 +223,23 @@ query_nodes(int pbs_sd, server_info *sinfo)
 		sinfo->nodes_by_NASrank[i] = ninfo;
 #endif /* localmod 049 */
 
-		ninfo->rank = get_sched_rank();
-
-		/* get node info from mom */
-		if (talk_with_mom(ninfo)) {
-			/* failed to get information from node, mark it not free for this cycle */
-			ninfo->is_free = 0;
-			ninfo->is_offline = 1;
-			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO, ninfo->name,
-				"Failed to talk with mom, marking node offline");
-		}
-
-		ninfo_arr[i] = ninfo;
+		if (node_in_partition(ninfo)) {
+			ninfo->rank = get_sched_rank();
+			/* get node info from mom */
+			if (talk_with_mom(ninfo)) {
+				/* failed to get information from node, mark it not free for this cycle */
+				ninfo->is_free = 0;
+				ninfo->is_offline = 1;
+				schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO, ninfo->name,
+					"Failed to talk with mom, marking node offline");
+			}
+			ninfo_arr[nidx++] = ninfo;
+		} else
+			free_node_info(ninfo);
 
 		cur_node = cur_node->next;
 	}
-	ninfo_arr[i] = NULL;
+	ninfo_arr[nidx] = NULL;
 
 	if (update_mom_resources(ninfo_arr) == 0) {
 		pbs_statfree(nodes);
@@ -249,7 +251,7 @@ query_nodes(int pbs_sd, server_info *sinfo)
 	site_vnode_inherit(ninfo_arr);
 #endif /* localmod 062 */
 	resolve_indirect_resources(ninfo_arr);
-	sinfo->num_nodes = num_nodes;
+	sinfo->num_nodes = nidx;
 	pbs_statfree(nodes);
 	return ninfo_arr;
 }
@@ -309,6 +311,13 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 			count = strtol(attrp->value, &endp, 10);
 			if (*endp == '\0')
 				ninfo->port = count + 1;
+		}
+		else if(!strcmp(attrp->name, ATTR_partition)) {
+			ninfo->partition = string_dup(attrp->value);
+			if (ninfo->partition == NULL) {
+				log_err(errno, __func__, MEM_ERR_MSG);
+				return NULL;
+			}
 		}
 		else if (!strcmp(attrp->name, ATTR_NODE_jobs))
 			ninfo->jobs = break_comma_list(attrp->value);
@@ -522,6 +531,7 @@ new_node_info()
 	/* localmod 049 */
 	new->NASrank = -1;
 #endif
+	new->partition = NULL;
 	return new;
 }
 
@@ -595,6 +605,9 @@ free_node_info(node_info *ninfo)
 
 		if (ninfo->nodesig != NULL)
 			free(ninfo->nodesig);
+
+		if (ninfo->partition != NULL)
+			free(ninfo->partition);
 
 		free(ninfo);
 	}
@@ -1269,6 +1282,14 @@ dup_node_info(node_info *onode, server_info *nsinfo,
 #ifdef NAS /* localmod 049 */
 	nnode->NASrank = onode->NASrank;
 #endif /* localmod 049 */
+
+	if (onode->partition != NULL) {
+		nnode->partition = string_dup(onode->partition);
+		if (nnode->partition == NULL) {
+			free_node_info(nnode);
+			return NULL;
+		}
+	}
 
 	return nnode;
 }
@@ -5634,5 +5655,68 @@ check_node_array_eligibility(node_info **ninfo_arr, resource_resv *resresv, plac
 	 */
 	if (err->status_code == SCHD_UNKWN && misc_err->status_code != SCHD_UNKWN)
 		move_schd_error(err, misc_err);
+}
+
+/**
+ * @brief
+ *      node_in_partition	-  Tells whether the given node belongs to this scheduler
+ *
+ * @param[in]	ninfo		-  node information
+ *
+ *
+ * @return	int
+ * @retval	1	: if success
+ * @retval	0	: if failure
+ */
+int
+node_in_partition(node_info *ninfo)
+{
+	char **my_partitions;
+
+	if (dflt_sched) {
+		if (ninfo->partition == NULL)
+			return 1;
+		else
+			return 0;
+	}
+	if (ninfo->partition == NULL)
+		return 0;
+
+	my_partitions = break_comma_list(partitions);
+	if (my_partitions == NULL) {
+		log_err(errno, __func__, "Error parsing partitions");
+		return 0;
+	}
+
+	if (find_string(my_partitions, ninfo->partition)) {
+		free_string_array(my_partitions);
+		return 1;
+	} else {
+		free_string_array(my_partitions);
+		return 0;
+	}
+}
+
+/**
+ * @brief
+ *		node_partition_cmp - used with node_filter to filter nodes attached to a
+ *		   specific partition
+ *
+ * @param[in]	node	-	the node we're currently filtering
+ * @param[in]	arg	-	the name of the partition
+ *
+ * @return	int
+ * @return	1	: keep the node
+ * @return	0	: don't keep the node
+ *
+ */
+int
+node_partition_cmp(node_info *ninfo, void *arg)
+{
+	if (ninfo->partition != NULL)
+		if (!strcmp(ninfo->partition,  (char *) arg))
+			return 1;
+
+	return 0;
 }
 

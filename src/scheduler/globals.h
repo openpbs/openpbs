@@ -42,7 +42,7 @@ extern "C" {
 #endif
 
 #include "data_types.h"
-
+#include "limits.h"
 /* resources to check */
 extern const struct rescheck res_to_check[];
 
@@ -74,6 +74,19 @@ const struct enum_conv resind[RES_HIGH+1];
 extern resdef **allres;
 extern resdef **consres;
 extern resdef **boolres;
+
+extern char *partitions;
+extern char scheduler_host_name[PBS_MAXHOSTNAME+1];
+extern char *sc_name;
+extern int sched_port;
+extern char *logfile;
+#ifdef WIN32
+extern char path_log[_MAX_PATH];
+#else
+extern char path_log[_POSIX_PATH_MAX];
+#endif
+extern int dflt_sched;
+
 
 /**
  * @brief

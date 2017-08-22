@@ -102,6 +102,8 @@ extern time_t time_now;
 /* External functions */
 
 extern int issue_to_svr(char *, struct batch_request *, void (*func)(struct work_task *));
+extern struct batch_request *cpy_stage(struct batch_request *, job *, enum job_atr, int);
+extern resc_resv  *chk_rescResv_request(char *, struct batch_request *);
 
 /* Private Functions in this file */
 

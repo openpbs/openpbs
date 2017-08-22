@@ -566,6 +566,8 @@ extern int action_sched_priv(attribute *pattr, void *pobj, int actmode);
 extern int action_sched_log(attribute *pattr, void *pobj, int actmode);
 extern int action_sched_user(attribute *pattr, void *pobj, int actmode);
 extern int action_sched_port(attribute *pattr, void *pobj, int actmode);
+extern int action_sched_host(attribute *pattr, void *pobj, int actmode);
+extern int action_sched_partition(attribute *pattr, void *pobj, int actmode);
 /* Extern functions from queue_attr_def */
 extern int decode_null(attribute *patr, char *name, char *rn, char *val);
 extern int set_null(attribute *patr, attribute *new, enum batch_op op);

@@ -112,6 +112,7 @@
 #include "user.h"
 #include "hook.h"
 #include "pbs_internal.h"
+#include "pbs_sched.h"
 #ifndef PBS_MOM
 #include "pbs_db.h"
 #endif
@@ -2405,7 +2406,7 @@ req_commit(struct batch_request *preq)
 		}
 		delete_link(&presv->ri_allresvs);
 		append_link(&svr_allresvs, &presv->ri_allresvs, presv);
-		set_scheduler_flag(SCH_SCHEDULE_NEW);
+		set_scheduler_flag(SCH_SCHEDULE_NEW, dflt_scheduler);
 		Update_Resvstate_if_resv(pj);
 	}
 
@@ -3221,7 +3222,7 @@ req_resvSub(struct batch_request *preq)
 	 * is available for consideration
 	 */
 	append_link(&svr_allresvs, &presv->ri_allresvs, presv);
-	set_scheduler_flag(SCH_SCHEDULE_NEW);
+	set_scheduler_flag(SCH_SCHEDULE_NEW, dflt_scheduler);
 }
 
 

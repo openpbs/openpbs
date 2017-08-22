@@ -119,7 +119,7 @@ static int bad;
 
 /* The following private support functions are included */
 
-static int  status_que(pbs_queue *, struct batch_request *, pbs_list_head *);
+static int status_que(pbs_queue *, struct batch_request *, pbs_list_head *);
 static int status_node(struct pbsnode *, struct batch_request *, pbs_list_head *);
 static int status_resv(resc_resv *, struct batch_request *, pbs_list_head *);
 extern pbs_sched *find_scheduler(char *sched_name);
@@ -473,7 +473,7 @@ req_stat_que(struct batch_request *preq)
  * 		status_que - Build the status reply for a single queue.
  *
  * @param[in,out]	pque	-	ptr to que to status
- * @param[in]	preq	-	ptr to the decoded request
+ * @param[in]		preq	-	ptr to the decoded request
  * @param[in,out]	pstathd	-	head of list to append status to
  *
  * @return	int
@@ -579,12 +579,12 @@ req_stat_node(struct batch_request *preq)
 	preply->brp_choice = BATCH_REPLY_CHOICE_Status;
 	CLEAR_HEAD(preply->brp_un.brp_status);
 
-	if (type == 0) {		/*get status of the named node*/
+	if (type == 0) {		/* get status of the named node */
 		rc = status_node(pnode, preq, &preply->brp_un.brp_status);
 
-	} else {			/*get status of all nodes     */
+	} else {			/* get status of all nodes */
 
-		for (i=0; i<svr_totnodes; i++) {
+		for (i = 0; i < svr_totnodes; i++) {
 			pnode = pbsndlist[i];
 
 			rc = status_node(pnode, preq,

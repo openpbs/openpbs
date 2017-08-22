@@ -77,6 +77,9 @@ static void post_message_req(struct work_task *);
 
 extern char *msg_messagejob;
 
+extern job  *chk_job_request(char *, struct batch_request *, int *);
+
+
 
 /**
  * @brief

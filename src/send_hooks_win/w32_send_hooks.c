@@ -135,8 +135,6 @@ long		new_log_event_mask = 0;
 int	 	server_init_type = RECOV_WARM;
 char	        server_name[PBS_MAXSERVERNAME+1]; /* host_name[:service|port] */
 int		svr_delay_entry = 0;
-int		svr_do_schedule = SCH_SCHEDULE_NULL;
-int		svr_do_sched_high = SCH_SCHEDULE_NULL;
 int		svr_total_cpus = 0;		/* total number of cpus on nodes   */
 int		have_blue_gene_nodes = 0;
 int		svr_ping_rate = SVR_DEFAULT_PING_RATE;	/* time between sets of node pings */

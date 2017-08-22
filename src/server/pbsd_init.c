@@ -708,12 +708,16 @@ pbsd_init(int type)
 			/* Create and save default to DB*/
 			dflt_scheduler = sched_alloc(PBS_DFLT_SCHED_NAME);
 			(void)sched_save_db(dflt_scheduler, SVR_SAVE_NEW);
-			set_sched_default(dflt_scheduler);
+			set_sched_default(dflt_scheduler, 0);
 		} else {
 			/* set default values for all schedulers */
 			psched = (pbs_sched *) GET_NEXT(svr_allscheds);
 			while (psched != (pbs_sched *) 0) {
-				set_sched_default(psched);
+				set_sched_default(psched, 0);
+				if (psched != dflt_scheduler) {
+					psched->pbs_scheduler_port = psched->sch_attr[SCHED_ATR_sched_port].at_val.at_long;
+					psched->pbs_scheduler_addr = get_hostaddr(psched->sch_attr[SCHED_ATR_SchedHost].at_val.at_str);
+				}
 				psched = (pbs_sched *) GET_NEXT(psched->sc_link);
 			}
 		}
@@ -734,10 +738,11 @@ pbsd_init(int type)
 				printf("%s\n", log_buffer);
 				return -1;
 			}
-			svr_save_db(&server, SVR_SAVE_NEW);
-		} else {
-			svr_save_db(&server, SVR_SAVE_NEW);
 		}
+		svr_save_db(&server, SVR_SAVE_NEW);
+		dflt_scheduler = sched_alloc(PBS_DFLT_SCHED_NAME);
+		(void)sched_save_db(dflt_scheduler, SVR_SAVE_NEW);
+		set_sched_default(dflt_scheduler, 0);
 	}
 
 	/* 4. Check License information */

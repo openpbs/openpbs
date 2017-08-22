@@ -399,13 +399,15 @@ char *msg_sched_exist = "Scheduler already exists";
 char *msg_sched_name_big = "Scheduler name is too long";
 char *msg_unknown_sched = "Unknown Scheduler";
 char *msg_no_del_sched = "Can not delete Scheduler";
-char *msg_sched_priv_exists = "Another Sched object also has same value for its sched_priv directory";
-char *msg_sched_logs_exists = "Another Sched object also has same value for its sched_log directory";
-char *msg_route_que_no_partition = "Can not assign a partition to route queue";
+char *msg_sched_priv_exists = "Another scheduler also has same value for its sched_priv directory";
+char *msg_sched_logs_exists = "Another scheduler also has same value for its sched_log directory";
+char *msg_route_que_no_partition = "Cannot assign a partition to route queue";
 char *msg_cannot_set_route_que = "Route queues are incompatible with the partition attribute";
 char *msg_queue_not_in_partition = "Queue %s is not part of partition for node";
 char *msg_partition_not_in_queue = "Partition %s is not part of queue for node";
 char *msg_invalid_partion_in_queue = "Invalid partition in queue";
+char *msg_sched_op_not_permitted = "Operation is not permitted on default scheduler";
+char *msg_sched_part_already_used = "Partition is already associated with other scheduler";
 
 char *msg_resv_not_empty = "Reservation not empty";
 char *msg_stdg_resv_occr_conflict = "Requested time(s) will interfere with a later occurrence";
@@ -590,6 +592,8 @@ struct pbs_err_to_txt pbs_err_to_txt[] = {
 	{PBSE_ALPS_SWITCH_ERR, &msg_alps_switch_err},
 	{PBSE_SOFTWT_STF, &msg_softwt_stf},
 	{PBSE_BAD_NODE_STATE, &msg_bad_node_state},
+	{PBSE_SCHED_OP_NOT_PERMITTED, &msg_sched_op_not_permitted},
+	{PBSE_SCHED_PARTITION_ALREADY_EXISTS, &msg_sched_part_already_used},
 	{ 0, (char **)0 }		/* MUST be the last entry */
 };
 

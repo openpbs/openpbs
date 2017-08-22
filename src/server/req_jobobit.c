@@ -95,6 +95,7 @@
 #include "dis.h"
 #include "rpp.h"
 #include "libutil.h"
+#include "pbs_sched.h"
 
 
 /* External Global Data Items */
@@ -624,6 +625,7 @@ void
 rel_resc(job *pjob)
 {
 	conn_t *conn = NULL;
+	pbs_sched *psched;
 
 	free_nodes(pjob);
 
@@ -650,7 +652,14 @@ rel_resc(job *pjob)
 
 	/* Mark that scheduler should be called */
 
-	set_scheduler_flag(SCH_SCHEDULE_TERM);
+	if (find_assoc_sched_jid(pjob->ji_qs.ji_jobid, &psched))
+		set_scheduler_flag(SCH_SCHEDULE_TERM, psched);
+	else {
+		pbs_queue *pq;
+		pq = find_queuebyname( pjob->ji_qs.ji_queue);
+		sprintf(log_buffer, "Unable to reach scheduler associated with partition %s", pq->qu_attr[QA_ATR_partition].at_val.at_str);
+		log_err(-1, __func__, log_buffer);
+	}
 }
 /**
  * @brief

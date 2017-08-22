@@ -1701,3 +1701,4 @@ res_to_str_re(void *p, enum resource_fields fld, char **buf,
 		return "";
 	return *buf;
 }
+

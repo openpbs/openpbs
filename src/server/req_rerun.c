@@ -80,6 +80,8 @@ static void req_rerunjob2(struct batch_request *preq, job *pjob);
 extern char *msg_manager;
 extern char *msg_jobrerun;
 extern time_t time_now;
+extern job  *chk_job_request(char *, struct batch_request *, int *);
+
 
 
 /**
