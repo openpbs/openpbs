@@ -126,7 +126,6 @@ extern char  *msg_request;
 
 extern int    is_local_root(char *, char *);
 extern void   req_stat_hook(struct batch_request *);
-extern int    scheduler_sock;
 
 /* Private functions local to this file */
 
@@ -583,8 +582,7 @@ process_request(int sfds)
 #ifndef PBS_MOM
 	/* If the request is coming on the socket we opened to the  */
 	/* scheduler,  change the "user" from "root" to "Scheduler" */
-
-	if (request->rq_conn == scheduler_sock) {
+	if (find_sched_from_sock(request->rq_conn) != NULL) {
 		strncpy(request->rq_user, PBS_SCHED_DAEMON_NAME, PBS_MAXUSER);
 		request->rq_user[PBS_MAXUSER] = '\0';
 	}

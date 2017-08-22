@@ -1615,8 +1615,23 @@ mgr_server_unset(struct batch_request *preq)
 		} else if (strcasecmp(plist->al_name,
 			ATTR_power_provisioning) == 0) {
 			unset_power_provisioning();
+		} else if (strcasecmp(plist->al_name,
+				ATTR_scheduling) == 0) {
+			if (dflt_scheduler) {
+				dflt_scheduler->sch_attr[SCHED_ATR_scheduling].at_val.at_long = 0;
+				dflt_scheduler->sch_attr[SCHED_ATR_scheduling].at_flags |=
+						ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+				(void)sched_save_db(dflt_scheduler, SVR_SAVE_FULL);
+			}
+		}  else if (strcasecmp(plist->al_name,
+				ATTR_schediteration) == 0) {
+			if (dflt_scheduler) {
+				dflt_scheduler->sch_attr[SCHED_ATR_schediteration].at_val.at_long = 0;
+				dflt_scheduler->sch_attr[SCHED_ATR_schediteration].at_flags |=
+						ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+				(void)sched_save_db(dflt_scheduler, SVR_SAVE_FULL);
+			}
 		}
-
 		plist = (struct svrattrl *)GET_NEXT(plist->al_link);
 	}
 	plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_manager.rq_attr);
@@ -4145,7 +4160,7 @@ mgr_resource_delete(struct batch_request *preq)
 
 	restart_python_interpreter(__func__);
 	deferred_send_rescdef();
-	set_scheduler_flag(SCH_CONFIGURE);
+	set_scheduler_flag(SCH_CONFIGURE, NULL);
 
 	return;
 }
@@ -4384,7 +4399,7 @@ mgr_resource_set(struct batch_request *preq)
 
 	restart_python_interpreter(__func__);
 	deferred_send_rescdef();
-	set_scheduler_flag(SCH_CONFIGURE);
+	set_scheduler_flag(SCH_CONFIGURE, NULL);
 
 	return;
 }
@@ -4614,7 +4629,7 @@ mgr_resource_unset(struct batch_request *preq)
 
 	restart_python_interpreter(__func__);
 	deferred_send_rescdef();
-	set_scheduler_flag(SCH_CONFIGURE);
+	set_scheduler_flag(SCH_CONFIGURE, NULL);
 
 	return;
 }

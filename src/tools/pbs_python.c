@@ -174,7 +174,7 @@ set_resources_min_max(attribute *old, attribute *new, enum batch_op op)
 }
 
 void
-set_scheduler_flag(int flag)
+set_scheduler_flag(int flag, pbs_sched *psched)
 {
 	return;
 }
@@ -398,6 +398,12 @@ int
 deflt_chunk_action(attribute *pattr, void *pobj, int mode)
 {
 
+	return 0;
+}
+
+int
+action_svr_iteration(attribute *pattr, void *pobj, int mode)
+{
 	return 0;
 }
 
