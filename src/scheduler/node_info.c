@@ -177,9 +177,10 @@ query_nodes(int pbs_sd, server_info *sinfo)
 	char *err;				/* used with pbs_geterrmsg() */
 	int num_nodes = 0;			/* the number of nodes */
 	int i;
+	extern char *partitions;
 
 	/* get nodes from PBS server */
-	if ((nodes = pbs_statvnode(pbs_sd, NULL, NULL, NULL)) == NULL) {
+	if ((nodes = pbs_statvnode(pbs_sd, NULL, NULL, partitions)) == NULL) {
 		err = pbs_geterrmsg(pbs_sd);
 		sprintf(errbuf, "Error getting nodes: %s", err);
 		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO, "", errbuf);

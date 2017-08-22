@@ -10922,7 +10922,8 @@ class Scheduler(PBSService):
                             SCHED,
                             id="@default")
         self.server.manager(MGR_CMD_LIST, SCHED)
-        ignore_attrs = ['id', 'pbs_version', 'sched_host', 'state']
+        ignore_attrs = ['id', 'pbs_version', 'sched_host', 'state',
+                        'sched_port']
         unsetattrs = []
         for k in self.attributes.keys():
             if k not in ignore_attrs:

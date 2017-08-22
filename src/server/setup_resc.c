@@ -130,7 +130,7 @@ add_resource_def(char *name, int type, int perms)
 
 	}
 #ifndef PBS_MOM
-	set_scheduler_flag(SCH_CONFIGURE);
+	set_scheduler_flag(SCH_CONFIGURE, NULL);
 #endif
 
 	return 0;

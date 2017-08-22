@@ -141,8 +141,6 @@ extern char *msg_init_substate;
 extern char *msg_manager;
 extern char *msg_stageinfail;
 extern char *msg_job_abort;
-extern int   scheduler_sock;
-extern int   svr_do_schedule;
 extern pbs_list_head svr_deferred_req;
 extern time_t time_now;
 extern int   svr_totnodes;	/* non-zero if using nodes */
@@ -309,6 +307,7 @@ req_runjob(struct batch_request *preq)
 	int		  x, y, z;
 	struct deferred_request *pdefr;
 	char		  hook_msg[HOOK_MSG_SIZE];
+	pbs_sched	  *psched;
 
 	if (license_expired) {
 		req_reject(PBSE_LICENSEINV, 0, preq);
@@ -332,15 +331,22 @@ req_runjob(struct batch_request *preq)
 		return;
 	}
 	
+	if (!find_assoc_sched_jid(jid, &psched)) {
+		sprintf(log_buffer, "Unable to reach scheduler associated with job %s", jid);
+		log_err(-1, __func__, log_buffer);
+		req_reject(PBSE_IVALREQ, 0, preq);
+		return;
+	}
+
 #ifndef NAS /* localmod 133 */
-	if ((scheduler_sock != -1) && was_job_alteredmoved(parent)) {
+	if ((psched->scheduler_sock != -1) && was_job_alteredmoved(parent)) {
 		int index = find_attr(sched_attr_def, ATTR_throughput_mode, SCHED_ATR_LAST);
 		/* do not blacklist altered/moved jobs when throughput_mode is enabled */
 		if ((index == -1) ||
-			((dflt_scheduler->sch_attr[index].at_flags & ATR_VFLAG_SET) &&
-			 (dflt_scheduler->sch_attr[index].at_val.at_long == 0))) {
+			((psched->sch_attr[index].at_flags & ATR_VFLAG_SET) &&
+			 (psched->sch_attr[index].at_val.at_long == 0))) {
 			req_reject(PBSE_NORUNALTEREDJOB, 0, preq);
-			set_scheduler_flag(SCH_SCHEDULE_NEW);
+			set_scheduler_flag(SCH_SCHEDULE_NEW, psched);
 			return;
 		}
 	}
@@ -424,7 +430,7 @@ req_runjob(struct batch_request *preq)
 
 		/* if runjob request is from the Scheduler, */
 		/* it must have a destination specified     */
-		if (preq->rq_conn == scheduler_sock) {
+		if (preq->rq_conn == psched->scheduler_sock) {
 			sprintf(log_buffer,
 				"runjob request from scheduler with null destination");
 			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB, LOG_INFO,
@@ -458,7 +464,8 @@ req_runjob(struct batch_request *preq)
 		/* ensure that request is removed if client connect is closed */
 		net_add_close_func(preq->rq_conn, clear_from_defr);
 
-		if (schedule_jobs() == -1) {
+		if ((strcmp(psched->sch_attr[SCHED_ATR_sched_state].at_val.at_str, SC_DOWN))
+			&&  schedule_jobs(psched) == -1) {
 			/* unable to contact the Scheduler, reject */
 			req_reject(PBSE_NOSCHEDULER, 0, preq);
 			/* unlink and free the deferred request entry */
@@ -1595,7 +1602,7 @@ post_sendmom(struct work_task *pwt)
 							}
 							if ((phook->fail_action & HOOK_FAIL_ACTION_SCHEDULER_RESTART_CYCLE) != 0) {
 
-								set_scheduler_flag(SCH_SCHEDULE_RESTART_CYCLE);
+								set_scheduler_flag(SCH_SCHEDULE_RESTART_CYCLE, dflt_scheduler);
 								log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_INFO, phook->hook_name, "requested for scheduler to restart cycle");
 							}
 						}
@@ -1733,7 +1740,7 @@ where_to_runjob(struct batch_request *preq, job *pjob)
 	}
 
 	/* If the request did not come from the scheduler, update the comment. */
-	if (preq->rq_conn != scheduler_sock) {
+	if (find_sched_from_sock(preq->rq_conn) == NULL) {
 		char comment[MAXCOMMENTLEN];
 		nspec = pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_val.at_str;
 		if ((nspec != NULL) && (*nspec != '\0')) {

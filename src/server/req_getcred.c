@@ -54,6 +54,7 @@
 #include "credential.h"
 #include "net_connect.h"
 #include "batch_request.h"
+#include "pbs_share.h"
 
 
 /* External Global Data Items Referenced */
@@ -86,6 +87,9 @@ req_connect(struct batch_request *preq)
 	if ( (preq->rq_extend != NULL) && \
 		(strcmp(preq->rq_extend, QSUB_DAEMON) == 0) ) {
 		conn->cn_authen |= PBS_NET_CONN_FROM_QSUB_DAEMON;
+	} else if ( (preq->rq_extend != NULL) && \
+		(strcmp(preq->rq_extend, SC_DAEMON) == 0) ) {
+		conn->cn_authen |= PBS_NET_CONN_FROM_PRIVIL;
 	}
 
 	if ((conn->cn_authen &

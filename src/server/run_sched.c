@@ -65,6 +65,8 @@
 #include "work_task.h"
 #include "pbs_error.h"
 #include "batch_request.h"
+#include "pbs_sched.h"
+#include "queue.h"
 
 
 /* Global Data */
@@ -73,6 +75,7 @@ extern struct server server;
 extern pbs_net_t pbs_scheduler_addr;
 extern unsigned int pbs_scheduler_port;
 extern char      server_name[];
+extern struct connection *svr_conn;
 extern int	 svr_do_schedule;
 extern int	 svr_do_sched_high;
 extern char     *msg_sched_called;
@@ -158,6 +161,190 @@ err:
 
 /**
  * @brief
+ * 		find_assoc_sched - find the corresponding scheduler which is responsible
+ * 		for handling this job.
+ *
+ * @param[in]	jid	- job id
+ * @param[out]target_sched	- pointer to the corresponding scheduler to which the job belongs to
+ *
+ * @retval - 1 if success
+ * 	   - 0 if fail
+ */
+int
+find_assoc_sched_jid(char *jid, pbs_sched **target_sched)
+{
+	job *pj;
+	pbs_queue *pq;
+	attribute *part_attr;
+	int k;
+	char *q_name;
+	pbs_sched *psched;
+	int t;
+
+	*target_sched = NULL;
+
+	t = is_job_array(jid);
+	if ((t == IS_ARRAY_NO) || (t == IS_ARRAY_ArrayJob))
+		pj = find_job(jid);		/* regular or ArrayJob itself */
+	else
+		pj = find_arrayparent(jid); /* subjob(s) */
+
+	if (pj == NULL)
+		return 0;
+
+	q_name = pj->ji_qs.ji_queue;
+	pq = find_queuebyname(q_name);
+	if (pq == NULL)
+		return 0;
+
+	if (pq->qu_attr[QA_ATR_partition].at_flags & ATR_VFLAG_SET) {
+		psched = (pbs_sched*) GET_NEXT(svr_allscheds);
+		while (psched) {
+			part_attr = &(psched->sch_attr[SCHED_ATR_partition]);
+			if (part_attr->at_flags & ATR_VFLAG_SET) {
+				for (k = 0; k < part_attr->at_val.at_arst->as_usedptr; k++) {
+					if ((part_attr->at_val.at_arst->as_string[k] != NULL)
+							&& (!strcmp(part_attr->at_val.at_arst->as_string[k],
+									pq->qu_attr[QA_ATR_partition].at_val.at_str))) {
+						*target_sched = psched;
+						return 1;
+					}
+				}
+			}
+			psched = (pbs_sched*) GET_NEXT(psched->sc_link);
+		}
+	} else {
+		*target_sched = dflt_scheduler;
+		return 1;
+	}
+	return 0;
+}
+
+/**
+ * @brief
+ * 		find_assoc_sched - find the corresponding scheduler which is responsible
+ * 		for handling this job.
+ *
+ * @param[in]	jid	- job id
+ * @param[out]target_sched	- pointer to the corresponding scheduler to which the job belongs to
+ *
+ * @retval - 1 if success
+ * 	   - 0 if fail
+ */
+int
+find_assoc_sched_pj(job *pj, pbs_sched **target_sched)
+{
+	pbs_queue *pq;
+	pbs_sched *psched;
+	attribute *part_attr;
+	int k;
+	char *q_name;
+
+	*target_sched = NULL;
+
+	q_name = pj->ji_qs.ji_queue;
+	pq = find_queuebyname(q_name);
+	if (pq == NULL)
+		return 0;
+
+	if (pq->qu_attr[QA_ATR_partition].at_flags & ATR_VFLAG_SET) {
+		psched = (pbs_sched*) GET_NEXT(svr_allscheds);
+		while (psched) {
+			part_attr = &(psched->sch_attr[SCHED_ATR_partition]);
+			if (part_attr->at_flags & ATR_VFLAG_SET) {
+				for (k = 0; k < part_attr->at_val.at_arst->as_usedptr; k++) {
+					if ((part_attr->at_val.at_arst->as_string[k] != NULL)
+							&& (!strcmp(part_attr->at_val.at_arst->as_string[k],
+									pq->qu_attr[QA_ATR_partition].at_val.at_str))) {
+						*target_sched = psched;
+						return 1;
+					}
+				}
+			}
+			psched = (pbs_sched*) GET_NEXT(psched->sc_link);
+		}
+	} else {
+		*target_sched = dflt_scheduler;
+		return 1;
+	}
+	return 0;
+
+}
+
+/**
+ * @brief
+ * 		find_assoc_sched - find the corresponding scheduler which is responsible
+ * 		for handling this job.
+ *
+ * @param[in]	jid	- job id
+ * @param[out]target_sched	- pointer to the corresponding scheduler to which the job belongs to
+ *
+  * @retval - 1 if success
+ * 	    - 0 if fail
+ */
+int
+find_assoc_sched_pq(pbs_queue *pq, pbs_sched **target_sched)
+{
+	pbs_sched *psched;
+	attribute *part_attr;
+	int k;
+	char *q_name;
+
+	*target_sched = NULL;
+	if (pq == NULL)
+		return 0;
+
+	if (pq->qu_attr[QA_ATR_partition].at_flags & ATR_VFLAG_SET) {
+		psched = (pbs_sched*) GET_NEXT(svr_allscheds);
+		while (psched) {
+			part_attr = &(psched->sch_attr[SCHED_ATR_partition]);
+			if (part_attr->at_flags & ATR_VFLAG_SET) {
+				for (k = 0; k < part_attr->at_val.at_arst->as_usedptr; k++) {
+					if ((part_attr->at_val.at_arst->as_string[k] != NULL)
+							&& (!strcmp(part_attr->at_val.at_arst->as_string[k],
+									pq->qu_attr[QA_ATR_partition].at_val.at_str))) {
+						*target_sched = psched;
+						return 1;
+					}
+				}
+			}
+			psched = (pbs_sched*) GET_NEXT(psched->sc_link);
+		}
+	} else {
+		*target_sched = dflt_scheduler;
+		return 1;
+	}
+	return 0;
+
+}
+
+
+/**
+ * @brief
+ * 		find_sched_from_sock - find the corresponding scheduler which is having
+ * 		the given socket.
+ *
+ * @param[in]	sock	- socket descriptor
+ *
+ * @retval - pointer to the corresponding pbs_sched object if success
+ * 		 -  NULL if fail
+ */
+pbs_sched *
+find_sched_from_sock(int sock)
+{
+	pbs_sched *psched;
+	psched = (pbs_sched*) GET_NEXT(svr_allscheds);
+	while (psched) {
+		if (psched->scheduler_sock == sock || psched->scheduler_sock2 == sock)
+			return psched;
+		psched = (pbs_sched*) GET_NEXT(psched->sc_link);
+
+	}
+	return NULL;
+}
+
+/**
+ * @brief
  * 		contact_sched - open connection to the scheduler and send it a command
  *		Jobid is passed if and only if the cmd is SCH_SCHEDULE_AJOB
  *
@@ -166,7 +353,7 @@ err:
  */
 
 int
-contact_sched(int cmd, char *jobid)
+contact_sched(int cmd, char *jobid, pbs_net_t pbs_scheduler_addr, unsigned int pbs_scheduler_port)
 {
 	int sock;
 	conn_t *conn;
@@ -239,18 +426,22 @@ contact_sched(int cmd, char *jobid)
  * @retval	-1	: error
  */
 int
-schedule_high()
+schedule_high(pbs_sched *psched)
 {
 	int s;
-	if (scheduler_sock == -1) {
-		if ((s = contact_sched(svr_do_sched_high, NULL)) < 0)
+
+	if (psched == NULL)
+		return -1;
+
+	if (psched->scheduler_sock == -1) {
+		if ((s = contact_sched(psched->svr_do_sched_high, NULL, psched->pbs_scheduler_addr, psched->pbs_scheduler_port)) < 0)
 			return (-1);
-		set_sched_sock(s);
-		if (scheduler_sock2 == -1) {
-			if ((s = contact_sched(SCH_SCHEDULE_NULL, NULL)) >= 0)
-				scheduler_sock2 = s;
+		set_sched_sock(s, psched);
+		if (psched->scheduler_sock2 == -1) {
+			if ((s = contact_sched(SCH_SCHEDULE_NULL, NULL, psched->pbs_scheduler_addr, psched->pbs_scheduler_port)) >= 0)
+				psched->scheduler_sock2 = s;
 		}
-		svr_do_sched_high = SCH_SCHEDULE_NULL;
+		psched->svr_do_sched_high = SCH_SCHEDULE_NULL;
 		return 0;
 	}
 	return 1;
@@ -273,7 +464,7 @@ schedule_high()
  */
 
 int
-schedule_jobs()
+schedule_jobs(pbs_sched *psched)
 {
 	int cmd;
 	int s;
@@ -281,12 +472,15 @@ schedule_jobs()
 	struct deferred_request *pdefr;
 	char  *jid = NULL;
 
+	if (psched == NULL)
+		return -1;
+
 	if (first_time)
 		cmd = SCH_SCHEDULE_FIRST;
 	else
-		cmd = svr_do_schedule;
+		cmd = psched->svr_do_schedule;
 
-	if (scheduler_sock == -1) {
+	if (psched->scheduler_sock == -1) {
 
 		/* are there any qrun requests from manager/operator */
 		/* which haven't been sent,  they take priority      */
@@ -312,16 +506,16 @@ schedule_jobs()
 			pdefr = (struct deferred_request *)GET_NEXT(pdefr->dr_link);
 		}
 
-		if ((s = contact_sched(cmd, jid)) < 0)
+		if ((s = contact_sched(cmd, jid, psched->pbs_scheduler_addr, psched->pbs_scheduler_port)) < 0)
 			return (-1);
 		else if (pdefr != NULL)
 			pdefr->dr_sent = 1;   /* mark entry as sent to sched */
-		set_sched_sock(s);
-		if (scheduler_sock2 == -1) {
-			if ((s = contact_sched(SCH_SCHEDULE_NULL, NULL)) >= 0)
-				scheduler_sock2 = s;
+		set_sched_sock(s, psched);
+		if (psched->scheduler_sock2 == -1) {
+			if ((s = contact_sched(SCH_SCHEDULE_NULL, NULL, psched->pbs_scheduler_addr, psched->pbs_scheduler_port)) >= 0)
+				psched->scheduler_sock2 = s;
 		}
-		svr_do_schedule = SCH_SCHEDULE_NULL;
+		psched->svr_do_schedule = SCH_SCHEDULE_NULL;
 		first_time = 0;
 
 		/* if there are more qrun requests queued up, reset cmd so */
@@ -329,7 +523,7 @@ schedule_jobs()
 		pdefr = GET_NEXT(svr_deferred_req);
 		while (pdefr) {
 			if (pdefr->dr_sent == 0) {
-				svr_do_schedule = SCH_SCHEDULE_AJOB;
+				dflt_scheduler->svr_do_schedule = SCH_SCHEDULE_AJOB;
 				break;
 			}
 			pdefr = (struct deferred_request *)GET_NEXT(pdefr->dr_link);
@@ -361,13 +555,16 @@ static void
 scheduler_close(int sock)
 {
 	struct deferred_request *pdefr;
+	pbs_sched *psched;
 
-	if ((sock != -1) && (sock == scheduler_sock2)) {
-		scheduler_sock2 = -1;
+	psched = find_sched_from_sock(sock);
+
+	if ((sock != -1) && (sock == psched->scheduler_sock2)) {
+		psched->scheduler_sock2 = -1;
 		return;	/* nothing to check if scheduler_sock2 */
 	}
 
-	set_sched_sock(-1);
+	set_sched_sock(-1, psched);
 
 	/* clear list of jobs which were altered/modified during cycle */
 	am_jobs.am_used = 0;
@@ -450,20 +647,34 @@ was_job_alteredmoved(job *pjob)
  *		certain flag values should not be overwritten
  *
  * @param[in]	flag	-	pointer to job in question.
+ * @parm[in] psched -   pointer to sched object. Then set the flag only for this object.
+ *                                     NULL. Then set the flag for all the scheduler objects.
  */
 void
-set_scheduler_flag(int flag)
+set_scheduler_flag(int flag, pbs_sched *psched)
 {
-	/* high priority commands:
-	 * Note: A) usually SCH_QUIT is sent directly and not via here
-	 *       B) if we ever add a 3rd high prio command, we can lose them
-	 */
-	if (flag == SCH_CONFIGURE || flag == SCH_QUIT) {
-		if (svr_do_sched_high == SCH_QUIT)
-			return; /* keep only SCH_QUIT */
+	int single_sched;
 
-		svr_do_sched_high = flag;
-	}
+	if (psched)
+		single_sched = 1;
 	else
-		svr_do_schedule = flag;
+		single_sched = 0;
+
+	for (single_sched || (psched = (pbs_sched*) GET_NEXT(svr_allscheds)); psched ;psched = (pbs_sched*) GET_NEXT(psched->sc_link)) {
+		/* high priority commands:
+		 * Note: A) usually SCH_QUIT is sent directly and not via here
+		 *       B) if we ever add a 3rd high prio command, we can lose them
+		 */
+		if (flag == SCH_CONFIGURE || flag == SCH_QUIT) {
+			if (psched->svr_do_sched_high == SCH_QUIT)
+				return; /* keep only SCH_QUIT */
+
+			psched->svr_do_sched_high = flag;
+		}
+		else
+			psched->svr_do_schedule = flag;
+		if (single_sched)
+			break;
+	}
+
 }

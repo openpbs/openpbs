@@ -142,7 +142,6 @@ extern unsigned int pbs_server_port_dis;
 extern int	resc_access_perm;
 extern time_t	time_now;
 extern int svr_create_tmp_jobscript(job *pj, char *script_name);
-extern int	scheduler_sock;
 extern int	scheduler_jobs_stat;
 extern	char	*path_hooks_workdir;
 extern struct work_task *add_mom_deferred_list(int stream, mominfo_t *minfo, void (*func)(), char *msgid, void *parm1, void *parm2);
@@ -320,7 +319,7 @@ local_move(job *jobp, struct batch_request *req)
 	 * had changes resulting from the move that would impact scheduling or
 	 * placement, add job to list of jobs which cannot be run in this cycle.
 	 */
-	if ((req == NULL || (req->rq_conn != scheduler_sock)) && (scheduler_jobs_stat))
+	if ((req == NULL || (find_sched_from_sock(req->rq_conn) == NULL)) && (scheduler_jobs_stat))
 		am_jobs_add(jobp);
 
 	return 0;

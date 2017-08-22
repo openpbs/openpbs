@@ -222,6 +222,23 @@ clear_default_resc(job *pjob)
 
 /**
  * @brief
+ * 		tickle_for_reply ()
+ * 		For internally generated requests to the server we would like
+ * 		processing of the reply from the particular server subsystem
+ * 		to happen as "soon" as the server get back to its main loop -
+ * 		see server's main loop and "next_task()" and variable, "waittime".
+ * 		By placing a do nothing task on the "timed_task_list" whose time
+ * 		is now (or already passed), we can get next_task() to look at the
+ * 		"task_list_immed" tasks now rather than wait for a while
+ */
+void
+tickle_for_reply(void)
+{
+	(void)set_task(WORK_Timed, time_now + 10, 0, (void *)0);
+}
+
+/**
+ * @brief
  * 		svr_enquejob	-	Enqueue the job into specified queue.
  *
  * @param[in]	pjob	-	The job to be enqueued.
@@ -244,6 +261,7 @@ svr_enquejob(job *pjob)
 	job	       *pjcur;
 	pbs_queue      *pque;
 	int		rc;
+	pbs_sched	*psched;
 
 	/* make sure queue is still there, there exist a small window ... */
 
@@ -485,15 +503,23 @@ svr_enquejob(job *pjob)
 
 			/* better notify the Scheduler we have a new job */
 
-			set_scheduler_flag(SCH_SCHEDULE_NEW);
-
+			if (find_assoc_sched_pj(pjob, &psched))
+				set_scheduler_flag(SCH_SCHEDULE_NEW, psched);
+			else {
+				sprintf(log_buffer, "Unable to reach scheduler associated with job %s", pjob->ji_qs.ji_jobid);
+				log_err(-1, __func__, log_buffer);
+			}
 		} else if (server.sv_attr[SRV_ATR_EligibleTimeEnable].at_val.at_long &&
 			server.sv_attr[SRV_ATR_scheduling].at_val.at_long) {
 
 			/* notify the Scheduler we have moved a job here */
 
-			set_scheduler_flag(SCH_SCHEDULE_MVLOCAL);
-
+			if (find_assoc_sched_pj(pjob, &psched))
+				set_scheduler_flag(SCH_SCHEDULE_MVLOCAL, psched);
+			else {
+				sprintf(log_buffer, "Unable to reach scheduler associated with job %s", pjob->ji_qs.ji_jobid);
+				log_err(-1, __func__, log_buffer);
+			}
 		}
 
 
@@ -614,6 +640,7 @@ svr_setjobstate(job *pjob, int newstate, int newsubstate)
 	int    oldstate;
 	pbs_queue *pque = pjob->ji_qhdr;
 	long newaccruetype;
+	pbs_sched *psched;
 
 	/*
 	 * If the job has already finished, then do not make any new changes
@@ -657,7 +684,13 @@ svr_setjobstate(job *pjob, int newstate, int newsubstate)
 					attribute *etime = &pjob->
 						ji_wattr[(int)JOB_ATR_etime];
 
-					set_scheduler_flag(SCH_SCHEDULE_NEW);
+					if (find_assoc_sched_pj(pjob, &psched))
+						set_scheduler_flag(SCH_SCHEDULE_NEW, psched);
+					else {
+						sprintf(log_buffer, "Unable to reach scheduler associated with job %s", pjob->ji_qs.ji_jobid);
+						log_err(-1, __func__, log_buffer);
+					}
+
 					if ((etime->at_flags & ATR_VFLAG_SET)
 						== 0) {
 						etime->at_val.at_long = time_now;
@@ -3185,7 +3218,7 @@ Time4resv(struct work_task *ptask)
 
 		resv_exclusive_handler(presv);
 
-		set_scheduler_flag(SCH_SCHEDULE_JOBRESV);
+		set_scheduler_flag(SCH_SCHEDULE_JOBRESV,dflt_scheduler);
 
 		/*notify the relevant persons that the reservation time has arrived*/
 		if(presv->ri_qs.ri_tactive == time_now){
@@ -3259,7 +3292,7 @@ Time4resv1(struct work_task *ptask)
 #endif
 
 		/* specify the scheduling command for the scheduler */
-		set_scheduler_flag(SCH_SCHEDULE_JOBRESV);
+		set_scheduler_flag(SCH_SCHEDULE_JOBRESV, dflt_scheduler);
 }
 
 
@@ -3963,7 +3996,7 @@ resv_retry_handler(struct work_task *ptask)
 		return;
 
 	/* Notify scheduler that a reservation needs to be reconfirmed */
-	set_scheduler_flag(SCH_SCHEDULE_RESV_RECONFIRM);
+	set_scheduler_flag(SCH_SCHEDULE_RESV_RECONFIRM, dflt_scheduler);
 }
 
 /**
@@ -4388,25 +4421,6 @@ handle_qmgr_reply_to_startORenable(struct work_task *pwt)
 	 *action.  We will pass on that for now.
 	 */
 }
-
-
-/**
- * @brief
- * 		tickle_for_reply ()
- * 		For internally generated requests to the server we would like
- * 		processing of the reply from the particular server subsystem
- * 		to happen as "soon" as the server get back to its main loop -
- * 		see server's main loop and "next_task()" and variable, "waittime".
- * 		By placing a do nothing task on the "timed_task_list" whose time
- * 		is now (or already passed), we can get next_task() to look at the
- * 		"task_list_immed" tasks now rather than wait for a while
- */
-void
-tickle_for_reply(void)
-{
-	(void)set_task(WORK_Timed, time_now + 10, 0, (void *)0);
-}
-
 
 
 /**

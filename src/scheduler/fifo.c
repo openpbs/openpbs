@@ -82,6 +82,9 @@
 #include <sched_cmds.h>
 #include <time.h>
 #include <log.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include "data_types.h"
 #include "fifo.h"
 #include "queue_info.h"
@@ -109,6 +112,7 @@
 #include "pbs_share.h"
 #include "pbs_internal.h"
 #include "limits_if.h"
+#include "pbs_version.h"
 
 
 #ifdef NAS
@@ -119,12 +123,39 @@
 static prev_job_info *last_running = NULL;
 static int last_running_size = 0;
 
+char	scheduler_name[PBS_MAXHOSTNAME+1] = "Me";  /*arbitrary string*/
+char	sc_name[PBS_MAXSCHEDNAME];
+char	*log_dir = NULL;
+char	*priv_dir = NULL;
+char	*partitions = NULL;
+int	sched_port = -1;
+char	*logfile = (char *)0;
+#ifdef WIN32
+char	path_log[_MAX_PATH];
+#else
+char	path_log[_POSIX_PATH_MAX];
+#endif
+int	dflt_sched = 0;
+
 #ifdef WIN32
 extern void win_toolong(void);
 #endif
 
 extern int	second_connection;
 extern int	get_sched_cmd_noblk(int sock, int *val, char **jobid);
+extern void     update_svr_sched_state(char *state);
+
+#define COPY_ATTR_VALUE(DEST, SRC) \
+	{ \
+		int len = 0;\
+		if (DEST) { \
+			free(DEST); \
+		} \
+		len = strlen(SRC);\
+		DEST = (char*)malloc(len + 1); \
+		strncpy(DEST, attr->value, len); \
+		DEST[len] = '\0';\
+	}
 
 /**
  * @brief
@@ -521,6 +552,7 @@ init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
 int
 schedule(int cmd, int sd, char *runjobid)
 {
+	update_svr_sched_state(SC_SCHEDULING);
 	switch (cmd) {
 		case SCH_ERROR:
 		case SCH_SCHEDULE_NULL:
@@ -555,17 +587,31 @@ schedule(int cmd, int sd, char *runjobid)
 			reset_global_resource_ptrs();
 			free(conf.prime_sort);
 			free(conf.non_prime_sort);
-			if(schedinit() != 0)
+			/*
+			 * This is required since there is a probability that scheduler's configuration has been changed at
+			 * server through qmgr.
+			 */
+			if (update_svr_schedobj(connector, 0, 0)) {
+				sprintf(log_buffer, "update_svr_schedobj failed");
+				log_err(-1, __func__, log_buffer);
+				return 1;
+			}
+			if(schedinit() != 0) {
+				update_svr_sched_state(SC_IDLE);
 				return 0;
+			}
 			break;
 		case SCH_QUIT:
 #ifdef PYTHON
 			Py_Finalize();
 #endif
+			update_svr_sched_state(SC_DOWN);
 			return 1;		/* have the scheduler exit nicely */
 		default:
+			update_svr_sched_state(SC_IDLE);
 			return 0;
 	}
+	update_svr_sched_state(SC_IDLE);
 	return 0;
 }
 
@@ -613,6 +659,7 @@ intermediate_schedule(int sd, char *jobid)
 	}
 	while (ret == -1);
 
+	update_svr_sched_state(SC_IDLE);
 	return 0;
 }
 
@@ -2328,3 +2375,306 @@ next_job(status *policy, server_info *sinfo, int flag)
 	}
 	return rjob;
 }
+
+/**
+ * @brief
+ *	Updates the scheduler state to the server.
+ *
+ * @param[in] state - status to be updated.
+ *
+ * @par Side Effects:
+ *	None
+ *
+ *
+ */
+void
+update_svr_sched_state(char *state)
+{
+
+	struct	attropl	*attribs, *patt;
+	if (connector < 0)
+		return;
+
+	attribs = (struct  attropl *)calloc(1, sizeof(struct attropl));
+	if (attribs == NULL) {
+		sprintf(log_buffer, "can't update scheduler attribs, calloc failed");
+		log_err(-1, __func__, log_buffer);
+		return;
+	}
+	patt = attribs;
+
+	/* Scheduler State*/
+	patt->name = ATTR_sched_state;
+	patt->value = state;
+	patt->next = NULL;
+
+	pbs_manager(connector,
+			MGR_CMD_SET,
+			MGR_OBJ_SCHED,
+			sc_name,
+			attribs,
+			NULL);
+	free(attribs);
+}
+
+/**
+ * @brief
+ *	Helper function used to copy the attribute values from batch_status to the corresponding
+ *	scheduler global variables which hold its priv_dir, log_dir and partitions
+ *
+ * @param[in] status - populated batch_status after stating this scheduler from server
+ *
+ *
+ * @par Side Effects:
+ *	None
+ *
+ *
+ */
+static void
+sched_settings_frm_svr(struct batch_status *status)
+{
+	struct attrl *attr;
+	char *tmp_priv_dir = NULL;
+	char *tmp_log_dir = NULL;
+	char *tmp_partitions = NULL;
+	int c;
+	int lockfds;
+	struct	attropl	*attribs, *patt;
+	struct batch_status *ss = NULL;
+	int	err;
+	int priv_dir_update_fail = 0;
+	extern char *partitions;
+
+	attr = status->attribs;
+	/*
+	 * resetting the following before fetching from batch_status.
+	 */
+	while (attr != NULL) {
+		if (attr->name != NULL && attr->value != NULL) {
+			if (!strcmp(attr->name, ATTR_sched_priv)) {
+				COPY_ATTR_VALUE(tmp_priv_dir, attr->value);
+			} else if (!strcmp(attr->name, ATTR_sched_log)) {
+				COPY_ATTR_VALUE(tmp_log_dir, attr->value);
+			} else if (!strcmp(attr->name, ATTR_partition)) {
+				COPY_ATTR_VALUE(tmp_partitions, attr->value);
+			}
+		}
+		attr = attr->next;
+	}
+
+	if (!dflt_sched) {
+		if ((log_dir != NULL) && strcmp(log_dir, tmp_log_dir) != 0) {
+			(void)snprintf(path_log,  MAXPATHLEN, tmp_log_dir);
+			log_close(1);
+			if (log_open(logfile, path_log) == -1) {
+				/* update the sched_log attribute with its previous value only */
+				attribs = (struct  attropl *)calloc(1, sizeof(struct attropl));
+				if (attribs == NULL) {
+					sprintf(log_buffer, "can't update scheduler attribs, calloc failed");
+					log_err(-1, __func__, log_buffer);
+					return;
+				}
+				patt = attribs;
+				patt->name = ATTR_sched_log;
+				patt->value = log_dir;
+				patt->next = NULL;
+				err = pbs_manager(connector,
+					MGR_CMD_SET, MGR_OBJ_SCHED,
+					sc_name, attribs, NULL);
+				free(attribs);
+				if (err) {
+					sprintf(log_buffer, "Failed to update log_dir value %s at the server", log_dir);
+					log_err(-1, __func__, log_buffer);
+				}
+				/* switch back to the existing logs directory */
+				(void)snprintf(path_log,  MAXPATHLEN, log_dir);
+				if (log_open(logfile, path_log)) {
+					sprintf(log_buffer, "Failed to open the log file in dir %s", log_dir);
+					log_err(-1, __func__, log_buffer);
+					return;
+				}
+				sprintf(log_buffer, "%s: logfile could not be opened under directory %s", logfile, tmp_log_dir);
+				sprintf(log_buffer, "switching back to previous directory %s", log_dir);
+				log_err(-1, __func__, log_buffer);
+			} else {
+				free(log_dir);
+				log_dir = tmp_log_dir;
+				sprintf(log_buffer, "scheduler log directory is changed to %s", log_dir);
+				schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_INFO,
+						"reconfigure", log_buffer);
+			}
+		} else
+			log_dir = tmp_log_dir;
+		if ((priv_dir != NULL) && strcmp(priv_dir, tmp_priv_dir) != 0) {
+			(void)snprintf(log_buffer,  LOG_BUF_SIZE, tmp_priv_dir);
+			#if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
+				c  = chk_file_sec(log_buffer, 1, 0, S_IWGRP|S_IWOTH, 1);
+				c |= chk_file_sec(pbs_conf.pbs_environment, 0, 0, S_IWGRP|S_IWOTH, 0);
+				if (c != 0) {
+					sprintf(log_buffer, "PBS failed validation checks for directory %s", tmp_priv_dir);
+					sprintf(log_buffer, "switching back to previous directory %s", priv_dir);
+					log_err(-1, __func__, log_buffer);
+					priv_dir_update_fail = 1;
+				}
+			#endif  /* not DEBUG and not NO_SECURITY_CHECK */
+			if (c == 0) {
+				if (chdir(log_buffer) == -1) {
+					sprintf(log_buffer, "PBS failed validation checks for directory %s", tmp_priv_dir);
+					sprintf(log_buffer, "switching back to previous directory %s", priv_dir);
+					log_err(-1, __func__, log_buffer);
+					priv_dir_update_fail = 1;
+				} else {
+					(void)unlink("sched.lock");
+					lockfds = open("sched.lock", O_CREAT|O_WRONLY, 0644);
+					if (lockfds < 0) {
+						sprintf(log_buffer, "PBS failed validation checks for directory %s", tmp_priv_dir);
+						sprintf(log_buffer, "switching back to previous directory %s", priv_dir);
+						log_err(-1, __func__, log_buffer);
+						priv_dir_update_fail = 1;
+						/*
+						 *  change back to the previous sched_priv directory
+						 */
+						chdir(priv_dir);
+					} else {
+						/* write schedulers pid into lockfile */
+						#ifdef WIN32
+							lseek(lockfds, (off_t)0, SEEK_SET);
+						#else
+							(void)ftruncate(lockfds, (off_t)0);
+						#endif
+							(void)sprintf(log_buffer, "%d\n", getpid());
+						(void)write(lockfds, log_buffer, strlen(log_buffer));
+						free(priv_dir);
+						priv_dir = tmp_priv_dir;
+						sprintf(log_buffer, "scheduler priv directory has changed to %s", priv_dir);
+						schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_INFO,
+								"reconfigure", log_buffer);
+					}
+				}
+			}
+		} else
+			priv_dir = tmp_priv_dir;
+
+		if (priv_dir_update_fail) {
+			/* update the sched_log attribute with its previous value only */
+			attribs = (struct  attropl *)calloc(1, sizeof(struct attropl));
+			if (attribs == NULL) {
+				sprintf(log_buffer, "can't update scheduler attribs, calloc failed");
+				log_err(-1, __func__, log_buffer);
+				return;
+			}
+			patt = attribs;
+			patt->name = ATTR_sched_priv;
+			patt->value = priv_dir;
+			patt->next = NULL;
+			err = pbs_manager(connector,
+				MGR_CMD_SET, MGR_OBJ_SCHED,
+				sc_name, attribs, NULL);
+			free(attribs);
+			if (err) {
+				sprintf(log_buffer, "Failed in updating priv_dir value %s to the server", priv_dir);
+				log_err(-1, __func__, log_buffer);
+			}
+		}
+		if ((partitions != NULL) && strcmp(partitions, tmp_partitions) != 0) {
+			free(partitions);
+			partitions = tmp_partitions;
+		} else
+			partitions = tmp_partitions;
+	}
+
+}
+
+/**
+ * @brief
+ *	Updates a set of attribute values of scheduler to the server and also does a status of this scheduler
+ *	on server and fetches the updates of its attributes.
+ *
+ * @param[in] connector - socket descriptor to server
+ * @param[in] cmd     - scheduler command
+ * @param[in] alarm_time  - value to be updated for scheduler cycle length.
+ *
+ *
+ * @retval Error code
+ * @return -1 - Failure
+ * @return  0 - Success
+ *
+ * @par Side Effects:
+ *	None
+ *
+ *
+ */
+int
+update_svr_schedobj(int connector, int cmd, int alarm_time)
+{
+	char timestr[128];
+	char port_str[MAX_INT_LEN];
+	static	int svr_knows_me = 0;
+	int	err;
+	struct	attropl	*attribs, *patt;
+	struct batch_status *ss = NULL;
+
+	/* This command is only sent on restart of the server */
+	if (cmd != 0 && cmd == SCH_SCHEDULE_FIRST)
+		svr_knows_me = 0;
+
+	if (cmd !=0 && svr_knows_me || cmd == SCH_ERROR || connector < 0)
+		return 0;
+
+	/* Stat the scheduler to get details of sched */
+	ss = pbs_statsched(connector, sc_name, NULL, NULL);
+	if (ss == NULL) {
+		sprintf(log_buffer, "Unable to retrieve the scheduler attributes from server");
+		log_err(-1, __func__, log_buffer);
+		return 1;
+	}
+	sched_settings_frm_svr(ss);
+
+	if (!dflt_sched && (partitions == NULL)) {
+		sprintf(log_buffer, "Scheduler does not contain a partition. shutting down");
+		log_err(-1, __func__, log_buffer);
+		return 1;
+	}
+
+	pbs_statfree(ss);
+
+	/* update the sched with new values */
+	attribs = (struct  attropl *)calloc(4, sizeof(struct attropl));
+	if (attribs == NULL) {
+		sprintf(log_buffer, "can't update scheduler attribs, calloc failed");
+		log_err(-1, __func__, log_buffer);
+		return 1;
+	}
+	patt = attribs;
+	patt->name = ATTR_SchedHost;
+	patt->value = scheduler_name;
+	patt->next = patt + 1;
+	patt++;
+	patt->name = ATTR_sched_port;
+	snprintf(port_str, MAX_INT_LEN, "%d", sched_port);
+	patt->value = port_str;
+	patt->next = patt + 1;
+	patt++;
+	patt->name = ATTR_version;
+	patt->value = pbs_version;
+	if (alarm_time) {
+		patt->next = patt + 1;
+		patt++;
+		patt->name = ATTR_sched_cycle_len;
+		snprintf(timestr, sizeof(timestr), "%d", alarm_time);
+		patt->value = timestr;
+	}
+	patt->next = NULL;
+
+	err = pbs_manager(connector,
+		MGR_CMD_SET, MGR_OBJ_SCHED,
+		sc_name, attribs, NULL);
+	if (err == 0 && svr_knows_me == 0)
+		svr_knows_me = 1;
+
+	free(attribs);
+
+	return 0;
+}
+
+

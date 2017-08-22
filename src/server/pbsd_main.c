@@ -139,6 +139,7 @@
 #include "provision.h"
 #include "pbs_db.h"
 #include "pbs_sched.h"
+#include "pbs_share.h"
 
 #include <pbs_python.h>  /* for python interpreter */
 
@@ -165,7 +166,6 @@ extern	int		svr_chngNodesfile;
 extern  pbs_list_head svr_requests;
 extern char     *msg_err_malloc;
 extern int       pbs_failover_active;
-extern int	scheduler_sock, scheduler_sock2;
 
 /* Local Private Functions */
 
@@ -224,8 +224,6 @@ char	       *pbs_o_host = "PBS_O_HOST";
 pbs_net_t	pbs_mom_addr;
 unsigned int	pbs_mom_port;
 unsigned int	pbs_rm_port;
-pbs_net_t	pbs_scheduler_addr;
-unsigned int	pbs_scheduler_port;
 pbs_net_t	pbs_server_addr;
 unsigned int	pbs_server_port_dis;
 /*
@@ -272,15 +270,13 @@ char	       *pbs_server_id;
 int		reap_child_flag = 0;
 time_t		secondary_delay = 30;
 struct server	server;		/* the server structure */
-pbs_sched	*dflt_scheduler;	/* the default scheduler */
+pbs_sched	*dflt_scheduler = NULL;	/* the default scheduler */
 char	        primary_host[PBS_MAXHOSTNAME+1];   /* host_name of primary */
 int		shutdown_who;		/* see req_shutdown() */
 char	       *mom_host = server_host;
 long		new_log_event_mask = 0;
 int		server_init_type = RECOV_WARM;
 int		svr_delay_entry = 0;
-int             svr_do_schedule = SCH_SCHEDULE_NULL;
-int             svr_do_sched_high = SCH_SCHEDULE_NULL; /* high priority cmds */
 int             svr_ping_rate = SVR_DEFAULT_PING_RATE;    /* time between sets of node pings */
 int             ping_nodes_rate = SVR_DEFAULT_PING_RATE; /* time between ping nodes as determined from server_init_type */
 pbs_list_head   svr_deferred_req;
@@ -907,6 +903,7 @@ main(int argc, char **argv)
 	struct stat 		sb_sa;
 	struct batch_request	*periodic_req;
 	char			hook_msg[HOOK_MSG_SIZE];
+	pbs_sched		*psched;
 	char			*keep_daemon_name = NULL;
 #ifndef WIN32
 	pid_t			sid = -1;
@@ -934,6 +931,9 @@ main(int argc, char **argv)
 	int				try_db = 0;
 	int 			db_stop_counts = 0;
 	int 			db_stop_email_sent = 0;
+
+	pbs_net_t		pbs_scheduler_addr;
+	unsigned int		pbs_scheduler_port;
 
 	extern int		optind;
 	extern char		*optarg;
@@ -1933,10 +1933,10 @@ try_db_again:
 		svr_mailowner(0, 0, 1, log_buffer);
 		if (server.sv_attr[(int)SRV_ATR_scheduling].at_val.at_long) {
 			/* Scheduling is true, see if we can contact scheduler */
-			if (contact_sched(SCH_SCHEDULE_NULL, NULL) < 0) {
+			if (contact_sched(SCH_SCHEDULE_NULL, NULL, pbs_scheduler_addr, pbs_scheduler_port) < 0) {
 				/* No - try bringing up scheduler here */
 				pbs_scheduler_addr = get_hostaddr(pbs_conf.pbs_secondary);
-				if (contact_sched(SCH_SCHEDULE_NULL, NULL) < 0) {
+				if (contact_sched(SCH_SCHEDULE_NULL, NULL, pbs_scheduler_addr, pbs_scheduler_port) < 0) {
 					char **workenv;
 					char schedcmd[MAXPATHLEN+1];
 					/* save the current, "safe", environment.          */
@@ -1971,6 +1971,8 @@ try_db_again:
 		(void)set_task(WORK_Timed, time_now, primary_handshake, NULL);
 
 	}
+	dflt_scheduler->pbs_scheduler_addr = pbs_scheduler_addr;
+	dflt_scheduler->pbs_scheduler_port = pbs_scheduler_port;
 
 #ifdef WIN32
 	sprintf(log_buffer, msg_startup2, getpid(), pbs_server_port_dis,
@@ -2075,25 +2077,26 @@ try_db_again:
 				clear_exec_vnode();
 				first_run = 0;
 			}
-
+			for (psched = (pbs_sched*) GET_NEXT(svr_allscheds); psched; psched = (pbs_sched*) GET_NEXT(psched->sc_link)) {
 			/* if time or event says to run scheduler, do it */
 
 			/* if we have a high prio sched command, send it 1st */
-			if (svr_do_sched_high != SCH_SCHEDULE_NULL)
-				schedule_high();
+				if ((strcmp(psched->sch_attr[SCHED_ATR_sched_state].at_val.at_str, SC_DOWN)) &&
+					psched->svr_do_sched_high != SCH_SCHEDULE_NULL)
+					schedule_high(psched);
 
 
-			if (svr_do_schedule == SCH_SCHEDULE_RESTART_CYCLE) {
+				if (psched->svr_do_schedule == SCH_SCHEDULE_RESTART_CYCLE) {
 
 				/* send only to existing connection */
 				/* since it is for interrupting current */
 				/* cycle */
 				/* NOTE: both primary and secondary scheduler */
 				/* connect must have been setup to be valid */
-				if ((scheduler_sock2 != -1) &&
-					(scheduler_sock != -1)) {
-					if (put_sched_cmd(scheduler_sock2,
-						svr_do_schedule, NULL) == 0) {
+					if ((psched->scheduler_sock2 != -1) &&
+						(psched->scheduler_sock != -1)) {
+						if (put_sched_cmd(psched->scheduler_sock2,
+								psched->svr_do_schedule, NULL) == 0) {
 						log_event(PBSEVENT_DEBUG2,
 							PBS_EVENTCLASS_SERVER,
 							LOG_NOTICE, msg_daemonname,
@@ -2105,9 +2108,9 @@ try_db_again:
 						LOG_NOTICE, msg_daemonname,
 						"no valid secondary connection to scheduler: restart scheduling cycle request ignored");
 				}
-				svr_do_schedule = SCH_SCHEDULE_NULL;
-			} else if (((svr_unsent_qrun_req) || ((svr_do_schedule != SCH_SCHEDULE_NULL) &&
-				server.sv_attr[(int)SRV_ATR_scheduling].at_val.at_long))
+					psched->svr_do_schedule = SCH_SCHEDULE_NULL;
+				} else if (((svr_unsent_qrun_req) || ((psched->svr_do_schedule != SCH_SCHEDULE_NULL) &&
+					psched->sch_attr[(int)SCHED_ATR_scheduling].at_val.at_long))
 				&& can_schedule()) {
 				/*
 				 * If svr_unsent_qrun_req is set to one there are pending qrun
@@ -2116,12 +2119,14 @@ try_db_again:
 				 * If svr_unsent_qrun_req is not set then do the existing checking and do 
 				 * scheduling only if server scheduling is turned on.
 				 */
-				server.sv_next_schedule = time_now + server.sv_attr[(int)SRV_ATR_scheduler_iteration].at_val.at_long;
-				if((schedule_jobs() == 0) && (svr_unsent_qrun_req))
+
+					psched->sch_next_schedule = time_now +
+							psched->sch_attr[(int)	SCHED_ATR_schediteration].at_val.at_long;
+					if((strcmp(psched->sch_attr[SCHED_ATR_sched_state].at_val.at_str, SC_DOWN)) &&
+							(schedule_jobs(psched) == 0) && (svr_unsent_qrun_req))
 					svr_unsent_qrun_req = 0;
 			}
-
-
+			}
 		} else if (*state == SV_STATE_HOT) {
 
 			/* Are there HOT jobs to rerun */
@@ -2221,7 +2226,7 @@ try_db_again:
 	/* if brought up the Secondary Scheduler, take it down */
 
 	if (brought_up_alt_sched == 1)
-		(void)contact_sched(SCH_QUIT, NULL);
+		(void)contact_sched(SCH_QUIT, NULL, pbs_scheduler_addr, pbs_scheduler_port);
 
 	/* if Moms are to to down as well, tell them */
 
@@ -2404,15 +2409,18 @@ next_task()
 
 	time_t		   tilwhen;
 	time_t		   delay;
+	pbs_sched	   *psched;
 
 	tilwhen = default_next_task();
 
 	/* should the scheduler be run?  If so, adjust the delay time  */
 
-	if ((delay = server.sv_next_schedule - time_now) <= 0)
-		set_scheduler_flag(SCH_SCHEDULE_TIME);
+	for (psched = (pbs_sched*) GET_NEXT(svr_allscheds); psched; psched = (pbs_sched*) GET_NEXT(psched->sc_link)) {
+		if ((delay = psched->sch_next_schedule - time_now) <= 0)
+			set_scheduler_flag(SCH_SCHEDULE_TIME, psched);
 	else if (delay < tilwhen)
 		tilwhen = delay;
+	}
 
 	next_sync_mom_hookfiles();
 

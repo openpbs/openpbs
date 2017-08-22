@@ -48,6 +48,7 @@ extern "C" {
 #include "pbs_db.h"
 #include "reservation.h"
 #include "resource.h"
+#include "pbs_sched.h"
 
 /* Protocol types when connecting to another server (eg mom) */
 #define PROT_INVALID	-1
@@ -57,7 +58,7 @@ extern "C" {
 extern int   check_num_cpus(void);
 extern int   chk_hold_priv(long hold, int priv);
 extern void  close_client(int sfds);
-extern int   contact_sched(int, char *jobid);
+extern int   contact_sched(int, char *jobid, pbs_net_t pbs_scheduler_addr, unsigned int pbs_scheduler_port);
 extern void  count_node_cpus(void);
 extern int   ctcpus(char *buf, int *hascpp);
 extern void  get_jobowner(char *from, char *to);
@@ -76,8 +77,8 @@ extern void  process_dis_request(int);
 extern int   save_flush(void);
 extern void  save_setup(int);
 extern int   save_struct(char *, unsigned int);
-extern int   schedule_jobs(void);
-extern int   schedule_high(void);
+extern int   schedule_jobs(pbs_sched *);
+extern int   schedule_high(pbs_sched *);
 extern void  shutdown_nodes(void);
 extern char *site_map_user(char *, char *);
 extern char *site_map_resvuser(char *, char *);
@@ -97,7 +98,7 @@ extern void  mark_node_down(char *, char *);
 extern void  mark_node_offline_by_mom(char *, char *);
 extern void  clear_node_offline_by_mom(char *, char *);
 extern void  mark_which_queues_have_nodes(void);
-extern void  set_sched_sock(int);
+extern void  set_sched_sock(int, pbs_sched *);
 extern void  pbs_close_stdfiles(void);
 extern int   is_job_array(char *id);
 extern char *get_index_from_jid(char *newjid);
@@ -282,6 +283,7 @@ extern int   chk_characteristic(struct pbsnode *pnode, int *pneed_todo);
 extern int   is_valid_str_resource(attribute *pattr, void *pobject, int actmode);
 extern int   setup_arrayjob_attrs(attribute *, void *, int);
 extern int   deflt_chunk_action(attribute *pattr, void *pobj, int mode);
+extern int   action_svr_iteration(attribute *pattr, void *pobj, int mode);
 extern void  update_node_rassn(attribute *, enum batch_op);
 extern int   cvt_nodespec_to_select(char *, char **, size_t *, attribute *);
 extern int is_valid_resource(attribute *pattr, void *pobject, int actmode);

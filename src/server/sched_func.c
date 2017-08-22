@@ -47,6 +47,7 @@
 #include <string.h>
 #include <memory.h>
 #include <pbs_config.h>
+#include "pbs_share.h"
 #include "pbs_sched.h"
 #include "log.h"
 #include "pbs_ifl.h"
@@ -84,7 +85,10 @@ sched_alloc(char *sched_name)
 	CLEAR_LINK(psched->sc_link);
 	strncpy(psched->sc_name, sched_name, PBS_MAXSCHEDNAME);
 	psched->sc_name[PBS_MAXSCHEDNAME - 1] = '\0';
-
+	psched->svr_do_schedule = SCH_SCHEDULE_NULL;
+	psched->svr_do_sched_high = SCH_SCHEDULE_NULL;
+	psched->scheduler_sock = -1;
+	psched->scheduler_sock2 = -1;
 	append_link(&svr_allscheds, &psched->sc_link, psched);
 
 	/* set the working attributes to "unspecified" */
@@ -197,8 +201,39 @@ sched_delete(pbs_sched *psched)
 int
 action_sched_port(attribute *pattr, void *pobj, int actmode)
 {
-	if (actmode == ATR_ACTION_ALTER) {
-		/*TODO*/
+	pbs_sched *psched;
+	psched = (pbs_sched *) pobj;
+
+	if (actmode == ATR_ACTION_ALTER || actmode == ATR_ACTION_RECOV) {
+		if ( dflt_scheduler && psched != dflt_scheduler) {
+			psched->pbs_scheduler_port = pattr->at_val.at_long;
+		}
+	}
+	return PBSE_NONE;
+}
+
+/**
+ * @brief
+ * 		action routine for the sched's "sched_host" attribute
+ *
+ * @param[in]	pattr	-	attribute being set
+ * @param[in]	pobj	-	Object on which attribute is being set
+ * @param[in]	actmode	-	the mode of setting, recovery or just alter
+ *
+ * @return	error code
+ * @retval	PBSE_NONE	-	Success
+ * @retval	!PBSE_NONE	-	Failure
+ *
+ */
+int
+action_sched_host(attribute *pattr, void *pobj, int actmode)
+{
+	pbs_sched *psched;
+	psched = (pbs_sched *) pobj;
+
+	if (actmode == ATR_ACTION_ALTER || actmode == ATR_ACTION_RECOV) {
+		if ( dflt_scheduler && psched != dflt_scheduler)
+			psched->pbs_scheduler_addr = get_hostaddr(pattr->at_val.at_str);
 	}
 	return PBSE_NONE;
 }
@@ -220,6 +255,12 @@ int
 action_sched_priv(attribute *pattr, void *pobj, int actmode)
 {
 	pbs_sched* psched;
+
+	psched = (pbs_sched *) pobj;
+
+	if (pobj == dflt_scheduler)
+		return PBSE_OP_NOT_PERMITTED;
+
 	if (actmode == ATR_ACTION_NEW || actmode == ATR_ACTION_ALTER) {
 		psched = (pbs_sched*) GET_NEXT(svr_allscheds);
 		while (psched != (pbs_sched*) 0) {
@@ -234,6 +275,7 @@ action_sched_priv(attribute *pattr, void *pobj, int actmode)
 			psched = (pbs_sched*) GET_NEXT(psched->sc_link);
 		}
 	}
+	set_scheduler_flag(SCH_CONFIGURE, psched);
 	return PBSE_NONE;
 }
 
@@ -254,6 +296,11 @@ int
 action_sched_log(attribute *pattr, void *pobj, int actmode)
 {
 	pbs_sched* psched;
+	psched = (pbs_sched *) pobj;
+
+	if (pobj == dflt_scheduler)
+		return PBSE_OP_NOT_PERMITTED;
+
 	if (actmode == ATR_ACTION_NEW || actmode == ATR_ACTION_ALTER) {
 		psched = (pbs_sched*) GET_NEXT(svr_allscheds);
 		while (psched != (pbs_sched*) 0) {
@@ -268,6 +315,7 @@ action_sched_log(attribute *pattr, void *pobj, int actmode)
 			psched = (pbs_sched*) GET_NEXT(psched->sc_link);
 		}
 	}
+	set_scheduler_flag(SCH_CONFIGURE, psched);
 	return PBSE_NONE;
 }
 
@@ -287,8 +335,10 @@ action_sched_log(attribute *pattr, void *pobj, int actmode)
 int
 action_sched_iteration(attribute *pattr, void *pobj, int actmode)
 {
-	if (actmode == ATR_ACTION_ALTER) {
-		/*TODO*/
+	if (pobj == dflt_scheduler) {
+			server.sv_attr[SRV_ATR_scheduler_iteration].at_val.at_long = pattr->at_val.at_long;
+			server.sv_attr[SRV_ATR_scheduler_iteration].at_flags |= ATR_VFLAG_MODCACHE;
+			svr_save_db(&server, SVR_SAVE_QUICK);
 	}
 	return PBSE_NONE;
 }
@@ -332,13 +382,28 @@ int
 poke_scheduler(attribute *pattr, void *pobj, int actmode)
 {
 	if (pobj == &server || pobj == dflt_scheduler) {
+		if (pobj == &server) {
+			/* set this attribute on main scheduler */
+			if (dflt_scheduler) {
+				dflt_scheduler->sch_attr[SCHED_ATR_scheduling].at_val.at_long = pattr->at_val.at_long;
+				dflt_scheduler->sch_attr[SCHED_ATR_scheduling].at_flags |=
+						ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+				(void)sched_save_db(dflt_scheduler, SVR_SAVE_FULL);
+			}
+		} else {
+			server.sv_attr[SRV_ATR_scheduling].at_val.at_long = pattr->at_val.at_long;
+			server.sv_attr[SRV_ATR_scheduling].at_flags |= ATR_VFLAG_MODCACHE;
+			svr_save_db(&server, SVR_SAVE_QUICK);
+		}
 		if (actmode == ATR_ACTION_ALTER) {
 			if (pattr->at_val.at_long)
-				set_scheduler_flag(SCH_SCHEDULE_CMD);
+				set_scheduler_flag(SCH_SCHEDULE_CMD, dflt_scheduler);
 		}
-		/*TODO also set this attribute on main scheduler */
 	} else {
-		/*TODO need add the code for other scheduler apart from main scheduler. */
+		if (actmode == ATR_ACTION_ALTER) {
+			if (pattr->at_val.at_long)
+				set_scheduler_flag(SCH_SCHEDULE_CMD, (pbs_sched *)pobj);
+	}
 	}
 	return PBSE_NONE;
 }
@@ -359,6 +424,19 @@ set_sched_default(pbs_sched* psched)
 		psched->sch_attr[(int) SCHED_ATR_sched_cycle_len].at_flags =
 				ATR_VFLAG_DEFLT | ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
 	}
+	if ((psched->sch_attr[(int) SCHED_ATR_schediteration].at_flags & ATR_VFLAG_SET) == 0) {
+		psched->sch_attr[(int) SCHED_ATR_schediteration].at_val.at_long = PBS_SCHEDULE_CYCLE;
+		psched->sch_attr[(int) SCHED_ATR_schediteration].at_flags =
+				ATR_VFLAG_DEFLT | ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+	}
+	if ((psched->sch_attr[(int) SCHED_ATR_scheduling].at_flags & ATR_VFLAG_SET) == 0) {
+		if (psched != dflt_scheduler)
+			psched->sch_attr[(int) SCHED_ATR_scheduling].at_val.at_long = 0;
+		else
+			psched->sch_attr[(int) SCHED_ATR_scheduling].at_val.at_long = 1;
+		psched->sch_attr[(int) SCHED_ATR_scheduling].at_flags =
+				ATR_VFLAG_DEFLT | ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+	}
 	if ((psched->sch_attr[(int) SCHED_ATR_sched_state].at_flags & ATR_VFLAG_SET) == 0) {
 		psched->sch_attr[(int) SCHED_ATR_sched_state].at_val.at_str = malloc(SC_STATUS_LEN + 1);
 		if (psched->sch_attr[(int) SCHED_ATR_sched_state].at_val.at_str == NULL)
@@ -374,5 +452,89 @@ set_sched_default(pbs_sched* psched)
 		}
 
 	}
+	if ((psched->sch_attr[(int) SCHED_ATR_sched_priv].at_flags & ATR_VFLAG_SET) == 0) {
+		psched->sch_attr[(int) SCHED_ATR_sched_priv].at_val.at_str = malloc(MAXPATHLEN + 1);
+		if (psched->sch_attr[(int) SCHED_ATR_sched_priv].at_val.at_str == NULL)
+			return;
+		else {
+			if (psched != dflt_scheduler)
+				(void) snprintf(psched->sch_attr[(int) SCHED_ATR_sched_priv].at_val.at_str, MAXPATHLEN, "%s/sched_priv_%s",
+						pbs_conf.pbs_home_path, psched->sc_name);
+			else
+				(void) snprintf(psched->sch_attr[(int) SCHED_ATR_sched_priv].at_val.at_str, MAXPATHLEN, "%s/sched_priv",
+						pbs_conf.pbs_home_path);
+			psched->sch_attr[(int) SCHED_ATR_sched_priv].at_flags =
+			ATR_VFLAG_DEFLT | ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+		}
+
+	}
+	if ((psched->sch_attr[(int) SCHED_ATR_sched_log].at_flags & ATR_VFLAG_SET) == 0) {
+		psched->sch_attr[(int) SCHED_ATR_sched_log].at_val.at_str = malloc(MAXPATHLEN + 1);
+		if (psched->sch_attr[(int) SCHED_ATR_sched_log].at_val.at_str == NULL)
+			return;
+		else {
+			if (psched != dflt_scheduler)
+				(void) snprintf(psched->sch_attr[(int) SCHED_ATR_sched_log].at_val.at_str, MAXPATHLEN, "%s/sched_logs_%s",
+						pbs_conf.pbs_home_path, psched->sc_name);
+			else
+				(void) snprintf(psched->sch_attr[(int) SCHED_ATR_sched_log].at_val.at_str, MAXPATHLEN, "%s/sched_logs",
+						pbs_conf.pbs_home_path);
+			psched->sch_attr[(int) SCHED_ATR_sched_log].at_flags =
+			ATR_VFLAG_DEFLT | ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+		}
+
+	}
 }
 
+
+/**
+ * @brief
+ * 		action routine for the scheduler's partition attribute
+ *
+ * @param[in]	pattr	-	pointer to attribute structure
+ * @param[in]	pobj	-	not used
+ * @param[in]	actmode	-	action mode
+ *
+ *
+ * @return	error code
+ * @retval	PBSE_NONE	-	Success
+ * @retval	!PBSE_NONE	-	Failure
+ *
+ */
+
+int
+action_sched_partition(attribute *pattr, void *pobj, int actmode)
+{
+	pbs_sched* psched;
+	pbs_sched* pin_sched;
+	attribute *part_attr;
+	int i;
+	int k;
+	if (pobj == dflt_scheduler)
+		return PBSE_OP_NOT_PERMITTED;
+	pin_sched = (pbs_sched*) pobj;
+
+	for (i=0; i < pattr->at_val.at_arst->as_usedptr; ++i) {
+		if (pattr->at_val.at_arst->as_string[i] == NULL)
+			continue;
+		psched = (pbs_sched*) GET_NEXT(svr_allscheds);
+		while (psched) {
+			if (psched == pobj) {
+				psched = (pbs_sched*) GET_NEXT(psched->sc_link);
+				continue;
+			}
+			part_attr = &(psched->sch_attr[SCHED_ATR_partition]);
+			if (part_attr->at_flags & ATR_VFLAG_SET) {
+				for (k = 0; k < part_attr->at_val.at_arst->as_usedptr; k++) {
+					if ((part_attr->at_val.at_arst->as_string[k] != NULL)
+							&& (!strcmp(pattr->at_val.at_arst->as_string[i],
+									part_attr->at_val.at_arst->as_string[k])))
+						return PBSE_PART_ALREADY_USED;
+				}
+			}
+			psched = (pbs_sched*) GET_NEXT(psched->sc_link);
+		}
+	}
+	set_scheduler_flag(SCH_CONFIGURE, pin_sched);
+	return PBSE_NONE;
+}

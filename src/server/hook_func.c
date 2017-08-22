@@ -4306,7 +4306,7 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 	*num_run += 1;
 	if (pbs_python_get_scheduler_restart_cycle_flag() == TRUE) {
 
-		set_scheduler_flag(SCH_SCHEDULE_RESTART_CYCLE);
+		set_scheduler_flag(SCH_SCHEDULE_RESTART_CYCLE, dflt_scheduler);
 		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
 			LOG_INFO, phook->hook_name,
 			"requested for scheduler to restart cycle");

@@ -88,7 +88,6 @@ extern int   comp_resc_lt;
 extern char *resc_in_err;
 
 static resource_def *pseldef = NULL;
-extern int scheduler_sock;
 extern int scheduler_jobs_stat;
 extern int resc_access_perm;
 extern char *msg_nostf_resv;
@@ -198,7 +197,7 @@ req_modifyjob(struct batch_request *preq)
 	}
 
 	/* allow scheduler to modify job */
-	if (preq->rq_conn != scheduler_sock) {
+	if (find_sched_from_sock(preq->rq_conn) == NULL) {
 		/* provisioning job is not allowed to be modified */
 		if ((pjob->ji_qs.ji_state == JOB_STATE_RUNNING) &&
 			(pjob->ji_qs.ji_substate == JOB_SUBSTATE_PROVISION)) {
@@ -243,7 +242,7 @@ req_modifyjob(struct batch_request *preq)
 		 * If the scheduler itself sends a modify job request,
 		 * no need to delay the job until next cycle.
 		 */
-		if ((preq->rq_conn != scheduler_sock) && (scheduler_jobs_stat) && (job_attr_def[i].at_flags & ATR_DFLAG_SCGALT))
+		if ((find_sched_from_sock(preq->rq_conn) == NULL) && (scheduler_jobs_stat) && (job_attr_def[i].at_flags & ATR_DFLAG_SCGALT))
 			add_to_am_list = 1;
 
 		/* Is the attribute modifiable in RUN state ? */
@@ -888,7 +887,7 @@ req_modifyReservation(struct batch_request *preq)
 		rc = modify_resv_attr(presv, psatl, preq->rq_perm, &bad);
 
 	if (send_to_scheduler)
-		set_scheduler_flag(SCH_SCHEDULE_RESV_RECONFIRM);
+		set_scheduler_flag(SCH_SCHEDULE_RESV_RECONFIRM, dflt_scheduler);
 
 	(void)sprintf(log_buffer, "Attempting to modify reservation");
 	if (presv->ri_alter_flags & RESV_START_TIME_MODIFIED) {

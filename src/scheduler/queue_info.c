@@ -86,7 +86,7 @@
 #include "node_partition.h"
 #include "limits_if.h"
 #include "pbs_internal.h"
-
+#include "fifo.h"
 
 /**
  * @brief
@@ -149,7 +149,7 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 		return NULL;
 
 	/* get queue info from PBS server */
-	if ((queues = pbs_statque(pbs_sd, NULL, NULL, NULL)) == NULL) {
+	if ((queues = pbs_statque(pbs_sd, NULL, NULL, partitions)) == NULL) {
 		errmsg = pbs_geterrmsg(pbs_sd);
 		if (errmsg == NULL)
 			errmsg = "";

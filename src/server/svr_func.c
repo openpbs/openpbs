@@ -194,8 +194,6 @@
 
 extern struct python_interpreter_data  svr_interp_data;
 
-
-extern int    scheduler_sock;
 extern time_t time_now;
 extern char  *resc_in_err;
 extern char  *msg_daemonname;
@@ -315,7 +313,7 @@ encode_svrstate(attribute *pattr, pbs_list_head *phead, char *atname, char *rsna
 	if (pattr->at_val.at_long == SV_STATE_RUN) {
 		if (server.sv_attr[(int)SRV_ATR_scheduling].at_val.at_long == 0)
 			psname = svr_idle;
-		else if (scheduler_sock != -1)
+		else if (dflt_scheduler->scheduler_sock != -1)
 			psname = svr_sched;
 	}
 
@@ -802,9 +800,9 @@ set_rpp_highwater(attribute *pattr, void *pobj, int actmode)
  * @param[in]	s	-	internal socket used to communicate with the scheduler
  */
 void
-set_sched_sock(int s)
+set_sched_sock(int s, pbs_sched *psched)
 {
-	scheduler_sock = s;
+	psched->scheduler_sock = s;
 	server.sv_attr[(int)SRV_ATR_State].at_flags |= ATR_VFLAG_MODCACHE;
 }
 
@@ -926,6 +924,31 @@ ssignon_transition_okay(attribute *pattr, void *pobject, int actmode)
 
 	return (0);
 
+}
+
+/**
+ * @brief
+ * 		action_svr_iteration - the "action" routine for the server
+ *		scheduler_iteration attribute
+ * @param[in]	pattr	-	pointer to attribute structure
+ * @param[in]	pobject -	pointer to some parent object.
+ * @param[in]	actmode	-	the action to take (e.g. ATR_ACTION_ALTER)
+ *
+ * @return	int
+ * @retval	0	: success
+ * @retval	!0	: PBSE Error Code
+ */
+int
+action_svr_iteration(attribute *pattr, void *pobj, int mode)
+{
+	/* set this attribute on main scheduler */
+	if (dflt_scheduler) {
+		dflt_scheduler->sch_attr[SCHED_ATR_schediteration].at_val.at_long = pattr->at_val.at_long;
+		dflt_scheduler->sch_attr[SCHED_ATR_schediteration].at_flags |=
+				ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+		(void)sched_save_db(dflt_scheduler, SVR_SAVE_FULL);
+	}
+	return PBSE_NONE;
 }
 
 /**
@@ -1590,7 +1613,7 @@ eligibletime_action(attribute *pattr, void *pobject, int actmode)
 		/* if scheduling is true, need to run the scheduling cycle */
 		/* so that, accrue type is determined for cases */
 		if (server.sv_attr[SRV_ATR_scheduling].at_val.at_long)
-			set_scheduler_flag(SCH_SCHEDULE_ETE_ON);
+			set_scheduler_flag(SCH_SCHEDULE_ETE_ON, NULL);
 
 	}
 

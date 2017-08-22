@@ -141,6 +141,7 @@
 #include "fairshare.h"
 #include "check.h"
 #include "pbs_sched.h"
+#include "fifo.h"
 #ifdef NAS
 #include "site_code.h"
 #endif
@@ -172,7 +173,7 @@ query_server(status *pol, int pbs_sd)
 {
 	struct batch_status *server;	/* info about the server */
 	struct batch_status *sched;	/* info about the server's scheduler object */
-	struct batch_status *bs_resvs;	/* batch status of the reservations */
+	struct batch_status *bs_resvs = NULL;	/* batch status of the reservations */
 	server_info *sinfo;		/* scheduler internal form of server info */
 	queue_info **qinfo;		/* array of queues on the server */
 	counts *cts;			/* used to count running per user/grp */
@@ -245,7 +246,8 @@ query_server(status *pol, int pbs_sd)
 	 * will populate internal data structures based on this batch status
 	 * after all other data is queried
 	 */
-	bs_resvs = stat_resvs(pbs_sd);
+	if (dflt_sched)
+		bs_resvs = stat_resvs(pbs_sd);
 
 	/* get the nodes, if any - NOTE: will set sinfo -> num_nodes */
 	if ((sinfo->nodes = query_nodes(pbs_sd, sinfo)) == NULL) {

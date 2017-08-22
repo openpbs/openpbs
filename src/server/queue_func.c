@@ -358,6 +358,7 @@ queuestart_action(attribute *pattr, void *pobject, int actmode)
 	long	oldtype;
 	long 	newaccruetype = -1;	/* if determining accrue type */
 	pbs_queue *pque = (pbs_queue *) pobject;
+	pbs_sched *psched;
 
 	if ((pque != NULL) && (server.sv_attr[SRV_ATR_EligibleTimeEnable].at_val.at_long == 1)) {
 
@@ -402,8 +403,14 @@ queuestart_action(attribute *pattr, void *pobject, int actmode)
 			}
 
 			/* if scheduling = True, notify scheduler to start */
-			if (server.sv_attr[SRV_ATR_scheduling].at_val.at_long)
-				set_scheduler_flag(SCH_SCHEDULE_STARTQ);
+			if (server.sv_attr[SRV_ATR_scheduling].at_val.at_long) {
+				if (find_assoc_sched_pq(pque, &psched))
+					set_scheduler_flag(SCH_SCHEDULE_STARTQ, psched);
+				else {
+					sprintf(log_buffer, "No scheduler associated with the queue %s", pque->qu_qs.qu_name);
+					log_err(-1, __func__, log_buffer);
+				}
+			}
 		}
 	}
 

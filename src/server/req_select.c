@@ -91,7 +91,6 @@ extern pbs_list_head svr_alljobs;
 extern time_t	 time_now;
 extern char	 statechars[];
 extern long svr_history_enable;
-extern int scheduler_sock;
 extern int scheduler_jobs_stat;
 
 /* Private Functions  */
@@ -367,7 +366,8 @@ req_selectjobs(struct batch_request *preq)
 	 * approach to query for jobs, e.g., by issuing a single pbs_statjob()
 	 * instead of a per-queue selstat()
 	 */
-	if ((scheduler_sock != -1) && (preq->rq_conn == scheduler_sock) && (!scheduler_jobs_stat)) {
+	if ((find_sched_from_sock(preq->rq_conn) != NULL) && (!scheduler_jobs_stat)) {
+		//if ((dflt_scheduler->scheduler_sock != -1) && (preq->rq_conn == dflt_scheduler->scheduler_sock) && (!scheduler_jobs_stat)) {
 		scheduler_jobs_stat = 1;
 	}
 

@@ -57,5 +57,6 @@
 #define SCH_SCHEDULE_RESV_RECONFIRM 16		/* Reconfirm a reservation */
 #define SCH_SCHEDULE_RESTART_CYCLE 17		/* Restart a scheduling cycle */
 
+
 extern int schedule(int cmd, int sd, char *runjid);
-extern void set_scheduler_flag(int);
+

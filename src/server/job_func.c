@@ -155,7 +155,6 @@ static int  set_resvAttrs_off_jobAttrs(resc_resv*, job*);
 /* Global Data items */
 #ifndef PBS_MOM
 extern struct server   server;
-extern int scheduler_sock;
 #endif	/* PBS_MOM */
 extern char *msg_abt_err;
 extern char *path_jobs;
@@ -520,7 +519,7 @@ job_free(job *pj)
 					 * If so, then reject the request.
 					 */
 					if ((tbr->rq_orgconn != -1) &&
-						(tbr->rq_orgconn == scheduler_sock)) {
+						(find_sched_from_sock(tbr->rq_orgconn) != NULL)) {
 						tbr->rq_conn = tbr->rq_orgconn;
 						req_reject(PBSE_HISTJOBID, 0, tbr);
 					}
@@ -1692,7 +1691,7 @@ resv_purge(resc_resv *presv)
 
 	/*Release any nodes that were associated to this reservation*/
 	free_resvNodes(presv);
-	set_scheduler_flag(SCH_SCHEDULE_TERM);
+	set_scheduler_flag(SCH_SCHEDULE_TERM, dflt_scheduler);
 
 	strcpy(dbresv.ri_resvid, presv->ri_qs.ri_resvID);
 	obj.pbs_db_obj_type = PBS_DB_RESV;

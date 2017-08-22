@@ -624,6 +624,7 @@ void
 rel_resc(job *pjob)
 {
 	conn_t *conn = NULL;
+	pbs_sched *psched;
 
 	free_nodes(pjob);
 
@@ -650,7 +651,12 @@ rel_resc(job *pjob)
 
 	/* Mark that scheduler should be called */
 
-	set_scheduler_flag(SCH_SCHEDULE_TERM);
+	if (find_assoc_sched_pj(pjob, &psched))
+		set_scheduler_flag(SCH_SCHEDULE_TERM, psched);
+	else {
+		sprintf(log_buffer, "Unable to reach scheduler associated with job %s", pjob->ji_qs.ji_jobid);
+		log_err(-1, __func__, log_buffer);
+	}
 }
 /**
  * @brief
