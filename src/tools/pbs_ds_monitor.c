@@ -287,6 +287,12 @@ lock_out(int fds, int op)
  *  	In case of a failover environment, the whole operation is retried
  *  	several times in a loop.
  *
+ * @param[in]  lockfile         - Path of db_lock file.
+ * @param[out] reason           - Reason for failure, if not able to accquire lock
+ * @param[in]  reasonlen        - reason buffer legnth.
+ * @param[out] is_lock_hld_by_thishost  - This flag is set if the lock is held by the host
+ *                                          requesting accquire_lock in check_mode.
+ *
  * @return	File handle of the open and locked file
  * @retval	INVALID_HANDLE_VALUE	: Function failed to acquire lock
  * @retval	INVALID_HANDLE_VALUE	: Function succeeded (file handle returned)
@@ -294,7 +300,7 @@ lock_out(int fds, int op)
  * @par MT-safe:	Yes
  */
 HANDLE
-acquire_lock(char *lockfile, char *reason, int reasonlen)
+acquire_lock(char *lockfile, char *reason, int reasonlen, int *is_lock_hld_by_thishost)
 {
 	HANDLE hFile = INVALID_HANDLE_VALUE;
 	int i, j;
@@ -341,6 +347,12 @@ acquire_lock(char *lockfile, char *reason, int reasonlen)
 			} else {
 				snprintf(reason, reasonlen, "Lock seems to be held by %s", who);
 			}
+			if (is_lock_hld_by_thishost != NULL) {
+				if (strcmp(thishost, who) == 0)
+					*is_lock_hld_by_thishost = 1;
+				else
+					*is_lock_hld_by_thishost = 0;
+			}
 		}
 	} else
 		snprintf(reason, reasonlen, "Could not access lockfile, errno=%d", GetLastError());
@@ -376,12 +388,13 @@ acquire_lock(char *lockfile, char *reason, int reasonlen)
 int
 win_db_monitor(char *mode)
 {
-	int  rc;
+	int rc;
 	BOOL fSuccess = FALSE;
 	HANDLE hFile;
 	char lockfile[MAXPATHLEN + 1];
 	char cmd_line[2*MAXPATHLEN + 1];
 	char result[RES_BUF_SIZE];
+	int is_lock_local = 0;
 	pio_handles pio;
 	proc_ctrl proc_info;
 	HANDLE hOut, hErr;
@@ -394,8 +407,10 @@ win_db_monitor(char *mode)
 	 * Return success if able to lock, else return failure.
 	 */
 	if (strcmp(mode, "check") == 0) {
-		hFile = acquire_lock(lockfile, result, sizeof(result));
+		hFile = acquire_lock(lockfile, result, sizeof(result), &is_lock_local);
 		if (hFile == INVALID_HANDLE_VALUE) {
+			if (is_lock_local)
+				return 0; /* Since lock is already held by this host, return success */
 			fprintf(stderr, "Failed to acquire lock on %s. %s\n", lockfile, result);
 			return 1;
 		}
@@ -527,7 +542,7 @@ win_db_monitor_child()
 	clear_stop_db_file();
 
 	snprintf(lockfile, MAXPATHLEN, "%s\\datastore\\pbs_dblock", pbs_conf.pbs_home_path);
-	hFile = acquire_lock(lockfile, reason, sizeof(reason));
+	hFile = acquire_lock(lockfile, reason, sizeof(reason), NULL);
 	if (hFile == INVALID_HANDLE_VALUE) {
 		printf("%s", reason);
 		fflush(stdout);
@@ -591,9 +606,11 @@ win_db_monitor_child()
  *  	In case of a failover environment, the whole operation is retried
  *  	several times in a loop.
  *
- * @param[in]	lockfile	-	lockfile used to acquire_lock
- * @param[out]	reason	-	failure reason.
- * @param[in]	reasonlen	-	length of the reason string.
+ * @param[in]  lockfile         - Path of db_lock file.
+ * @param[out] reason           - Reason for failure, if not able to accquire lock
+ * @param[in]  reasonlen        - reason buffer legnth.
+ * @param[out] is_lock_hld_by_thishost  - This flag is set if the lock is held by the host
+ *                                         requesting accquire_lock in check_mode.
  *
  * @return	File descriptor of the open and locked file
  * @retval	-1	: Function failed to acquire lock
@@ -602,7 +619,7 @@ win_db_monitor_child()
  * @par MT-safe:	Yes
  */
 int
-acquire_lock(char *lockfile, char *reason, int reasonlen)
+acquire_lock(char *lockfile, char *reason, int reasonlen, int *is_lock_hld_by_thishost)
 {
 	int fd;
 	struct stat st;
@@ -694,9 +711,17 @@ again:
 		p = strchr(who, ':');
 		if (p) {
 			*p = '\0';
-			snprintf(reason, reasonlen, "Lock seems to be held by pid: %s running on host: %s", (p + 1), who);
+			snprintf(reason, reasonlen,
+					"Lock seems to be held by pid: %s running on host: %s",
+					(p + 1), who);
 		} else {
 			snprintf(reason, reasonlen, "Lock seems to be held by %s", who);
+		}
+		if (is_lock_hld_by_thishost != NULL) {
+			if (strcmp(thishost, who) == 0)
+				*is_lock_hld_by_thishost = 1;
+			else
+				*is_lock_hld_by_thishost = 0;
 		}
 	}
 
@@ -739,13 +764,14 @@ again:
 int
 unix_db_monitor(char *mode)
 {
-	int  fd;
-	int  rc;
-	int  i;
+	int fd;
+	int rc;
+	int i;
 	pid_t dbpid;
 	char lockfile[MAXPATHLEN + 1];
 	int pipefd[2];
 	int res;
+	int is_lock_local = 0;
 	char reason[RES_BUF_SIZE];
 
 	reason[0] = '\0';
@@ -797,7 +823,14 @@ unix_db_monitor(char *mode)
 	/* Protect from being killed by kernel */
 	daemon_protect(0, PBS_DAEMON_PROTECT_ON);
 
-	if ((fd = acquire_lock(lockfile, reason, sizeof(reason))) == -1) {
+	if ((fd = acquire_lock(lockfile, reason, sizeof(reason), &is_lock_local)) == -1) {
+		if (is_lock_local && strcmp(mode, "check") == 0) {
+			/* write success to parent since lock is already held by the localhost */
+			res = 0;
+			write(pipefd[1], &res, sizeof(int));
+			close(pipefd[1]);
+			return 0;
+		}
 		res = 1;
 		write(pipefd[1], &res, sizeof(int));
 		write(pipefd[1], reason, sizeof(reason));

@@ -609,13 +609,17 @@ pbs_dataservice_control(char *cmd, char **errmsg)
  * @retval      -1  - Error in routine
  * @retval       0  - Data service running on local host
  * @retval       1  - Data service not running
- * @retval	 2  - Data service running on another host
+ * @retval       2  - Data service running on another host
  *
  */
 int
 pbs_status_db(char **errmsg)
 {
-	return (pbs_dataservice_control(PBS_DB_CONTROL_STATUS, errmsg));
+    int rc = pbs_dataservice_control(PBS_DB_CONTROL_STATUS, errmsg);
+    if (!(rc == 0 || rc == 1 || rc == 2))
+        rc = -1;
+
+    return rc;
 }
 
 /**

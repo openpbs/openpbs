@@ -2834,6 +2834,9 @@ get_db_connect_information()
 			return NULL;
 		}
 
+		snprintf(log_buffer, sizeof(log_buffer), "pbs_status_db exit code %d", rc);
+		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, log_buffer);
+
 		if (last_rc != rc) {
 			/*
 			 * we might have failed trying to start database several times locally
@@ -2859,7 +2862,7 @@ get_db_connect_information()
 					lconn = setup_db_connection(pbs_conf.pbs_primary, PBS_DB_CNT_TIMEOUT_INFINITE, 1);
 
 				if (rc == 2) /* db could be running on secondary, don't start, try connecting to secondary's */
-					lconn = setup_db_connection(pbs_conf.pbs_secondary, PBS_DB_CNT_TIMEOUT_INFINITE, 0);
+					lconn = setup_db_connection(pbs_conf.pbs_secondary, PBS_DB_CNT_TIMEOUT_NORMAL, 0);
 
 			} else {
 				/* Failover is configured and this is active secondary */
@@ -2867,7 +2870,7 @@ get_db_connect_information()
 					lconn = setup_db_connection(pbs_conf.pbs_secondary, PBS_DB_CNT_TIMEOUT_INFINITE, 1);
 
 				if (rc == 2) /* db could be running on primary, don't start, try connecting to primary's */
-					lconn = setup_db_connection(pbs_conf.pbs_primary, PBS_DB_CNT_TIMEOUT_INFINITE, 0);
+					lconn = setup_db_connection(pbs_conf.pbs_primary, PBS_DB_CNT_TIMEOUT_NORMAL, 0);
 			}
 		} else {
 			/*
@@ -2939,7 +2942,6 @@ try_connect_database(pbs_db_conn_t *conn)
 {
 	int i;
 	int failcode = 0;
-	int throw_err = 1;
 
 	if (conn->conn_state == PBS_DB_CONNECT_STATE_CONNECTED)
 		return; /* already connected */
@@ -2947,6 +2949,10 @@ try_connect_database(pbs_db_conn_t *conn)
 	if (conn->conn_state == PBS_DB_CONNECT_STATE_CONNECTING &&
 		(time(0) - conn->conn_connect_time > conn->conn_timeout) &&
 		conn->conn_timeout != 0) { /* 0 is infinite */
+		snprintf(log_buffer, sizeof(log_buffer),
+			"Dataservice connection failed due to timeout");
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, msg_daemonname,
+			log_buffer);
 		conn->conn_state = PBS_DB_CONNECT_STATE_FAILED; /* failed connection due to time out */
 	}
 
@@ -2984,31 +2990,9 @@ try_connect_database(pbs_db_conn_t *conn)
 	if (conn->conn_state == PBS_DB_CONNECT_STATE_FAILED && failcode != PBS_DB_STILL_STARTING) {
 		db_oper_failed_times++;
 		get_db_errmsg(failcode, &db_err_msg);
-
-		if (!pbs_conf.pbs_data_service_host && pbs_conf.pbs_primary) {
-			/* its a failover configuration without explicit database host name */
-			if ((pbs_failover_active && strcmp(conn->conn_host, pbs_conf.pbs_primary) == 0) ||
-				(!pbs_failover_active && strcmp(conn->conn_host, pbs_conf.pbs_primary) != 0)) {
-
-				/*
-				 * Secondary active and connecting to primary database or
-				 * primary active and connecting to secondary database
-				 * In these cases it is done only to check whether the database is really up
-				 * or not, so do not print "connection failed" messages
-				 */
-				throw_err = 0;
-			}
-		}
-
-		if (throw_err == 1) {
-			log_set_dberr(db_err_msg, conn->conn_db_err);
-			log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE,
-				PBS_EVENTCLASS_SERVER, LOG_CRIT,
-				msg_daemonname, log_buffer);
-		}
-		if (failcode == PBS_DB_CONNREFUSED) {
-			conn->conn_db_state = PBS_DB_DOWN; /* allow to retry to start db again */
-		}
+		log_set_dberr(db_err_msg, conn->conn_db_err);
+		log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_CRIT, msg_daemonname, log_buffer);
+		conn->conn_db_state = PBS_DB_DOWN; /* allow to retry to start db again */
 	} else if (conn->conn_state == PBS_DB_CONNECT_STATE_CONNECTED) {
 		sprintf(log_buffer, "connected to PBS dataservice@%s", conn->conn_host);
 		log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE,
@@ -3121,14 +3105,16 @@ setup_db_connection(char *host, int timeout, int have_db_control)
 		get_db_errmsg(failcode, &db_err_msg);
 		if(conn)
 			log_set_dberr(db_err_msg, conn->conn_db_err);
-		log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE,
-			PBS_EVENTCLASS_SERVER, LOG_CRIT,
-			msg_daemonname, log_buffer);
-		fprintf(stderr, "%s\n", db_err_msg);
-		if (strlen(errmsg) > 0) {
-			log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE,
-				PBS_EVENTCLASS_SERVER, LOG_CRIT,
-				msg_daemonname, errmsg);
+		log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_CRIT, msg_daemonname, log_buffer);
+
+		if (db_err_msg && strlen(db_err_msg) > 0) {
+			log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_CRIT, msg_daemonname, db_err_msg);
+			fprintf(stderr, "%s\n", db_err_msg);
+		}
+
+		if (errmsg && strlen(errmsg) > 0) {
+			log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
+					LOG_CRIT, msg_daemonname, errmsg);
 			fprintf(stderr, "%s\n", errmsg);
 		}
 		return NULL;
