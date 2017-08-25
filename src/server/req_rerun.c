@@ -437,7 +437,11 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 		req_reject(PBSE_BADSTATE, 0, preq);
 		return;
 	}
-	if ((pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING) && (force==0)) {
+	/* a node failure tolerant job could be waiting for healthy nodes
+         * and it would have a JOB_SUBSTATE_PRERUN substate.
+         */
+	if ((pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING) &&
+            (pjob->ji_qs.ji_substate != JOB_SUBSTATE_PRERUN) && (force == 0)) {
 		req_reject(PBSE_BADSTATE, 0, preq);
 		return;
 	}

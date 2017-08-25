@@ -682,6 +682,10 @@ class HookUtils(object):
                 'name': 'execjob_attach',
                 'handler': self._execjob_attach_handler
             }
+            self.hook_events[pbs.EXECJOB_RESIZE] = {
+                'name': 'execjob_resize',
+                'handler': self._execjob_resize_handler
+            }
             self.hook_events[pbs.MOM_EVENTS] = {
                 'name': 'mom_events',
                 'handler': None
@@ -750,8 +754,8 @@ class HookUtils(object):
         # Create the cgroup(s) for the job
         cgroup.create_job(event.job.id, node)
         # Configure the new cgroup
-        cgroup.configure_job(event.job.id,
-                             jobutil.assigned_resources, node, cgroup)
+        cgroup.configure_job(event.job.id, jobutil.assigned_resources,
+                             node, cgroup, event.type)
         # Initialize resource usage for the job
         cgroup.update_job_usage(event.job.id, event.job.resources_used)
         # Write out the assigned resources
@@ -971,6 +975,48 @@ class HookUtils(object):
         cgroup.add_pids(event.pid, jobutil.job.id)
         return True
 
+    def _execjob_resize_handler(self, event, cgroup, jobutil):
+        """
+        Handler for execjob_resize events.
+        """
+        pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
+        # Instantiate the NodeConfig class for get_memory_on_node and
+        # get_vmem_on node
+        node = NodeConfig(cgroup.cfg)
+        pbs.logmsg(pbs.EVENT_DEBUG4, '%s: NodeConfig class instantiated' %
+                   caller_name())
+        pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Host assigned job resources: %s' %
+                   (caller_name(), jobutil.assigned_resources))
+        # Configure the cgroup
+        cgroup.configure_job(event.job.id, jobutil.assigned_resources,
+                             node, cgroup, event.type)
+        # Write out the assigned resources
+        cgroup.write_cgroup_assigned_resources(event.job.id)
+        # Write out the environment variable for the host (pbs_attach)
+        if 'device_names' in cgroup.assigned_resources:
+            pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Devices: %s' %
+                       (caller_name(),
+                        cgroup.assigned_resources['device_names']))
+            env_list = []
+            if cgroup.assigned_resources['device_names']:
+                mics = []
+                gpus = []
+                for key in cgroup.assigned_resources['device_names']:
+                    if key.startswith('mic'):
+                        mics.append(key[3:])
+                    elif key.startswith('nvidia'):
+                        gpus.append(key[6:])
+                if mics:
+                    env_list.append('OFFLOAD_DEVICES=%s' %
+                                    string.join(mics, ','))
+                if gpus:
+                    # Don't put quotes around the values. ex "0" or "0,1".
+                    # This will cause it to fail.
+                    env_list.append('CUDA_VISIBLE_DEVICES=%s' %
+                                    string.join(gpus, ','))
+            pbs.logmsg(pbs.EVENT_DEBUG4, 'ENV_LIST: %s' % env_list)
+            cgroup.write_job_env_file(event.job.id, env_list)
+        return True
 
 #
 # CLASS JobUtils
@@ -3291,7 +3337,7 @@ class CgroupUtils(object):
                    (total))
         return self._assign_resources(requested, total, socketlist, node)
 
-    def available_node_resources(self, node):
+    def available_node_resources(self, node, exclude_jobid=None):
         """
         Determine which resources are available from the supplied node
         dictionary (i.e. the local node) by removing resources already
@@ -3333,6 +3379,12 @@ class CgroupUtils(object):
                    'Assigned: %s' % (self.assigned_resources))
         # Remove all of the resources that are assigned to other jobs
         for jobid in self.assigned_resources:
+            if exclude_jobid and (jobid == exclude_jobid):
+                pbs.logmsg(pbs.EVENT_DEBUG4,
+                           ('Job %s res not removed from host '
+                            'available res: excluded job') % jobid)
+                continue
+
             # Support suspended jobs on nodes
             if job_is_suspended(jobid):
                 pbs.logmsg(pbs.EVENT_DEBUG4,
@@ -3645,7 +3697,7 @@ class CgroupUtils(object):
             finally:
                 os.umask(old_umask)
 
-    def configure_job(self, jobid, hostresc, node, cgroup):
+    def configure_job(self, jobid, hostresc, node, cgroup, event_type):
         """
         Determine the cgroup limits and configure the cgroups
         """
@@ -3798,7 +3850,13 @@ class CgroupUtils(object):
         # Make two attempts since self.cleanup_orphans may actually fix the
         # problem we see in a first attempt
         for attempt in range(2):
-            avail_resc = self.available_node_resources(node)
+            if event_type == pbs.EXECJOB_RESIZE:
+                # consider current job's resources as being available,
+                # where a subset of them would be re-assigned to the
+                # the same job.
+                avail_resc = self.available_node_resources(node, jobid)
+            else:
+                avail_resc = self.available_node_resources(node)
             assigned = self.assign_job(hostresc, avail_resc, node)
             if not assigned:
                 # No resources were assigned to the job. Most likely cause

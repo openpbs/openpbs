@@ -574,7 +574,8 @@ err:
  *			  This 'vnl' is saved internally inside
  *			  hook_requests_to_server(), to be freed later in
  *			  is_request() under IS_HOOK_ACTION_ACK request
- *			  on an IS_UPDATE_FROM_HOOK acknowledgement.
+ *			  on an IS_UPDATE_FROM_HOOK/IS_UPDATE_FROM_HOOK2
+ *			  acknowledgement.
  * @return	int
  * 		DIS_SUCCESS	- for successful operations.
  * 		!= DIS_SUCCESS	- for failure encountered
@@ -603,6 +604,7 @@ send_hook_vnl(void *vnl)
 	pvna->hva_euser[0] = '\0';
 	pvna->hva_actid = hook_action_id++;
 	pvna->hva_vnl   = the_vnlp;
+	pvna->hva_update_cmd = IS_UPDATE_FROM_HOOK;
 	append_link(&pvnalist, &pvna->hva_link, pvna);
 
 	/* The argument of 1 means to save action to */
@@ -1128,7 +1130,8 @@ is_request(int stream, int version)
 						break;
 					}
 				}
-			} else if (hktype == IS_UPDATE_FROM_HOOK) {
+			} else if ((hktype == IS_UPDATE_FROM_HOOK) ||
+			           (hktype == IS_UPDATE_FROM_HOOK2)) {
 
 				for (phvna = GET_NEXT(svr_hook_vnl_actions);
 					phvna;
@@ -1272,7 +1275,7 @@ hook_requests_to_server(pbs_list_head *plist)
 			continue;
 		}
 
-		ret = is_compose(server_stream, IS_UPDATE_FROM_HOOK);
+		ret = is_compose(server_stream, pvna->hva_update_cmd);
 		if (ret != DIS_SUCCESS)
 			goto hook_requests_to_server_err;
 

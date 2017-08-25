@@ -95,8 +95,9 @@
 #include "mom_hook_func.h"
 #include "placementsets.h"
 #include "pbs_internal.h"
+#include "pbs_reliable.h"
 
-
+#define	PIPE_READ_TIMEOUT	5
 #define EXTRA_ENV_PTRS	       32
 
 /* Global Variables */
@@ -121,11 +122,14 @@ extern	unsigned int	pbs_mom_port;
 extern	time_t		time_now;
 extern	time_t		time_resc_updated;
 extern char		*path_hooks_workdir;
+extern	long		joinjob_alarm_time;
+extern	long		job_launch_delay;
 int              mom_reader_go;		/* see catchinter() & mom_writer() */
 struct var_table vtable;		/* for building up Job's environ */
 
 extern int x11_reader_go;
 extern int enable_exechost2;
+extern char *msg_err_malloc;
 
 int	ptc = -1;	/* fd for master pty */
 #ifndef WIN32
@@ -1549,6 +1553,7 @@ record_finish_exec(int sd)
 		pjob->ji_jsmpipe = -1;
 		(void)close(pjob->ji_mjspipe);
 		pjob->ji_mjspipe = -1;
+
 		if (pjob->ji_jsmpipe2 != -1) {
 			(void)close_conn(pjob->ji_jsmpipe2);
 			pjob->ji_jsmpipe2 = -1;
@@ -1557,6 +1562,26 @@ record_finish_exec(int sd)
 		if (pjob->ji_mjspipe2 != -1) {
 			(void)close(pjob->ji_mjspipe2);
 			pjob->ji_mjspipe2 = -1;
+		}
+
+		if (pjob->ji_child2parent_job_update_pipe != -1) {
+			(void)close_conn(pjob->ji_child2parent_job_update_pipe);
+			pjob->ji_child2parent_job_update_pipe = -1;
+		}
+
+		if (pjob->ji_parent2child_job_update_pipe != -1) {
+			(void)close(pjob->ji_parent2child_job_update_pipe);
+			pjob->ji_parent2child_job_update_pipe = -1;
+		}
+
+		if (pjob->ji_parent2child_job_update_status_pipe != -1) {
+			(void)close(pjob->ji_parent2child_job_update_status_pipe);
+			pjob->ji_parent2child_job_update_status_pipe = -1;
+		}
+
+		if (pjob->ji_parent2child_moms_status_pipe != -1) {
+			(void)close(pjob->ji_parent2child_moms_status_pipe);
+			pjob->ji_parent2child_moms_status_pipe = -1;
 		}
 		(void)sprintf(log_buffer, "start failed, improper sid");
 		exec_bail(pjob, JOB_EXEC_RETRY, log_buffer);
@@ -1578,15 +1603,48 @@ record_finish_exec(int sd)
 	pjob->ji_jsmpipe = -1;
 	(void)close(pjob->ji_mjspipe);
 	pjob->ji_mjspipe = -1;
+	
+	if (pjob->ji_jsmpipe2 != -1) {
+		(void)close_conn(pjob->ji_jsmpipe2);
+		pjob->ji_jsmpipe2 = -1;
+	}
+
+	if (pjob->ji_mjspipe2 != -1) {
+		(void)close(pjob->ji_mjspipe2);
+		pjob->ji_mjspipe2 = -1;
+	}
+
+	if (pjob->ji_child2parent_job_update_pipe != -1) {
+		(void)close_conn(pjob->ji_child2parent_job_update_pipe);
+		pjob->ji_child2parent_job_update_pipe = -1;
+	}
+
+	if (pjob->ji_parent2child_job_update_pipe != -1) {
+		(void)close(pjob->ji_parent2child_job_update_pipe);
+		pjob->ji_parent2child_job_update_pipe = -1;
+	}
+
+	if (pjob->ji_parent2child_job_update_status_pipe != -1) {
+		(void)close(pjob->ji_parent2child_job_update_status_pipe);
+		pjob->ji_parent2child_job_update_status_pipe = -1;
+	}
+
+	if (pjob->ji_parent2child_moms_status_pipe != -1) {
+		(void)close(pjob->ji_parent2child_moms_status_pipe);
+		pjob->ji_parent2child_moms_status_pipe = -1;
+	}
+
 	DBPRT(("%s: read start return %d %d\n", __func__,
 		sjr.sj_code, sjr.sj_session))
 
 #ifndef WIN32
-	/* update pjob with values set from a prologue hook */
-	/* since these are hooks that are executing in a child process */
-	/* and changes inside the child will not be reflected in main */
-	/* mom */
-	if (num_eligible_hooks(HOOK_EVENT_EXECJOB_PROLOGUE) > 0) {
+	/* update pjob with values set from a prologue/launch hook
+	 * since these are hooks that are executing in a child process
+	 * and changes inside the child will not be reflected in main
+	 * mom
+	 */
+	if ((num_eligible_hooks(HOOK_EVENT_EXECJOB_PROLOGUE) > 0) ||
+	    (num_eligible_hooks(HOOK_EVENT_EXECJOB_LAUNCH) > 0)) {
 		char 	hook_outfile[MAXPATHLEN+1];
 		struct	stat stbuf;
 		int	reject_rerunjob = 0;
@@ -1665,7 +1723,7 @@ record_finish_exec(int sd)
 				/* job changes, vnode changes, job actions */
 
 				update_ajob_status_using_cmd(pjob,
-					IS_RESCUSED_FROM_HOOK);
+					IS_RESCUSED_FROM_HOOK, 0);
 
 				/* Push vnl hook changes to server */
 				hook_requests_to_server(&vnl_changes);
@@ -1850,49 +1908,24 @@ generate_pbs_nodefile(job *pjob, char *nodefile, int nodefile_sz,
 
 /**
  * @brief
- *	Write a piece of data of size 'data_size' into pipe 'upfds'.
- *
- * @param[in]	upfds - pipe descriptor upstream.
- * @param[in]	data - the data to write
- * @param[in]	data_size - the size of 'data'
- *
- * @return int
- * @retval  0	- for success
- * @retval  1	- for failure
- */
-int
-write_pipe_data(int upfds, void *data, int data_size)
-{
-	int	nwrite =  0;
-
-	if ((data  == NULL) || (data_size <= 0)) {
-		return (1);
-	}
-
-	nwrite = writepipe(upfds, data, data_size);
-	if (nwrite != data_size) {
-		log_err(-1, __func__, "not all data got written");
-		return (1);
-	}
-	return (0);
-}
-
-/**
- * @brief
  *	Read a piece of data from 'downfds' pipe of size 'data_size'.
  *
  * @param[in]	downfds - the pipe descriptor to read from.
  * @param[in]	data_size - the size of data to read.
+ * @param[in]	wait_sec - # of seconds to wait for data to arrive.
  *
  * @return void *
- * @retval <opaque_data>	- pointer to some data that is in a static
- *				  area that must not be freed and can
+ * @retval <opaque_data>	- pointer to some data that is in a fixed
+ *				  memory area that must not be freed and can
  *				  get overwritten on a next call to this
  *				  function.
  * @retval NULL			- if no data was found or error encountered.
+ * @note
+ *	The read time is timed out using the $job_launch_delay mom config
+ *	option value.
  */
 void *
-read_pipe_data(int downfds, int data_size)
+read_pipe_data(int downfds, int data_size, int wait_sec)
 {
 	static	char	*buf = NULL;
 	static  int	buf_size = 0;
@@ -1903,7 +1936,7 @@ read_pipe_data(int downfds, int data_size)
 	struct timeval	tv;
 
 	FD_ZERO(&readset);
-	tv.tv_sec = 30;		/* connect timeout */
+	tv.tv_sec = wait_sec;		/* connect timeout */
 	tv.tv_usec = 0;
 
 	FD_SET((unsigned int)downfds, &readset);
@@ -1912,7 +1945,7 @@ read_pipe_data(int downfds, int data_size)
 
 #else
 	struct pollfd pollfds[1];
-	int timeout = 30 * 1000; 	/* milli seconds */
+	int timeout = (int)(wait_sec * 1000); /* milli seconds */
 	pollfds[0].fd = downfds;
 	pollfds[0].events  = POLLIN;
 	pollfds[0].revents  = 0;
@@ -1939,6 +1972,7 @@ read_pipe_data(int downfds, int data_size)
 		buf = tpbuf;
 		buf_size = data_size;
 	}
+	memset(buf, 0, buf_size);
 
 	nread = readpipe(downfds, buf, data_size);
 
@@ -1951,21 +1985,605 @@ read_pipe_data(int downfds, int data_size)
 
 /**
  * @brief
+ *	Write a piece of data of size 'data_size' into pipe descriptors
+ *	'upfds' (data write)  and 'downfds' (data ack).
+ *
+ * @param[in]	upfds - pipe descriptor upstream.
+ * @param[in]	downfds - pipe descriptor downstream
+ * @param[in]	data - the data to write
+ * @param[in]	data_size - the size of 'data'
+ *
+ * @return int
+ * @retval  0	- for success
+ * @retval  1	- for failure
+ */
+int
+write_pipe_data_ack(int upfds, int downfds, void *data, size_t data_size)
+{
+	void	*data_recv = NULL;
+	int	nwrite =  0;
+	size_t	data_size_recv;
+
+	if ((data  == NULL) || (data_size == 0)) {
+		return (1);
+	}
+
+	/* first send out data length */
+	nwrite = writepipe(upfds, data, data_size);
+	if (nwrite != data_size) {
+		log_err(-1, __func__, "failed to write data to pipe");
+		return (1);
+	}
+	
+	/* wait for acknowledgement */
+	data_recv = read_pipe_data(downfds, sizeof(size_t), PIPE_READ_TIMEOUT);
+	if (data_recv == NULL) {
+		log_err(-1, __func__, "failed to get ack from pipe");
+		return (1);
+	}
+
+	memcpy(&data_size_recv, data_recv, sizeof(size_t));
+	if (data_size_recv != data_size) {
+		log_err(-1, __func__, "received data not match sent data");
+		return (1);
+	}
+	return (0);
+}
+
+/**
+ * @brief
+ *	Write a piece of data of size 'data_size' into pipe 'upfds'.
+ *
+ * @param[in]	upfds - pipe descriptor upstream.
+ * @param[in]	data - the data to write
+ * @param[in]	data_size - the size of 'data'
+ *
+ * @return int
+ * @retval  0	- for success
+ * @retval  1	- for failure
+ */
+int
+write_pipe_data(int upfds, void *data, int data_size)
+{
+	int	nwrite =  0;
+
+	if ((data  == NULL) || (data_size <= 0)) {
+		return (1);
+	}
+
+	nwrite = writepipe(upfds, data, data_size);
+	if (nwrite != data_size) {
+		log_err(-1, __func__, "partial write detected");
+		return (1);
+	}
+	return (0);
+}
+
+/**
+ * @brief
+ *	Write 'r_size' first, and then the actual data 'r_buf' into pipe
+ *	descriptors *	'upfds' (data write)  and 'downfds' (data ack).
+ *
+ * @param[in]	upfds - pipe descriptor upstream.
+ * @param[in]	downfds - pipe descriptor downstream
+ * @param[in]	r_buf - the data to write
+ * @param[in]	r_size - the size of 'r_buf'
+ *
+ * @return int
+ * @retval  0	- for success
+ * @retval  1	- for failure
+ *
+ */
+int
+send_string_data(int upfds, int downfds, void *r_buf, size_t r_size)
+{
+	/* send new string size */
+	if (write_pipe_data_ack(upfds, downfds, &r_size, sizeof(size_t)) != 0) {
+		return (1);
+	}
+	/* now send string data actual data */
+	if (write_pipe_data_ack(upfds, downfds, r_buf, r_size) != 0) {
+		return (1);
+	}
+
+	return (0);
+}
+
+/**
+ * @brief
+ *	Read some string of data from 'downfds' pipe descriptor and using
+ *	'upfds' for acknowledgement.
+ *
+ * @param[in]	downfds - the pipe descriptor to read from.
+ * @param[in]	upfds - the pipe descriptor to use for acks.
+ *
+ * @return char *
+ * @retval <string_of_data>	- pointer to some string data that is in a
+ *				  fixed memory area that must not be freed and
+ *				  can get overwritten on a next call to this
+ *				  function. 
+ * @retval NULL			- if no data was found or error encountered.	
+ * @note
+ *	The read time is timed out using the $job_launch_delay mom config
+ *	option value.
+ */
+char *
+receive_string_data(int downfds, int  upfds)
+{
+	char	*r_buf;
+	size_t	r_size;
+	size_t	ack_size;
+
+	/* get size of buffer to receive */
+	r_buf = read_pipe_data(downfds, sizeof(size_t), PIPE_READ_TIMEOUT);
+	if (r_buf == NULL) {
+		return (NULL);
+	}
+	memcpy(&r_size, r_buf, sizeof(size_t));
+	/* ack that we got the r_size */
+	ack_size = sizeof(size_t);
+	if (write_pipe_data(upfds, &ack_size, sizeof(size_t)) != 0) {
+		snprintf(log_buffer, sizeof(log_buffer), "write of length %lu bytes to pipe failed", (unsigned long)ack_size);
+		log_err(errno, __func__, log_buffer);
+		return (NULL);
+	}
+
+	/* now get the actual string data */
+	r_buf = read_pipe_data(downfds, r_size, PIPE_READ_TIMEOUT);
+	if (r_buf == NULL) {
+		snprintf(log_buffer, sizeof(log_buffer), "read of pipe of size %lu bytes for failed", (unsigned long)r_size);
+		log_err(errno, __func__, log_buffer);
+		return (NULL);
+	}
+	/* send back as an acknowledgement that MOM got it */
+	ack_size = r_size;
+	if (write_pipe_data(upfds, &ack_size, sizeof(size_t)) != 0) {
+		snprintf(log_buffer, sizeof(log_buffer), "write of length %lu bytes to pipe failed", (unsigned long)r_size);
+		log_err(errno, __func__, log_buffer);
+		return (NULL);
+	}
+	return (r_buf);
+}
+
+/**
+ * @brief
  *	Send a command 'cmd' request using the pipes given.
  *
  * @param[in]	upfds - upstream pipe
  * @param[in]	downstream - downstream pipe
  * @param[in]	cmd - command request to send (e.g. IM_EXEC_PROLOGUE)
  *
- * @return none
+ * @return int
+ * @retval 0	- success
+ * @retval 1	- fail
  */
-void
+int
 send_pipe_request(int upfds, int downfds, int cmd)
 {
-	(void)write_pipe_data(upfds, &cmd, sizeof(int));
+	char	*r_buf;
+	int	cmd_read;
+
+	if (write_pipe_data(upfds, &cmd, sizeof(int)) != 0) {
+		log_err(-1, __func__, "bad write to pipe");
+		return (1);
+	}
 
 	/* wait for acknowledgement */
-	(void) read_pipe_data(downfds, sizeof(int));
+	r_buf = read_pipe_data(downfds, sizeof(int), PIPE_READ_TIMEOUT);
+	if (r_buf == NULL) {
+		log_err(-1, __func__, "bad read from pipe");
+		return (1);
+	}	
+
+	memcpy(&cmd_read, r_buf, sizeof(int));
+	if (cmd != cmd_read) {
+		snprintf(log_buffer, sizeof(log_buffer), "wrote %d got %d", cmd, cmd_read);
+		log_err(-1, __func__, log_buffer);
+		return (1);
+	}
+	return (0);
+}
+
+/**
+ * @brief
+ *	Returns 1 (true) if sister moms have all replied IM_ALL_OKAY status in
+ *	regards to execution of remote prologue hooks.
+ *
+ * @param[in,out]	pjob	 - job being operated on.
+ * @param[in]		pipefd	-  pipe to mother superior to get status info.
+ * @return int
+ * @retval 1	- for true
+ * @retval 0	- for false
+ */
+int
+prologue_hook_all_okay_from_sisters_moms(job *pjob, int pipefd)
+{
+	int	cmd_ack = 0;
+	char	*r_buf = NULL;
+
+	if (pipefd == -1)
+		return (0);
+
+	/* get cmd_ack from parent that it received IM_ALL_OKAY status from
+	 * all sister moms regarding execution of remote prologue hooks.
+	 */
+	r_buf = read_pipe_data(pipefd, sizeof(int), 0);
+	if (r_buf != NULL)
+		memcpy(&cmd_ack, r_buf, sizeof(int));
+
+	if ((r_buf == NULL) || (cmd_ack != IM_ALL_OKAY))
+		return (0);
+	return (1);
+}
+
+/**
+ * @brief
+ *	Wait/read from 'pipfd' pipe for node names of unhealthy moms, and
+ *	update accordingly the job 'pjob''s ji_node_list and ji_failed_node_list.
+ *	Return in 'vnl_fails' those entries in job's exec_vnode where the
+ *	vnodes are managed by parent moms appearing in pjob->ji_failed_node_list.
+ *
+ * @param[in/out]	pjob	 - job being operated on.
+ * @param[in]		pipefd	-  pipe to mother superior to get data.
+ * @param[in]		prolo_pipefd	-  pipe to mother superior to get info
+ *				   about remote prologue hook execution
+ * @param[out]		vnl_fails - fill in with the list of vnodes and their
+ *				   resources with non-healthy  parent moms.
+ * @param[out]		vnl_good - fill in with the list of vnodes and their
+ *				   resources with functional parent moms.
+ * @param[in]		timeout	- # of seconds to wait waiting for list of failed
+ *				   mom hosts.
+ * @return int
+ * @retval 0	- for success
+ * @retval 1	- for failure
+ */
+int
+get_failed_moms_and_vnodes(job *pjob, int pipefd, int prolo_pipefd, vnl_t **vnl_fails, vnl_t **vnl_good, unsigned int timeout)
+{
+	size_t	r_size = 0;
+	char	*r_buf = NULL;
+	int	timer;
+	char	err_msg[LOG_BUF_SIZE];
+	int	prolo_okay = 0;
+
+	if (pjob == NULL)
+		return (1);
+
+	/* Get failed mom hosts, and update the job's node_list and failed_node_list */
+	timer = timeout;
+	do {
+		/* get size of buffer to receive */
+		r_buf = read_pipe_data(pipefd, sizeof(size_t), 1);
+		if (r_buf != NULL) {
+			memcpy(&r_size, r_buf, sizeof(size_t));
+			/* now get the actual string data */
+			r_buf = read_pipe_data(pipefd, r_size, 0);
+			if (r_buf != NULL) {
+				snprintf(log_buffer, sizeof(log_buffer), "received from parent mom that node's host %s is not healthy", r_buf);
+				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
+				reliable_job_node_add(&pjob->ji_failed_node_list, r_buf);
+				reliable_job_node_delete(&pjob->ji_node_list, r_buf);
+			}
+		}
+		if (prolo_pipefd != -1)
+			prolo_okay = prologue_hook_all_okay_from_sisters_moms(pjob, prolo_pipefd);
+		timer--;
+	} while ((timer >= 0) && !prolo_okay);
+
+
+	if ((prolo_pipefd != -1) && !prolo_okay)
+		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, "not all prologue hooks to sister moms completed, but job will proceed to execute");
+
+	/* now prune_exec_vnode taking away vnodes managed by moms
+	 * in job's node_fail_list, and also satisfy the original
+	 * job schedselect
+         */
+	if (prune_exec_vnode(pjob, NULL, vnl_fails, vnl_good, err_msg, LOG_BUF_SIZE) != 0) {
+		return (1);
+	}
+
+	return (0);
+}
+
+/**
+ * @brief
+ *	This is called by a job child process telling parent mom of job attribute
+ *	updates, using the communication pipes:'pipefd_write', 'pipefd_ack',
+ *	'pipefd_status'.
+ *
+ * @param[in,out]	pjob	 - job being operated on.
+ * @param[in]		pipefd_write - for sending the job update request.
+ * @param[in]		pipefd_ack - for receiving the ack from parent mom that it
+ *				     has received the job update request.
+ * @param[in]		pipefd_status - for child to get the result from parent mom
+ *					on the job update.
+ * @retval 0	- for success
+ * @retval 1	- for failure
+ */
+int
+send_update_job(job *pjob, int pipefd_write, int pipefd_ack, int pipefd_status)
+{
+	int	exec_vnode_hookset;
+	int	schedselect_hookset;
+	int	exec_host_hookset;
+	int	exec_host2_hookset;
+	size_t	r_size = 0;
+	char	*r_buf = NULL;
+	int	cmd_ack = IM_ALL_OKAY;
+
+	if (pjob == NULL)
+		return (1);
+
+	exec_vnode_hookset = pjob->ji_wattr[JOB_ATR_exec_vnode].at_flags & ATR_VFLAG_HOOK;
+	schedselect_hookset = pjob->ji_wattr[JOB_ATR_SchedSelect].at_flags & ATR_VFLAG_HOOK;
+	exec_host_hookset = pjob->ji_wattr[JOB_ATR_exec_host].at_flags & ATR_VFLAG_HOOK;
+	exec_host2_hookset = pjob->ji_wattr[JOB_ATR_exec_host2].at_flags & ATR_VFLAG_HOOK;
+	if (!exec_vnode_hookset || !schedselect_hookset ||
+	   (!exec_host_hookset && !exec_host2_hookset)) {
+		return (1);
+	}
+
+	/* now that we pruned exec_vnode, need to send the
+	 * update to the parent mom
+	 */
+	if (send_pipe_request(pipefd_write, pipefd_ack, IM_UPDATE_JOB) != 0) {
+		log_err(-1, __func__, "send of IM_UPDATE_JOB to parent mom failed");
+		return (1);
+	}
+
+	/* add delay */
+ 	r_buf = pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_val.at_str;
+	r_size = strlen(r_buf) + 1;
+
+ 	if (send_string_data(pipefd_write, pipefd_ack, r_buf, r_size) != 0) {
+		snprintf(log_buffer, sizeof(log_buffer),
+			"failed to send_string_data %s to parent mom", r_buf);
+		log_err(-1, __func__, log_buffer);
+		return (1);
+	}
+
+	/* now send new exec_host or exec_host2 */
+	if (pjob->ji_wattr[(int)JOB_ATR_exec_host2].at_flags & ATR_VFLAG_SET) {
+ 		r_buf = pjob->ji_wattr[(int)JOB_ATR_exec_host2].at_val.at_str;
+	} else if (pjob->ji_wattr[(int)JOB_ATR_exec_host].at_flags & ATR_VFLAG_SET) {
+		/* send new exec_host size */
+ 		r_buf = pjob->ji_wattr[(int)JOB_ATR_exec_host].at_val.at_str;
+	} else {
+		snprintf(log_buffer, sizeof(log_buffer),
+			 "job %s has unset exec_host and exec_host2", pjob->ji_qs.ji_jobid);
+		log_err(-1, __func__, log_buffer);
+		return (1);
+	}
+	r_size = strlen(r_buf) + 1;
+
+ 	if (send_string_data(pipefd_write, pipefd_ack, r_buf, r_size) != 0) {
+		snprintf(log_buffer, sizeof(log_buffer),
+			"failed to send_string_data %s to parent mom", r_buf);
+		log_err(-1, __func__, log_buffer);
+		return (1);
+	}
+
+	/* now send schedselect */
+      	r_buf = pjob->ji_wattr[(int)JOB_ATR_SchedSelect].at_val.at_str;
+
+	r_size = strlen(r_buf) + 1;
+ 	if (send_string_data(pipefd_write, pipefd_ack, r_buf, r_size) != 0) {
+		snprintf(log_buffer, sizeof(log_buffer),
+			"failed to send_string_data %s to parent mom", r_buf);
+		log_err(-1, __func__, log_buffer);
+		return (1);
+	}
+
+	/* clear the hook set flag since we've sent the update */
+	pjob->ji_wattr[JOB_ATR_exec_vnode].at_flags &= ~ATR_VFLAG_HOOK;
+	if (exec_host2_hookset)
+		pjob->ji_wattr[JOB_ATR_exec_host2].at_flags &= ~ATR_VFLAG_HOOK;
+	else	
+		pjob->ji_wattr[JOB_ATR_exec_host].at_flags &= ~ATR_VFLAG_HOOK;
+	pjob->ji_wattr[JOB_ATR_SchedSelect].at_flags &= ~ATR_VFLAG_HOOK;
+
+	if (pjob->ji_numnodes > 1) {
+		/* get cmd_ack from parent that it received
+		 * and acted upon the job updates from sis moms
+		 */
+		snprintf(log_buffer, sizeof(log_buffer), "waiting up to %d secs for job update acks from sister moms", PIPE_READ_TIMEOUT);
+		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
+		r_buf = read_pipe_data(pipefd_status, sizeof(int), PIPE_READ_TIMEOUT);
+		if (r_buf != NULL)
+			memcpy(&cmd_ack, r_buf, sizeof(int));
+		if ((r_buf == NULL) || (cmd_ack != IM_ALL_OKAY)) {
+			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, "not all job updates to sister moms completed");
+		}
+	}
+	return (0);
+}
+
+/**
+ * @brief
+ *	Get/set job pjob's exec_vnode, exec_host, schedselect from the job's
+ *	3rd pipe, and communicatng to the server of the new exec_vnode,
+ *	schedselect values (no need to send exec_host as server will just
+ *	recreate it on its end). The sister moms whose vnodes have been
+ *	out in the new exec_vnode would get an IM_DELETE_JOB2 request.
+ * @param[in]	pjob - job whose exec_vnode/exec_host/schedselect  is being
+ *			obtained.
+ * @param[in]	msg - fill in with error message received if this function
+ *			encounters a failure.
+ * @param[in]	msg_size - size of 'msg'.
+ *
+ * @return int
+ * @retval 0	- for success
+ * @retval 1	- for non-success due to pipes failure
+ * @retval 2	- for no data found 
+ * @retval -1	- for non-success due to internal error.
+ */
+int
+get_new_exec_vnode_host_schedselect(job *pjob, char *msg, size_t msg_size)
+{
+	char	*new_exec_vnode = NULL;
+	char	*new_exec_host = NULL;
+	char	*new_schedselect = NULL;
+	char	*r_buf;
+	int	rc = 0;
+
+	/* get exec_vnode don't close pipes */
+	r_buf = receive_string_data(pjob->ji_child2parent_job_update_pipe,
+					pjob->ji_parent2child_job_update_pipe);
+	if (r_buf == NULL) {
+		(void)snprintf(msg, msg_size, "failed to obtain new exec_vnode");
+		return (1);
+	}
+	new_exec_vnode = strdup(r_buf);
+	if (new_exec_vnode == NULL) {
+		(void)snprintf(msg, msg_size, "%s: new exec_vnode strdup error", __func__);
+		return (1);
+	}
+
+	/* get exec_host */
+	r_buf = receive_string_data(pjob->ji_child2parent_job_update_pipe, pjob->ji_parent2child_job_update_pipe);
+	if (r_buf == NULL) {
+		(void)snprintf(msg, msg_size, "failed to obtain new exec_host size");
+		free(new_exec_vnode);
+		return (1);
+	}
+
+	new_exec_host = strdup(r_buf);
+	if (new_exec_host == NULL) {
+		(void)snprintf(msg, msg_size, "failed to strdup new exec_host");
+		free(new_exec_vnode);
+		return (1);
+	}
+	/* get schedselect */
+	r_buf = receive_string_data(pjob->ji_child2parent_job_update_pipe, pjob->ji_parent2child_job_update_pipe);
+	if (r_buf == NULL) {
+		(void)snprintf(msg, msg_size, "failed to obtain new schedselect size");
+		free(new_exec_vnode);
+		free(new_exec_host);
+		return (1);
+	}
+
+	new_schedselect = strdup(r_buf);
+	if (new_schedselect == NULL) {
+		(void)snprintf(msg, msg_size, "failed to strdup new schedselect");
+		free(new_exec_vnode);
+		free(new_exec_host);
+		return (1);
+	}
+
+	/* set job's exec_vnode */
+	snprintf(log_buffer, sizeof(log_buffer), "pruned from exec_vnode=%s",
+	     	pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_val.at_str);
+	log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
+			pjob->ji_qs.ji_jobid, log_buffer);
+	snprintf(log_buffer, sizeof(log_buffer),
+		"pruned to exec_vnode=%s", new_exec_vnode);
+	log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
+		pjob->ji_qs.ji_jobid, log_buffer);
+
+	(void)job_attr_def[(int)JOB_ATR_exec_vnode].at_decode(
+		&pjob->ji_wattr[(int)JOB_ATR_exec_vnode], NULL, NULL, new_exec_vnode);
+
+	(void)update_resources_list(pjob, ATTR_l,
+		JOB_ATR_resource, new_exec_vnode, INCR, 0,
+			JOB_ATR_resource_orig);
+
+
+	if (pjob->ji_wattr[(int)JOB_ATR_exec_host2].at_flags & ATR_VFLAG_SET) {
+		(void)job_attr_def[(int)JOB_ATR_exec_host2].at_decode(
+			&pjob->ji_wattr[(int)JOB_ATR_exec_host2],
+			(char *)0,
+			(char *)0,
+			new_exec_host);
+	} else if (pjob->ji_wattr[(int)JOB_ATR_exec_host].at_flags & ATR_VFLAG_SET) {
+		(void)job_attr_def[(int)JOB_ATR_exec_host].at_decode(
+			&pjob->ji_wattr[(int)JOB_ATR_exec_host],
+			(char *)0,
+			(char *)0,
+			new_exec_host);
+	}
+
+	/* Send DELETE_JOB2 request to the sister moms not in
+	 * 'new_peh', to kill the job on that sister and
+	 * report resources_used info.
+	 */
+	(void)send_sisters_inner(pjob, IM_DELETE_JOB2, NULL, new_exec_host);
+
+	(void)job_attr_def[(int)JOB_ATR_SchedSelect].at_decode(
+		&pjob->ji_wattr[(int)JOB_ATR_SchedSelect],
+		(char *)0,
+		(char *)0,
+		new_schedselect);
+
+	pjob->ji_modified = 1;
+
+	free(new_exec_vnode);
+	free(new_exec_host);
+	free(new_schedselect);
+
+	if ((rc = job_nodes(pjob)) != 0) {
+		snprintf(msg, msg_size, "failed updating internal nodes data (rc=%d)", rc);
+		return (-1);
+	}
+	if (generate_pbs_nodefile(pjob, NULL, 0, msg, msg_size) != 0) {
+		return (-1);
+	}
+
+	job_save(pjob, SAVEJOB_FULL);
+	/* set modify flag on the job attributes that will be sent to the server */
+	pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_flags |= ATR_VFLAG_MODIFY;
+	pjob->ji_wattr[(int)JOB_ATR_SchedSelect].at_flags |= ATR_VFLAG_MODIFY;
+	(void)update_ajob_status_using_cmd(pjob, IS_RESCUSED, 1);
+
+	return (0);
+}
+
+/**
+ * @brief
+ *	A task that will report failed node hosts due to
+ *	unsuccessful execjob_prologue hook execution.
+ *
+ * @param[in] 	work_task -  task to process.
+ *
+ * @return none
+ *
+ */
+static void
+report_failed_node_hosts_task(struct work_task *ptask)
+{
+	job			*pjob = (job *)ptask->wt_parm1;
+	reliable_job_node	*rjn, *rjn_next;
+
+
+	if (pjob == NULL) {
+		log_err(-1, __func__, "task structure contains reference to NULL job");
+		return;
+	}
+	if ((pjob->ji_qs.ji_state != JOB_STATE_RUNNING) ||
+	    (pjob->ji_qs.ji_substate != JOB_SUBSTATE_PRERUN)) {
+		return;	/* job not longer waiting for healthy moms */
+	}
+
+	for (rjn = (reliable_job_node *)GET_NEXT(pjob->ji_node_list); rjn != NULL; rjn = rjn_next) {
+		rjn_next = (reliable_job_node *)GET_NEXT(rjn->rjn_link);
+		if (strcmp(rjn->rjn_host, mom_host) == 0)
+			continue;
+		
+		if (!rjn->prologue_hook_success) {
+			reliable_job_node_add(&pjob->ji_failed_node_list, rjn->rjn_host);
+#ifndef WIN32
+			if (pjob->ji_parent2child_moms_status_pipe != -1) {
+				size_t r_size;
+				r_size = strlen(rjn->rjn_host) + 1;
+				if (write_pipe_data(pjob->ji_parent2child_moms_status_pipe, &r_size, sizeof(size_t)) == 0)
+					(void)write_pipe_data(pjob->ji_parent2child_moms_status_pipe, rjn->rjn_host, r_size);
+				else
+					log_err(errno, __func__, "failed to write");
+			}
+#endif
+			delete_link(&rjn->rjn_link);
+			free(rjn);
+		}
+	}
 }
 
 /**
@@ -1985,6 +2603,7 @@ receive_pipe_request(int sd)
 	job			*pjob = NULL;
 	pbs_task		*ptask;
 	int			cmd;
+	char			msg[LOG_BUF_SIZE];
 
 	if ((conn = get_conn(sd)) == NULL) {
 		log_err(PBSE_INTERNAL, __func__, "unable to find pipe");
@@ -2013,6 +2632,7 @@ receive_pipe_request(int sd)
 	(void)writepipe(pjob->ji_mjspipe2, &cmd, sizeof(int));
 
 	if (cmd == IM_EXEC_PROLOGUE) {
+
 		if (send_sisters(pjob, IM_EXEC_PROLOGUE, NULL) != pjob->ji_numnodes - 1) {
 			snprintf(log_buffer, sizeof(log_buffer),
 			  	"warning: %s: IM_EXEC_PROLOGUE requests "
@@ -2020,9 +2640,160 @@ receive_pipe_request(int sd)
 				pjob->ji_qs.ji_jobid);
 			log_err(-1, __func__, log_buffer);
 		}
-	} else {
-		char msg[LOG_BUF_SIZE];
 
+		if (do_tolerate_node_failures(pjob)) {
+			long delay_value;
+			/* execute report task 'delay_value' seconds from
+			 * now, where the value is 95% of the job_launch_delay
+			 * value. This allows the waiting child mom to
+			 * capture the failed node host values before it times
+			 * out on job_launch_delay.
+			 */
+ 			delay_value = 0.95 * job_launch_delay;
+			(void)set_task(WORK_Timed, time_now + delay_value, report_failed_node_hosts_task, pjob);
+		}
+	} else {
+		snprintf(msg, sizeof(msg), "ignoring unknown cmd %d", cmd);
+		log_err(-1, __func__, msg);
+	}
+}
+
+/**
+ * @brief
+ *	Close various pipes touched by a job update.
+ *
+ * @param[in] pjob - structure handle to job
+ *
+ * @return Void
+ *
+ */
+void
+close_update_pipes(job *pjob)
+{
+	if (pjob == NULL)
+		return;
+
+	(void)close_conn(pjob->ji_child2parent_job_update_pipe);
+	pjob->ji_child2parent_job_update_pipe = -1;
+	(void)close(pjob->ji_parent2child_job_update_pipe);
+	pjob->ji_parent2child_job_update_pipe = -1;
+
+	if (pjob->ji_jsmpipe2 != -1) {
+		(void)close(pjob->ji_jsmpipe2);
+		pjob->ji_jsmpipe2 = -1;
+	}
+
+	if (pjob->ji_mjspipe2 != -1) {
+		(void)close(pjob->ji_mjspipe2);
+		pjob->ji_mjspipe2 = -1;
+	}
+
+	(void)close_conn(pjob->ji_jsmpipe);
+	pjob->ji_jsmpipe = -1;
+	(void)close(pjob->ji_mjspipe);
+	pjob->ji_mjspipe = -1;
+}
+
+/**
+ * @brief
+ * 	Receive a special request from the pipe represented by descriptor
+ *	'sd'.
+ * @param[in]	sd - connection descriptor
+ *
+ * @return none
+ *
+ */
+static void
+receive_job_update_request(int sd)
+{
+	conn_t			*conn = NULL;
+	int			i;
+	job			*pjob = NULL;
+	pbs_task		*ptask;
+	int			cmd;
+	char			msg[LOG_BUF_SIZE];
+
+	if ((conn = get_conn(sd)) == NULL) {
+		log_err(PBSE_INTERNAL, __func__, "unable to find pipe");
+		return;
+	}
+
+	ptask = (pbs_task *)conn->cn_data;
+
+	if (ptask == NULL) 
+		return;
+
+	pjob  = ptask->ti_job;
+
+	if (pjob == NULL) {
+		log_err(PBSE_INTERNAL, __func__, "no job task associated with connection");
+		return;
+	}
+
+	/* now we read the cmd or error */
+	i = readpipe(pjob->ji_child2parent_job_update_pipe, &cmd, sizeof(int));
+
+	if (i != sizeof(int)) {
+		snprintf(msg, sizeof(msg),
+			"read of pipe for pid job %s got %d not %d: errno %s",
+			pjob->ji_qs.ji_jobid, i, (int)sizeof(int), strerror(errno));
+
+		close_update_pipes(pjob);
+		exec_bail(pjob, JOB_EXEC_RETRY, msg);
+		return;
+	}
+
+	/* send back as an acknowledgement that MOM got it */
+	(void)writepipe(pjob->ji_parent2child_job_update_pipe, &cmd, sizeof(int));
+
+	if (cmd == IM_UPDATE_JOB) {
+		mom_hook_input_t	hook_input;
+		mom_hook_output_t	hook_output;
+		char			hook_msg[HOOK_MSG_SIZE + 1];
+		int			hook_errcode = 0;
+		hook			*last_phook;
+		unsigned int		hook_fail_action = 0;
+
+#if	defined(MOM_CPUSET) && !defined(IRIX6_CPUSET)
+		/* preserve job's current cpuset and processes, but mark the
+		 * resources internally as free, so that a subset of them can be
+		 * re-assigned back to the job via modify_cpuset().
+		 */
+		 suspend_job(pjob);
+#endif	/* MOM_CPUSET && !IRIX6_CPUSET */
+
+		if (get_new_exec_vnode_host_schedselect(pjob, msg, LOG_BUF_SIZE) != 0) {
+			close_update_pipes(pjob);
+			exec_bail(pjob, JOB_EXEC_RETRY, msg);
+			return;
+		}
+	
+#if	defined(MOM_CPUSET) && !defined(IRIX6_CPUSET)
+		if (modify_cpuset(pjob) < 0) {
+			exec_bail(pjob, JOB_EXEC_RETRY, "failed to modify job's current cpuset");
+			return;
+		}
+#endif	/* MOM_CPUSET && !IRIX6_CPUSET */
+
+		mom_hook_input_init(&hook_input);
+		hook_input.pjob = pjob;
+
+		mom_hook_output_init(&hook_output);
+		hook_output.reject_errcode = &hook_errcode;
+		hook_output.last_phook = &last_phook;
+		hook_output.fail_action = &hook_fail_action;
+		if (mom_process_hooks(HOOK_EVENT_EXECJOB_RESIZE,
+			PBS_MOM_SERVICE_NAME, mom_host, &hook_input,
+			&hook_output,
+			hook_msg, sizeof(hook_msg), 1) == 0) {
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE, pjob->ji_qs.ji_jobid, "execjob_resize hook rejected request");
+			close_update_pipes(pjob);
+			exec_bail(pjob, JOB_EXEC_RETRY, hook_msg);
+			return;
+		}
+		(void)send_sisters_job_update(pjob);
+		pjob->ji_updated = 1;
+	} else {
 		snprintf(msg, sizeof(msg), "ignoring unknown cmd %d", cmd);
 		log_err(-1, __func__, msg);
 	}
@@ -2053,18 +2824,26 @@ finish_exec(job *pjob)
 	attribute		*pattr;
 	attribute		*pattri;
 #if SHELL_INVOKE == 1
-	int	   		pipe_script[2] = {-1, -1};
+	int	   		pipe_script[] = {-1, -1};
 #endif
 	char			*pts_name;	/* name of slave pty */
 	char			*shell;
-	int			jsmpipe[2] = {-1, -1};	/* job starter to MOM for sid */
-	int			jsmpipe2[2] = {-1, -1};	/* job starter to MOM for sid */
+	int			jsmpipe[] = {-1, -1};	/* job starter to MOM for sid */
+	int			jsmpipe2[] = {-1, -1};	/* job starter to MOM */
+	int			child2parent_job_update_pipe[] = {-1, -1};	/* job starter to MOM */
+	int			child2parent_job_update_pipe_w = -1;
 	int			upfds = -1;	/* init to invalid fd */
-	int			upfds2 = -1;			/* init to invalid fd */
-	int			mjspipe[2] = {-1, -1};	/* MOM to job starter for ack */
-	int			mjspipe2[2] = {-1, -1};	/* MOM to job starter for ack */
+	int			upfds2 = -1;	/* init to invalid fd */
+	int			mjspipe[] = {-1, -1};	/* MOM to job starter for ack */
+	int			mjspipe2[] = {-1, -1};	/* MOM to job starter */
+	int			parent2child_job_update_pipe[] = {-1, -1};	/* MOM to job starter */
+	int			parent2child_job_update_pipe_r = -1;
+	int			parent2child_job_update_status_pipe[] = {-1, -1};	/* MOM to job starter */
+	int			parent2child_job_update_status_pipe_r = -1;	/* init to invalid fd */
 	int			downfds = -1;	/* init to invalid fd */
 	int			downfds2 = -1;	/* init to invalid fd */
+	int			parent2child_moms_status_pipe[] = {-1, -1};	/* MOM to job starter */
+	int			parent2child_moms_status_pipe_r = -1;	/* init to invalid fd */
 	int			port_out, port_err;
 	struct startjob_rtn	sjr;
 #if MOM_ALPS
@@ -2097,6 +2876,8 @@ finish_exec(job *pjob)
 	mom_hook_output_t	hook_output;
 	int			job_has_executable;
 	FILE			*temp_stderr = stderr;
+	vnl_t			*vnl_fails = NULL;
+	vnl_t			*vnl_good = NULL;
 
 	ptc = -1; /* No current master pty */
 
@@ -2279,6 +3060,7 @@ finish_exec(job *pjob)
 			} else {
 				upfds2 = jsmpipe2[1];
 			}
+	
 			if (mjspipe2[0] < 3) {
 				downfds2 = fcntl(mjspipe2[0], F_DUPFD, 3);
 				(void)close(mjspipe2[0]);
@@ -2303,6 +3085,104 @@ finish_exec(job *pjob)
 		}
 	}
 
+	if (do_tolerate_node_failures(pjob)) {
+		/* create 3rd set of pipes between MOM and the job starter
+		 * fork the job starter which will become the job
+		 */
+	
+		if ((pipe(parent2child_job_update_pipe) == -1) || (pipe(child2parent_job_update_pipe) == -1)) {
+			i = -1;
+		} else {
+			i = 0;
+			/* make sure pipe file descriptors are above 2 */
+			if (child2parent_job_update_pipe[1] < 3) {
+				child2parent_job_update_pipe_w = fcntl(child2parent_job_update_pipe[1], F_DUPFD, 3);
+				(void)close(child2parent_job_update_pipe[1]);
+				child2parent_job_update_pipe[1] = -1;
+			} else {
+				child2parent_job_update_pipe_w = child2parent_job_update_pipe[1];
+			}
+			if (parent2child_job_update_pipe[0] < 3) {
+				parent2child_job_update_pipe_r = fcntl(parent2child_job_update_pipe[0], F_DUPFD, 3);
+				(void)close(parent2child_job_update_pipe[0]);
+				parent2child_job_update_pipe[0] = -1;
+			} else {
+				parent2child_job_update_pipe_r = parent2child_job_update_pipe[0];
+			}
+		}
+		if ((i == -1) || (child2parent_job_update_pipe_w < 3) || (parent2child_job_update_pipe_r < 3)) {
+			if (child2parent_job_update_pipe_w != -1)
+				(void)close(child2parent_job_update_pipe_w);
+			if (parent2child_job_update_pipe_r != -1)
+				(void)close(parent2child_job_update_pipe_r);
+			if (child2parent_job_update_pipe[0] != -1)
+				(void)close(child2parent_job_update_pipe[0]);
+			if (parent2child_job_update_pipe[1] != -1)
+				(void)close(parent2child_job_update_pipe[1]);
+			(void)sprintf(log_buffer,
+					"Failed to create communication pipe");
+			exec_bail(pjob, JOB_EXEC_RETRY, log_buffer);
+			return;
+		}
+	
+		/* create 4th set of pipes between MOM and the job starter
+		 * fork the job starter which will become the job
+		 */
+	
+		if (pipe(parent2child_job_update_status_pipe) == -1) {
+			i = -1;
+		} else {
+			i = 0;
+			/* make sure pipe file descriptors are above 2 */
+			if (parent2child_job_update_status_pipe[0] < 3) {
+				parent2child_job_update_status_pipe_r = fcntl(parent2child_job_update_status_pipe[0], F_DUPFD, 3);
+				(void)close(parent2child_job_update_status_pipe[0]);
+				parent2child_job_update_status_pipe[0] = -1;
+			} else {
+				parent2child_job_update_status_pipe_r = parent2child_job_update_status_pipe[0];
+			}
+		}
+		if ((i == -1) || (parent2child_job_update_status_pipe_r < 3)) {
+			if (parent2child_job_update_status_pipe_r != -1)
+				(void)close(parent2child_job_update_status_pipe_r);
+			if (parent2child_job_update_status_pipe[1] != -1)
+				(void)close(parent2child_job_update_status_pipe[1]);
+			(void)sprintf(log_buffer,
+					"Failed to create communication pipe");
+			exec_bail(pjob, JOB_EXEC_RETRY, log_buffer);
+			return;
+		}
+	
+	
+		if (pipe(parent2child_moms_status_pipe) == -1) {
+			i = -1;
+	
+		} else {
+	
+			i = 0;
+	
+			/* make sure pipe file descriptors are above 2 */
+			if (parent2child_moms_status_pipe[0] < 3) {
+				parent2child_moms_status_pipe_r = fcntl(parent2child_moms_status_pipe[0], F_DUPFD, 3);
+				(void)close(parent2child_moms_status_pipe[0]);
+				parent2child_moms_status_pipe[0] = -1;
+			} else {
+				parent2child_moms_status_pipe_r = parent2child_moms_status_pipe[0];
+			}
+		}
+	
+		if ((i == -1) || (parent2child_moms_status_pipe_r < 3)) {
+			if (parent2child_moms_status_pipe_r != -1)
+				(void)close(parent2child_moms_status_pipe_r);
+			if (parent2child_moms_status_pipe[1] != -1)
+				(void)close(parent2child_moms_status_pipe[1]);
+			(void)sprintf(log_buffer,
+					"Failed to create communication pipe");
+			exec_bail(pjob, JOB_EXEC_RETRY, log_buffer);
+			return;
+		}
+	}
+
 	pjob->ji_qs.ji_stime = time_now;
 	pjob->ji_sampletim  = time_now;
 
@@ -2318,8 +3198,15 @@ finish_exec(job *pjob)
 
 		(void)close(upfds);
 		(void)close(downfds);
+
 		(void)close(upfds2);
 		(void)close(downfds2);
+
+		(void)close(child2parent_job_update_pipe_w);
+		(void)close(parent2child_job_update_pipe_r);
+
+		(void)close(parent2child_job_update_status_pipe_r);
+		(void)close(parent2child_moms_status_pipe_r);
 
 		/* add the pipe to the connection table so we can poll it */
 
@@ -2332,6 +3219,12 @@ finish_exec(job *pjob)
 			(void)close(mjspipe[1]);
 			(void)close(jsmpipe2[0]);
 			(void)close(mjspipe2[1]);
+
+			(void)close(child2parent_job_update_pipe[0]);
+			(void)close(parent2child_job_update_pipe[1]);
+
+			(void)close(parent2child_job_update_status_pipe[1]);
+			(void)close(parent2child_moms_status_pipe[1]);
 #if SHELL_INVOKE == 1
 			if (pipe_script[0] != -1)
 				(void) close(pipe_script[0]);
@@ -2380,6 +3273,44 @@ finish_exec(job *pjob)
 				return;
 			}
 			conn->cn_data = ptask;
+		}
+
+		/* 
+		 * if there are prologue hooks to run
+		 * add the pipe to the connection table so we can poll it
+		 */
+		if (do_tolerate_node_failures(pjob)) {
+
+			if ((conn = add_conn(child2parent_job_update_pipe[0], ChildPipe,
+				(pbs_net_t)0, (unsigned int)0,
+					receive_job_update_request)) == NULL) {
+				log_event(PBSEVENT_ERROR,
+					PBS_EVENTCLASS_JOB, LOG_ERR,
+					pjob->ji_qs.ji_jobid,
+					"Unable to start job, communication connection table is full");
+				(void)close(child2parent_job_update_pipe[0]);
+				(void)close(parent2child_job_update_pipe[1]);
+			
+				(void)close(jsmpipe2[0]);
+				(void)close(mjspipe2[1]);
+	
+				(void)close(jsmpipe[0]);
+				(void)close(mjspipe[1]);
+	
+				if (pipe_script[0] != -1)
+					(void)close(pipe_script[0]);
+				if (pipe_script[1] != -1)
+					(void)close(pipe_script[1]);
+				exec_bail(pjob, JOB_EXEC_RETRY, NULL);
+				return;
+			}
+			conn->cn_data = ptask;
+	
+			pjob->ji_child2parent_job_update_pipe = child2parent_job_update_pipe[0];
+			pjob->ji_parent2child_job_update_pipe = parent2child_job_update_pipe[1];
+	
+			pjob->ji_parent2child_job_update_status_pipe = parent2child_job_update_status_pipe[1];
+			pjob->ji_parent2child_moms_status_pipe = parent2child_moms_status_pipe[1];
 		}
 
 		if (ptc >= 0) {
@@ -2483,10 +3414,28 @@ finish_exec(job *pjob)
 			(void)close(upfds2);
 		if (downfds2 != -1)
 			(void)close(downfds2);
+		if (child2parent_job_update_pipe_w != -1)
+			(void)close(child2parent_job_update_pipe_w);
+		if (parent2child_job_update_pipe_r != -1)
+			(void)close(parent2child_job_update_pipe_r);
+		if (parent2child_job_update_status_pipe_r != -1)
+			(void)close(parent2child_job_update_status_pipe_r);
+		if (parent2child_moms_status_pipe_r != -1)
+			(void)close(parent2child_moms_status_pipe_r);
+
 		if (jsmpipe2[0] != -1)
 			(void)close(jsmpipe2[0]);
 		if (mjspipe2[1] != -1)
 			(void)close(mjspipe2[1]);
+		if (child2parent_job_update_pipe[0] != -1)
+			(void)close(child2parent_job_update_pipe[0]);
+		if (parent2child_job_update_pipe[1] != -1)
+			(void)close(parent2child_job_update_pipe[1]);
+		if (parent2child_job_update_status_pipe[1] != -1)
+			(void)close(parent2child_job_update_status_pipe[1]);
+		if (parent2child_moms_status_pipe[1] != -1)
+			(void)close(parent2child_moms_status_pipe[1]);
+
 		(void)sprintf(log_buffer, "Fork failed in %s: %d",
 			__func__, errno);
 		exec_bail(pjob, JOB_EXEC_RETRY, log_buffer);
@@ -2498,14 +3447,29 @@ finish_exec(job *pjob)
 	/*						*/
 	/************************************************/
 
-	(void)close(jsmpipe[0]);
-	(void)close(mjspipe[1]);
-	(void)close(jsmpipe2[0]);
-	(void)close(mjspipe2[1]);
-	/*
-	 * at this point, child writes to upfds2, and child
-	 * reads from downfds2
-	 */
+	if (jsmpipe[0] != -1)
+		(void)close(jsmpipe[0]);
+
+	if (mjspipe[1] != -1)
+		(void)close(mjspipe[1]);
+
+	if (jsmpipe2[0] != -1)
+		(void)close(jsmpipe2[0]); 
+
+	if (mjspipe2[1] != -1)
+		(void)close(mjspipe2[1]);
+
+	if (child2parent_job_update_pipe[0] != -1)
+		(void)close(child2parent_job_update_pipe[0]);
+
+	if (parent2child_job_update_pipe[1] != -1)
+		(void)close(parent2child_job_update_pipe[1]);
+
+	if (parent2child_job_update_status_pipe[1] != -1)
+		(void)close(parent2child_job_update_status_pipe[1]);
+
+	if (parent2child_moms_status_pipe[1] != -1)
+		(void)close(parent2child_moms_status_pipe[1]);
 
 	CLR_SJR(sjr)	/* clear structure used to return info to parent */
 
@@ -2844,6 +3808,10 @@ finish_exec(job *pjob)
 			(void)close(downfds);
 			(void)close(upfds2);
 			(void)close(downfds2);
+			(void)close(child2parent_job_update_pipe_w);
+			(void)close(parent2child_job_update_pipe_r);
+			(void)close(parent2child_job_update_status_pipe_r);
+			(void)close(parent2child_moms_status_pipe_r);
 			(void)close(pts);
 			/*Closing the inherited post forwarded listening socket  */
 			if (pjob->ji_wattr[JOB_ATR_X11_cookie].at_val.at_str) {
@@ -2873,12 +3841,22 @@ finish_exec(job *pjob)
 			fflush(stderr);
 			set_termcc(pts);	/* set terminal control char */
 			(void)setwinsize(pts);	/* set window size to qsub's */
+			if (do_tolerate_node_failures(pjob) && (get_failed_moms_and_vnodes(pjob, parent2child_moms_status_pipe_r, -1, &vnl_fails, &vnl_good, 1) != 0)) {
+				FREE_VNLS(vnl_fails, vnl_good);
+				starter_return(upfds, downfds,
+						JOB_EXEC_RETRY, &sjr);
+			}
 
 			/* run prolog */
 			if (prolo_hooks > 0) {
 
 				mom_hook_input_init(&hook_input);
 				hook_input.pjob = pjob;
+				if (do_tolerate_node_failures(pjob)) {
+					hook_input.vnl_fail = (vnl_t *)vnl_fails;
+					hook_input.failed_mom_list = &pjob->ji_failed_node_list;
+					hook_input.succeeded_mom_list = &pjob->ji_node_list;
+				}
 
 				mom_hook_output_init(&hook_output);
 				hook_output.reject_errcode = &hook_errcode;
@@ -2913,7 +3891,13 @@ finish_exec(job *pjob)
 					}
 					return;
 				case 1:   /* explicit accept */
-					send_pipe_request(upfds2, downfds2, IM_EXEC_PROLOGUE);
+					if (send_pipe_request(upfds2, downfds2, IM_EXEC_PROLOGUE) != 0) {
+						log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB,
+								LOG_INFO, pjob->ji_qs.ji_jobid,
+							"warning: send of IM_EXEC_PROLOGUE to parent mom failed");
+					}
+					if (do_tolerate_node_failures(pjob))
+						send_update_job(pjob, child2parent_job_update_pipe_w, parent2child_job_update_pipe_r, parent2child_job_update_status_pipe_r);
 					break;
 				case 2:
 					/* no hook script executed - execute old-style prologue */
@@ -2931,7 +3915,13 @@ finish_exec(job *pjob)
 					log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
 						LOG_INFO, "",
 						"prologue hook event: accept req by default");
-					send_pipe_request(upfds2, downfds2, IM_EXEC_PROLOGUE);
+					if (send_pipe_request(upfds2, downfds2, IM_EXEC_PROLOGUE) != 0) {
+						log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB,
+								LOG_INFO, pjob->ji_qs.ji_jobid,
+							"warning: send of IM_EXEC_PROLOGUE to parent mom failed");
+					}
+					if (do_tolerate_node_failures(pjob))
+						send_update_job(pjob, child2parent_job_update_pipe_w, parent2child_job_update_pipe_r, parent2child_job_update_status_pipe_r);
 			}
 
 			shellpid = fork();
@@ -2958,11 +3948,24 @@ finish_exec(job *pjob)
 					/* fork, parent is "reader" process  */
 					(void)sigaction(SIGTERM, &act, NULL);
 
-					(void)close(pts);
-					(void)close(upfds);
-					(void)close(downfds);
-					(void)close(upfds2);
-					(void)close(downfds2);
+					if (pts != -1)
+						(void)close(pts);
+					if (upfds != -1)
+						(void)close(upfds);
+					if (downfds != -1)
+						(void)close(downfds);
+					if (upfds2 != -1)
+						(void)close(upfds2);
+					if (downfds2 != -1)
+						(void)close(downfds2);
+					if (child2parent_job_update_pipe_w != -1)
+						(void)close(child2parent_job_update_pipe_w);
+					if (parent2child_job_update_pipe_r != -1)
+						(void)close(parent2child_job_update_pipe_r);
+					if (parent2child_job_update_status_pipe_r != -1)
+						(void)close(parent2child_job_update_status_pipe_r);
+					if (parent2child_moms_status_pipe_r != -1)
+						(void)close(parent2child_moms_status_pipe_r);
 					(void)close(1);
 					(void)close(2);
 
@@ -3105,11 +4108,21 @@ finish_exec(job *pjob)
 				j = JOB_EXEC_RETRY;
 			starter_return(upfds, downfds, j, &sjr);
 		}
-
+		if (do_tolerate_node_failures(pjob) &&
+			(get_failed_moms_and_vnodes(pjob, downfds2, -1, &vnl_fails, &vnl_good, 1) != 0)) {
+			FREE_VNLS(vnl_fails, vnl_good);
+			starter_return(upfds, downfds, JOB_EXEC_RETRY, &sjr);
+		}
 		/* run prologue hooks */
+
 		if (prolo_hooks > 0) {
 			mom_hook_input_init(&hook_input);
 			hook_input.pjob = pjob;
+			if (do_tolerate_node_failures(pjob)) {
+				hook_input.vnl_fail = (vnl_t *)vnl_fails;
+				hook_input.failed_mom_list = &pjob->ji_failed_node_list;
+				hook_input.succeeded_mom_list = &pjob->ji_node_list;
+			}
 
 			mom_hook_output_init(&hook_output);
 			hook_output.reject_errcode = &hook_errcode;
@@ -3142,7 +4155,13 @@ finish_exec(job *pjob)
 						JOB_EXEC_FAILHOOK_RERUN, &sjr);
 				}
 			case 1:   /* explicit accept */
-				send_pipe_request(upfds2, downfds2, IM_EXEC_PROLOGUE);
+				if (send_pipe_request(upfds2, downfds2, IM_EXEC_PROLOGUE) != 0) {
+						log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB,
+								LOG_INFO, pjob->ji_qs.ji_jobid,
+							"warning: send of IM_EXEC_PROLOGUE to parent mom failed");
+				}
+				if (do_tolerate_node_failures(pjob))
+					send_update_job(pjob, child2parent_job_update_pipe_w, parent2child_job_update_pipe_r, parent2child_job_update_status_pipe_r);
 				break;
 			case 2:
 				/* no hook script executed - execute old-style prologue */
@@ -3163,7 +4182,13 @@ finish_exec(job *pjob)
 				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
 					LOG_INFO, "",
 					"prologue hook event: accept req by default");
-				send_pipe_request(upfds2, downfds2, IM_EXEC_PROLOGUE);
+				if (send_pipe_request(upfds2, downfds2, IM_EXEC_PROLOGUE) != 0) {
+					log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB,
+							LOG_INFO, pjob->ji_qs.ji_jobid,
+							"warning: send of IM_EXEC_PROLOGUE to parent mom failed");
+				}
+				if (do_tolerate_node_failures(pjob))
+					send_update_job(pjob, child2parent_job_update_pipe_w, parent2child_job_update_pipe_r, parent2child_job_update_status_pipe_r);
 		}
 
 	}
@@ -3235,6 +4260,24 @@ finish_exec(job *pjob)
 		job_has_executable = 1;
 	}
 
+	if (do_tolerate_node_failures(pjob) && (prolo_hooks > 0)) {
+
+		/* free up from previous execjob_prologue hook */
+		FREE_VNLS(vnl_fails, vnl_good);
+
+		if (pjob->ji_numnodes > 1) {
+			snprintf(log_buffer, sizeof(log_buffer), "waiting up to %ld secs ($job_launch_delay) for mom hosts status and prologue hooks ack", job_launch_delay);
+			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
+			/* a filled-in log_buffer could be mistaken for an error message */
+			log_buffer[0] = '\0';
+	
+			if (get_failed_moms_and_vnodes(pjob, parent2child_moms_status_pipe_r, (prolo_hooks > 0) ? downfds2 : -1, &vnl_fails, &vnl_good, job_launch_delay) != 0) {
+				FREE_VNLS(vnl_fails, vnl_good);
+				starter_return(upfds, downfds, JOB_EXEC_RETRY, &sjr);
+			}
+		}
+	}
+
 	the_progname = shell;
 	the_argv = argv;
 
@@ -3247,6 +4290,12 @@ finish_exec(job *pjob)
 	hook_input.progname = the_progname;
 	hook_input.argv = the_argv;
 	hook_input.env = the_env;
+
+	if (do_tolerate_node_failures(pjob)) {
+		hook_input.vnl_fail = (vnl_t *)vnl_fails;
+		hook_input.failed_mom_list = &pjob->ji_failed_node_list;
+		hook_input.succeeded_mom_list = &pjob->ji_node_list;
+	}
 
 	mom_hook_output_init(&hook_output);
 	hook_output.reject_errcode = &hook_errcode;
@@ -3266,8 +4315,16 @@ finish_exec(job *pjob)
 			free(progname);
 			free_attrlist(&argv_list);
 			free_str_array(hook_output.env);
-			starter_return(upfds, downfds,
-				JOB_EXEC_FAILHOOK_DELETE, &sjr);
+			if (do_tolerate_node_failures(pjob))
+				FREE_VNLS(vnl_fails, vnl_good);
+
+			if (hook_errcode == PBSE_HOOK_REJECT_RERUNJOB) {
+				starter_return(upfds, downfds,
+					JOB_EXEC_FAILHOOK_RERUN, &sjr);
+			} else {
+				starter_return(upfds, downfds,
+					JOB_EXEC_FAILHOOK_DELETE, &sjr);
+			}
 		case 1:   /* explicit accept */
 			if (progname != NULL)
 				the_progname = progname;
@@ -3280,6 +4337,9 @@ finish_exec(job *pjob)
 				free(progname);
 				free_attrlist(&argv_list);
 				free_str_array(hook_output.env);
+				if (do_tolerate_node_failures(pjob))
+					FREE_VNLS(vnl_fails, vnl_good);
+
 				starter_return(upfds, downfds,
 					JOB_EXEC_FAILHOOK_DELETE, &sjr);
 			}
@@ -3292,6 +4352,9 @@ finish_exec(job *pjob)
 				free(progname);
 				free_attrlist(&argv_list);
 				free_str_array(the_argv);
+				if (do_tolerate_node_failures(pjob))
+					FREE_VNLS(vnl_fails, vnl_good);
+
 				starter_return(upfds, downfds,
 					       JOB_EXEC_FAILHOOK_DELETE, &sjr);
 			}
@@ -3319,6 +4382,8 @@ finish_exec(job *pjob)
 				k++;
 			}
 			the_env = vtable.v_envp;
+			if (do_tolerate_node_failures(pjob))
+				send_update_job(pjob, child2parent_job_update_pipe_w, parent2child_job_update_pipe_r, parent2child_job_update_status_pipe_r);
 
 			break;
 		case 2:	  /* no hook script executed - go ahead and accept event */
@@ -3328,6 +4393,9 @@ finish_exec(job *pjob)
 				LOG_INFO, "",
 				"execjob_launch hook event: accept req by default");
 	}
+
+	if (do_tolerate_node_failures(pjob))
+		FREE_VNLS(vnl_fails, vnl_good);
 
 	/* if job has executable (submitted as qsub -- <progname> <argv>), then */
 	/* <progname> and <argv> take precedence so they must not be passed to */
@@ -4120,7 +5188,7 @@ nodes_free(job *pj)
 
 	if (pj->ji_vnods) {
 		vp = pj->ji_vnods;
-		for (i=0; i<pj->ji_numvnod; i++, vp++) {
+		for (i = 0; i < pj->ji_numvnod; i++, vp++) {
 			if (vp->vn_hname)
 				free(vp->vn_hname);
 			if (vp->vn_vname)
@@ -4130,16 +5198,17 @@ nodes_free(job *pj)
 		pj->ji_vnods = NULL;
 	}
 
-	if (pj->ji_vnods0) {
-		vp = pj->ji_vnods0;
-		for (i=0; i<pj->ji_numvnod0; i++, vp++) {
+	if (pj->ji_assn_vnodes) {
+		vp = pj->ji_assn_vnodes;
+		for (i = 0; i < pj->ji_num_assn_vnodes; i++, vp++) {
 			if (vp->vn_hname)
 				free(vp->vn_hname);
 			if (vp->vn_vname)
 				free(vp->vn_vname);
 		}
-		(void)free(pj->ji_vnods0);
-		pj->ji_vnods0 = NULL;
+		(void)free(pj->ji_assn_vnodes);
+		pj->ji_assn_vnodes = NULL;
+		pj->ji_num_assn_vnodes = 0;
 	}
 
 	if (pj->ji_hosts) {
@@ -4205,7 +5274,8 @@ nodes_free(job *pj)
  * @retval	PBSE_* on error.
  *
  * @par Side Effects:
- *	pjob->ji_vnods and  pjob->ji_hosts are set, arrays in the heap
+ *	pjob->ji_vnods, pjob->ji_assn_vnodes, and pjob->ji_hosts are set,
+ *	arrays in the heap
  *
  * @par MT-safe: likely no
  *
@@ -4233,12 +5303,11 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 	int	 nprocs;
 	int	 n_chunks;
 	int	 procindex;
-	int	 procindex0;
 	int	 rc;
 	long long sz;
 	char	*tpc;
-	resc_limit have;
-	resc_limit need;
+	resc_limit_t have;
+	resc_limit_t need;
 	int	 naccels = 0;	  /* naccelerators count */
 	int	 need_accel = 0;  /* accelerator needed in subchunk? */
 	long long accel_mem = 0;  /* accel mem per exec_vnode key-value pair */
@@ -4264,6 +5333,11 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 	static char	      *sbuf = NULL;
 	static int	       snelmt = 0;
 	static key_value_pair *skv = NULL;
+	char	*save_ptr;	/* posn for strtok_r() */
+	int	n_assn_vnodes;
+	int	assn_index;
+	char	*tmp_str;
+	char	*evnode;
 
 	if (pjob == NULL)
 		return (PBSE_INTERNAL);
@@ -4276,7 +5350,12 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 	nodes_free(pjob);
 
 	execvnode = pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_val.at_str;
+	if (execvnode == NULL)
+		return (PBSE_INTERNAL);
+
 	schedselect = pjob->ji_wattr[(int)JOB_ATR_SchedSelect].at_val.at_str;
+	if (schedselect == NULL)
+		return (PBSE_INTERNAL);
 
 	if (pjob->ji_wattr[(int)JOB_ATR_exec_host2].at_val.at_str != NULL) {
 		/* Mom got information from new server */
@@ -4370,10 +5449,26 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 	DBPRT(("- allocating %d hosts and %d procs\n", nmoms, nprocs))
 	pjob->ji_hosts = (hnodent *)calloc(nmoms+1, sizeof(hnodent));
 	pjob->ji_vnods = (vmpiprocs *)calloc(nprocs+1, sizeof(vmpiprocs));
-	pjob->ji_vnods0 = (vmpiprocs *)calloc(n_chunks+1, sizeof(vmpiprocs));
+
+	n_assn_vnodes = 0;
+	evnode = strdup(execvnode);
+	if (evnode == NULL) {
+		log_err(errno, __func__, "strdup failed");
+		return (PBSE_SYSTEM);
+	}
+	for (tmp_str = strtok_r(evnode, "+", &save_ptr); tmp_str != NULL; tmp_str = strtok_r(NULL, "+", &save_ptr)) {
+		n_assn_vnodes++;
+	}
+
+	if (n_assn_vnodes == 0)
+		n_assn_vnodes = 1;
+
+	free(evnode);
+
+	pjob->ji_assn_vnodes = (vmpiprocs *)calloc(n_assn_vnodes + 1, sizeof(vmpiprocs));
 
 	if ((pjob->ji_hosts == NULL) || (pjob->ji_vnods == NULL) ||
-		(pjob->ji_vnods0 == NULL)) {
+		(pjob->ji_assn_vnodes == NULL)) {
 		log_err(errno, "job_nodes" , "calloc failed");
 		return (PBSE_SYSTEM);
 	}
@@ -4385,9 +5480,8 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 	for (i=0; i <= nprocs; ++i)
 		pjob->ji_vnods[i].vn_node = TM_ERROR_NODE;
 
-	for (i=0; i <= n_chunks; ++i) {
-		pjob->ji_vnods0[i].vn_node = TM_ERROR_NODE;
-	}
+	for (i = 0; i <= n_assn_vnodes; ++i)
+		pjob->ji_assn_vnodes[i].vn_node = TM_ERROR_NODE;
 
 	/* Now parse schedselect and exec_vnode at same time to map mpiprocs */
 	/* onto the corresponding Mom and sum up the resources allocated     */
@@ -4399,7 +5493,7 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 
 	momindex  = 0;
 	procindex = 0;
-	procindex0 = 0;
+	assn_index = 0;
 
 	elast = ebuf;
 
@@ -4415,16 +5509,15 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 	 */
 
 	/* (1) parse chunk from select spec */
+
 	psubspec = parse_plus_spec_r(sbuf, &slast, &hpn);
 	while (psubspec) {
 		int	 nthreads;
 		int	 numprocs;
-		int	 found_cpus0;
 
 		DBPRT(("\tsubspec: %s\n", psubspec))
 		nthreads = -1;
 		numprocs = -1;
-		found_cpus0 = 0;
 #ifdef NAS /* localmod 082 */
 		rc = parse_chunk_r(psubspec, 0, &snc, &snelma, &snelmt, &skv, NULL);
 #else
@@ -4484,7 +5577,6 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 			if (numprocs == -1) {
 				if (need.rl_ncpus == 0) {
 					numprocs = 0;
-					found_cpus0 = 1;
 				} else {
 					numprocs = 1;
 				}
@@ -4576,8 +5668,9 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 				hp->hn_sister = SISTER_OKAY;
 				hp->hn_nprocs = 0;
 				hp->hn_vlnum  = 0;
+				hp->hn_vlist  = (host_vlist_t *)0;
 				hp->hn_vlist  = NULL;
-				memset(&hp->hn_nrlimit, 0, sizeof(resc_limit));
+				memset(&hp->hn_nrlimit, 0, sizeof(resc_limit_t));
 				CLEAR_HEAD(hp->hn_events);
 				/* mark next slot as the (current) end */
 				pjob->ji_hosts[momindex].hn_node = TM_ERROR_NODE;
@@ -4627,6 +5720,7 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 
 						if (get_fullhostname(hp->hn_host, namebuf,
 								(sizeof(namebuf) - 1)) != 0) {
+
 							sprintf(log_buffer,
 								"Failed to get fullhostname from %s for job %s",
 								hp->hn_host, pjob->ji_qs.ji_jobid);
@@ -4703,6 +5797,7 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 					} else {
 						pmm = create_mommap_entry(nodep, NULL, pmom, 0);
 					}
+
 					if (pmm == NULL) {
 						delete_mom_entry(pmom);
 						return PBSE_SYSTEM;
@@ -4757,6 +5852,25 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 					phv[hp->hn_vlnum].hv_mem   = ndmem;
 					hp->hn_vlnum++;
 				}
+
+				vmp = &pjob->ji_assn_vnodes[assn_index];
+				vmp->vn_node = assn_index++;
+				if (hp != NULL)
+					vmp->vn_host = hp;
+				if (pmm != NULL)
+					vmp->vn_vname = strdup(pmm->mvm_name);
+				if (vmp->vn_vname == NULL) {
+					if (vmp->vn_hname != NULL) {
+						free(vmp->vn_hname);
+						vmp->vn_hname = NULL;
+					}
+					return (PBSE_SYSTEM);
+				}
+				vmp->vn_cpus  = vnncpus;
+				vmp->vn_mem  = ndmem;
+				/* mark next entry as the (current) end */
+				pjob->ji_assn_vnodes[assn_index].vn_node = TM_ERROR_NODE;
+
 				if (stop_on_paren  == 0)
 					break;
 				else if (hpn < 0)
@@ -4807,34 +5921,6 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 				/* mark next entry as the (current) end */
 				pjob->ji_vnods[procindex].vn_node = TM_ERROR_NODE;
 			}
-			/* track zero cpu-assigned vnodes in this chunk. */
-			if (found_cpus0 && (pjob->ji_vnods0 != NULL)) {
-				vmp = &pjob->ji_vnods0[procindex0];
-				vmp->vn_node = procindex0++;
-				vmp->vn_host = hp;
-				if (pmm->mvm_hostn) {
-					/* copy the true host name */
-					vmp->vn_hname = strdup(pmm->mvm_hostn);
-					if (vmp->vn_hname == NULL)
-						return (PBSE_SYSTEM);
-				} else {
-					/* set null and we will use the Mom name */
-					vmp->vn_hname = NULL;
-				}
-				/* track only what's needed by hooks */
-				vmp->vn_vname = strdup(pmm->mvm_name);
-				if (vmp->vn_vname == NULL) {
-					if (vmp->vn_hname != NULL) {
-						free(vmp->vn_hname);
-						vmp->vn_hname = NULL;
-					}
-					return (PBSE_SYSTEM);
-				}
-				vmp->vn_cpus  = have.rl_ncpus;
-				vmp->vn_mem  = have.rl_mem;
-				/* mark next entry as the (current) end */
-				pjob->ji_vnods0[procindex0].vn_node = TM_ERROR_NODE;
-			}
 		}
 
 		/* do next section of schedselect */
@@ -4843,7 +5929,7 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 
 	pjob->ji_numnodes = momindex;
 	pjob->ji_numvnod  = procindex;
-	pjob->ji_numvnod0  = procindex0;
+	pjob->ji_num_assn_vnodes = assn_index;
 
 	return (0);
 }
@@ -4949,6 +6035,9 @@ start_exec(job *pjob)
 	}
 	pjob->ji_nodeid = 0;		/* I'm MS */
 	nodenum = pjob->ji_numnodes;
+
+	if (do_tolerate_node_failures(pjob))
+		reliable_job_node_add(&pjob->ji_node_list, mom_host);
 
 	if (nodenum > 1) {
 		attribute *pattr;
@@ -5116,6 +6205,15 @@ start_exec(job *pjob)
 		}
 
 		free_attrlist(&phead);
+		if (do_tolerate_node_failures(pjob)) {
+			if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_WAITING_JOIN_JOB) {
+				pjob->ji_qs.ji_substate = JOB_SUBSTATE_WAITING_JOIN_JOB;
+				pjob->ji_joinalarm = time_now + joinjob_alarm_time;
+				sprintf(log_buffer, "job waiting up to %ld secs ($sister_join_job_alarm) for all sister moms to join", joinjob_alarm_time);
+				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
+				log_buffer[0] = '\0';
+			}
+		}
 	} else {		/* no sisters */
 		pjob->ji_ports[0] = -1;
 		pjob->ji_ports[1] = -1;
@@ -5123,31 +6221,21 @@ start_exec(job *pjob)
 		pjob->ji_stderr = -1;
 
 		/*
-		 ** This is a single node job but we need to do any
-		 ** extra setup provided by job_join_extra for local MS.
+		 * All the JOIN messages have come in.
 		 */
-		if (job_join_extra != NULL) {
-			if (job_join_extra(pjob, &pjob->ji_hosts[0]) != 0) {
-				exec_bail(pjob, JOB_EXEC_RETRY, NULL);
-				return;
-			}
-		}
-
-#if	defined(MOM_CPUSET) && !defined(IRIX6_CPUSET)
-		if (new_cpuset(pjob) < 0) {
+		switch (pre_finish_exec(pjob, 0)) {
+		  case PRE_FINISH_FAIL_NEW_CPUSET:
 			log_joberr(-1, __func__, "new_cpuset failed",
 				pjob->ji_qs.ji_jobid);
 			exec_bail(pjob, JOB_EXEC_RETRY, NULL);
 			return;
-		}
-#endif	/* MOM_CPUSET && !IRIX6_CPUSET */
-#if	MOM_BGL
-		if (verify_job_bgl_partition(pjob, &job_error_code) != 0) {
-			exec_bail(pjob, job_error_code, NULL);
+		  case PRE_FINISH_SUCCESS:
+		  	finish_exec(pjob);
+		  	break;
+		  default:
+			exec_bail(pjob, JOB_EXEC_RETRY, NULL);
 			return;
 		}
-#endif	/* MOM_BGL */
-		finish_exec(pjob);
 	}
 }
 
@@ -5220,7 +6308,6 @@ starter_return(int upfds, int downfds, int code, struct startjob_rtn *sjrtn)
 
 	sjrtn->sj_code = code;
 	(void)writepipe(upfds, sjrtn, sizeof(*sjrtn));
-	(void)close(upfds);
 
 	/* wait for acknowledgement */
 	(void)readpipe(downfds, &ack, sizeof(ack));

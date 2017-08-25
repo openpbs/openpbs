@@ -101,8 +101,8 @@
 #include "libsec.h"
 #include "mom_hook_func.h"
 #include "pbs_internal.h"
-
-
+#include "placementsets.h"
+#include "pbs_reliable.h"
 #define EXTRA_ENV_PTRS	       32
 
 /**
@@ -127,8 +127,9 @@ extern	unsigned int	pbs_mom_port;
 extern	time_t		time_now;
 extern	time_t		time_resc_updated;
 extern	char		mom_host[];
-extern char             *mom_home;
-extern int enable_exechost2;
+extern	char		*mom_home;
+extern	int		enable_exechost2;
+extern	long		joinjob_alarm_time;
 
 int              mom_reader_go;		/* see catchinter() & mom_writer() */
 
@@ -192,6 +193,87 @@ static	void catchinter(int);
 	int     hold = fcntl(fd, F_DUPFD, 3); \
 	(void)close(fd); \
 	fd = hold; \
+}
+
+/**
+ * @brief
+ *	Update job's nodes resources information based on the
+ *	hook set values to exec_vnode, exec_host/exec_host2.
+ *
+ * @param[in,out]	pjob	 - job being operated on.
+ * @param[in]		old_exec_vnode - job's previous exec_vnode
+ *					value before the hook update.
+ * @retval 0	- for success
+ * @retval 1	- for failure
+ */
+static int
+send_update_job(job *pjob, char *old_exec_vnode)
+{
+	int	exec_vnode_hookset;
+	int	schedselect_hookset;
+	int	exec_host_hookset;
+	int	exec_host2_hookset;
+	char	*new_exec_vnode;
+	char	*new_exec_host;
+	int	rc;
+	char	err_msg[LOG_BUF_SIZE];
+
+	if (pjob == NULL)
+		return (1);
+
+	exec_vnode_hookset = pjob->ji_wattr[JOB_ATR_exec_vnode].at_flags & ATR_VFLAG_HOOK;
+	schedselect_hookset = pjob->ji_wattr[JOB_ATR_SchedSelect].at_flags & ATR_VFLAG_HOOK;
+	exec_host_hookset = pjob->ji_wattr[JOB_ATR_exec_host].at_flags & ATR_VFLAG_HOOK;
+	exec_host2_hookset = pjob->ji_wattr[JOB_ATR_exec_host2].at_flags & ATR_VFLAG_HOOK;
+	if (!exec_vnode_hookset || !schedselect_hookset ||
+	   (!exec_host_hookset && !exec_host2_hookset)) {
+		return (1);
+	}
+
+	snprintf(log_buffer, sizeof(log_buffer), "pruned from exec_vnode=%s", old_exec_vnode);
+	new_exec_vnode = pjob->ji_wattr[JOB_ATR_exec_vnode].at_val.at_str;
+	log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
+			pjob->ji_qs.ji_jobid, log_buffer);
+	snprintf(log_buffer, sizeof(log_buffer),
+		"pruned to exec_vnode=%s", new_exec_vnode);
+	log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
+		pjob->ji_qs.ji_jobid, log_buffer);
+
+	(void)update_resources_list(pjob, ATTR_l,
+		JOB_ATR_resource, new_exec_vnode, INCR, 0,
+			JOB_ATR_resource_orig);
+
+	if (pjob->ji_wattr[(int)JOB_ATR_exec_host2].at_flags & ATR_VFLAG_SET) {
+		new_exec_host = pjob->ji_wattr[(int)JOB_ATR_exec_host2].at_val.at_str;
+	} else if (pjob->ji_wattr[(int)JOB_ATR_exec_host].at_flags & ATR_VFLAG_SET) {
+		new_exec_host = pjob->ji_wattr[(int)JOB_ATR_exec_host].at_val.at_str;
+	}
+
+	/* Send DELETE_JOB2 request to the sister moms not in
+	 * 'new_peh', to kill the job on that sister and
+	 * report resources_used info.
+	 */
+	(void)send_sisters_inner(pjob, IM_DELETE_JOB2, NULL, new_exec_host);
+
+	if ((rc = job_nodes(pjob)) != 0) {
+		snprintf(err_msg, LOG_BUF_SIZE, "failed updating internal nodes data (rc=%d)", rc);
+		log_err(-1, __func__, err_msg);
+		return (1);
+	}
+	if (generate_pbs_nodefile(pjob, NULL, 0, err_msg, LOG_BUF_SIZE) != 0) {
+		log_err(-1, __func__, err_msg);
+		return (1);
+	}
+
+	job_save(pjob, SAVEJOB_FULL);
+	/* set modify flag on the job attributes that will be sent to the server */
+	pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_flags |= ATR_VFLAG_MODIFY;
+	pjob->ji_wattr[(int)JOB_ATR_SchedSelect].at_flags |= ATR_VFLAG_MODIFY;
+	(void)update_ajob_status_using_cmd(pjob, IS_RESCUSED, 1);
+
+	(void)send_sisters_job_update(pjob);
+	pjob->ji_updated = 1;
+	return (0);
 }
 
 /**
@@ -1509,7 +1591,10 @@ finish_exec(job *pjob)
 	HANDLE                  hReadPipe_dummy = INVALID_HANDLE_VALUE;	/* dummy pipe read handle */
 	HANDLE                  hWritePipe_dummy = INVALID_HANDLE_VALUE; /* dummy pipe write handle */
 	char			cmd_shell[MAX_PATH + 1] = {'\0'};
-
+	vnl_t			*vnl_fails = NULL;
+	vnl_t			*vnl_good = NULL;
+	char			*old_exec_vnode = NULL;
+	char			err_msg[LOG_BUF_SIZE];
 
 	script_in = script_out = script_err = -1;
 	is_MS = pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE;
@@ -1936,6 +2021,24 @@ finish_exec(job *pjob)
 
 	mom_hook_input_init(&hook_input);
 	hook_input.pjob = pjob;
+	if (do_tolerate_node_failures(pjob)) {
+		/* need to fill in 'vnl_fails' and 'vnl_good' values used as input to hook */
+		if (prune_exec_vnode(pjob, NULL, &vnl_fails, &vnl_good, err_msg, LOG_BUF_SIZE) != 0) {
+			FREE_VNLS(vnl_fails, vnl_good);
+			exec_bail(pjob, JOB_EXEC_RETRY, err_msg);
+			return;
+		}
+		if (pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_flags & ATR_VFLAG_SET) {
+			old_exec_vnode = strdup(pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_val.at_str);
+			if (old_exec_vnode == NULL) {
+				exec_bail(pjob, JOB_EXEC_RETRY, NULL);
+				return;
+			}
+		}
+		hook_input.vnl_fail = (vnl_t *)vnl_fails;
+		hook_input.failed_mom_list = &pjob->ji_failed_node_list;
+		hook_input.succeeded_mom_list = &pjob->ji_node_list;
+	}
 
 	mom_hook_output_init(&hook_output);
 	hook_output.reject_errcode = &hook_errcode;
@@ -1959,6 +2062,8 @@ finish_exec(job *pjob)
 			} else { /* rerun is the default */
 				exec_bail(pjob, JOB_EXEC_FAILHOOK_RERUN, NULL);
 			}
+			if (do_tolerate_node_failures(pjob))
+				free(old_exec_vnode);
 			return;
 		case 1:   /* explicit accept */
 			/* tell sister moms to execute prologue hooks */
@@ -1969,6 +2074,8 @@ finish_exec(job *pjob)
 					pjob->ji_qs.ji_jobid);
 				log_err(-1, __func__, log_buffer);
 			}
+			if (do_tolerate_node_failures(pjob))
+				send_update_job(pjob, old_exec_vnode);
 			break;
 		case 2:
 			/* no hook script executed - run old style prologue */
@@ -1978,10 +2085,14 @@ finish_exec(job *pjob)
 				(void)fprintf(stderr,
 					"Could not run prolog: %s\n", log_buffer);
 				exec_bail(pjob, JOB_EXEC_FAIL2, NULL);
+				if (do_tolerate_node_failures(pjob))
+					free(old_exec_vnode);
 				return;
 			} else if (j != 0) {
 				/* requeue job */
 				exec_bail(pjob, JOB_EXEC_RETRY, NULL);
+				if (do_tolerate_node_failures(pjob))
+					free(old_exec_vnode);
 				return;
 			}
 			break;
@@ -1997,8 +2108,14 @@ finish_exec(job *pjob)
 						pjob->ji_qs.ji_jobid);
 					log_err(-1, __func__, log_buffer);
 				}
+				if (do_tolerate_node_failures(pjob))
+					send_update_job(pjob,old_exec_vnode);
 	}
 
+	if (do_tolerate_node_failures(pjob)) {
+		free(old_exec_vnode);
+		old_exec_vnode = NULL;
+	}
 
 	/*
 	 **	Create the job and set the limits.
@@ -2197,6 +2314,26 @@ finish_exec(job *pjob)
 		hook_input.argv = argv_in;
 		hook_input.env = env;
 
+		if (do_tolerate_node_failures(pjob)) {
+			/* need to fill in 'vnl_fails' and 'vnl_good' values used as input to hook */
+			if (prune_exec_vnode(pjob, NULL, &vnl_fails, &vnl_good, err_msg, LOG_BUF_SIZE) != 0) {
+				FREE_VNLS(vnl_fails, vnl_good);
+				free(old_exec_vnode);
+				exec_bail(pjob, JOB_EXEC_RETRY, err_msg);
+				return;
+			}
+			hook_input.vnl_fail = (vnl_t *)vnl_fails;
+			hook_input.failed_mom_list = &pjob->ji_failed_node_list;
+			hook_input.succeeded_mom_list = &pjob->ji_node_list;
+			if (pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_flags & ATR_VFLAG_SET) {
+				old_exec_vnode = strdup(pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_val.at_str);
+				if (old_exec_vnode == NULL) {
+					exec_bail(pjob, JOB_EXEC_RETRY, NULL);
+					return;
+				}
+			}
+		}
+
 		mom_hook_output_init(&hook_output);
 		hook_output.reject_errcode = &hook_errcode;
 
@@ -2209,20 +2346,31 @@ finish_exec(job *pjob)
 		switch (mom_process_hooks(HOOK_EVENT_EXECJOB_LAUNCH,
 				PBS_MOM_SERVICE_NAME,
 				mom_host, &hook_input, &hook_output,
-				hook_msg, sizeof(hook_msg), 0)) {
+				hook_msg, sizeof(hook_msg), 1)) {
 
 			case 0:	/* explicit reject */
 				free_str_array(argv_in);
 				free(progname_out);
 				free_attrlist(&argv_list);
 				free_str_array(hook_output.env);
-				exec_bail(pjob, JOB_EXEC_FAIL2, NULL);
+				if (do_tolerate_node_failures(pjob)) {
+					FREE_VNLS(vnl_fails, vnl_good);
+					free(old_exec_vnode);
+				}
+				if (hook_errcode == PBSE_HOOK_REJECT_RERUNJOB)
+					exec_bail(pjob, JOB_EXEC_FAILHOOK_RERUN, NULL);
+				else
+					exec_bail(pjob, JOB_EXEC_FAILHOOK_DELETE, NULL);
 				return;
 			case 1:   /* explicit accept */
 				if (progname_out == NULL) {
 					free_str_array(argv_in);
 					free_attrlist(&argv_list);
 					free_str_array(hook_output.env);
+					if (do_tolerate_node_failures(pjob)) {
+						FREE_VNLS(vnl_fails, vnl_good);
+						free(old_exec_vnode);
+					}
 					exec_bail(pjob, JOB_EXEC_FAIL2,
 						"execjob_launch hook returned NULL progname!");
 					return;
@@ -2234,7 +2382,10 @@ finish_exec(job *pjob)
 					free(progname_out);
 					free_attrlist(&argv_list);
 					free_str_array(hook_output.env);
-
+					if (do_tolerate_node_failures(pjob)) {
+						FREE_VNLS(vnl_fails, vnl_good);
+						free(old_exec_vnode);
+					}
 					exec_bail(pjob, JOB_EXEC_FAIL2,
 						"execjob_launch hook returned NULL argv!");
 					return;
@@ -2252,6 +2403,10 @@ finish_exec(job *pjob)
 					free_attrlist(&argv_list);
 					free_str_array(hook_output.env);
 					free_str_array(argv_out);
+					if (do_tolerate_node_failures(pjob)) {
+						FREE_VNLS(vnl_fails, vnl_good);
+						free(old_exec_vnode);
+					}
 
 					exec_bail(pjob, JOB_EXEC_FAIL2,
 						"execjob_launch hook returned NULL argv_str!");
@@ -2272,6 +2427,8 @@ finish_exec(job *pjob)
 				if (env == NULL) {
 					free_str_array(argv_in);
 					free_attrlist(&argv_list);
+					if (do_tolerate_node_failures(pjob))
+						free(old_exec_vnode);
 					exec_bail(pjob, JOB_EXEC_FAIL2,
 						  "execjob_launch hook NULL env!");
 					return;
@@ -2287,6 +2444,8 @@ finish_exec(job *pjob)
 				/* with entries from */
 				/* new env_array */
 				env_block = make_envp();
+				if (do_tolerate_node_failures(pjob))
+					send_update_job(pjob, old_exec_vnode);
 				break;
 			case 2:	  /* no hook script executed - go ahead and accept event */
 				break;
@@ -2294,11 +2453,18 @@ finish_exec(job *pjob)
 				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
 					LOG_INFO, "",
 					"execjob_launch hook event: accept req by default");
+				if (do_tolerate_node_failures(pjob))
+					send_update_job(pjob, old_exec_vnode);
 		}
 
 		free_str_array(argv_in);
 		free_attrlist(&argv_list);
 		free_str_array(hook_output.env);
+		if (do_tolerate_node_failures(pjob)) {
+			FREE_VNLS(vnl_fails, vnl_good);
+			free(old_exec_vnode);
+			old_exec_vnode = NULL;
+		}
 
 		/*
 		 * In case of Interactive job, we need not collect std output and error into files.
@@ -3257,15 +3423,18 @@ nodes_free(job *pj)
 		pj->ji_vnods = NULL;
 	}
 
-	if (pj->ji_vnods0) {
-		for (vp=pj->ji_vnods0; vp->vn_node != TM_ERROR_NODE; vp++) {
+	if (pj->ji_assn_vnodes) {
+		int i;
+		vp = pj->ji_assn_vnodes;
+		for (i = 0; i < pj->ji_num_assn_vnodes; i++, vp++) {
 			if (vp->vn_hname)
 				free(vp->vn_hname);
 			if (vp->vn_vname)
 				free(vp->vn_vname);
 		}
-		(void)free(pj->ji_vnods0);
-		pj->ji_vnods0 = NULL;
+		(void)free(pj->ji_assn_vnodes);
+		pj->ji_assn_vnodes = NULL;
+		pj->ji_num_assn_vnodes = 0;
 	}
 
 	if (pj->ji_hosts) {
@@ -3327,7 +3496,7 @@ nodes_free(job *pj)
  * @retval	PBSE_* on error.
  *
  * @par Side Effects:
- *	pjob->ji_vnods and  pjob->ji_hosts are set, arrays in the heap
+ *	pjob->ji_vnods, pjob->ji_assn_vnodes, and pjob->ji_hosts are set, arrays in the heap
  *
  * @par MT-safe: likely no
  *
@@ -3349,7 +3518,6 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 	int	 nmoms;
 	int	 nthreads;
 	int	 numprocs;
-	int	 found_cpus0;
 	vmpiprocs *vmp;
 	momvmap_t *pmm;
 	mominfo_t *pmom;
@@ -3359,12 +3527,9 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 	int	 nprocs;
 	int	 n_chunks;
 	int	 procindex;
-	int	 procindex0;
 	int	 rc;
 	long long sz;
 	char	*tpc;
-	resc_limit have;
-	resc_limit need;
 
 	/* variables used in parsing the "exec_vnode" string */
 	int	 stop_on_paren;
@@ -3386,6 +3551,13 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 	static char	      *sbuf = NULL;
 	static int	       snelmt = 0;
 	static key_value_pair *skv = NULL;
+	resc_limit_t		have;
+	resc_limit_t		need;
+	char			*save_ptr;	/* posn for strtok_r() */
+	int			n_assn_vnodes;
+	int			assn_index;
+	char			*tmp_str;
+	char			*evnode;
 
 	if (pjob == NULL)
 		return (PBSE_INTERNAL);
@@ -3398,7 +3570,13 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 	nodes_free(pjob);
 
 	execvnode = pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_val.at_str;
+	if (execvnode == NULL)
+		return (PBSE_INTERNAL);
+
 	schedselect = pjob->ji_wattr[(int)JOB_ATR_SchedSelect].at_val.at_str;
+	if (schedselect == NULL)
+		return (PBSE_INTERNAL);
+
 	if (pjob->ji_wattr[(int)JOB_ATR_exec_host2].at_val.at_str != NULL) {
 		/* Mom got information from new server */
 		enable_exechost2 = 1;
@@ -3449,10 +3627,9 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 
 		nmoms += snc;		/* num of Moms, one per chunk */
 		k = 1;			/* default number of mpiprocs */
-		for (j=0; j<snelma; ++j) {
+		for (j = 0; j < snelma; ++j) {
 			if (strcmp(skv[j].kv_keyw, "mpiprocs") == 0) {
 				k= atol(skv[j].kv_val);
-				break;
 			}
 		}
 		nprocs += snc * k;	/* mpiproces * num of chunks */
@@ -3463,10 +3640,25 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 	DBPRT(("- allocating %d hosts and %d procs\n", nmoms, nprocs))
 	pjob->ji_hosts = (hnodent *)calloc(nmoms+1, sizeof(hnodent));
 	pjob->ji_vnods = (vmpiprocs *)calloc(nprocs+1, sizeof(vmpiprocs));
-	pjob->ji_vnods0 = (vmpiprocs *)calloc(n_chunks+1, sizeof(vmpiprocs));
+
+	n_assn_vnodes = 0;
+	evnode = strdup(execvnode);
+	if (evnode == NULL) {
+		log_err(errno, __func__, "strdup failed");
+		return (PBSE_SYSTEM);
+	}
+	for (tmp_str = strtok_r(evnode, "+", &save_ptr); tmp_str != NULL; tmp_str = strtok_r(NULL, "+", &save_ptr)) {
+		n_assn_vnodes++;
+	}
+	if (n_assn_vnodes == 0)
+		n_assn_vnodes = 1;
+
+	free(evnode);
+
+	pjob->ji_assn_vnodes = (vmpiprocs *)calloc(n_assn_vnodes + 1, sizeof(vmpiprocs));
 
 	if ((pjob->ji_hosts == NULL) || (pjob->ji_vnods == NULL) ||
-		(pjob->ji_vnods0 == NULL)) {
+		(pjob->ji_assn_vnodes == NULL)) {
 		log_err(errno, "job_nodes" , "calloc failed");
 		return (PBSE_SYSTEM);
 	}
@@ -3478,10 +3670,8 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 	for (i=0; i <= nprocs; ++i)
 		pjob->ji_vnods[i].vn_node = TM_ERROR_NODE;
 
-	for (i=0; i <= n_chunks; ++i) {
-		pjob->ji_vnods0[i].vn_node = TM_ERROR_NODE;
-	}
-
+	for (i = 0; i <= n_assn_vnodes; ++i)
+		pjob->ji_assn_vnodes[i].vn_node = TM_ERROR_NODE;
 	/* Now parse schedselect and exec_vnode at same time to map mpiprocs */
 	/* onto the corresponding Mom and sum up the resources allocated     */
 	/* from each Mom						     */
@@ -3492,7 +3682,7 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 
 	momindex  = 0;
 	procindex = 0;
-	procindex0 = 0;
+	assn_index = 0;
 
 	elast = ebuf;
 
@@ -3513,7 +3703,6 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 		DBPRT(("\tsubspec: %s\n", psubspec))
 		nthreads = -1;
 		numprocs = -1;
-		found_cpus0 = 0;
 		rc = parse_chunk_r(psubspec, &snc, &snelma, &snelmt, &skv, NULL);
 		/* snc = number of chunks */
 		if (rc != 0) {
@@ -3547,7 +3736,6 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 			if (numprocs == -1) {
 				if (need.rl_ncpus == 0) {
 					numprocs = 0;
-					found_cpus0 = 1;
 				} else {
 					numprocs = 1;
 				}
@@ -3639,7 +3827,7 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 				hp->hn_nprocs = 0;
 				hp->hn_vlnum  = 0;
 				hp->hn_vlist  = NULL;
-				memset(&hp->hn_nrlimit, 0, sizeof(resc_limit));
+				memset(&hp->hn_nrlimit, 0, sizeof(resc_limit_t));
 				CLEAR_HEAD(hp->hn_events);
 				/* mark next slot as the (current) end */
 				pjob->ji_hosts[momindex].hn_node =
@@ -3744,6 +3932,24 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 					phv[hp->hn_vlnum].hv_mem   = ndmem;
 					hp->hn_vlnum++;
 				}
+
+				vmp = &pjob->ji_assn_vnodes[assn_index];
+				vmp->vn_node = assn_index++;
+				if (hp != NULL)
+					vmp->vn_host = hp;
+				if (pmm != NULL)
+					vmp->vn_vname = strdup(pmm->mvm_name);
+				if (vmp->vn_vname == NULL) {
+					if (vmp->vn_hname != NULL) {
+						free(vmp->vn_hname);
+						vmp->vn_hname = NULL;
+					}
+					return (PBSE_SYSTEM);
+				}
+				vmp->vn_cpus  = vnncpus;
+				vmp->vn_mem  = ndmem;
+				/* mark next entry as the (current) end */
+				pjob->ji_assn_vnodes[assn_index].vn_node = TM_ERROR_NODE;
 				if (stop_on_paren  == 0)
 					break;
 				else if (hpn < 0)
@@ -3772,44 +3978,16 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 						free(vmp->vn_hname);
 					return (PBSE_SYSTEM);
 				}
-				vmp->vn_cpus  = have.rl_ncpus;
-				vmp->vn_mem  = have.rl_mem;
-				vmp->vn_vmem  = have.rl_vmem;
-				vmp->vn_mpiprocs  = numprocs;
+				vmp->vn_cpus = have.rl_ncpus;
+				vmp->vn_mem = have.rl_mem;
+				vmp->vn_vmem = have.rl_vmem;
+				vmp->vn_mpiprocs = numprocs;
 				vmp->vn_threads = nthreads;
 
 				/* mark next entry as the (current) end */
 				pjob->ji_vnods[procindex].vn_node = TM_ERROR_NODE;
 			}
 
-			/* track zero cpu-assigned vnodes in this chunk. */
-			if (found_cpus0 && (pjob->ji_vnods0 != NULL)) {
-				vmp = &pjob->ji_vnods0[procindex0];
-				vmp->vn_node = procindex0++;
-				vmp->vn_host = hp;
-				if (pmm->mvm_hostn) {
-					/* copy the true host name */
-					vmp->vn_hname = strdup(pmm->mvm_hostn);
-					if (vmp->vn_hname == NULL)
-						return (PBSE_SYSTEM);
-				} else {
-					/* set null and we will use the Mom name */
-					vmp->vn_hname = NULL;
-				}
-				/* track only what's needed by hooks */
-				vmp->vn_vname = strdup(pmm->mvm_name);
-				if (vmp->vn_vname == NULL) {
-					if (vmp->vn_hname != NULL) {
-						free(vmp->vn_hname);
-						vmp->vn_hname = NULL;
-					}
-					return (PBSE_SYSTEM);
-				}
-				vmp->vn_cpus  = have.rl_ncpus;
-				vmp->vn_mem  = have.rl_mem;
-				/* mark next entry as the (current) end */
-				pjob->ji_vnods0[procindex0].vn_node = TM_ERROR_NODE;
-			}
 		}
 
 		/* do next section of schedselect */
@@ -3818,7 +3996,7 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 
 	pjob->ji_numnodes = momindex;
 	pjob->ji_numvnod  = procindex;
-	pjob->ji_numvnod0  = procindex0;
+	pjob->ji_num_assn_vnodes = assn_index;
 
 	return (0);
 }
@@ -3904,6 +4082,8 @@ start_exec(job *pjob)
 	}
 	pjob->ji_nodeid = 0;		/* I'm MS */
 	nodenum = pjob->ji_numnodes;
+	if (do_tolerate_node_failures(pjob))
+		reliable_job_node_add(&pjob->ji_node_list, mom_host);
 
 	if (nodenum > 1) {
 
@@ -4052,6 +4232,15 @@ start_exec(job *pjob)
 		}
 
 		free_attrlist(&phead);
+		if (do_tolerate_node_failures(pjob)) {
+			if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_WAITING_JOIN_JOB) {
+				pjob->ji_qs.ji_substate = JOB_SUBSTATE_WAITING_JOIN_JOB;
+				pjob->ji_joinalarm = time_now + joinjob_alarm_time;
+				sprintf(log_buffer, "job waiting up to %ld secs ($sister_join_job_alarm) for all sister moms to join", joinjob_alarm_time);
+				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
+				log_buffer[0] = '\0';
+			}
+		}
 	} else {		/* no sisters */
 		pjob->ji_ports[0] = -1;
 		pjob->ji_ports[1] = -1;

@@ -87,6 +87,10 @@ extern char pbsv1mod_meth_get_job_doc[];
 extern PyObject * pbsv1mod_meth_get_job(PyObject *self,
 	PyObject *args, PyObject *kwds);
 
+extern char pbsv1mod_meth_release_nodes_doc[];
+extern PyObject *pbsv1mod_meth_release_nodes(PyObject *self,
+	PyObject *args, PyObject *kwds);
+
 extern char pbsv1mod_meth_get_resv_doc[];
 extern PyObject * pbsv1mod_meth_get_resv(PyObject *self,
 	PyObject *args, PyObject *kwds);
@@ -372,6 +376,7 @@ _pv1mod_insert_int_constants(PyObject *dict) {
 	INSERT_INT_CONSTANT("EXECHOST_PERIODIC", HOOK_EVENT_EXECHOST_PERIODIC);
 	INSERT_INT_CONSTANT("EXECHOST_STARTUP", HOOK_EVENT_EXECHOST_STARTUP);
 	INSERT_INT_CONSTANT("EXECJOB_ATTACH", HOOK_EVENT_EXECJOB_ATTACH);
+	INSERT_INT_CONSTANT("EXECJOB_RESIZE", HOOK_EVENT_EXECJOB_RESIZE);
 	INSERT_INT_CONSTANT("MOM_EVENTS", MOM_EVENTS);
 	INSERT_INT_CONSTANT("PERIODIC", HOOK_EVENT_PERIODIC);
 
@@ -448,6 +453,8 @@ static PyMethodDef pbs_v1_module_methods[] = {
 		METH_KEYWORDS, pbsv1mod_meth_get_queue_doc},
 	{"get_job", (PyCFunction) pbsv1mod_meth_get_job,
 		METH_KEYWORDS, pbsv1mod_meth_get_job_doc},
+	{"release_nodes", (PyCFunction) pbsv1mod_meth_release_nodes,
+		METH_KEYWORDS, pbsv1mod_meth_release_nodes_doc},
 	{PY_GETRESV_METHOD, (PyCFunction) pbsv1mod_meth_get_resv,
 		METH_KEYWORDS, pbsv1mod_meth_get_resv_doc},
 	{PY_GETVNODE_METHOD, (PyCFunction) pbsv1mod_meth_get_vnode,

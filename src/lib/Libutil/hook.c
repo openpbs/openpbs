@@ -107,6 +107,7 @@ extern pbs_list_head svr_execjob_launch_hooks;
 extern pbs_list_head svr_exechost_periodic_hooks;
 extern pbs_list_head svr_exechost_startup_hooks;
 extern pbs_list_head svr_execjob_attach_hooks;
+extern pbs_list_head svr_execjob_resize_hooks;
 
 /**
  *
@@ -139,6 +140,7 @@ clear_hook_links(hook *phook)
 	delete_link(&phook->hi_exechost_periodic_hooks);
 	delete_link(&phook->hi_exechost_startup_hooks);
 	delete_link(&phook->hi_execjob_attach_hooks);
+	delete_link(&phook->hi_execjob_resize_hooks);
 }
 
 /**
@@ -164,124 +166,131 @@ hook_event_as_string(unsigned int event)
 
 	eventstr[0] = '\0';
 	if (event & HOOK_EVENT_QUEUEJOB) {
-		strcpy(eventstr, HOOKSTR_QUEUEJOB);
+		snprintf(eventstr, sizeof(eventstr), HOOKSTR_QUEUEJOB);
 		ev_ct++;
 	}
 
 	if (event & HOOK_EVENT_MODIFYJOB) {
 		if (ev_ct > 0)
-			strcat(eventstr, ",");
-		strcat(eventstr, HOOKSTR_MODIFYJOB);
+			strncat(eventstr, ",", sizeof(eventstr) - strlen(eventstr) - 1);
+		strncat(eventstr, HOOKSTR_MODIFYJOB, sizeof(eventstr) - strlen(eventstr) - 1);
 		ev_ct++;
 	}
 
 	if (event & HOOK_EVENT_RESVSUB) {
 		if (ev_ct > 0)
-			strcat(eventstr, ",");
-		strcat(eventstr, HOOKSTR_RESVSUB);
+			strncat(eventstr, ",", sizeof(eventstr) - strlen(eventstr) - 1);
+		strncat(eventstr, HOOKSTR_RESVSUB, sizeof(eventstr) - strlen(eventstr) - 1);
 		ev_ct++;
 	}
 
 	if (event & HOOK_EVENT_MOVEJOB) {
 		if (ev_ct > 0)
-			strcat(eventstr, ",");
-		strcat(eventstr, HOOKSTR_MOVEJOB);
+			strncat(eventstr, ",", sizeof(eventstr) - strlen(eventstr) - 1);
+		strncat(eventstr, HOOKSTR_MOVEJOB, sizeof(eventstr) - strlen(eventstr) - 1);
 		ev_ct++;
 	}
 
 	if (event & HOOK_EVENT_RUNJOB) {
 		if (ev_ct > 0)
-			strcat(eventstr, ",");
-		strcat(eventstr, HOOKSTR_RUNJOB);
+			strncat(eventstr, ",", sizeof(eventstr) - strlen(eventstr) - 1);
+		strncat(eventstr, HOOKSTR_RUNJOB, sizeof(eventstr) - strlen(eventstr) - 1);
 		ev_ct++;
 	}
 
 	if (event & HOOK_EVENT_PERIODIC) {
 		if (ev_ct > 0)
-			strcat(eventstr, ",");
-		strcat(eventstr, HOOKSTR_PERIODIC);
+			strncat(eventstr, ",", sizeof(eventstr) - strlen(eventstr) - 1);
+		strncat(eventstr, HOOKSTR_PERIODIC, sizeof(eventstr) - strlen(eventstr) - 1);
 		ev_ct++;
 	}
 
 	if (event & HOOK_EVENT_PROVISION) {
 		if (ev_ct > 0)
-			strcat(eventstr, ",");
-		strcat(eventstr, HOOKSTR_PROVISION);
+			strncat(eventstr, ",", sizeof(eventstr) - strlen(eventstr) - 1);
+		strncat(eventstr, HOOKSTR_PROVISION, sizeof(eventstr) - strlen(eventstr) - 1);
 		ev_ct++;
 	}
 
 	if (event & HOOK_EVENT_RESV_END) {
 		if (ev_ct > 0)
-	        	strcat(eventstr, ",");
-		strcat(eventstr, HOOKSTR_RESV_END);
+	        	strncat(eventstr, ",", sizeof(eventstr) - strlen(eventstr) - 1);
+		strncat(eventstr, HOOKSTR_RESV_END, sizeof(eventstr) - strlen(eventstr) - 1);
 		ev_ct++;
 	}
 
 	if (event & HOOK_EVENT_EXECJOB_BEGIN) {
 		if (ev_ct > 0)
-			strcat(eventstr, ",");
-		strcat(eventstr, HOOKSTR_EXECJOB_BEGIN);
+			strncat(eventstr, ",", sizeof(eventstr) - strlen(eventstr) - 1);
+		strncat(eventstr, HOOKSTR_EXECJOB_BEGIN, sizeof(eventstr) - strlen(eventstr) - 1);
 		ev_ct++;
 	}
 
 	if (event & HOOK_EVENT_EXECJOB_PROLOGUE) {
 		if (ev_ct > 0)
-			strcat(eventstr, ",");
-		strcat(eventstr, HOOKSTR_EXECJOB_PROLOGUE);
+			strncat(eventstr, ",", sizeof(eventstr) - strlen(eventstr) - 1);
+		strncat(eventstr, HOOKSTR_EXECJOB_PROLOGUE, sizeof(eventstr) - strlen(eventstr) - 1);
 		ev_ct++;
 	}
 
 	if (event & HOOK_EVENT_EXECJOB_EPILOGUE) {
 		if (ev_ct > 0)
-			strcat(eventstr, ",");
-		strcat(eventstr, HOOKSTR_EXECJOB_EPILOGUE);
+			strncat(eventstr, ",", sizeof(eventstr) - strlen(eventstr) - 1);
+		strncat(eventstr, HOOKSTR_EXECJOB_EPILOGUE, sizeof(eventstr) - strlen(eventstr) - 1);
 		ev_ct++;
 	}
 
 	if (event & HOOK_EVENT_EXECJOB_END) {
 		if (ev_ct > 0)
-			strcat(eventstr, ",");
-		strcat(eventstr, HOOKSTR_EXECJOB_END);
+			strncat(eventstr, ",", sizeof(eventstr) - strlen(eventstr) - 1);
+		strncat(eventstr, HOOKSTR_EXECJOB_END, sizeof(eventstr) - strlen(eventstr) - 1);
 		ev_ct++;
 	}
 
 	if (event & HOOK_EVENT_EXECJOB_PRETERM) {
 		if (ev_ct > 0)
-			strcat(eventstr, ",");
-		strcat(eventstr, HOOKSTR_EXECJOB_PRETERM);
+			strncat(eventstr, ",", sizeof(eventstr) - strlen(eventstr) - 1);
+		strncat(eventstr, HOOKSTR_EXECJOB_PRETERM, sizeof(eventstr) - strlen(eventstr) - 1);
 		ev_ct++;
 	}
 
 	if (event & HOOK_EVENT_EXECJOB_LAUNCH) {
 		if (ev_ct > 0)
-			strcat(eventstr, ",");
-		strcat(eventstr, HOOKSTR_EXECJOB_LAUNCH);
+			strncat(eventstr, ",", sizeof(eventstr) - strlen(eventstr) - 1);
+		strncat(eventstr, HOOKSTR_EXECJOB_LAUNCH, sizeof(eventstr) - strlen(eventstr) - 1);
 		ev_ct++;
 	}
 
 	if (event & HOOK_EVENT_EXECJOB_ATTACH) {
 		if (ev_ct > 0)
-			strcat(eventstr, ",");
-		strcat(eventstr, HOOKSTR_EXECJOB_ATTACH);
+			strncat(eventstr, ",", sizeof(eventstr) - strlen(eventstr) - 1);
+		strncat(eventstr, HOOKSTR_EXECJOB_ATTACH, sizeof(eventstr) - strlen(eventstr) - 1);
+		ev_ct++;
+	}
+
+	if (event & HOOK_EVENT_EXECJOB_RESIZE) {
+		if (ev_ct > 0)
+			strncat(eventstr, ",", sizeof(eventstr) - strlen(eventstr) - 1);
+		strncat(eventstr, HOOKSTR_EXECJOB_RESIZE, sizeof(eventstr) - strlen(eventstr) - 1);
 		ev_ct++;
 	}
 
 	if (event & HOOK_EVENT_EXECHOST_PERIODIC) {
 		if (ev_ct > 0)
-			strcat(eventstr, ",");
-		strcat(eventstr, HOOKSTR_EXECHOST_PERIODIC);
+			strncat(eventstr, ",", sizeof(eventstr) - strlen(eventstr) - 1);
+		strncat(eventstr, HOOKSTR_EXECHOST_PERIODIC, sizeof(eventstr) - strlen(eventstr) - 1);
 		ev_ct++;
 	}
 
 	if (event & HOOK_EVENT_EXECHOST_STARTUP) {
 		if (ev_ct > 0)
-			strcat(eventstr, ",");
-		strcat(eventstr, HOOKSTR_EXECHOST_STARTUP);
+			strncat(eventstr, ",", sizeof(eventstr) - strlen(eventstr) - 1);
+		strncat(eventstr, HOOKSTR_EXECHOST_STARTUP, sizeof(eventstr) - strlen(eventstr) - 1);
 		ev_ct++;
 	}
 
 	if (ev_ct == 0)
-		strcpy(eventstr, HOOKSTR_NONE);
+		snprintf(eventstr, sizeof(eventstr), HOOKSTR_NONE);
 	return (eventstr);
 }
 
@@ -329,6 +338,8 @@ hookstr_event_toint(char *eventstr)
 		return HOOK_EVENT_EXECHOST_STARTUP;
 	if (strcmp(eventstr, HOOKSTR_EXECJOB_ATTACH) == 0)
 		return HOOK_EVENT_EXECJOB_ATTACH;
+	if (strcmp(eventstr, HOOKSTR_EXECJOB_RESIZE) == 0)
+		return HOOK_EVENT_EXECJOB_RESIZE;
 
 	return 0;
 }
@@ -856,6 +867,8 @@ insert_hook_sort_order(unsigned int event, pbs_list_head *phook_head, hook *phoo
 		plink_elem = &phook->hi_exechost_startup_hooks;
 	} else if (event == HOOK_EVENT_EXECJOB_ATTACH) {
 		plink_elem = &phook->hi_execjob_attach_hooks;
+	} else if (event == HOOK_EVENT_EXECJOB_RESIZE) {
+		plink_elem = &phook->hi_execjob_resize_hooks;
 	} else {
 		/* should not happen */
 		log_err(PBSE_INTERNAL, __func__, "encountered a bad event");
@@ -904,6 +917,8 @@ insert_hook_sort_order(unsigned int event, pbs_list_head *phook_head, hook *phoo
 			plink_cur = &phook_cur->hi_exechost_startup_hooks;
 		} else if (event == HOOK_EVENT_EXECJOB_ATTACH) {
 			plink_cur = &phook_cur->hi_execjob_attach_hooks;
+		} else if (event == HOOK_EVENT_EXECJOB_RESIZE) {
+			plink_cur = &phook_cur->hi_execjob_resize_hooks;
 		} else {
 			/* should not happen */
 			log_err(PBSE_INTERNAL, __func__, "encountered a bad event");
@@ -1253,6 +1268,7 @@ set_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 		delete_link(&phook->hi_exechost_periodic_hooks);
 		delete_link(&phook->hi_exechost_startup_hooks);
 		delete_link(&phook->hi_execjob_attach_hooks);
+		delete_link(&phook->hi_execjob_resize_hooks);
 		phook->event = 0;
 	}
 
@@ -1433,11 +1449,18 @@ add_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 			phook->event 	|= HOOK_EVENT_EXECJOB_ATTACH;
 			insert_hook_sort_order(HOOK_EVENT_EXECJOB_ATTACH,
 				&svr_execjob_attach_hooks, phook);
+		} else if (strcmp(val, HOOKSTR_EXECJOB_RESIZE) == 0) {
+			if (phook->event & HOOK_EVENT_PROVISION)
+				goto err;
+			delete_link(&phook->hi_execjob_resize_hooks);
+			phook->event 	|= HOOK_EVENT_EXECJOB_RESIZE;
+			insert_hook_sort_order(HOOK_EVENT_EXECJOB_RESIZE,
+				&svr_execjob_resize_hooks, phook);
 		} else if (strcmp(val, HOOKSTR_NONE) != 0) {
 			snprintf(msg, msg_len-1,
 				"invalid argument (%s) to event. "
 				"Should be one or more of: %s,%s,%s,%s,%s,%s,%s,%s,"
-				"%s,%s,%s,%s,%s,%s,%s,%s,%s "
+				"%s,%s,%s,%s,%s,%s,%s,%s,%s,%s "
 				"or %s for no event",
 				newval, HOOKSTR_QUEUEJOB, HOOKSTR_MODIFYJOB,
 				HOOKSTR_RESVSUB, HOOKSTR_MOVEJOB,
@@ -1445,7 +1468,7 @@ add_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 				HOOKSTR_EXECJOB_BEGIN, HOOKSTR_EXECJOB_PROLOGUE,
 				HOOKSTR_EXECJOB_EPILOGUE, HOOKSTR_EXECJOB_PRETERM,
 				HOOKSTR_EXECJOB_END, HOOKSTR_EXECHOST_PERIODIC, HOOKSTR_EXECJOB_LAUNCH,
-				HOOKSTR_EXECHOST_STARTUP, HOOKSTR_EXECJOB_ATTACH, HOOKSTR_NONE);
+				HOOKSTR_EXECHOST_STARTUP, HOOKSTR_EXECJOB_ATTACH, HOOKSTR_EXECJOB_RESIZE, HOOKSTR_NONE);
 			free(newval_dup);
 			return (1);
 		}
@@ -1562,11 +1585,14 @@ del_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 		} else if (strcmp(val, HOOKSTR_EXECJOB_ATTACH) == 0) {
 			delete_link(&phook->hi_execjob_attach_hooks);
 			phook->event 	&= ~HOOK_EVENT_EXECJOB_ATTACH;
+		} else if (strcmp(val, HOOKSTR_EXECJOB_RESIZE) == 0) {
+			delete_link(&phook->hi_execjob_resize_hooks);
+			phook->event 	&= ~HOOK_EVENT_EXECJOB_RESIZE;
 		} else if (strcmp(val, HOOKSTR_NONE) != 0) {
 			snprintf(msg, msg_len-1,
 				"invalid argument (%s) to event. "
 				"Should be one or more of: %s,%s,%s,%s,%s,%s,%s,%s,"
-				"%s,%s,%s,%s,%s,%s,%s,%s,%s "
+				"%s,%s,%s,%s,%s,%s,%s,%s,%s,%s "
 				"or %s for no event.",
 				newval, HOOKSTR_QUEUEJOB, HOOKSTR_MODIFYJOB,
 				HOOKSTR_RESVSUB, HOOKSTR_MOVEJOB,
@@ -1575,7 +1601,7 @@ del_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 				HOOKSTR_EXECJOB_EPILOGUE, HOOKSTR_EXECJOB_END,
 				HOOKSTR_EXECJOB_PRETERM, HOOKSTR_EXECHOST_PERIODIC,
 				HOOKSTR_EXECJOB_LAUNCH, HOOKSTR_EXECHOST_STARTUP,
-				HOOKSTR_EXECJOB_ATTACH, HOOKSTR_NONE);
+				HOOKSTR_EXECJOB_ATTACH, HOOKSTR_EXECJOB_RESIZE, HOOKSTR_NONE);
 			free(newval_dup);
 			return (1);
 		}
@@ -1744,6 +1770,11 @@ set_hook_order(hook *phook, char *newval, char *msg, size_t msg_len)
 			&svr_execjob_attach_hooks, phook);
 	}
 
+	if (phook->event & HOOK_EVENT_EXECJOB_RESIZE) {
+		delete_link(&phook->hi_execjob_resize_hooks);
+		insert_hook_sort_order(HOOK_EVENT_EXECJOB_RESIZE,
+			&svr_execjob_resize_hooks, phook);
+	}
 	return (0);
 }
 
@@ -2089,6 +2120,10 @@ unset_hook_event(hook *phook, char *msg, size_t msg_len)
 		delete_link(&phook->hi_execjob_attach_hooks);
 	}
 
+	if (phook->event & HOOK_EVENT_EXECJOB_RESIZE) {
+		delete_link(&phook->hi_execjob_resize_hooks);
+	}
+
 	phook->event = HOOK_EVENT_DEFAULT;
 
 	return (0);
@@ -2213,6 +2248,12 @@ unset_hook_order(hook *phook, char *msg, size_t msg_len)
 		delete_link(&phook->hi_execjob_attach_hooks);
 		insert_hook_sort_order(HOOK_EVENT_EXECJOB_ATTACH,
 			&svr_execjob_attach_hooks, phook);
+	}
+
+	if (phook->event & HOOK_EVENT_EXECJOB_RESIZE) {
+		delete_link(&phook->hi_execjob_resize_hooks);
+		insert_hook_sort_order(HOOK_EVENT_EXECJOB_RESIZE,
+			&svr_execjob_resize_hooks, phook);
 	}
 
 	return (0);
@@ -3295,6 +3336,9 @@ print_hooks(unsigned int event)
 	} else if (event == HOOK_EVENT_EXECJOB_ATTACH) {
 		l_elem = svr_execjob_attach_hooks;
 		strcpy(ev_str, HOOKSTR_EXECJOB_ATTACH);
+	} else if (event == HOOK_EVENT_EXECJOB_RESIZE) {
+		l_elem = svr_execjob_resize_hooks;
+		strcpy(ev_str, HOOKSTR_EXECJOB_RESIZE);
 	} else {
 		l_elem = svr_allhooks;
 		strcpy(ev_str, "ALLHOOKS");
@@ -3340,6 +3384,8 @@ print_hooks(unsigned int event)
 			phook = (hook *)GET_NEXT(phook->hi_exechost_startup_hooks);
 		else if (event == HOOK_EVENT_EXECJOB_ATTACH)
 			phook = (hook *)GET_NEXT(phook->hi_execjob_attach_hooks);
+		else if (event == HOOK_EVENT_EXECJOB_RESIZE)
+			phook = (hook *)GET_NEXT(phook->hi_execjob_resize_hooks);
 		else
 			phook = (hook *)GET_NEXT(phook->hi_allhooks);
 

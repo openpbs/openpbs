@@ -127,6 +127,12 @@ struct python_script {
  * 				passed to an exechost_periodic hook.
  * @param[in]	vns_list - list of vnodes and their attributes/resources
  * 				passed to various hooks.
+ * @param[in]	vns_list_fail - list of failed vnodes and their
+ *				attributes/resources passed to various hooks.
+ * @param[in]	failed_mom_list - list of parent moms that have been
+ *				seen as down.
+ * @param[in]	succeeded_mom_list - list of parent moms that have been
+ *				seend as healthy.
  * @param[in]	pid - value to pbs.event().pid in an execjob_attach hook.
  *
  */
@@ -142,6 +148,9 @@ typedef struct	hook_input_param {
 	pbs_list_head	*jobs_list;
 	pbs_list_head	*vns_list;
 	pbs_list_head	*resv_list;
+	pbs_list_head	*vns_list_fail;
+	pbs_list_head	*failed_mom_list;
+	pbs_list_head	*succeeded_mom_list;
 	pid_t		pid;
 } hook_input_param_t;
 
@@ -166,6 +175,8 @@ typedef struct	hook_input_param {
  * 			executing exechost_periodic hook.
  * @param[out]	vns_list - list of modifications done to vnodes
  * 			after executing various hooks.
+ * @param[out]	vns_list_fail - list of modifications done to failed
+ * 			vnodes after executing various hooks.
  *
  */
 typedef struct	hook_output_param {
@@ -180,6 +191,7 @@ typedef struct	hook_output_param {
 	pbs_list_head	*jobs_list;
 	pbs_list_head	*vns_list;
 	pbs_list_head	*resv_list;
+	pbs_list_head	*vns_list_fail;
 } hook_output_param_t;
 
 /* global constants */
@@ -267,6 +279,7 @@ extern void pbs_python_ext_quick_shutdown_interpreter(void);
 #define PY_EVENT_PARAM_SRC_QUEUE "src_queue"
 #define PY_EVENT_PARAM_VNODE     "vnode"
 #define PY_EVENT_PARAM_VNODELIST "vnode_list"
+#define PY_EVENT_PARAM_VNODELIST_FAIL "vnode_list_fail"
 #define PY_EVENT_PARAM_JOBLIST "job_list"
 #define PY_EVENT_PARAM_RESVLIST "resv_list"
 #define PY_EVENT_PARAM_AOE	 "aoe"
@@ -274,6 +287,10 @@ extern void pbs_python_ext_quick_shutdown_interpreter(void);
 #define PY_EVENT_PARAM_ARGLIST "argv"
 #define PY_EVENT_PARAM_ENV	"env"
 #define PY_EVENT_PARAM_PID	"pid"
+
+/* special job object attributes */
+#define PY_JOB_FAILED_MOM_LIST	"failed_mom_list"
+#define PY_JOB_SUCCEEDED_MOM_LIST	"succeeded_mom_list"
 
 
 /* special resource object attributes - in modules/pbs/v1.1/_base_types.py */
@@ -393,6 +410,7 @@ extern void pbs_python_ext_quick_shutdown_interpreter(void);
 #define	EVENT_SRC_QUEUE_OBJECT	EVENT_OBJECT ".src_queue"
 #define	EVENT_VNODE_OBJECT	EVENT_OBJECT ".vnode"
 #define	EVENT_VNODELIST_OBJECT	EVENT_OBJECT ".vnode_list"
+#define	EVENT_VNODELIST_FAIL_OBJECT	EVENT_OBJECT ".vnode_list_fail"
 #define	EVENT_JOBLIST_OBJECT	EVENT_OBJECT ".job_list"
 #define	EVENT_AOE_OBJECT	EVENT_OBJECT ".aoe"
 #define	EVENT_ACCEPT_OBJECT	EVENT_OBJECT ".accept"
@@ -405,6 +423,10 @@ extern void pbs_python_ext_quick_shutdown_interpreter(void);
 #define	EVENT_ARGV_OBJECT  EVENT_OBJECT ".argv"
 #define	EVENT_ENV_OBJECT  EVENT_OBJECT ".env"
 #define	EVENT_PID_OBJECT  EVENT_OBJECT ".pid"
+
+/* Special Job parameters */
+#define	JOB_FAILED_MOM_LIST_OBJECT	EVENT_JOB_OBJECT "." PY_JOB_FAILED_MOM_LIST
+#define	JOB_SUCCEEDED_MOM_LIST_OBJECT	EVENT_JOB_OBJECT "." PY_JOB_SUCCEEDED_MOM_LIST
 
 /* Server parameter names */
 #define	SERVER_OBJECT		"pbs.server()"

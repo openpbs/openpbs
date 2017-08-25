@@ -130,6 +130,11 @@ extern int		alps_confirm_empty_timeout;
 extern int		alps_confirm_switch_timeout;
 #endif
 
+extern	long		joinjob_alarm_time;
+extern	long		job_launch_delay;
+extern	int		update_joinjob_alarm_time;
+extern	int		update_job_launch_delay;
+extern	pbs_list_head	svr_allhooks;
 /* External Functions */
 extern int	is_direct_write(job *, enum job_file, char *, int *);
 
@@ -4700,9 +4705,43 @@ req_copy_hookfile(struct batch_request *preq) /* ptr to the decoded request   */
 				(void)close(fds);
 			return;
 		} else {
+
+			hook  *phook2;
+			int   i;	
+			int   j;	
+
 			if ((phook->event & HOOK_EVENT_EXECHOST_PERIODIC) &&
 				!has_task_by_parm1(phook)) {
 				run_periodic_hook_bg(phook);
+			}
+
+			phook2 = (hook *)GET_NEXT(svr_allhooks);
+			i = j = 0;
+			for (phook2 = (hook *)GET_NEXT(svr_allhooks); phook2 != NULL;
+				phook2 = (hook *)GET_NEXT(phook2->hi_allhooks)) {
+				if (update_joinjob_alarm_time &&
+					(phook2->enabled == TRUE) &&
+					((phook2->event & HOOK_EVENT_EXECJOB_BEGIN) != 0)) {
+					if (i == 0)
+						joinjob_alarm_time = 0;
+					joinjob_alarm_time += phook2->alarm;
+					i++;
+				} else if (update_job_launch_delay &&
+					   (phook2->enabled == TRUE) &&
+					   ((phook2->event & HOOK_EVENT_EXECJOB_PROLOGUE) != 0)) {
+					if (j == 0)
+						job_launch_delay = 0;
+					job_launch_delay += phook2->alarm;
+					j++;
+				}
+			}
+			if (i > 0) {
+				snprintf(log_buffer, sizeof(log_buffer), "joinjob_alarm_time updated to %ld", joinjob_alarm_time);
+				log_err(-1, __func__, log_buffer);
+			}
+			if (j > 0) {
+				snprintf(log_buffer, sizeof(log_buffer), "job_launch_delay updated to %ld", job_launch_delay);
+				log_err(-1, __func__, log_buffer);
 			}
 		}
 		if (fp != NULL)

@@ -750,6 +750,9 @@ cullCPUs:
  *	makes cpu set for job
  *
  * @param[in] pjob - pointer to job structure
+ * @param[in] modify - if set to 1, don't create job's cpuset from scratch but
+ *			rather, update it using the current resource values assigned
+ *			to the job, which may have recently changed.
  *
  * @return 	string
  * @retval      cpuset name     SUCCESS
@@ -757,8 +760,8 @@ cullCPUs:
  *
  */
 
-char *
-make_cpuset(job *pjob)
+static char *
+make_cpuset_inner(job *pjob, int modify)
 {
 	char			*qname = NULL;
 	char			*ret = NULL;
@@ -783,6 +786,7 @@ make_cpuset(job *pjob)
 	static struct bitmask	*cpubits = NULL;
 	static struct bitmask	*membits = NULL;
 	int			cpuset_exists;
+	int	(*cpuset_action)(const char *, const struct cpuset *cp);
 
 	/* room for the full path of a PBS CPU set in the file system */
 	char			pathbuf[sizeof(DEV_CPUSET) + 1 +
@@ -796,6 +800,7 @@ make_cpuset(job *pjob)
 	 */
 	DBPRT(("%s:  job %s\n", __func__, pjob->ji_qs.ji_jobid))
 	qname = getsetname(pjob);	/* get name for job cpuset */
+
 	if (qname != NULL) {
 #if	(CPUSET_VERSION < 4)
 		/* get all the cpuset names on the system */
@@ -816,27 +821,33 @@ make_cpuset(job *pjob)
 		if (i < numsets)			/* found it */
 			return qname;
 #else
-		if ((cp = cpuset_alloc()) == NULL) {
-			log_joberr(errno, __func__, "cpuset_alloc",
-				pjob->ji_qs.ji_jobid);
-			free(qname);
-			return NULL;
-		}
-		if (cpuset_query(cp, qname) == -1)
-			cpuset_exists = 0;
-		else
-			cpuset_exists = 1;
-		cpuset_free(cp);
-		if (cpuset_exists)
-			return qname;
-		else {
-			free(qname);
-			qname = newsetname(pjob, NULL, 0);
+		if (!modify) {
+			if ((cp = cpuset_alloc()) == NULL) {
+				log_joberr(errno, __func__, "cpuset_alloc",
+					pjob->ji_qs.ji_jobid);
+				free(qname);
+				return NULL;
+			}
+			if (cpuset_query(cp, qname) == -1)
+				cpuset_exists = 0;
+			else
+				cpuset_exists = 1;
+			cpuset_free(cp);
+			if (cpuset_exists)
+				return qname;
+			else {
+				free(qname);
+				qname = newsetname(pjob, NULL, 0);
+			}
 		}
 #endif	/* CPUSET_VERSION < 4 */
-	} else
+	} else {
 		qname = newsetname(pjob, NULL, 0);
-
+		if (qname == NULL)
+			return (NULL);
+		modify = 0; /* new cpuset name, so create mode */
+			
+	}
 	/*
 	 *	The hnodent with index pjob->ji_nodeid contains a list of
 	 *	hn_vlnum vnodes in hn_vlist[], each of which belongs to this
@@ -1089,6 +1100,7 @@ make_cpuset(job *pjob)
 	}
 
 #if	(CPUSET_VERSION < 4)
+	modify = 0;	/* this mode not supported under older cpusets. */
 	/*
 	 **	Create file then the cpuset.
 	 */
@@ -1199,10 +1211,16 @@ make_cpuset(job *pjob)
 	cpuset_set_iopt(cp, "notify_on_release", 0);
 	cpuset_set_iopt(cp, "cpu_exclusive", 0);
 	cpuset_set_iopt(cp, "mem_exclusive", 0);
-	if (cpuset_create(name_buf, cp) == -1) {
+
+	if (modify)
+		cpuset_action = cpuset_modify;
+	else
+		cpuset_action = cpuset_create;
+
+	if (cpuset_action(name_buf, cp) == -1) {
 		extern char	*cpuset_error_action;
 
-		sprintf(log_buffer, "cpuset_create %s", qname);
+		sprintf(log_buffer, "cpuset_%s %s", modify ? "modify" : "create", qname);
 		log_joberr(errno, __func__, log_buffer, pjob->ji_qs.ji_jobid);
 		(void) cpuset_delete(name_buf);
 		if (!strcmp(cpuset_error_action, "offline")) {
@@ -1211,15 +1229,19 @@ make_cpuset(job *pjob)
 		}
 		goto done;
 	}
-	strncpy(pathbuf, DEV_CPUSET, sizeof(pathbuf));
-	strncat(pathbuf, name_buf, sizeof(pathbuf) - strlen(pathbuf));
 
-	if (chmod(pathbuf, 0755) == -1) {
-		sprintf(log_buffer, "chmod(%s, 0755)", pathbuf);
-		log_joberr(errno, __func__, log_buffer, pjob->ji_qs.ji_jobid);
+	if (!modify) {
+		strncpy(pathbuf, DEV_CPUSET, sizeof(pathbuf));
+		strncat(pathbuf, name_buf, sizeof(pathbuf) - strlen(pathbuf));
+
+		if (chmod(pathbuf, 0755) == -1) {
+			sprintf(log_buffer, "chmod(%s, 0755)", pathbuf);
+			log_joberr(errno, __func__, log_buffer, pjob->ji_qs.ji_jobid);
+		}
 	}
+
 #endif	/* CPUSET_VERSION < 4 */
-	sprintf(log_buffer, "created cpuset %s", qname);
+	sprintf(log_buffer, "%s cpuset %s", modify ? "modified" : "created", qname);
 	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 		pjob->ji_qs.ji_jobid, log_buffer);
 #ifdef NAS /* localmod 093 */
@@ -1268,6 +1290,40 @@ done:
 #endif	/* CPUSET_VERSION < 4 */
 
 	return ret;
+}
+
+/**
+ * @brief
+ * 	wrapper function that calls make_cpuset_inner() passing a 0 to the
+ *	modify parameter.
+ *
+ * @param[in] pjob - job pointer
+ *
+ * @return 	string
+ * @retval      cpuset name     SUCCESS
+ * @retval      NULL            FAILURE
+ */
+char *
+make_cpuset(job *pjob)
+{
+	return (make_cpuset_inner(pjob, 0));
+}
+
+/**
+ * @brief
+ * 	wrapper function that calls make_cpuset_inner() passing a 1 to the
+ *	modify parameter.
+ *
+ * @param[in] pjob - job pointer
+ *
+ * @return 	string
+ * @retval      cpuset name     SUCCESS
+ * @retval      NULL            FAILURE
+ */
+char *
+modify_cpuset(job *pjob)
+{
+	return (make_cpuset_inner(pjob, 1));
 }
 #endif	/* MOM_CPUSET */
 

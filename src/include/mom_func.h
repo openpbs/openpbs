@@ -214,18 +214,14 @@ extern int   run_pelog(int which, char *file, job *pjob, int pe_io_type);
 extern int   is_joined(job *);
 extern void  update_jobs_status(void);
 extern void  update_ajob_status(job *);
-extern void  update_ajob_status_using_cmd(job *, int);
+extern void  update_ajob_status_using_cmd(job *, int, int);
 extern void  calc_cpupercent(job *, unsigned long, unsigned long, time_t);
 extern void  dorestrict_user(void);
 extern int   task_save(pbs_task *ptask);
 extern void send_join_job_restart(int, eventent *, int, job *, pbs_list_head *);
 extern int send_resc_used_to_ms(int stream, char *jobid);
 extern int recv_resc_used_from_sister(int stream, char *jobid, int nodeidx);
-
-
 extern int  is_comm_up(int);
-
-
 
 /* Defines for pe_io_type, see run_pelog() */
 
@@ -234,6 +230,15 @@ extern int  is_comm_up(int);
 #define PE_IO_TYPE_STD 	1
 #define PE_PROLOGUE	1
 #define PE_EPILOGUE	2
+
+typedef enum {
+	PRE_FINISH_SUCCESS,
+	PRE_FINISH_SUCCESS_JOB_SETUP_SEND,
+	PRE_FINISH_FAIL,
+	PRE_FINISH_FAIL_JOB_SETUP_SEND,
+	PRE_FINISH_FAIL_JOIN_EXTRA,
+	PRE_FINISH_FAIL_NEW_CPUSET
+} pre_finish_results_t;
 
 #ifdef	_LIBPBS_H
 extern int	open_std_file(job *, enum job_file, int, gid_t);
@@ -248,7 +253,9 @@ extern int	im_compose(int stream, char *jobid, char *cookie,
 extern int	message_job(job *pjob, enum job_file jft, char *text);
 extern void	term_job(job *pjob);
 extern int	start_process(pbs_task *pt, char **argv, char **envp, bool nodemux);
+extern pre_finish_results_t pre_finish_exec(job *pjob, int do_job_setup_send);
 extern void	finish_exec(job *pjob);
+extern void	exec_bail(job *pjob, int code, char *txt);
 extern int	generate_pbs_nodefile(job *pjob, char *nodefile,
 			int nodefile_sz, char *err_msg, int err_msg_sz);
 extern int	job_nodes_inner(struct job *pjob, hnodent **mynp);
@@ -387,6 +394,7 @@ extern int init_x11_display(struct pfwdsock *, int, char *, char *, char *);
 extern int setcurrentworkdir(char *);
 extern int becomeuser(job *);
 extern int becomeuser_args(char *, uid_t, gid_t, gid_t);
+extern void close_update_pipes(job *);
 
 /* From popen.c */
 extern FILE *pbs_popen(const char *, const char *);

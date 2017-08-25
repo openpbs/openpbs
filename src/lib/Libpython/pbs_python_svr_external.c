@@ -851,6 +851,7 @@ hook_input_param_init(hook_input_param_t *hook_input)
 	hook_input->jobs_list = NULL;
 	hook_input->vns_list = NULL;
 	hook_input->resv_list = NULL;
+	hook_input->vns_list_fail = NULL;
 }
 
 /**
@@ -875,4 +876,5 @@ hook_output_param_init(hook_output_param_t *hook_output)
 	hook_output->jobs_list = NULL;
 	hook_output->vns_list = NULL;
 	hook_output->resv_list = NULL;
+	hook_output->vns_list_fail = NULL;
 }

@@ -176,7 +176,7 @@ def trace_hook(**kwargs):
                  'execjob_prologue', 'execjob_launch', 'execjob_attach', 
                  'execjob_preterm', 'execjob_epilogue', 'execjob_end', 
                  'resvsub', 'provision', 'exechost_periodic', 
-                 'exechost_startup']
+                 'exechost_startup', 'execjob_resize']
 
     hook_event={}
     for he in hook_events:

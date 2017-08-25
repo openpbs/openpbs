@@ -122,6 +122,7 @@
 #if	MOM_CSA || MOM_ALPS
 #include	"mom_mach.h"
 #endif	/* MOM_CSA or MOM_ALPS */
+#include	"pbs_reliable.h"
 
 #define STATE_UPDATE_TIME 10
 #ifndef	PRIO_MAX
@@ -300,6 +301,11 @@ momvmap_t     **mommap_array = NULL;
 int		mommap_array_size = 0;
 unsigned long	QA_testing = 0;
 
+long		joinjob_alarm_time = -1;
+long		job_launch_delay  = -1;	/* # of seconds to delay job launch due to pipe reads (pipe read timeout)  */
+int		update_joinjob_alarm_time = 0;
+int		update_job_launch_delay = 0;
+
 #ifdef NAS /* localmod 015 */
 unsigned long	spoolsize = 0; /* default spoolsize = unlimited */
 #endif /* localmod 015 */
@@ -353,6 +359,7 @@ pbs_list_head	svr_execjob_end_hooks;
 pbs_list_head	svr_exechost_periodic_hooks;
 pbs_list_head	svr_exechost_startup_hooks;
 pbs_list_head	svr_execjob_attach_hooks;
+pbs_list_head	svr_execjob_resize_hooks;
 
 /* the task lists */
 pbs_list_head	task_list_immed;
@@ -455,6 +462,8 @@ static handler_ret_t	set_cpuset_error_action(char *);
 #endif	/* MOM_CPUSET && CPUSET_VERSION >= 4 */
 static handler_ret_t	parse_config(char *);
 static handler_ret_t	prologalarm(char *);
+static handler_ret_t	set_joinjob_alarm(char *);
+static handler_ret_t	set_job_launch_delay(char *);
 static handler_ret_t	restricted(char *);
 static handler_ret_t	set_alien_attach(char *);
 static handler_ret_t	set_alien_kill(char *);
@@ -559,6 +568,8 @@ static struct	specials {
 #endif
 	{ "port",			set_momport },
 	{ "prologalarm",		prologalarm },
+	{ "sister_join_job_alarm",	set_joinjob_alarm },
+	{ "job_launch_delay",		set_job_launch_delay },
 	{ "restart_background",		set_restart_background },
 	{ "restart_transmogrify",	set_restart_transmogrify },
 	{ "restrict_user",		set_restrict_user },
@@ -1355,6 +1366,11 @@ initialize(void)
 
 	avl_destroy_index(&ix);
 
+	if (joinjob_alarm_time == -1)
+		joinjob_alarm_time = DEFAULT_JOINJOB_ALARM;
+
+	if (job_launch_delay == -1)
+		job_launch_delay = DEFAULT_JOB_LAUNCH_DELAY;
 }
 
 /**
@@ -2379,6 +2395,57 @@ prologalarm(char *value)
 	if (i <= 0)
 		return HANDLER_FAIL;	/* error */
 	pe_alarm_time = (unsigned int)i;
+	return HANDLER_SUCCESS;
+}
+
+/**
+ * @brief
+ *	Handler function for the $sister_join_job_alarm config option.
+ *
+ * @param[in]	value - the input given in config file.
+ *
+ * @return handler_ret_t
+ * @retval HANNDLER_SUCCESS
+ * @retval HANDLER_FAIL
+ */
+static handler_ret_t
+set_joinjob_alarm(char *value)
+{
+	long i;
+	char *endp;
+
+	log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
+		"sister_join_job_alarm", value);
+	i = strtol(value, &endp, 10);
+	if ((*endp != '\0') || (i <= 0) || (i == LONG_MIN) || (i == LONG_MAX))
+		return HANDLER_FAIL;	/* error */
+	joinjob_alarm_time = i;
+	return HANDLER_SUCCESS;
+}
+
+/**
+ * @brief
+ *	Handler function for the $job_launch_delay cconfig option.
+ *
+ * @param[in]	value - the input given in config file.
+ *
+ * @return handler_ret_t
+ * @retval HANNDLER_SUCCESS
+ * @retval HANDLER_FAIL
+ */
+static handler_ret_t
+set_job_launch_delay(char *value)
+{
+	long i;
+	char *endp;
+
+	log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
+		"job_launch_delay", value);
+	i = strtol(value, &endp, 10);
+ 
+	if ((*endp != '\0') || (i <= 0) || (i == LONG_MIN) || (i == LONG_MAX))
+		return HANDLER_FAIL;	/* error */
+	job_launch_delay = i;
 	return HANDLER_SUCCESS;
 }
 
@@ -4852,6 +4919,8 @@ read_config(char *file)
 	max_check_poll	     = MAX_CHECK_POLL_TIME;
 	min_check_poll	     = MIN_CHECK_POLL_TIME;
 	vnode_additive       = 1;	/* keep vnodes on HUP */
+	joinjob_alarm_time   = -1;
+	job_launch_delay     = -1;
 #ifdef NAS /* localmod 015 */
 	spoolsize            = 0; /* unlimited by default */
 #endif /* localmod 015 */
@@ -4994,6 +5063,17 @@ read_config(char *file)
 		 */
 		cpu_raresync();
 #endif	/* MOM_CPUSET */
+
+		if (joinjob_alarm_time == -1)
+			update_joinjob_alarm_time = 1;
+		else
+			update_joinjob_alarm_time = 0;
+
+		if (job_launch_delay == -1)
+			update_job_launch_delay = 1;
+		else
+			update_job_launch_delay = 0;
+
 		return (0);
 	}
 }
@@ -7250,20 +7330,34 @@ job_over_limit(job *pjob)
 	if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) == 0)	/* not MS */
 		return 0;
 
-	if (pjob->ji_nodekill != TM_ERROR_NODE) {
+	if (pjob->ji_nodekill >= pjob->ji_numnodes) {
+		char	*msgbuf = NULL;
+
+		pbs_asprintf(&msgbuf,
+			"warning: job %s ji_nodekill=%d >= ji_numnodes=%d",
+			pjob->ji_qs.ji_jobid, pjob->ji_nodekill, pjob->ji_numnodes);
+		log_err(-1, __func__, msgbuf);
+		free(msgbuf);
+	} else if (pjob->ji_nodekill != TM_ERROR_NODE) {
 		hnodent	*pnode = &pjob->ji_hosts[pjob->ji_nodekill];
 
 		/* special case EOF */
 		if (pnode->hn_sister == SISTER_EOF) {
-			sprintf(log_buffer, "node EOF %d (%s)",
-				pjob->ji_nodekill,
-				pnode->hn_host);
-			log_event(PBSEVENT_JOB | PBSEVENT_FORCE,
-				PBS_EVENTCLASS_JOB, LOG_INFO,
-				pjob->ji_qs.ji_jobid, log_buffer);
-			pjob->ji_qs.ji_un.ji_momt.ji_exitstat = JOB_EXEC_RERUN_SIS_FAIL;
-			(void)kill_job(pjob, SIGKILL);
-			return 0;
+			if ((reliable_job_node_find(&pjob->ji_failed_node_list,pnode->hn_host) != NULL) || (do_tolerate_node_failures(pjob))) {
+			 	snprintf(log_buffer, sizeof(log_buffer), "ignoring node EOF %d from failed mom %s as job is tolerant of node failures", pjob->ji_nodekill, pnode->hn_host?pnode->hn_host:"");
+				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
+				return 0;
+			} else {
+				sprintf(log_buffer, "node EOF %d (%s)",
+					pjob->ji_nodekill,
+					pnode->hn_host);
+				log_event(PBSEVENT_JOB | PBSEVENT_FORCE,
+					PBS_EVENTCLASS_JOB, LOG_INFO,
+					pjob->ji_qs.ji_jobid, log_buffer);
+					pjob->ji_qs.ji_un.ji_momt.ji_exitstat = JOB_EXEC_RERUN_SIS_FAIL;
+				(void)kill_job(pjob, SIGKILL);
+				return 0;
+			}
 		}
 		sprintf(log_buffer, "node %d (%s) requested job die, code %d",
 			pjob->ji_nodekill, pnode->hn_host, pnode->hn_sister);
@@ -9030,6 +9124,7 @@ main(int argc, char *argv[])
 	CLEAR_HEAD(svr_exechost_periodic_hooks);
 	CLEAR_HEAD(svr_exechost_startup_hooks);
 	CLEAR_HEAD(svr_execjob_attach_hooks);
+	CLEAR_HEAD(svr_execjob_resize_hooks);
 
 	CLEAR_HEAD(task_list_immed);
 	CLEAR_HEAD(task_list_timed);
@@ -9334,6 +9429,21 @@ main(int argc, char *argv[])
 				log_event(PBSEVENT_SYSTEM|PBSEVENT_ADMIN |
 					PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER,
 					LOG_INFO, msg_daemonname, log_buffer);
+
+				if (update_joinjob_alarm_time &&
+					(phook->enabled == TRUE) &&
+					((phook->event & HOOK_EVENT_EXECJOB_BEGIN) != 0)) {
+					if (joinjob_alarm_time == -1)
+						joinjob_alarm_time = 0;
+					joinjob_alarm_time += phook->alarm;
+				}
+				if (update_job_launch_delay &&
+					(phook->enabled == TRUE) &&
+					((phook->event & HOOK_EVENT_EXECJOB_PROLOGUE) != 0)) {
+					if (job_launch_delay == -1)
+						job_launch_delay = 0;
+					job_launch_delay += phook->alarm;
+				}
 			}
 		}
 		if (errno != 0 && errno != ENOENT)
@@ -9372,6 +9482,7 @@ main(int argc, char *argv[])
 	print_hooks(HOOK_EVENT_EXECHOST_PERIODIC);
 	print_hooks(HOOK_EVENT_EXECHOST_STARTUP);
 	print_hooks(HOOK_EVENT_EXECJOB_ATTACH);
+	print_hooks(HOOK_EVENT_EXECJOB_RESIZE);
 
 	/* cleanup the hooks work directory */
 	cleanup_hooks_workdir(0);
@@ -9730,6 +9841,26 @@ main(int argc, char *argv[])
 				pjob->ji_mompost(pjob, -1);
 				pjob->ji_mompost = NULL;
 			}
+
+			if (do_tolerate_node_failures(pjob) &&
+				(pjob->ji_qs.ji_substate == JOB_SUBSTATE_WAITING_JOIN_JOB) &&
+				(pjob->ji_joinalarm != 0) &&
+				(pjob->ji_joinalarm < time_now)) {
+				int rcode;
+
+				snprintf(log_buffer, sizeof(log_buffer), "sister_join_job_alarm wait time %ld secs exceeded", joinjob_alarm_time);
+				log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB,
+					  LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
+				pjob->ji_qs.ji_substate = JOB_SUBSTATE_PRERUN;
+
+				rcode = pre_finish_exec(pjob, 1);
+				if (rcode == PRE_FINISH_SUCCESS)
+					finish_exec(pjob);
+				else if (rcode != PRE_FINISH_SUCCESS_JOB_SETUP_SEND)
+					exec_bail(pjob, JOB_EXEC_RETRY, "pre_finish_exec failure");
+				pjob->ji_joinalarm = 0;
+			}
+
 			if (pjob->ji_flags & MOM_CHKPT_ACTIVE)
 				next_sample_time = min_check_poll;
 		}
@@ -9924,13 +10055,13 @@ main(int argc, char *argv[])
 					 */
 					if (send_sisters(pjob, IM_POLL_JOB, NULL) !=
 						pjob->ji_numnodes-1) {
-						log_event(PBSEVENT_JOB|PBSEVENT_FORCE,
-							PBS_EVENTCLASS_JOB, LOG_INFO,
-							pjob->ji_qs.ji_jobid,
-							"send POLL failed");
 
 						for (num = 0, np = pjob->ji_hosts; num < pjob->ji_numnodes; num++, np++) {
-							if ((time_now - np->hn_eof_ts) <= max_poll_downtime_val) {
+							if (reliable_job_node_find(&pjob->ji_failed_node_list, np->hn_host) != NULL) {
+								sprintf(log_buffer, "ignoring lost communication with %s for reliable job startup", np->hn_host);
+								log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
+								err_flag = 1;
+							} else if ((time_now - np->hn_eof_ts) <= max_poll_downtime_val) {
 								pjob->ji_nodekill = TM_ERROR_NODE; /* send poll failed, but dont kill job */
 								sprintf(log_buffer, "lost communication with %s, not killing job yet", np->hn_host);
 								log_joberr(-1, __func__, log_buffer, pjob->ji_qs.ji_jobid);
@@ -9938,6 +10069,10 @@ main(int argc, char *argv[])
 							}
 						}
 						if (err_flag == 0) {
+							log_event(PBSEVENT_JOB|PBSEVENT_FORCE,
+							 PBS_EVENTCLASS_JOB, LOG_INFO,
+							 pjob->ji_qs.ji_jobid,
+							 "send POLL failed");
 							if (!is_comm_up(COMM_MATURITY_TIME)) {
 								pjob->ji_nodekill = TM_ERROR_NODE; /* send poll failed, but dont kill job */
 								sprintf(log_buffer, "Connection to pbs_comm down/recently established, not killing job");

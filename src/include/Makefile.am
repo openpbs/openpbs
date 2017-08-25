@@ -80,6 +80,7 @@ noinst_HEADERS = \
 	pbs_ecl.h \
 	pbs_entlim.h \
 	pbs_internal.h \
+	pbs_reliable.h \
 	pbs_json.h \
 	pbs_license.h \
 	pbs_mpp.h \

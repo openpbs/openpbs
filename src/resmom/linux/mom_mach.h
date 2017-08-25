@@ -185,6 +185,7 @@ extern void	clear_cpuset(job *);		/* destroy cpuset */
 extern void	del_cpusetfile(char *, job *);
 extern char	*getsetname(job *);
 extern char	*make_cpuset(job *);		/* create cpuset */
+extern char	*modify_cpuset(job *);
 extern int	new_cpuset(job *);		/* get CPU set and set altid */
 extern int	resume_job(job *);
 extern int	suspend_job(job *);

@@ -292,6 +292,7 @@ static int pwd_opt = FALSE;
 static int cred_opt = FALSE;
 static int block_opt = FALSE;
 static int relnodes_on_stageout_opt = FALSE;
+static int tolerate_node_failures_opt = FALSE;
 static int roptarg_inter = FALSE;
 
 /* for saving option booleans */
@@ -333,7 +334,7 @@ static int pwd_opt_o = FALSE;
 static int cred_opt_o = FALSE;
 static int block_opt_o = FALSE;
 static int relnodes_on_stageout_opt_o = FALSE;
-
+static int tolerate_node_failures_opt_o = FALSE;
 
 /* The following are "Utility" functions. */
 
@@ -2803,6 +2804,11 @@ process_opts(int argc, char **argv, int passet)
 							snprintf(cred_name, sizeof(cred_name), "%s", valuewd);
 							set_attr(&attrib, ATTR_cred, valuewd);
 						}
+					} else if (strcmp(keyword, ATTR_tolerate_node_failures) == 0) {
+						if_cmd_line(tolerate_node_failures_opt) {
+							tolerate_node_failures_opt = passet;
+							set_attr(&attrib, ATTR_tolerate_node_failures, valuewd);
+						}
 					} else {
 						set_attr(&attrib, keyword, valuewd);
 					}
@@ -4237,7 +4243,7 @@ send_opts(void *s)
 		"%d %d %d %d %d %d %d %d %d %d "
 		"%d %d %d %d %d %d %d %d %d %d "
 		"%d %d %d %d %d %d %d %d %d %d "
-		"%d %d %d %d %d ",
+		"%d %d %d %d %d %d ",
 		a_opt, c_opt, e_opt, h_opt, j_opt,
 		k_opt, l_opt, m_opt, o_opt, p_opt,
 		q_opt, r_opt, u_opt, v_opt, z_opt,
@@ -4245,7 +4251,7 @@ send_opts(void *s)
 		S_opt, V_opt, Depend_opt, Interact_opt, Stagein_opt,
 		Stageout_opt, Sandbox_opt, Grouplist_opt, Resvstart_opt,
 		Resvend_opt, pwd_opt, cred_opt, block_opt, P_opt,
-					relnodes_on_stageout_opt);
+			relnodes_on_stageout_opt, tolerate_node_failures_opt);
 
 	return (send_string(s, daemon_buf));
 }
@@ -4282,7 +4288,7 @@ recv_opts(void *s)
 		"%d %d %d %d %d %d %d %d %d %d "
 		"%d %d %d %d %d %d %d %d %d %d "
 		"%d %d %d %d %d %d %d %d %d %d "
-		"%d %d %d %d %d ",
+		"%d %d %d %d %d %d ",
 		&a_opt, &c_opt, &e_opt, &h_opt, &j_opt,
 		&k_opt, &l_opt, &m_opt, &o_opt, &p_opt,
 		&q_opt, &r_opt, &u_opt, &v_opt, &z_opt,
@@ -4290,7 +4296,7 @@ recv_opts(void *s)
 		&S_opt, &V_opt, &Depend_opt, &Interact_opt, &Stagein_opt,
 		&Stageout_opt, &Sandbox_opt, &Grouplist_opt, &Resvstart_opt,
 		&Resvend_opt, &pwd_opt, &cred_opt, &block_opt, &P_opt,
-			&relnodes_on_stageout_opt);
+			&relnodes_on_stageout_opt, &tolerate_node_failures_opt);
 	return 0;
 }
 
@@ -4368,6 +4374,7 @@ handle_attribute_errors(struct ecl_attribute_errors *err_list, char *retmsg)
 			(strcmp(attribute->name, ATTR_inter) == 0) ||
 			(strcmp(attribute->name, ATTR_block) == 0) ||
 			(strcmp(attribute->name, ATTR_relnodes_on_stageout) == 0) ||
+			(strcmp(attribute->name, ATTR_tolerate_node_failures) == 0) ||
 			(strcmp(attribute->name, ATTR_resv_start) == 0) ||
 			(strcmp(attribute->name, ATTR_resv_end) == 0) ||
 			(strcmp(attribute->name, ATTR_pwd) == 0) ||
@@ -4606,6 +4613,7 @@ save_opts(void)
 	cred_opt_o = cred_opt;
 	block_opt_o = block_opt;
 	relnodes_on_stageout_opt_o = relnodes_on_stageout_opt;
+	tolerate_node_failures_opt_o = tolerate_node_failures_opt;
 }
 
 /**
@@ -4652,6 +4660,7 @@ restore_opts(void)
 	cred_opt = cred_opt_o;
 	block_opt = block_opt_o;
 	relnodes_on_stageout_opt = relnodes_on_stageout_opt_o;
+	tolerate_node_failures_opt = tolerate_node_failures_opt_o;
 }
 
 /**
@@ -5640,7 +5649,6 @@ again:
 			if ((recv_string(&sock, retmsg) != 0) ||
 				(dorecv(&sock, (char *) &rc, sizeof(int)) != 0) ||
 				rc == DMN_REFUSE_EXIT) {
-
 				/*
 				 * Something bad happened, either background submitted
 				 * and failed to send us response, or it failed before

@@ -53,6 +53,7 @@ extern "C" {
 
 #define PBS_ACCT_QUEUE	(int)'Q'	/* Job Queued record */
 #define PBS_ACCT_RUN	(int)'S'	/* Job run (Started) */
+#define PBS_ACCT_PRUNE	(int)'s'	/* Job run (Reliably-Started, assigned resources pruned) */
 #define PBS_ACCT_RERUN	(int)'R'	/* Job Rerun record */
 #define PBS_ACCT_CHKPNT	(int)'C'	/* Job Checkpointed and held */
 #define PBS_ACCT_RESTRT	(int)'T'	/* Job resTart (from chkpnt) record */
