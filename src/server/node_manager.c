@@ -2275,10 +2275,106 @@ stat_update(int stream)
 			(pjob->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long == rused.ru_hop)) {
 
 			long old_sid = 0;  /* used to save prior sid of job */
+			svrattrl	*execvnode_entry = NULL;
+			svrattrl	*schedselect_entry = NULL;
+			char		*cur_execvnode = NULL;
+			char		*cur_schedselect = NULL;
 
+			if (pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_flags & ATR_VFLAG_SET) {
+				cur_execvnode = pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_val.at_str;
+			}
+
+			if (pjob->ji_wattr[(int)JOB_ATR_SchedSelect].at_flags & ATR_VFLAG_SET) {
+				cur_schedselect = pjob->ji_wattr[(int)JOB_ATR_SchedSelect].at_val.at_str;
+			}
+
+			/* update all the attributes sent from Mom */
+			execvnode_entry = find_svrattrl_list_entry(&rused.ru_attr,ATTR_execvnode, NULL);
+			schedselect_entry = find_svrattrl_list_entry(&rused.ru_attr, ATTR_SchedSelect, NULL);
+
+			if ((execvnode_entry != NULL) &&
+			    (execvnode_entry->al_value != NULL) &&
+			    (schedselect_entry != NULL) &&
+			    (schedselect_entry->al_value != NULL) &&
+			    (cur_execvnode != NULL) &&
+			    (strcmp(cur_execvnode, execvnode_entry->al_value) != 0) &&
+			    (cur_schedselect != NULL) && 
+			    (strcmp(cur_schedselect, schedselect_entry->al_value) != 0)) {
+
+				/* decreements everything found in */
+				/*  exec_vnode */
+				set_resc_assigned((void *)pjob, 0, DECR);
+				free_nodes(pjob);
+
+				if (cur_execvnode != NULL) {
+					(void)job_attr_def[(int)JOB_ATR_exec_vnode_acct].at_decode( &pjob->ji_wattr[(int)JOB_ATR_exec_vnode_acct], (char *)0, (char *)0, cur_execvnode);
+				}
+
+				if ((pjob->ji_wattr[JOB_ATR_resource_acct].at_flags & ATR_VFLAG_SET) != 0) {
+					job_attr_def[JOB_ATR_resource_acct].at_free(&pjob->ji_wattr[JOB_ATR_resource_acct]);
+					pjob->ji_wattr[JOB_ATR_resource_acct].at_flags &= ~ATR_VFLAG_SET;
+				}
+				job_attr_def[JOB_ATR_resource_acct].at_set(&pjob->ji_wattr[JOB_ATR_resource_acct], &pjob->ji_wattr[JOB_ATR_resource], INCR);
+
+
+				(void)job_attr_def[(int)JOB_ATR_exec_host_acct].at_decode(
+					&pjob->ji_wattr[(int)JOB_ATR_exec_host_acct],
+					(char *)0,
+					(char *)0,
+		  			pjob->ji_wattr[(int)JOB_ATR_exec_host].at_val.at_str);
+				
+				if (assign_hosts(pjob, execvnode_entry->al_value, 1) == 0) {
+					resource_def *prdefsl;
+					resource     *presc;
+					(void)update_resources_list(pjob, ATTR_l,
+								    JOB_ATR_resource,
+					     			    execvnode_entry->al_value,
+					     			    INCR, 0,
+					     			    JOB_ATR_resource_orig);
+
+
+
+					if ((pjob->ji_wattr[JOB_ATR_SchedSelect_orig].at_flags & ATR_VFLAG_SET) == 0) {
+						(void)decode_str(&pjob->ji_wattr[(int)JOB_ATR_SchedSelect_orig], NULL, NULL, cur_schedselect);
+					}
+					(void)job_attr_def[(int)JOB_ATR_SchedSelect].at_decode(&pjob->ji_wattr[(int)JOB_ATR_SchedSelect],(char *)0, (char *)0, schedselect_entry->al_value);
+
+					/* re-generate nodect */
+					(void)set_chunk_sum(&pjob->ji_wattr[(int)JOB_ATR_SchedSelect], &pjob->ji_wattr[(int)JOB_ATR_resource]);
+					set_resc_assigned((void *)pjob, 0, INCR);
+
+					prdefsl = find_resc_def(svr_resc_def, "select", svr_resc_size);
+					/* re-generate "select" resource */
+					if (prdefsl != NULL) {
+						presc = find_resc_entry(
+			  				&pjob->ji_wattr[(int)JOB_ATR_resource], prdefsl);
+						if (presc == NULL) {
+							presc = add_resource_entry(&pjob->ji_wattr[(int)JOB_ATR_resource], prdefsl);
+						}
+						if (presc != NULL) {
+							(void)prdefsl->rs_decode(&presc->rs_value, NULL, "select", schedselect_entry->al_value);
+						}
+					}
+					account_jobstr2(pjob, PBS_ACCT_PRUNE);
+				} else {
+					log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
+						  pjob->ji_qs.ji_jobid,
+						"error assigning hosts...requeueing job");
+					discard_job(pjob, "Force rerun", 1);
+					force_reque(pjob);
+				}
+			}
+
+			if (execvnode_entry != NULL) {
+				delete_link(&execvnode_entry->al_link);
+				free(execvnode_entry);
+			}
+			if (schedselect_entry != NULL) {
+				delete_link(&schedselect_entry->al_link);
+				free(schedselect_entry);
+			}
 			if (pjob->ji_wattr[(int)JOB_ATR_session_id].at_flags & ATR_VFLAG_SET)
 				old_sid = pjob->ji_wattr[(int)JOB_ATR_session_id].at_val.at_long;
-
 			/* update all the attributes sent from Mom */
 			sattrl = (svrattrl *)GET_NEXT(rused.ru_attr);
 			if(sattrl != NULL) {
@@ -2900,7 +2996,7 @@ delete_from_exec_vnode(char *execvnode, char *vnodelist, char *err_msg,
 	}
 
 	entry = strlen(new_exec_vnode)-1;
-	if (new_exec_vnode[entry] == '+')
+	if ((entry >= 0) && (new_exec_vnode[entry] == '+'))
 		new_exec_vnode[entry] = '\0';
 
 	free(exec_vnode);
@@ -3535,7 +3631,9 @@ cross_link_mom_vnode(struct pbsnode *pnode, mominfo_t *pmom)
  * @param[in]  new   	- true if ok to create new vnode
  * @param[in]  pmom  	- the Mom which sent this update
  * @param[out] madenew 	- set non-zero if any new vnodes were created
- * @param[out] from_hook- set non-zero if request coming from hook
+ * @param[out] from_hook - set non-zero if request coming from hook
+ *			  Normally set to 1 for regular vnoded request;
+ *			  2 for qmgr-like (non-vnoded) request.
  *
  * @return int
  * @retval	zero	- ok
@@ -3664,14 +3762,18 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 				}
 			}
 		}
-	} else {
-		/* cross link the vnode and its Mom */
+	} else if (from_hook != 2) {
+		/* if coming from UPDATE_FROM_HOOK2, it becomes
+		 * like a qmgr request. So no need to change
+		 * current vnode's parent mom be the incoming node,
+		 * which is what cross_link_mom_node() does.
+		 */
 		if ((i = cross_link_mom_vnode(pnode, pmom)) != 0) {
 			return (i);
 		}
 	}
 
-	if (from_hook) {
+	if (from_hook == 1) {
 
 		/* see if the node already has this Mom listed,if not add her */
 		for (i=0; i<pnode->nd_nummoms; ++i) {
@@ -5276,6 +5378,7 @@ found:
 			break;
 
 		case IS_UPDATE_FROM_HOOK:
+		case IS_UPDATE_FROM_HOOK2:
 			hook_seq  = disrul(stream, &ret);
 			if (ret != DIS_SUCCESS)
 				goto err;
@@ -5310,7 +5413,7 @@ found:
 				vnrlp = VNL_NODENUM(vnlp, i);
 				/* update vnode */
 				made_new_vnodes = 0;
-				if (update2_to_vnode(vnrlp, cr_node, pmom, &made_new_vnodes, 1) == PBSE_PERM) {
+				if (update2_to_vnode(vnrlp, cr_node, pmom, &made_new_vnodes, (command == IS_UPDATE_FROM_HOOK2)?2:1) == PBSE_PERM) {
 					break; /* encountered a bad permission */
 				}
 			}

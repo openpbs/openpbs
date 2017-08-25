@@ -260,7 +260,8 @@ class _job(object):
     def __new__(cls,value,connect_server=None):
         return object.__new__(cls, value)
     
-    def __init__(self,id,connect_server=None):
+    def __init__(self,id,connect_server=None,
+                 node_list_fail=None, node_list_good=None):
         """__init__"""
 
         self.id = id
@@ -272,6 +273,8 @@ class _job(object):
         self._msmom = False
         self._stdout_file = None
         self._stderr_file = None
+        self.mom_list_fail = node_list_fail
+        self.mom_list_good = node_list_good
     #: m(__init__)
 
     def __str__(self):
@@ -332,16 +335,27 @@ class _job(object):
     def in_ms_mom(self):
         """in_ms_mom"""
         return self._msmom
+    #: m(in_ms_mom)
     def stdout_file(self):
         """stdout_file"""
         return self._stdout_file
+    #: m(stdout_file)
     def stderr_file(self):
         """stderr_file"""
         return self._stderr_file
-    #: m(in_ms_mom)
+    #: m(stderr_file)
+    def release_nodes(self, nodes_list=None, keep_select=None):
+        """release_nodes"""
+        if ( (_pbs_v1.event().type & _pbs_v1.EXECJOB_PROLOGUE) == 0 and
+             (_pbs_v1.event().type & _pbs_v1.EXECJOB_LAUNCH) == 0 ):
+            return None
+        return _pbs_v1.release_nodes(self, nodes_list, keep_select)
+    #: m(release_nodes)
 
 _job.id = PbsAttributeDescriptor(_job, 'id', "",(str,))
-_job._connect_server = PbsAttributeDescriptor(_job, '_connect_server', "", (str,))
+_job.mom_list_fail = PbsAttributeDescriptor(_job, 'mom_list_fail', {},(list,))
+_job.mom_list_good = PbsAttributeDescriptor(_job, 'mom_list_good', {},(list,))
+_job._connect_server = PbsAttributeDescriptor(_job, '_connect_server', {}, (str,))
 #: C(job)
 
 #:------------------------------------------------------------------------

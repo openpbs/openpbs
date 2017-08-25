@@ -284,6 +284,7 @@ enum job_atr {
 	JOB_ATR_resc_released,
 	JOB_ATR_resc_released_list,
 	JOB_ATR_relnodes_on_stageout,
+	JOB_ATR_tolerate_node_failures,
 #include "site_job_attr_enum.h"
 
 	JOB_ATR_UNKN,		/* the special "unknown" type		  */
@@ -298,6 +299,21 @@ enum PBS_Chkpt_By {
 	PBS_CHECKPOINT_WALLT	/* checkpoint by walltime interval */
 };
 
+typedef struct resc_limit {		/* per node limits for Mom	*/
+	int	  rl_ncpus;		/* number of cpus		*/
+	int	  rl_ssi;		/* ssinodes (for irix cpusets	*/
+	int	  rl_netwins;		/* network windows		*/
+	long long rl_mem;		/* working set size (real mem)	*/
+	long long rl_vmem;		/* total mem space (virtual)	*/
+	int	  rl_naccels;		/* number of accelerators	*/
+	long long rl_accel_mem;		/* accelerator mem (real mem)	*/
+	char	  *chunkstr;		/* chunk represented */
+	int	  chunkstr_sz;		/* size of chunkstr */
+	char	  *h_chunkstr;		/* chunk representing exec_host */
+	int	  h_chunkstr_sz;	/* size of h_chunksz */
+	char	  *h2_chunkstr;		/* chunk representing exec_host2  */
+	int	  h2_chunkstr_sz;	/* size of h2_chunkstr */
+} resc_limit;
 
 /*
  * The "definations" for the job attributes are in the following array,
@@ -319,18 +335,6 @@ typedef enum histjob_type {
 
 #ifdef	PBS_MOM
 #include "tm_.h"
-
-typedef struct resc_limit {		/* per node limits for Mom	*/
-	int	  rl_ncpus;		/* number of cpus		*/
-	int	  rl_ssi;		/* ssinodes (for irix cpusets	*/
-	long long rl_mem;		/* working set size (real mem)	*/
-	long long rl_vmem;		/* total mem space (virtual)	*/
-	int	  rl_naccels;		/* number of accelerators	*/
-	long long rl_accel_mem;		/* accelerator mem (real mem)	*/
-	char	  *chunkstr;		/* chunk represented */
-	char	  *h_chunkstr;		/* chunk representing exec_host */
-	char	  *h2_chunkstr;		/* chunk representing exec_host2  */
-} resc_limit;
 
 /*
  * host_vlist - an array of these is hung off of the hnodent for this host,
@@ -530,12 +534,17 @@ struct job {
 	time_t		ji_sampletim;	/* last usage sample time, irix only */
 	time_t		ji_polltime;	/* last poll from mom superior */
 	time_t		ji_actalarm;	/* time of site callout alarm */
+	time_t		ji_joinalarm;	/* time of job's sister join job alarm */
 	/* also, time obit sent, all */
 	time_t		ji_overlmt_timestamp;	/*time the job exceeded limit*/
 	int		ji_jsmpipe;	/* pipe from child starter process */
 	int		ji_mjspipe;	/* pipe to   child starter for ack */
 	int		ji_jsmpipe2;	/* pipe for child starter process to send special requests to parent mom */
 	int		ji_mjspipe2;	/* pipe for parent mom to ack special request from child starter process */
+	int		ji_child2parent_job_update_pipe;	/* read pipe to receive special request from child starter process */
+	int		ji_parent2child_job_update_pipe;	/* write pipe for parent mom to send info to child starter process */
+	int		ji_parent2child_job_update_status_pipe;	/* write pipe for parent mom to send job update status to child starter process */
+	int		ji_parent2child_moms_status_pipe;	/* write pipe for parent mom to send sister moms status to child starter process */
 	int		ji_updated;	/* set to 1 if job's node assignment was updated */
 	time_t		ji_walltime_stamp;	/* time stamp for accumulating walltime */
 #ifdef WIN32
@@ -550,12 +559,22 @@ struct job {
 	int		ji_numrescs;	/* number of entries in ji_resources*/
 	int		ji_numvnod;	/* number of virtual nodes */
 	int		ji_numvnod0;	/* number of entries in ji_vnods0 */
+	int		ji_num_assn_vnodes;	/* number of virtual nodes (full count) */
 	tm_event_t	ji_obit;	/* event for end-of-job */
 	hnodent	       *ji_hosts;	/* ptr to job host management stuff */
 	vmpiprocs      *ji_vnods;	/* ptr to job vnode management stuff */
 	vmpiprocs      *ji_vnods0;	/* ptr to 0 cpu assigned vnodes (for hooks) */
 	noderes	       *ji_resources;	/* ptr to array of node resources */
-	pbs_list_head       ji_tasks;	/* list of task structs */
+	vmpiprocs      *ji_assn_vnodes;	/* ptr to actual assigned vnodes (for hooks) */
+	pbs_list_head   ji_tasks;	/* list of task structs */
+	pbs_list_head	ji_node_list_fail;
+					/* list of mom nodes which fail to join job
+					 * due to hook rejection, hook error,
+					 * hook alarm, or communication failure.
+					 */
+	pbs_list_head	ji_node_list;	/* list of functional mom nodes with
+					 * vnodes assigned to the job
+					 */
 	tm_node_id	ji_nodekill;	/* set to nodeid requesting job die */
 	int		ji_flags;	/* mom only flags */
 	void	       *ji_setup;	/* save setup info */
@@ -858,6 +877,7 @@ typedef struct	infoent {
 #define IM_SEND_RESC		22
 #define IM_UPDATE_JOB		23
 #define IM_EXEC_PROLOGUE	24
+
 #define IM_ERROR		99
 #define IM_ERROR2		100
 
@@ -1000,7 +1020,12 @@ task_find	(job		*pjob,
 
 #define JOB_SUBSTATE_BEGUN	70	/* Array job has begun */
 #define JOB_SUBSTATE_PROVISION	71	/* job is waiting for provisioning tocomplete */
-/* Job sub-states defined in PBS to support history jobs and OGF-BES model */
+#define JOB_SUBSTATE_WAITING_JOIN_JOB 72   /* job waiting on IM_JOIN_JOB completion */
+#define JOB_SUBSTATE_COMPLETED_JOIN_JOB 73 /* job completed IM_JOIN_JOB request */
+
+/*
+ * Job sub-states defined in PBS to support history jobs and OGF-BES model:
+ */
 #define JOB_SUBSTATE_TERMINATED	91
 #define JOB_SUBSTATE_FINISHED	92
 #define JOB_SUBSTATE_FAILED	93
@@ -1106,6 +1131,11 @@ extern int   state_char2int(char);
 extern int   uniq_nameANDfile(char*, char*, char*);
 extern long  determine_accruetype(job *);
 extern int   update_eligible_time(long, job *);
+
+#define	ALL_NODE_FAILURES	"all"
+#define	JOB_START_NODE_FAILURES	"job_start"
+#define	NO_NODE_FAILURES	"none"
+extern int   do_tolerate_node_failures(job *);
 
 /*
  *	The filesystem related recovery/save routines are renamed

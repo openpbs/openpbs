@@ -338,14 +338,18 @@ job_alloc(void)
 
 #ifdef	PBS_MOM
 	CLEAR_HEAD(pj->ji_tasks);
+	CLEAR_HEAD(pj->ji_node_list_fail);
+	CLEAR_HEAD(pj->ji_node_list);
 	pj->ji_taskid = TM_INIT_TASK;
 	pj->ji_numnodes = 0;
 	pj->ji_numrescs = 0;
 	pj->ji_numvnod  = 0;
 	pj->ji_numvnod0  = 0;
+	pj->ji_num_assn_vnodes  = 0;
 	pj->ji_hosts = NULL;
 	pj->ji_vnods = NULL;
 	pj->ji_vnods0 = NULL;
+	pj->ji_assn_vnodes = NULL;
 	pj->ji_resources = NULL;
 	pj->ji_obit = TM_NULL_EVENT;
 	pj->ji_postevent = TM_NULL_EVENT;
@@ -356,6 +360,10 @@ job_alloc(void)
 	pj->ji_mjspipe = -1;
 	pj->ji_jsmpipe2 = -1;
 	pj->ji_mjspipe2 = -1;
+	pj->ji_child2parent_job_update_pipe = -1;
+	pj->ji_parent2child_job_update_pipe = -1;
+	pj->ji_parent2child_job_update_status_pipe = -1;
+	pj->ji_parent2child_moms_status_pipe = -1;
 	pj->ji_updated = 0;
 #ifdef WIN32
 	pj->ji_hJob = NULL;
@@ -579,6 +587,9 @@ job_free(job *pj)
 		pj->ji_resources = NULL;
 	}
 
+	reliable_job_node_free(&pj->ji_node_list_fail);
+	reliable_job_node_free(&pj->ji_node_list);
+
 	/*
 	 ** This gets rid of any dependent job structure(s) from ji_setup.
 	 */
@@ -767,6 +778,24 @@ job_purge(job *pjob)
 	}
 	if (pjob->ji_mjspipe2 != -1) {
 		(void)close(pjob->ji_mjspipe2);
+	}
+
+	/* if open, close 3rd pipes to/from Mom starter process */
+	if (pjob->ji_child2parent_job_update_pipe != -1) {
+		(void)close_conn(pjob->ji_child2parent_job_update_pipe);
+	}
+	if (pjob->ji_parent2child_job_update_pipe != -1) {
+		(void)close(pjob->ji_parent2child_job_update_pipe);
+	}
+
+	/* if open, close 4th pipes to/from Mom starter process */
+	if (pjob->ji_parent2child_job_update_status_pipe != -1) {
+		(void)close(pjob->ji_parent2child_job_update_status_pipe);
+	}
+
+	/* if open, close 5th pipes to/from Mom starter process */
+	if (pjob->ji_parent2child_moms_status_pipe != -1) {
+		(void)close(pjob->ji_parent2child_moms_status_pipe);
 	}
 #endif
 #else	/* not PBS_MOM */
@@ -1274,6 +1303,31 @@ decode_project(struct attribute *patr, char *name, char *rescn, char *val)
 		(*val == '\0')?PBS_DEFAULT_PROJECT:val));
 }
 
+/**
+ * @brief
+ * 	Returns 1 if job 'job' should remain running in spite of node failures.
+ * @param[in]	pjob	- job being queried
+ *
+ * @return int
+ * @retval	1 - if true
+ * @retval	0 - if false or 'tolerate_node_failures' attribute is unset
+ */
+int
+do_tolerate_node_failures(job *pjob)
+{
+
+	if (pjob == NULL) {
+		return (0);
+	}
+
+	if ((pjob->ji_wattr[(int)JOB_ATR_tolerate_node_failures].at_flags & ATR_VFLAG_SET) &&
+	   ((strcmp(pjob->ji_wattr[(int)JOB_ATR_tolerate_node_failures].at_val.at_str, ALL_NODE_FAILURES) == 0) ||
+	   ((strcmp(pjob->ji_wattr[(int)JOB_ATR_tolerate_node_failures].at_val.at_str, JOB_START_NODE_FAILURES) == 0) &&
+	    pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING))) {
+		return (1);
+	}
+	return (0);
+}
 /**
  * @brief
  *	This function updates/creates the resource list named

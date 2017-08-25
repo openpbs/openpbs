@@ -75,6 +75,74 @@
 
 #define IFNAME_MAX 256
 #define IFFAMILY_MAX 16
+/**
+ * @brief
+ *	Put 'msg' into 'err_msg' buffer of size 'err_msg_sz',
+ *	then logs 'err_msg' value along with 'errno' info and
+ *	'header_msg' into daemon_log.
+ *
+ * @param[in,out]	err_msg - holds error message 
+ * @param[in]		err_msg_sz - size of the 'err_msg' buffer
+ * @param[in]		msg - actual message to log
+ * @param[in]		errno - error number to log
+ * @param[in]		header_msg - some heading message to log
+ *
+ * @return none
+ *
+ */
+#define	LOG_ERR_BUF(err_msg, err_msg_sz, msg, errno, header_msg) \
+if ((err_msg != NULL) && (err_msg_sz > 0)) { \
+	snprintf(err_msg, err_msg_sz, msg); \
+	log_err(errno, header_msg, err_msg); \
+}
+
+/**
+ * @brief
+ *	Put 'msg' into 'err_msg' buffer of size 'err_msg_sz',
+ *	then logs 'err_msg' value and 'id' string into
+ *	daemon_logs with 'arg' mapping to the
+ *	only positional parameter in 'msg'
+ *
+ * @param[in,out]	err_msg - holds error message
+ * @param[in]		err_msg_sz - size of the 'err_msg' buffer
+ * @param[in]		msg - actual message to log
+ * @param[in]		arg - maps to 'msg's '%' parameter
+ * @param[in]		id - some calling function namee to log 
+ *
+ * @return none
+ *
+ */
+#define	LOG_EVENT_BUF_ARG1(err_msg, err_msg_sz, msg, arg, id) \
+if ((err_msg != NULL) && (err_msg_sz > 0)) { \
+	snprintf(err_msg, err_msg_sz, msg, arg); \
+	log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, \
+					id, err_msg); \
+}
+
+/**
+ * @brief
+ *	Put 'msg' into 'err_msg' buffer of size 'err_msg_sz',
+ *	then logs 'err_msg' value and 'id' string into
+ *	daemon_log with 'arg1', 'arg2', 'arg3'
+ *	mapping to the positional parameters in 'msg'.
+ *
+ * @param[in,out]	err_msg - holds error message
+ * @param[in]		err_msg_sz - size of the 'err_msg' buffer
+ * @param[in]		msg - actual message to log
+ * @param[in]		arg1 - Maps to 'msg's '%' 1st parameter
+ * @param[in]		arg2 - Maps to 'msg's '%' 2nd parameter
+ * @param[in]		arg3 - Maps to 'msg's '%' 3nd parameter
+ * @param[in]		id - some calling function namee to log
+ *
+ * @return none
+ *
+ */
+#define	LOG_EVENT_BUF_ARG3(err_msg, err_msg_sz, msg, arg1, arg2, arg3, id) \
+if ((err_msg != NULL) && (err_msg_sz > 0)) { \
+	snprintf(err_msg, err_msg_sz, msg, arg1, arg2, arg3); \
+	log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, \
+					id, err_msg); \
+}
 
 struct log_net_info { /* interface info for logging */
 	struct log_net_info *next;

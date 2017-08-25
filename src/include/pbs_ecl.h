@@ -128,6 +128,7 @@ int verify_value_sandbox(int, int, int, struct attropl *, char **);
 int verify_value_stagelist(int, int, int, struct attropl *, char **);
 int verify_value_jrange(int, int, int, struct attropl *, char **);
 int verify_value_state(int, int, int, struct attropl *, char **);
+int verify_value_tolerate_node_failures(int, int, int, struct attropl *, char **);
 
 /* verify object name function */
 int pbs_verify_object_name(int, char *);

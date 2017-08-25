@@ -501,7 +501,6 @@ extern vnpool_mom_t *find_vnode_pool(mominfo_t *pmom);
 extern int  send_ip_addrs_to_mom(int);
 #endif
 
-#ifdef	PBS_MOM
 extern  int	   recover_vmap(void);
 extern  void       delete_momvmap_entry(momvmap_t *);
 extern  momvmap_t *create_mommap_entry(char *, char *hostn, mominfo_t *, int);
@@ -513,7 +512,7 @@ extern int		create_vmap(void **);
 extern void		destroy_vmap(void *);
 extern mominfo_t	*find_vmapent_byID(void *, const char *);
 extern int		add_vmapent_byID(void *, const char *, void *);
-#endif	/* PBS_MOM */
+
 #ifdef	_WORK_TASK_H
 extern  void ping_nodes(struct work_task *);
 #endif	/* _WORK_TASK_H */

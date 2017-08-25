@@ -97,6 +97,7 @@ __all__ = [ '_generic_attr',
 
 import _pbs_v1
 import sys
+import math
 _size = _pbs_v1.svr_types._size
 _LOG  = _pbs_v1.logmsg
 _IS_SETTABLE = _pbs_v1.is_attrib_val_settable
@@ -893,6 +894,154 @@ class select(_generic_attr):
     def __init__(self,value):
         _pbs_v1.validate_input("resc", "select", value)
         super(select,self).__init__(value)
+
+    def increment_chunks(self, increment_spec):
+        """
+        Given a pbs.select value (i.e. <num>:r1=v1:r2=v2+...+<num>:rn=vN),
+        increase the number of chunks for each of the pbs.select chunk
+        specs (except for the first chunk assigned to primary mom)
+        by the 'increment' specification.
+        The first chunk is the single chunk inside the first item
+        in the plus-separated specs that is assigned to the
+        primary mom. It is left as is.
+        For instance, given a chunk specs of "3:ncpus=2+2:ncpus=4",
+        this is viewed as "(1:ncpus=2+2:ncpus=2)+(2:ncpus=4)", and
+        the increment specs described below would apply to the
+        chunk after the initial, single chunk "1:ncpus=2".
+
+        if 'increment_spec' is a number (int or long), then it will be
+        the amount to add to the number of chunks spcified for each
+        chunk that is not the first chunk in the pbs.select spec.
+
+        if 'increment_spec' is a numeric string (int or long), then it will
+        also be the amount to add to the number of chunks spcified for
+        each chunk that is not the first chunk in the pbs.select spec.
+
+        if 'increment_spec' is a numeric string that ends with a percent
+        sign (%), then this will be the percent amount of chunks to
+        increase each chunk (except the first chunk) in the pbs.select spec.
+        The resulting amount is rounded up (i.e. ceiling)
+        (e.g. 1.23 rounds up to 2).
+
+        Finally, if 'increment_spec' is a dictionary with elements of the
+        form:
+               {<chunk_index_to_select_spec> : <increment>, ...}
+        where <chunk_index_to_select_spec> starts at 0 for the first
+        chunk appearing in the plus-separated spec list,
+        and <increment> can be numeric, numeric string or
+        a percent increase value. This allow for individually
+        specifying the number of chunks to increase original value.
+        Note that for the first chunk in the list (0th index), the
+        increment will apply to the chunks beyond the first chunk, which is
+        assigned to the primary mom.
+
+        Ex. Given:
+            sel=pbs.select("ncpus=3:mem=1gb+1:ncpus=2:mem=2gb+2:ncpus=1:mem=3gb")
+
+            Calling sel.increment_chunks(2) would return a string:
+                "1:ncpus=3:mem=1gb+3:ncpus=2:mem=2gb+4:ncpus=1:mem=3gb"
+
+            Calling sel.increment_chunks("3") would return a string:
+                "1:ncpus=3:mem=1gb+4:ncpus=2:mem=2gb+5:ncpus=1:mem=3gb"
+
+            Calling sel.increment_chunks("23.5%"), would return a
+            pbs.select value mapping to:
+                "1:ncpus=3:mem=1gb+2:ncpus=2:mem=2gb+3:ncpus=1:mem=3gb"
+
+            with the first chunk, which is a single chunk, is left as is,
+            and the second and third chunks are increased by 23.5 %
+            resulting in 1.24 rounded up to 2 and 2.47 rounded up to 3.
+
+            Calling sel.increment_chunks({0: 0, 1: 4, 2: "50%"}), would
+            return a pbs.select value mapping to:
+                "1:ncpus=3:mem=1gb+5:ncpus=2:mem=2gb+3:ncpus=1:mem=3gb"
+
+            where no increase (0) for chunk 1, additional 4
+            chunks for chunk 2, 50% increase for chunk 3 resulting in
+            3.
+        
+            Given:
+                sel=pbs.select("5:ncpus=3:mem=1gb+1:ncpus=2:mem=2gb+2:ncpus=1:mem=3gb")
+
+            Then calling sel.increment_chunks("50%") or
+            sel.increment_chunks({0: "50%", 1: "50%", 2: "50%}) would return a
+            pbs.select value mapping to:
+                "7:ncpus=3:mem=1gb+2:ncpus=2:mem=2gb+3:ncpus=1:mem=3gb"
+            as for the first chunk, the initial single chunk of
+            "1:ncpus=3:mem=1gb" is left as is, with the "50%" increase applied to
+            the remaining chunks "4:ncpus=3:mem=1gb", and then added back to the
+            single chunk to make 7, while chunks 2 and 3 are increased to 2 and 3,
+            respectively.
+        """
+        increment = None
+        percent_inc = None 
+        increment_dict = None
+        if isinstance(increment_spec, (int,long)):
+            increment = increment_spec
+        elif isinstance(increment_spec, (str,)):
+            if increment_spec.endswith('%'): 
+                    percent_inc = float(increment_spec[:-1])/100 + 1.0
+            else:
+                    increment = int(increment_spec)
+        elif isinstance(increment_spec, (dict,)):
+            increment_dict = increment_spec
+        else:
+            raise ValueError("bad increment specs")
+  
+        ret_str = ""
+        strl = str(self).split("+")
+        i = 0 # index to each chunk in the + separated spec
+        for ch in strl:
+            if i != 0:  
+                ret_str += '+'
+            j = 0 # index to items within a chunk separated by ':'
+            for c in ch.split(":"):
+                c_str = c
+                if j == 0:
+                    save_str = None
+                    if not c.isdigit():
+                        c = "1"
+                        save_str = c_str
+                    ct = int(c)
+
+                    if i == 0:
+                        ct -= 1 # don't touch the first chunk which lands in MS
+
+                    if ct <= 0:
+                        num = 0
+                    elif increment:
+                        num = ct + increment
+                    elif percent_inc:
+                        num = int(math.ceil(ct * percent_inc))
+                    elif increment_dict and i in increment_dict:
+                        if isinstance(increment_dict[i], (int,long)):
+                            inc = increment_dict[i]
+                            num = ct + inc
+                        elif isinstance(increment_dict[i], (str,)):
+                            if increment_dict[i].endswith('%'):
+                                p_inc = float(increment_dict[i][:-1])/100 + 1.0
+                                num = int(math.ceil(ct * p_inc))
+                            else:
+                                inc = int(increment_dict[i])
+                                num = ct + inc
+                    else:
+                        raise ValueError("bad increment specs")
+
+                    if (i == 0):
+                        num += 1 # put back the decremented count
+
+                    if save_str:
+                        c_str = "%s:%s" % (num,save_str)
+                    else:
+                        c_str = "%s" % (num)
+                else:
+                    ret_str += ":"
+                ret_str += c_str
+                j += 1
+
+            i += 1
+
+        return select(ret_str)
 
 class place(_generic_attr):
     """

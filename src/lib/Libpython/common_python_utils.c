@@ -318,7 +318,6 @@ pbs_python_object_set_attr_string_value(PyObject *obj,
 		snprintf(log_buffer, LOG_BUF_SIZE-1,
 			"Null value passed while setting attribute '%s'", key);
 		log_buffer[LOG_BUF_SIZE-1] = '\0';
-		log_err(0, __func__, log_buffer);
 		log_err(PBSE_INTERNAL, __func__, log_buffer);
 		return rv;
 	}
@@ -326,14 +325,12 @@ pbs_python_object_set_attr_string_value(PyObject *obj,
 	tmp_py_str = PyString_FromString(value); /* NEW reference */
 
 	if (!tmp_py_str) { /* Uh-of failed */
-		log_err(0, __func__, "failed PyString_FromString");
 		pbs_python_write_error_to_log(__func__);
 		return rv;
 	}
 	rv = PyObject_SetAttrString(obj, key, tmp_py_str);
 
 	if (rv == -1) {
-		log_err(0, __func__, "failed to SetAttrString");
 		pbs_python_write_error_to_log(__func__);
 	}
 	Py_CLEAR(tmp_py_str);
@@ -410,7 +407,6 @@ pbs_python_object_get_attr_integral_value(PyObject *obj, const char *key)
 		snprintf(log_buffer, LOG_BUF_SIZE-1,
 			"obj %s has no key %s", pbs_python_object_str(obj), key);
 		log_buffer[LOG_BUF_SIZE-1] = '\0';
-		log_err(0, __func__, log_buffer);
 		return rv;
 	}
 
@@ -473,7 +469,8 @@ pbs_python_object_str(PyObject *obj)
 		return ("");
 	}
 	ret_str = tmp_str;
-	strcpy(ret_str, str);
+	if (str != NULL)
+		strcpy(ret_str, str);
 	Py_CLEAR(py_str);
 	return (ret_str);
 }

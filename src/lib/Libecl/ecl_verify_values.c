@@ -1671,3 +1671,44 @@ verify_value_select(int batch_request, int parent_object, int cmd,
 	} /* while */
 	return PBSE_NONE;
 }
+
+/**
+ * @brief
+ *	verifies the values specified by attribute ATTR_tolerate_node_failures
+ *
+ * @see
+ *
+ * @param[in]	batch_request	-	Batch Request Type
+ * @param[in]	parent_object	-	Parent Object Type
+ * @param[in]	cmd		-	Command Type
+ * @param[in]	pattr		-	address of attribute to verify
+ * @param[out]	err_msg		-	error message list
+ *
+ * @return	int
+ * @retval	0 	- 	Attribute passed verification
+ * @retval	>0 	- 	Failed verification - pbs errcode is returned
+ *
+ * @par	Side effects:
+ * 	None
+ *
+ * @par Reentrancy
+ *	MT-safe
+ */
+int
+verify_value_tolerate_node_failures(int batch_request, int parent_object, int cmd,
+	struct attropl *pattr, char **err_msg)
+{
+	int i;
+	char *tolerance_level[3] = {ALL_NODE_FAILURES, JOB_START_NODE_FAILURES, NO_NODE_FAILURES};
+
+	if ((pattr->value == NULL) || (pattr->value[0] == '\0'))
+		return PBSE_BADATVAL;
+
+	/* does the requested value match a legal value? */
+	for (i = 0; i < 3; i++) {
+		if (strncasecmp(tolerance_level[i], pattr->value,
+			strlen(pattr->value)) == 0)
+			return PBSE_NONE;
+	}
+	return (PBSE_BADATVAL);
+}

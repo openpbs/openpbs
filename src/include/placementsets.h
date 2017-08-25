@@ -43,6 +43,9 @@
  *	Manage vnodes and their associated attributes
  */
 
+#ifndef	_PBS_PLACEMENTSETS_H
+#define	_PBS_PLACEMENTSETS_H
+
 #include	<sys/types.h>
 #include	<stdio.h>
 #include	"avltree.h"
@@ -297,3 +300,4 @@ extern vnl_t	*vn_decode_DIS(int, int *);
  * @retval	DIS_SUCCESS	success
  */
 extern int	vn_encode_DIS(int, vnl_t *);
+#endif	/* _PBS_PLACEMENTSETS_H */

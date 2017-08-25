@@ -299,6 +299,12 @@ static enum job_atr mom_rtn_list[] = {
 	(enum job_atr) -1
 };
 
+static enum job_atr mom_rtn_list2[] = {
+	JOB_ATR_exec_vnode,
+	JOB_ATR_SchedSelect,
+	(enum job_atr) -1
+};
+
 #ifdef PYTHON
 /**
  * @brief
@@ -1023,19 +1029,28 @@ encode_used_exit:
  *
  * @param[in]	pjob - pointer to the job whose status is being returned.
  * @param[in]	cmd - command message to use to communicate status.
+ * @param[in]	rtn_list_to_use - the mom_rtn_list[] array to use,
+ *				1 or 2.
  *
  * @return Void
  *
  */
 
 void
-update_ajob_status_using_cmd(job *pjob, int cmd)
+update_ajob_status_using_cmd(job *pjob, int cmd, int rtn_list_to_use)
 {
 	attribute		 *at;
 	attribute_def		 *ad;
 	int			  index;
 	int			  nth = 0;
 	struct resc_used_update	  rused;
+	enum job_atr		*rtn_list;	
+
+	if (rtn_list_to_use == 2)
+		rtn_list = mom_rtn_list2;
+	else
+		rtn_list = mom_rtn_list; 
+		
 
 	/* pass user-client privilege to encode_resc() */
 
@@ -1059,8 +1074,8 @@ update_ajob_status_using_cmd(job *pjob, int cmd)
 	(void)job_attr_def[(int)JOB_ATR_session_id].at_encode(&pjob->ji_wattr[(int)JOB_ATR_session_id], &rused.ru_attr, job_attr_def[(int)JOB_ATR_session_id].at_name, NULL, ATR_ENCODE_CLIENT, NULL);
 
 	/* Now add certain others as required for updating at the Server */
-	for (index = 0; (int)mom_rtn_list[index] >= 0; ++index) {
-		nth = (int)mom_rtn_list[index];
+	for (index = 0; (int)rtn_list[index] >= 0; ++index) {
+		nth = (int)rtn_list[index];
 		at = &pjob->ji_wattr[nth];
 		ad = &job_attr_def[nth];
 
@@ -1096,7 +1111,7 @@ update_ajob_status_using_cmd(job *pjob, int cmd)
 
 /**
  * @brief
- *	Wrapper to: update_ajob_status_using_cmd(pjob, IS_RESCUSED).
+ *	Wrapper to: update_ajob_status_using_cmd(pjob, IS_RESCUSED, 1).
  *
  * @param[in]	pjob - job whose status is being returned.
  *
@@ -1109,7 +1124,7 @@ update_ajob_status_using_cmd(job *pjob, int cmd)
 void
 update_ajob_status(job *pjob)
 {
-	update_ajob_status_using_cmd(pjob, IS_RESCUSED);
+	update_ajob_status_using_cmd(pjob, IS_RESCUSED, 1);
 }
 
 /**
@@ -1297,7 +1312,7 @@ send_obit(job *pjob, int exval)
 
 
 				update_ajob_status_using_cmd(pjob,
-					IS_RESCUSED_FROM_HOOK);
+					IS_RESCUSED_FROM_HOOK, 1);
 
 				/* Push vnl  hook changes to server */
 				hook_requests_to_server(&vnl_changes);

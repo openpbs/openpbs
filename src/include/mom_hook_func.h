@@ -71,6 +71,7 @@ struct hook_vnl_action {
 	unsigned long  hva_actid;		 /* action id number */
 	char           hva_euser[PBS_MAXUSER+1]; /* effective hook user */
 	vnl_t         *hva_vnl;			 /* vnl updates */
+	int	       hva_update_cmd;		 /* e.g. IS_UPDATE_FROM_HOOK */
 };
 #endif
 
@@ -90,6 +91,14 @@ struct hook_vnl_action {
  * 			their attributes/resources assigned to a
  * 			job, or for exechost_periodic and exechost_startup
  * 			hooks, the vnodes managed by the system.
+ * @param[in]	vnl_fail - a vnl_t * structure used by various hooks
+ * 			that enumerate the list of vnodes and
+ * 			their attributes/resources assigned to a
+ * 			job, whose parent moms are non-functional.
+ * @param[in]	mom_list_fail - a svattrl structure enumerating the
+ *			sister mom hosts that have been seen as down.
+ * @param[in]	mom_list_good - a svattrl structure enumerating the
+ *			sister mom hosts that have been seen as up.
  * @param[in]	pid - used by execjob_atttach hook as the
  * 			pbs.event().pid value.
  * @param[in]	jobs_list - list of jobs and their attributes/resources
@@ -102,6 +111,9 @@ typedef struct mom_hook_input {
 	char	**argv;
 	char	**env;
 	void	*vnl;
+	void	*vnl_fail;
+	void	*mom_list_fail;
+	void	*mom_list_good;
 	pid_t	pid;
 	pbs_list_head	*jobs_list;
 } mom_hook_input_t;
@@ -131,6 +143,12 @@ typedef struct mom_hook_input {
  * 			responding to a particular event.
  * @param[in]	vnl - a vnl_t * structure holding the vnode changes
  * 			made after executing mom_process_hooks().
+ * @param[in]	vnl_fail - a vnl_t * structure holding the changes to
+ * 			failed vnodes made after executing
+ *			mom_process_hooks().
+ *holding the changes to
+ * 			failed vnodes made after executing
+ *			mom_process_hooks().
  */
 typedef struct mom_hook_output {
 	int		*reject_errcode;
@@ -140,6 +158,7 @@ typedef struct mom_hook_output {
 	pbs_list_head	*argv;
 	char		**env;
 	void		*vnl;
+	void		*vnl_fail;
 } mom_hook_output_t;
 
 extern int
@@ -187,6 +206,8 @@ mom_hook_input_init(mom_hook_input_t *hook_input);
 
 extern void
 mom_hook_output_init(mom_hook_output_t *hook_output);
+
+extern void send_hook_fail_action(hook *);	
 
 #ifdef	__cplusplus
 }
