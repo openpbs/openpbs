@@ -68,8 +68,9 @@ set HOMEDIR="%TOPDIR%\home"
 set EXECDIR="%TOPDIR%\exec"
 
 if exist %TOPDIR% (
-echo %TOPDIR% already available.. Deleting...
-rmdir /s /q %TOPDIR%
+	echo %TOPDIR% already available.. Deleting...
+	rmdir /s /q %TOPDIR%
+	if NOT %ERRORLEVEL% == 0 goto theend
 )
 
 echo Creating toplevel directories...
@@ -88,10 +89,11 @@ if %ERRORLEVEL% == 0 (
 		"%binaries_path%\tcltk\bin\*.dll"
 	) do (
 	xcopy /s /d "%%~a" "%EXECDIR%\bin" > NUL
+	if NOT %ERRORLEVEL% == 0 goto theend
 	)
 ) else (
-echo Fail to create %EXECDIR%\bin directory.
-goto theend
+	echo Failed to create %EXECDIR%\bin directory.
+	goto theend
 )
 
 echo Creating sbin directory and moving necessory files...
@@ -112,11 +114,12 @@ if %ERRORLEVEL% == 0 (
 		"%WINBUILDDIR%\src\server\Release\*.exe*"
 		"%WINBUILDDIR%\src\start_provision\Release\*.exe*"
 	) do (
-	xcopy /s /d "%%~a" "%EXECDIR%\sbin" > NUL
+		xcopy /s /d "%%~a" "%EXECDIR%\sbin" > NUL
+		if NOT %ERRORLEVEL% == 0 goto theend
 	)
 ) else (
-echo Fail to create %EXECDIR%\sbin directory.
-goto theend
+	echo Failed to create %EXECDIR%\sbin directory.
+	goto theend
 )
 
 echo Creating etc directory and moving necessory files...
@@ -132,11 +135,12 @@ if %ERRORLEVEL% == 0 (
 		"%SRCDIR%\src\cmds\scripts\pbs_db_schema.sql"
 		"%SRCDIR%\src\cmds\scripts\win_postinstall.py"
 	) do (
-	xcopy /s /d "%%~a" "%EXECDIR%\etc" > NUL
+		xcopy /s /d "%%~a" "%EXECDIR%\etc" > NUL
+		if NOT %ERRORLEVEL% == 0 goto theend
 	)
 ) else (
-echo Fail to create %EXECDIR%\etc directory.
-goto theend
+	echo Failed to create %EXECDIR%\etc directory.
+	goto theend
 )
 
 echo Creating include directory and moving necessory files...
@@ -151,37 +155,41 @@ if %ERRORLEVEL% == 0 (
 		"%SRCDIR%\src\include\win.h"
 	) do (
 	xcopy /s /d "%%~a" "%EXECDIR%\include" > NUL
+	if NOT %ERRORLEVEL% == 0 goto theend
 	)
 ) else (
-echo Fail to create %EXECDIR%\include directory.
-goto theend
+	echo Failed to create %EXECDIR%\include directory.
+	goto theend
 )
 
 echo Creating pgsql directory and moving necessory files...
 mkdir %EXECDIR%\pgsql
 if %ERRORLEVEL% == 0 (
-xcopy /s /d "%binaries_path%\pgsql\*" "%EXECDIR%\pgsql" > NUL
+	xcopy /s /d "%binaries_path%\pgsql\*" "%EXECDIR%\pgsql" > NUL
+	if NOT %ERRORLEVEL% == 0 goto theend
 ) else (
-echo Fail to create %EXECDIR%\pgsql directory.
-goto theend
+	echo Failed to create %EXECDIR%\pgsql directory.
+	goto theend
 )
 
 echo Creating python_x64 directory and moving necessory files...
 mkdir %EXECDIR%\python_x64
 if %ERRORLEVEL% == 0 (
-xcopy /s /d "%binaries_path%\python_x64\*.*" "%EXECDIR%\python_x64" > NUL
+	xcopy /s /d "%binaries_path%\python_x64\*.*" "%EXECDIR%\python_x64" > NUL
+	if NOT %ERRORLEVEL% == 0 goto theend
 ) else (
-echo Fail to create %EXECDIR%\python_x64 directory.
-goto theend
+	echo Failed to create %EXECDIR%\python_x64 directory.
+	goto theend
 )
 
 echo Creating python directory and moving necessory files...
 mkdir %EXECDIR%\python
 if %ERRORLEVEL% == 0 (
-xcopy /s /d "%binaries_path%\python\*" "%EXECDIR%\python" > NUL
+	xcopy /s /d "%binaries_path%\python\*" "%EXECDIR%\python" > NUL
+	if NOT %ERRORLEVEL% == 0 goto theend
 ) else (
-echo Fail to create %EXECDIR%\python directory.
-goto theend
+	echo Failed to create %EXECDIR%\python directory.
+	goto theend
 )
 
 echo Creating unsupported directory and moving necessory files...
@@ -193,11 +201,12 @@ if %ERRORLEVEL% == 0 (
 		"%SRCDIR%\src\unsupported\*.pl"
 		"%SRCDIR%\src\unsupported\*.py"
 	) do (
-	xcopy /s /d "%%~a" "%EXECDIR%\unsupported" > NUL
+		xcopy /s /d "%%~a" "%EXECDIR%\unsupported" > NUL
+		if NOT %ERRORLEVEL% == 0 goto theend
 	)
 ) else (
-echo Fail to create %EXECDIR%\unsupported directory.
-goto theend
+	echo Failed to create %EXECDIR%\unsupported directory.
+	goto theend
 )
 
 echo Creating scheduler privilage in home directory...
@@ -209,10 +218,11 @@ if %ERRORLEVEL% == 0 (
 		"%SRCDIR%\src\scheduler\pbs_resource_group"
 		"%SRCDIR%\src\scheduler\pbs_sched_config"
 	) do (
-	xcopy /s /d "%%~a" "%HOMEDIR%\sched_priv" > NUL
+		xcopy /s /d "%%~a" "%HOMEDIR%\sched_priv" > NUL
+		if NOT %ERRORLEVEL% == 0 goto theend
 	)
 ) else (
-echo Fail to create %HOMEDIR%\sched_priv directory.
+echo Failed to create %HOMEDIR%\sched_priv directory.
 goto theend
 )
 
@@ -226,11 +236,12 @@ if %ERRORLEVEL% == 0 (
 			"%SRCDIR%\src\modules\python\pbs\*.pyo"
 			"%SRCDIR%\src\modules\python\pbs\*.pyc"			
 		) do (
-		xcopy /s /d "%%~a" "%EXECDIR%\lib\python\altair\pbs" > NUL
+			xcopy /s /d "%%~a" "%EXECDIR%\lib\python\altair\pbs" > NUL
+			if NOT %ERRORLEVEL% == 0 goto theend
 		)
 	) else (
-	echo Fail to create %EXECDIR%\lib\python\altair\pbs directory.
-	goto theend
+		echo Failed to create %EXECDIR%\lib\python\altair\pbs directory.
+		goto theend
 	)
 	
 	mkdir %EXECDIR%\lib\python\altair\pbs\v1
@@ -241,11 +252,12 @@ if %ERRORLEVEL% == 0 (
 			"%SRCDIR%\src\modules\python\pbs\v1\*.pyc"	
 			"%SRCDIR%\win_configure\projects.VS2008\*.py"
 		) do (
-		xcopy /s /d "%%~a" "%EXECDIR%\lib\python\altair\pbs\v1" > NUL
+			xcopy /s /d "%%~a" "%EXECDIR%\lib\python\altair\pbs\v1" > NUL
+			if NOT %ERRORLEVEL% == 0 goto theend
 		)
 	) else (
-	echo Fail to create %EXECDIR%\lib\python\altair\pbs\v1 directory.
-	goto theend
+		echo Failed to create %EXECDIR%\lib\python\altair\pbs\v1 directory.
+		goto theend
 	)
 
 	mkdir %EXECDIR%\lib\python\python2.7
@@ -253,11 +265,12 @@ if %ERRORLEVEL% == 0 (
 		For %%a in (
 			"%binaries_path%\python\Lib\*.*"			
 		) do (
-		xcopy /d "%%~a" "%EXECDIR%\lib\python\python2.7\" > NUL
+			xcopy /d "%%~a" "%EXECDIR%\lib\python\python2.7\" > NUL
+			if NOT %ERRORLEVEL% == 0 goto theend
 		)	
 	) else (
-	echo Fail to create %EXECDIR%\lib\python\python2.7 directory.
-	goto theend
+		echo Failed to create %EXECDIR%\lib\python\python2.7 directory.
+		goto theend
 	)
 	
 	For %%a in (
@@ -267,21 +280,24 @@ if %ERRORLEVEL% == 0 (
 			"%WINBUILDDIR%\src\lib\Libpbs\Release\Libpbs.lib"
 			"%WINBUILDDIR%\src\lib\Libsite\Release\Libsite.lib"
 			"%WINBUILDDIR%\src\lib\Libwin\Release\Libwin.lib"
+			"%binaries_path%\libical\bin\*.dll"
 		) do (
-		xcopy /s /d "%%~a" "%EXECDIR%\lib" > NUL
+			xcopy /s /d "%%~a" "%EXECDIR%\lib" > NUL
+			if NOT %ERRORLEVEL% == 0 goto theend
 		)
 		
 	mkdir %EXECDIR%\lib\ical\zoneinfo
 	if %ERRORLEVEL% == 0 (
-		xcopy /s /d "%binaries_path%\libical\zoneinfo\*.*" "%EXECDIR%\lib\ical\zoneinfo" > NUL
+		xcopy /s /d "%binaries_path%\libical\share\libical\zoneinfo\*.*" "%EXECDIR%\lib\ical\zoneinfo" > NUL
+		if NOT %ERRORLEVEL% == 0 goto theend
 	) else (
-	echo Fail to create %EXECDIR%\lib\ical\zoneinfo directory.
-	goto theend
+		echo Failed to create %EXECDIR%\lib\ical\zoneinfo directory.
+		goto theend
 	)
 
 ) else (
-echo Fail to create %EXECDIR%\lib directory.
-goto theend
+	echo Failed to create %EXECDIR%\lib directory.
+	goto theend
 )
 
 echo "Finished successfully"

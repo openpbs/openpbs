@@ -74,17 +74,15 @@
   <Fragment>
 	  <DirectoryRef Id="TARGETDIR">
 			<Component Id="ENVIRON" Guid="1bc6b7a2-d5e0-4ef5-a4e7-8cf241af146e">  		
-				<Environment Id="PATHPYTHON64" Action="set" Part="first" Name="PATH" Permanent="no" System="yes" Value="[EXEC]python_x64"/>
-				<Environment Id="PATHPYTHON64libs" Action="set" Part="first" Name="PATH" Permanent="no" System="yes" Value="[EXEC]python_x64\libs"/>
-				<Environment Id="PYTHONPATH" Action="set" Part="first" Name="PYTHONPATH" Permanent="no" System="yes" Value="[EXEC]python\Lib"/>
-				<Environment Id="PYTHONPATHDLLS" Action="set" Part="first" Name="PYTHONPATH" Permanent="no" System="yes" Value="[EXEC]python_x64\DLLs"/>
-				<Environment Id="BIN" Action="set" Part="first" Name="PATH" Permanent="no" System="yes" Value="[EXEC]bin"/>
-				<Environment Id="SBIN" Action="set" Part="first" Name="PATH" Permanent="no" System="yes" Value="[EXEC]sbin"/>
-				<Environment Id="PGBIN" Action="set" Part="first" Name="PATH" Permanent="no" System="yes" Value="[EXEC]pgsql\bin"/>
-				<Environment Id="PGLIB" Action="set" Part="first" Name="PATH" Permanent="no" System="yes" Value="[EXEC]pgsql\lib"/>
 				<Environment Id="PBS_CONF_FILE" Action="set" Part="all" Name="PBS_CONF_FILE" Permanent="no" System="yes" Value="[INSTALLFOLDER]pbs.conf"/>
 				<Environment Id="PBS_EXEC" Action="set" Part="all" Name="PBS_EXEC" Permanent="no" System="yes" Value="[EXEC]"/>
-				<Environment Id="PBS_HOME" Action="set" Part="all" Name="PBS_HOME" Permanent="no" System="yes" Value="[INSTALLFOLDER]home"/>
+				<Environment Id="BIN" Action="set" Part="last" Name="PATH" Permanent="no" System="yes" Value="%PBS_EXEC%\bin"/>
+				<Environment Id="SBIN" Action="set" Part="last" Name="PATH" Permanent="no" System="yes" Value="%PBS_EXEC%\sbin"/>
+				<Environment Id="LIB" Action="set" Part="last" Name="PATH" Permanent="no" System="yes" Value="%PBS_EXEC%\lib"/>
+				<Environment Id="PGBIN" Action="set" Part="last" Name="PATH" Permanent="no" System="yes" Value="%PBS_EXEC%\pgsql\bin"/>
+				<Environment Id="PYTHON" Action="set" Part="last" Name="PATH" Permanent="no" System="yes" Value="%PBS_EXEC%\python"/>
+				<Environment Id="PYTHONSCRIPTS" Action="set" Part="last" Name="PATH" Permanent="no" System="yes" Value="%PBS_EXEC%\python\Scripts"/>
+				<Environment Id="PYTHONLIB" Action="set" Part="last" Name="PATH" Permanent="no" System="yes" Value="%PBS_EXEC%\python\python\Lib\site-packages\pywin32_system32"/>
 			</Component>
 	  </DirectoryRef>
   </Fragment> 
