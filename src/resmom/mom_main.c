@@ -8359,6 +8359,7 @@ main(int argc, char *argv[])
 #if defined(RLIM64_INFINITY)
 	{
 		struct rlimit64 rlimit;
+		int curerror;
 
 		rlimit.rlim_cur = RLIM64_INFINITY;
 		rlimit.rlim_max = RLIM64_INFINITY;
@@ -8366,8 +8367,31 @@ main(int argc, char *argv[])
 		(void)setrlimit64(RLIMIT_CPU,   &rlimit);
 		(void)setrlimit64(RLIMIT_FSIZE, &rlimit);
 		(void)setrlimit64(RLIMIT_DATA,  &rlimit);
-		(void)getrlimit64(RLIMIT_STACK, &orig_stack_size); /* get for later */
-		(void)setrlimit64(RLIMIT_STACK, &rlimit);
+		if (getrlimit64(RLIMIT_STACK, &orig_stack_size) != -1) {
+			if((orig_stack_size.rlim_cur != RLIM64_INFINITY) && (orig_stack_size.rlim_cur < MIN_STACK_LIMIT)) {
+				rlimit.rlim_cur = MIN_STACK_LIMIT;
+				rlimit.rlim_max = MIN_STACK_LIMIT;
+				if (setrlimit64(RLIMIT_STACK, &rlimit) == -1) {
+					curerror = errno;
+					sprintf(log_buffer, "Stack limit setting failed");
+					log_err(curerror, __func__, log_buffer);
+					sprintf(log_buffer, "%s errno=%d", log_buffer, curerror);
+					log_record(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, (char *)__func__, log_buffer);
+					exit(1);
+				}
+			}
+		} else {
+			curerror = errno;
+			sprintf(log_buffer, "Getting current Stack limit failed");
+			log_err(curerror, __func__, log_buffer);
+			sprintf(log_buffer, "%s errno=%d", log_buffer, curerror);
+			log_record(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, (char *)__func__, log_buffer);
+			exit(1);
+		}
+
+		rlimit.rlim_cur = RLIM64_INFINITY;
+		rlimit.rlim_max = RLIM64_INFINITY;
+
 #ifdef RLIMIT_NPROC
 		(void)getrlimit64(RLIMIT_NPROC, &orig_nproc_limit); /* get for later */
 		if (setrlimit64(RLIMIT_NPROC, &rlimit) == -1) {    /* set unlimited */
