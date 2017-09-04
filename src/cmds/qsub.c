@@ -4927,7 +4927,9 @@ main(int argc, char **argv, char **envp)   /* qsub */
 		exit_qsub(3);
 	}
 
-	qsub_envlist = env_array_to_varlist(envp);
+	if (V_opt) {
+		qsub_envlist = env_array_to_varlist(envp);
+        }
 
 	/*
 	 * Disable backgrounding if we are inside another qsub
