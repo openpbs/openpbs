@@ -465,22 +465,37 @@ comma_token(char *str)
 char *
 expand_varlist(char *varlist)
 {
-	char  *v_value1 = NULL;
-	char *v_value2 = NULL;
-	char *vn = NULL;
-	char *vv = NULL;
-	char *p1, *p2, *p;
-	char *ev;
-	int  v_value1_sz=0;
+	char	*v_value1 = NULL;
+	char	*v_value2 = NULL;
+	char	*vn = NULL;
+	char	*vv = NULL;
+	char	*p1, *p2, *p;
+	char	*ev;
+	int	v_value1_sz=0;
+	char	*pc;
+	int	special_char_cnt = 0;
+	int	len = 0;
 
+	/*
+	 * count special characters as they are escaped with '\' in copy_env_value function
+	 * so that this is useful while calculating the accurate size of the destination string.
+	 * Also calculating the length of the string.
+	 */
+	pc = varlist;
+	for (; *pc; pc++) {
+		if ((*pc == '"') || (*pc == '\'') || (*pc == ',') || (*pc == '\\'))
+			special_char_cnt++;
+		len++;
+	}
+
+	v_value1_sz = len +  special_char_cnt + 1;
 	/* final copy */
-	v_value1 = strdup(varlist);
+	v_value1 = malloc(v_value1_sz);
 	if (v_value1 == NULL) {
 		fprintf(stderr, "qsub: out of memory\n");
 		return NULL;
 	}
-	v_value1_sz=strlen(v_value1)+1;
-	v_value1[0] = '\0'; /* initialize */
+	v_value1[0] = '\0';
 
 	/* working copy */
 	v_value2 = strdup(varlist);
