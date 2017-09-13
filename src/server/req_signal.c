@@ -497,6 +497,13 @@ post_signal_req(struct work_task *pwt)
 			pjob->ji_wattr[(int) JOB_ATR_resc_released_list].at_flags &= ~ATR_VFLAG_SET;
 
 			svr_setjobstate(pjob, JOB_STATE_RUNNING, JOB_SUBSTATE_RUNNING);
+
+			if (!(pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob)) {
+				job_attr_def[(int) JOB_ATR_Comment].at_decode(
+						&pjob->ji_wattr[(int) JOB_ATR_Comment], (char *) 0,
+						(char *) 0, form_attr_comment("Job run at %s",
+						pjob->ji_wattr[(int) JOB_ATR_exec_vnode].at_val.at_str));
+			}
 		}
 
 		reply_ack(preq);
