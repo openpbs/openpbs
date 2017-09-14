@@ -5723,7 +5723,7 @@ mom_set_use(job *pjob)
 	if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend) != 0)
 		return (PBSE_NONE);	/* job suspended, don't track it */
 
-	DBPRT(("%s: entered %s\n", ___func__, pjob->ji_qs.ji_jobid))
+	DBPRT(("%s: entered %s\n", __func__, pjob->ji_qs.ji_jobid))
 
 	at->at_flags |= (ATR_VFLAG_MODIFY|ATR_VFLAG_SET);
 

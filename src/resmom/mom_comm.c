@@ -4695,7 +4695,7 @@ join_err:
 				disrul(stream, &ret);
 			BAIL("resources_used.cpupercent")
 			DBPRT(("%s: SEND_RESC %s OKAY nodeidx %d cpu %lu mem %lu\n",
-				id, jobid, resc_idx,
+				__func__, jobid, resc_idx,
 				pjob->ji_resources[nodeidx-1].nr_cput,
 				pjob->ji_resources[nodeidx-1].nr_mem))
 
