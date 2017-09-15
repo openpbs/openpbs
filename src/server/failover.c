@@ -70,6 +70,11 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#ifdef WIN32
+#include "win.h"
+#else
+#include <sys/wait.h>
+#endif /* WIN32 */
 #include "server_limits.h"
 #include "credential.h"
 #include "attribute.h"
@@ -86,8 +91,7 @@
 #include "pbs_db.h"
 
 
-
-/* used internal to this file onle */
+/* used internal to this file only */
 #define SECONDARY_STATE_noconn	-1	/* not connected to Primary */
 #define SECONDARY_STATE_conn	 0	/* connect to Primary */
 #define SECONDARY_STATE_regsent	 1	/* have sent register to Primary */
@@ -806,6 +810,125 @@ alt_conn(pbs_net_t addr, unsigned int sec)
 
 /**
  * @brief
+ * 	Function to check if stonith script exists at PBS_HOME/server_priv/stonith.
+ * 	If it does then invoke the script for execution.
+ * 
+ * @param[in]	node - hostname of the node, that needs to brought down.
+ * 
+ * @return	Error code
+ * @retval	 0 - stonith script executed successfully or script does not exist.
+ * @retval      -1 - stonith script failed to bring down node.
+ *
+ */
+int
+check_and_invoke_stonith(char *node)
+{
+	char		stonith_cmd[3*MAXPATHLEN+1] = {0};
+	char		stonith_fl[MAXPATHLEN+1] = {0};
+	char		*p = NULL;
+	char		out_err_fl[MAXPATHLEN+1] = {0};
+	char		*out_err_msg = NULL;
+	int		rc = 0;
+	int		fd = 0;
+	struct stat	stbuf;
+	
+	if (node == NULL )
+		return -1;
+
+	snprintf(stonith_fl, sizeof(stonith_fl), "%s/server_priv/stonith", pbs_conf.pbs_home_path);
+
+#ifdef WIN32
+	repl_slash(stonith_fl);
+#endif /* WIN32 */
+
+	if (stat(stonith_fl, &stbuf) != 0) {
+		if (errno == ENOENT) {
+			snprintf(log_buffer, LOG_BUF_SIZE, "Skipping STONITH");
+			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO,
+				  msg_daemonname, log_buffer);
+			return 0;
+		}
+	}
+
+	/* create unique filename by appending pid */
+	snprintf(out_err_fl, sizeof(out_err_fl), 
+		"%s/spool/stonith_out_err_fl_%s_%d", pbs_conf.pbs_home_path, node, getpid());
+	
+#ifdef WIN32
+	repl_slash(out_err_fl);
+#endif /* WIN32 */
+
+	/* execute stonith script and redirect output to file */
+	snprintf(stonith_cmd, sizeof(stonith_cmd), "%s %s > %s 2>&1", stonith_fl, node, out_err_fl);
+	snprintf(log_buffer, LOG_BUF_SIZE, 
+		"Executing STONITH script to bring down primary at %s", pbs_conf.pbs_server_name);
+	log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
+			msg_daemonname, log_buffer);
+
+#ifdef WIN32
+	rc = wsystem(stonith_cmd, INVALID_HANDLE_VALUE);
+#else 
+	rc = system(stonith_cmd);
+#endif /* WIN32 */
+
+	if (rc != 0) {
+		snprintf(log_buffer, LOG_BUF_SIZE, 
+			"STONITH script execution failed, script exit code: %d", rc);
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_CRIT,
+			msg_daemonname, log_buffer);
+	} else {
+		snprintf(log_buffer, LOG_BUF_SIZE, 
+			"STONITH script executed successfully");
+		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO,
+			  msg_daemonname, log_buffer);
+	}
+
+	/* read the contents of out_err_fl and load to out_err_msg */
+	if ((fd = open(out_err_fl, 0)) != -1) {
+		if (fstat(fd, &stbuf) != -1) {
+			out_err_msg = malloc(stbuf.st_size + 1);
+			if (out_err_msg == NULL) {
+				close(fd);
+				unlink(out_err_fl);
+				log_err(errno, __func__, "malloc failed");
+				return -1;
+			}
+
+			if (read(fd, out_err_msg, stbuf.st_size) == -1) {
+				close(fd);
+				snprintf(log_buffer, LOG_BUF_SIZE, 
+					"%s: read failed, errno: %d", out_err_fl, errno);
+				log_err(errno, __func__, log_buffer);
+				free(out_err_msg);
+				return -1;
+			}
+
+			*(out_err_msg + stbuf.st_size) = '\0';
+			p = out_err_msg + strlen(out_err_msg) - 1;
+
+			while ((p >= out_err_msg) && (*p == '\r' || *p == '\n'))
+				*p-- = '\0'; /* supress the last newline */
+		}
+		close(fd);
+	}
+
+	if (out_err_msg) {
+		snprintf(log_buffer, LOG_BUF_SIZE, 
+			"%s, exit_code: %d.", out_err_msg, rc);
+		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, 
+			msg_daemonname, log_buffer);
+		free(out_err_msg);
+	}
+
+	unlink(out_err_fl);
+
+	if (rc != 0)
+		return -1;
+	return rc;
+}
+
+/**
+ * @brief
  *		Take control back from an active Secondary Server
  *
  * @par Functionality:
@@ -915,6 +1038,7 @@ be_secondary(time_t delay)
 	time_t			 takeov_on_nocontact;
 	conn_t			 *conn;
 	int			 mode;
+	int			 rc = 0;
 
 	/*
 	 * do limited initialization of the network tables
@@ -1136,6 +1260,17 @@ be_secondary(time_t delay)
 						(void)CS_close_socket(sec_sock);
 						close(sec_sock);
 					}
+					break;
+				}
+				/* Invoke stonith, to make sure primary is down */
+				rc = check_and_invoke_stonith(pbs_conf.pbs_primary);
+				if (rc) {
+					snprintf(log_buffer, LOG_BUF_SIZE, 
+						"Secondary will attempt taking over again");
+					log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO,
+						msg_daemonname, log_buffer);
+
+					sleep(10);
 					break;
 				}
 				/* take over from primary */
