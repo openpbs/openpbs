@@ -13323,10 +13323,7 @@ class Job(ResourceResv):
         if self.platform == 'cray' or self.platform == 'craysim':
             if 'Resource_List.select' in attrs:
                 select = attrs['Resource_List.select']
-                m = select.startswith('vntype=') or ':vntype=' in select
-                if not m:
-                    select = select + ":vntype=cray_compute"
-                    attrs['Resource_List.select'] = select
+                attrs['Resource_List.select'] = self.add_cray_vntype(select)
             elif 'Resource_List.vntype' not in attrs:
                 attrs['Resource_List.vntype'] = 'cray_compute'
 
@@ -13337,6 +13334,58 @@ class Job(ResourceResv):
             self.attributes[ATTR_N] = jobname
         self.set_variable_list(self.username)
         self.set_sleep_time(100)
+
+    def add_cray_vntype(self, select=None):
+        """
+        Cray specific function to add vntype as ``cray_compute`` to each
+        select chunk
+
+        :param select: PBS select statement
+        :type select: str or None
+        """
+        ra = []
+        r = select.split('+')
+        for i in r:
+            select = PbsTypeSelect(i)
+            novntype = 'vntype' not in select.resources
+            nohost = 'host' not in select.resources
+            novnode = 'vnode' not in select.resources
+            if novntype and nohost and novnode:
+                i = i + ":vntype=cray_compute"
+            ra.append(i)
+        select_str = ''
+        for l in ra:
+            select_str = select_str + "+" + l
+        select_str = select_str[1:]
+        return select_str
+
+    def set_attributes(self, a={}):
+        """
+        set attributes and custom attributes on this job.
+        custom attributes are used when converting attributes to CLI.
+        In case of Cray platform if 'Resource_List.vntype' is set
+        already then remove it and add vntype value to each chunk of a
+        select statement.
+
+        :param a: Attribute dictionary
+        :type a: Dictionary
+        """
+        if isinstance(a, list):
+            a = OrderedDict(a)
+
+        self.attributes = OrderedDict(self.dflt_attributes.items() +
+                                      self.attributes.items() + a.items())
+
+        if self.platform == 'cray' or self.platform == 'craysim':
+            s = 'Resource_List.select' in a
+            v = 'Resource_List.vntype' in self.custom_attrs
+            if s and v:
+                del self.custom_attrs['Resource_List.vntype']
+                select = a['Resource_List.select']
+                a['Resource_List.select'] = self.add_cray_vntype(select)
+
+        self.custom_attrs = OrderedDict(self.custom_attrs.items() +
+                                        a.items())
 
     def set_variable_list(self, user=None, workdir=None):
         """
