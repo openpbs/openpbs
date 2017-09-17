@@ -41,6 +41,7 @@ from tests.functional import *
 
 
 class TestAdminSuspend(TestFunctional):
+
     """
     Test the admin-suspend/admin-resume feature for node maintenance
     """
@@ -166,7 +167,7 @@ class TestAdminSuspend(TestFunctional):
             self.server.manager(
                 MGR_CMD_SET, NODE,
                 {'state': 'maintenance'}, id='vn[0]', runas=ROOT_USER)
-        except PbsManagerError, e:
+        except PbsManagerError as e:
             self.assertTrue('Illegal value for node state' in e.msg[0])
 
         self.server.expect(NODE, {'state': 'free'}, id='vn[0]')
@@ -176,7 +177,7 @@ class TestAdminSuspend(TestFunctional):
             self.server.manager(
                 MGR_CMD_SET, NODE,
                 {'maintenance_jobs': 'foo'}, id='vn[0]', runas=ROOT_USER)
-        except PbsManagerError, e:
+        except PbsManagerError as e:
             self.assertTrue(
                 'Cannot set attribute, read only or insufficient permission'
                 in e.msg[0])
@@ -191,7 +192,7 @@ class TestAdminSuspend(TestFunctional):
 
         try:
             self.server.sigjob(jid, 'admin-suspend', runas=TEST_USER)
-        except PbsSignalError, e:
+        except PbsSignalError as e:
             self.assertTrue('Unauthorized Request' in e.msg[0])
 
         self.server.expect(JOB, {'job_state': 'R', 'substate': 42}, id=jid)
@@ -202,7 +203,7 @@ class TestAdminSuspend(TestFunctional):
 
         try:
             self.server.sigjob(jid, 'admin-resume', runas=TEST_USER)
-        except PbsSignalError, e:
+        except PbsSignalError as e:
             self.assertTrue('Unauthorized Request' in e.msg[0])
 
         self.server.expect(JOB, {'job_state': 'S'}, id=jid)
@@ -221,7 +222,7 @@ class TestAdminSuspend(TestFunctional):
 
         try:
             self.server.sigjob(jid1, "admin-resume", runas=ROOT_USER)
-        except PbsSignalError, e:
+        except PbsSignalError as e:
             self.assertTrue(
                 'Job can not be resumed with the requested resume signal'
                 in e.msg[0])
@@ -243,7 +244,7 @@ class TestAdminSuspend(TestFunctional):
 
         try:
             self.server.sigjob(jid1, "resume", runas=ROOT_USER)
-        except PbsSignalError, e:
+        except PbsSignalError as e:
             self.assertTrue(
                 'Job can not be resumed with the requested resume signal'
                 in e.msg[0])
@@ -647,7 +648,7 @@ class TestAdminSuspend(TestFunctional):
                                id=jid3, max_attempts=20)
             self.server.expect(JOB, {'exec_vnode': (MATCH_RE, 'vn[1]')},
                                id=jid4, max_attempts=20)
-        except Exception, e:
+        except Exception as e:
             self.assertFalse(e.rv)
             print ("jid3 and jid4 not running on vn[1] as expected")
 
@@ -696,7 +697,7 @@ class TestAdminSuspend(TestFunctional):
             self.server.manager(MGR_CMD_SET, NODE,
                                 {'maintenance_jobs': jid1}, id='vn[0]',
                                 runas=ROOT_USER)
-        except PbsManagerError, e:
+        except PbsManagerError as e:
             self.assertFalse(e.rv)
             msg = "Cannot set attribute, read only" +\
                   " or insufficient permission  maintenance_jobs"
@@ -707,7 +708,7 @@ class TestAdminSuspend(TestFunctional):
             self.server.manager(MGR_CMD_SET, NODE,
                                 {'maintenance_jobs': jid1}, id='vn[0]',
                                 runas='pbsoper')
-        except PbsManagerError, e:
+        except PbsManagerError as e:
             self.assertFalse(e.rv)
             msg = "Cannot set attribute, read only" +\
                   " or insufficient permission  maintenance_jobs"
@@ -718,7 +719,7 @@ class TestAdminSuspend(TestFunctional):
             self.server.manager(MGR_CMD_SET, NODE,
                                 {'maintenance_jobs': jid1}, id='vn[0]',
                                 runas=TEST_USER)
-        except PbsManagerError, e:
+        except PbsManagerError as e:
             self.assertFalse(e.rv)
             self.assertTrue("Unauthorized Request" in e.msg[0])
 
@@ -778,7 +779,7 @@ class TestAdminSuspend(TestFunctional):
         # admin-suspend job1. It will fail
         try:
             self.server.sigjob(jid1, 'admin-suspend', logerr=False)
-        except Exception, e:
+        except Exception as e:
             self.assertFalse(e.rv)
 
         # admin suspend job2
@@ -847,9 +848,10 @@ pbs.logmsg(pbs.LOG_DEBUG,\
         """
 
         # submit a job and admin-suspend it
-        j = Job(TEST_USER)
-        jid1 = self.server.submit(j)
-        jid2 = self.server.submit(j)
+        j1 = Job(TEST_USER)
+        jid1 = self.server.submit(j1)
+        j2 = Job(TEST_USER)
+        jid2 = self.server.submit(j2)
         self.server.expect(JOB, {'job_state': "R", 'substate': 42}, id=jid1)
         self.server.expect(JOB, {'job_state': "R", 'substate': 42}, id=jid2)
         self.server.sigjob(jid1, 'admin-suspend')
@@ -859,7 +861,8 @@ pbs.logmsg(pbs.LOG_DEBUG,\
         self.server.expect(NODE, {'state': 'maintenance'}, id='vn[0]')
 
         # submit another job. It will be queued
-        jid3 = self.server.submit(j)
+        j3 = Job(TEST_USER)
+        jid3 = self.server.submit(j3)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid3)
 
         # mark the node as offline too
