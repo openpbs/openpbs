@@ -39,6 +39,23 @@
 from tests.functional import *
 
 
+def convert_time(fmt, tm, fixdate=False):
+    """
+    Convert given time stamp <tm> into given format <fmt>
+    if fixdate is True add <space> before date if date is < 9
+    (This is because to match output with ctime as qstat uses it)
+    """
+    rv = time.strftime(fmt, time.localtime(float(tm)))
+    if ((sys.platform not in ('cygwin', 'win32')) and (fixdate)):
+        rv = rv.split()
+        date = int(rv[2])
+        if date <= 9:
+            date = ' ' + str(date)
+        rv[2] = str(date)
+        rv = ' '.join(rv)
+    return rv
+
+
 class TestPbsNodeRampDown(TestFunctional):
 
     """
@@ -227,6 +244,8 @@ class TestPbsNodeRampDown(TestFunctional):
             retjob.create_script(self.script['job1_3'])
         elif job_type == 'job1_5':
             retjob.create_script(self.script['job1_5'])
+        elif job_type == 'job1_6':
+            retjob.create_script(self.script['job1_6'])
         elif job_type == 'job1_extra_res':
             retjob.create_script(self.script['job1_extra_res'])
         elif job_type == 'job2':
@@ -241,6 +260,10 @@ class TestPbsNodeRampDown(TestFunctional):
             retjob.create_script(self.script['job11x'])
         elif job_type == 'job12':
             retjob.create_script(self.script['job12'])
+        elif job_type == 'job13':
+            retjob.create_script(self.script['job13'])
+        elif job_type == 'jobA':
+            retjob.create_script(self.script['jobA'])
 
         return self.server.submit(retjob)
 
@@ -319,6 +342,9 @@ class TestPbsNodeRampDown(TestFunctional):
         else:
             SLEEP_CMD = "/bin/sleep"
 
+        self.pbs_release_nodes_cmd = os.path.join(
+            self.server.pbs_conf['PBS_EXEC'], 'bin', 'pbs_release_nodes')
+
         FIB40 = os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin', '') + \
             'pbs_python -c "exec(\\\"def fib(i):\\n if i < 2:\\n  \
 return i\\n return fib(i-1) + fib(i-2)\\n\\nprint fib(40)\\\")"'
@@ -330,6 +356,10 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint fib(45)\\\")"'
         FIB50 = os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin', '') + \
             'pbs_python -c "exec(\\\"def fib(i):\\n if i < 2:\\n  \
 return i\\n return fib(i-1) + fib(i-2)\\n\\nprint fib(50)\\\")"'
+
+        FIB400 = os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin', '') + \
+            'pbs_python -c "exec(\\\"def fib(i):\\n if i < 2:\\n  \
+return i\\n return fib(i-1) + fib(i-2)\\n\\nprint fib(400)\\\")"'
 
         # job submission arguments
         self.script = {}
@@ -407,6 +437,21 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint fib(50)\\\")"'
             "pbsdsh -n 1 -- %s &\n" % (FIB45,) + \
             "pbsdsh -n 2 -- %s &\n" % (FIB45,) + \
             "%s\n" % (FIB45,)
+
+        self.script['jobA'] = \
+            "#PBS -l select=" + self.job1_select + "\n" + \
+            "#PBS -l place=" + self.job1_place + "\n" + \
+            "#PBS -J 1-5\n"\
+            "pbsdsh -n 1 -- %s &\n" % (FIB45,) + \
+            "pbsdsh -n 2 -- %s &\n" % (FIB45,) + \
+            "%s\n" % (FIB45,)
+
+        self.script['job1_6'] = \
+            "#PBS -l select=" + self.job1_select + "\n" + \
+            "#PBS -l place=" + self.job1_place + "\n" + \
+            SLEEP_CMD + " 10\n" + \
+            self.pbs_release_nodes_cmd + " " + self.n4 + "\n" + \
+            "%s\n" % (FIB50,)
 
         self.job1_extra_res_select = \
             "ncpus=3:mem=2gb:mpiprocs=3:ompthreads=2+" + \
@@ -521,14 +566,22 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint fib(50)\\\")"'
             "#PBS -l place=" + self.job12_place + "\n" + \
             SLEEP_CMD + " 60"
 
-        self.pbs_release_nodes_cmd = os.path.join(
-            self.server.pbs_conf['PBS_EXEC'], 'bin', 'pbs_release_nodes')
+        self.job13_select = "3:ncpus=1"
+        self.script['job13'] = \
+            "#PBS -l select=" + self.job13_select + "\n" + \
+            "#PBS -l place=" + self.job1_place + "\n" + \
+            "pbsdsh -n 1 -- %s\n" % (FIB400,) + \
+            "pbsdsh -n 2 -- %s\n" % (FIB400,) + \
+            "pbsdsh -n 3 -- %s\n" % (FIB400,)
 
     def tearDown(self):
         self.momA.signal("-CONT")
         self.momB.signal("-CONT")
         self.momC.signal("-CONT")
         TestFunctional.tearDown(self)
+        # Delete managers and operators if added
+        attrib = ['operators', 'managers']
+        self.server.manager(MGR_CMD_UNSET, SERVER, attrib, expect=True)
 
     def test_release_nodes_on_stageout_true(self):
         """
@@ -2172,8 +2225,8 @@ pbs.event().job.release_nodes_on_stageout=False
         """
         Test:
             Like test_release_all test except instead of calling
-            pbs_relaase_nodes from a command line, it is executed
-            inside the job script of a runing job. Same results.
+            pbs_release_nodes from a command line, it is executed
+            inside the job script of a running job. Same results.
         """
         # This one has a job script that calls 'pbs_release_nodes'
         # (no jobid specified)
@@ -6362,3 +6415,777 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
         self.server.expect(QUEUE, {'resources_assigned.ncpus': 7,
                                    'resources_assigned.mem': '5242880kb'},
                            id="workq")
+
+    def test_release_mgr_oper(self):
+        """
+        Test that nodes are getting released as manager and operator
+        """
+
+        jid = self.create_and_submit_job('job1_5')
+        self.server.expect(JOB, {'job_state': "R"}, id=jid)
+
+        manager = str(MGR_USER) + '@*'
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'managers': (INCR, manager)},
+                            sudo=True)
+        operator = str(OPER_USER) + '@*'
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'operators': (INCR, operator)},
+                            sudo=True)
+
+        # Release hostC as manager
+        cmd = [self.pbs_release_nodes_cmd, '-j', jid, self.n7]
+        ret = self.server.du.run_cmd(self.server.hostname, cmd,
+                                     runas=MGR_USER)
+        self.assertEqual(ret['rc'], 0)
+
+        # Only mom hostC will get the job summary it was released
+        # early courtesy of sole vnode <n7>.
+        self.momA.log_match(
+            "Job;%s;%s.+cput=.+ mem=.+" % (jid, self.hostC), n=10,
+            max_attempts=5, regexp=True)
+
+        # Only mom hostC will get the IM_DELETE_JOB2 request
+        self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
+                            max_attempts=5)
+
+        # Release vnodes from momB as operator
+        cmd = [self.pbs_release_nodes_cmd, '-j', jid, self.n5, self.n6]
+        ret = self.server.du.run_cmd(self.server.hostname, cmd,
+                                     runas=OPER_USER)
+        self.assertEqual(ret['rc'], 0)
+
+        # momB's host will not get job summary reported
+        self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
+            jid, self.hostB), n=10, regexp=True, max_attempts=5,
+            existence=False)
+
+        self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
+                            max_attempts=5, existence=False)
+
+        # Verify remaining job resources.
+        sel_esc = self.job1_select.replace("+", "\+")
+        exec_host_esc = self.job1_exec_host.replace(
+            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+        exec_vnode_esc = self.job1_exec_vnode.replace("[", "\[").replace(
+            "]", "\]").replace("(", "\(").replace(")", "\)").replace("+", "\+")
+        newsel = "1:mem=2097152kb:ncpus=3+1:mem=1048576kb:ncpus=1"
+
+        newsel_esc = newsel.replace("+", "\+")
+        new_exec_host = self.job1_exec_host.replace(
+            "+%s/0*2" % (self.n7,), "")
+        new_exec_host_esc = new_exec_host.replace(
+            "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+        new_exec_vnode = self.job1_exec_vnode.replace(
+            "+%s:mem=1048576kb:ncpus=1" % (self.n5,), "")
+        new_exec_vnode = new_exec_vnode.replace(
+            "+%s:ncpus=1" % (self.n6,), "")
+        new_exec_vnode = new_exec_vnode.replace(
+            "+(%s:ncpus=2:mem=2097152kb)" % (self.n7,), "")
+        new_exec_vnode_esc = \
+            new_exec_vnode.replace("[", "\[").replace("]", "\]").replace(
+                "(", "\(").replace(")", "\)").replace("+", "\+")
+        self.server.expect(JOB, {'job_state': 'R',
+                                 'Resource_List.mem': '3gb',
+                                 'Resource_List.ncpus': 4,
+                                 'Resource_List.select': newsel,
+                                 'Resource_List.place': self.job1_place,
+                                 'Resource_List.nodect': 2,
+                                 'schedselect': newsel,
+                                 'exec_host': new_exec_host,
+                                 'exec_vnode': new_exec_vnode}, id=jid)
+
+        # Though the job is listed with ncpus=4 taking away released vnode
+        # <n5> (1 cpu), <n6> (1 cpu), <n7> (2 cpus),
+        # only <n7> got released.  <n5> and <n6> are part of a super
+        # chunk that wasn't fully released.
+        self.license_count_match(6)
+
+        # Check account update ('u') record
+        self.match_accounting_log('u', jid, self.job1_exec_host_esc,
+                                  self.job1_exec_vnode_esc, "6gb", 8, 3,
+                                  self.job1_place,
+                                  self.job1_sel_esc)
+
+        # Check to make sure 'c' (next) record got generated
+        self.match_accounting_log('c', jid, new_exec_host_esc,
+                                  new_exec_vnode_esc, "3145728kb",
+                                  4, 2, self.job1_place, newsel_esc)
+
+        # Check various vnode status.
+        jobs_assn1 = "%s/0" % (jid,)
+        # <n5> still job-busy
+        self.match_vnode_status([self.n1, self.n2, self.n4, self.n5],
+                                'job-busy', jobs_assn1, 1, '1048576kb')
+
+        # <n6> still job-busy
+        self.match_vnode_status([self.n3, self.n6], 'job-busy', jobs_assn1, 1,
+                                '0kb')
+
+        # <n7> now free
+        self.match_vnode_status([self.n0, self.n7, self.n8, self.n9, self.n10],
+                                'free')
+
+        self.server.expect(SERVER, {'resources_assigned.ncpus': 6,
+                                    'resources_assigned.mem': '4194304kb'})
+        self.server.expect(QUEUE, {'resources_assigned.ncpus': 6,
+                                   'resources_assigned.mem': '4194304kb'},
+                           id="workq")
+
+        self.assertTrue(
+            self.pbs_nodefile_match_exec_host(jid, new_exec_host))
+
+        self.server.delete(jid)
+
+        # Check account phased end ('e') record
+        self.match_accounting_log('e', jid, new_exec_host_esc,
+                                  new_exec_vnode_esc,
+                                  "3145728kb", 4, 2,
+                                  self.job1_place,
+                                  newsel_esc)
+
+        # Check to make sure 'E' (end of job) record got generated
+        self.match_accounting_log('E', jid, self.job1_exec_host_esc,
+                                  self.job1_exec_vnode_esc, "6gb",
+                                  8, 3, self.job1_place, self.job1_sel_esc)
+
+    def test_release_job_array(self):
+        """
+        Release vnodes from a job array and subjob
+        """
+
+        jid = self.create_and_submit_job('jobA')
+
+        self.server.expect(JOB, {'job_state': 'B',
+                                 'Resource_List.mem': '6gb',
+                                 'Resource_List.ncpus': 8,
+                                 'Resource_List.nodect': 3,
+                                 'Resource_List.select': self.job1_select,
+                                 'Resource_List.place': self.job1_place,
+                                 'schedselect': self.job1_schedselect}, id=jid)
+
+        # Release nodes from job array. It will fail
+        cmd = [self.pbs_release_nodes_cmd, '-j', jid, self.n4]
+        try:
+            ret = self.server.du.run_cmd(self.server.hostname, cmd,
+                                         sudo=True)
+        except PtlExceptions as e:
+            self.assertTrue("not supported for Array jobs" in e.msg)
+            self.assertFalse(e.rc)
+
+        # Verify the same for subjob1
+        subjob1 = jid.replace('[]', '[1]')
+
+        self.server.expect(JOB, {'job_state': 'R',
+                                 'Resource_List.mem': '6gb',
+                                 'Resource_List.ncpus': 8,
+                                 'Resource_List.nodect': 3,
+                                 'Resource_List.select': self.job1_select,
+                                 'Resource_List.place': self.job1_place,
+                                 'schedselect': self.job1_schedselect,
+                                 'exec_host': self.job1_exec_host,
+                                 'exec_vnode': self.job1_exec_vnode},
+                           id=subjob1)
+        # Server's license_count used value matches job's 'ncpus' value.
+        self.license_count_match(8)
+
+        # Check various vnode status.
+        jobs_assn1 = "%s/0" % (subjob1,)
+        self.match_vnode_status([self.n1, self.n2, self.n4, self.n5],
+                                'job-busy', jobs_assn1, 1, '1048576kb')
+
+        self.match_vnode_status([self.n3, self.n6],
+                                'job-busy', jobs_assn1, 1, '0kb')
+
+        jobs_assn2 = "%s/0, %s/1" % (subjob1, subjob1)
+        self.match_vnode_status([self.n7], 'job-busy', jobs_assn2,
+                                2, '2097152kb')
+
+        self.match_vnode_status([self.n0, self.n8, self.n9, self.n10], 'free')
+
+        self.assertTrue(
+            self.pbs_nodefile_match_exec_host(subjob1, self.job1_exec_host))
+
+        # Run pbs_release_nodes as root
+        cmd = [self.pbs_release_nodes_cmd, '-j', subjob1, self.n4]
+        ret = self.server.du.run_cmd(self.server.hostname, cmd,
+                                     sudo=True)
+        self.assertEqual(ret['rc'], 0)
+
+        # Verify mom_logs
+        self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
+            subjob1, self.hostB), n=10,
+            regexp=True,
+            max_attempts=5,
+            existence=False)
+
+        self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
+            subjob1, self.hostC), n=10,
+            regexp=True, max_attempts=5,
+            existence=False)
+
+        # momB's host will not get DELETE_JOB2 request since
+        # not all its vnodes have been released yet from the job.
+        self.momB.log_match("Job;%s;DELETE_JOB2 received" % (subjob1,),
+                            n=20, max_attempts=5,
+                            existence=False)
+
+        # Verify remaining job resources.
+        newsel = "1:mem=2097152kb:ncpus=3+1:mem=1048576kb:ncpus=2+" + \
+                 "1:ncpus=2:mem=2097152kb"
+        newsel_esc = newsel.replace("+", "\+")
+        new_exec_host = self.job1_exec_host
+
+        # Below variable is being used for the accounting log match
+        # which is currently blocked on PTL bug PP-596.
+        # new_exec_host_esc = self.job1_exec_host.replace(
+        # "*", "\*").replace("[", "\[").replace("]", "\]").replace("+", "\+")
+
+        new_exec_vnode = self.job1_exec_vnode.replace(
+            "%s:mem=1048576kb:ncpus=1+" % (self.n4,), "")
+        new_exec_vnode_esc = new_exec_vnode.replace(
+            "[", "\[").replace("]", "\]").replace(
+            "(", "\(").replace(")", "\)").replace("+", "\+")
+        self.server.expect(JOB, {'job_state': 'R',
+                                 'Resource_List.mem': '5gb',
+                                 'Resource_List.ncpus': 7,
+                                 'Resource_List.select': newsel,
+                                 'Resource_List.place': self.job1_place,
+                                 'Resource_List.nodect': 3,
+                                 'schedselect': newsel,
+                                 'exec_host': self.job1_exec_host,
+                                 'exec_vnode': new_exec_vnode}, id=subjob1)
+
+        # Though the job is listed with ncpus=7 taking away released vnode
+        # <n4>, it's coming from a super-chunk where other vnodes <n5> and
+        # <n6> are still assigned to the job. So the parent mom of <n4>
+        # till won't release the job and thus, the 1 license for it is still
+        # allocated.
+        self.license_count_match(8)
+
+        # BELOW IS CODE IS BLOCEKD ON PP-596
+        # Check account update ('u') record
+        # self.match_accounting_log('u', subjob1, self.job1_exec_host_esc,
+        #                          self.job1_exec_vnode_esc, "6gb", 8, 3,
+        #                          self.job1_place,
+        #                          self.job1_sel_esc)
+
+        # Check to make sure 'c' (next) record got generated
+        # self.match_accounting_log('c', subjob1, self.job1_exec_host_esc,
+        #                          new_exec_vnode_esc, "5242880kb",
+        #                          7, 3, self.job1_place, newsel_esc)
+
+        # Check various vnode status.
+        jobs_assn1 = "%s/0" % (subjob1,)
+        self.match_vnode_status([self.n1, self.n2, self.n4, self.n5],
+                                'job-busy', jobs_assn1, 1, '1048576kb')
+
+        self.match_vnode_status([self.n3, self.n6], 'job-busy', jobs_assn1, 1,
+                                '0kb')
+
+        jobs_assn2 = "%s/0, %s/1" % (subjob1, subjob1)
+        self.match_vnode_status([self.n7], 'job-busy', jobs_assn2,
+                                2, '2097152kb')
+
+        self.match_vnode_status([self.n0, self.n8, self.n9, self.n10], 'free')
+
+        self.server.expect(SERVER, {'resources_assigned.ncpus': 8,
+                                    'resources_assigned.mem': '6291456kb'})
+        self.server.expect(QUEUE, {'resources_assigned.ncpus': 8,
+                                   'resources_assigned.mem': '6291456kb'},
+                           id="workq")
+
+        self.assertTrue(
+            self.pbs_nodefile_match_exec_host(subjob1, new_exec_host))
+
+        self.server.delete(subjob1)
+
+        # Check account phased end ('e') record
+        # self.match_accounting_log('e', subjob1, new_exec_host_esc,
+        #                          new_exec_vnode_esc,
+        #                          "5242880kb", 7, 3,
+        #                          self.job1_place,
+        #                          newsel_esc)
+
+        # Check to make sure 'E' (end of job) record got generated
+        # self.match_accounting_log('E', subjob1, self.job1_exec_host_esc,
+        #                          self.job1_exec_vnode_esc, "6gb",
+        #                          8, 3, self.job1_place, self.job1_sel_esc)
+
+    def test_release_job_states(self):
+        """
+        Release nodes on jobs in various states; Q, H, S, W
+        """
+
+        # Submit a regular job that cannot run
+        a = {'Resource_List.ncpus': 100}
+        j = Job(TEST_USER, a)
+        jid = self.server.submit(j)
+
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
+
+        # Release nodes from a queued job
+        cmd = [self.pbs_release_nodes_cmd, '-j', jid, self.n4]
+        ret = self.server.du.run_cmd(self.server.hostname, cmd,
+                                     sudo=True)
+        self.assertNotEqual(ret['rc'], 0)
+
+        self.server.delete(jid, wait=True)
+
+        # Submit a held job and try releasing the node
+        j1 = Job(TEST_USER, {ATTR_h: None})
+        jid1 = self.server.submit(j1)
+        self.server.expect(JOB, {'job_state': 'H'}, id=jid1)
+
+        cmd = [self.pbs_release_nodes_cmd, '-j', jid1, self.n4]
+        ret = self.server.du.run_cmd(self.server.hostname, cmd,
+                                     sudo=True)
+        self.assertNotEqual(ret['rc'], 0)
+        self.server.delete(jid1, wait=True)
+
+        # Submit a job in W state and try releasing the node
+        mydate = int(time.time()) + 120
+        mytime = convert_time('%m%d%H%M', str(mydate))
+        j2 = Job(TEST_USER, {ATTR_a: mytime})
+        jid2 = self.server.submit(j2)
+        self.server.expect(JOB, {'job_state': 'W'}, id=jid2)
+
+        cmd = [self.pbs_release_nodes_cmd, '-j', jid2, self.n4]
+        ret = self.server.du.run_cmd(self.server.hostname, cmd,
+                                     sudo=True)
+        self.assertNotEqual(ret['rc'], 0)
+        self.server.delete(jid2, wait=True)
+
+    def test_release_finishjob(self):
+        """
+        Test that releasing vnodes on finished jobs will fail
+        also verify the updated schedselect on a finished job
+        """
+
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'job_history_enable': "true"}, sudo=True)
+
+        jid = self.create_and_submit_job('job1_5')
+        self.server.expect(JOB, {'job_state': "R"}, id=jid)
+
+        # Release hostC
+        cmd = [self.pbs_release_nodes_cmd, '-j', jid, self.n7]
+        ret = self.server.du.run_cmd(self.server.hostname, cmd)
+        self.assertEqual(ret['rc'], 0)
+
+        # Submit another job and make sure it is
+        # picked up by hostC
+        j = Job(TEST_USER,
+                {'Resource_List.select': "1:host=" + self.hostC})
+        jid2 = self.server.submit(j)
+        ehost = self.hostC + "/1"
+        self.server.expect(JOB, {'job_state': "R",
+                                 "exec_host": ehost}, id=jid2)
+
+        self.server.delete(jid, wait=True)
+
+        # Release vnode4 from a finished job. It will throw error.
+        cmd = [self.pbs_release_nodes_cmd, '-j', jid, self.n4]
+        ret = self.server.du.run_cmd(self.server.hostname, cmd)
+        self.assertNotEqual(ret['rc'], 0)
+
+        # Verify the schedselect for a finished job
+        newsel = "1:mem=2097152kb:ncpus=3+1:mem=2097152kb:ncpus=3"
+        new_exec_host = "%s/0*0+%s/0*0" % (self.n0, self.hostB)
+        new_exec_vnode = self.job1_exec_vnode.replace(
+            "+(%s:ncpus=2:mem=2097152kb)" % (self.n7,), "")
+        self.server.expect(JOB, {'job_state': 'F',
+                                 'Resource_List.mem': '4194304kb',
+                                 'Resource_List.ncpus': 6,
+                                 'Resource_List.select': newsel,
+                                 'Resource_List.place': self.job1_place,
+                                 'Resource_List.nodect': 2,
+                                 'schedselect': newsel,
+                                 'exec_host': new_exec_host,
+                                 'exec_vnode': new_exec_vnode},
+                           extend='x', id=jid)
+
+    def test_release_suspendjob(self):
+        """
+        Test that releasing nodes on suspended job will also
+        fail and schedselect will not change
+        """
+
+        jid = self.create_and_submit_job('job1_5')
+
+        self.server.expect(JOB, {'job_state': 'R',
+                                 'Resource_List.mem': '6gb',
+                                 'Resource_List.ncpus': 8,
+                                 'Resource_List.nodect': 3,
+                                 'Resource_List.select': self.job1_select,
+                                 'Resource_List.place': self.job1_place,
+                                 'schedselect': self.job1_schedselect,
+                                 'exec_host': self.job1_exec_host,
+                                 'exec_vnode': self.job1_exec_vnode}, id=jid)
+
+        cmd = [self.pbs_release_nodes_cmd, '-j', jid, self.n4]
+        ret = self.server.du.run_cmd(self.server.hostname, cmd)
+        self.assertEqual(ret['rc'], 0)
+
+        # Verify remaining job resources
+        newsel = "1:mem=2097152kb:ncpus=3+1:mem=1048576kb:ncpus=2+" + \
+                 "1:ncpus=2:mem=2097152kb"
+        new_exec_vnode = self.job1_exec_vnode.replace(
+            "%s:mem=1048576kb:ncpus=1+" % (self.n4,), "")
+        self.server.expect(JOB, {'job_state': 'R',
+                                 'Resource_List.mem': '5gb',
+                                 'Resource_List.ncpus': 7,
+                                 'Resource_List.select': newsel,
+                                 'Resource_List.place': self.job1_place,
+                                 'Resource_List.nodect': 3,
+                                 'schedselect': newsel,
+                                 'exec_host': self.job1_exec_host,
+                                 'exec_vnode': new_exec_vnode}, id=jid)
+
+        # Suspend the job with qsig
+        self.server.sigjob(jid, 'suspend', runas=ROOT_USER)
+        self.server.expect(JOB, {'job_state': 'S'}, id=jid)
+
+        # Try releasing a node from suspended job
+        cmd = [self.pbs_release_nodes_cmd, '-j', jid, self.n7]
+        ret = self.server.du.run_cmd(self.server.hostname, cmd,
+                                     sudo=True)
+        self.assertNotEqual(ret['rc'], 0)
+
+        # Verify that resources won't change
+        self.server.expect(JOB, {'job_state': 'S',
+                                 'Resource_List.mem': '5gb',
+                                 'Resource_List.ncpus': 7,
+                                 'Resource_List.select': newsel,
+                                 'Resource_List.place': self.job1_place,
+                                 'Resource_List.nodect': 3,
+                                 'schedselect': newsel,
+                                 'exec_host': self.job1_exec_host,
+                                 'exec_vnode': new_exec_vnode}, id=jid)
+
+        # Release the job and make sure it is running
+        self.server.sigjob(jid, 'resume')
+        self.server.expect(JOB, {'job_state': 'R',
+                                 'Resource_List.mem': '5gb',
+                                 'Resource_List.ncpus': 7,
+                                 'Resource_List.select': newsel,
+                                 'Resource_List.place': self.job1_place,
+                                 'Resource_List.nodect': 3,
+                                 'schedselect': newsel,
+                                 'exec_host': self.job1_exec_host,
+                                 'exec_vnode': new_exec_vnode}, id=jid)
+
+    @timeout(500)
+    def test_release_multi_jobs(self):
+        """
+        Release vnodes when multiple jobs are present
+        """
+
+        # Delete the vnodes and recreate them
+        self.momA.delete_vnode_defs()
+        self.momB.delete_vnode_defs()
+        self.momA.restart()
+        self.momB.restart()
+        self.server.manager(MGR_CMD_DELETE, NODE, None, "")
+
+        self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostA)
+        self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostB)
+        self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostC)
+
+        self.server.manager(MGR_CMD_SET, NODE,
+                            {'resources_available.ncpus': 3},
+                            id=self.hostA)
+        self.server.manager(MGR_CMD_SET, NODE,
+                            {'resources_available.ncpus': 3},
+                            id=self.hostB)
+        self.server.manager(MGR_CMD_SET, NODE,
+                            {'resources_available.ncpus': 3},
+                            id=self.hostC)
+
+        # Submit multiple jobs
+        jid1 = self.create_and_submit_job('job13')
+        jid2 = self.create_and_submit_job('job13')
+        jid3 = self.create_and_submit_job('job13')
+
+        e_host_j1 = self.hostA + "/0+" + self.hostB + "/0+" + self.hostC + "/0"
+        e_host_j2 = self.hostA + "/1+" + self.hostB + "/1+" + self.hostC + "/1"
+        e_host_j3 = self.hostA + "/2+" + self.hostB + "/2+" + self.hostC + "/2"
+        e_vnode = "(%s:ncpus=1)+(%s:ncpus=1)+(%s:ncpus=1)" \
+            % (self.hostA, self.hostB, self.hostC)
+
+        self.server.expect(JOB, {"job_state=R": 3})
+        self.server.expect(JOB, {"exec_host": e_host_j1,
+                                 "exec_vnode": e_vnode}, id=jid1)
+        self.server.expect(JOB, {"exec_host": e_host_j2,
+                                 "exec_vnode": e_vnode}, id=jid2)
+        self.server.expect(JOB, {"exec_host": e_host_j3,
+                                 "exec_vnode": e_vnode}, id=jid3)
+
+        # Verify that 3 processes running on hostB
+        process = 0
+        self.server.pu.get_proc_info(
+            self.momB.hostname, ".*fib.*", None, regexp=True)
+        if (self.server.pu.processes is not None):
+            for key in self.server.pu.processes:
+                if ("fib" in key):
+                    process = len(self.server.pu.processes[key])
+                    self.logger.info(
+                        "length of the process is " + str(process) +
+                        " expected 3")
+
+        self.assertEqual(process, 3)
+
+        # Release node2 from job1 only
+        cmd = [self.pbs_release_nodes_cmd, '-j', jid1, self.hostB]
+        ret = self.server.du.run_cmd(self.server.hostname, cmd,
+                                     runas=TEST_USER)
+        self.assertEqual(ret['rc'], 0)
+
+        self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid1,),
+                            max_attempts=18, interval=2)
+
+        # Verify that only 2 process left on hostB now
+        process = 0
+        self.server.pu.get_proc_info(
+            self.momB.hostname, ".*fib.*", None, regexp=True)
+        if (self.server.pu.processes is not None):
+            for key in self.server.pu.processes:
+                if ("fib" in key):
+                    process = len(self.server.pu.processes[key])
+                    print "length of the process is %d " % (process,)
+        self.assertEqual(process, 2)
+
+        # Mom logs only have message for job1 for node3
+        self.momA.log_match(
+            "Job;%s;%s.+cput=.+mem.+" % (jid1, self.hostB),
+            max_attempts=18, interval=2, regexp=True)
+
+        self.momA.log_match(
+            "Job;%s;%s.+cput=.+mem.+" % (jid2, self.hostB),
+            max_attempts=5, regexp=True,
+            existence=False)
+
+        self.momA.log_match(
+            "Job;%s;%s.+cput=.+mem.+" % (jid3, self.hostB),
+            max_attempts=5, regexp=True,
+            existence=False)
+
+        # Verify the new schedselect for job1
+        new_e_host_j1 = e_host_j1.replace("+%s/0" % (self.hostB,), "")
+        new_e_vnode = e_vnode.replace("+(%s:ncpus=1)" % (self.hostB,), "")
+        self.server.expect(JOB, {'job_state': "R",
+                                 "exec_host": new_e_host_j1,
+                                 "exec_vnode": new_e_vnode,
+                                 "schedselect": "1:ncpus=1+1:ncpus=1",
+                                 "Resource_List.ncpus": 2,
+                                 "Resource_List.nodect": 2}, id=jid1)
+
+        # Verify that host and vnode won't change for job2 and job3
+        self.server.expect(JOB, {'job_state': "R",
+                                 "exec_host": e_host_j2,
+                                 "exec_vnode": e_vnode,
+                                 "Resource_List.nodect": 3}, id=jid2)
+        self.server.expect(JOB, {'job_state': 'R',
+                                 "exec_host": e_host_j3,
+                                 "exec_vnode": e_vnode,
+                                 "Resource_List.nodect": 3}, id=jid3)
+
+    def test_PBS_JOBID(self):
+        """
+        Test that if -j jobid is not provided then it is
+        picked by env variable $PBS_JOBID in job script
+        """
+
+        # This one has a job script that calls 'pbs_release_nodes'
+        # (no jobid specified)
+        jid = self.create_and_submit_job('job1_6')
+
+        self.server.expect(JOB, {'job_state': 'R',
+                                 'Resource_List.mem': '6gb',
+                                 'Resource_List.ncpus': 8,
+                                 'Resource_List.nodect': 3,
+                                 'Resource_List.select': self.job1_select,
+                                 'Resource_List.place': self.job1_place,
+                                 'schedselect': self.job1_schedselect,
+                                 'exec_host': self.job1_exec_host,
+                                 'exec_vnode': self.job1_exec_vnode}, id=jid)
+
+        # Verify remaining job resources
+        newsel = "1:mem=2097152kb:ncpus=3+1:mem=1048576kb:ncpus=2+" + \
+                 "1:ncpus=2:mem=2097152kb"
+        newsel_esc = newsel.replace("+", "\+")
+        new_exec_vnode = self.job1_exec_vnode.replace(
+            "%s:mem=1048576kb:ncpus=1+" % (self.n4,), "")
+        new_exec_vnode_esc = new_exec_vnode.replace(
+            "[", "\[").replace("]", "\]").replace(
+            "(", "\(").replace(")", "\)").replace("+", "\+")
+        self.server.expect(JOB, {'job_state': 'R',
+                                 'Resource_List.mem': '5gb',
+                                 'Resource_List.ncpus': 7,
+                                 'Resource_List.select': newsel,
+                                 'Resource_List.place': self.job1_place,
+                                 'Resource_List.nodect': 3,
+                                 'schedselect': newsel,
+                                 'exec_host': self.job1_exec_host,
+                                 'exec_vnode': new_exec_vnode},
+                           id=jid, interval=1, max_attempts=30)
+
+        # Check account update ('u') record
+        self.match_accounting_log('u', jid, self.job1_exec_host_esc,
+                                  self.job1_exec_vnode_esc, "6gb", 8, 3,
+                                  self.job1_place,
+                                  self.job1_sel_esc)
+
+        # Check to make sure 'c' (next) record got generated
+        self.match_accounting_log('c', jid, self.job1_exec_host_esc,
+                                  new_exec_vnode_esc, "5242880kb",
+                                  7, 3, self.job1_place, newsel_esc)
+
+    def test_release_nodes_on_stageout_diffvalues(self):
+        """
+        Set release_nodes_on_stageout to different values other than
+        true or false
+        """
+
+        a = {ATTR_W: "release_nodes_on_stageout=-1"}
+        j = Job(TEST_USER, a)
+        try:
+            self.server.submit(j)
+        except PtlException as e:
+            self.assertTrue("illegal -W value" in e.msg[0])
+
+        a = {ATTR_W: "release_nodes_on_stageout=11"}
+        j = Job(TEST_USER, a)
+        try:
+            self.server.submit(j)
+        except PtlException as e:
+            self.assertTrue("illegal -W value" in e.msg[0])
+
+        a = {ATTR_W: "release_nodes_on_stageout=tru"}
+        j = Job(TEST_USER, a)
+        try:
+            self.server.submit(j)
+        except PtlException as e:
+            self.assertTrue("illegal -W value" in e.msg[0])
+
+    def test_resc_accumulation(self):
+        """
+        Test that resources gets accumulated when a mom is released
+        """
+
+        # skip this test due to PP-972
+        self.skip_test(reason="Test fails due to PP-972")
+
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'job_history_enable': "true"}, sudo=True)
+
+        # Create custom resources
+        attr = {}
+        attr['type'] = 'float'
+        attr['flag'] = 'nh'
+        r = 'foo_f'
+        self.server.manager(
+            MGR_CMD_CREATE, RSC, attr, id=r, runas=ROOT_USER, logerr=False)
+
+        attr1 = {}
+        attr1['type'] = 'size'
+        attr1['flag'] = 'nh'
+        r1 = 'foo_i'
+        self.server.manager(
+            MGR_CMD_CREATE, RSC, attr1, id=r1, runas=ROOT_USER, logerr=False)
+
+        hook_body = """
+import pbs
+e=pbs.event()
+pbs.logmsg(pbs.LOG_DEBUG, "executed epilogue hook")
+if e.job.in_ms_mom():
+    e.job.resources_used["vmem"] = pbs.size("9gb")
+    e.job.resources_used["foo_i"] = pbs.size(999)
+    e.job.resources_used["foo_f"] = 0.09
+else:
+    e.job.resources_used["vmem"] = pbs.size("10gb")
+    e.job.resources_used["foo_i"] = pbs.size(1000)
+    e.job.resources_used["foo_f"] = 0.10
+"""
+
+        hook_name = "epi"
+        a = {'event': "execjob_epilogue", 'enabled': 'True'}
+        rv = self.server.create_import_hook(
+            hook_name,
+            a,
+            hook_body,
+            overwrite=True)
+        self.assertTrue(rv)
+
+        jid = self.create_and_submit_job('job1_5')
+        self.server.expect(JOB, {'job_state': "R"}, id=jid)
+
+        # Release hostC
+        cmd = [self.pbs_release_nodes_cmd, '-j', jid, self.n7]
+        ret = self.server.du.run_cmd(self.server.hostname, cmd)
+        self.assertEqual(ret['rc'], 0)
+
+        self.momC.log_match("executed epilogue hook", max_attempts=10)
+        self.momC.log_match("DELETE_JOB2 received", max_attempts=10)
+
+        self.server.delete(jid, wait=True)
+
+        self.server.expect(JOB, {'job_state': 'F',
+                                 "resources_used.foo_i": "3kb",
+                                 "resources_used.foo_f": '0.29',
+                                 "resources_used.vmem": '29gb'}, id=jid)
+
+    @timeout(500)
+    def test_release_reservations(self):
+        """
+        Release nodes from a reservation will throw error. However
+        jobs inside reservation queue works as expected.
+        """
+
+        # Create a reservation on multiple nodes
+        start = int(time.time()) + 30
+        a = {'Resource_List.select': self.job1_select,
+             'Resource_List.place': 'scatter',
+             'reserve_start': start}
+        r = Reservation(TEST_USER, a)
+        rid = self.server.submit(r)
+        rid = rid.split('.')[0]
+
+        self.server.expect(RESV,
+                           {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")},
+                           id=rid)
+
+        # Release a vnode from reservation. It will throw error.
+        cmd = [self.pbs_release_nodes_cmd, '-j', rid, self.n5]
+        r = self.server.du.run_cmd(self.server.hostname, cmd)
+        self.assertNotEqual(r['rc'], 0)
+
+        # Submit a job inside reservations and release vnode
+        a = {'queue': rid,
+             'Resource_List.select': self.job1_select}
+        j = Job(TEST_USER, a)
+        jid = self.server.submit(j)
+
+        # Wait for the job to start
+        self.server.expect(JOB, {'job_state': 'R'},
+                           offset=30, id=jid)
+
+        # Release vnodes from the job
+        cmd = [self.pbs_release_nodes_cmd, '-j', jid, self.n5]
+        r = self.server.du.run_cmd(self.server.hostname, cmd)
+        self.assertEqual(r['rc'], 0)
+
+        # Verify the new schedselect
+        newsel = "1:mem=2097152kb:ncpus=3+1:mem=1048576kb:ncpus=2+" + \
+                 "1:ncpus=2:mem=2097152kb"
+        new_exec_host = self.job1_exec_host
+        new_exec_vnode = self.job1_exec_vnode.replace(
+            "%s:mem=1048576kb:ncpus=1+" % (self.n5,), "")
+        self.server.expect(JOB, {'job_state': 'R',
+                                 'Resource_List.mem': '5gb',
+                                 'Resource_List.ncpus': 7,
+                                 'Resource_List.select': newsel,
+                                 'Resource_List.nodect': 3,
+                                 'schedselect': newsel,
+                                 'exec_host': new_exec_host,
+                                 'exec_vnode': new_exec_vnode}, id=jid)
