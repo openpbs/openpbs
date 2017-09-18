@@ -52,6 +52,7 @@ cscope.out
 *.user
 *.ncb
 *.suo
+.vscode/
 
 # Files used by gtags
 GPATH
