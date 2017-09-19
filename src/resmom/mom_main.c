@@ -7185,7 +7185,7 @@ job_over_limit(job *pjob)
 
 			units = "secs";
 			total = &total_cpu;
-			if (limit <= total_cpu)
+			if (limit < total_cpu)
 				break;
 		}
 		else if (strcmp(rd->rs_name, "mem") == 0) {
@@ -7194,7 +7194,7 @@ job_over_limit(job *pjob)
 
 			units = "kb";
 			total = &total_mem;
-			if (enforce_mem && (limit <= total_mem))
+			if (enforce_mem && (limit < total_mem))
 				break;
 		}
 	}
