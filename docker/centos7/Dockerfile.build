@@ -1,0 +1,13 @@
+#  multi-stage build
+# use pbsbase image as builder
+# build script will be triggered
+FROM pbspro/pbsbase:centos7 AS builder
+
+# base image 
+FROM centos:7
+LABEL maintainer="mliu@altair.com"
+LABEL description="PBS Professional Open Source"
+# copy rpm from builder
+COPY --from=builder /root/rpmbuild/RPMS/x86_64/pbspro-server-*.rpm .
+# install pbspro
+RUN yum install -y pbspro-server-*.rpm
