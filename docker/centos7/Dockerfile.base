@@ -8,4 +8,4 @@ RUN yum install -y gcc make rpm-build libtool hwloc-devel libX11-devel \
 # copy build script
 COPY build.sh /
 # trigger build when used as base image
-ONBUILD RUN chmod +x /build.sh && /build.sh
+ONBUILD RUN bash /build.sh
