@@ -1133,6 +1133,15 @@ e.job.resources_used["foo_f"] = 0.10
             "pro", a, hook_body,
             overwrite=True)
 
+        # Verify the copy message in the logs to avoid
+        # race conditions
+        self.momA.log_match(
+            "pro.PY;copy hook-related file", max_attempts=10)
+        self.momB.log_match(
+            "pro.PY;copy hook-related file", max_attempts=10)
+        self.momC.log_match(
+            "pro.PY;copy hook-related file", max_attempts=10)
+
         hook_body = """
 import pbs
 e=pbs.event()
@@ -1145,6 +1154,15 @@ e.job.resources_used["cput"] = 10
         self.server.create_import_hook(
             "epi", a, hook_body,
             overwrite=True)
+
+        # Verify the copy message in the logs to avoid
+        # race conditions
+        self.momA.log_match(
+            "epi.PY;copy hook-related file", max_attempts=10)
+        self.momB.log_match(
+            "epi.PY;copy hook-related file", max_attempts=10)
+        self.momC.log_match(
+            "epi.PY;copy hook-related file", max_attempts=10)
 
         a = {'Resource_List.select': '3:ncpus=1',
              'Resource_List.place': 'scatter'}
@@ -1166,27 +1184,29 @@ e.job.resources_used["cput"] = 10
             max_attempts=60, interval=1)
 
         # Submit another job
-        j.create_script(
+        j1 = Job(TEST_USER)
+        j1.set_attributes(a)
+        j1.create_script(
             "pbsdsh -n 1 hostname\n" +
             "pbsdsh -n 2 hostname\n" +
             "sleep 300\n")
-        jid = self.server.submit(j)
+        jid1 = self.server.submit(j1)
 
         # Verify that prologue hook has set the values
         self.server.expect(JOB, {
             'job_state': 'R',
             'resources_used.foo_i': '30',
             'resources_used.foo_f': '0.3'},
-            id=jid, max_attempts=30, interval=2)
+            id=jid1, max_attempts=30, interval=2)
 
         # Force delete the job
-        self.server.deljob(id=jid, wait=True, attr_W="force")
+        self.server.deljob(id=jid1, wait=True, attr_W="force")
 
         # Verify values are accumulated by prologue hook only
         self.server.expect(JOB, {
             'resources_used.foo_i': '30',
             'resources_used.foo_f': '0.3'},
-            extend='x', id=jid)
+            extend='x', id=jid1)
 
     def test_server_restart2(self):
         """
