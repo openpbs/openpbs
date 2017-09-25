@@ -1377,19 +1377,33 @@ post_sendmom(struct work_task *pwt)
 				        jobp->ji_qs.ji_destin, pbs_errno, reject_msg);
 			else
 				sprintf(log_buffer,
-				        "send of job to %s failed error = %d",
-				        jobp->ji_qs.ji_destin, pbs_errno);
+					"send of job to %s failed error = %d",
+					jobp->ji_qs.ji_destin, pbs_errno);
+
 			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, jobp->ji_qs.ji_jobid, log_buffer);
 			snprintf(log_buffer, LOG_BUF_SIZE,
 					"Not Running: PBS Error: %s", pbse_to_txt(PBSE_MOMREJECT));
-			if (jobp->ji_qs.ji_svrflags & JOB_SVFLG_SubJob)
-				job_attr_def[(int) JOB_ATR_Comment].at_decode(
+
+			
+			if (jobp->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
+				/* 
+				 * if the job is a subjob, set the comment of parent job array 
+				 * only if the job array is not in state begun. Once the job 
+				 * array starts its comment is set to a begun message and
+				 * should not change after that
+				 */
+				if (jobp->ji_parentaj->ji_qs.ji_state != JOB_STATE_BEGUN) {
+					job_attr_def[(int) JOB_ATR_Comment].at_decode(
 						&jobp->ji_parentaj->ji_wattr[(int) JOB_ATR_Comment],
 						(char *) 0, (char *) 0, log_buffer);
-			else
+				}
+			}
+			else {              
+				/* if the job is a normal job */
 				job_attr_def[(int) JOB_ATR_Comment].at_decode(
 						&jobp->ji_wattr[(int) JOB_ATR_Comment], (char *) 0,
 						(char *) 0, log_buffer);
+			}
 		}
 
 		/* in the case of hook error we parse the hook_name and hook msg */
