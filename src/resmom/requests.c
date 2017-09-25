@@ -4554,6 +4554,7 @@ get_resources_from_file(char *path)
 	resources = malloc((numlines+1)*sizeof(char *));
 	if (resources == NULL) {
 		log_err(PBSEVENT_SYSTEM, __func__, MALLOC_ERR_MSG);
+		fclose(fp);
 		return NULL;
 	}
 
@@ -4564,12 +4565,14 @@ get_resources_from_file(char *path)
 			if (resources[i] == NULL) {
 				log_err(PBSEVENT_SYSTEM, __func__, MALLOC_ERR_MSG);
 				free_str_array(resources);
+				fclose(fp);
 				return NULL;
 			}
 			i++;
 		}
 	}
 	resources[i] = NULL;
+	fclose(fp);
 
 	return resources;
 }
