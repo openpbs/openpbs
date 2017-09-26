@@ -72,7 +72,7 @@ class TestHookDebugNoCrash(TestFunctional):
     def setUp(self):
         ret = self.du.run_cmd(
             self.server.hostname, [
-                'ulimit', '-n'], sudo=True, as_script=True, logerr=False)
+                'ulimit', '-n'], as_script=True, logerr=False)
         self.assertEqual(ret['rc'], 0)
         open_files_limit = ret['out'][0]
         if (open_files_limit == "unlimited") or (
