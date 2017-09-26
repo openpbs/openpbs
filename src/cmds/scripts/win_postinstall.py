@@ -41,7 +41,7 @@ def ValidateCredentials(username, password):
                 print "Post install process started..."
                 print "User Validation Success"
     else:
-        print "Usage error: \n post_install.py -u <username> -p <password>"
+        print "Usage error: \n "+ __file__ +" -u <username> -p <password>"
         sys.exit(4)
 
 
@@ -601,11 +601,11 @@ def main(argv):
             argv, "h:u:p:", [
                 "type=", "user=", "passwd="])
     except getopt.GetoptError:
-        print 'post_install.py -u <username> -p <password>'
+        print __file__ + ' -u <username> -p <password>'
         sys.exit(2)
     for opt, arg in opts:
         if opt == '-h':
-            print 'post_install.py -u <username> -p <password>'
+            print __file__ + ' -u <username> -p <password>'
             sys.exit()
         elif opt in ("-u", "--user"):
             username = arg

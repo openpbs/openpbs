@@ -55,8 +55,8 @@ set variable=%~dp0
 if "x!variable:~-29!"=="xpbspro\win_configure\msi\wix\" (
 	set variable=!variable:~0,-29!
 ) else (
-echo "Failed to parse PBS prefix location"
-goto theend
+	echo "Failed to parse PBS prefix location"
+	goto theend
 )
 set PBS_prefix=!variable!
 
@@ -88,8 +88,17 @@ if %ERRORLEVEL% == 0 (
 		"%WINBUILDDIR%\src\tools\Release\*.exe"
 		"%binaries_path%\tcltk\bin\*.dll"
 	) do (
-	xcopy /s /d "%%~a" "%EXECDIR%\bin" > NUL
-	if NOT %ERRORLEVEL% == 0 goto theend
+		xcopy /s /d "%%~a" "%EXECDIR%\bin" > NUL
+		if NOT %ERRORLEVEL% == 0 goto theend
+	)
+	REM Exclude list of files from bin directory
+	For %%b in (
+		"%EXECDIR%\bin\pbs_dataservice.bat"
+		"%EXECDIR%\bin\pbs_ds_monitor.exe"
+		"%EXECDIR%\bin\pbs_ds_password.exe"
+	) do (
+		del /s "%%~b" > NUL
+		if NOT %ERRORLEVEL% == 0 goto theend
 	)
 ) else (
 	echo Failed to create %EXECDIR%\bin directory.
@@ -222,8 +231,8 @@ if %ERRORLEVEL% == 0 (
 		if NOT %ERRORLEVEL% == 0 goto theend
 	)
 ) else (
-echo Failed to create %HOMEDIR%\sched_priv directory.
-goto theend
+	echo Failed to create %HOMEDIR%\sched_priv directory.
+	goto theend
 )
 
 echo Creating lib in exec directory...
