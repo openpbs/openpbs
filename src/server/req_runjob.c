@@ -264,6 +264,26 @@ clear_from_defr(int sd)
 }
 
 /**
+ * @brief	Wrapper function that calls process_hooks()
+ *
+ * @see		req_runjob()
+ *
+ * @return	int
+ *
+ */
+int
+call_to_process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
+	void	(*pyinter_func)(void))
+{
+	int rc;
+	rc = process_hooks(preq, hook_msg, msg_len, pyinter_func);
+	if (rc == -1)
+		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
+				LOG_INFO, "", "runjob event: accept req by default");
+	return rc;
+}
+
+/**
  * @brief
  * 		req_runjob - service the Run Job and Asyc Run Job Requests
  * @par
@@ -452,27 +472,17 @@ req_runjob(struct batch_request *preq)
 	DBPRT(("req_runjob: received command to run job on destin %s\n",
 		preq->rq_ind.rq_run.rq_destin))
 
-	switch (process_hooks(preq, hook_msg, sizeof(hook_msg),
-			pbs_python_set_interrupt)) {
-
-		case 0:      /* explicit reject */
-			reply_text(preq, PBSE_HOOKERROR, hook_msg);
-			return;
-		case 1:    /* explicit accept */
-		case 2:    /* no hook script executed - go ahead and accept events*/
-			break;
-		default:
-			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-				LOG_INFO, "", "runjob event: accept req by default");
-	}
-
 	/* OK - go back over the run job request, assign the vhosts */
 	/* and finally run the job by calling req_runjob2()	    */
 
 	if (jt == IS_ARRAY_NO) {
 
 		/* just a regular job, pass it on down the line and be done */
-
+		if (call_to_process_hooks(preq, hook_msg, sizeof(hook_msg),
+				pbs_python_set_interrupt) == 0) {
+			reply_text(preq, PBSE_HOOKERROR, hook_msg);
+			return;
+		}
 		pjob = where_to_runjob(preq, parent);
 		if (pjob) {
 			/* free prov_vnode before use */
@@ -502,6 +512,11 @@ req_runjob(struct batch_request *preq)
 		}
 		if ((pjobsub = create_subjob(parent, jid, &j)) == NULL) {
 			req_reject(j, 0, preq);
+			return;
+		}
+		if (call_to_process_hooks(preq, hook_msg, sizeof(hook_msg),
+				pbs_python_set_interrupt) == 0) {
+			reply_text(preq, PBSE_HOOKERROR, hook_msg);
 			return;
 		}
 		pjob = where_to_runjob(preq, pjobsub);
@@ -550,6 +565,11 @@ req_runjob(struct batch_request *preq)
 					if ((pjobsub = create_subjob(parent, jid, &j)) == NULL) {
 						req_reject(j, 0, preq);
 						continue;
+					}
+					if (call_to_process_hooks(preq, hook_msg, sizeof(hook_msg),
+							pbs_python_set_interrupt) == 0) {
+						reply_text(preq, PBSE_HOOKERROR, hook_msg);
+						return;
 					}
 					if ((pjob = where_to_runjob(preq, pjobsub)) == NULL) {
 						/* requeue subjob */
