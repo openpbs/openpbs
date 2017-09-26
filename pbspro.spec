@@ -244,16 +244,52 @@ cd build
 %make_install
 
 %post %{pbs_server}
+# do not run pbs_postinstall when the CLE is greater than or equal to 6
+imps=0
+cle_release_version=0
+cle_release_path=/etc/opt/cray/release/cle-release
+if [ -f ${cle_release_path} ]; then
+        cle_release_version=`grep RELEASE ${cle_release_path} | cut -f2 -d= | cut -f1 -d.`
+fi
+[ "${cle_release_version}" -ge 6 ] 2>/dev/null && imps=1
+if [ $imps -eq 0 ]; then
 ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_postinstall server \
 	%{version} ${RPM_INSTALL_PREFIX:=%{pbs_prefix}} %{pbs_home} %{pbs_dbuser}
+else
+        install -D %{pbs_prefix}/libexec/pbs_init.d /etc/init.d/pbs
+fi
 
 %post %{pbs_execution}
+# do not run pbs_postinstall when the CLE is greater than or equal to 6
+imps=0
+cle_release_version=0
+cle_release_path=/etc/opt/cray/release/cle-release
+if [ -f ${cle_release_path} ]; then
+        cle_release_version=`grep RELEASE ${cle_release_path} | cut -f2 -d= | cut -f1 -d.`
+fi
+[ "${cle_release_version}" -ge 6 ] 2>/dev/null && imps=1
+if [ $imps -eq 0 ]; then
 ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_postinstall execution \
 	%{version} ${RPM_INSTALL_PREFIX:=%{pbs_prefix}} %{pbs_home}
+else
+        install -D %{pbs_prefix}/libexec/pbs_init.d /etc/init.d/pbs
+fi
 
 %post %{pbs_client}
+# do not run pbs_postinstall when the CLE is greater than or equal to 6
+imps=0
+cle_release_version=0
+cle_release_path=/etc/opt/cray/release/cle-release
+if [ -f ${cle_release_path} ]; then
+        cle_release_version=`grep RELEASE ${cle_release_path} | cut -f2 -d= | cut -f1 -d.`
+fi
+[ "${cle_release_version}" -ge 6 ] 2>/dev/null && imps=1
+if [ $imps -eq 0 ]; then
 ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_postinstall client \
 	%{version} ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}
+else
+        install -D %{pbs_prefix}/libexec/pbs_init.d /etc/init.d/pbs
+fi
 
 %preun %{pbs_server}
 if [ "$1" != "1" ]; then
