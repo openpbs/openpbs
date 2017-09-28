@@ -414,7 +414,7 @@ for i in 1 2 3 4; do while : ; do : ; done & done
                                       'altair',
                                       'pbs_hooks',
                                       'pbs_cgroups.PY')
-        self.load_hook(hook_file)
+        self.load_hook(self.hook_file)
         # Enable the cgroups hook
         conf = {'enabled': 'True', 'freq': 2}
         self.server.manager(MGR_CMD_SET, HOOK, conf, self.hook_name)
