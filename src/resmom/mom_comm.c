@@ -3313,6 +3313,45 @@ join_err:
 			}
 			break;
 
+		case	IM_EXEC_PROLOGUE:
+			/*
+			 ** Sender is (must be) mom superior commanding me to execute
+			 ** a prologue hook.
+			 */
+			DBPRT(("%s: %s for %s\n", id, "IM_EXEC_PROLOGUE", pjob->ji_qs.ji_jobid));
+			mom_hook_input_init(&hook_input);
+			hook_input.pjob = pjob;
+
+			mom_hook_output_init(&hook_output);
+			hook_output.reject_errcode = &hook_errcode;
+			hook_output.last_phook = &last_phook;
+			hook_output.fail_action = &hook_fail_action;
+
+			switch (hook_rc=mom_process_hooks(HOOK_EVENT_EXECJOB_PROLOGUE,
+						PBS_MOM_SERVICE_NAME,
+						mom_host, &hook_input, &hook_output,
+							hook_msg, sizeof(hook_msg), 1)) {
+
+				case 1:   	/* explicit accept */
+					break;
+				case 2:	/* no hook script executed - go ahead and accept event*/
+					break;
+				default:
+					/* a value of '0' means explicit reject encountered. */
+					if (hook_rc != 0) {
+						/* we've hit an internal error (malloc error, full disk, etc...), so */
+						/* treat this now like a  hook error so hook fail_action  */
+						/* will be consulted.  */
+						/* Before, behavior of an internal error was to ignore it! */ 
+						hook_errcode = PBSE_HOOKERROR;
+					}
+					SEND_ERR2(hook_errcode, (char *)hook_msg);
+					if (hook_errcode == PBSE_HOOKERROR) {
+					    send_hook_fail_action(last_phook);
+					}
+			}
+			break;
+
 		case	IM_SPAWN_TASK:
 			/*
 			 ** Sender is a MOM in a job that wants to start a task.
@@ -4445,6 +4484,25 @@ join_err:
 					if (errmsg != NULL) {
 						log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB,
 							LOG_INFO, jobid, errmsg);
+					}
+					break;
+
+				case	IM_EXEC_PROLOGUE:
+					/*
+					 * A MOM prologue hook execution has been rejected
+					 * for the job.  We need to send ABORT_JOB to all
+					 * the sisterhood and fail the job start to server.
+					 * I'm mother superior.
+					 */
+					if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) == 0) {
+						sprintf(log_buffer, "IM_EXEC_PROLOGUE ERROR and I'm not MS");
+						goto err;
+					}
+					DBPRT(("%s: IM_EXEC_PROLOGUE %s returned ERROR %d\n", id, jobid, errcode))
+					job_start_error(pjob, errcode, netaddr(addr), "IM_EXEC_PROLOGUE");
+					if (errmsg != NULL) {
+						log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB,
+							  LOG_INFO, jobid, errmsg);
 					}
 					break;
 

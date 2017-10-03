@@ -534,6 +534,8 @@ struct job {
 	time_t		ji_overlmt_timestamp;	/*time the job exceeded limit*/
 	int		ji_jsmpipe;	/* pipe from child starter process */
 	int		ji_mjspipe;	/* pipe to   child starter for ack */
+	int		ji_jsmpipe2;	/* pipe for child starter process to send special requests to parent mom */
+	int		ji_mjspipe2;	/* pipe for parent mom to ack special request from child starter process */
 	int		ji_updated;	/* set to 1 if job's node assignment was updated */
 #ifdef WIN32
 	HANDLE		ji_momsubt;	/* process HANDLE to mom subtask */
@@ -855,6 +857,7 @@ typedef struct	infoent {
 #define IM_DELETE_JOB2		21	/* sent by sister mom to delete job early */
 #define IM_SEND_RESC		22
 #define IM_UPDATE_JOB		23
+#define IM_EXEC_PROLOGUE	24
 #define IM_ERROR		99
 #define IM_ERROR2		100
 

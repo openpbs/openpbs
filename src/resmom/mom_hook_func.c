@@ -2902,6 +2902,150 @@ struct work_task *pwt;
 }
 
 /**
+ *
+ *	Based on 'hook_fail_action', send a request to server to
+ *	perform a hook fail action for hook named 'hook_name'.
+ *
+ * @param[in]	hook_name - hook in question
+ * @param[in]	hook_fail_action - the actual hook fail action.
+ *
+ * @return void
+ */
+void send_hook_fail_action(hook *phook)
+{
+
+	char	hook_buf[HOOK_BUF_SIZE];
+	vnl_t *tvnl = NULL;
+	int	vret = -1;
+
+	if ((phook == NULL) || (phook->hook_name == NULL)) {
+		return;
+	}
+
+	snprintf(hook_buf, sizeof(hook_buf)-1, "1,%s", phook->hook_name);
+
+	if (vnl_alloc(&tvnl) == NULL) {
+		snprintf(log_buffer, sizeof(log_buffer),
+			 "Failed to vnl_alloc vnlp for %s",
+			 phook->hook_name);
+		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
+			  LOG_INFO, "", log_buffer);
+		goto send_hook_fail_action_error;
+	}
+
+	if (phook->fail_action & HOOK_FAIL_ACTION_OFFLINE_VNODES) {
+		vret = vn_addvnr(tvnl, mom_short_name,
+			 	 VNATTR_HOOK_OFFLINE_VNODES,
+				 hook_buf, 0, 0, NULL);
+
+		if (vret != 0) {
+			snprintf(log_buffer, sizeof(log_buffer),
+					     "Failed to add to vnlp: %s=%s",
+					     VNATTR_HOOK_OFFLINE_VNODES, hook_buf);
+			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
+				LOG_INFO, phook->hook_name, log_buffer);
+			goto send_hook_fail_action_error;
+		}
+	}
+
+	if (phook->fail_action & HOOK_FAIL_ACTION_SCHEDULER_RESTART_CYCLE) {
+		vret = vn_addvnr(tvnl, mom_short_name,
+			 	VNATTR_HOOK_SCHEDULER_RESTART_CYCLE,
+				hook_buf, 0, 0, NULL);
+		if (vret != 0) {
+			snprintf(log_buffer, sizeof(log_buffer),
+				"Failed to add to vnlp: %s=%s",
+				VNATTR_HOOK_SCHEDULER_RESTART_CYCLE,
+							hook_buf);
+			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
+				LOG_INFO, phook->hook_name, log_buffer);
+			goto send_hook_fail_action_error;
+		}
+	}
+
+	if (vret == 0) {
+		/* this saves 'tvnl' in svr_vnl_action, and later freed
+		 * upon server acking action
+		 */
+		(void)send_hook_vnl(tvnl);
+		tvnl = NULL;
+	}
+
+send_hook_fail_action_error:
+	if (tvnl != NULL)
+		vnl_free(tvnl);
+}
+
+/**
+ *
+ * @brief
+ *	Record the name of the last hook that executed
+ *	on behalf of 'pjob' into a well-known file
+ *	location:
+ *
+ *	"<location_directory>/hook_<pjob's jobid>.out"
+ *	
+ *
+ * @param[in]	hook_event - calling event.
+ * @param[in]	hook_name - name of hook that executed
+ * @param[in] 	pjob - associated job executing hook
+ * @param[in] 	filepath - name of a file whose
+ *			directory location is used as
+ *			<location_directory>.
+ *
+ * @note
+ *	This will currently record only for
+ *	HOOK_EVENT_EXECJOB_PROLOGUE hooks.
+ * @return void
+ */
+static void
+record_job_last_hook_executed(unsigned int hook_event,
+	char *hook_name, job *pjob, char *filepath)
+{
+	char	hook_job_outfile[MAXPATHLEN+1];
+	FILE	*fp = NULL;
+	char *p;
+	char chr_save = '\0';
+	char *p_dir = NULL;
+
+	if ((hook_name == NULL) || (pjob == NULL)) {
+		return;
+	}
+	if (hook_event != HOOK_EVENT_EXECJOB_PROLOGUE) {
+		return;
+	}
+
+	if (filepath != NULL) {
+		p = strrchr(filepath, '/');
+		if (p != NULL) {
+			p++;
+			chr_save = *p;
+			*p = '\0';
+			p_dir = filepath;
+		}
+	}
+
+	snprintf(hook_job_outfile, MAXPATHLEN,
+		FMT_HOOK_JOB_OUTFILE, p_dir?p_dir:"",
+				pjob->ji_qs.ji_jobid);
+
+	if (chr_save != '\0')
+		*p = chr_save;  /* restore */
+
+	fp = fopen(hook_job_outfile, "w");
+	if (fp == NULL) {
+		snprintf(log_buffer, sizeof(log_buffer),
+			"failed to open hook_job_outfile=%s",
+				hook_job_outfile);
+		log_err(errno, __func__, log_buffer);
+		return;
+	}
+	fprintf(fp, "%s=%s\n", PY_EVENT_HOOK_NAME,
+					hook_name);
+	fclose(fp);
+}
+
+/**
  * @brief
  *	Process hook scripts based on request type.
  *	This loops through the matching list of
@@ -3163,6 +3307,7 @@ mom_process_hooks(unsigned int hook_event, char *req_user, char *req_host,
 				if (reject_errcode != NULL) {
 					*reject_errcode = PBSE_HOOKERROR;
 				}
+				record_job_last_hook_executed(hook_event, phook->hook_name, pjob, hook_outfile);
 				return (0);
 				/* -3 return from pbs_python == 2^8-3, but run_hook() */
 				/* itself could return "-3" if it catches the alarm()   */
@@ -3185,6 +3330,7 @@ mom_process_hooks(unsigned int hook_event, char *req_user, char *req_host,
 				if (reject_errcode != NULL) {
 					*reject_errcode = PBSE_HOOKERROR;
 				}
+				record_job_last_hook_executed(hook_event, phook->hook_name, pjob, hook_outfile);
 				return (0);
 			default:
 				snprintf(log_buffer, sizeof(log_buffer),

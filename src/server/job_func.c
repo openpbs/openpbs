@@ -353,6 +353,8 @@ job_alloc(void)
 	pj->ji_flags = 0;
 	pj->ji_jsmpipe = -1;
 	pj->ji_mjspipe = -1;
+	pj->ji_jsmpipe2 = -1;
+	pj->ji_mjspipe2 = -1;
 	pj->ji_updated = 0;
 #ifdef WIN32
 	pj->ji_hJob = NULL;
@@ -758,6 +760,14 @@ job_purge(job *pjob)
 	}
 	if (pjob->ji_mjspipe != -1) {
 		(void)close(pjob->ji_mjspipe);
+	}
+
+	/* if open, close 2nd pipes to/from Mom starter process */
+	if (pjob->ji_jsmpipe2 != -1) {
+		(void)close_conn(pjob->ji_jsmpipe2);
+	}
+	if (pjob->ji_mjspipe2 != -1) {
+		(void)close(pjob->ji_mjspipe2);
 	}
 #endif
 #else	/* not PBS_MOM */

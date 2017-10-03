@@ -1071,15 +1071,16 @@ add_hook_fail_action(hook *phook, char *newval, char *msg, size_t msg_len,
 			/* can't combine "none" with other fail_action values */
 			if (phook->fail_action & HOOK_FAIL_ACTION_NONE)
 				goto err;
-			/* must be an execjob_begin event value */
+			/* must contain one of the events in HOOK_EVENT_EXECJOB_BEGIN, HOOK_EVENT_EXECJOB_PROLOGUE */
 			/* in order to set a "scheduler_restart_cycle" fail_action value. */
 			if (strict &&
-				((phook->event & HOOK_EVENT_EXECJOB_BEGIN) == 0)) {
+				((phook->event & HOOK_EVENT_EXECJOB_BEGIN) == 0) &&
+				((phook->event & HOOK_EVENT_EXECJOB_PROLOGUE) == 0)) {
 				if (msg[0]=='\0') {
 					snprintf(msg, msg_len-1,
 						"Can't set hook fail_action value to '%s': "
-						"hook event must contain at least an %s value",
-						val, HOOKSTR_EXECJOB_BEGIN);
+						"hook event must contain at least one of %s, %s",
+						val, HOOKSTR_EXECJOB_BEGIN, HOOKSTR_EXECJOB_PROLOGUE);
 				}
 				free(newval_dup);
 				return (1);

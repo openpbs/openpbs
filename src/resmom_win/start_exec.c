@@ -1950,11 +1950,25 @@ finish_exec(job *pjob)
 		case 0:	/* explicit reject */
 			if (hook_errcode == PBSE_HOOK_REJECT_DELETEJOB) {
 				exec_bail(pjob, JOB_EXEC_FAILHOOK_DELETE, NULL);
+			} else if (hook_errcode == PBSE_HOOKERROR) {
+				/* tell the server to perform fail_action */
+				if (last_phook != NULL) {
+					send_hook_fail_action(find_hook(last_phook->hook_name));
+				}
+				exec_bail(pjob, JOB_EXEC_HOOKERROR, NULL);
 			} else { /* rerun is the default */
 				exec_bail(pjob, JOB_EXEC_FAILHOOK_RERUN, NULL);
 			}
 			return;
 		case 1:   /* explicit accept */
+			/* tell sister moms to execute prologue hooks */
+			if (send_sisters(pjob, IM_EXEC_PROLOGUE, NULL) != pjob->ji_numnodes - 1) {
+				snprintf(log_buffer, sizeof(log_buffer),
+					"warning: %s: IM_EXEC_PROLOGUE requests "
+					"could not reach some sister moms",
+					pjob->ji_qs.ji_jobid);
+				log_err(-1, __func__, log_buffer);
+			}
 			break;
 		case 2:
 			/* no hook script executed - run old style prologue */
@@ -1975,6 +1989,14 @@ finish_exec(job *pjob)
 			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
 				LOG_INFO, "",
 				"prologue hook event: accept req by default");
+				/* tell sister moms to execute prologue hooks */
+				if (send_sisters(pjob, IM_EXEC_PROLOGUE, NULL) != pjob->ji_numnodes - 1) {
+					snprintf(log_buffer, sizeof(log_buffer),
+						"warning: %s: IM_EXEC_PROLOGUE requests "
+						"could not reach some sister moms",
+						pjob->ji_qs.ji_jobid);
+					log_err(-1, __func__, log_buffer);
+				}
 	}
 
 

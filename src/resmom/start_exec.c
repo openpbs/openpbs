@@ -133,6 +133,7 @@ extern int enable_exechost2;
 
 int	ptc = -1;	/* fd for master pty */
 #ifndef WIN32
+#include <poll.h>
 #ifdef  RLIM64_INFINITY
 extern struct rlimit64 orig_nproc_limit;
 extern struct rlimit64 orig_core_limit;
@@ -1598,6 +1599,42 @@ record_finish_exec(int sd)
 		return;
 	}
 
+	/* now we read the session id or error */
+	memset(&sjr, 0, sizeof(sjr));
+	i = readpipe(pjob->ji_jsmpipe, &sjr, sizeof(sjr));
+	j = errno;
+
+	if (i != sizeof(sjr)) {
+		sprintf(log_buffer,
+			"read of pipe for pid job %s got %d not %d",
+			pjob->ji_qs.ji_jobid,
+			i, (int)sizeof(sjr));
+		log_err(j, __func__, log_buffer);
+		(void)close_conn(pjob->ji_jsmpipe);
+		pjob->ji_jsmpipe = -1;
+		(void)close(pjob->ji_mjspipe);
+		pjob->ji_mjspipe = -1;
+		if (pjob->ji_jsmpipe2 != -1) {
+			(void)close_conn(pjob->ji_jsmpipe2);
+			pjob->ji_jsmpipe2 = -1;
+		}
+
+		if (pjob->ji_mjspipe2 != -1) {
+			(void)close(pjob->ji_mjspipe2);
+			pjob->ji_mjspipe2 = -1;
+		}
+		(void)sprintf(log_buffer, "start failed, improper sid");
+		exec_bail(pjob, JOB_EXEC_RETRY, log_buffer);
+		return;
+	}
+	/* send back as an acknowledgement that MOM got it */
+	(void)writepipe(pjob->ji_mjspipe, &sjr, sizeof(sjr));
+	(void)close_conn(pjob->ji_jsmpipe);
+	pjob->ji_jsmpipe = -1;
+	(void)close(pjob->ji_mjspipe);
+	pjob->ji_mjspipe = -1;
+	DBPRT(("%s: read start return %d %d\n", __func__,
+		sjr.sj_code, sjr.sj_session))
 
 #ifndef WIN32
 	/* update pjob with values set from a prologue hook */
@@ -1616,7 +1653,39 @@ record_finish_exec(int sd)
 			pbs_list_head	vnl_changes;
 
 			CLEAR_HEAD(vnl_changes);
-			if (get_hook_results(hook_outfile, NULL, NULL, NULL, 0,
+			if (sjr.sj_code == JOB_EXEC_HOOKERROR) {
+		
+				char	hook_buf2[HOOK_BUF_SIZE];
+				int	fd;
+				char	*hook_name = NULL;
+				int	rd_size = stbuf.st_size;
+
+				if (rd_size >= HOOK_BUF_SIZE) {
+					rd_size = HOOK_BUF_SIZE - 1;
+				}
+
+				fd = open(hook_outfile, O_RDONLY);
+				hook_buf2[0] = '\0';
+				if (fd != -1) {
+					if (read(fd, hook_buf2, rd_size) == rd_size) {
+						hook_buf2[rd_size] = '\0';
+					    if (hook_buf2[rd_size-1] == '\n') {
+							hook_buf2[rd_size-1] = '\0';
+					    }
+					    
+					    hook_name = strchr(hook_buf2, '=');
+					    if (hook_name != NULL)
+							hook_name++;
+					}
+				
+					close(fd);
+					unlink(hook_outfile);
+				}
+				if (hook_name != NULL) {
+					send_hook_fail_action(find_hook(hook_name));
+				}
+		
+			} else if (get_hook_results(hook_outfile, NULL, NULL, NULL, 0,
 				&reject_rerunjob, &reject_deletejob, NULL,
 				NULL, 0, &vnl_changes, pjob, NULL, 0, NULL) != 0) {
 				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
@@ -1661,33 +1730,6 @@ record_finish_exec(int sd)
 		}
 	}
 #endif
-
-	/* now we read the session id or error */
-	memset(&sjr, 0, sizeof(sjr));
-	i = readpipe(pjob->ji_jsmpipe, &sjr, sizeof(sjr));
-	j = errno;
-
-	(void)close_conn(pjob->ji_jsmpipe);
-	pjob->ji_jsmpipe = -1;
-
-	if (i != sizeof(sjr)) {
-		sprintf(log_buffer,
-			"read of pipe for pid job %s got %d not %d",
-			pjob->ji_qs.ji_jobid,
-			i, (int)sizeof(sjr));
-		log_err(j, __func__, log_buffer);
-		(void)close(pjob->ji_mjspipe);
-		pjob->ji_mjspipe = -1;
-		(void)sprintf(log_buffer, "start failed, improper sid");
-		exec_bail(pjob, JOB_EXEC_RETRY, log_buffer);
-		return;
-	}
-	/* send back as an acknowledgement that MOM got it */
-	(void)writepipe(pjob->ji_mjspipe, &sjr, sizeof(sjr));
-	(void)close(pjob->ji_mjspipe);
-	pjob->ji_mjspipe = -1;
-	DBPRT(("%s: read start return %d %d\n", __func__,
-		sjr.sj_code, sjr.sj_session))
 
 	/*
 	 ** Set the global id before exiting on error so any
@@ -1856,6 +1898,186 @@ generate_pbs_nodefile(job *pjob, char *nodefile, int nodefile_sz,
 
 	return (0);
 }
+
+/**
+ * @brief
+ *	Write a piece of data of size 'data_size' into pipe 'upfds'.
+ *
+ * @param[in]	upfds - pipe descriptor upstream.
+ * @param[in]	data - the data to write
+ * @param[in]	data_size - the size of 'data'
+ *
+ * @return int
+ * @retval  0	- for success
+ * @retval  1	- for failure
+ */
+int
+write_pipe_data(int upfds, void *data, int data_size)
+{
+	int	nwrite =  0;
+
+	if ((data  == NULL) || (data_size <= 0)) {
+		return (1);
+	}
+
+	nwrite = writepipe(upfds, data, data_size);
+	if (nwrite != data_size) {
+		log_err(-1, __func__, "not all data got written");
+		return (1);
+	}
+	return (0);
+}
+
+/**
+ * @brief
+ *	Read a piece of data from 'downfds' pipe of size 'data_size'.
+ *
+ * @param[in]	downfds - the pipe descriptor to read from.
+ * @param[in]	data_size - the size of data to read.
+ *
+ * @return void *
+ * @retval <opaque_data>	- pointer to some data that is in a static
+ *				  area that must not be freed and can
+ *				  get overwritten on a next call to this
+ *				  function. 
+ * @retval NULL			- if no data was found or error encountered.
+ */
+void *
+read_pipe_data(int downfds, int data_size)
+{
+	static	char	*buf = NULL;
+	static  int	buf_size = 0;
+	int		ret;
+	int		nread =  0;
+#ifdef WIN32
+	fd_set		readset;
+	struct timeval	tv;
+
+	FD_ZERO(&readset);
+	tv.tv_sec = 30;		/* connect timeout */
+	tv.tv_usec = 0;
+
+	FD_SET((unsigned int)downfds, &readset);
+
+	ret = select(FD_SETSIZE, &readset, (fd_set *)0, (fd_set *)0, &tv);
+
+#else
+	struct pollfd pollfds[1];
+	int timeout = 30 * 1000; 	/* milli seconds */
+	pollfds[0].fd = downfds;
+	pollfds[0].events  = POLLIN;
+	pollfds[0].revents  = 0;
+
+	ret = poll(pollfds, 1, timeout);
+
+#endif
+	if (ret == -1) {
+		log_err(errno, __func__, "error on monitoring pipe");
+		return (NULL);
+	} else if (ret == 0) {
+		/* select or poll timed out */
+		return (NULL);
+	}	
+
+	if (data_size > buf_size) {
+		char *tpbuf;
+
+		tpbuf = realloc(buf, data_size);
+		if (tpbuf == NULL) {
+			log_err(-1, __func__, "realloc failure");
+			return (NULL);
+		}
+		buf = tpbuf;	
+		buf_size = data_size;
+	}
+
+	nread = readpipe(downfds, buf, data_size);
+
+	if (data_size != nread) {
+		log_err(-1, __func__, "did not receive all data");
+		return (NULL);
+	}
+	return (buf);
+}
+
+/**
+ * @brief
+ *	Send a command 'cmd' request using the pipes given.
+ *
+ * @param[in]	upfds - upstream pipe
+ * @param[in]	downstream - downstream pipe
+ * @param[in]	cmd - command request to send (e.g. IM_EXEC_PROLOGUE)
+ *
+ * @return none
+ */
+void
+send_pipe_request(int upfds, int downfds, int cmd)
+{
+	(void)write_pipe_data(upfds, &cmd, sizeof(int));
+
+	/* wait for acknowledgement */
+	(void) read_pipe_data(downfds, sizeof(int));
+}
+
+/**
+ * @brief
+ * 	Receive a special request from the pipe represented by descriptor
+ *	'sd'.
+ * @param[in]	sd - connection descriptor
+ *
+ * @return none
+ *
+ */
+static void
+receive_pipe_request(int sd)
+{
+	conn_t		*conn;
+	int			i;
+	job			*pjob = NULL;
+	pbs_task		*ptask;
+	int			cmd;
+	char			msg[LOG_BUF_SIZE];
+
+	if ((conn = get_conn(sd)) == NULL) {
+		log_err(PBSE_INTERNAL, __func__, "unable to find pipe");
+		return;
+	}
+
+	ptask = (pbs_task *)conn->cn_data;
+	if (ptask == NULL) 
+		return;
+
+	pjob  = ptask->ti_job;
+
+	if (pjob == NULL) {
+		log_err(PBSE_INTERNAL, __func__, "no job task associated with connection");
+		return;
+	}
+
+	/* now we read the cmd or error */
+	i = readpipe(pjob->ji_jsmpipe2, &cmd, sizeof(int));
+
+	if (i != sizeof(int)) {
+		return;
+	}
+
+	/* send back as an acknowledgement that MOM got it */
+	(void)writepipe(pjob->ji_mjspipe2, &cmd, sizeof(int));
+
+	if (cmd == IM_EXEC_PROLOGUE) {
+		if (send_sisters(pjob, IM_EXEC_PROLOGUE, NULL) != pjob->ji_numnodes - 1) {
+			snprintf(log_buffer, sizeof(log_buffer),
+			  	"warning: %s: IM_EXEC_PROLOGUE requests "
+			  	"could not reach some sister moms",
+				pjob->ji_qs.ji_jobid);
+			log_err(-1, __func__, log_buffer);
+		}
+	} else {
+		snprintf(msg, sizeof(msg), "ignoring unknown cmd %d", cmd);
+		log_err(-1, __func__, msg);
+	}
+}
+
 /**
  *
  * @brief
@@ -1889,9 +2111,13 @@ finish_exec(job *pjob)
 	int			qsub_sock, old_qsub_sock;
 	char			*shell;
 	int			jsmpipe[2] = {-1, -1};	/* job starter to MOM for sid */
+	int			jsmpipe2[2] = {-1, -1};	/* job starter to MOM for sid */
 	int			upfds = -1;	/* init to invalid fd */
+	int			upfds2 = -1;			/* init to invalid fd */
 	int			mjspipe[2] = {-1, -1};	/* MOM to job starter for ack */
+	int			mjspipe2[2] = {-1, -1};	/* MOM to job starter for ack */
 	int			downfds = -1;	/* init to invalid fd */
+	int			downfds2 = -1;	/* init to invalid fd */
 	int			port_out, port_err;
 	struct startjob_rtn	sjr;
 	char			*termtype;
@@ -2093,11 +2319,56 @@ finish_exec(job *pjob)
 		return;
 	}
 
+	prolo_hooks = num_eligible_hooks(HOOK_EVENT_EXECJOB_PROLOGUE);
+	
+	/* create 2nd set of pipes between MOM and the job starter */
+	/* if there are prologue hooks */
+	if (prolo_hooks > 0) {
+		if ((pipe(mjspipe2) == -1) || (pipe(jsmpipe2) == -1)) {
+			i = -1;
+
+		} else {
+
+			i = 0;
+
+			/* make sure pipe file descriptors are above 2 */
+
+			if (jsmpipe2[1] < 3) {
+				upfds2 = fcntl(jsmpipe2[1], F_DUPFD, 3);
+				(void)close(jsmpipe2[1]);
+				jsmpipe2[1] = -1;
+			} else {
+				upfds2 = jsmpipe2[1];
+			}
+			if (mjspipe2[0] < 3) {
+				downfds2 = fcntl(mjspipe2[0], F_DUPFD, 3);
+				(void)close(mjspipe2[0]);
+				mjspipe2[0] = -1;
+			} else {
+				downfds2 = mjspipe2[0];
+			}
+		}
+		if ((i == -1) || (upfds2 < 3) || (downfds2 < 3)) {
+			if (upfds2 != -1)
+				(void)close(upfds2);
+			if (downfds2 != -1)
+				(void)close(downfds2);
+			if (jsmpipe2[0] != -1)
+				(void)close(jsmpipe2[0]);
+			if (mjspipe2[1] != -1)
+				(void)close(mjspipe2[1]);
+			(void)snprintf(log_buffer, sizeof(log_buffer),
+					"Failed to create communication pipe");
+			exec_bail(pjob, JOB_EXEC_RETRY, log_buffer);
+			return;
+		}
+	} 
+
 	pjob->ji_qs.ji_stime = time_now;
 	pjob->ji_sampletim   = time_now;
 
 	/*
-	 ** Fork the child that will become the job.
+	 ** Fork the child process that will become the job.
 	 */
 	cpid = fork_me(-1);
 	if (cpid > 0) {
@@ -2108,6 +2379,8 @@ finish_exec(job *pjob)
 
 		(void)close(upfds);
 		(void)close(downfds);
+		(void)close(upfds2);
+		(void)close(downfds2);
 
 		/* add the pipe to the connection table so we can poll it */
 
@@ -2116,8 +2389,10 @@ finish_exec(job *pjob)
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
 					pjob->ji_qs.ji_jobid,
 					"Unable to start job, communication connection table is full");
-			(void) close(jsmpipe[0]);
-			(void) close(mjspipe[1]);
+			(void)close(jsmpipe[0]);
+			(void)close(mjspipe[1]);
+			(void)close(jsmpipe2[0]);
+			(void)close(mjspipe2[1]);
 #if SHELL_INVOKE == 1
 			if (pipe_script[0] != -1)
 				(void) close(pipe_script[0]);
@@ -2130,6 +2405,43 @@ finish_exec(job *pjob)
 		conn->cn_data = ptask;
 		pjob->ji_jsmpipe = jsmpipe[0];
 		pjob->ji_mjspipe = mjspipe[1];
+		pjob->ji_jsmpipe2 = jsmpipe2[0];
+		pjob->ji_mjspipe2 = mjspipe2[1];
+
+		/* 
+		 * at this point, parent mom writes to
+		 * pjob->ji_mjspipe2, and parent reads from
+		 * pjob->ji_jsmpipe2
+		 */
+
+		/* 
+		 * if there are prologue hooks to run
+		 * add the pipe to the connection table so we can poll it
+		 */
+		if (prolo_hooks > 0) {
+			if ((conn = add_conn(jsmpipe2[0], ChildPipe,
+				(pbs_net_t)0, (unsigned int)0,
+					receive_pipe_request)) == NULL) {
+				log_event(PBSEVENT_ERROR,
+					PBS_EVENTCLASS_JOB, LOG_ERR,
+					pjob->ji_qs.ji_jobid,
+					"Unable t0 start job... communication "
+					   "connection table is full");
+				(void)close(jsmpipe2[0]);
+				(void)close(mjspipe2[1]);
+	
+				(void)close(jsmpipe[0]);
+				(void)close(mjspipe[1]);
+	
+				if (pipe_script[0] != -1)
+					(void)close(pipe_script[0]);
+				if (pipe_script[1] != -1)
+					(void)close(pipe_script[1]);
+				exec_bail(pjob, JOB_EXEC_RETRY, NULL);
+				return;
+			}
+			conn->cn_data = ptask;
+		}
 
 		if (ptc >= 0) {
 			(void) close(ptc);
@@ -2227,6 +2539,14 @@ finish_exec(job *pjob)
 			(void)close(jsmpipe[0]);
 		if (mjspipe[1] != -1)
 			(void)close(mjspipe[1]);
+		if (upfds2 != -1)
+			(void)close(upfds2);
+		if (downfds2 != -1)
+			(void)close(downfds2);
+		if (jsmpipe2[0] != -1)
+			(void)close(jsmpipe2[0]);
+		if (mjspipe2[1] != -1)
+			(void)close(mjspipe2[1]);
 		(void)sprintf(log_buffer, "Fork failed in %s: %d",
 			__func__, errno);
 		exec_bail(pjob, JOB_EXEC_RETRY, log_buffer);
@@ -2240,6 +2560,12 @@ finish_exec(job *pjob)
 
 	(void)close(jsmpipe[0]);
 	(void)close(mjspipe[1]);
+	(void)close(jsmpipe2[0]); 
+	(void)close(mjspipe2[1]);
+	/* 
+	 * at this point, child writes to upfds2, and child
+	 * reads from downfds2
+	 */
 
 	CLR_SJR(sjr)	/* clear structure used to return info to parent */
 
@@ -2562,6 +2888,8 @@ finish_exec(job *pjob)
 
 			(void)close(upfds);
 			(void)close(downfds);
+			(void)close(upfds2);
+			(void)close(downfds2);
 			(void)close(pts);
 			/*Closing the inherited post forwarded listening socket  */
 			if (pjob->ji_wattr[JOB_ATR_X11_cookie].at_val.at_str) {
@@ -2621,6 +2949,9 @@ finish_exec(job *pjob)
 					if (hook_errcode == PBSE_HOOK_REJECT_DELETEJOB) {
 						starter_return(upfds, downfds,
 							JOB_EXEC_FAILHOOK_DELETE, &sjr);
+					} else if (hook_errcode == PBSE_HOOKERROR) {
+						starter_return(upfds, downfds,
+							JOB_EXEC_HOOKERROR, &sjr);
 					} else {
 						/* rerun is the default in prologue */
 						starter_return(upfds, downfds,
@@ -2628,6 +2959,7 @@ finish_exec(job *pjob)
 					}
 					return;
 				case 1:   /* explicit accept */
+					send_pipe_request(upfds2, downfds2, IM_EXEC_PROLOGUE);
 					break;
 				case 2:
 					/* no hook script executed - execute old-style prologue */
@@ -2645,6 +2977,7 @@ finish_exec(job *pjob)
 					log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
 						LOG_INFO, "",
 						"prologue hook event: accept req by default");
+					send_pipe_request(upfds2, downfds2, IM_EXEC_PROLOGUE);
 			}
 
 			shellpid = fork();
@@ -2674,6 +3007,8 @@ finish_exec(job *pjob)
 					(void)close(pts);
 					(void)close(upfds);
 					(void)close(downfds);
+					(void)close(upfds2);
+					(void)close(downfds2);
 					(void)close(1);
 					(void)close(2);
 
@@ -2817,8 +3152,7 @@ finish_exec(job *pjob)
 			starter_return(upfds, downfds, j, &sjr);
 		}
 
-		/* run prolog */
-
+		/* run prologue hooks */
 		if (prolo_hooks > 0) {
 			mom_hook_input_init(&hook_input);
 			hook_input.pjob = pjob;
@@ -2846,11 +3180,15 @@ finish_exec(job *pjob)
 				if (hook_errcode == PBSE_HOOK_REJECT_DELETEJOB) {
 					starter_return(upfds, downfds,
 						JOB_EXEC_FAILHOOK_DELETE, &sjr);
+				} else if (hook_errcode == PBSE_HOOKERROR) {
+					starter_return(upfds, downfds,
+						JOB_EXEC_HOOKERROR, &sjr);
 				} else { /* rerun is the default */
 					starter_return(upfds, downfds,
 						JOB_EXEC_FAILHOOK_RERUN, &sjr);
 				}
 			case 1:   /* explicit accept */
+				send_pipe_request(upfds2, downfds2, IM_EXEC_PROLOGUE);
 				break;
 			case 2:
 				/* no hook script executed - execute old-style prologue */
@@ -2871,6 +3209,7 @@ finish_exec(job *pjob)
 				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
 					LOG_INFO, "",
 					"prologue hook event: accept req by default");
+				send_pipe_request(upfds2, downfds2, IM_EXEC_PROLOGUE);
 		}
 
 	}
@@ -4969,7 +5308,8 @@ starter_return(int upfds, int downfds, int code, struct startjob_rtn *sjrtn)
 	(void)close(upfds);
 
 	/* wait for acknowledgement */
-	(void) readpipe(downfds, &ack, sizeof(ack));
+	(void)readpipe(downfds, &ack, sizeof(ack));
+	(void)close(upfds);
 	(void)close(downfds);
 	if (code < 0) {
 		exit(254);
