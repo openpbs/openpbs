@@ -5,7 +5,3 @@ RUN yum install -y gcc make rpm-build libtool hwloc-devel libX11-devel \
 	libXt-devel libedit-devel libical-devel ncurses-devel perl \
 	postgresql-devel python-devel tcl-devel  tk-devel swig expat-devel \
 	openssl-devel libXext libXft git
-# copy build script
-COPY build.sh /
-# trigger build when used as base image
-ONBUILD RUN bash /build.sh

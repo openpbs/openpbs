@@ -1,6 +1,4 @@
 #!/bin/bash
-mkdir /src
-git clone https://github.com/pbspro/pbspro.git /src/pbspro
 cd /src/pbspro
 ./autogen.sh
 ./configure -prefix=/opt/pbs
