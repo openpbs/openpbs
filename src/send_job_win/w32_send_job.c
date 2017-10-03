@@ -148,7 +148,8 @@ int		svr_do_schedule = SCH_SCHEDULE_NULL;
 int		svr_do_sched_high = SCH_SCHEDULE_NULL;
 int		svr_total_cpus = 0;		/* total number of cpus on nodes   */
 int		have_blue_gene_nodes = 0;
-int		svr_ping_rate = 300;	/* time between sets of node pings */
+int		svr_ping_rate = SVR_DEFAULT_PING_RATE;	/* time between sets of node pings */
+int 		ping_nodes_rate = SVR_DEFAULT_PING_RATE; /* time between ping nodes as determined from server_init_type */
 /* The following are defined to resolve external reference errors in windows build */
 char		*path_svrlive;		/* the svrlive file used for monitoring during failover */
 char		*pbs_server_name; /* pbs server name */

@@ -141,6 +141,7 @@ struct mom_svrinfo {
 	int	      msr_stream;   /* RPP stream to Mom */
 	time_t	      msr_timedown; /* time Mom marked down */
 	time_t	      msr_timeinit; /* time Mom marked initializing */
+	time_t        msr_timepinged; /* time Mom was last pinged */
 	struct work_task *msr_wktask;	/* work task for reque jobs */
 	pbs_list_head	msr_deferred_cmds;	/* links to svr work_task list for RPP replies */
 	unsigned long *msr_addrs;   /* IP addresses of host */

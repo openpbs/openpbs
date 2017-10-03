@@ -810,6 +810,7 @@ setup_notification()
 		pbsndlist[i]->nd_attr[(int)ND_ATR_state].at_flags |= ATR_VFLAG_MODCACHE;
 		for (nmom = 0; nmom < pbsndlist[i]->nd_nummoms; ++nmom) {
 			((mom_svrinfo_t *)(pbsndlist[i]->nd_moms[nmom]->mi_data))->msr_state |= INUSE_NEED_ADDRS;
+			((mom_svrinfo_t *)(pbsndlist[i]->nd_moms[nmom]->mi_data))->msr_timepinged = 0;
 		}
 	}
 }

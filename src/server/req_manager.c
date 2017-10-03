@@ -3429,6 +3429,9 @@ struct batch_request *preq;
 /**
  * @brief
  * 		setup_ping	- set up a task to ping nodes.
+ *
+ * @param[in] delay - delay after which to ping.
+ *
  */
 void
 setup_ping(int delay)

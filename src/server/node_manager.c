@@ -1073,6 +1073,8 @@ send_ip_addrs_to_mom(int stream)
  * @param[in] pmom - pointer to mom to ping
  * @param[in] force_hello - Whether to force a hello sequence with the mom
  * 			The force_hello flag will only be set in the case of RESTART
+ * @param[in] once - Whether it is a one shot ping which is done when a new device registers with comm
+ *                   In this case a new ping series is not create, but just a single ping done
  *
  * @return - The msg to send to the mom
  * @retval  IS_HELLO - mom needs a hello message
@@ -1083,7 +1085,7 @@ send_ip_addrs_to_mom(int stream)
  *
  */
 static int
-mom_ping_need(mominfo_t *pmom, int force_hello)
+mom_ping_need(mominfo_t *pmom, int force_hello, int once)
 {
 	mom_svrinfo_t   *psvrmom = (mom_svrinfo_t *)(pmom->mi_data);
 	struct pbsnode  *np;
@@ -1161,8 +1163,18 @@ mom_ping_need(mominfo_t *pmom, int force_hello)
 #else
 		tinsert2((u_long)psvrmom->msr_stream, 0, pmom, &streams);
 #endif /* localmod 005 */
-	} else
+	} else {
+		if (once) {
+			/* in case of one shot ping, don't ping recently pinged devices */
+			DBPRT(("%s: time_now = %d, timepinged=%d, ping_nodes_rate=%d, difference=%d\n", __func__,
+				time_now, psvrmom->msr_timepinged, ping_nodes_rate, time_now - psvrmom->msr_timepinged))
+			if (time_now - psvrmom->msr_timepinged < ping_nodes_rate) {
+				DBPRT(("%s: **** NOT PINGING ***\n", __func__))
+				return -1; /* skip this mom since it was pinged recently. This is to avoid a DOS attack */
+			}
+		}
 		com = IS_NULL;
+	}
 
 	DBPRT(("%s: **** ping %s on port %u, comm=%s\n", __func__, pmom->mi_host, pmom->mi_port, (com == IS_HELLO)? "IS_HELLO":"IS_NULL"));
 
@@ -1194,6 +1206,7 @@ mom_ping_need(mominfo_t *pmom, int force_hello)
 		}
 	}
 
+	psvrmom->msr_timepinged = time_now; /* record the time when it was last pinged */
 	return com;
 }
 
@@ -1203,17 +1216,18 @@ mom_ping_need(mominfo_t *pmom, int force_hello)
  * @param[in] pmom - pointer to mom to ping
  * @param[in] force_hello - Whether to force a hello sequence with the mom
  * 			The force_hello flag will only be set in the case of RESTART
+ * @param[in] once - one shot ping?
  *
  */
 static void
-ping_a_mom(mominfo_t *pmom, int force_hello)
+ping_a_mom(mominfo_t *pmom, int force_hello, int once)
 {
 	mom_svrinfo_t *psvrmom = (mom_svrinfo_t *)(pmom->mi_data);
 	struct	sockaddr_in	*addr;
 	int	ret;
 	int	com;
 
-	com = mom_ping_need(pmom, force_hello);
+	com = mom_ping_need(pmom, force_hello, once);
 	if (com == -1)
 		return; /* this mom does not need a ping */
 
@@ -1350,19 +1364,20 @@ err:
  * @param[in] mtfd_isnull  - The TPP channel to add moms as members for those that need IS_NULL
  * @param[in] mtfd_ishello_no_inv - The TPP channel to add moms as members for
  *		those that need IS_HELLO_NO_INVENTORY
+ * @param[in] once         - One shot ping?
  *
  * @see ping_nodes
  * @see ping_flush_mcast
  *
  */
 static void
-ping_a_mom_mcast(mominfo_t *pmom, int force_hello, int mtfd_ishello, int mtfd_isnull, int mtfd_ishello_no_inv)
+ping_a_mom_mcast(mominfo_t *pmom, int force_hello, int mtfd_ishello, int mtfd_isnull, int mtfd_ishello_no_inv, int once)
 {
 	mom_svrinfo_t *psvrmom = (mom_svrinfo_t *)(pmom->mi_data);
 	int rc;
 	int com;
 
-	com = mom_ping_need(pmom, force_hello);
+	com = mom_ping_need(pmom, force_hello, once);
 	if (com == -1)
 		return; /* this mom does not need a ping */
 
@@ -3120,7 +3135,7 @@ mark_nodes_unknown(int all)
  * @par
  *		If wt_parm1 is NULL, set up a worktask to ping again.
  *
- * @param[in]	ptask	-	work task strucure.
+ * @param[in]	ptask	-	work task structure.
  *
  * @return	void
  */
@@ -3131,10 +3146,14 @@ ping_nodes(struct work_task *ptask)
 	int	mtfd_ishello;
 	int	mtfd_isnull;
 	int	mtfd_ishello_no_inv;
+	int	once = 0;
 	int	com;
 
 	DOID("ping_nodes")
 	DBPRT(("%s: entered\n", id))
+
+	if (!ptask)
+		once = 1; /* not main ping series, just an one shot ping for any new devices */
 
 	if (pbs_conf.pbs_use_tcp == 1) {
 		/*
@@ -3169,7 +3188,7 @@ ping_nodes(struct work_task *ptask)
 				if (mominfo_array[i]) {
 					ping_a_mom_mcast(mominfo_array[i], 0,
 						mtfd_ishello, mtfd_isnull,
-						mtfd_ishello_no_inv);
+						mtfd_ishello_no_inv, once);
 				}
 			}
 
@@ -3184,20 +3203,13 @@ ping_nodes(struct work_task *ptask)
 	} else {
 		for (i = 0; i < mominfo_array_size; i++) {
 			if (mominfo_array[i]) {
-				ping_a_mom(mominfo_array[i], 0);
+				ping_a_mom(mominfo_array[i], 0, once);
 			}
 		}
 	}
 
-	if (ptask != NULL) {
-		if (server_init_type == RECOV_HOT) {
-			/* rapid ping rate while hot restart */
-			i = 15 < svr_ping_rate ? 15 : svr_ping_rate;
-		} else
-			i = svr_ping_rate; /* normal ping rate for normal run */
-
-		global_ping_task = set_task(WORK_Timed, time_now + i, ping_nodes, NULL);
-	}
+	if (ptask != NULL)
+		global_ping_task = set_task(WORK_Timed, time_now + ping_nodes_rate, ping_nodes, NULL);
 }
 
 /**
@@ -4542,7 +4554,7 @@ is_request(int stream, int version)
 		((mom_svrinfo_t *)(pmom->mi_data))->msr_stream = -1;
 		((mom_svrinfo_t *)(pmom->mi_data))->msr_state &= ~INUSE_INIT;
 
-		ping_a_mom(pmom, 1);
+		ping_a_mom(pmom, 1, 0);
 		return;
 
 	} else {
@@ -8554,7 +8566,7 @@ req_momrestart(struct batch_request *preq)
 	((mom_svrinfo_t *)(pmom->mi_data))->msr_state |=
 		INUSE_NEEDS_HELLO_PING | INUSE_UNKNOWN;
 	reply_ack(preq);
-	ping_a_mom(pmom, 1);
+	ping_a_mom(pmom, 1, 0);
 }
 /**
  * @brief update_resource_rel - This function creates JOB_ATR_resc_released_list job attribute

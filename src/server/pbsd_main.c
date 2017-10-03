@@ -160,7 +160,7 @@ extern int put_sched_cmd(int sock, int cmd, char *jobid);
 extern void setup_ping(int delay);
 
 /* External data items */
-extern	int	svr_chngNodesfile;
+extern	int		svr_chngNodesfile;
 extern  pbs_list_head svr_requests;
 extern char     *msg_err_malloc;
 extern int       pbs_failover_active;
@@ -182,6 +182,7 @@ static int touch_db_stop_file(void);
 static void log_tppmsg(int level, const char *objname, char *mess);
 #define MAX_DB_RETRIES			5
 #define MAX_DB_LOOP_DELAY		10
+#define HOT_START_PING_RATE		15
 
 /* Global Data Items */
 
@@ -277,12 +278,13 @@ char	       *mom_host = server_host;
 long		new_log_event_mask = 0;
 int		server_init_type = RECOV_WARM;
 int		svr_delay_entry = 0;
-int		svr_do_schedule = SCH_SCHEDULE_NULL;
-int		svr_do_sched_high = SCH_SCHEDULE_NULL; /* high priority cmds */
-int		svr_ping_rate = 300;	/* time between sets of node pings */
-pbs_list_head	svr_deferred_req;
-pbs_list_head	svr_queues;            /* list of queues                   */
-pbs_list_head	svr_alljobs;           /* list of all jobs in server       */
+int             svr_do_schedule = SCH_SCHEDULE_NULL;
+int             svr_do_sched_high = SCH_SCHEDULE_NULL; /* high priority cmds */
+int             svr_ping_rate = SVR_DEFAULT_PING_RATE;    /* time between sets of node pings */
+int             ping_nodes_rate = SVR_DEFAULT_PING_RATE; /* time between ping nodes as determined from server_init_type */
+pbs_list_head   svr_deferred_req;
+pbs_list_head   svr_queues;            /* list of queues                   */
+pbs_list_head   svr_alljobs;           /* list of all jobs in server       */
 pbs_list_head	svr_newjobs;           /* list of incomming new jobs       */
 pbs_list_head	svr_allresvs;          /* all reservations in server */
 pbs_list_head	svr_newresvs;          /* temporary list for new resv jobs */
@@ -365,9 +367,9 @@ int tpp_network_up = 0;
 void
 net_restore_handler(void *data)
 {
-	log_tppmsg(LOG_INFO, NULL, "net restore handler called");
-	tpp_network_up = 1;
-	setup_ping(3);
+    log_tppmsg(LOG_INFO, NULL, "net restore handler called");
+    tpp_network_up = 1;
+    ping_nodes(NULL);
 }
 
 /**
@@ -1600,6 +1602,13 @@ try_db_again:
 #endif	/* DEBUG is defined */
 		try_db ++;
 	}
+
+    /* determine the rate of calling the ping_nodes functionality based on server_init_type */
+    if (server_init_type == RECOV_HOT) {
+            /* rapid ping rate while hot restart */
+            ping_nodes_rate = HOT_START_PING_RATE < svr_ping_rate ? HOT_START_PING_RATE : svr_ping_rate;
+    } else
+            ping_nodes_rate = svr_ping_rate; /* normal ping rate for normal run */
 
 	if (!pbs_conf.pbs_data_service_host) {
 		/*
