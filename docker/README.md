@@ -4,7 +4,7 @@
 Readers should know how to write Dockerfiles using multi-stage builds. Please refer to the following sources:
 1. [Dockerfile reference](https://docs.docker.com/engine/reference/builder/)
 2. [Best practices for writing Dockerfile](https://docs.docker.com/engine/userguide/eng-image/dockerfile_best-practices/)
-3. [Use multi-stage builds](https://docs.docker.com/engine/reference/builder/)
+3. [Use multi-stage builds](https://docs.docker.com/engine/userguide/eng-image/multistage-build/)
 
 ## Directory Structure
 Each directory corresponds to a supported Linux distribution. For example, Dockerfiles for building an image based on CentOS version 7 are under the `centos7` directory. Each directory contains at least three files, a `Dockerfile.base`, a `Dockerfile.build` and `build.sh`. Please adhere to this structure when you create Dockerfiles for a new distribution.
