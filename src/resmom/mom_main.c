@@ -6935,6 +6935,7 @@ job 	*pjob;
  *	checked also as no single node can exceed the total
  *
  * @param[in] pjob - pointer to job
+ * @param[in] enforce_job_wide - bool, controls job-wide limits enforcement
  *
  * @return Bool
  * @retval TRUE If any well-formed polled limit has been exceeded
@@ -7192,11 +7193,13 @@ job_over_limit(job *pjob)
 	*/
 	if (enforce_on_exclhost == FALSE) {
 		prsdef = find_resc_def(svr_resc_def, "place", svr_resc_size);
-		patresc = &pjob->ji_wattr[(int)JOB_ATR_resource];
-		pplace = find_resc_entry(patresc, prsdef);
-		if (pplace && pplace->rs_value.at_val.at_str) {
-			if (strstr(pplace->rs_value.at_val.at_str, "exclhost"))
-				enforce_job_wide = FALSE;
+		if (prsdef != NULL) {
+			patresc = &pjob->ji_wattr[(int)JOB_ATR_resource];
+			pplace = find_resc_entry(patresc, prsdef);
+			if (pplace && pplace->rs_value.at_val.at_str) {
+				if (strstr(pplace->rs_value.at_val.at_str, "exclhost"))
+					enforce_job_wide = FALSE;
+			}
 		}
 	}
 
