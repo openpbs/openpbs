@@ -2405,7 +2405,7 @@ class CgroupUtils:
                            "%s: requested:%s, assigned:%s" %
                            (socketlist, req_mem, available['memory']))
                 return {}
-            if mem not in assigned:
+            if 'mem' not in assigned:
                 assigned['mem'] = 0
             assigned['mem'] += req_mem
         return assigned
