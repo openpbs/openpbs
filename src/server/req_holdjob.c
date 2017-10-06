@@ -205,7 +205,6 @@ req_holdjob(struct batch_request *preq)
 			*hold_val = old_hold;	/* reset to the old value */
 			req_reject(rc, 0, preq);
 		} else {
-			pjob->ji_qs.ji_substate = JOB_SUBSTATE_RERUN;
 			pjob->ji_qs.ji_svrflags |=
 				JOB_SVFLG_HASRUN | JOB_SVFLG_CHKPT;
 			(void)job_save(pjob, SAVEJOB_QUICK);
@@ -410,8 +409,6 @@ post_hold(struct work_task *pwt)
 		return;
 	}
 	if (code != 0) {
-		if (code != PBSE_CKPBSY)
-			pjob->ji_qs.ji_substate = JOB_SUBSTATE_RUNNING;	/* reset it */
 		if (code != PBSE_NOSUP) {
 			/* a "real" error - log message with return error code */
 			(void)sprintf(log_buffer, msg_mombadhold, code);
@@ -424,7 +421,7 @@ post_hold(struct work_task *pwt)
 	} else if (code == 0) {
 
 		/* record that MOM has a checkpoint file */
-
+		pjob->ji_qs.ji_substate = JOB_SUBSTATE_RERUN;
 		if (preq->rq_reply.brp_auxcode)	/* chkpt can be moved */
 			pjob->ji_qs.ji_svrflags =
 				(pjob->ji_qs.ji_svrflags & ~JOB_SVFLG_CHKPT) |
