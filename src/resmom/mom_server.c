@@ -583,8 +583,6 @@ process_IS_CMD(int stream)
 	if (rc != 0) {
 		close(stream);
 		free_br(request);
-		if (msgid)
-			free(msgid);
 		return;
 	}
 
