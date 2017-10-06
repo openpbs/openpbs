@@ -36,8 +36,6 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 
-import random
-import string
 from tests.functional import *
 
 
@@ -82,7 +80,7 @@ for i in range(0, iterations):
             'sleep 2\n' + \
             'python - 400 10 <<EOF\n' + \
             self.eatmem_script + 'EOF\n' + \
-            'sleep 1\n'
+            'sleep 5\n'
         self.eatmem_job2 = \
             '#PBS -joe\n' + \
             'sleep 2\n' + \
@@ -93,12 +91,15 @@ for i in range(0, iterations):
             self.eatmem_script + 'EOF\n' + \
             'sleep 4\n'
         self.eatmem_job3 = \
+            '#PBS -S /bin/bash\n' + \
             '#PBS -joe\n' + \
             'sleep 2\n' + \
-            'python - 300 10 <<EOF\n' + \
+            'let i=0; while [ $i -lt 20 ]; do\n' + \
+            'python - 3000 1 <<EOF\n' + \
             self.eatmem_script + 'EOF\n' + \
+            'done\n' + \
             'sleep 5\n' + \
-            'python - 400 10 <<EOF\n' + \
+            'python - 4000 1 <<EOF\n' + \
             self.eatmem_script + 'EOF\n' + \
             'sleep 10\n'
         self.cpuset_mem_script = """#!/bin/bash
@@ -149,9 +150,9 @@ else
 fi
 sleep 2
 """
-        self.sleep5_job = """#!/bin/bash
+        self.sleep15_job = """#!/bin/bash
 #PBS -joe
-sleep 5
+sleep 15
 """
         self.eat_cpu_script = """#!/bin/bash
 #PBS -joe
@@ -440,14 +441,6 @@ for i in 1 2 3 4; do while : ; do : ; done & done
                     paths['memsw'] = paths['memory']
         return paths
 
-    def random_name(self, length=16):
-        """
-        Returns a string of the specified length consisting of
-        lowercase ASCII characters.
-        """
-        return str().join(random.choice(string.ascii_lowercase)
-                          for _ in range(length))
-
     def load_hook(self, filename):
         """
         Import and enable a hook pointed to by the URL specified.
@@ -457,37 +450,36 @@ for i in 1 2 3 4; do while : ; do : ; done & done
                 script = fd.read()
         except:
             self.assertTrue(False, "Failed to open hook file %s" % filename)
-        newfile = os.path.join(os.sep, 'tmp', self.random_name())
-        with open(newfile, "w") as fd:
-            fd.write(script)
-        try:
-            events = '"execjob_begin,execjob_launch,execjob_attach,'
-            events += 'execjob_epilogue,execjob_end,exechost_startup,'
-            events += 'exechost_periodic"'
-            a = {'enabled': 'True',
-                 'freq': '2',
-                 'event': events}
-            self.server.create_import_hook(self.hook_name, a, script,
-                                           overwrite=True)
-            # Add the configuration
-            self.load_config(self.cfg0)
-        except:
-            raise
-        finally:
-            os.remove(newfile)
+        events = '"execjob_begin,execjob_launch,execjob_attach,'
+        events += 'execjob_epilogue,execjob_end,exechost_startup,'
+        events += 'exechost_periodic"'
+        a = {'enabled': 'True',
+             'freq': '2',
+             'event': events}
+        self.server.create_import_hook(self.hook_name, a, script,
+                                       overwrite=True)
+        # Add the configuration
+        self.load_config(self.cfg0)
 
     def load_config(self, cfg):
         """
         Create a hook configuration file with the provided contents.
         """
-        cfg_file = os.path.join(os.sep, 'tmp', self.random_name())
-        with open(cfg_file, "w") as fd:
-            fd.write(cfg)
+        (fd, fn) = self.du.mkstemp()
+        os.write(fd, cfg)
+        os.close(fd)
         a = {'content-type': 'application/x-config',
              'content-encoding': 'default',
-             'input-file': cfg_file}
+             'input-file': fn}
         self.server.manager(MGR_CMD_IMPORT, HOOK, a, self.hook_name)
-        os.remove(cfg_file)
+        os.remove(fn)
+        self.mom.log_match('pbs_cgroups.CF;copy hook-related ' +
+                           'file request received',
+                           max_attempts=3,
+                           starttime=self.server.ctime)
+        self.logger.info("Current config: %s" % cfg)
+        # Restart MoM to work around PP-993
+        self.mom.restart()
 
     def set_vntype(self, typestring='myvntype'):
         """
@@ -495,8 +487,17 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         """
         pbs_home = self.server.pbs_conf['PBS_HOME']
         vntype_file = os.path.join(pbs_home, 'mom_priv', 'vntype')
-        with open(vntype_file, "w") as fd:
-            fd.write(typestring)
+        self.logger.info("Setting vntype to %s in %s" %
+                         (typestring, vntype_file))
+        (fd, fn) = self.du.mkstemp()
+        os.write(fd, typestring)
+        os.close(fd)
+        ret = self.du.run_copy(hosts=self.mom.hostname, src=fn,
+                               dest=vntype_file, sudo=True, uid='root',
+                               gid='root', mode=0644, runas=ROOT_USER)
+        os.remove(fn)
+        if ret['rc'] != 0:
+            self.skipTest("pbs_cgroups_hook: need root privileges")
 
     def remove_vntype(self):
         """
@@ -504,73 +505,90 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         """
         pbs_home = self.server.pbs_conf['PBS_HOME']
         vntype_file = os.path.join(pbs_home, 'mom_priv', 'vntype')
-        if os.path.isfile(vntype_file):
-            os.remove(vntype_file)
+        ret = self.du.rm(hostname=self.mom.hostname, path=vntype_file,
+                         force=True, sudo=True, runas=ROOT_USER)
+        if not ret:
+            self.skipTest("pbs_cgroups_hook: need root privileges")
 
-    # Wait for up to ten seconds for a file to appear. Remove it if it does.
-    def wait_and_remove(self, filename):
+    def wait_and_remove_file(self, filename=''):
         """
         Wait up to ten seconds for a file to appear and then remove it.
         """
+        self.logger.info("Removing file: %s" % filename)
+        if not filename:
+            raise ValueError('Invalid filename')
         for _ in range(10):
             if not os.path.isfile(filename):
                 break
             try:
-                os.remove(filename)
+                self.du.rm(hostname=self.mom.hostname, path=filename,
+                           force=True, sudo=True, runas=TEST_USER)
             except:
                 time.sleep(1)
+        self.assertFalse(os.path.isfile(filename),
+                         "File not removed: %s" % filename)
+
+    def wait_and_read_file(self, filename=''):
+        """
+        Wait up to ten seconds for a file to appear and then read it.
+        """
+        from ptl.utils.pbs_logutils import PBSLogUtils
+        self.logger.info("Reading file: %s" % filename)
+        if not filename:
+            raise ValueError('Invalid filename')
+        for _ in range(10):
+            if os.path.isfile(filename):
+                break
+            time.sleep(1)
+        self.assertTrue(os.path.isfile(filename),
+                        "File not found: %s" % filename)
+        with PBSLogUtils().open_log(filename, sudo=True) as fd:
+            output = fd.read().splitlines()
+        return output
 
     def test_cgroup_vntype_excluded(self):
         """
         Test to verify that cgroups are not enforced on nodes
         that have an exclude vntype file set
-
-        This test is disabled because it times out while
-        running with other tests, but runs fine by itself.
         """
         name = 'CGROUP8'
-        self.load_config(self.cfg1 % ("", '"no_cgroups"', "", ""))
         self.set_vntype("no_cgroups")
-        a = {'Resource_List.select': '1:ncpus=1:mem=300mb',
-             ATTR_N: name}
+        self.load_config(self.cfg1 % ("", '"no_cgroups"', "", ""))
+        a = {'Resource_List.select': '1:ncpus=1:mem=300mb', ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.eatmem_job1)
+        j.create_script(self.sleep15_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
-        self.server.status(JOB, [ATTR_o, ATTR_e], jid)
+        self.server.status(JOB, ATTR_o, jid)
         o = j.attributes[ATTR_o]
         self.mom.log_match("no_cgroups is in the excluded vnode " +
-                           "type list: \['no_cgroups'\]",
+                           "type list: ['no_cgroups']",
                            max_attempts=3,
                            starttime=self.server.ctime)
-        self.wait_and_remove(o.split(':')[1])
+        self.wait_and_remove_file(o.split(':')[1])
 
     def test_cgroup_host_excluded(self):
         """
         Test to verify that cgroups are not enforced on nodes
         that have the exclude_hosts set
-
-        This test is disabled because it times out while
-        running with other tests, but runs fine by itself.
         """
         name = 'CGROUP9'
         self.load_config(self.cfg1 % ('"%s"' % self.mom.shortname, "", "", ""))
-        a = {'Resource_List.select': '1:ncpus=1:mem=300mb',
-             ATTR_N: name}
+        a = {'Resource_List.select': '1:ncpus=1:mem=300mb', ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.eatmem_job1)
+        j.create_script(self.sleep15_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
-        self.server.status(JOB, [ATTR_o, ATTR_e], jid)
+        self.server.status(JOB, ATTR_o, jid)
         o = j.attributes[ATTR_o]
         self.mom.log_match("%s" % self.mom.shortname +
                            " is in the excluded host list: " +
-                           "\['%s'\]" % self.mom.shortname,
+                           "['%s']" % self.mom.shortname,
                            max_attempts=5,
                            starttime=self.server.ctime)
-        self.wait_and_remove(o.split(':')[1])
+        self.wait_and_remove_file(o.split(':')[1])
 
     def test_cgroup_exclude_vntype_mem(self):
         """
@@ -578,57 +596,56 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         that have an exclude vntype file set
         """
         name = 'CGROUP12'
-        self.load_config(self.cfg3)
         self.set_vntype("no_cgroups_mem")
-        a = {'Resource_List.select': '1:ncpus=1:mem=300mb',
-             ATTR_N: name}
+        self.load_config(self.cfg3)
+        a = {'Resource_List.select': '1:ncpus=1:mem=300mb', ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.eatmem_job1)
+        j.create_script(self.sleep15_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
-        self.server.status(JOB, [ATTR_o, ATTR_e], jid)
+        self.server.status(JOB, ATTR_o, jid)
         o = j.attributes[ATTR_o]
         self.mom.log_match("cgroup excluded for subsystem memory " +
                            "on vnode type no_cgroups_mem",
                            max_attempts=5,
                            starttime=self.server.ctime)
-        self.wait_and_remove(o.split(':')[1])
+        self.wait_and_remove_file(o.split(':')[1])
 
     def test_cgroup_periodic_update(self):
         """
         Test to verify that cgroups are reporting usage for cput and mem
-
-        This test is disabled because it times out while
-        running with other tests, but runs fine by itself.
         """
         name = 'CGROUP13'
         self.load_config(self.cfg3)
-        a = {'Resource_List.select': '1:ncpus=1:mem=500mb',
-             ATTR_N: name}
+        a = {'Resource_List.select': '1:ncpus=1:mem=500mb', ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.eatmem_job2)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
-        self.server.status(JOB, [ATTR_o, ATTR_e], jid)
+        self.server.status(JOB, ATTR_o, jid)
         o = j.attributes[ATTR_o]
         self.mom.log_match("%s;update_job_usage: " % jid +
+                           "CPU usage: 0.000 secs",
+                           max_attempts=2)
+        self.mom.log_match("%s;update_job_usage: " % jid +
+                           "Memory usage: mem=0b",
+                           max_attempts=2)
+        self.mom.log_match("%s;update_job_usage: " % jid +
                            "Memory usage: vmem=0b",
-                           max_attempts=2,
-                           starttime=self.server.ctime)
-        self.mom.log_match(".*%s;update_job_usage: " % jid,
-                           "CPU usage: .*secs.*",
-                           regexp=True,
-                           max_attempts=5,
-                           starttime=self.server.ctime)
+                           max_attempts=2)
+        # Allow some time to pass for values to be updated
         time.sleep(5)
-        self.mom.log_match(".*%s;update_job_usage: " % jid +
-                           "Memory usage: vmem=[1-9][0-9]+.*",
+        self.mom.log_match("%s;update_job_usage: " % jid +
+                           "CPU usage: [0-9.]+ secs",
                            regexp=True,
-                           max_attempts=5,
-                           starttime=self.server.ctime)
-        self.wait_and_remove(o.split(':')[1])
+                           max_attempts=5)
+        self.mom.log_match("%s;update_job_usage: " % jid +
+                           "Memory usage: vmem=[1-9][0-9]+kb",
+                           regexp=True,
+                           max_attempts=5)
+        self.wait_and_remove_file(o.split(':')[1])
 
     def test_cgroup_cpuset_and_memory(self):
         """
@@ -639,30 +656,18 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         name = 'CGROUP1'
         self.load_config(self.cfg3)
         j = Job(TEST_USER)
-        a = {'Resource_List.select': '1:ncpus=1:mem=300mb',
-             ATTR_N: name}
+        a = {'Resource_List.select': '1:ncpus=1:mem=300mb', ATTR_N: name}
         j.set_attributes(a)
         j.create_script(self.cpuset_mem_script)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
-        self.server.status(JOB, [ATTR_o, ATTR_e], jid)
-        o = j.attributes[ATTR_o]
-        tmp_out = ''
-        try:
-            # Wait for the job output file to appear
-            self.logger.info("Job .o file: %s" % o)
-            tmp_file = o.split(':')[1]
-            i = 0
-            while not os.path.isfile(tmp_file) and i < 10:
-                i += 1
-                time.sleep(1)
-            with open(tmp_file, 'r') as fd:
-                tmp_out = fd.read().splitlines()
-        except:
-            self.assertTrue(False, "Job did not produce expected output")
-        self.wait_and_remove(o.split(':')[1])
+        self.server.status(JOB, ATTR_o, jid)
+        filename = j.attributes[ATTR_o]
+        tmp_file = filename.split(':')[1]
+        tmp_out = self.wait_and_read_file(tmp_file)
         self.logger.info("%s: %s" % (name, tmp_out))
+        self.wait_and_remove_file(tmp_file)
         self.assertTrue(jid in tmp_out)
         self.logger.info("job dir check passed")
         self.assertTrue("CpuIDs=0" in tmp_out)
@@ -683,29 +688,17 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         name = 'CGROUP2'
         self.load_config(self.cfg3)
         j = Job(TEST_USER)
-        a = {'Resource_List.select': '1:ncpus=1',
-             ATTR_N: name}
+        a = {'Resource_List.select': '1:ncpus=1', ATTR_N: name}
         j.set_attributes(a)
         j.create_script(self.cpuset_mem_script)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
-        self.server.status(JOB, [ATTR_o, ATTR_e], jid)
-        o = j.attributes[ATTR_o]
-        tmp_out = ''
-        try:
-            self.logger.info("Job .o file: %s" % o)
-            tmp_file = o.split(':')[1]
-            i = 0
-            while not os.path.isfile(tmp_file) and i < 10:
-                i += 1
-                time.sleep(1)
-            with open(tmp_file, 'r') as fd:
-                tmp_out = fd.read().splitlines()
-        except:
-            self.assertTrue(False, "Job did not produce expected output")
-        self.wait_and_remove(o.split(':')[1])
-        self.logger.info("output: %s" % tmp_out)
+        self.server.status(JOB, ATTR_o, jid)
+        filename = j.attributes[ATTR_o]
+        tmp_file = filename.split(':')[1]
+        tmp_out = self.wait_and_read_file(tmp_file)
+        self.wait_and_remove_file(tmp_file)
         self.assertTrue(jid in tmp_out)
         self.logger.info("job dir check passed")
         self.assertTrue("CpuIDs=0" in tmp_out)
@@ -724,89 +717,79 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         """
         name = "CGROUP3"
         self.load_config(self.cfg2)
-        a = {'Resource_List.select': '1:ncpus=1:mem=300mb',
-             ATTR_N: name}
+        a = {'Resource_List.select': '1:ncpus=1:mem=300mb', ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.check_dirs_script)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
-        self.server.status(JOB, [ATTR_o, ATTR_e], jid)
-        o = j.attributes[ATTR_o]
-        tmp_out = ''
-        try:
-            self.logger.info("Job .o file: %s" % o)
-            tmp_file = o.split(':')[1]
-            i = 0
-            while not os.path.isfile(tmp_file) and i < 10:
-                i += 1
-                time.sleep(1)
-            with open(tmp_file, 'r') as fd:
-                tmp_out = fd.read().splitlines()
-        except:
-            self.assertTrue(False, "Job did not produce expected output")
-        self.wait_and_remove(o.split(':')[1])
+        self.server.status(JOB, ATTR_o, jid)
+        filename = j.attributes[ATTR_o]
+        tmp_file = filename.split(':')[1]
+        tmp_out = self.wait_and_read_file(tmp_file)
+        self.wait_and_remove_file(tmp_file)
         check_devices = ['b *:* rwm',
                          'c 5:1 rwm',
                          'c 4:* rwm',
                          'c 1:* rwm',
                          'c 10:* rwm']
         for device in check_devices:
-            self.assertTrue(device in tmp_out)
+            self.assertTrue(device in tmp_out,
+                            '"%s" not found in: %s' % (device, tmp_out))
         self.logger.info("device_list check passed")
-        self.assertFalse("Disabled cgroup subsystems are populated" in tmp_out)
+        self.assertFalse("Disabled cgroup subsystems are populated" in tmp_out,
+                         'Found disabled cgroup subsystems populated')
         self.logger.info("Disabled subsystems check passed")
 
     def test_cgroup_cpuset(self):
         """
         Test to verify that 2 jobs are not assigned the same cpus
         """
+        pcpus = 0
+        with open('/proc/cpuinfo', 'r') as desc:
+            for line in desc:
+                if re.match('^processor', line):
+                    pcpus += 1
+        if pcpus < 2:
+            self.skipTest("Test requires at least two physical CPUs")
         name = "CGROUP4"
         self.load_config(self.cfg3)
-        a = {'Resource_List.select': '1:ncpus=1:mem=300mb',
-             ATTR_N: name + 'a'}
+        a = {'Resource_List.select': '1:ncpus=1:mem=300mb', ATTR_N: name + 'a'}
         j1 = Job(TEST_USER, attrs=a)
         j1.create_script(self.cpuset_mem_script)
         jid1 = self.server.submit(j1)
-        b = {'Resource_List.select': '1:ncpus=1:mem=300mb',
-             ATTR_N: name + 'b'}
+        a = {'job_state': 'R'}
+        self.server.expect(JOB, a, jid1)
+        self.server.status(JOB, ATTR_o, jid1)
+        filename1 = j1.attributes[ATTR_o]
+        b = {'Resource_List.select': '1:ncpus=1:mem=300mb', ATTR_N: name + 'b'}
         j2 = Job(TEST_USER, attrs=b)
         j2.create_script(self.cpuset_mem_script)
         jid2 = self.server.submit(j2)
         a = {'job_state': 'R'}
-        self.server.expect(JOB, a, jid1)
-        self.server.status(JOB, [ATTR_o, ATTR_e], jid1)
-        a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid2)
-        self.server.status(JOB, [ATTR_o, ATTR_e], jid2)
-        o1 = j1.attributes[ATTR_o]
-        o2 = j2.attributes[ATTR_o]
-        tmp_out1 = ''
-        tmp_out2 = ''
-        try:
-            self.logger.info("Job1 .o file: %s" % o1)
-            self.logger.info("Job2 .o file: %s" % o2)
-            tmp_file1 = o1.split(':')[1]
-            tmp_file2 = o2.split(':')[1]
-            i = 0
-            while (not (os.path.isfile(tmp_file1) and
-                        os.path.isfile(tmp_file2)) and
-                   i < 10):
-                i += 1
-                time.sleep(1)
-            with open(tmp_file1, 'r') as fd:
-                tmp_out1 = fd.read().splitlines()
-            with open(tmp_file2, 'r') as fd:
-                tmp_out2 = fd.read().splitlines()
-        except:
-            self.assertTrue(False, "Job did not produce expected output")
-        self.wait_and_remove(o1.split(':')[1])
-        self.wait_and_remove(o2.split(':')[1])
-        self.assertTrue(jid1 in tmp_out1)
-        self.assertTrue(jid2 in tmp_out2)
+        self.server.status(JOB, ATTR_o, jid2)
+        filename2 = j2.attributes[ATTR_o]
+        self.logger.info("Job1 .o file: %s" % filename1)
+        tmp_file1 = filename1.split(':')[1]
+        tmp_out1 = self.wait_and_read_file(tmp_file1)
+        self.logger.info("tmp_out1: %s" % tmp_out1)
+        self.wait_and_remove_file(tmp_file1)
+        self.assertTrue(jid1 in tmp_out1, '%s not found in output' % jid1)
+        self.logger.info("Job2 .o file: %s" % filename2)
+        tmp_file2 = filename2.split(':')[1]
+        tmp_out2 = self.wait_and_read_file(tmp_file2)
+        self.logger.info("tmp_out2: %s" % tmp_out2)
+        self.wait_and_remove_file(tmp_file2)
+        self.assertTrue(jid2 in tmp_out2, '%s not found in output' % jid2)
         self.logger.info("job dir check passed")
-        self.assertTrue("CpuIDs=0" in tmp_out1)
-        self.assertTrue("CpuIDs=1" in tmp_out2)
+        if 'CpuIDs=0' in tmp_out1 and 'CpuIDs=1' in tmp_out2:
+            pass
+        elif 'CpuIDs=1' in tmp_out1 and 'CpuIDs=0' in tmp_out2:
+            pass
+        else:
+            self.assertTrue(False,
+                            "Processes should be assigned to different CPUs")
         self.logger.info("CpuIDs check passed")
 
     def test_cgroup_enforce_memory(self):
@@ -816,19 +799,19 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         """
         name = 'CGROUP5'
         self.load_config(self.cfg3)
-        a = {'Resource_List.select': '1:ncpus=1:mem=300mb',
-             ATTR_N: name}
+        a = {'Resource_List.select': '1:ncpus=1:mem=300mb', ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.eatmem_job1)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
-        self.server.status(JOB, [ATTR_o, ATTR_e], jid)
+        self.server.status(JOB, ATTR_o, jid)
         o = j.attributes[ATTR_o]
-        self.mom.log_match("%s;Cgroup mem\w+ limit exceeded" % jid,
-                           max_attempts=5,
-                           starttime=self.server.ctime)
-        self.wait_and_remove(o.split(':')[1])
+        # mem and vmem limit will both be set, and either could be detected
+        self.mom.log_match("%s;Cgroup mem(ory|sw) limit exceeded" % jid,
+                           regexp=True,
+                           max_attempts=20)
+        self.wait_and_remove_file(o.split(':')[1])
 
     def test_cgroup_enforce_memsw(self):
         """
@@ -844,22 +827,13 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
-        self.server.status(JOB, [ATTR_o, ATTR_e], jid)
-        o = j.attributes[ATTR_o]
-        tmp_out = ''
-        try:
-            self.logger.info("Job .o file: %s" % o)
-            tmp_file = o.split(':')[1]
-            i = 0
-            while not os.path.isfile(tmp_file) and i < 10:
-                i += 1
-                time.sleep(1)
-            with open(tmp_file, 'r') as fd:
-                tmp_out = fd.read().splitlines()
-        except:
-            self.assertTrue(False, "Job did not produce expected output")
-        self.wait_and_remove(o.split(':')[1])
-        self.assertTrue("MemoryError" in tmp_out)
+        self.server.status(JOB, ATTR_o, jid)
+        filename = j.attributes[ATTR_o]
+        tmp_file = filename.split(':')[1]
+        tmp_out = self.wait_and_read_file(tmp_file)
+        self.wait_and_remove_file(tmp_file)
+        self.assertTrue("MemoryError" in tmp_out,
+                        'MemoryError not present in output')
 
     def test_cgroup_offline_node(self):
         """
@@ -872,61 +846,69 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         fdir = self.paths['freezer']
         if not os.path.isdir(fdir):
             self.skipTest("Freezer cgroup is not found")
+        # Configure the hook
         self.load_config(self.cfg3)
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb',
              'Resource_List.walltime': 3, ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.sleep5_job)
+        j.create_script(self.sleep15_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
-        self.server.status(JOB, [ATTR_o, ATTR_e], jid)
-        o = j.attributes[ATTR_o]
-        time.sleep(1)
+        self.server.status(JOB, ATTR_o, jid)
+        filename = j.attributes[ATTR_o]
+        tmp_file = filename.split(':')[1]
+        # Make dir in freezer subsystem
+        fdir = os.path.join(fdir, 'pbspro')
+        self.du.mkdir(hostname=self.mom.hostname, path=fdir, parents=False,
+                      mode=0755, sudo=True, runas=ROOT_USER)
+        fdir = os.path.join(fdir, jid)
+        self.du.mkdir(hostname=self.mom.hostname, path=fdir, parents=False,
+                      mode=0755, sudo=True, runas=ROOT_USER)
+        if not os.path.isdir(fdir):
+            self.skipTest("Unable to create %s" % fdir)
+        freezer_tasks_file = os.path.join(fdir, 'tasks')
+        if not os.path.isfile(freezer_tasks_file):
+            self.skipTest("File not found: %s" % freezer_tasks_file)
         # Query the pids in the cgroup
-        tasks_file = os.path.join(self.paths['cpuset'], 'pbspro', jid, 'tasks')
-        try:
-            with open(tasks_file, 'r') as fd:
-                tasks = fd.read().splitlines()
-        except:
-            self.assertTrue(False, "Failed to read cpuset tasks")
+        cpuset_tasks_file = os.path.join(self.paths['cpuset'], 'pbspro',
+                                         jid, 'tasks')
+        ret = self.du.cat(self.mom.hostname, cpuset_tasks_file,
+                          sudo=True, runas=ROOT_USER)
+        tasks = ret['out']
         self.logger.info("Tasks: %s" % tasks)
         self.assertTrue(tasks, "No tasks in cpuset cgroup for job")
-        # Make dir in freezer subsystem
-        try:
-            fdir = os.path.join(fdir, 'pbspro')
-            if not os.path.isdir(fdir):
-                os.mkdir(fdir)
-            fdir = os.path.join(fdir, jid)
-            if not os.path.isdir(fdir):
-                os.mkdir(fdir)
-        except:
-            self.assertTrue(False, "Could not create freezer subdirectories")
         self.logger.info("Server name: %s" % self.server.name)
-        self.logger.info("tasks: %s" % tasks)
         # Write each PID into the tasks file for the freezer cgroup
         for task in tasks[1:]:
-            with open(os.path.join(fdir, 'tasks'), 'w') as fd:
-                fd.write(str(task) + '\n')
+            cmd = ['/bin/echo', '%s' % task]
+            with open(freezer_tasks_file, 'w') as fd:
+                ret = self.du.run_cmd(self.mom.hostname, cmd, stdout=fd,
+                                      sudo=True, runas=ROOT_USER)
+            if ret['rc'] != 0:
+                self.skipTest("pbs_cgroups_hook: need root privileges")
         # Freeze the cgroup
+        cmd = ['/bin/echo', 'FROZEN']
         with open(os.path.join(fdir, 'freezer.state'), 'w') as fd:
-            fd.write("FROZEN")
-        rv1 = self.server.expect(NODE, {'state': 'offline'},
-                                 id=self.mom.shortname, interval=3)
+            ret = self.du.run_cmd(self.mom.hostname, cmd, stdout=fd,
+                                  sudo=True, runas=ROOT_USER)
+        if ret['rc'] != 0:
+            self.skipTest("pbs_cgroups_hook: need root privileges")
+        self.server.expect(NODE, {'state': 'offline'},
+                           id=self.mom.shortname, interval=3)
         # Thaw the cgroup
+        cmd = ['/bin/echo', 'THAWED']
         with open(os.path.join(fdir, 'freezer.state'), 'w') as fd:
-            fd.write("THAWED")
+            ret = self.du.run_cmd(self.mom.hostname, cmd, stdout=fd,
+                                  sudo=True, runas=ROOT_USER)
+        if ret['rc'] != 0:
+            self.skipTest("pbs_cgroups_hook: need root privileges")
         time.sleep(1)
-        try:
-            os.rmdir(fdir)
-            os.rmdir(os.path.dirname(fdir))
-        except:
-            pass
-        rv2 = self.server.expect(NODE, {'state': 'free'},
-                                 id=self.mom.shortname, interval=3)
-        self.wait_and_remove(o.split(':')[1])
-        self.assertTrue(rv1)
-        self.assertTrue(rv2)
+        self.du.rm(hostname=self.mom.hostname, path=os.path.dirname(fdir),
+                   force=True, recursive=True, sudo=True, runas=ROOT_USER)
+        self.server.expect(NODE, {'state': 'free'},
+                           id=self.mom.shortname, interval=3)
+        self.wait_and_remove_file(tmp_file)
 
     def test_cgroup_cpuset_host_excluded(self):
         """
@@ -935,20 +917,19 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         """
         name = 'CGROUP10'
         self.load_config(self.cfg1 % ("", "", "", '"%s"' % self.mom.shortname))
-        a = {'Resource_List.select': '1:ncpus=1:mem=300mb',
-             ATTR_N: name}
+        a = {'Resource_List.select': '1:ncpus=1:mem=300mb', ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.eatmem_job1)
+        j.create_script(self.sleep15_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
-        self.server.status(JOB, [ATTR_o, ATTR_e], jid)
+        self.server.status(JOB, ATTR_o, jid)
         o = j.attributes[ATTR_o]
-        self.mom.log_match("cgroup excluded for subsystem " +
-                           "%s on host %s" % ("cpuset", self.mom.shortname),
+        self.mom.log_match("cgroup excluded for subsystem cpuset " +
+                           "on host %s" % self.mom.shortname,
                            max_attempts=5,
                            starttime=self.server.ctime)
-        self.wait_and_remove(o.split(':')[1])
+        self.wait_and_remove_file(o.split(':')[1])
 
     def test_cgroup_run_on_host(self):
         """
@@ -957,14 +938,13 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         """
         name = 'CGROUP11'
         self.load_config(self.cfg1 % ("", "", '"NonexistentNode"', ""))
-        a = {'Resource_List.select': '1:ncpus=1:mem=300mb',
-             ATTR_N: name}
+        a = {'Resource_List.select': '1:ncpus=1:mem=300mb', ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
-        j.create_script(self.eatmem_job1)
+        j.create_script(self.sleep15_job)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
-        self.server.status(JOB, [ATTR_o, ATTR_e], jid)
+        self.server.status(JOB, ATTR_o, jid)
         o = j.attributes[ATTR_o]
         time.sleep(1)
         self.mom.log_match("%s is not in " % (self.mom.shortname) +
@@ -973,7 +953,7 @@ for i in 1 2 3 4; do while : ; do : ; done & done
                            regexp=True,
                            max_attempts=5,
                            starttime=self.server.ctime)
-        self.wait_and_remove(o.split(':')[1])
+        self.wait_and_remove_file(o.split(':')[1])
 
     def test_cgroup_qstat_resources(self):
         """
@@ -982,14 +962,13 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         """
         name = 'CGROUP14'
         self.load_config(self.cfg3)
-        a = {'Resource_List.select': '1:ncpus=1:mem=500mb',
-             ATTR_N: name}
+        a = {'Resource_List.select': '1:ncpus=1:mem=500mb', ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.eatmem_job3)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
-        self.server.status(JOB, [ATTR_o, ATTR_e], jid)
+        self.server.status(JOB, ATTR_o, jid)
         o = j.attributes[ATTR_o]
         self.logger.info("OUTPUT: %s" % o)
         resc_list = ['resources_used.cput']
@@ -1001,14 +980,15 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         cput1 = qstat1[0]['resources_used.cput']
         mem1 = qstat1[0]['resources_used.mem']
         vmem1 = qstat1[0]['resources_used.vmem']
-        time.sleep(10)
+        self.logger.info("Waiting 15 seconds for CPU time to accumulate")
+        time.sleep(15)
         qstat2 = self.server.status(JOB, resc_list, id=jid)
         for q in qstat2:
             self.logger.info("Q2: %s" % q)
         cput2 = qstat2[0]['resources_used.cput']
         mem2 = qstat2[0]['resources_used.mem']
         vmem2 = qstat2[0]['resources_used.vmem']
-        self.wait_and_remove(o.split(':')[1])
+        self.wait_and_remove_file(o.split(':')[1])
         self.assertNotEqual(cput1, cput2)
         self.assertNotEqual(mem1, mem2)
         self.assertNotEqual(vmem1, vmem2)
