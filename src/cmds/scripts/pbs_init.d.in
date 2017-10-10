@@ -831,9 +831,15 @@ pre_start_pbs()
 }
 
 : main code
-conf=${PBS_CONF_FILE:-/etc/pbs.conf}
+# save env variables in a temp file
+env_save="/tmp/$$_`date +'%s'`_env_save"
+declare -x > "${env_save}"
 
+conf=${PBS_CONF_FILE:-/etc/pbs.conf}
 [ -r "${conf}" ] && . "${conf}"
+
+# re-apply saved env variables
+. "${env_save}"
 
 if [ -z "${PBS_EXEC}" ] ; then
     echo "PBS_EXEC is undefined." >&2
