@@ -1458,3 +1458,21 @@ class SmokeTest(PBSTestSuite):
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
         self.server.delete(jid)
         self.server.expect(JOB, 'queue', op=UNSET, id=jid)
+
+    def test_man_pages(self):
+        """
+        Test basic functionality of man pages
+        """
+        pbs_conf = self.du.parse_pbs_config(self.server.shortname)
+        manpath = os.path.join(pbs_conf['PBS_EXEC'], "share", "man")
+        pbs_cmnds = ["pbsnodes", "qsub"]
+        os.environ['MANPATH'] = manpath
+        for pbs_cmd in pbs_cmnds:
+            cmd = "man %s" % pbs_cmd
+            rc = self.du.run_cmd(cmd=cmd)
+            msg = "Error while retrieving man page of %s" % pbs_cmd
+            msg += "command: %s" % rc['err']
+            self.assertEqual(rc['rc'], 0, msg)
+            msg = "Successfully retrieved man page for"
+            msg += " %s command" % pbs_cmd
+            self.logger.info(msg)
