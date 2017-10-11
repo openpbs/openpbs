@@ -57,7 +57,7 @@ AC_DEFUN([PBS_AC_WITH_DATABASE_DIR],
         AC_MSG_ERROR([Database headers not found.]))))
   AS_IF([test "$database_dir" = "/usr"],
     # Using system installed PostgreSQL
-    AS_IF([test -r "/usr/lib64/libpq.so" -o -r "/usr/lib/libpq.so" -o -r "/usr/lib/x86_64-linux-gnu/libpq.so"],
+    AS_IF([test -r "/usr/lib64/libpq.so" -o -r "/usr/lib/libpq.so" -o -r "/usr/lib/x86_64-linux-gnu/libpq.so" -o -r "/usr/lib/powerpc64le-linux-gnu/libpq.so"],
       [database_lib="-lpq"],
       AC_MSG_ERROR([PBS database shared object library not found.])),
     # Using developer installed PostgreSQL
