@@ -258,7 +258,7 @@ int		server_stream = -1;
 pbs_list_head	svr_newjobs;	/* jobs being sent to MOM */
 pbs_list_head	svr_alljobs;	/* all jobs under MOM's control */
 time_t		time_last_sample = 0;
-time_t		time_now = 0;
+extern time_t		time_now;
 time_t		time_resc_updated = 0;
 extern pbs_list_head svr_requests;
 extern struct var_table vtable;	/* see start_exec.c */
@@ -282,7 +282,7 @@ int		reject_root_scripts = FALSE;
 int		report_hook_checksums = TRUE;
 int		restart_transmogrify = FALSE;
 int		attach_allow = TRUE;
-double		wallfactor = 1.00;
+extern double		wallfactor;
 int		suspend_signal;
 int		resume_signal;
 int		cycle_harvester = 0;   /* MOM configured for cycle harvesting */
@@ -6336,7 +6336,7 @@ finish_loop(time_t waittime)
 
 #ifdef	WIN32
 	/* wait for a request to process or exiting procs */
-	for (i=0; i<waittime; i++) {
+	for (i = 0; i < waittime; i++) {
 		wait_action();
 
 		if (exiting_tasks)
@@ -7092,8 +7092,12 @@ mom_over_limit(job *pjob)
 				retval = local_gettime(pres, &value);
 				if (retval != PBSE_NONE)
 					continue;
-				num = (u_long)((double)(time_now -
-					pjob->ji_qs.ji_stime) * wallfactor);
+				/* use the resources_used.walltime value */
+				retval = local_gettime(used, &num);
+				if (retval != PBSE_NONE)
+					continue;
+				/* add time that has not been accumulated */
+				num += (time_now - pjob->ji_walltime_stamp) * wallfactor;
 				if (num > value) {
 					sprintf(log_buffer,
 						"walltime %lu exceeded limit %lu",
@@ -7959,79 +7963,79 @@ int
 main(int argc, char *argv[])
 #endif
 {
-	static	char		id[] = "mom_main";
-	struct			tpp_config tpp_conf;
-	int	 		errflg, c, rc;
-	int			stalone = 0;
-	int			i;
-#ifndef	DEBUG
-	FILE			*dummyfile;
-#endif
-#ifdef	WIN32
-	struct arg_param	*p = (struct arg_param *)pv;
-	int			argc;
-	char		 	**argv;
-	SERVICE_STATUS		ss;
-	int			pmode = S_IREAD | S_IWRITE;
-#else
-	int			pmode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
-
-	struct sigaction	act;
-#endif /* WIN32 */
-	char			*ptr;
-	char			*servername;
+	/* both Win32 and Unix */
+	struct tpp_config	tpp_conf;
+	int	 				errflg, c, rc;
+	int					stalone = 0;
+	int					i;
+	char				*ptr;
+	char				*servername;
 	unsigned int		serverport;
-	int	 		recover = 0;
-	time_t			time_state_update = 0;
-	int			tryport;
-	int			rppfd;		/* fd for rm and im comm */
-	int			privfd = -1;		/* fd for sending job info */
-#ifdef	WIN32
-	struct	_timeb		tval;
-#else
-	struct timeval		tval;
-#endif
-	double			myla;
-	job			*nxpjob;
-	job			*pjob;
+	int	 				recover = 0;
+	time_t				time_state_update = 0;
+	int					tryport;
+	int					rppfd;				/* fd for rm and im comm */
+	int					privfd = -1;		/* fd for sending job info */
+	double				myla;
+	job					*nxpjob;
+	job					*pjob;
 	extern time_t		wait_time;
-	time_t			getkbdtime();
-	void			activate_jobs();
-	void			idle_jobs();
-	char			*configscriptaction = NULL;
-	char			*inputfile = NULL;
-	char			*scriptname = NULL;
-	resource		*prscput;
-	resource		*prswall;
-	char			*getopt_str;
-	int			fd;
-	u_long			 ipaddr;
-#ifdef	WIN32
-	char			*pwst = NULL;
-	char			winsta_name[MAXPATHLEN+1];
-	char			desktop_name[MAXPATHLEN+1];
-	HWINSTA			old_winsta = NULL;
-	HWINSTA			pbs_winsta = NULL;
-	HDESK			pbs_desktop = NULL;
-	char			*pch = NULL;
-	extern char		*pbs_conf_env;
-#else
-	gid_t			 mygid;
-	extern char		*optarg;
-	extern int		optind;
-#endif /* WIN32 */
-	int			optindinc = 0;
-#ifdef _POSIX_MEMLOCK
-	int			do_mlockall = 0;
-#endif /* _POSIX_MEMLOCK */
+	time_t				getkbdtime();
+	void				activate_jobs();
+	void				idle_jobs();
+	char				*configscriptaction = NULL;
+	char				*inputfile = NULL;
+	char				*scriptname = NULL;
+	resource			*prscput;
+	resource			*prswall;
+	char				*getopt_str;
+	int					fd;
+	u_long				ipaddr;
+	int					optindinc = 0;
 	mom_hook_input_t	hook_input;
-	char			path_hooks_rescdef[MAXPATHLEN+1];
-	int			sock_bind_rm;
-	int			sock_bind_mom;
-#ifdef PYTHON
-	PyObject		*path;
-	char			buf[MAXPATHLEN];
+	char				path_hooks_rescdef[MAXPATHLEN+1];
+	int					sock_bind_rm;
+	int					sock_bind_mom;
+	conn_t				*conn;				/* connection to child process */
+#ifdef	WIN32
+	/* Win32 only */
+	struct arg_param	*p = (struct arg_param *)pv;
+	int					argc;
+	char		 		**argv;
+	SERVICE_STATUS		ss;
+	int					pmode = S_IREAD | S_IWRITE;
+	struct _timeb		tval;
+	char				*pwst = NULL;
+	char				winsta_name[MAXPATHLEN+1];
+	char				desktop_name[MAXPATHLEN+1];
+	HWINSTA				old_winsta = NULL;
+	HWINSTA				pbs_winsta = NULL;
+	HDESK				pbs_desktop = NULL;
+	char				*pch = NULL;
+	extern char			*pbs_conf_env;
+#else
+	/* Unix only */
+	int					pmode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+	struct timeval		tval;
+	struct sigaction	act;
+	gid_t				mygid;
+	extern char			*optarg;
+	extern int			optind;
+#endif /* WIN32 */
+
+#ifndef	DEBUG
+	FILE				*dummyfile;
 #endif
+
+#ifdef _POSIX_MEMLOCK
+	int					do_mlockall = 0;
+#endif
+
+#ifdef PYTHON
+	PyObject			*path;
+	char				buf[MAXPATHLEN];
+#endif
+
 
 #ifdef WIN32
 	_fcloseall(); 	/* Close any inherited extra files, leaving stdin-err open */
@@ -8040,17 +8044,10 @@ main(int argc, char *argv[])
 	c = sysconf(_SC_OPEN_MAX);
 	while (--c > 2)
 		(void)close(c);	/* close any file desc left open by parent */
-#endif
 
-
-
-#ifndef       WIN32
-
-	/*the real deal or version and exit?*/
+	/* the real deal or version and exit? */
 	execution_mode(argc, argv);
 #endif
-
-
 
 	/* If we are not run with real and effective uid of 0, forget it */
 #ifdef	WIN32
@@ -8335,10 +8332,10 @@ main(int argc, char *argv[])
 #ifdef	WIN32
 	save_env();
 #endif
-	/* The following is code to reduce security risks                */
-	/* start out with standard umask, system resource limit infinite */
-
-
+	/*
+	 * The following is code to reduce security risks
+	 * start out with standard umask, system resource limit infinite
+	 */
 	if ((num_var_env = setup_env(pbs_conf.pbs_environment)) == -1) {
 #ifdef	WIN32
 		g_dwCurrentState = SERVICE_STOPPED;
@@ -8465,7 +8462,7 @@ main(int argc, char *argv[])
 	}
 #endif	/* !RLIM64_INFINITY */
 
-#endif /* !WIN32 ---------------------------------------------------------- */
+#endif /* !WIN32 */
 
 
 	/* initialize pointers in resource_def array */
@@ -8856,7 +8853,7 @@ main(int argc, char *argv[])
 #ifdef _POSIX_MEMLOCK
 	if (do_mlockall == 1) {
 		if (mlockall(MCL_CURRENT|MCL_FUTURE) == -1) {
-			log_err(errno, id, "mlockall failed");
+			log_err(errno, __func__, "mlockall failed");
 		}
 	}
 #endif	/* _POSIX_MEMLOCK */
@@ -8972,7 +8969,7 @@ main(int argc, char *argv[])
 #ifndef	WIN32
 	/* block signals while we do things */
 	if (sigprocmask(SIG_BLOCK, &allsigs, NULL) == -1)
-		log_err(errno, id, "sigprocmask(BLOCK)");
+		log_err(errno, __func__, "sigprocmask(BLOCK)");
 
 	gettimeofday(&tval, NULL);
 	time_now = tval.tv_sec;
@@ -9092,7 +9089,7 @@ main(int argc, char *argv[])
 		set_rpp_funcs(log_rppfail);
 
 		if ((rppfd = rpp_bind(pbs_rm_port)) == -1) {
-			log_err(errno, id, "rpp_bind");
+			log_err(errno, __func__, "rpp_bind");
 #ifdef	WIN32
 			g_dwCurrentState = SERVICE_STOPPED;
 			ss.dwCurrentState = g_dwCurrentState;
@@ -9116,7 +9113,7 @@ main(int argc, char *argv[])
 				break;
 		}
 		if (privfd == -1) {
-			log_err(errno, id, "no privileged ports");
+			log_err(errno, __func__, "no privileged ports");
 #ifdef	WIN32
 			g_dwCurrentState = SERVICE_STOPPED;
 			ss.dwCurrentState = g_dwCurrentState;
@@ -9196,11 +9193,10 @@ main(int argc, char *argv[])
 	 * Recover the hooks.
 	 *
 	 */
-
 	if (chdir(path_hooks) != 0) {
 		(void)snprintf(log_buffer, sizeof(log_buffer),
 			msg_init_chdir, path_hooks);
-		log_err(errno, id, log_buffer);
+		log_err(errno, __func__, log_buffer);
 		return (-1);
 	}
 	hook_suf_len = strlen(hook_suffix);
@@ -9212,11 +9208,8 @@ main(int argc, char *argv[])
 			"Could not open hooks dir");
 	} else {
 		/* Now, for each hook found ... */
-
 		while (errno = 0, (pdirent = readdir(dir)) != (struct dirent *)0) {
-
 			/* recover the hooks */
-
 			baselen = strlen(pdirent->d_name) - hook_suf_len;
 			psuffix = pdirent->d_name + baselen;
 			if (strcmp(psuffix, hook_suffix)) {
@@ -9264,7 +9257,7 @@ main(int argc, char *argv[])
 	/* Need to go back to mom's working directory since when recovering */
 	/* hooks, we temporarily chdir-ed to the hooks directory. */
 	if (chdir(mom_home) == -1) {
-		log_err(errno, id, "pbs_mom unable to change working directory to mom home");
+		log_err(errno, __func__, "pbs_mom unable to change working directory to mom home");
 		return (-1);
 	}
 
@@ -9279,10 +9272,7 @@ main(int argc, char *argv[])
 	print_hooks(HOOK_EVENT_EXECHOST_STARTUP);
 	print_hooks(HOOK_EVENT_EXECJOB_ATTACH);
 
-	/*
-	 * cleanup  the hooks work directory
-	 */
-
+	/* cleanup the hooks work directory */
 	cleanup_hooks_workdir(0);
 	cleanup_hooks_in_path_spool(0);
 
@@ -9341,7 +9331,6 @@ main(int argc, char *argv[])
 	}
 
 	/* recover & abort Jobs which were under MOM's control */
-
 #ifdef	WIN32
 	old_winsta = GetProcessWindowStation();
 
@@ -9421,10 +9410,7 @@ main(int argc, char *argv[])
 	/* recover & abort Jobs which were under MOM's control */
 	init_abort_jobs(recover);
 
-	/*
-	 * deploy periodic hooks
-	 *
-	 */
+	/* deploy periodic hooks */
 	mom_hook_input_init(&hook_input);
 	hook_input.vnl = (vnl_t *)vnlp;
 	hook_input.jobs_list = &svr_alljobs;
@@ -9460,24 +9446,22 @@ main(int argc, char *argv[])
 	if (g_ssHandle != 0) SetServiceStatus(g_ssHandle, &ss);
 #endif	/* WIN32 */
 
-	/** TPP mode: don't send a restart at startup
+	/* 
+	 * TPP mode: don't send a restart at startup
 	 * we will send one when we connect to router
-	 **/
+	 */
 	if (pbs_conf.pbs_use_tcp == 0)
 		send_restart();
 
 #ifdef	WIN32
-	initialize();		/* put here to minimize chance of hanging up */
-	/* or delaying mom startup */
+	/* put here to minimize chance of hanging up or delaying mom startup */
+	initialize();		
 #endif	/* WIN32 */
 
-	/************************************************************/
-	/*							    */
-	/* Now at last, we are ready to do some work, the following */
-	/* section constitutes the "main" loop of MOM		    */
-	/*							    */
-	/************************************************************/
-
+	/*
+	 * Now at last, we are ready to do some work, the following section
+	 * constitutes the "main" loop of MOM
+	 */
 	for (; mom_run_state; finish_loop(wait_time)) {
 
 #ifndef	WIN32
@@ -9512,7 +9496,7 @@ main(int argc, char *argv[])
 					idletime = time_now - lastkey;
 
 				if (internal_state & MOM_STATE_BUSYKB) {
-					/* currently  busy keyboard */
+					/* currently busy keyboard */
 					if (idletime >= idle_avail) {
 						/* no longer busy */
 						internal_state &= ~MOM_STATE_BUSYKB;
@@ -9550,8 +9534,10 @@ main(int argc, char *argv[])
 					}
 				}
 			} else if (idle_check == -1) {
-				/* need to activate jobs that may have been idled */
-				/* before restart or SIGHUP 			  */
+				/* 
+				 * need to activate jobs that may have been idled before 
+				 * restart or SIGHUP
+				 */
 				activate_jobs();
 				if (update_state_flag) {
 					internal_state &= ~(MOM_STATE_INBYKB|MOM_STATE_BUSYKB|INUSE_BUSY);
@@ -9565,16 +9551,13 @@ main(int argc, char *argv[])
 		 * Is it time to update internal state?
 		 * This is done at a more leisurely pace
 		 */
-
 		if (time_now > time_state_update) {
 			time_state_update = time_now + STATE_UPDATE_TIME;
 
 			/*
 			 * If required, update node state info to Server
-			 *
 			 * check if loadave means we should be "busy"
 			 */
-
 			if (max_load_val > 0.0) {
 				(void)get_la(&myla);
 				/* check if need to update busy state */
@@ -9582,15 +9565,18 @@ main(int argc, char *argv[])
 			}
 		}
 
-		/* if needed, update server with my state change */
-		/* can be changed in check_busy() or query_adp() */
-
+		/* 
+		 * if needed, update server with my state change can be changed in 
+		 * check_busy() or query_adp()
+		 */
 		if (internal_state_update) {
 			state_to_server(UPDATE_VNODES);
 
 			(void)send_hook_vnl(vnlp_from_hook);
-			/* send_hook_vnl() saves 'vnlp_from_hook' internally, */
-			/* to be freed later when server acks the request. */
+			/* 
+			 * send_hook_vnl() saves 'vnlp_from_hook' internally, to be freed 
+			 * later when server acks the request.
+			 */
 			vnlp_from_hook = NULL;
 		}
 
@@ -9756,7 +9742,7 @@ main(int argc, char *argv[])
 			(void)mom_set_use(pjob);
 
 			/* see if need to check point any job */
-			if (pjob->ji_chkpttype==PBS_CHECKPOINT_CPUT) {
+			if (pjob->ji_chkpttype == PBS_CHECKPOINT_CPUT) {
 				/* checkpoint on cputime used */
 				prscput = find_resc_entry(
 					&pjob->ji_wattr[(int)JOB_ATR_resc_used],
@@ -9767,7 +9753,7 @@ main(int argc, char *argv[])
 				pjob->ji_chkptnext=prscput->rs_value.at_val.at_long
 					+ pjob->ji_chkpttime;
 
-			} else if (pjob->ji_chkpttype==PBS_CHECKPOINT_WALLT) {
+			} else if (pjob->ji_chkpttype == PBS_CHECKPOINT_WALLT) {
 				/*  checkpoint on walltime */
 				prswall = find_resc_entry(
 					&pjob->ji_wattr[(int)JOB_ATR_resc_used],
@@ -9775,7 +9761,7 @@ main(int argc, char *argv[])
 				if (pjob->ji_chkptnext > prswall->rs_value.at_val.at_long)
 					continue;
 
-				pjob->ji_chkptnext=prswall->rs_value.at_val.at_long
+				pjob->ji_chkptnext = prswall->rs_value.at_val.at_long
 					+ pjob->ji_chkpttime;
 
 			} else {
@@ -9807,10 +9793,10 @@ main(int argc, char *argv[])
 		int rc_qflag = access(quiesce_mom_flag_file, F_OK);
 
 		if (rc_qflag != 0 && mom_should_quiesce != 0) {
-			log_event(PBSEVENT_SYSTEM, 0, LOG_NOTICE, id, "mom is no longer quiesced");
+			log_event(PBSEVENT_SYSTEM, 0, LOG_NOTICE, __func__, "mom is no longer quiesced");
 			mom_should_quiesce = 0;
 		} else if (rc_qflag == 0 && mom_should_quiesce == 0) {
-			log_event(PBSEVENT_SYSTEM, 0, LOG_NOTICE, id, "mom will now quiesce");
+			log_event(PBSEVENT_SYSTEM, 0, LOG_NOTICE, __func__, "mom will now quiesce");
 			mom_should_quiesce = 1;
 		}
 #endif /* localmod 153 */
@@ -9848,7 +9834,7 @@ main(int argc, char *argv[])
 							pjob->ji_qs.ji_jobid,
 							"send POLL failed");
 
-						for (num=0, np = pjob->ji_hosts; num < pjob->ji_numnodes; num++, np++) {
+						for (num = 0, np = pjob->ji_hosts; num < pjob->ji_numnodes; num++, np++) {
 							if ((time_now - np->hn_eof_ts) <= max_poll_downtime_val) {
 								pjob->ji_nodekill = TM_ERROR_NODE; /* send poll failed, but dont kill job */
 								sprintf(log_buffer, "lost communication with %s, not killing job yet", np->hn_host);
@@ -9860,7 +9846,7 @@ main(int argc, char *argv[])
 							if (!is_comm_up(COMM_MATURITY_TIME)) {
 								pjob->ji_nodekill = TM_ERROR_NODE; /* send poll failed, but dont kill job */
 								sprintf(log_buffer, "Connection to pbs_comm down/recently established, not killing job");
-								log_joberr(-1, id, log_buffer, pjob->ji_qs.ji_jobid);
+								log_joberr(-1, __func__, log_buffer, pjob->ji_qs.ji_jobid);
 							}
 						}
 					}
@@ -9870,12 +9856,10 @@ main(int argc, char *argv[])
 				c = pjob->ji_qs.ji_svrflags;
 
 				/*
-				 ** Do not update job's overlimit timestamp
-				 ** when following flags are set
+				 * Do not update job's overlimit timestamp
+				 * when following flags are set
 				 */
-				if (c & (JOB_SVFLG_OVERLMT1 |
-					JOB_SVFLG_OVERLMT2 |
-					JOB_SVFLG_TERMJOB))
+				if (c & (JOB_SVFLG_OVERLMT1 | JOB_SVFLG_OVERLMT2 | JOB_SVFLG_TERMJOB))
 					continue;
 
 				if (job_over_limit(pjob)) {
@@ -9885,21 +9869,16 @@ main(int argc, char *argv[])
 						PBS_EVENTCLASS_JOB, LOG_INFO,
 						pjob->ji_qs.ji_jobid, log_buffer);
 
-					kill_msg = malloc(80 +
-						strlen(log_buffer));
+					kill_msg = malloc(80 + strlen(log_buffer));
 					if (kill_msg != NULL) {
-						sprintf(kill_msg,
-							"=>> PBS: job killed: %s\n",
-							log_buffer);
+						sprintf(kill_msg, "=>> PBS: job killed: %s\n", log_buffer);
 						if (c & JOB_SVFLG_HERE) {
 							message_job(pjob, StdErr, kill_msg);
 						} else {
-							/* Multi-mom scenario - adding a connection to demux for reporting error*/
+							/* Multi-mom scenario - adding a connection to demux for reporting error */
 
-							struct  sockaddr_in     *ap;
-							/*
-							 ** We always have a stream open to MS at node 0.
-							 */
+							struct sockaddr_in *ap;
+							/* We always have a stream open to MS at node 0 */
 							i = pjob->ji_hosts[0].hn_stream;
 							if ((ap = rpp_getaddr(i)) == NULL) {
 								log_joberr(-1, "over_limit_message",
@@ -9926,9 +9905,9 @@ main(int argc, char *argv[])
 
 					(void)terminate_job(pjob, 1);
 				}
-			}
-		}
-	}
+			} /* for pjob in mom_polljobs */
+		} /* for pjob in svr_alljobs */
+	} /* Mom main loop */
 
 	/* if kill_jobs_on_exit set, kill any running/suspended jobs */
 
@@ -10529,36 +10508,12 @@ active_idle(job *pjob, int which)
 		pjob->ji_qs.ji_svrflags |= JOB_SVFLG_Actsuspd;
 		send_wk_job_idle(pjob->ji_qs.ji_jobid, which);
 		if ((pjob->ji_qs.ji_svrflags &
-			(JOB_SVFLG_Suspend|JOB_SVFLG_Suspend)) == 0) {
-			/* save stop time for adjusting walltime */
-			pjob->ji_momstat = time_now;
-			/*
-			 ** Alexis Cousein - momstat isn't saved, so use
-			 ** saved start time to record walltime from second
-			 ** zero -- bogus date
-			 */
-			pjob->ji_qs.ji_stime = time_now - pjob->ji_qs.ji_stime;
+			(JOB_SVFLG_Suspend|JOB_SVFLG_Actsuspd)) == 0) {			
+			stop_walltime(pjob);
 		}
 	} else {		/* resume */
 		if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend) == 0) {
-			/*
-			 * if not also JOB_SVFLG_Suspend, then
-			 * adjust walltime for time suspended:
-			 * ji_momstat contains time when suspended,
-			 * ji_stime when job started; adjust stime to current
-			 * time minus (back to) amount of time used before
-			 * suspended.
-			 */
-			/*
-			 ** remove
-			 ** pjob->ji_qs.ji_stime = time_now -
-			 **	(pjob->ji_momstat - pjob->ji_qs.ji_stime);
-			 **
-			 ** Alexis Cousein - new logic based on precomputed
-			 ** ji_stime at suspend time
-			 */
-			pjob->ji_qs.ji_stime = time_now - pjob->ji_qs.ji_stime;
-
+			start_walltime(pjob);
 			pjob->ji_qs.ji_substate = JOB_SUBSTATE_RUNNING;
 		}
 		pjob->ji_qs.ji_svrflags &= ~JOB_SVFLG_Actsuspd;
@@ -10848,3 +10803,4 @@ mom_topology(void)
 #endif /* localmod 113 */
 }
 #endif	/* !WIN32 */
+

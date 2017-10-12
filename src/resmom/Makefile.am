@@ -86,6 +86,7 @@ pbs_mom_SOURCES = \
 	mom_main.c \
 	mom_server.c \
 	mom_vnode.c \
+	mom_walltime.c \
 	popen.c \
 	prolog.c \
 	requests.c \

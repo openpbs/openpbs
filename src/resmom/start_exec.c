@@ -1772,8 +1772,12 @@ record_finish_exec(int sd)
 	write_wkmg_record(WM_INIT, WM_INIT_START, pjob);
 #endif
 
-	/* return from the starter indicated the job is a go ... */
-	/* record the start time and session/process id		 */
+	/* 
+	 * return from the starter indicated the job is a go ...
+	 * record the start time and session/process id
+	 */
+
+	start_walltime(pjob);
 
 	pjob->ji_wattr[(int)JOB_ATR_session_id].at_val.at_long
 	= sjr.sj_session;
@@ -2365,7 +2369,7 @@ finish_exec(job *pjob)
 	} 
 
 	pjob->ji_qs.ji_stime = time_now;
-	pjob->ji_sampletim   = time_now;
+	pjob->ji_sampletim  = time_now;
 
 	/*
 	 ** Fork the child process that will become the job.
@@ -2496,11 +2500,11 @@ finish_exec(job *pjob)
 
 		if (pjob->ji_numnodes > 1 && !nodemux) {
 			/*
-			 ** Put port numbers into job struct and close sockets.
-			 ** The job uses them to talk to demux, but main MOM
-			 ** doesn't need them.   The port numbers are stored
-			 ** here for use in start_process(), to connect to
-			 ** pbs_demux.
+			 * Put port numbers into job struct and close sockets.
+			 * The job uses them to talk to demux, but main MOM
+			 * doesn't need them.   The port numbers are stored
+			 * here for use in start_process(), to connect to
+			 * pbs_demux.
 			 */
 			(void)close(pjob->ji_stdout);
 			pjob->ji_stdout = port_out;
@@ -5080,7 +5084,7 @@ start_exec(job *pjob)
 			}
 		}
 
-		for (i=1; i<nodenum; i++) {
+		for (i = 1; i < nodenum; i++) {
 			np = &pjob->ji_hosts[i];
 
 			np->hn_stream = rpp_open(np->hn_host, np->hn_port);
@@ -5143,7 +5147,7 @@ start_exec(job *pjob)
 			pjob->ji_stderr = -1;
 		} else {
 			/*
-			 **			Open two sockets for use by demux program later.
+			 * Open two sockets for use by demux program later.
 			 */
 			for (i=0; i<2; i++)
 				socks[i] = -1;
@@ -5179,7 +5183,7 @@ start_exec(job *pjob)
 			pjob->ji_stderr = socks[1];
 		}
 
-		for (i=1; i<nodenum; i++) {
+		for (i = 1; i < nodenum; i++) {
 			np = &pjob->ji_hosts[i];
 
 			if (i == 1)

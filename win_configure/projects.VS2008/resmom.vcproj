@@ -412,6 +412,31 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath="..\..\src\resmom\mom_walltime.c"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="0"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+						BasicRuntimeChecks="3"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="2"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+			</File>
+			<File
 				RelativePath="..\..\src\server\mom_info.c"
 				>
 				<FileConfiguration
@@ -851,6 +876,10 @@
 			</File>
 			<File
 				RelativePath="..\..\src\resmom\rm_dep.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\resmom_win\win\mom_func.h"
 				>
 			</File>
 		</Filter>

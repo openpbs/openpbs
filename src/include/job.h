@@ -388,16 +388,15 @@ typedef struct vmpiprocs {
 	long long	vn_accel_mem;	/* amt of accelerator memory wanted */
 } vmpiprocs;
 
-/* the following enum defines if a node resource is to be reported */
-/* by Mom */
+/* the following enum defines if a node resource is to be reported by Mom */
 enum PBS_NodeRes_Status {
 	PBS_NODERES_ACTIVE,	/* resource reported from a non-released node */
 	PBS_NODERES_DELETE	/* resource reported from a released node */
 };
 
 /*
- **	Mother Superior gets to hold an array of information from each
- **	of the other nodes for resource usage.
+ * Mother Superior gets to hold an array of information from each
+ * of the other nodes for resource usage.
  */
 typedef struct	noderes {
 	char		*nodehost;	/* corresponding node name */
@@ -501,16 +500,16 @@ struct jbdscrd {
 
 struct job {
 
-	/* Note: these members, upto ji_qs, are not saved to disk */
-	/* IMPORTANT: if adding to this are, see create_subjob()  */
-	/* in array_func.c; add the copy of the required elements */
+	/* 
+	 * Note: these members, upto ji_qs, are not saved to disk
+	 * IMPORTANT: if adding to this are, see create_subjob()
+	 * in array_func.c; add the copy of the required elements
+	 */
 
 	pbs_list_link       ji_alljobs;	/* links to all jobs in server */
 	pbs_list_link       ji_jobque;	/* SVR: links to jobs in same queue */
 	/* MOM: links to polled jobs */
 	pbs_list_link	ji_unlicjobs;	/* links to unlicensed jobs */
-	time_t		ji_momstat;	/* SVR: time of last status from MOM */
-	/* MOM: time job suspend (Cray)	*/
 	int		ji_modified;	/* struct changed, needs to be saved */
 	int		ji_momhandle;	/* open connection handle to MOM */
 	int		ji_mom_prot;	/* rpp or tcp */
@@ -537,6 +536,7 @@ struct job {
 	int		ji_jsmpipe2;	/* pipe for child starter process to send special requests to parent mom */
 	int		ji_mjspipe2;	/* pipe for parent mom to ack special request from child starter process */
 	int		ji_updated;	/* set to 1 if job's node assignment was updated */
+	time_t		ji_walltime_stamp;	/* time stamp for accumulating walltime */
 #ifdef WIN32
 	HANDLE		ji_momsubt;	/* process HANDLE to mom subtask */
 #else	/* not WIN32 */
@@ -822,8 +822,7 @@ typedef struct	infoent {
 #define	TI_FLAGS_INIT		1	/* task has called tm_init */
 #define	TI_FLAGS_CHKPT		2	/* task has checkpointed */
 #define	TI_FLAGS_ORPHAN		4	/* MOM not parent of task */
-#define	TI_FLAGS_SAVECKP	8	/* save value of CHKPT flag
-					   during checkpoint op */
+#define	TI_FLAGS_SAVECKP	8	/* save value of CHKPT flag during checkpoint op */
 
 #define TI_STATE_EMBRYO		0
 #define	TI_STATE_RUNNING	1
@@ -949,9 +948,7 @@ task_find	(job		*pjob,
 #define JOB_STATE_EXITING	5
 #define JOB_STATE_EXPIRED	6
 #define JOB_STATE_BEGUN		7
-/*
- * Job states defined for history jobs and OGF-BES model:
- */
+/* Job states defined for history jobs and OGF-BES model */
 #define JOB_STATE_MOVED		8
 #define JOB_STATE_FINISHED	9
 
@@ -959,7 +956,6 @@ task_find	(job		*pjob,
 /*
  * job sub-states are defined by PBS (more detailed) as:
  */
-
 #define JOB_SUBSTATE_TRANSIN 	00	/* Transit in, wait for commit, commit not yet called */
 #define JOB_SUBSTATE_TRANSICM	01	/* Transit in, job is being commited */
 #define JOB_SUBSTATE_TRNOUT	02	/* transiting job outbound */
@@ -994,17 +990,16 @@ task_find	(job		*pjob,
 #define JOB_SUBSTATE_OBIT	58	/* (MOM) job obit notice sent	   */
 #define JOB_SUBSTATE_TERM	59	/* Job is in site termination stage */
 #define JOB_SUBSTATE_DELJOB    153	/* (MOM) Job del_job_wait to sisters  */
+
 #define JOB_SUBSTATE_RERUN	60	/* job is rerun, recover output stage */
 #define JOB_SUBSTATE_RERUN1	61	/* job is rerun, stageout phase */
 #define JOB_SUBSTATE_RERUN2	62	/* job is rerun, delete files stage */
 #define JOB_SUBSTATE_RERUN3	63	/* job is rerun, mom delete job */
 #define JOB_SUBSTATE_EXPIRED	69	/* subjob (of an array) is gone */
+
 #define JOB_SUBSTATE_BEGUN	70	/* Array job has begun */
 #define JOB_SUBSTATE_PROVISION	71	/* job is waiting for provisioning tocomplete */
-
-/*
- * Job sub-states defined in PBS to support history jobs and OGF-BES model:
- */
+/* Job sub-states defined in PBS to support history jobs and OGF-BES model */
 #define JOB_SUBSTATE_TERMINATED	91
 #define JOB_SUBSTATE_FINISHED	92
 #define JOB_SUBSTATE_FAILED	93

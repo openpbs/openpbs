@@ -784,19 +784,7 @@ mom_set_use(job *pjob)
 		*lp_sz = MAX(*lp_sz, lnum_sz);
 	}
 
-	rd = find_resc_def(svr_resc_def, "walltime", svr_resc_size);
-	assert(rd != NULL);
-	pres = find_resc_entry(at, rd);
-	if (pres == NULL) {
-		pres = add_resource_entry(at, rd);
-		pres->rs_value.at_flags |= ATR_VFLAG_SET;
-		pres->rs_value.at_type = ATR_TYPE_LONG;
-		pres->rs_value.at_val.at_long = 0;
-	} else if ((pres->rs_value.at_flags & ATR_VFLAG_HOOK) == 0) {
-		pres->rs_value.at_val.at_long =
-			(long)((double)(time_now -
-			pjob->ji_qs.ji_stime) * wallfactor);
-	}
+	update_walltime(pjob);
 
 	rd = find_resc_def(svr_resc_def, "mem", svr_resc_size);
 	assert(rd != NULL);

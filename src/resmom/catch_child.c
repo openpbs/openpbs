@@ -1665,30 +1665,23 @@ end_loop:
 			}
 
 			/*
-			 ** No event waiting for sending info to MS
-			 ** so I'll just sit tight.
+			 * No event waiting for sending info to MS
+			 * so I'll just sit tight.
 			 */
 			if (pjob->ji_obit == TM_NULL_EVENT)
 				continue;
 
-			/*
-			 ** Check to see if any tasks are running.
-			 */
+			/* Check to see if any tasks are running */
 			ptask = (pbs_task *)GET_NEXT(pjob->ji_tasks);
 			while (ptask != NULL) {
 				if (ptask->ti_qs.ti_status == TI_STATE_RUNNING)
 					break;
 				ptask = (pbs_task *)GET_NEXT(ptask->ti_jobtask);
 			}
-			/*
-			 ** Still somebody there so don't send it yet.
-			 */
+			/* Still somebody there so don't send it yet. */
 			if (ptask != NULL)
 				continue;
-			/*
-			 ** No tasks running ... format and send a
-			 ** reply to the mother superior.
-			 */
+			/* No tasks running. Format and send a reply to the mother superior */
 			if (cookie != NULL) {
 				(void)im_compose(stream, pjob->ji_qs.ji_jobid,
 					cookie, IM_ALL_OKAY,
@@ -1708,16 +1701,8 @@ end_loop:
 		}
 
 		/*
-		 ** If the job was in SUSPENDED state and killed explicitly,
-		 ** then readjust the walltime i.e. ji_stime to current time
-		 ** minus (back to) amount of time spent before suspended.
-		 */
-		if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend)
-			pjob->ji_qs.ji_stime = time_now - pjob->ji_qs.ji_stime;
-
-		/*
-		 ** At this point, we know we are Mother Superior for this
-		 ** job which is EXITING.  Time for it to die.
+		 * At this point, we know we are Mother Superior for this
+		 * job which is EXITING.  Time for it to die.
 		 */
 		pjob->ji_qs.ji_svrflags &= ~(JOB_SVFLG_Suspend|
 			JOB_SVFLG_Actsuspd);
@@ -1726,8 +1711,8 @@ end_loop:
 		delete_link(&pjob->ji_jobque);	/* unlink from poll list */
 
 		/*
-		 ** The SISTER_KILLDONE flag needs to be reset so
-		 ** we can talk to the sisterhood.
+		 * The SISTER_KILLDONE flag needs to be reset so
+		 * we can talk to the sisterhood.
 		 */
 		for (i=0; i<pjob->ji_numnodes; i++) {
 			hnodent		*np = &pjob->ji_hosts[i];
@@ -1739,9 +1724,10 @@ end_loop:
 				np->hn_sister = SISTER_OKAY;
 		}
 
-		/*
-		 ** Job termination begins.
-		 */
+		/* Job termination begins */
+		
+		/* stop counting walltime */
+		stop_walltime(pjob);
 
 		/* summary for MS */
 		secs = resc_used(pjob, "cput", gettime);
@@ -1872,13 +1858,12 @@ end_loop:
 				(void)chdir(pjob->ji_grpcache->gc_homedir);
 			}
 		}
-
+ 
 		extval = 0;
+		
 		if (num_eligible_hooks(HOOK_EVENT_EXECJOB_EPILOGUE) > 0) {
-
 			mom_hook_input_init(&hook_input);
 			hook_input.pjob = pjob;
-
 			(void)mom_process_hooks(HOOK_EVENT_EXECJOB_EPILOGUE,
 				PBS_MOM_SERVICE_NAME, mom_host, &hook_input,
 				NULL, NULL, 0, 0);

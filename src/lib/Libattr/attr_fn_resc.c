@@ -523,7 +523,7 @@ is_builtin(resource_def *rscdef)
 
 /**
  * @brief
- * 	find_resc_entry - find a resource (value) entry in a list headed in an
+ * 	find_resc_entry - find a resource (value) entry in a list headed in
  * 	an attribute that points to the specified resource_def structure
  *
  * @param[in] pattr - pointer to attribute structure

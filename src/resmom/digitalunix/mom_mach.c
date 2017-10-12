@@ -825,12 +825,7 @@ mom_set_use(job *pjob)
 	lnum_sz = (mem_sum(pjob) + 1023) >> 10; /* in KB */
 	*lp_sz = MAX(*lp_sz, lnum_sz);
 
-	rd = find_resc_def(svr_resc_def, "walltime", svr_resc_size);
-	assert(rd != NULL);
-	pres = find_resc_entry(at, rd);
-	assert(pres != NULL);
-	pres->rs_value.at_val.at_long = (long)((double)(time_now -
-		pjob->ji_qs.ji_stime) * wallfactor);
+	update_walltime(pjob);
 
 	rd = find_resc_def(svr_resc_def, "mem", svr_resc_size);
 	assert(rd != NULL);

@@ -396,6 +396,11 @@ extern FILE *pbs_popen(const char *, const char *);
 extern int pbs_pkill(FILE *, int);
 extern int pbs_pclose(FILE *);
 
+/* from mom_walltime.c */
+extern void start_walltime(job *);
+extern void update_walltime(job *);
+extern void stop_walltime(job *);
+
 /* Define for max xauth data*/
 #define X_DISPLAY_LEN   512
 

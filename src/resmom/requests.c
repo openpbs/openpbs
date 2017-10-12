@@ -1559,14 +1559,7 @@ post_suspend(job *pjob, int err)
 		return;
 
 	if ((pjob->ji_flags & MOM_SISTER_ERR) == 0) {
-		/* save stop time for adjusting walltime */
-		pjob->ji_momstat = time_now;
-		/*
-		 ** Alexis Cousein - momstat isn't saved, so use
-		 ** saved start time to record walltime from second
-		 ** zero -- bogus date
-		 */
-		pjob->ji_qs.ji_stime = time_now - pjob->ji_qs.ji_stime;
+		stop_walltime(pjob);
 
 		pjob->ji_polltime = 0;	/* don't check polling */
 		pjob->ji_qs.ji_substate = JOB_SUBSTATE_SUSPEND;
@@ -1597,22 +1590,9 @@ post_resume(job *pjob, int err)
 		return;
 
 	if ((pjob->ji_flags & MOM_SISTER_ERR) == 0) {
-		/*
-		 * adjust walltime for time suspended, ji_momstat contains
-		 * time when suspended, ji_stime when job started; adjust
-		 * stime to current time minus (back to) amount of time
-		 * used before suspended.
-		 */
+
 		if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend) {
-			/*
-			 ** remove
-			 ** pjob->ji_qs.ji_stime = time_now -
-			 **	(pjob->ji_momstat - pjob->ji_qs.ji_stime);
-			 **
-			 ** Alexis Cousein - new logic based on precomputed
-			 ** ji_stime at suspend time
-			 */
-			pjob->ji_qs.ji_stime = time_now - pjob->ji_qs.ji_stime;
+			start_walltime(pjob);
 		}
 		/* if I'm not MS, start to check for polling again */
 		if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) == 0)
@@ -4495,9 +4475,6 @@ done:
 void
 post_restart(job *pjob, int ev)
 {
-	char		path[MAXPATHLEN+1];
-	struct	stat	sb;
-	time_t		ckpt_time, new_stime;
 	pbs_task	*ptask;
 
 	DBPRT(("post_restart: %s err %d\n", pjob->ji_qs.ji_jobid, ev))
@@ -4529,29 +4506,7 @@ post_restart(job *pjob, int ev)
 	/* reset sample time for cpupercent, to start over */
 	pjob->ji_sampletim = 0;
 
-	/*
-	 ** Reset mtime so walltime will not include held time.
-	 ** Update to time now minus the time already used
-	 ** unless it is suspended, see request.c/req_signal()
-	 **/
 	if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend) == 0) {
-		time_now = time(0);
-
-		strcpy(path, path_checkpoint);
-		if (*pjob->ji_qs.ji_fileprefix != '\0')
-			strcat(path, pjob->ji_qs.ji_fileprefix);
-		else
-			strcat(path, pjob->ji_qs.ji_jobid);
-		strcat(path, JOB_CKPT_SUFFIX);
-
-		if (stat(path, &sb) == -1) {
-			sprintf(log_buffer, "stat %s", path);
-			log_err(errno, __func__, log_buffer);
-			ckpt_time = time_now;
-		} else {
-			ckpt_time = sb.st_mtime;
-		}
-
 		/*
 		 ** Set all checkpointed tasks running.
 		 */
@@ -4561,12 +4516,11 @@ post_restart(job *pjob, int ev)
 			if (ptask->ti_flags & TI_FLAGS_CHKPT) {
 				ptask->ti_qs.ti_status = TI_STATE_RUNNING;
 				/*
-				 ** KLUDGE
-				 ** The sid for the task is saved as a
-				 ** negative value in scan_for_exiting()
-				 ** when it goes into DEAD state.  We need
-				 ** to keep it for the restarted task if a
-				 ** new sid has not been generated.
+				 * KLUDGE
+				 * The sid for the task is saved as a negative value in 
+				 * scan_for_exiting() when it goes into DEAD state. We 
+				 * need to keep it for the restarted task if a new sid 
+				 * has not been generated.
 				 */
 				if (ptask->ti_qs.ti_sid < 0) {
 					ptask->ti_qs.ti_sid =
@@ -4576,12 +4530,8 @@ post_restart(job *pjob, int ev)
 			}
 		}
 
-		new_stime = time_now - (ckpt_time - pjob->ji_qs.ji_stime);
-		if (new_stime > time_now)
-			new_stime = time_now;
-
-		pjob->ji_qs.ji_stime = new_stime;
 		pjob->ji_qs.ji_substate = JOB_SUBSTATE_RUNNING;
+		start_walltime(pjob);
 
 		if (mom_get_sample() != PBSE_NONE) {
 			time_resc_updated = time_now;
@@ -4589,6 +4539,7 @@ post_restart(job *pjob, int ev)
 		}
 	} else {
 		pjob->ji_qs.ji_substate = JOB_SUBSTATE_SUSPEND;
+		stop_walltime(pjob);
 	}
 	if (pjob->ji_preq) {
 		/*
