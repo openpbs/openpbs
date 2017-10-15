@@ -49,12 +49,131 @@ class TestQsub_remove_files(TestFunctional):
         submit a sleep job and make sure that the std_files
         are getting deleted when remove_files option is used.
         """
-        j = Job(TEST_USER)
-        j.set_attributes({ATTR_R: 'oe'})
+        j = Job(TEST_USER, attrs={ATTR_R: 'oe'})
         j.set_sleep_time(1)
-        sub_dir = DshUtils().mkdtemp(uid=TEST_USER.uid)
+        sub_dir = self.du.mkdtemp(uid=TEST_USER.uid)
         jid = self.server.submit(j, submit_dir=sub_dir)
-        self.server.log_match(jid + ";dequeuing from", max_attempts=10)
+        self.server.expect(JOB, {ATTR_R: 'oe'}, id=jid)
+        self.server.expect(JOB, 'job_state', op=UNSET, id=jid)
+        file_count = len([name for name in os.listdir(
+            sub_dir) if os.path.isfile(os.path.join(sub_dir, name))])
+        self.assertEqual(0, file_count)
+
+    def test_remove_file_sandbox_private(self):
+        """
+        submit a sleep job and make sure that the std_files
+        are getting deleted when remove_files option is used
+        and job is submitted with -Wsandbox=private.
+        """
+        j = Job(TEST_USER, attrs={ATTR_R: 'oe', ATTR_sandbox: 'private'})
+        j.set_sleep_time(1)
+        sub_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        jid = self.server.submit(j, submit_dir=sub_dir)
+        self.server.expect(JOB, {ATTR_R: 'oe'}, id=jid)
+        self.server.expect(JOB, 'job_state', op=UNSET, id=jid)
+        file_count = len([name for name in os.listdir(
+            sub_dir) if os.path.isfile(os.path.join(sub_dir, name))])
+        self.assertEqual(0, file_count)
+
+    def test_remove_files_output_file(self):
+        """
+        submit a job with -Ro option and make sure the output file
+        gets deleted after job finishes
+        """
+        j = Job(TEST_USER, attrs={ATTR_R: 'o'})
+        j.set_sleep_time(1)
+        sub_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        jid = self.server.submit(j, submit_dir=sub_dir)
+        self.server.expect(JOB, {ATTR_R: 'o'}, id=jid)
+        self.server.expect(JOB, 'job_state', op=UNSET, id=jid)
+        for name in os.listdir(sub_dir):
+            p = re.search('STDIN.e*', name)
+            if p:
+                self.logger.info('Match found: ' + p.group())
+            else:
+                self.assertTrue(False)
+        file_count = len([name for name in os.listdir(
+            sub_dir) if os.path.isfile(os.path.join(sub_dir, name))])
+        self.assertEqual(1, file_count)
+
+    def test_remove_files_error_file(self):
+        """
+        submit a job with -Re option and make sure the error file
+        gets deleted after job finishes and works with direct_write
+        """
+        j = Job(TEST_USER, attrs={ATTR_k: 'de', ATTR_R: 'e'})
+        j.set_sleep_time(1)
+        sub_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        mapping_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        self.mom.add_config(
+            {'$usecp': self.server.hostname + ':' + sub_dir
+             + ' ' + mapping_dir})
+        self.mom.restart()
+        jid = self.server.submit(j, submit_dir=sub_dir)
+        self.server.expect(JOB, {ATTR_R: 'e'}, id=jid)
+        self.server.expect(JOB, 'job_state', op=UNSET, id=jid)
+        for name in os.listdir(mapping_dir):
+            p = re.search('STDIN.o*', name)
+            if p:
+                self.logger.info('Match found: ' + p.group())
+            else:
+                self.assertTrue(False)
+        file_count = len([name for name in os.listdir(
+            mapping_dir) if os.path.isfile(os.path.join(mapping_dir, name))])
+        self.assertEqual(1, file_count)
+
+    def test_remove_files_error_custom_path(self):
+        """
+        submit a sleep job and make sure that the files
+        are getting deleted from custom path provided in
+        -e and -o option when -Roe is set.
+        """
+        tmp_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        err_file = os.path.join(tmp_dir, 'error_file')
+        out_file = os.path.join(tmp_dir, 'output_file')
+        a = {ATTR_e: err_file, ATTR_o: out_file, ATTR_R: 'oe'}
+        j = Job(TEST_USER, attrs=a)
+        j.set_sleep_time(1)
+        sub_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        jid = self.server.submit(j, submit_dir=sub_dir)
+        self.server.expect(JOB, {ATTR_R: 'oe'}, id=jid)
+        self.server.expect(JOB, 'job_state', op=UNSET, id=jid)
+        file_count = len([name for name in os.listdir(
+            tmp_dir) if os.path.isfile(os.path.join(tmp_dir, name))])
+        self.assertEqual(0, file_count)
+
+    def test_remove_files_error_custom_dir(self):
+        """
+        submit a sleep job and make sure that the files
+        are getting deleted from custom directory path
+        provided in -e and -o option when -Roe is set.
+        """
+        tmp_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        a = {ATTR_e: tmp_dir, ATTR_o: tmp_dir, ATTR_R: 'oe'}
+        j = Job(TEST_USER, attrs=a)
+        j.set_sleep_time(1)
+        sub_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        jid = self.server.submit(j, submit_dir=sub_dir)
+        self.server.expect(JOB, {ATTR_R: 'oe'}, id=jid)
+        self.server.expect(JOB, 'job_state', op=UNSET, id=jid)
+        file_count = len([name for name in os.listdir(
+            tmp_dir) if os.path.isfile(os.path.join(tmp_dir, name))])
+        self.assertEqual(0, file_count)
+
+    def test_remove_files_default_qsub_arguments(self):
+        """
+        submit a sleep job and make sure that the std_files
+        are removed after the job finishes from submission
+        directory when default_qsub_arguments is set to -Roe.
+        """
+        j = Job(TEST_USER)
+        j.set_sleep_time(1)
+        self.server.manager(MGR_CMD_SET, SERVER, {
+                            'default_qsub_arguments': '-Roe'})
+        sub_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        jid = self.server.submit(j, submit_dir=sub_dir)
+        self.server.expect(JOB, {ATTR_R: 'oe'}, id=jid)
+        self.server.expect(JOB, 'job_state', op=UNSET, id=jid)
         file_count = len([name for name in os.listdir(
             sub_dir) if os.path.isfile(os.path.join(sub_dir, name))])
         self.assertEqual(0, file_count)
@@ -65,12 +184,11 @@ class TestQsub_remove_files(TestFunctional):
         that the std_files are available when remove_files
         option is used.
         """
-        j = Job(TEST_USER)
-        j.set_attributes({ATTR_R: 'oe'})
+        j = Job(TEST_USER, attrs={ATTR_R: 'oe'})
         j.set_execargs('sleep', 1)
-        sub_dir = DshUtils().mkdtemp(uid=TEST_USER.uid)
+        sub_dir = self.du.mkdtemp(uid=TEST_USER.uid)
         jid = self.server.submit(j, submit_dir=sub_dir)
-        self.server.log_match(jid + ";dequeuing from", max_attempts=10)
+        self.server.expect(JOB, 'job_state', op=UNSET, id=jid)
         file_count = len([name for name in os.listdir(
             sub_dir) if os.path.isfile(os.path.join(sub_dir, name))])
         self.assertEqual(2, file_count)
@@ -99,3 +217,20 @@ class TestQsub_remove_files(TestFunctional):
                                    id=jid)
         except PbsAlterError as e:
             print str(e)
+
+    def test_qalter_direct_write_error(self):
+        """
+        submit a job and after it starts running alter
+        the job with -Roe and check whether expected
+        error message appears
+        """
+        j = Job(TEST_USER)
+        jid = self.server.submit(j)
+        attribs = {ATTR_R: 'oe'}
+        self.server.expect(JOB, {'job_state': 'R'})
+        try:
+            self.server.alterjob(jid, attribs)
+        except PbsAlterError as e:
+            self.assertTrue(
+                'Cannot modify attribute while job'
+                ' running  Remove_Files' in e.msg[0])
