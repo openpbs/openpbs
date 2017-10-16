@@ -3973,23 +3973,26 @@ class PBSService(PBSObject):
         return lines
 
     def _log_match(self, logtype, msg, id=None, n=50, tail=True,
-                   allmatch=False, regexp=False, day=None, max_attempts=1,
-                   interval=1, starttime=None, endtime=None,
+                   allmatch=False, regexp=False, day=None, max_attempts=None,
+                   interval=None, starttime=None, endtime=None,
                    level=logging.INFO, existence=True):
         """
-        If ``'msg'`` found in the ``'n'`` lines of the log file,
-        returns a ``tupe (x,y)`` where x is the matching line
-        number and y the line itself. If no match,return None.
-        If allmatch is True, a list of tuples is returned.
+        Match given ``msg`` in given ``n`` lines of log file
 
         :param logtype: The entity requested, an instance of a
                         Scheduler, Server, or MoM object, or the
                         strings 'tracejob' for tracejob or
                         'accounting' for accounting logs.
+        :type logtype: object
+        :param msg: log message to match, can be regex also when
+                    ``regexp`` is True
+        :type msg: str
         :param id: The id of the object to trace. Only used for
                    tracejob
+        :type id: str
         :param n: 'ALL' or the number of lines to search through,
                   defaults to 50
+        :type n: int
         :param tail: If true (default), starts from the end of
                      the file
         :type tail: bool
@@ -3999,24 +4002,37 @@ class PBSService(PBSObject):
         :type allmatch: bool
         :param regexp: If true msg is a Python regular expression.
                        Defaults to False
-        :type regex: bool
+        :type regexp: bool
         :param day: Optional day in YYYMMDD format.
-        :type day: str or None
+        :type day: str
         :param max_attempts: the number of attempts to make to find
                              a matching entry
-        :type max_attemps: int
+        :type max_attempts: int
         :param interval: the interval between attempts
         :type interval: int
         :param starttime: If set ignore matches that occur before
                           specified time
-        :type starttime: str or None
+        :type starttime: int
         :param endtime: If set ignore matches that occur after
                         specified time
-        :type endtime: str or None
+        :type endtime: int
+        :param level: The logging level, defaults to INFO
+        :type level: int
         :param existence: If True (default), check for existence of
                         given msg, else check for non-existence of
                         given msg.
         :type existence: bool
+
+        :return: (x,y) where x is the matching line
+                 number and y the line itself. If allmatch is True,
+                 a list of tuples is returned.
+        :rtype: tuple
+        :raises PtlLogMatchError:
+                When ``existence`` is True and given
+                ``msg`` is not found in ``n`` line
+                Or
+                When ``existence`` is False and given
+                ``msg`` found in ``n`` line.
 
         .. note:: The matching line number is relative to the record
                   number, not the absolute line number in the file.
@@ -4029,7 +4045,12 @@ class PBSService(PBSObject):
 
         if self.logutils is None:
             self.logutils = PBSLogUtils()
-
+        if max_attempts is None:
+            max_attempts = 60
+        if interval is None:
+            interval = 0.5
+        if starttime is None:
+            starttime = self.ctime
         rv = (None, None)
         attempt = 1
         lines = None
@@ -4079,18 +4100,17 @@ class PBSService(PBSObject):
 
     def accounting_match(self, msg, id=None, n=50, tail=True,
                          allmatch=False, regexp=False, day=None,
-                         max_attempts=1, interval=1, starttime=None,
+                         max_attempts=None, interval=None, starttime=None,
                          endtime=None, level=logging.INFO, existence=True):
         """
-        Find msg in accounting log.
+        Match given ``msg`` in given ``n`` lines of accounting log
 
-        If ``'msg'`` found in the ``'n'`` lines of the log file,
-        returns a ``tupe (x,y)`` where x is the matching line
-        number and y the line itself. If no match,return None.
-        If allmatch is True, a list of tuples is returned.
-
+        :param msg: log message to match, can be regex also when
+                    ``regexp`` is True
+        :type msg: str
         :param id: The id of the object to trace. Only used for
                    tracejob
+        :type id: str
         :param n: 'ALL' or the number of lines to search through,
                   defaults to 50
         :type n: int
@@ -4105,19 +4125,38 @@ class PBSService(PBSObject):
                        Defaults to False
         :type regexp: bool
         :param day: Optional day in YYYMMDD format.
-        :param max_attempts: the number of attempts to make to
-                             find a matching entry
-        :type max_attemplts: int
+        :type day: str
+        :param max_attempts: the number of attempts to make to find
+                             a matching entry
+        :type max_attempts: int
         :param interval: the interval between attempts
         :type interval: int
         :param starttime: If set ignore matches that occur before
                           specified time
+        :type starttime: int
         :param endtime: If set ignore matches that occur after
                         specified time
+        :type endtime: int
+        :param level: The logging level, defaults to INFO
+        :type level: int
+        :param existence: If True (default), check for existence of
+                        given msg, else check for non-existence of
+                        given msg.
+        :type existence: bool
 
-        .. note:: The matching line number is relative to the
-                  record number, not the absolute line number
-                  in the file.
+        :return: (x,y) where x is the matching line
+                 number and y the line itself. If allmatch is True,
+                 a list of tuples is returned.
+        :rtype: tuple
+        :raises PtlLogMatchError:
+                When ``existence`` is True and given
+                ``msg`` is not found in ``n`` line
+                Or
+                When ``existence`` is False and given
+                ``msg`` found in ``n`` line.
+
+        .. note:: The matching line number is relative to the record
+                  number, not the absolute line number in the file.
         """
         return self._log_match('accounting', msg, id, n, tail, allmatch,
                                regexp, day, max_attempts, interval, starttime,
@@ -4125,11 +4164,62 @@ class PBSService(PBSObject):
 
     def tracejob_match(self, msg, id=None, n=50, tail=True,
                        allmatch=False, regexp=False, day=None,
-                       max_attempts=1, interval=1, starttime=None,
+                       max_attempts=None, interval=None, starttime=None,
                        endtime=None, level=logging.INFO, existence=True):
         """
-        Find msg in tracejob log. See _log_match for details
+        Match given ``msg`` in given ``n`` lines of tracejob log
 
+        :param msg: log message to match, can be regex also when
+                    ``regexp`` is True
+        :type msg: str
+        :param id: The id of the object to trace.
+        :type id: str
+        :param n: 'ALL' or the number of lines to search through,
+                  defaults to 50
+        :type n: int
+        :param tail: If true (default), starts from the end of
+                     the file
+        :type tail: bool
+        :param allmatch: If True all matching lines out of then
+                         parsed are returned as a list. Defaults
+                         to False
+        :type allmatch: bool
+        :param regexp: If true msg is a Python regular expression.
+                       Defaults to False
+        :type regexp: bool
+        :param day: Optional day in YYYMMDD format.
+        :type day: str
+        :param max_attempts: the number of attempts to make to find
+                             a matching entry
+        :type max_attempts: int
+        :param interval: the interval between attempts
+        :type interval: int
+        :param starttime: If set ignore matches that occur before
+                          specified time
+        :type starttime: int
+        :param endtime: If set ignore matches that occur after
+                        specified time
+        :type endtime: int
+        :param level: The logging level, defaults to INFO
+        :type level: int
+        :param existence: If True (default), check for existence of
+                        given msg, else check for non-existence of
+                        given msg.
+        :type existence: bool
+
+        :return: (x,y) where x is the matching line
+                 number and y the line itself. If allmatch is True,
+                 a list of tuples is returned.
+        :rtype: tuple
+        :raises PtlLogMatchError:
+                When ``existence`` is True and given
+                ``msg`` is not found in ``n`` line
+                Or
+                When ``existence`` is False and given
+                ``msg`` found in ``n`` line.
+
+        .. note:: The matching line number is relative to the record
+                  number, not the absolute line number in the file.
         """
         return self._log_match('tracejob', msg, id, n, tail, allmatch,
                                regexp, day, max_attempts, interval, starttime,
@@ -4345,11 +4435,64 @@ class Comm(PBSService):
         return self.start()
 
     def log_match(self, msg=None, id=None, n=50, tail=True, allmatch=False,
-                  regexp=False, day=None, max_attempts=1, interval=1,
+                  regexp=False, day=None, max_attempts=None, interval=None,
                   starttime=None, endtime=None, level=logging.INFO,
                   existence=True):
         """
-        Match the comm logs
+        Match given ``msg`` in given ``n`` lines of Comm log
+
+        :param msg: log message to match, can be regex also when
+                    ``regexp`` is True
+        :type msg: str
+        :param id: The id of the object to trace. Only used for
+                   tracejob
+        :type id: str
+        :param n: 'ALL' or the number of lines to search through,
+                  defaults to 50
+        :type n: int
+        :param tail: If true (default), starts from the end of
+                     the file
+        :type tail: bool
+        :param allmatch: If True all matching lines out of then
+                         parsed are returned as a list. Defaults
+                         to False
+        :type allmatch: bool
+        :param regexp: If true msg is a Python regular expression.
+                       Defaults to False
+        :type regexp: bool
+        :param day: Optional day in YYYMMDD format.
+        :type day: str
+        :param max_attempts: the number of attempts to make to find
+                             a matching entry
+        :type max_attempts: int
+        :param interval: the interval between attempts
+        :type interval: int
+        :param starttime: If set ignore matches that occur before
+                          specified time
+        :type starttime: int
+        :param endtime: If set ignore matches that occur after
+                        specified time
+        :type endtime: int
+        :param level: The logging level, defaults to INFO
+        :type level: int
+        :param existence: If True (default), check for existence of
+                        given msg, else check for non-existence of
+                        given msg.
+        :type existence: bool
+
+        :return: (x,y) where x is the matching line
+                 number and y the line itself. If allmatch is True,
+                 a list of tuples is returned.
+        :rtype: tuple
+        :raises PtlLogMatchError:
+                When ``existence`` is True and given
+                ``msg`` is not found in ``n`` line
+                Or
+                When ``existence`` is False and given
+                ``msg`` found in ``n`` line.
+
+        .. note:: The matching line number is relative to the record
+                  number, not the absolute line number in the file.
         """
         return self._log_match(self, msg, id, n, tail, allmatch, regexp,
                                day, max_attempts, interval, starttime, endtime,
@@ -4822,11 +4965,64 @@ class Server(PBSService):
         return self.start()
 
     def log_match(self, msg=None, id=None, n=50, tail=True, allmatch=False,
-                  regexp=False, day=None, max_attempts=1, interval=1,
+                  regexp=False, day=None, max_attempts=None, interval=None,
                   starttime=None, endtime=None, level=logging.INFO,
                   existence=True):
         """
-        Match the PBS server logs
+        Match given ``msg`` in given ``n`` lines of Server log
+
+        :param msg: log message to match, can be regex also when
+                    ``regexp`` is True
+        :type msg: str
+        :param id: The id of the object to trace. Only used for
+                   tracejob
+        :type id: str
+        :param n: 'ALL' or the number of lines to search through,
+                  defaults to 50
+        :type n: int
+        :param tail: If true (default), starts from the end of
+                     the file
+        :type tail: bool
+        :param allmatch: If True all matching lines out of then
+                         parsed are returned as a list. Defaults
+                         to False
+        :type allmatch: bool
+        :param regexp: If true msg is a Python regular expression.
+                       Defaults to False
+        :type regexp: bool
+        :param day: Optional day in YYYMMDD format.
+        :type day: str
+        :param max_attempts: the number of attempts to make to find
+                             a matching entry
+        :type max_attempts: int
+        :param interval: the interval between attempts
+        :type interval: int
+        :param starttime: If set ignore matches that occur before
+                          specified time
+        :type starttime: int
+        :param endtime: If set ignore matches that occur after
+                        specified time
+        :type endtime: int
+        :param level: The logging level, defaults to INFO
+        :type level: int
+        :param existence: If True (default), check for existence of
+                        given msg, else check for non-existence of
+                        given msg.
+        :type existence: bool
+
+        :return: (x,y) where x is the matching line
+                 number and y the line itself. If allmatch is True,
+                 a list of tuples is returned.
+        :rtype: tuple
+        :raises PtlLogMatchError:
+                When ``existence`` is True and given
+                ``msg`` is not found in ``n`` line
+                Or
+                When ``existence`` is False and given
+                ``msg`` found in ``n`` line.
+
+        .. note:: The matching line number is relative to the record
+                  number, not the absolute line number in the file.
         """
         return self._log_match(self, msg, id, n, tail, allmatch, regexp,
                                day, max_attempts, interval, starttime, endtime,
@@ -10338,11 +10534,64 @@ class Scheduler(PBSService):
         return self.start()
 
     def log_match(self, msg=None, id=None, n=50, tail=True, allmatch=False,
-                  regexp=False, day=None, max_attempts=1, interval=1,
+                  regexp=False, day=None, max_attempts=None, interval=None,
                   starttime=None, endtime=None, level=logging.INFO,
                   existence=True):
         """
-        Match the scheduler logs
+        Match given ``msg`` in given ``n`` lines of Scheduler log
+
+        :param msg: log message to match, can be regex also when
+                    ``regexp`` is True
+        :type msg: str
+        :param id: The id of the object to trace. Only used for
+                   tracejob
+        :type id: str
+        :param n: 'ALL' or the number of lines to search through,
+                  defaults to 50
+        :type n: int
+        :param tail: If true (default), starts from the end of
+                     the file
+        :type tail: bool
+        :param allmatch: If True all matching lines out of then
+                         parsed are returned as a list. Defaults
+                         to False
+        :type allmatch: bool
+        :param regexp: If true msg is a Python regular expression.
+                       Defaults to False
+        :type regexp: bool
+        :param day: Optional day in YYYMMDD format.
+        :type day: str
+        :param max_attempts: the number of attempts to make to find
+                             a matching entry
+        :type max_attempts: int
+        :param interval: the interval between attempts
+        :type interval: int
+        :param starttime: If set ignore matches that occur before
+                          specified time
+        :type starttime: int
+        :param endtime: If set ignore matches that occur after
+                        specified time
+        :type endtime: int
+        :param level: The logging level, defaults to INFO
+        :type level: int
+        :param existence: If True (default), check for existence of
+                        given msg, else check for non-existence of
+                        given msg.
+        :type existence: bool
+
+        :return: (x,y) where x is the matching line
+                 number and y the line itself. If allmatch is True,
+                 a list of tuples is returned.
+        :rtype: tuple
+        :raises PtlLogMatchError:
+                When ``existence`` is True and given
+                ``msg`` is not found in ``n`` line
+                Or
+                When ``existence`` is False and given
+                ``msg`` found in ``n`` line.
+
+        .. note:: The matching line number is relative to the record
+                  number, not the absolute line number in the file.
         """
         return self._log_match(self, msg, id, n, tail, allmatch, regexp, day,
                                max_attempts, interval, starttime, endtime,
@@ -12248,11 +12497,64 @@ class MoM(PBSService):
         return self.start()
 
     def log_match(self, msg=None, id=None, n=50, tail=True, allmatch=False,
-                  regexp=False, day=None, max_attempts=1, interval=1,
+                  regexp=False, day=None, max_attempts=None, interval=None,
                   starttime=None, endtime=None, level=logging.INFO,
                   existence=True):
         """
-        Match the PBS mom logs
+        Match given ``msg`` in given ``n`` lines of MoM log
+
+        :param msg: log message to match, can be regex also when
+                    ``regexp`` is True
+        :type msg: str
+        :param id: The id of the object to trace. Only used for
+                   tracejob
+        :type id: str
+        :param n: 'ALL' or the number of lines to search through,
+                  defaults to 50
+        :type n: int
+        :param tail: If true (default), starts from the end of
+                     the file
+        :type tail: bool
+        :param allmatch: If True all matching lines out of then
+                         parsed are returned as a list. Defaults
+                         to False
+        :type allmatch: bool
+        :param regexp: If true msg is a Python regular expression.
+                       Defaults to False
+        :type regexp: bool
+        :param day: Optional day in YYYMMDD format.
+        :type day: str
+        :param max_attempts: the number of attempts to make to find
+                             a matching entry
+        :type max_attempts: int
+        :param interval: the interval between attempts
+        :type interval: int
+        :param starttime: If set ignore matches that occur before
+                          specified time
+        :type starttime: int
+        :param endtime: If set ignore matches that occur after
+                        specified time
+        :type endtime: int
+        :param level: The logging level, defaults to INFO
+        :type level: int
+        :param existence: If True (default), check for existence of
+                        given msg, else check for non-existence of
+                        given msg.
+        :type existence: bool
+
+        :return: (x,y) where x is the matching line
+                 number and y the line itself. If allmatch is True,
+                 a list of tuples is returned.
+        :rtype: tuple
+        :raises PtlLogMatchError:
+                When ``existence`` is True and given
+                ``msg`` is not found in ``n`` line
+                Or
+                When ``existence`` is False and given
+                ``msg`` found in ``n`` line.
+
+        .. note:: The matching line number is relative to the record
+                  number, not the absolute line number in the file.
         """
         return self._log_match(self, msg, id, n, tail, allmatch, regexp, day,
                                max_attempts, interval, starttime, endtime,

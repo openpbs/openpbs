@@ -109,8 +109,6 @@ class TestVnodePool(TestFunctional):
         """
         self.server.manager(MGR_CMD_SET, SERVER, {"log_events": -1})
 
-        found_in_momA = 0
-        found_in_momB = 0
         self.momA = self.moms.values()[0]
         self.momB = self.moms.values()[1]
         self.hostA = self.momA.shortname
@@ -123,27 +121,21 @@ class TestVnodePool(TestFunctional):
         self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostA, attrib=attr)
         self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostB, attrib=attr)
 
-        rc = self.server.log_match("Mom %s added to vnode_pool %s" %
-                                   (self.hostB, '1'), max_attempts=5,
-                                   starttime=start_time)
-        self.assertTrue(rc)
+        self.server.log_match("Mom %s added to vnode_pool %s" %
+                              (self.hostB, '1'), max_attempts=5,
+                              starttime=start_time)
 
-        rc = self.momA.log_match(
-            "Hello (no inventory required) from server", max_attempts=9,
-            starttime=start_time)
-        if rc is None:
-            found_in_momA = 0
-        else:
+        _msg = "Hello (no inventory required) from server"
+        try:
+            self.momA.log_match(_msg, max_attempts=9, starttime=start_time)
             found_in_momA = 1
-
-        rc = self.momB.log_match(
-            "Hello (no inventory required) from server", max_attempts=9,
-            starttime=start_time)
-        if rc is None:
-            found_in_momB = 0
-        else:
+        except PtlLogMatchError:
+            found_in_momA = 0
+        try:
+            self.momB.log_match(_msg, max_attempts=9, starttime=start_time)
             found_in_momB = 1
-
+        except PtlLogMatchError:
+            found_in_momB = 0
         self.assertEqual(found_in_momA + found_in_momB,
                          1, msg="an inventory mom not chosen correctly")
 
@@ -171,12 +163,10 @@ class TestVnodePool(TestFunctional):
         self.assertTrue(rv)
 
         # Check if inventory mom changed and is listed in the server log.
-        rc = self.server.log_match(
+        self.server.log_match(
             "Setting inventory_mom for vnode_pool %s to %s" %
             ('1', noninv_mom.shortname), max_attempts=5,
             starttime=start_time)
-        self.assertTrue(rc, msg="Inventory mom %s is not in server logs" %
-                        (noninv_mom.shortname))
         self.logger.info(
             "Inventory mom is now %s in server logs." %
             (noninv_mom.shortname))
@@ -211,8 +201,6 @@ class TestVnodePool(TestFunctional):
         Differing vnode_pool for two moms shall result in both moms reporting
         inventory.
         """
-        found_in_momA = 0
-        found_in_momB = 0
         self.momA = self.moms.values()[0]
         self.momB = self.moms.values()[1]
         self.hostA = self.momA.shortname
@@ -226,22 +214,17 @@ class TestVnodePool(TestFunctional):
         self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostA, attrib=attr_A)
         self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostB, attrib=attr_B)
 
-        rc = self.momA.log_match(
-            "Hello (no inventory required) from server", max_attempts=5,
-            starttime=start_time)
-        if rc is None:
-            found_in_momA = 0
-        else:
+        _msg = "Hello (no inventory required) from server"
+        try:
+            self.momA.log_match(_msg, max_attempts=5, starttime=start_time)
             found_in_momA = 1
-
-        rc = self.momB.log_match(
-            "Hello (no inventory required) from server", max_attempts=5,
-            starttime=start_time)
-        if rc is None:
-            found_in_momB = 0
-        else:
+        except PtlLogMatchError:
+            found_in_momA = 0
+        try:
+            self.momB.log_match(_msg, max_attempts=5, starttime=start_time)
             found_in_momB = 1
-
+        except PtlLogMatchError:
+            found_in_momB = 0
         self.assertTrue((found_in_momA + found_in_momB == 0),
                         msg="Both moms must report inventory")
 
@@ -269,10 +252,8 @@ class TestVnodePool(TestFunctional):
         except PbsManagerError as e:
             self.assertTrue("Invalid request" in e.msg[0])
 
-        rv = self.server.log_match(
-            "Unsupported actions for vnode_pool", max_attempts=5,
-            starttime=start_time)
-        self.assertTrue(rv)
+        self.server.log_match("Unsupported actions for vnode_pool",
+                              max_attempts=5, starttime=start_time)
         self.logger.info("Found correct server log message")
 
         self.momB = self.moms.values()[1]
@@ -291,11 +272,8 @@ class TestVnodePool(TestFunctional):
         except PbsManagerError as e:
             self.assertTrue("Invalid request" in e.msg[0])
 
-        rv = self.server.log_match(
-            "Unsupported actions for vnode_pool", max_attempts=5,
-            starttime=start_time)
-        self.assertTrue(rv, msg="Found correct server log message")
-
+        self.server.log_match("Unsupported actions for vnode_pool",
+                              max_attempts=5, starttime=start_time)
         try:
             self.server.manager(MGR_CMD_UNSET, NODE, id=self.hostB,
                                 attrib='vnode_pool', expect=False)
