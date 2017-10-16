@@ -874,7 +874,7 @@ class SmokeTest(PBSTestSuite):
         """
         Test job_sort_formula_threshold basic behavior
         """
-        self.scheduler.set_sched_config({'log_filter': '0'})
+        self.scheduler.set_sched_config({'log_filter': '2048'})
         a = {'resources_available.ncpus': 1}
         self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
         a = {'job_sort_formula':
@@ -883,7 +883,7 @@ class SmokeTest(PBSTestSuite):
         a = {'job_sort_formula_threshold': '7'}
         self.server.manager(MGR_CMD_SET, SCHED, a)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
-        a = {'Resource_List.select': '1:ncpus=1:mem=330kb',
+        a = {'Resource_List.select': '1:ncpus=1:mem=300kb',
              'Resource_List.walltime': 4}
         J1 = Job(TEST_USER1, attrs=a)
         a = {'Resource_List.select': '1:ncpus=1:mem=350kb',
@@ -910,19 +910,20 @@ class SmokeTest(PBSTestSuite):
                            interval=2)
         self.server.expect(JOB, {'job_state': 'Q'}, id=j1id, max_attempts=30,
                            interval=2)
-        msg = "Checking the job state of %s, runs after %s completes" % (j3id,
-                                                                         j4id)
-        self.logger.info(a)
+        msg = "Checking the job state of %s, runs after %s is deleted" % (j3id,
+                                                                          j4id)
+        self.logger.info(msg)
+        self.server.deljob(id=j4id, wait=True)
         self.server.expect(JOB, {'job_state': 'R'}, id=j3id, max_attempts=30,
                            interval=2)
         self.server.expect(JOB, {'job_state': 'Q'}, id=j2id, max_attempts=30,
                            interval=2)
         self.server.expect(JOB, {'job_state': 'Q'}, id=j1id, max_attempts=30,
                            interval=2)
-        self.scheduler.log_match(j1id + ";Formula Evaluation = 7",
+        self.scheduler.log_match(j1id + ";Formula Evaluation = 6",
                                  regexp=True, starttime=self.server.ctime,
                                  max_attempts=10, interval=2)
-        m = ";Job's formula value 7 is under threshold 7"
+        m = ";Job's formula value 6 is under threshold 7"
         self.scheduler.log_match(j1id + m,
                                  regexp=True, starttime=self.server.ctime,
                                  max_attempts=10, interval=2)
@@ -947,6 +948,13 @@ class SmokeTest(PBSTestSuite):
         self.scheduler.log_match(j4id + ";Formula Evaluation = 9",
                                  regexp=True, starttime=self.server.ctime,
                                  max_attempts=10, interval=2)
+
+        # Make sure we can qrun a job under the threshold
+        self.server.deljob(id=j3id, wait=True)
+        rv = self.server.expect(SERVER, {'server_state': 'Scheduling'}, op=NE)
+        self.server.expect(JOB, {ATTR_state: 'Q'}, id=j1id)
+        self.server.runjob(jobid=j1id)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=j1id)
 
     def isSuspended(self, ppid):
         """

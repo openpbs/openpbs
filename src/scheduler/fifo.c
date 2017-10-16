@@ -665,6 +665,13 @@ scheduling_cycle(int sd, char *jobid)
 		}
 	}
 
+	if (init_scheduling_cycle(policy, sd, sinfo) == 0) {
+		schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
+			sinfo->name, "init_scheduling_cycle failed.");
+		end_cycle_tasks(sinfo);
+		return 0;
+	}
+
 	/* jobid will not be NULL if we received a qrun request */
 	if (jobid != NULL) {
 		schdlog(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
@@ -690,13 +697,6 @@ scheduling_cycle(int sd, char *jobid)
 			rc = SCHD_ERROR;
 			sprintf(log_msg, "PBS Error: Scheduler can not find job");
 		}
-	}
-
-	if (init_scheduling_cycle(policy, sd, sinfo) == 0) {
-		schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
-			sinfo->name, "init_scheduling_cycle failed.");
-		end_cycle_tasks(sinfo);
-		return 0;
 	}
 
 	/* run loop run */
