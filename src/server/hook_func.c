@@ -4169,6 +4169,17 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 	}
 
 	if (fp_debug != NULL) {
+		/* print name of user requested queue if I am a queuejob hook */
+		if (rq_type == PBS_BATCH_QueueJob) {
+			char *qname = ((struct rq_queuejob *)req_ptr->rq_job)->rq_destin;
+			/* use default queue if user did not specify a queue for the job */
+			if ((!qname || *qname == '\0' || *qname == '@') &&
+				server.sv_attr[SRV_ATR_dflt_que].at_flags & ATR_VFLAG_SET)
+				fprintf(fp_debug, "%s.queue=%s\n", EVENT_JOB_OBJECT,
+						server.sv_attr[SRV_ATR_dflt_que].at_val.at_str);
+			else
+				fprintf(fp_debug, "%s.queue=%s\n", EVENT_JOB_OBJECT, qname);
+		}
 		fprintf(fp_debug, "%s.%s=%s\n", PBS_OBJ, GET_NODE_NAME_FUNC,
 			(char *)server_host);
 		fprintf(fp_debug, "%s.%s=%s\n", EVENT_OBJECT, PY_EVENT_TYPE,
