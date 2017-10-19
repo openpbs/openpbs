@@ -313,6 +313,8 @@ req_confirmresv(struct batch_request *preq)
 	char		*str_time = NULL;
 	extern char	server_host[];
 	int		is_being_altered = 0;
+	char		*tmp_buf = NULL;
+	size_t		tmp_buf_size = 0;
 
 	if ((preq->rq_perm & (ATR_DFLAG_MGWR | ATR_DFLAG_OPWR)) == 0) {
 		req_reject(PBSE_PERM, 0, preq);
@@ -352,7 +354,7 @@ req_confirmresv(struct batch_request *preq)
 				str_time = ctime(&(presv->ri_wattr[RESV_ATR_retry].at_val.at_long));
 				if (str_time != NULL) {
 					str_time[strlen(str_time)-1] = '\0';
-					(void)sprintf(log_buffer, "Next attempt to reconfirm reservation will be made on %s", str_time);
+					(void)snprintf(log_buffer, sizeof(log_buffer), "Next attempt to reconfirm reservation will be made on %s", str_time);
 					log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_RESV, LOG_NOTICE, presv->ri_qs.ri_resvID, log_buffer);
 				}
 			}
@@ -625,12 +627,12 @@ req_confirmresv(struct batch_request *preq)
 		if (presv->ri_wattr[(int)RESV_ATR_convert].at_val.at_str != NULL) {
 			rc = cnvrt_qmove(presv);
 			if (rc != 0) {
-				sprintf(buf, "%.240s FAILED",  presv->ri_qs.ri_resvID);
+				snprintf(buf, sizeof(buf), "%.240s FAILED",  presv->ri_qs.ri_resvID);
 			} else {
-				sprintf(buf, "%.240s CONFIRMED",  presv->ri_qs.ri_resvID);
+				snprintf(buf, sizeof(buf), "%.240s CONFIRMED",  presv->ri_qs.ri_resvID);
 			}
 		} else {
-			sprintf(buf, "%.240s CONFIRMED",  presv->ri_qs.ri_resvID);
+			snprintf(buf, sizeof(buf), "%.240s CONFIRMED",  presv->ri_qs.ri_resvID);
 		}
 
 		rc = reply_text(presv->ri_brp, PBSE_NONE, buf);
@@ -639,23 +641,6 @@ req_confirmresv(struct batch_request *preq)
 
 	svr_mailownerResv(presv, MAIL_CONFIRM, MAIL_NORMAL, log_buffer);
 	presv->ri_wattr[RESV_ATR_interactive].at_flags &= ~ATR_VFLAG_SET;
-
-	if (presv->ri_wattr[RESV_ATR_resv_standing].at_val.at_long) {
-		(void)sprintf(buf, "requestor=%s@%s start=%ld end=%ld nodes=%s count=%ld",
-			preq->rq_user, preq->rq_host,
-			presv->ri_qs.ri_stime, presv->ri_qs.ri_etime,
-			next_execvnode,
-			presv->ri_wattr[RESV_ATR_resv_count].at_val.at_long);
-	} else {
-		(void)sprintf(buf, "requestor=%s@%s start=%ld end=%ld nodes=%s",
-			preq->rq_user, preq->rq_host,
-			presv->ri_qs.ri_stime, presv->ri_qs.ri_etime,
-			next_execvnode);
-	}
-	if (!is_degraded)
-		account_recordResv(PBS_ACCT_CR, presv, buf);
-
-	free(next_execvnode);
 
 	if (is_being_altered) {
 		/*
@@ -696,6 +681,41 @@ req_confirmresv(struct batch_request *preq)
 	}
 
 	reply_ack(preq);
+
+	/* 100 extra bytes for field names, times, and count */
+	tmp_buf_size = 100 + strlen(preq->rq_user) + strlen(preq->rq_host) + strlen(next_execvnode);
+	if (tmp_buf_size > sizeof(buf)) {
+		tmp_buf = malloc(tmp_buf_size);
+		if (tmp_buf == NULL) {
+			snprintf(log_buffer, LOG_BUF_SIZE-1, "malloc failure (errno %d)", errno);
+			log_err(PBSE_SYSTEM, __func__, log_buffer);
+			return;
+		}
+	} else {
+		tmp_buf = buf;
+		tmp_buf_size = sizeof(buf);
+	}
+
+	if (presv->ri_wattr[RESV_ATR_resv_standing].at_val.at_long) {
+		(void)snprintf(tmp_buf, tmp_buf_size, "requestor=%s@%s start=%ld end=%ld nodes=%s count=%ld",
+			preq->rq_user, preq->rq_host,
+			presv->ri_qs.ri_stime, presv->ri_qs.ri_etime,
+			next_execvnode,
+			presv->ri_wattr[RESV_ATR_resv_count].at_val.at_long);
+	} else {
+		(void)snprintf(tmp_buf, tmp_buf_size, "requestor=%s@%s start=%ld end=%ld nodes=%s",
+			preq->rq_user, preq->rq_host,
+			presv->ri_qs.ri_stime, presv->ri_qs.ri_etime,
+			next_execvnode);
+	}
+	if (!is_degraded)
+		account_recordResv(PBS_ACCT_CR, presv, tmp_buf);
+
+	free(next_execvnode);
+	if (tmp_buf != buf) {
+		free(tmp_buf);
+		tmp_buf_size = 0;
+	}
 	return;
 }
 

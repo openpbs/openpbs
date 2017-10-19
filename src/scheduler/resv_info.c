@@ -673,6 +673,7 @@ query_resv(struct batch_status *resv, server_info *sinfo)
 				sinfo);
 			selectspec = create_select_from_nspec(advresv->nspec_arr);
 			advresv->execselect = parse_selspec(selectspec);
+			free(selectspec);
 		}
 		else if (!strcmp(attrp->name, ATTR_node_set))
 			advresv->node_set_str = break_comma_list(attrp->value);
@@ -749,6 +750,7 @@ new_resv_info()
 	rinfo->execvnodes_seq = NULL;
 	rinfo->count = 0;
 	rinfo->is_standing = 0;
+	rinfo->check_alternate_nodes = 0;
 	rinfo->occr_start_arr = NULL;
 
 	return rinfo;
@@ -820,6 +822,7 @@ dup_resv_info(resv_info *rinfo, server_info *sinfo)
 	nrinfo->resv_state = rinfo->resv_state;
 	nrinfo->resv_substate = rinfo->resv_substate;
 	nrinfo->is_standing = rinfo->is_standing;
+	nrinfo->check_alternate_nodes = rinfo->check_alternate_nodes;
 	nrinfo->timezone = string_dup(rinfo->timezone);
 	nrinfo->rrule = string_dup(rinfo->rrule);
 	nrinfo->resv_idx = rinfo->resv_idx;

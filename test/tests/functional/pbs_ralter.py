@@ -1108,3 +1108,23 @@ class TestPbsResvAlter(TestFunctional):
 
         self.alter_a_reservation(rid, start, end, shift, alter_e=True,
                                  whichMessage=0)
+
+    def test_large_resv_nodes_server_crash(self):
+        """
+        This test is to test whether the server crashes or not when a very
+        large resv_nodes is being recorded in the 'Y' accounting log.
+        If tested with a build without the fix, the test case will fail
+        and vice versa.
+        """
+        duration = 60
+        shift = 10
+        offset = 10
+
+        a = {'resources_available.ncpus': 4}
+        self.server.create_vnodes('vnode', a, num=256, mom=self.mom,
+                                  usenatvnode=True)
+
+        rid, start, end = self.submit_and_confirm_reservation(
+            offset, duration, select="256:ncpus=4")
+
+        self.alter_a_reservation(rid, start, end, shift, alter_s=True)
