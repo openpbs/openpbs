@@ -4065,7 +4065,7 @@ inventory_to_vnodes(basil_response_t *brp)
 	if (vn_addvnr(nv, mom_short_name, attr, utilBuffer, 0, 0, NULL) == -1)
 		goto bad_vnl;
 	attr = "resources_available.mem";
-	snprintf(utilBuffer, sizeof(utilBuffer), "%lu", totalmem);
+	snprintf(utilBuffer, sizeof(utilBuffer), "%lukb", totalmem);
 	/* already exists so don't define type */
 	if (vn_addvnr(nv, mom_short_name, attr, utilBuffer, 0, 0, NULL) == -1)
 		goto bad_vnl;

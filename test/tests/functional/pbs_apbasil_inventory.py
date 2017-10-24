@@ -224,3 +224,30 @@ type=\"ENGINE\"/>" % (self.basil_version[0])
                 # Compare xml vnode with pbs node.
                 print "Validating vnode:%s" % (vnode['vnode'])
                 self.comp_node(vnode)
+
+    def test_cray_login_node_memory_unit(self):
+        """
+        This test validates that cray mom node resources value remain
+        unchanged before and after adding $alps_client in mom config.
+        """
+        mom_id = self.mom.shortname
+        try:
+            cray_login_node = self.server.status(NODE, id=mom_id)[0]
+            self.mom.unset_mom_config('$alps_client', False)
+            self.reset_nodes(mom_id)
+            pbs_node = self.server.status(NODE, id=mom_id)[0]
+
+        except PbsStatusError:
+            self.assertFalse(True,
+                             "Mom node %s doesn't exist on pbs server"
+                             % (mom_id))
+
+        for rsc, val in pbs_node.iteritems():
+            self.assertTrue(rsc in cray_login_node,
+                            ("%s\t: login node has no rsc %s") %
+                            (mom_id, rsc))
+            rval = cray_login_node[rsc]
+            self.assertEqual(rval, val,
+                             ("%s\t: pbs node has %s=%s but login "
+                              "node has %s=%s") %
+                             (mom_id, rsc, val, rsc, rval))
