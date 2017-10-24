@@ -876,6 +876,9 @@ router_close_handler_inner(int tfd, int error, void *c, int hop)
 			 * to the special connect call, so that the new connection is
 			 * assigned to this same thread instead of new one
 			 */
+			sprintf(tpp_get_logbuf(), "Connecting to pbs_comm %s", r->router_name);
+			tpp_log_func(LOG_INFO, NULL, tpp_get_logbuf());
+
 			thrd = tpp_transport_get_thrd_context(tfd);
 			rc = tpp_transport_connect_spl(r->router_name, tpp_conf->auth_type, r->delay, ctx, &r->conn_fd, thrd);
 			if (rc != 0) {
@@ -1329,17 +1332,39 @@ router_pkt_handler(int tfd, void *data, int len, void *c)
 				}
 
 				if (found == 0) {
+					int fatal = 0;
 					/* add each address to the AVL_cluster_leaves tree
 					 * since this is the primary "routing table"
 					 */
 					for (i = 0; i < l->num_addrs; i++) {
 						if (tpp_tree_add_del(AVL_cluster_leaves, &l->leaf_addrs[i], l, TPP_OP_ADD) != 0) {
-							sprintf(tpp_get_logbuf(), "tfd=%d, Failed to add address %s to cluster-leaves tree",
-									tfd, tpp_netaddr(&l->leaf_addrs[i]));
+							if (tpp_find_tree(AVL_cluster_leaves, &l->leaf_addrs[i])) {
+								int k;
+								sprintf(tpp_get_logbuf(), "tfd=%d, Failed to add address %s to cluster-leaves tree "
+										"since address already exists, dropping duplicate",
+										tfd, tpp_netaddr(&l->leaf_addrs[i]));
+								/* remove this address from the list of addresses of the leaf */
+								for (k = i; k < (l->num_addrs - 1); k++) {
+									l->leaf_addrs[k] = l->leaf_addrs[k + 1];
+								}
+								l->num_addrs--;
+
+							} else {
+								sprintf(tpp_get_logbuf(), "tfd=%d, Failed to add address %s to cluster-leaves tree",
+										tfd, tpp_netaddr(&l->leaf_addrs[i]));
+								fatal++;
+							}
 							tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
-							tpp_unlock(&router_lock);
-							return -1;
 						}
+					}
+
+					if (fatal > 0 || l->num_addrs == 0) {
+						snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ,
+								"tfd=%d, Leaf %s had %s problem adding addresses, rejecting connection",
+								 tfd, tpp_netaddr(&l->leaf_addrs[0]), (fatal > 0)? "fatal" : "all duplicates");
+						tpp_log_func(LOG_CRIT, NULL, tpp_get_logbuf());
+						tpp_unlock(&router_lock);
+						return -1;
 					}
 				}
 
@@ -2041,6 +2066,9 @@ tpp_init_router(struct tpp_config *cnf)
 		}
 		ctx->ptr = r;
 		ctx->type = TPP_ROUTER_NODE;
+
+		sprintf(tpp_get_logbuf(), "Connecting to pbs_comm %s", tpp_conf->routers[j]);
+		tpp_log_func(LOG_INFO, NULL, tpp_get_logbuf());
 
 		if (tpp_transport_connect(tpp_conf->routers[j], tpp_conf->auth_type, 0, ctx, &r->conn_fd) == -1) {
 			tpp_unlock(&router_lock);

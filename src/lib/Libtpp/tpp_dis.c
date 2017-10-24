@@ -721,7 +721,7 @@ DIS_tpp_destroy(int fd)
  * @param[in] pbs_conf - Pointer to the Pbs_config structure
  * @param[out] tpp_conf - The tpp configuration structure duly filled based on
  *			  the input parameters
- * @param[in] nodename - The name of this side of the communication.
+ * @param[in] nodenames - The comma separated list of name of this side of the communication.
  * @param[in] port     - The port at which this side is identified.
  * @param[in] routers  - Array of router addresses ended by a null entry
  *			 router addresses are of the form "host:port"
@@ -741,8 +741,9 @@ DIS_tpp_destroy(int fd)
 int
 set_tpp_config(struct pbs_config *pbs_conf,
 	struct tpp_config *tpp_conf,
-	char *nodename,
-	int port, char *r,
+	char *nodenames,
+	int port,
+	char *r,
 	int compress,
 	int auth_type,
 	void* (*cb_get_ext_auth_data)(int auth_type, int *data_len, char *ebuf, int ebufsz),
@@ -752,6 +753,10 @@ set_tpp_config(struct pbs_config *pbs_conf,
 	int num_routers = 0;
 	char *routers = NULL;
 	char *s, *t, *ctx;
+	char *nm;
+	int len, hlen;
+	char *token, *saveptr, *tmp;
+	char *formatted_names = NULL;
 
 	/* before doing anything else, initialize the key to the tls
 	 * its okay to call this function multiple times since it
@@ -773,7 +778,7 @@ set_tpp_config(struct pbs_config *pbs_conf,
 		}
 	}
 
-	if (!nodename) {
+	if (!nodenames) {
 		snprintf(log_buffer, TPP_LOGBUF_SZ, "TPP node name not set");
 		fprintf(stderr, "%s\n", log_buffer);
 		tpp_log_func(LOG_CRIT, NULL, log_buffer);
@@ -819,18 +824,45 @@ set_tpp_config(struct pbs_config *pbs_conf,
 			tpp_sock_close(sd);
 			return -1;
 		}
-		/* dont close this socket */
+		/* don't close this socket */
 		tpp_set_close_on_exec(sd);
 	}
 
-	tpp_conf->node_name = mk_hostname(nodename, port);
-	if (!tpp_conf->node_name) {
-		snprintf(log_buffer, TPP_LOGBUF_SZ, "Failed to make node name");
-		fprintf(stderr, "%s\n", log_buffer);
-		tpp_log_func(LOG_CRIT, NULL, log_buffer);
-		return -1;
+	/* add port information to the node names and format into a single string as desired by TPP */
+	len = 0;
+	token = strtok_r(nodenames, ",", &saveptr);
+	while (token) {
+		nm = mk_hostname(token, port);
+		if (!nm) {
+			snprintf(log_buffer, TPP_LOGBUF_SZ, "Failed to make node name");
+			fprintf(stderr, "%s\n", log_buffer);
+			tpp_log_func(LOG_CRIT, NULL, log_buffer);
+			return -1;
+		}
+
+		hlen = strlen(nm);
+		if ((tmp = realloc(formatted_names, len + hlen + 2)) == NULL) { /* 2 for command and null char */
+			snprintf(log_buffer, TPP_LOGBUF_SZ, "Failed to make formatted node name");
+			fprintf(stderr, "%s\n", log_buffer);
+			tpp_log_func(LOG_CRIT, NULL, log_buffer);
+			return -1;
+		}
+
+		formatted_names = tmp;
+
+		if (len == 0) {
+			strcpy(formatted_names, nm);
+		} else {
+			strcat(formatted_names, ",");
+			strcat(formatted_names, nm);
+		}
+
+		len += hlen + 2;
+
+		token = strtok_r(NULL, ",", &saveptr);
 	}
 
+	tpp_conf->node_name = formatted_names;
 	tpp_conf->node_type = TPP_LEAF_NODE;
 	tpp_conf->numthreads = 1;
 
@@ -947,7 +979,14 @@ set_tpp_config(struct pbs_config *pbs_conf,
 			p++;
 		}
 
-		tpp_conf->routers[i++] = strdup(q);
+		nm = mk_hostname(q, TPP_DEF_ROUTER_PORT);
+		if (!nm) {
+			snprintf(log_buffer, TPP_LOGBUF_SZ, "Failed to make router name");
+			fprintf(stderr, "%s\n", log_buffer);
+			tpp_log_func(LOG_CRIT, NULL, log_buffer);
+			return -1;
+		}
+		tpp_conf->routers[i++] = nm;
 		tpp_conf->routers[i++] = NULL;
 
 	} else {

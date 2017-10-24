@@ -499,7 +499,7 @@ int tpp_del_fd(int ctl_fd, int fd);
 int tpp_mod_fd(int ctl_fd, int fd, int event);
 
 int tpp_validate_hdr(int tfd, char *pkt_start);
-tpp_addr_t *tpp_get_addresses(char *node_name, int *leaf_addr_count);
+tpp_addr_t *tpp_get_addresses(char *node_names, int *leaf_addr_count);
 tpp_addr_t *tpp_get_local_host(int sock);
 tpp_addr_t *tpp_get_connected_host(int sock);
 int tpp_sock_resolve_ip(tpp_addr_t *addr, char *host, int len);

@@ -632,6 +632,9 @@
 /* Defined when swig is available */
 #undef SWIG
 
+/* Python executable path */
+#undef SYSTEM_PYTHON_PATH
+
 /* Defined when Tcl is available */
 #undef TCL
 

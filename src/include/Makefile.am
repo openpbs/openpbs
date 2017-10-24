@@ -131,5 +131,6 @@ noinst_HEADERS = \
 	user.h \
 	win.h \
 	win_remote_shell.h \
-	work_task.h
+	work_task.h \
+	hnls.h
 

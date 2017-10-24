@@ -824,25 +824,28 @@ static int
 are_we_primary()
 {
 	char id[] = "pbs_sched";
-	char server_host[PBS_MAXHOSTNAME+1];
-	char hn1[PBS_MAXHOSTNAME+1];
+        char server_host[PBS_MAXHOSTNAME+1];
+        char hn1[PBS_MAXHOSTNAME+1];
 
-	if (pbs_conf.pbs_leaf_name) {
-		char *endp;
-		snprintf(server_host, sizeof(server_host), "%s", pbs_conf.pbs_leaf_name);
-		endp = strchr(server_host, ':');
-		if (endp)
-			*endp = '\0';
-	} else {
-		if ((gethostname(server_host, (sizeof(server_host) - 1)) == -1) ||
-			(get_fullhostname(server_host, server_host, (sizeof(server_host) - 1)) == -1)) {
-			log_err(-1, id, "Unable to get my host name");
-			return -1;
-		}
-	}
-	strncpy(scheduler_name, server_host, sizeof(scheduler_name));
-	scheduler_name [ sizeof(scheduler_name) -1 ] = '\0';
-	/* both secondary and primary should be set or neither set */
+        if (pbs_conf.pbs_leaf_name) {
+                char *endp;
+                snprintf(server_host, sizeof(server_host), "%s", pbs_conf.pbs_leaf_name);
+                endp = strchr(server_host, ','); /* find the first name */
+                if (endp)
+                        *endp = '\0';
+                endp = strchr(server_host, ':'); /* cut out the port */
+                if (endp)
+                        *endp = '\0';
+        } else {
+                if ((gethostname(server_host, (sizeof(server_host) - 1)) == -1) ||
+                        (get_fullhostname(server_host, server_host, (sizeof(server_host) - 1)) == -1)) {
+                        log_err(-1, id, "Unable to get my host name");
+                        return -1;
+                }
+        }
+        strncpy(scheduler_name, server_host, sizeof(scheduler_name));
+        scheduler_name [ sizeof(scheduler_name) -1 ] = '\0';
+        /* both secondary and primary should be set or neither set */
 	if ((pbs_conf.pbs_secondary == NULL) && (pbs_conf.pbs_primary == NULL))
 		return 1;
 	if ((pbs_conf.pbs_secondary == NULL) || (pbs_conf.pbs_primary == NULL))
@@ -1500,32 +1503,53 @@ main(int argc, char *argv[])
 
 	rpp_fd = -1;
 	if (pbs_conf.pbs_use_tcp == 1) {
-		char *nodename;
 		fd_set selset;
 		struct timeval tv;
+		char *nodename = NULL;
 
-		if (pbs_conf.pbs_leaf_name)
-			nodename = pbs_conf.pbs_leaf_name;
-		else
-			nodename = host;
+		sprintf(log_buffer, "Out of memory");
+		if (pbs_conf.pbs_leaf_name) {
+			char *p;
+			nodename = strdup(pbs_conf.pbs_leaf_name);
+
+			/* reset pbs_leaf_name to only the first leaf name with port */
+			p = strchr(pbs_conf.pbs_leaf_name, ','); /* keep only the first leaf name */
+			if (!p)
+				*p = '\0';
+			p = strchr(pbs_conf.pbs_leaf_name, ':'); /* cut out the port */
+			if (!p)
+				*p = '\0';
+		} else {
+			nodename = get_all_hostnames(log_buffer);
+		}
+		if (!nodename) {
+			log_err(-1, "pbsd_main", log_buffer);
+			(void) sprintf(log_buffer, "Unable to determine TPP node name");
+			fprintf(stderr, "%s", log_buffer);
+			return (3);
+		}
 
 		/* set tpp function pointers */
 		set_tpp_funcs(log_tppmsg);
 
 		if (pbs_conf.auth_method == AUTH_RESV_PORT) {
-		rc = set_tpp_config(&pbs_conf, &tpp_conf, nodename, pbs_conf.scheduler_service_port,
-							pbs_conf.pbs_leaf_routers, pbs_conf.pbs_use_compression,
-							TPP_AUTH_RESV_PORT, NULL, NULL);
+				rc = set_tpp_config(&pbs_conf, &tpp_conf, nodename, pbs_conf.scheduler_service_port,
+												pbs_conf.pbs_leaf_routers, pbs_conf.pbs_use_compression,
+												TPP_AUTH_RESV_PORT, NULL, NULL);
 		} else {
-			/* for all non-resv-port based authentication use a callback from TPP */
-			rc = set_tpp_config(&pbs_conf, &tpp_conf, nodename, pbs_conf.scheduler_service_port,
-								pbs_conf.pbs_leaf_routers, pbs_conf.pbs_use_compression,
-								TPP_AUTH_EXTERNAL, get_ext_auth_data, validate_ext_auth_data);
+				/* for all non-resv-port based authentication use a callback from TPP */
+				rc = set_tpp_config(&pbs_conf, &tpp_conf, nodename, pbs_conf.scheduler_service_port,
+														pbs_conf.pbs_leaf_routers, pbs_conf.pbs_use_compression,
+														TPP_AUTH_EXTERNAL, get_ext_auth_data, validate_ext_auth_data);
 		}
+
+		free(nodename);
+
 		if (rc == -1) {
 			fprintf(stderr, "Error setting TPP config\n");
 			return -1;
 		}
+
 		if ((rpp_fd = tpp_init(&tpp_conf)) == -1) {
 			fprintf(stderr, "rpp_init failed\n");
 			return -1;

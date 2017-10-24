@@ -45,5 +45,6 @@ libnet_a_SOURCES = \
 	net_server.c \
 	net_set_clse.c \
 	port_forwarding.c \
-	rm.c
+	rm.c \
+	hnls.c
 

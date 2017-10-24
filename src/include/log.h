@@ -57,7 +57,7 @@
  */
 
 #define LOG_BUF_SIZE		4096
-
+#define INET_FAMILY_SIZE 	10
 /* The following macro assist in sharing code between the Server and Mom */
 #define LOG_EVENT log_event
 

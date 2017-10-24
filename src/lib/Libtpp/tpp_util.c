@@ -1031,7 +1031,7 @@ tpp_send_ctl_msg(int fd, int code, tpp_addr_t *src, tpp_addr_t *dest, unsigned i
  *	Combine the host and port parameters to a single string.
  *
  * @param[in] - host - hostname
- * @param[in] - port - port
+ * @param[in] - port - add port if not already present
  *
  * @return	The combined string with the host:port
  * @retval	NULL - Failure (out of memory)
@@ -1047,13 +1047,12 @@ char *
 mk_hostname(char *host, int port)
 {
 	char *node_name = malloc(strlen(host) + 10);
-	if (!node_name)
-		return NULL;
-	if (port == -1)
-		sprintf(node_name, "%s", host);
-	else
-		sprintf(node_name, "%s:%d", host, port);
-
+	if (node_name) {
+		if (strchr(host, ':') || port == -1)
+			strcpy(node_name, host);
+		else
+			sprintf(node_name, "%s:%d", host, port);
+	}
 	return node_name;
 }
 
@@ -1677,7 +1676,7 @@ tpp_set_addr_cache(char *host, tpp_addr_t *addrs, int count)
 /**
  * @brief Get a list of addresses for a given hostname
  *
- * @param[in] node_name - host:port notation of host
+ * @param[in] node_names - comma separated hostnames, each of format host:port
  * @param[out] count - return address count
  *
  * @return        - Array of addresses in tpp_addr structures
@@ -1685,31 +1684,69 @@ tpp_set_addr_cache(char *host, tpp_addr_t *addrs, int count)
  * @retval  NULL  - call failed
  *
  * @par MT-safe: Yes
+ * 
  **/
 tpp_addr_t *
-tpp_get_addresses(char *node_name, int *count)
+tpp_get_addresses(char *names, int *count)
 {
-	int port;
-	char *host;
 	tpp_addr_t *addrs = NULL;
-	int i;
+	tpp_addr_t *addrs_tmp = NULL;
+	int tot_count = 0;
+	int tmp_count;
+	int i, j;
+	char *token;
+	char *saveptr;
+	int port;
+	char *p;
+	char *node_names;
 
 	*count = 0;
-
-	/* parse our name and port */
-	host = tpp_parse_hostname(node_name, &port);
-
-	addrs = tpp_sock_resolve_host(host, count); /* get all ipv4, ipv6 addresses */
-	if (!addrs) {
-		free(host);
+	if ((node_names = strdup(names)) == NULL) {
+		tpp_log_func(LOG_CRIT, __func__, "Out of memory allocating address block");
 		return NULL;
 	}
 
-	for(i = 0; i < *count; i++)
-		addrs[i].port = htons(port);
+	token = strtok_r(node_names, ",", &saveptr);
+	while (token) {
+		/* parse port from host name */
+		if ((p = strchr(token, ':')) == NULL) {
+			free(addrs);
+			free(node_names);
+			return NULL;
+		}
+		
+		*p = '\0';
+		port = atol(p+1);
+		
+		addrs_tmp = tpp_sock_resolve_host(token, &tmp_count); /* get all ipv4 addresses */
+		if (addrs_tmp) {
+			if ((addrs = realloc(addrs, (tot_count + tmp_count) * sizeof(tpp_addr_t))) == NULL) {
+				free(addrs);
+				free(node_names);
+				tpp_log_func(LOG_CRIT, __func__, "Out of memory allocating address block");
+				return NULL;
+			}
 
-	free(host);
+			for (i = 0; i < tmp_count; i++) {
+				for (j = 0; j < tot_count; j++) {
+					if (memcmp(&addrs[j].ip, &addrs_tmp[i].ip, sizeof(addrs_tmp[i].ip)) == 0)
+						break;
+				}
 
+				/* add if duplicate not found already */
+				if (j == tot_count) {
+					memmove(&addrs[tot_count], &addrs_tmp[i], sizeof(tpp_addr_t));
+					addrs[tot_count].port = htons(port);
+					tot_count++;
+				}
+			}
+		}
+
+		token = strtok_r(NULL, ",", &saveptr);
+	}
+	free(node_names);
+
+	*count = tot_count;
 	return addrs; /* free @ caller */
 }
 

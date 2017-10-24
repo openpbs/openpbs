@@ -145,6 +145,7 @@ pbs_comm_LDADD = \
 	$(top_builddir)/src/lib/Libtpp/libtpp.a \
 	$(top_builddir)/src/lib/Liblog/liblog.a \
 	$(top_builddir)/src/lib/Libutil/libutil.a \
+	$(top_builddir)/src/lib/Libnet/libnet.a \
 	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
 	-lpthread \
 	@socket_lib@

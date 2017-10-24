@@ -69,6 +69,7 @@
 #include "pbs_ifl.h"
 #include "pbs_internal.h"
 #include "pbs_version.h"
+#include "hnls.h"
 #if SYSLOG
 #include <syslog.h>
 #endif
@@ -332,6 +333,60 @@ log_init(void)
 #endif
 }
 
+/**
+ * @brief
+ *      Add interface information to log
+ *
+ * @par Side Effects:
+ *      None
+ *
+ * @par MT-safe: Yes
+ *
+ */
+
+void
+log_add_if_info()
+{
+	char tbuf[LOG_BUF_SIZE] = {0};
+	char inet_family[INET_FAMILY_SIZE], msg[LOG_BUF_SIZE] = {0}, temp_msg[LOG_BUF_SIZE] = {0};
+	int i;
+	struct net_if_info *ni, *curr, *temp;
+	
+	ni = (struct net_if_info*)malloc(sizeof(struct net_if_info));
+
+	get_if_info(ni, msg);
+
+	curr = ni;
+
+	if(strlen(msg)) { /* Adding error message to log */
+		strncpy(tbuf, msg, LOG_BUF_SIZE - 1);
+		log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, tbuf);
+		return;
+	}
+	while(curr) { /* Adding info to log */
+		snprintf(tbuf, LOG_BUF_SIZE, "%s interface %s: ", curr->iffamily, curr->ifname);
+		
+		for(i=0;curr->ifhostnames[i];i++){
+			snprintf(temp_msg, LOG_BUF_SIZE, "%s ", curr->ifhostnames[i]);
+			strncat(tbuf, temp_msg, LOG_BUF_SIZE);
+		}
+		log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, tbuf);
+		curr = curr->next;
+	}
+	curr = ni;
+	while (curr) { /* Freeing memory from malloc */
+		temp = curr; 
+		curr = curr -> next;
+		free(temp->iffamily);
+		free(temp->ifname);
+		for(i=0;temp->ifhostnames[i];i++)
+			free(temp->ifhostnames[i]);
+		free(temp->ifhostnames);
+		free(temp);
+		temp = NULL;
+	}
+	return;
+}
 
 /**
  *
