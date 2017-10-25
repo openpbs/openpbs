@@ -125,23 +125,10 @@ int calc_fair_share_perc(group_info *root, int shares);
 void update_usage_on_run(resource_resv *resresv);
 
 /*
- *      calculate_usage_value - calcualte a value that represents the usage
- *                              information
- */
-usage_t calculate_usage_value(resource_req *resreq);
-
-
-/*
  *      decay_fairshare_tree - decay the usage information kept in the fair
  *                             share tree
  */
 void decay_fairshare_tree(group_info *root);
-
-/*
- *      extract_fairshare - extract the first job from the user with the
- *                          least percentage / usage ratio
- */
-resource_resv *extract_fairshare(resource_resv **jobs);
 
 /*
  *      write_usage - write the usage information to the usage file

@@ -71,12 +71,9 @@ int cmp_placement_sets(const void *v1, const void *v2);
 int cmp_low_load(const void *v1, const void *v2);
 
 /*
- * cmp_fairshare - compare based on extract_fairshare()
- * note: extract_fairshare() returns 1 or -1 , there is no equal
- *
+ * cmp_fairshare - compare based on compare_path()
  */
 int cmp_fairshare(const void *j1, const void *j2);
-
 
 /*
  *

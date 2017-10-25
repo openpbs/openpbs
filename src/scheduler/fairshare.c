@@ -53,9 +53,7 @@
  * 	calc_fair_share_perc()
  * 	test_perc()
  * 	update_usage_on_run()
- * 	calculate_usage_value()
  * 	decay_fairshare_tree()
- * 	extract_fairshare()
  * 	compare_path()
  * 	print_fairshare()
  * 	write_usage()
@@ -161,7 +159,7 @@ group_info *
 find_group_info(char *name, group_info *root)
 {
 	group_info *ginfo;		/* the found group */
-	if (root == NULL || !strcmp(name, root->name))
+	if (root == NULL || name == NULL || !strcmp(name, root->name))
 		return root;
 
 	ginfo = find_group_info(name, root->sibling);
@@ -173,7 +171,7 @@ find_group_info(char *name, group_info *root)
 
 /**
  * @brief
- *		find_alloc_ginfo - trys to find a ginfo in the fair share tree.  If it
+ *		find_alloc_ginfo - tries to find a ginfo in the fair share tree.  If it
  *			  can not find the ginfo, then allocate a new one and
  *			  add it to the "unknown" group
  *
@@ -187,6 +185,9 @@ group_info *
 find_alloc_ginfo(char *name, group_info *root)
 {
 	group_info *ginfo;		/* the found group or allocated group */
+
+	if (name == NULL || root == NULL)
+		return NULL;
 
 	ginfo = find_group_info(name, root);
 
@@ -214,7 +215,7 @@ new_group_info()
 	group_info *new;		/* the new group */
 
 	if ((new = malloc(sizeof(group_info))) == NULL) {
-		log_err(errno, "new_group_info", MEM_ERR_MSG);
+		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL ;
 	}
 
@@ -270,8 +271,8 @@ parse_group(char *fname, group_info *root)
 	int linenum = 0;		/* current line number in the file */
 
 	if ((fp = fopen(fname, "r")) == NULL) {
-		sprintf(log_buffer, "Error opening file %s", fname);
-		log_err(errno, "parse_group", log_buffer);
+		snprintf(log_buffer, sizeof(log_buffer), "Error opening file %s", fname);
+		log_err(errno, __func__, log_buffer);
 		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, "", "Warning: resource group file error, fair share will not work");
 		return 0;
 	}
@@ -482,7 +483,7 @@ update_usage_on_run(resource_resv *resresv)
 	if (resresv == NULL)
 		return;
 
-	if (!resresv->is_job || resresv->job ==NULL)
+	if (!resresv->is_job || resresv->job == NULL)
 		return;
 
 	u = formula_evaluate(conf.fairshare_res, resresv, resresv->resreq);
@@ -496,48 +497,6 @@ update_usage_on_run(resource_resv *resresv)
 	else
 		schdlog(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, resresv->name,
 			"Job doesn't have a group_info ptr set, usage not updated.\n");
-}
-
-/**
- * @brief
- *		calculate_usage_value - calcualte a value that represents the usage
- *				information
- *
- * @param[in]	resreq	-	a resource_req list that holds the resource info
- *
- * @return	the calculated value
- *
- * @par NOTE:	currently it will only return the number of cpu seconds used.
- *	      This function can be more complicated
- *
- */
-usage_t
-calculate_usage_value(resource_req *resreq)
-{
-	resource_req *tmp;
-	sch_resource_t wt;
-
-	if (resreq != NULL) {
-		tmp = find_resource_req_by_str(resreq, conf.fairshare_res);
-		if (tmp != NULL)
-			return tmp->amount;
-		else if (!strcmp(conf.fairshare_res, "ncpus*walltime")) {
-			tmp = find_resource_req(resreq, getallres(RES_WALLTIME));
-			if (tmp != NULL) {
-				wt = tmp->amount;
-				tmp = find_resource_req(resreq, getallres(RES_NCPUS));
-				if (tmp != NULL)
-					return wt * tmp->amount;
-			}
-		}
-		else {
-			tmp = find_resource_req(resreq, getallres(RES_CPUT));
-			if (tmp != NULL)
-				return tmp->amount;
-		}
-	}
-
-	return 0;
 }
 
 /**
@@ -562,66 +521,6 @@ decay_fairshare_tree(group_info *root)
 	root->usage *= conf.fairshare_decay_factor;
 	if (root->usage == 0)
 		root->usage = 1;
-}
-
-/**
- * @brief
- *		extract_fairshare - extract the first job from the user with the
- *			    least usage / percentage  ratio
- *
- * @param[in]	jobs	-	array of jobs to search through
- *
- * @return	the found job
- * @retval	NULL on error
- *
- */
-resource_resv *
-extract_fairshare(resource_resv **jobs)
-{
-	resource_resv *good = NULL;	/* job with the min usage / percentage */
-	int cmp;			/* comparison value of two jobs */
-	int i;
-#if defined(NAS) && NAS_DEBUG /* localmod 031 */
-	char *whoami = "extract_fairshare";
-#endif /* localmod 031 */
-
-	if (jobs == NULL)
-		return NULL;
-
-	for (i = 0; jobs[i] != NULL; i++) {
-		if (jobs[i]->is_job && jobs[i]->job !=NULL) {
-			if (!jobs[i]->can_not_run && in_runnable_state(jobs[i])) {
-#ifdef NAS /* localmod 041 */
-				if (good == NULL) {
-					good = jobs[i];
-					continue;
-				}
-#else
-				if (good == NULL)
-					good = jobs[i];
-#endif
-#ifdef NAS /* localmod 041 */
-				/*
-				 * Restrict share comparisons to same job sort level.
-				 */
-				if (multi_sort(good, jobs[i]) != 0) {
-#if NAS_DEBUG /* localmod 031 */
-					printf("%s: stopped at %s vs. %s\n",
-						whoami, good->name, jobs[i]->name);
-#endif /* localmod 031 */
-					break;
-				}
-#endif /* localmod 041 */
-				if (good->job->ginfo != jobs[i]->job->ginfo) {
-					cmp = compare_path(good->job->ginfo->gpath,
-						jobs[i]->job->ginfo->gpath);
-					if (cmp > 0)
-						good = jobs[i];
-				}
-			}
-		}
-	}
-	return good;
 }
 
 /**
@@ -884,9 +783,9 @@ read_usage_v1(FILE *fp, group_info *root)
  * @brief
  * 		read version 2 usage file
  *
- * @param[in]	fp    - the file pointer to the open file
- * @param[in]	flags	-	flags to check whether to trim or not.
- * @param[in]	root  - root of the fairshare tree
+ * @param[in]	fp	- the file pointer to the open file
+ * @param[in]	flags	- flags to check whether to trim or not.
+ * @param[in]	root	- root of the fairshare tree
  *
  *	@retval 1 success
  *	@retval 0 failure
@@ -946,7 +845,7 @@ struct group_path *new_group_path()
 	struct group_path *new;
 
 	if ((new = malloc(sizeof(struct group_path))) == NULL) {
-		log_err(errno, "new_group_path", MEM_ERR_MSG);
+		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
 

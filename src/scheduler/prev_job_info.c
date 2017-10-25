@@ -94,22 +94,21 @@ create_prev_job_info(resource_resv **jobs, int size)
 	if (local_size == 0)
 		return NULL;
 
-	if ((new = (prev_job_info *) malloc(sizeof(prev_job_info)  * local_size)) == NULL) {
-		log_err(errno, "create_prev_job_info", "Error allocating memory");
+	if ((new = (prev_job_info *) calloc(local_size, sizeof(prev_job_info))) == NULL) {
+		log_err(errno, __func__, MEM_ERR_MSG);
 		return NULL;
 	}
 
 	for (i = 0; jobs[i] != NULL; i++) {
-		if (jobs[i]->job == NULL)
-			continue;
+		if(jobs[i]->job != NULL) {
+			new[i].name = jobs[i]->name;
+			new[i].resused = jobs[i]->job->resused;
+			new[i].entity_name = string_dup(jobs[i]->job->ginfo->name);
 
-		new[i].name = jobs[i]->name;
-		new[i].resused = jobs[i]->job->resused;
-		new[i].entity_name = string_dup(jobs[i]->job->ginfo->name);
-
-		/* so the memory is not freed at the end of the scheduling cycle */
-		jobs[i]->name = NULL;
-		jobs[i]->job->resused = NULL;
+			/* so the memory is not freed at the end of the scheduling cycle */
+			jobs[i]->name = NULL;
+			jobs[i]->job->resused = NULL;
+		}
 	}
 
 	return new;

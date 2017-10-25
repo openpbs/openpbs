@@ -370,34 +370,36 @@ init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
 			remove(USAGE_TOUCH);
 			resort = 1;
 		}
-		if (last_running != NULL) {
+		if (last_running != NULL && sinfo->running_jobs != NULL) {
 			/* add the usage which was accumulated between the last cycle and this
 			 * one and calculate a new value
 			 */
 
-			for (i = 0; i < last_running_size; i++) {
-				user = find_alloc_ginfo(last_running[i].entity_name,
-							sinfo->fairshare->root);
+			for (i = 0; i < last_running_size ; i++) {
+				if (last_running[i].name != NULL) {
+					user = find_alloc_ginfo(last_running[i].entity_name,
+								sinfo->fairshare->root);
 
-				if (sinfo->running_jobs != NULL) {
-					for (j = 0; sinfo->running_jobs[j] != NULL &&
-						strcmp(last_running[i].name, sinfo->running_jobs[j]->name); j++)
+					if (user != NULL) {
+						for (j = 0; sinfo->running_jobs[j] != NULL &&
+						     strcmp(last_running[i].name, sinfo->running_jobs[j]->name); j++)
 							;
 
-					if (sinfo->running_jobs[j] != NULL &&
-						sinfo->running_jobs[j]->job != NULL) {
-						/* just incase the delta is negative just add 0 */
-						delta = formula_evaluate(conf.fairshare_res, sinfo->running_jobs[j], sinfo->running_jobs[j]->job->resused) -
-							formula_evaluate(conf.fairshare_res, sinfo->running_jobs[j], last_running[i].resused);
+						if (sinfo->running_jobs[j] != NULL &&
+							sinfo->running_jobs[j]->job != NULL) {
+							/* just in case the delta is negative just add 0 */
+							delta = formula_evaluate(conf.fairshare_res, sinfo->running_jobs[j], sinfo->running_jobs[j]->job->resused) -
+								formula_evaluate(conf.fairshare_res, sinfo->running_jobs[j], last_running[i].resused);
 
-						delta = IF_NEG_THEN_ZERO(delta);
+							delta = IF_NEG_THEN_ZERO(delta);
 
-						gpath = user->gpath;
-						while (gpath != NULL) {
-							gpath->ginfo->usage += delta;
-							gpath = gpath->next;
+							gpath = user->gpath;
+							while (gpath != NULL) {
+								gpath->ginfo->usage += delta;
+								gpath = gpath->next;
+							}
+							resort = 1;
 						}
-						resort = 1;
 					}
 				}
 			}
