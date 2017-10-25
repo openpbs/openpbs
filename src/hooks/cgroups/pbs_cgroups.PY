@@ -2390,7 +2390,7 @@ class CgroupUtils:
                 pbs.logmsg(pbs.EVENT_DEBUG4, "Insufficient ngpus: %s/%s" %
                            (ngpus, gpus))
                 return {}
-            names, devices = self.__assign_devices('gpu', gpus[:tmp_ngpus],
+            names, devices = self.__assign_devices('gpu', gpus[:ngpus],
                                                    ngpus, node)
             for val in names:
                 assigned['device_names'].append(val)
@@ -2405,7 +2405,7 @@ class CgroupUtils:
                            "%s: requested:%s, assigned:%s" %
                            (socketlist, req_mem, available['memory']))
                 return {}
-            if mem not in assigned:
+            if 'mem' not in assigned:
                 assigned['mem'] = 0
             assigned['mem'] += req_mem
         return assigned
