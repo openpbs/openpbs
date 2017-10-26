@@ -173,3 +173,30 @@ class TestReservations(TestFunctional):
 
         self.server.expect(JOB, {'job_state': 'Q'}, id=j1id)
         self.server.expect(JOB, {'job_state': 'Q'}, id=j2id)
+
+    def test_sched_cycle_starts_on_resv_end(self):
+        """
+        This test checks whether the sched cycle gets started
+        when the advance reservation ends.
+        """
+        now = int(time.time())
+        a = {'Resource_List.select': "1:ncpus=2",
+             'reserve_start': now + 5,
+             'reserve_end': now + 12,
+             }
+        r = Reservation(TEST_USER, a)
+        rid = self.server.submit(r)
+        attr = {'Resource_List.walltime': '00:00:20'}
+        j = Job(TEST_USER, attr)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {ATTR_state: 'Q'},
+                           id=jid)
+        msg = "Job would conflict with reservation or top job"
+        self.server.expect(JOB, {ATTR_comment: "Not Running: " + msg}, id=jid)
+        self.scheduler.log_match(
+            jid + ";" + msg,
+            max_attempts=30)
+        self.server.log_match(
+            rid.split('.')[0] + ";deleted at request of pbs_server",
+            id=rid.split('.')[0], max_attempts=30)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)

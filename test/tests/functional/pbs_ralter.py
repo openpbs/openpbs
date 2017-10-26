@@ -52,6 +52,7 @@ class TestPbsResvAlter(TestFunctional):
     PBSE_STDG_RESV_OCCR_CONFLICT = 75
     PBSE_INCORRECT_USAGE = 2
     fmt = "%a %b %d %H:%M:%S %Y"
+    bu = BatchUtils()
 
     def setUp(self):
 
@@ -196,7 +197,8 @@ class TestPbsResvAlter(TestFunctional):
         if duration > 0:
             self.logger.info("Waiting for reservation to finish.")
         attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
-        self.server.expect(RESV, attrs, id=rid, offset=duration-5, interval=2)
+        self.server.expect(RESV, attrs, id=rid,
+                           offset=(duration - 5), interval=2)
 
     def check_standing_resv_second_occurrence(self, rid, start, end):
         """
@@ -217,10 +219,9 @@ class TestPbsResvAlter(TestFunctional):
         next_start = start + 3600
         next_end = end + 3600
         duration = end - start
-        bu = BatchUtils()
-        next_start_conv = bu.convert_seconds_to_resvtime(
+        next_start_conv = self.bu.convert_seconds_to_resvtime(
             next_start, self.fmt)
-        next_end_conv = bu.convert_seconds_to_resvtime(
+        next_end_conv = self.bu.convert_seconds_to_resvtime(
             next_end, self.fmt)
         attrs = {'reserve_start': next_start_conv,
                  'reserve_end': next_end_conv,
@@ -298,17 +299,16 @@ class TestPbsResvAlter(TestFunctional):
         new_start = start
         new_end = end
         attrs = {}
-        bu = BatchUtils()
 
         if alter_s:
             new_start = start + shift
-            new_start_conv = bu.convert_seconds_to_resvtime(
+            new_start_conv = self.bu.convert_seconds_to_resvtime(
                 new_start)
             attrs['reserve_start'] = new_start_conv
 
         if alter_e:
             new_end = end + shift
-            new_end_conv = bu.convert_seconds_to_resvtime(new_end)
+            new_end_conv = self.bu.convert_seconds_to_resvtime(new_end)
             attrs['reserve_end'] = new_end_conv
 
         if interactive > 0:
@@ -352,12 +352,12 @@ class TestPbsResvAlter(TestFunctional):
 
             if whichMessage == 1:
                 if alter_s:
-                    new_start_conv = bu.convert_seconds_to_resvtime(
+                    new_start_conv = self.bu.convert_seconds_to_resvtime(
                         new_start, self.fmt)
                     attrs['reserve_start'] = new_start_conv
 
                 if alter_e:
-                    new_end_conv = bu.convert_seconds_to_resvtime(
+                    new_end_conv = self.bu.convert_seconds_to_resvtime(
                         new_end, self.fmt)
                     attrs['reserve_end'] = new_end_conv
 
@@ -390,11 +390,22 @@ class TestPbsResvAlter(TestFunctional):
                 msg = "Resv;" + r + ";Reservation alter confirmed"
             else:
                 msg = "Resv;" + r + ";Reservation alter denied"
-
-            lines = self.server.log_match(msg, n='ALL', allmatch=True,
-                                          interval=2, max_attempts=30)
-            self.assertEqual(len(lines), sequence)
-
+            interval = 0.5
+            max_attempts = 20
+            for attempts in range(1, max_attempts + 1):
+                lines = self.server.log_match(msg, n='ALL', allmatch=True,
+                                              max_attempts=5)
+                info_msg = "log_match: searching " + \
+                    str(sequence) + " sequence of message: " + \
+                    msg + ": Got: " + str(len(lines))
+                self.logger.info(info_msg)
+                if len(lines) == sequence:
+                    break
+                else:
+                    attempts = attempts + 1
+                    time.sleep(interval)
+            if attempts > max_attempts:
+                raise PtlLogMatchError(rc=1, rv=False, msg=info_msg)
             return new_start, new_end
         else:
             try:
@@ -1128,3 +1139,151 @@ class TestPbsResvAlter(TestFunctional):
             offset, duration, select="256:ncpus=4")
 
         self.alter_a_reservation(rid, start, end, shift, alter_s=True)
+
+    def test_alter_advance_resv_boundary_values(self):
+        """
+        This test checks the alter of start and end times at the boundary
+        values for advance reservation.
+        """
+        duration = 30
+        shift = 5
+        offset = 5
+
+        rid, start, end = self.submit_and_confirm_reservation(
+            offset, duration)
+
+        start, end = self.alter_a_reservation(
+            rid, start, end, shift, alter_e=True, sequence=1)
+        start, end = self.alter_a_reservation(
+            rid, start, end, -shift, alter_e=True, sequence=2)
+        start, end = self.alter_a_reservation(
+            rid, start, end, shift, alter_s=True, sequence=3)
+        self.alter_a_reservation(
+            rid, start, end, -shift, alter_s=True, sequence=4)
+
+    def test_alter_standing_resv_boundary_values(self):
+        """
+        This test checks the alter of start and end times at the boundary
+        values for standing reservation.
+        """
+        duration = 30
+        shift = 5
+        offset = 5
+
+        rid, start, end = self.submit_and_confirm_reservation(
+            offset, duration, standing=True)
+
+        start, end = self.alter_a_reservation(
+            rid, start, end, shift, alter_e=True, sequence=1)
+        start, end = self.alter_a_reservation(
+            rid, start, end, -shift, alter_e=True, sequence=2)
+        start, end = self.alter_a_reservation(
+            rid, start, end, shift, alter_s=True, sequence=3)
+        self.alter_a_reservation(
+            rid, start, end, -shift, alter_s=True, sequence=4)
+
+    def test_alter_degraded_resv_mom_down(self):
+        """
+        This test checks the alter of start and end times of reservations
+        when mom is down.
+        """
+        duration = 30
+        shift = 5
+        offset = 60
+
+        rid1, start1, end1 = self.submit_and_confirm_reservation(
+            offset, duration, select="1:ncpus=2")
+        rid2, start2, end2 = self.submit_and_confirm_reservation(
+            offset, duration, select="1:ncpus=2", standing=True)
+        self.mom.stop()
+        msg = 'mom is not down'
+        self.assertFalse(self.mom.isUp(), msg)
+        attrs = {'reserve_state': (MATCH_RE, 'RESV_DEGRADED|10')}
+        self.server.expect(RESV, attrs, id=rid1)
+        self.server.expect(RESV, attrs, id=rid2)
+        self.alter_a_reservation(rid1, start1, end1, shift, alter_s=True,
+                                 alter_e=True, whichMessage=3, sequence=1)
+        self.alter_a_reservation(rid2, start2, end2, shift, alter_s=True,
+                                 alter_e=True, whichMessage=3, sequence=1)
+        self.alter_a_reservation(rid1, start1, end1, shift, alter_s=True,
+                                 alter_e=True, whichMessage=3, interactive=2,
+                                 sequence=2)
+        self.alter_a_reservation(rid2, start2, end2, shift, alter_s=True,
+                                 alter_e=True, whichMessage=3, interactive=2,
+                                 sequence=2)
+        self.mom.start()
+        # test same for node offline case
+        attrs1 = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, attrs1, id=rid1)
+        self.server.expect(RESV, attrs1, id=rid2)
+        resv_node1 = self.server.status(RESV, 'resv_nodes', id=rid1)[0][
+            'resv_nodes'].split(':')[0].split('(')[1]
+        resv_node2 = self.server.status(RESV, 'resv_nodes', id=rid2)[0][
+            'resv_nodes'].split(':')[0].split('(')[1]
+        if resv_node1 is resv_node2:
+            self.server.manager(MGR_CMD_SET, NODE, {
+                                'state': "offline"}, id=resv_node1)
+        else:
+            self.server.manager(MGR_CMD_SET, NODE, {
+                                'state': "offline"}, id=resv_node1)
+            self.server.manager(MGR_CMD_SET, NODE, {
+                                'state': "offline"}, id=resv_node2)
+        self.server.expect(RESV, attrs, id=rid1)
+        self.server.expect(RESV, attrs, id=rid2)
+        self.alter_a_reservation(rid1, start1, end1, shift, alter_s=True,
+                                 alter_e=True, whichMessage=3, sequence=3)
+        self.alter_a_reservation(rid2, start2, end2, shift, alter_s=True,
+                                 alter_e=True, whichMessage=3, sequence=3)
+        self.alter_a_reservation(rid1, start1, end1, shift, alter_s=True,
+                                 alter_e=True, whichMessage=3, interactive=2,
+                                 sequence=4)
+        self.alter_a_reservation(rid2, start2, end2, shift, alter_s=True,
+                                 alter_e=True, whichMessage=3, interactive=2,
+                                 sequence=4)
+
+    def test_alter_resv_name(self):
+        """
+        This test checks the alter of reservation name.
+        """
+        duration = 30
+        offset = 5
+
+        rid1 = self.submit_and_confirm_reservation(
+            offset, duration)
+        rid2 = self.submit_and_confirm_reservation(
+            offset, duration, standing=True)
+        attr1 = {ATTR_N: "Adv_Resv"}
+        self.server.alterresv(rid1[0], attr1)
+        attr2 = {ATTR_N: "Std_Resv"}
+        self.server.alterresv(rid2[0], attr2)
+        attr1 = {'Reserve_Name': "Adv_Resv"}
+        attr2 = {'Reserve_Name': "Std_Resv"}
+        self.server.expect(RESV, attr1, id=rid1[0])
+        self.server.expect(RESV, attr2, id=rid2[0])
+
+    def test_alter_user_permission(self):
+        """
+        This test checks the user permissions for pbs_ralter.
+        """
+        duration = 30
+        offset = 5
+        shift = 10
+
+        rid1, start1, end1 = self.submit_and_confirm_reservation(
+            offset, duration)
+        rid2, start2, end2 = self.submit_and_confirm_reservation(
+            offset, duration, standing=True)
+        new_start1 = self.bu.convert_seconds_to_resvtime(start1 + shift)
+        new_start2 = self.bu.convert_seconds_to_resvtime(start2 + shift)
+        new_end1 = self.bu.convert_seconds_to_resvtime(end1 + shift)
+        new_end2 = self.bu.convert_seconds_to_resvtime(end2 + shift)
+        try:
+            attr = {'reserve_start': new_start1, 'reserve_end': new_end1}
+            self.server.alterresv(rid1, attr, runas=TEST_USER1)
+        except PbsResvAlterError as e:
+            self.assertTrue("Unauthorized Request" in e.msg[0])
+        try:
+            attr = {'reserve_start': new_start2, 'reserve_end': new_end2}
+            self.server.alterresv(rid2, attr, runas=TEST_USER1)
+        except PbsResvAlterError as e:
+            self.assertTrue("Unauthorized Request" in e.msg[0])
