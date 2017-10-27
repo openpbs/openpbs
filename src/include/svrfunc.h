@@ -190,6 +190,7 @@ extern int   numindex_to_offset(job *parent, int iindx);
 #ifndef PBS_MOM
 extern void svr_setjob_histinfo(job *pjob, histjob_type type);
 extern void svr_histjob_update(job *pjob, int newstate, int newsubstate);
+extern char *form_attr_comment(const char *template, const char *execvnode);
 extern void complete_running(job *);
 extern void am_jobs_add(job *);
 extern int  was_job_alteredmoved(job *);
