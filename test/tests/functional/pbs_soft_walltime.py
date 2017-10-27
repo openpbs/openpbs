@@ -61,10 +61,18 @@ def cvt_duration(duration):
 
 
 class TestSoftWalltime(TestFunctional):
+
     """
     Test that the soft_walltime resource is being used properly and
     being extended properly when exceeded
     """
+
+    def setUp(self):
+        TestFunctional.setUp(self)
+        self.server.manager(
+            MGR_CMD_UNSET, SERVER, 'Resources_default.soft_walltime')
+        # Delete operators if added
+        self.server.manager(MGR_CMD_UNSET, SERVER, 'operators', expect=True)
 
     def stat_job(self, job):
         """
@@ -138,7 +146,7 @@ class TestSoftWalltime(TestFunctional):
     def test_soft_walltime_perms(self):
         """
         Test to see if soft_walltime can't be submitted with a job or
-        altered by a normal user
+        altered by a normal user or operator
         """
         J = Job(TEST_USER, attrs={'Resource_List.soft_walltime': 10})
         msg = 'Cannot set attribute, read only or insufficient permission'
@@ -156,6 +164,20 @@ class TestSoftWalltime(TestFunctional):
         try:
             self.server.alterjob(jid, {'Resource_List.soft_walltime': 10},
                                  runas=TEST_USER)
+        except PbsAlterError as e:
+            self.assertTrue(msg in e.msg[0])
+
+        self.server.expect(JOB, 'Resource_List.soft_walltime',
+                           op=UNSET, id=jid)
+
+        operator = str(OPER_USER) + '@*'
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'operators': (INCR, operator)},
+                            sudo=True)
+
+        try:
+            self.server.alterjob(jid, {'Resource_List.soft_walltime': 10},
+                                 runas=OPER_USER)
         except PbsAlterError as e:
             self.assertTrue(msg in e.msg[0])
 
@@ -290,7 +312,7 @@ e.accept()
         hook_body = \
             """import pbs
 e = pbs.event()
-e.job.Resource_List["soft_walltime"] = 5
+e.job.Resource_List["soft_walltime"] = pbs.duration(5)
 e.accept()
 """
         a = {'event': 'queuejob', 'enabled': 'True'}
@@ -481,8 +503,9 @@ e.accept()
              'reserve_end': now + 240}
         R = Reservation(TEST_USER, attrs=a)
         rid = self.server.submit(R)
-        self.scheduler.log_match(
-            rid + ';Reservation Confirmed', max_attempts=5)
+        self.server.expect(RESV,
+                           {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')},
+                           id=rid)
 
         a = {'Resource_List.ncpus': 4, ATTR_h: 'u'}
         J = Job(TEST_USER, attrs=a)
@@ -509,8 +532,9 @@ e.accept()
              'reserve_end': now + 240}
         R = Reservation(TEST_USER, attrs=a)
         rid = self.server.submit(R)
-        self.scheduler.log_match(
-            rid + ';Reservation Confirmed', max_attempts=5)
+        self.server.expect(RESV,
+                           {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')},
+                           id=rid)
 
         a = {'Resource_List.ncpus': 4,
              'Resource_List.walltime': 150, ATTR_h: 'u'}
@@ -687,3 +711,329 @@ e.accept()
 
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid3)
         self.server.expect(JOB, {ATTR_state: 'S'}, id=jid1)
+
+    def test_soft_values_default(self):
+        """
+        Test to verify that soft_walltime will only take integer/long type
+        value
+        """
+
+        msg = 'Illegal attribute or resource value'
+        try:
+            self.server.manager(
+                MGR_CMD_SET, SERVER, {'Resources_default.soft_walltime': '0'})
+        except PbsManagerError as e:
+            self.assertTrue(msg in e.msg[0])
+
+        try:
+            self.server.manager(
+                MGR_CMD_SET, SERVER,
+                {'Resources_default.soft_walltime': '00:00:00'})
+        except PbsManagerError as e:
+            self.assertTrue(msg in e.msg[0])
+
+        try:
+            self.server.manager(
+                MGR_CMD_SET, SERVER,
+                {'Resources_default.soft_walltime': 'abc'})
+        except PbsManagerError as e:
+            self.assertTrue(msg in e.msg[0])
+
+        try:
+            self.server.manager(
+                MGR_CMD_SET, SERVER,
+                {'Resources_default.soft_walltime': '01:20:aa'})
+        except PbsManagerError as e:
+            self.assertTrue(msg in e.msg[0])
+
+        try:
+            self.server.manager(MGR_CMD_SET, SERVER, {
+                                'Resources_default.soft_walltime':
+                                '1000000000000000000000000'})
+        except PbsManagerError as e:
+            self.assertTrue(msg in e.msg[0])
+
+        try:
+            self.server.manager(
+                MGR_CMD_SET, SERVER,
+                {'Resources_default.soft_walltime': '-1'})
+        except PbsManagerError as e:
+            self.assertTrue(msg in e.msg[0])
+
+        try:
+            self.server.manager(
+                MGR_CMD_SET, SERVER,
+                {'Resources_default.soft_walltime': '00.10'})
+        except PbsManagerError as e:
+            self.assertTrue(msg in e.msg[0])
+
+        self.server.manager(
+            MGR_CMD_SET, SERVER,
+            {'Resources_default.soft_walltime': '00:01:00'})
+
+    def test_soft_runjob_hook(self):
+        """
+        Test that soft walltime is set by runjob hook
+        """
+
+        hook_body = \
+            """import pbs
+e = pbs.event()
+e.job.Resource_List["soft_walltime"] = pbs.duration(5)
+e.accept()
+"""
+        a = {'event': 'runjob', 'enabled': 'True'}
+        self.server.create_import_hook("que", a, hook_body)
+
+        J = Job(TEST_USER)
+        jid = self.server.submit(J)
+
+        self.server.expect(JOB, {'Resource_List.soft_walltime': 5}, id=jid)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+
+    def test_soft_modifyjob_hook(self):
+        """
+        Test that soft walltime is set by modifyjob hook
+        """
+
+        hook_body = \
+            """import pbs
+e = pbs.event()
+e.job.Resource_List["soft_walltime"] = pbs.duration(15)
+e.accept()
+"""
+        a = {'event': 'modifyjob', 'enabled': 'True'}
+        self.server.create_import_hook("que", a, hook_body)
+
+        J = Job(TEST_USER)
+        jid = self.server.submit(J)
+
+        self.server.expect(
+            JOB, 'Resource_List.soft_walltime', op=UNSET, id=jid)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+
+        self.server.alterjob(jid, {'Resource_List.soft_walltime': 5})
+        self.server.expect(JOB, {'Resource_List.soft_walltime': 15}, id=jid)
+
+    def test_walltime_default(self):
+        """
+        Test soft walltime behavior with hard walltime is same
+        even if set under resource_default
+        """
+
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'Resources_default.soft_walltime': '15'})
+
+        J = Job(TEST_USER, attrs={'Resource_List.walltime': 15})
+        jid = self.server.submit(J)
+        self.server.expect(JOB, {'Resource_List.soft_walltime': 15}, id=jid)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+
+        self.server.deljob(jid, wait=True)
+
+        J = Job(TEST_USER, attrs={'Resource_List.walltime': 16})
+        jid1 = self.server.submit(J)
+        self.server.expect(JOB, {'Resource_List.soft_walltime': 15}, id=jid1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        self.server.deljob(jid1, wait=True)
+
+        # following piece is commented due to PP-1058
+        # try:
+        #    J = Job(TEST_USER, attrs={'Resource_List.walltime': 10})
+        #    jid1 = self.server.submit(J)
+        # except PtlSubmitError as e:
+        #    self.assertTrue("illegal attribute or resource value" in e.msg[0])
+        # self.assertEqual(jid1, None)
+
+    def test_soft_held(self):
+        """
+        Test that if job is held soft_walltime will not get extended
+        """
+        J = Job(TEST_USER, attrs={'Resource_List.walltime': '100'})
+        jid = self.server.submit(J)
+        self.server.alterjob(jid, {'Resource_List.soft_walltime': 7})
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+
+        self.logger.info(
+            "Sleep so long that soft_walltime get extended once")
+        time.sleep(7)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
+        self.server.expect(JOB, {'estimated.soft_walltime':
+                                 (MATCH_RE, '00:00:14|14')}, id=jid)
+
+        self.server.holdjob(jid, 'u')
+        self.server.rerunjob(jid)
+        self.server.expect(JOB, {'job_state': 'H'}, id=jid)
+
+        self.logger.info(
+            "sleep so long to verify that soft_walltime"
+            " don't change while job is held")
+        time.sleep(10)
+        self.server.expect(JOB, {'estimated.soft_walltime':
+                                 (MATCH_RE, '00:00:14|14')}, id=jid)
+
+        # release the job and look for the soft_walltime again
+        self.server.rlsjob(jid, 'u')
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
+        self.server.expect(JOB, {'job_state': 'R', 'estimated.soft_walltime':
+                                 (MATCH_RE, '00:00:14|14')},
+                           attrop=PTL_AND, id=jid)
+
+        # Wait for some more time and verify that soft_walltime
+        # extending again
+        time.sleep(7)
+        self.server.expect(JOB, {'estimated.soft_walltime':
+                                 (MATCH_RE, '00:00:21|21')}, id=jid)
+
+    def test_soft_less_cput(self):
+        """
+        Test that soft_walltime has no impact on cput enforcement limit
+        """
+
+        script = """
+i=0
+while [ 1 ]
+do
+    sleep 0.125;
+    dd if=/dev/zero of=/dev/null;
+done
+"""
+        j1 = Job(TEST_USER, {'Resource_List.cput': 5})
+        j1.create_script(body=script)
+        jid = self.server.submit(j1)
+        self.server.alterjob(jid, {'Resource_List.soft_walltime': 300})
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+
+        # verify that job is deleted when cput limit is reached
+        time.sleep(10)
+        self.server.expect(JOB, 'queue', op=UNSET, id=jid)
+
+    def test_soft_walltime_resv(self):
+        """
+        Submit a job with soft walltime inside a reservation
+        """
+
+        now = int(time.time())
+
+        a = {'Resource_List.ncpus': 1, 'reserve_start': now + 5,
+             'reserve_end': now + 10}
+        R = Reservation(TEST_USER, attrs=a)
+        rid = self.server.submit(R)
+        self.server.expect(RESV,
+                           {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')},
+                           id=rid)
+        r1 = rid.split('.')[0]
+
+        j1 = Job(TEST_USER, attrs={ATTR_queue: r1})
+        jid = self.server.submit(j1)
+
+        # Set soft walltime to greater than reservation end time
+        self.server.alterjob(jid, {'Resource_List.soft_walltime': 300})
+        self.server.expect(JOB, {'Resource_List.soft_walltime': 300}, id=jid)
+
+        # verify that the job gets deleted when reservation ends
+        self.server.expect(
+            JOB, 'queue', op=UNSET, id=jid, offset=10, max_attempts=10)
+
+    def test_restart_server(self):
+        """
+        Test that on server restart soft walltime is not reset
+        """
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'job_history_enable': 'True'})
+
+        hook_body = \
+            """import pbs
+e = pbs.event()
+e.job.Resource_List["soft_walltime"] = pbs.duration(8)
+e.accept()
+"""
+        a = {'event': 'queuejob', 'enabled': 'True'}
+        self.server.create_import_hook("que", a, hook_body)
+
+        J = Job(TEST_USER)
+        jid = self.server.submit(J)
+
+        self.server.expect(JOB, {'Resource_List.soft_walltime': 8}, id=jid)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+
+        self.logger.info("Wait till the soft_walltime is extended once")
+        time.sleep(9)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
+
+        self.server.expect(JOB, {'estimated.soft_walltime':
+                                 (MATCH_RE, '00:00:16|16')}, id=jid)
+
+        self.server.restart()
+
+        self.server.expect(JOB, {'Resource_List.soft_walltime': 8,
+                                 'estimated.soft_walltime':
+                                 (MATCH_RE, '00:00:16|16')},
+                           attrop=PTL_AND, id=jid)
+
+        # Delete the job and verify that estimated.soft_walltime is set
+        # for job history
+        self.server.deljob(jid, wait=True)
+        self.server.expect(JOB,
+                           {'job_state': 'F',
+                            'estimated.soft_walltime':
+                            (MATCH_RE, '00:00:16|16|00:00:24|24')},
+                           extend='x', attrop=PTL_AND, id=jid)
+
+    def test_resv_job_soft_hard2(self):
+        """
+        Test that a job with soft and hard walltime will not conflict with
+        reservtion if hard walltime is less that reservation start time.
+        """
+        a = {'resources_available.ncpus': 4}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
+
+        now = int(time.time())
+
+        a = {'Resource_List.ncpus': 4, 'reserve_start': now + 65,
+             'reserve_end': now + 240}
+        R = Reservation(TEST_USER, attrs=a)
+        rid = self.server.submit(R)
+        self.server.expect(RESV,
+                           {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')},
+                           id=rid)
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
+        a = {'Resource_List.ncpus': 4,
+             'Resource_List.walltime': 60}
+        J = Job(TEST_USER, attrs=a)
+        jid = self.server.submit(J)
+        self.server.alterjob(jid, {'Resource_List.soft_walltime': 60})
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+
+    def test_soft_job_array(self):
+        """
+        Test that soft walltime works similar way with subjobs as
+        regular jobs
+        """
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
+
+        J = Job(TEST_USER, attrs={ATTR_J: '1-5',
+                                  'Resource_List.walltime': 15})
+        jid = self.server.submit(J)
+        self.server.alterjob(jid, {'Resource_List.soft_walltime': 5})
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
+
+        self.server.expect(
+            JOB, {'job_state': 'B', 'Resource_List.soft_walltime': 5}, id=jid)
+        subjob1 = jid.replace('[]', '[1]')
+        self.server.expect(
+            JOB, {'job_state': 'R', 'Resource_List.soft_walltime': 5},
+            id=subjob1)
+
+        self.logger.info("Wait for 6s and make sure that subjob1 is not"
+                         "deleted even past soft_walltime")
+        time.sleep(6)
+        self.server.expect(JOB, {'job_state': 'R'}, id=subjob1)
+
+        # Make sure the subjob1 is deleted after 15s past walltime limit
+        self.server.expect(JOB, {'job_state': 'X'}, id=subjob1,
+                           offset=9)
