@@ -100,7 +100,6 @@ if __name__ == '__main__':
 
     # Arguments to PBSSnapUtils
     out_dir = None
-    diag_path = None
     server_host = None
     log_level = "INFOCLI2"
     acct_logs = 30  # Capture 30 days of accounting logs by default
@@ -125,9 +124,7 @@ if __name__ == '__main__':
         sys.exit(1)
 
     for o, val in opts:
-        if o == "-d":
-            diag_path = CliUtils.expand_abs_path(val)
-        elif o == "-o":
+        if o == "-o":
             out_dir = val
         elif o == "-H":
             server_host = val
@@ -187,8 +184,8 @@ if __name__ == '__main__':
         map_file = os.path.join(out_abspath, "obfuscate.map")
 
     # Capture the snapshot
-    with PBSSnapUtils(out_dir, diag_path=diag_path, server_host=server_host,
-                      acct_logs=acct_logs, daemon_logs=daemon_logs,
+    with PBSSnapUtils(out_dir, server_host=server_host, acct_logs=acct_logs,
+                      daemon_logs=daemon_logs,
                       additional_hosts=additional_hosts, map_file=map_file,
                       anonymize=anonymize,
                       create_tar=create_tar, log_path=log_path) as snap_utils:

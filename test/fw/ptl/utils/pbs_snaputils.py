@@ -375,11 +375,10 @@ class PBSSnapUtils(object):
     This makes sure that we do necessay cleanup before destroying objects
     """
 
-    def __init__(self, out_dir, diag_path=None, server_host=None,
-                 acct_logs=None, daemon_logs=None, additional_hosts=None,
+    def __init__(self, out_dir, server_host=None, acct_logs=None,
+                 daemon_logs=None, additional_hosts=None,
                  map_file=None, anonymize=None, create_tar=False,
                  log_path=None, sudo=False):
-        self.diag_path = diag_path
         self.out_dir = out_dir
         self.server_host = server_host
         self.acct_logs = acct_logs
@@ -393,9 +392,9 @@ class PBSSnapUtils(object):
         self.utils_obj = None
 
     def __enter__(self):
-        self.utils_obj = _PBSSnapUtils(self.out_dir, self.diag_path,
-                                       self.server_host, self.acct_logs,
-                                       self.srvc_logs, self.additional_hosts,
+        self.utils_obj = _PBSSnapUtils(self.out_dir, self.server_host,
+                                       self.acct_logs, self.srvc_logs,
+                                       self.additional_hosts,
                                        self.map_file, self.anonymize,
                                        self.create_tar, self.log_path,
                                        self.sudo)
@@ -414,8 +413,8 @@ class _PBSSnapUtils(object):
     PBS snapshot utilities
     """
 
-    def __init__(self, out_dir, diag_path=None, server_host=None,
-                 acct_logs=None, daemon_logs=None, additional_hosts=None,
+    def __init__(self, out_dir, server_host=None, acct_logs=None,
+                 daemon_logs=None, additional_hosts=None,
                  map_file=None, anonymize=False, create_tar=False,
                  log_path=None, sudo=False):
         """
@@ -423,8 +422,6 @@ class _PBSSnapUtils(object):
 
         :param out_dir: path to the directory where snapshot will be created
         :type out_dir: str
-        :param diag_path: Path to the diag directory to create snapshot from
-        :type diag_path: str or None
         :param server_host: Name of the host where PBS Server is running
         :type server_host: str or None
         :param acct_logs: number of accounting logs to capture
@@ -480,7 +477,6 @@ class _PBSSnapUtils(object):
         self.finalized = False
 
         # Parse the input arguments
-        self.diag = diag_path
         timestamp_str = time.strftime("%Y%m%d_%H_%M_%S")
         self.snapshot_name = "snapshot_" + timestamp_str
         # Make sure that the target directory exists
@@ -501,8 +497,8 @@ class _PBSSnapUtils(object):
         self.mapfile = map_file
 
         # Initialize Server and Scheduler objects
-        self.server = Server(server_host, diag=self.diag)
-        self.scheduler = Scheduler(server=self.server, diag=self.diag)
+        self.server = Server(server_host)
+        self.scheduler = Scheduler(server=self.server)
 
         # Store paths to PBS_HOME and PBS_EXEC
         self.pbs_home = self.server.pbs_conf["PBS_HOME"]
@@ -1606,8 +1602,7 @@ class _PBSSnapUtils(object):
 
     def capture_all(self):
         """
-        Capture a snapshot from the PBS system or convert diag information
-        to a snapshot directory
+        Capture a snapshot from the PBS system
 
         :returns: name of the output directory/tarfile containing the snapshot
         """
