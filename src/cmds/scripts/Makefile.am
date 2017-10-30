@@ -92,7 +92,8 @@ dist_bin_SCRIPTS = \
 dist_sbin_SCRIPTS = \
 	pbs_dataservice \
 	pbs_ds_password \
-	pbs_server
+	pbs_server \
+	pbs_snapshot
 
 dist_sysconf_DATA = \
 	modulefile \
@@ -107,4 +108,3 @@ limits.pbs_mom: $(srcdir)/limits.pbs_mom.compat
 
 limits.post_services: $(srcdir)/limits.post_services.compat
 	cp $? $@
-

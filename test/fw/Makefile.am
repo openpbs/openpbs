@@ -89,4 +89,3 @@ install-data-hook:
 uninstall-hook:
 	cd $(DESTDIR)$(ptlbindir) && \
 	rm -f pbs_stat.py pbs_loganalyzer.py pbs_snapshot.py
-

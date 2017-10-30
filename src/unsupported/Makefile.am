@@ -43,8 +43,7 @@ dist_unsupported_SCRIPTS = \
 	pbs_diag \
 	pbs_dtj \
 	pbs_loganalyzer \
-	pbs_stat \
-	pbs_snapshot
+	pbs_stat
 
 
 # Marking all *.py files as data as these files are meant to be used as hooks and 
@@ -74,4 +73,3 @@ pbs_rmget_LDADD = \
 	$(top_builddir)/src/lib/Libutil/libutil.a \
 	-lpthread
 pbs_rmget_SOURCES = pbs_rmget.c
-
