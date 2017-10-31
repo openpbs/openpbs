@@ -30,5 +30,6 @@ struct JsonNode{
 	}value;
 };
 JsonNode* add_json_node(JsonNodeType ntype, JsonValueType vtype, char *key, void *value);
+char *strdup_escape(const char *str);
 int  generate_json(FILE *stream);
 void free_json_node();

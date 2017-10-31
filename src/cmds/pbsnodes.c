@@ -190,9 +190,8 @@ cmp_node_name(char *n1, char *n2)
  *
  */
 static int
-encode_to_json(struct batch_status *bstat) {
-
-	JsonNode     *node;
+encode_to_json(struct batch_status *bstat)
+{
 	struct attrl *next;
 	struct attrl *pattr;
 	char	     *str;
@@ -209,49 +208,20 @@ encode_to_json(struct batch_status *bstat) {
 			if (add_json_node(JSON_OBJECT, JSON_NULL, pattr->name, NULL) == NULL)
 				return 1;
 			for (next = pattr; next; ) {
-				node = add_json_node(JSON_VALUE, JSON_NULL, next->resource, NULL);
-				if (node == NULL)
+				if (add_json_node(JSON_VALUE, JSON_NULL, next->resource, next->value) == NULL)
 					return 1;
-				str = next->value;
-				value = strtod(next->value, &pc);
-				while (pc) {
-					if (isspace(*pc))
-						pc++;
-					else
-						break;
-				}
-				if (strcmp(pc, "") == 0) {
-					ivalue = (long int)value;
-					if (value == ivalue) { /* This checks if value have any non zero fractional part after decimal. If not then value has to be represented as integer otherwise as float. */ 
-						node->value_type = JSON_INT;
-						node->value.inumber = ivalue;
-					} else {
-						node->value_type = JSON_FLOAT;
-						node->value.fnumber = value;
-					}
-				} else {
-					node->value_type = JSON_STRING;
-					node->value.string = strdup(str);
-					if (node->value.string == NULL)
+				if (next->next == NULL || strcmp(next->next->name, "resources_available")) {
+					/* Nothing left in resources_available, close object */
+					if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL) == NULL)
 						return 1;
-				}
-				if (next->next) {
-					if (strcmp(next->next->name, "resources_available") == 0)
-						next = next->next;
-					else {
-						node->node_type = JSON_OBJECT_END;
-						pattr = next;
-						next = NULL;
-					}
-				} else {
-					node->node_type = JSON_OBJECT_END;
 					pattr = next;
 					next = NULL;
+				} else {
+					next = next->next;
 				}
 			}
 		} else if (strcmp(pattr->name, "resources_assigned") == 0) {
-			node = add_json_node(JSON_OBJECT, JSON_NULL, pattr->name, NULL);
-			if (node == NULL)
+			if (add_json_node(JSON_OBJECT, JSON_NULL, pattr->name, NULL) == NULL)
 				return 1;
 			for (next = pattr; next; ) {
 				str = next->value;
@@ -264,113 +234,53 @@ encode_to_json(struct batch_status *bstat) {
 				}
 				/* Adding only non zero values.*/
 				if (value) {
-					ivalue = (long int)value;
-					if (strcmp(pc, "") == 0) {
-						if (value == ivalue)
-							node = add_json_node(JSON_VALUE, JSON_INT, next->resource, &ivalue);
-						else
-							node = add_json_node(JSON_VALUE, JSON_FLOAT, next->resource, &value);
-						if (node == NULL)
-							return 1;
-					} else if (str[0] != '0') {
-						node = add_json_node(JSON_VALUE, JSON_STRING, next->resource, str);
-						if (node == NULL)
-							return 1;
-					}
+					if (add_json_node(JSON_VALUE, JSON_NULL, next->resource, next->value) == NULL)
+						return 1;
 				} else {
 					if (str[0] != '0') {
-						node = add_json_node(JSON_VALUE, JSON_STRING, next->resource, str);
-						if (node == NULL)
+						if (add_json_node(JSON_VALUE, JSON_STRING, next->resource, str) == NULL)
 							return 1;
 					}
 				}
-				if (next->next) {
-					if (strcmp(next->next->name, "resources_assigned") == 0)
-						next = next->next;
-					else {
-						/* In case of an empty object */
-						if (node->node_type == JSON_OBJECT) {
-							node = add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL);
-							if (node == NULL)
-								return 1;
-						} else {
-							node->node_type = JSON_OBJECT_END;
-							pattr = next;
-							next = NULL;
-							break;
-						}
-					}
+				if (next->next == NULL || strcmp(next->next->name, "resources_assigned")) {
+					/* Nothing left in resources_assigned, close object */
+					if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL) == NULL)
+						return 1;
+					pattr = next;
+					next = NULL;
 				} else {
-					/* In case of an empty object adding an extra node to end the object. */
-					if (node->node_type == JSON_OBJECT) {
-						node = add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL);
-						if (node == NULL)
-							return 1;
-					} else {
-						node->node_type = JSON_OBJECT_END;
-						pattr = next;
-						next = NULL;
-						break;
-					}
+					next = next->next;
 				}
 			}
-		} else {
-			node = add_json_node(JSON_VALUE, JSON_NULL, pattr->name, NULL);
-			if (node == NULL)
+		} else if (strcmp(pattr->name, "jobs") == 0) {
+			if (add_json_node(JSON_ARRAY, JSON_NULL, pattr->name, NULL) == NULL)
 				return 1;
-			str = pattr->value;
-			value = strtod(pattr->value, &pc);
-			while (pc) {
-				if (isspace(*pc))
-					pc++;
-				else
-					break;
+			pc = pc1 = str = pattr->value;
+			while (*pc1) {
+				if (*pc1 != ' ')
+					*pc++ = *(pc1);
+				pc1++;
 			}
-			if (strcmp(pc, "") == 0) {
-				ivalue = (long int)value;
-				if (value == ivalue) {
-					node->value_type = JSON_INT;
-					node->value.inumber = ivalue;
-				} else {
-					node->value_type = JSON_FLOAT;
-					node->value.fnumber = value;
+			*pc = '\0';
+			for (pc = strtok(str, ","); pc != NULL; pc = strtok(NULL, ",")) {
+				pc1 = strchr(pc, '/');
+				if (pc1)
+					*pc1 = '\0';
+				if (strcmp(pc, prev_jobid) != 0) {
+					if (add_json_node(JSON_VALUE, JSON_STRING, NULL, pc) == NULL)
+						return 1;
 				}
-			} else if (strcmp(pattr->name, "jobs")== 0) {
-				node->node_type = JSON_ARRAY;
-				pc = pc1 = str;
-				while (*pc1) {
-					if (*pc1 != ' ')
-						*pc++ = *(pc1);
-					pc1++;
-				}
-				*pc = '\0';
-				pc = strtok(str, ",");
-				while (pc) {
-					pc1 = strchr(pc, '/');
-					if(pc1)
-						*pc1 = '\0';
-					if (strcmp(pc, prev_jobid) != 0) {
-						node = add_json_node(JSON_VALUE, JSON_STRING, NULL, pc);
-						if (node == NULL)
-							return 1;
-					}
-					prev_jobid = pc;
-					pc = strtok(NULL, ",");
-				}
-				node = add_json_node(JSON_ARRAY_END, JSON_NULL, NULL, NULL);
-				if (node == NULL)
-					return 1;
-			} else {
-				node->value_type = JSON_STRING;
-				node->value.string = strdup(str);
-				if (node->value.string == NULL)
-					return 1;
+				prev_jobid = pc;
 			}
+			if (add_json_node(JSON_ARRAY_END, JSON_NULL, NULL, NULL) == NULL)
+				return 1;
+		} else {
+			if (add_json_node(JSON_VALUE, JSON_NULL, pattr->name, pattr->value) == NULL)
+				return 1;
 		}
 
 	}
-	node = add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL);
-	if (node == NULL)
+	if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL) == NULL)
 		return 1;
 	return 0;
 

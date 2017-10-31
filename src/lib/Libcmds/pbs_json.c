@@ -59,6 +59,75 @@ link_node(JsonNode *node) {
 
 /**
  * @brief
+ * Duplicates a string where the new string conforms to JSON
+ *
+ * @param[in] str - string to be duplicated
+ *
+ * @return string
+ * @retval JSON conforming string   success
+ * @retval NULL                     error
+ *
+ */
+char*
+strdup_escape(const char *str)
+{
+	int       i = 0;
+	int       len = 0;
+	char      *temp = NULL;
+	char      *buf = NULL;
+	if (str != NULL) {
+		i = 0;
+		len = MAXBUFLEN;
+		buf = (char *) malloc(len);
+		if (buf == NULL)
+			return NULL;
+		while (*str) {
+			switch (*str) {
+			case '\b':
+				buf[i++] = '\\';
+				buf[i++] = 'b';
+				str++;
+				break;
+			case '\f':
+				buf[i++] = '\\';
+				buf[i++] = 'f';
+				str++;
+				break;
+			case '\n':
+				buf[i++] = '\\';
+				buf[i++] = 'n';
+				str++;
+				break;
+			case '\r':
+				buf[i++] = '\\';
+				buf[i++] = 'r';
+				str++;
+				break;
+			case '\t':
+				buf[i++] = '\\';
+				buf[i++] = 't';
+				str++;
+				break;
+			default:
+				buf[i++] = *str++;
+			}
+			if (i >= len - 2) {
+				len *= BUFFER_GROWTH_RATE;
+				temp = (char *) realloc(buf, len);
+				if (temp == NULL) {
+					free(buf);
+					return NULL;
+				}
+				buf = temp;
+			}
+		}
+		buf[i] = '\0';
+	}
+	return buf;
+}
+
+/**
+ * @brief
  *	add node to json list
  *
  * @param[in] ntype - node type
@@ -129,54 +198,9 @@ add_json_node(JsonNodeType ntype, JsonValueType vtype, char *key, void *value) {
 
 	if (node->value_type == JSON_STRING) {
 		if (value != NULL) {
-			ptr = value;
-			i = 0;
-			len = MAXBUFLEN;
-			buf = (char *) malloc(len);
-			if (buf == NULL)
+			ptr = strdup_escape(value);
+			if (ptr == NULL)
 				return NULL;
-			while (*ptr) {
-				switch (*ptr) {
-				case '\b':
-					buf[i++] = '\\';
-					buf[i++] = 'b';
-					ptr++;
-					break;
-				case '\f':
-					buf[i++] = '\\';
-					buf[i++] = 'f';
-					ptr++;
-					break;
-				case '\n':
-					buf[i++] = '\\';
-					buf[i++] = 'n';
-					ptr++;
-					break;
-				case '\r':
-					buf[i++] = '\\';
-					buf[i++] = 'r';
-					ptr++;
-					break;
-				case '\t':
-					buf[i++] = '\\';
-					buf[i++] = 't';
-					ptr++;
-					break;
-				default:
-					buf[i++] = *ptr++;
-				}
-				if (i >= len - 2) {
-					len *= BUFFER_GROWTH_RATE;
-					temp = (char *) realloc(buf, len);
-					if (temp == NULL) {
-						free(buf);
-						return NULL;
-					}
-					buf = temp;
-				}
-			}
-			buf[i] = '\0';
-			ptr = buf;
 		}
 		node->value.string = ptr;
 	}
