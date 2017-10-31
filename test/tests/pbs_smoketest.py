@@ -388,6 +388,28 @@ class SmokeTest(PBSTestSuite):
         self.server.expect(JOB, {'job_state': 'S'}, id=jid)
 
     @skipOnCpuSet
+    def test_preemption_qrun(self):
+        """
+        Test that qrun will preempt other jobs
+        """
+        self.server.manager(MGR_CMD_SET, NODE,
+                            {'resources_available.ncpus': 1},
+                            id=self.mom.shortname)
+        J1 = Job(TEST_USER)
+        jid1 = self.server.submit(J1)
+
+        J2 = Job(TEST_USER)
+        jid2 = self.server.submit(J2)
+
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
+        self.server.expect(JOB, {ATTR_state: 'Q'}, id=jid2)
+
+        self.server.runjob(jobid=jid2)
+
+        self.server.expect(JOB, {ATTR_state: 'S'}, id=jid1)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
+
+    @skipOnCpuSet
     def test_fairshare(self):
         """
         Test for fairshare
