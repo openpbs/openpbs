@@ -2075,6 +2075,10 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 
 	if (spec == NULL || ninfo_arr == NULL || resresv == NULL || placespec == NULL || nspec_arr == NULL)
 		return 0;
+	/* Unsetting RETURN_ALL_ERR flag, because with this flag set resresv_can_fit_nodepart can return
+	 * with multiple errors and the function only needs to see the first error it encounters.
+	 */
+	flags &= ~RETURN_ALL_ERR;
 
 #ifdef NAS /* localmod 063 */
 	/* Should be at least one chunk */
