@@ -730,6 +730,7 @@ typedef struct basil_node_socket {
 	int ordinal;
 	basil_processor_arch_t arch;
 	int clock_mhz;
+	basil_node_segment_t *segments;
 	struct basil_node_socket *next;
 } basil_node_socket_t;
 
