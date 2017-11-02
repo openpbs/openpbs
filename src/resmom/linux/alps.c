@@ -1436,7 +1436,7 @@ inventory_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 				return;
 			}
 			snprintf(&inv->mpp_host[0],
-				BASIL_STRING_SHORT, "%s", *vp);
+				BASIL_STRING_LONG, "%s", *vp);
 		} else {
 			parse_err_unrecognized_attr(d, *np);
 			return;
@@ -2643,7 +2643,7 @@ label_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 				parse_err_multiple_attrs(d, *np);
 				return;
 			}
-			snprintf(label->name, BASIL_STRING_SHORT, "%s", *vp);
+			snprintf(label->name, BASIL_STRING_MEDIUM, "%s", *vp);
 		} else if (strcmp(BASIL_ATR_TYPE, *np) == 0) {
 			if (label->type) {
 				parse_err_multiple_attrs(d, *np);
@@ -3165,42 +3165,42 @@ reservation_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 					parse_err_multiple_attrs(d, *np);
 					return;
 				}
-			snprintf(rsvn->user_name, BASIL_STRING_SHORT,
+			snprintf(rsvn->user_name, BASIL_STRING_MEDIUM,
 					"%s", *vp);
 			} else if (strcmp(BASIL_ATR_ACCOUNT_NAME, *np) == 0) {
 				if (*rsvn->account_name != '\0') {
 					parse_err_multiple_attrs(d, *np);
 					return;
 				}
-			snprintf(rsvn->account_name, BASIL_STRING_SHORT,
+			snprintf(rsvn->account_name, BASIL_STRING_MEDIUM,
 					"%s", *vp);
 			} else if (strcmp(BASIL_ATR_TIME_STAMP, *np) == 0) {
 				if (*rsvn->time_stamp != '\0') {
 					parse_err_multiple_attrs(d, *np);
 					return;
 				}
-			snprintf(rsvn->time_stamp, BASIL_STRING_SHORT,
+			snprintf(rsvn->time_stamp, BASIL_STRING_MEDIUM,
 					"%s", *vp);
 			} else if (strcmp(BASIL_ATR_BATCH_ID, *np) == 0) {
 				if (*rsvn->batch_id != '\0') {
 					parse_err_multiple_attrs(d, *np);
 					return;
 				}
-			snprintf(rsvn->batch_id, BASIL_STRING_SHORT,
+			snprintf(rsvn->batch_id, BASIL_STRING_LONG,
 					"%s", *vp);
 			} else if (strcmp(BASIL_ATR_RSVN_MODE, *np) == 0) {
 				if (*rsvn->rsvn_mode != '\0') {
 					parse_err_multiple_attrs(d, *np);
 					return;
 				}
-			snprintf(rsvn->rsvn_mode, BASIL_STRING_SHORT,
+			snprintf(rsvn->rsvn_mode, BASIL_STRING_MEDIUM,
 					"%s", *vp);
 			} else if (strcmp(BASIL_ATR_GPC_MODE, *np) == 0) {
 				if (*rsvn->gpc_mode != '\0') {
 					parse_err_multiple_attrs(d, *np);
 					return;
 				}
-			snprintf(rsvn->gpc_mode, BASIL_STRING_SHORT,
+			snprintf(rsvn->gpc_mode, BASIL_STRING_MEDIUM,
 					"%s", *vp);
 			} else {
 				parse_err_unrecognized_attr(d, *np);
