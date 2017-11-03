@@ -1678,15 +1678,9 @@ update_node_on_end(node_info *ninfo, resource_resv *resresv, char *job_state)
 		remove_resresv_from_array(ninfo->run_resvs_arr, resresv);
 	}
 
-	/* Since we are removing work from a node, it'll free up some cpus.  This
-	 * means it'll go from exclusive or shared to free.  If the node is busy
-	 * removing work will not make it leave the busy state until the loadave
-	 * has lowered.  This will take time.
-	 */
-	if (!ninfo->is_busy) {
-		set_node_info_state(ninfo, ND_free);
-	}
-	else if (is_excl(resresv->place_spec, ninfo->sharing)) {
+	if (ninfo->is_job_busy)
+		remove_node_state(ninfo, ND_jobbusy);
+	if (is_excl(resresv->place_spec, ninfo->sharing)) {
 		if (resresv->is_resv) {
 			if (ninfo->svr_node != NULL)
 				remove_node_state(ninfo->svr_node, ND_resv_exclusive);

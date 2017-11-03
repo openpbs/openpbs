@@ -292,7 +292,8 @@ enum sort_type
 enum resv_conf {
 	RESV_CONFIRM_FAIL = -1,
 	RESV_CONFIRM_VOID ,
-	RESV_CONFIRM_SUCCESS
+	RESV_CONFIRM_SUCCESS,
+	RESV_CONFIRM_RETRY
 };
 
 /* job substate meaning suspended by scheduler */

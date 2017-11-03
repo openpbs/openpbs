@@ -878,7 +878,7 @@ dup_resv_info(resv_info *rinfo, server_info *sinfo)
  *
  * @return	int
  * @retval	number of reservations confirmed
- * @retval	-1	: on error
+ * @retval	-1	: something went wrong with confirmation, retry later
  *
  */
 int
@@ -959,7 +959,7 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 				 * universe. These resources will be replaced by the newly allocated
 				 * ones from the simulated server universe.
 				 */
-				if (nresv->resv->resv_substate ==RESV_DEGRADED)
+				if (nresv->resv->resv_substate == RESV_DEGRADED)
 					release_nodes(sinfo->resvs[i]);
 
 				/* the number of occurrences is set during the confirmation process */
@@ -1015,7 +1015,7 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 						 * previous scheduling cycle. We retrieve the existing object from
 						 * the all_resresv list
 						 */
-						if (nresv->resv->resv_substate ==RESV_DEGRADED) {
+						if (nresv->resv->resv_substate == RESV_DEGRADED) {
 							nresv_copy = find_resource_resv_by_time(sinfo->all_resresv,
 								nresv_copy->name, nresv->resv->occr_start_arr[j]);
 							if (nresv_copy == NULL) {
@@ -1061,7 +1061,7 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 					 * processing a degraded reservation as otherwise, the resources
 					 * had already been added to the real universe in query_reservations
 					 */
-					if (nresv_copy->resv->resv_substate !=RESV_DEGRADED) {
+					if (nresv_copy->resv->resv_substate != RESV_DEGRADED) {
 						timed_event *te_start;
 						timed_event *te_end;
 						te_start = create_event(TIMED_RUN_EVENT, nresv_copy->start,
@@ -1096,13 +1096,13 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 				if (j == occr_count)
 					count++;
 			}
-			else  { /* Confirmation failed */
+			else if (pbsrc == RESV_CONFIRM_FAIL) {
 				/* For a degraded reservation, it had already been confirmed in a
 				 * previous scheduling cycle. We retrieve the existing object from
 				 * the all_resresv list and update the retry_time to break out of
 				 * the main loop that checks for reservations that need confirmation
 				 */
-				if (nresv->resv->resv_substate ==RESV_DEGRADED) {
+				if (nresv->resv->resv_substate == RESV_DEGRADED) {
 					for (j = 0; j < nresv->resv->count; j++) {
 						nresv_copy = find_resource_resv_by_time(sinfo->all_resresv,
 							nresv->name, nresv->resv->occr_start_arr[j]);
@@ -1140,6 +1140,9 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 			/* Clean up simulated server info */
 			free_server(nsinfo, 1);
 		}
+		/* Something went wrong with reservation confirmation, retry later */
+		if (pbsrc == RESV_CONFIRM_RETRY)
+			return -1;
 	}
 
 	return count;
@@ -1370,7 +1373,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 		 * are, then resources allocated to this reservation are released and the
 		 * reconfirmation proceeds.
 		 */
-		if (nresv->resv->resv_substate ==RESV_DEGRADED) {
+		if (nresv->resv->resv_substate == RESV_DEGRADED) {
 			/* determine the number of vnodes associated to the reservation that are
 			 * unavailable. If none, then this reservation or occurrence does not
 			 * require reconfirmation.
@@ -1491,7 +1494,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 				/* If the reservation is degraded, we log a message and continue */
 					snprintf(buf, MAX_LOG_SIZE, "Reservation Failed to Reconfirm: %s",
 						logmsg2);
-				if (nresv->resv->resv_substate ==RESV_DEGRADED) {
+				if (nresv->resv->resv_substate == RESV_DEGRADED) {
 					schdlog(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
 						nresv->name, buf);
 				}
@@ -1554,9 +1557,10 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 
 		if (rconf == RESV_CONFIRM_FAIL)
 			snprintf(logmsg, MAX_LOG_SIZE, "PBS Failed to confirm resv: %s", logmsg2);
-		else
-			snprintf(logmsg, MAX_LOG_SIZE, "PBS Failed to confirm resv: %s (%d)", errmsg,
-				pbs_errno);
+		else {
+			snprintf(logmsg, MAX_LOG_SIZE, "PBS Failed to confirm resv: %s (%d)", errmsg, pbs_errno);
+			rconf = RESV_CONFIRM_RETRY;
+		}
 		schdlog(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv_parent->name,
 			logmsg);
 		if (nresv_parent->resv->resv_substate == RESV_DEGRADED) {
@@ -1588,7 +1592,7 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 		/* If handling a degraded reservation, we recreate a new execvnode sequence
 		 * string, so the old should be cleared
 		 */
-		if (nresv_parent->resv->resv_substate ==RESV_DEGRADED)
+		if (nresv_parent->resv->resv_substate == RESV_DEGRADED)
 			free(nresv_parent->resv->execvnodes_seq);
 
 		/* set or update (for reconfirmation) the sequence of execvnodes */

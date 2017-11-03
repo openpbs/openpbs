@@ -659,12 +659,18 @@ scheduling_cycle(int sd, char *jobid)
 
 	/* don't confirm reservations if we're handling a qrun request */
 	if (jobid == NULL) {
-		if (check_new_reservations(policy, sd, sinfo->resvs, sinfo)) {
+		int rc;
+		rc = check_new_reservations(policy, sd, sinfo->resvs, sinfo);
+		if (rc) {
 			/* Check if there are new reservations.  If there are, we can't go any
 			 * further in the scheduling cycle since we don't have the up to date
 			 * information about the newly confirmed reservations
 			 */
 			end_cycle_tasks(sinfo);
+			/* Problem occurred confirming reservation, retry cycle */
+			if (rc < 0)
+				return -1;
+
 			return 0;
 		}
 	}
