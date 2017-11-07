@@ -2237,7 +2237,7 @@ class BatchUtils(object):
             return 0
         return int(hhmmss[0]) * 3600 + int(hhmmss[1]) * 60 + int(hhmmss[2])
 
-    def convert_seconds_to_resvtime(self, tm, fmt=None, seconds=True):
+    def convert_seconds_to_datetime(self, tm, fmt=None, seconds=True):
         """
         Convert time format to number of seconds since epoch
 
@@ -5896,11 +5896,11 @@ class Server(PBSService):
                 if ATTR_resv_start in obj.custom_attrs:
                     start = obj.custom_attrs[ATTR_resv_start]
                     obj.custom_attrs[ATTR_resv_start] = \
-                        self.utils.convert_seconds_to_resvtime(start)
+                        self.utils.convert_seconds_to_datetime(start)
                 if ATTR_resv_end in obj.custom_attrs:
                     end = obj.custom_attrs[ATTR_resv_end]
                     obj.custom_attrs[ATTR_resv_end] = \
-                        self.utils.convert_seconds_to_resvtime(end)
+                        self.utils.convert_seconds_to_datetime(end)
                 if ATTR_resv_timezone in obj.custom_attrs:
                     exclude_attrs += [ATTR_resv_timezone, ATTR_resv_standing]
                     # handling of impersonation differs widely across OS's,

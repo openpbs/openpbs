@@ -1695,8 +1695,6 @@ pbsd_init_job(job *pjob, int type)
 			pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags |= (ATR_VFLAG_SET & ATR_VFLAG_MODCACHE);
 		}
 
-		/* Need to increment the job state count as and when a job is loaded from the database */
-		server.sv_jobstates[pjob->ji_qs.ji_state]++;
 
 		switch (pjob->ji_qs.ji_substate) {
 
@@ -1908,12 +1906,9 @@ pbsd_init_reque(job *pjob, int change_state)
 	int newstate;
 	int newsubstate;
 	int rc;
-	int oldstate;
 
 	(void)sprintf(logbuf, msg_init_substate,
 		pjob->ji_qs.ji_substate);
-
-	oldstate = pjob->ji_qs.ji_state;
 
 	/* re-enqueue the job into the queue it was in */
 
@@ -1921,27 +1916,16 @@ pbsd_init_reque(job *pjob, int change_state)
 		/* update the state, typically to some form of QUEUED */
 		unset_extra_attributes(pjob);
 		svr_evaljobstate(pjob, &newstate, &newsubstate, 1);
-		(void)svr_setjobstate(pjob, newstate, newsubstate);
-		if (newstate == JOB_STATE_QUEUED)
-			/* The state count will be incremented in both
- 			 * svr_setjobstate() and svr_enquejob()
-			 * Decrement here so the counts do not get off
- 			 */
-			server.sv_jobstates[newstate]--;
-	} else {
-		set_statechar(pjob);
-		/* make sure substate attributes match actual value */
-		pjob->ji_wattr[(int)JOB_ATR_substate].at_val.at_long =
-			pjob->ji_qs.ji_substate;
-		pjob->ji_wattr[(int)JOB_ATR_substate].at_flags |=
-			ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+		pjob->ji_qs.ji_state =  newstate;
+		pjob->ji_qs.ji_substate =  newsubstate;
 	}
+	set_statechar(pjob);
+	/* make sure substate attributes match actual value */
+	pjob->ji_wattr[(int)JOB_ATR_substate].at_val.at_long =
+		pjob->ji_qs.ji_substate;
+	pjob->ji_wattr[(int)JOB_ATR_substate].at_flags |=
+		ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
 
-	/* if the state did not change, then decrement the state count of the job which was 
-	   incremented when the job was loaded from the database as it will anyway be modified in svr_enquejob(pjob) */ 
-	if(change_state == 0 || oldstate == newstate) {
-		server.sv_jobstates[oldstate]--;
-	}
 
 	if ((rc = svr_enquejob(pjob)) == 0) {
 		(void)strcat(logbuf, msg_init_queued);

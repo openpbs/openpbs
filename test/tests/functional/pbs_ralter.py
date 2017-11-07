@@ -219,9 +219,9 @@ class TestPbsResvAlter(TestFunctional):
         next_start = start + 3600
         next_end = end + 3600
         duration = end - start
-        next_start_conv = self.bu.convert_seconds_to_resvtime(
+        next_start_conv = self.bu.convert_seconds_to_datetime(
             next_start, self.fmt)
-        next_end_conv = self.bu.convert_seconds_to_resvtime(
+        next_end_conv = self.bu.convert_seconds_to_datetime(
             next_end, self.fmt)
         attrs = {'reserve_start': next_start_conv,
                  'reserve_end': next_end_conv,
@@ -302,13 +302,13 @@ class TestPbsResvAlter(TestFunctional):
 
         if alter_s:
             new_start = start + shift
-            new_start_conv = self.bu.convert_seconds_to_resvtime(
+            new_start_conv = self.bu.convert_seconds_to_datetime(
                 new_start)
             attrs['reserve_start'] = new_start_conv
 
         if alter_e:
             new_end = end + shift
-            new_end_conv = self.bu.convert_seconds_to_resvtime(new_end)
+            new_end_conv = self.bu.convert_seconds_to_datetime(new_end)
             attrs['reserve_end'] = new_end_conv
 
         if interactive > 0:
@@ -352,12 +352,12 @@ class TestPbsResvAlter(TestFunctional):
 
             if whichMessage == 1:
                 if alter_s:
-                    new_start_conv = self.bu.convert_seconds_to_resvtime(
+                    new_start_conv = self.bu.convert_seconds_to_datetime(
                         new_start, self.fmt)
                     attrs['reserve_start'] = new_start_conv
 
                 if alter_e:
-                    new_end_conv = self.bu.convert_seconds_to_resvtime(
+                    new_end_conv = self.bu.convert_seconds_to_datetime(
                         new_end, self.fmt)
                     attrs['reserve_end'] = new_end_conv
 
@@ -1273,10 +1273,10 @@ class TestPbsResvAlter(TestFunctional):
             offset, duration)
         rid2, start2, end2 = self.submit_and_confirm_reservation(
             offset, duration, standing=True)
-        new_start1 = self.bu.convert_seconds_to_resvtime(start1 + shift)
-        new_start2 = self.bu.convert_seconds_to_resvtime(start2 + shift)
-        new_end1 = self.bu.convert_seconds_to_resvtime(end1 + shift)
-        new_end2 = self.bu.convert_seconds_to_resvtime(end2 + shift)
+        new_start1 = self.bu.convert_seconds_to_datetime(start1 + shift)
+        new_start2 = self.bu.convert_seconds_to_datetime(start2 + shift)
+        new_end1 = self.bu.convert_seconds_to_datetime(end1 + shift)
+        new_end2 = self.bu.convert_seconds_to_datetime(end2 + shift)
         try:
             attr = {'reserve_start': new_start1, 'reserve_end': new_end1}
             self.server.alterresv(rid1, attr, runas=TEST_USER1)
