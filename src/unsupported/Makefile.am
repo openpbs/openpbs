@@ -52,7 +52,6 @@ dist_unsupported_DATA = \
 	NodeHealthCheck.py \
 	load_balance.py \
 	mom_dyn_res.py \
-	pbs-alps-inventory-check.py \
 	rapid_inter.py \
 	run_pelog_shell.py \
 	NodeHealthCheck.json \
