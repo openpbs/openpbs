@@ -39,6 +39,7 @@ def ValidateCredentials(username, password):
                 sys.exit(3)
             else:
                 print "Post install process started..."
+                print "This script may take a few minutes to run..."
                 print "User Validation Success"
     else:
         print "Usage error: \n "+ __file__ +" -u <username> -p <password>"
@@ -252,7 +253,7 @@ def InstallDataService(username, password):
                 print "Failed to initilize database"
                 sys.exit(6)
             else:
-                print "Database intialization is success"
+                print "Database initialization successful"
         UpdateDSconfig()
         print "InstallDataService completed "
 
