@@ -316,6 +316,7 @@ extern "C" {
 #define ATTR_python_restart_max_objects "python_restart_max_objects"
 #define ATTR_python_restart_min_interval "python_restart_min_interval"
 #define ATTR_power_provisioning "power_provisioning"
+#define ATTR_sync_mom_hookfiles_timeout "sync_mom_hookfiles_timeout"
 
 /* additional scheduler "attribute" names */
 

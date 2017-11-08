@@ -155,6 +155,7 @@ enum srv_atr {
 	SVR_ATR_restrict_res_to_release_on_suspend,
 	SRV_ATR_PowerProvisioning,
 	SRV_ATR_show_hidden_attribs,
+	SRV_ATR_sync_mom_hookfiles_timeout,
 	/* This must be last */
 	SRV_ATR_LAST
 };

@@ -6471,49 +6471,55 @@ add_pending_mom_allhooks_action(void *minfo, unsigned int action)
 void
 next_sync_mom_hookfiles(void)
 {
-	int	timeout_sec;
+	unsigned long timeout_sec;
 	time_t	timeout_time;
 	time_t	current_time;
+	short timed_out = 0;
 
 	if (pbs_conf.pbs_use_tcp == 1) {
 		timeout_sec = SYNC_MOM_HOOKFILES_TIMEOUT_TPP;
+		if (server.sv_attr[(int)SRV_ATR_sync_mom_hookfiles_timeout].at_flags & ATR_VFLAG_SET)
+			timeout_sec = server.sv_attr[(int)SRV_ATR_sync_mom_hookfiles_timeout].at_val.at_long;
 	} else {
 		timeout_sec = SYNC_MOM_HOOKFILES_TIMEOUT;
 	}
 	current_time = time((time_t *) 0);
 	timeout_time = g_sync_hook_time + timeout_sec;
-	if (do_sync_mom_hookfiles && 
-		(!sync_mom_hookfiles_proc_running ||
-		 	(current_time > timeout_time))) {
 
-		if (sync_mom_hookfiles_proc_running) {
-			/* we're timing out previous sync mom hook files */
-			/* process/action */
-			if (pbs_conf.pbs_use_tcp == 1) {
-				snprintf(log_buffer, sizeof(log_buffer),
-					"Timing out previous send of mom hook updates "
-					"(send replies expected=%d received=%d)",
-					g_hook_replies_expected, g_hook_replies_recvd);
-				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER,
-					LOG_INFO, __func__, log_buffer);
-				g_hook_replies_recvd = 0;
-				g_hook_replies_expected = 0;
-			} else {
-				sprintf(log_buffer,
-					"Timing out previous send of mom hook updates "
-					"(killing child process %d)", g_sync_hook_pid);
-				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER,
-					LOG_INFO, __func__, log_buffer);
-				kill_sync_hook_process();
-			}
-			/* attempt collapsing  the hook tracking file */
-			collapse_hook_tr();
-			sync_mom_hookfiles_proc_running = 0;
+	if (sync_mom_hookfiles_proc_running) {
+		if (current_time <= timeout_time)
+			/* previous updates still in progress and not timed out */
+			return;
+
+		/* we're timing out previous sync mom hook files process/action */
+		if (pbs_conf.pbs_use_tcp == 1) {
+			snprintf(log_buffer, sizeof(log_buffer),
+				 "Timing out previous send of mom hook updates "
+				 "(send replies expected=%d received=%d)",
+				 g_hook_replies_expected, g_hook_replies_recvd);
+			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER,
+				  LOG_INFO, __func__, log_buffer);
+			snprintf(log_buffer, sizeof(log_buffer), "timeout_sec=%lu", timeout_sec);
+			log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__, log_buffer);
+
+			g_hook_replies_recvd = 0;
+			g_hook_replies_expected = 0;
+		} else {
+			sprintf(log_buffer,
+				"Timing out previous send of mom hook updates "
+				"(killing child process %d)", g_sync_hook_pid);
+			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER,
+				  LOG_INFO, __func__, log_buffer);
+			kill_sync_hook_process();
 		}
-
-		if (bg_sync_mom_hookfiles() == 0)
-			do_sync_mom_hookfiles = 0;
+		/* attempt collapsing  the hook tracking file */
+		collapse_hook_tr();
+		sync_mom_hookfiles_proc_running = 0;
+		timed_out = 1;
 	}
+
+	if ((do_sync_mom_hookfiles || timed_out) && bg_sync_mom_hookfiles() == 0)
+		do_sync_mom_hookfiles = 0;
 }
 
 /**
