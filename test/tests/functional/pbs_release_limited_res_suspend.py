@@ -49,7 +49,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
     def setUp(self):
         TestFunctional.setUp(self)
         # Set default resources available on the default mom
-        a = {ATTR_rescavail+'.ncpus': 4, ATTR_rescavail+'.mem': '2gb'}
+        a = {ATTR_rescavail + '.ncpus': 4, ATTR_rescavail + '.mem': '2gb'}
         self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
         # Create an express queue
         b = {ATTR_qtype: 'Execution', ATTR_enable: 'True',
@@ -68,14 +68,14 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
 
         # Submit a low priority job
         j1 = Job(TEST_USER)
-        j1.set_attributes({ATTR_l+'.select': '1:ncpus=4:mem=512mb'})
+        j1.set_attributes({ATTR_l + '.select': '1:ncpus=4:mem=512mb'})
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
 
         # Submit a high priority job
         j2 = Job(TEST_USER)
         j2.set_attributes(
-            {ATTR_l+'.select': '1:ncpus=2:mem=512mb',
+            {ATTR_l + '.select': '1:ncpus=2:mem=512mb',
              ATTR_q: 'expressq'})
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
@@ -105,7 +105,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
 
         # Submit a low priority job
         j1 = Job(TEST_USER)
-        j1.set_attributes({ATTR_l+'.select': '1:ncpus=4:mem=512mb'})
+        j1.set_attributes({ATTR_l + '.select': '1:ncpus=4:mem=512mb'})
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
 
@@ -138,14 +138,14 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
 
         # Submit a low priority job
         j1 = Job(TEST_USER)
-        j1.set_attributes({ATTR_l+'.select': '1:ncpus=4:mem=512mb'})
+        j1.set_attributes({ATTR_l + '.select': '1:ncpus=4:mem=512mb'})
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
 
         # Submit a high priority job
         j2 = Job(TEST_USER)
         j2.set_attributes(
-            {ATTR_l+'.select': '1:ncpus=2:mem=256mb',
+            {ATTR_l + '.select': '1:ncpus=2:mem=256mb',
              ATTR_q: 'expressq'})
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
@@ -186,14 +186,14 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
 
         # Submit a low priority job
         j1 = Job(TEST_USER)
-        j1.set_attributes({ATTR_l+'.select': '1:ncpus=4:mem=512mb'})
+        j1.set_attributes({ATTR_l + '.select': '1:ncpus=4:mem=512mb'})
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
 
         # Submit a high priority job
         j2 = Job(TEST_USER)
         j2.set_attributes(
-            {ATTR_l+'.select': '1:ncpus=2:mem=512mb',
+            {ATTR_l + '.select': '1:ncpus=2:mem=512mb',
              ATTR_q: 'expressq'})
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
@@ -227,7 +227,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
 
         # Submit a low priority job
         j1 = Job(TEST_USER)
-        j1.set_attributes({ATTR_l+'.select':
+        j1.set_attributes({ATTR_l + '.select':
                            '1:ncpus=8:mem=512mb+1:ncpus=6:mem=256mb'})
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
@@ -235,7 +235,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         # Submit a high priority job
         j2 = Job(TEST_USER)
         j2.set_attributes(
-            {ATTR_l+'.select': '1:ncpus=8:mem=256mb',
+            {ATTR_l + '.select': '1:ncpus=8:mem=256mb',
              ATTR_q: 'expressq'})
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
@@ -260,7 +260,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
 
         # Submit a low priority job
         j1 = Job(TEST_USER)
-        j1.set_attributes({ATTR_l+'.select': '1:ncpus=4:mem=512mb',
+        j1.set_attributes({ATTR_l + '.select': '1:ncpus=4:mem=512mb',
                            ATTR_J: '1-3'})
         jid1 = self.server.submit(j1)
         subjobs = self.server.status(JOB, id=jid1, extend='t')
@@ -270,7 +270,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         # Submit a high priority job
         j2 = Job(TEST_USER)
         j2.set_attributes(
-            {ATTR_l+'.select': '1:ncpus=2:mem=512mb',
+            {ATTR_l + '.select': '1:ncpus=2:mem=512mb',
              ATTR_q: 'expressq'})
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
@@ -295,7 +295,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
 
         # Submit a low priority job
         j1 = Job(TEST_USER)
-        j1.set_attributes({ATTR_l+'.select': '1:ncpus=4:mem=512mb',
+        j1.set_attributes({ATTR_l + '.select': '1:ncpus=4:mem=512mb',
                            ATTR_J: '1-3'})
         jid1 = self.server.submit(j1)
         subjobs = self.server.status(JOB, id=jid1, extend='t')
@@ -305,7 +305,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         # Submit a high priority job
         j2 = Job(TEST_USER)
         j2.set_attributes(
-            {ATTR_l+'.select': '1:ncpus=2:mem=256mb',
+            {ATTR_l + '.select': '1:ncpus=2:mem=256mb',
              ATTR_q: 'expressq'})
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
@@ -331,14 +331,14 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
 
         # Submit a low priority job
         j1 = Job(TEST_USER)
-        j1.set_attributes({ATTR_l+'.select': '1:ncpus=4:mem=512mb'})
+        j1.set_attributes({ATTR_l + '.select': '1:ncpus=4:mem=512mb'})
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
 
         # Submit a high priority job
         j2 = Job(TEST_USER)
         j2.set_attributes(
-            {ATTR_l+'.select': '1:ncpus=2:mem=256mb',
+            {ATTR_l + '.select': '1:ncpus=2:mem=256mb',
              ATTR_q: 'expressq'})
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
@@ -373,7 +373,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
 
         # Submit a low priority job
         j1 = Job(TEST_USER)
-        j1.set_attributes({ATTR_l+'.select':
+        j1.set_attributes({ATTR_l + '.select':
                            '1:ncpus=8:mem=512mb+1:ncpus=6:mem=256mb'})
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
@@ -381,7 +381,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         # Submit a high priority job
         j2 = Job(TEST_USER)
         j2.set_attributes(
-            {ATTR_l+'.select': '1:ncpus=8:mem=256mb',
+            {ATTR_l + '.select': '1:ncpus=8:mem=256mb',
              ATTR_q: 'expressq'})
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
@@ -406,7 +406,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
 
         # Submit a low priority job
         j1 = Job(TEST_USER)
-        j1.set_attributes({ATTR_l+'.select': '1:ncpus=4:mem=512mb'})
+        j1.set_attributes({ATTR_l + '.select': '1:ncpus=4:mem=512mb'})
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
 
@@ -452,14 +452,14 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         """
         # Submit a low priority job
         j1 = Job(TEST_USER)
-        j1.set_attributes({ATTR_l+'.select': '1:ncpus=4:mem=512mb'})
+        j1.set_attributes({ATTR_l + '.select': '1:ncpus=4:mem=512mb'})
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
 
         # Submit a high priority job
         j2 = Job(TEST_USER)
         j2.set_attributes(
-            {ATTR_l+'.select': '1:ncpus=2:mem=256mb',
+            {ATTR_l + '.select': '1:ncpus=2:mem=256mb',
              ATTR_q: 'expressq'})
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
@@ -540,9 +540,9 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         self.server.manager(MGR_CMD_SET, QUEUE, a, id="workq")
 
         j1 = Job(TEST_USER)
-        j1.set_attributes({ATTR_l+'.ncpus': '4',
-                           ATTR_l+'.foo': '30',
-                           ATTR_l+'.bar': '40'})
+        j1.set_attributes({ATTR_l + '.ncpus': '4',
+                           ATTR_l + '.foo': '30',
+                           ATTR_l + '.bar': '40'})
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
 
@@ -586,9 +586,9 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, a)
 
         j1 = Job(TEST_USER)
-        j1.set_attributes({ATTR_l+'.ncpus': '4',
-                           ATTR_l+'.foo': '30',
-                           ATTR_l+'.bar': '40'})
+        j1.set_attributes({ATTR_l + '.ncpus': '4',
+                           ATTR_l + '.foo': '30',
+                           ATTR_l + '.bar': '40'})
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
 
@@ -633,9 +633,9 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
 
         j1 = Job(TEST_USER)
-        j1.set_attributes({ATTR_l+'.ncpus': '4',
-                           ATTR_l+'.foo': '30',
-                           ATTR_l+'.bar': '40'})
+        j1.set_attributes({ATTR_l + '.ncpus': '4',
+                           ATTR_l + '.foo': '30',
+                           ATTR_l + '.bar': '40'})
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
 
@@ -666,7 +666,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, a)
 
         j1 = Job(TEST_USER)
-        j1.set_attributes({ATTR_l+'.ncpus': '4'})
+        j1.set_attributes({ATTR_l + '.ncpus': '4'})
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
 
@@ -703,9 +703,9 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         self.server.create_vnodes("vnode2", vn_attrs, 1,
                                   self.mom, additive=True, fname="vnodedef2")
         j1 = Job(TEST_USER)
-        j1.set_attributes({ATTR_l+'.select':
+        j1.set_attributes({ATTR_l + '.select':
                            '1:ncpus=2+1:ncpus=6',
-                           ATTR_l+'.place': 'vscatter'})
+                           ATTR_l + '.place': 'vscatter'})
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
 
@@ -733,15 +733,15 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, a)
 
         j1 = Job(TEST_USER)
-        j1.set_attributes({ATTR_l+'.select': '1:ncpus=1',
-                           ATTR_l+'.place': 'excl'})
+        j1.set_attributes({ATTR_l + '.select': '1:ncpus=1',
+                           ATTR_l + '.place': 'excl'})
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
 
         # Submit a high priority job
         j2 = Job(TEST_USER)
         j2.set_attributes(
-            {ATTR_l+'.select': '1:ncpus=2',
+            {ATTR_l + '.select': '1:ncpus=2',
              ATTR_q: 'expressq'})
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
@@ -756,3 +756,30 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         # resume job
         self.server.deljob(jid2, wait=True)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
+
+    def test_normal_user_unable_to_see_res_released(self):
+        """
+        Check if normal user (non-operator, non-manager) has privileges to see
+        resources_released and resource_released_list attribute in job status
+        """
+        # Set mem in restrict_res_to_release_on_suspend server attribute
+        a = {ATTR_restrict_res_to_release_on_suspend: 'mem'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        j1 = Job(TEST_USER)
+        j1.set_attributes({ATTR_l + '.select': '1:ncpus=4:mem=512mb'})
+        jid1 = self.server.submit(j1)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
+        # suspend job
+        self.server.sigjob(jobid=jid1, signal="suspend")
+        self.server.expect(JOB, {ATTR_state: 'S'}, id=jid1)
+
+        # stat the job as a normal user
+        attrs = self.server.status(JOB, id=jid1, runas=TEST_USER)
+        self.assertFalse("resources_released" in attrs,
+                         "Normal user can see resources_released "
+                         "which is not expected")
+
+        self.assertFalse("resource_released_list.mem" in attrs,
+                         "Normal user can see resources_released_list "
+                         "which is not expected")
