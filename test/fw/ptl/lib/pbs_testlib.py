@@ -3892,7 +3892,7 @@ class PBSService(PBSObject):
                    tracejob
         :param n: One of 'ALL' of the number of lines to
                   process/display, defaults to 50.
-        :type n: int
+        :type n: str or int
         :param tail: if True, parse log from the end to the start,
                      otherwise parse from the start to the end.
                      Defaults to True.
@@ -3992,7 +3992,7 @@ class PBSService(PBSObject):
         :type id: str
         :param n: 'ALL' or the number of lines to search through,
                   defaults to 50
-        :type n: int
+        :type n: str or int
         :param tail: If true (default), starts from the end of
                      the file
         :type tail: bool
@@ -4049,7 +4049,7 @@ class PBSService(PBSObject):
             max_attempts = 60
         if interval is None:
             interval = 0.5
-        if starttime is None:
+        if starttime is None and n != 'ALL':
             starttime = self.ctime
         rv = (None, None)
         attempt = 1
@@ -4113,7 +4113,7 @@ class PBSService(PBSObject):
         :type id: str
         :param n: 'ALL' or the number of lines to search through,
                   defaults to 50
-        :type n: int
+        :type n: str or int
         :param tail: If true (default), starts from the end of
                      the file
         :type tail: bool
@@ -4176,7 +4176,7 @@ class PBSService(PBSObject):
         :type id: str
         :param n: 'ALL' or the number of lines to search through,
                   defaults to 50
-        :type n: int
+        :type n: str or int
         :param tail: If true (default), starts from the end of
                      the file
         :type tail: bool
@@ -4449,7 +4449,7 @@ class Comm(PBSService):
         :type id: str
         :param n: 'ALL' or the number of lines to search through,
                   defaults to 50
-        :type n: int
+        :type n: str or int
         :param tail: If true (default), starts from the end of
                      the file
         :type tail: bool
@@ -4979,7 +4979,7 @@ class Server(PBSService):
         :type id: str
         :param n: 'ALL' or the number of lines to search through,
                   defaults to 50
-        :type n: int
+        :type n: str or int
         :param tail: If true (default), starts from the end of
                      the file
         :type tail: bool
@@ -10548,7 +10548,7 @@ class Scheduler(PBSService):
         :type id: str
         :param n: 'ALL' or the number of lines to search through,
                   defaults to 50
-        :type n: int
+        :type n: str or int
         :param tail: If true (default), starts from the end of
                      the file
         :type tail: bool
@@ -12511,7 +12511,7 @@ class MoM(PBSService):
         :type id: str
         :param n: 'ALL' or the number of lines to search through,
                   defaults to 50
-        :type n: int
+        :type n: str or int
         :param tail: If true (default), starts from the end of
                      the file
         :type tail: bool
@@ -12691,7 +12691,7 @@ class MoM(PBSService):
         Returns True if the version of PBS used was built for Cray platforms
         """
         try:
-            self.log_match("alps_client", tail=False, max_attempts=1)
+            self.log_match("alps_client", n='ALL', tail=False, max_attempts=1)
         except PtlLogMatchError:
             return False
         else:
