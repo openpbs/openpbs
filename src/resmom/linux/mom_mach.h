@@ -82,13 +82,15 @@ extern "C" {
 #endif	/* CPUSET_VERSION < 4 */
 #endif	/* MOM_CPUSET */
 
-#if	MOM_CSA
+#if	MOM_CSA || MOM_ALPS
 #include <sys/types.h>
 #include <dlfcn.h>
 #include "/usr/include/job.h"
+#if	MOM_CSA
 #include <csaacct.h>
 #include <csa_api.h>
 #endif	/* MOM_CSA */
+#endif	/* MOM_CSA || MOM_ALPS */
 
 #if     MOM_BGL
 #include <rm_api.h>
@@ -129,9 +131,9 @@ struct startjob_rtn {
 	char  sj_cpuset_name[CPUSET_NAME_SIZE+1];
 #endif	/* MOM_CPUSET */
 
-#if	MOM_CSA
+#if	MOM_CSA || MOM_ALPS
 	jid_t	sj_jid;
-#endif	/* MOM_CSA */
+#endif	/* MOM_CSA or MOM_ALPS */
 
 #if	MOM_ALPS
 	long			sj_reservation;

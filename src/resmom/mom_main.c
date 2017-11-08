@@ -5563,12 +5563,12 @@ process_hup(void)
 	cleanup();
 	initialize();
 
-#if	MOM_CSA
+#if	MOM_CSA || MOM_ALPS /* ALPS needs libjob support */
 	/*
 	 * This needs to be called after the config file is read.
 	 */
 	ck_acct_facility_present();
-#endif	/* MOM_CSA */
+#endif	/* MOM_CSA or MOM_ALPS */
 
 	if (!real_hup)		/* no need to go on */
 		return;
@@ -8705,13 +8705,13 @@ main(int argc, char *argv[])
 		return (1);
 	}
 
-#if	MOM_CSA
+#if	MOM_CSA || MOM_ALPS /* ALPS needs libjob support */
 	/*
 	 * This needs to be called after the config file is read and before MOM
 	 * forks so the exit value can be seen if there is a bad flag combination.
 	 */
 	ck_acct_facility_present();
-#endif	/* MOM_CSA */
+#endif	/* MOM_CSA or MOM_ALPS */
 
 	/* initialize the network interface */
 

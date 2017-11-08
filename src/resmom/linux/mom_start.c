@@ -121,7 +121,8 @@ static struct libcsa_support {
 	{ "PP6", "SLES11", "x86_64", "libcsa.so.4", "libjob.so.2"},
 	{ "PP7", "SLES11", "ia64", "libcsa.so.4", "libjob.so.2"},
 	{ "---", "SLES10", "x86_64", "libcsa.so.1", "libjob.so"},
-	{ "---", "SLES11", "x86_64", "libcsa.so.1", "libjob.so"}
+	{ "---", "SLES11", "x86_64", "libcsa.so.1", "libjob.so"},
+	{ "---", "SLES12", "x86_64", "libcsa.so.1", "libjob.so.0"}
 };
 
 /**
@@ -146,6 +147,8 @@ extern	pbs_list_head	task_list_event;
 
 #if	MOM_CPUSET || MOM_ALPS
 extern	char		*path_jobs;
+char *get_versioned_libname(int sotype);
+int find_in_lib(void *handle, char * plnam, char *psnam, void ** psp);
 
 /**
  *	This is a temporary kludge - this work should really be done by
@@ -1267,7 +1270,7 @@ done:
 #endif	/* MOM_CPUSET */
 
 
-#if	MOM_CSA
+#if	MOM_CSA || MOM_ALPS /* MOM_ALPS requires libjob support */
 
 /* These globals are initialized in ck_acct_facility_present.
  *
@@ -1286,6 +1289,9 @@ int acct_facility_csa_active;
 int acct_dmd_wkmg;		/* valued in abi_correction() */
 jid_t	(*jc_create)();
 jid_t	(*jc_getjid)();
+#endif
+
+#if MOM_CSA
 int	(*p_csa_check)(struct csa_check_req *);
 int	(*p_csa_wracct)(struct csa_wra_req *);
 
@@ -1346,23 +1352,31 @@ abi_correction(void)
  * @return Void
  *
  */
+#endif /* MOM_CSA */
+
+#if MOM_CSA || MOM_ALPS /* MOM_ALPS requires libjob support */
 void
 ck_acct_facility_present(void)
 {
-	int		req_status;
-	int		ret1, ret2;
-	char	*status_csa;
-	char	*status_wkmg;
-	char	*libjob, *libcsa;
+	int	ret1;
+	int	ret2;
+	char	*libjob;
 
-	struct csa_check_req   check_req;
 	static void *handle1 = NULL, *handle2 = NULL;
 
 	struct	config		*cptr;
 	extern	struct	config	*config_array;
-
+#if MOM_CSA
+	int	req_status;
+	char	*libcsa;
+	struct csa_check_req   check_req;
+	char	*status_csa;
+	char	*status_wkmg;
 	/* "write workload management records" defaults to "on" */
 	acct_facility_wkmgt_recs = 1;
+#else
+	acct_facility_wkmgt_recs = 0;
+#endif
 
 	/* use of job_create defaults to True */
 	job_facility_enabled = 1;
@@ -1400,8 +1414,6 @@ ck_acct_facility_present(void)
 	acct_facility_active = 0;
 	acct_facility_csa_active = 0;
 	acct_facility_wkmgt_active = 0;
-	status_wkmg = "off";
-	status_csa = "off";
 
 	/*
 	 * If job facility is turned off, don't call dlopen for job_create.
@@ -1452,6 +1464,9 @@ ck_acct_facility_present(void)
 	if (job_facility_present == 0 || acct_facility_wkmgt_recs == 0)
 		goto done;
 
+#if MOM_CSA
+	status_wkmg = "off";
+	status_csa = "off";
 	libcsa = get_versioned_libname(sotype_csa);
 	if (libcsa == NULL) {
 		sprintf(log_buffer, "Could not find a supported CSA shared object");
@@ -1538,10 +1553,11 @@ ck_acct_facility_present(void)
 			__func__, log_buffer);
 		goto done;
 	}
+#endif
 
 err:
 	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_ACCT, LOG_DEBUG,
-			__func__, "CSA facility not present or improperly setup");
+			__func__, "CSA/job facility not present or improperly setup");
 
 done:
 	/*
@@ -1625,6 +1641,9 @@ find_in_lib(void *handle, char * plnam, char *psnam, void ** psp)
 	return (retcode);
 }
 
+#endif /* MOM_CSA or MOM_ALPS */
+
+#if MOM_CSA /* this section only when CSA is enabled */
 
 /**
  * @brief
@@ -1943,15 +1962,12 @@ write_wkmg_record(int rec_type, int sub_type, job *pjob)
 int
 set_job(job *pjob, struct startjob_rtn *sjr)
 {
-#if	MOM_CSA
-#endif	/* MOM_CSA */
-
 #ifdef	MOM_CPUSET
 	if (attach_to_cpuset(pjob, sjr) < 0)
 		return -2;
 #endif	/* MOM_CPUSET */
 
-#if	MOM_CSA
+#if	MOM_CSA || MOM_ALPS
 	if (job_facility_present && pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) {
 
 		/* host system has necessary JOB container facility present
@@ -1992,7 +2008,7 @@ set_job(job *pjob, struct startjob_rtn *sjr)
 
 		*pjid = sjr->sj_jid;
 	}
-#endif	/* MOM_CSA */
+#endif	/* MOM_CSA or MOM_ALPS */
 
 	sjr->sj_session = setsid();
 
@@ -2051,11 +2067,11 @@ set_job(job *pjob, struct startjob_rtn *sjr)
 			 * will use the job ID rather than the session ID.
 			 */
 			if (sjr->sj_pagg == 0) {
-#if MOM_CSA
+#if MOM_CSA || MOM_ALPS /* MOM_ALPS requires libjob support */
 				if ((job_facility_present == 1))
 					sjr->sj_pagg = sjr->sj_jid;
 				else
-#endif /* MOM_CSA */
+#endif /* MOM_CSA or MOM_ALPS */
 					sjr->sj_pagg = sjr->sj_session;
 			}
 			pjob->ji_extended.ji_ext.ji_reservation =
@@ -2210,12 +2226,10 @@ attach_to_cpuset(job *pjob, struct startjob_rtn *sjr)
 void
 set_globid(job *pjob, struct startjob_rtn *sjr)
 {
-#if	defined(MOM_CPUSET) || MOM_CSA
-#endif	/* MOM_CPUSET || MOM_CSA */
 #if	MOM_CPUSET
 	char	cbuf[CPUSET_NAME_SIZE+16];
 #endif	/* MOM_CPUSET */
-#if	MOM_CSA
+#if	MOM_CSA || MOM_ALPS
 	char		buf[19];  /* 0x,16 hex digits,'\0' */
 
 	if (sjr->sj_jid == (jid_t)-1) {
@@ -2229,7 +2243,7 @@ set_globid(job *pjob, struct startjob_rtn *sjr)
 
 		*(jid_t *)&pjob->ji_extended.ji_ext.ji_4jid[0] = sjr->sj_jid;
 
-
+#if MOM_CSA
 		if (acct_facility_active == 0) {
 
 			/* first success on job_create() after failure */
@@ -2238,8 +2252,17 @@ set_globid(job *pjob, struct startjob_rtn *sjr)
 			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_ACCT, LOG_DEBUG,
 				__func__, log_buffer);
 		}
+#endif /*MOM_CSA */
+		if (job_facility_present == 0) {
+			/* first success on job_create() after failure */
+			job_facility_present = 1;
+			sprintf(log_buffer, "Job container facility available");
+			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_ACCT, LOG_DEBUG,
+				__func__, log_buffer);
+
+		}
 	}
-#endif	/* MOM_CSA */
+#endif	/* MOM_CSA or MOM_ALPS */
 
 #if	MOM_CPUSET
 	/*
