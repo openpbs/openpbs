@@ -43,6 +43,7 @@ from ptl.lib.pbs_ifl_mock import *
 
 
 class TestQmgr(TestFunctional):
+
     """
     Test suite for PBSPro's qmgr command
     """
@@ -124,3 +125,33 @@ class TestQmgr(TestFunctional):
             if vndef_file is not None:
                 self.mom.delete_vnodes()
                 self.server.manager(MGR_CMD_DELETE, VNODE, id=nodename)
+
+    def test_multi_attributes(self):
+        """
+        Test to verify that if multiple attributes are set
+        simultaneously and out of which one fail then none
+        will be set.
+        """
+
+        a = {'queue_type': 'execution',
+             'enabled': 'True',
+             'started': 'True'}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='workq2')
+
+        a = {'partition': 'foo'}
+        self.server.manager(MGR_CMD_SET, QUEUE, a, id='workq')
+
+        a = {'partition': 'bar'}
+        self.server.manager(MGR_CMD_SET, QUEUE, a, id='workq2')
+
+        a = {'queue': 'workq', 'partition': 'bar'}
+        try:
+            self.server.manager(MGR_CMD_SET, NODE, a,
+                                id=self.mom.shortname)
+        except PbsManagerError as e:
+            self.assertNotEqual(e.rc, '0')
+            # Due to PP-1073 checking for the partial message
+            msg = " is not part of queue for node"
+            self.logger.info("looking for error, %s" % msg)
+            self.assertTrue(msg in e.msg[0])
+        self.server.expect(NODE, 'queue', op=UNSET, id=self.mom.shortname)
