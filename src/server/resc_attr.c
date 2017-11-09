@@ -791,14 +791,6 @@ apply_aoe_inchunk_rules(resource *presc, attribute *pattr, void *pobj,
 					}
 				}
 			}
-			/* there were chunks without aoe */
-			if (c) {
-				if (aoe_req)
-					free(aoe_req);
-				if (aoename)
-					free(aoename);
-				return PBSE_IVAL_AOECHUNK;      /* rule (a) */
-			}
 		}
 	}
 

@@ -641,6 +641,7 @@ struct resource_resv
 	unsigned	is_peer_ob:1;		/* res resv can from a peer server */
 
 	unsigned	is_job:1;		/* res resv is a job */
+	unsigned	is_prov_needed:1;	/* res resv requires provisioning */
 	unsigned	is_shrink_to_fit:1;	/* res resv is a shrink-to-fit job */
 	unsigned	is_resv:1;		/* res resv is an advanced reservation */
 

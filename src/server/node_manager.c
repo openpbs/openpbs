@@ -5511,7 +5511,7 @@ found:
 
 			free_attrlist(&reported_hooks);
 			np = psvrmom->msr_children[0];
-			if (np->nd_state == INUSE_PROV) {
+			if (np->nd_state & INUSE_PROV) {
 				DBPRT(("%s: calling [is_vnode_prov_done] from is_request\n", __func__))
 				is_vnode_prov_done(np->nd_name);
                 }

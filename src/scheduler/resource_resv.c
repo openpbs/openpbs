@@ -150,6 +150,7 @@ new_resource_resv()
 	resresv->can_never_run = 0;
 	resresv->is_peer_ob = 0;
 
+	resresv->is_prov_needed = 0;
 	resresv->is_job = 0;
 	resresv->is_shrink_to_fit = 0;
 	resresv->is_resv = 0;
@@ -370,6 +371,7 @@ dup_resource_resv(resource_resv *oresresv,
 	nresresv->can_not_run = oresresv->can_not_run;
 	nresresv->can_never_run = oresresv->can_never_run;
 	nresresv->is_peer_ob = oresresv->is_peer_ob;
+	nresresv->is_prov_needed = oresresv->is_prov_needed;
 	nresresv->is_shrink_to_fit = oresresv->is_shrink_to_fit;
 	nresresv->will_use_multinode = oresresv->will_use_multinode;
 

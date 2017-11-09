@@ -2884,7 +2884,7 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 	int		cur_ncpus = 0;		/* current number of ncpus left to license */
 	int		licenses_allocated = 0;	/* licenses allocated to a job on a node */
 	resource_req	*ncpusreq = NULL;
-	resdef		*ncpusdef = find_resdef(consres, "ncpus");
+	resource_req	*aoereq = NULL;
 
 	if (chk == NULL || pninfo_arr == NULL || resresv== NULL || pl == NULL || nspec_arr == NULL)
 		return 0;
@@ -2956,6 +2956,16 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 		return 0;
 	}
 
+	if (resresv->aoename != NULL) {
+		resresv->is_prov_needed = 1;
+		aoereq = find_resource_req(specreq_noncons, getallres(RES_AOE));
+		/* Provisionable node needed only if placement=pack or
+		 * subchunk consists aoe resource request.
+		 */
+		if (!pl->pack && aoereq == NULL)
+			resresv->is_prov_needed = 0;
+	}
+
 	for (req = specreq_noncons; req != NULL && req->type.is_non_consumable;
 		prevreq = req, req = req->next)
 			;
@@ -2967,7 +2977,6 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 		specreq_noncons = NULL;	/* no non-consumable resources */
 
 	cur_flt_lic = flt_lic;
-
 	nsa = *nspec_arr;
 
 	for (i = 0, j = 0; ninfo_arr[i] != NULL && chunks_found == 0; i++) {
@@ -3001,7 +3010,7 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 			if (is_vnode_eligible_chunk(specreq_noncons, ninfo_arr[i], resresv,
 					err)) {
 				if (!ninfo_arr[i]->lic_lock) {
-					ncpusreq = find_resource_req(specreq_cons, ncpusdef);
+					ncpusreq = find_resource_req(specreq_cons, getallres(RES_NCPUS));
 					if (ncpusreq != NULL)
 						cur_ncpus = ncpusreq->amount;
 					else
@@ -3054,7 +3063,7 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 							ns->ninfo = find_node_by_rank(pninfo_arr, ns->ninfo->rank);
 						}
 						if (!ninfo_arr[i]->lic_lock) {
-							ncpusreq = find_resource_req(specreq_cons, ncpusdef);
+							ncpusreq = find_resource_req(specreq_cons, getallres(RES_NCPUS));
 							if (ncpusreq != NULL)
 								licenses_allocated = cur_ncpus - ncpusreq->amount;
 							else
@@ -3068,7 +3077,7 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 						ns->end_of_chunk = 1;
 
 						if (!ninfo_arr[i]->lic_lock) {
-							ncpusreq = find_resource_req(specreq_noncons, ncpusdef);
+							ncpusreq = find_resource_req(specreq_noncons, getallres(RES_NCPUS));
 							if (ncpusreq != NULL)
 								licenses_allocated = ncpusreq->amount;
 							else
@@ -3113,8 +3122,7 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 				}
 			}
 
-		}
-		else {
+		} else {
 			schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG,
 				ninfo_arr[i]->name, "Node allocated to job");
 		}
@@ -3160,7 +3168,6 @@ eval_simple_selspec(status *policy, chunk *chk, node_info **pninfo_arr,
 	/* don't be so specific in the comment since it's only for a single node*/
 	free(err->arg1);
 	err->arg1 = NULL;
-
 	return 0;
 }
 
@@ -3202,15 +3209,6 @@ is_vnode_eligible(node_info *node, resource_resv *resresv,
 		set_schd_error_codes(err, NOT_RUN, NODE_NOT_EXCL);
 		set_schd_error_arg(err, ARG1, resresv->is_job ? "Job":"Reservation");
 		return 0;
-	}
-
-	/* Does this chunk have AOE? */
-	if (resresv->aoename != NULL) {
-		if (!is_aoe_avail_on_vnode(node, resresv)) {
-			set_schd_error_codes(err, NOT_RUN, AOE_NOT_AVALBL);
-			set_schd_error_arg(err, ARG1, resresv->aoename);
-			return 0;
-		}
 	}
 
 	/* Does this chunk have EOE? */
@@ -3458,10 +3456,10 @@ resources_avail_on_vnode(resource_req *specreq_cons, node_info *node,
 				if (!node->lic_lock && (cur_flt_lic < num_chunks) &&
 					!strcmp(req->name, "ncpus"))
 					/* if we can allocate more cpus than we have floating licenses,
-				 * we will allocate the number of floating licenses we have.  It
-				 * is still possible that more nodelocked licensed nodes are farther
-				 * down the node list and we can still satisfy the request.
-				 */
+					 * we will allocate the number of floating licenses we have.  It
+					 * is still possible that more nodelocked licensed nodes are farther
+					 * down the node list and we can still satisfy the request.
+					 */
 					num_chunks = cur_flt_lic;
 
 				if (num_chunks > 0) {
@@ -3469,13 +3467,11 @@ resources_avail_on_vnode(resource_req *specreq_cons, node_info *node,
 					if (is_p == NOT_PROVISIONABLE) {
 						allocated = 0;
 						break;
-					}
-					else if (is_p == PROVISIONING_NEEDED) {
+					} else if (is_p == PROVISIONING_NEEDED ) {
 						if (ns != NULL)
 							ns->go_provision = 1;
 						if (resresv->select->total_chunks >1)
 							set_current_aoe(node, resresv->aoename);
-
 						if (resresv->is_job) {
 							sprintf(logbuf, "Vnode %s selected for provisioning with AOE %s",
 								node->name, resresv->aoename);
@@ -3562,11 +3558,11 @@ resources_avail_on_vnode(resource_req *specreq_cons, node_info *node,
 	}
 	else {
 		num_chunks = check_resources_for_node(specreq_cons, node, resresv, err);
-
 		if (num_chunks > 0) {
 			is_p = is_provisionable(node, resresv, err);
 			if (is_p == NOT_PROVISIONABLE)
 				return 0;
+
 			else if (is_p == PROVISIONING_NEEDED) {
 				if (ns != NULL)
 					ns->go_provision = 1;
@@ -5130,7 +5126,8 @@ is_provisionable(node_info *node, resource_resv *resresv, schd_error *err)
 	int i;
 	int ret = NO_PROVISIONING_NEEDED;
 
-	if (resresv->aoename == NULL && resresv->is_job)
+	if ((resresv->aoename == NULL && resresv->is_job) ||
+	    !resresv->is_prov_needed)
 		return NO_PROVISIONING_NEEDED;
 
 	/* Perform checks if job is going to provision now or if reservation has aoe. */

@@ -658,7 +658,8 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 			resresv->job->nodect = 999999;
 #endif /* localmod 040 */
 
-		resresv->aoename = getaoename(resresv->select);
+		if ((resresv->aoename = getaoename(resresv->select)) != NULL)
+			resresv->is_prov_needed = 1;
 		if ((resresv->eoename = geteoename(resresv->select)) != NULL) {
 			/* job with a power profile can't be checkpointed or suspended */
 			resresv->job->can_checkpoint = 0;
@@ -4577,17 +4578,17 @@ update_accruetype(int pbs_sd, server_info *sinfo,
 char*
 getaoename(selspec *select)
 {
+	int i = 0;
 	resource_req *req;
 
 	if (select == NULL)
 		return NULL;
 
-	/* we only need to look at 1st chunk since either all request aoe
-	 * or none request aoe.
-	 */
-	req = find_resource_req(select->chunks[0]->req, getallres(RES_AOE));
-	if (req != NULL)
-		return string_dup(req->res_str);
+	for (i = 0; select->chunks[i] != NULL; i++) {
+		req = find_resource_req(select->chunks[i]->req, getallres(RES_AOE));
+		if (req != NULL)
+			return string_dup(req->res_str);
+	}
 
 	return NULL;
 }
