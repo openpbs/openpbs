@@ -4830,6 +4830,15 @@ main(int argc, char **argv, char **envp)   /* qsub */
 	if (command_flag == 0) {
 		/* if script is empty, get standard input */
 		if ((strcmp(script, "") == 0) || (strcmp(script, "-") == 0)) {
+			/* if this is a terminal, print a short info */
+			if (isatty(STDIN_FILENO) && Interact_opt == FALSE) {
+#ifdef WIN32
+				printf("Job script will be read from standard input. Submit with CTRL+Z.\n");
+#else
+				printf("Job script will be read from standard input. Submit with CTRL+D.\n");
+#endif
+			}
+
 			if (! N_opt) set_attr(&attrib, ATTR_N, "STDIN");
 			if (Interact_opt == FALSE) {
 				if ((errflg=get_script(stdin, script_tmp,
