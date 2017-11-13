@@ -56,26 +56,45 @@ class Test_power_provisioning_cray(TestFunctional):
         pltfom = self.du.get_platform()
         if pltfom != 'cray':
             self.skipTest("%s: not a cray")
+        self.mom.add_config({"logevent": "0xfffffff"})
+        self.setup_cray_eoe()   # setup hook and eoe
+        self.enable_power()     # enable hooks
 
     def setup_cray_eoe(self):
         """
         Setup a eoe list for all the nodes.
         Get possible values for pcaps using capmc command.
         """
-        eoe_vals = "low, med, high"
         min_nid = 0
         max_nid = 0
+        self.names = []
         for n in self.server.status(NODE):
-            name = n['id']
             if 'resources_available.PBScraynid' in n:
+                self.names.append(n['id'])
                 self.server.manager(MGR_CMD_SET, NODE,
-                                    {"resources_available.eoe": eoe_vals},
-                                    name)
+                                    {"power_provisioning": True}, n['id'])
                 craynid = n['resources_available.PBScraynid']
                 if min_nid == 0 or craynid < min_nid:
                     min_nid = craynid
                 if craynid > max_nid:
                     max_nid = craynid
+        # Dividing total number of nodes by 3 and setting each part to a
+        # different power profile , which will be used to submit jobs with
+        # chunks matching to the number of nodes set to each profile
+        self.npp = len(self.names) / 3
+        for i in xrange(len(self.names)):
+            if i in range(0, self.npp):
+                self.server.manager(MGR_CMD_SET, NODE,
+                                    {"resources_available.eoe": 'low'},
+                                    self.names[i])
+            if i in range(self.npp, self.npp * 2):
+                self.server.manager(MGR_CMD_SET, NODE,
+                                    {"resources_available.eoe": 'med'},
+                                    self.names[i])
+            if i in range(self.npp * 2, self.npp * 3):
+                self.server.manager(MGR_CMD_SET, NODE,
+                                    {"resources_available.eoe": 'high'},
+                                    self.names[i])
 
         # Find nid range for capmc command
         nids = str(min_nid) + "-" + str(max_nid)
@@ -161,10 +180,9 @@ e.accept()
         host = n['Mom']
         self.assertTrue(host is not None)
         mom = self.moms[host]
-        s = mom.log_match(
+        mom.log_match(
             "Hook;PBS_power.HK;copy hook-related file request received",
             starttime=self.server.ctime, max_attempts=60)
-        self.assertTrue(s)
 
     def submit_job(self, secs=10, a={}):
         """
@@ -176,7 +194,6 @@ e.accept()
         j.set_sleep_time(secs)
         self.logger.info(str(j))
         jid = self.server.submit(j)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
         self.job = j
         return jid
 
@@ -190,21 +207,36 @@ e.accept()
                 return True
         return False
 
-    def eoe_check(self, jid, eoe, secs):
-        # check that job is running and that the vnode has current_eoe set
-        qstat = self.server.status(JOB, id=jid)
-        vname = qstat[0]['exec_vnode'].partition(':')[0].strip('(')
-        self.server.expect(VNODE, {'current_eoe': eoe}, id=vname)
-
-        self.server.expect(JOB, 'job_state', op=UNSET, id=jid, offset=secs)
-        host = qstat[0]['exec_host'].partition('/')[0]
-        mom = self.moms[host]		# top mom
-        s = mom.log_match(".*;Job;%s;PMI: reset current_eoe.*" % jid,
+    def mom_logcheck(self, msg, jid=None):
+        mom = self.moms[self.host]           # top mom
+        if jid is not None:
+            mom.log_match(msg % jid,
                           regexp=True, starttime=self.server.ctime,
                           max_attempts=10)
-        self.assertTrue(s)
-        # check that vnode has current_eoe unset
-        self.server.expect(VNODE, {'current_eoe': eoe}, id=vname, op=UNSET)
+        else:
+            mom.log_match(msg,
+                          regexp=True, starttime=self.server.ctime,
+                          max_attempts=10)
+
+    def eoe_check(self, jid, eoe, secs):
+        # check that job is running and that the vnode has current_eoe set
+        # check for the appropriate log messages for cray
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        qstat = self.server.status(JOB, id=jid)
+        nodes = self.job.get_vnodes(self.job.exec_vnode)
+        for vname in nodes:
+            self.server.expect(VNODE, {'current_eoe': eoe}, id=vname)
+        self.server.expect(JOB, 'queue', op=UNSET, id=jid, offset=secs)
+        self.host = qstat[0]['exec_host'].partition('/')[0]
+        self.mom_logcheck(";Job;%s;Cray: get_usage", jid)
+        self.mom_logcheck("capmc get_node_energy_counter --nids")
+        self.mom_logcheck(";Job;%s;energy usage", jid)
+        self.mom_logcheck(";Job;%s;Cray: pcap node", jid)
+        self.mom_logcheck("capmc set_power_cap --nids")
+        self.mom_logcheck(";Job;%s;PMI: reset current_eoe", jid)
+        self.mom_logcheck(";Job;%s;Cray: remove pcap node", jid)
+        for vname in nodes:
+            self.server.expect(VNODE, {'current_eoe': eoe}, id=vname, op=UNSET)
 
     def eoe_job(self, num, eoe):
         """
@@ -229,30 +261,115 @@ e.accept()
         get set.
         """
 
-        self.setup_cray_eoe()   # setup hook and eoe
-        self.enable_power()		# enable hooks
-
-        # Make sure eoe is set correctly on the vnodes
-        eoes = set()		# use sets to be order independent
-        for n in self.server.status(NODE):
-            name = n['id']
-            if 'resources_available.eoe' in n:
-                self.server.manager(MGR_CMD_SET, NODE,
-                                    {"power_provisioning": True}, name)
-                curr = n['resources_available.eoe'].split(',')
-                self.logger.info("%s has eoe values %s" % (name, str(curr)))
-                if len(eoes) == 0:  # empty set
-                    eoes.update(curr)
-                else:  # all vnodes must have same eoes
-                    self.assertTrue(eoes == set(curr))
-        self.assertTrue(len(eoes) > 0)
-
-        # submit jobs for each eoe value
-        x = 5
-        while len(eoes) > 0:
-            eoe = eoes.pop()
-            jid = self.eoe_job(x, eoe)
+        eoes = ['low', 'med', 'high']
+        for profile in eoes:
+            jid = self.eoe_job(self.npp, profile)
             self.energy_check(jid)
 
-    def tearDown(self):
-        TestFunctional.tearDown(self)
+    @timeout(700)
+    def test_cray_request_more_eoe(self):
+        """
+        Submit jobs with available+1 eoe chunks and verify job comment.
+        """
+
+        x = self.npp + 1
+        jid = self.submit_job(10,
+                              {'Resource_List.place': 'scatter',
+                               'Resource_List.select': '%d:eoe=%s' % (x,
+                                                                      'high')})
+        self.server.expect(JOB, {
+            'job_state': 'Q',
+            'comment': 'Not Running: No available resources on nodes'},
+            id=jid)
+
+    @timeout(700)
+    def test_cray_eoe_job_multiple_eoe(self):
+        """
+        Submit jobs requesting multiple eoe and job should rejected by qsub.
+        """
+
+        a = {'Resource_List.place': 'scatter',
+             'Resource_List.select': '10:eoe=low+10:eoe=high'}
+        j = Job(TEST_USER, attrs=a)
+        j.set_sleep_time(10)
+        jid = None
+        try:
+            jid = self.server.submit(j)
+        except PbsSubmitError as e:
+            self.assertTrue(
+                'Invalid provisioning request in chunk' in e.msg[0])
+        self.assertFalse(jid)
+
+    @timeout(700)
+    def test_cray_server_prov_off(self):
+        """
+        Submit jobs requesting eoe when power provisioning unset on server
+        and verify that jobs wont run.
+        """
+
+        eoes = ['low', 'med', 'high']
+        a = {'power_provisioning': 'False'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        for profile in eoes:
+            jid = self.submit_job(10,
+                                  {'Resource_List.place': 'scatter',
+                                   'Resource_List.select': '%d:eoe=%s'
+                                   % (self.npp, profile)})
+            self.server.expect(JOB, {
+                'job_state': 'Q',
+                'comment': 'Not Running: No available resources on nodes'},
+                id=jid)
+
+    @timeout(700)
+    def test_cray_node_prov_off(self):
+        """
+        Submit jobs requesting eoe and verify that jobs wont run on
+        nodes where power provisioning is set to false.
+        """
+
+        eoes = ['med', 'high']
+        # set power_provisioning to off where eoe is set to false
+        for i in range(0, self.npp):
+            a = {'power_provisioning': 'False'}
+            self.server.manager(MGR_CMD_SET, NODE, a, id=self.names[i])
+
+        for profile in eoes:
+            jid = self.submit_job(10,
+                                  {'Resource_List.place': 'scatter',
+                                   'Resource_List.select': '%d:eoe=%s'
+                                   % (self.npp, profile)})
+            self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        jid_low = self.submit_job(10,
+                                  {'Resource_List.place': 'scatter',
+                                   'Resource_List.select': '%d:eoe=%s'
+                                   % (self.npp, 'low')})
+        exp_comm = 'Not Running: Insufficient amount of resource: '
+        exp_comm += 'vntype (cray_compute != cray_login)'
+        self.server.expect(JOB, {
+                           'job_state': 'Q',
+                           'comment': exp_comm}, attrop=PTL_AND, id=jid_low)
+
+    @timeout(700)
+    def test_cray_job_preemption(self):
+        """
+        Submit job to a high priority queue and verify
+        that job is preempted by requeueing.
+        """
+
+        self.server.manager(MGR_CMD_CREATE, QUEUE,
+                            {'queue_type': 'execution', 'started': 'True',
+                             'enabled': 'True', 'priority': 150}, id='workq2')
+        jid = self.submit_job(10,
+                              {'Resource_List.place': 'scatter',
+                               'Resource_List.select': '%d:eoe=%s'
+                               % (self.npp, 'low')})
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        t = int(time.time())
+        jid_hp = self.submit_job(10, {ATTR_queue: 'workq2',
+                                      'Resource_List.place': 'scatter',
+                                      'Resource_List.select': '%d:eoe=%s' %
+                                      (self.npp, 'low')})
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid_hp)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
+        self.scheduler.log_match("Job preempted by requeuing", starttime=t)
