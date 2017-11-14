@@ -241,8 +241,12 @@ type=\"ENGINE\"/>" % (self.basil_version[0])
             self.assertFalse(True,
                              "Mom node %s doesn't exist on pbs server"
                              % (mom_id))
+        # List of resources to be ignored while comparing.
+        ignr_rsc = ['license']
 
         for rsc, val in pbs_node.iteritems():
+            if rsc in ignr_rsc:
+                continue
             self.assertTrue(rsc in cray_login_node,
                             ("%s\t: login node has no rsc %s") %
                             (mom_id, rsc))
