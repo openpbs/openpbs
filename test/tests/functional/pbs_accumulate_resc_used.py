@@ -65,9 +65,9 @@ class TestPbsAccumulateRescUsed(TestFunctional):
         TestFunctional.setUp(self)
         self.logger.info("len moms = %d" % (len(self.moms)))
         if len(self.moms) != 3:
-            self.logger.error('test requires 3 MoMs as input, ' +
-                              '  use -p moms=<mom1>:<mom2>:<mom3>')
-            self.assertEqual(len(self.moms), 3)
+            usage_string = 'test requires 3 MoMs as input, ' + \
+                           'use -p moms=<mom1>:<mom2>:<mom3>'
+            self.skip_test(usage_string)
 
         # PBSTestSuite returns the moms passed in as parameters as dictionary
         # of hostname and MoM object
