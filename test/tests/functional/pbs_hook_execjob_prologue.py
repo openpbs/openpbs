@@ -216,5 +216,25 @@ class TestPbsExecutePrologue(TestFunctional):
         attr = {'resources_used.file': '2gb'}
         self.server.expect(JOB, attr, id=jid, extend='x', offset=1)
         self.server.accounting_match(
-            "E;%s;.*%s.*" % jid, 'resources_used.file=2gb', regexp=True,
+            "E;" + jid + ";.*resources_used.file=2gb", regexp=True,
             max_attempts=10)
+
+    def test_prologue_hook_fail_action_non_mom_hook(self):
+        """
+        Test that when fail action is set to anything other than 'None' on
+        a mom hook, and the mom hook event is not either execjob_begin,
+        exechost_startup, execjob_prologue, an error message is dispalyed
+        """
+        hook_name = "prologue"
+        hook_body = ("import pbs\n"
+                     "pbs.event().accept()\n")
+        attr = {'event': 'exechost_periodic',
+                'fail_action': 'offline_vnodes'}
+        try:
+            self.server.create_import_hook(hook_name, attr, hook_body)
+        except PbsManagerError, e:
+            exp_err = "Can't set hook fail_action value to 'offline_vnodes':"
+            exp_err += " hook event must"
+            exp_err += " contain at least one of execjob_begin"
+            exp_err += ", exechost_startup, execjob_prologue"
+            self.assertTrue(exp_err in e.msg[0])
