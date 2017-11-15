@@ -1123,6 +1123,13 @@ complete_running(job *jobp)
 		parent = jobp->ji_parentaj;
 		if (parent->ji_qs.ji_state == JOB_STATE_QUEUED) {
 			svr_setjobstate(parent, JOB_STATE_BEGUN, JOB_SUBSTATE_BEGUN);
+
+			/* Also set the parent job's stime */
+			parent->ji_qs.ji_stime = time_now;
+			parent->ji_wattr[(int)JOB_ATR_stime].at_val.at_long = time_now;
+			parent->ji_wattr[(int)JOB_ATR_stime].at_flags |=
+			ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+
 			account_jobstr(parent);
 			job_attr_def[(int) JOB_ATR_Comment].at_decode(
 					&parent->ji_wattr[(int) JOB_ATR_Comment], (char *) 0,
