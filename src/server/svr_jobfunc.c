@@ -415,7 +415,7 @@ svr_enquejob(job *pjob)
 
 	/* update any entity count and entity resources usage for the queue */
 
-	
+
 	if ((rc=set_entity_ct_sum_max(pjob, pque, INCR)) != 0) {
 		snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_ct_sum_max on queue failed with %d for enqueue in %s", rc, pque->qu_qs.qu_name);
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE, pjob->ji_qs.ji_jobid, log_buffer);
@@ -3862,7 +3862,7 @@ eval_resvState(resc_resv *presv, enum resvState_discrim s, int relVal,
 				else
 					*psub = RESV_RUNNING;
 				*pstate = RESV_RUNNING;
-				if (presv->ri_qs.ri_tactive < 
+				if (presv->ri_qs.ri_tactive <
 					presv->ri_wattr[RESV_ATR_start].at_val.at_long)
 					/*Assigning time_now to indicate when reservation become active
  					 *to help in fend off accounting on server restart*/
@@ -4705,12 +4705,25 @@ start_end_dur_wall(void *pobj, int objtype)
 
 		case  7:	/*start, end, duration*/
 			if ((pstime->at_val.at_long < time_now) ||
-				(petime->at_val.at_long < pstime->at_val.at_long))
+				(petime->at_val.at_long < pstime->at_val.at_long) ||
+				(pduration->at_val.at_long <= 0) ||
+				((petime->at_val.at_long - pstime->at_val.at_long) !=
+					pduration->at_val.at_long))
 				rc = -1;
-			else if ((pduration->at_val.at_long <= 0) ||
-				((petime->at_val.at_long - pstime->at_val.at_long)<
-				pduration->at_val.at_long))
+			break;
+
+		case  8:	/* end, duration */
+			if ((pduration->at_val.at_long <= 0) ||
+				(petime->at_val.at_long - pduration->at_val.at_long <
+					time_now)) {
 				rc = -1;
+			}
+			else {
+				pstime->at_flags |= ATR_VFLAG_SET |
+					ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+				pstime->at_val.at_long = petime->at_val.at_long -
+					pduration->at_val.at_long;
+			}
 			break;
 
 		case  9:	/*start, wall*/
@@ -4728,12 +4741,28 @@ start_end_dur_wall(void *pobj, int objtype)
 			}
 			break;
 
+		case 10:	/* end, wall */
+			if ((prsc->rs_value.at_val.at_long <= 0) ||
+				(petime->at_val.at_long - prsc->rs_value.at_val.at_long <
+					time_now)) {
+				rc = -1;
+			}
+			else {
+				pstime->at_flags |= ATR_VFLAG_SET |
+					ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+				pstime->at_val.at_long = petime->at_val.at_long -
+					prsc->rs_value.at_val.at_long;
+				pduration->at_flags |= ATR_VFLAG_SET |
+					ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+				pduration->at_val.at_long = prsc->rs_value.at_val.at_long;
+			}
+			break;
+
 		case 11:	/*start, end, wall*/
 			if ((pstime->at_val.at_long < time_now) ||
-				(prsc->rs_value.at_val.at_long <= 0))
-				rc = -1;
-			else if (petime->at_val.at_long - pstime->at_val.at_long <
-				prsc->rs_value.at_val.at_long)
+				(prsc->rs_value.at_val.at_long <= 0) ||
+				(petime->at_val.at_long - pstime->at_val.at_long !=
+					prsc->rs_value.at_val.at_long))
 				rc = -1;
 			else {
 				pduration->at_flags |= ATR_VFLAG_SET |
@@ -4757,13 +4786,11 @@ start_end_dur_wall(void *pobj, int objtype)
 
 		case 15:	/*start, end, duration & wall*/
 			if ((pstime->at_val.at_long < time_now) ||
-				(petime->at_val.at_long < pstime->at_val.at_long))
-				rc = -1;
-			else if ((pduration->at_val.at_long <= 0) ||
-				((petime->at_val.at_long - pstime->at_val.at_long)<
-				pduration->at_val.at_long))
-				rc = -1;
-			else if (prsc->rs_value.at_val.at_long != pduration->at_val.at_long)
+				(petime->at_val.at_long < pstime->at_val.at_long) ||
+				(pduration->at_val.at_long <= 0) ||
+				(prsc->rs_value.at_val.at_long != pduration->at_val.at_long) ||
+				((petime->at_val.at_long - pstime->at_val.at_long) !=
+					pduration->at_val.at_long))
 				rc = -1;
 			break;
 
@@ -5176,7 +5203,7 @@ svr_saveorpurge_finjobhist(job *pjob)
 		 * when current sub state is JOB_SUBSTATE_EXITED.
 		 */
 		if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
-			if (pjob->ji_terminated) 
+			if (pjob->ji_terminated)
 				pjob->ji_qs.ji_substate = JOB_SUBSTATE_TERMINATED;
 			else if ((pjob->ji_wattr[(int)JOB_ATR_exit_status].at_flags) &
 				ATR_VFLAG_SET) {
@@ -5818,7 +5845,7 @@ find_ms_full_host_and_port(job *pjob, int *port)
 		if (ms_exec_host == NULL) {
 			log_err(errno, __func__, "strdup failed");
 			return (NULL);
-			
+
 		}
 		if ((p=strchr(ms_exec_host, '/')) != NULL)
 			*p = '\0';
@@ -5832,7 +5859,7 @@ find_ms_full_host_and_port(job *pjob, int *port)
 		if (ms_exec_host == NULL) {
 			log_err(errno, __func__, "strdup failed");
 			return (NULL);
-			
+
 		}
 		if ((p=strchr(ms_exec_host, '/')) != NULL)
 			*p = '\0';
@@ -5846,7 +5873,7 @@ find_ms_full_host_and_port(job *pjob, int *port)
  *	then logs 'err_msg' value along with 'errno' info and
  *	'header_msg' into daemon_log.
  *
- * @param[in,out]	err_msg - holds error message 
+ * @param[in,out]	err_msg - holds error message
  * @param[in]		err_msg_sz - size of the 'err_msg' buffer
  * @param[in]		msg - actual message to log
  * @param[in]		errno - error number to log
@@ -5872,7 +5899,7 @@ if ((err_msg != NULL) && (err_msg_sz > 0)) { \
  * @param[in]		err_msg_sz - size of the 'err_msg' buffer
  * @param[in]		msg - actual message to log
  * @param[in]		arg - maps to 'msg's '%' parameter
- * @param[in]		id - some calling function namee to log 
+ * @param[in]		id - some calling function namee to log
  *
  * @return none
  *
@@ -5967,7 +5994,7 @@ post_send_job_exec_update_req(struct work_task *pwt)
 
 /**
  * @brief
- *	
+ *
  * Communicate to the MS mom pjob's exec_vnode, exec_host,
  * exec_host2, and schedselect attributes.
  *
@@ -5985,7 +6012,7 @@ post_send_job_exec_update_req(struct work_task *pwt)
 
 int
 send_job_exec_update_to_mom(job *pjob, char *err_msg, int err_msg_sz,
-				struct batch_request *reply_req) 
+				struct batch_request *reply_req)
 {
 	struct batch_request *newreq;
 	char		*new_exec_vnode = NULL;
@@ -6063,7 +6090,7 @@ send_job_exec_update_to_mom(job *pjob, char *err_msg, int err_msg_sz,
 	}
 
 	if (pjob->ji_wattr[(int)JOB_ATR_exec_host2].at_flags & ATR_VFLAG_SET) {
-		new_exec_host2 = 
+		new_exec_host2 =
 		  pjob->ji_wattr[(int)JOB_ATR_exec_host2].at_val.at_str;
 
 		if (add_to_svrattrl_list(
@@ -6086,7 +6113,7 @@ send_job_exec_update_to_mom(job *pjob, char *err_msg, int err_msg_sz,
 			psched->at_val.at_str, 0, NULL) == -1) {
 			LOG_EVENT_BUF_ARG3(err_msg,err_msg_sz,
 			   "failed to add_to_svrattrl_list(%s,%s,%s)",
-				ATTR_SchedSelect, "", 
+				ATTR_SchedSelect, "",
 				psched->at_val.at_str,
 				pjob->ji_qs.ji_jobid)
 			goto send_job_exec_update_exit;
@@ -6101,7 +6128,7 @@ send_job_exec_update_to_mom(job *pjob, char *err_msg, int err_msg_sz,
 		svrattrl 	*psvrl;
 		attribute_def	*objatrdef;
 		extern  int	resc_access_perm;
-	
+
 		objatrdef = &job_attr_def[(int)JOB_ATR_resource];
 		CLEAR_HEAD(collectresc);
 		resc_access_perm = READ_ONLY;
@@ -6179,7 +6206,7 @@ enum resc_sum_action {
  *			  must be non-NULL if 'action' is 'RESC_SUM_ADD'.
  * @param[in]	err_msg	- error message buffer filled in if there's an error executing
  *			  this function.
- * @param[in]	err_msg_sz - size of 'err_msg' buffer.  
+ * @param[in]	err_msg_sz - size of 'err_msg' buffer.
  *
  * @return 	char *
  * @retval	<string> If 'action' is RESC_SUM_ADD, then this returns the 'keyw' to
@@ -6228,9 +6255,9 @@ resc_sum_values_action(enum resc_sum_action action, resource_def *resc_def, char
 		int	l, r;
 		struct	resc_sum *tmp_rs;
 		int	found_match = 0;
-		struct	attribute tmpatr;	
+		struct	attribute tmpatr;
 
-		found_match = 0; 
+		found_match = 0;
 		for (k = 0; k < resc_sum_values_size; k++) {
 			rs = resc_sum_values;
 			if (rs[k].rs_def == NULL) {
@@ -6246,10 +6273,10 @@ resc_sum_values_action(enum resc_sum_action action, resource_def *resc_def, char
 				break;
 			}
 		}
-	
+
 		if (k == resc_sum_values_size) {
 			/* add a new entry */
-	
+
 			l = resc_sum_values_size + 5;
 			tmp_rs = (struct resc_sum *)realloc(resc_sum_values,
 				  		l* sizeof(struct resc_sum));
@@ -6268,7 +6295,7 @@ resc_sum_values_action(enum resc_sum_action action, resource_def *resc_def, char
 			k = resc_sum_values_size;
 			resc_sum_values_size = l;
 		}
-	
+
 		if (!found_match) {
 			rs = resc_sum_values;
 			rs[k].rs_def = resc_def;
@@ -6312,7 +6339,7 @@ resc_sum_values_action(enum resc_sum_action action, resource_def *resc_def, char
 				/* '1's below are for ':', '=', and '\0'. */
 				len_entry = 1 + strlen(val->al_resc) + 1 +
 					strlen(val->al_value) + 1;
-				new_len = strlen(buf) + len_entry; 
+				new_len = strlen(buf) + len_entry;
 
 				if (new_len > buf_size) {
 					tmp_buf = (char *)realloc(buf,  new_len);
@@ -6335,7 +6362,7 @@ resc_sum_values_action(enum resc_sum_action action, resource_def *resc_def, char
 			rs[k].rs_def = NULL;
 			memset(&rs[k].rs_attr, 0, sizeof(struct attribute));
 		}
-		return (buf);	
+		return (buf);
 	}
 }
 
@@ -6348,7 +6375,7 @@ resc_sum_values_action(enum resc_sum_action action, resource_def *resc_def, char
  *		2:ncpus=1:mem=3gb:mpiprocs=5
  *	this expands to:
  *	   ncpus=1:mem=3gb:mpiprocs=5+ncpus=1:mem=3gb:mpiprocs=5
- * @param[in]	select_str - the select/schedselect specification 
+ * @param[in]	select_str - the select/schedselect specification
  *
  * @return char *
  * @retval	!= NULL - the expanded select string
@@ -6359,7 +6386,7 @@ resc_sum_values_action(enum resc_sum_action action, resource_def *resc_def, char
  *	outside after use.
  */
 static char *
-expand_select_spec(char *select_str) 
+expand_select_spec(char *select_str)
 {
 	char		*selbuf = NULL;
 	int		hasprn3;
@@ -6416,17 +6443,17 @@ expand_select_spec(char *select_str)
 						if (ns_malloced > 0) {
 							free(new_sel);
 						}
-						log_err(-1, __func__, "pbs_strcat failed");	
+						log_err(-1, __func__, "pbs_strcat failed");
 						free(selbuf);
 						return (NULL);
 					}
-				
+
 				}
 				if (pbs_strcat(&new_sel, &ns_malloced, buf) == NULL) {
 					if (ns_malloced > 0) {
 						free(new_sel);
 					}
-					log_err(-1, __func__, "pbs_strcat failed");	
+					log_err(-1, __func__, "pbs_strcat failed");
 					free(selbuf);
 					return (NULL);
 				}
@@ -6453,7 +6480,7 @@ expand_select_spec(char *select_str)
  * @retval == NULL	if error encountered.
  *
  * @note
- *	The returned string can have duplicate resource 
+ *	The returned string can have duplicate resource
  *	names in them.
  *	The returned string points to a malloced area that
  *	must be freed when not needed.
@@ -6473,7 +6500,7 @@ resources_seen(char *exec_vnode)
 	char		*res_list = NULL;
 	char		*noden = NULL;
 	size_t		ssize = 0;
-	size_t		slen = 0;	
+	size_t		slen = 0;
 
 	if (exec_vnode == NULL) {
 		log_err(-1, __func__, "bad params passed");
@@ -6812,7 +6839,7 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 		goto recreate_exec_vnode_exit;
 	}
 
-	exec_host = 
+	exec_host =
 	   strdup(pjob->ji_wattr[(int)JOB_ATR_exec_host].at_val.at_str);
 
 	if (exec_host == NULL) {
@@ -6829,7 +6856,7 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 		goto recreate_exec_vnode_exit;
 	}
 
-	exec_host2 = 
+	exec_host2 =
 	  strdup(pjob->ji_wattr[(int)JOB_ATR_exec_host2].at_val.at_str);
 	if (exec_host2 == NULL) {
 		LOG_ERR_BUF(err_msg, err_msg_sz,
@@ -6889,7 +6916,7 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 		if (parse_node_resc(chunk, &noden, &nelem, &pkvp) == 0) {
 
 			/* see if previous entry already matches this */
-			if ((pnode == NULL) || 
+			if ((pnode == NULL) ||
 				(strcmp(pnode->nd_name, noden) != 0)) {
 				pnode = find_nodebyname(noden);
 			}
@@ -6902,7 +6929,7 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 			}
 
 			if (is_parent_host_of_node(pnode, ms_fullhost, ms_port) &&
-			     (vnodelist != NULL) &&	
+			     (vnodelist != NULL) &&
 			      in_string_list(noden, '+', vnodelist)) {
 				LOG_EVENT_BUF_ARG1(err_msg,err_msg_sz,
 				 "Can't free '%s' since it's on a "
@@ -7007,7 +7034,7 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 						log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 											__func__, err_msg);
 						goto recreate_exec_vnode_exit;
-						
+
 					}
 
 					snprintf(buf, sizeof(buf),
@@ -7017,7 +7044,7 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 
 				if (paren == 0) { /* have all chunks for */
 						  /* current host */
-			
+
 					if (parend) {
 						strcat(new_exec_vnode, ")");
 						parend = 0;
@@ -7027,7 +7054,7 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 						strcat(deallocated_execvnode, ")");
 						parend1 = 0;
 					}
-		
+
 
 					buf_sum = resc_sum_values_action(RESC_SUM_GET_CLEAR,
 							NULL, NULL, NULL, err_msg, err_msg_sz);
@@ -7048,7 +7075,7 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 								&new_select,
 								&ns_malloced,
 								"+") == NULL) {
-								log_err(-1, __func__, "pbs_strcat failed");	
+								log_err(-1, __func__, "pbs_strcat failed");
 								goto recreate_exec_vnode_exit;
 							}
 						}
@@ -7062,11 +7089,11 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 						}
 						if ((extra_res != NULL) && (extra_res[0] != '\0')) {
 							if (pbs_strcat(&new_select, &ns_malloced, ":") == NULL) {
-								log_err(-1, __func__, "pbs_strcat failed");	
+								log_err(-1, __func__, "pbs_strcat failed");
 								goto recreate_exec_vnode_exit;
 							}
 							if (pbs_strcat(&new_select, &ns_malloced, extra_res) == NULL) {
-								log_err(-1, __func__, "pbs_strcat failed");	
+								log_err(-1, __func__, "pbs_strcat failed");
 								goto recreate_exec_vnode_exit;
 							}
 						}
@@ -7101,13 +7128,13 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 							strcat(new_exec_vnode, ")");
 							parend = 0;
 						}
-			
+
 						if (parend1) {
 							strcat(deallocated_execvnode, ")");
 							parend1 = 0;
 						}
 					}
-		
+
 				}
 
 				if (hasprn < 0) {
@@ -7134,12 +7161,12 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 					if (buf_sum[0] != '\0') {
 						extra_res = return_missing_resources(chunk3,
 								res_in_exec_vnode);
-				
+
 						if (sel_entry > 0) {
 							/* there's already previous */
 							/* select/schedselect entry */
 							if (pbs_strcat(&new_select, &ns_malloced, "+") == NULL) {
-								log_err(-1, __func__, "pbs_strcat failed");	
+								log_err(-1, __func__, "pbs_strcat failed");
 								goto recreate_exec_vnode_exit;
 							}
 						}
@@ -7153,18 +7180,18 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 						}
 						if ((extra_res != NULL) && (extra_res[0] != '\0')) {
 							if (pbs_strcat(&new_select, &ns_malloced, ":") == NULL) {
-								log_err(-1, __func__, "pbs_strcat failed");	
+								log_err(-1, __func__, "pbs_strcat failed");
 								goto recreate_exec_vnode_exit;
 							}
 							if (pbs_strcat( &new_select, &ns_malloced, extra_res) == NULL) {
-								log_err(-1, __func__, "pbs_strcat failed");	
+								log_err(-1, __func__, "pbs_strcat failed");
 								goto recreate_exec_vnode_exit;
 							}
 						}
 						sel_entry++;
 
 					}
-		
+
 				}
 			}
 		} else {
@@ -7225,7 +7252,7 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 		}
 	}
 
-	/* output message about nodes to be freed but no part of job */	
+	/* output message about nodes to be freed but no part of job */
 	if ((vnodelist != NULL) && (err_msg != NULL) &&
 					(err_msg_sz > 0)) {
 		char	*tmpbuf = NULL;
@@ -7255,7 +7282,7 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 				}
 				if (pc1 == NULL) {
 					if (tmpbuf2[0] != '\0') {
-						strcat(tmpbuf2, " ");	
+						strcat(tmpbuf2, " ");
 					}
 					strcat(tmpbuf2, pc);
 				}
@@ -7390,7 +7417,7 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 				(void)decode_str(
                          		&pjob->ji_wattr[(int)JOB_ATR_SchedSelect_orig],
 					NULL,
-                                        NULL, 
+                                        NULL,
 					pjob->ji_wattr[JOB_ATR_SchedSelect].at_val.at_str);
 
 			}
