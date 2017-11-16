@@ -776,10 +776,10 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
 
         # stat the job as a normal user
         attrs = self.server.status(JOB, id=jid1, runas=TEST_USER)
-        self.assertFalse("resources_released" in attrs,
+        self.assertFalse("resources_released" in attrs[0],
                          "Normal user can see resources_released "
                          "which is not expected")
 
-        self.assertFalse("resource_released_list.mem" in attrs,
+        self.assertFalse("resource_released_list.mem" in attrs[0],
                          "Normal user can see resources_released_list "
                          "which is not expected")
