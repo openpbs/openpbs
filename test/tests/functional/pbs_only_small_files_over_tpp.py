@@ -50,9 +50,7 @@ class TestOnlySmallFilesOverTPP(TestFunctional):
         TestFunctional.setUp(self)
 
         if len(self.moms) != 2:
-            self.logger.error('test requires two MoMs as input, ' +
-                              '  use -p moms=<mom1>:<mom2>')
-            self.assertEqual(len(self.moms), 2)
+            self.skip_test(reason="need 2 mom hosts: -p moms=<m1>:<m2>")
 
         self.server.set_op_mode(PTL_CLI)
 

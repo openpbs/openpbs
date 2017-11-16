@@ -271,7 +271,6 @@ class TestPbsNodeRampDown(TestFunctional):
 
         if len(self.moms) != 3:
             self.skip_test(reason="need 3 mom hosts: -p moms=<m1>:<m2>:<m3>")
-            return
 
         TestFunctional.setUp(self)
         Job.dflt_attributes[ATTR_k] = 'oe'

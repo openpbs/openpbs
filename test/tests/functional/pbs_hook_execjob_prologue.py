@@ -49,7 +49,6 @@ class TestPbsExecutePrologue(TestFunctional):
     def setUp(self):
         if len(self.moms) != 3:
             self.skip_test(reason="need 3 mom hosts: -p moms=<m1>:<m2>:<m3>")
-            return
 
         TestFunctional.setUp(self)
 
