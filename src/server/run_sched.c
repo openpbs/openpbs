@@ -236,8 +236,6 @@ find_assoc_sched_pj(job *pj, pbs_sched **target_sched)
 {
 	pbs_queue *pq;
 	pbs_sched *psched;
-	attribute *part_attr;
-	int k;
 	char *q_name;
 
 	*target_sched = NULL;
@@ -248,10 +246,12 @@ find_assoc_sched_pj(job *pj, pbs_sched **target_sched)
 		return 0;
 
 	if (pq->qu_attr[QA_ATR_partition].at_flags & ATR_VFLAG_SET) {
+		attribute *part_attr;
 		psched = (pbs_sched*) GET_NEXT(svr_allscheds);
 		while (psched) {
 			part_attr = &(psched->sch_attr[SCHED_ATR_partition]);
 			if (part_attr->at_flags & ATR_VFLAG_SET) {
+				int k;
 				for (k = 0; k < part_attr->at_val.at_arst->as_usedptr; k++) {
 					if ((part_attr->at_val.at_arst->as_string[k] != NULL)
 							&& (!strcmp(part_attr->at_val.at_arst->as_string[k],

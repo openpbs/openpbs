@@ -876,7 +876,6 @@ main(int argc, char *argv[])
 	int		lockfds;
 	int		t = 1;
 	pid_t		pid;
-	int		try_port;
 	char		host[PBS_MAXHOSTNAME+1];
 #ifndef DEBUG
 	char		*dbfile = "sched_out";
@@ -1158,6 +1157,7 @@ main(int argc, char *argv[])
 			die(0);
 		}
 	} else {
+		int try_port;
 		for (try_port=STARTING_PORT_NUM;try_port < MAX_PORT_NUM;try_port++) {
 			/* try to bind this socket to a reserved port */
 			saddr.sin_family = AF_INET;

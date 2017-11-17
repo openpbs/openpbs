@@ -2437,12 +2437,8 @@ sched_settings_frm_svr(struct batch_status *status)
 	char *tmp_priv_dir = NULL;
 	char *tmp_log_dir = NULL;
 	char *tmp_partitions = NULL;
-	int c;
-	int lockfds;
 	struct	attropl	*attribs, *patt;
 	struct batch_status *ss = NULL;
-	int	err;
-	int priv_dir_update_fail = 0;
 	extern char *partitions;
 
 	attr = status->attribs;
@@ -2463,10 +2459,13 @@ sched_settings_frm_svr(struct batch_status *status)
 	}
 
 	if (!dflt_sched) {
+		int err;
+		int priv_dir_update_fail = 0;
 		if ((log_dir != NULL) && strcmp(log_dir, tmp_log_dir) != 0) {
 			(void)snprintf(path_log,  MAXPATHLEN, tmp_log_dir);
 			log_close(1);
 			if (log_open(logfile, path_log) == -1) {
+				struct attropl *patt;
 				/* update the sched_log attribute with its previous value only */
 				attribs = (struct  attropl *)calloc(1, sizeof(struct attropl));
 				if (attribs == NULL) {
@@ -2506,6 +2505,7 @@ sched_settings_frm_svr(struct batch_status *status)
 		} else
 			log_dir = tmp_log_dir;
 		if ((priv_dir != NULL) && strcmp(priv_dir, tmp_priv_dir) != 0) {
+			int c;
 			(void)snprintf(log_buffer,  LOG_BUF_SIZE, tmp_priv_dir);
 			#if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
 				c  = chk_file_sec(log_buffer, 1, 0, S_IWGRP|S_IWOTH, 1);
@@ -2524,6 +2524,7 @@ sched_settings_frm_svr(struct batch_status *status)
 					log_err(-1, __func__, log_buffer);
 					priv_dir_update_fail = 1;
 				} else {
+					int lockfds;
 					(void)unlink("sched.lock");
 					lockfds = open("sched.lock", O_CREAT|O_WRONLY, 0644);
 					if (lockfds < 0) {

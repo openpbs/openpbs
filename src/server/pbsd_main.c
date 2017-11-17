@@ -2408,7 +2408,6 @@ next_task()
 {
 
 	time_t		   tilwhen;
-	time_t		   delay;
 	pbs_sched	   *psched;
 
 	tilwhen = default_next_task();
@@ -2416,6 +2415,7 @@ next_task()
 	/* should the scheduler be run?  If so, adjust the delay time  */
 
 	for (psched = (pbs_sched*) GET_NEXT(svr_allscheds); psched; psched = (pbs_sched*) GET_NEXT(psched->sc_link)) {
+		time_t delay;
 		if ((delay = psched->sch_next_schedule - time_now) <= 0)
 			set_scheduler_flag(SCH_SCHEDULE_TIME, psched);
 	else if (delay < tilwhen)
