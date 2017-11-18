@@ -1124,7 +1124,7 @@ class TestEquivClass(TestFunctional):
 
         rname = rid.split('.')
         # Submit jobs inside reservation
-        a = {ATTR_queue: rname[0]}
+        a = {ATTR_queue: rname[0], 'Resource_List.select': '1:ncpus=1'}
         jids1 = self.submit_jobs(3, a)
 
         # Submit jobs outside of reservations
@@ -1839,4 +1839,42 @@ else:
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
 
         self.scheduler.log_match("Number of job equivalence classes: 1",
+                                 max_attempts=10, starttime=self.t)
+
+    def test_queue_resav(self):
+        """
+        Test that jobs in queues with resources_available limits use queue as
+        part of the criteria of making an equivalence class
+        """
+
+        a = {'resources_available.ncpus': 2}
+        self.server.create_vnodes('vnode', a, 1, self.mom, usenatvnode=True)
+
+        attrs = {'queue_type': 'Execution', 'started': 'True',
+                 'enabled': 'True', 'resources_available.ncpus': 1,
+                 'Priority': 10}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, attrs, id='workq2')
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
+
+        a = {'queue': 'workq', 'Resource_List.select': '1:ncpus=1'}
+        a2 = {'queue': 'workq2', 'Resource_List.select': '1:ncpus=1'}
+        J = Job(TEST_USER, attrs=a)
+        jid1 = self.server.submit(J)
+
+        J = Job(TEST_USER, attrs=a2)
+        jid2 = self.server.submit(J)
+
+        J = Job(TEST_USER, attrs=a2)
+        jid3 = self.server.submit(J)
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
+
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
+        self.server.expect(JOB, {ATTR_state: 'Q'}, id=jid3)
+
+        # 2 quivalence classes - one for jobs inside workq2
+        # and one for jobs inside workq
+        self.scheduler.log_match("Number of job equivalence classes: 2",
                                  max_attempts=10, starttime=self.t)

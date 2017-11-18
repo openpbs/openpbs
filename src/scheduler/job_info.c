@@ -2160,6 +2160,16 @@ resresv_set_use_proj(server_info *sinfo)
 
 /**
  * @brief should a resresv_set use the queue
+ * 	A resresv_set should use queue for the following reasons:
+ * 	Hard limits	max_run_res, etc
+ * 	Soft Limits	max_run_res_soft, etc
+ * 	Nodes		Queue has nodes(e.g., node's queue attribute)
+ * 	Dedtime queue 	Queue is a dedicated time queue
+ * 	Primetime	Queue is a primetime queue
+ * 	Non-primetime	Queue is a non-primetime queue
+ * 	Resource limits	Queue has resources_available limits
+ * 	Reservation	Queue is a reservation queue
+ *
  * @param qinfo - the queue
  * @retval 1 - yes
  * @retval 0 - no
@@ -2171,7 +2181,8 @@ resresv_set_use_queue(queue_info *qinfo)
 		return 0;
 
 	if (qinfo->has_hard_limit || qinfo->has_soft_limit || qinfo->has_nodes ||
-	    qinfo->is_ded_queue || qinfo->is_prime_queue || qinfo->is_nonprime_queue)
+	    qinfo->is_ded_queue || qinfo->is_prime_queue || qinfo->is_nonprime_queue ||
+	    qinfo->has_resav_limit || qinfo->resv != NULL)
 		return 1;
 
 	return 0;

@@ -457,6 +457,7 @@ query_queue_info(status *policy, struct batch_status *queue, server_info *sinfo)
 					free_queue_info(qinfo);
 					return NULL;
 				}
+				qinfo->has_resav_limit = 1;
 			}
 		} else if (!strcmp(attrp->name, ATTR_rescassn)) { /* resources_assigned */
 			resp = find_alloc_resource_by_str(qinfo->qres, attrp->resource);
@@ -528,6 +529,7 @@ new_queue_info(int limallocflag)
 	qinfo->has_soft_limit = 0;
 	qinfo->has_hard_limit = 0;
 	qinfo->is_peer_queue = 0;
+	qinfo->has_resav_limit = 0;
 	init_state_count(&(qinfo->sc));
 	if ((limallocflag != 0))
 		qinfo->liminfo = lim_alloc_liminfo();
@@ -897,6 +899,7 @@ dup_queue_info(queue_info *oqinfo, server_info *nsinfo)
 	nqinfo->has_soft_limit = oqinfo->has_soft_limit;
 	nqinfo->has_hard_limit = oqinfo->has_hard_limit;
 	nqinfo->is_peer_queue = oqinfo->is_peer_queue;
+	nqinfo->has_resav_limit = oqinfo->has_resav_limit;
 	nqinfo->sc = oqinfo->sc;
 	nqinfo->liminfo = lim_dup_liminfo(oqinfo->liminfo);
 	nqinfo->priority = oqinfo->priority;
