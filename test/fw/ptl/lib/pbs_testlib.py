@@ -13616,6 +13616,29 @@ class Job(ResourceResv):
         if isinstance(body, list):
             body = '\n'.join(body)
 
+        if self.platform == 'cray' or self.platform == 'craysim':
+            body = body.split("\n")
+            for i, line in enumerate(body):
+                if line.startswith("#PBS") and "select=" in line:
+                    if 'Resource_List.vntype' in self.attributes:
+                        self.unset_attributes(['Resource_List.vntype'])
+                    line_arr = line.split(" ")
+                    for j, element in enumerate(line_arr):
+                        select = element.startswith("select=")
+                        lselect = element.startswith("-lselect=")
+                        if select or lselect:
+                            if lselect:
+                                sel_str = element[9:]
+                            else:
+                                sel_str = element[7:]
+                            sel_str = self.add_cray_vntype(select=sel_str)
+                            if lselect:
+                                line_arr[j] = "-lselect=" + sel_str
+                            else:
+                                line_arr[j] = "select=" + sel_str
+                    body[i] = " ".join(line_arr)
+            body = '\n'.join(body)
+
         self.script_body = body
         if self.du is None:
             self.du = DshUtils()
