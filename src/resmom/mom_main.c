@@ -6982,7 +6982,7 @@ mom_over_limit(job *pjob)
 				svr_resc_size);
 			assert(rd != NULL);
 			preswalltime = find_resc_entry(at, rd);
-			assert(rd != NULL);
+			assert(preswalltime != NULL);
 			walltime_sum = preswalltime->rs_value.at_val.at_long;
 			if (walltime_sum > average_trialperiod) {
 				rd = find_resc_def(svr_resc_def, "cput",
