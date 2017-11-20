@@ -54,6 +54,7 @@ class TestSuspendResumeOnCray(TestFunctional):
             self.skipTest("Test suite only meant to run on a Cray")
         TestFunctional.setUp(self)
 
+    @tags('cray', 'smoke')
     def test_default_restrict_res_to_release_on_suspend_setting(self):
         """
         Check that on Cray restrict_res_to_release_on_suspend is always set
@@ -95,6 +96,7 @@ at least resid .* is exclusive"
                               max_attempts=10)
         self.assertTrue(s)
 
+    @tags('cray')
     def test_basic_admin_suspend_restart(self):
         """
         Test basic admin-suspend funcionality for jobs and array jobs with

@@ -47,7 +47,12 @@ class TestVnodePerNumaNode(TestFunctional):
     Test that the information is correctly being compressed into one vnode
     using the default setting (equivalent to FALSE).
     """
+    def setUp(self):
+        if not self.du.get_platform().startswith('cray'):
+            self.skipTest("Test suite only meant to run on a Cray")
+        TestFunctional.setUp(self)
 
+    @tags('cray', 'smoke')
     def test_settings(self):
         """
         vnode_per_numa_node is unset (defaults to FALSE).
