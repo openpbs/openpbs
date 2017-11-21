@@ -659,14 +659,16 @@ query_resv(struct batch_status *resv, server_info *sinfo)
 				return NULL;
 			}
 
-			set_resource_req(resreq, attrp->value);
-
-			if (advresv->resreq == NULL)
-				advresv->resreq = resreq;
-			if (!strcmp(attrp->resource, "place")) {
-				advresv->place_spec = parse_placespec(attrp->value);
-				if (advresv->place_spec == NULL)
-					advresv->is_invalid = 1;
+			if (set_resource_req(resreq, attrp->value) != 1)
+				advresv->is_invalid = 1;
+			else {
+				if (advresv->resreq == NULL)
+					advresv->resreq = resreq;
+				if (!strcmp(attrp->resource, "place")) {
+					advresv->place_spec = parse_placespec(attrp->value);
+					if (advresv->place_spec == NULL)
+						advresv->is_invalid = 1;
+				}
 			}
 		}
 		else if (!strcmp(attrp->name, ATTR_resv_nodes)) {

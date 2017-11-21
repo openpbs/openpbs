@@ -859,8 +859,13 @@ create_resource_req(char *name, char *value)
 			resreq->name = rdef->name;
 			resreq->type = rdef->type;
 
-			if (value != NULL)
-				set_resource_req(resreq, value);
+			if (value != NULL) {
+				if (set_resource_req(resreq, value) != 1) {
+					schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_DEBUG, name,
+						"Bad requested resource data");
+					return NULL;
+				}
+			}
 		}
 	} else {
 		schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_DEBUG, name, "Resource definition does not exist, resource may be invalid");
@@ -1004,13 +1009,15 @@ find_resource_req(resource_req *reqlist, resdef *def)
  * @param[out]	req	-	the resource_req to set
  * @param[in]	val -	the string value
  *
- * @return	nothing
- *
+ * @return	int
+ * @retval	1 for Success
+ * @retval	0 for Error
  */
-void
+int
 set_resource_req(resource_req *req, char *val)
 {
 	resdef *rdef;
+
 	/* if val is a string, req -> amount will be set to SCHD_INFINITY */
 	req->amount = res_to_num(val, &(req->type));
 	req->res_str = string_dup(val);
@@ -1018,11 +1025,19 @@ set_resource_req(resource_req *req, char *val)
 	if (req->def != NULL)
 		rdef = req->def;
 	else {
-	rdef = find_resdef(allres, req->name);
+		rdef = find_resdef(allres, req->name);
 		req->def = rdef;
 	}
 	if (rdef != NULL)
 		req->type = rdef->type;
+
+	if (req->amount == SCHD_INFINITY) {
+		/* Verify that this is actually a non-numeric resource */
+		if (!req->def->type.is_string)
+			return 0;
+	}
+
+	return 1;
 }
 
 

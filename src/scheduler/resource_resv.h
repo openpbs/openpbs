@@ -136,7 +136,7 @@ void free_resource_req(resource_req *req);
 /*
  *	set_resource_req - set the value and type of a resource req
  */
-void set_resource_req(resource_req *req, char *val);
+int set_resource_req(resource_req *req, char *val);
 
 /*
  *

@@ -242,19 +242,18 @@ add_str_to_array(char ***str_arr, char *str)
 
 /**
  * @brief
- * 		res_to_num - convert a resource string to a  sch_resource_t to
- *                      kilobytes
- *                      example: 1mb -> 1024
- *				 	1mw -> 1024 * SIZE_OF_WORD
+ * 		res_to_num - convert a resource string to a numeric sch_resource_t
  *
  * @param[in]	res_str	-	the resource string
  * @param[out]	type	-	the type of the resource
  *
- * @return	a number in kilobytes or seconds
+ * @return	sch_resource_t
+ * @retval	a number in kilobytes or seconds
+ * @retval	0 for False, if type is boolean
+ * @retval	1 for True, if type is boolean
  * @retval	SCHD_INFINITY	: if not a number
  *
  */
-
 sch_resource_t
 res_to_num(char *res_str, struct resource_type *type)
 {
@@ -888,7 +887,8 @@ is_num(char *str)
 {
 	int i;
 	char c;
-	int colen_count = 0;
+	int colon_count = 0;
+	int str_len = -1;
 
 	if (str == NULL)
 		return -1;
@@ -896,36 +896,37 @@ is_num(char *str)
 	if (str[0] == '-' || str[0] == '+')
 		str++;
 
-	for (i = 0; i < strlen(str) && (isdigit(str[i]) || str[i] == ':'); i++) {
+	str_len = strlen(str);
+	for (i = 0; i < str_len && (isdigit(str[i]) || str[i] == ':'); i++) {
 		if (str[i] == ':')
-			colen_count++;
+			colon_count++;
 	}
 
-	/* is the string completly numeric or a time(HH:MM:SS or MM:SS) */
-	if (i == strlen(str) && colen_count <= 2)
+	/* is the string completely numeric or a time(HH:MM:SS or MM:SS) */
+	if (i == str_len && colon_count <= 2)
 		return 1;
 
-	/* is the string a size */
-	if (i == strlen(str) - 2) {
+	/* is the string a size type resource like 'mem' */
+	if ((i == (str_len - 2)) || (i == (str_len - 1))) {
 		c = tolower(str[i]);
 		if (c == 'k' || c == 'm' || c == 'g' || c == 't') {
 			c = tolower(str[i+1]);
+			if (c == 'b' || c == 'w' || c == '\0')
+				return 1;
+		} else if (i == (str_len - 1)) {
+			/* catch the case of "b" or "w" */
 			if (c == 'b' || c == 'w')
 				return 1;
 		}
 	}
-	/* i > 0 so we don't catch the case of "b" or "w" */
-	else if (i > 0 && i == strlen(str) - 1)
-		if (tolower(str[i]) == 'b' || tolower(str[i] == 'w'))
-			return 1;
 
 	/* last but not least, make sure we didn't stop on a decmal point */
 	if (str[i] == '.') {
-		for (i++ ; i < strlen(str) && isdigit(str[i]); i++)
+		for (i++ ; i < str_len && isdigit(str[i]); i++)
 			;
 
 		/* number is a float */
-		if (i == strlen(str))
+		if (i == str_len)
 			return 1;
 	}
 

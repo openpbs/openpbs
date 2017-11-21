@@ -2944,6 +2944,11 @@ set_resource(schd_resource *res, char *val, enum resource_fields field)
 
 			/* if val is a string, avail will be set to SCHD_INFINITY */
 			res->avail = res_to_num(val, &(res->type));
+			if (res->avail == SCHD_INFINITY) {
+				/* Verify that this is a string type resource */
+				if (!res->def->type.is_string)
+					return 0;
+			}
 			res->str_avail = break_comma_list(val);
 			if (res->str_avail == NULL)
 				return 0;

@@ -1109,29 +1109,33 @@ query_job(struct batch_status *job, server_info *sinfo, schd_error *err)
 				return NULL;
 			}
 
-			set_resource_req(resreq, attrp->value);
-
-			if (resresv->resreq == NULL)
-				resresv->resreq = resreq;
+			if (set_resource_req(resreq, attrp->value) != 1) {
+				set_schd_error_codes(err, NEVER_RUN, ERR_SPECIAL);
+				set_schd_error_arg(err, SPECMSG, "Bad requested resource data");
+				resresv->is_invalid = 1;
+			} else {
+				if (resresv->resreq == NULL)
+					resresv->resreq = resreq;
 #ifdef NAS
-			if (!strcmp(attrp->resource, "nodect")) { /* nodect for sort */
-				/* localmod 040 */
-				count = strtol(attrp->value, &endp, 10);
-				if (*endp != '\n')
-					resresv->job->nodect = count;
-				else
-					resresv->job->nodect = 0;
-				/* localmod 034 */
-				resresv->job->accrue_rate = resresv->job->nodect; /* XXX should be SBU rate */
-			}
+				if (!strcmp(attrp->resource, "nodect")) { /* nodect for sort */
+					/* localmod 040 */
+					count = strtol(attrp->value, &endp, 10);
+					if (*endp != '\n')
+						resresv->job->nodect = count;
+					else
+						resresv->job->nodect = 0;
+					/* localmod 034 */
+					resresv->job->accrue_rate = resresv->job->nodect; /* XXX should be SBU rate */
+				}
 #endif
-			if (!strcmp(attrp->resource, "place")) {
-				resresv->place_spec = parse_placespec(attrp->value);
-				if (resresv->place_spec == NULL) {
-					set_schd_error_codes(err, NEVER_RUN, ERR_SPECIAL);
-					set_schd_error_arg(err, SPECMSG, "invalid placement spec");
-					resresv->is_invalid = 1;
+				if (!strcmp(attrp->resource, "place")) {
+					resresv->place_spec = parse_placespec(attrp->value);
+					if (resresv->place_spec == NULL) {
+						set_schd_error_codes(err, NEVER_RUN, ERR_SPECIAL);
+						set_schd_error_arg(err, SPECMSG, "invalid placement spec");
+						resresv->is_invalid = 1;
 
+					}
 				}
 			}
 		}
