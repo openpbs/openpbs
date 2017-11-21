@@ -37,7 +37,6 @@
 # trademark licensing policies.
 
 from tests.functional import *
-import shutil
 
 
 @tags('multisched')
@@ -56,7 +55,9 @@ class TestMultipleSchedulers(TestFunctional):
         self.sched_configure('sc1')
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'scheduling': 1}, id="sc1")
-
+        dir_path = '/var/spool/pbs/sched_dir'
+        if not os.path.exists(dir_path):
+            self.du.mkdir(path=dir_path, sudo=True)
         self.server.manager(MGR_CMD_CREATE, SCHED,
                             {'partition': 'P2',
                              'sched_priv':
@@ -104,11 +105,15 @@ class TestMultipleSchedulers(TestFunctional):
         sched_priv_dir = 'sched_priv_' + sched_name
         sched_logs_dir = 'sched_logs_' + sched_name
         if not os.path.exists(os.path.join(sched_home, sched_priv_dir)):
-            shutil.copytree(os.path.join(pbs_home, 'sched_priv'),
-                            os.path.join(sched_home, sched_priv_dir))
+            self.du.run_copy(self.server.hostname,
+                             os.path.join(pbs_home, 'sched_priv'),
+                             os.path.join(sched_home, sched_priv_dir),
+                             recursive=True)
         if not os.path.exists(os.path.join(sched_home, sched_logs_dir)):
-            shutil.copytree(os.path.join(pbs_home, 'sched_logs'),
-                            os.path.join(sched_home, sched_logs_dir))
+            self.du.run_copy(self.server.hostname,
+                             os.path.join(pbs_home, 'sched_logs'),
+                             os.path.join(sched_home, sched_logs_dir),
+                             recursive=True)
         self.scheduler.start(sched_name, sched_home)
 
     def check_vnodes(self, j, vnodes, jid):
@@ -134,8 +139,10 @@ class TestMultipleSchedulers(TestFunctional):
         log_msg = "switching back to previous directory"
         sched.log_match(log_msg, max_attempts=10, starttime=self.server.ctime)
         pbs_home = self.server.pbs_conf['PBS_HOME']
-        shutil.copytree(os.path.join(pbs_home, 'sched_priv'),
-                        os.path.join(pbs_home, 'sc1_new_priv'))
+        self.du.run_copy(self.server.hostname,
+                         os.path.join(pbs_home, 'sched_priv'),
+                         os.path.join(pbs_home, 'sc1_new_priv'),
+                         recursive=True)
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'sched_priv': '/var/spool/pbs/sc1_new_priv'},
                             id="sc1")
@@ -148,8 +155,10 @@ class TestMultipleSchedulers(TestFunctional):
         self.assertEqual(
             sched.attributes['sched_log'], '/var/spool/pbs/sched_logs_sc1')
         sched.log_match(log_msg, max_attempts=10, starttime=self.server.ctime)
-        shutil.copytree(os.path.join(pbs_home, 'sched_logs'),
-                        os.path.join(pbs_home, 'sc1_new_logs'))
+        self.du.run_copy(self.server.hostname,
+                         os.path.join(pbs_home, 'sched_logs'),
+                         os.path.join(pbs_home, 'sc1_new_logs'),
+                         recursive=True)
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'sched_priv': '/var/spool/pbs/sc1_new_logs'},
                             id="sc1")
@@ -159,8 +168,8 @@ class TestMultipleSchedulers(TestFunctional):
                             'sched_priv', id="sc1")
         log_msg = "scheduler priv directory has changed"
         sched.log_match(log_msg, max_attempts=10, starttime=self.server.ctime)
-        shutil.rmtree(os.path.join(pbs_home, 'sc1_new_priv'))
-        shutil.rmtree(os.path.join(pbs_home, 'sc1_new_logs'))
+        self.du.rm(path=os.path.join(pbs_home, 'sc1_new_priv'), recursive=True)
+        self.du.rm(path=os.path.join(pbs_home, 'sc1_new_logs'), recursive=True)
 
     def test_start_scheduler(self):
         """
@@ -189,14 +198,18 @@ class TestMultipleSchedulers(TestFunctional):
                               level=logging.INFOCLI, logerr=False)
         if ret['rc'] == 0:
             self.assertTrue(False)
-        shutil.copytree(os.path.join(pbs_home, 'sched_priv'),
-                        os.path.join(pbs_home, 'sched_priv_sc5'))
+        self.du.run_copy(self.server.hostname,
+                         os.path.join(pbs_home, 'sched_priv'),
+                         os.path.join(pbs_home, 'sched_priv_sc5'),
+                         recursive=True)
         ret = self.du.run_cmd(self.server.hostname, cmd,
                               level=logging.INFOCLI, logerr=False)
         if ret['rc'] == 0:
             self.assertTrue(False)
-        shutil.copytree(os.path.join(pbs_home, 'sched_logs'),
-                        os.path.join(pbs_home, 'sched_logs_sc5'))
+        self.du.run_copy(self.server.hostname,
+                         os.path.join(pbs_home, 'sched_logs'),
+                         os.path.join(pbs_home, 'sched_logs_sc5'),
+                         recursive=True)
         ret = self.du.run_cmd(self.server.hostname, cmd,
                               level=logging.INFOCLI, logerr=False)
         self.server.schedulers['sc5'].log_match(
@@ -217,8 +230,10 @@ class TestMultipleSchedulers(TestFunctional):
                             {'scheduling': 'True'}, id="sc5")
         self.server.manager(MGR_CMD_LIST, SCHED, id="sc5")
         self.assertEqual(sched.attributes['state'], 'scheduling')
-        shutil.rmtree(os.path.join(pbs_home, 'sched_logs_sc5'))
-        shutil.rmtree(os.path.join(pbs_home, 'sched_priv_sc5'))
+        self.du.rm(path=os.path.join(
+            pbs_home, 'sched_priv_sc5'), recursive=True)
+        self.du.rm(path=os.path.join(
+            pbs_home, 'sched_logs_sc5'), recursive=True)
 
     def test_resource_sched_reconfigure(self):
         """
@@ -570,4 +585,10 @@ class TestMultipleSchedulers(TestFunctional):
     def tearDown(self):
         self.du.run_cmd(self.server.hostname, [
                         'pkill', '-9', 'pbs_sched'], sudo=True)
+        sched_list = ['sc1', 'sc2', 'sc3']
+        for name in sched_list:
+            priv = self.server.schedulers[name].attributes['sched_priv']
+            self.du.rm(path=priv, recursive=True)
+            logs = self.server.schedulers[name].attributes['sched_log']
+            self.du.rm(path=logs, recursive=True)
         TestFunctional.tearDown(self)
