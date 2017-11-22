@@ -3318,7 +3318,7 @@ join_err:
 			 ** Sender is (must be) mom superior commanding me to execute
 			 ** a prologue hook.
 			 */
-			DBPRT(("%s: %s for %s\n", id, "IM_EXEC_PROLOGUE", pjob->ji_qs.ji_jobid));
+			DBPRT(("%s: %s for %s\n", __func__, "IM_EXEC_PROLOGUE", pjob->ji_qs.ji_jobid));
 			mom_hook_input_init(&hook_input);
 			hook_input.pjob = pjob;
 
@@ -4498,7 +4498,7 @@ join_err:
 						sprintf(log_buffer, "IM_EXEC_PROLOGUE ERROR and I'm not MS");
 						goto err;
 					}
-					DBPRT(("%s: IM_EXEC_PROLOGUE %s returned ERROR %d\n", id, jobid, errcode))
+					DBPRT(("%s: IM_EXEC_PROLOGUE %s returned ERROR %d\n", __func__, jobid, errcode))
 					job_start_error(pjob, errcode, netaddr(addr), "IM_EXEC_PROLOGUE");
 					if (errmsg != NULL) {
 						log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB,
