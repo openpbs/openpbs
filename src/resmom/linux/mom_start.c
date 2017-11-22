@@ -2110,8 +2110,8 @@ set_job(job *pjob, struct startjob_rtn *sjr)
 			char	filename[MAXPATHLEN];
 			int	rc;
 
-			if (rc = snprintf(filename, MAXPATHLEN, "%s/aux/%s.alpsresv", 
-				pbs_conf.pbs_home_path, pjob->ji_qs.ji_jobid) < MAXPATHLEN) {
+			if ((rc = snprintf(filename, MAXPATHLEN, "%s/aux/%s.alpsresv", 
+				pbs_conf.pbs_home_path, pjob->ji_qs.ji_jobid)) < MAXPATHLEN) {
 				fp = fopen(filename, "w");
 				if (fp == NULL) {
 					snprintf(log_buffer, sizeof(log_buffer),

@@ -5815,9 +5815,9 @@ alps_confirm_reservation(job *pjob)
 int
 alps_cancel_reservation(job *pjob)
 {
-	char buf[1024];
-	basil_response_t *brp;
-	char	filename[MAXPATHLEN];
+	char			buf[1024];
+	basil_response_t	*brp;
+	char			filename[MAXPATHLEN];
 
 	if (!pjob) {
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE, LOG_NOTICE, __func__,
@@ -5833,7 +5833,7 @@ alps_cancel_reservation(job *pjob)
 	snprintf(filename, MAXPATHLEN, "%s/aux/%s.alpsresv", pbs_conf.pbs_home_path, pjob->ji_qs.ji_jobid);
 	
 	if (pjob->ji_extended.ji_ext.ji_reservation < 0) {
-		/* 
+		       /* 
 			* The job structure doesn't have ALPS reservation ID information.
 			* This can happen when we hit various race conditions.  To help
 			* with this issue, we have previously saved the ALPS resv ID
@@ -5865,7 +5865,7 @@ alps_cancel_reservation(job *pjob)
 		pjob->ji_extended.ji_ext.ji_reservation = value;
 	}
 
-	/* At this point we have no further use for the file that contains
+	       /* At this point we have no further use for the file that contains
 		* the ALPS reservation ID.  Get rid of the file.
 		*/
 	(void)unlink(filename);
