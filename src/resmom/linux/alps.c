@@ -5833,30 +5833,30 @@ alps_cancel_reservation(job *pjob)
 	snprintf(filename, MAXPATHLEN, "%s/aux/%s.alpsresv", pbs_conf.pbs_home_path, pjob->ji_qs.ji_jobid);
 	
 	if (pjob->ji_extended.ji_ext.ji_reservation < 0) {
-		       /* 
+		       /*
 			* The job structure doesn't have ALPS reservation ID information.
 			* This can happen when we hit various race conditions.  To help
 			* with this issue, we have previously saved the ALPS resv ID
 			* in a file.
 			*
 			* The format of the file will consist of one line entry that
-			* has the string alps_resv_id a space and the ALPS reservation ID
-			* number.  We retrieve it here so the ALPS reservation can
-			* be canceled.
+			* has the ALPS reservation ID number. We retrieve it here so
+			* the ALPS reservation can be canceled.
 			*/
 		FILE    *fp = NULL;
 		long    value;
 
 		fp = fopen(filename, "r");
 		if (fp == NULL) {
-			snprintf(log_buffer, sizeof(log_buffer), "Can't open the file %s", filename);
+			snprintf(log_buffer, sizeof(log_buffer),
+				"Unable to open the file %s containing the ALPS Reservation ID", filename);
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 				(char *)__func__, log_buffer);
 			return (-1);
 		}
-		if (fscanf(fp, "alps_resv_id %ld", &value) != 1) {
-			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_DEBUG, 
-				(char *)__func__, "failed to read the alps_resv_id value");
+		if (fscanf(fp, "%ld", &value) != 1) {
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_DEBUG,
+				(char *)__func__, "failed to read the ALPS reservation ID value");
 			(void)fclose(fp);
 			(void)unlink(filename);
 			return (-1);

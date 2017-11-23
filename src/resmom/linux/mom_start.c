@@ -2119,7 +2119,7 @@ set_job(job *pjob, struct startjob_rtn *sjr)
 					log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB, LOG_ERR, 
 						(char *)__func__, log_buffer);
 				} else {
-					fprintf(fp, "alps_resv_id %ld\n",pjob->ji_extended.ji_ext.ji_reservation);
+					fprintf(fp, "%ld\n",pjob->ji_extended.ji_ext.ji_reservation);
 					(void)fclose(fp);
 				}
 			} else {
