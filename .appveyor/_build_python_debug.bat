@@ -36,23 +36,54 @@ REM trademark licensing policies.
 @echo on
 setlocal
 
-call "%~dp0_build_python_32bit.bat" %~1
-if not %ERRORLEVEL% == 0 (
-    echo "Failed to compile Python 32bit"
+call "%~dp0set_paths.bat" %~1
+
+cd "%BINARIESDIR%"
+
+if not defined PYTHON_VERSION (
+    echo "Please set PYTHON_VERSION to Python version!"
     exit /b 1
 )
 
-call "%~dp0_build_python_64bit.bat" %~1
-if not %ERRORLEVEL% == 0 (
-    echo "Failed to compile Python 64bit"
-    exit /b 1
+if %DO_DEBUG_BUILD% EQU 0 (
+    echo "You are in Release mode so no need of Python debug build, skipping Python debug build"
+    exit /b 0
 )
 
-call "%~dp0_build_python_debug.bat" %~1
+if exist "%BINARIESDIR%\python_debug" (
+    echo "%BINARIESDIR%\python_debug exist already!"
+    exit /b 0
+)
+
+if not exist "%BINARIESDIR%\cpython-%PYTHON_VERSION%.zip" (
+    "%CURL_BIN%" -qkL -o "%BINARIESDIR%\cpython-%PYTHON_VERSION%.zip" https://github.com/python/cpython/archive/v%PYTHON_VERSION%.zip
+    if not exist "%BINARIESDIR%\cpython-%PYTHON_VERSION%.zip" (
+        echo "Failed to download python"
+        exit /b 1
+    )
+)
+2>nul rd /S /Q "%BINARIESDIR%\cpython-%PYTHON_VERSION%"
+"%UNZIP_BIN%" -q "%BINARIESDIR%\cpython-%PYTHON_VERSION%.zip"
+cd "%BINARIESDIR%\cpython-%PYTHON_VERSION%"
+
+REM Restore externals directory if python_externals.tar.gz exists
+if exist "%BINARIESDIR%\python_externals.tar.gz" (
+    if not exist "%BINARIESDIR%\cpython-%PYTHON_VERSION%\externals" (
+        "%MSYSDIR%\bin\bash" --login -i -c "cd \"$BINARIESDIR_M/cpython-$PYTHON_VERSION\" && tar -xf \"$BINARIESDIR_M/python_externals.tar.gz\""
+    )
+)
+
+call "%BINARIESDIR%\cpython-%PYTHON_VERSION%\PCbuild\env.bat" x86
+
+call "%BINARIESDIR%\cpython-%PYTHON_VERSION%\PC\VS9.0\build.bat" -e -d
 if not %ERRORLEVEL% == 0 (
     echo "Failed to compile Python debug version"
     exit /b 1
 )
+
+REM Since Python debug mode doesn't have msi generation part so we need to copy whole source directory
+cd "%BINARIESDIR%"
+ren "%BINARIESDIR%\cpython-%PYTHON_VERSION%" python_debug
 
 exit /b 0
 

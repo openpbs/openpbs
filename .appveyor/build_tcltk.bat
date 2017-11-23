@@ -36,9 +36,9 @@ REM trademark licensing policies.
 @echo on
 setlocal
 
-call "%~dp0set_paths.bat"
+call "%~dp0set_paths.bat" %~1
 
-cd "%BUILDDIR%"
+cd "%BINARIESDIR%"
 
 if not defined TCL_VERSION (
     echo "Please set TCL_VERSION to Tcl version!"
@@ -49,81 +49,110 @@ if not defined TK_VERSION (
     exit /b 1
 )
 
-if exist "%BINARIESDIR%\tcltk" (
-    echo "%BINARIESDIR%\tcltk exist already!"
+set TCLTK_DIR_NAME=tcltk
+if %DO_DEBUG_BUILD% EQU 1 (
+    set TCLTK_DIR_NAME=tcltk_debug
+)
+set PGSQL_DIR_NAME=pgsql
+if %DO_DEBUG_BUILD% EQU 1 (
+    set PGSQL_DIR_NAME=pgsql_debug
+)
+
+if exist "%BINARIESDIR%\%TCLTK_DIR_NAME%" (
+    echo "%BINARIESDIR%\%TCLTK_DIR_NAME% exist already!"
     exit /b 0
 )
 
-if not exist "%BUILDDIR%\tcl%TCL_VERSION:.=%-src.zip" (
-    "%CURL_BIN%" -qkL -o "%BUILDDIR%\tcl%TCL_VERSION:.=%-src.zip" https://sourceforge.net/projects/tcl/files/Tcl/%TCL_VERSION%/tcl%TCL_VERSION:.=%-src.zip/download
-    if not exist "%BUILDDIR%\tcl%TCL_VERSION:.=%-src.zip" (
+if not exist "%BINARIESDIR%\tcl%TCL_VERSION:.=%-src.zip" (
+    "%CURL_BIN%" -qkL -o "%BINARIESDIR%\tcl%TCL_VERSION:.=%-src.zip" https://sourceforge.net/projects/tcl/files/Tcl/%TCL_VERSION%/tcl%TCL_VERSION:.=%-src.zip/download
+    if not exist "%BINARIESDIR%\tcl%TCL_VERSION:.=%-src.zip" (
         echo "Failed to download tcl"
         exit /b 1
     )
 )
-if not exist "%BUILDDIR%\tk%TK_VERSION:.=%-src.zip" (
-    "%CURL_BIN%" -qkL -o "%BUILDDIR%\tk%TK_VERSION:.=%-src.zip" https://sourceforge.net/projects/tcl/files/Tcl/%TK_VERSION%/tk%TK_VERSION:.=%-src.zip/download
-    if not exist "%BUILDDIR%\tk%TK_VERSION:.=%-src.zip" (
+if not exist "%BINARIESDIR%\tk%TK_VERSION:.=%-src.zip" (
+    "%CURL_BIN%" -qkL -o "%BINARIESDIR%\tk%TK_VERSION:.=%-src.zip" https://sourceforge.net/projects/tcl/files/Tcl/%TK_VERSION%/tk%TK_VERSION:.=%-src.zip/download
+    if not exist "%BINARIESDIR%\tk%TK_VERSION:.=%-src.zip" (
         echo "Failed to download tk"
         exit /b 1
     )
 )
 
-2>nul rd /S /Q "%BUILDDIR%\tcl%TCL_VERSION%"
-"%UNZIP_BIN%" -q "%BUILDDIR%\tcl%TCL_VERSION:.=%-src.zip"
+2>nul rd /S /Q "%BINARIESDIR%\tcl%TCL_VERSION%"
+"%UNZIP_BIN%" -q "%BINARIESDIR%\tcl%TCL_VERSION:.=%-src.zip"
 if not %ERRORLEVEL% == 0 (
-    echo "Failed to extract %BUILDDIR%\tcl%TCL_VERSION:.=%-src.zip"
+    echo "Failed to extract %BINARIESDIR%\tcl%TCL_VERSION:.=%-src.zip"
     exit /b 1
 )
-if not exist "%BUILDDIR%\tcl%TCL_VERSION%" (
-    echo "Could not find %BUILDDIR%\tcl%TCL_VERSION%"
+if not exist "%BINARIESDIR%\tcl%TCL_VERSION%" (
+    echo "Could not find %BINARIESDIR%\tcl%TCL_VERSION%"
     exit /b 1
 )
-if not exist "%BUILDDIR%\tcl%TCL_VERSION%\win" (
-    echo "Could not find %BUILDDIR%\tcl%TCL_VERSION%\win"
+if not exist "%BINARIESDIR%\tcl%TCL_VERSION%\win" (
+    echo "Could not find %BINARIESDIR%\tcl%TCL_VERSION%\win"
     exit /b 1
 )
 
-2>nul rd /S /Q "%BUILDDIR%\tk%TK_VERSION%"
-"%UNZIP_BIN%" -q "%BUILDDIR%\tk%TK_VERSION:.=%-src.zip"
+2>nul rd /S /Q "%BINARIESDIR%\tk%TK_VERSION%"
+"%UNZIP_BIN%" -q "%BINARIESDIR%\tk%TK_VERSION:.=%-src.zip"
 if not %ERRORLEVEL% == 0 (
-    echo "Failed to extract %BUILDDIR%\tk%TK_VERSION:.=%-src.zip"
+    echo "Failed to extract %BINARIESDIR%\tk%TK_VERSION:.=%-src.zip"
     exit /b 1
 )
-if not exist "%BUILDDIR%\tk%TK_VERSION%" (
-    echo "Could not find %BUILDDIR%\tk%TK_VERSION%"
+if not exist "%BINARIESDIR%\tk%TK_VERSION%" (
+    echo "Could not find %BINARIESDIR%\tk%TK_VERSION%"
     exit /b 1
 )
-if not exist "%BUILDDIR%\tk%TK_VERSION%\win" (
-    echo "Could not find %BUILDDIR%\tk%TK_VERSION%\win"
+if not exist "%BINARIESDIR%\tk%TK_VERSION%\win" (
+    echo "Could not find %BINARIESDIR%\tk%TK_VERSION%\win"
     exit /b 1
 )
 
 call "%VS90COMNTOOLS%vsvars32.bat"
 
-cd  "%BUILDDIR%\tcl%TCL_VERSION%\win"
-nmake /f "%BUILDDIR%\tcl%TCL_VERSION%\win\makefile.vc"
+cd  "%BINARIESDIR%\tcl%TCL_VERSION%\win"
+if %DO_DEBUG_BUILD% EQU 1 (
+    nmake /f "%BINARIESDIR%\tcl%TCL_VERSION%\win\makefile.vc" OPTS=symbols
+) else (
+    nmake /f "%BINARIESDIR%\tcl%TCL_VERSION%\win\makefile.vc"
+)
 if not %ERRORLEVEL% == 0 (
     echo "Failed to compile tcl"
     exit /b 1
 )
-nmake /f "%BUILDDIR%\tcl%TCL_VERSION%\win\makefile.vc" install INSTALLDIR="%BINARIESDIR%\tcltk"
+if %DO_DEBUG_BUILD% EQU 1 (
+    nmake /f "%BINARIESDIR%\tcl%TCL_VERSION%\win\makefile.vc" install OPTS=symbols INSTALLDIR="%BINARIESDIR%\%TCLTK_DIR_NAME%"
+) else (
+    nmake /f "%BINARIESDIR%\tcl%TCL_VERSION%\win\makefile.vc" install INSTALLDIR="%BINARIESDIR%\%TCLTK_DIR_NAME%"
+)
 if not %ERRORLEVEL% == 0 (
     echo "Failed to install tcl"
     exit /b 1
 )
 
-cd "%BUILDDIR%\tk%TK_VERSION%\win"
-set TCLDIR=%BUILDDIR%\tcl%TCL_VERSION%
-nmake /f "%BUILDDIR%\tk%TK_VERSION%\win\makefile.vc"
+cd "%BINARIESDIR%\tk%TK_VERSION%\win"
+set TCLDIR=%BINARIESDIR%\tcl%TCL_VERSION%
+if %DO_DEBUG_BUILD% EQU 1 (
+    nmake /f "%BINARIESDIR%\tk%TK_VERSION%\win\makefile.vc" OPTS=symbols
+) else (
+    nmake /f "%BINARIESDIR%\tk%TK_VERSION%\win\makefile.vc"
+)
 if not %ERRORLEVEL% == 0 (
     echo "Failed to compile tk"
     exit /b 1
 )
-nmake /f "%BUILDDIR%\tk%TK_VERSION%\win\makefile.vc" install INSTALLDIR="%BINARIESDIR%\tcltk"
+if %DO_DEBUG_BUILD% EQU 1 (
+    nmake /f "%BINARIESDIR%\tk%TK_VERSION%\win\makefile.vc" install OPTS=symbols INSTALLDIR="%BINARIESDIR%\%TCLTK_DIR_NAME%"
+) else (
+    nmake /f "%BINARIESDIR%\tk%TK_VERSION%\win\makefile.vc" install INSTALLDIR="%BINARIESDIR%\%TCLTK_DIR_NAME%"
+)
 if not %ERRORLEVEL% == 0 (
     echo "Failed to install tk"
     exit /b 1
 )
+
+cd "%BINARIESDIR%"
+2>nul rd /S /Q "%BINARIESDIR%\tcl%TCL_VERSION%"
+2>nul rd /S /Q "%BINARIESDIR%\tk%TK_VERSION%"
 
 exit /b 0

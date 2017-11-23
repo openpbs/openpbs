@@ -64,7 +64,7 @@
 				AdditionalOptions="/SAFESEH"
 				AdditionalDependencies="secur32.lib Userenv.lib mpr.lib ws2_32.lib netapi32.lib libpq.lib odbc32.lib odbccp32.lib libcrypto.lib crypt32.lib"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories="..\..\..\binaries\pgsql\lib;..\..\..\binaries\openssl\lib"
+				AdditionalLibraryDirectories="..\..\..\binaries\pgsql_debug\lib;..\..\..\binaries\openssl_debug\lib"
 				UACExecutionLevel="0"
 				IgnoreDefaultLibraryNames=""
 				GenerateDebugInformation="true"

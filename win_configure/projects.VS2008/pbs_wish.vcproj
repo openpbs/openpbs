@@ -44,7 +44,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\..\..\binaries\tcltk\include;..\..\src\include;..\include"
+				AdditionalIncludeDirectories="..\..\..\binaries\tcltk_debug\include;..\..\src\include;..\include"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;_USE_32BIT_TIME_T "
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="0"
@@ -72,11 +72,11 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalOptions="/SAFESEH"
-				AdditionalDependencies="secur32.lib Userenv.lib mpr.lib tk86t.lib site_tclWrap.obj pbs_tclWrap.obj ws2_32.lib netapi32.lib tcl86t.lib odbc32.lib odbccp32.lib"
+				AdditionalDependencies="secur32.lib Userenv.lib mpr.lib tk86tg.lib site_tclWrap.obj pbs_tclWrap.obj ws2_32.lib netapi32.lib tcl86tg.lib odbc32.lib odbccp32.lib"
 				OutputFile="..\..\..\win_build\src\tools\Debug\pbs_wish.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="..\..\..\win_build\src\tools\Debug;..\..\..\binaries\tcltk\lib"
+				AdditionalLibraryDirectories="..\..\..\win_build\src\tools\Debug;..\..\..\binaries\tcltk_debug\lib"
 				UACExecutionLevel="0"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="..\..\..\win_build\src\tools\Debug\pbs_wish.pdb"

@@ -44,7 +44,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\..\..\binaries\pgsql\include;..\..\src\lib\Libdb;..\..\src\include;..\include;..\..\..\binaries\openssl\include"
+				AdditionalIncludeDirectories="..\..\..\binaries\pgsql_debug\include;..\..\src\lib\Libdb;..\..\src\include;..\include;..\..\..\binaries\openssl_debug\include"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;_USE_32BIT_TIME_T;PRINTJOBSVR"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
@@ -76,7 +76,7 @@
 				OutputFile="..\..\..\win_build\src\tools\Debug\printjob_svr.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="..\..\..\binaries\openssl\lib;..\..\..\binaries\pgsql\lib"
+				AdditionalLibraryDirectories="..\..\..\binaries\openssl_debug\lib;..\..\..\binaries\pgsql_debug\lib"
 				UACExecutionLevel="0"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="..\..\..\win_build\src\tools\Debug\printjob.pdb"

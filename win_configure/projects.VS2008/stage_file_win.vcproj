@@ -45,7 +45,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\..\src\include;..\include;..\..\src\resmom_win\win;..\..\..\binaries\openssl\include"
+				AdditionalIncludeDirectories="..\..\src\include;..\include;..\..\src\resmom_win\win;..\..\..\binaries\openssl_debug\include"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;_USE_32BIT_TIME_T;PBS_MOM;PBS_STAGE_FILE"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="0"
@@ -78,7 +78,7 @@
 				OutputFile="..\..\..\win_build\src\resmom\Debug\pbs_stage_file.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="..\..\..\binaries\openssl\lib"
+				AdditionalLibraryDirectories="..\..\..\binaries\openssl_debug\lib"
 				UACExecutionLevel="0"
 				IgnoreDefaultLibraryNames=""
 				GenerateDebugInformation="true"

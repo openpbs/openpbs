@@ -36,46 +36,53 @@ REM trademark licensing policies.
 @echo on
 setlocal
 
-call "%~dp0set_paths.bat"
+call "%~dp0set_paths.bat" %~1
 
-cd "%BUILDDIR%"
+cd "%BINARIESDIR%"
 
 if not defined LIBICAL_VERSION (
     echo "Please set LIBICAL_VERSION to libical version!"
     exit /b 1
 )
 
-if exist "%BINARIESDIR%\libical" (
-    echo "%BINARIESDIR%\libical exist already!"
+set LIBICAL_DIR_NAME=libical
+set BUILD_TYPE=Release
+if %DO_DEBUG_BUILD% EQU 1 (
+    set LIBICAL_DIR_NAME=libical_debug
+    set BUILD_TYPE=Debug
+)
+
+if exist "%BINARIESDIR%\%LIBICAL_DIR_NAME%" (
+    echo "%BINARIESDIR%\%LIBICAL_DIR_NAME% exist already!"
     exit /b 0
 )
 
-if not exist "%BUILDDIR%\libical-%LIBICAL_VERSION%.zip" (
-    "%CURL_BIN%" -qkL -o "%BUILDDIR%\libical-%LIBICAL_VERSION%.zip" https://github.com/libical/libical/archive/v%LIBICAL_VERSION%.zip
-    if not exist "%BUILDDIR%\libical-%LIBICAL_VERSION%.zip" (
+if not exist "%BINARIESDIR%\libical-%LIBICAL_VERSION%.zip" (
+    "%CURL_BIN%" -qkL -o "%BINARIESDIR%\libical-%LIBICAL_VERSION%.zip" https://github.com/libical/libical/archive/v%LIBICAL_VERSION%.zip
+    if not exist "%BINARIESDIR%\libical-%LIBICAL_VERSION%.zip" (
         echo "Failed to download libical"
         exit /b 1
     )
 )
 
-2>nul rd /S /Q "%BUILDDIR%\libical-%LIBICAL_VERSION%"
-"%UNZIP_BIN%" -q "%BUILDDIR%\libical-%LIBICAL_VERSION%.zip"
+2>nul rd /S /Q "%BINARIESDIR%\libical-%LIBICAL_VERSION%"
+"%UNZIP_BIN%" -q "%BINARIESDIR%\libical-%LIBICAL_VERSION%.zip"
 if not %ERRORLEVEL% == 0 (
-    echo "Failed to extract %BUILDDIR%\libical-%LIBICAL_VERSION%.zip"
+    echo "Failed to extract %BINARIESDIR%\libical-%LIBICAL_VERSION%.zip"
     exit /b 1
 )
-if not exist "%BUILDDIR%\libical-%LIBICAL_VERSION%" (
-    echo "Could not find %BUILDDIR%\libical-%LIBICAL_VERSION%"
+if not exist "%BINARIESDIR%\libical-%LIBICAL_VERSION%" (
+    echo "Could not find %BINARIESDIR%\libical-%LIBICAL_VERSION%"
     exit /b 1
 )
 
-2>nul rd /S /Q "%BUILDDIR%\libical-%LIBICAL_VERSION%\build"
-mkdir "%BUILDDIR%\libical-%LIBICAL_VERSION%\build"
-cd "%BUILDDIR%\libical-%LIBICAL_VERSION%\build"
+2>nul rd /S /Q "%BINARIESDIR%\libical-%LIBICAL_VERSION%\build"
+mkdir "%BINARIESDIR%\libical-%LIBICAL_VERSION%\build"
+cd "%BINARIESDIR%\libical-%LIBICAL_VERSION%\build"
 
 call "%VS90COMNTOOLS%vsvars32.bat"
 
-"%CMAKE_BIN%" -DCMAKE_INSTALL_PREFIX="%BINARIESDIR%\libical" -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DUSE_32BIT_TIME_T=True ..
+"%CMAKE_BIN%" -DCMAKE_INSTALL_PREFIX="%BINARIESDIR%\%LIBICAL_DIR_NAME%" -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=%BUILD_TYPE% -DUSE_32BIT_TIME_T=True ..
 if not %ERRORLEVEL% == 0 (
     echo "Failed to generate makefiles for libical"
     exit /b 1
@@ -90,6 +97,9 @@ if not %ERRORLEVEL% == 0 (
     echo "Failed to install libical"
     exit /b 1
 )
+
+cd "%BINARIESDIR%"
+2>nul rd /S /Q "%BINARIESDIR%\libical-%LIBICAL_VERSION%"
 
 exit /b 0
 

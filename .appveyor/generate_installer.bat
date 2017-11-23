@@ -36,36 +36,35 @@ REM trademark licensing policies.
 @echo on
 setlocal
 
-1>nul 2>nul call "%~dp0set_paths.bat"
+1>nul 2>nul call "%~dp0set_paths.bat" %~1
 
 if defined WIX (
 	set "PATH=%WIX%bin;%PATH%"
 )
 
-cd "%~dp0..\..\pbspro\win_configure\msi\wix"
+call "%~dp0..\..\pbspro\win_configure\msi\wix\prep.bat" "%BINARIESDIR%" %~1
+if not %ERRORLEVEL% == 0 (
+    echo Failed to prepare PBS_EXEC!
+    exit /b 1
+)
 
-call "%~dp0..\..\pbspro\win_configure\msi\wix\prep.bat" "binaries_path=%BINARIESDIR%"
-
-if not exist "%BUILDDIR%\vcredist_x86.exe" (
-    "%CURL_BIN%" -qkL -o "%BUILDDIR%\vcredist_x86.exe" https://download.microsoft.com/download/5/B/C/5BC5DBB3-652D-4DCE-B14A-475AB85EEF6E/vcredist_x86.exe
-    if not exist "%BUILDDIR%\vcredist_x86.exe" (
+if not exist "%BINARIESDIR%\vcredist_x86.exe" (
+    "%CURL_BIN%" -qkL -o "%BINARIESDIR%\vcredist_x86.exe" https://download.microsoft.com/download/1/6/5/165255E7-1014-4D0A-B094-B6A430A6BFFC/vcredist_x86.exe
+    if not exist "%BINARIESDIR%\vcredist_x86.exe" (
         echo "Failed to download Microsoft Visual C++ 2010 Redistributable Package (x86)"
         exit /b 1
     )
 )
 
-copy /B /Y "%BUILDDIR%\vcredist_x86.exe" "%~dp0..\..\PBS\exec\etc\vcredist_x86.exe"
+1>nul copy /B /Y "%BINARIESDIR%\vcredist_x86.exe" "%~dp0..\..\PBS\exec\etc\vcredist_x86.exe"
 
-call "%~dp0..\..\pbspro\win_configure\msi\wix\build_wxs_source.bat"
-
-call "%~dp0..\..\pbspro\win_configure\msi\wix\create_msi.bat"
-
-if not exist "%~dp0..\..\pbspro\win_configure\msi\wix\PBSPro.msi" (
-    echo "Failed to generate PBSPro.msi"
+call "%~dp0..\..\pbspro\win_configure\msi\wix\create_msi.bat" %~1
+if not %ERRORLEVEL% == 0 (
+    echo Failed to generate PBS Pro MSI!
     exit /b 1
 )
 
-dir "%~dp0..\..\pbspro\win_configure\msi\wix\"
+dir "%~dp0..\..\win_build\msi"
 
 exit /b 0
 

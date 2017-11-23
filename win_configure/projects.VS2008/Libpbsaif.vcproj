@@ -42,7 +42,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\..\src\include;..\include;..\..\..\binaries\openssl\include"
+				AdditionalIncludeDirectories="..\..\src\include;..\include;..\..\..\binaries\openssl_debug\include"
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;_USRDLL;LIBPBSAIF_EXPORTS;DLL_EXPORT;_USE_32BIT_TIME_T "
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -69,7 +69,7 @@
 				AdditionalDependencies="ws2_32.lib netapi32.lib Userenv.lib mpr.lib secur32.lib libcrypto.lib crypt32.lib Libpbspthread.lib"
 				OutputFile="$(OutDir)\Libpbsaif.dll"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories="..\..\..\binaries\openssl\lib;..\..\..\win_build\src\lib\Libpbspthread\Debug"
+				AdditionalLibraryDirectories="..\..\..\binaries\openssl_debug\lib;..\..\..\win_build\src\lib\Libpbspthread\Debug"
 				UACExecutionLevel="0"
 				IgnoreDefaultLibraryNames="LIBCMT.LIB"
 				GenerateDebugInformation="true"

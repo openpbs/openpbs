@@ -33,7 +33,7 @@ REM Use of Altair’s trademarks, including but not limited to "PBS™",
 REM "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 REM trademark licensing policies.
 
-@echo on
+@echo off
 set __OLD_DIR="%CD%"
 cd "%~dp0..\.."
 
@@ -56,9 +56,6 @@ if not defined PERL_BIN (
 if not defined CMAKE_BIN (
     set CMAKE_BIN=cmake
 )
-if not defined __BUILDDIR (
-    set __BUILDDIR=%CD%\windows-work
-)
 if not defined __BINARIESDIR (
     set __BINARIESDIR=%CD%\binaries
 )
@@ -71,24 +68,7 @@ if exist "%VS90COMNTOOLS%vsvars32.bat" (
 
 set __RANDOM_VAL=%RANDOM::=_%
 set __RANDOM_VAL-%RANDOM_VAL:.=%
-set __BUILDJUNCTION=%__BUILDDIR:~0,2%\__withoutspace_builddir_%__RANDOM_VAL%
 set __BINARIESJUNCTION=%__BINARIESDIR:~0,2%\__withoutspace_binariesdir_%__RANDOM_VAL%
-if not exist "%__BUILDDIR%" (
-    mkdir "%__BUILDDIR%"
-)
-if not "%__BUILDDIR: =%"=="%__BUILDDIR%" (
-    mklink /J %__BUILDJUNCTION% "%__BUILDDIR%"
-    if not %ERRORLEVEL% == 0 (
-        echo "Could not create junction to %__BUILDJUNCTION% to %__BUILDDIR% which contains space"
-        exit 1
-    )
-    cd %__BUILDJUNCTION%
-) else (
-    cd %__BUILDDIR%
-)
-set BUILDDIR=%CD%
-for /F "usebackq tokens=*" %%i in (`""%MSYSDIR%\bin\bash.exe" -c "pwd""`) do set BUILDDIR_M=%%i
-cd "%~dp0..\.."
 if not exist "%__BINARIESDIR%" (
     mkdir "%__BINARIESDIR%"
 )
@@ -106,7 +86,7 @@ set BINARIESDIR=%CD%
 for /F "usebackq tokens=*" %%i in (`""%MSYSDIR%\bin\bash.exe" -c "pwd""`) do set BINARIESDIR_M=%%i
 
 if not defined LIBEDIT_VERSION (
-    set LIBEDIT_VERSION=2.203
+    set LIBEDIT_VERSION=2.204
 )
 if not defined LIBICAL_VERSION (
     set LIBICAL_VERSION=1.0.1
@@ -128,6 +108,14 @@ if not defined TCL_VERSION (
 )
 if not defined TK_VERSION (
     set TK_VERSION=8.6.6
+)
+
+set DO_DEBUG_BUILD=0
+if "%~1"=="debug" (
+    set DO_DEBUG_BUILD=1
+)
+if "%~1"=="Debug" (
+    set DO_DEBUG_BUILD=1
 )
 
 cd %__OLD_DIR%

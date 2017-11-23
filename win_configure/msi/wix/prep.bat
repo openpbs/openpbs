@@ -2,316 +2,214 @@
 
 REM Copyright (C) 1994-2017 Altair Engineering, Inc.
 REM For more information, contact Altair at www.altair.com.
-REM  
+REM
 REM This file is part of the PBS Professional ("PBS Pro") software.
-REM 
+REM
 REM Open Source License Information:
-REM  
+REM
 REM PBS Pro is free software. You can redistribute it and/or modify it under the
-REM terms of the GNU Affero General Public License as published by the Free 
-REM Software Foundation, either version 3 of the License, or (at your option) any 
+REM terms of the GNU Affero General Public License as published by the Free
+REM Software Foundation, either version 3 of the License, or (at your option) any
 REM later version.
-REM  
-REM PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+REM
+REM PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
 REM WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
 REM PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
-REM  
-REM You should have received a copy of the GNU Affero General Public License along 
+REM
+REM You should have received a copy of the GNU Affero General Public License along
 REM with this program.  If not, see <http://www.gnu.org/licenses/>.
-REM  
-REM Commercial License Information: 
-REM 
-REM The PBS Pro software is licensed under the terms of the GNU Affero General 
-REM Public License agreement ("AGPL"), except where a separate commercial license 
+REM
+REM Commercial License Information:
+REM
+REM The PBS Pro software is licensed under the terms of the GNU Affero General
+REM Public License agreement ("AGPL"), except where a separate commercial license
 REM agreement for PBS Pro version 14 or later has been executed in writing with Altair.
-REM  
-REM Altair’s dual-license business model allows companies, individuals, and 
-REM organizations to create proprietary derivative works of PBS Pro and distribute 
-REM them - whether embedded or bundled with other software - under a commercial 
+REM
+REM Altair’s dual-license business model allows companies, individuals, and
+REM organizations to create proprietary derivative works of PBS Pro and distribute
+REM them - whether embedded or bundled with other software - under a commercial
 REM license agreement.
-REM 
-REM Use of Altair’s trademarks, including but not limited to "PBS™", 
-REM "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+REM
+REM Use of Altair’s trademarks, including but not limited to "PBS™",
+REM "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 REM trademark licensing policies.
 
-REM This script will generate the componentgroup directory structure
+setlocal
 
-REM parsing command line arguments
-set argC=0
-for %%x in (%*) do set /A argC+=1
-
-if %argC% LSS 1 (
-	echo 'Usage %0 "binaries_path=path_to_binaries_dir"'
-	exit /b 1
-) else (
-	set %1
-	echo %binaries_path%
+if "%~1" == "" (
+    echo Path to binaries directory require!
+    exit /b 1
 )
 
-REM parsing the absolute path of this file to find PBS prefix directory
-set PBS_prefix=''
-@setlocal enableextensions enabledelayedexpansion
-set variable=%~dp0
-if "x!variable:~-29!"=="xpbspro\win_configure\msi\wix\" (
-	set variable=!variable:~0,-29!
-) else (
-	echo "Failed to parse PBS prefix location"
-	goto theend
+cd "%~dp0..\..\..\..\"
+set WINBUILDDIR=%CD%\win_build
+set PBS_EXECDIR=%CD%\PBS\exec
+set PBS_SRCDIR=%CD%\pbspro
+set BINARIESDIR=%~1
+set BUILD_TYPE=Release
+set BINARIESDIR_TYPE=
+if "%~2"=="debug" (
+    set BUILD_TYPE=Debug
+    set BINARIESDIR_TYPE=_debug
 )
-set PBS_prefix=!variable!
-
-REM Defining needed variables 
-set WINBUILDDIR="%PBS_prefix%win_build"
-set TOPDIR="%PBS_prefix%PBS"
-set SRCDIR="%PBS_prefix%pbspro"
-set HOMEDIR="%TOPDIR%\home"
-set EXECDIR="%TOPDIR%\exec"
-
-if exist %TOPDIR% (
-	echo %TOPDIR% already available.. Deleting...
-	rmdir /s /q %TOPDIR%
-	if NOT %ERRORLEVEL% == 0 goto theend
+if "%~2"=="Debug" (
+    set BUILD_TYPE=Debug
+    set BINARIESDIR_TYPE=_debug
 )
 
-echo Creating toplevel directories...
-mkdir %TOPDIR% %HOMEDIR% %EXECDIR%
-if NOT %ERRORLEVEL% == 0 goto theend
-echo done
+cd "%~dp0"
 
-echo Creating bin directory and moving necessory files...
-mkdir %EXECDIR%\bin
-if %ERRORLEVEL% == 0 (
-	For %%a in (
-		"%WINBUILDDIR%\src\cmds\Release\*.exe"
-		"%WINBUILDDIR%\src\lib\Libpbspthread\Release\Libpbspthread.dll"
-		"%SRCDIR%\src\cmds\scripts\*.bat"
-		"%WINBUILDDIR%\src\tools\Release\*.exe"
-		"%binaries_path%\tcltk\bin\*.dll"
-	) do (
-		xcopy /s /d "%%~a" "%EXECDIR%\bin" > NUL
-		if NOT %ERRORLEVEL% == 0 goto theend
-	)
-	REM Exclude list of files from bin directory
-	For %%b in (
-		"%EXECDIR%\bin\pbs_dataservice.bat"
-		"%EXECDIR%\bin\pbs_ds_monitor.exe"
-		"%EXECDIR%\bin\pbs_ds_password.exe"
-	) do (
-		del /s "%%~b" > NUL
-		if NOT %ERRORLEVEL% == 0 goto theend
-	)
-) else (
-	echo Failed to create %EXECDIR%\bin directory.
-	goto theend
+2>nul rd /S /Q "%PBS_EXECDIR%"
+
+echo Copying necessory files for PBS_EXEC\bin
+for %%a in (
+    "%WINBUILDDIR%\src\cmds\%BUILD_TYPE%\*.exe"
+    "%WINBUILDDIR%\src\lib\Libpbspthread\%BUILD_TYPE%\Libpbspthread.dll"
+    "%WINBUILDDIR%\src\tools\%BUILD_TYPE%\*.exe"
+    "%PBS_SRCDIR%\src\cmds\scripts\*.bat"
+    "%BINARIESDIR%\tcltk%BINARIESDIR_TYPE%\bin\*.dll"
+) do (
+    1>nul xcopy /Y /V /J "%%a" "%PBS_EXECDIR%\bin\"
+    if not %ERRORLEVEL% == 0 (
+        echo Failed to copy files from "%%a" to "%PBS_EXECDIR%\bin\"
+        exit /b 1
+    )
+)
+1>nul copy /B /Y "%PBS_EXECDIR%\bin\printjob_svr.exe" "%PBS_EXECDIR%\bin\printjob.exe"
+
+REM Remove unneccesory files from bin directory
+del /F /Q "%PBS_EXECDIR%\bin\pbs_ds_monitor.exe"
+del /F /Q "%PBS_EXECDIR%\bin\pbs_ds_password.exe"
+del /F /Q "%PBS_EXECDIR%\bin\pbs_dataservice.bat"
+
+echo Copying necessory files for PBS_EXEC\sbin
+for %%a in (
+    "%WINBUILDDIR%\src\server\%BUILD_TYPE%\*.exe"
+    "%WINBUILDDIR%\src\iff\%BUILD_TYPE%\*.exe"
+    "%WINBUILDDIR%\src\tools\%BUILD_TYPE%\pbs_ds_monitor.exe"
+    "%WINBUILDDIR%\src\resmom\%BUILD_TYPE%\*.exe"
+    "%WINBUILDDIR%\src\mom_rcp\%BUILD_TYPE%\*.exe"
+    "%WINBUILDDIR%\src\cmds\%BUILD_TYPE%\pbs_ds_password.exe"
+    "%WINBUILDDIR%\src\scheduler\%BUILD_TYPE%\*.exe"
+    "%WINBUILDDIR%\src\send_job\%BUILD_TYPE%\*.exe"
+    "%WINBUILDDIR%\src\send_hooks\%BUILD_TYPE%\*.exe"
+    "%WINBUILDDIR%\src\start_provision\%BUILD_TYPE%\*.exe"
+    "%PBS_SRCDIR%\src\cmds\scripts\pbs_dataservice.bat"
+) do (
+    1>nul xcopy /Y /V /J "%%a" "%PBS_EXECDIR%\sbin\"
+    if not %ERRORLEVEL% == 0 (
+        echo Failed to copy files from "%%a" to "%PBS_EXECDIR%\sbin\"
+        exit /b 1
+    )
 )
 
-echo Creating sbin directory and moving necessory files...
-mkdir %EXECDIR%\sbin
-if %ERRORLEVEL% == 0 (
-	For %%a in (
-		"%WINBUILDDIR%\src\server\Release\pbs_comm.exe"
-		"%WINBUILDDIR%\src\iff\Release\*.exe"
-		"%WINBUILDDIR%\src\tools\Release\pbs_ds_monitor.exe"
-		"%WINBUILDDIR%\src\resmom\Release\*.exe*"
-		"%WINBUILDDIR%\src\mom_rcp\Release\*.exe*"
-		"%SRCDIR%\src\cmds\scripts\pbs_dataservice.bat"
-		"%WINBUILDDIR%\src\mom_rshd\Release\*.exe"
-		"%WINBUILDDIR%\src\cmds\Release\pbs_ds_password.exe"
-		"%WINBUILDDIR%\src\scheduler\Release\*.exe"
-		"%WINBUILDDIR%\src\send_job\Release\*.exe*"
-		"%WINBUILDDIR%\src\send_hooks\Release\*.exe*"
-		"%WINBUILDDIR%\src\server\Release\*.exe*"
-		"%WINBUILDDIR%\src\start_provision\Release\*.exe*"
-	) do (
-		xcopy /s /d "%%~a" "%EXECDIR%\sbin" > NUL
-		if NOT %ERRORLEVEL% == 0 goto theend
-	)
-) else (
-	echo Failed to create %EXECDIR%\sbin directory.
-	goto theend
+echo Copying necessory files for PBS_EXEC\etc
+for %%a in (
+    "%PBS_SRCDIR%\src\scheduler\pbs_holidays*"
+    "%PBS_SRCDIR%\src\scheduler\pbs_dedicated"
+    "%PBS_SRCDIR%\src\scheduler\pbs_resource_group"
+    "%PBS_SRCDIR%\src\scheduler\pbs_sched_config"
+    "%PBS_SRCDIR%\src\cmds\scripts\pbs_db_schema.sql"
+    "%PBS_SRCDIR%\src\cmds\scripts\win_postinstall.py"
+) do (
+    1>nul xcopy /Y /V /J "%%a" "%PBS_EXECDIR%\etc\"
+    if not %ERRORLEVEL% == 0 (
+        echo Failed to copy files from "%%a" to "%PBS_EXECDIR%\etc\"
+        exit /b 1
+    )
+)
+echo > "%PBS_EXECDIR%\etc\createdb.bat"
+echo > "%PBS_EXECDIR%\etc\create_svr_defaults.bat"
+
+echo Copying necessory files for PBS_EXEC\include
+for %%a in (
+    "%PBS_SRCDIR%\src\include\pbs_error.h"
+    "%PBS_SRCDIR%\src\include\pbs_ifl.h"
+    "%PBS_SRCDIR%\src\include\rm.h"
+    "%PBS_SRCDIR%\src\include\tm_.h"
+    "%PBS_SRCDIR%\src\include\tm.h"
+    "%PBS_SRCDIR%\src\include\win.h"
+) do (
+    1>nul xcopy /Y /V /J "%%a" "%PBS_EXECDIR%\include\"
+    if not %ERRORLEVEL% == 0 (
+        echo Failed to copy files from "%%a" to "%PBS_EXECDIR%\include\"
+        exit /b 1
+    )
 )
 
-echo Creating etc directory and moving necessory files...
-
-mkdir %EXECDIR%\etc
-if %ERRORLEVEL% == 0 (
-	For %%a in (
-		"%SRCDIR%\src\scheduler\pbs_holidays.*"
-		"%SRCDIR%\src\scheduler\pbs_dedicated"
-		"%SRCDIR%\src\scheduler\pbs_holidays"
-		"%SRCDIR%\src\scheduler\pbs_resource_group"
-		"%SRCDIR%\src\scheduler\pbs_sched_config"
-		"%SRCDIR%\src\cmds\scripts\pbs_db_schema.sql"
-		"%SRCDIR%\src\cmds\scripts\win_postinstall.py"
-	) do (
-		xcopy /s /d "%%~a" "%EXECDIR%\etc" > NUL
-		if NOT %ERRORLEVEL% == 0 goto theend
-	)
-) else (
-	echo Failed to create %EXECDIR%\etc directory.
-	goto theend
+echo Copying necessory files for PBS_EXEC\lib
+1>nul xcopy /Y /V /J /S "%PBS_SRCDIR%\src\modules\python\pbs" "%PBS_EXECDIR%\lib\python\altair\"
+if not %ERRORLEVEL% == 0 (
+    echo Failed to copy files from "%PBS_SRCDIR%\src\modules\python\pbs" to "%PBS_EXECDIR%\lib\python\altair\"
+    exit /b 1
+)
+1>nul xcopy /Y /V /J "%PBS_SRCDIR%\win_configure\projects.VS2008\pbs_ifl.py" "%PBS_EXECDIR%\lib\python\altair\pbs\v1\"
+if not %ERRORLEVEL% == 0 (
+    echo Failed to copy files from "%PBS_SRCDIR%\win_configure\projects.VS2008\pbs_ifl.py" to "%PBS_EXECDIR%\lib\python\altair\altair\v1\"
+    exit /b 1
+)
+1>nul xcopy /Y /V /J "%BINARIESDIR%\python\Lib\*.*" "%PBS_EXECDIR%\lib\python\python2.7\"
+if not %ERRORLEVEL% == 0 (
+    echo Failed to copy files from "%BINARIESDIR%\python\Lib\" to "%PBS_EXECDIR%\lib\python\python2.7\"
+    exit /b 1
+)
+1>nul xcopy /Y /V /J /S "%BINARIESDIR%\libical%BINARIESDIR_TYPE%\share\libical\zoneinfo" "%PBS_EXECDIR%\lib\ical\zoneinfo\"
+if not %ERRORLEVEL% == 0 (
+    echo Failed to copy files from "%BINARIESDIR%\libical%BINARIESDIR_TYPE%\share\libical\zoneinfo" to "%PBS_EXECDIR%\lib\ical\zoneinfo"
+    exit /b 1
+)
+for %%a in (
+    "%WINBUILDDIR%\src\lib\Libattr\%BUILD_TYPE%\Libattr.lib"
+    "%WINBUILDDIR%\src\lib\Liblog\%BUILD_TYPE%\Liblog.lib"
+    "%WINBUILDDIR%\src\lib\Libnet\%BUILD_TYPE%\Libnet.lib"
+    "%WINBUILDDIR%\src\lib\Libpbs\%BUILD_TYPE%\Libpbs.lib"
+    "%WINBUILDDIR%\src\lib\Libsite\%BUILD_TYPE%\Libsite.lib"
+    "%WINBUILDDIR%\src\lib\Libwin\%BUILD_TYPE%\Libwin.lib"
+    "%BINARIESDIR%\libical%BINARIESDIR_TYPE%\bin\*.dll"
+) do (
+    1>nul xcopy /Y /V /J "%%a" "%PBS_EXECDIR%\lib\"
+    if not %ERRORLEVEL% == 0 (
+        echo Failed to copy files from "%%a" to "%PBS_EXECDIR%\lib\"
+        exit /b 1
+    )
 )
 
-echo Creating include directory and moving necessory files...
-mkdir %EXECDIR%\include
-if %ERRORLEVEL% == 0 (
-	For %%a in (
-		"%SRCDIR%\src\include\pbs_error.h"
-		"%SRCDIR%\src\include\pbs_ifl.h"
-		"%SRCDIR%\src\include\rm.h"
-		"%SRCDIR%\src\include\tm_.h"
-		"%SRCDIR%\src\include\tm.h"
-		"%SRCDIR%\src\include\win.h"
-	) do (
-	xcopy /s /d "%%~a" "%EXECDIR%\include" > NUL
-	if NOT %ERRORLEVEL% == 0 goto theend
-	)
-) else (
-	echo Failed to create %EXECDIR%\include directory.
-	goto theend
+echo Copying necessory files for PBS_EXEC\unsupported
+for %%a in (
+    "%WINBUILDDIR%\src\unsupported\%BUILD_TYPE%\*.exe"
+    "%PBS_SRCDIR%\src\unsupported\README"
+    "%PBS_SRCDIR%\src\unsupported\*.pl"
+    "%PBS_SRCDIR%\src\unsupported\*.py*"
+) do (
+    1>nul xcopy /Y /V /J "%%a" "%PBS_EXECDIR%\unsupported\"
+    if not %ERRORLEVEL% == 0 (
+        echo Failed to copy files from "%%a" to "%PBS_EXECDIR%\unsupported\"
+        exit /b 1
+    )
 )
 
-echo Creating pgsql directory and moving necessory files...
-mkdir %EXECDIR%\pgsql
-if %ERRORLEVEL% == 0 (
-	xcopy /s /d "%binaries_path%\pgsql\*" "%EXECDIR%\pgsql" > NUL
-	if NOT %ERRORLEVEL% == 0 goto theend
-) else (
-	echo Failed to create %EXECDIR%\pgsql directory.
-	goto theend
+echo Copying necessory files for PBS_EXEC\pgsql
+1>nul xcopy /Y /V /J /S "%BINARIESDIR%\pgsql%BINARIESDIR_TYPE%" "%PBS_EXECDIR%\pgsql\"
+if not %ERRORLEVEL% == 0 (
+    echo Failed to copy files from "%BINARIESDIR%\pgsql%BINARIESDIR_TYPE%" to "%PBS_EXECDIR%\pgsql\"
+    exit /b 1
 )
 
-echo Creating python_x64 directory and moving necessory files...
-mkdir %EXECDIR%\python_x64
-if %ERRORLEVEL% == 0 (
-	xcopy /s /d "%binaries_path%\python_x64\*.*" "%EXECDIR%\python_x64" > NUL
-	if NOT %ERRORLEVEL% == 0 goto theend
-) else (
-	echo Failed to create %EXECDIR%\python_x64 directory.
-	goto theend
+echo Copying necessory files for PBS_EXEC\python
+1>nul xcopy /Y /V /J /S "%BINARIESDIR%\python" "%PBS_EXECDIR%\python\"
+if not %ERRORLEVEL% == 0 (
+    echo Failed to copy files from "%BINARIESDIR%\python" to "%PBS_EXECDIR%\python\"
+    exit /b 1
+)
+if "%BUILD_TYPE%"=="Debug" (
+    1>nul copy /B /Y "%BINARIESDIR%\python_debug\PC\VS9.0\python27_d.dll" "%PBS_EXECDIR%\python\"
 )
 
-echo Creating python directory and moving necessory files...
-mkdir %EXECDIR%\python
-if %ERRORLEVEL% == 0 (
-	xcopy /s /d "%binaries_path%\python\*" "%EXECDIR%\python" > NUL
-	if NOT %ERRORLEVEL% == 0 goto theend
-) else (
-	echo Failed to create %EXECDIR%\python directory.
-	goto theend
+echo Copying necessory files for PBS_EXEC\python_x64
+1>nul xcopy /Y /V /J /S "%BINARIESDIR%\python_x64" "%PBS_EXECDIR%\python_x64\"
+if not %ERRORLEVEL% == 0 (
+    echo Failed to copy files from "%BINARIESDIR%\python_x64" to "%PBS_EXECDIR%\python_x64\"
+    exit /b 1
 )
 
-echo Creating unsupported directory and moving necessory files...
-mkdir %EXECDIR%\unsupported
-if %ERRORLEVEL% == 0 (
-	For %%a in (
-		"%WINBUILDDIR%\src\unsupported\Release\*.exe"
-		"%SRCDIR%\src\unsupported\README"
-		"%SRCDIR%\src\unsupported\*.pl"
-		"%SRCDIR%\src\unsupported\*.py"
-	) do (
-		xcopy /s /d "%%~a" "%EXECDIR%\unsupported" > NUL
-		if NOT %ERRORLEVEL% == 0 goto theend
-	)
-) else (
-	echo Failed to create %EXECDIR%\unsupported directory.
-	goto theend
-)
-
-echo Creating scheduler privilage in home directory...
-mkdir %HOMEDIR%\sched_priv
-if %ERRORLEVEL% == 0 (
-	For %%a in (
-		"%SRCDIR%\src\scheduler\pbs_dedicated"
-		"%SRCDIR%\src\scheduler\pbs_holidays"
-		"%SRCDIR%\src\scheduler\pbs_resource_group"
-		"%SRCDIR%\src\scheduler\pbs_sched_config"
-	) do (
-		xcopy /s /d "%%~a" "%HOMEDIR%\sched_priv" > NUL
-		if NOT %ERRORLEVEL% == 0 goto theend
-	)
-) else (
-	echo Failed to create %HOMEDIR%\sched_priv directory.
-	goto theend
-)
-
-echo Creating lib in exec directory...
-mkdir %EXECDIR%\lib
-if %ERRORLEVEL% == 0 (
-	mkdir %EXECDIR%\lib\python\altair\pbs
-	if %ERRORLEVEL% == 0 (
-		For %%a in (
-			"%SRCDIR%\src\modules\python\pbs\*.py"
-			"%SRCDIR%\src\modules\python\pbs\*.pyo"
-			"%SRCDIR%\src\modules\python\pbs\*.pyc"			
-		) do (
-			xcopy /s /d "%%~a" "%EXECDIR%\lib\python\altair\pbs" > NUL
-			if NOT %ERRORLEVEL% == 0 goto theend
-		)
-	) else (
-		echo Failed to create %EXECDIR%\lib\python\altair\pbs directory.
-		goto theend
-	)
-	
-	mkdir %EXECDIR%\lib\python\altair\pbs\v1
-	if %ERRORLEVEL% == 0 (
-		For %%a in (
-			"%SRCDIR%\src\modules\python\pbs\v1\*.py"
-			"%SRCDIR%\src\modules\python\pbs\v1\*.pyo"
-			"%SRCDIR%\src\modules\python\pbs\v1\*.pyc"	
-			"%SRCDIR%\win_configure\projects.VS2008\*.py"
-		) do (
-			xcopy /s /d "%%~a" "%EXECDIR%\lib\python\altair\pbs\v1" > NUL
-			if NOT %ERRORLEVEL% == 0 goto theend
-		)
-	) else (
-		echo Failed to create %EXECDIR%\lib\python\altair\pbs\v1 directory.
-		goto theend
-	)
-
-	mkdir %EXECDIR%\lib\python\python2.7
-	if %ERRORLEVEL% == 0 (	
-		For %%a in (
-			"%binaries_path%\python\Lib\*.*"			
-		) do (
-			xcopy /d "%%~a" "%EXECDIR%\lib\python\python2.7\" > NUL
-			if NOT %ERRORLEVEL% == 0 goto theend
-		)	
-	) else (
-		echo Failed to create %EXECDIR%\lib\python\python2.7 directory.
-		goto theend
-	)
-	
-	For %%a in (
-			"%WINBUILDDIR%\src\lib\Libattr\Release\Libattr.lib"
-			"%WINBUILDDIR%\src\lib\Liblog\Release\Liblog.lib"
-			"%WINBUILDDIR%\src\lib\Libnet\Release\Libnet.lib"
-			"%WINBUILDDIR%\src\lib\Libpbs\Release\Libpbs.lib"
-			"%WINBUILDDIR%\src\lib\Libsite\Release\Libsite.lib"
-			"%WINBUILDDIR%\src\lib\Libwin\Release\Libwin.lib"
-			"%binaries_path%\libical\bin\*.dll"
-		) do (
-			xcopy /s /d "%%~a" "%EXECDIR%\lib" > NUL
-			if NOT %ERRORLEVEL% == 0 goto theend
-		)
-		
-	mkdir %EXECDIR%\lib\ical\zoneinfo
-	if %ERRORLEVEL% == 0 (
-		xcopy /s /d "%binaries_path%\libical\share\libical\zoneinfo\*.*" "%EXECDIR%\lib\ical\zoneinfo" > NUL
-		if NOT %ERRORLEVEL% == 0 goto theend
-	) else (
-		echo Failed to create %EXECDIR%\lib\ical\zoneinfo directory.
-		goto theend
-	)
-
-) else (
-	echo Failed to create %EXECDIR%\lib directory.
-	goto theend
-)
-
-echo "Finished successfully"
-exit /b
-
-:theend
-echo "Error: while preparing directory structure" 
-exit /b
+exit /b 0

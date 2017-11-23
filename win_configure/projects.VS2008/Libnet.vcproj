@@ -15,6 +15,80 @@
 	</ToolFiles>
 	<Configurations>
 		<Configuration
+			Name="Debug|Win32"
+			OutputDirectory="..\..\..\win_build\src\lib\Libnet\Debug"
+			IntermediateDirectory="..\..\..\win_build\src\lib\Libnet\Debug"
+			ConfigurationType="4"
+			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
+			UseOfMFC="0"
+			ATLMinimizesCRunTimeLibraryUsage="false"
+			CharacterSet="2"
+			>
+			<Tool
+				Name="VCPreBuildEventTool"
+			/>
+			<Tool
+				Name="VCCustomBuildTool"
+			/>
+			<Tool
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
+			<Tool
+				Name="VCMIDLTool"
+			/>
+			<Tool
+				Name="VCCLCompilerTool"
+				Optimization="0"
+					AdditionalIncludeDirectories="..\..\src\include,..\include,..\..\src\lib\Libtpp"
+				PreprocessorDefinitions="WIN32;_DEBUG;_LIB;_USE_32BIT_TIME_T "
+				BasicRuntimeChecks="3"
+				RuntimeLibrary="0"
+				UsePrecompiledHeader="0"
+				PrecompiledHeaderFile="..\..\..\win_build\src\lib\Libnet\Debug\Libnet.pch"
+				AssemblerListingLocation="..\..\..\win_build\src\lib\Libnet\Debug\"
+				ObjectFile="..\..\..\win_build\src\lib\Libnet\Debug\"
+				ProgramDataBaseFileName="..\..\..\win_build\src\lib\Libnet\Debug\"
+				WarningLevel="3"
+				SuppressStartupBanner="true"
+				DebugInformationFormat="4"
+				CompileAs="0"
+			/>
+			<Tool
+				Name="VCManagedResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCResourceCompilerTool"
+				PreprocessorDefinitions="_DEBUG"
+				Culture="1033"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
+			<Tool
+				Name="VCLibrarianTool"
+				OutputFile="..\..\..\win_build\src\lib\Libnet\Debug\Libnet.lib"
+				SuppressStartupBanner="true"
+			/>
+			<Tool
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+			/>
+		</Configuration>
+		<Configuration
 			Name="Release|Win32"
 			OutputDirectory="..\..\..\win_build\src\lib\Libnet\Release"
 			IntermediateDirectory="..\..\..\win_build\src\lib\Libnet\Release"
@@ -71,80 +145,6 @@
 			<Tool
 				Name="VCLibrarianTool"
 				OutputFile="..\..\..\win_build\src\lib\Libnet\Release\Libnet.lib"
-				SuppressStartupBanner="true"
-			/>
-			<Tool
-				Name="VCALinkTool"
-			/>
-			<Tool
-				Name="VCXDCMakeTool"
-			/>
-			<Tool
-				Name="VCBscMakeTool"
-			/>
-			<Tool
-				Name="VCFxCopTool"
-			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-			/>
-		</Configuration>
-		<Configuration
-			Name="Debug|Win32"
-			OutputDirectory="..\..\..\win_build\src\lib\Libnet\Debug"
-			IntermediateDirectory="..\..\..\win_build\src\lib\Libnet\Debug"
-			ConfigurationType="4"
-			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
-			UseOfMFC="0"
-			ATLMinimizesCRunTimeLibraryUsage="false"
-			CharacterSet="2"
-			>
-			<Tool
-				Name="VCPreBuildEventTool"
-			/>
-			<Tool
-				Name="VCCustomBuildTool"
-			/>
-			<Tool
-				Name="VCXMLDataGeneratorTool"
-			/>
-			<Tool
-				Name="VCWebServiceProxyGeneratorTool"
-			/>
-			<Tool
-				Name="VCMIDLTool"
-			/>
-			<Tool
-				Name="VCCLCompilerTool"
-				Optimization="0"
-					AdditionalIncludeDirectories="..\..\src\include,..\include,..\..\src\lib\Libtpp"
-				PreprocessorDefinitions="WIN32;_DEBUG;_LIB;_USE_32BIT_TIME_T "
-				BasicRuntimeChecks="3"
-				RuntimeLibrary="0"
-				UsePrecompiledHeader="0"
-				PrecompiledHeaderFile="..\..\..\win_build\src\lib\Libnet\Debug\Libnet.pch"
-				AssemblerListingLocation="..\..\..\win_build\src\lib\Libnet\Debug\"
-				ObjectFile="..\..\..\win_build\src\lib\Libnet\Debug\"
-				ProgramDataBaseFileName="..\..\..\win_build\src\lib\Libnet\Debug\"
-				WarningLevel="3"
-				SuppressStartupBanner="true"
-				DebugInformationFormat="4"
-				CompileAs="0"
-			/>
-			<Tool
-				Name="VCManagedResourceCompilerTool"
-			/>
-			<Tool
-				Name="VCResourceCompilerTool"
-				PreprocessorDefinitions="_DEBUG"
-				Culture="1033"
-			/>
-			<Tool
-				Name="VCPreLinkEventTool"
-			/>
-			<Tool
-				Name="VCLibrarianTool"
-				OutputFile="..\..\..\win_build\src\lib\Libnet\Debug\Libnet.lib"
 				SuppressStartupBanner="true"
 			/>
 			<Tool

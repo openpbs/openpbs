@@ -1,16 +1,19 @@
 version: "#{build}"
 pull_requests:
   do_not_increment_build_number: true
+clone_depth: 5
+cache:
+  - C:\projects\binaries -> .appveyor.yml, .appveyor
 configuration:
   - Release
-clone_depth: 5
+  - Debug
 before_build:
-  - cmd: call .appveyor\appveyor_helper.bat
+  - cmd: call .appveyor\appveyor_helper.bat %CONFIGURATION%
 build_script:
   - cmd: call "%VS90COMNTOOLS%vsvars32.bat"
-  - cmd: vcbuild win_configure\pbs_windows_VS2008.sln "Release|Win32"
+  - cmd: vcbuild win_configure\pbs_windows_VS2008.sln "%CONFIGURATION%|Win32"
 after_build:
-  - cmd: call .appveyor\generate_installer.bat
+  - cmd: call .appveyor\generate_installer.bat %CONFIGURATION%
 test: off
 deploy: off
 

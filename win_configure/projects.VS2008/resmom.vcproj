@@ -45,7 +45,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\..\src\resmom\mom_hpcp;..\..\src\include;..\include;..\..\src\resmom;..\..\src\resmom_win;..\..\src\resmom_win\win;..\..\..\binaries\openssl\include;..\..\..\binaries\python\include"
+				AdditionalIncludeDirectories="..\..\src\resmom\mom_hpcp;..\..\src\include;..\include;..\..\src\resmom;..\..\src\resmom_win;..\..\src\resmom_win\win;..\..\..\binaries\openssl_debug\include;..\..\..\binaries\python_debug\PC;..\..\..\binaries\python_debug\Include"
 				PreprocessorDefinitions="_DEBUG;DEBUG;PBS_MOM=1;_WIN32_WINNT=0x0500;PBS_MOM;WIN32;_CONSOLE;_USE_32BIT_TIME_T;LINKS_PYTHON"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
@@ -77,7 +77,7 @@
 				OutputFile="..\..\..\win_build\src\resmom\Debug\pbs_mom.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="..\..\..\win_build\src\server\Release;..\..\src\server;..\..\..\binaries\openssl\lib;..\..\..\binaries\python\libs"
+				AdditionalLibraryDirectories="..\..\..\win_build\src\server\Release;..\..\src\server;..\..\..\binaries\openssl_debug\lib;..\..\..\binaries\python_debug\PC\VS9.0"
 				UACExecutionLevel="0"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="..\..\..\win_build\src\resmom\Debug\pbs_mom.pdb"

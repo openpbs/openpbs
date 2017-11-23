@@ -36,76 +36,89 @@ REM trademark licensing policies.
 @echo on
 setlocal
 
-call "%~dp0set_paths.bat"
+call "%~dp0set_paths.bat" %~1
 
-cd "%BUILDDIR%"
+cd "%BINARIESDIR%"
 
 if not defined LIBEDIT_VERSION (
     echo "Please set LIBEDIT_VERSION to editline version!"
     exit /b 1
 )
 
-if exist "%BINARIESDIR%\libedit" (
-    echo "%BINARIESDIR%\libedit exist already!"
+set LIBEDIT_DIR_NAME=libedit
+set BUILD_TYPE=Release
+if %DO_DEBUG_BUILD% EQU 1 (
+    set LIBEDIT_DIR_NAME=libedit_debug
+    set BUILD_TYPE=Debug
+)
+
+if exist "%BINARIESDIR%\%LIBEDIT_DIR_NAME%" (
+    echo "%BINARIESDIR%\%LIBEDIT_DIR_NAME% exist already!"
     exit /b 0
 )
 
-if not exist "%BUILDDIR%\wineditline-%LIBEDIT_VERSION%.zip" (
-    "%CURL_BIN%" -qkL -o "%BUILDDIR%\wineditline-%LIBEDIT_VERSION%.zip" https://sourceforge.net/projects/mingweditline/files/wineditline-%LIBEDIT_VERSION%.zip/download
-    if not exist "%BUILDDIR%\wineditline-%LIBEDIT_VERSION%.zip" (
+if not exist "%BINARIESDIR%\wineditline-%LIBEDIT_VERSION%.zip" (
+    "%CURL_BIN%" -qkL -o "%BINARIESDIR%\wineditline-%LIBEDIT_VERSION%.zip" https://sourceforge.net/projects/mingweditline/files/wineditline-%LIBEDIT_VERSION%.zip/download
+    if not exist "%BINARIESDIR%\wineditline-%LIBEDIT_VERSION%.zip" (
         echo "Failed to download libedit"
         exit /b 1
     )
 )
 
-2>nul rd /S /Q "%BUILDDIR%\wineditline-%LIBEDIT_VERSION%"
-"%UNZIP_BIN%" -q "%BUILDDIR%\wineditline-%LIBEDIT_VERSION%.zip"
+2>nul rd /S /Q "%BINARIESDIR%\wineditline-%LIBEDIT_VERSION%"
+"%UNZIP_BIN%" -q "%BINARIESDIR%\wineditline-%LIBEDIT_VERSION%.zip"
 if not %ERRORLEVEL% == 0 (
-    echo "Failed to extract %BUILDDIR%\wineditline-%LIBEDIT_VERSION%.zip"
+    echo "Failed to extract %BINARIESDIR%\wineditline-%LIBEDIT_VERSION%.zip"
     exit /b 1
 )
-if not exist "%BUILDDIR%\wineditline-%LIBEDIT_VERSION%" (
-    echo "Could not find %BUILDDIR%\wineditline-%LIBEDIT_VERSION%"
+if not exist "%BINARIESDIR%\wineditline-%LIBEDIT_VERSION%" (
+    echo "Could not find %BINARIESDIR%\wineditline-%LIBEDIT_VERSION%"
     exit /b 1
 )
 
-2>nul rd /S /Q "%BUILDDIR%\wineditline-%LIBEDIT_VERSION%\build"
-2>nul rd /S /Q "%BUILDDIR%\wineditline-%LIBEDIT_VERSION%\bin32"
-2>nul rd /S /Q "%BUILDDIR%\wineditline-%LIBEDIT_VERSION%\lib32"
-2>nul rd /S /Q "%BUILDDIR%\wineditline-%LIBEDIT_VERSION%\include"
-mkdir "%BUILDDIR%\wineditline-%LIBEDIT_VERSION%\build"
+2>nul rd /S /Q "%BINARIESDIR%\wineditline-%LIBEDIT_VERSION%\build"
+2>nul rd /S /Q "%BINARIESDIR%\wineditline-%LIBEDIT_VERSION%\bin32"
+2>nul rd /S /Q "%BINARIESDIR%\wineditline-%LIBEDIT_VERSION%\lib32"
+2>nul rd /S /Q "%BINARIESDIR%\wineditline-%LIBEDIT_VERSION%\include"
+mkdir "%BINARIESDIR%\wineditline-%LIBEDIT_VERSION%\build"
 
-cd "%BUILDDIR%\wineditline-%LIBEDIT_VERSION%\build" && %CMAKE_BIN% -DLIB_SUFFIX=32 -DMSVC_USE_STATIC_RUNTIME=ON -DCMAKE_BUILD_TYPE=Release -G "NMake Makefiles" ..
+cd "%BINARIESDIR%\wineditline-%LIBEDIT_VERSION%\build" && %CMAKE_BIN% -DLIB_SUFFIX=32 -DMSVC_USE_STATIC_RUNTIME=ON -DCMAKE_BUILD_TYPE=%BUILD_TYPE% -G "NMake Makefiles" ..
 if not %ERRORLEVEL% == 0 (
     echo "Failed to generate makefiles for libedit"
     exit /b 1
 )
+
 nmake
 if not %ERRORLEVEL% == 0 (
     echo "Failed to compile libedit"
     exit /b 1
 )
+
 nmake install
 if not %ERRORLEVEL% == 0 (
     echo "Failed to install libedit"
     exit /b 1
 )
-2>nul mkdir "%BINARIESDIR%\libedit" && cd "%BUILDDIR%\wineditline-%LIBEDIT_VERSION%"
+
+2>nul mkdir "%BINARIESDIR%\%LIBEDIT_DIR_NAME%" && cd "%BINARIESDIR%\wineditline-%LIBEDIT_VERSION%"
 if %ERRORLEVEL% == 0 (
-  for %%f in (bin32 include lib32) do (
-    robocopy /S %%f "%BINARIESDIR%\libedit\%%f"
-    if %ERRORLEVEL% GTR 1 (
-      goto exitloop
-    ) else (
-      set ERRORLEVEL=0
+    for %%f in (bin32 include lib32) do (
+        robocopy /S %%f "%BINARIESDIR%\%LIBEDIT_DIR_NAME%\%%f"
+        if %ERRORLEVEL% GTR 1 (
+            goto exitloop
+        ) else (
+           set ERRORLEVEL=0
+        )
     )
-  )
 )
 :exitloop
 if not %ERRORLEVEL% == 0 (
-    echo "Failed to copy bin32, include and lib32 from %BUILDDIR%\wineditline-%LIBEDIT_VERSION% to %BINARIESDIR%\libedit"
+    echo "Failed to copy bin32, include and lib32 from %BINARIESDIR%\wineditline-%LIBEDIT_VERSION% to %BINARIESDIR%\%LIBEDIT_DIR_NAME%"
     exit /b 1
 )
+
+cd "%BINARIESDIR%"
+2>nul rd /S /Q "%BINARIESDIR%\wineditline-%LIBEDIT_VERSION%"
 
 exit /b 0
 

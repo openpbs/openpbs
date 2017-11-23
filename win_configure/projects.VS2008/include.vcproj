@@ -16,31 +16,6 @@
 	</ToolFiles>
 	<Configurations>
 		<Configuration
-			Name="Release|Win32"
-			OutputDirectory="..\..\..\win_build\src\include\Release"
-			IntermediateDirectory="..\..\..\win_build\src\include\Release"
-			ConfigurationType="10"
-			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
-			UseOfMFC="0"
-			ATLMinimizesCRunTimeLibraryUsage="false"
-			>
-			<Tool
-				Name="VCPreBuildEventTool"
-				CommandLine="&quot;$(ProjectDir)gen_pbs_version.bat&quot;"
-			/>
-			<Tool
-				Name="VCCustomBuildTool"
-			/>
-			<Tool
-				Name="VCMIDLTool"
-				TypeLibraryName="..\..\..\win_build\src\include\Release\include.tlb"
-				HeaderFileName=""
-			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-			/>
-		</Configuration>
-		<Configuration
 			Name="Debug|Win32"
 			OutputDirectory="..\..\..\win_build\src\include\Debug"
 			IntermediateDirectory="..\..\..\win_build\src\include\Debug"
@@ -59,6 +34,31 @@
 			<Tool
 				Name="VCMIDLTool"
 				TypeLibraryName="..\..\..\win_build\src\include\Debug\include.tlb"
+				HeaderFileName=""
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+			/>
+		</Configuration>
+		<Configuration
+			Name="Release|Win32"
+			OutputDirectory="..\..\..\win_build\src\include\Release"
+			IntermediateDirectory="..\..\..\win_build\src\include\Release"
+			ConfigurationType="10"
+			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
+			UseOfMFC="0"
+			ATLMinimizesCRunTimeLibraryUsage="false"
+			>
+			<Tool
+				Name="VCPreBuildEventTool"
+				CommandLine="&quot;$(ProjectDir)gen_pbs_version.bat&quot;"
+			/>
+			<Tool
+				Name="VCCustomBuildTool"
+			/>
+			<Tool
+				Name="VCMIDLTool"
+				TypeLibraryName="..\..\..\win_build\src\include\Release\include.tlb"
 				HeaderFileName=""
 			/>
 			<Tool

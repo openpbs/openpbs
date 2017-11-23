@@ -60,13 +60,21 @@ REM    next PBS deps and main loop again goes to wait loop and this goes on till
 REM    end of all batch file in .appveyor directory
 
 setlocal enableDelayedExpansion
-
 cd "%~dp0\.."
-
 set /a "started=0, ended=0"
 set hasmore=1
-1>nul 2>nul del *.out *.passed
+set BUILD_TYPE=Release
+if "%~1"=="debug" (
+    set BUILD_TYPE=Debug
+)
+if "%~1"=="Debug" (
+    set BUILD_TYPE=Debug
+)
 for /f "usebackq" %%A in (`dir /b C:\__withoutspace_*dir_* 2^>nul`) do rd /Q C:\%%A
+
+call "%~dp0set_paths.bat"
+1>nul 2>nul del /Q /F %BINARIESDIR%\*.bat.out %BINARIESDIR%\*.passed
+
 for /f "usebackq" %%A in (`dir /on /b .appveyor ^| findstr /B /R "^build_.*\.bat$"`) do (
     if !started! lss %NUMBER_OF_PROCESSORS% (
         set /a "started+=1, next=started"
@@ -74,8 +82,8 @@ for /f "usebackq" %%A in (`dir /on /b .appveyor ^| findstr /B /R "^build_.*\.bat
         call :Wait
     )
     set out!next!=%%A.out
-    echo !time! - %%A: started
-    start /b "" "cmd /c 1>%%A.out 2>&1 .appveyor\%%A && echo > %%A.passed"
+    echo !time! - %%A - %BUILD_TYPE% version: started
+    start /b "" "cmd /c 1>%BINARIESDIR%\%%A.out 2>&1 .appveyor\%%A %BUILD_TYPE% && echo > %BINARIESDIR%\%%A.passed"
     REM Introduce 2 sec delay to get different RANDOM value
     1>nul 2>nul ping /n 2 ::1
 )
@@ -83,12 +91,12 @@ set hasmore=
 
 :Wait
 for /l %%N in (1 1 %started%) do 2>nul (
-    if not defined ended%%N if exist "!out%%N!" 9>>"!out%%N!" (
-        if not exist "!out%%N:out=passed!" (
-            type "!out%%N!"
+    if not defined ended%%N if exist "%BINARIESDIR%\!out%%N!" 9>>"%BINARIESDIR%\!out%%N!" (
+        if not exist "%BINARIESDIR%\!out%%N:out=passed!" (
+            type "%BINARIESDIR%\!out%%N!"
             exit 1
         ) else (
-            echo !time! - !out%%N:.out=!: finished
+            echo !time! - !out%%N:.out=! - %BUILD_TYPE% version: finished
         )
         if defined hasmore (
             set /a "next=%%N"
@@ -101,4 +109,6 @@ if %ended% lss %started% (
     1>nul 2>nul ping /n 5 ::1
     goto :Wait
 )
+
+1>nul 2>nul del /Q /F %BINARIESDIR%\*.bat.out %BINARIESDIR%\*.passed
 

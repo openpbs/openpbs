@@ -41,7 +41,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\..\src\include;..\include;..\..\..\binaries\openssl\include;..\..\..\binaries\libical\include"
+				AdditionalIncludeDirectories="..\..\src\include;..\include;..\..\..\binaries\openssl_debug\include;..\..\..\binaries\libical_debug\include"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE; LIBICAL;_USE_32BIT_TIME_T "
 				MinimalRebuild="false"
 				BasicRuntimeChecks="3"

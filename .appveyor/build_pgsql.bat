@@ -36,48 +36,55 @@ REM trademark licensing policies.
 @echo on
 setlocal
 
-call "%~dp0set_paths.bat"
+call "%~dp0set_paths.bat" %~1
 
-cd "%BUILDDIR%"
+cd "%BINARIESDIR%"
 
 if not defined PGSQL_VERSION (
     echo "Please set PGSQL_VERSION to PostgreSQL version!"
     exit /b 1
 )
 
-if exist "%BINARIESDIR%\pgsql" (
-    echo "%BINARIESDIR%\pgsql exist already!"
+set PGSQL_DIR_NAME=pgsql
+set BUILD_TYPE=
+if %DO_DEBUG_BUILD% EQU 1 (
+    set PGSQL_DIR_NAME=pgsql_debug
+    set BUILD_TYPE=DEBUG
+)
+
+if exist "%BINARIESDIR%\%PGSQL_DIR_NAME%" (
+    echo "%BINARIESDIR%\%PGSQL_DIR_NAME% exist already!"
     exit /b 0
 )
 
-if not exist "%BUILDDIR%\postgresql-%PGSQL_VERSION%.tar.bz2" (
-    "%CURL_BIN%" -qkL -o "%BUILDDIR%\postgresql-%PGSQL_VERSION%.tar.bz2" https://ftp.postgresql.org/pub/source/v%PGSQL_VERSION%/postgresql-%PGSQL_VERSION%.tar.bz2
-    if not exist "%BUILDDIR%\postgresql-%PGSQL_VERSION%.tar.bz2" (
+if not exist "%BINARIESDIR%\postgresql-%PGSQL_VERSION%.tar.bz2" (
+    "%CURL_BIN%" -qkL -o "%BINARIESDIR%\postgresql-%PGSQL_VERSION%.tar.bz2" https://ftp.postgresql.org/pub/source/v%PGSQL_VERSION%/postgresql-%PGSQL_VERSION%.tar.bz2
+    if not exist "%BINARIESDIR%\postgresql-%PGSQL_VERSION%.tar.bz2" (
         echo "Failed to download postgresql"
         exit /b 1
     )
 )
 
-2>nul rd /S /Q "%BUILDDIR%\postgresql-%PGSQL_VERSION%"
-"%MSYSDIR%\bin\bash" --login -i -c "cd \"$BUILDDIR_M/\" && tar -xf postgresql-%PGSQL_VERSION%.tar.bz2"
+2>nul rd /S /Q "%BINARIESDIR%\postgresql-%PGSQL_VERSION%"
+"%MSYSDIR%\bin\bash" --login -i -c "cd \"$BINARIESDIR_M/\" && tar -xf postgresql-%PGSQL_VERSION%.tar.bz2"
 if not %ERRORLEVEL% == 0 (
-    echo "Failed to extract %BUILDDIR%\postgresql-%PGSQL_VERSION%.tar.bz2"
+    echo "Failed to extract %BINARIESDIR%\postgresql-%PGSQL_VERSION%.tar.bz2"
     exit /b 1
 )
-if not exist "%BUILDDIR%\postgresql-%PGSQL_VERSION%" (
-    echo "Could not find %BUILDDIR%\postgresql-%PGSQL_VERSION%"
+if not exist "%BINARIESDIR%\postgresql-%PGSQL_VERSION%" (
+    echo "Could not find %BINARIESDIR%\postgresql-%PGSQL_VERSION%"
     exit /b 1
 )
-if not exist "%BUILDDIR%\postgresql-%PGSQL_VERSION%\src\tools\msvc" (
-    echo "Could not find %BUILDDIR%\postgresql-%PGSQL_VERSION%\src\tools\msvc"
+if not exist "%BINARIESDIR%\postgresql-%PGSQL_VERSION%\src\tools\msvc" (
+    echo "Could not find %BINARIESDIR%\postgresql-%PGSQL_VERSION%\src\tools\msvc"
     exit /b 1
 )
 
-call "%VS90COMNTOOLS%\vsvars32.bat"
+call "%VS90COMNTOOLS%vsvars32.bat"
 
-cd "%BUILDDIR%\postgresql-%PGSQL_VERSION%\src\tools\msvc"
+cd "%BINARIESDIR%\postgresql-%PGSQL_VERSION%\src\tools\msvc"
 
-call "%BUILDDIR%\postgresql-%PGSQL_VERSION%\src\tools\msvc\build.bat"
+call "%BINARIESDIR%\postgresql-%PGSQL_VERSION%\src\tools\msvc\build.bat" %BUILD_TYPE%
 if not %ERRORLEVEL% == 0 (
     echo "Failed to compile pgsql"
     exit /b 1
@@ -85,11 +92,14 @@ if not %ERRORLEVEL% == 0 (
 
 REM This is for Perl to find ./inc/Module/Install.pm, see header of http://cpansearch.perl.org/src/AUDREYT/Module-Install-0.64/lib/Module/Install.pm
 set PERL5LIB=.
-call "%BUILDDIR%\postgresql-%PGSQL_VERSION%\src\tools\msvc\install.bat" "%BINARIESDIR%\pgsql"
+call "%BINARIESDIR%\postgresql-%PGSQL_VERSION%\src\tools\msvc\install.bat" "%BINARIESDIR%\%PGSQL_DIR_NAME%"
 if not %ERRORLEVEL% == 0 (
     echo "Failed to install pgsql"
     exit /b 1
 )
+
+cd "%BINARIESDIR%"
+2>nul rd /S /Q "%BINARIESDIR%\postgresql-%PGSQL_VERSION%"
 
 exit /b 0
 

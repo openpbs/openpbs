@@ -44,7 +44,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\..\src\include;..\include;..\..\..\binaries\tcltk\include"
+				AdditionalIncludeDirectories="..\..\src\include;..\include;..\..\..\binaries\tcltk_debug\include"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;_USE_32BIT_TIME_T "
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="0"
@@ -72,11 +72,11 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalOptions="/SAFESEH"
-				AdditionalDependencies="secur32.lib Userenv.lib mpr.lib tcl86t.lib ws2_32.lib netapi32.lib odbc32.lib odbccp32.lib"
+				AdditionalDependencies="secur32.lib Userenv.lib mpr.lib tcl86tg.lib ws2_32.lib netapi32.lib odbc32.lib odbccp32.lib"
 				OutputFile="..\..\..\win_build\src\cmds\Debug\qstat.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="..\..\..\binaries\tcltk\lib"
+				AdditionalLibraryDirectories="..\..\..\binaries\tcltk_debug\lib"
 				UACExecutionLevel="0"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="..\..\..\win_build\src\cmds\Debug\qstat.pdb"
