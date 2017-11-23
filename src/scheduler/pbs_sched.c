@@ -107,8 +107,8 @@
 #include	"libsec.h"
 #include	"pbs_ecl.h"
 #include	"pbs_share.h"
-#include "config.h"
-#include "fifo.h"
+#include	"config.h"
+#include	"fifo.h"
 
 struct		connect_handle connection[NCONNECTS];
 int		connector;
@@ -126,7 +126,7 @@ char		*configfile = NULL;	/* name of file containing
 extern char		*msg_daemonname;
 char		**glob_argv;
 char		usage[] =
-	"[-d home][-L logfile][-p file] [-S port][-R port][-n][-N][-c clientsfile]";
+	"[-d home][-L logfile][-p file][-I schedname][-S port][-R port][-n][-N][-c clientsfile]";
 struct	sockaddr_in	saddr;
 sigset_t	allsigs;
 int		pbs_rm_port;
@@ -221,8 +221,6 @@ die(int sig)
 	}
 
 	log_close(1);
-	if (connector > 0)
-		update_svr_sched_state(SC_DOWN);
 	exit(1);
 }
 
@@ -792,8 +790,8 @@ are_we_primary()
 		log_err(-1, __func__, "Unable to get my host name");
 		return -1;
 	}
-	strncpy(scheduler_name, server_host, sizeof(scheduler_name));
-	scheduler_name [ sizeof(scheduler_name) -1 ] = '\0';
+	strncpy(scheduler_host_name, server_host, sizeof(scheduler_host_name));
+	scheduler_host_name [ sizeof(scheduler_host_name) -1 ] = '\0';
 
 	/* both secondary and primary should be set or neither set */
 	if ((pbs_conf.pbs_secondary == NULL) && (pbs_conf.pbs_primary == NULL))
@@ -938,7 +936,7 @@ main(int argc, char *argv[])
 	pbs_rm_port = pbs_conf.manager_service_port;
 
 	opterr = 0;
-	while ((c = getopt(argc, argv, "lL:NS:R:d:p:c:a:n")) != EOF) {
+	while ((c = getopt(argc, argv, "lL:NS:I:R:d:p:c:a:n")) != EOF) {
 		switch (c) {
 			case 'l':
 #ifdef _POSIX_MEMLOCK
@@ -952,6 +950,9 @@ main(int argc, char *argv[])
 				break;
 			case 'N':
 				stalone = 1;
+				break;
+			case 'I':
+				sc_name = optarg;
 				break;
 			case 'S':
 				sched_port = atoi(optarg);
@@ -998,16 +999,11 @@ main(int argc, char *argv[])
 				break;
 		}
 	}
-	/* Check whether the sched name is specified in command line args
-	 * If specified then copy the sched name
-	 * */
-	if (argc > optind)
-		strncpy(sc_name, argv[optind], PBS_MAXSCHEDNAME - 1);
-	else {
-		strncpy(sc_name, PBS_DFLT_SCHED_NAME, PBS_MAXSCHEDNAME -1);
+
+	if (sc_name == NULL) {
+		sc_name = PBS_DFLT_SCHED_NAME;
 		dflt_sched = 1;
 	}
-	sc_name[PBS_MAXSCHEDNAME] = '\0';
 
 	if (errflg) {
 		fprintf(stderr, "usage: %s %s\n", argv[0], usage);
@@ -1143,33 +1139,13 @@ main(int argc, char *argv[])
 		log_err(errno, __func__, "setsockopt");
 		die(0);
 	}
-	if (dflt_sched) {
-		saddr.sin_family = AF_INET;
-		saddr.sin_port = htons(sched_port);
-		saddr.sin_addr.s_addr = INADDR_ANY;
-		if (bind(server_sock, (struct sockaddr *)&saddr, sizeof(saddr)) < 0) {
-			log_err(errno, __func__, "bind");
-			die(0);
-		}
-	} else {
-		int try_port;
-		for (try_port=STARTING_PORT_NUM;try_port < MAX_PORT_NUM;try_port++) {
-			/* try to bind this socket to a reserved port */
-			saddr.sin_family = AF_INET;
-			saddr.sin_addr.s_addr = INADDR_ANY;
-			saddr.sin_port = htons(try_port);
-			memset(&(saddr.sin_zero), '\0', sizeof(saddr.sin_zero));
-			if (bind(server_sock, (struct sockaddr *)&saddr, sizeof(saddr)) != -1) {
-				break;
-			}
-			if ((errno != EADDRINUSE) && (errno != EADDRNOTAVAIL))
-				break;
-		}
-		if (try_port == MAX_PORT_NUM) {
-			log_err(errno, __func__, "No free ports are available");
-			die(0);
-		}
-		sched_port = try_port;
+
+	saddr.sin_family = AF_INET;
+	saddr.sin_port = htons(sched_port);
+	saddr.sin_addr.s_addr = INADDR_ANY;
+	if (bind(server_sock, (struct sockaddr *)&saddr, sizeof(saddr)) < 0) {
+		log_err(errno, __func__, "bind");
+		die(0);
 	}
 
 	/*Initialize security library's internal data structures*/
@@ -1329,15 +1305,6 @@ main(int argc, char *argv[])
 	sprintf(log_buffer, "%s startup pid %ld", argv[0], (long)pid);
 	log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__, log_buffer);
 
-	/*connector = pbs_connect_noblk(NULL,10);*/
-	connector = cnt2server_extend(NULL, SC_DAEMON);
-	if (update_svr_schedobj(connector, 0, alarm_time)) {
-		sprintf(log_buffer, "update_svr_schedobj failed");
-		log_err(-1, __func__, log_buffer);
-		return -1;
-	}
-	update_svr_sched_state(SC_IDLE);
-
 	rpp_fd = -1;
 	if (pbs_conf.pbs_use_tcp == 1) {
 		char *nodename;
@@ -1419,7 +1386,6 @@ main(int argc, char *argv[])
 		if (!FD_ISSET(server_sock, &fdset))
 			continue;
 
-		pbs_disconnect(connector);
 		/* connector is set in server_connect() */
 		cmd = server_command(&runjobid);
 

@@ -1947,6 +1947,8 @@ try_db_again:
 	}
 	dflt_scheduler->pbs_scheduler_addr = pbs_scheduler_addr;
 	dflt_scheduler->pbs_scheduler_port = pbs_scheduler_port;
+	strncpy(dflt_scheduler->sch_attr[(int) SCHED_ATR_sched_state].at_val.at_str, SC_SCHEDULING, SC_STATUS_LEN);
+	dflt_scheduler->sch_attr[(int) SCHED_ATR_sched_state].at_val.at_str[SC_STATUS_LEN] = '\0';
 
 #ifdef WIN32
 	sprintf(log_buffer, msg_startup2, getpid(), pbs_server_port_dis,
@@ -2051,10 +2053,9 @@ try_db_again:
 				/* if time or event says to run scheduler, do it */
 
 				/* if we have a high prio sched command, send it 1st */
-				if ((strcmp(psched->sch_attr[SCHED_ATR_sched_state].at_val.at_str, SC_DOWN)) &&
+				if (psched->sch_attr[SCHED_ATR_scheduling].at_val.at_long &&
 					psched->svr_do_sched_high != SCH_SCHEDULE_NULL)
 					schedule_high(psched);
-
 
 				if (psched->svr_do_schedule == SCH_SCHEDULE_RESTART_CYCLE) {
 
@@ -2067,16 +2068,17 @@ try_db_again:
 						(psched->scheduler_sock != -1)) {
 						if (put_sched_cmd(psched->scheduler_sock2,
 								psched->svr_do_schedule, NULL) == 0) {
+							sprintf(log_buffer, "sent scheduler restart scheduling cycle request to %s", psched->sc_name);
 							log_event(PBSEVENT_DEBUG2,
 								PBS_EVENTCLASS_SERVER,
-								LOG_NOTICE, msg_daemonname,
-								"sent scheduler restart scheduling cycle request");
+								LOG_NOTICE, msg_daemonname, log_buffer);
 						}
 					} else {
+						sprintf(log_buffer, "no valid secondary connection to scheduler %s: restart scheduling cycle request ignored",
+								psched->sc_name);
 						log_event(PBSEVENT_DEBUG3,
 							PBS_EVENTCLASS_SERVER,
-							LOG_NOTICE, msg_daemonname,
-							"no valid secondary connection to scheduler: restart scheduling cycle request ignored");
+							LOG_NOTICE, msg_daemonname, log_buffer);
 					}
 					psched->svr_do_schedule = SCH_SCHEDULE_NULL;
 				} else if (((svr_unsent_qrun_req) || ((psched->svr_do_schedule != SCH_SCHEDULE_NULL) &&
@@ -2092,7 +2094,7 @@ try_db_again:
 
 					psched->sch_next_schedule = time_now +
 							psched->sch_attr[(int)	SCHED_ATR_schediteration].at_val.at_long;
-					if((strcmp(psched->sch_attr[SCHED_ATR_sched_state].at_val.at_str, SC_DOWN)) &&
+					if (psched->sch_attr[SCHED_ATR_scheduling].at_val.at_long &&
 							(schedule_jobs(psched) == 0) && (svr_unsent_qrun_req))
 						svr_unsent_qrun_req = 0;
 				}
@@ -2998,9 +3000,9 @@ try_connect_database(pbs_db_conn_t *conn)
 	if (conn->conn_state == PBS_DB_CONNECT_STATE_FAILED && failcode != PBS_DB_STILL_STARTING) {
 		db_oper_failed_times++;
 		get_db_errmsg(failcode, &db_err_msg);
-			log_set_dberr(db_err_msg, conn->conn_db_err);
+		log_set_dberr(db_err_msg, conn->conn_db_err);
 		log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_CRIT, msg_daemonname, log_buffer);
-			conn->conn_db_state = PBS_DB_DOWN; /* allow to retry to start db again */
+		conn->conn_db_state = PBS_DB_DOWN; /* allow to retry to start db again */
 	} else if (conn->conn_state == PBS_DB_CONNECT_STATE_CONNECTED) {
 		sprintf(log_buffer, "connected to PBS dataservice@%s", conn->conn_host);
 		log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE,

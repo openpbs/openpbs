@@ -111,6 +111,7 @@
 #include "user.h"
 #include "hook.h"
 #include "pbs_internal.h"
+#include "pbs_sched.h"
 #ifndef PBS_MOM
 #include "pbs_db.h"
 #endif

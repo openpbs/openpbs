@@ -117,6 +117,7 @@
 #include "win.h"
 #endif
 #include "job.h"
+#include "pbs_sched.h"
 #include "reservation.h"
 #include "pbs_error.h"
 #include "log.h"
@@ -501,7 +502,7 @@ svr_enquejob(job *pjob)
 
 			/* better notify the Scheduler we have a new job */
 
-			if (find_assoc_sched_pj(pjob, &psched))
+			if (find_assoc_sched_jid(pjob->ji_qs.ji_jobid, &psched))
 				set_scheduler_flag(SCH_SCHEDULE_NEW, psched);
 			else {
 				sprintf(log_buffer, "Unable to reach scheduler associated with job %s", pjob->ji_qs.ji_jobid);
@@ -512,7 +513,7 @@ svr_enquejob(job *pjob)
 
 			/* notify the Scheduler we have moved a job here */
 
-			if (find_assoc_sched_pj(pjob, &psched))
+			if (find_assoc_sched_jid(pjob->ji_qs.ji_jobid, &psched))
 				set_scheduler_flag(SCH_SCHEDULE_MVLOCAL, psched);
 			else {
 				sprintf(log_buffer, "Unable to reach scheduler associated with job %s", pjob->ji_qs.ji_jobid);
@@ -682,7 +683,7 @@ svr_setjobstate(job *pjob, int newstate, int newsubstate)
 					attribute *etime = &pjob->
 						ji_wattr[(int)JOB_ATR_etime];
 
-					if (find_assoc_sched_pj(pjob, &psched))
+					if (find_assoc_sched_jid(pjob->ji_qs.ji_jobid, &psched))
 						set_scheduler_flag(SCH_SCHEDULE_NEW, psched);
 					else {
 						sprintf(log_buffer, "Unable to reach scheduler associated with job %s", pjob->ji_qs.ji_jobid);
