@@ -3,7 +3,7 @@
 	ProjectType="Visual C++"
 	Version="9.00"
 	Name="pbs_release_nodes"
-	ProjectGUID="{EEE5479C-60E8-4E49-9545-B5C370542319}"
+	ProjectGUID="{AA00D215-116C-406D-82C5-32E894A1D0D9}"
 	TargetFrameworkVersion="131072"
 	>
 	<Platforms>

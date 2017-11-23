@@ -73,7 +73,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalOptions="/SAFESEH /STACK:0x1000000"
-				AdditionalDependencies="secur32.lib Userenv.lib mpr.lib libcrypto.lib crypt32.lib winmm.lib pdh.lib ws2_32.lib netapi32.lib odbc32.lib odbccp32.lib Psapi.lib python27.lib"
+				AdditionalDependencies="secur32.lib Userenv.lib mpr.lib libcrypto.lib crypt32.lib winmm.lib pdh.lib ws2_32.lib netapi32.lib odbc32.lib odbccp32.lib Psapi.lib python27_d.lib"
 				OutputFile="..\..\..\win_build\src\resmom\Debug\pbs_mom.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"

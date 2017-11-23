@@ -74,7 +74,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalOptions="/SAFESEH /STACK:0x1000000"
-				AdditionalDependencies="secur32.lib Userenv.lib mpr.lib netapi32.lib ws2_32.lib odbc32.lib odbccp32.lib python27.lib libical.lib"
+				AdditionalDependencies="secur32.lib Userenv.lib mpr.lib netapi32.lib ws2_32.lib odbc32.lib odbccp32.lib python27_d.lib libical.lib"
 				OutputFile="..\..\..\win_build\src\scheduler\Debug\pbs_sched.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"

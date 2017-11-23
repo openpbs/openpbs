@@ -73,7 +73,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalOptions="/SAFESEH"
-				AdditionalDependencies="libcrypto.lib crypt32.lib secur32.lib Userenv.lib mpr.lib netapi32.lib resv_attr.obj resc_attr.obj svr_attr.obj ws2_32.lib odbc32.lib odbccp32.lib svr_attr_def.obj queue_attr_def.obj job_attr_def.obj node_attr_def.obj resv_attr_def.obj resc_def_all.obj setup_resc.obj vnparse.obj python27.lib"
+				AdditionalDependencies="libcrypto.lib crypt32.lib secur32.lib Userenv.lib mpr.lib netapi32.lib resv_attr.obj resc_attr.obj svr_attr.obj ws2_32.lib odbc32.lib odbccp32.lib svr_attr_def.obj queue_attr_def.obj job_attr_def.obj node_attr_def.obj resv_attr_def.obj resc_def_all.obj setup_resc.obj vnparse.obj python27_d.lib"
 				OutputFile="..\..\..\win_build\src\tools\Debug\pbs_python.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
