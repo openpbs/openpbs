@@ -102,6 +102,7 @@
 #include <memory.h>
 #include "server.h"
 #include "hook.h"
+#include "pbs_sched.h"
 
 
 #define	RETRY	3	/* number of times to retry network move */

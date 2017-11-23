@@ -109,6 +109,7 @@
 #include "resv_node.h"
 #include "queue.h"
 #include "sched_cmds.h"
+#include "pbs_sched.h"
 
 #ifdef WIN32
 #include <direct.h>

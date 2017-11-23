@@ -60,6 +60,7 @@
 #include "pbs_nodes.h"
 #include <sys/file.h>
 #include "libutil.h"
+#include "pbs_sched.h"
 
 extern char *msg_daemonname;
 #ifndef PBS_MOM

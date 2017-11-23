@@ -95,6 +95,7 @@
 #include "dis.h"
 #include "rpp.h"
 #include "libutil.h"
+#include "pbs_sched.h"
 
 
 /* External Global Data Items */
@@ -651,10 +652,12 @@ rel_resc(job *pjob)
 
 	/* Mark that scheduler should be called */
 
-	if (find_assoc_sched_pj(pjob, &psched))
+	if (find_assoc_sched_jid(pjob->ji_qs.ji_jobid, &psched))
 		set_scheduler_flag(SCH_SCHEDULE_TERM, psched);
 	else {
-		sprintf(log_buffer, "Unable to reach scheduler associated with job %s", pjob->ji_qs.ji_jobid);
+		pbs_queue *pq;
+		pq = find_queuebyname( pjob->ji_qs.ji_queue);
+		sprintf(log_buffer, "Unable to reach scheduler associated with job %s", pq->qu_attr[QA_ATR_partition].at_val.at_str);
 		log_err(-1, __func__, log_buffer);
 	}
 }

@@ -77,6 +77,7 @@
 #include "pbs_db.h"
 #include "pbs_nodes.h"
 #include <memory.h>
+#include "pbs_sched.h"
 
 
 /* Global Data */
@@ -404,10 +405,10 @@ queuestart_action(attribute *pattr, void *pobject, int actmode)
 
 			/* if scheduling = True, notify scheduler to start */
 			if (server.sv_attr[SRV_ATR_scheduling].at_val.at_long) {
-				if (find_assoc_sched_pq(pque, &psched))
+				if (find_assoc_sched_pque(pque, &psched))
 					set_scheduler_flag(SCH_SCHEDULE_STARTQ, psched);
 				else {
-					sprintf(log_buffer, "No scheduler associated with the queue %s", pque->qu_qs.qu_name);
+					sprintf(log_buffer, "No scheduler associated with the partition %s", pque->qu_attr[QA_ATR_partition].at_val.at_str);
 					log_err(-1, __func__, log_buffer);
 				}
 			}

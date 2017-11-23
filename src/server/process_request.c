@@ -110,6 +110,7 @@
 #include "dis.h"
 #include "pbs_nodes.h"
 #include "svrfunc.h"
+#include "pbs_sched.h"
 
 /* global data items */
 

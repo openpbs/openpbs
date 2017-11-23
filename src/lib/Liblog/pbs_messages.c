@@ -406,8 +406,8 @@ char *msg_cannot_set_route_que = "Route queues are incompatible with the partiti
 char *msg_queue_not_in_partition = "Queue %s is not part of partition for node";
 char *msg_partition_not_in_queue = "Partition %s is not part of queue for node";
 char *msg_invalid_partion_in_queue = "Invalid partition in queue";
-char *msg_op_not_permitted = "Operation is not permitted on default scheduler";
-char *msg_part_already_used = "Partition is already associated with other scheduler";
+char *msg_sched_op_not_permitted = "Operation is not permitted on default scheduler";
+char *msg_sched_part_already_used = "Partition is already associated with other scheduler";
 
 char *msg_resv_not_empty = "Reservation not empty";
 char *msg_stdg_resv_occr_conflict = "Requested time(s) will interfere with a later occurrence";
@@ -592,8 +592,8 @@ struct pbs_err_to_txt pbs_err_to_txt[] = {
 	{PBSE_ALPS_SWITCH_ERR, &msg_alps_switch_err},
 	{PBSE_SOFTWT_STF, &msg_softwt_stf},
 	{PBSE_BAD_NODE_STATE, &msg_bad_node_state},
-	{PBSE_OP_NOT_PERMITTED, &msg_op_not_permitted},
-	{PBSE_PART_ALREADY_USED, &msg_part_already_used},
+	{PBSE_SCHED_OP_NOT_PERMITTED, &msg_sched_op_not_permitted},
+	{PBSE_SCHED_PARTITION_ALREADY_EXISTS, &msg_sched_part_already_used},
 	{ 0, (char **)0 }		/* MUST be the last entry */
 };
 

@@ -97,6 +97,7 @@
 #include "libutil.h"
 #include "cmds.h"
 #include "svrfunc.h"
+#include "pbs_sched.h"
 
 #define PBS_PYTHON 1.1
 #define MAXBUF	4096

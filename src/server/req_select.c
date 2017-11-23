@@ -80,7 +80,7 @@
 #include "log.h"
 #include "pbs_nodes.h"
 #include "svrfunc.h"
-
+#include "pbs_sched.h"
 
 /* Private Data */
 

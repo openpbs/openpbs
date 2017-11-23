@@ -191,6 +191,7 @@
 #include "pbs_db.h"
 #include "libutil.h"
 #include "pbs_ecl.h"
+#include "pbs_sched.h"
 
 extern struct python_interpreter_data  svr_interp_data;
 

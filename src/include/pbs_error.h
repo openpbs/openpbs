@@ -294,8 +294,8 @@ extern "C" {
 #define PBSE_PARTITION_NOT_IN_QUE 15220  /* Partition does not belong to the queue */
 #define PBSE_INVALID_PARTITION_QUE 15221 /* Invalid partition to the queue */
 #define PBSE_ALPS_SWITCH_ERR 15222	/* ALPS failed to do the suspend/resume */
-#define PBSE_OP_NOT_PERMITTED 15223 	/* Operation not permitted on default scheduler */
-#define PBSE_PART_ALREADY_USED 15224 	/* Partition already used */
+#define PBSE_SCHED_OP_NOT_PERMITTED 15223 /* Operation not permitted on default scheduler */
+#define PBSE_SCHED_PARTITION_ALREADY_EXISTS 15224 /* Partition already exists */
 
 /* the following structure is used to tie error number      */
 /* with text to be returned to a client, see svr_messages.c */

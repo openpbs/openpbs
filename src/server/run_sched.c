@@ -67,6 +67,7 @@
 #include "batch_request.h"
 #include "pbs_sched.h"
 #include "queue.h"
+#include "pbs_share.h"
 
 
 /* Global Data */
@@ -175,8 +176,6 @@ find_assoc_sched_jid(char *jid, pbs_sched **target_sched)
 {
 	job *pj;
 	pbs_queue *pq;
-	attribute *part_attr;
-	int k;
 	char *q_name;
 	pbs_sched *psched;
 	int t;
@@ -191,54 +190,6 @@ find_assoc_sched_jid(char *jid, pbs_sched **target_sched)
 
 	if (pj == NULL)
 		return 0;
-
-	q_name = pj->ji_qs.ji_queue;
-	pq = find_queuebyname(q_name);
-	if (pq == NULL)
-		return 0;
-
-	if (pq->qu_attr[QA_ATR_partition].at_flags & ATR_VFLAG_SET) {
-		psched = (pbs_sched*) GET_NEXT(svr_allscheds);
-		while (psched) {
-			part_attr = &(psched->sch_attr[SCHED_ATR_partition]);
-			if (part_attr->at_flags & ATR_VFLAG_SET) {
-				for (k = 0; k < part_attr->at_val.at_arst->as_usedptr; k++) {
-					if ((part_attr->at_val.at_arst->as_string[k] != NULL)
-							&& (!strcmp(part_attr->at_val.at_arst->as_string[k],
-									pq->qu_attr[QA_ATR_partition].at_val.at_str))) {
-						*target_sched = psched;
-						return 1;
-					}
-				}
-			}
-			psched = (pbs_sched*) GET_NEXT(psched->sc_link);
-		}
-	} else {
-		*target_sched = dflt_scheduler;
-		return 1;
-	}
-	return 0;
-}
-
-/**
- * @brief
- * 		find_assoc_sched - find the corresponding scheduler which is responsible
- * 		for handling this job.
- *
- * @param[in]	jid	- job id
- * @param[out]target_sched	- pointer to the corresponding scheduler to which the job belongs to
- *
- * @retval - 1 if success
- * 	   - 0 if fail
- */
-int
-find_assoc_sched_pj(job *pj, pbs_sched **target_sched)
-{
-	pbs_queue *pq;
-	pbs_sched *psched;
-	char *q_name;
-
-	*target_sched = NULL;
 
 	q_name = pj->ji_qs.ji_queue;
 	pq = find_queuebyname(q_name);
@@ -268,7 +219,6 @@ find_assoc_sched_pj(job *pj, pbs_sched **target_sched)
 		return 1;
 	}
 	return 0;
-
 }
 
 /**
@@ -283,7 +233,7 @@ find_assoc_sched_pj(job *pj, pbs_sched **target_sched)
  * 	    - 0 if fail
  */
 int
-find_assoc_sched_pq(pbs_queue *pq, pbs_sched **target_sched)
+find_assoc_sched_pque(pbs_queue *pq, pbs_sched **target_sched)
 {
 	pbs_sched *psched;
 	attribute *part_attr;
@@ -295,8 +245,7 @@ find_assoc_sched_pq(pbs_queue *pq, pbs_sched **target_sched)
 		return 0;
 
 	if (pq->qu_attr[QA_ATR_partition].at_flags & ATR_VFLAG_SET) {
-		psched = (pbs_sched*) GET_NEXT(svr_allscheds);
-		while (psched) {
+		for (psched = (pbs_sched*) GET_NEXT(svr_allscheds); psched; psched = (pbs_sched*) GET_NEXT(psched->sc_link)) {
 			part_attr = &(psched->sch_attr[SCHED_ATR_partition]);
 			if (part_attr->at_flags & ATR_VFLAG_SET) {
 				for (k = 0; k < part_attr->at_val.at_arst->as_usedptr; k++) {
@@ -308,7 +257,6 @@ find_assoc_sched_pq(pbs_queue *pq, pbs_sched **target_sched)
 					}
 				}
 			}
-			psched = (pbs_sched*) GET_NEXT(psched->sc_link);
 		}
 	} else {
 		*target_sched = dflt_scheduler;
@@ -333,12 +281,10 @@ pbs_sched *
 find_sched_from_sock(int sock)
 {
 	pbs_sched *psched;
-	psched = (pbs_sched*) GET_NEXT(svr_allscheds);
-	while (psched) {
+
+	for (psched = (pbs_sched*) GET_NEXT(svr_allscheds); psched; psched = (pbs_sched*) GET_NEXT(psched->sc_link)) {
 		if (psched->scheduler_sock == sock || psched->scheduler_sock2 == sock)
 			return psched;
-		psched = (pbs_sched*) GET_NEXT(psched->sc_link);
-
 	}
 	return NULL;
 }
@@ -444,6 +390,10 @@ schedule_high(pbs_sched *psched)
 		psched->svr_do_sched_high = SCH_SCHEDULE_NULL;
 		return 0;
 	}
+	strncpy(psched->sch_attr[(int) SCHED_ATR_sched_state].at_val.at_str, SC_SCHEDULING, SC_STATUS_LEN);
+	psched->sch_attr[(int) SCHED_ATR_sched_state].at_val.at_str[SC_STATUS_LEN] = '\0';
+	psched->sch_attr[(int) SCHED_ATR_sched_state].at_flags = ATR_VFLAG_DEFLT | ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+
 	return 1;
 }
 
@@ -516,6 +466,11 @@ schedule_jobs(pbs_sched *psched)
 				psched->scheduler_sock2 = s;
 		}
 		psched->svr_do_schedule = SCH_SCHEDULE_NULL;
+
+		strncpy(psched->sch_attr[(int) SCHED_ATR_sched_state].at_val.at_str, SC_SCHEDULING, SC_STATUS_LEN);
+		psched->sch_attr[(int) SCHED_ATR_sched_state].at_val.at_str[SC_STATUS_LEN] = '\0';
+		psched->sch_attr[(int) SCHED_ATR_sched_state].at_flags = ATR_VFLAG_DEFLT | ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+
 		first_time = 0;
 
 		/* if there are more qrun requests queued up, reset cmd so */
@@ -523,7 +478,9 @@ schedule_jobs(pbs_sched *psched)
 		pdefr = GET_NEXT(svr_deferred_req);
 		while (pdefr) {
 			if (pdefr->dr_sent == 0) {
-				dflt_scheduler->svr_do_schedule = SCH_SCHEDULE_AJOB;
+				pbs_sched *target_sched;
+				if (find_assoc_sched_jid(pdefr->dr_preq->rq_ind.rq_queuejob.rq_jid, &target_sched))
+					target_sched->svr_do_schedule = SCH_SCHEDULE_AJOB;
 				break;
 			}
 			pdefr = (struct deferred_request *)GET_NEXT(pdefr->dr_link);
@@ -532,6 +489,7 @@ schedule_jobs(pbs_sched *psched)
 		return (0);
 	} else
 		return (1);	/* scheduler was busy */
+
 }
 
 /**
@@ -558,6 +516,13 @@ scheduler_close(int sock)
 	pbs_sched *psched;
 
 	psched = find_sched_from_sock(sock);
+
+	if (psched == NULL)
+		return;
+
+	strncpy(psched->sch_attr[(int) SCHED_ATR_sched_state].at_val.at_str, SC_IDLE, SC_STATUS_LEN);
+	psched->sch_attr[(int) SCHED_ATR_sched_state].at_val.at_str[SC_STATUS_LEN] = '\0';
+	psched->sch_attr[(int) SCHED_ATR_sched_state].at_flags = ATR_VFLAG_DEFLT | ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
 
 	if ((sock != -1) && (sock == psched->scheduler_sock2)) {
 		psched->scheduler_sock2 = -1;
@@ -657,10 +622,12 @@ set_scheduler_flag(int flag, pbs_sched *psched)
 
 	if (psched)
 		single_sched = 1;
-	else
+	else {
 		single_sched = 0;
+		psched = (pbs_sched*) GET_NEXT(svr_allscheds);
+	}
 
-	for (single_sched || (psched = (pbs_sched*) GET_NEXT(svr_allscheds)); psched ;psched = (pbs_sched*) GET_NEXT(psched->sc_link)) {
+	for (single_sched || psched; psched ; psched = (pbs_sched*) GET_NEXT(psched->sc_link)) {
 		/* high priority commands:
 		 * Note: A) usually SCH_QUIT is sent directly and not via here
 		 *       B) if we ever add a 3rd high prio command, we can lose them

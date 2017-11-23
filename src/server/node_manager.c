@@ -176,6 +176,7 @@
 #include	"hook_func.h"
 #include	"sched_cmds.h"
 #include	"provision.h"
+#include "pbs_sched.h"
 #include	"svrfunc.h"
 
 #if !defined(H_ERRNO_DECLARED) && !defined(WIN32)
@@ -3037,10 +3038,10 @@ deallocate_job(mominfo_t *pmom, job *pjob)
 		free(new_exec_vnode);
 
 	}
-	if (find_assoc_sched_pj(pjob, &psched))
+	if (find_assoc_sched_jid(pjob->ji_qs.ji_jobid, &psched))
 		set_scheduler_flag(SCH_SCHEDULE_TERM, psched);
 	else {
-		sprintf(log_buffer, "Unable to reach scheduler associated with job %s", pjob->ji_qs.ji_jobid);
+		sprintf(log_buffer, "Unable to reach scheduler associated with partition");
 		log_err(-1, __func__, log_buffer);
 	}
 	free(freed_vnode_list);
@@ -8718,10 +8719,10 @@ free_sister_vnodes(job *pjob, char *vnodelist, char *err_msg,
 	/* increment everything found in new exec_vnode */
 	set_resc_assigned((void *)pjob, 0,  INCR);
 						
-	if (find_assoc_sched_pj(pjob, &psched))
+	if (find_assoc_sched_jid(pjob->ji_qs.ji_jobid, &psched))
 		set_scheduler_flag(SCH_SCHEDULE_TERM, psched);
 	else {
-		sprintf(log_buffer, "Unable to reach scheduler associated with job %s", pjob->ji_qs.ji_jobid);
+		sprintf(log_buffer, "Unable to reach scheduler associated with partition");
 		log_err(-1, __func__, log_buffer);
 	}
 	rc = send_job_exec_update_to_mom(pjob, err_msg, err_msg_sz, reply_req);

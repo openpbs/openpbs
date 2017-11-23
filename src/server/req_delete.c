@@ -102,6 +102,8 @@ extern time_t time_now;
 /* External functions */
 
 extern int issue_to_svr(char *, struct batch_request *, void (*func)(struct work_task *));
+extern struct batch_request *cpy_stage(struct batch_request *, job *, enum job_atr, int);
+extern resc_resv  *chk_rescResv_request(char *, struct batch_request *);
 
 /* Private Functions in this file */
 
@@ -327,6 +329,7 @@ req_deletejob(struct batch_request *preq)
 	int delhist = 0;
 	int maxindex = 0;
 	int count = 0;
+	extern job  *chk_job_request(char *, struct batch_request *, int *);
 
 	jid = preq->rq_ind.rq_delete.rq_objname;
 

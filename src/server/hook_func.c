@@ -143,6 +143,7 @@
 #include "reservation.h"
 #include "cmds.h"
 #include "server.h"
+#include "pbs_sched.h"
 
 
 /* External functions */

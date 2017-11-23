@@ -71,6 +71,7 @@
 #include "hook.h"
 #include "sched_cmds.h"
 #include "pbs_internal.h"
+#include "pbs_sched.h"
 
 
 /* Global Data Items: */
@@ -95,6 +96,9 @@ extern char *msg_nostf_resv;
 int modify_resv_attr(resc_resv *presv, svrattrl *plist, int perm, int *bad);
 extern void resv_revert_alter_times(resc_resv *presv);
 extern int gen_future_reply(resc_resv *presv, long fromNow);
+extern job  *chk_job_request(char *, struct batch_request *, int *);
+extern resc_resv  *chk_rescResv_request(char *, struct batch_request *);
+
 
 
 

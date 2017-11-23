@@ -56,6 +56,7 @@
 #define SCH_SCHEDULE_ETE_ON 15		/* eligible_time_enable is turned ON */
 #define SCH_SCHEDULE_RESV_RECONFIRM 16		/* Reconfirm a reservation */
 #define SCH_SCHEDULE_RESTART_CYCLE 17		/* Restart a scheduling cycle */
+#define SCH_ATTRS_CONFIGURE 18
 
 
 extern int schedule(int cmd, int sd, char *runjid);

@@ -162,7 +162,7 @@ extern int put_sched_cmd(int sock, int cmd, char *jobid);
 extern void setup_ping(int delay);
 
 /* External data items */
-extern	int		svr_chngNodesfile;
+extern	int	svr_chngNodesfile;
 extern  pbs_list_head svr_requests;
 extern char     *msg_err_malloc;
 extern int       pbs_failover_active;
@@ -279,9 +279,9 @@ int		server_init_type = RECOV_WARM;
 int		svr_delay_entry = 0;
 int             svr_ping_rate = SVR_DEFAULT_PING_RATE;    /* time between sets of node pings */
 int             ping_nodes_rate = SVR_DEFAULT_PING_RATE; /* time between ping nodes as determined from server_init_type */
-pbs_list_head   svr_deferred_req;
-pbs_list_head   svr_queues;            /* list of queues                   */
-pbs_list_head   svr_alljobs;           /* list of all jobs in server       */
+pbs_list_head	svr_deferred_req;
+pbs_list_head	svr_queues;            /* list of queues                   */
+pbs_list_head	svr_alljobs;           /* list of all jobs in server       */
 pbs_list_head	svr_newjobs;           /* list of incomming new jobs       */
 pbs_list_head	svr_allresvs;          /* all reservations in server */
 pbs_list_head	svr_newresvs;          /* temporary list for new resv jobs */
@@ -365,8 +365,8 @@ int tpp_network_up = 0;
 void
 net_restore_handler(void *data)
 {
-    log_tppmsg(LOG_INFO, NULL, "net restore handler called");
-    tpp_network_up = 1;
+	log_tppmsg(LOG_INFO, NULL, "net restore handler called");
+	tpp_network_up = 1;
     ping_nodes(NULL);
 }
 
@@ -1973,6 +1973,8 @@ try_db_again:
 	}
 	dflt_scheduler->pbs_scheduler_addr = pbs_scheduler_addr;
 	dflt_scheduler->pbs_scheduler_port = pbs_scheduler_port;
+	strncpy(dflt_scheduler->sch_attr[(int) SCHED_ATR_sched_state].at_val.at_str, SC_SCHEDULING, SC_STATUS_LEN);
+	dflt_scheduler->sch_attr[(int) SCHED_ATR_sched_state].at_val.at_str[SC_STATUS_LEN] = '\0';
 
 #ifdef WIN32
 	sprintf(log_buffer, msg_startup2, getpid(), pbs_server_port_dis,
@@ -2078,54 +2080,54 @@ try_db_again:
 				first_run = 0;
 			}
 			for (psched = (pbs_sched*) GET_NEXT(svr_allscheds); psched; psched = (pbs_sched*) GET_NEXT(psched->sc_link)) {
-			/* if time or event says to run scheduler, do it */
+				/* if time or event says to run scheduler, do it */
 
-			/* if we have a high prio sched command, send it 1st */
-				if ((strcmp(psched->sch_attr[SCHED_ATR_sched_state].at_val.at_str, SC_DOWN)) &&
+				/* if we have a high prio sched command, send it 1st */
+				if (psched->sch_attr[SCHED_ATR_scheduling].at_val.at_long &&
 					psched->svr_do_sched_high != SCH_SCHEDULE_NULL)
 					schedule_high(psched);
 
-
 				if (psched->svr_do_schedule == SCH_SCHEDULE_RESTART_CYCLE) {
 
-				/* send only to existing connection */
-				/* since it is for interrupting current */
-				/* cycle */
-				/* NOTE: both primary and secondary scheduler */
-				/* connect must have been setup to be valid */
+					/* send only to existing connection */
+					/* since it is for interrupting current */
+					/* cycle */
+					/* NOTE: both primary and secondary scheduler */
+					/* connect must have been setup to be valid */
 					if ((psched->scheduler_sock2 != -1) &&
 						(psched->scheduler_sock != -1)) {
 						if (put_sched_cmd(psched->scheduler_sock2,
 								psched->svr_do_schedule, NULL) == 0) {
-						log_event(PBSEVENT_DEBUG2,
+							sprintf(log_buffer, "sent scheduler restart scheduling cycle request to %s", psched->sc_name);
+							log_event(PBSEVENT_DEBUG2,
+								PBS_EVENTCLASS_SERVER,
+								LOG_NOTICE, msg_daemonname, log_buffer);
+						}
+					} else {
+						sprintf(log_buffer, "no valid secondary connection to scheduler %s: restart scheduling cycle request ignored",
+								psched->sc_name);
+						log_event(PBSEVENT_DEBUG3,
 							PBS_EVENTCLASS_SERVER,
-							LOG_NOTICE, msg_daemonname,
-							"sent scheduler restart scheduling cycle request");
+							LOG_NOTICE, msg_daemonname, log_buffer);
 					}
-				} else {
-					log_event(PBSEVENT_DEBUG3,
-						PBS_EVENTCLASS_SERVER,
-						LOG_NOTICE, msg_daemonname,
-						"no valid secondary connection to scheduler: restart scheduling cycle request ignored");
-				}
 					psched->svr_do_schedule = SCH_SCHEDULE_NULL;
 				} else if (((svr_unsent_qrun_req) || ((psched->svr_do_schedule != SCH_SCHEDULE_NULL) &&
 					psched->sch_attr[(int)SCHED_ATR_scheduling].at_val.at_long))
-				&& can_schedule()) {
-				/*
-				 * If svr_unsent_qrun_req is set to one there are pending qrun
-				 * request, then do schedule_jobs irrespective of the server scheduling 
-				 * state.
-				 * If svr_unsent_qrun_req is not set then do the existing checking and do 
-				 * scheduling only if server scheduling is turned on.
-				 */
+					&& can_schedule()) {
+					/*
+					 * If svr_unsent_qrun_req is set to one there are pending qrun
+					 * request, then do schedule_jobs irrespective of the server scheduling
+					 * state.
+					 * If svr_unsent_qrun_req is not set then do the existing checking and do
+					 * scheduling only if server scheduling is turned on.
+					 */
 
 					psched->sch_next_schedule = time_now +
 							psched->sch_attr[(int)	SCHED_ATR_schediteration].at_val.at_long;
-					if((strcmp(psched->sch_attr[SCHED_ATR_sched_state].at_val.at_str, SC_DOWN)) &&
+					if (psched->sch_attr[SCHED_ATR_scheduling].at_val.at_long &&
 							(schedule_jobs(psched) == 0) && (svr_unsent_qrun_req))
-					svr_unsent_qrun_req = 0;
-			}
+						svr_unsent_qrun_req = 0;
+				}
 			}
 		} else if (*state == SV_STATE_HOT) {
 
@@ -2418,8 +2420,8 @@ next_task()
 		time_t delay;
 		if ((delay = psched->sch_next_schedule - time_now) <= 0)
 			set_scheduler_flag(SCH_SCHEDULE_TIME, psched);
-	else if (delay < tilwhen)
-		tilwhen = delay;
+		else if (delay < tilwhen)
+			tilwhen = delay;
 	}
 
 	next_sync_mom_hookfiles();
@@ -3052,9 +3054,9 @@ try_connect_database(pbs_db_conn_t *conn)
 	if (conn->conn_state == PBS_DB_CONNECT_STATE_FAILED && failcode != PBS_DB_STILL_STARTING) {
 		db_oper_failed_times++;
 		get_db_errmsg(failcode, &db_err_msg);
-		log_set_dberr(db_err_msg, conn->conn_db_err);
+			log_set_dberr(db_err_msg, conn->conn_db_err);
 		log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_CRIT, msg_daemonname, log_buffer);
-		conn->conn_db_state = PBS_DB_DOWN; /* allow to retry to start db again */
+			conn->conn_db_state = PBS_DB_DOWN; /* allow to retry to start db again */
 	} else if (conn->conn_state == PBS_DB_CONNECT_STATE_CONNECTED) {
 		sprintf(log_buffer, "connected to PBS dataservice@%s", conn->conn_host);
 		log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE,
@@ -3173,7 +3175,7 @@ setup_db_connection(char *host, int timeout, int have_db_control)
 
 		if (db_err_msg && strlen(db_err_msg) > 0) {
 			log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_CRIT, msg_daemonname, db_err_msg);
-			fprintf(stderr, "%s\n", db_err_msg);
+		fprintf(stderr, "%s\n", db_err_msg);
 		}
 
 		if (strlen(errmsg) > 0) {

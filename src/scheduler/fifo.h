@@ -44,12 +44,10 @@ extern "C" {
 #include  <limits.h>
 #include "data_types.h"
 int connector;
-extern char sc_name[PBS_MAXSCHEDNAME];
-extern char *log_dir;
-extern char *priv_dir;
+extern char *sc_name;
 extern int sched_port;
 extern char *partitions;
-extern char scheduler_name[PBS_MAXHOSTNAME+1];
+extern char scheduler_host_name[PBS_MAXHOSTNAME+1];
 extern char *logfile;
 extern char path_log[_POSIX_PATH_MAX];
 extern int dflt_sched;
