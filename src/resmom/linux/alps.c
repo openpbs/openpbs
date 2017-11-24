@@ -5833,23 +5833,19 @@ alps_cancel_reservation(job *pjob)
 	snprintf(filename, MAXPATHLEN, "%s/aux/%s.alpsresv", pbs_conf.pbs_home_path, pjob->ji_qs.ji_jobid);
 	
 	if (pjob->ji_extended.ji_ext.ji_reservation < 0) {
-		       /*
-			* The job structure doesn't have ALPS reservation ID information.
-			* This can happen when we hit various race conditions.  To help
-			* with this issue, we have previously saved the ALPS resv ID
-			* in a file.
-			*
-			* The format of the file will consist of one line entry that
-			* has the ALPS reservation ID number. We retrieve it here so
-			* the ALPS reservation can be canceled.
-			*/
+		/*
+		 * During race conditions, the job structure won't have the
+		 * reservation ID. So we previously stored it in a file.
+		 * We retrieve the ALPS reservation ID from the file and
+		 * cancel the ALPS reservation.
+		 */
 		FILE    *fp = NULL;
 		long    value;
 
 		fp = fopen(filename, "r");
 		if (fp == NULL) {
 			snprintf(log_buffer, sizeof(log_buffer),
-				"Unable to open the file %s containing the ALPS Reservation ID", filename);
+				"Unable to open the file %s, failed to cancel orphan reservation", filename);
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 				(char *)__func__, log_buffer);
 			return (-1);
@@ -5865,9 +5861,7 @@ alps_cancel_reservation(job *pjob)
 		pjob->ji_extended.ji_ext.ji_reservation = value;
 	}
 
-	       /* At this point we have no further use for the file that contains
-		* the ALPS reservation ID.  Get rid of the file.
-		*/
+	/* Delete the file containing ALPS reservation ID*/
 	(void)unlink(filename);
 	
 	/* Return success if no reservation present. */

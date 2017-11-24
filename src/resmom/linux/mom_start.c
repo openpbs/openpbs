@@ -2097,14 +2097,13 @@ set_job(job *pjob, struct startjob_rtn *sjr)
 					 */
 			sjr->sj_reservation = 0;
 		}
-		
+
 		/*
-		 * If we have a valid reservation id, save it off in case
-		 * the ALPS reservation information isn't part of the job struct
-		 * (e.g. job got killed before ALPS reservation ID was noted)
-		 * Then we can use this to cancel the ALPS reservation so we
-		 * don't leave orphaned ALPS reservations around.
+		 * Save the ALPS reservation ID so that it can be used to
+		 * delete the reservation in case of race conditions
+		 * where the ID doesn't get recorded in the job structure.
 		 */
+
 		if(pjob->ji_extended.ji_ext.ji_reservation > 0) {
 			FILE	*fp = NULL;
 			char	filename[MAXPATHLEN];
@@ -2119,7 +2118,7 @@ set_job(job *pjob, struct startjob_rtn *sjr)
 					log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB, LOG_ERR, 
 						(char *)__func__, log_buffer);
 				} else {
-					fprintf(fp, "%ld\n",pjob->ji_extended.ji_ext.ji_reservation);
+					fprintf(fp, "%ld\n", pjob->ji_extended.ji_ext.ji_reservation);
 					(void)fclose(fp);
 				}
 			} else {
