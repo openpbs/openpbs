@@ -62,6 +62,13 @@ if not defined __BUILDDIR (
 if not defined __BINARIESDIR (
     set __BINARIESDIR=%CD%\binaries
 )
+if exist "%VS90COMNTOOLS%vsvars32.bat" (
+    call "%VS90COMNTOOLS%vsvars32.bat"
+) else (
+    echo "Could not find %VS90COMNTOOLS%vsvars32.bat"
+    exit 1
+)
+
 set __RANDOM_VAL=%RANDOM::=_%
 set __RANDOM_VAL-%RANDOM_VAL:.=%
 set __BUILDJUNCTION=%__BUILDDIR:~0,2%\__withoutspace_builddir_%__RANDOM_VAL%
@@ -99,7 +106,7 @@ set BINARIESDIR=%CD%
 for /F "usebackq tokens=*" %%i in (`""%MSYSDIR%\bin\bash.exe" -c "pwd""`) do set BINARIESDIR_M=%%i
 
 if not defined LIBEDIT_VERSION (
-    set LIBEDIT_VERSION=2.201
+    set LIBEDIT_VERSION=2.203
 )
 if not defined LIBICAL_VERSION (
     set LIBICAL_VERSION=1.0.1
