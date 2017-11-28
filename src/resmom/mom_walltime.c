@@ -35,6 +35,7 @@
  *
  */
 
+#include <stdlib.h>
 #include <time.h>
 #include <sys/types.h>
 #include "job.h"
@@ -46,7 +47,15 @@ time_t			time_now = 0;
 double			wallfactor = 1.00;
 
 /**
+ * @brief
+ *
+ *		This function starts counting the walltime of a job
+ *
+ * @param[in] 	pjob	    - pointer to the job
  * 
+ * @return	void
+ * 
+ * @par MT-safe: No
  */
 void
 start_walltime(job *pjob) {
@@ -62,6 +71,17 @@ start_walltime(job *pjob) {
     pjob->ji_walltime_stamp = time_now;
 }
 
+/**
+ * @brief
+ *
+ *		This function updates the walltime of a job
+ *
+ * @param[in] 	pjob	    - pointer to the job
+ * 
+ * @return	void
+ * 
+ * @par MT-safe: No
+ */
 void
 update_walltime(job *pjob) {
     attribute       *resources_used;
@@ -91,7 +111,15 @@ update_walltime(job *pjob) {
 }
 
 /**
+ * @brief
+ *
+ *		This function stops counting the walltime of a job
+ *
+ * @param[in] 	pjob	    - pointer to the job
  * 
+ * @return	void
+ * 
+ * @par MT-safe: No
  */
 void
 stop_walltime(job *pjob) {
