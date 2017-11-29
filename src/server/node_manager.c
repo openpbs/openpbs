@@ -7061,7 +7061,13 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 				return (PBSE_UNKNODE);
 			}
 
-			if (pnode->nd_state & (INUSE_DOWN | INUSE_STALE)) {
+			/*
+			 * Initially don't allow allow jobs/resvs to be placed on down or stale nodes.
+			 * If the job is already on a down/stale node and is being recovered from the
+			 * database, allow it back onto that node.  Nodes may not be back up before
+			 * jobs are recovered from the database.
+			 */
+			if (svr_init == FALSE && (pnode->nd_state & (INUSE_DOWN | INUSE_STALE))) {
 				free(phowl);
 				free(execvncopy);
 				return (PBSE_BAD_NODE_STATE);
