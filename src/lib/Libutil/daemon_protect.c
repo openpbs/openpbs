@@ -3,6 +3,7 @@
  */
 #include <sys/types.h>
 #include <unistd.h>
+#include <string.h>
 #include <stdio.h>
 #include <fcntl.h>
 #include "server_limits.h"
@@ -61,16 +62,16 @@ daemon_protect(pid_t pid, enum PBS_Daemon_Protect action)
 	 *	which is older to -17 to protect or 0 to unprotect.
 	 */
 	snprintf(fname, MAXPATHLEN, oom_protect_new.oom_path, pid);
-	if ((fd = open(fname, O_WRONLY)) != -1) {
-		write(fd, oom_protect_new.oom_value[(int)action], sizeof(oom_protect_new.oom_value[(int)action])-1);
+	if ((fd = open(fname, O_WRONLY|O_TRUNC)) != -1) {
+		write(fd, oom_protect_new.oom_value[(int)action], strlen(oom_protect_new.oom_value[(int)action]));
 
 	} else {
 
 		/* failed to open "oom_score_adj", now try "oom_adj" */
 		/* found in older Linux kernels			     */
 		snprintf(fname, MAXPATHLEN, oom_protect_old.oom_path, pid);
-		if ((fd = open(fname, O_WRONLY)) != -1) {
-			write(fd, oom_protect_old.oom_value[(int)action], sizeof(oom_protect_old.oom_value[(int)action])-1);
+		if ((fd = open(fname, O_WRONLY|O_TRUNC)) != -1) {
+			write(fd, oom_protect_old.oom_value[(int)action], strlen(oom_protect_old.oom_value[(int)action]));
 		}
 	}
 	if (fd != -1)
