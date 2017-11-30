@@ -1,36 +1,36 @@
 /*
  * Copyright (C) 1994-2017 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
- *  
+ *
  * This file is part of the PBS Professional ("PBS Pro") software.
- * 
+ *
  * Open Source License Information:
- *  
+ *
  * PBS Pro is free software. You can redistribute it and/or modify it under the
- * terms of the GNU Affero General Public License as published by the Free 
- * Software Foundation, either version 3 of the License, or (at your option) any 
+ * terms of the GNU Affero General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
  * later version.
- *  
- * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY 
+ *
+ * PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
  * PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
- *  
- * You should have received a copy of the GNU Affero General Public License along 
+ *
+ * You should have received a copy of the GNU Affero General Public License along
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
- *  
- * Commercial License Information: 
- * 
- * The PBS Pro software is licensed under the terms of the GNU Affero General 
- * Public License agreement ("AGPL"), except where a separate commercial license 
+ *
+ * Commercial License Information:
+ *
+ * The PBS Pro software is licensed under the terms of the GNU Affero General
+ * Public License agreement ("AGPL"), except where a separate commercial license
  * agreement for PBS Pro version 14 or later has been executed in writing with Altair.
- *  
- * Altair’s dual-license business model allows companies, individuals, and 
- * organizations to create proprietary derivative works of PBS Pro and distribute 
- * them - whether embedded or bundled with other software - under a commercial 
+ *
+ * Altair’s dual-license business model allows companies, individuals, and
+ * organizations to create proprietary derivative works of PBS Pro and distribute
+ * them - whether embedded or bundled with other software - under a commercial
  * license agreement.
- * 
- * Use of Altair’s trademarks, including but not limited to "PBS™", 
- * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's 
+ *
+ * Use of Altair’s trademarks, including but not limited to "PBS™",
+ * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
  * trademark licensing policies.
  *
  */
@@ -509,6 +509,7 @@ req_confirmresv(struct batch_request *preq)
 			if (presv->ri_wattr[RESV_ATR_start].at_val.at_long
 				!= PBS_RESV_FUTURE_SCH) {
 				if (gen_task_EndResvWindow(presv)) {
+					free(next_execvnode);
 					req_reject(PBSE_SYSTEM, 0, preq);
 					return;
 				}
@@ -573,6 +574,7 @@ req_confirmresv(struct batch_request *preq)
 
 	if (is_being_altered & RESV_END_TIME_MODIFIED) {
 		if (gen_task_EndResvWindow(presv)) {
+			free(next_execvnode);
 			req_reject(PBSE_SYSTEM, 0, preq);
 			return;
 		}
@@ -587,6 +589,7 @@ req_confirmresv(struct batch_request *preq)
 	rc = assign_resv_resc(presv, next_execvnode);
 
 	if (rc != PBSE_NONE) {
+		free(next_execvnode);
 		req_reject(rc, 0, preq);
 		return;
 	}
@@ -598,6 +601,7 @@ req_confirmresv(struct batch_request *preq)
 	 */
 	if (!is_degraded && (is_being_altered != RESV_END_TIME_MODIFIED) &&
 		(rc = gen_task_Time4resv(presv)) != 0) {
+		free(next_execvnode);
 		req_reject(rc, 0, preq);
 		return;
 	}
@@ -680,42 +684,45 @@ req_confirmresv(struct batch_request *preq)
 			  presv->ri_qs.ri_resvID, "Reservation confirmed");
 	}
 
-	reply_ack(preq);
-
-	/* 100 extra bytes for field names, times, and count */
-	tmp_buf_size = 100 + strlen(preq->rq_user) + strlen(preq->rq_host) + strlen(next_execvnode);
-	if (tmp_buf_size > sizeof(buf)) {
-		tmp_buf = malloc(tmp_buf_size);
-		if (tmp_buf == NULL) {
-			snprintf(log_buffer, LOG_BUF_SIZE-1, "malloc failure (errno %d)", errno);
-			log_err(PBSE_SYSTEM, __func__, log_buffer);
-			return;
+	if (!is_degraded) {
+		/* 100 extra bytes for field names, times, and count */
+		tmp_buf_size = 100 + strlen(preq->rq_user) + strlen(preq->rq_host) + strlen(next_execvnode);
+		if (tmp_buf_size > sizeof(buf)) {
+			tmp_buf = malloc(tmp_buf_size);
+			if (tmp_buf == NULL) {
+				snprintf(log_buffer, LOG_BUF_SIZE-1, "malloc failure (errno %d)", errno);
+				log_err(PBSE_SYSTEM, __func__, log_buffer);
+				free(next_execvnode);
+				reply_ack(preq);
+				return;
+			}
+		} else {
+			tmp_buf = buf;
+			tmp_buf_size = sizeof(buf);
 		}
-	} else {
-		tmp_buf = buf;
-		tmp_buf_size = sizeof(buf);
-	}
 
-	if (presv->ri_wattr[RESV_ATR_resv_standing].at_val.at_long) {
-		(void)snprintf(tmp_buf, tmp_buf_size, "requestor=%s@%s start=%ld end=%ld nodes=%s count=%ld",
-			preq->rq_user, preq->rq_host,
-			presv->ri_qs.ri_stime, presv->ri_qs.ri_etime,
-			next_execvnode,
-			presv->ri_wattr[RESV_ATR_resv_count].at_val.at_long);
-	} else {
-		(void)snprintf(tmp_buf, tmp_buf_size, "requestor=%s@%s start=%ld end=%ld nodes=%s",
-			preq->rq_user, preq->rq_host,
-			presv->ri_qs.ri_stime, presv->ri_qs.ri_etime,
-			next_execvnode);
-	}
-	if (!is_degraded)
+		if (presv->ri_wattr[RESV_ATR_resv_standing].at_val.at_long) {
+			(void)snprintf(tmp_buf, tmp_buf_size, "requestor=%s@%s start=%ld end=%ld nodes=%s count=%ld",
+				preq->rq_user, preq->rq_host,
+				presv->ri_qs.ri_stime, presv->ri_qs.ri_etime,
+				next_execvnode,
+				presv->ri_wattr[RESV_ATR_resv_count].at_val.at_long);
+		} else {
+			(void)snprintf(tmp_buf, tmp_buf_size, "requestor=%s@%s start=%ld end=%ld nodes=%s",
+				preq->rq_user, preq->rq_host,
+				presv->ri_qs.ri_stime, presv->ri_qs.ri_etime,
+				next_execvnode);
+		}
 		account_recordResv(PBS_ACCT_CR, presv, tmp_buf);
+		if (tmp_buf != buf) {
+			free(tmp_buf);
+			tmp_buf_size = 0;
+		}
+	}
 
 	free(next_execvnode);
-	if (tmp_buf != buf) {
-		free(tmp_buf);
-		tmp_buf_size = 0;
-	}
+	reply_ack(preq);
+
 	return;
 }
 
