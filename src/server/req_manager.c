@@ -3163,7 +3163,8 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 
 		/* If this is the "natural vnode" (i.e. 0th entry) */
 		if (pnode->nd_nummoms == 1) {
-			if (pnode->nd_attr[(int)ND_ATR_vnode_pool].at_val.at_long > 0) {
+			if ((pnode->nd_attr[(int)ND_ATR_vnode_pool].at_flags & ATR_VFLAG_SET) &&
+			    (pnode->nd_attr[(int)ND_ATR_vnode_pool].at_val.at_long > 0)) {
 				smp->msr_vnode_pool = pnode->nd_attr[(int)ND_ATR_vnode_pool].at_val.at_long;
 			}
 		}
@@ -3648,7 +3649,8 @@ struct batch_request *preq;
 
 	mymom   = pnode->nd_moms[0];
 	vn_pool = pnode->nd_attr[(int)ND_ATR_vnode_pool].at_val.at_long;
-	if (vn_pool > 0) {
+	if ((pnode->nd_attr[(int)ND_ATR_vnode_pool].at_flags & ATR_VFLAG_SET) && 
+	   (vn_pool > 0)) {
 		if (add_mom_to_pool(mymom) == PBSE_NONE) {
 			/* cross link any vnodes of an existing Mom in pool */
 			int i;
