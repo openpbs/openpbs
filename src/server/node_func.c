@@ -524,10 +524,6 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 	pnode->nd_attr[(int)ND_ATR_Sharing].at_flags =
 		ATR_VFLAG_SET|ATR_VFLAG_DEFLT;
 
-	pnode->nd_attr[(int)ND_ATR_vnode_pool].at_val.at_long = 0;
-	pnode->nd_attr[(int)ND_ATR_vnode_pool].at_flags =
-		ATR_VFLAG_SET|ATR_VFLAG_DEFLT;
-
 	pat1 = &pnode->nd_attr[(int)ND_ATR_ResourceAvail];
 	pat2 = &pnode->nd_attr[(int)ND_ATR_ResourceAssn];
 
@@ -1630,7 +1626,8 @@ setup_nodes()
 				np->nd_moms[0]->mi_modtime = mom_modtime;
 		}
 		if (np) {
-			if (np->nd_attr[(int)ND_ATR_vnode_pool].at_val.at_long > 0) {
+			if ((np->nd_attr[(int)ND_ATR_vnode_pool].at_flags & ATR_VFLAG_SET) &&
+			    (np->nd_attr[(int)ND_ATR_vnode_pool].at_val.at_long > 0)) {
 				mominfo_t *pmom = np->nd_moms[0];
 				if (pmom &&
 				    (np == ((mom_svrinfo_t *)(pmom->mi_data))->msr_children[0])) {
