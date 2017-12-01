@@ -428,7 +428,7 @@ static char exsbin[][80] = {
 	/* 10 */ "sbin/pbs_server",
 	/* 11 */ "sbin/pbsfs",
 	/* 12 */ "sbin/pbs_probe",
-	/* 14 */ "sbin/pbs_upgrade_job"
+	/* 13 */ "sbin/pbs_upgrade_job"
 };
 
 static char exetc[][80] = {
@@ -827,7 +827,7 @@ static MPUG	sbin_mpugs[] = {
 	{1, 6, 0,     frwxgo, sgsrwxorwx, &dflt_pbs_ug, exsbin[10], NULL }, /* pbs_server */
 	{1, 6, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exsbin[11], NULL }, /* pbsfs */
 	{1, 0, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exsbin[12], NULL }, /* pbs_probe */
-	{1, 2, 0,     frwxgo, sgsrwxorwx, &dflt_pbs_ug, exsbin[14], NULL } /* pbs_upgrade_job */
+	{1, 2, 0,     frwxgo, sgsrwxorwx, &dflt_pbs_ug, exsbin[13], NULL } /* pbs_upgrade_job */
 };
 
 
@@ -2271,16 +2271,16 @@ get_realpath_values(struct infrastruct *pinf)
 				 * file system path
 				 */
 
-				sprintf(msg, "Unable to convert the primary, %s, string to a real path\n%s\n", origin_names[i], strerror(errno));
+				snprintf(msg, sizeof(msg), "Unable to convert the primary, %s, string to a real path\n%s\n", origin_names[i], strerror(errno));
 				put_msg_in_table(pinf, SRC_pri, MSG_pri, msg);
-				sprintf(msg, "%s: %s\n", origin_names[i], pinf->pri.pbs_mpug[i].path);
+				snprintf(msg, sizeof(msg), "%s: %s\n", origin_names[i], pinf->pri.pbs_mpug[i].path);
 				put_msg_in_table(pinf, SRC_pri, MSG_pri, msg);
 				/* good_prime[i] = 0; */
 			}
 		} else {
 
 			if (pinf->pri.pbs_mpug[i].notReq == 0)
-				sprintf(msg, "Missing primary path %s", origin_names[i]);
+				snprintf(msg, sizeof(msg), "Missing primary path %s", origin_names[i]);
 			put_msg_in_table(pinf, SRC_pri, MSG_pri, msg);
 		}
 	}
@@ -2317,13 +2317,13 @@ get_realpath_values(struct infrastruct *pinf)
 			if ((fd = open(path, O_RDONLY)) != -1) {
 				if (fstat(fd, &st) != -1) {
 					if ((st.st_mode & 0777) != 0600) {
-						sprintf(msg, "%s, permission must "
+						snprintf(msg, sizeof(msg), "%s, permission must "
 							"be 0600\n", path);
 						put_msg_in_table(NULL,
 							SRC_home, MSG_real, msg);
 					}
 					if (st.st_uid != 0) {
-						sprintf(msg, "%s, owner must "
+						snprintf(msg, sizeof(msg), "%s, owner must "
 							"be root\n", path);
 						put_msg_in_table(NULL,
 							SRC_home, MSG_real, msg);
@@ -2336,7 +2336,7 @@ get_realpath_values(struct infrastruct *pinf)
 						if (pw != NULL)
 							pbs_dataname[0] = strdup(buf);
 						else {
-							sprintf(msg, "db_user %s "
+							snprintf(msg, sizeof(msg), "db_user %s "
 								"does not exist\n", buf);
 							put_msg_in_table(NULL,
 								SRC_home, MSG_real, msg);
@@ -2374,9 +2374,9 @@ get_realpath_values(struct infrastruct *pinf)
 					} else if ((pmpug[j].notReq & notbits) == 0) {
 
 						if (errno == ENOENT)
-							sprintf(msg, "%s, %s\n", path, strerror(errno));
+							snprintf(msg, sizeof(msg), "%s, %s\n", path, strerror(errno));
 						else
-							sprintf(msg, "%s,  errno = %d\n", path, errno);
+							snprintf(msg, sizeof(msg), "%s,  errno = %d\n", path, errno);
 
 						put_msg_in_table(NULL, SRC_home, MSG_real, msg);
 					}
@@ -2418,9 +2418,9 @@ get_realpath_values(struct infrastruct *pinf)
 					} else if ((pmpug[j].notReq & notbits) == 0) {
 
 						if (errno == ENOENT)
-							sprintf(msg, "%s, %s\n", path, strerror(errno));
+							snprintf(msg, sizeof(msg), "%s, %s\n", path, strerror(errno));
 						else
-							sprintf(msg, "%s,  errno = %d\n", path, errno);
+							snprintf(msg, sizeof(msg), "%s,  errno = %d\n", path, errno);
 						put_msg_in_table(NULL, SRC_exec, MSG_real, msg);
 					}
 				}
@@ -2790,7 +2790,7 @@ chk_entries(MPUG *pmpug, MPUG **knwn_set)
 
 	if ((dir = opendir(dirpath)) == (DIR *)0) {
 
-		sprintf(msg, "Can't open directory %s for inspection\n", dirpath);
+		snprintf(msg, sizeof(msg), "Can't open directory %s for inspection\n", dirpath);
 		put_msg_in_table(NULL, SRC_none, MSG_oth, msg);
 		return;
 	}
@@ -2853,12 +2853,12 @@ chk_entries(MPUG *pmpug, MPUG **knwn_set)
 		 * fitness of this entry were found to apply.
 		 */
 
-		sprintf(msg, "%s, unrecognized entry appears in %s\n", pdirent->d_name, pmpug->path);
+		snprintf(msg, sizeof(msg), "%s, unrecognized entry appears in %s\n", pdirent->d_name, pmpug->path);
 		put_msg_in_table(NULL, SRC_none, MSG_unr, msg);
 	}
 	if (errno != 0 && errno != ENOENT) {
 
-		sprintf(msg, "Can't read directory %s for inspection\n", dirpath);
+		snprintf(msg, sizeof(msg), "Can't read directory %s for inspection\n", dirpath);
 		put_msg_in_table(NULL, SRC_none, MSG_oth, msg);
 		(void)closedir(dir);
 		return;
@@ -2901,7 +2901,7 @@ non_db_resident(MPUG *pmpug, char* psuf, int dirtype, char *entryname)
 		case PBS_logsdir:
 			if (is_a_numericname(entryname) == 0) {
 
-				sprintf(msg, "%s, unrecognized entry appears in %s\n", entryname, pmpug->path);
+				snprintf(msg, sizeof(msg), "%s, unrecognized entry appears in %s\n", entryname, pmpug->path);
 				put_msg_in_table(NULL, SRC_none, MSG_unr, msg);
 			}
 	}
@@ -3066,7 +3066,7 @@ check_owner_modes(char *path, MPUG *p_mpug, int sys)
 
 		rc = mbits_and_owner(&sbuf, p_mpug, sys);
 		if (rc) {
-			sprintf(msg, "\n%s", path);
+			snprintf(msg, sizeof(msg), "\n%s", path);
 			put_msg_in_table(NULL, SRC_none, MSG_po, msg);
 			perm_msg = perm_owner_msg(&sbuf, p_mpug, NULL, sys);
 			strcpy(msg, perm_msg);
@@ -3085,7 +3085,7 @@ check_owner_modes(char *path, MPUG *p_mpug, int sys)
 		if (errno != ENOENT || ! p_mpug->notReq) {
 			/* this PBS file is required */
 
-			sprintf(msg, "lstat error: %s, \"%s\"\n", path, strerror(errno));
+			snprintf(msg, sizeof(msg), "lstat error: %s, \"%s\"\n", path, strerror(errno));
 			put_msg_in_table(NULL, SRC_none, MSG_real, msg);
 			rc = LSTAT_PATH_ERR;
 		}
@@ -3196,7 +3196,7 @@ perm_owner_msg(struct stat *ps, MPUG *p_mpug,
 
 	if (sys) {
 
-		sprintf(buf, "(%s) needs to be (%s)", owner_is, owner_need);
+		snprintf(buf, sizeof(buf), "(%s) needs to be (%s)", owner_is, owner_need);
 		free(owner_is);
 		free(owner_need);
 		return (buf);
@@ -3211,7 +3211,7 @@ perm_owner_msg(struct stat *ps, MPUG *p_mpug,
 	perm_is = strdup(perm_string(ps->st_mode));
 	perm_need = strdup(perm_string(modes));
 
-	sprintf(buf, "(%s , %s) needs to be (%s , %s)",
+	snprintf(buf, sizeof(buf), "(%s , %s) needs to be (%s , %s)",
 		perm_is, owner_is, perm_need, owner_need);
 
 	free(perm_is);
@@ -3302,18 +3302,18 @@ owner_string(struct stat *ps, MPUG *p_mpug, int sys)
 		if (ppw != NULL && pgrp != NULL &&
 			ppw->pw_name != NULL && pgrp->gr_name != NULL)
 
-			sprintf(buf, "%s , %s", ppw->pw_name, pgrp->gr_name);
+			snprintf(buf, sizeof(buf), "%s , %s", ppw->pw_name, pgrp->gr_name);
 		else
-			sprintf(buf, "%d , %d", ps->st_uid, ps->st_gid);
+			snprintf(buf, sizeof(buf), "%d , %d", ps->st_uid, ps->st_gid);
 
 	} else if (p_mpug) {
 		if (p_mpug->vld_ug) {
 			if (sys)
-				sprintf(buf, "ownerID < 10, group id < 10");
+				snprintf(buf, sizeof(buf), "ownerID < 10, group id < 10");
 			else
-				sprintf(buf, "%s, group id < 10", p_mpug->vld_ug->unames[0]);
+				snprintf(buf, sizeof(buf), "%s, group id < 10", p_mpug->vld_ug->unames[0]);
 		} else
-			sprintf(buf, " ");
+			snprintf(buf, sizeof(buf), " ");
 	}
 	return buf;
 }
@@ -3342,13 +3342,13 @@ process_ret_code(enum func_names from, int rc, struct infrastruct *pinf)
 			if (pinf->pri.pbs_mpug[PBS_conf].path) {
 
 				if (rc == PBS_CONF_NO_EXIST)
-					sprintf(msg, "File %s does not exist\n",
+					snprintf(msg, sizeof(msg), "File %s does not exist\n",
 						pinf->pri.pbs_mpug[PBS_conf].path);
 				else if (rc == PBS_CONF_CAN_NOT_OPEN)
-					sprintf(msg, "Could not open PBS configuration file %s\n",
+					snprintf(msg, sizeof(msg), "Could not open PBS configuration file %s\n",
 						pinf->pri.pbs_mpug[PBS_conf].path);
 				else
-					sprintf(msg,
+					snprintf(msg, sizeof(msg),
 						"Internal pbs_probe problem, unknown return code\n");
 
 				put_msg_in_table(pinf, SRC_pri, MSG_pri, msg);
@@ -3551,14 +3551,14 @@ fix_perm_owner(MPUG *p_mpug, struct stat *ps, ADJ *p_adj)
 		dis_modes = (mode_t)p_mpug->dis_modes;
 
 	if (dis_modes & modes) {
-		sprintf(msg, "%s: database problem, 'allowed/disallowed' modes overlap", p_mpug->path);
+		snprintf(msg, sizeof(msg), "%s: database problem, 'allowed/disallowed' modes overlap", p_mpug->path);
 		put_msg_in_table(NULL, SRC_none, MSG_po, msg);
 		return;
 	}
 
 	if (ps->st_mode != modes) {
 		if ((rc = chmod(p_mpug->realpath, modes))) {
-			sprintf(msg, "%s: permission correction failed, %s", p_mpug->path, strerror(errno));
+			snprintf(msg, sizeof(msg), "%s: permission correction failed, %s", p_mpug->path, strerror(errno));
 			put_msg_in_table(NULL, SRC_none, MSG_po, msg);
 		} else {
 			fixes |= 0x1;	/* permission */
@@ -3577,7 +3577,7 @@ fix_perm_owner(MPUG *p_mpug, struct stat *ps, ADJ *p_adj)
 		if (p_mpug->vld_ug->uids[i] == -1) {
 			rc = chown(p_mpug->realpath, p_mpug->vld_ug->uids[0], -1);
 			if (rc) {
-				sprintf(msg, "%s: ownership correction failed, %s", p_mpug->path, strerror(errno));
+				snprintf(msg, sizeof(msg), "%s: ownership correction failed, %s", p_mpug->path, strerror(errno));
 				put_msg_in_table(NULL, SRC_none, MSG_po, msg);
 			} else {
 				fixes |= 0x2;
@@ -3598,7 +3598,7 @@ fix_perm_owner(MPUG *p_mpug, struct stat *ps, ADJ *p_adj)
 			 */
 			rc = chown(p_mpug->realpath, -1, p_mpug->vld_ug->gids[0]);
 			if (rc) {
-				sprintf(msg, "%s: group correction failed, %s", p_mpug->path, strerror(errno));
+				snprintf(msg, sizeof(msg), "%s: group correction failed, %s", p_mpug->path, strerror(errno));
 				put_msg_in_table(NULL, SRC_none, MSG_po, msg);
 			} else {
 				fixes |= 0x4;
@@ -3608,21 +3608,21 @@ fix_perm_owner(MPUG *p_mpug, struct stat *ps, ADJ *p_adj)
 
 	switch (fixes) {
 		case 1:
-			sprintf(msg, "%s: corrected permissions", p_mpug->path);
+			snprintf(msg, sizeof(msg), "%s: corrected permissions", p_mpug->path);
 			put_msg_in_table(NULL, SRC_none, MSG_po, msg);
 			break;
 
 		case 2:
 		case 4:
 		case 6:
-			sprintf(msg, "%s: corrected ownership(s)", p_mpug->path);
+			snprintf(msg, sizeof(msg), "%s: corrected ownership(s)", p_mpug->path);
 			put_msg_in_table(NULL, SRC_none, MSG_po, msg);
 			break;
 
 		case 3:
 		case 5:
 		case 7:
-			sprintf(msg, "%s: corrected permissions and ownership(s)", p_mpug->path);
+			snprintf(msg, sizeof(msg), "%s: corrected permissions and ownership(s)", p_mpug->path);
 			put_msg_in_table(NULL, SRC_none, MSG_po, msg);
 			break;
 	}
