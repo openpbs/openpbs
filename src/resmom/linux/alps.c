@@ -5839,7 +5839,7 @@ alps_cancel_reservation(job *pjob)
 		 * We retrieve the ALPS reservation ID from the file and
 		 * cancel the ALPS reservation.
 		 */
-		FILE    *fp = NULL;
+		FILE    *fp;
 		long    value;
 
 		fp = fopen(filename, "r");
