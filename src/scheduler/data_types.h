@@ -462,7 +462,6 @@ struct job_info
 	int job_id;			/* numeric portion of the job id */
 	resource_req *resused;		/* a list of resources used */
 	group_info *ginfo;		/* the fair share node for the owner */
-	selspec *execselect;		/* select spec from exec_vnode */
 
 	/* subjob information */
 	char *array_id;			/* job id of job array if we are a subjob */

@@ -1237,7 +1237,6 @@ new_job_info()
 	jinfo->alt_id = NULL;
 	jinfo->queue = NULL;
 	jinfo->resv = NULL;
-	jinfo->execselect = NULL;
 	jinfo->priority = 0;
 	jinfo->etime = UNSPECIFIED;
 	jinfo->stime = UNSPECIFIED;
@@ -1310,9 +1309,6 @@ free_job_info(job_info *jinfo)
 
 	if (jinfo->array_id != NULL)
 		free(jinfo->array_id);
-
-	if (jinfo->execselect != NULL)
-		free_selspec(jinfo->execselect);
 
 	if (jinfo->queued_subjobs != NULL)
 		free_range_list(jinfo->queued_subjobs);
@@ -2214,8 +2210,8 @@ resresv_set_which_selspec(resource_resv *resresv)
 	if(resresv == NULL)
 		return NULL;
 
-	if (resresv->job != NULL && !resresv->job->is_running && resresv->job->execselect != NULL)
-		return resresv->job->execselect;
+	if (resresv->job != NULL && !resresv->job->is_running && resresv->execselect != NULL)
+		return resresv->execselect;
 
 	return resresv->select;
 }
@@ -2536,7 +2532,6 @@ dup_job_info(job_info *ojinfo, queue_info *nqinfo, server_info *nsinfo)
 	njinfo->comment = string_dup(ojinfo->comment);
 	njinfo->resv_id = string_dup(ojinfo->resv_id);
 	njinfo->alt_id = string_dup(ojinfo->alt_id);
-	njinfo->execselect = dup_selspec(ojinfo->execselect);
 
 	if (ojinfo->resv != NULL) {
 		njinfo->resv = find_resource_resv_by_rank(nqinfo->server->resvs,
