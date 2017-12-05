@@ -13624,7 +13624,7 @@ class InteractiveJob(threading.Thread):
             self.job.interactive_handle = _p
             time.sleep(_st)
             expstr = "qsub: waiting for job "
-            expstr += "(?P<jobid>\d+.[0-9A-Za-z-]+) to start"
+            expstr += "(?P<jobid>\d+.[0-9A-Za-z.-]+) to start"
             _p.expect(expstr)
             if _p.match:
                 self.jobid = _p.match.group('jobid')
