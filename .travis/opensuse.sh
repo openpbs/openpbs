@@ -6,7 +6,7 @@ ${DOCKER_EXEC} zypper -n ar -f -G http://download.opensuse.org/repositories/deve
 ${DOCKER_EXEC} zypper -n ref
 ${DOCKER_EXEC} zypper -n install rpmdevtools
 ${DOCKER_EXEC} rpmdev-setuptree
-${DOCKER_EXEC} /bin/sh -c "zypper -n install \$(rpmspec --buildrequires -q pbspro.spec)"
+${DOCKER_EXEC} /bin/sh -c "zypper -n install --force-resolution \$(rpmspec --buildrequires -q pbspro.spec)"
 ${DOCKER_EXEC} ./autogen.sh
 ${DOCKER_EXEC} ./configure
 ${DOCKER_EXEC} make dist
