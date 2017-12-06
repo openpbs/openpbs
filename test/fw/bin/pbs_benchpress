@@ -235,6 +235,11 @@ if __name__ == '__main__':
         usage()
         sys.exit(1)
 
+    if args:
+        sys.stderr.write('Invalid usage. Exiting\n')
+        usage()
+        sys.exit(1)
+
     for o, val in opts:
         if o == '-i':
             showinfo = True
