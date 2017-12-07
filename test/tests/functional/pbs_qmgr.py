@@ -76,13 +76,18 @@ class TestQmgr(TestFunctional):
         node_prefix = "vn"
         nodename = node_prefix + "[0]"
         vndef_file = None
+        qmgr_path = os.path.join(self.server.pbs_conf["PBS_EXEC"], "bin",
+                                 "qmgr")
+        if not os.path.isfile(qmgr_path):
+            self.server.skipTest("qmgr binary not found!")
+
         try:
             # Check 1: New attributes are prefixed with spaces and not tabs
             # Execute qmgr -c 'list sched' and store output in a temp file
             if self.du.is_localhost(self.server.hostname) is True:
-                qmgr_cmd = ["qmgr", "-c", "list sched"]
+                qmgr_cmd = [qmgr_path, "-c", "list sched"]
             else:
-                qmgr_cmd = ["qmgr", "-c", "\'list sched\'"]
+                qmgr_cmd = [qmgr_path, "-c", "\'list sched\'"]
             with os.fdopen(fd, "w+") as tempfd:
                 ret = self.du.run_cmd(self.server.hostname, qmgr_cmd,
                                       stdout=tempfd)
@@ -107,9 +112,9 @@ class TestQmgr(TestFunctional):
             # Execute "qmgr 'list node vn[0]'"
             # The comment attribute should generate a line extension
             if self.du.is_localhost(self.server.hostname) is True:
-                qmgr_cmd = ["qmgr", "-c", "list node " + nodename]
+                qmgr_cmd = [qmgr_path, "-c", "list node " + nodename]
             else:
-                qmgr_cmd = ["qmgr", "-c", "\'list node " + nodename + "\'"]
+                qmgr_cmd = [qmgr_path, "-c", "\'list node " + nodename + "\'"]
             with open(fn, "w+") as tempfd:
                 ret = self.du.run_cmd(self.server.hostname, qmgr_cmd,
                                       stdout=tempfd)
