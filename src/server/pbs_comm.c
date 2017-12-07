@@ -177,9 +177,10 @@ void WINAPI PbsCommMain(DWORD dwArgc, LPTSTR *rgszArgv);
 void WINAPI PbsCommHandler(DWORD dwControl);
 DWORD WINAPI main_thread(void *pv);
 
-// NOTE: Note the global state used by your service. Your service has a name,
-// state and a status handle used by SetServiceStatus.
-//
+/*
+ * NOTE: Note the global state used by your service. Your service has a name,
+ * state and a status handle used by SetServiceStatus.
+ */
 const TCHAR * const     g_PbsCommName = __TEXT("PBS_COMM");
 HANDLE                  g_hthreadMain = 0;
 SERVICE_STATUS_HANDLE   g_ssHandle = 0;

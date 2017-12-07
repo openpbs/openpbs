@@ -211,7 +211,6 @@ check_deletehistoryjob(struct batch_request * preq)
 	int historyjob;
 	int histerr;
 	char *jid;
-	DOID("check_deletehistoryjob")
 	jid = preq->rq_ind.rq_delete.rq_objname;
 
 	histpjob = find_job(jid);

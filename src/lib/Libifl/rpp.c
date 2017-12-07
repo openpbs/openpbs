@@ -617,7 +617,6 @@ char	ival[] = {
        		fprintf x; \
 		errno = err; \
 	}
-#define	DOID(x)		static char id[] = x;
 
 #elif	defined(RPPLOG)
 
@@ -741,12 +740,10 @@ static	char	logbuf[4096], *logp;
        		rpp_dbprt = 0; \
 		errno = err; \
 	}
-#define	DOID(x)		static char id[] = x;
 
 #else
 #define	DBTO	xxx
 #define	DBPRT(x)
-#define	DOID(x)
 #endif
 
 
@@ -1132,12 +1129,11 @@ fix_connreset_msbug(int sd)
 static void
 __rpp_form_pkt(int index, int type, int seq, u_char *buf, int len)
 {
-	DOID("form_pkt")
 	struct	send_packet	*pktp;
 	struct	stream		*sp;
 
 	DBPRT((DBTO, "%s: index %d type %d seq %d len %d\n",
-		id, index, type, seq, len))
+		__func__, index, type, seq, len))
 	sp = &stream_array[index];
 	pktp = (struct send_packet *)malloc(sizeof(struct send_packet));
 	assert(pktp != NULL);
@@ -1177,7 +1173,7 @@ __rpp_form_pkt(int index, int type, int seq, u_char *buf, int len)
 	 ** if the stream is fully open, format and put on the send queue
 	 */
 	DBPRT((DBTO, "%s: idx %d link %d seq %d len %d to sendq\n",
-		id, index, type, seq, len))
+		__func__, index, type, seq, len))
 
 	I2TOH(type, (char *)&pktp->data[len])
 	I8TOH(sp->stream_id, (char *)&pktp->data[len+RPP_HDR_SID])
@@ -1211,20 +1207,19 @@ static
 struct	stream	*
 __rpp_check_pkt(int index, struct	sockaddr_in *addrp)
 {
-	DOID("check_pkt")
 	struct	stream	*sp;
 	struct	in_addr	*addrs;
 	int		i;
 
 	if (index < 0 || index >= stream_num) {
 		DBPRT((DBTO, "%s: BAD INDEX %d outside limit %d\n",
-			id, index, stream_num))
+			__func__, index, stream_num))
 		return NULL;
 	}
 
 	sp = &stream_array[index];
 	if (sp->state <= RPP_FREE) {
-		DBPRT((DBTO, "%s: FREE STREAM\n", id))
+		DBPRT((DBTO, "%s: FREE STREAM\n", __func__))
 		return NULL;
 	}
 
@@ -1243,7 +1238,7 @@ __rpp_check_pkt(int index, struct	sockaddr_in *addrp)
 	}
 
 bad:
-	DBPRT((DBTO, "%s: ADDRESS MISMATCH\n", id))
+	DBPRT((DBTO, "%s: ADDRESS MISMATCH\n", __func__))
 	DBPRT((DBTO, "\tstream %d addr %s\n", index, netaddr(&sp->addr)))
 	DBPRT((DBTO, "\tpkt addr %s\n", netaddr(addrp)))
 	return NULL;
@@ -1258,7 +1253,6 @@ static
 void
 __rpp_send_out(void)
 {
-	DOID("send_out")
 	struct	send_packet	*pp;
 	struct	stream		*sp;
 	time_t	curr = time(NULL);
@@ -1327,7 +1321,7 @@ __rpp_send_out(void)
 		sp = &stream_array[pp->index];
 		DBPRT((DBTO,
 			"%s index %d type %d retry %d seq %d to %s crc %8.8s\n",
-			id, pp->index, pp->type,
+			__func__, pp->index, pp->type,
 			pp->retries, pp->sequence, netaddr(&sp->addr),
 			(char *)&pp->data[pp->len+RPP_PKT_CRC]))
 		if (sendto(sp->fd, (char *)pp->data, RPP_PKT_HEAD+pp->len,
@@ -1559,7 +1553,6 @@ static
 struct	hostent		*
 __rpp_get_cname(struct sockaddr_in *addr)
 {
-	DOID("get_cname")
 	struct	hostent		*hp;
 	char			*hname;
 
@@ -1567,7 +1560,7 @@ __rpp_get_cname(struct sockaddr_in *addr)
 		sizeof(struct in_addr),
 		addr->sin_family)) == NULL) {
 		DBPRT((DBTO, "%s: addr not found, h_errno=%d errno=%d\n",
-			id, h_errno, errno))
+			__func__, h_errno, errno))
 		return NULL;
 	}
 	if ((hname = (char *)strdup(hp->h_name)) == NULL)
@@ -1576,7 +1569,7 @@ __rpp_get_cname(struct sockaddr_in *addr)
 	if ((hp = hostbyname(hname)) == NULL) {
 		DBPRT((DBTO,
 			"%s: canonical name %s not found, h_errno=%d errno=%d\n",
-			id, hname, h_errno, errno))
+			__func__, hname, h_errno, errno))
 	}
 	free(hname);
 	return hp;
@@ -1637,12 +1630,11 @@ static
 int
 __rpp_send_ack(struct stream *sp, int seq)
 {
-	DOID("send_ack")
 	char	buf[RPP_PKT_HEAD];
 	u_long	xcrc;
 
 	if (sp->stream_id < 0) {		/* can't send yet */
-		DBPRT((DBTO, "%s: STREAM NOT OPEN seq %d\n", id, seq))
+		DBPRT((DBTO, "%s: STREAM NOT OPEN seq %d\n", __func__, seq))
 		return 0;
 	}
 
@@ -1653,10 +1645,10 @@ __rpp_send_ack(struct stream *sp, int seq)
 	I8TOH(xcrc, &buf[RPP_PKT_CRC])
 
 	DBPRT((DBTO, "%s: seq %d to %s crc %lX\n",
-		id, seq, netaddr(&sp->addr), xcrc))
+		__func__, seq, netaddr(&sp->addr), xcrc))
 	if (sendto(sp->fd, buf, RPP_PKT_HEAD, 0, (struct sockaddr *)&sp->addr,
 		sizeof(struct sockaddr_in)) == -1) {
-		DBPRT((DBTO, "%s: ACK error %d\n", id, errno))
+		DBPRT((DBTO, "%s: ACK error %d\n", __func__, errno))
 		if (errno != EWOULDBLOCK && errno != ENOBUFS)
 			return -1;
 	}
@@ -1799,7 +1791,6 @@ static
 int
 __rpp_recv_pkt(int fd)
 {
-	DOID("recv_pkt")
 	ssize_t			len;
 	pbs_socklen_t		flen;
 	struct	sockaddr_in	addr;
@@ -1867,14 +1858,14 @@ __rpp_recv_pkt(int fd)
 		return -1;
 	}
 
-	DBPRT((DBTO, "%s: addr %s len %d\n", id, netaddr(&addr), len))
+	DBPRT((DBTO, "%s: addr %s len %ld\n", __func__, netaddr(&addr), (long)len))
 
 	if (len < RPP_PKT_HEAD)		/* less than minimum size */
 		goto err_out;
 
 	HTOI8(&data[len-RPP_CRC_LEN], pktcrc)
 	if (pktcrc != crc((u_char *)data, (u_long)(len-RPP_CRC_LEN))) {
-		DBPRT((DBTO, "%s: packet crc %08lX failed\n", id, pktcrc))
+		DBPRT((DBTO, "%s: packet crc %08lX failed\n", __func__, pktcrc))
 		goto err_out;
 	}
 	HTOI2(&data[len-RPP_PKT_HEAD], type)
@@ -1885,7 +1876,7 @@ __rpp_recv_pkt(int fd)
 
 		case RPP_ACK:
 			DBPRT((DBTO, "%s: ACK stream %d sequence %d crc %08lX\n",
-				id, streamid, sequence, pktcrc))
+				__func__, streamid, sequence, pktcrc))
 			free(data);
 			if ((sp = __rpp_check_pkt(streamid, &addr)) == NULL)
 				return -2;
@@ -1894,7 +1885,7 @@ __rpp_recv_pkt(int fd)
 				if (sequence != sp->open_key) {
 					DBPRT((DBTO,
 						"%s: WILD ACK in RPP_OPEN_PEND %d\n",
-						id, streamid))
+						__func__, streamid))
 					return -2;
 				}
 				spp = sp->send_head;
@@ -1909,7 +1900,7 @@ __rpp_recv_pkt(int fd)
 			}
 			else if (sp->stream_id == -1) {
 				DBPRT((DBTO, "%s: ACK for closed stream %d\n",
-					id, streamid))
+					__func__, streamid))
 				return -2;
 			}
 
@@ -1920,8 +1911,8 @@ __rpp_recv_pkt(int fd)
 			}
 			if (spp) {
 				DBPRT((DBTO, "%s: stream %d seq %d retry %d took %ld\n",
-					id, streamid, sequence, (int)spp->retries,
-					(int)(time(NULL) - spp->first_sent)))
+					__func__, streamid, sequence, (int)spp->retries,
+					(long)(time(NULL) - spp->first_sent)))
 
 				if (sp->state == RPP_CLOSE_WAIT1 &&
 					spp->type == RPP_GOODBYE)
@@ -1945,7 +1936,7 @@ __rpp_recv_pkt(int fd)
 
 		case RPP_GOODBYE:
 			DBPRT((DBTO, "%s: GOODBYE stream %d sequence %d crc %08lX\n",
-				id, streamid, sequence, pktcrc))
+				__func__, streamid, sequence, pktcrc))
 			free(data);
 			if ((sp = __rpp_check_pkt(streamid, &addr)) == NULL)
 				return -2;
@@ -1981,7 +1972,7 @@ __rpp_recv_pkt(int fd)
 					break;
 			}
 			if (rpp == NULL || rpp->sequence > sequence) {
-				DBPRT((DBTO, "%s: GOOD seq %d\n", id, sequence))
+				DBPRT((DBTO, "%s: GOOD seq %d\n", __func__, sequence))
 				pkt = (struct recv_packet *)
 					malloc(sizeof(struct recv_packet));
 				assert(pkt != NULL);
@@ -2002,15 +1993,15 @@ __rpp_recv_pkt(int fd)
 			}
 			else {
 				DBPRT((DBTO, "%s: DUPLICATE seq %d MAX seen %d\n",
-					id, sequence, rpp->sequence))
+					__func__, sequence, rpp->sequence))
 			}
 			return -2;
 
 		case RPP_DATA:
 		case RPP_EOD:
 			DBPRT((DBTO,
-				"%s: DATA stream %d sequence %d crc %08lX len %d\n",
-				id, streamid, sequence, pktcrc, len))
+				"%s: DATA stream %d sequence %d crc %08lX len %ld\n",
+				__func__, streamid, sequence, pktcrc, (long)len))
 			if ((sp = __rpp_check_pkt(streamid, &addr)) == NULL)
 				goto err_out;
 			if (__rpp_send_ack(sp, sequence) == -1) {
@@ -2035,7 +2026,7 @@ __rpp_recv_pkt(int fd)
 			}
 
 			if (sequence < sp->recv_sequence) {
-				DBPRT((DBTO, "%s: OLD seq %d\n", id, sequence))
+				DBPRT((DBTO, "%s: OLD seq %d\n", __func__, sequence))
 				free(data);
 				return -2;
 			}
@@ -2046,7 +2037,7 @@ __rpp_recv_pkt(int fd)
 					break;
 			}
 			if (rpp == NULL || rpp->sequence > sequence) {
-				DBPRT((DBTO, "%s: GOOD seq %d\n", id, sequence))
+				DBPRT((DBTO, "%s: GOOD seq %d\n", __func__, sequence))
 				data = realloc(data, len);
 				assert(data != NULL);
 				pkt = (struct recv_packet *)
@@ -2074,7 +2065,7 @@ __rpp_recv_pkt(int fd)
 			}
 			else {
 				DBPRT((DBTO, "%s: DUPLICATE seq %d MAX seen %d\n",
-					id, sequence, rpp->sequence))
+					__func__, sequence, rpp->sequence))
 				free(data);
 			}
 			break;
@@ -2085,7 +2076,7 @@ __rpp_recv_pkt(int fd)
 			 ** in the "streamid" field and open key in the sequence.
 			 */
 			DBPRT((DBTO, "%s: HELLO1 stream %d sequence %d\n",
-				id, streamid, sequence))
+				__func__, streamid, sequence))
 			free(data);
 			for (i=0; i<stream_num; i++) {
 				sp = &stream_array[i];
@@ -2132,7 +2123,7 @@ __rpp_recv_pkt(int fd)
 			 ** stream index overloaded in the "sequence" field.
 			 */
 			DBPRT((DBTO, "%s: HELLO2 stream %d sequence %d\n",
-				id, streamid, sequence))
+				__func__, streamid, sequence))
 			free(data);
 			if ((sp = __rpp_check_pkt(streamid, &addr)) == NULL)
 				return -2;
@@ -2151,12 +2142,12 @@ __rpp_recv_pkt(int fd)
 					if (sp->stream_id == sequence) {
 						DBPRT((DBTO,
 							"%s: stream %d got DUP HELLO2 %d\n",
-							id, streamid, sp->state))
+							__func__, streamid, sp->state))
 						if (__rpp_send_ack(sp, sp->open_key) == -1)
 							return -1;
 					}
 					else {
-						DBPRT((DBTO, "%s: NON-DUP HELLO2\n", id))
+						DBPRT((DBTO, "%s: NON-DUP HELLO2\n", __func__))
 					}
 					return -2;
 			}
@@ -2168,13 +2159,13 @@ __rpp_recv_pkt(int fd)
 			if ((spp = sp->send_head) == NULL) {
 				DBPRT((DBTO,
 					"%s: stream %d got HELLO2 but sendq NULL\n",
-					id, streamid))
+					__func__, streamid))
 				return -2;
 			}
 			if (spp->type != RPP_HELLO1) {
 				DBPRT((DBTO,
 					"%s: stream %d sendq %d rather than HELLO1\n",
-					id, streamid, spp->type))
+					__func__, streamid, spp->type))
 				return -2;
 			}
 			sp->send_head = spp->next;	/* remove HELLO1 pkt */
@@ -2190,7 +2181,7 @@ __rpp_recv_pkt(int fd)
 
 				DBPRT((DBTO,
 					"%s: idx %d link %d seq %d len %d to sendq\n",
-					id, streamid, spp->type, spp->sequence, len))
+					__func__, streamid, spp->type, spp->sequence, len))
 				I2TOH(spp->type, (char *)&spp->data[len])
 				I8TOH(sp->stream_id,
 					(char *)&spp->data[len+RPP_HDR_SID])
@@ -2213,7 +2204,7 @@ __rpp_recv_pkt(int fd)
 		default:
 			DBPRT((DBTO,
 				"%s: UNKNOWN packet type %d stream %d sequence %d\n",
-				id, type, streamid, sequence))
+				__func__, type, streamid, sequence))
 			free(data);
 			break;
 	}
@@ -2312,11 +2303,10 @@ static
 int
 __rpp_dopending(int index, int flag)
 {
-	DOID("dopending")
 	struct	stream		*sp;
 	struct	pending		*pp;
 
-	DBPRT((DBTO, "%s: entered index %d\n", id, index))
+	DBPRT((DBTO, "%s: entered index %d\n", __func__, index))
 	sp = &stream_array[index];
 
 	for (pp=sp->pend_head; pp != sp->pend_tail; pp=sp->pend_head) {
@@ -2358,10 +2348,9 @@ __rpp_dopending(int index, int flag)
 int
 __rpp_flush(int index)
 {
-	DOID("flush")
 	struct	stream	*sp;
 
-	DBPRT((DBTO, "%s: entered index %d\n", id, index))
+	DBPRT((DBTO, "%s: entered index %d\n", __func__, index))
 	if (index < 0 || index >= stream_num) {
 		errno = EINVAL;
 		return -1;
@@ -2573,7 +2562,6 @@ __rpp_bind(uint port)
 int
 __rpp_open(char *name, uint port)
 {
-	DOID("__rpp_open")
 	int			i, stream;
 	struct	hostent		*hp;
 	struct	stream		*sp;
@@ -2581,7 +2569,7 @@ __rpp_open(char *name, uint port)
 	struct sockaddr_in	*host_addr;
 #endif
 
-	DBPRT((DBTO, "%s: entered %s:%d\n", id, name, port))
+	DBPRT((DBTO, "%s: entered %s:%d\n", __func__, name, port))
 	errno = 0;
 
 	if (__rpp_bind(0) == -1)	/* bind if we need to */
@@ -2591,7 +2579,7 @@ __rpp_open(char *name, uint port)
 	 ** First, we look up the IP address for this name.
 	 */
 	if ((hp = hostbyname(name)) == NULL) {
-		DBPRT((DBTO, "%s: host %s not found\n", id, name))
+		DBPRT((DBTO, "%s: host %s not found\n", __func__, name))
 			errno = ENOENT;
 		return -1;
 	}
@@ -2613,14 +2601,14 @@ __rpp_open(char *name, uint port)
 			continue;
 		if (sp->state > RPP_CLOSE_PEND) {
 			DBPRT((DBTO, "%s: OLD STREAM state %d reopened %d\n",
-				id, sp->state, sp->open_key))
+				__func__, sp->state, sp->open_key))
 
 			clear_stream(sp);	/* old stream */
 		}
 		else {
 			DBPRT((DBTO,
 				"%s: reopen of %s, rpp_retry %d\n",
-				id, netaddr(&sp->addr), rpp_retry))
+				__func__, netaddr(&sp->addr), rpp_retry))
 			return i;
 		}
 	}
@@ -2673,10 +2661,9 @@ __rpp_open(char *name, uint port)
 struct	sockaddr_in*
 __rpp_getaddr(int index)
 {
-	DOID("getaddr")
 	struct	stream	*sp;
 
-	DBPRT((DBTO, "%s: entered index %d\n", id, index))
+	DBPRT((DBTO, "%s: entered index %d\n", __func__, index))
 	if (index < 0 || index >= stream_num) {
 		errno = EINVAL;
 		return NULL;
@@ -2705,12 +2692,11 @@ __rpp_getaddr(int index)
 struct	sockaddr_in*
 __rpp_localaddr(int index)
 {
-	DOID("localaddr")
 	struct	stream	*sp;
 	pbs_socklen_t	ssize = sizeof(struct sockaddr);
 	static	struct sockaddr_in	lsaddr;
 
-	DBPRT((DBTO, "%s: entered index %d\n", id, index))
+	DBPRT((DBTO, "%s: entered index %d\n", __func__, index))
 	if (index < 0 || index >= stream_num) {
 		errno = EINVAL;
 		return NULL;
@@ -2852,10 +2838,9 @@ __rpp_shutdown(void)
 int
 __rpp_close(int index)
 {
-	DOID("close")
 	struct	stream		*sp;
 
-	DBPRT((DBTO, "%s: entered index %d\n", id, index))
+	DBPRT((DBTO, "%s: entered index %d\n", __func__, index))
 	errno = 0;
 	if (index < 0 || index >= stream_num) {
 		errno = EINVAL;
@@ -2910,12 +2895,11 @@ __rpp_close(int index)
 int
 __rpp_write(int index, void *buf, int len)
 {
-	DOID("write")
 	struct	stream	*sp;
 	struct	pending	*pp;
 	int		hold, residual, more;
 
-	DBPRT((DBTO, "%s: entered index %d size %d\n", id, index, len))
+	DBPRT((DBTO, "%s: entered index %d size %d\n", __func__, index, len))
 	if (index < 0 || index >= stream_num || len < 0) {
 		errno = EINVAL;
 		return -1;
@@ -2991,7 +2975,6 @@ static
 int
 __rpp_attention(int index)
 {
-	DOID("attention")
 	int			mesg, count;
 	int			seq;
 	struct	stream		*sp;
@@ -2999,7 +2982,7 @@ __rpp_attention(int index)
 
 	sp = &stream_array[index];
 	DBPRT((DBTO, "%s: stream %d in state %d addr %s\n",
-		id, index, sp->state, netaddr(&sp->addr)))
+		__func__, index, sp->state, netaddr(&sp->addr)))
 	__rpp_stale(sp);
 
 	switch (sp->state) {
@@ -3054,9 +3037,7 @@ __rpp_attention(int index)
 int
 rpp_advise(int cmd, void *ctl)
 {
-	DOID("rpp_advise")
-
-	DBPRT((DBTO, "%s: entered cmd %d\n", id, cmd))
+	DBPRT((DBTO, "%s: entered cmd %d\n", __func__, cmd))
 
 	switch (cmd) {
 		case RPP_ADVISE_TIMEOUT:
@@ -3064,7 +3045,7 @@ rpp_advise(int cmd, void *ctl)
 				break;
 
 			read_timeout = *((time_t *)ctl);	/* save timeout value */
-			DBPRT((DBTO, "%s: set read_timeout = %ld\n", id, read_timeout))
+			DBPRT((DBTO, "%s: set read_timeout = %ld\n", __func__, read_timeout))
 			return 0;
 	}
 	return -1;
@@ -3086,7 +3067,6 @@ static
 int
 __rpp_okay(int index)
 {
-	DOID(("__rpp_okay"))
 	struct	stream		*sp;
 	fd_set			fdset;
 	struct	timeval		tv;
@@ -3103,7 +3083,7 @@ __rpp_okay(int index)
 		if (read_timeout >= 0) {
 			time_t	now = time(NULL);
 
-			DBPRT((DBTO, "%s: waited %ld of %ld\n", id,
+			DBPRT((DBTO, "%s: waited %ld of %ld\n", __func__,
 				now - start, read_timeout))
 			if ((now - start) > read_timeout) {
 				errno = ETIMEDOUT;
@@ -3153,12 +3133,11 @@ __rpp_okay(int index)
 int
 __rpp_read(int index, void *buf, int len)
 {
-	DOID("read")
 	int			hiwater, cpylen, hold, ret, xlen;
 	struct	recv_packet	*pp;
 	struct	stream		*sp;
 
-	DBPRT((DBTO, "%s: entered index %d\n", id, index))
+	DBPRT((DBTO, "%s: entered index %d\n", __func__, index))
 
 	if (index < 0 || index >= stream_num || len < 0) {
 		errno = EINVAL;
@@ -3226,10 +3205,9 @@ __rpp_read(int index, void *buf, int len)
 int
 __rpp_rcommit(int	index, int flag)
 {
-	DOID("rcommit")
 	struct	stream		*sp;
 
-	DBPRT((DBTO, "%s: entered index %d\n", id, index))
+	DBPRT((DBTO, "%s: entered index %d\n", __func__, index))
 
 	if (index < 0 || index >= stream_num) {
 		errno = EINVAL;
@@ -3274,11 +3252,10 @@ __rpp_rcommit(int	index, int flag)
 int
 __rpp_eom(int index)
 {
-	DOID("eom")
 	struct	stream		*sp;
 	struct	recv_packet	*pp;
 
-	DBPRT((DBTO, "%s: entered index %d\n", id, index))
+	DBPRT((DBTO, "%s: entered index %d\n", __func__, index))
 
 	if (index < 0 || index >= stream_num) {
 		errno = EINVAL;
@@ -3337,11 +3314,10 @@ __rpp_eom(int index)
 int
 __rpp_wcommit(int index, int flag)
 {
-	DOID("wcommit")
 	struct	pending		*pp, *next;
 	struct	stream		*sp;
 
-	DBPRT((DBTO, "%s: entered index %d\n", id, index))
+	DBPRT((DBTO, "%s: entered index %d\n", __func__, index))
 	if (index < 0 || index >= stream_num) {
 		errno = EINVAL;
 		return -1;
@@ -3407,11 +3383,10 @@ __rpp_wcommit(int index, int flag)
 int
 __rpp_skip(int index, size_t len)
 {
-	DOID("skip")
 	struct	stream		*sp;
 	int			ret, hiwater;
 
-	DBPRT((DBTO, "%s: entered index %d\n", id, index))
+	DBPRT((DBTO, "%s: entered index %d\n", __func__, index))
 	if (index < 0 || index >= stream_num) {
 		errno = EINVAL;
 		return -1;
@@ -3452,10 +3427,9 @@ __rpp_skip(int index, size_t len)
 int
 __rpp_poll(void)
 {
-	DOID("poll")
 	int			i;
 
-	DBPRT((DBTO, "%s: entered streams %d\n", id, stream_num))
+	DBPRT((DBTO, "%s: entered streams %d\n", __func__, stream_num))
 	errno = 0;
 
 	/*
@@ -3493,10 +3467,9 @@ __rpp_poll(void)
 int
 __rpp_io(void)
 {
-	DOID("io")
 	int			i;
 
-	DBPRT((DBTO, "%s: entered streams %d\n", id, stream_num))
+	DBPRT((DBTO, "%s: entered streams %d\n", __func__, stream_num))
 	errno = 0;
 	/*
 	 ** Read socket to get any packets

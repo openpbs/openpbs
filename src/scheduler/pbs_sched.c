@@ -1304,6 +1304,11 @@ main(int argc, char *argv[])
 	setvbuf(stdout, NULL, _IOLBF, 0);
 	dup2(fileno(stdout), fileno(stderr));
 #else
+	if (stalone != 1) {
+		(void) sprintf(log_buffer, "Debug build does not fork.");
+		log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO,
+				__func__, log_buffer);
+	}
 	lock_out(lockfds, F_WRLCK);
 	setvbuf(stdout, NULL, _IOLBF, 0);
 	setvbuf(stderr, NULL, _IOLBF, 0);

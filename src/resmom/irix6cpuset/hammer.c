@@ -79,7 +79,6 @@ static int	ascending_uid(const void *, const void *);
 pid_t
 start_hammer(int secs)
 {
-	char		*id = "start_hammer";
 	pid_t		pid, parent;
 	int			rc;
 
@@ -92,7 +91,7 @@ start_hammer(int secs)
 	pid = fork();
 
 	if (pid == -1) {
-		log_err(errno, id, "cannot fork hammer process.");
+		log_err(errno, __func__, "cannot fork hammer process.");
 		return -1;
 	}
 
@@ -167,7 +166,6 @@ start_hammer(int secs)
 int
 hammer_loop(shared_block *share, pid_t parent)
 {
-	char		*id = "hammer_loop";
 	time_t		last_time = (time_t)0, now;
 	metaarray		sidlist;
 	prpsinfo_t		psinfo;
@@ -210,7 +208,7 @@ hammer_loop(shared_block *share, pid_t parent)
 
 	/* Change working directory to the pinfo dir, and open a handle on it. */
 	if (chdir(PROC_PINFO_PATH) || ((dirhandle = opendir(".")) == NULL)) {
-		log_err(errno, id, PROC_PINFO_PATH);
+		log_err(errno, __func__, PROC_PINFO_PATH);
 		return -1;
 	}
 
@@ -221,7 +219,7 @@ hammer_loop(shared_block *share, pid_t parent)
 	(void)memset((void *)&sidlist, 0, sizeof(sidlist));
 	sidlist.data = (pid_t *)malloc(sizeof(pid_t) * HAMMER_SIDLIST_SZ);
 	if (sidlist.data == NULL) {
-		log_err(errno, id, "malloc(sidlist)");
+		log_err(errno, __func__, "malloc(sidlist)");
 		goto bail;
 	}
 
@@ -243,7 +241,7 @@ hammer_loop(shared_block *share, pid_t parent)
 		if (now - last_time < HAMMER_LOOP_INTERVAL) {
 			for (i = HAMMER_LOOP_INTERVAL + last_time - now; i > 0; i--) {
 				if (getppid() != parent) {
-					log_err(-1, id, "hammer was orphaned while sleeping!");
+					log_err(-1, __func__, "hammer was orphaned while sleeping!");
 					errno = 0;
 					goto bail;
 				}
@@ -288,7 +286,7 @@ hammer_loop(shared_block *share, pid_t parent)
 				(void)sprintf(log_buffer,
 					"cannot find hammer exempt group '%s'", PBS_EXEMPT_GROUP);
 				log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
-					id, log_buffer);
+					__func__, log_buffer);
 				first = 0;
 			}
 
@@ -308,7 +306,7 @@ hammer_loop(shared_block *share, pid_t parent)
 				if (temp_exempts == NULL) {
 					(void)sprintf(log_buffer,
 						"realloc exempt list (%llu bytes)", (unsigned long long)sizeof(uid_t) * i);
-					log_err(errno, id, log_buffer);
+					log_err(errno, __func__, log_buffer);
 					/* Try again next iteration. */
 					continue;
 				} else {
@@ -341,7 +339,7 @@ hammer_loop(shared_block *share, pid_t parent)
 			if (first) {
 				first = 0;
 				log_buffer[strlen(log_buffer) - 1] = '.';
-				log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, id,
+				log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__,
 					log_buffer);
 			}
 
@@ -383,7 +381,7 @@ hammer_loop(shared_block *share, pid_t parent)
 
 			temp_sidlist_data = (pid_t *)realloc(sidlist.data, sidlist.size * 2);
 			if (temp_sidlist_data == NULL) {
-				log_err(errno, id, "realloc(sidlist)");
+				log_err(errno, __func__, "realloc(sidlist)");
 				goto bail;
 			} else {
 				sidlist.data = temp_sidlist_data;
@@ -432,14 +430,14 @@ hammer_loop(shared_block *share, pid_t parent)
 			 */
 			if ((fd = open(fname, O_RDONLY)) < 0) {
 				if (errno != ENOENT)
-					log_err(errno, id, fname);	/* Real error -- log it. */
+					log_err(errno, __func__, fname);	/* Real error -- log it. */
 
 				continue;
 			}
 
 			if (ioctl(fd, PIOCPSINFO, (void *)&psinfo)) {
 				if (errno != ENOENT)
-					log_err(errno, id, fname);	/* Real error -- log it. */
+					log_err(errno, __func__, fname);	/* Real error -- log it. */
 
 				(void)close(fd);
 				fd = -1;		/* Avoid confusion later. */
@@ -460,7 +458,7 @@ hammer_loop(shared_block *share, pid_t parent)
 			if (psinfo.pr_zomb)
 				continue;
 
-			DBPRT(("%s: process %d parent %d owner %d/%d [%s]\n", id,
+			DBPRT(("%s: process %d parent %d owner %d/%d [%s]\n", __func__,
 				psinfo.pr_pid, psinfo.pr_ppid,
 				psinfo.pr_uid, psinfo.pr_gid, psinfo.pr_fname));
 
@@ -501,7 +499,7 @@ hammer_loop(shared_block *share, pid_t parent)
 				continue;
 
 #ifdef DEBUG_LOTS
-			DBPRT(("%s: Checking for exempts (%d exempt uids)\n", id, nexempts));
+			DBPRT(("%s: Checking for exempts (%d exempt uids)\n", __func__, nexempts));
 #endif /* DEBUG_LOTS */
 
 			ignore = 0;
@@ -514,7 +512,7 @@ hammer_loop(shared_block *share, pid_t parent)
 				 */
 
 #ifdef DEBUG_LOTS
-				DBPRT(("%s:  running pid %d uid %d exempt uid %d\n", id,
+				DBPRT(("%s:  running pid %d uid %d exempt uid %d\n", __func__,
 					psinfo.pr_pid, psinfo.pr_uid, exempts[i]));
 #endif /* DEBUG_LOTS */
 
@@ -534,7 +532,7 @@ hammer_loop(shared_block *share, pid_t parent)
 			/* Should it be ignored?  If so, continue on to the next pid. */
 			if (ignore) {
 #ifdef DEBUG_LOTS
-				DBPRT(("%s: process %d owned by %d [%s] is exempt\n", id,
+				DBPRT(("%s: process %d owned by %d [%s] is exempt\n", __func__,
 					psinfo.pr_pid, psinfo.pr_uid, psinfo.pr_fname));
 #endif /* DEBUG_LOTS */
 
@@ -557,7 +555,7 @@ hammer_loop(shared_block *share, pid_t parent)
 				 */
 
 #ifdef DEBUG_LOTS
-				DBPRT(("%s:  running pid %d sid %d compare to session %d\n", id,
+				DBPRT(("%s:  running pid %d sid %d compare to session %d\n", __func__,
 					psinfo.pr_pid, psinfo.pr_sid, sids[i]));
 #endif /* DEBUG_LOTS */
 
@@ -577,7 +575,7 @@ hammer_loop(shared_block *share, pid_t parent)
 			/* Should it be ignored?  If so, continue on to the next pid. */
 			if (ignore) {
 #ifdef DEBUG_LOTS
-				DBPRT(("%s: process %d owned by %d [%s] is exempt\n", id,
+				DBPRT(("%s: process %d owned by %d [%s] is exempt\n", __func__,
 					psinfo.pr_pid, psinfo.pr_uid, psinfo.pr_fname));
 #endif /* DEBUG_LOTS */
 
@@ -600,9 +598,9 @@ hammer_loop(shared_block *share, pid_t parent)
 				pwent ? pwent->pw_name : "???",
 				grent ? grent->gr_name : "???",
 				psinfo.pr_fname);
-			DBPRT(("%s: %s\n", id, log_buffer));
+			DBPRT(("%s: %s\n", __func__, log_buffer));
 			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
-				id, log_buffer);
+				__func__, log_buffer);
 			if (!enforce_nokill)
 				(void)kill(this_pid, SIGKILL);
 		}

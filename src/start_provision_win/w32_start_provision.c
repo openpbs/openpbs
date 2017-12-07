@@ -250,7 +250,6 @@ panic_stop_db(char *txt)
 int
 main(int argc, char *argv[])
 {
-	char	*id = "start_provision";
 	int	i;
 	int	rc;
 	hook	*phook;
@@ -279,7 +278,7 @@ main(int argc, char *argv[])
 		pbs_python_svr_destroy_interpreter_data;
 
 	if (argc != 7) {
-		log_err(PBSE_INTERNAL, id, "start_provision"
+		log_err(PBSE_INTERNAL, __func__, "start_provision"
 			" <vnode-name> <aoe-requested>");
 		exit(2);
 	}
@@ -307,7 +306,7 @@ main(int argc, char *argv[])
 	/* Find the provision hook info */
 	phook = (hook *)malloc(sizeof(hook));
 	if (phook == (hook *)0) {
-		log_err(errno, id, "no memory");
+		log_err(errno, __func__, "no memory");
 		exit(2);
 	}
 	(void)memset((char *)phook, (int)0, (size_t)sizeof(hook));
@@ -334,7 +333,7 @@ main(int argc, char *argv[])
 
 	if ((rc = pbs_python_check_and_compile_script(&svr_interp_data,
 		phook->script)) != 0) {
-		DBPRT(("%s: Recompilation failed\n", id))
+		DBPRT(("%s: Recompilation failed\n", __func__))
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_INFO,
 			argv[3], "Provisioning script recompilation failed");
 		exit(2);
@@ -343,12 +342,12 @@ main(int argc, char *argv[])
 	(void)memset(&prov_info, 0, sizeof(prov_info));
 	prov_info.pvnfo_vnode = malloc(strlen(argv[1]+1));
 	if (prov_info.pvnfo_vnode == NULL) {
-		log_err(ENOMEM, id, "out of memory");
+		log_err(ENOMEM, __func__, "out of memory");
 		exit(2);
 	}
 	prov_info.pvnfo_aoe_req = malloc(strlen(argv[2]+1));
 	if (prov_info.pvnfo_aoe_req == NULL) {
-		log_err(ENOMEM, id, "out of memory");
+		log_err(ENOMEM, __func__, "out of memory");
 		free(prov_info.pvnfo_vnode);
 		exit(2);
 	}

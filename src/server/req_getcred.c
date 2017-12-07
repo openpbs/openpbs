@@ -107,7 +107,6 @@ req_connect(struct batch_request *preq)
 void
 req_authenResvPort(struct batch_request *preq)
 {
-	int		s;
 	pbs_net_t	req_addr;
 	conn_t		*cp;
 	uint		authrequest_port = preq->rq_ind.rq_authen_resvport.rq_port;
@@ -125,13 +124,9 @@ req_authenResvPort(struct batch_request *preq)
 	 * in the request
 	 */
 
-	for (cp = (conn_t *)GET_NEXT(svr_allconns);cp;cp = GET_NEXT(cp->cn_link)) {
-		if (authrequest_port == cp->cn_port &&
-			req_addr == cp->cn_addr) {
-
-			if ((cp->cn_authen
-					& (PBS_NET_CONN_AUTHENTICATED | PBS_NET_CONN_FROM_PRIVIL))
-					== 0) {
+	for (cp = (conn_t *)GET_NEXT(svr_allconns); cp; cp = GET_NEXT(cp->cn_link)) {
+		if (authrequest_port == cp->cn_port && req_addr == cp->cn_addr) {
+			if ((cp->cn_authen & (PBS_NET_CONN_AUTHENTICATED | PBS_NET_CONN_FROM_PRIVIL)) == 0) {
 				(void) strcpy(cp->cn_username, preq->rq_user);
 				(void)strcpy(cp->cn_hostname, preq->rq_host);
 				/* time stamp just for the record */

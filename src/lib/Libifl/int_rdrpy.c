@@ -113,7 +113,6 @@ PBSD_rdrpy(int c)
 	int rc;
 	struct batch_reply *reply;
 	int sock;
-	time_t old_timeout;
 
 	/* clear any prior error message */
 

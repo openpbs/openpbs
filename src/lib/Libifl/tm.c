@@ -77,10 +77,8 @@
 	printf x; \
 	errno = err; \
 }
-#define	DOID(x)		static char id[] = x;
 #else
 #define DBPRT(x)
-#define DOID(x)
 #endif
 
 #ifndef	MIN
@@ -372,7 +370,7 @@ new_task(char *jobid, tm_node_id node, tm_task_id task)
 {
 	task_info		*tp, **head;
 
-	DBPRT(("%s: jobid=%s node=%d task=%08.8X\n",
+	DBPRT(("%s: jobid=%s node=%d task=0x%08X\n",
 		__func__, jobid ? jobid : "none", node, task))
 	if (jobid != tm_jobid && strcmp(jobid, tm_jobid) != 0) {
 		DBPRT(("%s: task job %s not my job %s\n",
@@ -381,7 +379,7 @@ new_task(char *jobid, tm_node_id node, tm_task_id task)
 	}
 
 	if ((tp = find_task(task)) != NULL) {
-		DBPRT(("%s: task %08.8X found with node %d should be %d\n",
+		DBPRT(("%s: task 0x%08X found with node %d should be %d\n",
 			__func__, task, tp->t_node, node))
 		return task;
 	}

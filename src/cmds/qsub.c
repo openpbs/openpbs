@@ -884,17 +884,17 @@ dorecv(void *s, char *buf, int bufsize)
 
 	do {
 		fSuccess = ReadFile(
-			hPipe, // handle to pipe
-			p, // buffer to receive data
-			remaining, // size of buffer
-			&bytes, // number of bytes read
-			NULL); // not overlapped I/O
+			hPipe, /* handle to pipe */
+			p, /* buffer to receive data */
+			remaining, /* size of buffer */
+			&bytes, /* number of bytes read */
+			NULL); /* not overlapped I/O */
 
 		if (!fSuccess && GetLastError() != ERROR_MORE_DATA)
 			return -1;
 		p += bytes;
 		remaining -= bytes;
-	} while (!fSuccess); // repeat loop if ERROR_MORE_DATA
+	} while (!fSuccess); /* repeat loop if ERROR_MORE_DATA */
 #else
 	int sock = (int) *((int *) s);
 	int rc;
@@ -940,11 +940,11 @@ dosend(void *s, char *buf, int bufsize)
 	HANDLE hPipe = (HANDLE) s;
 
 	fSuccess = WriteFile(
-		hPipe, // handle to pipe
-		buf, // buffer to write from
-		bufsize, // number of bytes to write
-		&bytes, // number of bytes written
-		NULL); // not overlapped I/O
+		hPipe, /* handle to pipe */
+		buf, /* buffer to write from */
+		bufsize, /* number of bytes to write */
+		&bytes, /* number of bytes written */
+		NULL); /* not overlapped I/O */
 
 	if (!fSuccess || bufsize != bytes)
 		return -1;
@@ -5000,10 +5000,10 @@ again:
 
 				/* now create a named event to wait on later */
 				hEvent = CreateEvent(
-					&sa, // default security attribute
-					TRUE, // manual-reset event
-					FALSE, // initial state = signaled
-					NULL); // unnamed event object
+					&sa, /* default security attribute */
+					TRUE, /* manual-reset event */
+					FALSE, /* initial state = signaled */
+					NULL); /* unnamed event object */
 				if (hEvent == NULL)
 					goto regular_submit;
 
@@ -5278,10 +5278,10 @@ do_daemon_stuff(char *file, char *handle, char *server)
 		goto error;
 
 	hEvent = CreateEvent(
-		NULL, // default security attribute
-		TRUE, // manual-reset event
-		FALSE, // initial state = signaled
-		NULL); // unnamed event object
+		NULL, /* default security attribute */
+		TRUE, /* manual-reset event */
+		FALSE, /* initial state = signaled */
+		NULL); /* unnamed event object */
 	if (hEvent == NULL)
 		goto error;
 
@@ -5294,10 +5294,10 @@ do_daemon_stuff(char *file, char *handle, char *server)
 		PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
 		PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
 		PIPE_UNLIMITED_INSTANCES,
-		BUFSIZE, // output buffer size
-		BUFSIZE, // input buffer size
-		PIPE_TIMEOUT, // client time-out
-		NULL); // no security attribute
+		BUFSIZE, /* output buffer size */
+		BUFSIZE, /* input buffer size */
+		PIPE_TIMEOUT, /* client time-out */
+		NULL); /* no security attribute */
 	if (hPipe == INVALID_HANDLE_VALUE)
 		goto error;
 

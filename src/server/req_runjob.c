@@ -177,7 +177,6 @@ extern int   svr_totnodes;	/* non-zero if using nodes */
 static int
 check_and_provision_job(struct batch_request *preq, job *pjob, int *need_prov)
 {
-	DOID("check_and_provision_job")
 	int rc=0;
 
 	/* prov node is part of exec_vnodes, */
@@ -213,7 +212,7 @@ check_and_provision_job(struct batch_request *preq, job *pjob, int *need_prov)
 	/* provisioning was needed and enqueued */
 
 	(void)svr_setjobstate(pjob, JOB_STATE_RUNNING, JOB_SUBSTATE_PROVISION);
-	DBPRT(("%s: Sucessfully enqueued provisioning for job %s\n", id, pjob->ji_qs.ji_jobid))
+	DBPRT(("%s: Sucessfully enqueued provisioning for job %s\n", __func__, pjob->ji_qs.ji_jobid))
 
 	/* log accounting line for start of prov for a job */
 	set_job_ProvAcctRcd(pjob, time_now, PROVISIONING_STARTED);

@@ -507,7 +507,7 @@ json_dumps(PyObject *py_val, char *msg, size_t msg_len)
 	if (py_value == NULL) {
 		if (msg != NULL) {
 			snprintf(msg, msg_len,
-				"failed to build python arg %x", py_val);
+				"failed to build python arg %p", (void *)py_val);
 		}
 		goto json_dumps_fail;
 	}
@@ -599,20 +599,18 @@ encode_used(job *pjob, pbs_list_head *phead)
 	attribute	*at2;
 	attribute_def	*ad;
 	int		 rc;
-	resource_def	*rd;
+	resource_def	*rd = NULL;
 	resource_def	*rd2;
 	resource	*rs;
 	resource	*rs2;
 	attribute	 val;	/* holds the final accumulated resources_used values from Moms including those released from the job */
 	attribute	 val2;	/* temp variable for accumulating resources_used from sis Moms */
 	attribute	 val3;	/* holds the final accumulated resources_used values from Moms, which does not include the released moms from job */
-	int		k = 0;
 	struct  attribute tmpatr = {0};
 	struct  attribute tmpatr3 = {0};
 	char		*sval;
 	char emsg[HOOK_BUF_SIZE];
 	char *dumps = NULL;
-	attribute	*at3;
 	attribute_def	*ad3;
 	PyObject *py_jvalue = (PyObject *)NULL;
 	PyObject *py_accum = (PyObject *)NULL; /* holds accum resources_used values from all moms (including the released sister moms from job) */
@@ -625,7 +623,6 @@ encode_used(job *pjob, pbs_list_head *phead)
 	if ((at->at_flags & ATR_VFLAG_SET) == 0)
 		return;
 
-	at3 = &pjob->ji_wattr[JOB_ATR_resc_used_update];
 	ad3 = &job_attr_def[JOB_ATR_resc_used_update];
 
 	for (rs = (resource *)GET_NEXT(at->at_val.at_list);
@@ -1008,11 +1005,13 @@ encode_used(job *pjob, pbs_list_head *phead)
 encode_used_exit:
 	if (((tmpatr.at_flags & ATR_VFLAG_SET) != 0) &&
 				(tmpatr.at_type == ATR_TYPE_STR)) {
-		rd->rs_free(&tmpatr);
+		if (rd)
+			rd->rs_free(&tmpatr);
 	}
 	if (((tmpatr3.at_flags & ATR_VFLAG_SET) != 0) &&
 				(tmpatr3.at_type == ATR_TYPE_STR)) {
-		rd->rs_free(&tmpatr3);
+		if (rd)
+			rd->rs_free(&tmpatr3);
 	}
 }
 

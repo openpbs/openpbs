@@ -1288,9 +1288,8 @@ void
 renew_cred_server(struct	work_task *ptask)
 {
 	job	*pjob = (job *)ptask->wt_parm1;
-	DOID("renew_cred_server")
 
-	DBPRT(("%s: entered\n", id))
+	DBPRT(("%s: entered\n", __func__))
 	renew_credential(pjob);
 	return;
 }
@@ -1693,13 +1692,12 @@ done:
 void
 req_jobcredential(struct batch_request *preq)
 {
-	DOID("req_jobcredential")
 	job	*pj;
 	int	type;
 	char	*cred;
 	size_t	len;
 
-	DBPRT(("%s: entered\n", id))
+	DBPRT(("%s: entered\n", __func__))
 	pj = locate_new_job(preq, (char *)0);
 	if (pj == (job *)0) {
 		req_reject(PBSE_IVALREQ, 0, preq);
@@ -1771,10 +1769,9 @@ req_jobcredential(struct batch_request *preq)
 void
 req_gsscontext(struct batch_request *preq)
 {
-	DOID("req_gsscontext")
 	job	*pj;
 
-	DBPRT(("%s: entered\n", id))
+	DBPRT(("%s: entered\n", __func__))
 	pj = locate_new_job(preq, (char *)0);
 	if (pj == (job *)0) {
 		req_reject(PBSE_IVALREQ, 0, preq);
@@ -1862,13 +1859,13 @@ void
 req_jobscript(struct batch_request *preq)
 {
 	job	*pj;
-	u_Long size;
 #ifdef PBS_MOM
 	int	 filemode = 0700;
 	int	 fds;
 	char namebuf[MAXPATHLEN];
 #else
 	char *temp;
+	u_Long size;
 #endif
 
 	pj = locate_new_job(preq, (char *)0);

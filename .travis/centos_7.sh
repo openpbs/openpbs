@@ -10,7 +10,7 @@ ${DOCKER_EXEC} ./autogen.sh
 ${DOCKER_EXEC} ./configure
 ${DOCKER_EXEC} make dist
 ${DOCKER_EXEC} /bin/sh -c 'cp -fv pbspro-*.tar.gz /root/rpmbuild/SOURCES/'
-${DOCKER_EXEC} rpmbuild -bb pbspro.spec
+${DOCKER_EXEC} /bin/sh -c 'CFLAGS="-g -O2 -Wall -Werror" rpmbuild -bb pbspro.spec'
 ${DOCKER_EXEC} /bin/sh -c 'yum -y install /root/rpmbuild/RPMS/x86_64/pbspro-server-*.x86_64.rpm'
 ${DOCKER_EXEC} /etc/init.d/pbs start
 ${DOCKER_EXEC} yum -y install python-pip sudo which net-tools man-db time.x86_64

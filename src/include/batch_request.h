@@ -441,6 +441,7 @@ extern int decode_DIS_JobObit(int socket, struct batch_request *);
 extern int decode_DIS_Manage(int socket, struct batch_request *);
 extern int decode_DIS_MoveJob(int socket, struct batch_request *);
 extern int decode_DIS_MessageJob(int socket, struct batch_request *);
+extern int decode_DIS_ModifyResv(int socket, struct batch_request *);
 extern int decode_DIS_PySpawn(int socket, struct batch_request *);
 extern int decode_DIS_QueueJob(int socket, struct batch_request *);
 extern int decode_DIS_Register(int socket, struct batch_request *);

@@ -552,7 +552,6 @@ hpcbp_add_datastaging_element(struct array_strings *parst,
 	char *user_name, char *filename,
 	int delete_flag)
 {
-	char	*id = "hpcbp_add_datastaging_element";
 	char	*plocal = NULL;
 	char	*prmt = NULL;
 	char	from[_POSIX_PATH_MAX + 1];
@@ -586,8 +585,8 @@ hpcbp_add_datastaging_element(struct array_strings *parst,
 				*prmt = '@';    /* restore the @ */
 				strncpy(to, (prmt + 1), _POSIX_PATH_MAX);
 				to[_POSIX_PATH_MAX] = '\0';
-				DBPRT(("%s: From: %s\n", id, from))
-				DBPRT(("%s: To: %s\n", id, to))
+				DBPRT(("%s: From: %s\n", __func__, from))
+				DBPRT(("%s: To: %s\n", __func__, to))
 				/*
 				 * In case of Stageout/Stagein directives
 				 * user should specify remote host along with
@@ -631,7 +630,7 @@ hpcbp_add_datastaging_element(struct array_strings *parst,
 			remote_file, stage_element, delete_flag, user_name);
 	} else {
 		sprintf(log_buffer, HPCBP_INVALID_ARG);
-		log_err(LOG_ERR, id, log_buffer);
+		log_err(LOG_ERR, __func__, log_buffer);
 		return -1;
 	}
 	return (0);
@@ -958,7 +957,6 @@ static int
 hpcbp_parse_qdel_response(struct soap *soap,
 	struct soap_dom_element *dom)
 {
-	DOID("hpcbp_parse_qdel_response")
 	struct 	soap_dom_element *iter;
 
 	for (iter = dom; iter; iter = soap_dom_next_element(iter)) {
@@ -966,7 +964,7 @@ hpcbp_parse_qdel_response(struct soap *soap,
 		if (strcmp(iter->name, "Terminated") == 0) {
 			/* If 'Terminated' XML element is true */
 			/* job has terminated succesfully */
-			DBPRT(("%s: terminate status: %s\n", id, iter->data))
+			DBPRT(("%s: terminate status: %s\n", __func__, iter->data))
 			if (strcmp(iter->data, "true") == 0)
 				return HPCBP_JOB_TERMINATE_SUCCESS;
 			else
@@ -988,7 +986,6 @@ hpcbp_parse_qdel_response(struct soap *soap,
 static int
 hpcbp_parse_qstat_response(struct soap *s, struct soap_dom_element *dom)
 {
-	DOID("hpcbp_parse_qstat_response")
 	struct 	soap_dom_element *iter;
 	struct 	soap_dom_attribute *attr;
 	int 	state = HPCBP_JOB_STATE_UNKNOWN;
@@ -1002,7 +999,7 @@ hpcbp_parse_qstat_response(struct soap *s, struct soap_dom_element *dom)
 				if (strcmp(attr->name, "state"))
 					continue;
 				/* 'state' attribute found */
-				DBPRT(("%s: job status: %s\n", id, attr->data))
+				DBPRT(("%s: job status: %s\n", __func__, attr->data))
 				if (strcmp(attr->data, "Pending") == 0)
 					state = HPCBP_JOB_STATE_PENDING;
 				else if (strcmp(attr->data, "Running") == 0)
@@ -1032,7 +1029,6 @@ static void
 hpcbp_parse_pbsnodes_response(struct soap *soap,
 	struct soap_dom_element *dom, vnl_t **p_vnlp)
 {
-	char	*id = "hpcbp_parse_pbsnodes_response";
 	struct 	soap_dom_element 	*iter;
 	struct 	soap_dom_element 	*iter1;
 	struct 	soap_dom_element 	*resource = NULL;
@@ -1050,7 +1046,7 @@ hpcbp_parse_pbsnodes_response(struct soap *soap,
 			break;
 		}
 	}
-	DBPRT(("%s: total number of vnodes: %d\n", id, number_of_vnodes))
+	DBPRT(("%s: total number of vnodes: %d\n", __func__, number_of_vnodes))
 	if (number_of_vnodes <= 0) {
 		if (*p_vnlp != NULL) {
 			vnl_free(*p_vnlp);
@@ -1064,7 +1060,7 @@ hpcbp_parse_pbsnodes_response(struct soap *soap,
 
 	if (hpcbp_vnodes == NULL) {
 		sprintf(log_buffer, HPCBP_MEM_ALLOC);
-		log_err(LOG_ERR, id, log_buffer);
+		log_err(LOG_ERR, __func__, log_buffer);
 		return;
 	}
 	if (*p_vnlp != NULL) {
@@ -1074,7 +1070,7 @@ hpcbp_parse_pbsnodes_response(struct soap *soap,
 
 	if (vnl_alloc(p_vnlp) == NULL) {
 		sprintf(log_buffer, HPCBP_MEM_ALLOC);
-		log_err(LOG_ERR, id, log_buffer);
+		log_err(LOG_ERR, __func__, log_buffer);
 		return;
 	}
 
@@ -1087,13 +1083,13 @@ hpcbp_parse_pbsnodes_response(struct soap *soap,
 					if (i >= number_of_vnodes)
 						goto hpcp_vn_create_exit;
 					i++;	/* new node */
-					DBPRT(("%s: vnode hostname: %s\n", id,
+					DBPRT(("%s: vnode hostname: %s\n", __func__,
 						iter1->data))
 					hpcbp_vnodes[i] = strdup(iter1->data);
 					if (hpcbp_vnodes[i] == NULL) {
 						sprintf(log_buffer,
 							HPCBP_MEM_ALLOC);
-						log_err(LOG_ERR, id,
+						log_err(LOG_ERR, __func__,
 							log_buffer);
 						goto hpcp_vn_create_exit;
 					}
@@ -1143,7 +1139,7 @@ hpcbp_parse_pbsnodes_response(struct soap *soap,
 				if (strcmp(iter1->name,
 					"PhysicalMemory") == 0) {
 					DBPRT(("%s: mem: %s\n",
-						id, iter1->data))
+						__func__, iter1->data))
 					amt_mem_b = atoll(iter1->data);
 					/*
 					 * Got memory in bytes,
@@ -1181,7 +1177,6 @@ hpcp_vn_create_exit:
 int
 hpcbp_fetch_server_certificate()
 {
-	static	char	id[] = "hpcbp_fetch_server_certificate";
 	BIO 		*bio = NULL;
 	SSL 		*ssl = NULL;
 	SSL_CTX 	*ctx = NULL;
@@ -1206,7 +1201,7 @@ hpcbp_fetch_server_certificate()
 		(handle = dlopen(openssl, RTLD_LAZY)) == NULL) {
 		sprintf(log_buffer, HPCBP_OPENSSL_ERR);
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE,
-			LOG_ERR, id, log_buffer);
+			LOG_ERR, __func__, log_buffer);
 		return rcode;
 	}
 	if (handle != NULL) {
@@ -1230,7 +1225,7 @@ hpcbp_fetch_server_certificate()
 		hostname_with_port[j] = hpcbp_webservice_address[i];
 	}
 	hostname_with_port[j] = '\0';
-	DBPRT(("%s: host_name_with_port: %s\n", id, hostname_with_port))
+	DBPRT(("%s: host_name_with_port: %s\n", __func__, hostname_with_port))
 
 	if (colon_flag) {
 		/*
@@ -1251,13 +1246,13 @@ hpcbp_fetch_server_certificate()
 			hostname_without_port[i] = hostname_with_port[i];
 		hostname_without_port[i] = '\0';
 	}
-	DBPRT(("%s : hostname_without_port: %s\n", id, hostname_without_port))
+	DBPRT(("%s : hostname_without_port: %s\n", __func__, hostname_without_port))
 	/* Check whether MOM is able to resolve hostname */
 	hp = gethostbyname(hostname_without_port);
 	if (hp == NULL) {	/* unable to resolve, problem with parsing */
 		sprintf(log_buffer, HPCBP_CNT_RES);
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE,
-			LOG_ERR, id, log_buffer);
+			LOG_ERR, __func__, log_buffer);
 		return rcode;
 	}
 
@@ -1270,7 +1265,7 @@ hpcbp_fetch_server_certificate()
 	ctx = SSL_CTX_new(SSLv23_client_method());
 	if (ctx == NULL) {
 		sprintf(log_buffer, HPCBP_CNT_SSL);
-		log_err(-1, id, log_buffer);
+		log_err(-1, __func__, log_buffer);
 		return rcode;
 	}
 
@@ -1278,14 +1273,14 @@ hpcbp_fetch_server_certificate()
 	bio = BIO_new_ssl_connect(ctx);
 	if (bio == NULL) {
 		sprintf(log_buffer, HPCBP_CNT_CONNECT);
-		log_err(-1, id, log_buffer);
+		log_err(-1, __func__, log_buffer);
 		goto err;
 	}
 
 	BIO_get_ssl(bio, &ssl);
 	if (!ssl) {
 		sprintf(log_buffer, HPCBP_CNT_SSL);
-		log_err(-1, id, log_buffer);
+		log_err(-1, __func__, log_buffer);
 		goto err;
 	}
 
@@ -1302,7 +1297,7 @@ hpcbp_fetch_server_certificate()
 
 	if (BIO_do_connect(bio) < 0) {
 		sprintf(log_buffer, HPCBP_CNT_CONNECT);
-		log_err(-1, id, log_buffer);
+		log_err(-1, __func__, log_buffer);
 		goto err;
 	}
 
@@ -1310,29 +1305,29 @@ hpcbp_fetch_server_certificate()
 	x509 = SSL_get_peer_certificate(ssl);
 	if (x509 == NULL) {
 		sprintf(log_buffer, HPCBP_FETCH_CERT);
-		log_err(-1, id, log_buffer);
+		log_err(-1, __func__, log_buffer);
 		goto err;
 	}
 
-	DBPRT(("%s: HPCBP Certificate path: %s\n", id, hpcbp_certificate_path))
+	DBPRT(("%s: HPCBP Certificate path: %s\n", __func__, hpcbp_certificate_path))
 	fp = fopen(hpcbp_certificate_path, "w");
 	if (fp == NULL) {
 		sprintf(log_buffer, HPCBP_CERT_CREATE);
-		log_err(-1, id, log_buffer);
+		log_err(-1, __func__, log_buffer);
 		goto err;
 	}
 
 	cert_file = BIO_new_fp(fp, BIO_CLOSE);
 	if (cert_file == NULL) {
 		sprintf(log_buffer, HPCBP_CERT_CREATE);
-		log_err(-1, id, log_buffer);
+		log_err(-1, __func__, log_buffer);
 		goto err;
 	}
 
 	/* Write certificate to file */
 	if (!PEM_write_bio_X509(cert_file, x509)) {
 		sprintf(log_buffer, HPCBP_CERT_WRITE);
-		log_err(-1, id, log_buffer);
+		log_err(-1, __func__, log_buffer);
 		goto err;
 	}
 
@@ -1358,7 +1353,6 @@ err:
 int
 hpcbp_create_endpoint_reference()
 {
-	static  char id[] = "hpcbp_create_endpoint_reference";
 	FILE 	*hpcbp_epr;
 
 	if (hpcbp_protocol) {
@@ -1369,7 +1363,7 @@ hpcbp_create_endpoint_reference()
 	if (hpcbp_epr == NULL) {
 		sprintf(log_buffer, HPCBP_END_ERR);
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE,
-			LOG_ERR, id, log_buffer);
+			LOG_ERR, __func__, log_buffer);
 		return -1;
 	}
 	(void)fprintf(hpcbp_epr,
@@ -1391,7 +1385,6 @@ hpcbp_create_endpoint_reference()
 void
 hpcbp_remove_temp(char *pbs_jobid)
 {
-	DOID("hpcbp_remove_temp")
 	char activity_identifier[_POSIX_PATH_MAX];
 	char jsdl_script_file_path[_POSIX_PATH_MAX];
 
@@ -1399,7 +1392,7 @@ hpcbp_remove_temp(char *pbs_jobid)
 		tmpdirname(pbs_jobid), pbs_jobid);
 	(void)sprintf(jsdl_script_file_path, "%s/%s.jsdl",
 		tmpdirname(pbs_jobid), pbs_jobid);
-	DBPRT(("%s: PBS Job ID: %s : Activity Identifier: %s\n", id,
+	DBPRT(("%s: PBS Job ID: %s : Activity Identifier: %s\n", __func__,
 		jsdl_script_file_path, activity_identifier))
 	unlink(activity_identifier);
 	unlink(jsdl_script_file_path);
@@ -1415,7 +1408,6 @@ hpcbp_remove_temp(char *pbs_jobid)
 static int
 hpcbp_convert_pbstojsdl(char *jsdl_file_path, job *pjob)
 {
-	char			*id = "hpcbp_convert_pbstojsdl";
 	FILE 			*jsdl_file = NULL;
 	char			*tmp = NULL;
 	char			*tmp1 = NULL;
@@ -1444,11 +1436,11 @@ hpcbp_convert_pbstojsdl(char *jsdl_file_path, job *pjob)
 		return -1;
 	}
 	/* Creating JSDL document for job submission */
-	DBPRT(("%s: JSDL file path: %s\n", id, jsdl_file_path))
+	DBPRT(("%s: JSDL file path: %s\n", __func__, jsdl_file_path))
 	jsdl_file = fopen(jsdl_file_path, "w");
 	if (jsdl_file == NULL) {
 		sprintf(log_buffer, HPCBP_JSDL_ERR);
-		log_joberr(-1, id, log_buffer, pjob->ji_qs.ji_jobid);
+		log_joberr(-1, __func__, log_buffer, pjob->ji_qs.ji_jobid);
 		goto error;
 	}
 	(void)fprintf(jsdl_file,
@@ -1543,7 +1535,7 @@ hpcbp_convert_pbstojsdl(char *jsdl_file_path, job *pjob)
 	(void)fprintf(jsdl_file, "\t \t </%s>\n", CANDIDATE_HOSTS);
 
 	/* Add aggregate number of ncpus to the JSDL document */
-	DBPRT(("%s: aggregate ncpus: %d\n", id, total_number_of_ncpus))
+	DBPRT(("%s: aggregate ncpus: %d\n", __func__, total_number_of_ncpus))
 	if (total_number_of_ncpus) {
 		(void)fprintf(jsdl_file, "\t \t <%s>\n", TOTAL_CPU_COUNT);
 		(void)fprintf(jsdl_file, "\t \t \t <%s>%d</%s>\n",
@@ -1567,7 +1559,7 @@ hpcbp_convert_pbstojsdl(char *jsdl_file_path, job *pjob)
 			retval = local_gettime(pres, &value);
 			if (retval != PBSE_NONE)
 				goto error;
-			DBPRT(("%s: cput: %ld\n", id, value))
+			DBPRT(("%s: cput: %ld\n", __func__, value))
 			(void)fprintf(jsdl_file, "\t \t <%s>\n",
 				TOTAL_CPU_TIME);
 			(void)fprintf(jsdl_file, "\t \t \t <%s>%ld</%s>\n",
@@ -1579,7 +1571,7 @@ hpcbp_convert_pbstojsdl(char *jsdl_file_path, job *pjob)
 			retval = local_gettime(pres, &value);
 			if (retval != PBSE_NONE)
 				goto error;
-			DBPRT(("%s: pcput: %ld\n", id, value))
+			DBPRT(("%s: pcput: %ld\n", __func__, value))
 			(void)fprintf(jsdl_file, "\t \t <%s>\n",
 				IND_CPU_TIME);
 			(void)fprintf(jsdl_file, "\t \t \t <%s>%ld</%s>\n",
@@ -1591,7 +1583,7 @@ hpcbp_convert_pbstojsdl(char *jsdl_file_path, job *pjob)
 			retval = local_getsize(pres, &value);
 			if (retval != PBSE_NONE)
 				goto error;
-			DBPRT(("%s: pvmem: %ld\n", id, value))
+			DBPRT(("%s: pvmem: %ld\n", __func__, value))
 			(void)fprintf(jsdl_file, "\t \t <%s>\n",
 				IND_VIRTUAL_MEM);
 			(void)fprintf(jsdl_file, "\t \t \t <%s>%ld</%s>\n",
@@ -1603,7 +1595,7 @@ hpcbp_convert_pbstojsdl(char *jsdl_file_path, job *pjob)
 			retval = local_getsize(pres, &value);
 			if (retval != PBSE_NONE)
 				goto error;
-			DBPRT(("%s: pmem: %ld\n", id, value))
+			DBPRT(("%s: pmem: %ld\n", __func__, value))
 			(void)fprintf(jsdl_file, "\t \t <%s>\n",
 				IND_PHY_MEM);
 			(void)fprintf(jsdl_file, "\t \t \t <%s>%ld</%s>\n",
@@ -1615,7 +1607,7 @@ hpcbp_convert_pbstojsdl(char *jsdl_file_path, job *pjob)
 			retval = local_getsize(pres, &value);
 			if (retval != PBSE_NONE)
 				goto error;
-			DBPRT(("%s: pmem: %ld\n", id, value))
+			DBPRT(("%s: pmem: %ld\n", __func__, value))
 			(void)fprintf(jsdl_file, "\t \t <%s>\n",
 				TOTAL_MEM);
 			(void)fprintf(jsdl_file, "\t \t \t <%s>%ld</%s>\n",
@@ -1627,7 +1619,7 @@ hpcbp_convert_pbstojsdl(char *jsdl_file_path, job *pjob)
 			retval = local_getsize(pres, &value);
 			if (retval != PBSE_NONE)
 				goto error;
-			DBPRT(("%s: file: %ld\n", id, value))
+			DBPRT(("%s: file: %ld\n", __func__, value))
 			(void)fprintf(jsdl_file, "\t \t <%s>\n",
 				IND_DISK_SPACE);
 			(void)fprintf(jsdl_file, "\t \t \t <%s>%ld</%s>\n",
@@ -1661,8 +1653,8 @@ hpcbp_convert_pbstojsdl(char *jsdl_file_path, job *pjob)
 				break;
 			}
 		}
-		DBPRT(("%s : osname = %s\n", id, arch_osname))
-		DBPRT(("%s : osversion = %s\n", id, arch_osname))
+		DBPRT(("%s : osname = %s\n", __func__, arch_osname))
+		DBPRT(("%s : osversion = %s\n", __func__, arch_osname))
 		(void)fprintf(jsdl_file, "\t \t \t \t<%s>%s</%s>\n",
 			OS_NAME, arch_osname, OS_NAME);
 		(void)fprintf(jsdl_file, "\t \t \t <%s>%s</%s>\n",
@@ -1723,7 +1715,7 @@ hpcbp_convert_pbstojsdl(char *jsdl_file_path, job *pjob)
 		JOB_DESCRIPTION, JOB_DEFINITION);
 	if (ferror(jsdl_file)) {
 		sprintf(log_buffer, HPCBP_JSDL_SCRIPT);
-		log_joberr(-1, id, log_buffer, pjob->ji_qs.ji_jobid);
+		log_joberr(-1, __func__, log_buffer, pjob->ji_qs.ji_jobid);
 	}
 
 	/* Ignore JOB_ATR_shell  attribute */
@@ -1773,8 +1765,6 @@ hpcbp_precheck(enum hpcbp_req_t request_flag, job *pjob, struct soap **s,
 	char **hpcbp_user_password, char *pbs_jobid,
 	char *hpcbp_reguser_credbuf, size_t hpcbp_reguser_credlen)
 {
-
-	char 	*id = "hpcbp_precheck";
 	char	*password = NULL;	/* store decrypted password */
 	int	ret = 0;
 	size_t	tmp_credlen = 0;
@@ -1792,7 +1782,7 @@ hpcbp_precheck(enum hpcbp_req_t request_flag, job *pjob, struct soap **s,
 		if (pbs_decrypt_pwd(hpcbp_user_credbuf, PBS_CREDTYPE_AES, hpcbp_user_credlen,
 			&password)) {
 			sprintf(log_buffer, HPCBP_DECRYPT_ERR);
-			log_joberr(-1, id, log_buffer, pbs_jobid);
+			log_joberr(-1, __func__, log_buffer, pbs_jobid);
 			goto error;
 		} else {
 			password[hpcbp_user_credlen] ='\0';
@@ -1803,7 +1793,7 @@ hpcbp_precheck(enum hpcbp_req_t request_flag, job *pjob, struct soap **s,
 		if (pbs_decrypt_pwd(hpcbp_reguser_credbuf, PBS_CREDTYPE_AES, hpcbp_reguser_credlen,
 			&password)) {
 			sprintf(log_buffer, HPCBP_DECRYPT_ERR);
-			log_joberr(-1, id, log_buffer, pbs_jobid);
+			log_joberr(-1, __func__, log_buffer, pbs_jobid);
 			goto error;
 		} else {
 			password[hpcbp_reguser_credlen] = '\0';
@@ -1839,7 +1829,7 @@ hpcbp_precheck(enum hpcbp_req_t request_flag, job *pjob, struct soap **s,
 	if (ret) {
 		/* unable to create gSOAP runtime environment */
 		sprintf(log_buffer, HPCBP_GSOAP_INIT);
-		log_joberr(-1, id, log_buffer, pbs_jobid);
+		log_joberr(-1, __func__, log_buffer, pbs_jobid);
 		goto error;
 	}
 	/* Add Header to the SOAP request message */
@@ -1847,7 +1837,7 @@ hpcbp_precheck(enum hpcbp_req_t request_flag, job *pjob, struct soap **s,
 	if (ret) {
 		if (request_flag == HPCBP_REQUEST_PBSNODES) {
 			sprintf(log_buffer, HPCBP_HEAD_NODES);
-			log_err(-1, id, log_buffer);
+			log_err(-1, __func__, log_buffer);
 		} else {
 			if (request_flag == HPCBP_REQUEST_QSUB)
 				sprintf(log_buffer, HPCBP_HEAD_QSUB);
@@ -1856,7 +1846,7 @@ hpcbp_precheck(enum hpcbp_req_t request_flag, job *pjob, struct soap **s,
 			else if (request_flag == HPCBP_REQUEST_QDEL)
 				sprintf(log_buffer, HPCBP_HEAD_QDEL);
 			/* log error message */
-			log_joberr(-1, id, log_buffer, pjob->ji_qs.ji_jobid);
+			log_joberr(-1, __func__, log_buffer, pjob->ji_qs.ji_jobid);
 		}
 		hpcbp_soap_uninit(*s);
 		goto error;
@@ -1884,7 +1874,6 @@ int
 hpcbp_pbs_qsub(job  *pjob, char **hpcbp_jobid,
 	char *hpcbp_reguser_credbuf, size_t hpcbp_reguser_credlen)
 {
-	char	*id = "hpcbp_pbs_qsub";
 	struct	soap				*soap;
 	struct 	bes__CreateActivityType 	request;
 	struct 	bes__CreateActivityResponseType response;
@@ -1910,8 +1899,8 @@ hpcbp_pbs_qsub(job  *pjob, char **hpcbp_jobid,
 		tmpdirname(pjob->ji_qs.ji_jobid), pjob->ji_qs.ji_jobid);
 	(void)sprintf(jsdl_script_file_path, "%s/%s.jsdl",
 		tmpdirname(pjob->ji_qs.ji_jobid), pjob->ji_qs.ji_jobid);
-	DBPRT(("%s: activity identifier: %s\n", id, activity_identifier))
-	DBPRT(("%s: JSDL script file: %s\n", id, jsdl_script_file_path))
+	DBPRT(("%s: activity identifier: %s\n", __func__, activity_identifier))
+	DBPRT(("%s: JSDL script file: %s\n", __func__, jsdl_script_file_path))
 
 	/* Convert PBS Job request into JSDL document */
 	ret= hpcbp_convert_pbstojsdl(jsdl_script_file_path, pjob);
@@ -1922,7 +1911,7 @@ hpcbp_pbs_qsub(job  *pjob, char **hpcbp_jobid,
 	jsdl = open(jsdl_script_file_path, O_RDONLY);
 	if (jsdl == -1) {
 		sprintf(log_buffer, HPCBP_JSDL_OPEN);
-		log_joberr(-1, id, log_buffer, pjob->ji_qs.ji_jobid);
+		log_joberr(-1, __func__, log_buffer, pjob->ji_qs.ji_jobid);
 		goto error;
 	}
 	dom = (struct soap_dom_element*)soap_malloc(soap,
@@ -1938,7 +1927,7 @@ hpcbp_pbs_qsub(job  *pjob, char **hpcbp_jobid,
 		(soap_end_recv(dom->soap))) {
 
 		sprintf(log_buffer, HPCBP_JSDL_READ);
-		log_joberr(-1, id, log_buffer, pjob->ji_qs.ji_jobid);
+		log_joberr(-1, __func__, log_buffer, pjob->ji_qs.ji_jobid);
 		goto error;
 	}
 
@@ -1977,14 +1966,14 @@ hpcbp_pbs_qsub(job  *pjob, char **hpcbp_jobid,
 		CREATE_ACTION, &request,
 		&response) != SOAP_OK) {
 		sprintf(log_buffer, HPCBP_QSUB_CRED);
-		log_joberr(-1, id, log_buffer, pjob->ji_qs.ji_jobid);
+		log_joberr(-1, __func__, log_buffer, pjob->ji_qs.ji_jobid);
 		goto error;
 	} else {
 		hpcbp_cleandom(response.__any);
 		read_hpcbp_job_identifier(soap, response.__any, &jobid);
 		if (jobid == NULL) {
 			sprintf(log_buffer, HPCBP_READ_ACT);
-			log_joberr(-1, id, log_buffer, pjob->ji_qs.ji_jobid);
+			log_joberr(-1, __func__, log_buffer, pjob->ji_qs.ji_jobid);
 			goto error;
 		}
 		*hpcbp_jobid = jobid;
@@ -1993,7 +1982,7 @@ hpcbp_pbs_qsub(job  *pjob, char **hpcbp_jobid,
 			O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR);
 		if (apr == -1) {
 			sprintf(log_buffer, HPCBP_CRT_ACT);
-			log_joberr(-1, id, log_buffer, pjob->ji_qs.ji_jobid);
+			log_joberr(-1, __func__, log_buffer, pjob->ji_qs.ji_jobid);
 			goto error;
 		}
 		soap_set_namespaces(soap, epr_namespaces);
@@ -2003,7 +1992,7 @@ hpcbp_pbs_qsub(job  *pjob, char **hpcbp_jobid,
 			response.__any, NULL)) ||
 			soap_end_send(soap)) {
 			sprintf(log_buffer, HPCBP_WRITE_ACT);
-			log_joberr(-1, id, log_buffer,
+			log_joberr(-1, __func__, log_buffer,
 				pjob->ji_qs.ji_jobid);
 			close(apr);
 			goto error;
@@ -2033,7 +2022,6 @@ int
 hpcbp_pbs_qdel(job *pjob, char *hpcbp_reguser_credbuf,
 	size_t hpcbp_reguser_credlen)
 {
-	char	*id = "hpcbp_pbs_qdel";
 	struct 	bes__TerminateActivitiesType request;
 	struct 	bes__TerminateActivitiesResponseType response;
 	struct 	soap_dom_element *dom = NULL;
@@ -2050,11 +2038,11 @@ hpcbp_pbs_qdel(job *pjob, char *hpcbp_reguser_credbuf,
 
 	(void)sprintf(activity_identifier, "%s/%s.xml",
 		tmpdirname(pjob->ji_qs.ji_jobid), pjob->ji_qs.ji_jobid);
-	DBPRT(("%s: activity idenfier: %s\n", id, activity_identifier))
+	DBPRT(("%s: activity idenfier: %s\n", __func__, activity_identifier))
 	epr = open(activity_identifier, O_RDONLY);
 	if (epr == -1) {
 		sprintf(log_buffer, HPCBP_READ_ID);
-		log_joberr(-1, id, log_buffer, pjob->ji_qs.ji_jobid);
+		log_joberr(-1, __func__, log_buffer, pjob->ji_qs.ji_jobid);
 		goto error;
 	}
 	dom = (struct soap_dom_element*)soap_malloc(soap,
@@ -2069,7 +2057,7 @@ hpcbp_pbs_qdel(job *pjob, char *hpcbp_reguser_credbuf,
 		(soap_in_xsd__anyType(dom->soap, NULL, dom, NULL) == NULL) ||
 		(soap_end_recv(dom->soap))) {
 		sprintf(log_buffer, HPCBP_READ_ID);
-		log_joberr(-1, id, log_buffer, pjob->ji_qs.ji_jobid);
+		log_joberr(-1, __func__, log_buffer, pjob->ji_qs.ji_jobid);
 		goto error;
 	}
 	memset(&request, 0, sizeof(struct bes__TerminateActivitiesType));
@@ -2088,18 +2076,18 @@ hpcbp_pbs_qdel(job *pjob, char *hpcbp_reguser_credbuf,
 		hpcbp_webservice_address, TERMINATE_ACTION,
 		request, &response) != SOAP_OK) {
 		sprintf(log_buffer, HPCBP_CNT_ERR);
-		log_joberr(-1, id, log_buffer, pjob->ji_qs.ji_jobid);
+		log_joberr(-1, __func__, log_buffer, pjob->ji_qs.ji_jobid);
 		goto error;
 	} else {
 		/* Parse 'TerminateActivities' response message */
 		ret = hpcbp_parse_qdel_response(soap, response.__any);
 		if (ret == HPCBP_JOB_TEMINATE_UNDEFINED) {
 			sprintf(log_buffer, HPCBP_READ_QDEL_RES);
-			log_joberr(-1, id, log_buffer,
+			log_joberr(-1, __func__, log_buffer,
 				pjob->ji_qs.ji_jobid);
 		} else if (ret == HPCBP_JOB_TERMINATE_FAILED) {
 			sprintf(log_buffer, HPCBP_QDEL_CRED);
-			log_joberr(-1, id, log_buffer,
+			log_joberr(-1, __func__, log_buffer,
 				pjob->ji_qs.ji_jobid);
 		}
 	}
@@ -2122,7 +2110,6 @@ error:
 int
 hpcbp_pbs_qstat(char *pbs_jobid)
 {
-	char	*id = "hpcbp_pbs_qstat";
 	struct 	bes__GetActivityStatusesType request;
 	struct 	bes__GetActivityStatusesResponseType response;
 	struct 	soap_dom_element *dom = NULL;
@@ -2140,7 +2127,7 @@ hpcbp_pbs_qstat(char *pbs_jobid)
 
 	(void)sprintf(activity_identifier, "%s/%s.xml",
 		tmpdirname(pbs_jobid), pbs_jobid);
-	DBPRT(("%s: activity idenfier: %s\n", id, activity_identifier))
+	DBPRT(("%s: activity idenfier: %s\n", __func__, activity_identifier))
 	/* Open activity identifier file */
 	epr = open(activity_identifier, O_RDONLY);
 	if (epr == -1) {
@@ -2155,7 +2142,7 @@ hpcbp_pbs_qstat(char *pbs_jobid)
 		 * exits with non-zero exit value.
 		 */
 		sprintf(log_buffer, HPCBP_READ_ID);
-		log_joberr(-1, id, log_buffer, pbs_jobid);
+		log_joberr(-1, __func__, log_buffer, pbs_jobid);
 		goto error;
 	}
 	dom = (struct soap_dom_element*)soap_malloc(soap,
@@ -2170,7 +2157,7 @@ hpcbp_pbs_qstat(char *pbs_jobid)
 		(soap_in_xsd__anyType(dom->soap, NULL, dom, NULL) == NULL) ||
 		(soap_end_recv(dom->soap))) {
 		sprintf(log_buffer, HPCBP_READ_ID);
-		log_joberr(-1, id, log_buffer, pbs_jobid);
+		log_joberr(-1, __func__, log_buffer, pbs_jobid);
 		goto error;
 	}
 	memset(&request, 0, sizeof(struct bes__GetActivityStatusesType));
@@ -2189,14 +2176,14 @@ hpcbp_pbs_qstat(char *pbs_jobid)
 		hpcbp_webservice_address, STATUS_ACTION,
 		request, &response) != SOAP_OK) {
 		sprintf(log_buffer, HPCBP_CNT_ERR);
-		log_joberr(-1, id, log_buffer, pbs_jobid);
+		log_joberr(-1, __func__, log_buffer, pbs_jobid);
 		goto error;
 	} else {
 		/* Parse 'GetActivityStatuses' response message */
 		state = hpcbp_parse_qstat_response(soap, response.__any);
 		if (state == HPCBP_JOB_STATE_UNKNOWN) {
 			sprintf(log_buffer, HPCBP_READ_QSTAT_RES);
-			log_joberr(-1, id, log_buffer, pbs_jobid);
+			log_joberr(-1, __func__, log_buffer, pbs_jobid);
 		}
 	}
 error:
@@ -2217,7 +2204,6 @@ error:
 int
 hpcbp_pbs_pbsnodes(int node_status_flag, char *pbs_jobid , char *hpcbp_jobid)
 {
-	static char id[] = "hpcbp_pbs_pbsnodes";
 	struct 	bes__GetFactoryAttributesDocumentType request;
 	struct 	bes__GetFactoryAttributesDocumentResponseType response;
 	struct	soap_dom_element *dom = NULL;
@@ -2250,7 +2236,7 @@ hpcbp_pbs_pbsnodes(int node_status_flag, char *pbs_jobid , char *hpcbp_jobid)
 			if (fp == NULL) {
 				sprintf(log_buffer, HPCBP_NODES_XML);
 				log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE,
-					LOG_ERR, id, log_buffer);
+					LOG_ERR, __func__, log_buffer);
 				goto error;
 			}
 			(void)fprintf(fp, "<%s xmlns:hpcp-af=\"%s\"> \n",
@@ -2263,18 +2249,18 @@ hpcbp_pbs_pbsnodes(int node_status_flag, char *pbs_jobid , char *hpcbp_jobid)
 			if (ferror(fp)) {
 				sprintf(log_buffer, HPCBP_NODES_XML);
 				log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE,
-					LOG_ERR, id, log_buffer);
+					LOG_ERR, __func__, log_buffer);
 			}
 			fclose(fp);
 		}
 	} else {
 		sprintf(log_buffer, HPCBP_PBS_INVALID);
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE,
-			LOG_ERR, id, log_buffer);
+			LOG_ERR, __func__, log_buffer);
 		goto error;
 
 	}
-	DBPRT(("%s: file name: %s\n", id, file_name))
+	DBPRT(("%s: file name: %s\n", __func__, file_name))
 	memset(&request, 0,
 		sizeof(struct bes__GetFactoryAttributesDocumentType));
 	memset(&response, 0,
@@ -2294,7 +2280,7 @@ hpcbp_pbs_pbsnodes(int node_status_flag, char *pbs_jobid , char *hpcbp_jobid)
 		(soap_end_recv(dom->soap))) {
 		sprintf(log_buffer, HPCBP_FILE_CONT);
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE,
-			LOG_ERR, id, log_buffer);
+			LOG_ERR, __func__, log_buffer);
 		goto error;
 	}
 	request.__any = dom;
@@ -2311,7 +2297,7 @@ hpcbp_pbs_pbsnodes(int node_status_flag, char *pbs_jobid , char *hpcbp_jobid)
 		request, &response) != SOAP_OK) {
 		sprintf(log_buffer, HPCBP_CNT_ERR);
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE,
-			LOG_ERR, id, log_buffer);
+			LOG_ERR, __func__, log_buffer);
 		goto error;
 	} else {
 		hpcbp_parse_pbsnodes_response(soap,

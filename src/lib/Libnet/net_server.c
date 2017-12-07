@@ -253,7 +253,7 @@ connection_init(void) {
  *	Only initial the connection table and poll pollfds or select readset.
  *
  * @param[in] port - port number
- * @param[in] readfunc - callback function which indicates type of request 
+ * @param[in] readfunc - callback function which indicates type of request
  *
  * @return	int
  * @retval	0	success
@@ -900,7 +900,6 @@ cleanup_conn(int cndx)
 void
 net_close(int but)
 {
-	int i;
 	conn_t *cp = NULL;
 
 	if (net_is_initialized == 0)

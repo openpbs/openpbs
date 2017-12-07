@@ -244,7 +244,6 @@ void
 cache_data(char *func, char *key, char *value_array,
 	int value_array_nelem, int value_array_strsize)
 {
-	static	char	*id = "cache_data";
 	int	i, k;
 	int	reuse_slot = -1;
 	int	free_slot = -1;
@@ -1732,7 +1731,6 @@ isLocalSystem()
 int
 isAdminPrivilege(char *user)
 {
-	static	char	*id = "isAdminPrivilege";
 	GROUP_USERS_INFO_0 *groups = NULL;
 	DWORD	nread;
 	DWORD	i;
@@ -1751,7 +1749,7 @@ isAdminPrivilege(char *user)
 	if (user == NULL)
 		return (FALSE);
 
-	c_data = find_cache_data(id, user);
+	c_data = find_cache_data(__func__, user);
 	if (c_data != NULL) {
 		if (strcmp(c_data, "TRUE") == 0)
 			return (TRUE);
@@ -1766,7 +1764,7 @@ isAdminPrivilege(char *user)
 			(urid == SECURITY_LOCAL_SYSTEM_RID)) {
 
 			strcpy(c_data_[0], "TRUE");
-			cache_data(id, user, (char *)c_data_, 1, 6);
+			cache_data(__func__, user, (char *)c_data_, 1, 6);
 
 			return (TRUE);
 		}
@@ -1775,7 +1773,7 @@ isAdminPrivilege(char *user)
 	if (isLocalAdminMember(realuser)) {
 
 		strcpy(c_data_[0], "TRUE");
-		cache_data(id, user, (char *)c_data_, 1, 6);
+		cache_data(__func__, user, (char *)c_data_, 1, 6);
 
 		return (TRUE);
 	}
@@ -1796,7 +1794,7 @@ isAdminPrivilege(char *user)
 					LocalFree(gsid);
 
 					strcpy(c_data_[0], "TRUE");
-					cache_data(id, user, (char *)c_data_,
+					cache_data(__func__, user, (char *)c_data_,
 						1, 6);
 
 					return (TRUE);
@@ -1807,7 +1805,7 @@ isAdminPrivilege(char *user)
 
 					if (isLocalAdminMember(gfull)) {
 						strcpy(c_data_[0], "TRUE");
-						cache_data(id, user, (char *)c_data_,
+						cache_data(__func__, user, (char *)c_data_,
 							1, 6);
 						NetApiBufferFree(groups);
 						LocalFree(gsid);
@@ -1840,7 +1838,7 @@ isAdminPrivilege(char *user)
 					NetApiBufferFree(groups);
 
 					strcpy(c_data_[0], "TRUE");
-					cache_data(id, user, (char *)c_data_,
+					cache_data(__func__, user, (char *)c_data_,
 						1, 6);
 
 					return (TRUE);
@@ -1852,7 +1850,7 @@ isAdminPrivilege(char *user)
 	}
 
 	strcpy(c_data_[0], "FALSE");
-	cache_data(id, user, (char *)c_data_, 1, 6);
+	cache_data(__func__, user, (char *)c_data_, 1, 6);
 
 	return (FALSE);
 }
@@ -1896,7 +1894,6 @@ char *
 getdefgrpname(char *user)
 {
 
-	static char *id = "getdefgrpname";
 	GROUP_USERS_INFO_0 *groups = NULL;
 	char	*group;
 	char	realuser[PBS_MAXHOSTNAME+UNLEN+2]; /* dom\user0 */
@@ -1910,7 +1907,7 @@ getdefgrpname(char *user)
 	if (user == NULL)
 		return (NULL);
 
-	c_data = find_cache_data(id, user);
+	c_data = find_cache_data(__func__, user);
 	if (c_data != NULL) {
 		return (strdup(c_data)); /* malloced value expected for return */
 	}
@@ -1931,7 +1928,7 @@ getdefgrpname(char *user)
 		NetApiBufferFree(groups);
 
 		strcpy(c_data_[0], group);
-		cache_data(id, user, (char *)c_data_, 1, GNLEN);
+		cache_data(__func__, user, (char *)c_data_, 1, GNLEN);
 
 		return (group);
 	}
@@ -1942,7 +1939,7 @@ getdefgrpname(char *user)
 		NetApiBufferFree(groups);
 
 		strcpy(c_data_[0], group);
-		cache_data(id, user, (char *)c_data_, 1, GNLEN);
+		cache_data(__func__, user, (char *)c_data_, 1, GNLEN);
 
 		return (group);
 	}
@@ -1950,7 +1947,7 @@ getdefgrpname(char *user)
 	(void)free(group);
 
 	strcpy(c_data_[0], "Everyone");
-	cache_data(id, user, (char *)c_data_, 1, GNLEN);
+	cache_data(__func__, user, (char *)c_data_, 1, GNLEN);
 
 	return (strdup("Everyone"));
 }
@@ -2194,7 +2191,6 @@ int
 getgids(char *user, SID *grp[], DWORD rids[])
 {
 
-	static	char	   *id = "getgids";
 	GROUP_USERS_INFO_0 *groups = NULL;
 	DWORD	nread;
 	DWORD	i, j, k;
@@ -2211,7 +2207,7 @@ getgids(char *user, SID *grp[], DWORD rids[])
 	if (user == NULL)
 		return (0);
 
-	c_data = find_cache_data(id, user);
+	c_data = find_cache_data(__func__, user);
 	if (c_data != NULL) {
 		char *end_c_data = c_data + (CACHE_VALUE_NELEM*CACHE_STR_SIZE);
 		SID  *gsid = NULL;
@@ -2306,7 +2302,7 @@ getgids(char *user, SID *grp[], DWORD rids[])
 		NetApiBufferFree(groups);
 		groups = NULL;
 	}
-	cache_data(id, user, (char *)c_data_, j, GNLEN);
+	cache_data(__func__, user, (char *)c_data_, j, GNLEN);
 
 	return (j);
 }
@@ -2569,7 +2565,6 @@ unmap_unc_path(char *path)
 static char *
 getAssignedHomeDirectory(char *user)
 {
-	static	char	*id = "getAssignedHomeDirectory";
 	USER_INFO_1	*uinfo = NULL;
 
 	wchar_t userw[UNLEN+1];
@@ -2592,7 +2587,7 @@ getAssignedHomeDirectory(char *user)
 	if (user == NULL)
 		return (NULL);
 
-	c_data = find_cache_data(id, user);
+	c_data = find_cache_data(__func__, user);
 	if (c_data != NULL) {
 		if (c_data[0] == '\0') {
 			return (NULL);
@@ -2637,7 +2632,7 @@ getAssignedHomeDirectory(char *user)
 					if (dcw) NetApiBufferFree(dcw);
 
 					c_data_[0][0] = '\0';
-					cache_data(id, user, (char *)c_data_,
+					cache_data(__func__, user, (char *)c_data_,
 						1, CACHE_STR_SIZE);
 
 					return (NULL);
@@ -2648,7 +2643,7 @@ getAssignedHomeDirectory(char *user)
 
 				if (strlen(homedir) < CACHE_STR_SIZE) {
 					strcpy(c_data_[0], homedir);
-					cache_data(id, user, (char *)c_data_,
+					cache_data(__func__, user, (char *)c_data_,
 						1, CACHE_STR_SIZE);
 				}
 
@@ -2663,10 +2658,10 @@ getAssignedHomeDirectory(char *user)
 
 	if (homedir == NULL) {
 		c_data_[0][0] = '\0';
-		cache_data(id, user, (char *)c_data_, 1, CACHE_STR_SIZE);
+		cache_data(__func__, user, (char *)c_data_, 1, CACHE_STR_SIZE);
 	} else if (strlen(homedir) < CACHE_STR_SIZE) {
 		strcpy(c_data_[0], homedir);
-		cache_data(id, user, (char *)c_data_, 1, CACHE_STR_SIZE);
+		cache_data(__func__, user, (char *)c_data_, 1, CACHE_STR_SIZE);
 	}
 
 	return (homedir);
@@ -4147,8 +4142,6 @@ wsystem(char *cmdline, HANDLE user_handle)
 static int
 add_window_station_ace(HWINSTA hwin, SID *usid)
 {
-	static	char	*id = "add_window_station_ace";
-
 	int			ret = 1;
 	SECURITY_INFORMATION	si;
 	SECURITY_DESCRIPTOR	*sd = NULL;
@@ -4370,8 +4363,6 @@ fail:
 static int
 add_desktop_ace(HDESK hdesk, SID *usid)
 {
-	static	char	*id = "add_desktop_ace";
-
 	int			ret = 1;
 	SECURITY_INFORMATION	si = 0;
 	SECURITY_DESCRIPTOR	*sd = NULL;
@@ -4538,8 +4529,6 @@ fail:
 int
 use_window_station_desktop(SID *usid)
 {
-	static char	*id = "use_winstation_desktop";
-
 	HWINSTA	hwin;
 	HDESK	hdesk;
 	int	ret = 1;
@@ -4580,8 +4569,6 @@ use_window_station_desktop(SID *usid)
 int
 use_window_station_desktop2(char *user)
 {
-	static char	*id = "use_winstation_desktop";
-
 	HWINSTA	hwin;
 	HDESK	hdesk;
 	SID	*usid;
@@ -4627,7 +4614,6 @@ use_window_station_desktop2(char *user)
 static void
 print_pwentries(void)
 {
-
 	int i;
 	/* look for a password */
 	for (i=0; i<user_num; i++) {
@@ -5364,7 +5350,6 @@ has_read_access_domain_users_end:
 int
 check_executor(void)
 {
-	static	char	*id = "check_executor";
 	char 	dname[PBS_MAXHOSTNAME+1];
 	char 	exec_unamef[PBS_MAXHOSTNAME+UNLEN+2]; /* <dom>\<user>0 */
 	char 	exec_uname[PBS_MAXHOSTNAME+UNLEN+2];
@@ -5397,14 +5382,14 @@ check_executor(void)
 
 		if (stricmp(exec_dname, dname) != 0) {
 			sprintf(winlog_buffer,
-				"%s: Executing user %s must be a domain account in domain %s", id, exec_uname, dname);
+				"%s: Executing user %s must be a domain account in domain %s", __func__, exec_uname, dname);
 			return (2);
 		}
 
 		/* this test must occur first before the "read access" test */
 		if (!isAdminPrivilege(exec_uname)) {
 			sprintf(winlog_buffer,
-				"%s: executing user %s should be an admin account", id, exec_uname);
+				"%s: executing user %s should be an admin account", __func__, exec_uname);
 			return (1);
 		}
 
@@ -5416,13 +5401,13 @@ check_executor(void)
 
 		if (!has_read_access_domain_users(dctrlw)) {
 			sprintf(winlog_buffer,
-				"%s: executing user %s cannot read all users info in %s (DC is %S)", id, exec_uname, dname, dctrlw);
+				"%s: executing user %s cannot read all users info in %s (DC is %S)", __func__, exec_uname, dname, dctrlw);
 			return (3);
 		}
 	} else {
 		if (!isAdminPrivilege(exec_uname)) {
 			sprintf(winlog_buffer,
-				"%s: executing user %s should be an admin account", id, exec_uname);
+				"%s: executing user %s should be an admin account", __func__, exec_uname);
 			return (1);
 		}
 	}

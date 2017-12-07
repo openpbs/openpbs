@@ -326,9 +326,10 @@ void WINAPI PbsServerMain(DWORD dwArgc, LPTSTR *rgszArgv);
 void WINAPI PbsServerHandler(DWORD dwControl);
 DWORD WINAPI main_thread(void *pv);
 
-// NOTE: Note the global state used by your service. Your service has a name,
-// state and a status handle used by SetServiceStatus.
-//
+/*
+ * NOTE: Note the global state used by your service. Your service has a name,
+ * state and a status handle used by SetServiceStatus.
+ */
 const TCHAR * const     g_PbsServerName = __TEXT("PBS_SERVER");
 HANDLE                  g_hthreadMain = 0;
 SERVICE_STATUS_HANDLE   g_ssHandle = 0;
@@ -447,7 +448,6 @@ go_to_background()
 void
 do_rpp(int stream)
 {
-	DOID("do_rpp")
 	int			ret, proto, version;
 	void			is_request(int, int);
 	void			stream_eof(int, int, char *);
@@ -461,19 +461,19 @@ do_rpp(int stream)
 	version = disrsi(stream, &ret);
 	if (ret != DIS_SUCCESS) {
 		DBPRT(("%s: no protocol version number %s\n",
-			id, dis_emsg[ret]))
+			__func__, dis_emsg[ret]))
 		stream_eof(stream, ret, NULL);
 		return;
 	}
 
 	switch (proto) {
 		case	IS_PROTOCOL:
-			DBPRT(("%s: got an inter-server request\n", id))
+			DBPRT(("%s: got an inter-server request\n", __func__))
 			is_request(stream, version);
 			break;
 
 		default:
-			DBPRT(("%s: unknown request %d\n", id, proto))
+			DBPRT(("%s: unknown request %d\n", __func__, proto))
 			stream_eof(stream, ret, NULL);
 			break;
 	}
@@ -906,7 +906,6 @@ main(int argc, char **argv)
 	struct stat 		sb_sa;
 	struct batch_request	*periodic_req;
 	char			hook_msg[HOOK_MSG_SIZE];
-	int			ret;
 #ifndef WIN32
 	pid_t			sid = -1;
 #endif
@@ -1276,10 +1275,11 @@ main(int argc, char **argv)
 	}
 
 #ifdef NAS /* localmod 104 */
-	if ((lockfds = open(lockfile, O_CREAT | O_WRONLY, 0644)) < 0) {
+	if ((lockfds = open(lockfile, O_CREAT | O_WRONLY, 0644)) < 0)
 #else
-	if ((lockfds = open(lockfile, O_CREAT | O_WRONLY, 0600)) < 0) {
+	if ((lockfds = open(lockfile, O_CREAT | O_WRONLY, 0600)) < 0)
 #endif /* localmod 104 */
+	{
 		(void)sprintf(log_buffer, "%s: unable to open lock file",
 			msg_daemonname);
 		(void)fprintf(stderr, "%s\n", log_buffer);
@@ -2160,7 +2160,7 @@ try_db_again:
 			((void *)GET_NEXT(task_list_event) == (void *)0))
 			*state = SV_STATE_DOWN;
 	}
-	DBPRT(("Server out of main loop, state is %d\n", *state))
+	DBPRT(("Server out of main loop, state is %ld\n", *state))
 
 	svr_save_db(&server, SVR_SAVE_FULL);	/* final recording of server */
 	track_save((struct work_task *)0);	/* save tracking data	     */
@@ -3112,7 +3112,7 @@ setup_db_connection(char *host, int timeout, int have_db_control)
 			fprintf(stderr, "%s\n", db_err_msg);
 		}
 
-		if (errmsg && strlen(errmsg) > 0) {
+		if (strlen(errmsg) > 0) {
 			log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
 					LOG_CRIT, msg_daemonname, errmsg);
 			fprintf(stderr, "%s\n", errmsg);

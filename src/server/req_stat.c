@@ -808,7 +808,6 @@ req_stat_sched(struct batch_request *preq)
 {
 	svrattrl	   *pal;
 	struct batch_reply *preply;
-	struct brp_status  *pstat;
 	int rc = 0;
 	pbs_sched *psched;
 

@@ -92,11 +92,6 @@ static void append_to_word(dictionary *, struct word *, int);
 /* Create a string out of all words in a dictionary and their corresponding mapped indices */
 static char *dict_to_str(dictionary *);
 
-#ifdef DEBUG
-/* Print the dictionary to stdout for testing purposes */
-static void print_dict(dictionary *);
-#endif
-
 /* Free memory allocated to dictionary */
 static void free_dict(dictionary *);
 
@@ -778,31 +773,6 @@ free_execvnode_seq(char **ptr)
 
 
 #ifdef DEBUG
-/**
- * @brief
- * 	Print the dictionary to stdout. Intended for testing purposes
- *
- * @param[in] dict - The dictionary considered
- *
- */
-static void
-print_dict(dictionary *dict)
-{
-	struct word *w = dict->first;
-	struct map *m = w->map;
-	while (w != NULL) {
-		printf("%s\t", w->name);
-		while (m!=NULL) {
-			printf("%d\t", m->val);
-			m = m->next;
-		}
-		w = w->next;
-		if (w != NULL)
-			m = w->map;
-		printf("\n");
-	}
-}
-
 /**
  * @brief
  * 	function for Unit test

@@ -451,11 +451,10 @@ ERROR_EXIT:
 static PyObject *
 pps_size_richcompare(PPSVR_Size_Object *self, PyObject *with, int op)
 {
-
+	PyObject *result = Py_False; /* MUST incref result before return */
 	struct attribute attr_self;
 	struct attribute attr_with;
 	int cmp_result;
-	PyObject *result = Py_False; /* MUST incref result before return */
 
 	/* basic check make sure only size objects are compared */
 	/* Al: I originally changed this to allow coercing compare operands but */
@@ -465,8 +464,8 @@ pps_size_richcompare(PPSVR_Size_Object *self, PyObject *with, int op)
 	/* size types don't match.  */
 	if (!PyObject_TypeCheck(self, &PPSVR_Size_Type) ||
 		!PyObject_TypeCheck(with, &PPSVR_Size_Type)) {
-		Py_INCREF(Py_False);
-		return Py_False;
+		Py_INCREF(result);
+		return result;
 	}
 
 	COPY_SIZE_VALUE(attr_self.at_val.at_size, self->sz_value);

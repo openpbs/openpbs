@@ -3380,7 +3380,6 @@ injob(job *pjob, pid_t sid)
 static unsigned long
 cput_sum(job *pjob)
 {
-	char			*id = "cput_ses";
 	int			i;
 	unsigned long		cputime = 0;
 	int			nps = 0;
@@ -3412,7 +3411,7 @@ cput_sum(job *pjob)
 
 			nps++;
 			taskprocs++;
-			DBPRT(("%s: pid=%d task=%u", id, pp->pi_pid,
+			DBPRT(("%s: pid=%d task=%u", __func__, pp->pi_pid,
 				ptask->ti_qs.ti_task))
 			if (pp->pi_state == SZOMB) {
 				/* get zombie time only if top process in job */
@@ -3433,7 +3432,7 @@ cput_sum(job *pjob)
 		if (tcput > ptask->ti_cput)
 			ptask->ti_cput = tcput;
 		cputime += ptask->ti_cput;
-		DBPRT(("%s: task %08.8X cput %u jobsum %lu\n", id,
+		DBPRT(("%s: task %08.8X cput %u jobsum %lu\n", __func__,
 			ptask->ti_qs.ti_task, ptask->ti_cput, cputime))
 
 		if (taskprocs == 0) {

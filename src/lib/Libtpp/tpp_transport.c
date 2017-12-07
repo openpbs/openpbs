@@ -2216,11 +2216,9 @@ send_data(phy_conn_t *conn)
 							TPP_SCRATCHSIZE,
 							conn->td->nas_num_lrg_sends_C,
 							conn->td->nas_num_qual_lrg_sends_C,
-							conn->td->nas_num_lrg_sends_C > 0 ? conn->td->nas
-							_min_bytes_lrg_send_C : 0,
+							conn->td->nas_num_lrg_sends_C > 0 ? conn->td->nas_min_bytes_lrg_send_C : 0,
 							conn->td->nas_max_bytes_lrg_send_C,
-							conn->td->nas_num_lrg_sends_C > 0 ? conn->td->nas
-							_lrg_send_sum_kb_C / ((double) conn->td->nas_num_lrg_sends_C) : 0.0);
+							conn->td->nas_num_lrg_sends_C > 0 ? conn->td->nas_lrg_send_sum_kb_C / ((double) conn->td->nas_num_lrg_sends_C) : 0.0);
 						tpp_log_func(LOG_ERR, __func__, tpp_get_logbuf());
 					}
 

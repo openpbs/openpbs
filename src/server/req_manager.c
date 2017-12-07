@@ -142,7 +142,6 @@ extern pbs_sched *sched_alloc(char *sched_name);
 extern pbs_sched *find_scheduler(char *sched_name);
 extern void sched_free(pbs_sched *psched);
 extern int sched_delete(pbs_sched *psched);
-extern void set_sched_default(pbs_sched* psched);
 extern  void unset_power_provisioning(void);
 
 extern struct server server;
@@ -1342,8 +1341,8 @@ mgr_queue_delete(struct batch_request *preq)
 	char            *problem_names;
 	int             problem_cnt;
 	char            *name;
-	pbs_queue       *pque;
-	pbs_queue       *next_queue;
+	pbs_queue       *pque = NULL;
+	pbs_queue       *next_queue = NULL;
 	int             rc;
 	int             type=0;
 	struct pbs_queue **problem_queues = (struct pbs_queue**)0;
@@ -1357,8 +1356,7 @@ mgr_queue_delete(struct batch_request *preq)
 	/* get the queue to be deleted */
 	if (type == 0) {
 		pque = find_queuebyname(name);
-	}
-	else {
+	} else {
 		problem_queues = (struct pbs_queue **)malloc(server.sv_qs.sv_numque * sizeof(struct pbs_queue *));
 		if (problem_queues == NULL) {
 			log_err(ENOMEM, __func__, "out of memory");

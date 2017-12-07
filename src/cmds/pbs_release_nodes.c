@@ -58,7 +58,6 @@ int
 main(int argc, char **argv, char **envp) /* pbs_release_nodes */
 {
 	int c;
-	int to_file;
 	int errflg=0;
 	int any_failed=0;
 
@@ -70,25 +69,17 @@ main(int argc, char **argv, char **envp) /* pbs_release_nodes */
 	char *node_list = NULL;
 	int connect;
 	int stat=0;
-	int located = FALSE;
 	int k;
 	int all_opt = 0;
-
-#define MAX_MSG_STRING_LEN 256
-	char msg_string[MAX_MSG_STRING_LEN+1];
 
 #define GETOPT_ARGS "j:a"
 
 	/*test for real deal or just version and exit*/
-
 	execution_mode(argc, argv);
 
 #ifdef WIN32
 	winsock_init();
 #endif
-
-	msg_string[0]='\0';
-	to_file = 0;
 
 	job_id[0] = '\0';
 	while ((c = getopt(argc, argv, GETOPT_ARGS)) != EOF) {
@@ -137,22 +128,17 @@ main(int argc, char **argv, char **envp) /* pbs_release_nodes */
 		len += (strlen(argv[k]) + 1);	/* +1 for space */
 	}
 
-	node_list = (char *)malloc(len+1);
+	node_list = (char *)malloc(len + 1);
 	if (node_list == NULL) {
 		fprintf(stderr, "failed to malloc to store data (error %d)", errno);
 		exit(2);
 	}
 	node_list[0] = '\0';
 
-	len = 0;
-	for (optind; optind < argc; optind++) {
-		if (len == 0) {
-			strcpy(node_list, argv[optind]);
-		} else {
+	for (k = optind; k < argc; k++) {
+		if (k != optind)
 			strcat(node_list, "+");
-			strcat(node_list, argv[optind]);
-		}
-		len++;
+		strcat(node_list, argv[k]);
 	}
 	if (get_server(job_id, job_id_out, server_out)) {
 		fprintf(stderr, "pbs_release_nodes: illegally formed job identifier: %s\n", job_id);

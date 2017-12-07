@@ -294,7 +294,6 @@ done:
 void
 req_usercredential(struct batch_request *preq)
 {
-	DOID("req_jobcredential2")
 	char	*user;
 	int	type;
 	char	*cred;
@@ -302,7 +301,7 @@ req_usercredential(struct batch_request *preq)
 	char	info[512];
 	int	rval;
 
-	DBPRT(("%s: entered\n", id))
+	DBPRT(("%s: entered\n", __func__))
 	user = preq->rq_ind.rq_usercred.rq_user;
 	type = preq->rq_ind.rq_usercred.rq_type;
 	cred = preq->rq_ind.rq_usercred.rq_data;

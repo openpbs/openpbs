@@ -380,7 +380,6 @@ sched_recov_db(void)
 	pbs_db_attr_info_t attr_info;
 	pbs_db_obj_info_t obj;
 	int rc;
-	int index;
 	int count;
 	void *state = NULL;
 	pbs_sched *psched;

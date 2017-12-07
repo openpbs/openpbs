@@ -337,11 +337,11 @@ sec_cslog(int ecode, const char *caller, const char *txtmsg)
 void (*p_cslog)(int ecode, const char *caller, const char *txtmsg) = sec_cslog;
 
 
-#if 1
 /*------------------------------------------------------------------------
  * unused utility functions (mostly for debugging aids)
  * 	To include these, just change the #if 0, to #if 1
  *------------------------------------------------------------------------
+ */
  
 /**
  * @brief
@@ -393,8 +393,6 @@ dump(char *msg, int  length, char *data)
 
 	fprintf(stderr, "\n");
 }
-
-#endif
 
 /*========================================================================
  * Internal Supporting Functions

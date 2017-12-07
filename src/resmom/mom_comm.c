@@ -1484,10 +1484,12 @@ send_sisters_inner(job *pjob, int com, pbs_jobndstm_t command_func,
  * @brief
  *	This is the wrapper function to 'send_sisters_inner()'.
  */
+int
 send_sisters(job *pjob, int com, pbs_jobndstm_t command_func)
 {
 	return (send_sisters_inner(pjob, com, command_func, NULL));
 }
+
 #define	SEND_ERR(err) \
 if (reply) { \
 	(void)im_compose(stream, jobid, cookie, IM_ERROR, event, fromtask, IM_OLD_PROTOCOL_VER); \
@@ -2367,7 +2369,6 @@ send_resc_used_to_ms(int stream, char *jobid)
 	attribute_def		*ad;
 	svrattrl		*pal;
 	svrattrl		*nxpal;
-	svrattrl		*sister;
 	pbs_list_head		lhead;
 	pbs_list_head		send_head;
 	extern	int		resc_access_perm;
@@ -2466,9 +2467,6 @@ int
 recv_resc_used_from_sister(int stream, char *jobid, int nodeidx)
 {
 	attribute_def		*pdef;
-	svrattrl		*pal;
-	svrattrl		*nxpal;
-	svrattrl		*sister;
 	pbs_list_head		lhead;
 	extern	int		resc_access_perm;
 	svrattrl		*psatl;

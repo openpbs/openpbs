@@ -731,7 +731,7 @@ on_job_exit(struct work_task *ptask)
 	int    rc;
 	int    stageout_status = 1; /* success */
 	long   t;
-	pbs_list_head	*mom_tasklist_ptr;
+	pbs_list_head	*mom_tasklist_ptr = NULL;
 	mominfo_t *pmom = 0;
 	int	release_nodes_on_stageout = 0;
 
@@ -805,7 +805,8 @@ on_job_exit(struct work_task *ptask)
 					if (rc == 0) {
 						append_link(&pjob->ji_svrtask, &pt->wt_linkobj, pt);
 						if (pjob->ji_mom_prot == PROT_RPP)
-							append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
+							if (mom_tasklist_ptr)
+								append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
 						return;	/* come back when mom replies */
 					} else {
 						/* set up as if mom returned error */
@@ -893,7 +894,8 @@ on_job_exit(struct work_task *ptask)
 					if (rc == 0) {
 						append_link(&pjob->ji_svrtask, &pt->wt_linkobj, pt);
 						if (pjob->ji_mom_prot == PROT_RPP)
-							append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
+							if (mom_tasklist_ptr)
+								append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
 						return;	/* come back when mom replies */
 					} else {
 						/* set up as if mom returned error */
@@ -979,7 +981,8 @@ on_job_exit(struct work_task *ptask)
 					if (rc == 0) {
 						append_link(&pjob->ji_svrtask, &pt->wt_linkobj, pt);
 						if (pjob->ji_mom_prot == PROT_RPP)
-							append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
+							if (mom_tasklist_ptr)
+								append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
 						return;	/* come back when mom replies */
 					} else {
 						/* set up as if mom returned error */
@@ -1158,7 +1161,7 @@ on_job_rerun(struct work_task *ptask)
 	struct batch_request *preq;
 	struct work_task     *pt;
 	int		      rc;
-	pbs_list_head	*mom_tasklist_ptr;
+	pbs_list_head	*mom_tasklist_ptr = NULL;
 	mominfo_t *pmom = 0;
 
 	if (ptask->wt_type != WORK_Deferred_Reply) {
@@ -1219,7 +1222,8 @@ on_job_rerun(struct work_task *ptask)
 					/* request ok, will come back when its done */
 					append_link(&pjob->ji_svrtask, &pt->wt_linkobj, pt);
 					if (pjob->ji_mom_prot == PROT_RPP)
-						append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
+						if (mom_tasklist_ptr)
+							append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
 					return;
 				} else {
 					/* set up as if mom returned error */
@@ -1269,7 +1273,8 @@ on_job_rerun(struct work_task *ptask)
 					if (rc == 0) {
 						append_link(&pjob->ji_svrtask, &pt->wt_linkobj, pt);
 						if (pjob->ji_mom_prot == PROT_RPP)
-							append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
+							if (mom_tasklist_ptr)
+								append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
 						return;	/* come back when mom replies */
 					} else
 						/* set up as if mom returned error */
@@ -1339,7 +1344,8 @@ on_job_rerun(struct work_task *ptask)
 					if (rc == 0) {
 						append_link(&pjob->ji_svrtask, &pt->wt_linkobj, pt);
 						if (pjob->ji_mom_prot == PROT_RPP)
-							append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
+							if (mom_tasklist_ptr)
+								append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
 						return;
 					} else {	/* error on sending request */
 						preq->rq_reply.brp_code = rc;
@@ -1388,7 +1394,8 @@ on_job_rerun(struct work_task *ptask)
 					if (rc == 0) {
 						append_link(&pjob->ji_svrtask, &pt->wt_linkobj, pt);
 						if (pjob->ji_mom_prot == PROT_RPP)
-							append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
+							if (mom_tasklist_ptr)
+								append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
 						return;	/* come back when Mom replies */
 					} else {
 						/* set up as if mom returned error */
@@ -1524,6 +1531,7 @@ setrerun(job *pjob)
  * @param[in]		delim - a pointer to the delimiter to use
  * @param[in]		pjob - job structure for additional info
  */
+int
 concat_rescused_to_buffer(char **buffer, int *buffer_size, svrattrl *patlist, char *delim, job *pjob)
 {
 	int val_len;
@@ -1667,7 +1675,6 @@ concat_rescused_to_buffer(char **buffer, int *buffer_size, svrattrl *patlist, ch
 void
 job_obit(struct resc_used_update *pruu, int stream)
 {
-	DOID("job_obit")
 	int		  alreadymailed = 0;
 	char		 *acctbuf = NULL;
 	int  		  acctbuf_size = 0;
@@ -1677,10 +1684,8 @@ job_obit(struct resc_used_update *pruu, int stream)
 	int		  local_exitstatus = 0;
 	char		 *mailbuf = NULL;
 	int		  mailbuf_size = 0;
-	int		  need;
 	int		  newstate;
 	int		  newsubst;
-	char		 *pc;
 	job		 *pjob;
 	svrattrl	 *patlist;
 	struct work_task *ptask;
@@ -1690,11 +1695,11 @@ job_obit(struct resc_used_update *pruu, int stream)
 
 	time_now = time(0);
 
-	DBPRT(("%s: Obit received for job %s status=%d hop=%d\n", id,
+	DBPRT(("%s: Obit received for job %s status=%d hop=%d\n", __func__,
 		pruu->ru_pjobid, pruu->ru_status, pruu->ru_hop))
 	pjob = find_job(pruu->ru_pjobid);
 	if (pjob == (job *)0) {		/* not found */
-		DBPRT(("%s: job %s not found!\n", id, pruu->ru_pjobid))
+		DBPRT(("%s: job %s not found!\n", __func__, pruu->ru_pjobid))
 		if ((server_init_type == RECOV_COLD) ||
 			(server_init_type == RECOV_CREATE)) {
 			(void)sprintf(log_buffer, msg_obitnojob, PBSE_CLEANEDOUT);
@@ -1724,14 +1729,14 @@ job_obit(struct resc_used_update *pruu, int stream)
 
 	if (pjob->ji_qs.ji_state != JOB_STATE_RUNNING) {
 		DBPRT(("%s: job %s not in running state!\n",
-			id, pruu->ru_pjobid))
+			__func__, pruu->ru_pjobid))
 		if (pjob->ji_qs.ji_state != JOB_STATE_EXITING) {
 
 			/* not running and not exiting - bad news   */
 			/* may be from old Mom and job was requeued */
 			/* tell mom to trash job		    */
 			DBPRT(("%s: job %s not in exiting state!\n",
-				id, pruu->ru_pjobid))
+				__func__, pruu->ru_pjobid))
 			reject_obit(stream, pruu->ru_pjobid);
 
 			(void)sprintf(log_buffer, "%s", msg_obitnotrun);
@@ -1794,7 +1799,7 @@ job_obit(struct resc_used_update *pruu, int stream)
 		/* alive after being down awhile and job was requeue and run */
 		/* somewhere else.   Just tell Mom to junk job.		     */
 		DBPRT(("%s: job %s run count too low\n",
-			id, pruu->ru_pjobid))
+			__func__, pruu->ru_pjobid))
 		reject_obit(stream, pruu->ru_pjobid);
 		FREE_RUU(pruu) /* free pruu, see mom_server.h */
 		return;
@@ -1835,7 +1840,7 @@ job_obit(struct resc_used_update *pruu, int stream)
 	if ((pjob->ji_qs.ji_substate == JOB_SUBSTATE_PRERUN) ||
 		(pjob->ji_qs.ji_substate == JOB_SUBSTATE_PROVISION)) {
 
-		DBPRT(("%s: job %s in prerun state.\n", id, pruu->ru_pjobid))
+		DBPRT(("%s: job %s in prerun state.\n", __func__, pruu->ru_pjobid))
 		complete_running(pjob);
 	}
 	if (pjob->ji_prunreq) {
@@ -1969,7 +1974,7 @@ job_obit(struct resc_used_update *pruu, int stream)
 					pjob->ji_qs.ji_jobid,
 					msg_hook_reject_deletejob);
 				DBPRT(("%s: MOM rejected job %s due to a hook.\n",
-					id, pruu->ru_pjobid))
+					__func__, pruu->ru_pjobid))
 				svr_mailowner(pjob, MAIL_ABORT, MAIL_FORCE,
 					msg_hook_reject_deletejob);
 				alreadymailed = 1;
@@ -1981,7 +1986,7 @@ job_obit(struct resc_used_update *pruu, int stream)
 					LOG_INFO, pjob->ji_qs.ji_jobid,
 					"a hook requested for job to be deleted");
 				DBPRT(("%s: a hook requested for job %s to be deleted.\n",
-					id, pruu->ru_pjobid))
+					__func__, pruu->ru_pjobid))
 				svr_mailowner(pjob, MAIL_ABORT, MAIL_FORCE,
 					"a hook requested for job to be deleted");
 				alreadymailed = 1;
@@ -1993,7 +1998,7 @@ job_obit(struct resc_used_update *pruu, int stream)
 				/* MOM rejected job with fatal error, abort job */
 
 				DBPRT(("%s: MOM rejected job %s with fatal error.\n",
-					id, pruu->ru_pjobid))
+					__func__, pruu->ru_pjobid))
 				svr_mailowner(pjob, MAIL_ABORT, MAIL_FORCE, msg_momnoexec1);
 				alreadymailed = 1;
 				break;
@@ -2003,7 +2008,7 @@ job_obit(struct resc_used_update *pruu, int stream)
 				/* MOM reject job after files setup, abort job */
 
 				DBPRT(("%s: MOM rejected job %s after setup.\n",
-					id, pruu->ru_pjobid))
+					__func__, pruu->ru_pjobid))
 				svr_mailowner(pjob, MAIL_ABORT, MAIL_FORCE, msg_momnoexec2);
 				alreadymailed = 1;
 				break;
@@ -2013,7 +2018,7 @@ job_obit(struct resc_used_update *pruu, int stream)
 				/* MOM aborted job on her initialization */
 
 				DBPRT(("%s: MOM aborted job %s on init, no requeue.\n",
-					id, pruu->ru_pjobid))
+					__func__, pruu->ru_pjobid))
 				alreadymailed = setrerun(pjob);
 				pjob->ji_qs.ji_svrflags |= JOB_SVFLG_HASRUN;
 				break;
@@ -2023,7 +2028,7 @@ job_obit(struct resc_used_update *pruu, int stream)
 				/* MOM abort job because uid or gid was invalid */
 
 				DBPRT(("%s: MOM rejected job %s with invaild uid/gid.\n",
-					id, pruu->ru_pjobid))
+					__func__, pruu->ru_pjobid))
 				svr_mailowner(pjob, MAIL_ABORT, MAIL_FORCE, msg_baduser);
 				alreadymailed = 1;
 				/* go to the retry case */
@@ -2071,13 +2076,13 @@ job_obit(struct resc_used_update *pruu, int stream)
 						pjob->ji_qs.ji_jobid,
 						msg_hook_reject_rerunjob);
 					DBPRT(("%s: MOM rejected job %s due to a hook.\n",
-						id, pruu->ru_pjobid))
+						__func__, pruu->ru_pjobid))
 				}
 RetryJob:
 				/* MOM rejected job, but said retry it */
 
 				DBPRT(("%s: MOM rejected job %s but will retry.\n",
-					id, pruu->ru_pjobid))
+					__func__, pruu->ru_pjobid))
 				if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_HASRUN) {
 					/* has run before, treat this as another rerun */
 					alreadymailed = setrerun(pjob);
@@ -2108,7 +2113,7 @@ RetryJob:
 				/* MOM could not restart job, setup for rerun */
 
 				DBPRT(("%s: MOM could not restart job %s, will rerun.\n",
-					id, pruu->ru_pjobid))
+					__func__, pruu->ru_pjobid))
 				alreadymailed = setrerun(pjob);
 				pjob->ji_qs.ji_svrflags &= ~JOB_SVFLG_CHKPT;
 				break;
@@ -2124,8 +2129,7 @@ RetryJob:
 				/* requeue job and leave all information on execution  */
 				/* host for a later restart                            */
 
-				DBPRT(("%s: MOM request requeue of job for restart.\n",
-					id, pruu->ru_pjobid))
+				DBPRT(("%s: MOM request requeue of job for restart.\n", __func__))
 				if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob)
 					goto RetryJob;
 
@@ -2151,7 +2155,7 @@ RetryJob:
 				/* Must recover output and checkpoint file, do eoj	    */
 
 				DBPRT(("%s: MOM aborted migratable job %s on init,"
-					" will requeue.\n", id, pruu->ru_pjobid))
+					" will requeue.\n", __func__, pruu->ru_pjobid))
 
 				if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob)
 					goto RetryJob;
@@ -2174,7 +2178,7 @@ RetryJob:
 				case JOB_EXEC_FAIL_SECURITY:
 					/* MOM rejected job with security breach fatal error, abort job */
 					DBPRT(("%s: MOM rejected job %s with security breach fatal error.\n",
-						id, pruu->ru_pjobid))
+						__func__, pruu->ru_pjobid))
 					pjob->ji_modified = 1;
 					pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long |= HOLD_s;
 					pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_MODIFY;
@@ -2206,7 +2210,7 @@ RetryJob:
 		(pjob->ji_qs.ji_substate != JOB_SUBSTATE_RERUN2))) {
 
 		DBPRT(("%s: Job %s is terminating and not rerun.\n",
-			id, pjob->ji_qs.ji_jobid))
+			__func__, pjob->ji_qs.ji_jobid))
 
 		(void)svr_setjobstate(pjob, JOB_STATE_EXITING,
 			JOB_SUBSTATE_EXITING);
@@ -2243,7 +2247,7 @@ RetryJob:
 		 * If not checkpointed, clear "resources_used"
 		 * Requeue job
 		 */
-		DBPRT(("%s: Rerunning job %s\n", id, pjob->ji_qs.ji_jobid))
+		DBPRT(("%s: Rerunning job %s\n", __func__, pjob->ji_qs.ji_jobid))
 
 		if ((pjob->ji_qs.ji_svrflags &
 			(JOB_SVFLG_CHKPT | JOB_SVFLG_ChkptMig)) == 0) {
@@ -2285,6 +2289,6 @@ RetryJob:
 	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob)
 		ack_obit(stream, pjob->ji_qs.ji_jobid);
 
-	DBPRT(("%s: Returning from end of function.\n", id))
+	DBPRT(("%s: Returning from end of function.\n", __func__))
 	return;
 }

@@ -45,9 +45,10 @@ AC_DEFUN([PBS_AC_DECL_SOCKLEN_T],
 #include <netdb.h>
 ], [
 #ifdef  __hpux
-  NO socklen_t in HPUX
+#error NO socklen_t in HPUX
 #else
-  socklen_t       len;
+  socklen_t       len = 0;
+  len++;
 #endif
 ],
     pbs_ac_cv_decl_socklen_t=yes,

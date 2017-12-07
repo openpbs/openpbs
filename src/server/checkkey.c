@@ -182,11 +182,6 @@ set_cpu_licenses_need(job *pjob, char *exec_vnode)
 	return 1;
 }
 
-static void
-report_license_highuse(void)
-{
-}
-
 void
 allocate_cpu_licenses(job *pjob)
 {

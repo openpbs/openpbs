@@ -71,8 +71,8 @@ extern "C" {
 
 #endif	/* PBS_CRED_GRIDPROXY */
 
-int pbs_encrypt_data(char *uncrypted, int *credtype, size_t len, char **crypted, size_t *outlen);
-int pbs_decrypt_data(char *crypted, int credtype, size_t len, char **uncrypted, size_t *outlen);
+extern int pbs_encrypt_data(char *uncrypted, int *credtype, size_t len, char **crypted, size_t *outlen);
+extern int pbs_decrypt_data(char *crypted, int credtype, size_t len, char **uncrypted, size_t *outlen);
 
 #ifdef	__cplusplus
 }

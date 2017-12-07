@@ -416,9 +416,6 @@ local_or_remote(char **path)
 int
 is_direct_write(job *pjob, enum job_file which, char *path, int *direct_write_possible)
 {
-	attribute *at;
-	resource_def *rd;
-	resource *dw;
 	char *oldpath;
 	char working_path[MAXPATHLEN + 1];
 	char *p = working_path;

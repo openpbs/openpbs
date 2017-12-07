@@ -68,16 +68,17 @@
  */
 #ifdef	DEBUG
 #define	DBPRT(x)	printf x;
-#define	DOID(x)		static char id[] = x;
 #else
 #define	DBPRT(x)
-#define	DOID(x)
 #endif
+
+#define IFNAME_MAX 256
+#define IFFAMILY_MAX 16
 
 struct log_net_info { /* interface info for logging */
 	struct log_net_info *next;
-	char *ifname;
-	char *iffamily;
+	char ifname[IFNAME_MAX];
+	char iffamily[IFFAMILY_MAX];
 	char **ifhostnames;
 };
 
@@ -88,7 +89,8 @@ extern long *log_event_mask;
 extern void set_logfile(FILE *fp);
 extern int set_msgdaemonname(char *ch);
 
-extern void get_if_info(struct log_net_info *ni, char *msg);
+extern struct log_net_info *get_if_info(char *msg);
+extern void free_if_info(struct log_net_info *ni);
 
 extern void log_close(int close_msg);
 extern void log_err(int err, const char *func, const char *text);

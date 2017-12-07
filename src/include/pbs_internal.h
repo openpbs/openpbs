@@ -416,9 +416,9 @@ DECLDIR int pbs_geterrno(void);
 
 DECLDIR int pbs_py_spawn(int, char *, char **, char **);
 
-DECLDIR int pbs_encrypt_pwd(char *, int *, char **, size_t *);
+DECLDIR int pbs_encrypt_pwd(unsigned char *, int *, unsigned char **, size_t *);
 
-DECLDIR int pbs_decrypt_pwd(char *, int, size_t, char **);
+DECLDIR int pbs_decrypt_pwd(unsigned char *, int, size_t, unsigned char **);
 
 DECLDIR char *
 pbs_submit_with_cred(int, struct attropl *, char *,

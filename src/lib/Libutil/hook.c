@@ -508,23 +508,22 @@ hook_freq_as_string(int freq)
 int
 set_hook_name(hook *phook, char *newval, char *msg, size_t msg_len)
 {
-	static char	*id = "set_hook_name";
 	int		pbsprefix;
 
 	if (msg == NULL) { /* should not happen */
-		log_err(PBSE_INTERNAL, id, "'msg' buffer is NULL");
+		log_err(PBSE_INTERNAL, __func__, "'msg' buffer is NULL");
 		return (1);
 	}
 	memset(msg, '\0', msg_len);
 
 	if (phook  == NULL) {
 		snprintf(msg, msg_len-1, "%s: hook parameter is NULL!",
-			id);
+			__func__);
 		return (1);
 	}
 
 	if (newval == NULL) {
-		snprintf(msg, msg_len-1, "%s: hook's name is NULL!", id);
+		snprintf(msg, msg_len-1, "%s: hook's name is NULL!", __func__);
 		return (1);
 	}
 
@@ -557,22 +556,20 @@ set_hook_name(hook *phook, char *newval, char *msg, size_t msg_len)
 int
 set_hook_enabled(hook *phook, char *newval, char *msg, size_t msg_len)
 {
-	static char	*id = "set_hook_enabled";
-
 	if (msg == NULL) { /* should not happen */
-		log_err(PBSE_INTERNAL, id, "'msg' buffer is NULL");
+		log_err(PBSE_INTERNAL, __func__, "'msg' buffer is NULL");
 		return (1);
 	}
 	memset(msg, '\0', msg_len);
 
 	if (phook  == NULL) {
 		snprintf(msg, msg_len-1,
-			"%s: hook parameter is NULL!", id);
+			"%s: hook parameter is NULL!", __func__);
 		return (1);
 	}
 
 	if (newval == NULL) {
-		snprintf(msg, msg_len-1, "%s: hook's value is NULL!", id);
+		snprintf(msg, msg_len-1, "%s: hook's value is NULL!", __func__);
 		return (1);
 	}
 
@@ -606,22 +603,20 @@ set_hook_enabled(hook *phook, char *newval, char *msg, size_t msg_len)
 int
 set_hook_debug(hook *phook, char *newval, char *msg, size_t msg_len)
 {
-	static char	*id = "set_hook_debug";
-
 	if (msg == NULL) { /* should not happen */
-		log_err(PBSE_INTERNAL, id, "'msg' buffer is NULL");
+		log_err(PBSE_INTERNAL, __func__, "'msg' buffer is NULL");
 		return (1);
 	}
 	memset(msg, '\0', msg_len);
 
 	if (phook  == NULL) {
 		snprintf(msg, msg_len-1,
-			"%s: hook parameter is NULL!", id);
+			"%s: hook parameter is NULL!", __func__);
 		return (1);
 	}
 
 	if (newval == NULL) {
-		snprintf(msg, msg_len-1, "%s: hook's value is NULL!", id);
+		snprintf(msg, msg_len-1, "%s: hook's value is NULL!", __func__);
 		return (1);
 	}
 
@@ -656,22 +651,20 @@ int
 set_hook_type(hook *phook, char *newval, char *msg, size_t msg_len,
 	int allow_PBS_type)
 {
-	static	char	*id = "set_hook_type";
-
 	if (msg == NULL) { /* should not happen */
-		log_err(PBSE_INTERNAL, id, "'msg' buffer is NULL");
+		log_err(PBSE_INTERNAL, __func__, "'msg' buffer is NULL");
 		return (1);
 	}
 	memset(msg, '\0', msg_len);
 
 	if (phook  == NULL) {
 		snprintf(msg, msg_len-1, "%s: hook parameter is NULL!",
-			id);
+			__func__);
 		return (1);
 	}
 
 	if (newval == NULL) {
-		snprintf(msg, msg_len-1, "%s: hook's type is NULL!", id);
+		snprintf(msg, msg_len-1, "%s: hook's type is NULL!", __func__);
 		return (1);
 	}
 
@@ -746,22 +739,20 @@ set_hook_type(hook *phook, char *newval, char *msg, size_t msg_len,
 int
 set_hook_user(hook *phook, char *newval, char *msg, size_t msg_len, int strict)
 {
-	static char	*id = "set_hook_user";
-
 	if (msg == NULL) { /* should not happen */
-		log_err(PBSE_INTERNAL, id, "'msg' buffer is NULL");
+		log_err(PBSE_INTERNAL, __func__, "'msg' buffer is NULL");
 		return (1);
 	}
 	memset(msg, '\0', msg_len);
 
 	if (phook  == NULL) {
 		snprintf(msg, msg_len-1,
-			"%s: hook parameter is NULL!", id);
+			"%s: hook parameter is NULL!", __func__);
 		return (1);
 	}
 
 	if (newval == NULL) {
-		snprintf(msg, msg_len-1, "%s:  hook's user is NULL!", id);
+		snprintf(msg, msg_len-1, "%s:  hook's user is NULL!", __func__);
 		return (1);
 	}
 
@@ -810,12 +801,11 @@ set_hook_user(hook *phook, char *newval, char *msg, size_t msg_len, int strict)
 static void
 insert_hook_sort_order(unsigned int event, pbs_list_head *phook_head, hook *phook)
 {
-	static  char    *id = "insert_hook_sort_order";
 	pbs_list_link	*plink_elem, *plink_cur;
 	hook		*phook_cur;
 
 	if ((phook_head == NULL) || (phook == NULL)) {
-		log_err(PBSE_INTERNAL, id,
+		log_err(PBSE_INTERNAL, __func__,
 			"NULL arguments to phook_head and/or phook");
 		return;
 	}
@@ -854,7 +844,7 @@ insert_hook_sort_order(unsigned int event, pbs_list_head *phook_head, hook *phoo
 		plink_elem = &phook->hi_execjob_attach_hooks;
 	} else {
 		/* should not happen */
-		log_err(PBSE_INTERNAL, id, "encountered a bad event");
+		log_err(PBSE_INTERNAL, __func__, "encountered a bad event");
 		return;
 	}
 
@@ -900,7 +890,7 @@ insert_hook_sort_order(unsigned int event, pbs_list_head *phook_head, hook *phoo
 			plink_cur = &phook_cur->hi_execjob_attach_hooks;
 		} else {
 			/* should not happen */
-			log_err(PBSE_INTERNAL, id, "encountered a bad event");
+			log_err(PBSE_INTERNAL, __func__, "encountered a bad event");
 			return;
 		}
 
@@ -942,22 +932,20 @@ int
 set_hook_fail_action(hook *phook, char *newval, char *msg,
 	size_t msg_len, int strict)
 {
-	static char	*id = "set_hook_fail_action";
-
 	if (msg == NULL) { /* should not happen */
-		log_err(PBSE_INTERNAL, id, "'msg' buffer is NULL");
+		log_err(PBSE_INTERNAL, __func__, "'msg' buffer is NULL");
 		return (1);
 	}
 	memset(msg, '\0', msg_len);
 
 	if (phook  == NULL) {
 		snprintf(msg, msg_len-1, "%s: hook parameter is NULL!",
-			id);
+			__func__);
 		return (1);
 	}
 
 	if (newval == NULL) {
-		snprintf(msg, msg_len-1, "%s: hook's fail_action is NULL!", id);
+		snprintf(msg, msg_len-1, "%s: hook's fail_action is NULL!", __func__);
 		return (1);
 	}
 
@@ -996,29 +984,28 @@ int
 add_hook_fail_action(hook *phook, char *newval, char *msg, size_t msg_len,
 	int strict)
 {
-	static char	*id = "add_hook_fail_action";
 	char	*val, *newval_dup;
 
 	if (msg == NULL) { /* should not happen */
-		log_err(PBSE_INTERNAL, id, "'msg' buffer is NULL");
+		log_err(PBSE_INTERNAL, __func__, "'msg' buffer is NULL");
 		return (1);
 	}
 	memset(msg, '\0', msg_len);
 
 	if (phook  == NULL) {
 		snprintf(msg, msg_len-1, "%s: hook parameter is NULL!",
-			id);
+			__func__);
 		return (1);
 	}
 
 	if (newval == NULL) {
-		snprintf(msg, msg_len-1, "%s: hook's fail_action is NULL!", id);
+		snprintf(msg, msg_len-1, "%s: hook's fail_action is NULL!", __func__);
 		return (1);
 	}
 
 	if ((newval_dup=strdup(newval)) == NULL) {
 		snprintf(msg, msg_len-1,
-			"%s: failed to malloc newval=%s!", id, newval);
+			"%s: failed to malloc newval=%s!", __func__, newval);
 		return (1);
 	}
 	val = strtok(newval_dup, ",");
@@ -1137,29 +1124,28 @@ err:
 int
 del_hook_fail_action(hook *phook, char *newval, char *msg, size_t msg_len)
 {
-	static char	*id = "del_hook_fail_action";
 	char	*val, *newval_dup;
 
 	if (msg == NULL) { /* should not happen */
-		log_err(PBSE_INTERNAL, id, "'msg' buffer is NULL");
+		log_err(PBSE_INTERNAL, __func__, "'msg' buffer is NULL");
 		return (1);
 	}
 	memset(msg, '\0', msg_len);
 
 	if (phook  == NULL) {
 		snprintf(msg, msg_len-1, "%s: hook parameter is NULL!",
-			id);
+			__func__);
 		return (1);
 	}
 
 	if (newval == NULL) {
-		snprintf(msg, msg_len-1, "%s: hook's fail_action is NULL!", id);
+		snprintf(msg, msg_len-1, "%s: hook's fail_action is NULL!", __func__);
 		return (1);
 	}
 
 	if ((newval_dup=strdup(newval)) == NULL) {
 		snprintf(msg, msg_len-1,
-			"%s: failed to malloc newval=%s!", id, newval);
+			"%s: failed to malloc newval=%s!", __func__, newval);
 		return (1);
 	}
 
@@ -1215,22 +1201,20 @@ del_hook_fail_action(hook *phook, char *newval, char *msg, size_t msg_len)
 int
 set_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 {
-	static char	*id = "set_hook_event";
-
 	if (msg == NULL) { /* should not happen */
-		log_err(PBSE_INTERNAL, id, "'msg' buffer is NULL");
+		log_err(PBSE_INTERNAL, __func__, "'msg' buffer is NULL");
 		return (1);
 	}
 	memset(msg, '\0', msg_len);
 
 	if (phook  == NULL) {
 		snprintf(msg, msg_len-1, "%s: hook parameter is NULL!",
-			id);
+			__func__);
 		return (1);
 	}
 
 	if (newval == NULL) {
-		snprintf(msg, msg_len-1, "%s: hook's event is NULL!", id);
+		snprintf(msg, msg_len-1, "%s: hook's event is NULL!", __func__);
 		return (1);
 	}
 
@@ -1277,30 +1261,29 @@ set_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 int
 add_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 {
-	static char	*id = "add_hook_event";
 	char	*val, *newval_dup;
 	hook 	*anotherhook;
 
 	if (msg == NULL) { /* should not happen */
-		log_err(PBSE_INTERNAL, id, "'msg' buffer is NULL");
+		log_err(PBSE_INTERNAL, __func__, "'msg' buffer is NULL");
 		return (1);
 	}
 	memset(msg, '\0', msg_len);
 
 	if (phook  == NULL) {
 		snprintf(msg, msg_len-1, "%s: hook parameter is NULL!",
-			id);
+			__func__);
 		return (1);
 	}
 
 	if (newval == NULL) {
-		snprintf(msg, msg_len-1, "%s: hook's event is NULL!", id);
+		snprintf(msg, msg_len-1, "%s: hook's event is NULL!", __func__);
 		return (1);
 	}
 
 	if ((newval_dup=strdup(newval)) == NULL) {
 		snprintf(msg, msg_len-1,
-			"%s: failed to malloc newval=%s!", id, newval);
+			"%s: failed to malloc newval=%s!", __func__, newval);
 		return (1);
 	}
 	val = strtok(newval_dup, ",");
@@ -1476,29 +1459,28 @@ err:
 int
 del_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 {
-	static char	*id = "del_hook_event";
 	char	*val, *newval_dup;
 
 	if (msg == NULL) { /* should not happen */
-		log_err(PBSE_INTERNAL, id, "'msg' buffer is NULL");
+		log_err(PBSE_INTERNAL, __func__, "'msg' buffer is NULL");
 		return (1);
 	}
 	memset(msg, '\0', msg_len);
 
 	if (phook  == NULL) {
 		snprintf(msg, msg_len-1, "%s: hook parameter is NULL!",
-			id);
+			__func__);
 		return (1);
 	}
 
 	if (newval == NULL) {
-		snprintf(msg, msg_len-1, "%s: hook's event is NULL!", id);
+		snprintf(msg, msg_len-1, "%s: hook's event is NULL!", __func__);
 		return (1);
 	}
 
 	if ((newval_dup=strdup(newval)) == NULL) {
 		snprintf(msg, msg_len-1,
-			"%s: failed to malloc newval=%s!", id, newval);
+			"%s: failed to malloc newval=%s!", __func__, newval);
 		return (1);
 	}
 
@@ -1598,23 +1580,22 @@ int
 set_hook_order(hook *phook, char *newval, char *msg, size_t msg_len)
 {
 
-	static	char	*id = "set_hook_order";
 	int 		val;
 
 	if (msg == NULL) { /* should not happen */
-		log_err(PBSE_INTERNAL, id, "'msg' buffer is NULL");
+		log_err(PBSE_INTERNAL, __func__, "'msg' buffer is NULL");
 		return (1);
 	}
 	memset(msg, '\0', msg_len);
 
 	if (phook  == NULL) {
 		snprintf(msg, msg_len-1, "%s: hook parameter is NULL!",
-			id);
+			__func__);
 		return (1);
 	}
 
 	if (newval == NULL) {
-		snprintf(msg, msg_len-1, "%s: hook's order is NULL!", id);
+		snprintf(msg, msg_len-1, "%s: hook's order is NULL!", __func__);
 		return (1);
 	}
 
@@ -1793,7 +1774,6 @@ int
 set_hook_freq(hook *phook, char *newval, char *msg, size_t msg_len)
 {
 	int	freq;
-
 	char		*pc = NULL;
 
 	if (msg == NULL) { /* should not happen */
@@ -1862,17 +1842,15 @@ set_hook_freq(hook *phook, char *newval, char *msg, size_t msg_len)
 int
 unset_hook_enabled(hook *phook, char *msg, size_t msg_len)
 {
-	static char	*id = "unset_hook_enabled";
-
 	if (msg == NULL) { /* should not happen */
-		log_err(PBSE_INTERNAL, id, "'msg' buffer is NULL");
+		log_err(PBSE_INTERNAL, __func__, "'msg' buffer is NULL");
 		return (1);
 	}
 	memset(msg, '\0', msg_len);
 
 	if (phook == NULL) {
 		snprintf(msg, msg_len-1,
-			"%s: hook parameter is NULL", id);
+			"%s: hook parameter is NULL", __func__);
 		return (1);
 	}
 
@@ -1894,17 +1872,15 @@ unset_hook_enabled(hook *phook, char *msg, size_t msg_len)
 int
 unset_hook_debug(hook *phook, char *msg, size_t msg_len)
 {
-	static char	*id = "unset_hook_debug";
-
 	if (msg == NULL) { /* should not happen */
-		log_err(PBSE_INTERNAL, id, "'msg' buffer is NULL");
+		log_err(PBSE_INTERNAL, __func__, "'msg' buffer is NULL");
 		return (1);
 	}
 	memset(msg, '\0', msg_len);
 
 	if (phook == NULL) {
 		snprintf(msg, msg_len-1,
-			"%s: hook parameter is NULL", id);
+			"%s: hook parameter is NULL", __func__);
 		return (1);
 	}
 
@@ -1920,17 +1896,15 @@ unset_hook_debug(hook *phook, char *msg, size_t msg_len)
 int
 unset_hook_type(hook *phook, char *msg, size_t msg_len)
 {
-	static char	*id = "unset_hook_type";
-
 	if (msg == NULL) { /* should not happen */
-		log_err(PBSE_INTERNAL, id, "'msg' buffer is NULL");
+		log_err(PBSE_INTERNAL, __func__, "'msg' buffer is NULL");
 		return (1);
 	}
 	memset(msg, '\0', msg_len);
 
 	if (phook == NULL) {
 		snprintf(msg, msg_len-1,
-			"%s: hook parameter is NULL", id);
+			"%s: hook parameter is NULL", __func__);
 		return (1);
 	}
 
@@ -1954,17 +1928,15 @@ unset_hook_type(hook *phook, char *msg, size_t msg_len)
 int
 unset_hook_user(hook *phook, char *msg, size_t msg_len)
 {
-	static char *id = "unset_hook_user";
-
 	if (msg == NULL) { /* should not happen */
-		log_err(PBSE_INTERNAL, id, "'msg' buffer is NULL");
+		log_err(PBSE_INTERNAL, __func__, "'msg' buffer is NULL");
 		return (1);
 	}
 	memset(msg, '\0', msg_len);
 
 	if (phook == NULL) {
 		snprintf(msg, msg_len-1,
-			"%s: hook parameter is NULL", id);
+			"%s: hook parameter is NULL", __func__);
 		return (1);
 	}
 
@@ -1980,17 +1952,15 @@ unset_hook_user(hook *phook, char *msg, size_t msg_len)
 int
 unset_hook_fail_action(hook *phook, char *msg, size_t msg_len)
 {
-	static char *id = "unset_hook_fail_action";
-
 	if (msg == NULL) { /* should not happen */
-		log_err(PBSE_INTERNAL, id, "'msg' buffer is NULL");
+		log_err(PBSE_INTERNAL, __func__, "'msg' buffer is NULL");
 		return (1);
 	}
 	memset(msg, '\0', msg_len);
 
 	if (phook == NULL) {
 		snprintf(msg, msg_len-1,
-			"%s: hook parameter is NULL", id);
+			"%s: hook parameter is NULL", __func__);
 		return (1);
 	}
 
@@ -2015,17 +1985,15 @@ unset_hook_fail_action(hook *phook, char *msg, size_t msg_len)
 int
 unset_hook_event(hook *phook, char *msg, size_t msg_len)
 {
-	static char	*id = "unset_hook_event";
-
 	if (msg == NULL) { /* should not happen */
-		log_err(PBSE_INTERNAL, id, "'msg' buffer is NULL");
+		log_err(PBSE_INTERNAL, __func__, "'msg' buffer is NULL");
 		return (1);
 	}
 	memset(msg, '\0', msg_len);
 
 	if (phook == NULL) {
 		snprintf(msg, msg_len-1,
-			"%s: hook parameter is NULL", id);
+			"%s: hook parameter is NULL", __func__);
 		return (1);
 	}
 
@@ -2107,17 +2075,15 @@ unset_hook_event(hook *phook, char *msg, size_t msg_len)
 int
 unset_hook_order(hook *phook, char *msg, size_t msg_len)
 {
-	static char	*id = "unset_hook_order";
-
 	if (msg == NULL) { /* should not happen */
-		log_err(PBSE_INTERNAL, id, "'msg' buffer is NULL");
+		log_err(PBSE_INTERNAL, __func__, "'msg' buffer is NULL");
 		return (1);
 	}
 	memset(msg, '\0', msg_len);
 
 	if (phook == NULL) {
 		snprintf(msg, msg_len-1,
-			"%s: hook parameter is NULL", id);
+			"%s: hook parameter is NULL", __func__);
 		return (1);
 	}
 
@@ -2218,17 +2184,15 @@ unset_hook_order(hook *phook, char *msg, size_t msg_len)
 int
 unset_hook_alarm(hook *phook, char *msg, size_t msg_len)
 {
-	static char	*id = "unset_hook_alarm";
-
 	if (msg == NULL) { /* should not happen */
-		log_err(PBSE_INTERNAL, id, "'msg' buffer is NULL");
+		log_err(PBSE_INTERNAL, __func__, "'msg' buffer is NULL");
 		return (1);
 	}
 	memset(msg, '\0', msg_len);
 
 	if (phook == NULL) {
 		snprintf(msg, msg_len-1,
-			"%s: hook parameter is NULL", id);
+			"%s: hook parameter is NULL", __func__);
 		return (1);
 	}
 
@@ -2252,17 +2216,15 @@ unset_hook_alarm(hook *phook, char *msg, size_t msg_len)
 int
 unset_hook_freq(hook *phook, char *msg, size_t msg_len)
 {
-	static char	*id = "unset_hook_freq";
-
 	if (msg == NULL) { /* should not happen */
-		log_err(PBSE_INTERNAL, id, "'msg' buffer is NULL");
+		log_err(PBSE_INTERNAL, __func__, "'msg' buffer is NULL");
 		return (1);
 	}
 	memset(msg, '\0', msg_len);
 
 	if (phook == NULL) {
 		snprintf(msg, msg_len-1,
-			"%s: hook parameter is NULL", id);
+			"%s: hook parameter is NULL", __func__);
 		return (1);
 	}
 
@@ -2320,12 +2282,11 @@ hook_init(hook *phook, void (*pyfree_func)(struct python_script *))
 hook	*
 hook_alloc(void)
 {
-	static char	*id = "hook_alloc";
 	hook		*phook;
 
 	phook = (hook *)malloc(sizeof(hook));
 	if (phook == (hook *)0) {
-		log_err(errno, id, "no memory");
+		log_err(errno, __func__, "no memory");
 		return ((hook *)0);
 	}
 	(void)memset((char *)phook, (int)0, (size_t)sizeof(hook));
@@ -2376,7 +2337,6 @@ hook_free(hook *phook, void (*pyfree_func)(struct python_script *))
 void
 mark_hook_file_bad(char *filename)
 {
-	static char *id = "mark_hook_file_bad";
 	char	bad_filename[MAXPATHLEN+1];
 	char	*p;
 	int	is_hook_cntrl_file = 0;
@@ -2419,14 +2379,14 @@ mark_hook_file_bad(char *filename)
 		errno = GetLastError();
 		snprintf(log_buffer, sizeof(log_buffer),
 			"MoveFileEx(%s, %s) failed!", filename, bad_filename);
-		log_err(errno, id, log_buffer);
+		log_err(errno, __func__, log_buffer);
 
 	} else {
 		snprintf(log_buffer, sizeof(log_buffer),
 			"renamed hook-related file %s as %s", filename,
 			bad_filename);
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_HOOK,
-			LOG_WARNING, id, log_buffer);
+			LOG_WARNING, __func__, log_buffer);
 	}
 	secure_file(bad_filename, "Administrators",
 		READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED);
@@ -2434,13 +2394,13 @@ mark_hook_file_bad(char *filename)
 	if (rename(filename, bad_filename) == -1) {
 		snprintf(log_buffer, sizeof(log_buffer),
 			"error renaming hook file %s", filename);
-		log_err(errno, id, log_buffer);
+		log_err(errno, __func__, log_buffer);
 	} else {
 		snprintf(log_buffer, sizeof(log_buffer),
 			"renamed hook-related file %s as %s", filename,
 			bad_filename);
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_HOOK,
-			LOG_WARNING, id, log_buffer);
+			LOG_WARNING, __func__, log_buffer);
 	}
 #endif
 }
@@ -2464,11 +2424,10 @@ mark_hook_file_bad(char *filename)
 void
 hook_purge(hook	*phook, void (*pyfree_func)(struct python_script *))
 {
-	static	char	id[] = "hook_purge";
 	char		namebuf[MAXPATHLEN+1];
 
 	if (phook == NULL) {
-		log_err(PBSE_INTERNAL, id, "phook is NULL!");
+		log_err(PBSE_INTERNAL, __func__, "phook is NULL!");
 		return;
 	}
 
@@ -2477,7 +2436,7 @@ hook_purge(hook	*phook, void (*pyfree_func)(struct python_script *))
 		/* hook_name should not be NULL, but if so, we already    */
 		/* malloced hook structure so don't return here so as     */
 		/* to catch hook_free() at the end.                       */
-		log_err(PBSE_INTERNAL, id,
+		log_err(PBSE_INTERNAL, __func__,
 			"phook->hook_name is NULL!");
 	}
 	else {
@@ -2498,7 +2457,7 @@ hook_purge(hook	*phook, void (*pyfree_func)(struct python_script *))
 				sprintf(log_buffer,
 					"Failed to delete hook config file %s",
 					namebuf);
-				log_err(errno, id, log_buffer);
+				log_err(errno, __func__, log_buffer);
 				mark_hook_file_bad(namebuf);
 
 			}
@@ -2518,7 +2477,7 @@ hook_purge(hook	*phook, void (*pyfree_func)(struct python_script *))
 				sprintf(log_buffer,
 					"Failed to delete hook script %s",
 					namebuf);
-				log_err(errno, id, log_buffer);
+				log_err(errno, __func__, log_buffer);
 				mark_hook_file_bad(namebuf);
 			}
 		}
@@ -2536,7 +2495,7 @@ hook_purge(hook	*phook, void (*pyfree_func)(struct python_script *))
 				sprintf(log_buffer,
 					"Failed to delete hook control file %s",
 					namebuf);
-				log_err(errno, id, log_buffer);
+				log_err(errno, __func__, log_buffer);
 				mark_hook_file_bad(namebuf);
 
 			}
@@ -2560,17 +2519,16 @@ hook_purge(hook	*phook, void (*pyfree_func)(struct python_script *))
 int
 hook_save(hook *phook)
 {
-	static char	*id = "hook_save";
 	char		hookfile[MAXPATHLEN+1];
 	char		hookfile_new[MAXPATHLEN+1];
 	FILE		*hkfp = NULL;
 
 	if (phook == NULL) {
-		log_err(PBSE_INTERNAL, id, "phook is NULL!");
+		log_err(PBSE_INTERNAL, __func__, "phook is NULL!");
 		return (-1);
 	}
 	if (phook->hook_name == NULL) {
-		log_err(PBSE_INTERNAL, id,
+		log_err(PBSE_INTERNAL, __func__,
 			"phook->hook_name is NULL!");
 		return (-1);
 	}
@@ -2588,7 +2546,7 @@ hook_save(hook *phook)
 
 	if ((hkfp = fopen(hookfile_new, "w")) == NULL) {
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_HOOK,
-			LOG_WARNING, id,
+			LOG_WARNING, __func__,
 			"Hook control file update failed!");
 		return (-1);
 	}
@@ -2643,7 +2601,7 @@ hook_save(hook *phook)
 		(fclose(hkfp) != 0)) {
 		sprintf(log_buffer, "Failed to flush/close hook file %s",
 			hookfile_new);
-		log_err(errno, id, log_buffer);
+		log_err(errno, __func__, log_buffer);
 		return (-1);
 	}
 
@@ -2652,7 +2610,7 @@ hook_save(hook *phook)
 		errno = GetLastError();
 		sprintf(log_buffer, "MoveFileEx(%s, %s) failed! Deleting file.",
 			hookfile_new, hookfile);
-		log_err(errno, id, log_buffer);
+		log_err(errno, __func__, log_buffer);
 		(void)unlink(hookfile_new);
 		return (-1);
 	}
@@ -2664,13 +2622,13 @@ hook_save(hook *phook)
 		(fclose(hkfp) != 0)) {
 		sprintf(log_buffer, "Failed to flush/close hook file %s",
 			hookfile_new);
-		log_err(errno, id, log_buffer);
+		log_err(errno, __func__, log_buffer);
 		return (-1);
 	}
 	if (rename(hookfile_new, hookfile) < 0) {
 		sprintf(log_buffer, "rename(%s, %s) failed!",
 			hookfile_new, hookfile);
-		log_err(errno, id, log_buffer);
+		log_err(errno, __func__, log_buffer);
 		(void)unlink(hookfile_new);
 		return (-1);
 	}
@@ -2742,7 +2700,7 @@ find_hookbyevent(int hook_event)
 			break;
 		phook = (hook *)GET_NEXT(phook->hi_allhooks);
 	}
-	DBPRT(("hook pointer is %x\n", phook))
+	DBPRT(("hook pointer is %p\n", (void *)phook))
 	return (phook);  /* may be a null pointer */
 }
 
@@ -2803,7 +2761,6 @@ decode_block_base64(unsigned char *ascii_data, ssize_t	ascii_len,
 	unsigned char *bin_data, ssize_t *p_bin_len,
 	char *msg, size_t msg_len)
 {
-	static char *id = "decode_block_base64";
 	int leftbits = 0;
 	unsigned char this_ch;
 	unsigned int leftchar = 0;
@@ -2811,7 +2768,7 @@ decode_block_base64(unsigned char *ascii_data, ssize_t	ascii_len,
 	ssize_t		bin_len = 0;
 
 	if (msg == NULL) { /* should not happen */
-		log_err(PBSE_INTERNAL, id, "'msg' buffer is NULL");
+		log_err(PBSE_INTERNAL, __func__, "'msg' buffer is NULL");
 		return (1);
 	}
 	memset(msg, '\0', msg_len);
@@ -2892,14 +2849,13 @@ encode_block_base64(unsigned char *bin_data, ssize_t bin_len,
 	unsigned char *ascii_data, ssize_t *p_ascii_len,
 	char *msg, size_t msg_len)
 {
-	static char *id = "encode_block_base64";
 	int leftbits = 0;
 	unsigned char this_ch;
 	unsigned int leftchar = 0;
 	unsigned char *ascii_data_start;
 
 	if (msg == NULL) { /* should not happen */
-		log_err(PBSE_INTERNAL, id, "'msg' buffer is NULL");
+		log_err(PBSE_INTERNAL, __func__, "'msg' buffer is NULL");
 		return (1);
 	}
 	memset(msg, '\0', msg_len);
@@ -2952,7 +2908,6 @@ int
 encode_hook_content(char *infile, char *outfile, char *content_encoding,
 	char *msg, size_t msg_len)
 {
-	static char *id = "encode_hook_content";
 	FILE *infp = NULL;
 	FILE *outfp = NULL;
 	unsigned char in_data[HOOK_BUF_SIZE];
@@ -2965,7 +2920,7 @@ encode_hook_content(char *infile, char *outfile, char *content_encoding,
 	int	ret = 0;
 
 	if (msg == NULL) { /* should not happen */
-		log_err(PBSE_INTERNAL, id, "'msg' buffer is NULL");
+		log_err(PBSE_INTERNAL, __func__, "'msg' buffer is NULL");
 		return (1);
 	}
 	memset(msg, '\0', msg_len);
@@ -3080,7 +3035,6 @@ int
 decode_hook_content(char *infile, char *outfile, char *content_encoding,
 	char *msg, size_t msg_len)
 {
-	static char *id = "decode_hook_content";
 	FILE *infp = NULL;
 	FILE *outfp;
 	unsigned char in_data[HOOK_BUF_SIZE+1];
@@ -3092,7 +3046,7 @@ decode_hook_content(char *infile, char *outfile, char *content_encoding,
 	ssize_t out_len = 0;
 
 	if (msg == NULL) { /* should not happen */
-		log_err(PBSE_INTERNAL, id, "'msg' buffer is NULL");
+		log_err(PBSE_INTERNAL, __func__, "'msg' buffer is NULL");
 		return (1);
 	}
 	memset(msg, '\0', msg_len);
@@ -3200,7 +3154,6 @@ decode_hook_content_exit:
 void
 print_hook(hook	*phook, char *heading)
 {
-	static char	*id = "print_hook";
 	if (phook == NULL)
 		return;
 
@@ -3218,7 +3171,7 @@ print_hook(hook	*phook, char *heading)
 		HOOKATT_ALARM, phook->alarm,
 		HOOKATT_FREQ, phook->freq);
 	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_HOOK,
-		LOG_INFO, id, log_buffer);
+		LOG_INFO, __func__, log_buffer);
 
 	snprintf(log_buffer, sizeof(log_buffer),
 		"checksums: %s: hook_control_checksum=%lu hook_script_checksum=%lu hook_config_checksum=%lu",
@@ -3227,7 +3180,7 @@ print_hook(hook	*phook, char *heading)
 		phook->hook_script_checksum,
 		phook->hook_config_checksum);
 	log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
-		LOG_INFO, id, log_buffer);
+		LOG_INFO, __func__, log_buffer);
 }
 
 /**
@@ -3377,7 +3330,6 @@ hook_recov(char	*filename, FILE	*hookfp, char *msg, size_t msg_len,
 	int (*pyalloc_func)(const char *, struct python_script **),
 	void (*pyfree_func)(struct python_script *))
 {
-	static	char	*id = "hook_recov";
 	hook	*phook;
 	char	basename[MAXPATHLEN+1];
 	char	*p;
@@ -3390,7 +3342,7 @@ hook_recov(char	*filename, FILE	*hookfp, char *msg, size_t msg_len,
 	int	created_here = 0;
 
 	if (msg == NULL) { /* should not happen */
-		log_err(PBSE_INTERNAL, id, "'msg' buffer is NULL");
+		log_err(PBSE_INTERNAL, __func__, "'msg' buffer is NULL");
 		return ((hook *)0);
 	}
 	memset(msg, '\0', msg_len);
@@ -3428,7 +3380,7 @@ hook_recov(char	*filename, FILE	*hookfp, char *msg, size_t msg_len,
 		phook->hook_name = strdup(hook_name);
 
 		if (phook->hook_name == NULL) {
-			log_err(errno, id, "no memory");
+			log_err(errno, __func__, "no memory");
 			snprintf(msg, msg_len-1,
 				"Hook name could not be determined!");
 			goto hook_recov_error;
@@ -3451,7 +3403,7 @@ hook_recov(char	*filename, FILE	*hookfp, char *msg, size_t msg_len,
 	if (hookfp == NULL) {
 		if ((fp = fopen(filename, "r")) == NULL) {
 			sprintf(log_buffer, "%s", filename);
-			log_err(errno, id, log_buffer);
+			log_err(errno, __func__, log_buffer);
 			snprintf(msg, msg_len-1,
 				"error %s opening file %s", strerror(errno), filename);
 			goto hook_recov_error;
@@ -3476,7 +3428,7 @@ hook_recov(char	*filename, FILE	*hookfp, char *msg, size_t msg_len,
 		} else {
 			snprintf(msg, msg_len-1,
 				"line %d is too long", linenum);
-			log_err(PBSE_SYSTEM, id, msg);
+			log_err(PBSE_SYSTEM, __func__, msg);
 			goto hook_recov_error;
 		}
 		/* ignore initial white space;  skip blank lines */
@@ -3496,7 +3448,7 @@ hook_recov(char	*filename, FILE	*hookfp, char *msg, size_t msg_len,
 		if ((pequal = strchr(linebuf, '=')) == NULL) {
 			snprintf(msg, msg_len-1,
 				"line %d:  missing '='", linenum);
-			log_err(PBSE_SYSTEM, id, msg);
+			log_err(PBSE_SYSTEM, __func__, msg);
 			goto hook_recov_error;
 		}
 
@@ -3504,7 +3456,7 @@ hook_recov(char	*filename, FILE	*hookfp, char *msg, size_t msg_len,
 			snprintf(msg, msg_len-1,
 				"line %d:  no <attribute value>",
 				linenum);
-			log_err(PBSE_SYSTEM, id, msg);
+			log_err(PBSE_SYSTEM, __func__, msg);
 			goto hook_recov_error;
 		}
 		*pequal = '\0';
@@ -3580,7 +3532,7 @@ hook_recov(char	*filename, FILE	*hookfp, char *msg, size_t msg_len,
 			snprintf(msg, msg_len-1,
 				"failed to allocate storage for python script %s",
 				hook_script);
-			log_err(errno, id, msg);
+			log_err(errno, __func__, msg);
 		} else {
 			phook->hook_script_checksum = crc_file(hook_script);
 		}
@@ -3640,11 +3592,9 @@ hook_recov_error:
 void
 catch_hook_alarm(ALARM_HANDLER_ARG)
 {
-	static char	*id = "catch_hook_alarm";
-
 	snprintf(log_buffer, LOG_BUF_SIZE-1,
 		"alarm call received, interrupting hook execution.");
-	log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_NOTICE, id,
+	log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_NOTICE, __func__,
 		log_buffer);
 
 	if (python_interrupt_func != NULL)
@@ -3673,7 +3623,6 @@ catch_hook_alarm(ALARM_HANDLER_ARG)
 int
 set_alarm(int sec, void (*pyinter_func)(void))
 {
-	static char *id = "set_alarm";
 #ifndef WIN32
 	static struct sigaction act, oact;
 
@@ -3687,7 +3636,7 @@ set_alarm(int sec, void (*pyinter_func)(void))
 		act.sa_handler = catch_hook_alarm;
 		if (sigaction(SIGALRM, &act, &oact) == -1) {
 			log_event(PBSEVENT_ADMIN | PBSEVENT_SYSTEM,
-				PBS_EVENTCLASS_HOOK, LOG_ERR, id,
+				PBS_EVENTCLASS_HOOK, LOG_ERR, __func__,
 				"Failed to install alarm");
 			return (-1);
 		}
@@ -3723,7 +3672,6 @@ set_alarm(int sec, void (*pyinter_func)(void))
 void
 cleanup_hooks_workdir(struct work_task *ptask)
 {
-	static	char	*id = "cleanup_hooks_workdir";
 	DIR	*dir;
 	struct 	dirent *pdirent;
 	struct 	stat sbuf;
@@ -3734,7 +3682,7 @@ cleanup_hooks_workdir(struct work_task *ptask)
 	if (dir == (DIR *)0) {
 		sprintf(log_buffer, "could not opendir %s",
 			path_hooks_workdir);
-		log_err(errno, id, log_buffer);
+		log_err(errno, __func__, log_buffer);
 		return;
 	}
 	while (errno = 0, (pdirent = readdir(dir)) != (struct dirent *)0) {
@@ -3750,7 +3698,7 @@ cleanup_hooks_workdir(struct work_task *ptask)
 			path_hooks_workdir, pdirent->d_name);
 		if (stat(hook_file, &sbuf) == -1) {
 			sprintf(log_buffer, "could not stat %s", hook_file);
-			log_err(errno, id, log_buffer);
+			log_err(errno, __func__, log_buffer);
 			continue;
 		}
 
@@ -3760,14 +3708,14 @@ cleanup_hooks_workdir(struct work_task *ptask)
 				if (errno != ENOENT) {
 					sprintf(log_buffer, "could not cleanup %s",
 						hook_file);
-					log_err(errno, id, log_buffer);
+					log_err(errno, __func__, log_buffer);
 				}
 			}
 		}
 
 	}
 	if (errno != 0 && errno != ENOENT) {
-		log_err(errno, id, "readdir");
+		log_err(errno, __func__, "readdir");
 	}
 	if (dir) {
 		(void)closedir(dir);

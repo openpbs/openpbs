@@ -42,7 +42,7 @@ int
 pbs_encrypt_data(char *uncrypted, int *credtype, size_t len, char **crypted, size_t *outlen)
 {
         int plen, len2 = 0;
-        char *cblk;
+        unsigned char *cblk;
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
         EVP_CIPHER_CTX real_ctx;
@@ -65,7 +65,7 @@ pbs_encrypt_data(char *uncrypted, int *credtype, size_t len, char **crypted, siz
                 return -1;
         }
 
-        if (EVP_EncryptUpdate(ctx, cblk, &plen, uncrypted, len) == 0) {
+        if (EVP_EncryptUpdate(ctx, cblk, &plen, (unsigned char *)uncrypted, len) == 0) {
                 CIPHER_CONTEXT_CLEAN(ctx);
                 free(cblk);
                 cblk = NULL;
@@ -81,7 +81,7 @@ pbs_encrypt_data(char *uncrypted, int *credtype, size_t len, char **crypted, siz
 
         CIPHER_CONTEXT_CLEAN(ctx);
 
-        *crypted = cblk;
+        *crypted = (char *)cblk;
         *outlen = plen + len2;
         *credtype = PBS_CREDTYPE_AES;
 
@@ -116,7 +116,7 @@ pbs_encrypt_pwd(char *str, int *credtype, char **credbuf, size_t *credlen)
 int
 pbs_decrypt_data(char *crypted, int credtype, size_t len, char **uncrypted, size_t *outlen)
 {
-        char *cblk;
+        unsigned char *cblk;
         int plen, len2 = 0;
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
@@ -139,7 +139,7 @@ pbs_decrypt_data(char *crypted, int credtype, size_t len, char **uncrypted, size
                 return -1;
         }
 
-        if (EVP_DecryptUpdate(ctx, cblk, &plen, crypted, len) == 0) {
+        if (EVP_DecryptUpdate(ctx, cblk, &plen, (unsigned char *)crypted, len) == 0) {
                 CIPHER_CONTEXT_CLEAN(ctx);
                 free(cblk);
                 cblk = NULL;
@@ -155,7 +155,7 @@ pbs_decrypt_data(char *crypted, int credtype, size_t len, char **uncrypted, size
 
         CIPHER_CONTEXT_CLEAN(ctx);
 
-        *uncrypted = cblk;
+        *uncrypted = (char *)cblk;
         *outlen = plen + len2;
 
         return 0;

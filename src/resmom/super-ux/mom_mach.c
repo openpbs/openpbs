@@ -1244,22 +1244,21 @@ cput_proc(pid_t pid)
 char *
 cput(struct rm_attribute *attrib)
 {
-	char			*id = "cput";
 	int			value;
 
 	if (attrib == NULL) {
-		log_err(-1, id, no_parm);
+		log_err(-1, __func__, no_parm);
 		rm_errno = RM_ERR_NOPARAM;
 		return NULL;
 	}
 	if ((value = atoi(attrib->a_value)) == 0) {
 		sprintf(log_buffer, "bad param: %s", attrib->a_value);
-		log_err(-1, id, log_buffer);
+		log_err(-1, __func__, log_buffer);
 		rm_errno = RM_ERR_BADPARAM;
 		return NULL;
 	}
 	if (momgetattr(NULL)) {
-		log_err(-1, id, extra_parm);
+		log_err(-1, __func__, extra_parm);
 		rm_errno = RM_ERR_BADPARAM;
 		return NULL;
 	}
@@ -1373,22 +1372,21 @@ mem_proc(pid_t pid)
 char *
 mem(struct rm_attribute *attrib)
 {
-	char			*id = "mem";
 	int			value;
 
 	if (attrib == NULL) {
-		log_err(-1, id, no_parm);
+		log_err(-1, __func__, no_parm);
 		rm_errno = RM_ERR_NOPARAM;
 		return NULL;
 	}
 	if ((value = atoi(attrib->a_value)) == 0) {
 		sprintf(log_buffer, "bad param: %s", attrib->a_value);
-		log_err(-1, id, log_buffer);
+		log_err(-1, __func__, log_buffer);
 		rm_errno = RM_ERR_BADPARAM;
 		return NULL;
 	}
 	if (momgetattr(NULL)) {
-		log_err(-1, id, extra_parm);
+		log_err(-1, __func__, extra_parm);
 		rm_errno = RM_ERR_BADPARAM;
 		return NULL;
 	}
@@ -1417,7 +1415,6 @@ mem(struct rm_attribute *attrib)
 char *
 sessions(struct rm_attribute *attrib)
 {
-	char			*id = "sessions";
 	int			i, j;
 	proc_t			*pp;
 	char			*fmt;
@@ -1427,12 +1424,12 @@ sessions(struct rm_attribute *attrib)
 	register	pid_t	jobid;
 
 	if (attrib) {
-		log_err(-1, id, extra_parm);
+		log_err(-1, __func__, extra_parm);
 		rm_errno = RM_ERR_BADPARAM;
 		return NULL;
 	}
 	if ((jids = (pid_t *)calloc(maxjid, sizeof(pid_t))) == NULL) {
-		log_err(errno, id, "no memory");
+		log_err(errno, __func__, "no memory");
 		rm_errno = RM_ERR_SYSTEM;
 		return NULL;
 	}
@@ -1455,7 +1452,7 @@ sessions(struct rm_attribute *attrib)
 		if ((jobid = pp->p_sid) == 0)
 			continue;
 		DBPRT(("%s[%d]: pid %d sid %d\n",
-			id, njids, pp->p_pid, jobid))
+			__func__, njids, pp->p_pid, jobid))
 
 		for (j=0; j<njids; j++) {
 			if (jids[j] == jobid)
@@ -1466,7 +1463,7 @@ sessions(struct rm_attribute *attrib)
 				maxjid += 100;
 				hold = (pid_t *)realloc(jids, maxjid);
 				if (hold == NULL) {
-					log_err(errno, id, "realloc");
+					log_err(errno, __func__, "realloc");
 					rm_errno = RM_ERR_SYSTEM;
 					free(jids);
 					return NULL;
@@ -1529,7 +1526,6 @@ nsessions(struct rm_attribute *attrib)
 char *
 pids(struct rm_attribute *attrib)
 {
-	char		*id = "pids";
 	pid_t		jobid;
 	int		i;
 	proc_t		*pp;
@@ -1537,18 +1533,18 @@ pids(struct rm_attribute *attrib)
 	int		num_pids;
 
 	if (attrib == NULL) {
-		log_err(-1, id, no_parm);
+		log_err(-1, __func__, no_parm);
 		rm_errno = RM_ERR_NOPARAM;
 		return NULL;
 	}
 	if ((jobid = (pid_t)atoi(attrib->a_value)) == 0) {
 		sprintf(log_buffer, "bad param: %s", attrib->a_value);
-		log_err(-1, id, log_buffer);
+		log_err(-1, __func__, log_buffer);
 		rm_errno = RM_ERR_BADPARAM;
 		return NULL;
 	}
 	if (momgetattr(NULL)) {
-		log_err(-1, id, extra_parm);
+		log_err(-1, __func__, extra_parm);
 		rm_errno = RM_ERR_BADPARAM;
 		return NULL;
 	}
@@ -1572,7 +1568,7 @@ pids(struct rm_attribute *attrib)
 		pp = &proct[i];
 
 		DBPRT(("%s[%d]: pid: %d sid %d\n",
-			id, num_pids, pp->p_pid, pp->p_sid))
+			__func__, num_pids, pp->p_pid, pp->p_sid))
 		if (jobid != pp->p_sid)
 			continue;
 
@@ -1599,7 +1595,6 @@ pids(struct rm_attribute *attrib)
 pid_t *
 allpids(void)
 {
-	static char		*id = "allpids";
 	int			 i;
 	proc_t			*pp;
 	static	pid_t		*pids = NULL;
@@ -1610,7 +1605,7 @@ allpids(void)
 	if (pids != NULL)
 		free(pids);
 	if ((pids = (pid_t *)calloc(nproc+1, sizeof(pid_t))) == NULL) {
-		log_err(errno, id, "no memory");
+		log_err(errno, __func__, "no memory");
 		return NULL;
 	}
 
@@ -1637,7 +1632,6 @@ allpids(void)
 char *
 nusers(struct rm_attribute *attrib)
 {
-	char			*id = "nusers";
 	int			i, j;
 	proc_t			*pp;
 	int			nuids = 0;
@@ -1646,12 +1640,12 @@ nusers(struct rm_attribute *attrib)
 	register	uid_t	uid;
 
 	if (attrib) {
-		log_err(-1, id, extra_parm);
+		log_err(-1, __func__, extra_parm);
 		rm_errno = RM_ERR_BADPARAM;
 		return NULL;
 	}
 	if ((uids = (uid_t *)calloc(maxuid, sizeof(uid_t))) == NULL) {
-		log_err(errno, id, "no memory");
+		log_err(errno, __func__, "no memory");
 		rm_errno = RM_ERR_SYSTEM;
 		return NULL;
 	}
@@ -1668,7 +1662,7 @@ nusers(struct rm_attribute *attrib)
 			continue;
 
 		DBPRT(("%s[%d]: pid %d uid %d\n",
-			id, nuids, pp->p_pid, uid))
+			__func__, nuids, pp->p_pid, uid))
 
 		for (j=0; j<nuids; j++) {
 			if (uids[j] == uid)
@@ -1679,7 +1673,7 @@ nusers(struct rm_attribute *attrib)
 				maxuid += 100;
 				hold = (uid_t *)realloc(uids, maxuid);
 				if (hold == NULL) {
-					log_err(errno, id, "realloc");
+					log_err(errno, __func__, "realloc");
 					rm_errno = RM_ERR_SYSTEM;
 					free(uids);
 					return NULL;
@@ -1709,10 +1703,8 @@ nusers(struct rm_attribute *attrib)
 static char *
 ncpus(struct rm_attribute *attrib)
 {
-	char		*id = "ncpus";
-
 	if (attrib) {
-		log_err(-1, id, extra_parm);
+		log_err(-1, __func__, extra_parm);
 		rm_errno = RM_ERR_BADPARAM;
 		return NULL;
 	}
@@ -1734,10 +1726,8 @@ ncpus(struct rm_attribute *attrib)
 char *
 physmem(struct rm_attribute *attrib)
 {
-	static	char	id[] = "physmem";
-
 	if (attrib) {
-		log_err(-1, id, extra_parm);
+		log_err(-1, __func__, extra_parm);
 		rm_errno = RM_ERR_BADPARAM;
 		return NULL;
 	}
@@ -1759,18 +1749,17 @@ physmem(struct rm_attribute *attrib)
 char *
 size_fs(char *param)
 {
-	static	char	id[] = "size_fs";
 	struct	statfs	fsbuf;
 
 	if (param[0] != '/') {
 		sprintf(log_buffer, "%s: not full path filesystem name: %s",
-			id, param);
-		log_err(-1, id, log_buffer);
+			__func__, param);
+		log_err(-1, __func__, log_buffer);
 		rm_errno = RM_ERR_BADPARAM;
 		return NULL;
 	}
 	if (statfs(param, &fsbuf, sizeof(fsbuf), 0) == -1) {
-		log_err(errno, id, "statvfs");
+		log_err(errno, __func__, "statvfs");
 		rm_errno = RM_ERR_BADPARAM;
 		return NULL;
 	}
@@ -1794,19 +1783,18 @@ size_fs(char *param)
 char *
 size_file(char *param)
 {
-	char		*id = "size_file";
 	struct	stat	sbuf;
 
 	if (param[0] != '/') {
 		sprintf(log_buffer, "%s: not full path filesystem name: %s",
-			id, param);
-		log_err(-1, id, log_buffer);
+			__func__, param);
+		log_err(-1, __func__, log_buffer);
 		rm_errno = RM_ERR_BADPARAM;
 		return NULL;
 	}
 
 	if (stat(param, &sbuf) == -1) {
-		log_err(errno, id, "stat");
+		log_err(errno, __func__, "stat");
 		rm_errno = RM_ERR_BADPARAM;
 		return NULL;
 	}
@@ -1829,16 +1817,15 @@ size_file(char *param)
 char *
 size(struct rm_attribute *attrib)
 {
-	char	*id = "size";
 	char	*param;
 
 	if (attrib == NULL) {
-		log_err(-1, id, no_parm);
+		log_err(-1, __func__, no_parm);
 		rm_errno = RM_ERR_NOPARAM;
 		return NULL;
 	}
 	if (momgetattr(NULL)) {
-		log_err(-1, id, extra_parm);
+		log_err(-1, __func__, extra_parm);
 		rm_errno = RM_ERR_BADPARAM;
 		return NULL;
 	}
@@ -1868,10 +1855,9 @@ size(struct rm_attribute *attrib)
 int
 get_la(double *rv)
 {
-	char	*id = "get_la";
 	loadavg_t	load;
 
-	if (getkmem(nli[NL_LOADAVE].n_value, &load, sizeof(load), id))
+	if (getkmem(nli[NL_LOADAVE].n_value, &load, sizeof(load), __func__))
 		return PBSE_SYSTEM;
 
 	*rv = (double)load.average[0]/(double)load.fscale;
@@ -1888,11 +1874,9 @@ get_la(double *rv)
 void
 mom_nice()
 {
-	static  char    *id = "mom_nice";
-
 	if ((nice_val != 0) && (setpriority(PRIO_PROCESS, 0, nice_val) == -1)) {
 		(void)sprintf(log_buffer, "failed to nice(%d) mom", nice_val);
-		log_err(errno, id, log_buffer);
+		log_err(errno, __func__, log_buffer);
 	}
 
 }
@@ -1907,11 +1891,9 @@ mom_nice()
 void
 mom_unnice()
 {
-	static  char    *id = "mom_unnice";
-
 	if ((nice_val != 0) && (setpriority(PRIO_PROCESS, 0, 0) == -1)) {
 		(void)sprintf(log_buffer, "failed to nice(%d) mom", nice_val);
-		log_err(errno, id, log_buffer);
+		log_err(errno, __func__, log_buffer);
 	}
 }
 

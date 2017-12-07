@@ -679,7 +679,7 @@ struct resource_resv
 	char		**node_set_str;		/* user specified node string */
 	node_info	**node_set;		/* node array specified by node_set_str */
 #ifdef NAS /* localmod 034 */
-	enumsite_j_share_type share_type; /* How resv counts against group share */
+	enum site_j_share_type share_type;	/* How resv counts against group share */
 #endif /* localmod 034 */
 };
 

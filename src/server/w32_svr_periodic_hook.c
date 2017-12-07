@@ -388,7 +388,6 @@ execute_python_periodic_hook(hook  *phook)
 int
 main(int argc, char *argv[])
 {
-	char	*id = "pbs_run_periodic_hook";
 	int	i;
 	int		rc;
 	hook	*phook;
@@ -413,7 +412,7 @@ main(int argc, char *argv[])
 		pbs_python_svr_destroy_interpreter_data;
 
 	if (argc != 3) {
-		log_err(PBSE_INTERNAL, id, "pbs_run_periodic_hook"
+		log_err(PBSE_INTERNAL, __func__, "pbs_run_periodic_hook"
 			" <hook_name> <server home path>");
 		exit(2);
 	}
@@ -432,7 +431,7 @@ main(int argc, char *argv[])
 	/* Find the periodic hook info */
 	phook = (hook *)malloc(sizeof(hook));
 	if (phook == (hook *)0) {
-		log_err(errno, id, "no memory");
+		log_err(errno, __func__, "no memory");
 		exit(2);
 	}
 	(void)memset((char *)phook, (int)0, (size_t)sizeof(hook));
@@ -460,7 +459,7 @@ main(int argc, char *argv[])
 
 	if ((rc = pbs_python_check_and_compile_script(&svr_interp_data,
 		phook->script)) != 0) {
-		DBPRT(("%s: Recompilation failed\n", id))
+		DBPRT(("%s: Recompilation failed\n", __func__))
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_INFO,
 			argv[1], "Periodic hook script recompilation failed");
 		exit(2);

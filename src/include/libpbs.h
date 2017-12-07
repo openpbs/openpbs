@@ -337,7 +337,7 @@ extern struct batch_reply *PBSD_rdrpy_sock(int sock, int *rc);
 struct batch_reply *PBSD_rdrpyRPP(int stream);
 extern void PBSD_FreeReply(struct batch_reply *);
 extern struct batch_status *PBSD_status(int c, int function,
-	char *id, struct attrl *attrib, char *extend);
+	char *objid, struct attrl *attrib, char *extend);
 
 extern struct batch_status *PBSD_status_get(int c);
 extern char * PBSD_queuejob(int c, char *j, char *d,
@@ -354,8 +354,9 @@ extern int encode_DIS_JobFile(int socket, int, char *, int, char *, int);
 extern int encode_DIS_JobId(int socket, char *);
 extern int encode_DIS_Manage(int socket, int cmd, int objt,
 	char *, struct attropl *);
-extern int encode_DIS_MoveJob(int socket, char *jid, char *dest);
 extern int encode_DIS_MessageJob(int socket, char *jid, int fopt, char *m);
+extern int encode_DIS_MoveJob(int socket, char *jid, char *dest);
+extern int encode_DIS_ModifyResv(int socket, char *resv_id, struct attropl *aoplp);
 extern int encode_DIS_RelnodesJob(int socket, char *jid, char *node_list);
 extern int encode_DIS_PySpawn(int socket, char *jid, char **argv, char **envp);
 extern int encode_DIS_QueueJob(int socket, char *jid,

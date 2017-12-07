@@ -7,7 +7,6 @@
 #define	SHARE_FILE	"shares"
 #define SORTED_FILE	"sortedjobs"
 
-
 extern int site_bump_topjobs(resource_resv* resv, double delta);
 extern int site_check_cpu_share(server_info *, status *, resource_resv *);
 extern time_t site_decode_time(const char *val);
@@ -28,7 +27,7 @@ extern void site_restore_users(void);
 extern void site_save_users(void);
 extern void site_set_job_share(resource_resv *resresv);
 extern void site_set_NAS_pri(job_info *, time_t, long);
-extern void site_set_node_share(node_info *ninfo, resource *res);
+extern void site_set_node_share(node_info *ninfo, schd_resource *res);
 extern int site_set_share_head(server_info *sinfo);
 extern void site_set_share_type(server_info *, resource_resv *);
 extern int site_should_backfill_with_job(status *policy, server_info *sinfo, resource_resv *resresv, int ntj, int nqtj, schd_error *err);

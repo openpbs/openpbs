@@ -82,7 +82,7 @@ sched_alloc(char *sched_name)
 
 	CLEAR_LINK(psched->sc_link);
 	strncpy(psched->sc_name, sched_name, PBS_MAXSCHEDNAME);
-	psched->sc_name[PBS_MAXSCHEDNAME] = '\0';
+	psched->sc_name[PBS_MAXSCHEDNAME - 1] = '\0';
 
 	append_link(&svr_allscheds, &psched->sc_link, psched);
 
@@ -106,7 +106,6 @@ sched_alloc(char *sched_name)
 pbs_sched *
 find_scheduler(char *sched_name)
 {
-	char *pc;
 	pbs_sched *psched = NULL;
 	if (!sched_name)
 		return NULL;

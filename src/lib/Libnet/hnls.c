@@ -44,6 +44,7 @@
 #include <string.h>
 #include <errno.h>
 #include "log.h"
+#include "pbs_ifl.h"
 
 #if defined(linux)
 
@@ -127,18 +128,21 @@ free_if_hostnames(char **names)
 void
 get_sa_family(struct sockaddr *saddr, char *family)
 {
-	memset(family, 0, sizeof(family));
+	if (!family)
+		return;
+	*family = '\0';
+	if (!saddr)
+		return;
 
 	switch(saddr->sa_family){
 		case AF_INET:
-			strcpy(family, "ipv4");
+			strncpy(family, "ipv4", IFFAMILY_MAX);
 			break;
 		case AF_INET6:
-			strcpy(family, "ipv6");
+			strncpy(family, "ipv6", IFFAMILY_MAX);
 			break;
-		default:
-			return;
 	}
+	family[IFFAMILY_MAX - 1] = '\0';
 }
 /**
  *
@@ -210,6 +214,7 @@ get_if_hostnames(struct sockaddr *saddr)
 	}
 	return names;
 }
+
 /**
  *
  * @brief
@@ -220,72 +225,77 @@ get_if_hostnames(struct sockaddr *saddr)
  *
  * @par MT-safe: Yes
  *
- * @param[out]   ni - linked list holding interface name, family,
- *			hostnames returned from system
  * @param[out]   msg - error message returned if system calls not successful
  *
- * @return void
+ * @return struct log_net_info * - Linked list of log_net_info structures
  */
-void
-get_if_info(struct log_net_info *ni, char *msg)
+struct log_net_info *
+get_if_info(char *msg)
 {
-	
-	char inet_family[10];
-	struct log_net_info *curr,*prev;
-	
+	struct log_net_info *head = NULL;
+	struct log_net_info *curr = NULL;
+	struct log_net_info *prev = NULL;
+
 #if defined(linux)
-	
+
 	int c, i, ret;
 	char **hostnames;
 	struct ifaddrs *ifp, *listp;	
 
-	curr = ni;
-
+	if (!msg)
+		return NULL;
 	ret = getifaddrs(&ifp);
-
 	if ((ret != 0) || (ifp == NULL)) {
-		strncpy(msg, "Failed to obtain interface names", 2048);
-		free(ni);
-		ni = NULL;
-		return;
+		strncpy(msg, "Failed to obtain interface names", LOG_BUF_SIZE);
+		msg[LOG_BUF_SIZE - 1] = '\0';
+		return NULL;
 	}
 	for (listp = ifp; listp; listp = listp->ifa_next) {
 		hostnames = get_if_hostnames(listp->ifa_addr);
 		if(!hostnames)
 			continue;
-
-		curr->next = NULL;
-		curr->iffamily = (char*)malloc(10*sizeof(char));
-		curr->ifname = (char*)malloc(256*sizeof(char));
-		
+		curr = (struct log_net_info *)calloc(1, sizeof(struct log_net_info));
+		if (!curr) {
+			free_if_info(head);
+			free_if_hostnames(hostnames);
+			strncpy(msg, "Out of memory", LOG_BUF_SIZE);
+			msg[LOG_BUF_SIZE - 1] = '\0';
+			return NULL;
+		}
+		if (prev)
+			prev->next = curr;
+		if (!head)
+			head = curr;
 		get_sa_family(listp->ifa_addr, curr->iffamily);
-		strncpy(curr->ifname, listp->ifa_name, 256);
-
-		for(c = 0; hostnames[c] ; c++);
-		curr->ifhostnames = (char**)malloc((c+1)*sizeof(char*));
-		for(i = 0; i < (c + 1); i++){
-			if(i == c) {
-				curr->ifhostnames[i] = NULL;
-				break;
-			}					
-			curr->ifhostnames[i] = (char*)malloc(256*sizeof(char));
-			strncpy(curr->ifhostnames[i], hostnames[i], 256);
+		strncpy(curr->ifname, listp->ifa_name, IFNAME_MAX);
+		curr->ifname[IFNAME_MAX - 1] = '\0';
+		/* Count the hostname entries and allocate space */
+		for (c = 0; hostnames[c]; c++)
+			;
+		curr->ifhostnames = (char**)calloc(c + 1, sizeof(char*));
+		if (!curr->ifhostnames) {
+			free_if_info(head);
+			free_if_hostnames(hostnames);
+			strncpy(msg, "Out of memory", LOG_BUF_SIZE);
+			msg[LOG_BUF_SIZE - 1] = '\0';
+			return NULL;
 		}
-
+		for (i = 0; i < c; i++){
+			curr->ifhostnames[i] = (char*)calloc(PBS_MAXHOSTNAME, sizeof(char));
+			if (!curr->ifhostnames[i]) {
+				free_if_info(head);
+				free_if_hostnames(hostnames);
+				strncpy(msg, "Out of memory", LOG_BUF_SIZE);
+				msg[LOG_BUF_SIZE - 1] = '\0';
+				return NULL;
+			}
+			strncpy(curr->ifhostnames[i], hostnames[i], (PBS_MAXHOSTNAME - 1));
+		}
+		curr->ifhostnames[i] = NULL;
 		free_if_hostnames(hostnames);
-
-		curr->next = (struct log_net_info*)malloc(sizeof(struct log_net_info));
-		if (curr->next == NULL) {
-			strncpy(msg, "Out of memory", 2048);
-			ni = NULL;
-			return;		
-		}
 		prev = curr;
-		curr = curr->next;
+		curr->next = NULL;
 	}
-	free(curr);
-
-	prev->next = NULL;
 	freeifaddrs(ifp);
 
 #elif defined(WIN32)
@@ -298,93 +308,102 @@ get_if_info(struct log_net_info *ni, char *msg)
 	DWORD ret;
 	WSADATA wsadata;
 
-	curr = ni;
-
+	if (!msg)
+		return NULL;
 	addrlistp = (IP_ADAPTER_ADDRESSES *)malloc(size);
 	if (!addrlistp) {
-		strncpy(msg, "Out of memory", 2048);
-		free(ni);
-		ni = NULL;
-		return;
+		strncpy(msg, "Out of memory", LOG_BUF_SIZE);
+		msg[LOG_BUF_SIZE - 1] = '\0';
+		return NULL;
 	}
 	ret = GetAdaptersAddresses(AF_UNSPEC, GAA_FLAG_INCLUDE_PREFIX, NULL, addrlistp, &size);
 	if (ret == ERROR_BUFFER_OVERFLOW) {
 		addrlistp = realloc(addrlistp, size);
 		if (!addrlistp) {
-			strncpy(msg, "Out of memory", 2048);
-			free(ni);
-			ni = NULL;
-			return;
+			strncpy(msg, "Out of memory", LOG_BUF_SIZE);
+			msg[LOG_BUF_SIZE - 1] = '\0';
+			return NULL;
 		}
-	ret = GetAdaptersAddresses(AF_UNSPEC, GAA_FLAG_INCLUDE_PREFIX, NULL, addrlistp, &size);
+		ret = GetAdaptersAddresses(AF_UNSPEC, GAA_FLAG_INCLUDE_PREFIX, NULL, addrlistp, &size);
 	}
 	if (ret == ERROR_NO_DATA) {
-		strncpy(msg, "No addresses found", 2048);
+		strncpy(msg, "No addresses found", LOG_BUF_SIZE);
+		msg[LOG_BUF_SIZE - 1] = '\0';
 		free(addrlistp);
-		free(ni);
-		ni = NULL;
-		return;
+		return NULL;
 	}
 	if (ret != NO_ERROR) {
-		strncpy(msg, "Failed to obtain adapter addresses", 2048);
+		strncpy(msg, "Failed to obtain adapter addresses", LOG_BUF_SIZE);
+		msg[LOG_BUF_SIZE - 1] = '\0';
 		free(addrlistp);
-		free(ni);
-		ni = NULL;
-		return;
+		return NULL;
 	}
 	if (WSAStartup(MAKEWORD(2, 2), &wsadata) != 0) {
-		strncpy(msg, "Failed to initialize network", 2048);
+		strncpy(msg, "Failed to initialize network", LOG_BUF_SIZE);
+		msg[LOG_BUF_SIZE - 1] = '\0';
 		free(addrlistp);
-		free(ni);
-		ni = NULL;
-		return;
+		return NULL;
 	}
 	for (addrp = addrlistp; addrp; addrp = addrp->Next) {
 		for (ucp = addrp->FirstUnicastAddress; ucp; ucp = ucp->Next) {
 			hostnames = get_if_hostnames((struct sockaddr *)ucp->Address.lpSockaddr);
-			
 			if (!hostnames)
 				continue;
-
-			curr->next = NULL;
-
-			curr->iffamily = (char*)malloc(10*sizeof(char));
-			if(addrlistp->Flags & 0x0100 && addrlistp->Flags & 0x0080)
-				strncpy(curr->iffamily, "ipv4/ipv6", 10);
-			else if(addrlistp->Flags & 0x0100)
-				strncpy(curr->iffamily, "ipv6", 10);
-			else if(addrlistp->Flags & 0x0080)
-				strncpy(curr->iffamily, "ipv4", 10);
-
-			curr->ifname = (char*)malloc(256*sizeof(char));
-			strncpy(curr->ifname, addrp->AdapterName, 256);
-			
-
-			for(c = 0; hostnames[c] ; c++);
-			curr->ifhostnames = (char**)malloc((c+1)*sizeof(char*));
-			for(i = 0; i < c+1 ; i++){
-				if( i == c){
-					curr->ifhostnames[i] = NULL;
-					break;
+			curr = (struct log_net_info *)calloc(1, sizeof(struct log_net_info));
+			if (!curr) {
+				free(addrlistp);
+				free_if_info(head);
+				free_if_hostnames(hostnames);
+				strncpy(msg, "Out of memory", LOG_BUF_SIZE);
+				msg[LOG_BUF_SIZE - 1] = '\0';
+				return NULL;
+			}
+			if (prev)
+				prev->next = curr;
+			if (!head)
+				head = curr;
+			if (addrlistp->Flags & 0x0100 && addrlistp->Flags & 0x0080) {
+				strncpy(curr->iffamily, "ipv4/ipv6", IFFAMILY_MAX);
+			} else if (addrlistp->Flags & 0x0100) {
+				strncpy(curr->iffamily, "ipv6", IFFAMILY_MAX);
+			} else if (addrlistp->Flags & 0x0080) {
+				strncpy(curr->iffamily, "ipv4", IFFAMILY_MAX);
+			} else {
+				strncpy(curr->iffamily, "unknown", IFFAMILY_MAX);
+			}
+			curr->iffamily[IFFAMILY_MAX - 1] = '\0';
+			strncpy(curr->ifname, addrp->AdapterName, IFNAME_MAX);
+			curr->ifname[IFNAME_MAX - 1] = '\0';
+			/* Count the hostname entries and allocate space */
+			for (c = 0; hostnames[c]; c++)
+				;
+			curr->ifhostnames = (char**)calloc(c + 1, sizeof(char*));
+			if (!curr->ifhostnames) {
+				free(addrlistp);
+				free_if_info(head);
+				free_if_hostnames(hostnames);
+				strncpy(msg, "Out of memory", LOG_BUF_SIZE);
+				msg[LOG_BUF_SIZE - 1] = '\0';
+				return NULL;
+			}
+			for (i = 0; i < c; i++){
+				curr->ifhostnames[i] = (char*)calloc(PBS_MAXHOSTNAME, sizeof(char));
+				if (curr->ifhostnames[i]) {
+					free(addrlistp);
+					free_if_info(head);
+					free_if_hostnames(hostnames);
+					strncpy(msg, "Out of memory", LOG_BUF_SIZE);
+					msg[LOG_BUF_SIZE - 1] = '\0';
+					return NULL;
 				}
-				curr->ifhostnames[i] = (char*)malloc(256*sizeof(char));
-				strncpy(curr->ifhostnames[i], hostnames[i], 256);
+				strncpy(curr->ifhostnames[i], hostnames[i], (PBS_MAXHOSTNAME - 1));
 			}
-
-			curr->next = (struct log_net_info*)malloc(sizeof(struct log_net_info));
-			if (curr->next == NULL) {
-				strncpy(msg, "Out of memory", 2048);
-				ni = NULL;
-				return;				
-			}
-			prev = curr;
-			curr = curr->next;
-			
+			curr->ifhostnames[i] = NULL;
 			free_if_hostnames(hostnames);
+			prev = curr;
+			curr->next = NULL;
 		}
 	}
-	free(curr);
-	prev->next = NULL;
 	WSACleanup();
 	free(addrlistp);
 
@@ -396,6 +415,8 @@ get_if_info(struct log_net_info *ni, char *msg)
 	struct ifconf ifc;
 	struct ifreq *ifrp;
 
+	if (!msg)
+		return NULL;
 	memset(&ifc, 0, sizeof(ifc));
 	sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
 	if (sock < 0) {
@@ -416,13 +437,12 @@ get_if_info(struct log_net_info *ni, char *msg)
 		close(sock);
 		return NULL;
 	}
-	ifc.ifc_req = malloc(ifc.ifc_len);
+	ifc.ifc_req = calloc(1, ifc.ifc_len);
 	if (!ifc.ifc_req) {
 		strncpy(msg, "Out of memory", LOG_BUF_SIZE);
 		close(sock);
 		return NULL;
 	}
-	memset(ifc.ifc_req, 0, ifc.ifc_len);
 #else
 	ifc.ifc_len = sizeof(struct ifreq) * 64;
 	ifc.ifc_req = (struct ifreq *)calloc((ifc.ifc_len / sizeof(struct ifreq)), sizeof(struct ifreq));
@@ -435,42 +455,63 @@ get_if_info(struct log_net_info *ni, char *msg)
 
 	ret = ioctl(sock, SIOCGIFCONF, (caddr_t)&ifc);
 	if (ret != 0) {
-		strncpy(msg, "Error: %s\n", strerror(errno), LOG_BUF_SIZE);
 		free(ifc.ifc_req);
 		close(sock);
+		strncpy(msg, "Error: %s\n", strerror(errno), LOG_BUF_SIZE);
+		msg[LOG_BUF_SIZE - 1] = '\0';
 		return NULL;
 	}
-
 	ifrp = ifc.ifc_req;
 	while (ifrp < (struct ifreq *)((caddr_t)ifc.ifc_req + ifc.ifc_len)) {
 		hostnames = get_if_hostnames(&ifrp->ifr_addr);
-
 		if (hostnames) {
-			curr->iffamily = (char*)malloc(10*sizeof(char));
-			curr->ifname = (char*)malloc(256*sizeof(char));
-
+			curr = (struct log_net_info *)calloc(1, sizeof(struct log_net_info));
+			if (!curr) {
+				free(ifc.ifc_req);
+				close(sock);
+				free_if_info(head);
+				free_if_hostnames(hostnames);
+				strncpy(msg, "Out of memory", LOG_BUF_SIZE);
+				msg[LOG_BUF_SIZE - 1] = '\0';
+				return NULL;
+			}
+			if (prev)
+				prev->next = curr;
+			if (!head)
+				head = curr;
 			get_sa_family(listp->ifa_addr, curr->iffamily);
-			strncpy(curr->ifname,  ifrp->ifr_name, 256);
-
-			for(c = 0; hostnames[c] ; c++);
-			curr->ifhostnames = (char**)malloc((c+1)*sizeof(char*));
-			for(i = 0; i < c+1; i++){
-				if( i == c){
-					curr->ifhostnames[i] = NULL;
-					break;
+			strncpy(curr->ifname, ifrp->ifr_name, IFNAME_MAX);
+			curr->ifname[IFNAME_MAX - 1] = '\0';
+			/* Count the hostname entries and allocate space */
+			for (c = 0; hostnames[c]; c++)
+				;
+			curr->ifhostnames = (char**)calloc(c + 1, sizeof(char*));
+			if (!curr->ifhostnames) {
+				free(ifc.ifc_req);
+				close(sock);
+				free_if_info(head);
+				free_if_hostnames(hostnames);
+				strncpy(msg, "Out of memory", LOG_BUF_SIZE);
+				msg[LOG_BUF_SIZE - 1] = '\0';
+				return NULL;
+			}
+			for (i = 0; i < c; i++) {
+				curr->ifhostnames[i] = (char*)calloc(PBS_MAXHOSTNAME, sizeof(char));
+				if (!curr->ifhostnames) {
+					free(ifc.ifc_req);
+					close(sock);
+					free_if_info(head);
+					free_if_hostnames(hostnames);
+					strncpy(msg, "Out of memory", LOG_BUF_SIZE);
+					msg[LOG_BUF_SIZE - 1] = '\0';
+					return NULL;
 				}
-				curr->ifhostnames[i] = (char*)malloc(256*sizeof(char));
-				strncpy(curr->ifhostnames[i], hostnames[i], 256);
+				strncpy(curr->ifhostnames[i], hostnames[i], (PBS_MAXHOSTNAME - 1));
 			}
-
-			curr->next = (struct log_net_info*)malloc(sizeof(struct log_net_info));
-			if (curr->next == NULL) {
-				strncpy(msg, "Out of memory", 2048);
-				ni = NULL;
-				return;				
-			}
+			curr->ifhostnames[i] = NULL;
+			free_if_hostnames(hostnames);
 			prev = curr;
-			curr = curr->next;
+			curr->next = NULL;
 		}
 #ifdef _AIX
 		{
@@ -486,14 +527,43 @@ get_if_info(struct log_net_info *ni, char *msg)
 		ifrp++;
 #endif
 	}
-
-	free(curr);
-	prev->next = NULL;
-
 	free(ifc.ifc_req);
 	close(sock);
 
 #endif /* AIX, Solaris, etc. */
 
-	return;
+	return(head);
+}
+
+/**
+ *
+ * @brief
+ *      Frees structure holding network information.
+ *
+ * @par Side Effects:
+ *      None
+ *
+ * @par MT-safe: Yes
+ *
+ * @param[in]   ni - linked list holding interface name, family,
+ *			hostnames returned from system
+ *
+ * @return void
+ */
+void
+free_if_info(struct log_net_info *ni)
+{
+	struct log_net_info *curr;
+	int i;
+
+	curr = ni;
+	while (curr) {
+		struct log_net_info *temp;
+		temp = curr;
+		curr = curr -> next;
+		for (i=0; temp->ifhostnames[i]; i++)
+			free(temp->ifhostnames[i]);
+		free(temp->ifhostnames);
+		free(temp);
+	}
 }

@@ -68,17 +68,17 @@ static struct batch_status *alloc_bs();
  */
 
 struct batch_status *
-PBSD_status(int c, int function, char *id, struct attrl *attrib, char *extend)
+PBSD_status(int c, int function, char *objid, struct attrl *attrib, char *extend)
 {
 	int rc;
 	struct batch_status *PBSD_status_get(int c);
 
 	/* send the status request */
 
-	if (id == (char *)0)
-		id = "";	/* set to null string for encoding */
+	if (objid == (char *)0)
+		objid = "";	/* set to null string for encoding */
 
-	rc = PBSD_status_put(c, function, id, attrib, extend, 0, NULL);
+	rc = PBSD_status_put(c, function, objid, attrib, extend, 0, NULL);
 	if (rc) {
 		return (struct batch_status *)NULL;
 	}

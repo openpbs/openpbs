@@ -6123,7 +6123,6 @@ send_job_exec_update_to_mom(job *pjob, char *err_msg, int err_msg_sz,
 
 
 	if ((pjob->ji_wattr[JOB_ATR_resource].at_flags & ATR_VFLAG_SET) != 0) {
-		resource	*pr, *next;
 		pbs_list_head    collectresc;
 		svrattrl 	*psvrl;
 		attribute_def	*objatrdef;
@@ -6364,6 +6363,9 @@ resc_sum_values_action(enum resc_sum_action action, resource_def *resc_def, char
 		}
 		return (buf);
 	}
+
+	/* Should never get here. */
+	return (NULL);
 }
 
 /**
@@ -6586,7 +6588,7 @@ return_missing_resources(char *chunk, char *res_list)
 	int		rc = 0;
 	static char	*ret_buf = NULL;
 	static int	ret_buf_size = 0;
-	int		l, p;
+	int		l;
 	char		*chunk_dup = NULL;
 
 	if ((res_list == NULL) || (chunk == NULL)) {
@@ -6704,7 +6706,6 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 	char	*exec_host = NULL;
 	char	*exec_host2 = NULL;
 	char	*new_exec_vnode = NULL;
-	char	*new_exec_vnode_deallocated = NULL;
 	char	*new_exec_host = NULL;
 	char	*new_exec_host2 = NULL;
 	char	*new_select = NULL;
@@ -6723,29 +6724,22 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 	int	hasprn1 = 0;
 	int	hasprn2 = 0;
 	int	hasprn3 = 0;
-	int	entry0 = 0;
 	int	entry = 0;
 	int	f_entry = 0;
 	int	h_entry = 0;
 	int	sel_entry = 0;
-	int	i,j,k,np;
+	int	j;
 	int	nelem;
 	char	*noden;
 	struct	key_value_pair *pkvp;
 	char	*ms_fullhost = NULL;
 	char	buf[LOG_BUF_SIZE] = {0};
-	attribute *pexech;
-	attribute *pexech1;
-	attribute *pexech2;
 	resource	*presc;
 	int		ms_port = 0;
 	struct	pbsnode *pnode = NULL;
 	resource_def	*prdefsl = NULL;
 	int		rc = 1;
-	resource_def	*pdef;
-	int		nodect = 0;
 	int		ns_malloced = 0;
-	char		*tmp_str = NULL;
 	char		*buf_sum = NULL;
 	int		paren = 0;
 	int		parend = 0;
@@ -6771,7 +6765,6 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 		return (1);
 
 	}
-
 
 	if ((pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_flags & ATR_VFLAG_SET) == 0) {
 		LOG_ERR_BUF(err_msg, err_msg_sz,
@@ -6871,15 +6864,6 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 		goto recreate_exec_vnode_exit;
 	}
 
-	pdef = find_resc_def(svr_resc_def, "nodect", svr_resc_size);
-	if (pdef) {
-		presc = find_resc_entry(
-			&pjob->ji_wattr[(int)JOB_ATR_resource], pdef);
-		if (presc && ((presc->rs_value.at_flags & ATR_VFLAG_SET) != 0)) {
-			nodect = presc->rs_value.at_val.at_long;
-		}
-	}
-
 	schedselect = expand_select_spec(pjob->ji_wattr[\
 			JOB_ATR_SchedSelect].at_val.at_str);
 
@@ -6898,7 +6882,6 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 	prdefarch = find_resc_def(svr_resc_def, "arch", svr_resc_size);
 	/* There's a 1:1:1 mapping among exec_vnode parenthesized entries, exec_host, */
 	/* and exec_host2,  */
-	entry0 = 0;	/* exec_vnode_deallocated entries */
 	entry = 0;	/* exec_vnode entries */
 	h_entry = 0;	/* exec_host* entries */
 	sel_entry = 0;	/* select and schedselect entries */
@@ -7018,9 +7001,6 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 				entry++;
 
 				for (j = 0; j < nelem; ++j) {
-					attribute   tmpatr;
-					int r;
-
 					resc_def = find_resc_def(svr_resc_def, pkvp[j].kv_keyw,
 										svr_resc_size);
 

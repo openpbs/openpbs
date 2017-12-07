@@ -223,16 +223,14 @@ on_segv(int sig)
 void
 die(int sig)
 {
-	char    *id = "die";
-
 	if (sig > 0) {
 		sprintf(log_buffer, "caught signal %d", sig);
 		log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO,
-			id, log_buffer);
+			__func__, log_buffer);
 	}
 	else {
 		log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO,
-			id, "abnormal termination");
+			__func__, "abnormal termination");
 	}
 
 	log_close(1);
@@ -324,7 +322,6 @@ socket_to_conn(int sock)
 int
 addclient(char *name)
 {
-	static	char	id[] = "addclient";
 	int	i;
 	struct	hostent		*host;
 #ifndef WIN32
@@ -334,7 +331,7 @@ addclient(char *name)
 
 	if ((host = gethostbyname(name)) == NULL) {
 		sprintf(log_buffer, "host %s not found", name);
-		log_err(-1, id, log_buffer);
+		log_err(-1, __func__, log_buffer);
 		return -1;
 	}
 
@@ -374,7 +371,6 @@ static
 int
 read_config(char *file)
 {
-	static	char *id = "read_config";
 	FILE	*conf;
 	int	i;
 	char	line[CONF_LINE_LEN];
@@ -398,7 +394,7 @@ read_config(char *file)
 #endif
 
 	if ((conf = fopen(file, "r")) == NULL) {
-		log_err(errno, id, "cannot open config file");
+		log_err(errno, __func__, "cannot open config file");
 		return (-1);
 	}
 	while (fgets(line, CONF_LINE_LEN, conf)) {
@@ -451,8 +447,6 @@ read_config(char *file)
 void
 restart(int sig)
 {
-	char    *id = "restart";
-
 	if (sig) {
 		log_close(1);
 		log_open(logfile, path_log);
@@ -460,7 +454,7 @@ restart(int sig)
 	} else {
 		sprintf(log_buffer, "restart command");
 	}
-	log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, id,
+	log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__,
 		log_buffer);
 	if (configfile) {
 		if (read_config(configfile) != 0)
@@ -478,7 +472,6 @@ restart(int sig)
 void
 badconn(char *msg)
 {
-	static	char	id[] = "badconn";
 	struct	in_addr	addr;
 	char		buf[5*sizeof(addr) + 100];
 	struct	hostent	*phe;
@@ -507,7 +500,7 @@ badconn(char *msg)
 
 	sprintf(log_buffer, "%s on port %u %s",
 		buf, ntohs(saddr.sin_port), msg);
-	log_err(-1, id, log_buffer);
+	log_err(-1, __func__, log_buffer);
 	return;
 }
 
@@ -534,7 +527,6 @@ badconn(char *msg)
 int
 server_command(char **jid)
 {
-	char		*id = "server_command";
 	int		new_socket;
 	int		slen;
 	int		i = 0;
@@ -548,7 +540,7 @@ server_command(char **jid)
 	new_socket = accept(server_sock,
 		(struct sockaddr *)&saddr, &slen);
 	if (new_socket == -1) {
-		log_err(errno, id, "accept");
+		log_err(errno, __func__, "accept");
 		return SCH_ERROR;
 	}
 
@@ -577,7 +569,7 @@ server_command(char **jid)
 	}
 
 	if ((connector = socket_to_conn(new_socket)) < 0) {
-		log_err(errno, id, "socket_to_conn");
+		log_err(errno, __func__, "socket_to_conn");
 #ifdef WIN32
 		closesocket(new_socket);
 #else
@@ -588,7 +580,7 @@ server_command(char **jid)
 
 	/* get_sched_cmd() located in file get_4byte.c */
 	if (get_sched_cmd(new_socket, &cmd, jid) != 1) {
-		log_err(errno, id, "get_sched_cmd");
+		log_err(errno, __func__, "get_sched_cmd");
 #ifdef WIN32
 		closesocket(new_socket);
 #else
@@ -616,7 +608,7 @@ server_command(char **jid)
 		second_connection = accept(server_sock,
 			(struct sockaddr *)&saddr, &slen);
 		if (second_connection == -1) {
-			log_err(errno, id,
+			log_err(errno, __func__,
 				"warning: failed to get second_connection");
 			return cmd; /* bail out early */
 		}
@@ -651,7 +643,7 @@ server_command(char **jid)
 
 
 		if (get_sched_cmd(second_connection, &cmd2, &jid2) != 1) {
-			log_err(errno, id, "get_sched_cmd");
+			log_err(errno, __func__, "get_sched_cmd");
 #ifdef WIN32
 			(void)closesocket(second_connection);
 #else
@@ -666,7 +658,7 @@ server_command(char **jid)
 	} else {
 
 		log_event(PBSEVENT_DEBUG, LOG_DEBUG,
-			PBS_EVENTCLASS_SERVER, id,
+			PBS_EVENTCLASS_SERVER, __func__,
 			"warning: timed-out getting second_connection");
 	}
 
@@ -693,7 +685,6 @@ static	char scheduler_name[PBS_MAXHOSTNAME+1] = "Me";  /*arbitrary string*/
 static void
 update_svr_schedobj(int cmd, int alarm_time)
 {
-	static	char    id[] = "update_svr_schedobj";
 	char timestr[128];
 
 	/*same host:port with a new scheduler*/
@@ -710,7 +701,7 @@ update_svr_schedobj(int cmd, int alarm_time)
 	attribs = (struct  attropl *)calloc(3, sizeof(struct attropl));
 	if (attribs == NULL) {
 		sprintf(log_buffer, "can't update scheduler attribs, calloc failed");
-		log_err(-1, id, log_buffer);
+		log_err(-1, __func__, log_buffer);
 		return;
 	}
 	patt = attribs;
@@ -823,7 +814,6 @@ lock_out(int fds, int op)
 static int
 are_we_primary()
 {
-	char id[] = "pbs_sched";
 	char server_host[PBS_MAXHOSTNAME+1];
 	char hn1[PBS_MAXHOSTNAME+1];
 
@@ -836,7 +826,7 @@ are_we_primary()
 	} else {
 		if ((gethostname(server_host, (sizeof(server_host) - 1)) == -1) ||
 			(get_fullhostname(server_host, server_host, (sizeof(server_host) - 1)) == -1)) {
-			log_err(-1, id, "Unable to get my host name");
+			log_err(-1, __func__, "Unable to get my host name");
 			return -1;
 		}
 	}
@@ -849,7 +839,7 @@ are_we_primary()
 		return -1;
 
 	if (get_fullhostname(pbs_conf.pbs_primary, hn1, (sizeof(hn1) - 1))==-1) {
-		log_err(-1, id, "Unable to get full host name of primary");
+		log_err(-1, __func__, "Unable to get full host name of primary");
 		return -1;
 	}
 
@@ -857,7 +847,7 @@ are_we_primary()
 		return 1;	/* we are the listed primary */
 
 	if (get_fullhostname(pbs_conf.pbs_secondary, hn1, (sizeof(hn1) - 1))==-1) {
-		log_err(-1, id, "Unable to get full host name of secondary");
+		log_err(-1, __func__, "Unable to get full host name of secondary");
 		return -1;
 	}
 	if (strcmp(hn1, server_host) == 0)
@@ -944,7 +934,6 @@ int
 main(int argc, char *argv[])
 {
 #endif
-	char		*id = "main";
 	char		zone_dir[MAXPATHLEN];
 	int		go, c, errflg = 0, rc;
 #ifdef WIN32
@@ -1276,7 +1265,7 @@ main(int argc, char *argv[])
 #ifdef WIN32
 		errno = WSAGetLastError();
 #endif
-		log_err(errno, id, "gethostname");
+		log_err(errno, __func__, "gethostname");
 		die(0);
 	}
 
@@ -1296,7 +1285,7 @@ main(int argc, char *argv[])
 	}
 
 	if (server_sock < 0) {
-		log_err(errno, id, "socket");
+		log_err(errno, __func__, "socket");
 		die(0);
 	}
 
@@ -1305,7 +1294,7 @@ main(int argc, char *argv[])
 	setsockopt(server_sock, SOL_SOCKET, SO_LINGER, (char *)&li, sizeof(li));
 #else
 	if ((server_sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-		log_err(errno, id, "socket");
+		log_err(errno, __func__, "socket");
 		die(0);
 	}
 #endif
@@ -1315,7 +1304,7 @@ main(int argc, char *argv[])
 #ifdef WIN32
 		errno = WSAGetLastError();
 #endif
-		log_err(errno, id, "setsockopt");
+		log_err(errno, __func__, "setsockopt");
 		die(0);
 	}
 	saddr.sin_family = AF_INET;
@@ -1325,20 +1314,20 @@ main(int argc, char *argv[])
 #ifdef WIN32
 		errno = WSAGetLastError();
 #endif
-		log_err(errno, id, "bind");
+		log_err(errno, __func__, "bind");
 		die(0);
 	}
 	if (listen(server_sock, 5) < 0) {
 #ifdef WIN32
 		errno = WSAGetLastError();
 #endif
-		log_err(errno, id, "listen");
+		log_err(errno, __func__, "listen");
 		die(0);
 	}
 
 	okclients = (pbs_net_t *)calloc(START_CLIENTS, sizeof(pbs_net_t));
 	if (okclients == NULL) {
-		log_err(errno, id, "Unable to allocate memory (malloc error)");
+		log_err(errno, __func__, "Unable to allocate memory (malloc error)");
 		die(0);
 	}
 	addclient(LOCALHOST_SHORTNAME);   /* who has permission to call MOM */
@@ -1367,7 +1356,7 @@ main(int argc, char *argv[])
 	}
 
 	if (lockfds < 0) {
-		log_err(errno, id, "open lock file");
+		log_err(errno, __func__, "open lock file");
 		exit(1);
 	}
 
@@ -1429,7 +1418,7 @@ main(int argc, char *argv[])
 		(void)sprintf(log_buffer,
 			"local initialization failed, terminating");
 		log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO,
-			id, log_buffer);
+			__func__, log_buffer);
 		exit(1);
 	}
 
@@ -1486,7 +1475,7 @@ main(int argc, char *argv[])
 #ifdef _POSIX_MEMLOCK
 	if (do_mlockall == 1) {
 		if (mlockall(MCL_CURRENT|MCL_FUTURE) == -1) {
-			log_err(errno, id, "mlockall failed");
+			log_err(errno, __func__, "mlockall failed");
 		}
 	}
 #endif	/* _POSIX_MEMLOCK */
@@ -1496,7 +1485,7 @@ main(int argc, char *argv[])
 		LOG_NOTICE, PBS_EVENTCLASS_SERVER, msg_daemonname, log_buffer);
 
 	sprintf(log_buffer, "%s startup pid %d", argv[0], pid);
-	log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, id, log_buffer);
+	log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__, log_buffer);
 
 	rpp_fd = -1;
 	if (pbs_conf.pbs_use_tcp == 1) {
@@ -1546,7 +1535,7 @@ main(int argc, char *argv[])
 
 		/* set a timeout for rpp_read operations */
 		if (rpp_advise(RPP_ADVISE_TIMEOUT, &rpp_advise_timeout) != 0) {
-			log_err(errno, id, "rpp_advise");
+			log_err(errno, __func__, "rpp_advise");
 			die(0);
 		}
 	}
@@ -1575,7 +1564,7 @@ main(int argc, char *argv[])
 		FD_SET(server_sock, &fdset);
 		if (select(FD_SETSIZE, &fdset, NULL, NULL, NULL) == -1) {
 			if (errno != EINTR) {
-				log_err(errno, id, "select");
+				log_err(errno, __func__, "select");
 				die(0);
 			}
 			continue;
@@ -1583,7 +1572,7 @@ main(int argc, char *argv[])
 
 		if (pbs_conf.pbs_use_tcp == 0 && rpp_fd != -1 && FD_ISSET(rpp_fd, &fdset)) {
 			if (rpp_io() == -1)
-				log_err(errno, id, "rpp_io");
+				log_err(errno, __func__, "rpp_io");
 		}
 		if (!FD_ISSET(server_sock, &fdset))
 			continue;
@@ -1596,7 +1585,7 @@ main(int argc, char *argv[])
 
 #ifndef WIN32
 		if (sigprocmask(SIG_BLOCK, &allsigs, &oldsigs) == -1)
-			log_err(errno, id, "sigprocmaskSIG_BLOCK)");
+			log_err(errno, __func__, "sigprocmaskSIG_BLOCK)");
 
 		if (!opt_no_restart)
 			segv_last_time = time(NULL);
@@ -1623,12 +1612,12 @@ main(int argc, char *argv[])
 
 #ifndef WIN32
 		if (sigprocmask(SIG_SETMASK, &oldsigs, NULL) == -1)
-			log_err(errno, id, "sigprocmask(SIG_SETMASK)");
+			log_err(errno, __func__, "sigprocmask(SIG_SETMASK)");
 #endif
 }
 
 	sprintf(log_buffer, "%s normal finish pid %d", argv[0], pid);
-	log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, id, log_buffer);
+	log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__, log_buffer);
 
 	lock_out(lockfds, F_UNLCK);	/* unlock  */
 	(void)close(lockfds);

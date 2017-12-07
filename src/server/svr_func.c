@@ -3893,7 +3893,6 @@ add_prov_record(prov_pid pid,
 	struct prov_vnode_info * prov_vnode_info)
 {
 	int i;
-	DOID("add_prov_record")
 
 	for (i = 0; i < server.sv_provtracksize; i++) {
 		if (server.sv_prov_track[i].pvtk_mtime == 0) {
@@ -3903,17 +3902,17 @@ add_prov_record(prov_pid pid,
 	}
 	if (i == server.sv_provtracksize) {
 		DBPRT(("%s: Could not add records: current records = %d\n",
-			id, server.sv_cur_prov_records))
+			__func__, server.sv_cur_prov_records))
 		return -1;
 	}
 	server.sv_prov_track[i].pvtk_mtime = time_now;
 	if ((server.sv_prov_track[i].pvtk_vnode = strdup(prov_vnode_info->pvnfo_vnode)) == NULL) {
-		DBPRT(("%s: Unable to allocate Memory!\n"));
+		DBPRT(("%s: Unable to allocate Memory!\n", __func__));
 		return -1;
 	}
 	if ((server.sv_prov_track[i].pvtk_aoe_req = strdup(prov_vnode_info->pvnfo_aoe_req)) == NULL) {
 		free(server.sv_prov_track[i].pvtk_vnode);
-		DBPRT(("%s: Unable to allocate Memory!\n"));
+		DBPRT(("%s: Unable to allocate Memory!\n", __func__));
 		return -1;
 	}
 	server.sv_prov_track[i].prov_vnode_info = prov_vnode_info;
@@ -3921,7 +3920,7 @@ add_prov_record(prov_pid pid,
 	server.sv_cur_prov_records++;
 	server.sv_provtrackmodifed = 1;
 	DBPRT(("%s: Added a record: current records = %d\n",
-		id, server.sv_cur_prov_records))
+		__func__, server.sv_cur_prov_records))
 	return 0;
 }
 
@@ -3991,7 +3990,6 @@ void
 prov_track_save()
 {
 	FILE 	*fd;
-	DOID("prov_track_save")
 	int 	i;
 
 	/* set task for next round trip */
@@ -4000,7 +3998,7 @@ prov_track_save()
 
 	fd = fopen(path_prov_track, "w");
 	if (fd == NULL) {
-		DBPRT(("%s: unable to open tracking file\n", id))
+		DBPRT(("%s: unable to open tracking file\n", __func__))
 		return;
 	}
 #ifdef WIN32
@@ -4260,7 +4258,6 @@ int
 parse_prov_vnode(char *prov_vnode, exec_vnode_listtype *prov_vnodes)
 {
 	/* Variables used in parsing the "exec_vnode" string */
-	DOID("parse_prov_vnode")
 	char		*psubspec;
 	char 		*slast;
 	char		*sbuf = NULL;
@@ -4270,7 +4267,7 @@ parse_prov_vnode(char *prov_vnode, exec_vnode_listtype *prov_vnodes)
 	char		*p = NULL;
 
 	if (prov_vnode == NULL) {
-		DBPRT(("%s: invalid params\n", id))
+		DBPRT(("%s: invalid params\n", __func__))
 		return (-1);
 	}
 
@@ -4299,7 +4296,7 @@ parse_prov_vnode(char *prov_vnode, exec_vnode_listtype *prov_vnodes)
 			(*prov_vnodes)[i][k] =  *p;
 		}
 		(*prov_vnodes)[i][k] = '\0';
-		DBPRT(("%s: %s\n", id, (*prov_vnodes)[i]))
+		DBPRT(("%s: %s\n", __func__, (*prov_vnodes)[i]))
 		++i;
 		psubspec = parse_plus_spec_r(slast, &slast, &hpn);
 	}
@@ -4411,7 +4408,6 @@ int
 find_prov_vnode_list(job *pjob, exec_vnode_listtype *prov_vnodes, char **aoe_name)
 {
 	/* Variables used in parsing the "exec_vnode" string */
-	DOID("find_prov_vnode_list")
 	char		*psubspec;
 	char 		*slast;
 	char		*sbuf = NULL;
@@ -4433,7 +4429,7 @@ find_prov_vnode_list(job *pjob, exec_vnode_listtype *prov_vnodes, char **aoe_nam
 		execvnod = pjob->ji_wattr[(int) JOB_ATR_exec_vnode].at_val.at_str;
 
 	if (execvnod == NULL) {
-		DBPRT(("%s: invalid params\n", id))
+		DBPRT(("%s: invalid params\n", __func__))
 		return (-1);
 	}
 
@@ -4480,7 +4476,7 @@ find_prov_vnode_list(job *pjob, exec_vnode_listtype *prov_vnodes, char **aoe_nam
 					if (no_add)
 						break;
 
-					DBPRT(("%s: Look up node %s\n", id, vname))
+					DBPRT(("%s: Look up node %s\n", __func__, vname))
 					pnode = find_nodebyname(vname);
 					/* check if node really needs provisioning, if not, continue.
 					 * This is to stop qrun -H from provisioning a node (including
@@ -4496,7 +4492,7 @@ find_prov_vnode_list(job *pjob, exec_vnode_listtype *prov_vnodes, char **aoe_nam
 						break;
 
 					strcpy((*prov_vnodes)[i], vname);
-					DBPRT(("%s: %s\n", id, (*prov_vnodes)[i]))
+					DBPRT(("%s: %s\n", __func__, (*prov_vnodes)[i]))
 					++i;
 					if (aoe_name != NULL) {
 						aoe = malloc(strlen(((pkvp + k)->kv_val)) + 1);
@@ -4508,7 +4504,7 @@ find_prov_vnode_list(job *pjob, exec_vnode_listtype *prov_vnodes, char **aoe_nam
 						strcpy(aoe, ((pkvp + k)->kv_val));
 						aoe[strlen((pkvp + k)->kv_val)] = '\0';
 						(*aoe_name) = aoe;
-						DBPRT(("%s: %s\n", id, (*aoe_name)))
+						DBPRT(("%s: %s\n", __func__, (*aoe_name)))
 					}
 					break;
 				}
@@ -4536,7 +4532,7 @@ find_prov_vnode_list(job *pjob, exec_vnode_listtype *prov_vnodes, char **aoe_nam
 		&pjob->ji_wattr[(int) JOB_ATR_prov_vnode],
 		(char *) 0, (char *) 0, pbuf);
 
-	DBPRT(("%s: prov_vnode: %s\n", id, pbuf))
+	DBPRT(("%s: prov_vnode: %s\n", __func__, pbuf))
 
 	free(pbuf);
 	free(sbuf);
@@ -4655,7 +4651,6 @@ free_prov_vnode(struct pbsnode * pnode)
 static int
 is_runnable(job *ptr, struct prov_vnode_info *pvnfo)
 {
-	DOID("is_runnable")
 	struct			pbsnode	*np = NULL;
 	int			i;
 	int			eflag = 0;
@@ -4667,12 +4662,12 @@ is_runnable(job *ptr, struct prov_vnode_info *pvnfo)
 
 
 	if (!ptr) {
-		DBPRT(("%s: ptr is NULL\n", id))
+		DBPRT(("%s: ptr is NULL\n", __func__))
 		return -1;
 	}
 
 	pjob = (job *) ptr;
-	DBPRT(("%s: Entered jobid=%s\n", id, pjob->ji_qs.ji_jobid))
+	DBPRT(("%s: Entered jobid=%s\n", __func__, pjob->ji_qs.ji_jobid))
 
 	aoe_req = pvnfo->pvnfo_aoe_req;
 
@@ -4691,7 +4686,7 @@ is_runnable(job *ptr, struct prov_vnode_info *pvnfo)
 	/* a catch to stop processing further since job would have already */
 	/* been held or re queued */
 	if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_PROVISION) {
-		DBPRT(("%s: stray provisioning for job %s\n", id,
+		DBPRT(("%s: stray provisioning for job %s\n", __func__,
 			pjob->ji_qs.ji_jobid))
 		eflag = -4;
 		goto label1;
@@ -4702,7 +4697,7 @@ is_runnable(job *ptr, struct prov_vnode_info *pvnfo)
 		np = find_nodebyname(prov_vnode_list[i]);
 		if (np == NULL) {
 			DBPRT(("%s: node %s is null\n",
-				id, prov_vnode_list[i]))
+				__func__, prov_vnode_list[i]))
 			eflag = -2;
 			/* let eflag get overwritten in next iterations
 			 by other conditions */
@@ -4713,7 +4708,7 @@ is_runnable(job *ptr, struct prov_vnode_info *pvnfo)
 		if (np->nd_state & (INUSE_OFFLINE|INUSE_OFFLINE_BY_MOM)) {
 
 			DBPRT(("%s: vnode %s is offline (failed prov)\n",
-				id, np->nd_name))
+				__func__, np->nd_name))
 			eflag = -2;
 			break;
 
@@ -4721,7 +4716,7 @@ is_runnable(job *ptr, struct prov_vnode_info *pvnfo)
 			(np->nd_state & INUSE_WAIT_PROV)) {
 			/* Check any vnode is provisioning */
 			eflag = -1;
-			DBPRT(("%s: Some nodes still provisioning\n", id))
+			DBPRT(("%s: Some nodes still provisioning\n", __func__))
 			break;
 		} else {
 			/* check if node has the correct aoe or not */
@@ -4736,7 +4731,7 @@ is_runnable(job *ptr, struct prov_vnode_info *pvnfo)
 				strcmp(current_aoe,  aoe_req) != 0) {
 				eflag = -3;
 				DBPRT(("%s: req_aoe mismatch on %s\n",
-					id, prov_vnode_list[i]))
+					__func__, prov_vnode_list[i]))
 				break;
 			}
 		}
@@ -4789,10 +4784,9 @@ fail_vnode_job(struct prov_vnode_info * prov_vnode_info, int hold_or_que)
 	int			i;
 	struct pbsnode 		*np;
 	struct prov_tracking	*ptracking = NULL;
-	DOID("fail_vnode_job")
 
 	if (!prov_vnode_info) {
-		DBPRT(("%s: prov_vnode_info is NULL\n", id))
+		DBPRT(("%s: prov_vnode_info is NULL\n", __func__))
 		return;
 	}
 
@@ -4910,10 +4904,8 @@ fail_vnode_job(struct prov_vnode_info * prov_vnode_info, int hold_or_que)
 static void
 mark_prov_vnode_offline(pbsnode *pnode, char * comment)
 {
-	DOID("mark_prov_vnode_offline")
-
 	if (!pnode) {
-		DBPRT(("%s: pnode is NULL\n", id))
+		DBPRT(("%s: pnode is NULL\n", __func__))
 		return;
 	}
 
@@ -4922,7 +4914,7 @@ mark_prov_vnode_offline(pbsnode *pnode, char * comment)
 		&pnode->nd_attr[(int)ND_ATR_current_aoe]);
 
 	DBPRT(("%s: node=%s set to offline, resetting current_aoe\n",
-		id, pnode->nd_name))
+		__func__, pnode->nd_name))
 
 	/* set node to down state */
 	set_vnode_state(pnode, INUSE_OFFLINE, Nd_State_Or);
@@ -4977,18 +4969,17 @@ mark_prov_vnode_offline(pbsnode *pnode, char * comment)
 static void
 fail_vnode(struct prov_vnode_info *prov_vnode_info, int hold_or_que)
 {
-	DOID("fail_vnode")
 	struct pbsnode		*pnode;
 	char	  		comment[MAXNLINE];
 
 	if (!prov_vnode_info) {
-		DBPRT(("%s: prov_vnode_info is NULL\n", id))
+		DBPRT(("%s: prov_vnode_info is NULL\n", __func__))
 		return;
 	}
 
 	pnode = find_nodebyname(prov_vnode_info->pvnfo_vnode);
 
-	DBPRT(("%s: node=%s entered\n", id, prov_vnode_info->pvnfo_vnode))
+	DBPRT(("%s: node=%s entered\n", __func__, prov_vnode_info->pvnfo_vnode))
 
 	if (pnode == NULL)
 		return;
@@ -5029,7 +5020,6 @@ offline_all_provisioning_vnodes()
 	struct pbsnode 	*pnode;
 	char	  	comment[MAXNLINE];
 	char 	    	*vnode;
-	DOID("offline_all_provisioning_vnodes")
 
 	strcpy(comment,
 		"Vnode offlined since server went down during provisioning");
@@ -5062,7 +5052,7 @@ offline_all_provisioning_vnodes()
 	server.sv_provtrackmodifed = 1;
 
 	DBPRT(("%s: Marked %d nodes offline (from prov recovery)\n",
-		id, count))
+		__func__, count))
 
 	/* save the provisioning table to disk */
 	prov_track_save();
@@ -5101,10 +5091,9 @@ check_and_run_jobs(struct prov_vnode_info * prov_vnode_info)
 	job			*pjob;
 	int			rc;
 	struct 			work_task task;
-	DOID("check_and_run_jobs")
 
 	if (!prov_vnode_info) {
-		DBPRT(("%s: prov_vnode_info is NULL\n", id))
+		DBPRT(("%s: prov_vnode_info is NULL\n", __func__))
 		return;
 	}
 
@@ -5116,7 +5105,7 @@ check_and_run_jobs(struct prov_vnode_info * prov_vnode_info)
 	if (prov_vnode_info->pvnfo_jobid[0] == '\0')
 		return;
 
-	DBPRT(("%s: Entered, node=%s, jobid=%s\n", id,
+	DBPRT(("%s: Entered, node=%s, jobid=%s\n", __func__,
 		prov_vnode_info->pvnfo_vnode, prov_vnode_info->pvnfo_jobid))
 
 	pjob = (job *) find_job(prov_vnode_info->pvnfo_jobid);
@@ -5135,7 +5124,7 @@ check_and_run_jobs(struct prov_vnode_info * prov_vnode_info)
 		 * prov over on all nodes,
 		 * but some nodes offline or curr_aoe bad
 		 */
-		DBPRT(("%s: Jobid: %s isjob_eligible returned %d\n", id,
+		DBPRT(("%s: Jobid: %s isjob_eligible returned %d\n", __func__,
 			pjob->ji_qs.ji_jobid, rc))
 		if (rc == -3)
 			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_INFO,
@@ -5185,7 +5174,6 @@ check_and_run_jobs(struct prov_vnode_info * prov_vnode_info)
 void
 is_vnode_prov_done(char * vnode)
 {
-	DOID("is_vnode_prov_done")
 	struct	pbsnode		*pnode = NULL;
 	struct prov_vnode_info	*prov_vnode_info;
 	struct  work_task 	*ptask_timeout;
@@ -5201,7 +5189,7 @@ is_vnode_prov_done(char * vnode)
 	if (ptracking->pvtk_pid > -1)
 #endif
 	{
-		DBPRT(("%s: Provisioning script not yet done\n", id))
+		DBPRT(("%s: Provisioning script not yet done\n", __func__))
 		return;
 	}
 
@@ -5212,7 +5200,7 @@ is_vnode_prov_done(char * vnode)
 
 	ptask_timeout = prov_vnode_info->ptask_timed;
 
-	DBPRT(("%s: Entered for node:%s\n", id, prov_vnode_info->pvnfo_vnode))
+	DBPRT(("%s: Entered for node:%s\n", __func__, prov_vnode_info->pvnfo_vnode))
 
 	/* check if this node is up or not */
 	if ((pnode->nd_state & VNODE_UNAVAILABLE) ||
@@ -5222,19 +5210,19 @@ is_vnode_prov_done(char * vnode)
 		 when the vnode gets up (from set_vnode_state)
 		 */
 		DBPRT(("%s: node:%s not yet up\n",
-			id, prov_vnode_info->pvnfo_vnode))
+			__func__, prov_vnode_info->pvnfo_vnode))
 		return;
 	}
 
 	DBPRT(("%s: node:%s is up - cancelling timeout task\n",
-		id, prov_vnode_info->pvnfo_vnode))
+		__func__, prov_vnode_info->pvnfo_vnode))
 	/* delete the timeout task */
 	delete_task(ptask_timeout);
 
 	/* unset the provisioning flag on this node */
 	if (pnode->nd_state & INUSE_PROV) {
 		DBPRT(("%s: node:%s is up - removing prov\n",
-			id, prov_vnode_info->pvnfo_vnode))
+			__func__, prov_vnode_info->pvnfo_vnode))
 		set_vnode_state(pnode, ~INUSE_PROV, Nd_State_And);
 	}
 
@@ -5390,7 +5378,6 @@ prov_startjob(struct work_task *ptask)
 static void
 prov_request_deferred(struct work_task *wtask)
 {
-	DOID("prov_request_deferred")
 	struct work_task 	*timeout_task;
 	int			stat;
 	struct	pbsnode		*pnode = NULL;
@@ -5407,7 +5394,7 @@ prov_request_deferred(struct work_task *wtask)
 	this_pid = (HANDLE) wtask->wt_event;
 #else
 	this_pid = (pid_t) wtask->wt_event;
-	DBPRT(("%s: pid = %ld\n", id, (long)this_pid))
+	DBPRT(("%s: pid = %ld\n", __func__, (long)this_pid))
 #endif	/* WIN32 */
 	timeout_task = (struct work_task *) prov_vnode_info->ptask_timed;
 
@@ -5426,7 +5413,7 @@ prov_request_deferred(struct work_task *wtask)
 	if (WIFEXITED(stat))
 		exit_status=WEXITSTATUS(stat);
 
-	DBPRT(("%s: stat=%d, exit_status=%d\n", id, stat, exit_status))
+	DBPRT(("%s: stat=%d, exit_status=%d\n", __func__, stat, exit_status))
 
 	/* success or application prov over */
 	if (exit_status == 0 || exit_status == APP_PROV_SUCCESS) {
@@ -5445,7 +5432,7 @@ prov_request_deferred(struct work_task *wtask)
 			prov_vnode_info->pvnfo_aoe_req);
 
 		DBPRT(("%s: node:%s current_aoe set: %s\n",
-			id, pnode->nd_name, prov_vnode_info->pvnfo_aoe_req))
+			__func__, pnode->nd_name, prov_vnode_info->pvnfo_aoe_req))
 
 
 		/* write the node current_aoe */
@@ -5531,7 +5518,6 @@ prov_request_deferred(struct work_task *wtask)
 static void
 prov_request_timed(struct work_task *wtask)
 {
-	DOID("prov_request_timed")
 	struct work_task 	*ptask_defer;
 	struct prov_vnode_info	*prov_vnode_info;
 	prov_pid		this_pid;
@@ -5550,7 +5536,7 @@ prov_request_timed(struct work_task *wtask)
 		msg_daemonname, log_buffer);
 
 	DBPRT(("%s: Entered node:%s Timed timeout work task\n",
-		id, prov_vnode_info->pvnfo_vnode))
+		__func__, prov_vnode_info->pvnfo_vnode))
 
 	ptracking = get_prov_record_by_vnode(prov_vnode_info->pvnfo_vnode);
 #ifdef WIN32
@@ -5561,7 +5547,7 @@ prov_request_timed(struct work_task *wtask)
 	{
 		/* pid is part of the deferred task event */
 		this_pid = ptracking->pvtk_pid;
-		DBPRT(("%s: pid = %d\n", id, this_pid))
+		DBPRT(("%s: pid = %d\n", __func__, this_pid))
 
 		/* Kill all process belonging to this process group */
 #ifdef	WIN32
@@ -5571,10 +5557,10 @@ prov_request_timed(struct work_task *wtask)
 #endif	/* WIN32 */
 		{
 			DBPRT(("%s: couldn't kill prov process pgid = %d\n",
-				id, this_pid))
+				__func__, this_pid))
 		}
 		DBPRT(("%s: killed provisioning process tree for pgid = %d\n",
-			id, this_pid))
+			__func__, this_pid))
 
 		/*
 		 * script was running, it means that prov_request_deferred did
@@ -5627,16 +5613,15 @@ prov_request_timed(struct work_task *wtask)
 void
 set_srv_prov_attributes(void)
 {
-	DOID("set_srv_prov_attributes")
 #ifdef PYTHON
 	hook 		*phook;
 
-	DBPRT(("Entered %s\n", id))
+	DBPRT(("Entered %s\n", __func__))
 
 	phook = find_hookbyevent(HOOK_EVENT_PROVISION);
 	if (!phook || !phook->script || !phook->enabled) {
 		disable_svr_prov();
-		DBPRT(("%s: script/enabled not set\n", id))
+		DBPRT(("%s: script/enabled not set\n", __func__))
 		return;
 	}
 
@@ -5651,7 +5636,7 @@ set_srv_prov_attributes(void)
 		ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
 #else
 	disable_svr_prov();
-	DBPRT(("%s: Python not enabled\n", id))
+	DBPRT(("%s: Python not enabled\n", __func__))
 #endif
 }
 
@@ -5842,7 +5827,6 @@ execute_python_prov_script(hook  *phook,
 static int
 start_vnode_provisioning(struct prov_vnode_info * prov_vnode_info)
 {
-	DOID("start_vnode_provisioning")
 	prov_pid		pid;
 	struct	work_task	*ptask_defer;
 	struct	work_task	*ptask_timed;
@@ -5864,19 +5848,19 @@ start_vnode_provisioning(struct prov_vnode_info * prov_vnode_info)
 		NULL, TRUE};
 #endif	/* WIN32 */
 
-	DBPRT(("%s: Provisioning vnode: %s with aoe: %s\n", id,
+	DBPRT(("%s: Provisioning vnode: %s with aoe: %s\n", __func__,
 		prov_vnode_info->pvnfo_vnode, prov_vnode_info->pvnfo_aoe_req))
 
 	pnode = find_nodebyname(prov_vnode_info->pvnfo_vnode);
 	if (!pnode) {
-		DBPRT(("%s: Could not find vnode %s\n", id,
+		DBPRT(("%s: Could not find vnode %s\n", __func__,
 			prov_vnode_info->pvnfo_vnode))
 		return (PBSE_SYSTEM);
 	}
 
 	phook = find_hookbyevent(HOOK_EVENT_PROVISION);
 	if (!phook) {
-		DBPRT(("%s: Provisioning hook not found\n", id))
+		DBPRT(("%s: Provisioning hook not found\n", __func__))
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO,
 			msg_daemonname, "Provisioning hook not found");
 		return rc;
@@ -5884,7 +5868,7 @@ start_vnode_provisioning(struct prov_vnode_info * prov_vnode_info)
 
 	if ((rc=pbs_python_check_and_compile_script(&svr_interp_data,
 		phook->script)) != 0) {
-		DBPRT(("%s: Recompilation failed\n", id))
+		DBPRT(("%s: Recompilation failed\n", __func__))
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_INFO,
 			msg_daemonname, "Provisioning script recompilation failed");
 		return rc;
@@ -5912,7 +5896,7 @@ start_vnode_provisioning(struct prov_vnode_info * prov_vnode_info)
 	/* Create child process to run TOP-LEVEL provisioning script */
 	pid = fork();
 	if (pid == -1) { /* fork failed */
-		DBPRT(("%s: fork() failed\n", id))
+		DBPRT(("%s: fork() failed\n", __func__))
 		return (PBSE_SYSTEM);
 	}
 	else if (pid == 0) {	/* child process */
@@ -6063,7 +6047,6 @@ start_vnode_provisioning(struct prov_vnode_info * prov_vnode_info)
 int
 check_and_enqueue_provisioning(job *pjob, int *need_prov)
 {
-	DOID("check_and_enqueue_provisioning")
 	exec_vnode_listtype 	prov_vnode_list = NULL;
 	int			num_of_prov_vnodes = -1;
 	int			i;
@@ -6072,10 +6055,10 @@ check_and_enqueue_provisioning(job *pjob, int *need_prov)
 	struct work_task 	*ptask_start_prov;
 	char			*aoe_req=NULL; /* to point to aoe */
 
-	DBPRT(("%s: Entered\n", id))
+	DBPRT(("%s: Entered\n", __func__))
 
 	if (need_prov == NULL) {
-		DBPRT(("%s: bad params\n", id))
+		DBPRT(("%s: bad params\n", __func__))
 		return (PBSE_IVALREQ);
 	}
 
@@ -6093,12 +6076,12 @@ check_and_enqueue_provisioning(job *pjob, int *need_prov)
 		return (PBSE_IVALREQ);
 	}
 
-	DBPRT(("%s: aoe_req: %s\n", id, (aoe_req?aoe_req:"NULL")))
+	DBPRT(("%s: aoe_req: %s\n", __func__, (aoe_req?aoe_req:"NULL")))
 
 	if (num_of_prov_vnodes == 0) {
 		*need_prov = 0;
 		DBPRT(("%s: Provisioning will not be done, "
-			"since no aoe requested or scheduler did not give provision vnode\n", id))
+			"since no aoe requested or scheduler did not give provision vnode\n", __func__))
 		if (prov_vnode_list)
 			free(prov_vnode_list);
 		return (PBSE_NONE);
@@ -6170,7 +6153,7 @@ check_and_enqueue_provisioning(job *pjob, int *need_prov)
 		return (PBSE_INTERNAL);
 	}
 
-	DBPRT(("%s: Provisioning will be done\n", id))
+	DBPRT(("%s: Provisioning will be done\n", __func__))
 
 	free(prov_vnode_list);
 	if (aoe_req)
@@ -6215,7 +6198,6 @@ do_provisioning(struct work_task * wtask)
 {
 	struct prov_vnode_info *prov_vnode_info;
 	struct pbsnode	       *pnode;
-	DOID("do_provisioning")
 	int 			rc;
 
 	prov_vnode_info = GET_NEXT(prov_allvnodes);
@@ -6240,7 +6222,7 @@ do_provisioning(struct work_task * wtask)
 
 		pnode = find_nodebyname(prov_vnode_info->pvnfo_vnode);
 		if (pnode == NULL) {
-			DBPRT(("%s: node %s was deleted\n", id,
+			DBPRT(("%s: node %s was deleted\n", __func__,
 				prov_vnode_info->pvnfo_vnode))
 			free_pvnfo(prov_vnode_info);
 			prov_vnode_info = GET_NEXT(prov_allvnodes);
@@ -6258,7 +6240,7 @@ do_provisioning(struct work_task * wtask)
 			/* this node will not provision, remove flag */
 			pnode = find_nodebyname(prov_vnode_info->pvnfo_vnode);
 			if (pnode) {
-				DBPRT(("%s: \n", id))
+				DBPRT(("%s: \n", __func__))
 				set_vnode_state(pnode, ~(INUSE_PROV|INUSE_WAIT_PROV),
 					Nd_State_And);
 			}
@@ -6294,7 +6276,6 @@ do_provisioning(struct work_task * wtask)
 static void
 del_prov_vnode_entry(job *pjob)
 {
-	DOID("del_prov_vnode_entry")
 	struct prov_vnode_info *tmp_record;
 	struct prov_vnode_info *nxt_record;
 	struct pbsnode	*pnode;
@@ -6305,7 +6286,7 @@ del_prov_vnode_entry(job *pjob)
 		nxt_record = GET_NEXT(tmp_record->al_link);
 		if (strcmp(tmp_record->pvnfo_jobid, pjob->ji_qs.ji_jobid) == 0) {
 			delete_link(&tmp_record->al_link);
-			DBPRT(("%s: vnode %s\n", id, tmp_record->pvnfo_vnode))
+			DBPRT(("%s: vnode %s\n", __func__, tmp_record->pvnfo_vnode))
 			/* node is no longer going to provision */
 			pnode = find_nodebyname(tmp_record->pvnfo_vnode);
 			if (pnode)
@@ -6480,7 +6461,6 @@ action_jobscript_max_size(attribute *pattr, void *pobj, int actmode)
 int
 action_check_res_to_release(attribute *pattr, void *pobj, int actmode)
 {
-	struct attribute attrib;
 	int i;
 	if (pattr == NULL)
 		return PBSE_NONE;
@@ -6756,7 +6736,6 @@ default_queue_chk(attribute *pattr, void *pobj, int actmode)
 void
 force_qsub_daemons_update(void)
 {
-	int s;
 	conn_t *cp = NULL;
 	if (svr_allconns.ll_next == (pbs_list_link *)0)
 		return;

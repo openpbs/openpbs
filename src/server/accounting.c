@@ -1199,8 +1199,6 @@ account_jobend(job *pjob, char *used, int type)
 	int i = 0;
 	int len = 0;
 	char *pb = NULL;
-	char *str = NULL;
-	char errtime[] = "00:00:00";
 	struct svrattrl *patlist = NULL;
 	char *resc_used;
 	int resc_used_size = 0;
@@ -1241,7 +1239,7 @@ account_jobend(job *pjob, char *used, int type)
 	/* Alternate id if present */
 
 	if (pjob->ji_wattr[(int)JOB_ATR_altid].at_flags & ATR_VFLAG_SET) {
-		i = 9+strlen(pjob->ji_wattr[(int)JOB_ATR_altid].at_val.at_str);
+		i = 9 + strlen(pjob->ji_wattr[(int)JOB_ATR_altid].at_val.at_str);
 		if (i > len)
 			if (grow_acct_buf(&pb, &len, i) == -1)
 				goto writeit;
@@ -1592,7 +1590,6 @@ build_common_data_for_job_update(job *pjob, int type, char *buf, int len)
 	int       nd;
 	svrattrl *pal;
 	char 	*pb;
-	char	*p;
 	int	k, len_acct, att_index;
 	char	save_char;
 	int	old_perm;
@@ -2005,14 +2002,12 @@ account_job_update(job *pjob, int type)
 	int i = 0;
 	int len = 0;
 	char *pb = NULL;
-	char errtime[] = "00:00:00";
-	char *str = NULL;
 	pbs_list_head attrlist;
 	struct svrattrl *patlist = NULL;
 	char *resc_used = NULL;
 	int resc_used_size = 0;
 	int k, len_upd;	
-	char	save_char;
+	char	save_char = '\0';
 	int	old_perm;
 
 
@@ -2041,7 +2036,7 @@ account_job_update(job *pjob, int type)
 
 	if (pjob->ji_wattr[(int)JOB_ATR_altid].at_flags & ATR_VFLAG_SET) {
 		/* 9 is for length of " alt_id=" and \0 */
-		i = 9+strlen(pjob->ji_wattr[(int)JOB_ATR_altid].at_val.at_str);
+		i = 9 + strlen(pjob->ji_wattr[(int)JOB_ATR_altid].at_val.at_str);
 		if (i > len)
 			if (grow_acct_buf(&pb, &len, i) == -1)
 				goto writeit;

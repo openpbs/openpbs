@@ -77,7 +77,6 @@ display_single_reservation(struct batch_status *resv, int how)
 	struct attrl	*attrp = NULL;
 	time_t		tmp_time;
 	char		tbuf[64];
-	struct tm	*ptm = NULL;
 	char		*fmt = "%a %b %d %H:%M:%S %Y";
 
 	attrp = resv->attribs;

@@ -5089,7 +5089,6 @@ injob(job *pjob, pid_t sid)
 static ulong
 cput_sum(job *pjob)
 {
-	DOID("cput_ses")
 	int		i;
 	ulong		cputime = 0;
 	int		nps = 0;
@@ -5572,7 +5571,6 @@ mom_get_sample(void)
 	sampletime_floor = time_last_sample;
 	while (errno = 0, (dent = readdir(pdir)) != NULL) {
 		int	nomem = 0;
-		pid_t	p;
 
 		nprocs++;
 
@@ -5586,11 +5584,14 @@ mom_get_sample(void)
 			} else
 				continue;
 		}
-		p = strtol(dent->d_name, NULL, 10);
 #if MOM_CPUSET
-		if ((pidcache != NULL) && pidcache_check(p, pidcache) == 0) {
-			nskipped++;
-			continue;
+		{
+			pid_t	p;
+			p = strtol(dent->d_name, NULL, 10);
+			if ((pidcache != NULL) && pidcache_check(p, pidcache) == 0) {
+				nskipped++;
+				continue;
+			}
 		}
 #endif	/* MOM_CPUSET */
 		sprintf(procname, "/proc/%s/stat", dent->d_name);

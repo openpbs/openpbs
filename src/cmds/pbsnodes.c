@@ -198,7 +198,6 @@ encode_to_json(struct batch_status *bstat)
 	char	     *pc;
 	char	     *pc1;
 	double	      value = 0;
-	long int      ivalue = 0;
 	char	     *prev_jobid = "";
 
 	if (add_json_node(JSON_OBJECT, JSON_NULL, bstat->name, NULL) == NULL)

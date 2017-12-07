@@ -167,9 +167,10 @@ void WINAPI PbsMomMain(DWORD dwArgc, LPTSTR *rgszArgv);
 void WINAPI PbsMomHandler(DWORD dwControl);
 DWORD WINAPI main_thread(void *pv);
 
-// NOTE: Note the global state used by your service. Your service has a name,
-// state and a status handle used by SetServiceStatus.
-//
+/*
+ * NOTE: Note the global state used by your service. Your service has a name,
+ * state and a status handle used by SetServiceStatus.
+ */
 const TCHAR * const     g_PbsMomName = __TEXT("PBS_MOM");
 HANDLE                  g_hthreadMain = 0;
 SERVICE_STATUS_HANDLE   g_ssHandle = 0;
@@ -1067,8 +1068,17 @@ initialize(void)
 	unsigned int	hook_fail_action = 0;
 	int		ret;
 
-	/**
-	 * Keep Solaris happy so we don't get unaligned access errors.
+	/*
+	 * Each node of the AVL tree has a key, the hostname in this
+	 * case. The default length of the key is defined in avltree.h,
+	 * but then overridden here by the union definition of xxrp. The
+	 * rp variable then points to this structure. When memory beyond
+	 * the default lenfth of the AVL_IX_REC is accessed, it must be
+	 * through xxrp or the compiler will complain about accessing
+	 * memory beyond the size of the structure.
+	 *
+	 * This also keeps Solaris happy by avoiding unaligned access
+	 * errors.
 	 */
 	union {
 		AVL_IX_REC	xrp;
@@ -1305,7 +1315,7 @@ initialize(void)
 
 		/* search for host */
 		strncpy(rp->key, host, PBS_MAXHOSTNAME);
-		rp->key[PBS_MAXHOSTNAME] = '\0';
+		xxrp.buf[PBS_MAXHOSTNAME + sizeof(AVL_IX_REC)] = '\0';
 
 		/* look to see if host has a sharing value saved */
 		avl = avl_find_key(rp, &ix);
@@ -2285,7 +2295,6 @@ usecp(char *value)
 {
 	char *pnxt;
 	static int   cphosts_max = 0;
-	static char *id = "usecp";
 
 	if (cphosts_max == 0) {
 		pcphosts = malloc(2 * sizeof(struct cphosts));
@@ -2308,7 +2317,7 @@ usecp(char *value)
 	pnxt = strchr(value, (int)':');
 	if (pnxt == NULL) {
 		sprintf(log_buffer, "invalid host specification: %s", value);
-		log_err(-1, id, log_buffer);
+		log_err(-1, __func__, log_buffer);
 		return HANDLER_FAIL;
 	}
 	*pnxt++ = '\0';
@@ -7323,13 +7332,7 @@ char	*prog;
 #endif
 
 #ifdef NAS_UNKILL /* localmod 011 */
-/*
- *=====================================================================
- * free_kp_list_entries(head) - delete_link() and free() entries of a linked
- *             list
- * Entry:      head = head of linked list
- *=====================================================================
- */
+
 /**
  * @brief
  *	free_kp_list_entries(head) - delete_link() and free() entries of a linked
@@ -7339,8 +7342,7 @@ char	*prog;
  *
  * @return 	Void
  *
- *
-
+ */
 void
 free_kp_list_entries(pbs_list_head *head)
 {
@@ -7357,13 +7359,6 @@ free_kp_list_entries(pbs_list_head *head)
 	CLEAR_HEAD((*head));
 }
 
-/*
- *=====================================================================
- * kp_comment_node() - Set a node comment regarding the presence of unkillable
- *             processes. Based on Altair's offline_job_vnodes().
- *=====================================================================
- */
-
 /**
  * @brief
  *	kp_comment_node() - Set a node comment regarding the presence of unkillable
@@ -7372,7 +7367,6 @@ free_kp_list_entries(pbs_list_head *head)
  * @return 	Void
  *
  */
-
 void
 kp_comment_node(void)
 {
@@ -7996,7 +7990,6 @@ main(int argc, char *argv[])
 	char				path_hooks_rescdef[MAXPATHLEN+1];
 	int					sock_bind_rm;
 	int					sock_bind_mom;
-	conn_t				*conn;				/* connection to child process */
 #ifdef	WIN32
 	/* Win32 only */
 	struct arg_param	*p = (struct arg_param *)pv;
@@ -8835,6 +8828,11 @@ main(int argc, char *argv[])
 	dummyfile = fopen("/dev/null", "w");
 	assert((dummyfile != 0) && (fileno(dummyfile) == 2));
 #else	/* DEBUG */
+	if (stalone != 1) {
+		(void) sprintf(log_buffer, "Debug build does not fork.");
+		log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO,
+				__func__, log_buffer);
+	}
 	mom_pid = getpid();
 	(void)setvbuf(stdout, NULL, _IOLBF, 0);
 	(void)setvbuf(stderr, NULL, _IOLBF, 0);

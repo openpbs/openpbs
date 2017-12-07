@@ -1489,7 +1489,6 @@ nodemask_tot_mem(Bitfield *nodemask)
 int
 is_small_job(job *pjob, cpuset_shared *share_req)
 {
-	char                *id = "can_job_share_cpuset";
 	resource            *pres;
 	char                *jobid;
 	unsigned long       ncpus = 0;
@@ -1515,7 +1514,7 @@ is_small_job(job *pjob, cpuset_shared *share_req)
 		(void)sprintf(log_buffer,
 			"can't determine if job %s can share cpuset - no ncpus or mem",
 			jobid);
-		log_err(-1, id, log_buffer);
+		log_err(-1, __func__, log_buffer);
 		return (0);
 	}
 

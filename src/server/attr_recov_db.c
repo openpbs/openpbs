@@ -285,7 +285,6 @@ recov_attr_db(pbs_db_conn_t *conn,
 	int limit,
 	int unknown)
 {
-//	static	  char	id[] = "recov_attr";
 	int	  amt;
 	int	  index;
 	svrattrl *pal = (svrattrl *)0;

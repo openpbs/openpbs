@@ -112,7 +112,6 @@ extern time_t	 time_now;
 void
 add_dest(job *jobp)
 {
-	char	*id = "add_dest";
 	badplace	*bp;
 	char	*baddest = jobp->ji_qs.ji_destin;
 
@@ -260,7 +259,6 @@ int
 job_route(job *jobp)
 {
 	int			 bad_state = 0;
-	char			*id = "job_route";
 	time_t			 life;
 	struct pbs_queue	*qp;
 	long			 retry_time;
@@ -295,7 +293,7 @@ job_route(job *jobp)
 
 		default:
 			(void)sprintf(log_buffer, "(%s) %s, state=%d",
-				id, msg_badstate, jobp->ji_qs.ji_state);
+				__func__, msg_badstate, jobp->ji_qs.ji_state);
 			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 				jobp->ji_qs.ji_jobid, log_buffer);
 			return (0);

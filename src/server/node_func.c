@@ -1216,7 +1216,6 @@ struct pbssubn *create_subnode(struct pbsnode *pnode, struct pbssubn *lstsn)
 int
 setup_nodes_fs(int preprocess)
 {
-	DOID("setup_nodes")
 	FILE	 *nin;
 	char	  line[MAXNLINE];
 	char	  comm[MAXNLINE];
@@ -1244,7 +1243,7 @@ setup_nodes_fs(int preprocess)
 	int	    resc_added = 0;	
 
 
-	DBPRT(("%s: entered\n", id))
+	DBPRT(("%s: entered\n", __func__))
 	CLEAR_HEAD(atrlist);
 
 #ifdef WIN32
@@ -1546,7 +1545,6 @@ errtoken2:
 int
 setup_nodes()
 {
-	DOID("setup_nodes")
 	int	  err;
 	int       perm = ATR_DFLAG_ACCESS | ATR_PERM_ALLOW_INDIRECT;
 	pbs_db_obj_info_t   obj;
@@ -1562,7 +1560,7 @@ setup_nodes()
 	int bad;
 	int i, num;
 
-	DBPRT(("%s: entered\n", id))
+	DBPRT(("%s: entered\n", __func__))
 	CLEAR_HEAD(atrlist);
 
 	tfree2(&streams);
@@ -2332,12 +2330,17 @@ decode_Mom_list(struct attribute *patr, char *name, char *rescn, char *val)
 		clear_attr(patr, &node_attr_def[(int)ND_ATR_Mom]);
 	}
 
-	if(str_arr_len==0){
-		str_arr=malloc((2*ns+1)*sizeof(char *));
-		str_arr_len = 2*ns + 1;
+	if (str_arr_len == 0) {
+		str_arr = malloc(((2 * ns) + 1) * sizeof(char *));
+		str_arr_len = (2 * ns) + 1;
 	} else if (str_arr_len < ns) {
-		str_arr=realloc(str_arr, (2*ns+1)*sizeof(char *));
-		str_arr_len = 2*ns + 1;
+		char **new_str_arr;
+		new_str_arr = realloc(str_arr, ((2 * ns) + 1) * sizeof(char *));
+		/* str_arr will be untouched if realloc failed */
+		if (!new_str_arr)
+			return PBSE_SYSTEM;
+		str_arr = new_str_arr;
+		str_arr_len = (2 * ns) + 1;
 	}
 	/* Filling node list to a array, this has been done outside the
 	 * second for loop since, parse_comma_string() is being again called internally by
@@ -2345,10 +2348,10 @@ decode_Mom_list(struct attribute *patr, char *name, char *rescn, char *val)
 	 */
 	str_arr[0]=NULL;
 	p = parse_comma_string(val);
-	for (i=0; (str_arr[i] = p) != NULL; i++) 
+	for (i = 0; (str_arr[i] = p) != NULL; i++) 
 		p = parse_comma_string(NULL);
 
-	for (i = 0; p=str_arr[i]; i++) {
+	for (i = 0; (p = str_arr[i]) != NULL; i++) {
 		clear_attr(&new, &node_attr_def[(int)ND_ATR_Mom]);
 		/* try the cache first */
 		tmp_fqdn = NULL;
@@ -2882,7 +2885,7 @@ int
 chk_vnode_pool (attribute *new, void *pobj, int actmode)
 {
 	static char     id[] = "chk_vnode_pool";
-	int             pool = -1;
+	int		pool = -1;
 
 	switch (actmode) {
 		case ATR_ACTION_NEW:

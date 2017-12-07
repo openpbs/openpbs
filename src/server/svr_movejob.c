@@ -421,7 +421,6 @@ post_routejob(struct work_task *pwt)
 static void
 post_movejob(struct work_task *pwt)
 {
-	char	*id = "post_movejob";
 	struct batch_request *req;
 	int	newstate;
 	int	newsub;

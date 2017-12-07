@@ -6736,7 +6736,7 @@ void post_server_periodic_hook(struct work_task *ptask) {
 	if (WIFEXITED(stat)) {
 		(void)sprintf(log_buffer, "Server periodic hook ran successfully");
 	} else {
-		(void)sprintf(log_buffer, "Server periodic hook encountered errors", stat);
+		(void)sprintf(log_buffer, "Server periodic hook encountered errors");
 	}
 	log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_INFO,
 		__func__, log_buffer);
@@ -6758,7 +6758,6 @@ void post_server_periodic_hook(struct work_task *ptask) {
 void
 run_periodic_hook(struct work_task *ptask)
 {
-	static struct batch_request *preq;
 	char hook_msg[HOOK_MSG_SIZE] = {'\0'};
 	int ret;
 	int num_run = 0;

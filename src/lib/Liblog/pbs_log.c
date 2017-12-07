@@ -283,7 +283,7 @@ log_atfork_prepare()
 
 /**
  * @brief
- *      wrapper function for log_mutex_unlock().
+ *	wrapper function for log_mutex_unlock().
  *
  */
 void
@@ -294,9 +294,9 @@ log_atfork_parent()
 
 /**
  * @brief
- *      wrapper function for log_mutex_unlock().
+ *	wrapper function for log_mutex_unlock().
  *
- */     
+ */
 void
 log_atfork_child()
 {
@@ -338,7 +338,7 @@ log_init(void)
 
 /** 
  * @brief
- *      Add general debugging information in log
+ *	Add general debugging information in log
  *
  * @par Side Effects:
  * 	None
@@ -390,10 +390,10 @@ log_add_debug_info()
 
 /**
  * @brief
- *      Add interface information to log
+ *	Add interface information to log
  *
  * @par Side Effects:
- *      None
+ *	None
  *
  * @par MT-safe: Yes
  *
@@ -403,47 +403,33 @@ void
 log_add_if_info()
 {
 	char tbuf[LOG_BUF_SIZE];
-	char inet_family[10], msg[LOG_BUF_SIZE], temp[LOG_BUF_SIZE];
+	char msg[LOG_BUF_SIZE];
+	char temp[LOG_BUF_SIZE];
 	int i;
 	struct log_net_info *ni, *curr;
 	
-	ni = (struct log_net_info*)malloc(sizeof(struct log_net_info));
-
 	memset(msg, '\0', sizeof(msg));
-	memset(temp, '\0', sizeof(temp));
-
-	get_if_info(ni, msg);
-
-	curr = ni;
-
+	ni = get_if_info(msg);
 	if(strlen(msg)){ /* Adding error message to log */
 		strncpy(tbuf, msg, LOG_BUF_SIZE);
 		log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, tbuf);
-		return;
 	}
-	while(curr){ /* Adding info to log */
-		snprintf(tbuf, LOG_BUF_SIZE, "%s interface %s: ", curr->iffamily, curr->ifname);
-		
-		for(i=0;curr->ifhostnames[i];i++){
+	if (!ni)
+		return;
+
+	/* Add info to log */
+	for (curr = ni; curr; curr = curr->next) {
+		snprintf(tbuf, LOG_BUF_SIZE, "%s interface %s: ",
+			(curr->iffamily) ? curr->iffamily : "NULL",
+			(curr->ifname) ? curr->ifname : "NULL");
+		for (i = 0; curr->ifhostnames[i]; i++) {
 			snprintf(temp, LOG_BUF_SIZE, "%s ", curr->ifhostnames[i]);
 			strncat(tbuf, temp, LOG_BUF_SIZE);
 		}
 		log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, tbuf);
-		curr = curr->next;
 	}
-	curr = ni;
-	while (curr){ /* Freeing memory from malloc */
-		struct log_net_info* temp = curr; 
-		curr = curr -> next;
-		free(temp->iffamily);
-		free(temp->ifname);
-		for(i=0;temp->ifhostnames[i];i++)
-			free(temp->ifhostnames[i]);
-		free(temp->ifhostnames);
-		free(temp);
-		temp = NULL;
-	}
-	return;
+
+	free_if_info(ni);
 }
 
 /**
@@ -480,7 +466,7 @@ log_open(char *filename, char *directory)
  *			   to create a log file named after the current date
  *			   yymmdd, which is made into the log file.
  * @param[in]	log_directory -  The directory used by mk_log_name()
- *			         as the log directory for the generated
+ *				 as the log directory for the generated
  *				 log filename.
  * @param[in]	silent - if set to 1, then extra messages such as
  *			"Log opened", "pbs_version=", "pbs_build="
@@ -703,7 +689,7 @@ log_err(int errnum, const char *routine, const char *text)
  *	The error is recorded to the pbs log file and to syslogd if it is
  *	available.  If the error file has not been opened and if syslog is
  *	not defined, then the console is opened.  The record written into
- *      the log will be of type PBS_EVENTCLASS_JOB
+ *	the log will be of type PBS_EVENTCLASS_JOB
  *
  * @param[in] errnum - error number
  * @param[in] routine - error in which routine

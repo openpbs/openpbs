@@ -1072,7 +1072,6 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 	int  rc = -1;
 	char *pc, *pc1, *pc2, *pc3, *pc4;
 	char *in_data = NULL;
-	char *tmp_data = NULL;
 	long int endpos;
 	int in_data_sz;
 	char *data_value;

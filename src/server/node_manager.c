@@ -158,7 +158,6 @@
 #include 	"acct.h"
 #include	"queue.h"
 #include	"pbs_nodes.h"
-#include	"svrfunc.h"
 #include	"log.h"
 #include	"rpp.h"
 #include	"dis.h"
@@ -176,6 +175,7 @@
 #include	"hook_func.h"
 #include	"sched_cmds.h"
 #include	"provision.h"
+#include	"svrfunc.h"
 
 #if !defined(H_ERRNO_DECLARED) && !defined(WIN32)
 extern int h_errno;
@@ -1041,21 +1041,21 @@ send_ip_addrs_to_mom(int stream)
 {
 	int		j;
 	int		ret;
-	unsigned long	ipaddr;
 
 	ret = is_compose(stream, IS_CLUSTER_ADDRS2);
 	if (ret != DIS_SUCCESS)
 		return (ret);
 	for (j = 0; j < pbs_iplist->li_nrowsused; j++) {
-
+#ifdef DEBUG
+		unsigned long	ipaddr;
 		ipaddr = IPLIST_GET_LOW(pbs_iplist, j);
 		DBPRT(("%s: ip %d\t%ld.%ld.%ld.%ld\n", __func__, j,
 			(ipaddr & 0xff000000) >> 24,
 			(ipaddr & 0x00ff0000) >> 16,
 			(ipaddr & 0x0000ff00) >> 8,
 			(ipaddr & 0x000000ff)))
-
-		DBPRT(("%s: depth %d\n", __func__, IPLIST_GET_HIGH(pbs_iplist, j)))
+#endif	/* DEBUG */
+		DBPRT(("%s: depth %ld\n", __func__, (long)IPLIST_GET_HIGH(pbs_iplist, j)))
 		ret = diswul(stream, IPLIST_GET_LOW(pbs_iplist, j));
 		if (ret != DIS_SUCCESS)
 			return (ret);
@@ -1166,8 +1166,10 @@ mom_ping_need(mominfo_t *pmom, int force_hello, int once)
 	} else {
 		if (once) {
 			/* in case of one shot ping, don't ping recently pinged devices */
-			DBPRT(("%s: time_now = %d, timepinged=%d, ping_nodes_rate=%d, difference=%d\n", __func__,
-				time_now, psvrmom->msr_timepinged, ping_nodes_rate, time_now - psvrmom->msr_timepinged))
+			DBPRT(("%s: time_now = %lu, timepinged=%lu, ping_nodes_rate=%d, difference=%lu\n",
+				__func__, (unsigned long)time_now,
+				(unsigned long)psvrmom->msr_timepinged, ping_nodes_rate,
+				(unsigned long)(time_now - psvrmom->msr_timepinged)))
 			if (time_now - psvrmom->msr_timepinged < ping_nodes_rate) {
 				DBPRT(("%s: **** NOT PINGING ***\n", __func__))
 				return -1; /* skip this mom since it was pinged recently. This is to avoid a DOS attack */
@@ -1417,7 +1419,6 @@ ping_a_mom_mcast(mominfo_t *pmom, int force_hello, int mtfd_ishello, int mtfd_is
 void
 set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_state_op type)
 {
-	DOID("set_vnode_state")
 	unsigned long nd_prev_state;
 
 	if (pnode == NULL)
@@ -1437,12 +1438,12 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 
 		default:
 			DBPRT(("%s: operator type unrecognized %d, defaulting to Nd_State_Set",
-				id, type))
+				__func__, type))
 			type = Nd_State_Set;
 			pnode->nd_state = state_bits;
 	}
 
-	DBPRT(("%s(%5s): Requested state transition 0x%x --> 0x%x\n", id, pnode->nd_name,
+	DBPRT(("%s(%5s): Requested state transition 0x%lx --> 0x%lx\n", __func__, pnode->nd_name,
 		nd_prev_state, pnode->nd_state))
 
 	/* sync state attribute with nd_state */
@@ -1460,7 +1461,7 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 		return;
 	}
 
-	DBPRT(("%s(%5s): state transition 0x%x --> 0x%x\n", id, pnode->nd_name,
+	DBPRT(("%s(%5s): state transition 0x%lx --> 0x%lx\n", __func__, pnode->nd_name,
 		nd_prev_state, pnode->nd_state))
 
 	/* node is marked INUSE_DOWN | INUSE_PROV when provisioning.
@@ -2717,11 +2718,6 @@ deallocate_job_from_node(job *pjob, struct pbsnode *pnode)
 	int		 still_has_jobs; /* still jobs on this vnode */
 	struct	pbssubn	*np;
 	struct	jobinfo	*jp, *prev, *next;
-	mom_svrinfo_t	*psvrmom;
-	int		 i;
-	int		 j;
-	int		 ivnd;
-
 
 	if ((pjob == NULL) || (pnode == NULL)) {
 		return (0);
@@ -2816,9 +2812,7 @@ delete_from_exec_vnode(char *execvnode, char *vnodelist, char *err_msg,
 	char	*noden;
 	struct	key_value_pair *pkvp;
 	char	buf[LOG_BUF_SIZE] = {0};
-	struct	pbsnode *pnode = NULL;
 	int	j;
-	int	rc = 1;
 	int	paren = 0;
 	int	parend = 0;
 
@@ -2908,7 +2902,6 @@ delete_from_exec_vnode(char *execvnode, char *vnodelist, char *err_msg,
 	if (new_exec_vnode[entry] == '+')
 		new_exec_vnode[entry] = '\0';
 
-	rc = 0;
 	free(exec_vnode);
 	return (new_exec_vnode);
 
@@ -2964,7 +2957,6 @@ is_parent_mom_of_node(mominfo_t *pmom, pbsnode *pnode)
 static void
 deallocate_job(mominfo_t *pmom, job *pjob)
 {
-	int   rc;
 	pbsnode *pnode;
 	int	i;
 	int	totcpus = 0;
@@ -3056,14 +3048,13 @@ deallocate_job(mominfo_t *pmom, job *pjob)
 void
 stream_eof(int stream, int ret, char *msg)
 {
-	DOID("stream_eof")
 	mominfo_t		*mp;
 
 	rpp_close(stream);
 
 	/* find who the stream belongs to and mark down */
 	if ((mp = tfind2((u_long)stream, 0, &streams)) != NULL) {
-		DBPRT(("%s: %s down\n", id, mp->mi_host))
+		DBPRT(("%s: %s down\n", __func__, mp->mi_host))
 		if (msg == NULL)
 			msg = "communication closed";
 		momptr_down(mp, msg);
@@ -3147,10 +3138,8 @@ ping_nodes(struct work_task *ptask)
 	int	mtfd_isnull;
 	int	mtfd_ishello_no_inv;
 	int	once = 0;
-	int	com;
 
-	DOID("ping_nodes")
-	DBPRT(("%s: entered\n", id))
+	DBPRT(("%s: entered\n", __func__))
 
 	if (!ptask)
 		once = 1; /* not main ping series, just an one shot ping for any new devices */
@@ -3227,7 +3216,6 @@ void
 setup_gss(mominfo_t *node, char *inbuf, size_t inlen)
 {
 #ifdef	PBS_CRED_GRIDPROXY
-	static	char		id[] = "setup_gss";
 	OM_uint32		major, minor;
 	gss_buffer_desc		input, output;
 	OM_uint32		flag = GSS_C_CONF_FLAG;
@@ -4316,7 +4304,7 @@ mom_running_jobs(int stream)
 		if (rc)
 			goto err;
 
-		DBPRT(("mom_running_jobs: %s substate: %d runver: %d\n", jobid, substate, runver))
+		DBPRT(("mom_running_jobs: %s substate: %d runver: %ld\n", jobid, substate, runver))
 		if ((pjob = find_job(jobid)) == NULL) {
 			/* job not found,  tell Mom to discard it */
 			send_discard_job(stream, jobid, -1, "not known to Server");
@@ -4475,7 +4463,6 @@ is_request(int stream, int version)
 	char			*hname = NULL;
 	unsigned long		hook_rescdef_checksum;
 	unsigned long		chksum_rescdef;
-	int			com;
 
 	CLEAR_HEAD(reported_hooks);
 	DBPRT(("%s: stream %d version %d\n", __func__, stream, version))
@@ -5088,7 +5075,7 @@ found:
 
 		case IS_RESCUSED:
 		case IS_RESCUSED_FROM_HOOK:
-#ifdef  DEBUG
+#ifdef DEBUG
 			if (command == IS_RESCUSED)
 				DBPRT(("%s: IS_RESCUSED\n", __func__))
 				else
@@ -6894,7 +6881,6 @@ which_parent_mom(pbsnode *pnode, mominfo_t *pcur_mom)
 int
 set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char **hoststr, char **hoststr2, int mk_new_host, int svr_init)
 {
-	DOID("set_nodes")
 	int	      alloc_how = INUSE_JOB;
 	char         *chunk;
 	int	      setck;
@@ -7376,7 +7362,7 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 						snp->jobs = jp;
 						jp->job   = pjob;
 					}
-					DBPRT(("set_node: node: %s/%d to job %s, still free: %d\n",
+					DBPRT(("set_node: node: %s/%ld to job %s, still free: %ld\n",
 						pnode->nd_name, snp->index, pjob->ji_qs.ji_jobid,
 						pnode->nd_nsnfree))
 				}
@@ -7506,7 +7492,7 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 				tmp_pl->vnode = (phowl+i)->hw_pnd;
 				presv->ri_pbsnode_list = tmp_pl;
 				presv->ri_vnodect++;
-				DBPRT(("%s: Adding %s to %s\n", id,
+				DBPRT(("%s: Adding %s to %s\n", __func__,
 					(phowl+i)->hw_pnd->nd_name, presv->ri_qs.ri_resvID))
 			}
 		}
@@ -7533,7 +7519,6 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 void
 free_nodes(job *pjob)
 {
-	DOID("free_nodes")
 	int              numcpus;	/* for floating licensing */
 	struct	pbssubn	*np;
 	mom_svrinfo_t	*psvrmom;
@@ -7544,7 +7529,7 @@ free_nodes(job *pjob)
 	int		 ivnd;
 	int		 still_has_jobs;	/* still jobs on this vnode */
 
-	DBPRT(("%s: entered\n", id))
+	DBPRT(("%s: entered\n", __func__))
 
 	/* decrement number of jobs on the Mom who is the first Mom */
 	/* for the job, Mother Superior; incremented in set_nodes() */
@@ -7586,7 +7571,7 @@ free_nodes(job *pjob)
 						continue;
 					}
 
-					DBPRT(("Freeing node %s/%d from job %s\n",
+					DBPRT(("Freeing node %s/%ld from job %s\n",
 						pnode->nd_name, np->index,
 						pjob->ji_qs.ji_jobid))
 					if (prev == NULL)
@@ -7605,7 +7590,7 @@ free_nodes(job *pjob)
 					}
 					free(jp);
 					jp = NULL;
-					DBPRT(("%s: upping free count to %d\n", id,
+					DBPRT(("%s: upping free count to %ld\n", __func__,
 						pnode->nd_nsnfree))
 				}
 				if (np->jobs == NULL) {
@@ -7657,14 +7642,13 @@ free_nodes(job *pjob)
 void
 free_resvNodes(resc_resv *presv)
 {
-	DOID("free_resvNodes")
 	struct	pbsnode	 *pnode;
 	struct	resvinfo *rinfp, *prev;
 	int		 i;
 	pbsnode_list_t *pnl;
 	pbsnode_list_t *pnl_next;
 
-	DBPRT(("%s: entered\n", id))
+	DBPRT(("%s: entered\n", __func__))
 	for (i=0; i<svr_totnodes; i++) {
 		pnode = pbsndlist[i];
 
@@ -7791,7 +7775,6 @@ check_for_negative_resource(resource_def *prdef, resource *presc, char *noden)
 static int
 adj_resc_on_node(char *noden, int aflag, enum batch_op op, resource_def *prdef, char *val, int hop)
 {
-	int		 nerr = 0;
 	pbsnode		*pnode;
 	resource	*presc;
 	attribute	*pattr;
@@ -8159,9 +8142,8 @@ shutdown_nodes(void)
 	mominfo_t		*pmom;
 	mom_svrinfo_t		*psvrmom;
 	int			i, ret;
-	DOID("down_nodes")
 
-	DBPRT(("%s: entered\n", id))
+	DBPRT(("%s: entered\n", __func__))
 	for (i=0; i<mominfo_array_size; i++) {
 		pmom = mominfo_array[i];
 
@@ -8172,7 +8154,7 @@ shutdown_nodes(void)
 		if (psvrmom->msr_stream < 0)
 			continue;
 
-		DBPRT(("%s: down %s\n", id, pmom->mi_host))
+		DBPRT(("%s: down %s\n", __func__, pmom->mi_host))
 
 		ret = is_compose(psvrmom->msr_stream, IS_SHUTDOWN);
 		if (ret == DIS_SUCCESS) {
@@ -8383,9 +8365,8 @@ degrade_offlined_nodes_reservations(void)
 {
 	int i;
 	struct pbsnode *pn;
-	DOID("degrade_offlined_nodes_reservations")
 
-	DBPRT(("%s: entered\n", id))
+	DBPRT(("%s: entered\n", __func__))
 	for (i=0; i<svr_totnodes; i++) {
 		pn = pbsndlist[i];
 		if ((pn->nd_state & (INUSE_OFFLINE|INUSE_OFFLINE_BY_MOM)) != 0 ||
@@ -8420,9 +8401,8 @@ degrade_downed_nodes_reservations(void)
 {
 	int i;
 	struct pbsnode *pn;
-	DOID("degrade_downed_nodes_reservations")
 
-	DBPRT(("%s: entered\n", id))
+	DBPRT(("%s: entered\n", __func__))
 	for (i=0; i<svr_totnodes; i++) {
 		pn = pbsndlist[i];
 		/* checking for nodes that are down, including stale state,
@@ -8706,8 +8686,7 @@ free_sister_vnodes(job *pjob, char *vnodelist, char *err_msg,
 	set_resc_assigned((void *)pjob, 0,  INCR);
 						
 	set_scheduler_flag(SCH_SCHEDULE_TERM);
-	rc = send_job_exec_update_to_mom(pjob, err_msg, err_msg_sz,
-							reply_req);
+	rc = send_job_exec_update_to_mom(pjob, err_msg, err_msg_sz, reply_req);
 
 	if (rc == 0) {
 		account_job_update(pjob, PBS_ACCT_UPDATE);

@@ -354,12 +354,11 @@ fprint_joblist(FILE *fp, char *head_str, pbs_list_head *joblist)
 static void
 add_natural_vnode_info(vnl_t **p_vnlp)
 {
-	static char	*id = "add_natural_vnode_info";
 	char	bufs[BUFSIZ];
 
 	if (*p_vnlp == NULL) {
 		if (vnl_alloc(p_vnlp) == NULL) {
-			log_err(errno, id, "Failed to allocate vnlp");
+			log_err(errno, __func__, "Failed to allocate vnlp");
 			return;
 		}
 	}
@@ -370,7 +369,7 @@ add_natural_vnode_info(vnl_t **p_vnlp)
 		snprintf(log_buffer, sizeof(log_buffer),
 			"Failed to add '%s %s=%s' to vnode list",
 			mom_short_name, ATTR_NODE_pcpus, bufs);
-		log_err(-1, id, log_buffer);
+		log_err(-1, __func__, log_buffer);
 		return;
 
 	}
@@ -382,7 +381,7 @@ add_natural_vnode_info(vnl_t **p_vnlp)
 			"Failed to add '%s %s=%s' to vnode list",
 			mom_short_name, "resources_available.ncpus",
 			bufs);
-		log_err(-1, id, log_buffer);
+		log_err(-1, __func__, log_buffer);
 		return;
 
 	}
@@ -393,7 +392,7 @@ add_natural_vnode_info(vnl_t **p_vnlp)
 		snprintf(log_buffer, sizeof(log_buffer),
 			"Failed to add '%s %s=%s' to vnode list",
 			mom_short_name, "resources_available.mem", bufs);
-		log_err(-1, id, log_buffer);
+		log_err(-1, __func__, log_buffer);
 		return;
 
 	}
@@ -404,7 +403,7 @@ add_natural_vnode_info(vnl_t **p_vnlp)
 			"Failed to add '%s %s=%s' to vnode list",
 			mom_host, "arch",
 			arch((struct rm_attribute *)NULL));
-		log_err(-1, id, log_buffer);
+		log_err(-1, __func__, log_buffer);
 		return;
 
 	}
@@ -414,7 +413,7 @@ add_natural_vnode_info(vnl_t **p_vnlp)
 		snprintf(log_buffer, sizeof(log_buffer),
 			"Failed to add '%s %s=%s' to vnode list",
 			mom_short_name, "pbs_version", pbs_version);
-		log_err(-1, id, log_buffer);
+		log_err(-1, __func__, log_buffer);
 		return;
 
 	}
@@ -467,10 +466,7 @@ vna_list_free(pbs_list_head listh)
  */
 static int
 copy_file_and_set_owner(char *src_file, char *dest_file, job *pjob) {
-
-	static	char	*id = "copy_file_and_set_owner";
 	int	st;
-
 
 	if ((src_file == NULL) || (dest_file == NULL) || (pjob == NULL))
 		return -1;
@@ -481,34 +477,34 @@ copy_file_and_set_owner(char *src_file, char *dest_file, job *pjob) {
 		case 0:
 			break;
 		case COPY_FILE_BAD_INPUT:
-			log_err(errno, id,
+			log_err(errno, __func__,
 				"copy_file_internal: bad input parameter");
 			return -1;
 		case COPY_FILE_BAD_SOURCE:
 			snprintf(log_buffer, sizeof(log_buffer),
 				"Failed to open file %s",
 				src_file);
-			log_err(errno, id, log_buffer);
+			log_err(errno, __func__, log_buffer);
 			return -1;
 		case COPY_FILE_BAD_DEST:
 			snprintf(log_buffer, sizeof(log_buffer),
 				"Failed to open file copy %s",
 				dest_file);
-			log_err(errno, id, log_buffer);
+			log_err(errno, __func__, log_buffer);
 			return -1;
 		case COPY_FILE_BAD_WRITE:
 			snprintf(log_buffer,
 				sizeof(log_buffer),
 				"Failed writing to file %s",
 				dest_file);
-			log_err(errno, id, log_buffer);
+			log_err(errno, __func__, log_buffer);
 			return -1;
 		default:
 			snprintf(log_buffer,
 				sizeof(log_buffer),
 				"Unknown copy_file_internal return %d",
 				st);
-			log_err(errno, id, log_buffer);
+			log_err(errno, __func__, log_buffer);
 			return -1;
 	}
 #ifndef WIN32
@@ -517,7 +513,7 @@ copy_file_and_set_owner(char *src_file, char *dest_file, job *pjob) {
 		pjob->ji_qs.ji_un.ji_momt.ji_exgid) == -1) {
 		snprintf(log_buffer, sizeof(log_buffer),
 			"chown: %s", dest_file);
-		log_err(errno, id, log_buffer);
+		log_err(errno, __func__, log_buffer);
 		(void)unlink(dest_file);
 		return -1;
 	}
@@ -529,7 +525,7 @@ copy_file_and_set_owner(char *src_file, char *dest_file, job *pjob) {
 		"Administrators",
 	READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED) \
 							      == 0 ) {
-		log_err(errno, id, log_buffer);
+		log_err(errno, __func__, log_buffer);
 		(void)unlink(dest_file);
 		return -1;
 	}
@@ -557,7 +553,6 @@ static	int
 vnl_add_vnode_entries(vnl_t *vnl, vmpiprocs *vnode_entry, int num_vnodes,
 	int *matched_nvnode)
 {
-	static	char *id = "vnl_add_vnode_entries";
 	int	i, rc;
 	char	bufs[BUFSIZ];
 	char	*v_name = NULL;
@@ -596,7 +591,7 @@ vnl_add_vnode_entries(vnl_t *vnl, vmpiprocs *vnode_entry, int num_vnodes,
 			snprintf(log_buffer, sizeof(log_buffer),
 				"%s:failed to add '%s=%s'",
 				v_name, RESCASSN_NCPUS, bufs);
-			log_err(-1, id, log_buffer);
+			log_err(-1, __func__, log_buffer);
 			return (-1);
 		}
 		v_mem = vnode_entry[i].vn_mem;
@@ -612,7 +607,7 @@ vnl_add_vnode_entries(vnl_t *vnl, vmpiprocs *vnode_entry, int num_vnodes,
 			snprintf(log_buffer, sizeof(log_buffer),
 				"%s:failed add '%s=%s'",
 				v_name, RESCASSN_MEM, bufs);
-			log_err(-1, id, log_buffer);
+			log_err(-1, __func__, log_buffer);
 			return (-1);
 		}
 	}
@@ -1756,12 +1751,11 @@ run_periodic_hook_bg(hook *phook)
 static void
 run_periodic_hook_bg_task(struct work_task *ptask)
 {
-	static	char	*id = "run_periodic_bg_task";
 	hook	 *phook = (hook *)ptask->wt_parm1;
 
 
 	if (phook == NULL) {
-		log_err(-1, id, "A hook has disappeared.");
+		log_err(-1, __func__, "A hook has disappeared.");
 		return;	/* no hook to execute */
 	}
 
@@ -1859,7 +1853,6 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 	char	*line_data = NULL;
 	int	line_data_sz;
 	long int endpos;
-	char	*tmp_data = NULL;
 	int	start_new_vnl = 1;
 	struct hook_vnl_action *pvna;
 	char hook_euser[PBS_MAXUSER+1];
@@ -3591,7 +3584,6 @@ num_eligible_hooks(unsigned int hook_event)
 void
 cleanup_hooks_in_path_spool(struct work_task *ptask)
 {
-	static	char	*id = "cleanup_hooks_workdir";
 	DIR	*dir;
 	struct 	dirent *pdirent;
 	struct 	stat sbuf;
@@ -3602,7 +3594,7 @@ cleanup_hooks_in_path_spool(struct work_task *ptask)
 	if (dir == (DIR *)0) {
 		sprintf(log_buffer, "could not opendir %s",
 			path_hooks_workdir);
-		log_err(errno, id, log_buffer);
+		log_err(errno, __func__, log_buffer);
 		return;
 	}
 	while (errno = 0, (pdirent = readdir(dir)) != (struct dirent *)0) {
@@ -3623,7 +3615,7 @@ cleanup_hooks_in_path_spool(struct work_task *ptask)
 			path_spool, pdirent->d_name);
 		if (stat(hook_file, &sbuf) == -1) {
 			sprintf(log_buffer, "could not stat %s", hook_file);
-			log_err(errno, id, log_buffer);
+			log_err(errno, __func__, log_buffer);
 			continue;
 		}
 
@@ -3633,14 +3625,14 @@ cleanup_hooks_in_path_spool(struct work_task *ptask)
 				if (errno != ENOENT) {
 					sprintf(log_buffer, "could not cleanup %s",
 						hook_file);
-					log_err(errno, id, log_buffer);
+					log_err(errno, __func__, log_buffer);
 				}
 			}
 		}
 
 	}
 	if (errno != 0 && errno != ENOENT) {
-		log_err(errno, id, "readdir");
+		log_err(errno, __func__, "readdir");
 	}
 	if (dir) {
 		(void)closedir(dir);

@@ -160,11 +160,8 @@ static struct attrl *display_attribs = &basic_attribs[0];
 int cmp_jobs(const void *j1, const void *j2)
 {
 	char *job1, *job2;
-	char server1[MAXSERVERNAME], server2[MAXSERVERNAME];
-	char job_id[PBS_MAXCLTJOBID];
 	char *seq_num1 = NULL;
 	char *seq_num2 = NULL;
-	char *job_id_out = NULL;
 	char *pserver_one = NULL;
 	char *pserver_two = NULL;
 	int ret = 0;

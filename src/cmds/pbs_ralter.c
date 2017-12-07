@@ -63,22 +63,17 @@ static time_t dtend;
 int
 process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 {
-	int	i = 0;
 	int	c = 0;
-	char	*erp = NULL;
 	int	errflg = 0;
 	time_t	t;
 
 	char	time_buf[80] = {0};
-	char	dur_buf[800] = {0};
-	int	opt_re_flg = FALSE;
 	char	*endptr = NULL;
 	long	temp = 0;
 
 	while ((c = getopt(argc, argv, "E:I:m:M:N:R:q:")) != EOF) {
 		switch (c) {
 			case 'E':
-				opt_re_flg = TRUE;
 				t = cvtdate(optarg);
 				if (t >= 0) {
 					(void)sprintf(time_buf, "%ld", (long)t);
@@ -113,7 +108,6 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 				break;
 
 			case 'R':
-				opt_re_flg = TRUE;
 				t = cvtdate(optarg);
 				if (t >= 0) {
 					(void)sprintf(time_buf, "%ld", (long)t);
@@ -212,7 +206,6 @@ main(int argc, char *argv[], char *envp[])		/* pbs_ralter */
 	char		*errmsg = NULL;			/* return from pbs_geterrmsg */
 	char		destbuf[256] = {0};		/* buffer for option server */
 	struct attrl 	*attrib = NULL;			/* the attrib list */
-	char		*new_resvname = NULL;		/* the name returned from pbs_modify_resv */
 	struct		ecl_attribute_errors *err_list = NULL;
 	char		resv_id[PBS_MAXCLTJOBID] = {0};
 	char		resv_id_out[PBS_MAXCLTJOBID] = {0};

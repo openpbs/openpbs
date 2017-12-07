@@ -64,7 +64,7 @@
 
 #include "pbs_error.h"
 #ifdef LIBICAL
-#include "ical.h"
+#include <libical/ical.h>
 #endif
 
 #define DATE_LIMIT (3*(60*60*24*365)) /* Limit to 3 years from now */

@@ -321,9 +321,7 @@ void
 site_cmds(interp)
 Tcl_Interp	*interp;
 {
-	DOID("site_cmds")
-
-	DBPRT(("%s: entered\n", id))
+	DBPRT(("%s: entered\n", __func__))
 #ifdef NAS
 	/* localmod 071 */
 	Tcl_CreateObjCommand(interp, "pbsatrsep", PBS_atrsep, NULL, NULL);

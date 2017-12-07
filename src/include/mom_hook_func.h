@@ -176,6 +176,9 @@ extern void
 new_job_action_req(job *pjob, enum hook_user huser, int action);
 
 extern void
+send_hook_fail_action(hook *);
+
+extern void
 vna_list_free(pbs_list_head);
 
 extern void

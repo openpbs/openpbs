@@ -1669,7 +1669,7 @@ site_set_NAS_pri(job_info *job, time_t max_starve, long starve_num)
  *=====================================================================
  */
 void
-site_set_node_share(node_info *ninfo, resource *res)
+site_set_node_share(node_info *ninfo, schd_resource *res)
 {
 	int		i;
 	struct shr_type	*stp = NULL;
@@ -3690,8 +3690,6 @@ job_filter_normal(resource_resv *resv, share_info *si)
 int
 check_for_cycle_interrupt(int do_logging)
 {
-	char    *id = "check_for_cycle_interrupt";
-
 	if (!do_soft_cycle_interrupt && !do_hard_cycle_interrupt) {
 		return 0;
 	}
@@ -3705,7 +3703,7 @@ check_for_cycle_interrupt(int do_logging)
 	    time(NULL) >=
 		interrupted_cycle_start_time + conf.min_intrptd_cycle_length) {
 		if (do_logging)
-			schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, id,
+			schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
 				"Short circuit of this cycle");
 
 		return 1;
@@ -3715,7 +3713,7 @@ check_for_cycle_interrupt(int do_logging)
 		sprintf(log_buffer, "Too early to short circuit (%ds elapsed, need %ds)",
 			(int)(time(NULL) - interrupted_cycle_start_time),
 			conf.min_intrptd_cycle_length);
-		schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, id, log_buffer);
+		schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, log_buffer);
 	}
 
 	return 0;

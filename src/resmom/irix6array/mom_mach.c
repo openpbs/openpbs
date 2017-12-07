@@ -325,7 +325,6 @@ injob(job *pjob, ash_t *pash)
 static unsigned long
 cput_sum(job *pjob)
 {
-	char			*id = "cput_ses";
 	int			i;
 	int			inproc = 0;
 	ulong			cputime;
@@ -356,7 +355,7 @@ cput_sum(job *pjob)
 		proctime = tv(pi->pr_time) + tv(pi->pr_ctime);
 		cputime += proctime;
 		DBPRT(("%s: ses %d pid %d pcput %lu cputime %lu\n",
-			id, pi->pr_sid, pi->pr_pid, proctime, cputime))
+			__func__, pi->pr_sid, pi->pr_pid, proctime, cputime))
 	}
 
 	if (nps == 0)

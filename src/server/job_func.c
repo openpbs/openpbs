@@ -705,14 +705,12 @@ int direct_write_requested(job *pjob) {
 void
 job_purge(job *pjob)
 {
-	char		namebuf[MAXPATHLEN+1];
+	char		namebuf[MAXPATHLEN + 1] = {'\0'};
 	extern	char	*msg_err_purgejob;
-	conn_t		*connection = NULL;
 #ifdef	PBS_MOM
 	extern	char	*path_checkpoint;
 	int keeping = 0;
 	attribute *jrpattr = NULL;
-	char *pstr = NULL;
 #else
 	extern	char	*msg_err_purgejob_db;
 	pbs_db_obj_info_t obj;
@@ -744,7 +742,7 @@ job_purge(job *pjob)
 	}
 	/* if open, close pipes to/from Mom starter process */
 	if (pjob->ji_jsmpipe != -1) {
-		int conn_idx = 0;
+		conn_t *connection = NULL;
 
 		if ((pjob->ji_wattr[(int)JOB_ATR_session_id].at_flags & ATR_VFLAG_SET) == 0 &&
 				!(pjob->ji_wattr[(int)JOB_ATR_session_id].at_val.at_long) &&
@@ -856,13 +854,13 @@ job_purge(job *pjob)
 			&& (pjob->ji_qs.ji_un.ji_momt.ji_exitstat == JOB_EXEC_OK)) {
 		if (strchr(jrpattr->at_val.at_str, 'o')) {
 			(void) strcpy(namebuf, std_file_name(pjob, StdOut, &keeping));
-			if (namebuf && unlink(namebuf) < 0)
+			if (*namebuf && (unlink(namebuf) < 0))
 				if (errno != ENOENT)
 					log_err(errno, __func__, msg_err_purgejob);
 		}
 		if (strchr(jrpattr->at_val.at_str, 'e')) {
 			(void) strcpy(namebuf, std_file_name(pjob, StdErr, &keeping));
-			if (namebuf && unlink(namebuf) < 0)
+			if (*namebuf && (unlink(namebuf) < 0))
 				if (errno != ENOENT)
 					log_err(errno, __func__, msg_err_purgejob);
 		}

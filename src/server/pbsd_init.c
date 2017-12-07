@@ -1310,7 +1310,7 @@ pbsd_init(int type)
 
 		server.sv_provtracksize =
 			server.sv_attr[(int)SRV_ATR_max_concurrent_prov].at_val.at_long;
-		DBPRT(("pbsd_init: server.sv_provtracksize=%d amt=%d\n", server.sv_provtracksize, amt))
+		DBPRT(("pbsd_init: server.sv_provtracksize=%d amt=%ld\n", server.sv_provtracksize, (long)amt))
 
 		p = malloc(amt + 1);
 		if (p == NULL) {

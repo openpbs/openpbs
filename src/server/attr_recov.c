@@ -314,7 +314,6 @@ int
 recov_attr_fs(int fd, void *parent, struct attribute_def *padef,
 	struct attribute *pattr, int limit, int unknown)
 {
-//	static	  char	id[] = "recov_attr";
 	int	  amt;
 	int	  len;
 	int	  index;

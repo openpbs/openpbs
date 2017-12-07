@@ -51,6 +51,7 @@
 #include	"pbs_config.h"
 #include	<stdlib.h>
 #include	<string.h>
+#include	<unistd.h>
 #include	"tcl.h"
 #include	"rm.h"
 #include	"pbs_ifl.h"

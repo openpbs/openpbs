@@ -395,22 +395,29 @@ parse_log(FILE *fp, char *job, int ind)
 	int buf_size = 16384;	/* initial buffer size */
 	int break_fl = 0;
 
-	buf = (char*)malloc(buf_size * sizeof(char));
+	buf = (char*)calloc(buf_size, sizeof(char));
+	if (!buf)
+		return;
 
 	tms.tm_isdst = -1;	/* mktime() will attempt to figure it out */
 
 	strcpy(job_buf, job);
 
 	while (fgets(buf, buf_size, fp) != NULL) {
-		while(buf_size == strlen(buf) + 1) {
+		while (buf_size == (strlen(buf) + 1)) {
 			buf_size *= 2;
 			tbuf = (char*)realloc(buf, (buf_size + 1) * sizeof(char));
-			if(tbuf == NULL || (buf = tbuf) && fgets(buf + strlen(buf), buf_size/2 + 1, fp) == NULL){
+			if (!tbuf) {
+				break_fl = 1;
+				break;
+			}
+			buf = tbuf;
+			if(fgets(buf + strlen(buf), buf_size/2 + 1, fp) == NULL) {
 				break_fl = 1;
 				break;
 			}
 		}
-		if(break_fl)
+		if (break_fl)
 			break;
 		lineno++;
 		j++;

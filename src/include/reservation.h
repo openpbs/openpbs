@@ -346,6 +346,7 @@ extern	void add_resv_beginEnd_tasks();
 extern	void resv_retry_handler(struct work_task *);
 #endif	/* _WORK_TASK_H */
 
+extern  int  change_enableORstart(resc_resv *, int, char *);
 extern	void unset_resv_retry(resc_resv *);
 extern	void set_resv_retry(resc_resv *, long);
 extern	void eval_resvState(resc_resv *, enum resvState_discrim, int, int *,

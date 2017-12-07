@@ -270,7 +270,6 @@ main(int argc, char *argv[])
 	char		*destin;
 	int			encode_type;
 	int			i;
-	char		*id = "pbs_send_job";
 	job			*jobp;
 	char		 job_id[PBS_MAXSVRJOBID+1];
 	attribute	*pattr;
@@ -424,13 +423,13 @@ main(int argc, char *argv[])
 
 	if (chk_save_file(jobfile_full) != 0) {
 		sprintf(log_buffer, "Error opening jobfile=%s", jobfile);
-		log_err(-1, id, log_buffer);
+		log_err(-1, __func__, log_buffer);
 		goto fatal_exit;
 	}
 
 	if ((jobp=job_recov_fs(jobfile, RECOV_SUBJOB)) == NULL) {
 		sprintf(log_buffer, "Failed to recreate job in jobfile=%s", jobfile);
-		log_err(-1, id, log_buffer);
+		log_err(-1, __func__, log_buffer);
 		goto fatal_exit;
 	}
 
@@ -476,7 +475,7 @@ main(int argc, char *argv[])
 	if (hp == NULL) {
 		sprintf(log_buffer, "%s: h_errno=%d",
 			inet_ntoa(addr), h_errno);
-		log_err(-1, id, log_buffer);
+		log_err(-1, __func__, log_buffer);
 	}
 	else {
 		/* read any credential file */
@@ -508,7 +507,7 @@ main(int argc, char *argv[])
 			PBS_NET_RC_FATAL) {
 			(void)sprintf(log_buffer, "send_job failed to %lx port %d",
 				hostaddr, port);
-			log_err(pbs_errno, id, log_buffer);
+			log_err(pbs_errno, __func__, log_buffer);
 			goto fatal_exit;
 		} else if (con == PBS_NET_RC_RETRY) {
 			pbs_errno = WSAECONNREFUSED;	/* should retry */

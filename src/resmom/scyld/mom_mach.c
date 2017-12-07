@@ -386,7 +386,6 @@ injob(job *pjob, pid_t sid)
 static unsigned long
 cput_sum(job *pjob)
 {
-	DOID("cput_ses")
 	int			i;
 	ulong			cputime = 0;
 	int			nps = 0;
@@ -420,13 +419,13 @@ cput_sum(job *pjob)
 			tcput += (ps->utime + ps->stime +
 				ps->cutime + ps->cstime);
 			DBPRT(("%s: ses %d pid %d cputime %lu\n",
-				id, ps->session, ps->pid, tcput));
+				__func__, ps->session, ps->pid, tcput));
 		}
 
 		if (tcput > ptask->ti_cput)
 			ptask->ti_cput = tcput;
 		cputime += ptask->ti_cput;
-		DBPRT(("%s: task %08.8X cput %lu total %lu\n", id,
+		DBPRT(("%s: task %08.8X cput %lu total %lu\n", __func__,
 			ptask->ti_qs.ti_task, ptask->ti_cput, cputime))
 
 		if (taskprocs == 0) {
