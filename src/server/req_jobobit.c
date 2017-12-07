@@ -633,14 +633,14 @@ rel_resc(job *pjob)
 	/* is there a rerun request waiting for acknowledgement that        */
 	/* resources (including licenses) are indeed released? Then ack it. */
 	if (pjob->ji_rerun_preq != NULL) { /* set only in req_rerun() */
+		if (pjob->ji_rerun_preq->rq_conn != PBS_LOCAL_CONNECTION)
+			conn = get_conn(pjob->ji_rerun_preq->rq_conn);
+
 		reply_ack(pjob->ji_rerun_preq);
 
-		/* clear no-timeout flag on connection */
-		if (pjob->ji_rerun_preq->rq_conn != PBS_LOCAL_CONNECTION) {
-			conn = get_conn(pjob->ji_rerun_preq->rq_conn);
-			if (conn)
-				conn->cn_authen &= ~PBS_NET_CONN_NOTIMEOUT;
-		}
+		/* clear no-timeout flag on connection to prevent stale connections */
+		if (conn)
+			conn->cn_authen &= ~PBS_NET_CONN_NOTIMEOUT;
 
 		pjob->ji_rerun_preq = NULL;
 	}
@@ -798,7 +798,7 @@ on_job_exit(struct work_task *ptask)
 					if (release_nodes_on_stageout) {
 						if (free_sister_vnodes(pjob, NULL, log_buffer, LOG_BUF_SIZE, NULL) != 0) {
 							log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_WARNING, pjob->ji_qs.ji_jobid, log_buffer);
-						}	
+						}
 					}
 					preq->rq_extra = (void *)pjob;
 					rc = issue_Drequest(handle, preq, on_job_exit, &pt, pjob->ji_mom_prot);
@@ -1929,7 +1929,7 @@ job_obit(struct resc_used_update *pruu, int stream)
 			if (tmpdef == NULL)
 				continue;
 
-			/* 
+			/*
 			 * Copy all resources to the accounting buffer.
 			 * Copy all but invisible resources into the mail buffer.
 			 * The ATR_DFLAG_USRD flag will not be set on invisible resources.
