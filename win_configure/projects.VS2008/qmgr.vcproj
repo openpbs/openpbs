@@ -72,7 +72,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="secur32.lib Userenv.lib mpr.lib ws2_32.lib netapi32.lib odbc32.lib odbccp32.lib libedit_static.a"
+				AdditionalDependencies="secur32.lib Userenv.lib mpr.lib ws2_32.lib netapi32.lib odbc32.lib odbccp32.lib edit_static.lib"
 				OutputFile="..\..\..\win_build\src\cmds\Debug\qmgr.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
@@ -165,7 +165,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="secur32.lib Userenv.lib mpr.lib ws2_32.lib netapi32.lib odbc32.lib odbccp32.lib libedit_static.a"
+				AdditionalDependencies="secur32.lib Userenv.lib mpr.lib ws2_32.lib netapi32.lib odbc32.lib odbccp32.lib edit_static.lib"
 				OutputFile="..\..\..\win_build\src\cmds\Release\qmgr.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
