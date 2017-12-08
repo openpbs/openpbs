@@ -46,7 +46,7 @@ class TestPBSSnapshot(TestFunctional):
     """
     Test suit with unit tests for the pbs_snapshot tool
     """
-    pbs_snapshot_exists = None  # Flag to check if pbs_snaphot binary exists
+    pbs_snapshot_path = None
 
     def setUp(self):
         TestFunctional.setUp(self)
@@ -58,15 +58,15 @@ class TestPBSSnapshot(TestFunctional):
                                             id="ngpus", expect=True,
                                             sudo=True))
 
-        # Check whether pbs_snapshot binary is accessible
+        # Check whether pbs_snapshot is accessible
         try:
-            ret = self.du.run_cmd(cmd=["pbs_snapshot", "-h"])
-            if ret['rc'] == 0:
-                self.pbs_snapshot_exists = True
-            else:
-                self.pbs_snapshot_exists = False
+            self.pbs_snapshot_path = os.path.join(
+                self.server.pbs_conf["PBS_EXEC"], "sbin", "pbs_snapshot")
+            ret = self.du.run_cmd(cmd=[self.pbs_snapshot_path, "-h"])
+            if ret['rc'] != 0:
+                self.pbs_snapshot_path = None
         except Exception:
-            self.pbs_snapshot_exists = False
+            self.pbs_snapshot_path = None
 
         # Check whether the user has root access or not
         # pbs_snapshot only supports being run as root, so skip the entire
@@ -250,11 +250,11 @@ class TestPBSSnapshot(TestFunctional):
         """
         Test capturing a snapshot via the pbs_snapshot program
         """
-        if not self.pbs_snapshot_exists:
-            self.skip_test("pbs_snapshot binary not found")
+        if self.pbs_snapshot_path is None:
+            self.skip_test("pbs_snapshot not found")
 
         target_dir = self.du.get_tempdir()
-        snap_cmd = ["pbs_snapshot", "-o", target_dir]
+        snap_cmd = [self.pbs_snapshot_path, "-o", target_dir]
         ret = self.du.run_cmd(cmd=snap_cmd, sudo=True)
         self.assertEquals(ret['rc'], 0)
 
@@ -277,12 +277,12 @@ class TestPBSSnapshot(TestFunctional):
         Test capturing a snapshot via the pbs_snapshot program
         Capture no logs
         """
-        if not self.pbs_snapshot_exists:
-            self.skip_test("pbs_snapshot binary not found")
+        if self.pbs_snapshot_path is None:
+            self.skip_test("pbs_snapshot not found")
 
         target_dir = self.du.get_tempdir()
-        snap_cmd = ["pbs_snapshot", "-o", target_dir, "--daemon-logs=0",
-                    "--accounting-logs=0"]
+        snap_cmd = [self.pbs_snapshot_path, "-o", target_dir,
+                    "--daemon-logs=0", "--accounting-logs=0"]
         ret = self.du.run_cmd(cmd=snap_cmd, sudo=True)
         self.assertEquals(ret['rc'], 0)
 
@@ -333,8 +333,8 @@ class TestPBSSnapshot(TestFunctional):
         Test obfuscation of user & group related attributes while capturing
         snapshots via pbs_snapshot
         """
-        if not self.pbs_snapshot_exists:
-            self.skip_test("pbs_snapshot binary not found")
+        if self.pbs_snapshot_path is None:
+            self.skip_test("pbs_snapshot not found")
 
         now = int(time.time())
 
@@ -350,8 +350,8 @@ class TestPBSSnapshot(TestFunctional):
 
         # Now, take a snapshot with --obfuscate
         target_dir = self.du.get_tempdir()
-        snap_cmd = ["pbs_snapshot", "-o", target_dir, "--daemon-logs=0",
-                    "--accounting-logs=0", "--obfuscate"]
+        snap_cmd = [self.pbs_snapshot_path, "-o", target_dir,
+                    "--daemon-logs=0", "--accounting-logs=0", "--obfuscate"]
         ret = self.du.run_cmd(cmd=snap_cmd, sudo=True)
         self.assertEquals(ret['rc'], 0)
 
