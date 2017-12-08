@@ -39,7 +39,7 @@
 %define pbs_client client
 %define pbs_execution execution
 %define pbs_server server
-%define pbs_version 14.1.0
+%define pbs_version 14.1.2
 %define pbs_release 0
 %define pbs_prefix /opt/pbs
 %define pbs_home /var/spool/pbs

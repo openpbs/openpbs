@@ -10,7 +10,8 @@ How to install PBS Pro using the configure script.
     yum install -y gcc make rpm-build libtool hwloc-devel \
       libX11-devel libXt-devel libedit-devel libical-devel \
       ncurses-devel perl postgresql-devel python-devel tcl-devel \
-      tk-devel swig expat-devel openssl-devel libXext libXft
+      tk-devel swig expat-devel openssl-devel libXext libXft \
+      autoconf
 
   For openSUSE systems you should run the following command as root:
 
@@ -18,7 +19,7 @@ How to install PBS Pro using the configure script.
       libX11-devel libXt-devel libedit-devel libical-devel \
       ncurses-devel perl postgresql-devel python-devel tcl-devel \
       tk-devel swig libexpat-devel libopenssl-devel libXext-devel \
-      libXft-devel fontconfig
+      libXft-devel fontconfig autoconf
 
 2. Install the prerequisite packages for running PBS Pro. In addition
   to the commands below, you should also install a text editor of
@@ -35,10 +36,12 @@ How to install PBS Pro using the configure script.
       sendmail sudo tcl tk libical1
 
 3. Open a terminal as a normal (non-root) user, unpack the PBS Pro
-  tarball, and cd to the package directory.
+  tarball, cd to the package directory, and generate the configure
+  script.
 
-    tar -xpvf pbspro-14.1.0.tar.gz
-    cd pbspro-14.1.0
+    tar -xpvf pbspro-14.1.2.tar.gz
+    cd pbspro-14.1.2
+    ./autogen.sh
 
 4. Display the available build parameters.
 
