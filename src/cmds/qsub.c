@@ -5782,17 +5782,6 @@ do_connect(char *server_out, char *retmsg)
 		return (pbs_errno);
 	}
 
-	/*
-	 * Disable TCP Nagle's algorithm on connection to server.
-	 * Nagle's algorithm is hurting qsub performance in case of larger
-	 * environment sizes on some customer systems
-	 */
-	if (pbs_connection_set_nodelay(sd_svr) == -1) {
-		sprintf(retmsg, "qsub: cannot set nodelay on connection %d (errno=%d)\n",
-			sd_svr, errno);
-		return (PBSE_SYSTEM);
-	}
-
 	refresh_dfltqsubargs();
 
 	pbs_hostvar = malloc(pbs_o_hostsize + PBS_MAXHOSTNAME+1);
