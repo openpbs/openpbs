@@ -6758,6 +6758,8 @@ force_qsub_daemons_update(void)
 {
 	int s;
 	conn_t *cp = NULL;
+	if (svr_allconns.ll_next == (pbs_list_link *)0)
+		return;
 	for (cp = (conn_t *)GET_NEXT(svr_allconns);cp; cp = GET_NEXT(cp->cn_link)) {
 		if (cp->cn_authen & PBS_NET_CONN_FROM_QSUB_DAEMON)
 			cp->cn_authen |= PBS_NET_CONN_FORCE_QSUB_UPDATE;
