@@ -4393,9 +4393,7 @@ putenv_if_not_exist(char *env_var, char *env_val, int mode, char *cmd_get_val)
 		log_err(-1, __func__, "malloc failed");
 		return (-1);
 	}
-	sprintf(env_str, "%s=%s", env_var, env_val);
-	/* malloced string becomes part of environment */
-	putenv(env_str);
+	setenv(env_var, env_val, 1);
 
 	return (0);
 }

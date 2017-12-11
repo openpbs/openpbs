@@ -5272,7 +5272,6 @@ do_daemon_stuff(char *file, char *handle, char *server)
 	int svr_sock = -1;
 	HANDLE handles[2];
 	time_t connect_time = 0;
-	char env_string[2*MAXPATHLEN+1] = {0};
 
 	sd_svr = -1; /* not connected */
 	hEventParent = atoi(handle);
@@ -5374,8 +5373,7 @@ do_daemon_stuff(char *file, char *handle, char *server)
 		if (_chdir(qsub_cwd) != 0)
 			goto error;
 
-		snprintf(env_string, sizeof(env_string) -1, "PWD=%s", qsub_cwd);
-		if (putenv(env_string) != 0)
+		if (setenv("PWD", qsub_cwd, 1) != 0)
 			goto error;
 
 		if (sd_svr == -1) {
@@ -5602,7 +5600,6 @@ do_daemon_stuff(void)
 	mode_t cmask = 0077;
 	time_t connect_time = time(0);
 	sigset_t newsigmask, oldsigmask;
-	char env_string[2*MAXPATHLEN+1] = {0};
 	char *err_op = "";
 	char log_buf[LOG_BUF_SIZE];
 
@@ -5710,9 +5707,8 @@ do_daemon_stuff(void)
 			goto error;
 		}
 
-		snprintf(env_string, sizeof(env_string) -1, "PWD=%s", qsub_cwd);
-		if (putenv(env_string) != 0) {
-			err_op = "putenv";
+		if (setenv("PWD", qsub_cwd, 1) != 0) {
+			err_op = "setenv";
 			goto error;
 		}
 

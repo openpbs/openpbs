@@ -1323,7 +1323,7 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 		(void)SetEnvironmentVariable(PBS_HOOK_CONFIG_FILE, NULL);
 	}
 #else
-	if (putenv(env_pbs_hook_config) != 0) {
+	if (setenv(PBS_HOOK_CONFIG_FILE, hook_config_path, 1) != 0) {
 		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
 			LOG_ERR, phook->hook_name, "Failed to set PBS_HOOK_CONFIG_FILE");
 		return (-1);
@@ -1346,7 +1346,7 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 		env_ret = snprintf(env_pbs_conf, sizeof(env_pbs_conf),
 			"PBS_CONF_FILE=%s", pbs_conf.pbs_conf_file);
 		if ((env_ret < 0) || ((size_t)env_ret != strlen(env_pbs_conf)) ||
-			(putenv(env_pbs_conf) != 0)) {
+			(setenv("PBS_CONF_FILE", pbs_conf.pbs_conf_file, 1) != 0 )) {
 			log_err(errno, __func__, "Failed to set PBS_CONF_FILE");
 			goto run_hook_exit;
 		}

@@ -273,8 +273,7 @@ set_kerb_cred(char *filename, char *data, size_t dsize, int conn)
 
 	(void)strcpy(cname, "FILE:");
 	(void)strcat(cname, filename);
-	sprintf(log_buffer, "KRB5CCNAME=%s", cname);
-	putenv(log_buffer);
+	setenv("KRB5CCNAME", cname, 1);
 
 	if ((err = krb5_cc_resolve(ktext, cname, &kache)) == -1) {
 		sprintf(log_buffer, "krb5_cc_resolve(%s",
@@ -354,7 +353,7 @@ set_gridproxy(char *filename, char *data, size_t dsize, uid_t uid, gid_t gid)
 		goto done;
 	}
 
-	if (putenv(envstr) == -1) {
+	if (setenv("X509_USER_PROXY", filename, 1) == -1) {
 		sprintf(log_buffer, "putenv: %s %s", buf, strerror(errno));
 		goto done;
 	}
@@ -459,20 +458,8 @@ fork_to_user(struct batch_request *preq)
 	}
 
 	/* create a USER env entry ... k5dcelogin may need it */
-	sprintf(buf, "USER=%s", rqcpf->rq_user);
-	if ((envstr = strdup(buf)) == NULL) {
-		revert_impersonated_user();
-		return (INVALID_HANDLE_VALUE);
-	}
-	putenv(envstr);
-
-	/* create a PBS_EXEC env entry */
-	sprintf(buf, "PBS_EXEC=%s", pbs_conf.pbs_exec_path);
-	if ((envstr = strdup(buf)) == NULL) {
-		revert_impersonated_user();
-		return (INVALID_HANDLE_VALUE);
-	}
-	putenv(envstr);
+	setenv("USER", rqcpf->rq_user, 1);
+	setenv("PBS_EXEC", pbs_conf.pbs_exec_path, 1);
 
 	return (pwdp->pw_userlogin);
 }
@@ -543,16 +530,10 @@ struct batch_request *preq;
 		rqcpf = &preq->rq_ind.rq_cpyfile;
 
 	/* create a USER env entry ... k5dcelogin may need it */
-	sprintf(buf, "USER=%s", rqcpf->rq_user);
-	if ((envstr = strdup(buf)) == NULL)
-		frk_err(PBSE_SYSTEM, preq); /* no return */
-	putenv(envstr);
+	setenv("USER", rqcpf->rq_user, 1);
 
 	/* create a PBS_EXEC env entry */
-	sprintf(buf, "PBS_EXEC=%s", pbs_conf.pbs_exec_path);
-	if ((envstr = strdup(buf)) == NULL)
-		frk_err(PBSE_SYSTEM, preq); /* no return */
-	putenv(envstr);
+	setenv("PBS_EXEC", pbs_conf.pbs_exec_path, 1);
 
 	if (((pjob = find_job(rqcpf->rq_jobid)) != NULL) &&
 		(pjob->ji_grpcache != NULL)) {
@@ -633,7 +614,8 @@ struct batch_request *preq;
 					log_err(errno, __func__, "Unable to allocate Memory!\n");
 					frk_err(PBSE_SYSTEM, preq);
 				}
-				putenv(envstr);
+				sprintf(buf, "%d", fds[0]);
+				setenv("PBS_PWPIPE", buf, 1);
 				fcntl(cred_pipe, F_SETFD, 1);	/* close on exec */
 
 				/* construct argv array */
