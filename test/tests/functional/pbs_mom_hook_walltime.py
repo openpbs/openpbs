@@ -74,3 +74,67 @@ class TestMomHookWalltime(TestFunctional):
                            offset=15)
         self.server.expect(JOB, {'resources_used.walltime': 5}, op=LE, id=jid,
                            extend='x')
+
+    def test_hold_time_not_counted_in_walltime(self):
+        """
+        Test that hold time is not counted in walltime
+        """
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'job_history_enable': 'True'})
+
+        a = {'Resource_List.ncpus': 1}
+        J1 = Job(TEST_USER, attrs=a)
+        J1.set_sleep_time(30)
+        jid1 = self.server.submit(J1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        time.sleep(10)
+        self.server.expect(JOB, {'resources_used.walltime': 0}, op=GT, id=jid1,
+                           extend='x')
+
+        self.server.holdjob(jid1, USER_HOLD)
+        self.server.rerunjob(jid1)
+        self.server.expect(JOB, {'Hold_Types': 'u'}, jid1)
+        time.sleep(5)
+
+        self.server.rlsjob(jid1, USER_HOLD)
+        self.server.expect(JOB, {ATTR_state: 'F'}, id=jid1, extend='x',
+                           offset=30)
+
+        # The sleep time should not be included in the used walltime
+        self.server.expect(JOB, {'resources_used.walltime': 30}, op=LE,
+                           id=jid1, extend='x')
+
+    def test_suspend_time_not_counted_in_walltime(self):
+        """
+        Test that suspend time is not counted in walltime
+        """
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'job_history_enable': 'True'})
+        a = {'Resource_List.ncpus': 1}
+
+        script_content = (
+            'for i in {1..10}\n'
+            'do\n'
+            '\techo "time wait"\n'
+            '\tsleep 1\n'
+            'done'
+        )
+
+        J1 = Job(TEST_USER, attrs=a)
+        J1.create_script(body=script_content)
+        jid1 = self.server.submit(J1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+
+        self.server.sigjob(jobid=jid1, signal="suspend")
+        self.server.expect(JOB, {'job_state': 'S'}, id=jid1)
+
+        time.sleep(15)
+        self.server.sigjob(jobid=jid1, signal="resume")
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+
+        self.server.expect(JOB, {ATTR_state: 'F'}, id=jid1, extend='x',
+                           offset=5)
+
+        # Used walltime should be less than the sleep time after suspend
+        self.server.expect(JOB, {'resources_used.walltime': 10}, op=LE,
+                           id=jid1, extend='x')
