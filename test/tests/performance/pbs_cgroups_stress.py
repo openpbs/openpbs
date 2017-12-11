@@ -163,9 +163,7 @@ class TestCgroupsStress(TestPerformance):
         """
         Create a hook configuration file with the provided contents.
         """
-        (fd, fn) = self.du.mkstemp()
-        os.write(fd, cfg)
-        os.close(fd)
+        fn = self.du.create_temp_file(body=cfg)
         a = {'content-type': 'application/x-config',
              'content-encoding': 'default',
              'input-file': fn}

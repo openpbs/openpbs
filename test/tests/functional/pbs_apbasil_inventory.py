@@ -112,11 +112,8 @@ class TestBasilInventory(TestFunctional):
                                   method=basil_method, qtype=basil_qtype)
         mom_config = self.mom.parse_config()
         alps_client = mom_config['$alps_client']
-        (fd, fn) = self.du.mkstemp()
-        os.write(fd, query)
-        os.close(fd)
-        (fd, xout) = self.du.mkstemp()
-        os.close(fd)
+        fn = self.du.create_temp_file(body=query)
+        xout = self.du.create_temp_file()
         self.du.run_cmd(cmd="%s < %s > %s" % (alps_client, fn, xout),
                         as_script=True)
         os.remove(fn)

@@ -37,7 +37,6 @@
 
 
 from tests.functional import *
-import os
 import subprocess
 from subprocess import Popen, PIPE
 
@@ -53,10 +52,10 @@ class Test_pbs_python(TestFunctional):
         Thi method spawns a python process using
         pbs_python and checks for the result
         """
-        fd, fn = tempfile.mkstemp(prefix='test', suffix='.py', text=True)
-        os.write(fd, "print \"Hello\"")
-        os.close(fd)
-        pbs_python = self.server.pbs_conf['PBS_EXEC'] + "/bin/pbs_python"
+        fn = self.du.create_temp_file(prefix='test', suffix='.py',
+                                      body="print \"Hello\"", text=True)
+        pbs_python = os.path.join(self.server.pbs_conf['PBS_EXEC'],
+                                  "bin", "pbs_python")
         msg = ['Hello']
         cmd = [pbs_python] + [fn]
         rc = self.du.run_cmd(cmd=cmd, sudo=True)

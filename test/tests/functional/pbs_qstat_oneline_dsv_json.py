@@ -56,7 +56,7 @@ class TestQstat_oneline_json_dsv(TestFunctional):
         qstat_cmd = os.path.join(
             self.server.pbs_conf['PBS_EXEC'], 'bin', 'qstat')
         [qstat_dsv_script, qstat_dsv_out, qstat_oneline_script,
-            qstat_oneline_out] = [DshUtils().mkstemp()[1] for _ in range(4)]
+         qstat_oneline_out] = [DshUtils().create_temp_file() for _ in range(4)]
         f = open(qstat_dsv_script, 'w')
         f.write(qstat_cmd + ' -f -F dsv ' + str(jid) + ' > ' + qstat_dsv_out)
         f.close()
@@ -88,7 +88,7 @@ class TestQstat_oneline_json_dsv(TestFunctional):
         j = Job(TEST_USER)
         j.set_sleep_time(10)
         jid = self.server.submit(j)
-        [qstat_json_script, qstat_json_out] = [DshUtils().mkstemp()[1]
+        [qstat_json_script, qstat_json_out] = [DshUtils().create_temp_file()
                                                for _ in range(2)]
         qstat_cmd = os.path.join(
             self.server.pbs_conf['PBS_EXEC'], 'bin', 'qstat')

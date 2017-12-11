@@ -135,10 +135,9 @@ def NodesetDelete( nodeset_name ):
         Setup a fake sgi_api script on all the nodes.
         Return the number of nodes.
         """
-        (fd, fn) = self.du.mkstemp()
-        os.write(fd, script)
-        os.close(fd)
+        fn = self.du.create_temp_file(body=script)
         self.du.chmod(path=fn, mode=perm, sudo=True)
+
         done = set()
         nodes = self.server.status(NODE)
         for n in nodes:

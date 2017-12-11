@@ -94,11 +94,10 @@ class TestServerDynRes(TestFunctional):
         resname = ["mybadres"]
         restype = ["long"]
         script_body = "echo abc"
-        (fd, fn) = self.du.mkstemp(prefix="PtlPbs_badoutfile",
-                                   body=script_body)
+        fn = self.du.create_temp_file(prefix="PtlPbs_badoutfile",
+                                      body=script_body)
 
         self.du.chmod(path=fn, mode=0755, sudo=True)
-        os.close(fd)
         resval = ['"' + resname[0] + ' ' + '!' + fn + '"']
 
         # Add it as a server_dyn_res that returns a string output
@@ -199,10 +198,9 @@ class TestServerDynRes(TestFunctional):
 
         fpath_out = os.path.join(os.sep, "tmp", "PtlPbs_got_foo")
 
-        (fd_in, fn_in) = self.du.mkstemp(prefix="PtlPbs_get_foo",
+        fn_in = self.du.create_temp_file(prefix="PtlPbs_get_foo",
                                          body=script_body)
         self.du.chmod(path=fn_in, mode=0755, sudo=True)
-        os.close(fd_in)
 
         # Add additional white space between resource name and the script
         resval = ['"' + resname[0] + '  ' + ' !' + fn_in + '"']
@@ -242,21 +240,19 @@ class TestServerDynRes(TestFunctional):
         script_body_m = "echo 12"
         script_body_l = "echo 20"
 
-        (fd_s, fn_s) = self.du.mkstemp(prefix="PtlPbs_small", suffix=".scr",
-                                       body=script_body_s)
-        (fd_m, fn_m) = self.du.mkstemp(prefix="PtlPbs_medium", suffix=".scr",
-                                       body=script_body_m)
-        (fd_l, fn_l) = self.du.mkstemp(prefix="PtlPbs_large", suffix=".scr",
-                                       body=script_body_l)
+        fn_s = self.du.create_temp_file(prefix="PtlPbs_small",
+                                        suffix=".scr",
+                                        body=script_body_s)
+        fn_m = self.du.create_temp_file(prefix="PtlPbs_medium",
+                                        suffix=".scr",
+                                        body=script_body_m)
+        fn_l = self.du.create_temp_file(prefix="PtlPbs_large",
+                                        suffix=".scr",
+                                        body=script_body_l)
 
         self.du.chmod(path=fn_s, mode=0755, sudo=True)
         self.du.chmod(path=fn_m, mode=0755, sudo=True)
         self.du.chmod(path=fn_l, mode=0755, sudo=True)
-
-        # Close file handles, else scheduler cannot execute them
-        os.close(fd_s)
-        os.close(fd_m)
-        os.close(fd_l)
 
         resval = ['"' + resname[0] + ' ' + '!' + fn_s + '"',
                   '"' + resname[1] + ' ' + '!' + fn_m + '"',
@@ -303,10 +299,10 @@ class TestServerDynRes(TestFunctional):
         # Prep for server_dyn_resource script
         script_body = "echo abc"
 
-        (fd, fn) = self.du.mkstemp(prefix="PtlPbs_check", suffix=".scr",
-                                   body=script_body)
+        fn = self.du.create_temp_file(prefix="PtlPbs_check",
+                                      suffix=".scr",
+                                      body=script_body)
         self.du.chmod(path=fn, mode=0755, sudo=True)
-        os.close(fd)
 
         resval = ['"' + resname[0] + ' ' + '!' + fn + '"']
 
@@ -346,10 +342,10 @@ class TestServerDynRes(TestFunctional):
         # Prep for server_dyn_resource script
         script_body = "echo white, red, blue"
 
-        (fd, fn) = self.du.mkstemp(prefix="PtlPbs_color", suffix=".scr",
-                                   body=script_body)
+        fn = self.du.create_temp_file(prefix="PtlPbs_color",
+                                      suffix=".scr",
+                                      body=script_body)
         self.du.chmod(path=fn, mode=0755, sudo=True)
-        os.close(fd)
 
         resval = ['"' + resname[0] + ' ' + '!' + fn + '"']
 
@@ -390,10 +386,10 @@ class TestServerDynRes(TestFunctional):
         # Prep for server_dyn_resource script
         script_body = "echo 100gb"
 
-        (fd, fn) = self.du.mkstemp(prefix="PtlPbs_size", suffix=".scr",
-                                   body=script_body)
+        fn = self.du.create_temp_file(prefix="PtlPbs_size",
+                                      suffix=".scr",
+                                      body=script_body)
         self.du.chmod(path=fn, mode=0755, sudo=True)
-        os.close(fd)
 
         resval = ['"' + resname[0] + ' ' + '!' + fn + '"']
 
@@ -453,10 +449,10 @@ class TestServerDynRes(TestFunctional):
         # Prep for server_dyn_resource script
         script_body = "echo 100gb"
 
-        (fd, fn) = self.du.mkstemp(prefix="PtlPbs_size", suffix=".scr",
-                                   body=script_body)
+        fn = self.du.create_temp_file(prefix="PtlPbs_size",
+                                      suffix=".scr",
+                                      body=script_body)
         self.du.chmod(path=fn, mode=0755, sudo=True)
-        os.close(fd)
 
         resval = ['"' + resname[0] + ' ' + '!' + fn + '"']
 

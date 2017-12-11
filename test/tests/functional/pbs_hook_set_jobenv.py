@@ -108,16 +108,13 @@ class TestPbsHookSetJobEnv(TestFunctional):
         api_to_cli.setdefault(self.ATTR_V, 'V')
 
         # temporary files
-        (fd, fn) = tempfile.mkstemp(prefix="job_out1")
-        os.close(fd)
+        fn = self.du.create_temp_file(prefix="job_out1")
         self.job_out1_tempfile = fn
 
-        (fd, fn) = tempfile.mkstemp(prefix="job_out2")
-        os.close(fd)
+        fn = self.du.create_temp_file(prefix="job_out2")
         self.job_out2_tempfile = fn
 
-        (fd, fn) = tempfile.mkstemp(prefix="job_out3")
-        os.close(fd)
+        fn = self.du.create_temp_file(prefix="job_out3")
         self.job_out3_tempfile = fn
 
     def tearDown(self):

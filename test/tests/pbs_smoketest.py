@@ -546,7 +546,7 @@ class SmokeTest(PBSTestSuite):
         """
         Test for file staging
         """
-        (_, fn) = self.du.mkstemp(uid=str(TEST_USER))
+        fn = self.du.create_temp_file(asuser=str(TEST_USER))
         a = {ATTR_stagein: fn + '2@' + self.server.hostname + ':' + fn}
         j = Job(TEST_USER, a)
         j.set_sleep_time(2)
