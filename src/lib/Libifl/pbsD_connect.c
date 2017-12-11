@@ -669,13 +669,13 @@ __pbs_connect_extend(char *server, char *extend_data)
 		/* the following lousy hack is needed since the socket call needs */
 		/* SYSTEMROOT env variable properly set! */
 		if (getenv("SYSTEMROOT") == NULL) {
-			putenv("SYSTEMROOT=C:\\WINNT");	/* Try WINNT */
-			putenv("SystemRoot=C:\\WINNT");	/* Try WINNT */
+			setenv("SYSTEMROOT", "C:\\WINNT", 1);
+			setenv("SystemRoot", "C:\\WINNT", 1);
 		}
 		connection[out].ch_socket = socket(AF_INET, SOCK_STREAM, 0);
 		if (connection[out].ch_socket < 0) {
-			putenv("SYSTEMROOT=C:\\WINDOWS");	/* Try XP */
-			putenv("SystemRoot=C:\\WINDOWS");	/* Try XP */
+			setenv("SYSTEMROOT", "C:\\WINDOWS", 1);
+			setenv("SystemRoot", "C:\\WINDOWS", 1);
 			connection[out].ch_socket = socket(AF_INET, SOCK_STREAM, 0);
 
 		}
@@ -1103,13 +1103,13 @@ pbs_connect_noblk(char *server, int tout)
 	/* the following lousy hack is needed since the socket call needs */
 	/* SYSTEMROOT env variable properly set! */
 	if (getenv("SYSTEMROOT") == NULL) {
-		putenv("SYSTEMROOT=C:\\WINNT");	/* Try WINNT */
-		putenv("SystemRoot=C:\\WINNT");	/* Try WINNT */
+		setenv("SYSTEMROOT", "C:\\WINNT", 1);
+		setenv("SystemRoot", "C:\\WINNT", 1);
 	}
 	connection[out].ch_socket = socket(AF_INET, SOCK_STREAM, 0);
 	if (connection[out].ch_socket < 0) {
-		putenv("SYSTEMROOT=C:\\WINDOWS");	/* Try XP */
-		putenv("SystemRoot=C:\\WINDOWS");	/* Try XP */
+		setenv("SYSTEMROOT", "C:\\WINDOWS", 1);
+		setenv("SystemRoot", "C:\\WINDOWS", 1);
 		connection[out].ch_socket = socket(AF_INET, SOCK_STREAM, 0);
 	}
 #else

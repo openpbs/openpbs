@@ -2668,7 +2668,6 @@ main(int argc, char *argv[])
 
 		if (getenv("PBS_CONF_FILE") == NULL) {
 			char conf_path[80];
-			char conf_env[80];
 			char *p;
 			char psave;
 			struct stat sbuf;
@@ -2679,9 +2678,7 @@ main(int argc, char *argv[])
 				_snprintf(conf_path, 79, "%spbs.conf", argv[0]);
 				*p = psave;
 				if (stat(conf_path, &sbuf) == 0) {
-					_snprintf(conf_env, 79, "PBS_CONF_FILE=%s",
-						conf_path);
-					putenv(conf_env);
+					setenv("PBS_CONF_FILE", conf_path, 1);
 				}
 			}
 		}

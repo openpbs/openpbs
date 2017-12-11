@@ -250,7 +250,7 @@ cache_data(char *func, char *key, char *value_array,
 	int	free_slot = -1;
 	int	oldest_slot = -1;
 	time_t	now;
-	char	func_key[CACHE_STR_SIZE*2 + 1];
+	char	func_key[CACHE_STR_SIZE*2 + 1] = {'\0'};
 	char	*varray = NULL;	   	/* pointer to value_array */
 	char	*end_varray = NULL;   /* pointer to end of value_array */
 
@@ -392,7 +392,7 @@ SID*
 sid_dup(SID *src_sid)
 {
 	DWORD	sid_len_need;
-	SID	*dest_sid;
+	SID	*dest_sid = NULL;
 
 	if ((src_sid == NULL) || (!IsValidSid(src_sid)))
 		return (NULL);	/* nothing happens */
@@ -565,8 +565,8 @@ get_full_username(char *username,
 	DWORD		sid_sz = 0;
 	TCHAR		domain[PBS_MAXHOSTNAME+1] = "";
 	DWORD		domain_sz;
-	char		tryname[PBS_MAXHOSTNAME+UNLEN+2];	/* dom\user0 */
-	char		actual_name[PBS_MAXHOSTNAME+UNLEN+2];	/* dom\user0 */
+	char		tryname[PBS_MAXHOSTNAME+UNLEN+2] = {'\0'};	/* dom\user0 */
+	char		actual_name[PBS_MAXHOSTNAME+UNLEN+2] = {'\0'};	/* dom\user0 */
 
 	if (username == NULL)
 		return (NULL);
@@ -789,10 +789,10 @@ get_dcinfo(char *net_name,
 static void
 resolve_username(char *username[PBS_MAXHOSTNAME+UNLEN+2]) /* domain\user0 */
 {
-	char uname[UNLEN+1];
-	char dname[PBS_MAXHOSTNAME+1];
-	char actual_dname[PBS_MAXHOSTNAME+1];
-	char domain_ctrl[PBS_MAXHOSTNAME+1];
+	char uname[UNLEN+1] = {'\0'};
+	char dname[PBS_MAXHOSTNAME+1] = {'\0'};
+	char actual_dname[PBS_MAXHOSTNAME+1] = {'\0'};
+	char domain_ctrl[PBS_MAXHOSTNAME+1] = {'\0'};
 	char *p;
 
 	if (username == NULL)
@@ -828,10 +828,10 @@ resolve_username(char *username[PBS_MAXHOSTNAME+UNLEN+2]) /* domain\user0 */
 static void
 resolve_grpname(char *grpname[PBS_MAXHOSTNAME+GNLEN+2]) /* domain\user0 */
 {
-	char gname[GNLEN+1];
-	char dname[PBS_MAXHOSTNAME+1];
-	char actual_dname[PBS_MAXHOSTNAME+1];
-	char domain_ctrl[PBS_MAXHOSTNAME+1];
+	char gname[GNLEN+1] = {'\0'};
+	char dname[PBS_MAXHOSTNAME+1] = {'\0'};
+	char actual_dname[PBS_MAXHOSTNAME+1] = {'\0'};
+	char domain_ctrl[PBS_MAXHOSTNAME+1] = {'\0'};
 	char *p;
 
 	if (grpname == NULL)
@@ -928,7 +928,7 @@ getusersid2(char *uname,
 {
 	SID		*sid = NULL;
 	SID_NAME_USE	type = 0;
-	char 		username[PBS_MAXHOSTNAME+UNLEN+2]; /* domain\user0 */
+	char 		username[PBS_MAXHOSTNAME+UNLEN+2] = {'\0'}; /* domain\user0 */
 	char		*p = NULL;
 	HANDLE		hToken = INVALID_HANDLE_VALUE;
 	DWORD		dwBufferSize = 0;
@@ -1364,15 +1364,15 @@ getGlobalGroups(char *user, GROUP_USERS_INFO_0 **groupsp)
 	DWORD nread, total;
 	DWORD pref = 16;
 	DWORD rc;
-	wchar_t userw[UNLEN+1];
+	wchar_t userw[UNLEN+1] = {'\0'};
 
-	char    dname[PBS_MAXHOSTNAME+1];
+	char    dname[PBS_MAXHOSTNAME+1] = {'\0'};
 
-	char    domain_name[PBS_MAXHOSTNAME+1];
-	char    user_name[PBS_MAXHOSTNAME+1];
+	char    domain_name[PBS_MAXHOSTNAME+1] = {'\0'};
+	char    user_name[PBS_MAXHOSTNAME+1] = {'\0'};
 
-	char    dctrl[PBS_MAXHOSTNAME+1];
-	wchar_t dctrlw[PBS_MAXHOSTNAME+1];
+	char    dctrl[PBS_MAXHOSTNAME+1] = {'\0'};
+	wchar_t dctrlw[PBS_MAXHOSTNAME+1] = {'\0'};
 	char	*p = NULL;
 
 	/* user: <domain_name>\<user_name> */
@@ -1447,15 +1447,15 @@ getLocalGroups(char *user, GROUP_USERS_INFO_0 **groupsp)
 	DWORD nread, total;
 	DWORD pref = 16;
 	DWORD rc;
-	wchar_t userw[UNLEN+1];
+	wchar_t userw[UNLEN+1] = {'\0'};
 
-	char    dname[PBS_MAXHOSTNAME+1];
+	char    dname[PBS_MAXHOSTNAME+1] = {'\0'};
 
-	char    domain_name[PBS_MAXHOSTNAME+1];
-	char    user_name[PBS_MAXHOSTNAME+1];
+	char    domain_name[PBS_MAXHOSTNAME+1] = {'\0'};
+	char    user_name[PBS_MAXHOSTNAME+1] = {'\0'};
 
-	char    dctrl[PBS_MAXHOSTNAME+1];
-	wchar_t dctrlw[PBS_MAXHOSTNAME+1];
+	char    dctrl[PBS_MAXHOSTNAME+1] = {'\0'};
+	wchar_t dctrlw[PBS_MAXHOSTNAME+1] = {'\0'};
 	char	*p = NULL;
 
 	/* user: <domain_name>\<user_name> */
@@ -1471,7 +1471,7 @@ getLocalGroups(char *user, GROUP_USERS_INFO_0 **groupsp)
 
 	strcpy(dctrl, domain_name);
 	if (GetComputerDomainName(dname) == 1) {
-		char    dname_a[PBS_MAXHOSTNAME+1];
+		char    dname_a[PBS_MAXHOSTNAME+1] = {'\0'};
 
 		get_dcinfo(domain_name, dname_a, dctrl);
 	}
@@ -1594,8 +1594,8 @@ isMember(char *user, char *group)
 	GROUP_USERS_INFO_0 *groups = NULL;
 	DWORD	nread;
 	DWORD	i;
-	wchar_t groupw[GNLEN+1];
-	char		realuser[PBS_MAXHOSTNAME+UNLEN+2]; /* dom\user0 */
+	wchar_t groupw[GNLEN+1] = {'\0'};
+	char		realuser[PBS_MAXHOSTNAME+UNLEN+2] = {'\0'}; /* dom\user0 */
 	SID_NAME_USE	sid_type;
 	SID		*sid = NULL;
 
@@ -1897,7 +1897,7 @@ getdefgrpname(char *user)
 
 	GROUP_USERS_INFO_0 *groups = NULL;
 	char	*group;
-	char	realuser[PBS_MAXHOSTNAME+UNLEN+2]; /* dom\user0 */
+	char	realuser[PBS_MAXHOSTNAME+UNLEN+2] = {'\0'}; /* dom\user0 */
 	DWORD	sid_sz = 0;
 	SID_NAME_USE	sid_type;
 	SID		*sid = NULL;
@@ -1974,7 +1974,7 @@ getdefgrpsid(char *user)
 char *
 getlogin(void)
 {
-	static char	usern[UNLEN+1];
+	static char	usern[UNLEN+1] = {'\0'};
 	int		sz;
 	int		ret;
 
@@ -2038,7 +2038,7 @@ getlogin(void)
 char *
 getlogin_full(void)
 {
-	static char	usern[PBS_MAXHOSTNAME+UNLEN+2];
+	static char	usern[PBS_MAXHOSTNAME+UNLEN+2] = {'\0'};
 	int		sz;
 	int		ret;
 
@@ -2195,10 +2195,10 @@ getgids(char *user, SID *grp[], DWORD rids[])
 	GROUP_USERS_INFO_0 *groups = NULL;
 	DWORD	nread;
 	DWORD	i, j, k;
-	char	group[GNLEN+1];
+	char	group[GNLEN+1] = {'\0'};
 	SID		*g;
 	int		found;
-	char    realuser[PBS_MAXHOSTNAME+UNLEN+2]; /* dom\user0 */
+	char    realuser[PBS_MAXHOSTNAME+UNLEN+2] = {'\0'}; /* dom\user0 */
 	SID_NAME_USE    sid_type;
 	SID             *sid = NULL;
 
@@ -2360,9 +2360,9 @@ inGroups(char *gname, SID *gidlist[], int len)
 char *
 default_local_homedir(char *username, HANDLE usertoken, int ret_profile_path)
 {
-	static  char 	homestr[MAXPATHLEN+1];
-	char		profilepath[MAXPATHLEN+1];
-	char		personal_path[MAX_PATH];
+	static  char 	homestr[MAXPATHLEN+1] = {'\0'};
+	char		profilepath[MAXPATHLEN+1] = {'\0'};
+	char		personal_path[MAX_PATH] = {'\0'};
 	char		logb[LOG_BUF_SIZE] = {'\0' } ;
 	DWORD		profsz;
 	HANDLE		userlogin;
@@ -2468,7 +2468,7 @@ map_unc_path(char *path, struct passwd *pw)
 
 	DWORD       ret;
 	NETRESOURCE nr;
-	static char local_drive[MAXPATHLEN+1];
+	static char local_drive[MAXPATHLEN+1] = {'\0'};
 	int	    lsize = MAXPATHLEN+1;
 
 	strcpy(local_drive, "");
@@ -2572,8 +2572,8 @@ getAssignedHomeDirectory(char *user)
 	char	*homedir = NULL;
 	char	*sysdrv = NULL;
 	int	len;
-	char	realuser[PBS_MAXHOSTNAME+UNLEN+2]; /* dom\user0 */
-	wchar_t	realuserw[PBS_MAXHOSTNAME+UNLEN+2]; /* dom\user0 */
+	char	realuser[PBS_MAXHOSTNAME+UNLEN+2] = {'\0'}; /* dom\user0 */
+	wchar_t	realuserw[PBS_MAXHOSTNAME+UNLEN+2] = {'\0'}; /* dom\user0 */
 	SID_NAME_USE sid_type;
 	SID	*sid = NULL;
 	char	*p;
@@ -2726,9 +2726,9 @@ getRhostsFile(char *user, HANDLE userlogin)
 {
 
 	struct  stat sbuf;
-	static char rhosts_file[MAXPATHLEN+1];
+	static char rhosts_file[MAXPATHLEN+1] = {'\0'};
 	char	*homedir = NULL;
-	char	profilepath[MAXPATHLEN+1];
+	char	profilepath[MAXPATHLEN+1] = {'\0'};
 
 
 	homedir = getAssignedHomeDirectory(user);
@@ -2995,7 +2995,7 @@ print_token_groups(TOKEN_GROUPS *token_groups)
 {
 	int	i;
 	char	*gname = NULL;
-	char	buf[80];
+	char	buf[80] = {'\0'};
 	char	logb[LOG_BUF_SIZE] = {'\0' } ;
 
 	strcpy(logb, "");
@@ -3040,7 +3040,7 @@ create_token_privs_byuser(SID *usid, DWORD attrib, HANDLE hLsa)
 	LSA_UNICODE_STRING *lsaRights = NULL;
 	ULONG numRights = 0;
 	int	len, i;
-	char privname[GNLEN+1];
+	char privname[GNLEN+1] = {'\0'};
 
 	if (hLsa == INVALID_HANDLE_VALUE || usid == NULL)
 		return (NULL);
@@ -3078,7 +3078,7 @@ create_token_privs_bygroups(TOKEN_GROUPS *token_groups, DWORD attrib, HANDLE hLs
 	LSA_UNICODE_STRING *lsaRights = NULL;
 	ULONG numRights = 0;
 	int	len, i, j, k;
-	char privname[GNLEN+1];
+	char privname[GNLEN+1] = {'\0'};
 	LUID	luid;
 	BOOL	found_match;
 
@@ -3206,8 +3206,8 @@ print_token_privs(TOKEN_PRIVILEGES *token_privs)
 	int i;
 	LUID luid;
 	DWORD cb;
-	char  buf[512];
-	char  buf2[512];
+	char  buf[512] = {'\0'};
+	char  buf2[512] = {'\0'};
 	char  logb[LOG_BUF_SIZE] = {'\0' } ;
 
 	if (token_privs == NULL)
@@ -3397,8 +3397,8 @@ print_dacl(ACL *pdacl)
 	ACL_SIZE_INFORMATION    sizeInfo;
 	ACCESS_ALLOWED_ACE      *pace;
 	int                     i;
-	char			bigbuf[1024];
-	char			buf2[80];
+	char			bigbuf[1024] = {'\0'};
+	char			buf2[80] = {'\0'};
 	char			*secname;
 
 	GetAclInformation(pdacl, &sizeInfo, sizeof(sizeInfo), AclSizeInformation);
@@ -3940,8 +3940,8 @@ setuser_with_password(char *user,
 {
 
 	SID     *usid;
-	char    thepass[PWLEN+1];
-	char    realname[UNLEN+1];
+	char    thepass[PWLEN+1] = {'\0'};
+	char    realname[UNLEN+1] = {'\0'};
 	char    domain[PBS_MAXHOSTNAME+1] = "";
 	struct	passwd *pwdp = NULL;
 	int	i;
@@ -4986,7 +4986,7 @@ struct passwd *
 getpwuid(uid_t uid)
 {
 	struct  passwd *pwdp = NULL;
-	char	*username;
+	char	*username = NULL;
 	int	i;
 
 	if (uid == NULL)
@@ -5028,10 +5028,10 @@ cache_usertoken_and_homedir(char *user,
 	int (*decrypt_func)(char *, int, size_t, char **),
 	int force)
 {
-	char	msg[4096];
+	char	msg[4096] = {'\0'};
 	char	*credb = NULL;
 	size_t	credl = 0;
-	struct passwd *pwdp;
+	struct passwd *pwdp = NULL;
 	int	i;
 
 	if (user == (char *)0)
@@ -5219,7 +5219,7 @@ wrap_NetUserGetInfo(LPCWSTR servername,
 
 	if ((netst == ERROR_LOGON_FAILURE) || (netst == ERROR_ACCESS_DENIED)) {
 		struct passwd *pw = NULL;
-		char	user_name[UNLEN+1];
+		char	user_name[UNLEN+1] = {'\0'};
 		int	i;
 
 		wcstombs(user_name, username, UNLEN);
@@ -5351,10 +5351,10 @@ has_read_access_domain_users_end:
 int
 check_executor(void)
 {
-	char 	dname[PBS_MAXHOSTNAME+1];
-	char 	exec_unamef[PBS_MAXHOSTNAME+UNLEN+2]; /* <dom>\<user>0 */
-	char 	exec_uname[PBS_MAXHOSTNAME+UNLEN+2];
-	char	exec_dname[PBS_MAXHOSTNAME+1];
+	char 	dname[PBS_MAXHOSTNAME+1] = {'\0'};
+	char 	exec_unamef[PBS_MAXHOSTNAME+UNLEN+2] = {'\0'}; /* <dom>\<user>0 */
+	char 	exec_uname[PBS_MAXHOSTNAME+UNLEN+2] = {'\0'};
+	char	exec_dname[PBS_MAXHOSTNAME+1] = {'\0'};
 	char	*p = NULL;
 	int	ret = 0;
 
@@ -5376,9 +5376,9 @@ check_executor(void)
 	}
 
 	if (GetComputerDomainName(dname)) {
-		char    	dname_a[PBS_MAXHOSTNAME+1];
-		char    	dctrl[PBS_MAXHOSTNAME+1];
-		wchar_t 	dctrlw[PBS_MAXHOSTNAME+1];
+		char    	dname_a[PBS_MAXHOSTNAME+1] = {'\0'};
+		char    	dctrl[PBS_MAXHOSTNAME+1] = {'\0'};
+		wchar_t 	dctrlw[PBS_MAXHOSTNAME+1] = {'\0'};
 
 
 		if (stricmp(exec_dname, dname) != 0) {

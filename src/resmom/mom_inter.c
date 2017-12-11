@@ -535,10 +535,8 @@ init_x11_display(
 
 		return (-1);
 	}
-	sprintf(homeenv, "HOME=%s",
-		homedir);
 
-	putenv(homeenv);
+	setenv("HOME", homedir, 1);
 
 	for (n = 0; n < NUM_SOCKS; n++)
 		socks[n].active = 0;

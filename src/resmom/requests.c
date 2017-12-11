@@ -273,8 +273,7 @@ set_kerb_cred(char *filename, char *data, size_t dsize, int conn)
 
 	(void)strcpy(cname, "FILE:");
 	(void)strcat(cname, filename);
-	sprintf(log_buffer, "KRB5CCNAME=%s", cname);
-	putenv(log_buffer);
+	setenv("KRB5CCNAME", cname, 1);
 
 	if ((err = krb5_cc_resolve(ktext, cname, &kache)) == -1) {
 		sprintf(log_buffer, "krb5_cc_resolve(%s",
@@ -340,22 +339,13 @@ set_gridproxy(char *filename, char *data, size_t dsize, uid_t uid, gid_t gid)
 	int		ret = -1;
 	char		*cred;
 	size_t		len;
-	char		buf[MAXPATHLEN+1];
-	char		*envstr;
 	int		fd = -1;
 
 	if (pbs_decrypt_data(data, PBS_CREDTYPE_AES, dsize, &cred, &len))
 		goto done;
 
-	sprintf(buf, "X509_USER_PROXY=%s", filename);
-	envstr = strdup(buf);
-	if (envstr == NULL) {
-		sprintf(log_buffer, "putenv: out of memory");
-		goto done;
-	}
-
-	if (putenv(envstr) == -1) {
-		sprintf(log_buffer, "putenv: %s %s", buf, strerror(errno));
+	if (setenv("X509_USER_PROXY", filename, 1) == -1) {
+		sprintf(log_buffer, "setenv: %s=%s %s", "X509_USER_PROXY", filename, strerror(errno));
 		goto done;
 	}
 
@@ -401,7 +391,6 @@ fork_to_user(struct batch_request *preq)
 	struct passwd 	*pwdp = NULL;
 	struct rq_cpyfile       *rqcpf;
 	static char     buf[MAXPATHLEN+1];
-	char            *envstr;
 	char		lpath[MAXPATHLEN+1];
 	job		*pjob;
 
@@ -459,20 +448,8 @@ fork_to_user(struct batch_request *preq)
 	}
 
 	/* create a USER env entry ... k5dcelogin may need it */
-	sprintf(buf, "USER=%s", rqcpf->rq_user);
-	if ((envstr = strdup(buf)) == NULL) {
-		revert_impersonated_user();
-		return (INVALID_HANDLE_VALUE);
-	}
-	putenv(envstr);
-
-	/* create a PBS_EXEC env entry */
-	sprintf(buf, "PBS_EXEC=%s", pbs_conf.pbs_exec_path);
-	if ((envstr = strdup(buf)) == NULL) {
-		revert_impersonated_user();
-		return (INVALID_HANDLE_VALUE);
-	}
-	putenv(envstr);
+	setenv("USER", rqcpf->rq_user, 1);
+	setenv("PBS_EXEC", pbs_conf.pbs_exec_path, 1);
 
 	return (pwdp->pw_userlogin);
 }
@@ -522,7 +499,6 @@ struct batch_request *preq;
 	gid_t		user_rgid;
 	int		fds[2];
 	int		usek5dce = 0;
-	char		*envstr;
 	struct rq_cpyfile	*rqcpf;
 	static char	buf[MAXPATHLEN+1];
 
@@ -543,16 +519,10 @@ struct batch_request *preq;
 		rqcpf = &preq->rq_ind.rq_cpyfile;
 
 	/* create a USER env entry ... k5dcelogin may need it */
-	sprintf(buf, "USER=%s", rqcpf->rq_user);
-	if ((envstr = strdup(buf)) == NULL)
-		frk_err(PBSE_SYSTEM, preq); /* no return */
-	putenv(envstr);
+	setenv("USER", rqcpf->rq_user, 1);
 
 	/* create a PBS_EXEC env entry */
-	sprintf(buf, "PBS_EXEC=%s", pbs_conf.pbs_exec_path);
-	if ((envstr = strdup(buf)) == NULL)
-		frk_err(PBSE_SYSTEM, preq); /* no return */
-	putenv(envstr);
+	setenv("PBS_EXEC", pbs_conf.pbs_exec_path, 1);
 
 	if (((pjob = find_job(rqcpf->rq_jobid)) != NULL) &&
 		(pjob->ji_grpcache != NULL)) {
@@ -628,12 +598,9 @@ struct batch_request *preq;
 					frk_err(PBSE_SYSTEM, preq); /* no return */
 				}
 				cred_pipe = fds[1];
-				sprintf(buf, "PBS_PWPIPE=%d", fds[0]);
-				if ((envstr = strdup(buf)) == NULL) {
-					log_err(errno, __func__, "Unable to allocate Memory!\n");
-					frk_err(PBSE_SYSTEM, preq);
-				}
-				putenv(envstr);
+				
+				sprintf(buf, "%d", fds[0]);
+				setenv("PBS_PWPIPE", buf, 1);
 				fcntl(cred_pipe, F_SETFD, 1);	/* close on exec */
 
 				/* construct argv array */

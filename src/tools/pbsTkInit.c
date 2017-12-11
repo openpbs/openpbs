@@ -110,8 +110,7 @@ int
 main(int argc, char *argv[])
 {
 
-	char    tcl_libpath[MAXPATHLEN+13];     /* 13 for "TCL_LIBRARY=" + \0 */
-	char    tk_libpath[MAXPATHLEN+12];     /* 12 for "TK_LIBRARY=" + \0 */
+	char	tbuf_env[256];
 
 	/*the real deal or just pbs_version and exit?*/
 
@@ -127,24 +126,23 @@ main(int argc, char *argv[])
 
 	if (!getenv("TCL_LIBRARY")) {
 		if (pbs_conf.pbs_exec_path) {
-			sprintf((char *)tcl_libpath,
-				"TCL_LIBRARY=%s/tcltk/lib/tcl%s",
-				pbs_conf.pbs_exec_path, TCL_VERSION);
-			putenv(tcl_libpath);
+			sprintf(tbuf_env, "%s/tcltk/lib/tcl%s",
+                                pbs_conf.pbs_exec_path, TCL_VERSION);
+			setenv("TCL_LIBRARY", tbuf_env, 1);
 		}
 	}
 
 
 	if (!getenv("TK_LIBRARY")) {
 		if (pbs_conf.pbs_exec_path) {
-			sprintf((char *)tk_libpath,
+			sprintf(tbuf_env, 
 #ifdef WIN32
-				"TK_LIBRARY=%s/lib/tk%s",
+                                "%s/lib/tk%s",
 #else
-				"TK_LIBRARY=%s/tcltk/lib/tk%s",
+                                "%s/tcltk/lib/tk%s",
 #endif
-				pbs_conf.pbs_exec_path, TK_VERSION);
-			putenv(tk_libpath);
+                                pbs_conf.pbs_exec_path, TK_VERSION);
+			setenv("TK_LIBRARY", tbuf_env, 1);
 		}
 	}
 

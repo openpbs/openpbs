@@ -142,7 +142,7 @@ win_attach(BOOL use_cmd, int newsid, int port, int doparent, pid_t pid, char *jo
 		 * installations of MPICH will not open a new session and escape
 		 * the new task.
 		 */
-		(void)putenv("MPICH_PROCESS_GROUP=no");
+		(void)setenv("MPICH_PROCESS_GROUP", "no", 1);
 
 		if ((ac > 0) && (av != NULL) && (*av != NULL) && (*av[0] != '\0')) {
 			/* create a suspended process */
@@ -398,7 +398,7 @@ main(int argc, char *argv[])
 		 ** installations of MPICH will not call setsid() and escape
 		 ** the new task.
 		 */
-		(void)putenv("MPICH_PROCESS_GROUP=no");
+		(void)setenv("MPICH_PROCESS_GROUP", "no", 1);
 
 		argv += optind;
 		argc -= optind;

@@ -49,9 +49,67 @@ static char	sysrootdir[MAXPATHLEN+1] = "";
 static char	sysdrive[MAXPATHLEN+1] = "";
 static char	temp_path[MAXPATHLEN+1] = "";
 static char	user_domain[PBS_MAXHOSTNAME+1] = "";
+static char	value_buf[ENV_BUF_SIZE] = "";
 /**
  * @file	env.c
  */
+/**
+ * @brief
+ * 	_setenv_win: Set an environment variable
+ *  
+ * @param[in] key - string holding key for environment variable
+ * @param[in] value - string holding value for environment variable
+ * @param[in] interrupt - int value to override existing value, not used in Windows
+ *	
+ * @return	int
+ * @retval	0		success
+ * @retval	non-zero	error
+
+ */
+int
+_setenv_win(char* key, char* value, int overwrite)
+{
+	errno = 0;
+
+	if(!GetEnvironmentVariable(key, value_buf, ENV_BUF_SIZE) && !overwrite)
+		if(!GetLastError() == ERROR_ENVVAR_NOT_FOUND)
+			return 0;
+
+	if(!SetEnvironmentVariable(key, value)){
+		errno = GetLastError();
+		return errno;
+	}
+
+	return 0;
+}
+/**
+ * @brief
+ * 	_getenv_win: Get value of an environment variable
+ *  
+ * @param[in] key - string holding key for environment variable
+ * @param[in] value - string buffer where value for environment variable will be returned
+ * @param[in] buffer size - int value to specify max length
+ *	
+ * @return	char*
+ * @retval	value of key in the environment 	success
+ * @retval	NULL								error
+
+ */
+char *
+_getenv_win(char *key)
+{
+	errno = 0;
+	memset(value_buf, 0, sizeof(value_buf));
+
+	if(!GetEnvironmentVariable(key, value_buf, ENV_BUF_SIZE)){
+		if(GetLastError() == ERROR_ENVVAR_NOT_FOUND){
+			errno = ERROR_ENVVAR_NOT_FOUND;
+			return NULL;
+		}
+	}
+
+	return value_buf;
+}
 /**
  * @brief
  * 	save_env: gets/sets some important environment variable values that can
@@ -116,11 +174,9 @@ save_env(void)
 	}
 
 	/* Set the SYSTEMROOT and SystemRoot environment variables */
-	sprintf(env_string, "SYSTEMROOT=%s", sysrootdir);
-	putenv(env_string);
+	setenv("SYSTEMROOT", sysrootdir, 1);
 
-	sprintf(env_string, "SystemRoot=%s", sysrootdir);
-	putenv(env_string);
+	setenv("SystemRoot", sysrootdir, 1);
 
 	/* The following figures out the value for SYSTEMDRIVE */
 	strcpy(sysdrive, "C:");
@@ -129,11 +185,9 @@ save_env(void)
 	}
 
 	/* Set the SYSTEMDRIVE and SystemDrive environment variables */
-	sprintf(env_string, "SYSTEMDRIVE=%s", sysdrive);
-	putenv(env_string);
+	setenv("SYSTEMDRIVE", sysdrive, 1);
 
-	sprintf(env_string, "SystemDrive=%s", sysdrive);
-	putenv(env_string);
+	setenv("SystemDrive", sysdrive, 1);
 
 	/* The following figures out the value for TEMP */
 	strcpy(temp_path, "");

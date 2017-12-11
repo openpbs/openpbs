@@ -637,7 +637,7 @@ int   pe_io_type;
 				/* set PBS_JOBDIR to user HOME*/
 				sprintf(buf, "PBS_JOBDIR=%s", pjob->ji_grpcache->gc_homedir);
 			}
-			if (putenv(buf) != 0)
+			if (setenv("PBS_JOBDIR", pjob->ji_grpcache->gc_homedir, 1) != 0) 
 				log_err(-1, "run_pelog", "set environment variable PBS_JOBDIR");
 		}
 

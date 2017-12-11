@@ -124,7 +124,7 @@ pbsTcl_Init(Tcl_Interp *interp)
 int
 main(int argc, char *argv[])
 {
-	char	tcl_libpath[MAXPATHLEN+13];	/* 13 for "TCL_LIBRARY=" + \0 */
+	char	tbuf_env[256];
 	int rc;
 
 	/*the real deal or just pbs_version and exit?*/
@@ -149,14 +149,14 @@ main(int argc, char *argv[])
 
 	if (!getenv("TCL_LIBRARY")) {
 		if (pbs_conf.pbs_exec_path) {
-			sprintf((char *)tcl_libpath,
+			sprintf(tbuf_env, 
 #ifdef WIN32
-				"TCL_LIBRARY=%s/lib/tcl%s",
+                                "%s/lib/tcl%s",
 #else
-				"TCL_LIBRARY=%s/tcltk/lib/tcl%s",
+                                "%s/tcltk/lib/tcl%s",
 #endif
 				pbs_conf.pbs_exec_path, TCL_VERSION);
-			putenv(tcl_libpath);
+			setenv("TCL_LIBRARY", tbuf_env, 1);
 		}
 	}
 	if (pbs_conf.pbs_use_tcp == 1) {
