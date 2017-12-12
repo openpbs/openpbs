@@ -467,7 +467,6 @@ chk_job_request(char *jobid, struct batch_request *preq, int *rc)
 		p2 = strchr(jobid, '.');
 		if (p2) 
 			*p2 = '\0';
-		/*strcat(jobid, p1);*/
 		strncat(jobid, p1, PBS_MAXSVRJOBID-1);
 	}
 
