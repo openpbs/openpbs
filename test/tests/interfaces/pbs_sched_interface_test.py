@@ -36,6 +36,7 @@
 # trademark licensing policies.
 
 from tests.interfaces import *
+import shutil
 
 
 @tags('multisched')
@@ -47,10 +48,34 @@ class TestSchedulerInterface(TestInterfaces):
 
     def setUp(self):
         TestInterfaces.setUp(self)
-
+        a = {'partition': 'P1',
+             'sched_host': self.server.hostname,
+             'sched_port': '15051'}
         self.server.manager(MGR_CMD_CREATE,
-                            SCHED,
+                            SCHED, a,
                             id="TestCommonSched")
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'sched_port': 15051},
+                            id="TestCommonSched")
+        self.sched_configure("TestCommonSched", '15051')
+
+    def sched_configure(self, sched_name, sched_port, sched_home=None):
+        pbs_home = self.server.pbs_conf['PBS_HOME']
+        if sched_home is None:
+            sched_home = pbs_home
+        sched_priv_dir = 'sched_priv_' + sched_name
+        sched_logs_dir = 'sched_logs_' + sched_name
+        if not os.path.exists(os.path.join(sched_home, sched_priv_dir)):
+            self.du.run_copy(self.server.hostname,
+                             os.path.join(pbs_home, 'sched_priv'),
+                             os.path.join(sched_home, sched_priv_dir),
+                             recursive=True)
+        if not os.path.exists(os.path.join(sched_home, sched_logs_dir)):
+            self.du.run_copy(self.server.hostname,
+                             os.path.join(pbs_home, 'sched_logs'),
+                             os.path.join(sched_home, sched_logs_dir),
+                             recursive=True)
+        self.server.schedulers[sched_name].start(sched_port, sched_home)
 
     def test_duplicate_scheduler_name(self):
         """
@@ -103,6 +128,7 @@ class TestSchedulerInterface(TestInterfaces):
                             SCHED,
                             id="testDeleteSched",
                             runas=ROOT_USER)
+        print self.server.schedulers
 
         # Check for attribute set permission
         try:
@@ -155,9 +181,129 @@ class TestSchedulerInterface(TestInterfaces):
         self.server.manager(MGR_CMD_LIST,
                             SCHED,
                             id="TestCommonSched")
-        sched = None
-        sched = self.server.schedulers['TestCommonSched']
-        self.assertNotEqual(sched, None)
-        self.assertEqual(
-            sched.attributes['sched_cycle_length'],
-            '00:20:00')
+        a = {'sched_cycle_length': '00:20:00'}
+        self.server.expect(SCHED, a, id='TestCommonSched', max_attempts=10)
+
+    def test_sched_default_attrs(self):
+        """
+        Test all sched attributes are set by default on default scheduler
+        """
+        sched_priv = os.path.join(
+            self.server.pbs_conf['PBS_HOME'], 'sched_priv')
+        sched_logs = os.path.join(
+            self.server.pbs_conf['PBS_HOME'], 'sched_logs')
+        a = {'sched_port': 15004,
+             'sched_host': self.server.hostname,
+             'sched_priv': sched_priv,
+             'sched_log': sched_logs,
+             'scheduling': 'True',
+             'scheduler_iteration': 600,
+             'state': 'idle',
+             'sched_cycle_length': '00:20:00'}
+        self.server.expect(SCHED, a, id='default', max_attempts=10)
+
+    def test_scheduling_attribute(self):
+        """
+        Test scheduling attribute on newly created scheduler is false
+        unless made true
+        """
+        self.server.expect(SCHED, {'scheduling': 'False'},
+                           id='TestCommonSched', max_attempts=10)
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduling': 'True'},
+                            runas=ROOT_USER, id='TestCommonSched')
+        self.server.expect(SCHED, {'scheduling': 'True'},
+                           id='TestCommonSched', max_attempts=10)
+
+    def test_set_sched_priv_log_duplicate_value(self):
+        """
+        Test setting of sched_priv and sched_log to a
+        value assigned to another scheduler
+        """
+        err_msg = "Another Sched object also has same "
+        err_msg += "value for its sched_priv directory"
+        try:
+            self.server.manager(MGR_CMD_SET, SCHED,
+                                {'sched_priv': '/var/spool/pbs/sched_priv'},
+                                runas=ROOT_USER, id='TestCommonSched')
+        except PbsManagerError, e:
+            self.assertTrue(err_msg in e.msg[0],
+                            "Error message is not expected")
+        err_msg = "Another Sched object also has same "
+        err_msg += "value for its sched_log directory"
+        try:
+            self.server.manager(MGR_CMD_SET, SCHED,
+                                {'sched_log': '/var/spool/pbs/sched_logs'},
+                                runas=ROOT_USER, id='TestCommonSched')
+        except PbsManagerError, e:
+            self.assertTrue(err_msg in e.msg[0],
+                            "Error message is not expected")
+
+    def test_set_default_sched_not_permitted(self):
+        """
+        Test setting partition on default scheduler
+        """
+        err_msg = "Operation is not permitted on default scheduler"
+        try:
+            self.server.manager(MGR_CMD_SET, SCHED,
+                                {'partition': 'P1'},
+                                runas=ROOT_USER)
+        except PbsManagerError, e:
+            self.assertTrue(err_msg in e.msg[0],
+                            "Error message is not expected")
+        try:
+            self.server.manager(MGR_CMD_SET, SCHED,
+                                {'sched_priv': '/var/spool/somedir'},
+                                runas=ROOT_USER)
+        except PbsManagerError, e:
+            self.assertTrue(err_msg in e.msg[0],
+                            "Error message is not expected")
+        try:
+            self.server.manager(MGR_CMD_SET, SCHED,
+                                {'sched_log': '/var/spool/somedir'},
+                                runas=ROOT_USER)
+        except PbsManagerError, e:
+            self.assertTrue(err_msg in e.msg[0],
+                            "Error message is not expected")
+
+    def test_sched_name_too_long(self):
+        """
+        Test creating a scheduler with name longer than 15 chars
+        """
+        try:
+            self.server.manager(MGR_CMD_CREATE, SCHED,
+                                runas=ROOT_USER, id="TestLongScheduler")
+        except PbsManagerError, e:
+            self.assertTrue("Scheduler name is too long" in e.msg[0],
+                            "Error message is not expected")
+
+    def test_set_default_sched_attrs(self):
+        """
+        Test setting scheduling and scheduler_iteration on default scheduler
+        and it updates server attributes and vice versa
+        """
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduling': 'False'},
+                            runas=ROOT_USER)
+        self.server.expect(SERVER, {'scheduling': 'False'})
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'scheduling': 'True'},
+                            runas=ROOT_USER)
+        self.server.manager(MGR_CMD_LIST, SCHED, id='default')
+        self.server.expect(SCHED, {'scheduling': 'True'},
+                           id='default', max_attempts=10)
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduler_iteration': 300},
+                            runas=ROOT_USER)
+        self.server.expect(SERVER, {'scheduler_iteration': 300})
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'scheduler_iteration': 500},
+                            runas=ROOT_USER)
+        self.server.manager(MGR_CMD_LIST, SCHED, id='default')
+        self.server.expect(SCHED, {'scheduler_iteration': 500},
+                           id='default', max_attempts=10)
+
+    def tearDown(self):
+        self.du.run_cmd(self.server.hostname, [
+                        'pkill', '-9', 'pbs_sched'], sudo=True)
+        TestInterfaces.tearDown(self)

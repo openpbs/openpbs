@@ -3742,7 +3742,10 @@ class PBSService(PBSObject):
         """
         priv = self._instance_to_privpath(inst)
         lock = self._instance_to_lock(inst)
-        path = os.path.join(self.pbs_conf['PBS_HOME'], priv, lock)
+        if isinstance(inst, Scheduler) and 'sched_priv' in inst.attributes:
+            path = os.path.join(inst.attributes.get('sched_priv'), lock)
+        else:
+            path = os.path.join(self.pbs_conf['PBS_HOME'], priv, lock)
         rv = self.du.cat(self.hostname, path, sudo=True, logerr=False)
         if ((rv['rc'] == 0) and (len(rv['out']) > 0)):
             self.pid = rv['out'][0].strip()
@@ -3928,10 +3931,15 @@ class PBSService(PBSObject):
                                             'server_priv', 'accounting', day)
                     sudo = True
                 else:
-                    logval = self._instance_to_logpath(logtype)
-                    if logval:
-                        filename = os.path.join(self.pbs_conf['PBS_HOME'],
-                                                logval, day)
+                    if (isinstance(self, Scheduler) and
+                            'sched_log' in self.attributes):
+                        filename = os.path.join(
+                            self.attributes.get('sched_log'), day)
+                    else:
+                        logval = self._instance_to_logpath(logtype)
+                        if logval:
+                            filename = os.path.join(self.pbs_conf['PBS_HOME'],
+                                                    logval, day)
                 if n == 'ALL':
                     if self._is_local and not sudo:
                         lines = open(filename)
@@ -6622,6 +6630,21 @@ class Server(PBSService):
                     del self.queues[i]
                 if obj_type == MGR_OBJ_RSC and i in self.resources:
                     del self.resources[i]
+                if obj_type == SCHED and i in self.schedulers.keys():
+                    del self.schedulers[i]
+
+        bs_list = []
+        if cmd == MGR_CMD_SET:
+            if rc == 0 and id is not None:
+                tbsl = copy.deepcopy(attrib)
+                tbsl['id'] = id
+                bs_list.append(tbsl)
+                self.update_attributes(obj_type, bs_list)
+
+        if cmd == MGR_CMD_CREATE or cmd == MGR_CMD_UNSET:
+            if rc == 0:
+                bsl = self.status(obj_type, attrib, id, extend)
+                self.update_attributes(obj_type, bsl)
 
         if rc != 0:
             raise PbsManagerError(rv=False, rc=rc, msg=self.geterrmsg(),
@@ -8325,7 +8348,6 @@ class Server(PBSService):
         """
         Populate objects from batch status data
         """
-
         if bs is None:
             return
 
@@ -10422,14 +10444,12 @@ class Scheduler(PBSService):
 
         self.dflt_holidays_file = os.path.join(self.pbs_conf['PBS_EXEC'],
                                                'etc', 'pbs_holidays')
-
         self.holidays_file = os.path.join(self.pbs_conf['PBS_HOME'],
                                           'sched_priv', 'holidays')
 
         self.dflt_resource_group_file = os.path.join(self.pbs_conf['PBS_EXEC'],
                                                      'etc',
                                                      'pbs_resource_group')
-
         self.resource_group_file = os.path.join(self.pbs_conf['PBS_HOME'],
                                                 'sched_priv', 'resource_group')
         self.fairshare_tree = self.query_fairshare()
@@ -10484,7 +10504,8 @@ class Scheduler(PBSService):
         """
         return super(Scheduler, self)._all_instance_pids(inst=self)
 
-    def start(self, args=None, launcher=None):
+    def start(self, sched_port=None, sched_home=None, args=None,
+              launcher=None):
         """
         Start the scheduler
 
@@ -10493,6 +10514,21 @@ class Scheduler(PBSService):
         :param launcher: Optional utility to invoke the launch of the service
         :type launcher: str or list
         """
+        if self.attributes['id'] != 'default' and sched_port is not None:
+            cmd = [os.path.join(self.pbs_conf['PBS_EXEC'],
+                                'sbin', 'pbs_sched')]
+            cmd += ['-I', self.attributes['id']]
+            cmd += ['-S', sched_port]
+            if sched_home is not None:
+                cmd += ['-d', sched_home]
+            try:
+                ret = self.du.run_cmd(self.hostname, cmd, sudo=True,
+                                      logerr=False, level=logging.INFOCLI)
+            except PbsInitServicesError as e:
+                raise PbsServiceError(rc=e.rc, rv=e.rv, msg=e.msg)
+            self.server.manager(MGR_CMD_LIST, SCHED)
+            return ret
+
         if args is not None or launcher is not None:
             return super(Scheduler, self)._start(inst=self, args=args,
                                                  launcher=launcher)
@@ -10640,13 +10676,17 @@ class Scheduler(PBSService):
             self.sched_config = {}
             self._sched_config_comments = {}
             self._config_order = []
-
+        if 'sched_priv' in self.attributes:
+            self.sched_config_file = os.path.join(
+                self.attributes.get('sched_priv'),
+                'sched_config')
         if schd_cnfg is None:
             if self.sched_config_file is not None:
                 schd_cnfg = self.sched_config_file
             else:
                 self.logger.error('no scheduler configuration file to parse')
                 return False
+
         try:
             conf_opts = self.du.cat(self.hostname, schd_cnfg,
                                     sudo=(not self.has_diag),
@@ -10788,8 +10828,12 @@ class Scheduler(PBSService):
             os.close(fd)
 
             if path is None:
-                sp = os.path.join(self.pbs_conf['PBS_HOME'], "sched_priv",
-                                  "sched_config")
+                if 'sched_priv' in self.attributes:
+                    sp = os.path.join(self.attributes.get('sched_priv'),
+                                      'sched_config')
+                else:
+                    sp = os.path.join(self.pbs_conf['PBS_HOME'],
+                                      'sched_priv', 'sched_config')
                 if self.du.is_localhost(self.hostname):
                     self.du.run_copy(self.hostname, sp, sp + '.bak', sudo=True)
                 else:
@@ -10922,8 +10966,8 @@ class Scheduler(PBSService):
                             SCHED,
                             id="@default")
         self.server.manager(MGR_CMD_LIST, SCHED)
-        ignore_attrs = ['id', 'pbs_version', 'sched_host', 'state',
-                        'sched_port']
+        ignore_attrs = ['id', 'pbs_version', 'sched_host',
+                        'state', 'sched_port']
         unsetattrs = []
         for k in self.attributes.keys():
             if k not in ignore_attrs:
@@ -10943,7 +10987,8 @@ class Scheduler(PBSService):
         if self.du.cmp(self.hostname, self.dflt_sched_config_file,
                        self.sched_config_file) != 0:
             self.du.run_copy(self.hostname, self.dflt_sched_config_file,
-                             self.sched_config_file, mode=0644, sudo=True)
+                             self.sched_config_file, mode=0644,
+                             sudo=True)
         self.signal('-HUP')
         # Revert fairshare usage
         cmd = [os.path.join(self.pbs_conf['PBS_EXEC'], 'sbin', 'pbsfs'), '-e']
@@ -10969,7 +11014,11 @@ class Scheduler(PBSService):
         """
         conf = {}
         sconf = {MGR_OBJ_SCHED: conf}
-        sched_priv = os.path.join(self.pbs_conf['PBS_HOME'], 'sched_priv')
+        if 'sched_priv' in self.attributes:
+            sched_priv = self.attributes.get('sched_priv')
+        else:
+            sched_priv = os.path.join(
+                self.pbs_conf['PBS_HOME'], 'sched_priv')
         sc = os.path.join(sched_priv, 'sched_config')
         self._save_config_file(conf, sc)
         rg = os.path.join(sched_priv, 'resource_group')
@@ -11079,7 +11128,10 @@ class Scheduler(PBSService):
                         "reverting holidays file to default")
 
         rc = None
-
+        if 'sched_priv' in self.attributes:
+            self.holidays_file = os.path.join(
+                self.attributes.get('sched_priv'),
+                'holidays')
         # Copy over the holidays file from PBS_EXEC if it exists
         if self.du.cmp(self.hostname, self.dflt_holidays_file,
                        self.holidays_file) != 0:
@@ -11110,7 +11162,10 @@ class Scheduler(PBSService):
 
         days_map = obj._days_map
         days_set = obj.days_set
-
+        if 'sched_priv' in self.attributes:
+            self.holidays_file = os.path.join(
+                self.attributes.get('sched_priv'),
+                'holidays')
         if path is None:
             path = self.holidays_file
         lines = self.du.cat(self.hostname, path, sudo=True)['out']
@@ -11621,6 +11676,10 @@ class Scheduler(PBSService):
         if obj is None:
             obj = self.holidays_obj
 
+        if 'sched_priv' in self.attributes:
+            self.holidays_file = os.path.join(
+                self.attributes.get('sched_priv'),
+                'holidays')
         if out_path is None:
             out_path = self.holidays_file
 
@@ -12030,9 +12089,12 @@ class Scheduler(PBSService):
 
         if hostname is None:
             hostname = self.hostname
-        if resource_group is None:
-            resource_group = self.resource_group_file
-
+        if 'sched_priv' in self.attributes:
+            self.resource_group_file = os.path.join(
+                self.attributes.get('sched_priv'),
+                'resource_group')
+        # if resource_group is None:
+        resource_group = self.resource_group_file
         # if has_diag is True acces to sched_priv may not require su privilege
         ret = self.du.cat(hostname, resource_group, sudo=(not self.has_diag))
         if ret['rc'] != 0:
@@ -12065,6 +12127,10 @@ class Scheduler(PBSService):
         :param nshares: The number of shares associated to the entity
         :type nshares: int
         """
+        if 'sched_priv' in self.attributes:
+            self.resource_group_file = os.path.join(
+                self.attributes.get('sched_priv'),
+                'resource_group')
         if self.resource_group is None:
             self.resource_group = self.parse_resource_group(
                 self.hostname, self.resource_group_file)
