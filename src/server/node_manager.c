@@ -176,7 +176,7 @@
 #include	"hook_func.h"
 #include	"sched_cmds.h"
 #include	"provision.h"
-#include "pbs_sched.h"
+#include        "pbs_sched.h"
 
 #if !defined(H_ERRNO_DECLARED) && !defined(WIN32)
 extern int h_errno;
