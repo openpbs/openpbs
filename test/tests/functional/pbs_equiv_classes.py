@@ -1878,3 +1878,57 @@ else:
         # and one for jobs inside workq
         self.scheduler.log_match("Number of job equivalence classes: 2",
                                  max_attempts=10, starttime=self.t)
+
+    def test_overlap_resv(self):
+        """
+        Test that 2 overlapping reservation creates 2 different
+        equivalence classes
+        """
+
+        # Submit a reservation
+        a = {'Resource_List.select': '1:ncpus=1',
+             'reserve_start': int(time.time()) + 20,
+             'reserve_end': int(time.time()) + 300, }
+        r1 = Reservation(TEST_USER, a)
+        rid1 = self.server.submit(r1)
+        r2 = Reservation(TEST_USER, a)
+        rid2 = self.server.submit(r2)
+        a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        self.server.expect(RESV, a, id=rid1)
+        self.server.expect(RESV, a, id=rid2)
+
+        r1name = rid1.split('.')
+        r2name = rid2.split('.')
+        a = {ATTR_queue: r1name[0], 'Resource_List.select': '1:ncpus=1'}
+        j1 = Job(TEST_USER, a)
+        jid1 = self.server.submit(j1)
+        self.server.expect(JOB, 'comment', op=SET, id=jid1)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid1)
+        j2 = Job(TEST_USER, a)
+        jid2 = self.server.submit(j2)
+        self.server.expect(JOB, 'comment', op=SET, id=jid2)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
+
+        a = {ATTR_queue: r2name[0], 'Resource_List.select': '1:ncpus=1'}
+        j3 = Job(TEST_USER, a)
+        jid3 = self.server.submit(j3)
+        self.server.expect(JOB, 'comment', op=SET, id=jid3)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid3)
+        j4 = Job(TEST_USER, a)
+        jid4 = self.server.submit(j4)
+        self.server.expect(JOB, 'comment', op=SET, id=jid4)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid4)
+
+        # Wait for reservation to start
+        self.server.expect(RESV, {'reserve_state=RESV_RUNNING': 2}, offset=20)
+
+        # Verify that equivalence class is 2; one for
+        # each reservation queue
+        self.scheduler.log_match("Number of job equivalence classes: 2",
+                                 max_attempts=10, starttime=self.t)
+
+        # Verify that one job from R1 is running and
+        # one job from R2 is running
+
+        self.server.expect(JOB, {"job_state": 'R'}, id=jid1)
+        self.server.expect(JOB, {"job_state": 'R'}, id=jid3)
