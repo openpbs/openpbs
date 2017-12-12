@@ -2434,7 +2434,6 @@ sched_settings_frm_svr(struct batch_status *status)
 				patt->value = "0";
 				patt->next = NULL;
 
-				patt->next = NULL;
 				err = pbs_manager(connector,
 					MGR_CMD_SET, MGR_OBJ_SCHED,
 					sc_name, attribs, NULL);
