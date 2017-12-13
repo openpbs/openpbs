@@ -616,10 +616,17 @@ modify_job_attr(job *pjob, svrattrl *plist, int perm, int *bad)
 		return (rc);
 	}
 
-	/* Now copy the new values into the job attribute array */
+	/* Now copy the new values into the job attribute array for the purposes of running the action functions */
 
 	for (i = 0; i < JOB_ATR_LAST; i++) {
 		if (newattr[i].at_flags & ATR_VFLAG_MODIFY) {
+			/*
+			 * The function update_eligible_time() expects it is the only one setting accrue_type.
+			 * If we set it here, it will get confused.  There is no action function for accrue_type,
+			 * so pre-setting it for the action function calls isn't required.
+			 */
+			if (i == JOB_ATR_accrue_type)
+				continue;
 			job_attr_def[i].at_free(&pattr[i]);
 			if ((pre_copy[i].at_type == ATR_TYPE_LIST) ||
 				(pre_copy[i].at_type == ATR_TYPE_RESC)) {
