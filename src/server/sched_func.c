@@ -439,9 +439,11 @@ set_sched_default(pbs_sched* psched)
 	}
 	if ((psched->sch_attr[(int) SCHED_ATR_sched_state].at_flags & ATR_VFLAG_SET) == 0) {
 		psched->sch_attr[(int) SCHED_ATR_sched_state].at_val.at_str = malloc(SC_STATUS_LEN + 1);
-		if (psched->sch_attr[(int) SCHED_ATR_sched_state].at_val.at_str == NULL)
+		if (psched->sch_attr[(int) SCHED_ATR_sched_state].at_val.at_str == NULL) {
+			snprintf(log_buffer, LOG_BUF_SIZE-1, "malloc failure (errno %d)", errno);
+			log_err(PBSE_SYSTEM, __func__, log_buffer);
 			return;
-		else {
+		} else {
 			if (psched != dflt_scheduler)
 				strncpy(psched->sch_attr[(int) SCHED_ATR_sched_state].at_val.at_str, SC_DOWN, SC_STATUS_LEN);
 			else
@@ -454,9 +456,11 @@ set_sched_default(pbs_sched* psched)
 	}
 	if ((psched->sch_attr[(int) SCHED_ATR_sched_priv].at_flags & ATR_VFLAG_SET) == 0) {
 		psched->sch_attr[(int) SCHED_ATR_sched_priv].at_val.at_str = malloc(MAXPATHLEN + 1);
-		if (psched->sch_attr[(int) SCHED_ATR_sched_priv].at_val.at_str == NULL)
+		if (psched->sch_attr[(int) SCHED_ATR_sched_priv].at_val.at_str == NULL) {
+			snprintf(log_buffer, LOG_BUF_SIZE-1, "malloc failure (errno %d)", errno);
+			log_err(PBSE_SYSTEM, __func__, log_buffer);
 			return;
-		else {
+		} else {
 			if (psched != dflt_scheduler)
 				(void) snprintf(psched->sch_attr[(int) SCHED_ATR_sched_priv].at_val.at_str, MAXPATHLEN, "%s/sched_priv_%s",
 						pbs_conf.pbs_home_path, psched->sc_name);
@@ -470,9 +474,11 @@ set_sched_default(pbs_sched* psched)
 	}
 	if ((psched->sch_attr[(int) SCHED_ATR_sched_log].at_flags & ATR_VFLAG_SET) == 0) {
 		psched->sch_attr[(int) SCHED_ATR_sched_log].at_val.at_str = malloc(MAXPATHLEN + 1);
-		if (psched->sch_attr[(int) SCHED_ATR_sched_log].at_val.at_str == NULL)
+		if (psched->sch_attr[(int) SCHED_ATR_sched_log].at_val.at_str == NULL) {
+			snprintf(log_buffer, LOG_BUF_SIZE-1, "malloc failure (errno %d)", errno);
+			log_err(PBSE_SYSTEM, __func__, log_buffer);
 			return;
-		else {
+		} else {
 			if (psched != dflt_scheduler)
 				(void) snprintf(psched->sch_attr[(int) SCHED_ATR_sched_log].at_val.at_str, MAXPATHLEN, "%s/sched_logs_%s",
 						pbs_conf.pbs_home_path, psched->sc_name);
@@ -517,10 +523,8 @@ action_sched_partition(attribute *pattr, void *pobj, int actmode)
 	for (i=0; i < pattr->at_val.at_arst->as_usedptr; ++i) {
 		if (pattr->at_val.at_arst->as_string[i] == NULL)
 			continue;
-		psched = (pbs_sched*) GET_NEXT(svr_allscheds);
-		while (psched) {
+		for (psched = (pbs_sched*) GET_NEXT(svr_allscheds); psched; psched = (pbs_sched*) GET_NEXT(psched->sc_link)) {
 			if (psched == pobj) {
-				psched = (pbs_sched*) GET_NEXT(psched->sc_link);
 				continue;
 			}
 			part_attr = &(psched->sch_attr[SCHED_ATR_partition]);
@@ -532,7 +536,6 @@ action_sched_partition(attribute *pattr, void *pobj, int actmode)
 						return PBSE_SCHED_PARTITION_ALREADY_EXISTS;
 				}
 			}
-			psched = (pbs_sched*) GET_NEXT(psched->sc_link);
 		}
 	}
 	set_scheduler_flag(SCH_ATTRS_CONFIGURE, pin_sched);
