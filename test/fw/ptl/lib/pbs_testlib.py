@@ -10686,7 +10686,6 @@ class Scheduler(PBSService):
             else:
                 self.logger.error('no scheduler configuration file to parse')
                 return False
-
         try:
             conf_opts = self.du.cat(self.hostname, schd_cnfg,
                                     sudo=(not self.has_diag),
@@ -10987,8 +10986,7 @@ class Scheduler(PBSService):
         if self.du.cmp(self.hostname, self.dflt_sched_config_file,
                        self.sched_config_file) != 0:
             self.du.run_copy(self.hostname, self.dflt_sched_config_file,
-                             self.sched_config_file, mode=0644,
-                             sudo=True)
+                             self.sched_config_file, mode=0644, sudo=True)
         self.signal('-HUP')
         # Revert fairshare usage
         cmd = [os.path.join(self.pbs_conf['PBS_EXEC'], 'sbin', 'pbsfs'), '-e']

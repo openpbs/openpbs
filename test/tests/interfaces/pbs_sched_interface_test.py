@@ -36,7 +36,6 @@
 # trademark licensing policies.
 
 from tests.interfaces import *
-import shutil
 
 
 @tags('multisched')
@@ -128,7 +127,6 @@ class TestSchedulerInterface(TestInterfaces):
                             SCHED,
                             id="testDeleteSched",
                             runas=ROOT_USER)
-        print self.server.schedulers
 
         # Check for attribute set permission
         try:
