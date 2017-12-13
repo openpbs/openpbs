@@ -2382,7 +2382,6 @@ sched_settings_frm_svr(struct batch_status *status)
 	struct	attropl	*attribs;
 	struct batch_status *ss = NULL;
 	static char *log_dir = NULL;
-	static char *priv_dir = NULL;
 	char *tmp_comment = NULL;
 	int clear_comment = 0;
 	extern char *partitions;
@@ -2410,6 +2409,7 @@ sched_settings_frm_svr(struct batch_status *status)
 		int priv_dir_update_fail = 0;
 		struct attropl *patt;
 		char comment[MAX_LOG_SIZE] = {0};
+		static char *priv_dir = NULL;
 		if ((log_dir != NULL) && strcmp(log_dir, tmp_log_dir) != 0) {
 			(void)snprintf(path_log,  sizeof(path_log), tmp_log_dir);
 			log_close(1);
@@ -2523,8 +2523,6 @@ sched_settings_frm_svr(struct batch_status *status)
 			patt++;
 			patt->name = ATTR_scheduling;
 			patt->value = "0";
-			patt->next = NULL;
-
 			patt->next = NULL;
 			err = pbs_manager(connector,
 				MGR_CMD_SET, MGR_OBJ_SCHED,

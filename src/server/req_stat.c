@@ -119,8 +119,8 @@ static int bad;
 
 /* The following private support functions are included */
 
-static int  status_que(pbs_queue *, struct batch_request *, pbs_list_head *, attribute *attr);
-static int status_node(struct pbsnode *, struct batch_request *, pbs_list_head *, attribute *attr);
+static int status_que(pbs_queue *, struct batch_request *, pbs_list_head *);
+static int status_node(struct pbsnode *, struct batch_request *, pbs_list_head *);
 static int status_resv(resc_resv *, struct batch_request *, pbs_list_head *);
 extern pbs_sched *find_scheduler(char *sched_name);
 /**
@@ -459,12 +459,10 @@ req_stat_que(struct batch_request *preq)
 	if (type == 0) {	/* get status of the one named queue */
 		if (preq->rq_extend != NULL) {
 			if (pque->qu_attr[QA_ATR_partition].at_flags & ATR_VFLAG_SET) {
-				/*search for the partition in the attr*/
+				/* search for the partition in the attr */
 				for (k = 0; k < attr.at_val.at_arst->as_usedptr; k++) {
-					if ((attr.at_val.at_arst->as_string[k] != NULL)
-							&& (!strcmp(
-									pque->qu_attr[QA_ATR_partition].at_val.at_str,
-									attr.at_val.at_arst->as_string[k]))) {
+					if ((attr.at_val.at_arst->as_string[k] != NULL) &&
+						(!strcmp(pque->qu_attr[QA_ATR_partition].at_val.at_str, attr.at_val.at_arst->as_string[k]))) {
 						consider_q = 1;
 						break;
 					}
@@ -479,28 +477,23 @@ req_stat_que(struct batch_request *preq)
 			}
 		}
 		if (consider_q) {
-			rc = status_que(pque, preq, &preply->brp_un.brp_status,
-					(preq->rq_extend ? &attr : NULL));
+			rc = status_que(pque, preq, &preply->brp_un.brp_status);
 			consider_q = 0;
 		}
 	} else {	/* get status of queues */
-		pque = (pbs_queue *)GET_NEXT(svr_queues);
-		while (pque) {
+		for (pque = (pbs_queue *)GET_NEXT(svr_queues); pque;pque = (pbs_queue *)GET_NEXT(pque->qu_link)) {
 			if (preq->rq_extend != NULL) {
 				if (pque->qu_attr[QA_ATR_partition].at_flags & ATR_VFLAG_SET) {
-					/*search for the partition in the attr*/
+					/* search for the partition in the attr */
 					for (k = 0; k < attr.at_val.at_arst->as_usedptr; k++) {
-						if ((attr.at_val.at_arst->as_string[k] != NULL)
-								&& (!strcmp(
-										pque->qu_attr[QA_ATR_partition].at_val.at_str,
-										attr.at_val.at_arst->as_string[k]))) {
+						if ((attr.at_val.at_arst->as_string[k] != NULL) &&
+							(!strcmp(pque->qu_attr[QA_ATR_partition].at_val.at_str, attr.at_val.at_arst->as_string[k]))) {
 							consider_q = 1;
 							break;
 						}
 					}
 				}
 				if (!consider_q) {
-					pque = (pbs_queue *)GET_NEXT(pque->qu_link);
 					continue;
 				}
 			} else {
@@ -512,8 +505,7 @@ req_stat_que(struct batch_request *preq)
 				}
 			}
 			if (consider_q) {
-				rc = status_que(pque, preq, &preply->brp_un.brp_status,
-						(preq->rq_extend ? &attr : NULL));
+				rc = status_que(pque, preq, &preply->brp_un.brp_status);
 				if (rc != 0) {
 					if (rc == PBSE_PERM)
 						rc = 0;
@@ -522,7 +514,6 @@ req_stat_que(struct batch_request *preq)
 				}
 				consider_q = 0;
 			}
-			pque = (pbs_queue *)GET_NEXT(pque->qu_link);
 		}
 	}
 
@@ -539,7 +530,7 @@ req_stat_que(struct batch_request *preq)
  * 		status_que - Build the status reply for a single queue.
  *
  * @param[in,out]	pque	-	ptr to que to status
- * @param[in]	preq	-	ptr to the decoded request
+ * @param[in]		preq	-	ptr to the decoded request
  * @param[in,out]	pstathd	-	head of list to append status to
  *
  * @return	int
@@ -548,11 +539,10 @@ req_stat_que(struct batch_request *preq)
  */
 
 static int
-status_que(pbs_queue *pque, struct batch_request *preq, pbs_list_head *pstathd, attribute *attr)
+status_que(pbs_queue *pque, struct batch_request *preq, pbs_list_head *pstathd)
 {
 	struct brp_status *pstat;
 	svrattrl	  *pal;
-	int k;
 
 	if ((preq->rq_perm & ATR_DFLAG_RDACC) == 0)
 		return (PBSE_PERM);
@@ -665,10 +655,8 @@ req_stat_node(struct batch_request *preq)
 			if (pnode->nd_attr[ND_ATR_partition].at_flags & ATR_VFLAG_SET) {
 				/*search for the partition in the attr*/
 				for (k = 0; k < attr.at_val.at_arst->as_usedptr; k++) {
-					if ((attr.at_val.at_arst->as_string[k] != NULL)
-							&& (!strcmp(
-									pnode->nd_attr[ND_ATR_partition].at_val.at_str,
-									attr.at_val.at_arst->as_string[k]))) {
+					if ((attr.at_val.at_arst->as_string[k] != NULL) &&
+						(!strcmp(pnode->nd_attr[ND_ATR_partition].at_val.at_str, attr.at_val.at_arst->as_string[k]))) {
 						consider_n = 1;
 						break;
 					}
@@ -683,22 +671,19 @@ req_stat_node(struct batch_request *preq)
 			}
 		}
 		if (consider_n || preq->rq_conn != dflt_scheduler->scheduler_sock) {
-			rc = status_node(pnode, preq, &preply->brp_un.brp_status,
-					(preq->rq_extend ? &attr : NULL));
+			rc = status_node(pnode, preq, &preply->brp_un.brp_status);
 			consider_n = 0;
 		}
 	} else {
 		/*get status of all nodes     */
-		for (i=0; i<svr_totnodes; i++) {
+		for (i = 0; i < svr_totnodes; i++) {
 			pnode = pbsndlist[i];
 			if (preq->rq_extend != NULL) {
 				if (pnode->nd_attr[ND_ATR_partition].at_flags & ATR_VFLAG_SET) {
-					/*search for the partition in the attr*/
+					/* search for the partition in the attr */
 					for (k = 0; k < attr.at_val.at_arst->as_usedptr; k++) {
-						if ((attr.at_val.at_arst->as_string[k] != NULL)
-								&& (!strcmp(
-										pnode->nd_attr[ND_ATR_partition].at_val.at_str,
-										attr.at_val.at_arst->as_string[k]))) {
+						if ((attr.at_val.at_arst->as_string[k] != NULL) &&
+							(!strcmp(pnode->nd_attr[ND_ATR_partition].at_val.at_str, attr.at_val.at_arst->as_string[k]))) {
 							consider_n = 1;
 							break;
 						}
@@ -716,8 +701,7 @@ req_stat_node(struct batch_request *preq)
 				}
 			}
 			if (consider_n || preq->rq_conn != dflt_scheduler->scheduler_sock) {
-				rc = status_node(pnode, preq, &preply->brp_un.brp_status,
-						(preq->rq_extend ? &attr : NULL));
+				rc = status_node(pnode, preq, &preply->brp_un.brp_status);
 				if (rc != 0) {
 					if (rc == PBSE_PERM)
 						rc = 0;
@@ -759,13 +743,12 @@ req_stat_node(struct batch_request *preq)
  */
 
 static int
-status_node(struct pbsnode *pnode, struct batch_request *preq, pbs_list_head *pstathd, attribute *attr)
+status_node(struct pbsnode *pnode, struct batch_request *preq, pbs_list_head *pstathd)
 {
 	int		   rc = 0;
 	struct brp_status *pstat;
 	svrattrl	  *pal;
 	unsigned long		   old_nd_state = VNODE_UNAVAILABLE;
-	int k;
 	int found;
 
 	if (pnode->nd_state & INUSE_DELETED)  /*node no longer valid*/

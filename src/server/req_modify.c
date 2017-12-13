@@ -163,6 +163,7 @@ req_modifyjob(struct batch_request *preq)
 	int		 sendmom = 0;
 	char		hook_msg[HOOK_MSG_SIZE];
 	int		mod_project = 0;
+	pbs_sched	*psched;
 
 	switch (process_hooks(preq, hook_msg, sizeof(hook_msg),
 			pbs_python_set_interrupt)) {
@@ -200,8 +201,9 @@ req_modifyjob(struct batch_request *preq)
 		return;
 	}
 
+	psched = find_sched_from_sock(preq->rq_conn);
 	/* allow scheduler to modify job */
-	if (find_sched_from_sock(preq->rq_conn) == NULL) {
+	if (psched == NULL) {
 		/* provisioning job is not allowed to be modified */
 		if ((pjob->ji_qs.ji_state == JOB_STATE_RUNNING) &&
 			(pjob->ji_qs.ji_substate == JOB_SUBSTATE_PROVISION)) {
@@ -246,7 +248,7 @@ req_modifyjob(struct batch_request *preq)
 		 * If the scheduler itself sends a modify job request,
 		 * no need to delay the job until next cycle.
 		 */
-		if ((find_sched_from_sock(preq->rq_conn) == NULL) && (scheduler_jobs_stat) && (job_attr_def[i].at_flags & ATR_DFLAG_SCGALT))
+		if ((psched == NULL) && (scheduler_jobs_stat) && (job_attr_def[i].at_flags & ATR_DFLAG_SCGALT))
 			add_to_am_list = 1;
 
 		/* Is the attribute modifiable in RUN state ? */

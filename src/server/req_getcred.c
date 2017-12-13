@@ -84,13 +84,13 @@ req_connect(struct batch_request *preq)
 		return;
 	}
 
-	if ( (preq->rq_extend != NULL) && \
-		(strcmp(preq->rq_extend, QSUB_DAEMON) == 0) ) {
-		conn->cn_authen |= PBS_NET_CONN_FROM_QSUB_DAEMON;
-	} else if ( (preq->rq_extend != NULL) && \
-		(strcmp(preq->rq_extend, SC_DAEMON) == 0) ) {
-		conn->cn_authen |= PBS_NET_CONN_FROM_PRIVIL;
+	if (preq->rq_extend != NULL) {
+		if (strcmp(preq->rq_extend, QSUB_DAEMON) == 0)
+			conn->cn_authen |= PBS_NET_CONN_FROM_QSUB_DAEMON;
+		else if (strcmp(preq->rq_extend, SC_DAEMON) == 0)
+			conn->cn_authen |= PBS_NET_CONN_FROM_PRIVIL;
 	}
+
 
 	if ((conn->cn_authen &
 		(PBS_NET_CONN_AUTHENTICATED|PBS_NET_CONN_FROM_PRIVIL))==0) {

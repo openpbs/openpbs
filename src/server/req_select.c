@@ -367,7 +367,6 @@ req_selectjobs(struct batch_request *preq)
 	 * instead of a per-queue selstat()
 	 */
 	if ((find_sched_from_sock(preq->rq_conn) != NULL) && (!scheduler_jobs_stat)) {
-		//if ((dflt_scheduler->scheduler_sock != -1) && (preq->rq_conn == dflt_scheduler->scheduler_sock) && (!scheduler_jobs_stat)) {
 		scheduler_jobs_stat = 1;
 	}
 
