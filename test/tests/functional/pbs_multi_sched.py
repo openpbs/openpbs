@@ -138,7 +138,6 @@ class TestMultipleSchedulers(TestFunctional):
         Test sched_priv can be only set to valid paths
         and check for appropriate comments
         """
-        sched = self.server.schedulers['sc1']
         if not os.path.exists('/var/sched_priv_do_not_exist'):
             self.server.manager(MGR_CMD_SET, SCHED,
                                 {'sched_priv': '/var/sched_priv_do_not_exist'},
