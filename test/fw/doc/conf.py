@@ -12,6 +12,41 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
+# Copyright (C) 1994-2018 Altair Engineering, Inc.
+# For more information, contact Altair at www.altair.com.
+#
+# This file is part of the PBS Professional ("PBS Pro") software.
+#
+# Open Source License Information:
+#
+# PBS Pro is free software. You can redistribute it and/or modify it under the
+# terms of the GNU Affero General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+# See the GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Commercial License Information:
+#
+# For a copy of the commercial license terms and conditions,
+# go to: (http://www.pbspro.com/UserArea/agreement.html)
+# or contact the Altair Legal Department.
+#
+# Altair’s dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of PBS Pro and
+# distribute them - whether embedded or bundled with other software -
+# under a commercial license agreement.
+#
+# Use of Altair’s trademarks, including but not limited to "PBS™",
+# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
+# trademark licensing policies.
+
 import sys
 import os
 
@@ -54,7 +89,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'PbsTestLab'
-copyright = u'(C) 1994-2017 Altair Engineering, Inc'
+copyright = u'(C) 1994-2018 Altair Engineering, Inc'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -211,7 +246,7 @@ latex_elements = {'papersize': 'a4paper', }
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [('index', 'PbsTestLab.tex', u'PbsTestLab Documentation',
-                    u'Copyright (C) 1994-2017 Altair Engineering, Inc',
+                    u'Copyright (C) 1994-2018 Altair Engineering, Inc',
                     'manual'), ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -240,7 +275,7 @@ latex_show_urls = 'True'
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [('index', 'pbstestlab', u'PbsTestLab Documentation',
-              [u'Copyright (C) 1994-2017 Altair Engineering, Inc'], 1)]
+              [u'Copyright (C) 1994-2018 Altair Engineering, Inc'], 1)]
 
 # If true, show URL addresses after external links.
 # man_show_urls = False
@@ -252,7 +287,7 @@ man_pages = [('index', 'pbstestlab', u'PbsTestLab Documentation',
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [('index', 'PbsTestLab', u'PbsTestLab Documentation',
-                      u'Copyright (C) 1994-2017 Altair Engineering, Inc',
+                      u'Copyright (C) 1994-2018 Altair Engineering, Inc',
                       'PbsTestLab', 'PBS Pro Testing and Benchmarking\
                       Framework', 'Miscellaneous'), ]
 
