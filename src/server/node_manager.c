@@ -1944,13 +1944,13 @@ find_degraded_occurrence(resc_resv *presv, struct pbsnode *np,
 
 	/* Search for a match for this node in each occurrence's execvnode */
 	for (i=ridx_adjusted-1, j=1; i < rcount_adjusted; i++, j++) {
-		/* we keep track of the occurrence time to determine the earliest
-		 * degraded time */
-		occr_time = get_occurrence(rrule, dtstart, tz, j);
-
 		if (find_vnode_in_execvnode(execvnodes_seq[i], np->nd_name)) {
 			occr_found = 1;
 			if (degraded_op == Set_Degraded_Time) {
+				/* we keep track of the occurrence time to determine the earliest
+				 * degraded time */
+				occr_time = get_occurrence(rrule, dtstart, tz, j);
+
 				/* Set the degraded start time to the earliest occurrence
 				 * with unavailable nodes. We do not check for
 				 * reserve_retry_init because we may be entering here
