@@ -62,7 +62,8 @@ class TestResvStaleVnode(TestFunctional):
         self.server.create_vnodes('vnode', a, 1, fname='fname2', delall=False,
                                   additive=True, mom=self.mom, expect=False)
 
-        self.scheduler.set_sched_config({'node_sort_key': 'sort_priority'})
+        self.scheduler.set_sched_config({'node_sort_key':
+                                        'sort_priority HIGH'})
 
     def test_conf_resv_stale_vnode(self):
         """
