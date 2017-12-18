@@ -415,6 +415,7 @@ struct queue_info
 	int num_parts;		/* number of node partitions(node_group_key) */
 	int num_topjobs;	/* current number of top jobs in this queue */
 	int backfill_depth;	/* total allowable topjobs in this queue*/
+	char *partition;	/* partition to which queue belongs to */
 };
 
 struct job_info
@@ -604,6 +605,7 @@ struct node_info
 	node_info *svr_node;		/* ptr to svr's node if we're a resv node */
 	node_partition *hostset;      /* other vnodes on on the same host */
 	node_scratch nscr;            /* scratch space local to node search code */
+	char *partition;	      /*  partition to which node belongs to */
 };
 
 struct resv_info

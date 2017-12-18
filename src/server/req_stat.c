@@ -417,9 +417,6 @@ req_stat_que(struct batch_request *preq)
 	struct batch_reply *preply;
 	int		    rc   = 0;
 	int		    type = 0;
-	int		    k;
-	int		    consider_q = 0;
-	attribute	    attr;
 
 	/*
 	 * first, validate the name of the requested object, either
@@ -446,77 +443,23 @@ req_stat_que(struct batch_request *preq)
 	preply->brp_choice = BATCH_REPLY_CHOICE_Status;
 	CLEAR_HEAD(preply->brp_un.brp_status);
 
-	memset(&attr, 0, sizeof(attr));
-	if (preq->rq_extend != NULL) {
-		rc = sched_attr_def[SCHED_ATR_partition].at_decode(&attr, ATTR_partition, NULL, preq->rq_extend);
-		if (rc) {
-			(void) reply_free(preply);
-			req_reject(rc, bad, preq);
-			return;
-		}
-	}
-
 	if (type == 0) {	/* get status of the one named queue */
-		if (preq->rq_extend != NULL) {
-			if (pque->qu_attr[QA_ATR_partition].at_flags & ATR_VFLAG_SET) {
-				/* search for the partition in the attr */
-				for (k = 0; k < attr.at_val.at_arst->as_usedptr; k++) {
-					if ((attr.at_val.at_arst->as_string[k] != NULL) &&
-						(!strcmp(pque->qu_attr[QA_ATR_partition].at_val.at_str, attr.at_val.at_arst->as_string[k]))) {
-						consider_q = 1;
-						break;
-					}
-				}
-			}
-		} else {
-			if (preq->rq_conn == dflt_scheduler->scheduler_sock) {
-				if (!(pque->qu_attr[QA_ATR_partition].at_flags & ATR_VFLAG_SET))
-					consider_q = 1;
-			} else {
-				consider_q = 1;
-			}
-		}
-		if (consider_q) {
-			rc = status_que(pque, preq, &preply->brp_un.brp_status);
-			consider_q = 0;
-		}
+		rc = status_que(pque, preq, &preply->brp_un.brp_status);
+
 	} else {	/* get status of queues */
-		for (pque = (pbs_queue *)GET_NEXT(svr_queues); pque;pque = (pbs_queue *)GET_NEXT(pque->qu_link)) {
-			if (preq->rq_extend != NULL) {
-				if (pque->qu_attr[QA_ATR_partition].at_flags & ATR_VFLAG_SET) {
-					/* search for the partition in the attr */
-					for (k = 0; k < attr.at_val.at_arst->as_usedptr; k++) {
-						if ((attr.at_val.at_arst->as_string[k] != NULL) &&
-							(!strcmp(pque->qu_attr[QA_ATR_partition].at_val.at_str, attr.at_val.at_arst->as_string[k]))) {
-							consider_q = 1;
-							break;
-						}
-					}
-				}
-				if (!consider_q) {
-					continue;
-				}
-			} else {
-				if (preq->rq_conn == dflt_scheduler->scheduler_sock) {
-					if (!(pque->qu_attr[QA_ATR_partition].at_flags & ATR_VFLAG_SET))
-						consider_q = 1;
-				} else {
-					consider_q = 1;
-				}
+
+		pque = (pbs_queue *)GET_NEXT(svr_queues);
+		while (pque) {
+			rc = status_que(pque, preq, &preply->brp_un.brp_status);
+			if (rc != 0) {
+				if (rc == PBSE_PERM)
+					rc = 0;
+				else
+					break;
 			}
-			if (consider_q) {
-				rc = status_que(pque, preq, &preply->brp_un.brp_status);
-				if (rc != 0) {
-					if (rc == PBSE_PERM)
-						rc = 0;
-					else
-						break;
-				}
-				consider_q = 0;
-			}
+			pque = (pbs_queue *)GET_NEXT(pque->qu_link);
 		}
 	}
-
 	if (rc) {
 		(void)reply_free(preply);
 		req_reject(rc, bad, preq);
@@ -605,9 +548,6 @@ req_stat_node(struct batch_request *preq)
 	int		    rc   = 0;
 	int		    type = 0;
 	int		    i;
-	attribute	    attr;
-	int		    consider_n = 0;
-	int		    k;
 
 	/*
 	 * first, check that the server indeed has a list of nodes
@@ -639,77 +579,18 @@ req_stat_node(struct batch_request *preq)
 	preply->brp_choice = BATCH_REPLY_CHOICE_Status;
 	CLEAR_HEAD(preply->brp_un.brp_status);
 
-	memset(&attr, 0, sizeof(attr));
-
-	if (preq->rq_extend != NULL) {
-		rc = sched_attr_def[SCHED_ATR_partition].at_decode(&attr, ATTR_partition, NULL, preq->rq_extend);
-		if (rc) {
-			(void) reply_free(preply);
-			req_reject(rc, bad, preq);
-			return;
-		}
-	}
-
 	if (type == 0) {		/*get status of the named node*/
-		if (preq->rq_extend != NULL) {
-			if (pnode->nd_attr[ND_ATR_partition].at_flags & ATR_VFLAG_SET) {
-				/*search for the partition in the attr*/
-				for (k = 0; k < attr.at_val.at_arst->as_usedptr; k++) {
-					if ((attr.at_val.at_arst->as_string[k] != NULL) &&
-						(!strcmp(pnode->nd_attr[ND_ATR_partition].at_val.at_str, attr.at_val.at_arst->as_string[k]))) {
-						consider_n = 1;
-						break;
-					}
-				}
-			}
-		} else {
-			if (preq->rq_conn == dflt_scheduler->scheduler_sock) {
-				if (!(pnode->nd_attr[ND_ATR_partition].at_flags & ATR_VFLAG_SET))
-					consider_n = 1;
-			} else {
-				consider_n = 1;
-			}
-		}
-		if (consider_n || preq->rq_conn != dflt_scheduler->scheduler_sock) {
-			rc = status_node(pnode, preq, &preply->brp_un.brp_status);
-			consider_n = 0;
-		}
-	} else {
-		/*get status of all nodes     */
-		for (i = 0; i < svr_totnodes; i++) {
+		rc = status_node(pnode, preq, &preply->brp_un.brp_status);
+
+	} else {			/*get status of all nodes     */
+
+		for (i=0; i<svr_totnodes; i++) {
 			pnode = pbsndlist[i];
-			if (preq->rq_extend != NULL) {
-				if (pnode->nd_attr[ND_ATR_partition].at_flags & ATR_VFLAG_SET) {
-					/* search for the partition in the attr */
-					for (k = 0; k < attr.at_val.at_arst->as_usedptr; k++) {
-						if ((attr.at_val.at_arst->as_string[k] != NULL) &&
-							(!strcmp(pnode->nd_attr[ND_ATR_partition].at_val.at_str, attr.at_val.at_arst->as_string[k]))) {
-							consider_n = 1;
-							break;
-						}
-					}
-				}
-				if (!consider_n) {
-					continue;
-				}
-			} else {
-				if (preq->rq_conn == dflt_scheduler->scheduler_sock) {
-					if (!(pnode->nd_attr[ND_ATR_partition].at_flags & ATR_VFLAG_SET))
-						consider_n = 1;
-				} else {
-					consider_n = 1;
-				}
-			}
-			if (consider_n || preq->rq_conn != dflt_scheduler->scheduler_sock) {
-				rc = status_node(pnode, preq, &preply->brp_un.brp_status);
-				if (rc != 0) {
-					if (rc == PBSE_PERM)
-						rc = 0;
-					else
-						break;
-				}
-				consider_n = 0;
-			}
+
+			rc = status_node(pnode, preq,
+				&preply->brp_un.brp_status);
+			if (rc)
+				break;
 		}
 	}
 
@@ -749,7 +630,6 @@ status_node(struct pbsnode *pnode, struct batch_request *preq, pbs_list_head *ps
 	struct brp_status *pstat;
 	svrattrl	  *pal;
 	unsigned long		   old_nd_state = VNODE_UNAVAILABLE;
-	int found;
 
 	if (pnode->nd_state & INUSE_DELETED)  /*node no longer valid*/
 		return  (0);

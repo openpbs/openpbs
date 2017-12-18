@@ -177,10 +177,11 @@ query_nodes(int pbs_sd, server_info *sinfo)
 	char *err;				/* used with pbs_geterrmsg() */
 	int num_nodes = 0;			/* the number of nodes */
 	int i;
-	extern char *partitions;
+	int nidx;
+	char **my_partitions;
 
 	/* get nodes from PBS server */
-	if ((nodes = pbs_statvnode(pbs_sd, NULL, NULL, partitions)) == NULL) {
+	if ((nodes = pbs_statvnode(pbs_sd, NULL, NULL, NULL)) == NULL) {
 		err = pbs_geterrmsg(pbs_sd);
 		sprintf(errbuf, "Error getting nodes: %s", err);
 		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO, "", errbuf);
@@ -209,8 +210,10 @@ query_nodes(int pbs_sd, server_info *sinfo)
 	}
 #endif /* localmod 049 */
 
+	my_partitions = break_comma_list(partitions);
+
 	cur_node = nodes;
-	for (i = 0; cur_node != NULL; i++) {
+	for (i = 0, nidx=0; cur_node != NULL; i++) {
 		/* get node info from server */
 		if ((ninfo = query_node_info(cur_node, sinfo)) == NULL) {
 			pbs_statfree(nodes);
@@ -223,6 +226,32 @@ query_nodes(int pbs_sd, server_info *sinfo)
 		sinfo->nodes_by_NASrank[i] = ninfo;
 #endif /* localmod 049 */
 
+		if (dflt_sched) {
+			if (ninfo->partition != NULL) {
+				cur_node = cur_node->next;
+				continue;
+			}
+		} else {
+			if (ninfo->partition == NULL) {
+				cur_node = cur_node->next;
+				continue;
+			} else {
+				int i;
+				int in_partition = 0;
+				for (i=0; my_partitions[i] != NULL; i++) {
+					if (strcmp(ninfo->partition, my_partitions[i]) == 0) {
+						in_partition = 1;
+						break;
+					}
+				}
+				if (!in_partition) {
+					cur_node = cur_node->next;
+					continue;
+				}
+
+			}
+		}
+
 		ninfo->rank = get_sched_rank();
 
 		/* get node info from mom */
@@ -234,11 +263,11 @@ query_nodes(int pbs_sd, server_info *sinfo)
 				"Failed to talk with mom, marking node offline");
 		}
 
-		ninfo_arr[i] = ninfo;
+		ninfo_arr[nidx++] = ninfo;
 
 		cur_node = cur_node->next;
 	}
-	ninfo_arr[i] = NULL;
+	ninfo_arr[nidx] = NULL;
 
 	if (update_mom_resources(ninfo_arr) == 0) {
 		pbs_statfree(nodes);
@@ -250,7 +279,7 @@ query_nodes(int pbs_sd, server_info *sinfo)
 	site_vnode_inherit(ninfo_arr);
 #endif /* localmod 062 */
 	resolve_indirect_resources(ninfo_arr);
-	sinfo->num_nodes = num_nodes;
+	sinfo->num_nodes = nidx;
 	pbs_statfree(nodes);
 	return ninfo_arr;
 }
@@ -310,6 +339,13 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 			count = strtol(attrp->value, &endp, 10);
 			if (*endp == '\0')
 				ninfo->port = count + 1;
+		}
+		else if(!strcmp(attrp->name, ATTR_partition)) {
+			ninfo->partition = string_dup(attrp->value);
+			if (ninfo->partition == NULL) {
+				log_err(errno, "node_queue_info", MEM_ERR_MSG);
+				return NULL;
+			}
 		}
 		else if (!strcmp(attrp->name, ATTR_NODE_jobs))
 			ninfo->jobs = break_comma_list(attrp->value);
@@ -523,6 +559,7 @@ new_node_info()
 	/* localmod 049 */
 	new->NASrank = -1;
 #endif
+	new->partition = NULL;
 	return new;
 }
 
@@ -596,6 +633,10 @@ free_node_info(node_info *ninfo)
 
 		if (ninfo->nodesig != NULL)
 			free(ninfo->nodesig);
+
+		if (ninfo->partition != NULL) {
+			free(ninfo->partition);
+		}
 
 		free(ninfo);
 	}
@@ -1270,6 +1311,14 @@ dup_node_info(node_info *onode, server_info *nsinfo,
 #ifdef NAS /* localmod 049 */
 	nnode->NASrank = onode->NASrank;
 #endif /* localmod 049 */
+
+	if (nnode->partition != NULL) {
+		nnode->partition = string_dup(onode->partition);
+		if (nnode->partition == NULL) {
+			free_node_info(nnode);
+			return NULL;
+		}
+	}
 
 	return nnode;
 }
