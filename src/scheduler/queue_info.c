@@ -129,7 +129,7 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 	/* peer server descriptor */
 	int peer_sd = 0;
 
-	int i, j;
+	int i, j, qidx;
 	int num_queues = 0;
 
 	int err = 0;			/* an error has occurred */
@@ -138,6 +138,8 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 	char *errmsg;
 
 	schd_error *sch_err;
+
+	char **my_partitions;
 
 	if (policy == NULL || sinfo == NULL)
 		return NULL;
@@ -148,7 +150,7 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 		return NULL;
 
 	/* get queue info from PBS server */
-	if ((queues = pbs_statque(pbs_sd, NULL, NULL, partitions)) == NULL) {
+	if ((queues = pbs_statque(pbs_sd, NULL, NULL, NULL)) == NULL) {
 		errmsg = pbs_geterrmsg(pbs_sd);
 		if (errmsg == NULL)
 			errmsg = "";
@@ -173,15 +175,43 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 	}
 	qinfo_arr[0] = NULL;
 
+	my_partitions = break_comma_list(partitions);
+
 	cur_queue = queues;
 
-	for (i = 0; cur_queue != NULL && !err; i++) {
+	for (i = 0, qidx=0; cur_queue != NULL && !err; i++) {
 		/* convert queue information from batch_status to queue_info */
 		if ((qinfo = query_queue_info(policy, cur_queue, sinfo)) == NULL) {
 			free_schd_error(sch_err);
 			pbs_statfree(queues);
 			free_queues(qinfo_arr, 1);
 			return NULL;
+		}
+
+		if (dflt_sched) {
+			if (qinfo->partition != NULL) {
+				cur_queue = cur_queue->next;
+				continue;
+			}
+		} else {
+			if (qinfo->partition == NULL) {
+				cur_queue = cur_queue->next;
+				continue;
+			} else {
+				int i;
+				int in_partition = 0;
+				for (i=0; my_partitions[i] != NULL; i++) {
+					if (strcmp(qinfo->partition, my_partitions[i]) == 0) {
+						in_partition = 1;
+						break;
+					}
+				}
+				if (!in_partition) {
+					cur_queue = cur_queue->next;
+					continue;
+				}
+
+			}
 		}
 
 		/* check if the queue is a dedicated time queue */
@@ -306,11 +336,11 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 				}
 			}
 		}
-		qinfo_arr[i] = qinfo;
+		qinfo_arr[qidx++] = qinfo;
 
 		cur_queue = cur_queue->next;
 	}
-	qinfo_arr[i] = NULL;
+	qinfo_arr[qidx] = NULL;
 
 
 	pbs_statfree(queues);
@@ -380,6 +410,13 @@ query_queue_info(status *policy, struct batch_status *queue, server_info *sinfo)
 			qinfo->backfill_depth = strtol(attrp->value, NULL, 10);
 			if(qinfo->backfill_depth > 0)
 				policy->backfill = 1;
+		}
+		else if(!strcmp(attrp->name, ATTR_partition)) {
+			qinfo->partition = string_dup(attrp->value);
+			if (qinfo->partition == NULL) {
+				log_err(errno, "query_queue_info", MEM_ERR_MSG);
+				return NULL;
+			}
 		}
 		else if (is_reslimattr(attrp)) {
 			(void) lim_setlimits(attrp, LIM_RES, qinfo->liminfo);
@@ -565,7 +602,7 @@ new_queue_info(int limallocflag)
 	/* localmod 040 */
 	qinfo->ignore_nodect_sort	 = 0;
 #endif
-
+	qinfo->partition = NULL;
 	return qinfo;
 }
 
@@ -825,6 +862,9 @@ free_queue_info(queue_info *qinfo)
 		lim_free_liminfo(qinfo->liminfo);
 		qinfo->liminfo = NULL;
 	}
+	if (qinfo->partition != NULL) {
+		free(qinfo->partition);
+	}
 
 	free(qinfo);
 }
@@ -946,6 +986,14 @@ dup_queue_info(queue_info *oqinfo, server_info *nsinfo)
 	if (oqinfo->nodes != NULL)
 		nqinfo->nodes = node_filter(nsinfo->nodes, nsinfo->num_nodes,
 			node_queue_cmp, (void *) nqinfo->name, 0);
+
+	if (oqinfo->partition != NULL) {
+		nqinfo->partition = string_dup(oqinfo->partition);
+		if (nqinfo->partition == NULL) {
+			free_queue_info(nqinfo);
+			return NULL;
+		}
+	}
 
 	return nqinfo;
 }
