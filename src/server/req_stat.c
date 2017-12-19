@@ -118,7 +118,7 @@ static int bad;
 
 /* The following private support functions are included */
 
-static int  status_que(pbs_queue *, struct batch_request *, pbs_list_head *);
+static int status_que(pbs_queue *, struct batch_request *, pbs_list_head *);
 static int status_node(struct pbsnode *, struct batch_request *, pbs_list_head *);
 static int status_resv(resc_resv *, struct batch_request *, pbs_list_head *);
 extern pbs_sched *find_scheduler(char *sched_name);
@@ -472,7 +472,7 @@ req_stat_que(struct batch_request *preq)
  * 		status_que - Build the status reply for a single queue.
  *
  * @param[in,out]	pque	-	ptr to que to status
- * @param[in]	preq	-	ptr to the decoded request
+ * @param[in]		preq	-	ptr to the decoded request
  * @param[in,out]	pstathd	-	head of list to append status to
  *
  * @return	int

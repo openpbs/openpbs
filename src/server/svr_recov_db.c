@@ -435,6 +435,9 @@ sched_recov_db(void)
 	if (pbs_db_end_trx(conn, PBS_DB_COMMIT) != 0)
 		goto db_err;
 
+	if (server.sv_attr[SRV_ATR_scheduling].at_val.at_long)
+		set_scheduler_flag(SCH_SCHEDULE_ETE_ON, NULL);
+
 	return 0;
 
 db_err:

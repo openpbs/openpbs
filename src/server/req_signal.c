@@ -69,6 +69,7 @@
 #include "pbs_nodes.h"
 #include "svrfunc.h"
 #include "sched_cmds.h"
+#include "pbs_sched.h"
 
 
 /* Private Function local to this file */
@@ -82,6 +83,8 @@ int create_resreleased (job *pjob);
 
 extern char *msg_momreject;
 extern char *msg_signal_job;
+extern job  *chk_job_request(char *, struct batch_request *, int *);
+
 
 /**
  * @brief
@@ -283,6 +286,7 @@ req_signaljob2(struct batch_request *preq, job *pjob)
 	char 		 *pnodespec;
 	int		suspend = 0;
 	int		resume = 0;
+	pbs_sched	*psched;
 
 	if ((pjob->ji_qs.ji_state != JOB_STATE_RUNNING)	||
 		((pjob->ji_qs.ji_state == JOB_STATE_RUNNING) && (pjob->ji_qs.ji_substate == JOB_SUBSTATE_PROVISION))) {
@@ -349,7 +353,12 @@ req_signaljob2(struct batch_request *preq, job *pjob)
 					/* not from scheduler, change substate so the  */
 					/* scheduler will resume the job when possible */
 					svr_setjobstate(pjob, JOB_STATE_RUNNING, JOB_SUBSTATE_SCHSUSP);
-					set_scheduler_flag(SCH_SCHEDULE_NEW);
+					if (find_assoc_sched_jid(pjob->ji_qs.ji_jobid, &psched))
+						set_scheduler_flag(SCH_SCHEDULE_NEW, psched);
+					else {
+						sprintf(log_buffer, "Unable to reach scheduler associated with job %s", pjob->ji_qs.ji_jobid);
+						log_err(-1, __func__, log_buffer);
+					}
 					reply_send(preq);
 					return;
 				}

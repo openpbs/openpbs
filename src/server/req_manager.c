@@ -1615,8 +1615,23 @@ mgr_server_unset(struct batch_request *preq)
 		} else if (strcasecmp(plist->al_name,
 			ATTR_power_provisioning) == 0) {
 			unset_power_provisioning();
+		} else if (strcasecmp(plist->al_name,
+				ATTR_scheduling) == 0) {
+			if (dflt_scheduler) {
+				dflt_scheduler->sch_attr[SCHED_ATR_scheduling].at_val.at_long = 0;
+				dflt_scheduler->sch_attr[SCHED_ATR_scheduling].at_flags |=
+						ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+				(void)sched_save_db(dflt_scheduler, SVR_SAVE_FULL);
+			}
+		}  else if (strcasecmp(plist->al_name,
+				ATTR_schediteration) == 0) {
+			if (dflt_scheduler) {
+				dflt_scheduler->sch_attr[SCHED_ATR_schediteration].at_val.at_long = 0;
+				dflt_scheduler->sch_attr[SCHED_ATR_schediteration].at_flags |=
+						ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+				(void)sched_save_db(dflt_scheduler, SVR_SAVE_FULL);
+			}
 		}
-
 		plist = (struct svrattrl *)GET_NEXT(plist->al_link);
 	}
 	plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_manager.rq_attr);
@@ -1696,15 +1711,23 @@ void
 mgr_sched_unset(struct batch_request *preq)
 {
 	int	  bad_attr = 0;
-	svrattrl *plist;
+	svrattrl *plist, *tmp_plist;
 	int	  rc;
 	pbs_sched *psched = find_scheduler(preq->rq_ind.rq_manager.rq_objname);
 	if (!psched) {
 		req_reject(PBSE_UNKSCHED, 0, preq);
 		return;
 	}
-	plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_manager.rq_attr);
 
+
+	for (tmp_plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_manager.rq_attr); tmp_plist; tmp_plist = (struct svrattrl *)GET_NEXT(tmp_plist->al_link)) {
+		if (strcasecmp(tmp_plist->al_name, ATTR_sched_log) == 0 ||
+			strcasecmp(tmp_plist->al_name, ATTR_sched_priv) == 0) {
+			set_scheduler_flag(SCH_ATTRS_CONFIGURE, psched);
+		}
+	}
+
+	plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_manager.rq_attr);
 	rc = mgr_unset_attr(psched->sch_attr, sched_attr_def, SCHED_ATR_LAST, plist,
 		preq->rq_perm, &bad_attr, (void *)psched, PARENT_TYPE_SCHED, INDIRECT_RES_CHECK);
 	if (rc != 0)
@@ -4147,7 +4170,7 @@ mgr_resource_delete(struct batch_request *preq)
 
 	restart_python_interpreter(__func__);
 	deferred_send_rescdef();
-	set_scheduler_flag(SCH_CONFIGURE);
+	set_scheduler_flag(SCH_CONFIGURE, NULL);
 
 	return;
 }
@@ -4386,7 +4409,7 @@ mgr_resource_set(struct batch_request *preq)
 
 	restart_python_interpreter(__func__);
 	deferred_send_rescdef();
-	set_scheduler_flag(SCH_CONFIGURE);
+	set_scheduler_flag(SCH_CONFIGURE, NULL);
 
 	return;
 }
@@ -4616,7 +4639,7 @@ mgr_resource_unset(struct batch_request *preq)
 
 	restart_python_interpreter(__func__);
 	deferred_send_rescdef();
-	set_scheduler_flag(SCH_CONFIGURE);
+	set_scheduler_flag(SCH_CONFIGURE, NULL);
 
 	return;
 }
