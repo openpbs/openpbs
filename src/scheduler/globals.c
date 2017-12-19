@@ -160,10 +160,10 @@ resdef **boolres = NULL;
 char *cmp_aoename = NULL;
 
 char *partitions = NULL;
-char scheduler_host_name[PBS_MAXHOSTNAME+1] = "Me";  /*arbitrary string*/
+char scheduler_host_name[PBS_MAXHOSTNAME + 1] = "Me";  /* arbitrary string */
 char *sc_name = NULL;
 int sched_port = -1;
-char *logfile = (char *)0;
+char *logfile = NULL;
 #ifdef WIN32
 char path_log[_MAX_PATH];
 #else

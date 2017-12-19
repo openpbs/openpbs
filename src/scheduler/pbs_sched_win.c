@@ -128,6 +128,7 @@
 #include	"pbs_share.h"
 #include	"config.h"
 #include	"fifo.h"
+#include	"globals.h"
 
 
 struct		connect_handle connection[NCONNECTS];
@@ -769,7 +770,7 @@ are_we_primary()
 		}
 	}
 	strncpy(scheduler_host_name, server_host, sizeof(scheduler_host_name));
-	scheduler_host_name [ sizeof(scheduler_host_name) -1 ] = '\0';
+	scheduler_host_name[sizeof(scheduler_host_name) -1] = '\0';
 	/* both secondary and primary should be set or neither set */
 	if ((pbs_conf.pbs_secondary == NULL) && (pbs_conf.pbs_primary == NULL))
 		return 1;
@@ -1553,11 +1554,7 @@ main(int argc, char *argv[])
 		cmd = server_command(&runjobid);
 
 		/*based on cmd: send|not scheduler's PBS version to server*/
-		if (update_svr_schedobj(connector, cmd, alarm_time)) {
-			sprintf(log_buffer, "update_svr_schedobj failed");
-			log_err(-1, __func__, log_buffer);
-			return -1;
-		}
+		update_svr_schedobj(connector, cmd, alarm_time);
 
 #ifndef WIN32
 		if (sigprocmask(SIG_BLOCK, &allsigs, &oldsigs) == -1)

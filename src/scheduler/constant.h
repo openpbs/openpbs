@@ -151,18 +151,6 @@ enum update_accruetype_mode
 
 #define PREEMPT_NONE 1
 
-#define COPY_ATTR_VALUE(DEST, SRC) \
-	{ \
-		int len = 0;\
-		if (DEST) { \
-			free(DEST); \
-		} \
-		len = strlen(SRC);\
-		DEST = (char*)malloc(len + 1); \
-		strncpy(DEST, attr->value, len); \
-		DEST[len] = '\0';\
-	}
-
 /* resource comparison flag values */
 enum resval_cmpflag
 {

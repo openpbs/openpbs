@@ -108,8 +108,9 @@
 #include	"libsec.h"
 #include	"pbs_ecl.h"
 #include	"pbs_share.h"
-#include "config.h"
-#include "fifo.h"
+#include	"config.h"
+#include	"fifo.h"
+#include	"globals.h"
 
 struct		connect_handle connection[NCONNECTS];
 int		connector;
@@ -795,7 +796,7 @@ are_we_primary()
 		return -1;
 	}
 	strncpy(scheduler_host_name, server_host, sizeof(scheduler_host_name));
-	scheduler_host_name [ sizeof(scheduler_host_name) -1 ] = '\0';
+	scheduler_host_name[sizeof(scheduler_host_name) -1] = '\0';
 
 	/* both secondary and primary should be set or neither set */
 	if ((pbs_conf.pbs_secondary == NULL) && (pbs_conf.pbs_primary == NULL))
@@ -1144,13 +1145,13 @@ main(int argc, char *argv[])
 		die(0);
 	}
 
-		saddr.sin_family = AF_INET;
-		saddr.sin_port = htons(sched_port);
-		saddr.sin_addr.s_addr = INADDR_ANY;
-		if (bind(server_sock, (struct sockaddr *)&saddr, sizeof(saddr)) < 0) {
-			log_err(errno, __func__, "bind");
-			die(0);
-		}
+	saddr.sin_family = AF_INET;
+	saddr.sin_port = htons(sched_port);
+	saddr.sin_addr.s_addr = INADDR_ANY;
+	if (bind(server_sock, (struct sockaddr *)&saddr, sizeof(saddr)) < 0) {
+		log_err(errno, __func__, "bind");
+		die(0);
+	}
 
 	/*Initialize security library's internal data structures*/
 	{

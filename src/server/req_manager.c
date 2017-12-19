@@ -1719,7 +1719,7 @@ mgr_sched_unset(struct batch_request *preq)
 	}
 
 
-	for (tmp_plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_manager.rq_attr);tmp_plist;tmp_plist = (struct svrattrl *)GET_NEXT(tmp_plist->al_link)) {
+	for (tmp_plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_manager.rq_attr); tmp_plist; tmp_plist = (struct svrattrl *)GET_NEXT(tmp_plist->al_link)) {
 		if (strcasecmp(tmp_plist->al_name, ATTR_sched_log) == 0 ||
 			strcasecmp(tmp_plist->al_name, ATTR_sched_priv) == 0) {
 			set_scheduler_flag(SCH_ATTRS_CONFIGURE, psched);
