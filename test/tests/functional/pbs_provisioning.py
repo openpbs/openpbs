@@ -50,13 +50,16 @@ import time
 e = pbs.event()
 vnode = e.vnode
 aoe = e.aoe
+if aoe == 'App1':
+    pbs.logmsg(pbs.LOG_DEBUG, "fake calling application provisioning script")
+    e.accept(1)
 pbs.logmsg(pbs.LOG_DEBUG, "aoe=%s,vnode=%s" % (aoe,vnode))
-pbs.logmsg(pbs.LOG_DEBUG, "fake calling os provisiong script")
+pbs.logmsg(pbs.LOG_DEBUG, "fake calling os provisioning script")
 e.accept(0)
 """
 
 
-class TestProvisioningJobWithHook(PBSTestSuite):
+class TestProvisioningJob(TestFunctional):
     """
     This testsuite tests whether OS provisioned jobs are getting all
      required hook files at MOM
@@ -77,51 +80,47 @@ class TestProvisioningJobWithHook(PBSTestSuite):
              and job is printing log message from execjob_begin hook.
     """
     hook_list = ['begin', 'my_provisioning']
+    hostA = ""
 
     def setUp(self):
-
+        TestFunctional.setUp(self)
         self.momA = self.moms.values()[0]
         self.momA.delete_vnode_defs()
         self.logger.info(self.momA.shortname)
 
         self.hostA = self.momA.shortname
-        rc = self.server.manager(MGR_CMD_DELETE, NODE, None, "")
-        self.assertEqual(rc, 0)
+        self.server.manager(
+            MGR_CMD_DELETE, NODE, None, "", runas=ROOT_USER)
 
-        rc = self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostA)
-        self.assertEqual(rc, 0)
+        self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostA)
 
         a = {'provision_enable': 'true'}
-        rv = self.server.manager(
+        self.server.manager(
             MGR_CMD_SET, NODE, a, id=self.hostA, expect=True)
-        self.assertTrue(rv)
-
-        a = {'resources_available.aoe': 'osimage1'}
-        rv = self.server.manager(
-            MGR_CMD_SET, NODE, a, id=self.hostA, expect=True)
-        self.assertTrue(rv)
 
         self.server.manager(
             MGR_CMD_SET, SERVER, {
                 'log_events': 2047}, expect=True)
         self.server.expect(NODE, {'state': 'free'}, id=self.hostA)
 
-        hook_name = "begin"
         a = {'event': 'execjob_begin', 'enabled': 'True'}
         rv = self.server.create_import_hook(
-            hook_name, a, hook_begin, overwrite=True)
+            self.hook_list[0], a, hook_begin, overwrite=True)
         self.assertTrue(rv)
 
-        hook_name = "my_provisioning"
         a = {'event': 'provision', 'enabled': 'True', 'alarm': '300'}
         rv = self.server.create_import_hook(
-            hook_name, a, hook_provision, overwrite=True)
+            self.hook_list[1], a, hook_provision, overwrite=True)
         self.assertTrue(rv)
 
-    def test_execjob_begin_hook_on_provisioned_job(self):
+    def test_execjob_begin_hook_on_os_provisioned_job(self):
         """
             Test the execjob_begin hook is seen by OS provisioned job.
         """
+        a = {'resources_available.aoe': 'osimage1'}
+        self.server.manager(
+            MGR_CMD_SET, NODE, a, id=self.hostA, expect=True)
+
         job = Job(TEST_USER1, attrs={ATTR_l: 'aoe=osimage1'})
         job.set_sleep_time(1)
         jid = self.server.submit(job)
@@ -154,3 +153,20 @@ class TestProvisioningJobWithHook(PBSTestSuite):
                                 max_attempts=20,
                                 interval=1)
         self.assertTrue(rv)
+
+    def test_app_provisioning(self):
+        """
+        Test application provisioning
+        """
+        a = {'resources_available.aoe': 'App1'}
+        self.server.manager(
+            MGR_CMD_SET, NODE, a, id=self.hostA, expect=True)
+
+        job = Job(TEST_USER1, attrs={ATTR_l: 'aoe=App1'})
+        job.set_sleep_time(1)
+        jid = self.server.submit(job)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        self.server.log_match(
+            "fake calling application provisioning script",
+            max_attempts=20,
+            interval=1)

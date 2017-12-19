@@ -5448,8 +5448,9 @@ prov_request_deferred(struct work_task *wtask)
 		if (exit_status == APP_PROV_SUCCESS &&
 			(pnode->nd_state & INUSE_DOWN))
 			set_vnode_state(pnode, ~INUSE_DOWN, Nd_State_And);
-		else
-			is_vnode_prov_done(pnode->nd_name);
+
+		is_vnode_prov_done(pnode->nd_name);
+
 		return;
 	}
 
