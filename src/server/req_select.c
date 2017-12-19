@@ -332,6 +332,7 @@ req_selectjobs(struct batch_request *preq)
 	char		   *pstate = NULL;
 	int		    rc;
 	struct select_list *selistp;
+	pbs_sched	   *psched;
 
 	/*
 	 * if the letter T (or t) is in the extend string,  select subjobs
@@ -365,7 +366,8 @@ req_selectjobs(struct batch_request *preq)
 	 * approach to query for jobs, e.g., by issuing a single pbs_statjob()
 	 * instead of a per-queue selstat()
 	 */
-	if ((find_sched_from_sock(preq->rq_conn) != NULL) && (!scheduler_jobs_stat)) {
+	psched = find_sched_from_sock(preq->rq_conn);
+	if ((psched != NULL) && (psched == dflt_scheduler ) && (!scheduler_jobs_stat)) {
 		scheduler_jobs_stat = 1;
 	}
 
