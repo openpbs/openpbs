@@ -42,13 +42,23 @@
 extern "C" {
 #endif
 
+#include "pbs_config.h"
+#include "pbs_ifl.h"
+#include "libpbs.h"
+#include "list_link.h"
 #include "attribute.h"
+#include "resource.h"
+#include "pbs_ifl.h"
+#include "server_limits.h"
 #include "sched_cmds.h"
-#include "net_connect.h"
+#include "work_task.h"
+#include  "net_connect.h"
+#include "resv_node.h"
+#include "queue.h"
+#include "batch_request.h"
 #include "job.h"
 #include "reservation.h"
-#include "queue.h"
-#include "resource.h"
+
 
 #define PBS_SCHED_CYCLE_LEN_DEFAULT 1200
 

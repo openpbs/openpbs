@@ -2416,7 +2416,6 @@ sched_settings_frm_svr(struct batch_status *status)
 	char *tmp_log_dir = NULL;
 	char *tmp_partitions = NULL;
 	struct	attropl	*attribs;
-	struct batch_status *ss = NULL;
 	static char *log_dir = NULL;
 	char *tmp_comment = NULL;
 	int clear_comment = 0;
@@ -2645,7 +2644,7 @@ update_svr_schedobj(int connector, int cmd, int alarm_time)
 	if (cmd == SCH_SCHEDULE_FIRST)
 		svr_knows_me = 0;
 
-	if (cmd != SCH_SCHEDULE_NULL && svr_knows_me || cmd == SCH_ERROR || connector < 0)
+	if ((cmd != SCH_SCHEDULE_NULL && svr_knows_me) || cmd == SCH_ERROR || connector < 0)
 		return 1;
 
 	/* Stat the scheduler to get details of sched */

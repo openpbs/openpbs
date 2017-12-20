@@ -235,7 +235,6 @@ find_assoc_sched_pque(pbs_queue *pq, pbs_sched **target_sched)
 {
 	pbs_sched *psched;
 	attribute *part_attr;
-	char *q_name;
 
 	*target_sched = NULL;
 	if (pq == NULL)
@@ -625,7 +624,7 @@ set_scheduler_flag(int flag, pbs_sched *psched)
 		psched = (pbs_sched*) GET_NEXT(svr_allscheds);
 	}
 
-	for (single_sched || psched; psched ; psched = (pbs_sched*) GET_NEXT(psched->sc_link)) {
+	for (; psched ; psched = (pbs_sched*) GET_NEXT(psched->sc_link)) {
 		/* high priority commands:
 		 * Note: A) usually SCH_QUIT is sent directly and not via here
 		 *       B) if we ever add a 3rd high prio command, we can lose them
