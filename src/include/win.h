@@ -449,6 +449,11 @@ extern void get_token_info(HANDLE htok,
 extern int wsystem(char *cmdline, HANDLE user_handle);
 
 /* Saving/restoring environment */
+#define ENV_BUF_SIZE            32767 /* max size of buffer for return value of GetEnvironmentVariable */
+
+#define getenv _getenv_win
+#define setenv _setenv_win
+
 extern void save_env(void);
 extern int _setenv_win(char *key, char *value, int overwrite);
 extern char *_getenv_win(char *key);
@@ -456,11 +461,6 @@ extern char *get_saved_env(char *e);
 extern void create_env_avltree();
 extern void update_env_avltree();
 extern void destroy_env_avltree();
-
-#ifdef WIN32
-#define getenv _getenv_win
-#define setenv _setenv_win
-#endif
 
 /* Privileges */
 extern int has_privilege(char *);

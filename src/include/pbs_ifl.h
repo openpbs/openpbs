@@ -424,7 +424,6 @@ enum mgr_obj {
 #define BLUEGENE		"bluegene"
 /* SUSv2 guarantees that host names are limited to 255 bytes */
 #define PBS_MAXHOSTNAME		255	/* max host name length */
-#define ENV_BUF_SIZE		32767 /* max size of buffer for return value of GetEnvironmentVariable */
 #ifndef MAXPATHLEN
 #define MAXPATHLEN		1024	/* max path name length */
 #endif

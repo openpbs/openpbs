@@ -62,7 +62,7 @@ static char	value_buf[ENV_BUF_SIZE] = "";
  * @param[in] interrupt - int value to override existing value, not used in Windows
  *	
  * @return	int
- * @retval	0			success
+ * @retval	0		success
  * @retval	non-zero	error
 
  */
@@ -91,15 +91,15 @@ _setenv_win(char* key, char* value, int overwrite)
  * @param[in] buffer size - int value to specify max length
  *	
  * @return	char*
- * @retval	value of key in environment		success
- * @retval	NULL					error
+ * @retval	value of key in the environment 	success
+ * @retval	NULL								error
 
  */
-char*
-_getenv_win(char* key)
+char *
+_getenv_win(char *key)
 {
 	errno = 0;
-	memset(value_buf, 0, 255);
+	memset(value_buf, 0, sizeof(value_buf));
 
 	if(!GetEnvironmentVariable(key, value_buf, ENV_BUF_SIZE)){
 		if(GetLastError() == ERROR_ENVVAR_NOT_FOUND){
