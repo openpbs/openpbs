@@ -2372,13 +2372,13 @@ next_job(status *policy, server_info *sinfo, int flag)
 static int
 copy_attr_value(char **dest, char *src)
 {
-	int len = 0;
 	int ret = 0;
 
 	if (*dest != NULL)
 		free(*dest);
 
 	if (src !=NULL) {
+		int len = 0;
 		len = strlen(src);
 		*dest = (char*)malloc(len + 1);
 		if (*dest == NULL) {
@@ -2416,7 +2416,6 @@ sched_settings_frm_svr(struct batch_status *status)
 	char *tmp_log_dir = NULL;
 	char *tmp_partitions = NULL;
 	struct	attropl	*attribs;
-	static char *log_dir = NULL;
 	char *tmp_comment = NULL;
 	int clear_comment = 0;
 	extern char *partitions;
@@ -2449,6 +2448,7 @@ sched_settings_frm_svr(struct batch_status *status)
 		struct attropl *patt;
 		char comment[MAX_LOG_SIZE] = {0};
 		static char *priv_dir = NULL;
+		static char *log_dir = NULL;
 		if ((log_dir != NULL) && strcmp(log_dir, tmp_log_dir) != 0) {
 			(void)snprintf(path_log,  sizeof(path_log), tmp_log_dir);
 			log_close(1);
@@ -2580,30 +2580,36 @@ sched_settings_frm_svr(struct batch_status *status)
 	if (clear_comment) {
 		int err;
 		struct attropl *patt;
-		char comment[MAX_LOG_SIZE] = {0};
 
 		attribs = calloc(1, sizeof(struct attropl));
 		if (attribs == NULL) {
 			snprintf(log_buffer, sizeof(log_buffer), "can't update scheduler attribs, calloc failed");
 			log_err(errno, __func__, log_buffer);
-			strncpy(comment, "Unable to clear comment", MAX_LOG_SIZE);
 			free(tmp_log_dir);
 			free(tmp_priv_dir);
 			free(tmp_partitions);
-		} else
-			strncpy(comment, " ", 1);
+			return 0;
+		}
+
 		patt = attribs;
 		patt->name = ATTR_comment;
-		patt->value = comment;
+		patt->value = malloc(1);
+		if (patt->value == NULL) {
+			snprintf(log_buffer, sizeof(log_buffer), "can't update scheduler attribs, malloc failed");
+			log_err(errno, __func__, log_buffer);
+			return 0;
+		}
+		patt->value[0] = '\0';
 		patt->next = NULL;
 		err = pbs_manager(connector,
-			MGR_CMD_SET, MGR_OBJ_SCHED,
+				MGR_CMD_UNSET, MGR_OBJ_SCHED,
 			sc_name, attribs, NULL);
 		free(attribs);
 		free(tmp_comment);
 		if (err) {
-			snprintf(log_buffer, sizeof(log_buffer), "Failed to update scheduler comment %s at the server", comment);
+			snprintf(log_buffer, sizeof(log_buffer), "Failed to update scheduler comment at the server");
 			log_err(-1, __func__, log_buffer);
+			return 0;
 		}
 		clear_comment = 0;
 	}
