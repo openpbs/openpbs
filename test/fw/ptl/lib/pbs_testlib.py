@@ -3743,7 +3743,7 @@ class PBSService(PBSObject):
         priv = self._instance_to_privpath(inst)
         lock = self._instance_to_lock(inst)
         if isinstance(inst, Scheduler) and 'sched_priv' in inst.attributes:
-            path = os.path.join(inst.attributes.get('sched_priv'), lock)
+            path = os.path.join(inst.attributes['sched_priv'], lock)
         else:
             path = os.path.join(self.pbs_conf['PBS_HOME'], priv, lock)
         rv = self.du.cat(self.hostname, path, sudo=True, logerr=False)
@@ -6630,7 +6630,7 @@ class Server(PBSService):
                     del self.queues[i]
                 if obj_type == MGR_OBJ_RSC and i in self.resources:
                     del self.resources[i]
-                if obj_type == SCHED and i in self.schedulers.keys():
+                if obj_type == SCHED and i in self.schedulers:
                     del self.schedulers[i]
 
         bs_list = []
@@ -10686,6 +10686,7 @@ class Scheduler(PBSService):
             else:
                 self.logger.error('no scheduler configuration file to parse')
                 return False
+
         try:
             conf_opts = self.du.cat(self.hostname, schd_cnfg,
                                     sudo=(not self.has_diag),
@@ -10853,8 +10854,6 @@ class Scheduler(PBSService):
         if validate:
             self.signal('-HUP')
             try:
-                self.log_match("Sched;reconfigure;Scheduler is reconfiguring",
-                               n=10, starttime=reconfig_time)
                 self.log_match("Error reading line", n=10, max_attempts=2,
                                starttime=reconfig_time, existence=False)
             except PtlLogMatchError:
@@ -10986,7 +10985,8 @@ class Scheduler(PBSService):
         if self.du.cmp(self.hostname, self.dflt_sched_config_file,
                        self.sched_config_file) != 0:
             self.du.run_copy(self.hostname, self.dflt_sched_config_file,
-                             self.sched_config_file, mode=0644, sudo=True)
+                             self.sched_config_file, mode=0644,
+                             sudo=True)
         self.signal('-HUP')
         # Revert fairshare usage
         cmd = [os.path.join(self.pbs_conf['PBS_EXEC'], 'sbin', 'pbsfs'), '-e']
@@ -13688,7 +13688,7 @@ class InteractiveJob(threading.Thread):
             self.job.interactive_handle = _p
             time.sleep(_st)
             expstr = "qsub: waiting for job "
-            expstr += "(?P<jobid>\d+.[0-9A-Za-z.-]+) to start"
+            expstr += "(?P<jobid>\d+.[0-9A-Za-z-]+) to start"
             _p.expect(expstr)
             if _p.match:
                 self.jobid = _p.match.group('jobid')

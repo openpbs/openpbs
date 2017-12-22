@@ -36,6 +36,7 @@
 # trademark licensing policies.
 
 from tests.interfaces import *
+import shutil
 
 
 @tags('multisched')
@@ -84,7 +85,7 @@ class TestSchedulerInterface(TestInterfaces):
             self.server.manager(MGR_CMD_CREATE,
                                 SCHED,
                                 id="TestCommonSched")
-        except PbsManagerError, e:
+        except PbsManagerError as e:
             if self.server.get_op_mode() == PTL_CLI:
                 self.assertTrue(
                     'qmgr: Error (15211) returned from server' in e.msg[1])
@@ -99,7 +100,7 @@ class TestSchedulerInterface(TestInterfaces):
                                 SCHED,
                                 id="testCreateSched",
                                 runas=OPER_USER)
-        except PbsManagerError, e:
+        except PbsManagerError as e:
             if self.server.get_op_mode() == PTL_CLI:
                 self.assertTrue(
                     'qmgr: Error (15007) returned from server' in e.msg[1])
@@ -118,7 +119,7 @@ class TestSchedulerInterface(TestInterfaces):
                                 SCHED,
                                 id="testDeleteSched",
                                 runas=OPER_USER)
-        except PbsManagerError, e:
+        except PbsManagerError as e:
             if self.server.get_op_mode() == PTL_CLI:
                 self.assertTrue(
                     'qmgr: Error (15007) returned from server' in e.msg[1])
@@ -127,6 +128,7 @@ class TestSchedulerInterface(TestInterfaces):
                             SCHED,
                             id="testDeleteSched",
                             runas=ROOT_USER)
+        print self.server.schedulers
 
         # Check for attribute set permission
         try:
@@ -135,7 +137,7 @@ class TestSchedulerInterface(TestInterfaces):
                                 {'sched_cycle_length': 12000},
                                 id="TestCommonSched",
                                 runas=OPER_USER)
-        except PbsManagerError, e:
+        except PbsManagerError as e:
             if self.server.get_op_mode() == PTL_CLI:
                 self.assertTrue(
                     'qmgr: Error (15007) returned from server' in e.msg[1])
@@ -155,7 +157,7 @@ class TestSchedulerInterface(TestInterfaces):
             self.server.manager(MGR_CMD_DELETE,
                                 SCHED,
                                 id="default")
-        except PbsManagerError, e:
+        except PbsManagerError as e:
             if self.server.get_op_mode() == PTL_CLI:
                 self.assertTrue(
                     'qmgr: Error (15214) returned from server' in e.msg[1])
@@ -176,9 +178,6 @@ class TestSchedulerInterface(TestInterfaces):
                             SCHED,
                             'sched_cycle_length',
                             id="TestCommonSched")
-        self.server.manager(MGR_CMD_LIST,
-                            SCHED,
-                            id="TestCommonSched")
         a = {'sched_cycle_length': '00:20:00'}
         self.server.expect(SCHED, a, id='TestCommonSched', max_attempts=10)
 
@@ -198,7 +197,8 @@ class TestSchedulerInterface(TestInterfaces):
              'scheduler_iteration': 600,
              'state': 'idle',
              'sched_cycle_length': '00:20:00'}
-        self.server.expect(SCHED, a, id='default', max_attempts=10)
+        self.server.expect(SCHED, a, id='default',
+                           attrop=PTL_AND, max_attempts=10)
 
     def test_scheduling_attribute(self):
         """
@@ -224,7 +224,7 @@ class TestSchedulerInterface(TestInterfaces):
             self.server.manager(MGR_CMD_SET, SCHED,
                                 {'sched_priv': '/var/spool/pbs/sched_priv'},
                                 runas=ROOT_USER, id='TestCommonSched')
-        except PbsManagerError, e:
+        except PbsManagerError as e:
             self.assertTrue(err_msg in e.msg[0],
                             "Error message is not expected")
         err_msg = "Another Sched object also has same "
@@ -233,7 +233,7 @@ class TestSchedulerInterface(TestInterfaces):
             self.server.manager(MGR_CMD_SET, SCHED,
                                 {'sched_log': '/var/spool/pbs/sched_logs'},
                                 runas=ROOT_USER, id='TestCommonSched')
-        except PbsManagerError, e:
+        except PbsManagerError as e:
             self.assertTrue(err_msg in e.msg[0],
                             "Error message is not expected")
 
@@ -246,21 +246,21 @@ class TestSchedulerInterface(TestInterfaces):
             self.server.manager(MGR_CMD_SET, SCHED,
                                 {'partition': 'P1'},
                                 runas=ROOT_USER)
-        except PbsManagerError, e:
+        except PbsManagerError as e:
             self.assertTrue(err_msg in e.msg[0],
                             "Error message is not expected")
         try:
             self.server.manager(MGR_CMD_SET, SCHED,
                                 {'sched_priv': '/var/spool/somedir'},
                                 runas=ROOT_USER)
-        except PbsManagerError, e:
+        except PbsManagerError as e:
             self.assertTrue(err_msg in e.msg[0],
                             "Error message is not expected")
         try:
             self.server.manager(MGR_CMD_SET, SCHED,
                                 {'sched_log': '/var/spool/somedir'},
                                 runas=ROOT_USER)
-        except PbsManagerError, e:
+        except PbsManagerError as e:
             self.assertTrue(err_msg in e.msg[0],
                             "Error message is not expected")
 
@@ -271,7 +271,7 @@ class TestSchedulerInterface(TestInterfaces):
         try:
             self.server.manager(MGR_CMD_CREATE, SCHED,
                                 runas=ROOT_USER, id="TestLongScheduler")
-        except PbsManagerError, e:
+        except PbsManagerError as e:
             self.assertTrue("Scheduler name is too long" in e.msg[0],
                             "Error message is not expected")
 
@@ -287,7 +287,6 @@ class TestSchedulerInterface(TestInterfaces):
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'scheduling': 'True'},
                             runas=ROOT_USER)
-        self.server.manager(MGR_CMD_LIST, SCHED, id='default')
         self.server.expect(SCHED, {'scheduling': 'True'},
                            id='default', max_attempts=10)
         self.server.manager(MGR_CMD_SET, SCHED,
@@ -297,7 +296,6 @@ class TestSchedulerInterface(TestInterfaces):
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'scheduler_iteration': 500},
                             runas=ROOT_USER)
-        self.server.manager(MGR_CMD_LIST, SCHED, id='default')
         self.server.expect(SCHED, {'scheduler_iteration': 500},
                            id='default', max_attempts=10)
 

@@ -48,7 +48,6 @@ class TestMultipleSchedulers(TestFunctional):
 
     def setUp(self):
         TestFunctional.setUp(self)
-
         a = {'partition': 'P1,P4',
              'sched_host': self.server.hostname,
              'sched_port': '15050'}
@@ -56,22 +55,20 @@ class TestMultipleSchedulers(TestFunctional):
                             a, id="sc1")
         self.sched_configure('sc1', '15050')
         self.server.manager(MGR_CMD_SET, SCHED,
-                            {'scheduling': 1,
-                             'sched_port': 15050}, id="sc1")
+                            {'scheduling': 'True'}, id="sc1")
         dir_path = '/var/spool/pbs/sched_dir'
         if not os.path.exists(dir_path):
             self.du.mkdir(path=dir_path, sudo=True)
         a = {'partition': 'P2',
-             'sched_priv': '/var/spool/pbs/sched_dir/sched_priv_sc2',
-             'sched_log': '/var/spool/pbs/sched_dir/sched_logs_sc2',
+             'sched_priv': os.path.join(dir_path, 'sched_priv_sc2'),
+             'sched_log': os.path.join(dir_path, 'sched_logs_sc2'),
              'sched_host': self.server.hostname,
              'sched_port': '15051'}
         self.server.manager(MGR_CMD_CREATE, SCHED,
                             a, id="sc2")
-        self.sched_configure('sc2', '15051', '/var/spool/pbs/sched_dir')
+        self.sched_configure('sc2', '15051', dir_path)
         self.server.manager(MGR_CMD_SET, SCHED,
-                            {'scheduling': 1,
-                             'sched_port': 15051}, id="sc2")
+                            {'scheduling': 'True'}, id="sc2")
         a = {'partition': 'P3',
              'sched_host': self.server.hostname,
              'sched_port': '15052'}
@@ -79,18 +76,13 @@ class TestMultipleSchedulers(TestFunctional):
                             a, id="sc3")
         self.sched_configure('sc3', '15052')
         self.server.manager(MGR_CMD_SET, SCHED,
-                            {'scheduling': 1,
-                             'sched_port': 15052}, id="sc3")
-
+                            {'scheduling': 'True'}, id="sc3")
         a = {'queue_type': 'execution',
-             'started': 't',
-             'enabled': 't'}
+             'started': 'True',
+             'enabled': 'True'}
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='wq1')
-        print self.server.queues
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='wq2')
-        print self.server.queues
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='wq3')
-        print self.server.queues
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='wq4')
         p1 = {'partition': 'P1'}
         self.server.manager(MGR_CMD_SET, QUEUE, p1, id='wq1')
@@ -119,10 +111,8 @@ class TestMultipleSchedulers(TestFunctional):
                              os.path.join(sched_home, sched_priv_dir),
                              recursive=True)
         if not os.path.exists(os.path.join(sched_home, sched_logs_dir)):
-            self.du.run_copy(self.server.hostname,
-                             os.path.join(pbs_home, 'sched_logs'),
-                             os.path.join(sched_home, sched_logs_dir),
-                             recursive=True)
+            self.du.mkdir(path=os.path.join(sched_home, sched_logs_dir),
+                          sudo=True)
         self.server.schedulers[sched_name].start(sched_port, sched_home)
 
     def check_vnodes(self, j, vnodes, jid):
@@ -159,8 +149,7 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.expect(SCHED, a, id='sc1', max_attempts=10)
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'scheduling': 'True'}, id="sc1")
-        a = {'comment': ''}
-        self.server.expect(SCHED, a, id='sc1', max_attempts=10)
+        self.server.expect(SCHED, 'comment', id='sc1', op=UNSET)
         self.du.rm(path=os.path.join(pbs_home, 'sc1_new_priv'), recursive=True)
 
     def test_set_sched_log(self):
@@ -168,7 +157,6 @@ class TestMultipleSchedulers(TestFunctional):
         Test sched_log can be only set to valid paths
         and check for appropriate comments
         """
-        sched = self.server.schedulers['sc1']
         if not os.path.exists('/var/sched_log_do_not_exist'):
             self.server.manager(MGR_CMD_SET, SCHED,
                                 {'sched_log': '/var/sched_log_do_not_exist'},
@@ -180,10 +168,8 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'scheduling': 'True'}, id="sc1")
         pbs_home = self.server.pbs_conf['PBS_HOME']
-        self.du.run_copy(self.server.hostname,
-                         os.path.join(pbs_home, 'sched_logs'),
-                         os.path.join(pbs_home, 'sc1_new_logs'),
-                         recursive=True)
+        self.du.mkdir(path=os.path.join(pbs_home, 'sc1_new_logs'),
+                      sudo=True)
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'sched_log': '/var/spool/pbs/sc1_new_logs'},
                             id="sc1")
@@ -191,15 +177,14 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.expect(SCHED, a, id='sc1', max_attempts=10)
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'scheduling': 'True'}, id="sc1")
-        a = {'comment': ''}
-        self.server.expect(SCHED, a, id='sc1', max_attempts=10)
+        self.server.expect(SCHED, 'comment', id='sc1', op=UNSET)
         self.du.rm(path=os.path.join(pbs_home, 'sc1_new_logs'), recursive=True)
 
     def test_start_scheduler(self):
         """
-        Test that scheduler wont start without creation from qmgr and
-        appropriate folders created and partition assigned and test
-        states of scheduler in each stage
+        Test that scheduler wont start without appropriate folders created.
+        Scheduler will log a message if started without partition. Test
+        scheduler states down, idle, scheduling.
         """
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'partition': (DECR, 'P3')}, id="sc3")
@@ -211,11 +196,11 @@ class TestMultipleSchedulers(TestFunctional):
              'sched_port': '15055',
              'scheduling': 'True'}
         self.server.manager(MGR_CMD_SET, SCHED, a, id="sc5")
-        sched = self.server.schedulers['sc5']
         # Try starting without sched_priv and sched_logs
         ret = self.server.schedulers['sc5'].start(sched_port='15055')
         self.server.expect(SCHED, {'state': 'down'}, id='sc5', max_attempts=10)
         if ret['rc'] == 0:
+            self.logger.info("sched_priv dir is not present for scheduler")
             self.assertTrue(False)
         self.du.run_copy(self.server.hostname,
                          os.path.join(pbs_home, 'sched_priv'),
@@ -223,6 +208,7 @@ class TestMultipleSchedulers(TestFunctional):
                          recursive=True)
         ret = self.server.schedulers['sc5'].start(sched_port='15055')
         if ret['rc'] == 0:
+            self.logger.info("sched_logs dir is not present for scheduler")
             self.assertTrue(False)
         self.du.run_copy(self.server.hostname,
                          os.path.join(pbs_home, 'sched_logs'),
@@ -239,13 +225,13 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.expect(SCHED, {'state': 'idle'}, id='sc5', max_attempts=10)
         a = {'resources_available.ncpus': 100}
         self.server.manager(MGR_CMD_SET, NODE, a, id='vnode[2]', expect=True)
-        for _ in xrange(100):
+        for _ in xrange(500):
             j = Job(TEST_USER1, attrs={ATTR_queue: 'wq3'})
             self.server.submit(j)
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'scheduling': 'True'}, id="sc5")
-        self.server.manager(MGR_CMD_LIST, SCHED, id="sc5")
-        self.assertEqual(sched.attributes['state'], 'scheduling')
+        self.server.expect(SCHED, {'state': 'scheduling'},
+                           id='sc5', max_attempts=10)
         self.du.rm(path=os.path.join(
             pbs_home, 'sched_priv_sc5'), recursive=True)
         self.du.rm(path=os.path.join(
@@ -258,28 +244,30 @@ class TestMultipleSchedulers(TestFunctional):
         """
         t = int(time.time())
         self.server.manager(MGR_CMD_CREATE, RSC, id='foo')
-        sched_list = self.server.schedulers.keys()
-        for name in sched_list:
+        for name in self.server.schedulers:
             self.server.schedulers[name].log_match(
                 "Scheduler is reconfiguring",
                 max_attempts=10, starttime=t)
+        time.sleep(1)
         t = int(time.time())
         attr = {ATTR_RESC_TYPE: 'long'}
         self.server.manager(MGR_CMD_SET, RSC, attr, id='foo')
-        for name in sched_list:
+        for name in self.server.schedulers:
             self.server.schedulers[name].log_match(
                 "Scheduler is reconfiguring",
                 max_attempts=10, starttime=t)
+        time.sleep(1)
         t = int(time.time())
         self.server.manager(MGR_CMD_DELETE, RSC, id='foo')
-        for name in sched_list:
+        for name in self.server.schedulers:
             self.server.schedulers[name].log_match(
                 "Scheduler is reconfiguring",
                 max_attempts=10, starttime=t)
 
     def test_remove_partition_sched(self):
         """
-        Test that removing all the partitions from a scheduler.
+        Test that removing all the partitions from a scheduler
+        unsets partition attribute on scheduler and update scheduler logs.
         """
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'partition': (DECR, 'P1')}, id="sc1")
@@ -288,13 +276,13 @@ class TestMultipleSchedulers(TestFunctional):
         log_msg = "Scheduler does not contain a partition"
         self.server.schedulers['sc1'].log_match(log_msg, max_attempts=10,
                                                 starttime=self.server.ctime)
-        self.server.manager(MGR_CMD_UNSET, SCHED, 'partition',
-                            id="sc2")
+        # self.server.manager(MGR_CMD_UNSET, SCHED, 'partition',
+        #                    id="sc2", expect=True)
 
     def test_job_queue_partition(self):
         """
-        Test job submitted to a queue assosciated to a partition will land
-        into a node assosciated with that partition.
+        Test job submitted to a queue associated to a partition will land
+        into a node associated with that partition.
         """
         j = Job(TEST_USER1, attrs={ATTR_queue: 'wq1',
                                    'Resource_List.select': '1:ncpus=2'})
@@ -327,30 +315,41 @@ class TestMultipleSchedulers(TestFunctional):
     def test_multiple_partition_same_sched(self):
         """
         Test that multiple partition jobs are serviced by same scheduler
-        if the partitions are set on the scheduler
+        if the partitions are set on the scheduler and test that even a job
+        submitted to partition P1 queue can run on node set to partition P4
+        if both partitions are serviced by same scheduler.
         """
         j = Job(TEST_USER1, attrs={ATTR_queue: 'wq1',
                                    'Resource_List.select': '1:ncpus=2'})
-        jid = self.server.submit(j)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        jid1 = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
         nodes = ['vnode[0]']
-        self.check_vnodes(j, nodes, jid)
+        self.check_vnodes(j, nodes, jid1)
         self.server.schedulers['sc1'].log_match(
-            str(jid) + ';Job run', max_attempts=10,
+            str(jid1) + ';Job run', max_attempts=10,
             starttime=self.server.ctime)
         j = Job(TEST_USER1, attrs={ATTR_queue: 'wq4',
-                                   'Resource_List.select': '1:ncpus=2'})
-        jid = self.server.submit(j)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+                                   'Resource_List.select': '1:ncpus=1'})
+        jid2 = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
         nodes = ['vnode[3]']
-        self.check_vnodes(j, nodes, jid)
+        self.check_vnodes(j, nodes, jid2)
         self.server.schedulers['sc1'].log_match(
-            str(jid) + ';Job run', max_attempts=10,
+            str(jid2) + ';Job run', max_attempts=10,
+            starttime=self.server.ctime)
+        j = Job(TEST_USER1, attrs={ATTR_queue: 'wq1',
+                                   'Resource_List.select': '1:ncpus=1'})
+        jid3 = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
+        nodes = ['vnode[3]']
+        self.check_vnodes(j, nodes, jid3)
+        self.server.schedulers['sc1'].log_match(
+            str(jid3) + ';Job run', max_attempts=10,
             starttime=self.server.ctime)
 
     def test_multiple_queue_same_partition(self):
         """
-        Test multiple queue assosciated with same partition
+        Test multiple queue associated with same partition
         is serviced by same scheduler
         """
         j = Job(TEST_USER1, attrs={ATTR_queue: 'wq1',
@@ -362,6 +361,8 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.schedulers['sc1'].log_match(
             str(jid) + ';Job run', max_attempts=10,
             starttime=self.server.ctime)
+        p1 = {'partition': 'P1'}
+        self.server.manager(MGR_CMD_SET, QUEUE, p1, id='wq4')
         j = Job(TEST_USER1, attrs={ATTR_queue: 'wq4',
                                    'Resource_List.select': '1:ncpus=1'})
         jid = self.server.submit(j)
@@ -413,27 +414,23 @@ class TestMultipleSchedulers(TestFunctional):
         t = int(time.time())
         self.server.schedulers['sc2'].set_sched_config(
             {'strict_ordering': 'True ALL'})
-        j = Job(TEST_USER1, attrs={ATTR_queue: 'wq2',
-                                   'Resource_List.select': '1:ncpus=2',
-                                   'Resource_List.walltime': 60})
+        a = {ATTR_queue: 'wq2',
+             'Resource_List.select': '1:ncpus=2',
+             'Resource_List.walltime': 60}
+        j = Job(TEST_USER1, attrs=a)
         jid1 = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
-        j = Job(TEST_USER1, attrs={ATTR_queue: 'wq2',
-                                   'Resource_List.select': '1:ncpus=2',
-                                   'Resource_List.walltime': 60})
+        j = Job(TEST_USER1, attrs=a)
         jid2 = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
         self.server.schedulers['sc2'].log_match(
             str(jid2) + ';Job is a top job and will run at',
             max_attempts=10, starttime=t)
-        j = Job(TEST_USER1, attrs={ATTR_queue: 'wq3',
-                                   'Resource_List.select': '1:ncpus=2',
-                                   'Resource_List.walltime': 60})
+        a['queue'] = 'wq3'
+        j = Job(TEST_USER1, attrs=a)
         jid3 = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
-        j = Job(TEST_USER1, attrs={ATTR_queue: 'wq3',
-                                   'Resource_List.select': '1:ncpus=2',
-                                   'Resource_List.walltime': 60})
+        j = Job(TEST_USER1, attrs=a)
         jid4 = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid4)
         self.server.schedulers['sc3'].log_match(
@@ -474,42 +471,31 @@ class TestMultipleSchedulers(TestFunctional):
 
     def test_restart_server(self):
         """
-        Test after server restarts it can connect to all schedulers
-        and jobs will still be running
+        Test after server restarts sched attributes are persistent
         """
-        j = Job(TEST_USER1, attrs={ATTR_queue: 'wq1',
-                                   'Resource_List.select': '1:ncpus=2'})
-        jid1 = self.server.submit(j)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
-        self.server.schedulers['sc1'].log_match(
-            str(jid1) + ';Job run', max_attempts=10,
-            starttime=self.server.ctime)
-        j = Job(TEST_USER1, attrs={ATTR_queue: 'wq2',
-                                   'Resource_List.select': '1:ncpus=2'})
-        jid2 = self.server.submit(j)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
-        self.server.schedulers['sc2'].log_match(
-            str(jid2) + ';Job run', max_attempts=10,
-            starttime=self.server.ctime)
-        j = Job(TEST_USER1, attrs={ATTR_queue: 'wq3',
-                                   'Resource_List.select': '1:ncpus=2'})
-        jid3 = self.server.submit(j)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
-        self.server.schedulers['sc3'].log_match(
-            str(jid3) + ';Job run', max_attempts=10,
-            starttime=self.server.ctime)
-        j = Job(TEST_USER1, attrs={ATTR_queue: 'workq',
-                                   'Resource_List.select': '1:ncpus=2'})
-        jid4 = self.server.submit(j)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid4)
-        self.server.schedulers['default'].log_match(
-            str(jid4) + ';Job run', max_attempts=10,
-            starttime=self.server.ctime)
+        sched_priv = os.path.join(
+            self.server.pbs_conf['PBS_HOME'], 'sched_priv_sc1')
+        sched_logs = os.path.join(
+            self.server.pbs_conf['PBS_HOME'], 'sched_logs_sc1')
+        a = {'sched_port': 15050,
+             'sched_host': self.server.hostname,
+             'sched_priv': sched_priv,
+             'sched_log': sched_logs,
+             'scheduling': 'True',
+             'scheduler_iteration': 600,
+             'state': 'idle',
+             'sched_cycle_length': '00:20:00'}
+        self.server.expect(SCHED, a, id='sc1',
+                           attrop=PTL_AND, max_attempts=10)
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduler_iteration': 300,
+                             'sched_cycle_length': '00:10:00'},
+                            id='sc1')
         self.server.restart()
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid4)
+        a['scheduler_iteration'] = 300
+        a['sched_cycle_length'] = '00:10:00'
+        self.server.expect(SCHED, a, id='sc1',
+                           attrop=PTL_AND, max_attempts=10)
 
     def test_resv_default_sched(self):
         """
@@ -533,33 +519,30 @@ class TestMultipleSchedulers(TestFunctional):
         """
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'job_sort_formula': 'ncpus'})
-        j = Job(TEST_USER1, attrs={'Resource_List.select': '1:ncpus=2'})
-        jid1 = self.server.submit(j)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduling': 'False'}, id="default")
         j = Job(TEST_USER1, attrs={'Resource_List.select': '1:ncpus=1'})
+        jid1 = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid1)
+        j = Job(TEST_USER1, attrs={'Resource_List.select': '1:ncpus=2'})
         jid2 = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
-        j = Job(TEST_USER1, attrs={'Resource_List.select': '1:ncpus=2'})
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduling': 'True'}, id="default")
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduling': 'False'}, id="sc3")
+        j = Job(TEST_USER1, attrs={ATTR_queue: 'wq3',
+                                   'Resource_List.select': '1:ncpus=1'})
         jid3 = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid3)
-        self.server.delete(jid1, wait=True)
-        self.server.expect(JOB, 'job_state', op=UNSET, id=jid1)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
         j = Job(TEST_USER1, attrs={ATTR_queue: 'wq3',
                                    'Resource_List.select': '1:ncpus=2'})
         jid4 = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid4)
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduling': 'True'}, id="sc3")
         self.server.expect(JOB, {'job_state': 'R'}, id=jid4)
-        j = Job(TEST_USER1, attrs={ATTR_queue: 'wq3',
-                                   'Resource_List.select': '1:ncpus=1'})
-        jid5 = self.server.submit(j)
-        self.server.expect(JOB, {'job_state': 'Q'}, id=jid5)
-        j = Job(TEST_USER1, attrs={ATTR_queue: 'wq3',
-                                   'Resource_List.select': '1:ncpus=2'})
-        jid6 = self.server.submit(j)
-        self.server.expect(JOB, {'job_state': 'Q'}, id=jid6)
-        self.server.delete(jid4, wait=True)
-        self.server.expect(JOB, 'job_state', op=UNSET, id=jid4)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid6)
 
     def test_run_limts_per_scheduler(self):
         """
