@@ -937,12 +937,16 @@ main(int argc, char **argv)
 		free(host);
 		host = NULL;
 	} else if (pbs_conf.pbs_leaf_name) {
-		name = pbs_conf.pbs_leaf_name;
-		host = tpp_parse_hostname(name, &port);
-		if (host)
-			snprintf(server_host, sizeof(server_host), "%s", host);
-		free(host);
-		host = NULL;
+		char *endp;
+
+		snprintf(server_host, sizeof(server_host), "%s", pbs_conf.pbs_leaf_name);
+		endp = strchr(server_host, ','); /* find the first name */
+		if (endp)
+			*endp = '\0';
+		endp = strchr(server_host, ':'); /* cut out the port */
+		if (endp)
+			*endp = '\0';
+		name = server_host;
 	} else {
 		if (gethostname(server_host, (sizeof(server_host) - 1)) == -1) {
 #ifndef WIN32

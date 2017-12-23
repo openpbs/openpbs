@@ -105,10 +105,11 @@ update_pids() {
 }
 
 # lc_host_name - convert host name into lower case short host name
-
+# also handle multiple names in PBS_LEAF_NAME
+# PBS_LEAF_NAME is now of the format: host:port,host:port so the following code is to cut on , (to get the first host) and then : to parse our the port
 lc_host_name() 
 {
-  echo $1 | cut -d: -f1 | cut -d. -f1 | sed -e "y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/"
+  echo $1 | cut -d, -f1 | cut -d: -f1 | cut -d. -f1 | sed -e "y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/"
 }
 
 # check_started - check if a particular pid is the program which is expected.

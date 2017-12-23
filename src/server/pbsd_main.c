@@ -159,6 +159,7 @@ extern int chk_and_update_db_svrhost();
 
 extern int put_sched_cmd(int sock, int cmd, char *jobid);
 extern void setup_ping(int delay);
+extern char *get_all_ips(char *msg);
 
 /* External data items */
 extern	int		svr_chngNodesfile;
@@ -1053,7 +1054,10 @@ main(int argc, char **argv)
 	if (pbs_conf.pbs_leaf_name) {
 		char *endp;
 		snprintf(server_host, sizeof(server_host), "%s", pbs_conf.pbs_leaf_name);
-		endp = strchr(server_host, ':');
+		endp = strchr(server_host, ','); /* find first name */
+		if (endp)
+			*endp = '\0';
+		endp = strchr(server_host, ':'); /* cut out port, if present */
 		if (endp)
 			*endp = '\0';
 	} else if (gethostname(server_host, (sizeof(server_host) - 1)) == -1) {
@@ -1814,19 +1818,26 @@ try_db_again:
 
 	if (pbs_conf.pbs_use_tcp == 1) {
 		char *nodename = NULL;
-		if (pbs_conf.pbs_leaf_name)
-			nodename = pbs_conf.pbs_leaf_name;
-		else if (pbs_conf.pbs_primary)
-			if (!pbs_failover_active)
-				nodename = pbs_conf.pbs_primary;
-			else
-				nodename = pbs_conf.pbs_secondary;
-		else if (pbs_conf.pbs_server_host_name)
-			nodename = pbs_conf.pbs_server_host_name;
-		else if (pbs_conf.pbs_server_name)
-			nodename = pbs_conf.pbs_server_name;
 
+		sprintf(log_buffer, "Out of memory");
+		if (pbs_conf.pbs_leaf_name) {
+			char *p;
+			nodename = strdup(pbs_conf.pbs_leaf_name);
+
+			/* reset pbs_leaf_name to only the first leaf name with port */
+			p = strchr(pbs_conf.pbs_leaf_name, ','); /* keep only the first leaf name */
+			if (p)
+				*p = '\0';
+			p = strchr(pbs_conf.pbs_leaf_name, ':'); /* cut out the port */
+			if (p)
+				*p = '\0';
+		} else if (pbs_conf.pbs_server_host_name) {
+			nodename = strdup(pbs_conf.pbs_server_host_name);
+		} else {
+			nodename = get_all_ips(log_buffer);
+		}
 		if (!nodename) {
+			log_err(-1, "pbsd_main", log_buffer);
 			(void) sprintf(log_buffer, "Unable to determine TPP node name");
 			fprintf(stderr, "%s", log_buffer);
 			stop_db();
@@ -1844,6 +1855,9 @@ try_db_again:
 			rc = set_tpp_config(&pbs_conf, &tpp_conf, nodename, pbs_server_port_dis, pbs_conf.pbs_leaf_routers,
 								pbs_conf.pbs_use_compression, TPP_AUTH_EXTERNAL, get_ext_auth_data, validate_ext_auth_data);
 		}
+
+		free(nodename);
+
 		if (rc == -1) {
 			(void) sprintf(log_buffer, "Error setting TPP config");
 			fprintf(stderr, "%s", log_buffer);

@@ -182,6 +182,7 @@ char		*mom_domain;
 #endif	/* WIN32 */
 
 extern void	mom_vnlp_report(vnl_t *vnl, char *header);
+extern char *get_all_ips(char *msg);
 
 int		alien_attach = 0;		/* attach alien procs */
 int		alien_kill = 0;			/* kill alien procs */
@@ -9045,31 +9046,52 @@ main(int argc, char *argv[])
 			sprintf(log_buffer,
 				"Problem initializing security library (%d)", csret);
 			log_err(-1, "pbsd_main", log_buffer);
-			exit(3);
-		}
+                        exit(3);
+                }
 	}
 	if (pbs_conf.pbs_use_tcp == 1) {
 		char *nodename;
-		if (pbs_conf.pbs_leaf_name)
-			nodename = pbs_conf.pbs_leaf_name;
-		else
-			nodename = mom_host;
 
-		/* set tcp function pointers */
+		sprintf(log_buffer, "Out of memory");
+		if (pbs_conf.pbs_leaf_name) {
+			char *p;
+			nodename = strdup(pbs_conf.pbs_leaf_name);
+
+			/* reset pbs_leaf_name to only the first leaf name with port */
+			p = strchr(pbs_conf.pbs_leaf_name, ','); /* keep only the first leaf name */
+			if (p)
+				*p = '\0';
+			p = strchr(pbs_conf.pbs_leaf_name, ':'); /* cut out the port */
+			if (p)
+				*p = '\0';
+		} else {
+			nodename = get_all_ips(log_buffer);
+		}
+		if (!nodename) {
+			log_err(-1, "pbsd_main", log_buffer);
+			(void) sprintf(log_buffer, "Unable to determine TPP node name");
+			fprintf(stderr, "%s", log_buffer);
+			return (3);
+		}
+
+	    /* set tcp function pointers */
 		set_tpp_funcs(log_tppmsg);
 
 		if (pbs_conf.auth_method == AUTH_RESV_PORT) {
-			rc = set_tpp_config(&pbs_conf, &tpp_conf, nodename, pbs_rm_port, pbs_conf.pbs_leaf_routers,
-								pbs_conf.pbs_use_compression, TPP_AUTH_RESV_PORT, NULL, NULL);
+				rc = set_tpp_config(&pbs_conf, &tpp_conf, nodename, pbs_rm_port, pbs_conf.pbs_leaf_routers,
+														pbs_conf.pbs_use_compression, TPP_AUTH_RESV_PORT, NULL, NULL);
 		} else {
-			/* for all non-resv-port based authentication use a callback from TPP */
-			rc = set_tpp_config(&pbs_conf, &tpp_conf, nodename, pbs_rm_port, pbs_conf.pbs_leaf_routers,
-								pbs_conf.pbs_use_compression, TPP_AUTH_EXTERNAL, get_ext_auth_data, validate_ext_auth_data);
+				/* for all non-resv-port based authentication use a callback from TPP */
+				rc = set_tpp_config(&pbs_conf, &tpp_conf, nodename, pbs_rm_port, pbs_conf.pbs_leaf_routers,
+														pbs_conf.pbs_use_compression, TPP_AUTH_EXTERNAL, get_ext_auth_data, validate_ext_auth_data);
 		}
+
+		free(nodename);
+
 		if (rc == -1) {
 			(void) sprintf(log_buffer, "Error setting TPP config");
 			log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
-					LOG_ERR,msg_daemonname, log_buffer);
+								LOG_ERR,msg_daemonname, log_buffer);
 			fprintf(stderr, "%s", log_buffer);
 			return (3);
 		}

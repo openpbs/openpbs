@@ -666,6 +666,11 @@ tpp_init(struct tpp_config *cnf)
 	int app_fd;
 
 	tpp_conf = cnf;
+	if (tpp_conf->node_name == NULL) {
+		snprintf(log_buffer, TPP_LOGBUF_SZ, "TPP leaf node name is NULL");
+		tpp_log_func(LOG_CRIT, NULL, log_buffer);
+		return -1;
+	}
 
 	/* before doing anything else, initialize the key to the tls */
 	if (tpp_init_tls_key() != 0) {
@@ -674,7 +679,8 @@ tpp_init(struct tpp_config *cnf)
 		return -1;
 	}
 
-	TPP_DBPRT(("localhost = %s", tpp_conf->node_name));
+	snprintf(log_buffer, TPP_LOGBUF_SZ, "TPP leaf node names = %s", tpp_conf->node_name);
+	tpp_log_func(LOG_CRIT, NULL, log_buffer);
 
 	if (tpp_addr_cache_init() != 0) {
 		tpp_log_func(LOG_CRIT, __func__, "Failed to initialize the TPP address cache");

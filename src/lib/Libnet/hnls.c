@@ -83,6 +83,9 @@
 
 #endif
 
+extern char	*netaddr(struct sockaddr_in *);
+#define NETADDR_BUF 80
+
 /**
  *
  * @brief
@@ -567,4 +570,137 @@ free_if_info(struct log_net_info *ni)
 		free(temp->ifhostnames);
 		free(temp);
 	}
+}
+
+/**
+* @brief
+	Get a list of all IPs
+*
+* @return 
+*	Comma separated list of ips in string format
+* 
+* @par Side Effects:
+*	None
+*
+* @par MT-safe: Yes
+*
+* @param[out]   msg - error message returned if system calls not successful
+*
+*/
+char *
+get_all_ips(char *msg)
+{
+	char * nodenames = NULL;
+#if defined(linux)
+	char *tmp;
+	int len, hlen, ret;
+	struct ifaddrs *ifp, *listp;
+	char buf[NETADDR_BUF] = {'\0'};
+	char *p;
+
+	msg[0] = '\0';
+
+	ret = getifaddrs(&ifp);
+
+	if ((ret != 0) || (ifp == NULL)) {
+		strncpy(msg, "Failed to obtain interface names", LOG_BUF_SIZE - 1);
+		return NULL;
+	}
+
+	len = 0;
+	for (listp = ifp; listp; listp = listp->ifa_next) {
+		if ((listp->ifa_addr == NULL) || (listp->ifa_addr->sa_family != AF_INET)) 
+			continue;
+		sprintf(buf, "%s", netaddr((struct sockaddr_in *)listp->ifa_addr));
+		if (!strcmp(buf,"unknown")) 
+			continue;
+		if ((p=strchr(buf, ':')))
+			*p = '\0';
+
+		hlen = strlen (buf);
+		tmp = realloc(nodenames, len + hlen + 2); /* 2 for comma and null char */
+		if (!tmp) {
+			strncpy(msg, "Out of memory", LOG_BUF_SIZE - 1);
+			free(nodenames);
+			nodenames = NULL;
+			break;
+		}
+		nodenames = tmp;
+
+		if (len == 0)
+			strcpy(nodenames, buf);
+		else {
+			strcat(nodenames, ",");
+			strcat(nodenames, buf);
+		}
+		len += hlen + 2;
+	}
+
+	freeifaddrs(ifp);
+
+#elif defined(WIN32)
+
+	int i, len=0, hlen, ret;
+	char *tmp;
+	char buf[NETADDR_BUF] = {'\0'};
+	
+	/* Variables used by GetIpAddrTable */
+	PMIB_IPADDRTABLE pIPAddrTable;
+	DWORD dwSize = 0;
+	DWORD dwRetVal = 0;
+	IN_ADDR IPAddr;
+
+	msg[0] = '\0';
+	
+	pIPAddrTable = (MIB_IPADDRTABLE *) malloc(sizeof (MIB_IPADDRTABLE));
+
+	if (pIPAddrTable) {
+		// Make an initial call to GetIpAddrTable to get the
+		// necessary size into the dwSize variable
+		if (GetIpAddrTable(pIPAddrTable, &dwSize, 0) == ERROR_INSUFFICIENT_BUFFER) {
+			free(pIPAddrTable);
+			pIPAddrTable = (MIB_IPADDRTABLE *) malloc(dwSize);
+
+		}
+		if (pIPAddrTable == NULL) {
+			strncpy(msg, "Memory allocation failed for GetIpAddrTable", LOG_BUF_SIZE - 1);
+			return NULL;	
+		}
+	}
+	// Make a second call to GetIpAddrTable to get the
+	// actual data we want
+	if ( (dwRetVal = GetIpAddrTable( pIPAddrTable, &dwSize, 0 )) != NO_ERROR ) { 
+		strncpy(msg, "GetIpAddrTable failed", LOG_BUF_SIZE - 1);
+		return NULL;
+	}
+
+	for (i=0; i < (int) pIPAddrTable->dwNumEntries; i++) {
+		IPAddr.S_un.S_addr = (u_long) pIPAddrTable->table[i].dwAddr;
+		sprintf(buf, "%s", inet_ntoa(IPAddr));
+		hlen = strlen (buf);
+		tmp = realloc(nodenames, len + hlen + 2); /* 2 for comma and null char */
+		if (!tmp) {
+			strncpy(msg, "Out of memory", LOG_BUF_SIZE - 1);
+			free(nodenames);
+			nodenames = NULL;
+			break;
+		}
+		nodenames = tmp;
+		if (len == 0)
+			strcpy(nodenames, buf);
+		else {
+			strcat(nodenames, ",");
+			strcat(nodenames, buf);
+		}
+		len += hlen + 2;
+	}
+
+	if (pIPAddrTable) {
+		free(pIPAddrTable);
+		pIPAddrTable = NULL;
+	}
+
+#endif 
+
+	return nodenames;
 }

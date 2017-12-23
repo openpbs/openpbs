@@ -65,7 +65,7 @@ struct tpp_config {
 	int    node_type; /* leaf, proxy */
 	char   **routers; /* other proxy names (and backups) to connect to */
 	int    numthreads;
-	char   *node_name;
+	char   *node_name; /* list of comma separated node names */
 	char   auth_type;
 	void * (*get_ext_auth_data)(int auth_type, int *data_len, char *ebuf, int ebufsz);
 	int    (*validate_ext_auth_data) (int auth_type, void *data, int data_len, char *ebuf, int ebufsz);

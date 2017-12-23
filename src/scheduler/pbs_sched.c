@@ -122,6 +122,7 @@ char		*configfile = NULL;	/* name of file containing
 						 client names to be added */
 
 extern char		*msg_daemonname;
+extern char *get_all_ips(char *msg);
 char		**glob_argv;
 char		usage[] =
 	"[-d home][-L logfile][-p file] [-S port][-R port][-n][-N][-c clientsfile]";
@@ -832,14 +833,18 @@ are_we_primary()
 	if (pbs_conf.pbs_leaf_name) {
 		char *endp;
 		snprintf(server_host, sizeof(server_host), "%s", pbs_conf.pbs_leaf_name);
-		endp = strchr(server_host, ':');
+		endp = strchr(server_host, ','); /* find the first name */
+		if (endp)
+			*endp = '\0';
+		endp = strchr(server_host, ':'); /* cut out the port */
 		if (endp)
 			*endp = '\0';
 	} else if ((gethostname(server_host, (sizeof(server_host) - 1)) == -1) ||
-		(get_fullhostname(server_host, server_host, (sizeof(server_host) - 1)) == -1)) {
-		log_err(-1, __func__, "Unable to get my host name");
-		return -1;
+				(get_fullhostname(server_host, server_host, (sizeof(server_host) - 1)) == -1)) {
+				log_err(-1, __func__, "Unable to get my host name");
+				return -1;
 	}
+
 	strncpy(scheduler_name, server_host, sizeof(scheduler_name));
 	scheduler_name [ sizeof(scheduler_name) -1 ] = '\0';
 
@@ -1344,14 +1349,31 @@ main(int argc, char *argv[])
 
 	rpp_fd = -1;
 	if (pbs_conf.pbs_use_tcp == 1) {
-		char *nodename;
 		fd_set selset;
 		struct timeval tv;
+		char *nodename = NULL;
 
-		if (pbs_conf.pbs_leaf_name)
-			nodename = pbs_conf.pbs_leaf_name;
-		else
-			nodename = host;
+		sprintf(log_buffer, "Out of memory");
+		if (pbs_conf.pbs_leaf_name) {
+			char *p;
+			nodename = strdup(pbs_conf.pbs_leaf_name);
+
+			/* reset pbs_leaf_name to only the first leaf name with port */
+			p = strchr(pbs_conf.pbs_leaf_name, ','); /* keep only the first leaf name */
+			if (p)
+				*p = '\0';
+			p = strchr(pbs_conf.pbs_leaf_name, ':'); /* cut out the port */
+			if (p)
+				*p = '\0';
+		} else {
+			nodename = get_all_ips(log_buffer);
+		}
+		if (!nodename) {
+			log_err(-1, "pbsd_main", log_buffer);
+			(void) sprintf(log_buffer, "Unable to determine TPP node name");
+			fprintf(stderr, "%s", log_buffer);
+			return (3);
+		}
 
 		/* set tpp function pointers */
 		set_tpp_funcs(log_tppmsg);
@@ -1366,6 +1388,9 @@ main(int argc, char *argv[])
 								pbs_conf.pbs_leaf_routers, pbs_conf.pbs_use_compression,
 								TPP_AUTH_EXTERNAL, get_ext_auth_data, validate_ext_auth_data);
 		}
+
+		free(nodename);
+
 		if (rc == -1) {
 			fprintf(stderr, "Error setting TPP config\n");
 			return -1;

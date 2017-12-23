@@ -47,6 +47,7 @@
 #include "rpp.h"
 #include "log.h"
 
+extern char *get_all_ips(char *msg);
 
 #define SHOW_NONE 0xff
 int log_mask;
@@ -111,20 +112,18 @@ main(int argc, char *argv[])
 	}
 
 	if (pbs_conf.pbs_use_tcp == 1) {
-		char 			*nodename;
 		struct			tpp_config tpp_conf;
-		char			my_hostname[PBS_MAXHOSTNAME+1];
 		fd_set 			selset;
 		struct 			timeval tv;
 
-		if (pbs_conf.pbs_leaf_name)
-			nodename = pbs_conf.pbs_leaf_name;
-		else {
-			if (gethostname(my_hostname, (sizeof(my_hostname) - 1)) < 0) {
-				fprintf(stderr, "Failed to get hostname\n");
-				return -1;
+		if (!pbs_conf.pbs_leaf_name) {
+			pbs_conf.pbs_leaf_name = get_all_ips(log_buffer);
+			if (!pbs_conf.pbs_leaf_name) {
+				log_err(-1, "pbsd_main", log_buffer);
+				(void) sprintf(log_buffer, "Unable to determine TPP node name");
+				fprintf(stderr, "%s", log_buffer);
+				return (3);
 			}
-			nodename = my_hostname;
 		}
 
 		/* We don't want to show logs related to connecting pbs_comm on console
@@ -139,13 +138,13 @@ main(int argc, char *argv[])
 		rc = 0;
 #ifndef WIN32
 		if (pbs_conf.auth_method == AUTH_MUNGE)
-			rc = set_tpp_config(&pbs_conf, &tpp_conf, nodename, -1, pbs_conf.pbs_leaf_routers,
+			rc = set_tpp_config(&pbs_conf, &tpp_conf, pbs_conf.pbs_leaf_name, -1, pbs_conf.pbs_leaf_routers,
 								pbs_conf.pbs_use_compression,
 								TPP_AUTH_EXTERNAL,
 								get_ext_auth_data, validate_ext_auth_data);
 		else
 #endif
-			rc = set_tpp_config(&pbs_conf, &tpp_conf, nodename, -1, pbs_conf.pbs_leaf_routers,
+			rc = set_tpp_config(&pbs_conf, &tpp_conf, pbs_conf.pbs_leaf_name, -1, pbs_conf.pbs_leaf_routers,
 								pbs_conf.pbs_use_compression,
 								TPP_AUTH_RESV_PORT,
 								NULL, NULL);
