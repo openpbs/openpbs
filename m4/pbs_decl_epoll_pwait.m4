@@ -51,6 +51,8 @@ AC_DEFUN([PBS_AC_DECL_EPOLL_PWAIT],
 #include <unistd.h>
 #include <poll.h>
 #include <signal.h>
+#include <stdio.h>
+#include <errno.h>
 #include <sys/epoll.h>
 int main()
 {

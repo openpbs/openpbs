@@ -6288,8 +6288,8 @@ bg_sync_mom_hookfiles(void)
 	 */
 
 	/* standard rpp closure and net close */
-	rpp_terminate();
 	net_close(-1);
+	rpp_terminate();
 
 	/* Reset signal actions for most to SIG_DFL */
 	sigemptyset(&act.sa_mask);
@@ -6615,8 +6615,8 @@ bg_delete_mom_hooks(void *minfo)
 	 */
 
 	/* standard rpp closure and net close */
-	rpp_terminate();
 	net_close(-1);
+	rpp_terminate();
 
 	/* Reset signal actions for most to SIG_DFL */
 	sigemptyset(&act.sa_mask);
@@ -6826,8 +6826,8 @@ run_periodic_hook(struct work_task *ptask)
 #ifndef WIN32
 	else {
 		/* Close all server connections */
-		rpp_terminate();
 		net_close(-1);
+		rpp_terminate();
 		/* Unprotect child from being killed by kernel */
 		daemon_protect(0, PBS_DAEMON_PROTECT_OFF);
 		ret = server_process_hooks(PBS_BATCH_HookPeriodic, NULL, NULL, phook, 

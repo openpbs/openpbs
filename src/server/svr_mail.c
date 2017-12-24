@@ -636,10 +636,10 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 	 * From here on, we are a child process of the server.
 	 * Fix up file descriptors and signal handlers.
 	 */
-
-	if(pfn_rpp_terminate)
-		rpp_terminate();
 	net_close(-1);
+	if (pfn_rpp_terminate)
+		rpp_terminate();
+
 	/* Unprotect child from being killed by kernel */
 	daemon_protect(0, PBS_DAEMON_PROTECT_OFF);
 
@@ -894,8 +894,8 @@ svr_mailownerResv(resc_resv *presv, int mailpoint, int force, char *text)
 	 * Fix up file descriptors and signal handlers.
 	 */
 
-	rpp_terminate();
 	net_close(-1);
+	rpp_terminate();
 
 	/* Unprotect child from being killed by kernel */
 	daemon_protect(0, PBS_DAEMON_PROTECT_OFF);

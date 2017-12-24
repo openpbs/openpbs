@@ -2244,9 +2244,9 @@ try_db_again:
 	/* Shut down interpreter now before closing network connections */
 	pbs_python_ext_shutdown_interpreter(&svr_interp_data); /* stop python if started */
 
-	rpp_shutdown();
 	shutdown_ack();
 	net_close(-1);		/* close all network connections */
+	rpp_shutdown();
 
 	/*
 	 * SERVER is going to be shutdown, delete AVL tree using

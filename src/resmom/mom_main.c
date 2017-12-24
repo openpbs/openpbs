@@ -9955,8 +9955,8 @@ main(int argc, char *argv[])
 		scan_for_exiting();
 	(void)mom_close_poll();
 
-	rpp_shutdown();
 	net_close(-1);		/* close all network connections */
+	rpp_shutdown();
 
 	/* Have we any jobs that can be purged before we go away? */
 

@@ -5903,8 +5903,8 @@ start_vnode_provisioning(struct prov_vnode_info * prov_vnode_info)
 	else if (pid == 0) {	/* child process */
 		alarm(0);
 		/* standard rpp closure and net close */
-		rpp_terminate();
 		net_close(-1);
+		rpp_terminate();
 
 		/* Reset signal actions for most to SIG_DFL */
 		sigemptyset(&act.sa_mask);

@@ -217,6 +217,5 @@ struct connection {
 	char            cn_username[PBS_MAXUSER];
 	char            cn_hostname[PBS_MAXHOSTNAME+1];
 	pbs_list_link   cn_link;  /* link to the next connection in the linked list */
-	pid_t           cn_pid;  /* process id of the creator */
 };
 #endif	/* _NET_CONNECT_H */

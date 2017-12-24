@@ -45,6 +45,7 @@ AC_CONFIG_MACRO_DIR([m4])
 AC_CANONICAL_TARGET([])
 # FIXME: The subdir-objects option will be enabled by default in the future
 AM_INIT_AUTOMAKE([-Wall foreign])
+AC_USE_SYSTEM_EXTENSIONS
 
 # Checks for programs.
 AC_PROG_AWK

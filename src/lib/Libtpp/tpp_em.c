@@ -74,7 +74,7 @@
 #include "tpp_common.h"
 #include "tpp_platform.h"
 
-#ifdef HAVE_EVENTFD_H
+#ifdef HAVE_SYS_EVENTFD_H
 #include <sys/eventfd.h>
 #endif
 
@@ -1357,7 +1357,7 @@ tpp_mbox_init(tpp_mbox_t *mbox)
 	tpp_init_lock(&mbox->mbox_mutex);
 	TPP_QUE_CLEAR(&mbox->mbox_queue);
 
-#ifdef HAVE_EVENTFD_H
+#ifdef HAVE_SYS_EVENTFD_H
 	if ((mbox->mbox_eventfd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK)) == -1) {
 		snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "eventfd() error, errno=%d", errno);
 		tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
@@ -1405,7 +1405,7 @@ tpp_mbox_init(tpp_mbox_t *mbox)
 int
 tpp_mbox_getfd(tpp_mbox_t *mbox)
 {
-#ifdef HAVE_EVENTFD_H
+#ifdef HAVE_SYS_EVENTFD_H
 	return mbox->mbox_eventfd;
 #else
 	return mbox->mbox_pipe[0];
@@ -1427,7 +1427,7 @@ tpp_mbox_getfd(tpp_mbox_t *mbox)
 void
 tpp_mbox_destroy(tpp_mbox_t *mbox)
 {
-#ifdef HAVE_EVENTFD_H
+#ifdef HAVE_SYS_EVENTFD_H
 	close(mbox->mbox_eventfd);
 #else
 	if (mbox->mbox_pipe[0] > -1)
@@ -1460,7 +1460,7 @@ tpp_mbox_destroy(tpp_mbox_t *mbox)
 int
 tpp_mbox_monitor(void *em_ctx, tpp_mbox_t *mbox)
 {
-#ifdef HAVE_EVENTFD_H
+#ifdef HAVE_SYS_EVENTFD_H
 	/* add eventfd to the poll set */
 	if (tpp_em_add_fd(em_ctx, mbox->mbox_eventfd, EM_IN) == -1) {
 		snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "em_add_fd() error, errno=%d", errno);
@@ -1501,7 +1501,7 @@ tpp_mbox_monitor(void *em_ctx, tpp_mbox_t *mbox)
 int
 tpp_mbox_read(tpp_mbox_t *mbox, unsigned int *tfd, int *cmdval, void **data)
 {
-#ifdef HAVE_EVENTFD_H
+#ifdef HAVE_SYS_EVENTFD_H
 	uint64_t u;
 #else
 	char b;
@@ -1518,7 +1518,7 @@ tpp_mbox_read(tpp_mbox_t *mbox, unsigned int *tfd, int *cmdval, void **data)
 
 	/* if no more data, clear all notifications */
 	if (cmd == NULL) {
-#ifdef HAVE_EVENTFD_H
+#ifdef HAVE_SYS_EVENTFD_H
 		read(mbox->mbox_eventfd, &u, sizeof(uint64_t));
 #else
 		while (tpp_pipe_read(mbox->mbox_pipe[0], &b, sizeof(char)) == sizeof(char));
@@ -1610,7 +1610,7 @@ tpp_mbox_post(tpp_mbox_t *mbox, unsigned int tfd, int cmdval, void *data)
 {
 	tpp_cmd_t *cmd;
 	ssize_t s;
-#ifdef HAVE_EVENTFD_H
+#ifdef HAVE_SYS_EVENTFD_H
 	uint64_t u;
 #else
 	char b;
@@ -1639,7 +1639,7 @@ tpp_mbox_post(tpp_mbox_t *mbox, unsigned int tfd, int cmdval, void *data)
 
 	while (1) {
 		/* send a notification to the thread */
-#ifdef HAVE_EVENTFD_H
+#ifdef HAVE_SYS_EVENTFD_H
 		u = 1;
 		s = write(mbox->mbox_eventfd, &u, sizeof(uint64_t));
 		if (s == sizeof(uint64_t))

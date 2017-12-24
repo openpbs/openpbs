@@ -368,7 +368,7 @@ typedef struct {
 typedef struct {
 	pthread_mutex_t mbox_mutex;
 	tpp_que_t mbox_queue;
-#ifdef HAVE_EVENTFD_H
+#ifdef HAVE_SYS_EVENTFD_H
 	int mbox_eventfd;
 #else
 	int mbox_pipe[2]; /* may be unused */
