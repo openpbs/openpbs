@@ -83,6 +83,7 @@ typedef struct {
 #define AVL_DUP_KEYS_OK	1	/* repeated key & rec cause an error message */
 #define AVL_COUNT_DUPS	2	/* complete dups allowed, count repetitions */
 
+extern void *get_avl_tls(void);
 extern void	avl_create_index(AVL_IX_DESC *pix, int dup, int keylength);
 extern void	avl_destroy_index(AVL_IX_DESC *pix);
 extern int	avl_find_key(AVL_IX_REC *pe, AVL_IX_DESC *pix);

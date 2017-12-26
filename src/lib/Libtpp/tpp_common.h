@@ -387,7 +387,9 @@ typedef struct {
 	void *td;
 	char tpplogbuf[TPP_LOGBUF_SZ];
 	char tppstaticbuf[TPP_LOGBUF_SZ];
-} tpp_tls;
+	void *log_data; /* data created by the logging layer for the TPP threads */
+	void *avl_data; /* data created by the avl tree functions for the TPP threads */
+} tpp_tls_t;
 
 tpp_que_elem_t* tpp_enque(tpp_que_t *l, void *data);
 void *tpp_deque(tpp_que_t *l);
@@ -406,7 +408,7 @@ int tpp_set_user_data(int sd, void *user_data);
 char* convert_to_ip_port(char *host_port, int port);
 
 int tpp_init_tls_key(void);
-tpp_tls *tpp_get_tls(void);
+tpp_tls_t *tpp_get_tls(void);
 char *tpp_get_logbuf(void);
 char *mk_hostname(char *host, int port);
 int tpp_open(char *dest_host, unsigned int port);
@@ -650,6 +652,7 @@ int tpp_mbox_read(tpp_mbox_t *mbox, unsigned int *tfd, int *cmdval, void **data)
 int tpp_mbox_clear(tpp_mbox_t *mbox, tpp_que_elem_t **n, unsigned int tfd, int *cmdval, void **data);
 int tpp_mbox_post(tpp_mbox_t *mbox, unsigned int tfd, int cmdval, void *data);
 int tpp_mbox_getfd(tpp_mbox_t *mbox);
+void tpp_mbox_drain_unsafe(tpp_mbox_t *mbox);
 
 extern int tpp_going_down;
 /**********************************************************************/

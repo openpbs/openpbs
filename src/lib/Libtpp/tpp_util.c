@@ -131,7 +131,13 @@ tpp_cr_pkt(void *data, int len, int mk_data)
 	if (mk_data == 0)
 		pkt->data = data;
 	else {
+#ifdef DEBUG
+		/* use calloc() to satisfy valgrind in debug mode */
+		pkt->data = calloc(len, 1);
+#else
+		/* use malloc() in non-debug mode for performance */
 		pkt->data = malloc(len);
+#endif
 		if (!pkt->data) {
 			free(pkt);
 			snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Out of memory allocating packet data of %d bytes", len);
@@ -961,12 +967,12 @@ tpp_init_tls_key()
  * @par MT-safe: Yes
  *
  */
-tpp_tls *
+tpp_tls_t *
 tpp_get_tls()
 {
-	tpp_tls *ptr;
+	tpp_tls_t *ptr;
 	if ((ptr = pthread_getspecific(tpp_key_tls)) == NULL) {
-		ptr = calloc(1, sizeof(tpp_tls));
+		ptr = calloc(1, sizeof(tpp_tls_t));
 		if (!ptr)
 			return NULL;
 
@@ -975,7 +981,7 @@ tpp_get_tls()
 			return NULL;
 		}
 	}
-	return (tpp_tls *) ptr; /* thread data already initialized */
+	return (tpp_tls_t *) ptr; /* thread data already initialized */
 }
 
 /**
@@ -993,7 +999,7 @@ tpp_get_tls()
 char *
 tpp_get_logbuf()
 {
-	tpp_tls *ptr;
+	tpp_tls_t *ptr;
 
 	ptr = tpp_get_tls();
 	if (!ptr) {
@@ -1718,7 +1724,7 @@ tpp_get_connected_host(int sock)
 char *
 tpp_netaddr(tpp_addr_t *ap)
 {
-	tpp_tls *ptr;
+	tpp_tls_t *ptr;
 #ifdef WIN32
 	struct sockaddr_in in;
 	struct sockaddr_in6 in6;

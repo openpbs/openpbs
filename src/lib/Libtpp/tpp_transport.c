@@ -145,6 +145,7 @@ typedef struct {
 	tpp_que_t lazy_conn_que;  /* The delayed connection queue on this thread */
 	tpp_que_t close_conn_que;  /* The closed connection queue on this thread */
 	tpp_mbox_t mbox;     /* message box for this thread */
+	tpp_tls_t *tpp_tls;	/* tls data related to tpp work */
 } thrd_data_t;
 
 #ifdef NAS /* localmod 149 */
@@ -693,7 +694,8 @@ tpp_transport_set_handlers(int (*pkt_presend_handler)(int phy_con, tpp_packet_t 
  * @par MT-safe: No
  *
  */
-static phy_conn_t* alloc_conn(int tfd)
+static phy_conn_t*
+alloc_conn(int tfd)
 {
 	phy_conn_t *conn;
 	void *p;
@@ -1385,6 +1387,7 @@ handle_cmd(thrd_data_t *td, int tfd, int cmd, void *data)
 {
 	int slot_state;
 	phy_conn_t *conn;
+	conn_event_t *conn_ev;
 	int num_cons = 0;
 
 	conn = get_transport_atomic(tfd, &slot_state);
@@ -1398,6 +1401,7 @@ handle_cmd(thrd_data_t *td, int tfd, int cmd, void *data)
 		handle_disconnect(conn);
 	} else if (cmd == TPP_CMD_EXIT) {
 		int i;
+		tpp_tls_t *p;
 
 		for (i = 0; i < conns_array_size; i++) {
 			conn = get_transport_atomic(i, &slot_state);
@@ -1413,6 +1417,11 @@ handle_cmd(thrd_data_t *td, int tfd, int cmd, void *data)
 		if (td->listen_fd > -1)
 			tpp_sock_close(td->listen_fd);
 
+		/* clean up the lazy conn queue */
+		while ((conn_ev = tpp_deque(&td->lazy_conn_que))) {
+			free(conn_ev);
+		}
+
 		/* clean up the close queue and piled up send data */
 		while ((conn = tpp_deque(&td->close_conn_que))) {
 			tpp_sock_close(conn->sock_fd);
@@ -1422,7 +1431,17 @@ handle_cmd(thrd_data_t *td, int tfd, int cmd, void *data)
 		snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Thrd exiting, had %d connections", num_cons);
 		tpp_log_func(LOG_INFO, NULL, tpp_get_logbuf());
 
+		/* clean up any tls memory, just for valgrind's sake */
+		if ((p = tpp_get_tls())) {
+			free(p->log_data);
+			free(p->avl_data);
+			free(p);
+			td->tpp_tls = NULL;
+		}
+
 		pthread_exit(NULL);
+		/* no execution after this */
+
 	} else if (cmd == TPP_CMD_ASSIGN) {
 		int delay = (int)(long) data;
 
@@ -1473,7 +1492,7 @@ handle_cmd(thrd_data_t *td, int tfd, int cmd, void *data)
 int
 tpp_get_thrd_index()
 {
-	tpp_tls *tls;
+	tpp_tls_t *tls;
 	thrd_data_t *td;
 	if ((tls = tpp_get_tls()) == NULL)
 		return -1;
@@ -1534,7 +1553,7 @@ work(void *v)
 	int new_connection = 0;
 	int timeout, timeout2;
 	time_t now;
-	tpp_tls *ptr;
+	tpp_tls_t *ptr;
 #ifndef WIN32
 	int rc;
 	sigset_t	blksigs;
@@ -1551,6 +1570,7 @@ work(void *v)
 		exit(1);
 	}
 	ptr->td = (void *) td;
+	td->tpp_tls = ptr; /* store allocated area for tls into td to free at shutdown/terminate */
 
 #ifndef WIN32
 	/* block a certain set of signals that we do not care about in this IO thread
@@ -1572,6 +1592,11 @@ work(void *v)
 		exit(1);
 	}
 #endif
+	tpp_log_func(LOG_CRIT, NULL, "Thread ready");
+
+	/* store the log and avl tls data so we can free later */
+	td->tpp_tls->log_data = log_get_tls_data();
+	td->tpp_tls->avl_data = get_avl_tls();
 
 	/* start processing loop */
 	for (;;) {
@@ -2294,6 +2319,9 @@ free_phy_conn(phy_conn_t *conn)
 {
 	tpp_packet_t *p = NULL;
 
+	if (!conn)
+		return;
+
 	if (conn->conn_params) {
 		if (conn->conn_params->hostname)
 			free(conn->conn_params->hostname);
@@ -2304,12 +2332,21 @@ free_phy_conn(phy_conn_t *conn)
 		tpp_free_pkt(p);
 	}
 
-	if (conn->scratch.data)
-		free(conn->scratch.data);
-	if (conn->scratch.extra_data)
-		free(conn->scratch.extra_data);
-
+	free(conn->ctx);
+	free(conn->scratch.data);
+	free(conn->scratch.extra_data);
 	free(conn);
+}
+
+/*
+ * Dummy log function used when terminate is called
+ * We cannot log anything after fork even if tpp_dummy_logfunc
+ * is called accidentally, so set tpp_log_func to this
+ * dummy function
+ */
+void
+tpp_dummy_logfunc(int level, const char *id, char *mess)
+{
 }
 
 /**
@@ -2342,20 +2379,16 @@ tpp_transport_shutdown()
 	}
 	free(thrd_pool);
 
+	for (i = 0; i < conns_array_size; i++) {
+		if (conns_array[i].conn) {
+			tpp_sock_close(conns_array[i].conn->sock_fd);
+			free_phy_conn(conns_array[i].conn);
+		}
+	}
+
 	/* free the array */
 	free(conns_array);
 	tpp_destroy_lock(&cons_array_lock);
-}
-
-/*
- * Dummy log function used when terminate is called
- * We cannot log anything after fork even if tpp_func_func
- * is called accidentally, so set tpp_log_func to this
- * dummy function
- */
-void
-tpp_dummy_logfunc(int level, const char *id, char *mess)
-{
 }
 
 /**
@@ -2382,7 +2415,22 @@ tpp_transport_terminate()
 	tpp_log_func = tpp_dummy_logfunc;
 
 	for (i = 0; i < num_threads; i++) {
+#ifdef DEBUG
+		conn_event_t *conn_ev;
+		/* satisfy valgrind in debug mode, not in regular for performance */
+		tpp_mbox_drain_unsafe(&thrd_pool[i]->mbox);
+
+		/* clean up the lazy conn queue */
+		while ((conn_ev = tpp_deque(&thrd_pool[i]->lazy_conn_que))) {
+			free(conn_ev);
+		}
+#endif
 		tpp_em_destroy(thrd_pool[i]->em_context);
+		if (thrd_pool[i]->tpp_tls) {
+			free(thrd_pool[i]->tpp_tls->log_data);
+			free(thrd_pool[i]->tpp_tls->avl_data);
+		}
+		free(thrd_pool[i]->tpp_tls);
 		if (thrd_pool[i]->listen_fd > -1)
 			tpp_sock_close(thrd_pool[i]->listen_fd);
 		free(thrd_pool[i]);
@@ -2395,9 +2443,11 @@ tpp_transport_terminate()
 	/* close all open physical connections, else child carries open socket
 	 * and a later close at parent is not all sides closed
 	 */
-	for(i = 0; i < conns_array_size; i++) {
-		if (conns_array[i].conn)
+	for (i = 0; i < conns_array_size; i++) {
+		if (conns_array[i].conn) {
 			tpp_sock_close(conns_array[i].conn->sock_fd);
+			free_phy_conn(conns_array[i].conn);
+		}
 	}
 
 	/* free the array */

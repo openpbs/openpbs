@@ -6835,6 +6835,27 @@ run_periodic_hook(struct work_task *ptask)
 					   sizeof(hook_msg), pbs_python_set_interrupt, &num_run, &event_initialized);
 		if (ret == 0)
 			log_event(PBSE_HOOKERROR, PBS_EVENTCLASS_HOOK, LOG_ERR, __func__, hook_msg);
+
+#if defined(DEBUG)
+		/* for valgrind, clear some stuff up */
+		{
+			hook *phook = (hook *) GET_NEXT(svr_allhooks);
+			while (phook) {
+				hook *tmp;
+				free(phook->hook_name);
+				if (phook->script) {
+					struct python_script *scr = phook->script;
+					free(scr->path);
+					free(scr->py_code_obj);
+				}
+				free(phook->script);
+				tmp = phook;
+				phook = (hook *) GET_NEXT(phook->hi_allhooks);
+				free(tmp);
+			}
+		}
+#endif
+
 		exit(ret);
 	}
 #endif

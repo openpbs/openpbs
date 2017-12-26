@@ -202,6 +202,24 @@ mk_log_name(char *pbuf, size_t pbufsz)
 
 /**
  * @brief
+ *	Return the address of the tls data related to pbs_log_tls_key
+ *
+ * @return tls data pointer
+ *
+ * @par Side Effects:
+ *	None
+ *
+ * @par MT-safe: Yes
+ *
+ */
+void *
+log_get_tls_data(void)
+{
+	return pthread_getspecific(pbs_log_tls_key);
+}
+
+/**
+ * @brief
  *	Lock the mutex associated with this log
  *
  * @return Error code

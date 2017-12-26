@@ -89,6 +89,7 @@ extern long *log_event_mask;
 
 extern void set_logfile(FILE *fp);
 extern int set_msgdaemonname(char *ch);
+extern void *log_get_tls_data(void);
 
 extern struct log_net_info *get_if_info(char *msg);
 extern void free_if_info(struct log_net_info *ni);

@@ -191,3 +191,39 @@ Note 4: You need to use a POSIX (or nearly POSIX) make. GNU make
   is not guaranteed to work. Don't be surprised if the first thing
   that make does is call configure again.
 
+
+
+Using valgrind with PBS Professional.
+-------------------------------------
+Here is a set of steps to detect memory errors/leaks within PBS code.
+
+1. Install the valgrind development package.
+
+   yum install valgrind-devel (zypper for OpenSUSE).
+
+
+2. Compile Python in a way that valgrind can work with it, as follows:
+
+   ./configure --prefix=<installdir> --without-pymalloc --with-pydebug --with-valgrind
+   make; make install
+
+
+3. Compile PBS Professional with the special python and in debug mode as follows:
+
+   ./configure --prefix=<installdir> --with-python=<python-dir>  CFLAGS="-g -DPy_DEBUG -DDEBUG -Wall -Werror"
+
+   
+4. Run pbs daemons under valgrind.
+   
+   a) To detect memory errors (not leaks) run pbs daemons as follows: 
+	
+   export LD_LIBRARY_PATH=/opt/pbs/pgsql/lib:/opt/pbs/lib:$LD_LIBRARY_PATH
+   valgrind --tool=memcheck --log-file=/tmp/val.out /opt/pbs/sbin/pbs_server.bin
+
+
+   b) To detect memory leaks use the supplied leaks suppression file valgrind.supp, as follows: 
+   
+   export LD_LIBRARY_PATH=/opt/pbs/pgsql/lib:/opt/pbs/lib:$LD_LIBRARY_PATH
+   valgrind --tool=memcheck --log-file=/tmp/val.out --suppressions=./valgrind.supp --leak-check=full --track-origins=yes /opt/pbs/sbin/pbs_server.bin
+   
+  

@@ -1489,6 +1489,29 @@ tpp_getaddr(int fd)
 
 /**
  * @brief
+ *	Convenience function to free router strutures
+ *	
+ * @par MT-safe: yes
+ *
+ */
+static void
+free_routers()
+{
+	int i;
+
+	for (i = 0; i < max_routers; i++)
+		free(routers[i]);
+	free(routers);
+
+	free(tpp_conf->node_name);
+	for (i = 0; tpp_conf->routers[i]; i++)
+		free(tpp_conf->routers[i]);
+
+	free(tpp_conf->routers);
+}
+
+/**
+ * @brief
  *	Shuts down the tpp library gracefully
  *
  * @par Functionality
@@ -1529,6 +1552,8 @@ tpp_shutdown()
 	if (strmarray)
 		free(strmarray);
 	tpp_destroy_lock(&strmarray_lock);
+
+	free_routers();
 }
 
 /**
@@ -1565,10 +1590,12 @@ tpp_terminate()
 
 	tpp_transport_terminate();
 
+	tpp_mbox_destroy(&app_mbox);
+
 	if (strmarray)
 		free(strmarray);
 
-	return;
+	free_routers();
 }
 
 /* NULL definitions for some unimplemented functions */
@@ -2159,6 +2186,11 @@ tpp_mcast_send(int mtfd, void *data, unsigned int len, unsigned int full_len, un
 	}
 
 	minfo_len = sizeof(tpp_mcast_pkt_info_t) * d->num_fds;
+
+#ifdef DEBUG
+	/* in debug mode satisfy valgrind by initializing header memory */
+	memset(&mhdr, 0, sizeof(mhdr));
+#endif
 
 	/* header data */
 	mhdr.type = TPP_MCAST_DATA;

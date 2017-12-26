@@ -512,7 +512,7 @@ repl_slash(char *path)
  * @brief
  *	Function to start/stop the database service/daemons
  *	Basically calls the pbs_dataservice script/batch file with
- *	the sepcified command. It adds a second parameter
+ *	the specified command. It adds a second parameter
  *	"PBS" to the command string. This way the script/batch file
  *	knows that the call came from the pbs code rather than
  *	being invoked from commandline by the admin
@@ -593,7 +593,7 @@ pbs_dataservice_control(char *cmd, char **errmsg)
 				*(*errmsg+stbuf.st_size)=0;
 				p = *errmsg + strlen(*errmsg) - 1;
 				while ((p >= *errmsg) && (*p == '\r' || *p == '\n'))
-					*p-- = 0; /* supress the last newline */
+					*p-- = 0; /* suppress the last newline */
 			}
 			close(fd);
 		}

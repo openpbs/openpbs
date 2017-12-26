@@ -908,6 +908,7 @@ main(int argc, char **argv)
 	struct stat 		sb_sa;
 	struct batch_request	*periodic_req;
 	char			hook_msg[HOOK_MSG_SIZE];
+	char			*keep_daemon_name = NULL;
 #ifndef WIN32
 	pid_t			sid = -1;
 #endif
@@ -2003,6 +2004,9 @@ try_db_again:
 		return (1);
 	}
 
+	/* save it so we can free it without needing the pointer inside svr_interp_data */
+	keep_daemon_name = svr_interp_data.daemon_name;
+
 	strncpy(svr_interp_data.local_host_name, server_host, (sizeof(svr_interp_data.local_host_name) - 1));
 	if ((pc=strchr(svr_interp_data.local_host_name, '.')) != NULL)
 		*pc = '\0';
@@ -2016,6 +2020,7 @@ try_db_again:
 	if (periodic_req == NULL) {
 		log_err(errno, msg_daemonname, "Out of memory!");
 		stop_db();
+		free(keep_daemon_name);
 		return (1);
 	}
 	process_hooks(periodic_req, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
@@ -2248,6 +2253,27 @@ try_db_again:
 	net_close(-1);		/* close all network connections */
 	rpp_shutdown();
 
+#if defined(DEBUG)
+	/* for valgrind, clear some stuff up */
+	{
+		hook *phook = (hook *) GET_NEXT(svr_allhooks);
+		while (phook) {
+			hook *tmp;
+			free(phook->hook_name);
+			if (phook->script) {
+				struct python_script *scr = phook->script;
+				free(scr->global_dict);
+				free(scr->path);
+				free(scr->py_code_obj);
+			}
+			free(phook->script);
+			tmp = phook;
+			phook = (hook *)GET_NEXT(phook->hi_allhooks);
+			free(tmp);
+		}
+	}
+#endif
+
 	/*
 	 * SERVER is going to be shutdown, delete AVL tree using
 	 * avl_destroy_index() which was created in pbsd_init.c
@@ -2274,6 +2300,7 @@ try_db_again:
 		LOG_NOTICE, msg_daemonname, msg_svrdown);
 	acct_close();
 	log_close(1);
+	free(keep_daemon_name); /* logs closed, can free here */
 
 #ifdef WIN32
 	destroypids();
@@ -2846,8 +2873,10 @@ get_db_connect_information()
 		if (rc == -1) {
 			snprintf(log_buffer, sizeof(log_buffer), "status db failed: %s", failstr);
 			log_err(-1, msg_daemonname, log_buffer);
+			free(failstr);
 			return NULL;
 		}
+		free(failstr);
 
 		snprintf(log_buffer, sizeof(log_buffer), "pbs_status_db exit code %d", rc);
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, log_buffer);
@@ -3037,8 +3066,10 @@ stop_db()
 	db_oper_failed_times = 0;
 	while (1) {
 		rc = pbs_status_db(&db_err);
-		if (rc != 0)
+		if (rc != 0) {
+			free(db_err);
 			return; /* dataservice not running, got killed? */
+		}
 
 		strcpy(log_buffer, "Stopping PBS dataservice");
 		log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE,
@@ -3065,7 +3096,7 @@ stop_db()
 		db_delay = (int)(1 + db_oper_failed_times * 1.5);
 		if (db_oper_failed_times > MAX_DB_LOOP_DELAY)
 			db_delay = MAX_DB_LOOP_DELAY; /* limit to MAX_DB_LOOP_DELAY secs */
-		sleep(db_delay); /* dont burn the CPU looping too fast */
+		sleep(db_delay); /* don't burn the CPU looping too fast */
 	}
 }
 /**

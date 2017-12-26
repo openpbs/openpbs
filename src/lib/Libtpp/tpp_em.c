@@ -1542,6 +1542,33 @@ tpp_mbox_read(tpp_mbox_t *mbox, unsigned int *tfd, int *cmdval, void **data)
 
 /**
  * @brief
+ *	Drain commands and data from an mbox
+ *	Thread unsafe, and called only in debug mode to satisfy valgrind after a fork
+ *
+ * @param[in] - mbox   - The mbox to read from
+ *
+ * @par Side Effects:
+ *	None
+ *
+ * @par MT-safe: NO
+ *
+ */
+void
+tpp_mbox_drain_unsafe(tpp_mbox_t *mbox)
+{
+	tpp_que_elem_t *n = NULL;
+
+	while ((n = TPP_QUE_NEXT(&mbox->mbox_queue, n))) {
+		tpp_cmd_t *cmd;
+		if ((cmd = TPP_QUE_DATA(n)))
+			free(cmd->data);
+		free(cmd);
+		n = tpp_que_del_elem(&mbox->mbox_queue, n);
+	}
+}
+
+/**
+ * @brief
  *	Clear pending commands pertaining to a connection
  *	from this mbox
  *	Called usually when the connection got closed and

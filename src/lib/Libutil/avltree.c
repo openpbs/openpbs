@@ -138,7 +138,8 @@ static pthread_key_t avl_tls_key;
  *	initializes avl tls by creating a key.
  *
  */
-void avl_init_tls(void)
+void
+avl_init_tls(void)
 {
 	if (pthread_key_create(&avl_tls_key, NULL) != 0) {
 		fprintf(stderr, "avl tls key creation failed\n");
@@ -154,7 +155,8 @@ void avl_init_tls(void)
  * @return 	structure handle
  * @retval	pointer to avl tree info (tls)
  */
-avl_tls_t *get_avl_tls()
+void *
+get_avl_tls(void)
 {
 	avl_tls_t *p_avl_tls = NULL;
 
