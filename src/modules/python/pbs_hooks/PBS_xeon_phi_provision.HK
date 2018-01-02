@@ -1,0 +1,6 @@
+type=pbs
+enabled=false
+user=pbsadmin
+event=provision
+order=1
+alarm=1800

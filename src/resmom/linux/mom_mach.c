@@ -4667,21 +4667,39 @@ vnlp_has_topology_info(void) {
  *		functions to export the topology information that it generates,
  *		but on Cray systems we instead export information via the
  *		alps_inventory() function.
+ * @brief A synopsis of the function call sequence (for vnode creation).
+ *	  1. Process the System (BASIL 1.7) Query in alps_system_KNL(). This
+ *	  	does not include KNL vnode creation.
+ *	  2. Process the Inventory (BASIL 1.4) Query in alps_inventory() and
+ *		create non-KNL vnodes.
+ *	  	KNL vnodes returned by the earlier System Query (step 1) are
+ *		filtered from the Inventory (1.4) response.
+ *	  3. Create KNL vnodes in system_to_vnodes_KNL(), using information
+ *		retrieved earlier in alps_system_KNL() (step 1).
  *
  * @see	alps_inventory
  * @see	mom_topology
- *
+ * @see alps_system_KNL
+ * @see system_to_vnodes_KNL
  */
 void
 dep_topology(void)
 {
 #if	MOM_ALPS
+	/* This function is the entry point for System Query processing. */
+	/* Activities include making a System XML Request & handling the XML Response. */
+	alps_system_KNL();
 	/*
 	 * The call to physmem needs to take place before the ALPS inventory
 	 * because a vnode for the "login node" will be created which
 	 * must have the memory set.
 	 */
+	/* Inventory (BASIL 1.4) Query processing. */
+	/* Create non-KNL vnodes. */
 	alps_inventory();
+
+	/* Create KNL VNodes. */
+	system_to_vnodes_KNL();
 #endif
 	if (!vnlp_has_topology_info()) {
 		/* Populate "topology_info", only if the attribute */

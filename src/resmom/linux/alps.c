@@ -105,6 +105,7 @@ extern pid_t getsid(pid_t);
 
 /**
  * Remember the PBScrayhost (mpphost) reported by ALPS.
+ * Utilized during Inventory query procession for Compute nodes.
  */
 char	mpphost[BASIL_STRING_LONG];
 
@@ -112,10 +113,10 @@ char	mpphost[BASIL_STRING_LONG];
  * Data types to support interaction with the Cray ALPS implementation.
  */
 
-extern char *alps_client;
-extern int vnode_per_numa_node;
-extern char *ret_string;
-extern vnl_t	*vnlp;
+extern char  *alps_client;
+extern int    vnode_per_numa_node;
+extern char  *ret_string;
+extern vnl_t *vnlp;
 
 /**
  * Define a sane BASIL stack limit.
@@ -162,6 +163,19 @@ typedef struct element_counts {
 } element_counts_t;
 
 /**
+ * This is for the SYSTEM Query XML Response.
+ * Maintain counts on elements that are limited to one instance per context.
+ * These counters are checked to ensure that the XML Response is not nested/
+ * jumbled in any way.
+ */
+typedef struct element_counts_sys {
+	int response;
+	int response_data;
+	int system;
+} element_counts_sys_t;
+
+
+/**
  * Pointers for node data used when parsing inventory.
  * These provide a place to hang lists of any possible result from an
  * ALPS inventory. Additionally, counters for node states are kept here.
@@ -198,6 +212,15 @@ typedef struct inventory_data {
 } inventory_data_t;
 
 /**
+ * Pointer to System <Nodes> data used when parsing System response.
+ * This structure is expected to grow as/when we implement more of
+ * the BASIL 1.7 features.
+ */
+typedef struct system_data {
+	basil_system_element_t *node_group;
+} system_data_t;
+
+/**
  * The user data structure for expat.
  */
 typedef struct ud {
@@ -205,12 +228,26 @@ typedef struct ud {
 	int stack[MAX_BASIL_STACK + 1];
 	char status[BASIL_STRING_SHORT];
 	char message[BASIL_ERROR_BUFFER_SIZE];
+	char type[BASIL_STRING_SHORT];
+	char basil_ver[BASIL_STRING_SHORT];
 	char error_class[BASIL_STRING_SHORT];
 	char error_source[BASIL_STRING_SHORT];
 	element_counts_t count;
+	element_counts_sys_t count_sys;
 	inventory_data_t current;
+	system_data_t current_sys;
 	basil_response_t *brp;
 } ud_t;
+
+/**
+ * Pointer to a response structure (that gets filled in with KNL Node information).
+ */
+static basil_response_t *brp_knl;
+
+/**
+ * List of all KNL Nodes extracted from the System (BASIL 1.7) XML Response.
+ */
+static char *knl_node_list;
 
 /**
  * Function pointers to XML handler functions.
@@ -235,6 +272,8 @@ static char *basil_inventory;
 static char *alps_client_out;
 
 static char	*requestBuffer;
+static char	*requestBuffer_knl;
+static size_t	requestSize_knl;
 static size_t	requestCurr = 0;
 static size_t	requestSize = 0;
 
@@ -251,9 +290,17 @@ static char utilBuffer[(UTIL_BUFFER_LEN * sizeof(char))];
 static	int	basil11orig	= 0;
 
 /**
- * Variable that keeps track of which basil version to speak
+ * Variables that keep track of which basil version to speak.
+ * The Inventory Query speaks BASIL 1.4 (stored in basilversion_inventory) and
+ * the System Query speaks BASIL 1.7 (stored in basilversion_system).
  */
-static char	basilversion[BASIL_STRING_SHORT];
+static char	basilversion_inventory[BASIL_STRING_SHORT];
+static char	basilversion_system[BASIL_STRING_SHORT];
+
+/**
+ * Flag to indicate BASIL 1.7 support.
+ */
+static int basil_1_7_supported;
 
 /**
  * Variable that keeps track of the numeric value related to the basil version.
@@ -277,11 +324,24 @@ static const char *pbs_supported_basil_versions[] __attribute__((unused)) = {
 	NULL
 };
 
+static int first_compute_node = 1;
+
 /**
  * String to use for mpp_host in vnode names when basil11orig
  * is true.
  */
 #define	FAKE_MPP_HOST	"default"
+
+/**
+ * Prototype declarations for System Query (KNL) related functions.
+ */
+static int init_KNL_alps_req_buf(void);
+static void create_vnodes_KNL(basil_response_query_system_t *);
+static int exclude_from_KNL_processing(basil_system_element_t *);
+static long *process_nodelist_KNL(char *, int *);
+static void store_nids(int, char *, long **, int *);
+static void free_basil_elements_KNL(basil_system_element_t *);
+static void alps_engine_query_KNL(void);
 
 /**
  * @brief
@@ -321,6 +381,28 @@ new_alps_req(void)
 	}
 	assert(requestBuffer != NULL);
 	requestCurr = 0;
+}
+
+/**
+ * @brief
+ * Start a new ALPS request for KNL.
+ *
+ * If need be, allocate a buffer.
+ * @retval 1 if buffer allocation failed.
+ * @retval 0 if success.
+ */
+static int
+init_KNL_alps_req_buf(void)
+{
+	if (requestBuffer_knl == NULL) {
+		requestSize_knl = UTIL_BUFFER_LEN;
+		if ((requestBuffer_knl = (char*)malloc(UTIL_BUFFER_LEN)) == NULL) {
+			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE, LOG_ERR, __func__,
+				"Memory allocation for XML request buffer failed.");
+			return 1;
+		}
+	}
+	return 0;
 }
 
 /**
@@ -724,6 +806,7 @@ stack_busted(ud_t *d)
 					break;
 				case basil_1_3:
 				case basil_1_4:
+				case basil_1_7:
 					if (strcmp(BASIL_ELM_SOCKET, prev) != 0) {
 						parse_err_illegal_start(d);
 						return (1);
@@ -759,6 +842,7 @@ stack_busted(ud_t *d)
 					break;
 				case basil_1_3:
 				case basil_1_4:
+				case basil_1_7:
 					if (strcmp(BASIL_ELM_COMPUTEUNIT, prev) != 0) {
 						parse_err_illegal_start(d);
 						return (1);
@@ -900,8 +984,6 @@ stack_busted(ud_t *d)
  * 	the BASIL document format changes. Cray will provide a new basil.h
  * 	when this occurs.
  *
- * Note: basilversion is set in alps_engine_query(), before response_start
- * is called.
  *
  * The standard Expat start handler function prototype is used.
  * @param[in] d pointer to user data structure
@@ -934,11 +1016,12 @@ response_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 		xml_dbg("%s: %s = %s", __func__, *np, *vp);
 		if (strcmp(BASIL_ATR_PROTOCOL, *np) == 0) {
 			BASIL_STRSET_SHORT(protocol, *vp);
-			if ((strcmp(BASIL_VAL_VERSION_1_4, *vp) != 0) &&
+			if ((strcmp(BASIL_VAL_VERSION_1_7, *vp) != 0) &&
+				(strcmp(BASIL_VAL_VERSION_1_4, *vp) != 0) &&
 				(strcmp(BASIL_VAL_VERSION_1_3, *vp) != 0) &&
 				(strcmp(BASIL_VAL_VERSION_1_2, *vp) != 0) &&
 				(strcmp(BASIL_VAL_VERSION_1_1, *vp) != 0)) {
-				parse_err_version_mismatch(d, *vp, basilversion);
+				parse_err_version_mismatch(d, *vp, d->basil_ver);
 				return;
 			}
 		}
@@ -947,7 +1030,6 @@ response_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 		parse_err_unspecified_attr(d, BASIL_ATR_PROTOCOL);
 		return;
 	}
-	return;
 }
 
 /**
@@ -1054,6 +1136,14 @@ response_data_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 					brp->error_flags |= (BASIL_ERR_TRANSIENT);
 				}
 			}
+		} else if (strcmp(BASIL_ATR_TYPE, *np) == 0) {
+			strncpy(d->type, *vp, sizeof(d->type) - 1);
+			d->type[sizeof(d->type) - 1] = '\0';
+			if ((strcmp(BASIL_VAL_SYSTEM, *vp) != 0) &&
+			    (strcmp(BASIL_VAL_ENGINE, *vp) != 0)) {
+				parse_err_illegal_attr_val(d, *np, *vp);
+				return;
+			}
 		} else {
 			parse_err_unrecognized_attr(d, *np);
 			return;
@@ -1068,7 +1158,6 @@ response_data_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 		parse_err_unspecified_attr(d, BASIL_ATR_STATUS);
 		return;
 	}
-	return;
 }
 
 /**
@@ -1696,6 +1785,7 @@ node_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 			break;
 		case basil_1_3:
 		case basil_1_4:
+		case basil_1_7:
 			/* segment_array is reset in socket_start() for these
 			 * BASIL versions.
 			 */
@@ -1943,6 +2033,7 @@ segment_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 				break;
 			case basil_1_3:
 			case basil_1_4:
+			case basil_1_7:
 				(d->current.socket)->segments = segment;
 				break;
 		}
@@ -1985,6 +2076,7 @@ segment_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 			break;
 		case basil_1_3:
 		case basil_1_4:
+		case basil_1_7:
 			d->count.computeunit_array = 0;
 			d->current.processor = NULL;
 			break;
@@ -2142,6 +2234,7 @@ processor_array_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 			break;
 		case basil_1_3:
 		case basil_1_4:
+		case basil_1_7:
 			/* processor is reset in segment_start()
 			 * for these BASIL versions
 			 */
@@ -2206,6 +2299,7 @@ processor_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 			break;
 		case basil_1_3:
 		case basil_1_4:
+		case basil_1_7:
 			cu = (d->current.segment)->computeunits;
 			if (!cu) {
 				parse_err_internal(d);
@@ -2283,6 +2377,7 @@ processor_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 			break;
 		case basil_1_3:
 		case basil_1_4:
+		case basil_1_7:
 			/* The arch and mhz info is no longer part of the
 			 * processor XML for these BASIL versions
 			 */
@@ -3378,6 +3473,7 @@ ignore_element(ud_t *d, const XML_Char *el, const XML_Char **atts)
 	return;
 }
 
+
 /**
  * @brief
  * 	Generic method registered to handle character data for elements
@@ -3406,6 +3502,113 @@ disallow_char_data(ud_t *d, const XML_Char *s, int len)
 		return;
 	parse_err_illegal_char_data(d, s);
 	return;
+}
+
+/**
+ * @brief
+ * Helper function for allow_char_data() that is registered to handle
+ * character data for elements.
+ * The user data structure (ud_t) is populated with the node rangelist associated
+ * with the 'Nodes' element (in the System BASIL 1.7 XML response), that is
+ * currently being processed.
+ *
+ * @param d pointer to user data structure.
+ * @param[in] s string.
+ * @param[in] len length of string.
+ *
+ * @return void
+ */
+static void
+parse_nidlist_char_data(ud_t *d, const char *s, int len)
+{
+	char *tmp_ptr = NULL;
+
+	/*
+	 * Point 'nidlist' to a copy of s (which now contains the parsed char data
+	 * i.e. the node rangelist).
+	 */
+	if ((d->current_sys.node_group->nidlist = strndup(s, len)) == NULL) {
+		parse_err_out_of_memory(d);
+		d->current_sys.node_group->nidlist = NULL;
+		return;
+	}
+
+	/*
+	 * Check if the current rangelist of Nodes is of type KNL and that such Nodes
+	 * are in "batch" mode and in the "up" state.
+	 */
+	if (!exclude_from_KNL_processing(d->current_sys.node_group)) {
+		/*
+		 * Accummulate KNL Nodes, extracted from each Node group, in a buffer
+		 * for later use. The KNL Nodes in this buffer will be excluded from vnode
+		 * creation in inventory_to_vnodes() (which creates non-KNL vnodes only).
+		 */
+		if (!knl_node_list) {
+			knl_node_list = malloc(sizeof(char) * (len + 1));
+			if (knl_node_list == NULL) {
+				log_err(errno, __func__, "malloc failure");
+				return;
+			}
+			strcpy(knl_node_list, d->current_sys.node_group->nidlist);
+		} else {
+			/* Allocate an extra byte for the "," separation between rangelists. */
+			tmp_ptr = realloc(knl_node_list, sizeof(char) * (strlen(knl_node_list) + len + 2));
+			if (!tmp_ptr) {
+				log_err(errno, __func__, "realloc failure");
+				free(knl_node_list);
+				knl_node_list = NULL;
+				return;
+			}
+			knl_node_list = tmp_ptr;
+
+			/*
+			 * To maintain comma separation between Node rangelists belonging
+			 * to each Node Group (in the System XML Response), we append a
+			 * "," at the end of the current array e.g. 12,13-15,16,17 is what
+			 * we want and not 12,13-1516,17.
+			 */
+			strcat(knl_node_list, ",");
+			strcat(knl_node_list, d->current_sys.node_group->nidlist);
+		}
+	}
+}
+
+/**
+ * @brief
+ * Function registered to handle character data for XML Elements
+ * that utilize it. Skip leading whitespace characters since they
+ * may be there for formatting.
+ *
+ * @param d pointer to user data structure.
+ * @param[in] s string.
+ * @param[in] len length of string.
+ *
+ * @return void
+ */
+static void
+allow_char_data(ud_t *d, const XML_Char *s, int len)
+{
+	int i = 0;
+	int j = 0;
+
+	/*
+	 * As an example, a string 's' could initially point to a rangelist
+	 * "  12-15,18,19,20".  'j' accummulates the leading whitespace count.
+	 */
+	for (i = 0; i < len; i++) {
+		if (!isspace(*(s+i)))
+			break;
+		j++;
+	}
+	if (i == len)
+		return;
+
+	/*
+	 * 's+j' is the location where the 'useful' data starts.
+	 * Subtracting the whitespace count from 'len' gives the true length of
+	 * the node rangelist string e.g. "12-15,18,19,20".
+	 */
+	parse_nidlist_char_data(d, s + j, len - j);
 }
 
 /**
@@ -3498,7 +3701,7 @@ inventory_end(ud_t *d, const XML_Char *el)
 int
 handler_find_index(const XML_Char *el)
 {
-	int i;
+	int i = 0;
 
 	for (i = 1; handler[i].element; i++) {
 		if (strcmp(handler[i].element, el) == 0)
@@ -3524,7 +3727,7 @@ handler_find_index(const XML_Char *el)
 static void
 parse_element_start(void *ud, const XML_Char *el, const XML_Char **atts)
 {
-	int i;
+	int i = 0;
 	ud_t *d;
 
 	if (!ud)
@@ -3562,7 +3765,7 @@ parse_element_start(void *ud, const XML_Char *el, const XML_Char **atts)
 static void
 parse_element_end(void *ud, const XML_Char *el)
 {
-	int i;
+	int i = 0;
 	ud_t *d;
 
 	if (!ud)
@@ -3643,13 +3846,13 @@ inventory_loop_on_segments(basil_node_t *node, vnl_t *nv, char *arch,
 	basil_node_accelerator_t *accel = NULL;
 	basil_node_computeunit_t *cu = NULL;
 	int	aflag = READ_WRITE | ATR_DFLAG_CVTSLT;
-	long	totmem;
-	int	totcpus;
+	long	totmem = 0;
+	int	totcpus = 0;
 	int	totaccel = 0;
 	int	first_seg = 0;
 	char	vname[VNODE_NAME_LEN];
 	char	*attr;
-	int	totseg;
+	int	totseg = 0;
 
 	/* Proceed only if we have valid pointers */
 	if (node == NULL) {
@@ -3968,10 +4171,14 @@ inventory_to_vnodes(basil_response_t *brp)
 	vnl_t		*nv = NULL;
 	int		ret = 0;
 	char		*xmlbuf;
-	int		xmllen;
-	int		seg_num;
-	int		cpu_ct;
-	long		mem_ct;
+	int		xmllen = 0;
+	int		seg_num = 0;
+	int		cpu_ct = 0;
+	long		*arr_nodes = NULL;
+	int		node_count = 0;
+	int		idx = 0;
+	int		skip_node = 0;
+	long		mem_ct = 0;
 	char		name[VNODE_NAME_LEN];
 	basil_node_t 	*node = NULL;
 	basil_response_query_inventory_t *inv = NULL;
@@ -4089,12 +4296,35 @@ inventory_to_vnodes(basil_response_t *brp)
 		goto bad_vnl;
 
 	/*
+	 * Extract KNL NIDs (Node ID) from 'knl_node_list' ('knl_node_list' is a string
+	 * containing a rangelist of KNL Node IDs) and populate 'arr_nodes'.
+	 * If BASIL 1.7 is not supported on the Cray system, knl_node_list remains empty,
+	 * causing NULL to be returned and node_count to be set to 0.
+	 */
+
+	if (basil_1_7_supported)
+		arr_nodes = process_nodelist_KNL(knl_node_list, &node_count);
+	/*
 	 * now create the compute nodes
 	 */
 	inv = &brp->data.query.data.inventory;
 	for (order = 1, node = inv->nodes; node; node = node->next, order++) {
 		char		*arch;
-		static int	first_compute_node = 1;
+
+		/*
+		 * We are only interested in creating non-KNL vnodes in this function.
+		 * We avoid creating vnodes for KNL Nodes here since they will be
+		 * created in system_to_vnodes_KNL(). So, filter them out here.
+		 */
+		skip_node = 0;
+		for (idx = 0; idx < node_count; idx++) {
+			if (arr_nodes && node->node_id == arr_nodes[idx]) {
+				skip_node = 1;
+				break;
+			}
+		}
+		if (skip_node)
+			continue;
 
 		(void)memset(name, '\0', VNODE_NAME_LEN);
 		if (node->role != basil_node_role_batch)
@@ -4121,7 +4351,6 @@ inventory_to_vnodes(basil_response_t *brp)
 				if (vnode_per_numa_node) {
 					snprintf(name, VNODE_NAME_LEN, "%s_%ld_0",
 						mpphost, node->node_id);
-					name[VNODE_NAME_LEN-1]='\0';
 				} else {
 					/* When concatenating the segments into
 					 * one vnode, we don't put any segment info
@@ -4129,7 +4358,6 @@ inventory_to_vnodes(basil_response_t *brp)
 					 */
 					snprintf(name, VNODE_NAME_LEN, "%s_%ld",
 						mpphost, node->node_id);
-					name[VNODE_NAME_LEN-1] = '\0';
 				}
 				first_compute_node = 0;
 				attr = ATTR_NODE_TopologyInfo;
@@ -4179,6 +4407,17 @@ inventory_to_vnodes(basil_response_t *brp)
 		vnl_free(vnlp);
 	}
 	vnlp = nv;
+
+	/* We have no further use for this string of KNL node rangelist(s), so free it. */
+	if (knl_node_list) {
+		free(knl_node_list);
+		knl_node_list = NULL;
+	}
+	/* We have no further use for this array of KNL node ids, so free it. */
+	if (arr_nodes) {
+		free(arr_nodes);
+		arr_nodes = NULL;
+	}
 
 	return;
 
@@ -4419,6 +4658,25 @@ free_basil_node(basil_node_t *p)
 
 /**
  * @brief
+ * Destructor function for BASIL System element structure.
+ * @param p linked list of structures to free.
+ */
+static void
+free_basil_elements_KNL(basil_system_element_t *p)
+{
+	basil_system_element_t *nxtp;
+	if (!p)
+		return;
+	nxtp = p->next;
+	if (p->nidlist)
+		free(p->nidlist);
+	free(p);
+	free_basil_elements_KNL(nxtp);
+}
+
+
+/**
+ * @brief
  * 	Destructor function for BASIL reservation structure.
  *
  * @param p structure to free
@@ -4454,7 +4712,7 @@ free_basil_query_status_res(basil_response_query_status_res_t *p)
  * @brief
  * Destructor function for BASIL response structure.
 
- * @param brp structure to free
+ * @param brp structure to free.
  *
  * @return Void
  */
@@ -4467,6 +4725,8 @@ free_basil_response_data(basil_response_t *brp)
 		if (brp->data.query.type == basil_query_inventory) {
 			free_basil_node(brp->data.query.data.inventory.nodes);
 			free_basil_rsvn(brp->data.query.data.inventory.rsvns);
+		} else if (brp->data.query.type == basil_query_system) {
+			free_basil_elements_KNL(brp->data.query.data.system.elements);
 		} else if (brp->data.query.type == basil_query_engine) {
 			if (brp->data.query.data.engine.name)
 				free(brp->data.query.data.engine.name);
@@ -4498,8 +4758,9 @@ static int
 alps_request_child(int infd, int outfd)
 {
 	char *p;
-	int rc;
-	int in, out;
+	int rc = 0;
+	int in = 0;
+	int out = 0;
 
 	in = infd;
 	out = outfd;
@@ -4581,23 +4842,22 @@ alps_request_child(int infd, int outfd)
  *
  * Read the XML from the ALPS client and pass it to XML_Parse.
  * This is where the actual Expat (XML_) functions are called.
- *
  * @param[in] fdin file descriptor to read XML stream from child
- *
+ * @param[in] basil_ver BASIL version indicates context i.e. did control
+ *	      arrive at this function as a result of processing the
+ *	      Inventory Query or System Query
  * @return pointer to filled in response structure
  * @retval NULL no result
  *
  */
 static basil_response_t *
-alps_request_parent(int fdin)
+alps_request_parent(int fdin, char *basil_ver)
 {
 	ud_t ud;
 	basil_response_t *brp;
 	FILE *in = NULL;
-	int status;
-	int len;
+	int status = 0;
 	int eof = 0;
-	int rc;
 	int inventory_size = 0;
 
 	in = fdopen(fdin, "r");
@@ -4636,7 +4896,16 @@ alps_request_parent(int fdin)
 		return NULL;
 	} else
 		inventory_size = strlen(alps_client_out) + 1;
+
+	if (basil_ver != NULL)
+		strncpy(ud.basil_ver, basil_ver, BASIL_STRING_SHORT);
+	else
+		strncpy(ud.basil_ver, BASIL_VAL_UNKNOWN, BASIL_STRING_SHORT);
+	ud.basil_ver[BASIL_STRING_SHORT - 1] = '\0';
+
 	do {
+		int rc = 0;
+		int len = 0;
 		expatBuffer[0] = '\0';
 		len = fread(expatBuffer, sizeof(char),
 			(EXPAT_BUFFER_LEN - 1), in);
@@ -4702,20 +4971,23 @@ alps_request_parent(int fdin)
  * stdout to be read by the parent.
  *
  * @param[in] msg XML message to send to ALPS client
- *
+ * @param[in] basil_ver BASIL version indicates context i.e. did control
+ *	      arrive at this function as a result of processing the
+ *	      Inventory Query or System Query.
  * @return pointer to filled in response structure
  * @retval NULL no result
  *
  */
 static basil_response_t *
-alps_request(char *msg)
+alps_request(char *msg, char *basil_ver)
 {
 	int toChild[2];
 	int fromChild[2];
-	int status;
+	int status = 0;
 	pid_t pid;
 	pid_t exited;
-	size_t msglen, wlen = -1;
+	size_t msglen = 0;
+	size_t wlen = -1;
 	basil_response_t *brp = NULL;
 	FILE *fp = NULL;
 
@@ -4788,8 +5060,7 @@ alps_request(char *msg)
 	}
 
 	fclose(fp);
-	brp = alps_request_parent(fromChild[0]);
-	if (!brp) {
+	if ((brp = alps_request_parent(fromChild[0], basil_ver)) == NULL) {
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE, LOG_DEBUG, __func__,
 			"No response from ALPS.");
 	}
@@ -4991,11 +5262,14 @@ alps_create_reserve_request(job *pjob, basil_request_reserve_t **req)
 	enum rlplace_value	rpv;
 	enum vnode_sharing	vnsv;
 	struct passwd *pwent;
-	int		i, j, num;
+	int		i = 0;
+	int		j = 0;
+	int		num = 0;
 	int		err_ret = 1;
 	nodesum_t	*nodes;
 	vmpiprocs	*vp;
-	size_t		len, nsize;
+	size_t		len = 0;
+	size_t		nsize = 0;
 	char		*cp;
 	long		pstate = 0;
 	char		*pgov = NULL;
@@ -5537,7 +5811,7 @@ alps_create_reservation(basil_request_reserve_t *bresvp, long *rsvn_id,
 	sprintf(utilBuffer, "<?xml version=\"1.0\"?>\n"
 		"<" BASIL_ELM_REQUEST " "
 		BASIL_ATR_PROTOCOL "=\"%s\" "
-		BASIL_ATR_METHOD "=\"" BASIL_VAL_RESERVE "\">\n", basilversion);
+		BASIL_ATR_METHOD "=\"" BASIL_VAL_RESERVE "\">\n", basilversion_inventory);
 	add_alps_req(utilBuffer);
 	sprintf(utilBuffer,
 		" <" BASIL_ELM_RESVPARAMARRAY " "
@@ -5714,8 +5988,7 @@ alps_create_reservation(basil_request_reserve_t *bresvp, long *rsvn_id,
 	add_alps_req("</" BASIL_ELM_REQUEST ">");
 	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG, __func__,
 		"Creating ALPS reservation for job.");
-	brp = alps_request(requestBuffer);
-	if (!brp) {
+	if ((brp = alps_request(requestBuffer, basilversion_inventory)) == NULL){
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE, LOG_NOTICE, __func__,
 			"Failed to create ALPS reservation.");
 		return (-1);
@@ -5786,12 +6059,11 @@ alps_confirm_reservation(job *pjob)
 		BASIL_ATR_PROTOCOL "=\"%s\" "
 		BASIL_ATR_METHOD "=\"" BASIL_VAL_CONFIRM "\" "
 		BASIL_ATR_RSVN_ID "=\"%ld\" "
-		"%s =\"%llu\"/>", basilversion,
+		"%s =\"%llu\"/>", basilversion_inventory,
 		pjob->ji_extended.ji_ext.ji_reservation,
 		basil11orig ? BASIL_ATR_ADMIN_COOKIE : BASIL_ATR_PAGG_ID,
 		pjob->ji_extended.ji_ext.ji_pagg);
-	brp = alps_request(requestBuffer);
-	if (!brp) {
+	if ((brp = alps_request(requestBuffer, basilversion_inventory)) == NULL) {
 		sprintf(log_buffer, "Failed to confirm ALPS reservation %ld.",
 			pjob->ji_extended.ji_ext.ji_reservation);
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE,
@@ -5853,12 +6125,11 @@ alps_cancel_reservation(job *pjob)
 		BASIL_ATR_PROTOCOL "=\"%s\" "
 		BASIL_ATR_METHOD "=\"" BASIL_VAL_RELEASE "\" "
 		BASIL_ATR_RSVN_ID "=\"%ld\" "
-		"%s =\"%llu\"/>", basilversion,
+		"%s =\"%llu\"/>", basilversion_inventory,
 		pjob->ji_extended.ji_ext.ji_reservation,
 		basil11orig ? BASIL_ATR_ADMIN_COOKIE : BASIL_ATR_PAGG_ID,
 		pjob->ji_extended.ji_ext.ji_pagg);
-	brp = alps_request(requestBuffer);
-	if (!brp) {
+	if ((brp = alps_request(requestBuffer, basilversion_inventory)) == NULL) {
 		sprintf(log_buffer, "Failed to cancel ALPS reservation %ld.",
 			pjob->ji_extended.ji_ext.ji_reservation);
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE,
@@ -5969,7 +6240,7 @@ alps_suspend_resume_reservation(job *pjob, basil_switch_action_t switchval)
 	snprintf(utilBuffer, sizeof(utilBuffer),"<?xml version=\"1.0\"?>\n"
 		"<" BASIL_ELM_REQUEST " "
 		BASIL_ATR_PROTOCOL "=\"%s\" "
-		BASIL_ATR_METHOD "=\"" BASIL_VAL_SWITCH "\">\n", basilversion);
+		BASIL_ATR_METHOD "=\"" BASIL_VAL_SWITCH "\">\n", basilversion_inventory);
 	add_alps_req(utilBuffer);
 	add_alps_req( " <" BASIL_ELM_RSVNARRAY ">\n");
 	snprintf(utilBuffer, sizeof(utilBuffer),
@@ -5981,8 +6252,7 @@ alps_suspend_resume_reservation(job *pjob, basil_switch_action_t switchval)
 	add_alps_req(utilBuffer);
 	add_alps_req( " </" BASIL_ELM_RSVNARRAY ">\n");
 	add_alps_req( "</" BASIL_ELM_REQUEST ">");
-	brp = alps_request(requestBuffer);
-	if (!brp) {
+	if ((brp = alps_request(requestBuffer, basilversion_inventory)) == NULL) {
 		snprintf(log_buffer, sizeof(log_buffer),
 			"Failed to switch %s ALPS reservation.", actionstring);
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE, LOG_NOTICE,
@@ -6058,7 +6328,7 @@ alps_confirm_suspend_resume(job *pjob, basil_switch_action_t switchval)
 		BASIL_ATR_PROTOCOL "=\"%s\" "
 		BASIL_ATR_METHOD "=\"" BASIL_VAL_QUERY "\" "
 		BASIL_ATR_TYPE "=\"" BASIL_VAL_STATUS "\">\n",
-		basilversion);
+		basilversion_inventory);
 	add_alps_req(utilBuffer);
 	add_alps_req( " <"  BASIL_ELM_RSVNARRAY ">\n");
 	sprintf(utilBuffer,
@@ -6069,8 +6339,7 @@ alps_confirm_suspend_resume(job *pjob, basil_switch_action_t switchval)
 	add_alps_req( " </" BASIL_ELM_RSVNARRAY ">\n");
 	add_alps_req( "</" BASIL_ELM_REQUEST ">");
 
-	brp = alps_request(requestBuffer);
-	if (!brp) {
+	if ((brp = alps_request(requestBuffer, basilversion_inventory)) == NULL) {
 		sprintf(log_buffer, "Failed to confirm ALPS reservation %ld has been switched.",
 			pjob->ji_extended.ji_ext.ji_reservation);
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE,
@@ -6231,15 +6500,14 @@ alps_engine_query(void)
 
 	new_alps_req();
 	for (i = 0; (pbs_supported_basil_versions[i] != NULL); i++) {
-		sprintf(basilversion, pbs_supported_basil_versions[i]);
+		sprintf(basilversion_inventory, pbs_supported_basil_versions[i]);
 		sprintf(requestBuffer, "<?xml version=\"1.0\"?>\n"
 			"<" BASIL_ELM_REQUEST " "
 			BASIL_ATR_PROTOCOL "=\"%s\" "
 			BASIL_ATR_METHOD "=\"" BASIL_VAL_QUERY "\" "
 			BASIL_ATR_TYPE "=\"" BASIL_VAL_ENGINE "\"/>",
-			basilversion);
-		brp = alps_request(requestBuffer);
-		if (brp != NULL) {
+			basilversion_inventory);
+		if ((brp = alps_request(requestBuffer, basilversion_inventory)) != NULL) {
 			if (*brp->error == '\0') {
 				/*
 				 * There are no errors in the response data.
@@ -6257,10 +6525,10 @@ alps_engine_query(void)
 						if (ver != NULL) {
 							tmp = strtok(ver, ",");
 							while (tmp) {
-								if ((strcmp(basilversion, tmp)) == 0) {
+								if ((strcmp(basilversion_inventory, tmp)) == 0) {
 									/* Success! We found a version to speak */
 									sprintf(log_buffer, "The basilversion is "
-										"set to %s", basilversion);
+										"set to %s", basilversion_inventory);
 									log_event(PBSEVENT_DEBUG,
 										PBS_EVENTCLASS_NODE,
 										LOG_DEBUG, __func__, log_buffer);
@@ -6288,17 +6556,17 @@ alps_engine_query(void)
 								LOG_NOTICE, __func__, log_buffer);
 						}
 					} else {
-						if ((strcmp(basilversion, BASIL_VAL_VERSION_1_1)) == 0) {
+						if ((strcmp(basilversion_inventory, BASIL_VAL_VERSION_1_1)) == 0) {
 							/* basil_support isn't in the XML response
 							 * and the XML wasn't junk, so
 							 * assume CLE 2.2 is running.
 							 */
 							sprintf(log_buffer, "Assuming CLE 2.2 is running, "
-								"setting the basilversion to %s", basilversion);
+								"setting the basilversion to %s", basilversion_inventory);
 							log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE,
 								LOG_DEBUG,__func__, log_buffer);
 							sprintf(log_buffer, "The basilversion is "
-								"set to %s", basilversion);
+								"set to %s", basilversion_inventory);
 							log_event(PBSEVENT_DEBUG,
 								PBS_EVENTCLASS_NODE,
 								LOG_DEBUG,__func__, log_buffer);
@@ -6320,7 +6588,7 @@ alps_engine_query(void)
 			}
 		} else {
 			sprintf(log_buffer, "ALPS ENGINE query failed with BASIL "
-				"version %s.", basilversion);
+				"version %s.", basilversion_inventory);
 			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE,
 				LOG_NOTICE,__func__, log_buffer);
 		}
@@ -6339,7 +6607,7 @@ alps_engine_query(void)
 	 * Set basilversion to "UNDEFINED"
 	 */
 	if (found_ver == 0) {
-		sprintf(basilversion, BASIL_VAL_UNDEFINED);
+		sprintf(basilversion_inventory, BASIL_VAL_UNDEFINED);
 		sprintf(log_buffer, "No BASIL versions are understood.");
 		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE,
 			LOG_NOTICE,__func__, log_buffer);
@@ -6348,13 +6616,13 @@ alps_engine_query(void)
 		 * Set basilver so the rest of the code can use switch
 		 * statements to choose the appropriate code path
 		 */
-		if ((strcmp(basilversion, BASIL_VAL_VERSION_1_4)) == 0) {
+		if ((strcmp(basilversion_inventory, BASIL_VAL_VERSION_1_4)) == 0) {
 			basilver = basil_1_4;
-		} else if ((strcmp(basilversion, BASIL_VAL_VERSION_1_3)) == 0) {
+		} else if ((strcmp(basilversion_inventory, BASIL_VAL_VERSION_1_3)) == 0) {
 			basilver = basil_1_3;
-		} else if ((strcmp(basilversion, BASIL_VAL_VERSION_1_2)) == 0) {
+		} else if ((strcmp(basilversion_inventory, BASIL_VAL_VERSION_1_2)) == 0) {
 			basilver = basil_1_2;
-		} else if ((strcmp(basilversion, BASIL_VAL_VERSION_1_1)) == 0) {
+		} else if ((strcmp(basilversion_inventory, BASIL_VAL_VERSION_1_1)) == 0) {
 			basilver = basil_1_1;
 		}
 
@@ -6373,6 +6641,7 @@ void
 alps_inventory(void)
 {
 	basil_response_t *brp;
+	first_compute_node = 1;
 
 	/* Determine what BASIL version we should speak */
 	alps_engine_query();
@@ -6381,9 +6650,8 @@ alps_inventory(void)
 		"<" BASIL_ELM_REQUEST " "
 		BASIL_ATR_PROTOCOL "=\"%s\" "
 		BASIL_ATR_METHOD "=\"" BASIL_VAL_QUERY "\" "
-		BASIL_ATR_TYPE "=\"" BASIL_VAL_INVENTORY "\"/>", basilversion);
-	brp = alps_request(requestBuffer);
-	if (!brp) {
+		BASIL_ATR_TYPE "=\"" BASIL_VAL_INVENTORY "\"/>", basilversion_inventory);
+	if ((brp = alps_request(requestBuffer, basilversion_inventory)) == NULL) {
 		sprintf(log_buffer, "ALPS inventory request failed.");
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE,
 			LOG_NOTICE, __func__, log_buffer);
@@ -6400,6 +6668,802 @@ alps_inventory(void)
 	inventory_to_vnodes(brp);
 	free_basil_response_data(brp);
 	return;
+}
+
+/**
+ *
+ * @brief System Query handling (for KNL Nodes).
+ * 	  Invoked from dep_topology() in mom_mach.c before alps_inventory()
+ * 	  (which handles processing for non-KNL Cray Compute Nodes) is called.
+ *	  Checks if BASIL 1.7 is supported, then makes a System Query request and
+ *	  populates System Query related structures.
+ *
+ * @return void
+ *
+ */
+void
+alps_system_KNL(void)
+{
+	/*
+	 * Determine if ALPS supports the BASIL 1.7 protocol. We are only
+	 * partially supporting the BASIL 1.7 protocol (for the System Query).
+	 */
+	alps_engine_query_KNL();
+
+	if (basil_1_7_supported)
+		log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_NODE, LOG_DEBUG, __func__,
+			"This Cray system supports the BASIL 1.7 protocol.");
+	else {
+		log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_NODE, LOG_ERR, __func__,
+			"This Cray system does not support the BASIL 1.7 protocol.");
+		return;
+	}
+
+	/*
+	 * Allocate a buffer (requestBuffer_knl) for a new ALPS request (System Query).
+	 * A nonzero return value indicates failure; return at this point without proceeding
+	 * with System Query processing.
+	 */
+	if (init_KNL_alps_req_buf() != 0)
+		return;
+
+	/* Create a System (BASIL 1.7) Query request to fetch KNL information. */
+	snprintf(requestBuffer_knl, UTIL_BUFFER_LEN, "<?xml version=\"1.0\"?>\n"
+		"<" BASIL_ELM_REQUEST " "
+		BASIL_ATR_PROTOCOL "=\"%s\" "
+		BASIL_ATR_METHOD "=\"" BASIL_VAL_QUERY "\" "
+		BASIL_ATR_TYPE "=\"" BASIL_VAL_SYSTEM "\"/>", basilversion_system);
+
+	/*
+	 * The 'basil_ver' argument is checked in response_start() (a callback
+	 * function invoked during alps_request() processing). Flow of control can
+	 * arrive at response_start() from either alps_system_KNL() or alps_inventory().
+	 * This argument helps make the distinction.
+	 */
+	if ((brp_knl = alps_request(requestBuffer_knl, basilversion_system)) == NULL) {
+
+		/* Failure to get KNL Node information from ALPS. */
+		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE, LOG_NOTICE, __func__,
+			  "ALPS System Query request failed.");
+		return;
+	}
+}
+
+/**
+ * @brief Issue an ENGINE query to determine if BASIL 1.7 is supported.
+ * 	  We are partially supporting the BASIL 1.7 protocol (for the System Query).
+ *	  If the BASIL 1.7 protocol is found in the query response, set a flag
+ *	  that will be checked in alps_system_KNL().
+ *
+ * @return void
+ */
+static void
+alps_engine_query_KNL(void)
+{
+	basil_response_t *brp_eng;
+
+	/*
+	 * Allocate a buffer (requestBuffer_knl) for a new ALPS request (Engine Query).
+	 * A nonzero return value indicates failure.
+	 */
+	if (init_KNL_alps_req_buf() != 0)
+		return;
+
+	/* This is set to "1.1", since PBS may be running on a system that may or */
+	/* may not support BASIL 1.7. BASIL 1.1 is the lowest version that supports */
+	/* the ENGINE Query. */
+
+	sprintf(requestBuffer_knl, "<?xml version=\"1.0\"?>\n"
+		"<" BASIL_ELM_REQUEST " "
+		BASIL_ATR_PROTOCOL "=\"%s\" "
+		BASIL_ATR_METHOD "=\"" BASIL_VAL_QUERY "\" "
+		BASIL_ATR_TYPE "=\"" BASIL_VAL_ENGINE "\"/>",
+		BASIL_VAL_VERSION_1_1);
+	if ((brp_eng = alps_request(requestBuffer_knl, BASIL_VAL_VERSION_1_1)) != NULL) {
+		/* Proceed if no errors in the response data. */
+		if (*brp_eng->error == '\0') {
+			/* Ensure we have the correct response. */
+			if (brp_eng->method == basil_method_query) {
+				/* Check if 'basil_support' is set before trying to strdup. */
+				if (brp_eng->data.query.data.engine.basil_support != NULL) {
+
+					if (strstr(brp_eng->data.query.data.engine.basil_support,
+						   BASIL_VAL_VERSION_1_7) != NULL) {
+						basil_1_7_supported = 1;
+						snprintf(basilversion_system, sizeof(basilversion_system),
+							 BASIL_VAL_VERSION_1_7);
+					} else
+						basil_1_7_supported = 0;
+				}
+			} else {
+				/* Wrong method in the response. */
+				sprintf(log_buffer, "Wrong method, expected: %d but "
+					"got: %d", basil_method_query, brp_eng->method);
+				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE,
+					LOG_DEBUG, __func__, log_buffer);
+			}
+		} else {
+			/* There was an error in the BASIL response. */
+			sprintf(log_buffer, "Error in BASIL response: %s", brp_eng->error);
+			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG,
+				__func__, log_buffer);
+		}
+	}
+
+	free_basil_response_data(brp_eng);
+}
+
+/**
+ * @brief Process the System (BASIL 1.7) Query Response. This includes creation
+ *	  of KNL vnodes.
+ *
+ * @return void
+ */
+void
+system_to_vnodes_KNL(void)
+{
+	basil_response_query_system_t *sys_knl;
+
+	if (!basil_1_7_supported)
+		return;
+
+	/* System 1.7 Query failed to get KNL Node information from ALPS. */
+	if (!brp_knl)
+		return;
+
+	if (brp_knl->method != basil_method_query) {
+		snprintf(log_buffer, sizeof(log_buffer), "Wrong method: %d",
+			brp_knl->method);
+		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG, __func__,
+			log_buffer);
+		return;
+	}
+
+	if (brp_knl->data.query.type != basil_query_system) {
+		snprintf(log_buffer, sizeof(log_buffer), "Wrong query type: %d",
+			brp_knl->data.query.type);
+		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG, __func__,
+			log_buffer);
+		return;
+	}
+
+	if (*brp_knl->error != '\0') {
+		snprintf(log_buffer, sizeof(log_buffer), "Error in BASIL response: %s",
+			brp_knl->error);
+		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG, __func__,
+			log_buffer);
+		return;
+	}
+
+	sys_knl = &brp_knl->data.query.data.system;
+
+	create_vnodes_KNL(sys_knl);
+
+	free_basil_response_data(brp_knl);
+}
+
+/**
+ *
+ * @brief Create KNL vnodes.
+ * 	  'vnlp' is a global pointer that gets freed in process_hup() (mom_main.c)
+ * 	  during a MoM restart. The vnode state gets cleared and we repeat the vnode
+ *	  creation cycle i.e. creation of non-KNL vnodes (in inventory_to_vnodes())
+ *	  followed by KNL vnodes in this function.
+ *
+ * @param[in] sys_knl ALPS BASIL System Query response.
+ *
+ * @return void
+ */
+static void
+create_vnodes_KNL(basil_response_query_system_t *sys_knl)
+{
+	char	*attr, *arch;
+	char	vname[VNODE_NAME_LEN];
+	char	utilBuffer_knl[(UTIL_BUFFER_LEN * sizeof(char))];
+	int	ncpus_per_knl;
+	int	node_idx = 0;
+	int	node_count =0;
+	long	node_id = 0;
+	long	*nid_arr = NULL;
+	int	atype = READ_WRITE | ATR_DFLAG_CVTSLT;
+	char	mpphost_knl[BASIL_STRING_LONG];
+
+
+	basil_system_element_t *node_group;
+
+
+	if (sys_knl == NULL)
+		return;
+
+	snprintf(mpphost_knl, sizeof(mpphost_knl), "%s", sys_knl->mpp_host);
+
+
+	/*
+	 * Iterate through all the Node groups in the System Query Response. Each
+	 * Node group may contain information about multiple (a 'range list') of KNL Nodes.
+	 * Each XML Element <Nodes ...> </Nodes> encapsulates information about a group of Nodes.
+	 */
+	for (node_group = sys_knl->elements; node_group; node_group = node_group->next) {
+
+		/*
+		 * The System Query XML Response contains information about KNL and
+		 * non-KNL Nodes. We are only interested in KNL nodes that are in
+		 * "batch" mode and in the "up" state.
+		 */
+		if (exclude_from_KNL_processing(node_group))
+			continue;
+
+		/*
+		 * Extract NIDs (Node ID) from node_group->nidlist.
+		 * If nidlist is empty, node_count gets set to 0 and vnode
+		 * creation in the inner for() is bypassed.
+		 */
+		nid_arr = process_nodelist_KNL(node_group->nidlist, &node_count);
+
+		/*
+		 * Create vnodes for each of the KNL Nodes listed in this Node group.
+		 * All KNL Nodes within a Node Group will have similar vnode attributes,
+		 * since all attributes in each <Nodes ...> XML element apply to all
+		 * Nodes listed in the 'rangelist'.
+		 */
+		for (node_idx = 0; node_idx < node_count; node_idx++) {
+
+			node_id = nid_arr[node_idx];
+			snprintf(vname, VNODE_NAME_LEN, "%s_%ld", mpphost_knl, node_id);
+
+			if (first_compute_node) {
+				/*
+				 * Create the name of the very first vnode so we
+				 * can attach topology info to it.
+				 */
+
+				attr = ATTR_NODE_TopologyInfo;
+				if (vn_addvnr(vnlp, vname, attr, (char *) basil_inventory,
+					     ATR_TYPE_STR, READ_ONLY, NULL) == -1)
+					  goto bad_vnl;
+				first_compute_node = 0;
+			}
+
+			attr = "sharing";
+			if (vn_addvnr(vnlp, vname, attr, ND_Force_Exclhost, 0, 0, NULL) == -1)
+				goto bad_vnl;
+
+			attr = "resources_available.vntype";
+			if (vn_addvnr(vnlp, vname, attr, CRAY_COMPUTE, 0, 0, NULL) == -1)
+				goto bad_vnl;
+
+			attr = "resources_available.PBScrayhost";
+			if (vn_addvnr(vnlp, vname, attr, mpphost_knl, ATR_TYPE_STR, atype, NULL) == -1)
+				goto bad_vnl;
+
+			attr = "resources_available.arch";
+			arch = BASIL_VAL_XT;
+			if (vn_addvnr(vnlp, vname, attr, arch, ATR_TYPE_STR, atype, NULL) == -1)
+				goto bad_vnl;
+
+			attr = "resources_available.host";
+			snprintf(utilBuffer_knl, sizeof(utilBuffer_knl), "%s_%ld", mpphost_knl, node_id);
+			if (vn_addvnr(vnlp, vname, attr, utilBuffer_knl, 0, 0, NULL) == -1)
+				goto bad_vnl;
+
+			attr = "resources_available.PBScraynid";
+			snprintf(utilBuffer_knl, sizeof(utilBuffer_knl), "%ld", node_id);
+			if (vn_addvnr(vnlp, vname, attr, utilBuffer_knl, ATR_TYPE_STR, atype, NULL) == -1)
+				goto bad_vnl;
+
+			if (vnode_per_numa_node) {
+				attr = "resources_available.PBScrayseg";
+				if (vn_addvnr(vnlp, vname, attr, "0", ATR_TYPE_STR, atype, NULL) == -1)
+					goto bad_vnl;
+			}
+			attr = "resources_available.ncpus";
+			ncpus_per_knl = atoi(node_group->compute_units);
+			snprintf(utilBuffer_knl, sizeof(utilBuffer_knl), "%d", ncpus_per_knl);
+			if (vn_addvnr(vnlp, vname, attr, utilBuffer_knl, 0, 0, NULL) == -1)
+				goto bad_vnl;
+
+			/* avlmem is conventional DRAM mem. avlmem = page_size_kb * page_count. */
+			attr = "resources_available.mem";
+			snprintf(utilBuffer_knl, sizeof(utilBuffer_knl), "%skb", node_group->avlmem);
+			if (vn_addvnr(vnlp, vname, attr, utilBuffer_knl, 0, 0, NULL) == -1)
+				goto bad_vnl;
+
+			attr = "current_aoe";
+			snprintf(utilBuffer_knl, sizeof(utilBuffer_knl), "%s_%s",
+				node_group->numa_cfg, node_group->hbm_cfg);
+			if (vn_addvnr(vnlp, vname, attr, utilBuffer_knl, 0, 0, NULL) == -1)
+				goto bad_vnl;
+
+			/* hbmem is high bandwidth mem (MCDRAM) in megabytes. */
+			attr = "resources_available.hbmem";
+			snprintf(utilBuffer_knl, sizeof(utilBuffer_knl), "%smb", node_group->hbmsize);
+			if (vn_addvnr(vnlp, vname, attr, utilBuffer_knl, 0, 0, NULL) == -1)
+				goto bad_vnl;
+		}
+		/* We have no further use for this array of KNL node ids. */
+		if (nid_arr) {
+			free(nid_arr);
+			nid_arr = NULL;
+		}
+	}
+
+	return;
+
+bad_vnl:
+	snprintf(log_buffer, sizeof(log_buffer), "Creation of Cray KNL vnodes failed with name %s", vname);
+	log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG, __func__, log_buffer);
+	/*
+	 * Don't free nv since it might be important in the dump.
+	 */
+	abort();
+}
+
+/**
+ *
+ * @brief Check if this Node Group needs to be considered for KNL processing.
+ *        We are only interested in KNL Nodes that have "role" set to "batch" and
+ *	  "state" set to "up".
+ *	  The attributes "numa_cfg", "hbmsize", "hbm_cfg" not being empty ("") implies
+ *	  they pertain to KNL Nodes.
+ *
+ * @param[in] ptrNodeGrp Pointer to the current Node Group in the System XML Response.
+ *
+ * @return int
+ * @retval 1 Indicates that the Node Group should not be considered.
+ * @retval 0 Indicates that the Node Group should be considered.
+ *
+ */
+static int
+exclude_from_KNL_processing(basil_system_element_t *ptrNodeGrp)
+{
+	if ((strcmp(ptrNodeGrp->role, BASIL_VAL_BATCH_SYS) != 0) ||
+	    (strcmp(ptrNodeGrp->state, BASIL_VAL_UP_SYS) != 0) ||
+	    ((strcmp(ptrNodeGrp->numa_cfg, "") == 0) &&
+	     (strcmp(ptrNodeGrp->hbmsize, "") == 0) &&
+	     (strcmp(ptrNodeGrp->hbm_cfg, "") == 0)))
+		return 1;
+	else
+		return 0;
+}
+
+/**
+ *
+ * @brief KNL Nodes are specified in 'Rangelist' format in a string e.g. "12,13,14-18,21".
+ * 	  Extract Node IDs from this string and store them in an integer array.
+ *
+ * @param[in] nidlist String containing rangelist of Nodes.
+ * @param[out] ptr_count Total number of Nodes in this list.
+ *
+ * @return int *
+ * @retval This is an long integer array containing Node IDs.
+ *	   nid_arr returned here is freed in the calling function after use.
+ */
+static long *
+process_nodelist_KNL(char *nidlist, int *ptr_count)
+{
+	char delim[] = ",";
+	char *token, *nidlist_array, *endptr;
+	int nid_count = 0;
+	long *nid_arr = NULL;
+
+	if (nidlist == NULL) {
+		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG, __func__, "No KNL nodes.");
+		*ptr_count = 0;
+		return NULL;
+	}
+
+	if ((nidlist_array = strdup(nidlist)) == NULL){
+		log_err(errno, __func__, "malloc failure");
+		*ptr_count = 0;
+		return NULL;
+	}
+
+	endptr = NULL;
+	/* 'token' points to a null terminated string containing the token e.g. "12\0", "14-18\0". */
+	token = strtok(nidlist_array, delim);
+	while (token != NULL) {
+		int nid_num;
+		/*
+		 * Each token (e.g. "12" or "14-18") is converted to an int and sent as
+		 * an argument to store_nids(). In case of tokens such as "14-18", nid_num=14
+		 * and 'endptr' points to the first invalid character i.e. "-".
+		 */
+		nid_num = (int)strtol(token, &endptr, 10);
+		/* Checking for invalid data in the Node rangelist. */
+		if ((*endptr != '\0') && (*endptr != '-')) {
+			snprintf(log_buffer, sizeof(log_buffer), "Bad KNL Rangelist: \"%s\"", nidlist_array);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_NODE, LOG_ERR, __func__, log_buffer);
+			free(nid_arr);
+			nid_arr = NULL;
+			nid_count = 0;
+			break;
+		}
+
+		store_nids(nid_num, endptr, &nid_arr, &nid_count);
+		if (nid_arr == NULL) {
+			nid_count = 0;
+			break;
+		}
+
+		token = strtok(NULL, delim);
+	}
+
+	*ptr_count = nid_count;
+	free(nidlist_array);
+	return nid_arr;
+}
+
+/**
+ *
+ * @brief Helper function for process_nodelist_KNL().
+ *	  It stores the tokenized Node IDs in an integer array.
+ * @example For the token "14-18", nid_num = 14, *endptr = "-" and endptr = "-18\0".
+ *	  The Node IDs 14 and 18 are extracted and stored in 'nid_arr'.
+ *
+ * @param[in] nid_num Node ID to be stored.
+ * @param[in] endptr Ptr to invalid character (set by strtol()).
+ *
+ * @param[out] nid_arr Array to hold all Node IDs.
+ * @param[out] nid_count Node count.
+ *
+ * @return void
+ */
+static void
+store_nids(int nid_num, char *endptr, long **nid_arr, int *nid_count)
+{
+	int count = *nid_count;
+	int range_len = 1;
+	int i = 0;
+	long *tmp_ptr = NULL;
+	char *ptr = NULL;
+
+	if (*endptr == '-') {
+		int nid_num_last;
+		nid_num_last = (int)strtol(endptr + 1, &ptr, 10);
+		/* Checking for invalid data in the Node rangelist. */
+		if ((*ptr != '\0') && (*ptr != '-')) {
+			snprintf(log_buffer, sizeof(log_buffer), "Bad KNL Rangelist: \"%s\"", endptr);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_NODE, LOG_ERR, __func__, log_buffer);
+			free(*nid_arr);
+			*nid_arr = NULL;
+			return;
+		}
+
+		range_len = (nid_num_last - nid_num) + 1;
+	}
+
+	tmp_ptr = (long *)realloc(*nid_arr, (count + range_len) * sizeof(long));
+	if (!tmp_ptr) {
+		log_err(errno, __func__, "realloc failure");
+		free(*nid_arr);
+		*nid_arr = NULL;
+		return;
+	}
+	*nid_arr = tmp_ptr;
+
+	for (i = 0; i < range_len; i++) {
+		*(*nid_arr + count) = nid_num + i;
+		count++;
+
+	}
+
+	*nid_count = count;
+}
+
+/**
+ * @brief
+ * This function is registered to handle the System element in
+ * the System XML response.
+ *
+ * The standard Expat start handler function prototype is used.
+ * @param d pointer to user data structure
+ * @param[in] el unused in this function
+ * @param[in] atts array of name/value pairs
+ *
+ * @return void
+ */
+static void
+system_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
+{
+	const XML_Char **np;
+	const XML_Char **vp;
+	basil_response_t *brp;
+	basil_response_query_system_t *sys;
+
+	if (++(d->count_sys.system) > 1) {
+		parse_err_multiple_elements(d);
+		return;
+	}
+
+	brp = d->brp;
+	brp->data.query.type = basil_query_system;
+	sys = &brp->data.query.data.system;
+
+	for (np=vp=atts, vp++; np && *np && vp && *vp; np=++vp, vp++) {
+		xml_dbg("%s: %s = %s", __func__, *np, *vp);
+		if (strcmp(BASIL_ATR_TIMESTAMP, *np) == 0) {
+			if (sys->timestamp != 0) {
+				parse_err_multiple_attrs(d, *np);
+				return;
+			}
+			sys->timestamp = atoll(*vp);
+		} else if (strcmp(BASIL_ATR_MPPHOST, *np) == 0) {
+			if (sys->mpp_host[0] != '\0') {
+				parse_err_multiple_attrs(d, *np);
+				return;
+			}
+			snprintf(sys->mpp_host, BASIL_STRING_LONG, "%s", *vp);
+		} else if (strcmp(BASIL_ATR_CPCU, *np) == 0) {
+			if (sys->cpcu_val != 0) {
+				parse_err_multiple_attrs(d, *np);
+				return;
+			}
+
+			sys->cpcu_val = atoi(*vp);
+			if (sys->cpcu_val < 0) {
+				parse_err_illegal_attr_val(d, *np, *vp);
+				return;
+			}
+		} else {
+			parse_err_unrecognized_attr(d, *np);
+			return;
+		}
+	}
+}
+
+/**
+ * @brief
+ * This function is registered to handle the 'Nodes' element within a System XML
+ * response.
+ * This element handler is called each time a new <Nodes ...> element is encountered
+ * in the XML response currently being parsed. It populates the user data structure
+ * (ud_t *d) with the current <Nodes ...> element attribute/value pairs.
+ *
+ * The standard Expat start handler function prototype is used.
+ * @param d pointer to user data structure
+ * @param[in] el unused in this function
+ * @param[in] atts array of name/value pairs
+ *
+ * @return void
+ */
+static void
+node_group_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
+{
+	const XML_Char **np;
+	const XML_Char **vp;
+	basil_system_element_t *node_group;
+	basil_response_t *brp;
+	int page_size_KB = 0;
+	int shift_count = 0;
+	int res = 0;
+	long page_count, avl_mem;
+	char *invalid_char_ptr;
+
+	brp = d->brp;
+	node_group = (basil_system_element_t *)calloc(1, sizeof(basil_system_element_t));
+	if (!node_group) {
+		parse_err_out_of_memory(d);
+		return;
+	}
+
+	if (d->current_sys.node_group)
+		(d->current_sys.node_group)->next = node_group;
+	else
+		brp->data.query.data.system.elements = node_group;
+
+	d->current_sys.node_group = node_group;
+
+	/*
+	 * Iterate through the attribute name/value pairs. Update the name and
+	 * value pointers with each loop. If the XML attributes ("role", "state",
+	 * "speed", "numa_nodes", "dies", "compute_units", "cpus_per_cu",
+	 * "page_size_kb", "page_count", "accels", "accel_state", "numa_cfg",
+	 * "hbm_size_mb", "hbm_cache_pct") are repeated within each "Nodes"
+	 * element under consideration, invoke parse_err_multiple_attrs().
+	 */
+	for (np=vp=atts, vp++; np && *np && vp && *vp; np=++vp, vp++) {
+		xml_dbg("%s: %s = %s", __func__, *np, *vp);
+		if (strcmp(BASIL_ATR_ROLE, *np) == 0) {
+			if (*node_group->role != '\0') {
+				parse_err_multiple_attrs(d, *np);
+				return;
+			}
+
+			if ((strcmp(BASIL_VAL_BATCH_SYS, *vp) == 0) ||
+			    (strcmp(BASIL_VAL_INTERACTIVE_SYS, *vp) == 0))
+				strncpy(node_group->role, *vp, sizeof(node_group->role) - 1);
+			else
+				strcpy(node_group->role, BASIL_VAL_UNKNOWN);
+		} else if (strcmp(BASIL_ATR_STATE, *np) == 0) {
+			if (*node_group->state != '\0') {
+				parse_err_multiple_attrs(d, *np);
+				return;
+			}
+
+			if ((strcmp(BASIL_VAL_UP_SYS, *vp) == 0) ||
+			    (strcmp(BASIL_VAL_DOWN_SYS, *vp) == 0) ||
+			    (strcmp(BASIL_VAL_UNAVAILABLE_SYS, *vp) == 0) ||
+			    (strcmp(BASIL_VAL_ROUTING_SYS, *vp) == 0) ||
+			    (strcmp(BASIL_VAL_SUSPECT_SYS, *vp) == 0) ||
+			    (strcmp(BASIL_VAL_ADMIN_SYS, *vp) == 0))
+				strncpy(node_group->state, *vp, sizeof(node_group->state) - 1);
+			else
+				strcpy(node_group->state, BASIL_VAL_UNKNOWN);
+		} else if (strcmp(BASIL_ATR_SPEED, *np) == 0) {
+			if (*node_group->speed != '\0') {
+				parse_err_multiple_attrs(d, *np);
+				return;
+			}
+
+			/**
+			 * The speed attribute is not used elsewhere in PBS. Setting
+			 * it to -1 to catch the multiple instances scenario (i.e.
+			 * multiple speed attributes occurring in the XML response).
+ 			 */
+			strncpy(node_group->speed, "-1", sizeof(node_group->speed) - 1);
+		} else if (strcmp(BASIL_ATR_NUMA_NODES, *np) == 0) {
+			if (*node_group->numa_nodes != '\0') {
+				parse_err_multiple_attrs(d, *np);
+				return;
+			}
+
+			/* *vp cannot be empty (""), "0" nor negative. */
+			if (strtol(*vp, &invalid_char_ptr, 10) <= 0) {
+				parse_err_illegal_attr_val(d, *np, *vp);
+				return;
+			}
+			strncpy(node_group->numa_nodes, *vp, sizeof(node_group->numa_nodes) - 1);
+		} else if (strcmp(BASIL_ATR_DIES, *np) == 0) {
+			if (*node_group->n_dies != '\0') {
+				parse_err_multiple_attrs(d, *np);
+				return;
+			}
+
+			/* *vp cannot be empty ("") nor negative. Can be "0". */
+			if ((strcmp(*vp, "") == 0) || (strtol(*vp, &invalid_char_ptr, 10) < 0)) {
+				parse_err_illegal_attr_val(d, *np, *vp);
+				return;
+			}
+			strncpy(node_group->n_dies, *vp, sizeof(node_group->n_dies) - 1);
+		} else if (strcmp(BASIL_ATR_COMPUTE_UNITS, *np) == 0) {
+			if (*node_group->compute_units != '\0') {
+				parse_err_multiple_attrs(d, *np);
+				return;
+			}
+
+			/* *vp cannot be empty ("") nor negative. Can be "0". */
+			if ((strcmp(*vp, "") == 0) || (strtol(*vp, &invalid_char_ptr, 10) < 0)) {
+				parse_err_illegal_attr_val(d, *np, *vp);
+				return;
+			}
+			strncpy(node_group->compute_units, *vp, sizeof(node_group->compute_units) - 1);
+		} else if (strcmp(BASIL_ATR_CPUS_PER_CU, *np) == 0) {
+			if (*node_group->cpus_per_cu != '\0') {
+				parse_err_multiple_attrs(d, *np);
+				return;
+			}
+
+			/* *vp cannot be empty (""), "0" nor negative. */
+			if (strtol(*vp, &invalid_char_ptr, 10) <= 0) {
+				parse_err_illegal_attr_val(d, *np, *vp);
+				return;
+			}
+			strncpy(node_group->cpus_per_cu, *vp, sizeof(node_group->cpus_per_cu) - 1);
+		} else if (strcmp(BASIL_ATR_PAGE_SIZE_KB, *np) == 0) {
+			if (*node_group->pgszl2 != '\0') {
+				parse_err_multiple_attrs(d, *np);
+				return;
+			}
+
+			/* *vp cannot be empty (""), "0" nor negative. */
+			page_size_KB = strtol(*vp, &invalid_char_ptr, 10);
+			if (page_size_KB <= 0) {
+				parse_err_illegal_attr_val(d, *np, *vp);
+				return;
+			}
+
+			shift_count = 0;
+			while(1) {
+				/* Computing log base 2 of page_size_KB. */
+				/* e.g. if page_size_kb = 1 KB (i.e. 1024 Bytes), */
+				/* then pgszl2 = 10 (since 2 ^ 10 = 1024). */
+				res = 1 << shift_count;
+				if (res == page_size_KB)
+					break;
+				else
+					shift_count++;
+			}
+			/* Adding log base 2 of 1024. */
+			shift_count += 10;
+			snprintf(node_group->pgszl2, BASIL_STRING_SHORT, "%d", shift_count);
+		} else if (strcmp(BASIL_ATR_PAGE_COUNT, *np) == 0) {
+			if (*node_group->avlmem != '\0') {
+				parse_err_multiple_attrs(d, *np);
+				return;
+			}
+
+			/* *vp cannot be empty ("") nor negative. Can be "0". */
+			page_count = strtol(*vp, &invalid_char_ptr, 10);
+			if ((strcmp(*vp, "") == 0) || (page_count < 0)) {
+				parse_err_illegal_attr_val(d, *np, *vp);
+				return;
+			}
+
+			avl_mem = page_size_KB * page_count;
+			snprintf(node_group->avlmem, BASIL_STRING_SHORT, "%ld", avl_mem);
+		} else if (strcmp(BASIL_ATR_ACCELS, *np) == 0) {
+			if (*node_group->accel_name != '\0') {
+				parse_err_multiple_attrs(d, *np);
+				return;
+			}
+
+			/* *vp cannot be empty (""). */
+			if (strcmp(*vp, "") == 0) {
+				parse_err_illegal_attr_val(d, *np, *vp);
+				return;
+			}
+			strncpy(node_group->accel_name, *vp, sizeof(node_group->accel_name) - 1);
+		} else if (strcmp(BASIL_ATR_ACCEL_STATE, *np) == 0) {
+			if (*node_group->accel_state != '\0') {
+				parse_err_multiple_attrs(d, *np);
+				return;
+			}
+
+			if ((strcmp(BASIL_VAL_UP_SYS, *vp) == 0) ||
+			    (strcmp(BASIL_VAL_DOWN_SYS, *vp) == 0))
+				strncpy(node_group->accel_state, *vp, sizeof(node_group->accel_state) - 1);
+			else
+				strcpy(node_group->accel_state, BASIL_VAL_UNKNOWN);
+		} else if (strcmp(BASIL_ATR_NUMA_CFG, *np) == 0) {
+			if (*node_group->numa_cfg != '\0') {
+				parse_err_multiple_attrs(d, *np);
+				return;
+			}
+
+			if ((strcmp(BASIL_VAL_EMPTY_SYS, *vp) == 0) ||
+			    (strcmp(BASIL_VAL_A2A_SYS, *vp) == 0) ||
+			    (strcmp(BASIL_VAL_SNC2_SYS, *vp) == 0) ||
+			    (strcmp(BASIL_VAL_SNC4_SYS, *vp) == 0) ||
+			    (strcmp(BASIL_VAL_HEMI_SYS, *vp) == 0) ||
+			    (strcmp(BASIL_VAL_QUAD_SYS, *vp) == 0))
+				strncpy(node_group->numa_cfg, *vp, sizeof(node_group->numa_cfg) - 1);
+			else {
+				parse_err_illegal_attr_val(d, *np, *vp);
+				return;
+			}
+		} else if (strcmp(BASIL_ATR_HBMSIZE, *np) == 0) {
+			if (*node_group->hbmsize != '\0') {
+				parse_err_multiple_attrs(d, *np);
+				return;
+			}
+
+			/* *vp cannot be negative. */
+			if (strtol(*vp, &invalid_char_ptr, 10) < 0) {
+				parse_err_illegal_attr_val(d, *np, *vp);
+				return;
+			}
+			strncpy(node_group->hbmsize, *vp, sizeof(node_group->hbmsize) - 1);
+		} else if (strcmp(BASIL_ATR_HBM_CFG, *np) == 0) {
+			if (*node_group->hbm_cfg != '\0') {
+				parse_err_multiple_attrs(d, *np);
+				return;
+			}
+			if ((strcmp(BASIL_VAL_EMPTY_SYS, *vp) == 0) ||
+			    (strcmp(BASIL_VAL_0_SYS, *vp) == 0) ||
+			    (strcmp(BASIL_VAL_25_SYS, *vp) == 0) ||
+			    (strcmp(BASIL_VAL_50_SYS, *vp) == 0) ||
+			    (strcmp(BASIL_VAL_100_SYS, *vp) == 0))
+				strncpy(node_group->hbm_cfg, *vp, sizeof(node_group->hbm_cfg) - 1);
+			else {
+				parse_err_illegal_attr_val(d, *np, *vp);
+				return;
+			}
+		}
+		else {
+			parse_err_unrecognized_attr(d, *np);
+			return;
+		}
+	}
 }
 
 /**
@@ -6674,6 +7738,18 @@ static element_handler_t handler[] =
 		ignore_element,
 		default_element_end,
 		disallow_char_data
+	},
+	{
+		BASIL_ELM_SYSTEM,
+		system_start,
+		default_element_end,
+		disallow_char_data,
+	},
+	{
+		BASIL_ELM_NODES,
+		node_group_start,
+		default_element_end,
+		allow_char_data
 	},
 	{
 		NULL,

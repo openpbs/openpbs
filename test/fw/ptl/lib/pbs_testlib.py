@@ -5882,7 +5882,7 @@ class Server(PBSService):
                                                   prefix='PtlPbsJobScript',
                                                   asuser=obj.username,
                                                   body=aprun_cmd)
-                    self.du.chmod(hostname, fn, mode=0755)
+                    self.du.chmod(fn, mode=0755)
                     script = fn
             elif script is None and obj.script is not None:
                 script = obj.script
@@ -11035,6 +11035,7 @@ class Scheduler(PBSService):
         self.parse_sched_config()
         if self.platform == 'cray' or self.platform == 'craysim':
             self.add_resource('vntype')
+            self.add_resource('hbmem')
         self.fairshare_tree = None
         self.resource_group = None
         return self.isUp()

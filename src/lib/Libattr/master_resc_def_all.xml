@@ -1046,6 +1046,24 @@
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
 	<member_at_struct>NULL</member_at_struct>
    </attributes>
+   <attributes>
+   /*hbmem*/
+	<member_name><both>"hbmem"</both></member_name>
+	<member_at_decode>decode_size</member_at_decode>
+	<member_at_encode>encode_size</member_at_encode>
+	<member_at_set>set_size</member_at_set>
+	<member_at_comp>comp_size</member_at_comp>
+	<member_at_free>free_null</member_at_free>
+	<member_at_action>NULL_FUNC</member_at_action>
+	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_RASSN | ATR_DFLAG_ANASSN |ATR_DFLAG_CVTSLT</both></member_at_flags>
+	<member_at_type><both>ATR_TYPE_SIZE</both></member_at_type>
+	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
+	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_verify_function>
+	<ECL>verify_datatype_size</ECL>
+	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+	</member_verify_function>
+   </attributes>
    <attributes flag = 'SVR'>
    /*pgov*/
 	<member_name><SVR>"pgov"</SVR></member_name>

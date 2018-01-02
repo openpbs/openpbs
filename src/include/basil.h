@@ -193,6 +193,7 @@
 							/* BASIL_ELM_PROCESSOR */
 							/* BASIL_ELM_COMMAND */
 #define BASIL_ATR_ROLE		"role"			/* BASIL_ELM_NODE */
+							/* BASIL_ELM_NODES */
 #define BASIL_ATR_WIDTH		"width"			/* BASIL_ELM_RESERVEPARAM */
 							/* BASIL_ELM_COMMAND */
 #define BASIL_ATR_DEPTH		"depth"			/* BASIL_ELM_RESERVEPARAM */
@@ -216,6 +217,8 @@
 #define BASIL_ATR_DISPOSITION	"disposition"		/* BASIL_ELM_LABEL */
 #define BASIL_ATR_STATE		"state"			/* BASIL_ELM_NODE */
 							/* BASIL_ELM_ACCELERATOR */
+							/* BASIL_ELM_NODES */
+
 #define BASIL_ATR_ORDINAL	"ordinal"		/* BASIL_ELM_NODE */
 							/* BASIL_ELM_SOCKET */
 							/* BASIL_ELM_SEGMENT */
@@ -225,8 +228,10 @@
 							/* BASIL_ELM_PROCESSOR */
 							/* BASIL_ELM_ACCELERATOR */
 #define BASIL_ATR_PAGE_SIZE_KB	"page_size_kb"		/* BASIL_ELM_MEMORY */
+							/* BASIL_ELM_NODES */
 #define BASIL_ATR_PAGE_COUNT	"page_count"		/* BASIL_ELM_MEMORY */
 							/* BASIL_ELM_MEMORYALLOC */
+							/* BASIL_ELM_NODES */
 #define BASIL_ATR_PAGES_RSVD	"pages_rsvd"		/* BASIL_ELM_MEMORY */
 #define BASIL_ATR_VERSION	"version"		/* BASIL_ELM_ENGINE */
 #define BASIL_ATR_SUPPORTED	"basil_support"		/* BASIL_ELM_ENGINE */
@@ -254,7 +259,7 @@
 #define BASIL_VAL_VERSION_1_2   "1.2"			/* BASIL_ATR_PROTOCOL 1.2 */
 #define BASIL_VAL_VERSION_1_3   "1.3"			/* BASIL_ATR_PROTOCOL 1.3 */
 #define BASIL_VAL_VERSION_1_4   "1.4"			/* BASIL_ATR_PROTOCOL 1.4 */
-#define BASIL_VAL_VERSION	BASIL_VAL_VERSION_1_4
+
 
 #define BASIL_VAL_UNDEFINED	"UNDEFINED"	/* All attributes */
 #define BASIL_VAL_SUCCESS	"SUCCESS"	/* BASIL_ATR_STATUS */
@@ -263,6 +268,7 @@
 #define BASIL_VAL_TRANSIENT	"TRANSIENT"	/* BASIL_ATR_ERROR_CLASS */
 #define BASIL_VAL_INTERNAL	"INTERNAL"	/* BASIL_ATR_ERROR_SOURCE */
 #define BASIL_VAL_SYSTEM	"SYSTEM"	/* BASIL_ATR_ERROR_SOURCE */
+						/* BASIL_ATR_QRY_TYPE */
 #define BASIL_VAL_PARSER	"PARSER"	/* BASIL_ATR_ERROR_SOURCE */
 #define BASIL_VAL_SYNTAX	"SYNTAX"	/* BASIL_ATR_ERROR_SOURCE */
 #define BASIL_VAL_BACKEND	"BACKEND"	/* BASIL_ATR_ERROR_SOURCE */
@@ -322,6 +328,51 @@
 #define BASIL_VAL_IN		"IN"		/* BASIL_ATR_ACTION */
 #define BASIL_VAL_OUT		"OUT"		/* BASIL_ATR_ACTION */
 
+/*
+ * The following SYSTEM Query (and BASIL 1.7) specific Macro definitions have
+ * been copied from the Cray-supplied basil.h header file.
+ * ('Role', 'State', 'Page_Size' & 'Page_Count' related Macros already exist.
+ * These attributes are common across XML Elements such as Inventory & System.)
+ */
+#define BASIL_ELM_SYSTEM        "System"        /* BASIL_ELM_RESPONSEDATA */
+#define BASIL_ELM_NODES         "Nodes"         /* BASIL_ELM_SYSTEM */
+#define BASIL_ATR_CPCU          "cpcu"          /* BASIL_ELM_SYSTEM */
+#define BASIL_ATR_SPEED         "speed"         /* BASIL_ELM_NODES */
+#define BASIL_ATR_NUMA_NODES    "numa_nodes"    /* BASIL_ELM_NODES */
+#define BASIL_ATR_DIES          "dies"          /* BASIL_ELM_NODES */
+#define BASIL_ATR_COMPUTE_UNITS "compute_units" /* BASIL_ELM_NODES */
+#define BASIL_ATR_CPUS_PER_CU   "cpus_per_cu"   /* BASIL_ELM_NODES */
+#define BASIL_ATR_ACCELS        "accels"        /* BASIL_ELM_NODES */
+#define BASIL_ATR_ACCEL_STATE   "accel_state"   /* BASIL_ELM_NODES */
+#define BASIL_ATR_NUMA_CFG      "numa_cfg"      /* BASIL_ELM_NODES */
+#define BASIL_ATR_HBMSIZE       "hbm_size_mb"   /* BASIL_ELM_NODES */
+#define BASIL_ATR_HBM_CFG       "hbm_cache_pct" /* BASIL_ELM_NODES */
+#define BASIL_VAL_VERSION_1_7   "1.7"           /* BASIL_ATR_PROTOCOL 1.7 */
+#define BASIL_VAL_VERSION       BASIL_VAL_VERSION_1_7
+
+/*
+ * The following Macro definitions have been created by Altair to support
+ * SYSTEM Query processing.
+ */
+#define BASIL_VAL_INTERACTIVE_SYS "interactive" /* BASIL_ATR_ROLE */
+#define BASIL_VAL_BATCH_SYS     "batch"		/* BASIL_ATR_ROLE */
+#define BASIL_VAL_UP_SYS        "up"          	/* BASIL_ATR_STATE */
+#define BASIL_VAL_DOWN_SYS      "down"        	/* BASIL_ATR_STATE */
+#define BASIL_VAL_UNAVAILABLE_SYS "unavailable" /* BASIL_ATR_STATE */
+#define BASIL_VAL_ROUTING_SYS   "routing"     	/* BASIL_ATR_STATE */
+#define BASIL_VAL_SUSPECT_SYS   "suspect"     	/* BASIL_ATR_STATE */
+#define BASIL_VAL_ADMIN_SYS     "admin"       	/* BASIL_ATR_STATE */
+#define BASIL_VAL_EMPTY_SYS	""              /* BASIL_ATR_NUMA_CFG */
+#define BASIL_VAL_A2A_SYS     	"a2a"           /* BASIL_ATR_NUMA_CFG */
+#define BASIL_VAL_SNC2_SYS    	"snc2"          /* BASIL_ATR_NUMA_CFG */
+#define BASIL_VAL_SNC4_SYS    	"snc4"          /* BASIL_ATR_NUMA_CFG */
+#define BASIL_VAL_HEMI_SYS    	"hemi"          /* BASIL_ATR_NUMA_CFG */
+#define BASIL_VAL_QUAD_SYS    	"quad"          /* BASIL_ATR_NUMA_CFG */
+#define BASIL_VAL_0_SYS       	"0"             /* BASIL_ATR_HBM_CFG */
+#define BASIL_VAL_25_SYS      	"25"            /* BASIL_ATR_HBM_CFG */
+#define BASIL_VAL_50_SYS      	"50"            /* BASIL_ATR_HBM_CFG */
+#define BASIL_VAL_100_SYS     	"100"           /* BASIL_ATR_HBM_CFG */
+
 /* if set, the specified env var is the href (i.e., url) of an xslt file */
 #define BASIL_XSLT_HREF_ENV	"BASIL_XSLT_HREF"
 
@@ -338,6 +389,7 @@
 
 /* The first version listed is considered the current version. */
 static const char *basil_supported_versions[] __attribute__((unused)) = {
+	BASIL_VAL_VERSION_1_7,
 	BASIL_VAL_VERSION_1_4,
 	BASIL_VAL_VERSION_1_3,
 	BASIL_VAL_VERSION_1_2,
@@ -354,7 +406,9 @@ typedef enum {
 	basil_1_1,
 	basil_1_2,
 	basil_1_3,
-	basil_1_4
+	basil_1_4,
+	/* basil_1_5 and basil_1_6 are not supported */
+	basil_1_7 = 17
 } basil_version_t;
 
 /*
@@ -362,7 +416,7 @@ typedef enum {
  * always make BASIL_VERSION_MAX the current, largest version
  * number from the basil_version_t enum.
  */
-#define BASIL_VERSION_MAX basil_1_4
+#define BASIL_VERSION_MAX basil_1_7
 #define BASIL_VERSION_MIN basil_1_0
 
 /* BASIL enumerated types */
@@ -383,6 +437,7 @@ typedef enum {
 	basil_query_network,
 	basil_query_status,
 	basil_query_summary,
+	basil_query_system,
 	basil_query_topology
 } basil_query_t;
 
@@ -606,6 +661,14 @@ typedef struct basil_request_query_status {
 	basil_request_query_status_res_t *reservation;
 } basil_request_query_status_t;
 
+/*
+ * Copied this System Query specific (BASIL 1.7) structure definition
+ * (basil_request_query_system_t) from the Cray-supplied basil.h file.
+ */
+typedef struct basil_request_query_system {
+    unsigned long long changecount;
+} basil_request_query_system_t;
+
 typedef struct basil_topology_filter {
 	char name[BASIL_STRING_LONG];
 	struct basil_topology_filter *next;
@@ -621,6 +684,7 @@ typedef struct basil_request_query {
 	union {
 		basil_request_query_inventory_t *inv;
 		basil_request_query_status_t *status;
+		basil_request_query_system_t *system;
 		basil_request_query_topology_t *topology;
 	} data;
 } basil_request_query_t;
@@ -805,6 +869,37 @@ typedef struct basil_response_query_status {
 	basil_response_query_status_res_t *reservation;
 } basil_response_query_status_t;
 
+/*
+ * Selectively copied System Query specific (BASIL 1.7) structure definitions
+ * (basil_system_element_t, basil_response_query_system_t) from the cray
+ * supplied basil.h file.
+ */
+typedef struct basil_system_element {
+    char role[BASIL_STRING_SHORT];
+    char state[BASIL_STRING_SHORT];
+    char speed[BASIL_STRING_SHORT];
+    char numa_nodes[BASIL_STRING_SHORT];
+    char n_dies[BASIL_STRING_SHORT];
+    char compute_units[BASIL_STRING_SHORT];
+    char cpus_per_cu[BASIL_STRING_SHORT];
+    char pgszl2[BASIL_STRING_SHORT];
+    char avlmem[BASIL_STRING_SHORT];
+    char accel_name[BASIL_STRING_SHORT];
+    char accel_state[BASIL_STRING_SHORT];
+    char numa_cfg[BASIL_STRING_SHORT];
+    char hbmsize[BASIL_STRING_SHORT];
+    char hbm_cfg[BASIL_STRING_SHORT];
+    char *nidlist;
+    struct basil_system_element *next;
+} basil_system_element_t;
+
+typedef struct basil_response_query_system {
+    long long timestamp;
+    char mpp_host[BASIL_STRING_LONG];
+    int cpcu_val;
+    basil_system_element_t *elements;
+} basil_response_query_system_t;
+
 typedef struct basil_response_query_topology {
 	int executeFilters;
 	basil_topology_filter_t *filters;
@@ -817,6 +912,7 @@ typedef struct basil_response_query {
 		basil_response_query_engine_t engine;
 		basil_response_query_network_t network;
 		basil_response_query_status_t status;
+		basil_response_query_system_t system;
 		basil_response_query_topology_t topology;
 	} data;
 } basil_response_query_t;

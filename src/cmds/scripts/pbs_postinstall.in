@@ -687,18 +687,23 @@ create_home() {
 			cp ${PBS_EXEC}/etc/pbs_sched_config ${PBS_HOME}/sched_priv/sched_config
 			chmod 644 ${PBS_HOME}/sched_priv/sched_config
 		fi
-		# special for cray... add vntype to sched_config if it isn't already there
+		# special for cray... add vntype and hbmem to sched_config if it isn't already there
 		if is_cray_xt; then
 			sconfig="${PBS_HOME}/sched_priv/sched_config"
 			grep '^[[:space:]]*resources:.*vntype' $sconfig > /dev/null
 			if [ $? -ne 0 ]; then
 				echo "*** Added vntype to sched_config resources"
-				tmp_config="/tmp/config.$$"
-				sed '/^[[:space:]]*resources:/ s/\"$/, vntype\"/' $sconfig > $tmp_config
-				mv $tmp_config $sconfig
+				sed --in-place '/^[[:space:]]*resources:/ s/\"$/, vntype\"/' $sconfig
+			fi
+
+			grep '^[[:space:]]*resources:.*hbmem' $sconfig > /dev/null
+			if [ $? -ne 0 ]; then
+				echo "*** Added hbmem to sched_config resources"
+				sed --in-place '/^[[:space:]]*resources:/ s/\"$/, hbmem\"/' $sconfig
 			fi
 		fi
 		echo "***"
+
 	fi
 
 	# Configure PBS_HOME for pbs_comm

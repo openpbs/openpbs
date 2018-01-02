@@ -1433,7 +1433,7 @@ ping_a_mom_mcast(mominfo_t *pmom, int force_hello, int mtfd_ishello, int mtfd_is
 void
 set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_state_op type)
 {
-	unsigned long nd_prev_state;
+	unsigned long 	nd_prev_state;
 
 	if (pnode == NULL)
 		return;
@@ -1469,6 +1469,33 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 	}
 
 	if (pnode->nd_state & INUSE_PROV) {
+		if (!(pnode->nd_state & VNODE_UNAVAILABLE) ||	
+			(pnode->nd_state == INUSE_PROV)) { /* INUSE_FREE is 0 */	
+
+			attribute    *pala;
+			resource_def *prd;
+			resource     *prc;
+
+			pala = &pnode->nd_attr[(int)ND_ATR_ResourceAvail];
+			prd = find_resc_def(svr_resc_def, "vntype", svr_resc_size);
+			if (pala && prd && (prc = find_resc_entry(pala, prd))) {
+				if (strncmp(prc->rs_value.at_val.at_arst->as_string[0],
+					"cray_compute", 12) == 0)  {
+					
+					/**
+ 					 * Unlike other nodes, in compute-node
+ 					 * provisioning, MOM node does not restart
+ 					 * so is_vnode_prov_done will not get call from
+ 					 * IS_HOOK_CHECKSUMS request and the same is
+ 					 * called here.
+ 					 */
+
+					DBPRT(("%s: calling [is_vnode_prov_done] from set_vnode_state, type = %d\n", __func__, type))	
+					is_vnode_prov_done(pnode->nd_name);	
+				}
+			}
+		}
+
 		/* while node is provisioning, we don't want the reservation
 		 * to degrade, hence returning.
 		 */
