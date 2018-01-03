@@ -179,12 +179,20 @@ class TestReservations(TestFunctional):
         when the advance reservation ends.
         """
         now = int(time.time())
+        a = {'resources_available.ncpus': 2}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname,
+                            expect=True, sudo=True)
+
         a = {'Resource_List.select': "1:ncpus=2",
              'reserve_start': now + 5,
              'reserve_end': now + 12,
              }
         r = Reservation(TEST_USER, a)
         rid = self.server.submit(r)
+
+        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, a, rid)
+
         attr = {'Resource_List.walltime': '00:00:20'}
         j = Job(TEST_USER, attr)
         jid = self.server.submit(j)
