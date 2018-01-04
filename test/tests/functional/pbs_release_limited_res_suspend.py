@@ -561,13 +561,13 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         self.assertEqual(rv[0][ras_bar], "40",
                          msg="pbs should not release resource bar")
 
-    def test_server_res_release_upon_suspension(self):
+    def test_server_res_release_upon_suspension_using_qsig(self):
         """
         Create 2 consumable resources and set it on server,
         set one of those resouces in restrict_res_to_release_on_suspend,
         submit a job requesting these resources, check if the resource
         set in restrict_res_to_release_on_suspend shows up as released
-        on the server
+        on the server when job is suspended using qsig
         """
 
         # create a custom resource
@@ -605,6 +605,72 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
                          msg="pbs did not release resource foo")
 
         self.assertEqual(rv[0][ras_bar], "40",
+                         msg="pbs should not release resource bar")
+
+    def test_server_res_release_upon_suspension_using_preemption(self):
+        """
+        Create 2 consumable resources and set it on server,
+        set one of those resouces in restrict_res_to_release_on_suspend,
+        submit a job requesting these resources, check if the resource
+        set in restrict_res_to_release_on_suspend shows up as released
+        on the server when preemption happens
+        """
+
+        # create a custom resource
+        attr = {ATTR_RESC_TYPE: 'long',
+                ATTR_RESC_FLAG: 'q'}
+        self.server.manager(MGR_CMD_CREATE, RSC, attr, id='foo')
+        self.server.manager(MGR_CMD_CREATE, RSC, attr, id='bar')
+
+        # Set foo in restrict_res_to_release_on_suspend server attribute
+        a = {ATTR_restrict_res_to_release_on_suspend: 'ncpus,foo'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        # Add foo and bar to the resources scheduler checks for
+        resources = self.scheduler.sched_config['resources']
+        resources = resources[:-1] + ', foo, bar\"'
+        self.scheduler.set_sched_config({'resources': resources})
+
+        a = {ATTR_rescavail + ".foo": '100',
+             ATTR_rescavail + ".bar": '100'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        # Submit 2 normal priority jobs
+        j1 = Job(TEST_USER)
+        j1.set_attributes({ATTR_l + '.ncpus': '1',
+                           ATTR_l + '.foo': '40',
+                           ATTR_l + '.bar': '20'})
+        jid1 = self.server.submit(j1)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
+
+        j2 = Job(TEST_USER)
+        j2.set_attributes({ATTR_l + '.ncpus': '1',
+                           ATTR_l + '.foo': '40',
+                           ATTR_l + '.bar': '20'})
+        jid2 = self.server.submit(j2)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
+
+        # Submit a high priority job
+        j3 = Job(TEST_USER)
+        j3.set_attributes({ATTR_l + '.ncpus': '1',
+                           ATTR_l + '.foo': '70',
+                           ATTR_l + '.bar': '20',
+                           ATTR_q: 'expressq'})
+        jid3 = self.server.submit(j3)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid3)
+        self.server.expect(JOB, {ATTR_state: 'S'}, id=jid2)
+        self.server.expect(JOB, {ATTR_state: 'S'}, id=jid1)
+
+        ras_foo = ATTR_rescassn + '.foo'
+        ras_bar = ATTR_rescassn + '.bar'
+
+        rv = self.server.status(
+            SERVER, [ras_foo, ras_bar])
+        self.assertNotEqual(rv, None)
+
+        self.assertEqual(rv[0][ras_foo], "70",
+                         msg="pbs did not release resource foo")
+
+        self.assertEqual(rv[0][ras_bar], "60",
                          msg="pbs should not release resource bar")
 
     def test_node_custom_res_release_upon_suspension(self):

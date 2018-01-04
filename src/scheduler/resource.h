@@ -113,9 +113,14 @@ resdef **resstr_to_resdef(char **resstr);
 int no_hostvnode(void *v, void *arg);
 
 /* filter function for filter_array().  Used to filter for resources
- * that are host based and get summed at the job level
+ * that are at server/queue level and get summed at the job level
  */
 int def_rassn(void *v, void *arg);
+
+/* filter function for filter_array().  Used to filter for resources
+ * that are host based and get summed at the job level
+ */
+int def_rassn_select(void *v, void *arg);
 
 /* add resdef to resdef array */
 int add_resdef_to_array(resdef ***resdef_arr, resdef *def);

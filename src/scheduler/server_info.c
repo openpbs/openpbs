@@ -335,6 +335,9 @@ query_server(status *pol, int pbs_sd)
 	policy->resdef_to_check_rassn = (resdef **)
 		filter_array((void **) policy->resdef_to_check,
 		def_rassn, NULL, NO_FLAGS);
+	policy->resdef_to_check_rassn_select = (resdef **)
+		filter_array((void **) policy->resdef_to_check,
+		def_rassn_select, NULL, NO_FLAGS);
 
 	sinfo->calendar = create_event_list(sinfo);
 
@@ -3264,6 +3267,7 @@ dup_status(status *ost)
 	nst->resdef_to_check_no_hostvnode =
 		copy_resdef_array(ost->resdef_to_check_no_hostvnode);
 	nst->resdef_to_check_rassn = copy_resdef_array(ost->resdef_to_check_rassn);
+	nst->resdef_to_check_rassn_select = copy_resdef_array(ost->resdef_to_check_rassn_select);
 	nst->resdef_to_check_noncons = copy_resdef_array(ost->resdef_to_check_noncons);
 	nst->equiv_class_resdef = copy_resdef_array(ost->equiv_class_resdef);
 	nst->rel_on_susp = copy_resdef_array(ost->rel_on_susp);
@@ -3289,6 +3293,8 @@ free_status(status *st)
 		free(st->resdef_to_check_no_hostvnode);
 	if (st->resdef_to_check_rassn != NULL)
 		free(st->resdef_to_check_rassn);
+	if (st->resdef_to_check_rassn_select != NULL)
+		free(st->resdef_to_check_rassn_select);
 	if (st->resdef_to_check_noncons != NULL)
 		free(st->resdef_to_check_noncons);
 	if (st->rel_on_susp != NULL)

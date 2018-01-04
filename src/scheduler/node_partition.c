@@ -952,7 +952,7 @@ resresv_can_fit_nodepart(status *policy, node_partition *np, resource_resv *resr
 	else
 		req = resresv->resreq;
 	if (check_avail_resources(np->res, req,
-				pass_flags, policy->resdef_to_check_rassn,
+				pass_flags, policy->resdef_to_check_rassn_select,
 				INSUFFICIENT_RESOURCE, err) == 0) {
 		if ((flags & RETURN_ALL_ERR)) {
 			can_fit = 0;

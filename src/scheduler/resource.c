@@ -66,6 +66,7 @@
  * 	collect_resources_from_requests()
  * 	no_hostvnode()
  * 	def_rassn()
+ * 	def_rassn_select()
  * 	update_sorting_defs()
  *
  */
@@ -925,7 +926,7 @@ no_hostvnode(void *v, void *arg)
 /**
  * @brief
  * 		filter function for filter_array().  Used to filter for resources
- * 		that are host based and get summed at the job level
+ * 		that are server/queue level and get summed at the job level
  *
  * @param[in]	v	-	pointer to resource definition structure.
  * @param[in]	arg	-	argument (not used)
@@ -936,6 +937,27 @@ no_hostvnode(void *v, void *arg)
  */
 int
 def_rassn(void *v, void *arg)
+{
+	resdef *r = (resdef *)v;
+	if (r->flags & ATR_DFLAG_RASSN)
+		return 1;
+	return 0;
+}
+
+/**
+ * @brief
+ * 		filter function for filter_array().  Used to filter for resources
+ * 		that are host based and get summed at the job level
+ *
+ * @param[in]	v	-	pointer to resource definition structure.
+ * @param[in]	arg	-	argument (not used)
+ *
+ * @return	int
+ * @retval	1	: reassigned vnode.
+ * @retval	0	: not reassigned.
+ */
+int
+def_rassn_select(void *v, void *arg)
 {
 	resdef *r = (resdef *)v;
 	if ((r->flags & ATR_DFLAG_RASSN) && (r->flags & ATR_DFLAG_CVTSLT))

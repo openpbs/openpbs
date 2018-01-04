@@ -3214,7 +3214,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 				"Simulation: preempting job");
 
 			pjob->job->resreleased = create_res_released_array(policy, pjob);
-			pjob->job->resreq_rel = create_resreq_rel_list(policy, pjob->job->resreleased);
+			pjob->job->resreq_rel = create_resreq_rel_list(policy, pjob);
 
 			update_universe_on_end(policy, pjob,  "S");
 			if ( nsinfo->calendar != NULL ) {
@@ -5047,7 +5047,7 @@ char *create_res_released(status *policy, resource_resv *pjob)
 		if (pjob->job->resreleased == NULL) {
 			return NULL;
 		}
-		pjob->job->resreq_rel = create_resreq_rel_list(policy, pjob->job->resreleased);
+		pjob->job->resreq_rel = create_resreq_rel_list(policy, pjob);
 	}
 	return create_execvnode(pjob->job->resreleased);
 }
@@ -5095,29 +5095,28 @@ nspec **create_res_released_array(status *policy, resource_resv *resresv)
  * @note only uses RASSN resources on the sched_config resources line
  * 
  * @param policy - policy info
- * @param res_released - resources_released array to accumulate
+ * @param pjob -  resource reservation structure
  * @return resource_req *
  * @retval newly created resreq_rel array
  * @retval NULL on error
  */
-resource_req *create_resreq_rel_list(status *policy, nspec **res_released)
+resource_req *create_resreq_rel_list(status *policy, resource_resv *pjob)
 {
-	int i;
 	resource_req *resreq_rel = NULL;
 	resource_req *rel;
 	resource_req *req;
-	if(policy == NULL || res_released == NULL)
+	if (policy == NULL || pjob == NULL)
 		return NULL;
 
-	for(i = 0; res_released[i] != NULL; i++) {
-		for(req = res_released[i]->resreq; req != NULL; req = req->next) {
-			if(resdef_exists_in_array(policy->resdef_to_check_rassn, req->def)) {
-				rel = find_alloc_resource_req(resreq_rel, req->def);
-				if(rel != NULL) {
-					rel->amount += req->amount;
-					if(resreq_rel == NULL)
-						resreq_rel = rel;
-				}
+	for (req = pjob->resreq; req != NULL; req = req->next) {
+		if (resdef_exists_in_array(policy->resdef_to_check_rassn, req->def)) {
+			if ((policy->rel_on_susp != NULL) && resdef_exists_in_array(policy->rel_on_susp, req->def) == 0)
+				continue;
+			rel = find_alloc_resource_req(resreq_rel, req->def);
+			if (rel != NULL) {
+				rel->amount += req->amount;
+				if (resreq_rel == NULL)
+					resreq_rel = rel;
 			}
 		}
 	}

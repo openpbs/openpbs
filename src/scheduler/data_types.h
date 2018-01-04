@@ -243,6 +243,7 @@ struct status
 	resdef **resdef_to_check;		/* resources to match as definitions */
 	resdef **resdef_to_check_no_hostvnode;	/* resdef_to_check without host/vnode*/
 	resdef **resdef_to_check_rassn;		/* resdef_to_check intersects res_rassn */
+	resdef **resdef_to_check_rassn_select;	/* resdef_to_check intersects res_rassn and host level resource */
 	resdef **resdef_to_check_noncons;	/* non-consumable resources to match */
 	resdef **equiv_class_resdef;		/* resources to consider for job equiv classes */
 

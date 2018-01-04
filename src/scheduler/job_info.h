@@ -404,7 +404,7 @@ nspec **create_res_released_array( status *policy, resource_resv *resresv);
  * @brief create a resource_rel array for a job by accumulating all of the RASSN
  *	    resources in a resources_released nspec array.
  */
-resource_req *create_resreq_rel_list(status *policy, nspec **res_released);
+resource_req *create_resreq_rel_list(status *policy, resource_resv *pjob);
 
 /* Returns the extended duration of a job that has exceeded its soft_walltime */
 long extend_soft_walltime(resource_resv *resresv, time_t server_time);
