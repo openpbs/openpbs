@@ -153,8 +153,8 @@ print_usage()
 		"usage: pbs_ralter [-I seconds] [-m mail_points] [-M mail_list]\n"
 	"                [-N reservation_name] [-R start_time] [-E end_time]\n"
 	"                resv_id\n";
-	fprintf(stderr, usage);
-	fprintf(stderr, usag2);
+	fprintf(stderr, "%s", usage);
+	fprintf(stderr, "%s", usag2);
 }
 
 
