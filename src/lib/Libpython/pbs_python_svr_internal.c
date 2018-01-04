@@ -544,7 +544,7 @@ ERROR_EXIT:
  *  	- It is possible to combine pbs_python_setup_resc_get_value_type
  *    	and pbs_python_setup_attr_get_value_type into a macro.
  */
- 
+
 
 /*
  * NO exception raised
@@ -699,7 +699,7 @@ pbs_python_free_py_types_array(PyObject ***py_types_array)
  * @brief
  *	makes a call to given python object klass and maskes default value
  *
- * @param[in] klass - function 
+ * @param[in] klass - function
  * @param[in] args - arguments for function
  *
  * @return	PyObject *
@@ -1218,7 +1218,7 @@ ERROR_EXIT:
 /**
  * @brief
  * 	pbs_python_clear_types_table clear the python pointers
- * 	
+ *
  * exceptions:
  *   	None
  */
@@ -1827,7 +1827,7 @@ set_entity_resource_or_return_value(pbs_list_head *resc_value_list,
 }
 
 
-/** 
+/**
  * @brief
  *	Given a list of resource values in 'resc_value_list', if
  *	py_resource' is not NULL, then set the Python resource object
@@ -2325,7 +2325,7 @@ pbs_python_populate_python_class_from_svrattrl(PyObject *py_instance,
  * 	the form [hh:[mm:]]ss[.ms]
  *
  * @return	long
- * @retval	-1 or -2				for error, each filling 
+ * @retval	-1 or -2				for error, each filling
  *							a differnt log_buffer message
  * @retval	time in[hh:[mm:]]ss[.ms] format		success
  */
@@ -2417,7 +2417,7 @@ return_external_value(char *name, char *val)
 int
 varlist_same(char *varl1, char *varl2) {
 	pbs_list_head	list1;/* Caution: list maintained in sorted order */
-	pbs_list_head	list2;/* Caution: list maintained in sorted order */ 
+	pbs_list_head	list2;/* Caution: list maintained in sorted order */
 	char		*pc, *pc1;
 	char		*env_var;
 	char		*env_val;
@@ -3133,7 +3133,7 @@ svrattrl_exit:
  * @param[in] py_instance - PyObject with attributes
  *
  * @return	int
- * @retval	0 	for success;  
+ * @retval	0 	for success;
  * @retval	-1 	otherwise.
  *
  */
@@ -3418,6 +3418,7 @@ _pps_helper_get_queue(pbs_queue *pque, const char *que_name)
 	if (py_hook_pbsque != NULL) {
 		for (i=0; i < py_hook_pbsque_max; i++) {
 			if (py_hook_pbsque[i] == NULL) {
+				Py_INCREF(py_que);
 				py_hook_pbsque[i] = py_que;
 				break;
 			}
@@ -3524,6 +3525,7 @@ _pps_helper_get_server(void)
 	}
 
 	object_counter++;
+	Py_INCREF(py_svr);
 	py_hook_pbsserver = py_svr;
 	return py_svr;
 ERROR_EXIT:
@@ -3683,7 +3685,7 @@ ERROR_EXIT:
 /**
  * @brief
  * 	Helper method returning a resv Python Object from a a resc_resv struct.
- * 	
+ *
  * @param[in] presv_o - reservation structure
  * @param[in] resvid - reservation name
  *
@@ -3942,7 +3944,7 @@ GR_ERROR_EXIT:
 /**
  * @brief
  * 	Returns the event param's item corresponding to key 'name'.
- * 
+ *
  * @param[in] name - key
  *
  * @return 	PyObject *
@@ -3989,7 +3991,7 @@ _pbs_python_event_get_param(char *name)
  * 	could be modified in a hook script.
  *
  * @return	int
- * @retval	0 	for sucess; 
+ * @retval	0 	for sucess;
  * @retval	-1 	otherwise
  */
 int
@@ -4576,7 +4578,7 @@ create_py_strlist_from_svrattrl_names(pbs_list_head *phead)
 		return (NULL);
 	}
 
-	for (plist = (svrattrl *)GET_NEXT(*phead); plist; 
+	for (plist = (svrattrl *)GET_NEXT(*phead); plist;
 			plist = (svrattrl *)GET_NEXT(plist->al_link)) {
 
 		if (plist->al_name == NULL) {
@@ -4817,8 +4819,8 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 		/* save the next vnode_set_req item  */
 		nxp_resc_val = (pbs_resource_value *) GET_NEXT(resc_val->all_rescs);
 
-		Py_CLEAR(resc_val->py_resource);	
-		Py_CLEAR(resc_val->py_resource_str_value);	
+		Py_CLEAR(resc_val->py_resource);
+		Py_CLEAR(resc_val->py_resource_str_value);
 		free_attrlist(&resc_val->value_list);
 
 		delete_link(&resc_val->all_rescs);
@@ -6325,8 +6327,8 @@ _pbs_python_event_set_attrval(char *name, char *value)
 /**
  * @brief
  * 	Gets the value of the attribute 'name' of the current Python Object event
- * 	as a string. 
- * 
+ * 	as a string.
+ *
  * @param[in] name - attr name
  *
  * @return	char *
@@ -7324,7 +7326,7 @@ pbsv1mod_meth_is_attrib_val_settable(PyObject *self, PyObject *args, PyObject *k
 				rc = 1;
 				goto IAVS_ERROR_EXIT;
 			}
-		}	
+		}
 	} else if (strcmp(name, ATTR_runcount) == 0) {
 		long	runcount;
 
@@ -7528,8 +7530,8 @@ pbsv1mod_meth_event(void)
  *	check whether job input is valid
  *
  * @return	int
- * @retval	0 	if 'value' is a valid value for job attribute/resource 'name'; 
- * @retval	1 	if not a valid value; 
+ * @retval	0 	if 'value' is a valid value for job attribute/resource 'name';
+ * @retval	1 	if not a valid value;
  * @retval	2 	if did not find a criteria for determining validity of value against 'name'..
  *
  * @par Note:
@@ -7575,11 +7577,11 @@ is_job_input_valid(char *name, char *value)
  *	validate the input for reservation
  *
  * @return	int
- * @retval	0 	if 'value' is a valid value for reservation attribute/resource 'name'; 
- * @retval	1 	if not a valid value; 
+ * @retval	0 	if 'value' is a valid value for reservation attribute/resource 'name';
+ * @retval	1 	if not a valid value;
  * @retval	2 	if did not find a criteria for determining validity of value against 'name'..
  *
- * @par	NOTE: 
+ * @par	NOTE:
  *	This code is taken from the pbs_rsub parsing of input.
  *
  */
@@ -7977,7 +7979,7 @@ pbsv1mod_meth_wordsize(void)
  * 	number of bytes pre-allocated for the string arrays 'opval' and 'delval'.
  * 	The caller is responsible for allocating enough space for these parameters.
  *
- * @par	NOTE: 
+ * @par	NOTE:
  *	This returns the string value returned by pbs_python_object_str(),
  * 	which returns a fixed memory area that gets overwritten by subsequent
  * 	calls to this function. So The return value of this function must be
@@ -8705,7 +8707,7 @@ _pbs_python_do_vnode_set(void)
 					fprintf(hook_debug.output_fp,
 						"%s(%s).%s=%s\n",
 						SERVER_VNODE_OBJECT,
-						pnode->nd_name,	
+						pnode->nd_name,
 						pal->al_name,
 						pal->al_value);
 				}
@@ -10169,9 +10171,9 @@ const char pbsv1mod_meth_get_queue_static_doc[] =
 
 /**
  * @brief
- *	return a Python queue object representing the current instance 
+ *	return a Python queue object representing the current instance
  *	of the PBS queue 'qnamne' from a static source.
- * 
+ *
  * @return	PyObject *
  * @retval	reference to queue	success
  * @retval	NULL			error
@@ -10406,7 +10408,7 @@ const char pbsv1mod_meth_get_vnode_static_doc[] =
 /**
  * @brief
  *	get vnode info
- * 
+ *
  * @par Note:
  *	'vname' is the name of vnode whose info is beting returned.
  *
@@ -10415,7 +10417,7 @@ const char pbsv1mod_meth_get_vnode_static_doc[] =
  *		PBS vnode 'vname', from a static source.				success
  * @retval	None of static data source is not available.				error
  *
- */	
+ */
 PyObject *
 pbsv1mod_meth_get_vnode_static(PyObject *self, PyObject *args, PyObject *kwds)
 {
@@ -11163,7 +11165,7 @@ pbs_python_set_os_environ(char *env_var, char *env_val)
  * 	Set the pbs.hook_config_filename value to 'conf_file'.
  *
  * @param[in]	conf_file - path to the pbs hook config file.
- * 
+ *
  * @return int
  * @retval 0 	for success
  * @retval !=0	for error
