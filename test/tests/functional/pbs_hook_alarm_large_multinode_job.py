@@ -36,6 +36,7 @@
 # trademark licensing policies.
 
 from tests.functional import *
+from time import sleep
 
 
 class TestPbsHookAlarmLargeMultinodeJob(TestFunctional):
@@ -138,20 +139,26 @@ import pbs
 e=pbs.event()
 pbs.logmsg(pbs.LOG_DEBUG, "executing epilogue hook %s" % (e.hook_name,))
 """
+        search_after = int(time.time())
         a = {'event': hook_event, 'enabled': 'True',
              'alarm': '15'}
         self.server.create_import_hook(hook_name, a, hook_body)
 
         j = Job(TEST_USER)
-        a = {'Resource_List.select': '5000:ncpus=1:mem=1gb',
-             'Resource_List.walltime': 10}
+        a = {'Resource_List.select': '5000:ncpus=1:mem=1gb'}
 
         j.set_attributes(a)
+        j.set_sleep_time(10)
 
         jid = self.server.submit(j)
-
         self.server.expect(JOB, {'job_state': 'R'},
                            jid, max_attempts=15, interval=2)
+
+        self.logger.info("Wait 10s for job to finish")
+        sleep(10)
+
+        self.server.log_match("dequeuing from", starttime=search_after)
+
         self.mom.log_match(
             "pbs_python;executing epilogue hook %s" % (hook_name,), n=100,
             max_attempts=5, interval=5, regexp=True)
@@ -175,20 +182,26 @@ import pbs
 e=pbs.event()
 pbs.logmsg(pbs.LOG_DEBUG, "executing end hook %s" % (e.hook_name,))
 """
+        search_after = int(time.time())
         a = {'event': hook_event, 'enabled': 'True',
              'alarm': '15'}
         self.server.create_import_hook(hook_name, a, hook_body)
 
         j = Job(TEST_USER)
-        a = {'Resource_List.select': '5000:ncpus=1:mem=1gb',
-             'Resource_List.walltime': 10}
+        a = {'Resource_List.select': '5000:ncpus=1:mem=1gb'}
 
         j.set_attributes(a)
+        j.set_sleep_time(10)
 
         jid = self.server.submit(j)
-
         self.server.expect(JOB, {'job_state': 'R'},
                            jid, max_attempts=15, interval=2)
+
+        self.logger.info("Wait 10s for job to finish")
+        sleep(10)
+
+        self.server.log_match("dequeuing from", starttime=search_after)
+
         self.mom.log_match(
             "pbs_python;executing end hook %s" % (hook_name,), n=100,
             max_attempts=5, interval=5, regexp=True)
