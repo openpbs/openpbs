@@ -44,7 +44,7 @@ class TestJobRouting(TestFunctional):
     This test suite validates state of parent job and subjobs in a Job Array.
     """
 
-    def setup(self):
+    def setUp(self):
         self.momA = self.moms.values()[0]
         self.momA.delete_vnode_defs()
 
