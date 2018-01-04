@@ -93,6 +93,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <time.h>
+#include <math.h>
 #include <netdb.h>
 #include <signal.h>
 #include <sys/types.h>
@@ -5236,16 +5237,22 @@ svr_clean_job_history(struct work_task *pwt)
 	job 	*nxpjob = (job *)0;
 	int 	walltime_used = 0;
 
-	/* set up another work task for next time period */
-	if (pwt && svr_history_enable) {
-		if (!set_task(WORK_Timed,
-			(time_now + SVR_CLEAN_JOBHIST_TM),
-			svr_clean_job_history, (void *)0)) {
-			log_err(errno,
-				"svr_clean_job_history",
-				"Unable to set task for clean job history");
-		}
-	}
+	/*
+	 * Keep track of time spent purging jobs, interrupts purge if necessary.
+	 * Timed task in nearby future set if purge took too long.
+	 * Timed task in far future only set if this task completes.
+	 * Autotunes time between job history purges:
+	 * - raised if last purge was short
+	 * - lowered if this purge needs to be interrupted
+	 */
+
+	time_t	begin_time;
+	time_t	end_time;
+	static time_t time_between_tasks = SVR_CLEAN_JOBHIST_TM;
+
+	begin_time = time(NULL);
+	/* Initialize end_time, in case we do not get into the while loop */
+	end_time = begin_time;
 
 	/*
 	 * Traverse through the SERVER job list and find the history
@@ -5290,6 +5297,65 @@ svr_clean_job_history(struct work_task *pwt)
 		}
 		/* restore the saved next in pjob */
 		pjob = nxpjob;
+
+		/* check if we spent too long hogging the pbs_server process here */
+		end_time = time(NULL);
+		if ((end_time - begin_time) > SVR_CLEAN_JOBHIST_SECS) {
+			/* Apparently the interval between history purges is too long.
+			 * reduce it using factor 0.7
+			 */
+			time_between_tasks = (floor((double)time_between_tasks * 0.7));
+
+			/* no use reducing to less than 4 * SVR_CLEAN_JOBHIST_SECS
+			 * since we'll already schedule a continuation task here
+			 */
+			if (time_between_tasks < (4 * SVR_CLEAN_JOBHIST_SECS))
+				time_between_tasks = 4 * SVR_CLEAN_JOBHIST_SECS;
+
+			/* set up another work task in near future,
+			 * but leave as much time as we spent in this routine for other work first
+			 */
+			if (!set_task(WORK_Timed,
+				(end_time + SVR_CLEAN_JOBHIST_SECS),
+				svr_clean_job_history, (void *)0)) {
+				log_err(errno,
+					"svr_clean_job_history",
+					"Unable to set task for clean job history");
+					/* on error to set task
+					 * just continue purging the history
+					 */
+			} else
+				/* but if we managed to set a task in near future, return;
+				 * that task will continue where we left off
+				 */
+				return;
+		}
+	} /* end of while loop through jobs */
+
+	/* We purged everything necessary in this task if we get here.
+	 * set up another work task for next time period.
+	 */
+	if (pwt && svr_history_enable) {
+		if (!set_task(WORK_Timed,
+			(time_now + time_between_tasks),
+			svr_clean_job_history, (void *)0)) {
+			log_err(errno,
+				"svr_clean_job_history",
+				"Unable to set task for clean job history");
+		}
+	}
+
+	/* try to move the time between tasks up again
+	 * but only if we spent less than 2/3rds of what we were allowed to spend
+	 * Note the last purge of a chain of purges will often tend to undo part of the lowering
+	 * in the earlier incomplete purges -- that's OK: 0.7*1.1 is still smaller than 1
+	 */
+
+	if ((time_between_tasks < SVR_CLEAN_JOBHIST_TM) &&
+	    ((end_time - begin_time) < floor((double)SVR_CLEAN_JOBHIST_SECS * 2/3))) {
+		time_between_tasks = ceil((double) time_between_tasks * 1.1);
+		if (time_between_tasks > SVR_CLEAN_JOBHIST_TM)
+			time_between_tasks = SVR_CLEAN_JOBHIST_TM;
 	}
 }
 

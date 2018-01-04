@@ -250,6 +250,7 @@ enum failover_state {
  * Server job history defines & globals
  */
 #define SVR_CLEAN_JOBHIST_TM	120	/* after 2 minutes, reschedule the work task */
+#define SVR_CLEAN_JOBHIST_SECS	5	/* never spend more than 5 seconds in one sweep to clean hist */
 #define SVR_JOBHIST_DEFAULT	1209600	/* default time period to keep job history: 2 weeks */
 
 /* function prototypes */
