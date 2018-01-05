@@ -6684,7 +6684,7 @@ calc_cpupercent(job *pjob, u_long oldcput, u_long newcput, time_t sampletime)
 	resource	*pres_req;
 	resource	*preswalltime;
 	resource_def	*rd;
-	long		 wallt, dur;
+	long	dur;
 
 	/* if job started after last sample skip calculation */
 	if (pjob->ji_qs.ji_stime > sampletime)
@@ -6731,12 +6731,14 @@ calc_cpupercent(job *pjob, u_long oldcput, u_long newcput, time_t sampletime)
 		 * sample going down -
 		 *   never allow percent to rise above (*lp)
 		 */
-
+		long	wallt = -1;
 		rd = find_resc_def(svr_resc_def, "Walltime", svr_resc_size);
 		assert(rd != NULL);
 		preswalltime = find_resc_entry(at_used, rd);
-		assert(rd != NULL);
-		wallt = preswalltime->rs_value.at_val.at_long;
+		if ((preswalltime != NULL) &&
+			((preswalltime->rs_value.at_flags & ATR_VFLAG_SET) != 0)) {
+			wallt = preswalltime->rs_value.at_val.at_long;
+		}
 		if (wallt <= 0)
 			return;
 
@@ -6974,8 +6976,8 @@ mom_over_limit(job *pjob)
 		rd = find_resc_def(svr_resc_def, "cpupercent", svr_resc_size);
 		assert(rd != NULL);
 		prescpup = find_resc_entry(at, rd);
-		if (prescpup != NULL) {
-
+		if ((prescpup != NULL) &&
+			((prescpup->rs_value.at_flags & ATR_VFLAG_SET) != 0)) {
 			num = prescpup->rs_value.at_val.at_long;
 			if ((float)num >
 				(value*100*delta_cpufactor + delta_percent_over)) {
@@ -6996,31 +6998,35 @@ mom_over_limit(job *pjob)
 				svr_resc_size);
 			assert(rd != NULL);
 			preswalltime = find_resc_entry(at, rd);
-			assert(preswalltime != NULL);
-			walltime_sum = preswalltime->rs_value.at_val.at_long;
-			if (walltime_sum > average_trialperiod) {
-				rd = find_resc_def(svr_resc_def, "cput",
-					svr_resc_size);
-				assert(rd != NULL);
-				prescput = find_resc_entry(at, rd);
-				assert(prescput != NULL);
-				cput_sum = prescput->rs_value.at_val.at_long;
-				/* "value" is from ncpus */
-				if (((double)cput_sum/(double)walltime_sum) >
-					(value*average_cpufactor+average_percent_over/100.0)) {
-					sprintf(log_buffer,
-						"ncpus %.2f exceeded limit %lu (sum)",
-						(double)cput_sum/(double)walltime_sum,
-						value);
-					if (cpuaverage) { /* abort job */
-						return (TRUE);
-					} else if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_cpuperc) == 0) {
-						/* just log it */
-						log_event(PBSEVENT_JOB,
-							PBS_EVENTCLASS_JOB, LOG_INFO,
-							pjob->ji_qs.ji_jobid,
-							log_buffer);
-						pjob->ji_qs.ji_svrflags |= JOB_SVFLG_cpuperc;
+			if ((preswalltime != NULL) &&
+				((preswalltime->rs_value.at_flags & ATR_VFLAG_SET) != 0)) {
+				walltime_sum = preswalltime->rs_value.at_val.at_long;
+				if (walltime_sum > average_trialperiod) {
+					rd = find_resc_def(svr_resc_def, "cput",
+						svr_resc_size);
+					assert(rd != NULL);
+					prescput = find_resc_entry(at, rd);
+					if ((prescput != NULL) &&
+						((prescput->rs_value.at_flags & ATR_VFLAG_SET) != 0)) {
+						cput_sum = prescput->rs_value.at_val.at_long;
+						/* "value" is from ncpus */
+						if (((double)cput_sum/(double)walltime_sum) >
+							(value*average_cpufactor+average_percent_over/100.0)) {
+							sprintf(log_buffer,
+								"ncpus %.2f exceeded limit %lu (sum)",
+								(double)cput_sum/(double)walltime_sum,
+								value);
+							if (cpuaverage) { /* abort job */
+								return (TRUE);
+							} else if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_cpuperc) == 0) {
+								/* just log it */
+								log_event(PBSEVENT_JOB,
+									PBS_EVENTCLASS_JOB, LOG_INFO,
+									pjob->ji_qs.ji_jobid,
+									log_buffer);
+								pjob->ji_qs.ji_svrflags |= JOB_SVFLG_cpuperc;
+							}
+						}
 					}
 				}
 			}
