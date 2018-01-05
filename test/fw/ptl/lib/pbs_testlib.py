@@ -10504,21 +10504,21 @@ class Scheduler(PBSService):
         """
         return super(Scheduler, self)._all_instance_pids(inst=self)
 
-    def start(self, sched_port=None, sched_home=None, args=None,
-              launcher=None):
+    def start(self, sched_home=None, args=None, launcher=None):
         """
         Start the scheduler
-
+        :param sched_home: Path to scheduler log and home directory
+        :type sched_home: str
         :param args: Arguments required to start the scheduler
         :type args: str
         :param launcher: Optional utility to invoke the launch of the service
         :type launcher: str or list
         """
-        if self.attributes['id'] != 'default' and sched_port is not None:
+        if self.attributes['id'] != 'default':
             cmd = [os.path.join(self.pbs_conf['PBS_EXEC'],
                                 'sbin', 'pbs_sched')]
             cmd += ['-I', self.attributes['id']]
-            cmd += ['-S', sched_port]
+            cmd += ['-S', self.attributes['sched_port']]
             if sched_home is not None:
                 cmd += ['-d', sched_home]
             try:
