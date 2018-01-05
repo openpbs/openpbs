@@ -690,23 +690,23 @@ decrypt_sa_password(char *crypted, int credtype, size_t len, char **passwd)
 int
 add_service_account(char *password)
 {
-	char 	dname[PBS_MAXHOSTNAME+1];
-	char	dctrl[PBS_MAXHOSTNAME+1];
-	wchar_t	unamew[UNLEN+1];
-	wchar_t	dnamew[UNLEN+1];
-	wchar_t	dctrlw[PBS_MAXHOSTNAME+1];
+	char 	dname[PBS_MAXHOSTNAME+1] = {'\0'};
+	char	dctrl[PBS_MAXHOSTNAME+1] = {'\0'};
+	wchar_t	unamew[UNLEN+1] = {L'\0'};
+	wchar_t	dnamew[UNLEN+1] = {L'\0'};
+	wchar_t	dctrlw[PBS_MAXHOSTNAME+1] = {L'\0'};
 
-	NET_API_STATUS nstatus;
+	NET_API_STATUS nstatus = 0;
 	USER_INFO_1	*ui1_ptr = NULL; /* better indicator of lookup */
 	/*  permission */
 	struct passwd	*pw = NULL;
 
-	char 	sa_name[PBS_MAXHOSTNAME+UNLEN+2]; /* service account fullname */
+	char 	sa_name[PBS_MAXHOSTNAME+UNLEN+2] = {'\0'}; /* service account fullname */
 	/* domain\user\0 */
 	int	ret_val = 0;
-	int	in_domain_environment;
-	USER_INFO_1	ui;
-	wchar_t	passwordw[LM20_PWLEN+1];
+	int	in_domain_environment = 0;
+	USER_INFO_1	ui = {0};
+	wchar_t	passwordw[LM20_PWLEN+1] = {L'\0'};
 
 	/* find domain name, group name to add service account to */
 	in_domain_environment = GetComputerDomainName(dname);
