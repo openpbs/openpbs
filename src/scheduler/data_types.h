@@ -605,7 +605,7 @@ struct node_info
 	node_info *svr_node;		/* ptr to svr's node if we're a resv node */
 	node_partition *hostset;      /* other vnodes on on the same host */
 	node_scratch nscr;            /* scratch space local to node search code */
-	char *partition;	      /*  partition to which node belongs to */
+	char *partition;	      /* partition to which node belongs to */
 };
 
 struct resv_info

@@ -162,7 +162,7 @@ err:
 
 /**
  * @brief
- * 		find_assoc_sched - find the corresponding scheduler which is responsible
+ * 		find_assoc_sched_jid - find the corresponding scheduler which is responsible
  * 		for handling this job.
  *
  * @param[in]	jid - job id
@@ -177,7 +177,6 @@ find_assoc_sched_jid(char *jid, pbs_sched **target_sched)
 	job *pj;
 	pbs_queue *pq;
 	char *q_name;
-	pbs_sched *psched;
 	int t;
 
 	*target_sched = NULL;
@@ -196,35 +195,15 @@ find_assoc_sched_jid(char *jid, pbs_sched **target_sched)
 	if (pq == NULL)
 		return 0;
 
-	if (pq->qu_attr[QA_ATR_partition].at_flags & ATR_VFLAG_SET) {
-		attribute *part_attr;
-		for (psched = (pbs_sched *) GET_NEXT(svr_allscheds); psched; psched = (pbs_sched *) GET_NEXT(psched->sc_link)) {
-			part_attr = &(psched->sch_attr[SCHED_ATR_partition]);
-			if (part_attr->at_flags & ATR_VFLAG_SET) {
-				int k;
-				for (k = 0; k < part_attr->at_val.at_arst->as_usedptr; k++) {
-					if ((part_attr->at_val.at_arst->as_string[k] != NULL)
-							&& (!strcmp(part_attr->at_val.at_arst->as_string[k],
-									pq->qu_attr[QA_ATR_partition].at_val.at_str))) {
-						*target_sched = psched;
-						return 1;
-					}
-				}
-			}
-		}
-	} else {
-		*target_sched = dflt_scheduler;
-		return 1;
-	}
-	return 0;
+	return find_assoc_sched_pque(pq, target_sched);
 }
 
 /**
  * @brief
- * 		find_assoc_sched - find the corresponding scheduler which is responsible
+ * 		find_assoc_sched_pque - find the corresponding scheduler which is responsible
  * 		for handling this job.
  *
- * @param[in]	jid	- job id
+ * @param[in]	pq	- pointer to pbs_queue
  * @param[out]target_sched	- pointer to the corresponding scheduler to which the job belongs to
  *
   * @retval - 1 if success

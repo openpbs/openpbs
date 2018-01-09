@@ -52,7 +52,7 @@ extern "C" {
 #include "server_limits.h"
 #include "sched_cmds.h"
 #include "work_task.h"
-#include  "net_connect.h"
+#include "net_connect.h"
 #include "resv_node.h"
 #include "queue.h"
 #include "batch_request.h"

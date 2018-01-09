@@ -579,12 +579,12 @@ req_stat_node(struct batch_request *preq)
 	preply->brp_choice = BATCH_REPLY_CHOICE_Status;
 	CLEAR_HEAD(preply->brp_un.brp_status);
 
-	if (type == 0) {		/*get status of the named node*/
+	if (type == 0) {		/* get status of the named node */
 		rc = status_node(pnode, preq, &preply->brp_un.brp_status);
 
-	} else {			/*get status of all nodes     */
+	} else {			/* get status of all nodes */
 
-		for (i=0; i<svr_totnodes; i++) {
+		for (i = 0; i < svr_totnodes; i++) {
 			pnode = pbsndlist[i];
 
 			rc = status_node(pnode, preq,

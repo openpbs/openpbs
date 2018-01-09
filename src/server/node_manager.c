@@ -3041,7 +3041,7 @@ deallocate_job(mominfo_t *pmom, job *pjob)
 	if (find_assoc_sched_jid(pjob->ji_qs.ji_jobid, &psched))
 		set_scheduler_flag(SCH_SCHEDULE_TERM, psched);
 	else {
-		sprintf(log_buffer, "Unable to reach scheduler associated with partition");
+		sprintf(log_buffer, "Unable to find scheduler associated with partition");
 		log_err(-1, __func__, log_buffer);
 	}
 	free(freed_vnode_list);
@@ -8722,7 +8722,7 @@ free_sister_vnodes(job *pjob, char *vnodelist, char *err_msg,
 	if (find_assoc_sched_jid(pjob->ji_qs.ji_jobid, &psched))
 		set_scheduler_flag(SCH_SCHEDULE_TERM, psched);
 	else {
-		sprintf(log_buffer, "Unable to reach scheduler associated with partition");
+		sprintf(log_buffer, "Unable to find scheduler associated with partition");
 		log_err(-1, __func__, log_buffer);
 	}
 	rc = send_job_exec_update_to_mom(pjob, err_msg, err_msg_sz, reply_req);

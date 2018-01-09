@@ -140,8 +140,6 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 
 	schd_error *sch_err;
 
-	char **my_partitions;
-
 	if (policy == NULL || sinfo == NULL)
 		return NULL;
 
@@ -176,8 +174,6 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 	}
 	qinfo_arr[0] = NULL;
 
-	my_partitions = break_comma_list(partitions);
-
 	cur_queue = queues;
 
 	for (i = 0, qidx=0; cur_queue != NULL && !err; i++) {
@@ -189,155 +185,134 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 			return NULL;
 		}
 
-		if (dflt_sched) {
-			if (qinfo->partition != NULL) {
-				cur_queue = cur_queue->next;
-				continue;
-			}
-		} else {
-			if (qinfo->partition == NULL) {
-				cur_queue = cur_queue->next;
-				continue;
-			} else {
-				int i;
-				int in_partition = 0;
-				for (i=0; my_partitions[i] != NULL; i++) {
-					if (strcmp(qinfo->partition, my_partitions[i]) == 0) {
-						in_partition = 1;
-						break;
-					}
-				}
-				if (!in_partition) {
-					cur_queue = cur_queue->next;
-					continue;
+		if (queue_in_partition(qinfo)) {
+			/* check if the queue is a dedicated time queue */
+			if (conf.ded_prefix[0] != '\0')
+				if (!strncmp(qinfo->name, conf.ded_prefix, strlen(conf.ded_prefix))) {
+					qinfo->is_ded_queue = 1;
+					sinfo->has_ded_queue = 1;
 				}
 
+			/* check if the queue is a prime time queue */
+			if (conf.pt_prefix[0] != '\0')
+				if (!strncmp(qinfo->name, conf.pt_prefix, strlen(conf.pt_prefix))) {
+					qinfo->is_prime_queue = 1;
+					sinfo->has_prime_queue = 1;
+				}
+
+			/* check if the queue is a nonprimetime queue */
+			if (conf.npt_prefix[0] != '\0')
+				if (!strncmp(qinfo->name, conf.npt_prefix, strlen(conf.npt_prefix))) {
+					qinfo->is_nonprime_queue = 1;
+					sinfo->has_nonprime_queue = 1;
+				}
+
+			/* check if it is OK for jobs to run in the queue */
+			ret = is_ok_to_run_queue(sinfo->policy, qinfo);
+			if (ret == SUCCESS)
+				qinfo->is_ok_to_run = 1;
+			else
+				qinfo->is_ok_to_run = 0;
+
+			if (qinfo->has_nodes) {
+				qinfo->nodes = node_filter(sinfo->nodes, sinfo->num_nodes,
+					node_queue_cmp, (void *) qinfo->name, 0);
+
+				qinfo->num_nodes = count_array((void **) qinfo->nodes);
+
 			}
-		}
 
-		/* check if the queue is a dedicated time queue */
-		if (conf.ded_prefix[0] != '\0')
-			if (!strncmp(qinfo->name, conf.ded_prefix, strlen(conf.ded_prefix))) {
-				qinfo->is_ded_queue = 1;
-				sinfo->has_ded_queue = 1;
-			}
+			if (ret != QUEUE_NOT_EXEC) {
+				/* get all the jobs which reside in the queue */
+				qinfo->jobs = query_jobs(policy, pbs_sd, qinfo, NULL, qinfo->name);
 
-		/* check if the queue is a prime time queue */
-		if (conf.pt_prefix[0] != '\0')
-			if (!strncmp(qinfo->name, conf.pt_prefix, strlen(conf.pt_prefix))) {
-				qinfo->is_prime_queue = 1;
-				sinfo->has_prime_queue = 1;
-			}
+				for (j = 0; j < NUM_PEERS && conf.peer_queues[j].local_queue != NULL; j++) {
+					int peer_on = 1;
 
-		/* check if the queue is a nonprimetime queue */
-		if (conf.npt_prefix[0] != '\0')
-			if (!strncmp(qinfo->name, conf.npt_prefix, strlen(conf.npt_prefix))) {
-				qinfo->is_nonprime_queue = 1;
-				sinfo->has_nonprime_queue = 1;
-			}
-
-		/* check if it is OK for jobs to run in the queue */
-		ret = is_ok_to_run_queue(sinfo->policy, qinfo);
-		if (ret == SUCCESS)
-			qinfo->is_ok_to_run = 1;
-		else
-			qinfo->is_ok_to_run = 0;
-
-		if (qinfo->has_nodes) {
-			qinfo->nodes = node_filter(sinfo->nodes, sinfo->num_nodes,
-				node_queue_cmp, (void *) qinfo->name, 0);
-
-			qinfo->num_nodes = count_array((void **) qinfo->nodes);
-
-		}
-
-		if (ret != QUEUE_NOT_EXEC) {
-			/* get all the jobs which reside in the queue */
-			qinfo->jobs = query_jobs(policy, pbs_sd, qinfo, NULL, qinfo->name);
-
-			for (j = 0; j < NUM_PEERS && conf.peer_queues[j].local_queue != NULL; j++) {
-				int peer_on = 1;
-
-				if (!strcmp(conf.peer_queues[j].local_queue, qinfo->name)) {
-					/* Locally-peered queues reuse the scheduler's connection */
-					if (conf.peer_queues[j].remote_server == NULL) {
-						peer_sd = pbs_sd;
+					if (!strcmp(conf.peer_queues[j].local_queue, qinfo->name)) {
+						/* Locally-peered queues reuse the scheduler's connection */
+						if (conf.peer_queues[j].remote_server == NULL) {
+							peer_sd = pbs_sd;
+						}
+						else if ((peer_sd = pbs_connect_noblk(conf.peer_queues[j].remote_server, 2)) < 0) {
+							/* Message was PBSEVENT_SCHED - moved to PBSEVENT_DEBUG2 for
+							 * failover reasons (see bz3002)
+							 */
+							sprintf(log_buffer, "Can not connect to peer %s", conf.peer_queues[j].remote_server);
+							schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_REQUEST, LOG_INFO,
+												qinfo->name, log_buffer);
+							conf.peer_queues[j].peer_sd = -1;
+							peer_on = 0; /* do not proceed */
+						}
+						if (peer_on) {
+								conf.peer_queues[j].peer_sd = peer_sd;
+								qinfo->is_peer_queue = 1;
+								/* get peered jobs */
+								qinfo->jobs = query_jobs(policy, peer_sd, qinfo, qinfo->jobs, conf.peer_queues[j].remote_queue);
+						}
 					}
-					else if ((peer_sd = pbs_connect_noblk(conf.peer_queues[j].remote_server, 2)) < 0) {
-						/* Message was PBSEVENT_SCHED - moved to PBSEVENT_DEBUG2 for
-						 * failover reasons (see bz3002)
-						 */
-						sprintf(log_buffer, "Can not connect to peer %s", conf.peer_queues[j].remote_server);
-						schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_REQUEST, LOG_INFO,
-											qinfo->name, log_buffer);
-						conf.peer_queues[j].peer_sd = -1;
-						peer_on = 0; /* do not proceed */
-					}
-					if (peer_on) {
-							conf.peer_queues[j].peer_sd = peer_sd;
-							qinfo->is_peer_queue = 1;
-							/* get peered jobs */
-							qinfo->jobs = query_jobs(policy, peer_sd, qinfo, qinfo->jobs, conf.peer_queues[j].remote_queue);
+				}
+
+				clear_schd_error(sch_err);
+				set_schd_error_codes(sch_err, NOT_RUN, ret);
+				if (qinfo->is_ok_to_run == 0) {
+					translate_fail_code(sch_err, comment, log_msg);
+					update_jobs_cant_run(pbs_sd, qinfo->jobs, NULL, sch_err, START_WITH_JOB);
+				}
+
+				count_states(qinfo->jobs, &(qinfo->sc));
+
+				qinfo->running_jobs = resource_resv_filter(qinfo->jobs,
+					qinfo->sc.total, check_run_job, NULL, 0);
+
+				if (qinfo->running_jobs  == NULL)
+					err = 1;
+
+				if (qinfo->has_soft_limit || qinfo->has_hard_limit) {
+					if (qinfo->running_jobs != NULL) {
+						counts *allcts;
+
+						allcts = find_alloc_counts(qinfo->alljobcounts,
+							"o:" PBS_ALL_ENTITY);
+						if (qinfo->alljobcounts == NULL)
+							qinfo->alljobcounts = allcts;
+
+						/* set the user and group counts */
+						for (j = 0; qinfo->running_jobs[j] != NULL; j++) {
+							cts = find_alloc_counts(qinfo->user_counts,
+								qinfo->running_jobs[j]->user);
+							if (qinfo->user_counts == NULL)
+								qinfo->user_counts = cts;
+
+							update_counts_on_run(cts, qinfo->running_jobs[j]->resreq);
+
+							cts = find_alloc_counts(qinfo->group_counts,
+								qinfo->running_jobs[j]->group);
+
+							if (qinfo->group_counts == NULL)
+								qinfo->group_counts = cts;
+
+							update_counts_on_run(cts, qinfo->running_jobs[j]->resreq);
+
+							cts = find_alloc_counts(qinfo->project_counts,
+								qinfo->running_jobs[j]->project);
+
+							if (qinfo->project_counts == NULL)
+								qinfo->project_counts = cts;
+
+							update_counts_on_run(cts, qinfo->running_jobs[j]->resreq);
+
+							update_counts_on_run(allcts, qinfo->running_jobs[j]->resreq);
+						}
+						create_total_counts(NULL, qinfo, NULL, QUEUE);
 					}
 				}
 			}
 
-			clear_schd_error(sch_err);
-			set_schd_error_codes(sch_err, NOT_RUN, ret);
-			if (qinfo->is_ok_to_run == 0) {
-				translate_fail_code(sch_err, comment, log_msg);
-				update_jobs_cant_run(pbs_sd, qinfo->jobs, NULL, sch_err, START_WITH_JOB);
-			}
+			qinfo_arr[qidx++] = qinfo;
 
-			count_states(qinfo->jobs, &(qinfo->sc));
-
-			qinfo->running_jobs = resource_resv_filter(qinfo->jobs,
-				qinfo->sc.total, check_run_job, NULL, 0);
-
-			if (qinfo->running_jobs  == NULL)
-				err = 1;
-
-			if (qinfo->has_soft_limit || qinfo->has_hard_limit) {
-				if (qinfo->running_jobs != NULL) {
-					counts *allcts;
-
-					allcts = find_alloc_counts(qinfo->alljobcounts,
-						"o:" PBS_ALL_ENTITY);
-					if (qinfo->alljobcounts == NULL)
-						qinfo->alljobcounts = allcts;
-
-					/* set the user and group counts */
-					for (j = 0; qinfo->running_jobs[j] != NULL; j++) {
-						cts = find_alloc_counts(qinfo->user_counts,
-							qinfo->running_jobs[j]->user);
-						if (qinfo->user_counts == NULL)
-							qinfo->user_counts = cts;
-
-						update_counts_on_run(cts, qinfo->running_jobs[j]->resreq);
-
-						cts = find_alloc_counts(qinfo->group_counts,
-							qinfo->running_jobs[j]->group);
-
-						if (qinfo->group_counts == NULL)
-							qinfo->group_counts = cts;
-
-						update_counts_on_run(cts, qinfo->running_jobs[j]->resreq);
-
-						cts = find_alloc_counts(qinfo->project_counts,
-							qinfo->running_jobs[j]->project);
-
-						if (qinfo->project_counts == NULL)
-							qinfo->project_counts = cts;
-
-						update_counts_on_run(cts, qinfo->running_jobs[j]->resreq);
-
-						update_counts_on_run(allcts, qinfo->running_jobs[j]->resreq);
-					}
-					create_total_counts(NULL, qinfo, NULL, QUEUE);
-				}
-			}
-		}
-		qinfo_arr[qidx++] = qinfo;
+		} else
+			free_queue_info(qinfo);
 
 		cur_queue = cur_queue->next;
 	}
@@ -415,7 +390,7 @@ query_queue_info(status *policy, struct batch_status *queue, server_info *sinfo)
 		else if(!strcmp(attrp->name, ATTR_partition)) {
 			qinfo->partition = string_dup(attrp->value);
 			if (qinfo->partition == NULL) {
-				log_err(errno, "query_queue_info", MEM_ERR_MSG);
+				log_err(errno, __func__, MEM_ERR_MSG);
 				return NULL;
 			}
 		}
@@ -863,9 +838,8 @@ free_queue_info(queue_info *qinfo)
 		lim_free_liminfo(qinfo->liminfo);
 		qinfo->liminfo = NULL;
 	}
-	if (qinfo->partition != NULL) {
+	if (qinfo->partition != NULL)
 		free(qinfo->partition);
-	}
 
 	free(qinfo);
 }
@@ -1047,4 +1021,45 @@ node_queue_cmp(node_info *ninfo, void *arg)
 
 	return 0;
 }
+
+/**
+ * @brief
+ *      queue_in_partition	-  Tells whether the given node belongs to this scheduler
+ *
+ * @param[in]	qinfo		-  queue information
+ *
+ * @return	a node_info filled with information from node
+ *
+ * @return	int
+ * @retval	1	: if success
+ * @retval	0	: if failure
+ */
+int
+queue_in_partition(queue_info *qinfo)
+{
+	char **my_partitions;
+	int i;
+
+	if (dflt_sched) {
+		if (qinfo->partition == NULL)
+			return 1;
+		else
+			return 0;
+	}
+	if (qinfo->partition == NULL)
+		return 0;
+	my_partitions = break_comma_list(partitions);
+	if (my_partitions == NULL) {
+		log_err(errno, __func__, "Error parsing partitions");
+		return 0;
+	}
+	for (i=0; my_partitions[i] != NULL; i++) {
+		if (strcmp(qinfo->partition, my_partitions[i]) == 0) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+
 

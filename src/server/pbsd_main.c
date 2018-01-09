@@ -3054,9 +3054,9 @@ try_connect_database(pbs_db_conn_t *conn)
 	if (conn->conn_state == PBS_DB_CONNECT_STATE_FAILED && failcode != PBS_DB_STILL_STARTING) {
 		db_oper_failed_times++;
 		get_db_errmsg(failcode, &db_err_msg);
-			log_set_dberr(db_err_msg, conn->conn_db_err);
+		log_set_dberr(db_err_msg, conn->conn_db_err);
 		log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_CRIT, msg_daemonname, log_buffer);
-			conn->conn_db_state = PBS_DB_DOWN; /* allow to retry to start db again */
+		conn->conn_db_state = PBS_DB_DOWN; /* allow to retry to start db again */
 	} else if (conn->conn_state == PBS_DB_CONNECT_STATE_CONNECTED) {
 		sprintf(log_buffer, "connected to PBS dataservice@%s", conn->conn_host);
 		log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE,
@@ -3175,7 +3175,7 @@ setup_db_connection(char *host, int timeout, int have_db_control)
 
 		if (db_err_msg && strlen(db_err_msg) > 0) {
 			log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_CRIT, msg_daemonname, db_err_msg);
-		fprintf(stderr, "%s\n", db_err_msg);
+			fprintf(stderr, "%s\n", db_err_msg);
 		}
 
 		if (strlen(errmsg) > 0) {

@@ -2354,46 +2354,6 @@ next_job(status *policy, server_info *sinfo, int flag)
 
 /**
  * @brief
- *	Helper function used to copy the given source string to the destination string. It also
- *	frees the destination and then allocates required memory before copying.
- *
- * @param[in] dest - Address of pointer to destination string
- * @param[in] dest - pointer to source string
- *
- * @retval
- * @return 0 - Failure
- * @return  1 - Success
- *
- * @par Side Effects:
- *	None
- *
- *
- */
-static int
-copy_attr_value(char **dest, char *src)
-{
-	int ret = 0;
-
-	if (*dest != NULL)
-		free(*dest);
-
-	if (src !=NULL) {
-		int len = 0;
-		len = strlen(src);
-		*dest = (char*)malloc(len + 1);
-		if (*dest == NULL) {
-			log_err(errno, __func__, MEM_ERR_MSG);
-			return ret;
-		}
-		strncpy(*dest, src, len);
-		(*dest)[len] = '\0';
-		ret = 1;
-	}
-	return ret;
-}
-
-/**
- * @brief
  *	Helper function used to copy the attribute values from batch_status to the corresponding
  *	scheduler global variables which hold its priv_dir, log_dir and partitions
  *
@@ -2456,14 +2416,16 @@ sched_settings_frm_svr(struct batch_status *status)
 				/* update the sched comment attribute with the reason for failure */
 				attribs = calloc(2, sizeof(struct attropl));
 				if (attribs == NULL) {
-					snprintf(log_buffer, sizeof(log_buffer), "can't update scheduler attribs, calloc failed");
-					log_err(errno, __func__, log_buffer);
+					schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_INFO, __func__, MEM_ERR_MSG);
 					free(tmp_log_dir);
 					free(tmp_priv_dir);
 					free(tmp_partitions);
+					if (tmp_comment != NULL)
+						free(tmp_comment);
+					return 0;
 				}
 
-				strncpy(comment, "Unable to change the sched_logs directory", MAX_LOG_SIZE -1);
+				strncpy(comment, "Unable to change the sched_log directory", MAX_LOG_SIZE -1);
 				patt = attribs;
 				patt->name = ATTR_comment;
 				patt->value = comment;
@@ -2490,6 +2452,7 @@ sched_settings_frm_svr(struct batch_status *status)
 				schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_INFO,
 						"reconfigure", log_buffer);
 				free(log_dir);
+				log_dir = NULL;
 			}
 		}
 		log_dir = tmp_log_dir;
@@ -2537,6 +2500,7 @@ sched_settings_frm_svr(struct batch_status *status)
 						if (tmp_comment != NULL)
 							clear_comment = 1;
 						free(priv_dir);
+						priv_dir = NULL;
 					}
 				}
 			}
@@ -2547,12 +2511,12 @@ sched_settings_frm_svr(struct batch_status *status)
 			/* update the sched comment attribute with the reason for failure */
 			attribs = calloc(2, sizeof(struct attropl));
 			if (attribs == NULL) {
-				snprintf(log_buffer, sizeof(log_buffer), "can't update scheduler attribs, calloc failed");
-				log_err(errno, __func__, log_buffer);
+				schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_INFO, __func__, MEM_ERR_MSG);
 				strncpy(comment, "Unable to change the sched_priv directory", MAX_LOG_SIZE);
 				free(tmp_log_dir);
 				free(tmp_priv_dir);
 				free(tmp_partitions);
+				return 0;
 			}
 			patt = attribs;
 			patt->name = ATTR_comment;
@@ -2574,6 +2538,7 @@ sched_settings_frm_svr(struct batch_status *status)
 		}
 		if (cstrcmp(partitions, tmp_partitions) != 0) {
 			free(partitions);
+			partitions = NULL;
 		}
 		partitions = tmp_partitions;
 	}
@@ -2583,11 +2548,11 @@ sched_settings_frm_svr(struct batch_status *status)
 
 		attribs = calloc(1, sizeof(struct attropl));
 		if (attribs == NULL) {
-			snprintf(log_buffer, sizeof(log_buffer), "can't update scheduler attribs, calloc failed");
-			log_err(errno, __func__, log_buffer);
+			schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_INFO, __func__, MEM_ERR_MSG);
 			free(tmp_log_dir);
 			free(tmp_priv_dir);
 			free(tmp_partitions);
+			free(tmp_comment);
 			return 0;
 		}
 
@@ -2674,8 +2639,7 @@ update_svr_schedobj(int connector, int cmd, int alarm_time)
 	/* update the sched with new values */
 	attribs = calloc(4, sizeof(struct attropl));
 	if (attribs == NULL) {
-		sprintf(log_buffer, "can't update scheduler attribs, calloc failed");
-		log_err(errno, __func__, log_buffer);
+		schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_INFO, __func__, MEM_ERR_MSG);
 		return 0;
 	}
 	patt = attribs;

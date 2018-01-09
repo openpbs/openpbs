@@ -651,6 +651,8 @@ void set_current_eoe(node_info *node, char *eoe);
 /* check nodes for eligibility and mark them ineligible if not */
 void check_node_array_eligibility(node_info **ninfo_arr, resource_resv *resresv, place *pl, schd_error *err);
 
+int node_in_partition(node_info *ninfo);
+
 
 #ifdef	__cplusplus
 }
