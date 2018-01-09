@@ -1263,16 +1263,16 @@ main(int argc, char *argv[])
 	}
 
 
-		saddr.sin_family = AF_INET;
-		saddr.sin_port = htons(sched_port);
-		saddr.sin_addr.s_addr = INADDR_ANY;
-		if (bind(server_sock, (struct sockaddr *)&saddr, sizeof(saddr)) < 0) {
+	saddr.sin_family = AF_INET;
+	saddr.sin_port = htons(sched_port);
+	saddr.sin_addr.s_addr = INADDR_ANY;
+	if (bind(server_sock, (struct sockaddr *)&saddr, sizeof(saddr)) < 0) {
 #ifdef WIN32
-			errno = WSAGetLastError();
+		errno = WSAGetLastError();
 #endif
-			log_err(errno, __func__, "bind");
-			die(0);
-		}
+		log_err(errno, __func__, "bind");
+		die(0);
+	}
 
 
 	if (listen(server_sock, 5) < 0) {

@@ -203,8 +203,8 @@ find_assoc_sched_jid(char *jid, pbs_sched **target_sched)
  * 		find_assoc_sched_pque - find the corresponding scheduler which is responsible
  * 		for handling this job.
  *
- * @param[in]	pq	- pointer to pbs_queue
- * @param[out]target_sched	- pointer to the corresponding scheduler to which the job belongs to
+ * @param[in]	pq		- pointer to pbs_queue
+ * @param[out]  target_sched	- pointer to the corresponding scheduler to which the job belongs to
  *
   * @retval - 1 if success
  * 	    - 0 if fail
