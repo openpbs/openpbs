@@ -1052,8 +1052,6 @@ router_pkt_handler(int tfd, void *data, int len, void *c)
 
 		case TPP_CTL_AUTH: {
 			char ebuf[TPP_LOGBUF_SZ];
-			tpp_auth_pkt_hdr_t ahdr;
-			char atype;
 			char *adata;
 			void *adata_buf;
 			int alen;
@@ -1082,7 +1080,6 @@ router_pkt_handler(int tfd, void *data, int len, void *c)
 				return -1;
 			}
 
-			atype = ahdr.auth_type;
 			alen = len - sizeof(tpp_auth_pkt_hdr_t);
 			adata_buf = (((char *) data) + sizeof(tpp_auth_pkt_hdr_t));
 			adata = (char *)malloc(alen+1);
@@ -1094,7 +1091,7 @@ router_pkt_handler(int tfd, void *data, int len, void *c)
 				return -1;
 			}
 
-			rc = tpp_conf->validate_ext_auth_data(atype, adata, alen, ebuf, sizeof(ebuf));
+			rc = tpp_conf->validate_ext_auth_data(TPP_AUTH_EXTERNAL, adata, alen, ebuf, sizeof(ebuf));
 			if (rc != 0) {
 				snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "tfd=%d connection from %s failed authentication. %s", tfd, tpp_netaddr(&connected_host), ebuf);
 				tpp_log_func(LOG_CRIT, NULL, tpp_get_logbuf());

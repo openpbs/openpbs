@@ -845,7 +845,7 @@ send_sisters_job_update(job *pjob)
 	char		*cookie;
 	int		num = 0;
 	hnodent		*np;	
-	eventent	*ep;	
+	eventent	*ep = NULL;	
 	int		i;
 	int		ret;
 

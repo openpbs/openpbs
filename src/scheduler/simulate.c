@@ -1131,14 +1131,11 @@ dup_timed_event_list(timed_event *ote_list, server_info *nsinfo)
 	timed_event *ote;
 	timed_event *nte = NULL;
 	timed_event *nte_prev = NULL;
-	timed_event *nte_head;
+	timed_event *nte_head = NULL;
 
 	if (ote_list == NULL || nsinfo == NULL)
 		return NULL;
 
-#ifdef NAS /* localmod 005 */
-	nte_head = NULL;		/* quiet compiler warning */
-#endif /* localmod 005 */
 	for (ote = ote_list; ote != NULL; ote = ote->next) {
 		nte = dup_timed_event(ote, nsinfo);
 		if (nte_prev != NULL)

@@ -990,7 +990,7 @@ void update_sorting_defs(int op)
 {
 	int i, j;
 	char errbuf[MAX_LOG_SIZE];
-	char *prefix;
+	char *prefix = NULL;
 
 	/* Job sorts */
 	for (i = 0; i < 4; i++) {
@@ -1020,6 +1020,7 @@ void update_sorting_defs(int op)
 				break;
 			default:
 				si = NULL;
+				obj = SOBJ_JOB;
 		}
 		if (si != NULL) {
 			for (j = 0; si[j].res_name != NULL; j++) {

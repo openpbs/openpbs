@@ -1750,7 +1750,7 @@ mgr_hook_set(struct batch_request *preq)
 	unsigned int	prev_phook_event = 0;
 	char		*hook_user_val = NULL;
 	char		*hook_fail_action_val = NULL;
-	enum batch_op	hook_fail_action_op;
+	enum batch_op	hook_fail_action_op = DFLT;
 	char		*hook_freq_val = NULL;
 	int		hook_obj;
 
@@ -2932,7 +2932,7 @@ set_job_varlist(job *pjob, char *hook_name, char *msg, int msg_len)
 	size_t	elen;
 	struct array_strings *astr;
 	char	*new_attrval_str = NULL;
-	char	*pfrom, *end, *pc;
+	char	*pfrom, *end, *pc = NULL;
 
 	if ((pjob == NULL) || (msg == NULL) || (msg_len <= 0)) {
 		log_err(-1, __func__, "pjob, msg,or msg_len parameter is bad");

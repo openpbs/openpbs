@@ -872,7 +872,9 @@ return_file(job *pjob, enum job_file which, int sock)
 void
 req_deletejob(struct batch_request *preq)
 {
+#if !MOM_ALPS
 	int  		numnodes;
+#endif
 	job 		*pjob;
 	char 		hook_msg[HOOK_MSG_SIZE+1];
 	hook		*last_phook = NULL;
@@ -885,75 +887,86 @@ req_deletejob(struct batch_request *preq)
 	jobid = preq->rq_ind.rq_delete.rq_objname;
 	pjob = find_job(jobid);
 
-	if (pjob) {
-		/*
-		 * check to see is there any copy request pending
-		 * for this job ?
-		 */
-#ifdef WIN32
-		if (get_copyinfo_from_list(jobid) != NULL)
-#else
-		if (pjob->ji_momsubt != 0 && pjob->ji_mompost == post_cpyfile)
-#endif
-		{
-			/*
-			 * we have copy request pending so we
-			 * need to first process the post_cpyfile
-			 * request before starting this one.
-			 * Tell the server to try again later.
-			 */
-			req_reject(PBSE_TRYAGAIN, 0, preq);
-			return;
-		}
-
-		/* save number of nodes in sisterhood in case */
-		/* job is deleted in mom_deljob_wait()	      */
-		numnodes = pjob->ji_numnodes;
-
-		/* mom_deljob_wait() sets substate to */
-		/* prevent sending more OBIT messages */
-
-#if MOM_ALPS
-		pjob->ji_preq = preq;	/* needed when canceling ALPS */
-#else
-		pjob->ji_preq = NULL;
-#endif
-		mom_hook_input_init(&hook_input);
-		hook_input.pjob = pjob;
-
-		mom_hook_output_init(&hook_output);
-		hook_output.reject_errcode = &reject_errcode;
-		hook_output.last_phook = &last_phook;
-		hook_output.fail_action = &hook_fail_action;
-
-		(void)mom_process_hooks(HOOK_EVENT_EXECJOB_END,
-			PBS_MOM_SERVICE_NAME, mom_host, &hook_input,
-			&hook_output, hook_msg, sizeof(hook_msg), 1);
-#if MOM_ALPS
-		(void)mom_deljob_wait(pjob);
-
-		/* The delete job request from Server will have been  */
-		/* or will be replied to and freed by the             */
-		/* alps_cancel_reservation code in the sequence of    */
-		/* functions started with the above call to           */
-		/* mom_deljob_wait().  Set preq to NULL here so we    */
-		/* don't try, mistakenly, to use it again.            */
-		preq = NULL;
-#else
-		if (mom_deljob_wait(pjob) > 0) {
-			/* wait till sisters respond */
-			pjob->ji_preq = preq;
-		} else if (numnodes > 1) {
-			/* no messages sent, but there are sisters */
-			/* must be all down			   */
-			req_reject(PBSE_SISCOMM, 0, preq); /* all sis down */
-		} else {
-			reply_ack(preq);	/* no sisters, reply now  */
-		}
-#endif
-	} else {
+	if (!pjob) {
 		req_reject(PBSE_UNKJOBID, 0, preq);
+		return;
 	}
+
+	/*
+	 * check to see is there any copy request pending
+	 * for this job ?
+	 */
+#ifdef WIN32
+	if (get_copyinfo_from_list(jobid) != NULL)
+#else
+	if (pjob->ji_momsubt != 0 && pjob->ji_mompost == post_cpyfile)
+#endif
+	{
+		/*
+		 * we have copy request pending so we
+		 * need to first process the post_cpyfile
+		 * request before starting this one.
+		 * Tell the server to try again later.
+		 */
+		req_reject(PBSE_TRYAGAIN, 0, preq);
+		return;
+	}
+
+#if !MOM_ALPS
+	/*
+	 * save number of nodes in sisterhood in case
+	 * job is deleted in mom_deljob_wait()
+	 */
+	numnodes = pjob->ji_numnodes;
+#endif
+
+	/*
+	 * mom_deljob_wait() sets substate to
+	 * prevent sending more OBIT messages
+	 */
+
+#if MOM_ALPS
+	pjob->ji_preq = preq;	/* needed when canceling ALPS */
+#else
+	pjob->ji_preq = NULL;
+#endif
+	mom_hook_input_init(&hook_input);
+	hook_input.pjob = pjob;
+
+	mom_hook_output_init(&hook_output);
+	hook_output.reject_errcode = &reject_errcode;
+	hook_output.last_phook = &last_phook;
+	hook_output.fail_action = &hook_fail_action;
+
+	(void)mom_process_hooks(HOOK_EVENT_EXECJOB_END,
+		PBS_MOM_SERVICE_NAME, mom_host, &hook_input,
+		&hook_output, hook_msg, sizeof(hook_msg), 1);
+#if MOM_ALPS
+	(void)mom_deljob_wait(pjob);
+
+	/*
+	 * The delete job request from Server will have been
+	 * or will be replied to and freed by the
+	 * alps_cancel_reservation code in the sequence of
+	 * functions started with the above call to
+	 * mom_deljob_wait().  Set preq to NULL here so we
+	 * don't try, mistakenly, to use it again.
+	 */
+	pjob->ji_preq = NULL;
+#else
+	if (mom_deljob_wait(pjob) > 0) {
+		/* wait till sisters respond */
+		pjob->ji_preq = preq;
+	} else if (numnodes > 1) {
+		/*
+		 * no messages sent, but there are sisters
+		 * must be all down
+		 */
+		req_reject(PBSE_SISCOMM, 0, preq); /* all sis down */
+	} else {
+		reply_ack(preq);	/* no sisters, reply now  */
+	}
+#endif
 }
 
 /**

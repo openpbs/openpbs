@@ -165,13 +165,13 @@ encode_unkn(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, i
 {
 	svrattrl *plist;
 	svrattrl *pnew;
-	svrattrl *xprior;
+	svrattrl *xprior = NULL;
 	int	  first = 1;
 
 	if (!attr)
 		return (-2);
 
-	plist= (svrattrl *)GET_NEXT(attr->at_val.at_list);
+	plist = (svrattrl *)GET_NEXT(attr->at_val.at_list);
 	if (plist == (svrattrl *)0)
 		return (0);
 
@@ -188,7 +188,7 @@ encode_unkn(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, i
 		pnew->al_flags  = plist->al_flags;
 		pnew->al_refct  = 1;
 
-		pnew->al_name  = (char *)pnew + sizeof(svrattrl);
+		pnew->al_name = (char *)pnew + sizeof(svrattrl);
 		(void)memcpy(pnew->al_name, plist->al_name, plist->al_nameln);
 		if (plist->al_rescln) {
 			pnew->al_resc = pnew->al_name + pnew->al_nameln;
@@ -207,10 +207,11 @@ encode_unkn(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, i
 			append_link(phead, &pnew->al_link, pnew);
 		if (first) {
 			if (rtnl)
-				*rtnl  = pnew;
-			first  = 0;
+				*rtnl = pnew;
+			first = 0;
 		} else {
-			xprior->al_sister = pnew;
+			if (xprior)
+				xprior->al_sister = pnew;
 		}
 		xprior = pnew;
 

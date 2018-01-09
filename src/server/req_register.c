@@ -1233,7 +1233,7 @@ encode_depend(attribute *attr, pbs_list_head *phead, char *atname, char *rsname,
 	struct depend 	   *nxdp;
 	struct svrattrl	   *pal;
 	struct depend 	   *pdp;
-	struct depend_job  *pdjb;
+	struct depend_job  *pdjb = NULL;
 	struct dependnames *pn;
 
 	if (!attr)

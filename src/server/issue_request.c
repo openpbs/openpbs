@@ -134,7 +134,7 @@ relay_to_mom2(job *pjob, struct batch_request *request,
 	struct work_task *pwt;
 	int prot;
 	mominfo_t *pmom = 0;
-	pbs_list_head	*mom_tasklist_ptr;
+	pbs_list_head	*mom_tasklist_ptr = NULL;
 
 	momaddr = pjob->ji_qs.ji_un.ji_exect.ji_momaddr;
 	momport = pjob->ji_qs.ji_un.ji_exect.ji_momport;

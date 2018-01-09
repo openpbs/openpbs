@@ -174,7 +174,7 @@ decode_resc(struct attribute *patr, char *name, char *rescn, char *val)
  * single value to be encoded.  But resource attribute may have a whole bunch.
  * First get the name of the parent attribute (typically "resource-list").
  * Then for each resource in the list, call the individual resource encode
- * routine with "aname" set to the parent attribute name.
+ * routine with "atname" set to the parent attribute name.
  *
  * @param[in] attr -  ptr to attribute to encode
  * @param[in] phead - head of attrlist list
@@ -209,7 +209,7 @@ encode_resc(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, i
 	int	    perm;
 	int	    first = 1;
 	svrattrl   *xrtnl;
-	svrattrl   *xprior;
+	svrattrl   *xprior = NULL;
 
 	if (!attr)
 		return (-1);
@@ -218,8 +218,9 @@ encode_resc(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, i
 
 	/* ok now do each separate resource */
 
-	prsc = (resource *)GET_NEXT(attr->at_val.at_list);
-	while (prsc != (resource *)0) {
+	for (prsc = (resource *)GET_NEXT(attr->at_val.at_list);
+			prsc != (resource *)0;
+			prsc = (resource *)GET_NEXT(prsc->rs_link)) {
 
 		/*
 		 * encode if sending to client or MOM with permission
@@ -229,19 +230,15 @@ encode_resc(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, i
 
 		perm = prsc->rs_defin->rs_flags & resc_access_perm ;
 		dflt = prsc->rs_value.at_flags & ATR_VFLAG_DEFLT;
-		if (((mode == ATR_ENCODE_CLIENT) && perm)  ||
-
-			(mode == ATR_ENCODE_HOOK)     ||
-
-			(mode == ATR_ENCODE_DB)  ||
-
-			((mode == ATR_ENCODE_MOM) && perm)     ||
-
+		if (((mode == ATR_ENCODE_CLIENT) && perm) ||
+			(mode == ATR_ENCODE_HOOK) ||
+			(mode == ATR_ENCODE_DB) ||
+			((mode == ATR_ENCODE_MOM) && perm) ||
 			(mode == ATR_ENCODE_SAVE) ||
-
-			((mode == ATR_ENCODE_SVR)  && (dflt == 0) && perm)) {
+			((mode == ATR_ENCODE_SVR) && (dflt == 0) && perm)) {
 
 			rsname = prsc->rs_defin->rs_name;
+			xrtnl = NULL;
 			if (prsc->rs_value.at_flags & ATR_VFLAG_INDIRECT)
 				rc = encode_str(&prsc->rs_value, phead,
 					atname, rsname, mode, &xrtnl);
@@ -249,22 +246,22 @@ encode_resc(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, i
 				rc = prsc->rs_defin->rs_encode(&prsc->rs_value, phead,
 					atname, rsname, mode, &xrtnl);
 
-			if (rc > 0) {
-				if (first) {
-					if (rtnl)
-						*rtnl  = xrtnl;
-					first  = 0;
-				} else {
-					xprior->al_sister = xrtnl;
-				}
-				xprior = xrtnl;
-
-			} else if (rc < 0) {
+			if (rc < 0)
 				return (rc);
+			if (xrtnl == NULL)
+				continue;
+			if (first) {
+				if (rtnl)
+					*rtnl  = xrtnl;
+				first  = 0;
+			} else {
+				if (xprior)
+					xprior->al_sister = xrtnl;
 			}
+			xprior = xrtnl;
+
 			grandtotal += rc;
 		}
-		prsc = (resource *)GET_NEXT(prsc->rs_link);
 	}
 	return (grandtotal);
 }

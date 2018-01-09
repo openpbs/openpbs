@@ -7867,7 +7867,7 @@ update_job_node_rassn(job *pjob, attribute *pexech, enum batch_op op)
 	int       nelem;
 	char	 *noden;
 	int	  rc;
-	resource_def	      *prdef;
+	resource_def	*prdef = NULL;
 	struct key_value_pair *pkvp;
 	attribute	*queru = (attribute *)0;
 	attribute	*sysru = (attribute *)0;

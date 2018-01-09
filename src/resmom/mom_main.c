@@ -104,7 +104,7 @@
 #include	"pbs_version.h"
 #include	"libsec.h"
 #include	"pbs_ecl.h"
-#include "pbs_internal.h"
+#include	"pbs_internal.h"
 #if	defined(MOM_CPUSET)
 #include	"mom_vnode.h"
 #endif	/* MOM_CPUSET */
@@ -119,6 +119,9 @@
 #include	"work_task.h"
 #include	"pbs_share.h"
 #include	"mom_server.h"
+#if	MOM_CSA || MOM_ALPS
+#include	"mom_mach.h"
+#endif	/* MOM_CSA or MOM_ALPS */
 
 #define STATE_UPDATE_TIME 10
 #ifndef	PRIO_MAX

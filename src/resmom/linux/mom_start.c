@@ -2242,7 +2242,9 @@ set_globid(job *pjob, struct startjob_rtn *sjr)
 		(void)decode_str(&pjob->ji_wattr[JOB_ATR_acct_id],
 			ATTR_acct_id, NULL, buf);
 
-		*(jid_t *)&pjob->ji_extended.ji_ext.ji_4jid[0] = sjr->sj_jid;
+		(void)memcpy(&pjob->ji_extended.ji_ext.ji_4jid,
+				&sjr->sj_jid,
+				sizeof(pjob->ji_extended.ji_ext.ji_4jid));
 
 #if MOM_CSA
 		if (acct_facility_active == 0) {

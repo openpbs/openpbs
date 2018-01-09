@@ -193,7 +193,7 @@ encode_rcost(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, 
 	svrattrl *pal;
 	struct resource_cost *pcost;
 	int	  first = 1;
-	svrattrl *xprior;
+	svrattrl *xprior = NULL;
 
 	if (!attr)
 		return (-1);

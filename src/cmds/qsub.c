@@ -2562,7 +2562,7 @@ block()
 	pbs_socklen_t		fromlen;
 	char			*jobid = "none";
 	char			*message = NULL;
-	char			*fail;
+	char			*fail = NULL;
 	int			news;
 	int			ret;
 	int			version;
@@ -2669,7 +2669,8 @@ retry:
 	exit_qsub(exitval);
 
 err:
-	fprintf(stderr, "qsub: Bad Request Protocol, %s\n", fail);
+	fprintf(stderr, "qsub: Bad Request Protocol, %s\n",
+			((fail != NULL) && (*fail != '\0')) ? fail : "unknown error");
 	exit_qsub(3);
 }
 

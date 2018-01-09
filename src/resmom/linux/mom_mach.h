@@ -166,7 +166,6 @@ extern	int	acct_facility_wkmgt_recs;
 extern	int	acct_facility_wkmgt_active;
 extern	int	acct_facility_csa_active;
 extern	int	acct_dmd_wkmg;
-extern	void	ck_acct_facility_present(void);
 extern	jid_t	(*jc_create)();
 extern	jid_t	(*jc_getjid)();
 extern	int	(*p_csa_check)(struct csa_check_req *);
@@ -174,8 +173,11 @@ extern	int	(*p_csa_wracct)(struct csa_wra_req *);
 extern	void	write_wkmg_record(int, int, job *);
 extern	int	find_in_lib(void*, char*, char*, void**);
 extern	char	*get_versioned_libname(int);
-
 #endif	/* MOM_CSA */
+
+#if	MOM_CSA || MOM_ALPS
+extern	void	ck_acct_facility_present(void);
+#endif	/* MOM_CSA or MOM_ALPS */
 
 #if	MOM_CPUSET
 extern int	attach_to_cpuset(job *, struct startjob_rtn *);

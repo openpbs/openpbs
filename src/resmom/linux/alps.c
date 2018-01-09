@@ -714,6 +714,7 @@ stack_busted(ud_t *d)
 			}
 		} else if (strcmp(BASIL_ELM_SEGMENTARRAY, top) == 0) {
 			switch (basilver) {
+				case basil_1_0:
 				case basil_1_1:
 				case basil_1_2:
 					if (strcmp(BASIL_ELM_NODE, prev) != 0) {
@@ -748,6 +749,7 @@ stack_busted(ud_t *d)
 			}
 		} else if (strcmp(BASIL_ELM_PROCESSORARRAY, top) == 0) {
 			switch (basilver) {
+				case basil_1_0:
 				case basil_1_1:
 				case basil_1_2:
 					if (strcmp(BASIL_ELM_SEGMENT, prev) != 0) {
@@ -914,12 +916,10 @@ response_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 {
 	const XML_Char **np;
 	const XML_Char **vp;
-	basil_response_t *brp;
 	char protocol[BASIL_STRING_SHORT];
 
 	if (stack_busted(d))
 		return;
-	brp = d->brp;
 	if (++(d->count.response) > 1) {
 		parse_err_multiple_elements(d);
 		return;
@@ -1689,16 +1689,17 @@ node_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 	}
 	/* Reset the array counters. */
 	switch (basilver) {
-	case basil_1_1:
-	case basil_1_2:
-		d->count.segment_array = 0;
-		break;
-	case basil_1_3:
-	case basil_1_4:
-		/* segment_array is reset in socket_start() for these
-		 * BASIL versions.
-		 */
-		break;
+		case basil_1_0:
+		case basil_1_1:
+		case basil_1_2:
+			d->count.segment_array = 0;
+			break;
+		case basil_1_3:
+		case basil_1_4:
+			/* segment_array is reset in socket_start() for these
+			 * BASIL versions.
+			 */
+			break;
 	}
 	d->count.socket_array = 0;
 	d->count.accelerator_array = 0;
@@ -1759,11 +1760,9 @@ socket_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 	const XML_Char **np;
 	const XML_Char **vp;
 	basil_node_socket_t *socket;
-	basil_response_t *brp;
 
 	if (stack_busted(d))
 		return;
-	brp = d->brp;
 	socket = malloc(sizeof(basil_node_socket_t));
 	if (!socket) {
 		parse_err_out_of_memory(d);
@@ -1934,14 +1933,15 @@ segment_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 			return;
 		}
 		switch (basilver) {
-			case basil_1_3:
-			case basil_1_4:
-				(d->current.socket)->segments = segment;
-				break;
+			case basil_1_0:
 			case basil_1_1:
 			case basil_1_2:
 				/* There are no socket elements. */
 				(d->current.node)->segments = segment;
+				break;
+			case basil_1_3:
+			case basil_1_4:
+				(d->current.socket)->segments = segment;
 				break;
 		}
 	}
@@ -1974,17 +1974,18 @@ segment_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 	}
 	/* Reset the array counters. */
 	switch (basilver) {
-	case basil_1_3:
-	case basil_1_4:
-		d->count.computeunit_array = 0;
-		d->current.processor = NULL;
-		break;
-	case basil_1_1:
-	case basil_1_2:
-		/* There are no compute units, and the processor
-		 * count was initialized as part of processor_array_start()
-		 */
-		break;
+		case basil_1_0:
+		case basil_1_1:
+		case basil_1_2:
+			/* There are no compute units, and the processor
+			 * count was initialized as part of processor_array_start()
+			 */
+			break;
+		case basil_1_3:
+		case basil_1_4:
+			d->count.computeunit_array = 0;
+			d->current.processor = NULL;
+			break;
 	}
 	d->count.processor_array = 0;
 	d->count.memory_array = 0;
@@ -2132,16 +2133,17 @@ processor_array_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 		return;
 	}
 	switch (basilver) {
-	case basil_1_1:
-	case basil_1_2:
-		d->current.processor = NULL;
-		break;
-	case basil_1_3:
-	case basil_1_4:
-		/* processor is reset in segment_start()
-		 * for these BASIL versions
-		 */
-		break;
+		case basil_1_0:
+		case basil_1_1:
+		case basil_1_2:
+			d->current.processor = NULL;
+			break;
+		case basil_1_3:
+		case basil_1_4:
+			/* processor is reset in segment_start()
+			 * for these BASIL versions
+			 */
+			break;
 	}
 	return;
 }
@@ -2195,6 +2197,11 @@ processor_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 	}
 	d->current.processor = processor;
 	switch (basilver) {
+		case basil_1_0:
+		case basil_1_1:
+		case basil_1_2:
+			/* There are no computeunits for these BASIL versions */
+			break;
 		case basil_1_3:
 		case basil_1_4:
 			cu = (d->current.segment)->computeunits;
@@ -2202,10 +2209,6 @@ processor_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 				parse_err_internal(d);
 				return;
 			}
-			break;
-		case basil_1_1:
-		case basil_1_2:
-			/* There are no computeunits for these BASIL versions */
 			break;
 	}
 
@@ -2262,6 +2265,7 @@ processor_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 		return;
 	}
 	switch (basilver) {
+		case basil_1_0:
 		case basil_1_1:
 		case basil_1_2:
 			if (!processor->arch) {
@@ -3360,12 +3364,10 @@ ignore_element(ud_t *d, const XML_Char *el, const XML_Char **atts)
 {
 	const XML_Char **np;
 	const XML_Char **vp;
-	char	*id;
 
 	if (stack_busted(d))
 		return;
 
-	id = handler[d->stack[d->depth]].element;
 	for (np = vp = atts, vp++; np && *np && vp && *vp; np = ++vp, vp++) {
 		xml_dbg("%s: %s = %s", __func__, *np, *vp);
 	}
@@ -3968,7 +3970,6 @@ inventory_to_vnodes(basil_response_t *brp)
 	long		mem_ct;
 	char		name[VNODE_NAME_LEN];
 	basil_node_t 	*node = NULL;
-	basil_node_socket_t *sock = NULL;
 	basil_response_query_inventory_t *inv = NULL;
 	hwloc_topology_t topology;
 
@@ -4034,14 +4035,14 @@ inventory_to_vnodes(basil_response_t *brp)
 			hwloc_topology_destroy(topology);
 			return;
 		} else {
-			snprintf(lbuf, sizeof(lbuf), "allocated log buffer, len %d", lbuflen);
+			snprintf(lbuf, lbuflen, "allocated log buffer, len %d", lbuflen);
 			log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_NODE,
 				LOG_DEBUG, __func__, lbuf);
 		}
 		log_event(PBSEVENT_DEBUG4,
 			PBS_EVENTCLASS_NODE,
 			LOG_DEBUG, __func__, "topology exported");
-		snprintf(lbuf, sizeof(lbuf), "%s%s", NODE_TOPOLOGY_TYPE_HWLOC, xmlbuf);
+		snprintf(lbuf, lbuflen, "%s%s", NODE_TOPOLOGY_TYPE_HWLOC, xmlbuf);
 		if (vn_addvnr(nv, mom_short_name, ATTR_NODE_TopologyInfo,
 			lbuf, ATR_TYPE_STR, READ_ONLY, NULL) == -1) {
 			hwloc_free_xmlbuffer(topology, xmlbuf);
@@ -4049,7 +4050,7 @@ inventory_to_vnodes(basil_response_t *brp)
 			free(lbuf);
 			goto bad_vnl;
 		} else {
-			snprintf(lbuf, sizeof(lbuf), "attribute '%s = %s%s' added",
+			snprintf(lbuf, lbuflen, "attribute '%s = %s%s' added",
 				ATTR_NODE_TopologyInfo,
 				NODE_TOPOLOGY_TYPE_HWLOC, xmlbuf);
 			log_event(PBSEVENT_DEBUG4,

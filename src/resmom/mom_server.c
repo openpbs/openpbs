@@ -1514,10 +1514,10 @@ state_to_server(int what_to_update)
 	if (ret != DIS_SUCCESS)
 		goto err;
 	if (use_UPDATE2) {
-#ifdef	MOM_ALPS
+#if	MOM_ALPS
 		/*
-		 * This is a clumsy workaround for a problem with the reporting
-		 * of vnodes by multiple MoMs:  the "check_other_moms_time"
+		 * This is a workaround for a problem with the reporting of
+		 * vnodes by multiple MoMs:  the "check_other_moms_time"
 		 * variable's value being nonzero results in the vnl_modtime
 		 * for additional MoMs' vnodes being set to match the modtime
 		 * for the first one to report.  This in turn causes the call
@@ -1534,7 +1534,7 @@ state_to_server(int what_to_update)
 		 * vnode mod time.
 		 */
 		vnlp->vnl_modtime = time(0);
-#endif
+#endif	/* MOM_ALPS */
 
 		ret = vn_encode_DIS(server_stream, vnlp);	/* vnode list */
 		if (ret != DIS_SUCCESS)

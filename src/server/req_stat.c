@@ -1111,7 +1111,7 @@ req_stat_resc(struct batch_request *preq)
 	int		     i;
 	char		    *name;
 	char		    *extend;
-	struct resource_def *prd;
+	struct resource_def *prd = NULL;
 	struct batch_reply  *preply;
 	int		     rc   = 0;
 	int		     type;
