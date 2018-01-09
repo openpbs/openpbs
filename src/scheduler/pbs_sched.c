@@ -796,7 +796,7 @@ are_we_primary()
 		return -1;
 	}
 	strncpy(scheduler_host_name, server_host, sizeof(scheduler_host_name));
-	scheduler_host_name[sizeof(scheduler_host_name) -1] = '\0';
+	scheduler_host_name[sizeof(scheduler_host_name) - 1] = '\0';
 
 	/* both secondary and primary should be set or neither set */
 	if ((pbs_conf.pbs_secondary == NULL) && (pbs_conf.pbs_primary == NULL))
