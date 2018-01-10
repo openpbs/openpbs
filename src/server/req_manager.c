@@ -1625,9 +1625,13 @@ mgr_server_unset(struct batch_request *preq)
 		}  else if (strcasecmp(plist->al_name,
 				ATTR_schediteration) == 0) {
 			if (dflt_scheduler) {
-				dflt_scheduler->sch_attr[SCHED_ATR_schediteration].at_val.at_long = 0;
-				dflt_scheduler->sch_attr[SCHED_ATR_schediteration].at_flags |=
-						ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+				svrattrl *tm_list;
+				tm_list = attrlist_create(plist->al_name, NULL, 0);
+				tm_list->al_link.ll_next->ll_struct = NULL;
+				rc = mgr_unset_attr(dflt_scheduler->sch_attr, sched_attr_def, SCHED_ATR_LAST, tm_list,
+					-1, &bad_attr, (void *)dflt_scheduler, PARENT_TYPE_SCHED, INDIRECT_RES_CHECK);
+				if (rc != 0)
+					reply_badattr(rc, bad_attr, plist, preq);
 				(void)sched_save_db(dflt_scheduler, SVR_SAVE_FULL);
 			}
 		}
@@ -1683,10 +1687,12 @@ mgr_sched_set(struct batch_request *preq)
 	if (rc != 0)
 		reply_badattr(rc, bad_attr, plist, preq);
 	else {
-
+		//int unset_flag = 0;
 		/* save the attributes to disk */
 		(void)sched_save_db(psched, SVR_SAVE_FULL);
-		set_sched_default(psched);
+		/*if (preq->rq_fromsvr)
+			unset_flag = 1;*/
+		set_sched_default(psched, 0);
 		(void)sprintf(log_buffer, msg_manager, msg_man_set,
 			preq->rq_user, preq->rq_host);
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SCHED, LOG_INFO,
@@ -1723,6 +1729,17 @@ mgr_sched_unset(struct batch_request *preq)
 		if (strcasecmp(tmp_plist->al_name, ATTR_sched_log) == 0 ||
 			strcasecmp(tmp_plist->al_name, ATTR_sched_priv) == 0) {
 			set_scheduler_flag(SCH_ATTRS_CONFIGURE, psched);
+		} else if (strcasecmp(tmp_plist->al_name, ATTR_schediteration) == 0) {
+			if (dflt_scheduler) {
+				svrattrl *t_list;
+				t_list = attrlist_create(tmp_plist->al_name, NULL, 0);
+				t_list->al_link.ll_next->ll_struct = NULL;
+				rc = mgr_unset_attr(server.sv_attr, svr_attr_def, SRV_ATR_LAST, t_list,
+					-1, &bad_attr, (void *)&server, PARENT_TYPE_SERVER, INDIRECT_RES_CHECK);
+				if (rc != 0)
+					reply_badattr(rc, bad_attr, tmp_plist, preq);
+				svr_save_db(&server, SVR_SAVE_FULL);
+			}
 		}
 	}
 
@@ -1735,7 +1752,7 @@ mgr_sched_unset(struct batch_request *preq)
 
 		/* save the attributes to disk */
 		(void)sched_save_db(psched, SVR_SAVE_FULL);
-		set_sched_default(psched);
+		set_sched_default(psched, 1);
 		(void)sprintf(log_buffer, msg_manager, msg_man_uns,
 			preq->rq_user, preq->rq_host);
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SCHED, LOG_INFO,
@@ -3590,7 +3607,7 @@ mgr_sched_create(struct batch_request *preq)
 
 		/* save the attributes to disk */
 		(void) sched_save_db(psched, SVR_SAVE_FULL);
-		set_sched_default(psched);
+		set_sched_default(psched, 0);
 		snprintf(log_buffer, LOG_BUF_SIZE, msg_manager, msg_man_set,
 				preq->rq_user, preq->rq_host);
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SCHED, LOG_INFO, msg_daemonname, log_buffer);

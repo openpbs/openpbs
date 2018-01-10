@@ -798,7 +798,8 @@ set_rpp_highwater(attribute *pattr, void *pobj, int actmode)
  *		scheduler.   Done here because also need to invalidate the server
  *		state attribute cache.
  *
- * @param[in]	s	-	internal socket used to communicate with the scheduler
+ * @param[in] s		-	internal socket used to communicate with the scheduler
+ * @param[in] psched	-	pointer to sched object
  */
 void
 set_sched_sock(int s, pbs_sched *psched)
@@ -944,10 +945,12 @@ action_svr_iteration(attribute *pattr, void *pobj, int mode)
 {
 	/* set this attribute on main scheduler */
 	if (dflt_scheduler) {
-		dflt_scheduler->sch_attr[SCHED_ATR_schediteration].at_val.at_long = pattr->at_val.at_long;
-		dflt_scheduler->sch_attr[SCHED_ATR_schediteration].at_flags |=
-				ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
-		(void)sched_save_db(dflt_scheduler, SVR_SAVE_FULL);
+		if (mode == ATR_ACTION_NEW || mode == ATR_ACTION_ALTER || mode == ATR_ACTION_RECOV) {
+			dflt_scheduler->sch_attr[SCHED_ATR_schediteration].at_val.at_long = pattr->at_val.at_long;
+			dflt_scheduler->sch_attr[SCHED_ATR_schediteration].at_flags |=
+					ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+			(void)sched_save_db(dflt_scheduler, SVR_SAVE_FULL);
+		}
 	}
 	return PBSE_NONE;
 }

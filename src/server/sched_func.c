@@ -84,7 +84,7 @@ sched_alloc(char *sched_name)
 
 	CLEAR_LINK(psched->sc_link);
 	strncpy(psched->sc_name, sched_name, PBS_MAXSCHEDNAME);
-	psched->sc_name[PBS_MAXSCHEDNAME - 1] = '\0';
+	psched->sc_name[PBS_MAXSCHEDNAME] = '\0';
 	psched->svr_do_schedule = SCH_SCHEDULE_NULL;
 	psched->svr_do_sched_high = SCH_SCHEDULE_NULL;
 	psched->scheduler_sock = -1;
@@ -234,6 +234,8 @@ action_sched_host(attribute *pattr, void *pobj, int actmode)
 	if (actmode == ATR_ACTION_NEW || actmode == ATR_ACTION_ALTER || actmode == ATR_ACTION_RECOV) {
 		if ( dflt_scheduler && psched != dflt_scheduler)
 			psched->pbs_scheduler_addr = get_hostaddr(pattr->at_val.at_str);
+		if (psched->pbs_scheduler_addr == (pbs_net_t)0)
+			return PBSE_BADATVAL;
 	}
 	return PBSE_NONE;
 }
@@ -337,8 +339,8 @@ action_sched_iteration(attribute *pattr, void *pobj, int actmode)
 {
 	if (pobj == dflt_scheduler) {
 			server.sv_attr[SRV_ATR_scheduler_iteration].at_val.at_long = pattr->at_val.at_long;
-			server.sv_attr[SRV_ATR_scheduler_iteration].at_flags |= ATR_VFLAG_MODCACHE;
-			svr_save_db(&server, SVR_SAVE_QUICK);
+			server.sv_attr[SRV_ATR_scheduler_iteration].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+			svr_save_db(&server, SVR_SAVE_FULL);
 	}
 	return PBSE_NONE;
 }
@@ -403,7 +405,7 @@ poke_scheduler(attribute *pattr, void *pobj, int actmode)
 		if (actmode == ATR_ACTION_ALTER) {
 			if (pattr->at_val.at_long)
 				set_scheduler_flag(SCH_SCHEDULE_CMD, (pbs_sched *)pobj);
-	}
+		}
 	}
 	return PBSE_NONE;
 }
@@ -412,10 +414,13 @@ poke_scheduler(attribute *pattr, void *pobj, int actmode)
  * @brief
  * 		Sets default scheduler attributes
  *
- * @param[in]	psched	-	Scheduler
- */
+ * @param[in] psched		- Scheduler
+ * @parma[in] unset_flag	- flag to indicate if this function is called after unset of any sched attributes.
+ *
+ *
+  */
 void
-set_sched_default(pbs_sched* psched)
+set_sched_default(pbs_sched* psched, int unset_flag)
 {
 	if (!psched)
 		return;
@@ -424,7 +429,7 @@ set_sched_default(pbs_sched* psched)
 		psched->sch_attr[(int) SCHED_ATR_sched_cycle_len].at_flags =
 				ATR_VFLAG_DEFLT | ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
 	}
-	if ((psched->sch_attr[(int) SCHED_ATR_schediteration].at_flags & ATR_VFLAG_SET) == 0) {
+	if (!unset_flag && (psched->sch_attr[(int) SCHED_ATR_schediteration].at_flags & ATR_VFLAG_SET) == 0) {
 		psched->sch_attr[(int) SCHED_ATR_schediteration].at_val.at_long = PBS_SCHEDULE_CYCLE;
 		psched->sch_attr[(int) SCHED_ATR_schediteration].at_flags =
 				ATR_VFLAG_DEFLT | ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
