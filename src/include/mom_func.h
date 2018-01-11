@@ -401,6 +401,7 @@ extern int pbs_pclose(FILE *);
 extern void start_walltime(job *);
 extern void update_walltime(job *);
 extern void stop_walltime(job *);
+extern void recover_walltime(job *);
 
 /* Define for max xauth data*/
 #define X_DISPLAY_LEN   512

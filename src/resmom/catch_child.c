@@ -2249,8 +2249,10 @@ init_abort_jobs(int recover)
 				ptask->ti_flags |= TI_FLAGS_ORPHAN;
 			}
 
-			if (pj->ji_qs.ji_substate == JOB_SUBSTATE_RUNNING)
+			if (pj->ji_qs.ji_substate == JOB_SUBSTATE_RUNNING) {
+				recover_walltime(pj);
 				start_walltime(pj);
+			}
 
 			if (mom_do_poll(pj))
 				append_link(&mom_polljobs, &pj->ji_jobque, pj);

@@ -137,3 +137,46 @@ stop_walltime(job *pjob) {
     update_walltime(pjob);
     pjob->ji_walltime_stamp = 0;
 }
+
+/**
+ * @brief
+ *
+ *		This function tries to recover the used walltime of a job.
+ *
+ * @param[in] 	pjob	    - pointer to the job
+ *
+ * @return	void
+ *
+ * @par MT-safe: No
+ */
+void
+recover_walltime(job *pjob) {
+    attribute       *resources_used;
+    resource_def    *walltime_def;
+    resource        *used_walltime;
+
+    if (NULL == pjob)
+        return;
+
+    if (0 == pjob->ji_qs.ji_stime)
+        return;
+
+    if (0 == time_now)
+        time_now = time(NULL);
+
+    resources_used = &pjob->ji_wattr[(int)JOB_ATR_resc_used];
+    assert(resources_used != NULL);
+    walltime_def = find_resc_def(svr_resc_def, "walltime", svr_resc_size);
+    assert(walltime_def != NULL);
+    used_walltime = find_resc_entry(resources_used, walltime_def);
+
+    /*
+     * if the used walltime is not set, try to recover it.
+     */
+    if (NULL == used_walltime) {
+        used_walltime = add_resource_entry(resources_used, walltime_def);
+        used_walltime->rs_value.at_flags |= ATR_VFLAG_SET;
+        used_walltime->rs_value.at_type = ATR_TYPE_LONG;
+        used_walltime->rs_value.at_val.at_long = (long)((double)(time_now - pjob->ji_qs.ji_stime) * wallfactor);
+    }
+}
