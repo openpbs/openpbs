@@ -398,8 +398,7 @@ class PBSTestSuite(unittest.TestCase):
     mom = None
     comm = None
     servers = None
-    schedulers = {}
-    scheds = None
+    schedulers = None
     moms = None
     comms = None
 
@@ -669,18 +668,12 @@ class PBSTestSuite(unittest.TestCase):
         """
         if init_sched_func is None:
             init_sched_func = cls.init_scheduler
-        cls.scheds = cls.init_from_conf(conf=cls.conf,
-                                        single='scheduler',
-                                        multiple='schedulers', skip=skip,
-                                        func=init_sched_func)
-        if cls.scheds:
-            cls.scheduler = cls.scheds.values()[0]
-
-        for sched in cls.scheds.values():
-            if sched.server.name in cls.schedulers:
-                continue
-            else:
-                cls.schedulers[sched.server.name] = sched.server.schedulers
+        cls.schedulers = cls.init_from_conf(conf=cls.conf,
+                                            single='scheduler',
+                                            multiple='schedulers', skip=skip,
+                                            func=init_sched_func)
+        if cls.schedulers:
+            cls.scheduler = cls.schedulers.values()[0]
 
     @classmethod
     def init_moms(cls, init_mom_func=None, skip='nomom'):
@@ -824,9 +817,8 @@ class PBSTestSuite(unittest.TestCase):
         """
         Revert the values set for schedulers
         """
-        for server in self.schedulers.values():
-            for sched in server.values():
-                self.revert_scheduler(sched, force)
+        for sched in self.schedulers.values():
+            self.revert_scheduler(sched, force)
 
     def revert_moms(self, force=False):
         """
@@ -1005,29 +997,6 @@ class PBSTestSuite(unittest.TestCase):
         self._procmon.stop()
         self.metrics_data['procs'] = self._procmon.db_proc_info
         self._process_monitoring = False
-
-    def sched_configure(self, sched_name, sched_home=None):
-        """
-        Start scheduler with creating required directories for scheduler
-        :param sched_name: scheduler name
-        :type sched_name: str
-        :param sched_home: path of scheduler home and log directory
-        :type sched_home: str
-        """
-        pbs_home = self.server.pbs_conf['PBS_HOME']
-        if sched_home is None:
-            sched_home = pbs_home
-        sched_priv_dir = 'sched_priv_' + sched_name
-        sched_logs_dir = 'sched_logs_' + sched_name
-        if not os.path.exists(os.path.join(sched_home, sched_priv_dir)):
-            self.du.run_copy(self.server.hostname,
-                             os.path.join(pbs_home, 'sched_priv'),
-                             os.path.join(sched_home, sched_priv_dir),
-                             recursive=True)
-        if not os.path.exists(os.path.join(sched_home, sched_logs_dir)):
-            self.du.mkdir(path=os.path.join(sched_home, sched_logs_dir),
-                          sudo=True)
-        self.server.schedulers[sched_name].start(sched_home)
 
     def skipTest(self, reason=None):
         """

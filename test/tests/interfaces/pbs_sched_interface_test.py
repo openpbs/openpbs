@@ -36,8 +36,10 @@
 # trademark licensing policies.
 
 from tests.interfaces import *
+import shutil
 
 
+@tags('multisched')
 class TestSchedulerInterface(TestInterfaces):
 
     """
@@ -52,7 +54,28 @@ class TestSchedulerInterface(TestInterfaces):
         self.server.manager(MGR_CMD_CREATE,
                             SCHED, a,
                             id="TestCommonSched")
-        self.sched_configure("TestCommonSched")
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'sched_port': 15051},
+                            id="TestCommonSched")
+        self.sched_configure("TestCommonSched", '15051')
+
+    def sched_configure(self, sched_name, sched_port, sched_home=None):
+        pbs_home = self.server.pbs_conf['PBS_HOME']
+        if sched_home is None:
+            sched_home = pbs_home
+        sched_priv_dir = 'sched_priv_' + sched_name
+        sched_logs_dir = 'sched_logs_' + sched_name
+        if not os.path.exists(os.path.join(sched_home, sched_priv_dir)):
+            self.du.run_copy(self.server.hostname,
+                             os.path.join(pbs_home, 'sched_priv'),
+                             os.path.join(sched_home, sched_priv_dir),
+                             recursive=True)
+        if not os.path.exists(os.path.join(sched_home, sched_logs_dir)):
+            self.du.run_copy(self.server.hostname,
+                             os.path.join(pbs_home, 'sched_logs'),
+                             os.path.join(sched_home, sched_logs_dir),
+                             recursive=True)
+        self.server.schedulers[sched_name].start(sched_port, sched_home)
 
     def test_duplicate_scheduler_name(self):
         """
@@ -61,26 +84,11 @@ class TestSchedulerInterface(TestInterfaces):
         try:
             self.server.manager(MGR_CMD_CREATE,
                                 SCHED,
-                                {'sched_port': '15052'},
                                 id="TestCommonSched")
         except PbsManagerError as e:
             if self.server.get_op_mode() == PTL_CLI:
                 self.assertTrue(
                     'qmgr: Error (15211) returned from server' in e.msg[1])
-
-    def test_invalid_sched_port(self):
-        """
-        Test setting invalid port.
-        """
-        try:
-            self.server.manager(MGR_CMD_SET, SCHED,
-                                {'sched_port': 'asdf'},
-                                id="TestCommonSched",
-                                runas=ROOT_USER)
-        except PbsManagerError as e:
-            err_msg = "Illegal attribute or resource value"
-            self.assertTrue(err_msg in e.msg[0],
-                            "Error message is not expected")
 
     def test_permission_on_scheduler(self):
         """
@@ -90,7 +98,6 @@ class TestSchedulerInterface(TestInterfaces):
         try:
             self.server.manager(MGR_CMD_CREATE,
                                 SCHED,
-                                {'sched_port': '15052'},
                                 id="testCreateSched",
                                 runas=OPER_USER)
         except PbsManagerError as e:
@@ -100,14 +107,12 @@ class TestSchedulerInterface(TestInterfaces):
 
         self.server.manager(MGR_CMD_CREATE,
                             SCHED,
-                            {'sched_port': '15052'},
                             id="testCreateSched",
                             runas=ROOT_USER)
 
         # Check for delete permission
         self.server.manager(MGR_CMD_CREATE,
                             SCHED,
-                            {'sched_port': '15052'},
                             id="testDeleteSched")
         try:
             self.server.manager(MGR_CMD_DELETE,
@@ -123,6 +128,7 @@ class TestSchedulerInterface(TestInterfaces):
                             SCHED,
                             id="testDeleteSched",
                             runas=ROOT_USER)
+        print self.server.schedulers
 
         # Check for attribute set permission
         try:
