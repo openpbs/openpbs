@@ -689,7 +689,6 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 	int		k;
 	char		script_path[MAXPATHLEN+1];
 	char		hook_config_path[MAXPATHLEN+1];
-	char		env_pbs_hook_config[2*MAXPATHLEN+1];
 	char		*p;
 	pbs_list_head	*jobs_list = NULL;
 	char		*pc;
@@ -1303,32 +1302,17 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 	log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK, LOG_INFO,
 		phook->hook_name, log_buffer);
 
-	env_pbs_hook_config[0] = '\0';
-	if (hook_config_path[0] != '\0') {
-		snprintf(env_pbs_hook_config, sizeof(env_pbs_hook_config),
-			"%s=%s", PBS_HOOK_CONFIG_FILE, hook_config_path);
-	}
+	if (hook_config_path[0] == '\0') {
 #ifdef WIN32
-	p = strrchr(env_pbs_hook_config, '=');
-	if (p != NULL) {
-		*p = '\0';
-		if (!SetEnvironmentVariable(env_pbs_hook_config, p+1)) {
-			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-				LOG_ERR, phook->hook_name, "Failed to set PBS_HOOK_CONFIG_FILE");
-			return (-1);
-		}
-	} else {
 		/* since under Windows, this is still main mom (not forked), */
 		/* need to unset the hook config environment variable. */
-		(void)SetEnvironmentVariable(PBS_HOOK_CONFIG_FILE, NULL);
-	}
-#else
-	if (setenv(PBS_HOOK_CONFIG_FILE, hook_config_path, 1) != 0) {
+		setenv(PBS_HOOK_CONFIG_FILE, NULL, 1);
+#endif /* WIN32 */
+	} else if (setenv(PBS_HOOK_CONFIG_FILE, hook_config_path, 1) != 0) {
 		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
 			LOG_ERR, phook->hook_name, "Failed to set PBS_HOOK_CONFIG_FILE");
 		return (-1);
 	}
-#endif
 
 #ifndef WIN32
 	/* We're passing the calling process' (mom's) environment  */
@@ -1341,12 +1325,7 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 	/* perhaps due to an incorrectly setup host.		   */
 
 	if (pbs_conf.pbs_conf_file != NULL) {
-		static	char	env_pbs_conf[STRBUF];
-		int	env_ret;
-		env_ret = snprintf(env_pbs_conf, sizeof(env_pbs_conf),
-			"PBS_CONF_FILE=%s", pbs_conf.pbs_conf_file);
-		if ((env_ret < 0) || ((size_t)env_ret != strlen(env_pbs_conf)) ||
-			(setenv("PBS_CONF_FILE", pbs_conf.pbs_conf_file, 1) != 0 )) {
+		if (setenv("PBS_CONF_FILE", pbs_conf.pbs_conf_file, 1) != 0 ) {
 			log_err(errno, __func__, "Failed to set PBS_CONF_FILE");
 			goto run_hook_exit;
 		}

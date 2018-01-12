@@ -297,7 +297,6 @@ main(int argc, char *argv[])
 
 		if (getenv("PBS_CONF_FILE") == NULL) {
 			char conf_path[80];
-			char conf_env[80];
 			char *p;
 			char psave;
 			struct stat sbuf;

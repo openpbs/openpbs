@@ -4289,14 +4289,14 @@ verifyexit:
 
 /**
  * @brief
- *	if mode is 0, then calls "putenv(env_var=env_val)" if env_var
+ *	if mode is 0, then calls "setenv(env_var, env_val, 1)" if env_var
  *	is not defined in the current environment.
- *	if mode is 1, then calls "putenv(env_var=env_val)" if env_var
+ *	if mode is 1, then calls "setenv(env_var, env_val, 1)" if env_var
  *	is not defined in the current environment, and env_val is an existent
  *	file path.
  *	if mode is 2, then if env_var is not defined in the current environment,
  *	then execute 'cmd_get_val' to get the value for env_val, and call
- *	putenv(env_var=env_val). Any passed env_val in this case will be ignored
+ *	setenv(env_var, env_val, 1). Any passed env_val in this case will be ignored
  *	and should just be set to NULL.
  *
  * @param[in] env_var - environment variable
@@ -4309,7 +4309,7 @@ verifyexit:
  *
  */
 static int
-putenv_if_not_exist(char *env_var, char *env_val, int mode, char *cmd_get_val)
+setenv_if_not_exists(char *env_var, char *env_val, int mode, char *cmd_get_val)
 {
 	char	*str = NULL;
 	char	*env_str = NULL;
@@ -4470,7 +4470,7 @@ add_restrict_user_exceptions(char *user)
 static int
 set_bgl_environment()
 {
-	if (putenv_if_not_exist("BRIDGE_CONFIG_FILE",
+	if (setenv_if_not_exists("BRIDGE_CONFIG_FILE",
 		BRIDGE_CONFIG_FILE, 1, NULL) == -1) {
 		return (-1);
 	}
@@ -4478,25 +4478,25 @@ set_bgl_environment()
 		getenv("BRIDGE_CONFIG_FILE"));
 	log_event(PBSEVENT_SYSTEM, 0, LOG_DEBUG, __func__, log_buffer);
 
-	if (putenv_if_not_exist("DB_PROPERTY", DB_PROPERTY, 1, NULL) == -1) {
+	if (setenv_if_not_exists("DB_PROPERTY", DB_PROPERTY, 1, NULL) == -1) {
 		return (-1);
 	}
 	sprintf(log_buffer, "DB_PROPERTY=%s", getenv("DB_PROPERTY"));
 	log_event(PBSEVENT_SYSTEM, 0, LOG_DEBUG, __func__, log_buffer);
 
-	if (putenv_if_not_exist("MMCS_SERVER_IP", mom_host, 0, NULL) == -1) {
+	if (setenv_if_not_exists("MMCS_SERVER_IP", mom_host, 0, NULL) == -1) {
 		return (-1);
 	}
 	sprintf(log_buffer, "MMCS_SERVER_IP=%s", getenv("MMCS_SERVER_IP"));
 	log_event(PBSEVENT_SYSTEM, 0, LOG_DEBUG, __func__, log_buffer);
 
-	if (putenv_if_not_exist("DB2DIR", NULL, 2, DB2DIR_GET_CMD) == -1) {
+	if (setenv_if_not_exists("DB2DIR", NULL, 2, DB2DIR_GET_CMD) == -1) {
 		return (-1);
 	}
 	sprintf(log_buffer, "DB2DIR=%s", getenv("DB2DIR"));
 	log_event(PBSEVENT_SYSTEM, 0, LOG_DEBUG, __func__, log_buffer);
 
-	if (putenv_if_not_exist("DB2INSTANCE", NULL, 2,
+	if (setenv_if_not_exists("DB2INSTANCE", NULL, 2,
 		DB2INSTANCE_GET_CMD) == -1) {
 		return (-1);
 	}

@@ -339,22 +339,14 @@ set_gridproxy(char *filename, char *data, size_t dsize, uid_t uid, gid_t gid)
 	int		ret = -1;
 	char		*cred;
 	size_t		len;
-	char		buf[MAXPATHLEN+1];
 	char		*envstr;
 	int		fd = -1;
 
 	if (pbs_decrypt_data(data, PBS_CREDTYPE_AES, dsize, &cred, &len))
 		goto done;
 
-	sprintf(buf, "X509_USER_PROXY=%s", filename);
-	envstr = strdup(buf);
-	if (envstr == NULL) {
-		sprintf(log_buffer, "putenv: out of memory");
-		goto done;
-	}
-
 	if (setenv("X509_USER_PROXY", filename, 1) == -1) {
-		sprintf(log_buffer, "putenv: %s %s", buf, strerror(errno));
+		sprintf(log_buffer, "setenv: %s=%s %s", "X509_USER_PROXY", filename, strerror(errno));
 		goto done;
 	}
 
