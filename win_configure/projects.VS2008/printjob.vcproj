@@ -45,9 +45,9 @@
 				Name="VCCLCompilerTool"
 				Optimization="0"
 				AdditionalIncludeDirectories="..\..\src\include,..\include"
-				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;_USE_32BIT_TIME_T "
+				PreprocessorDefinitions="WIN32;DEBUG;_DEBUG;_CONSOLE;_USE_32BIT_TIME_T "
 				BasicRuntimeChecks="3"
-				RuntimeLibrary="1"
+				RuntimeLibrary="3"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile="..\..\..\win_build\src\tools\Debug\printjob.pch"
 				AssemblerListingLocation="..\..\..\win_build\src\tools\Debug\"
@@ -141,7 +141,7 @@
 				AdditionalIncludeDirectories="..\..\src\include,..\include"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;_USE_32BIT_TIME_T "
 				StringPooling="true"
-				RuntimeLibrary="0"
+				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile="..\..\..\win_build\src\tools\Release\printjob.pch"
@@ -211,28 +211,6 @@
 			<File
 				RelativePath="..\..\src\tools\printjob.c"
 				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						Optimization="0"
-						AdditionalIncludeDirectories=""
-						PreprocessorDefinitions=""
-						BasicRuntimeChecks="3"
-						RuntimeLibrary="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						Optimization="2"
-						AdditionalIncludeDirectories=""
-						PreprocessorDefinitions=""
-					/>
-				</FileConfiguration>
 			</File>
 		</Filter>
 		<Filter

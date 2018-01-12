@@ -2263,13 +2263,6 @@ try_db_again:
 		}
 	}
 
-	/* Shut down interpreter now before closing network connections */
-	pbs_python_ext_shutdown_interpreter(&svr_interp_data); /* stop python if started */
-
-	shutdown_ack();
-	net_close(-1);		/* close all network connections */
-	rpp_shutdown();
-
 #if defined(DEBUG)
 	/* for valgrind, clear some stuff up */
 	{
@@ -2277,12 +2270,7 @@ try_db_again:
 		while (phook) {
 			hook *tmp;
 			free(phook->hook_name);
-			if (phook->script) {
-				struct python_script *scr = phook->script;
-				free(scr->global_dict);
-				free(scr->path);
-				free(scr->py_code_obj);
-			}
+			pbs_python_ext_free_python_script(phook->script);
 			free(phook->script);
 			tmp = phook;
 			phook = (hook *)GET_NEXT(phook->hi_allhooks);
@@ -2290,6 +2278,13 @@ try_db_again:
 		}
 	}
 #endif
+
+	/* Shut down interpreter now before closing network connections */
+	pbs_python_ext_shutdown_interpreter(&svr_interp_data); /* stop python if started */
+
+	shutdown_ack();
+	net_close(-1);		/* close all network connections */
+	rpp_shutdown();
 
 	/*
 	 * SERVER is going to be shutdown, delete AVL tree using

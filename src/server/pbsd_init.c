@@ -254,10 +254,10 @@ static char badlicense[] = "One or more PBS license keys are invalid, jobs may n
 void
 init_server_attrs()
 {
-	resource_def    *prdef;
-	resource        *presc;
-	struct attribute attrib;
-	int i;
+	resource_def    *prdef = NULL;
+	resource        *presc = NULL;
+	struct attribute attrib = {0};
+	int i = 0;
 
 	for (i=0; i<SRV_ATR_LAST; i++)
 		clear_attr(&server.sv_attr[i], &svr_attr_def[i]);

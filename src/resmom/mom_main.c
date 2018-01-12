@@ -9238,6 +9238,8 @@ main(int argc, char *argv[])
 		while (errno = 0, (pdirent = readdir(dir)) != (struct dirent *)0) {
 			/* recover the hooks */
 			baselen = strlen(pdirent->d_name) - hook_suf_len;
+			if (baselen < 0)
+				continue;
 			psuffix = pdirent->d_name + baselen;
 			if (strcmp(psuffix, hook_suffix)) {
 				continue;

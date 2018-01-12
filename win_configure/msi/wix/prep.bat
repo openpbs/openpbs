@@ -137,9 +137,9 @@ for %%a in (
 )
 
 echo Copying necessory files for PBS_EXEC\lib
-1>nul xcopy /Y /V /J /S "%PBS_SRCDIR%\src\modules\python\pbs" "%PBS_EXECDIR%\lib\python\altair\"
+1>nul xcopy /Y /V /J /S "%PBS_SRCDIR%\src\modules\python\pbs" "%PBS_EXECDIR%\lib\python\altair\pbs\"
 if not %ERRORLEVEL% == 0 (
-    echo Failed to copy files from "%PBS_SRCDIR%\src\modules\python\pbs" to "%PBS_EXECDIR%\lib\python\altair\"
+    echo Failed to copy files from "%PBS_SRCDIR%\src\modules\python\pbs" to "%PBS_EXECDIR%\lib\python\altair\pbs\"
     exit /b 1
 )
 1>nul xcopy /Y /V /J "%PBS_SRCDIR%\win_configure\projects.VS2008\pbs_ifl.py" "%PBS_EXECDIR%\lib\python\altair\pbs\v1\"
@@ -152,6 +152,10 @@ if not %ERRORLEVEL% == 0 (
     echo Failed to copy files from "%BINARIESDIR%\python\Lib\" to "%PBS_EXECDIR%\lib\python\python2.7\"
     exit /b 1
 )
+
+"%BINARIESDIR%\python\python.exe" -Wi "%BINARIESDIR%\python\Lib\compileall.py" -q -f -x "%PBS_EXECDIR%\lib\python"
+"%BINARIESDIR%\python\python.exe" -O -Wi "%BINARIESDIR%\python\Lib\compileall.py" -q -f -x "%PBS_EXECDIR%\lib\python"
+
 1>nul xcopy /Y /V /J /S "%BINARIESDIR%\libical%BINARIESDIR_TYPE%\share\libical\zoneinfo" "%PBS_EXECDIR%\lib\ical\zoneinfo\"
 if not %ERRORLEVEL% == 0 (
     echo Failed to copy files from "%BINARIESDIR%\libical%BINARIESDIR_TYPE%\share\libical\zoneinfo" to "%PBS_EXECDIR%\lib\ical\zoneinfo"
@@ -202,6 +206,7 @@ if not %ERRORLEVEL% == 0 (
 )
 if "%BUILD_TYPE%"=="Debug" (
     1>nul copy /B /Y "%BINARIESDIR%\python_debug\PC\VS9.0\python27_d.dll" "%PBS_EXECDIR%\python\"
+	1>nul copy /B /Y "%BINARIESDIR%\python_debug\PC\VS9.0\python27_d.pdb" "%PBS_EXECDIR%\python\"
 )
 
 echo Copying necessory files for PBS_EXEC\python_x64

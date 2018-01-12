@@ -74,25 +74,29 @@ static ACL *
 create_secure_dacl(char *user, ACCESS_MASK mask, SID *owner_sid)
 {
 
-	DWORD					rids[1];
-	gid_t					grp[_MAX_GROUPS];
-	int						i, k;
-	int						cbAcl, cbAce;
-	ACL						*ndacl;
-	SID						*sid;
-	char					*name;
-	char	logb[LOG_BUF_SIZE] = {'\0' } ;
+	DWORD rids[1] = {0};
+	gid_t grp[_MAX_GROUPS] = {0};
+	int i = 0;
+	int k = 0;
+	int cbAcl = 0;
+	ACL *ndacl = NULL;
+	char logb[LOG_BUF_SIZE] = {'\0' };
 
 	rids[0] = DOMAIN_ALIAS_RID_ADMINS;
 	k = getgids(getlogin(), grp, rids);
 
 	if ((k < _MAX_GROUPS) && (owner_sid != NULL)) {
-		grp[k] = owner_sid;
+		grp[k] = sid_dup(owner_sid);
+		if (grp[k] == NULL) {
+			sprintf(logb, "failed to copy owner_sid");
+			log_err(-1, __func__, logb);
+			return (NULL);
+		}
 		k++;
 	}
 
 	if (user != NULL && mask != 0) {
-		sid = getgrpsid(user);
+		SID *sid = getgrpsid(user);
 		if (sid == NULL)
 			sid = getusersid(user);
 		if (sid) {
@@ -109,7 +113,7 @@ create_secure_dacl(char *user, ACCESS_MASK mask, SID *owner_sid)
 	cbAcl = sizeof(ACL);
 	for (i = 0 ; i < k; i++) {
 		// subtract ACE.SidStart from the size
-		cbAce = sizeof(ACCESS_ALLOWED_ACE) - sizeof(DWORD);
+		int cbAce = sizeof(ACCESS_ALLOWED_ACE) - sizeof(DWORD);
 		// add this ACE's SID length
 		cbAce += GetLengthSid(grp[i]);
 		// add the length of each ACE to the total ACL length
@@ -119,13 +123,13 @@ create_secure_dacl(char *user, ACCESS_MASK mask, SID *owner_sid)
 	ndacl = (ACL *)malloc(cbAcl);
 	if (ndacl == NULL) {
 		sprintf(logb, "failed to malloc %d bytes", cbAcl);
-		log_err(-1, "create_secure_dacl", logb);
+		log_err(-1, __func__, logb);
 		return (NULL);
 	}
 	InitializeAcl(ndacl, cbAcl, ACL_REVISION);
 
 	for (i=0; i < k; i++) {
-		name = getgrpname_full(grp[i]);
+		char *name = getgrpname_full(grp[i]);
 
 		if (name == NULL)
 			name = getusername(grp[i]);
@@ -137,19 +141,18 @@ create_secure_dacl(char *user, ACCESS_MASK mask, SID *owner_sid)
 			if (AddAccessAllowedAce(ndacl, ACL_REVISION, mask | 0x00100000, grp[i]) == 0) {
 				sprintf(logb, "failed to add %d to %s", mask,
 					name);
-				log_err(-1, "create_secure_dacl", logb);
+				log_err(-1, __func__, logb);
 			}
 
 		} else {
 			if (AddAccessAllowedAce(ndacl, ACL_REVISION,
 				READS_MASK | WRITES_MASK | STANDARD_RIGHTS_ALL, grp[i]) == 0) {
 				sprintf(logb, "failed to add WRITES_MASK and READS_MASK to %s", name);
-				log_err(-1, "create_secure_dacl", logb);
+				log_err(-1, __func__, logb);
 			}
 		}
 		(void)free(name);
-		if (!EqualSid(grp[i], owner_sid))
-			LocalFree(grp[i]);
+		LocalFree(grp[i]);
 	}
 	return (ndacl);
 }
@@ -311,21 +314,25 @@ secure_file(char *path, char *user, ACCESS_MASK mask)
 static ACL *
 create_secure_dacl2(char *user, ACCESS_MASK mask, char *user2, ACCESS_MASK mask2, SID *owner_sid)
 {
-
-	DWORD					rids[1];
-	gid_t					grp[_MAX_GROUPS];
-	int						i, k;
-	int						cbAcl, cbAce;
-	ACL						*ndacl;
-	SID						*sid;
-	char					*name;
-	char	logb[LOG_BUF_SIZE] = {'\0' } ;
+	DWORD rids[1] = {0};
+	gid_t grp[_MAX_GROUPS] = {0};
+	int i = 0;
+	int k = 0;
+	int cbAcl = 0;
+	ACL *ndacl = NULL;
+	SID *sid = NULL;
+	char logb[LOG_BUF_SIZE] = {'\0' };
 
 	rids[0] = DOMAIN_ALIAS_RID_ADMINS;
 	k = getgids(getlogin(), grp, rids);
 
 	if ((k < _MAX_GROUPS) && (owner_sid != NULL)) {
-		grp[k] = owner_sid;
+		grp[k] = sid_dup(owner_sid);
+		if (grp[k] == NULL) {
+			sprintf(logb, "failed to copy owner_sid");
+			log_err(-1, __func__, logb);
+			return (NULL);
+		}
 		k++;
 	}
 
@@ -361,7 +368,7 @@ create_secure_dacl2(char *user, ACCESS_MASK mask, char *user2, ACCESS_MASK mask2
 	cbAcl = sizeof(ACL);
 	for (i = 0 ; i < k; i++) {
 		// subtract ACE.SidStart from the size
-		cbAce = sizeof(ACCESS_ALLOWED_ACE) - sizeof(DWORD);
+		int cbAce = sizeof(ACCESS_ALLOWED_ACE) - sizeof(DWORD);
 		// add this ACE's SID length
 		cbAce += GetLengthSid(grp[i]);
 		// add the length of each ACE to the total ACL length
@@ -371,13 +378,13 @@ create_secure_dacl2(char *user, ACCESS_MASK mask, char *user2, ACCESS_MASK mask2
 	ndacl = (ACL *)malloc(cbAcl);
 	if (ndacl == NULL) {
 		sprintf(logb, "failed to malloc %d bytes", cbAcl);
-		log_err(-1, "create_secure_dacl2", logb);
+		log_err(-1, __func__, logb);
 		return (NULL);
 	}
 	InitializeAcl(ndacl, cbAcl, ACL_REVISION);
 
 	for (i=0; i < k; i++) {
-		name = getgrpname_full(grp[i]);
+		char *name = getgrpname_full(grp[i]);
 
 		if (name == NULL)
 			name = getusername(grp[i]);
@@ -404,8 +411,7 @@ create_secure_dacl2(char *user, ACCESS_MASK mask, char *user2, ACCESS_MASK mask2
 			}
 		}
 		(void)free(name);
-		if (!EqualSid(grp[i], owner_sid))
-			LocalFree(grp[i]);
+		LocalFree(grp[i]);
 	}
 
 	return (ndacl);
@@ -1483,7 +1489,10 @@ secure_mom_files(void)
 			(pdirent = readdir(dir)) != (struct dirent *)0) {
 			char *p;
 			if (p = strrchr(pdirent->d_name, '.')) {
-				if (strcmpi(p+(strlen(p)-4), ".bat") == 0) {
+				int baselen = strlen(p)-4;
+				if (baselen < 0)
+					continue;
+				if (strcmpi(p+baselen, ".bat") == 0) {
 					sprintf(fpath, "%s/%s", path, pdirent->d_name);
 					sprintf(logb,"securing file %s", fpath);
 					log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE| PBSEVENT_DEBUG, PBS_EVENTCLASS_FILE, LOG_DEBUG, "", logb);

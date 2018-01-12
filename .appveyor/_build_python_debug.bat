@@ -73,6 +73,11 @@ if exist "%BINARIESDIR%\python_externals.tar.gz" (
     )
 )
 
+REM Patch python source to make it purify compatible
+REM this patch is same as compiling python with '--without-pymalloc' in Linux
+REM but unfortunately in windows we don't have command line option like Linux
+"%MSYSDIR%\bin\bash" --login -i -c "cd \"$BINARIESDIR_M/cpython-$PYTHON_VERSION\" && sed -i 's/#define WITH_PYMALLOC 1//g' PC/pyconfig.h"
+
 call "%BINARIESDIR%\cpython-%PYTHON_VERSION%\PCbuild\env.bat" x86
 
 call "%BINARIESDIR%\cpython-%PYTHON_VERSION%\PC\VS9.0\build.bat" -e -d

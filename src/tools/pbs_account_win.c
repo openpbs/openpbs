@@ -612,7 +612,7 @@ add_to_administrators_group(wchar_t *dnamew, wchar_t *unamew)
 	}
 
 	if (gsid)
-		FreeSid(gsid);
+		LocalFree(gsid);
 	else
 		fprintf(stderr,
 			"Failed to add %S\\%S to Administrators group: bad SID\n",

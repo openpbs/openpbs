@@ -111,7 +111,6 @@
 /* Global Variables */
 
 extern  int		num_var_env;
-extern	char	      **environ;
 extern	int		exiting_tasks;
 extern	u_long		localaddr;
 extern	pbs_list_head	mom_polljobs;

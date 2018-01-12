@@ -125,8 +125,6 @@ extern	int		num_acpus;
 extern 	u_Long		av_phy_mem;
 extern	char		pbs_version[];
 
-extern	char		**environ;
-
 extern int becomeuser(job *pjob);
 
 extern int  send_sched_recycle(char *user);
