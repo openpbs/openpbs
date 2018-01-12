@@ -45,6 +45,7 @@ class TestJobRouting(TestFunctional):
     """
 
     def setUp(self):
+        TestFunctional.setUp(self)
         self.momA = self.moms.values()[0]
         self.momA.delete_vnode_defs()
 
