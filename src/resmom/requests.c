@@ -339,7 +339,6 @@ set_gridproxy(char *filename, char *data, size_t dsize, uid_t uid, gid_t gid)
 	int		ret = -1;
 	char		*cred;
 	size_t		len;
-	char		*envstr;
 	int		fd = -1;
 
 	if (pbs_decrypt_data(data, PBS_CREDTYPE_AES, dsize, &cred, &len))
@@ -392,7 +391,6 @@ fork_to_user(struct batch_request *preq)
 	struct passwd 	*pwdp = NULL;
 	struct rq_cpyfile       *rqcpf;
 	static char     buf[MAXPATHLEN+1];
-	char            *envstr;
 	char		lpath[MAXPATHLEN+1];
 	job		*pjob;
 
@@ -501,7 +499,6 @@ struct batch_request *preq;
 	gid_t		user_rgid;
 	int		fds[2];
 	int		usek5dce = 0;
-	char		*envstr;
 	struct rq_cpyfile	*rqcpf;
 	static char	buf[MAXPATHLEN+1];
 
@@ -601,11 +598,7 @@ struct batch_request *preq;
 					frk_err(PBSE_SYSTEM, preq); /* no return */
 				}
 				cred_pipe = fds[1];
-				sprintf(buf, "PBS_PWPIPE=%d", fds[0]);
-				if ((envstr = strdup(buf)) == NULL) {
-					log_err(errno, __func__, "Unable to allocate Memory!\n");
-					frk_err(PBSE_SYSTEM, preq);
-				}
+				
 				sprintf(buf, "%d", fds[0]);
 				setenv("PBS_PWPIPE", buf, 1);
 				fcntl(cred_pipe, F_SETFD, 1);	/* close on exec */
