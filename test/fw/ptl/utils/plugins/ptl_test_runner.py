@@ -45,6 +45,7 @@ import platform
 import pwd
 import signal
 import ptl
+import re
 from logging import StreamHandler
 from traceback import format_exception
 from types import ModuleType
@@ -635,16 +636,32 @@ class PTLTestRunner(Plugin):
     def _cleanup(self):
         self.logger.info('Cleaning up temporary files')
         du = DshUtils()
-        tmpdir = tempfile.gettempdir()
-        ftd = []
-        if tmpdir:
+        root_dir = os.sep
+        dirlist = set([os.path.join(root_dir, 'tmp'),
+                       os.path.join(root_dir, 'var', 'tmp')])
+        # get tmp dir from the environment
+        for envname in 'TMPDIR', 'TEMP', 'TMP':
+            dirname = os.getenv(envname)
+            if dirname:
+                dirlist.add(dirname)
+
+        p = re.compile(r'^pbs\.\d+')
+        for tmpdir in dirlist:
+            # list the contents of each tmp dir and
+            # get the file list to be deleted
+            self.logger.info('Cleaning up ' + tmpdir + ' dir')
+            ftd = []
             files = du.listdir(path=tmpdir)
             bn = os.path.basename
             ftd.extend([f for f in files if bn(f).startswith('PtlPbs')])
             ftd.extend([f for f in files if bn(f).startswith('STDIN')])
+            ftd.extend([f for f in files if bn(f).startswith('pbsscrpt')])
+            ftd.extend([f for f in files if bn(f).startswith('pbs.conf.')])
+            ftd.extend([f for f in files if p.match(bn(f))])
             for f in ftd:
                 du.rm(path=f, sudo=True, recursive=True, force=True,
                       level=logging.DEBUG)
+        tmpdir = tempfile.gettempdir()
         os.chdir(tmpdir)
         tmppath = os.path.join(tmpdir, 'dejagnutemp%s' % os.getpid())
         if du.isdir(path=tmppath):
