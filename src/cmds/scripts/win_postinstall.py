@@ -381,6 +381,7 @@ def main():
         __log_err('Only user with Administrators privileges can run this script!')
         sys.exit(255)
     __log_info('Post installation process started')
+    __log_info('This script may take a few minutes to run')
     pbs_conf_path = os.environ.get('PBS_CONF_FILE', None)
     if pbs_conf_path is None:
         __log_err('Failed to find PBS_CONF_FILE path from environ')
