@@ -2183,7 +2183,7 @@ resresv_set_use_queue(queue_info *qinfo)
 
 	if (qinfo->has_hard_limit || qinfo->has_soft_limit || qinfo->has_nodes ||
 	    qinfo->is_ded_queue || qinfo->is_prime_queue || qinfo->is_nonprime_queue ||
-	    qinfo->has_resav_limit || qinfo->resv != NULL)
+	    qinfo->has_resav_limit || qinfo->resv != NULL || (qinfo->partition != NULL))
 		return 1;
 
 	return 0;

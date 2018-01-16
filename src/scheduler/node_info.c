@@ -3243,6 +3243,18 @@ is_vnode_eligible(node_info *node, resource_resv *resresv,
 		}
 	}
 
+	if (!dflt_sched) {
+		if (resresv->is_job && (node->partition != NULL)) {
+			if (cstrcmp(node->partition, resresv->job->queue->partition) != 0) {
+				set_schd_error_codes(err, NOT_RUN, INVALID_NODE_TYPE);
+				set_schd_error_arg(err, ARG1, (char*) node_state_to_str(node));
+#ifdef NAS /* localmod 031 */
+				set_schd_error_arg(err, ARG2, node->name);
+#endif /* localmod 031 */
+				return 0;
+			}
+		}
+	}
 	if (!node->is_free) {
 		set_schd_error_codes(err, NOT_RUN, INVALID_NODE_STATE);
 		set_schd_error_arg(err, ARG1, (char*) node_state_to_str(node));

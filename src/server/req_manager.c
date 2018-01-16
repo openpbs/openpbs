@@ -1687,11 +1687,7 @@ mgr_sched_set(struct batch_request *preq)
 	if (rc != 0)
 		reply_badattr(rc, bad_attr, plist, preq);
 	else {
-		//int unset_flag = 0;
-		/* save the attributes to disk */
 		(void)sched_save_db(psched, SVR_SAVE_FULL);
-		/*if (preq->rq_fromsvr)
-			unset_flag = 1;*/
 		set_sched_default(psched, 0);
 		(void)sprintf(log_buffer, msg_manager, msg_man_set,
 			preq->rq_user, preq->rq_host);

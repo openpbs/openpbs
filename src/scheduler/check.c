@@ -1502,10 +1502,6 @@ check_nodes(status *policy, server_info *sinfo, queue_info *qinfo, resource_resv
 	int			error = 0;
 	node_partition		**nodepart = NULL;
 	node_info		**ninfo_arr = NULL;
-	node_info		**ninfo_arr_filtrd = NULL;
-	int			num_nodes;
-	int			i;
-	int			idx;
 
 	if (sinfo == NULL || resresv == NULL || err == NULL) {
 		if (err != NULL)
@@ -1611,31 +1607,15 @@ check_nodes(status *policy, server_info *sinfo, queue_info *qinfo, resource_resv
 	if (ninfo_arr == NULL || error)
 		return NULL;
 
-	num_nodes = count_array((void **) ninfo_arr);
-	if ((ninfo_arr_filtrd = (node_info **) malloc((num_nodes + 1) * sizeof(node_info *))) == NULL) {
-		log_err(errno, __func__, MEM_ERR_MSG);
-		return NULL;
-	}
-	ninfo_arr_filtrd[0] = NULL;
-
-	for (i = 0, idx = 0; i < num_nodes; i++) {
-		if (!dflt_sched && resresv->is_job && strcmp(ninfo_arr[i]->partition, resresv->job->queue->partition) == 0) {
-			ninfo_arr_filtrd[idx++] = ninfo_arr[i];
-		}
-	}
-	ninfo_arr_filtrd[idx] = NULL;
-
 	get_resresv_spec(resresv, &spec, &pl);
 
 	err->status_code = NOT_RUN;
-	rc = eval_selspec(policy, spec, pl, (dflt_sched || resresv->is_resv) ? ninfo_arr : ninfo_arr_filtrd, nodepart, resresv,
+	rc = eval_selspec(policy, spec, pl, ninfo_arr, nodepart, resresv,
 		flags, &nspec_arr, err);
 
 	/* We can run, yippie! */
-	if (rc > 0) {
-		free(ninfo_arr_filtrd);
+	if (rc > 0)
 		return nspec_arr;
-	}
 
 	/* We were not told why the resresv can't run: Use generic reason */
 	if (err->status_code == SCHD_UNKWN)
@@ -1643,7 +1623,6 @@ check_nodes(status *policy, server_info *sinfo, queue_info *qinfo, resource_resv
 
 	free_nspecs(nspec_arr);
 
-	free(ninfo_arr_filtrd);
 	return NULL;
 }
 

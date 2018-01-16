@@ -1732,7 +1732,7 @@ copy_attr_value(char **dest, char *src)
 		len = strlen(src);
 		*dest = (char*)malloc(len + 1);
 		if (*dest == NULL) {
-			schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_INFO, __func__, MEM_ERR_MSG);
+			schdlog(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, MEM_ERR_MSG);
 			return ret;
 		}
 		strncpy(*dest, src, len);
