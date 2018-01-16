@@ -165,6 +165,7 @@ extern char  server_name[];
 extern char *pbs_server_name;
 extern pbs_list_head svr_newjobs;
 extern pbs_list_head svr_alljobs;
+extern int is_called_by_job_purge;
 
 #ifdef PBS_MOM
 #include "mom_func.h"
@@ -913,6 +914,12 @@ job_purge(job *pjob)
 			log_joberr(-1, __func__, msg_err_purgejob_db,
 				pjob->ji_qs.ji_jobid);
 		}
+	}
+
+	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_HasNodes) {
+		is_called_by_job_purge = 1;
+		free_nodes(pjob);
+		is_called_by_job_purge = 0;
 	}
 
 	if (pjob->ji_resvp && !(pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob)) {

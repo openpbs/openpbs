@@ -187,6 +187,8 @@ int		 svr_quehasnodes;
 int	 	 svr_totnodes = 0;	/* total number nodes defined       */
 int		 svr_chngNodesfile = 0;	/* 1 signals want nodes file update */
 /* on server shutdown, (qmgr mods)  */
+int		 is_called_by_job_purge = 0;
+
 struct pbsnode **pbsndlist = NULL;
 
 static int	 cvt_overflow(size_t, size_t);
@@ -7525,10 +7527,11 @@ free_nodes(job *pjob)
 	mom_svrinfo_t	*psvrmom;
 	struct  pbsnode *pnode;
 	struct	jobinfo	*jp, *prev, *next;
-	int		 i;
-	int		 j;
-	int		 ivnd;
-	int		 still_has_jobs;	/* still jobs on this vnode */
+	int     i;
+	int     j;
+	int     ivnd;
+	int     still_has_jobs;	/* still jobs on this vnode */
+	int     special_case = 0;
 
 	DBPRT(("%s: entered\n", __func__))
 
@@ -7555,7 +7558,26 @@ free_nodes(job *pjob)
 		for (j=0; j<psvrmom->msr_jbinxsz; j++) {
 			if (psvrmom->msr_jobindx[j] == pjob) {
 				psvrmom->msr_jobindx[j] = NULL;
+				if (is_called_by_job_purge)
+					special_case = 1;
 			}
+		}
+
+		if (special_case) {
+			snprintf(log_buffer, LOG_BUF_SIZE, "\n================================================================"
+				"======================================================\nPBSPro diagnostic information."
+				" Share this log with PBSPro Team.\n=========================================="
+				"============================================================================\n"
+				"Mom's state:%lu, number of jobs on this node: %d, number of vnodes: %d.\n"
+				"Other jobs present in the node follows:",
+				psvrmom->msr_state, psvrmom->msr_numjobs, psvrmom->msr_numvnds);
+			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
+			for (j=0; j<psvrmom->msr_jbinxsz; j++)
+				if (psvrmom->msr_jobindx[j] != NULL)
+					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, psvrmom->msr_jobindx[j]->ji_qs.ji_jobid);
+			sprintf(log_buffer, "===================================================================="
+				"==================================================");
+			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
 		}
 
 		for (ivnd = 0; ivnd < psvrmom->msr_numvnds; ++ivnd) {
@@ -7617,10 +7639,12 @@ free_nodes(job *pjob)
 			}
 
 		}
+		special_case = 0;
 	}
 	pjob->ji_qs.ji_svrflags &= ~JOB_SVFLG_HasNodes;
 
 	deallocate_cpu_licenses(pjob);
+	is_called_by_job_purge = 0;
 
 }
 
