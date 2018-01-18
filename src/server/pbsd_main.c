@@ -159,7 +159,6 @@ extern int chk_and_update_db_svrhost();
 
 extern int put_sched_cmd(int sock, int cmd, char *jobid);
 extern void setup_ping(int delay);
-extern char *get_all_ips(char *msg);
 
 /* External data items */
 extern	int		svr_chngNodesfile;
@@ -1815,6 +1814,7 @@ try_db_again:
 		log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
 			LOG_ERR, msg_daemonname, log_buffer);
 		stop_db();
+		return (3);
 	}
 
 	if (pbs_conf.pbs_use_tcp == 1) {
@@ -1832,17 +1832,27 @@ try_db_again:
 			p = strchr(pbs_conf.pbs_leaf_name, ':'); /* cut out the port */
 			if (p)
 				*p = '\0';
-		} else if (pbs_conf.pbs_server_host_name) {
-			nodename = strdup(pbs_conf.pbs_server_host_name);
 		} else {
-			nodename = get_all_ips(log_buffer);
+			char *host = NULL;
+			if (pbs_conf.pbs_primary)
+				if (!pbs_failover_active)
+					host = pbs_conf.pbs_primary;
+				else
+					host = pbs_conf.pbs_secondary;
+			else if (pbs_conf.pbs_server_host_name)
+				host = pbs_conf.pbs_server_host_name;
+			else if (pbs_conf.pbs_server_name)
+				host = pbs_conf.pbs_server_name;
+
+			/* since pbs_leaf_name was not specified, determine all IPs */
+			nodename = get_all_ips(host, log_buffer, sizeof(log_buffer) - 1);
 		}
+			
 		if (!nodename) {
 			log_err(-1, "pbsd_main", log_buffer);
-			(void) sprintf(log_buffer, "Unable to determine TPP node name");
-			fprintf(stderr, "%s", log_buffer);
+			fprintf(stderr, "%s\n", "Unable to determine TPP node name");
 			stop_db();
-			return (3);
+			return (1);
 		}
 
 		/* set tpp function pointers */

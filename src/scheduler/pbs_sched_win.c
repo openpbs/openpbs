@@ -1508,13 +1508,12 @@ main(int argc, char *argv[])
 			if ( p != NULL)
 				*p = '\0';
 		} else {
-			nodename = get_all_ips(log_buffer);
+			nodename = get_all_ips(host, log_buffer, sizeof(log_buffer) - 1);
 		}
 		if (!nodename) {
 			log_err(-1, "pbsd_main", log_buffer);
-			(void) sprintf(log_buffer, "Unable to determine TPP node name");
-			fprintf(stderr, "%s", log_buffer);
-			return (3);
+			fprintf(stderr, "%s\n", "Unable to determine TPP node name");
+			return (1);
 		}
 
 		/* set tpp function pointers */

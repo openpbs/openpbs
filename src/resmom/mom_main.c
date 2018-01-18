@@ -185,7 +185,6 @@ char		*mom_domain;
 #endif	/* WIN32 */
 
 extern void	mom_vnlp_report(vnl_t *vnl, char *header);
-extern char *get_all_ips(char *msg);
 
 int		alien_attach = 0;		/* attach alien procs */
 int		alien_kill = 0;			/* kill alien procs */
@@ -9074,13 +9073,12 @@ main(int argc, char *argv[])
 			if (p)
 				*p = '\0';
 		} else {
-			nodename = get_all_ips(log_buffer);
+			nodename = get_all_ips(mom_host, log_buffer, sizeof(log_buffer) - 1);
 		}
 		if (!nodename) {
 			log_err(-1, "pbsd_main", log_buffer);
-			(void) sprintf(log_buffer, "Unable to determine TPP node name");
-			fprintf(stderr, "%s", log_buffer);
-			return (3);
+			fprintf(stderr, "%s\n", "Unable to determine TPP node name");
+			return (1);
 		}
 
 	    /* set tcp function pointers */

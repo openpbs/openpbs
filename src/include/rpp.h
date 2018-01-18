@@ -146,7 +146,7 @@ extern void			(*pfn_rpp_add_close_func)(int, void (*func)(int));
 #define rpp_add_close_func(x, y) (*pfn_rpp_add_close_func)(x, y)
 
 extern char	*netaddr(struct sockaddr_in *);
-
+extern char *get_all_ips(char *, char *, size_t);
 #define	RPP_ADVISE_TIMEOUT	1
 
 

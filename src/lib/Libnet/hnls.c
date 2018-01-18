@@ -46,6 +46,7 @@
 #include <errno.h>
 #include "log.h"
 #include "pbs_ifl.h"
+#include "pbs_internal.h"
 
 #if defined(linux)
 
@@ -64,6 +65,8 @@
 
 #pragma comment(lib,"Ws2_32.lib")
 #pragma comment(lib,"Iphlpapi.lib")
+#include <windows.h>
+#include "win.h"
 
 #else
 
@@ -565,7 +568,7 @@ free_if_info(struct log_net_info *ni)
 		struct log_net_info *temp;
 		temp = curr;
 		curr = curr -> next;
-		for (i=0; temp->ifhostnames[i]; i++)
+		for (i = 0; temp->ifhostnames[i]; i++)
 			free(temp->ifhostnames[i]);
 		free(temp->ifhostnames);
 		free(temp);
@@ -574,53 +577,165 @@ free_if_info(struct log_net_info *ni)
 
 /**
 * @brief
-	Get a list of all IPs
+	Get a list of all IPs (ipv4) for a given hostname
 *
-* @return 
-*	Comma separated list of ips in string format
-* 
+* @return
+*	Comma separated list of IPs in string format
+*
 * @par Side Effects:
 *	None
 *
 * @par MT-safe: Yes
 *
-* @param[out]   msg - error message returned if system calls not successful
+* @param[in]    host        - hostname of the current host to resolve IPs for
+* @param[out]   msg_buf     - error message returned if system calls not successful
+* @param[in]    msg_buf_len - length of the message buffer passed
 *
 */
-char *
-get_all_ips(char *msg)
+static char *
+get_host_ips(char *host, char *msg_buf, size_t msg_buf_len)
 {
-	char * nodenames = NULL;
-#if defined(linux)
-	char *tmp;
-	int len, hlen, ret;
-	struct ifaddrs *ifp, *listp;
+	struct addrinfo *aip, *pai;
+	struct addrinfo hints;
+	int rc = 0;
 	char buf[NETADDR_BUF] = {'\0'};
-	char *p;
+	int count = 0;
+	char *nodenames = NULL;
+	char *tmp;
+	int len, hlen;
 
-	msg[0] = '\0';
+	errno = 0;
 
-	ret = getifaddrs(&ifp);
+	memset(&hints, 0, sizeof(struct addrinfo));
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_protocol = IPPROTO_TCP;
 
-	if ((ret != 0) || (ifp == NULL)) {
-		strncpy(msg, "Failed to obtain interface names", LOG_BUF_SIZE - 1);
+	if ((rc = getaddrinfo(host, NULL, &hints, &pai)) != 0) {
+		snprintf(msg_buf, msg_buf_len, "Error %d resolving %s\n", rc, host);
 		return NULL;
 	}
 
 	len = 0;
+	count = 0;
+	for (aip = pai; aip != NULL; aip = aip->ai_next) {
+		if (aip->ai_family == AF_INET) { /* for now only count IPv4 addresses */
+			char *p;
+			struct sockaddr_in *sa = (struct sockaddr_in *) aip->ai_addr;
+			if (ntohl(sa->sin_addr.s_addr) >> 24 == IN_LOOPBACKNET)
+				continue;
+			sprintf(buf, "%s", netaddr(sa));
+			if (!strcmp(buf, "unknown"))
+				continue;
+			if ((p = strchr(buf, ':')))
+				*p = '\0';
+
+			hlen = strlen(buf);
+			tmp = realloc(nodenames, len + hlen + 2); /* 2 for comma and null char */
+			if (!tmp) {
+				strncpy(msg_buf, "Out of memory", msg_buf_len);
+				free(nodenames);
+				nodenames = NULL;
+				break;
+			}
+			nodenames = tmp;
+
+			if (len == 0)
+				strcpy(nodenames, buf);
+			else {
+				strcat(nodenames, ",");
+				strcat(nodenames, buf);
+			}
+			len += hlen + 2;
+			count++;
+		}
+	}
+
+	freeaddrinfo(pai);
+
+	if (count == 0) {
+		snprintf(msg_buf, msg_buf_len, "Could not find any usable IP address for host %s", host);
+		return NULL;
+	}
+	return nodenames;
+}
+
+/**
+* @brief
+*	Get a list of all IPs
+*   First it resolves the supplied hostname to determine it's IPs
+*	Then it enumerates the interfaces in the host and determines IPs
+*	for each of those interfaces.
+*
+*	Do not supply a remote hostname in this function.
+*
+* @return
+*	Comma separated list of IPs in string format
+*
+* @par Side Effects:
+*	None
+*
+* @par MT-safe: Yes
+*
+* @param[in]	hostname    - hostname of the current host to resolve IPs for
+* @param[out]   msg_buf     - error message returned if system calls not successful
+* @param[in]    msg_buf_len - length of the message buffer passed
+*
+*/
+char *
+get_all_ips(char *hostname, char *msg_buf, size_t msg_buf_len)
+{
+	char *nodenames;
+	int len, ret;
+	char *tmp;
+	char buf[NETADDR_BUF];
+
+#if defined(linux)
+	struct ifaddrs *ifp, *listp;
+	char *p;
+#elif defined(WIN32)
+	int i;
+	/* Variables used by GetIpAddrTable */
+	PMIB_IPADDRTABLE pIPAddrTable;
+	DWORD dwSize = 0;
+	DWORD dwRetVal = 0;
+	IN_ADDR IPAddr;
+#endif
+
+	msg_buf[0] = '\0';
+
+	/* prepend the list of IPs with the IPs resolved from the passed hostname */
+	nodenames = get_host_ips(hostname, msg_buf, msg_buf_len);
+	if (!nodenames) {
+		return NULL;
+	}
+
+	len = strlen(nodenames);
+
+#if defined(linux)
+	ret = getifaddrs(&ifp);
+
+	if ((ret != 0) || (ifp == NULL)) {
+		strncpy(msg_buf, "Failed to obtain interface names", msg_buf_len);
+		free(nodenames);
+		return NULL;
+	}
+
 	for (listp = ifp; listp; listp = listp->ifa_next) {
+		int hlen;
+
 		if ((listp->ifa_addr == NULL) || (listp->ifa_addr->sa_family != AF_INET)) 
 			continue;
 		sprintf(buf, "%s", netaddr((struct sockaddr_in *)listp->ifa_addr));
-		if (!strcmp(buf,"unknown")) 
+		if (!strcmp(buf,"unknown"))
 			continue;
-		if ((p=strchr(buf, ':')))
+		if ((p = strchr(buf, ':')))
 			*p = '\0';
 
 		hlen = strlen (buf);
 		tmp = realloc(nodenames, len + hlen + 2); /* 2 for comma and null char */
 		if (!tmp) {
-			strncpy(msg, "Out of memory", LOG_BUF_SIZE - 1);
+			strncpy(msg_buf, "Out of memory", msg_buf_len);
 			free(nodenames);
 			nodenames = NULL;
 			break;
@@ -639,18 +754,6 @@ get_all_ips(char *msg)
 	freeifaddrs(ifp);
 
 #elif defined(WIN32)
-
-	int i, len=0, hlen, ret;
-	char *tmp;
-	char buf[NETADDR_BUF] = {'\0'};
-	
-	/* Variables used by GetIpAddrTable */
-	PMIB_IPADDRTABLE pIPAddrTable;
-	DWORD dwSize = 0;
-	DWORD dwRetVal = 0;
-	IN_ADDR IPAddr;
-
-	msg[0] = '\0';
 	
 	pIPAddrTable = (MIB_IPADDRTABLE *) malloc(sizeof (MIB_IPADDRTABLE));
 
@@ -663,24 +766,28 @@ get_all_ips(char *msg)
 
 		}
 		if (pIPAddrTable == NULL) {
-			strncpy(msg, "Memory allocation failed for GetIpAddrTable", LOG_BUF_SIZE - 1);
+			strncpy(msg_buf, "Memory allocation failed for GetIpAddrTable", msg_buf_len);
+			free(nodenames);
 			return NULL;	
 		}
 	}
 	// Make a second call to GetIpAddrTable to get the
 	// actual data we want
 	if ( (dwRetVal = GetIpAddrTable( pIPAddrTable, &dwSize, 0 )) != NO_ERROR ) { 
-		strncpy(msg, "GetIpAddrTable failed", LOG_BUF_SIZE - 1);
+		strncpy(msg_buf, "GetIpAddrTable failed", msg_buf_len);
+		free(pIPAddrTable);
+		free(nodenames);
 		return NULL;
 	}
 
-	for (i=0; i < (int) pIPAddrTable->dwNumEntries; i++) {
+	for (i = 0; i < (int) pIPAddrTable->dwNumEntries; i++) {
+		int hlen;
 		IPAddr.S_un.S_addr = (u_long) pIPAddrTable->table[i].dwAddr;
 		sprintf(buf, "%s", inet_ntoa(IPAddr));
 		hlen = strlen (buf);
 		tmp = realloc(nodenames, len + hlen + 2); /* 2 for comma and null char */
 		if (!tmp) {
-			strncpy(msg, "Out of memory", LOG_BUF_SIZE - 1);
+			strncpy(msg_buf, "Out of memory", msg_buf_len);
 			free(nodenames);
 			nodenames = NULL;
 			break;

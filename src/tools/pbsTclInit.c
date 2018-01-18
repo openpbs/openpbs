@@ -68,7 +68,6 @@ extern	int	quiet;
 #endif /* localmod 099 */
 
 extern	void	add_cmds(Tcl_Interp *interp);
-extern char *get_all_ips(char *msg);
 
 #define SHOW_NONE 0xff
 int log_mask;
@@ -166,12 +165,16 @@ main(int argc, char *argv[])
 		struct 			timeval tv;
 
 		if (!pbs_conf.pbs_leaf_name) {
-			pbs_conf.pbs_leaf_name = get_all_ips(log_buffer);
+			char my_hostname[PBS_MAXHOSTNAME+1];
+			if (gethostname(my_hostname, (sizeof(my_hostname) - 1)) < 0) {
+				fprintf(stderr, "Failed to get hostname\n");
+				return -1;
+			}
+			pbs_conf.pbs_leaf_name = get_all_ips(my_hostname, log_buffer, sizeof(log_buffer) - 1);
 			if (!pbs_conf.pbs_leaf_name) {
-				log_err(-1, "pbsd_main", log_buffer);
-				(void) sprintf(log_buffer, "Unable to determine TPP node name");
-				fprintf(stderr, "%s", log_buffer);
-				return (3);
+				fprintf(stderr, "%s\n", log_buffer);
+				fprintf(stderr, "%s\n", "Unable to determine TPP node name");
+				return -1;
 			}
 		}
 
