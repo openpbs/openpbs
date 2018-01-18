@@ -68,6 +68,11 @@ class TestJobArrayComment(TestFunctional):
         attr = {'event': 'execjob_begin', 'enabled': 'True'}
         self.server.create_import_hook(hook_name, attr, hook_body)
 
+        # Check if the hook copy was successful
+        self.server.log_match("successfully sent hook file.*" +
+                              hook_name + ".PY", regexp=True,
+                              max_attempts=60, interval=2)
+
         test_job_array = Job(TEST_USER, attrs={
             ATTR_J: '0-9',
             'Resource_List.select': 'ncpus=1'
