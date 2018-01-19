@@ -129,9 +129,9 @@ struct python_script {
  * 				passed to various hooks.
  * @param[in]	vns_list_fail - list of failed vnodes and their
  *				attributes/resources passed to various hooks.
- * @param[in]	mom_list_fail - list of parent moms that have been
+ * @param[in]	failed_mom_list - list of parent moms that have been
  *				seen as down.
- * @param[in]	mom_list_good - list of parent moms that have been
+ * @param[in]	succeeded_mom_list - list of parent moms that have been
  *				seend as healthy.
  * @param[in]	pid - value to pbs.event().pid in an execjob_attach hook.
  *
@@ -148,8 +148,8 @@ typedef struct	hook_input_param {
 	pbs_list_head	*jobs_list;
 	pbs_list_head	*vns_list;
 	pbs_list_head	*vns_list_fail;
-	pbs_list_head	*mom_list_fail;
-	pbs_list_head	*mom_list_good;
+	pbs_list_head	*failed_mom_list;
+	pbs_list_head	*succeeded_mom_list;
 	pid_t		pid;
 } hook_input_param_t;
 
@@ -285,8 +285,8 @@ extern void pbs_python_ext_quick_shutdown_interpreter(void);
 #define PY_EVENT_PARAM_PID	"pid"
 
 /* special job object attributes */
-#define PY_JOB_MOM_LIST_FAIL	"mom_list_fail"
-#define PY_JOB_MOM_LIST_GOOD	"mom_list_good"
+#define PY_JOB_FAILED_MOM_LIST	"failed_mom_list"
+#define PY_JOB_SUCCEEDED_MOM_LIST	"succeeded_mom_list"
 
 
 /* special resource object attributes - in modules/pbs/v1.1/_base_types.py */
@@ -421,8 +421,8 @@ extern void pbs_python_ext_quick_shutdown_interpreter(void);
 #define	EVENT_PID_OBJECT  EVENT_OBJECT ".pid"
 
 /* Special Job parameters */
-#define	JOB_MOM_LIST_FAIL_OBJECT	EVENT_JOB_OBJECT "." PY_JOB_MOM_LIST_FAIL
-#define	JOB_MOM_LIST_GOOD_OBJECT	EVENT_JOB_OBJECT "." PY_JOB_MOM_LIST_GOOD
+#define	JOB_FAILED_MOM_LIST_OBJECT	EVENT_JOB_OBJECT "." PY_JOB_FAILED_MOM_LIST
+#define	JOB_SUCCEEDED_MOM_LIST_OBJECT	EVENT_JOB_OBJECT "." PY_JOB_SUCCEEDED_MOM_LIST
 
 /* Server parameter names */
 #define	SERVER_OBJECT		"pbs.server()"

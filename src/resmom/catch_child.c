@@ -296,13 +296,13 @@ static enum job_atr mom_rtn_list[] = {
 	JOB_ATR_hold,
 	JOB_ATR_variables,
 	JOB_ATR_runcount,
-	(enum job_atr) -1
+	JOB_ATR_LAST
 };
 
-static enum job_atr mom_rtn_list2[] = {
+static enum job_atr mom_rtn_list_ext[] = {
 	JOB_ATR_exec_vnode,
 	JOB_ATR_SchedSelect,
-	(enum job_atr) -1
+	JOB_ATR_LAST
 };
 
 #ifdef PYTHON
@@ -1029,15 +1029,16 @@ encode_used_exit:
  *
  * @param[in]	pjob - pointer to the job whose status is being returned.
  * @param[in]	cmd - command message to use to communicate status.
- * @param[in]	rtn_list_to_use - the mom_rtn_list[] array to use,
- *				1 or 2.
+ * @param[in]	use_rtn_list_ext - set to 1 to use mom_rtn_list_ext[];
+ *				   otherwise, use mom_rtn_list[]
+ *				
  *
  * @return Void
  *
  */
 
 void
-update_ajob_status_using_cmd(job *pjob, int cmd, int rtn_list_to_use)
+update_ajob_status_using_cmd(job *pjob, int cmd, int use_rtn_list_ext)
 {
 	attribute		 *at;
 	attribute_def		 *ad;
@@ -1046,8 +1047,8 @@ update_ajob_status_using_cmd(job *pjob, int cmd, int rtn_list_to_use)
 	struct resc_used_update	  rused;
 	enum job_atr		*rtn_list;	
 
-	if (rtn_list_to_use == 2)
-		rtn_list = mom_rtn_list2;
+	if (use_rtn_list_ext)
+		rtn_list = mom_rtn_list_ext;
 	else
 		rtn_list = mom_rtn_list; 
 		
@@ -1060,11 +1061,10 @@ update_ajob_status_using_cmd(job *pjob, int cmd, int rtn_list_to_use)
 	rused.ru_comment = NULL;
 	rused.ru_status = 0;
 
-	if (pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags & ATR_VFLAG_SET) {
-		rused.ru_hop    = pjob->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long;
-	} else {
-		rused.ru_hop    = pjob->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long;
-	}
+	if (pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags & ATR_VFLAG_SET)
+		rused.ru_hop = pjob->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long;
+	else
+		rused.ru_hop = pjob->ji_wattr[(int)JOB_ATR_runcount].at_val.at_long;
 
 	CLEAR_HEAD(rused.ru_attr);
 	rused.ru_next = NULL;
@@ -1074,7 +1074,7 @@ update_ajob_status_using_cmd(job *pjob, int cmd, int rtn_list_to_use)
 	(void)job_attr_def[(int)JOB_ATR_session_id].at_encode(&pjob->ji_wattr[(int)JOB_ATR_session_id], &rused.ru_attr, job_attr_def[(int)JOB_ATR_session_id].at_name, NULL, ATR_ENCODE_CLIENT, NULL);
 
 	/* Now add certain others as required for updating at the Server */
-	for (index = 0; (int)rtn_list[index] >= 0; ++index) {
+	for (index = 0; (int)rtn_list[index] != JOB_ATR_LAST; ++index) {
 		nth = (int)rtn_list[index];
 		at = &pjob->ji_wattr[nth];
 		ad = &job_attr_def[nth];
@@ -1111,7 +1111,7 @@ update_ajob_status_using_cmd(job *pjob, int cmd, int rtn_list_to_use)
 
 /**
  * @brief
- *	Wrapper to: update_ajob_status_using_cmd(pjob, IS_RESCUSED, 1).
+ *	Wrapper to: update_ajob_status_using_cmd(pjob, IS_RESCUSED, 0).
  *
  * @param[in]	pjob - job whose status is being returned.
  *
@@ -1124,7 +1124,7 @@ update_ajob_status_using_cmd(job *pjob, int cmd, int rtn_list_to_use)
 void
 update_ajob_status(job *pjob)
 {
-	update_ajob_status_using_cmd(pjob, IS_RESCUSED, 1);
+	update_ajob_status_using_cmd(pjob, IS_RESCUSED, 0);
 }
 
 /**
@@ -1197,7 +1197,7 @@ update_jobs_status(void)
 			/* resend any of the attributes modified by a hook */
 			/* just incase the update didn't reach the server  */
 
-			for (index=0; (int)mom_rtn_list[index] >= 0; ++index) {
+			for (index=0; (int)mom_rtn_list[index] != JOB_ATR_LAST; ++index) {
 				nth = (int)mom_rtn_list[index];
 				at = &pjob->ji_wattr[nth];
 				ad = &job_attr_def[nth];
@@ -1312,7 +1312,7 @@ send_obit(job *pjob, int exval)
 
 
 				update_ajob_status_using_cmd(pjob,
-					IS_RESCUSED_FROM_HOOK, 1);
+					IS_RESCUSED_FROM_HOOK, 0);
 
 				/* Push vnl  hook changes to server */
 				hook_requests_to_server(&vnl_changes);

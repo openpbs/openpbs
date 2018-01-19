@@ -122,6 +122,7 @@
 #if	MOM_CSA || MOM_ALPS
 #include	"mom_mach.h"
 #endif	/* MOM_CSA or MOM_ALPS */
+#include	"pbs_reliable.h"
 
 #define STATE_UPDATE_TIME 10
 #ifndef	PRIO_MAX
@@ -299,8 +300,8 @@ momvmap_t     **mommap_array = NULL;
 int		mommap_array_size = 0;
 unsigned long	QA_testing = 0;
 
-unsigned int	joinjob_alarm_time = -1;
-unsigned int	job_launch_delay  = -1;	/* # of seconds to delay job launch due to pipe reads (pipe read timeout)  */
+int		joinjob_alarm_time = -1;
+int		job_launch_delay  = -1;	/* # of seconds to delay job launch due to pipe reads (pipe read timeout)  */
 int		update_joinjob_alarm_time = 0;
 int		update_job_launch_delay = 0;
 
@@ -1369,6 +1370,15 @@ initialize(void)
 
 	avl_destroy_index(&ix);
 
+	if (joinjob_alarm_time == -1)
+		update_joinjob_alarm_time = 1;
+	else
+		update_joinjob_alarm_time = 0;
+
+	if (job_launch_delay == -1)
+		update_job_launch_delay = 1;
+	else
+		update_job_launch_delay = 0;
 }
 
 /**
@@ -2410,13 +2420,14 @@ static handler_ret_t
 set_joinjob_alarm(char *value)
 {
 	int i;
+	char *endp;
 
 	log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
 		"sister_join_job_alarm", value);
-	i = (unsigned int)atoi(value);
-	if (i <= 0)
+	i = (int)strtol(value, &endp, 10);
+	if ((*endp != '\0') || (i <= 0) || (i == LONG_MIN) || (i == LONG_MAX))
 		return HANDLER_FAIL;	/* error */
-	joinjob_alarm_time = (unsigned int)i;
+	joinjob_alarm_time = i;
 	return HANDLER_SUCCESS;
 }
 
@@ -2434,13 +2445,15 @@ static handler_ret_t
 set_job_launch_delay(char *value)
 {
 	int i;
+	char *endp;
 
 	log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
 		"job_launch_delay", value);
-	i = (unsigned int)atoi(value);
-	if (i <= 0)
+	i = (int)strtol(value, &endp, 10);
+ 
+	if ((*endp != '\0') || (i <= 0) || (i == LONG_MIN) || (i == LONG_MAX))
 		return HANDLER_FAIL;	/* error */
-	job_launch_delay = (unsigned int)i;
+	job_launch_delay = i;
 	return HANDLER_SUCCESS;
 }
 
@@ -6793,7 +6806,12 @@ calc_cpupercent(job *pjob, u_long oldcput, u_long newcput, time_t sampletime)
 		assert(rd != NULL);
 		preswalltime = find_resc_entry(at_used, rd);
 		assert(rd != NULL);
-		wallt = preswalltime->rs_value.at_val.at_long;
+		if (preswalltime != NULL) {
+			wallt = preswalltime->rs_value.at_val.at_long;
+		} else {
+			wallt = -1;
+		}
+
 		if (wallt <= 0)
 			return;
 
@@ -7053,31 +7071,32 @@ mom_over_limit(job *pjob)
 				svr_resc_size);
 			assert(rd != NULL);
 			preswalltime = find_resc_entry(at, rd);
-			assert(preswalltime != NULL);
-			walltime_sum = preswalltime->rs_value.at_val.at_long;
-			if (walltime_sum > average_trialperiod) {
-				rd = find_resc_def(svr_resc_def, "cput",
-					svr_resc_size);
-				assert(rd != NULL);
-				prescput = find_resc_entry(at, rd);
-				assert(prescput != NULL);
-				cput_sum = prescput->rs_value.at_val.at_long;
-				/* "value" is from ncpus */
-				if (((double)cput_sum/(double)walltime_sum) >
-					(value*average_cpufactor+average_percent_over/100.0)) {
-					sprintf(log_buffer,
-						"ncpus %.2f exceeded limit %lu (sum)",
-						(double)cput_sum/(double)walltime_sum,
-						value);
-					if (cpuaverage) { /* abort job */
-						return (TRUE);
-					} else if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_cpuperc) == 0) {
-						/* just log it */
-						log_event(PBSEVENT_JOB,
-							PBS_EVENTCLASS_JOB, LOG_INFO,
-							pjob->ji_qs.ji_jobid,
-							log_buffer);
-						pjob->ji_qs.ji_svrflags |= JOB_SVFLG_cpuperc;
+			if (preswalltime != NULL) {
+				walltime_sum = preswalltime->rs_value.at_val.at_long;
+				if (walltime_sum > average_trialperiod) {
+					rd = find_resc_def(svr_resc_def, "cput",
+						svr_resc_size);
+					assert(rd != NULL);
+					prescput = find_resc_entry(at, rd);
+					assert(prescput != NULL);
+					cput_sum = prescput->rs_value.at_val.at_long;
+					/* "value" is from ncpus */
+					if (((double)cput_sum/(double)walltime_sum) >
+						(value*average_cpufactor+average_percent_over/100.0)) {
+						sprintf(log_buffer,
+							"ncpus %.2f exceeded limit %lu (sum)",
+							(double)cput_sum/(double)walltime_sum,
+							value);
+						if (cpuaverage) { /* abort job */
+							return (TRUE);
+						} else if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_cpuperc) == 0) {
+							/* just log it */
+							log_event(PBSEVENT_JOB,
+								PBS_EVENTCLASS_JOB, LOG_INFO,
+								pjob->ji_qs.ji_jobid,
+								log_buffer);
+							pjob->ji_qs.ji_svrflags |= JOB_SVFLG_cpuperc;
+						}
 					}
 				}
 			}
@@ -7248,7 +7267,7 @@ job_over_limit(job *pjob)
 
 		/* special case EOF */
 		if (pnode->hn_sister == SISTER_EOF) {
-			if (do_tolerate_node_failures(pjob)) {
+			if ((reliable_job_node_find(&pjob->ji_failed_node_list,pnode->hn_host) != NULL) || (do_tolerate_node_failures(pjob))) {
 			 	snprintf(log_buffer, sizeof(log_buffer), "ignoring node EOF %d from failed mom %s as job is tolerant of node failures", pjob->ji_nodekill, pnode->hn_host?pnode->hn_host:"");
 				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
 				return 0;
@@ -9288,13 +9307,6 @@ main(int argc, char *argv[])
 	}
 	hook_suf_len = strlen(hook_suffix);
 
-	if (joinjob_alarm_time == -1) {
-		update_joinjob_alarm_time = 1;
-	}
-	if (job_launch_delay == -1) {
-		update_job_launch_delay = 1;
-	}
-
 	dir = opendir(".");
 	if (dir == (DIR *)0) {
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER,
@@ -9352,12 +9364,11 @@ main(int argc, char *argv[])
 		(void)closedir(dir);
 	}
 
-	if (joinjob_alarm_time == -1) {
+	if (joinjob_alarm_time == -1)
 		joinjob_alarm_time = 30;
-	}
-	if (job_launch_delay == -1) {
+
+	if (job_launch_delay == -1)
 		job_launch_delay = 30;
-	}
 
 	snprintf(path_hooks_rescdef, MAXPATHLEN, "%s%s", path_hooks,
 							PBS_RESCDEF);
@@ -9744,17 +9755,20 @@ main(int argc, char *argv[])
 				pjob->ji_momsubt = 0;
 				pjob->ji_mompost(pjob, -1);
 				pjob->ji_mompost = NULL;
-			} else if (do_tolerate_node_failures(pjob) &&
+			}
+
+			if (do_tolerate_node_failures(pjob) &&
 				(pjob->ji_qs.ji_substate == JOB_SUBSTATE_WAITING_JOIN_JOB) &&
 				(pjob->ji_joinalarm != 0) &&
 				(pjob->ji_joinalarm < time_now)) {
 				sprintf(log_buffer, "sister_join_job_alarm wait time %u secs exceeded", joinjob_alarm_time);
 				log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB,
 					  LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
+				pjob->ji_qs.ji_substate = JOB_SUBSTATE_PRERUN;
 				finish_exec(pjob);
-				pjob->ji_qs.ji_substate = JOB_SUBSTATE_COMPLETED_JOIN_JOB;
 				pjob->ji_joinalarm = 0;
 			}
+
 			if (pjob->ji_flags & MOM_CHKPT_ACTIVE)
 				next_sample_time = min_check_poll;
 		}
@@ -9955,16 +9969,17 @@ main(int argc, char *argv[])
 					 */
 					if (send_sisters(pjob, IM_POLL_JOB, NULL) !=
 						pjob->ji_numnodes-1) {
-						log_event(PBSEVENT_JOB|PBSEVENT_FORCE,
-							PBS_EVENTCLASS_JOB, LOG_INFO,
-							pjob->ji_qs.ji_jobid,
-							"send POLL failed");
 
 						for (num = 0, np = pjob->ji_hosts; num < pjob->ji_numnodes; num++, np++) {
-							if (do_tolerate_node_failures(pjob)) {
+							if (reliable_job_node_find(&pjob->ji_failed_node_list, np->hn_host) != NULL) {
 								sprintf(log_buffer, "ignoring lost communication with %s for reliable job startup", np->hn_host);
 								log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
-								reliable_job_node_add(&pjob->ji_node_list_fail, np->hn_host);
+								err_flag = 1;
+
+							} else if (do_tolerate_node_failures(pjob)) {
+								sprintf(log_buffer, "ignoring lost communication with %s for reliable job startup", np->hn_host);
+								log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
+								reliable_job_node_add(&pjob->ji_failed_node_list, np->hn_host);
 								reliable_job_node_delete(&pjob->ji_node_list, np->hn_host);
 								err_flag = 1;
 							} else if ((time_now - np->hn_eof_ts) <= max_poll_downtime_val) {
@@ -9975,6 +9990,10 @@ main(int argc, char *argv[])
 							}
 						}
 						if (err_flag == 0) {
+							log_event(PBSEVENT_JOB|PBSEVENT_FORCE,
+							 PBS_EVENTCLASS_JOB, LOG_INFO,
+							 pjob->ji_qs.ji_jobid,
+							 "send POLL failed");
 							if (!is_comm_up(COMM_MATURITY_TIME)) {
 								pjob->ji_nodekill = TM_ERROR_NODE; /* send poll failed, but dont kill job */
 								sprintf(log_buffer, "Connection to pbs_comm down/recently established, not killing job");

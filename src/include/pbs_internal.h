@@ -45,8 +45,6 @@ extern "C" {
 
 #include "pbs_ifl.h"
 #include "libutil.h"
-#include "placementsets.h"
-#include "list_link.h"
 
 /*
  *
@@ -399,21 +397,6 @@ typedef enum { false, true } bool;
 #include "stdbool.h"
 #endif
 
-/*
- * The reliable_job_node structure is used to keep track of nodes
- * representing mom hosts fore reliable job startup.
- */
-typedef struct	reliable_job_node {
-	pbs_list_link	rjn_link;
-	char		rjn_host[PBS_MAXHOSTNAME+1]; /* mom host name */
-} reliable_job_node;
-
-extern reliable_job_node *reliable_job_node_find(pbs_list_head *, char *);
-extern int reliable_job_node_add(pbs_list_head *, char *);
-extern void reliable_job_node_delete(pbs_list_head *, char *);
-extern void reliable_job_node_free(pbs_list_head *);
-extern void reliable_job_node_print(char *, pbs_list_head *, int);
-
 #ifdef _USRDLL		/* This is only for building Windows DLLs
 			 * and not their static libraries
 			 */
@@ -532,84 +515,6 @@ extern int pbs_rescquery(int, char **, int, int *, int *, int *, int *);
 extern int pbs_rescreserve(int, char **, int, pbs_resource_t *);
 
 extern int pbs_rescrelease(int, pbs_resource_t);
-
-/**
- *
- * @brief
- * 	The relnodes_input_t structure contains the input request
- * 	parameters to the pbs_release_nodes_*() function.
- * 	
- * @param[in]	jobid - pointer to id of the job being released
- * @param[in]	vnodes_data - list of vnodes and their data in the system
- * @param[in]	execvnode - job's exec_vnode value
- * @param[in]	exechost - job's exec_host value
- * @param[in]	exechost2 - job's exec_host2 value
- * @param[out]	p_new_exec_vhode - holds the new exec_vnode value after release
- * @param[out]	p_new_exec_host - holds the new exec_host value after release
- * @param[out]	p_new_exec_host2 - holds the new exec_host2 value after release
- * @param[out]	p_new_schedselect - holds the new schedselect value after release
- *
- */
-typedef struct	relnodes_input {
-	char		*jobid;
-	void		*vnodes_data;
-	char		*execvnode;
-	char		*exechost;
-	char		*exechost2;
-	char		**p_new_exec_vnode;
-	char		**p_new_exec_host;
-	char		**p_new_exec_host2;
-	char		**p_new_schedselect;
-} relnodes_input_t;
-
-/**
- *
- * @brief
- * 	The relnodes_given_nodelist_t structure contains the additional
- * 	input parameters to the pbs_release_nodes(_given_vnodelist) function
- *	when called to release a set of vnodes.
- * 	
- * @param[in]	vnodelist - list of vnodes to release
- * @param[in]	schedselect - job's schedselect value
- * @param[in]	deallocated_nodes_orig - job's current deallocated_exevnode value
- * @param[out]	p_new_deallocated_execvnode - holds the new deallocated_exec_vnode after release
- */
-typedef struct	relnodes_input_vnodelist {
-	char		*vnodelist;
-	char		*schedselect;
-	char		*deallocated_nodes_orig;
-	char		**p_new_deallocated_execvnode;
-} relnodes_input_vnodelist_t;
-
-/**
- *
- * @brief
- * 	The relnodes_given_select_t structure contains the input
- * 	parameters to the pbs_release_nodes_given_select() function
- *	when called to satisfy select_str parameter.
- * 	
- * @param[in]	select_str - job's select value after nodes are released
- * @param[in]	mom_list_fail - list of unhealthy moms
- * @param[in]	mom_list_good - list of healthy moms
- * @param[in]	failed_vnodes - list of vnodes assigned to the job managed by unhealthy moms
- * @param[in]	good_vnodes- list of vnodes assigned to the job managed by healthy moms
- */
-typedef struct	relnodes_input_select {
-	char		*select_str;
-	void		*mom_list_fail;
-	void		*mom_list_good;
-	void		**failed_vnodes;
-	void		**good_vnodes;
-} relnodes_input_select_t;
-
-extern void relnodes_input_init(relnodes_input_t *r_input);
-extern void relnodes_input_vnodelist_init(relnodes_input_vnodelist_t *r_input);
-extern void relnodes_input_select_init(relnodes_input_select_t *r_input);
-extern int pbs_release_nodes_given_select(relnodes_input_t *r_input, relnodes_input_select_t *r_input2, char *err_msg, int err_msg_sz);
-
-extern int pbs_release_nodes_given_nodelist(relnodes_input_t *r_input, relnodes_input_vnodelist_t *r_input2, char *err_msg, int err_msg_sz);
-
-extern int do_schedselect(char *, void *, void *, char **, char **);
 
 extern char *avail(int, char *);
 

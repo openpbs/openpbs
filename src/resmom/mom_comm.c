@@ -90,6 +90,7 @@
 #include	"mom_hook_func.h"
 #include	"pbs_internal.h"
 #include	"placementsets.h"
+#include	"pbs_reliable.h"
 
 
 /* Global Data Items */
@@ -833,7 +834,7 @@ is_comm_up(int maturity_time)
  *	belonging to the parent 'momlist' (pjob->ji_momlist)
  *	are retained, and that it satisfies only the given 'select_str'.
  *
- * @param[in/out] pjob 		- job whose exec_vnode/exec_host/exec_host2
+ * @param[in,out] pjob 		- job whose exec_vnode/exec_host/exec_host2
  *				 is being pruned.
  * @param[in]	select_str 	- the "schedselect"-like string containing the
  *				specifications that will filter the job's
@@ -874,13 +875,13 @@ prune_exec_vnode(job *pjob,  char *select_str, vnl_t **failed_vnodes, vnl_t **go
 	relnodes_input_select_t		r_input_select;
 
 	if (pjob == NULL) {
-		LOG_ERR_BUF(err_msg, err_msg_sz, "job parameter is NULL", -1, __func__)
+		log_err(-1, __func__, "job parameter is NULL");
 		return (1);
 	}
 
 	if (((pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_flags & ATR_VFLAG_SET) == 0) ||
 	    (pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_val.at_str == NULL)) {
-		LOG_ERR_BUF(err_msg, err_msg_sz, "no execvnode", -1, __func__)
+		log_err(-1, __func__, "no execvnode");
 		return (1);
 	}
 
@@ -897,16 +898,15 @@ prune_exec_vnode(job *pjob,  char *select_str, vnl_t **failed_vnodes, vnl_t **go
 	}
 
 	if ((exechost == NULL) && (exechost2 == NULL)) {
-		LOG_ERR_BUF(err_msg, err_msg_sz, "no exechost nor exechost2", -1, __func__)
+		log_err(-1, __func__, "no exechost nor exechost2");
 		goto prune_exec_vnode_exit;
 	}
 
-	if (exechost == NULL) {
+	if (exechost == NULL)
 		exechost = exechost2;
-	}
-	if (exechost2 == NULL) {
+
+	if (exechost2 == NULL)
 		exechost2 = exechost;
-	}
 
 	relnodes_input_init(&r_input);
 	r_input.jobid = pjob->ji_qs.ji_jobid;
@@ -920,8 +920,8 @@ prune_exec_vnode(job *pjob,  char *select_str, vnl_t **failed_vnodes, vnl_t **go
 
 	relnodes_input_select_init(&r_input_select);
 	r_input_select.select_str = select_str;
-	r_input_select.mom_list_fail = &pjob->ji_node_list_fail;
-	r_input_select.mom_list_good = &pjob->ji_node_list;
+	r_input_select.failed_mom_list = &pjob->ji_failed_node_list;
+	r_input_select.succeeded_mom_list = &pjob->ji_node_list;
 	r_input_select.failed_vnodes = (void **)failed_vnodes;
 	r_input_select.good_vnodes = (void **)good_vnodes;
 	rc = pbs_release_nodes_given_select(&r_input, &r_input_select, err_msg, LOG_BUF_SIZE);
@@ -944,7 +944,7 @@ prune_exec_vnode(job *pjob,  char *select_str, vnl_t **failed_vnodes, vnl_t **go
 	}
 
 	if (new_exec_vnode != NULL) {
-		entry = strlen(new_exec_vnode)-1;
+		entry = strlen(new_exec_vnode) - 1;
 		if (new_exec_vnode[entry] == '+')
 			new_exec_vnode[entry] = '\0';
 
@@ -959,7 +959,7 @@ prune_exec_vnode(job *pjob,  char *select_str, vnl_t **failed_vnodes, vnl_t **go
 	}
 
 	if (new_exec_host != NULL) {
-		entry = strlen(new_exec_host)-1;
+		entry = strlen(new_exec_host) - 1;
 		if (new_exec_host[entry] == '+')
 			new_exec_host[entry] = '\0';
 		(void)job_attr_def[(int)JOB_ATR_exec_host].at_decode(
@@ -971,7 +971,7 @@ prune_exec_vnode(job *pjob,  char *select_str, vnl_t **failed_vnodes, vnl_t **go
 	}
 
 	if (new_exec_host2 != NULL) {
-		entry = strlen(new_exec_host2)-1;
+		entry = strlen(new_exec_host2) - 1;
 		if (new_exec_host2[entry] == '+')
 			new_exec_host2[entry] = '\0';
 		(void)job_attr_def[(int)JOB_ATR_exec_host2].at_decode(
@@ -1085,16 +1085,15 @@ send_sisters_job_update(job *pjob)
 	for (i = 1; i < pjob->ji_numnodes; i++) {
 		np = &pjob->ji_hosts[i];
 
-		if (do_tolerate_node_failures(pjob) &&
-		   (reliable_job_node_find(&pjob->ji_node_list_fail, np->hn_host) != NULL)) {
-			/* ensure current node (which is managed by an failed mom
+		if (reliable_job_node_find(&pjob->ji_failed_node_list, np->hn_host) != NULL) {
+			/* ensure current node (which is managed by a failed mom
 			 * host) is not flagged as a problem
 			 */
 			if (pjob->ji_nodekill == np->hn_node)
 				pjob->ji_nodekill = TM_ERROR_NODE;
-			snprintf(log_buffer, sizeof(log_buffer)-1,
+			snprintf(log_buffer, sizeof(log_buffer),
 			         "not sending request IM_UPDATE_JOB to failed mom %s",
-				 np->hn_host?np->hn_host:"");
+				 np->hn_host ? np->hn_host : "UNDEFINED");
 			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
 			continue;
 		}
@@ -1487,16 +1486,15 @@ send_sisters_mcast_inner(job *pjob, int com, pbs_jobndstm_t command_func,
 			continue;
 		}
 
-		if (do_tolerate_node_failures(pjob) &&
-		   (reliable_job_node_find(&pjob->ji_node_list_fail, np->hn_host) != NULL)) {
-			/* ensure current node (which is managed by an failed mom
+		if (reliable_job_node_find(&pjob->ji_failed_node_list, np->hn_host) != NULL) {
+			/* ensure current node (which is managed by a failed mom
 			 * host) is not flagged as a problem
 			 */
 			if (pjob->ji_nodekill == np->hn_node)
 				pjob->ji_nodekill = TM_ERROR_NODE;
-			snprintf(log_buffer, sizeof(log_buffer)-1,
+			snprintf(log_buffer, sizeof(log_buffer),
 			         "not sending request %d to failed mom %s",
-				 com, np->hn_host?np->hn_host:"");
+				 com, np->hn_host ? np->hn_host : "UNDEFINED");
 			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
 			continue;
 		}
@@ -1632,24 +1630,24 @@ send_sisters_inner(job *pjob, int com, pbs_jobndstm_t command_func,
 		if ((exclude_exec_host != NULL) &&
 			in_exechost(exclude_exec_host, np->hn_host,
 						np->hn_port-1)) {
-			/* ensure current node (which is managed by an */
-			/* excluded mom host) is not flagged as a problem */
+			/* ensure current node (which is managed by an
+			 * excluded mom host) is not flagged as a problem
+			 */
 			if (pjob->ji_nodekill == np->hn_node) {
 				pjob->ji_nodekill = TM_ERROR_NODE;
 			}
 			continue;
 		}
 
-		if (do_tolerate_node_failures(pjob) &&
-		   (reliable_job_node_find(&pjob->ji_node_list_fail, np->hn_host) != NULL)) {
-			/* ensure current node (which is managed by an failed mom
+		if (reliable_job_node_find(&pjob->ji_failed_node_list, np->hn_host) != NULL) {
+			/* ensure current node (which is managed by a failed mom
 			 * host) is not flagged as a problem
 			 */
 			if (pjob->ji_nodekill == np->hn_node)
 				pjob->ji_nodekill = TM_ERROR_NODE;
 			snprintf(log_buffer, sizeof(log_buffer)-1,
 			         "not sending request %d to failed mom %s",
-				 com, np->hn_host?np->hn_host:"");
+				 com, np->hn_host ? np->hn_host : "UNDEFINED");
 			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
 			continue;
 		}
@@ -1836,7 +1834,7 @@ find_node(job *pjob, int stream, tm_node_id vnodeid)
  * @retval "" (empty string)	- if none found or error encountered.
  *
  * @note
- *	The returned hostname points to a static area that must not
+ *	The returned hostname points to a fixed memory area that must not
  *	be freed, and get overwritten on the next call to
  *	addr_to_hostname().
  * 
@@ -1845,22 +1843,36 @@ char *
 addr_to_hostname(struct sockaddr_in *ap)
 {
 	struct	hostent	*hp;
-
+	static	char	*ret_hostname = NULL;
+	int		hostname_sz = 0;
+	char		*tmp_str;
 
 	if (ap == NULL)
 		return ("");
 
 	hp = gethostbyaddr((void *)&ap->sin_addr, sizeof(struct in_addr), AF_INET);
 	if (hp == NULL) {
-		snprintf(log_buffer, sizeof(log_buffer)-1, "%s: h_errno=%d",
+		snprintf(log_buffer, sizeof(log_buffer), "%s: h_errno=%d",
 			 inet_ntoa(ap->sin_addr), h_errno);
 		log_err(-1, __func__, log_buffer);
 		return ("");
 	}
-	if (hp->h_name == NULL) {
+	if (hp->h_name == NULL)
+		return ("");
+
+	if ((ret_hostname != NULL) && (strcmp(ret_hostname, hp->h_name) == 0))
+		return (ret_hostname);
+
+	hostname_sz = strlen(hp->h_name) + 1;
+	tmp_str = (char *)realloc((char *)ret_hostname, hostname_sz);
+	if (tmp_str == NULL) {  /* error on realloc */
+		log_err(errno, __func__, "error on realloc");
 		return ("");
 	}
-	return (hp->h_name);
+	ret_hostname = tmp_str;
+	strncpy(ret_hostname, hp->h_name, hostname_sz);
+	ret_hostname[hostname_sz - 1] = '\0';
+	return (ret_hostname);
 }
 /**
  * @brief
@@ -1883,32 +1895,33 @@ job_start_error(job *pjob, int code, char *nodename, char *cmd)
 	void    exec_bail(job *pjob, int code, char *txt);
 #endif
 
-	if ((pjob == NULL) || (nodename == NULL) || (cmd == NULL)) {
+	if ((pjob == NULL) || (nodename == NULL) || (cmd == NULL))
 		return;
-	}
 
-	sprintf(log_buffer,
+	snprintf(log_buffer, sizeof(log_buffer),
 		"%s %d from node %s could not %s successfully",
 		__func__, code, nodename, cmd);
 	log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
 		pjob->ji_qs.ji_jobid, log_buffer);
-
 	if (do_tolerate_node_failures(pjob)) {
+		snprintf(log_buffer, sizeof(log_buffer),
+			 "ignoring error from %s as job is tolerant of node failures", nodename);
 		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
-			pjob->ji_qs.ji_jobid, "ignoring error as job is tolerant of node failures");
+			pjob->ji_qs.ji_jobid, log_buffer);
+		/* a filled-in log_buffer could be mistaken for an error message */
+		log_buffer[0] = '\0';
 		
-		reliable_job_node_add(&pjob->ji_node_list_fail, nodename);
+		reliable_job_node_add(&pjob->ji_failed_node_list, nodename);
 		reliable_job_node_delete(&pjob->ji_node_list, nodename);
 
 #ifndef WIN32
 		if (pjob->ji_parent2child_moms_status_pipe != -1) {
 			size_t r_size;
-			r_size = strlen(nodename)+1; 	
-			if (write_pipe_data(pjob->ji_parent2child_moms_status_pipe, &r_size, sizeof(size_t)) == 0) {
+			r_size = strlen(nodename) + 1;
+			if (write_pipe_data(pjob->ji_parent2child_moms_status_pipe, &r_size, sizeof(size_t)) == 0)
 				(void)write_pipe_data(pjob->ji_parent2child_moms_status_pipe, nodename, r_size);
-			} else {
+			else
 				log_err(errno, __func__, "failed to write");
-			}
 		}
 		return;
 #endif
@@ -1951,7 +1964,10 @@ chk_del_job(job *pjob, int errcode)
 	DBPRT(("%s for job %s\n", __func__, pjob->ji_qs.ji_jobid))
 
 	for (i=1; i<pjob->ji_numnodes; i++) {
-		if (pjob->ji_hosts[i].hn_sister == SISTER_OKAY) {
+		if (reliable_job_node_find(&pjob->ji_failed_node_list, pjob->ji_hosts[i].hn_host) != NULL) {
+			DBPRT(("%s: %d IGNORED for node %s\n", __func__,
+				i, pjob->ji_hosts[i].hn_host))
+		} else if (pjob->ji_hosts[i].hn_sister == SISTER_OKAY) {
 			/* still need to wait for her to answer */
 			DBPRT(("%s: %d OK  for node %s\n", __func__,
 				i, pjob->ji_hosts[i].hn_host))
@@ -2137,7 +2153,7 @@ node_bailout(job *pjob, hnodent *np)
 				DBPRT(("%s: KILL/ABORT JOB %s\n",
 					__func__, pjob->ji_qs.ji_jobid))
 				for (i=1; i<pjob->ji_numnodes; i++) {
-					if (pjob->ji_hosts[i].hn_sister == SISTER_OKAY)
+					if ((reliable_job_node_find(&pjob->ji_failed_node_list, pjob->ji_hosts[i].hn_host) == NULL) && (pjob->ji_hosts[i].hn_sister == SISTER_OKAY))
 						break;
 				}
 				if (i == pjob->ji_numnodes) {	/* all dead */
@@ -2187,7 +2203,7 @@ node_bailout(job *pjob, hnodent *np)
 				 */
 				if (do_tolerate_node_failures(pjob)) {
 
-					snprintf(log_buffer, sizeof(log_buffer)-1,
+					snprintf(log_buffer, sizeof(log_buffer),
 			 		"ignoring POLL error from failed mom %s as job is tolerant of node failures",
 						np->hn_host?np->hn_host:"");
 					log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
@@ -2326,17 +2342,16 @@ im_eof(int stream, int ret)
 				if (do_tolerate_node_failures(pjob)) {
 					sprintf(log_buffer, "ignoring lost communication with %s as job is tolerant of node failures", np->hn_host);
 					log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
-					reliable_job_node_add(&pjob->ji_node_list_fail, np->hn_host);
+					reliable_job_node_add(&pjob->ji_failed_node_list, np->hn_host);
 					reliable_job_node_delete(&pjob->ji_node_list, np->hn_host);
 #ifndef WIN32
 					if (pjob->ji_parent2child_moms_status_pipe != -1) {
 						size_t r_size;
-						r_size = strlen(np->hn_host)+1; 	
-						if (write_pipe_data(pjob->ji_parent2child_moms_status_pipe, &r_size, sizeof(size_t)) == 0) {
+						r_size = strlen(np->hn_host) + 1; 	
+						if (write_pipe_data(pjob->ji_parent2child_moms_status_pipe, &r_size, sizeof(size_t)) == 0)
 							(void)write_pipe_data(pjob->ji_parent2child_moms_status_pipe, np->hn_host, r_size);
-						} else {
+						else
 							log_err(errno, __func__, "failed to write");
-						}
 					}
 #endif
 					continue;
@@ -3642,9 +3657,13 @@ join_err:
 						mom_host, &hook_input, &hook_output,
 							hook_msg, sizeof(hook_msg), 1)) {
 
-				case 1:   	/* explicit accept */
-					break;
+				case 1: /* explicit accept */
 				case 2:	/* no hook script executed - go ahead and accept event*/
+					ret = im_compose(stream, jobid, cookie,
+							IM_ALL_OKAY,
+							event, fromtask, IM_OLD_PROTOCOL_VER);
+					if (ret != DIS_SUCCESS)
+						goto err;
 					break;
 				default:
 					/* a value of '0' means explicit reject encountered. */
@@ -3660,11 +3679,6 @@ join_err:
 					    send_hook_fail_action(last_phook);
 					}
 			}
-			ret = im_compose(stream, jobid, cookie,
-				IM_ALL_OKAY,
-				event, fromtask, IM_OLD_PROTOCOL_VER);
-			if (ret != DIS_SUCCESS)
-				goto err;
 			break;
 
 		case	IM_SPAWN_TASK:
@@ -4368,13 +4382,13 @@ join_err:
 						 ** At this point, we are ready to call
 						 ** finish_exec and launch the job.
 						 */
- 						if (!do_tolerate_node_failures(pjob) || (pjob->ji_qs.ji_substate != JOB_SUBSTATE_COMPLETED_JOIN_JOB)) {
-							finish_exec(pjob);
-							log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
-							if (do_tolerate_node_failures(pjob)) {
-								pjob->ji_qs.ji_substate = JOB_SUBSTATE_COMPLETED_JOIN_JOB;
+ 						if (!do_tolerate_node_failures(pjob) || (pjob->ji_qs.ji_substate == JOB_SUBSTATE_WAITING_JOIN_JOB)) {
+							if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_WAITING_JOIN_JOB) {
+								pjob->ji_qs.ji_substate = JOB_SUBSTATE_PRERUN;
 								job_save(pjob, SAVEJOB_QUICK);
 							}
+							finish_exec(pjob);
+							log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
 						}
 					}
 					break;
@@ -4503,7 +4517,7 @@ join_err:
 					/* don't close stream in case other jobs use it */
 					np->hn_sister = SISTER_KILLDONE;
 					for (i=1; i<pjob->ji_numnodes; i++) {
-						if (pjob->ji_hosts[i].hn_sister == SISTER_OKAY)
+						if ((reliable_job_node_find(&pjob->ji_failed_node_list, pjob->ji_hosts[i].hn_host) == NULL) && (pjob->ji_hosts[i].hn_sister == SISTER_OKAY))
 							break;
 					}
 					if (i == pjob->ji_numnodes) {	/* all dead */
@@ -4763,18 +4777,17 @@ join_err:
 						log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
 					}
 
+#ifndef WIN32
 					if (ep == NULL) {
 						/* no events left */
-#ifndef WIN32
 						if (do_tolerate_node_failures(pjob) && (pjob->ji_mjspipe2 != -1)) {
 							int cmd = IM_ALL_OKAY;
 							log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, "all job prologue hook from sisters done");
-
 						    	write_pipe_data(pjob->ji_mjspipe2, (int *)&cmd, sizeof(int));
 						}
-#endif
 
 					}
+#endif
 					break;
 
 				default:
@@ -4817,7 +4830,7 @@ join_err:
 					}
 					DBPRT(("%s: JOIN_JOB %s returned ERROR %d\n",
 						__func__, jobid, errcode))
-					job_start_error(pjob, errcode, (do_tolerate_node_failures(pjob)?addr_to_hostname(addr):netaddr(addr)), "JOIN_JOB");
+					job_start_error(pjob, errcode, (do_tolerate_node_failures(pjob) ? addr_to_hostname(addr) : netaddr(addr)), "JOIN_JOB");
 					if (errmsg != NULL) {
 						log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB,
 							LOG_INFO, jobid, errmsg);
@@ -4943,7 +4956,7 @@ join_err:
 					}
 					np->hn_sister = errcode ? errcode : SISTER_KILLDONE;
 					for (i=1; i<pjob->ji_numnodes; i++) {
-						if (pjob->ji_hosts[i].hn_sister == SISTER_OKAY)
+						if ((reliable_job_node_find(&pjob->ji_failed_node_list, pjob->ji_hosts[i].hn_host) == NULL) && (pjob->ji_hosts[i].hn_sister == SISTER_OKAY))
 							break;
 					}
 					if (i == pjob->ji_numnodes) {	/* all dead */
@@ -5011,7 +5024,7 @@ join_err:
 					}
 
 					if (do_tolerate_node_failures(pjob)) {
-						snprintf(log_buffer, sizeof(log_buffer)-1, "ignoring POLL_JOB error from failed mom %s as job is tolerant of node failures", np->hn_host?np->hn_host:"");
+						snprintf(log_buffer, sizeof(log_buffer), "ignoring POLL_JOB error from failed mom %s as job is tolerant of node failures", np->hn_host?np->hn_host:"");
 						log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
 						break;
 					}
@@ -5028,7 +5041,7 @@ join_err:
 
 				case	IM_UPDATE_JOB:
 					if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) == 0) {
-						sprintf(log_buffer, "IM_UPDATE_JOB ERROR and I'm not MS");
+						snprintf(log_buffer, sizeof(log_buffer), "IM_UPDATE_JOB ERROR and I'm not MS");
 						goto err;
 					}
 					DBPRT(("%s: IM_UPDATE_JOB %s returned ERROR %d\n", id, jobid, errcode))

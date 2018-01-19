@@ -1699,14 +1699,14 @@ verify_value_tolerate_node_failures(int batch_request, int parent_object, int cm
 	struct attropl *pattr, char **err_msg)
 {
 	int i;
-	char *tolerance_level[3] = {ALL_NODE_FAILURES, JOB_START_NODE_FAILURES, NO_NODE_FAILURES};
+	char *tolerance_level[] = {TOLERATE_NODE_FAILURES_ALL, TOLERATE_NODE_FAILURES_JOB_START, TOLERATE_NODE_FAILURES_NONE, NULL};
 
 	if ((pattr->value == NULL) || (pattr->value[0] == '\0'))
 		return PBSE_BADATVAL;
 
 	/* does the requested value match a legal value? */
-	for (i = 0; i < 3; i++) {
-		if (strncasecmp(tolerance_level[i], pattr->value,
+	for (i = 0; tolerance_level[i] != NULL; i++) {
+		if (strncmp(tolerance_level[i], pattr->value,
 			strlen(pattr->value)) == 0)
 			return PBSE_NONE;
 	}

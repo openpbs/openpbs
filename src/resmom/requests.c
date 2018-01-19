@@ -5019,9 +5019,9 @@ req_copy_hookfile(struct batch_request *preq) /* ptr to the decoded request   */
 			}
 
 			phook2 = (hook *)GET_NEXT(svr_allhooks);
-			i = 0;
-			j = 0;
-			while (phook2) {
+			i = j = 0;
+			for (phook2 = (hook *)GET_NEXT(svr_allhooks); phook2 != NULL;
+				phook2 = (hook *)GET_NEXT(phook2->hi_allhooks)) {
 				if (update_joinjob_alarm_time &&
 					(phook2->enabled == TRUE) &&
 					((phook2->event & HOOK_EVENT_EXECJOB_BEGIN) != 0)) {
@@ -5037,7 +5037,6 @@ req_copy_hookfile(struct batch_request *preq) /* ptr to the decoded request   */
 					job_launch_delay += phook2->alarm;
 					j++;
 				}
-				phook2 = (hook *)GET_NEXT(phook2->hi_allhooks);
 			}
 			if (i > 0) {
 				snprintf(log_buffer, sizeof(log_buffer), "joinjob_alarm_time updated to %u", joinjob_alarm_time);

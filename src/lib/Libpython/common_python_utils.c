@@ -469,8 +469,11 @@ pbs_python_object_str(PyObject *obj)
 		return ("");
 	}
 	ret_str = tmp_str;
-	if (str != NULL)
-		strcpy(ret_str, str);
+	*ret_str = '\0';
+	if (str != NULL) {
+		strncpy(ret_str, str, alloc_sz);
+		ret_str[alloc_sz - 1] = '\0';
+	}
 	Py_CLEAR(py_str);
 	return (ret_str);
 }

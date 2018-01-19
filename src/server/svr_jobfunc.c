@@ -130,6 +130,7 @@
 #include "dis.h"
 #include "libsec.h"
 #include "pbs_license.h"
+#include "pbs_reliable.h"
 #ifndef WIN32
 #include <sys/wait.h>
 #endif
@@ -5694,8 +5695,7 @@ send_job_exec_update_to_mom(job *pjob, char *err_msg, int err_msg_sz,
 	struct	work_task	*pwt = NULL;
 
 	if (pjob == NULL) {
-		LOG_ERR_BUF(err_msg, err_msg_sz, "bad job parameter",
-					PBSE_INTERNAL, __func__)
+		log_err(-1, __func__, "bad job parameter");
 		return (1);
 	}
 
@@ -5706,8 +5706,7 @@ send_job_exec_update_to_mom(job *pjob, char *err_msg, int err_msg_sz,
 		 */
 		reply_req->rq_extend = strdup(err_msg);
 		if (reply_req->rq_extend == NULL) {
-			LOG_ERR_BUF(err_msg, err_msg_sz, "strdup failed",
-					PBSE_INTERNAL, __func__)
+			log_err(-1, __func__, "strdup failed");
 			return (1);
 		}
 
@@ -5716,9 +5715,7 @@ send_job_exec_update_to_mom(job *pjob, char *err_msg, int err_msg_sz,
 	newreq = alloc_br(PBS_BATCH_ModifyJob);
 
 	if (newreq == (struct batch_request *) 0) {
-		LOG_ERR_BUF(err_msg, err_msg_sz,
-			"failed to alloc_br for PBS_MATCH_modifyjob",
-					errno, __func__)
+		log_err(-1, __func__, "failed to alloc_br for PBS_MATCH_modifyjob");
 		return (1);
 	}
 	CLEAR_HEAD(newreq->rq_ind.rq_modify.rq_attr);
@@ -5734,10 +5731,10 @@ send_job_exec_update_to_mom(job *pjob, char *err_msg, int err_msg_sz,
 			&(newreq->rq_ind.rq_modify.rq_attr),
 			ATTR_execvnode, NULL, new_exec_vnode, 0,
 							NULL) == -1) {
-			LOG_EVENT_BUF_ARG3(err_msg,err_msg_sz-1,
-			   "failed to add_to_svrattrl_list(%s,%s,%s)",
-				ATTR_execvnode, "", new_exec_vnode,
-						pjob->ji_qs.ji_jobid)
+			if ((err_msg != NULL) && (err_msg_sz > 0)) {
+				snprintf(err_msg, err_msg_sz, "failed to add_to_svrattrl_list(%s,%s,%s)", ATTR_execvnode, "", new_exec_vnode);
+        			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, err_msg);
+			}
 			goto send_job_exec_update_exit;
 		}
 		num_updates++;
@@ -5750,10 +5747,10 @@ send_job_exec_update_to_mom(job *pjob, char *err_msg, int err_msg_sz,
 		if (add_to_svrattrl_list(
 			&(newreq->rq_ind.rq_modify.rq_attr),
 			ATTR_exechost, NULL, new_exec_host, 0, NULL) == -1) {
-			LOG_EVENT_BUF_ARG3(err_msg,err_msg_sz,
-			   "failed to add_to_svrattrl_list(%s,%s,%s)",
-				ATTR_exechost, "", new_exec_host,
-						pjob->ji_qs.ji_jobid)
+			if ((err_msg != NULL) && (err_msg_sz > 0)) {
+				snprintf(err_msg, err_msg_sz, "failed to add_to_svrattrl_list(%s,%s,%s)", ATTR_exechost, "", new_exec_host);
+        			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, err_msg);
+			}
 			goto send_job_exec_update_exit;
 		}
 		num_updates++;
@@ -5766,10 +5763,10 @@ send_job_exec_update_to_mom(job *pjob, char *err_msg, int err_msg_sz,
 		if (add_to_svrattrl_list(
 			&(newreq->rq_ind.rq_modify.rq_attr),
 			ATTR_exechost2, NULL, new_exec_host2, 0, NULL) == -1) {
-			LOG_EVENT_BUF_ARG3(err_msg,err_msg_sz,
-			   "failed to add_to_svrattrl_list(%s,%s,%s)",
-				ATTR_exechost2, "", new_exec_host2,
-						pjob->ji_qs.ji_jobid)
+			if ((err_msg != NULL) && (err_msg_sz > 0)) {
+				snprintf(err_msg, err_msg_sz, "failed to add_to_svrattrl_list(%s,%s,%s)", ATTR_exechost2, "", new_exec_host2);
+        			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, err_msg);
+			}
 			goto send_job_exec_update_exit;
 		}
 		num_updates++;
@@ -5781,11 +5778,10 @@ send_job_exec_update_to_mom(job *pjob, char *err_msg, int err_msg_sz,
 			&(newreq->rq_ind.rq_modify.rq_attr),
 			ATTR_SchedSelect, NULL,
 			psched->at_val.at_str, 0, NULL) == -1) {
-			LOG_EVENT_BUF_ARG3(err_msg,err_msg_sz,
-			   "failed to add_to_svrattrl_list(%s,%s,%s)",
-				ATTR_SchedSelect, "",
-				psched->at_val.at_str,
-				pjob->ji_qs.ji_jobid)
+			if ((err_msg != NULL) && (err_msg_sz > 0)) {
+				snprintf(err_msg, err_msg_sz, "failed to add_to_svrattrl_list(%s,%s,%s)", ATTR_SchedSelect, "", psched->at_val.at_str);
+        			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, err_msg);
+			}
 			goto send_job_exec_update_exit;
 		}
 		num_updates++;
@@ -5810,13 +5806,10 @@ send_job_exec_update_to_mom(job *pjob, char *err_msg, int err_msg_sz,
 				    objatrdef->at_name, psvrl->al_resc,
 				      psvrl->al_value, 0, NULL) == -1) {
 					free_attrlist(&collectresc);
-					LOG_EVENT_BUF_ARG3(err_msg,
-							err_msg_sz,
-			   			"failed to add_to_svrattrl_list(%s,%s,%s)",
-			      			objatrdef->at_name,
-						psvrl->al_resc,
-						psvrl->al_value,
-						pjob->ji_qs.ji_jobid)
+					if ((err_msg != NULL) && (err_msg_sz > 0)) {
+						snprintf(err_msg, err_msg_sz, "failed to add_to_svrattrl_list(%s,%s,%s)", objatrdef->at_name, psvrl->al_resc, psvrl->al_value);
+        					log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, err_msg);
+					}
 					goto send_job_exec_update_exit;
 				}
 				num_updates++;
@@ -5832,9 +5825,7 @@ send_job_exec_update_to_mom(job *pjob, char *err_msg, int err_msg_sz,
 		rc = relay_to_mom2(pjob, newreq,
 				post_send_job_exec_update_req, &pwt);
 		if (rc != 0) {
-			LOG_ERR_BUF(err_msg, err_msg_sz,
-				"failed telling mom of the request",
-							rc, __func__)
+			log_err(-1, __func__, "failed telling mom of the request");
 		} else {
 			pwt->wt_parm2 = reply_req;
 		}
@@ -5894,39 +5885,34 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 	relnodes_input_vnodelist_t	r_input_vnlist;
 
 	if (pjob == NULL) {
-		LOG_ERR_BUF(err_msg, err_msg_sz, "bad job parameter", -1, __func__)
+		log_err(-1, __func__, "bad job parameter");
 		return (1);
 	}
 
 	if ((pjob->ji_qs.ji_state != JOB_STATE_RUNNING) &&
 	    (pjob->ji_qs.ji_state != JOB_STATE_EXITING)) {
-		LOG_ERR_BUF(err_msg, err_msg_sz,
-			"job not in running or exiting state", -1, __func__)
+		log_err(-1, __func__, "job not in running or exiting state");
 		return (1);
 
 	}
 
 	if ((pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_flags & ATR_VFLAG_SET) == 0) {
-		LOG_ERR_BUF(err_msg, err_msg_sz,
-			"exec_vnode is not set", -1, __func__)
+		log_err(-1, __func__, "exec_vnode is not set");
 		return (1);
 	}
 
 	if ((pjob->ji_wattr[(int)JOB_ATR_exec_host].at_flags & ATR_VFLAG_SET) == 0) {
-		LOG_ERR_BUF(err_msg, err_msg_sz,
-			"exec_host is not set", -1, __func__)
+		log_err(-1, __func__, "exec_host is not set");
 		return (1);
 	}
 
 	if ((pjob->ji_wattr[(int)JOB_ATR_exec_host2].at_flags & ATR_VFLAG_SET) == 0) {
-		LOG_ERR_BUF(err_msg, err_msg_sz,
-			"exec_host2 is not set", -1, __func__)
+		log_err(-1, __func__, "exec_host2 is not set");
 		return (1);
 	}
 
 	if ((pjob->ji_wattr[(int)JOB_ATR_SchedSelect].at_flags & ATR_VFLAG_SET) == 0) {
-		LOG_ERR_BUF(err_msg, err_msg_sz,
-			"schedselect is not set", -1, __func__)
+		log_err(-1, __func__, "schedselect is not set");
 		return (1);
 	}
 
@@ -5970,9 +5956,11 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 		if (strcmp(pjob->ji_wattr[(int) JOB_ATR_exec_vnode].at_val.at_str,
 						 new_exec_vnode) == 0) {
 			/* no change */
-			LOG_EVENT_BUF_ARG1(err_msg,err_msg_sz,
-				"node(s) requested to be released not part of the job: %s",
-				vnodelist?vnodelist:"", pjob->ji_qs.ji_jobid)
+
+			if ((err_msg != NULL) && (err_msg_sz > 0)) {
+				snprintf(err_msg, err_msg_sz, "node(s) requested to be released not part of the job: %s", vnodelist?vnodelist:"");
+        			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, err_msg);
+			}
 			goto recreate_exec_vnode_exit;
 		}
 		(void)job_attr_def[(int)JOB_ATR_exec_vnode_acct].at_decode(

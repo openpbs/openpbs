@@ -115,14 +115,14 @@ typedef unsigned long pbs_net_t;        /* for holding host addresses */
 #define IS_DISCARD_DONE		21
 #define IS_HPCBP_ATTRIBUTES	22 	/* Depricated */
 #define	IS_CLUSTER_ADDRS2	23
-#define IS_UPDATE_FROM_HOOK	24
+#define IS_UPDATE_FROM_HOOK	24 /* request to update vnodes from a hook running on parent mom host */
 #define IS_RESCUSED_FROM_HOOK	25 /* request from child mom for a hook */
 #define IS_HOOK_JOB_ACTION      26 /* request from hook to delete/requeue job */
 #define IS_HOOK_ACTION_ACK      27 /* acknowledge a request of the above 2    */
 #define IS_HOOK_SCHEDULER_RESTART_CYCLE  29 /* hook wish scheduler to recycle */
 #define IS_HOOK_CHECKSUMS		 30 /* mom reports about hooks seen */
 #define IS_HELLO_NO_INVENTORY	31 /* send info about the mom node only */
-#define IS_UPDATE_FROM_HOOK2	32
+#define IS_UPDATE_FROM_HOOK2	32 /* request to update vnodes from a hook running on a parent mom host or an allowed non-parent mom host */
 
 #define IS_CMD          40
 #define IS_CMD_REPLY    41

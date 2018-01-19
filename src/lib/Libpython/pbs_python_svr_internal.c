@@ -76,6 +76,7 @@
 #include "svrfunc.h"
 #include "pbs_ecl.h"
 #include "placementsets.h"
+#include "pbs_reliable.h"
 
 
 /* -----                        GLOBALS                        -----    */
@@ -4694,7 +4695,6 @@ py_strlist_to_reliable_job_node_list(PyObject *py_strlist, pbs_list_head *to_hea
 		}
 	}
 	return (0);
-
 }
 
 /**
@@ -4743,7 +4743,7 @@ read_statm(void)
  * @return PyObject *
  * @retval <python_object>	- the Python object representing the
  *				  vnode_list parameter
- * @retval NULL			- if failure is encountered
+ * @retval NULL		- if failure is encountered
  *
  */
 static PyObject *
@@ -4827,6 +4827,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 	PyObject *py_env = (PyObject *) NULL;
 	PyObject *py_pid = (PyObject *) NULL;
 	PyObject *py_node_list = (PyObject *) NULL;
+	PyObject *py_failed_node_list = (PyObject *) NULL;
 
 	static long hook_counter = 0; /* for tracking interpreter restart */
 	static long min_restart_interval = 0; /* prevents frequent restarts */
@@ -5486,7 +5487,6 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 			goto event_set_exit;
 		}
 
-		/* set VNODELIST param */
 		py_vnodelist = create_hook_vnode_list_param(py_event_param,
 					PY_TYPE_EVENT, PY_EVENT_PARAM_VNODELIST,
 					(pbs_list_head *)req_params->vns_list);
@@ -5498,7 +5498,6 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 
 		if (hook_event == HOOK_EVENT_EXECJOB_PROLOGUE) {
 
-			/* set VNODELIST_FAIL */
 			py_vnodelist_fail = create_hook_vnode_list_param(py_event_param,
 						PY_TYPE_EVENT, PY_EVENT_PARAM_VNODELIST_FAIL,
 			    			(pbs_list_head *)req_params->vns_list_fail);
@@ -5507,36 +5506,32 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 				rc = -1;
 				goto event_set_exit;
 			}
-			py_node_list = create_py_strlist_from_svrattrl_names((pbs_list_head *)req_params->mom_list_fail);
-			if (py_node_list == NULL) {
+			py_failed_node_list = create_py_strlist_from_svrattrl_names((pbs_list_head *)req_params->failed_mom_list);
+			if (py_failed_node_list == NULL) {
 				rc = -1;
 				goto event_set_exit;
 			}
 
-			/* set mom_list_fail: py_vnlist given to py_job so ref count auto incremented */
-			rc = PyObject_SetAttrString(py_job, PY_JOB_MOM_LIST_FAIL, py_node_list);
+			/* set failed_mom_list: py_vnlist given to py_job so ref count auto incremented */
+			rc = PyObject_SetAttrString(py_job, PY_JOB_FAILED_MOM_LIST, py_failed_node_list);
 			if (rc == -1) {
-				Py_CLEAR(py_node_list);
 				rc = -1;
 				goto event_set_exit;
 			}
-			Py_CLEAR(py_node_list);
 
-			/* set mom_list_good: py_vnlist given to py_job so ref count auto incremented */
-			py_node_list = create_py_strlist_from_svrattrl_names((pbs_list_head *)req_params->mom_list_good);
+			/* set succeeded_mom_list: py_vnlist given to py_job so ref count auto incremented */
+			py_node_list = create_py_strlist_from_svrattrl_names((pbs_list_head *)req_params->succeeded_mom_list);
 			if (py_node_list == NULL) {
 				rc = -1;
 				goto event_set_exit;
 			}
 
 			/* set vnode list: py_vnlist given to py_job so ref count auto incremented */
-			rc = PyObject_SetAttrString(py_job, PY_JOB_MOM_LIST_GOOD, py_node_list);
+			rc = PyObject_SetAttrString(py_job, PY_JOB_SUCCEEDED_MOM_LIST, py_node_list);
 			if (rc == -1) {
-				Py_CLEAR(py_node_list);
 				rc = -1;
 				goto event_set_exit;
 			}
-			Py_CLEAR(py_node_list);
 		}
 
 	} else if (hook_event == HOOK_EVENT_EXECJOB_LAUNCH) {
@@ -5590,7 +5585,6 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 			goto event_set_exit;
 		}
 
-		/* SET VNODELIST param */
 		py_vnodelist = \
 			   create_hook_vnode_list_param(py_event_param,
 					PY_TYPE_EVENT, PY_EVENT_PARAM_VNODELIST,
@@ -5601,8 +5595,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 			goto event_set_exit;
 		}
 
-		/* SET VNODELIST_FAIL param */
-		py_vnodelist_fail = \
+		py_vnodelist_fail =
 			   create_hook_vnode_list_param(py_event_param,
 				PY_TYPE_EVENT, PY_EVENT_PARAM_VNODELIST_FAIL,
 			    	(pbs_list_head *)req_params->vns_list_fail);
@@ -5612,37 +5605,33 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 			goto event_set_exit;
 		}
 
-		/* SET job's mom_list_fail param *vnlist */
-		py_node_list = create_py_strlist_from_svrattrl_names((pbs_list_head *)req_params->mom_list_fail);
+		/* SET job's failed_mom_list param *vnlist */
+		py_failed_node_list = create_py_strlist_from_svrattrl_names((pbs_list_head *)req_params->failed_mom_list);
+		if (py_failed_node_list == NULL) {
+			rc = -1;
+			goto event_set_exit;
+		}
+
+		/* set failed_mom_list: py_failed_node_list given to py_job so ref count auto incremented */
+		rc = PyObject_SetAttrString(py_job, PY_JOB_FAILED_MOM_LIST, py_failed_node_list);
+		if (rc == -1) {
+			rc = -1;
+			goto event_set_exit;
+		}
+
+		/* SET job's succeeded_mom_list param *vnlist */
+		py_node_list = create_py_strlist_from_svrattrl_names((pbs_list_head *)req_params->succeeded_mom_list);
 		if (py_node_list == NULL) {
 			rc = -1;
 			goto event_set_exit;
 		}
 
-		/* set mom_list_fail: py_node_list given to py_job so ref count auto incremented */
-		rc = PyObject_SetAttrString(py_job, PY_JOB_MOM_LIST_FAIL, py_node_list);
+		/* set succeeded_mom_list: py_node_list given to py_job so ref count auto incremented */
+		rc = PyObject_SetAttrString(py_job, PY_JOB_SUCCEEDED_MOM_LIST, py_node_list);
 		if (rc == -1) {
-			Py_CLEAR(py_node_list);
 			rc = -1;
 			goto event_set_exit;
 		}
-		Py_CLEAR(py_node_list);
-
-		/* SET job's mom_list_good param *vnlist */
-		py_node_list = create_py_strlist_from_svrattrl_names((pbs_list_head *)req_params->mom_list_good);
-		if (py_node_list == NULL) {
-			rc = -1;
-			goto event_set_exit;
-		}
-
-		/* set mom_list_good: py_node_list given to py_job so ref count auto incremented */
-		rc = PyObject_SetAttrString(py_job, PY_JOB_MOM_LIST_GOOD, py_node_list);
-		if (rc == -1) {
-			Py_CLEAR(py_node_list);
-			rc = -1;
-			goto event_set_exit;
-		}
-		Py_CLEAR(py_node_list);
 
 		/* SET PROGNAME param */
 		progname = req_params->progname;
@@ -5735,8 +5724,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 		(hook_event == HOOK_EVENT_EXECHOST_STARTUP)) {
 
 		/* SET VNODELIST param */
-		py_vnodelist = \
-			   create_hook_vnode_list_param(py_event_param,
+		py_vnodelist = create_hook_vnode_list_param(py_event_param,
 				PY_TYPE_EVENT,
 				PY_EVENT_PARAM_VNODELIST,
 			    (pbs_list_head *)req_params->vns_list);
@@ -5841,9 +5829,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 			goto event_set_exit;
 		}
 
-		/* SET VNODELIST param */
-		py_vnodelist = \
-			   create_hook_vnode_list_param(py_event_param,
+		py_vnodelist = create_hook_vnode_list_param(py_event_param,
 				PY_TYPE_EVENT,
 				PY_EVENT_PARAM_VNODELIST,
 			    (pbs_list_head *)req_params->vns_list);
@@ -5896,6 +5882,8 @@ event_set_exit:
 	Py_CLEAR(py_varlist_o);
 	Py_CLEAR(py_vnodelist);
 	Py_CLEAR(py_vnodelist_fail);
+	Py_CLEAR(py_failed_node_list);
+	Py_CLEAR(py_node_list);
 	Py_CLEAR(py_resclist);
 	Py_CLEAR(py_exec_vnode);
 	Py_CLEAR(py_vnode);
@@ -5922,7 +5910,7 @@ _pbs_python_event_unset(void)
  *	data taken from the individual vnodes in event parameter
  *	'vnodelist_name'.
  * @param[in]	vnodelist_name  - name of vnode_list[] in pbs.event().
- * @param[in/out] vnlist 	- the pbs list to populate.
+ * @param[in,out] vnlist 	- the pbs list to populate.
  *
  * @return int
  * @retval 0	- success
@@ -5978,7 +5966,7 @@ populate_svrattrl_from_vnodelist_param(char *vnodelist_name,
 	}
 
 	num_attrs = PyList_Size(py_attr_keys);
-	for (i=0; i < num_attrs; i++) {
+	for (i = 0; i < num_attrs; i++) {
 
 		key_str = strdup(pbs_python_list_get_item_string_value(py_attr_keys, i));
 		if ((key_str == NULL) || (key_str[0] == '\0')) {
@@ -5989,7 +5977,7 @@ populate_svrattrl_from_vnodelist_param(char *vnodelist_name,
 			continue;
 		}
 
-		py_vnode = PyDict_GetItemString(py_vnlist, key_str); /* borrowed */
+		py_vnode = PyDict_GetItemString(py_vnlist, key_str); /* no need to Py_CLEAR() later since this returns a borrowed reference */
 
 		if (py_vnode == NULL) {
 			snprintf(log_buffer, sizeof(log_buffer)-1,
@@ -6002,14 +5990,13 @@ populate_svrattrl_from_vnodelist_param(char *vnodelist_name,
 			return -1;
 		}
 
-		if (pbs_python_populate_svrattrl_from_python_class(\
+		if (pbs_python_populate_svrattrl_from_python_class(
 			py_vnode, vnlist, key_str, 1) == -1) {
-			snprintf(log_buffer, sizeof(log_buffer)-1,
+			snprintf(log_buffer, sizeof(log_buffer),
 				 "failed to populate svrattrl with key '%s' value", key_str);
 			log_err(PBSE_INTERNAL, __func__, log_buffer);
 			Py_CLEAR(py_attr_keys);
 			free(key_str);
-			key_str = NULL;
 			return -1;
 		}
 		free(key_str);
@@ -7199,8 +7186,8 @@ pbsv1mod_meth_is_attrib_val_settable(PyObject *self, PyObject *args, PyObject *k
 				pbs_python_types_table[PP_RESC_IDX].t_class) &&
 				!PyObject_IsInstance(py_owner,
 				pbs_python_types_table[PP_VNODE_IDX].t_class)) {
-				snprintf(log_buffer, LOG_BUF_SIZE-1,
-					"Can only set progname, argv, env event parameters as well as job, resource, vnode under %s hook.", "execjob_launch");
+				snprintf(log_buffer, LOG_BUF_SIZE,
+					"Can only set progname, argv, env event parameters as well as job, resource, vnode under %s hook.", HOOKSTR_EXECJOB_LAUNCH);
 				log_buffer[LOG_BUF_SIZE-1] = '\0';
 				PyErr_SetString(PyExc_AssertionError, log_buffer);
 				goto IAVS_ERROR_EXIT;
@@ -11580,7 +11567,7 @@ pbsv1mod_meth_release_nodes(PyObject *self, PyObject *args, PyObject *kwds)
 	PyObject *py_nodes = (PyObject *) NULL;
 	PyObject *py_attr_hookset_dict = (PyObject *)NULL;
 	PyObject *py_attr_hookset_dict0 = (PyObject *)NULL;
-	PyObject *py_attr_keys = NULL;
+	PyObject *py_attr_keys = (PyObject *)NULL;
 	char	*vnodelist = NULL;
 	int	vnodelist_sz = 0;
 
@@ -11596,8 +11583,8 @@ pbsv1mod_meth_release_nodes(PyObject *self, PyObject *args, PyObject *kwds)
 	char	*exechost2 = NULL;
 	char	*schedselect = NULL;
 	pbs_list_head	exec_vnode_list;
-	pbs_list_head	mom_list_fail;
-	pbs_list_head	mom_list_good;
+	pbs_list_head	failed_mom_list;
+	pbs_list_head	succeeded_mom_list;
 	vnl_t	*failed_vnodes = NULL;
 	vnl_t	*good_vnodes = NULL;
 	char	*new_exec_vnode = NULL;
@@ -11608,24 +11595,17 @@ pbsv1mod_meth_release_nodes(PyObject *self, PyObject *args, PyObject *kwds)
 	PyObject *py_return = Py_None;
 	int	hook_set_mode_orig;
 	char	*jobid = NULL;
-	char	err_msg[LOG_BUF_SIZE];
+	char	err_msg[LOG_BUF_SIZE] = {'\0'};
 
 	hook_set_mode_orig = hook_set_mode;
 
 	CLEAR_HEAD(exec_vnode_list);
-	CLEAR_HEAD(mom_list_good);
-	CLEAR_HEAD(mom_list_fail);
+	CLEAR_HEAD(succeeded_mom_list);
+	CLEAR_HEAD(failed_mom_list);
+	memset(log_buffer, '\0', LOG_BUF_SIZE);
 
-	memset((char *)log_buffer, '\0', LOG_BUF_SIZE);
-
-	if (!PyArg_ParseTupleAndKeywords(args, kwds,
-		"OOO:release_nodes",
-		kwlist,
-		&py_job,
-		&py_nodes_list,
-		&py_keep_select
-		)
-		) {
+	if (!PyArg_ParseTupleAndKeywords(args, kwds, "OOO:release_nodes",
+		kwlist, &py_job, &py_nodes_list, &py_keep_select)) {
 		log_err(-1, __func__, "PyArg_ParseTupleAndKeywords failed!");
 		goto release_nodes_exit;
 	}
@@ -11636,7 +11616,7 @@ pbsv1mod_meth_release_nodes(PyObject *self, PyObject *args, PyObject *kwds)
 		char	*vn_name;
 
 		if (!PyDict_Check(py_nodes_list)) {
-			log_err(PBSE_INTERNAL, __func__, "nodes_list is not a dictionary!");
+			log_err(PBSE_INTERNAL, __func__, "nodes_list is not a dictionary");
 			goto release_nodes_exit;
 		}
 
@@ -11648,7 +11628,7 @@ pbsv1mod_meth_release_nodes(PyObject *self, PyObject *args, PyObject *kwds)
 		}
 
 		if (!PyList_Check(py_attr_keys)) {
-			log_err(PBSE_INTERNAL, __func__, "nodes_list's key is not a list");
+			log_err(PBSE_INTERNAL, __func__, "nodes_list key is not a list");
 			Py_CLEAR(py_attr_keys);
 			goto release_nodes_exit;
 		}
@@ -11656,8 +11636,7 @@ pbsv1mod_meth_release_nodes(PyObject *self, PyObject *args, PyObject *kwds)
 		vnodelist_sz = HOOK_BUF_SIZE;
 		vnodelist = (char *)malloc(vnodelist_sz);
 		if (vnodelist == NULL) {
-			snprintf(log_buffer, LOG_BUF_SIZE-1, "malloc failure (errno %d)", errno);
-			log_err(PBSE_SYSTEM, __func__, log_buffer);
+			log_err(errno, __func__, "malloc failure");
 			goto release_nodes_exit;
 		}
 	
@@ -11674,16 +11653,14 @@ pbsv1mod_meth_release_nodes(PyObject *self, PyObject *args, PyObject *kwds)
 
 			if (vnodelist[0] != '\0') {
 				if (pbs_strcat(&vnodelist, &vnodelist_sz, "+") == NULL) {
-					snprintf(log_buffer, LOG_BUF_SIZE-1, "pbs_strcat failure (errno %d)", errno);
-					log_err(PBSE_SYSTEM, __func__, log_buffer);
+					log_err(errno, __func__, "pbs_strcat failure");
 					free(vn_name);
 					goto release_nodes_exit;
 				}
 			}
 		
 			if (pbs_strcat(&vnodelist, &vnodelist_sz, vn_name) == NULL) {
-				snprintf(log_buffer, LOG_BUF_SIZE-1, "pbs_strcat failure (errno %d)", errno);
-				log_err(PBSE_SYSTEM, __func__, log_buffer);
+				log_err(errno, __func__, "pbs_strcat failure");
 				free(vn_name);
 				goto release_nodes_exit;
 			}
@@ -11697,20 +11674,20 @@ pbsv1mod_meth_release_nodes(PyObject *self, PyObject *args, PyObject *kwds)
 			log_err(-1, __func__, "empty keep_select value");
 			goto release_nodes_exit;
 		}
-		/* keep_select */
+		/* release nodes in such a way that 'keep_select' request is satisfied */
 		keep_select = strdup(str);
 		if (keep_select == NULL) {
 			log_err(-1, __func__, "strdup keep_select failed");
 			goto release_nodes_exit;
 		}
 	
-		/* populate mom_list_fail */
-		if (PyObject_HasAttrString(py_job, PY_JOB_MOM_LIST_FAIL)) {
-			py_nodes = PyObject_GetAttrString(py_job, PY_JOB_MOM_LIST_FAIL);
+		/* populate failed_mom_list used to decide which nodes to release */
+		if (PyObject_HasAttrString(py_job, PY_JOB_FAILED_MOM_LIST)) {
+			py_nodes = PyObject_GetAttrString(py_job, PY_JOB_FAILED_MOM_LIST);
 			if (py_nodes != NULL) {
 				if (PyList_Check(py_nodes)) {
-					if (py_strlist_to_reliable_job_node_list(py_nodes, &mom_list_fail) == -1) {
-						snprintf(log_buffer, LOG_BUF_SIZE-1, "%s: Failed to dump Python string list values into a svrattrl list!", PY_JOB_MOM_LIST_FAIL);
+					if (py_strlist_to_reliable_job_node_list(py_nodes, &failed_mom_list) == -1) {
+						snprintf(log_buffer, LOG_BUF_SIZE-1, "%s: Failed to dump Python string list values into a svrattrl list!", PY_JOB_FAILED_MOM_LIST);
 						log_err(PBSE_INTERNAL, __func__, log_buffer);
 						goto release_nodes_exit;
 					}
@@ -11719,14 +11696,14 @@ pbsv1mod_meth_release_nodes(PyObject *self, PyObject *args, PyObject *kwds)
 			}
 		}
 
-		/* populate mom_list_good */
-		if (PyObject_HasAttrString(py_job, PY_JOB_MOM_LIST_GOOD)) {
-			py_nodes = PyObject_GetAttrString(py_job, PY_JOB_MOM_LIST_GOOD); /* NEW */
+		/* populate succeeded_mom_list used to decide which nodes to keep */
+		if (PyObject_HasAttrString(py_job, PY_JOB_SUCCEEDED_MOM_LIST)) {
+			py_nodes = PyObject_GetAttrString(py_job, PY_JOB_SUCCEEDED_MOM_LIST); /* NEW */
 	
 			if (py_nodes != NULL) {
 				if (PyList_Check(py_nodes)) {
-					if (py_strlist_to_reliable_job_node_list(py_nodes, &mom_list_good) == -1) {
-						snprintf(log_buffer, sizeof(log_buffer), "%s: Failed to dump Python string list values into a svrattrl list!", PY_JOB_MOM_LIST_GOOD);
+					if (py_strlist_to_reliable_job_node_list(py_nodes, &succeeded_mom_list) == -1) {
+						snprintf(log_buffer, sizeof(log_buffer), "%s: Failed to dump Python string list values into a svrattrl list!", PY_JOB_SUCCEEDED_MOM_LIST);
 						log_err(PBSE_INTERNAL, __func__, log_buffer);
 						goto release_nodes_exit;
 					}
@@ -11841,8 +11818,8 @@ pbsv1mod_meth_release_nodes(PyObject *self, PyObject *args, PyObject *kwds)
 	} else if (keep_select != NULL) {
 		relnodes_input_select_init(&r_input_select);
 		r_input_select.select_str = keep_select;
-		r_input_select.mom_list_fail = &mom_list_fail;
-		r_input_select.mom_list_good = &mom_list_good;
+		r_input_select.failed_mom_list = &failed_mom_list;
+		r_input_select.succeeded_mom_list = &succeeded_mom_list;
 		r_input_select.failed_vnodes = (void **)&failed_vnodes;
 		r_input_select.good_vnodes = (void **)&good_vnodes;
 		rc = pbs_release_nodes_given_select(&r_input, &r_input_select, err_msg, LOG_BUF_SIZE);
@@ -11959,8 +11936,8 @@ release_nodes_exit:
 	free(schedselect);
 	free_attrlist(&exec_vnode_list);
 	Py_CLEAR(py_nodes);
-	reliable_job_node_free(&mom_list_fail);
-	reliable_job_node_free(&mom_list_good);
+	reliable_job_node_free(&failed_mom_list);
+	reliable_job_node_free(&succeeded_mom_list);
 	free(new_exec_vnode);
 	free(new_exec_host);
 	free(new_exec_host2);

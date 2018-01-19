@@ -313,7 +313,7 @@ typedef struct resc_limit {		/* per node limits for Mom	*/
 	int	  h_chunkstr_sz;	/* size of h_chunksz */
 	char	  *h2_chunkstr;		/* chunk representing exec_host2  */
 	int	  h2_chunkstr_sz;	/* size of h2_chunkstr */
-} resc_limit;
+} resc_limit_t;
 
 /*
  * The "definations" for the job attributes are in the following array,
@@ -370,7 +370,7 @@ typedef	struct	hnodent {
 	int		hn_nprocs;	/* num procs allocated to this node */
 	int		hn_vlnum;	/* num entries in vlist */
 	host_vlist_t   *hn_vlist;	/* list of vnodes allocated */
-	resc_limit	hn_nrlimit;	/* resc limits per node */
+	resc_limit_t	hn_nrlimit;	/* resc limits per node */
 	void	       *hn_setup;	/* save any setup info here */
 	pbs_list_head	hn_events;	/* pointer to list of events */
 } hnodent;
@@ -558,16 +558,14 @@ struct job {
 	int		ji_numnodes;	/* number of nodes (at least 1) */
 	int		ji_numrescs;	/* number of entries in ji_resources*/
 	int		ji_numvnod;	/* number of virtual nodes */
-	int		ji_numvnod0;	/* number of entries in ji_vnods0 */
 	int		ji_num_assn_vnodes;	/* number of virtual nodes (full count) */
 	tm_event_t	ji_obit;	/* event for end-of-job */
 	hnodent	       *ji_hosts;	/* ptr to job host management stuff */
 	vmpiprocs      *ji_vnods;	/* ptr to job vnode management stuff */
-	vmpiprocs      *ji_vnods0;	/* ptr to 0 cpu assigned vnodes (for hooks) */
 	noderes	       *ji_resources;	/* ptr to array of node resources */
 	vmpiprocs      *ji_assn_vnodes;	/* ptr to actual assigned vnodes (for hooks) */
 	pbs_list_head   ji_tasks;	/* list of task structs */
-	pbs_list_head	ji_node_list_fail;
+	pbs_list_head	ji_failed_node_list;
 					/* list of mom nodes which fail to join job
 					 * due to hook rejection, hook error,
 					 * hook alarm, or communication failure.
@@ -1021,7 +1019,6 @@ task_find	(job		*pjob,
 #define JOB_SUBSTATE_BEGUN	70	/* Array job has begun */
 #define JOB_SUBSTATE_PROVISION	71	/* job is waiting for provisioning tocomplete */
 #define JOB_SUBSTATE_WAITING_JOIN_JOB 72   /* job waiting on IM_JOIN_JOB completion */
-#define JOB_SUBSTATE_COMPLETED_JOIN_JOB 73 /* job completed IM_JOIN_JOB request */
 
 /*
  * Job sub-states defined in PBS to support history jobs and OGF-BES model:
@@ -1132,9 +1129,9 @@ extern int   uniq_nameANDfile(char*, char*, char*);
 extern long  determine_accruetype(job *);
 extern int   update_eligible_time(long, job *);
 
-#define	ALL_NODE_FAILURES	"all"
-#define	JOB_START_NODE_FAILURES	"job_start"
-#define	NO_NODE_FAILURES	"none"
+#define	TOLERATE_NODE_FAILURES_ALL	"all"
+#define	TOLERATE_NODE_FAILURES_JOB_START	"job_start"
+#define	TOLERATE_NODE_FAILURES_NONE	"none"
 extern int   do_tolerate_node_failures(job *);
 
 /*

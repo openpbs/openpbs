@@ -338,17 +338,15 @@ job_alloc(void)
 
 #ifdef	PBS_MOM
 	CLEAR_HEAD(pj->ji_tasks);
-	CLEAR_HEAD(pj->ji_node_list_fail);
+	CLEAR_HEAD(pj->ji_failed_node_list);
 	CLEAR_HEAD(pj->ji_node_list);
 	pj->ji_taskid = TM_INIT_TASK;
 	pj->ji_numnodes = 0;
 	pj->ji_numrescs = 0;
 	pj->ji_numvnod  = 0;
-	pj->ji_numvnod0  = 0;
 	pj->ji_num_assn_vnodes  = 0;
 	pj->ji_hosts = NULL;
 	pj->ji_vnods = NULL;
-	pj->ji_vnods0 = NULL;
 	pj->ji_assn_vnodes = NULL;
 	pj->ji_resources = NULL;
 	pj->ji_obit = TM_NULL_EVENT;
@@ -587,7 +585,7 @@ job_free(job *pj)
 		pj->ji_resources = NULL;
 	}
 
-	reliable_job_node_free(&pj->ji_node_list_fail);
+	reliable_job_node_free(&pj->ji_failed_node_list);
 	reliable_job_node_free(&pj->ji_node_list);
 
 	/*
@@ -1316,13 +1314,12 @@ int
 do_tolerate_node_failures(job *pjob)
 {
 
-	if (pjob == NULL) {
+	if (pjob == NULL)
 		return (0);
-	}
 
 	if ((pjob->ji_wattr[(int)JOB_ATR_tolerate_node_failures].at_flags & ATR_VFLAG_SET) &&
-	   ((strcmp(pjob->ji_wattr[(int)JOB_ATR_tolerate_node_failures].at_val.at_str, ALL_NODE_FAILURES) == 0) ||
-	   ((strcmp(pjob->ji_wattr[(int)JOB_ATR_tolerate_node_failures].at_val.at_str, JOB_START_NODE_FAILURES) == 0) &&
+	   ((strcmp(pjob->ji_wattr[(int)JOB_ATR_tolerate_node_failures].at_val.at_str, TOLERATE_NODE_FAILURES_ALL) == 0) ||
+	   ((strcmp(pjob->ji_wattr[(int)JOB_ATR_tolerate_node_failures].at_val.at_str, TOLERATE_NODE_FAILURES_JOB_START) == 0) &&
 	    pjob->ji_qs.ji_substate != JOB_SUBSTATE_RUNNING))) {
 		return (1);
 	}

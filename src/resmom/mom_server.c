@@ -687,8 +687,8 @@ err:
  *			  This 'vnl' is saved internally inside
  *			  hook_requests_to_server(), to be freed later in
  *			  is_request() under IS_HOOK_ACTION_ACK request
- *			  on an IS_UPDATE_FROM_HOOK/IS_UPDATE_FROM_HOOk2
- *			   acknowledgement.
+ *			  on an IS_UPDATE_FROM_HOOK/IS_UPDATE_FROM_HOOK2
+ *			  acknowledgement.
  * @return	int
  * 		DIS_SUCCESS	- for successful operations.
  * 		!= DIS_SUCCESS	- for failure encountered

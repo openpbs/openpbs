@@ -79,6 +79,7 @@
 #include "net_connect.h"
 #include "mom_hook_func.h"
 #include "hook.h"
+#include "pbs_reliable.h"
 
 
 #define	RESCASSN_NCPUS	"resources_assigned.ncpus"
@@ -685,8 +686,8 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 	struct	work_task *ptask;
 	vnl_t		*vnl = NULL;
 	vnl_t		*vnl_fail = NULL;
-	pbs_list_head	*mom_list_fail = NULL;
-	pbs_list_head	*mom_list_good = NULL;
+	pbs_list_head	*failed_mom_list = NULL;
+	pbs_list_head	*succeeded_mom_list = NULL;
 	vnl_t		*nv = NULL;
 	int		vnl_created = 0;
 	job		*pjob = NULL;
@@ -763,8 +764,8 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 			    (event_type == HOOK_EVENT_EXECJOB_PROLOGUE)) {
 				vnl = (vnl_t *)hook_input->vnl;
 				vnl_fail = (vnl_t *)hook_input->vnl_fail;
-				mom_list_fail = (pbs_list_head *)hook_input->mom_list_fail;
-				mom_list_good = (pbs_list_head *)hook_input->mom_list_good;
+				failed_mom_list = (pbs_list_head *)hook_input->failed_mom_list;
+				succeeded_mom_list = (pbs_list_head *)hook_input->succeeded_mom_list;
 			}
 			break;
 		case HOOK_EVENT_EXECHOST_PERIODIC:
@@ -1209,18 +1210,18 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 				  EVENT_VNODELIST_FAIL_OBJECT, vnl_fail);
 			}
 
-			if (mom_list_fail != NULL) {
-				rjn = (reliable_job_node *)GET_NEXT(*mom_list_fail);
+			if (failed_mom_list != NULL) {
+				rjn = (reliable_job_node *)GET_NEXT(*failed_mom_list);
 				while (rjn) {
-					fprintf(fp,  "%s=%s\n", JOB_MOM_LIST_FAIL_OBJECT, rjn->rjn_host);
+					fprintf(fp,  "%s=%s\n", JOB_FAILED_MOM_LIST_OBJECT, rjn->rjn_host);
 					rjn = (reliable_job_node *)GET_NEXT(rjn->rjn_link);
 				}
 			}
 
-			if (mom_list_good != NULL) {
-				rjn = (reliable_job_node *)GET_NEXT(*mom_list_good);
+			if (succeeded_mom_list != NULL) {
+				rjn = (reliable_job_node *)GET_NEXT(*succeeded_mom_list);
 				while (rjn) {
-					fprintf(fp,  "%s=%s\n", JOB_MOM_LIST_GOOD_OBJECT, rjn->rjn_host);
+					fprintf(fp,  "%s=%s\n", JOB_SUCCEEDED_MOM_LIST_OBJECT, rjn->rjn_host);
 					rjn = (reliable_job_node *)GET_NEXT(rjn->rjn_link);
 				}
 			}
@@ -2492,17 +2493,17 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 		      (strncmp(obj_name, EVENT_VNODELIST_OBJECT,
 					vn_obj_len) == 0)) {
 
-			int	*start_new_vnl0;
-			vnl_t	**hvnlp0 = NULL;
+			int	*start_new_vnl_tmp;
+			vnl_t	**hvnlp_tmp = NULL;
 		
 			if (strncmp(obj_name,
 				EVENT_VNODELIST_FAIL_OBJECT,
 					vn_fail_obj_len) == 0) {
-				start_new_vnl0 = &start_new_vnl_fail;
-				hvnlp0 = &hvnlp_fail;
+				start_new_vnl_tmp = &start_new_vnl_fail;
+				hvnlp_tmp = &hvnlp_fail;
 			} else {
-				start_new_vnl0 = &start_new_vnl;
-				hvnlp0 = &hvnlp;
+				start_new_vnl_tmp = &start_new_vnl;
+				hvnlp_tmp = &hvnlp;
 			}
 
 			/* NOTE: obj_name here is: pbs.event().vnode_list[<vname>] */
@@ -2558,8 +2559,8 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 				}
 			}
 
-			if (*start_new_vnl0) {
-				*start_new_vnl0 = 0;
+			if (*start_new_vnl_tmp) {
+				*start_new_vnl_tmp = 0;
 				/* now add new hook_vnl_action structure to */
 				/* the list of such to return for updating  */
 				/* the Server                               */
@@ -2570,21 +2571,22 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 					pvna->hva_actid = 0;
 					pvna->hva_vnl   = NULL;
 					pvna->hva_update_cmd = IS_UPDATE_FROM_HOOK;
-					if (do_tolerate_node_failures(pjob))
+					if (strncmp(obj_name, EVENT_VNODELIST_FAIL_OBJECT, vn_fail_obj_len) == 0) {
 						pvna->hva_update_cmd = IS_UPDATE_FROM_HOOK2;
-					if (vnl_alloc(hvnlp0) == NULL) {
+					}
+					if (vnl_alloc(hvnlp_tmp) == NULL) {
 						log_err(errno, __func__, "Failed to allocate hvnlp");
 					} else {
-						pvna->hva_vnl = *hvnlp0;
+						pvna->hva_vnl = *hvnlp_tmp;
 						append_link(pvnalist,
 							&pvna->hva_link, pvna);
 					}
 				} else {
 					log_err(errno, __func__, "Failed to allocate hook action");
 				}
-				if ((copy_file == 0) && (*hvnlp0 != NULL)) {
+				if ((copy_file == 0) && (*hvnlp_tmp != NULL)) {
 					/* add a entry to the vnl for the user */
-					rc=vn_addvnr(*hvnlp0, mom_short_name,
+					rc=vn_addvnr(*hvnlp_tmp, mom_short_name,
 						      VNATTR_HOOK_REQUESTOR,
 						      hook_euser,
 						      ATR_TYPE_STR, READ_ONLY,
@@ -2599,7 +2601,7 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 				}
 			}
 			rc = -1;
-			if (*hvnlp0) {
+			if (*hvnlp_tmp) {
 				char *p2;
 				resource_def *prdef;
 				unsigned int at_type;
@@ -2638,7 +2640,7 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 				} else {
 					at_type =  ATR_TYPE_STR;
 				}
-				rc=vn_addvnr(*hvnlp0, vname_str, name_str,
+				rc=vn_addvnr(*hvnlp_tmp, vname_str, name_str,
 					data_value, at_type, rs_flag, NULL);
 				if (rc == -1) {
 					snprintf(log_buffer, sizeof(log_buffer),
@@ -3444,7 +3446,7 @@ mom_process_hooks(unsigned int hook_event, char *req_user, char *req_host,
 
 
 				update_ajob_status_using_cmd(pjob,
-					IS_RESCUSED_FROM_HOOK, 1);
+					IS_RESCUSED_FROM_HOOK, 0);
 			}
 
 			/* Push vnl hook changes to server */
@@ -3716,8 +3718,8 @@ mom_hook_input_init(mom_hook_input_t *hook_input)
 	hook_input->env = NULL;
 	hook_input->vnl = NULL;
 	hook_input->vnl_fail = NULL;
-	hook_input->mom_list_fail = NULL;
-	hook_input->mom_list_good = NULL;
+	hook_input->failed_mom_list = NULL;
+	hook_input->succeeded_mom_list = NULL;
 	hook_input->jobs_list = NULL;
 }
 

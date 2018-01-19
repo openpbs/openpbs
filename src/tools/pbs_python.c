@@ -1044,8 +1044,8 @@ return_internal_value(char *name, char *val)
  * 			             		Caution: svrattrl values stored in sorted order
  * @param[in] event_vnode_fail_svrattrl -	gets <attribute_name>=EVENT_VNODELIST_FAIL_OBJECT data
  * 			             		Caution: svrattrl values stored in sorted order
- * @param[in] job_mom_list_fail_svrattrl -	gets <attribute_name>=JOB_MOM_LIST_FAIL_OBJECT data
- * @param[in] job_mom_list_good_svrattrl -	gets <attribute_name>=JOB_MOM_LIST_GOOD_OBJECT data
+ * @param[in] job_failed_mom_list_svrattrl -	gets <attribute_name>=JOB_FAILED_MOM_LIST_OBJECT data
+ * @param[in] job_succeeded_mom_list_svrattrl -	gets <attribute_name>=JOB_SUCCEEDED_MOM_LIST_OBJECT data
  * @param[in]	event_src_queue_svrattrl	-	gets <attribute_name>=EVENT_SRC_QUEUE_OBJECT data
  * @param[in]	event_aoe_svrattrl	-	gets <attribute_name=EVENT_AOE_OBJECT data
  * @param[in]	event_argv_svrattrl	-	gets <attribute_name=EVENT_ARGV_OBJECT data
@@ -1064,8 +1064,8 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 	pbs_list_head *event_job_svrattrl, pbs_list_head *event_job_o_svrattrl,
 	pbs_list_head *event_resv_svrattrl, pbs_list_head *event_vnode_svrattrl,
 	pbs_list_head *event_vnode_fail_svrattrl,
-	pbs_list_head *job_mom_list_fail_svrattrl,
-	pbs_list_head *job_mom_list_good_svrattrl,
+	pbs_list_head *job_failed_mom_list_svrattrl,
+	pbs_list_head *job_succeeded_mom_list_svrattrl,
 	pbs_list_head *event_src_queue_svrattrl, pbs_list_head *event_aoe_svrattrl,
 	pbs_list_head *event_argv_svrattrl, pbs_list_head *event_jobs_svrattrl)
 {
@@ -1098,10 +1098,10 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 		(event_resv_svrattrl == NULL) || (event_vnode_svrattrl == NULL) ||
 		(event_src_queue_svrattrl == NULL) || (event_aoe_svrattrl == NULL) ||
 		(event_argv_svrattrl == NULL) || (event_vnode_fail_svrattrl == NULL) ||
-		(job_mom_list_fail_svrattrl == NULL) ||
-		(job_mom_list_good_svrattrl == NULL) ||
+		(job_failed_mom_list_svrattrl == NULL) ||
+		(job_succeeded_mom_list_svrattrl == NULL) ||
 		(event_jobs_svrattrl == NULL)) {
-		log_err(errno, __func__, "Bad input parameter!");
+		log_err(-1, __func__, "Bad input parameter!");
 		rc = -1;
 		goto populate_svrattrl_fail;
 	}
@@ -1127,8 +1127,8 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 	if (event_resv_svrattrl) free_attrlist(event_resv_svrattrl);
 	if (event_vnode_svrattrl) free_attrlist(event_vnode_svrattrl);
 	if (event_vnode_fail_svrattrl) free_attrlist(event_vnode_fail_svrattrl);
-	if (job_mom_list_fail_svrattrl) free_attrlist(job_mom_list_fail_svrattrl);
-	if (job_mom_list_good_svrattrl) free_attrlist(job_mom_list_good_svrattrl);
+	if (job_failed_mom_list_svrattrl) free_attrlist(job_failed_mom_list_svrattrl);
+	if (job_succeeded_mom_list_svrattrl) free_attrlist(job_succeeded_mom_list_svrattrl);
 	if (event_src_queue_svrattrl) free_attrlist(event_src_queue_svrattrl);
 	if (event_aoe_svrattrl) free_attrlist(event_aoe_svrattrl);
 	if (event_argv_svrattrl) free_attrlist(event_argv_svrattrl);
@@ -1320,15 +1320,15 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 					if (event_svrattrl)
 						rc = add_to_svrattrl_list(event_svrattrl, name_str, resc_str, val_str, 0, NULL);
 				}
-			} else if( event_job_svrattrl &&
+			} else if (event_job_svrattrl &&
 			(strcmp(obj_name, EVENT_JOB_OBJECT) == 0) ) {
-				if (strcmp(name_str, PY_JOB_MOM_LIST_FAIL) == 0) {
-					if (job_mom_list_fail_svrattrl) {
-						rc = add_to_svrattrl_list(job_mom_list_fail_svrattrl, val_str, NULL, NULL, 0, NULL);
+				if (strcmp(name_str, PY_JOB_FAILED_MOM_LIST) == 0) {
+					if (job_failed_mom_list_svrattrl) {
+						rc = add_to_svrattrl_list(job_failed_mom_list_svrattrl, val_str, NULL, NULL, 0, NULL);
 					}
-				} else if (strcmp(name_str, PY_JOB_MOM_LIST_GOOD) == 0) {
-					if (job_mom_list_good_svrattrl) {
-						rc = add_to_svrattrl_list(job_mom_list_good_svrattrl, val_str, NULL, NULL, 0, NULL);
+				} else if (strcmp(name_str, PY_JOB_SUCCEEDED_MOM_LIST) == 0) {
+					if (job_succeeded_mom_list_svrattrl) {
+						rc = add_to_svrattrl_list(job_succeeded_mom_list_svrattrl, val_str, NULL, NULL, 0, NULL);
 					}
 				} else {
 					rc = add_to_svrattrl_list(event_job_svrattrl, name_str, resc_str, val_str, 0, NULL);
@@ -1409,29 +1409,13 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 					in_data[0] = '\0';
 					continue;
 				}
-				if (strncmp(obj_name,
-					EVENT_VNODELIST_FAIL_OBJECT,
-					vn_fail_obj_len) == 0) { 
-					rc = \
-					  add_to_svrattrl_list_sorted(\
-					     event_vnode_fail_svrattrl,
-						name_str, resc_str,
-						return_internal_value(\
-						attr_name, val_str), 0,
-								 NULL);
+				if (strncmp(obj_name, EVENT_VNODELIST_FAIL_OBJECT, vn_fail_obj_len) == 0) { 
+					rc = add_to_svrattrl_list_sorted(event_vnode_fail_svrattrl, name_str, resc_str, return_internal_value(attr_name, val_str), 0, NULL);
 				} else {
-					rc = \
-					  add_to_svrattrl_list_sorted(\
-						event_vnode_svrattrl,
-						name_str, resc_str,
-						return_internal_value(\
-						attr_name, val_str), 0,
-								 NULL);
+					rc = add_to_svrattrl_list_sorted(event_vnode_svrattrl, name_str, resc_str, return_internal_value(attr_name, val_str), 0, NULL);
 				}
 
-			} else if( event_jobs_svrattrl && \
-			(strncmp(obj_name, EVENT_JOBLIST_OBJECT,
-				job_obj_len) == 0)) {
+			} else if( event_jobs_svrattrl && (strncmp(obj_name, EVENT_JOBLIST_OBJECT, job_obj_len) == 0)) {
 
 				/* pbs.event().job_list[<jobid>]\0<attribute name>\0<resource name>\0<value>
 				 * where obj_name = pbs.event().job_list[<jobid>]
@@ -1492,12 +1476,10 @@ pbs_python_populate_svrattrl_from_file(char *input_file,
 				}
 				rc = add_to_svrattrl_list_sorted(event_jobs_svrattrl,
 					name_str, resc_str, val_str, 0, NULL);
-			} else if( event_src_queue_svrattrl && \
-			(strcmp(obj_name, EVENT_SRC_QUEUE_OBJECT) == 0) ) {
+			} else if( event_src_queue_svrattrl && (strcmp(obj_name, EVENT_SRC_QUEUE_OBJECT) == 0) ) {
 				rc = add_to_svrattrl_list(event_src_queue_svrattrl,
 					name_str, resc_str, val_str, 0, NULL);
-			} else if( event_aoe_svrattrl && \
-			 (strcmp(obj_name, EVENT_AOE_OBJECT) == 0) ) {
+			} else if( event_aoe_svrattrl && (strcmp(obj_name, EVENT_AOE_OBJECT) == 0) ) {
 				rc = add_to_svrattrl_list(event_aoe_svrattrl, name_str,
 					resc_str, val_str, 0, NULL);
 			} else if ((strcmp(obj_name, PBS_OBJ) == 0) &&
@@ -2405,7 +2387,6 @@ main(int argc, char *argv[], char *envp[])
 
 	/*the real deal or output pbs_version and exit?*/
 	execution_mode(argc, argv);
-
 	if (pbs_loadconf(0) == 0) {
 		fprintf(stderr, "Failed to load pbs.conf!\n");
 		return 1;
@@ -2630,7 +2611,7 @@ main(int argc, char *argv[], char *envp[])
 				server_queues, server_queues_names,
 				server_resvs, server_resvs_resvids,
 				server_vnodes, server_vnodes_names,
-				job_mom_list_fail, job_mom_list_good;
+				job_failed_mom_list, job_succeeded_mom_list;
 		svrattrl *svrattrl_e;
 		FILE	 *fp_out = NULL;
 		FILE	 *fp_server_out = NULL;
@@ -2821,7 +2802,6 @@ main(int argc, char *argv[], char *envp[])
 			exit(1);
 		}
 
-
 		CLEAR_HEAD(default_list);
 		CLEAR_HEAD(event);
 		CLEAR_HEAD(event_job);
@@ -2829,8 +2809,8 @@ main(int argc, char *argv[], char *envp[])
 		CLEAR_HEAD(event_resv);
 		CLEAR_HEAD(event_vnode);
 		CLEAR_HEAD(event_vnode_fail);
-		CLEAR_HEAD(job_mom_list_fail);
-		CLEAR_HEAD(job_mom_list_good);
+		CLEAR_HEAD(job_failed_mom_list);
+		CLEAR_HEAD(job_succeeded_mom_list);
 		CLEAR_HEAD(event_src_queue);
 		CLEAR_HEAD(event_aoe);
 		CLEAR_HEAD(event_argv);
@@ -2839,8 +2819,8 @@ main(int argc, char *argv[], char *envp[])
 		rc = pbs_python_populate_svrattrl_from_file(the_input,
 			&default_list,
 			&event, &event_job, &event_job_o, &event_resv,
-			&event_vnode, &event_vnode_fail, &job_mom_list_fail,
-			&job_mom_list_good, &event_src_queue,
+			&event_vnode, &event_vnode_fail, &job_failed_mom_list,
+			&job_succeeded_mom_list, &event_src_queue,
 			&event_aoe, &event_argv, &event_jobs);
 		if (rc == -1) {
 			fprintf(stderr, "%s: failed to populate svrattrl \n", argv[0]);
@@ -3127,10 +3107,10 @@ main(int argc, char *argv[], char *envp[])
 
 				if (hook_event == HOOK_EVENT_EXECJOB_PROLOGUE) {
 					req_params.vns_list_fail = (pbs_list_head *)&event_vnode_fail;
-					req_params.mom_list_fail = (pbs_list_head *)&job_mom_list_fail;
-					print_svrattrl_list("pbs_python mom_list_fail==>", &job_mom_list_fail);
-					req_params.mom_list_good = (pbs_list_head *)&job_mom_list_good;
-					print_svrattrl_list("pbs_python mom_list_good==>", &job_mom_list_good);
+					req_params.failed_mom_list = (pbs_list_head *)&job_failed_mom_list;
+					print_svrattrl_list("pbs_python failed_mom_list==>", &job_failed_mom_list);
+					req_params.succeeded_mom_list = (pbs_list_head *)&job_succeeded_mom_list;
+					print_svrattrl_list("pbs_python succeeded_mom_list==>", &job_succeeded_mom_list);
 				}
 
 				rc = pbs_python_event_set(hook_event, req_user,
@@ -3163,10 +3143,10 @@ main(int argc, char *argv[], char *envp[])
 				}
 
 				req_params.rq_job = (struct rq_queuejob *)&rqj;
-				req_params.vns_list = (pbs_list_head *)&event_vnode;
-				req_params.vns_list_fail = (pbs_list_head *)&event_vnode_fail;
-				req_params.mom_list_fail = (pbs_list_head *)&job_mom_list_fail;
-				req_params.mom_list_good = (pbs_list_head *)&job_mom_list_good;
+				req_params.vns_list = &event_vnode;
+				req_params.vns_list_fail = &event_vnode_fail;
+				req_params.failed_mom_list = &job_failed_mom_list;
+				req_params.succeeded_mom_list = &job_succeeded_mom_list;
 
 				if ((svrattrl_e=find_svrattrl_list_entry(&event,
 					PY_EVENT_PARAM_PROGNAME, NULL)) != NULL) {
@@ -3552,22 +3532,19 @@ main(int argc, char *argv[], char *envp[])
 					fprintf(fp_out, "%s=%s\n", EVENT_PROGNAME_OBJECT, progname);
 					fprint_svrattrl_list(fp_out, EVENT_OBJECT, &event_argv);
 					fprintf(fp_out, "%s=\"\"\"%s\"\"\"\n", EVENT_ENV_OBJECT, env_str);
-					if (strcmp(progname_orig, progname) != 0) {
+					if (strcmp(progname_orig, progname) != 0)
 						print_progname = 1;
-					}
 
 					argv_str = argv_list_to_str((pbs_list_head *)&event_argv);
 
 					if (((argv_str_orig == NULL) && (argv_str != NULL)) ||
 					    ((argv_str_orig != NULL) && (argv_str == NULL)) ||
 					    ((argv_str_orig != NULL) && (argv_str != NULL) &&
-						(strcmp(argv_str_orig, argv_str) != 0))) {
+						(strcmp(argv_str_orig, argv_str) != 0)))
 						print_argv = 1;
-					}
 
-					if (!varlist_same(env_str_orig, env_str)) {
+					if (!varlist_same(env_str_orig, env_str))
 						print_env = 1;
-					}
 
 					if (print_progname) {
 						snprintf(log_buffer, sizeof(log_buffer), "progname orig: %s",  progname_orig);
@@ -3587,29 +3564,24 @@ main(int argc, char *argv[], char *envp[])
 						snprintf(log_buffer, sizeof(log_buffer), "env new: %s",  env_str);
 						log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_INFO, hook_name, log_buffer);
 					}
-					if (argv_str_orig != NULL)
-						free(argv_str_orig);
-					if (argv_str != NULL)
-						free(argv_str);
+					free(argv_str_orig);
+					free(argv_str);
 					/* Put something here the modified stuff */
 					tmp_str = pbs_python_event_job_getval_hookset(ATTR_execvnode, NULL, 0, NULL, 0);
-					if (tmp_str != NULL) {
+					if (tmp_str != NULL)
 						fprintf(fp_out, "%s.%s=%s\n", EVENT_JOB_OBJECT, ATTR_execvnode, tmp_str);
-					}
 
 					tmp_str = pbs_python_event_job_getval_hookset(ATTR_exechost, NULL, 0, NULL, 0);
-					if (tmp_str != NULL) {
+					if (tmp_str != NULL)
 						fprintf(fp_out, "%s.%s=%s\n", EVENT_JOB_OBJECT, ATTR_exechost, tmp_str);
-					}
+
 					tmp_str = pbs_python_event_job_getval_hookset(ATTR_exechost2, NULL, 0, NULL, 0);
-					if (tmp_str != NULL) {
+					if (tmp_str != NULL)
 						fprintf(fp_out, "%s.%s=%s\n", EVENT_JOB_OBJECT, ATTR_exechost2, tmp_str);
-					}
 
 					tmp_str = pbs_python_event_job_getval_hookset(ATTR_SchedSelect, NULL, 0, NULL, 0);
-					if (tmp_str != NULL) {
+					if (tmp_str != NULL)
 						fprintf(fp_out, "%s.%s=%s\n", EVENT_JOB_OBJECT, ATTR_SchedSelect, tmp_str);
-					}
 				} else if (hook_event == HOOK_EVENT_EXECJOB_PROLOGUE) {
 					fprint_svrattrl_list(fp_out, EVENT_VNODELIST_FAIL_OBJECT, &event_vnode_fail);
 				}

@@ -95,9 +95,9 @@ struct hook_vnl_action {
  * 			that enumerate the list of vnodes and
  * 			their attributes/resources assigned to a
  * 			job, whose parent moms are non-functional.
- * @param[in]	mom_list_fail - a svattrl structure enumerating the
+ * @param[in]	failed_mom_list - a svattrl structure enumerating the
  *			sister mom hosts that have been seen as down.
- * @param[in]	mom_list_good - a svattrl structure enumerating the
+ * @param[in]	succeeded_mom_list - a svattrl structure enumerating the
  *			sister mom hosts that have been seen as up.
  * @param[in]	pid - used by execjob_atttach hook as the
  * 			pbs.event().pid value.
@@ -112,8 +112,8 @@ typedef struct mom_hook_input {
 	char	**env;
 	void	*vnl;
 	void	*vnl_fail;
-	void	*mom_list_fail;
-	void	*mom_list_good;
+	void	*failed_mom_list;
+	void	*succeeded_mom_list;
 	pid_t	pid;
 	pbs_list_head	*jobs_list;
 } mom_hook_input_t;

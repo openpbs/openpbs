@@ -909,13 +909,10 @@ class select(_generic_attr):
         the increment specs described below would apply to the
         chunk after the initial, single chunk "1:ncpus=2".
 
-        if 'increment_spec' is a number (int or long), then it will be
-        the amount to add to the number of chunks spcified for each
-        chunk that is not the first chunk in the pbs.select spec.
-
-        if 'increment_spec' is a numeric string (int or long), then it will
-        also be the amount to add to the number of chunks spcified for
-        each chunk that is not the first chunk in the pbs.select spec.
+        if 'increment_spec' is a number (int or long) or a numeric
+        string,  then it will be the amount to add to the number of
+        chunks spcified for each chunk that is not the first chunk
+        in the pbs.select spec.
 
         if 'increment_spec' is a numeric string that ends with a percent
         sign (%), then this will be the percent amount of chunks to
@@ -976,54 +973,59 @@ class select(_generic_attr):
         increment = None
         percent_inc = None 
         increment_dict = None
-        if isinstance(increment_spec, (int,long)):
+        if isinstance(increment_spec, (int, long)):
             increment = increment_spec
-        elif isinstance(increment_spec, (str,)):
+        elif isinstance(increment_spec, str):
             if increment_spec.endswith('%'): 
                     percent_inc = float(increment_spec[:-1])/100 + 1.0
             else:
                     increment = int(increment_spec)
-        elif isinstance(increment_spec, (dict,)):
+        elif isinstance(increment_spec, dict):
             increment_dict = increment_spec
         else:
             raise ValueError("bad increment specs")
   
         ret_str = ""
-        strl = str(self).split("+")
         i = 0 # index to each chunk in the + separated spec
-        for ch in strl:
+        for chunk in str(self).split("+"):
             if i != 0:  
                 ret_str += '+'
             j = 0 # index to items within a chunk separated by ':'
-            for c in ch.split(":"):
-                c_str = c
+            for subchunk in chunk.split(":"):
+                c_str = subchunk
                 if j == 0:
+                    # given <chunk_ct>:<res1>=<val1>:<res2>=<val2> or
+                    # <res1>=<val1>:<res2>:<val2> (without <chunk_ct>),
+                    # here we're looking at the first field:
+                    # subchunk=<chunk_ct> or subchunk=<res1>=<val1>
                     save_str = None
-                    if not c.isdigit():
-                        c = "1"
+                    if not subchunk.isdigit():
+                        # detected a first field that is not
+                        # a <chunk_ct>, so default to 1 
+                        subchunk = "1"
                         save_str = c_str
-                    ct = int(c)
+                    chunk_ct = int(subchunk)
 
                     if i == 0:
-                        ct -= 1 # don't touch the first chunk which lands in MS
+                        chunk_ct -= 1 # don't touch the first chunk which lands in MS
 
-                    if ct <= 0:
+                    if chunk_ct <= 0:
                         num = 0
                     elif increment:
-                        num = ct + increment
+                        num = chunk_ct + increment
                     elif percent_inc:
-                        num = int(math.ceil(ct * percent_inc))
-                    elif increment_dict and i in increment_dict:
-                        if isinstance(increment_dict[i], (int,long)):
+                        num = int(math.ceil(chunk_ct * percent_inc))
+                    elif increment_dict is not None and i in increment_dict:
+                        if isinstance(increment_dict[i], (int, long)):
                             inc = increment_dict[i]
-                            num = ct + inc
-                        elif isinstance(increment_dict[i], (str,)):
+                            num = chunk_ct + inc
+                        elif isinstance(increment_dict[i], str):
                             if increment_dict[i].endswith('%'):
                                 p_inc = float(increment_dict[i][:-1])/100 + 1.0
-                                num = int(math.ceil(ct * p_inc))
+                                num = int(math.ceil(chunk_ct * p_inc))
                             else:
                                 inc = int(increment_dict[i])
-                                num = ct + inc
+                                num = chunk_ct + inc
                     else:
                         raise ValueError("bad increment specs")
 

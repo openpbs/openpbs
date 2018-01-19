@@ -261,7 +261,7 @@ class _job(object):
         return object.__new__(cls, value)
     
     def __init__(self,id,connect_server=None,
-                 node_list_fail=None, node_list_good=None):
+                 failed_node_list=None, node_list=None):
         """__init__"""
 
         self.id = id
@@ -273,8 +273,8 @@ class _job(object):
         self._msmom = False
         self._stdout_file = None
         self._stderr_file = None
-        self.mom_list_fail = node_list_fail
-        self.mom_list_good = node_list_good
+        self.failed_mom_list = failed_node_list
+        self.succeeded_mom_list = node_list
     #: m(__init__)
 
     def __str__(self):
@@ -353,8 +353,8 @@ class _job(object):
     #: m(release_nodes)
 
 _job.id = PbsAttributeDescriptor(_job, 'id', "",(str,))
-_job.mom_list_fail = PbsAttributeDescriptor(_job, 'mom_list_fail', {},(list,))
-_job.mom_list_good = PbsAttributeDescriptor(_job, 'mom_list_good', {},(list,))
+_job.failed_mom_list = PbsAttributeDescriptor(_job, 'failed_mom_list', {},(list,))
+_job.succeeded_mom_list = PbsAttributeDescriptor(_job, 'succeeded_mom_list', {},(list,))
 _job._connect_server = PbsAttributeDescriptor(_job, '_connect_server', {}, (str,))
 #: C(job)
 

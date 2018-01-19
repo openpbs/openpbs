@@ -2280,16 +2280,14 @@ stat_update(int stream)
 			char		*cur_execvnode = NULL;
 			char		*cur_schedselect = NULL;
 
-			if (pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_flags & ATR_VFLAG_SET) {
+			if (pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_flags & ATR_VFLAG_SET)
 				cur_execvnode = pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_val.at_str;
-			}
 
-			if (pjob->ji_wattr[(int)JOB_ATR_SchedSelect].at_flags & ATR_VFLAG_SET) {
+			if (pjob->ji_wattr[(int)JOB_ATR_SchedSelect].at_flags & ATR_VFLAG_SET)
 				cur_schedselect = pjob->ji_wattr[(int)JOB_ATR_SchedSelect].at_val.at_str;
-			}
 
 			/* update all the attributes sent from Mom */
-			execvnode_entry = find_svrattrl_list_entry(&rused.ru_attr,ATTR_execvnode, NULL);
+			execvnode_entry = find_svrattrl_list_entry(&rused.ru_attr, ATTR_execvnode, NULL);
 			schedselect_entry = find_svrattrl_list_entry(&rused.ru_attr, ATTR_SchedSelect, NULL);
 
 			if ((execvnode_entry != NULL) &&
@@ -2301,8 +2299,7 @@ stat_update(int stream)
 			    (cur_schedselect != NULL) && 
 			    (strcmp(cur_schedselect, schedselect_entry->al_value) != 0)) {
 
-				/* decreements everything found in */
-				/*  exec_vnode */
+				/* decreements everything found in exec_vnode */
 				set_resc_assigned((void *)pjob, 0, DECR);
 				free_nodes(pjob);
 
@@ -3762,12 +3759,7 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 				}
 			}
 		}
-	} else if (from_hook != 2) {
-		/* if coming from UPDATE_FROM_HOOK2, it becomes
-		 * like a qmgr request. So no need to change
-		 * current vnode's parent mom be the incoming node,
-		 * which is what cross_link_mom_node() does.
-		 */
+	} else if (from_hook == 0) {
 		if ((i = cross_link_mom_vnode(pnode, pmom)) != 0) {
 			return (i);
 		}
@@ -3776,7 +3768,7 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 	if (from_hook == 1) {
 
 		/* see if the node already has this Mom listed,if not add her */
-		for (i=0; i<pnode->nd_nummoms; ++i) {
+		for (i = 0; i < pnode->nd_nummoms; ++i) {
 			if (pnode->nd_moms[i] == pmom)
 				pnode_has_mom = 1;
 			break;
@@ -3788,6 +3780,15 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE,
 				LOG_INFO, pmom->mi_host, log_buffer);
 			return (PBSE_BADHOST);
+		}
+
+		/* not done for UPDATE_FROM_HOOK2 (i.e. from_hook == 2)
+		 * as it becomes like a qmgr request. So no need to change
+		 * current vnode's parent mom be the incoming node,
+		 * which is what cross_link_mom_node() does.
+		 */
+		if ((i = cross_link_mom_vnode(pnode, pmom)) != 0) {
+			return (i);
 		}
 	}
 

@@ -2671,7 +2671,7 @@
       <member_at_free>free_str</member_at_free>
       <member_at_action>NULL_FUNC</member_at_action>
       <member_at_flags>
-         <both>READ_WRITE | ATR_DFLAG_SvRD | ATR_DFLAG_Creat | ATR_DFLAG_ALTRUN | ATR_DFLAG_SELEQ |ATR_DFLAG_MOM</both>
+         <both>READ_WRITE | ATR_DFLAG_SvRD | ATR_DFLAG_Creat | ATR_DFLAG_ALTRUN | ATR_DFLAG_SELEQ | ATR_DFLAG_MOM</both>
       </member_at_flags>
       <member_at_type>
          <both>ATR_TYPE_STR</both>
