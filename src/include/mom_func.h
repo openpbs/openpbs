@@ -218,18 +218,14 @@ extern int   run_pelog(int which, char *file, job *pjob, int pe_io_type);
 extern int   is_joined(job *);
 extern void  update_jobs_status(void);
 extern void  update_ajob_status(job *);
-extern void  update_ajob_status_using_cmd(job *, int);
+extern void  update_ajob_status_using_cmd(job *, int, int);
 extern void  calc_cpupercent(job *, unsigned long, unsigned long, time_t);
 extern void  dorestrict_user(void);
 extern int   task_save(pbs_task *ptask);
 extern void send_join_job_restart(int, eventent *, int, job *, pbs_list_head *);
 extern int send_resc_used_to_ms(int stream, char *jobid);
 extern int recv_resc_used_from_sister(int stream, char *jobid, int nodeidx);
-
-
 extern int  is_comm_up(int);
-
-
 
 /* Defines for pe_io_type, see run_pelog() */
 

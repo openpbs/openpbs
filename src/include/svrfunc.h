@@ -226,6 +226,9 @@ extern int   free_sister_vnodes(job *, char *, char *, int, struct batch_request
 extern int   send_job(job *, pbs_net_t, int, int, void (*x)(struct work_task *), struct batch_request *);
 extern int   relay_to_mom(job *, struct batch_request *, void (*)(struct work_task *));
 extern int   relay_to_mom2(job *, struct batch_request *, void (*)(struct work_task *), struct work_task **);
+extern int recreate_exec_vnode(job *, char *, char *, int);
+extern int send_job_exec_update_to_mom(job *, char *, int, struct batch_request *);
+extern int free_sister_vnodes(job *, char *, char *, int, struct batch_request *);
 extern void  indirect_target_check(struct work_task *);
 extern void primary_handshake(struct work_task *);
 extern void secondary_handshake(struct work_task *);
@@ -283,6 +286,7 @@ extern int   is_valid_str_resource(attribute *pattr, void *pobject, int actmode)
 extern int   setup_arrayjob_attrs(attribute *, void *, int);
 extern int   deflt_chunk_action(attribute *pattr, void *pobj, int mode);
 extern void  update_node_rassn(attribute *, enum batch_op);
+extern void  update_job_node_rassn(job *, attribute *, enum batch_op);
 extern int   cvt_nodespec_to_select(char *, char **, size_t *, attribute *);
 extern int is_valid_resource(attribute *pattr, void *pobject, int actmode);
 extern int   queuestart_action(attribute *pattr, void *pobject, int actmode);
@@ -291,7 +295,6 @@ extern int   set_chunk_sum(attribute  *pselectattr, attribute *pattr);
 extern int   update_resources_rel(job *, attribute *, enum batch_op);
 extern int   keepfiles_action(attribute *pattr, void *pobject, int actmode);
 extern int   removefiles_action(attribute *pattr, void *pobject, int actmode);
-
 
 /* Functions below exposed as they are now accessed by the Python hooks */
 extern void update_state_ct(attribute *, int *, char *);
