@@ -1148,6 +1148,8 @@ complete_running(job *jobp)
 			/* if any dependencies, see if action required */
 			if (parent->ji_wattr[(int)JOB_ATR_depend].at_flags&ATR_VFLAG_SET)
 				(void)depend_on_exec(parent);
+
+			svr_mailowner(parent, MAIL_BEGIN, MAIL_NORMAL, NULL);
 		}
 	}
 	/* Job started ATR_Comment is set in server since scheduler cannot read	*/

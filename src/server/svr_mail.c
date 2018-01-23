@@ -606,9 +606,19 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 	if (force != MAIL_FORCE) {
 		if (pjob != 0) {
 
+			if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
+				if (pjob->ji_wattr[(int)JOB_ATR_mailpnts].at_flags & ATR_VFLAG_SET) {
+					if (strchr(pjob->ji_wattr[(int)JOB_ATR_mailpnts].at_val.at_str,
+						MAIL_SUBJOB) == NULL)
+						return;
+				} else {
+					return;
+				}
+			}
+
 			/* see if user specified mail of this type */
 
-			if (pjob->ji_wattr[(int)JOB_ATR_mailpnts].at_flags &ATR_VFLAG_SET) {
+			if (pjob->ji_wattr[(int)JOB_ATR_mailpnts].at_flags & ATR_VFLAG_SET) {
 				if (strchr(pjob->ji_wattr[(int)JOB_ATR_mailpnts].at_val.at_str,
 					mailpoint) == (char *)0)
 					return;

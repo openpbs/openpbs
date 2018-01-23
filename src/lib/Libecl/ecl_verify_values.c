@@ -741,18 +741,20 @@ verify_value_mailpoints(int batch_request, int parent_object, int cmd,
 	if (strlen(pattr->value) == 0)
 		return PBSE_BADATVAL;
 
+	if (strlen(pattr->value) == 1 && *pattr->value == 'j')
+		return PBSE_BADATVAL;
+
 	if (strcmp(pattr->value, "n") != 0) {
-		pc = pattr->value;
-		while (*pc) {
+		for (pc = pattr->value; *pc; pc++) {
 			if (batch_request == PBS_BATCH_SubmitResv || batch_request == PBS_BATCH_ModifyResv) {
 				if (*pc != 'a' && *pc != 'b' && *pc != 'e'
 					&& *pc != 'c')
 					return PBSE_BADATVAL;
 			} else {
-				if (*pc != 'a' && *pc != 'b' && *pc != 'e')
+				if (*pc != 'a' && *pc != 'b' && *pc != 'e'
+					&& *pc != 'j')
 					return PBSE_BADATVAL;
 			}
-			pc++;
 		}
 	}
 	return PBSE_NONE;

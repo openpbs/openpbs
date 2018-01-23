@@ -116,6 +116,7 @@ static enum job_atr attrs_to_copy[] = {
 	JOB_ATR_join,
 	JOB_ATR_keep,
 	JOB_ATR_mtime,
+	JOB_ATR_mailpnts,
 	JOB_ATR_mailuser,
 	JOB_ATR_nodemux,
 	JOB_ATR_outpath,
@@ -410,6 +411,8 @@ chk_array_doneness(job *parent)
 			sprintf(acctbuf, msg_job_end_stat, e);
 			account_job_update(parent, PBS_ACCT_LAST);
 			account_jobend(parent, acctbuf, PBS_ACCT_END);
+
+			svr_mailowner(parent, MAIL_END, MAIL_NORMAL, acctbuf);
 		}
 		if (parent->ji_wattr[(int)JOB_ATR_depend].at_flags & ATR_VFLAG_SET)
 			(void)depend_on_term(parent);

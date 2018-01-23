@@ -830,6 +830,9 @@ Mail is sent when the job is aborted by the batch system.
 Mail is sent when the job begins execution.
 .IP e 5
 Mail is sent when the job terminates.
+.IP j 5
+Mail is sent also for subjobs of an array job.
+Option "j" must be combined with "a", "b", or "e".
 .LP
 .br
 Format: string.  

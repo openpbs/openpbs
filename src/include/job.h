@@ -923,6 +923,7 @@ task_find	(job		*pjob,
 #define MAIL_OTHER (int)'o'
 #define MAIL_STAGEIN (int)'s'
 #define MAIL_CONFIRM (int)'c'	/*scheduler requested reservation be confirmed*/
+#define MAIL_SUBJOB (int)'j'
 #define MAIL_NORMAL 0
 #define MAIL_FORCE  1
 

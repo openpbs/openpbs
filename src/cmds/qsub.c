@@ -3723,6 +3723,13 @@ process_opts(int argc, char **argv, int passet)
 		exit_qsub(1);
 	}
 #endif
+
+	if (errflg == 0 && J_opt == 0 && get_attr(attrib, ATTR_m, NULL) != NULL &&
+		strchr(get_attr(attrib, ATTR_m, NULL), 'j') != NULL) {
+		fprintf(stderr, "qsub: mail option 'j' can not be used without array job\n");
+		exit_qsub(1);
+	}
+
 	/*
 	 * If argv[optind] points to '--' string, then
 	 * decrement optind, so that it would always point

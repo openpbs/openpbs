@@ -451,6 +451,9 @@ Mail sent when job is aborted
 Mail sent when job starts
 .IP e 
 Mail sent when job ends
+.IP j 
+Mail is sent also for subjobs of an array job.
+Option "j" must be combined with "a", "b", or "e".
 .IP n
 No mail is sent.  Cannot be combined with other options.
 .LP
