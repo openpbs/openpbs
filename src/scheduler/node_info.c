@@ -3243,18 +3243,6 @@ is_vnode_eligible(node_info *node, resource_resv *resresv,
 		}
 	}
 
-	if (!dflt_sched) {
-		if (resresv->is_job && (node->partition != NULL)) {
-			if (cstrcmp(node->partition, resresv->job->queue->partition) != 0) {
-				set_schd_error_codes(err, NOT_RUN, INVALID_NODE_TYPE);
-				set_schd_error_arg(err, ARG1, (char*) node_state_to_str(node));
-#ifdef NAS /* localmod 031 */
-				set_schd_error_arg(err, ARG2, node->name);
-#endif /* localmod 031 */
-				return 0;
-			}
-		}
-	}
 	if (!node->is_free) {
 		set_schd_error_codes(err, NOT_RUN, INVALID_NODE_STATE);
 		set_schd_error_arg(err, ARG1, (char*) node_state_to_str(node));
@@ -5688,7 +5676,6 @@ int
 node_in_partition(node_info *ninfo)
 {
 	char **my_partitions;
-	int i;
 
 	if (dflt_sched) {
 		if (ninfo->partition == NULL)
@@ -5698,18 +5685,19 @@ node_in_partition(node_info *ninfo)
 	}
 	if (ninfo->partition == NULL)
 		return 0;
+
 	my_partitions = break_comma_list(partitions);
 	if (my_partitions == NULL) {
 		log_err(errno, __func__, "Error parsing partitions");
 		return 0;
 	}
-	for (i=0; my_partitions[i] != NULL; i++) {
-		if (strcmp(ninfo->partition, my_partitions[i]) == 0) {
-			free_string_array(my_partitions);
-			return 1;
-		}
+
+	if (find_string(my_partitions, ninfo->partition)) {
+		free_string_array(my_partitions);
+		return 1;
+	} else {
+		free_string_array(my_partitions);
+		return 0;
 	}
-	free_string_array(my_partitions);
-	return 0;
 }
 

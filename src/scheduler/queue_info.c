@@ -220,6 +220,10 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 
 				qinfo->num_nodes = count_array((void **) qinfo->nodes);
 
+			} else if (qinfo->partition != NULL) {
+				qinfo->nodes_in_partition= node_filter(sinfo->nodes, sinfo->num_nodes,
+						node_partition_cmp, (void *) qinfo->partition, 0);
+				qinfo->num_nodes = count_array((void **) qinfo->nodes_in_partition);
 			}
 
 			if (ret != QUEUE_NOT_EXEC) {
@@ -388,10 +392,15 @@ query_queue_info(status *policy, struct batch_status *queue, server_info *sinfo)
 				policy->backfill = 1;
 		}
 		else if(!strcmp(attrp->name, ATTR_partition)) {
-			qinfo->partition = string_dup(attrp->value);
-			if (qinfo->partition == NULL) {
-				log_err(errno, __func__, MEM_ERR_MSG);
-				return NULL;
+			if (attrp->value != NULL) {
+				qinfo->partition = string_dup(attrp->value);
+				if (qinfo->partition == NULL) {
+					log_err(errno, __func__, MEM_ERR_MSG);
+					return NULL;
+				}
+				qinfo->has_partition = 1;
+			} else {
+				qinfo->has_partition = 0;
 			}
 		}
 		else if (is_reslimattr(attrp)) {
@@ -538,6 +547,7 @@ new_queue_info(int limallocflag)
 	qinfo->is_nonprime_queue = 0;
 	qinfo->is_ok_to_run	 = 0;
 	qinfo->has_nodes = 0;
+	qinfo->has_partition = 0;
 	qinfo->priority	 = 0;
 	qinfo->has_soft_limit = 0;
 	qinfo->has_hard_limit = 0;
@@ -554,6 +564,7 @@ new_queue_info(int limallocflag)
 	qinfo->server	 = NULL;
 	qinfo->resv		 = NULL;
 	qinfo->nodes	 = NULL;
+	qinfo->nodes_in_partition = NULL;
 	qinfo->alljobcounts	 = NULL;
 	qinfo->group_counts  = NULL;
 	qinfo->project_counts  = NULL;
@@ -811,6 +822,8 @@ free_queue_info(queue_info *qinfo)
 		free(qinfo->running_jobs);
 	if (qinfo->nodes != NULL)
 		free(qinfo->nodes);
+	if (qinfo->nodes_in_partition != NULL)
+		free(qinfo->nodes_in_partition);
 	if (qinfo->alljobcounts != NULL)
 		free_counts_list(qinfo->alljobcounts);
 	if (qinfo->group_counts != NULL)
@@ -911,6 +924,7 @@ dup_queue_info(queue_info *oqinfo, server_info *nsinfo)
 	nqinfo->is_prime_queue = oqinfo->is_prime_queue;
 	nqinfo->is_nonprime_queue = oqinfo->is_nonprime_queue;
 	nqinfo->has_nodes = oqinfo->has_nodes;
+	nqinfo->has_partition = oqinfo->has_partition;
 	nqinfo->has_soft_limit = oqinfo->has_soft_limit;
 	nqinfo->has_hard_limit = oqinfo->has_hard_limit;
 	nqinfo->is_peer_queue = oqinfo->is_peer_queue;
@@ -961,6 +975,10 @@ dup_queue_info(queue_info *oqinfo, server_info *nsinfo)
 	if (oqinfo->nodes != NULL)
 		nqinfo->nodes = node_filter(nsinfo->nodes, nsinfo->num_nodes,
 			node_queue_cmp, (void *) nqinfo->name, 0);
+
+	if (oqinfo->nodes_in_partition != NULL)
+		nqinfo->nodes_in_partition = node_filter(nsinfo->nodes, nsinfo->num_nodes,
+			node_partition_cmp, (void *) nqinfo->partition, 0);
 
 	if (oqinfo->partition != NULL) {
 		nqinfo->partition = string_dup(oqinfo->partition);
@@ -1024,6 +1042,29 @@ node_queue_cmp(node_info *ninfo, void *arg)
 
 /**
  * @brief
+ *		node_partition_cmp - used with node_filter to filter nodes attached to a
+ *		   specific partition
+ *
+ * @param[in]	node	-	the node we're currently filtering
+ * @param[in]	arg	-	the name of the partition
+ *
+ * @return	int
+ * @return	1	: keep the node
+ * @return	0	: don't keep the node
+ *
+ */
+int
+node_partition_cmp(node_info *ninfo, void *arg)
+{
+	if (ninfo->partition != NULL)
+		if (!strcmp(ninfo->partition,  (char *) arg))
+			return 1;
+
+	return 0;
+}
+
+/**
+ * @brief
  *      queue_in_partition	-  Tells whether the given node belongs to this scheduler
  *
  * @param[in]	qinfo		-  queue information
@@ -1038,7 +1079,6 @@ int
 queue_in_partition(queue_info *qinfo)
 {
 	char **my_partitions;
-	int i;
 
 	if (dflt_sched) {
 		if (qinfo->partition == NULL)
@@ -1048,17 +1088,21 @@ queue_in_partition(queue_info *qinfo)
 	}
 	if (qinfo->partition == NULL)
 		return 0;
+
 	my_partitions = break_comma_list(partitions);
 	if (my_partitions == NULL) {
 		log_err(errno, __func__, "Error parsing partitions");
 		return 0;
 	}
-	for (i=0; my_partitions[i] != NULL; i++) {
-		if (strcmp(qinfo->partition, my_partitions[i]) == 0) {
-			return 1;
-		}
+
+	if (find_string(my_partitions, qinfo->partition)) {
+		free_string_array(my_partitions);
+		return 1;
+	} else {
+		free_string_array(my_partitions);
+		return 0;
 	}
-	return 0;
+
 }
 
 

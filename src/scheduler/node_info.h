@@ -178,6 +178,12 @@ void update_node_on_run(nspec *ns, resource_resv *resresv, char *job_state);
 int node_queue_cmp(node_info *ninfo, void *arg);
 
 /*
+ *      node_partition_cmp - used with node_filter to filter nodes attached to a
+ *                           specific partition
+ */
+int node_partition_cmp(node_info *ninfo, void *arg);
+
+/*
  *      update_node_on_end - update a node when a job ends
  */
 void update_node_on_end(node_info *ninfo, resource_resv *resresv, char *job_state);

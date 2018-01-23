@@ -420,7 +420,7 @@ poke_scheduler(attribute *pattr, void *pobj, int actmode)
  *
   */
 void
-set_sched_default(pbs_sched* psched, int unset_flag)
+set_sched_default(pbs_sched *psched, int unset_flag)
 {
 	if (!psched)
 		return;

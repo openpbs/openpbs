@@ -2388,16 +2388,16 @@ sched_settings_frm_svr(struct batch_status *status)
 	while (attr != NULL) {
 		if (attr->name != NULL && attr->value != NULL) {
 			if (!strcmp(attr->name, ATTR_sched_priv)) {
-				if (copy_attr_value(&tmp_priv_dir, attr->value) == 0)
+				if (strcpy_alloc(&tmp_priv_dir, attr->value) == 0)
 					return 0;
 			} else if (!strcmp(attr->name, ATTR_sched_log)) {
-				if (copy_attr_value(&tmp_log_dir, attr->value) == 0)
+				if (strcpy_alloc(&tmp_log_dir, attr->value) == 0)
 					return 0;
 			} else if (!strcmp(attr->name, ATTR_partition)) {
-				if (copy_attr_value(&tmp_partitions, attr->value) == 0)
+				if (strcpy_alloc(&tmp_partitions, attr->value) == 0)
 					return 0;
 			} else if (!strcmp(attr->name, ATTR_comment)) {
-				if (copy_attr_value(&tmp_comment, attr->value) == 0)
+				if (strcpy_alloc(&tmp_comment, attr->value) == 0)
 					return 0;
 			}
 		}
@@ -2426,7 +2426,7 @@ sched_settings_frm_svr(struct batch_status *status)
 					return 0;
 				}
 
-				strncpy(comment, "Unable to change the sched_log directory", MAX_LOG_SIZE -1);
+				strncpy(comment, "Unable to change the sched_log directory", MAX_LOG_SIZE - 1);
 				patt = attribs;
 				patt->name = ATTR_comment;
 				patt->value = comment;

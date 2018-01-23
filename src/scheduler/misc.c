@@ -1720,17 +1720,14 @@ res_to_str_re(void *p, enum resource_fields fld, char **buf,
  *
  */
 int
-copy_attr_value(char **dest, char *src)
+strcpy_alloc(char **dest, char *src)
 {
 	int ret = 0;
 
-	if (*dest != NULL)
-		free(*dest);
-
-	if (src !=NULL) {
+	if (src != NULL) {
 		int len = 0;
 		len = strlen(src);
-		*dest = (char*)malloc(len + 1);
+		*dest = realloc(*dest, len+1);
 		if (*dest == NULL) {
 			schdlog(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, MEM_ERR_MSG);
 			return ret;
