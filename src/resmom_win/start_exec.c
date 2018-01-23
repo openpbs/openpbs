@@ -2483,6 +2483,7 @@ finish_exec(job *pjob)
 
 	/* start of walltime shouldn't account for task_save() by PBS */
 	pjob->ji_qs.ji_stime = time_now;
+	start_walltime(pjob);
 
 	rc = ResumeThread(pi.hThread);
 	if (rc == -1) {

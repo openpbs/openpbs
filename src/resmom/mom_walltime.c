@@ -50,7 +50,7 @@ double			wallfactor = 1.00;
 /**
  * @brief
  *
- *		This function starts counting the walltime of a job
+ *		start_walltime() starts counting the walltime of a job.
  *
  * @param[in] 	pjob	    - pointer to the job
  * 
@@ -75,7 +75,9 @@ start_walltime(job *pjob) {
 /**
  * @brief
  *
- *		This function updates the walltime of a job
+ *		update_walltime() updates the walltime of a job. If walltime is
+ *      not in resources_used then update_walltime() creates a new entry
+ *      for it.
  *
  * @param[in] 	pjob	    - pointer to the job
  * 
@@ -89,32 +91,36 @@ update_walltime(job *pjob) {
     resource_def    *walltime_def;
     resource        *used_walltime;
 
-    if (0 == pjob->ji_walltime_stamp)
-        return;
-
     resources_used = &pjob->ji_wattr[(int)JOB_ATR_resc_used];
     assert(resources_used != NULL);
     walltime_def = find_resc_def(svr_resc_def, "walltime", svr_resc_size);
     assert(walltime_def != NULL);
     used_walltime = find_resc_entry(resources_used, walltime_def);
-    
+
+    /* if walltime entry is not created yet, create it */
     if (NULL == used_walltime) {
         used_walltime = add_resource_entry(resources_used, walltime_def);
         used_walltime->rs_value.at_flags |= ATR_VFLAG_SET;
         used_walltime->rs_value.at_type = ATR_TYPE_LONG;
         used_walltime->rs_value.at_val.at_long = 0;
-    } else if (0 == (used_walltime->rs_value.at_flags & ATR_VFLAG_HOOK)) {
-        /* walltime is not set by hook */
+    }
+
+    if (0 != (used_walltime->rs_value.at_flags & ATR_VFLAG_HOOK)) {
+        /* walltime is set by hook so do not update here */
+        return;
+    }
+
+    if (0 != pjob->ji_walltime_stamp) {
+        /* walltime counting is not stopped so update it */
         used_walltime->rs_value.at_val.at_long += (long)((time_now - pjob->ji_walltime_stamp) * wallfactor);
         pjob->ji_walltime_stamp = time_now;
     }
-    /* if walltime is set by hook then we do not update it */
 }
 
 /**
  * @brief
  *
- *		This function stops counting the walltime of a job
+ *		stop_walltime() stops counting the walltime of a job.
  *
  * @param[in] 	pjob	    - pointer to the job
  * 
@@ -141,7 +147,7 @@ stop_walltime(job *pjob) {
 /**
  * @brief
  *
- *		This function tries to recover the used walltime of a job.
+ *		recover_walltime() tries to recover the used walltime of a job.
  *
  * @param[in] 	pjob	    - pointer to the job
  *
