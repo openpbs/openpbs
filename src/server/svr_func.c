@@ -164,7 +164,7 @@
 #include "windows.h"
 #endif
 #include "server_limits.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "log.h"
 #include "attribute.h"
 #include "resource.h"
@@ -199,11 +199,11 @@ extern int    scheduler_sock;
 extern time_t time_now;
 extern char  *resc_in_err;
 extern char  *msg_daemonname;
-extern pbs_list_head task_list_event;
-extern pbs_list_head task_list_timed;
+extern pbs_list_node task_list_event;
+extern pbs_list_node task_list_timed;
 extern char   server_name[];
 
-extern pbs_list_head svr_allconns;
+extern pbs_list_node svr_allconns;
 extern int max_connection;
 
 #define ERR_MSG_SIZE 256
@@ -228,7 +228,7 @@ int provision_timeout;
 /*
  * the top level list of all vnodes queued for provisioning
  */
-pbs_list_head prov_allvnodes;
+pbs_list_node prov_allvnodes;
 
 static int  is_runnable(job *, struct prov_vnode_info *);
 extern void set_srv_prov_attributes();
@@ -298,7 +298,7 @@ static char *svr_state_names[] = {
  */
 
 int
-encode_svrstate(attribute *pattr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
+encode_svrstate(attribute *pattr, pbs_list_node *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
 	svrattrl *pal;
 	char *psname;
@@ -324,7 +324,7 @@ encode_svrstate(attribute *pattr, pbs_list_head *phead, char *atname, char *rsna
 		return (-1);
 	(void)strcpy(pal->al_value, psname);
 	pal->al_flags = pattr->at_flags;
-	append_link(phead, &pal->al_link, pal);
+	append_node(phead, &pal->al_link, pal);
 	if (rtnl)
 		*rtnl = pal;
 	return (1);
@@ -953,7 +953,7 @@ deflt_chunk_action(attribute *pattr, void *pobj, int mode)
 	int		 old_perm;
 	struct key_value_pair **pkvp;
 	resource	*presc;
-	pbs_list_head        head;
+	pbs_list_node        head;
 	svrattrl	*psvratrl;
 	int		 rc;
 	extern int       resc_access_perm;
@@ -1732,7 +1732,7 @@ static int que_newstyle[] = {
 	-1
 };
 
-extern pbs_list_head svr_queues;
+extern pbs_list_node svr_queues;
 /**
  * @brief
  * 		is_attrs_in_list_set - for a list of certain attributes, is any of them
@@ -1852,7 +1852,7 @@ entlim_resum(struct work_task *pwt)
 	job		  *pj;
 	void		  *pobject;
 	pbs_queue	  *pque;
-	extern  pbs_list_head  svr_alljobs;
+	extern  pbs_list_node  svr_alljobs;
 
 	pobject = pwt->wt_parm1;    /* pointer to parent object */
 	is_resc = pwt->wt_aux;	    /* 1=resource, 0-count */
@@ -3369,9 +3369,9 @@ int revert_entity_resources(attribute *pmaxqresc, attribute *pattr_old,
 	int res_flag=1;
 	if ( pmaxqresc && presc_new && presc_first && euser && egroup && project ) {
 
-		for (presc_new = (resource *)GET_PRIOR(presc_new->rs_link);
+		for (presc_new = (resource *)GET_PREV(presc_new->rs_link);
 			( presc_new != (resource *)0 ) && res_flag;
-			presc_new = (resource *)GET_PRIOR(presc_new->rs_link)) {
+			presc_new = (resource *)GET_PREV(presc_new->rs_link)) {
 
 		if (presc_new == presc_first)
 			res_flag=0;
@@ -4608,7 +4608,7 @@ free_prov_vnode(struct pbsnode * pnode)
 
 	if (pnode->nd_state & INUSE_WAIT_PROV) {
 		if ((prov_vnode_info = find_prov_vnode(pnode)))
-			delete_link(&prov_vnode_info->al_link);
+			delete_node(&prov_vnode_info->al_link);
 
 		set_vnode_state(pnode, ~INUSE_WAIT_PROV, Nd_State_And);
 	}
@@ -6131,8 +6131,8 @@ check_and_enqueue_provisioning(job *pjob, int *need_prov)
 		}
 		strcpy(prov_vnode_info->pvnfo_jobid, pjob->ji_qs.ji_jobid);
 
-		CLEAR_LINK(prov_vnode_info->al_link);
-		append_link(&prov_allvnodes, &prov_vnode_info->al_link,
+		CLEAR_NODE(prov_vnode_info->al_link);
+		append_node(&prov_allvnodes, &prov_vnode_info->al_link,
 			prov_vnode_info);
 
 		pnode = find_nodebyname(prov_vnode_list[i]);
@@ -6220,7 +6220,7 @@ do_provisioning(struct work_task * wtask)
 		 */
 
 		/* remove this node from the linked list */
-		delete_link(&prov_vnode_info->al_link);
+		delete_node(&prov_vnode_info->al_link);
 
 		pnode = find_nodebyname(prov_vnode_info->pvnfo_vnode);
 		if (pnode == NULL) {
@@ -6287,7 +6287,7 @@ del_prov_vnode_entry(job *pjob)
 	while (tmp_record) {
 		nxt_record = GET_NEXT(tmp_record->al_link);
 		if (strcmp(tmp_record->pvnfo_jobid, pjob->ji_qs.ji_jobid) == 0) {
-			delete_link(&tmp_record->al_link);
+			delete_node(&tmp_record->al_link);
 			DBPRT(("%s: vnode %s\n", __func__, tmp_record->pvnfo_vnode))
 			/* node is no longer going to provision */
 			pnode = find_nodebyname(tmp_record->pvnfo_vnode);
@@ -6739,7 +6739,7 @@ void
 force_qsub_daemons_update(void)
 {
 	conn_t *cp = NULL;
-	if (svr_allconns.ll_next == (pbs_list_link *)0)
+	if (svr_allconns.next == (pbs_list_node *)0)
 		return;
 	for (cp = (conn_t *)GET_NEXT(svr_allconns);cp; cp = GET_NEXT(cp->cn_link)) {
 		if (cp->cn_authen & PBS_NET_CONN_FROM_QSUB_DAEMON)

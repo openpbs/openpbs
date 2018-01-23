@@ -83,7 +83,7 @@
 #include <stdlib.h>
 #include "libpbs.h"
 #include "server_limits.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "resource.h"
 #include "server.h"
@@ -143,7 +143,7 @@ extern char *msg_stageinfail;
 extern char *msg_job_abort;
 extern int   scheduler_sock;
 extern int   svr_do_schedule;
-extern pbs_list_head svr_deferred_req;
+extern pbs_list_node svr_deferred_req;
 extern time_t time_now;
 extern int   svr_totnodes;	/* non-zero if using nodes */
 
@@ -254,7 +254,7 @@ clear_from_defr(int sd)
 					pdefr->dr_preq = NULL;
 				} else {
 					/* unlink & free the deferred request */
-					delete_link(&pdefr->dr_link);
+					delete_node(&pdefr->dr_link);
 					free(pdefr);
 				}
 				break;
@@ -437,7 +437,7 @@ req_runjob(struct batch_request *preq)
 			req_reject(PBSE_SYSTEM, 0, preq);
 			return;
 		}
-		CLEAR_LINK(pdefr->dr_link);
+		CLEAR_NODE(pdefr->dr_link);
 
 		/* fix the job id so the suffix matches the real jobid's */
 		/* suffix;  in case qrun 1.short vs 1.short.domain.com   */
@@ -454,7 +454,7 @@ req_runjob(struct batch_request *preq)
 		pdefr->dr_id[PBS_MAXSVRJOBID] ='\0';
 		pdefr->dr_preq = preq;
 		pdefr->dr_sent = 0;
-		append_link(&svr_deferred_req, &pdefr->dr_link, pdefr);
+		append_node(&svr_deferred_req, &pdefr->dr_link, pdefr);
 		/* ensure that request is removed if client connect is closed */
 		net_add_close_func(preq->rq_conn, clear_from_defr);
 
@@ -462,7 +462,7 @@ req_runjob(struct batch_request *preq)
 			/* unable to contact the Scheduler, reject */
 			req_reject(PBSE_NOSCHEDULER, 0, preq);
 			/* unlink and free the deferred request entry */
-			delete_link(&pdefr->dr_link);
+			delete_node(&pdefr->dr_link);
 			free(pdefr);
 		}
 		return;
@@ -1905,7 +1905,7 @@ req_defschedreply(struct batch_request *preq)
 	}
 
 	/* unlink and free the deferred request entry */
-	delete_link(&pdefr->dr_link);
+	delete_node(&pdefr->dr_link);
 	free(pdefr);
 
 	reply_send(preq);

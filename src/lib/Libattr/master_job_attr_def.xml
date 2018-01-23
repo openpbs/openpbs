@@ -71,7 +71,7 @@
       #include &lt;pbs_config.h&gt;   
       #include &lt;sys/types.h&gt;
       #include "pbs_ifl.h"
-      #include "list_link.h"
+      #include "linked_list.h"
       #include "attribute.h"
       #include "job.h"
       #include "server_limits.h"

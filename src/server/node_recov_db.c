@@ -72,7 +72,7 @@
 
 #include <unistd.h>
 #include "server_limits.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 
 #ifdef WIN32
@@ -84,7 +84,7 @@
 
 #include "log.h"
 #include "attribute.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "server_limits.h"
 #include "credential.h"
 #include "libpbs.h"
@@ -110,7 +110,7 @@ extern int recov_attr_db(pbs_db_conn_t *conn,
 	int unknown);
 extern int recov_attr_db_raw(pbs_db_conn_t *conn,
 	pbs_db_attr_info_t *p_attr_info,
-	pbs_list_head *phead);
+	pbs_list_node *phead);
 #endif /* localmod 005 */
 
 /**
@@ -268,7 +268,7 @@ db_err:
  *
  */
 int
-node_recov_db_raw(void *nd, pbs_list_head *phead)
+node_recov_db_raw(void *nd, pbs_list_node *phead)
 {
 	pbs_db_attr_info_t attr_info;
 	pbs_db_obj_info_t obj;
@@ -331,7 +331,7 @@ node_save_db(struct pbsnode *pnode, int mode)
 	pbs_db_conn_t *conn = (pbs_db_conn_t *) svr_db_conn;
 	int	j, wrote_np;
 	svrattrl     *psvrl;
-	pbs_list_head     wrtattr;
+	pbs_list_node     wrtattr;
 
 	svr_to_db_node(pnode, &dbnode);
 	obj.pbs_db_obj_type = PBS_DB_NODE;
@@ -397,14 +397,14 @@ node_save_db(struct pbsnode *pnode, int mode)
 		} else if (strcmp(psvrl->al_name, ATTR_NODE_pcpus) == 0) {
 			/* don't write out pcpus at this point, see */
 			/* check for pcpus if needed after loop end */
-			delete_link(&psvrl->al_link);
+			delete_node(&psvrl->al_link);
 			(void)free(psvrl);
 
 			continue;
 		} else if (strcmp(psvrl->al_name, ATTR_NODE_resv_enable) == 0) {
 			/*  write resv_enable only if not default value */
 			if ((psvrl->al_flags & ATR_VFLAG_DEFLT) != 0) {
-				delete_link(&psvrl->al_link);
+				delete_node(&psvrl->al_link);
 				(void)free(psvrl);
 
 				continue;
@@ -423,7 +423,7 @@ node_save_db(struct pbsnode *pnode, int mode)
 		if (pbs_db_insert_obj(conn, &attr_obj) != 0)
 			goto db_err;
 
-		delete_link(&psvrl->al_link);
+		delete_node(&psvrl->al_link);
 		(void)free(psvrl);
 	}
 

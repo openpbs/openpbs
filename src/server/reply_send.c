@@ -65,7 +65,7 @@
 #include "log.h"
 #include "pbs_error.h"
 #include "server_limits.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "net_connect.h"
 #include "attribute.h"
 #include "credential.h"
@@ -83,8 +83,8 @@ extern char *msg_daemonname;
 extern char *msg_system;
 
 #ifndef PBS_MOM
-extern pbs_list_head task_list_event;
-extern pbs_list_head task_list_immed;
+extern pbs_list_node task_list_event;
+extern pbs_list_node task_list_immed;
 char   *resc_in_err = NULL;
 #endif	/* PBS_MOM */
 
@@ -276,8 +276,8 @@ reply_send(struct batch_request *request)
 		while (ptask) {
 			if ((ptask->wt_type == WORK_Deferred_Local) &&
 				(ptask->wt_parm1 == (void *)request)) {
-				delete_link(&ptask->wt_linkall);
-				append_link(&task_list_immed,
+				delete_node(&ptask->wt_linkall);
+				append_node(&task_list_immed,
 					&ptask->wt_linkall, ptask);
 				return (0);
 			}

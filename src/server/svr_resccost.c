@@ -76,7 +76,7 @@
 #include <time.h>
 #include <sys/types.h>
 #include "pbs_ifl.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "resource.h"
 #include "pbs_error.h"
@@ -87,7 +87,7 @@
 
 
 struct resource_cost {
-	pbs_list_link	rc_link;
+	pbs_list_node	rc_link;
 	resource_def   *rc_def;
 	long		rc_cost;
 };
@@ -108,10 +108,10 @@ static struct resource_cost *add_cost_entry(attribute *patr, resource_def *prdef
 
 	pcost = malloc(sizeof(struct resource_cost));
 	if (pcost) {
-		CLEAR_LINK(pcost->rc_link);
+		CLEAR_NODE(pcost->rc_link);
 		pcost->rc_def = prdef;
 		pcost->rc_cost = 0;
-		append_link(&patr->at_val.at_list, &pcost->rc_link, pcost);
+		append_node(&patr->at_val.at_list, &pcost->rc_link, pcost);
 	}
 	return (pcost);
 }
@@ -188,7 +188,7 @@ decode_rcost(struct attribute *patr, char *name, char *rescn, char *val)
 
 
 int
-encode_rcost(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
+encode_rcost(attribute *attr, pbs_list_node *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
 	svrattrl *pal;
 	struct resource_cost *pcost;
@@ -208,7 +208,7 @@ encode_rcost(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, 
 
 		(void)sprintf(pal->al_value, "%ld", pcost->rc_cost);
 		pal->al_flags = attr->at_flags;
-		append_link(phead, &pal->al_link, pal);
+		append_node(phead, &pal->al_link, pal);
 		if (first) {
 			if (rtnl)
 				*rtnl  = pal;
@@ -291,7 +291,7 @@ free_rcost(attribute *pattr)
 
 	while ((pcost = (struct resource_cost *)GET_NEXT(
 		pattr->at_val.at_list)) != NULL) {
-		delete_link(&pcost->rc_link);
+		delete_node(&pcost->rc_link);
 		(void)free(pcost);
 	}
 	pattr->at_flags &= ~ATR_VFLAG_SET;

@@ -44,7 +44,7 @@ extern "C" {
 #endif
 
 #include "portability.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "resource.h"
 

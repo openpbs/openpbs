@@ -48,7 +48,7 @@ extern "C" {
  *
  *	<sys/types.h>
  *	"attribute.h"
- *	"list_link.h"
+ *	"linked_list.h"
  *      "server_limits.h"
  *      "resource.h"
  *      "reservation.h"
@@ -142,8 +142,8 @@ extern attribute_def que_attr_def[];
 /* at last we come to the queue definition itself	*/
 
 struct pbs_queue {
-	pbs_list_link	qu_link;		/* forward/backward links */
-	pbs_list_head	qu_jobs;		/* jobs in this queue */
+	pbs_list_node	qu_link;		/* forward/backward links */
+	pbs_list_node	qu_jobs;		/* jobs in this queue */
 	resc_resv	*qu_resvp;		/* !=NULL if que established */
 	/* to support a reservation */
 	int		 qu_nseldft;		/* number of elm in qu_seldft */

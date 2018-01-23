@@ -49,7 +49,7 @@
 #include <string.h>
 #include "libpbs.h"
 #include "server_limits.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "credential.h"
 #include "net_connect.h"
@@ -60,7 +60,7 @@
 
 extern time_t time_now;
 
-extern pbs_list_head svr_allconns;
+extern pbs_list_node svr_allconns;
 extern int max_connection;
 
 /* Global Data Home in this file */

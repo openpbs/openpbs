@@ -62,7 +62,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "log.h"
 #include "pbs_nodes.h"
@@ -236,7 +236,7 @@ save_attr_fs(struct attribute_def *padef, struct attribute *pattr, int numattr)
 {
 	svrattrl	 dummy;
 	int		 errct = 0;
-	pbs_list_head 	 lhead;
+	pbs_list_node 	 lhead;
 	int		 i;
 	svrattrl	*pal;
 	int		 rc;
@@ -267,7 +267,7 @@ save_attr_fs(struct attribute_def *padef, struct attribute *pattr, int numattr)
 
 				if (save_struct((char *)pal, pal->al_tsize) < 0)
 					errct++;
-				delete_link(&pal->al_link);
+				delete_node(&pal->al_link);
 				(void)free(pal);
 			}
 		}
@@ -374,7 +374,7 @@ recov_attr_fs(int fd, void *parent, struct attribute_def *padef,
 		}
 		if (!pal)
 			return (errno);
-		CLEAR_LINK(pal->al_link);
+		CLEAR_NODE(pal->al_link);
 
 		/* read in the actual attribute data */
 

@@ -63,7 +63,7 @@ noinst_HEADERS = \
 	libsec.h \
 	libutil.h \
 	limits_if.h \
-	list_link.h \
+	linked_list.h \
 	log.h \
 	Long_.h \
 	Long.h \

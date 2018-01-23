@@ -55,7 +55,7 @@
 #include <errno.h>
 
 #include "server_limits.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "credential.h"
 #include "batch_request.h"
@@ -252,8 +252,8 @@ req_orderjob(struct batch_request *req)
 		(void)svr_enquejob(pjob2);
 
 	} else {
-		swap_link(&pjob1->ji_jobque,  &pjob2->ji_jobque);
-		swap_link(&pjob1->ji_alljobs, &pjob2->ji_alljobs);
+		swap_node(&pjob1->ji_jobque,  &pjob2->ji_jobque);
+		swap_node(&pjob1->ji_alljobs, &pjob2->ji_alljobs);
 	}
 
 	/* need to update disk copy of both jobs to save new order */

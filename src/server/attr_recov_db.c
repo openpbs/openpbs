@@ -62,7 +62,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "log.h"
 #include "pbs_nodes.h"
@@ -110,7 +110,7 @@ make_attr(char *attr_name, char *attr_resc,
 	if ((psvrat = (svrattrl *) malloc(tsize)) == 0)
 		return NULL;
 
-	CLEAR_LINK(psvrat->al_link);
+	CLEAR_NODE(psvrat->al_link);
 	psvrat->al_sister = (svrattrl *) 0;
 	psvrat->al_atopl.next = 0;
 	psvrat->al_tsize = tsize;
@@ -165,7 +165,7 @@ save_attr_db(pbs_db_conn_t *conn, pbs_db_attr_info_t *p_attr_info,
 	struct attribute_def *padef, struct attribute *pattr,
 	int numattr, int newparent)
 {
-	pbs_list_head	lhead;
+	pbs_list_node	lhead;
 	int		i;
 	svrattrl	*pal;
 	int		rc = 0;
@@ -242,7 +242,7 @@ save_attr_db(pbs_db_conn_t *conn, pbs_db_attr_info_t *p_attr_info,
 					goto err;
 			}
 
-			delete_link(&pal->al_link);
+			delete_node(&pal->al_link);
 			(void)free(pal);
 		}
 	}
@@ -360,7 +360,7 @@ recov_attr_db(pbs_db_conn_t *conn,
 			ret = -1;
 			break;
 		}
-		CLEAR_LINK(pal->al_link);
+		CLEAR_NODE(pal->al_link);
 
 		pal->al_refct = 1;	/* ref count reset to 1 */
 
@@ -481,7 +481,7 @@ recov_attr_db(pbs_db_conn_t *conn,
  *
  * @param[in]	conn - Database connection handle
  * @param[in]	p_attr_info - Information about the database parent
- * @param[in]	phead - The pbs_list_head to which to append attributes to
+ * @param[in]	phead - The pbs_list_node to which to append attributes to
  *
  * @return      Error code
  * @retval	 0  - Success
@@ -490,7 +490,7 @@ recov_attr_db(pbs_db_conn_t *conn,
 int
 recov_attr_db_raw(pbs_db_conn_t *conn,
 	pbs_db_attr_info_t *p_attr_info,
-	pbs_list_head *phead)
+	pbs_list_node *phead)
 {
 //	static	  char	id[] = "recov_attr";
 	int	  amt;
@@ -542,9 +542,9 @@ recov_attr_db_raw(pbs_db_conn_t *conn,
 			free(pal);
 			return (-1);
 		}
-		CLEAR_LINK(pal->al_link);
+		CLEAR_NODE(pal->al_link);
 		pal->al_refct = 1;	/* ref count reset to 1 */
-		append_link(phead, &pal->al_link, pal);
+		append_node(phead, &pal->al_link, pal);
 	}
 	pbs_db_cursor_close(conn, state);
 	return (0);

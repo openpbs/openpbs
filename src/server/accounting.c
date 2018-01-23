@@ -62,7 +62,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "resource.h"
 #include "server_limits.h"
@@ -153,7 +153,7 @@ grow_acct_buf(char **pb, int *avail, int need)
  */
 
 static void
-sum_resc_alloc(job *pjob, pbs_list_head *list)
+sum_resc_alloc(job *pjob, pbs_list_node *list)
 {
 	char	  *chunk;
 	char	  *exechost;
@@ -367,7 +367,7 @@ get_walltime(job *jp, int res)
 static char *
 acct_job(job *pjob, int type, char *buf, int len)
 {
-	pbs_list_head attrlist;
+	pbs_list_node attrlist;
 	int	  i, k;
 	int       nd;
 	svrattrl *pal;
@@ -685,7 +685,7 @@ acct_job(job *pjob, int type, char *buf, int len)
 		(void)strcat(pb, "=");
 		cpy_quote_value(pb, pal->al_value);
 		(void)strcat(pb, " ");
-		delete_link(&pal->al_link);
+		delete_node(&pal->al_link);
 		(void)free(pal);
 		pb += strlen(pb);
 	}
@@ -710,7 +710,7 @@ acct_job(job *pjob, int type, char *buf, int len)
 static char *
 acct_resv(resc_resv *presv, char *buf, int len)
 {
-	pbs_list_head attrlist;	/*retrieved resources list put here*/
+	pbs_list_node attrlist;	/*retrieved resources list put here*/
 	int	  i;
 	svrattrl *pal;
 	char	*pb;
@@ -887,7 +887,7 @@ acct_resv(resc_resv *presv, char *buf, int len)
 		(void)strcat(pb, "=");
 		cpy_quote_value(pb, pal->al_value);
 		(void)strcat(pb, " ");
-		delete_link(&pal->al_link);
+		delete_node(&pal->al_link);
 		(void)free(pal);
 		pb += strlen(pb);
 	}
@@ -1101,7 +1101,7 @@ job	*pjob;
 void
 account_jobstr2(job *pjob, int type)
 {
-	pbs_list_head attrlist;
+	pbs_list_node attrlist;
 	int	  nd;
 	int 	  len;
 	svrattrl *pal;
@@ -1143,7 +1143,7 @@ account_jobstr2(job *pjob, int type)
 			(void)strcat(pb, "=");
 			cpy_quote_value(pb, pal->al_value);
 			(void)strcat(pb, " ");
-			delete_link(&pal->al_link);
+			delete_node(&pal->al_link);
 			(void)free(pal);
 			pb += strlen(pb);
 		}
@@ -1203,7 +1203,7 @@ account_jobend(job *pjob, char *used, int type)
 	struct svrattrl *patlist = NULL;
 	char *resc_used;
 	int resc_used_size = 0;
-	pbs_list_head temp_head;
+	pbs_list_node temp_head;
 
 	CLEAR_HEAD(temp_head);
 	/* pack in general information about the job */
@@ -1586,7 +1586,7 @@ set_job_ProvAcctRcd(job *pjob, long time_se, int type)
 static char *
 build_common_data_for_job_update(job *pjob, int type, char *buf, int len)
 {
-	pbs_list_head attrlist;
+	pbs_list_node attrlist;
 	int	  ct;
 	int       nd;
 	svrattrl *pal;
@@ -1865,7 +1865,7 @@ build_common_data_for_job_update(job *pjob, int type, char *buf, int len)
 			(void)strcat(pb, "=");
 			cpy_quote_value(pb, pal->al_value);
 			(void)strcat(pb, " ");
-			delete_link(&pal->al_link);
+			delete_node(&pal->al_link);
 			(void)free(pal);
 			pb += strlen(pb);
 		}
@@ -1964,7 +1964,7 @@ build_common_data_for_job_update(job *pjob, int type, char *buf, int len)
 			(void)strcat(pb, "=");
 			cpy_quote_value(pb, pal->al_value);
 			(void)strcat(pb, " ");
-			delete_link(&pal->al_link);
+			delete_node(&pal->al_link);
 			(void)free(pal);
 			pb += strlen(pb);
 		}
@@ -2003,7 +2003,7 @@ account_job_update(job *pjob, int type)
 	int i = 0;
 	int len = 0;
 	char *pb = NULL;
-	pbs_list_head attrlist;
+	pbs_list_node attrlist;
 	struct svrattrl *patlist = NULL;
 	char *resc_used = NULL;
 	int resc_used_size = 0;

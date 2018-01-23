@@ -65,7 +65,7 @@
 #include "log.h"
 
 extern char	*path_jobs;
-extern pbs_list_head svr_alljobs;
+extern pbs_list_node svr_alljobs;
 
 extern char	*bitfield2hex(Bitfield *);
 extern char	*bitfield2bin(Bitfield *);

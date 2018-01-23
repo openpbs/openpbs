@@ -56,7 +56,7 @@
 #include <ctype.h>
 #include <time.h>
 #include "server_limits.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "server.h"
 #include "credential.h"
@@ -97,7 +97,7 @@ extern char	     statechars[];
  */
 
 static void
-svrcached(attribute *pat, pbs_list_head *phead, attribute_def *pdef)
+svrcached(attribute *pat, pbs_list_node *phead, attribute_def *pdef)
 {
 	svrattrl *working = NULL;
 	svrattrl *wcopy;
@@ -142,9 +142,9 @@ svrcached(attribute *pat, pbs_list_head *phead, attribute_def *pdef)
 		working = encoded;
 		if (working->al_refct < 2) {
 			while (working) {
-				CLEAR_LINK(working->al_link);
+				CLEAR_NODE(working->al_link);
 				if (phead != NULL)
-					append_link(phead, &working->al_link, working);
+					append_node(phead, &working->al_link, working);
 				working->al_refct++;	/* incr ref count */
 				working = working->al_sister;
 			}
@@ -161,9 +161,9 @@ svrcached(attribute *pat, pbs_list_head *phead, attribute_def *pdef)
 				if (wcopy) {
 					*wcopy = *working;
 					working = working->al_sister;
-					CLEAR_LINK(wcopy->al_link);
+					CLEAR_NODE(wcopy->al_link);
 					if (phead != NULL)
-						append_link(phead, &wcopy->al_link, wcopy);
+						append_node(phead, &wcopy->al_link, wcopy);
 					wcopy->al_refct = 1;
 					wcopy->al_sister = NULL;
 				}
@@ -180,7 +180,7 @@ svrcached(attribute *pat, pbs_list_head *phead, attribute_def *pdef)
  * @param[in,out]	pattr	-	attribute structure
  * @param[in]	limit	-	limit on size of def array
  * @param[in]	priv	-	user-client privilege
- * @param[in,out]	phead	-	pbs_list_head
+ * @param[in,out]	phead	-	pbs_list_node
  * @param[out]	bad	-	RETURN: index of first bad attribute
  *
  * @return	int
@@ -189,7 +189,7 @@ svrcached(attribute *pat, pbs_list_head *phead, attribute_def *pdef)
  */
 
 int
-status_attrib(svrattrl *pal, attribute_def *padef, attribute *pattr, int limit, int priv, pbs_list_head *phead, int *bad)
+status_attrib(svrattrl *pal, attribute_def *padef, attribute *pattr, int limit, int priv, pbs_list_node *phead, int *bad)
 {
 	int   index;
 	int   nth = 0;
@@ -243,7 +243,7 @@ status_attrib(svrattrl *pal, attribute_def *padef, attribute *pattr, int limit, 
  */
 
 int
-status_job(job *pjob, struct batch_request *preq, svrattrl *pal, pbs_list_head *pstathd, int *bad)
+status_job(job *pjob, struct batch_request *preq, svrattrl *pal, pbs_list_node *pstathd, int *bad)
 {
 	struct brp_status *pstat;
 	time_t tm;
@@ -306,11 +306,11 @@ status_job(job *pjob, struct batch_request *preq, svrattrl *pal, pbs_list_head *
 	pstat = (struct brp_status *)malloc(sizeof(struct brp_status));
 	if (pstat == (struct brp_status *)0)
 		return (PBSE_SYSTEM);
-	CLEAR_LINK(pstat->brp_stlink);
+	CLEAR_NODE(pstat->brp_stlink);
 	pstat->brp_objtype = MGR_OBJ_JOB;
 	(void)strcpy(pstat->brp_objname, pjob->ji_qs.ji_jobid);
 	CLEAR_HEAD(pstat->brp_attr);
-	append_link(pstathd, &pstat->brp_stlink, pstat);
+	append_node(pstathd, &pstat->brp_stlink, pstat);
 
 	/* add attributes to the status reply */
 
@@ -357,7 +357,7 @@ status_job(job *pjob, struct batch_request *preq, svrattrl *pal, pbs_list_head *
  * @retval	PBSE_IVALREQ	: something wrong with the flags
  */
 int
-status_subjob(job *pjob, struct batch_request *preq, svrattrl *pal, int subj, pbs_list_head *pstathd, int *bad)
+status_subjob(job *pjob, struct batch_request *preq, svrattrl *pal, int subj, pbs_list_node *pstathd, int *bad)
 {
 	int		   limit = (int)JOB_ATR_LAST;
 	struct brp_status *pstat;
@@ -398,11 +398,11 @@ status_subjob(job *pjob, struct batch_request *preq, svrattrl *pal, int subj, pb
 	pstat = (struct brp_status *)malloc(sizeof(struct brp_status));
 	if (pstat == (struct brp_status *)0)
 		return (PBSE_SYSTEM);
-	CLEAR_LINK(pstat->brp_stlink);
+	CLEAR_NODE(pstat->brp_stlink);
 	pstat->brp_objtype = MGR_OBJ_JOB;
 	(void)strcpy(pstat->brp_objname, mk_subjob_id(pjob, subj));
 	CLEAR_HEAD(pstat->brp_attr);
-	append_link(pstathd, &pstat->brp_stlink, pstat);
+	append_node(pstathd, &pstat->brp_stlink, pstat);
 
 	/* add attributes to the status reply */
 

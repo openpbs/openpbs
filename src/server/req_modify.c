@@ -54,7 +54,7 @@
 #include "libpbs.h"
 #include <signal.h>
 #include "server_limits.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "resource.h"
 #include "server.h"

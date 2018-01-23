@@ -80,7 +80,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "libpbs.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "server_limits.h"
 #include "credential.h"
@@ -251,7 +251,7 @@ req_register(struct batch_request *preq)
 						ptask = set_task(WORK_Immed, 0, post_run_depend,
 							(void *)pjob);
 						if (ptask)
-							append_link(&pjob->ji_svrtask,
+							append_node(&pjob->ji_svrtask,
 								&ptask->wt_linkobj, ptask);
 					}
 					/* fall through to complete registration */
@@ -861,7 +861,7 @@ static struct depend *make_depend(int type, attribute *pattr)
 	pdep = (struct depend *)malloc(sizeof(struct depend));
 	if (pdep) {
 		clear_depend(pdep, type, 0);
-		append_link(&pattr->at_val.at_list, &pdep->dp_link, pdep);
+		append_node(&pattr->at_val.at_list, &pdep->dp_link, pdep);
 		pattr->at_flags |= ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
 	}
 	return (pdep);
@@ -988,12 +988,12 @@ static struct depend_job *make_dependjob(struct depend *pdep, char *jobid, char 
 	pdj = (struct depend_job *)malloc(sizeof(struct depend_job));
 	if (pdj) {
 
-		CLEAR_LINK(pdj->dc_link);
+		CLEAR_NODE(pdj->dc_link);
 		pdj->dc_state   = 0;
 		pdj->dc_cost    = 0;
 		(void)strcpy(pdj->dc_child, jobid);
 		(void)strcpy(pdj->dc_svr, host);
-		append_link(&pdep->dp_jobs, &pdj->dc_link, pdj);
+		append_node(&pdep->dp_jobs, &pdj->dc_link, pdj);
 	}
 	return (pdj);
 }
@@ -1225,7 +1225,7 @@ dup_depend(attribute *pattr, struct depend *pd)
 /*ARGSUSED*/
 
 int
-encode_depend(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
+encode_depend(attribute *attr, pbs_list_node *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
 	int		    ct = 0;
 	char		    cvtbuf[22];
@@ -1291,7 +1291,7 @@ encode_depend(attribute *attr, pbs_list_head *phead, char *atname, char *rsname,
 	if (numdep) {
 		/* there are dependencies recorded, added to the list	*/
 		pal->al_flags = attr->at_flags;
-		append_link(phead, &pal->al_link, pal);
+		append_node(phead, &pal->al_link, pal);
 		if (rtnl)
 			*rtnl = pal;
 		return (1);
@@ -1398,10 +1398,10 @@ free_depend(struct attribute *attr)
 		GET_NEXT(attr->at_val.at_list)) != NULL) {
 		while ((pdjb = (struct depend_job *)
 			GET_NEXT(pdp->dp_jobs)) != NULL) {
-			delete_link(&pdjb->dc_link);
+			delete_node(&pdjb->dc_link);
 			(void)free(pdjb);
 		}
-		delete_link(&pdp->dp_link);
+		delete_node(&pdp->dp_link);
 		(void)free(pdp);
 	}
 	attr->at_flags &= ~ATR_VFLAG_SET;
@@ -1507,7 +1507,7 @@ build_depend(attribute *pattr, char *value)
 
 			pdjb = (struct depend_job *)malloc(sizeof(*pdjb));
 			if (pdjb) {
-				CLEAR_LINK(pdjb->dc_link);
+				CLEAR_NODE(pdjb->dc_link);
 				pdjb->dc_state = 0;
 				pdjb->dc_cost  = 0;
 				pdjb->dc_svr[0] = '\0';
@@ -1544,7 +1544,7 @@ build_depend(attribute *pattr, char *value)
 					}
 				}
 
-				append_link(&pd->dp_jobs, &pdjb->dc_link, pdjb);
+				append_node(&pd->dp_jobs, &pdjb->dc_link, pdjb);
 			} else {
 				return (PBSE_SYSTEM);
 			}
@@ -1579,7 +1579,7 @@ clear_depend(struct depend *pd, int type, int exist)
 		}
 	} else {
 		CLEAR_HEAD(pd->dp_jobs);
-		CLEAR_LINK(pd->dp_link);
+		CLEAR_NODE(pd->dp_link);
 	}
 	pd->dp_type = type;
 	pd->dp_numexp = 0;
@@ -1602,7 +1602,7 @@ del_depend(struct depend *pd)
 	while ((pdj = (struct depend_job *)GET_NEXT(pd->dp_jobs)) != NULL) {
 		del_depend_job(pdj);
 	}
-	delete_link(&pd->dp_link);
+	delete_node(&pd->dp_link);
 	(void)free(pd);
 }
 
@@ -1616,6 +1616,6 @@ del_depend(struct depend *pd)
 static void
 del_depend_job(struct depend_job *pdj)
 {
-	delete_link(&pdj->dc_link);
+	delete_node(&pdj->dc_link);
 	(void)free(pdj);
 }

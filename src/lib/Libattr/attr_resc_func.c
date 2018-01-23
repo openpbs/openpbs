@@ -48,7 +48,7 @@
 #include <pbs_ifl.h>
 #include "pbs_internal.h"
 #include "log.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "resource.h"
 #include "pbs_error.h"

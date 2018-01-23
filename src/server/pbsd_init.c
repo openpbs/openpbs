@@ -96,7 +96,7 @@
 #include "pbs_ifl.h"
 #include "net_connect.h"
 #include "log.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "server_limits.h"
 #include "server.h"
@@ -185,10 +185,10 @@ extern long	 new_log_event_mask;
 extern char	 server_host[];
 extern char	 server_name[];
 extern int	 svr_delay_entry;
-extern pbs_list_head svr_newjobs;
-extern pbs_list_head svr_alljobs;
-extern pbs_list_head svr_allresvs;
-extern pbs_list_head task_list_event;
+extern pbs_list_node svr_newjobs;
+extern pbs_list_node svr_alljobs;
+extern pbs_list_node svr_allresvs;
+extern pbs_list_node task_list_event;
 extern time_t	 time_now;
 extern time_t	 jan1_yr2038;
 
@@ -200,13 +200,13 @@ struct license_used  usedlicenses;
 extern struct resc_sum *svr_resc_sum;
 extern char   *path_hooks;
 extern char   *path_hooks_workdir;
-extern pbs_list_head       prov_allvnodes;
+extern pbs_list_node       prov_allvnodes;
 extern int 		max_concurrent_prov;
 extern int		brought_up_db;
 extern char		*pbs_server_id;
 extern pbs_db_conn_t	*svr_db_conn;
 
-extern	pbs_list_head	svr_allhooks;
+extern	pbs_list_node	svr_allhooks;
 
 
 #ifdef WIN32
@@ -961,7 +961,7 @@ pbsd_init(int type)
 			is_resv_window_in_future(presv);
 			set_old_subUniverse(presv);
 
-			append_link(&svr_allresvs, &presv->ri_allresvs, presv);
+			append_node(&svr_allresvs, &presv->ri_allresvs, presv);
 			if (attach_queue_to_reservation(presv)) {
 
 				/* reservation needed queue; failed to find it */
@@ -1719,7 +1719,7 @@ pbsd_init_job(job *pjob, int type)
 					 * receiving sock number though
 					 */
 					pjob->ji_qs.ji_un.ji_newt.ji_fromsock = -1;
-					append_link(&svr_newjobs,
+					append_node(&svr_newjobs,
 						&pjob->ji_alljobs, pjob);
 
 				}

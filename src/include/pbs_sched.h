@@ -79,7 +79,7 @@ enum sched_atr {
 extern attribute_def sched_attr_def[];
 
 typedef struct pbs_sched {
-	pbs_list_link	sc_link;		/* forward/backward links */
+	pbs_list_node	sc_link;		/* forward/backward links */
 
 	char sc_name[PBS_MAXSCHEDNAME];
 	/* sched object's attributes  */
@@ -88,7 +88,7 @@ typedef struct pbs_sched {
 
 
 extern pbs_sched *dflt_scheduler;
-extern	pbs_list_head	svr_allscheds;
+extern	pbs_list_node	svr_allscheds;
 
 #ifdef	__cplusplus
 }

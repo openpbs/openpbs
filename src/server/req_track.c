@@ -58,7 +58,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include "server_limits.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "server.h"
 #include "credential.h"

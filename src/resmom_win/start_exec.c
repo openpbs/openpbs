@@ -73,7 +73,7 @@
 #include <Userenv.h>
 
 #include "libpbs.h"
-#include "list_link.h"
+#include "linked_list.h"
 
 #ifndef WIN32
 #include "portability.h"
@@ -114,7 +114,7 @@ extern  int		num_var_env;
 extern	char	      **environ;
 extern	int		exiting_tasks;
 extern	u_long		localaddr;
-extern	pbs_list_head	mom_polljobs;
+extern	pbs_list_node	mom_polljobs;
 extern	int		next_sample_time;
 extern	int		min_check_poll;
 extern	char		*path_checkpoint;
@@ -142,7 +142,7 @@ struct	var_table vtable;
 static int set_credential(job *, char **, char ***);
 
 extern eventent * event_dup(eventent *ep, job *pjob, hnodent *pnode);
-extern void send_join_job_restart_mcast(int mtfd, int com, eventent *ep, int nth, job *pjob, pbs_list_head *phead);
+extern void send_join_job_restart_mcast(int mtfd, int com, eventent *ep, int nth, job *pjob, pbs_list_node *phead);
 
 extern int is_direct_write(job *, enum job_file, char *, int *);
 static int direct_write_possible = 1;
@@ -1499,7 +1499,7 @@ finish_exec(job *pjob)
 	unsigned int		hook_fail_action = 0;
 	mom_hook_input_t	hook_input;
 	mom_hook_output_t	hook_output;
-	pbs_list_head		argv_list;
+	pbs_list_node		argv_list;
 	char			*progname = NULL;
 	char			*progname_out = NULL;
 	char			**argv_in = NULL;
@@ -1536,8 +1536,8 @@ finish_exec(job *pjob)
 	 */
 
 	if (pjob->ji_numnodes > 1 || mom_do_poll(pjob))
-		if (is_linked(&mom_polljobs, &pjob->ji_jobque) == 0)
-			append_link(&mom_polljobs, &pjob->ji_jobque, pjob);
+		if (is_in_list(&mom_polljobs, &pjob->ji_jobque) == 0)
+			append_node(&mom_polljobs, &pjob->ji_jobque, pjob);
 
 	/* Is the job to be periodic checkpointed */
 
@@ -2598,7 +2598,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 	unsigned int		hook_fail_action = 0;
 	mom_hook_input_t	hook_input;
 	mom_hook_output_t	hook_output;
-	pbs_list_head		argv_list;
+	pbs_list_node		argv_list;
 	char			*progname = NULL;
 	char			*progname_out = NULL;
 	char			**argv_in = NULL;
@@ -3284,7 +3284,7 @@ nodes_free(job *pj)
 					arrayfree(ep->ee_argv);
 				if (ep->ee_envp)
 					arrayfree(ep->ee_envp);
-				delete_link(&ep->ee_next);
+				delete_node(&ep->ee_next);
 				free(ep);
 				ep = (eventent *)GET_NEXT(np->hn_events);
 			}
@@ -3859,7 +3859,7 @@ start_exec(job *pjob)
 #endif
 	hnodent		        *np = NULL;
 	attribute	        *pattr = NULL;
-	pbs_list_head	        phead;
+	pbs_list_node	        phead;
 	int		        nodemux = 0;
 	int			mtfd = -1;
 

@@ -44,7 +44,7 @@
 #include <string.h>
 #include "portability.h"
 #include "pbs_ifl.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "resource.h"
 #include "pbs_error.h"

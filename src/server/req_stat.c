@@ -70,7 +70,7 @@
 #include "libpbs.h"
 #include <ctype.h>
 #include "server_limits.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "server.h"
 #include "credential.h"
@@ -92,8 +92,8 @@
 /* Global Data Items: */
 
 extern struct server server;
-extern pbs_list_head svr_alljobs;
-extern pbs_list_head svr_queues;
+extern pbs_list_node svr_alljobs;
+extern pbs_list_node svr_queues;
 extern char          server_name[];
 extern attribute_def svr_attr_def[];
 extern attribute_def que_attr_def[];
@@ -106,9 +106,9 @@ extern long svr_history_enable;
 /* Extern Functions */
 
 extern int status_attrib(svrattrl *, attribute_def *, attribute *,
-	int, int, pbs_list_head *, int *);
+	int, int, pbs_list_node *, int *);
 extern int status_nodeattrib(svrattrl *, attribute_def *, struct pbsnode *,
-	int, int, pbs_list_head *, int *);
+	int, int, pbs_list_node *, int *);
 
 extern int svr_chk_histjob(job *);
 
@@ -119,9 +119,9 @@ static int bad;
 
 /* The following private support functions are included */
 
-static int  status_que(pbs_queue *, struct batch_request *, pbs_list_head *);
-static int status_node(struct pbsnode *, struct batch_request *, pbs_list_head *);
-static int status_resv(resc_resv *, struct batch_request *, pbs_list_head *);
+static int  status_que(pbs_queue *, struct batch_request *, pbs_list_node *);
+static int status_node(struct pbsnode *, struct batch_request *, pbs_list_node *);
+static int status_resv(resc_resv *, struct batch_request *, pbs_list_node *);
 extern pbs_sched *find_scheduler(char *sched_name);
 /**
  * @brief
@@ -482,7 +482,7 @@ req_stat_que(struct batch_request *preq)
  */
 
 static int
-status_que(pbs_queue *pque, struct batch_request *preq, pbs_list_head *pstathd)
+status_que(pbs_queue *pque, struct batch_request *preq, pbs_list_node *pstathd)
 {
 	struct brp_status *pstat;
 	svrattrl	  *pal;
@@ -511,9 +511,9 @@ status_que(pbs_queue *pque, struct batch_request *preq, pbs_list_head *pstathd)
 		return (PBSE_SYSTEM);
 	pstat->brp_objtype = MGR_OBJ_QUEUE;
 	(void)strcpy(pstat->brp_objname, pque->qu_qs.qu_name);
-	CLEAR_LINK(pstat->brp_stlink);
+	CLEAR_NODE(pstat->brp_stlink);
 	CLEAR_HEAD(pstat->brp_attr);
-	append_link(pstathd, &pstat->brp_stlink, pstat);
+	append_node(pstathd, &pstat->brp_stlink, pstat);
 
 	/* add attributes to the status reply */
 
@@ -624,7 +624,7 @@ req_stat_node(struct batch_request *preq)
  */
 
 static int
-status_node(struct pbsnode *pnode, struct batch_request *preq, pbs_list_head *pstathd)
+status_node(struct pbsnode *pnode, struct batch_request *preq, pbs_list_node *pstathd)
 {
 	int		   rc = 0;
 	struct brp_status *pstat;
@@ -664,13 +664,13 @@ status_node(struct pbsnode *pnode, struct batch_request *preq, pbs_list_head *ps
 
 	pstat->brp_objtype = MGR_OBJ_NODE;
 	(void)strcpy(pstat->brp_objname, pnode->nd_name);
-	CLEAR_LINK(pstat->brp_stlink);
+	CLEAR_NODE(pstat->brp_stlink);
 	CLEAR_HEAD(pstat->brp_attr);
 
 	/*add this new brp_status structure to the list hanging off*/
 	/*the request's reply substructure                         */
 
-	append_link(pstathd, &pstat->brp_stlink, pstat);
+	append_node(pstathd, &pstat->brp_stlink, pstat);
 
 	/*point to the list of node-attributes about which we want status*/
 	/*hang that status information from the brp_attr field for this  */
@@ -733,11 +733,11 @@ req_stat_svr(struct batch_request *preq)
 		req_reject(PBSE_SYSTEM, 0, preq);
 		return;
 	}
-	CLEAR_LINK(pstat->brp_stlink);
+	CLEAR_NODE(pstat->brp_stlink);
 	(void)strcpy(pstat->brp_objname, server_name);
 	pstat->brp_objtype = MGR_OBJ_SERVER;
 	CLEAR_HEAD(pstat->brp_attr);
-	append_link(&preply->brp_un.brp_status, &pstat->brp_stlink, pstat);
+	append_node(&preply->brp_un.brp_status, &pstat->brp_stlink, pstat);
 
 	/* add attributes to the status reply */
 
@@ -763,7 +763,7 @@ req_stat_svr(struct batch_request *preq)
  * @retval	!0	: PBSE error code
  */
 static int
-status_sched(pbs_sched *psched, struct batch_request *preq, pbs_list_head *pstathd)
+status_sched(pbs_sched *psched, struct batch_request *preq, pbs_list_node *pstathd)
 {
 	int		   rc = 0;
 	struct brp_status *pstat;
@@ -778,9 +778,9 @@ status_sched(pbs_sched *psched, struct batch_request *preq, pbs_list_head *pstat
 			PBS_MAXSVRJOBID : PBS_MAXDEST) -1);
 	pstat->brp_objname[(PBS_MAXSVRJOBID > PBS_MAXDEST ? PBS_MAXSVRJOBID : PBS_MAXDEST) - 1] = '\0';
 
-	CLEAR_LINK(pstat->brp_stlink);
+	CLEAR_NODE(pstat->brp_stlink);
 	CLEAR_HEAD(pstat->brp_attr);
-	append_link(pstathd, &pstat->brp_stlink, pstat);
+	append_node(pstathd, &pstat->brp_stlink, pstat);
 
 
 	bad = 0;
@@ -986,7 +986,7 @@ req_stat_resv(struct batch_request * preq)
  */
 
 static int
-status_resv(resc_resv *presv, struct batch_request *preq, pbs_list_head *pstathd)
+status_resv(resc_resv *presv, struct batch_request *preq, pbs_list_node *pstathd)
 {
 	struct brp_status *pstat;
 	svrattrl	  *pal;
@@ -1006,9 +1006,9 @@ status_resv(resc_resv *presv, struct batch_request *preq, pbs_list_head *pstathd
 
 	pstat->brp_objtype = MGR_OBJ_RESV;
 	(void)strcpy(pstat->brp_objname, presv->ri_qs.ri_resvID);
-	CLEAR_LINK(pstat->brp_stlink);
+	CLEAR_NODE(pstat->brp_stlink);
 	CLEAR_HEAD(pstat->brp_attr);
-	append_link(pstathd, &pstat->brp_stlink, pstat);
+	append_node(pstathd, &pstat->brp_stlink, pstat);
 
 	/*finally, add the requested attributes to the status reply*/
 
@@ -1042,7 +1042,7 @@ status_resv(resc_resv *presv, struct batch_request *preq, pbs_list_head *pstathd
  */
 
 static int
-status_resc(struct resource_def *prd, struct batch_request *preq, pbs_list_head *pstathd, int private)
+status_resc(struct resource_def *prd, struct batch_request *preq, pbs_list_node *pstathd, int private)
 {
 	struct attribute   attr;
 	struct brp_status *pstat;
@@ -1058,7 +1058,7 @@ status_resc(struct resource_def *prd, struct batch_request *preq, pbs_list_head 
 		return (PBSE_SYSTEM);
 	pstat->brp_objtype = MGR_OBJ_RSC;
 	(void)strcpy(pstat->brp_objname, prd->rs_name);
-	CLEAR_LINK(pstat->brp_stlink);
+	CLEAR_NODE(pstat->brp_stlink);
 	CLEAR_HEAD(pstat->brp_attr);
 
 	/* add attributes to the status reply */
@@ -1091,7 +1091,7 @@ status_resc(struct resource_def *prd, struct batch_request *preq, pbs_list_head 
 		if (encode_str(&attr, &pstat->brp_attr, ATTR_RESC_FLAG, NULL, 0, NULL) == -1)
 			return PBSE_SYSTEM;
 	}
-	append_link(pstathd, &pstat->brp_stlink, pstat);
+	append_node(pstathd, &pstat->brp_stlink, pstat);
 	return 0;
 }
 

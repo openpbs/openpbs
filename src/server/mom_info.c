@@ -65,7 +65,7 @@
 #include <errno.h>
 #include <sys/types.h>
 #include "libpbs.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "resource.h"
 #include "credential.h"

@@ -62,7 +62,7 @@
 #include	<signal.h>
 
 #include	"portability.h"
-#include 	"list_link.h"
+#include 	"linked_list.h"
 #include 	"pbs_ifl.h"
 #include 	"server_limits.h"
 #include	"pbs_error.h"
@@ -110,10 +110,10 @@ extern	int		internal_state_update;
 extern	int		cycle_harvester;
 extern  char	        *mom_home;
 extern  unsigned long   hook_action_id;
-extern	pbs_list_head	svr_alljobs;
-extern	pbs_list_head	svr_hook_job_actions;
-extern	pbs_list_head	svr_hook_vnl_actions;
-extern	pbs_list_head	svr_allhooks;
+extern	pbs_list_node	svr_alljobs;
+extern	pbs_list_node	svr_hook_job_actions;
+extern	pbs_list_node	svr_hook_vnl_actions;
+extern	pbs_list_node	svr_allhooks;
 extern  int		svr_hook_resend_job_attrs;
 extern  int 		mom_recvd_ip_cluster_addrs;
 
@@ -698,7 +698,7 @@ int
 send_hook_vnl(void *vnl)
 {
 	struct hook_vnl_action *pvna;
-	pbs_list_head pvnalist;
+	pbs_list_node pvnalist;
 	int		ret;
 	vnl_t		*the_vnlp = vnl;
 
@@ -712,11 +712,11 @@ send_hook_vnl(void *vnl)
 		return DIS_NOMALLOC;
 	}
 	CLEAR_HEAD(pvnalist);
-	CLEAR_LINK(pvna->hva_link);
+	CLEAR_NODE(pvna->hva_link);
 	pvna->hva_euser[0] = '\0';
 	pvna->hva_actid = hook_action_id++;
 	pvna->hva_vnl   = the_vnlp;
-	append_link(&pvnalist, &pvna->hva_link, pvna);
+	append_node(&pvnalist, &pvna->hva_link, pvna);
 
 	/* The argument of 1 means to save action to */
 	/* svr_vnl_actions list for possible resend. */
@@ -1260,7 +1260,7 @@ is_request(int stream, int version)
 					phjba;
 					phjba = GET_NEXT(phjba->hja_link)) {
 					if (hkseq == phjba->hja_actid) {
-						delete_link(&phjba->hja_link);
+						delete_node(&phjba->hja_link);
 						free(phjba);
 						break;
 					}
@@ -1272,7 +1272,7 @@ is_request(int stream, int version)
 					phvna = GET_NEXT(phvna->hva_link)) {
 
 					if (hkseq == phvna->hva_actid) {
-						delete_link(&phvna->hva_link);
+						delete_node(&phvna->hva_link);
 						/* save admin vnode changes */
 						/* done by various hooks */
 						if (phvna->hva_euser [0] == \
@@ -1348,7 +1348,7 @@ err:
  *
  */
 int
-hook_requests_to_server(pbs_list_head *plist)
+hook_requests_to_server(pbs_list_node *plist)
 {
 	int			resending = 0;
 	int			ret;
@@ -1378,7 +1378,7 @@ hook_requests_to_server(pbs_list_head *plist)
 
 		if ((pvnlph = pvna->hva_vnl) == NULL) {
 			/* nothing to send, get rid of it */
-			delete_link(&pvna->hva_link);
+			delete_node(&pvna->hva_link);
 			free(pvna);
 			pvna = nxt;
 			continue;
@@ -1391,8 +1391,8 @@ hook_requests_to_server(pbs_list_head *plist)
 
 			/* relink them into the main list of "outstanding" */
 			/* changes sent to the server */
-			delete_link(&pvna->hva_link);
-			append_link(&svr_hook_vnl_actions, &pvna->hva_link, pvna);
+			delete_node(&pvna->hva_link);
+			append_node(&svr_hook_vnl_actions, &pvna->hva_link, pvna);
 			pvna->hva_actid = ++hook_action_id;
 
 			/*

@@ -63,7 +63,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "pbs_error.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "server_limits.h"
 #include "work_task.h"
@@ -121,11 +121,11 @@ add_dest(job *jobp)
 		log_err(errno, __func__, msg_err_malloc);
 		return;
 	}
-	CLEAR_LINK(bp->bp_link);
+	CLEAR_NODE(bp->bp_link);
 
 	strcpy(bp->bp_dest, baddest);
 
-	append_link(&jobp->ji_rejectdest, &bp->bp_link, bp);
+	append_node(&jobp->ji_rejectdest, &bp->bp_link, bp);
 	return;
 }
 

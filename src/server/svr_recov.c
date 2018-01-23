@@ -64,7 +64,7 @@
 #include <sys/stat.h>
 #include "pbs_ifl.h"
 #include "server_limits.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "job.h"
 #include "reservation.h"
@@ -79,7 +79,7 @@
 /* Global Data Items: */
 
 extern struct server server;
-extern pbs_list_head svr_queues;
+extern pbs_list_node svr_queues;
 extern attribute_def svr_attr_def[];
 extern char	*path_svrdb;
 extern char	*path_svrdb_new;
@@ -346,7 +346,7 @@ save_acl(attribute *attr, attribute_def *pdef, char *subdir, char *name)
 	int		fds;
 	char		filename1[MAXPATHLEN];
 	char		filename2[MAXPATHLEN];
-	pbs_list_head	head;
+	pbs_list_node	head;
 	int		i;
 	svrattrl	*pentry;
 #ifdef WIN32

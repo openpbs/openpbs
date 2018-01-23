@@ -81,11 +81,11 @@ sched_alloc(char *sched_name)
 		return NULL;
 	}
 
-	CLEAR_LINK(psched->sc_link);
+	CLEAR_NODE(psched->sc_link);
 	strncpy(psched->sc_name, sched_name, PBS_MAXSCHEDNAME);
 	psched->sc_name[PBS_MAXSCHEDNAME - 1] = '\0';
 
-	append_link(&svr_allscheds, &psched->sc_link, psched);
+	append_node(&svr_allscheds, &psched->sc_link, psched);
 
 	/* set the working attributes to "unspecified" */
 
@@ -142,7 +142,7 @@ sched_free(pbs_sched *psched)
 	}
 
 	/* now free the main structure */
-	delete_link(&psched->sc_link);
+	delete_node(&psched->sc_link);
 	(void) free(psched);
 }
 

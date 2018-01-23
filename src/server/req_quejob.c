@@ -89,7 +89,7 @@
 
 #include "libpbs.h"
 #include "server_limits.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "resource.h"
 #include "server.h"
@@ -164,8 +164,8 @@ extern char *resc_in_err;
 #endif	/* PBS_MOM */
 
 extern int	 resc_access_perm;
-extern pbs_list_head svr_alljobs;
-extern pbs_list_head svr_newjobs;
+extern pbs_list_node svr_alljobs;
+extern pbs_list_node svr_newjobs;
 extern attribute_def job_attr_def[];
 extern char *path_jobs;
 extern char *path_resvs;
@@ -550,8 +550,8 @@ req_quejob(struct batch_request *preq)
 			pj->ji_qs.ji_substate = JOB_SUBSTATE_TRANSIN;
 			if (reply_jobid(preq, pj->ji_qs.ji_jobid,
 				BATCH_REPLY_CHOICE_Queue) == 0) {
-				delete_link(&pj->ji_alljobs);
-				append_link(&svr_newjobs, &pj->ji_alljobs, pj);
+				delete_node(&pj->ji_alljobs);
+				append_node(&svr_newjobs, &pj->ji_alljobs, pj);
 				pj->ji_qs.ji_un_type = JOB_UNION_TYPE_NEW;
 				pj->ji_qs.ji_un.ji_newt.ji_fromsock = sock;
 				if (!preq->isrpp) {
@@ -568,7 +568,7 @@ req_quejob(struct batch_request *preq)
 			return;
 		}
 		/* unlink job from svr_alljobs since will be place on newjobs */
-		delete_link(&pj->ji_alljobs);
+		delete_node(&pj->ji_alljobs);
 	} else {
 		/* if not already here, allocate job struct */
 
@@ -1220,7 +1220,7 @@ req_quejob(struct batch_request *preq)
 
 	/* link job into server's new jobs list request  */
 
-	append_link(&svr_newjobs, &pj->ji_alljobs, pj);
+	append_node(&svr_newjobs, &pj->ji_alljobs, pj);
 
 #ifndef	PBS_MOM
 	{
@@ -1341,7 +1341,7 @@ next_cred_renew(job *pjob, time_t endtime)
 		pwt = set_task(WORK_Timed, time_now + renewin,
 			renew_cred_server, pjob);
 		if (pwt)
-			append_link(&pjob->ji_svrtask, &pwt->wt_linkobj, pwt);
+			append_node(&pjob->ji_svrtask, &pwt->wt_linkobj, pwt);
 	}
 #endif	/* PBS_MOM */
 
@@ -1705,7 +1705,7 @@ req_jobcredential(struct batch_request *preq)
 		return;
 	}
 	if (pj->ji_qs.ji_substate != JOB_SUBSTATE_TRANSIN) {
-		delete_link(&pj->ji_alljobs);
+		delete_node(&pj->ji_alljobs);
 		req_reject(PBSE_IVALREQ, 0, preq);
 		return;
 	}
@@ -1726,7 +1726,7 @@ req_jobcredential(struct batch_request *preq)
 
 		case PBS_CREDTYPE_DCE_KRB5:
 			if (save_kerb_cred(pj, cred, len, TRUE, preq->rq_conn) == -1) {
-				delete_link(&pj->ji_alljobs);
+				delete_node(&pj->ji_alljobs);
 				req_reject(PBSE_SYSTEM, 0, preq);
 			}
 			else
@@ -1735,12 +1735,12 @@ req_jobcredential(struct batch_request *preq)
 
 		case PBS_CREDTYPE_GRIDPROXY:
 			if (unseal_gridproxy(pj, &cred, &len) == -1) {
-				delete_link(&pj->ji_alljobs);
+				delete_node(&pj->ji_alljobs);
 				req_reject(PBSE_SYSTEM, 0, preq);
 				break;
 			}
 			if (write_cred(pj, cred, len) == -1) {
-				delete_link(&pj->ji_alljobs);
+				delete_node(&pj->ji_alljobs);
 				req_reject(PBSE_SYSTEM, 0, preq);
 			}
 			else
@@ -1750,7 +1750,7 @@ req_jobcredential(struct batch_request *preq)
 
 		default:
 			if (write_cred(pj, cred, len) == -1) {
-				delete_link(&pj->ji_alljobs);
+				delete_node(&pj->ji_alljobs);
 				req_reject(PBSE_SYSTEM, 0, preq);
 			}
 			else
@@ -1875,7 +1875,7 @@ req_jobscript(struct batch_request *preq)
 		return;
 	}
 	if (pj->ji_qs.ji_substate != JOB_SUBSTATE_TRANSIN) {
-		delete_link(&pj->ji_alljobs);
+		delete_node(&pj->ji_alljobs);
 		req_reject(PBSE_IVALREQ, 0, preq);
 		return;
 	}
@@ -1916,7 +1916,7 @@ req_jobscript(struct batch_request *preq)
 
 				log_err(-1, "req_jobscript",
 					msg_mom_reject_root_scripts);
-				delete_link(&pj->ji_alljobs);
+				delete_node(&pj->ji_alljobs);
 				req_reject(PBSE_MOM_REJECT_ROOT_SCRIPTS, 0, preq);
 				return;
 			}
@@ -1937,7 +1937,7 @@ req_jobscript(struct batch_request *preq)
 	}
 	if (fds < 0) {
 		log_err(errno, "req_jobscript", msg_script_open);
-		delete_link(&pj->ji_alljobs);
+		delete_node(&pj->ji_alljobs);
 		req_reject(PBSE_SYSTEM, 0, preq);
 		return;
 	}
@@ -1951,7 +1951,7 @@ req_jobscript(struct batch_request *preq)
 		(unsigned)preq->rq_ind.rq_jobfile.rq_size) !=
 		preq->rq_ind.rq_jobfile.rq_size) {
 		log_err(errno, "req_jobscript", msg_script_write);
-		delete_link(&pj->ji_alljobs);
+		delete_node(&pj->ji_alljobs);
 		req_reject(PBSE_SYSTEM, 0, preq);
 		(void)close(fds);
 		return;
@@ -2293,8 +2293,8 @@ req_commit(struct batch_request *preq)
 #endif  /* IRIX6_CPUSET */
 	/* move job from new job list to "all" job list, set to running state */
 
-	delete_link(&pj->ji_alljobs);
-	append_link(&svr_alljobs, &pj->ji_alljobs, pj);
+	delete_node(&pj->ji_alljobs);
+	append_node(&svr_alljobs, &pj->ji_alljobs, pj);
 	/*
 	 ** Set JOB_SVFLG_HERE to indicate that this is Mother Superior.
 	 */
@@ -2358,7 +2358,7 @@ req_commit(struct batch_request *preq)
 
 	/* remove job for the server new job list, set state, and enqueue it */
 
-	delete_link(&pj->ji_alljobs);
+	delete_node(&pj->ji_alljobs);
 
 	svr_evaljobstate(pj, &newstate, &newsub, 1);
 	pj->ji_modified = 0; /* don't save from svr_setjobstate, we will save soon after */
@@ -2403,8 +2403,8 @@ req_commit(struct batch_request *preq)
 			req_reject(PBSE_SYSTEM, 0, preq);
 			return;
 		}
-		delete_link(&presv->ri_allresvs);
-		append_link(&svr_allresvs, &presv->ri_allresvs, presv);
+		delete_node(&presv->ri_allresvs);
+		append_node(&svr_allresvs, &presv->ri_allresvs, presv);
 		set_scheduler_flag(SCH_SCHEDULE_NEW);
 		Update_Resvstate_if_resv(pj);
 	}
@@ -3220,7 +3220,7 @@ req_resvSub(struct batch_request *preq)
 	 * and let the scheduler know that something new
 	 * is available for consideration
 	 */
-	append_link(&svr_allresvs, &presv->ri_allresvs, presv);
+	append_node(&svr_allresvs, &presv->ri_allresvs, presv);
 	set_scheduler_flag(SCH_SCHEDULE_NEW);
 }
 
@@ -3272,7 +3272,7 @@ get_queue_for_reservation(resc_resv *presv)
 	static	char		Execution[] = "Execution";
 	struct batch_request	*newreq;
 	attribute		*pattr;
-	pbs_list_head		*plhed;
+	pbs_list_node		*plhed;
 	int			rc = 0;
 	svrattrl		*psatl;
 	struct work_task	*pwt;
@@ -3319,7 +3319,7 @@ get_queue_for_reservation(resc_resv *presv)
 			&presv->ri_wattr[RESV_ATR_resource],
 			prdef);
 		if (dont_set_in_max[i].ds_rescp)
-			delete_link(&dont_set_in_max[i].ds_rescp->rs_link);
+			delete_node(&dont_set_in_max[i].ds_rescp->rs_link);
 	}
 
 
@@ -3333,7 +3333,7 @@ get_queue_for_reservation(resc_resv *presv)
 
 	for (i=0; i<j; ++i) {
 		if (dont_set_in_max[i].ds_rescp)
-			append_link(
+			append_node(
 				&presv->ri_wattr[RESV_ATR_resource].at_val.at_list,
 				&dont_set_in_max[i].ds_rescp->rs_link,
 				dont_set_in_max[i].ds_rescp);
@@ -3348,7 +3348,7 @@ get_queue_for_reservation(resc_resv *presv)
 		(svrattrl *)0) {
 		psatl->al_flags = que_attr_def[QA_ATR_QType].at_flags;
 		strcpy(psatl->al_value, Execution);
-		append_link(plhed, &psatl->al_link, psatl);
+		append_node(plhed, &psatl->al_link, psatl);
 	} else {
 		free_br(newreq);
 		return  (PBSE_genBatchReq);
@@ -3359,7 +3359,7 @@ get_queue_for_reservation(resc_resv *presv)
 		(svrattrl *)0) {
 		psatl->al_flags = que_attr_def[QA_ATR_Enabled].at_flags;
 		strcpy(psatl->al_value, ATR_FALSE);
-		append_link(plhed, &psatl->al_link, psatl);
+		append_node(plhed, &psatl->al_link, psatl);
 	} else {
 		free_br(newreq);
 		return  (PBSE_genBatchReq);
@@ -3369,7 +3369,7 @@ get_queue_for_reservation(resc_resv *presv)
 	if ((psatl = attrlist_create(ATTR_start, NULL, lenF)) != (svrattrl *)0) {
 		psatl->al_flags = que_attr_def[QA_ATR_Started].at_flags;
 		strcpy(psatl->al_value, ATR_FALSE);
-		append_link(plhed, &psatl->al_link, psatl);
+		append_node(plhed, &psatl->al_link, psatl);
 	} else {
 		free_br(newreq);
 		return  (PBSE_genBatchReq);
@@ -3401,7 +3401,7 @@ get_queue_for_reservation(resc_resv *presv)
 			NULL, lenT)) != (svrattrl *)0) {
 			psatl->al_flags = que_attr_def[QA_ATR_AclUserEnabled].at_flags;
 			strcpy(psatl->al_value, ATR_TRUE);
-			append_link(plhed, &psatl->al_link, psatl);
+			append_node(plhed, &psatl->al_link, psatl);
 		} else {
 			free_br(newreq);
 			return  (PBSE_genBatchReq);
@@ -3433,7 +3433,7 @@ get_queue_for_reservation(resc_resv *presv)
 			NULL, lenT)) != (svrattrl *)0) {
 			psatl->al_flags = que_attr_def[QE_ATR_AclGroupEnabled].at_flags;
 			strcpy(psatl->al_value, ATR_TRUE);
-			append_link(plhed, &psatl->al_link, psatl);
+			append_node(plhed, &psatl->al_link, psatl);
 		} else {
 			free_br(newreq);
 			return  (PBSE_genBatchReq);
@@ -3465,7 +3465,7 @@ get_queue_for_reservation(resc_resv *presv)
 			NULL, lenT)) != (svrattrl *)0) {
 			psatl->al_flags = que_attr_def[QA_ATR_AclHostEnabled].at_flags;
 			strcpy(psatl->al_value, ATR_TRUE);
-			append_link(plhed, &psatl->al_link, psatl);
+			append_node(plhed, &psatl->al_link, psatl);
 		} else {
 			free_br(newreq);
 			return  (PBSE_genBatchReq);

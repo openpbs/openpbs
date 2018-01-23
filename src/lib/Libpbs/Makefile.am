@@ -210,7 +210,7 @@ libpbs_la_SOURCES = \
 	../Libifl/int_status.c \
 	../Libifl/int_ucred.c \
 	../Libifl/int_modify_resv.c \
-	../Libifl/list_link.c \
+	../Libifl/linked_list.c \
 	../Libifl/PBS_attr.c \
 	../Libifl/PBS_data.c \
 	../Libifl/pbs_authors.c \

@@ -50,7 +50,7 @@
 #include <windows.h>
 #include "win.h"
 #include "pbs_ifl.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "job.h"
 #include "credential.h"

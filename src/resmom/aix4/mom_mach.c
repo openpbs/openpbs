@@ -68,7 +68,7 @@
 
 #include "pbs_error.h"
 #include "portability.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "server_limits.h"
 #include "attribute.h"
 #include "resource.h"
@@ -603,7 +603,7 @@ int	ib_num = 0;
 /**
  * List of all jobs local to MOM.
  */
-extern pbs_list_head	svr_alljobs;
+extern pbs_list_node	svr_alljobs;
 
 /**
  * Values for flag passed to make_jobkey.

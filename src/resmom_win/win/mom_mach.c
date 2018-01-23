@@ -56,7 +56,7 @@
 #include <wtsapi32.h>
 
 #include "pbs_error.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "server_limits.h"
 #include "attribute.h"
 #include "resource.h"
@@ -110,7 +110,7 @@ extern	double	cputfactor;
 extern	double	wallfactor;
 extern  int	nrun_factor;
 extern	int	suspend_signal, resume_signal;
-extern	pbs_list_head	svr_alljobs;	/* all jobs under MOM's control */
+extern	pbs_list_node	svr_alljobs;	/* all jobs under MOM's control */
 
 /*
  ** local functions and data

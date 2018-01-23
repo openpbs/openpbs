@@ -56,7 +56,7 @@
 #include <sys/types.h>
 #include <stdlib.h>
 #include "libpbs.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "dis.h"
 
 /**
@@ -160,7 +160,7 @@ decode_DIS_replySvr(int sock, struct batch_reply *reply)
 				pstsvr = (struct brp_status *)malloc(sizeof(struct brp_status));
 				if (pstsvr == 0) return DIS_NOMALLOC;
 
-				CLEAR_LINK(pstsvr->brp_stlink);
+				CLEAR_NODE(pstsvr->brp_stlink);
 				pstsvr->brp_objname[0] = '\0';
 				CLEAR_HEAD(pstsvr->brp_attr);
 
@@ -173,7 +173,7 @@ decode_DIS_replySvr(int sock, struct batch_reply *reply)
 					(void)free(pstsvr);
 					return rc;
 				}
-				append_link(&reply->brp_un.brp_status,
+				append_node(&reply->brp_un.brp_status,
 					&pstsvr->brp_stlink, pstsvr);
 				rc = decode_DIS_svrattrl(sock, &pstsvr->brp_attr);
 			}

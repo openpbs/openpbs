@@ -56,7 +56,7 @@
 #include "net_connect.h"
 #include "sched_cmds.h"
 #include "dis.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "job.h"
 #include "server.h"
@@ -77,7 +77,7 @@ extern int	 svr_do_schedule;
 extern int	 svr_do_sched_high;
 extern char     *msg_sched_called;
 extern char     *msg_sched_nocall;
-extern pbs_list_head svr_deferred_req;
+extern pbs_list_node svr_deferred_req;
 extern void  est_start_timed_task(struct work_task *);
 extern char	*msg_noloopbackif;
 extern char	*msg_daemonname;
@@ -391,7 +391,7 @@ scheduler_close(int sock)
 			if (pdefr->dr_preq != NULL)
 				req_reject(PBSE_INTERNAL, 0, pdefr->dr_preq);
 			/* unlink and free the deferred request entry */
-			delete_link(&pdefr->dr_link);
+			delete_node(&pdefr->dr_link);
 			free(pdefr);
 		}
 		else if((pdefr->dr_sent == 0) && (svr_unsent_qrun_req == 0)) {

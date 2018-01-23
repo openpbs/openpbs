@@ -102,7 +102,7 @@
 #include	"portability.h"
 #include	"pbs_error.h"
 #include	"log.h"
-#include	"list_link.h"
+#include	"linked_list.h"
 #include	"server_limits.h"
 #include	"attribute.h"
 #include	"resource.h"

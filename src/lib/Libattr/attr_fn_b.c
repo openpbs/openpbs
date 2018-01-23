@@ -46,7 +46,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "pbs_ifl.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "pbs_error.h"
 
@@ -170,7 +170,7 @@ decode_b(struct attribute *patr, char *name, char *rescn, char *val)
 /*ARGSUSED*/
 
 int
-encode_b(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
+encode_b(attribute *attr, pbs_list_node *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
 	size_t	  ct;
 	svrattrl *pal;
@@ -195,7 +195,7 @@ encode_b(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int 
 	pal->al_flags = attr->at_flags;
 
 	if (phead)
-		append_link(phead, &pal->al_link, pal);
+		append_node(phead, &pal->al_link, pal);
 	if (rtnl)
 		*rtnl = pal;
 	return (1);

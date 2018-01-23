@@ -57,7 +57,7 @@
 #include <pbs_ifl.h>
 #include <errno.h>
 #include <string.h>
-#include <list_link.h>
+#include <linked_list.h>
 #include <log.h>
 #include <attribute.h>
 #include <resource.h>
@@ -93,9 +93,9 @@ extern int svr_resc_unk;  /* the last one */
 extern char          server_name[];
 extern char          server_host[];
 extern struct python_interpreter_data  svr_interp_data;
-extern pbs_list_head       svr_queues;    /* list of queues                   */
-extern pbs_list_head       svr_alljobs;   /* list of all jobs in server       */
-extern pbs_list_head       svr_allresvs;  /* all reservations in server */
+extern pbs_list_node       svr_queues;    /* list of queues                   */
+extern pbs_list_node       svr_alljobs;   /* list of all jobs in server       */
+extern pbs_list_node       svr_allresvs;  /* all reservations in server */
 extern char	       *msg_man_set;
 extern char		*path_hooks_workdir;
 
@@ -192,18 +192,18 @@ typedef struct _pbs_iter_item {
 	PyObject  *py_iter;             /* *the* iterator */
 	void      *data;                /* arbitrary pbs data */
 	int	  data_index;           /* index of data to some table */
-	pbs_list_link all_iters;
+	pbs_list_node all_iters;
 } pbs_iter_item;
 
-static pbs_list_head pbs_iter_list;               /* list of PBS iterators */
+static pbs_list_node pbs_iter_list;               /* list of PBS iterators */
 
 typedef struct _vnode_set_req {
 	char		vnode_name[PBS_MAXNODENAME+1];
-	pbs_list_head 	rq_attr;	/* list of attributes to set */
-	pbs_list_link 	all_reqs;
+	pbs_list_node 	rq_attr;	/* list of attributes to set */
+	pbs_list_node 	all_reqs;
 } vnode_set_req;
 
-static pbs_list_head pbs_vnode_set_list;      /* list of vnode set requests */
+static pbs_list_node pbs_vnode_set_list;      /* list of vnode set requests */
 
 /**
  * @brief
@@ -223,11 +223,11 @@ typedef struct _pbs_resource_value {
 	PyObject	*py_resource;
 	PyObject	*py_resource_str_value;
 	attribute_def	*attr_def_p;	/* corresponding resource definition */
-	pbs_list_head 	value_list;	/* resource values to set */
-	pbs_list_link 	all_rescs;
+	pbs_list_node 	value_list;	/* resource values to set */
+	pbs_list_node 	all_rescs;
 } pbs_resource_value;
 
-static pbs_list_head pbs_resource_value_list;  	/* list of resource */
+static pbs_list_node pbs_resource_value_list;  	/* list of resource */
 						/* values to instantiate */
 
 static PyObject  *PyPbsV1Module_Obj = (PyObject *) NULL; /* pbs.v1 module object */
@@ -303,29 +303,29 @@ static	int	use_static_data = 0;	/* use static server-related data */
 
 static	hook_debug_t	hook_debug;
 
-static	pbs_list_head *server_data;
+static	pbs_list_node *server_data;
 
 typedef struct server_jobs_t {
-	pbs_list_head	*data;
-	pbs_list_head	*ids;
+	pbs_list_node	*data;
+	pbs_list_node	*ids;
 } server_jobs_t;
 static	server_jobs_t server_jobs;
 
 typedef struct server_queues_t {
-	pbs_list_head	*data;
-	pbs_list_head	*names;
+	pbs_list_node	*data;
+	pbs_list_node	*names;
 } server_queues_t;
 static	server_queues_t server_queues;
 
 typedef struct server_resvs_t {
-	pbs_list_head	*data;
-	pbs_list_head	*resvids;
+	pbs_list_node	*data;
+	pbs_list_node	*resvids;
 } server_resvs_t;
 static	server_resvs_t server_resvs;
 
 typedef struct server_vnodes_t {
-	pbs_list_head	*data;
-	pbs_list_head	*names;
+	pbs_list_node	*data;
+	pbs_list_node	*names;
 } server_vnodes_t;
 static	server_vnodes_t server_vnodes;
 
@@ -341,7 +341,7 @@ static	server_vnodes_t server_vnodes;
  *
  */
 void
-print_svrattrl_list(char *head_str, pbs_list_head *phead)
+print_svrattrl_list(char *head_str, pbs_list_node *phead)
 {
 	svrattrl *plist = NULL;
 	int i;
@@ -1473,7 +1473,7 @@ set_in_python(PyObject *py_resource,
  *
  */
 static int
-set_entity_resource_or_return_value(pbs_list_head *resc_value_list,
+set_entity_resource_or_return_value(pbs_list_node *resc_value_list,
 	char *reslist_name, PyObject *py_resource, char **p_strbuf)
 {
 	static	char	*ret_str_value = NULL;
@@ -1482,7 +1482,7 @@ set_entity_resource_or_return_value(pbs_list_head *resc_value_list,
 	svrattrl *svrattr_val_tmp = (svrattrl *) NULL; /* tmp pointer for traversal*/
 	svrattrl *svrattr_val_next = (svrattrl *) NULL;
 	svrattrl *plist = (svrattrl *) NULL;
-	pbs_list_head  entity_head;
+	pbs_list_node  entity_head;
 	char	*bef_resc = NULL;
 	char	*cur_resc = NULL;
 	char	*next_resc = NULL;
@@ -1848,7 +1848,7 @@ set_entity_resource_or_return_value(pbs_list_head *resc_value_list,
  *
  */
 static int
-set_resource_or_return_value(pbs_list_head *resc_value_list, char *reslist_name,
+set_resource_or_return_value(pbs_list_node *resc_value_list, char *reslist_name,
 	PyObject *py_resource, char **p_strbuf)
 {
 	static	char	*ret_str_value = NULL;
@@ -1997,7 +1997,7 @@ pbs_python_populate_attributes_to_python_class(PyObject *py_instance,
 	int ret_rc = 0;
 	svrattrl *svrattr_val = (svrattrl *) NULL; /* tmp pointer */
 	svrattrl *svrattr_val_tmp = (svrattrl *) NULL; /* tmp pointer for traversal*/
-	pbs_list_head pheadp;
+	pbs_list_node pheadp;
 	attribute *attr_p = (attribute *) NULL;
 	attribute_def *attr_def_p = (attribute_def *) NULL;
 	PyObject *py_attr_resc = (PyObject *) NULL; /* for resource types */
@@ -2071,7 +2071,7 @@ pbs_python_populate_attributes_to_python_class(PyObject *py_instance,
 
 					(void)memset((char *)resc_val, (int)0,
 						(size_t)sizeof(pbs_resource_value));
-					CLEAR_LINK(resc_val->all_rescs);
+					CLEAR_NODE(resc_val->all_rescs);
 					/* no need to incref py_attr_resc */
 					/* since that's already done */
 					/* with the PyObject_GetAttrString() */
@@ -2083,7 +2083,7 @@ pbs_python_populate_attributes_to_python_class(PyObject *py_instance,
 					list_move(&pheadp,
 						&resc_val->value_list);
 
-					append_link(&pbs_resource_value_list,
+					append_node(&pbs_resource_value_list,
 						&resc_val->all_rescs,
 						(pbs_resource_value *)resc_val);
 					resc_val->py_resource_str_value =
@@ -2221,7 +2221,7 @@ pbs_python_populate_attributes_to_python_class(PyObject *py_instance,
  *	a svrattrl list.
  *
  * @param[in] py_instance -  a Python object/class to populate
- * @param[in] svrattrl_list - a pbs_list_head with svrattrl entries whose
+ * @param[in] svrattrl_list - a pbs_list_node with svrattrl entries whose
  *				values will be used to populate 'py_instance'
  *
  * @return indication of whether or not 'py_instance' was completely
@@ -2231,7 +2231,7 @@ pbs_python_populate_attributes_to_python_class(PyObject *py_instance,
  */
 int
 pbs_python_populate_python_class_from_svrattrl(PyObject *py_instance,
-	pbs_list_head *svrattrl_list)
+	pbs_list_node *svrattrl_list)
 {
 	svrattrl	*plist = NULL;
 
@@ -2416,8 +2416,8 @@ return_external_value(char *name, char *val)
  */
 int
 varlist_same(char *varl1, char *varl2) {
-	pbs_list_head	list1;/* Caution: list maintained in sorted order */
-	pbs_list_head	list2;/* Caution: list maintained in sorted order */
+	pbs_list_node	list1;/* Caution: list maintained in sorted order */
+	pbs_list_node	list2;/* Caution: list maintained in sorted order */
 	char		*pc, *pc1;
 	char		*env_var;
 	char		*env_val;
@@ -2567,7 +2567,7 @@ load_cached_resource_value(PyObject *py_resource_match)
 		}
 		Py_DECREF(resc_val->py_resource);
 		free_attrlist(&resc_val->value_list);
-		delete_link(&resc_val->all_rescs);
+		delete_node(&resc_val->all_rescs);
 		free(resc_val);
 
 	}
@@ -2578,7 +2578,7 @@ load_cached_resource_value(PyObject *py_resource_match)
 /**
  *
  * @brief
- *	Repopulates the 'svrattrl_list' (pbs_list_head) with values found from
+ *	Repopulates the 'svrattrl_list' (pbs_list_node) with values found from
  * 	py_instance's attributes  and resources.
  *
  * @param[in]	  py_instance	- Python object to get input from.
@@ -2614,7 +2614,7 @@ load_cached_resource_value(PyObject *py_resource_match)
  */
 int
 pbs_python_populate_svrattrl_from_python_class(PyObject *py_instance,
-	pbs_list_head *svrattrl_list, char *name_prefix, int append)
+	pbs_list_node *svrattrl_list, char *name_prefix, int append)
 {
 	PyObject	*py_attr_dict = (PyObject *)NULL;
 	PyObject	*py_attr_hookset_dict = (PyObject *)NULL;
@@ -2629,7 +2629,7 @@ pbs_python_populate_svrattrl_from_python_class(PyObject *py_instance,
 	char		*name_str_dup = NULL;
 	char		*val_str_dup = NULL;
 	int		num_attrs, i;
-	pbs_list_head	svrattrl_list2;
+	pbs_list_node	svrattrl_list2;
 	int		rc = -1;
 	int		hook_set_flag = 0;
 	int		has_resv_duration;
@@ -4055,7 +4055,7 @@ _pbs_python_set_mode(int mode)
  * @retval	NULL		- if an error occured.
  */
 static PyObject *
-create_py_vnodelist(pbs_list_head *vnlist)
+create_py_vnodelist(pbs_list_node *vnlist)
 {
 	svrattrl	*plist, *plist_next;
 	PyObject	*py_vn = (PyObject *)NULL;  /* class vnode arg list */
@@ -4064,7 +4064,7 @@ create_py_vnodelist(pbs_list_head *vnlist)
 	PyObject	*py_vnode_class = (PyObject *)NULL;
 	struct 	rq_node {
 		char	  rq_id[PBS_MAXNODENAME*2];
-		pbs_list_head rq_attr;
+		pbs_list_node rq_attr;
 	} rqs;
 	char		*p = NULL;
 	char		*pn = NULL;
@@ -4275,7 +4275,7 @@ create_py_vnodelist_exit:
  * @retjal	NULL		- if an error occured.
  */
 static PyObject *
-create_py_joblist(pbs_list_head *joblist)
+create_py_joblist(pbs_list_node *joblist)
 {
 	svrattrl	*plist, *plist_next;
 	PyObject	*py_jn = (PyObject *)NULL;  /* class job arg list */
@@ -4284,7 +4284,7 @@ create_py_joblist(pbs_list_head *joblist)
 	PyObject	*py_job_class = (PyObject *)NULL;
 	struct 	rq_job {
 		char	  rq_id[PBS_MAXNODENAME*2];
-		pbs_list_head rq_attr;
+		pbs_list_node rq_attr;
 	} rqs;
 	char		*p = NULL;
 	char		*pn = NULL;
@@ -4548,7 +4548,7 @@ create_py_strlist_exit:
 /**
  *
  * @brief
- *	Given a pbs_list_head 'phead', convert just the attribute names
+ *	Given a pbs_list_node 'phead', convert just the attribute names
  *      (plist->al_name) into a Python string list.
  *	return a Python list object to represent names of the given
  *	pbs list..
@@ -4561,7 +4561,7 @@ create_py_strlist_exit:
  * @retval	NULL		- if an error occured.
  */
 static PyObject *
-create_py_strlist_from_svrattrl_names(pbs_list_head *phead)
+create_py_strlist_from_svrattrl_names(pbs_list_node *phead)
 {
 	PyObject	*py_str = (PyObject *)NULL;  /* a string value */
 	PyObject	*py_strlist = (PyObject *)NULL;
@@ -4629,7 +4629,7 @@ create_py_strlist_from_svrattrl_names_exit:
  * @retval	-1	- error
  */
 static int
-py_strlist_to_svrattrl(PyObject *py_strlist, pbs_list_head *to_head, char *name_str)
+py_strlist_to_svrattrl(PyObject *py_strlist, pbs_list_node *to_head, char *name_str)
 {
 	char	*str;
 	int	i;
@@ -4763,8 +4763,8 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 	pbs_resource_value *resc_val;
 	pbs_resource_value *nxp_resc_val;
 
-	pbs_list_head	*vnlist;
-	pbs_list_head	*joblist;
+	pbs_list_node	*vnlist;
+	pbs_list_node	*joblist;
 
        	vnlist = req_params->vns_list;
 
@@ -4793,7 +4793,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 		if (iter_entry->py_iter)
 			Py_CLEAR(iter_entry->py_iter);
 
-		delete_link(&iter_entry->all_iters);
+		delete_node(&iter_entry->all_iters);
 		free(iter_entry);
 		iter_entry = nxp_iter_entry;
 	}
@@ -4807,7 +4807,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 
 		free_attrlist(&vn_set_req->rq_attr);
 
-		delete_link(&vn_set_req->all_reqs);
+		delete_node(&vn_set_req->all_reqs);
 		free(vn_set_req);
 		vn_set_req = nxp_vn_set_req;
 	}
@@ -4823,7 +4823,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 		Py_CLEAR(resc_val->py_resource_str_value);
 		free_attrlist(&resc_val->value_list);
 
-		delete_link(&resc_val->all_rescs);
+		delete_node(&resc_val->all_rescs);
 		free(resc_val);
 		resc_val = nxp_resc_val;
 	}
@@ -5398,7 +5398,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 			goto event_set_exit;
 		}
 
-		vnlist = (pbs_list_head *)req_params->vns_list;
+		vnlist = (pbs_list_node *)req_params->vns_list;
 
 		(void)PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_VNODELIST,
 			Py_None);
@@ -5470,7 +5470,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 		}
 
 		/* SET VNODE_LIST param */
-		vnlist = (pbs_list_head *)req_params->vns_list;
+		vnlist = (pbs_list_node *)req_params->vns_list;
 
 		(void)PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_VNODELIST,
 			Py_None);
@@ -5582,7 +5582,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 	} else if ((hook_event == HOOK_EVENT_EXECHOST_PERIODIC) ||
 		(hook_event == HOOK_EVENT_EXECHOST_STARTUP)) {
 
-		vnlist = (pbs_list_head *)req_params->vns_list;
+		vnlist = (pbs_list_node *)req_params->vns_list;
 
 		/* SET VNODE_LIST param */
 		(void)PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_VNODELIST,
@@ -5607,7 +5607,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 		/* SET JOB_LIST param */
 		if (hook_event == HOOK_EVENT_EXECHOST_PERIODIC) {
 			/* initialize event param to None */
-			joblist = (pbs_list_head *)req_params->jobs_list;
+			joblist = (pbs_list_node *)req_params->jobs_list;
 
 			(void)PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_JOBLIST,
 				Py_None);
@@ -5700,7 +5700,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 		}
 
 		/* SET VNODE_LIST param */
-		vnlist = (pbs_list_head *)req_params->vns_list;
+		vnlist = (pbs_list_node *)req_params->vns_list;
 
 		(void)PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_VNODELIST,
 			Py_None);
@@ -5869,7 +5869,7 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 			}
 
 			ret = py_strlist_to_svrattrl(py_arglist,
-				(pbs_list_head *)(req_params->argv_list),
+				(pbs_list_node *)(req_params->argv_list),
 				PY_EVENT_PARAM_ARGLIST);
 			if (ret == -1) {
 				snprintf(log_buffer, sizeof(log_buffer),
@@ -5979,7 +5979,7 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 				}
 
 				if (pbs_python_populate_svrattrl_from_python_class(py_vnode,
-					(pbs_list_head *)(req_params->vns_list), key_str, 1) == -1) {
+					(pbs_list_node *)(req_params->vns_list), key_str, 1) == -1) {
 					snprintf(log_buffer, sizeof(log_buffer)-1,
 						"failed to populate svrattrl with key '%s' value", key_str);
 					log_err(PBSE_INTERNAL, __func__, log_buffer);
@@ -5990,7 +5990,7 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 				}
 				free(key_str);
 			}
-			print_svrattrl_list("pbs_populate_svrattrl_from_python_class==>", (pbs_list_head *)(req_params->vns_list));
+			print_svrattrl_list("pbs_populate_svrattrl_from_python_class==>", (pbs_list_node *)(req_params->vns_list));
 			Py_CLEAR(py_attr_keys);
 
 			if (hook_event == HOOK_EVENT_EXECHOST_PERIODIC) {
@@ -6053,7 +6053,7 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 					}
 
 					if (pbs_python_populate_svrattrl_from_python_class(py_job,
-						(pbs_list_head *)(req_params->jobs_list), key_str, 1) == -1) {
+						(pbs_list_node *)(req_params->jobs_list), key_str, 1) == -1) {
 						snprintf(log_buffer, sizeof(log_buffer)-1,
 							"failed to populate svrattrl with key '%s' value", key_str);
 						log_err(PBSE_INTERNAL, __func__, log_buffer);
@@ -6071,7 +6071,7 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 							strcpy(val_str, "False");
 						}
 						if (add_to_svrattrl_list(\
-								(pbs_list_head *)(req_params->jobs_list),
+								(pbs_list_node *)(req_params->jobs_list),
 								PY_DELETEJOB_FLAG, NULL, val_str,
 									ATR_VFLAG_HOOK, key_str) == -1) {
 							snprintf(log_buffer, LOG_BUF_SIZE-1, "failed to add_to_svrattrl_list(%s.%s,null,%s)",
@@ -6093,7 +6093,7 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 							strcpy(val_str, "False");
 						}
 						if (add_to_svrattrl_list(\
-							(pbs_list_head *)(req_params->jobs_list),
+							(pbs_list_node *)(req_params->jobs_list),
 									PY_RERUNJOB_FLAG, NULL,
 								val_str, ATR_VFLAG_HOOK, key_str) == -1) {
 							snprintf(log_buffer, LOG_BUF_SIZE-1, "failed to add_to_svrattrl_list(%s.%s,null,%s)",
@@ -6111,7 +6111,7 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 					}
 				}
 				Py_CLEAR(py_attr_keys);
-				print_svrattrl_list("pbs_populate_svrattrl_from_python_class==>", (pbs_list_head *)(req_params->jobs_list));
+				print_svrattrl_list("pbs_populate_svrattrl_from_python_class==>", (pbs_list_node *)(req_params->jobs_list));
 			}
 
 			break;
@@ -8185,7 +8185,7 @@ pbsv1mod_meth_iter_nextfunc(PyObject *self, PyObject *args, PyObject *kwds)
 			}
 			(void)memset((char *)iter_entry, (int)0,
 				(size_t)sizeof(pbs_iter_item));
-			CLEAR_LINK(iter_entry->all_iters);
+			CLEAR_NODE(iter_entry->all_iters);
 
 			iter_entry->py_iter = py_self;
 			Py_INCREF(py_self);
@@ -8277,7 +8277,7 @@ pbsv1mod_meth_iter_nextfunc(PyObject *self, PyObject *args, PyObject *kwds)
 
 			}
 
-			append_link(&pbs_iter_list, &iter_entry->all_iters,
+			append_node(&pbs_iter_list, &iter_entry->all_iters,
 				(pbs_iter_item *)iter_entry);
 			Py_RETURN_NONE; /* nothing to return since this is __init__ */
 
@@ -8453,10 +8453,10 @@ pbsv1mod_meth_mark_vnode_set(PyObject *self, PyObject *args, PyObject *kwds)
 		}
 		(void)memset((char *)vn_set_req, (int)0,
 			(size_t)sizeof(vnode_set_req));
-		CLEAR_LINK(vn_set_req->all_reqs);
+		CLEAR_NODE(vn_set_req->all_reqs);
 		CLEAR_HEAD(vn_set_req->rq_attr);
 		strncpy(vn_set_req->vnode_name, vnode_name, PBS_MAXNODENAME);
-		append_link(&pbs_vnode_set_list, &vn_set_req->all_reqs,
+		append_node(&pbs_vnode_set_list, &vn_set_req->all_reqs,
 			(vnode_set_req *)vn_set_req);
 	}
 
@@ -8467,7 +8467,7 @@ pbsv1mod_meth_mark_vnode_set(PyObject *self, PyObject *args, PyObject *kwds)
 		/* it's too messy and buggy, error prone to have */
 		/* to "extend" the svratrl entry!                */
 
-		delete_link(&plist->al_link);
+		delete_node(&plist->al_link);
 		free(plist);
 
 	}
@@ -9761,7 +9761,7 @@ pbs_python_get_hook_debug_objname(void)
  *
  */
 void
-pbs_python_set_server_info(pbs_list_head *server_input)
+pbs_python_set_server_info(pbs_list_node *server_input)
 {
 	server_data = server_input;
 }
@@ -9771,8 +9771,8 @@ pbs_python_set_server_info(pbs_list_head *server_input)
  *	set the job information into server_job data.
  */
 void
-pbs_python_set_server_jobs_info(pbs_list_head *server_jobs_input,
-	pbs_list_head *ids)
+pbs_python_set_server_jobs_info(pbs_list_node *server_jobs_input,
+	pbs_list_node *ids)
 {
 	server_jobs.data = server_jobs_input;
 	server_jobs.ids = ids;
@@ -9784,8 +9784,8 @@ pbs_python_set_server_jobs_info(pbs_list_head *server_jobs_input,
  */
 
 void
-pbs_python_set_server_queues_info(pbs_list_head *server_queues_input,
-	pbs_list_head *names)
+pbs_python_set_server_queues_info(pbs_list_node *server_queues_input,
+	pbs_list_node *names)
 {
 	server_queues.data = server_queues_input;
 	server_queues.names = names;
@@ -9797,8 +9797,8 @@ pbs_python_set_server_queues_info(pbs_list_head *server_queues_input,
  */
 
 void
-pbs_python_set_server_resvs_info(pbs_list_head *server_resvs_input,
-	pbs_list_head *resvids)
+pbs_python_set_server_resvs_info(pbs_list_node *server_resvs_input,
+	pbs_list_node *resvids)
 {
 	server_resvs.data = server_resvs_input;
 	server_resvs.resvids = resvids;
@@ -9810,8 +9810,8 @@ pbs_python_set_server_resvs_info(pbs_list_head *server_resvs_input,
  */
 
 void
-pbs_python_set_server_vnodes_info(pbs_list_head *server_vnodes_input,
-	pbs_list_head *names)
+pbs_python_set_server_vnodes_info(pbs_list_node *server_vnodes_input,
+	pbs_list_node *names)
 {
 	server_vnodes.data = server_vnodes_input;
 	server_vnodes.names =  names;
@@ -9995,7 +9995,7 @@ py_get_queue_static(char *qname, char *svr_name)
 	char		*pn = NULL;
 	char		*p1 = NULL;
 	char		*attr_name = NULL;
-	pbs_list_head	queuel;
+	pbs_list_node	queuel;
 	int		rc;
 
 	if (!use_static_data || (server_queues.data == NULL)) {
@@ -10232,7 +10232,7 @@ py_get_vnode_static(char *vname, char *svr_name)
 	char		*pn = NULL;
 	char		*p1 = NULL;
 	char		*attr_name = NULL;
-	pbs_list_head	vnodel;
+	pbs_list_node	vnodel;
 	int		rc;
 
 	if (!use_static_data || (server_vnodes.data == NULL)) {
@@ -10474,7 +10474,7 @@ py_get_job_static(char *jid, char *svr_name, char *queue_name)
 	char		*pn = NULL;
 	char		*p1 = NULL;
 	char		*attr_name = NULL;
-	pbs_list_head	jobl;
+	pbs_list_node	jobl;
 	/* set job.queue to actual queue object */
 	char		*qname;
 	PyObject *py_server = (PyObject *) NULL;
@@ -10755,7 +10755,7 @@ py_get_resv_static(char *resvid, char *svr_name)
 	char		*pn = NULL;
 	char		*p1 = NULL;
 	char		*attr_name = NULL;
-	pbs_list_head	resvl;
+	pbs_list_node	resvl;
 	PyObject *py_server = (PyObject *) NULL;
 	PyObject *py_que = (PyObject *) NULL;
 	int		rc;

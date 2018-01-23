@@ -49,7 +49,7 @@
 #include <sys/types.h>
 #include <pbs_ifl.h>
 #include "log.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "resource.h"
 #include "pbs_error.h"
@@ -385,7 +385,7 @@ decode_entlim_res(struct attribute *patr, char *name, char *rescn, char *val)
  * First get the name of the parent attribute.
  * Then for each entry in the tree, call the individual resource encode
  * routine with "aname" set to the parent attribute name and with a null
- * pbs_list_head .  The encoded resource value is then prepended with the "entity
+ * pbs_list_node .  The encoded resource value is then prepended with the "entity
  * string" and "=" character which is then concatenated together to create a
  * single value string for the entire attribute value. As we find a new pair of
  * "attribute_name+resc_name", we add to a list where we continue to assemble
@@ -414,7 +414,7 @@ decode_entlim_res(struct attribute *patr, char *name, char *rescn, char *val)
  */
 
 int
-encode_entlim_db(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
+encode_entlim_db(attribute *attr, pbs_list_node *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
 	void *ctx;
 	int grandtotal = 0;
@@ -557,7 +557,7 @@ encode_entlim_db(attribute *attr, pbs_list_head *phead, char *atname, char *rsna
 		/* op is not stored in db, so no need to set it */
 
 		if (phead)
-			append_link(phead, &pal->al_link, pal);
+			append_node(phead, &pal->al_link, pal);
 
 		if (index == 0) {
 			if (rtnl)
@@ -599,7 +599,7 @@ err:
  * First get the name of the parent attribute.
  * Then for each entry in the tree, call the individual resource encode
  * routine with "aname" set to the parent attribute name and with a null
- * pbs_list_head .  The encoded resource value is then prepended with the "entity
+ * pbs_list_node .  The encoded resource value is then prepended with the "entity
  * string" and "=" character which is then placed in a new svrattrl entry
  * which is then added to the real list head.
  *
@@ -620,7 +620,7 @@ err:
  *
  */
 int
-encode_entlim(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
+encode_entlim(attribute *attr, pbs_list_node *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
 	void	   *ctx;
 	int	    grandtotal = 0;
@@ -750,7 +750,7 @@ encode_entlim(attribute *attr, pbs_list_head *phead, char *atname, char *rsname,
 				}
 				pal->al_atopl.op = op;
 				if (phead)
-					append_link(phead, &pal->al_link, pal);
+					append_node(phead, &pal->al_link, pal);
 				if (first) {
 					if (rtnl)
 						*rtnl  = pal;

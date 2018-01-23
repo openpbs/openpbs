@@ -79,7 +79,7 @@
 #ifdef	WIN32
 #include	"pbs_config.h"
 #endif
-#include	"list_link.h"
+#include	"linked_list.h"
 #include	"attribute.h"
 #include	"pbs_nodes.h"
 #include	"cmds.h"

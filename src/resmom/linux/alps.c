@@ -89,7 +89,7 @@ extern pid_t getsid(pid_t);
 #endif	/* _XOPEN_SOURCE */
 
 #include "pbs_error.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "server_limits.h"
 #include "attribute.h"
 #include "resource.h"

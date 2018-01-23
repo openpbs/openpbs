@@ -48,7 +48,7 @@
 #include <ctype.h>
 #include <string.h>
 #include <fcntl.h>
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "resource.h"
 #include "pbs_error.h"

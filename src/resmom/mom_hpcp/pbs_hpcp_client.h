@@ -40,7 +40,7 @@
 #define	_PBS_HPCP_CLIENT_H 1
 
 #include "libpbs.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "server_limits.h"
 #include "attribute.h"
 #include "job.h"

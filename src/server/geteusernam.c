@@ -64,7 +64,7 @@
 #endif
 
 #include "server_limits.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "job.h"
 #include "reservation.h"

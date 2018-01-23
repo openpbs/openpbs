@@ -41,14 +41,14 @@
 extern "C" {
 #endif
 
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 /*
  * job.h - structure definations for job objects
  *
  * Include Files Required:
  *	<sys/types.h>
- *	"list_link.h"
+ *	"linked_list.h"
  *	"attribute.h"
  *	"server_limits.h"
  *	"reservation.h"
@@ -77,12 +77,12 @@ extern char *pbs_gss_error(char *msg, OM_uint32 maj, OM_uint32 min);
  */
 
 struct depend {
-	pbs_list_link dp_link;	/* link to next dependency, if any       */
+	pbs_list_node dp_link;	/* link to next dependency, if any       */
 	short	  dp_type;	/* type of dependency (all) 	         */
 	short	  dp_numexp;	/* num jobs expected (on or syncct only) */
 	short	  dp_numreg;	/* num jobs registered (syncct only)     */
 	short	  dp_released;	/* This job released to run (syncwith)   */
-	pbs_list_head dp_jobs;	/* list of related jobs  (all)           */
+	pbs_list_node dp_jobs;	/* list of related jobs  (all)           */
 };
 
 /*
@@ -91,7 +91,7 @@ struct depend {
  */
 
 struct depend_job {
-	pbs_list_link dc_link;
+	pbs_list_node dc_link;
 	short	dc_state;	/* released / ready to run (syncct)	 */
 	long	dc_cost;	/* cost of this child (syncct)		 */
 	char	dc_child[PBS_MAXSVRJOBID+1]; /* child (dependent) job	 */
@@ -125,7 +125,7 @@ struct depend_job {
  * status back, see svr_movejob.c.
  */
 typedef struct	badplace {
-	pbs_list_link	bp_link;
+	pbs_list_node	bp_link;
 	char		bp_dest[PBS_MAXROUTEDEST+1];
 } badplace;
 
@@ -368,7 +368,7 @@ typedef	struct	hnodent {
 	host_vlist_t   *hn_vlist;	/* list of vnodes allocated */
 	resc_limit	hn_nrlimit;	/* resc limits per node */
 	void	       *hn_setup;	/* save any setup info here */
-	pbs_list_head	hn_events;	/* pointer to list of events */
+	pbs_list_node	hn_events;	/* pointer to list of events */
 } hnodent;
 
 typedef struct vmpiprocs {
@@ -507,10 +507,10 @@ struct job {
 	 * in array_func.c; add the copy of the required elements
 	 */
 
-	pbs_list_link       ji_alljobs;	/* links to all jobs in server */
-	pbs_list_link       ji_jobque;	/* SVR: links to jobs in same queue */
+	pbs_list_node       ji_alljobs;	/* links to all jobs in server */
+	pbs_list_node       ji_jobque;	/* SVR: links to jobs in same queue */
 	/* MOM: links to polled jobs */
-	pbs_list_link	ji_unlicjobs;	/* links to unlicensed jobs */
+	pbs_list_node	ji_unlicjobs;	/* links to unlicensed jobs */
 	int		ji_modified;	/* struct changed, needs to be saved */
 	int		ji_momhandle;	/* open connection handle to MOM */
 	int		ji_mom_prot;	/* rpp or tcp */
@@ -555,7 +555,7 @@ struct job {
 	vmpiprocs      *ji_vnods;	/* ptr to job vnode management stuff */
 	vmpiprocs      *ji_vnods0;	/* ptr to 0 cpu assigned vnodes (for hooks) */
 	noderes	       *ji_resources;	/* ptr to array of node resources */
-	pbs_list_head       ji_tasks;	/* list of task structs */
+	pbs_list_node       ji_tasks;	/* list of task structs */
 	tm_node_id	ji_nodekill;	/* set to nodeid requesting job die */
 	int		ji_flags;	/* mom only flags */
 	void	       *ji_setup;	/* save setup info */
@@ -569,7 +569,7 @@ struct job {
 	int		ji_ports[2];	/* ports for stdout/err */
 #else					/* END Mom ONLY -  start Server ONLY */
 	struct batch_request *ji_prunreq; /* outstanding runjob request */
-	pbs_list_head	ji_svrtask;	/* links to svr work_task list */
+	pbs_list_node	ji_svrtask;	/* links to svr work_task list */
 	struct pbs_queue  *ji_qhdr;	/* current queue header */
 	struct resc_resv  *ji_resvp;	/* !=0 reservation job;see job_purge */
 	struct resc_resv  *ji_myResv;	/* !=0 job belongs to a reservation */
@@ -579,7 +579,7 @@ struct job {
 	int		ji_retryok;	/* ok to retry, some reject was temp */
 	int		ji_terminated;	/* job terminated by deljob batch req */
 	int		ji_deletehistory; /* job history should not be saved */
-	pbs_list_head	ji_rejectdest;	/* list of rejected destinations */
+	pbs_list_node	ji_rejectdest;	/* list of rejected destinations */
 	int		ji_modifyct;	/* count of changes before save */
 	struct job     *ji_parentaj;	/* subjob:   parent Array Job */
 	struct ajtrkhd *ji_ajtrk;	/* ArrayJob: index tracking table */
@@ -730,7 +730,7 @@ union jobextend_514 {
 typedef struct	pbs_task {
 	job		*ti_job;	/* pointer to owning job */
 	unsigned long	ti_cput;	/* track cput by task */
-	pbs_list_link	ti_jobtask;	/* links to tasks for this job */
+	pbs_list_node	ti_jobtask;	/* links to tasks for this job */
 	int		*ti_tmfd;	/* DIS file descriptors to tasks */
 	int		ti_tmnum;	/* next avail entry in ti_tmfd */
 	int		ti_tmmax;	/* size of ti_tmfd */
@@ -742,8 +742,8 @@ typedef struct	pbs_task {
 #endif
 
 	tm_event_t	ti_register;	/* event if task registers */
-	pbs_list_head	ti_obits;	/* list of obit events */
-	pbs_list_head	ti_info;	/* list of named info */
+	pbs_list_node	ti_obits;	/* list of obit events */
+	pbs_list_node	ti_info;	/* list of named info */
 	struct taskfix {
 		char    	ti_parentjobid[PBS_MAXSVRJOBID+1];
 		tm_node_id	ti_parentnode;	/* parent vnode */
@@ -780,7 +780,7 @@ typedef struct	eventent {
 	tm_task_id	ee_taskid;	/* which task id */
 	char		**ee_argv;	/* save args for spawn */
 	char		**ee_envp;	/* save env for spawn */
-	pbs_list_link	ee_next;	/* link to next one */
+	pbs_list_node	ee_next;	/* link to next one */
 } eventent;
 
 /*
@@ -806,7 +806,7 @@ typedef struct	obitent {
 		} oe_tm;
 		struct batch_request	*oe_preq;
 	} oe_u;
-	pbs_list_link	oe_next;	/* link to next one */
+	pbs_list_node	oe_next;	/* link to next one */
 } obitent;
 
 /*
@@ -817,7 +817,7 @@ typedef struct	infoent {
 	char		*ie_name;	/* published name */
 	void		*ie_info;	/* the glop */
 	size_t		ie_len;		/* how much glop */
-	pbs_list_link	ie_next;	/* link to next one */
+	pbs_list_node	ie_next;	/* link to next one */
 } infoent;
 
 #define	TI_FLAGS_INIT		1	/* task has called tm_init */

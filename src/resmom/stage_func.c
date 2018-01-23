@@ -56,7 +56,7 @@
 #include "rpp.h"
 #endif
 #include "pbs_ifl.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "job.h"
 #include "ticket.h"
@@ -2076,7 +2076,7 @@ free_rq_cpyfile_cred(struct rq_cpyfile *pcf)
 		struct rqfpair *ppair = NULL;
 
 		while ((ppair = (struct rqfpair *)GET_NEXT(pcf->rq_pair)) != NULL) {
-			delete_link(&ppair->fp_link);
+			delete_node(&ppair->fp_link);
 			if (ppair->fp_local)
 				(void)free(ppair->fp_local);
 			if (ppair->fp_rmt)
@@ -2161,7 +2161,7 @@ recv_rq_cpyfile_cred(struct rq_cpyfile *pcf)
 			free_rq_cpyfile_cred(pcf);
 			return 0;
 		}
-		CLEAR_LINK(ppair->fp_link);
+		CLEAR_NODE(ppair->fp_link);
 		ppair->fp_flag  = 0;
 		ppair->fp_local = NULL;
 		ppair->fp_rmt   = NULL;
@@ -2217,7 +2217,7 @@ recv_rq_cpyfile_cred(struct rq_cpyfile *pcf)
 				ppair->fp_rmt[strlen(ppair->fp_rmt)-1] = '\0';
 			}
 		}
-		append_link(&pcf->rq_pair, &ppair->fp_link, ppair);
+		append_node(&pcf->rq_pair, &ppair->fp_link, ppair);
 	}
 
 	if (fgets(buf, sizeof(buf), stdin) == NULL) {

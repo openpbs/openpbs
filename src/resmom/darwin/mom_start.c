@@ -49,7 +49,7 @@
 #include <pwd.h>
 #include "portability.h"
 #include "libpbs.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "log.h"
 #include "server_limits.h"
 #include "attribute.h"
@@ -65,7 +65,7 @@
 
 extern int	 exiting_tasks;
 extern char	 mom_host[];
-extern pbs_list_head svr_alljobs;
+extern pbs_list_node svr_alljobs;
 extern int	 termin_child;
 
 /* Private variables */

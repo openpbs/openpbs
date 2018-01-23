@@ -100,7 +100,7 @@
 #include <string.h>
 #include "pbs_ifl.h"
 #include "libpbs.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "work_task.h"
 #include "attribute.h"
 #include "resource.h"
@@ -163,8 +163,8 @@ extern char *path_spool;
 extern char *path_resvs;
 extern char  server_name[];
 extern char *pbs_server_name;
-extern pbs_list_head svr_newjobs;
-extern pbs_list_head svr_alljobs;
+extern pbs_list_node svr_newjobs;
+extern pbs_list_node svr_alljobs;
 extern int is_called_by_job_purge;
 
 #ifdef PBS_MOM
@@ -192,14 +192,14 @@ tasks_free(job *pj)
 	while (tp) {
 		op = (obitent *)GET_NEXT(tp->ti_obits);
 		while (op) {
-			delete_link(&op->oe_next);
+			delete_node(&op->oe_next);
 			free(op);
 			op = (obitent *)GET_NEXT(tp->ti_obits);
 		}
 
 		ip = (infoent *)GET_NEXT(tp->ti_info);
 		while (ip) {
-			delete_link(&ip->ie_next);
+			delete_node(&ip->ie_next);
 			free(ip->ie_name);
 			free(ip->ie_info);
 			free(ip);
@@ -211,7 +211,7 @@ tasks_free(job *pj)
 				close_conn(tp->ti_tmfd[i]);
 			free(tp->ti_tmfd);
 		}
-		delete_link(&tp->ti_jobtask);
+		delete_node(&tp->ti_jobtask);
 		free(tp);
 		tp = (pbs_task *)GET_NEXT(pj->ji_tasks);
 	}
@@ -328,9 +328,9 @@ job_alloc(void)
 	pj->ji_licneed = -1;	/* indicates uninitialized, invalid value */
 	pj->ji_licalloc = 0;
 
-	CLEAR_LINK(pj->ji_alljobs);
-	CLEAR_LINK(pj->ji_jobque);
-	CLEAR_LINK(pj->ji_unlicjobs);
+	CLEAR_NODE(pj->ji_alljobs);
+	CLEAR_NODE(pj->ji_jobque);
+	CLEAR_NODE(pj->ji_unlicjobs);
 #ifdef	PBS_CRED_GRIDPROXY
 	pj->ji_gsscontext = GSS_C_NO_CONTEXT;
 #endif
@@ -539,7 +539,7 @@ job_free(job *pj)
 
 		bp = (badplace *)GET_NEXT(pj->ji_rejectdest);
 		while (bp) {
-			delete_link(&bp->bp_link);
+			delete_node(&bp->bp_link);
 			free(bp);
 			bp = (badplace *)GET_NEXT(pj->ji_rejectdest);
 		}
@@ -727,9 +727,9 @@ job_purge(job *pjob)
 		pjob->ji_rerun_preq = NULL;
 	}
 #ifdef	PBS_MOM
-	delete_link(&pjob->ji_jobque);
-	delete_link(&pjob->ji_alljobs);
-	delete_link(&pjob->ji_unlicjobs);
+	delete_node(&pjob->ji_jobque);
+	delete_node(&pjob->ji_alljobs);
+	delete_node(&pjob->ji_unlicjobs);
 
 	if (pjob->ji_preq != NULL) {
 		log_joberr(PBSE_INTERNAL, __func__, "request outstanding",
@@ -961,7 +961,7 @@ job_purge(job *pjob)
 
 	/* Clearing purge job info from svr_newjobs list */
         if(pjob == (job *)GET_NEXT(svr_newjobs))
-                delete_link(&pjob->ji_alljobs);
+                delete_node(&pjob->ji_alljobs);
 
 	job_free(pjob);
 	return;
@@ -1343,7 +1343,7 @@ update_resources_list(job *pjob, char *res_list_name,
 		while (pr != (resource *)0) {
 			next = (resource *)GET_NEXT(pr->rs_link);
 			if (pr->rs_defin->rs_flags & (ATR_DFLAG_RASSN | ATR_DFLAG_FNASSN | ATR_DFLAG_ANASSN)) {
-				delete_link(&pr->rs_link);
+				delete_node(&pr->rs_link);
 				if (pr->rs_value.at_flags & ATR_VFLAG_INDIRECT)
 					free_str(&pr->rs_value);
 				else
@@ -1475,7 +1475,7 @@ resc_resv_alloc(void)
 		return ((resc_resv *)0);
 	}
 	(void)memset((char *)resvp, (int)0, (size_t)sizeof(resc_resv));
-	CLEAR_LINK(resvp->ri_allresvs);
+	CLEAR_NODE(resvp->ri_allresvs);
 	CLEAR_HEAD(resvp->ri_svrtask);
 	CLEAR_HEAD(resvp->ri_rejectdest);
 
@@ -1527,7 +1527,7 @@ resv_free(resc_resv *presv)
 
 	bp = (badplace *)GET_NEXT(presv->ri_rejectdest);
 	while (bp) {
-		delete_link(&bp->bp_link);
+		delete_node(&bp->bp_link);
 		free(bp);
 		bp = (badplace *)GET_NEXT(presv->ri_rejectdest);
 	}
@@ -1641,7 +1641,7 @@ resv_purge(resc_resv *presv)
 			return;
 		}
 
-		CLEAR_LINK(preq->rq_ind.rq_manager.rq_attr);
+		CLEAR_NODE(preq->rq_ind.rq_manager.rq_attr);
 		preq->rq_ind.rq_manager.rq_cmd = MGR_CMD_DELETE;
 		preq->rq_ind.rq_manager.rq_objtype = MGR_OBJ_QUEUE;
 
@@ -1688,7 +1688,7 @@ resv_purge(resc_resv *presv)
 	/*Remove reservation's link element from whichever of the server's
 	 *global lists (svr_allresvs or svr_newresvs) has it
 	 */
-	delete_link(&presv->ri_allresvs);
+	delete_node(&presv->ri_allresvs);
 
 	/*Release any nodes that were associated to this reservation*/
 	free_resvNodes(presv);
@@ -1884,7 +1884,7 @@ add_resc_resv_to_job(job *pjob)
 	/* First, fill out the "non-saved" and "quick-save"
 	 * area of the resc_resv structure
 	 *
-	 * remark: pbs_list_head structures in the resc_resv are
+	 * remark: pbs_list_node structures in the resc_resv are
 	 * initialized as part of the above "resc_resv_alloc()"
 	 * Start, end and duration in "quick save" will be set
 	 * further on by "start_end_dur_wall ()"
@@ -1997,7 +1997,7 @@ add_resc_resv_to_job(job *pjob)
 	 *req_commit request).
 	 */
 
-	append_link(&svr_newresvs, &presv->ri_allresvs, presv);
+	append_node(&svr_newresvs, &presv->ri_allresvs, presv);
 	return (PBSE_NONE);
 }
 
@@ -2057,7 +2057,7 @@ set_resvAttrs_off_jobAttrs(resc_resv *presv, job *pjob)
 	attribute_def	*prd = resv_attr_def;
 	svrattrl	*tpsatl;
 	svrattrl	*psatl = (svrattrl *)0;
-	pbs_list_head	lhead;	  /*list of attrlist structs*/
+	pbs_list_node	lhead;	  /*list of attrlist structs*/
 
 	CLEAR_HEAD(lhead);
 	for (i=0, ji = index_atrJob_to_atrResv [i][1],

@@ -46,7 +46,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "pbs_ifl.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "server_limits.h"
 #include "job.h"
@@ -135,7 +135,7 @@ decode_hold(struct attribute *patr, char *name, char *rescn, char *val)
 /*ARGSUSED*/
 
 int
-encode_hold(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
+encode_hold(attribute *attr, pbs_list_node *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 
 {
 	int       i;
@@ -168,7 +168,7 @@ encode_hold(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, i
 
 	pal->al_flags = attr->at_flags;
 	if (phead)
-		append_link(phead, &pal->al_link, pal);
+		append_node(phead, &pal->al_link, pal);
 	if (rtnl)
 		*rtnl = pal;
 

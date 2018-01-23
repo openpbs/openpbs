@@ -59,7 +59,7 @@
 #include <string.h>
 #include "pbs_ifl.h"
 #include "libpbs.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "work_task.h"
 #include "hook.h"
 #include "log.h"
@@ -98,22 +98,22 @@ extern	char		*path_spool;
 extern	char		*mom_home;
 extern  char		mom_host[];
 extern  char		mom_short_name[];
-extern pbs_list_head	svr_execjob_begin_hooks;
-extern pbs_list_head	svr_execjob_prologue_hooks;
-extern pbs_list_head	svr_execjob_epilogue_hooks;
-extern pbs_list_head	svr_execjob_preterm_hooks;
-extern pbs_list_head	svr_execjob_launch_hooks;
-extern pbs_list_head	svr_execjob_end_hooks;
-extern pbs_list_head	svr_exechost_periodic_hooks;
-extern pbs_list_head	svr_exechost_startup_hooks;
-extern pbs_list_head	svr_execjob_attach_hooks;
-extern pbs_list_head	svr_hook_job_actions;
-extern pbs_list_head	svr_hook_vnl_actions;
+extern pbs_list_node	svr_execjob_begin_hooks;
+extern pbs_list_node	svr_execjob_prologue_hooks;
+extern pbs_list_node	svr_execjob_epilogue_hooks;
+extern pbs_list_node	svr_execjob_preterm_hooks;
+extern pbs_list_node	svr_execjob_launch_hooks;
+extern pbs_list_node	svr_execjob_end_hooks;
+extern pbs_list_node	svr_exechost_periodic_hooks;
+extern pbs_list_node	svr_exechost_startup_hooks;
+extern pbs_list_node	svr_execjob_attach_hooks;
+extern pbs_list_node	svr_hook_job_actions;
+extern pbs_list_node	svr_hook_vnl_actions;
 
-extern	pbs_list_head       task_list_immed;
-extern	pbs_list_head       task_list_timed;
-extern	pbs_list_head       task_list_event;
-extern	pbs_list_head	svr_alljobs;
+extern	pbs_list_node       task_list_immed;
+extern	pbs_list_node       task_list_timed;
+extern	pbs_list_node       task_list_event;
+extern	pbs_list_node	svr_alljobs;
 extern	int		svr_hook_resend_job_attrs;
 
 extern	char		*msg_err_malloc;
@@ -148,7 +148,7 @@ extern	int		internal_state_update; /* flag for sending mom information update to
 static void
 fprintf_job_struct(FILE *fp, job *pjob)
 {
-	pbs_list_head	phead;
+	pbs_list_node	phead;
 	attribute	*pattr;
 	svrattrl	*psatl;
 	svrattrl	*ps;
@@ -281,11 +281,11 @@ fprint_vnl(FILE *fp, char *head_str, vnl_t *vp)
  *
  */
 void
-fprint_joblist(FILE *fp, char *head_str, pbs_list_head *joblist)
+fprint_joblist(FILE *fp, char *head_str, pbs_list_node *joblist)
 {
 	job		*pjob;
 	int		i;
-	pbs_list_head	phead;
+	pbs_list_node	phead;
 	attribute	*pattr;
 	svrattrl	*psatl;
 	svrattrl	*ps;
@@ -431,7 +431,7 @@ add_natural_vnode_info(vnl_t **p_vnlp)
  *
  */
 void
-vna_list_free(pbs_list_head listh)
+vna_list_free(pbs_list_node listh)
 {
 	struct hook_vnl_action *pvna;
 	struct hook_vnl_action *nxt;
@@ -443,7 +443,7 @@ vna_list_free(pbs_list_head listh)
 		if (pvna->hva_vnl) {
 			vnl_free((vnl_t *)pvna->hva_vnl);
 		}
-		delete_link(&pvna->hva_link);
+		delete_node(&pvna->hva_link);
 		free(pvna);
 		pvna = nxt;
 	}
@@ -693,7 +693,7 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 	char		hook_config_path[MAXPATHLEN+1];
 	char		env_pbs_hook_config[2*MAXPATHLEN+1];
 	char		*p;
-	pbs_list_head	*jobs_list = NULL;
+	pbs_list_node	*jobs_list = NULL;
 	char		*pc;
 	int		keeping = 0;
 	char		*std_file = NULL;
@@ -1828,7 +1828,7 @@ int
 get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 	char *reject_msg, int reject_msg_size, int *reject_rerunjob,
 	int *reject_deletejob, int *reboot_flag, char *reboot_cmd,
-	int reboot_cmd_size, pbs_list_head *pvnalist, job *pjob,
+	int reboot_cmd_size, pbs_list_node *pvnalist, job *pjob,
 	hook *phook, int copy_file, mom_hook_output_t *hook_output) {
 
 	char *name_str;
@@ -2159,7 +2159,7 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 					*prog = strdup(data_value);
 				}
 			} else if (strcmp(name_str, PY_EVENT_PARAM_ARGLIST) == 0) {
-				pbs_list_head *ar_list;
+				pbs_list_node *ar_list;
 
 				arg_list_entries++;
 				if (hook_output != NULL) {
@@ -2414,7 +2414,7 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 						while (plist2 != NULL) {
 							if (strcmp(plist->al_resc,
 								plist2->al_resc) == 0) {
-								delete_link(&plist->al_link);
+								delete_node(&plist->al_link);
 								free(plist);
 								break;
 							}
@@ -2516,7 +2516,7 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 				/* the Server                               */
 				pvna = malloc(sizeof(struct hook_vnl_action));
 				if ((pvna != NULL) && (pvnalist != NULL)) {
-					CLEAR_LINK(pvna->hva_link);
+					CLEAR_NODE(pvna->hva_link);
 					strncpy(pvna->hva_euser, hook_euser, PBS_MAXUSER);
 					pvna->hva_actid = 0;
 					pvna->hva_vnl   = NULL;
@@ -2525,7 +2525,7 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 							"Failed to allocate hvnlp");
 					} else {
 						pvna->hva_vnl = hvnlp;
-						append_link(pvnalist,
+						append_node(pvnalist,
 							&pvna->hva_link, pvna);
 					}
 				} else {
@@ -2750,7 +2750,7 @@ new_job_action_req(job *pjob, enum hook_user huser, int action)
 		log_err(PBSE_SYSTEM, "new_job_action_req", msg_err_malloc);
 		return;
 	}
-	CLEAR_LINK(phja->hja_link);
+	CLEAR_NODE(phja->hja_link);
 	strncpy(phja->hja_jid, pjob->ji_qs.ji_jobid, PBS_MAXSVRJOBID);
 	phja->hja_actid = ++hook_action_id;
 
@@ -2761,7 +2761,7 @@ new_job_action_req(job *pjob, enum hook_user huser, int action)
 	}
 	phja->hja_huser = huser;
 	phja->hja_action = action;
-	append_link(&svr_hook_job_actions, &phja->hja_link, phja);
+	append_node(&svr_hook_job_actions, &phja->hja_link, phja);
 	send_hook_job_action(phja);
 }
 
@@ -2799,7 +2799,7 @@ struct work_task *pwt;
 	int	delete_flag = 0;
 	int	reboot_flag = 0;
 	char	reboot_cmd[HOOK_BUF_SIZE];
-	pbs_list_head vnl_changes;
+	pbs_list_node vnl_changes;
 
 	CLEAR_HEAD(vnl_changes);
 	reboot_cmd[0] = '\0';
@@ -3076,7 +3076,7 @@ mom_process_hooks(unsigned int hook_event, char *req_user, char *req_host,
 	hook			*phook;
 	hook			*phook_next = NULL;
 	int			rc;
-	pbs_list_head		*head_ptr;
+	pbs_list_node		*head_ptr;
 	int			num_run = 0;
 	char			hook_infile[MAXPATHLEN+1];
 	char			hook_outfile[MAXPATHLEN+1];
@@ -3089,7 +3089,7 @@ mom_process_hooks(unsigned int hook_event, char *req_user, char *req_host,
 	int			reboot_flag = 0;
 	char			reboot_cmd[HOOK_BUF_SIZE];
 	int			wait_hook;
-	pbs_list_head		vnl_changes;
+	pbs_list_node		vnl_changes;
 	int			set_job_exit = 0;
 	char			*log_id = NULL;
 	int			log_type = 0;
@@ -3490,7 +3490,7 @@ num_eligible_hooks(unsigned int hook_event)
 {
 	hook			*phook;
 	hook			*phook_next = NULL;
-	pbs_list_head		*head_ptr;
+	pbs_list_node		*head_ptr;
 	int			num_hooks = 0;
 
 	switch (hook_event) {

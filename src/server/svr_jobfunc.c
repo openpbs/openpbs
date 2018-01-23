@@ -103,7 +103,7 @@
 #include "pbs_ifl.h"
 #include "libutil.h"
 #include "server_limits.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "libpbs.h"
 #include "credential.h"
@@ -165,15 +165,15 @@ extern char *msg_mombadmodify;
 
 extern struct server server;
 extern int  pbs_mom_port;
-extern pbs_list_head svr_alljobs;
-extern pbs_list_head svr_unlicensedjobs;
+extern pbs_list_node svr_alljobs;
+extern pbs_list_node svr_unlicensedjobs;
 extern char  *msg_badwait;		/* error message */
 extern char  *msg_daemonname;
 extern char  *msg_also_deleted_job_history;
 extern char   server_name[];
 extern char  *pbs_server_name;
 extern char   server_host[];
-extern pbs_list_head svr_queues;
+extern pbs_list_node svr_queues;
 extern int    comp_resc_lt;
 extern int    comp_resc_gt;
 extern time_t time_now;
@@ -259,8 +259,8 @@ svr_enquejob(job *pjob)
 		if ((pjob->ji_qs.ji_state == JOB_STATE_MOVED) ||
 			(pjob->ji_qs.ji_state == JOB_STATE_FINISHED)) {
 
-			if (is_linked(&svr_alljobs, &pjob->ji_alljobs) == 0) {
-				append_link(&svr_alljobs, &pjob->ji_alljobs, pjob);
+			if (is_in_list(&svr_alljobs, &pjob->ji_alljobs) == 0) {
+				append_node(&svr_alljobs, &pjob->ji_alljobs, pjob);
 				/**
 				 * Add to AVL tree so that find_job() can return
 				 * faster compared to linked list traverse.
@@ -293,23 +293,23 @@ svr_enquejob(job *pjob)
 		pjob->ji_qs.ji_jobid, log_buffer);
 #endif	/* NDEBUG */
 
-	pjcur = (job *)GET_PRIOR(svr_alljobs);
+	pjcur = (job *)GET_PREV(svr_alljobs);
 	while (pjcur) {
 		if ((unsigned long)pjob->ji_wattr[(int)JOB_ATR_qrank].
 			at_val.at_long >=
 			(unsigned long)pjcur->ji_wattr[(int)JOB_ATR_qrank].
 			at_val.at_long)
 			break;
-		pjcur = (job *)GET_PRIOR(pjcur->ji_alljobs);
+		pjcur = (job *)GET_PREV(pjcur->ji_alljobs);
 	}
 	if (pjcur == 0) {
 		/* link first in server's list */
-		insert_link(&svr_alljobs, &pjob->ji_alljobs, pjob,
-			LINK_INSET_AFTER);
+		insert_node(&svr_alljobs, &pjob->ji_alljobs, pjob,
+			NODE_INSET_AFTER);
 	} else {
 		/* link after 'current' job in server's list */
-		insert_link(&pjcur->ji_alljobs, &pjob->ji_alljobs, pjob,
-			LINK_INSET_AFTER);
+		insert_node(&pjcur->ji_alljobs, &pjob->ji_alljobs, pjob,
+			NODE_INSET_AFTER);
 	}
 
 	/**
@@ -325,23 +325,23 @@ svr_enquejob(job *pjob)
 
 	pjob->ji_qhdr = pque;
 
-	pjcur = (job *)GET_PRIOR(pque->qu_jobs);
+	pjcur = (job *)GET_PREV(pque->qu_jobs);
 	while (pjcur) {
 		if ((unsigned long)pjob->ji_wattr[(int)JOB_ATR_qrank].
 			at_val.at_long >=
 			(unsigned long)pjcur->ji_wattr[(int)JOB_ATR_qrank].
 			at_val.at_long)
 			break;
-		pjcur = (job *)GET_PRIOR(pjcur->ji_jobque);
+		pjcur = (job *)GET_PREV(pjcur->ji_jobque);
 	}
 	if (pjcur == 0) {
 		/* link first in list */
-		insert_link(&pque->qu_jobs, &pjob->ji_jobque, pjob,
-			LINK_INSET_AFTER);
+		insert_node(&pque->qu_jobs, &pjob->ji_jobque, pjob,
+			NODE_INSET_AFTER);
 	} else {
 		/* link after 'current' job in list */
-		insert_link(&pjcur->ji_jobque, &pjob->ji_jobque, pjob,
-			LINK_INSET_AFTER);
+		insert_node(&pjcur->ji_jobque, &pjob->ji_jobque, pjob,
+			NODE_INSET_AFTER);
 	}
 
 	/* update counts: queue and queue by state */
@@ -524,9 +524,9 @@ svr_dequejob(job *pjob)
 
 	/* remove job from server's all job list and reduce server counts */
 
-	if (is_linked(&svr_alljobs, &pjob->ji_alljobs)) {
-		delete_link(&pjob->ji_alljobs);
-		delete_link(&pjob->ji_unlicjobs);
+	if (is_in_list(&svr_alljobs, &pjob->ji_alljobs)) {
+		delete_node(&pjob->ji_alljobs);
+		delete_node(&pjob->ji_unlicjobs);
 
 		/**
 		 * Remove the key from the AVL tree which was
@@ -567,8 +567,8 @@ svr_dequejob(job *pjob)
 		}
 
 
-		if (is_linked(&pque->qu_jobs, &pjob->ji_jobque)) {
-			delete_link(&pjob->ji_jobque);
+		if (is_in_list(&pque->qu_jobs, &pjob->ji_jobque)) {
+			delete_node(&pjob->ji_jobque);
 			if (--pque->qu_numjobs < 0)
 				bad_ct = 1;
 			if (--pque->qu_njstate[pjob->ji_qs.ji_state] < 0)
@@ -1650,7 +1650,7 @@ job_wait_over(struct work_task *pwt)
 
 			ptask = set_task(WORK_Timed, when, job_wait_over, pjob);
 			if (ptask) {
-				append_link(&pjob->ji_svrtask,
+				append_node(&pjob->ji_svrtask,
 					&ptask->wt_linkobj, ptask);
 			}
 			return;
@@ -1721,7 +1721,7 @@ job_set_wait(attribute *pattr, void *pjob, int mode)
 	ptask = set_task(WORK_Timed, when, job_wait_over, pjob);
 	if (ptask == (struct work_task *)0)
 		return (-1);
-	append_link(&((job *)pjob)->ji_svrtask, &ptask->wt_linkobj, ptask);
+	append_node(&((job *)pjob)->ji_svrtask, &ptask->wt_linkobj, ptask);
 
 	/* set JOB_SVFLG_HASWAIT to show job has work task entry */
 
@@ -1956,7 +1956,7 @@ get_hostPart(char *from)
 static int
 set_select_and_place(int objtype, void *pobj, attribute *patr)
 {
-	pbs_list_head     collectresc;
+	pbs_list_node     collectresc;
 	static char  *cvt = NULL;
 	static size_t cvt_len;
 	char	     *ndspec;
@@ -3202,7 +3202,7 @@ Time4resv(struct work_task *ptask)
 			/* set things so that the reservation going away causes */
 			/* any "yet to be processed" work tasks also going away */
 
-			append_link(&presv->ri_svrtask, &ptask->wt_linkobj, ptask);
+			append_node(&presv->ri_svrtask, &ptask->wt_linkobj, ptask);
 		}
 	}
 }
@@ -3247,7 +3247,7 @@ Time4resv1(struct work_task *ptask)
 			/* set things so that the job going away will result in */
 			/* any "yet to be processed" work tasks also going away */
 
-			append_link(&presv->ri_svrtask, &pwt->wt_linkobj, pwt);
+			append_node(&presv->ri_svrtask, &pwt->wt_linkobj, pwt);
 		}
 	}
 
@@ -3469,7 +3469,7 @@ Time4occurrenceFinish(resc_resv *presv)
 			presv->ri_wattr[RESV_ATR_resv_idx].at_val.at_long = rcount;
 
 			if ((ptask = set_task(WORK_Immed, 0, Time4resvFinish, presv)) != 0)
-				append_link(&presv->ri_svrtask, &ptask->wt_linkobj, ptask);
+				append_node(&presv->ri_svrtask, &ptask->wt_linkobj, ptask);
 
 			return;
 		}
@@ -3670,7 +3670,7 @@ delete_occurrence_jobs(resc_resv *presv)
 	 * This can happen if a pbs_rdel is invoked on the reservation while it is
 	 * processing the deletion of running jobs. */
 	if ((ptask = set_task(WORK_Timed, time_now + 5, running_jobs_count, presv)) != 0)
-		append_link(&presv->ri_svrtask, &ptask->wt_linkobj, ptask);
+		append_node(&presv->ri_svrtask, &ptask->wt_linkobj, ptask);
 }
 
 /**
@@ -4034,7 +4034,7 @@ gen_task_Time4resv(resc_resv *presv)
 		 * any "yet to be processed" work tasks to also go away
 		 */
 
-		append_link(&presv->ri_svrtask, &ptask->wt_linkobj, ptask);
+		append_node(&presv->ri_svrtask, &ptask->wt_linkobj, ptask);
 
 		/* cause to have issued to the qmgr subsystem
 		 * a request to enable the reservation's queue
@@ -4108,7 +4108,7 @@ gen_deleteResv(resc_resv *presv, long fromNow)
 		 * and set up to notify Scheduler of new reservation-job
 		 */
 
-		append_link(&presv->ri_svrtask, &ptask->wt_linkobj, ptask);
+		append_node(&presv->ri_svrtask, &ptask->wt_linkobj, ptask);
 		presv->ri_futuredr = 1;
 	} else
 		rc = PBSE_SYSTEM;
@@ -4148,7 +4148,7 @@ gen_negI_deleteResv(resc_resv *presv, long fromNow)
 		 * and set up to notify Scheduler of new reservation-job
 		 */
 
-		append_link(&presv->ri_svrtask, &ptask->wt_linkobj, ptask);
+		append_node(&presv->ri_svrtask, &ptask->wt_linkobj, ptask);
 		presv->ri_futuredr = 1;
 	} else
 		rc = PBSE_SYSTEM;
@@ -4191,7 +4191,7 @@ gen_future_deleteResv(resc_resv *presv, long fromNow)
 		 * and set up to notify Scheduler of new reservation-job
 		 */
 
-		append_link(&presv->ri_svrtask, &ptask->wt_linkobj, ptask);
+		append_node(&presv->ri_svrtask, &ptask->wt_linkobj, ptask);
 		presv->ri_futuredr = 1;
 		presv->resv_end_task = ptask;
 	} else
@@ -4232,7 +4232,7 @@ gen_future_reply(resc_resv *presv, long fromNow)
 		 * and set up to notify Scheduler of new reservation-job
 		 */
 
-		append_link(&presv->ri_svrtask, &ptask->wt_linkobj, ptask);
+		append_node(&presv->ri_svrtask, &ptask->wt_linkobj, ptask);
 		presv->ri_futuredr = 1;
 	} else
 		rc = PBSE_SYSTEM;
@@ -4270,7 +4270,7 @@ change_enableORstart(resc_resv *presv, int which, char *value)
 {
 	extern char  *msg_internalReqFail;
 	struct batch_request	*newreq;
-	pbs_list_head		*plhed;
+	pbs_list_node		*plhed;
 	int			len;
 	svrattrl		*psatl;
 	struct work_task	*pwt;
@@ -4317,7 +4317,7 @@ change_enableORstart(resc_resv *presv, int which, char *value)
 	if ((psatl = attrlist_create(at_name, NULL, len)) != (svrattrl *)0) {
 		psatl->al_flags = que_attr_def[index].at_flags;
 		strcpy(psatl->al_value, value);
-		append_link(plhed, &psatl->al_link, psatl);
+		append_node(plhed, &psatl->al_link, psatl);
 	} else {
 		free_br(newreq);
 		return  (PBSE_INTERNAL);
@@ -4441,7 +4441,7 @@ remove_deleted_resvs(void)
 				 * and set up to notify Scheduler of new reservation-job
 				 */
 
-				append_link(&presv->ri_svrtask, &ptask->wt_linkobj, ptask);
+				append_node(&presv->ri_svrtask, &ptask->wt_linkobj, ptask);
 			}
 		}
 		presv = nxresv;
@@ -6190,7 +6190,7 @@ send_job_exec_update_to_mom(job *pjob, char *err_msg, int err_msg_sz,
 
 
 	if ((pjob->ji_wattr[JOB_ATR_resource].at_flags & ATR_VFLAG_SET) != 0) {
-		pbs_list_head    collectresc;
+		pbs_list_node    collectresc;
 		svrattrl 	*psvrl;
 		attribute_def	*objatrdef;
 		extern  int	resc_access_perm;

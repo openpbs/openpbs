@@ -55,7 +55,7 @@
 #include <sys/types.h>
 #include "libpbs.h"
 #include "server_limits.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "server.h"
 #include "credential.h"
@@ -72,7 +72,7 @@
 
 /* Private Functions Local to this file */
 
-static int get_hold(pbs_list_head *, char **);
+static int get_hold(pbs_list_node *, char **);
 static void post_hold(struct work_task *);
 
 /* Global Data Items: */
@@ -325,7 +325,7 @@ req_releasejob(struct batch_request *preq)
  */
 
 static int
-get_hold(pbs_list_head *phead, char	 **pset)
+get_hold(pbs_list_node *phead, char	 **pset)
 {
 	int		 have_one = 0;
 	struct svrattrl *holdattr = (struct svrattrl*)0;

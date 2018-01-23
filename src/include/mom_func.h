@@ -222,7 +222,7 @@ extern void  update_ajob_status_using_cmd(job *, int);
 extern void  calc_cpupercent(job *, unsigned long, unsigned long, time_t);
 extern void  dorestrict_user(void);
 extern int   task_save(pbs_task *ptask);
-extern void send_join_job_restart(int, eventent *, int, job *, pbs_list_head *);
+extern void send_join_job_restart(int, eventent *, int, job *, pbs_list_node *);
 extern int send_resc_used_to_ms(int stream, char *jobid);
 extern int recv_resc_used_from_sister(int stream, char *jobid, int nodeidx);
 
@@ -311,7 +311,7 @@ enum stagefile_errcode {
 };
 
 struct copy_info {
-	pbs_list_link al_link;		/* link to all copy info list */
+	pbs_list_node al_link;		/* link to all copy info list */
 	char *jobid;			/* job id to which this info belongs */
 	struct work_task *ptask;	/* pointer to work task */
 	struct batch_request *preq;	/* pointer to batch request */
@@ -320,7 +320,7 @@ struct copy_info {
 typedef struct copy_info copy_info;
 
 #define CPY_PIPE_BUFSIZE 4096	/* buffer size for pipe */
-extern pbs_list_head mom_copyreqs_list;
+extern pbs_list_node mom_copyreqs_list;
 extern void post_cpyfile(struct work_task *);
 extern copy_info *get_copyinfo_from_list(char *);
 #endif
@@ -385,7 +385,7 @@ extern void  set_termcc(int);
 extern int   conn_qsub(char *host, long port);
 extern void  state_to_server(int);
 extern int   send_hook_vnl(void *vnl);
-extern int hook_requests_to_server(pbs_list_head *);
+extern int hook_requests_to_server(pbs_list_node *);
 extern void  set_job_toexited(char *);
 extern int init_x11_display(struct pfwdsock *, int, char *, char *, char *);
 extern int setcurrentworkdir(char *);

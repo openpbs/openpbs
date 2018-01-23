@@ -63,7 +63,7 @@
 #include <errno.h>
 #include <sys/types.h>
 #include "pbs_ifl.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "server_limits.h"
 #include "log.h"

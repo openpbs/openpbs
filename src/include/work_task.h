@@ -50,7 +50,7 @@ extern "C" {
  * This information need not be preserved.
  *
  * Other Required Header Files
- *	"list_link.h"
+ *	"linked_list.h"
  */
 
 enum work_type {
@@ -74,9 +74,9 @@ enum wtask_delete_option {
 };
 
 struct work_task  {
-	pbs_list_link	 wt_linkall;	/* link to event type work list */
-	pbs_list_link	 wt_linkobj;	/* link to others of same object */
-	pbs_list_link	 wt_linkobj2;   /* link to another set of similarity */
+	pbs_list_node	 wt_linkall;	/* link to event type work list */
+	pbs_list_node	 wt_linkobj;	/* link to others of same object */
+	pbs_list_node	 wt_linkobj2;   /* link to another set of similarity */
 	long		 wt_event;	/* event id: time, pid, socket, ... */
 	char		*wt_event2;	/* if replies on the same handle, then additional distinction */
 	enum work_type	 wt_type;	/* type of event */

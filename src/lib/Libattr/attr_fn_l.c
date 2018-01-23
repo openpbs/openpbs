@@ -45,7 +45,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pbs_ifl.h>
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "resource.h"
 #include "server_limits.h"
@@ -141,7 +141,7 @@ decode_l(struct attribute *patr, char *name, char *rescn, char *val)
 #define CVNBUFSZ 21
 
 int
-encode_l(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
+encode_l(attribute *attr, pbs_list_node *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
 	size_t	  ct;
 	char	  cvnbuf[CVNBUFSZ];
@@ -162,7 +162,7 @@ encode_l(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int 
 	(void)memcpy(pal->al_value, cvnbuf, ct);
 	pal->al_flags = attr->at_flags;
 	if (phead)
-		append_link(phead, &pal->al_link, pal);
+		append_node(phead, &pal->al_link, pal);
 	if (rtnl)
 		*rtnl = pal;
 

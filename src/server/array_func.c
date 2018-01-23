@@ -75,7 +75,7 @@
 #include <string.h>
 #include "pbs_ifl.h"
 #include "libpbs.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "resource.h"
 #include "server_limits.h"
@@ -771,7 +771,7 @@ fixup_arrayindicies(attribute *pattr, void *pobj, int mode)
 job *
 create_subjob(job *parent, char *newjid, int *rc)
 {
-	pbs_list_head  attrl;
+	pbs_list_node  attrl;
 	int	   i;
 	int	   j;
 	int	   indx;
@@ -971,7 +971,7 @@ dup_br_for_subjob(struct batch_request *opreq, job *pjob, void (*func)(struct ba
 				pjob->ji_qs.ji_jobid);
 			break;
 		default:
-			delete_link(&npreq->rq_link);
+			delete_node(&npreq->rq_link);
 			free(npreq);
 			return;
 	}

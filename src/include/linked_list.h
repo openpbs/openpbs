@@ -35,62 +35,62 @@
  * trademark licensing policies.
  *
  */
-#ifndef	_LIST_LINK_H
-#define	_LIST_LINK_H
+#ifndef	_LINKED_LIST_H
+#define	_LINKED_LIST_H
 #ifdef	__cplusplus
 extern "C" {
 #endif
 
 
 /*
- * list_link.h - header file for general linked list routines
- *		see list_link.c
+ * linked_list.h - header file for general linked list routines
+ *		see linked_list.c
  *
  *	A user defined linked list can be managed by these routines if
- *	the first element of the user structure is the pbs_list_link struct
+ *	the first element of the user structure is the pbs_list_node struct
  *	defined below.
  */
 
 /* list entry list sub-structure */
 
-typedef struct pbs_list_link {
-	struct pbs_list_link *ll_prior;
-	struct pbs_list_link *ll_next;
-	void		 *ll_struct;
-} pbs_list_link;
-typedef pbs_list_link pbs_list_head;
+typedef struct pbs_list_node {
+	struct pbs_list_node *prev;
+	struct pbs_list_node *next;
+	void		 *data;
+} pbs_list_node;
+typedef pbs_list_node pbs_list_node;
 
-/* macros to clear list head or link */
+/* macros to clear list head or node */
 
-#define CLEAR_HEAD(e) e.ll_next = &e, e.ll_prior = &e, e.ll_struct = (void *)0
-#define CLEAR_LINK(e) e.ll_next = &e, e.ll_prior = &e
+#define CLEAR_HEAD(e) e.next = &e, e.prev = &e, e.data = (void *)0
+#define CLEAR_NODE(e) e.next = &e, e.prev = &e
 
-#define LINK_INSET_BEFORE 0
-#define LINK_INSET_AFTER  1
+#define NODE_INSET_BEFORE 0
+#define NODE_INSET_AFTER  1
 
 #if defined(DEBUG) && !defined(NDEBUG)
 #define GET_NEXT(pe) get_next((pe), __FILE__, __LINE__)
-#define GET_PRIOR(pe) get_prior((pe), __FILE__, __LINE__)
+#define GET_PREV(pe) get_prev((pe), __FILE__, __LINE__)
 #else
-#define GET_NEXT(pe)  (pe).ll_next->ll_struct
-#define GET_PRIOR(pe) (pe).ll_prior->ll_struct
+#define GET_NEXT(pe)  (pe).next->data
+#define GET_PREV(pe) (pe).prev->data
 #endif
 
 /* function prototypes */
 
-extern void insert_link(pbs_list_link *old, pbs_list_link *new, void *pobj, int pos);
-extern void append_link(pbs_list_head *head, pbs_list_link *new, void *pnewobj);
-extern void delete_link(pbs_list_link *old);
-extern void swap_link   (pbs_list_link *, pbs_list_link *);
-extern int  is_linked(pbs_list_link *head, pbs_list_link *old);
-extern void list_move(pbs_list_head *old, pbs_list_head *new);
+extern void insert_node(pbs_list_node *old, pbs_list_node *new, void *pobj, int pos);
+extern void append_node(pbs_list_node *head, pbs_list_node *new, void *pnewobj);
+extern void delete_node(pbs_list_node *old);
+extern void swap_node   (pbs_list_node *, pbs_list_node *);
+extern int  is_in_list(pbs_list_node *head, pbs_list_node *old);
+extern void list_move(pbs_list_node *old, pbs_list_node *new);
 
 #ifndef NDEBUG
-extern void *get_next(pbs_list_link, char *file, int line);
-extern void *get_prior(pbs_list_link, char *file, int line);
+extern void *get_next(pbs_list_node, char *file, int line);
+extern void *get_prev(pbs_list_node, char *file, int line);
 #endif	/* NDEBUG */
 
 #ifdef	__cplusplus
 }
 #endif
-#endif /* _LIST_LINK_H */
+#endif /* _LINKED_LIST_H */

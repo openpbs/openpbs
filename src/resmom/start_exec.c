@@ -71,7 +71,7 @@
 
 #include "libpbs.h"
 #include "portability.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "server_limits.h"
 #include "attribute.h"
 #include "resource.h"
@@ -107,7 +107,7 @@ extern	char	      **environ;
 extern	int		exiting_tasks;
 extern	u_long		localaddr;
 extern	int		lockfds;
-extern	pbs_list_head	mom_polljobs;
+extern	pbs_list_node	mom_polljobs;
 extern	int		next_sample_time;
 extern	int		min_check_poll;
 extern	char		*path_checkpoint;
@@ -145,7 +145,7 @@ extern struct rlimit   orig_core_limit;
 #endif  /* WIN32 */
 
 extern eventent * event_dup(eventent *ep, job *pjob, hnodent *pnode);
-extern void send_join_job_restart_mcast(int mtfd, int com, eventent *ep, int nth, job *pjob, pbs_list_head *phead);
+extern void send_join_job_restart_mcast(int mtfd, int com, eventent *ep, int nth, job *pjob, pbs_list_node *phead);
 
 /* Local Varibles */
 
@@ -1505,8 +1505,8 @@ job_setup(job *pjob, struct passwd **pwdparm)
 	 */
 
 	if (pjob->ji_numnodes > 1 || mom_do_poll(pjob))
-		if (is_linked(&mom_polljobs, &pjob->ji_jobque) == 0)
-			append_link(&mom_polljobs, &pjob->ji_jobque, pjob);
+		if (is_in_list(&mom_polljobs, &pjob->ji_jobque) == 0)
+			append_node(&mom_polljobs, &pjob->ji_jobque, pjob);
 
 	/* Is the job to be periodic checkpointed */
 
@@ -1651,7 +1651,7 @@ record_finish_exec(int sd)
 		snprintf(hook_outfile, MAXPATHLEN, FMT_HOOK_JOB_OUTFILE,
 			path_hooks_workdir, pjob->ji_qs.ji_jobid);
 		if (stat(hook_outfile, &stbuf) == 0) {
-			pbs_list_head	vnl_changes;
+			pbs_list_node	vnl_changes;
 
 			CLEAR_HEAD(vnl_changes);
 			if (sjr.sj_code == JOB_EXEC_HOOKERROR) {
@@ -2151,7 +2151,7 @@ finish_exec(job *pjob)
 	int			hook_rc;
 	int			prolo_hooks = 0;/*# of runnable prologue hooks*/
 	char			*progname = NULL;
-	pbs_list_head		argv_list;
+	pbs_list_node		argv_list;
 	char			*the_progname;
 	char			**the_argv;
 	char			**the_env;
@@ -3678,7 +3678,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 	int			hook_errcode = 0;
 	char			hook_msg[HOOK_MSG_SIZE+1];
 	char			*progname = NULL;
-	pbs_list_head		argv_list;
+	pbs_list_node		argv_list;
 	mom_hook_input_t	hook_input;
 	mom_hook_output_t	hook_output;
 	char			*the_progname;
@@ -4255,7 +4255,7 @@ nodes_free(job *pj)
 					arrayfree(ep->ee_argv);
 				if (ep->ee_envp)
 					arrayfree(ep->ee_envp);
-				delete_link(&ep->ee_next);
+				delete_node(&ep->ee_next);
 				free(ep);
 				ep = (eventent *)GET_NEXT(np->hn_events);
 			}
@@ -4982,7 +4982,7 @@ start_exec(job *pjob)
 	struct	sockaddr_in	saddr;
 	hnodent		*np;
 	attribute	*pattr;
-	pbs_list_head	phead;
+	pbs_list_node	phead;
 	int		nodemux = 0;
 	int		mtfd = -1;
 #if	MOM_BGL

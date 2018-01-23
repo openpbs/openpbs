@@ -61,7 +61,7 @@
 #include <windows.h>
 #include "win.h"
 
-#include "list_link.h"
+#include "linked_list.h"
 #include "work_task.h"
 #include "log.h"
 #include "server_limits.h"
@@ -157,34 +157,34 @@ struct license_block licenses;
 struct license_used  usedlicenses;
 struct resc_sum *svr_resc_sum;
 attribute      *pbs_float_lic;
-pbs_list_head	svr_queues;            /* list of queues                   */
-pbs_list_head	svr_alljobs;           /* list of all jobs in server       */
-pbs_list_head	svr_allscheds;         /* list of schedulers               */
-pbs_list_head	svr_newjobs;           /* list of incomming new jobs       */
-pbs_list_head	svr_allresvs;          /* all reservations in server */
-pbs_list_head	svr_newresvs;          /* temporary list for new resv jobs */
-pbs_list_head	svr_allhooks;	       /* list of all hooks in server       */
-pbs_list_head	svr_queuejob_hooks;
-pbs_list_head	svr_modifyjob_hooks;
-pbs_list_head	svr_resvsub_hooks;
-pbs_list_head	svr_movejob_hooks;
-pbs_list_head	svr_runjob_hooks;
-pbs_list_head	svr_periodic_hooks;
-pbs_list_head	svr_provision_hooks;
-pbs_list_head	svr_execjob_begin_hooks;
-pbs_list_head	svr_execjob_prologue_hooks;
-pbs_list_head	svr_execjob_launch_hooks;
-pbs_list_head	svr_execjob_epilogue_hooks;
-pbs_list_head	svr_execjob_end_hooks;
-pbs_list_head	svr_execjob_preterm_hooks;
-pbs_list_head	svr_exechost_periodic_hooks;
-pbs_list_head	svr_exechost_startup_hooks;
-pbs_list_head	svr_execjob_attach_hooks;
-pbs_list_head	task_list_immed;
-pbs_list_head	task_list_timed;
-pbs_list_head	task_list_event;
-pbs_list_head   	svr_deferred_req;
-pbs_list_head   	svr_unlicensedjobs;	/* list of jobs to license */
+pbs_list_node	svr_queues;            /* list of queues                   */
+pbs_list_node	svr_alljobs;           /* list of all jobs in server       */
+pbs_list_node	svr_allscheds;         /* list of schedulers               */
+pbs_list_node	svr_newjobs;           /* list of incomming new jobs       */
+pbs_list_node	svr_allresvs;          /* all reservations in server */
+pbs_list_node	svr_newresvs;          /* temporary list for new resv jobs */
+pbs_list_node	svr_allhooks;	       /* list of all hooks in server       */
+pbs_list_node	svr_queuejob_hooks;
+pbs_list_node	svr_modifyjob_hooks;
+pbs_list_node	svr_resvsub_hooks;
+pbs_list_node	svr_movejob_hooks;
+pbs_list_node	svr_runjob_hooks;
+pbs_list_node	svr_periodic_hooks;
+pbs_list_node	svr_provision_hooks;
+pbs_list_node	svr_execjob_begin_hooks;
+pbs_list_node	svr_execjob_prologue_hooks;
+pbs_list_node	svr_execjob_launch_hooks;
+pbs_list_node	svr_execjob_epilogue_hooks;
+pbs_list_node	svr_execjob_end_hooks;
+pbs_list_node	svr_execjob_preterm_hooks;
+pbs_list_node	svr_exechost_periodic_hooks;
+pbs_list_node	svr_exechost_startup_hooks;
+pbs_list_node	svr_execjob_attach_hooks;
+pbs_list_node	task_list_immed;
+pbs_list_node	task_list_timed;
+pbs_list_node	task_list_event;
+pbs_list_node   	svr_deferred_req;
+pbs_list_node   	svr_unlicensedjobs;	/* list of jobs to license */
 time_t		time_now;
 time_t		jan1_yr2038;
 time_t          secondary_delay = 30;

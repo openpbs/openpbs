@@ -60,7 +60,7 @@
 #include "pbs_ifl.h"
 #include "libpbs.h"
 #include "portability.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "pbs_nodes.h"
 #include "batch_request.h"

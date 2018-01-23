@@ -51,7 +51,7 @@ extern "C" {
  * This data is obtained by the encode dependent routine.
  *
  * Other required header files:
- *	"list_link.h"
+ *	"linked_list.h"
  *	"server_limits.h"
  *	"attribute.h"
  *	"credential.h"
@@ -81,7 +81,7 @@ extern "C" {
 struct rq_queuejob {
 	char		   rq_destin[PBS_MAXDEST+1];
 	char		   rq_jid[PBS_MAXSVRJOBID+1];
-	pbs_list_head	   rq_attr;	/* svrattrlist */
+	pbs_list_node	   rq_attr;	/* svrattrlist */
 };
 
 /* JobCredential */
@@ -144,7 +144,7 @@ struct rq_manage {
 	int	     rq_cmd;
 	int	     rq_objtype;
 	char	     rq_objname[PBS_MAXSVRJOBID+1];
-	pbs_list_head    rq_attr;	/* svrattrlist */
+	pbs_list_node    rq_attr;	/* svrattrlist */
 };
 
 /* HoldJob -  plus preference flag */
@@ -212,14 +212,14 @@ struct rq_signal {
 
 struct rq_status {
 	char    *rq_id;		/* allow mulitple (job) ids */
-	pbs_list_head rq_attr;
+	pbs_list_node rq_attr;
 };
 
 /* Select Job  and selstat */
 
 struct rq_selstat {
-	pbs_list_head rq_selattr;
-	pbs_list_head rq_rtnattr;
+	pbs_list_node rq_selattr;
+	pbs_list_node rq_rtnattr;
 };
 
 
@@ -286,7 +286,7 @@ struct rq_cpyfile {
 	char 	  rq_user[PBS_MAXUSER+1]; 	  /* used in Copy & Delete */
 	char 	  rq_group[PBS_MAXGRPN+1];	  /* used in Copy only     */
 	int 	  rq_dir;       		  /* direction and sandbox flags: used in Copy & Delete */
-	pbs_list_head rq_pair;	/* list of rqfpair,  used in Copy & Delete */
+	pbs_list_node rq_pair;	/* list of rqfpair,  used in Copy & Delete */
 };
 
 struct rq_cpyfile_cred {
@@ -302,7 +302,7 @@ struct rq_momrestart {
 };
 
 struct rqfpair {
-	pbs_list_link	 fp_link;
+	pbs_list_node	 fp_link;
 	int		 fp_flag;	/* 1 for std[out|err] 2 for stageout */
 	char		*fp_local;	/* used in Copy & Delete */
 	char		*fp_rmt;	/* used in Copy only     */
@@ -315,7 +315,7 @@ struct rqfpair {
  */
 
 struct batch_request {
-	pbs_list_link rq_link;	/* linkage of all requests 		*/
+	pbs_list_node rq_link;	/* linkage of all requests 		*/
 	struct batch_request * rq_parentbr;
 	/* parent request for job array request */
 	int	  rq_refct;	/* reference count - child requests     */
@@ -457,7 +457,7 @@ extern int decode_DIS_SignalJob(int socket, struct batch_request *);
 extern int decode_DIS_Status(int socket, struct batch_request *);
 extern int decode_DIS_TrackJob(int socket, struct batch_request *);
 extern int decode_DIS_replySvr(int socket, struct batch_reply *);
-extern int decode_DIS_svrattrl(int socket, pbs_list_head *);
+extern int decode_DIS_svrattrl(int socket, pbs_list_node *);
 
 extern int encode_DIS_failover(int socket, struct batch_request *);
 extern int encode_DIS_CopyFiles(int socket, struct batch_request *);

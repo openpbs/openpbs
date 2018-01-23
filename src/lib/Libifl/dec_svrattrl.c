@@ -70,7 +70,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "libpbs.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "dis.h"
 
@@ -110,7 +110,7 @@
  */
 
 int
-decode_DIS_svrattrl(int sock, pbs_list_head *phead)
+decode_DIS_svrattrl(int sock, pbs_list_node *phead)
 {
 	int		i;
 	unsigned int	hasresc;
@@ -134,7 +134,7 @@ decode_DIS_svrattrl(int sock, pbs_list_head *phead)
 		if ((psvrat = (svrattrl *)malloc(tsize)) == 0)
 			return DIS_NOMALLOC;
 
-		CLEAR_LINK(psvrat->al_link);
+		CLEAR_NODE(psvrat->al_link);
 		psvrat->al_sister = (svrattrl *)0;
 		psvrat->al_atopl.next = 0;
 		psvrat->al_tsize = tsize;
@@ -175,7 +175,7 @@ decode_DIS_svrattrl(int sock, pbs_list_head *phead)
 		psvrat->al_op = (enum batch_op)disrui(sock, &rc);
 		if (rc) break;
 
-		append_link(phead, &psvrat->al_link, psvrat);
+		append_node(phead, &psvrat->al_link, psvrat);
 	}
 
 	if (rc) {

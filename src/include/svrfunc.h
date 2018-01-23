@@ -117,7 +117,7 @@ extern void svr_saveorpurge_finjobhist(job *);
 extern int recreate_exec_vnode(job *, char *, char *, int);
 extern void unset_extra_attributes(job *);
 extern int node_delete_db(struct pbsnode *);
-extern int node_recov_db_raw(void *, pbs_list_head *);
+extern int node_recov_db_raw(void *, pbs_list_node *);
 extern int save_attr_db(pbs_db_conn_t *, pbs_db_attr_info_t *,	struct attribute_def *, struct attribute *, int , int);
 extern int recov_attr_db(pbs_db_conn_t *, void *, pbs_db_attr_info_t *, struct attribute_def *, struct attribute *, int , int);
 extern int svr_migrate_data_from_fs(void);
@@ -127,7 +127,7 @@ extern int resv_save_db(resc_resv *, int);
 extern int svr_chk_histjob(job *);
 extern int delete_attr_db(pbs_db_conn_t *, pbs_db_attr_info_t *, struct svrattrl *);
 extern int chk_and_update_db_svrhost(void);
-extern int recov_attr_db_raw(pbs_db_conn_t *, pbs_db_attr_info_t *, pbs_list_head *);
+extern int recov_attr_db_raw(pbs_db_conn_t *, pbs_db_attr_info_t *, pbs_list_node *);
 extern int apply_aoe_inchunk_rules(resource *, attribute *, void *, int);
 extern int apply_select_inchunk_rules(resource *, attribute *, void *, int, int);
 extern int svr_create_tmp_jobscript(job *, char *);
@@ -344,7 +344,7 @@ extern void  node_unreserve(pbs_resource_t handle);
 extern int   node_spec(struct spec_and_context *, int);
 #endif	/* _RESERVATION_H */
 
-#ifdef	_LIST_LINK_H
+#ifdef	_LINKED_LIST_H
 /*
  * This structure is used to hold information for a runjob batch request
  * from a client (that is not the Scheduler) which is being forwarded to
@@ -362,13 +362,13 @@ extern int   node_spec(struct spec_and_context *, int);
  */
 
 struct deferred_request {
-	pbs_list_link		dr_link;
+	pbs_list_node		dr_link;
 	char			dr_id[PBS_MAXSVRJOBID+1];
 	struct batch_request   *dr_preq;
 	int			dr_sent;	/* sent to Scheduler */
 };
 
-#endif /* _LIST_LINK_H */
+#endif /* _LINKED_LIST_H */
 
 
 /* The following is used are req_stat.c and req_select.c */
@@ -398,8 +398,8 @@ struct	stat_cntl { /* used in req_stat_job */
 	char		      sc_jobid[PBS_MAXSVRJOBID+1];
 };
 
-extern  int 	status_job(job *, struct batch_request *, svrattrl  *, pbs_list_head *, int *);
-extern  int 	status_subjob(job *, struct batch_request *, svrattrl  *, int, pbs_list_head *, int *);
+extern  int 	status_job(job *, struct batch_request *, svrattrl  *, pbs_list_node *, int *);
+extern  int 	status_subjob(job *, struct batch_request *, svrattrl  *, int, pbs_list_node *, int *);
 extern	int	stat_to_mom(job *, struct stat_cntl *);
 
 #endif	/* STAT_CNTL */

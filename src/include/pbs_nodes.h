@@ -144,7 +144,7 @@ struct mom_svrinfo {
 	time_t	      msr_timeinit; /* time Mom marked initializing */
 	time_t        msr_timepinged; /* time Mom was last pinged */
 	struct work_task *msr_wktask;	/* work task for reque jobs */
-	pbs_list_head	msr_deferred_cmds;	/* links to svr work_task list for RPP replies */
+	pbs_list_node	msr_deferred_cmds;	/* links to svr work_task list for RPP replies */
 	unsigned long *msr_addrs;   /* IP addresses of host */
 	int	      msr_numvnds;  /* number of vnodes */
 	int	      msr_numvslots; /* number of slots in msr_children */

@@ -70,7 +70,7 @@
 #include <pbs_ifl.h>
 #include <errno.h>
 #include <string.h>
-#include <list_link.h>
+#include <linked_list.h>
 #include <log.h>
 #include <attribute.h>
 #include <pbs_error.h>

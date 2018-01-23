@@ -41,7 +41,7 @@
 extern "C" {
 #endif
 #include "attribute.h"
-#include "list_link.h"
+#include "linked_list.h"
 
 
 /*
@@ -50,7 +50,7 @@ extern "C" {
  * Other required header files:
  *	"portability.h"
  *	"attribute.h"
- *	"list_link.h"
+ *	"linked_list.h"
  *
  * Resources are "a special case" of attributes.  Resources use similiar
  * structures as attributes.  Certain types, type related functions,
@@ -79,7 +79,7 @@ typedef enum resdef_op {
 } resdef_op_t;
 
 typedef struct resource {
-	pbs_list_link 	     rs_link;	/* link to other resources in list */
+	pbs_list_node 	     rs_link;	/* link to other resources in list */
 	struct resource_def *rs_defin;	/* pointer to definition entry */
 	attribute	     rs_value;	/* attribute struct holding value */
 } resource;
@@ -87,7 +87,7 @@ typedef struct resource {
 typedef struct resource_def {
 	char   *rs_name;
 	int   (*rs_decode)(attribute *prsc, char *name, char *rn, char *val);
-	int   (*rs_encode)(attribute *prsv, pbs_list_head *phead, char *atname,
+	int   (*rs_encode)(attribute *prsv, pbs_list_node *phead, char *atname,
 		char *rsname, int mode, svrattrl **rtnl);
 	int   (*rs_set)(attribute *old, attribute *new, enum batch_op op);
 	int   (*rs_comp)(attribute *prsc, attribute *with);
@@ -147,7 +147,7 @@ struct resc_type_map {
 	char *rtm_rname;
 	int   rtm_type;
 	int   (*rtm_decode)(attribute *prsc, char *name, char *rn, char *val);
-	int   (*rtm_encode)(attribute *prsv, pbs_list_head *phead, char *atname,
+	int   (*rtm_encode)(attribute *prsv, pbs_list_node *phead, char *atname,
 		char *rsname, int mode, svrattrl **rtnl);
 	int   (*rtm_set)(attribute *old, attribute *new, enum batch_op op);
 	int   (*rtm_comp)(attribute *prsc, attribute *with);

@@ -69,7 +69,7 @@
 #include	<sys/stat.h>
 
 #include 	"libpbs.h"
-#include	"list_link.h"
+#include	"linked_list.h"
 #include	"attribute.h"
 #include	"resource.h"
 #include	"server_limits.h"
@@ -98,9 +98,9 @@ extern	int		exiting_tasks;
 extern	char		mom_host[];
 extern	char		*path_jobs;
 extern	int		pbs_errno;
-extern	pbs_list_head	mom_deadjobs;	/* for deferred purging of job */
-extern	pbs_list_head	mom_polljobs;	/* must have resource limits polled */
-extern	pbs_list_head	svr_alljobs;	/* all jobs under MOM's control */
+extern	pbs_list_node	mom_deadjobs;	/* for deferred purging of job */
+extern	pbs_list_node	mom_polljobs;	/* must have resource limits polled */
+extern	pbs_list_node	svr_alljobs;	/* all jobs under MOM's control */
 extern	time_t		time_now;
 extern	int		server_stream;
 extern	char		mom_short_name[];
@@ -290,9 +290,9 @@ event_dup(eventent *ep, job *pjob, hnodent *pnode)
 	assert(nep);
 
 	memmove(nep, ep, sizeof(*ep));
-	CLEAR_LINK(nep->ee_next);
+	CLEAR_NODE(nep->ee_next);
 
-	append_link(&pnode->hn_events, &nep->ee_next, nep);
+	append_node(&pnode->hn_events, &nep->ee_next, nep);
 
 	if (pnode->hn_stream == -1)
 		pnode->hn_stream = rpp_open(pnode->hn_host, pnode->hn_port);
@@ -332,7 +332,7 @@ event_alloc(job *pjob, int command, int fd, hnodent *pnode,
 	ep->ee_taskid = taskid;
 	ep->ee_argv = NULL;
 	ep->ee_envp = NULL;
-	CLEAR_LINK(ep->ee_next);
+	CLEAR_NODE(ep->ee_next);
 
 	if ((ep->ee_event = eventnum++) == TM_NULL_EVENT) {
 		/*
@@ -374,7 +374,7 @@ check:
 		 */
 	}
 
-	append_link(&pnode->hn_events, &ep->ee_next, ep);
+	append_node(&pnode->hn_events, &ep->ee_next, ep);
 
 	if (pnode->hn_stream == -1)
 		pnode->hn_stream = rpp_open(pnode->hn_host, pnode->hn_port);
@@ -439,8 +439,8 @@ momtask_create(job *pjob)
 	assert(ptask);
 	memset((void *)ptask, 0, sizeof(pbs_task));
 	ptask->ti_job = pjob;
-	CLEAR_LINK(ptask->ti_jobtask);
-	append_link(&pjob->ji_tasks, &ptask->ti_jobtask, ptask);
+	CLEAR_NODE(ptask->ti_jobtask);
+	append_node(&pjob->ji_tasks, &ptask->ti_jobtask, ptask);
 	ptask->ti_tmfd = NULL;
 	ptask->ti_protover = -1;
 	ptask->ti_flags = 0;
@@ -838,7 +838,7 @@ is_comm_up(int maturity_time)
 int
 send_sisters_job_update(job *pjob)
 {
-	pbs_list_head	phead;
+	pbs_list_node	phead;
 	int		mtfd = -1;
 	int		com;
 	svrattrl	*psatl;
@@ -1017,7 +1017,7 @@ send_sisters_job_update(job *pjob)
 int
 receive_job_update(int stream, job *pjob)
 {
-	pbs_list_head	lhead;
+	pbs_list_node	lhead;
 	int		found_exechost = 0;
 	int		found_execvnode = 0;
 	int		found_schedselect = 0;
@@ -1705,13 +1705,13 @@ chk_del_job(job *pjob, int errcode)
 		 * If the job is already on the list of jobs to be purged,
 		 * do nothing.
 		 */
-		if (is_linked(&mom_deadjobs, &pjob->ji_jobque)) {
+		if (is_in_list(&mom_deadjobs, &pjob->ji_jobque)) {
 			DBPRT(("%s: job %s ALREADY LINKED to deadjobs\n",
 				__func__, pjob->ji_qs.ji_jobid))
 		} else {
-			if (is_linked(&mom_polljobs, &pjob->ji_jobque))
-				delete_link(&pjob->ji_jobque);
-			append_link(&mom_deadjobs, &pjob->ji_jobque, pjob);
+			if (is_in_list(&mom_polljobs, &pjob->ji_jobque))
+				delete_node(&pjob->ji_jobque);
+			append_node(&mom_deadjobs, &pjob->ji_jobque, pjob);
 		}
 	}
 }
@@ -1737,7 +1737,7 @@ node_bailout(job *pjob, hnodent *np)
 	int		 keep_event = 0;
 	char		*name;
 	attribute	*pattr;
-	pbs_list_head	 phead;
+	pbs_list_node	 phead;
 
 	ep = (eventent *)GET_NEXT(np->hn_events);
 	while (ep) {
@@ -1923,7 +1923,7 @@ node_bailout(job *pjob, hnodent *np)
 		/* this event in the list (keep_event==1) or delete it   */
 		nxtep = (eventent *)GET_NEXT(ep->ee_next);
 		if (keep_event == 0) {
-			delete_link(&ep->ee_next);
+			delete_node(&ep->ee_next);
 			free(ep);
 		} else {
 			keep_event = 0;	/* reset for next event */
@@ -2205,8 +2205,8 @@ task_saveinfo(pbs_task *ptask, char *name, void *info, int len)
 	if ((ip = task_findinfo(ptask, name)) == NULL) {	/* new name */
 		ip = (infoent *)malloc(sizeof(infoent));
 		assert(ip);
-		CLEAR_LINK(ip->ie_next);
-		append_link(&ptask->ti_info, &ip->ie_next, ip);
+		CLEAR_NODE(ip->ie_next);
+		append_node(&ptask->ti_info, &ip->ie_next, ip);
 		ip->ie_name = name;
 	}
 	else				/* replace name with new info */
@@ -2233,7 +2233,7 @@ resc_string(job *pjob)
 	attribute		*at;
 	attribute_def		*ad;
 	svrattrl		*pal;
-	pbs_list_head		lhead;
+	pbs_list_node		lhead;
 	int			len, used, tot;
 	char			*res_str, *ch;
 	char			*getuname();
@@ -2370,8 +2370,8 @@ send_resc_used_to_ms(int stream, char *jobid)
 	attribute_def		*ad;
 	svrattrl		*pal;
 	svrattrl		*nxpal;
-	pbs_list_head		lhead;
-	pbs_list_head		send_head;
+	pbs_list_node		lhead;
+	pbs_list_node		send_head;
 	extern	int		resc_access_perm;
 	svrattrl		 *psatl;
 	job			*pjob;
@@ -2468,7 +2468,7 @@ int
 recv_resc_used_from_sister(int stream, char *jobid, int nodeidx)
 {
 	attribute_def		*pdef;
-	pbs_list_head		lhead;
+	pbs_list_node		lhead;
 	extern	int		resc_access_perm;
 	svrattrl		*psatl;
 	job			*pjob;
@@ -2596,7 +2596,7 @@ im_request(int stream, int version)
 	size_t			len;
 	tm_event_t		event, event_client = 0;
 	int			efd = -1;
-	pbs_list_head		lhead;
+	pbs_list_node		lhead;
 	svrattrl		*psatl;
 	attribute_def		*pdef;
 	extern  unsigned long	 QA_testing;
@@ -3015,8 +3015,8 @@ im_request(int stream, int version)
 			 ** is not used otherwise by MOM
 			 */
 			if (mom_do_poll(pjob))
-				append_link(&mom_polljobs, &pjob->ji_jobque, pjob);
-			append_link(&svr_alljobs, &pjob->ji_alljobs, pjob);
+				append_node(&mom_polljobs, &pjob->ji_jobque, pjob);
+			append_node(&svr_alljobs, &pjob->ji_alljobs, pjob);
 
 			/*
 			 ** At this point, we have done all the job setup.
@@ -3135,7 +3135,7 @@ join_err:
 		event_client = ep->ee_client;
 		argv = ep->ee_argv;
 		envp = ep->ee_envp;
-		delete_link(&ep->ee_next);
+		delete_node(&ep->ee_next);
 		free(ep);
 	}
 
@@ -3638,8 +3638,8 @@ join_err:
 			else {	/* save obit request with task */
 				obitent	*op = (obitent *)malloc(sizeof(obitent));
 				assert(op);
-				CLEAR_LINK(op->oe_next);
-				append_link(&ptask->ti_obits, &op->oe_next, op);
+				CLEAR_NODE(op->oe_next);
+				append_node(&ptask->ti_obits, &op->oe_next, op);
 				op->oe_type = OBIT_TYPE_TMEVENT;
 				op->oe_u.oe_tm.oe_fd = -1;
 				op->oe_u.oe_tm.oe_node = pvnodeid;
@@ -4916,7 +4916,7 @@ cleanup:
 					pobit->oe_u.oe_tm.oe_event,
 					pobit->oe_u.oe_tm.oe_node,
 					pobit->oe_u.oe_tm.oe_taskid))
-				delete_link(&pobit->oe_next);
+				delete_node(&pobit->oe_next);
 				free(pobit);
 				events++;
 			}
@@ -5342,9 +5342,9 @@ tm_request(int fd, int version)
 		 ** Add to list of polled jobs if it isn't
 		 ** already there.
 		 */
-		if (is_linked(&mom_polljobs,
+		if (is_in_list(&mom_polljobs,
 			&pjob->ji_jobque) == 0) {
-			append_link(&mom_polljobs,
+			append_node(&mom_polljobs,
 				&pjob->ji_jobque, pjob);
 		}
 
@@ -5910,8 +5910,8 @@ aterr:
 			else {
 				obitent	*op = (obitent *)malloc(sizeof(obitent));
 				assert(op);
-				CLEAR_LINK(op->oe_next);
-				append_link(&ptask->ti_obits, &op->oe_next, op);
+				CLEAR_NODE(op->oe_next);
+				append_node(&ptask->ti_obits, &op->oe_next, op);
 				op->oe_type = OBIT_TYPE_TMEVENT;
 				op->oe_u.oe_tm.oe_fd = fd;
 				op->oe_u.oe_tm.oe_node = tvnodeid;
@@ -6082,11 +6082,11 @@ err:
  * @param[in]	ep     - pointer to associated event
  * @param[in]	nth    - index of host entry (job's node number for this sister)
  * @param[in]	pjob   - pointer to job structure for job to be run
- * @param[in]	phead  - pointer to pbs_list_head of job's encoded attributes
+ * @param[in]	phead  - pointer to pbs_list_node of job's encoded attributes
  */
 
 void
-send_join_job_restart(int com, eventent *ep, int nth, job *pjob, pbs_list_head *phead)
+send_join_job_restart(int com, eventent *ep, int nth, job *pjob, pbs_list_node *phead)
 {
 	size_t	   mycred_len = 0;
 	char	  *mycred_buf = NULL;
@@ -6153,7 +6153,7 @@ send_join_job_restart(int com, eventent *ep, int nth, job *pjob, pbs_list_head *
  */
 
 void
-send_join_job_restart_mcast(int mtfd, int com, eventent *ep, int nth, job *pjob, pbs_list_head *phead)
+send_join_job_restart_mcast(int mtfd, int com, eventent *ep, int nth, job *pjob, pbs_list_node *phead)
 {
 	size_t	   mycred_len = 0;
 	char	  *mycred_buf = NULL;

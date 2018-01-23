@@ -118,7 +118,7 @@
 #include <string.h>
 #include "pbs_ifl.h"
 #include "libpbs.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "work_task.h"
 #include "attribute.h"
 #include "batch_request.h"
@@ -201,26 +201,26 @@ extern char *msg_man_uns;
 extern char *msg_noattr;
 extern char *msg_internal;
 extern char *msg_norelytomom;
-extern pbs_list_head svr_allhooks;
-extern pbs_list_head svr_queuejob_hooks;
-extern pbs_list_head svr_modifyjob_hooks;
-extern pbs_list_head svr_resvsub_hooks;
-extern pbs_list_head svr_movejob_hooks;
-extern pbs_list_head svr_runjob_hooks;
-extern pbs_list_head svr_periodic_hooks;
-extern pbs_list_head svr_provision_hooks;
-extern pbs_list_head svr_execjob_begin_hooks;
-extern pbs_list_head svr_execjob_prologue_hooks;
-extern pbs_list_head svr_execjob_epilogue_hooks;
-extern pbs_list_head svr_execjob_preterm_hooks;
-extern pbs_list_head svr_execjob_end_hooks;
-extern pbs_list_head svr_exechost_periodic_hooks;
-extern pbs_list_head svr_exechost_startup_hooks;
-extern pbs_list_head svr_execjob_launch_hooks;
-extern pbs_list_head svr_execjob_attach_hooks;
+extern pbs_list_node svr_allhooks;
+extern pbs_list_node svr_queuejob_hooks;
+extern pbs_list_node svr_modifyjob_hooks;
+extern pbs_list_node svr_resvsub_hooks;
+extern pbs_list_node svr_movejob_hooks;
+extern pbs_list_node svr_runjob_hooks;
+extern pbs_list_node svr_periodic_hooks;
+extern pbs_list_node svr_provision_hooks;
+extern pbs_list_node svr_execjob_begin_hooks;
+extern pbs_list_node svr_execjob_prologue_hooks;
+extern pbs_list_node svr_execjob_epilogue_hooks;
+extern pbs_list_node svr_execjob_preterm_hooks;
+extern pbs_list_node svr_execjob_end_hooks;
+extern pbs_list_node svr_exechost_periodic_hooks;
+extern pbs_list_node svr_exechost_startup_hooks;
+extern pbs_list_node svr_execjob_launch_hooks;
+extern pbs_list_node svr_execjob_attach_hooks;
 extern	time_t	time_now;
 extern 	struct python_interpreter_data  svr_interp_data;
-extern	pbs_list_head task_list_event;
+extern	pbs_list_node task_list_event;
 extern struct work_task *add_mom_deferred_list(int stream, mominfo_t *minfo, void (*func)(), char *msgid, void *parm1, void *parm2);
 
 extern	char	*path_rescdef;
@@ -300,7 +300,7 @@ hook_action_tid_get(void)
  * @retval	1 - otherwise.
  */
 static int
-attrlist_add(pbs_list_head *atl, char *name, char *val)
+attrlist_add(pbs_list_node *atl, char *name, char *val)
 {
 	svrattrl	*pal2;
 
@@ -324,7 +324,7 @@ attrlist_add(pbs_list_head *atl, char *name, char *val)
 		return (1);
 	}
 	strcpy(pal2->al_value, val);
-	append_link(atl, &pal2->al_link, pal2);
+	append_node(atl, &pal2->al_link, pal2);
 	return (0);
 }
 
@@ -2336,7 +2336,7 @@ mgr_hook_unset_error:
  */
 
 int
-status_hook(hook *phook, struct batch_request *preq, pbs_list_head *pstathd, char *hook_msg, size_t msg_len)
+status_hook(hook *phook, struct batch_request *preq, pbs_list_node *pstathd, char *hook_msg, size_t msg_len)
 {
 	struct brp_status *pstat;
 	svrattrl	  *pal;
@@ -2368,9 +2368,9 @@ status_hook(hook *phook, struct batch_request *preq, pbs_list_head *pstathd, cha
 	pstat->brp_objtype = hook_obj;
 
 	(void)strcpy(pstat->brp_objname, hookname);
-	CLEAR_LINK(pstat->brp_stlink);
+	CLEAR_NODE(pstat->brp_stlink);
 	CLEAR_HEAD(pstat->brp_attr);
-	append_link(pstathd, &pstat->brp_stlink, pstat);
+	append_node(pstathd, &pstat->brp_stlink, pstat);
 
 	/* add attributes to the status reply */
 
@@ -3750,7 +3750,7 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 	hook			*phook_next = NULL;
 	unsigned int		hook_event;
 	hook_input_param_t	req_ptr;
-	pbs_list_head		*head_ptr;
+	pbs_list_node		*head_ptr;
 	job			*pjob = NULL;
 	int			t;
 	char			*jobid = NULL;
