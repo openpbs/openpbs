@@ -72,13 +72,14 @@ class TestClientNagles(TestPerformance):
         return :
               -1 on qdel fail
         """
+        qsel_list = self.server.select()
+        qsel_list = " ".join(qsel_list)
         command = self.time_command
         command += " -f \"%e\" "
-        command += os.path.join(
-            self.server.client_conf['PBS_EXEC'],
-            'bin',
-            'qdel `qselect`')
-
+        command += os.path.join(self.server.client_conf['PBS_EXEC'],
+                                'bin',
+                                'qdel ')
+        command += qsel_list
         # compute elapse time without -E option
         qdel_perf = self.du.run_cmd(self.server.hostname,
                                     command,
