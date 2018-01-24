@@ -3125,7 +3125,7 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\src\lib\Libifl\list_link.c"
+				RelativePath="..\..\src\lib\Libifl\linked_list.c"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
