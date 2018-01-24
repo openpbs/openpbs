@@ -6655,6 +6655,7 @@ class Server(PBSService):
 
         if expect:
             offset = None
+            attrop = PTL_OR
             if obj_type in (NODE, HOST):
                 obj_type = VNODE
             if obj_type in (VNODE, QUEUE):
@@ -6664,12 +6665,22 @@ class Server(PBSService):
             else:
                 op = EQ
 
+            # If scheduling is set to false then check for
+            # 'server_state' to be 'Idle'
+            if attrib and isinstance(attrib,
+                                     dict) and 'scheduling' in attrib.keys():
+                if str(attrib['scheduling']) in PTL_FALSE:
+                    attrib['server_state'] = 'Idle'
+                    attrop = PTL_AND
+
             if oid is None:
                 return self.expect(obj_type, attrib, oid, op=op,
-                                   max_attempts=max_attempts, offset=offset)
+                                   max_attempts=max_attempts,
+                                   attrop=attrop, offset=offset)
             for i in oid:
                 rc = self.expect(obj_type, attrib, i, op=op,
-                                 max_attempts=max_attempts, offset=offset)
+                                 max_attempts=max_attempts,
+                                 attrop=attrop, offset=offset)
                 if not rc:
                     break
         return rc
