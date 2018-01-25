@@ -854,8 +854,8 @@ e.accept()
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
         self.logger.info(
-            "Sleep so long that soft_walltime get extended once")
-        time.sleep(7)
+            "Sleep to let soft_walltime get extended once")
+        time.sleep(10)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         self.server.expect(JOB, {'estimated.soft_walltime':
                                  (MATCH_RE, '00:00:14|14')}, id=jid)
@@ -865,8 +865,8 @@ e.accept()
         self.server.expect(JOB, {'job_state': 'H'}, id=jid)
 
         self.logger.info(
-            "sleep so long to verify that soft_walltime"
-            " don't change while job is held")
+            "Sleep to verify that soft_walltime"
+            " doesn't change while job is held")
         time.sleep(10)
         self.server.expect(JOB, {'estimated.soft_walltime':
                                  (MATCH_RE, '00:00:14|14')}, id=jid)
@@ -880,9 +880,13 @@ e.accept()
 
         # Wait for some more time and verify that soft_walltime
         # extending again
-        time.sleep(7)
+        self.logger.info(
+            "Sleep enough to let soft_walltime get extended again"
+            " since the walltime was reset to 0")
+        time.sleep(17)
         self.server.expect(JOB, {'estimated.soft_walltime':
-                                 (MATCH_RE, '00:00:21|21')}, id=jid)
+                                 (MATCH_RE, '00:00:21|21')}, id=jid,
+                           max_attempts=5)
 
     def test_soft_less_cput(self):
         """
