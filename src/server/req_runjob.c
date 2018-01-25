@@ -1121,7 +1121,8 @@ complete_running(job *jobp)
 		/* if this is first subjob to run, mark */
 		/* parent Array as state "Begun"	*/
 		parent = jobp->ji_parentaj;
-		if (parent->ji_qs.ji_state == JOB_STATE_QUEUED) {
+		if (parent->ji_qs.ji_state == JOB_STATE_QUEUED ||
+			(parent->ji_qs.ji_state == JOB_STATE_BEGUN && parent->ji_qs.ji_stime == 0)) {
 			svr_setjobstate(parent, JOB_STATE_BEGUN, JOB_SUBSTATE_BEGUN);
 
 			/* Also set the parent job's stime */
