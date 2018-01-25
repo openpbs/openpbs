@@ -5304,9 +5304,15 @@ alps_create_reserve_request(job *pjob, basil_request_reserve_t **req)
 		/*
 		 * If the user requested place=excl then we need to pass
 		 * that information into the ALPS reservation.
-		 * If not exclusive set it to shared by default
 		 */
-		p->rsvn_mode = (rpv == rlplace_excl)?basil_rsvn_mode_exclusive:basil_rsvn_mode_shared;
+		p->rsvn_mode = basil_rsvn_mode_none;	/* initialize it */
+		if (rpv == rlplace_excl) {
+			/*
+			 * The user asked for the node exclusively.
+			 * Set it in the ALPS reservation.
+			 */
+			p->rsvn_mode = basil_rsvn_mode_exclusive;
+		}
 		if (ns->ncpus != ns->threads) {
 			sprintf(log_buffer, "ompthreads %ld does not match"
 				" ncpus %ld", ns->threads, ns->ncpus);
