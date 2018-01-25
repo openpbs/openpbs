@@ -1283,7 +1283,7 @@ dup_node_info(node_info *onode, server_info *nsinfo,
 	nnode->NASrank = onode->NASrank;
 #endif /* localmod 049 */
 
-	if (nnode->partition != NULL) {
+	if (onode->partition != NULL) {
 		nnode->partition = string_dup(onode->partition);
 		if (nnode->partition == NULL) {
 			free_node_info(nnode);

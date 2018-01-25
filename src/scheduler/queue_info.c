@@ -978,7 +978,7 @@ dup_queue_info(queue_info *oqinfo, server_info *nsinfo)
 
 	if (oqinfo->nodes_in_partition != NULL)
 		nqinfo->nodes_in_partition = node_filter(nsinfo->nodes, nsinfo->num_nodes,
-			node_partition_cmp, (void *) nqinfo->partition, 0);
+			node_partition_cmp, (void *) oqinfo->partition, 0);
 
 	if (oqinfo->partition != NULL) {
 		nqinfo->partition = string_dup(oqinfo->partition);
