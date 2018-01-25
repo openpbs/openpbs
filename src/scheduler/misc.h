@@ -244,6 +244,8 @@ char *
 res_to_str_re(void *p, enum resource_fields fld, char **buf,
 	int *bufsize, unsigned int flags);
 
+int strcpy_alloc(char **dest, char *src);
+
 /*
  * clear schd_error structure for reuse
  */

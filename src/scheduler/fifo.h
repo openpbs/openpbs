@@ -41,7 +41,9 @@
 extern "C" {
 #endif
 
+#include  <limits.h>
 #include "data_types.h"
+int connector;
 
 /*
  *      schedinit - initialize conf struct and parse conf files
@@ -220,6 +222,9 @@ int main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rer
  *	return success 1 or error 0
  */
 int scheduler_simulation_task(int pbs_sd, int debug);
+
+int update_svr_schedobj(int connector, int cmd, int alarm_time);
+
 
 #ifdef	__cplusplus
 }

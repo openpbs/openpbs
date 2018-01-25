@@ -84,6 +84,8 @@ extern char	*msg_jobholdrel;
 extern char	*msg_mombadhold;
 extern char	*msg_postmomnojob;
 extern time_t	 time_now;
+extern job  *chk_job_request(char *, struct batch_request *, int *);
+
 
 int chk_hold_priv(long val, int perm);
 

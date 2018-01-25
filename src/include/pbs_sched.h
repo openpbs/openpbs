@@ -42,13 +42,26 @@
 extern "C" {
 #endif
 
+#include "pbs_config.h"
+#include "pbs_ifl.h"
+#include "libpbs.h"
+#include "list_link.h"
 #include "attribute.h"
+#include "resource.h"
+#include "pbs_ifl.h"
+#include "server_limits.h"
+#include "sched_cmds.h"
+#include "work_task.h"
+#include "net_connect.h"
+#include "resv_node.h"
+#include "queue.h"
+#include "batch_request.h"
+#include "job.h"
+#include "reservation.h"
+
+
 #define PBS_SCHED_CYCLE_LEN_DEFAULT 1200
 
-/* scheduler-attribute values (state) */
-#define SC_DOWN		"down"
-#define SC_IDLE			"idle"
-#define SC_SCHEDULING	"scheduling"
 #define SC_STATUS_LEN 	10
 
 /*attributes for the server's sched object*/
@@ -80,8 +93,14 @@ extern attribute_def sched_attr_def[];
 
 typedef struct pbs_sched {
 	pbs_list_link	sc_link;		/* forward/backward links */
-
-	char sc_name[PBS_MAXSCHEDNAME];
+	int scheduler_sock;
+	int scheduler_sock2;
+	int svr_do_schedule;
+	int svr_do_sched_high;
+	pbs_net_t pbs_scheduler_addr;
+	unsigned int pbs_scheduler_port;
+	time_t sch_next_schedule;		/* when to next run scheduler cycle */
+	char sc_name[PBS_MAXSCHEDNAME + 1];
 	/* sched object's attributes  */
 	attribute sch_attr[SCHED_ATR_LAST];
 } pbs_sched;
@@ -89,6 +108,10 @@ typedef struct pbs_sched {
 
 extern pbs_sched *dflt_scheduler;
 extern	pbs_list_head	svr_allscheds;
+extern void set_scheduler_flag(int flag, pbs_sched *psched);
+extern int find_assoc_sched_jid(char *jid, pbs_sched **target_sched);
+extern int find_assoc_sched_pque(pbs_queue *pq, pbs_sched **target_sched);
+extern pbs_sched *find_sched_from_sock(int sock);
 
 #ifdef	__cplusplus
 }

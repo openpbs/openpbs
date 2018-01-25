@@ -371,6 +371,7 @@ struct queue_info
 	unsigned is_prime_queue:1;	/* only run jobs in primetime */
 	unsigned is_nonprime_queue:1;	/* only run jobs in nonprimetime */
 	unsigned has_nodes:1;		/* does this queue have nodes assoc with it */
+	unsigned has_partition:1;	/* does this queue has partition assoc with it */
 	unsigned has_soft_limit:1;	/* queue has a soft user/grp limit set */
 	unsigned has_hard_limit:1;	/* queue has a hard user/grp limit set */
 	unsigned is_peer_queue:1;	/* queue is a peer queue */
@@ -396,6 +397,7 @@ struct queue_info
 	resource_resv **jobs;		/* array of jobs that reside in queue */
 	resource_resv **running_jobs;	/* array of jobs in the running state */
 	node_info **nodes;		/* array of nodes associated with the queue */
+	node_info **nodes_in_partition; /* array of nodes associated with the queue's partition */
 	counts *group_counts;		/* group resource and running counts */
 	counts *project_counts;	/* project resource and running counts */
 	counts *user_counts;		/* user resource and running counts */
@@ -415,6 +417,7 @@ struct queue_info
 	int num_parts;		/* number of node partitions(node_group_key) */
 	int num_topjobs;	/* current number of top jobs in this queue */
 	int backfill_depth;	/* total allowable topjobs in this queue*/
+	char *partition;	/* partition to which queue belongs to */
 };
 
 struct job_info
@@ -604,6 +607,7 @@ struct node_info
 	node_info *svr_node;		/* ptr to svr's node if we're a resv node */
 	node_partition *hostset;      /* other vnodes on on the same host */
 	node_scratch nscr;            /* scratch space local to node search code */
+	char *partition;	      /* partition to which node belongs to */
 };
 
 struct resv_info
@@ -818,6 +822,7 @@ struct resresv_set
 	char *user;			/* user of set, can be NULL */
 	char *group;			/* group of set, can be NULL */
 	char *project;			/* project of set, can be NULL */
+	char *partition;		/* partition of set, can be NULL */
 	selspec *select_spec;		/* select spec of set */
 	place *place_spec;		/* place spec of set */
 	resource_req *req;		/* ATTR_L (qsub -l) resources of set.  Only contains resources on the resources line */

@@ -1701,3 +1701,40 @@ res_to_str_re(void *p, enum resource_fields fld, char **buf,
 		return "";
 	return *buf;
 }
+
+/**
+ * @brief
+ *	Helper function used to copy the given source string to the destination string. It also
+ *	frees the destination and then allocates required memory before copying.
+ *
+ * @param[in, out] dest - Address of pointer to destination string
+ * @param[in] 	   src  - pointer to source string
+ *
+ * @retval
+ * @return 0 - Failure
+ * @return 1 - Success
+ *
+ * @par Side Effects:
+ *	None
+ *
+ *
+ */
+int
+strcpy_alloc(char **dest, char *src)
+{
+	int ret = 0;
+
+	if (src != NULL) {
+		int len = 0;
+		len = strlen(src);
+		*dest = realloc(*dest, len+1);
+		if (*dest == NULL) {
+			schdlog(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, MEM_ERR_MSG);
+			return ret;
+		}
+		strcpy(*dest, src);
+		ret = 1;
+	}
+	return ret;
+}
+

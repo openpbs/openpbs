@@ -71,6 +71,7 @@
 #include "hook.h"
 #include "sched_cmds.h"
 #include "pbs_internal.h"
+#include "pbs_sched.h"
 
 
 /* Global Data Items: */
@@ -88,7 +89,6 @@ extern int   comp_resc_lt;
 extern char *resc_in_err;
 
 static resource_def *pseldef = NULL;
-extern int scheduler_sock;
 extern int scheduler_jobs_stat;
 extern int resc_access_perm;
 extern char *msg_nostf_resv;
@@ -96,6 +96,9 @@ extern char *msg_nostf_resv;
 int modify_resv_attr(resc_resv *presv, svrattrl *plist, int perm, int *bad);
 extern void resv_revert_alter_times(resc_resv *presv);
 extern int gen_future_reply(resc_resv *presv, long fromNow);
+extern job  *chk_job_request(char *, struct batch_request *, int *);
+extern resc_resv  *chk_rescResv_request(char *, struct batch_request *);
+
 
 
 
@@ -160,6 +163,7 @@ req_modifyjob(struct batch_request *preq)
 	int		 sendmom = 0;
 	char		hook_msg[HOOK_MSG_SIZE];
 	int		mod_project = 0;
+	pbs_sched	*psched;
 
 	switch (process_hooks(preq, hook_msg, sizeof(hook_msg),
 			pbs_python_set_interrupt)) {
@@ -197,8 +201,9 @@ req_modifyjob(struct batch_request *preq)
 		return;
 	}
 
+	psched = find_sched_from_sock(preq->rq_conn);
 	/* allow scheduler to modify job */
-	if (preq->rq_conn != scheduler_sock) {
+	if (psched == NULL) {
 		/* provisioning job is not allowed to be modified */
 		if ((pjob->ji_qs.ji_state == JOB_STATE_RUNNING) &&
 			(pjob->ji_qs.ji_substate == JOB_SUBSTATE_PROVISION)) {
@@ -243,7 +248,7 @@ req_modifyjob(struct batch_request *preq)
 		 * If the scheduler itself sends a modify job request,
 		 * no need to delay the job until next cycle.
 		 */
-		if ((preq->rq_conn != scheduler_sock) && (scheduler_jobs_stat) && (job_attr_def[i].at_flags & ATR_DFLAG_SCGALT))
+		if ((psched == NULL) && (scheduler_jobs_stat) && (job_attr_def[i].at_flags & ATR_DFLAG_SCGALT))
 			add_to_am_list = 1;
 
 		/* Is the attribute modifiable in RUN state ? */
@@ -888,7 +893,7 @@ req_modifyReservation(struct batch_request *preq)
 		rc = modify_resv_attr(presv, psatl, preq->rq_perm, &bad);
 
 	if (send_to_scheduler)
-		set_scheduler_flag(SCH_SCHEDULE_RESV_RECONFIRM);
+		set_scheduler_flag(SCH_SCHEDULE_RESV_RECONFIRM, dflt_scheduler);
 
 	(void)sprintf(log_buffer, "Attempting to modify reservation");
 	if (presv->ri_alter_flags & RESV_START_TIME_MODIFIED) {

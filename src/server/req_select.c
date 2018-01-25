@@ -80,7 +80,7 @@
 #include "log.h"
 #include "pbs_nodes.h"
 #include "svrfunc.h"
-
+#include "pbs_sched.h"
 
 /* Private Data */
 
@@ -91,7 +91,6 @@ extern pbs_list_head svr_alljobs;
 extern time_t	 time_now;
 extern char	 statechars[];
 extern long svr_history_enable;
-extern int scheduler_sock;
 extern int scheduler_jobs_stat;
 
 /* Private Functions  */
@@ -334,6 +333,7 @@ req_selectjobs(struct batch_request *preq)
 	char		   *pstate = NULL;
 	int		    rc;
 	struct select_list *selistp;
+	pbs_sched	   *psched;
 
 	/*
 	 * if the letter T (or t) is in the extend string,  select subjobs
@@ -367,7 +367,8 @@ req_selectjobs(struct batch_request *preq)
 	 * approach to query for jobs, e.g., by issuing a single pbs_statjob()
 	 * instead of a per-queue selstat()
 	 */
-	if ((scheduler_sock != -1) && (preq->rq_conn == scheduler_sock) && (!scheduler_jobs_stat)) {
+	psched = find_sched_from_sock(preq->rq_conn);
+	if ((psched != NULL) && (psched == dflt_scheduler) && (!scheduler_jobs_stat)) {
 		scheduler_jobs_stat = 1;
 	}
 
