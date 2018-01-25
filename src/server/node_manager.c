@@ -176,7 +176,7 @@
 #include	"hook_func.h"
 #include	"sched_cmds.h"
 #include	"provision.h"
-#include "pbs_sched.h"
+#include 	"pbs_sched.h"
 #include	"svrfunc.h"
 
 #if !defined(H_ERRNO_DECLARED) && !defined(WIN32)
@@ -1952,9 +1952,10 @@ find_degraded_occurrence(resc_resv *presv, struct pbsnode *np,
 		if (find_vnode_in_execvnode(execvnodes_seq[i], np->nd_name)) {
 			occr_found = 1;
 			if (degraded_op == Set_Degraded_Time) {
-		/* we keep track of the occurrence time to determine the earliest
-		 * degraded time */
-		occr_time = get_occurrence(rrule, dtstart, tz, j);
+				/* we keep track of the occurrence time to determine the earliest
+				 * degraded time
+				 */
+				occr_time = get_occurrence(rrule, dtstart, tz, j);
 
 				/* Set the degraded start time to the earliest occurrence
 				 * with unavailable nodes. We do not check for
@@ -3041,8 +3042,7 @@ deallocate_job(mominfo_t *pmom, job *pjob)
 	if (find_assoc_sched_jid(pjob->ji_qs.ji_jobid, &psched))
 		set_scheduler_flag(SCH_SCHEDULE_TERM, psched);
 	else {
-		sprintf(log_buffer, "Unable to find scheduler associated with partition");
-		log_err(-1, __func__, log_buffer);
+		log_err(-1, __func__, "Unable to find scheduler associated with partition");
 	}
 	free(freed_vnode_list);
 }

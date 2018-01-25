@@ -657,7 +657,7 @@ rel_resc(job *pjob)
 	else {
 		pbs_queue *pq;
 		pq = find_queuebyname( pjob->ji_qs.ji_queue);
-		sprintf(log_buffer, "Unable to reach scheduler associated with job %s", pq->qu_attr[QA_ATR_partition].at_val.at_str);
+		sprintf(log_buffer, "Unable to reach scheduler associated with partition %s", pq->qu_attr[QA_ATR_partition].at_val.at_str);
 		log_err(-1, __func__, log_buffer);
 	}
 }

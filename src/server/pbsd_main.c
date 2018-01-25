@@ -367,7 +367,7 @@ net_restore_handler(void *data)
 {
 	log_tppmsg(LOG_INFO, NULL, "net restore handler called");
 	tpp_network_up = 1;
-    ping_nodes(NULL);
+	ping_nodes(NULL);
 }
 
 /**

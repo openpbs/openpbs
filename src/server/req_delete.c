@@ -329,7 +329,6 @@ req_deletejob(struct batch_request *preq)
 	int delhist = 0;
 	int maxindex = 0;
 	int count = 0;
-	extern job  *chk_job_request(char *, struct batch_request *, int *);
 
 	jid = preq->rq_ind.rq_delete.rq_objname;
 

@@ -2572,6 +2572,7 @@ sched_settings_frm_svr(struct batch_status *status)
 				MGR_CMD_UNSET, MGR_OBJ_SCHED,
 			sc_name, attribs, NULL);
 		free(attribs);
+		free(attribs->value);
 		free(tmp_comment);
 		if (err) {
 			snprintf(log_buffer, sizeof(log_buffer), "Failed to update scheduler comment at the server");

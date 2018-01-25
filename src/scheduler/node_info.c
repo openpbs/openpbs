@@ -5666,7 +5666,6 @@ check_node_array_eligibility(node_info **ninfo_arr, resource_resv *resresv, plac
  *
  * @param[in]	ninfo		-  node information
  *
- * @return	a node_info filled with information from node
  *
  * @return	int
  * @retval	1	: if success

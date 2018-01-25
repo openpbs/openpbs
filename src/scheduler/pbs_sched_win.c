@@ -1475,13 +1475,12 @@ main(int argc, char *argv[])
 
 		if (pbs_conf.auth_method == AUTH_RESV_PORT) {
 		rc = set_tpp_config(&pbs_conf, &tpp_conf, nodename, sched_port,
-							pbs_conf.pbs_leaf_routers, pbs_conf.pbs_use_compression,
-							TPP_AUTH_RESV_PORT, NULL, NULL);
+				pbs_conf.pbs_leaf_routers, pbs_conf.pbs_use_compression, TPP_AUTH_RESV_PORT, NULL, NULL);
 		} else {
 			/* for all non-resv-port based authentication use a callback from TPP */
 			rc = set_tpp_config(&pbs_conf, &tpp_conf, nodename, sched_port,
-								pbs_conf.pbs_leaf_routers, pbs_conf.pbs_use_compression,
-								TPP_AUTH_EXTERNAL, get_ext_auth_data, validate_ext_auth_data);
+					pbs_conf.pbs_leaf_routers, pbs_conf.pbs_use_compression,
+					TPP_AUTH_EXTERNAL, get_ext_auth_data, validate_ext_auth_data);
 		}
 
 		free(nodename);
