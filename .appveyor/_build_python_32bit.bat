@@ -115,7 +115,7 @@ set PIP_EXTRA_ARGS=
 if exist "%BINARIESDIR%\pypiwin32-219-cp27-none-win32.whl" (
     set PIP_EXTRA_ARGS=--no-index --find-links="%BINARIESDIR%" --no-cache-dir
 )
-"%BINARIESDIR%\cpython-%PYTHON_VERSION%\%PCBUILD%\python.exe" -m pip install %PIP_EXTRA_ARGS% pypiwin32
+"%BINARIESDIR%\cpython-%PYTHON_VERSION%\%PCBUILD%\python.exe" -m pip install %PIP_EXTRA_ARGS% pypiwin32==219
 if not %ERRORLEVEL% == 0 (
     echo "Failed to install pypiwin32 for Python 32bit"
     exit /b 1
@@ -139,7 +139,7 @@ if not %ERRORLEVEL% == 0 (
     echo "Failed to run ensurepip in %BINARIESDIR%\python for Python 32bit"
     exit /b 1
 )
-"%BINARIESDIR%\python\python.exe" -m pip install %PIP_EXTRA_ARGS% pypiwin32
+"%BINARIESDIR%\python\python.exe" -m pip install %PIP_EXTRA_ARGS% pypiwin32==219
 if not %ERRORLEVEL% == 0 (
     echo "Failed to install pypiwin32 in %BINARIESDIR%\python for Python 32bit"
     exit /b 1
