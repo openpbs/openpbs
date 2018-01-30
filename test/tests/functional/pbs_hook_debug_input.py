@@ -38,6 +38,7 @@
 from tests.functional import *
 import os
 import fnmatch
+from ptl.utils.pbs_logutils import PBSLogUtils
 
 
 class TestHookDebugInput(TestFunctional):
@@ -56,9 +57,13 @@ class TestHookDebugInput(TestFunctional):
         Remove hook debug files in hooks/tmp folder that
         match pattern
         """
-        for item in os.listdir(self.server_hooks_tmp_dir):
+        for item in self.du.listdir(path=self.server_hooks_tmp_dir, sudo=True):
             if fnmatch.fnmatch(item, pattern):
-                os.remove(os.path.join(self.server_hooks_tmp_dir, item))
+                self.du.rm(path=item, sudo=True)
+
+                # Check if the file was removed
+                ret = self.du.isfile(path=item, sudo=True)
+                self.assertFalse(ret)
 
     def match_queue_name_in_input_file(self, input_file_pattern, qname):
         """
@@ -66,12 +71,12 @@ class TestHookDebugInput(TestFunctional):
         that matches input_file_pattern
         """
         input_file = None
-        for item in os.listdir(self.server_hooks_tmp_dir):
+        for item in self.du.listdir(path=self.server_hooks_tmp_dir, sudo=True):
             if fnmatch.fnmatch(item, input_file_pattern):
-                input_file = os.path.join(self.server_hooks_tmp_dir, item)
+                input_file = item
                 break
         self.assertTrue(input_file is not None)
-        with open(input_file) as f:
+        with PBSLogUtils().open_log(input_file, sudo=True) as f:
             search_str = 'pbs.event().job.queue=%s' % qname
             self.assertTrue(search_str in f.read())
         self.remove_files_match(input_file_pattern)
@@ -91,7 +96,8 @@ class TestHookDebugInput(TestFunctional):
         attr = {ATTR_qtype: 'execution', ATTR_enable: 'True'}
         self.server.manager(MGR_CMD_CREATE, QUEUE, attr, id=new_queue)
 
-        input_file_pattern = 'hook_queuejob_%s*.in' % hook_name
+        input_file_pattern = os.path.join(self.server_hooks_tmp_dir,
+                                          'hook_queuejob_%s*.in' % hook_name)
         self.remove_files_match(input_file_pattern)
 
         j1 = Job(TEST_USER)
