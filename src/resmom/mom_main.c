@@ -1318,8 +1318,7 @@ initialize(void)
 			exclhost = vnode_sharing_to_str(shareval);
 
 		/* search for host */
-		strncpy(rp->key, host, PBS_MAXHOSTNAME);
-		xxrp.buf[PBS_MAXHOSTNAME + sizeof(AVL_IX_REC)] = '\0';
+		snprintf(rp->key, PBS_MAXHOSTNAME, "%s", host);
 
 		/* look to see if host has a sharing value saved */
 		avl = avl_find_key(rp, &ix);

@@ -635,8 +635,7 @@ vn_addvnr(vnl_t *vnlp, char *id, char *attr, char *attrval,
 	}
 
 	/* the index was created with string keys */
-	strncpy(rp->key, id, PBS_MAXHOSTNAME);
-	xxrp.buf[PBS_MAXHOSTNAME + sizeof(AVL_IX_REC)] = '\0';
+	snprintf(rp->key, PBS_MAXHOSTNAME, "%s", id);
 	if ((vnrlp = id2vnrl(vnlp, id, rp)) == NULL) {
 		if ((newid = strdup(id)) == NULL) {
 			free(newval);
@@ -716,9 +715,7 @@ id2vnrl(vnl_t *vnlp, char *id, AVL_IX_REC *rp)
 
 	if (rp == NULL) {
 		rp = &xxrp.xrp;
-
-		strncpy(rp->key, id, PBS_MAXHOSTNAME);
-		xxrp.buf[PBS_MAXHOSTNAME + sizeof(AVL_IX_REC)] = '\0';
+		snprintf(rp->key, PBS_MAXHOSTNAME, "%s", id);
 	}
 
 	if (avl_find_key(rp, &vnlp->vnl_ix) == AVL_IX_OK) {
