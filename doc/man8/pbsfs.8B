@@ -62,8 +62,7 @@
 The 
 .B pbsfs
 command is used to print or manipulate the PBS scheduler's fairshare usage data.
-Some options should only be used when the scheduler is not running.  There are
-multiple parts to a fairshare node and you can print these data in different
+There are multiple parts to a fairshare node and you can print these data in different
 formats.  The 
 .B pbsfs 
 command must be run by root; otherwise it will print the error message, 
@@ -101,8 +100,6 @@ scheduler's config file.
 .LP
 
 .SH OPTIONS
-
-.B Scheduler can be running:
 .IP "-t" 10
 print the fairshare tree in a hierarchical format.
 .IP "-p" 10
@@ -114,22 +111,16 @@ the node.
 compare two fairshare entities
 .LP
 
-.B Scheduler must be down:
 .IP "-s entity usage_value" 10
 set 
 .I entity's 
 usage value to 
 .I usage_value.  
-Please note that editing a
-non-leaf node is ignored.  All non-leaf node usage values are calculated each
-time the scheduler is run/HUPed.
 .IP "-d" 10
 decay the fairshare tree (divide all values in half)
 .IP "-e" 10
 trim fairshare tree to just the entities in the resource_group file
 .LP
-
-.B Scheduler can be running or down:
 .IP "--version" 10
 The 
 .B pbsfs

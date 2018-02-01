@@ -392,6 +392,7 @@ class PBSTestSuite(unittest.TestCase):
     revert_hooks = True
     del_hooks = True
     del_queues = True
+    del_scheds = True
     del_vnodes = True
     server = None
     scheduler = None
@@ -826,9 +827,8 @@ class PBSTestSuite(unittest.TestCase):
         Revert the values set for schedulers
         """
         for scheds in self.schedulers.values():
-            for sched in scheds.keys():
-                if sched == 'default':
-                    self.revert_scheduler(scheds[sched], force)
+            if 'default' in scheds:
+                self.revert_scheduler(scheds['default'], force)
 
     def revert_moms(self, force=False):
         """
@@ -864,6 +864,7 @@ class PBSTestSuite(unittest.TestCase):
                                       delhooks=self.del_hooks,
                                       revertqueues=self.revert_queues,
                                       delqueues=self.del_queues,
+                                      delscheds=self.del_scheds,
                                       revertresources=self.revert_resources,
                                       server_stat=server_stat)
         rv = self.is_server_licensed(server)

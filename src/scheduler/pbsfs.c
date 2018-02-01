@@ -72,10 +72,9 @@ static void print_fairshare(group_info *root, int level);
 #define FS_PRINT 4
 #define FS_PRINT_TREE 8
 #define FS_DECAY 16
-#define FS_ADD 32
-#define FS_COMP 64
-#define FS_TRIM_TREE 128
-#define FS_WRITE_FILE 256
+#define FS_COMP 32
+#define FS_TRIM_TREE 64
+#define FS_WRITE_FILE 128
 
 /**
  * @brief
@@ -88,7 +87,8 @@ static void print_fairshare(group_info *root, int level);
 int
 main(int argc, char *argv[])
 {
-	char path_buf[256];
+	char path_buf[256] = {0};
+	char sched_name[PBS_MAXSCHEDNAME + 1] = "default";
 	group_info *ginfo;
 	group_info *ginfo2;
 	int c;
@@ -98,14 +98,19 @@ main(int argc, char *argv[])
 	char *endp;
 	char *testp;
 
-	/*the real deal or output version and exit?*/
+	/* the real deal or output version and exit? */
 	execution_mode(argc, argv);
 	set_msgdaemonname("pbsfs");
+
+#ifdef WIN32
+	winsock_init();
+#endif
+
 
 	if (pbs_loadconf(0) <= 0)
 		exit(1);
 
-	while ((c = getopt(argc, argv, "sgptdcae-:")) != -1)
+	while ((c = getopt(argc, argv, "sgptdceI:-:")) != -1)
 		switch (c) {
 			case 'g':
 				flags = FS_GET;
@@ -122,14 +127,14 @@ main(int argc, char *argv[])
 			case 'd':
 				flags = FS_DECAY | FS_WRITE_FILE;
 				break;
-			case 'a':
-				flags = FS_ADD;
-				break;
 			case 'c':
 				flags = FS_COMP;
 				break;
 			case 'e':
 				flags = FS_TRIM_TREE | FS_WRITE_FILE;
+				break;
+			case 'I':
+				snprintf(sched_name, sizeof(sched_name), "%s", optarg);
 				break;
 			case '-':
 				flag1 = 1;
@@ -141,23 +146,59 @@ main(int argc, char *argv[])
 		exit(1);
 	}
 	if ((flags & (FS_PRINT | FS_PRINT_TREE)) && (argc - optind) != 0) {
-		fprintf(stderr, "Usage: pbsfs -[ptdgcs]\n");
+		fprintf(stderr, "Usage: pbsfs -[ptdgcs] [-I sched_name]\n");
 		exit(1);
 	}
 	else if ((flags & FS_GET)  && (argc - optind) != 1) {
-		fprintf(stderr, "Usage: pbsfs -g <fairshare_entity>\n");
+		fprintf(stderr, "Usage: pbsfs [-I sched_name] -g <fairshare_entity>\n");
 		exit(1);
 	}
 	else if ((flags & FS_SET) && (argc - optind) != 2) {
-		fprintf(stderr, "Usage: pbsfs -s <fairshare_entity> <usage>\n");
+		fprintf(stderr, "Usage: pbsfs [-I sched_name] -s <fairshare_entity> <usage>\n");
 		exit(1);
 	}
 	else if ((flags & FS_COMP) && (argc - optind) != 2) {
-		fprintf(stderr, "Usage: pbsfs -c <entity1> <entity2>\n");
+		fprintf(stderr, "Usage: pbsfs [-I sched_name] -c <entity1> <entity2>\n");
 		exit(1);
 	}
 
-	sprintf(path_buf, "%s/sched_priv/", pbs_conf.pbs_home_path);
+	if (strcmp(sched_name, "default") != 0) {
+		int pbs_sd;
+		struct batch_status *bs;
+		struct batch_status *cur_bs;
+		pbs_sd = pbs_connect(NULL);
+		if (pbs_sd < 0) {
+			fprintf(stderr, "Can't connect to the server\n");
+			exit(1);
+		}
+		bs = pbs_statsched(pbs_sd, NULL, NULL, NULL);
+
+		for (cur_bs = bs; cur_bs != NULL; cur_bs = cur_bs->next) {
+			if (strcmp(cur_bs->name, sched_name) == 0) {
+				struct attrl *cur_attrl;
+				for (cur_attrl = cur_bs->attribs; cur_attrl != NULL; cur_attrl = cur_attrl->next) {
+					if (strcmp(cur_attrl->name, ATTR_sched_priv) == 0) {
+						strncpy(path_buf, cur_attrl->value, sizeof(path_buf));
+						path_buf[sizeof(path_buf) - 1] = '\0';
+						break;
+					}
+				}
+				if (cur_attrl == NULL) {
+					fprintf(stderr, "Scheduler %s does not have its sched_priv set\n", sched_name);
+					exit(1);
+				}
+				break;
+			}
+		}
+		if (cur_bs == NULL) {
+			fprintf(stderr, "Scheduler %s does not exist\n", sched_name);
+			exit(1);
+		}
+		pbs_disconnect(pbs_sd);
+
+	} else
+		snprintf(path_buf, sizeof(path_buf), "%s/sched_priv/", pbs_conf.pbs_home_path);
+
 	if (chdir(path_buf) == -1) {
 		perror("Unable to access fairshare data");
 		exit(1);
@@ -187,18 +228,18 @@ main(int argc, char *argv[])
 	}
 	else if (flags & FS_DECAY)
 		decay_fairshare_tree(conf.fairshare->root);
-	else if (flags & (FS_GET | FS_SET | FS_ADD | FS_COMP)) {
-		ginfo = find_group_info(argv[2], conf.fairshare->root);
+	else if (flags & (FS_GET | FS_SET | FS_COMP)) {
+		ginfo = find_group_info(argv[optind], conf.fairshare->root);
 
 		if (ginfo == NULL) {
-			fprintf(stderr, "Fairshare Entity %s does not exist.\n", argv[2]);
+			fprintf(stderr, "Fairshare Entity %s does not exist.\n", argv[optind]);
 			return 1;
 		}
 		if (flags & FS_COMP) {
-			ginfo2 = find_group_info(argv[3], conf.fairshare->root);
+			ginfo2 = find_group_info(argv[optind + 1], conf.fairshare->root);
 
 			if (ginfo2 == NULL) {
-				fprintf(stderr, "Fairshare Entity %s does not exist.\n", argv[3]);
+				fprintf(stderr, "Fairshare Entity %s does not exist.\n", argv[optind + 1]);
 				return 1;
 			}
 			switch (compare_path(ginfo->gpath, ginfo2->gpath)) {
@@ -217,15 +258,11 @@ main(int argc, char *argv[])
 		else if (flags & FS_GET)
 			print_fairshare_entity(ginfo);
 		else {
-			testp = argv[3];
+			testp = argv[optind + 1];
 			val = strtod(testp, &endp);
 
-			if (*endp == '\0') {
-				if (flags & FS_SET)
-					ginfo->usage = val;
-				else
-					ginfo->usage += val;
-			}
+			if (*endp == '\0')
+				ginfo->usage = val;
 		}
 	}
 

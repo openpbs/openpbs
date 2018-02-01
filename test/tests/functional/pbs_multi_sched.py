@@ -200,14 +200,14 @@ class TestMultipleSchedulers(TestFunctional):
         self.du.run_copy(self.server.hostname,
                          os.path.join(pbs_home, 'sched_priv'),
                          os.path.join(pbs_home, 'sched_priv_sc5'),
-                         recursive=True)
+                         recursive=True, sudo=True)
         ret = self.scheds['sc5'].start()
         msg = "sched_logs dir is not present for scheduler"
         self.assertTrue(ret['rc'], msg)
         self.du.run_copy(self.server.hostname,
                          os.path.join(pbs_home, 'sched_logs'),
                          os.path.join(pbs_home, 'sched_logs_sc5'),
-                         recursive=True)
+                         recursive=True, sudo=True)
         ret = self.scheds['sc5'].start()
         self.scheds['sc5'].log_match(
             "Scheduler does not contain a partition",
@@ -579,3 +579,123 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid4)
         jc = "Not Running: User has reached server running job limit."
         self.server.expect(JOB, {'comment': jc}, id=jid4)
+
+    def test_multi_fairshare(self):
+        """
+        Test different schedulers have their own fairshare trees with
+        their own usage
+        """
+        self.common_setup()
+        default_shares = 10
+        default_usage = 100
+
+        sc1_shares = 20
+        sc1_usage = 200
+
+        sc2_shares = 30
+        sc2_usage = 300
+
+        sc3_shares = 40
+        sc3_usage = 400
+
+        self.scheds['default'].add_to_resource_group(TEST_USER, 10, 'root',
+                                                     default_shares)
+        self.scheds['default'].set_fairshare_usage(TEST_USER, default_usage)
+
+        self.scheds['sc1'].add_to_resource_group(TEST_USER, 10, 'root',
+                                                 sc1_shares)
+        self.scheds['sc1'].set_fairshare_usage(TEST_USER, sc1_usage)
+
+        self.scheds['sc2'].add_to_resource_group(TEST_USER, 10, 'root',
+                                                 sc2_shares)
+        self.scheds['sc2'].set_fairshare_usage(TEST_USER, sc2_usage)
+
+        self.scheds['sc3'].add_to_resource_group(TEST_USER, 10, 'root',
+                                                 sc3_shares)
+        self.scheds['sc3'].set_fairshare_usage(TEST_USER, sc3_usage)
+
+        # requery fairshare info from pbsfs
+        default_fs = self.scheds['default'].query_fairshare()
+        sc1_fs = self.scheds['sc1'].query_fairshare()
+        sc2_fs = self.scheds['sc2'].query_fairshare()
+        sc3_fs = self.scheds['sc3'].query_fairshare()
+
+        n = default_fs.get_node(id=10)
+        self.assertEquals(n.nshares, default_shares)
+        self.assertEquals(n.usage, default_usage)
+
+        n = sc1_fs.get_node(id=10)
+        self.assertEquals(n.nshares, sc1_shares)
+        self.assertEquals(n.usage, sc1_usage)
+
+        n = sc2_fs.get_node(id=10)
+        self.assertEquals(n.nshares, sc2_shares)
+        self.assertEquals(n.usage, sc2_usage)
+
+        n = sc3_fs.get_node(id=10)
+        self.assertEquals(n.nshares, sc3_shares)
+        self.assertEquals(n.usage, sc3_usage)
+
+    def test_sched_priv_change(self):
+        """
+        Test that when the sched_priv directory changes, all of the
+        PTL internal scheduler objects (e.g. fairshare tree) are reread
+        """
+
+        new_sched_priv = os.path.join(self.server.pbs_conf['PBS_HOME'],
+                                      'sched_priv2')
+        if os.path.exists(new_sched_priv):
+            self.du.rm(path=new_sched_priv, recursive=True,
+                       sudo=True, force=True)
+
+        dflt_sched_priv = os.path.join(self.server.pbs_conf['PBS_HOME'],
+                                       'sched_priv')
+
+        self.du.run_copy(src=dflt_sched_priv, dest=new_sched_priv,
+                         recursive=True, sudo=True)
+        self.setup_sc3()
+        s = self.server.status(SCHED, id='sc3')
+        old_sched_priv = s[0]['sched_priv']
+
+        self.scheds['sc3'].add_to_resource_group(TEST_USER, 10, 'root', 20)
+        self.scheds['sc3'].holidays_set_year(new_year="3000")
+        self.scheds['sc3'].set_sched_config({'fair_share': 'True ALL'})
+
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'sched_priv': new_sched_priv}, id='sc3')
+
+        n = self.scheds['sc3'].fairshare_tree.get_node(id=10)
+        self.assertFalse(n)
+
+        y = self.scheds['sc3'].holidays_get_year()
+        self.assertNotEquals(y, "3000")
+        self.assertTrue(self.scheds['sc3'].
+                        sched_config['fair_share'].startswith('false'))
+
+        # clean up: revert_to_defaults() will remove the new sched_priv.  We
+        # need to remove the old one
+        self.du.rm(path=old_sched_priv, sudo=True, recursive=True, force=True)
+
+    def test_fairshare_decay(self):
+        """
+        Test pbsfs's fairshare decay for multisched
+        """
+        self.setup_sc3()
+        self.scheds['sc3'].add_to_resource_group(TEST_USER, 10, 'root', 20)
+        self.scheds['sc3'].set_fairshare_usage(name=TEST_USER, usage=10)
+        self.scheds['sc3'].decay_fairshare_tree()
+        n = self.scheds['sc3'].fairshare_tree.get_node(id=10)
+        self.assertTrue(n.usage, 5)
+
+    def test_cmp_fairshare(self):
+        """
+        Test pbsfs's compare fairshare functionality for multisched
+        """
+        self.setup_sc3()
+        self.scheds['sc3'].add_to_resource_group(TEST_USER, 10, 'root', 20)
+        self.scheds['sc3'].set_fairshare_usage(name=TEST_USER, usage=10)
+        self.scheds['sc3'].add_to_resource_group(TEST_USER2, 20, 'root', 20)
+        self.scheds['sc3'].set_fairshare_usage(name=TEST_USER2, usage=100)
+
+        user = self.scheds['sc3'].cmp_fairshare_entities(TEST_USER, TEST_USER2)
+        self.assertEquals(user, str(TEST_USER))
