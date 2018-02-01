@@ -630,7 +630,7 @@ class TestPbsResvAlter(TestFunctional):
 
         All the above operations are expected to be successful.
         """
-        offset = 20
+        offset = 30
         duration = 20
         shift = 15
         rid, start, end = self.submit_and_confirm_reservation(offset,
