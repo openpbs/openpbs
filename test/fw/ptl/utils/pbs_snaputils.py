@@ -350,7 +350,8 @@ class _PBSSnapUtils(object):
 
         # Add self.server_host to the list of hosts
         self.server_host = self.server.hostname
-        self.all_hosts.append(self.server_host)
+        if self.server_host not in self.all_hosts:
+            self.all_hosts.append(self.server_host)
 
         # If output needs to be a tarball, create the tarfile name
         # tarfile name = <output directory name>.tgz
@@ -526,7 +527,7 @@ class _PBSSnapUtils(object):
         Also create a tarfile and add the snapshot dir if create_tar is True
         """
 
-        os.mkdir(self.snapdir)
+        os.makedirs(self.snapdir, 0755)
 
         if self.create_tar:
             self.outtar_fd = tarfile.open(self.outtar_path, "w:gz")
@@ -724,11 +725,12 @@ quit()
         # log path with the hostname
         if not self.du.is_localhost(host):
             prefix = host + ":"
-            # Make sure that the target, host specific log dir exists
-            if not os.path.isdir(snap_logdir):
-                os.makedirs(snap_logdir)
         else:
             prefix = ""
+
+        # Make sure that the target, host specific log dir exists
+        if not os.path.isdir(snap_logdir):
+            os.makedirs(snap_logdir)
 
         # Go over the list and copy over each log file
         for pbs_logfile in pbs_logfiles:
