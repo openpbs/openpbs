@@ -47,6 +47,8 @@ class TestVnodePool(TestFunctional):
     """
 
     def setUp(self):
+        if not self.du.get_platform().startswith('cray'):
+            self.skipTest("This test can only run on a cray")
         TestFunctional.setUp(self)
         if len(self.moms.values()) < 2:
             self.skipTest("Provide at least 2 moms while invoking test")
@@ -121,7 +123,7 @@ class TestVnodePool(TestFunctional):
         self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostB, attrib=attr)
 
         self.server.log_match("Mom %s added to vnode_pool %s" %
-                              (self.hostB, '1'), max_attempts=5,
+                              (self.momB.hostname, '1'), max_attempts=5,
                               starttime=start_time)
 
         _msg = "Hello (no inventory required) from server"
