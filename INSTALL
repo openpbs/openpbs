@@ -51,8 +51,8 @@ How to install PBS Pro using the configure script.
 3. Open a terminal as a normal (non-root) user, unpack the PBS Pro
   tarball, and cd to the package directory.
 
-    tar -xpvf pbspro-17.1.0.tar.gz
-    cd pbspro-17.1.0
+    tar -xpvf pbspro-18.1.0.tar.gz
+    cd pbspro-18.1.0
 
 4. Generate the configure script and Makefiles. (See note 1 below)
 
@@ -225,5 +225,4 @@ Here is a set of steps to detect memory errors/leaks within PBS code.
    
    export LD_LIBRARY_PATH=/opt/pbs/pgsql/lib:/opt/pbs/lib:$LD_LIBRARY_PATH
    valgrind --tool=memcheck --log-file=/tmp/val.out --suppressions=./valgrind.supp --leak-check=full --track-origins=yes /opt/pbs/sbin/pbs_server.bin
-   
-  
+
