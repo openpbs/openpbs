@@ -6779,7 +6779,7 @@ static mominfo_t *
 which_parent_mom(pbsnode *pnode, mominfo_t *pcur_mom)
 {
 	int		 i;
-	int		 nj;
+	int		 nj = 0;
 	mominfo_t	*pmom;
 	mom_svrinfo_t	*psvrmom;
 	mominfo_t	*rtnmom;
@@ -6796,12 +6796,13 @@ which_parent_mom(pbsnode *pnode, mominfo_t *pcur_mom)
 		}
 	}
 
-	/* no former parent Mom or she is not a parent of this vnode, */
-	/* find the "least busy" Mom parent of this vnode */
+	/* no former parent Mom or she is not a parent of this vnode,
+	 * find the "least busy" Mom parent of this vnode
+	 */
 
 	rtnmom = NULL;	/* what will be returned if all are down/offline */
 
-	for (i=0; i<pnode->nd_nummoms; ++i) {
+	for (i = 0; i < pnode->nd_nummoms; ++i) {
 		pmom    = pnode->nd_moms[i];
 		psvrmom = (mom_svrinfo_t *)pmom->mi_data;
 
@@ -6811,7 +6812,7 @@ which_parent_mom(pbsnode *pnode, mominfo_t *pcur_mom)
 			/* this mom/natural-vnode is not down nor offline */
 			if ((rtnmom == NULL) || (nj > psvrmom->msr_numjobs)) {
 				nj = psvrmom->msr_numjobs;
-				rtnmom  = pmom;
+				rtnmom = pmom;
 			}
 		}
 	}
