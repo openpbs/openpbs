@@ -46,7 +46,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "pbs_ifl.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "pbs_error.h"
 
@@ -103,7 +103,7 @@
 /*ARGSUSED*/
 
 int
-encode_inter(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
+encode_inter(attribute *attr, pbs_list_node *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
 	if ((mode == ATR_ENCODE_CLIENT) || (mode == ATR_ENCODE_HOOK))
 		return (encode_b(attr, phead, atname, rsname, mode, rtnl));

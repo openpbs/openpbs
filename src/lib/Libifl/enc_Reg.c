@@ -58,7 +58,7 @@
 
 #include <sys/types.h>
 #include "libpbs.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "server_limits.h"
 #include "attribute.h"
 #include "credential.h"

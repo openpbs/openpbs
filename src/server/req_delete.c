@@ -60,7 +60,7 @@
 #include "portability.h"
 #include "libpbs.h"
 #include "server_limits.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "work_task.h"
 #include "attribute.h"
 #include "server.h"
@@ -983,7 +983,7 @@ req_deleteReservation(struct batch_request *preq)
 			}
 			psatl->al_flags = que_attr_def[QA_ATR_Enabled].at_flags;
 			strcpy(psatl->al_value, "False");
-			append_link(&newreq->rq_ind.rq_manager.rq_attr, &psatl->al_link, psatl);
+			append_node(&newreq->rq_ind.rq_manager.rq_attr, &psatl->al_link, psatl);
 
 			if ((psatl = attrlist_create(ATTR_start, NULL, lenF))
 				== (svrattrl *) 0) {
@@ -994,7 +994,7 @@ req_deleteReservation(struct batch_request *preq)
 			}
 			psatl->al_flags = que_attr_def[QA_ATR_Started].at_flags;
 			strcpy(psatl->al_value, "False");
-			append_link(&newreq->rq_ind.rq_manager.rq_attr,
+			append_node(&newreq->rq_ind.rq_manager.rq_attr,
 				&psatl->al_link, psatl);
 
 			if (issue_Drequest(PBS_LOCAL_CONNECTION, newreq,
@@ -1007,7 +1007,7 @@ req_deleteReservation(struct batch_request *preq)
 			 * structure also removes any "yet to be processed"
 			 * work tasks that are associated with the reservation
 			 */
-			append_link(&presv->ri_svrtask, &pwt->wt_linkobj, pwt);
+			append_node(&presv->ri_svrtask, &pwt->wt_linkobj, pwt);
 
 			tickle_for_reply();
 		}
@@ -1060,7 +1060,7 @@ req_deleteReservation(struct batch_request *preq)
 				 * structure also removes any "yet to be processed"
 				 * work tasks that are associated with the reservation
 				 */
-				append_link(&presv->ri_svrtask, &pwt->wt_linkobj, pwt);
+				append_node(&presv->ri_svrtask, &pwt->wt_linkobj, pwt);
 
 				tickle_for_reply();
 			} else
@@ -1106,7 +1106,7 @@ req_deleteReservation(struct batch_request *preq)
 				pwt = set_task(WORK_Immed, 0, post_deljobfromresv_req,
 					(void *) presv);
 				if (pwt)
-					append_link(&presv->ri_svrtask,
+					append_node(&presv->ri_svrtask,
 						&pwt->wt_linkobj, pwt);
 			}
 		}
@@ -1313,6 +1313,6 @@ struct work_task *pwt;
 		pwt = set_task(WORK_Timed, time_now + 30, post_deljobfromresv_req,
 			(void *) presv);
 		if (pwt)
-			append_link(&presv->ri_svrtask, &pwt->wt_linkobj, pwt);
+			append_node(&presv->ri_svrtask, &pwt->wt_linkobj, pwt);
 	}
 }

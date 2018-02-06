@@ -45,7 +45,7 @@ extern "C" {
 /*
  * user.h - structure definations for user concept
  * Other required header files:
- *     "list_link.h"
+ *     "linked_list.h"
  *     "server_limits.h"
  *     "attribute.h"
  *     "credential.h"

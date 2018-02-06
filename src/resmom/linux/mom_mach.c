@@ -71,7 +71,7 @@
 
 #include "pbs_error.h"
 #include "portability.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "server_limits.h"
 #include "attribute.h"
 #include "resource.h"
@@ -685,7 +685,7 @@ del_cpusetfile(char *qname, job *pjob)
 void
 clear_cpuset(job *pjob)
 {
-	extern	pbs_list_head	svr_alljobs;
+	extern	pbs_list_node	svr_alljobs;
 	int			i, numsets;
 	cpuset_NameList_t	*names;
 	char			*qname;
@@ -3695,7 +3695,7 @@ get_bgl_jobs(void)
 	pm_partition_id_t	bjpartid;
 	rm_job_state_t		bjstate;
 	struct bgl_job		*bjparts = NULL;
-	extern pbs_list_head	svr_alljobs;
+	extern pbs_list_node	svr_alljobs;
 	job			*pj;
 
 	if ((st=rm_get_jobs(JOB_ALL_FLAG, &bjobs)) != STATUS_OK) {

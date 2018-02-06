@@ -49,7 +49,7 @@ extern "C" {
  *
  * Include Files Required:
  *	<sys/types.h>
- *	"list_link.h"
+ *	"linked_list.h"
  *	"batch_request.h"
  *	"pbs_ifl.h"
  */
@@ -111,7 +111,7 @@ extern void hook_action_tid_set(long long int);
 extern long long int hook_action_tid_get(void);
 
 #ifdef	_BATCH_REQUEST_H
-extern int status_hook(hook *, struct batch_request *, pbs_list_head *, char *, size_t);
+extern int status_hook(hook *, struct batch_request *, pbs_list_node *, char *, size_t);
 extern void mgr_hook_import(struct batch_request *);
 extern void mgr_hook_export(struct batch_request *);
 extern void mgr_hook_set(struct batch_request *);

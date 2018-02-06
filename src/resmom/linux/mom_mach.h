@@ -239,7 +239,7 @@ extern ulong	cpupernode;
 #if	(CPUSET_VERSION >= 4)
 extern int		*cpuignore;
 extern int		num_pcpus;
-extern pbs_list_head	svr_alljobs;
+extern pbs_list_node	svr_alljobs;
 extern int		cpus_nbits;
 extern int		mems_nbits;
 #endif	/* CPUSET_VERSION >= 4 */

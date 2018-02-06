@@ -84,7 +84,7 @@
 #include 	"libpbs.h"
 #include 	"pbs_ifl.h"
 #include	"server_limits.h"
-#include	"list_link.h"
+#include	"linked_list.h"
 #include	"attribute.h"
 #include	"placementsets.h"
 #include	"resource.h"
@@ -257,15 +257,15 @@ int		pbs_errno;
 gid_t		pbsgroup;
 unsigned int	pbs_mom_port;
 unsigned int	pbs_rm_port;
-pbs_list_head	mom_polljobs;	/* jobs that must have resource limits polled */
-pbs_list_head	mom_deadjobs;	/* jobs that need to purged, see chk_del_job */
+pbs_list_node	mom_polljobs;	/* jobs that must have resource limits polled */
+pbs_list_node	mom_deadjobs;	/* jobs that need to purged, see chk_del_job */
 int		server_stream = -1;
-pbs_list_head	svr_newjobs;	/* jobs being sent to MOM */
-pbs_list_head	svr_alljobs;	/* all jobs under MOM's control */
+pbs_list_node	svr_newjobs;	/* jobs being sent to MOM */
+pbs_list_node	svr_alljobs;	/* all jobs under MOM's control */
 time_t		time_last_sample = 0;
 extern time_t		time_now;
 time_t		time_resc_updated = 0;
-extern pbs_list_head svr_requests;
+extern pbs_list_node svr_requests;
 extern struct var_table vtable;	/* see start_exec.c */
 #if	MOM_ALPS
 #define	ALPS_REL_INTERVAL_MAX		30;	/* 30 sec */
@@ -313,7 +313,7 @@ int             mom_should_quiesce = 0;
 					   process unkillable */
 
 struct kp {
-	pbs_list_link	kp_link;	/* linked list struct */
+	pbs_list_node	kp_link;	/* linked list struct */
 	pid_t		pid;		/* pid of process being killed */
 	pid_t		ppid;		/* ppid of process being killed */
 	u_Long		start_time;	/* start_time of process being killed */
@@ -321,44 +321,44 @@ struct kp {
 };
 typedef struct kp kp;
 
-pbs_list_head	killed_procs;		/* procs killed by dorestrict_user() */
+pbs_list_node	killed_procs;		/* procs killed by dorestrict_user() */
 #endif /* localmod 011 */
 
 unsigned long	hook_action_id = 0;
 
-pbs_list_head	svr_allhooks;
+pbs_list_node	svr_allhooks;
 /* hooks below ignored */
-pbs_list_head	svr_queuejob_hooks;
-pbs_list_head	svr_modifyjob_hooks;
-pbs_list_head	svr_resvsub_hooks;
-pbs_list_head	svr_movejob_hooks;
-pbs_list_head	svr_runjob_hooks;
-pbs_list_head	svr_periodic_hooks;
-pbs_list_head	svr_provision_hooks;
-pbs_list_head	svr_hook_job_actions;
-pbs_list_head   svr_hook_vnl_actions;
+pbs_list_node	svr_queuejob_hooks;
+pbs_list_node	svr_modifyjob_hooks;
+pbs_list_node	svr_resvsub_hooks;
+pbs_list_node	svr_movejob_hooks;
+pbs_list_node	svr_runjob_hooks;
+pbs_list_node	svr_periodic_hooks;
+pbs_list_node	svr_provision_hooks;
+pbs_list_node	svr_hook_job_actions;
+pbs_list_node   svr_hook_vnl_actions;
 int		svr_hook_resend_job_attrs = 0;
 int		mom_recvd_ip_cluster_addrs = 0;
 
 /* the mom hooks */
-pbs_list_head	svr_execjob_begin_hooks;
-pbs_list_head	svr_execjob_prologue_hooks;
-pbs_list_head	svr_execjob_epilogue_hooks;
-pbs_list_head	svr_execjob_preterm_hooks;
-pbs_list_head	svr_execjob_launch_hooks;
-pbs_list_head	svr_execjob_end_hooks;
-pbs_list_head	svr_exechost_periodic_hooks;
-pbs_list_head	svr_exechost_startup_hooks;
-pbs_list_head	svr_execjob_attach_hooks;
+pbs_list_node	svr_execjob_begin_hooks;
+pbs_list_node	svr_execjob_prologue_hooks;
+pbs_list_node	svr_execjob_epilogue_hooks;
+pbs_list_node	svr_execjob_preterm_hooks;
+pbs_list_node	svr_execjob_launch_hooks;
+pbs_list_node	svr_execjob_end_hooks;
+pbs_list_node	svr_exechost_periodic_hooks;
+pbs_list_node	svr_exechost_startup_hooks;
+pbs_list_node	svr_execjob_attach_hooks;
 
 /* the task lists */
-pbs_list_head	task_list_immed;
-pbs_list_head	task_list_timed;
-pbs_list_head	task_list_event;
+pbs_list_node	task_list_immed;
+pbs_list_node	task_list_timed;
+pbs_list_node	task_list_event;
 
 #ifdef WIN32
 /* copy request list */
-pbs_list_head	mom_copyreqs_list;
+pbs_list_node	mom_copyreqs_list;
 #endif
 
 #ifndef	WIN32
@@ -7344,16 +7344,16 @@ char	*prog;
 
 /**
  * @brief
- *	free_kp_list_entries(head) - delete_link() and free() entries of a linked
+ *	free_kp_list_entries(head) - delete_node() and free() entries of a linked
  *	list
  *
- * @param[in] head - pointer to pbs_list_head
+ * @param[in] head - pointer to pbs_list_node
  *
  * @return 	Void
  *
  */
 void
-free_kp_list_entries(pbs_list_head *head)
+free_kp_list_entries(pbs_list_node *head)
 {
 	kp *entry;
 	kp *next;
@@ -7361,7 +7361,7 @@ free_kp_list_entries(pbs_list_head *head)
 	entry = (kp *)GET_NEXT(*head);
 	while (entry) {
 		next = (kp *)GET_NEXT(entry->kp_link);
-		delete_link(&entry->kp_link);
+		delete_node(&entry->kp_link);
 		free(entry);
 		entry = next;
 	}
@@ -7449,7 +7449,7 @@ dorestrict_user(void)
 	char                    *usr                   = NULL;
 
 #ifdef NAS_UNKILL /* localmod 011 */
-	pbs_list_head		new_killed_procs;
+	pbs_list_node		new_killed_procs;
 	kp			*current_kp, *prev_kp;
 
 	CLEAR_HEAD(new_killed_procs);
@@ -7680,9 +7680,9 @@ dorestrict_user(void)
 			 ** Add to list of polled jobs if it isn't
 			 ** already there.
 			 */
-			if (is_linked(&mom_polljobs,
+			if (is_in_list(&mom_polljobs,
 				&hjob->ji_jobque) == 0) {
-				append_link(&mom_polljobs,
+				append_node(&mom_polljobs,
 					&hjob->ji_jobque, hjob);
 			}
 			sprintf(log_buffer,
@@ -7738,7 +7738,7 @@ badguy:
 		 */
 		current_kp->pid = pid;
 		time(&current_kp->kill_time);
-		CLEAR_LINK(current_kp->kp_link);
+		CLEAR_NODE(current_kp->kp_link);
 		ret = kill_procinfo(pid, &current_kp->ppid, &current_kp->start_time);
 		if (ret != TM_OKAY) {
 			/*
@@ -7796,7 +7796,7 @@ badguy:
 						 */
 						free(current_kp);
 						current_kp = prev_kp;
-						delete_link(&prev_kp->kp_link);
+						delete_node(&prev_kp->kp_link);
 					}
 
 					break;
@@ -7808,7 +7808,7 @@ badguy:
 		 ** Build a new list of processes we've attempted to kill
 		 */
 		if (current_kp != NULL)
-			append_link(&new_killed_procs, &current_kp->kp_link, current_kp);
+			append_node(&new_killed_procs, &current_kp->kp_link, current_kp);
 #endif /* localmod 011 */
 		DBPRT(("%s: KILL pid %d sid %d\n", id, pid, procsid))
 		if (kill(pid, SIGKILL) == 0) {

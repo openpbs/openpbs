@@ -60,7 +60,7 @@
 #include <signal.h>
 #include <string.h>
 #include "server_limits.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "work_task.h"
 #include "log.h"
 #include "attribute.h"
@@ -89,7 +89,7 @@ static struct batch_request *pshutdown_request = 0;
 
 /* Global Data Items: */
 
-extern pbs_list_head svr_alljobs;
+extern pbs_list_node svr_alljobs;
 extern char *msg_abort_on_shutdown;
 extern char *msg_daemonname;
 extern char *msg_init_queued;
@@ -100,7 +100,7 @@ extern char *msg_stillrunning;
 extern char *msg_on_shutdown;
 extern char *msg_job_abort;
 
-extern pbs_list_head task_list_event;
+extern pbs_list_node task_list_event;
 extern struct server server;
 extern attribute_def svr_attr_def[];
 

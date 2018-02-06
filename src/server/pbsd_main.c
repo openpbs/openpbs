@@ -108,7 +108,7 @@
 #include <sys/prctl.h>
 #endif
 
-#include "list_link.h"
+#include "linked_list.h"
 #include "work_task.h"
 #include "log.h"
 #include "server_limits.h"
@@ -162,7 +162,7 @@ extern void setup_ping(int delay);
 
 /* External data items */
 extern	int		svr_chngNodesfile;
-extern  pbs_list_head svr_requests;
+extern  pbs_list_node svr_requests;
 extern char     *msg_err_malloc;
 extern int       pbs_failover_active;
 extern int	scheduler_sock, scheduler_sock2;
@@ -283,34 +283,34 @@ int             svr_do_schedule = SCH_SCHEDULE_NULL;
 int             svr_do_sched_high = SCH_SCHEDULE_NULL; /* high priority cmds */
 int             svr_ping_rate = SVR_DEFAULT_PING_RATE;    /* time between sets of node pings */
 int             ping_nodes_rate = SVR_DEFAULT_PING_RATE; /* time between ping nodes as determined from server_init_type */
-pbs_list_head   svr_deferred_req;
-pbs_list_head   svr_queues;            /* list of queues                   */
-pbs_list_head   svr_alljobs;           /* list of all jobs in server       */
-pbs_list_head	svr_newjobs;           /* list of incomming new jobs       */
-pbs_list_head	svr_allresvs;          /* all reservations in server */
-pbs_list_head	svr_newresvs;          /* temporary list for new resv jobs */
-pbs_list_head	svr_unlicensedjobs;	/* list of jobs to be licensed */
-pbs_list_head	task_list_immed;
-pbs_list_head	task_list_timed;
-pbs_list_head	task_list_event;
-pbs_list_head	svr_allhooks;
-pbs_list_head	svr_queuejob_hooks;
-pbs_list_head	svr_modifyjob_hooks;
-pbs_list_head	svr_resvsub_hooks;
-pbs_list_head	svr_movejob_hooks;
-pbs_list_head	svr_runjob_hooks;
-pbs_list_head	svr_provision_hooks;
-pbs_list_head	svr_periodic_hooks;
-pbs_list_head	svr_execjob_begin_hooks;
-pbs_list_head	svr_execjob_prologue_hooks;
-pbs_list_head	svr_execjob_epilogue_hooks;
-pbs_list_head	svr_execjob_preterm_hooks;
-pbs_list_head	svr_execjob_launch_hooks;
-pbs_list_head	svr_execjob_end_hooks;
-pbs_list_head	svr_exechost_periodic_hooks;
-pbs_list_head	svr_exechost_startup_hooks;
-pbs_list_head	svr_execjob_attach_hooks;
-pbs_list_head	svr_allscheds;
+pbs_list_node   svr_deferred_req;
+pbs_list_node   svr_queues;            /* list of queues                   */
+pbs_list_node   svr_alljobs;           /* list of all jobs in server       */
+pbs_list_node	svr_newjobs;           /* list of incomming new jobs       */
+pbs_list_node	svr_allresvs;          /* all reservations in server */
+pbs_list_node	svr_newresvs;          /* temporary list for new resv jobs */
+pbs_list_node	svr_unlicensedjobs;	/* list of jobs to be licensed */
+pbs_list_node	task_list_immed;
+pbs_list_node	task_list_timed;
+pbs_list_node	task_list_event;
+pbs_list_node	svr_allhooks;
+pbs_list_node	svr_queuejob_hooks;
+pbs_list_node	svr_modifyjob_hooks;
+pbs_list_node	svr_resvsub_hooks;
+pbs_list_node	svr_movejob_hooks;
+pbs_list_node	svr_runjob_hooks;
+pbs_list_node	svr_provision_hooks;
+pbs_list_node	svr_periodic_hooks;
+pbs_list_node	svr_execjob_begin_hooks;
+pbs_list_node	svr_execjob_prologue_hooks;
+pbs_list_node	svr_execjob_epilogue_hooks;
+pbs_list_node	svr_execjob_preterm_hooks;
+pbs_list_node	svr_execjob_launch_hooks;
+pbs_list_node	svr_execjob_end_hooks;
+pbs_list_node	svr_exechost_periodic_hooks;
+pbs_list_node	svr_exechost_startup_hooks;
+pbs_list_node	svr_execjob_attach_hooks;
+pbs_list_node	svr_allscheds;
 time_t		time_now;
 time_t		jan1_yr2038;
 struct batch_request	*saved_takeover_req=NULL;

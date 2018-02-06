@@ -48,7 +48,7 @@ extern "C" {
  * Other include files required:
  *	<sys/types.h>
  *	"attribute.h"
- *	"list_link.h"
+ *	"linked_list.h"
  *	"server_limits.h"
  *
  * The server object (structure) contains the parameters which
@@ -192,9 +192,9 @@ struct server {
 
 
 extern struct server	server;
-extern	pbs_list_head	svr_alljobs;
-extern	pbs_list_head	svr_newresvs;	/* incomming new reservations */
-extern	pbs_list_head	svr_allresvs;	/* all reservations in server */
+extern	pbs_list_node	svr_alljobs;
+extern	pbs_list_node	svr_newresvs;	/* incomming new reservations */
+extern	pbs_list_node	svr_allresvs;	/* all reservations in server */
 extern  int		svr_ping_rate;	/* time between rounds of ping */
 extern  int 		ping_nodes_rate; /* time between ping nodes as determined from server_init_type */
 

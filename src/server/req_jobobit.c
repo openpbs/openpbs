@@ -75,7 +75,7 @@
 
 #include "libpbs.h"
 #include "server_limits.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "resource.h"
 #include "server.h"
@@ -192,7 +192,7 @@ setup_cpyfiles(struct batch_request *preq, job  *pjob, char *from, char *to, int
 	char		  *prq_user;
 	char		  *prq_group;
 	int 		  *prq_dir;
-	pbs_list_head	  *prq_pair;
+	pbs_list_node	  *prq_pair;
 
 	/* if this is a sub job of an array job, then check to see if the */
 	/* index needs to be substituted in the paths			  */
@@ -312,11 +312,11 @@ setup_cpyfiles(struct batch_request *preq, job  *pjob, char *from, char *to, int
 		return ((struct batch_request *)0);
 	}
 
-	CLEAR_LINK(pair->fp_link);
+	CLEAR_NODE(pair->fp_link);
 	pair->fp_local  = from;
 	pair->fp_rmt    = to;
 	pair->fp_flag   = tflag;
-	append_link(prq_pair, &pair->fp_link, pair);
+	append_node(prq_pair, &pair->fp_link, pair);
 	return (preq);
 }
 /**
@@ -607,7 +607,7 @@ mom_comm(job *pjob, void (*func)(struct work_task *))
 
 			t += time_now;
 			pwt = set_task(WORK_Timed, t, func, (void *)pjob);
-			append_link(&pjob->ji_svrtask, &pwt->wt_linkobj, pwt);
+			append_node(&pjob->ji_svrtask, &pwt->wt_linkobj, pwt);
 			return (-1);
 		}
 	}
@@ -698,7 +698,7 @@ conn_to_mom_failed(job *pjob, void(*func)(struct work_task *))
 	}
 	pjob->ji_momhandle = -1;
 	ptask = set_task(WORK_Immed, 0, func, pjob);
-	append_link(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);
+	append_node(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);
 	return;
 }
 
@@ -732,7 +732,7 @@ on_job_exit(struct work_task *ptask)
 	int    rc;
 	int    stageout_status = 1; /* success */
 	long   t;
-	pbs_list_head	*mom_tasklist_ptr = NULL;
+	pbs_list_node	*mom_tasklist_ptr = NULL;
 	mominfo_t *pmom = 0;
 	int	release_nodes_on_stageout = 0;
 
@@ -804,10 +804,10 @@ on_job_exit(struct work_task *ptask)
 					preq->rq_extra = (void *)pjob;
 					rc = issue_Drequest(handle, preq, on_job_exit, &pt, pjob->ji_mom_prot);
 					if (rc == 0) {
-						append_link(&pjob->ji_svrtask, &pt->wt_linkobj, pt);
+						append_node(&pjob->ji_svrtask, &pt->wt_linkobj, pt);
 						if (pjob->ji_mom_prot == PROT_RPP)
 							if (mom_tasklist_ptr)
-								append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
+								append_node(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
 						return;	/* come back when mom replies */
 					} else {
 						/* set up as if mom returned error */
@@ -822,7 +822,7 @@ on_job_exit(struct work_task *ptask)
 					(void)svr_setjobstate(pjob, JOB_STATE_EXITING,
 						JOB_SUBSTATE_STAGEDEL);
 					ptask = set_task(WORK_Immed, 0, on_job_exit, pjob);
-					append_link(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);
+					append_node(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);
 					return;
 				}
 			}
@@ -893,10 +893,10 @@ on_job_exit(struct work_task *ptask)
 
 					rc = issue_Drequest(handle, preq, on_job_exit, &pt, pjob->ji_mom_prot);
 					if (rc == 0) {
-						append_link(&pjob->ji_svrtask, &pt->wt_linkobj, pt);
+						append_node(&pjob->ji_svrtask, &pt->wt_linkobj, pt);
 						if (pjob->ji_mom_prot == PROT_RPP)
 							if (mom_tasklist_ptr)
-								append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
+								append_node(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
 						return;	/* come back when mom replies */
 					} else {
 						/* set up as if mom returned error */
@@ -912,7 +912,7 @@ on_job_exit(struct work_task *ptask)
 					(void)svr_setjobstate(pjob, JOB_STATE_EXITING,
 						JOB_SUBSTATE_EXITED);
 					ptask = set_task(WORK_Immed, 0, on_job_exit, pjob);
-					append_link(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);
+					append_node(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);
 					return;
 				}
 			}
@@ -934,7 +934,7 @@ on_job_exit(struct work_task *ptask)
 					t = pjob->ji_retryok++;
 					t = time_now + (t * t);
 					ptask = set_task(WORK_Timed, t, on_job_exit, pjob);
-					append_link(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask
+					append_node(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask
 						);
 					return;
 				}
@@ -980,10 +980,10 @@ on_job_exit(struct work_task *ptask)
 					preq->rq_extra = (void *)pjob;
 					rc = issue_Drequest(handle, preq, on_job_exit, &pt, pjob->ji_mom_prot);
 					if (rc == 0) {
-						append_link(&pjob->ji_svrtask, &pt->wt_linkobj, pt);
+						append_node(&pjob->ji_svrtask, &pt->wt_linkobj, pt);
 						if (pjob->ji_mom_prot == PROT_RPP)
 							if (mom_tasklist_ptr)
-								append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
+								append_node(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
 						return;	/* come back when mom replies */
 					} else {
 						/* set up as if mom returned error */
@@ -1027,7 +1027,7 @@ on_job_exit(struct work_task *ptask)
 				t = pjob->ji_retryok++;
 				t = time_now + (t * t);
 				ptask = set_task(WORK_Timed, t, on_job_exit, pjob);
-				append_link(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask
+				append_node(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask
 					);
 				return;
 			} else {
@@ -1162,7 +1162,7 @@ on_job_rerun(struct work_task *ptask)
 	struct batch_request *preq;
 	struct work_task     *pt;
 	int		      rc;
-	pbs_list_head	*mom_tasklist_ptr = NULL;
+	pbs_list_node	*mom_tasklist_ptr = NULL;
 	mominfo_t *pmom = 0;
 
 	if (ptask->wt_type != WORK_Deferred_Reply) {
@@ -1203,7 +1203,7 @@ on_job_rerun(struct work_task *ptask)
 					(void)svr_setjobstate(pjob, JOB_STATE_EXITING,
 						JOB_SUBSTATE_RERUN1);
 					ptask = set_task(WORK_Immed, 0, on_job_rerun, pjob);
-					append_link(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);
+					append_node(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);
 					return;
 				}
 
@@ -1221,10 +1221,10 @@ on_job_rerun(struct work_task *ptask)
 				rc = issue_Drequest(handle, preq, on_job_rerun, &pt, pjob->ji_mom_prot);
 				if (rc == 0) {
 					/* request ok, will come back when its done */
-					append_link(&pjob->ji_svrtask, &pt->wt_linkobj, pt);
+					append_node(&pjob->ji_svrtask, &pt->wt_linkobj, pt);
 					if (pjob->ji_mom_prot == PROT_RPP)
 						if (mom_tasklist_ptr)
-							append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
+							append_node(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
 					return;
 				} else {
 					/* set up as if mom returned error */
@@ -1272,10 +1272,10 @@ on_job_rerun(struct work_task *ptask)
 					preq->rq_extra = (void *)pjob;
 					rc =  issue_Drequest(handle, preq, on_job_rerun, &pt, pjob->ji_mom_prot);
 					if (rc == 0) {
-						append_link(&pjob->ji_svrtask, &pt->wt_linkobj, pt);
+						append_node(&pjob->ji_svrtask, &pt->wt_linkobj, pt);
 						if (pjob->ji_mom_prot == PROT_RPP)
 							if (mom_tasklist_ptr)
-								append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
+								append_node(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
 						return;	/* come back when mom replies */
 					} else
 						/* set up as if mom returned error */
@@ -1289,7 +1289,7 @@ on_job_rerun(struct work_task *ptask)
 					(void)svr_setjobstate(pjob, JOB_STATE_EXITING,
 						JOB_SUBSTATE_RERUN2);
 					ptask = set_task(WORK_Immed, 0, on_job_rerun, pjob);
-					append_link(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);
+					append_node(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);
 					return;
 				}
 			}
@@ -1343,10 +1343,10 @@ on_job_rerun(struct work_task *ptask)
 					preq->rq_extra = (void *)pjob;
 					rc =  issue_Drequest(handle, preq, on_job_rerun, &pt, pjob->ji_mom_prot);
 					if (rc == 0) {
-						append_link(&pjob->ji_svrtask, &pt->wt_linkobj, pt);
+						append_node(&pjob->ji_svrtask, &pt->wt_linkobj, pt);
 						if (pjob->ji_mom_prot == PROT_RPP)
 							if (mom_tasklist_ptr)
-								append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
+								append_node(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
 						return;
 					} else {	/* error on sending request */
 						preq->rq_reply.brp_code = rc;
@@ -1357,7 +1357,7 @@ on_job_rerun(struct work_task *ptask)
 					(void)svr_setjobstate(pjob, JOB_STATE_EXITING,
 						JOB_SUBSTATE_RERUN3);
 					ptask = set_task(WORK_Immed, 0, on_job_rerun, pjob);
-					append_link(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);
+					append_node(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);
 					return;
 				}
 			}
@@ -1393,10 +1393,10 @@ on_job_rerun(struct work_task *ptask)
 					preq->rq_extra = (void *)pjob;
 					rc = issue_Drequest(handle, preq, on_job_rerun, &pt, pjob->ji_mom_prot);
 					if (rc == 0) {
-						append_link(&pjob->ji_svrtask, &pt->wt_linkobj, pt);
+						append_node(&pjob->ji_svrtask, &pt->wt_linkobj, pt);
 						if (pjob->ji_mom_prot == PROT_RPP)
 							if (mom_tasklist_ptr)
-								append_link(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
+								append_node(mom_tasklist_ptr, &pt->wt_linkobj2, pt); /* if rpp, link to mom list as well */
 						return;	/* come back when Mom replies */
 					} else {
 						/* set up as if mom returned error */
@@ -1761,7 +1761,7 @@ job_obit(struct resc_used_update *pruu, int stream)
 			 */
 			if (pjob->ji_momhandle != -1) {
 				struct batch_request *prequest;
-				extern pbs_list_head task_list_event;
+				extern pbs_list_node task_list_event;
 
 				ptask = (struct work_task *)
 					GET_NEXT(task_list_event);
@@ -1788,7 +1788,7 @@ job_obit(struct resc_used_update *pruu, int stream)
 			else
 				eojproc = on_job_rerun;
 			ptask = set_task(WORK_Immed, 0, eojproc, (void *)pjob);
-			append_link(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);
+			append_node(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);
 			return;
 		}
 		/* State EXITING and substate TERM, this is the real obit */
@@ -2237,7 +2237,7 @@ RetryJob:
 		check_block(pjob, "");		/* if block set, send word */
 
 		ptask = set_task(WORK_Immed, 0, on_job_exit, (void *)pjob);
-		append_link(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);
+		append_node(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);
 
 		/* "on_job_exit()" will be dispatched out of the main loop */
 
@@ -2278,7 +2278,7 @@ RetryJob:
 			pjob->ji_qs.ji_substate);
 
 		ptask = set_task(WORK_Immed, 0, on_job_rerun, (void *)pjob);
-		append_link(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);
+		append_node(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);
 
 		/* "on_job_rerun()" will be dispatched out of the main loop */
 	}

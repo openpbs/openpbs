@@ -61,7 +61,7 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include "portability.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "pbs_ifl.h"
 #include "pbs_nodes.h"
@@ -82,8 +82,8 @@ long pbs_max_licenses		= PBS_MAX_LICENSING_LICENSES;
 int  pbs_licensing_linger	= PBS_LIC_LINGER_TIME;
 
 /* Global Data Items: */
-extern pbs_list_head svr_alljobs;
-extern pbs_list_head svr_unlicensedjobs;
+extern pbs_list_node svr_alljobs;
+extern pbs_list_node svr_unlicensedjobs;
 
 extern pbs_net_t pbs_server_addr;
 unsigned long hostidnum;

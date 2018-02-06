@@ -45,7 +45,7 @@ extern "C" {
  *
  * Include Files Required:
  *	<sys/types.h>
- *	"list_link.h"
+ *	"linked_list.h"
  *	"attribute.h"
  *	"server_limits.h"
  *	"batch_request.h"
@@ -173,7 +173,7 @@ struct resc_resv {
 
 	/* Note: these members, upto ri_qs, are not saved to disk */
 
-	pbs_list_link		ri_allresvs;		/* links this resc_resv into the
+	pbs_list_node		ri_allresvs;		/* links this resc_resv into the
 							 * server's global list
 							 */
 
@@ -200,11 +200,11 @@ struct resc_resv {
 							 * reservation or a standing reservation occurrence
 							 */
 
-	pbs_list_head		ri_svrtask;		/* place to keep work_task struct that
+	pbs_list_node		ri_svrtask;		/* place to keep work_task struct that
 							 * are "attached" to this reservation
 							 */
 
-	pbs_list_head		ri_rejectdest;		/* place to keep badplace structs that
+	pbs_list_node		ri_rejectdest;		/* place to keep badplace structs that
 							 * are "attached" to this reservation
 							 * Will only be useful if we later make
 							 */

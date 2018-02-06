@@ -45,7 +45,7 @@
 #include <string.h>
 #include <errno.h>
 #include "pbs_ifl.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "pbs_error.h"
 #include "libpbs.h"
@@ -161,7 +161,7 @@ free_svrcache(struct attribute *attr)
 	if ((working != NULL) && (--working->al_refct <= 0)) {
 		while (working) {
 			sister = working->al_sister;
-			delete_link(&working->al_link);
+			delete_node(&working->al_link);
 			(void)free(working);
 			working = sister;
 		}
@@ -172,7 +172,7 @@ free_svrcache(struct attribute *attr)
 	if ((working != NULL) && (--working->al_refct <= 0)) {
 		while (working) {
 			sister = working->al_sister;
-			delete_link(&working->al_link);
+			delete_node(&working->al_link);
 			(void)free(working);
 			working = sister;
 		}
@@ -292,7 +292,7 @@ attrlist_alloc(int szname, int szresc, int szval)
 	memset(pal, 0, sizeof(svrattrl));
 #endif
 
-	CLEAR_LINK(pal->al_link);	/* clear link */
+	CLEAR_NODE(pal->al_link);	/* clear link */
 	pal->al_sister	   = (svrattrl *)0;
 	pal->al_atopl.next = 0;
 	pal->al_tsize = tsize;		/* set various string sizes */
@@ -364,7 +364,7 @@ attrlist_create(char  *aname, char  *rname, int vsize)
  *
  */
 void
-free_attrlist(pbs_list_head *pattrlisthead)
+free_attrlist(pbs_list_node *pattrlisthead)
 {
 	free_svrattrl((svrattrl *)GET_NEXT(*pattrlisthead));
 }
@@ -392,13 +392,13 @@ free_svrattrl(svrattrl *pal)
 			sister = pal->al_sister;
 			while (sister) {
 				nxpal = sister->al_sister;
-				delete_link(&sister->al_link);
+				delete_node(&sister->al_link);
 				(void)free(sister);
 				sister = nxpal;
 			}
 		}
 		nxpal = (struct svrattrl *)GET_NEXT(pal->al_link);
-		delete_link(&pal->al_link);
+		delete_node(&pal->al_link);
 		if (pal->al_refct <= 0)
 			(void)free(pal);
 		pal = nxpal;
@@ -517,7 +517,7 @@ count_substrings(char *val, int *pcnt)
  */
 
 void
-attrl_fixlink(pbs_list_head *phead)
+attrl_fixlink(pbs_list_node *phead)
 {
 	svrattrl *pal;
 	svrattrl *pnxt;
@@ -579,7 +579,7 @@ free_none(struct attribute *attr)
  *
  */
 int
-add_to_svrattrl_list(pbs_list_head *phead, char *name_str, char *resc_str,
+add_to_svrattrl_list(pbs_list_node *phead, char *name_str, char *resc_str,
 	char *val_str, unsigned int flag, char *name_prefix)
 {
 	svrattrl 	 *psvrat = NULL;
@@ -620,7 +620,7 @@ add_to_svrattrl_list(pbs_list_head *phead, char *name_str, char *resc_str,
 		strcpy(psvrat->al_value, val_str);
 	}
 	psvrat->al_flags = flag;
-	append_link(phead, &psvrat->al_link, psvrat);
+	append_node(phead, &psvrat->al_link, psvrat);
 
 	return 0;
 }
@@ -642,12 +642,12 @@ add_to_svrattrl_list(pbs_list_head *phead, char *name_str, char *resc_str,
  * @retval -1	error
  */
 int
-add_to_svrattrl_list_sorted(pbs_list_head *phead, char *name_str, char *resc_str,
+add_to_svrattrl_list_sorted(pbs_list_node *phead, char *name_str, char *resc_str,
 	char *val_str, unsigned int flag, char *name_prefix)
 {
 	svrattrl 	*psvrat = NULL;
 	int		valln = 0;
-	pbs_list_link	*plink_cur;
+	pbs_list_node	*plink_cur;
 	svrattrl 	*psvr_cur;
 	char 	*tmp_str = NULL;
 	size_t	sz;
@@ -699,10 +699,10 @@ add_to_svrattrl_list_sorted(pbs_list_head *phead, char *name_str, char *resc_str
 
 	if (psvr_cur) {
 		/* link before 'current' svrattrl in list */
-		insert_link(plink_cur, &psvrat->al_link, psvrat, LINK_INSET_BEFORE);
+		insert_node(plink_cur, &psvrat->al_link, psvrat, NODE_INSET_BEFORE);
 	} else {
 		/* attach either at the beginning or the last of the list */
-		insert_link(plink_cur, &psvrat->al_link, psvrat, LINK_INSET_AFTER);
+		insert_node(plink_cur, &psvrat->al_link, psvrat, NODE_INSET_AFTER);
 	}
 	return 0;
 }
@@ -720,7 +720,7 @@ add_to_svrattrl_list_sorted(pbs_list_head *phead, char *name_str, char *resc_str
  *
  */
 int
-copy_svrattrl_list(pbs_list_head *from_head, pbs_list_head *to_head)
+copy_svrattrl_list(pbs_list_node *from_head, pbs_list_node *to_head)
 {
 	svrattrl *plist = NULL;
 
@@ -755,7 +755,7 @@ copy_svrattrl_list(pbs_list_head *from_head, pbs_list_head *to_head)
  *  @retval	NULL - none found
  */
 svrattrl *
-find_svrattrl_list_entry(pbs_list_head *phead, char *name, char *resc)
+find_svrattrl_list_entry(pbs_list_node *phead, char *name, char *resc)
 {
 	svrattrl *plist = NULL;
 
@@ -797,7 +797,7 @@ find_svrattrl_list_entry(pbs_list_head *phead, char *name, char *resc)
  */
 unsigned int
 get_svrattrl_flag(char *name, char *resc, char *val,
-	pbs_list_head *svrattrl_list, int hook_set_flag)
+	pbs_list_node *svrattrl_list, int hook_set_flag)
 {
 	svrattrl *svrattrl_e;
 	unsigned int flag = 0;
@@ -824,10 +824,10 @@ get_svrattrl_flag(char *name, char *resc, char *val,
  * @retval 0	otherwise
  */
 int
-compare_svrattrl_list(pbs_list_head *l1, pbs_list_head *l2)
+compare_svrattrl_list(pbs_list_node *l1, pbs_list_node *l2)
 {
-	pbs_list_head	list1;
-	pbs_list_head	list2;
+	pbs_list_node	list1;
+	pbs_list_node	list2;
 	svrattrl	*pal1 = NULL;
 	svrattrl	*pal2 = NULL;
 	svrattrl	*nxpal1 = NULL;
@@ -857,10 +857,10 @@ compare_svrattrl_list(pbs_list_head *l1, pbs_list_head *l2)
 			if ((strcmp(pal1->al_name, pal2->al_name) == 0) &&
 				(strcmp(pal1->al_value, pal2->al_value) == 0)) {
 				found_match = 1;
-				delete_link(&pal2->al_link);
+				delete_node(&pal2->al_link);
 				free(pal2);
 
-				delete_link(&pal1->al_link);
+				delete_node(&pal1->al_link);
 				free(pal1);
 				break;
 			}
@@ -926,7 +926,7 @@ free_str_array(char **str_array)
  * @retval	NULL	- could not allocate memory or input invalid.
  */
 char **
-svrattrl_to_str_array(pbs_list_head *pbs_list)
+svrattrl_to_str_array(pbs_list_node *pbs_list)
 {
 	int	i;
 	int	len;
@@ -985,7 +985,7 @@ svrattrl_to_str_array(pbs_list_head *pbs_list)
  *
  */
 int
-str_array_to_svrattrl(char **str_array, pbs_list_head *to_head, char *name_str)
+str_array_to_svrattrl(char **str_array, pbs_list_node *to_head, char *name_str)
 {
 	int	i;
 

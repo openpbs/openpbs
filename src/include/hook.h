@@ -47,7 +47,7 @@ extern "C" {
  *
  * Include Files Required:
  *	<sys/types.h>
- *	"list_link.h"
+ *	"linked_list.h"
  *	"batch_request.h"
  *	"pbs_ifl.h"
  */
@@ -123,23 +123,23 @@ struct hook {
 	unsigned long	hook_script_checksum;	/* checksum for .PY file */
 	unsigned long	hook_config_checksum;	/* checksum for .CF file */
 	/* deletion */
-	pbs_list_link	hi_allhooks;
-	pbs_list_link	hi_queuejob_hooks;
-	pbs_list_link	hi_modifyjob_hooks;
-	pbs_list_link	hi_resvsub_hooks;
-	pbs_list_link	hi_movejob_hooks;
-	pbs_list_link	hi_runjob_hooks;
-	pbs_list_link 	hi_provision_hooks;
-	pbs_list_link 	hi_periodic_hooks;
-	pbs_list_link	hi_execjob_begin_hooks;
-	pbs_list_link	hi_execjob_prologue_hooks;
-	pbs_list_link	hi_execjob_epilogue_hooks;
-	pbs_list_link	hi_execjob_end_hooks;
-	pbs_list_link	hi_execjob_preterm_hooks;
-	pbs_list_link	hi_execjob_launch_hooks;
-	pbs_list_link 	hi_exechost_periodic_hooks;
-	pbs_list_link 	hi_exechost_startup_hooks;
-	pbs_list_link	hi_execjob_attach_hooks;
+	pbs_list_node	hi_allhooks;
+	pbs_list_node	hi_queuejob_hooks;
+	pbs_list_node	hi_modifyjob_hooks;
+	pbs_list_node	hi_resvsub_hooks;
+	pbs_list_node	hi_movejob_hooks;
+	pbs_list_node	hi_runjob_hooks;
+	pbs_list_node 	hi_provision_hooks;
+	pbs_list_node 	hi_periodic_hooks;
+	pbs_list_node	hi_execjob_begin_hooks;
+	pbs_list_node	hi_execjob_prologue_hooks;
+	pbs_list_node	hi_execjob_epilogue_hooks;
+	pbs_list_node	hi_execjob_end_hooks;
+	pbs_list_node	hi_execjob_preterm_hooks;
+	pbs_list_node	hi_execjob_launch_hooks;
+	pbs_list_node 	hi_exechost_periodic_hooks;
+	pbs_list_node 	hi_exechost_startup_hooks;
+	pbs_list_node	hi_execjob_attach_hooks;
 	struct work_task *ptask;		    /* work task pointer, used in periodic hooks */
 };
 

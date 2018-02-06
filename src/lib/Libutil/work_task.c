@@ -49,15 +49,15 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include "server_limits.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "work_task.h"
 
 
 /* Global Data Items: */
 
-extern pbs_list_head task_list_immed; /* list of tasks that can execute now */
-extern pbs_list_head task_list_timed; /* list of tasks that have set start times */
-extern pbs_list_head task_list_event; /* list of tasks responding to an event */
+extern pbs_list_node task_list_immed; /* list of tasks that can execute now */
+extern pbs_list_node task_list_timed; /* list of tasks that have set start times */
+extern pbs_list_node task_list_event; /* list of tasks responding to an event */
 extern int svr_delay_entry;
 extern time_t	time_now;
 
@@ -87,9 +87,9 @@ struct work_task *set_task(enum work_type type, long event_id, void (*func)(stru
 	pnew = (struct work_task *)malloc(sizeof(struct work_task));
 	if (pnew == (struct work_task *)0)
 		return ((struct work_task *)0);
-	CLEAR_LINK(pnew->wt_linkall);
-	CLEAR_LINK(pnew->wt_linkobj);
-	CLEAR_LINK(pnew->wt_linkobj2);
+	CLEAR_NODE(pnew->wt_linkall);
+	CLEAR_NODE(pnew->wt_linkobj);
+	CLEAR_NODE(pnew->wt_linkobj2);
 	pnew->wt_event = event_id;
 	pnew->wt_event2 = NULL;
 	pnew->wt_type  = type;
@@ -101,7 +101,7 @@ struct work_task *set_task(enum work_type type, long event_id, void (*func)(stru
 	pnew->wt_aux2  = 0;
 
 	if (type == WORK_Immed)
-		append_link(&task_list_immed, &pnew->wt_linkall, pnew);
+		append_node(&task_list_immed, &pnew->wt_linkall, pnew);
 	else if (type == WORK_Timed) {
 		pold = (struct work_task *)GET_NEXT(task_list_timed);
 		while (pold) {
@@ -110,12 +110,12 @@ struct work_task *set_task(enum work_type type, long event_id, void (*func)(stru
 			pold = (struct work_task *)GET_NEXT(pold->wt_linkall);
 		}
 		if (pold)
-			insert_link(&pold->wt_linkall, &pnew->wt_linkall, pnew,
-				LINK_INSET_BEFORE);
+			insert_node(&pold->wt_linkall, &pnew->wt_linkall, pnew,
+				NODE_INSET_BEFORE);
 		else
-			append_link(&task_list_timed, &pnew->wt_linkall, pnew);
+			append_node(&task_list_timed, &pnew->wt_linkall, pnew);
 	} else
-		append_link(&task_list_event, &pnew->wt_linkall, pnew);
+		append_node(&task_list_event, &pnew->wt_linkall, pnew);
 	return (pnew);
 }
 
@@ -135,9 +135,9 @@ struct work_task *set_task(enum work_type type, long event_id, void (*func)(stru
 void
 dispatch_task(struct work_task *ptask)
 {
-	delete_link(&ptask->wt_linkall);
-	delete_link(&ptask->wt_linkobj);
-	delete_link(&ptask->wt_linkobj2);
+	delete_node(&ptask->wt_linkall);
+	delete_node(&ptask->wt_linkobj);
+	delete_node(&ptask->wt_linkobj2);
 	if (ptask->wt_func)
 		ptask->wt_func(ptask);		/* dispatch process function */
 	(void)free(ptask);
@@ -154,9 +154,9 @@ dispatch_task(struct work_task *ptask)
 void
 delete_task(struct work_task *ptask)
 {
-	delete_link(&ptask->wt_linkobj);
-	delete_link(&ptask->wt_linkobj2);
-	delete_link(&ptask->wt_linkall);
+	delete_node(&ptask->wt_linkobj);
+	delete_node(&ptask->wt_linkobj2);
+	delete_node(&ptask->wt_linkall);
 	(void)free(ptask);
 }
 

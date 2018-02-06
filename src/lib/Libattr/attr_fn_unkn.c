@@ -46,7 +46,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pbs_ifl.h>
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "resource.h"
 #include "pbs_error.h"
@@ -124,7 +124,7 @@ decode_unkn(struct attribute *patr, char *name, char *rescn, char *value)
 	if (valln)
 		memcpy(entry->al_value, value, valln);
 
-	append_link(&patr->at_val.at_list, &entry->al_link, entry);
+	append_node(&patr->at_val.at_list, &entry->al_link, entry);
 	patr->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 	return (0);
 }
@@ -161,7 +161,7 @@ decode_unkn(struct attribute *patr, char *name, char *rescn, char *value)
 /*ARGSUSED*/
 
 int
-encode_unkn(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
+encode_unkn(attribute *attr, pbs_list_node *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
 	svrattrl *plist;
 	svrattrl *pnew;
@@ -179,7 +179,7 @@ encode_unkn(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, i
 		pnew = (svrattrl *)malloc(plist->al_tsize);
 		if (pnew == (svrattrl *)0)
 			return (-1);
-		CLEAR_LINK(pnew->al_link);
+		CLEAR_NODE(pnew->al_link);
 		pnew->al_sister = NULL;
 		pnew->al_tsize  = plist->al_tsize;
 		pnew->al_nameln = plist->al_nameln;
@@ -204,7 +204,7 @@ encode_unkn(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, i
 				pnew->al_valln);
 		}
 		if (phead)
-			append_link(phead, &pnew->al_link, pnew);
+			append_node(phead, &pnew->al_link, pnew);
 		if (first) {
 			if (rtnl)
 				*rtnl = pnew;
@@ -252,8 +252,8 @@ set_unkn(struct attribute *old, struct attribute *new, enum batch_op op)
 	plist = (svrattrl *)GET_NEXT(new->at_val.at_list);
 	while (plist != (svrattrl *)0) {
 		pnext = (svrattrl *)GET_NEXT(plist->al_link);
-		delete_link(&plist->al_link);
-		append_link(&old->at_val.at_list, &plist->al_link, plist);
+		delete_node(&plist->al_link);
+		append_node(&old->at_val.at_list, &plist->al_link, plist);
 		plist = pnext;
 	}
 	old->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
@@ -302,7 +302,7 @@ free_unkn(attribute *pattr)
 	if (pattr->at_flags & ATR_VFLAG_SET) {
 		while ((plist = (svrattrl *)GET_NEXT(pattr->at_val.at_list)) !=
 			(svrattrl *)0) {
-			delete_link(&plist->al_link);
+			delete_node(&plist->al_link);
 			(void)free(plist);
 		}
 	}

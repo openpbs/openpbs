@@ -60,7 +60,7 @@
 #include <sys/stat.h>
 #include "dis.h"
 #include "libpbs.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "server_limits.h"
 #include "attribute.h"
 #include "resource.h"
@@ -93,7 +93,7 @@ extern  char            mom_host[];
 extern char		*path_epilog;
 extern char		*path_jobs;
 extern unsigned int	default_server_port;
-extern pbs_list_head	svr_alljobs;
+extern pbs_list_node	svr_alljobs;
 extern int		exiting_tasks;
 extern char		*msg_daemonname;
 extern int		svr_hook_resend_job_attrs;
@@ -106,7 +106,7 @@ extern int		termin_child;
 extern int		resc_access_perm;
 extern int		server_stream;
 extern time_t		time_now;
-extern pbs_list_head	mom_polljobs;
+extern pbs_list_node	mom_polljobs;
 extern unsigned int	pbs_mom_port;
 #if MOM_ALPS
 extern int		alps_release_interval_max;
@@ -585,13 +585,13 @@ json_dumps_fail:
  * 	 encode_used - encode resources used by a job to be returned to the server
  *
  * @param[in] pjob - pointer to job structure
- * @param[in] phead - pointer to pbs_list_head structure
+ * @param[in] phead - pointer to pbs_list_node structure
  *
  * @return Void
  *
  */
 static void
-encode_used(job *pjob, pbs_list_head *phead)
+encode_used(job *pjob, pbs_list_node *phead)
 {
 	unsigned long	 lnum;
 	unsigned long	 lnum3;
@@ -1235,7 +1235,7 @@ void
 send_obit(job *pjob, int exval)
 {
 	struct resc_used_update rud;
-	pbs_list_head vnl_changes;
+	pbs_list_node vnl_changes;
 
 #ifndef WIN32
 	/* update pjob with values set from an epilogue hook */
@@ -1584,7 +1584,7 @@ scan_for_exiting(void)
 				}
 
 end_loop:
-				delete_link(&pobit->oe_next);
+				delete_node(&pobit->oe_next);
 				free(pobit);
 			}
 			ptask->ti_qs.ti_status = TI_STATE_DEAD;
@@ -1708,7 +1708,7 @@ end_loop:
 			JOB_SVFLG_Actsuspd);
 		if (pjob->ji_qs.ji_un.ji_momt.ji_exitstat != JOB_EXEC_INITABT)
 			(void)kill_job(pjob, SIGKILL);
-		delete_link(&pjob->ji_jobque);	/* unlink from poll list */
+		delete_node(&pjob->ji_jobque);	/* unlink from poll list */
 
 		/*
 		 * The SISTER_KILLDONE flag needs to be reset so
@@ -2124,7 +2124,7 @@ init_abort_jobs(int recover)
 		/* To get homedir info */
 		pj->ji_grpcache = NULL;
 		check_pwd(pj);
-		append_link(&svr_alljobs, &pj->ji_alljobs, pj);
+		append_node(&svr_alljobs, &pj->ji_alljobs, pj);
 		job_nodes(pj);
 		task_recov(pj);
 
@@ -2255,7 +2255,7 @@ init_abort_jobs(int recover)
 			}
 
 			if (mom_do_poll(pj))
-				append_link(&mom_polljobs, &pj->ji_jobque, pj);
+				append_node(&mom_polljobs, &pj->ji_jobque, pj);
 		}
 	}
 	if (errno != 0 && errno != ENOENT) {

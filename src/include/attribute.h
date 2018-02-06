@@ -45,7 +45,7 @@ extern "C" {
 #include "pbs_internal.h"
 #include "Long.h"
 #include "grunt.h"
-#include "list_link.h"
+#include "linked_list.h"
 
 #ifndef _TIME_H
 #include <sys/types.h>
@@ -54,7 +54,7 @@ extern "C" {
  * This header file contains the definitions for attributes
  *
  * Other required header files:
- *	"list_link.h"
+ *	"linked_list.h"
  *	"portability.h"
  *
  * Attributes are represented in one or both of two forms, external and
@@ -99,7 +99,7 @@ extern "C" {
  */
 
 struct svrattrl {
-	pbs_list_link	al_link;
+	pbs_list_node	al_link;
 	struct svrattrl *al_sister;  /* co-resource svrattrl		     */
 	struct attropl	al_atopl;    /* name,resource,value, see pbs_ifl.h   */
 	int		al_tsize;    /* size of this structure (variable)    */
@@ -162,7 +162,7 @@ union attr_val {	      /* the attribute value	*/
 	char 		     *at_str;	/* char string  */
 	struct array_strings *at_arst;	/* array of strings */
 	struct size_value     at_size;	/* size value */
-	pbs_list_head	      at_list;	/* list of resources,  ... */
+	pbs_list_node	      at_list;	/* list of resources,  ... */
 	struct  pbsnode	     *at_jinfo; /* ptr to node's job info  */
 	short		      at_short;	/* short int; node's state */
 	float		      at_float;	/* floating point vaule */
@@ -189,7 +189,7 @@ typedef struct attribute attribute;
 struct attribute_def {
 	char	*at_name;
 	int	(*at_decode)(attribute *patr, char *name, char *rn, char *val);
-	int	(*at_encode)(attribute *pattr, pbs_list_head *phead,
+	int	(*at_encode)(attribute *pattr, pbs_list_node *phead,
 		char *aname, char *rsname, int mode,
 		svrattrl **rtnl);
 	int	(*at_set)(attribute *pattr, attribute *new, enum batch_op);
@@ -312,7 +312,7 @@ extern void free_none  (attribute *attr);
 extern svrattrl *attrlist_alloc(int szname, int szresc, int szval);
 extern svrattrl *attrlist_create(char *aname, char *rname, int szval);
 extern void free_svrattrl(svrattrl *pal);
-extern void free_attrlist(pbs_list_head *attrhead);
+extern void free_attrlist(pbs_list_node *attrhead);
 extern void free_svrcache(struct attribute *attr);
 extern int  attr_atomic_set(svrattrl *plist, attribute *old,
 	attribute *new, attribute_def *pdef, int limit,
@@ -323,21 +323,21 @@ extern int  attr_atomic_node_set(svrattrl *plist, attribute *old,
 extern void attr_atomic_kill(attribute *temp, attribute_def *pdef, int);
 extern void attr_atomic_copy(attribute *old, attribute *new, attribute_def *pdef, int limit);
 
-extern int copy_svrattrl_list(pbs_list_head *from_phead, pbs_list_head *to_head);
-extern int  compare_svrattrl_list(pbs_list_head *list1, pbs_list_head *list2);
-extern svrattrl *find_svrattrl_list_entry(pbs_list_head *phead, char *name,
+extern int copy_svrattrl_list(pbs_list_node *from_phead, pbs_list_node *to_head);
+extern int  compare_svrattrl_list(pbs_list_node *list1, pbs_list_node *list2);
+extern svrattrl *find_svrattrl_list_entry(pbs_list_node *phead, char *name,
 	char *resc);
-extern int add_to_svrattrl_list(pbs_list_head *phead, char *name_str, char *resc_str,
+extern int add_to_svrattrl_list(pbs_list_node *phead, char *name_str, char *resc_str,
 	char *val_str, unsigned int flag, char *name_prefix);
-extern int add_to_svrattrl_list_sorted(pbs_list_head *phead, char *name_str, char *resc_str,
+extern int add_to_svrattrl_list_sorted(pbs_list_node *phead, char *name_str, char *resc_str,
 	char *val_str, unsigned int flag, char *name_prefix);
 extern unsigned int get_svrattrl_flag(char *name, char *resc, char *val,
-	pbs_list_head *svrattrl_list, int hook_set_flag);
-extern int compare_svrattrl_list(pbs_list_head *l1, pbs_list_head *l2);
+	pbs_list_node *svrattrl_list, int hook_set_flag);
+extern int compare_svrattrl_list(pbs_list_node *l1, pbs_list_node *l2);
 
 extern void free_str_array(char **);
-extern char **svrattrl_to_str_array(pbs_list_head *);
-extern int str_array_to_svrattrl(char **str_array, pbs_list_head *to_head, char *header_str);
+extern char **svrattrl_to_str_array(pbs_list_node *);
+extern int str_array_to_svrattrl(char **str_array, pbs_list_node *to_head, char *header_str);
 extern char *str_array_to_str(char **str_array, char delimiter);
 extern char *env_array_to_str(char **env_array, char delimiter);
 extern char **str_to_str_array(char *str, char delimiter);
@@ -367,37 +367,37 @@ extern int  decode_nodes(struct attribute *, char *, char *, char *);
 extern int  decode_select(struct attribute *, char *, char *, char *);
 extern int  decode_Mom_list(struct attribute *, char *, char *, char *);
 
-extern int  encode_b(attribute *attr, pbs_list_head *phead, char *atname,
+extern int  encode_b(attribute *attr, pbs_list_node *phead, char *atname,
 	char *rsname, int mode, svrattrl **rtnl);
-extern int  encode_c(attribute *attr, pbs_list_head *phead, char *atname,
+extern int  encode_c(attribute *attr, pbs_list_node *phead, char *atname,
 	char *rsname, int mode, svrattrl **rtnl);
-extern int  encode_entlim(attribute *attr, pbs_list_head *phead, char *atname,
+extern int  encode_entlim(attribute *attr, pbs_list_node *phead, char *atname,
 	char *rsname, int mode, svrattrl **rtnl);
-extern int  encode_f(attribute *attr, pbs_list_head *phead, char *atname,
+extern int  encode_f(attribute *attr, pbs_list_node *phead, char *atname,
 	char *rsname, int mode, svrattrl **rtnl);
-extern int encode_l  (attribute *attr, pbs_list_head *phead, char *atname,
+extern int encode_l  (attribute *attr, pbs_list_node *phead, char *atname,
 	char *rsname, int mode, svrattrl **rtnl);
-extern int encode_ll(attribute *attr, pbs_list_head *phead, char *atname,
+extern int encode_ll(attribute *attr, pbs_list_node *phead, char *atname,
 	char *rsname, int mode, svrattrl **rtnl);
-extern int encode_size  (attribute *attr, pbs_list_head *phead, char *atname,
+extern int encode_size  (attribute *attr, pbs_list_node *phead, char *atname,
 	char *rsname, int mode, svrattrl **rtnl);
-extern int encode_str  (attribute *attr, pbs_list_head *phead, char *atname,
+extern int encode_str  (attribute *attr, pbs_list_node *phead, char *atname,
 	char *rsname, int mode, svrattrl **rtnl);
-extern int encode_time(attribute *attr, pbs_list_head *phead, char *atname,
+extern int encode_time(attribute *attr, pbs_list_node *phead, char *atname,
 	char *rsname, int mode, svrattrl **rtnl);
-extern int encode_arst(attribute *attr, pbs_list_head *phead, char *atname,
+extern int encode_arst(attribute *attr, pbs_list_node *phead, char *atname,
 	char *rsname, int mode, svrattrl **rtnl);
-extern int encode_arst_bs(attribute *attr, pbs_list_head *phead, char *atname,
+extern int encode_arst_bs(attribute *attr, pbs_list_node *phead, char *atname,
 	char *rsname, int mode, svrattrl **rtnl);
-extern int encode_resc(attribute *attr, pbs_list_head *phead, char *atname,
+extern int encode_resc(attribute *attr, pbs_list_node *phead, char *atname,
 	char *rsname, int mode, svrattrl **rtnl);
-extern int encode_inter(attribute *attr, pbs_list_head *phead, char *atname,
+extern int encode_inter(attribute *attr, pbs_list_node *phead, char *atname,
 	char *rsname, int mode, svrattrl **rtnl);
-extern int encode_unkn(attribute *attr, pbs_list_head *phead, char *atname,
+extern int encode_unkn(attribute *attr, pbs_list_node *phead, char *atname,
 	char *rsname, int mode, svrattrl **rtnl);
-extern int encode_depend(attribute *attr, pbs_list_head *phead, char *atname,
+extern int encode_depend(attribute *attr, pbs_list_node *phead, char *atname,
 	char *rsname, int mode, svrattrl **rtnl);
-extern int encode_hold(attribute *attr, pbs_list_head *phead, char *atname,
+extern int encode_hold(attribute *attr, pbs_list_node *phead, char *atname,
 	char *rsname, int mode, svrattrl **rtnl);
 
 extern int set_b(attribute *attr, attribute *new, enum batch_op);
@@ -461,22 +461,22 @@ extern int   acl_check(attribute *, char *canidate, int type);
 extern int   check_duplicates(struct array_strings *strarr);
 
 extern char *arst_string(char *str, attribute *pattr);
-extern void  attrl_fixlink(pbs_list_head *svrattrl);
+extern void  attrl_fixlink(pbs_list_node *svrattrl);
 extern void  recov_acl(attribute *, attribute_def *, char *, char *);
 extern int   save_acl(attribute *, attribute_def *,  char *, char *);
 extern int   save_attr_fs(attribute_def *, attribute *, int);
 
-extern int      encode_state(attribute *, pbs_list_head *, char *,
+extern int      encode_state(attribute *, pbs_list_node *, char *,
 	char *, int, svrattrl **rtnl);
-extern int      encode_props(attribute*, pbs_list_head*, char*,
+extern int      encode_props(attribute*, pbs_list_node*, char*,
 	char*, int, svrattrl **rtnl);
-extern int      encode_jobs  (attribute*, pbs_list_head*, char*,
+extern int      encode_jobs  (attribute*, pbs_list_node*, char*,
 	char*, int, svrattrl **rtnl);
-extern int      encode_resvs(attribute*, pbs_list_head*, char*,
+extern int      encode_resvs(attribute*, pbs_list_node*, char*,
 	char*, int, svrattrl **rtnl);
-extern int      encode_ntype(attribute*, pbs_list_head*, char*,
+extern int      encode_ntype(attribute*, pbs_list_node*, char*,
 	char*, int, svrattrl **rtnl);
-extern int      encode_sharing(attribute*, pbs_list_head*, char*,
+extern int      encode_sharing(attribute*, pbs_list_node*, char*,
 	char*, int, svrattrl **rtnl);
 extern int      decode_state(attribute*, char*, char*, char*);
 extern int      decode_props(attribute*, char*, char*, char*);
@@ -544,11 +544,11 @@ extern int action_check_res_to_release(attribute *pattr, void *pobj, int actmode
 /* Extern functions from sched_attr_def*/
 extern int action_opt_bf_fuzzy(attribute *pattr, void *pobj, int actmode);
 
-extern int encode_svrstate(attribute *pattr,  pbs_list_head *phead,  char *aname,
+extern int encode_svrstate(attribute *pattr,  pbs_list_node *phead,  char *aname,
 	char *rsname,  int mode,  svrattrl **rtnl);
 
 extern int decode_rcost(attribute *patr,  char *name,  char *rn,  char *val);
-extern int encode_rcost(attribute *attr,  pbs_list_head *phead,  char *atname,
+extern int encode_rcost(attribute *attr,  pbs_list_node *phead,  char *atname,
 	char *rsname,  int mode,  svrattrl **rtnl);
 extern int set_rcost(attribute *attr,  attribute *new,  enum batch_op);
 extern void free_rcost(attribute *attr);

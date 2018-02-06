@@ -59,7 +59,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "server_limits.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "resource.h"
 #include "server.h"
@@ -132,7 +132,7 @@ cnvrt_delete(struct work_task *ptask)
 	}
 
 	wt = set_task(WORK_Timed, (time_now + 600), cnvrt_delete, ptmp);
-	append_link(&presv->ri_svrtask, &wt->wt_linkobj, wt);
+	append_node(&presv->ri_svrtask, &wt->wt_linkobj, wt);
 }
 
 

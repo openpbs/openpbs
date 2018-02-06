@@ -46,7 +46,7 @@
 #include <string.h>
 #include <assert.h>
 #include "pbs_ifl.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "server_limits.h"
 #include "net_connect.h"
@@ -293,7 +293,7 @@ str_to_vnode_state(char *vnstate)
  */
 
 int
-encode_state(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int mode, svrattrl **rtnl)
+encode_state(attribute *pattr, pbs_list_node *ph, char *aname, char *rname, int mode, svrattrl **rtnl)
 {
 	int	  i;
 	svrattrl *pal;
@@ -344,7 +344,7 @@ encode_state(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int 
 	(void)strcpy(pal->al_value, state_str);
 	pal->al_flags = ATR_VFLAG_SET;
 	if (ph)
-		append_link(ph, &pal->al_link, pal);
+		append_node(ph, &pal->al_link, pal);
 	if (rtnl)
 		*rtnl = pal;
 
@@ -432,7 +432,7 @@ vnode_ntype_to_str(int vntype)
  *
  */
 int
-encode_ntype(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int mode, svrattrl **rtnl)
+encode_ntype(attribute *pattr, pbs_list_node *ph, char *aname, char *rname, int mode, svrattrl **rtnl)
 {
 	svrattrl *pal;
 	short	 ntype;
@@ -466,7 +466,7 @@ encode_ntype(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int 
 	(void)strcpy(pal->al_value, ntype_str);
 	pal->al_flags = ATR_VFLAG_SET;
 	if (ph)
-		append_link(ph, &pal->al_link, pal);
+		append_node(ph, &pal->al_link, pal);
 	if (rtnl)
 		*rtnl = pal;
 
@@ -497,7 +497,7 @@ encode_ntype(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int 
  */
 
 int
-encode_jobs(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int mode, svrattrl **rtnl)
+encode_jobs(attribute *pattr, pbs_list_node *ph, char *aname, char *rname, int mode, svrattrl **rtnl)
 
 {
 	svrattrl	*pal;
@@ -573,7 +573,7 @@ encode_jobs(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int m
 	free(job_str);
 
 	if (ph)
-		append_link(ph, &pal->al_link, pal);
+		append_node(ph, &pal->al_link, pal);
 	if (rtnl)
 		*rtnl = pal;
 
@@ -603,7 +603,7 @@ encode_jobs(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int m
  */
 
 int
-encode_resvs(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int mode, svrattrl **rtnl)
+encode_resvs(attribute *pattr, pbs_list_node *ph, char *aname, char *rname, int mode, svrattrl **rtnl)
 {
 	svrattrl	*pal;
 	struct resvinfo *rip;
@@ -657,7 +657,7 @@ encode_resvs(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int 
 	free(resv_str);
 
 	if (ph)
-		append_link(ph, &pal->al_link, pal);
+		append_node(ph, &pal->al_link, pal);
 	if (rtnl)
 		*rtnl = pal;
 
@@ -684,7 +684,7 @@ encode_resvs(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int 
  */
 
 int
-encode_sharing(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int mode, svrattrl **rtnl)
+encode_sharing(attribute *pattr, pbs_list_node *ph, char *aname, char *rname, int mode, svrattrl **rtnl)
 {
 	int       n;
 	svrattrl *pal;
@@ -708,7 +708,7 @@ encode_sharing(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, in
 	(void)strcpy(pal->al_value, vn_str);
 	pal->al_flags = ATR_VFLAG_SET;
 	if (ph)
-		append_link(ph, &pal->al_link, pal);
+		append_node(ph, &pal->al_link, pal);
 	if (rtnl)
 		*rtnl = pal;
 

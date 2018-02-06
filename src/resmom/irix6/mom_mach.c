@@ -76,7 +76,7 @@
 
 #include "pbs_error.h"
 #include "portability.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "server_limits.h"
 #include "attribute.h"
 #include "resource.h"
@@ -352,7 +352,7 @@ injob(job *pjob, prpsinfo_t *psp)
 {
 	task		*ptask;
 	pid_t		key;
-	pbs_list_head 	*phead;
+	pbs_list_node 	*phead;
 
 	if (pjob->ji_extended.ji_ext.ji_jid > 0) {
 		/* use sgi job id */

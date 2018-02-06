@@ -60,7 +60,7 @@
 #include <stdio.h>
 #include "dis.h"
 #include "libpbs.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "server_limits.h"
 #include "attribute.h"
 #include "log.h"
@@ -132,7 +132,7 @@ decode_DIS_CopyFiles(int sock, struct batch_request *preq)
 		ppair = (struct rqfpair *)malloc(sizeof(struct rqfpair));
 		if (ppair == (struct rqfpair *)0)
 			return DIS_NOMALLOC;
-		CLEAR_LINK(ppair->fp_link);
+		CLEAR_NODE(ppair->fp_link);
 		ppair->fp_local = 0;
 		ppair->fp_rmt   = 0;
 
@@ -152,7 +152,7 @@ decode_DIS_CopyFiles(int sock, struct batch_request *preq)
 			(void)free(ppair);
 			return rc;
 		}
-		append_link(&pcf->rq_pair, &ppair->fp_link, ppair);
+		append_node(&pcf->rq_pair, &ppair->fp_link, ppair);
 	}
 	return 0;
 }
@@ -217,7 +217,7 @@ decode_DIS_CopyFiles_Cred(int sock, struct batch_request *preq)
 		ppair = (struct rqfpair *)malloc(sizeof(struct rqfpair));
 		if (ppair == (struct rqfpair *)0)
 			return DIS_NOMALLOC;
-		CLEAR_LINK(ppair->fp_link);
+		CLEAR_NODE(ppair->fp_link);
 		ppair->fp_local = 0;
 		ppair->fp_rmt   = 0;
 
@@ -237,7 +237,7 @@ decode_DIS_CopyFiles_Cred(int sock, struct batch_request *preq)
 			(void)free(ppair);
 			return rc;
 		}
-		append_link(&pcfc->rq_copyfile.rq_pair,
+		append_node(&pcfc->rq_copyfile.rq_pair,
 			&ppair->fp_link, ppair);
 	}
 
@@ -375,7 +375,7 @@ decode_DIS_replySvr_inner(int sock, struct batch_reply *reply)
 				pstsvr = (struct brp_status *)malloc(sizeof(struct brp_status));
 				if (pstsvr == 0) return DIS_NOMALLOC;
 
-				CLEAR_LINK(pstsvr->brp_stlink);
+				CLEAR_NODE(pstsvr->brp_stlink);
 				pstsvr->brp_objname[0] = '\0';
 				CLEAR_HEAD(pstsvr->brp_attr);
 
@@ -388,7 +388,7 @@ decode_DIS_replySvr_inner(int sock, struct batch_reply *reply)
 					(void)free(pstsvr);
 					return rc;
 				}
-				append_link(&reply->brp_un.brp_status,
+				append_node(&reply->brp_un.brp_status,
 					&pstsvr->brp_stlink, pstsvr);
 				rc = decode_DIS_svrattrl(sock, &pstsvr->brp_attr);
 			}

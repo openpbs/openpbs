@@ -142,7 +142,7 @@
 #include	"portability.h"
 #include	"libpbs.h"
 #include	"server_limits.h"
-#include	"list_link.h"
+#include	"linked_list.h"
 #include	"attribute.h"
 #include	"resource.h"
 #include	"server.h"
@@ -208,7 +208,7 @@ extern struct	license_used  usedlicenses;
 extern int tpp_network_up; /* from pbsd_main.c - used only in case of TPP */
 extern struct work_task *global_ping_task;
 
-extern pbs_list_head svr_unlicensedjobs;
+extern pbs_list_node svr_unlicensedjobs;
 
 extern unsigned int pbs_mom_port;
 
@@ -218,7 +218,7 @@ extern char *msg_noloopbackif;
 extern char *msg_job_end_stat;
 extern char *msg_daemonname;
 extern char *msg_new_inventory_mom;
-extern pbs_list_head	svr_allhooks;
+extern pbs_list_node	svr_allhooks;
 
 extern void is_vnode_prov_done(char *); /* for provisioning */
 extern void free_prov_vnode(struct pbsnode *);
@@ -2098,7 +2098,7 @@ set_resv_retry(resc_resv *presv, long retry_time)
 		/* set things so that the reservation going away will result in
 		 * any "yet to be processed" work tasks also going away
 		 */
-		append_link(&presv->ri_svrtask, &pwt->wt_linkobj, pwt);
+		append_node(&presv->ri_svrtask, &pwt->wt_linkobj, pwt);
 	}
 }
 
@@ -3554,7 +3554,7 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 	int localmadenew = 0;
 	int ret;
 	struct pbsnode *pnode;
-	pbs_list_head atrlist;
+	pbs_list_node atrlist;
 	svrattrl *pal;
 	char     buf[200];
 	attribute *pattr;
@@ -3614,12 +3614,12 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 		/* create vnode */
 		pal = attrlist_create(ATTR_NODE_Mom, 0, strlen(pmom->mi_host)+1);
 		strcpy(pal->al_value, pmom->mi_host);
-		append_link(&atrlist, &pal->al_link, pal);
+		append_node(&atrlist, &pal->al_link, pal);
 		if (pmom->mi_port != PBS_MOM_SERVICE_PORT) {
 			sprintf(buf, "%u", pmom->mi_port);
 			pal = attrlist_create(ATTR_NODE_Port, 0, strlen(buf)+1);
 			strcpy(pal->al_value, buf);
-			append_link(&atrlist, &pal->al_link, pal);
+			append_node(&atrlist, &pal->al_link, pal);
 		}
 		pal = GET_NEXT(atrlist);
 		bad =create_pbs_node(pvnal->vnal_id, pal, ATR_DFLAG_MGWR,
@@ -4461,7 +4461,7 @@ is_request(int stream, int version)
 	unsigned long		 oldstate;
 	vnl_t			*vnlp;			/* vnode list */
 	static char		node_up[] = "node up";
-	pbs_list_head		reported_hooks;
+	pbs_list_node		reported_hooks;
 	hook			*phook;
 	char			*hname = NULL;
 	unsigned long		hook_rescdef_checksum;
@@ -5705,7 +5705,7 @@ write_single_node_mom_attr(struct pbsnode *np)
 {
 	pbs_db_attr_info_t attr;
 	pbs_db_obj_info_t obj;
-	pbs_list_head     wrtattr;
+	pbs_list_node     wrtattr;
 	svrattrl     *psvrl;
 
 	obj.pbs_db_obj_type = PBS_DB_ATTR;
@@ -5740,7 +5740,7 @@ write_single_node_mom_attr(struct pbsnode *np)
 					return -1;
 				}
 			}
-			delete_link(&psvrl->al_link);
+			delete_node(&psvrl->al_link);
 			(void)free(psvrl);
 		}
 		node_save_db(np, NODE_SAVE_QUICK); /* save node qs so that nd_index is updated as well */
@@ -7281,8 +7281,8 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 			pjob->ji_licalloc = 0;
 
 			/* add job to list of jobs to be relicensed later */
-			if (!is_linked(&svr_unlicensedjobs, &pjob->ji_unlicjobs)) {
-				append_link(&svr_unlicensedjobs, &pjob->ji_unlicjobs,
+			if (!is_in_list(&svr_unlicensedjobs, &pjob->ji_unlicjobs)) {
+				append_node(&svr_unlicensedjobs, &pjob->ji_unlicjobs,
 					pjob);
 			}
 		}

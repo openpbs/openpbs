@@ -83,7 +83,7 @@
 #include <pbs_entlim.h>
 #include <work_task.h>
 #include <resource.h>
-#include <list_link.h>
+#include <linked_list.h>
 #include <attribute.h>
 #include "libpbs.h"
 #include "batch_request.h"
@@ -128,32 +128,32 @@ char            *pbs_server_name;
 char            *pbs_server_id;
 char		*resc_in_err = NULL;
 
-pbs_list_head	task_list_immed;
-pbs_list_head	task_list_timed;
-pbs_list_head	task_list_event;
+pbs_list_node	task_list_immed;
+pbs_list_node	task_list_timed;
+pbs_list_node	task_list_event;
 int		svr_delay_entry;
 
-pbs_list_head	svr_queues;
-pbs_list_head	svr_alljobs;
-pbs_list_head	svr_allresvs;
+pbs_list_node	svr_queues;
+pbs_list_node	svr_alljobs;
+pbs_list_node	svr_allresvs;
 
-pbs_list_head	svr_allhooks;
-pbs_list_head	svr_queuejob_hooks;
-pbs_list_head	svr_modifyjob_hooks;
-pbs_list_head	svr_resvsub_hooks;
-pbs_list_head	svr_movejob_hooks;
-pbs_list_head	svr_runjob_hooks;
-pbs_list_head	svr_provision_hooks;
-pbs_list_head	svr_periodic_hooks;
-pbs_list_head	svr_execjob_begin_hooks;
-pbs_list_head	svr_execjob_prologue_hooks;
-pbs_list_head	svr_execjob_epilogue_hooks;
-pbs_list_head	svr_execjob_preterm_hooks;
-pbs_list_head	svr_execjob_launch_hooks;
-pbs_list_head	svr_execjob_end_hooks;
-pbs_list_head	svr_exechost_periodic_hooks;
-pbs_list_head	svr_exechost_startup_hooks;
-pbs_list_head	svr_execjob_attach_hooks;
+pbs_list_node	svr_allhooks;
+pbs_list_node	svr_queuejob_hooks;
+pbs_list_node	svr_modifyjob_hooks;
+pbs_list_node	svr_resvsub_hooks;
+pbs_list_node	svr_movejob_hooks;
+pbs_list_node	svr_runjob_hooks;
+pbs_list_node	svr_provision_hooks;
+pbs_list_node	svr_periodic_hooks;
+pbs_list_node	svr_execjob_begin_hooks;
+pbs_list_node	svr_execjob_prologue_hooks;
+pbs_list_node	svr_execjob_epilogue_hooks;
+pbs_list_node	svr_execjob_preterm_hooks;
+pbs_list_node	svr_execjob_launch_hooks;
+pbs_list_node	svr_execjob_end_hooks;
+pbs_list_node	svr_exechost_periodic_hooks;
+pbs_list_node	svr_exechost_startup_hooks;
+pbs_list_node	svr_execjob_attach_hooks;
 
 char 		*path_hooks;
 char 		*path_hooks_workdir;
@@ -644,7 +644,7 @@ decode_rcost(struct attribute *patr, char *name, char *rescn, char *val)
 int
 encode_rcost(attr, phead, atname, rsname, mode, rtnl)
 attribute	*attr;	  /* ptr to attribute */
-pbs_list_head	*phead;	  /* head of attrlist list */
+pbs_list_node	*phead;	  /* head of attrlist list */
 char		*atname;  /* attribute name */
 char		*rsname;  /* resource name or null */
 int		mode;	  /* encode mode, unused here */
@@ -716,7 +716,7 @@ action_power_provisioning(attribute *pattr, void *pobj, int actmode) {
  * @param[out]	rtnl	-	RETURN: ptr to svrattrl
  */
 int
-encode_svrstate(attribute *pattr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
+encode_svrstate(attribute *pattr, pbs_list_node *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
 	return (1);
 }
@@ -757,7 +757,7 @@ decode_depend(struct attribute *patr, char *name, char *rescn, char *val)
  * @retval	success
  */
 int
-encode_depend(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
+encode_depend(attribute *attr, pbs_list_node *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
 	return 0;
 }
@@ -1056,11 +1056,11 @@ return_internal_value(char *name, char *val)
  */
 int
 pbs_python_populate_svrattrl_from_file(char *input_file,
-	pbs_list_head *default_svrattrl, pbs_list_head *event_svrattrl,
-	pbs_list_head *event_job_svrattrl, pbs_list_head *event_job_o_svrattrl,
-	pbs_list_head *event_resv_svrattrl, pbs_list_head *event_vnode_svrattrl,
-	pbs_list_head *event_src_queue_svrattrl, pbs_list_head *event_aoe_svrattrl,
-	pbs_list_head *event_argv_svrattrl, pbs_list_head *event_jobs_svrattrl)
+	pbs_list_node *default_svrattrl, pbs_list_node *event_svrattrl,
+	pbs_list_node *event_job_svrattrl, pbs_list_node *event_job_o_svrattrl,
+	pbs_list_node *event_resv_svrattrl, pbs_list_node *event_vnode_svrattrl,
+	pbs_list_node *event_src_queue_svrattrl, pbs_list_node *event_aoe_svrattrl,
+	pbs_list_node *event_argv_svrattrl, pbs_list_node *event_jobs_svrattrl)
 {
 
 	char *attr_name;
@@ -1539,16 +1539,16 @@ populate_svrattrl_fail:
  */
 int
 pbs_python_populate_server_svrattrl_from_file(char *input_file,
-	pbs_list_head *default_svrattrl,
-	pbs_list_head *server_svrattrl,
-	pbs_list_head *server_jobs_svrattrl,
-	pbs_list_head *server_jobs_ids_svrattrl,
-	pbs_list_head *server_queues_svrattrl,
-	pbs_list_head *server_queues_names_svrattrl,
-	pbs_list_head *server_resvs_svrattrl,
-	pbs_list_head *server_resvs_resvids_svrattrl,
-	pbs_list_head *server_vnodes_svrattrl,
-	pbs_list_head *server_vnodes_names_svrattrl)
+	pbs_list_node *default_svrattrl,
+	pbs_list_node *server_svrattrl,
+	pbs_list_node *server_jobs_svrattrl,
+	pbs_list_node *server_jobs_ids_svrattrl,
+	pbs_list_node *server_queues_svrattrl,
+	pbs_list_node *server_queues_names_svrattrl,
+	pbs_list_node *server_resvs_svrattrl,
+	pbs_list_node *server_resvs_resvids_svrattrl,
+	pbs_list_node *server_vnodes_svrattrl,
+	pbs_list_node *server_vnodes_names_svrattrl)
 {
 
 	char *attr_name;
@@ -2157,7 +2157,7 @@ populate_server_svrattrl_fail:
  * @return	none
  */
 void
-fprint_svrattrl_list(FILE *fp, char *head_str, pbs_list_head *phead)
+fprint_svrattrl_list(FILE *fp, char *head_str, pbs_list_node *phead)
 {
 	svrattrl *plist = NULL;
 	char	*p, *p0;
@@ -2260,7 +2260,7 @@ fprint_str_array(FILE *fp, char *head_str, void **str_array)
  *
  */
 static char	*
-argv_list_to_str(pbs_list_head *argv_list)
+argv_list_to_str(pbs_list_node *argv_list)
 {
 	int	i, len;
 	char	*ret_string = NULL;
@@ -2576,7 +2576,7 @@ main(int argc, char *argv[], char *envp[])
 		int	errflg=0;
 		unsigned int hook_event = 0;
 		struct python_script	*py_script = NULL;
-		pbs_list_head default_list, event, event_job, event_job_o,
+		pbs_list_node default_list, event, event_job, event_job_o,
 		event_resv, event_vnode, event_src_queue,
 		event_aoe, event_argv, event_jobs,
 		server, server_jobs, server_jobs_ids,
@@ -2942,7 +2942,7 @@ main(int argc, char *argv[], char *envp[])
 				}
 
 				req_params.rq_job = (struct rq_quejob *)&rqj;
-				req_params.vns_list = (pbs_list_head *)&event_vnode;
+				req_params.vns_list = (pbs_list_node *)&event_vnode;
 				rc = pbs_python_event_set(hook_event, req_user,
 					req_host, &req_params);
 
@@ -3036,7 +3036,7 @@ main(int argc, char *argv[], char *envp[])
 					goto pbs_python_end;
 				}
 				req_params.rq_job = (struct rq_queuejob *)&rqj;
-				req_params.vns_list = (pbs_list_head *)&event_vnode;
+				req_params.vns_list = (pbs_list_node *)&event_vnode;
 				rc = pbs_python_event_set(hook_event, req_user,
 					req_host, &req_params);
 
@@ -3069,7 +3069,7 @@ main(int argc, char *argv[], char *envp[])
 					goto pbs_python_end;
 				}
 				req_params.rq_job = (struct rq_queuejob *)&rqj;
-				req_params.vns_list = (pbs_list_head *)&event_vnode;
+				req_params.vns_list = (pbs_list_node *)&event_vnode;
 
 				rc = pbs_python_event_set(hook_event, req_user,
 					req_host, &req_params);
@@ -3101,7 +3101,7 @@ main(int argc, char *argv[], char *envp[])
 				}
 
 				req_params.rq_job = (struct rq_queuejob *)&rqj;
-				req_params.vns_list = (pbs_list_head *)&event_vnode;
+				req_params.vns_list = (pbs_list_node *)&event_vnode;
 
 				if ((svrattrl_e=find_svrattrl_list_entry(&event,
 					PY_EVENT_PARAM_PROGNAME, NULL)) != NULL) {
@@ -3111,9 +3111,9 @@ main(int argc, char *argv[], char *envp[])
 					progname_orig = "";
 				}
 
-				req_params.argv_list = (pbs_list_head *)&event_argv;
+				req_params.argv_list = (pbs_list_node *)&event_argv;
 
-				argv_str_orig = argv_list_to_str((pbs_list_head *)&event_argv);
+				argv_str_orig = argv_list_to_str((pbs_list_node *)&event_argv);
 				if ((svrattrl_e=find_svrattrl_list_entry(&event,
 					PY_EVENT_PARAM_ENV, NULL)) != NULL) {
 					req_params.env = svrattrl_e->al_value;
@@ -3158,7 +3158,7 @@ main(int argc, char *argv[], char *envp[])
 					req_params.pid = -1;
 				}
 
-				req_params.vns_list = (pbs_list_head *)&event_vnode;
+				req_params.vns_list = (pbs_list_node *)&event_vnode;
 
 
 				rc = pbs_python_event_set(hook_event, req_user,
@@ -3445,7 +3445,7 @@ main(int argc, char *argv[], char *envp[])
 				CLEAR_HEAD(event_vnode);
 
 				req_params_out.rq_job = (struct rq_quejob *)&rqj;
-				req_params_out.vns_list = (pbs_list_head *)&event_vnode;
+				req_params_out.vns_list = (pbs_list_node *)&event_vnode;
 				pbs_python_event_to_request(hook_event,
 					&req_params_out);
 				fprint_svrattrl_list(fp_out, EVENT_JOB_OBJECT,
@@ -3497,7 +3497,7 @@ main(int argc, char *argv[], char *envp[])
 				}
 
 				req_params_out.progname = (char **)&progname;
-				req_params_out.argv_list = (pbs_list_head *)&event_argv;
+				req_params_out.argv_list = (pbs_list_node *)&event_argv;
 				req_params_out.env = (char **)&env_str;
 
 				pbs_python_event_to_request(hook_event,
@@ -3514,7 +3514,7 @@ main(int argc, char *argv[], char *envp[])
 					print_progname = 1;
 				}
 
-				argv_str = argv_list_to_str((pbs_list_head *)&event_argv);
+				argv_str = argv_list_to_str((pbs_list_node *)&event_argv);
 
 				if (((argv_str_orig == NULL) && (argv_str != NULL)) ||
 				    ((argv_str_orig != NULL) && (argv_str == NULL)) ||
@@ -3571,11 +3571,11 @@ main(int argc, char *argv[], char *envp[])
 				CLEAR_HEAD(event_vnode);
 				free_attrlist(&event_jobs);
 				CLEAR_HEAD(event_jobs);
-				req_params_out.vns_list = (pbs_list_head *)&event_vnode;
+				req_params_out.vns_list = (pbs_list_node *)&event_vnode;
 				if (hook_event == HOOK_EVENT_EXECHOST_PERIODIC) {
 					free_attrlist(&event_jobs);
 					CLEAR_HEAD(event_jobs);
-					req_params_out.jobs_list = (pbs_list_head *)&event_jobs;
+					req_params_out.jobs_list = (pbs_list_node *)&event_jobs;
 				}
 				pbs_python_event_to_request(hook_event,
 					&req_params_out);

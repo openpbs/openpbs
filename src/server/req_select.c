@@ -67,7 +67,7 @@
 #include "libpbs.h"
 #include <string.h>
 #include "server_limits.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "resource.h"
 #include "server.h"
@@ -87,7 +87,7 @@
 /* Global Data Items  */
 
 extern int	 resc_access_perm;
-extern pbs_list_head svr_alljobs;
+extern pbs_list_node svr_alljobs;
 extern time_t	 time_now;
 extern char	 statechars[];
 extern long svr_history_enable;

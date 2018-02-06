@@ -91,7 +91,7 @@
 #include <netdb.h>
 #include <errno.h>
 #include "server_limits.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "work_task.h"
 #include "attribute.h"
 #include "resource.h"
@@ -146,7 +146,7 @@ extern int sched_delete(pbs_sched *psched);
 extern  void unset_power_provisioning(void);
 
 extern struct server server;
-extern pbs_list_head     svr_queues;
+extern pbs_list_node     svr_queues;
 extern attribute_def que_attr_def[];
 extern attribute_def svr_attr_def[];
 extern int  svr_chngNodesfile;
@@ -1187,7 +1187,7 @@ mgr_unset_attr(attribute *pattr, attribute_def *pdef, int limit, svrattrl *plist
 									resource *nresc;
 									if ((nresc = find_resc_entry((pattr+i), prsdef)) != NULL) {
 										nresc->rs_defin->rs_free(&nresc->rs_value);
-										delete_link(&nresc->rs_link);
+										delete_node(&nresc->rs_link);
 										free(nresc);
 										nresc = (resource *)GET_NEXT((pattr+i)->at_val.at_list);
 										if (nresc == (resource *)0)
@@ -1200,7 +1200,7 @@ mgr_unset_attr(attribute *pattr, attribute_def *pdef, int limit, svrattrl *plist
 					}
 					prsdef->rs_free(&presc->rs_value);
 				}
-				delete_link(&presc->rs_link);
+				delete_node(&presc->rs_link);
 				free(presc);
 				presc = NULL;
 			}
@@ -4025,7 +4025,7 @@ mgr_resource_delete(struct batch_request *preq)
 			pattr = &pq->qu_attr[i];
 			if ((pattr->at_flags & ATR_VFLAG_SET) && (pattr->at_type == ATR_TYPE_RESC || pattr->at_type == ATR_TYPE_ENTITY)) {
 				plist = attrlist_create(que_attr_def[i].at_name, prdef->rs_name, 0);
-				plist->al_link.ll_next->ll_struct = NULL;
+				plist->al_link.next->data = NULL;
 				rc = mgr_unset_attr(pq->qu_attr, que_attr_def, QA_ATR_LAST, plist, -1, &bad, (void *)pq, PARENT_TYPE_QUE_ALL, INDIRECT_RES_CHECK);
 				if (rc != 0) {
 					snprintf(log_buffer, sizeof(log_buffer), "error unsetting resource %s.%s", que_attr_def[i].at_name, prdef->rs_name);
@@ -4059,7 +4059,7 @@ mgr_resource_delete(struct batch_request *preq)
 		pattr = &server.sv_attr[i];
 		if ((pattr->at_flags & ATR_VFLAG_SET) && (pattr->at_type == ATR_TYPE_RESC || pattr->at_type == ATR_TYPE_ENTITY)) {
 			plist = attrlist_create(svr_attr_def[i].at_name, prdef->rs_name, 0);
-			plist->al_link.ll_next->ll_struct = NULL;
+			plist->al_link.next->data = NULL;
 			rc = mgr_unset_attr(server.sv_attr, svr_attr_def, SRV_ATR_LAST, plist, -1, &bad, (void *)&server, PARENT_TYPE_SERVER, INDIRECT_RES_CHECK);
 			if (rc != 0) {
 				snprintf(log_buffer, sizeof(log_buffer), "error unsetting resource %s.%s", svr_attr_def[i].at_name, prdef->rs_name);
@@ -4092,7 +4092,7 @@ mgr_resource_delete(struct batch_request *preq)
 			pattr = &pbsndlist[i]->nd_attr[j];
 			if ((pattr->at_flags & ATR_VFLAG_SET) && (pattr->at_type == ATR_TYPE_RESC || pattr->at_type == ATR_TYPE_ENTITY)) {
 				plist = attrlist_create(node_attr_def[j].at_name, prdef->rs_name, 0);
-				plist->al_link.ll_next->ll_struct = NULL;
+				plist->al_link.next->data = NULL;
 				rc = mgr_unset_attr(pbsndlist[i]->nd_attr, node_attr_def, ND_ATR_LAST, plist, -1, &bad, (void *)pbsndlist[i], PARENT_TYPE_NODE, INDIRECT_RES_UNLINK);
 				if (rc != 0) {
 					snprintf(log_buffer, sizeof(log_buffer), "error unsetting resource %s.%s", node_attr_def[i].at_name, prdef->rs_name);
@@ -4536,7 +4536,7 @@ mgr_resource_unset(struct batch_request *preq)
 				if (i == SRV_ATR_resource_assn) {
 					if (server.sv_attr[i].at_flags & ATR_VFLAG_SET) {
 						presc->rs_defin->rs_free(&presc->rs_value);
-						delete_link(&presc->rs_link);
+						delete_node(&presc->rs_link);
 						free(presc);
 						presc = (resource *)GET_NEXT(server.sv_attr[i].at_val.at_list);
 						if (presc == (resource *)0)
@@ -4566,7 +4566,7 @@ mgr_resource_unset(struct batch_request *preq)
 			q_attr = &pq_list[q_count]->qu_attr[QE_ATR_ResourceAssn];
 			presc = get_resource(q_attr, prdef);
 			presc->rs_defin->rs_free(&presc->rs_value);
-			delete_link(&presc->rs_link);
+			delete_node(&presc->rs_link);
 			free(presc);
 			presc = (resource *)GET_NEXT(q_attr->at_val.at_list);
 			if (presc == (resource *)0)

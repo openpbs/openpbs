@@ -126,7 +126,7 @@
 #include <assert.h>
 #include "pbs_ifl.h"
 #include "libpbs.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "resource.h"
 #include "credential.h"
@@ -162,7 +162,7 @@ extern int	 svr_totnodes;
 extern char	*path_nodes_new;
 extern char	*path_nodes;
 extern char	*path_nodestate;
-extern pbs_list_head svr_queues;
+extern pbs_list_node svr_queues;
 extern int	 svr_chngNodesfile;
 extern unsigned int pbs_mom_port;
 extern unsigned int pbs_rm_port;
@@ -177,7 +177,7 @@ extern struct python_interpreter_data  svr_interp_data;
 
 #ifdef NAS /* localmod 005 */
 /* External Functions Called */
-extern int node_recov_db_raw(void *nd, pbs_list_head *phead);
+extern int node_recov_db_raw(void *nd, pbs_list_node *phead);
 extern int node_delete_db(struct pbsnode *pnode);
 extern int write_single_node_state(struct pbsnode *np);
 #endif /* localmod 005 */
@@ -368,7 +368,7 @@ chk_characteristic(struct pbsnode *pnode, int *pneed_todo)
  */
 
 int
-status_nodeattrib(svrattrl *pal, attribute_def *padef, struct pbsnode *pnode, int limit, int priv, pbs_list_head *phead, int *bad)
+status_nodeattrib(svrattrl *pal, attribute_def *padef, struct pbsnode *pnode, int limit, int priv, pbs_list_node *phead, int *bad)
 {
 	int   rc = 0;		/*return code, 0 == success*/
 	int   index;
@@ -902,7 +902,7 @@ static int
 save_nodes_db_mom(mominfo_t *pmom)
 {
 	struct pbsnode *np;
-	pbs_list_head wrtattr;
+	pbs_list_node wrtattr;
 	mom_svrinfo_t *psvrm;
 	int	isoff;
 	int	hascomment;
@@ -972,7 +972,7 @@ static int
 save_nodes_db_inner(void)
 {
 	int i;
-	pbs_list_head wrtattr;
+	pbs_list_node wrtattr;
 	mominfo_t *pmom;
 
 	/* for each Mom ... */
@@ -1232,7 +1232,7 @@ setup_nodes_fs(int preprocess)
 	svrattrl *pal;
 	int	  perm = ATR_DFLAG_ACCESS | ATR_PERM_ALLOW_INDIRECT;
 	int	  file_version = 0;
-	pbs_list_head atrlist;
+	pbs_list_node atrlist;
 	long	  sharing_val;
 	char	 *sharing_str;
 	static char *ravail = ATTR_rescavail;
@@ -1404,7 +1404,7 @@ setup_nodes_fs(int preprocess)
 					}
 					(void)strcpy(pal->al_value, val);
 					pal->al_flags = SET;
-					append_link(&atrlist, &pal->al_link, pal);
+					append_node(&atrlist, &pal->al_link, pal);
 				}
 				free(val);
 				val = NULL;
@@ -1433,7 +1433,7 @@ setup_nodes_fs(int preprocess)
 					}
 					(void)strcpy(pal->al_value, ATR_TRUE);
 					pal->al_flags = SET;
-					append_link(&atrlist, &pal->al_link, pal);
+					append_node(&atrlist, &pal->al_link, pal);
 				}
 			}
 
@@ -1555,7 +1555,7 @@ setup_nodes()
 	int rc;
 	time_t	  mom_modtime = 0;
 	struct pbsnode *np;
-	pbs_list_head atrlist;
+	pbs_list_node atrlist;
 	pbs_db_conn_t *conn = (pbs_db_conn_t *) svr_db_conn;
 	svrattrl *pal;
 	int bad;

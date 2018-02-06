@@ -70,7 +70,7 @@
 #include <sys/time.h>
 #include "pbs_ifl.h"
 #include "server_limits.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "job.h"
 #include "reservation.h"
@@ -86,7 +86,7 @@
 /* Global Data Items: */
 
 extern struct server server;
-extern pbs_list_head svr_queues;
+extern pbs_list_node svr_queues;
 extern attribute_def svr_attr_def[];
 extern char	*path_priv;
 extern time_t	time_now;

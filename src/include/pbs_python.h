@@ -56,7 +56,7 @@
 #include <pbs_ifl.h>
 #include "pbs_internal.h"
 #include <log.h>
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 
 #ifdef WIN32
@@ -137,10 +137,10 @@ typedef struct	hook_input_param {
 	void		*rq_prov;
 	void		*rq_run;
 	char		*progname;
-	pbs_list_head	*argv_list;
+	pbs_list_node	*argv_list;
 	char		*env;
-	pbs_list_head	*jobs_list;
-	pbs_list_head	*vns_list;
+	pbs_list_node	*jobs_list;
+	pbs_list_node	*vns_list;
 	pid_t		pid;
 } hook_input_param_t;
 
@@ -174,10 +174,10 @@ typedef struct	hook_output_param {
 	void		*rq_prov;
 	void		*rq_run;
 	char		**progname;
-	pbs_list_head	*argv_list;
+	pbs_list_node	*argv_list;
 	char		**env;
-	pbs_list_head	*jobs_list;
-	pbs_list_head	*vns_list;
+	pbs_list_node	*jobs_list;
+	pbs_list_node	*vns_list;
 } hook_output_param_t;
 
 /* global constants */
@@ -538,31 +538,31 @@ extern void
 pbs_python_set_use_static_data_value(int);
 
 extern void
-pbs_python_set_server_info(pbs_list_head *);
+pbs_python_set_server_info(pbs_list_node *);
 
 extern void
 pbs_python_unset_server_info(void);
 
 extern void
-pbs_python_set_server_jobs_info(pbs_list_head *, pbs_list_head *);
+pbs_python_set_server_jobs_info(pbs_list_node *, pbs_list_node *);
 
 extern void
 pbs_python_unset_server_jobs_info(void);
 
 extern void
-pbs_python_set_server_queues_info(pbs_list_head *, pbs_list_head *);
+pbs_python_set_server_queues_info(pbs_list_node *, pbs_list_node *);
 
 extern void
 pbs_python_unset_server_queues_info(void);
 
 extern void
-pbs_python_set_server_resvs_info(pbs_list_head *, pbs_list_head *);
+pbs_python_set_server_resvs_info(pbs_list_node *, pbs_list_node *);
 
 extern void
 pbs_python_unset_server_resvs_info(void);
 
 extern void
-pbs_python_set_server_vnodes_info(pbs_list_head *, pbs_list_head *);
+pbs_python_set_server_vnodes_info(pbs_list_node *, pbs_list_node *);
 
 extern void
 pbs_python_unset_server_vnodes_info(void);

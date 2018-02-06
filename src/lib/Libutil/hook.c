@@ -56,7 +56,7 @@
 #include <string.h>
 #include "pbs_ifl.h"
 #include "libpbs.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "work_task.h"
 #include "log.h"
 #include "server_limits.h"
@@ -89,23 +89,23 @@ extern char *path_hooks_workdir;
 extern	char	*path_hooks;
 extern	time_t	time_now;
 
-extern pbs_list_head svr_allhooks;
-extern pbs_list_head svr_queuejob_hooks;
-extern pbs_list_head svr_modifyjob_hooks;
-extern pbs_list_head svr_resvsub_hooks;
-extern pbs_list_head svr_movejob_hooks;
-extern pbs_list_head svr_runjob_hooks;
-extern pbs_list_head svr_provision_hooks;
-extern pbs_list_head svr_periodic_hooks;
-extern pbs_list_head svr_execjob_begin_hooks;
-extern pbs_list_head svr_execjob_prologue_hooks;
-extern pbs_list_head svr_execjob_epilogue_hooks;
-extern pbs_list_head svr_execjob_end_hooks;
-extern pbs_list_head svr_execjob_preterm_hooks;
-extern pbs_list_head svr_execjob_launch_hooks;
-extern pbs_list_head svr_exechost_periodic_hooks;
-extern pbs_list_head svr_exechost_startup_hooks;
-extern pbs_list_head svr_execjob_attach_hooks;
+extern pbs_list_node svr_allhooks;
+extern pbs_list_node svr_queuejob_hooks;
+extern pbs_list_node svr_modifyjob_hooks;
+extern pbs_list_node svr_resvsub_hooks;
+extern pbs_list_node svr_movejob_hooks;
+extern pbs_list_node svr_runjob_hooks;
+extern pbs_list_node svr_provision_hooks;
+extern pbs_list_node svr_periodic_hooks;
+extern pbs_list_node svr_execjob_begin_hooks;
+extern pbs_list_node svr_execjob_prologue_hooks;
+extern pbs_list_node svr_execjob_epilogue_hooks;
+extern pbs_list_node svr_execjob_end_hooks;
+extern pbs_list_node svr_execjob_preterm_hooks;
+extern pbs_list_node svr_execjob_launch_hooks;
+extern pbs_list_node svr_exechost_periodic_hooks;
+extern pbs_list_node svr_exechost_startup_hooks;
+extern pbs_list_node svr_execjob_attach_hooks;
 
 /**
  *
@@ -118,25 +118,25 @@ extern pbs_list_head svr_execjob_attach_hooks;
 void
 clear_hook_links(hook *phook)
 {
-	delete_link(&phook->hi_queuejob_hooks);
-	delete_link(&phook->hi_modifyjob_hooks);
-	delete_link(&phook->hi_resvsub_hooks);
-	delete_link(&phook->hi_movejob_hooks);
-	delete_link(&phook->hi_runjob_hooks);
-	delete_link(&phook->hi_provision_hooks);
-	delete_link(&phook->hi_periodic_hooks);
-	delete_link(&phook->hi_allhooks);
+	delete_node(&phook->hi_queuejob_hooks);
+	delete_node(&phook->hi_modifyjob_hooks);
+	delete_node(&phook->hi_resvsub_hooks);
+	delete_node(&phook->hi_movejob_hooks);
+	delete_node(&phook->hi_runjob_hooks);
+	delete_node(&phook->hi_provision_hooks);
+	delete_node(&phook->hi_periodic_hooks);
+	delete_node(&phook->hi_allhooks);
 
 	/* mom hooks below */
-	delete_link(&phook->hi_execjob_begin_hooks);
-	delete_link(&phook->hi_execjob_prologue_hooks);
-	delete_link(&phook->hi_execjob_epilogue_hooks);
-	delete_link(&phook->hi_execjob_preterm_hooks);
-	delete_link(&phook->hi_execjob_launch_hooks);
-	delete_link(&phook->hi_execjob_end_hooks);
-	delete_link(&phook->hi_exechost_periodic_hooks);
-	delete_link(&phook->hi_exechost_startup_hooks);
-	delete_link(&phook->hi_execjob_attach_hooks);
+	delete_node(&phook->hi_execjob_begin_hooks);
+	delete_node(&phook->hi_execjob_prologue_hooks);
+	delete_node(&phook->hi_execjob_epilogue_hooks);
+	delete_node(&phook->hi_execjob_preterm_hooks);
+	delete_node(&phook->hi_execjob_launch_hooks);
+	delete_node(&phook->hi_execjob_end_hooks);
+	delete_node(&phook->hi_exechost_periodic_hooks);
+	delete_node(&phook->hi_exechost_startup_hooks);
+	delete_node(&phook->hi_execjob_attach_hooks);
 }
 
 /**
@@ -800,9 +800,9 @@ set_hook_user(hook *phook, char *newval, char *msg, size_t msg_len, int strict)
  *
  */
 static void
-insert_hook_sort_order(unsigned int event, pbs_list_head *phook_head, hook *phook)
+insert_hook_sort_order(unsigned int event, pbs_list_node *phook_head, hook *phook)
 {
-	pbs_list_link	*plink_elem, *plink_cur;
+	pbs_list_node	*plink_elem, *plink_cur;
 	hook		*phook_cur;
 
 	if ((phook_head == NULL) || (phook == NULL)) {
@@ -849,7 +849,7 @@ insert_hook_sort_order(unsigned int event, pbs_list_head *phook_head, hook *phoo
 		return;
 	}
 
-	if (is_linked(phook_head, plink_elem)) {
+	if (is_in_list(phook_head, plink_elem)) {
 		return;
 	}
 
@@ -904,10 +904,10 @@ insert_hook_sort_order(unsigned int event, pbs_list_head *phook_head, hook *phoo
 
 	if (phook_cur) {
 		/* link before 'current' hook in server's list */
-		insert_link(plink_cur, plink_elem, phook, LINK_INSET_BEFORE);
+		insert_node(plink_cur, plink_elem, phook, NODE_INSET_BEFORE);
 	} else {
 		/* attach either at the beginning or the last of the list */
-		insert_link(plink_cur, plink_elem, phook, LINK_INSET_AFTER);
+		insert_node(plink_cur, plink_elem, phook, NODE_INSET_AFTER);
 	}
 }
 
@@ -1221,22 +1221,22 @@ set_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 
 	if (phook->event != 0) {
 
-		delete_link(&phook->hi_queuejob_hooks);
-		delete_link(&phook->hi_modifyjob_hooks);
-		delete_link(&phook->hi_resvsub_hooks);
-		delete_link(&phook->hi_movejob_hooks);
-		delete_link(&phook->hi_runjob_hooks);
-		delete_link(&phook->hi_provision_hooks);
-		delete_link(&phook->hi_periodic_hooks);
-		delete_link(&phook->hi_execjob_begin_hooks);
-		delete_link(&phook->hi_execjob_prologue_hooks);
-		delete_link(&phook->hi_execjob_epilogue_hooks);
-		delete_link(&phook->hi_execjob_preterm_hooks);
-		delete_link(&phook->hi_execjob_launch_hooks);
-		delete_link(&phook->hi_execjob_end_hooks);
-		delete_link(&phook->hi_exechost_periodic_hooks);
-		delete_link(&phook->hi_exechost_startup_hooks);
-		delete_link(&phook->hi_execjob_attach_hooks);
+		delete_node(&phook->hi_queuejob_hooks);
+		delete_node(&phook->hi_modifyjob_hooks);
+		delete_node(&phook->hi_resvsub_hooks);
+		delete_node(&phook->hi_movejob_hooks);
+		delete_node(&phook->hi_runjob_hooks);
+		delete_node(&phook->hi_provision_hooks);
+		delete_node(&phook->hi_periodic_hooks);
+		delete_node(&phook->hi_execjob_begin_hooks);
+		delete_node(&phook->hi_execjob_prologue_hooks);
+		delete_node(&phook->hi_execjob_epilogue_hooks);
+		delete_node(&phook->hi_execjob_preterm_hooks);
+		delete_node(&phook->hi_execjob_launch_hooks);
+		delete_node(&phook->hi_execjob_end_hooks);
+		delete_node(&phook->hi_exechost_periodic_hooks);
+		delete_node(&phook->hi_exechost_startup_hooks);
+		delete_node(&phook->hi_execjob_attach_hooks);
 		phook->event = 0;
 	}
 
@@ -1292,35 +1292,35 @@ add_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 		if (strcmp(val, HOOKSTR_QUEUEJOB) == 0) {
 			if (phook->event & HOOK_EVENT_PROVISION)
 				goto err;
-			delete_link(&phook->hi_queuejob_hooks);
+			delete_node(&phook->hi_queuejob_hooks);
 			phook->event 	|= HOOK_EVENT_QUEUEJOB;
 			insert_hook_sort_order(HOOK_EVENT_QUEUEJOB,
 				&svr_queuejob_hooks, phook);
 		} else if (strcmp(val, HOOKSTR_MODIFYJOB) == 0) {
 			if (phook->event & HOOK_EVENT_PROVISION)
 				goto err;
-			delete_link(&phook->hi_modifyjob_hooks);
+			delete_node(&phook->hi_modifyjob_hooks);
 			phook->event 	|= HOOK_EVENT_MODIFYJOB;
 			insert_hook_sort_order(HOOK_EVENT_MODIFYJOB,
 				&svr_modifyjob_hooks, phook);
 		} else if (strcmp(val, HOOKSTR_RESVSUB) == 0) {
 			if (phook->event & HOOK_EVENT_PROVISION)
 				goto err;
-			delete_link(&phook->hi_resvsub_hooks);
+			delete_node(&phook->hi_resvsub_hooks);
 			phook->event 	|= HOOK_EVENT_RESVSUB;
 			insert_hook_sort_order(HOOK_EVENT_RESVSUB,
 				&svr_resvsub_hooks, phook);
 		} else if (strcmp(val, HOOKSTR_MOVEJOB) == 0) {
 			if (phook->event & HOOK_EVENT_PROVISION)
 				goto err;
-			delete_link(&phook->hi_movejob_hooks);
+			delete_node(&phook->hi_movejob_hooks);
 			phook->event 	|= HOOK_EVENT_MOVEJOB;
 			insert_hook_sort_order(HOOK_EVENT_MOVEJOB,
 				&svr_movejob_hooks, phook);
 		} else if (strcmp(val, HOOKSTR_RUNJOB) == 0) {
 			if (phook->event & HOOK_EVENT_PROVISION)
 				goto err;
-			delete_link(&phook->hi_runjob_hooks);
+			delete_node(&phook->hi_runjob_hooks);
 			phook->event 	|= HOOK_EVENT_RUNJOB;
 			insert_hook_sort_order(HOOK_EVENT_RUNJOB,
 				&svr_runjob_hooks, phook);
@@ -1336,77 +1336,77 @@ add_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 					anotherhook->hook_name);
 				return -1;
 			}
-			delete_link(&phook->hi_provision_hooks);
+			delete_node(&phook->hi_provision_hooks);
 			phook->event 	|= HOOK_EVENT_PROVISION;
 			insert_hook_sort_order(HOOK_EVENT_PROVISION,
 				&svr_provision_hooks, phook);
 		} else if (strcmp(val, HOOKSTR_PERIODIC) == 0) {
 			if (phook->event & HOOK_EVENT_PROVISION)
 				goto err;
-			delete_link(&phook->hi_periodic_hooks);
+			delete_node(&phook->hi_periodic_hooks);
 			phook->event 	|= HOOK_EVENT_PERIODIC;
 			insert_hook_sort_order(HOOK_EVENT_PERIODIC,
 				&svr_periodic_hooks, phook);
 		} else if (strcmp(val, HOOKSTR_EXECJOB_BEGIN) == 0) {
 			if (phook->event & HOOK_EVENT_PROVISION)
 				goto err;
-			delete_link(&phook->hi_execjob_begin_hooks);
+			delete_node(&phook->hi_execjob_begin_hooks);
 			phook->event 	|= HOOK_EVENT_EXECJOB_BEGIN;
 			insert_hook_sort_order(HOOK_EVENT_EXECJOB_BEGIN,
 				&svr_execjob_begin_hooks, phook);
 		} else if (strcmp(val, HOOKSTR_EXECJOB_PROLOGUE) == 0) {
 			if (phook->event & HOOK_EVENT_PROVISION)
 				goto err;
-			delete_link(&phook->hi_execjob_prologue_hooks);
+			delete_node(&phook->hi_execjob_prologue_hooks);
 			phook->event 	|= HOOK_EVENT_EXECJOB_PROLOGUE;
 			insert_hook_sort_order(HOOK_EVENT_EXECJOB_PROLOGUE,
 				&svr_execjob_prologue_hooks, phook);
 		} else if (strcmp(val, HOOKSTR_EXECJOB_EPILOGUE) == 0) {
 			if (phook->event & HOOK_EVENT_PROVISION)
 				goto err;
-			delete_link(&phook->hi_execjob_epilogue_hooks);
+			delete_node(&phook->hi_execjob_epilogue_hooks);
 			phook->event 	|= HOOK_EVENT_EXECJOB_EPILOGUE;
 			insert_hook_sort_order(HOOK_EVENT_EXECJOB_EPILOGUE,
 				&svr_execjob_epilogue_hooks, phook);
 		} else if (strcmp(val, HOOKSTR_EXECJOB_END) == 0) {
 			if (phook->event & HOOK_EVENT_PROVISION)
 				goto err;
-			delete_link(&phook->hi_execjob_end_hooks);
+			delete_node(&phook->hi_execjob_end_hooks);
 			phook->event 	|= HOOK_EVENT_EXECJOB_END;
 			insert_hook_sort_order(HOOK_EVENT_EXECJOB_END,
 				&svr_execjob_end_hooks, phook);
 		} else if (strcmp(val, HOOKSTR_EXECJOB_PRETERM) == 0) {
 			if (phook->event & HOOK_EVENT_PROVISION)
 				goto err;
-			delete_link(&phook->hi_execjob_preterm_hooks);
+			delete_node(&phook->hi_execjob_preterm_hooks);
 			phook->event 	|= HOOK_EVENT_EXECJOB_PRETERM;
 			insert_hook_sort_order(HOOK_EVENT_EXECJOB_PRETERM,
 				&svr_execjob_preterm_hooks, phook);
 		} else if (strcmp(val, HOOKSTR_EXECJOB_LAUNCH) == 0) {
 			if (phook->event & HOOK_EVENT_PROVISION)
 				goto err;
-			delete_link(&phook->hi_execjob_launch_hooks);
+			delete_node(&phook->hi_execjob_launch_hooks);
 			phook->event 	|= HOOK_EVENT_EXECJOB_LAUNCH;
 			insert_hook_sort_order(HOOK_EVENT_EXECJOB_LAUNCH,
 				&svr_execjob_launch_hooks, phook);
 		} else if (strcmp(val, HOOKSTR_EXECHOST_PERIODIC) == 0) {
 			if (phook->event & HOOK_EVENT_PROVISION)
 				goto err;
-			delete_link(&phook->hi_exechost_periodic_hooks);
+			delete_node(&phook->hi_exechost_periodic_hooks);
 			phook->event 	|= HOOK_EVENT_EXECHOST_PERIODIC;
 			insert_hook_sort_order(HOOK_EVENT_EXECHOST_PERIODIC,
 				&svr_exechost_periodic_hooks, phook);
 		} else if (strcmp(val, HOOKSTR_EXECHOST_STARTUP) == 0) {
 			if (phook->event & HOOK_EVENT_PROVISION)
 				goto err;
-			delete_link(&phook->hi_exechost_startup_hooks);
+			delete_node(&phook->hi_exechost_startup_hooks);
 			phook->event 	|= HOOK_EVENT_EXECHOST_STARTUP;
 			insert_hook_sort_order(HOOK_EVENT_EXECHOST_STARTUP,
 				&svr_exechost_startup_hooks, phook);
 		} else if (strcmp(val, HOOKSTR_EXECJOB_ATTACH) == 0) {
 			if (phook->event & HOOK_EVENT_PROVISION)
 				goto err;
-			delete_link(&phook->hi_execjob_attach_hooks);
+			delete_node(&phook->hi_execjob_attach_hooks);
 			phook->event 	|= HOOK_EVENT_EXECJOB_ATTACH;
 			insert_hook_sort_order(HOOK_EVENT_EXECJOB_ATTACH,
 				&svr_execjob_attach_hooks, phook);
@@ -1488,53 +1488,53 @@ del_hook_event(hook *phook, char *newval, char *msg, size_t msg_len)
 	val = strtok(newval_dup, ",");
 	while (val) {
 		if (strcmp(val, HOOKSTR_QUEUEJOB) == 0) {
-			delete_link(&phook->hi_queuejob_hooks);
+			delete_node(&phook->hi_queuejob_hooks);
 			phook->event 	&= ~HOOK_EVENT_QUEUEJOB;
 		} else if (strcmp(val, HOOKSTR_MODIFYJOB) == 0) {
-			delete_link(&phook->hi_modifyjob_hooks);
+			delete_node(&phook->hi_modifyjob_hooks);
 			phook->event 	&= ~HOOK_EVENT_MODIFYJOB;
 		} else if (strcmp(val, HOOKSTR_RESVSUB) == 0) {
-			delete_link(&phook->hi_resvsub_hooks);
+			delete_node(&phook->hi_resvsub_hooks);
 			phook->event 	&= ~HOOK_EVENT_RESVSUB;
 		} else if (strcmp(val, HOOKSTR_MOVEJOB) == 0) {
-			delete_link(&phook->hi_movejob_hooks);
+			delete_node(&phook->hi_movejob_hooks);
 			phook->event 	&= ~HOOK_EVENT_MOVEJOB;
 		} else if (strcmp(val, HOOKSTR_RUNJOB) == 0) {
-			delete_link(&phook->hi_runjob_hooks);
+			delete_node(&phook->hi_runjob_hooks);
 			phook->event 	&= ~HOOK_EVENT_RUNJOB;
 		} else if (strcmp(val, HOOKSTR_PROVISION) == 0) {
-			delete_link(&phook->hi_provision_hooks);
+			delete_node(&phook->hi_provision_hooks);
 			phook->event 	&= ~HOOK_EVENT_PROVISION;
 		} else if (strcmp(val, HOOKSTR_PERIODIC) == 0) {
-			delete_link(&phook->hi_periodic_hooks);
+			delete_node(&phook->hi_periodic_hooks);
 			phook->event 	&= ~HOOK_EVENT_PERIODIC;
 			delete_task_by_parm1(phook, DELETE_ALL);
 		} else if (strcmp(val, HOOKSTR_EXECJOB_BEGIN) == 0) {
-			delete_link(&phook->hi_execjob_begin_hooks);
+			delete_node(&phook->hi_execjob_begin_hooks);
 			phook->event 	&= ~HOOK_EVENT_EXECJOB_BEGIN;
 		} else if (strcmp(val, HOOKSTR_EXECJOB_PROLOGUE) == 0) {
-			delete_link(&phook->hi_execjob_prologue_hooks);
+			delete_node(&phook->hi_execjob_prologue_hooks);
 			phook->event 	&= ~HOOK_EVENT_EXECJOB_PROLOGUE;
 		} else if (strcmp(val, HOOKSTR_EXECJOB_EPILOGUE) == 0) {
-			delete_link(&phook->hi_execjob_epilogue_hooks);
+			delete_node(&phook->hi_execjob_epilogue_hooks);
 			phook->event 	&= ~HOOK_EVENT_EXECJOB_EPILOGUE;
 		} else if (strcmp(val, HOOKSTR_EXECJOB_END) == 0) {
-			delete_link(&phook->hi_execjob_end_hooks);
+			delete_node(&phook->hi_execjob_end_hooks);
 			phook->event 	&= ~HOOK_EVENT_EXECJOB_END;
 		} else if (strcmp(val, HOOKSTR_EXECJOB_PRETERM) == 0) {
-			delete_link(&phook->hi_execjob_preterm_hooks);
+			delete_node(&phook->hi_execjob_preterm_hooks);
 			phook->event 	&= ~HOOK_EVENT_EXECJOB_PRETERM;
 		} else if (strcmp(val, HOOKSTR_EXECJOB_LAUNCH) == 0) {
-			delete_link(&phook->hi_execjob_launch_hooks);
+			delete_node(&phook->hi_execjob_launch_hooks);
 			phook->event 	&= ~HOOK_EVENT_EXECJOB_LAUNCH;
 		} else if (strcmp(val, HOOKSTR_EXECHOST_PERIODIC) == 0) {
-			delete_link(&phook->hi_exechost_periodic_hooks);
+			delete_node(&phook->hi_exechost_periodic_hooks);
 			phook->event 	&= ~HOOK_EVENT_EXECHOST_PERIODIC;
 		} else if (strcmp(val, HOOKSTR_EXECHOST_STARTUP) == 0) {
-			delete_link(&phook->hi_exechost_startup_hooks);
+			delete_node(&phook->hi_exechost_startup_hooks);
 			phook->event 	&= ~HOOK_EVENT_EXECHOST_STARTUP;
 		} else if (strcmp(val, HOOKSTR_EXECJOB_ATTACH) == 0) {
-			delete_link(&phook->hi_execjob_attach_hooks);
+			delete_node(&phook->hi_execjob_attach_hooks);
 			phook->event 	&= ~HOOK_EVENT_EXECJOB_ATTACH;
 		} else if (strcmp(val, HOOKSTR_NONE) != 0) {
 			snprintf(msg, msg_len-1,
@@ -1629,85 +1629,85 @@ set_hook_order(hook *phook, char *newval, char *msg, size_t msg_len)
 	phook->order = val;
 
 	if (phook->event & HOOK_EVENT_QUEUEJOB) {
-		delete_link(&phook->hi_queuejob_hooks);
+		delete_node(&phook->hi_queuejob_hooks);
 		insert_hook_sort_order(HOOK_EVENT_QUEUEJOB,
 			&svr_queuejob_hooks, phook);
 	}
 
 	if (phook->event & HOOK_EVENT_MODIFYJOB) {
-		delete_link(&phook->hi_modifyjob_hooks);
+		delete_node(&phook->hi_modifyjob_hooks);
 		insert_hook_sort_order(HOOK_EVENT_MODIFYJOB,
 			&svr_modifyjob_hooks, phook);
 	}
 
 	if (phook->event & HOOK_EVENT_RESVSUB) {
-		delete_link(&phook->hi_resvsub_hooks);
+		delete_node(&phook->hi_resvsub_hooks);
 		insert_hook_sort_order(HOOK_EVENT_RESVSUB,
 			&svr_resvsub_hooks, phook);
 	}
 
 	if (phook->event & HOOK_EVENT_MOVEJOB) {
-		delete_link(&phook->hi_movejob_hooks);
+		delete_node(&phook->hi_movejob_hooks);
 		insert_hook_sort_order(HOOK_EVENT_MOVEJOB,
 			&svr_movejob_hooks, phook);
 	}
 
 	if (phook->event & HOOK_EVENT_RUNJOB) {
-		delete_link(&phook->hi_runjob_hooks);
+		delete_node(&phook->hi_runjob_hooks);
 		insert_hook_sort_order(HOOK_EVENT_RUNJOB,
 			&svr_runjob_hooks, phook);
 	}
 
 	if (phook->event & HOOK_EVENT_EXECJOB_BEGIN) {
-		delete_link(&phook->hi_execjob_begin_hooks);
+		delete_node(&phook->hi_execjob_begin_hooks);
 		insert_hook_sort_order(HOOK_EVENT_EXECJOB_BEGIN,
 			&svr_execjob_begin_hooks, phook);
 	}
 
 	if (phook->event & HOOK_EVENT_EXECJOB_PROLOGUE) {
-		delete_link(&phook->hi_execjob_prologue_hooks);
+		delete_node(&phook->hi_execjob_prologue_hooks);
 		insert_hook_sort_order(HOOK_EVENT_EXECJOB_PROLOGUE,
 			&svr_execjob_prologue_hooks, phook);
 	}
 
 	if (phook->event & HOOK_EVENT_EXECJOB_EPILOGUE) {
-		delete_link(&phook->hi_execjob_epilogue_hooks);
+		delete_node(&phook->hi_execjob_epilogue_hooks);
 		insert_hook_sort_order(HOOK_EVENT_EXECJOB_EPILOGUE,
 			&svr_execjob_epilogue_hooks, phook);
 	}
 
 	if (phook->event & HOOK_EVENT_EXECJOB_END) {
-		delete_link(&phook->hi_execjob_end_hooks);
+		delete_node(&phook->hi_execjob_end_hooks);
 		insert_hook_sort_order(HOOK_EVENT_EXECJOB_END,
 			&svr_execjob_end_hooks, phook);
 	}
 
 	if (phook->event & HOOK_EVENT_EXECJOB_PRETERM) {
-		delete_link(&phook->hi_execjob_preterm_hooks);
+		delete_node(&phook->hi_execjob_preterm_hooks);
 		insert_hook_sort_order(HOOK_EVENT_EXECJOB_PRETERM,
 			&svr_execjob_preterm_hooks, phook);
 	}
 
 	if (phook->event & HOOK_EVENT_EXECJOB_LAUNCH) {
-		delete_link(&phook->hi_execjob_launch_hooks);
+		delete_node(&phook->hi_execjob_launch_hooks);
 		insert_hook_sort_order(HOOK_EVENT_EXECJOB_LAUNCH,
 			&svr_execjob_launch_hooks, phook);
 	}
 
 	if (phook->event & HOOK_EVENT_EXECHOST_PERIODIC) {
-		delete_link(&phook->hi_exechost_periodic_hooks);
+		delete_node(&phook->hi_exechost_periodic_hooks);
 		insert_hook_sort_order(HOOK_EVENT_EXECHOST_PERIODIC,
 			&svr_exechost_periodic_hooks, phook);
 	}
 
 	if (phook->event & HOOK_EVENT_EXECHOST_STARTUP) {
-		delete_link(&phook->hi_exechost_startup_hooks);
+		delete_node(&phook->hi_exechost_startup_hooks);
 		insert_hook_sort_order(HOOK_EVENT_EXECHOST_STARTUP,
 			&svr_exechost_startup_hooks, phook);
 	}
 
 	if (phook->event & HOOK_EVENT_EXECJOB_ATTACH) {
-		delete_link(&phook->hi_execjob_attach_hooks);
+		delete_node(&phook->hi_execjob_attach_hooks);
 		insert_hook_sort_order(HOOK_EVENT_EXECJOB_ATTACH,
 			&svr_execjob_attach_hooks, phook);
 	}
@@ -1999,59 +1999,59 @@ unset_hook_event(hook *phook, char *msg, size_t msg_len)
 	}
 
 	if (phook->event & HOOK_EVENT_QUEUEJOB)
-		delete_link(&phook->hi_queuejob_hooks);
+		delete_node(&phook->hi_queuejob_hooks);
 
 	if (phook->event & HOOK_EVENT_MODIFYJOB)
-		delete_link(&phook->hi_modifyjob_hooks);
+		delete_node(&phook->hi_modifyjob_hooks);
 
 	if (phook->event & HOOK_EVENT_RESVSUB)
-		delete_link(&phook->hi_resvsub_hooks);
+		delete_node(&phook->hi_resvsub_hooks);
 
 	if (phook->event & HOOK_EVENT_MOVEJOB)
-		delete_link(&phook->hi_movejob_hooks);
+		delete_node(&phook->hi_movejob_hooks);
 
 	if (phook->event & HOOK_EVENT_RUNJOB)
-		delete_link(&phook->hi_runjob_hooks);
+		delete_node(&phook->hi_runjob_hooks);
 
 	if (phook->event & HOOK_EVENT_PROVISION)
-		delete_link(&phook->hi_provision_hooks);
+		delete_node(&phook->hi_provision_hooks);
 
 	if (phook->event & HOOK_EVENT_PERIODIC)
-		delete_link(&phook->hi_periodic_hooks);
+		delete_node(&phook->hi_periodic_hooks);
 
 	if (phook->event & HOOK_EVENT_EXECJOB_BEGIN) {
-		delete_link(&phook->hi_execjob_begin_hooks);
+		delete_node(&phook->hi_execjob_begin_hooks);
 	}
 
 	if (phook->event & HOOK_EVENT_EXECJOB_PROLOGUE) {
-		delete_link(&phook->hi_execjob_prologue_hooks);
+		delete_node(&phook->hi_execjob_prologue_hooks);
 	}
 
 	if (phook->event & HOOK_EVENT_EXECJOB_EPILOGUE) {
-		delete_link(&phook->hi_execjob_epilogue_hooks);
+		delete_node(&phook->hi_execjob_epilogue_hooks);
 	}
 
 	if (phook->event & HOOK_EVENT_EXECJOB_PRETERM) {
-		delete_link(&phook->hi_execjob_preterm_hooks);
+		delete_node(&phook->hi_execjob_preterm_hooks);
 	}
 
 	if (phook->event & HOOK_EVENT_EXECJOB_LAUNCH) {
-		delete_link(&phook->hi_execjob_launch_hooks);
+		delete_node(&phook->hi_execjob_launch_hooks);
 	}
 
 	if (phook->event & HOOK_EVENT_EXECJOB_END) {
-		delete_link(&phook->hi_execjob_end_hooks);
+		delete_node(&phook->hi_execjob_end_hooks);
 	}
 
 	if (phook->event & HOOK_EVENT_EXECHOST_PERIODIC) {
-		delete_link(&phook->hi_exechost_periodic_hooks);
+		delete_node(&phook->hi_exechost_periodic_hooks);
 	}
 	if (phook->event & HOOK_EVENT_EXECHOST_STARTUP) {
-		delete_link(&phook->hi_exechost_startup_hooks);
+		delete_node(&phook->hi_exechost_startup_hooks);
 	}
 
 	if (phook->event & HOOK_EVENT_EXECJOB_ATTACH) {
-		delete_link(&phook->hi_execjob_attach_hooks);
+		delete_node(&phook->hi_execjob_attach_hooks);
 	}
 
 	phook->event = HOOK_EVENT_DEFAULT;
@@ -2091,85 +2091,85 @@ unset_hook_order(hook *phook, char *msg, size_t msg_len)
 	phook->order = HOOK_ORDER_DEFAULT;
 
 	if (phook->event & HOOK_EVENT_QUEUEJOB) {
-		delete_link(&phook->hi_queuejob_hooks);
+		delete_node(&phook->hi_queuejob_hooks);
 		insert_hook_sort_order(HOOK_EVENT_QUEUEJOB,
 			&svr_queuejob_hooks, phook);
 	}
 
 	if (phook->event & HOOK_EVENT_MODIFYJOB) {
-		delete_link(&phook->hi_modifyjob_hooks);
+		delete_node(&phook->hi_modifyjob_hooks);
 		insert_hook_sort_order(HOOK_EVENT_MODIFYJOB,
 			&svr_modifyjob_hooks, phook);
 	}
 
 	if (phook->event & HOOK_EVENT_RESVSUB) {
-		delete_link(&phook->hi_resvsub_hooks);
+		delete_node(&phook->hi_resvsub_hooks);
 		insert_hook_sort_order(HOOK_EVENT_RESVSUB,
 			&svr_resvsub_hooks, phook);
 	}
 
 	if (phook->event & HOOK_EVENT_MOVEJOB) {
-		delete_link(&phook->hi_movejob_hooks);
+		delete_node(&phook->hi_movejob_hooks);
 		insert_hook_sort_order(HOOK_EVENT_MOVEJOB,
 			&svr_movejob_hooks, phook);
 	}
 
 	if (phook->event & HOOK_EVENT_RUNJOB) {
-		delete_link(&phook->hi_runjob_hooks);
+		delete_node(&phook->hi_runjob_hooks);
 		insert_hook_sort_order(HOOK_EVENT_RUNJOB,
 			&svr_runjob_hooks, phook);
 	}
 
 	if (phook->event & HOOK_EVENT_EXECJOB_BEGIN) {
-		delete_link(&phook->hi_execjob_begin_hooks);
+		delete_node(&phook->hi_execjob_begin_hooks);
 		insert_hook_sort_order(HOOK_EVENT_EXECJOB_BEGIN,
 			&svr_execjob_begin_hooks, phook);
 	}
 
 	if (phook->event & HOOK_EVENT_EXECJOB_PROLOGUE) {
-		delete_link(&phook->hi_execjob_prologue_hooks);
+		delete_node(&phook->hi_execjob_prologue_hooks);
 		insert_hook_sort_order(HOOK_EVENT_EXECJOB_PROLOGUE,
 			&svr_execjob_prologue_hooks, phook);
 	}
 
 	if (phook->event & HOOK_EVENT_EXECJOB_EPILOGUE) {
-		delete_link(&phook->hi_execjob_epilogue_hooks);
+		delete_node(&phook->hi_execjob_epilogue_hooks);
 		insert_hook_sort_order(HOOK_EVENT_EXECJOB_EPILOGUE,
 			&svr_execjob_epilogue_hooks, phook);
 	}
 
 	if (phook->event & HOOK_EVENT_EXECJOB_END) {
-		delete_link(&phook->hi_execjob_end_hooks);
+		delete_node(&phook->hi_execjob_end_hooks);
 		insert_hook_sort_order(HOOK_EVENT_EXECJOB_END,
 			&svr_execjob_end_hooks, phook);
 	}
 
 	if (phook->event & HOOK_EVENT_EXECJOB_PRETERM) {
-		delete_link(&phook->hi_execjob_preterm_hooks);
+		delete_node(&phook->hi_execjob_preterm_hooks);
 		insert_hook_sort_order(HOOK_EVENT_EXECJOB_PRETERM,
 			&svr_execjob_preterm_hooks, phook);
 	}
 
 	if (phook->event & HOOK_EVENT_EXECJOB_LAUNCH) {
-		delete_link(&phook->hi_execjob_launch_hooks);
+		delete_node(&phook->hi_execjob_launch_hooks);
 		insert_hook_sort_order(HOOK_EVENT_EXECJOB_LAUNCH,
 			&svr_execjob_launch_hooks, phook);
 	}
 
 	if (phook->event & HOOK_EVENT_EXECHOST_PERIODIC) {
-		delete_link(&phook->hi_exechost_periodic_hooks);
+		delete_node(&phook->hi_exechost_periodic_hooks);
 		insert_hook_sort_order(HOOK_EVENT_EXECHOST_PERIODIC,
 			&svr_exechost_periodic_hooks, phook);
 	}
 
 	if (phook->event & HOOK_EVENT_EXECHOST_STARTUP) {
-		delete_link(&phook->hi_exechost_startup_hooks);
+		delete_node(&phook->hi_exechost_startup_hooks);
 		insert_hook_sort_order(HOOK_EVENT_EXECHOST_STARTUP,
 			&svr_exechost_startup_hooks, phook);
 	}
 
 	if (phook->event & HOOK_EVENT_EXECJOB_ATTACH) {
-		delete_link(&phook->hi_execjob_attach_hooks);
+		delete_node(&phook->hi_execjob_attach_hooks);
 		insert_hook_sort_order(HOOK_EVENT_EXECJOB_ATTACH,
 			&svr_execjob_attach_hooks, phook);
 	}
@@ -2297,7 +2297,7 @@ hook_alloc(void)
 	hook_init(phook, NULL);
 
 	clear_hook_links(phook);
-	append_link(&svr_allhooks, &phook->hi_allhooks, phook);
+	append_node(&svr_allhooks, &phook->hi_allhooks, phook);
 
 	return (phook);
 }
@@ -3197,7 +3197,7 @@ print_hooks(unsigned int event)
 {
 	hook	*phook;
 	int	i;
-	pbs_list_head l_elem;
+	pbs_list_node l_elem;
 	char    ev_str[40];
 	char	heading[80];
 
@@ -3369,7 +3369,7 @@ hook_recov(char	*filename, FILE	*hookfp, char *msg, size_t msg_len,
 	if (phook != NULL) {
 		hook_init(phook, pyfree_func);
 		clear_hook_links(phook);
-		append_link(&svr_allhooks, &phook->hi_allhooks, phook);
+		append_node(&svr_allhooks, &phook->hi_allhooks, phook);
 		created_here = 0;
 	} else {
 		phook = hook_alloc();
@@ -3561,7 +3561,7 @@ hook_recov_error:
 		/* reuse phook later */
 		hook_init(phook, pyfree_func);
 		clear_hook_links(phook);
-		append_link(&svr_allhooks, &phook->hi_allhooks, phook);
+		append_node(&svr_allhooks, &phook->hi_allhooks, phook);
 		return ((hook *)0);
 	}
 }

@@ -69,7 +69,7 @@
 #include "libsec.h"
 #include "pbs_error.h"
 #include "pbs_internal.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "job.h"
 #include "svrfunc.h"
@@ -90,7 +90,7 @@ static conn_t **svr_conn;    /* list of pointers to connections indexed by the s
 #define CONNS_ARRAY_INCREMENT	100 /* Increases this many more connection pointers when dynamically allocating memory for svr_conn */
 static int conns_array_size = 0;  /* Size of the svr_conn list, initialized to 0 */
 
-pbs_list_head svr_allconns; /* head of the linked list of active connections */
+pbs_list_node svr_allconns; /* head of the linked list of active connections */
 
 /*
  * The following data is private to this set of network interface routines.
@@ -224,7 +224,7 @@ void
 connection_init(void) {
 	conn_t *cp = NULL;
 
-	if(!svr_allconns.ll_next) {
+	if(!svr_allconns.next) {
 		CLEAR_HEAD(svr_allconns);
 		return;
 	}
@@ -684,8 +684,8 @@ add_conn(int sd, enum conn_type type, pbs_net_t addr, unsigned int port, void (*
 	svr_conn[idx] = conn;
 
 	/* Add to list of connections */
-	CLEAR_LINK(conn->cn_link);
-	append_link(&svr_allconns, &conn->cn_link, conn);
+	CLEAR_NODE(conn->cn_link);
+	append_node(&svr_allconns, &conn->cn_link, conn);
 
 	if (tpp_em_add_fd(poll_context, sd, EM_IN | EM_HUP | EM_ERR) < 0) {
 		int err = errno;
@@ -845,7 +845,7 @@ cleanup_conn(int idx)
 	}
 
 	/* Remove connection from the linked list */
-	delete_link(&svr_conn[idx]->cn_link);
+	delete_node(&svr_conn[idx]->cn_link);
 
 	/* Free the connection memory */
 	free(svr_conn[idx]);

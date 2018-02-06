@@ -55,7 +55,7 @@
 #endif
 #include <sys/stat.h>
 #include "libpbs.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "server_limits.h"
 #include "attribute.h"
 #include "job.h"
@@ -114,7 +114,7 @@ int	   buflen;	/* the length of the above buffer */
 {
 	int       need;
 	svrattrl *patlist;
-	pbs_list_head svlist;
+	pbs_list_node svlist;
 #ifdef WIN32
 	int tmp_buflen = buflen;
 #endif

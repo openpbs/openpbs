@@ -80,7 +80,7 @@
 
 #include "libpbs.h"
 #include "pbs_error.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "server_limits.h"
 #include "work_task.h"
@@ -155,7 +155,7 @@ extern	char	*log_file;
 extern	char	path_log[];
 extern  char    *path_rescdef;
 extern char     *path_users;
-extern	pbs_list_head svr_alljobs;
+extern	pbs_list_node svr_alljobs;
 extern time_t time_now;
 extern long	svr_history_enable;
 extern long	svr_history_duration;
@@ -509,7 +509,7 @@ post_movejob(struct work_task *pwt)
 int
 send_job_exec(job *jobp, pbs_net_t hostaddr, int port, struct batch_request *request)
 {
-	pbs_list_head attrl;
+	pbs_list_node attrl;
 	attribute *pattr;
 	mominfo_t *pmom = NULL;
 	int stream = -1;
@@ -575,7 +575,7 @@ send_job_exec(job *jobp, pbs_net_t hostaddr, int port, struct batch_request *req
 		goto send_err;
 
 	/* add to pjob->svrtask list so its automatically cleared when job is purged */
-	append_link(&jobp->ji_svrtask, &ptask->wt_linkobj, ptask);
+	append_node(&jobp->ji_svrtask, &ptask->wt_linkobj, ptask);
 
 	/* we cannot use the same msgid, since it is not part of the preq,
 	 * make a dup of it, and we can freely free it
@@ -744,7 +744,7 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 		return (-1);
 	} else {
 		ptask->wt_parm2 = jobp;
-		append_link(&((job *)jobp)->ji_svrtask, &ptask->wt_linkobj, ptask);
+		append_node(&((job *)jobp)->ji_svrtask, &ptask->wt_linkobj, ptask);
 	}
 
 	script_name[0] = '\0';
@@ -810,7 +810,7 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 	sprintf(buf, "move_type=%d\n", move_type);
 	win_pwrite(&pio, buf, strlen(buf));
 
-	sprintf(buf, "in_server=%d\n", is_linked(&svr_alljobs, &jobp->ji_alljobs));
+	sprintf(buf, "in_server=%d\n", is_in_list(&svr_alljobs, &jobp->ji_alljobs));
 	win_pwrite(&pio, buf, strlen(buf));
 
 	sprintf(buf, "server_name=%s\n", (server_name?server_name:""));
@@ -870,7 +870,7 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 	win_pclose2(&pio);	/* closes all handles except the process handle */
 	return (2);
 #else
-	pbs_list_head	 attrl;
+	pbs_list_node	 attrl;
 	enum conn_type   cntype = ToServerDIS;
 	int		 con;
 	char		*credbuf = NULL;
@@ -954,7 +954,7 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 			return (-1);
 		} else {
 			ptask->wt_parm2 = jobp;
-			append_link(&((job *)jobp)->ji_svrtask,
+			append_node(&((job *)jobp)->ji_svrtask,
 				&ptask->wt_linkobj, ptask);
 		}
 		return 2;

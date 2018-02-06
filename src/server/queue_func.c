@@ -64,7 +64,7 @@
 #include "pbs_ifl.h"
 #include <errno.h>
 #include <string.h>
-#include "list_link.h"
+#include "linked_list.h"
 #include "log.h"
 #include "attribute.h"
 #include "server_limits.h"
@@ -84,7 +84,7 @@
 extern char     *msg_err_unlink;
 extern char	*path_queues;
 extern struct    server server;
-extern pbs_list_head svr_queues;
+extern pbs_list_node svr_queues;
 extern time_t	 time_now;
 extern long	 svr_history_enable;
 #ifndef PBS_MOM
@@ -118,10 +118,10 @@ que_alloc(char *name)
 	(void)memset((char *)pq, (int)0, (size_t)sizeof(pbs_queue));
 	pq->qu_qs.qu_type = QTYPE_Unset;
 	CLEAR_HEAD(pq->qu_jobs);
-	CLEAR_LINK(pq->qu_link);
+	CLEAR_NODE(pq->qu_link);
 
 	strncpy(pq->qu_qs.qu_name, name, PBS_MAXQUEUENAME);
-	append_link(&svr_queues, &pq->qu_link, pq);
+	append_node(&svr_queues, &pq->qu_link, pq);
 	server.sv_qs.sv_numque++;
 
 	/* set the working attributes to "unspecified" */
@@ -162,7 +162,7 @@ que_free(pbs_queue *pq)
 	/* now free the main structure */
 
 	server.sv_qs.sv_numque--;
-	delete_link(&pq->qu_link);
+	delete_node(&pq->qu_link);
 	(void)free((char *)pq);
 }
 
@@ -228,7 +228,7 @@ que_purge(pbs_queue *pque)
 			pjob = (job *)GET_NEXT(pque->qu_jobs);
 			while (pjob) {
 				nxpjob = (job *)GET_NEXT(pjob->ji_jobque);
-				delete_link(&pjob->ji_jobque);
+				delete_node(&pjob->ji_jobque);
 				--pque->qu_numjobs;
 				--pque->qu_njstate[pjob->ji_qs.ji_state];
 				pjob->ji_qhdr = (pbs_queue *)0;

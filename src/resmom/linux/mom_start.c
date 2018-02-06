@@ -56,7 +56,7 @@
 #include <sys/utsname.h>
 #include <ctype.h>
 #include "libpbs.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "log.h"
 #include "server_limits.h"
 #include "attribute.h"
@@ -138,13 +138,13 @@ enum sotype {sotype_job, sotype_csa};
 
 extern	int		exiting_tasks;
 extern	char		mom_host[];
-extern	pbs_list_head	svr_alljobs;
+extern	pbs_list_node	svr_alljobs;
 extern	int		termin_child;
 extern	int		num_acpus;
 extern	int		num_pcpus;
 extern	int		svr_delay_entry;
 
-extern	pbs_list_head	task_list_event;
+extern	pbs_list_node	task_list_event;
 
 #if	MOM_CPUSET || MOM_ALPS
 extern	char		*path_jobs;

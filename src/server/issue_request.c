@@ -64,7 +64,7 @@
 #include "dis.h"
 #include "libpbs.h"
 #include "server_limits.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "credential.h"
 #include "batch_request.h"
@@ -80,7 +80,7 @@
 /* Global Data Items: */
 
 extern struct connect_handle connection[];
-extern pbs_list_head task_list_event;
+extern pbs_list_node task_list_event;
 extern time_t	time_now;
 extern char	*msg_issuebad;
 extern char     *msg_norelytomom;
@@ -134,7 +134,7 @@ relay_to_mom2(job *pjob, struct batch_request *request,
 	struct work_task *pwt;
 	int prot;
 	mominfo_t *pmom = 0;
-	pbs_list_head	*mom_tasklist_ptr = NULL;
+	pbs_list_node	*mom_tasklist_ptr = NULL;
 
 	momaddr = pjob->ji_qs.ji_un.ji_exect.ji_momaddr;
 	momport = pjob->ji_qs.ji_un.ji_exect.ji_momport;
@@ -161,9 +161,9 @@ relay_to_mom2(job *pjob, struct batch_request *request,
 	rc = issue_Drequest(conn, request, func, &pwt, prot);
 	if ((rc == 0) && (func != release_req)) {
 		/* work-task entry job related rpp, link to the job's list */
-		append_link(&pjob->ji_svrtask, &pwt->wt_linkobj, pwt);
+		append_node(&pjob->ji_svrtask, &pwt->wt_linkobj, pwt);
 		if (prot == PROT_RPP)
-			append_link(mom_tasklist_ptr, &pwt->wt_linkobj2, pwt); /* if rpp, link to mom list as well */
+			append_node(mom_tasklist_ptr, &pwt->wt_linkobj2, pwt); /* if rpp, link to mom list as well */
 	}
 
 	if (ppwt != NULL)
@@ -354,10 +354,10 @@ add_mom_deferred_list(int stream, mominfo_t *minfo, void (*func)(), char *msgid,
 	/* remove this task from the event list, as we will be adding to deferred list anyway
 	 * and there is no child process whose exit needs to be reaped
 	 */
-	delete_link(&ptask->wt_linkall);
+	delete_node(&ptask->wt_linkall);
 
 	/* append to the moms deferred command list */
-	append_link(&(((mom_svrinfo_t *) (minfo->mi_data))->msr_deferred_cmds), &ptask->wt_linkobj2, ptask);
+	append_node(&(((mom_svrinfo_t *) (minfo->mi_data))->msr_deferred_cmds), &ptask->wt_linkobj2, ptask);
 	return ptask;
 }
 
@@ -720,7 +720,7 @@ issue_Drequest(int conn,
 			 * since its an rpp delayed task, remove it from the task_event list
 			 * caller will add to moms deferred cmd list
 			 */
-			delete_link(&ptask->wt_linkall);
+			delete_node(&ptask->wt_linkall);
 		}
 		ptask->wt_aux2 = rpp; /* 0 in case of non-TPP */
 		*ppwt = ptask;

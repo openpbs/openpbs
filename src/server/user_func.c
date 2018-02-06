@@ -84,7 +84,7 @@
 #include "pbs_ifl.h"
 #include "log.h"
 #include "user.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "server_limits.h"
 #include "attribute.h"
 #include "credential.h"

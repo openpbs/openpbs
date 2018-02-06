@@ -57,7 +57,7 @@ extern "C" {
 
 /* used to send hook's job delete/requeue request to server */
 struct hook_job_action {
-	pbs_list_link  hja_link;
+	pbs_list_node  hja_link;
 	char           hja_jid[PBS_MAXSVRJOBID+1]; /* job id */
 	unsigned long  hja_actid;		   /* action id number */
 	int            hja_runct;		   /* job's run count */
@@ -67,7 +67,7 @@ struct hook_job_action {
 
 #ifdef VNL_NODENUM
 struct hook_vnl_action {
-	pbs_list_link  hva_link;
+	pbs_list_node  hva_link;
 	unsigned long  hva_actid;		 /* action id number */
 	char           hva_euser[PBS_MAXUSER+1]; /* effective hook user */
 	vnl_t         *hva_vnl;			 /* vnl updates */
@@ -103,7 +103,7 @@ typedef struct mom_hook_input {
 	char	**env;
 	void	*vnl;
 	pid_t	pid;
-	pbs_list_head	*jobs_list;
+	pbs_list_node	*jobs_list;
 } mom_hook_input_t;
 
 
@@ -137,7 +137,7 @@ typedef struct mom_hook_output {
 	hook		**last_phook;
 	unsigned int	*fail_action;
 	char		**progname;
-	pbs_list_head	*argv;
+	pbs_list_node	*argv;
 	char		**env;
 	void		*vnl;
 } mom_hook_output_t;
@@ -164,7 +164,7 @@ extern int
 get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 	char *reject_msg, int reject_msg_size, int *reject_rerunjob,
 	int *reject_deletejob, int *reboot_flag, char *reboot_cmd,
-	int reboot_cmd_size, pbs_list_head *p_obj, job *pjob, hook *phook,
+	int reboot_cmd_size, pbs_list_node *p_obj, job *pjob, hook *phook,
 	int copy_file, mom_hook_output_t *hook_output);
 
 extern void
@@ -180,7 +180,7 @@ extern void
 send_hook_fail_action(hook *);
 
 extern void
-vna_list_free(pbs_list_head);
+vna_list_free(pbs_list_node);
 
 extern void
 mom_hook_input_init(mom_hook_input_t *hook_input);

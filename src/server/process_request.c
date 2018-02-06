@@ -95,7 +95,7 @@
 #include "libpbs.h"
 #include "pbs_error.h"
 #include "server_limits.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "job.h"
 #include "server.h"
@@ -113,12 +113,12 @@
 
 /* global data items */
 
-pbs_list_head svr_requests;
+pbs_list_node svr_requests;
 
 
 extern struct server server;
 extern char      server_host[];
-extern pbs_list_head svr_newjobs;
+extern pbs_list_node svr_newjobs;
 extern time_t    time_now;
 extern char  *msg_err_noqueue;
 extern char  *msg_err_malloc;
@@ -1251,7 +1251,7 @@ struct batch_request *alloc_br(int type)
 	else {
 		memset((void *)req, (int)0, sizeof(struct batch_request));
 		req->rq_type = type;
-		CLEAR_LINK(req->rq_link);
+		CLEAR_NODE(req->rq_link);
 		req->rq_conn = -1;		/* indicate not connected */
 		req->rq_orgconn = -1;		/* indicate not connected */
 		req->rq_time = time_now;
@@ -1259,7 +1259,7 @@ struct batch_request *alloc_br(int type)
 		req->isrpp = 0; /* not rpp by default */
 		req->rppcmd_msgid = NULL; /* NULL msgid to boot */
 		req->rq_reply.brp_choice = BATCH_REPLY_CHOICE_NULL;
-		append_link(&svr_requests, &req->rq_link, req);
+		append_node(&svr_requests, &req->rq_link, req);
 	}
 	return (req);
 }
@@ -1291,7 +1291,7 @@ close_quejob(int sfds)
 					 * it here as TRANSICM until we hear from the sending
 					 * server again to commit.
 					 */
-					delete_link(&pjob->ji_alljobs);
+					delete_node(&pjob->ji_alljobs);
 					pjob->ji_qs.ji_state = JOB_STATE_QUEUED;
 					pjob->ji_qs.ji_substate = JOB_SUBSTATE_QUEUED;
 					if (svr_enquejob(pjob))
@@ -1304,7 +1304,7 @@ close_quejob(int sfds)
 
 				/* else delete the job */
 
-				delete_link(&pjob->ji_alljobs);
+				delete_node(&pjob->ji_alljobs);
 				job_purge(pjob);
 			}
 			break;
@@ -1488,7 +1488,7 @@ decode_DIS_RelnodesJob(int sock, struct batch_request *preq)
 void
 free_br(struct batch_request *preq)
 {
-	delete_link(&preq->rq_link);
+	delete_node(&preq->rq_link);
 	reply_free(&preq->rq_reply);
 
 	if (preq->rq_parentbr) {
@@ -1648,7 +1648,7 @@ freebr_cpyfile(struct rq_cpyfile *pcf)
 	struct rqfpair *ppair;
 
 	while ((ppair = (struct rqfpair *)GET_NEXT(pcf->rq_pair)) != NULL) {
-		delete_link(&ppair->fp_link);
+		delete_node(&ppair->fp_link);
 		if (ppair->fp_local)
 			(void)free(ppair->fp_local);
 		if (ppair->fp_rmt)
@@ -1669,7 +1669,7 @@ freebr_cpyfile_cred(struct rq_cpyfile_cred *pcfc)
 
 	while ((ppair = (struct rqfpair *)GET_NEXT(pcfc->rq_copyfile.rq_pair))
 		!= NULL) {
-		delete_link(&ppair->fp_link);
+		delete_node(&ppair->fp_link);
 		if (ppair->fp_local)
 			(void)free(ppair->fp_local);
 		if (ppair->fp_rmt)

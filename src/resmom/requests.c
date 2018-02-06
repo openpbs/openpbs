@@ -64,7 +64,7 @@
 #include "libpbs.h"
 #include "pbs_error.h"
 #include "server_limits.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "ticket.h"
 #include "credential.h"
 #include "attribute.h"
@@ -93,7 +93,7 @@
 
 extern unsigned int	default_server_port;
 extern int		exiting_tasks;
-extern pbs_list_head	svr_alljobs;
+extern pbs_list_node	svr_alljobs;
 extern char		mom_host[];
 #ifdef	WIN32
 extern char		*mom_home;
@@ -1244,8 +1244,8 @@ req_py_spawn(struct batch_request *preq)
 		pjob->ji_qs.ji_jobid, log_buffer);
 	free(allargs);
 
-	CLEAR_LINK(op->oe_next);
-	append_link(&ptask->ti_obits, &op->oe_next, op);
+	CLEAR_NODE(op->oe_next);
+	append_node(&ptask->ti_obits, &op->oe_next, op);
 	op->oe_type = OBIT_TYPE_BREVENT;
 	op->oe_u.oe_preq = preq;
 
@@ -2891,7 +2891,7 @@ post_cpyfile(struct work_task *pwt)
 	DBPRT(("%s\n", log_buffer))
 	log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_DEBUG, jobid, log_buffer);
 
-	delete_link(&cpyinfo->al_link);
+	delete_node(&cpyinfo->al_link);
 	free(cpyinfo->jobid);
 	cpyinfo->jobid = NULL;
 	free(cpyinfo);
@@ -2960,7 +2960,7 @@ req_cpyfile(struct batch_request *preq)
 	struct proc_ctrl	proc_info;
 	extern char			*path_log;
 	extern char			*log_file;
-	extern pbs_list_head task_list_event;
+	extern pbs_list_node task_list_event;
 	int					is_network_drive = 0;
 	char				current_dir[MAX_PATH + 1] = {'\0'};
 	int 				direct_write = 0;
@@ -3072,7 +3072,7 @@ req_cpyfile(struct batch_request *preq)
 	}
 
 	memset(cpyinfo, 0, sizeof(copy_info));
-	CLEAR_LINK(cpyinfo->al_link);
+	CLEAR_NODE(cpyinfo->al_link);
 
 	if ((cpyinfo->jobid = strdup(rqcpf->rq_jobid)) == NULL) {
 		(void)snprintf(log_buffer, sizeof(log_buffer), "unable to allocate memory for copy_info->jobid for job %s", rqcpf->rq_jobid);
@@ -3137,7 +3137,7 @@ req_cpyfile(struct batch_request *preq)
 	}
 	
 	cpyinfo->ptask = ptask;
-	append_link(&mom_copyreqs_list, &cpyinfo->al_link, cpyinfo);
+	append_node(&mom_copyreqs_list, &cpyinfo->al_link, cpyinfo);
 
 	addpid(cpyinfo->pio.pi.hProcess);
 

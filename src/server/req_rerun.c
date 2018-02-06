@@ -57,7 +57,7 @@
 #include "libpbs.h"
 #include <signal.h>
 #include "server_limits.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "work_task.h"
 #include "attribute.h"
 #include "server.h"
@@ -508,7 +508,7 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 	if (ptask) {
 		/* this ensures that the ptask created gets cleared in case */
 		/* pjob gets deleted before the task is served */
-		append_link(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);
+		append_node(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);
 	}
 
 	/* set no-timeout flag on connection to client */

@@ -47,7 +47,7 @@
 #include <string.h>
 #include <pbs_ifl.h>
 #include "log.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "resource.h"
 #include "pbs_error.h"
@@ -200,7 +200,7 @@ decode_resc(struct attribute *patr, char *name, char *rescn, char *val)
  *
  */
 int
-encode_resc(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
+encode_resc(attribute *attr, pbs_list_node *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
 	int	    dflt;
 	resource   *prsc;
@@ -437,7 +437,7 @@ free_resc(attribute *pattr)
 	pr = (resource *)GET_NEXT(pattr->at_val.at_list);
 	while (pr != (resource *)0) {
 		next = (resource *)GET_NEXT(pr->rs_link);
-		delete_link(&pr->rs_link);
+		delete_node(&pr->rs_link);
 		if (pr->rs_value.at_flags & ATR_VFLAG_INDIRECT)
 			free_str(&pr->rs_value);
 		else
@@ -584,7 +584,7 @@ add_resource_entry(attribute *pattr, resource_def *prdef)
 		log_err(-1, "add_resource_entry", "unable to malloc space");
 		return ((resource *)0);
 	}
-	CLEAR_LINK(new->rs_link);
+	CLEAR_NODE(new->rs_link);
 	new->rs_defin = prdef;
 	new->rs_value.at_type = prdef->rs_type;
 	new->rs_value.at_flags = 0;
@@ -593,9 +593,9 @@ add_resource_entry(attribute *pattr, resource_def *prdef)
 	prdef->rs_free(&new->rs_value);
 
 	if (pr != (resource *)0) {
-		insert_link(&pr->rs_link, &new->rs_link, new, LINK_INSET_BEFORE);
+		insert_node(&pr->rs_link, &new->rs_link, new, NODE_INSET_BEFORE);
 	} else {
-		append_link(&pattr->at_val.at_list, &new->rs_link, new);
+		append_node(&pattr->at_val.at_list, &new->rs_link, new);
 	}
 	pattr->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 	return (new);

@@ -71,7 +71,7 @@
 
 #include "pbs_error.h"
 #include "portability.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "server_limits.h"
 #include "attribute.h"
 #include "resource.h"
@@ -778,7 +778,7 @@ mom_get_sample()
 	aspidlist_t		*taskpids = 0;
 	ash_t			ash;
 	extern aserror_t 	aserrorcode;
-	extern pbs_list_head	svr_alljobs;
+	extern pbs_list_node	svr_alljobs;
 	extern time_t time_last_sample;
 
 	time_last_sample = time_now;

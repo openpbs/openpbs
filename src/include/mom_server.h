@@ -42,8 +42,8 @@ extern "C" {
 #endif
 
 
-#ifndef	_LIST_LINK_H
-#include "list_link.h"
+#ifndef	_LINKED_LIST_H
+#include "linked_list.h"
 #endif
 
 /*
@@ -61,7 +61,7 @@ struct resc_used_update {
 	char			*ru_comment;	/* a general message	     */
 	int			 ru_status;	/* job exit status (or zero) */
 	int			 ru_hop;	/* hop/run count of job	*/
-	pbs_list_head		 ru_attr;	/* list of svrattrl */
+	pbs_list_node		 ru_attr;	/* list of svrattrl */
 };
 
 #define FREE_RUU(x) \

@@ -71,7 +71,7 @@ extern void prov_track_save(void);
  */
 
 struct prov_vnode_info {
-	pbs_list_link		al_link;
+	pbs_list_node		al_link;
 	char			*pvnfo_vnode;
 	char			*pvnfo_aoe_req;
 	char			pvnfo_jobid[PBS_MAXSVRJOBID+1];  /* job id */

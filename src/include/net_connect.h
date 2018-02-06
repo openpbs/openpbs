@@ -46,7 +46,7 @@
  */
 #include <sys/types.h>
 #include <unistd.h>
-#include "list_link.h"
+#include "linked_list.h"
 #define PBS_NET_H
 #ifndef PBS_NET_TYPE
 typedef unsigned long pbs_net_t;        /* for holding host addresses */
@@ -216,6 +216,6 @@ struct connection {
 	void            *cn_data;         /* pointer to some data for cn_func */
 	char            cn_username[PBS_MAXUSER];
 	char            cn_hostname[PBS_MAXHOSTNAME+1];
-	pbs_list_link   cn_link;  /* link to the next connection in the linked list */
+	pbs_list_node   cn_link;  /* link to the next connection in the linked list */
 };
 #endif	/* _NET_CONNECT_H */

@@ -40,7 +40,7 @@
 #include <sys/types.h>
 #include <string.h>
 #include "portability.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "attribute.h"
 #include "server_limits.h"
 #include "job.h"

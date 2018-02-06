@@ -61,7 +61,7 @@ extern "C" {
 #include <limits.h>
 
 #include "pbs_ifl.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "pbs_error.h"
 #include "pbs_internal.h"
 #include "pbs_client_thread.h"
@@ -155,11 +155,11 @@ struct brp_select {		/* reply to Select Job Request */
 };
 
 struct brp_status {		/* reply to Status Job/Queue/Server Request */
-	pbs_list_link brp_stlink;
+	pbs_list_node brp_stlink;
 	int	  brp_objtype;
 	char	  brp_objname[(PBS_MAXSVRJOBID > PBS_MAXDEST ?
 		PBS_MAXSVRJOBID : PBS_MAXDEST) + 1];
-	pbs_list_head brp_attr;		/* head of svrattrlist */
+	pbs_list_node brp_attr;		/* head of svrattrlist */
 };
 
 struct brp_cmdstat {
@@ -199,7 +199,7 @@ struct batch_reply {
 	union {
 		char	  brp_jid[PBS_MAXSVRJOBID+1];
 		struct brp_select *brp_select;	/* select replies */
-		pbs_list_head 	   brp_status;	/* status (svr) replies */
+		pbs_list_node 	   brp_status;	/* status (svr) replies */
 		struct brp_cmdstat *brp_statc;  /* status (cmd) replies) */
 		struct {
 			int   brp_txtlen;
@@ -343,7 +343,7 @@ extern struct batch_status *PBSD_status(int c, int function,
 extern struct batch_status *PBSD_status_get(int c);
 extern char * PBSD_queuejob(int c, char *j, char *d,
 	struct attropl *a, char *ex, int rpp, char **msgid);
-extern int decode_DIS_svrattrl(int sock, pbs_list_head *phead);
+extern int decode_DIS_svrattrl(int sock, pbs_list_node *phead);
 extern int decode_DIS_attrl(int sock, struct attrl **ppatt);
 extern int decode_DIS_JobId(int socket, char *jobid);
 extern int decode_DIS_replyCmd(int socket, struct batch_reply *);

@@ -72,7 +72,7 @@
 
 #include "pbs_error.h"
 #include "portability.h"
-#include "list_link.h"
+#include "linked_list.h"
 #include "server_limits.h"
 #include "attribute.h"
 #include "resource.h"
@@ -171,7 +171,7 @@ extern	int	num_acpus;
 extern	int	num_pcpus;
 extern  u_Long	av_phy_mem;
 extern	int	internal_state_update;
-extern  pbs_list_head svr_alljobs;
+extern  pbs_list_node svr_alljobs;
 extern  struct rlimit64 orig_stack_size;	/* see mom_main.c */
 
 /* Bitfields used to maintain state of nodes that are "out of service". */
@@ -774,7 +774,7 @@ set_checkpoint_upgrade(char *value)
 static int
 injob(job *pjob, proc_info *pi)
 {
-	pbs_list_head	phead;
+	pbs_list_node	phead;
 	task            *ptask;
 	pid_t           key;
 
@@ -1353,7 +1353,7 @@ mom_get_sample()
 	task	*ptask;
 	pid_t	*sids;
 	int	thissid, maxsids;
-	extern pbs_list_head	svr_alljobs;
+	extern pbs_list_node	svr_alljobs;
 
 	/* Get a lock on the shared segment. */
 	ACQUIRE_LOCK(mom_shared->share_lock);
