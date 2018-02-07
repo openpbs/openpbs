@@ -314,6 +314,7 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 			}
 
 			qinfo_arr[qidx++] = qinfo;
+			qinfo_arr[qidx] = NULL;
 
 		} else
 			free_queue_info(qinfo);
