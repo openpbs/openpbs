@@ -7,9 +7,8 @@
 * *Bugs: if the issue is intermittent and not easily reproducible, describe the situation/scenarios/configurations where it was likely triggered*
 * *If there is an issue ID, link to it: [PP-XXXX](https://pbspro.atlassian.net/browse/PP-XXXX)*
 
-#### Affected Platform(s) and PBS Version
+#### Affected Platform(s)
 * *Platform (for example CentOS 7.2)*
-* *Bugs: version where observed (for example PBS 14.2.1)*
 
 #### Cause / Analysis / Design
 * *If there is an external design, link to it **[project documentation area](https://pbspro.atlassian.net/wiki/display/PD)***
