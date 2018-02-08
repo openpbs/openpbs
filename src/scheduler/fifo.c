@@ -2449,8 +2449,8 @@ sched_settings_frm_svr(struct batch_status *status)
 		}
 
 		if (tmp_priv_dir != NULL) {
-			int c;
-			#if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
+			int c = -1;
+#if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
 				c  = chk_file_sec(tmp_priv_dir, 1, 0, S_IWGRP|S_IWOTH, 1);
 				c |= chk_file_sec(pbs_conf.pbs_environment, 0, 0, S_IWGRP|S_IWOTH, 0);
 				if (c != 0) {
@@ -2459,7 +2459,7 @@ sched_settings_frm_svr(struct batch_status *status)
 					strncpy(comment, "PBS failed validation checks for sched_priv directory", MAX_LOG_SIZE -1);
 					priv_dir_update_fail = 1;
 				}
-			#endif  /* not DEBUG and not NO_SECURITY_CHECK */
+#endif  /* not DEBUG and not NO_SECURITY_CHECK */
 			if (c == 0) {
 				if (chdir(tmp_priv_dir) == -1) {
 					snprintf(log_buffer, sizeof(log_buffer), "PBS failed validation checks for directory %s", tmp_priv_dir);
