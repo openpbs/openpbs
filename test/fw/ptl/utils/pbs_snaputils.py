@@ -48,157 +48,6 @@ from ptl.utils.pbs_dshutils import DshUtils
 from ptl.utils.pbs_logutils import PBSLogUtils
 from ptl.utils.pbs_anonutils import PBSAnonymizer
 
-BUILT_IN_RSCS = """Name: cput
-    type = 1
-    flag = 3135
-Name: mem
-    type = 5
-    flag = 181311
-Name: walltime
-    type = 1
-    flag = 3135
-Name: ncpus
-    type = 1
-    flag = 181311
-Name: arch
-    type = 3
-    flag = 132159
-Name: host
-    type = 3
-    flag = 131135
-Name: vnode
-    type = 3
-    flag = 131135
-Name: aoe
-    type = 3
-    flag = 131135
-Name: min_walltime
-    type = 1
-    flag = 2111
-Name: max_walltime
-    type = 1
-    flag = 2111
-Name: preempt_targets
-    type = 3
-    flag = 63
-Name: naccelerators
-    type = 1
-    flag = 181311
-Name: select
-    type = 3
-    flag = 63
-Name: place
-    type = 3
-    flag = 1087
-Name: nodes
-    type = 3
-    flag = 63
-Name: nodect
-    type = 1
-    flag = 16437
-Name: nchunk
-    type = 1
-    flag = 131133
-Name: vntype
-    type = 3
-    flag = 131135
-Name: mpiprocs
-    type = 1
-    flag = 147519
-Name: ompthreads
-    type = 1
-    flag = 131135
-Name: cpupercent
-    type = 1
-    flag = 61
-Name: file
-    type = 5
-    flag = 1087
-Name: pmem
-    type = 5
-    flag = 1087
-Name: vmem
-    type = 5
-    flag = 181311
-Name: pvmem
-    type = 5
-    flag = 1087
-Name: nice
-    type = 1
-    flag = 1087
-Name: pcput
-    type = 1
-    flag = 1087
-Name: nodemask
-    type = 3
-    flag = 1085
-Name: hpm
-    type = 1
-    flag = 17471
-Name: ssinodes
-    type = 1
-    flag = 1087
-Name: resc
-    type = 3
-    flag = 63
-Name: software
-    type = 3
-    flag = 63
-Name: site
-    type = 3
-    flag = 1087
-Name: exec_vnode
-    type = 3
-    flag = 61
-Name: start_time
-    type = 1
-    flag = 61
-Name: mpphost
-    type = 3
-    flag = 1087
-Name: mpparch
-    type = 3
-    flag = 1087
-Name: mpplabels
-    type = 3
-    flag = 1087
-Name: mppwidth
-    type = 1
-    flag = 1087
-Name: mppdepth
-    type = 1
-    flag = 1087
-Name: mppnppn
-    type = 1
-    flag = 1087
-Name: mppnodes
-    type = 3
-    flag = 3135
-Name: mppmem
-    type = 5
-    flag = 1087
-Name: mppt
-    type = 1
-    flag = 3135
-Name: partition
-    type = 3
-    flag = 1085
-Name: accelerator
-    type = 11
-    flag = 132159
-Name: accelerator_model
-    type = 3
-    flag = 132159
-Name: accelerator_memory
-    type = 5
-    flag = 181311
-Name: accelerator_group
-    type = 3
-    flag = 131135
-Name: |unknown|
-    type = 0
-    flag = 63
-"""
 
 # Define an enum which is used to label various pieces of information
 (   # qstat outputs
@@ -265,8 +114,7 @@ Name: |unknown|
     CORE_SERVER,
     CORE_MOM,
     # Miscellaneous
-    RSCS_ALL,
-    CTIME) = range(56)
+    CTIME) = range(55)
 
 
 # Define paths to various files/directories with respect to the snapshot
@@ -278,7 +126,6 @@ QMGR_PS_PATH = os.path.join(SERVER_DIR, "qmgr_ps.out")
 QSTAT_Q_PATH = os.path.join(SERVER_DIR, "qstat_Q.out")
 QSTAT_QF_PATH = os.path.join(SERVER_DIR, "qstat_Qf.out")
 QMGR_PR_PATH = os.path.join(SERVER_DIR, "qmgr_pr.out")
-RSCS_PATH = os.path.join(SERVER_DIR, "rscs_all")
 # server_priv/
 SVR_PRIV_PATH = "server_priv"
 ACCT_LOGS_PATH = os.path.join("server_priv", "accounting")
@@ -559,8 +406,6 @@ class _PBSSnapUtils(object):
         self.server_info[QSTAT_QF_OUT] = value
         value = (QMGR_PR_PATH, [QMGR_CMD, "-c", "p r"])
         self.server_info[QMGR_PR_OUT] = value
-        value = (RSCS_PATH, None)
-        self.server_info[RSCS_ALL] = value
         value = (SVR_PRIV_PATH, None)
         self.server_info[SVR_PRIV] = value
         value = (SVR_LOGS_PATH, None)
@@ -718,8 +563,13 @@ class _PBSSnapUtils(object):
                 cmd[2] = "\'" + cmd[2] + "\'"
 
         with open(out_path, "w") as out_fd:
-            self.du.run_cmd(host, cmd=cmd, stdout=out_fd,
-                            sudo=self.sudo, as_script=as_script)
+            try:
+                self.du.run_cmd(host, cmd=cmd, stdout=out_fd,
+                                sudo=self.sudo, as_script=as_script)
+            except OSError:
+                # This usually happens when the command is not found
+                # Just return
+                return
 
             if self.anonymize and not skip_anon:
                 self.__anonymize_file(out_path)
@@ -1167,60 +1017,6 @@ class _PBSSnapUtils(object):
         self.__capture_logs(host, pbs_logdir, snap_logdir,
                             self.num_daemon_logs)
 
-    def __capture_rscs_all(self):
-        """
-        Capture built-in as well as custom resources in a file called
-        'rscs_all'
-        """
-        # Parse all custom resources
-        resources = self.server.parse_resources()
-        custom_rscs_names = None
-        if resources is not None:
-            # Convert type and flags to their numeric format
-            for rsc in resources.values():
-                if rsc.type:
-                    rsc.set_type(self.__convert_type_to_numeric(rsc.type))
-                if rsc.flag:
-                    rsc.set_flag(str(self.__convert_flag_to_numeric(rsc.flag)))
-
-            custom_rscs_names = resources.keys()
-
-            # anonymize custom resources
-            if self.anonymize and self.anon_obj.resc_key is not None:
-                self.logger.debug("Anonymizing custom resources")
-                resources = self.anon_obj.anonymize_resource_def(resources)
-                custom_rscs_names = resources.keys()
-
-        if custom_rscs_names is None:
-            custom_rscs_names = []
-
-        # The resourcedef file doesn't define the built-in resources.
-        # Use the build-ins specified in the string "BUILT_IN_RSCS"
-        # This string should be updated with each release PBSPro or
-        # a better way of querying built-ins should be implemented
-        builtin_rscs_str = BUILT_IN_RSCS
-
-        # Write out resources in the following format:
-        # Name: <resource id>
-        #     type = <resource type>
-        #     flag = <resource flag>
-        self.logger.debug("capturing all resources in \"rscs_all\"")
-        snap_rscs = os.path.join(self.snapdir, RSCS_PATH)
-        with open(snap_rscs, "w") as rscfd:
-            # Write out the built-in resources
-            rscfd.write(builtin_rscs_str)
-
-            # Write out the custom resources
-            for rsc in custom_rscs_names:
-                rsc_obj = resources[rsc]
-                rsc_str = "Name: " + rsc_obj.attributes['id']
-                rsc_str += "\n    type = " + str(rsc_obj.attributes['type'])
-                rsc_str += "\n    flag = " + str(rsc_obj.attributes['flag'])
-                rscfd.write(rsc_str + "\n")
-
-        if self.create_tar:
-            self.__add_to_archive(snap_rscs)
-
     def capture_server(self, with_svr_logs=False, with_acct_logs=False):
         """
         Capture PBS server specific information
@@ -1262,9 +1058,6 @@ class _PBSSnapUtils(object):
         if with_acct_logs and self.num_acct_logs > 0:
             # Capture accounting logs
             self.__capture_acct_logs()
-
-        # Capture built-in + custom resources
-        self.__capture_rscs_all()
 
         if self.create_tar:
             return self.outtar_path
