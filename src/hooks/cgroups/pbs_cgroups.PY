@@ -751,7 +751,11 @@ class HookUtils(object):
         Handler for execjob_end events.
         """
         pbs.logmsg(pbs.EVENT_DEBUG4, "%s: Method called" % caller_name())
-        # The cgroup was already deleted in the epilogue handler.
+        # The cgroup is usually deleted in the execjob_epilogue event
+        # There are certain corner cases where epilogue can fail or skip
+        # Delete files again here to make sure we catch those
+        # cgroup.delete() does nothing if files are already deleted
+        cgroup.delete(event.job.id)
         # Remove the assigned_resources and job_env files.
         filelist = []
         filelist.append(os.path.join(cgroup.hook_storage_dir, event.job.id))

@@ -438,8 +438,11 @@ for i in 1 2 3 4; do while : ; do : ; done & done
                                       'pbs_hooks',
                                       'pbs_cgroups.PY')
         self.load_hook(self.hook_file)
+        events = '"execjob_begin,execjob_launch,execjob_attach,'
+        events += 'execjob_epilogue,execjob_end,exechost_startup,'
+        events += 'exechost_periodic"'
         # Enable the cgroups hook
-        conf = {'enabled': 'True', 'freq': 2}
+        conf = {'enabled': 'True', 'freq': 2, 'event': events}
         self.server.manager(MGR_CMD_SET, HOOK, conf, self.hook_name)
         # Restart mom so exechost_startup hook is run
         self.hostA.signal('-HUP')
@@ -572,7 +575,7 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         self.logger.info("Reading file: %s on mom: %s" % (filename, mom))
         if not filename:
             raise ValueError('Invalid filename')
-        for _ in range(10):
+        for _ in range(30):
             if self.du.isfile(hostname=mom, path=filename):
                 break
             time.sleep(1)
@@ -1092,7 +1095,6 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         time.sleep(1)
         self.hostB.log_match("%s is not in " % (self.momB) +
                              "the approved host list: ['%s']" % self.momA,
-                             regexp=True,
                              max_attempts=5,
                              starttime=self.server.ctime)
         cpath = os.path.join(self.paths['memory'], 'pbspro', jid)
@@ -1241,7 +1243,7 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         name = 'CGROUP17'
         self.load_config(self.cfg1 % ("", "", "", ""))
         a = {'Resource_List.select': '2:ncpus=1:mem=300mb',
-             'Resource_List.place': 'scatter', ATTR_N: name,
+             'Resource_List.place': 'scatter:excl', ATTR_N: name,
              ATTR_J: "1-4"}
         j = Job(TEST_USER, attrs=a)
         jid = self.server.submit(j)
@@ -1328,10 +1330,41 @@ time.sleep(20)
         rv2 = self.is_dir(cpath, self.momB)
         self.assertFalse(rv2)
 
+    def test_cgroup_execjob_end_should_delete_cgroup(self):
+        """
+        Test to verify that if execjob_epilogue hook failed to run or to
+        clean up cgroup files for a job, execjob_end hook should clean them up
+        """
+        self.load_config(self.cfg4)
+        # remove epilogue and periodic from the list of events
+        attr = {'enabled': 'True', 'event': '"execjob_begin,execjob_launch,\
+execjob_attach,execjob_end,exechost_startup"'}
+        self.server.manager(MGR_CMD_SET, HOOK, attr, self.hook_name)
+        self.server.expect(NODE, {'state': 'free'})
+        j = Job(TEST_USER)
+        j.set_execargs('/bin/true')
+        jid = self.server.submit(j)
+        # wait for job to finish
+        self.server.expect(JOB, 'queue', id=jid, op=UNSET, max_attempts=10,
+                           interval=1, offset=1)
+        # verify that cgroup files for this job are gone even if
+        # epilogue and periodic events are not disabled
+        for subsys, path in self.paths.items():
+            # only check under subsystems that are enabled
+            enabled_subsys = ['cpuacct', 'cpuset', 'memory', 'memsw']
+            if (any([x in subsys for x in enabled_subsys])):
+                continue
+            filename = os.path.join(path, 'pbspro', str(jid))
+            self.logger.info("Checking file %s" % filename)
+            self.assertFalse(os.path.isfile(filename))
+
     def tearDown(self):
         TestFunctional.tearDown(self)
         self.load_config(self.cfg0)
         self.remove_vntype()
+        events = '"execjob_begin,execjob_launch,execjob_attach,'
+        events += 'execjob_epilogue,execjob_end,exechost_startup,'
+        events += 'exechost_periodic"'
         # Disable the cgroups hook
-        conf = {'enabled': 'False', 'freq': 30}
+        conf = {'enabled': 'False', 'freq': 30, 'event': events}
         self.server.manager(MGR_CMD_SET, HOOK, conf, self.hook_name)
