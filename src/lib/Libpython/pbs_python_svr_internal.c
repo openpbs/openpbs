@@ -455,6 +455,7 @@ _pps_getset_descriptor_object(PyObject *klass,
 	}
 	/* check whether the attribute descriptor is already present */
 	if (PyObject_HasAttrString(klass, name)) {
+		Py_CLEAR(py_descr_args);
 		return 1;
 	}
 
@@ -492,7 +493,7 @@ _pps_getset_descriptor_object(PyObject *klass,
 	}
 	Py_CLEAR(py_descr_args);
 	Py_CLEAR(py_descr_kwds);
-	/* not set the class attribute */
+	/* now set the class attribute */
 	if ((PyObject_SetAttrString(klass, name, py_attr_descr) == -1)) {
 		goto ERROR_EXIT;
 	}
@@ -756,7 +757,7 @@ pbs_python_setup_vnode_class_attributes(void)
 	if (py_vnode_attr_types == NULL)
 		goto ERROR_EXIT;
 
-	memset(py_vnode_attr_types, 0, sizeof(PyObject *)*num_entry);
+	memset(py_vnode_attr_types, 0, sizeof(PyObject *) * num_entry);
 
 	/* ok now set all the node_attr_def types known to the server */
 	attr_def_p = node_attr_def;
@@ -836,9 +837,8 @@ pbs_python_setup_resv_class_attributes(void)
 	else
 		DEBUG2_ARG1("BEGIN setting up all reservation attributes %s", "");
 	py_resv_attr_types = PyMem_New(PyObject *, num_entry);
-	memset(py_resv_attr_types, 0, sizeof(PyObject *)*num_entry);
-
 	if (!py_resv_attr_types) { goto ERROR_EXIT;}
+	memset(py_resv_attr_types, 0, sizeof(PyObject *) * num_entry);
 
 	/* ok now set all the resv_attr_def types known to the server */
 	attr_def_p = resv_attr_def;
@@ -922,9 +922,8 @@ pbs_python_setup_server_class_attributes(void)
 	else
 		DEBUG2_ARG1("BEGIN setting up all server attributes %s", "");
 	py_svr_attr_types = PyMem_New(PyObject *, num_entry);
-	memset(py_svr_attr_types, 0, sizeof(PyObject *)*num_entry);
-
 	if (!py_svr_attr_types) { goto ERROR_EXIT;}
+	memset(py_svr_attr_types, 0, sizeof(PyObject *) * num_entry);
 
 	/* ok now set all the svr_attr_def types known to the server */
 	attr_def_p = svr_attr_def;
@@ -1008,9 +1007,8 @@ pbs_python_setup_job_class_attributes(void)
 	else
 		DEBUG2_ARG1("BEGIN setting up all job attributes %s", "");
 	py_job_attr_types = PyMem_New(PyObject *, num_entry);
-	memset(py_job_attr_types, 0, sizeof(PyObject *)*num_entry);
-
 	if (!py_job_attr_types) { goto ERROR_EXIT;}
+	memset(py_job_attr_types, 0, sizeof(PyObject *) * num_entry);
 
 	/* ok now set all the job_attr_def types known to the server */
 	attr_def_p = job_attr_def;
@@ -1095,9 +1093,8 @@ pbs_python_setup_queue_class_attributes(void)
 	else
 		DEBUG2_ARG1("BEGIN setting up all queue attributes %s", "");
 	py_que_attr_types = PyMem_New(PyObject *, num_entry);
-	memset(py_que_attr_types, 0, sizeof(PyObject *)*num_entry);
-
 	if (!py_que_attr_types) { goto ERROR_EXIT;}
+	memset(py_que_attr_types, 0, sizeof(PyObject *) * num_entry);
 
 	/* ok now set all the resources known to the server */
 	attr_def_p = que_attr_def;
@@ -1176,9 +1173,8 @@ pbs_python_setup_python_resource_type(void)
 	else
 		DEBUG2_ARG1("BEGIN setting up all resource attributes %s", "");
 	py_svr_resc_types = PyMem_New(PyObject *, num_entry);
-	memset(py_svr_resc_types, 0, sizeof(PyObject *)*num_entry);
-
 	if (!py_svr_resc_types) { goto ERROR_EXIT;}
+	memset(py_svr_resc_types, 0, sizeof(PyObject *) * num_entry);
 
 	/* ok now set all the resources known to the server */
 	resc_def_p = svr_resc_def;
@@ -3976,6 +3972,7 @@ _pbs_python_event_get_param(char *name)
 
 	if (!PyDict_Check(py_param)) {
 		log_err(PBSE_INTERNAL, __func__, "event's param is not a dictionary");
+		Py_CLEAR(py_param);
 		return NULL;
 	}
 
