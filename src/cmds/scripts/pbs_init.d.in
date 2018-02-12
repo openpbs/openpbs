@@ -134,10 +134,8 @@ check_started() {
   fi
 
 # strip out everything except executable name
-  prog_name=`echo ${ps_out} | awk '{print $1}' | \
-	awk -F/ '{print $NF}' | awk '{print $1}'`
-
-  if [ "${prog_name}" = $2 ] ; then
+  prog_name=`echo ${ps_out} | grep -how "$2"`
+  if [ "x${prog_name}" = "x$2" ] ; then
     return 0;
   fi
 
@@ -840,6 +838,8 @@ conf=${PBS_CONF_FILE:-/etc/pbs.conf}
 
 # re-apply saved env variables
 . "${env_save}"
+
+rm -f "${env_save}"
 
 if [ -z "${PBS_EXEC}" ] ; then
     echo "PBS_EXEC is undefined." >&2

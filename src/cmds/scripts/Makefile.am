@@ -101,6 +101,7 @@ dist_sysconf_DATA = \
 	pbs_db_schema.sql
 
 CLEANFILES = \
+	pbs_init.d \
 	limits.pbs_mom \
 	limits.post_services
 
