@@ -8,6 +8,7 @@ env:
     - OS_TYPE=opensuse
     - OS_TYPE=debian:8
     - OS_TYPE=centos:7 BUILD_MODE=_debug
+    - OS_TYPE=centos:7 BUILD_MODE=_sanitize
 before_install:
     - .github/runchecks
     - docker pull ${OS_TYPE}
@@ -20,7 +21,7 @@ before_install:
     - ${DOCKER_EXEC} cat /etc/hosts
 install:
     - ./.travis/${OS_TYPE//:/_}${BUILD_MODE}.sh
-    - '[ "x${BUILD_MODE}" != "x" ] && exit 0 || true'
+    - '[ "x${BUILD_MODE}" == "x_debug" ] && exit 0 || true'
     - ${DOCKER_EXEC} /bin/sh -c "cd test/fw; pip install -r requirements.txt ."
     - ${DOCKER_EXEC_TTY} pbs_config --make-ug
     - ${DOCKER_EXEC_TTY} /bin/sh -c "cd test/tests; pbs_benchpress -l INFOCLI2 -o ../../ptl.txt --tags=smoke"
