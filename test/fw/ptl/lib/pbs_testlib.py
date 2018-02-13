@@ -6619,7 +6619,7 @@ class Server(PBSService):
                             break
                     if rc == 0:
                         rc = tmprc
-
+        bs_list = []
         if cmd == MGR_CMD_DELETE and oid is not None and rc == 0:
             for i in oid:
                 if obj_type == MGR_OBJ_HOOK and i in self.hooks:
@@ -6633,17 +6633,26 @@ class Server(PBSService):
                 if obj_type == SCHED and i in self.schedulers:
                     del self.schedulers[i]
 
-        bs_list = []
-        if cmd == MGR_CMD_SET:
-            if rc == 0 and id is not None:
+        elif cmd == MGR_CMD_SET and rc == 0 and id is not None:
+            if isinstance(id, list):
+                for name in id:
+                    tbsl = copy.deepcopy(attrib)
+                    tbsl['name'] = name
+                    bs_list.append(tbsl)
+                    self.update_attributes(obj_type, bs_list)
+            else:
                 tbsl = copy.deepcopy(attrib)
                 tbsl['id'] = id
                 bs_list.append(tbsl)
                 self.update_attributes(obj_type, bs_list)
 
-        if cmd == MGR_CMD_CREATE:
-            if rc == 0:
-                bsl = self.status(obj_type, attrib, id, extend)
+        elif cmd == MGR_CMD_CREATE and rc == 0:
+            if isinstance(id, list):
+                for name in id:
+                    bsl = self.status(obj_type, id=name, extend=extend)
+                    self.update_attributes(obj_type, bsl)
+            else:
+                bsl = self.status(obj_type, id=id, extend=extend)
                 self.update_attributes(obj_type, bsl)
 
         if rc != 0:
