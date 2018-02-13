@@ -576,14 +576,11 @@ set_limits()
 	{
 		struct rlimit64 rlimit;
 
-		rlimit.rlim_cur = TPP_MAXOPENFD; 
+		rlimit.rlim_cur = TPP_MAXOPENFD;
 		rlimit.rlim_max = TPP_MAXOPENFD;
 
-		if (setrlimit64(RLIMIT_NOFILE, &rlimit) == -1){
-			sprintf(log_buffer, "Could not set max open files limit");
-			log_err(errno, __func__, log_buffer);
-			sprintf(log_buffer, "%s errno=%d", log_buffer, errno);
-			log_record(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, (char *)__func__, log_buffer);
+		if (setrlimit64(RLIMIT_NOFILE, &rlimit) == -1) {
+			log_err(errno, __func__, "could not set max open files limit");
 		}
 
 		rlimit.rlim_cur = RLIM64_INFINITY;
@@ -622,24 +619,20 @@ set_limits()
 #ifndef WIN32
 	{
 		struct rlimit rlimit;
-		int curerror;
 
-		rlimit.rlim_cur = TPP_MAXOPENFD; 
+		rlimit.rlim_cur = TPP_MAXOPENFD;
 		rlimit.rlim_max = TPP_MAXOPENFD;
-		if (setrlimit(RLIMIT_NOFILE, &rlimit) == -1){
-			sprintf(log_buffer, "Could not set max open files limit");
-			log_err(errno, __func__, log_buffer);
-			sprintf(log_buffer, "%s errno=%d", log_buffer, errno);
-			log_record(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, (char *)__func__, log_buffer);
+		if (setrlimit(RLIMIT_NOFILE, &rlimit) == -1) {
+			log_err(errno, __func__, "could not set max open files limit");
 		}
 		rlimit.rlim_cur = RLIM_INFINITY;
 		rlimit.rlim_max = RLIM_INFINITY;
-		(void)setrlimit(RLIMIT_CPU,   &rlimit);
+		(void)setrlimit(RLIMIT_CPU, &rlimit);
 #ifdef	RLIMIT_RSS
-		(void)setrlimit(RLIMIT_RSS  , &rlimit);
+		(void)setrlimit(RLIMIT_RSS, &rlimit);
 #endif	/* RLIMIT_RSS */
 #ifdef	RLIMIT_VMEM
-		(void)setrlimit(RLIMIT_VMEM  , &rlimit);
+		(void)setrlimit(RLIMIT_VMEM, &rlimit);
 #endif	/* RLIMIT_VMEM */
 #ifdef	RLIMIT_CORE
 		if (pbs_conf.pbs_core_limit) {
@@ -672,20 +665,12 @@ set_limits()
 				rlimit.rlim_cur = MIN_STACK_LIMIT;
 				rlimit.rlim_max = MIN_STACK_LIMIT;
 				if (setrlimit(RLIMIT_STACK, &rlimit) == -1) {
-					curerror = errno;
-					sprintf(log_buffer, "Stack limit setting failed");
-					log_err(curerror, __func__, log_buffer);
-					sprintf(log_buffer, "%s errno=%d", log_buffer, curerror);
-					log_record(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, (char *)__func__, log_buffer);
+					log_err(errno, __func__, "setting stack limit failed");
 					exit(1);
 				}
 			}
 		} else {
-			curerror = errno;
-			sprintf(log_buffer, "Getting current Stack limit failed");
-			log_err(curerror, __func__, log_buffer);
-			sprintf(log_buffer, "%s errno=%d", log_buffer, curerror);
-			log_record(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, (char *)__func__, log_buffer);
+			log_err(errno, __func__, "getting current stack limit failed");
 			exit(1);
 		}
 #endif  /* not linux */
@@ -912,9 +897,6 @@ main(int argc, char **argv)
 	(void)setgroups(1, (gid_t *)&i);	/* secure suppl. groups */
 #endif
 
-	/* set pbs_comm's process limits */
-	set_limits();
-
 	log_event_mask = &pbs_conf.pbs_comm_log_events;
 	tpp_set_logmask(*log_event_mask);
 
@@ -1000,10 +982,11 @@ main(int argc, char **argv)
 		return 1;
 	}
 
-
-
 	(void) snprintf(path_log, sizeof(path_log), "%s/%s", pbs_conf.pbs_home_path, PBS_COMM_LOGDIR);
 	(void) log_open(log_file, path_log);
+
+	/* set pbs_comm's process limits */
+	set_limits(); /* set_limits can call log_record, so call only after opening log file */
 
 	/* set tcp function pointers */
 	set_tpp_funcs(log_tppmsg);
