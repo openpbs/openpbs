@@ -163,7 +163,7 @@ do_stat_of_a_job(struct batch_request *preq, job *pjob, int dohistjobs, int dosu
 		pal = (svrattrl *)GET_NEXT(preq->rq_ind.rq_status.rq_attr);
 
 		rc = status_job(pjob, preq, pal, &preply->brp_un.brp_status, &bad);
-		if (dosubjobs && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) && 
+		if (dosubjobs && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) &&
 			((rc == PBSE_NONE) || (rc != PBSE_PERM)) && pjob->ji_ajtrk != NULL) {
 
 		    for (indx=0; indx<pjob->ji_ajtrk->tkm_ct; ++indx) {
@@ -178,7 +178,7 @@ do_stat_of_a_job(struct batch_request *preq, job *pjob, int dohistjobs, int dosu
 	}
 	return (PBSE_NONE);
 }
-	
+
 /**
  * @brief
  * 		Support function for req_stat_job().
@@ -292,8 +292,8 @@ void req_stat_job(struct batch_request *preq)
 	int		    dosubjobs = 0;
 	int		    dohistjobs = 0;
 	char		   *name;
-	job		   *pjob = (job *)0;
-	pbs_queue	   *pque = (pbs_queue *)0;
+	job		   *pjob = NULL;
+	pbs_queue	   *pque = NULL;
 	struct batch_reply *preply;
 	int		    rc   = 0;
 	int		    type = 0;
@@ -330,7 +330,7 @@ void req_stat_job(struct batch_request *preq)
 
 	if ( isdigit((int)*name) ) {
 		/* a single job id */
-		type = 1;	
+		type = 1;
 		rc = PBSE_UNKJOBID;
 
 	} else if ( isalpha((int)*name) ) {
@@ -378,7 +378,7 @@ void req_stat_job(struct batch_request *preq)
 		return;
 
 	} else if (type == 2) {
-		pjob = (job *)GET_NEXT(pque->qu_jobs);	
+		pjob = (job *)GET_NEXT(pque->qu_jobs);
 		while (pjob && (rc == PBSE_NONE)) {
 			rc = do_stat_of_a_job(preq, pjob, dohistjobs, dosubjobs);
 			pjob = (job *)GET_NEXT(pjob->ji_jobque);
@@ -433,7 +433,7 @@ req_stat_que(struct batch_request *preq)
 		if (pque == NULL)
 			pque = find_resvqueuebyname(name);
 #endif /* localmod 075 */
-		if (pque == (pbs_queue *)0) {
+		if (pque == NULL) {
 			req_reject(PBSE_UNKQUE, 0, preq);
 			return;
 		}
@@ -507,7 +507,7 @@ status_que(pbs_queue *pque, struct batch_request *preq, pbs_list_head *pstathd)
 	/* allocate status sub-structure and fill in header portion */
 
 	pstat = (struct brp_status *)malloc(sizeof(struct brp_status));
-	if (pstat == (struct brp_status *)0)
+	if (pstat == NULL)
 		return (PBSE_SYSTEM);
 	pstat->brp_objtype = MGR_OBJ_QUEUE;
 	(void)strcpy(pstat->brp_objname, pque->qu_qs.qu_name);
@@ -544,7 +544,7 @@ req_stat_node(struct batch_request *preq)
 	char		    *name;
 	struct batch_reply  *preply;
 	svrattrl	    *pal;
-	struct pbsnode	    *pnode = (struct pbsnode*)0;
+	struct pbsnode	    *pnode = NULL;
 	int		    rc   = 0;
 	int		    type = 0;
 	int		    i;
@@ -569,7 +569,7 @@ req_stat_node(struct batch_request *preq)
 		type = 1;
 	else {
 		pnode = find_nodebyname(name);
-		if (pnode == (struct pbsnode *)0) {
+		if (pnode == NULL) {
 			req_reject(PBSE_UNKNODE, 0, preq);
 			return;
 		}
@@ -659,7 +659,7 @@ status_node(struct pbsnode *pnode, struct batch_request *preq, pbs_list_head *ps
 	/*allocate status sub-structure and fill in header portion*/
 
 	pstat = (struct brp_status *)malloc(sizeof(struct brp_status));
-	if (pstat == (struct brp_status *)0)
+	if (pstat == NULL)
 		return (PBSE_SYSTEM);
 
 	pstat->brp_objtype = MGR_OBJ_NODE;
@@ -728,7 +728,7 @@ req_stat_svr(struct batch_request *preq)
 	CLEAR_HEAD(preply->brp_un.brp_status);
 
 	pstat = (struct brp_status *)malloc(sizeof(struct brp_status));
-	if (pstat == (struct brp_status *)0) {
+	if (pstat == NULL) {
 		reply_free(preply);
 		req_reject(PBSE_SYSTEM, 0, preq);
 		return;
@@ -770,7 +770,7 @@ status_sched(pbs_sched *psched, struct batch_request *preq, pbs_list_head *pstat
 	svrattrl	  *pal;
 
 	pstat = (struct brp_status *)malloc(sizeof(struct brp_status));
-	if (pstat == (struct brp_status *)0)
+	if (pstat == NULL)
 		return (PBSE_SYSTEM);
 
 	pstat->brp_objtype = MGR_OBJ_SCHED;
@@ -829,7 +829,7 @@ req_stat_sched(struct batch_request *preq)
 		}
 	} else {
 		psched = (pbs_sched *) GET_NEXT(svr_allscheds);
-		while (psched != (pbs_sched *) 0) {
+		while (psched != NULL) {
 			rc = status_sched(psched, preq, &preply->brp_un.brp_status);
 			if (rc != 0) {
 				break;
@@ -922,7 +922,7 @@ req_stat_resv(struct batch_request * preq)
 {
 	char		   *name;
 	struct batch_reply *preply;
-	resc_resv	   *presv = (resc_resv*)0;
+	resc_resv	   *presv = NULL;
 	int		    rc   = 0;
 	int		    type = 0;
 
@@ -938,7 +938,7 @@ req_stat_resv(struct batch_request * preq)
 		type = 1;
 	else {
 		presv = find_resv(name);
-		if (presv == (resc_resv *)0) {
+		if (presv == NULL) {
 			req_reject(PBSE_UNKRESVID, 0, preq);
 			return;
 		}
@@ -1001,7 +1001,7 @@ status_resv(resc_resv *presv, struct batch_request *preq, pbs_list_head *pstathd
 	/*now allocate status sub-structure and fill header portion*/
 
 	pstat = (struct brp_status *)malloc(sizeof(struct brp_status));
-	if (pstat == (struct brp_status *)0)
+	if (pstat == NULL)
 		return (PBSE_SYSTEM);
 
 	pstat->brp_objtype = MGR_OBJ_RESV;
@@ -1054,7 +1054,7 @@ status_resc(struct resource_def *prd, struct batch_request *preq, pbs_list_head 
 	/* allocate status sub-structure and fill in header portion */
 
 	pstat = (struct brp_status *)malloc(sizeof(struct brp_status));
-	if (pstat == (struct brp_status *)0)
+	if (pstat == NULL)
 		return (PBSE_SYSTEM);
 	pstat->brp_objtype = MGR_OBJ_RSC;
 	(void)strcpy(pstat->brp_objname, prd->rs_name);

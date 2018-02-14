@@ -72,8 +72,8 @@ __pbs_msgjob(int c, char *jobid, int fileopt, char *msg, char *extend)
 	struct batch_reply *reply;
 	int	rc;
 
-	if ((jobid == (char *)0) || (*jobid == '\0') ||
-		(msg == (char *)0) || (*msg == '\0'))
+	if ((jobid == NULL) || (*jobid == '\0') ||
+		(msg == NULL) || (*msg == '\0'))
 		return (pbs_errno = PBSE_IVALREQ);
 
 	/* initialize the thread context data, if not already initialized */
@@ -194,8 +194,8 @@ char *extend;
 	struct batch_reply *reply;
 	int	rc;
 
-	if ((jobid == (char *)0) || (*jobid == '\0') ||
-					(node_list == (char *)0))
+	if ((jobid == NULL) || (*jobid == '\0') ||
+					(node_list == NULL))
 		return (pbs_errno = PBSE_IVALREQ);
 
 	/* initialize the thread context data, if not already initialized */

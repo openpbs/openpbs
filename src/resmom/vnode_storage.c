@@ -70,7 +70,7 @@ extern void	mom_CPUs_report();
  * @retval 	0 	Failure
  *
  */
- 
+
 int
 create_vmap(void **ctxp)
 {
@@ -135,7 +135,7 @@ find_vmapent_byID(void *ctx, const char *vnid)
 #endif	/* DEBUG */
 	}
 
-	return ((mominfo_t *) NULL);
+	return NULL;
 }
 
 

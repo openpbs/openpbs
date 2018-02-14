@@ -265,7 +265,7 @@ server_disconnect(int connect)
 	close(connection[connect].ch_socket);
 #endif
 
-	if (connection[connect].ch_errtxt != (char *)NULL)
+	if (connection[connect].ch_errtxt != NULL)
 		free(connection[connect].ch_errtxt);
 
 	connection[connect].ch_errno = 0;
@@ -1086,7 +1086,7 @@ main(int argc, char *argv[])
 	}
 
 	/* Save the original working directory for "restart" */
-	if ((oldpath = getcwd((char *)NULL, MAXPATHLEN)) == NULL) {
+	if ((oldpath = getcwd(NULL, MAXPATHLEN)) == NULL) {
 		fprintf(stderr, "cannot get current working directory\n");
 #ifdef WIN32
 		g_dwCurrentState = SERVICE_STOPPED;
@@ -1501,7 +1501,7 @@ main(int argc, char *argv[])
 		FD_SET(rpp_fd, &selset);
 		tv.tv_sec = 5;
 		tv.tv_usec = 0;
-		select(FD_SETSIZE, &selset, (fd_set *) 0, (fd_set *) 0, &tv);
+		select(FD_SETSIZE, &selset, NULL, NULL, &tv);
 
 		rpp_poll(); /* to clear off the read notification */
 	} else {
@@ -1779,7 +1779,7 @@ PbsSchedMain(DWORD dwArgc, LPTSTR *rgszArgv)
 	}
 
 	pap = create_arg_param();
-	if (pap == (struct arg_param *)0)
+	if (pap == NULL)
 		return;
 	pap->argc = dwArgc;
 

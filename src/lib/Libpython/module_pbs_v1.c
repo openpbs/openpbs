@@ -241,7 +241,7 @@ extern PyObject *pbsv1mod_meth_use_static_data(void);
 
 
 /* private */
-static PyObject *PyPbsV1ModuleExtension_Obj = (PyObject *) NULL; /* BORROWED reference */
+static PyObject *PyPbsV1ModuleExtension_Obj = NULL; /* BORROWED reference */
 
 /*  -----                    MODULE HELPER FUNCTIONS          -----    */
 
@@ -553,8 +553,8 @@ PyObject *
 pbs_v1_module_init(void)
 {
 
-	PyObject *m     = (PyObject *) NULL; /* the module object, BORROWED ref */
-	PyObject *mdict = (PyObject *) NULL; /* the module object, BORROWED ref */
+	PyObject *m     = NULL; /* the module object, BORROWED ref */
+	PyObject *mdict = NULL; /* the module object, BORROWED ref */
 
 	m = Py_InitModule3(PBS_PYTHON_V1_MODULE_EXTENSION_NAME,
 		pbs_v1_module_methods,
@@ -571,19 +571,19 @@ pbs_v1_module_init(void)
 
 	if ((PyDict_SetItemString(mdict, "svr_types",
 		ppsvr_create_types_module())) == -1)
-		return (PyObject *) NULL;
+		return NULL;
 	/* Add all our constants */
 	if (_pv1mod_insert_int_constants(mdict) == -1)
-		return (PyObject *) NULL;
+		return NULL;
 
 	if (_pv1mod_insert_str_constants(mdict) == -1)
-		return (PyObject *) NULL;
+		return NULL;
 
 	PyPbsV1ModuleExtension_Obj = m; /* used to create separate namespaces later */
 	return m;
 
 ERROR_EXIT:
-	return (PyObject *) NULL;
+	return NULL;
 }
 
 

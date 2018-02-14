@@ -146,12 +146,12 @@ struct arg_param *create_arg_param(void)
 	pap = (struct arg_param *)malloc(sizeof(struct arg_param));
 
 	if (pap == NULL)
-		return (NULL);
+		return NULL;
 
 	pap->argv = (char **)malloc(50 * sizeof(char *));	/* should be sufficient */
 	if (pap->argv == NULL) {
 		(void)free(pap);
-		return (NULL);
+		return NULL;
 	}
 	return (pap);
 }
@@ -239,7 +239,7 @@ fcntl(int fd, int cmd, long arg)
 
 /**
  * @brief
- * 	just a placeholder for the unix equivalent function. 
+ * 	just a placeholder for the unix equivalent function.
  *
  * @param[in] path - file path
  * @param[in] resolved_path - resolved path
@@ -258,7 +258,7 @@ realpath(const char *path, char *resolved_path)
 
 /**
  * @brief
- * 	mimics the unix equivalent, with minimum output 
+ * 	mimics the unix equivalent, with minimum output
  *
  * @param[in] file_name - filename to be stat-ed
  * @param[out] buf - stat of file
@@ -296,11 +296,11 @@ lstat(const char *file_name, struct stat *buf)
 }
 
 /**
- * @brief 
+ * @brief
  *	fix_temp_path: given a dynamically generated temporary filename 'tmp_name',
- *	if this refers to a file that is located in top-level dir 
- *	"\", then modify the input string so that the location 
- *	is in TMP as specified in environment. 
+ *	if this refers to a file that is located in top-level dir
+ *	"\", then modify the input string so that the location
+ *	is in TMP as specified in environment.
  *
  * @param[in] tmp_name - temporary file name.
  *
@@ -347,24 +347,24 @@ my_fopen(const char *filename, const char *mode)
 	int	ct;
 
 	if (strcmp(mode, "r") != 0) {
-		return (NULL);
+		return NULL;
 	}
 
 	if ((fd=open(filename, O_RDONLY|O_TEXT)) == -1) {
-		return (NULL);
+		return NULL;
 	}
 
 	if (fstat(fd, &sbuf) == -1) {
-		return (NULL);
+		return NULL;
 	}
 
 	if ((content=(char *)malloc((size_t)sbuf.st_size+1)) == NULL) {
-		return (NULL);
+		return NULL;
 	}
 
 	if ((mfp=(MY_FILE *)malloc(sizeof(MY_FILE))) == NULL) {
 		(void)free(content);
-		return (NULL);
+		return NULL;
 	}
 
 	ct = 0;
@@ -404,7 +404,7 @@ my_fgets(char *buf, int n, MY_FILE *stream)
 	char *bufp;
 
 	if (stream == NULL || (n <= 0) || (buf == NULL)) {
-		return (NULL);
+		return NULL;
 	}
 
 	bufp = buf;
@@ -419,7 +419,7 @@ my_fgets(char *buf, int n, MY_FILE *stream)
 	}
 
 	if (bufp == buf) 	/* it never advanced, then no output */
-		return (NULL);
+		return NULL;
 
 	*bufp = '\0';
 
@@ -464,7 +464,7 @@ my_fclose(MY_FILE *stream)
  * @retval	0	success
  * @retval	-1	error
  *
- */ 
+ */
 long int
 pathconf(const char *__path, int __name)
 {
@@ -484,7 +484,7 @@ pathconf(const char *__path, int __name)
  * @return	int
  * @retval	-1	error
  * @retval	256	success
- * 
+ *
  */
 
 long int
@@ -497,14 +497,14 @@ fpathconf(int __fd, int __name)
 
 /* Secure Functions */
 /**
- * @brief 
+ * @brief
  *	A Windows version of strtok.
  *
  * @param[in] strToken- String containing token or tokens.
  * @param[in] strDelimit - Set of delimiter characters.
  *
  * @return	pointer to string
- * @retval	pointer to the next token found in strToken. 
+ * @retval	pointer to the next token found in strToken.
  * @retval	NULL	when no more tokens are found. Each call modifies strToken by substituting
  *          	a NULL character for each delimiter that is encountered.
  * @see strok() on MSDN.
@@ -882,7 +882,7 @@ get_win_rootdir(void)
 	return root_dir;
 }
 /**
- * @brief 
+ * @brief
  *	get command shell.
  *
  * @param[in] cmd : sufficiently allocated buffer to hold the command shell path.

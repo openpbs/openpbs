@@ -100,7 +100,7 @@ int
 decode_f(struct attribute *patr, char *name, char *rescn, char *val)
 {
 	size_t	len;
-	if ((val != (char *)0) && ((len = strlen(val)) != 0)) {
+	if ((val != NULL) && ((len = strlen(val)) != 0)) {
 		char	*end;
 		float	fval;
 
@@ -125,7 +125,7 @@ decode_f(struct attribute *patr, char *name, char *rescn, char *val)
 }
 
 /**
- * @brief 
+ * @brief
  *	encode attribute of type float into attr_extern
  *
  * @param[in] attr - ptr to attribute
@@ -164,7 +164,7 @@ encode_f(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int 
 	ct = strlen(cvnbuf) + 1;
 
 	pal = attrlist_create(atname, rsname, ct);
-	if (pal == (svrattrl *)0)
+	if (pal == NULL)
 		return (-1);
 
 	(void)memcpy(pal->al_value, cvnbuf, ct);
@@ -213,7 +213,7 @@ set_f(struct attribute *attr, struct attribute *new, enum batch_op op)
 	return (0);
 }
 
-/** 
+/**
  * @brief
  * 	comp_f - compare two attributes of type float
  *

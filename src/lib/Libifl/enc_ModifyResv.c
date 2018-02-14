@@ -46,7 +46,7 @@ const static char ident[] = "@(#) $RCSfile: enc_ModifyResv.c,v $ $Revision: #9 $
 
 /**
  * @brief encode the Modify Reservation request for sending to the server.
- * 
+ *
  * @param[in] sock - socket descriptor for the connection.
  * @param[in] resv_id - Reservation identifier of the reservation that would be modified.
  * @param[in] aoplp - list of attributes that will be modified.
@@ -58,7 +58,7 @@ encode_DIS_ModifyResv(int sock, char *resv_id, struct attropl *aoplp)
 {
 	int   rc = 0;
 
-	if (resv_id == (char *)0)
+	if (resv_id == NULL)
 		resv_id = "";
 
 	if (((rc = diswui(sock, MGR_OBJ_RESV)) != 0) ||

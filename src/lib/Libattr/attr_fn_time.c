@@ -105,7 +105,7 @@ decode_time(struct attribute *patr, char *name, char *rescn, char *val)
 	long strtol_ret = 0;
 	int index = -1;
 
-	if ((val == (char *)0) || (strlen(val) == 0)) {
+	if ((val == NULL) || (strlen(val) == 0)) {
 		patr->at_flags = (patr->at_flags & ~ATR_VFLAG_SET) |
 			(ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE);
 		patr->at_val.at_long = 0;
@@ -221,7 +221,7 @@ encode_time(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, i
 	ct = strlen(cvnbuf) + 1;
 
 	pal = attrlist_create(atname, rsname, ct);
-	if (pal == (svrattrl *)0)
+	if (pal == NULL)
 		return (-1);
 
 	(void)memcpy(pal->al_value, cvnbuf, ct);

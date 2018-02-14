@@ -180,7 +180,7 @@ struct resc_resv {
 	struct pbs_queue	*ri_qp;			/* pbs_queue that got created
 							 * to support this "reservation
 							 * note: for a "reservation job"
-							 * this value is (pbs_que *)0
+							 * this value is NULL
 							 */
 
 	int			ri_futuredr;		/* non-zero if future delete resv

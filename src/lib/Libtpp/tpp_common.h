@@ -667,7 +667,7 @@ extern int tpp_going_down;
 		int	err = errno; \
 		time_t now; \
 		struct tm ptm; \
-		now = time((time_t *)0); \
+		now = time(NULL); \
 		localtime_r(&now, &ptm); \
 		printf("%02d/%02d/%04d %02d:%02d:%02d;Thread:%d:%s: ",  \
 			ptm.tm_mon+1, ptm.tm_mday, ptm.tm_year+1900, \

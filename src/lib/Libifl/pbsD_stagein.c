@@ -54,7 +54,7 @@
  *
  * @param[in] c - communication handle
  * @param[in] jobid - job identifier
- * @param[in] location - destination for job 
+ * @param[in] location - destination for job
  * @param[in] extend - extend string for request
  *
  * @return      int
@@ -71,9 +71,9 @@ pbs_stagein(int c, char *jobid, char *location, char *extend)
 	int	sock;
 
 
-	if ((jobid == (char *)0) || (*jobid == '\0'))
+	if ((jobid == NULL) || (*jobid == '\0'))
 		return (pbs_errno = PBSE_IVALREQ);
-	if (location == (char *)0)
+	if (location == NULL)
 		location = "";
 
 

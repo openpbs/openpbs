@@ -77,7 +77,7 @@ sched_alloc(char *sched_name)
 
 	psched = calloc(1, sizeof(pbs_sched));
 
-	if (psched == (pbs_sched *) 0) {
+	if (psched == NULL) {
 		log_err(errno, __func__, "Unable to allocate memory (malloc error)");
 		return NULL;
 	}
@@ -115,7 +115,7 @@ find_scheduler(char *sched_name)
 	if (!sched_name)
 		return NULL;
 	psched = (pbs_sched *) GET_NEXT(svr_allscheds);
-	while (psched != (pbs_sched *) 0) {
+	while (psched != NULL) {
 		if (strcmp(sched_name, psched->sc_name) == 0)
 			break;
 		psched = (pbs_sched *) GET_NEXT(psched->sc_link);
@@ -265,7 +265,7 @@ action_sched_priv(attribute *pattr, void *pobj, int actmode)
 
 	if (actmode == ATR_ACTION_NEW || actmode == ATR_ACTION_ALTER || actmode == ATR_ACTION_RECOV) {
 		psched = (pbs_sched*) GET_NEXT(svr_allscheds);
-		while (psched != (pbs_sched*) 0) {
+		while (psched != NULL) {
 			if (psched->sch_attr[SCHED_ATR_sched_priv].at_flags & ATR_VFLAG_SET) {
 				if (!strcmp(psched->sch_attr[SCHED_ATR_sched_priv].at_val.at_str, pattr->at_val.at_str)) {
 					if (psched != pobj) {
@@ -305,7 +305,7 @@ action_sched_log(attribute *pattr, void *pobj, int actmode)
 
 	if (actmode == ATR_ACTION_NEW || actmode == ATR_ACTION_ALTER || actmode == ATR_ACTION_RECOV) {
 		psched = (pbs_sched*) GET_NEXT(svr_allscheds);
-		while (psched != (pbs_sched*) 0) {
+		while (psched != NULL) {
 			if (psched->sch_attr[SCHED_ATR_sched_log].at_flags & ATR_VFLAG_SET) {
 				if (!strcmp(psched->sch_attr[SCHED_ATR_sched_log].at_val.at_str, pattr->at_val.at_str)) {
 					if (psched != pobj) {

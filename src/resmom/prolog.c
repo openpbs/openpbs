@@ -122,7 +122,7 @@ int	   buflen;	/* the length of the above buffer */
 	CLEAR_HEAD(svlist);
 	*buf = '\0';
 
-	if (encode_resc(pattr, &svlist, "x", (char *)0, ATR_ENCODE_CLIENT, NULL) <=0)
+	if (encode_resc(pattr, &svlist, "x", NULL, ATR_ENCODE_CLIENT, NULL) <=0)
 		return (buf);
 
 	patlist = (svrattrl *)GET_NEXT(svlist);
@@ -344,14 +344,14 @@ int   pe_io_type;
 			arg[9] = "null";
 		sprintf(exitcode, "%d", pjob->ji_qs.ji_un.ji_momt.ji_exitstat);
 		arg[10] = exitcode;
-		arg[11] = (char *)0;
+		arg[11] = NULL;
 
 	} else {
 #ifdef NAS /* localmod 095 */
 		arg[4] = resc_to_string(&pjob->ji_wattr[(int)JOB_ATR_resource], resc_list, 2048);
 		arg[5] = NULL;
 #else
-		arg[4] = (char *)0;
+		arg[4] = NULL;
 #endif /* localmod 095 */
 	}
 
@@ -618,9 +618,9 @@ int   pe_io_type;
 		} else {
 #ifdef NAS /* localmod 095 */
 			arg[4] = resc_to_string(&pjob->ji_wattr[(int)JOB_ATR_resource], resc_list, 2048);
-			arg[5] = (char *)0;
+			arg[5] = NULL;
 #else
-			arg[4] = (char *)0;
+			arg[4] = NULL;
 #endif /* localmod 095 */
 		}
 
@@ -637,7 +637,7 @@ int   pe_io_type;
 				/* set PBS_JOBDIR to user HOME*/
 				sprintf(buf, "PBS_JOBDIR=%s", pjob->ji_grpcache->gc_homedir);
 			}
-			if (setenv("PBS_JOBDIR", pjob->ji_grpcache->gc_homedir, 1) != 0) 
+			if (setenv("PBS_JOBDIR", pjob->ji_grpcache->gc_homedir, 1) != 0)
 				log_err(-1, "run_pelog", "set environment variable PBS_JOBDIR");
 		}
 

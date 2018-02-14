@@ -426,5 +426,5 @@ struct sig_tbl sig_tbl[] = {
 	{ "WINCH", SIGWINCH },
 	{ "USR1", SIGUSR1 },
 	{ "USR2", SIGUSR2 },
-	{(char *)0, -1 }
+	{NULL, -1 }
 };

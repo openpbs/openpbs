@@ -135,7 +135,7 @@ okname(char *cp0)
 
 /**
  * @brief
- */	
+ */
 int
 susystem(char *s,
 	uid_t userid, /* used in unix */
@@ -190,7 +190,7 @@ susystem(char *s,
 		case 0:
 			if (setuid(userid) == -1)
 				_exit(126);
-			execl(_PATH_BSHELL, "sh", "-c", s, (char *)0);
+			execl(_PATH_BSHELL, "sh", "-c", s, NULL);
 			_exit(127);
 	}
 	if (waitpid(pid, &status, 0) < 0)
@@ -211,7 +211,7 @@ susystem(char *s,
  *
  * @return	BUF*
  * @retval	pointer to reallocated BUF struct
- * @par	NOTE: 
+ * @par	NOTE:
  *	This pointer can be same as <bp> if size is 0 or less than
  *	already allocated buffer size in <bp>
  */

@@ -72,7 +72,7 @@ __pbs_rerunjob(int c, char *jobid, char *extend)
 	int	sock;
 	time_t  old_tcp_timeout;
 
-	if ((jobid == (char *)0) || (*jobid == '\0'))
+	if ((jobid == NULL) || (*jobid == '\0'))
 		return (pbs_errno = PBSE_IVALREQ);
 
 	sock = connection[c].ch_socket;

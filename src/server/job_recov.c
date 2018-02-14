@@ -434,8 +434,8 @@ job_recov_fs(char *filename, int recov_subjob)
 
 
 	pj = job_alloc();	/* allocate & initialize job structure space */
-	if (pj == (job *)0) {
-		return ((job *)0);
+	if (pj == NULL) {
+		return NULL;
 	}
 
 	(void)strcpy(pbs_recov_filename, path_jobs);	/* job directory path */
@@ -466,7 +466,7 @@ job_recov_fs(char *filename, int recov_subjob)
 			pbs_recov_filename);
 		log_err(errno, "job_recov", log_buffer);
 		free((char *)pj);
-		return ((job *)0);
+		return NULL;
 	}
 #endif
 
@@ -476,7 +476,7 @@ job_recov_fs(char *filename, int recov_subjob)
 			pbs_recov_filename);
 		log_err(errno, "job_recov", log_buffer);
 		free((char *)pj);
-		return ((job *)0);
+		return NULL;
 	}
 #ifdef WIN32
 	setmode(fds, O_BINARY);
@@ -491,7 +491,7 @@ job_recov_fs(char *filename, int recov_subjob)
 		log_err(errno, "job_recov", log_buffer);
 		free((char *)pj);
 		(void)close(fds);
-		return ((job *)0);
+		return NULL;
 	}
 	/* Does file name match the internal name? */
 	/* This detects ghost files */
@@ -505,7 +505,7 @@ job_recov_fs(char *filename, int recov_subjob)
 		log_err(errno, "job_recov", log_buffer);
 		free((char *)pj);
 		(void)close(fds);
-		return ((job *)0);
+		return NULL;
 	}
 	pn++;
 #else
@@ -522,7 +522,7 @@ job_recov_fs(char *filename, int recov_subjob)
 		log_err(-1, "job_recov", log_buffer);
 		free((char *)pj);
 		(void)close(fds);
-		return ((job *)0);
+		return NULL;
 	}
 
 	/* unless directed, don't recover Array Sub jobs */
@@ -531,7 +531,7 @@ job_recov_fs(char *filename, int recov_subjob)
 		(recov_subjob == NO_RECOV_SUBJOB)) {
 		free((char *)pj);
 		(void)close(fds);
-		return ((job *)0);
+		return NULL;
 	}
 
 	/* read in extended save area depending on VERSION */
@@ -546,7 +546,7 @@ job_recov_fs(char *filename, int recov_subjob)
 		log_err(errno, "job_recov", log_buffer);
 		free((char *)pj);
 		(void)close(fds);
-		return ((job *)0);
+		return NULL;
 	} else if (pj->ji_qs.ji_jsversion < JSVERSION_80) {
 		/* If older version, read and copy extended area     */
 		if (recov_514_extend(fds, pj) != 0) {
@@ -557,7 +557,7 @@ job_recov_fs(char *filename, int recov_subjob)
 			log_err(errno, "job_recov", log_buffer);
 			free((char *)pj);
 			(void)close(fds);
-			return ((job *)0);
+			return NULL;
 		}
 	} else {
 		/* If current version, JSVERSION_80, read into place */
@@ -570,7 +570,7 @@ job_recov_fs(char *filename, int recov_subjob)
 			log_err(errno, "job_recov", log_buffer);
 			free((char *)pj);
 			(void)close(fds);
-			return ((job *)0);
+			return NULL;
 		}
 	}
 #ifndef PBS_MOM
@@ -584,12 +584,12 @@ job_recov_fs(char *filename, int recov_subjob)
 			log_err(errno, "job_recov", log_buffer);
 			free((char *)pj);
 			(void)close(fds);
-			return ((job *)0);
+			return NULL;
 		}
 		if ((pj->ji_ajtrk = (struct ajtrkhd *)malloc(xs)) == NULL) {
 			free((char *)pj);
 			(void)close(fds);
-			return ((job *)0);
+			return NULL;
 		}
 		read(fds, (char *)pj->ji_ajtrk + sizeof(xs), xs - sizeof(xs));
 		pj->ji_ajtrk->tkm_size = xs;
@@ -605,7 +605,7 @@ job_recov_fs(char *filename, int recov_subjob)
 		log_err(errno, "job_recov", log_buffer);
 		job_free(pj);
 		(void)close(fds);
-		return ((job *)0);
+		return NULL;
 	}
 	(void)close(fds);
 
@@ -680,21 +680,21 @@ job_or_resv_save_fs(void *pobj, int updatetype, int objtype)
 	char	namebuf1[MAXPATHLEN+1];
 	char	namebuf2[MAXPATHLEN+1];
 
-	char		*path = (char*)0;
-	char		*err_msg = (char*)0;
-	char		*err_msgl = (char*)0;
-	char		*prefix = (char*)0;
-	char		*suffix = (char*)0;
-	char		*cpsuffix = (char*)0;
+	char		*path = NULL;
+	char		*err_msg = NULL;
+	char		*err_msgl = NULL;
+	char		*prefix = NULL;
+	char		*suffix = NULL;
+	char		*cpsuffix = NULL;
 
-	char		*p_oid = (char*)0;
-	long		*p_mtime = (long*)0;
-	int		*p_modified = (int*)0;
-	void		*pfixed = (void*)0;
+	char		*p_oid = NULL;
+	long		*p_mtime = NULL;
+	int		*p_modified = NULL;
+	void		*pfixed = NULL;
 	ssize_t		i;
 	size_t		fixed_size;
-	attribute_def	*p_attr_def = (attribute_def*)0;
-	attribute	*wattr = (attribute*)0;
+	attribute_def	*p_attr_def = NULL;
+	attribute	*wattr = NULL;
 	int		final_attr;
 	int		eventclass;
 	int		pmode;
@@ -978,8 +978,8 @@ job_or_resv_recov_fs(char *filename, int objtype)
 
 #ifndef PBS_MOM		/*MOM doesn't know about resource reservations*/
 		presv = resc_resv_alloc();   /* allocate & init resc_rescv struct */
-		if (presv == (resc_resv *)0) {
-			return ((void *)0);
+		if (presv == NULL) {
+			return NULL;
 		}
 		pobj = (void *)presv;
 		path = path_resvs;
@@ -994,14 +994,14 @@ job_or_resv_recov_fs(char *filename, int objtype)
 		attr_unkn = RESV_ATR_UNKN;
 		final_attr = RESV_ATR_LAST;
 #else	/* PBS_MOM only: This will never come here for MOM!!! */
-		return ((void *)0);
+		return NULL;
 #endif
 
 	} else {
 
 		pj = job_alloc();           /* allocate & initialize job struct */
-		if (pj == (job *)0) {
-			return ((void *)0);
+		if (pj == NULL) {
+			return NULL;
 		}
 		pobj = (void *)pj;
 		path = path_jobs;
@@ -1030,7 +1030,7 @@ job_or_resv_recov_fs(char *filename, int objtype)
 		sprintf(log_buffer, "%s on %s", err_msg, namebuf);
 		log_err(errno, "job_or_resv_recov", log_buffer);
 		free((char *)pobj);
-		return ((void *)0);
+		return NULL;
 	}
 #ifdef WIN32
 	setmode(fds, O_BINARY);
@@ -1043,7 +1043,7 @@ job_or_resv_recov_fs(char *filename, int objtype)
 		log_err(errno, "job_or_resv_recov", err_buf);
 		free((char *)pobj);
 		(void)close(fds);
-		return ((void *)0);
+		return NULL;
 	}
 	/* Does file name match the internal name? */
 	/* This detects ghost files */
@@ -1057,7 +1057,7 @@ job_or_resv_recov_fs(char *filename, int objtype)
 		log_err(errno, "job_or_resv_recov", log_buffer);
 		free((char *)pj);
 		(void)close(fds);
-		return ((job *)0);
+		return NULL;
 	}
 	pn++;
 #else
@@ -1071,7 +1071,7 @@ job_or_resv_recov_fs(char *filename, int objtype)
 		log_err(-1, "job_or_resv_recov", log_buffer);
 		free((char *)pobj);
 		(void)close(fds);
-		return ((void *)0);
+		return NULL;
 	}
 
 	/* read in working attributes */
@@ -1090,7 +1090,7 @@ job_or_resv_recov_fs(char *filename, int objtype)
 		}
 
 		(void)close(fds);
-		return ((void *)0);
+		return NULL;
 	}
 
 	(void)close(fds);

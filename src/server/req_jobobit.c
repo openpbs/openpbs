@@ -176,7 +176,7 @@ setup_from(job  *pjob, char *suffix)
  * @param[in]	tflag	- 1 if stdout or stderr , 2 if stage out or in
  *
  * @return	modified batch request.
- * @retval	(struct batch_request *)0	- failure
+ * @retval	NULL	- failure
  */
 
 static
@@ -203,7 +203,7 @@ setup_cpyfiles(struct batch_request *preq, job  *pjob, char *from, char *to, int
 		from = subst_array_index(pjob, from);
 	}
 
-	if (preq == (struct batch_request *)0) {
+	if (preq == NULL) {
 		char		*momname;
 
 		/* check that certain required attributues are valid */
@@ -222,7 +222,7 @@ setup_cpyfiles(struct batch_request *preq, job  *pjob, char *from, char *to, int
 				free(to);
 			if (cred)
 				free(cred);
-			return (NULL);
+			return NULL;
 		}
 		/* allocate and initialize the batch request struct */
 
@@ -235,7 +235,7 @@ setup_cpyfiles(struct batch_request *preq, job  *pjob, char *from, char *to, int
 			preq = alloc_br(PBS_BATCH_CopyFiles);
 		}
 
-		if (preq == (struct batch_request *)0) {
+		if (preq == NULL) {
 			if (from)
 				free(from);
 			if (to)
@@ -308,9 +308,9 @@ setup_cpyfiles(struct batch_request *preq, job  *pjob, char *from, char *to, int
 	}
 
 	pair = (struct rqfpair *)malloc(sizeof(struct rqfpair));
-	if (pair == (struct rqfpair *)0) {
+	if (pair == NULL) {
 		free_br(preq);
-		return ((struct batch_request *)0);
+		return NULL;
 	}
 
 	CLEAR_LINK(pair->fp_link);
@@ -368,7 +368,7 @@ enum job_atr	 ati;
  * @param[in]	ati	- JOB_ATR_, output/error path.
  *
  * @return	modified batch request.
- * @retval	(struct batch_request *)0	failure
+ * @retval	NULL	failure
  */
 
 static struct batch_request *cpy_stdfile(struct batch_request *preq, job *pjob, enum job_atr ati)
@@ -378,13 +378,13 @@ static struct batch_request *cpy_stdfile(struct batch_request *preq, job *pjob, 
 	attribute *jkpattr;
 	attribute *pathattr = &pjob->ji_wattr[(int)ati];
 	char *suffix;
-	char *to = (char *)0;
+	char *to = NULL;
 
 	/* if the job is interactive, don't bother to return output file */
 
 	if (pjob->ji_wattr[(int)JOB_ATR_interactive].at_flags &&
 		pjob->ji_wattr[(int)JOB_ATR_interactive].at_val.at_long)
-		return ((struct batch_request *)0);
+		return NULL;
 
 	/* set up depending on which file */
 
@@ -401,7 +401,7 @@ static struct batch_request *cpy_stdfile(struct batch_request *preq, job *pjob, 
 		(void)sprintf(log_buffer, "%c file missing", key);
 		log_event(PBSEVENT_ERROR|PBSEVENT_JOB, PBS_EVENTCLASS_JOB,
 			LOG_INFO,  pjob->ji_qs.ji_jobid, log_buffer);
-		return ((struct batch_request *)0);
+		return NULL;
 	}
 
 	/* Is the file joined to another, if so don't copy it */
@@ -448,7 +448,7 @@ static struct batch_request *cpy_stdfile(struct batch_request *preq, job *pjob, 
 	/* build up the name used by MOM as the from name */
 
 	from = setup_from(pjob, suffix);
-	if (from == (char *)0) {
+	if (from == NULL) {
 		(void)free(to);
 		return (preq);
 	}
@@ -746,7 +746,7 @@ on_job_exit(struct work_task *ptask)
 	int	release_nodes_on_stageout = 0;
 
 	if (ptask->wt_type != WORK_Deferred_Reply) {
-		preq = (struct batch_request *)0;
+		preq = NULL;
 		pjob = (job *)ptask->wt_parm1;
 	} else {
 		preq = (struct batch_request *)ptask->wt_parm1;
@@ -1175,7 +1175,7 @@ on_job_rerun(struct work_task *ptask)
 	mominfo_t *pmom = 0;
 
 	if (ptask->wt_type != WORK_Deferred_Reply) {
-		preq = (struct batch_request *)0;
+		preq = NULL;
 		pjob = (job *)ptask->wt_parm1;
 	} else {
 		preq = (struct batch_request *)ptask->wt_parm1;
@@ -1221,7 +1221,7 @@ on_job_rerun(struct work_task *ptask)
 				/* mom deletes her copy if returned ok	*/
 
 				preq = alloc_br(PBS_BATCH_Rerun);
-				if (preq == (struct batch_request *)0) {
+				if (preq == NULL) {
 					return;
 				}
 				(void)strcpy(preq->rq_ind.rq_rerun, pjob->ji_qs.ji_jobid);
@@ -1708,7 +1708,7 @@ job_obit(struct resc_used_update *pruu, int stream)
 	DBPRT(("%s: Obit received for job %s status=%d hop=%d\n", __func__,
 		pruu->ru_pjobid, pruu->ru_status, pruu->ru_hop))
 	pjob = find_job(pruu->ru_pjobid);
-	if (pjob == (job *)0) {		/* not found */
+	if (pjob == NULL) {		/* not found */
 		DBPRT(("%s: job %s not found!\n", __func__, pruu->ru_pjobid))
 		if ((server_init_type == RECOV_COLD) ||
 			(server_init_type == RECOV_CREATE)) {
@@ -2063,7 +2063,7 @@ job_obit(struct resc_used_update *pruu, int stream)
 
 					svr_mailowner(pjob, MAIL_BEGIN, MAIL_FORCE,
 						mailmsg);
-					job_attr_def[(int)JOB_ATR_Comment].at_decode(&pjob->ji_wattr[(int)JOB_ATR_Comment], (char *)0, (char *)0, mailmsg);
+					job_attr_def[(int)JOB_ATR_Comment].at_decode(&pjob->ji_wattr[(int)JOB_ATR_Comment], NULL, NULL, mailmsg);
 
 					log_event(PBSEVENT_ERROR|PBSEVENT_JOB,
 						PBS_EVENTCLASS_JOB, LOG_INFO,
@@ -2072,7 +2072,7 @@ job_obit(struct resc_used_update *pruu, int stream)
 				} else {
 					svr_mailowner(pjob, MAIL_BEGIN, MAIL_FORCE,
 						msg_bad_password);
-					job_attr_def[(int)JOB_ATR_Comment].at_decode(&pjob->ji_wattr[(int)JOB_ATR_Comment], (char *)0, (char *)0, msg_bad_password);
+					job_attr_def[(int)JOB_ATR_Comment].at_decode(&pjob->ji_wattr[(int)JOB_ATR_Comment], NULL, NULL, msg_bad_password);
 				}
 
 			case JOB_EXEC_RETRY:
@@ -2113,7 +2113,7 @@ RetryJob:
 						ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
 					job_attr_def[(int)JOB_ATR_Comment].at_decode(
 						&pjob->ji_wattr[(int)JOB_ATR_Comment],
-						(char *)0, (char *)0,
+						NULL, NULL,
 						"job held, too many failed attempts to run");
 				}
 				break;
@@ -2192,8 +2192,8 @@ RetryJob:
 					pjob->ji_modified = 1;
 					pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long |= HOLD_s;
 					pjob->ji_wattr[(int)JOB_ATR_hold].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_MODIFY;
-					job_attr_def[(int)JOB_ATR_Comment].at_decode(&pjob->ji_wattr[(int)JOB_ATR_Comment],(char *)0,
-						(char *)0,"job held due to possible security breach of job tmpdir, failed to start");
+					job_attr_def[(int)JOB_ATR_Comment].at_decode(&pjob->ji_wattr[(int)JOB_ATR_Comment],NULL,
+						NULL,"job held due to possible security breach of job tmpdir, failed to start");
 					rel_resc(pjob);
 					ack_obit(stream, pjob->ji_qs.ji_jobid);
 					svr_setjobstate(pjob, JOB_STATE_HELD, JOB_SUBSTATE_HELD);

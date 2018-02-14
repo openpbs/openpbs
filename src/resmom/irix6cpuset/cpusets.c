@@ -125,7 +125,7 @@ cpuset_small_ncpus_set(char *str)
 }
 
 /**
- * @brief 
+ * @brief
  *	cpuset_small_mem_set: the number in the config file is in terms of
  * 	kbytes, while internally, it will be represented in bytes.
  *
@@ -195,7 +195,7 @@ cpuset_destroy_delay_set(char *str)
 
 /**
  * @brief
- * 	creates the flags for 'str' is in the format: "flag1|flag2|..." 
+ * 	creates the flags for 'str' is in the format: "flag1|flag2|..."
  *
  * @param[in] str - config value
  *
@@ -305,7 +305,7 @@ cpuset_create_flags_print(char *head, int flags)
  *
  * @return	int
  * @retval	-1			error(with errno left as set by sysmp())
- * @retval	count of cpuset		
+ * @retval	count of cpuset
  */
 int
 query_cpusets(cpusetlist **listp, Bitfield *maskp)
@@ -612,7 +612,7 @@ current_cpuset(void)
 	/* Get the list of names else print error & exit */
 	if ((names = cpusetGetName(0)) == NULL) {
 		log_err(errno, __func__, "Failed to get current cpuset name");
-		return (NULL);
+		return NULL;
 	}
 
 	if (names->count == 0) {
@@ -722,7 +722,7 @@ teardown_cpuset(char *qname, Bitfield *nodesp)
 	return -1;		/* Cpuset cannot be deleted at this time. */
 }
 
-/** 
+/**
  * @brief
  * 	reclaim_cpusets()
  * 	Given a list of cpusets, attempt to destroy each cpuset named by the list.
@@ -807,7 +807,7 @@ reclaim_cpusets(cpusetlist **listp, Bitfield *maskp)
  * 	first try to find a shared cpuset from listp that will match the share_req
  * 	requirements given. If it finds one, then update its sharing information;
  * 	otherwise, * a new shared cpuset entry is created.
- * 
+ *
  * @param[in] listp - pointer to cpuset list
  * @param[in] qname - cpuset name to be added to list
  * @param[in] nodes - pointer to nodes bitfield
@@ -943,7 +943,7 @@ add_to_cpusetlist(cpusetlist **listp, char *qname, Bitfield *nodes, cpuset_share
  * @retval      0       success
  * @retval      1       failure( requested cpuset was not found)
  *
- * @par	NOTE: 
+ * @par	NOTE:
  *	This function does *not* destroy the cpuset, merely the element in
  * 	the list that tracks it.
  *
@@ -1020,8 +1020,8 @@ remove_from_cpusetlist(cpusetlist **listp, Bitfield *maskp, char *qname, cpuset_
 /**
  * @brief
  * 	free_cpusetlist()
- * 	Free a list composed of one or more cpusetlist elements.  
- * 
+ * 	Free a list composed of one or more cpusetlist elements.
+ *
  * @param[in] list - pointer to list
  *
  * @return	int
@@ -1056,7 +1056,7 @@ free_cpusetlist(cpusetlist *list)
  * @brief
  * 	find_cpuset()
  * 	Perform a simple linear search on the supplied list, looking for a cpuset
- * 	named by qname.  
+ * 	named by qname.
  *
  * @param[in] list - pointer to cpuset list
  * @param[in]  qname - cpuset name
@@ -1102,7 +1102,7 @@ find_cpuset_shared(cpusetlist *list, cpuset_shared *criteria)
 	time_t	ttl, cand_ttl;
 
 	if (criteria == NULL)
-		return (NULL);
+		return NULL;
 
 	for (ptr = list; ptr; ptr = ptr->next) {
 
@@ -1149,7 +1149,7 @@ find_cpuset_byjob(cpusetlist *list, char *jobid)
 	char		*qn;
 
 	if (jobid == NULL)
-		return (NULL);
+		return NULL;
 
 	for (ptr = list; ptr; ptr=ptr->next) {
 
@@ -1226,7 +1226,7 @@ print_cpusets(cpusetlist *list, char *heading)
  *
  * @param[in] list - pointer to cpusetlist
  *
- * @return	int 
+ * @return	int
  * @retval	num of nodeboards for cpuset	success
  * @retval	0				error
  *
@@ -1257,7 +1257,7 @@ num_nodes_cpusets(cpusetlist *list)
  *
  * @param[in] cpuset - pointer to cpuset_CPUList_t
  * @param[in] mask - pointer to mask bitfield
- * 
+ *
  * @par	Note:
  * 	cpu 0 if found to be one of the cpusets to allocate, will only be part
  *	part of a cpuset if *EXCLUSIVE cpuset_create_flags are not set.
@@ -1377,7 +1377,7 @@ string_to_qname(char *str)
 	 * against it anyway.
 	 */
 	if (str == NULL || (len = strlen(str)) < 3)
-		return (NULL);
+		return NULL;
 
 	if (len > QNAME_STRING_LEN)
 		len = QNAME_STRING_LEN;
@@ -1538,7 +1538,7 @@ is_small_job(job *pjob, cpuset_shared *share_req)
 /**
  * @brief
  * 	is_small_job2: like its predecessor, except recovered values for ncpus
- *	and mem are used first if set; otherwise, use the job resource values 
+ *	and mem are used first if set; otherwise, use the job resource values
  *
  * @param[in] pjob - job pointer
  * @param[in] rmem - recovered mem val
@@ -1655,7 +1655,7 @@ cleanup_cpuset_permfiles(void)
 {
 	DIR		*dir;
 	struct dirent	*pdirent;
-	job		*pj = (job *)0;
+	job		*pj = NULL;
 	char		*job_suffix = JOB_CPUSETQ_SUFFIX;
 	char		*psuffix;
 	int		i, found;
@@ -1665,12 +1665,12 @@ cleanup_cpuset_permfiles(void)
 	char		*qn;
 
 	dir = opendir(path_jobs);
-	if (dir == (DIR *)0) {
+	if (dir == NULL) {
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ALERT,
 			__func__, "Jobs directory not found");
 		return;
 	}
-	while ((pdirent = readdir(dir)) != (struct dirent *)0) {
+	while ((pdirent = readdir(dir)) != NULL) {
 
 		if ((i = strlen(pdirent->d_name)) <= job_suf_len)
 			continue;
@@ -1685,7 +1685,7 @@ cleanup_cpuset_permfiles(void)
 
 		found = 0;
 		pj = (job *)GET_NEXT(svr_alljobs);
-		while (pj != (job *)0) {
+		while (pj != NULL) {
 			qn = job_to_qname(pj);
 			if (qn && (strcasecmp(qname, qn) == 0)) {
 				found = 1;
@@ -1830,14 +1830,14 @@ job_to_qname(job *pjob)
 		return (cset->name);
 
 	if ((qnam=string_to_qname(jobid)) == NULL)
-		return (NULL);
+		return NULL;
 
 	strcpy(qname, qnam);
 	strcpy(suffix, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
 	p = &suffix[0];
 	while (find_cpuset(inusecpusets, qname) != NULL) { /* exists */
 		if (*p == NULL)
-			return (NULL);
+			return NULL;
 
 		qname[QNAME_STRING_LEN-1] = *p;
 		p++;

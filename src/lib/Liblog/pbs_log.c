@@ -133,16 +133,16 @@ static char *class_names[] = {
 /* External functions called */
 
 /**
- * @brief	
+ * @brief
  * set_msgdaemonname - set the variable msg_daemonname
  *			as per the daemon
  * @param[in] - ch - the string msg_daemonname to be set
  * @return int
  * @retval 1 - failure
  * @retval 0 - success
- */ 
+ */
 
-int set_msgdaemonname(char *ch) 
+int set_msgdaemonname(char *ch)
 {
 	if(!(msg_daemonname = strdup(ch))) {
 		return 1;
@@ -153,11 +153,11 @@ int set_msgdaemonname(char *ch)
 /**
  * @brief
  * set_logfile - set the logfile to stderr to log the message to stderr
- * @param[in] - fp - log file pointer 
+ * @param[in] - fp - log file pointer
  * @return void
  */
 
-void set_logfile(FILE *fp) 
+void set_logfile(FILE *fp)
 {
 	log_opened = 1;
 	logfile = fp;
@@ -185,7 +185,7 @@ mk_log_name(char *pbuf, size_t pbufsz)
 	struct tm *ptm;
 	time_t time_now;
 
-	time_now = time((time_t *)0);
+	time_now = time(NULL);
 
 #ifdef WIN32
 	ptm = localtime(&time_now);
@@ -355,13 +355,13 @@ log_init(void)
 #endif
 }
 
-/** 
+/**
  * @brief
  *	Add general debugging information in log
  *
  * @par Side Effects:
  * 	None
- * 
+ *
  * @par MT-safe: Yes
  *
  */
@@ -385,7 +385,7 @@ log_add_debug_info()
 
 	/* To add leaf node name, if set */
 	strcpy(temp, "pbs_leaf_name=");
-	if(pbs_conf.pbs_leaf_name){ 
+	if(pbs_conf.pbs_leaf_name){
 		strncat(temp, pbs_conf.pbs_leaf_name, LOG_BUF_SIZE);
 		strncat(temp, ";", LOG_BUF_SIZE);
 	}
@@ -393,7 +393,7 @@ log_add_debug_info()
 		strcat(temp, "N/A;");
 	strncat(tbuf, temp, LOG_BUF_SIZE);
 
-	
+
 	/* To add mom node name, if set */
 	strcpy(temp, "pbs_mom_node_name=");
 	if(pbs_conf.pbs_mom_node_name)
@@ -402,8 +402,8 @@ log_add_debug_info()
 		strncat(temp, "N/A", LOG_BUF_SIZE);
 	strncat(tbuf, temp, LOG_BUF_SIZE);
 	log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, tbuf);
-	
-	return;	
+
+	return;
 
 }
 
@@ -426,7 +426,7 @@ log_add_if_info()
 	char temp[LOG_BUF_SIZE];
 	int i;
 	struct log_net_info *ni, *curr;
-	
+
 	memset(msg, '\0', sizeof(msg));
 	ni = get_if_info(msg);
 	if(strlen(msg)){ /* Adding error message to log */
@@ -524,7 +524,7 @@ log_open_main(char *filename, char *directory, int silent)
 		if (strcmp(log_directory, directory) != 0)
 			(void)strncpy(log_directory, directory, _POSIX_PATH_MAX/2-1);
 
-		if ((filename == (char *)0) || (*filename == '\0')) {
+		if ((filename == NULL) || (*filename == '\0')) {
 			filename = mk_log_name(buf, _POSIX_PATH_MAX);
 			log_auto_switch = 1;
 		}
@@ -817,7 +817,7 @@ log_suspect_file(const char *func, const char *text, const char *file, struct st
  *	is to contain "continuation lines".
  *
  * @param[in] eventtype - event type
- * @param[in] objclass - event object class 
+ * @param[in] objclass - event object class
  * @param[in] sev - indication for whether to syslogging enabled or not
  * @param[in] objname - object name stating log msg related to which object
  * @param[in] text - log msg to be logged.
@@ -836,7 +836,7 @@ log_record(int eventtype, int objclass, int sev, const char *objname, const char
 	FILE  *savlog;
 	static char slogbuf[LOG_BUF_SIZE];
 
-	
+
 #if SYSLOG
 	if (syslogopen != 0) {
 		snprintf(slogbuf, LOG_BUF_SIZE,
@@ -854,7 +854,7 @@ log_record(int eventtype, int objclass, int sev, const char *objname, const char
 	if ((text == NULL) || (objname == NULL))
 		return;
 
-	now = time((time_t *)0);	/* get time for message */
+	now = time(NULL);	/* get time for message */
 
 #ifdef WIN32
 	ptm = localtime(&now);
@@ -869,7 +869,7 @@ log_record(int eventtype, int objclass, int sev, const char *objname, const char
 	/* Do we need to switch the log? */
 	if (log_auto_switch && (ptm->tm_yday != log_open_day)) {
 		log_close(1);
-		log_open((char *)0, log_directory);
+		log_open(NULL, log_directory);
 	}
 
 	if (log_opened < 1) {

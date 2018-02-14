@@ -631,7 +631,7 @@ pbsd_init(int type)
 	}
 #endif	/* not DEBUG and not NO_SECURITY_CHECK */
 
-	time_now = time((time_t *)0);
+	time_now = time(NULL);
 
 	(void)memset(&jan1_yr2038_tm, (int)0, sizeof(jan1_yr2038_tm));
 	jan1_yr2038_tm.tm_mday = 1;
@@ -712,7 +712,7 @@ pbsd_init(int type)
 		} else {
 			/* set default values for all schedulers */
 			psched = (pbs_sched *) GET_NEXT(svr_allscheds);
-			while (psched != (pbs_sched *) 0) {
+			while (psched != NULL) {
 				set_sched_default(psched, 0);
 				if (psched != dflt_scheduler) {
 					psched->pbs_scheduler_port = psched->sch_attr[SCHED_ATR_sched_port].at_val.at_long;
@@ -847,7 +847,7 @@ pbsd_init(int type)
 	}
 	while ((rc = pbs_db_cursor_next(conn, state, &obj)) == 0) {
 		/* recover queue */
-		if ((pque = que_recov_db(dbque.qu_name)) != (pbs_queue *) 0) {
+		if ((pque = que_recov_db(dbque.qu_name)) != NULL) {
 			/* que_recov increments sv_numque */
 			sprintf(log_buffer, msg_init_recovque,
 				pque->qu_qs.qu_name);
@@ -961,7 +961,7 @@ pbsd_init(int type)
 		/* recover reservation */
 		presv = (resc_resv *) job_or_resv_recov(dbresv.ri_resvid,
 			RESC_RESV_OBJECT);
-		if (presv != (resc_resv *) 0) {
+		if (presv != NULL) {
 
 			is_resv_window_in_future(presv);
 			set_old_subUniverse(presv);
@@ -1135,7 +1135,7 @@ pbsd_init(int type)
 	}
 
 	dir = opendir(".");
-	if (dir == (DIR *)0) {
+	if (dir == NULL) {
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER,
 			LOG_DEBUG, msg_daemonname,
 			"Could not open hooks dir");
@@ -1143,7 +1143,7 @@ pbsd_init(int type)
 		/* Now, for each hook found ... */
 
 		while (errno = 0,
-			(pdirent = readdir(dir)) != (struct dirent *)0) {
+			(pdirent = readdir(dir)) != NULL) {
 
 			if (chk_save_file(pdirent->d_name) != 0) {
 				continue;
@@ -1454,7 +1454,7 @@ pbsd_init(int type)
 #endif
 
 	hook_track_recov();
-	
+
 	/* Check to see that jobs in the maintenance_jobs attribute on a node still exist
 	 * If they don't exist any more, remove them from a node's maintenance_jobs attribute
 	 */
@@ -1463,7 +1463,7 @@ pbsd_init(int type)
 	for (i=0; i<svr_totnodes; i++) {
 		struct array_strings *arst;
 		arst = pbsndlist[i]->nd_attr[(int)ND_ATR_MaintJobs].at_val.at_arst;
-		if (pbsndlist[i]->nd_attr[(int)ND_ATR_MaintJobs].at_flags & ATR_VFLAG_SET && 
+		if (pbsndlist[i]->nd_attr[(int)ND_ATR_MaintJobs].at_flags & ATR_VFLAG_SET &&
 		    arst->as_usedptr > 0) {
 			int j;
 			int len = 0;
@@ -1472,7 +1472,7 @@ pbsd_init(int type)
 
 			for(j = 0; j < arst->as_usedptr; j++)
 				len += strlen(arst->as_string[j]) + 1; /* 1 for the comma*/
-			
+
 			if(len > buf_len) {
 				char *tmp_buf;
 				tmp_buf = realloc(buf, len + 1);
@@ -1587,13 +1587,13 @@ reassign_resc(job *pjob)
 			&pjob->ji_wattr[(int)JOB_ATR_exec_vnode]);
 		(void)job_attr_def[(int)JOB_ATR_exec_vnode].at_decode(
 			&pjob->ji_wattr[(int)JOB_ATR_exec_vnode],
-			(char *)0,
-			(char *)0,
+			NULL,
+			NULL,
 			vnodeout);
 		(void)job_attr_def[(int)JOB_ATR_exec_host].at_decode(
 			&pjob->ji_wattr[(int)JOB_ATR_exec_host],
-			(char *)0,
-			(char *)0,
+			NULL,
+			NULL,
 			hoststr);
 		pjob->ji_modified = 1;
 	}
@@ -1615,18 +1615,18 @@ reassign_resc(job *pjob)
 		}
 	}
 
-	if ( (pjob->ji_qs.ji_substate == JOB_SUBSTATE_SCHSUSP || pjob->ji_qs.ji_substate == JOB_SUBSTATE_SUSPEND) && 
+	if ( (pjob->ji_qs.ji_substate == JOB_SUBSTATE_SCHSUSP || pjob->ji_qs.ji_substate == JOB_SUBSTATE_SUSPEND) &&
 		(pjob->ji_wattr[(int) JOB_ATR_resc_released].at_flags & ATR_VFLAG_SET) ) {
 		/*
-		 * Allocating resources back to a suspended job is tricky.  
-		 * Suspended jobs only hold part of their resources 
-		 * If set_resc_assigned() is called by a job with the JOB_ATR_resc_released set, 
-		 * only some of the resources will be acted upon.  Since this 
+		 * Allocating resources back to a suspended job is tricky.
+		 * Suspended jobs only hold part of their resources
+		 * If set_resc_assigned() is called by a job with the JOB_ATR_resc_released set,
+		 * only some of the resources will be acted upon.  Since this
 		 * is a fresh job from disk, we need to allocate all of
 		 * its resources to it before we partially release some.
 		 * We do this by temporarily unsetting JOB_ATR_resc_released attribute while
-		 * restoring the job's resources.  This will allocate all of the 
-		 * requested resources to the job.  We add the flag back to the job 
+		 * restoring the job's resources.  This will allocate all of the
+		 * requested resources to the job.  We add the flag back to the job
 		 * and then decrement the resources released when the job was originally suspended.
 		 */
 		pjob->ji_wattr[(int) JOB_ATR_resc_released].at_flags &= ~ATR_VFLAG_SET;
@@ -1671,7 +1671,7 @@ pbsd_init_job(job *pjob, int type)
 		&pjob->ji_wattr[(int)JOB_ATR_at_server]);
 	job_attr_def[(int)JOB_ATR_at_server].at_decode(
 		&pjob->ji_wattr[(int)JOB_ATR_at_server],
-		(char *)0, (char *)0, server_name);
+		NULL, NULL, server_name);
 
 	/* now based on the initialization type */
 
@@ -1863,10 +1863,10 @@ pbsd_init_job(job *pjob, int type)
 		}
 
 		/* update entity limit sums for this job */
-		(void)set_entity_ct_sum_max(pjob, (pbs_queue *)0, INCR);
-		(void)set_entity_ct_sum_queued(pjob, (pbs_queue *)0, INCR);
-		(void)set_entity_resc_sum_max(pjob, (pbs_queue *)0, (attribute *)0, INCR);
-		(void)set_entity_resc_sum_queued(pjob, (pbs_queue *)0, (attribute *)0, INCR);
+		(void)set_entity_ct_sum_max(pjob, NULL, INCR);
+		(void)set_entity_ct_sum_queued(pjob, NULL, INCR);
+		(void)set_entity_resc_sum_max(pjob, NULL, NULL, INCR);
+		(void)set_entity_resc_sum_queued(pjob, NULL, NULL, INCR);
 
 		/* if job has IP address of Mom, it may have changed */
 		/* reset based on hostname                           */
@@ -2172,7 +2172,7 @@ Rmv_if_resv_not_possible(job *pjob)
 		 */
 
 		presv = find_resv(pjob->ji_qs.ji_jobid);
-		if (presv == (resc_resv *)0 ||
+		if (presv == NULL ||
 			pjob->ji_wattr[JOB_ATR_reserve_end]
 			.at_val.at_long < time_now)
 			rc = 1;
@@ -2220,7 +2220,7 @@ Rmv_if_resv_not_possible(job *pjob)
 static int
 attach_queue_to_reservation(resc_resv *presv)
 {
-	if (presv == (resc_resv *)0 || presv->ri_qs.ri_type != RESC_RESV_OBJECT)
+	if (presv == NULL || presv->ri_qs.ri_type != RESC_RESV_OBJECT)
 		return (0);
 	presv->ri_qp = find_queuebyname(presv->ri_qs.ri_queue);
 

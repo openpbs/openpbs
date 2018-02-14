@@ -66,18 +66,18 @@ opendir(const char *name)
 	strncpy(search, name, _MAX_PATH);
 
 	if (strlen(search)+3 > _MAX_PATH)
-		return (NULL);
+		return NULL;
 
 	strncat(search, "/*", _MAX_PATH);
 
 	hdir = FindFirstFile(search, &data);
 	if (hdir == INVALID_HANDLE_VALUE)
-		return (NULL);
+		return NULL;
 
 	dir = (DIR *)malloc(sizeof(DIR));
 
 	if (dir == NULL)
-		return (NULL);
+		return NULL;
 
 
 	dir->handle = hdir;
@@ -86,7 +86,7 @@ opendir(const char *name)
 
 	if (dir->entry == NULL) {
 		(void)free(dir);
-		return (NULL);
+		return NULL;
 	}
 
 	strncpy(dir->entry->d_name, data.cFileName, _MAX_PATH);
@@ -112,7 +112,7 @@ readdir(DIR *dir)
 	int     rval;
 
 	if (dir == NULL || dir->pos == DIR_END)
-		return (NULL);
+		return NULL;
 
 
 
@@ -125,7 +125,7 @@ readdir(DIR *dir)
 
 	if (rval == 0) {
 		dir->pos = DIR_END;
-		return (NULL);
+		return NULL;
 	}
 
 	dir->pos = DIR_MIDDLE;
@@ -137,11 +137,11 @@ readdir(DIR *dir)
  * @brief
  *	 close directory
  *
- * @param[in] - hdir - pointer to dir 
+ * @param[in] - hdir - pointer to dir
  *
  * @return	int
- * @retval	zero 	on success; 
- * @retval	-1 	on failure 
+ * @retval	zero 	on success;
+ * @retval	-1 	on failure
  *
  */
 int

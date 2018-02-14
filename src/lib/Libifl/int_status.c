@@ -51,7 +51,7 @@ static struct batch_status *alloc_bs();
 
 /**
  * @brief
- *	-wrapper function for PBSD_status_put which sends 
+ *	-wrapper function for PBSD_status_put which sends
  *	status batch request
  *
  * @param[in] c - socket descriptor
@@ -65,7 +65,7 @@ static struct batch_status *alloc_bs();
  * @return	structure handle
  * @retval 	pointer to batch status on SUCCESS
  * @retval 	NULL on failure
- * 
+ *
  */
 
 struct batch_status *
@@ -76,12 +76,12 @@ PBSD_status(int c, int function, char *objid, struct attrl *attrib, char *extend
 
 	/* send the status request */
 
-	if (objid == (char *)0)
+	if (objid == NULL)
 		objid = "";	/* set to null string for encoding */
 
 	rc = PBSD_status_put(c, function, objid, attrib, extend, 0, NULL);
 	if (rc) {
-		return (struct batch_status *)NULL;
+		return NULL;
 	}
 
 	/* get the status reply */
@@ -102,8 +102,8 @@ PBSD_status(int c, int function, char *objid, struct attrl *attrib, char *extend
 struct batch_status *PBSD_status_get(int c)
 {
 	struct brp_cmdstat  *stp; /* pointer to a returned status record */
-	struct batch_status *bsp  = (struct batch_status *)NULL;
-	struct batch_status *rbsp = (struct batch_status *)NULL;
+	struct batch_status *bsp  = NULL;
+	struct batch_status *rbsp = NULL;
 	struct batch_reply  *reply;
 	int i;
 
@@ -121,17 +121,17 @@ struct batch_status *PBSD_status_get(int c)
 		stp = reply->brp_un.brp_statc;
 		i = 0;
 		pbs_errno = 0;
-		while (stp != (struct brp_cmdstat *)NULL) {
+		while (stp != NULL) {
 			if (i++ == 0) {
 				rbsp = bsp = alloc_bs();
-				if (bsp == (struct batch_status *)NULL) {
+				if (bsp == NULL) {
 					pbs_errno = PBSE_SYSTEM;
 					break;
 				}
 			} else {
 				bsp->next = alloc_bs();
 				bsp = bsp->next;
-				if (bsp == (struct batch_status *)NULL) {
+				if (bsp == NULL) {
 					pbs_errno = PBSE_SYSTEM;
 					break;
 				}
@@ -143,12 +143,12 @@ struct batch_status *PBSD_status_get(int c)
 			bsp->attribs = stp->brp_attrl;
 			if (stp->brp_attrl)
 				stp->brp_attrl = 0;
-			bsp->next = (struct batch_status *)NULL;
+			bsp->next = NULL;
 			stp = stp->brp_stlink;
 		}
 		if (pbs_errno) {
 			pbs_statfree(rbsp);
-			rbsp = (struct batch_status *)NULL;
+			rbsp = NULL;
 		}
 	}
 	PBSD_FreeReply(reply);
@@ -167,10 +167,10 @@ static struct batch_status *alloc_bs()
 	bsp = MH(struct batch_status);
 	if (bsp) {
 
-		bsp->next = (struct batch_status *)NULL;
-		bsp->name = (char *)NULL;
-		bsp->attribs = (struct attrl *)NULL;
-		bsp->text = (char *)NULL;
+		bsp->next = NULL;
+		bsp->name = NULL;
+		bsp->attribs = NULL;
+		bsp->text = NULL;
 	}
 	return bsp;
 }

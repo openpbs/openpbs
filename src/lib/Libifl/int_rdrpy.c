@@ -78,7 +78,7 @@ PBSD_rdrpy_sock(int sock, int *rc)
 	/* clear any prior error message */
 	if ((reply = (struct batch_reply *)malloc(sizeof(struct batch_reply))) == 0) {
 		pbs_errno = PBSE_SYSTEM;
-		return ((struct batch_reply *)0);
+		return NULL;
 	}
 	(void)memset(reply, 0, sizeof(struct batch_reply));
 
@@ -90,7 +90,7 @@ PBSD_rdrpy_sock(int sock, int *rc)
 	if ((*rc = decode_DIS_replyCmd(sock, reply)) != 0) {
 		(void)free(reply);
 		pbs_errno = PBSE_PROTOCOL;
-		return (struct batch_reply *)NULL;
+		return NULL;
 	}
 	DIS_tcp_reset(sock, 0);		/* reset DIS read buffer */
 	pbs_tcp_timeout = old_timeout;
@@ -117,9 +117,9 @@ PBSD_rdrpy(int c)
 
 	/* clear any prior error message */
 
-	if (connection[c].ch_errtxt != (char *)NULL) {
+	if (connection[c].ch_errtxt != NULL) {
 		free(connection[c].ch_errtxt);
-		connection[c].ch_errtxt = (char *)NULL;
+		connection[c].ch_errtxt = NULL;
 	}
 
 	sock = connection[c].ch_socket;
@@ -129,7 +129,7 @@ PBSD_rdrpy(int c)
 		connection[c].ch_errtxt = strdup(dis_emsg[rc]);
 		if (connection[c].ch_errtxt == NULL)
 			pbs_errno = PBSE_SYSTEM;
-		return (struct batch_reply *) NULL;
+		return NULL;
 	}
 
 	connection[c].ch_errno = reply->brp_code;
@@ -142,7 +142,7 @@ PBSD_rdrpy(int c)
 			connection[c].ch_errtxt = strdup(reply->brp_un.brp_txt.brp_str);
 			if (connection[c].ch_errtxt == NULL) {
 				pbs_errno = PBSE_SYSTEM;
-				return (struct batch_reply *)NULL;
+				return NULL;
 			}
 		}
 	}
@@ -172,7 +172,7 @@ struct batch_reply *reply;
 	if (reply->brp_choice == BATCH_REPLY_CHOICE_Text) {
 		if (reply->brp_un.brp_txt.brp_str) {
 			(void)free(reply->brp_un.brp_txt.brp_str);
-			reply->brp_un.brp_txt.brp_str = (char *)0;
+			reply->brp_un.brp_txt.brp_str = NULL;
 			reply->brp_un.brp_txt.brp_txtlen = 0;
 		}
 

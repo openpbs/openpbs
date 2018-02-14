@@ -246,7 +246,7 @@ db_err:
 	free(np);
 	log_err(-1, "node_recov", "error on recovering node attr");
 	(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
-	return (NULL);
+	return NULL;
 }
 
 

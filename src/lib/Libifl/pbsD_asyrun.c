@@ -54,7 +54,7 @@
  *
  * @param[in] c - connection handle
  * @param[in] jobid- job identifier
- * @param[in] location - string of vnodes/resources to be allocated to the job 
+ * @param[in] location - string of vnodes/resources to be allocated to the job
  * @param[in] extend - extend string for encoding req
  *
  * @return      int
@@ -70,9 +70,9 @@ __pbs_asyrunjob(int c, char *jobid, char *location, char *extend)
 	unsigned long resch = 0;
 	int	sock;
 
-	if ((jobid == (char *)0) || (*jobid == '\0'))
+	if ((jobid == NULL) || (*jobid == '\0'))
 		return (pbs_errno = PBSE_IVALREQ);
-	if (location == (char *)0)
+	if (location == NULL)
 		location = "";
 
 	sock = connection[c].ch_socket;

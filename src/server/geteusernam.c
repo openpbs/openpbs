@@ -78,7 +78,7 @@
 extern char server_host[];
 
 /**
- * @brief	
+ * @brief
  *  	determine_euser - determine the effective user name
  *
  *  	Determine with which "user name" this object is to be associated
@@ -95,7 +95,7 @@ extern char server_host[];
  * @param[in,out]	isowner - Return: 1  if object's owner chosen as euser
  *
  * @return pointer to the user name
- * 
+ *
  */
 
 static char *
@@ -147,7 +147,7 @@ determine_euser(void *pobj, int objtype, attribute *pattr, int *isowner)
 		*isowner = 1;
 	}
 
-	/* copy user name into return buffer and strip off host name only when hit is set 
+	/* copy user name into return buffer and strip off host name only when hit is set
 	 * i.e. when either no user is specified(in this case, default the job to the object owner)
 	 * or a user is provided with the correct host name.
 	 * If not set, job can't be run as no user to run the job */
@@ -155,7 +155,7 @@ determine_euser(void *pobj, int objtype, attribute *pattr, int *isowner)
 		cvrt_fqn_to_name(hit, username);
 	}
 
-	
+
 
 	return (username);
 }
@@ -210,7 +210,7 @@ determine_egroup(void *pobj, int objtype, attribute *pattr)
 		}
 	}
 	if (!hit) 	/* nothing sepecified, return null */
-		return ((char *)0);
+		return NULL;
 
 	/* copy group name into return buffer, strip host name */
 	cvrt_fqn_to_name(hit, groupname);
@@ -325,7 +325,7 @@ set_objexid(void *pobj, int objtype, attribute *attrry)
 	else
 		pattr = &objattrs[idx_ul];
 
-	if ((puser = determine_euser(pobj, objtype, pattr, &isowner)) == (char *)0)
+	if ((puser = determine_euser(pobj, objtype, pattr, &isowner)) == NULL)
 		return (bad_euser);
 
 
@@ -338,7 +338,7 @@ set_objexid(void *pobj, int objtype, attribute *attrry)
 	}
 #else
 	pwent = getpwnam(puser);
-	if (pwent == (struct passwd *)0) {
+	if (pwent == NULL) {
 		if (!server.sv_attr[(int)SRV_ATR_FlatUID].at_val.at_long)
 			return (bad_euser);
 	} else if (pwent->pw_uid == 0) {
@@ -370,7 +370,7 @@ set_objexid(void *pobj, int objtype, attribute *attrry)
 
 	pattr = &objattrs[idx_euser];
 	obj_attr_def[idx_euser].at_free(pattr);
-	obj_attr_def[idx_euser].at_decode(pattr, (char *)0, (char *)0, puser);
+	obj_attr_def[idx_euser].at_decode(pattr, NULL, NULL, puser);
 
 #ifndef WIN32
 	if (pwent != NULL) {
@@ -381,7 +381,7 @@ set_objexid(void *pobj, int objtype, attribute *attrry)
 		pattr = &objattrs[idx_acct];
 		if ((pattr->at_flags & ATR_VFLAG_SET) == 0) {
 			(void)obj_attr_def[idx_acct].at_decode(pattr,
-				(char *)0, (char *)0, "\0");
+				NULL, NULL, "\0");
 		}
 
 		/*
@@ -411,7 +411,7 @@ set_objexid(void *pobj, int objtype, attribute *attrry)
 			(void)LocalFree(sid);
 #else
 			gpent = getgrnam(pgrpn);
-			if (gpent == (struct group *)0) {
+			if (gpent == NULL) {
 				if (pwent != NULL)	/* no such group is allowed */
 					return (bad_egrp);	/* only when no user (flatuid)*/
 
@@ -439,7 +439,7 @@ set_objexid(void *pobj, int objtype, attribute *attrry)
 #else
 
 			gpent = getgrgid(pwent->pw_gid);
-			if (gpent != (struct group *)0) {
+			if (gpent != NULL) {
 				pgrpn = gpent->gr_name;		/* use group name */
 			} else {
 				(void)sprintf(gname, "%d", pwent->pw_gid);
@@ -475,7 +475,7 @@ set_objexid(void *pobj, int objtype, attribute *attrry)
 	obj_attr_def[idx_egroup].at_free(pattr);
 
 	if (addflags != 0) {
-		obj_attr_def[idx_egroup].at_decode(pattr, (char *)0, (char *)0, pgrpn);
+		obj_attr_def[idx_egroup].at_decode(pattr, NULL, NULL, pgrpn);
 		pattr->at_flags |= addflags;
 	}
 

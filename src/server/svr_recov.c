@@ -393,7 +393,7 @@ save_acl(attribute *attr, attribute_def *pdef, char *subdir, char *name)
 #endif
 
 	CLEAR_HEAD(head);
-	i = pdef->at_encode(attr, &head, pdef->at_name, (char *)0, ATR_ENCODE_SAVE, NULL);
+	i = pdef->at_encode(attr, &head, pdef->at_name, NULL, ATR_ENCODE_SAVE, NULL);
 	if (i < 0) {
 		log_err(-1, "save_acl", "unable to encode acl");
 		(void)close(fds);
@@ -402,7 +402,7 @@ save_acl(attribute *attr, attribute_def *pdef, char *subdir, char *name)
 	}
 
 	pentry = (svrattrl *)GET_NEXT(head);
-	if (pentry != (svrattrl *)0) {
+	if (pentry != NULL) {
 		/* write entry, but without terminating null */
 		while ((i = write(fds, pentry->al_value, pentry->al_valln - 1))
 			!= pentry->al_valln - 1) {
@@ -488,7 +488,7 @@ recov_acl(attribute *pattr, attribute_def *pdef, char *subdir, char *name)
 
 	errno = 0;
 	(void)strcpy(filename1, path_priv);
-	if (subdir != (char *)0) {
+	if (subdir != NULL) {
 		(void)strcat(filename1, subdir);
 		(void)strcat(filename1, "/");
 	}
@@ -517,7 +517,7 @@ recov_acl(attribute *pattr, attribute_def *pdef, char *subdir, char *name)
 	if (sb.st_size == 0)
 		return;		/* no data */
 	buf = malloc((size_t)sb.st_size + 1);	/* 1 extra for added null */
-	if (buf == (char *)0) {
+	if (buf == NULL) {
 		(void)close(fds);
 		return;
 	}
@@ -532,7 +532,7 @@ recov_acl(attribute *pattr, attribute_def *pdef, char *subdir, char *name)
 
 	clear_attr(&tempat, pdef);
 
-	if (pdef->at_decode(&tempat, pdef->at_name, (char *)0, buf) < 0) {
+	if (pdef->at_decode(&tempat, pdef->at_name, NULL, buf) < 0) {
 		(void)sprintf(log_buffer,  "decode of acl %s failed",
 			pdef->at_name);
 		log_err(errno, "recov_acl", log_buffer);

@@ -81,13 +81,13 @@ parse_comma_string_r(char **start)
 
 	char	    *back;
 
-	if ((start == (char **)0) || (*start == (char *)0))
+	if ((start == NULL) || (*start == NULL))
 		return NULL;
 
 	pc = *start;
 
 	if (*pc == '\0')
-		return ((char *)0);	/* already at end, no strings */
+		return NULL;	/* already at end, no strings */
 
 	/* skip over leading white space */
 
@@ -339,7 +339,7 @@ static int   badonly = 0;
 
 /**
  * @brief
- * 	-this is just a dummy "addfunc" that prints what was passed in 
+ * 	-this is just a dummy "addfunc" that prints what was passed in
  *
  * @return	int
  *
@@ -397,7 +397,7 @@ main(int argc, char *argv[])
 			return 1;
 		}
 		printf("  %s\n", cstr);
-		rc = entlim_parse(cstr, "mem", (void *)0, dummyadd);
+		rc = entlim_parse(cstr, "mem", NULL, dummyadd);
 		if ((rc != 0) && (goodonly == 0)) {
 			printf("error: %s\n", input);
 			i = 7 - rc;

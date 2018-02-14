@@ -194,7 +194,7 @@ pbs_python_set_mode(int mode)
  * 	could be modified in a hook script.
  *
  * @return	int
- * @retval	0 	for success 
+ * @retval	0 	for success
  * @retval	-1 	otherwise
  */
 int
@@ -311,7 +311,7 @@ pbs_python_event_job_getval(char *attrib_name)
 #ifdef PYTHON
 	return (_pbs_python_event_job_getval(attrib_name));
 #else
-	return (NULL);
+	return NULL;
 #endif
 }
 
@@ -331,7 +331,7 @@ pbs_python_event_jobresc_getval_hookset(char *attrib_name, char *resc_name)
 #ifdef PYTHON
 	return (_pbs_python_event_jobresc_getval_hookset(attrib_name, resc_name));
 #else
-	return (NULL);
+	return NULL;
 #endif
 }
 
@@ -369,7 +369,7 @@ pbs_python_event_jobresc_getval(char *attrib_name, char *resc_name)
 #ifdef PYTHON
 	return (_pbs_python_event_jobresc_getval(attrib_name, resc_name));
 #else
-	return (NULL);
+	return NULL;
 #endif
 }
 
@@ -409,7 +409,7 @@ pbs_python_event_get_attrval(char *name)
 #ifdef PYTHON
 	return (_pbs_python_event_get_attrval(name));
 #else
-	return (NULL);
+	return NULL;
 #endif
 }
 
@@ -452,7 +452,7 @@ pbs_python_event_get_reject_msg(void)
 #ifdef PYTHON
 	return (_pbs_python_event_get_reject_msg());
 #else
-	return (NULL);
+	return NULL;
 #endif
 }
 
@@ -564,7 +564,7 @@ pbs_python_do_vnode_set(void)
 /**
  * @brief
  * 	validate_job_formula - validate that the sorting forumla is in the
- *	correct form.  We do this by calling python and having 
+ *	correct form.  We do this by calling python and having
  *	it catch exceptions.
  *
  */
@@ -661,7 +661,7 @@ int validate_job_formula(attribute *pattr, void *pobject, int actmode) {
 	*script = '\0';
 
 	/* import math and initialize variables */
-	sprintf(buf, 
+	sprintf(buf,
 		"ans = 0\n"
 		"errnum = 0\n"
 		"errmsg = \'\'\n"
@@ -684,7 +684,7 @@ int validate_job_formula(attribute *pattr, void *pobject, int actmode) {
 		goto validate_job_formula_exit;
 	}
 	/* Now for the real guts: The initial try/except block*/
-	sprintf(buf, 
+	sprintf(buf,
 		"try:\n"
 		"    exec(\'ans=");
 	if (pbs_strcat(&script, &script_size, buf) == NULL) {
@@ -814,7 +814,7 @@ validate_job_formula_exit:
 
 /**
  * @brief
- * 	pbs_python_set_interrupt - wrapper to PyErr_SetInterrupt() 
+ * 	pbs_python_set_interrupt - wrapper to PyErr_SetInterrupt()
  *
  */
 

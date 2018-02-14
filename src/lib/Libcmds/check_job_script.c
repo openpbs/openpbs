@@ -57,7 +57,7 @@
  * @return	int
  * @retval	TRUE	executable
  * @retval	FALSE	not executable
- *	
+ *
  */
 int
 pbs_isexecutable(char *s)
@@ -94,6 +94,6 @@ pbs_ispbsdir(char *s, char *prefix)
 	if (l > 0 && strncmp(it, prefix, l) == 0)
 		return (it+l);
 	else
-		return ((char *)NULL);
+		return NULL;
 }
 

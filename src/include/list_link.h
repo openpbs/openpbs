@@ -62,7 +62,7 @@ typedef pbs_list_link pbs_list_head;
 
 /* macros to clear list head or link */
 
-#define CLEAR_HEAD(e) e.ll_next = &e, e.ll_prior = &e, e.ll_struct = (void *)0
+#define CLEAR_HEAD(e) e.ll_next = &e, e.ll_prior = &e, e.ll_struct = NULL
 #define CLEAR_LINK(e) e.ll_next = &e, e.ll_prior = &e
 
 #define LINK_INSET_BEFORE 0

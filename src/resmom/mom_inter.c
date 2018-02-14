@@ -82,7 +82,7 @@ extern int ptc;
  * 	read_net - read data from network till received amount expected
  *
  * @param[in] sock - file descriptor
- * @param[in] buf  - buffer 
+ * @param[in] buf  - buffer
  * @param[in] amt  - amount of data
  *
  * @return int
@@ -120,7 +120,7 @@ int    amt;
  *
  * @param sock - file descriptor
  *
- * @return string 
+ * @return string
  *
  */
 
@@ -134,12 +134,12 @@ int sock;
 
 	if ((read_net(sock, buf, PBS_TERM_BUF_SZ) != PBS_TERM_BUF_SZ) ||
 		(strncmp(buf, "TERM=", 5) != 0))
-		return ((char *)0);
+		return NULL;
 
 	/* get the basic control characters from qsub's termial */
 
 	if (read_net(sock, cc_array, PBS_TERM_CCA) != PBS_TERM_CCA) {
-		return ((char *)0);
+		return NULL;
 	}
 
 	return (buf);
@@ -242,7 +242,7 @@ int sock;
  * @retval    0     Success
  * @retval   -1     Failure
  *
- */ 
+ */
 int
 setwinsize(pty)
 int pty;
@@ -414,7 +414,7 @@ mom_reader_Xjob(int s)
  * 	Writer process: reads from master pty, and writes
  * 	data out to the rem socket
  *
- * @param[in] s - socket fd 
+ * @param[in] s - socket fd
  * @param[in] ptc - master file descriptor
  *
  * @return    error code

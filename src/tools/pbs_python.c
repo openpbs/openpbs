@@ -184,24 +184,24 @@ set_scheduler_flag(int flag, pbs_sched *psched)
 job	*
 find_job(char *jobid)
 {
-	return (NULL);
+	return NULL;
 }
 
 resc_resv *
 find_resv(char *resvid)
 {
-	return (NULL);
+	return NULL;
 }
 
 pbs_queue *
 find_queuebyname(char *qname)
 {
-	return (NULL);
+	return NULL;
 }
 
 struct pbsnode *find_nodebyname(char *nname)
 {
-	return (NULL);
+	return NULL;
 }
 
 void
@@ -271,7 +271,7 @@ is_job_array(char *jobid)
 job *
 find_arrayparent(char *subjobid)
 {
-	return (NULL);
+	return NULL;
 }
 
 int
@@ -929,7 +929,7 @@ node_pcpu_action(attribute *new, void *pobj, int actmode)
 char*
 find_aoe_from_request(resc_resv *presv)
 {
-	return (NULL);
+	return NULL;
 }
 
 int
@@ -2274,7 +2274,7 @@ argv_list_to_str(pbs_list_head *argv_list)
 	svrattrl *plist = NULL;
 
 	if (argv_list == NULL)
-		return (NULL);
+		return NULL;
 
 	len=0;
 	i=0;
@@ -2284,7 +2284,7 @@ argv_list_to_str(pbs_list_head *argv_list)
 	plist = (svrattrl *)GET_NEXT(*argv_list);
 	while (plist) {
 		if (plist->al_value == NULL) {
-			return (NULL);
+			return NULL;
 		}
 		len += strlen(plist->al_value);
 		len++;	/* for ' ' (space) */
@@ -2298,7 +2298,7 @@ argv_list_to_str(pbs_list_head *argv_list)
 		ret_string = (char *)malloc(len);
 
 		if (ret_string == NULL)
-			return (NULL);
+			return NULL;
 		i=0;
 		plist = (svrattrl *)GET_NEXT(*argv_list);
 		while (plist) {
@@ -2349,7 +2349,7 @@ main(int argc, char *argv[], char *envp[])
 		struct python_interpreter_data *interp_data);
 	extern void pbs_python_svr_destroy_interpreter_data(
 		struct python_interpreter_data *interp_data);
-	
+
 	if(set_msgdaemonname("pbs_python")) {
 		fprintf(stderr, "Out of memory\n");
 		return 1;
@@ -2497,7 +2497,7 @@ main(int argc, char *argv[], char *envp[])
 			lenvp[i] = python_envbuf;
 			i++;
 		}
-		lenvp[i] = (char *)0;
+		lenvp[i] = NULL;
 
 
 		if (argc == 1) {
@@ -2553,7 +2553,7 @@ main(int argc, char *argv[], char *envp[])
 			}
 
 			largv[0] = argv[0];
-			largv[2] = (char *)0;
+			largv[2] = NULL;
 
 			rc = execve(python_path, largv, lenvp);
 		} else {
@@ -2651,7 +2651,7 @@ main(int argc, char *argv[], char *envp[])
 			argv2[j++] = argv[i];
 			argc2++;
 		}
-		argv2[i] = (char *)0;
+		argv2[i] = NULL;
 
 		pbs_python_set_use_static_data_value(0);
 		while ((c = getopt(argc2, argv2, "i:o:l:L:e:r:s:")) != EOF) {
@@ -2924,7 +2924,7 @@ main(int argc, char *argv[], char *envp[])
 			(struct python_script **) &py_script);
 
 		pbs_python_ext_start_interpreter(&svr_interp_data);
-		hook_input_param_init(&req_params);	
+		hook_input_param_init(&req_params);
 		switch (hook_event) {
 
 			case HOOK_EVENT_QUEUEJOB:
@@ -3238,7 +3238,7 @@ main(int argc, char *argv[], char *envp[])
 			char *tmp_argv[2];
 
 			tmp_argv[0] = argv[0];
-			tmp_argv[1] = (char *)0;
+			tmp_argv[1] = NULL;
 
 			rc=Py_Main(1, tmp_argv);
 		} else {

@@ -779,7 +779,7 @@ pbs_client_thread_add_connect_context(int connect)
 
 	new->th_ch = connect;
 	new->th_ch_errno = 0;
-	new->th_ch_errtxt = (char *) NULL;
+	new->th_ch_errtxt = NULL;
 	if (p->th_conn_context)
 		new->th_ch_next = p->th_conn_context;
 	else

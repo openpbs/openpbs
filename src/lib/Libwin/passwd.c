@@ -168,9 +168,9 @@ static struct cache cache_array[CACHE_NELEM] = {0};
  * @param[in] str - input string
  *
  * @return	unsigned long
- * @retval	hashed val	
+ * @retval	hashed val
  *
- */ 
+ */
 static unsigned long
 sdbm(unsigned char *str)
 {
@@ -357,7 +357,7 @@ find_cache_data(char *func, char *key)
 
 	if ((func == NULL) || (key == NULL) ||
 		(func[0] == '\0') || (key[0] == '\0')) {
-		return (NULL);
+		return NULL;
 	}
 
 	now = time(0);
@@ -373,13 +373,13 @@ find_cache_data(char *func, char *key)
 		}
 	} while ((i = ((i+1) % CACHE_NELEM)) != k);
 
-	return (NULL);
+	return NULL;
 }
 
 /**
- * @brief 
- *	sid_dup: duplicates a SID value 'src_sid' to a form that can be freed 
- *	later by LocalFree() and not FreeSid() 
+ * @brief
+ *	sid_dup: duplicates a SID value 'src_sid' to a form that can be freed
+ *	later by LocalFree() and not FreeSid()
  *
  * @param[in] src_sid - SID
  *
@@ -395,17 +395,17 @@ sid_dup(SID *src_sid)
 	SID	*dest_sid = NULL;
 
 	if ((src_sid == NULL) || (!IsValidSid(src_sid)))
-		return (NULL);	/* nothing happens */
+		return NULL;	/* nothing happens */
 
 	sid_len_need = GetLengthSid(src_sid);
 
 	if ((dest_sid = (SID *)LocalAlloc(LPTR, sid_len_need)) == NULL) {
-		return (NULL);
+		return NULL;
 	}
 
 	if (CopySid(sid_len_need, dest_sid, src_sid) == 0) {
 		LocalFree(dest_sid);
-		return (NULL);
+		return NULL;
 	}
 
 	return (dest_sid);
@@ -421,7 +421,7 @@ sid_dup(SID *src_sid)
  * @retval	NULL			error
  *
  * @par Note:
- *	Return value must be LocalFree() later. 
+ *	Return value must be LocalFree() later.
  */
 SID *
 create_administrators_sid(void)
@@ -432,7 +432,7 @@ create_administrators_sid(void)
 
 	if (AllocateAndInitializeSid(&sid_auth, 2, SECURITY_BUILTIN_DOMAIN_RID,
 		DOMAIN_ALIAS_RID_ADMINS, 0, 0, 0, 0, 0, 0, &sid_tmp) == 0)
-		return (NULL);
+		return NULL;
 
 	/* Need to make a duplicate that is freeable by LocalFree() */
 	/* (and not FreeSid) for consistency throughout the code */
@@ -445,7 +445,7 @@ create_administrators_sid(void)
 }
 
 /**
- * @brief 
+ * @brief
  *	create_everyone_sid: creates a well-known SID value for the
  *	Everyone account.
  *
@@ -467,7 +467,7 @@ create_everyone_sid(void)
 
 	if (AllocateAndInitializeSid(&sid_auth, 1, SECURITY_WORLD_RID,
 		0, 0, 0, 0, 0, 0, 0, &sid_tmp) == 0)
-		return (NULL);
+		return NULL;
 
 	/* Need to make a duplicate that is freeable by LocalFree() */
 	/* (and not FreeSid) for consistency throughout the code */
@@ -482,8 +482,8 @@ create_everyone_sid(void)
 /**
  * @brief
  *	create_domain_users_sid: creates a well-known SID value for the
- *	"Domain Users" group. 
- * 
+ *	"Domain Users" group.
+ *
  * @return      pointer to SID
  * @retval      SID for domain users group      success
  * @retval      NULL                    	error
@@ -505,7 +505,7 @@ create_domain_users_sid(void)
 
 	usid = getusersid(getlogin());
 	if (usid == NULL)
-		return (NULL);
+		return NULL;
 
 	auth_ct = *GetSidSubAuthorityCount(usid);
 
@@ -539,7 +539,7 @@ create_domain_users_sid(void)
 }
 
 /**
- * @brief 
+ * @brief
  *	get_full_username: given a <username>, returns in 'realname' either
  *	<username> if corresponding local account exists, or <domain>\<username> if
  *	a domain account was found instead.
@@ -569,7 +569,7 @@ get_full_username(char *username,
 	char		actual_name[PBS_MAXHOSTNAME+UNLEN+2] = {'\0'};	/* dom\user0 */
 
 	if (username == NULL)
-		return (NULL);
+		return NULL;
 
 	sid_sz = 0;
 	domain_sz = sizeof(domain);
@@ -590,16 +590,16 @@ get_full_username(char *username,
 	}
 
 	if (sid_sz <= 0)
-		return (NULL);
+		return NULL;
 
 	if ((sid = (SID *)LocalAlloc(LPTR, sid_sz)) == NULL) {
-		return (NULL);
+		return NULL;
 	}
 
 	if (LookupAccountName(0, actual_name, sid, &sid_sz, domain,
 		&domain_sz, psid_type) == 0) {
 		LocalFree(sid);
-		return (NULL);
+		return NULL;
 	}
 
 	if (strlen(domain) > 0)
@@ -712,9 +712,9 @@ get_computer_domain_name_end:
  * 	references entity.
  *
  * @return	int
- * @retval	1 	if info was obtained 
+ * @retval	1 	if info was obtained
  * @retval	0 	if unsuccessful.
- * 
+ *
  * @par	NOTE: Returned values are CACHED.
  */
 int
@@ -817,7 +817,7 @@ resolve_username(char *username[PBS_MAXHOSTNAME+UNLEN+2]) /* domain\user0 */
 }
 
 /**
- * @brief 
+ * @brief
  *	resolve_grpname: Given a groupname of the form "ref_domain_name\grpname",
  *	resolve "ref_domain_name" to an "actual" domain name. The ref_domain_name
  *	may be the name of a local host in which we would want the domain name
@@ -856,10 +856,10 @@ resolve_grpname(char *grpname[PBS_MAXHOSTNAME+GNLEN+2]) /* domain\user0 */
 }
 
 /**
- * @brief 
- *	getusersid: Given a usernam, return the machine readable SID value. 
+ * @brief
+ *	getusersid: Given a usernam, return the machine readable SID value.
  *
- * NOTE: This returns a pointer to a malloc-ed area. Thus, need to free afterwards via LocalFree() 
+ * NOTE: This returns a pointer to a malloc-ed area. Thus, need to free afterwards via LocalFree()
  *
  * @param[in] uname - username
  *
@@ -876,7 +876,7 @@ getusersid(char *uname)
 	SID_NAME_USE		type = 0;
 
 	if (uname == NULL)
-		return (NULL);
+		return NULL;
 
 	/* a well-known SID could have a different name depending on locality */
 	/* for instance, Administrators in US but Administrateurs in France */
@@ -909,13 +909,13 @@ getusersid(char *uname)
 	}
 
 	if (sid == NULL) {
-		return (NULL);
+		return NULL;
 	}
 
 	if( type != SidTypeUser && type != SidTypeWellKnownGroup && \
 						type != SidTypeAlias) {
 		LocalFree(sid);
-		return (NULL);
+		return NULL;
 	}
 
 	return (sid);
@@ -937,7 +937,7 @@ getusersid2(char *uname,
 	char		logb[LOG_BUF_SIZE] = {'\0' } ;
 
 	if (uname == NULL)
-		return (NULL);
+		return NULL;
 
 	username[0] = '\0';
 
@@ -977,13 +977,13 @@ getusersid2(char *uname,
 				sid = get_full_username(username, username2, &type);
 			}
 			if (sid == NULL) {
-				return (NULL);
+				return NULL;
 			}
 
 			if (type != SidTypeUser && type != SidTypeWellKnownGroup &&
 				type != SidTypeAlias) {
 				LocalFree(sid);
-				return (NULL);
+				return NULL;
 			}
 			strcpy(realuser, username);
 		} else {
@@ -1044,11 +1044,11 @@ getusersid2(char *uname,
 }
 
 /**
- * @brief 
- *	getuserpname: Given a SID value, return the human readable username 
+ * @brief
+ *	getuserpname: Given a SID value, return the human readable username
  *
- * @par NOTE: 
- *	This returns a pointer to a malloc-ed area. Thus, need to free afterwards 
+ * @par NOTE:
+ *	This returns a pointer to a malloc-ed area. Thus, need to free afterwards
  *
  * @param[in] sid - SID val
  *
@@ -1070,21 +1070,21 @@ getusername(SID *sid)
 	domain_sz = sizeof(domain);
 
 	if (LookupAccountSid(0, sid, name, &name_sz, domain, &domain_sz, &type) != 0) {
-		return (NULL);
+		return NULL;
 	}
 
 	if ((name = malloc(name_sz)) == NULL) {
-		return (NULL);
+		return NULL;
 	}
 
 	if (LookupAccountSid(0, sid, name, &name_sz, domain, &domain_sz, &type) == 0) {
 		(void)free(name);
-		return (NULL);
+		return NULL;
 	}
 
 	if (type != SidTypeUser && type != SidTypeAlias && type != SidTypeWellKnownGroup) {
 		(void)free(name);
-		return (NULL);
+		return NULL;
 	}
 
 	return (name);
@@ -1093,12 +1093,12 @@ getusername(SID *sid)
 
 
 /**
- * @brief 
- *	getusername_full: Given a SID value, return the human readable "full" 
- *  	username: <domain_name>\<user>.                                      
+ * @brief
+ *	getusername_full: Given a SID value, return the human readable "full"
+ *  	username: <domain_name>\<user>.
  *
- * @par NOTE: 
- *	This returns a pointer to a malloc-ed area. Thus, need to free afterwards 
+ * @par NOTE:
+ *	This returns a pointer to a malloc-ed area. Thus, need to free afterwards
  *
  * @return	string
  * @retval	full username	success
@@ -1119,27 +1119,27 @@ getusername_full(SID *sid)
 	domain_sz = sizeof(domain);
 
 	if (LookupAccountSid(0, sid, name, &name_sz, domain, &domain_sz, &type) != 0) {
-		return (NULL);
+		return NULL;
 	}
 
 	if ((name = malloc(name_sz)) == NULL) {
-		return (NULL);
+		return NULL;
 	}
 
 	if (LookupAccountSid(0, sid, name, &name_sz, domain, &domain_sz, &type) == 0) {
 		(void)free(name);
-		return (NULL);
+		return NULL;
 	}
 
 	if (type != SidTypeUser && type != SidTypeAlias && type != SidTypeWellKnownGroup) {
 		(void)free(name);
-		return (NULL);
+		return NULL;
 	}
 
 	fullname = (char *)malloc(domain_sz + 1 + name_sz + 1);
 	if (fullname == NULL) {
 		(void)free(name);
-		return (NULL);
+		return NULL;
 	}
 	sprintf(fullname, "%s\\%s", domain, name);
 	(void)free(name);
@@ -1147,11 +1147,11 @@ getusername_full(SID *sid)
 }
 
 /**
- * @brief 
- *	getgroupsid: Given a grpnam, return the machine readable SID value. 
+ * @brief
+ *	getgroupsid: Given a grpnam, return the machine readable SID value.
  *
- * @par NOTE: 
- *	This returns a pointer to a malloc-ed area. Thus, need to free afterwards 
+ * @par NOTE:
+ *	This returns a pointer to a malloc-ed area. Thus, need to free afterwards
  *
  * @param[in] grpnam - group name
  *
@@ -1167,7 +1167,7 @@ getgrpsid(char *grpnam)
 	SID_NAME_USE	type;
 
 	if (grpnam == NULL)
-		return (NULL);
+		return NULL;
 
 	/* a well-known SID could have a different name depending on locality */
 	/* for instance, Administrators in US but Administrateurs in France */
@@ -1200,17 +1200,17 @@ getgrpsid(char *grpnam)
 
 			if (LookupAccountName(0, grpnam2, sid, &sid_sz,
 				domain, &domain_sz, &type) != 0) {
-				return (NULL);
+				return NULL;
 			}
 
 			if ((sid = (SID *)LocalAlloc(LPTR, sid_sz)) == NULL) {
-				return (NULL);
+				return NULL;
 			}
 
 			if (LookupAccountName(0, grpnam2, sid, &sid_sz,
 				domain, &domain_sz, &type) == 0) {
 				LocalFree(sid);
-				return (NULL);
+				return NULL;
 			}
 
 
@@ -1228,19 +1228,19 @@ getgrpsid(char *grpnam)
 
 	if (type != SidTypeGroup && type != SidTypeAlias && type != SidTypeWellKnownGroup) {
 		LocalFree(sid);
-		return (NULL);
+		return NULL;
 	}
 
 	return (sid);
 
 }
 
-/** 
- * @brief 
- *	getgrpname: Given a SID value, return the human readable name 
+/**
+ * @brief
+ *	getgrpname: Given a SID value, return the human readable name
  *
- * @par NOTE: 
- *	This returns a pointer to a malloc-ed area. Thus, need to free afterwards 
+ * @par NOTE:
+ *	This returns a pointer to a malloc-ed area. Thus, need to free afterwards
  *
  * @param[in] sid - SID val
  *
@@ -1262,21 +1262,21 @@ getgrpname(SID *sid)
 	domain_sz = sizeof(domain);
 
 	if (LookupAccountSid(0, sid, name, &name_sz, domain, &domain_sz, &type) != 0) {
-		return (NULL);
+		return NULL;
 	}
 
 	if ((name = malloc(name_sz)) == NULL) {
-		return (NULL);
+		return NULL;
 	}
 
 	if (LookupAccountSid(0, sid, name, &name_sz, domain, &domain_sz, &type) == 0) {
 		(void)free(name);
-		return (NULL);
+		return NULL;
 	}
 
 	if (type != SidTypeGroup && type != SidTypeAlias && type != SidTypeWellKnownGroup) {
 		(void)free(name);
-		return (NULL);
+		return NULL;
 	}
 
 	return (name);
@@ -1287,8 +1287,8 @@ getgrpname(SID *sid)
  * @brief
  *	getgrpname_full: like getgrpname() except the domainname of the group is also prefixed.
  *
- * @par	NOTE: 
- *	This returns a pointer to a malloc-ed area. Thus, need to free afterwards 
+ * @par	NOTE:
+ *	This returns a pointer to a malloc-ed area. Thus, need to free afterwards
  *
  * @param[in] sid - SID value
  *
@@ -1311,27 +1311,27 @@ getgrpname_full(SID *sid)
 	domain_sz = sizeof(domain);
 
 	if (LookupAccountSid(0, sid, name, &name_sz, domain, &domain_sz, &type) != 0) {
-		return (NULL);
+		return NULL;
 	}
 
 	if ((name = malloc(name_sz)) == NULL) {
-		return (NULL);
+		return NULL;
 	}
 
 	if (LookupAccountSid(0, sid, name, &name_sz, domain, &domain_sz, &type) == 0) {
 		(void)free(name);
-		return (NULL);
+		return NULL;
 	}
 
 	if (type != SidTypeGroup && type != SidTypeAlias && type != SidTypeWellKnownGroup) {
 		(void)free(name);
-		return (NULL);
+		return NULL;
 	}
 
 	fullname = (char *)malloc(domain_sz + 1 + name_sz + 1);
 	if (fullname == NULL) {
 		(void)free(name);
-		return (NULL);
+		return NULL;
 	}
 
 	sprintf(fullname, "%s\\%s", domain, name);
@@ -1344,8 +1344,8 @@ getgrpname_full(SID *sid)
  * @brief
  * 	returns the # of global groups found for user, with the list places in groupsp.
  *
- * @par NOTE: 
- *	groupsp must be freed by NetApiBufferFree() 
+ * @par NOTE:
+ *	groupsp must be freed by NetApiBufferFree()
  *
  * @param[in] user - user name
  * @param[out] groupsp - groups
@@ -1425,10 +1425,10 @@ getGlobalGroups(char *user, GROUP_USERS_INFO_0 **groupsp)
 }
 
 /**
- * @brief 
+ * @brief
  *	returns the # of local groups found for user, with the list places in groupsp.
- * 
- * @par	NOTE: *groupsp must be freed by NetApiBufferFree() 
+ *
+ * @par	NOTE: *groupsp must be freed by NetApiBufferFree()
  *
  * @param[in] user - username
  * @param[in] groupsp - pointer to groups
@@ -1510,14 +1510,14 @@ getLocalGroups(char *user, GROUP_USERS_INFO_0 **groupsp)
 
 
 /**
- * @brief 
- *	isLocalAdminMember: returns TRUE if user belongs to the local            
- * 	Administrators group on the local computer. Otherwise, returns           
- * 	0 for FALSE.								    
+ * @brief
+ *	isLocalAdminMember: returns TRUE if user belongs to the local
+ * 	Administrators group on the local computer. Otherwise, returns
+ * 	0 for FALSE.
  *
  * @param[in] user - username
  *
- * @par NOTE: 'user' can be of the form "<domain_name>\<user_name>".		    
+ * @par NOTE: 'user' can be of the form "<domain_name>\<user_name>".
  *
  * @return	int
  * @retval	TRUE	success
@@ -1575,9 +1575,9 @@ isLocalAdminMember_end:
 }
 
 /**
- * @brief 
+ * @brief
  *	returns TRUE if user belongs to group where that group is local or global (network). Otherwise,
- *	FALSE. 
+ *	FALSE.
  *
  * @param[in] user - username
  * @param[in] group - groupname
@@ -1666,10 +1666,10 @@ sid2rid(SID *sid)
  * @retval	FALSE - Process NOT running with LOCALSYSTEM account
  *
  */
-BOOL 
+BOOL
 isLocalSystem()
 {
-  HANDLE			hToken_currentproc = INVALID_HANDLE_VALUE;  
+  HANDLE			hToken_currentproc = INVALID_HANDLE_VALUE;
   PSID				pls_sid;
   BOOL				is_local_system = FALSE;
   UCHAR				usertoken[sizeof(TOKEN_USER) + sizeof(SID) + sizeof(DWORD) * SID_MAX_SUB_AUTHORITIES];
@@ -1677,7 +1677,7 @@ isLocalSystem()
   ULONG				usertoken_returnlen;
   SID_IDENTIFIER_AUTHORITY	sid_ia_NT = SECURITY_NT_AUTHORITY;
 
-  /* 
+  /*
    * Open current process token
    * and get user sid
    */
@@ -1906,7 +1906,7 @@ getdefgrpname(char *user)
 	char	c_data_[1][GNLEN+1] = {0};
 
 	if (user == NULL)
-		return (NULL);
+		return NULL;
 
 	c_data = find_cache_data(__func__, user);
 	if (c_data != NULL) {
@@ -1916,12 +1916,12 @@ getdefgrpname(char *user)
 	sid = get_full_username(user, realuser, &sid_type);
 
 	if (sid == NULL)
-		return (NULL);
+		return NULL;
 
 	LocalFree(sid);
 
 	if ((group=malloc(GNLEN+1)) == NULL)
-		return (NULL);
+		return NULL;
 
 	/* Search Local groups */
 	if (getLocalGroups(realuser, &groups) > 0 && groups) {
@@ -2130,7 +2130,7 @@ getuid(void)
 	uname = getlogin();
 
 	if (uname == NULL)
-		return (NULL);
+		return NULL;
 
 	usid   = getusersid(uname);
 
@@ -2169,7 +2169,7 @@ getgid(void)
 
 	gname = getdefgrpname(getlogin());
 	if (gname == NULL)
-		return (NULL);
+		return NULL;
 
 	gsid   = getgrpsid(gname);
 
@@ -2524,7 +2524,7 @@ map_unc_path(char *path, struct passwd *pw)
  * @retval		1 if path contains a network mapped drive
  *				0 otherwise
  */
-int 
+int
 is_network_drive_path(char *path)
 {
 	char drive_path[NETWORK_DRIVE_PATHLEN] = {'\0'};
@@ -2535,7 +2535,7 @@ is_network_drive_path(char *path)
 	if (path[1] != ':')
 		return 0;
 
-	snprintf(drive_path, NETWORK_DRIVE_PATHLEN - 1, "%s\\", path); 
+	snprintf(drive_path, NETWORK_DRIVE_PATHLEN - 1, "%s\\", path);
 
 	if(GetDriveType(drive_path) == DRIVE_REMOTE)
 		return 1;
@@ -2586,12 +2586,12 @@ getAssignedHomeDirectory(char *user)
 	char	c_data_[1][CACHE_STR_SIZE] = {0};
 
 	if (user == NULL)
-		return (NULL);
+		return NULL;
 
 	c_data = find_cache_data(__func__, user);
 	if (c_data != NULL) {
 		if (c_data[0] == '\0') {
-			return (NULL);
+			return NULL;
 		}
 		return (strdup(c_data)); /* malloced value expected as return */
 	}
@@ -2636,7 +2636,7 @@ getAssignedHomeDirectory(char *user)
 					cache_data(__func__, user, (char *)c_data_,
 						1, CACHE_STR_SIZE);
 
-					return (NULL);
+					return NULL;
 				}
 				wcstombs(homedir, uinfo->usri1_home_dir, len);
 				NetApiBufferFree(uinfo);
@@ -2907,14 +2907,14 @@ create_token_groups(char *user, DWORD attrib)
 
 	n = getgids(user, gids, rids);
 	if (n <= 0)
-		return (NULL);
+		return NULL;
 
 	len = sizeof(TOKEN_GROUPS) + \
 			((n-ANYSIZE_ARRAY)*sizeof(SID_AND_ATTRIBUTES));
 
 	token_groups = (TOKEN_GROUPS *)malloc(len);
 	if (token_groups == NULL)
-		return (NULL);
+		return NULL;
 
 	token_groups->GroupCount = n;
 
@@ -3043,7 +3043,7 @@ create_token_privs_byuser(SID *usid, DWORD attrib, HANDLE hLsa)
 	char privname[GNLEN+1] = {'\0'};
 
 	if (hLsa == INVALID_HANDLE_VALUE || usid == NULL)
-		return (NULL);
+		return NULL;
 
 	/* get user rights and add to list of user token privileges */
 	LsaEnumerateAccountRights(hLsa, usid, &lsaRights, &numRights);
@@ -3054,7 +3054,7 @@ create_token_privs_byuser(SID *usid, DWORD attrib, HANDLE hLsa)
 	token_privs = (TOKEN_PRIVILEGES *)malloc(len);
 
 	if (token_privs == NULL)
-		return (NULL);
+		return NULL;
 
 	token_privs->PrivilegeCount = numRights;
 
@@ -3083,14 +3083,14 @@ create_token_privs_bygroups(TOKEN_GROUPS *token_groups, DWORD attrib, HANDLE hLs
 	BOOL	found_match;
 
 	if (hLsa == INVALID_HANDLE_VALUE)
-		return (NULL);
+		return NULL;
 
 	len = sizeof(TOKEN_PRIVILEGES) - \
 		(ANYSIZE_ARRAY*sizeof(LUID_AND_ATTRIBUTES));
 	token_privs = (TOKEN_PRIVILEGES *)malloc(len);
 
 	if (token_privs == NULL)
-		return (NULL);
+		return NULL;
 
 	token_privs->PrivilegeCount = 0;
 	for (i=0; i < (int)token_groups->GroupCount; i++) {
@@ -3153,7 +3153,7 @@ merge_token_privs(TOKEN_PRIVILEGES *token_privs1, TOKEN_PRIVILEGES *token_privs2
 	BOOL	found_match;
 
 	if (token_privs1 == NULL || token_privs2 == NULL) {
-		return (NULL);
+		return NULL;
 	}
 
 	len = sizeof(TOKEN_PRIVILEGES) + \
@@ -3163,7 +3163,7 @@ merge_token_privs(TOKEN_PRIVILEGES *token_privs1, TOKEN_PRIVILEGES *token_privs2
 
 	token_privs = (TOKEN_PRIVILEGES *)malloc(len);
 	if (token_privs == NULL)
-		return (NULL);
+		return NULL;
 	token_privs->PrivilegeCount = token_privs1->PrivilegeCount;
 
 	for (i=0; i < (int)token_privs->PrivilegeCount; i++) {
@@ -3242,11 +3242,11 @@ create_token_source(char *name)
 	TOKEN_SOURCE	*token_source;
 
 	if (name == NULL)
-		return (NULL);
+		return NULL;
 
 	token_source = (TOKEN_SOURCE *)malloc(sizeof(TOKEN_SOURCE));
 	if (token_source == NULL)
-		return (NULL);
+		return NULL;
 
 	memset(token_source, 0, sizeof(TOKEN_SOURCE));
 	strcpy(token_source->SourceName, name);
@@ -3289,14 +3289,14 @@ create_default_dacl(SID *usid, TOKEN_GROUPS *token_groups)
 	cbAce = sizeof(ACCESS_ALLOWED_ACE) - sizeof(DWORD);
 	ssid = getusersid("SYSTEM");
 	if (ssid == NULL)
-		return (NULL);
+		return NULL;
 
 	cbAce += GetLengthSid(ssid);
 	cbAcl += cbAce;
 
 	ndacl = (ACL *)malloc(cbAcl);
 	if (ndacl == NULL)
-		return (NULL);
+		return NULL;
 
 	InitializeAcl(ndacl, cbAcl, ACL_REVISION);
 	for (i=0; i < (int)token_groups->GroupCount; i++) {
@@ -3308,7 +3308,7 @@ create_default_dacl(SID *usid, TOKEN_GROUPS *token_groups)
 				SPECIFIC_RIGHTS_ALL|STANDARD_RIGHTS_ALL,
 				token_groups->Groups[i].Sid) == 0) {
 				(void)free(ndacl);
-				return (NULL);
+				return NULL;
 
 			}
 		}
@@ -3316,13 +3316,13 @@ create_default_dacl(SID *usid, TOKEN_GROUPS *token_groups)
 	if (AddAccessAllowedAce(ndacl, ACL_REVISION,
 		SPECIFIC_RIGHTS_ALL|STANDARD_RIGHTS_ALL, usid) == 0) {
 		(void)free(ndacl);
-		return (NULL);
+		return NULL;
 	}
 
 	if (AddAccessAllowedAce(ndacl, ACL_REVISION,
 		SPECIFIC_RIGHTS_ALL|STANDARD_RIGHTS_ALL, ssid) == 0) {
 		(void)free(ndacl);
-		return (NULL);
+		return NULL;
 	}
 
 	return (ndacl);
@@ -3356,14 +3356,14 @@ create_dacl(SID *usid, TOKEN_GROUPS *token_groups)
 	cbAce = sizeof(ACCESS_ALLOWED_ACE) - sizeof(DWORD);
 	ssid = getusersid("SYSTEM");
 	if (ssid == NULL)
-		return (NULL);
+		return NULL;
 
 	cbAce += GetLengthSid(ssid);
 	cbAcl += cbAce;
 
 	ndacl = (ACL *)malloc(cbAcl);
 	if (ndacl == NULL)
-		return (NULL);
+		return NULL;
 
 	InitializeAcl(ndacl, cbAcl, ACL_REVISION);
 	for (i=0; i < (int)token_groups->GroupCount; i++) {
@@ -3371,19 +3371,19 @@ create_dacl(SID *usid, TOKEN_GROUPS *token_groups)
 			SPECIFIC_RIGHTS_ALL|STANDARD_RIGHTS_ALL,
 			token_groups->Groups[i].Sid) == 0) {
 			(void)free(ndacl);
-			return (NULL);
+			return NULL;
 		}
 	}
 	if (AddAccessAllowedAce(ndacl, ACL_REVISION,
 		SPECIFIC_RIGHTS_ALL|STANDARD_RIGHTS_ALL, usid) == 0) {
 		(void)free(ndacl);
-		return (NULL);
+		return NULL;
 	}
 
 	if (AddAccessAllowedAce(ndacl, ACL_REVISION,
 		SPECIFIC_RIGHTS_ALL|STANDARD_RIGHTS_ALL, ssid) == 0) {
 		(void)free(ndacl);
-		return (NULL);
+		return NULL;
 	}
 
 	return (ndacl);
@@ -4653,7 +4653,7 @@ add_pwentry(char *name,
 	DWORD	sid_len_need;
 
 	if (name == NULL)
-		return (NULL);
+		return NULL;
 
 	/* look for a password */
 	for (i=0; i<user_num; i++) {
@@ -4779,7 +4779,7 @@ err:
 	if (user_array)
 		free(user_array);
 	fprintf(stderr, "Unable to allocate memory!\n");
-	return (NULL);
+	return NULL;
 }
 
 /* logon_pw: creates a logon handle for 'username' with any output or logging */
@@ -4990,7 +4990,7 @@ getpwuid(uid_t uid)
 	int	i;
 
 	if (uid == NULL)
-		return (NULL);
+		return NULL;
 
 	/* look for a password */
 	for (i=0; i<user_num; i++) {
@@ -5017,7 +5017,7 @@ getpwuid(uid_t uid)
 
 /**
  * @brief
- * 	This function must be executed by ADMIN 
+ * 	This function must be executed by ADMIN
  */
 void
 cache_usertoken_and_homedir(char *user,
@@ -5034,7 +5034,7 @@ cache_usertoken_and_homedir(char *user,
 	struct passwd *pwdp = NULL;
 	int	i;
 
-	if (user == (char *)0)
+	if (user == NULL)
 		return;
 
 	/* look for cached values if not forced to re-save values */
@@ -5065,11 +5065,11 @@ cache_usertoken_and_homedir(char *user,
 
 /**
  * @brief
- * 	wrap_NetUserGetGroups: wrapped "NetUserGetGroups()" that attempts to 
- * 	correct failures due to ERROR_ACCESS_DENIED or ERROR_LOGON_FAILURE by 
- * 	executing the call in the context of the user. 
+ * 	wrap_NetUserGetGroups: wrapped "NetUserGetGroups()" that attempts to
+ * 	correct failures due to ERROR_ACCESS_DENIED or ERROR_LOGON_FAILURE by
+ * 	executing the call in the context of the user.
  *
- * @par	NOTE: uses 'winlog_buffer" for logging messages. 
+ * @par	NOTE: uses 'winlog_buffer" for logging messages.
  */
 NET_API_STATUS
 wrap_NetUserGetGroups(LPCWSTR servername,
@@ -5136,7 +5136,7 @@ wrap_NetUserGetGroups(LPCWSTR servername,
  *	to correct failures due to ERROR_ACCESS_DENIED or ERROR_LOGON_FAILURE
  *	by executing the call in the context of the user.
  *
- * @par	NOTE: uses 'winlog_buffer' for logging messages 
+ * @par	NOTE: uses 'winlog_buffer' for logging messages
  */
 NET_API_STATUS
 wrap_NetUserGetLocalGroups(LPCWSTR servername,
@@ -5197,7 +5197,7 @@ wrap_NetUserGetLocalGroups(LPCWSTR servername,
 
 
 /**
- * @brief 
+ * @brief
  *	wrap_NetUserGetInfo: wrapped "NetUserGetInfo()" that attempts
  *	to correct failures due to ERROR_ACCESS_DENIED or ERROR_LOGON_FAILURE
  *	by executing the call in the context of the user.
@@ -5258,11 +5258,11 @@ wrap_NetUserGetInfo(LPCWSTR servername,
 
 /**
  * @brief
- * 	has_read_access_domain_users: returns 1 (TRUE) if executing account       
- * 	has read access to all users information in the domain served by domain   
- * 	controller 'dctrlw'; otherwise, returns 0 (FALSE).			     
- * NOTE: Heuristic: we'll only attempt to query up to NUM_USERS_TO_CHECK     
- * 
+ * 	has_read_access_domain_users: returns 1 (TRUE) if executing account
+ * 	has read access to all users information in the domain served by domain
+ * 	controller 'dctrlw'; otherwise, returns 0 (FALSE).
+ * NOTE: Heuristic: we'll only attempt to query up to NUM_USERS_TO_CHECK
+ *
  */
 #define NUM_USERS_TO_CHECK	5
 
@@ -5328,25 +5328,25 @@ has_read_access_domain_users_end:
 	return (ret);
 }
 
-/** 
+/**
  * @brief
- *	check_executor: validates the executing user account against some set of 
- *    
+ *	check_executor: validates the executing user account against some set of
+ *
  * @par	criteria:
  *	(a) account is a member of an admin-type of group,\n
  *      (b) if in a domained environment, account is a domain account.\n
- *      (c) if in a domained environment, account can read all users       
- *           				    information in the domain.      
+ *      (c) if in a domained environment, account can read all users
+ *           				    information in the domain.
  * @return	int
- * @retval	0 	if the 3 criteria have been satisfied, or returns:           
- * @retval	1 	if (a) is not satisfied,					    
- * @retval	2 	if (b) is not satisfied, and				    
- * @retval	3	if (c) is not satisfied. 			    	    
- *	     		and 'winlog_buffer" will be filled with the       		    
- *           		message that can be used to output to some log file.	    
- * Idea is based on return value, execution of PBS service account would    
- * either proceed or abort.						   
- */ 
+ * @retval	0 	if the 3 criteria have been satisfied, or returns:
+ * @retval	1 	if (a) is not satisfied,
+ * @retval	2 	if (b) is not satisfied, and
+ * @retval	3	if (c) is not satisfied.
+ *	     		and 'winlog_buffer" will be filled with the
+ *           		message that can be used to output to some log file.
+ * Idea is based on return value, execution of PBS service account would
+ * either proceed or abort.
+ */
 
 int
 check_executor(void)
@@ -5551,7 +5551,7 @@ get_usernamefromsessionid(DWORD sessionid, char** p_username)
 		strcpy(username, temp_username);
 	}
 	if(p_username != NULL)
-		*p_username = getlogin(); 
+		*p_username = getlogin();
 
 	(void)revert_impersonated_user();
 	CloseHandle(hDupUserToken);
@@ -5585,11 +5585,11 @@ BOOL PBS_QueryFullProcessImageName(HANDLE hProcess, char *exe_name, int *exe_nam
 
 	proc_id = GetProcessId(hProcess);
 	hprocessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, proc_id);
-	
+
 	if(hprocessSnap)
 	{
 		BOOL nextProcess = Process32First(hprocessSnap, &pe32);
-		
+
 		while(nextProcess)
 		{
 			if(pe32.th32ProcessID == proc_id)
@@ -5603,7 +5603,7 @@ BOOL PBS_QueryFullProcessImageName(HANDLE hProcess, char *exe_name, int *exe_nam
 		{
 			*exe_namelen = strlen(pe32.szExeFile);
 			if(exe_name != NULL)
-				strncpy(exe_name, pe32.szExeFile, *exe_namelen);			
+				strncpy(exe_name, pe32.szExeFile, *exe_namelen);
 			ret = TRUE;
 		}
 		else
@@ -5738,7 +5738,7 @@ stat_uncpath(char *path, struct stat *psb)
 	if (path != NULL && *path != '\0' && psb != NULL) {
 		/*
 		 * convert "\ " (escaped space) with " "
-		 * because "\" (escape char) in "\ " 
+		 * because "\" (escape char) in "\ "
 		 * is valid path seperator in Windows
 		 * and also "/" with "\"
 		 */
@@ -5778,7 +5778,7 @@ access_uncpath(char *path, int mode)
 	if (path != NULL && *path != '\0') {
 		/*
 		 * convert "\ " (escaped space) with " "
-		 * because "\" (escape char) in "\ " 
+		 * because "\" (escape char) in "\ "
 		 * is valid path seperator in Windows
 		 * and also "/" with "\"
 		 */
@@ -5813,14 +5813,14 @@ get_uncpath(char *path)
 	size_t path_len = 0;
 	char path_temp_buf[MAXPATHLEN+1] = {'\0'};
 
-	if (path == NULL || 
+	if (path == NULL ||
 		*path == '\0' ||
 		IS_UNCPATH(path))
 		return;
 
 	/*
 	 * convert "\ " (escaped space) with " " and
-	 * "\," (escaped comma) with "," because "\" (escape char) in "\ " or "\," 
+	 * "\," (escaped comma) with "," because "\" (escape char) in "\ " or "\,"
 	 * is valid path seperator in Windows
 	 * and also "/" with "\"
 	 */

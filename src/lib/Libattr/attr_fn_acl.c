@@ -228,11 +228,11 @@ acl_check(attribute *pattr, char *name, int type)
 			break;
 	}
 
-	if (name == (char *)0)
+	if (name == NULL)
 		return (default_rtn);
 
 	if (!(pattr->at_flags & ATR_VFLAG_SET) ||
-		((pas = pattr->at_val.at_arst) == (struct array_strings *)0) ||
+		((pas = pattr->at_val.at_arst) == NULL) ||
 		(pas->as_usedptr == 0)) {
 
 #ifdef HOST_ACL_DEFAULT_ALL
@@ -327,7 +327,7 @@ chk_dup_acl(struct array_strings *old, struct array_strings *new)
  *
  * @return	int
  * @retval	PBSE error number	Failure
- * @retval	0			Success 
+ * @retval	0			Success
  *
  */
 
@@ -367,8 +367,8 @@ set_allacl(struct attribute *attr, struct attribute *new, enum batch_op op, int 
 		pas->as_npointers = i;
 		pas->as_usedptr = 0;
 		pas->as_bufsize = 0;
-		pas->as_buf     = (char *)0;
-		pas->as_next   = (char *)0;
+		pas->as_buf     = NULL;
+		pas->as_next   = NULL;
 		attr->at_val.at_arst = pas;
 	}
 
@@ -386,7 +386,7 @@ set_allacl(struct attribute *attr, struct attribute *new, enum batch_op op, int 
 			 */
 
 			for (i=0; i< pas->as_usedptr; i++)
-				pas->as_string[i] = (char *)0;	/* clear all pointers */
+				pas->as_string[i] = NULL;	/* clear all pointers */
 			pas->as_usedptr = 0;
 			pas->as_next   = pas->as_buf;
 
@@ -431,7 +431,7 @@ set_allacl(struct attribute *attr, struct attribute *new, enum batch_op op, int 
 					pc = realloc(pas->as_buf, need);
 				else
 					pc = malloc(need);
-				if (pc == (char *)0)
+				if (pc == NULL)
 					return (PBSE_SYSTEM);
 				offset = pc - pas->as_buf;
 				pas->as_buf   = pc;
@@ -450,7 +450,7 @@ set_allacl(struct attribute *attr, struct attribute *new, enum batch_op op, int 
 				j = 3 * j / 2;		/* allocate extra     */
 				need = sizeof(struct array_strings) + (j-1)*sizeof(char *);
 				tmppas=(struct array_strings *)realloc((char *)pas, need);
-				if (tmppas == (struct array_strings *)0)
+				if (tmppas == NULL)
 					return (PBSE_SYSTEM);
 				tmppas->as_npointers = j;
 				pas = tmppas;
@@ -501,7 +501,7 @@ set_allacl(struct attribute *attr, struct attribute *new, enum batch_op op, int 
 						/* compact pointers */
 						for (++i; i < pas->as_npointers; i++)
 							pas->as_string[i-1] = pas->as_string[i] - nsize;
-						pas->as_string[i-1] = (char *)0;
+						pas->as_string[i-1] = NULL;
 						pas->as_usedptr--;
 						break;
 					}
@@ -606,8 +606,8 @@ user_order(char *s1, char *s2)
  * @brief
  *	comapre the group names
  *
- * @param[in]   s1 - group name 
- * @param[in]   s2 - group name 
+ * @param[in]   s1 - group name
+ * @param[in]   s2 - group name
  *
  * @return 	int
  * @retval  	0	if equal

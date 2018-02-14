@@ -536,7 +536,7 @@ find_resource_resv_by_time(resource_resv **resresv_arr, char *name, time_t start
 	if (resresv_arr == NULL || name == NULL)
 		return NULL;
 
-	for (i = 0; resresv_arr[i] != NULL ;i++) {
+	for (i = 0; resresv_arr[i] != NULL;i++) {
 		if ((strcmp(resresv_arr[i]->name, name) == 0) && (resresv_arr[i]->start == start_time))
 			break;
 	}

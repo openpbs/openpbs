@@ -848,7 +848,7 @@ create_subjob(job *parent, char *newjid, int *rc)
 		psub = &subj->ji_wattr[j];
 		pdef = &job_attr_def[j];
 
-		if (pdef->at_encode(ppar, &attrl, pdef->at_name, (char *)0,
+		if (pdef->at_encode(ppar, &attrl, pdef->at_name, NULL,
 			ATR_ENCODE_MOM, &psatl) > 0) {
 			for (psatl = (svrattrl *)GET_NEXT(attrl); psatl;
 				psatl = ((svrattrl *)GET_NEXT(psatl->al_link))) {
@@ -906,7 +906,7 @@ create_subjob(job *parent, char *newjid, int *rc)
 	if (svr_enquejob(subj) != 0) {
 		job_purge(subj);
 		*rc = PBSE_IVALREQ;
-		return ((job *)0);
+		return NULL;
 	}
 	*rc = PBSE_NONE;
 	return subj;

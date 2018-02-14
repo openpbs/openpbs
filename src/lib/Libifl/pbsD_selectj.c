@@ -81,24 +81,24 @@ __pbs_selectjob(int c, struct attropl *attrib, char *extend)
 
 	/* initialize the thread context data, if not already initialized */
 	if (pbs_client_thread_init_thread_context() != 0)
-		return ((char **)0);
+		return NULL;
 
 	/* first verify the attributes, if verification is enabled */
 	if (pbs_verify_attributes(c, PBS_BATCH_SelectJobs, MGR_OBJ_JOB,
 		MGR_CMD_NONE, attrib))
-		return ((char **)0);
+		return NULL;
 
 	/* lock pthread mutex here for this connection */
 	/* blocking call, waits for mutex release */
 	if (pbs_client_thread_lock_connection(c) != 0)
-		return ((char **)0);
+		return NULL;
 
-	if (PBSD_select_put(c, PBS_BATCH_SelectJobs, attrib, (struct attrl *)0, extend) == 0)
+	if (PBSD_select_put(c, PBS_BATCH_SelectJobs, attrib, NULL, extend) == 0)
 		ret = PBSD_select_get(c);
 
 	/* unlock the thread lock and update the thread context data */
 	if (pbs_client_thread_unlock_connection(c) != 0)
-		return ((char **) 0);
+		return NULL;
 
 	return ret;
 }
@@ -129,17 +129,17 @@ __pbs_selstat(int c, struct attropl *attrib, struct attrl   *rattrib, char *exte
 
 	/* initialize the thread context data, if not already initialized */
 	if (pbs_client_thread_init_thread_context() != 0)
-		return ((struct batch_status *)0);
+		return NULL;
 
 	/* first verify the attributes, if verification is enabled */
 	if (pbs_verify_attributes(c, PBS_BATCH_SelectJobs, MGR_OBJ_JOB,
 		MGR_CMD_NONE, attrib))
-		return ((struct batch_status *)0);
+		return NULL;
 
 	/* lock pthread mutex here for this connection */
 	/* blocking call, waits for mutex release */
 	if (pbs_client_thread_lock_connection(c) != 0)
-		return ((struct batch_status *)0);
+		return NULL;
 
 
 	if (PBSD_select_put(c, PBS_BATCH_SelStat, attrib, rattrib, extend) == 0)
@@ -147,7 +147,7 @@ __pbs_selstat(int c, struct attropl *attrib, struct attrl   *rattrib, char *exte
 
 	/* unlock the thread lock and update the thread context data */
 	if (pbs_client_thread_unlock_connection(c) != 0)
-		return ((struct batch_status *)0);
+		return NULL;
 
 	return ret;
 }
@@ -155,7 +155,7 @@ __pbs_selstat(int c, struct attropl *attrib, struct attrl   *rattrib, char *exte
 
 /**
  * @brief
- *	-encode and puts selectjob request  data 
+ *	-encode and puts selectjob request  data
  *
  * @param[in] c - communication handle
  * @param[in] type - type of request
@@ -169,7 +169,7 @@ __pbs_selstat(int c, struct attropl *attrib, struct attrl   *rattrib, char *exte
  *
  */
 static int
-PBSD_select_put(int c, int type, struct attropl *attrib, 
+PBSD_select_put(int c, int type, struct attropl *attrib,
 			struct attrl *rattrib, char *extend)
 {
 	int rc;
@@ -224,7 +224,7 @@ PBSD_select_get(int c)
 	int   stringtot;
 	size_t totsize;
 	struct brp_select *sr;
-	char **retval = (char **)NULL;
+	char **retval = NULL;
 
 	/* read reply from stream */
 
@@ -243,7 +243,7 @@ PBSD_select_get(int c)
 		stringtot = 0;
 		njobs = 0;
 		sr = reply->brp_un.brp_select;
-		while (sr != (struct brp_select *)NULL) {
+		while (sr != NULL) {
 			stringtot += strlen(sr->brp_jobid) + 1;
 			njobs++;
 			sr = sr->brp_next;
@@ -254,10 +254,10 @@ PBSD_select_get(int c)
 
 		totsize = stringtot + (njobs+1) * (sizeof(char *));
 		retval = (char **)malloc(totsize);
-		if (retval == (char **)NULL) {
+		if (retval == NULL) {
 			pbs_errno = PBSE_SYSTEM;
 			PBSD_FreeReply(reply);
-			return (char **)NULL;
+			return NULL;
 		}
 		sr = reply->brp_un.brp_select;
 		sp = (char *)retval + (njobs + 1) * sizeof(char *);
@@ -267,7 +267,7 @@ PBSD_select_get(int c)
 			sp += strlen(sp) + 1;
 			sr = sr->brp_next;
 		}
-		retval[i] = (char *)NULL;
+		retval[i] = NULL;
 	}
 
 	PBSD_FreeReply(reply);

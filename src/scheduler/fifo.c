@@ -866,7 +866,7 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 	site_list_jobs(sinfo, sinfo->jobs);
 #endif
 	for (i = 0; !end_cycle &&
-		(njob = next_job(policy, sinfo, sort_again)) != NULL ; i++) {
+		(njob = next_job(policy, sinfo, sort_again)) != NULL; i++) {
 #ifdef NAS /* localmod 030 */
 		if (check_for_cycle_interrupt(1)) {
 			break;

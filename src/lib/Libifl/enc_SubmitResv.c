@@ -79,7 +79,7 @@ encode_DIS_SubmitResv(int sock, char *resv_id, struct attropl *aoplp)
 {
 	int   rc;
 
-	if (resv_id == (char *)0)
+	if (resv_id == NULL)
 		resv_id = "";
 
 	/* send the reservation ID and then an empty destination

@@ -343,7 +343,7 @@ PbsCommMain(DWORD dwArgc, LPTSTR *rgszArgv)
 	}
 
 	pap = create_arg_param();
-	if (pap == (struct arg_param *)0)
+	if (pap == NULL)
 		return;
 	pap->argc = dwArgc;
 
@@ -1045,7 +1045,7 @@ main(int argc, char **argv)
 	if (conf.routers) {
 		while (conf.routers[i]) {
 			sprintf(log_buffer, "Router[%d]:%s", i, conf.routers[i]);
-			fprintf(stdout, "%s\n", log_buffer);		
+			fprintf(stdout, "%s\n", log_buffer);
 			log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, log_buffer);
 			i++;
 		}

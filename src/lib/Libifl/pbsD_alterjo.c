@@ -67,22 +67,22 @@
 int
 __pbs_alterjob(int c, char *jobid, struct attrl *attrib, char *extend)
 {
-	struct attropl *ap = (struct attropl *)NULL;
-	struct attropl *ap1 = (struct attropl *)NULL;
+	struct attropl *ap = NULL;
+	struct attropl *ap1 = NULL;
 	int i;
 
-	if ((jobid == (char *)0) || (*jobid == '\0'))
+	if ((jobid == NULL) || (*jobid == '\0'))
 		return (pbs_errno = PBSE_IVALREQ);
 
 	/* copy the attrl to an attropl */
-	while (attrib != (struct attrl *)NULL) {
-		if (ap == (struct attropl *)NULL) {
+	while (attrib != NULL) {
+		if (ap == NULL) {
 			ap1 = ap = MH(struct attropl);
 		} else {
 			ap->next = MH(struct attropl);
 			ap = ap->next;
 		}
-		if (ap == (struct attropl *)NULL) {
+		if (ap == NULL) {
 			pbs_errno = PBSE_SYSTEM;
 			return -1;
 		}
@@ -90,7 +90,7 @@ __pbs_alterjob(int c, char *jobid, struct attrl *attrib, char *extend)
 		ap->resource = attrib->resource;
 		ap->value = attrib->value;
 		ap->op = SET;
-		ap->next = (struct attropl *)NULL;
+		ap->next = NULL;
 		attrib = attrib->next;
 	}
 
@@ -103,7 +103,7 @@ __pbs_alterjob(int c, char *jobid, struct attrl *attrib, char *extend)
 		extend);
 
 	/* free up the attropl we just created */
-	while (ap1 != (struct attropl *)NULL) {
+	while (ap1 != NULL) {
 		ap = ap1->next;
 		free(ap1);
 		ap1 = ap;

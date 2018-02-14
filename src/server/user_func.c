@@ -483,13 +483,13 @@ req_user_migrate(struct batch_request *preq)
 
 	rc = 0;
 	dir = opendir(path_users);
-	if (dir == (DIR *)0) {
+	if (dir == NULL) {
 		sprintf(log_buffer, "could not opendir %s", path_users);
 		log_err(errno, __func__, log_buffer);
 		pbs_ret = PBSE_SYSTEM;
 		goto migrate_exit;
 	}
-	while (errno = 0, (pdirent = readdir(dir)) != (struct dirent *)0) {
+	while (errno = 0, (pdirent = readdir(dir)) != NULL) {
 		char	*p = NULL;
 
 		if (pdirent->d_name[0] == '.') {
@@ -543,7 +543,7 @@ migrate_exit:
 	if (con >= 0)
 		svr_disconnect(con);
 
-	if (dir != (DIR *)0)
+	if (dir != NULL)
 		(void) closedir(dir);
 
 	if (pbs_ret != PBSE_NONE)

@@ -235,7 +235,7 @@ clear_default_resc(job *pjob)
 void
 tickle_for_reply(void)
 {
-	(void)set_task(WORK_Timed, time_now + 10, 0, (void *)0);
+	(void)set_task(WORK_Timed, time_now + 10, 0, NULL);
 }
 
 /**
@@ -267,7 +267,7 @@ svr_enquejob(job *pjob)
 	/* make sure queue is still there, there exist a small window ... */
 
 	pque = find_queuebyname(pjob->ji_qs.ji_queue);
-	if (pque == (pbs_queue *)0) {
+	if (pque == NULL) {
 		/*
 		 * If it is a history job, then don't return PBSE_UNKQUE
 		 * error but link the job to SERVER job list and update
@@ -388,7 +388,7 @@ svr_enquejob(job *pjob)
 	pdef    = &job_attr_def[(int)JOB_ATR_in_queue];
 	pattrjb = &pjob->ji_wattr[(int)JOB_ATR_in_queue];
 	pdef->at_free(pattrjb);
-	pdef->at_decode(pattrjb, (char *)0, (char *)0, pque->qu_qs.qu_name);
+	pdef->at_decode(pattrjb, NULL, NULL, pque->qu_qs.qu_name);
 
 	if (pque->qu_attr[(int)QA_ATR_QType].at_val.at_str == NULL) {
 		sprintf(log_buffer, "queue type must be set for queue `%s`",
@@ -431,7 +431,7 @@ svr_enquejob(job *pjob)
 							ATR_VFLAG_SET) == 0 ) {
 		job_attr_def[(int)JOB_ATR_project].at_decode(
 			&pjob->ji_wattr[(int)JOB_ATR_project],
-			(char *)0, (char *)0, PBS_DEFAULT_PROJECT);
+			NULL, NULL, PBS_DEFAULT_PROJECT);
 	}
 
 	/* update any entity count and entity resources usage for the queue */
@@ -447,12 +447,12 @@ svr_enquejob(job *pjob)
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE, pjob->ji_qs.ji_jobid, log_buffer);
 	}
 
-	if ((rc=set_entity_resc_sum_max(pjob, pque, (attribute *)0, INCR)) != 0) {
+	if ((rc=set_entity_resc_sum_max(pjob, pque, NULL, INCR)) != 0) {
 		snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_resc_sum_max on queue failed with %d for enqueue in %s", rc, pque->qu_qs.qu_name);
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE, pjob->ji_qs.ji_jobid, log_buffer);
 	}
 
-	if ((rc=set_entity_resc_sum_queued(pjob, pque, (attribute*)0, INCR)) != 0) {
+	if ((rc=set_entity_resc_sum_queued(pjob, pque, NULL, INCR)) != 0) {
 		snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_resc_sum_queued on queue failed with %d for enqueue in %s", rc, pque->qu_qs.qu_name);
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE, pjob->ji_qs.ji_jobid, log_buffer);
 	}
@@ -568,7 +568,7 @@ svr_dequejob(job *pjob)
 			bad_ct = 1;
 	}
 
-	if ((pque = pjob->ji_qhdr) != (pbs_queue *)0) {
+	if ((pque = pjob->ji_qhdr) != NULL) {
 
 
 		/* update any entity count and entity resources usage at que */
@@ -583,12 +583,12 @@ svr_dequejob(job *pjob)
 			log_err(rc, __func__, log_buffer);
 		}
 
-		if ((rc=set_entity_resc_sum_max(pjob, pque, (attribute *)0, DECR)) != 0) {
+		if ((rc=set_entity_resc_sum_max(pjob, pque, NULL, DECR)) != 0) {
 			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_resc_sum_max on queue failed with %d for dequeue in %s", rc, pque->qu_qs.qu_name);
 			log_err(rc, __func__, log_buffer);
 		}
 
-		if ((rc=set_entity_resc_sum_queued(pjob, pque, (attribute*)0, DECR)) != 0) {
+		if ((rc=set_entity_resc_sum_queued(pjob, pque, NULL, DECR)) != 0) {
 			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_resc_sum_queued on queue failed with %d for dequeue in %s", rc, pque->qu_qs.qu_name);
 			log_err(rc, __func__, log_buffer);
 		}
@@ -601,7 +601,7 @@ svr_dequejob(job *pjob)
 			if (--pque->qu_njstate[pjob->ji_qs.ji_state] < 0)
 				bad_ct = 1;
 		}
-		pjob->ji_qhdr = (pbs_queue *)0;
+		pjob->ji_qhdr = NULL;
 	}
 
 #ifndef NDEBUG
@@ -670,7 +670,7 @@ svr_setjobstate(job *pjob, int newstate, int newsubstate)
 			changed = 1;
 			server.sv_jobstates[oldstate]--;
 			server.sv_jobstates[newstate]++;
-			if (pque != (pbs_queue *)0) {
+			if (pque != NULL) {
 
 				pque->qu_njstate[oldstate]--;
 				pque->qu_njstate[newstate]++;
@@ -926,7 +926,7 @@ cmp_resvStateRelated_attrs(void *pobj, int objtype)
 	int	  (*pf)(attribute *, attribute *, enum batch_op);
 
 
-	if (pobj == (void *)0)
+	if (pobj == NULL)
 		return;
 
 	if (objtype == JOB_OBJECT) {
@@ -1109,7 +1109,7 @@ get_wt_limit(attribute *plimit_attr, attribute *wt_attr)
 		return 1;
 	/* Check min_walltime if min_or_max == MIN_WALLTIME_LIMIT */
 	wiresc = (resource *)GET_NEXT(plimit_attr->at_val.at_list);
-	while (wiresc != (resource *)0) {
+	while (wiresc != NULL) {
 		if ((strcasecmp(wiresc->rs_defin->rs_name, WALLTIME) == 0)
 			&& (wiresc->rs_value.at_flags & ATR_VFLAG_SET)) {
 			*wt_attr = wiresc->rs_value;
@@ -1256,7 +1256,7 @@ chk_resc_limits(attribute *pattr, pbs_queue *pque)
 
 	/* Get resource_list.min_walltime and resource_list.max_walltime if it is a STF job */
 	atresc = (resource *)GET_NEXT(pattr->at_val.at_list);
-	while (atresc != (resource *)0) {
+	while (atresc != NULL) {
 		if ((strcasecmp(atresc->rs_defin->rs_name, MIN_WALLTIME) == 0)) {
 			resc_minwt = atresc;
 		}
@@ -1455,10 +1455,10 @@ svr_chkque(job *pjob, pbs_queue *pque, char *hostname, int mtype)
 		/* 7b. Check limit on number of jobs per entity in server only if */
 		/*     this is a new job defined by state == JOB_STATE_TRANSIT    */
 		if (pjob->ji_qs.ji_state == JOB_STATE_TRANSIT) {
-			i = check_entity_ct_limit_max(pjob, (pbs_queue *)0);
+			i = check_entity_ct_limit_max(pjob, NULL);
 			if (i != 0)
 				return i;
-			i = check_entity_ct_limit_queued(pjob, (pbs_queue *)0);
+			i = check_entity_ct_limit_queued(pjob, NULL);
 			if (i != 0)
 				return i;
 		}
@@ -1474,16 +1474,16 @@ svr_chkque(job *pjob, pbs_queue *pque, char *hostname, int mtype)
 		/* checks 7c and 7d are bypassed for a move by manager or qorder */
 		if (mtype != MOVE_TYPE_MgrMv) {
 			/* 7c. Check resource limits per entity in queue */
-			i = check_entity_resc_limit_max(pjob, pque, (attribute *)0);
+			i = check_entity_resc_limit_max(pjob, pque, NULL);
 			if (i == 0)
-				i = check_entity_resc_limit_queued(pjob, pque, (attribute *)0);
+				i = check_entity_resc_limit_queued(pjob, pque, NULL);
 
 			if (i == 0) {
 				/* 7d. Check resource limits per entity in server if this */
 				/*     is a new job defined by state == JOB_STATE_TRANSIT */
-				i = check_entity_resc_limit_max(pjob, (pbs_queue *)0, (attribute *)0);
+				i = check_entity_resc_limit_max(pjob, NULL, NULL);
 				if (i == 0)
-					i = check_entity_resc_limit_queued(pjob, (pbs_queue *)0, (attribute *)0);
+					i = check_entity_resc_limit_queued(pjob, NULL, NULL);
 
 				if (i == 0) {
 					/* 7e.  test old gateing limits */
@@ -1671,7 +1671,7 @@ job_wait_over(struct work_task *pwt)
 
 #ifndef NDEBUG
 	{
-		time_t now = time((time_t *)0);
+		time_t now = time(NULL);
 		time_t when = ((job *)pjob)->ji_wattr[(int)JOB_ATR_exectime].
 			at_val.at_long;
 		struct work_task *ptask;
@@ -1753,7 +1753,7 @@ job_set_wait(attribute *pattr, void *pjob, int mode)
 	}
 
 	ptask = set_task(WORK_Timed, when, job_wait_over, pjob);
-	if (ptask == (struct work_task *)0)
+	if (ptask == NULL)
 		return (-1);
 	append_link(&((job *)pjob)->ji_svrtask, &ptask->wt_linkobj, ptask);
 
@@ -1964,10 +1964,10 @@ get_hostPart(char *from)
 {
 	char *pc;
 
-	if ((pc = strchr(from, '@')) == (char *)0)
-		return (NULL);
+	if ((pc = strchr(from, '@')) == NULL)
+		return NULL;
 	else if (*(++pc) == '\0')
-		return (NULL);
+		return NULL;
 	return pc;
 }
 
@@ -2624,11 +2624,11 @@ set_deflt_resc(attribute *jb, attribute *dflt, int selflg)
 			if (prescdt->rs_value.at_flags & ATR_VFLAG_SET) {
 				/* see if the job already has that resource */
 				prescjb = find_resc_entry(jb, prescdt->rs_defin);
-				if ((prescjb == (resource *)0) ||
+				if ((prescjb == NULL) ||
 					((prescjb->rs_value.at_flags &
 					ATR_VFLAG_SET) == 0)) {
 
-					if (prescjb == (resource *)0)
+					if (prescjb == NULL)
 						prescjb = add_resource_entry(jb,
 							prescdt->rs_defin);
 					if (prescjb) {
@@ -2667,8 +2667,8 @@ set_resc_deflt(void *pobj, int objtype, pbs_queue *pque)
 {
 	static resc_resv  *presv;
 	job	   *pjob;
-	attribute  *pdest = (attribute *)0;
-	attribute  *psched = (attribute *)0;
+	attribute  *pdest = NULL;
+	attribute  *psched = NULL;
 	resource   *presc;
 	resource_def *prdefsl;
 	resource_def *prdefpc;
@@ -2677,29 +2677,29 @@ set_resc_deflt(void *pobj, int objtype, pbs_queue *pque)
 	switch (objtype) {
 		case	JOB_OBJECT:
 			pjob = (job *)pobj;
-			assert(pjob != (job *)0);
+			assert(pjob != NULL);
 			if (pque == NULL)
 				pque = pjob->ji_qhdr;
-			assert(pque != (pbs_queue *)0);
+			assert(pque != NULL);
 			pdest = &pjob->ji_wattr[(int)JOB_ATR_resource];
 			psched = &pjob->ji_wattr[(int)JOB_ATR_SchedSelect];
 			break;
 
 		case	RESC_RESV_OBJECT:
 			presv = (resc_resv *)pobj;
-			assert(presv != (resc_resv *)0);
-			pque = (pbs_queue *)0;
+			assert(presv != NULL);
+			pque = NULL;
 			pdest = &presv->ri_wattr[(int)RESV_ATR_resource];
 			psched = &presv->ri_wattr[(int)RESV_ATR_SchedSelect];
 			break;
 
 		case	RESV_JOB_OBJECT:
 			presv = (resc_resv *)pobj;
-			assert(presv != (resc_resv *)0);
+			assert(presv != NULL);
 			pjob = presv->ri_jbp;
-			assert(pjob != (job *)0);
+			assert(pjob != NULL);
 			pque = pjob->ji_qhdr;
-			assert(pque != (pbs_queue *)0);
+			assert(pque != NULL);
 			pdest = &presv->ri_wattr[(int)RESV_ATR_resource];
 			break;
 
@@ -2935,11 +2935,11 @@ Update_Resvstate_if_resv(job *pjob)
 	resc_resv *presv;
 	int	  beyondStart = 0;
 
-	if (pjob == (job *)0)
+	if (pjob == NULL)
 		return;
 
 	/* Is this job a reservation job ? */
-	if ((presv = pjob->ji_resvp) == (resc_resv *)0)
+	if ((presv = pjob->ji_resvp) == NULL)
 		return;
 
 	ap = &pjob->ji_wattr[JOB_ATR_reserve_state];
@@ -3149,7 +3149,7 @@ Time4reply(struct work_task *ptask)
 		}
 
 		(void)reply_text(presv->ri_brp, PBSE_NONE, buf);
-		presv->ri_brp = (struct batch_request *)0 ;
+		presv->ri_brp = NULL ;
 	}
 }
 
@@ -3378,7 +3378,7 @@ Time4resvFinish(struct work_task *ptask)
 			presv->ri_qs.ri_resvID);
 
 		(void)issue_Drequest(PBS_LOCAL_CONNECTION, preq,
-			resvFinishReply, (struct work_task **)0, 0);
+			resvFinishReply, NULL, 0);
 
 		/*notify relevant parties that the reservation's
 		 *ending time has arrived and reservation is being deleted
@@ -3447,7 +3447,7 @@ Time4occurrenceFinish(resc_resv *presv)
 
 	dtend = presv->ri_wattr[RESV_ATR_end].at_val.at_long;
 	next = dtstart;
-	now = time((time_t *) 0);
+	now = time(NULL);
 
 	/* Add next occurrence and account for missed occurrences..
 	 * A missed occurrence is one that had its reservation end time in the past.
@@ -3688,7 +3688,7 @@ delete_occurrence_jobs(resc_resv *presv)
 	struct work_task *ptask;
 
 	pjob = (job *)GET_NEXT(presv->ri_qp->qu_jobs);
-	while (pjob != (job *)0) {
+	while (pjob != NULL) {
 		/* Get the next job from the queue before the job is unlinked as a result
 		 * of job_abt
 		 */
@@ -3749,7 +3749,7 @@ Time4_term(struct work_task *ptask)
 			presv->ri_qs.ri_resvID);
 
 		(void)issue_Drequest(PBS_LOCAL_CONNECTION, preq,
-			resvFinishReply, (struct work_task **)0, 0);
+			resvFinishReply, NULL, 0);
 
 		/*notify relevant parties that the reservation's
 		 *ending time has arrived and reservation is being deleted
@@ -3807,7 +3807,7 @@ Time4_I_term(struct work_task *ptask)
 			presv->ri_qs.ri_resvID);
 
 		(void)issue_Drequest(PBS_LOCAL_CONNECTION, preq,
-			resvFinishReply, (struct work_task **)0, 0);
+			resvFinishReply, NULL, 0);
 
 		/*notify relevant parties that the reservation's
 		 *ending time has arrived and reservation is being deleted
@@ -4101,7 +4101,7 @@ gen_task_EndResvWindow(resc_resv *presv)
 	int		 rc;
 	long		 fromNow;
 
-	if (presv == (resc_resv *)0)
+	if (presv == NULL)
 		return (PBSE_INTERNAL);
 
 	fromNow = presv->ri_qs.ri_etime - (long)time_now;
@@ -4319,7 +4319,7 @@ change_enableORstart(resc_resv *presv, int which, char *value)
 		return (0);
 
 	newreq = alloc_br(PBS_BATCH_Manager);
-	if (newreq == (struct batch_request *)0) {
+	if (newreq == NULL) {
 		(void)sprintf(log_buffer, "batch request allocation failed");
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_RESV, LOG_NOTICE,
 			presv->ri_qs.ri_resvID, log_buffer);
@@ -4348,7 +4348,7 @@ change_enableORstart(resc_resv *presv, int which, char *value)
 		return  (PBSE_INTERNAL);
 
 	len = strlen(value) + 1;
-	if ((psatl = attrlist_create(at_name, NULL, len)) != (svrattrl *)0) {
+	if ((psatl = attrlist_create(at_name, NULL, len)) != NULL) {
 		psatl->al_flags = que_attr_def[index].at_flags;
 		strcpy(psatl->al_value, value);
 		append_link(plhed, &psatl->al_link, psatl);
@@ -4609,7 +4609,7 @@ int
 start_end_dur_wall(void *pobj, int objtype)
 {
 	job		*pjob = NULL;
-	resc_resv	*presv = (resc_resv *)0;
+	resc_resv	*presv = NULL;
 	resource_def	*rscdef = NULL;
 	resource	*prsc = NULL;
 	attribute	*pstime = NULL;
@@ -4935,7 +4935,7 @@ convert_long_to_time(long l)
 	 * accommodate "hh:mm:ss\0"
 	 */
 	str = (char*)malloc(hr_len + 9);
-	if (str == (char*)0)
+	if (str == NULL)
 		return NULL;
 
 	sprintf(str, "%02u:%02d:%02d", h, m, s);
@@ -5248,8 +5248,8 @@ svr_saveorpurge_finjobhist(job *pjob)
 void
 svr_clean_job_history(struct work_task *pwt)
 {
-	job 	*pjob = (job *)0;
-	job 	*nxpjob = (job *)0;
+	job 	*pjob = NULL;
+	job 	*nxpjob = NULL;
 	int 	walltime_used = 0;
 
 	/*
@@ -5307,7 +5307,7 @@ svr_clean_job_history(struct work_task *pwt)
 			if (time_now >= (pjob->ji_wattr[(int) JOB_ATR_history_timestamp].at_val.at_long
 				+ svr_history_duration)) {
 				job_purge(pjob);
-				pjob = (job *) 0;
+				pjob = NULL;
 			}
 		}
 		/* restore the saved next in pjob */
@@ -5332,7 +5332,7 @@ svr_clean_job_history(struct work_task *pwt)
 			 */
 			if (!set_task(WORK_Timed,
 				(end_time + SVR_CLEAN_JOBHIST_SECS),
-				svr_clean_job_history, (void *)0)) {
+				svr_clean_job_history, NULL)) {
 				log_err(errno,
 					"svr_clean_job_history",
 					"Unable to set task for clean job history");
@@ -5353,7 +5353,7 @@ svr_clean_job_history(struct work_task *pwt)
 	if (pwt && svr_history_enable) {
 		if (!set_task(WORK_Timed,
 			(time_now + time_between_tasks),
-			svr_clean_job_history, (void *)0)) {
+			svr_clean_job_history, NULL)) {
 			log_err(errno,
 				"svr_clean_job_history",
 				"Unable to set task for clean job history");
@@ -5398,7 +5398,7 @@ svr_histjob_update(job * pjob, int newstate, int newsubstate)
 		pjob->ji_modifyct = 0; /* force write to disk */
 		server.sv_jobstates[oldstate]--;
 		server.sv_jobstates[newstate]++;
-		if (pque != (pbs_queue *)0) {
+		if (pque != NULL) {
 			pque->qu_njstate[oldstate]--;
 			pque->qu_njstate[newstate]++;
 		}
@@ -5483,8 +5483,8 @@ update_job_finish_comment(job *pjob, int newsubstate, char *user)
 	if (buffer[0] != '\0') {
 		(void)job_attr_def[(int)JOB_ATR_Comment].at_decode(
 			&pjob->ji_wattr[(int)JOB_ATR_Comment],
-			(char *)0,
-			(char *)0,
+			NULL,
+			NULL,
 			buffer);
 	}
 }
@@ -5513,14 +5513,14 @@ svr_setjob_histinfo(job *pjob, histjob_type type)
 {
 	int newstate = 0;
 	int newsubstate = 0;
-	struct ajtrkhd *ptbl = (struct ajtrkhd *)0;
-	struct work_task *pwt = (struct work_task *)0;
+	struct ajtrkhd *ptbl = NULL;
+	struct work_task *pwt = NULL;
 	char qname[PBS_MAXQUEUENAME+PBS_MAXHOSTNAME+1];
 
 	if (type == T_MOV_JOB) { /* MOVED job */
 
 		char *destination = pjob->ji_qs.ji_destin;
-		char *tmpstr = (char *)0;
+		char *tmpstr = NULL;
 
 		if (destination == NULL || *destination == '\0') {
 			return;
@@ -5563,8 +5563,8 @@ svr_setjob_histinfo(job *pjob, histjob_type type)
 		/* Set the queue attribute to destination */
 		(void)job_attr_def[(int)JOB_ATR_in_queue].at_decode(
 			&pjob->ji_wattr[(int)JOB_ATR_in_queue],
-			(char *)0,
-			(char *)0,
+			NULL,
+			NULL,
 			destination);
 
 		/* set the job comment attr with destination */
@@ -5572,8 +5572,8 @@ svr_setjob_histinfo(job *pjob, histjob_type type)
 			destination);
 		(void)job_attr_def[(int)JOB_ATR_Comment].at_decode(
 			&pjob->ji_wattr[(int)JOB_ATR_Comment],
-			(char *)0,
-			(char *)0,
+			NULL,
+			NULL,
 			log_buffer);
 		/*
 		 * SET the NEW STATE/SUB-STATE for the job (which is moved).
@@ -5667,12 +5667,12 @@ svr_setjob_histinfo(job *pjob, histjob_type type)
 	if ((pjob->ji_qs.ji_state != JOB_STATE_MOVED) &&
 		(pjob->ji_qs.ji_state != JOB_STATE_FINISHED)) {
 		int rc;
-		if ((rc=set_entity_ct_sum_max(pjob, (pbs_queue *)0, DECR)) != 0) {
+		if ((rc=set_entity_ct_sum_max(pjob, NULL, DECR)) != 0) {
 			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_ct_sum_max on server failed with %d for finished job", rc);
 			log_err(rc, __func__, log_buffer);
 		}
 
-		if ((rc=set_entity_resc_sum_max(pjob, (pbs_queue *)0, (attribute *)0, DECR)) != 0) {
+		if ((rc=set_entity_resc_sum_max(pjob, NULL, NULL, DECR)) != 0) {
 			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_resc_sum_max on server failed with %d for finished job", rc);
 			log_err(rc, __func__, log_buffer);
 		}
@@ -5682,17 +5682,17 @@ svr_setjob_histinfo(job *pjob, histjob_type type)
 			log_err(rc, __func__, log_buffer);
 		}
 
-		if ((rc=set_entity_resc_sum_max(pjob, pjob->ji_qhdr, (attribute *)0, DECR)) != 0) {
+		if ((rc=set_entity_resc_sum_max(pjob, pjob->ji_qhdr, NULL, DECR)) != 0) {
 			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_resc_sum_max on queue failed with %d for finished job", rc);
 			log_err(rc, __func__, log_buffer);
 		}
 
-		if ((rc=set_entity_ct_sum_queued(pjob, (pbs_queue *)0, DECR)) != 0) {
+		if ((rc=set_entity_ct_sum_queued(pjob, NULL, DECR)) != 0) {
 			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_ct_sum_queued on server failed with %d for finished job", rc);
 			log_err(rc, __func__, log_buffer);
 		}
 
-		if ((rc=set_entity_resc_sum_queued(pjob, (pbs_queue *)0, (attribute *)0, DECR)) != 0) {
+		if ((rc=set_entity_resc_sum_queued(pjob, NULL, NULL, DECR)) != 0) {
 			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_resc_sum_queued on server failed with %d for finished job", rc);
 			log_err(rc, __func__, log_buffer);
 		}
@@ -5702,7 +5702,7 @@ svr_setjob_histinfo(job *pjob, histjob_type type)
 			log_err(rc, __func__, log_buffer);
 		}
 
-		if ((rc=set_entity_resc_sum_queued(pjob, pjob->ji_qhdr, (attribute *)0, DECR)) != 0) {
+		if ((rc=set_entity_resc_sum_queued(pjob, pjob->ji_qhdr, NULL, DECR)) != 0) {
 			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_resc_sum_queued on queue failed with %d for finished job", rc);
 			log_err(rc, __func__, log_buffer);
 		}
@@ -5798,12 +5798,12 @@ svr_avlkey_create(const char *keystr)
 	AVL_IX_REC *pkey;
 
 	if (keystr == NULL)
-		return (NULL);
+		return NULL;
 
 	keylen = sizeof(AVL_IX_REC) + strlen(keystr) + 1;
 	pkey = malloc(keylen);
 	if (pkey == NULL)
-		return (NULL);
+		return NULL;
 
 	memset((void *)pkey, 0, keylen);
 	(void)strcpy(pkey->key, keystr);
@@ -5917,7 +5917,7 @@ find_ms_full_host_and_port(job *pjob, int *port)
 
 	if ((pjob == NULL) || (port == NULL)) {
 		log_err(PBSE_INTERNAL, __func__, "bad input parameter");
-		return (NULL);
+		return NULL;
 	}
 
 	*port = pbs_mom_port;
@@ -5926,7 +5926,7 @@ find_ms_full_host_and_port(job *pjob, int *port)
 		ms_exec_host = strdup(pjob->ji_wattr[(int)JOB_ATR_exec_host2].at_val.at_str);
 		if (ms_exec_host == NULL) {
 			log_err(errno, __func__, "strdup failed");
-			return (NULL);
+			return NULL;
 
 		}
 		if ((p=strchr(ms_exec_host, '/')) != NULL)
@@ -5940,7 +5940,7 @@ find_ms_full_host_and_port(job *pjob, int *port)
 		ms_exec_host = strdup(pjob->ji_wattr[(int)JOB_ATR_exec_host].at_val.at_str);
 		if (ms_exec_host == NULL) {
 			log_err(errno, __func__, "strdup failed");
-			return (NULL);
+			return NULL;
 
 		}
 		if ((p=strchr(ms_exec_host, '/')) != NULL)
@@ -6100,7 +6100,7 @@ send_job_exec_update_to_mom(job *pjob, char *err_msg, int err_msg_sz,
 	char		*new_exec_vnode = NULL;
 	char		*new_exec_host = NULL;
 	char		*new_exec_host2 = NULL;
-	attribute	*psched = (attribute *)0;
+	attribute	*psched = NULL;
 	int		rc = 1;
 	int		num_updates = 0;
 	struct	work_task	*pwt = NULL;
@@ -6127,7 +6127,7 @@ send_job_exec_update_to_mom(job *pjob, char *err_msg, int err_msg_sz,
 
 	newreq = alloc_br(PBS_BATCH_ModifyJob);
 
-	if (newreq == (struct batch_request *) 0) {
+	if (newreq == NULL) {
 		LOG_ERR_BUF(err_msg, err_msg_sz,
 			"failed to alloc_br for PBS_MATCH_modifyjob",
 					errno, __func__)
@@ -6313,7 +6313,7 @@ resc_sum_values_action(enum resc_sum_action action, resource_def *resc_def, char
 	if ((action == RESC_SUM_ADD) && ((resc_def == NULL) || (keyw == NULL) || (value == NULL))) {
 		LOG_ERR_BUF(err_msg, err_msg_sz,
 				"RESC_SUM_ADD: resc_def, keyw, or value is NULL", -1, __func__)
-		return (NULL);
+		return NULL;
 	}
 
 	if (resc_sum_values_size == 0) {
@@ -6322,7 +6322,7 @@ resc_sum_values_action(enum resc_sum_action action, resource_def *resc_def, char
 		if (resc_sum_values == NULL) {
 			LOG_ERR_BUF(err_msg, err_msg_sz,
 				"resc_sum_values calloc error", -1, __func__)
-			return (NULL);
+			return NULL;
 		}
 		resc_sum_values_size = 20;
 		for (k = 0; k < resc_sum_values_size; k++) {
@@ -6364,7 +6364,7 @@ resc_sum_values_action(enum resc_sum_action action, resource_def *resc_def, char
 			if (tmp_rs == NULL) {
 				LOG_ERR_BUF(err_msg, err_msg_sz,
 				"resc_sum_values realloc error", -1, __func__)
-				return (NULL);
+				return NULL;
 			}
 			resc_sum_values = tmp_rs;
 			for (k = resc_sum_values_size; k < l; k++) {
@@ -6400,7 +6400,7 @@ resc_sum_values_action(enum resc_sum_action action, resource_def *resc_def, char
 			if (buf == NULL) {
 				LOG_ERR_BUF(err_msg, err_msg_sz,
 	 				"local buf malloc error", -1, __func__)
-				return (NULL);
+				return NULL;
 			}
 			buf_size = LOG_BUF_SIZE;
 		}
@@ -6427,7 +6427,7 @@ resc_sum_values_action(enum resc_sum_action action, resource_def *resc_def, char
 					if (tmp_buf == NULL) {
 			   			LOG_ERR_BUF(err_msg, err_msg_sz,
 	 						"local buf realloc error", -1, __func__)
-						return (NULL);
+						return NULL;
 					}
 					buf = tmp_buf;
 					buf_size = new_len;
@@ -6447,7 +6447,7 @@ resc_sum_values_action(enum resc_sum_action action, resource_def *resc_def, char
 	}
 
 	/* Should never get here. */
-	return (NULL);
+	return NULL;
 }
 
 /**
@@ -6488,13 +6488,13 @@ expand_select_spec(char *select_str)
 
         if (select_str == NULL) {
                 log_err(-1, __func__, "bad param passed");
-		return (NULL);
+		return NULL;
         }
 
 	selbuf = strdup(select_str);
         if (selbuf == NULL) {
                 log_err(errno, __func__, "strdup fail");
-		return (NULL);
+		return NULL;
         }
 
 	/* parse chunk from select spec */
@@ -6509,7 +6509,7 @@ expand_select_spec(char *select_str)
 		if (rc != 0) {
 			free(selbuf);
 			free(new_sel);
-			return (NULL);
+			return NULL;
 		}
 
 		for (i = 0; i < snc; ++i) {	   /* for each chunk in select.. */
@@ -6529,7 +6529,7 @@ expand_select_spec(char *select_str)
 						}
 						log_err(-1, __func__, "pbs_strcat failed");
 						free(selbuf);
-						return (NULL);
+						return NULL;
 					}
 
 				}
@@ -6539,7 +6539,7 @@ expand_select_spec(char *select_str)
 					}
 					log_err(-1, __func__, "pbs_strcat failed");
 					free(selbuf);
-					return (NULL);
+					return NULL;
 				}
 			}
 		}
@@ -6588,20 +6588,20 @@ resources_seen(char *exec_vnode)
 
 	if (exec_vnode == NULL) {
 		log_err(-1, __func__, "bad params passed");
-		return (NULL);
+		return NULL;
 	}
 
 	selbuf = strdup(exec_vnode);
 	if (selbuf == NULL) {
 		log_err(-1, __func__, "strdup failed on exec_vnode");
-		return (NULL);
+		return NULL;
 	}
 	ssize = strlen(exec_vnode)+1;
 	res_list = (char *) calloc(1, strlen(exec_vnode)+1);
 	if (res_list == NULL) {
 		log_err(-1, __func__, "calloc failed on exec_vnode");
 		free(selbuf);
-		return (NULL);
+		return NULL;
 	}
 
 	psubspec = parse_plus_spec_r(selbuf, &last, &hasprn);
@@ -6610,7 +6610,7 @@ resources_seen(char *exec_vnode)
 		if (rc != 0) {
 			free(selbuf);
 			free(res_list);
-			return (NULL);
+			return NULL;
 		}
 
 		for (j=0; j<snelma; ++j) {
@@ -6675,7 +6675,7 @@ return_missing_resources(char *chunk, char *res_list)
 
 	if ((res_list == NULL) || (chunk == NULL)) {
 		log_err(-1, __func__, "bad params passed");
-		return (NULL);
+		return NULL;
 	}
 
 	if (ret_buf == NULL) {
@@ -6693,7 +6693,7 @@ return_missing_resources(char *chunk, char *res_list)
 	chunk_dup = strdup(chunk);
 	if (chunk_dup == NULL) {
 		log_err(errno, __func__, "strdup failed on chunk");
-		return (NULL);
+		return NULL;
 	}
 #ifdef NAS /* localmod 082 */
 	rc = parse_chunk_r(chunk_dup, 0, &snc, &snelma,
@@ -6707,7 +6707,7 @@ return_missing_resources(char *chunk, char *res_list)
 			"bad parse of %s", chunk_dup);
 		log_err(-1, __func__, log_buffer);
 		free(chunk_dup);
-		return (NULL);
+		return NULL;
 	}
 	ret_buf[0] = '\0';
 	for (l = 0; l < snelma; ++l) {
@@ -7375,16 +7375,16 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 		}
 		(void)job_attr_def[(int)JOB_ATR_exec_vnode_acct].at_decode(
 			&pjob->ji_wattr[(int)JOB_ATR_exec_vnode_acct],
-			(char *)0,
-			(char *)0,
+			NULL,
+			NULL,
 		pjob->ji_wattr[(int) JOB_ATR_exec_vnode].at_val.at_str);
 
 		/* save original value which will be used later in the accounting end record */
 		if ((pjob->ji_wattr[JOB_ATR_exec_vnode_orig].at_flags & ATR_VFLAG_SET) == 0) {
 			(void)job_attr_def[(int)JOB_ATR_exec_vnode_orig].at_decode(
 				&pjob->ji_wattr[(int)JOB_ATR_exec_vnode_orig],
-				(char *)0,
-				(char *)0,
+				NULL,
+				NULL,
 				pjob->ji_wattr[(int) JOB_ATR_exec_vnode].at_val.at_str);
 		}
 
@@ -7397,8 +7397,8 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 
 		(void)job_attr_def[(int)JOB_ATR_exec_vnode].at_decode(
 			&pjob->ji_wattr[(int)JOB_ATR_exec_vnode],
-			(char *)0,
-			(char *)0,
+			NULL,
+			NULL,
 			new_exec_vnode);
 		pjob->ji_modified = 1;
 
@@ -7410,8 +7410,8 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 	if (deallocated_execvnode[0] != '\0') {
 		(void)job_attr_def[(int)JOB_ATR_exec_vnode_deallocated].at_decode(
 			&pjob->ji_wattr[(int)JOB_ATR_exec_vnode_deallocated],
-			(char *)0,
-			(char *)0,
+			NULL,
+			NULL,
 			deallocated_execvnode);
 		pjob->ji_modified = 1;
 	}
@@ -7420,23 +7420,23 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 
 		(void)job_attr_def[(int)JOB_ATR_exec_host_acct].at_decode(
 			&pjob->ji_wattr[(int)JOB_ATR_exec_host_acct],
-			(char *)0,
-			(char *)0,
+			NULL,
+			NULL,
 		  pjob->ji_wattr[(int)JOB_ATR_exec_host].at_val.at_str);
 
 		/* save original value which will be used later in the accounting end record */
 		if ((pjob->ji_wattr[JOB_ATR_exec_host_orig].at_flags & ATR_VFLAG_SET) == 0) {
 			(void)job_attr_def[(int)JOB_ATR_exec_host_orig].at_decode(
 				&pjob->ji_wattr[(int)JOB_ATR_exec_host_orig],
-				(char *)0,
-				(char *)0,
+				NULL,
+				NULL,
 		  	pjob->ji_wattr[(int)JOB_ATR_exec_host].at_val.at_str);
 		}
 
 		(void)job_attr_def[(int)JOB_ATR_exec_host].at_decode(
 			&pjob->ji_wattr[(int)JOB_ATR_exec_host],
-			(char *)0,
-			(char *)0,
+			NULL,
+			NULL,
 			new_exec_host);
 		pjob->ji_modified = 1;
 	}
@@ -7445,8 +7445,8 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 
 		(void)job_attr_def[(int)JOB_ATR_exec_host2].at_decode(
 			&pjob->ji_wattr[(int)JOB_ATR_exec_host2],
-			(char *)0,
-			(char *)0,
+			NULL,
+			NULL,
 			new_exec_host2);
 		pjob->ji_modified = 1;
 	}

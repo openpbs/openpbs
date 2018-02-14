@@ -248,10 +248,10 @@ add_select_entry(char *jid, struct brp_select ***pselx)
 	struct brp_select *pselect;
 
 	pselect = (struct brp_select *)malloc(sizeof(struct brp_select));
-	if (pselect == (struct brp_select *)0)
+	if (pselect == NULL)
 		return 0;
 
-	pselect->brp_next = (struct brp_select *)0;
+	pselect->brp_next = NULL;
 	(void)strcpy(pselect->brp_jobid, jid);
 	**pselx = pselect;
 	*pselx = &pselect->brp_next;
@@ -387,7 +387,7 @@ req_selectjobs(struct batch_request *preq)
 	preply = &preq->rq_reply;
 	if (preq->rq_type == PBS_BATCH_SelectJobs) {
 		preply->brp_choice = BATCH_REPLY_CHOICE_Select;
-		preply->brp_un.brp_select = (struct brp_select *)0;
+		preply->brp_un.brp_select = NULL;
 	} else {
 		preply->brp_choice = BATCH_REPLY_CHOICE_Status;
 		CLEAR_HEAD(preply->brp_un.brp_status);
@@ -630,10 +630,10 @@ build_selentry(svrattrl *plist, attribute_def *pdef, int perm, struct select_lis
 
 	entry = (struct select_list *)
 		malloc(sizeof(struct select_list));
-	if (entry == (struct select_list *)0)
+	if (entry == NULL)
 		return (PBSE_SYSTEM);
 
-	entry->sl_next = (struct select_list *)0;
+	entry->sl_next = NULL;
 
 	clear_attr(&entry->sl_attr, pdef);
 
@@ -725,16 +725,16 @@ build_selist(svrattrl *plist, int perm, struct select_list **pselist, pbs_queue 
 	int		    i;
 	char		   *pc;
 	attribute_def	   *pdef;
-	struct select_list *prior = (struct select_list *)0;
+	struct select_list *prior = NULL;
 	int		    rc;
 
 	/* set permission for decode_resc() */
 
 	resc_access_perm = perm;
 
-	*pque = (pbs_queue *)0;
+	*pque = NULL;
 	*bad = 0;
-	*pselist = (struct select_list *)0;
+	*pselist = NULL;
 	while (plist) {
 		(*bad)++;	/* list counter incase one is bad */
 
@@ -753,7 +753,7 @@ build_selist(svrattrl *plist, int perm, struct select_list **pselist, pbs_queue 
 					if (*pque == NULL)
 						*pque = find_resvqueuebyname(plist->al_value);
 #endif /* localmod 075 */
-					if (*pque == (pbs_queue *)0)
+					if (*pque == NULL)
 						return (PBSE_UNKQUE);
 				}
 			}

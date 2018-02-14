@@ -206,7 +206,7 @@ __pbs_verify_attributes(int connect, int batch_request,
 	con->th_ch_errno = 0;
 	if (con->th_ch_errtxt)
 		free(con->th_ch_errtxt);
-	con->th_ch_errtxt = (char *) NULL;
+	con->th_ch_errtxt = NULL;
 
 	if (attribute_list == NULL)
 		return 0;

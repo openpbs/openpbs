@@ -28,7 +28,7 @@
  **
  **
  */
-/* 
+/*
  * Copyright (C) 1994-2018 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
@@ -149,7 +149,7 @@ avl_init_tls(void)
 
 /**
  * @brief
- *	retrieves and returns the avl tls by checking key initialization 
+ *	retrieves and returns the avl tls by checking key initialization
  *	setting  value in tls and adding the key to list.
  *
  * @return 	structure handle
@@ -497,7 +497,7 @@ avltree_last(node **tt)
  * @brief
  *	insert the given record into the tree pointed by tt.
  *
- * @param[in] tt - address of root 
+ * @param[in] tt - address of root
  * @param[in] key - record to be inserted
  *
  * @return	structure handle
@@ -707,7 +707,7 @@ avl_destroy_index(AVL_IX_DESC *pix)
  * @brief
  *	finds a record in tree and copy its index.
  *
- * @param[in] pe - key 
+ * @param[in] pe - key
  * @param[in] pix - pointer to tree
  *
  * @return	int
@@ -900,7 +900,7 @@ avl_prev_key(AVL_IX_REC *pe, AVL_IX_DESC *pix)
  *
  * @param[in] pe - key value
  * @param[in] pix - root node
- * 
+ *
  * @return	int
  * @retval	AVL_IX_OK(1)	success
  * @retval	AVL_IX_FAIL(0)	error
@@ -948,11 +948,11 @@ avlkey_create(AVL_IX_DESC *tree, void *key)
 			keylen = sizeof(AVL_IX_REC) + MAX_AVLKEY_LEN + 1;
 		} else {
 			keylen = sizeof(AVL_IX_REC) + strlen(key) + 1;
-		}		
+		}
 	}
 	pkey = calloc(1, keylen);
 	if (pkey == NULL)
-		return (NULL);
+		return NULL;
 
 	if (key != NULL) {
 		if (tree->keylength != 0)
@@ -963,7 +963,7 @@ avlkey_create(AVL_IX_DESC *tree, void *key)
 
 	return (pkey);
 }
-		
+
 /**
  * @brief
  *	Create an empty AVL tree
@@ -987,7 +987,7 @@ create_tree(int dups, int keylen)
 
 	AVL_p = (AVL_IX_DESC *) malloc(sizeof(AVL_IX_DESC));
 	if (AVL_p == NULL)
-		return (NULL);
+		return NULL;
 
 	avl_create_index(AVL_p, dups, keylen);
 	return AVL_p;

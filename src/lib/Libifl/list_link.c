@@ -68,8 +68,8 @@
  * 	-insert_link - adds a new entry to a list.
  *	Entry is added either before (position=0) or after (position !=0)
  *	an old entry.
- * 
- * @param[in] old	ptr to old entry in list 
+ *
+ * @param[in] old	ptr to old entry in list
  * @param[in] new  	ptr to new link entry
  * @param[in] pobj 	ptr to object to link in
  * @param[in] position  0=before old, else after
@@ -78,17 +78,17 @@
  */
 
 void
-insert_link(struct pbs_list_link *old, struct pbs_list_link *new, 
+insert_link(struct pbs_list_link *old, struct pbs_list_link *new,
  		void *pobj, int position)
 {
 
 #ifndef NDEBUG
 	/* first make sure unlinked entries are pointing to themselves	    */
 
-	if ((pobj          == (void *)0)	      ||
-		(old           == (struct pbs_list_link *)0) ||
-		(old->ll_prior == (pbs_list_link *)0)        ||
-		(old->ll_next  == (pbs_list_link *)0)        ||
+	if ((pobj          == NULL)	      ||
+		(old           == NULL) ||
+		(old->ll_prior == NULL)        ||
+		(old->ll_next  == NULL)        ||
 		(new->ll_prior != (pbs_list_link *)new)      ||
 		(new->ll_next  != (pbs_list_link *)new)) {
 		(void)fprintf(stderr, "Assertion failed, bad pointer in insert_link\n");
@@ -121,7 +121,7 @@ insert_link(struct pbs_list_link *old, struct pbs_list_link *new,
  * @brief
  * 	-append_link - append a new entry to the end of the list
  *
- * @param[in] head      ptr to head of list 
+ * @param[in] head      ptr to head of list
  * @param[in] new       ptr to new link entry
  * @param[in] pobj      ptr to object to link in
  *
@@ -135,9 +135,9 @@ append_link(pbs_list_head *head, pbs_list_head *new, void *pobj)
 #ifndef NDEBUG
 	/* first make sure unlinked entries are pointing to themselves	    */
 
-	if ((pobj == (void *)0) 		  ||
-		(head->ll_prior == (pbs_list_link *)0)   ||
-		(head->ll_next  == (pbs_list_link *)0)   ||
+	if ((pobj == NULL) 		  ||
+		(head->ll_prior == NULL)   ||
+		(head->ll_next  == NULL)   ||
 		(new->ll_prior  != (pbs_list_link *)new) ||
 		(new->ll_next   != (pbs_list_link *)new)) {
 		(void)fprintf(stderr, "Assertion failed, bad pointer in insert_link\n");
@@ -167,7 +167,7 @@ append_link(pbs_list_head *head, pbs_list_head *new, void *pobj)
  *	Note: the old entry is unchanged other than the list links
  *	are cleared.
  *
- * @param[in] old       ptr to link to delete 
+ * @param[in] old       ptr to link to delete
  *
  * @return	Void
  *
@@ -177,11 +177,11 @@ void
 delete_link(struct pbs_list_link *old)
 {
 
-	if ((old->ll_prior != (pbs_list_link *)0) &&
+	if ((old->ll_prior != NULL) &&
 		(old->ll_prior != old) && (old->ll_prior->ll_next == old))
 		(old->ll_prior)->ll_next = old->ll_next;
 
-	if ((old->ll_next != (pbs_list_link *)0) &&
+	if ((old->ll_next != NULL) &&
 		(old->ll_next != old) && (old->ll_next->ll_prior == old))
 		(old->ll_next)->ll_prior = old->ll_prior;
 
@@ -195,9 +195,9 @@ delete_link(struct pbs_list_link *old)
  *
  * @param[in] pone - member one
  * @param[in] ptwo - member two
- * 
+ *
  * @return	Void
- * 
+ *
  */
 
 void
@@ -270,8 +270,8 @@ is_linked(pbs_list_link *head, pbs_list_link *entry)
 void *
 get_next(pbs_list_link pl, char *file, int line)
 {
-	if ((pl.ll_next == (pbs_list_link *)0) ||
-		((pl.ll_next == &pl) && (pl.ll_struct != (void *)0))) {
+	if ((pl.ll_next == NULL) ||
+		((pl.ll_next == &pl) && (pl.ll_struct != NULL))) {
 		(void)fprintf(stderr, "Assertion failed, bad pointer in link: file \"%s\", line %d\n", file, line);
 		abort();
 	}
@@ -292,8 +292,8 @@ get_next(pbs_list_link pl, char *file, int line)
 void *
 get_prior(pbs_list_link pl, char *file, int line)
 {
-	if ((pl.ll_prior == (pbs_list_link *)0) ||
-		((pl.ll_prior == &pl) && (pl.ll_struct != (void *)0))) {
+	if ((pl.ll_prior == NULL) ||
+		((pl.ll_prior == &pl) && (pl.ll_struct != NULL))) {
 		(void)fprintf(stderr, "Assertion failed, null pointer in link: file \"%s\", line %d\n", file, line);
 		abort();
 	}

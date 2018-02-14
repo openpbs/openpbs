@@ -141,7 +141,7 @@ job *pjob;
 		/* change the request type from copy to delete  */
 
 		preq->rq_type = PBS_BATCH_DelFiles;
-		preq->rq_extra = (void *) 0;
+		preq->rq_extra = NULL;
 		if (relay_to_mom(pjob, preq, release_req) == 0) {
 			pjob->ji_qs.ji_svrflags &= ~JOB_SVFLG_StagedIn;
 		} else {
@@ -274,9 +274,9 @@ job *pjob;
 {
 	struct batch_request   *preq;
 	char rmt_server[PBS_MAXSERVERNAME + 1] = {'\0'};
-	char *at = (char *)0;
+	char *at = NULL;
 
-	if (pjob == (job *)0)
+	if (pjob == NULL)
 		return;
 
 	if ((at = strchr(pjob->ji_wattr[JOB_ATR_in_queue].at_val.at_str, (int)'@')) == NULL)
@@ -285,7 +285,7 @@ job *pjob;
 	strncpy(rmt_server, at + 1, PBS_MAXSERVERNAME + 1);
 
 	preq = alloc_br(PBS_BATCH_DeleteJob);
-	if (preq == (struct batch_request *)0)
+	if (preq == NULL)
 		return;
 
 	(void)strcpy(preq->rq_ind.rq_delete.rq_objname, pjob->ji_qs.ji_jobid);
@@ -344,7 +344,7 @@ req_deletejob(struct batch_request *preq)
 	else
 		qdel_mail = 1;
 	parent = chk_job_request(jid, preq, &jt);
-	if (parent == (job *) 0)
+	if (parent == NULL)
 		return; /* note, req_reject already called */
 
 	if (delhist) {
@@ -538,7 +538,7 @@ req_deletejob(struct batch_request *preq)
 					JOB_SUBSTATE_TERMINATED;
 				parent->ji_ajtrk->tkm_dsubjsct++;
 				set_subjob_tblstate(parent, i, JOB_STATE_EXPIRED);
-				acct_del_write(jidsj, (job *) 0, preq, 1); /* no mail */
+				acct_del_write(jidsj, NULL, preq, 1); /* no mail */
 			}
 			x += z;
 		}
@@ -711,7 +711,7 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 					preq, 0);
 				reply_ack(preq);
 				rel_resc(pjob);
-				(void) job_abt(pjob, (char *) 0);
+				(void) job_abt(pjob, NULL);
 			} else
 				req_reject(PBSE_BADSTATE, 0, preq);
 			return;
@@ -820,7 +820,7 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 		if (pjob->ji_qs.ji_state == JOB_STATE_EXITING)
 			discard_job(pjob, "Forced Delete", 1);
 		rel_resc(pjob);
-		(void) job_abt(pjob, (char *) 0);
+		(void) job_abt(pjob, NULL);
 	}
 
 	reply_send(preq);
@@ -865,7 +865,7 @@ req_deleteReservation(struct batch_request *preq)
 	/*Note: on failure, chk_rescResv_request invokes req_reject
 	 *Appropriate reply got sent & batch_request got freed
 	 */
-	if (presv == (resc_resv *) 0)
+	if (presv == NULL)
 		return;
 
 
@@ -900,7 +900,7 @@ req_deleteReservation(struct batch_request *preq)
 		}
 
 		(void) reply_text(presv->ri_brp, PBSE_NONE, buf);
-		presv->ri_brp = (struct batch_request *) 0;
+		presv->ri_brp = NULL;
 	}
 
 
@@ -944,7 +944,7 @@ req_deleteReservation(struct batch_request *preq)
 	 */
 
 	if (presv->ri_qs.ri_type == RESC_RESV_OBJECT
-		&& presv->ri_qp != (pbs_queue *) 0
+		&& presv->ri_qp != NULL
 		&& presv->ri_qp->qu_numjobs > 0) {
 
 		/*One or more jobs are attached to this resource reservation
@@ -962,7 +962,7 @@ req_deleteReservation(struct batch_request *preq)
 
 			svrattrl *psatl;
 			newreq = alloc_br(PBS_BATCH_Manager);
-			if (newreq == (struct batch_request *) 0) {
+			if (newreq == NULL) {
 				req_reject(PBSE_SYSTEM, 0, preq);
 				return;
 			}
@@ -977,7 +977,7 @@ req_deleteReservation(struct batch_request *preq)
 			newreq->rq_perm = perm;
 
 			if ((psatl = attrlist_create(ATTR_enable, NULL, lenF))
-				== (svrattrl *) 0) {
+				== NULL) {
 
 				req_reject(PBSE_SYSTEM, 0, preq);
 				free_br(newreq);
@@ -988,7 +988,7 @@ req_deleteReservation(struct batch_request *preq)
 			append_link(&newreq->rq_ind.rq_manager.rq_attr, &psatl->al_link, psatl);
 
 			if ((psatl = attrlist_create(ATTR_start, NULL, lenF))
-				== (svrattrl *) 0) {
+				== NULL) {
 
 				req_reject(PBSE_SYSTEM, 0, preq);
 				free_br(newreq);
@@ -1021,7 +1021,7 @@ req_deleteReservation(struct batch_request *preq)
 			relVal, &state, &sub);
 		(void) resv_setResvState(presv, state, sub);
 		pjob = (job *) GET_NEXT(presv->ri_qp->qu_jobs);
-		while (pjob != (job *) 0) {
+		while (pjob != NULL) {
 
 			pnxj = (job *) GET_NEXT(pjob->ji_jobque);
 
@@ -1036,14 +1036,14 @@ req_deleteReservation(struct batch_request *preq)
 				continue;
 			}
 			newreq = alloc_br(PBS_BATCH_DeleteJob);
-			if (newreq != (struct batch_request *) 0) {
+			if (newreq != NULL) {
 
 				/*when owner of job is not same as owner of resv, */
 				/*need extra permission; Also extra info for owner*/
 
 				CLEAR_HEAD(newreq->rq_ind.rq_manager.rq_attr);
 				newreq->rq_perm = perm | ATR_DFLAG_MGWR;
-				newreq->rq_extend = (char *) 0;
+				newreq->rq_extend = NULL;
 
 				/*reply processing needs resv*/
 				newreq->rq_extra = (void *) presv;
@@ -1091,10 +1091,10 @@ req_deleteReservation(struct batch_request *preq)
 			 * better to purge the RESV now only without waiting
 			 * for next resv delete iteration.
 			 */
-			pjob = (job *) 0;
+			pjob = NULL;
 			if (presv && presv->ri_qp)
 				pjob = (job *) GET_NEXT(presv->ri_qp->qu_jobs);
-			while (pjob != (job *) 0) {
+			while (pjob != NULL) {
 				if ((pjob->ji_qs.ji_state != JOB_STATE_MOVED) &&
 					(pjob->ji_qs.ji_state != JOB_STATE_FINISHED))
 					break;
@@ -1184,7 +1184,7 @@ post_delete_mom1(struct work_task *pwt)
 
 	pjob = find_job(preq_sig->rq_ind.rq_signal.rq_jid);
 	release_req(pwt);
-	if (pjob == (job *) 0) {
+	if (pjob == NULL) {
 		/* job has gone away */
 		req_reject(PBSE_UNKJOBID, 0, preq_clt);
 		return;
@@ -1275,12 +1275,12 @@ post_deljobfromresv_req(pwt)
 struct work_task *pwt;
 {
 	resc_resv *presv;
-	job *pjob = (job*) 0;
+	job *pjob = NULL;
 
 	presv = (resc_resv *)((struct batch_request *) pwt->wt_parm1);
 
 	/* return if presv is not valid */
-	if (presv == (resc_resv *) 0)
+	if (presv == NULL)
 		return;
 
 	if (presv->ri_qs.ri_type == RESC_RESV_OBJECT) {
@@ -1288,7 +1288,7 @@ struct work_task *pwt;
 		if (presv->ri_downcnt != 0) {
 			if (presv->ri_qp)
 				pjob = (job *) GET_NEXT(presv->ri_qp->qu_jobs);
-			while (pjob != (job *) 0) {
+			while (pjob != NULL) {
 				if ((pjob->ji_qs.ji_state != JOB_STATE_MOVED) &&
 					(pjob->ji_qs.ji_state != JOB_STATE_FINISHED))
 					break;
@@ -1299,7 +1299,7 @@ struct work_task *pwt;
 			 * make the ri_downcnt to 0, so that resv_purge()
 			 * can be called down.
 			 */
-			if (pjob == (job *) 0)
+			if (pjob == NULL)
 				presv->ri_downcnt = 0;
 		}
 	} else {

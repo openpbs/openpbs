@@ -86,13 +86,13 @@ PBSD_hookbuf(int c, int reqtype, int seq, char *buf, int len,
 			return rc;
 	}
 
-	if ((hook_filename == (char *)0) || (hook_filename[0] == '\0'))
+	if ((hook_filename == NULL) || (hook_filename[0] == '\0'))
 		return (pbs_errno = PBSE_PROTOCOL);
 
 	if ((rc = encode_DIS_ReqHdr(sock, reqtype, pbs_current_user)) ||
 		(rc = encode_DIS_CopyHookFile(sock, seq, buf, len,
 		hook_filename)) ||
-		(rc = encode_DIS_ReqExtend(sock, (char *)0))) {
+		(rc = encode_DIS_ReqExtend(sock, NULL))) {
 
 		if (!rpp)
 			connection[c].ch_errtxt = strdup(dis_emsg[rc]);
@@ -207,13 +207,13 @@ PBSD_delhookfile(int c, char *hook_filename, int rpp, char **msgid)
 			return rc;
 	}
 
-	if ((hook_filename == (char *)0) || (hook_filename[0] == '\0'))
+	if ((hook_filename == NULL) || (hook_filename[0] == '\0'))
 		return (pbs_errno = PBSE_PROTOCOL);
 
 	if ((rc = encode_DIS_ReqHdr(sock, PBS_BATCH_DelHookFile,
 		pbs_current_user)) ||
 		(rc = encode_DIS_DelHookFile(sock, hook_filename)) ||
-		(rc = encode_DIS_ReqExtend(sock, (char *)0))) {
+		(rc = encode_DIS_ReqExtend(sock, NULL))) {
 
 		if (!rpp)
 			connection[c].ch_errtxt = strdup(dis_emsg[rc]);

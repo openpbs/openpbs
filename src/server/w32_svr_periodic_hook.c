@@ -95,10 +95,10 @@
 
 
 /* Global Data Items */
-char	       *acct_file = (char *)0;
-char	       *acctlog_spacechar = (char *)0;
+char	       *acct_file = NULL;
+char	       *acctlog_spacechar = NULL;
 int		license_cpus;
-char	       *log_file  = (char *)0;
+char	       *log_file  = NULL;
 char	       *path_acct;
 char	        path_log[MAXPATHLEN+1];
 char	       *path_priv = NULL;
@@ -201,7 +201,7 @@ int tpp_network_up = 0;
 
 /**
  * @brief
- * 	just a dummy entry for pbs_close_stdfiles since needed by failover.obj 
+ * 	just a dummy entry for pbs_close_stdfiles since needed by failover.obj
  */
 void
 pbs_close_stdfiles(void)
@@ -210,7 +210,7 @@ pbs_close_stdfiles(void)
 }
 /**
  * @brief
- * 	needed by failover.obj 
+ * 	needed by failover.obj
  */
 void
 make_server_auto_restart(confirm)
@@ -221,7 +221,7 @@ int	confirm;
 
 /**
  * @brief
- * needed by svr_chk_owner.obj and user_func.obj 
+ * needed by svr_chk_owner.obj and user_func.obj
  */
 int
 decrypt_pwd(char *crypted, size_t len, char **passwd)
@@ -231,7 +231,7 @@ decrypt_pwd(char *crypted, size_t len, char **passwd)
 
 /**
  * @brief
- * 	needed by *_recov_db.obj 
+ * 	needed by *_recov_db.obj
  *
  */
 void
@@ -429,7 +429,7 @@ main(int argc, char *argv[])
 
 	/* Find the periodic hook info */
 	phook = (hook *)malloc(sizeof(hook));
-	if (phook == (hook *)0) {
+	if (phook == NULL) {
 		log_err(errno, __func__, "no memory");
 		exit(2);
 	}
@@ -444,7 +444,7 @@ main(int argc, char *argv[])
 	phook->type = HOOK_TYPE_DEFAULT;
 	phook->user = HOOK_PBSADMIN;
 	phook->event = HOOK_EVENT_PERIODIC;
-	phook->script = (struct python_script *)NULL;
+	phook->script = NULL;
 	/* get script */
 	snprintf(output_path, MAXPATHLEN,
 		"%s/hooks/%s%s", path_priv, phook->hook_name, ".PY");

@@ -29077,7 +29077,7 @@ soap_default_string(struct soap *soap, char **a)
 #ifdef SOAP_DEFAULT_string
 	*a = SOAP_DEFAULT_string;
 #else
-	*a = (char *)0;
+	*a = NULL;
 #endif
 }
 

@@ -71,7 +71,7 @@ typedef unsigned long long	u_Long;
 
 Long strToL(const char *nptr, char **endptr, int base);
 u_Long strTouL(const char *nptr, char **endptr, int base);
-#define atoL(nptr)		strToL((nptr), (char **)NULL, 10)
+#define atoL(nptr)		strToL((nptr), NULL, 10)
 
 /****************************************************************************/
 #elif defined(__GNUC__) ||		    /* SunOS, FreeBSD, NetBSD, BSDI */\
@@ -89,7 +89,7 @@ typedef unsigned long long	u_Long;
 
 Long strToL(const char *nptr, char **endptr, int base);
 u_Long strTouL(const char *nptr, char **endptr, int base);
-#define atoL(nptr)		strToL((nptr), (char **)NULL, 10)
+#define atoL(nptr)		strToL((nptr), NULL, 10)
 
 /****************************************************************************/
 #elif defined(__sgi) && defined(_LONGLONG) && _MIPS_SZLONG == 32    /* Irix */\

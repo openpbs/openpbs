@@ -373,5 +373,5 @@ struct sig_tbl sig_tbl[] = {
 	{ "TTOU", SIGTTOU },
 	{ "XCPU", SIGXCPU },
 	{ "XFSZ", SIGXFSZ },
-	{(char *)0, -1}
+	{NULL, -1}
 };

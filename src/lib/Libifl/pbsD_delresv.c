@@ -66,9 +66,9 @@
 int
 __pbs_delresv(int c, char *resv_id, char *extend)
 {
-	struct attropl *aoplp = (struct attropl *)NULL;
+	struct attropl *aoplp = NULL;
 
-	if ((resv_id == (char *)0) || (*resv_id == '\0'))
+	if ((resv_id == NULL) || (*resv_id == '\0'))
 		return (pbs_errno = PBSE_IVALREQ);
 
 	return PBSD_manager(c, PBS_BATCH_DeleteResv,

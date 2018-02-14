@@ -109,10 +109,10 @@ extern resource_def *svr_resc_def;
 static int chk_save_file(char *filename);
 
 /* Global Data Items */
-char	       *acct_file = (char *)0;
-char	       *acctlog_spacechar = (char *)0;
+char	       *acct_file = NULL;
+char	       *acctlog_spacechar = NULL;
 int		license_cpus;
-char	       *log_file  = (char *)0;
+char	       *log_file  = NULL;
 char	       *path_acct;
 char	        path_log[MAXPATHLEN+1];
 char	       *path_priv = NULL;
@@ -223,7 +223,7 @@ pbs_close_stdfiles(void)
 }
 /**
  * @brief
- *	needed by failover.obj 
+ *	needed by failover.obj
  */
 void
 make_server_auto_restart( int confirm)
@@ -233,7 +233,7 @@ make_server_auto_restart( int confirm)
 
 /**
  * @brief
- * 	needed by svr_chk_owner.obj and user_func.obj 
+ * 	needed by svr_chk_owner.obj and user_func.obj
  */
 int
 decrypt_pwd(char *crypted, size_t len, char **passwd)
@@ -243,7 +243,7 @@ decrypt_pwd(char *crypted, size_t len, char **passwd)
 
 /**
  * @brief
- * 	needed by *_recov_db.obj 
+ * 	needed by *_recov_db.obj
  */
 void
 panic_stop_db(char *txt)
@@ -459,7 +459,7 @@ main(int argc, char *argv[])
 	for (i=0; i < (int)JOB_ATR_LAST; i++) {
 		if ((job_attr_def+i)->at_flags & resc_access_perm) {
 			(void)(job_attr_def+i)->at_encode(pattr+i, &attrl,
-				(job_attr_def+i)->at_name, (char *)0,
+				(job_attr_def+i)->at_name, NULL,
 				encode_type, NULL);
 		}
 	}
@@ -528,7 +528,7 @@ main(int argc, char *argv[])
 			pqjatr = &((svrattrl *)GET_NEXT(attrl))->al_atopl;
 			destin = jobp->ji_qs.ji_destin;
 
-			if (PBSD_queuejob(con, jobp->ji_qs.ji_jobid, destin, pqjatr, (char *)0, prot, NULL)== 0) {
+			if (PBSD_queuejob(con, jobp->ji_qs.ji_jobid, destin, pqjatr, NULL, prot, NULL)== 0) {
 				if (pbs_errno == PBSE_JOBEXIST && move_type == MOVE_TYPE_Exec) {
 					/* already running, mark it so */
 					log_event(PBSEVENT_ERROR,
@@ -684,7 +684,7 @@ ok_exit:
  * @brief
  *	checks whether input file is saved by checking its status info.
  *
- * @param[in] filename - filename 
+ * @param[in] filename - filename
  */
 static int
 chk_save_file(char *filename)

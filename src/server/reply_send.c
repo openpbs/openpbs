@@ -108,7 +108,7 @@ void reply_free(struct batch_reply *prep);
 static void
 set_err_msg(int code, char *msgbuf, size_t msglen)
 {
-	char *msg = (char *)0;
+	char *msg = NULL;
 	char *msg_tmp;
 
 	/* subtract 1 from buffer length to insure room for null terminator */
@@ -352,7 +352,7 @@ reply_free(struct batch_reply *prep)
 	if (prep->brp_choice == BATCH_REPLY_CHOICE_Text) {
 		if (prep->brp_un.brp_txt.brp_str) {
 			(void)free(prep->brp_un.brp_txt.brp_str);
-			prep->brp_un.brp_txt.brp_str = (char *)0;
+			prep->brp_un.brp_txt.brp_str = NULL;
 			prep->brp_un.brp_txt.brp_txtlen = 0;
 		}
 

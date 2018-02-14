@@ -176,7 +176,7 @@ connection_find_usable_index(int sd)
  *
  */
 static int
-connection_find_actual_index(int sd) 
+connection_find_actual_index(int sd)
 {
 	if (sd >= 0 && sd < conns_array_size) {
 		if (svr_conn[sd])
@@ -206,7 +206,7 @@ connection_find_actual_index(int sd)
  *
  */
 conn_t *
-get_conn(int sd) 
+get_conn(int sd)
 {
 	int idx = connection_find_actual_index(sd);
 	if (idx < 0)
@@ -392,7 +392,7 @@ connection_idlecheck(void)
 	time_t now;
 	conn_t *next_cp = (conn_t *) GET_NEXT(svr_allconns);
 
-	now = time((time_t *) 0);
+	now = time(NULL);
 	if (now - last_checked < 60)
 		return;
 
@@ -431,7 +431,7 @@ connection_idlecheck(void)
  * @return	 0  successful
  * @retval	-1 unsuccessful
  *
- * @par Remark:	
+ * @par Remark:
  *	If the authentication fails, messages are logged to
  *	the server's log file and the connection's security
  *	information is closed out (freed).
@@ -551,7 +551,7 @@ wait_request(time_t waittime)
 				return -1;
 			}
 
-			svr_conn[idx]->cn_lasttime = time((time_t *) 0);
+			svr_conn[idx]->cn_lasttime = time(NULL);
 
 			if (svr_conn[idx]->cn_active != Primary && svr_conn[idx]->cn_active != RppComm && svr_conn[idx]->cn_active
 					!= Secondary) {
@@ -589,7 +589,7 @@ wait_request(time_t waittime)
  * @param[in]   sd - main socket with connection request pending
  *
  * @return void
- * 
+ *
  */
 static void
 accept_conn(int sd)
@@ -604,7 +604,7 @@ accept_conn(int sd)
 
 	/* update last-time of main socket */
 
-	svr_conn[idx]->cn_lasttime = time((time_t *)0);
+	svr_conn[idx]->cn_lasttime = time(NULL);
 
 	fromsize = sizeof(from);
 	newsock = accept(sd, (struct sockaddr *)&from, &fromsize);
@@ -671,7 +671,7 @@ add_conn(int sd, enum conn_type type, pbs_net_t addr, unsigned int port, void (*
 	conn->cn_active = type;
 	conn->cn_addr = addr;
 	conn->cn_port = (unsigned short) port;
-	conn->cn_lasttime = time((time_t *) 0);
+	conn->cn_lasttime = time(NULL);
 	conn->cn_func = func;
 	conn->cn_oncl = 0;
 	conn->cn_authen = 0;
@@ -689,13 +689,13 @@ add_conn(int sd, enum conn_type type, pbs_net_t addr, unsigned int port, void (*
 
 	if (tpp_em_add_fd(poll_context, sd, EM_IN | EM_HUP | EM_ERR) < 0) {
 		int err = errno;
-		snprintf(logbuf, sizeof(logbuf), 
+		snprintf(logbuf, sizeof(logbuf),
 			"could not add socket %d to the poll list",	sd);
 		log_err(err, __func__, logbuf);
 		close_conn(sd);
 		return NULL;
 	}
-	
+
 	return svr_conn[idx];
 }
 
@@ -739,7 +739,7 @@ add_conn_data(int sd, void * data)
  *
  * @return pointer to the connection related data
  * @retval - Null, if sd not found
- * 
+ *
  */
 void *
 get_conn_data(int sd)
@@ -947,7 +947,7 @@ get_connecthost(int sd, char *namebuf, int size)
 	addr.s_addr = htonl(svr_conn[idx]->cn_addr);
 
 	if ((phe = gethostbyaddr((char *) &addr, sizeof(struct in_addr),
-		AF_INET)) == (struct hostent *)0) {
+		AF_INET)) == NULL) {
 #if defined(WIN32) || defined(__hpux)
 			/*inet_ntoa is thread-safe on windows & hpux */
 			(void)strcpy(namebuf, inet_ntoa(addr));

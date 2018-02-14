@@ -117,7 +117,7 @@ add_dest(job *jobp)
 	char	*baddest = jobp->ji_qs.ji_destin;
 
 	bp = (badplace *)malloc(sizeof(badplace));
-	if (bp == (badplace *)0) {
+	if (bp == NULL) {
 		log_err(errno, __func__, msg_err_malloc);
 		return;
 	}
@@ -181,7 +181,7 @@ is_bad_dest(job	*jobp, char *dest)
 int
 default_router(job *jobp, struct pbs_queue *qp, long retry_time)
 {
-	struct array_strings *dest_attr = (struct array_strings *)0;
+	struct array_strings *dest_attr = NULL;
 	char		     *destination;
 	int		      last;
 

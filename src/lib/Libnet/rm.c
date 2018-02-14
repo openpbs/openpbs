@@ -292,7 +292,7 @@ findout(int stream)
  *
  * @param[in] stream - socket descriptor
  * @param[in] com - command
- * 
+ *
  * @return	int
  * @retval	0	success
  * @retval	!0	error
@@ -377,7 +377,7 @@ simpleget(int stream)
 
 #if RPP
 	fd_set selset;
-	
+
 	while(1) {
 		/* since tpp recvs are essentially allways non blocking
 		 * we can call a dis function only if we are sure we have
@@ -385,7 +385,7 @@ simpleget(int stream)
 		 */
 		FD_ZERO(&selset);
 		FD_SET(rpp_fd, &selset);
-		if (select(FD_SETSIZE, &selset, (fd_set *)0, (fd_set *)0, NULL) > 0) {
+		if (select(FD_SETSIZE, &selset, NULL, NULL, NULL) > 0) {
 			if (rpp_poll() == stream)
 				break;
 		} else
@@ -413,7 +413,7 @@ simpleget(int stream)
 
 /**
  * @brief
- *	Close connection to resource monitor.  
+ *	Close connection to resource monitor.
  *
  * @param[in] stream - socket descriptor
  *
@@ -436,7 +436,7 @@ closerm(int stream)
 
 /**
  * @brief
- *	Shutdown the resource monitor.  
+ *	Shutdown the resource monitor.
  *
  * @param[in] stream - socket descriptor
  *
@@ -565,7 +565,7 @@ doreq(struct out *op, char *line)
  *	Add a request to a single stream.
  *
  * @param[in] stream - socket descriptor
- * @param[in line - request string 
+ * @param[in line - request string
  *
  * @return      int
  * @retval      0       if all is ok
@@ -636,11 +636,11 @@ allreq(char *line)
 /**
  * @brief
  *	Finish (and send) any outstanding message to the resource monitor.
- *	
+ *
  * @param[in] stream	socket descriptor
  *
  * @return	string
- * @retval	pointer to the next response line 
+ * @retval	pointer to the next response line
  * @retval	NULL if there are no more or an error occured.  Set pbs_errno on error.
  */
 char *

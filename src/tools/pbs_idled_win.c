@@ -166,7 +166,7 @@ stop_prev_pbs_idle()
 		if ((!strncmp(proc.szExeFile, PROG_NAME, 9))
 			&& (proc.th32ProcessID != GetCurrentProcessId())) {
 			process_owner = get_processowner(proc.th32ProcessID, NULL, NULL, 0, NULL, 0);
-			if ((process_owner != (char *)NULL) && (!_stricmp(current_fqdn, process_owner))) {
+			if ((process_owner != NULL) && (!_stricmp(current_fqdn, process_owner))) {
 				/* found running pbs_idled process try to terminate them */
 				processtree_op_by_id(proc.th32ProcessID, TERMINATE, 0);
 			} else {

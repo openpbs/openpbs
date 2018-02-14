@@ -646,7 +646,7 @@ acct_job(job *pjob, int type, char *buf, int len)
 		&pjob->ji_wattr[att_index],
 		&attrlist,
 		job_attr_def[att_index].at_name,
-		(char *)0,
+		NULL,
 		ATR_ENCODE_CLIENT, NULL);
 	resc_access_perm = old_perm;
 
@@ -832,21 +832,21 @@ acct_resv(resc_resv *presv, char *buf, int len)
 		&presv->ri_wattr[(int)RESV_ATR_auth_u],
 		&attrlist,
 		resv_attr_def[(int)RESV_ATR_auth_u].at_name,
-		(char *)0,
+		NULL,
 		ATR_ENCODE_CLIENT, NULL);
 
 	(void)resv_attr_def[(int)RESV_ATR_auth_g].at_encode(
 		&presv->ri_wattr[(int)RESV_ATR_auth_g],
 		&attrlist,
 		resv_attr_def[(int)RESV_ATR_auth_g].at_name,
-		(char *)0,
+		NULL,
 		ATR_ENCODE_CLIENT, NULL);
 
 	(void)resv_attr_def[(int)RESV_ATR_auth_h].at_encode(
 		&presv->ri_wattr[(int)RESV_ATR_auth_h],
 		&attrlist,
 		resv_attr_def[(int)RESV_ATR_auth_h].at_name,
-		(char *)0,
+		NULL,
 		ATR_ENCODE_CLIENT, NULL);
 
 
@@ -857,7 +857,7 @@ acct_resv(resc_resv *presv, char *buf, int len)
 		&presv->ri_wattr[(int)RESV_ATR_resource],
 		&attrlist,
 		resv_attr_def[(int)RESV_ATR_resource].at_name,
-		(char *)0,
+		NULL,
 		ATR_ENCODE_CLIENT, NULL);
 	resc_access_perm = old_perm;
 
@@ -922,13 +922,13 @@ acct_open(char *filename)
 	time_t now;
 	struct tm *ptm;
 
-	if (acct_buf == (char *)0) {	/* malloc buffer space */
+	if (acct_buf == NULL) {	/* malloc buffer space */
 		acct_buf = (char *)malloc(acct_bufsize+1);
-		if (acct_buf == (char *)0)
+		if (acct_buf == NULL)
 			return (-1);
 	}
 
-	if (filename == (char *)0) {	/* go with default */
+	if (filename == NULL) {	/* go with default */
 		now = time(0);
 		ptm = localtime(&now);
 		(void)sprintf(filen, "%s%04d%02d%02d",
@@ -1006,9 +1006,9 @@ write_account_record(int acctype, char *id, char *text)
 
 	if (acct_auto_switch && (acct_opened_day != ptm->tm_yday)) {
 		acct_close();
-		acct_open((char *)0);
+		acct_open(NULL);
 	}
-	if (text == (char *)0)
+	if (text == NULL)
 		text = "";
 
 	(void)fprintf(acctfile,
@@ -1282,7 +1282,7 @@ account_jobend(job *pjob, char *used, int type)
 			else
 				encode_resc(&pjob->ji_wattr[(int) JOB_ATR_resc_used],
 					    &temp_head, job_attr_def[(int) JOB_ATR_resc_used].at_name,
-					    (char *) 0, ATR_ENCODE_CLIENT, &patlist);
+					    NULL, ATR_ENCODE_CLIENT, &patlist);
 
 			/* Allocate initial space for resc_used.  Future space will be allocated by pbs_strcat(). */
 			resc_used = malloc(RESC_USED_BUF_SIZE);
@@ -1525,7 +1525,7 @@ set_job_ProvAcctRcd(job *pjob, long time_se, int type)
 		(void)sprintf(logmsg, "prov_vnode is NULL for job %s", pjob->ji_wattr[(int)JOB_ATR_hashname].at_val.at_str);
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, "Bug", logmsg);
 
-		return;	
+		return;
 	}
 #endif /* localmod 136 */
 	nd = 18 + strlen(pjob->ji_wattr[(int)JOB_ATR_prov_vnode].at_val.at_str);
@@ -1821,10 +1821,10 @@ build_common_data_for_job_update(job *pjob, int type, char *buf, int len)
 			&pjob->ji_wattr[att_index],
 			&attrlist,
 			job_attr_def[att_index].at_name,
-			(char *)0,
+			NULL,
 			ATR_ENCODE_CLIENT, NULL);
 		resc_access_perm = old_perm;
-	
+
 		nd = 0;	/* compute total size needed in buf */
 		pal = GET_NEXT(attrlist);
 		while (pal != NULL) {
@@ -1837,7 +1837,7 @@ build_common_data_for_job_update(job *pjob, int type, char *buf, int len)
 		if (nd > len)
 			if (grow_acct_buf(&pb, &len, nd) == -1)
 				return (pb);
-	
+
 		if (type == PBS_ACCT_UPDATE)
 			len_acct = 5; /* for length of "_acct" */
 		else
@@ -1858,7 +1858,7 @@ build_common_data_for_job_update(job *pjob, int type, char *buf, int len)
 				}
 			}
 			if (pal->al_resc) {
-				
+
 				(void)strcat(pb, ".");
 				(void)strcat(pb, pal->al_resc);
 			}
@@ -1920,10 +1920,10 @@ build_common_data_for_job_update(job *pjob, int type, char *buf, int len)
 			&pjob->ji_wattr[att_index],
 			&attrlist,
 			job_attr_def[att_index].at_name,
-			(char *)0,
+			NULL,
 			ATR_ENCODE_CLIENT, NULL);
 		resc_access_perm = old_perm;
-	
+
 		nd = 0;	/* compute total size needed in buf */
 		pal = GET_NEXT(attrlist);
 		while (pal != NULL) {
@@ -1936,11 +1936,11 @@ build_common_data_for_job_update(job *pjob, int type, char *buf, int len)
 		if (nd > len)
 			if (grow_acct_buf(&pb, &len, nd) == -1)
 				return (pb);
-	
+
 		if (type == PBS_ACCT_UPDATE)
 			len_acct = strlen("_acct");
 		else
-			len_acct = 0;	
+			len_acct = 0;
 		while ((pal = GET_NEXT(attrlist)) != NULL) {
 			/* strip off the '_acct' suffix */
 			if (len_acct > 0) {
@@ -1957,7 +1957,7 @@ build_common_data_for_job_update(job *pjob, int type, char *buf, int len)
 				}
 			}
 			if (pal->al_resc) {
-				
+
 				(void)strcat(pb, ".");
 				(void)strcat(pb, pal->al_resc);
 			}
@@ -2007,7 +2007,7 @@ account_job_update(job *pjob, int type)
 	struct svrattrl *patlist = NULL;
 	char *resc_used = NULL;
 	int resc_used_size = 0;
-	int k, len_upd;	
+	int k, len_upd;
 	char	save_char = '\0';
 	int	old_perm;
 
@@ -2086,7 +2086,7 @@ account_job_update(job *pjob, int type)
 			&pjob->ji_wattr[(int)JOB_ATR_resc_used_update],
 			&attrlist,
 			job_attr_def[(int)JOB_ATR_resc_used_update].at_name,
-			(char *)0,
+			NULL,
 			ATR_ENCODE_CLIENT, NULL);
 	resc_access_perm = old_perm;
 

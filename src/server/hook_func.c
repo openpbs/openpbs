@@ -317,8 +317,8 @@ attrlist_add(pbs_list_head *atl, char *name, char *val)
 		return (1);
 	}
 
-	pal2 = attrlist_create(name, (char *)0, (int)strlen(val)+1);
-	if (pal2 == (svrattrl *)0) {
+	pal2 = attrlist_create(name, NULL, (int)strlen(val)+1);
+	if (pal2 == NULL) {
 		sprintf(log_buffer,
 			"(%s,%s) - failed to create attribute list", name, val);
 		log_err(errno, __func__, log_buffer);
@@ -470,7 +470,7 @@ send_rescdef(int force)
 	st2=stat(path_hooks_rescdef, &sbuf2);
 
 	if ((st == 0) && (sbuf.st_size > 0) &&
-		(force || ((st2 == -1) && (errno == ENOENT)) || 
+		(force || ((st2 == -1) && (errno == ENOENT)) ||
 		((st2 == 0) && (sbuf.st_mtime > sbuf2.st_mtime)))) {
 		st = copy_file_internal(path_rescdef, path_hooks_rescdef);
 		if (st != 0) {
@@ -708,7 +708,7 @@ hook_track_recov(void)
 #if defined(WIN32)    /* Windows */
 		hook_tid = _atoi64(p2);
 #elif defined(__hpux) /* HP-UX */
-		hook_tid = strToL(p2, (char **)NULL, 10);
+		hook_tid = strToL(p2, NULL, 10);
 #else
 		hook_tid = atoll(p2);
 #endif
@@ -997,7 +997,7 @@ mgr_hook_delete(struct batch_request *preq)
 
 	phook = find_hook(hookname);
 
-	if ((phook == (hook *)0) || phook->pending_delete) {
+	if ((phook == NULL) || phook->pending_delete) {
 		snprintf(hook_msg, HOOK_MSG_SIZE-1, "%s does not exist!",
 			hookname);
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_HOOK, LOG_INFO,
@@ -1157,7 +1157,7 @@ mgr_hook_import(struct batch_request *preq)
 
 	phook = find_hook(hookname);
 
-	if ((phook == (hook *)0) || phook->pending_delete) {
+	if ((phook == NULL) || phook->pending_delete) {
 		snprintf(hook_msg, HOOK_MSG_SIZE-1,
 			"%s does not exist!", hookname);
 		reply_text(preq, PBSE_HOOKERROR, hook_msg);
@@ -1442,7 +1442,7 @@ mgr_hook_import(struct batch_request *preq)
 	if (phook->script) {
 		pbs_python_ext_free_python_script(phook->script);
 		free(phook->script);
-		phook->script = (struct python_script *)NULL;
+		phook->script = NULL;
 	}
 
 	if (pbs_python_ext_alloc_python_script(output_path,
@@ -1520,7 +1520,7 @@ mgr_hook_export(struct batch_request *preq)
 	/* Else one and only one vhook */
 	phook = find_hook(hookname);
 
-	if ((phook == (hook *)0) || phook->pending_delete) {
+	if ((phook == NULL) || phook->pending_delete) {
 		snprintf(hook_msg, HOOK_MSG_SIZE-1,
 			"%s does not exist!", hookname);
 		reply_text(preq, PBSE_HOOKERROR, hook_msg);
@@ -1768,7 +1768,7 @@ mgr_hook_set(struct batch_request *preq)
 
 	phook = find_hook(hookname);
 
-	if ((phook == (hook *)0) || phook->pending_delete) {
+	if ((phook == NULL) || phook->pending_delete) {
 		snprintf(hook_msg, HOOK_MSG_SIZE-1,
 			"%s does not exist!", hookname);
 		reply_text(preq, PBSE_HOOKERROR, hook_msg);
@@ -2168,7 +2168,7 @@ mgr_hook_unset(struct batch_request *preq)
 	/* Else one and only one vhook */
 	phook = find_hook(hookname);
 
-	if ((phook == (hook *)0) || phook->pending_delete) {
+	if ((phook == NULL) || phook->pending_delete) {
 		snprintf(hook_msg, HOOK_MSG_SIZE-1,
 			"%s does not exist!", hookname);
 		reply_text(preq, PBSE_HOOKERROR, hook_msg);
@@ -2361,7 +2361,7 @@ status_hook(hook *phook, struct batch_request *preq, pbs_list_head *pstathd, cha
 	memset(hook_msg, '\0', msg_len);
 
 	pstat = (struct brp_status *)malloc(sizeof(struct brp_status));
-	if (pstat == (struct brp_status *)0)
+	if (pstat == NULL)
 		return (PBSE_SYSTEM);
 
 
@@ -2494,7 +2494,7 @@ req_stat_hook(struct batch_request *preq)
 		type = 1;
 	} else {
 		phook = find_hook(name);
-		if ((phook == (hook *)NULL) || phook->pending_delete) {
+		if ((phook == NULL) || phook->pending_delete) {
 			reply_text(preq, PBSE_HOOKERROR, "hook not found");
 			return;
 		}
@@ -2604,8 +2604,8 @@ set_exec_time(job *pjob, char *new_exec_time_str, char *msg,
 
 	rc = job_attr_def[(int)JOB_ATR_exectime].at_decode(
 		&pjob->ji_wattr[(int)JOB_ATR_exectime],
-		(char *)0,
-		(char *)0,
+		NULL,
+		NULL,
 		new_exec_time_str);
 
 	if (rc == 0) {
@@ -2707,7 +2707,7 @@ set_hold_types(job *pjob, char *new_hold_types_str,
 	rc = job_attr_def[(int)JOB_ATR_hold].at_decode(
 		&pjob->ji_wattr[(int)JOB_ATR_hold],
 		ATTR_h,
-		(char *)0,
+		NULL,
 		new_hold_types_str);
 
 	if (rc != 0) {
@@ -2744,7 +2744,7 @@ set_hold_types(job *pjob, char *new_hold_types_str,
 			hook_name, date);
 		job_attr_def[(int)JOB_ATR_Comment].at_decode(
 			&pjob->ji_wattr[(int)JOB_ATR_Comment],
-			(char *)0, (char *)0, buf);
+			NULL, NULL, buf);
 	}
 
 	if (old_hold != pjob->ji_wattr[(int)JOB_ATR_hold].at_val.at_long) {
@@ -2857,8 +2857,8 @@ set_attribute(job *pjob, int attr_index,
 
 	rc = job_attr_def[attr_index].at_decode(
 		&pjob->ji_wattr[attr_index],
-		(char *)0,
-		(char *)0,
+		NULL,
+		NULL,
 		new_attrval_str);
 	if (rc == 0) {
 		if (job_attr_def[attr_index].at_action) {
@@ -3859,7 +3859,7 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 			continue;
 		}
 		rc = server_process_hooks(preq->rq_type, preq->rq_user, preq->rq_host, phook,
-					  hook_event, pjob, &req_ptr, hook_msg, msg_len, pyinter_func, 
+					  hook_event, pjob, &req_ptr, hook_msg, msg_len, pyinter_func,
 					  &num_run, &event_initialized);
 		if ((rc == 0) || (rc == -1))
 			return (rc);
@@ -3930,7 +3930,7 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 	pbs_python_set_hook_debug_output_file("");
 
 	if (phook->debug) {
-		snprintf(hook_inputfile, MAXPATHLEN, FMT_HOOK_INFILE, path_hooks_workdir, 
+		snprintf(hook_inputfile, MAXPATHLEN, FMT_HOOK_INFILE, path_hooks_workdir,
 			hook_event_as_string(hook_event), phook->hook_name, (int)time(0));
 
 		fp_debug = fopen(hook_inputfile, "w");
@@ -4012,7 +4012,7 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 				default:
 					do_recreate = 0;
 			}
-			if (do_recreate) { 
+			if (do_recreate) {
 				fp_debug_out_save = pbs_python_get_hook_debug_output_fp();
 				pbs_python_set_hook_debug_output_fp(fp_debug);
 				/* recreate_request() appends */
@@ -4662,7 +4662,7 @@ add_mom_hook_action(mom_hook_action_t ***hookact_array,
 				/* be sure to free up previous entry which */
 				/* was previously malloc-ed */
 				free(pact);
-				(*hookact_array)[i] = (mom_hook_action_t *)0;
+				(*hookact_array)[i] = NULL;
 				empty = i;
 			}
 		} else if (empty == -1) {
@@ -4681,7 +4681,7 @@ add_mom_hook_action(mom_hook_action_t ***hookact_array,
 			*hookact_array = tp;
 			*hookact_array_size += GROW_MOMHOOK_ARRAY_AMT;
 			for (i = empty; i < *hookact_array_size; i++)
-				(*hookact_array)[i] = (mom_hook_action_t *)0;
+				(*hookact_array)[i] = NULL;
 		} else {
 			log_err(errno, __func__, merr);
 			return (-1);
@@ -4813,7 +4813,7 @@ find_mom_hook_action(mom_hook_action_t **hookact_array,
 			return pact;
 	}
 
-	return (mom_hook_action_t *)0; 	/* didn't find it */
+	return NULL; 	/* didn't find it */
 }
 
 /**
@@ -6155,7 +6155,7 @@ kill_sync_hook_process(void)
 #else
 	if (kill(g_sync_hook_pid, SIGKILL) == -1) {
 		log_err(errno, "kill_sync_mom_hook_process", "error killing pid");
-		return;	
+		return;
 	}
 #endif
 	g_sync_hook_pid = -1;
@@ -6296,10 +6296,10 @@ bg_sync_mom_hookfiles(void)
 	sigemptyset(&act.sa_mask);
 	act.sa_flags = 0;
 	act.sa_handler = SIG_DFL;
-	(void)sigaction(SIGCHLD, &act, (struct sigaction *)0);
-	(void)sigaction(SIGHUP, &act, (struct sigaction *)0);
-	(void)sigaction(SIGINT, &act, (struct sigaction *)0);
-	(void)sigaction(SIGTERM, &act, (struct sigaction *)0);
+	(void)sigaction(SIGCHLD, &act, NULL);
+	(void)sigaction(SIGHUP, &act, NULL);
+	(void)sigaction(SIGINT, &act, NULL);
+	(void)sigaction(SIGTERM, &act, NULL);
 
 	/* Reset signal mask */
 	(void)sigprocmask(SIG_SETMASK, &act.sa_mask, NULL);
@@ -6484,7 +6484,7 @@ next_sync_mom_hookfiles(void)
 	} else {
 		timeout_sec = SYNC_MOM_HOOKFILES_TIMEOUT;
 	}
-	current_time = time((time_t *) 0);
+	current_time = time(NULL);
 	timeout_time = g_sync_hook_time + timeout_sec;
 
 	if (sync_mom_hookfiles_proc_running) {
@@ -6629,10 +6629,10 @@ bg_delete_mom_hooks(void *minfo)
 	sigemptyset(&act.sa_mask);
 	act.sa_flags = 0;
 	act.sa_handler = SIG_DFL;
-	(void)sigaction(SIGCHLD, &act, (struct sigaction *)0);
-	(void)sigaction(SIGHUP, &act, (struct sigaction *)0);
-	(void)sigaction(SIGINT, &act, (struct sigaction *)0);
-	(void)sigaction(SIGTERM, &act, (struct sigaction *)0);
+	(void)sigaction(SIGCHLD, &act, NULL);
+	(void)sigaction(SIGHUP, &act, NULL);
+	(void)sigaction(SIGINT, &act, NULL);
+	(void)sigaction(SIGTERM, &act, NULL);
 
 	/* Reset signal mask */
 	(void)sigprocmask(SIG_SETMASK, &act.sa_mask, NULL);
@@ -6812,7 +6812,7 @@ run_periodic_hook(struct work_task *ptask)
 		return;
 	}
 #else
-	snprintf(hkFileName, sizeof(hkFileName), "%s/sbin/pbs_run_periodic_hook %s %s",pbs_conf.pbs_exec_path, 
+	snprintf(hkFileName, sizeof(hkFileName), "%s/sbin/pbs_run_periodic_hook %s %s",pbs_conf.pbs_exec_path,
 						phook->hook_name, path_priv);
 	ret = CreateProcess(NULL, hkFileName, NULL, NULL, TRUE, flags , NULL, NULL, &si, &pi);
 	if (ret == 0) {
@@ -6827,7 +6827,7 @@ run_periodic_hook(struct work_task *ptask)
 		(void)set_task(WORK_Deferred_Child, (long)pid,
 			post_server_periodic_hook, phook);
 		/* Set a timed task for next occurance of this hook */
-		(void)set_task(WORK_Timed, time_now + phook->freq, 
+		(void)set_task(WORK_Timed, time_now + phook->freq,
 			run_periodic_hook, phook);
 	}
 #ifndef WIN32
@@ -6837,7 +6837,7 @@ run_periodic_hook(struct work_task *ptask)
 		rpp_terminate();
 		/* Unprotect child from being killed by kernel */
 		daemon_protect(0, PBS_DAEMON_PROTECT_OFF);
-		ret = server_process_hooks(PBS_BATCH_HookPeriodic, NULL, NULL, phook, 
+		ret = server_process_hooks(PBS_BATCH_HookPeriodic, NULL, NULL, phook,
 					   HOOK_EVENT_PERIODIC, NULL, &req_ptr, hook_msg,
 					   sizeof(hook_msg), pbs_python_set_interrupt, &num_run, &event_initialized);
 		if (ret == 0)

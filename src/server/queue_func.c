@@ -112,9 +112,9 @@ que_alloc(char *name)
 
 
 	pq = (pbs_queue *)malloc(sizeof(pbs_queue));
-	if (pq == (pbs_queue *)0) {
+	if (pq == NULL) {
 		log_err(errno, "que_alloc", "no memory");
-		return ((pbs_queue *)0);
+		return NULL;
 	}
 	(void)memset((char *)pq, (int)0, (size_t)sizeof(pbs_queue));
 	pq->qu_qs.qu_type = QTYPE_Unset;
@@ -205,8 +205,8 @@ que_purge(pbs_queue *pque)
 		 */
 		if (svr_history_enable) { /* SVR histconf chk */
 
-			job 	*pjob = (job *)0;
-			job 	*nxpjob = (job *)0;
+			job 	*pjob = NULL;
+			job 	*nxpjob = NULL;
 
 			pjob = (job *)GET_NEXT(pque->qu_jobs);
 			while (pjob) {
@@ -232,7 +232,7 @@ que_purge(pbs_queue *pque)
 				delete_link(&pjob->ji_jobque);
 				--pque->qu_numjobs;
 				--pque->qu_njstate[pjob->ji_qs.ji_state];
-				pjob->ji_qhdr = (pbs_queue *)0;
+				pjob->ji_qhdr = NULL;
 				pjob = nxpjob;
 			}
 		} else {
@@ -277,7 +277,7 @@ find_queuebyname(char *quename)
 	if (pc)
 		*pc = '\0';
 	pque = (pbs_queue *)GET_NEXT(svr_queues);
-	while (pque != (pbs_queue *)0) {
+	while (pque != NULL) {
 		if (strcmp(qname, pque->qu_qs.qu_name) == 0)
 			break;
 		pque = (pbs_queue *)GET_NEXT(pque->qu_link);
@@ -310,7 +310,7 @@ find_resvqueuebyname(char *quename)
 	if (pc)
 		*pc = '\0';
 	pque = (pbs_queue *)GET_NEXT(svr_queues);
-	while (pque != (pbs_queue *)0) {
+	while (pque != NULL) {
 		if (pque->qu_resvp != NULL
 			&& (strcmp(qname, pque->qu_resvp->ri_wattr[(int)RESV_ATR_resv_name].at_val.at_str) == 0))
 			break;
@@ -332,7 +332,7 @@ find_resvqueuebyname(char *quename)
 pbs_queue *
 get_dfltque(void)
 {
-	pbs_queue *pq = (pbs_queue *)0;
+	pbs_queue *pq = NULL;
 
 	if (server.sv_attr[SRV_ATR_dflt_que].at_flags & ATR_VFLAG_SET)
 		pq = find_queuebyname(server.sv_attr[SRV_ATR_dflt_que].at_val.at_str);
@@ -370,7 +370,7 @@ queuestart_action(attribute *pattr, void *pobject, int actmode)
 
 			pj = (job*)GET_NEXT(pque->qu_jobs);
 
-			while (pj != (job*)0) {
+			while (pj != NULL) {
 
 				oldtype = pj->ji_wattr[(int)JOB_ATR_accrue_type].at_val.at_long;
 
@@ -389,7 +389,7 @@ queuestart_action(attribute *pattr, void *pobject, int actmode)
 
 			pj = (job*)GET_NEXT(pque->qu_jobs);
 
-			while (pj != (job*)0) {
+			while (pj != NULL) {
 
 				oldtype = pj->ji_wattr[(int)JOB_ATR_accrue_type].at_val.at_long;
 

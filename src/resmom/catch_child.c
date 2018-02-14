@@ -164,7 +164,7 @@ get_node(job *pjob, tm_node_id nodeid)
  * @brief
  *	Restart each task which has exited and has TI_FLAGS_CHKPT turned on.
  *	If all tasks have been restarted, turn off MOM_CHKPT_POST.
- * 
+ *
  * @param[in] pjob - pointer to job structure
  *
  * @return Void
@@ -317,20 +317,20 @@ static enum job_atr mom_rtn_list[] = {
 PyObject *
 json_loads(char *value, char *msg, size_t msg_len)
 {
-	PyObject	*py_name = (PyObject *)NULL;
-	PyObject	*py_module = (PyObject *)NULL;
-	PyObject 	*py_dict = (PyObject *)NULL;
-	PyObject	*py_func_loads = (PyObject *)NULL;
-	PyObject	*py_value = (PyObject *)NULL;
-	PyObject	*py_result = (PyObject *)NULL;
+	PyObject	*py_name = NULL;
+	PyObject	*py_module = NULL;
+	PyObject 	*py_dict = NULL;
+	PyObject	*py_func_loads = NULL;
+	PyObject	*py_value = NULL;
+	PyObject	*py_result = NULL;
 
 	if (value == NULL) {
-		return ((PyObject *)NULL);
+		return NULL;
 	}
 
 	if (msg != NULL) {
 		if (msg_len <= 0) {
-			return ((PyObject *)NULL);
+			return NULL;
 		}
 		msg[0] = '\0';
 	}
@@ -340,7 +340,7 @@ json_loads(char *value, char *msg, size_t msg_len)
 		if (msg != NULL) {
 			snprintf(msg, msg_len, "failed to construct json name");
 		}
-		return ((PyObject *)NULL);
+		return NULL;
 	}
 
 	py_module = PyImport_Import(py_name);
@@ -383,10 +383,10 @@ json_loads(char *value, char *msg, size_t msg_len)
 
 	if (PyErr_Occurred()) {
 		if (msg != NULL) {
-			PyObject *exc_string = (PyObject *)NULL;
-			PyObject *exc_type = (PyObject *)NULL;
-			PyObject *exc_value = (PyObject *)NULL;
-			PyObject *exc_traceback = (PyObject *)NULL;
+			PyObject *exc_string = NULL;
+			PyObject *exc_type = NULL;
+			PyObject *exc_value = NULL;
+			PyObject *exc_traceback = NULL;
 
 			PyErr_Fetch(&exc_type, &exc_value, &exc_traceback);
 
@@ -426,7 +426,7 @@ json_loads_fail:
 	Py_XDECREF(py_module);
 	Py_XDECREF(py_value);
 	Py_XDECREF(py_result);
-	return ((PyObject *)NULL);
+	return NULL;
 
 }
 
@@ -449,23 +449,23 @@ json_loads_fail:
 char *
 json_dumps(PyObject *py_val, char *msg, size_t msg_len)
 {
-	PyObject	*py_name = (PyObject *)NULL;
-	PyObject	*py_module = (PyObject *)NULL;
-	PyObject 	*py_dict = (PyObject *)NULL;
-	PyObject	*py_func_dumps = (PyObject *)NULL;
-	PyObject	*py_value = (PyObject *)NULL;
-	PyObject	*py_result = (PyObject *)NULL;
+	PyObject	*py_name = NULL;
+	PyObject	*py_module = NULL;
+	PyObject 	*py_dict = NULL;
+	PyObject	*py_func_dumps = NULL;
+	PyObject	*py_value = NULL;
+	PyObject	*py_result = NULL;
 	char		*tmp_str = NULL;
 	char		*ret_string = NULL;
 	int		slen;
 
 	if (py_val == NULL) {
-		return (NULL);
+		return NULL;
 	}
 
 	if (msg != NULL) {
 		if (msg_len <= 0) {
-			return (NULL);
+			return NULL;
 		}
 		msg[0] = '\0';
 	}
@@ -475,7 +475,7 @@ json_dumps(PyObject *py_val, char *msg, size_t msg_len)
 		if (msg != NULL) {
 			snprintf(msg, msg_len, "failed to construct json name");
 		}
-		return (NULL);
+		return NULL;
 	}
 
 	py_module = PyImport_Import(py_name);
@@ -517,10 +517,10 @@ json_dumps(PyObject *py_val, char *msg, size_t msg_len)
 
 	if (PyErr_Occurred()) {
 		if (msg != NULL) {
-			PyObject *exc_string = (PyObject *)NULL;
-			PyObject *exc_type = (PyObject *)NULL;
-			PyObject *exc_value = (PyObject *)NULL;
-			PyObject *exc_traceback = (PyObject *)NULL;
+			PyObject *exc_string = NULL;
+			PyObject *exc_type = NULL;
+			PyObject *exc_value = NULL;
+			PyObject *exc_traceback = NULL;
 
 			PyErr_Fetch(&exc_type, &exc_value, &exc_traceback);
 
@@ -558,14 +558,14 @@ json_dumps(PyObject *py_val, char *msg, size_t msg_len)
 	if (tmp_str == NULL) {
 		snprintf(msg, msg_len, "PyString_AsString failed");
 		Py_XDECREF(py_result);
-		return (NULL);
+		return NULL;
 	}
 	slen = strlen(tmp_str) + 3; /* for null character + 2 single quotes */
 	ret_string = (char *)malloc(slen);
 	if (ret_string == NULL) {
 		snprintf(msg, msg_len, "malloc of ret_string failed");
 		Py_XDECREF(py_result);
-		return (NULL);
+		return NULL;
 	}
 	snprintf(ret_string, slen, "'%s'", tmp_str);
 	Py_XDECREF(py_result);
@@ -575,7 +575,7 @@ json_dumps_fail:
 	Py_XDECREF(py_name);
 	Py_XDECREF(py_module);
 	Py_XDECREF(py_result);
-	return (NULL);
+	return NULL;
 
 }
 #endif
@@ -613,9 +613,9 @@ encode_used(job *pjob, pbs_list_head *phead)
 	char emsg[HOOK_BUF_SIZE];
 	char *dumps = NULL;
 	attribute_def	*ad3;
-	PyObject *py_jvalue = (PyObject *)NULL;
-	PyObject *py_accum = (PyObject *)NULL; /* holds accum resources_used values from all moms (including the released sister moms from job) */
-	PyObject *py_accum3 = (PyObject *)NULL; /* holds accum resources_used values from all moms (NOT including the released sister moms from job) */
+	PyObject *py_jvalue = NULL;
+	PyObject *py_accum = NULL; /* holds accum resources_used values from all moms (including the released sister moms from job) */
+	PyObject *py_accum3 = NULL; /* holds accum resources_used values from all moms (NOT including the released sister moms from job) */
 
 	/* append resources_used */
 
@@ -627,7 +627,7 @@ encode_used(job *pjob, pbs_list_head *phead)
 	ad3 = &job_attr_def[JOB_ATR_resc_used_update];
 
 	for (rs = (resource *)GET_NEXT(at->at_val.at_list);
-		rs != (resource *)0;
+		rs != NULL;
 		rs = (resource *)GET_NEXT(rs->rs_link)) {
 
 		rd = rs->rs_defin;
@@ -693,9 +693,9 @@ encode_used(job *pjob, pbs_list_head *phead)
 				int	fail = 0;
 				int	fail2 = 0;
 
-				py_accum3 = (PyObject *)NULL;
-				py_jvalue = (PyObject *)NULL;
-				py_accum = (PyObject *)NULL;
+				py_accum3 = NULL;
+				py_jvalue = NULL;
+				py_accum = NULL;
 
 				(void)memset(&tmpatr, 0, sizeof(struct attribute));
 				(void)memset(&tmpatr3, 0, sizeof(struct attribute));
@@ -746,7 +746,7 @@ encode_used(job *pjob, pbs_list_head *phead)
 
 					fail = fail2 = 0;
 					for (rs2 = (resource *)GET_NEXT(at2->at_val.at_list);
-						rs2 != (resource *)0;
+						rs2 != NULL;
 						rs2 = (resource *)GET_NEXT(rs2->rs_link)) {
 						rd2 = rs2->rs_defin;
 						val2 = rs2->rs_value;	/* copy resource attribute */
@@ -984,7 +984,7 @@ encode_used(job *pjob, pbs_list_head *phead)
 			if (rc < 0) {
 				goto encode_used_exit;
 			}
-	
+
 			rc = rd->rs_encode(&val3, phead,
 				ad3->at_name, rd->rs_name,
 				ATR_ENCODE_CLIENT, NULL);
@@ -1151,7 +1151,7 @@ update_jobs_status(void)
 		/* allocate reply structure and fill in header portion */
 		prused = (struct resc_used_update *)
 			malloc(sizeof(struct resc_used_update));
-		assert(prused != (struct resc_used_update *)0);
+		assert(prused != NULL);
 		prused->ru_pjobid = pjob->ji_qs.ji_jobid;
 		prused->ru_comment= NULL;
 		prused->ru_status = 0;
@@ -1408,7 +1408,7 @@ scan_for_exiting(void)
 
 #ifdef WIN32
 	/* update the latest intelligence about the running jobs; */
-	time_now = time((time_t *)0);
+	time_now = time(NULL);
 	if (mom_get_sample() == PBSE_NONE) {
 		pjob = (job *)GET_NEXT(svr_alljobs);
 		while (pjob) {
@@ -1725,7 +1725,7 @@ end_loop:
 		}
 
 		/* Job termination begins */
-		
+
 		/* stop counting walltime */
 		stop_walltime(pjob);
 
@@ -1858,9 +1858,9 @@ end_loop:
 				(void)chdir(pjob->ji_grpcache->gc_homedir);
 			}
 		}
- 
+
 		extval = 0;
-		
+
 		if (num_eligible_hooks(HOOK_EVENT_EXECJOB_EPILOGUE) > 0) {
 			mom_hook_input_init(&hook_input);
 			hook_input.pjob = pjob;
@@ -1890,7 +1890,7 @@ end_loop:
 }
 
 /**
- * @brief 
+ * @brief
  * 	send old style IS_RESTART message to Server.
  *	Used when Server is older & does not recognize the TCP Restart message.
  *
@@ -1982,7 +1982,7 @@ send_restart_tcp(char *svr, unsigned int port)
 	if (encode_DIS_ReqHdr(sock, PBS_BATCH_MomRestart, "root") ||
 		diswst(sock, mom_host)      ||
 		diswui(sock, pbs_mom_port)  ||
-		encode_DIS_ReqExtend(sock, (char *)0)) {
+		encode_DIS_ReqExtend(sock, NULL)) {
 		return (-1);
 	}
 	if (DIS_tcp_wflush(sock)) {
@@ -2021,7 +2021,7 @@ send_restart_tcp(char *svr, unsigned int port)
  *	Close any existing rpp streams to the server, it is unlikely that
  *	there is one.  Parse the server name from pbs.conf;
  *	Use PBS_SERVER_HOST_NAME if defined, else use PBS_SERVER.
- *	Try sending message via TCP first 
+ *	Try sending message via TCP first
  *
  * @see send_restart_tcp()
  *	If that returns 1 or -1, fall back to useing rpp
@@ -2086,7 +2086,7 @@ init_abort_jobs(int recover)
 	DIR		*dir;
 	int		i, sisters;
 	struct dirent	*pdirent;
-	job		*pj = (job *)0;
+	job		*pj = NULL;
 	char		*job_suffix = JOB_FILE_SUFFIX;
 	int		job_suf_len = strlen(job_suffix);
 	char		*psuffix;
@@ -2098,12 +2098,12 @@ init_abort_jobs(int recover)
 	extern	char	*path_spool;
 
 	dir = opendir(path_jobs);
-	if (dir == (DIR *)0) {
+	if (dir == NULL) {
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ALERT,
 			msg_daemonname, "Jobs directory not found");
 		exit(1);
 	}
-	while (errno = 0, (pdirent = readdir(dir)) != (struct dirent *)0) {
+	while (errno = 0, (pdirent = readdir(dir)) != NULL) {
 		if ((i = strlen(pdirent->d_name)) <= job_suf_len)
 			continue;
 
@@ -2163,7 +2163,7 @@ init_abort_jobs(int recover)
 		if (sisters > 0) {
 			pj->ji_resources = (noderes *)calloc(sisters,
 				sizeof(noderes));
-			if (pj->ji_resources == (noderes *)0) {
+			if (pj->ji_resources == NULL) {
 				log_err(ENOMEM, "init_abort_jobs", "out of memory");
 				continue;
 			}
@@ -2278,7 +2278,7 @@ init_abort_jobs(int recover)
 		return;
 	}
 
-	while (errno = 0, (pdirent = readdir(dir)) != (struct dirent *)0) {
+	while (errno = 0, (pdirent = readdir(dir)) != NULL) {
 		if (strncmp(pdirent->d_name, rcperr, sizeof(rcperr)-1) != 0)
 			continue;
 

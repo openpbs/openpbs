@@ -128,7 +128,7 @@ decode_DIS_replyCmd(int sock, struct batch_reply *reply)
 
 			/* have to get count of number of strings first */
 
-			reply->brp_un.brp_select = (struct brp_select *)0;
+			reply->brp_un.brp_select = NULL;
 			pselx = &reply->brp_un.brp_select;
 			ct = disrui(sock, &rc);
 			if (rc) return rc;
@@ -136,7 +136,7 @@ decode_DIS_replyCmd(int sock, struct batch_reply *reply)
 			while (ct--) {
 				psel = (struct brp_select *)malloc(sizeof(struct brp_select));
 				if (psel == 0) return DIS_NOMALLOC;
-				psel->brp_next = (struct brp_select *)0;
+				psel->brp_next = NULL;
 				psel->brp_jobid[0] = '\0';
 				rc = disrfst(sock, PBS_MAXSVRJOBID+1, psel->brp_jobid);
 				if (rc) {
@@ -152,7 +152,7 @@ decode_DIS_replyCmd(int sock, struct batch_reply *reply)
 
 			/* have to get count of number of status objects first */
 
-			reply->brp_un.brp_statc = (struct brp_cmdstat *)0;
+			reply->brp_un.brp_statc = NULL;
 			pstcx = &reply->brp_un.brp_statc;
 			ct = disrui(sock, &rc);
 			if (rc) return rc;
@@ -161,9 +161,9 @@ decode_DIS_replyCmd(int sock, struct batch_reply *reply)
 				pstcmd = (struct brp_cmdstat *)malloc(sizeof(struct brp_cmdstat));
 				if (pstcmd == 0) return DIS_NOMALLOC;
 
-				pstcmd->brp_stlink = (struct brp_cmdstat *)0;
+				pstcmd->brp_stlink = NULL;
 				pstcmd->brp_objname[0] = '\0';
-				pstcmd->brp_attrl = (struct attrl *)0;
+				pstcmd->brp_attrl = NULL;
 
 				pstcmd->brp_objtype = disrui(sock, &rc);
 				if (rc == 0) {

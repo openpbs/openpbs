@@ -224,7 +224,7 @@ req_rerunjob(struct batch_request *preq)
 
 	jid = preq->rq_ind.rq_signal.rq_jid;
 	parent = chk_job_request(jid, preq, &jt);
-	if (parent == (job *)0)
+	if (parent == NULL)
 		return;		/* note, req_reject already called */
 
 	if ((preq->rq_perm & (ATR_DFLAG_MGWR | ATR_DFLAG_OPWR)) == 0) {
@@ -413,7 +413,7 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 	conn_t	*conn;
 	int rc;
 	int is_mgr = 0;
-	void *force_rerun = (void *)0;
+	void *force_rerun = NULL;
 
 	if (preq->rq_extend && (strcmp(preq->rq_extend, "force") == 0))
 		force = 1;
@@ -500,7 +500,7 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 	/* put a timeout on the rerun request so that it doesn't hang 	*/
 	/* indefinitely; if it does, the scheduler would also hang on a */
 	/* requeue request  */
-	time_now = time((time_t *)0);
+	time_now = time(NULL);
 	if ((server.sv_attr[(int)SRV_ATR_JobRequeTimeout].at_flags & ATR_VFLAG_SET) == 0) {
 		rerun_to = time_now + PBS_DIS_TCP_TIMEOUT_RERUN;
 	} else {

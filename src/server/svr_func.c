@@ -248,7 +248,7 @@ extern void  svr_clean_job_history(struct work_task *);
 long	node_fail_requeue = PBS_NODE_FAIL_REQUEUE_DEFAULT; /* default value for node_fail_requeue 310 */
 
 /*
- * Added for jobscript_max_size 
+ * Added for jobscript_max_size
  */
 struct attribute attr_jobscript_max_size; /* to store default size value for jobscript_max_size */
 
@@ -319,7 +319,7 @@ encode_svrstate(attribute *pattr, pbs_list_head *phead, char *atname, char *rsna
 	}
 
 	pal = attrlist_create(atname, rsname, strlen(psname) + 1);
-	if (pal == (svrattrl *)0)
+	if (pal == NULL)
 		return (-1);
 	(void)strcpy(pal->al_value, psname);
 	pal->al_flags = pattr->at_flags;
@@ -345,13 +345,13 @@ encode_svrstate(attribute *pattr, pbs_list_head *phead, char *atname, char *rsna
 void
 set_resc_assigned(void *pobj, int objtype, enum batch_op op)
 {
-	resc_resv    *presv = (resc_resv *)0;
+	resc_resv    *presv = NULL;
 	resource_def *rscdef;
-	job	     *pjob = (job *)0;
-	resource     *pr = (resource *)0;
-	resource     *rescp = (resource *)0;
-	attribute    *queru = (attribute *)0;
-	attribute    *sysru = (attribute *)0;
+	job	     *pjob = NULL;
+	resource     *pr = NULL;
+	resource     *rescp = NULL;
+	attribute    *queru = NULL;
+	attribute    *sysru = NULL;
 
 	/*First part of this lengthy function figures out which
 	 *"resources_assigned" lists need to get updated.  Most of
@@ -421,16 +421,16 @@ set_resc_assigned(void *pobj, int objtype, enum batch_op op)
 			 *itself begins running or is terminated.  So don't touch
 			 *the server's resources_assigned
 			 */
-			sysru = (attribute *)0;
+			sysru = NULL;
 		}
 	} else if (objtype == 1) {
 
 		presv = (resc_resv *)pobj;
-		queru = (attribute *)0;
-		sysru = (attribute *)0;
+		queru = NULL;
+		sysru = NULL;
 		rescp = (resource *)GET_NEXT(presv->ri_wattr[(int)RESV_ATR_resource]
 			.at_val.at_list);
-		if (presv->ri_parent != (resc_resv *)0 &&
+		if (presv->ri_parent != NULL &&
 			(presv->ri_parent->ri_qs.ri_state == RESV_RUNNING ||
 			presv->ri_parent->ri_qs.ri_state == RESV_DELETED ||
 			presv->ri_parent->ri_qs.ri_state == RESV_BEING_DELETED ||
@@ -443,7 +443,7 @@ set_resc_assigned(void *pobj, int objtype, enum batch_op op)
 			 */
 			sysru = &presv->
 				ri_parent->ri_qp->qu_attr[(int)QE_ATR_ResourceAssn];
-		} else if (presv->ri_parent == (resc_resv *)0 &&
+		} else if (presv->ri_parent == NULL &&
 			(presv->ri_qs.ri_state == RESV_RUNNING ||
 			presv->ri_qs.ri_state == RESV_DELETED ||
 			presv->ri_qs.ri_state == RESV_BEING_DELETED ||
@@ -480,9 +480,9 @@ set_resc_assigned(void *pobj, int objtype, enum batch_op op)
 
 			if (sysru) {
 				pr = find_resc_entry(sysru, rscdef);
-				if (pr == (resource *)0) {
+				if (pr == NULL) {
 					pr = add_resource_entry(sysru, rscdef);
-					if (pr == (resource *)0)
+					if (pr == NULL)
 						return;
 				}
 				rscdef->rs_set(&pr->rs_value, &rescp->rs_value, op);
@@ -493,9 +493,9 @@ set_resc_assigned(void *pobj, int objtype, enum batch_op op)
 
 			if (queru) {
 				pr = find_resc_entry(queru, rscdef);
-				if (pr == (resource *)0) {
+				if (pr == NULL) {
 					pr = add_resource_entry(queru, rscdef);
-					if (pr == (resource *)0)
+					if (pr == NULL)
 						return;
 				}
 				rscdef->rs_set(&pr->rs_value, &rescp->rs_value, op);
@@ -540,7 +540,7 @@ ck_chkpnt(attribute *pattr, void *pobject, int mode)
 	pbs_queue *pque;
 
 	val = pattr->at_val.at_str;
-	if (val == (char *)0)
+	if (val == NULL)
 		return (0);
 
 	if ((*val == 'n') || (*val == 's') || (*val == 'u')) {
@@ -1253,7 +1253,7 @@ void
 unset_node_fail_requeue(void)
 {
 	node_fail_requeue = PBS_NODE_FAIL_REQUEUE_DEFAULT;
-	
+
 	sprintf(log_buffer,
 		"node_fail_requeue reverting back to default val %ld",
 		node_fail_requeue);
@@ -1589,7 +1589,7 @@ eligibletime_action(attribute *pattr, void *pobject, int actmode)
 	if (pattr->at_val.at_long == 1) {
 
 		pj = (job *)GET_NEXT(svr_alljobs);
-		while (pj != (job *)0) {
+		while (pj != NULL) {
 			/*
 			 * try to determine accruetype for
 			 * jobs submitted when eligible_time_enable was 'off'
@@ -2630,12 +2630,12 @@ check_entity_resc_limit_queued(job *pjob, pbs_queue *pque, attribute *altered_re
 		pattr_old = &pjob->ji_wattr[(int)JOB_ATR_resource];
 	} else {
 		pattr_new = &pjob->ji_wattr[(int)JOB_ATR_resource];
-		pattr_old = (attribute *)0;	/* null */
+		pattr_old = NULL;	/* null */
 	}
 
 
 	for (presc_new = (resource *)GET_NEXT(pattr_new->at_val.at_list);
-		presc_new != (resource *)0; 
+		presc_new != NULL;
 		presc_new = (resource *)GET_NEXT(presc_new->rs_link)) {
 		/* is there an entity limit set for this resource */
 		if  (!(presc_new->rs_value.at_flags & ATR_VFLAG_SET)
@@ -2857,12 +2857,12 @@ check_entity_resc_limit_max(job *pjob, pbs_queue *pque, attribute *altered_resc)
 		pattr_old = &pjob->ji_wattr[(int)JOB_ATR_resource];
 	} else {
 		pattr_new = &pjob->ji_wattr[(int)JOB_ATR_resource];
-		pattr_old = (attribute *)0;	/* null */
+		pattr_old = NULL;	/* null */
 	}
 
 
 	for (presc_new = (resource *)GET_NEXT(pattr_new->at_val.at_list);
-		presc_new != (resource *)0;
+		presc_new != NULL;
 		presc_new = (resource *)GET_NEXT(presc_new->rs_link)) {
 		/* is there an entity limit set for this resource */
 		if  (!(presc_new->rs_value.at_flags & ATR_VFLAG_SET)
@@ -3161,11 +3161,11 @@ set_single_entity_res(enum lim_keytypes kt, char *ename,
 #endif	/* DEBUG */
 
 	if (plf->slf_rescd->rs_type == ATR_TYPE_SIZE) {
-		snprintf(log_buffer, LOG_BUF_SIZE-1, "...adjusting Entity resc for reskey %s to %ldkb ", kstr, 
+		snprintf(log_buffer, LOG_BUF_SIZE-1, "...adjusting Entity resc for reskey %s to %ldkb ", kstr,
 		         (long) plf->slf_sum.at_val.at_size.atsv_num << (plf->slf_sum.at_val.at_size.atsv_shift - 10));
 		log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_ERR, msg_daemonname, log_buffer);
 	} else if (plf->slf_rescd->rs_type == ATR_TYPE_LONG) {
-		snprintf(log_buffer, LOG_BUF_SIZE-1, "...adjusting Entity resc for reskey %s to %ld ", 
+		snprintf(log_buffer, LOG_BUF_SIZE-1, "...adjusting Entity resc for reskey %s to %ld ",
 		         kstr, plf->slf_sum.at_val.at_long);
 		log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_ERR, msg_daemonname, log_buffer);
 	} else {
@@ -3375,7 +3375,7 @@ set_entity_ct_sum_max(job *pjob, pbs_queue *pque, enum batch_op op)
  *
  * @param[in]  pmaxqresc    -   pointer to queue attribute structure
  * @param[in]  pattr_old    -   pointer to job attribute
- * @param[in]  presc_new    -   pointer to current processing resource 
+ * @param[in]  presc_new    -   pointer to current processing resource
  * @param[in]  presc_old    -   pointer to old resource before alter
  * @param[in]  presc_first  -   pointer to first resource, used to reach the starting of resource list
  * @param[in]  egroup       -   effective group name
@@ -3385,19 +3385,19 @@ set_entity_ct_sum_max(job *pjob, pbs_queue *pque, enum batch_op op)
  *
  * @return      int
  * @retval      zero        -   all went ok
- * @retval      -1          -   error in input parameters  
+ * @retval      -1          -   error in input parameters
  */
 
-int revert_entity_resources(attribute *pmaxqresc, attribute *pattr_old, 
-	resource *presc_new, resource *presc_old, resource *presc_first, 
-	char *egroup, char *euser, char *project, enum batch_op op) 
+int revert_entity_resources(attribute *pmaxqresc, attribute *pattr_old,
+	resource *presc_new, resource *presc_old, resource *presc_first,
+	char *egroup, char *euser, char *project, enum batch_op op)
 {
 
 	int res_flag=1;
 	if ( pmaxqresc && presc_new && presc_first && euser && egroup && project ) {
 
 		for (presc_new = (resource *)GET_PRIOR(presc_new->rs_link);
-			( presc_new != (resource *)0 ) && res_flag;
+			( presc_new != NULL ) && res_flag;
 			presc_new = (resource *)GET_PRIOR(presc_new->rs_link)) {
 
 		if (presc_new == presc_first)
@@ -3420,9 +3420,9 @@ int revert_entity_resources(attribute *pmaxqresc, attribute *pattr_old,
 		}
 
 		return(0);
-	} else 
+	} else
 		return(-1);
-	
+
 }
 
 /**
@@ -3492,7 +3492,7 @@ set_entity_resc_sum_queued(job *pjob, pbs_queue *pque, attribute *altered_resc,
 		pattr_old = &pjob->ji_wattr[(int)JOB_ATR_resource];
 	} else {
 		pattr_new = &pjob->ji_wattr[(int)JOB_ATR_resource];
-		pattr_old = (attribute *)0;	/* null */
+		pattr_old = NULL;	/* null */
 	}
 
 	DBPRT(("Adjusting entity resource sums at %s\n", pque ? pque->qu_qs.qu_name : "server"))
@@ -3514,16 +3514,16 @@ set_entity_resc_sum_queued(job *pjob, pbs_queue *pque, attribute *altered_resc,
 		return PBSE_INTERNAL;
 	}
 
-	snprintf(log_buffer, LOG_BUF_SIZE-1, "Adjusting entity resource sums at %s for euser %s", 
+	snprintf(log_buffer, LOG_BUF_SIZE-1, "Adjusting entity resource sums at %s for euser %s",
 		        pque ? pque->qu_qs.qu_name : "server", euser);
-		 
+
 	log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_INFO,
 		pjob->ji_qs.ji_jobid, log_buffer);
 
 	rc_final = 0;
 
 	for (presc_new = (resource *)GET_NEXT(pattr_new->at_val.at_list), presc_first=presc_new;
-		presc_new != (resource *)0;
+		presc_new != NULL;
 		presc_new = (resource *)GET_NEXT(presc_new->rs_link)) {
 
 		char *rescn;
@@ -3553,16 +3553,16 @@ set_entity_resc_sum_queued(job *pjob, pbs_queue *pque, attribute *altered_resc,
 			pmaxqresc,
 			presc_new, presc_old, op);
 		if (rc) {
-			snprintf(log_buffer, LOG_BUF_SIZE-1, 
-				"Error in LIM_OVERALL for resource %s", rescn); 
+			snprintf(log_buffer, LOG_BUF_SIZE-1,
+				"Error in LIM_OVERALL for resource %s", rescn);
 			log_err(rc ,__func__, log_buffer);
 			if (op == INCR) {
 				if (presc_new != presc_first)
-					if(revert_entity_resources(pmaxqresc, pattr_old, presc_new, presc_old, presc_first, egroup, euser, project, rev_op) != 0)	
+					if(revert_entity_resources(pmaxqresc, pattr_old, presc_new, presc_old, presc_first, egroup, euser, project, rev_op) != 0)
 						log_err(PBSE_INTERNAL, __func__, "Error in revert_entity_resources");
 				return rc;
-			} else { 
-				if (!rc_final) 
+			} else {
+				if (!rc_final)
 					rc_final = rc;
 			}	continue;
 		}
@@ -3572,8 +3572,8 @@ set_entity_resc_sum_queued(job *pjob, pbs_queue *pque, attribute *altered_resc,
 			pmaxqresc,
 			presc_new, presc_old, op);
 		if (rc) {
-			snprintf(log_buffer, LOG_BUF_SIZE-1, 
-				"Error in LIM_USER for euser %s for resource %s", euser, rescn); 
+			snprintf(log_buffer, LOG_BUF_SIZE-1,
+				"Error in LIM_USER for euser %s for resource %s", euser, rescn);
 			log_err(rc, __func__, log_buffer);
 			/* reverse change made above */
 			(void)set_single_entity_res(LIM_OVERALL, PBS_ALL_ENTITY,
@@ -3585,7 +3585,7 @@ set_entity_resc_sum_queued(job *pjob, pbs_queue *pque, attribute *altered_resc,
 						log_err(PBSE_INTERNAL, __func__, "Error in revert_entity_resources");
 				return rc;
 			} else {
-				if (!rc_final) 
+				if (!rc_final)
 					rc_final = rc;
 				continue;
 			}
@@ -3597,8 +3597,8 @@ set_entity_resc_sum_queued(job *pjob, pbs_queue *pque, attribute *altered_resc,
 			presc_new, presc_old, op);
 		if (rc) {
 
-			snprintf(log_buffer, LOG_BUF_SIZE-1, 
-				"Error in LIM_GROUP for egroup %s for resource %s", egroup, rescn); 
+			snprintf(log_buffer, LOG_BUF_SIZE-1,
+				"Error in LIM_GROUP for egroup %s for resource %s", egroup, rescn);
 			log_err(rc, __func__, log_buffer);
 
 			/* reverse changes made above */
@@ -3614,7 +3614,7 @@ set_entity_resc_sum_queued(job *pjob, pbs_queue *pque, attribute *altered_resc,
                                                 log_err(PBSE_INTERNAL, __func__, "Error in revert_entity_resources");
 				return rc;
 			} else {
-				if (!rc_final) 
+				if (!rc_final)
 					rc_final = rc;
 				continue;
 			}
@@ -3626,8 +3626,8 @@ set_entity_resc_sum_queued(job *pjob, pbs_queue *pque, attribute *altered_resc,
 			pmaxqresc,
 			presc_new, presc_old, op);
 		if (rc) {
-			snprintf(log_buffer, LOG_BUF_SIZE-1, 
-				"Error in LIM_USER for project %s for resource %s", project, rescn); 
+			snprintf(log_buffer, LOG_BUF_SIZE-1,
+				"Error in LIM_USER for project %s for resource %s", project, rescn);
 			log_err(rc, __func__, log_buffer);
 
 			/* reverse changes made above */
@@ -3646,7 +3646,7 @@ set_entity_resc_sum_queued(job *pjob, pbs_queue *pque, attribute *altered_resc,
 						log_err(PBSE_INTERNAL, __func__, "Error in revert_entity_resources");
 				return rc;
 			} else {
-				if (!rc_final) 
+				if (!rc_final)
 					rc_final = rc;
 				continue;
 			}
@@ -3728,7 +3728,7 @@ set_entity_resc_sum_max(job *pjob, pbs_queue *pque, attribute *altered_resc,
 		pattr_old = &pjob->ji_wattr[(int)JOB_ATR_resource];
 	} else {
 		pattr_new = &pjob->ji_wattr[(int)JOB_ATR_resource];
-		pattr_old = (attribute *)0;	/* null */
+		pattr_old = NULL;	/* null */
 	}
 
 	DBPRT(("Adjusting entity resource sums at %s\n", pque ? pque->qu_qs.qu_name : "server"))
@@ -3749,16 +3749,16 @@ set_entity_resc_sum_max(job *pjob, pbs_queue *pque, attribute *altered_resc,
 		return PBSE_INTERNAL;
 	}
 
-	snprintf(log_buffer, LOG_BUF_SIZE-1, "Adjusting entity resource sums at %s for euser %s", 
+	snprintf(log_buffer, LOG_BUF_SIZE-1, "Adjusting entity resource sums at %s for euser %s",
 			pque ? pque->qu_qs.qu_name : "server", euser);
-		 
+
 	log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_INFO,
 		pjob->ji_qs.ji_jobid, log_buffer);
 
 	rc_final = 0;
 
 	for (presc_new = (resource *)GET_NEXT(pattr_new->at_val.at_list), presc_first=presc_new;
-		presc_new != (resource *)0;
+		presc_new != NULL;
 		presc_new = (resource *)GET_NEXT(presc_new->rs_link)) {
 		char *rescn;
 		if (!(presc_new->rs_value.at_flags & ATR_VFLAG_SET)
@@ -3788,8 +3788,8 @@ set_entity_resc_sum_max(job *pjob, pbs_queue *pque, attribute *altered_resc,
 			pmaxqresc,
 			presc_new, presc_old, op);
 		if (rc) {
-			snprintf(log_buffer, LOG_BUF_SIZE-1, 
-				"Error in  LIM_OVERALL for resource %s", rescn); 
+			snprintf(log_buffer, LOG_BUF_SIZE-1,
+				"Error in  LIM_OVERALL for resource %s", rescn);
 			log_err(rc ,__func__, log_buffer);
 			if (op == INCR) {
 				if (presc_new != presc_first)
@@ -3809,8 +3809,8 @@ set_entity_resc_sum_max(job *pjob, pbs_queue *pque, attribute *altered_resc,
 			presc_new, presc_old, op);
 		if (rc) {
 			/* reverse change made above */
-			snprintf(log_buffer, LOG_BUF_SIZE-1, 
-				"Error in  LIM_USER for euser %s for resource %s", euser, rescn); 
+			snprintf(log_buffer, LOG_BUF_SIZE-1,
+				"Error in  LIM_USER for euser %s for resource %s", euser, rescn);
 			log_err(rc ,__func__, log_buffer);
 			(void)set_single_entity_res(LIM_OVERALL, PBS_ALL_ENTITY,
 				pmaxqresc,
@@ -3832,8 +3832,8 @@ set_entity_resc_sum_max(job *pjob, pbs_queue *pque, attribute *altered_resc,
 			pmaxqresc,
 			presc_new, presc_old, op);
 		if (rc) {
-			snprintf(log_buffer, LOG_BUF_SIZE-1, 
-				"Error in  LIM_GROUP for egroup %s for resource %s", egroup, rescn); 
+			snprintf(log_buffer, LOG_BUF_SIZE-1,
+				"Error in  LIM_GROUP for egroup %s for resource %s", egroup, rescn);
 			log_err(rc ,__func__, log_buffer);
 			/* reverse changes made above */
 			(void)set_single_entity_res(LIM_OVERALL, PBS_ALL_ENTITY,
@@ -3860,8 +3860,8 @@ set_entity_resc_sum_max(job *pjob, pbs_queue *pque, attribute *altered_resc,
 			presc_new, presc_old, op);
 		if (rc) {
 
-			snprintf(log_buffer, LOG_BUF_SIZE-1, 
-				"Error in LIM_PROJECT for project %s for resource %s", project, rescn); 
+			snprintf(log_buffer, LOG_BUF_SIZE-1,
+				"Error in LIM_PROJECT for project %s for resource %s", project, rescn);
 			log_err(rc ,__func__, log_buffer);
 			/* reverse changes made above */
 			(void)set_single_entity_res(LIM_OVERALL, PBS_ALL_ENTITY,
@@ -4214,7 +4214,7 @@ check_req_aoe_available(struct pbsnode * pnode, char * aoe_req)
 	if (prc) {
 		pas = prc->rs_value.at_val.at_arst;
 
-		if (pas != (struct array_strings *)0) {
+		if (pas != NULL) {
 			for (i = 0; i < pas->as_usedptr; i++) {
 				if (strcmp(aoe_req, pas->as_string[i]) == 0)
 					return 0;
@@ -4558,7 +4558,7 @@ find_prov_vnode_list(job *pjob, exec_vnode_listtype *prov_vnodes, char **aoe_nam
 	}
 	(void) job_attr_def[(int) JOB_ATR_prov_vnode].at_decode(
 		&pjob->ji_wattr[(int) JOB_ATR_prov_vnode],
-		(char *) 0, (char *) 0, pbuf);
+		NULL, NULL, pbuf);
 
 	DBPRT(("%s: prov_vnode: %s\n", __func__, pbuf))
 
@@ -4864,7 +4864,7 @@ fail_vnode_job(struct prov_vnode_info * prov_vnode_info, int hold_or_que)
 			ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
 		job_attr_def[(int)JOB_ATR_Comment].at_decode(
 			&pjob->ji_wattr[(int)JOB_ATR_Comment],
-			(char *)0, (char *)0,
+			NULL, NULL,
 			"job held, provisioning failed to start");
 		svr_setjobstate(pjob, JOB_STATE_HELD, JOB_SUBSTATE_HELD);
 	} else if (hold_or_que == 1) {
@@ -5278,7 +5278,7 @@ is_vnode_prov_done(char * vnode)
 	 * to do more prov so start a task for looking at
 	 * other nodes in the provisioning queue
 	 */
-	set_task(WORK_Immed, 0, do_provisioning, (void *) NULL);
+	set_task(WORK_Immed, 0, do_provisioning, NULL);
 }
 
 /**
@@ -5293,7 +5293,7 @@ is_vnode_prov_done(char * vnode)
  *
  */
 
-static void 
+static void
 prov_startjob(struct work_task *ptask)
 {
 	job			*pjob;
@@ -5456,7 +5456,7 @@ prov_request_deferred(struct work_task *wtask)
 		(void)node_attr_def[(int)ND_ATR_current_aoe].at_decode(
 			&pnode->nd_attr[(int)ND_ATR_current_aoe],
 			ATTR_NODE_current_aoe,
-			(char *)0,
+			NULL,
 			prov_vnode_info->pvnfo_aoe_req);
 
 		DBPRT(("%s: node:%s current_aoe set: %s\n",
@@ -5508,7 +5508,7 @@ prov_request_deferred(struct work_task *wtask)
 	 * do more prov so start a task for looking at other
 	 * nodes in the provisioning queue
 	 */
-	set_task(WORK_Immed, 0, do_provisioning, (void *) NULL);
+	set_task(WORK_Immed, 0, do_provisioning, NULL);
 }
 
 /**
@@ -5611,7 +5611,7 @@ prov_request_timed(struct work_task *wtask)
 	 * to do more prov so start a task for looking at other nodes
 	 * in the provisioning queue
 	 */
-	set_task(WORK_Immed, 0, do_provisioning, (void *) NULL);
+	set_task(WORK_Immed, 0, do_provisioning, NULL);
 }
 
 
@@ -5938,10 +5938,10 @@ start_vnode_provisioning(struct prov_vnode_info * prov_vnode_info)
 		sigemptyset(&act.sa_mask);
 		act.sa_flags   = 0;
 		act.sa_handler = SIG_DFL;
-		(void)sigaction(SIGCHLD, &act, (struct sigaction *)0);
-		(void)sigaction(SIGHUP, &act, (struct sigaction *)0);
-		(void)sigaction(SIGINT, &act, (struct sigaction *)0);
-		(void)sigaction(SIGTERM, &act, (struct sigaction *)0);
+		(void)sigaction(SIGCHLD, &act, NULL);
+		(void)sigaction(SIGHUP, &act, NULL);
+		(void)sigaction(SIGINT, &act, NULL);
+		(void)sigaction(SIGTERM, &act, NULL);
 
 		/* Reset signal mask */
 		(void)sigprocmask(SIG_SETMASK, &act.sa_mask, NULL);
@@ -6444,7 +6444,7 @@ action_backfill_depth(attribute *pattr, void *pobj, int actmode) {
 
 /**
  * @brief
- *	action_jobscript_max_size - action function for jobscript_max_size 
+ *	action_jobscript_max_size - action function for jobscript_max_size
  *	valid input range is >=1 to <=2GB
  *
  * @param[in] pattr - server attributes (jobscript_max_size)
@@ -6458,7 +6458,7 @@ action_backfill_depth(attribute *pattr, void *pobj, int actmode) {
  */
 
 int
-action_jobscript_max_size(attribute *pattr, void *pobj, int actmode) 
+action_jobscript_max_size(attribute *pattr, void *pobj, int actmode)
 {
 	struct attribute attrib;
 	if (pattr == NULL)
@@ -6519,7 +6519,7 @@ action_check_res_to_release(attribute *pattr, void *pobj, int actmode)
   *
   */
 void
-unset_jobscript_max_size(void) 
+unset_jobscript_max_size(void)
 {
 	struct attribute attrib;
 	svr_attr_def[(int)SVR_ATR_jobscript_max_size].at_decode(&attrib,ATTR_jobscript_max_size,NULL,DFLT_JOBSCRIPT_MAX_SIZE);
@@ -6747,7 +6747,7 @@ default_queue_chk(attribute *pattr, void *pobj, int actmode)
 	if (actmode == ATR_ACTION_ALTER) {
 		if (pattr->at_flags & ATR_VFLAG_SET) {
 			pq = find_queuebyname(pattr->at_val.at_str);
-			if (pq == (pbs_queue *)0) {
+			if (pq == NULL) {
 				return (PBSE_UNKQUE);
 			}
 		}
@@ -6766,7 +6766,7 @@ void
 force_qsub_daemons_update(void)
 {
 	conn_t *cp = NULL;
-	if (svr_allconns.ll_next == (pbs_list_link *)0)
+	if (svr_allconns.ll_next == NULL)
 		return;
 	for (cp = (conn_t *)GET_NEXT(svr_allconns);cp; cp = GET_NEXT(cp->cn_link)) {
 		if (cp->cn_authen & PBS_NET_CONN_FROM_QSUB_DAEMON)

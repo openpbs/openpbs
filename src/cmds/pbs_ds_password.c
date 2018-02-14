@@ -316,7 +316,7 @@ int
 check_user(char *userid)
 {
 	pwent = getpwnam(userid);
-	if (pwent == (struct passwd *)0)
+	if (pwent == NULL)
 		return (-1);
 #ifndef WIN32
 	if (pwent->pw_uid == 0)
@@ -360,11 +360,11 @@ change_ownership(char *path, char *userid)
 
 	chown(path, pwent->pw_uid, (gid_t)-1);
 	dir = opendir(path);
-	if (dir == (DIR *)0) {
+	if (dir == NULL) {
 		return -1;
 	}
 
-	while (errno = 0, (pdirent = readdir(dir)) != (struct dirent *)0) {
+	while (errno = 0, (pdirent = readdir(dir)) != NULL) {
 		if (strcmp(pdirent->d_name, ".") == 0 ||
 			strcmp(pdirent->d_name, "..") == 0)
 			continue;

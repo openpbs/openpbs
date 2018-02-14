@@ -80,9 +80,9 @@ encode_DIS_QueueJob(int sock, char *jobid, char *destin, struct attropl *aoplp)
 {
 	int   rc;
 
-	if (jobid == (char *)0)
+	if (jobid == NULL)
 		jobid = "";
-	if (destin == (char *)0)
+	if (destin == NULL)
 		destin = "";
 
 	if ((rc = diswst(sock, jobid) != 0) ||

@@ -64,7 +64,7 @@
  * @param[in]   seq -   sequence number of the current block of data being sent
  * @param[in]   buf - block of data to be sent
  * @param[in]   len - # of characters in 'buf'
- * @param[in]	jobid - job id 
+ * @param[in]	jobid - job id
  * @param[in] 	which - file type
  *
  * @return      int
@@ -77,7 +77,7 @@ encode_DIS_JobFile(int sock, int seq, char *buf, int len, char *jobid, int which
 {
 	int   rc;
 
-	if (jobid == (char *)0)
+	if (jobid == NULL)
 		jobid = "";
 	if ((rc = diswui(sock, seq) != 0) ||
 		(rc = diswui(sock, which) != 0) ||

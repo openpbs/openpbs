@@ -94,11 +94,11 @@ setup_env(char *filen)
 		}
 	}
 	environ = nulenv;
-	if ((filen == (char *)0) || (*filen == '\0'))
+	if ((filen == NULL) || (*filen == '\0'))
 		return 0;
 
 	efile = fopen(filen, "r");
-	if (efile != (FILE *)0) {
+	if (efile != NULL) {
 
 		while (fgets(buf, PBS_ENV_CHUNCK, efile)) {
 
@@ -138,7 +138,7 @@ setup_env(char *filen)
 				envp[nstr++] = envbuf;
 				if (nstr == PBS_ENVP_STR)
 					goto err;
-				envp[nstr] = (char *)0;
+				envp[nstr] = NULL;
 			}
 		}
 		fclose(efile);

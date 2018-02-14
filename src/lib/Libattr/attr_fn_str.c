@@ -100,16 +100,16 @@ decode_str(struct attribute *patr, char *name, char *rescn, char *val)
 	if ((patr->at_flags & ATR_VFLAG_SET) && (patr->at_val.at_str))
 		(void)free(patr->at_val.at_str);
 
-	if ((val != (char *)0) && ((len = strlen(val) + 1) > 1)) {
+	if ((val != NULL) && ((len = strlen(val) + 1) > 1)) {
 		patr->at_val.at_str = malloc((unsigned) len);
-		if (patr->at_val.at_str == (char *)0)
+		if (patr->at_val.at_str == NULL)
 			return (PBSE_SYSTEM);
 		(void)strcpy(patr->at_val.at_str, val);
 		patr->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 	} else {
 		patr->at_flags = (patr->at_flags & ~ATR_VFLAG_SET) |
 			(ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE);
-		patr->at_val.at_str = (char *)0;
+		patr->at_val.at_str = NULL;
 	}
 	return (0);
 }
@@ -147,7 +147,7 @@ encode_str(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, in
 		return (0);
 
 	pal = attrlist_create(atname, rsname, (int)strlen(attr->at_val.at_str)+1);
-	if (pal == (svrattrl *)0)
+	if (pal == NULL)
 		return (-1);
 
 	(void)strcpy(pal->al_value, attr->at_val.at_str);
@@ -196,7 +196,7 @@ set_str(struct attribute *attr, struct attribute *new, enum batch_op op)
 
 			if (attr->at_val.at_str)
 				(void)free(attr->at_val.at_str);
-			if ((attr->at_val.at_str = malloc(nsize)) == (char *)0)
+			if ((attr->at_val.at_str = malloc(nsize)) == NULL)
 				return (PBSE_SYSTEM);
 			(void)strcpy(attr->at_val.at_str, new->at_val.at_str);
 			break;
@@ -208,7 +208,7 @@ set_str(struct attribute *attr, struct attribute *new, enum batch_op op)
 				new_value = realloc(attr->at_val.at_str, nsize);
 			else
 				new_value = malloc(nsize);
-			if (new_value == (char *)0)
+			if (new_value == NULL)
 				return (PBSE_SYSTEM);
 			attr->at_val.at_str = new_value;
 			(void)strcat(attr->at_val.at_str, new->at_val.at_str);
@@ -234,7 +234,7 @@ set_str(struct attribute *attr, struct attribute *new, enum batch_op op)
 
 		default:	return (PBSE_INTERNAL);
 	}
-	if ((attr->at_val.at_str != (char *)0) && (*attr->at_val.at_str !='\0'))
+	if ((attr->at_val.at_str != NULL) && (*attr->at_val.at_str !='\0'))
 		attr->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 	else
 		attr->at_flags &= ~ATR_VFLAG_SET;
@@ -280,11 +280,11 @@ free_str(struct attribute *attr)
 		(void)free(attr->at_val.at_str);
 	}
 	free_null(attr);
-	attr->at_val.at_str = (char *)0;
+	attr->at_val.at_str = NULL;
 }
 
 /**
- * @brief 
+ * @brief
  *	Special function that verifies the size of the input
  * 	for jobname before calling decode_str
  *
@@ -303,7 +303,7 @@ int
 decode_jobname(attribute *patr, char *name, char *rescn, char *val)
 {
 
-	if (val != (char *)0) {
+	if (val != NULL) {
 		if (strlen(val) > (size_t)PBS_MAXJOBNAME)
 			return (PBSE_BADATVAL);
 	}

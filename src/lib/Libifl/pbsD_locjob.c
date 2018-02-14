@@ -68,11 +68,11 @@ __pbs_locjob(int c, char *jobid, char *extend)
 {
 	int	rc;
 	struct batch_reply *reply;
-	char       *ploc = (char *)0;
+	char       *ploc = NULL;
 	int sock;
 
 
-	if ((jobid == (char *)0) || (*jobid == '\0')) {
+	if ((jobid == NULL) || (*jobid == '\0')) {
 		pbs_errno = PBSE_IVALREQ;
 		return (ploc);
 	}
@@ -81,12 +81,12 @@ __pbs_locjob(int c, char *jobid, char *extend)
 
 	/* initialize the thread context data, if not already initialized */
 	if (pbs_client_thread_init_thread_context() != 0)
-		return (char *) NULL;
+		return NULL;
 
 	/* lock pthread mutex here for this connection */
 	/* blocking call, waits for mutex release */
 	if (pbs_client_thread_lock_connection(c) != 0)
-		return (char *) NULL;
+		return NULL;
 
 	/* setup DIS support routines for following DIS calls */
 
@@ -102,7 +102,7 @@ __pbs_locjob(int c, char *jobid, char *extend)
 			pbs_errno = PBSE_PROTOCOL;
 		}
 		(void)pbs_client_thread_unlock_connection(c);
-		return (char *)NULL;
+		return NULL;
 	}
 
 	/* write data over tcp stream */
@@ -110,7 +110,7 @@ __pbs_locjob(int c, char *jobid, char *extend)
 	if (DIS_tcp_wflush(sock)) {
 		pbs_errno = PBSE_PROTOCOL;
 		(void)pbs_client_thread_unlock_connection(c);
-		return (char *)NULL;
+		return NULL;
 	}
 
 	/* read reply from stream */
@@ -133,7 +133,7 @@ __pbs_locjob(int c, char *jobid, char *extend)
 
 	/* unlock the thread lock and update the thread context data */
 	if (pbs_client_thread_unlock_connection(c) != 0)
-		return (char *) NULL;
+		return NULL;
 
 	return ploc;
 }

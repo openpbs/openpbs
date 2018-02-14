@@ -2135,7 +2135,7 @@ get_la(double *rv)
 u_long
 gracetime(ulong secs)
 {
-	time_t	now = time((time_t *)NULL);
+	time_t	now = time(NULL);
 
 	if (secs > now)		/* time is in the future */
 		return (secs - now);

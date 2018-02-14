@@ -124,7 +124,7 @@ vn_parse(const char *file, callfunc_t callback)
 	if ((fp = fopen(file, "r")) == NULL) {
 		sprintf(log_buffer, "%s", file);
 		log_err(errno, __func__, log_buffer);
-		return ((vnl_t *) NULL);
+		return NULL;
 	}
 
 	vnlp = vn_parse_stream(fp, callback);
@@ -167,13 +167,13 @@ vn_parse_stream(FILE *fp, callfunc_t callback)
 	static	char	type[] = "type";
 
 	if (vnl_alloc(&vnlp) == NULL) {
-		return ((vnl_t *) NULL);
+		return NULL;
 	}
 
 	if (fstat(fileno(fp), &sb) == -1) {
 		log_err(errno, __func__, "fstat");
 		vnl_free(vnlp);
-		return ((vnl_t *) NULL);
+		return NULL;
 	} else
 		vnlp->vnl_modtime = sb.st_mtime;
 
@@ -207,7 +207,7 @@ vn_parse_stream(FILE *fp, callfunc_t callback)
 				linenum);
 			log_err(PBSE_SYSTEM, __func__, log_buffer);
 			vnl_free(vnlp);
-			return ((void *) NULL);
+			return NULL;
 		}
 
 		/* ignore initial white space;  skip blank lines */
@@ -223,7 +223,7 @@ vn_parse_stream(FILE *fp, callfunc_t callback)
 				iddelim);
 			log_err(PBSE_SYSTEM, __func__, log_buffer);
 			vnl_free(vnlp);
-			return ((void *) NULL);
+			return NULL;
 		}
 		while ((p < pdelim) && isspace(*p))
 			p++;
@@ -232,7 +232,7 @@ vn_parse_stream(FILE *fp, callfunc_t callback)
 				linenum);
 			log_err(PBSE_SYSTEM, __func__, log_buffer);
 			vnl_free(vnlp);
-			return ((void *) NULL);
+			return NULL;
 		} else {
 			tokbegin = p;
 			while ((p < pdelim) && !isspace(*p))
@@ -256,7 +256,7 @@ vn_parse_stream(FILE *fp, callfunc_t callback)
 				"invalid character in vnode name \"%s\"", vnid);
 			log_err(PBSE_SYSTEM, __func__, log_buffer);
 			vnl_free(vnlp);
-			return ((void *) NULL);
+			return NULL;
 		}
 		/* Condition to make sure that vnode name should not exceed
 		 * PBS_MAXHOSTNAME i.e. 64 characters. This is because the
@@ -267,7 +267,7 @@ vn_parse_stream(FILE *fp, callfunc_t callback)
 			sprintf(log_buffer,
 				"Node name \"%s\" is too big", vnid);
 			log_err(PBSE_SYSTEM, __func__, log_buffer);
-			return ((void *) NULL);
+			return NULL;
 		}
 		/* <ATTRNAME> <ATTRDELIM> */
 		p = pdelim + 1;		/* advance past iddelim */
@@ -276,7 +276,7 @@ vn_parse_stream(FILE *fp, callfunc_t callback)
 				attrdelim);
 			log_err(PBSE_SYSTEM, __func__, log_buffer);
 			vnl_free(vnlp);
-			return ((void *) NULL);
+			return NULL;
 		}
 		while ((p < pdelim) && isspace(*p))
 			p++;
@@ -285,7 +285,7 @@ vn_parse_stream(FILE *fp, callfunc_t callback)
 				linenum);
 			log_err(PBSE_SYSTEM, __func__, log_buffer);
 			vnl_free(vnlp);
-			return ((void *) NULL);
+			return NULL;
 		} else {
 			tokbegin = p;
 			while ((p < pdelim) && !isspace(*p))
@@ -304,7 +304,7 @@ vn_parse_stream(FILE *fp, callfunc_t callback)
 				linenum);
 			log_err(PBSE_SYSTEM, __func__, log_buffer);
 			vnl_free(vnlp);
-			return ((void *) NULL);
+			return NULL;
 		}
 
 		/*
@@ -357,7 +357,7 @@ vn_parse_stream(FILE *fp, callfunc_t callback)
 				linenum, attrdelim);
 			log_err(PBSE_SYSTEM, __func__, log_buffer);
 			vnl_free(vnlp);
-			return ((void *) NULL);
+			return NULL;
 		}
 
 		/* look for optional "keyword = typeval" */
@@ -370,7 +370,7 @@ vn_parse_stream(FILE *fp, callfunc_t callback)
 					linenum, attrdelim);
 				log_err(PBSE_SYSTEM, __func__, log_buffer);
 				vnl_free(vnlp);
-				return ((void *) NULL);
+				return NULL;
 			}
 			tokbegin = p;
 			while ((p < pdelim) && !isspace(*p))
@@ -387,7 +387,7 @@ vn_parse_stream(FILE *fp, callfunc_t callback)
 						linenum);
 					log_err(PBSE_SYSTEM, __func__, log_buffer);
 					vnl_free(vnlp);
-					return ((void *) NULL);
+					return NULL;
 				}
 				tokbegin = p;
 				while ((*p != '\0') && !isspace(*p))
@@ -402,7 +402,7 @@ vn_parse_stream(FILE *fp, callfunc_t callback)
 					log_err(PBSE_SYSTEM, __func__,
 						log_buffer);
 					vnl_free(vnlp);
-					return ((void *) NULL);
+					return NULL;
 				}
 				typecode = ptmap->rtm_type;
 
@@ -412,7 +412,7 @@ vn_parse_stream(FILE *fp, callfunc_t callback)
 					linenum, tokbegin);
 				log_err(PBSE_SYSTEM, __func__, log_buffer);
 				vnl_free(vnlp);
-				return ((void *) NULL);
+				return NULL;
 			}
 
 
@@ -424,7 +424,7 @@ vn_parse_stream(FILE *fp, callfunc_t callback)
 				"line %d:  vn_addvnr failed", linenum);
 			log_err(PBSE_SYSTEM, __func__, log_buffer);
 			vnl_free(vnlp);
-			return ((vnl_t *) NULL);
+			return NULL;
 		}
 	}
 
@@ -458,7 +458,7 @@ vn_merge(vnl_t *cur, vnl_t *new, callfunc_t callback)
 				newres->vna_name, newres->vna_val,
 				newres->vna_type, newres->vna_flag,
 				callback) == -1)
-				return (NULL);
+				return NULL;
 		}
 	}
 
@@ -516,7 +516,7 @@ vn_merge2(vnl_t *cur, vnl_t *new, char *allow_attribs, callfunc_t callback)
 				newres->vna_name, newres->vna_val,
 				newres->vna_type, newres->vna_flag,
 				callback) == -1)
-				return (NULL);
+				return NULL;
 		}
 	}
 
@@ -725,7 +725,7 @@ id2vnrl(vnl_t *vnlp, char *id, AVL_IX_REC *rp)
 		return (vnrlp);
 	}
 
-	return ((vnal_t *) NULL);
+	return NULL;
 }
 
 /**
@@ -895,7 +895,7 @@ parse_node_token(char *start, int cok, int *err, char *term)
 	while (*pt && isspace((int)*pt))	/* skip leading whitespace */
 		pt++;
 	if (*pt == '\0')
-		return (NULL);		/* no token */
+		return NULL;		/* no token */
 
 	ts = pt;
 
@@ -958,13 +958,13 @@ vnl_alloc(vnl_t **vp)
 		if ((newchunk = malloc(sizeof(vnl_t))) == NULL) {
 			sprintf(log_buffer, "malloc vnl_t");
 			log_err(errno, __func__, log_buffer);
-			return ((vnl_t *) NULL);
+			return NULL;
 		}
 
 		newlist = NULL;
 		if (vnal_alloc(&newlist) == NULL) {
 			free(newchunk);
-			return ((vnl_t *) NULL);
+			return NULL;
 		}
 		/*
 		 * The keylength 0 means use nul terminated strings for keys.
@@ -974,7 +974,7 @@ vnl_alloc(vnl_t **vp)
 		newchunk->vnl_nelem = 1;
 		newchunk->vnl_cur = 0;
 		newchunk->vnl_used = 0;
-		newchunk->vnl_modtime = time((time_t *) 0);
+		newchunk->vnl_modtime = time(NULL);
 		return (*vp = newchunk);
 	} else {
 		/*
@@ -989,7 +989,7 @@ vnl_alloc(vnl_t **vp)
 			newsize * sizeof(vnal_t))) == NULL) {
 			sprintf(log_buffer, "realloc vnl_list");
 			log_err(errno, __func__, log_buffer);
-			return ((vnl_t *) NULL);
+			return NULL;
 		} else {
 			(*vp)->vnl_list = newlist;
 			memset(((vnal_t *)(*vp)->vnl_list) + cursize, 0,
@@ -1024,13 +1024,13 @@ vnal_alloc(vnal_t **vp)
 		if ((newchunk = malloc(sizeof(vnal_t))) == NULL) {
 			sprintf(log_buffer, "malloc vnal_t");
 			log_err(errno, __func__, log_buffer);
-			return ((vnal_t *) NULL);
+			return NULL;
 		}
 		if ((newlist = calloc(VN_NCHUNKS, sizeof(vna_t))) == NULL) {
 			sprintf(log_buffer, "calloc vna_t");
 			log_err(errno, __func__, log_buffer);
 			free(newchunk);
-			return ((vnal_t *) NULL);
+			return NULL;
 		} else {
 			newchunk->vnal_nelem = VN_NCHUNKS;
 			newchunk->vnal_cur = 0;
@@ -1050,7 +1050,7 @@ vnal_alloc(vnal_t **vp)
 			newsize * sizeof(vna_t))) == NULL) {
 			sprintf(log_buffer, "realloc vnal_list");
 			log_err(errno, __func__, log_buffer);
-			return ((vnal_t *) NULL);
+			return NULL;
 		} else {
 			(*vp)->vnal_list = newlist;
 			memset(((vna_t *)(*vp)->vnal_list) + cursize, 0,

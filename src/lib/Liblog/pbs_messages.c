@@ -40,6 +40,7 @@
 #include "portability.h"
 #include "pbs_error.h"
 
+#include <stdlib.h>
 
 /**
  * @file	pbs_messages.c
@@ -594,7 +595,7 @@ struct pbs_err_to_txt pbs_err_to_txt[] = {
 	{PBSE_BAD_NODE_STATE, &msg_bad_node_state},
 	{PBSE_SCHED_OP_NOT_PERMITTED, &msg_sched_op_not_permitted},
 	{PBSE_SCHED_PARTITION_ALREADY_EXISTS, &msg_sched_part_already_used},
-	{ 0, (char **)0 }		/* MUST be the last entry */
+	{ 0, NULL }		/* MUST be the last entry */
 };
 
 
@@ -618,8 +619,8 @@ pbse_to_txt(int err)
 
 	while (pbs_err_to_txt[i].err_no && (pbs_err_to_txt[i].err_no != err))
 		++i;
-	if (pbs_err_to_txt[i].err_txt != (char **)0)
+	if (pbs_err_to_txt[i].err_txt != NULL)
 		return (*pbs_err_to_txt[i].err_txt);
 	else
-		return ((char *)0);
+		return NULL;
 }

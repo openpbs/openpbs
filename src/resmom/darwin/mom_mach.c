@@ -335,7 +335,7 @@ pcputime(char *id, int i)
  * @brief
  *      Internal session cpu time decoding routine.
  *
- * @param[in] job - a job pointer. 
+ * @param[in] job - a job pointer.
  *
  * @return      ulong
  * @retval      sum of all cpu time consumed for all tasks executed by the job, in seconds,
@@ -414,7 +414,7 @@ cput_sum(job *pjob)
  *              space consumed by all current processes within the job.
  *
  */
-static unsigned long 
+static unsigned long
 mem_sum(job *pjob)
 {
 	int		i;
@@ -453,7 +453,7 @@ mem_sum(job *pjob)
  * @retval      old resident set size   Error
  *
  */
-static unsigned long 
+static unsigned long
 resi_sum(job *pjob)
 {
 	int		i;
@@ -628,7 +628,7 @@ mom_set_limits(job *pjob, int set_mode)
  *
  * @return      int
  * @retval      TRUE    if polling is necessary
- * @retval      FALSE   otherwise. 
+ * @retval      FALSE   otherwise.
  *
  * NOTE: Actual polling is done using the mom_over_limit machine-dependent function.
  *
@@ -739,7 +739,7 @@ static struct kinfo_proc *apple_getprocs(int *nprocs)
  * @retval      PBSE_NONE       Success
  *
  */
-int 
+int
 mom_get_sample()
 {
   int           i;
@@ -803,7 +803,7 @@ mom_get_sample()
  * @return int
  * @retval PBSE_NONE    for success.
  */
-int 
+int
 mom_set_use(job	*pjob)
 {
 	resource	*pres;
@@ -1016,7 +1016,7 @@ bld_ptree(pid_t sid)
  * @return      Void
  *
  */
-static void 
+static void
 kill_ptree(int idx, int flag, int sig)
 {
 	int		 child;
@@ -1109,7 +1109,7 @@ kill_session(pid_t sesid, int sig, int dir)
 	return ct;
 }
 
-/** 
+/**
  * @brief
  * 	Clean up everything related to polling.
  *	In the case of the sun, close the kernal if it is open.
@@ -2107,7 +2107,7 @@ get_la(double *rv)
 u_long
 gracetime(u_long secs)
 {
-	time_t	now = time((time_t *)NULL);
+	time_t	now = time(NULL);
 
 	if (secs > now)		/* time is in the future */
 		return (secs - now);
@@ -2386,7 +2386,7 @@ dep_attach(task *ptask)
 
 /**
  * @brief
- *	This is basically a wrapper for the MACH t_info and vm_region calls 
+ *	This is basically a wrapper for the MACH t_info and vm_region calls
  *
  * @param[in] t_info - pointer to task_basic_info structure
  * @param[in] pid - process id
@@ -2485,7 +2485,7 @@ int get_tinfo_by_pid( struct task_basic_info *t_info,
 
 /**
  * @brief
- *	get the system time and user time for live threads for a task by pid 
+ *	get the system time and user time for live threads for a task by pid
  *
  * @param[in] t_info - pointer to task_basic_info structure
  * @param[in] pid - process id

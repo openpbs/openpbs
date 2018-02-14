@@ -147,7 +147,7 @@ find_resc_type_map_by_typev(int typenum)
 		if (resc_type_map_arr[i].rtm_type == typenum)
 			return (&resc_type_map_arr[i]);
 	}
-	return (NULL);	/* didn't find the matching type */
+	return NULL;	/* didn't find the matching type */
 }
 
 /**

@@ -193,7 +193,7 @@ svr_shutdown(int type)
 	svr_save_db(&server, SVR_SAVE_QUICK);
 
 	pnxt = (job *)GET_NEXT(svr_alljobs);
-	while ((pjob = pnxt) != (job *)0) {
+	while ((pjob = pnxt) != NULL) {
 		pnxt = (job *)GET_NEXT(pjob->ji_alljobs);
 
 		if (pjob->ji_qs.ji_state == JOB_STATE_RUNNING) {
@@ -299,7 +299,7 @@ shutdown_chkpt(job *pjob)
 	attribute 	      temp;
 
 	phold = alloc_br(PBS_BATCH_HoldJob);
-	if (phold == (struct batch_request *)0)
+	if (phold == NULL)
 		return (PBSE_SYSTEM);
 
 	temp.at_flags = ATR_VFLAG_SET;
@@ -314,7 +314,7 @@ shutdown_chkpt(job *pjob)
 	if (job_attr_def[(int)JOB_ATR_hold].at_encode(&temp,
 		&phold->rq_ind.rq_hold.rq_orig.rq_attr,
 		job_attr_def[(int)JOB_ATR_hold].at_name,
-		(char *)0,
+		NULL,
 		ATR_ENCODE_CLIENT, NULL) < 0)
 		return (PBSE_SYSTEM);
 
@@ -362,7 +362,7 @@ post_chkpt(struct work_task *ptask)
 			pjob->ji_modified = 1;
 			(void)job_save(pjob, SAVEJOB_QUICK);
 		}
-		account_record(PBS_ACCT_CHKPNT, pjob, (char *)0);
+		account_record(PBS_ACCT_CHKPNT, pjob, NULL);
 	} else {
 		/* need to try rerun if possible or just abort the job */
 		if (preq->rq_reply.brp_code != PBSE_CKPBSY) {

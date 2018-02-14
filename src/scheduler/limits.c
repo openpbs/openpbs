@@ -437,18 +437,18 @@ lim_alloc_liminfo(void)
 	struct limit_info	*lip;
 
 	if ((lip = calloc(1, sizeof(struct limit_info))) == NULL)
-		return (NULL);
+		return NULL;
 	else {
 		void	*ctx;
 
 		if ((ctx = entlim_initialize_ctx()) == NULL) {
 			lim_free_liminfo(lip);
-			return (NULL);
+			return NULL;
 		} else
 			LI2RESCTX(lip) = ctx;
 		if ((ctx = entlim_initialize_ctx()) == NULL) {
 			lim_free_liminfo(lip);
-			return (NULL);
+			return NULL;
 		} else
 			LI2RESCTXSOFT(lip) = ctx;
 
@@ -477,21 +477,21 @@ lim_dup_liminfo(void *p)
 	if ((oldlip == NULL) ||
 		(LI2RESCTX(oldlip) == NULL) ||
 		(LI2RESCTXSOFT(oldlip) == NULL))
-		return (NULL);
+		return NULL;
 
 	if ((newlip = calloc(1, sizeof(struct limit_info))) == NULL)
-		return (NULL);
+		return NULL;
 	else {
 		void	*ctx;
 
 		if ((ctx = lim_dup_ctx(LI2RESCTX(oldlip))) == NULL) {
 			lim_free_liminfo(newlip);
-			return (NULL);
+			return NULL;
 		} else
 			LI2RESCTX(newlip) = ctx;
 		if ((ctx = lim_dup_ctx(LI2RESCTXSOFT(oldlip))) == NULL) {
 			lim_free_liminfo(newlip);
-			return (NULL);
+			return NULL;
 		} else
 			LI2RESCTXSOFT(newlip) = ctx;
 
@@ -678,7 +678,7 @@ has_hardlimits(void *p)
 	struct limit_info	*lip = p;
 	pbs_entlim_key_t	*k;
 
-	k = entlim_get_next((pbs_entlim_key_t *) NULL, LI2RESCTX(lip));
+	k = entlim_get_next(NULL, LI2RESCTX(lip));
 	if (k != NULL) {	/* at least one hard resource limit present */
 		free(k);
 		return (1);
@@ -687,7 +687,7 @@ has_hardlimits(void *p)
 	/* run limit already checked? */
 	if (LI2RUNCTX(lip) == LI2RESCTX(lip))
 		return (0);
-	k = entlim_get_next((pbs_entlim_key_t *) NULL, LI2RUNCTX(lip));
+	k = entlim_get_next(NULL, LI2RUNCTX(lip));
 	if (k != NULL) {	/* at least one hard run limit present */
 		free(k);
 		return (1);
@@ -712,7 +712,7 @@ has_softlimits(void *p)
 	struct limit_info	*lip = p;
 	pbs_entlim_key_t	*k;
 
-	k = entlim_get_next((pbs_entlim_key_t *) NULL, LI2RESCTXSOFT(lip));
+	k = entlim_get_next(NULL, LI2RESCTXSOFT(lip));
 	if (k != NULL) {	/* at least one soft resource limit present */
 		free(k);
 		return (1);
@@ -721,7 +721,7 @@ has_softlimits(void *p)
 	/* run limit already checked? */
 	if (LI2RUNCTXSOFT(lip) == LI2RESCTXSOFT(lip))
 		return (0);
-	k = entlim_get_next((pbs_entlim_key_t *) NULL, LI2RUNCTXSOFT(lip));
+	k = entlim_get_next(NULL, LI2RUNCTXSOFT(lip));
 	if (k != NULL) {	/* at least one soft run limit present */
 		free(k);
 		return (1);
@@ -2933,7 +2933,7 @@ static int
 lim_setrunlimits(const struct attrl *a, void *ctx)
 {
 
-	if (entlim_parse(a->value, (char *) NULL, ctx, lim_callback) == 0)
+	if (entlim_parse(a->value, NULL, ctx, lim_callback) == 0)
 		return (0);
 	else {
 		(void) sprintf(log_buffer, "entlim_parse(%s) failed",
@@ -2965,7 +2965,7 @@ static int
 lim_setoldlimits(const struct attrl *a, void *ctx)
 {
 	int i;
-	struct lim_old2new *avalue = (struct lim_old2new *) 0;
+	struct lim_old2new *avalue = NULL;
 	enum lim_keytypes kt;
 	char *p;
 	char *e;
@@ -3191,14 +3191,14 @@ static int
 lim_callback(void *ctx, enum lim_keytypes kt, char *param, char *namestring,
 	char *res, char *val)
 {
-	char		*key = (char *) NULL;
-	char		*v = (char *) NULL;
+	char		*key = NULL;
+	char		*v = NULL;
 
-	if (res != (char *) NULL)
+	if (res != NULL)
 		key = entlim_mk_reskey(kt, namestring, res);
 	else
 		key = entlim_mk_runkey(kt, namestring);
-	if (key == (char *) NULL) {
+	if (key == NULL) {
 		sprintf(log_buffer, "key construction %d %s failed",
 			(int) kt, namestring);
 		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,
@@ -3206,7 +3206,7 @@ lim_callback(void *ctx, enum lim_keytypes kt, char *param, char *namestring,
 		return (-1);
 	}
 
-	if ((v = strdup(val)) == (char *) NULL) {
+	if ((v = strdup(val)) == NULL) {
 		sprintf(log_buffer, "strdup %s %s %s failed",
 			key, res, val);
 		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__,

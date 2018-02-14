@@ -63,7 +63,7 @@ void
 prt_job_err(char *cmd, int connect, char *id)
 {
 	char *errmsg;
-	char *histerrmsg = (char *)0;
+	char *histerrmsg = NULL;
 
 	errmsg = pbs_geterrmsg(connect);
 	if (errmsg != NULL) {
@@ -73,7 +73,7 @@ prt_job_err(char *cmd, int connect, char *id)
 				sprintf(histerrmsg, errmsg, id);
 				fprintf(stderr, "%s: %s\n", cmd, histerrmsg);
 				free(histerrmsg);
-				histerrmsg = (char *)0;
+				histerrmsg = NULL;
 			} else {
 				fprintf(stderr,
 					"%s: Server returned error %d for job %s\n",

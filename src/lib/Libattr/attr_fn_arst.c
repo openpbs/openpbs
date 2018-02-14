@@ -129,7 +129,7 @@ decode_arst_direct(struct attribute *patr, char *val)
 	slen = strlen(val);
 
 	pbuf  = (char *)malloc(slen + 1);
-	if (pbuf == (char *)0)
+	if (pbuf == NULL)
 		return (PBSE_SYSTEM);
 	bksize = ((ns-1) * sizeof(char *)) + sizeof(struct array_strings);
 	stp = (struct array_strings *)malloc(bksize);
@@ -170,13 +170,13 @@ decode_arst_direct(struct attribute *patr, char *val)
 	pc = pbuf;
 	j = 0;
 	pstr = parse_comma_string(sbufp);
-	while ((pstr != (char *)0) && (j < ns)) {
+	while ((pstr != NULL) && (j < ns)) {
 		stp->as_string[j] = pc;
 		while (*pstr) {
 			*pc++ = *pstr++;
 		}
 		*pc++ = '\0';
-		pstr = parse_comma_string((char *)0);
+		pstr = parse_comma_string(NULL);
 		j++;
 	}
 
@@ -195,7 +195,7 @@ decode_arst_direct(struct attribute *patr, char *val)
  * 	decode_arst - decode a comma string into an attr of type ATR_TYPE_ARST
  *
  * @param[in] patr - pointer to attribute structure
- * @param[in] name - attribute name 
+ * @param[in] name - attribute name
  * @param[in] rescn - resource name
  * @param[in] val - attribute value
  *
@@ -212,7 +212,7 @@ decode_arst(struct attribute *patr, char *name, char *rescn, char *val)
 	int	  rc;
 	attribute temp;
 
-	if ((val == (char *)0) || (strlen(val) == 0)) {
+	if ((val == NULL) || (strlen(val) == 0)) {
 		free_arst(patr);
 		/* _SET cleared in free_arst */
 		patr->at_flags |= ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
@@ -261,8 +261,8 @@ decode_arst(struct attribute *patr, char *name, char *rescn, char *val)
  * @param[in] phead - ptr to head of attrlist list
  * @param[in] atname - attribute name
  * @param[in] rsname - resource name or null
- * @param[in] mode - encode mode 
- * @param[out] rtnl - ptr to svrattrl 
+ * @param[in] mode - encode mode
+ * @param[out] rtnl - ptr to svrattrl
  *
  * @retval	int
  * @retval	>0	if ok, entry created and linked into list
@@ -306,7 +306,7 @@ encode_arst(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, i
 	/* if we are escaping special characters		*/
 
 	pal = attrlist_create(atname, rsname, j);
-	if (pal == (svrattrl *)0)
+	if (pal == NULL)
 		return (-1);
 
 	pal->al_flags = attr->at_flags;
@@ -396,8 +396,8 @@ set_arst(struct attribute *attr, struct attribute *new, enum batch_op op)
 		pas->as_npointers = j;
 		pas->as_usedptr = 0;
 		pas->as_bufsize = 0;
-		pas->as_buf     = (char *)0;
-		pas->as_next    = (char *)0;
+		pas->as_buf     = NULL;
+		pas->as_next    = NULL;
 		attr->at_val.at_arst = pas;
 	}
 	if ((op == INCR) && !pas->as_buf)
@@ -417,11 +417,11 @@ set_arst(struct attribute *attr, struct attribute *new, enum batch_op op)
 			 */
 
 			for (i=0; i< pas->as_usedptr; i++)
-				pas->as_string[i] = (char *)0;	/* clear all pointers */
+				pas->as_string[i] = NULL;	/* clear all pointers */
 			pas->as_usedptr = 0;
 			pas->as_next   = pas->as_buf;
 
-			if (new->at_val.at_arst == (struct array_strings *)0)
+			if (new->at_val.at_arst == NULL)
 				break;	/* none to set */
 
 			nsize = xpasx->as_next - xpasx->as_buf; /* space needed */
@@ -454,7 +454,7 @@ set_arst(struct attribute *attr, struct attribute *new, enum batch_op op)
 					pc = realloc(pas->as_buf, need);
 				else
 					pc = malloc(need);
-				if (pc == (char *)0)
+				if (pc == NULL)
 					return (PBSE_SYSTEM);
 				offset = pc - pas->as_buf;
 				pas->as_buf   = pc;
@@ -470,7 +470,7 @@ set_arst(struct attribute *attr, struct attribute *new, enum batch_op op)
 				j = 3 * j / 2;		/* allocate extra     */
 				need = sizeof(struct array_strings) + (j-1) * sizeof(char *);
 				newpas=(struct array_strings *)realloc((char *)pas, need);
-				if (newpas == (struct array_strings *)0)
+				if (newpas == NULL)
 					return (PBSE_SYSTEM);
 				newpas->as_npointers = j;
 				pas = newpas;
@@ -499,7 +499,7 @@ set_arst(struct attribute *attr, struct attribute *new, enum batch_op op)
 						/* compact pointers */
 						for (++i; i < pas->as_npointers; i++)
 							pas->as_string[i-1] = pas->as_string[i] - nsize;
-						pas->as_string[i-1] = (char *)0;
+						pas->as_string[i-1] = NULL;
 						pas->as_usedptr--;
 						break;
 					}
@@ -557,7 +557,7 @@ comp_arst(struct attribute *attr, struct attribute *with)
 	else
 		return (1);
 }
- 
+
 /**
  * @brief
  *	frees arst attribute.
@@ -602,7 +602,7 @@ arst_string(char *str, attribute *pattr)
 	struct array_strings *parst;
 
 	if ((pattr->at_type != ATR_TYPE_ARST) || !(pattr->at_flags & ATR_VFLAG_SET))
-		return ((char *)0);
+		return NULL;
 
 	len = strlen(str);
 	parst = pattr->at_val.at_arst;
@@ -610,7 +610,7 @@ arst_string(char *str, attribute *pattr)
 		if (strncmp(str, parst->as_string[i], len) == 0)
 			return (parst->as_string[i]);
 	}
-	return ((char *)0);
+	return NULL;
 }
 
 /**
@@ -627,7 +627,7 @@ arst_string(char *str, attribute *pattr)
  *	Newlines (\n) are allowed because they could be present in
  *	environment variables.
  *
- *	On any following calls with start set to a null pointer (char *)0,
+ *	On any following calls with start set to a null pointer NULL,
  *	the next value element is returned...
  *
  * @param[in] start - string to be parsed
@@ -636,7 +636,7 @@ arst_string(char *str, attribute *pattr)
  * @retval	start address for string	Success
  * @retval	NULL				Failure
  *
- */	
+ */
 
 static char *
 parse_comma_string_bs(char *start)
@@ -646,7 +646,7 @@ parse_comma_string_bs(char *start)
 	char	    *back;
 	char	    *rv;
 
-	if (start != (char *)0)
+	if (start != NULL)
 		pc = start;
 
 	/* skip over leading white space */
@@ -654,7 +654,7 @@ parse_comma_string_bs(char *start)
 		pc++;
 
 	if (!pc || !*pc)
-		return ((char *)0);	/* already at end, no strings */
+		return NULL;	/* already at end, no strings */
 
 	rv = dest = pc;	/* the start point which will be returned */
 
@@ -717,7 +717,7 @@ int	*pcnt;		/*where to return the value*/
 	int	ns;
 	char   *pc;
 
-	if (val == (char *)0)
+	if (val == NULL)
 		return  (PBSE_INTERNAL);
 
 	/*
@@ -791,7 +791,7 @@ decode_arst_direct_bs(struct attribute *patr, char *val)
 	slen = strlen(val);
 
 	pbuf  = (char *)malloc(slen + 1);
-	if (pbuf == (char *)0)
+	if (pbuf == NULL)
 		return (PBSE_SYSTEM);
 	bksize = (ns-1) * sizeof(char *) + sizeof(struct array_strings);
 	stp = (struct array_strings *)malloc(bksize);
@@ -831,13 +831,13 @@ decode_arst_direct_bs(struct attribute *patr, char *val)
 	pc = pbuf;
 	j  = 0;
 	pstr = parse_comma_string_bs(sbufp);
-	while ((pstr != (char *)0) && (j < ns)) {
+	while ((pstr != NULL) && (j < ns)) {
 		stp->as_string[j] = pc;
 		while (*pstr) {
 			*pc++ = *pstr++;
 		}
 		*pc++ = '\0';
-		pstr = parse_comma_string_bs((char *)0);
+		pstr = parse_comma_string_bs(NULL);
 		j++;
 	}
 
@@ -861,7 +861,7 @@ decode_arst_direct_bs(struct attribute *patr, char *val)
  * @param[in] patr - ptr to attribute to decode
  * @param[in] name - attribute name
  * @param[in] rescn - resource name or null
- * @param[out] val - string holding values for attribute structure 
+ * @param[out] val - string holding values for attribute structure
  *
  * @retval      int
  * @retval      0	if ok
@@ -876,7 +876,7 @@ decode_arst_bs(struct attribute *patr, char *name, char *rescn, char *val)
 	int	  rc;
 	attribute temp;
 
-	if ((val == (char *)0) || (strlen(val) == 0)) {
+	if ((val == NULL) || (strlen(val) == 0)) {
 		free_arst(patr);
 		/* _SET cleared in free_arst */
 		patr->at_flags |= ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
@@ -968,7 +968,7 @@ encode_arst_bs(attribute *attr, pbs_list_head *phead, char *atname, char *rsname
 			++j;
 	}
 	pal = attrlist_create(atname, rsname, j);
-	if (pal == (svrattrl *)0)
+	if (pal == NULL)
 		return (-1);
 
 	pal->al_flags = attr->at_flags;
@@ -1087,8 +1087,8 @@ set_arst_uniq(struct attribute *attr, struct attribute *new, enum batch_op op)
 		pas->as_npointers = j;
 		pas->as_usedptr = 0;
 		pas->as_bufsize = 0;
-		pas->as_buf     = (char *)0;
-		pas->as_next   = (char *)0;
+		pas->as_buf     = NULL;
+		pas->as_next   = NULL;
 		attr->at_val.at_arst = pas;
 	}
 
@@ -1106,7 +1106,7 @@ set_arst_uniq(struct attribute *attr, struct attribute *new, enum batch_op op)
 			pc = realloc(pas->as_buf, need);
 		else
 			pc = malloc(need);
-		if (pc == (char *)0)
+		if (pc == NULL)
 			return (PBSE_SYSTEM);
 		offset = pc - pas->as_buf;
 		pas->as_buf   = pc;
@@ -1124,7 +1124,7 @@ set_arst_uniq(struct attribute *attr, struct attribute *new, enum batch_op op)
 		j = 3 * j / 2;		/* allocate extra     */
 		need = sizeof(struct array_strings) + (j-1) * sizeof(char *);
 		newpas=(struct array_strings *)realloc((char *)pas, need);
-		if (newpas == (struct array_strings *)0)
+		if (newpas == NULL)
 			return (PBSE_SYSTEM);
 		newpas->as_npointers = j;
 		pas = newpas;
@@ -1152,7 +1152,7 @@ set_arst_uniq(struct attribute *attr, struct attribute *new, enum batch_op op)
 }
 
 /**
- * @brief 
+ * @brief
  *	check for duplicate entries in a string array
  *
  * @param[in] strarr - the string array to check for duplicates

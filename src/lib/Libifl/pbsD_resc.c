@@ -87,7 +87,7 @@ free_node_pool(struct node_pool *np)
  * @param[in] ct - count of query strings
  * @param[in] rh - resource handle
  *
- * @return	int 
+ * @return	int
  * @retval	0	success
  * @retval	!0	error
  *
@@ -150,7 +150,7 @@ PBS_resc(int c, int reqtype, char **rescl, int ct, pbs_resource_t rh)
 
 	if ((rc = encode_DIS_ReqHdr(sock, reqtype, pbs_current_user)) ||
 		(rc = encode_DIS_Resc(sock, rescl, ct, rh)) ||
-		(rc = encode_DIS_ReqExtend(sock, (char *)0))) {
+		(rc = encode_DIS_ReqExtend(sock, NULL))) {
 		connection[c].ch_errtxt = strdup(dis_emsg[rc]);
 		if (connection[c].ch_errtxt == NULL) {
 			pbs_errno = PBSE_SYSTEM;
@@ -172,7 +172,7 @@ PBS_resc(int c, int reqtype, char **rescl, int ct, pbs_resource_t rh)
  * @param[in] c - communication handle
  * @param[in] resclist - list of queries
  * @param[in] num_resc - number in list
- * @param[out] available - number available per query 
+ * @param[out] available - number available per query
  * @param[out] allocated - number allocated per query
  * @param[out] reserved - number reserved  per query
  * @param[out] down - number down/off  per query
@@ -254,7 +254,7 @@ done:
  * @param[in] c - communication handle
  * @param[in] rl - list of resources
  * @param[in] num_resc - number of items in list
- * @param[in] prh - ptr to resource reservation handle 
+ * @param[in] prh - ptr to resource reservation handle
  *
  * @return      int
  * @retval      0       success
@@ -347,7 +347,7 @@ pbs_rescrelease(int c, pbs_resource_t rh)
 	if (pbs_client_thread_lock_connection(c) != 0)
 		return pbs_errno;
 
-	if ((rc = PBS_resc(c, PBS_BATCH_ReleaseResc, (char **)0, 0, rh)) != 0) {
+	if ((rc = PBS_resc(c, PBS_BATCH_ReleaseResc, NULL, 0, rh)) != 0) {
 		(void)pbs_client_thread_unlock_connection(c);
 		return (rc);
 	}
@@ -378,7 +378,7 @@ pbs_rescrelease(int c, pbs_resource_t rh)
 
 /**
  * @brief
- * 	-totpool() - return total number of nodes 
+ * 	-totpool() - return total number of nodes
  *
  * @param[in] con - connection handle
  * @param[in] update - flag indicating update or not
@@ -441,7 +441,7 @@ totpool(int con, int update)
 
 /**
  * @brief
- * 	-usepool() - return number of nodes in use, includes reserved and down 
+ * 	-usepool() - return number of nodes in use, includes reserved and down
  *
  * @param[in] con - connection handle
  * @param[in] update - flag indicating update or not

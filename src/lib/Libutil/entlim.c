@@ -110,7 +110,7 @@ entlim_create_key(const char *keystr)
 	}
 	pkey = (pbs_entlim_key_t *)malloc(keylen);
 	if (pkey == NULL)
-		return (NULL);
+		return NULL;
 	memset((void *)pkey, 0, keylen);
 	if ((keystr != NULL) && (*keystr != '\0'))
 		strcpy(pkey->key, keystr);
@@ -348,7 +348,7 @@ entlim_free_ctx(void *ctx, void free_leaf(void *))
  *
  * @return	strinf
  * @retval	ptr to key string in the heap -
- *  
+ *
  * @par	WARNING - it is up to you to free it
  */
 static char *
@@ -367,7 +367,7 @@ entlim_mk_keystr(enum lim_keytypes kt, const char *entity, const char *resc)
 	else if (kt == LIM_OVERALL)
 		ktyl = 'o';
 	else
-		return (NULL); 	/* invalid entity key type */
+		return NULL; 	/* invalid entity key type */
 
 	keylen = 2 + strlen(entity);
 	if (resc)
@@ -398,7 +398,7 @@ entlim_mk_keystr(enum lim_keytypes kt, const char *entity, const char *resc)
 char *
 entlim_mk_runkey(enum lim_keytypes kt, const char *entity)
 {
-	return entlim_mk_keystr(kt, entity, (char *)0);
+	return entlim_mk_keystr(kt, entity, NULL);
 }
 
 /**
@@ -462,7 +462,7 @@ entlim_entity_from_key(pbs_entlim_key_t *pk, char *rtnname, size_t ln)
  *
  * @return      int
  * @retval      0 	resource name found and returned
- * @retval      -1	resource name would not fit 
+ * @retval      -1	resource name would not fit
  * @retval	+1	no resource name found
  *
  */

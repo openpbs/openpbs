@@ -518,6 +518,6 @@ struct sig_tbl sig_tbl[] = {
 	{ "RETRACT", SIGRETRACT },
 	{ "SOUND", SIGSOUND },
 	{ "SAK", SIGSAK },
-	{(char *)0, -1 }
+	{NULL, -1 }
 };
 

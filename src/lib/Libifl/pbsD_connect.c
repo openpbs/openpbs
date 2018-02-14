@@ -76,7 +76,7 @@ extern struct connect_handle connection[NCONNECTS];
 
 #define ERR_BUF_SIZE 4096
 
-/** 
+/**
  * @brief
  *	-returns the default server name.
  *
@@ -126,7 +126,7 @@ __pbs_default()
  *
  * @return	string
  * @retval	servr name	success
- * 
+ *
  */
 static char *
 PBS_get_server(char *server, char *server_name,
@@ -145,7 +145,7 @@ PBS_get_server(char *server, char *server_name,
 
 	/* first, get the "net.address[:port]" into 'server_name' */
 
-	if ((server == (char *)NULL) || (*server == '\0')) {
+	if ((server == NULL) || (*server == '\0')) {
 		if ((p=pbs_default()) == NULL)
 			return NULL;
 		strcpy(server_name, p);
@@ -255,7 +255,7 @@ PBSD_authenticate(int psock, char * server_name, int server_port,
 		rc = 0;
 
 		piff = (FILE *)popen(cmd[k], "r");
-		if (piff == (FILE *)0) {
+		if (piff == NULL) {
 			rc = -1;
 			break;
 		}
@@ -451,7 +451,7 @@ engage_external_authentication(int sock, int auth_type, int fromsvr, char *ebuf,
 				diswuc(sock, auth_type) || /* authentication_type */
 				diswsi(sock, cred_len) ||       /* credential length */
 				diswcs(sock, cred, cred_len) || /* credential data */
-				encode_DIS_ReqExtend(sock, (char *) 0)) {
+				encode_DIS_ReqExtend(sock, NULL)) {
 			pbs_errno = PBSE_SYSTEM;
 			goto err;
 		}
@@ -589,7 +589,7 @@ __pbs_connect_extend(char *server, char *extend_data)
 	/* get server host and port	*/
 
 	server = PBS_get_server(server, server_name, &server_port);
-	if (server == (char *)NULL) {
+	if (server == NULL) {
 		pbs_errno = PBSE_NOSERVER;
 		return -1;
 	}
@@ -642,7 +642,7 @@ __pbs_connect_extend(char *server, char *extend_data)
 		out = i;
 		connection[out].ch_errno = 0;
 		connection[out].ch_socket= -1;
-		connection[out].ch_errtxt = (char *)NULL;
+		connection[out].ch_errtxt = NULL;
 		connection[out].ch_inuse = 1; /* reserve the socket */
 		break;
 	}
@@ -727,16 +727,16 @@ __pbs_connect_extend(char *server, char *extend_data)
 			if (bind(connection[out].ch_socket, (struct sockaddr *)&my_sockaddr, sizeof(my_sockaddr)) != 0) {
 				return -1;
 			}
-		} 
+		}
 
-		if (get_hostsockaddr(server, &server_addr) != 0) 
+		if (get_hostsockaddr(server, &server_addr) != 0)
 			return -1;
 
 		server_addr.sin_port = htons(server_port);
 		if (connect(connection[out].ch_socket,
 			(struct sockaddr *)&server_addr,
 			sizeof(struct sockaddr)) == 0) {
-				
+
 				break;
 		} else {
 			/* connect attempt failed */
@@ -884,12 +884,12 @@ pbs_connection_set_nodelay(int connect)
 int
 __pbs_connect(char *server)
 {
-	return (pbs_connect_extend(server, (char *)0));
+	return (pbs_connect_extend(server, NULL));
 }
 
-/** 
+/**
  * @brief
- *	-send close connection batch request 
+ *	-send close connection batch request
  *
  * @param[in] connect - socket descriptor
  *
@@ -951,9 +951,9 @@ __pbs_disconnect(int connect)
 	CS_close_socket(sock);
 	CLOSESOCKET(sock);
 
-	if (connection[connect].ch_errtxt != (char *)NULL) {
+	if (connection[connect].ch_errtxt != NULL) {
 		free(connection[connect].ch_errtxt);
-		connection[connect].ch_errtxt = (char *)NULL;
+		connection[connect].ch_errtxt = NULL;
 	}
 	connection[connect].ch_errno = 0;
 	connection[connect].ch_inuse = 0;
@@ -1068,7 +1068,7 @@ pbs_connect_noblk(char *server, int tout)
 	/* get server host and port	*/
 
 	server = PBS_get_server(server, server_name, &server_port);
-	if (server == (char *)NULL) {
+	if (server == NULL) {
 		pbs_errno = PBSE_NOSERVER;
 		return -1;
 	}
@@ -1084,7 +1084,7 @@ pbs_connect_noblk(char *server, int tout)
 		connection[out].ch_inuse = 1;
 		connection[out].ch_errno = 0;
 		connection[out].ch_socket= -1;
-		connection[out].ch_errtxt = (char *)NULL;
+		connection[out].ch_errtxt = NULL;
 		break;
 	}
 
@@ -1286,7 +1286,7 @@ err:
 	if ((i = encode_DIS_ReqHdr(connection[out].ch_socket,
 		PBS_BATCH_Connect, pbs_current_user)) ||
 		(i = encode_DIS_ReqExtend(connection[out].ch_socket,
-		(char *)0))) {
+		NULL))) {
 		pbs_errno = PBSE_SYSTEM;
 		return -1;
 	}

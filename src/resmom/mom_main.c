@@ -272,14 +272,14 @@ extern struct var_table vtable;	/* see start_exec.c */
 #define	ALPS_REL_TIMEOUT		600;	/* 10 min */
 #define	ALPS_CONF_EMPTY_TIMEOUT		10;	/* 10 sec */
 #define	ALPS_CONF_SWITCH_TIMEOUT	35;	/* 35 sec */
-char	       *alps_client = (char *)NULL;
+char	       *alps_client = NULL;
 int		alps_release_interval_max;
 int		vnode_per_numa_node;
 int		alps_release_timeout;
 int		alps_confirm_empty_timeout;
 int		alps_confirm_switch_timeout;
 #endif /* MOM_ALPS */
-char	       *path_checkpoint = (char *)NULL;
+char	       *path_checkpoint = NULL;
 static		resource_def *rdcput;
 static		resource_def *rdwall;
 int		restart_background = FALSE;
@@ -384,9 +384,9 @@ static time_t	went_busy  =  0;	/* time keyboard went busy */
 static time_t	prior_key  =  0;	/* time of prior keystroke/mouse */
 static int	restrictrm = 0;		/* restricted RM request */
 static int	kill_jobs_on_exit = 0;	/* kill running jobs on Mom exit */
-static char    *path_checkpoint_from_getopt = (char *)NULL;
-static char    *path_checkpoint_from_getenv = (char *)NULL;
-static char    *path_checkpoint_default = (char *)NULL;
+static char    *path_checkpoint_from_getopt = NULL;
+static char    *path_checkpoint_from_getenv = NULL;
+static char    *path_checkpoint_default = NULL;
 #ifdef	WIN32
 static char     path_checkpoint_buf[MAX_PATH] = "\0";
 #else
@@ -587,7 +587,7 @@ static struct specials addspecial[] = {
 };
 
 
-char	*log_file = (char *)0;
+char	*log_file = NULL;
 char	*path_log;
 
 
@@ -668,7 +668,7 @@ static void check_busy(double);
  *
  * @param[in] path - directory path
  * @param[in] id   - char pointer holding which directory
- *  
+ *
  * @retval 0 success
  * @retval -1 failure
  *
@@ -700,8 +700,8 @@ check_directory(char *path, char *id)
 #endif
 
 /**
- * @brief 
- * 	logs error message 
+ * @brief
+ * 	logs error message
  *
  * @param[in] attrib - pointer to rm_attribute structure
  *
@@ -749,7 +749,7 @@ arch(struct rm_attribute *attrib)
  *
  * @return string
  * @retval user name
- *  
+ *
  */
 char *
 getuname(void)
@@ -881,7 +881,7 @@ loadave(struct rm_attribute *attrib)
  *
  * @param[in] attrib - pointer to rm_attribute structure
  *
- * @return  string 
+ * @return  string
  * @retval  log_buffer  Success
  * @retval  NULL	Failure
  *
@@ -1172,7 +1172,7 @@ initialize(void)
 			log_err(PBSE_SYSTEM, __func__, "vnl_alloc failed");
 			return;
 		}
-		vnlp_from_hook->vnl_modtime = time((time_t *)0);
+		vnlp_from_hook->vnl_modtime = time(NULL);
 	}
 
 	mom_hook_input_init(&hook_input);
@@ -1202,7 +1202,7 @@ initialize(void)
 				/* we've hit an internal error (malloc error, full disk, etc...), so */
 				/* treat this now like a  hook error so hook fail_action  */
 				/* will be consulted.  */
-				/* Before, behavior of an internal error was to ignore it! */ 
+				/* Before, behavior of an internal error was to ignore it! */
 				hook_errcode = PBSE_HOOKERROR;
 			}
 			if (hook_errcode == PBSE_HOOKERROR) { /* error */
@@ -1230,7 +1230,7 @@ initialize(void)
 							last_phook->hook_name,
 							log_buffer);
 					}
-					vnlp_from_hook->vnl_modtime = time((time_t *)0);
+					vnlp_from_hook->vnl_modtime = time(NULL);
 				}
 				break;
 			} else if (hook_fail_action & HOOK_FAIL_ACTION_CLEAR_VNODES) {
@@ -1386,11 +1386,11 @@ memcheck(char *buf)
  *	the corresponding place that it used to point to in
  *	the old buffer.
  *
- * @param[in] spot - buffer 
+ * @param[in] spot - buffer
  * @param[in] len - buffer len
  *
  * @return Void
- * 
+ *
  */
 void
 checkret(char **spot, int len)
@@ -1827,7 +1827,7 @@ create_idle_files()
 #endif
 
 /**
- * @brief	
+ * @brief
  *	add_mom_action - Parse mom action command from mom config file and add
  *	into mom_action array
  *
@@ -2038,7 +2038,7 @@ addclient_byname(char *name)
 	return ipaddr;
 }
 
-/** 
+/**
  * @brief
  *	wrapper func for addclient_byname.
  *
@@ -2061,7 +2061,7 @@ addclient(char *name)
 
 #if	MOM_BGL
 /**
- * @brief 
+ * @brief
  *	sets reserve partitions.
  *
  * @param[in] part_list - partition list
@@ -2158,7 +2158,7 @@ set_report_hook_checksums(char *value)
  * @retval 	HANDLER_SUCCESS		Success
  *
  */
- 
+
 static handler_ret_t
 restricted(char *name)
 {
@@ -2263,7 +2263,7 @@ set_cpuset_error_action(char *value)
 /**
  * @brief
  *	sets wallfactor
- * 
+ *
  * @param[in] value - value for wallfactor
  *
  * @return      handler_ret_t
@@ -2411,9 +2411,9 @@ set_nrun_factor(char *value)
 
 /**
  * @brief
- *      Performs shell_escape_timeout on process tree by using given parent process handle <hProcess> and close that handle. 
+ *      Performs shell_escape_timeout on process tree by using given parent process handle <hProcess> and close that handle.
  *
- * @return 	Void 
+ * @return 	Void
  *
  */
 
@@ -2601,7 +2601,7 @@ do_mom_action_script(int	ae, 	/* index into action table */
 	assert((0 <= ae) && (ae < (int)LastAction));
 
 	ma = &mom_action[ae];
-	if (ma->ma_script == (char *)0)
+	if (ma->ma_script == NULL)
 		return -2;
 
 	/* does script really exist? */
@@ -3421,7 +3421,7 @@ setidealload(char *value)
  * @retval      HANDLER_FAIL            Failure
  * @retval      HANDLER_SUCCESS         Success
  *
- */     
+ */
 
 static handler_ret_t
 setmaxload(char *value)
@@ -3657,7 +3657,7 @@ set_jobdir_root(char *value)
 
 /**
  * @brief
- *	sets boolean value 
+ *	sets boolean value
  *
  * @param[in] id - function name
  * @param[in] value - value
@@ -3872,7 +3872,7 @@ set_alps_client(char *value)
 /**
  * @brief
  * 	Set the timeout value in seconds when we will stop checking for
- * 	ALPS SWITCH response to change from "EMPTY". 
+ * 	ALPS SWITCH response to change from "EMPTY".
  * 	In order to work around a situation where we must poll on "EMPTY" in
  * 	case it changes.  After the timeout, we can proceed with the suspend.
  *
@@ -3910,11 +3910,11 @@ set_alps_confirm_switch_timeout(char *value)
 /**
  * @brief
  * Set the configuration flag that defines vnode creation behavior
- * on a Cray.  
+ * on a Cray.
  *
  * @par
  * If vnode_per_numa_node is set to TRUE, then
- * PBS will create one vnode per NUMA node (i.e. per segment).  
+ * PBS will create one vnode per NUMA node (i.e. per segment).
  * Thus there will be multiple vnodes per host.
  *
  * If vnode_per_numa_node is set to FALSE, then
@@ -4081,7 +4081,7 @@ set_checkpoint_path(char *value)
  * @retval 	HANDLER_SUCCESS 	success
  * @retval 	HANDLER_FAIL		Failure
  *
- */ 
+ */
 static handler_ret_t
 set_momname(char *value)
 {
@@ -4508,7 +4508,7 @@ config_versionhandler(char *value, const char *filename, FILE *fp)
 	return HANDLER_SUCCESS;
 }
 
-/** 
+/**
  * @brief
  *	compares two directories from directory list
  *
@@ -4572,7 +4572,7 @@ do_readdir(char *dirname, time_t *mod)
 
 	if ((dirp = opendir(dirname)) == NULL) {
 		perror(dirname);
-		return (NULL);
+		return NULL;
 	}
 	/*
 	 * Get mod time if requested.
@@ -4598,14 +4598,14 @@ do_readdir(char *dirname, time_t *mod)
 			log_err(errno, __func__, "realloc");
 			free_dirlist(list);
 			(void) closedir(dirp);
-			return (NULL);
+			return NULL;
 		} else
 			list = newlist;
 		if ((s = strdup(dp->d_name)) == NULL) {
 			log_err(errno, __func__, "strdup");
 			free_dirlist(list);
 			(void) closedir(dirp);
-			return (NULL);
+			return NULL;
 		} else {
 			/*
 			 *	N.B.:  the free_dirlist() function above
@@ -4619,7 +4619,7 @@ do_readdir(char *dirname, time_t *mod)
 	if (errno != 0 && errno != ENOENT) {
 		perror(dirname);
 		(void) closedir(dirp);
-		return (NULL);
+		return NULL;
 	}
 	(void) closedir(dirp);
 
@@ -5144,7 +5144,7 @@ doconfig_list(void)
 /**
  * @brief
  *
- */	
+ */
 void
 doconfig_show(char *name)
 {
@@ -5398,7 +5398,7 @@ conf_res(char *s, struct rm_attribute *attr)
 
 #ifdef	WIN32
 	shell_escape_handle = child.pi.hProcess;
-	(void)win_alarm(alarm_time, shell_escape_timeout);	
+	(void)win_alarm(alarm_time, shell_escape_timeout);
 #else
 	fd = fileno(child);
 #endif	/* WIN32 */
@@ -5513,7 +5513,7 @@ catch_hup(int sig)
  *	Do a restart of resmom.
  *	Read the last seen config file and
  *	Clean up and reinit the dependent code.
- * 
+ *
  * @return Void
  *
  */
@@ -5692,7 +5692,7 @@ log_verbose(char *id, char *buf, int len)
  * @param[in] ipadd - ip address of host
  *
  * @return 	int
- * @retval 	0   	Failure 
+ * @retval 	0   	Failure
  * @retval 	1	Success
  *
  */
@@ -6080,7 +6080,7 @@ do_rpp(int stream)
 }
 
 /* ARGSUSED */
- 
+
 /**
  * @brief
  *	wrapper function for do_rpp which calls infinitely
@@ -6090,7 +6090,7 @@ do_rpp(int stream)
  * @return Void
  *
  */
- 	
+
 void
 rpp_request(int fd)
 {
@@ -6384,7 +6384,7 @@ finish_loop(time_t waittime)
 
 /**
  * @brief
- *	locks mom and logs error msg 
+ *	locks mom and logs error msg
  *
  * @param[in] fds - file descriptor
  * @param[in] op - type of lock
@@ -6392,7 +6392,7 @@ finish_loop(time_t waittime)
  * @return Void
  *
  */
- 
+
 static void
 mom_lock(int fds,
 	int op /* F_WRLCK  or  F_UNLCK */)
@@ -6455,7 +6455,7 @@ mom_lock(int fds,
  *	to receive the decoded value.  It returns the decoded value in kb.
  *
  * @param[in] pres - pointer to resource
- * 
+ *
  * @note  This will return only up to ULONG_MAX kb (i.e. return value is
  *	  unsigned long). Even though the new size data type has been expanded
  *	  to hold up to UlONG_MAX kb (i.e. unsigned long long max), this
@@ -6607,7 +6607,7 @@ local_getsize(resource *pres,
  *	Accepts a resource pointer and a pointer to the unsigned long integer
  *	to receive the decoded value.  It returns a PBS error code, and the
  *	decoded value of time in seconds in the unsigned long integer.
- * 
+ *
  * @param[in] pres - pointer to resource
  * @param[out] ret - pointer to u_long to hold decoded value
  *
@@ -7233,7 +7233,7 @@ job_over_limit(job *pjob)
 	attr = &pjob->ji_wattr[JOB_ATR_resource];
 	used = &pjob->ji_wattr[JOB_ATR_resc_used];
 	for (limresc = (resource *)GET_NEXT(attr->at_val.at_list);
-		limresc != (resource *)0;
+		limresc != NULL;
 		limresc = (resource *)GET_NEXT(limresc->rs_link)) {
 
 		if ((limresc->rs_value.at_flags & ATR_VFLAG_SET) == 0)
@@ -7246,7 +7246,7 @@ job_over_limit(job *pjob)
 			continue;
 
 		useresc = find_resc_entry(used, rd);
-		if (useresc == (resource *)0)
+		if (useresc == NULL)
 			continue;
 		if ((useresc->rs_value.at_flags & ATR_VFLAG_SET) == 0)
 			continue;
@@ -7270,7 +7270,7 @@ job_over_limit(job *pjob)
 				break;
 		}
 	}
-	if (limresc == (resource *)0)
+	if (limresc == NULL)
 		return 0;
 
 	sprintf(log_buffer, "%s job total %lu %s exceeded limit %lu %s",
@@ -7286,7 +7286,7 @@ static char	configusage[] = "%s -s insert scriptname inputfile\n"
 /**
  * @brief
  *	Prints usage for prog
- * 
+ *
  * @param[in] prog - char pointer which holds program name
  *
  * @return Void
@@ -8068,7 +8068,7 @@ main(int argc, char *argv[])
 		char* pbsconf_temp = "PBS_CONF_FILE";
 		pch = pch + strlen("PBS_MOM");
 		if ((pbs_conf_env = (char*) malloc(strlen(pbsconf_temp)+ strlen(pch) + 1)) != NULL) {
-			memset(pbs_conf_env, 0, strlen(pbsconf_temp)+ strlen(pch) + 1); 
+			memset(pbs_conf_env, 0, strlen(pbsconf_temp)+ strlen(pch) + 1);
 			strncpy(pbs_conf_env, pbsconf_temp, strlen(pbsconf_temp)+ strlen(pch));
 			pbs_conf_env = strcat(pbs_conf_env, pch);
 		} else {
@@ -8099,7 +8099,7 @@ main(int argc, char *argv[])
 		fprintf(stderr, "%s: Must be run as root\n", argv[0]);
 		return (1);
 	}
-	
+
 	if (!has_privilege(SE_DEBUG_NAME))
 		ena_privilege(SE_DEBUG_NAME);
 #else
@@ -8499,9 +8499,9 @@ main(int argc, char *argv[])
 	/* failure cases so it's hard to know if a corrupt log file is the */
 	/* culprit, which happes occasionally under windows. */
 	log_open(log_file, path_log);
-	
 
-	/* moved the 2 functions here as they are now using the log functions, 
+
+	/* moved the 2 functions here as they are now using the log functions,
 	and these functions can be used after calling log_open() */
 
 	/* let SCM wait 20 seconds for secure_misc_files() to complete */
@@ -9229,13 +9229,13 @@ main(int argc, char *argv[])
 	hook_suf_len = strlen(hook_suffix);
 
 	dir = opendir(".");
-	if (dir == (DIR *)0) {
+	if (dir == NULL) {
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER,
 			LOG_DEBUG, msg_daemonname,
 			"Could not open hooks dir");
 	} else {
 		/* Now, for each hook found ... */
-		while (errno = 0, (pdirent = readdir(dir)) != (struct dirent *)0) {
+		while (errno = 0, (pdirent = readdir(dir)) != NULL) {
 			/* recover the hooks */
 			baselen = strlen(pdirent->d_name) - hook_suf_len;
 			if (baselen < 0)
@@ -9475,7 +9475,7 @@ main(int argc, char *argv[])
 	if (g_ssHandle != 0) SetServiceStatus(g_ssHandle, &ss);
 #endif	/* WIN32 */
 
-	/* 
+	/*
 	 * TPP mode: don't send a restart at startup
 	 * we will send one when we connect to router
 	 */
@@ -9484,7 +9484,7 @@ main(int argc, char *argv[])
 
 #ifdef	WIN32
 	/* put here to minimize chance of hanging up or delaying mom startup */
-	initialize();		
+	initialize();
 #endif	/* WIN32 */
 
 	/*
@@ -9502,7 +9502,7 @@ main(int argc, char *argv[])
 
 		wait_time = default_next_task();
 		end_proc();
-		time_now = time((time_t *)0);
+		time_now = time(NULL);
 
 		dorestrict_user();
 
@@ -9563,8 +9563,8 @@ main(int argc, char *argv[])
 					}
 				}
 			} else if (idle_check == -1) {
-				/* 
-				 * need to activate jobs that may have been idled before 
+				/*
+				 * need to activate jobs that may have been idled before
 				 * restart or SIGHUP
 				 */
 				activate_jobs();
@@ -9594,16 +9594,16 @@ main(int argc, char *argv[])
 			}
 		}
 
-		/* 
-		 * if needed, update server with my state change can be changed in 
+		/*
+		 * if needed, update server with my state change can be changed in
 		 * check_busy() or query_adp()
 		 */
 		if (internal_state_update) {
 			state_to_server(UPDATE_VNODES);
 
 			(void)send_hook_vnl(vnlp_from_hook);
-			/* 
-			 * send_hook_vnl() saves 'vnlp_from_hook' internally, to be freed 
+			/*
+			 * send_hook_vnl() saves 'vnlp_from_hook' internally, to be freed
 			 * later when server acks the request.
 			 */
 			vnlp_from_hook = NULL;
@@ -9684,7 +9684,7 @@ main(int argc, char *argv[])
 
 		/* are there any jobs? No - then don't bother with Resources */
 
-		if ((pjob = (job *)GET_NEXT(svr_alljobs)) == (job *)0)
+		if ((pjob = (job *)GET_NEXT(svr_alljobs)) == NULL)
 			continue;
 
 		if (pbs_conf.pbs_use_tcp == 0)
@@ -10010,7 +10010,7 @@ main(int argc, char *argv[])
  *
  * @return 	string
  * @retval	string holding directory path
- * 
+ *
  */
 
 static char *
@@ -10020,7 +10020,7 @@ mk_dirs(char *base)
 	int   ltop = strlen(pbs_conf.pbs_home_path);
 
 	pn = malloc(ltop + strlen(base) + 2);
-	if (pn == (char *)0)
+	if (pn == NULL)
 #ifdef	WIN32
 		ExitThread(2);
 #else
@@ -10209,7 +10209,7 @@ PbsMomMain(DWORD dwArgc, LPTSTR *rgszArgv)
 	}
 
 	pap = create_arg_param();
-	if (pap == (struct arg_param *)0)
+	if (pap == NULL)
 		return;
 	pap->argc = dwArgc;
 
@@ -10246,7 +10246,7 @@ PbsMomMain(DWORD dwArgc, LPTSTR *rgszArgv)
 }
 
 /**
- * @brief	
+ * @brief
  *	Handler function accepts shutdown and releases mutex so the
  *	PbsMomMain() can know it's time to exit.
  *
@@ -10354,7 +10354,7 @@ struct input_dev_list {
 	{	1,	"/dev/kbd1"  },
 	{	1,	"/dev/hid/mouse_000" },
 	{	1,	"/dev/hid/kbd_000"   },
-	{	0,	(char *)0    }
+	{	0,	NULL    }
 };
 
 /**
@@ -10389,7 +10389,7 @@ setmax(char *dev)
  *	we assume that "time_now" is the current time
  */
 #ifdef	WIN32
-/** 
+/**
  * @brief
  *	gets most recent access time found for idle_touch file
  *
@@ -10480,7 +10480,7 @@ getkbdtime(void)
  * @retval	NULL	Failure
  * @retval	string	Success
  *
- */ 
+ */
 char *
 idletime(struct rm_attribute *attrib)
 {
@@ -10535,7 +10535,7 @@ active_idle(job *pjob, int which)
 		pjob->ji_qs.ji_svrflags |= JOB_SVFLG_Actsuspd;
 		send_wk_job_idle(pjob->ji_qs.ji_jobid, which);
 		if ((pjob->ji_qs.ji_svrflags &
-			(JOB_SVFLG_Suspend|JOB_SVFLG_Actsuspd)) == 0) {			
+			(JOB_SVFLG_Suspend|JOB_SVFLG_Actsuspd)) == 0) {
 			stop_walltime(pjob);
 		}
 	} else {		/* resume */
@@ -10666,9 +10666,9 @@ check_busy(double mla)
 }
 
 #ifndef	WIN32
-/** 
+/**
  * @fn mom_topology
- * @brief	
+ * @brief
  *	compute and export platform-dependent topology information
  *
  * @return	void
@@ -10770,7 +10770,7 @@ mom_topology(void)
 
 			char	attrbuf[1024];
 			char	valbuf[1024];
-			char	*memstr = physmem((struct rm_attribute *) 0);
+			char	*memstr = physmem(NULL);
 
 			if  (vnl_alloc(&vnlp) == NULL) {
 				log_err(PBSE_SYSTEM, __func__, "vnl_alloc failed");
@@ -10816,7 +10816,7 @@ mom_topology(void)
 					PBS_EVENTCLASS_NODE,
 					LOG_DEBUG, __func__, lbuf);
 			}
-			vtp->vnl_modtime = time((time_t *)0);
+			vtp->vnl_modtime = time(NULL);
 			vnlp = vtp;
 
 		} else {

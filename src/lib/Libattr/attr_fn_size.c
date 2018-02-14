@@ -100,7 +100,7 @@ decode_size(struct attribute *patr, char *name, char *rescn, char *val)
 
 	patr->at_val.at_size.atsv_num   = 0;
 	patr->at_val.at_size.atsv_shift = 0;
-	if ((val != (char *)0) && (strlen(val) != 0)) {
+	if ((val != NULL) && (strlen(val) != 0)) {
 		errno = 0;
 		if (to_size(val, &patr->at_val.at_size) != 0)
 			return (PBSE_BADATVAL);
@@ -153,7 +153,7 @@ encode_size(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, i
 	ct = strlen(cvnbuf) + 1;
 
 	pal = attrlist_create(atname, rsname, ct);
-	if (pal == (svrattrl *)0)
+	if (pal == NULL)
 		return (-1);
 
 	(void)memcpy(pal->al_value, cvnbuf, ct);
@@ -237,7 +237,7 @@ set_size(struct attribute *attr, struct attribute *new, enum batch_op op)
  * @param[in] with - pointer to attribute structure
  *
  * @return      int
- * @retval      0	if 1st == 2nd 
+ * @retval      0	if 1st == 2nd
  * @retval      1	if 1st > 2nd
  * @retval	-1 	if 1st < 2nd
  *
@@ -345,7 +345,7 @@ normalize_size(struct size_value *a, struct size_value *b, struct size_value *ta
 
 
 /**
- * @brief 
+ * @brief
  *	Decode the value string into a size_value structure.
  *
  * @param[in] val - String containing the text to convert.
@@ -496,7 +496,7 @@ get_kilobytes_from_attr(struct attribute *attr)
  *	If the value is not set, or the attriute is not type "size", then
  *	zero is returned.
  *
- * @param[in] attr- server attributes 
+ * @param[in] attr- server attributes
  *
  * @return - size in bytes
  *

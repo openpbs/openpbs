@@ -68,7 +68,7 @@
  *		mm = minute, [00, 59]
  *		SS = seconds, [00, 59]
  *
- * @return	time_t 
+ * @return	time_t
  * @retval	number of seconds since epoch (Coordinated Univ. Time)
  * @retval	-1 if error.
  */
@@ -107,7 +107,7 @@ cvtdate(char *datestr)
 			return (-1);
 
 	buf[2] = '\0';
-	clock = time((time_t *)0);
+	clock = time(NULL);
 #ifdef WIN32
 	GetLocalTime(&win_ltm);
 	ltm.tm_year = win_ltm.wYear - 1900; /* unix is counted from 1900 */

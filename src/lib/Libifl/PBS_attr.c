@@ -69,7 +69,7 @@ PBS_val_al(struct attrl *alp)
 	return 0;
 }
 
-/** 
+/**
  * @brief
  *	-frees the attr list
  *
@@ -82,7 +82,7 @@ void
 PBS_free_al(struct attrl *alp)
 {
 	struct attrl *talp;
-	while (alp != (struct attrl *)NULL) {
+	while (alp != NULL) {
 		free(alp->name);
 		free(alp->resource);
 		free(alp->value);
@@ -107,7 +107,7 @@ PBS_free_al(struct attrl *alp)
 int
 PBS_val_aopl(struct attropl *aoplp)
 {
-	while (aoplp != (struct attropl *)NULL) {
+	while (aoplp != NULL) {
 		if ((aoplp->name == 0) || (aoplp == 0))
 			return -1;
 		aoplp = aoplp->next;
@@ -115,7 +115,7 @@ PBS_val_aopl(struct attropl *aoplp)
 	return 0;
 }
 
-/** 
+/**
  * @brief
  *      -frees the attr list with option
  *
@@ -129,7 +129,7 @@ void
 PBS_free_aopl(struct attropl *aoplp)
 {
 	struct attropl *taoplp;
-	while (aoplp != (struct attropl *)NULL) {
+	while (aoplp != NULL) {
 		if (aoplp->name) {
 			free(aoplp->name);
 			aoplp->name = NULL;

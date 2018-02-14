@@ -70,17 +70,17 @@ __pbs_rlsjob(int c, char *jobid, char *holdtype, char *extend)
 	struct attropl aopl;
 
 
-	if ((jobid == (char *)0) || (*jobid == '\0'))
+	if ((jobid == NULL) || (*jobid == '\0'))
 		return (pbs_errno = PBSE_IVALREQ);
 
 	aopl.name = ATTR_h;
-	aopl.resource = (char *)NULL;
-	if ((holdtype == (char *)NULL) || (*holdtype == '\0'))
+	aopl.resource = NULL;
+	if ((holdtype == NULL) || (*holdtype == '\0'))
 		aopl.value = "u";
 	else
 		aopl.value = holdtype;
 	aopl.op = SET;
-	aopl.next = (struct attropl *)NULL;
+	aopl.next = NULL;
 	return PBSD_manager(c, PBS_BATCH_ReleaseJob, MGR_CMD_SET,
 		MGR_OBJ_JOB, jobid, &aopl, extend);
 }

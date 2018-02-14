@@ -88,7 +88,7 @@ req_locatejob(struct batch_request *preq)
 	char 		 *at;
 	int		  i;
 	job		 *pjob;
-	char		 *location = (char *)0;
+	char		 *location = NULL;
 
 	if ((at = strchr(preq->rq_ind.rq_locate, (int)'@')) != NULL)
 		*at = '\0';			/* strip off @server_name */
@@ -111,7 +111,7 @@ req_locatejob(struct batch_request *preq)
 	if (pjob && (pjob->ji_qs.ji_state != JOB_STATE_MOVED)) {
 		location = pbs_server_name;
 	} else {
-		int	job_array_ret;	
+		int	job_array_ret;
 		job_array_ret = is_job_array(preq->rq_ind.rq_locate);
 		if ((job_array_ret == IS_ARRAY_Single) || (job_array_ret == IS_ARRAY_Range)) {
 			int i;

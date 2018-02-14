@@ -56,11 +56,11 @@ static char	value_buf[ENV_BUF_SIZE] = "";
 /**
  * @brief
  * 	_setenv_win: Set an environment variable
- *  
+ *
  * @param[in] key - string holding key for environment variable
  * @param[in] value - string holding value for environment variable
  * @param[in] interrupt - int value to override existing value, not used in Windows
- *	
+ *
  * @return	int
  * @retval	0		success
  * @retval	non-zero	error
@@ -85,11 +85,11 @@ _setenv_win(char* key, char* value, int overwrite)
 /**
  * @brief
  * 	_getenv_win: Get value of an environment variable
- *  
+ *
  * @param[in] key - string holding key for environment variable
  * @param[in] value - string buffer where value for environment variable will be returned
  * @param[in] buffer size - int value to specify max length
- *	
+ *
  * @return	char*
  * @retval	value of key in the environment 	success
  * @retval	NULL								error
@@ -240,5 +240,5 @@ get_saved_env(char *e)
 		return (temp_path);
 	if (strcmp(e, "USERDOMAIN") == 0)
 		return (user_domain);
-	return (NULL);
+	return NULL;
 }

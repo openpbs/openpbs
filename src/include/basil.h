@@ -342,7 +342,7 @@ static const char *basil_supported_versions[] __attribute__((unused)) = {
 	BASIL_VAL_VERSION_1_2,
 	BASIL_VAL_VERSION_1_1,
 	BASIL_VAL_VERSION_1_0,
-	(char *) 0
+	NULL
 };
 
 /*

@@ -71,8 +71,8 @@ __pbs_orderjob(int c, char *job1, char *job2, char *extend)
 	int sock;
 
 
-	if ((job1 == (char *)0) || (*job1 == '\0') ||
-		(job2 == (char *)0) || (*job2 == '\0'))
+	if ((job1 == NULL) || (*job1 == '\0') ||
+		(job2 == NULL) || (*job2 == '\0'))
 		return (pbs_errno = PBSE_IVALREQ);
 
 	sock = connection[c].ch_socket;

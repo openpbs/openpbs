@@ -192,16 +192,16 @@ pbs_db_conn_t *conn = NULL;  /* pointer to work out a valid connection - later a
 
 int		stalone = 0;	/* is program running not as a service ? */
 #ifdef WIN32
-char		*acctlog_spacechar = (char *)0; /* subst for spaces appearing */
+char		*acctlog_spacechar = NULL; /* subst for spaces appearing */
 /* in username, groupname,    */
 /* account name, and script   */
 /* entries of acct log file   */
 #endif
-char	       *acct_file = (char *)0;
+char	       *acct_file = NULL;
 char	        daemonname[PBS_MAXHOSTNAME+8];
 int		used_unix_licenses  = 0;
 int		used_linix_licenses = 0;
-char	       *log_file  = (char *)0;
+char	       *log_file  = NULL;
 char	       *path_svrdb;
 char	       *path_acct;
 char           *path_usedlicenses;
@@ -228,7 +228,7 @@ pbs_net_t	pbs_server_addr;
 unsigned int	pbs_server_port_dis;
 /*
  * the names of the Server:
- *    pbs_server_name - from PBS_SERVER_HOST_NAME 
+ *    pbs_server_name - from PBS_SERVER_HOST_NAME
  *	  server_name - from PBS_SERVER
  *	  server_host - Set as follows:
  *	  		1. FQDN of pbs_server_name if set
@@ -242,7 +242,7 @@ unsigned int	pbs_server_port_dis;
  * Add new optional entry in PBS Configuration whose value is the fully
  * qualified domain name (FQDN) of the host on which the PBS Server is
  * running.
- *	I.1.2.3.1	This name is used by clients to contact the Server. 
+ *	I.1.2.3.1	This name is used by clients to contact the Server.
  *	I.1.2.3.2	If PBS Failover is configured (PBS_PRIMARY and
  *			PBS_SECONDARY in the PBS Configuration), this symbol
  *			and its value will be ignored and the values of
@@ -1046,7 +1046,7 @@ main(int argc, char **argv)
 			SetServiceStatus(g_ssHandle, &ss);
 		return (0);
 	}
-	winsock_init();	
+	winsock_init();
 #endif
 
 	/* find out who we are (hostname) */
@@ -1251,9 +1251,9 @@ main(int argc, char **argv)
 	}
 
 #ifdef WIN32
-	if (acctlog_spacechar == (char *)0) {
+	if (acctlog_spacechar == NULL) {
 		acctlog_spacechar = strdup("");
-		if (acctlog_spacechar == (char *)0) {
+		if (acctlog_spacechar == NULL) {
 			(void)fprintf(stderr,
 				"%s: acctlog_spacechar malloc failed\n",
 				argv[0]);
@@ -1847,7 +1847,7 @@ try_db_again:
 			/* since pbs_leaf_name was not specified, determine all IPs */
 			nodename = get_all_ips(host, log_buffer, sizeof(log_buffer) - 1);
 		}
-			
+
 		if (!nodename) {
 			log_err(-1, "pbsd_main", log_buffer);
 			fprintf(stderr, "%s\n", "Unable to determine TPP node name");
@@ -2194,13 +2194,13 @@ try_db_again:
 			(*state < SV_STATE_SECIDLE) &&
 			(server.sv_jobstates[JOB_STATE_RUNNING] == 0) &&
 			(server.sv_jobstates[JOB_STATE_EXITING] == 0) &&
-			((void *)GET_NEXT(task_list_event) == (void *)0))
+			((void *)GET_NEXT(task_list_event) == NULL))
 			*state = SV_STATE_DOWN;
 	}
 	DBPRT(("Server out of main loop, state is %ld\n", *state))
 
 	svr_save_db(&server, SVR_SAVE_FULL);	/* final recording of server */
-	track_save((struct work_task *)0);	/* save tracking data	     */
+	track_save(NULL);	/* save tracking data	     */
 
 	/* save any jobs that need saving */
 	for (pjob = (job *)GET_NEXT(svr_alljobs);
@@ -2713,7 +2713,7 @@ PbsServerMain(DWORD dwArgc, LPTSTR *rgszArgv)
 	}
 
 	pap = create_arg_param();
-	if (pap == (struct arg_param *)0)
+	if (pap == NULL)
 		return;
 	pap->argc = dwArgc;
 

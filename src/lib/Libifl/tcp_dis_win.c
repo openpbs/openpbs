@@ -168,7 +168,7 @@ static struct tcp_chan *DIS_find_tcp_chan(int fd)
 		found = found->c_link;
 	}
 	if (found == NULL)
-		return (NULL);
+		return NULL;
 
 	return &found->c_tcp;
 }
@@ -464,8 +464,8 @@ tcp_readi(int fd)
 
 		FD_ZERO(&readset);
 		FD_SET((unsigned int)fd, &readset);
-		i = select(FD_SETSIZE, &readset, (fd_set *)0,
-			(fd_set *)0, &timeout);
+		i = select(FD_SETSIZE, &readset, NULL,
+			NULL, &timeout);
 		if (pbs_tcp_interrupt)
 			break;
 #ifdef WIN32
@@ -511,7 +511,7 @@ tcp_readi(int fd)
  *
  * @param[in] sock - socket descriptor
  * @param[in] rpp - indication whether to use rpp or not
- * 
+ *
  * @par	Functionality:
  * 	calls DIS_tcp_wflush or rpp_flush based on input parameter rpp
  *
@@ -615,7 +615,7 @@ DIS_tcp_clear(struct tcpdisbuf *tp)
 	tp->tdis_eod   = 0;
 }
 
-/** 
+/**
  * @brief
  *	-reset setup for tcp
  *
@@ -784,7 +784,7 @@ tcp_rcommit(int fd, int commit_flag)
  * @brief
  * 	-tcp_wcommit - tcp/dis support routine to commit/uncommit write data
  *
- * @param[in] fd - file descriptor 
+ * @param[in] fd - file descriptor
  * @param[in] flag - indication to commit or not
  *
  * @return      int

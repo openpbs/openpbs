@@ -89,11 +89,11 @@ enum job_file {
 };
 
 #define MH(type) (type *)malloc(sizeof(type))
-#define M(var,type) if( (var = MH(type)) == (type *)NULL ) \
+#define M(var,type) if( (var = MH(type)) == NULL ) \
 	{ return PBSE_SYSTEM; }
-#define STRLEN(s) ((s==(char *)NULL)?0:strlen(s))
-#define Str2QB(s) ((s==(char *)NULL)?(struct qbuf *)NULL:str2qb(s, strlen(s), 0))
-#define QB2Str(q) ((q==(struct qbuf *)NULL)?(char *)NULL:qb2str(q))
+#define STRLEN(s) ((s==NULL)?0:strlen(s))
+#define Str2QB(s) ((s==NULL)?NULL:str2qb(s, strlen(s), 0))
+#define QB2Str(q) ((q==NULL)?NULL:qb2str(q))
 
 /* This variable has been moved to Thread local storage
  * The define points to a function pointer which locates

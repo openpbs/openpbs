@@ -137,7 +137,7 @@ decode_b(struct attribute *patr, char *name, char *rescn, char *val)
 {
 	int i;
 
-	if ((val == (char *)0) || (strlen(val) == 0)) {
+	if ((val == NULL) || (strlen(val) == 0)) {
 		patr->at_flags = (patr->at_flags & ~ATR_VFLAG_SET) |
 			(ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE);
 		patr->at_val.at_long = 0;		/* default to false */
@@ -189,7 +189,7 @@ encode_b(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int 
 	ct = strlen(value) + 1;
 
 	pal = attrlist_create(atname, rsname, ct);
-	if (pal == (svrattrl *)0)
+	if (pal == NULL)
 		return (-1);
 	strcpy(pal->al_value, value);
 	pal->al_flags = attr->at_flags;

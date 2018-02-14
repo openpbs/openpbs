@@ -1157,7 +1157,7 @@ hpcbp_parse_pbsnodes_response(struct soap *soap,
 			break;
 		}
 	}
-	(*p_vnlp)->vnl_modtime = time((time_t *)0);
+	(*p_vnlp)->vnl_modtime = time(NULL);
 	return;
 
 hpcp_vn_create_exit:

@@ -55,10 +55,10 @@
 
 
 /**
- * @brief 
- *	Basically, create a dacl allowing only access to Administrators-type groups 
- * 	This also will add the 'owner_sid' to this permission list giving it 
- * 	Full Control 
+ * @brief
+ *	Basically, create a dacl allowing only access to Administrators-type groups
+ * 	This also will add the 'owner_sid' to this permission list giving it
+ * 	Full Control
  *
  * @param[in]  path - the target file/directory
  * @param[in]  user - the username to assign ownership
@@ -90,7 +90,7 @@ create_secure_dacl(char *user, ACCESS_MASK mask, SID *owner_sid)
 		if (grp[k] == NULL) {
 			sprintf(logb, "failed to copy owner_sid");
 			log_err(-1, __func__, logb);
-			return (NULL);
+			return NULL;
 		}
 		k++;
 	}
@@ -124,7 +124,7 @@ create_secure_dacl(char *user, ACCESS_MASK mask, SID *owner_sid)
 	if (ndacl == NULL) {
 		sprintf(logb, "failed to malloc %d bytes", cbAcl);
 		log_err(-1, __func__, logb);
-		return (NULL);
+		return NULL;
 	}
 	InitializeAcl(ndacl, cbAcl, ACL_REVISION);
 
@@ -203,7 +203,7 @@ secure_file(char *path, char *user, ACCESS_MASK mask)
 
 	/* make PBS service account as the owner */
 	usid = create_administrators_sid();
-	
+
 	if (usid == NULL) {
 		usid   = getusersid(getlogin());
 	}
@@ -236,7 +236,7 @@ secure_file(char *path, char *user, ACCESS_MASK mask)
 	} else {
 		gsid = NULL;
 	}
-	
+
 	if (gsid) {
 		if (SetSecurityDescriptorGroup(&sd, gsid, FALSE) == 0) {
 			sprintf(logb, "error setting group for file %s", path);
@@ -297,7 +297,7 @@ secure_file(char *path, char *user, ACCESS_MASK mask)
 
 /**
  * @brief
- * 	Like create_secure_dacl() but for 2 users. 
+ * 	Like create_secure_dacl() but for 2 users.
  *
  * @param[in]  user - the username to assign ownership
  * @param[in]  mask - the file permission mask to assign
@@ -331,7 +331,7 @@ create_secure_dacl2(char *user, ACCESS_MASK mask, char *user2, ACCESS_MASK mask2
 		if (grp[k] == NULL) {
 			sprintf(logb, "failed to copy owner_sid");
 			log_err(-1, __func__, logb);
-			return (NULL);
+			return NULL;
 		}
 		k++;
 	}
@@ -379,7 +379,7 @@ create_secure_dacl2(char *user, ACCESS_MASK mask, char *user2, ACCESS_MASK mask2
 	if (ndacl == NULL) {
 		sprintf(logb, "failed to malloc %d bytes", cbAcl);
 		log_err(-1, __func__, logb);
-		return (NULL);
+		return NULL;
 	}
 	InitializeAcl(ndacl, cbAcl, ACL_REVISION);
 
@@ -419,8 +419,8 @@ create_secure_dacl2(char *user, ACCESS_MASK mask, char *user2, ACCESS_MASK mask2
 
 /**
  * @brief
- *	Like secure_file() except we have 2 other user permissions to add to 
- * 	path 
+ *	Like secure_file() except we have 2 other user permissions to add to
+ * 	path
  *
  * @param[in]  user - the username to assign ownership
  * @param[in]  mask - the file permission mask to assign
@@ -462,7 +462,7 @@ secure_file2(char *path, char *user, ACCESS_MASK mask, char *user2, ACCESS_MASK 
 
 	/* make PBS service account as the owner */
 	usid = create_administrators_sid();
-	
+
 	if (usid == NULL)
 		usid = getusersid(getlogin());
 
@@ -554,7 +554,7 @@ secure_file2(char *path, char *user, ACCESS_MASK mask, char *user2, ACCESS_MASK 
 
 /**
  * @brief
- *	initialize the accessinfo 
+ *	initialize the accessinfo
  *
  * @param[out] acc - pointer to access info
  * @param[in]  len - length
@@ -581,8 +581,8 @@ accessinfo_init(struct accessinfo *acc, int len)
  * @param[in] mask - the file permission mask to assign
  *
  * @return	int
- * @retval	1 	if an entry is added; 
- * @retval	0 	if an entry is updated; 
+ * @retval	1 	if an entry is added;
+ * @retval	0 	if an entry is updated;
  * @retval	-1 	if no entry was added;
  *
  */
@@ -612,7 +612,7 @@ accessinfo_add(struct accessinfo *acc, int len, char *group, int mask)
  * @param[in] len - length of access info
  *
  * @return	int
- * @retval	1 	if acc has all zeros for mask; 
+ * @retval	1 	if acc has all zeros for mask;
  * @retval	0	otherwise
  *
  */
@@ -630,7 +630,7 @@ accessinfo_mask_allzero(struct accessinfo *acc, int len)
 }
 
 /**
- * @brief 
+ * @brief
  *      frees access info entry from list.
  *
  * @param[in] acc - pointer to access info
@@ -736,7 +736,7 @@ accessinfo_values(struct accessinfo *acc, int len)
  * 	A bug is in PBS-windows interaction partucularly when windows is shutdown
  *	and the file's perms get corrupted. This usually happens in the
  *	middle of a move <fname.new> <fname> operation. This function fixes this
- *	problem allowing <fname.*> to be accessible to the current process. 
+ *	problem allowing <fname.*> to be accessible to the current process.
  *
  * @param[in] fname - filename
  *
@@ -755,7 +755,7 @@ fix_perms(char *fname)
 
 /**
  * @brief
- *	The same as fix_perms() except the two file names are explicitly given 
+ *	The same as fix_perms() except the two file names are explicitly given
  *
  * @param[in] fname1 - filename
  * @param[in] fname2 - filename
@@ -905,14 +905,14 @@ chkerr:
  * @brief
  * 	perm_granted: check whether the user granted with access permission.
  *
- * @param[in] path - file path. 
- * @param[in] perm_mask - permission mask 
+ * @param[in] path - file path.
+ * @param[in] perm_mask - permission mask
  * @param[in] user - user name
- * @param[out] realuser - full username 
+ * @param[out] realuser - full username
  *
  * @return 	int
  * @retval	0 	if user has been grated the permission in 'perm_mask'
- *			for the file specified in path. Otherwise, 
+ *			for the file specified in path. Otherwise,
  * @retval 	1 	errmsg is filled in with the error message.
  *			This also returns in 'realuser' the full user name of 'user' in the form
  *			"dom\user0".
@@ -1035,7 +1035,7 @@ perm_chkerr:
  */
 static void
 create_dir_admin_only(char *path)
-{	
+{
 	char	logb[LOG_BUF_SIZE] = {'\0' } ;
 
 	if (CreateDirectory(path, 0) != 0) {
@@ -1052,7 +1052,7 @@ create_dir_admin_only(char *path)
 /**
  * @brief
  *      create read directory in given path,
- *      
+ *
  * @param[in] path - path where directory to be created
  */
 
@@ -1114,11 +1114,11 @@ make_dir_files_admin_read(char *path)
 	secure_file(path, "Administrators", READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED);
 	/* If the item is not a directory, we are done. */
 	dir = opendir(path);
-	if (dir == (DIR *)0) {
+	if (dir == NULL) {
 		return;
 	}
 	/* Recurse into the directory. */
-	while (errno = 0, (pdirent = readdir(dir)) != (struct dirent *)0) {
+	while (errno = 0, (pdirent = readdir(dir)) != NULL) {
 		/* Ignore the "." and ".." entries. */
 		if (pdirent->d_name[0] == '.') {
 			if (pdirent->d_name[1] == '\0')
@@ -1150,7 +1150,7 @@ make_dir_files_admin_read(char *path)
  */
 static void
 make_dir_files_everyone_read(char *path)
-{	
+{
 	char	logb[LOG_BUF_SIZE] = {'\0' } ;
 	DIR	*dir;
 	struct	dirent *pdirent;
@@ -1171,18 +1171,18 @@ make_dir_files_everyone_read(char *path)
 		log_err(-1, "make_dir_files_everyone_read", logb);
 		return;
 	}
-	if (!S_ISDIR(sb.st_mode)) {		
+	if (!S_ISDIR(sb.st_mode)) {
 		return;
 	}
-	
+
 	dir = opendir(path);
-	if (dir == (DIR *)0) {
+	if (dir == NULL) {
 		sprintf(logb,"readdir error; %s", path);
 		log_err(-1, "make_dir_files_everyone_read", logb);
 		return;
 	}
 	/* Recurse into the directory. */
-	while (errno = 0, (pdirent = readdir(dir)) != (struct dirent *)0) {
+	while (errno = 0, (pdirent = readdir(dir)) != NULL) {
 		/* Ignore the "." and ".." entries. */
 		if (pdirent->d_name[0] == '.') {
 			if (pdirent->d_name[1] == '\0')
@@ -1227,11 +1227,11 @@ make_dir_files_service_account_read(char *path)
 		username, READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED);
 
 	dir = opendir(path);
-	if (dir == (DIR *)0) {
+	if (dir == NULL) {
 		return;
 	}
 
-	while (errno = 0, (pdirent = readdir(dir)) != (struct dirent *)0) {
+	while (errno = 0, (pdirent = readdir(dir)) != NULL) {
 		if (strcmp(pdirent->d_name, ".") == 0 ||
 			strcmp(pdirent->d_name, "..") == 0)
 			continue;
@@ -1481,12 +1481,12 @@ secure_mom_files(void)
 
 	dir = opendir(path);
 
-	if (dir != (DIR *)0) {
+	if (dir != NULL) {
 		struct dirent *pdirent;
 		char fpath[MAXPATHLEN+1];
 
 		while (errno = 0,
-			(pdirent = readdir(dir)) != (struct dirent *)0) {
+			(pdirent = readdir(dir)) != NULL) {
 			char *p;
 			if (p = strrchr(pdirent->d_name, '.')) {
 				int baselen = strlen(p)-4;
@@ -1568,12 +1568,12 @@ secure_sched_files()
 
 	dir = opendir(path);
 
-	if (dir != (DIR *)0) {
+	if (dir != NULL) {
 		struct dirent *pdirent;
 		char fpath[MAXPATHLEN+1];
 
 		while (errno = 0,
-			(pdirent = readdir(dir)) != (struct dirent *)0) {
+			(pdirent = readdir(dir)) != NULL) {
 			if( (strcmp(pdirent->d_name, ".") != 0) && \
 		      (strcmp(pdirent->d_name, "..") != 0) ) {
 				sprintf(fpath, "%s/%s", path, pdirent->d_name);
@@ -1622,7 +1622,7 @@ secure_rshd_files()
 }
 
 /**
- * @brief 
+ * @brief
  *	Secures all the files' permissions in home_path to full control
  *	for administrators group and to read for everyone group.
  *

@@ -222,7 +222,7 @@ read_attr(int fd)
 		return 0;
 
 	pal = (svrattrl *)malloc(tempal.al_tsize);
-	if (pal == (svrattrl *)0) {
+	if (pal == NULL) {
 		fprintf(stderr, "malloc failed\n");
 		exit(1);
 	}
@@ -240,11 +240,11 @@ read_attr(int fd)
 	if (pal->al_rescln)
 		pal->al_resc = pal->al_name + pal->al_nameln;
 	else
-		pal->al_resc = (char *)0;
+		pal->al_resc = NULL;
 	if (pal->al_valln)
 		pal->al_value = pal->al_name + pal->al_nameln + pal->al_rescln;
 	else
-		pal->al_value = (char *)0;
+		pal->al_value = NULL;
 
 	printf("%s", pal->al_name);
 	if (pal->al_resc)
@@ -562,7 +562,7 @@ char *argv[];
 			 * the job-id is given to open the job file in mom_priv
 			 */
 			job_id = (char *) malloc(strlen(jobfile)+ strlen(pbs_conf.pbs_server_name)+2);
-			if (job_id == (char *)0) {
+			if (job_id == NULL) {
 				perror("malloc failed");
 				exit(1);
 			}
@@ -575,7 +575,7 @@ char *argv[];
 			/*frame the jobfile to contain $PBS_HOME/mom_priv/jobs/jobid.JB */
 			jobfile = (char *) malloc(strlen(pbs_conf.pbs_home_path)+(strlen(job_id))
 				+(strlen("/mom_priv/jobs/.JB"))+1);
-			if (jobfile == (char *) 0) {
+			if (jobfile == NULL) {
 				perror("malloc failed");
 				free(job_id);
 				exit(1);

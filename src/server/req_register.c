@@ -194,7 +194,7 @@ req_register(struct batch_request *preq)
 
 	/* find the "parent" job specified in the request */
 
-	if ((pjob = find_job(preq->rq_ind.rq_register.rq_parent)) == (job *)0) {
+	if ((pjob = find_job(preq->rq_ind.rq_register.rq_parent)) == NULL) {
 
 		/*
 		 * job not found... if server is initializing, it may not
@@ -441,7 +441,7 @@ post_doq(struct work_task *pwt)
 		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
 			jobid, log_buffer);
 		pjob = find_job(jobid);
-		if ((msg = pbse_to_txt(preq->rq_reply.brp_code)) != (char *)0) {
+		if ((msg = pbse_to_txt(preq->rq_reply.brp_code)) != NULL) {
 			(void)strcat(log_buffer, " ");
 			(void)strcat(log_buffer, msg);
 		}
@@ -451,7 +451,7 @@ post_doq(struct work_task *pwt)
 				 * we don't want to change what goes into accounting log via job_abt
 				 */
 				char log_msg[LOG_BUF_SIZE];
-				snprintf(log_msg, sizeof(log_msg), "%s, %s", msg_job_moved, 
+				snprintf(log_msg, sizeof(log_msg), "%s, %s", msg_job_moved,
 					"sending dependency request to remote server");
 				log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, jobid, log_msg);
 				ppjob = find_job(preq->rq_ind.rq_register.rq_parent);
@@ -729,7 +729,7 @@ depend_on_term(job *pjob)
 			case JOB_DEPEND_TYPE_BEFOREANY:
 				op = JOB_DEPEND_OP_RELEASE;
 				break;
-			
+
 		}
 
 		if (op != -1) {
@@ -763,7 +763,7 @@ set_depend_hold(job *pjob, attribute *pattr)
 	int		loop = 1;
 	int		newstate;
 	int		newsubst;
-	struct depend  *pdp = (struct depend *)0;
+	struct depend  *pdp = NULL;
 	int		substate = -1;
 
 	if (pattr->at_flags & ATR_VFLAG_SET)
@@ -815,12 +815,12 @@ set_depend_hold(job *pjob, attribute *pattr)
  * @param[in]	pattr	-	attribute structure
  *
  * @return	dependent job structure
- * @retval	(struct depend *)0	: fail
+ * @retval	NULL	: fail
  */
 
 static struct depend *find_depend(int type, attribute *pattr)
 {
-	struct depend *pdep = (struct depend *)0;
+	struct depend *pdep = NULL;
 
 #ifdef NAS /* localmod 109 */
 	sprintf(log_buffer, "find_depend: t=%d, p.f=%#x, p.t=%#x", type, (int)pattr->at_flags, (int)pattr->at_type);
@@ -851,12 +851,12 @@ static struct depend *find_depend(int type, attribute *pattr)
  * @param[in,out]	pattr	-	attribute structure
  *
  * @return	dependent job structure
- * @retval	(struct depend *)0	: fail
+ * @retval	NULL	: fail
  */
 
 static struct depend *make_depend(int type, attribute *pattr)
 {
-	struct depend *pdep = (struct depend *)0;
+	struct depend *pdep = NULL;
 
 	pdep = (struct depend *)malloc(sizeof(struct depend));
 	if (pdep) {
@@ -891,8 +891,8 @@ register_dep(attribute *pattr, struct batch_request *preq, int type, int *made)
 	/* change into the mirror image type */
 
 	type ^= (JOB_DEPEND_TYPE_BEFORESTART - JOB_DEPEND_TYPE_AFTERSTART);
-	if ((pdep = find_depend(type, pattr)) == (struct depend *)0) {
-		if ((pdep = make_depend(type, pattr)) == (struct depend *)0)
+	if ((pdep = find_depend(type, pattr)) == NULL) {
+		if ((pdep = make_depend(type, pattr)) == NULL)
 			return (PBSE_SYSTEM);
 	}
 	if ((pdj = find_dependjob(pdep,
@@ -903,7 +903,7 @@ register_dep(attribute *pattr, struct batch_request *preq, int type, int *made)
 	} else if ((pdj = make_dependjob(pdep,
 		preq->rq_ind.rq_register.rq_child,
 		preq->rq_ind.rq_register.rq_svr)) ==
-		(struct depend_job *)0) {
+		NULL) {
 		return (PBSE_SYSTEM);
 	} else
 		*made = 1;
@@ -1023,7 +1023,7 @@ send_depend_req(job *pjob, struct depend_job *pparent, int type, int op, int sch
 	struct batch_request *preq;
 
 	preq = alloc_br(PBS_BATCH_RegistDep);
-	if (preq == (struct batch_request *)0) {
+	if (preq == NULL) {
 		log_err(errno, __func__, msg_err_malloc);
 		return (PBSE_SYSTEM);
 	}
@@ -1047,7 +1047,7 @@ send_depend_req(job *pjob, struct depend_job *pparent, int type, int op, int sch
 	preq->rq_ind.rq_register.rq_op = op;
 	(void)strcpy(preq->rq_host, pparent->dc_svr);  /* for issue_to_svr() */
 
-	preq->rq_ind.rq_register.rq_cost = 0;	
+	preq->rq_ind.rq_register.rq_cost = 0;
 
 	if (issue_to_svr(pparent->dc_svr, preq, postfunc) == -1) {
 		(void)sprintf(log_buffer, "Unable to perform dependency with job %s", pparent->dc_child);
@@ -1095,7 +1095,7 @@ struct dependnames {
 	{JOB_DEPEND_TYPE_BEFORENOTOK, "beforenotok" },
 	{JOB_DEPEND_TYPE_BEFOREANY,  "beforeany" },
 	{JOB_DEPEND_TYPE_ON,         "on" },
-	{-1,			     (char *)0 }
+	{-1,			     NULL }
 };
 
 
@@ -1120,7 +1120,7 @@ decode_depend(struct attribute *patr, char *name, char *rescn, char *val)
 	int		 rc;
 	char		*valwd;
 
-	if ((val == (char *)0) || (*val == 0)) {
+	if ((val == NULL) || (*val == 0)) {
 		free_depend(patr);
 		patr->at_flags |= ATR_VFLAG_MODIFY;
 		return (0);
@@ -1136,7 +1136,7 @@ decode_depend(struct attribute *patr, char *name, char *rescn, char *val)
 			free_depend(patr);
 			return (rc);
 		}
-		valwd = parse_comma_string((char *)0);
+		valwd = parse_comma_string(NULL);
 	}
 
 	patr->at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
@@ -1242,7 +1242,7 @@ encode_depend(attribute *attr, pbs_list_head *phead, char *atname, char *rsname,
 		return (0);	/* no values */
 
 	pdp = (struct depend *)GET_NEXT(attr->at_val.at_list);
-	if (pdp == (struct depend *)0)
+	if (pdp == NULL)
 		return (0);
 
 	/* scan dependencies types to compute needed base size of svrattrl */
@@ -1260,7 +1260,7 @@ encode_depend(attribute *attr, pbs_list_head *phead, char *atname, char *rsname,
 		}
 	}
 
-	if ((pal = attrlist_create(atname, rsname, ct)) == (svrattrl *)0) {
+	if ((pal = attrlist_create(atname, rsname, ct)) == NULL) {
 		return (-1);
 	}
 	*pal->al_value = '\0';
@@ -1300,7 +1300,7 @@ encode_depend(attribute *attr, pbs_list_head *phead, char *atname, char *rsname,
 		/* so remove this svrattrl from ths list		*/
 		(void)free(pal);
 		if (rtnl)
-			*rtnl = (svrattrl *)0;
+			*rtnl = NULL;
 		return (0);
 	}
 }
@@ -1442,7 +1442,7 @@ build_depend(attribute *pattr, char *value)
 	 * struct;  set_depend will "remove" any of that kind.
 	 */
 
-	if ((nxwrd = strchr(value, (int)':')) != (char *)0)
+	if ((nxwrd = strchr(value, (int)':')) != NULL)
 		*nxwrd++ = '\0';
 
 
@@ -1457,14 +1457,14 @@ build_depend(attribute *pattr, char *value)
 	/* what types do we have already? */
 
 	for (i=0; i<JOB_DEPEND_NUMBER_TYPES; i++)
-		have[i] = (struct depend *)0;
+		have[i] = NULL;
 	for (pd = (struct depend *)GET_NEXT(pattr->at_val.at_list);
 		pd; pd = (struct depend *)GET_NEXT(pd->dp_link))
 		have[pd->dp_type] = pd;
 
-	if ((pd = have[type]) == (struct depend *)0) {
+	if ((pd = have[type]) == NULL) {
 		pd = make_depend(type, pattr);
-		if (pd == (struct depend *)0)
+		if (pd == NULL)
 			return (PBSE_SYSTEM);
 	}
 

@@ -188,7 +188,7 @@ parse_stage_list(char *list)
 
 	if (strlen(list) == 0) return (1);
 
-	if ((l = (char *)malloc(strlen(list)+1)) == (char *)0) {
+	if ((l = (char *)malloc(strlen(list)+1)) == NULL) {
 		fprintf(stderr, "Out of memory.\n");
 		exit(1);
 	}

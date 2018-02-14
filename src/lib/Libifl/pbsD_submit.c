@@ -82,7 +82,7 @@ struct cred_info {
  *
  */
 char *
-pbs_submit_with_cred(int c, struct attropl  *attrib, char *script, 
+pbs_submit_with_cred(int c, struct attropl  *attrib, char *script,
 			char *destination, char  *extend, int credtype,
 			size_t credlen, char  *credbuf)
 {
@@ -92,19 +92,19 @@ pbs_submit_with_cred(int c, struct attropl  *attrib, char *script,
 
 	/* initialize the thread context data, if not already initialized */
 	if (pbs_client_thread_init_thread_context() != 0)
-		return (char *)NULL;
+		return NULL;
 
 	/* lock pthread mutex here for this connection */
 	/* blocking call, waits for mutex release */
 	if (pbs_client_thread_lock_connection(c) != 0)
-		return (char *) NULL;
+		return NULL;
 
 	ptr = (struct pbs_client_thread_context *)
 		pbs_client_thread_get_context_data();
 	if (!ptr) {
 		pbs_errno = PBSE_INTERNAL;
 		(void)pbs_client_thread_unlock_connection(c);
-		return (char *) NULL;
+		return NULL;
 	}
 
 	if (!ptr->th_cred_info) {
@@ -112,7 +112,7 @@ pbs_submit_with_cred(int c, struct attropl  *attrib, char *script,
 		if (!cred_info) {
 			pbs_errno = PBSE_INTERNAL;
 			(void)pbs_client_thread_unlock_connection(c);
-			return (char *) NULL;
+			return NULL;
 		}
 		ptr->th_cred_info = (void *) cred_info;
 	} else
@@ -132,7 +132,7 @@ pbs_submit_with_cred(int c, struct attropl  *attrib, char *script,
 
 	/* unlock the thread lock and update the thread context data */
 	if (pbs_client_thread_unlock_connection(c) != 0)
-		return (char *) NULL;
+		return NULL;
 
 	return ret;
 }
@@ -156,7 +156,7 @@ char *
 __pbs_submit(int c, struct attropl  *attrib, char *script, char *destination, char *extend)
 {
 	struct attropl		*pal;
-	char			*return_jobid = (char *)NULL;
+	char			*return_jobid = NULL;
 	int			rc;
 	struct pbs_client_thread_context *ptr;
 	struct cred_info	*cred_info = NULL;
@@ -185,7 +185,7 @@ __pbs_submit(int c, struct attropl  *attrib, char *script, char *destination, ch
 
 	/* first be sure that the script is readable if specified ... */
 
-	if ((script != (char *)0) && (*script != '\0')) {
+	if ((script != NULL) && (*script != '\0')) {
 		if (access(script, R_OK) != 0) {
 			pbs_errno = PBSE_BADSCRIPT;
 			if ((connection[c].ch_errtxt = strdup("cannot access script file")) == NULL)
@@ -201,12 +201,12 @@ __pbs_submit(int c, struct attropl  *attrib, char *script, char *destination, ch
 
 	/* Queue job with null string for job id */
 	return_jobid = PBSD_queuejob(c, "", destination, attrib, extend, 0, NULL);
-	if (return_jobid == (char *)NULL)
+	if (return_jobid == NULL)
 		goto error;
 
 	/* send script across */
 
-	if ((script != (char *)0) && (*script != '\0')) {
+	if ((script != NULL) && (*script != '\0')) {
 		if ((rc = PBSD_jscript(c, script, 0, NULL)) != 0) {
 			if (rc == PBSE_JOBSCRIPTMAXSIZE)
 				pbs_errno = rc;
@@ -236,10 +236,10 @@ __pbs_submit(int c, struct attropl  *attrib, char *script, char *destination, ch
 
 	/* unlock the thread lock and update the thread context data */
 	if (pbs_client_thread_unlock_connection(c) != 0)
-		return (char *) NULL;
+		return NULL;
 
 	return return_jobid;
 error:
 	(void)pbs_client_thread_unlock_connection(c);
-	return (char *)NULL;
+	return NULL;
 }

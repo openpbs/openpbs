@@ -96,7 +96,7 @@ find_index(pid_t sid, metaarray *sesslist)
  * @param[in] pidlist_ptr - pointer to pointer to sidpidlist_t structure
  *
  * @return	int
- * @retval	0 	for success, 
+ * @retval	0 	for success,
  * @retval	1 	for fail.
  */
 static int
@@ -167,7 +167,7 @@ sidpidlist_add(pid_t sid, pid_t pid, pid_t ppid, sidpidlist_t **pidlist_ptr)
  * @param[in] input_sidlist - pointer to input session array
  *
  * @return	int
- * @retval	0 	if successfully cached information; 
+ * @retval	0 	if successfully cached information;
  * @retval	1 	otherwise.
  * Note:    be sure to sidlist_cache_free() when info no longer needed.
  */
@@ -261,8 +261,8 @@ sidlist_cache_info(metaarray *input_sidlist)
 
 /**
  * @brief
- * 	sidlist_cache_free: frees up data allocated to cache_sidlist. 
- * 
+ * 	sidlist_cache_free: frees up data allocated to cache_sidlist.
+ *
  * @return	Void
  */
 void
@@ -311,7 +311,7 @@ sidlist_cache_print(void)
  *
  * @return 	structure handle
  * @retval	ponter to list of pids from session(sidpidlist_t)
- * 
+ *
  */
 
 sidpidlist_t *
@@ -350,7 +350,7 @@ sidpidlist_get(pid_t sid)
 	/* Change working directory to the pinfo dir, and open a handle on it. */
 	if (chdir(PROC_PINFO_PATH) || ((dirhandle = opendir(".")) == NULL)) {
 		log_err(errno, __func__, PROC_PINFO_PATH);
-		return (NULL);
+		return NULL;
 	}
 	/*
 	 * Loop through the pinfo directory, looking up each pid to see if it
@@ -394,7 +394,7 @@ sidpidlist_get(pid_t sid)
 			/* sidpidlist was not created yet */
 			if (sidpidlist_add(sid, psinfo.pr_pid, psinfo.pr_ppid,
 				&pidlist) != 0)
-				return (NULL);
+				return NULL;
 		}
 	} /* while */
 
@@ -432,12 +432,12 @@ sidpidlist_t  	*pidlist;
 
 /**
  * @brief
- * 	sidpidlist_print: prints out the values in the pidlist array. 
+ * 	sidpidlist_print: prints out the values in the pidlist array.
  *
  * @param[in] pointer to session id list
  *
  * @return	Void
- * 
+ *
  */
 void
 sidpidlist_print(sidpidlist_t *pidlist)

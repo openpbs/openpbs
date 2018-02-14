@@ -99,7 +99,7 @@ get_hostaddr(char *hostname)
 	}
 #if defined(__hpux)
 	hp = gethostbyname(hostname);
-	if (hp == (struct hostent *)0) {
+	if (hp == NULL) {
 		if (h_errno == TRY_AGAIN)
 			pbs_errno = PBS_NET_RC_RETRY;
 		else

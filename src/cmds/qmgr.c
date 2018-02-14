@@ -171,7 +171,7 @@ static char *entlim_attrs[] = {
 	ATTR_max_queued_res,
 	ATTR_queued_jobs_threshold,
 	ATTR_queued_jobs_threshold_res,
-	(char *)0		/* keep as last one please */
+	NULL		/* keep as last one please */
 };
 
 /* Hook-related variables and functions */
@@ -217,10 +217,10 @@ dyn_strcpy(char **dest, char *src)
 /**
  * @brief
  * 	base: returns the basename of the given 'path'.
- * 
+ *
  * @param[in] path - file path
- * 
- * @return string 
+ *
+ * @return string
  * @retval filename
  * exits from program on failure
  *
@@ -256,7 +256,7 @@ base(char *path)
  * @brief
  *	To print out the prompt you need to use a function.  This could be
  *	made to do something special, but I opt to just have a static prompt.
- * 
+ *
  * @param[in] e - prompt printing function
  *
  * @return string
@@ -636,7 +636,7 @@ qmgr_add_history(char *req)
 #endif
 
 static void
-attrlist_add(struct attropl  **attrlist, char *attname, 
+attrlist_add(struct attropl  **attrlist, char *attname,
 	size_t attname_len, char *attval, size_t attval_len)
 {
 	struct attropl *paol;
@@ -1076,7 +1076,7 @@ params_export(char *attrs, struct attropl **attrlist, int doper)
 
 /**
  * @brief
- *	who: returns the username currently running this command 
+ *	who: returns the username currently running this command
  *
  * @return string
  * @retval username
@@ -1186,7 +1186,7 @@ main(int argc, char **argv)
 	}
 
 	if (gethostname(cur_host, (sizeof(cur_host) - 1)) == 0)
-		get_fullhostname(cur_host, cur_host, (sizeof(cur_host) - 1));	
+		get_fullhostname(cur_host, cur_host, (sizeof(cur_host) - 1));
 
 	/*
 	 * Get the Server Name which is used in hook related error messages:
@@ -1694,7 +1694,7 @@ blanks(int number)
  *	check_list - check a comma delimited list for valid syntax
  *
  * @param[in] list  - A comma delimited list.
- * @param[in] type  - server, queue, node, or resource 
+ * @param[in] type  - server, queue, node, or resource
  *
  * valid syntax: name[@server][,name]
  *		example: batch@svr1,debug
@@ -1831,7 +1831,7 @@ remove_char(char *ptr, int ch)
  *
  * @return int
  * @retval 0	If the resource is not found, or if the type is not available,
- *	
+ *
  */
 int
 get_resc_type(char *rname, struct batch_status *pbs)
@@ -1916,7 +1916,7 @@ is_reservation_queue(int sd, char *qname)
  *
  */
 void
-display(int otype, int ptype, char *oname, struct batch_status *status, 
+display(int otype, int ptype, char *oname, struct batch_status *status,
 	int format, struct server *mysvr)
 {
 	struct attrl *attr;
@@ -1931,36 +1931,36 @@ display(int otype, int ptype, char *oname, struct batch_status *status,
 	static struct attropl exp_attribs[] = {
 		{	(struct attropl *)&exp_attribs[1],
 			CONTENT_TYPE_PARAM,
-			(char *)0,
+			NULL,
 			HOOKSTR_CONTENT,
 			SET					},
 		{	(struct attropl *)&exp_attribs[2],
 			CONTENT_ENCODING_PARAM,
-			(char *)0,
+			NULL,
 			HOOKSTR_BASE64,
 			SET					},
-		{	(struct attropl *)0,
+		{	NULL,
 			OUTPUT_FILE_PARAM,
-			(char *)0,
-			(char *)0,  /* has to be constant in some compilers like IRIX */
+			NULL,
+			NULL,  /* has to be constant in some compilers like IRIX */
 			SET					},
 	};
 
 	static struct attropl exp_attribs_config[] = {
 		{	(struct attropl *)&exp_attribs_config[1],
 			CONTENT_TYPE_PARAM,
-			(char *)0,
+			NULL,
 			HOOKSTR_CONFIG,
 			SET					},
 		{	(struct attropl *)&exp_attribs_config[2],
 			CONTENT_ENCODING_PARAM,
-			(char *)0,
+			NULL,
 			HOOKSTR_BASE64,
 			SET					},
-		{	(struct attropl *)0,
+		{	NULL,
 			OUTPUT_FILE_PARAM,
-			(char *)0,
-			(char *)0,  /* has to be constant in some compilers like IRIX */
+			NULL,
+			NULL,  /* has to be constant in some compilers like IRIX */
 			SET					},
 	};
 
@@ -2344,7 +2344,7 @@ display(int otype, int ptype, char *oname, struct batch_status *status,
  * @parm[in]  obj_names - names of objects to set active
  *
  * @return  Error code
- * @retval  0  on success 
+ * @retval  0  on success
  * @retval  !0 on failure
  *
  */
@@ -2494,7 +2494,7 @@ set_active(int obj_type, struct objname *obj_names)
  * @param[in] attribs - the attribute we're setting
  *
  * @return Void
- *        
+ *
  */
 void
 handle_formula(struct attropl *attribs)
@@ -3337,12 +3337,12 @@ get_request(char **request)
 		lp = line;
 		ll = 0;
 		while (!eol) {
-			/* The following code block (enclosed within if() {}) is executed only for the special case of 
- 			 * qmgr Commands being supplied from a file or within delimiters e.g. $qmgr < cmd_file.txt, where 
-			 * cmd_file.txt contains Commands ... or 
+			/* The following code block (enclosed within if() {}) is executed only for the special case of
+ 			 * qmgr Commands being supplied from a file or within delimiters e.g. $qmgr < cmd_file.txt, where
+			 * cmd_file.txt contains Commands ... or
 			 * $qmgr <<EOF
  			 * p q workq
- 			 * EOF <--- EOF is a delimiter. 
+ 			 * EOF <--- EOF is a delimiter.
  			 * This code block is not needed for the cases where qmgr receives input Interactively
  			 * or from the Command Line, since these checks already get done in get_request_hist().
  			 */
@@ -3814,7 +3814,7 @@ pstderr(const char *string)
  * @param[in]	errmesg       actual error message
  *
  * @return Void
- * 	Global Variable: zopt 
+ * 	Global Variable: zopt
  *
  */
 void
@@ -4090,7 +4090,7 @@ is_valid_object(struct objname *obj, int type)
 	return valid;
 }
 
-/** 
+/**
  * @brief
  *	default_server_name - create an objname struct for the default server
  *
@@ -4123,7 +4123,7 @@ default_server_name()
  * @param[in]  svr  - server for temp struct
  *
  * @returns structure
- * @retval  temporary objname  
+ * @retval  temporary objname
  *
  */
 struct objname *temp_objname(char *obj_name, char *svr_name, struct server *svr)

@@ -75,9 +75,9 @@ pbs_defschreply(int c, int cmd, char *id, int err, char *txt, char *extend)
 	int	sock;
 	int	has_txt = 0;
 
-	if ((id == (char *)0) || (*id == '\0'))
+	if ((id == NULL) || (*id == '\0'))
 		return (pbs_errno = PBSE_IVALREQ);
-	if ((txt != (char *)0) && (*txt != '\0'))
+	if ((txt != NULL) && (*txt != '\0'))
 		has_txt = 1;
 
 	sock = connection[c].ch_socket;

@@ -90,7 +90,7 @@ get_fullhostname(char *shortname, char *namebuf, int bufsize)
 
 #if defined(__hpux)
 	phe = gethostbyname(shortname);
-	if (phe == (struct hostent *)0)
+	if (phe == NULL)
 		return (-1);
 #else
 	memset(&hints, 0, sizeof(struct addrinfo));

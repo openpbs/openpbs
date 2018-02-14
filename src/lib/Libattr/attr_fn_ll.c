@@ -98,7 +98,7 @@ decode_ll(struct attribute *patr, char *name, char *rescn, char *val)
 {
 	char *pc;
 
-	if ((val != (char *)0) && (strlen(val) != 0)) {
+	if ((val != NULL) && (strlen(val) != 0)) {
 
 		patr->at_val.at_ll = (Long)strTouL(val, &pc, 0);
 		if (*pc != '\0')
@@ -148,7 +148,7 @@ encode_ll(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int
 	ct = strlen(cvn) + 1;
 
 	pal = attrlist_create(atname, rsname, ct);
-	if (pal == (svrattrl *)0)
+	if (pal == NULL)
 		return (-1);
 
 	(void)memcpy(pal->al_value, cvn, ct);

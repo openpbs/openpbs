@@ -167,7 +167,7 @@ main(int argc, char *argv[])
 		FD_SET(rpp_fd, &selset);
 		tv.tv_sec = 5;
 		tv.tv_usec = 0;
-		select(FD_SETSIZE, &selset, (fd_set *) 0, (fd_set *) 0, &tv);
+		select(FD_SETSIZE, &selset, NULL, NULL, &tv);
 
 		rpp_poll(); /* to clear off the read notification */
 

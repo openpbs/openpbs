@@ -294,7 +294,7 @@ end_proc()
  * @param[in] sid - session id
  *
  * @return      Bool
- * @retval      TRUE    
+ * @retval      TRUE
  * @retval      FALSE   Error
  *
  */
@@ -376,7 +376,7 @@ cput_sum(job *pjob)
  *              space consumed by all current processes within the job.
  *
  */
-static unsigned long 
+static unsigned long
 mem_sum(job *pjob)
 {
 	int			i;
@@ -679,7 +679,7 @@ mom_set_limits(job *pjob, int set_mode)
  *
  * @return      int
  * @retval      TRUE    if polling is necessary
- * @retval      FALSE   otherwise. 
+ * @retval      FALSE   otherwise.
  *
  * NOTE: Actual polling is done using the mom_over_limit machine-dependent function.
  *
@@ -904,7 +904,7 @@ mom_get_sample()
  * @return int
  * @retval PBSE_NONE    for success.
  */
-int 
+int
 mom_set_use(job *pjob)
 {
 	resource		*pres;
@@ -1186,7 +1186,7 @@ mach_restart(task *ptask, char *file)
 			DBPRT(("setash failed before restart, errno = %d", errno))
 		}
 	}
-	rc =  ckpt_restart(file, (struct ckpt_args **)0, 0);
+	rc =  ckpt_restart(file, NULL, 0);
 	if ((ptask->ti_job->ji_globid == NULL) && (rc > 0)) {
 		(void)sprintf(cvtbuf, "%llx", rc);
 		ptask->ti_job->ji_globid = strdup(cvtbuf);
@@ -1364,15 +1364,15 @@ ncpus(struct rm_attribute *attrib)
 
 /**
  * @brief
- *      returns the total physical memory 
- *      
+ *      returns the total physical memory
+ *
  * @param[in] attrib - pointer to rm_attribute structure
- *      
+ *
  * @return      string
  * @retval      tot physical memory     Success
  * @retval      NULL                    Error
- *              
- */             
+ *
+ */
 char *
 physmem(struct rm_attribute *attrib)
 {
@@ -1552,7 +1552,7 @@ get_la(double *rv)
 u_long
 gracetime(u_long secs)
 {
-	time_t	now = time((time_t *)NULL);
+	time_t	now = time(NULL);
 
 	if (secs > now)		/* time is in the future */
 		return (secs - now);
@@ -1788,14 +1788,14 @@ availmask(struct  rm_attribute  *attrib)
 	if (nprocs < 1) {
 		log_err(errno, __func__, "sysmp(MP_NPROCS");
 		rm_errno = RM_ERR_SYSTEM;
-		return (NULL);
+		return NULL;
 	}
 
 	if (sysmp(MP_NUMA_GETCPUNODEMAP, (void *)cpumap,
 		sizeof(cnodeid_t) * nprocs) != 0) {
 		log_err(errno, __func__, "sysmp(MP_NUMA_GETCPUNODEMAP");
 		rm_errno = RM_ERR_SYSTEM;
-		return (NULL);
+		return NULL;
 	}
 
 	/*

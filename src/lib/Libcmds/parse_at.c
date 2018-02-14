@@ -152,7 +152,7 @@ parse_at_list(char *list, int use_count, int abs_path)
 	int rc = 0;
 	char user[MAXPATHLEN+1];
 	char host[PBS_MAXSERVERNAME];
-	struct hostlist *ph, *nh, *hostlist = (struct hostlist *)0;
+	struct hostlist *ph, *nh, *hostlist = NULL;
 
 	if ((list == NULL) || (*list == '\0'))
 		return 1;

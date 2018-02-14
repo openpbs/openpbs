@@ -217,7 +217,7 @@ new_group_info()
 
 	if ((new = malloc(sizeof(group_info))) == NULL) {
 		log_err(errno, __func__, MEM_ERR_MSG);
-		return NULL ;
+		return NULL;
 	}
 
 	new->name = NULL;

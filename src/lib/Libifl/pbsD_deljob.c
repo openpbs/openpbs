@@ -66,9 +66,9 @@
 int
 __pbs_deljob(int c, char *jobid, char *extend)
 {
-	struct attropl *aoplp = (struct attropl *)NULL;
+	struct attropl *aoplp = NULL;
 
-	if ((jobid == (char *)0) || (*jobid == '\0'))
+	if ((jobid == NULL) || (*jobid == '\0'))
 		return (pbs_errno = PBSE_IVALREQ);
 
 	return PBSD_manager(c, PBS_BATCH_DeleteJob,

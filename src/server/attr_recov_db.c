@@ -111,7 +111,7 @@ make_attr(char *attr_name, char *attr_resc,
 		return NULL;
 
 	CLEAR_LINK(psvrat->al_link);
-	psvrat->al_sister = (svrattrl *) 0;
+	psvrat->al_sister = NULL;
 	psvrat->al_atopl.next = 0;
 	psvrat->al_tsize = tsize;
 	psvrat->al_name = (char *) psvrat + sizeof(svrattrl);
@@ -201,7 +201,7 @@ save_attr_db(pbs_db_conn_t *conn, pbs_db_attr_info_t *p_attr_info,
 
 		rc = (padef+i)->at_encode(pattr+i, &lhead,
 			(padef+i)->at_name,
-			(char *)0, ATR_ENCODE_DB, NULL);
+			NULL, ATR_ENCODE_DB, NULL);
 		if (rc < 0)
 			goto err;
 
@@ -209,7 +209,7 @@ save_attr_db(pbs_db_conn_t *conn, pbs_db_attr_info_t *p_attr_info,
 
 		/* now that attribute has been encoded, update to db */
 		while ((pal = (svrattrl *)GET_NEXT(lhead)) !=
-			(svrattrl *)0) {
+			NULL) {
 
 			strcpy(p_attr_info->attr_name, pal->al_atopl.name);
 			if (pal->al_atopl.resource)
@@ -288,8 +288,8 @@ recov_attr_db(pbs_db_conn_t *conn,
 {
 	int	  amt;
 	int	  index;
-	svrattrl *pal = (svrattrl *)0;
-	svrattrl *tmp_pal = (svrattrl *)0;
+	svrattrl *pal = NULL;
+	svrattrl *tmp_pal = NULL;
 	int	  ret;
 	void	 *state = NULL;
 	pbs_db_obj_info_t obj;
@@ -329,7 +329,7 @@ recov_attr_db(pbs_db_conn_t *conn,
 
 			prdef = find_resc_def(svr_resc_def,
 				p_attr_info->attr_resc, svr_resc_size);
-			if (prdef == (resource_def *)0) {
+			if (prdef == NULL) {
 				snprintf(log_buffer, sizeof(log_buffer),
 					"%s's unknown resource \"%s.%s\" ignored",
 					((padef == svr_attr_def)?"server":"queue"),

@@ -200,7 +200,7 @@ check_and_provision_job(struct batch_request *preq, job *pjob, int *need_prov)
 		(void)svr_setjobstate(pjob, JOB_STATE_HELD, JOB_SUBSTATE_HELD);
 		job_attr_def[(int)JOB_ATR_Comment].at_decode(
 			&pjob->ji_wattr[(int)JOB_ATR_Comment],
-			(char *)0, (char *)0,
+			NULL, NULL,
 			"job held, provisioning failed to start");
 
 		/* not offlining vnodes, since its not a vnode's fault. vnode */
@@ -324,7 +324,7 @@ req_runjob(struct batch_request *preq)
 
 	jid = preq->rq_ind.rq_run.rq_jid;
 	parent = chk_job_request(jid, preq, &jt);
-	if (parent == (job *)0)
+	if (parent == NULL)
 		return;		/* note, req_reject already called */
 
 	/* the job must be in an execution queue */
@@ -333,7 +333,7 @@ req_runjob(struct batch_request *preq)
 		req_reject(PBSE_IVALREQ, 0, preq);
 		return;
 	}
-	
+
 	if (!find_assoc_sched_jid(jid, &psched)) {
 		sprintf(log_buffer, "Unable to reach scheduler associated with job %s", jid);
 		log_err(-1, __func__, log_buffer);
@@ -666,7 +666,7 @@ req_runjob2(struct batch_request *preq, job *pjob)
 		preq = 0;	/* cleared so we don't try to reuse */
 	}
 
-	if (((rc = svr_startjob(pjob, preq)) != 0) && 
+	if (((rc = svr_startjob(pjob, preq)) != 0) &&
 		((rq_type == PBS_BATCH_AsyrunJob) || preq)) {
 		free_nodes(pjob);
 		if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
@@ -754,7 +754,7 @@ post_stagein(struct work_task *pwt)
 	pjob = find_job(preq->rq_extra);
 	free(preq->rq_extra);
 
-	if (pjob != (job *)0) {
+	if (pjob != NULL) {
 
 		if (code != 0) {
 
@@ -800,7 +800,7 @@ post_stagein(struct work_task *pwt)
 			pjob->ji_qs.ji_svrflags |= JOB_SVFLG_StagedIn;
 			if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_STAGEGO) {
 				/* continue to start job running */
-				(void)svr_strtjob2(pjob, (struct batch_request *)0);
+				(void)svr_strtjob2(pjob, NULL);
 			} else {
 				svr_evaljobstate(pjob, &newstate, &newsub, 0);
 				(void)svr_setjobstate(pjob, newstate, newsub);
@@ -928,7 +928,7 @@ svr_startjob(job *pjob, struct batch_request *preq)
 	if (!(pjob->ji_wattr[(int)JOB_ATR_hashname].at_flags & ATR_VFLAG_SET))
 		if (job_attr_def[(int)JOB_ATR_hashname].at_decode(
 			&pjob->ji_wattr[(int)JOB_ATR_hashname],
-			(char *)0, (char *)0,
+			NULL, NULL,
 			pjob->ji_qs.ji_jobid))
 			return (PBSE_SYSTEM);
 
@@ -1052,8 +1052,8 @@ svr_strtjob2(job *pjob, struct batch_request *preq)
 	{
 		job_attr_def[(int) JOB_ATR_Comment].at_decode(
 				&pjob->ji_wattr[(int) JOB_ATR_Comment],
-				(char *) 0,
-				(char *) 0,
+				NULL,
+				NULL,
 				form_attr_comment("Job was sent for execution at %s",
 						pjob->ji_wattr[(int) JOB_ATR_exec_vnode].at_val.at_str));
 	}
@@ -1142,8 +1142,8 @@ complete_running(job *jobp)
 
 			account_jobstr(parent);
 			job_attr_def[(int) JOB_ATR_Comment].at_decode(
-					&parent->ji_wattr[(int) JOB_ATR_Comment], (char *) 0,
-					(char *) 0,
+					&parent->ji_wattr[(int) JOB_ATR_Comment], NULL,
+					NULL,
 					form_attr_comment("Job Array Began at %s", NULL));
 			/* if any dependencies, see if action required */
 			if (parent->ji_wattr[(int)JOB_ATR_depend].at_flags&ATR_VFLAG_SET)
@@ -1157,8 +1157,8 @@ complete_running(job *jobp)
 	else {
 		job_attr_def[(int) JOB_ATR_Comment].at_decode(
 				&jobp->ji_wattr[(int) JOB_ATR_Comment],
-				(char *) 0,
-				(char *) 0,
+				NULL,
+				NULL,
 				form_attr_comment("Job run at %s",
 						jobp->ji_wattr[(int) JOB_ATR_exec_vnode].at_val.at_str));
 	}
@@ -1209,7 +1209,7 @@ complete_running(job *jobp)
 
 	/* accounting log for start or restart */
 	if (jobp->ji_qs.ji_svrflags & JOB_SVFLG_CHKPT)
-		account_record(PBS_ACCT_RESTRT, jobp, (char *)0);
+		account_record(PBS_ACCT_RESTRT, jobp, NULL);
 	else
 		account_jobstr(jobp);
 
@@ -1218,7 +1218,7 @@ complete_running(job *jobp)
 	if (jobp->ji_wattr[(int)JOB_ATR_depend].at_flags&ATR_VFLAG_SET)
 		(void)depend_on_exec(jobp);
 
-	svr_mailowner(jobp, MAIL_BEGIN, MAIL_NORMAL, (char *)0);
+	svr_mailowner(jobp, MAIL_BEGIN, MAIL_NORMAL, NULL);
 	/*
 	 * it is unfortunate, but while the job has gone into execution,
 	 * there is no way of obtaining the session id except by making
@@ -1325,7 +1325,7 @@ post_sendmom(struct work_task *pwt)
 			snprintf(log_buffer, LOG_BUF_SIZE, msg_job_end_sig, WTERMSIG(wstat));
 			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB, LOG_INFO,
 				jobp->ji_qs.ji_jobid, log_buffer);
-		} 
+		}
 #endif
 		else {
 			r = SEND_JOB_RETRY;
@@ -1423,25 +1423,25 @@ post_sendmom(struct work_task *pwt)
 			snprintf(log_buffer, LOG_BUF_SIZE,
 					"Not Running: PBS Error: %s", pbse_to_txt(PBSE_MOMREJECT));
 
-			
+
 			if (jobp->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
-				/* 
-				 * if the job is a subjob, set the comment of parent job array 
-				 * only if the job array is not in state begun. Once the job 
+				/*
+				 * if the job is a subjob, set the comment of parent job array
+				 * only if the job array is not in state begun. Once the job
 				 * array starts its comment is set to a begun message and
 				 * should not change after that
 				 */
 				if (jobp->ji_parentaj->ji_qs.ji_state != JOB_STATE_BEGUN) {
 					job_attr_def[(int) JOB_ATR_Comment].at_decode(
 						&jobp->ji_parentaj->ji_wattr[(int) JOB_ATR_Comment],
-						(char *) 0, (char *) 0, log_buffer);
+						NULL, NULL, log_buffer);
 				}
 			}
-			else {              
+			else {
 				/* if the job is a normal job */
 				job_attr_def[(int) JOB_ATR_Comment].at_decode(
-						&jobp->ji_wattr[(int) JOB_ATR_Comment], (char *) 0,
-						(char *) 0, log_buffer);
+						&jobp->ji_wattr[(int) JOB_ATR_Comment], NULL,
+						NULL, log_buffer);
 			}
 		}
 
@@ -1477,9 +1477,9 @@ post_sendmom(struct work_task *pwt)
 				complete_running(jobp);
 			break;
 
-#ifndef WIN32			
+#ifndef WIN32
 		case SEND_JOB_SIGNAL:
-			
+
 			/* send_job child process has been signaled
 			 * therefore kill the job if it is already
 			 * running on the MOM and force requeue the job
@@ -1590,7 +1590,7 @@ post_sendmom(struct work_task *pwt)
 						job_attr_def[(int)JOB_ATR_Comment].\
 						at_decode(\
 					  &jobp->ji_wattr[(int)JOB_ATR_Comment],
-							(char *)0, (char *)0,
+							NULL, NULL,
 							"job held, too many failed attempts to run");
 					}
 
@@ -1664,13 +1664,13 @@ chk_job_torun(struct batch_request *preq, job *pjob)
 		(pjob->ji_qs.ji_substate == JOB_SUBSTATE_PRERUN)  ||
 		(pjob->ji_qs.ji_substate == JOB_SUBSTATE_RUNNING)) {
 		req_reject(PBSE_BADSTATE, 0, preq);
-		return (job *)0;
+		return NULL;
 	}
 
 	if (preq->rq_type == PBS_BATCH_StageIn) {
 		if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_STAGEIN) {
 			req_reject(PBSE_BADSTATE, 0, preq);
-			return (job *)0;
+			return NULL;
 		}
 	}
 	return (pjob);
@@ -1707,12 +1707,12 @@ where_to_runjob(struct batch_request *preq, job *pjob)
 				pjob->ji_qs.ji_svrflags &= ~(JOB_SVFLG_CHKPT |
 					JOB_SVFLG_StagedIn);
 				req_reject(PBSE_IVALREQ, 0, preq);
-				return (job *)0;
+				return NULL;
 			}
 			if ((rc = assign_hosts(pjob, nspec, 0)) != 0) {
 				free(nspec);
 				req_reject(rc, 0, preq);
-				return (job *)0;
+				return NULL;
 			}
 		}
 	} else {
@@ -1720,10 +1720,10 @@ where_to_runjob(struct batch_request *preq, job *pjob)
 		/* job has not run before or need not run there again	*/
 		/* reserve nodes and set exec_vnode anew		*/
 
-		if ((prun->rq_destin == (char *)0) ||
+		if ((prun->rq_destin == NULL) ||
 			(*prun->rq_destin == '\0')) {
 			req_reject(PBSE_IVALREQ, 0, preq);
-			return ((job *)0);
+			return NULL;
 		}
 
 		if ((pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_flags & ATR_VFLAG_SET) != 0) {
@@ -1740,7 +1740,7 @@ where_to_runjob(struct batch_request *preq, job *pjob)
 
 		if (rc != 0) {
 			req_reject(rc, 0, preq);
-			return (job *)0;
+			return NULL;
 		}
 	}
 
@@ -1755,7 +1755,7 @@ where_to_runjob(struct batch_request *preq, job *pjob)
 		}
 		job_attr_def[(int)JOB_ATR_Comment].at_decode(
 			&pjob->ji_wattr[(int)JOB_ATR_Comment],
-			(char *)0, (char *)0, comment);
+			NULL, NULL, comment);
 	}
 
 	return (pjob);
@@ -1819,18 +1819,18 @@ assign_hosts(job  *pjob, char *given, int set_exec_vnode)
 				&pjob->ji_wattr[(int)JOB_ATR_exec_vnode]);
 			(void)job_attr_def[(int)JOB_ATR_exec_vnode].at_decode(
 				&pjob->ji_wattr[(int)JOB_ATR_exec_vnode],
-				(char *)0,
-				(char *)0,
+				NULL,
+				NULL,
 				vnodestoalloc);
 			(void)job_attr_def[(int)JOB_ATR_exec_host].at_decode(
 				&pjob->ji_wattr[(int)JOB_ATR_exec_host],
-				(char *)0,
-				(char *)0,
+				NULL,
+				NULL,
 				hoststr);
 			(void)job_attr_def[(int)JOB_ATR_exec_host2].at_decode(
 				&pjob->ji_wattr[(int)JOB_ATR_exec_host2],
-				(char *)0,
-				(char *)0,
+				NULL,
+				NULL,
 				hoststr2);
 			pjob->ji_modified = 1;
 		} else {

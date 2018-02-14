@@ -318,9 +318,9 @@ job_alloc(void)
 #endif
 
 	pj = (job *)malloc(sizeof(job));
-	if (pj == (job *)0) {
+	if (pj == NULL) {
 		log_err(errno, "job_alloc", "no memory");
-		return ((job *)0);
+		return NULL;
 	}
 	(void)memset((char *)pj, (int)0, (size_t)sizeof(job));
 
@@ -780,12 +780,12 @@ job_purge(job *pjob)
 			else
 				update_subjob_state(pjob, JOB_STATE_EXPIRED);
 		} else {
-			(void)set_entity_ct_sum_queued(pjob, (pbs_queue *)0, DECR);
-			(void)set_entity_resc_sum_queued(pjob, (pbs_queue *)0,
-				(attribute *)0, DECR);
-			(void)set_entity_ct_sum_max(pjob, (pbs_queue *)0, DECR);
-			(void)set_entity_resc_sum_max(pjob, (pbs_queue *)0,
-				(attribute *)0, DECR);
+			(void)set_entity_ct_sum_queued(pjob, NULL, DECR);
+			(void)set_entity_resc_sum_queued(pjob, NULL,
+				NULL, DECR);
+			(void)set_entity_ct_sum_max(pjob, NULL, DECR);
+			(void)set_entity_resc_sum_max(pjob, NULL,
+				NULL, DECR);
 			svr_dequejob(pjob);
 		}
 	}
@@ -838,7 +838,7 @@ job_purge(job *pjob)
 		}
 	}
 
-	if (path_checkpoint != (char *)0) {	/* delete checkpoint files */
+	if (path_checkpoint != NULL) {	/* delete checkpoint files */
 		(void)strcpy(namebuf, path_checkpoint);
 		if (*pjob->ji_qs.ji_fileprefix != '\0')
 			(void)strcat(namebuf, pjob->ji_qs.ji_fileprefix);
@@ -1084,7 +1084,7 @@ find_job(char *jobid)
 	}
 #endif
 	pj = (job *)GET_NEXT(svr_alljobs);
-	while (pj != (job *)0) {
+	while (pj != NULL) {
 		if (!strncasecmp(jobid, pj->ji_qs.ji_jobid, sizeof(pj->ji_qs.ji_jobid)))
 			break;
 		pj = (job *)GET_NEXT(pj->ji_alljobs);
@@ -1325,7 +1325,7 @@ update_resources_list(job *pjob, char *res_list_name,
 
 	if (exec_vnode == NULL || pjob == NULL) {
 		log_err(PBSE_INTERNAL, __func__, "bad input parameter");
-		
+
 		return (1);
 	}
 
@@ -1340,7 +1340,7 @@ update_resources_list(job *pjob, char *res_list_name,
 		}
 
 		pr = (resource *)GET_NEXT(pjob->ji_wattr[res_list_index].at_val.at_list);
-		while (pr != (resource *)0) {
+		while (pr != NULL) {
 			next = (resource *)GET_NEXT(pr->rs_link);
 			if (pr->rs_defin->rs_flags & (ATR_DFLAG_RASSN | ATR_DFLAG_FNASSN | ATR_DFLAG_ANASSN)) {
 				delete_link(&pr->rs_link);
@@ -1394,7 +1394,7 @@ update_resources_list(job *pjob, char *res_list_name,
 						  sizeof(log_buffer),
 						  "decode of %s failed",
 						 prdef->rs_name);
-						  
+
 					log_err(PBSE_INTERNAL, __func__,
 							log_buffer);
 					goto update_resources_list_error;
@@ -1470,9 +1470,9 @@ resc_resv_alloc(void)
 	resc_resv	*resvp;
 
 	resvp = (resc_resv *)malloc(sizeof(resc_resv));
-	if (resvp == (resc_resv *)0) {
+	if (resvp == NULL) {
 		log_err(errno, "resc_resv_alloc", "no memory");
-		return ((resc_resv *)0);
+		return NULL;
 	}
 	(void)memset((char *)resvp, (int)0, (size_t)sizeof(resc_resv));
 	CLEAR_LINK(resvp->ri_allresvs);
@@ -1537,15 +1537,7 @@ resv_free(resc_resv *presv)
 		free_br(presv->ri_brp);
 
 	/* now free the main structure */
-
-	(void)free((char *)presv);
-
-	/*
-	 * After free()ing the memory, it should not be accessed
-	 * anywhere. Make it NULL and make sure presv is validated
-	 * before being used.
-	 */
-	presv = (resc_resv *)0;
+	free(presv);
 }
 
 /**
@@ -1570,7 +1562,7 @@ find_resv(char *resvID)
 	if ((at = strchr(resvID, (int)'@')) != 0)
 		*at = '\0';	/* strip of @server_name */
 	presv = (resc_resv *)GET_NEXT(svr_allresvs);
-	while (presv != (resc_resv *)0) {
+	while (presv != NULL) {
 		if (!strcmp(resvID, presv->ri_qs.ri_resvID))
 			return (presv);
 		presv = (resc_resv *)GET_NEXT(presv->ri_allresvs);
@@ -1634,7 +1626,7 @@ resv_purge(resc_resv *presv)
 		 * As Stated: Assumption is that the queue is empty of jobs
 		 */
 		preq = alloc_br(PBS_BATCH_Manager);
-		if (preq == (struct batch_request *)0) {
+		if (preq == NULL) {
 			(void)sprintf(log_buffer, "batch request allocation failed");
 			log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_RESV, LOG_ERR,
 				presv->ri_qs.ri_resvID, log_buffer);
@@ -1752,7 +1744,7 @@ post_resv_purge(struct work_task *pwt)
 	/*qmgr gave no error in doing MGR_CMD_DELETE on the queue
 	 *So it's safe to clear the reservation's queue pointer
 	 */
-	presv->ri_qp = (pbs_queue *)0;
+	presv->ri_qp = NULL;
 
 	/*now re-call resv_purge to execute the function's lower part*/
 	resv_purge(presv);
@@ -1784,7 +1776,7 @@ resv_abt(resc_resv *presv, char *text)
 
 	if (old_state == RESV_BEING_DELETED) {
 		if (presv->ri_qs.ri_type == RESV_JOB_OBJECT) {
-			if (presv->ri_jbp == (job *)0) {
+			if (presv->ri_jbp == NULL) {
 
 				account_recordResv(PBS_ACCT_ABT, presv, "");
 				svr_mailownerResv(presv, MAIL_ABORT, MAIL_NORMAL, text);
@@ -1792,9 +1784,9 @@ resv_abt(resc_resv *presv, char *text)
 			} else
 				rc = -1;
 		} else if (presv->ri_qs.ri_type == RESC_RESV_OBJECT) {
-			if ((presv->ri_qp != (pbs_queue*)0 &&
+			if ((presv->ri_qp != NULL &&
 				presv->ri_qp->qu_numjobs == 0) ||
-				presv->ri_qp == (pbs_queue *)0) {
+				presv->ri_qp == NULL) {
 
 				account_recordResv(PBS_ACCT_ABT, presv, "");
 				svr_mailownerResv(presv, MAIL_ABORT, MAIL_NORMAL, text);
@@ -1868,7 +1860,7 @@ add_resc_resv_to_job(job *pjob)
 	int		state, sub;
 	int		rc;
 
-	if (pjob == (job *)0) {
+	if (pjob == NULL) {
 		return  (PBSE_NONE);
 	}
 
@@ -1878,7 +1870,7 @@ add_resc_resv_to_job(job *pjob)
 		.at_flags & ATR_VFLAG_SET) == 0)
 		return  (PBSE_NOTRESV);
 
-	if ((presv = resc_resv_alloc()) == (resc_resv *)0)
+	if ((presv = resc_resv_alloc()) == NULL)
 		return  (PBSE_SYSTEM);
 
 	/* First, fill out the "non-saved" and "quick-save"
@@ -1915,7 +1907,7 @@ add_resc_resv_to_job(job *pjob)
 	 * reservation's job(s)
 	 */
 	(void)strcpy(presv->ri_qs.ri_queue, "");
-	presv->ri_qp = (pbs_queue *)0;
+	presv->ri_qp = NULL;
 
 	/* Now set various of the reservation attributes
 	 * based on what is specified for the job
@@ -1937,7 +1929,7 @@ add_resc_resv_to_job(job *pjob)
 	(void)strcpy(buf, pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str);
 	resv_attr_def[(int)RESV_ATR_resv_owner].at_decode(
 		&presv->ri_wattr[(int)RESV_ATR_resv_owner],
-		(char *)0, (char *)0, buf);
+		NULL, NULL, buf);
 
 	/* make sure owner is put in reservation's User_List */
 	if (act_resv_add_owner(&presv->ri_wattr[(int)RESV_ATR_userlst],
@@ -2018,7 +2010,7 @@ add_resc_resv_to_job(job *pjob)
 int
 add_resc_resv_if_resvJob(job *pjob)
 {
-	if (pjob == (job *)0)
+	if (pjob == NULL)
 		return (PBSE_INTERNAL);
 
 	if ((pjob->ji_wattr[JOB_ATR_reserve_start]
@@ -2056,7 +2048,7 @@ set_resvAttrs_off_jobAttrs(resc_resv *presv, job *pjob)
 	attribute_def	*pjd = job_attr_def;
 	attribute_def	*prd = resv_attr_def;
 	svrattrl	*tpsatl;
-	svrattrl	*psatl = (svrattrl *)0;
+	svrattrl	*psatl = NULL;
 	pbs_list_head	lhead;	  /*list of attrlist structs*/
 
 	CLEAR_HEAD(lhead);
@@ -2072,8 +2064,8 @@ set_resvAttrs_off_jobAttrs(resc_resv *presv, job *pjob)
 		if (pjob->ji_wattr[ji].at_flags & ATR_VFLAG_SET) {
 
 			rc = pjd[ji].at_encode(&pjob->ji_wattr[ji], &lhead,
-				prd[ri].at_name, (char *)0,
-				ATR_ENCODE_CLIENT, (svrattrl **)0);
+				prd[ri].at_name, NULL,
+				ATR_ENCODE_CLIENT, NULL);
 			if (rc < 0) {
 				rc = -1;
 			} else if (rc > 0) {
@@ -2086,7 +2078,7 @@ set_resvAttrs_off_jobAttrs(resc_resv *presv, job *pjob)
 
 				do {
 
-					if (psatl->al_resc == (char *)0) {
+					if (psatl->al_resc == NULL) {
 						rc = prd[ri].at_decode(&presv->ri_wattr[ri],
 							psatl->al_name,
 							psatl->al_resc,

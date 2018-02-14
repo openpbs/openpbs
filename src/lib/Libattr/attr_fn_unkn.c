@@ -103,22 +103,22 @@ decode_unkn(struct attribute *patr, char *name, char *rescn, char *value)
 	size_t	     valln;
 
 
-	if (patr == (attribute *)0)
+	if (patr == NULL)
 		return (PBSE_INTERNAL);
 
 	if (!(patr->at_flags & ATR_VFLAG_SET))
 		CLEAR_HEAD(patr->at_val.at_list);
 
-	if (name == (char *)0)
+	if (name == NULL)
 		return (PBSE_INTERNAL);
 
-	if (value == (char *)0)
+	if (value == NULL)
 		valln = 0;
 	else
 		valln = strlen(value) + 1;
 
 	entry = attrlist_create(name, rescn, valln);
-	if (entry == (svrattrl *)0)
+	if (entry == NULL)
 		return (PBSE_SYSTEM);
 
 	if (valln)
@@ -172,12 +172,12 @@ encode_unkn(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, i
 		return (-2);
 
 	plist = (svrattrl *)GET_NEXT(attr->at_val.at_list);
-	if (plist == (svrattrl *)0)
+	if (plist == NULL)
 		return (0);
 
-	while (plist != (svrattrl *)0) {
+	while (plist != NULL) {
 		pnew = (svrattrl *)malloc(plist->al_tsize);
-		if (pnew == (svrattrl *)0)
+		if (pnew == NULL)
 			return (-1);
 		CLEAR_LINK(pnew->al_link);
 		pnew->al_sister = NULL;
@@ -195,7 +195,7 @@ encode_unkn(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, i
 			(void)memcpy(pnew->al_resc, plist->al_resc,
 				plist->al_rescln);
 		} else {
-			pnew->al_resc = (char *)0;
+			pnew->al_resc = NULL;
 		}
 		if (plist->al_valln) {
 			pnew->al_value = pnew->al_name + pnew->al_nameln +
@@ -250,7 +250,7 @@ set_unkn(struct attribute *old, struct attribute *new, enum batch_op op)
 	assert(old && new && (new->at_flags & ATR_VFLAG_SET));
 
 	plist = (svrattrl *)GET_NEXT(new->at_val.at_list);
-	while (plist != (svrattrl *)0) {
+	while (plist != NULL) {
 		pnext = (svrattrl *)GET_NEXT(plist->al_link);
 		delete_link(&plist->al_link);
 		append_link(&old->at_val.at_list, &plist->al_link, plist);
@@ -301,7 +301,7 @@ free_unkn(attribute *pattr)
 
 	if (pattr->at_flags & ATR_VFLAG_SET) {
 		while ((plist = (svrattrl *)GET_NEXT(pattr->at_val.at_list)) !=
-			(svrattrl *)0) {
+			NULL) {
 			delete_link(&plist->al_link);
 			(void)free(plist);
 		}

@@ -85,7 +85,7 @@ get_sched_cmd(int sock, int *val, char **jid)
 {
 	int	i;
 	int     rc = 0;
-	char	*jobid = (char *)0;
+	char	*jobid = NULL;
 
 	DIS_tcp_setup(sock);
 
@@ -98,7 +98,7 @@ get_sched_cmd(int sock, int *val, char **jid)
 			goto err;
 		*jid = jobid;
 	} else {
-		*jid = (char *)0;
+		*jid = NULL;
 	}
 	*val = i;
 	return 1;

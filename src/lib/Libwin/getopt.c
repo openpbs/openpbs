@@ -138,7 +138,7 @@ getopt(int __argc,
 
 /**
  * @brief
- * 	Given a string, converts instances of '\' to '/'. 
+ * 	Given a string, converts instances of '\' to '/'.
  *
  * @param[in] str - input string
  *
@@ -160,7 +160,7 @@ back2forward_slash(char *str)
 
 /**
  * @brief
- * 	Like back2forward_slash except "\ " or "\," (escapes a space or comma) is left alone. 
+ * 	Like back2forward_slash except "\ " or "\," (escapes a space or comma) is left alone.
  *
  * @param[in] str - input string
  */
@@ -180,8 +180,8 @@ back2forward_slash2(char *str)
 }
 
 /**
- * @brief 
- *	Given a string, converts instances of '/' to '\'. 
+ * @brief
+ *	Given a string, converts instances of '/' to '\'.
  *
  * @param[in] str - input string
  */
@@ -199,9 +199,9 @@ forward2back_slash(char *str)
 }
 
 /**
- * @brief 
+ * @brief
  *	Given a path string, returns the best possible equivalent short pathname
- *	(8.3 aliasing. The returned value is a ptr to a static area 
+ *	(8.3 aliasing. The returned value is a ptr to a static area
  *
  * @param[in] str - input string
  */
@@ -251,9 +251,9 @@ lpath2short(char *str)
 }
 
 /**
- * @brief 
+ * @brief
  *	Like lpath2short() except the passed string itself is modified to reflect
- *	the short name. 
+ *	the short name.
  *
  * @param[in] str - input string
  */
@@ -267,7 +267,7 @@ lpath2short_B(char *str)
 }
 
 /**
- * @brief 
+ * @brief
  *	Given a string str, converts instances of ' ' (space) with the repl string.
  *	Also, if the first character in repl string appears in str, then that is
  *	replaced with '%<hex_num>' where <hex_num> is the ascii hex represetation of
@@ -294,7 +294,7 @@ replace_space(char *str, char *repl)
 	int	has_space = 0;
 
 	if (str == NULL || repl == NULL)
-		return (NULL);
+		return NULL;
 
 	repl_len = strlen(repl);
 
@@ -331,10 +331,10 @@ replace_space(char *str, char *repl)
 }
 
 /**
- * @brief 
+ * @brief
  *	shorten_and_cleanup_path: Takes a filename path, removes any trailing
  *	unprintable character on the name, and then returns the windows shortname
- *	equivalent.  
+ *	equivalent.
  *
  * @param[in] - path - filename path
  *
@@ -352,7 +352,7 @@ shorten_and_cleanup_path(char *path)
 
 	conf_filename2 = (char *)malloc(strlen(path)+1);
 	if (conf_filename2 == NULL)
-		return (NULL);
+		return NULL;
 
 	strcpy(conf_filename2, path);
 	i = strlen(conf_filename2);
@@ -364,7 +364,7 @@ shorten_and_cleanup_path(char *path)
 
 	if ((conf_filename = strdup(lpath2short(conf_filename2))) == NULL) {
 		(void)free(conf_filename2);
-		return (NULL);
+		return NULL;
 	}
 	back2forward_slash(conf_filename);
 

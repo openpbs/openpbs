@@ -102,7 +102,7 @@ char *obtain_vnames[NUM_LCL_ENV_VAR] = {
 	"LC_TIME",
 	"PATH",
 	"TZ" ,
-	(char *)0
+	NULL
 };
 
 /*
@@ -145,7 +145,7 @@ struct sig_tbl sig_tbl[] = {
 	{ "PROF", SIGPROF },
 	{ "XCPU", SIGXCPU },
 	{ "XFSZ", SIGXFSZ },
-	{(char *)0, -1}
+	{NULL, -1}
 };
 /* Private variables */
 
@@ -879,7 +879,7 @@ open_master(char **rtn_name)
 	int	fds;
 
 	*rtn_name = _getpty(&fds, O_RDWR | O_NOCTTY, 0600, 1);
-	if (*rtn_name == (char *)0)
+	if (*rtn_name == NULL)
 		return (-1);
 	else
 		return (fds);
@@ -888,7 +888,7 @@ open_master(char **rtn_name)
 /**
  * @brief
  *	filter_nodepool: removes from npool any "nodes" that belong to an
- *	existing cpuset. 
+ *	existing cpuset.
  * @param[in] npool - pointer to Bitfield structure
  *
  * @return	Void
@@ -942,7 +942,7 @@ filter_nodepool(Bitfield *npool)
  *
  * @param[in] pjob - job pointer
  * @param[out] nodes_assn - pointer to Bitfield structure
- * @param[in] cpuset_name - cpuset name 
+ * @param[in] cpuset_name - cpuset name
  * @param[out] cpuset_info - shared cpuset info
  *
  * @return	int
@@ -1123,7 +1123,7 @@ assign_cpuset(job *pjob, Bitfield *nodes_assn, char *cpuset_name, cpuset_shared 
 /**
  * @brief
  *	note_nodemask() - Set the resources_used.nodemask field to maskstr on pjob.
- * 
+ *
  * @param[in] pjob - job pointer
  * @param[out] maskstr - string to hold nodemask for job
  *
@@ -1132,7 +1132,7 @@ assign_cpuset(job *pjob, Bitfield *nodes_assn, char *cpuset_name, cpuset_shared 
  * 2retval	-1	Error
  *
  */
- 
+
 int
 note_nodemask(job *pjob, char *maskstr)
 {

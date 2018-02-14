@@ -191,7 +191,7 @@ static void	remove_node_topology(char *);
  * @param[in]	nodename	- node being searched
  *
  * @return	pbsnode
- * @retval	(struct pbsnode *)0	- failure
+ * @retval	NULL	- failure
  */
 
 struct pbsnode	  *find_nodebyname(nodename)
@@ -199,8 +199,8 @@ char *nodename;
 {
 	char		*pslash;
 
-	if (nodename == (char *)0)
-		return (struct pbsnode *)0;
+	if (nodename == NULL)
+		return NULL;
 	if (*nodename == '(')
 		nodename++;	/* skip over leading paren */
 	if ((pslash = strchr(nodename, (int)'/')) != NULL)
@@ -235,7 +235,7 @@ pbs_net_t addr;
 			}
 		}
 	}
-	return (NULL);
+	return NULL;
 }
 
 
@@ -255,7 +255,7 @@ static unsigned long	old_state = 0;				/*node's   state   */
 void
 save_characteristic(struct pbsnode *pnode)
 {
-	if (pnode == (struct pbsnode *)0)
+	if (pnode == NULL)
 		return;
 
 	old_address = pnode;
@@ -284,13 +284,13 @@ chk_characteristic(struct pbsnode *pnode, int *pneed_todo)
 	int		i;
 	int		deleted=0;
 
-	if (pnode != old_address || pnode == (struct pbsnode *)0) {
+	if (pnode != old_address || pnode == NULL) {
 		/*
 		 **	didn't do save_characteristic() before
 		 **	issuing chk_characteristic()
 		 */
 
-		old_address = (struct pbsnode *)0;
+		old_address = NULL;
 		return (-1);
 	}
 	pnode->nd_modified = 0; /* reset */
@@ -339,7 +339,7 @@ chk_characteristic(struct pbsnode *pnode, int *pneed_todo)
 			}
 		}
 	}
-	old_address = (struct pbsnode *)0;
+	old_address = NULL;
 	return  0;
 }
 
@@ -392,7 +392,7 @@ status_nodeattrib(svrattrl *pal, attribute_def *padef, struct pbsnode *pnode, in
 			if ((padef+index)->at_flags & priv) {
 				rc = (padef+index)->at_encode(&pnode->nd_attr[index],
 					phead,
-					(padef+index)->at_name, (char *)0,
+					(padef+index)->at_name, NULL,
 					ATR_ENCODE_CLIENT, NULL);
 				if (rc < 0) {
 					rc = -rc;
@@ -413,7 +413,7 @@ status_nodeattrib(svrattrl *pal, attribute_def *padef, struct pbsnode *pnode, in
 				rc = (padef+index)->at_encode(
 					&pnode->nd_attr[index],
 					phead, (padef+index)->at_name,
-					(char *)0, ATR_ENCODE_CLIENT, NULL);
+					NULL, ATR_ENCODE_CLIENT, NULL);
 				if (rc < 0) {
 					rc = -rc;
 					break;
@@ -486,7 +486,7 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 	pnode->nd_hostname= NULL;
 	pnode->nd_state = INUSE_UNKNOWN | INUSE_DOWN;
 	pnode->nd_resvp   = NULL;
-	pnode->nd_pque	  = (struct pbs_queue *)0;
+	pnode->nd_pque	  = NULL;
 	pnode->nd_nummoms = 0;
 	pnode->nd_modified = 0;
 	pnode->nd_moms    = (struct mominfo **)calloc(1, sizeof(struct mominfo *));
@@ -580,8 +580,8 @@ subnode_delete(struct pbssubn *psubn)
 		jipt = jip->next;
 		free(jip);
 	}
-	psubn->jobs  = (struct jobinfo *)0;
-	psubn->next  = (struct pbssubn *)0;
+	psubn->jobs  = NULL;
+	psubn->next  = NULL;
 	psubn->inuse = INUSE_DELETED;
 	free(psubn);
 }
@@ -733,7 +733,7 @@ effective_node_delete(struct pbsnode *pnode)
 	} else if (pnode->nd_nummoms == 1) {
 		psvrmom = (mom_svrinfo_t *)(pnode->nd_moms[0]->mi_data);
 		if (psvrmom->msr_children[0] == pnode) {
-			/* 
+			/*
 			 * This is the "natural" vnode for a Mom
 			 * must mean for the Mom to go away also
 			 * first remove from any vnode pool
@@ -760,7 +760,7 @@ effective_node_delete(struct pbsnode *pnode)
 	/* set the nd_moms to NULL before calling save */
 	if (pnode->nd_moms)
 		free(pnode->nd_moms);
-	pnode->nd_moms = (struct mominfo **)0;
+	pnode->nd_moms = NULL;
 
 	DBPRT(("Deleting node %s from database\n", pnode->nd_name))
 	node_delete_db(pnode);
@@ -844,7 +844,7 @@ process_host_name_part(char *objname, svrattrl *plist, char **pname, int *ntype)
 
 	pnodename = strdup(objname);
 
-	if (pnodename == (char *)0)
+	if (pnodename == NULL)
 		return  (PBSE_SYSTEM);
 
 	*ntype = NTYPE_PBS;
@@ -1157,14 +1157,14 @@ struct pbssubn *create_subnode(struct pbsnode *pnode, struct pbssubn *lstsn)
 	struct pbssubn **nxtsn;
 
 	psubn = (struct pbssubn *)malloc(sizeof(struct pbssubn));
-	if (psubn == (struct pbssubn *)0) {
-		return (NULL);
+	if (psubn == NULL) {
+		return NULL;
 	}
 
 	/* initialize the subnode and link into the parent node */
 
-	psubn->next  = (struct pbssubn *)NULL;
-	psubn->jobs  = (struct jobinfo *)NULL;
+	psubn->next  = NULL;
+	psubn->jobs  = NULL;
 	psubn->inuse = 0;
 	psubn->index = pnode->nd_nsn++;
 	pnode->nd_nsnfree++;
@@ -1241,7 +1241,7 @@ setup_nodes_fs(int preprocess)
 	static char cr_attr_err[]  = "cannot create node attribute";
 	static char br_resc_err[]  = "old style property %s already defined as non-boolean resource and/or not node level resource, cannot convert it";
 	static char timestamp[] = "$modtime=";
-	int	    resc_added = 0;	
+	int	    resc_added = 0;
 
 
 	DBPRT(("%s: entered\n", __func__))
@@ -1318,7 +1318,7 @@ setup_nodes_fs(int preprocess)
 
 		while (1) {
 
-			rsc = (char *)0;
+			rsc = NULL;
 			token = parse_node_token(NULL, 0, &err, &xchar);
 			if (err)
 				goto errtoken1;
@@ -1388,7 +1388,7 @@ setup_nodes_fs(int preprocess)
 				}
 
 				if (!preprocess) {
-					if ((rsc == (char *)0) && ((strcmp(token, "np")==0) ||
+					if ((rsc == NULL) && ((strcmp(token, "np")==0) ||
 						(strcmp(token, "ncpus")==0))) {
 						/* translate np=# to resources_avail.ncpus=# */
 						rsc = "ncpus";
@@ -1396,7 +1396,7 @@ setup_nodes_fs(int preprocess)
 					}
 
 					pal = attrlist_create(token, rsc, strlen(val)+1);
-					if (pal == (svrattrl *)0) {
+					if (pal == NULL) {
 						strcpy(log_buffer, cr_attr_err);
 						free(val);
 						val = NULL;
@@ -1427,7 +1427,7 @@ setup_nodes_fs(int preprocess)
 				} else {
 
 					pal = attrlist_create(ravail, token, strlen(ATR_TRUE)+1);
-					if (pal == (svrattrl *)0) {
+					if (pal == NULL) {
 						strcpy(log_buffer, cr_attr_err);
 						goto errtoken2;
 					}
@@ -1499,7 +1499,7 @@ setup_nodes_fs(int preprocess)
 							node_attr_def[(int)ND_ATR_Comment].at_decode(
 								&np->nd_attr[(int)ND_ATR_Comment],
 								ATTR_comment,
-								(char *)0,
+								NULL,
 								comm);
 						}
 						break;
@@ -1694,7 +1694,7 @@ delete_a_subnode(struct pbsnode *pnode)
 
 	subnode_delete(psubn);
 	if (pprior)
-		pprior->next = (struct pbssubn *)0;
+		pprior->next = NULL;
 }
 
 /**
@@ -1774,7 +1774,7 @@ set_clear_target(struct pbsnode *psourcend, resource *psourcerc, int index, int 
 		nname = " ";
 
 	pn = psourcerc->rs_value.at_val.at_str;
-	if ((pn == (char *)0) ||
+	if ((pn == NULL) ||
 		(*pn != '@') ||
 		((pnode = find_nodebyname(pn+1)) == NULL)) {
 		sprintf(log_buffer,
@@ -2177,7 +2177,7 @@ mark_which_queues_have_nodes()
 	svr_quehasnodes = 0;
 
 	pque = (pbs_queue *)GET_NEXT(svr_queues);
-	while (pque != (pbs_queue *)0) {
+	while (pque != NULL) {
 		pque->qu_attr[(int)QE_ATR_HasNodes].at_val.at_long = 0;
 		pque->qu_attr[(int)QE_ATR_HasNodes].at_flags &= ~ATR_VFLAG_SET;
 		pque->qu_attr[(int)QE_ATR_HasNodes].at_flags |= ATR_VFLAG_MODCACHE;
@@ -2233,7 +2233,7 @@ node_queue_action(attribute *pattr, void *pobj, int actmode)
 			pnode->nd_pque = pq;
 		}
 	} else {
-		pnode->nd_pque = (pbs_queue *)0;
+		pnode->nd_pque = NULL;
 	}
 	mark_which_queues_have_nodes();
 	return 0;
@@ -2318,7 +2318,7 @@ decode_Mom_list(struct attribute *patr, char *name, char *rescn, char *val)
 	attribute		  new;
 	char			 *tmp_fqdn;
 
-	if ((val == (char *)0) || (strlen(val) == 0) || count_substrings(val, &ns)) {
+	if ((val == NULL) || (strlen(val) == 0) || count_substrings(val, &ns)) {
 		node_attr_def[(int)ND_ATR_Mom].at_free(patr);
 		clear_attr(patr, &node_attr_def[(int)ND_ATR_Mom]);
 		/* ATTR_VFLAG_SET is cleared now */
@@ -2349,7 +2349,7 @@ decode_Mom_list(struct attribute *patr, char *name, char *rescn, char *val)
 	 */
 	str_arr[0]=NULL;
 	p = parse_comma_string(val);
-	for (i = 0; (str_arr[i] = p) != NULL; i++) 
+	for (i = 0; (str_arr[i] = p) != NULL; i++)
 		p = parse_comma_string(NULL);
 
 	for (i = 0; (p = str_arr[i]) != NULL; i++) {

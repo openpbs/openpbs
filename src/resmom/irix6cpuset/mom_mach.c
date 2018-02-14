@@ -360,17 +360,17 @@ dep_initialize()
 
 /**
  * @brief
- * 	returns the name of the cpuset, mem and ncpus assigned to the job. 
- * 	Info is taken from the job's alt_id field. The format of this field is: 
- * 	alt_id = ...cpuset=<cpuset_name>:<mem_assn>kb/<ncpus_assn>p 
+ * 	returns the name of the cpuset, mem and ncpus assigned to the job.
+ * 	Info is taken from the job's alt_id field. The format of this field is:
+ * 	alt_id = ...cpuset=<cpuset_name>:<mem_assn>kb/<ncpus_assn>p
  *
  * @param[in] pjob - job pointer
- * @param[out] name - name of cpuset 
+ * @param[out] name - name of cpuset
  * @param[out] mem - memory
  * @param[out] ncpus - number of cpus
  *
  * @return	Void
- * Returns 1 if cpuset information was obtained; 0 otherwise. 
+ * Returns 1 if cpuset information was obtained; 0 otherwise.
  */
 static void
 job_cpuset(job *pjob, char *name, size_t *mem, int *ncpus)
@@ -459,7 +459,7 @@ cpusets_initialize(void)
 	cpusetlist	*ptr;
 	int		nsets;
 	int		rsets;
-	job		*pjob = (job *)0;
+	job		*pjob = NULL;
 	char		cpuset_name[QNAME_STRING_LEN+1];
 	cpuset_shared	share;
 	Bitfield	job_nodes;
@@ -473,7 +473,7 @@ cpusets_initialize(void)
 
 	inusecpusets = NULL;
 	pjob = (job *)GET_NEXT(svr_alljobs);
-	while (pjob != (job *)0) {
+	while (pjob != NULL) {
 		if (pjob->ji_qs.ji_state == JOB_STATE_RUNNING &&
 			pjob->ji_qs.ji_substate == JOB_SUBSTATE_RUNNING) {
 
@@ -2150,7 +2150,7 @@ mach_restart(task *ptask, char *file)
 			"calling ckpt_restart");
 
 		/* Now, running inside that cpuset, restart the checkpoint. */
-		rst_rtn.ckptid = ckpt_restart(file, (struct ckpt_args **)0, 0);
+		rst_rtn.ckptid = ckpt_restart(file, NULL, 0);
 
 		if (rst_rtn.ckptid == -1)
 			rst_rtn.errno  = errno;
@@ -2486,14 +2486,14 @@ ncpus(struct rm_attribute *attrib)
 /**
  * @brief
  *      returns the total physical memory in system in KB as string
- *     
+ *
  * @param[in] attrib - pointer to rm_attribute structure
- *     
+ *
  * @return      string
  * @retval      tot physical memory     Success
  * @retval      NULL                    Error
- *      
- */     
+ *
+ */
 char *
 physmem(struct rm_attribute *attrib)
 {
@@ -2674,7 +2674,7 @@ get_la(double *rv)
 u_long
 gracetime(u_long secs)
 {
-	time_t	now = time((time_t *)NULL);
+	time_t	now = time(NULL);
 
 	if (secs > now)		/* time is in the future */
 		return (secs - now);
@@ -3080,7 +3080,7 @@ execmask(struct rm_attribute *attrib)
 /**
  * @brief
  * 	Convert a number of seconds into a text string of the form HH:MM:SS.
- * 
+ *
  * @param[in] seconds - number of seconds
  *
  * @return	string

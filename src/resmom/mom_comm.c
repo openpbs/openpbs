@@ -118,9 +118,9 @@ char	task_fmt[] = "/%8.8X";
  **
  ** These are functions to provide extra interaction between mother
  ** superior and the sisters for any special job setup that needs
- ** to take place. If no extra setup needs to happen, the function 
- ** pointers are all NULL and standard MOM interaction takes place.  
- ** The sequence of actions which happen for extra setup is as follows 
+ ** to take place. If no extra setup needs to happen, the function
+ ** pointers are all NULL and standard MOM interaction takes place.
+ ** The sequence of actions which happen for extra setup is as follows
  ** (showing one sister):
  **
  **    MS                          sister
@@ -309,10 +309,10 @@ event_dup(eventent *ep, job *pjob, hnodent *pnode)
  * @param[in] fd - TM stream
  * @param[in] pnode - pointer to structure to keep track of events for node
  * @param[in] event - MOM event number
- * @param[in] taskid - which task id 
+ * @param[in] taskid - which task id
  *
  * @return structure handle
- * @retval eventent * 
+ * @retval eventent *
  *
  */
 eventent *
@@ -389,7 +389,7 @@ check:
  * @param[in] x - unsigned number
  *
  * @return int
- * @retval number of bits 
+ * @retval number of bits
  *
  */
 int
@@ -468,7 +468,7 @@ momtask_create(job *pjob)
 /**
  * @brief
  *	find task for job
- * 
+ *
  * @param[in] pjob - structure handle to job
  * @param[in] taskid - task id
  *
@@ -497,7 +497,7 @@ task_find(job *pjob, tm_task_id taskid)
  *
  * @return structure handle to pbs_task
  *
- */	
+ */
 pbs_task *
 find_session(pid_t sid)
 {
@@ -640,7 +640,7 @@ task_recov(job *pjob)
 		return -1;
 
 	(void)strcat(dirname, "/");
-	while (errno = 0, (pdirent = readdir(dir)) != (struct dirent *)0) {
+	while (errno = 0, (pdirent = readdir(dir)) != NULL) {
 		if (pdirent->d_name[0] == '.')
 			continue;
 
@@ -728,7 +728,7 @@ done:
  *
  * @param[in] stream - file descriptor
  * @param[in] jobid  - character pointer holding jobid
- * @param[in] cookie -  
+ * @param[in] cookie -
  * @param[in] command - command for task
  * @param[in] event   - event number
  * @param[in] taskid  - task id
@@ -827,7 +827,7 @@ is_comm_up(int maturity_time)
 /**
  * @brief
  *	Send to sister nodes updates to exec_vnode, exec_host2,
- *	and schedselect job attributes. 
+ *	and schedselect job attributes.
  *
  * @param[in]	pjob - job to update
  *
@@ -844,8 +844,8 @@ send_sisters_job_update(job *pjob)
 	svrattrl	*psatl;
 	char		*cookie;
 	int		num = 0;
-	hnodent		*np;	
-	eventent	*ep = NULL;	
+	hnodent		*np;
+	eventent	*ep = NULL;
 	int		i;
 	int		ret;
 
@@ -871,7 +871,7 @@ send_sisters_job_update(job *pjob)
 		&pjob->ji_wattr[(int)JOB_ATR_exec_vnode],
 		&phead,
 		ATTR_execvnode,
-		(char *)0,
+		NULL,
 		ATR_ENCODE_MOM,
 		NULL);
 
@@ -879,7 +879,7 @@ send_sisters_job_update(job *pjob)
 		&pjob->ji_wattr[(int)JOB_ATR_exec_host2],
 		&phead,
 		ATTR_exechost2,
-		(char *)0,
+		NULL,
 		ATR_ENCODE_MOM,
 		NULL);
 
@@ -887,7 +887,7 @@ send_sisters_job_update(job *pjob)
 		&pjob->ji_wattr[(int)JOB_ATR_SchedSelect],
 		&phead,
 		ATTR_SchedSelect,
-		(char *)0,
+		NULL,
 		ATR_ENCODE_MOM,
 		NULL);
 
@@ -1129,7 +1129,7 @@ receive_job_update(int stream, job *pjob)
  *	as one of the entries in '+' separated 'exechost' string.
  *
  * @param[in]	exechost - a string of the form:
- *		  exec_host2: <host1>:<port1>/...+<host2>:<port2>/...	
+ *		  exec_host2: <host1>:<port1>/...+<host2>:<port2>/...
  *		  - or -
  *		  exec_host: <host1>/...+<host2>/...
  * @param[in]	mname - mom  hostname to match.
@@ -1137,7 +1137,7 @@ receive_job_update(int stream, job *pjob)
  *
  * @return int
  * @retval 1	- for a match.
- * @retval 0	- for a non-match or error. 	
+ * @retval 0	- for a non-match or error.
  */
 static int
 in_exechost(char *exechost, char *mname, int port)
@@ -1156,7 +1156,7 @@ in_exechost(char *exechost, char *mname, int port)
 		return 0;
 	}
 
-	ehost = strdup(exechost);	
+	ehost = strdup(exechost);
 	if (ehost == NULL) {
 		log_err(errno, __func__, "strdup failed");
 		return 0;
@@ -1236,10 +1236,10 @@ in_exechost(char *exechost, char *mname, int port)
  *
  * @param[in] pjob - structure handle to job
  * @param[in] com  - command for task
- * @param[in] command_func - function 
+ * @param[in] command_func - function
  * @param[in] exclude_exec_host - if sister host match one of these,
  *			then ignore sending mcast message to that host.
- * 
+ *
  * @return int
  * @retval num - number of nodes without problem
  * @retval 0   - Failure
@@ -1289,7 +1289,7 @@ send_sisters_mcast_inner(job *pjob, int com, pbs_jobndstm_t command_func,
 						np->hn_port-1)) {
 			/*
 			 ** ensure current node (which is managed by an
-			 ** excluded mom host) is not flagged as a problem 
+			 ** excluded mom host) is not flagged as a problem
 			 */
 			if (pjob->ji_nodekill == np->hn_node)
 				pjob->ji_nodekill = TM_ERROR_NODE;
@@ -1387,7 +1387,7 @@ send_sisters_mcast_inner(job *pjob, int com, pbs_jobndstm_t command_func,
  * @retval 0   - Failure
  *
  * @note
- *	Set pjob->ji_nodekill if there is a problem with a node. 
+ *	Set pjob->ji_nodekill if there is a problem with a node.
  *
  */
 int
@@ -1509,7 +1509,7 @@ if (reply) { \
  * 	Check to see which node a stream is coming from.  Return a NULL
  * 	if it is not assigned to this job.  Return a nodeent pointer if
  * 	it is.
- * 
+ *
  * @param[in] pjob - structure handle to job
  * @param[in] stream - file descriptor for task
  * @param[in] vnodeid - node id
@@ -1652,7 +1652,7 @@ job_start_error(job *pjob, int code, char *nodename, char *cmd)
  *	reply to the server and purge the job structure
  *
  * @param[in] pjob - structure handle to job
- * @param[in] errcode - error code 
+ * @param[in] errcode - error code
  *
  * @return Void
  *
@@ -1774,7 +1774,7 @@ node_bailout(job *pjob, hnodent *np)
 							pattr+i,
 							&phead,
 							(job_attr_def+i)->at_name,
-							(char *)0,
+							NULL,
 							ATR_ENCODE_MOM,
 							NULL);
 					}
@@ -1937,12 +1937,12 @@ node_bailout(job *pjob, hnodent *np)
  *	Tie off all loose ends for a job that is going away.  In particular,
  * 	release any special resources.  The job should already be terminated
  * 	before getting here.
- * 
+ *
  * @param[in] pjob - structure handle to job
  *
  * @see job_clean_extra
  * @see del_job_hw
- * 
+ *
  * @return Void
  *
  */
@@ -1973,7 +1973,7 @@ term_job(job *pjob)
  * @brief
  *	Handle a stream that needs to be closed.
  *	May be either from another Mom, or the server.
- * 
+ *
  * @param[in] stream - file descriptor
  * @param[in] ret    - indicates value for error message to be logged
  *
@@ -2079,8 +2079,8 @@ im_eof(int stream, int ret)
  *
  * @return error code
  * @retval TRUE  error
- * @retval FALSE if okay 
- *	
+ * @retval FALSE if okay
+ *
  */
 int
 check_ms(int stream, job *pjob)
@@ -2129,10 +2129,10 @@ check_ms(int stream, job *pjob)
 /**
  * @brief
  *	return resource used by job
- * 
+ *
  * @param[in] pjob - structure handle to job
  * @param[in] name - character pointer holding resource name
- * @param[in] (*func)(resource *) - 	
+ * @param[in] (*func)(resource *) -
  *
  *
  */
@@ -2164,9 +2164,9 @@ resc_used(job *pjob, char *name, u_long	(*func)(resource *))
 /**
  * @brief
  *	Find named info for a task.
- * 
+ *
  * @param[in] ptask - structure handle to pbs_task
- * @param[in] name  - name of task 
+ * @param[in] name  - name of task
  *
  * @return structure handle to infoent
  *
@@ -2188,10 +2188,10 @@ task_findinfo(pbs_task *ptask, char *name)
 /**
  * @brief
  *	Save named info with a task.
- * 
+ *
  * @param[in] ptask - structure handle to pbs_task
  * @param[in] name  - char pointer to hold name of task
- * @param[in] info  - string counted 
+ * @param[in] info  - string counted
  * @param[in] len   - length of string
  *
  * @return Void
@@ -2224,7 +2224,7 @@ task_saveinfo(pbs_task *ptask, char *name, void *info, int len)
  * @param pjob - structure handle to job
  *
  * @return string
- * @retval res_string 
+ * @retval res_string
  *
  */
 char *
@@ -2245,7 +2245,7 @@ resc_string(job *pjob)
 	used = 0;
 	res_str = (char *)malloc(tot);
 	if (res_str == NULL)
-		return (NULL);
+		return NULL;
 	strcpy(res_str, ch);
 	used += len;
 	res_str[used++] = ':';
@@ -2299,7 +2299,7 @@ resc_string(job *pjob)
  * @param[in] len - length of string
  * @param[in] tcp - indiaction whether tcp or not
  * @param[in] con - inter mom stream
- * 
+ *
  * @return  error code
  * @retval -1     error
  * @retval  0     Success
@@ -2407,7 +2407,7 @@ send_resc_used_to_ms(int stream, char *jobid)
 	pal = (svrattrl *)GET_NEXT(lhead);
 	psatl = pal;
 
-	while (pal != (svrattrl *)0) {
+	while (pal != NULL) {
 		nxpal = (struct svrattrl *)GET_NEXT(pal->al_link);
 
 		/* no need to track the resources automatically sent to MS */
@@ -2457,7 +2457,7 @@ send_resc_used_to_ms(int stream, char *jobid)
  * @param[in] jobid - the jobid of the owning job.
  * @param[in] nodeidx - node index to the job's internal resources table
  *			where received values will be saved.
- *			resources values received from 
+ *			resources values received from
  *
  * @return  error code
  * @retval -1     error
@@ -2609,7 +2609,7 @@ im_request(int stream, int version)
 	mom_hook_input_t	hook_input;
 	mom_hook_output_t	hook_output;
 	int			hook_errcode = 0;
-	int			hook_rc = 0;	
+	int			hook_rc = 0;
 	hook			*last_phook = NULL;
 	unsigned int		hook_fail_action = 0;
 	char			*nodehost = NULL;
@@ -2641,7 +2641,7 @@ im_request(int stream, int version)
 		im_eof(stream, 0);
 		return;
 	}
-	
+
 	jobid = disrst(stream, &ret);
 	BAIL("jobid")
 	cookie = disrst(stream, &ret);
@@ -2683,7 +2683,7 @@ im_request(int stream, int version)
 				kill_job(pjob, SIGKILL);
 				mom_deljob(pjob);
 			}
-			if ((pjob = job_alloc()) == (job *)0) {
+			if ((pjob = job_alloc()) == NULL) {
 				SEND_ERR(PBSE_SYSTEM)
 				goto done;
 			}
@@ -2833,7 +2833,7 @@ im_request(int stream, int version)
 						/* we've hit an internal error (malloc error, full disk, etc...), so */
 						/* treat this now like a  hook error so hook fail_action  */
 						/* will be consulted.  */
-						/* Before, behavior of an internal error was to ignore it! */ 
+						/* Before, behavior of an internal error was to ignore it! */
 						hook_errcode = PBSE_HOOKERROR;
 					}
 					SEND_ERR2(hook_errcode, (char *)hook_msg);
@@ -2934,7 +2934,7 @@ im_request(int stream, int version)
 				goto done;
 			}
 #endif
-			if (check_pwd(pjob) == (struct passwd *)0) {
+			if (check_pwd(pjob) == NULL) {
 				log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_NOTICE,
 					pjob->ji_qs.ji_jobid, log_buffer);
 				mom_deljob(pjob);
@@ -2960,7 +2960,7 @@ im_request(int stream, int version)
 #ifdef WIN32
 				if (mkjobdir(pjob->ji_qs.ji_jobid,
 					jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir),
-					(pjob->ji_user != NULL) ? pjob->ji_user->pw_name : NULL, 
+					(pjob->ji_user != NULL) ? pjob->ji_user->pw_name : NULL,
 					(pjob->ji_user != NULL) ? pjob->ji_user->pw_userlogin : INVALID_HANDLE_VALUE)) {
 					sprintf(log_buffer, "unable to create the job directory %s",
 						jobdirname(pjob->ji_qs.ji_jobid, pjob->ji_grpcache->gc_homedir));
@@ -3070,7 +3070,7 @@ join_err:
 	/*
 	 ** Check if job already exists.
 	 */
-	if ((pjob = find_job(jobid)) == (job *)0) {
+	if ((pjob = find_job(jobid)) == NULL) {
 		SEND_ERR(PBSE_JOBEXIST)
 		goto done;
 	}
@@ -3263,7 +3263,7 @@ join_err:
 
 				ret = im_compose(stream, jobid, cookie, IM_SEND_RESC,
 					event, fromtask, IM_OLD_PROTOCOL_VER);
-		
+
 				/* Send the information tallied for the job. */
 				ret = diswst(stream, mom_host);
 				BAIL("mom_host")
@@ -3286,11 +3286,11 @@ join_err:
 				/* Needed to create a lightweight copy of the job to
 				 * contain only the jobid info, so I can just call
 				 * new_job_action() to create a JOB_ACT_REQ_DEALLOCATE
-				 * request. Can't use the original 'pjob' structure as 
+				 * request. Can't use the original 'pjob' structure as
 				 * before creating the request, the real job should have
 				 * been deleted already.
 				 */
-				if ((pjob2 = job_alloc()) != (job *)0) {
+				if ((pjob2 = job_alloc()) != NULL) {
 					(void)strncpy(pjob2->ji_qs.ji_jobid, jobid, PBS_MAXSVRJOBID);
 					pjob2->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long =
 								runver;
@@ -3341,7 +3341,7 @@ join_err:
 						/* we've hit an internal error (malloc error, full disk, etc...), so */
 						/* treat this now like a  hook error so hook fail_action  */
 						/* will be consulted.  */
-						/* Before, behavior of an internal error was to ignore it! */ 
+						/* Before, behavior of an internal error was to ignore it! */
 						hook_errcode = PBSE_HOOKERROR;
 					}
 					SEND_ERR2(hook_errcode, (char *)hook_msg);
@@ -3415,7 +3415,7 @@ join_err:
 						num*sizeof(char *));
 						assert(argv);
 					}
-					argv[i] = cp;	
+					argv[i] = cp;
 				}
 			} else {
 			  	argc = disrui(stream, &ret);
@@ -3427,7 +3427,7 @@ join_err:
 				assert(argv);
 				for (i=0; i<argc; i++) {
 					argv[i] = disrst(stream, &ret);
-					if (ret != DIS_SUCCESS) 
+					if (ret != DIS_SUCCESS)
 						break;
 				}
 			}
@@ -4738,7 +4738,7 @@ join_err:
 					goto err;
 				}
 				pjob->ji_numrescs++;
-				
+
 			}
 			pjob->ji_resources[resc_idx].nr_cput =
 				disrul(stream, &ret);
@@ -4829,7 +4829,7 @@ fini:
  * @brief
  *      Handle a stream that needs to be closed.
  *      May be either from another Mom, or the server.
- * 
+ *
  * @param[in] fd - file descriptor
  *
  * @return Void
@@ -5121,7 +5121,7 @@ tm_request(int fd, int version)
 		}
 		else {
 			/* verify the jobid is known */
-			if ((pjob = find_job(jobid)) == (job *)0) {
+			if ((pjob = find_job(jobid)) == NULL) {
 				sprintf(log_buffer, "job not found");
 				i = TM_ENOTFOUND;
 				goto aterr;
@@ -5381,7 +5381,7 @@ aterr:
 
 	/* Continue normal processing for all other commands. */
 	/* verify the jobid is known */
-	if ((pjob = find_job(jobid)) == (job *)0) {
+	if ((pjob = find_job(jobid)) == NULL) {
 		sprintf(log_buffer, "job not found");
 		goto err;
 	}

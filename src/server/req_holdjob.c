@@ -142,7 +142,7 @@ req_holdjob(struct batch_request *preq)
 
 
 	pjob = chk_job_request(preq->rq_ind.rq_hold.rq_orig.rq_objname, preq, &jt);
-	if (pjob == (job *)0)
+	if (pjob == NULL)
 		return;
 	if ((jt != IS_ARRAY_NO) && (jt != IS_ARRAY_ArrayJob)) {
 		req_reject(PBSE_IVALREQ, 0, preq);
@@ -192,7 +192,7 @@ req_holdjob(struct batch_request *preq)
 	(void)strncpy(date, (const char *)ctime(&now), 24);
 	date[24] = '\0';
 	(void)sprintf(log_buffer, "Job held by %s on %s", preq->rq_user, date);
-	job_attr_def[(int)JOB_ATR_Comment].at_decode(&pjob->ji_wattr[(int)JOB_ATR_Comment], (char *)0, (char *)0, log_buffer);
+	job_attr_def[(int)JOB_ATR_Comment].at_decode(&pjob->ji_wattr[(int)JOB_ATR_Comment], NULL, NULL, log_buffer);
 
 	(void)sprintf(log_buffer, msg_jobholdset, pset, preq->rq_user,
 		preq->rq_host);
@@ -254,7 +254,7 @@ req_releasejob(struct batch_request *preq)
 
 
 	pjob = chk_job_request(preq->rq_ind.rq_release.rq_objname, preq, &jt);
-	if (pjob == (job *)0)
+	if (pjob == NULL)
 		return;
 
 	if ((jt != IS_ARRAY_NO) && (jt != IS_ARRAY_ArrayJob)) {
@@ -330,7 +330,7 @@ static int
 get_hold(pbs_list_head *phead, char	 **pset)
 {
 	int		 have_one = 0;
-	struct svrattrl *holdattr = (struct svrattrl*)0;
+	struct svrattrl *holdattr = NULL;
 	struct svrattrl *pal;
 
 	pal = (struct svrattrl *)GET_NEXT((*phead));
@@ -353,7 +353,7 @@ get_hold(pbs_list_head *phead, char	 **pset)
 	return (job_attr_def[(int)JOB_ATR_hold].at_decode(
 		&temphold,
 		holdattr->al_name,
-		(char *)0,
+		NULL,
 		holdattr->al_value));
 }
 
@@ -404,7 +404,7 @@ post_hold(struct work_task *pwt)
 	}
 
 	pjob = find_job(preq->rq_ind.rq_hold.rq_orig.rq_objname);
-	if (pjob  == (job *)0) {
+	if (pjob  == NULL) {
 		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 			preq->rq_ind.rq_hold.rq_orig.rq_objname,
 			msg_postmomnojob);
@@ -435,7 +435,7 @@ post_hold(struct work_task *pwt)
 
 		/* note in accounting file */
 
-		account_record(PBS_ACCT_CHKPNT, pjob, (char *)0);
+		account_record(PBS_ACCT_CHKPNT, pjob, NULL);
 	}
 	reply_ack(preq);
 }

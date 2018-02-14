@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <data>
-    <!--  				
+    <!--
  * Copyright (C) 1994-2018 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
@@ -35,9 +35,9 @@
  * Use of Altair’s trademarks, including but not limited to "PBS™",
  * "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
  * trademark licensing policies.
-    
-	NOTE (Server File) 
-    
+
+	NOTE (Server File)
+
 	resc_def_all is the array of attribute definitions for resc.
     Each legal job attribute is defined here.
     The entries for each attribute are (see attribute.h):
@@ -52,9 +52,9 @@
        value type,
 	   member_at_entlim,
 	   member_at_struct,
-       
+
 	 NOTE (ECL File)
-	 
+
 	 The entries for each attribute are (see attribute.h):\n
        name,
        type,
@@ -64,7 +64,7 @@
     -->
    <head>
       <SVR>
-      #include &lt;pbs_config.h&gt;   
+      #include &lt;pbs_config.h&gt;
       #include &lt;sys/types.h&gt;
       #include &lt;stdlib.h&gt;
       #include &lt;stdio.h&gt;
@@ -97,7 +97,7 @@
       static resource_def svr_resc_defm[] = {
       </SVR>
       <ECL>
-      #include &lt;pbs_config.h&gt;   
+      #include &lt;pbs_config.h&gt;
       #include &lt;sys/types.h&gt;
       #include "pbs_ifl.h"
       #include "pbs_ecl.h"
@@ -105,7 +105,7 @@
       ecl_attribute_def ecl_svr_resc_def[] = {
       </ECL>
    </head>
-   <attributes>		
+   <attributes>
    /*cput*/
 	<member_name><both>"cput"</both></member_name>
 	<member_at_decode>decode_time</member_at_decode>
@@ -117,13 +117,13 @@
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_ALTRUN</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>verify_datatype_time</ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes>		
+   <attributes>
    /*mem*/
 	<member_name><both>"mem"</both></member_name>
 	<member_at_decode>decode_size</member_at_decode>
@@ -135,13 +135,13 @@
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_RASSN | ATR_DFLAG_ANASSN |ATR_DFLAG_CVTSLT</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_SIZE</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>verify_datatype_size</ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes>		
+   <attributes>
    /*walltime*/
 	<member_name><both>"walltime"</both></member_name>			<!-- wall clock time limit for a job  -->
 	<member_at_decode>decode_time</member_at_decode>
@@ -153,13 +153,13 @@
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_ALTRUN</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>verify_datatype_time</ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes>		
+   <attributes>
   /* soft_walltime */
         <member_name><both>"soft_walltime"</both></member_name>        <!-- soft wall clock time limit for a job  -->
         <member_at_decode>decode_time</member_at_decode>
@@ -171,14 +171,14 @@
         <member_at_flags><both>MGR_ONLY_SET | ATR_DFLAG_ALTRUN</both></member_at_flags>
         <member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
         <member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-        <member_at_struct>(struct resource_def *)0</member_at_struct>
+        <member_at_struct>NULL</member_at_struct>
         <member_verify_function>
         <ECL>verify_datatype_time</ECL>
         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
         </member_verify_function>
    </attributes>
 
-   <attributes>		
+   <attributes>
    /*min_walltime*/
 	<member_name><both>"min_walltime"</both></member_name>		<!-- min wall clock time limit for a job  -->
 	<member_at_decode>decode_time</member_at_decode>
@@ -190,13 +190,13 @@
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_ALTRUN</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>verify_datatype_time</ECL>
 	<ECL>verify_value_zero_or_positive</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes>		
+   <attributes>
    /*max_walltime*/
 	<member_name><both>"max_walltime"</both></member_name>		<!-- max wall clock time limit for a job  -->
 	<member_at_decode>decode_time</member_at_decode>
@@ -208,13 +208,13 @@
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_ALTRUN</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>verify_datatype_time</ECL>
 	<ECL>verify_value_zero_or_positive</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes>		
+   <attributes>
    /*ncpus*/
 	<member_name><both>"ncpus"</both></member_name>                        <!-- number of processors for job  -->
 	<member_at_decode>decode_l</member_at_decode>
@@ -226,13 +226,13 @@
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_RASSN | ATR_DFLAG_ANASSN | ATR_DFLAG_CVTSLT</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>verify_datatype_long</ECL>
 	<ECL>verify_value_zero_or_positive</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes flag = 'SVR'>		
+   <attributes flag = 'SVR'>
    /*naccelerators*/
 	<member_name><SVR>"naccelerators"</SVR></member_name>	<!-- number of accelerators  -->
 	<member_at_decode>decode_l</member_at_decode>
@@ -244,9 +244,9 @@
 	<member_at_flags><SVR>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_RASSN | ATR_DFLAG_ANASSN | ATR_DFLAG_CVTSLT</SVR></member_at_flags>
 	<member_at_type><SVR>ATR_TYPE_LONG</SVR></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
    </attributes>
-   <attributes>		
+   <attributes>
    /*select*/
 	<member_name><both>"select"</both></member_name>			<!-- user specification of select  -->
 	<member_at_decode>decode_select</member_at_decode>
@@ -262,13 +262,13 @@
 	<member_at_flags><both>READ_WRITE</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>verify_datatype_select</ECL>
 	<ECL>verify_value_select</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes>		
+   <attributes>
    /*place*/
 	<member_name><both>"place"</both></member_name>			<!-- user specification of place  -->
 	<member_at_decode>decode_place</member_at_decode>
@@ -280,13 +280,13 @@
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes>		
+   <attributes>
    /*nodes*/
 	<member_name><both>"nodes"</both></member_name>			<!-- user specification of nodes  -->
 	<member_at_decode>decode_nodes</member_at_decode>
@@ -298,13 +298,13 @@
 	<member_at_flags><both>READ_WRITE</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>verify_datatype_nodes</ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes>		
+   <attributes>
    /*nodect*/
 	<member_name><both>"nodect"</both></member_name>		<!-- count of number of nodes requested  -->
 	<member_at_decode>decode_l</member_at_decode>			<!-- read-only, set by server whenever   -->
@@ -316,13 +316,13 @@
 	<member_at_flags><both>READ_ONLY | ATR_DFLAG_MGWR | ATR_DFLAG_RASSN</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>verify_datatype_long</ECL>
 	<ECL>verify_value_zero_or_positive</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes>		
+   <attributes>
    /*arch*/
 	<member_name><both>"arch"</both></member_name>				<!-- system architecture type  -->
 	<member_at_decode>decode_str</member_at_decode>
@@ -334,13 +334,13 @@
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_CVTSLT | ATR_DFLAG_MOM</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes flag = 'SVR'>		
+   <attributes flag = 'SVR'>
    /*nchunk*/
 	<member_name><SVR>"nchunk"</SVR></member_name>		<!-- number of chunks  -->
 	<member_at_decode>decode_l</member_at_decode>
@@ -352,9 +352,9 @@
 	<member_at_flags><SVR>NO_USER_SET | ATR_DFLAG_CVTSLT</SVR></member_at_flags>
 	<member_at_type><SVR>ATR_TYPE_LONG</SVR></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
    </attributes>
-   <attributes flag = 'SVR'>		
+   <attributes flag = 'SVR'>
    /*vntype*/
 	<member_name><SVR>"vntype"</SVR></member_name>
 	<member_at_decode>decode_arst</member_at_decode>
@@ -366,9 +366,9 @@
 	<member_at_flags><SVR>READ_WRITE | ATR_DFLAG_CVTSLT</SVR></member_at_flags>
 	<member_at_type><SVR>ATR_TYPE_ARST</SVR></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
    </attributes>
-   <attributes>		
+   <attributes>
    /*MPIPROCS*/
 	<member_name><both>MPIPROCS</both></member_name>		<!-- "mpiprocs", special resource for mpi  -->
 	<member_at_decode>decode_l</member_at_decode>
@@ -380,13 +380,13 @@
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_RASSN | ATR_DFLAG_CVTSLT</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>verify_datatype_long</ECL>
 	<ECL>verify_value_zero_or_positive</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes>		
+   <attributes>
    /*OMPTHREADS*/
 	<member_name><both>OMPTHREADS</both></member_name>		<!-- "ompthreads", special resource for OpenMP  -->
 	<member_at_decode>decode_l</member_at_decode>
@@ -398,13 +398,13 @@
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_CVTSLT</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>verify_datatype_long</ECL>
 	<ECL>verify_value_zero_or_positive</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes>		
+   <attributes>
    /*cpupercent*/
 	<member_name><both>"cpupercent"</both></member_name>
 	<member_at_decode>decode_l</member_at_decode>
@@ -416,7 +416,7 @@
 	<member_at_flags><both>NO_USER_SET</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>verify_datatype_long</ECL>
 	<ECL>verify_value_zero_or_positive</ECL>
@@ -434,13 +434,13 @@
 	<member_at_flags><both>NO_USER_SET</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_FLOAT</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>verify_datatype_float</ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes>		
+   <attributes>
    /*file*/
 	<member_name><both>"file"</both></member_name>
 	<member_at_decode>decode_size</member_at_decode>
@@ -452,13 +452,13 @@
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_SIZE</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>verify_datatype_size</ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
 	</attributes>
-   <attributes>		
+   <attributes>
    /*pmem*/
 	<member_name><both>"pmem"</both></member_name>
 	<member_at_decode>decode_size</member_at_decode>
@@ -470,13 +470,13 @@
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_SIZE</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>verify_datatype_size</ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes>		
+   <attributes>
    /*vmem*/
 	<member_name><both>"vmem"</both></member_name>
 	<member_at_decode>decode_size</member_at_decode>
@@ -488,13 +488,13 @@
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_RASSN | ATR_DFLAG_ANASSN | ATR_DFLAG_CVTSLT</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_SIZE</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>verify_datatype_size</ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes>		
+   <attributes>
    /*pvmem*/
 	<member_name><both>"pvmem"</both></member_name>
 	<member_at_decode>decode_size</member_at_decode>
@@ -506,13 +506,13 @@
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_SIZE</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>verify_datatype_size</ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes>		
+   <attributes>
    /*nice*/
 	<member_name><both>"nice"</both></member_name>				<!-- job nice value  -->
 	<member_at_decode>decode_l</member_at_decode>
@@ -524,13 +524,13 @@
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>verify_datatype_long</ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes>		
+   <attributes>
    /*pcput*/
 	<member_name><both>"pcput"</both></member_name>
 	<member_at_decode>decode_time</member_at_decode>
@@ -542,13 +542,13 @@
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>verify_datatype_time</ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes>		
+   <attributes>
    /*nodemask*/
 	<member_name><both>"nodemask"</both></member_name>
 	<member_at_decode>decode_str</member_at_decode>
@@ -560,13 +560,13 @@
 	<member_at_flags><both>NO_USER_SET | ATR_DFLAG_MOM</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
 	</attributes>
-  <attributes>		
+  <attributes>
   /*hpm*/
 	<member_name><both>"hpm"</both></member_name>                          <!-- Job wants Hardware Perf. Monitors  -->
 	<member_at_decode>decode_l</member_at_decode>
@@ -578,13 +578,13 @@
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_RASSN</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>verify_datatype_long</ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes>		
+   <attributes>
    /*ssinodes*/
 	<member_name><both>"ssinodes"</both></member_name>                     <!-- Number of SSI "nodes" requested  -->
 	<member_at_decode>decode_l</member_at_decode>
@@ -596,13 +596,13 @@
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>verify_datatype_long</ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes>		
+   <attributes>
    /*host*/
 	<member_name><both>"host"</both></member_name>				<!-- host to execute on  -->
 	<member_at_decode>decode_str</member_at_decode>
@@ -618,13 +618,13 @@
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_CVTSLT</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes>		
+   <attributes>
    /*vnode*/
 	<member_name><both>"vnode"</both></member_name>			<!-- vnode name on which to execute  -->
 	<member_at_decode>decode_str</member_at_decode>
@@ -636,13 +636,13 @@
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_CVTSLT</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes>		
+   <attributes>
    /*resc*/
 	<member_name><both>"resc"</both></member_name>
 	<member_at_decode>decode_arst</member_at_decode>
@@ -654,13 +654,13 @@
 	<member_at_flags><both>READ_WRITE</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_ARST</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes>		
+   <attributes>
    /*software*/
 	<member_name><both>"software"</both></member_name>			<!-- software required for execution  -->
 	<member_at_decode>decode_str</member_at_decode>
@@ -672,13 +672,13 @@
 	<member_at_flags><both>READ_WRITE</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes>		
+   <attributes>
    /*site*/
 	<member_name><both>"site"</both></member_name>                         <!-- site resource  -->
 	<member_at_decode>decode_str</member_at_decode>
@@ -690,13 +690,13 @@
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes flag = 'SVR'>		
+   <attributes flag = 'SVR'>
    /*exec_vnode*/
 	<member_name><SVR>"exec_vnode"</SVR></member_name>		<!-- estimated place where job will run  -->
 	<member_at_decode>decode_str</member_at_decode>
@@ -708,9 +708,9 @@
 	<member_at_flags><SVR>NO_USER_SET</SVR></member_at_flags>
 	<member_at_type><SVR>ATR_TYPE_STR</SVR></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
    </attributes>
-   <attributes flag = 'SVR'>		
+   <attributes flag = 'SVR'>
    /*start_time*/
 	<member_name><SVR>"start_time"</SVR></member_name>			<!-- estimated start time  -->
 	<member_at_decode>decode_l</member_at_decode>
@@ -722,9 +722,9 @@
 	<member_at_flags><SVR>NO_USER_SET</SVR></member_at_flags>
 	<member_at_type><SVR>ATR_TYPE_LONG</SVR></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
    </attributes>
-   <attributes>		
+   <attributes>
    /*mpphost*/
 	<member_name><both>"mpphost"</both></member_name>			<!-- Host assosciated with MPP nodes  -->
 	<member_at_decode>decode_str</member_at_decode>
@@ -736,13 +736,13 @@
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes>		
+   <attributes>
    /*mpparch*/
 	<member_name><both>"mpparch"</both></member_name>			<!-- MPP PE architecture type  -->
 	<member_at_decode>decode_str</member_at_decode>
@@ -754,13 +754,13 @@
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes>		
+   <attributes>
    /*mpplabels*/
 	<member_name><both>"mpplabels"</both></member_name>			<!-- PE label(s) required for execution  -->
 	<member_at_decode>decode_str</member_at_decode>
@@ -772,13 +772,13 @@
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes>		
+   <attributes>
    /*mppwidth*/
 	<member_name><both>"mppwidth"</both></member_name>			<!-- Number of PEs  -->
 	<member_at_decode>decode_l</member_at_decode>
@@ -790,13 +790,13 @@
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>verify_datatype_long</ECL>
 	<ECL>verify_value_zero_or_positive</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes>		
+   <attributes>
    /*mppdepth*/
 	<member_name><both>"mppdepth"</both></member_name>			<!-- Number of threads per PE  -->
 	<member_at_decode>decode_l</member_at_decode>
@@ -808,13 +808,13 @@
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>verify_datatype_long</ECL>
 	<ECL>verify_value_zero_or_positive</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes>		
+   <attributes>
    /*mppnppn*/
 	<member_name><both>"mppnppn"</both></member_name>			<!-- Number of MPP processes per node  -->
 	<member_at_decode>decode_l</member_at_decode>
@@ -826,13 +826,13 @@
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>verify_datatype_long</ECL>
 	<ECL>verify_value_zero_or_positive</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes>		
+   <attributes>
    /*mppnodes*/
 	<member_name><both>"mppnodes"</both></member_name>			<!-- Specific nodes required by app  -->
 	<member_at_decode>decode_str</member_at_decode>
@@ -844,13 +844,13 @@
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_ALTRUN</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes>		
+   <attributes>
    /*mppmem*/
 	<member_name><both>"mppmem"</both></member_name>			<!-- Max memory for all applications  -->
 	<member_at_decode>decode_size</member_at_decode>
@@ -862,13 +862,13 @@
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_SIZE</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>verify_datatype_size</ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes>		
+   <attributes>
    /*mppt*/
 	<member_name><both>"mppt"</both></member_name>				<!-- total mpp time for job  -->
 	<member_at_decode>decode_time</member_at_decode>
@@ -880,7 +880,7 @@
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_ALTRUN</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_LONG</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>verify_datatype_time</ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
@@ -898,7 +898,7 @@
 	<member_at_flags><both>NO_USER_SET | ATR_DFLAG_MOM</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
@@ -916,13 +916,13 @@
 	<member_at_flags><both>NO_USER_SET | ATR_DFLAG_MOM</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_STR</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
 	</member_verify_function>
    </attributes>
-   <attributes macro = '#ifndef PBS_MOM' mflag = 'SVR'>	   
+   <attributes macro = '#ifndef PBS_MOM' mflag = 'SVR'>
    /*aoe*/
 	<member_name><both>"aoe"</both></member_name>       	<!-- aoe   -->
 	<member_at_decode>decode_arst</member_at_decode>
@@ -934,13 +934,13 @@
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_CVTSLT</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_ARST</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function> 
+	</member_verify_function>
    </attributes>
-   <attributes macro = '#ifndef PBS_MOM' mflag = 'SVR'>	   
+   <attributes macro = '#ifndef PBS_MOM' mflag = 'SVR'>
    /*eoe*/
 	<member_name><both>"eoe"</both></member_name>       	<!-- eoe   -->
 	<member_at_decode>decode_arst</member_at_decode>
@@ -952,15 +952,15 @@
 	<member_at_flags><both>READ_WRITE | ATR_DFLAG_CVTSLT</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_ARST</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
 	<ECL>NULL_VERIFY_VALUE_FUNC</ECL>
-	</member_verify_function> 
+	</member_verify_function>
    </attributes>
     <attributes>
    	/*preempt_targets*/
-	<member_name><both>"preempt_targets"</both></member_name> 
+	<member_name><both>"preempt_targets"</both></member_name>
 	<member_at_decode>decode_arst</member_at_decode>
 	<member_at_encode>encode_arst</member_at_encode>
 	<member_at_set>set_arst</member_at_set>
@@ -970,11 +970,11 @@
 	<member_at_flags><both>READ_WRITE</both></member_at_flags>
 	<member_at_type><both>ATR_TYPE_ARST</both></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
 	<member_verify_function>
 	<ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
 	<ECL>verify_value_preempt_targets</ECL>
-	</member_verify_function> 
+	</member_verify_function>
    </attributes>
    <attributes flag = 'SVR'>
    	/*accelerator*/
@@ -988,9 +988,9 @@
 	<member_at_flags><SVR>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_CVTSLT</SVR></member_at_flags>
 	<member_at_type><SVR>ATR_TYPE_BOOL</SVR></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
    </attributes>
-   <attributes flag = 'SVR'>		
+   <attributes flag = 'SVR'>
    /*accelerator_model*/
 	<member_name><SVR>"accelerator_model"</SVR></member_name>		<!-- accelerator model/family  -->
 	<member_at_decode>decode_str</member_at_decode>
@@ -1002,9 +1002,9 @@
 	<member_at_flags><SVR>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_CVTSLT</SVR></member_at_flags>
 	<member_at_type><SVR>ATR_TYPE_STR</SVR></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
    </attributes>
-   <attributes flag = 'SVR'>		
+   <attributes flag = 'SVR'>
    /*accelerator_memory*/
 	<member_name><SVR>"accelerator_memory"</SVR></member_name>	<!-- memory associated with the accelerator  -->
 	<member_at_decode>decode_size</member_at_decode>
@@ -1016,9 +1016,9 @@
 	<member_at_flags><SVR>READ_WRITE | ATR_DFLAG_MOM | ATR_DFLAG_RASSN | ATR_DFLAG_ANASSN |ATR_DFLAG_CVTSLT</SVR></member_at_flags>
 	<member_at_type><SVR>ATR_TYPE_SIZE</SVR></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
    </attributes>
-   <attributes flag = 'SVR'>		
+   <attributes flag = 'SVR'>
    /*accelerator_group*/
 	<member_name><SVR>"accelerator_group"</SVR></member_name>
 	<member_at_decode>decode_arst</member_at_decode>
@@ -1030,7 +1030,7 @@
 	<member_at_flags><SVR>READ_WRITE | ATR_DFLAG_CVTSLT</SVR></member_at_flags>
 	<member_at_type><SVR>ATR_TYPE_ARST</SVR></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
    </attributes>
    <attributes flag = 'SVR'>
    /*pstate*/
@@ -1044,7 +1044,7 @@
 	<member_at_flags><SVR>READ_WRITE | ATR_DFLAG_MOM</SVR></member_at_flags>
 	<member_at_type><SVR>ATR_TYPE_STR</SVR></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
    </attributes>
    <attributes flag = 'SVR'>
    /*pgov*/
@@ -1058,7 +1058,7 @@
 	<member_at_flags><SVR>READ_WRITE | ATR_DFLAG_MOM</SVR></member_at_flags>
 	<member_at_type><SVR>ATR_TYPE_STR</SVR></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
    </attributes>
    <attributes flag = 'SVR'>
    /*pcap_node*/
@@ -1072,7 +1072,7 @@
 	<member_at_flags><SVR>READ_WRITE | ATR_DFLAG_MOM</SVR></member_at_flags>
 	<member_at_type><SVR>ATR_TYPE_LONG</SVR></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
    </attributes>
    <attributes flag = 'SVR'>
    /*pcap_accelerator*/
@@ -1086,9 +1086,9 @@
 	<member_at_flags><SVR>READ_WRITE | ATR_DFLAG_MOM</SVR></member_at_flags>
 	<member_at_type><SVR>ATR_TYPE_LONG</SVR></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
    </attributes>
-   <attributes flag = 'SVR'>		
+   <attributes flag = 'SVR'>
     /* the definition for the "unknown" resource MUST be last */
 	<member_name><SVR>"|unknown|"</SVR></member_name>
 	<member_at_decode>decode_unkn</member_at_decode>
@@ -1100,7 +1100,7 @@
 	<member_at_flags><SVR>READ_WRITE</SVR></member_at_flags>
 	<member_at_type><SVR>ATR_TYPE_LIST</SVR></member_at_type>
 	<member_at_entlim>PBS_ENTLIM_NOLIMIT</member_at_entlim>
-	<member_at_struct>(struct resource_def *)0</member_at_struct>
+	<member_at_struct>NULL</member_at_struct>
    </attributes>
    <tail>
       <SVR>

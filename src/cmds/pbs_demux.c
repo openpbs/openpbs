@@ -78,7 +78,7 @@ char   *cookie = 0;
 
 /**
  * @brief
- *	read data from socket 
+ *	read data from socket
  *
  * @param[in] sock - socket
  * @param[in] prm  - routem structure pointer
@@ -200,7 +200,7 @@ main(int argc, char *argv[])
 		timeout.tv_usec = 0;
 		timeout.tv_sec  = 10;
 
-		n = select(FD_SETSIZE, &selset, (fd_set *)0, (fd_set *)0, &timeout);
+		n = select(FD_SETSIZE, &selset, NULL, NULL, &timeout);
 		if (n == -1) {
 			if (errno == EINTR) {
 				n = 0;

@@ -636,8 +636,8 @@ job_recov_db(char *jid, int recov_subjob)
 	int count, xs, i;
 
 	pj = job_alloc();	/* allocate & initialize job structure space */
-	if (pj == (job *)0) {
-		return ((job *)0);
+	if (pj == NULL) {
+		return NULL;
 	}
 
 	if (pbs_db_begin_trx(conn, 0, 0) !=0)
@@ -712,7 +712,7 @@ db_err:
 	log_err(-1, "job_recov", log_buffer);
 
 	(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
-	return (NULL);
+	return NULL;
 }
 
 /**
@@ -739,8 +739,8 @@ resv_recov_db(char *resvid)
 	pbs_db_conn_t *conn = svr_db_conn;
 
 	presv = resc_resv_alloc();
-	if (presv == (resc_resv *)0) {
-		return ((resc_resv *)0);
+	if (presv == NULL) {
+		return NULL;
 	}
 
 	if (pbs_db_begin_trx(conn, 0, 0) !=0)
@@ -780,7 +780,7 @@ db_err:
 	log_err(-1, "resv_recov", log_buffer);
 
 	(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
-	return (NULL);
+	return NULL;
 }
 
 

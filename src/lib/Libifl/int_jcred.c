@@ -84,7 +84,7 @@ PBSD_GSS_context(int sock, char *buf, int len)
 	if ((rc = encode_DIS_ReqHdr(sock, PBS_BATCH_GSS_Context,
 		pbs_current_user)) ||
 		(rc = diswcs(sock, buf, (size_t)len)) ||
-		(rc = encode_DIS_ReqExtend(sock, (char *)0))) {
+		(rc = encode_DIS_ReqExtend(sock, NULL))) {
 		return rc;
 	}
 	if (DIS_tcp_wflush(sock))
@@ -172,7 +172,7 @@ add_status(char **str, OM_uint32 code, int type)
  * @param[in] min - minor status
  *
  * @return	string
- * @retval	err msg	
+ * @retval	err msg
  *
  */
 char *
@@ -326,7 +326,7 @@ PBSD_jcred(int c, int type, char *buf, int len, int rpp, char **msgid)
 
 	if ((rc =encode_DIS_ReqHdr(sock, PBS_BATCH_JobCred, pbs_current_user)) ||
 		(rc = encode_DIS_JobCred(sock, type, buf, len)) ||
-		(rc = encode_DIS_ReqExtend(sock, (char *)0))) {
+		(rc = encode_DIS_ReqExtend(sock, NULL))) {
 		if (!rpp) {
 			connection[c].ch_errtxt = strdup(dis_emsg[rc]);
 			if (connection[c].ch_errtxt == NULL)

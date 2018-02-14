@@ -85,8 +85,8 @@ struct work_task *set_task(enum work_type type, long event_id, void (*func)(stru
 	struct work_task *pold;
 
 	pnew = (struct work_task *)malloc(sizeof(struct work_task));
-	if (pnew == (struct work_task *)0)
-		return ((struct work_task *)0);
+	if (pnew == NULL)
+		return NULL;
 	CLEAR_LINK(pnew->wt_linkall);
 	CLEAR_LINK(pnew->wt_linkobj);
 	CLEAR_LINK(pnew->wt_linkobj2);
@@ -291,7 +291,7 @@ default_next_task(void)
 	time_t		   tilwhen = 2;  /* basic cycle time */
 
 
-	time_now = time((time_t *)0);
+	time_now = time(NULL);
 
 	if (svr_delay_entry) {
 		ptask = (struct work_task *)GET_NEXT(task_list_event);

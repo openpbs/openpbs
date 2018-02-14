@@ -93,7 +93,7 @@
 int
 decode_c(struct attribute *patr, char *name, char *rescn, char *val)
 {
-	if ((val == (char *)0) || (strlen(val) == 0)) {
+	if ((val == NULL) || (strlen(val) == 0)) {
 		patr->at_flags = (patr->at_flags & ~ATR_VFLAG_SET) |
 			(ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE);
 		patr->at_val.at_char = '\0';
@@ -136,7 +136,7 @@ encode_c(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int 
 		return (0);
 
 	pal = attrlist_create(atname, rsname, 2);
-	if (pal == (svrattrl *)0)
+	if (pal == NULL)
 		return (-1);
 
 	*pal->al_value   = attr->at_val.at_char;

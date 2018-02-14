@@ -410,7 +410,7 @@ static struct attr_names {
 	{ ATTR_NODE_TopologyInfo,	0,	0,	NULL},
 	{ ATTR_rescavail,	SKIP_ALL,	0,	NULL},
 	{ ATTR_rescassn,	SKIP_ALL,	0,	NULL},
-	{(char *)0, 0, 0, NULL }
+	{NULL, 0, 0, NULL }
 };
 
 /**
@@ -560,7 +560,7 @@ static struct attr_names {
 	{ ATTR_NODE_VnodePool, NULL},
 	{ ATTR_NODE_power_provisioning, NULL},
 	{ ATTR_NODE_current_eoe, NULL},
-	{(char *)0, NULL }
+	{NULL, NULL }
 };
 
 /**

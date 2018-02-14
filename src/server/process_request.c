@@ -502,7 +502,7 @@ process_request(int sfds)
 	conn_t		     *conn;
 
 
-	time_now = time((time_t *)0);
+	time_now = time(NULL);
 
 	conn = get_conn(sfds);
 
@@ -610,7 +610,7 @@ process_request(int sfds)
 #ifndef PBS_MOM
 	if (server.sv_attr[(int)SRV_ATR_acl_host_enable].at_val.at_long) {
 		/* acl enabled, check it; always allow myself	*/
-		
+
 		struct pbsnode *isanode = NULL;
 		if ((server.sv_attr[SRV_ATR_acl_host_moms_enable].at_flags & ATR_VFLAG_SET) &&
 			(server.sv_attr[(int)SRV_ATR_acl_host_moms_enable].at_val.at_long == 1)) {
@@ -1237,7 +1237,7 @@ close_client(int sfds)
  * @param[in]	type	- type of request
  *
  * @return	batch_request *
- * @retval	(struct batch_request *)0	- error
+ * @retval	NULL	- error
  */
 
 struct batch_request *alloc_br(int type)
@@ -1245,7 +1245,7 @@ struct batch_request *alloc_br(int type)
 	struct batch_request *req;
 
 	req= (struct batch_request *)malloc(sizeof(struct batch_request));
-	if (req== (struct batch_request *)0)
+	if (req== NULL)
 		log_err(errno, "alloc_br", msg_err_malloc);
 	else {
 		memset((void *)req, (int)0, sizeof(struct batch_request));
@@ -1277,7 +1277,7 @@ close_quejob(int sfds)
 	job *pjob;
 
 	pjob = (job *)GET_NEXT(svr_newjobs);
-	while (pjob  != (struct job *)0) {
+	while (pjob  != NULL) {
 		if (pjob->ji_qs.ji_un.ji_newt.ji_fromsock == sfds) {
 			if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_TRANSICM) {
 
@@ -1706,8 +1706,8 @@ parse_servername(char *name, unsigned int *service)
 	int   i = 0;
 	char *pc;
 
-	if ((name == (char *)0) || (*name == '\0'))
-		return (char *)0;
+	if ((name == NULL) || (*name == '\0'))
+		return NULL;
 	if (*name ==  '(')   /* skip leading open paren found in exec_vnode */
 		name++;
 

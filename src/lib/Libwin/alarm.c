@@ -94,12 +94,12 @@ alarm_thread(void *pv)
 }
 
 /**
- * @brief 
+ * @brief
  *	win_alarm: calls func after the specified # of timeout_secs has expired.
  *	Set timeout_secs to 0 to reset alarm.
  *
  * @param[in] timeout_secs - time slice
- * 
+ *
  * @return	unsigned int
  * @retval	number of seconds left in a prior alarm		success
  * @retval	0						error
@@ -160,7 +160,7 @@ win_alarm(unsigned int timeout_secs, void (*func)(void))
 	}
 
 	a = (struct alarm_param *)malloc(sizeof(struct alarm_param));
-	if (a == (struct alarm_param *)0)
+	if (a == NULL)
 		return (0);
 
 	DuplicateHandle(

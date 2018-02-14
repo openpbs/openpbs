@@ -121,7 +121,7 @@ get_num_occurrences(char *rrule, time_t dtstart, char *tz)
 	if (localzone == NULL)
 		return 0;
 
-	now = time((time_t *)0);
+	now = time(NULL);
 	date_limit = now + DATE_LIMIT;
 
 	rt = icalrecurrencetype_from_string(rrule);
@@ -245,7 +245,7 @@ get_occurrence(char *rrule, time_t dtstart, char *tz, int idx)
  *
  * @par	Note that the PBS_TZID environment variable HAS to be set for the occurrence's
  * 	dates to be correctly computed.
- *  
+ *
  * @param[in] rrule - The recurrence rule to unroll
  * @param[in] dtstart - The start time associated to the reservation (1st occurrence)
  * @param[in] dtend - The end time associated to the reservation (1st occurrence)
@@ -256,7 +256,7 @@ get_occurrence(char *rrule, time_t dtstart, char *tz, int idx)
  *
  * @return	int
  * @retval	The total number of occurrences that the recurrence rule and start date
- * 
+ *
  * 		define. 1 for an advance reservation.
  *
  */
@@ -581,7 +581,7 @@ set_ical_zoneinfo(char *path)
 	if (path != NULL) {
 		if(called)
 			free_zone_directory();
-		
+
 		set_zone_directory(path);
 		called = 1;
 	}
@@ -641,7 +641,7 @@ test_main(int argc, char *argv[])
 	}
 
 	tz = getenv("PBS_TZID");
-	dtstart = time((time_t *)0);
+	dtstart = time(NULL);
 
 	rrule = argv[1];
 	/* apply to your local configuration */

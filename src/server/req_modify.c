@@ -193,7 +193,7 @@ req_modifyjob(struct batch_request *preq)
 		pseldef = find_resc_def(svr_resc_def, "select", svr_resc_size);
 
 	pjob = chk_job_request(preq->rq_ind.rq_modify.rq_objname, preq, &jt);
-	if (pjob == (job *)0)
+	if (pjob == NULL)
 		return;
 
 	if ((jt == IS_ARRAY_Single) || (jt == IS_ARRAY_Range)) {
@@ -220,7 +220,7 @@ req_modifyjob(struct batch_request *preq)
 	}
 
 	plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_modify.rq_attr);
-	if (plist == (svrattrl *)0) {	/* nothing to do */
+	if (plist == NULL) {	/* nothing to do */
 		reply_ack(preq);
 		return;
 	}
@@ -288,11 +288,11 @@ req_modifyjob(struct batch_request *preq)
 
 			/* should the resource be only in a select spec */
 
-			if (prsd->rs_flags & ATR_DFLAG_CVTSLT && !outsideselect && 
+			if (prsd->rs_flags & ATR_DFLAG_CVTSLT && !outsideselect &&
 				plist->al_atopl.value && plist->al_atopl.value[0]) {
-				/* if "-lresource" is set and has non-NULL value,  
-				** remember as potential bad resource 
-				** if this appears along "select".  
+				/* if "-lresource" is set and has non-NULL value,
+				** remember as potential bad resource
+				** if this appears along "select".
 				*/
 				outsideselect = prsd;
 			}
@@ -563,10 +563,10 @@ modify_job_attr(job *pjob, svrattrl *plist, int perm, int *bad)
 						&newattr[(int)JOB_ATR_resource]);
 					if (rc == 0)
 					{
-						rc = check_entity_resc_limit_max(pjob, (pbs_queue *)0,
+						rc = check_entity_resc_limit_max(pjob, NULL,
 							&newattr[(int)JOB_ATR_resource]);
 						if (rc == 0)
-							rc = check_entity_resc_limit_queued(pjob, (pbs_queue *)0,
+							rc = check_entity_resc_limit_queued(pjob, NULL,
 								&newattr[(int)JOB_ATR_resource]);
 					}
 				}
@@ -600,10 +600,10 @@ modify_job_attr(job *pjob, svrattrl *plist, int perm, int *bad)
 	/* OK, if resources changed, reset entity sums */
 
 	if (changed_resc) {
-		(void)set_entity_resc_sum_max(pjob, (pbs_queue *)0,
+		(void)set_entity_resc_sum_max(pjob, NULL,
 			&newattr[(int)JOB_ATR_resource],
 			INCR);
-		(void)set_entity_resc_sum_queued(pjob, (pbs_queue *)0,
+		(void)set_entity_resc_sum_queued(pjob, NULL,
 			&newattr[(int)JOB_ATR_resource],
 			INCR);
 		(void)set_entity_resc_sum_max(pjob, pjob->ji_qhdr,
@@ -754,11 +754,11 @@ req_modifyReservation(struct batch_request *preq)
 	/* Note: on failure, chk_rescResv_request invokes req_reject
 	 * appropriate reply is sent and batch_request is freed.
 	 */
-	if (presv == (resc_resv *) 0)
+	if (presv == NULL)
 		return;
 
 	rid = preq->rq_ind.rq_modify.rq_objname;
-	if ((presv = find_resv(rid)) == (resc_resv *)0) {
+	if ((presv = find_resv(rid)) == NULL) {
 		/* Not on "all_resvs" list try "new_resvs" list */
 		presv = (resc_resv *)GET_NEXT(svr_newresvs);
 		while (presv) {

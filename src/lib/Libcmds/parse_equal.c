@@ -53,7 +53,7 @@
  *		*name will point to "name1"
  *		*value will point to "value1 ..." upto but not
  *			including the comma before "name2".
- *	On a second call, with start = (char *)0,
+ *	On a second call, with start = NULL,
  *		*name will point to "name2"
  *		*value will point t0 "value3 ..."
  *
@@ -69,7 +69,7 @@
  * @retval	1 	if  name and value are found
  * @retval	0 	if nothing (more) is parsed (null input)
  * @retval	-1 	if a syntax error was detected.
- * 
+ *
  */
 
 int
@@ -82,11 +82,11 @@ char **value;
 	char        *backup;
 	int	     quoting = 0;
 
-	if (start != (char *)0)
+	if (start != NULL)
 		pc = start;
 
 	if (*pc == '\0') {
-		*name = (char *)0;
+		*name = NULL;
 		return (0);	/* already at end, return no strings */
 	}
 
@@ -96,7 +96,7 @@ char **value;
 		pc++;
 
 	if (*pc == '\0') {
-		*name = (char *)0;	/* null name */
+		*name = NULL;	/* null name */
 		return (0);
 	} else if ((*pc == '=') || (*pc == ','))
 		return (-1);	/* no name, return error */

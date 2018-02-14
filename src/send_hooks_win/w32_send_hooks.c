@@ -106,10 +106,10 @@ unsigned int      pbs_server_port_dis = 0;
 pbs_net_t       pbs_server_addr = 0;
 char		*path_priv;
 char		*path_hooks_rescdef;
-char	       *acct_file = (char *)0;
-char	       *acctlog_spacechar = (char *)0;
+char	       *acct_file = NULL;
+char	       *acctlog_spacechar = NULL;
 int		license_cpus;
-char	       *log_file  = (char *)0;
+char	       *log_file  = NULL;
 char	       *path_acct;
 char	       *path_jobs = NULL;
 char	       *path_rescdef = NULL;
@@ -204,7 +204,7 @@ pbs_db_conn_t *svr_db_conn;
 
 /**
  * @brief
- *	just a dummy entry for pbs_close_stdfiles since needed by failover.obj 
+ *	just a dummy entry for pbs_close_stdfiles since needed by failover.obj
  */
 void
 pbs_close_stdfiles(void)
@@ -215,7 +215,7 @@ pbs_close_stdfiles(void)
 
 /**
  * @brief
- * 	needed by failover.obj 
+ * 	needed by failover.obj
  */
 void
 make_server_auto_restart(int confirm)
@@ -223,9 +223,9 @@ make_server_auto_restart(int confirm)
 	return;
 }
 
-/** 
+/**
  * @brief
- *	needed by svr_chk_owner.obj and user_func.obj 
+ *	needed by svr_chk_owner.obj and user_func.obj
  */
 int
 decrypt_pwd(char *crypted, size_t len, char **passwd)
@@ -235,7 +235,7 @@ decrypt_pwd(char *crypted, size_t len, char **passwd)
 
 /**
  * @brief
- * 	needed by *_recov_db.obj 
+ * 	needed by *_recov_db.obj
  */
 void
 panic_stop_db(char *txt)

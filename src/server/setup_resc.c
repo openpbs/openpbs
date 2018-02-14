@@ -363,7 +363,7 @@ expand_resc_array(char *rname, int rtype, int rflag)
 	pnew->rs_flags = rflag;
 	pnew->rs_type  = rtype;
 	pnew->rs_entlimflg = 0;
-	pnew->rs_next  = (struct resource_def *)0;
+	pnew->rs_next  = NULL;
 
 	pold->rs_next  = pnew;
 	svr_resc_size++;

@@ -193,7 +193,7 @@ wait_action(void)
 				(pjob->ji_mompost != NULL)) {
 				hArray[hNum++] = pjob->ji_momsubt;
 			}
-				
+
 			/*
 			 * process tasks
 			 */
@@ -343,5 +343,5 @@ struct sig_tbl sig_tbl[] = {
 	{ "PROF", 0 },
 	{ "XCPU", 0 },
 	{ "XFSZ", 0 },
-	{(char *)0, -1}
+	{NULL, -1}
 };

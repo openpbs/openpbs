@@ -274,7 +274,7 @@ static const char *pbs_supported_basil_versions[] __attribute__((unused)) = {
 	BASIL_VAL_VERSION_1_3,
 	BASIL_VAL_VERSION_1_2,
 	BASIL_VAL_VERSION_1_1,
-	(char *) 0
+	NULL
 };
 
 /**
@@ -4563,7 +4563,7 @@ alps_request_child(int infd, int outfd)
 	if (*p == '\0')
 		_exit(127);
 	log_close(0);
-	if (execl(alps_client, p, (char *)0) < 0)
+	if (execl(alps_client, p, NULL) < 0)
 		_exit(127);
 	exit(0);
 }
@@ -4598,14 +4598,14 @@ alps_request_parent(int fdin)
 	if (!in) {
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE, LOG_NOTICE, __func__,
 			"Failed to open read FD.");
-		return (NULL);
+		return NULL;
 	}
 	memset(&ud, 0, sizeof(ud));
 	brp = malloc(sizeof(basil_response_t));
 	if (!brp) {
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE, LOG_NOTICE, __func__,
 			"Failed to allocate response structure.");
-		return (NULL);
+		return NULL;
 	}
 	memset(brp, 0, sizeof(basil_response_t));
 	ud.brp = brp;
@@ -4614,7 +4614,7 @@ alps_request_parent(int fdin)
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE, LOG_NOTICE, __func__,
 			"Failed to create parser.");
 		free_basil_response_data(brp);
-		return (NULL);
+		return NULL;
 	}
 	XML_SetUserData(parser, (void *)&ud);
 	XML_SetElementHandler(parser, parse_element_start, parse_element_end);
@@ -4627,7 +4627,7 @@ alps_request_parent(int fdin)
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_NODE, LOG_ERR,
 			__func__, log_buffer);
 		free_basil_response_data(brp);
-		return (NULL);
+		return NULL;
 	} else
 		inventory_size = strlen(alps_client_out) + 1;
 	do {
@@ -4716,28 +4716,28 @@ alps_request(char *msg)
 	if (!alps_client) {
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE, LOG_NOTICE, __func__,
 			"No alps_client specified in MOM configuration file.");
-		return (NULL);
+		return NULL;
 	}
 	if (!msg) {
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE, LOG_DEBUG,
 			__func__, "No message parameter for method.");
-		return (NULL);
+		return NULL;
 	}
 	msglen = strlen(msg);
 	if (msglen < 32) {
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE, LOG_DEBUG,
 			__func__, "ALPS request too short.");
-		return (NULL);
+		return NULL;
 	}
 	snprintf(log_buffer, sizeof(log_buffer),
 		"Sending ALPS request: %s", msg);
 	log_event(PBSEVENT_DEBUG2, 0, LOG_DEBUG, __func__, log_buffer);
 	if (pipe(toChild) == -1)
-		return (NULL);
+		return NULL;
 	if (pipe(fromChild) == -1) {
 		(void)close(toChild[0]);
 		(void)close(toChild[1]);
-		return (NULL);
+		return NULL;
 	}
 
 	pid = fork();
@@ -4747,7 +4747,7 @@ alps_request(char *msg)
 		(void)close(toChild[1]);
 		(void)close(fromChild[0]);
 		(void)close(fromChild[1]);
-		return (NULL);
+		return NULL;
 	}
 	if (pid == 0) {
 		close(toChild[1]);
@@ -6180,12 +6180,12 @@ alps_confirm_suspend_resume(job *pjob, basil_switch_action_t switchval)
 	}
 	/*
 	 * Due to a race condition in ALPS where ALPS wrongly returns "EMPTY"
-	 * (which means no claim on the ALPS resv) when there may be a claim 
+	 * (which means no claim on the ALPS resv) when there may be a claim
 	 * on the reservation, PBS must work around this by polling for status
 	 * again when we get "EMPTY". Thus we will print at DEBUG2 level so
 	 * we can be aware of how often the race condition is encountered.
 	 */
-	if ((res->status == basil_reservation_status_empty) && 
+	if ((res->status == basil_reservation_status_empty) &&
 	   (switchval == basil_switch_action_out)) {
 		snprintf(log_buffer, sizeof(log_buffer),
 			"ALPS reservation %ld SWITCH status is = 'EMPTY'.",

@@ -166,8 +166,8 @@ node		*okclients = NULL;	/* tree of ip addrs */
  * @param[in]  key - value to be found in tree
  *
  * @return 	error code
- * @retval  	1     if found, 
- * @retval 	0     if not 
+ * @retval  	1     if found,
+ * @retval 	0     if not
  */
 int
 addrfind(key)
@@ -179,7 +179,7 @@ const u_long 	key;		/* key to be located */
 	return 1;
 #endif /* localmod 024 */
 
-	while (*rootp != (struct node_t *)0) {	/* Knuth's T1: */
+	while (*rootp != NULL) {	/* Knuth's T1: */
 		if (key == (*rootp)->key)	/* T2: */
 			return 1;		/* we found it! */
 		rootp = (key < (*rootp)->key) ?
@@ -204,7 +204,7 @@ addrinsert(const u_long key)
 	register node	*q;
 	node		**rootp = &okclients;	/* address of tree root */
 
-	while (*rootp != (struct node_t *)0) {	/* Knuth's T1: */
+	while (*rootp != NULL) {	/* Knuth's T1: */
 		if (key == (*rootp)->key)	/* T2: */
 			return;			/* we found it! */
 		rootp = (key < (*rootp)->key) ?
@@ -212,10 +212,10 @@ addrinsert(const u_long key)
 		&(*rootp)->right;	/* T4: follow right branch */
 	}
 	q = (node *) malloc(sizeof(node));	/* T5: key not found */
-	if (q != (struct node_t *)0) {		/* make new node */
+	if (q != NULL) {		/* make new node */
 		*rootp = q;			/* link new node to old */
 		q->key = key;			/* initialize new node */
-		q->left = q->right = (struct node_t *)0;
+		q->left = q->right = NULL;
 		sprintf(log_buffer,
 			"Adding IP address %ld.%ld.%ld.%ld as authorized",
 			(key & 0xff000000) >> 24,
@@ -237,9 +237,9 @@ addrinsert(const u_long key)
 /**
  * @brief
  *	free the value in tree
- * 
+ *
  * @param[in] rootp - pointer to root node
- * 
+ *
  * @return Void
  *
  */
@@ -396,12 +396,12 @@ done:
 /**
  * @brief
  *	reply to server
- * 
- * @param[in] stream - connection stream 
+ *
+ * @param[in] stream - connection stream
  *
  * @return Void
  *
- */	
+ */
 static void
 reply_hello4(int stream)
 {
@@ -1281,7 +1281,7 @@ is_request(int stream, int version)
 							if ((vnlp != NULL) ||\
 						    (vnl_alloc(&vnlp) \
 						    		      != NULL)) {
-								vnlp->vnl_modtime = time((time_t *)0);
+								vnlp->vnl_modtime = time(NULL);
 								vn_merge2(vnlp,
 									phvna->hva_vnl,
 									HOOK_VNL_PERSISTENT_ATTRIBS, NULL);
@@ -1358,7 +1358,7 @@ hook_requests_to_server(pbs_list_head *plist)
 	extern const		char *dis_emsg[];
 
 	if (plist == NULL)
-		return (0);	/* nothing to send */	
+		return (0);	/* nothing to send */
 
 	if (server_stream < 0) {
 		/* log but keep going to link the changes to be sent later */
@@ -1400,7 +1400,7 @@ hook_requests_to_server(pbs_list_head *plist)
 			 * value could be sent, causing pbs_server to panic with
 			 * "Input value too large" upon vn_decode_DIS()
 			 */
-			pvnlph->vnl_modtime = time((time_t *)0);
+			pvnlph->vnl_modtime = time(NULL);
 		}
 
 		/* Now send each update to the Server if we can */

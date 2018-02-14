@@ -134,7 +134,7 @@ create_socket_and_connect(char *host, unsigned int port)
 	struct hostent *hp;
 
 	hp = gethostbyname(host);
-	if (hp == (struct hostent *)0) {
+	if (hp == NULL) {
 		errno = WSAGetLastError();
 		return (-1);
 	}
@@ -289,20 +289,20 @@ send_mail(void *pv)
 	char	mailfrom_full[PBS_MAXUSER+PBS_MAXHOSTNAME+3] = {0}; /* +3 for '<' ,'>' and Null char */
 	int	sock;
 	int	sent = 0;
-	char	*stdmessage = (char *)0;
+	char	*stdmessage = NULL;
 	char	*pc = NULL;
 	char	*pc2 = NULL;
 	int	reply;
 	int	err_reply;
 	int	err_write;
 	extern  char server_host[];
-	
+
 	if (strchr(mailfrom, (int)'@')) { /* domain required */
 		sprintf(mailfrom_full, "<%s>", mailfrom);
 	} else {
 		sprintf(mailfrom_full, "<%s@pbspro.com>", mailfrom);
 	}
-	
+
 	pc = strtok(mailto, " ");
 	while (pc) {
 
@@ -323,44 +323,44 @@ send_mail(void *pv)
 			log_err(errno,"send_mail","Socket creation and connection Failed.");
 			goto error;
 		}
-		
+
 		err_reply = read_smtp_reply(sock);
 		if (err_reply != 220) {		/* service not ready */
 			log_err(err_reply,"send_mail","Service not ready for creation and connection of socket.");
 			goto error;
 		}
-		
+
 		err_write = write3_smtp_data(sock, "HELO ", mailhost, "\r\n");
 		if (err_write == SOCKET_ERROR) {
 			log_err(err_write,"send_mail","Conversation with the mail server cannot be initiated.");
 			goto error;
 		}
-		
+
 		err_reply = read_smtp_reply(sock);
 		if (err_reply != 250) {
 			log_err(err_reply,"send_mail","Service not ready for Initiation.");
 			goto error;
 		}
-		
+
 		err_write = write3_smtp_data(sock, "MAIL FROM: ", mailfrom_full, "\r\n");
 		if (err_write == SOCKET_ERROR) {
 			log_err(err_write,"send_mail","Error sending MAIL FROM: command to SMTP server");
 			goto error;
 		}
-		
+
 		err_reply = read_smtp_reply(sock);
 		if (err_reply != 250) {
 			log_err(err_reply,"send_mail","Service not ready for setting the MAIL FROM attribute");
 			goto error;
 		}
-		
+
 		sprintf(mailto_full, "<%s>", pc);
 		err_write = write3_smtp_data(sock, "RCPT TO: ", mailto_full, "\r\n");
 		if (err_write == SOCKET_ERROR) {
 			log_err(err_write,"send_mail","Error sending RCPT TO: command to SMTP server");
 			goto error;
 		}
-		
+
 		err_reply = read_smtp_reply(sock);
 		if (err_reply != 250) {
 			log_err(err_reply,"send_mail","Service not ready for setting the RCPT TO attribute");
@@ -372,13 +372,13 @@ send_mail(void *pv)
 			log_err(err_write,"send_mail","Error sending DATA command to SMTP server");
 			goto error;
 		}
-		
+
 		err_reply = read_smtp_reply(sock);
 		if (err_reply != 354) {
 			log_err(err_reply,"send_mail","Service Not Ready for Data Setting");
 			goto error;
 		}
-		
+
 		err_write = write3_smtp_data(sock, "To: ", pc, "\r\n");
 		if (err_write == SOCKET_ERROR) {
 			log_err(err_write,"send_mail","Error sending To: command to SMTP server");
@@ -456,8 +456,8 @@ send_mail(void *pv)
 			}
 		}
 
-		if (text != (char *)0) {
-			err_write = write3_smtp_data(sock, text, "\r\n", NULL); 
+		if (text != NULL) {
+			err_write = write3_smtp_data(sock, text, "\r\n", NULL);
 			if (err_write == SOCKET_ERROR) {
 				log_err(err_write,"send_mail","Error sending Mail Data to SMTP server");
 				goto error;
@@ -469,19 +469,19 @@ send_mail(void *pv)
 			log_err(err_write,"send_mail","Error sending Mail Data Termination to SMTP server");
 			goto error;
 		}
-		
+
 		err_reply = read_smtp_reply(sock);
 		if (err_reply != 250) {
 			log_err(err_reply,"send_mail","Service not ready to terminate Mail Data");
 			goto error;
 		}
-		
+
 		err_write = write3_smtp_data(sock, "QUIT\r\n", NULL, NULL);
 		if (err_write == SOCKET_ERROR) {
 			log_err(err_write,"send_mail","Error sending QUIT to SMTP server");
 			goto error;
 		}
-		
+
 		err_reply = read_smtp_reply(sock);
 		if (err_reply != 221) {
 			log_err(err_reply,"send_mail","Service not ready to Quit");
@@ -527,7 +527,7 @@ send_mail_detach(int type, char *mailfrom, char *mailto, char *jobid, int mailpo
 
 	struct mail_param *pmp = (struct mail_param *)malloc(sizeof(struct mail_param));
 
-	if (pmp == (struct mail_param *)0)
+	if (pmp == NULL)
 		return;
 	else
 		memset((void *)pmp, 0, sizeof(struct mail_param));
@@ -590,7 +590,7 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 	char	 mailto[MAIL_ADDR_BUF_LEN];
 	int	 mailaddrlen = 0;
 	struct array_strings *pas;
-	char	*stdmessage = (char *)0;
+	char	*stdmessage = NULL;
 	char	*pat;
 	extern  char server_host[];
 
@@ -620,7 +620,7 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 
 			if (pjob->ji_wattr[(int)JOB_ATR_mailpnts].at_flags & ATR_VFLAG_SET) {
 				if (strchr(pjob->ji_wattr[(int)JOB_ATR_mailpnts].at_val.at_str,
-					mailpoint) == (char *)0)
+					mailpoint) == NULL)
 					return;
 			} else if (mailpoint != MAIL_ABORT)	/* not set, default to abort */
 				return;
@@ -672,11 +672,11 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 			/* has mail user list, send to them rather than owner */
 
 			pas = pjob->ji_wattr[(int)JOB_ATR_mailuser].at_val.at_arst;
-			if (pas != (struct array_strings *)0) {
+			if (pas != NULL) {
 				for (i = 0; i < pas->as_usedptr; i++) {
 					addmailhost = 0;
 					mailaddrlen += strlen(pas->as_string[i]) + 2;
-					if ((pbs_conf.pbs_mail_host_name)  && 
+					if ((pbs_conf.pbs_mail_host_name)  &&
 					    (strchr(pas->as_string[i], (int)'@') == NULL)) {
 							/* no host specified in address and      */
 							/* pbs_mail_host_name is defined, use it */
@@ -695,7 +695,7 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 					  	sprintf(log_buffer,"Email list is too long: \"%.77s...\"", mailto);
 						log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_WARNING, pjob->ji_qs.ji_jobid, log_buffer);
 						break;
-					}						
+					}
 				}
 			}
 
@@ -706,20 +706,20 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 			(void)strncpy(mailto, pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str, sizeof(mailto));
 			mailto[(sizeof(mailto) - 1)] = '\0';
 			/* if pbs_mail_host_name is set in pbs.conf, then replace the */
-			/* host name with the name specified in pbs_mail_host_name    */ 
+			/* host name with the name specified in pbs_mail_host_name    */
 			if (pbs_conf.pbs_mail_host_name) {
-				if ((pat = strchr(mailto, (int)'@')) != NULL) 
+				if ((pat = strchr(mailto, (int)'@')) != NULL)
 					*pat = '\0';	/* remove existing @host */
 				if ((strlen(mailto) + strlen(pbs_conf.pbs_mail_host_name) + 1) < sizeof(mailto)) {
 					/* append the pbs_mail_host_name since it fits */
 					strcat(mailto, "@");
 					strcat(mailto, pbs_conf.pbs_mail_host_name);
-				} else {					
+				} else {
 				  	if (pat)
 						*pat = '@';	/* did't fit, restore the "at" sign */
 				  	sprintf(log_buffer,"Email address is too long: \"%.77s...\"", mailto);
 					log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_WARNING, pjob->ji_qs.ji_jobid, log_buffer);
-				}						
+				}
 			}
 		}
 
@@ -754,7 +754,7 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 		/* this child will be sendmail with its stdin set to the pipe */
       if (mfds[0] != 0) {
             (void)close(0);
-            if (dup(mfds[0]) == -1) 
+            if (dup(mfds[0]) == -1)
 				exit(1);
         }
         (void)close(1);
@@ -807,7 +807,7 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 	}
 	if (stdmessage)
 		fprintf(outmail, "%s\n", stdmessage);
-	if (text != (char *)0)
+	if (text != NULL)
 		fprintf(outmail, "%s\n", text);
 	fclose(outmail);
 
@@ -830,7 +830,7 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 void
 svr_mailowner(job *pjob, int mailpoint, int force, char *text)
 {
-	svr_mailowner_id((char *)0, pjob, mailpoint, force, text);
+	svr_mailowner_id(NULL, pjob, mailpoint, force, text);
 }
 
 /**
@@ -858,7 +858,7 @@ svr_mailownerResv(resc_resv *presv, int mailpoint, int force, char *text)
 	int	 mailaddrlen = 0;
 	struct array_strings *pas;
 	char	*pat;
-	char	*stdmessage = (char *)0;
+	char	*stdmessage = NULL;
 #ifndef WIN32
 	FILE	*outmail;
 	char	*margs[5];
@@ -872,7 +872,7 @@ svr_mailownerResv(resc_resv *presv, int mailpoint, int force, char *text)
 		if (presv->ri_wattr[(int)RESV_ATR_mailpnts].at_flags &ATR_VFLAG_SET) {
 			/*user has set one or mode mailpoints is this one included?*/
 			if (strchr(presv->ri_wattr[(int)RESV_ATR_mailpnts].at_val.at_str,
-				mailpoint) == (char *)0)
+				mailpoint) == NULL)
 				return;
 		} else {
 			/*user hasn't bothered to set any mailpoints so default to
@@ -886,7 +886,7 @@ svr_mailownerResv(resc_resv *presv, int mailpoint, int force, char *text)
 
 	if (presv->ri_wattr[(int)RESV_ATR_mailpnts].at_flags &ATR_VFLAG_SET) {
 		if (strchr(presv->ri_wattr[(int)RESV_ATR_mailpnts].at_val.at_str,
-			MAIL_NONE) != (char *)0)
+			MAIL_NONE) != NULL)
 			return;
 	}
 
@@ -925,11 +925,11 @@ svr_mailownerResv(resc_resv *presv, int mailpoint, int force, char *text)
 		/* has mail user list, send to them rather than owner */
 
 		pas = presv->ri_wattr[(int)RESV_ATR_mailuser].at_val.at_arst;
-		if (pas != (struct array_strings *)0) {
+		if (pas != NULL) {
 			for (i = 0; i < pas->as_usedptr; i++) {
 				addmailhost = 0;
 				mailaddrlen += strlen(pas->as_string[i]) + 2;
-				if ((pbs_conf.pbs_mail_host_name)  && 
+				if ((pbs_conf.pbs_mail_host_name)  &&
 				    (strchr(pas->as_string[i], (int)'@') == NULL)) {
 						/* no host specified in address and      */
 						/* pbs_mail_host_name is defined, use it */
@@ -946,7 +946,7 @@ svr_mailownerResv(resc_resv *presv, int mailpoint, int force, char *text)
 					  	sprintf(log_buffer,"Email list is too long: \"%.77s...\"", mailto);
 						log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_WARNING, presv->ri_qs.ri_resvID, log_buffer);
 						break;
-					}						
+					}
 					(void)strcat(mailto, " ");
 				}
 			}
@@ -959,9 +959,9 @@ svr_mailownerResv(resc_resv *presv, int mailpoint, int force, char *text)
 		(void)strncpy(mailto, presv->ri_wattr[(int)RESV_ATR_resv_owner].at_val.at_str, sizeof(mailto));
 		mailto[(sizeof(mailto) - 1)] = '\0';
 		/* if pbs_mail_host_name is set in pbs.conf, then replace the */
-		/* host name with the name specified in pbs_mail_host_name    */ 
+		/* host name with the name specified in pbs_mail_host_name    */
 		if (pbs_conf.pbs_mail_host_name) {
-			if ((pat = strchr(mailto, (int)'@')) != NULL) 
+			if ((pat = strchr(mailto, (int)'@')) != NULL)
 				*pat = '\0';	/* remove existing @host */
 			if ((strlen(mailto) + strlen(pbs_conf.pbs_mail_host_name) + 1) < sizeof(mailto)) {
 				/* append the pbs_mail_host_name since it fits */
@@ -997,7 +997,7 @@ svr_mailownerResv(resc_resv *presv, int mailpoint, int force, char *text)
 		/* this child will be sendmail with its stdin set to the pipe */
       if (mfds[0] != 0) {
             (void)close(0);
-            if (dup(mfds[0]) == -1) 
+            if (dup(mfds[0]) == -1)
 				exit(1);
         }
         (void)close(1);
@@ -1047,7 +1047,7 @@ svr_mailownerResv(resc_resv *presv, int mailpoint, int force, char *text)
 		presv->ri_wattr[(int)RESV_ATR_resv_name].at_val.at_str);
 	if (stdmessage)
 		fprintf(outmail, "%s\n", stdmessage);
-	if (text != (char *)0)
+	if (text != NULL)
 		fprintf(outmail, "%s\n", text);
 	fclose(outmail);
 

@@ -102,10 +102,10 @@ decode_DIS_attropl(int sock, struct attropl **ppatt)
 		if (pat == 0)
 			return DIS_NOMALLOC;
 
-		pat->next     = (struct attropl *)0;
-		pat->name     = (char *)0;
-		pat->resource = (char *)0;
-		pat->value    = (char *)0;
+		pat->next     = NULL;
+		pat->name     = NULL;
+		pat->resource = NULL;
+		pat->value    = NULL;
 
 		pat->name = disrst(sock, &rc);
 		if (rc)	break;

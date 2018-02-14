@@ -135,5 +135,5 @@ cnt2server_extend(char *server, char *extend)
 int
 cnt2server(char *server)
 {
-	return (cnt2server_extend(server, (char *)0));
+	return (cnt2server_extend(server, NULL));
 }

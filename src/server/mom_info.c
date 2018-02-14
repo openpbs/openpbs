@@ -87,7 +87,7 @@ static char merr[] = "malloc failed";
 
 /* mominfo_array is an array of mominfo_t pointers, one per host */
 
-mominfo_t **mominfo_array = (mominfo_t **)0;
+mominfo_t **mominfo_array = NULL;
 int         mominfo_array_size = 0;     /* num entries in the array */
 mominfo_time_t  mominfo_time = {0, 0};	/* time stamp of mominfo update */
 int	    svr_num_moms = 0;
@@ -158,10 +158,10 @@ create_mom_entry(char *hostname, unsigned int port)
 			mominfo_array = tp;
 			mominfo_array_size += GROW_MOMINFO_ARRAY_AMT;
 			for (i = empty; i < mominfo_array_size; ++i)
-				mominfo_array[i] = (mominfo_t *)0;
+				mominfo_array[i] = NULL;
 		} else {
 			log_err(errno, __func__, merr);
-			return (mominfo_t *)0;
+			return NULL;
 		}
 	}
 
@@ -174,8 +174,8 @@ create_mom_entry(char *hostname, unsigned int port)
 		pmom->mi_port = port;
 		pmom->mi_rmport = port + 1;
 		pmom->mi_modtime = (time_t)0;
-		pmom->mi_data    = (void *)0;
-		pmom->mi_action = (mom_hook_action_t **)0;
+		pmom->mi_data    = NULL;
+		pmom->mi_action = NULL;
 		pmom->mi_num_action = 0;
 #ifndef PBS_MOM
 		if ((msg_daemonname == NULL) ||
@@ -238,7 +238,7 @@ delete_mom_entry(mominfo_t *pmom)
 	/* find the entry in the arry that does point here */
 	for (i=0; i < mominfo_array_size; ++i) {
 		if (mominfo_array[i] == pmom) {
-			mominfo_array[i] = (mominfo_t *)0;
+			mominfo_array[i] = NULL;
 			break;
 		}
 	}
@@ -249,7 +249,7 @@ delete_mom_entry(mominfo_t *pmom)
 		for (i=0; i < pmom->mi_num_action; ++i) {
 			if (pmom->mi_action[i] != NULL) {
 				free(pmom->mi_action[i]);
-				pmom->mi_action[i] = (mom_hook_action_t *)0;
+				pmom->mi_action[i] = NULL;
 			}
 		}
 #endif
@@ -281,7 +281,7 @@ delete_mom_entry(mominfo_t *pmom)
  * @param[in]	port     - port number to which Mom will be listening
  *
  * @return	pointer to a mominfo_t element
- * @reval	(mominfo_t *)0	- couldn't find.
+ * @reval	NULL	- couldn't find.
  */
 
 mominfo_t *
@@ -298,7 +298,7 @@ find_mom_entry(char *hostname, unsigned int port)
 			return pmom;
 	}
 
-	return (mominfo_t *)0; 	/* didn't find it */
+	return NULL; 	/* didn't find it */
 }
 
 
@@ -345,12 +345,12 @@ create_svrmom_entry(char *hostname, unsigned int port, unsigned long *pul)
 	extern struct tree  *ipaddrs;
 
 	pmom = create_mom_entry(hostname, port);
-	if (pmom == (mominfo_t *)0) {
+	if (pmom == NULL) {
 		free(pul);
 		return pmom;
 	}
 
-	if (pmom->mi_data != (mom_svrinfo_t *)0) {
+	if (pmom->mi_data != NULL) {
 		free(pul);
 		return pmom;	/* already there */
 	}
@@ -359,7 +359,7 @@ create_svrmom_entry(char *hostname, unsigned int port, unsigned long *pul)
 	if (!psvrmom) {
 		log_err(errno, "create_svrmom_entry", merr);
 		delete_mom_entry(pmom);
-		return (mominfo_t *)0;
+		return NULL;
 	}
 
 	psvrmom->msr_state =INUSE_UNKNOWN | INUSE_NEEDS_HELLO_PING | INUSE_DOWN;
@@ -367,8 +367,8 @@ create_svrmom_entry(char *hostname, unsigned int port, unsigned long *pul)
 	psvrmom->msr_acpus = 0;
 	psvrmom->msr_pmem  = 0;
 	psvrmom->msr_numjobs = 0;
-	psvrmom->msr_arch  = (char *)0;
-	psvrmom->msr_pbs_ver  = (char *)0;
+	psvrmom->msr_arch  = NULL;
+	psvrmom->msr_pbs_ver  = NULL;
 	psvrmom->msr_stream  = -1;
 	CLEAR_HEAD(psvrmom->msr_deferred_cmds);
 	psvrmom->msr_timedown = (time_t)0;
@@ -387,7 +387,7 @@ create_svrmom_entry(char *hostname, unsigned int port, unsigned long *pul)
 		log_err(errno, "create_svrmom_entry", merr);
 		free(psvrmom);
 		delete_mom_entry(pmom);
-		return (mominfo_t *)0;
+		return NULL;
 	}
 #ifdef PBS_CRED_GRIDPROXY
 	psvrmom->msr_gsscontext = GSS_C_NO_CONTEXT;
@@ -455,7 +455,7 @@ delete_svrmom_entry(mominfo_t *pmom)
 				tdelete2(*up, pmom->mi_port,  &ipaddrs);
 			}
 			free(psvrmom->msr_addrs);
-			psvrmom->msr_addrs = (unsigned long *)0;
+			psvrmom->msr_addrs = NULL;
 		}
 		if (psvrmom->msr_children)
 			free(psvrmom->msr_children);
@@ -494,7 +494,7 @@ delete_svrmom_entry(mominfo_t *pmom)
  * @param[in]	notask	- mvm_notask
  *
  * @return	momvmap_t
- * @retval	(momvmap_t *)0	- failure
+ * @retval	NULL	- failure
  */
 momvmap_t *
 create_mommap_entry(char *vnode, char *hostn, mominfo_t *pmom, int notask)
@@ -508,7 +508,7 @@ create_mommap_entry(char *vnode, char *hostn, mominfo_t *pmom, int notask)
 	assert((vnode != NULL) && (*vnode != '\0') && (pmom != NULL));
 #else
 	if ((vnode == NULL) || (*vnode == '\0') || (pmom == NULL)) {
-		return (momvmap_t *)0;
+		return NULL;
 	}
 #endif
 
@@ -530,7 +530,7 @@ create_mommap_entry(char *vnode, char *hostn, mominfo_t *pmom, int notask)
 				mommap_array[i] = NULL;
 		} else {
 			log_err(errno, __func__, merr);
-			return (momvmap_t *)0;
+			return NULL;
 		}
 	}
 
@@ -598,7 +598,7 @@ find_vmap_entry(const char *vname)
 		if ((pmap != NULL) && (strcasecmp(pmap->mvm_name, vname) == 0))
 			return pmap;
 	}
-	return (momvmap_t *)NULL;
+	return NULL;
 }
 
 
@@ -610,7 +610,7 @@ struct mominfo *find_mom_by_vnodename(const char *vname)
 	if (pmap)
 		return (pmap->mvm_mom);
 	else
-		return (struct mominfo *)NULL;
+		return NULL;
 }
 
 mominfo_t *
@@ -623,6 +623,6 @@ add_mom_data(const char *vnid, void *data)
 		return (pmom);
 	}
 
-	return ((mominfo_t *) NULL);
+	return NULL;
 }
 #endif  /* PBS_MOM */

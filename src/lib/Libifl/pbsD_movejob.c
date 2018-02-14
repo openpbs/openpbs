@@ -71,9 +71,9 @@ __pbs_movejob(int c, char *jobid, char *destin, char *extend)
 	int		    sock;
 
 
-	if ((jobid == (char *)0) || (*jobid == '\0'))
+	if ((jobid == NULL) || (*jobid == '\0'))
 		return (pbs_errno = PBSE_IVALREQ);
-	if (destin == (char *)0)
+	if (destin == NULL)
 		destin = "";
 
 	sock = connection[c].ch_socket;

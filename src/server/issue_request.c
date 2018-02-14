@@ -343,7 +343,7 @@ add_mom_deferred_list(int stream, mominfo_t *minfo, void (*func)(), char *msgid,
 	 * event type to differentiate it in process_DreplyRPP.
 	 */
 	ptask = set_task(WORK_Deferred_cmd, (long) stream, func, parm1);
-	if (ptask == (struct work_task *) 0) {
+	if (ptask == NULL) {
 		log_err(errno, __func__, "could not set_task");
 		return NULL;
 	}
@@ -432,7 +432,7 @@ issue_Drequest(int conn,
 	}
 
 	ptask = set_task(wt, (long) conn, func, (void *) request);
-	if (ptask == (struct work_task *) 0) {
+	if (ptask == NULL) {
 		log_err(errno, __func__, "could not set_task");
 		if (ppwt != 0)
 			*ppwt = 0;
@@ -459,7 +459,7 @@ issue_Drequest(int conn,
 				MGR_CMD_DELETE,
 				MGR_OBJ_JOB,
 				request->rq_ind.rq_delete.rq_objname,
-				(struct attropl *)0,
+				NULL,
 				request->rq_extend,
 				rpp,
 				&msgid);
@@ -476,7 +476,7 @@ issue_Drequest(int conn,
 				MGR_OBJ_JOB,
 				request->rq_ind.rq_hold.rq_orig.rq_objname,
 				patrl,
-				(char *)0,
+				NULL,
 				rpp,
 				&msgid);
 			break;
@@ -486,7 +486,7 @@ issue_Drequest(int conn,
 				request->rq_ind.rq_message.rq_jid,
 				request->rq_ind.rq_message.rq_file,
 				request->rq_ind.rq_message.rq_text,
-				(char *)0,
+				NULL,
 				rpp,
 				&msgid);
 			break;
@@ -495,7 +495,7 @@ issue_Drequest(int conn,
 			rc =  PBSD_relnodes_put(conn,
 				request->rq_ind.rq_relnodes.rq_jid,
 				request->rq_ind.rq_relnodes.rq_node_list,
-				(char *)0,
+				NULL,
 				rpp,
 				&msgid);
 			break;
@@ -519,7 +519,7 @@ issue_Drequest(int conn,
 				MGR_OBJ_JOB,
 				request->rq_ind.rq_modify.rq_objname,
 				patrl,
-				(char *)0,
+				NULL,
 				rpp,
 				&msgid);
 			break;
@@ -566,7 +566,7 @@ issue_Drequest(int conn,
 			rc =  PBSD_sig_put(conn,
 				request->rq_ind.rq_signal.rq_jid,
 				request->rq_ind.rq_signal.rq_signame,
-				(char *)0,
+				NULL,
 				rpp,
 				&msgid);
 			break;
@@ -575,7 +575,7 @@ issue_Drequest(int conn,
 			rc =  PBSD_status_put(conn,
 				PBS_BATCH_StatusJob,
 				request->rq_ind.rq_status.rq_id,
-				(struct attrl *)0, (char *)0,
+				NULL, NULL,
 				rpp,
 				&msgid);
 			break;

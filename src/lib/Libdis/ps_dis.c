@@ -111,7 +111,7 @@ vn_decode_DIS(int fd, int *rcp)
 
 	vers = disrui(fd, rcp);
 	if (*rcp != DIS_SUCCESS)
-		return ((vnl_t *) NULL);
+		return NULL;
 
 	switch (vers) {
 		case PS_DIS_V3:
@@ -121,7 +121,7 @@ vn_decode_DIS(int fd, int *rcp)
 
 		default:
 			*rcp = DIS_PROTO;
-			return ((vnl_t *) NULL);
+			return NULL;
 	}
 }
 
@@ -153,22 +153,22 @@ vn_decode_DIS_V4(int fd, int *rcp)
 	time_t		t;
 	vnl_t		*vnlp;
 
-	if ((vnlp = malloc(sizeof(vnl_t))) == NULL) {
+	if ((vnlp = calloc(1, sizeof(vnl_t))) == NULL) {
 		*rcp = DIS_NOMALLOC;
-		return ((vnl_t *) NULL);
+		return NULL;
 	}
 
 	t = (time_t) disrsl(fd, rcp);
 	if (*rcp != DIS_SUCCESS) {
 		free(vnlp);
-		return ((vnl_t *) NULL);
+		return NULL;
 	} else {
 		vnlp->vnl_modtime = t;
 	}
 	size = disrui(fd, rcp);
 	if (*rcp != DIS_SUCCESS) {
 		free(vnlp);
-		return ((vnl_t *) NULL);
+		return NULL;
 	} else {
 		vnlp->vnl_nelem = vnlp->vnl_used = size;
 	}
@@ -177,7 +177,7 @@ vn_decode_DIS_V4(int fd, int *rcp)
 		sizeof(vnal_t))) == NULL) {
 		free(vnlp);
 		*rcp = DIS_NOMALLOC;
-		return ((vnl_t *) NULL);
+		return NULL;
 	}
 
 	for (i = 0; i < vnlp->vnl_used; i++) {
@@ -262,19 +262,23 @@ vn_decode_DIS_V3(int fd, int *rcp)
 	time_t		t;
 	vnl_t		*vnlp;
 
-	if ((vnlp = malloc(sizeof(vnl_t))) == NULL) {
+	if ((vnlp = calloc(1, sizeof(vnl_t))) == NULL) {
 		*rcp = DIS_NOMALLOC;
-		return ((vnl_t *) NULL);
+		return NULL;
 	}
 
 	t = (time_t) disrsl(fd, rcp);
-	if (*rcp != DIS_SUCCESS)
-		return ((vnl_t *) NULL);
+	if (*rcp != DIS_SUCCESS) {
+		free(vnlp);
+		return NULL;
+	}
 	else
 		vnlp->vnl_modtime = t;
 	size = disrui(fd, rcp);
-	if (*rcp != DIS_SUCCESS)
-		return ((vnl_t *) NULL);
+	if (*rcp != DIS_SUCCESS) {
+		free(vnlp);
+		return NULL;
+	}
 	else
 		vnlp->vnl_nelem = vnlp->vnl_used = size;
 
@@ -282,7 +286,7 @@ vn_decode_DIS_V3(int fd, int *rcp)
 		sizeof(vnal_t))) == NULL) {
 		free(vnlp);
 		*rcp = DIS_NOMALLOC;
-		return ((vnl_t *) NULL);
+		return NULL;
 	}
 
 	for (i = 0; i < vnlp->vnl_used; i++) {
@@ -461,5 +465,5 @@ free_and_return(vnl_t *vnlp)
 	free(vnlp->vnl_list);
 	free(vnlp);
 
-	return ((vnl_t *) NULL);
+	return NULL;
 }

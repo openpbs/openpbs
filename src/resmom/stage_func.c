@@ -98,7 +98,7 @@ static int sys_copy(int, int, char *, char *, struct rqfpair *, int, char *);
 #endif
 
 /**
- * @brief	
+ * @brief
  *	add_bad_list
  *	add new bad file message to bad file messages list
  *
@@ -267,7 +267,7 @@ const char *master;
 
 
 /**
- * @brief	
+ * @brief
  *	told_to_cp - Check a stage file request against the saved set of "usecp" paths.
  *
  * @param[in]	host	-	stage request hostname
@@ -328,7 +328,7 @@ told_to_cp(char *host, char *oldpath, char **newpath)
 }
 
 /**
- * @brief	
+ * @brief
  *	local_or_remote - Decide if the specified path is to a local or remote file.
  *
  * @param[in]	path	-	pointer to stage path string
@@ -347,7 +347,7 @@ local_or_remote(char **path)
 	char *pcolon = NULL;
 
 	pcolon = strchr(*path, (int)':');
-	if (pcolon == (char *)0)
+	if (pcolon == NULL)
 		return 0;
 
 	*pcolon = '\0';
@@ -467,7 +467,7 @@ is_direct_write(job *pjob, enum job_file which, char *path, int *direct_write_po
 
 #ifdef WIN32
 /**
- * @brief	
+ * @brief
  *	remtree - wrapper function to remove a tree (or single file) to support for UNC path
  *
  * @param[in]	dirname	-	path of single file or dir to remove
@@ -507,7 +507,7 @@ remtree(char *dirname)
  *	remove a tree (or single file)
  *
  * @param[in]	path - path of single file or dir to remove
- * 
+ *
  * @return 	int
  * @retval 	0 on success
  * @retval	-1 on failure
@@ -602,7 +602,7 @@ remtree(char *dirname)
 }
 
 /**
- * @brief	
+ * @brief
  *	pbs_glob - check whether given pattern matches in filename
  *	pattern matches:
  *	*	matches zero or more characters
@@ -666,7 +666,7 @@ pbs_glob(char *filen, char *pat)
 }
 
 /**
- * @brief	
+ * @brief
  *	copy_file - Do a single staging file copy.
  *
  * @param[in]		dir		-	direction of copy
@@ -865,7 +865,7 @@ copy_file(int dir, int rmtflag, char *owner, char *src, struct rqfpair *pair, in
 }
 
 /**
- * @brief	
+ * @brief
  *	stage_file - Handle file stage pair. The source could have a wildcard
  *	which would result in multipile copies.
  *
@@ -1065,7 +1065,7 @@ error:
 }
 
 /**
- * @brief	
+ * @brief
  *	rmjobdir - Remove the staging and execution directory and any files
  *	within it.
  *
@@ -1200,7 +1200,7 @@ rmjobdir(char *jobid, char *jobdir, uid_t uid, gid_t gid)
 	}
 
 	rpp_terminate();
-	execl(rm, "pbs_cleandir", rf, newdir, (char *)0);
+	execl(rm, "pbs_cleandir", rf, newdir, NULL);
 	log_err(errno, __func__, "execl");
 	exit(21);
 #endif
@@ -1251,7 +1251,7 @@ quote_and_copy_white(char *pd, char *ps, ssize_t sz)
 }
 #else
 /**
- * @brief	
+ * @brief
  *	is_scp_path - check whether scp_path in pbs_conf is set and contain "scp"
  *
  * @return	int
@@ -1272,7 +1272,7 @@ is_scp_path(void)
 }
 
 /**
- * @brief	
+ * @brief
  *	is_pbs_rcp_path - check whether rcp_path in pbs_conf is set and contain "pbs_rcp"
  *
  * @return	int
@@ -1293,11 +1293,11 @@ is_pbs_rcp_path(void)
 }
 #endif
 /**
- * @brief	
+ * @brief
  *	sys_copy
  *	issue system call to copy file
  *	Also check error of copy process and retry as required
- *		
+ *
  *	In Windows, use "xcopy" (for directory) or "copy" (for single file)
  *	for local copy and "pbs_rcp" for remote copy.
  *	If there is an error in the copy and pbs_rcp is used, it will try with scp.
@@ -1379,10 +1379,10 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 
 	strcpy(wdir, "C:\\");
 	getcwd(wdir, MAXPATHLEN+1);
-	
+
 	si.cb = sizeof(si);
 	si.lpDesktop = PBS_DESKTOP_NAME;
-	
+
 	if ((pw = getpwnam(owner)) == NULL) {
 		rc = PBSE_BADUSER;
 		goto sys_copy_end;
@@ -1612,7 +1612,7 @@ sys_copy(int dir, int rmtflg, char *owner, char *src, struct rqfpair *pair, int 
 				sleep(1);
 
 			if (shell == NULL)
-				execl(ag0, ag0, ag1, ag2, ag3, (char *)0);
+				execl(ag0, ag0, ag1, ag2, ag3, NULL);
 			else {
 				argv[argc++] = ag0;
 				argv[argc++] = ag1;
@@ -1984,7 +1984,7 @@ free_pcphosts(void)
 }
 
 /**
- * @brief	
+ * @brief
  *	recv_pcphosts - Receive cphosts struct through stdin sent by parent MoM
  *
  * @return	int
@@ -2019,7 +2019,7 @@ recv_pcphosts(void)
 	}
 
 	for (nh = 0; nh < cphosts_num; nh++) {
-		
+
 		if (fgets(buf, sizeof(buf), stdin) == NULL) {
 			free_pcphosts();
 			return 0;
@@ -2061,7 +2061,7 @@ recv_pcphosts(void)
 }
 
 /**
- * @brief	
+ * @brief
  *	free_rq_cpyfile_cred - Free allocated rq_cpyfile and cred info (if any)
  *
  * @param[in] pcf - pointer to already allocated rq_cpyfile struct
@@ -2094,7 +2094,7 @@ free_rq_cpyfile_cred(struct rq_cpyfile *pcf)
 }
 
 /**
- * @brief	
+ * @brief
  *	recv_rq_cpyfile_cred - Receive rq_cpyfile struct and cred_info (if any) through stdin sent by parent MoM
  *
  * @param[in/out] pcf - pointer to already allocated rq_cpyfile struct
@@ -2107,7 +2107,7 @@ free_rq_cpyfile_cred(struct rq_cpyfile *pcf)
  *		global variable cred_buf and cred_len
  *
  */
-int 
+int
 recv_rq_cpyfile_cred(struct rq_cpyfile *pcf)
 {
 	int pair_ct = 0;
@@ -2115,7 +2115,7 @@ recv_rq_cpyfile_cred(struct rq_cpyfile *pcf)
 	char buf[CPY_PIPE_BUFSIZE] = {'\0'};
 
 	CLEAR_HEAD(pcf->rq_pair);
-	
+
 	if (fgets(pcf->rq_jobid, PBS_MAXJOBNAME, stdin) == NULL) {
 		return 0;
 	} else {
@@ -2157,7 +2157,7 @@ recv_rq_cpyfile_cred(struct rq_cpyfile *pcf)
 	while (pair_ct--) {
 
 		ppair = (struct rqfpair *)malloc(sizeof(struct rqfpair));
-		if (ppair == (struct rqfpair *)0) {
+		if (ppair == NULL) {
 			free_rq_cpyfile_cred(pcf);
 			return 0;
 		}
@@ -2258,7 +2258,7 @@ recv_rq_cpyfile_cred(struct rq_cpyfile *pcf)
 }
 
 /**
- * @brief	
+ * @brief
  *	send_pcphosts - Send cphosts structure (information about usecp from mom config file)
  *	and cphosts_num (no. of usecp entry in cphosts struct) to
  *	given pipe handles <pio>
@@ -2299,7 +2299,7 @@ send_pcphosts(pio_handles *pio, struct cphosts *pcphosts)
 }
 
 /**
- * @brief	
+ * @brief
  *	send_rq_cpyfile_cred - Send given rq_cpyfile structure and cred info (if any) to
  *	given pipe handles <pio>
  *

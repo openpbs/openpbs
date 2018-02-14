@@ -343,8 +343,8 @@ req_quejob(struct batch_request *preq)
 
 	psatl = (svrattrl *)GET_NEXT(preq->rq_ind.rq_queuejob.rq_attr);
 	while (psatl) {
-		if (psatl->al_name == NULL || (!strcasecmp(psatl->al_name, ATTR_l) && psatl->al_resc == NULL)) { 
-			req_reject(PBSE_IVALREQ, 0, preq); 
+		if (psatl->al_name == NULL || (!strcasecmp(psatl->al_name, ATTR_l) && psatl->al_resc == NULL)) {
+			req_reject(PBSE_IVALREQ, 0, preq);
 			return;
 		}
 		if (!strcasecmp(psatl->al_name, ATTR_l) &&
@@ -454,7 +454,7 @@ req_quejob(struct batch_request *preq)
 
 	/* does job already exist, check both old and new jobs */
 
-	if ((pj = find_job(jid)) == (job *)0) {
+	if ((pj = find_job(jid)) == NULL) {
 		pj = (job *)GET_NEXT(svr_newjobs);
 		while (pj) {
 			if (!strcasecmp(pj->ji_qs.ji_jobid, jid))
@@ -473,7 +473,7 @@ req_quejob(struct batch_request *preq)
 	 * Otherwise SERVER will continue to reject queue request if job already
 	 * exists.
 	 */
-	if (pj != (job *)0) {
+	if (pj != NULL) {
 		if ((svr_chk_history_conf()) &&
 			(pj->ji_qs.ji_state == JOB_STATE_MOVED)) {
 			job_purge(pj);
@@ -499,13 +499,13 @@ req_quejob(struct batch_request *preq)
 #endif /* localmod 075 */
 		rc   = PBSE_UNKQUE;
 	}
-	if (pque == (pbs_queue *)0) {
+	if (pque == NULL) {
 		req_reject(rc, 0, preq);	   /* not there   */
 		return;
 	}
 
 	/* create the job structure */
-	if ((pj = job_alloc()) == (job *)0) {
+	if ((pj = job_alloc()) == NULL) {
 		req_reject(PBSE_SYSTEM, 0, preq);
 		return;
 	}
@@ -573,7 +573,7 @@ req_quejob(struct batch_request *preq)
 	} else {
 		/* if not already here, allocate job struct */
 
-		if ((pj = job_alloc()) == (job *)0) {
+		if ((pj = job_alloc()) == NULL) {
 			req_reject(PBSE_SYSTEM, 0, preq);
 			return;
 		}
@@ -746,7 +746,7 @@ req_quejob(struct batch_request *preq)
 			ATR_VFLAG_SET) == 0) {
 			job_attr_def[(int)JOB_ATR_jobname].at_decode(
 				&pj->ji_wattr[(int)JOB_ATR_jobname],
-				(char *)0, (char *)0, "none");
+				NULL, NULL, "none");
 		}
 
 		/* check resources in the Resource_List are valid job wide */
@@ -827,7 +827,7 @@ req_quejob(struct batch_request *preq)
 		(void)strcat(buf, preq->rq_host);
 		job_attr_def[(int)JOB_ATR_job_owner].at_decode(
 			&pj->ji_wattr[(int)JOB_ATR_job_owner],
-			(char *)0, (char *)0, buf);
+			NULL, NULL, buf);
 
 		/* set create time */
 
@@ -846,14 +846,14 @@ req_quejob(struct batch_request *preq)
 		clear_attr(&tempattr, &job_attr_def[(int)JOB_ATR_variables]);
 		(void)strcpy(buf, pbs_o_que);
 		(void)strcat(buf, pque->qu_qs.qu_name);
-		if (get_variable(pj, pbs_o_host) == (char *)0) {
+		if (get_variable(pj, pbs_o_host) == NULL) {
 			(void)strcat(buf, ",");
 			(void)strcat(buf, pbs_o_host);
 			(void)strcat(buf, "=");
 			(void)strcat(buf, preq->rq_host);
 		}
 		job_attr_def[(int)JOB_ATR_variables].at_decode(&tempattr,
-			(char *)0, (char *)0, buf);
+			NULL, NULL, buf);
 		job_attr_def[(int)JOB_ATR_variables].at_set(
 			&pj->ji_wattr[(int)JOB_ATR_variables],
 			&tempattr, INCR);
@@ -938,7 +938,7 @@ req_quejob(struct batch_request *preq)
 							ATR_VFLAG_SET) == 0 ) {
 			job_attr_def[(int)JOB_ATR_project].at_decode(
 				&pj->ji_wattr[(int)JOB_ATR_project],
-				(char *)0, (char *)0, PBS_DEFAULT_PROJECT);
+				NULL, NULL, PBS_DEFAULT_PROJECT);
 		}
 
 	} else {		/* job was created elsewhere and moved here */
@@ -970,14 +970,14 @@ req_quejob(struct batch_request *preq)
 		 */
 		job_attr_def[(int)JOB_ATR_reserve_ID]
 		.at_decode(&pj->ji_wattr[(int)JOB_ATR_reserve_ID],
-			(char *)0, (char *)0, (char*)0);
+			NULL, NULL, NULL);
 	}
 
 	/* set up at_server attribute for status */
 
 	job_attr_def[(int)JOB_ATR_at_server].at_decode(
 		&pj->ji_wattr[(int)JOB_ATR_at_server],
-		(char *)0, (char *)0, pbs_server_name);
+		NULL, NULL, pbs_server_name);
 
 	/* If enabled, check the server's required cred type */
 
@@ -1060,7 +1060,7 @@ req_quejob(struct batch_request *preq)
 			&pj->ji_wattr[(int)JOB_ATR_reserve_ID]);
 		job_attr_def[(int)JOB_ATR_reserve_ID].at_decode(
 			&pj->ji_wattr[(int)JOB_ATR_reserve_ID],
-			(char *)0, (char *)0,
+			NULL, NULL,
 			pque->qu_resvp->ri_qs.ri_resvID);
 		pj->ji_myResv = pque->qu_resvp;
 
@@ -1160,7 +1160,7 @@ req_quejob(struct batch_request *preq)
 				/* we've hit an internal error (malloc error, full disk, etc...), so */
 				/* treat this now like a  hook error so hook fail_action  */
 				/* will be consulted.  */
-				/* Before, behavior of an internal error was to ignore it! */ 
+				/* Before, behavior of an internal error was to ignore it! */
 				hook_errcode = PBSE_HOOKERROR;
 			}
 			if (hook_errcode == PBSE_HOOKERROR) { /* error */
@@ -1700,8 +1700,8 @@ req_jobcredential(struct batch_request *preq)
 	size_t	len;
 
 	DBPRT(("%s: entered\n", __func__))
-	pj = locate_new_job(preq, (char *)0);
-	if (pj == (job *)0) {
+	pj = locate_new_job(preq, NULL);
+	if (pj == NULL) {
 		req_reject(PBSE_IVALREQ, 0, preq);
 		return;
 	}
@@ -1774,8 +1774,8 @@ req_gsscontext(struct batch_request *preq)
 	job	*pj;
 
 	DBPRT(("%s: entered\n", __func__))
-	pj = locate_new_job(preq, (char *)0);
-	if (pj == (job *)0) {
+	pj = locate_new_job(preq, NULL);
+	if (pj == NULL) {
 		req_reject(PBSE_IVALREQ, 0, preq);
 		return;
 	}
@@ -1870,8 +1870,8 @@ req_jobscript(struct batch_request *preq)
 	u_Long size;
 #endif
 
-	pj = locate_new_job(preq, (char *)0);
-	if (pj == (job *)0) {
+	pj = locate_new_job(preq, NULL);
+	if (pj == NULL) {
 		req_reject(PBSE_IVALREQ, 0, preq);
 		return;
 	}
@@ -1960,7 +1960,7 @@ req_jobscript(struct batch_request *preq)
 	(void)close(fds);
 #else /* server - server - server - server */
 	/* add the script to the job */
-	size = get_bytes_from_attr(&attr_jobscript_max_size); 
+	size = get_bytes_from_attr(&attr_jobscript_max_size);
 	if (pj->ji_qs.ji_un.ji_newt.ji_scriptsz > size){
 		req_reject(PBSE_JOBSCRIPTMAXSIZE, 0, preq);
 		return;
@@ -2014,11 +2014,11 @@ req_mvjobfile(struct batch_request *preq)
 	struct stat sb;
 #endif
 
-	pj = locate_new_job(preq, (char *)0);
-	if (pj == (job *)0)
+	pj = locate_new_job(preq, NULL);
+	if (pj == NULL)
 		pj = find_job(preq->rq_ind.rq_jobfile.rq_jobid);
 
-	if ((preq->rq_fromsvr == 0) || (pj == (job *)0)) {
+	if ((preq->rq_fromsvr == 0) || (pj == NULL)) {
 		req_reject(PBSE_IVALREQ, 0, preq);
 		return;
 	}
@@ -2162,11 +2162,11 @@ req_mvjobfile(struct batch_request *preq)
 	else
 		oflag = O_CREAT | O_WRONLY | O_APPEND;
 
-	pj = locate_new_job(preq, (char *)0);
-	if (pj == (job *)0)
+	pj = locate_new_job(preq, NULL);
+	if (pj == NULL)
 		pj = find_job(preq->rq_ind.rq_jobfile.rq_jobid);
 
-	if (pj == (job *)0) {
+	if (pj == NULL) {
 		req_reject(PBSE_UNKJOBID, 0, preq);
 		return;
 	}
@@ -2193,7 +2193,7 @@ req_mvjobfile(struct batch_request *preq)
 
 		if (mkjobdir(pj->ji_qs.ji_jobid,
 			pbs_jobdir,
-			(pj->ji_user != NULL) ? pj->ji_user->pw_name : NULL, 
+			(pj->ji_user != NULL) ? pj->ji_user->pw_name : NULL,
 			INVALID_HANDLE_VALUE) != 0) {
 			sprintf(log_buffer, "unable to create the job directory %s", pbs_jobdir);
 			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pj->ji_qs.ji_jobid, log_buffer);
@@ -2265,7 +2265,7 @@ req_commit(struct batch_request *preq)
 #endif
 
 	pj = locate_new_job(preq, preq->rq_ind.rq_commit);
-	if (pj == (job *)0) {
+	if (pj == NULL) {
 		req_reject(PBSE_UNKJOBID, 0, preq);
 		return;
 	}
@@ -2348,10 +2348,10 @@ req_commit(struct batch_request *preq)
 
 	/* Set Server level entity usage */
 
-	if (((rc = set_entity_ct_sum_max(pj, (pbs_queue *)0, INCR)) != 0) ||
-		((rc = set_entity_ct_sum_queued(pj, (pbs_queue *)0, INCR)) != 0) ||
-		((rc = set_entity_resc_sum_max(pj, (pbs_queue *)0, (attribute *)0, INCR)) != 0) ||
-		((rc = set_entity_resc_sum_queued(pj, (pbs_queue *)0, (attribute *)0, INCR)) != 0)) {
+	if (((rc = set_entity_ct_sum_max(pj, NULL, INCR)) != 0) ||
+		((rc = set_entity_ct_sum_queued(pj, NULL, INCR)) != 0) ||
+		((rc = set_entity_resc_sum_max(pj, NULL, NULL, INCR)) != 0) ||
+		((rc = set_entity_resc_sum_queued(pj, NULL, NULL, INCR)) != 0)) {
 		job_purge(pj);
 		req_reject(rc, 0, preq);
 		return;
@@ -2399,7 +2399,7 @@ req_commit(struct batch_request *preq)
 				break;
 			presv = (resc_resv *)GET_NEXT(presv->ri_allresvs);
 		}
-		if (presv == (resc_resv  *)0) {
+		if (presv == NULL) {
 			(void)job_purge(pj);
 			req_reject(PBSE_SYSTEM, 0, preq);
 			return;
@@ -2525,7 +2525,7 @@ locate_new_job(struct batch_request *preq, char *jobid)
 	pbs_net_t conn_addr = 0;
 
 	if (preq == NULL)
-		return (job *) 0;
+		return NULL;
 
 	sock = preq->rq_conn;
 
@@ -2544,7 +2544,7 @@ locate_new_job(struct batch_request *preq, char *jobid)
 			((pj->ji_qs.ji_un.ji_newt.ji_fromsock == sock) &&
 			(pj->ji_qs.ji_un.ji_newt.ji_fromaddr == conn_addr))) {
 
-			if (jobid != (char *)0) {
+			if (jobid != NULL) {
 				if (!strncmp(pj->ji_qs.ji_jobid, jobid, PBS_MAXSVRJOBID))
 					break;
 			} else
@@ -2690,7 +2690,7 @@ req_resvSub(struct batch_request *preq)
 	 * this capability, but will have this code here
 	 */
 
-	if ((presv = find_resv(rid)) == (resc_resv *)0) {
+	if ((presv = find_resv(rid)) == NULL) {
 		/* Not on "all_resvs" list try "new_resvs" list */
 		presv = (resc_resv *)GET_NEXT(svr_newresvs);
 		while (presv) {
@@ -2700,7 +2700,7 @@ req_resvSub(struct batch_request *preq)
 		}
 	}
 
-	if (presv != (resc_resv *)0) {
+	if (presv != NULL) {
 
 		/* server rejects resvSub request if already exists */
 		req_reject(PBSE_RESVEXIST, 0, preq);
@@ -2716,7 +2716,7 @@ req_resvSub(struct batch_request *preq)
 	 * reservation get assigned
 	 */
 
-	if ((presv = resc_resv_alloc()) == (resc_resv *)0) {
+	if ((presv = resc_resv_alloc()) == NULL) {
 		(void)unlink(namebuf);
 		req_reject(PBSE_SYSTEM, 0, preq);
 		return;
@@ -2928,7 +2928,7 @@ req_resvSub(struct batch_request *preq)
 			strcpy(buf, "NULL");
 			resv_attr_def[(int)RESV_ATR_resv_name].at_decode(
 				&presv->ri_wattr[(int)RESV_ATR_resv_name],
-				(char *)0, (char *)0, buf);
+				NULL, NULL, buf);
 		}
 
 		/* set reservation owner attribute to user@host */
@@ -2940,7 +2940,7 @@ req_resvSub(struct batch_request *preq)
 		(void)strcat(buf, preq->rq_host);
 		resv_attr_def[(int)RESV_ATR_resv_owner].at_decode(
 			&presv->ri_wattr[(int)RESV_ATR_resv_owner],
-			(char *)0, (char *)0, buf);
+			NULL, NULL, buf);
 
 		/* make sure owner is in reservation's Authorized_Users */
 
@@ -3039,7 +3039,7 @@ req_resvSub(struct batch_request *preq)
 
 	resv_attr_def[(int)RESV_ATR_at_server].at_decode(
 		&presv->ri_wattr[(int)RESV_ATR_at_server],
-		(char *)0, (char *)0, pbs_server_name);
+		NULL, NULL, pbs_server_name);
 
 	/* set what will be the name of the reservation's associated queue */
 
@@ -3048,7 +3048,7 @@ req_resvSub(struct batch_request *preq)
 
 	resv_attr_def[(int)RESV_ATR_queue].at_decode(
 		&presv->ri_wattr[(int)RESV_ATR_queue],
-		(char *)0, (char *)0, qbuf);
+		NULL, NULL, qbuf);
 	/*
 	 * Now that the resc_resv structure exists and and has been setup,
 	 * try to acquire and setup a pbs_queue into which jobs submitted
@@ -3281,7 +3281,7 @@ get_queue_for_reservation(resc_resv *presv)
 
 
 	newreq = alloc_br(PBS_BATCH_Manager);
-	if (newreq == (struct batch_request *)0) {
+	if (newreq == NULL) {
 		(void)sprintf(log_buffer, "batch request allocation failed");
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_RESV, LOG_ERR,
 			presv->ri_qs.ri_resvID, log_buffer);
@@ -3325,12 +3325,12 @@ get_queue_for_reservation(resc_resv *presv)
 
 
 	rc = resv_attr_def[RESV_ATR_resource].at_encode(pattr, plhed,
-		ATTR_rescavail, (char *)0,
-		ATR_ENCODE_CLIENT, (svrattrl **)NULL);
+		ATTR_rescavail, NULL,
+		ATR_ENCODE_CLIENT, NULL);
 
 	rc += resv_attr_def[RESV_ATR_resource].at_encode(pattr, plhed,
-		ATTR_rescmax, (char *)0,
-		ATR_ENCODE_CLIENT, (svrattrl **)NULL);
+		ATTR_rescmax, NULL,
+		ATR_ENCODE_CLIENT, NULL);
 
 	for (i=0; i<j; ++i) {
 		if (dont_set_in_max[i].ds_rescp)
@@ -3346,7 +3346,7 @@ get_queue_for_reservation(resc_resv *presv)
 	}
 
 	if ((psatl = attrlist_create(ATTR_qtype, NULL, lenE)) !=
-		(svrattrl *)0) {
+		NULL) {
 		psatl->al_flags = que_attr_def[QA_ATR_QType].at_flags;
 		strcpy(psatl->al_value, Execution);
 		append_link(plhed, &psatl->al_link, psatl);
@@ -3357,7 +3357,7 @@ get_queue_for_reservation(resc_resv *presv)
 
 	/* Don't enable queue until reservation is RESV_CONFIRMED */
 	if ((psatl = attrlist_create(ATTR_enable, NULL, lenF)) !=
-		(svrattrl *)0) {
+		NULL) {
 		psatl->al_flags = que_attr_def[QA_ATR_Enabled].at_flags;
 		strcpy(psatl->al_value, ATR_FALSE);
 		append_link(plhed, &psatl->al_link, psatl);
@@ -3367,7 +3367,7 @@ get_queue_for_reservation(resc_resv *presv)
 	}
 
 	/* Don't start queue until reservation window here, RESV_TIME_TO_RUN */
-	if ((psatl = attrlist_create(ATTR_start, NULL, lenF)) != (svrattrl *)0) {
+	if ((psatl = attrlist_create(ATTR_start, NULL, lenF)) != NULL) {
 		psatl->al_flags = que_attr_def[QA_ATR_Started].at_flags;
 		strcpy(psatl->al_value, ATR_FALSE);
 		append_link(plhed, &psatl->al_link, psatl);
@@ -3390,8 +3390,8 @@ get_queue_for_reservation(resc_resv *presv)
 			return (PBSE_DUPLIST);
 		}
 		rc = resv_attr_def[RESV_ATR_auth_u].at_encode(pattr, plhed,
-			ATTR_acluser, (char *)0,
-			ATR_ENCODE_SVR, (svrattrl **)NULL);
+			ATTR_acluser, NULL,
+			ATR_ENCODE_SVR, NULL);
 		if (rc < 0) {
 			free_br(newreq);
 			return  (PBSE_genBatchReq);
@@ -3399,7 +3399,7 @@ get_queue_for_reservation(resc_resv *presv)
 
 		/*let the que know user acl is to be enforced*/
 		if ((psatl = attrlist_create(ATTR_acluren,
-			NULL, lenT)) != (svrattrl *)0) {
+			NULL, lenT)) != NULL) {
 			psatl->al_flags = que_attr_def[QA_ATR_AclUserEnabled].at_flags;
 			strcpy(psatl->al_value, ATR_TRUE);
 			append_link(plhed, &psatl->al_link, psatl);
@@ -3422,8 +3422,8 @@ get_queue_for_reservation(resc_resv *presv)
 			return (PBSE_DUPLIST);
 		}
 		rc = resv_attr_def[RESV_ATR_auth_g].at_encode(pattr, plhed,
-			ATTR_aclgroup, (char *)0,
-			ATR_ENCODE_SVR, (svrattrl **)NULL);
+			ATTR_aclgroup, NULL,
+			ATR_ENCODE_SVR, NULL);
 		if (rc < 0) {
 			free_br(newreq);
 			return  (PBSE_genBatchReq);
@@ -3431,7 +3431,7 @@ get_queue_for_reservation(resc_resv *presv)
 
 		/*let the que know user acl is to be enforced*/
 		if ((psatl = attrlist_create(ATTR_aclgren,
-			NULL, lenT)) != (svrattrl *)0) {
+			NULL, lenT)) != NULL) {
 			psatl->al_flags = que_attr_def[QE_ATR_AclGroupEnabled].at_flags;
 			strcpy(psatl->al_value, ATR_TRUE);
 			append_link(plhed, &psatl->al_link, psatl);
@@ -3454,8 +3454,8 @@ get_queue_for_reservation(resc_resv *presv)
 			return (PBSE_DUPLIST);
 		}
 		rc = resv_attr_def[RESV_ATR_auth_h].at_encode(pattr, plhed,
-			ATTR_aclhost, (char *)0,
-			ATR_ENCODE_SVR, (svrattrl **)NULL);
+			ATTR_aclhost, NULL,
+			ATR_ENCODE_SVR, NULL);
 		if (rc < 0) {
 			free_br(newreq);
 			return  (PBSE_genBatchReq);
@@ -3463,7 +3463,7 @@ get_queue_for_reservation(resc_resv *presv)
 
 		/*let the que know user acl is to be enforced*/
 		if ((psatl = attrlist_create(ATTR_aclhten,
-			NULL, lenT)) != (svrattrl *)0) {
+			NULL, lenT)) != NULL) {
 			psatl->al_flags = que_attr_def[QA_ATR_AclHostEnabled].at_flags;
 			strcpy(psatl->al_value, ATR_TRUE);
 			append_link(plhed, &psatl->al_link, psatl);

@@ -216,9 +216,9 @@ que_recov_fs(char   *filename)
 
 
 	pq = que_alloc(filename);  /* allocate & init queue structure space */
-	if (pq == (pbs_queue *)0) {
+	if (pq == NULL) {
 		log_err(-1, "que_recov", "que_alloc failed");
-		return ((pbs_queue *)0);
+		return NULL;
 	}
 
 	(void)strcpy(pbs_recov_filename, path_queues);
@@ -233,7 +233,7 @@ que_recov_fs(char   *filename)
 		sprintf(log_buffer, "error opening %s", pbs_recov_filename);
 		log_err(errno, "que_recov", log_buffer);
 		free((char *)pq);
-		return ((pbs_queue *)0);
+		return NULL;
 	}
 
 #ifdef WIN32
@@ -249,7 +249,7 @@ que_recov_fs(char   *filename)
 		log_err(errno, "que_recov", log_buffer);
 		free((char *)pq);
 		(void)close(fds);
-		return ((pbs_queue *)0);
+		return NULL;
 	}
 
 	/* read in queue attributes */
@@ -259,7 +259,7 @@ que_recov_fs(char   *filename)
 		log_err(-1, "que_recov", "recov_attr[common] failed");
 		que_free(pq);
 		(void)close(fds);
-		return ((pbs_queue *)0);
+		return NULL;
 	}
 
 	/*

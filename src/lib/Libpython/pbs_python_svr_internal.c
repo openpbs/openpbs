@@ -112,7 +112,7 @@ extern u_Long		pps_size_to_kbytes(PyObject *l);
 
 /* A dictionary for quick access to the pbs.v1 EMBEDDED_EXTENSION_TYPES */
 static
-PyObject  *PBS_PythonTypes = (PyObject *) NULL;  /* A dictionary maintaing name and type */
+PyObject  *PBS_PythonTypes = NULL;  /* A dictionary maintaing name and type */
 
 /*
  *  BEGIN Quick Access Types Table
@@ -230,28 +230,28 @@ typedef struct _pbs_resource_value {
 static pbs_list_head pbs_resource_value_list;  	/* list of resource */
 						/* values to instantiate */
 
-static PyObject  *PyPbsV1Module_Obj = (PyObject *) NULL; /* pbs.v1 module object */
+static PyObject  *PyPbsV1Module_Obj = NULL; /* pbs.v1 module object */
 
 /* an array holding all the vnode attribute descriptors (python pointers) */
-static PyObject **py_vnode_attr_types = (PyObject **) NULL;
+static PyObject **py_vnode_attr_types = NULL;
 /* an array holding all the resv attribute descriptors (python pointers) */
-static PyObject **py_resv_attr_types = (PyObject **) NULL;
+static PyObject **py_resv_attr_types = NULL;
 /* an array holding all the server attribute descriptors (python pointers) */
-static PyObject **py_svr_attr_types = (PyObject **) NULL;
+static PyObject **py_svr_attr_types = NULL;
 /* an array holding all the job attribute descriptors (python pointers) */
-static PyObject **py_job_attr_types = (PyObject **) NULL;
+static PyObject **py_job_attr_types = NULL;
 /* an array holding all the queue attribute descriptors (python pointers) */
-static PyObject **py_que_attr_types = (PyObject **) NULL;
+static PyObject **py_que_attr_types = NULL;
 /* an array of python objects holding all the resources (python pointers)*/
-static PyObject **py_svr_resc_types = (PyObject **) NULL;
+static PyObject **py_svr_resc_types = NULL;
 
 /* The function object that  instantiates/populates a PBS object using */
-static PyObject *py_pbs_statobj = (PyObject *) NULL;
+static PyObject *py_pbs_statobj = NULL;
 
 /* This is the current hook event object */
-static PyObject  *py_hook_pbsevent = (PyObject *) NULL;
+static PyObject  *py_hook_pbsevent = NULL;
 /* This is the cached local/server object */
-static PyObject  *py_hook_pbsserver = (PyObject *) NULL;
+static PyObject  *py_hook_pbsserver = NULL;
 /* An array of cached Python queue objects managed by the current server */
 static PyObject  **py_hook_pbsque  = NULL;
 static int	py_hook_pbsque_max = 0; /* Max # of entries in py_hook_pbsque */
@@ -444,10 +444,10 @@ _pps_getset_descriptor_object(PyObject *klass,
 	/* this is for constructor call , see _base_types.py */
 	static char *kwds[] = {"cls", "name", "default_value", "value_type",
 		"resc_attr", "is_entity"};
-	PyObject *py_descr_class = (PyObject *) NULL;
+	PyObject *py_descr_class = NULL;
 	PyObject *py_descr_args = PyTuple_New(0);
-	PyObject *py_descr_kwds = (PyObject *) NULL;
-	PyObject *py_attr_descr = (PyObject *) NULL;
+	PyObject *py_descr_kwds = NULL;
+	PyObject *py_attr_descr = NULL;
 
 	/* check we creation of tuple failed */
 	if (!(py_descr_args)) {
@@ -564,7 +564,7 @@ ERROR_EXIT:
 static PyObject *
 pbs_python_setup_resc_get_value_type(resource_def *resc_def_p)
 {
-	PyObject *py_tmp = (PyObject *) NULL; /* return value */
+	PyObject *py_tmp = NULL; /* return value */
 
 	/* check if we are special aka check PBS_PythonTypes first */
 	py_tmp = PyDict_GetItemString(PBS_PythonTypes, resc_def_p->rs_name);
@@ -617,7 +617,7 @@ pbs_python_setup_resc_get_value_type(resource_def *resc_def_p)
 static PyObject *
 pbs_python_setup_attr_get_value_type(attribute_def *attr_def_p, char *py_type)
 {
-	PyObject *py_tmp = (PyObject *) NULL; /* return value */
+	PyObject *py_tmp = NULL; /* return value */
 
 	/* check if we are special aka check PBS_PythonTypes first */
 
@@ -683,7 +683,7 @@ void
 pbs_python_free_py_types_array(PyObject ***py_types_array)
 {
 	PyObject **py_array_tmp = *py_types_array;
-	PyObject *py_tmp = (PyObject *) NULL;
+	PyObject *py_tmp = NULL;
 
 	if (*py_types_array) {
 		while ((py_tmp = *py_array_tmp)) {
@@ -692,7 +692,7 @@ pbs_python_free_py_types_array(PyObject ***py_types_array)
 		}
 	}
 	PyMem_Free(*py_types_array);
-	*py_types_array = (PyObject **)NULL; /* since we might be called again */
+	*py_types_array = NULL; /* since we might be called again */
 	return;
 }
 
@@ -709,9 +709,9 @@ pbs_python_free_py_types_array(PyObject ***py_types_array)
 PyObject *
 pbs_python_make_default_value(PyObject *klass, PyObject *args)
 {
-	PyObject *py_default_value = (PyObject *) NULL;
+	PyObject *py_default_value;
 
-	py_default_value = PyObject_Call(klass, args, (PyObject *)NULL);
+	py_default_value = PyObject_Call(klass, args, NULL);
 	if (!py_default_value) {
 		goto ERROR_EXIT;
 	}
@@ -719,7 +719,7 @@ pbs_python_make_default_value(PyObject *klass, PyObject *args)
 
 ERROR_EXIT:
 	pbs_python_write_error_to_log("could not make default value");
-	return (PyObject *) NULL;
+	return NULL;
 }
 
 /**
@@ -740,11 +740,11 @@ int
 pbs_python_setup_vnode_class_attributes(void)
 {
 	int i = 0;
-	attribute_def *attr_def_p = (attribute_def *) NULL; /* convenience pointer */
+	attribute_def *attr_def_p = NULL; /* convenience pointer */
 	PyObject *py_pbs_vnode_klass = pbs_python_types_table[PP_VNODE_IDX].t_class;
-	PyObject *py_value_type = (PyObject *) NULL;
-	PyObject *py_default_value = (PyObject *) NULL;
-	PyObject *py_default_args = (PyObject *) NULL;
+	PyObject *py_value_type = NULL;
+	PyObject *py_default_value = NULL;
+	PyObject *py_default_args = NULL;
 	int num_entry =  ND_ATR_LAST+1; /* 1 for sentinel */
 	int te;
 
@@ -786,7 +786,7 @@ pbs_python_setup_vnode_class_attributes(void)
 		if (_pps_getset_descriptor_object(py_pbs_vnode_klass,
 			attr_def_p->at_name,
 			py_default_value,
-			py_value_type, (char *)NULL, te) == -1)
+			py_value_type, NULL, te) == -1)
 
 			goto ERROR_EXIT;
 		Py_INCREF(py_value_type);
@@ -824,11 +824,11 @@ int
 pbs_python_setup_resv_class_attributes(void)
 {
 	int i = 0;
-	attribute_def *attr_def_p = (attribute_def *) NULL; /* convenience pointer */
+	attribute_def *attr_def_p = NULL; /* convenience pointer */
 	PyObject *py_pbs_resv_klass = pbs_python_types_table[PP_RESV_IDX].t_class;
-	PyObject *py_value_type = (PyObject *) NULL;
-	PyObject *py_default_value = (PyObject *) NULL;
-	PyObject *py_default_args = (PyObject *) NULL;
+	PyObject *py_value_type = NULL;
+	PyObject *py_default_value = NULL;
+	PyObject *py_default_args = NULL;
 	int num_entry =  RESV_ATR_LAST+1; /* 1 for sentinel */
 	int te;
 
@@ -869,7 +869,7 @@ pbs_python_setup_resv_class_attributes(void)
 		if (_pps_getset_descriptor_object(py_pbs_resv_klass,
 			attr_def_p->at_name,
 			py_default_value,
-			py_value_type, (char *)NULL, te) == -1)
+			py_value_type, NULL, te) == -1)
 
 			goto ERROR_EXIT;
 		Py_INCREF(py_value_type);
@@ -909,11 +909,11 @@ int
 pbs_python_setup_server_class_attributes(void)
 {
 	int i = 0;
-	attribute_def *attr_def_p = (attribute_def *) NULL; /* convenience pointer */
+	attribute_def *attr_def_p = NULL; /* convenience pointer */
 	PyObject *py_pbs_svr_klass = pbs_python_types_table[PP_SVR_IDX].t_class;
-	PyObject *py_value_type = (PyObject *) NULL;
-	PyObject *py_default_value = (PyObject *) NULL;
-	PyObject *py_default_args = (PyObject *) NULL;
+	PyObject *py_value_type = NULL;
+	PyObject *py_default_value = NULL;
+	PyObject *py_default_args = NULL;
 	int num_entry =  SRV_ATR_LAST+1; /* 1 for sentinel */
 	int te;
 
@@ -954,7 +954,7 @@ pbs_python_setup_server_class_attributes(void)
 		if (_pps_getset_descriptor_object(py_pbs_svr_klass,
 			attr_def_p->at_name,
 			py_default_value,
-			py_value_type, (char *)NULL, te) == -1)
+			py_value_type, NULL, te) == -1)
 
 			goto ERROR_EXIT;
 		Py_INCREF(py_value_type);
@@ -994,11 +994,11 @@ int
 pbs_python_setup_job_class_attributes(void)
 {
 	int i = 0;
-	attribute_def *attr_def_p = (attribute_def *) NULL; /* convenience pointer */
+	attribute_def *attr_def_p = NULL; /* convenience pointer */
 	PyObject *py_pbs_job_klass = pbs_python_types_table[PP_JOB_IDX].t_class;
-	PyObject *py_value_type = (PyObject *) NULL;
-	PyObject *py_default_value = (PyObject *) NULL;
-	PyObject *py_default_args = (PyObject *) NULL;
+	PyObject *py_value_type = NULL;
+	PyObject *py_default_value = NULL;
+	PyObject *py_default_args = NULL;
 	int num_entry =  JOB_ATR_LAST+1; /* 1 for sentinel */
 	int te;
 
@@ -1040,7 +1040,7 @@ pbs_python_setup_job_class_attributes(void)
 		if (_pps_getset_descriptor_object(py_pbs_job_klass,
 			attr_def_p->at_name,
 			py_default_value,
-			py_value_type, (char *)NULL, te) == -1)
+			py_value_type, NULL, te) == -1)
 
 			goto ERROR_EXIT;
 		Py_INCREF(py_value_type);
@@ -1080,11 +1080,11 @@ int
 pbs_python_setup_queue_class_attributes(void)
 {
 	int i = 0;
-	attribute_def *attr_def_p = (attribute_def *) NULL; /* convenience pointer */
+	attribute_def *attr_def_p = NULL; /* convenience pointer */
 	PyObject *py_pbs_que_klass = pbs_python_types_table[PP_QUE_IDX].t_class;
-	PyObject *py_value_type = (PyObject *) NULL;
-	PyObject *py_default_value = (PyObject *) NULL;
-	PyObject *py_default_args = (PyObject *) NULL;
+	PyObject *py_value_type = NULL;
+	PyObject *py_default_value = NULL;
+	PyObject *py_default_args = NULL;
 	int num_entry =  QA_ATR_LAST+1; /* 1 for sentinel */
 	int te;
 
@@ -1125,7 +1125,7 @@ pbs_python_setup_queue_class_attributes(void)
 		if (_pps_getset_descriptor_object(py_pbs_que_klass,
 			attr_def_p->at_name,
 			py_default_value,
-			py_value_type, (char *)NULL, te) == -1)
+			py_value_type, NULL, te) == -1)
 
 			goto ERROR_EXIT;
 		Py_INCREF(py_value_type);
@@ -1163,9 +1163,9 @@ int
 pbs_python_setup_python_resource_type(void)
 {
 	int i = 0, j;
-	resource_def *resc_def_p = (resource_def *) NULL; /* convenience pointer */
+	resource_def *resc_def_p = NULL; /* convenience pointer */
 	PyObject *py_pbs_resc_klass = pbs_python_types_table[PP_RESC_IDX].t_class;
-	PyObject *py_value_type = (PyObject *) NULL;
+	PyObject *py_value_type = NULL;
 	int num_entry =  svr_resc_size+1; /* 1 for sentinel */
 
 	if (IS_PBS_PYTHON_CMD(pbs_python_daemon_name))
@@ -1324,8 +1324,8 @@ pbs_python_unload_python_types(struct python_interpreter_data *interp_data)
 int
 pbs_python_load_python_types(struct python_interpreter_data *interp_data)
 {
-	PyObject *py_import = (PyObject *) NULL; /* new */
-	PyObject *py_sys_modules = (PyObject *) NULL; /* Borrowed ref */
+	PyObject *py_import = NULL; /* new */
+	PyObject *py_sys_modules = NULL; /* Borrowed ref */
 
 	if ((PBS_PythonTypes)) { /* ok already loaded */
 		return 0;
@@ -1475,9 +1475,9 @@ set_entity_resource_or_return_value(pbs_list_head *resc_value_list,
 	static	char	*ret_str_value = NULL;
 	static	size_t	ret_len = STRBUF;
 	static	size_t	nlen = 0;
-	svrattrl *svrattr_val_tmp = (svrattrl *) NULL; /* tmp pointer for traversal*/
-	svrattrl *svrattr_val_next = (svrattrl *) NULL;
-	svrattrl *plist = (svrattrl *) NULL;
+	svrattrl *svrattr_val_tmp = NULL; /* tmp pointer for traversal*/
+	svrattrl *svrattr_val_next = NULL;
+	svrattrl *plist = NULL;
 	pbs_list_head  entity_head;
 	char	*bef_resc = NULL;
 	char	*cur_resc = NULL;
@@ -1850,7 +1850,7 @@ set_resource_or_return_value(pbs_list_head *resc_value_list, char *reslist_name,
 	static	char	*ret_str_value = NULL;
 	static	size_t	ret_len = STRBUF;
 	static	size_t	nlen = 0;
-	svrattrl *svrattr_val_tmp = (svrattrl *) NULL; /* tmp pointer for traversal*/
+	svrattrl *svrattr_val_tmp = NULL; /* tmp pointer for traversal*/
 	char	*tmp_str = NULL;
 	int	rc = 0;	/* set to 1 if there's at least 1 failure */
 
@@ -1991,12 +1991,12 @@ pbs_python_populate_attributes_to_python_class(PyObject *py_instance,
 	int encode_rv = 0;  /* at_encode functions return value */
 	int rc = -1;
 	int ret_rc = 0;
-	svrattrl *svrattr_val = (svrattrl *) NULL; /* tmp pointer */
-	svrattrl *svrattr_val_tmp = (svrattrl *) NULL; /* tmp pointer for traversal*/
+	svrattrl *svrattr_val = NULL; /* tmp pointer */
+	svrattrl *svrattr_val_tmp = NULL; /* tmp pointer for traversal*/
 	pbs_list_head pheadp;
-	attribute *attr_p = (attribute *) NULL;
-	attribute_def *attr_def_p = (attribute_def *) NULL;
-	PyObject *py_attr_resc = (PyObject *) NULL; /* for resource types */
+	attribute *attr_p = NULL;
+	attribute_def *attr_def_p = NULL;
+	PyObject *py_attr_resc = NULL; /* for resource types */
 	char *value_str = NULL;
 	char *new_value_str = NULL;
 	pbs_resource_value *resc_val;
@@ -2008,11 +2008,11 @@ pbs_python_populate_attributes_to_python_class(PyObject *py_instance,
 		memset(&pheadp, 0, sizeof(pheadp));
 		CLEAR_HEAD(pheadp);
 
-		svrattr_val = (svrattrl *)NULL;
+		svrattr_val = NULL;
 		encode_rv = attr_def_p->at_encode(attr_p,
 		/* linked list */          &pheadp,
 		/* name        */          attr_def_p->at_name,
-		/* resource    */          (char *) NULL,
+		/* resource    */          NULL,
 		/* Encoding type */        ATR_ENCODE_HOOK,
 		/* returned svrattrl */    &svrattr_val
 			);
@@ -2060,7 +2060,7 @@ pbs_python_populate_attributes_to_python_class(PyObject *py_instance,
 						(pbs_resource_value *)malloc(\
 						    sizeof(pbs_resource_value));
 					if (resc_val == \
-						(pbs_resource_value *)0) {
+						NULL) {
 						free_attrlist(&pheadp);
 						continue;
 					}
@@ -2233,7 +2233,7 @@ pbs_python_populate_python_class_from_svrattrl(PyObject *py_instance,
 
 	int rc = 0;
 	int ret_rc = 0;
-	PyObject *py_attr_resc = (PyObject *) NULL; /* for resource types */
+	PyObject *py_attr_resc = NULL; /* for resource types */
 	char    *objname = NULL;
 
 	if (hook_debug.input_fp != NULL) {
@@ -2329,7 +2329,7 @@ static long
 duration_to_secs(char *time_str)
 {
 
-	char 	     *value_tmp = (char *)NULL;
+	char 	     *value_tmp = NULL;
 	struct attribute attr;
 	int  	     rc;
 
@@ -2480,7 +2480,7 @@ varlist_same(char *varl1, char *varl2) {
 	pal1 = (svrattrl *)GET_NEXT(list1);
 	pal2 = (svrattrl *)GET_NEXT(list2);
 	rc = 1;
-	while ((pal1 != (svrattrl *)0) && (pal2 != (svrattrl *)0))  {
+	while ((pal1 != NULL) && (pal2 != NULL))  {
 		if ((strcmp(pal1->al_name, pal2->al_name) != 0) ||
 				(strcmp(pal1->al_value, pal2->al_value) != 0)) {
 			rc = 0;
@@ -2490,7 +2490,7 @@ varlist_same(char *varl1, char *varl2) {
 		pal2 = (struct svrattrl *)GET_NEXT(pal2->al_link);
 	}
 	/* in the end, if they both match, both pointers must not be pointing anywhere */
-	if ((pal1 != (svrattrl *)0) || (pal2 != (svrattrl *)0)) {
+	if ((pal1 != NULL) || (pal2 != NULL)) {
 		rc = 0;
 	}
 
@@ -2612,13 +2612,13 @@ int
 pbs_python_populate_svrattrl_from_python_class(PyObject *py_instance,
 	pbs_list_head *svrattrl_list, char *name_prefix, int append)
 {
-	PyObject	*py_attr_dict = (PyObject *)NULL;
-	PyObject	*py_attr_hookset_dict = (PyObject *)NULL;
-	PyObject	*py_attr_hookset_dict0 = (PyObject *)NULL;
-	PyObject	*py_resc_hookset_dict = (PyObject *)NULL;
-	PyObject	*py_resc_hookset_dict0 = (PyObject *)NULL;
-	PyObject	*py_attr_keys = (PyObject *)NULL;
-	PyObject 	*py_val = (PyObject *)NULL;
+	PyObject	*py_attr_dict = NULL;
+	PyObject	*py_attr_hookset_dict = NULL;
+	PyObject	*py_attr_hookset_dict0 = NULL;
+	PyObject	*py_resc_hookset_dict = NULL;
+	PyObject	*py_resc_hookset_dict0 = NULL;
+	PyObject	*py_attr_keys = NULL;
+	PyObject 	*py_val = NULL;
 	PyObject	*py_keys = NULL;
 	PyObject	*py_keys_dict = NULL;
 	PyObject	*py_keys_dict2 = NULL;
@@ -2632,7 +2632,7 @@ pbs_python_populate_svrattrl_from_python_class(PyObject *py_instance,
 	char		the_resc[HOOK_BUF_SIZE];
 	static char     *the_val = NULL;
 	static int 	val_buf_size = HOOK_BUF_SIZE;
-	PyObject	*py_resc = (PyObject *)NULL;
+	PyObject	*py_resc = NULL;
 	long		val_sec;
 	char		*objname = NULL;
 
@@ -2709,7 +2709,7 @@ pbs_python_populate_svrattrl_from_python_class(PyObject *py_instance,
 				py_instance);
 			if ((py_attr_hookset_dict0 != NULL) &&
 				!PyDict_Check(py_attr_hookset_dict0))
-				py_attr_hookset_dict0 = (PyObject *)NULL; /* don't use */
+				py_attr_hookset_dict0 = NULL; /* don't use */
 		}
 	}
 
@@ -2788,7 +2788,7 @@ pbs_python_populate_svrattrl_from_python_class(PyObject *py_instance,
 			char *resc, *val;
 			int k, num_keys;
 			PyObject *py_class = pbs_python_types_table[PP_RESC_IDX].t_class;
-			PyObject *py_tmp = (PyObject *)NULL;
+			PyObject *py_tmp = NULL;
 
 			/* code snippet below mimics what's done in the
 			 * __str__ method of class pbs_resource under
@@ -2833,7 +2833,7 @@ pbs_python_populate_svrattrl_from_python_class(PyObject *py_instance,
 			 */
 			if (PyObject_HasAttrString(py_class,
 				"_attributes_unknown")) {
-				PyObject *py_i = (PyObject *)NULL;
+				PyObject *py_i = NULL;
 
 				py_keys_dict2 = PyObject_GetAttrString(py_class,
 					"_attributes_unknown");
@@ -2877,7 +2877,7 @@ pbs_python_populate_svrattrl_from_python_class(PyObject *py_instance,
 
 					if ((py_resc_hookset_dict0 != NULL) &&
 						!PyDict_Check(py_resc_hookset_dict0))
-						py_resc_hookset_dict0 = (PyObject *)NULL;/* don't use */
+						py_resc_hookset_dict0 = NULL;/* don't use */
 				}
 			}
 
@@ -3136,9 +3136,9 @@ svrattrl_exit:
 int
 pbs_python_mark_object_readonly(PyObject *py_instance)
 {
-	PyObject	*py_attr_dict = (PyObject *)NULL;
-	PyObject	*py_attr_keys = (PyObject *)NULL;
-	PyObject 	*py_val = (PyObject *)NULL;
+	PyObject	*py_attr_dict = NULL;
+	PyObject	*py_attr_keys = NULL;
+	PyObject 	*py_val = NULL;
 	int		num_attrs, i;
 	int         rc = -1;
 
@@ -3278,9 +3278,9 @@ mark_readonly_exit:
 static PyObject *
 _pps_helper_get_queue(pbs_queue *pque, const char *que_name)
 {
-	PyObject *py_que_class = (PyObject *) NULL;
-	PyObject *py_que = (PyObject *) NULL;
-	PyObject *py_qargs = (PyObject *) NULL;
+	PyObject *py_que_class = NULL;
+	PyObject *py_que = NULL;
+	PyObject *py_qargs = NULL;
 	pbs_queue *que;
 	int tmp_rc = -1;
 	int i;
@@ -3291,7 +3291,7 @@ _pps_helper_get_queue(pbs_queue *pque, const char *que_name)
 		if ((que_name == NULL) || (que_name[0] == '\0')) {
 			log_err(PBSE_INTERNAL, __func__,
 				"Unable to populate python queue object");
-			return (NULL);
+			return NULL;
 		}
 		que = find_queuebyname((char *)que_name);
 	}
@@ -3333,7 +3333,7 @@ _pps_helper_get_queue(pbs_queue *pque, const char *que_name)
 		log_err(PBSE_INTERNAL, __func__, "could not build args list for queue");
 		goto ERROR_EXIT;
 	}
-	py_que = PyObject_Call(py_que_class, py_qargs, (PyObject *) NULL);
+	py_que = PyObject_Call(py_que_class, py_qargs, NULL);
 	if (!py_que) {
 		log_err(PBSE_INTERNAL, __func__, "failed to create a python queue object");
 		goto ERROR_EXIT;
@@ -3432,7 +3432,7 @@ ERROR_EXIT:
 		Py_CLEAR(py_que);
 	PyErr_SetString(PyExc_AssertionError, "Failed to create queue object");
 
-	return (PyObject *) NULL;
+	return NULL;
 }
 
 /**
@@ -3452,12 +3452,12 @@ ERROR_EXIT:
 static PyObject *
 _pps_helper_get_server(void)
 {
-	PyObject *py_svr_class = (PyObject *) NULL;
-	PyObject *py_svr = (PyObject *) NULL;
-	PyObject *py_sargs = (PyObject *) NULL;
+	PyObject *py_svr_class = NULL;
+	PyObject *py_svr = NULL;
+	PyObject *py_sargs = NULL;
 	int tmp_rc = -1;
 
-	if (py_hook_pbsserver != (PyObject *)NULL) {
+	if (py_hook_pbsserver != NULL) {
 		Py_INCREF(py_hook_pbsserver);
 		return py_hook_pbsserver;
 	}
@@ -3475,7 +3475,7 @@ _pps_helper_get_server(void)
 		goto ERROR_EXIT;
 	}
 
-	py_svr = PyObject_Call(py_svr_class, py_sargs, (PyObject *) NULL);
+	py_svr = PyObject_Call(py_svr_class, py_sargs, NULL);
 	if (!py_svr) {
 		log_err(-1, pbs_python_daemon_name, "failed to create a python server object");
 		goto ERROR_EXIT;
@@ -3534,7 +3534,7 @@ ERROR_EXIT:
 
 	PyErr_SetString(PyExc_AssertionError, "Failed to create server object");
 
-	return (PyObject *) NULL;
+	return NULL;
 }
 
 /**
@@ -3556,11 +3556,11 @@ ERROR_EXIT:
 static PyObject *
 _pps_helper_get_job(job *pjob_o, const char *jobid, const char *qname)
 {
-	PyObject *py_job_class = (PyObject *) NULL;
-	PyObject *py_job = (PyObject *) NULL;
-	PyObject *py_jargs = (PyObject *) NULL;
-	PyObject *py_que = (PyObject *) NULL;
-	PyObject *py_server = (PyObject *) NULL;
+	PyObject *py_job_class = NULL;
+	PyObject *py_job = NULL;
+	PyObject *py_jargs = NULL;
+	PyObject *py_que = NULL;
+	PyObject *py_server = NULL;
 	job *pjob;
 	int tmp_rc = -1;
 	int t;
@@ -3571,7 +3571,7 @@ _pps_helper_get_job(job *pjob_o, const char *jobid, const char *qname)
 		if ((jobid == NULL) || (jobid[0] == '\0')) {
 			log_err(PBSE_INTERNAL, __func__,
 				"Unable to populate python job object");
-			return (NULL);
+			return NULL;
 		}
 		t = is_job_array((char *)jobid);
 
@@ -3614,7 +3614,7 @@ _pps_helper_get_job(job *pjob_o, const char *jobid, const char *qname)
 		log_err(-1, pbs_python_daemon_name, "could not build args list for job");
 		goto ERROR_EXIT;
 	}
-	py_job = PyObject_Call(py_job_class, py_jargs, (PyObject *) NULL);
+	py_job = PyObject_Call(py_job_class, py_jargs, NULL);
 	if (!py_job) {
 		log_err(-1, pbs_python_daemon_name, "failed to create a python job object");
 		goto ERROR_EXIT;
@@ -3675,7 +3675,7 @@ ERROR_EXIT:
 	Py_CLEAR(py_job);
 	PyErr_SetString(PyExc_AssertionError, "Failed to create job object");
 
-	return (PyObject *) NULL;
+	return NULL;
 }
 
 /**
@@ -3693,11 +3693,11 @@ ERROR_EXIT:
 static PyObject *
 _pps_helper_get_resv(resc_resv *presv_o, const char *resvid)
 {
-	PyObject *py_resv_class = (PyObject *) NULL;
-	PyObject *py_resv = (PyObject *) NULL;
-	PyObject *py_rargs = (PyObject *) NULL;
-	PyObject *py_que = (PyObject *) NULL;
-	PyObject *py_server = (PyObject *) NULL;
+	PyObject *py_resv_class = NULL;
+	PyObject *py_resv = NULL;
+	PyObject *py_rargs = NULL;
+	PyObject *py_que = NULL;
+	PyObject *py_server = NULL;
 	resc_resv *presv;
 	int tmp_rc = -1;
 	char resvid_out[PBS_MAXCLTJOBID];
@@ -3709,7 +3709,7 @@ _pps_helper_get_resv(resc_resv *presv_o, const char *resvid)
 		if ((resvid == NULL) || (resvid[0] == '\0')) {
 			log_err(PBSE_INTERNAL, __func__,
 				"Unable to populate python reservation object");
-			return (NULL);
+			return NULL;
 		}
 
 		if (get_server((char *)resvid, (char *)resvid_out,
@@ -3719,7 +3719,7 @@ _pps_helper_get_resv(resc_resv *presv_o, const char *resvid)
 				"illegally formed reservation identifier %s", resvid);
 			log_buffer[LOG_BUF_SIZE-1] = '\0';
 			log_err(PBSE_INTERNAL, __func__, log_buffer);
-			return (NULL);
+			return NULL;
 		}
 		presv = find_resv((char *)resvid_out);
 	}
@@ -3745,7 +3745,7 @@ _pps_helper_get_resv(resc_resv *presv_o, const char *resvid)
 			"could not build args list for resv");
 		goto GR_ERROR_EXIT;
 	}
-	py_resv = PyObject_Call(py_resv_class, py_rargs, (PyObject *) NULL);
+	py_resv = PyObject_Call(py_resv_class, py_rargs, NULL);
 	if (py_resv == NULL) {
 		log_err(-1, pbs_python_daemon_name,
 			"failed to create a python resv object");
@@ -3807,7 +3807,7 @@ GR_ERROR_EXIT:
 	Py_CLEAR(py_resv);
 	PyErr_SetString(PyExc_AssertionError, "Failed to create resv object");
 
-	return (PyObject *) NULL;
+	return NULL;
 }
 
 /**
@@ -3826,10 +3826,10 @@ GR_ERROR_EXIT:
 static PyObject *
 _pps_helper_get_vnode(struct pbsnode *pvnode_o, const char *vname)
 {
-	PyObject *py_vnode_class = (PyObject *) NULL;
-	PyObject *py_vnode = (PyObject *) NULL;
-	PyObject *py_rargs = (PyObject *) NULL;
-	PyObject *py_que = (PyObject *) NULL;
+	PyObject *py_vnode_class = NULL;
+	PyObject *py_vnode = NULL;
+	PyObject *py_rargs = NULL;
+	PyObject *py_que = NULL;
 	struct pbsnode *pvnode;
 	int tmp_rc = -1;
 	char buf[512];
@@ -3840,7 +3840,7 @@ _pps_helper_get_vnode(struct pbsnode *pvnode_o, const char *vname)
 		if ((vname == NULL) || (vname[0] == '\0')) {
 			log_err(PBSE_INTERNAL, __func__,
 				"Unable to populate python vnode object");
-			return (NULL);
+			return NULL;
 		}
 
 		pvnode = find_nodebyname((char *)vname);
@@ -3865,7 +3865,7 @@ _pps_helper_get_vnode(struct pbsnode *pvnode_o, const char *vname)
 			"could not build args list for vnode");
 		goto GR_ERROR_EXIT;
 	}
-	py_vnode = PyObject_Call(py_vnode_class, py_rargs, (PyObject *) NULL);
+	py_vnode = PyObject_Call(py_vnode_class, py_rargs, NULL);
 	if (py_vnode == NULL) {
 		log_err(-1, pbs_python_daemon_name,
 			"failed to create a python vnode object");
@@ -3931,7 +3931,7 @@ GR_ERROR_EXIT:
 	Py_CLEAR(py_vnode);
 	PyErr_SetString(PyExc_AssertionError, "Failed to create vnode object");
 
-	return (PyObject *) NULL;
+	return NULL;
 }
 /*
  * ---------- EVENT RELATED FUNCTIONS ------------
@@ -4055,10 +4055,10 @@ static PyObject *
 create_py_vnodelist(pbs_list_head *vnlist)
 {
 	svrattrl	*plist, *plist_next;
-	PyObject	*py_vn = (PyObject *)NULL;  /* class vnode arg list */
-	PyObject	*py_va = (PyObject *)NULL;  /* instantiated vnode object */
-	PyObject	*py_vnodelist = (PyObject *)NULL;
-	PyObject	*py_vnode_class = (PyObject *)NULL;
+	PyObject	*py_vn = NULL;  /* class vnode arg list */
+	PyObject	*py_va = NULL;  /* instantiated vnode object */
+	PyObject	*py_vnodelist = NULL;
+	PyObject	*py_vnode_class = NULL;
 	struct 	rq_node {
 		char	  rq_id[PBS_MAXNODENAME*2];
 		pbs_list_head rq_attr;
@@ -4067,14 +4067,14 @@ create_py_vnodelist(pbs_list_head *vnlist)
 	char		*pn = NULL;
 	char		*p1 = NULL;
 	char		*attr_name = NULL;
-	PyObject	*py_vnlist_ret = (PyObject *)NULL;
+	PyObject	*py_vnlist_ret = NULL;
 	int		rc;
 
 	py_vnodelist = PyDict_New(); /* NEW - empty dict */
 	if (py_vnodelist == NULL) {
 		log_err(PBSE_INTERNAL, __func__,
 			"failed to create a Vnodes list dictionary!");
-		return (NULL);
+		return NULL;
 	}
 
 	py_vnode_class = pbs_python_types_table[PP_VNODE_IDX].t_class;
@@ -4167,7 +4167,7 @@ create_py_vnodelist(pbs_list_head *vnlist)
 			}
 
 			py_vn = PyObject_Call(py_vnode_class, py_va,
-				(PyObject *) NULL); /* NEW ref */
+				NULL); /* NEW ref */
 			if (py_vn == NULL) {
 				snprintf(log_buffer, sizeof(log_buffer),
 					"failed to create a python vnode %s object",
@@ -4275,10 +4275,10 @@ static PyObject *
 create_py_joblist(pbs_list_head *joblist)
 {
 	svrattrl	*plist, *plist_next;
-	PyObject	*py_jn = (PyObject *)NULL;  /* class job arg list */
-	PyObject	*py_ja = (PyObject *)NULL;  /* instantiated job object */
-	PyObject	*py_joblist = (PyObject *)NULL;
-	PyObject	*py_job_class = (PyObject *)NULL;
+	PyObject	*py_jn = NULL;  /* class job arg list */
+	PyObject	*py_ja = NULL;  /* instantiated job object */
+	PyObject	*py_joblist = NULL;
+	PyObject	*py_job_class = NULL;
 	struct 	rq_job {
 		char	  rq_id[PBS_MAXNODENAME*2];
 		pbs_list_head rq_attr;
@@ -4287,14 +4287,14 @@ create_py_joblist(pbs_list_head *joblist)
 	char		*pn = NULL;
 	char		*p1 = NULL;
 	char		*attr_name = NULL;
-	PyObject	*py_joblist_ret = (PyObject *)NULL;
+	PyObject	*py_joblist_ret = NULL;
 	int		rc;
 
 	py_joblist = PyDict_New(); /* NEW - empty dict */
 	if (py_joblist == NULL) {
 		log_err(PBSE_INTERNAL, __func__,
 			"failed to create a jobs list dictionary!");
-		return (NULL);
+		return NULL;
 	}
 
 	py_job_class = pbs_python_types_table[PP_JOB_IDX].t_class;
@@ -4388,7 +4388,7 @@ create_py_joblist(pbs_list_head *joblist)
 			}
 
 			py_jn = PyObject_Call(py_job_class, py_ja,
-				(PyObject *) NULL); /* NEW ref */
+				NULL); /* NEW ref */
 			if (py_jn == NULL) {
 				snprintf(log_buffer, sizeof(log_buffer),
 					"failed to create a python job %s object",
@@ -4497,18 +4497,18 @@ static PyObject *
 create_py_strlist(char **str_list)
 {
 	int		i;
-	PyObject	*py_str = (PyObject *)NULL;  /* a string value */
-	PyObject	*py_strlist = (PyObject *)NULL;
-	PyObject	*py_strlist_ret = (PyObject *)NULL;
+	PyObject	*py_str = NULL;  /* a string value */
+	PyObject	*py_strlist = NULL;
+	PyObject	*py_strlist_ret = NULL;
 
 	if (str_list == NULL)
-		return (NULL);
+		return NULL;
 
 	py_strlist = PyList_New(0); /* NEW - empty list */
 	if (py_strlist == NULL) {
 		log_err(PBSE_INTERNAL, __func__,
 			"failed to create an array of strings list!");
-		return (NULL);
+		return NULL;
 	}
 	i = 0;
 	while (str_list[i]) {
@@ -4560,19 +4560,19 @@ create_py_strlist_exit:
 static PyObject *
 create_py_strlist_from_svrattrl_names(pbs_list_head *phead)
 {
-	PyObject	*py_str = (PyObject *)NULL;  /* a string value */
-	PyObject	*py_strlist = (PyObject *)NULL;
-	PyObject	*py_strlist_ret = (PyObject *)NULL;
+	PyObject	*py_str = NULL;  /* a string value */
+	PyObject	*py_strlist = NULL;
+	PyObject	*py_strlist_ret = NULL;
 	svrattrl	*plist;
 
 	if (phead == NULL)
-		return (NULL);
+		return NULL;
 
 	py_strlist = PyList_New(0); /* NEW - empty list */
 	if (py_strlist == NULL) {
 		log_err(PBSE_INTERNAL, __func__,
 			"failed to create a strings list!");
-		return (NULL);
+		return NULL;
 	}
 
 	for (plist = (svrattrl *)GET_NEXT(*phead); plist;
@@ -4707,32 +4707,32 @@ int
 _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 	hook_input_param_t *req_params)
 {
-	PyObject *py_event = (PyObject *) NULL;
-	PyObject *py_eargs = (PyObject *) NULL;
-	PyObject *py_jargs = (PyObject *) NULL;
-	PyObject *py_rargs = (PyObject *) NULL;
-	PyObject *py_job = (PyObject *) NULL;
-	PyObject *py_job_o = (PyObject *) NULL;
-	PyObject *py_que = (PyObject *) NULL;
-	PyObject *py_resv = (PyObject *) NULL;
-	PyObject *py_event_param = (PyObject *) NULL;
+	PyObject *py_event = NULL;
+	PyObject *py_eargs = NULL;
+	PyObject *py_jargs = NULL;
+	PyObject *py_rargs = NULL;
+	PyObject *py_job = NULL;
+	PyObject *py_job_o = NULL;
+	PyObject *py_que = NULL;
+	PyObject *py_resv = NULL;
+	PyObject *py_event_param = NULL;
 
-	PyObject *py_event_class = (PyObject *) NULL;
-	PyObject *py_job_class = (PyObject *) NULL;
-	PyObject *py_resv_class = (PyObject *) NULL;
-	PyObject *py_env_class = (PyObject *) NULL;
-	PyObject *py_varlist = (PyObject *) NULL;
-	PyObject *py_varlist_o = (PyObject *) NULL;
-	PyObject *py_vnodelist = (PyObject *) NULL;
-	PyObject *py_joblist = (PyObject *) NULL;
-	PyObject *py_exec_vnode = (PyObject *) NULL;
-	PyObject *py_vnode	   = (PyObject *) NULL;
-	PyObject *py_aoe	   = (PyObject *) NULL;
-	PyObject *py_resclist = (PyObject *) NULL;
-	PyObject *py_progname = (PyObject *) NULL;
-	PyObject *py_arglist = (PyObject *) NULL;
-	PyObject *py_env = (PyObject *) NULL;
-	PyObject *py_pid = (PyObject *) NULL;
+	PyObject *py_event_class = NULL;
+	PyObject *py_job_class = NULL;
+	PyObject *py_resv_class = NULL;
+	PyObject *py_env_class = NULL;
+	PyObject *py_varlist = NULL;
+	PyObject *py_varlist_o = NULL;
+	PyObject *py_vnodelist = NULL;
+	PyObject *py_joblist = NULL;
+	PyObject *py_exec_vnode = NULL;
+	PyObject *py_vnode	   = NULL;
+	PyObject *py_aoe	   = NULL;
+	PyObject *py_resclist = NULL;
+	PyObject *py_progname = NULL;
+	PyObject *py_arglist = NULL;
+	PyObject *py_env = NULL;
+	PyObject *py_pid = NULL;
 
 	static long hook_counter = 0; /* for tracking interpreter restart */
 	static long min_restart_interval = 0; /* prevents frequent restarts */
@@ -4915,7 +4915,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 		log_err(-1, __func__, "could not build args list for event");
 		goto event_set_exit;
 	}
-	py_event = PyObject_Call(py_event_class, py_eargs, (PyObject *)NULL);/*NEW*/
+	py_event = PyObject_Call(py_event_class, py_eargs, NULL);/*NEW*/
 
 	if (!py_event) {
 		log_err(-1, __func__, "failed to create a python event object");
@@ -4959,7 +4959,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 			log_err(PBSE_INTERNAL, __func__, "could not build args list for job");
 			goto event_set_exit;
 		}
-		py_job = PyObject_Call(py_job_class, py_jargs, (PyObject *)NULL);/*NEW*/
+		py_job = PyObject_Call(py_job_class, py_jargs, NULL);/*NEW*/
 
 		if (!py_job) {
 			log_err(PBSE_INTERNAL, __func__, "failed to create a python job object");
@@ -5013,7 +5013,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 		}
 
 		py_resv = PyObject_Call(py_resv_class, py_rargs,
-			(PyObject *)NULL);/*NEW*/
+			NULL);/*NEW*/
 
 		if (!py_resv) {
 			log_err(PBSE_INTERNAL, __func__, "failed to create a python resv object");
@@ -5057,7 +5057,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 			goto event_set_exit;
 		}
 
-		py_job = PyObject_Call(py_job_class, py_jargs, (PyObject *)NULL);/*NEW*/
+		py_job = PyObject_Call(py_job_class, py_jargs, NULL);/*NEW*/
 
 		if (!py_job) {
 			log_err(PBSE_INTERNAL, __func__, "failed to create a python job object");
@@ -5093,7 +5093,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 				py_jargs = Py_BuildValue("(sss)", "job", rqj->rq_objname,
 					pbs_conf.pbs_server_name); /* NEW ref */
 				py_job_o = PyObject_Call(py_pbs_statobj, py_jargs,
-					(PyObject *)NULL);/*NEW*/
+					NULL);/*NEW*/
 				hook_set_mode = C_MODE; /* ensure still in C mode */
 			}
 		} else {
@@ -5162,7 +5162,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 				py_jargs = Py_BuildValue("(sss)", "job", rqj->rq_jid,
 					pbs_conf.pbs_server_name); /* NEW ref */
 				py_job = PyObject_Call(py_pbs_statobj, py_jargs,
-					(PyObject *)NULL);/*NEW*/
+					NULL);/*NEW*/
 				hook_set_mode = C_MODE; /* ensure still in C mode */
 			}
 		} else {
@@ -5271,7 +5271,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 				py_jargs = Py_BuildValue("(sss)", "job", rqj->rq_jid,
 					pbs_conf.pbs_server_name); /* NEW ref */
 				py_job = PyObject_Call(py_pbs_statobj, py_jargs,
-					(PyObject *)NULL);/*NEW*/
+					NULL);/*NEW*/
 				hook_set_mode = C_MODE; /* ensure still in C mode */
 			}
 		} else {
@@ -5335,7 +5335,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 		/* set value of job's exec_vnode attribute if not already set */
 		py_exec_vnode = PyObject_GetAttrString(py_job, ATTR_execvnode);/* NEW */
 
-		if ((rqj->rq_destin != (char *)0) && (*rqj->rq_destin != '\0') &&
+		if ((rqj->rq_destin != NULL) && (*rqj->rq_destin != '\0') &&
 			((py_exec_vnode == NULL) || (py_exec_vnode == Py_None))) {
 			/* set "exec_vnodes" attribute if not set */
 			rc = pbs_python_object_set_attr_string_value(py_job,
@@ -5369,7 +5369,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 			log_err(PBSE_INTERNAL, __func__, "could not build args list for job");
 			goto event_set_exit;
 		}
-		py_job = PyObject_Call(py_job_class, py_jargs, (PyObject *)NULL);/*NEW*/
+		py_job = PyObject_Call(py_job_class, py_jargs, NULL);/*NEW*/
 
 		if (!py_job) {
 			log_err(PBSE_INTERNAL, __func__, "failed to create a python job object");
@@ -5440,7 +5440,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 			goto event_set_exit;
 		}
 
-		py_job = PyObject_Call(py_job_class, py_jargs, (PyObject *)NULL);/*NEW*/
+		py_job = PyObject_Call(py_job_class, py_jargs, NULL);/*NEW*/
 		if (py_job == NULL) {
 			LOG_ERROR_ARG2("%s: failed to create a python job object for param['%s']",
 				PY_TYPE_EVENT, PY_EVENT_PARAM_JOB);
@@ -5559,7 +5559,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 			log_err(PBSE_INTERNAL, __func__, "could not build env list for job");
 			goto event_set_exit;
 		}
-		py_env = PyObject_Call(py_env_class, py_eargs, (PyObject *)NULL);/*NEW*/
+		py_env = PyObject_Call(py_env_class, py_eargs, NULL);/*NEW*/
 
 		if (!py_env) {
 			log_err(PBSE_INTERNAL, __func__, "failed to create a python env object");
@@ -5648,7 +5648,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 			goto event_set_exit;
 		}
 
-		py_job = PyObject_Call(py_job_class, py_jargs, (PyObject *)NULL);/*NEW*/
+		py_job = PyObject_Call(py_job_class, py_jargs, NULL);/*NEW*/
 		if (py_job == NULL) {
 			LOG_ERROR_ARG2("%s: failed to create a python job object for param['%s']",
 				PY_TYPE_EVENT, PY_EVENT_PARAM_JOB);
@@ -5801,21 +5801,21 @@ _pbs_python_event_unset(void)
 int
 _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_params)
 {
-	PyObject 		*py_job = (PyObject *)NULL;
-	PyObject 		*py_vnode = (PyObject *)NULL;
-	PyObject 		*py_vnodelist = (PyObject *)NULL;
-	PyObject 		*py_joblist = (PyObject *)NULL;
-	PyObject 		*py_job_o = (PyObject *)NULL;
-	PyObject 		*py_resv = (PyObject *)NULL;
+	PyObject 		*py_job = NULL;
+	PyObject 		*py_vnode = NULL;
+	PyObject 		*py_vnodelist = NULL;
+	PyObject 		*py_joblist = NULL;
+	PyObject 		*py_job_o = NULL;
+	PyObject 		*py_resv = NULL;
 	char		*queue;
-	PyObject		*py_varlist = (PyObject *) NULL;
-	PyObject		*py_varlist_o = (PyObject *) NULL;
+	PyObject		*py_varlist = NULL;
+	PyObject		*py_varlist_o = NULL;
 	int			i, num_attrs;
 	char		*key_str = NULL;
-	PyObject		*py_attr_keys = (PyObject *) NULL;
-	PyObject		*py_progname = (PyObject *) NULL;
-	PyObject		*py_arglist = (PyObject *) NULL;
-	PyObject		*py_env = (PyObject *) NULL;
+	PyObject		*py_attr_keys = NULL;
+	PyObject		*py_progname = NULL;
+	PyObject		*py_arglist = NULL;
+	PyObject		*py_env = NULL;
 	int			ret;
 	char			*progname;
 	char			*env_str;
@@ -6226,7 +6226,7 @@ _pbs_python_event_get_reject_msg(void)
 {
 	if (hook_pbsevent_reject_msg[0] != '\0')
 		return ((char *)hook_pbsevent_reject_msg);
-	return (NULL);
+	return NULL;
 }
 
 /**
@@ -6341,7 +6341,7 @@ _pbs_python_event_get_attrval(char *name)
 	if (name == NULL) {
 		log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
 			LOG_ERR, __func__, "Got a NULL 'name'");
-		return (NULL);
+		return NULL;
 	}
 
 	if (py_hook_pbsevent == NULL) {
@@ -6351,11 +6351,11 @@ _pbs_python_event_get_attrval(char *name)
 
 		log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
 			LOG_ERR, __func__, log_buffer);
-		return (NULL);
+		return NULL;
 	}
 
 	if (!PyObject_HasAttrString(py_hook_pbsevent, name)) {
-		return (NULL);
+		return NULL;
 	}
 
 	py_attrval =  PyObject_GetAttrString(py_hook_pbsevent, name); /* NEW */
@@ -6400,8 +6400,8 @@ pbsv1mod_meth_get_queue(PyObject *self, PyObject *args, PyObject *kwds)
 {
 	static char *kwlist[] = {"name", NULL};
 
-	char *name     = (char *) NULL;
-	PyObject *py_que = (PyObject *)NULL;
+	char *name     = NULL;
+	PyObject *py_que = NULL;
 
 	if (!PyArg_ParseTupleAndKeywords(args, kwds,
 		"s:get_queue",
@@ -6416,7 +6416,7 @@ pbsv1mod_meth_get_queue(PyObject *self, PyObject *args, PyObject *kwds)
 	py_que = _pps_helper_get_queue(NULL, name);
 	hook_set_mode = PY_MODE;
 
-	if (py_que != (PyObject *)NULL)
+	if (py_que != NULL)
 		return py_que;
 	else
 		Py_RETURN_NONE;
@@ -6457,9 +6457,9 @@ pbsv1mod_meth_get_job(PyObject *self, PyObject *args, PyObject *kwds)
 {
 	static char *kwlist[] = {PY_TYPE_JOB, PY_TYPE_QUEUE, NULL};
 
-	char *jname     = (char *) NULL;
-	char *qname     = (char *) NULL;
-	PyObject *py_job = (PyObject *)NULL;
+	char *jname     = NULL;
+	char *qname     = NULL;
+	PyObject *py_job = NULL;
 
 	if (!PyArg_ParseTupleAndKeywords(args, kwds,
 		"s|s:get_job",
@@ -6475,7 +6475,7 @@ pbsv1mod_meth_get_job(PyObject *self, PyObject *args, PyObject *kwds)
 	py_job = _pps_helper_get_job(NULL, jname, qname);
 	hook_set_mode = PY_MODE;
 
-	if (py_job != (PyObject *)NULL)
+	if (py_job != NULL)
 		return py_job;
 	else
 		Py_RETURN_NONE;
@@ -6514,8 +6514,8 @@ pbsv1mod_meth_get_resv(PyObject *self, PyObject *args, PyObject *kwds)
 {
 	static char *kwlist[] = {PY_TYPE_RESV, NULL};
 
-	char *rname     = (char *) NULL;
-	PyObject *py_resv = (PyObject *)NULL;
+	char *rname     = NULL;
+	PyObject *py_resv = NULL;
 
 	if (!PyArg_ParseTupleAndKeywords(args, kwds,
 		"s:get_resv",
@@ -6530,7 +6530,7 @@ pbsv1mod_meth_get_resv(PyObject *self, PyObject *args, PyObject *kwds)
 	py_resv = _pps_helper_get_resv(NULL, rname);
 	hook_set_mode = PY_MODE;
 
-	if (py_resv != (PyObject *)NULL)
+	if (py_resv != NULL)
 		return py_resv;
 	else
 		Py_RETURN_NONE;
@@ -6568,8 +6568,8 @@ pbsv1mod_meth_get_vnode(PyObject *self, PyObject *args, PyObject *kwds)
 {
 	static char *kwlist[] = {PY_TYPE_VNODE, NULL};
 
-	char *vname     = (char *) NULL;
-	PyObject *py_vnode = (PyObject *)NULL;
+	char *vname     = NULL;
+	PyObject *py_vnode = NULL;
 
 	if (!PyArg_ParseTupleAndKeywords(args, kwds,
 		"s:get_vnode",
@@ -6584,7 +6584,7 @@ pbsv1mod_meth_get_vnode(PyObject *self, PyObject *args, PyObject *kwds)
 	py_vnode = _pps_helper_get_vnode(NULL, vname);
 	hook_set_mode = PY_MODE;
 
-	if (py_vnode != (PyObject *)NULL)
+	if (py_vnode != NULL)
 		return py_vnode;
 	else
 		Py_RETURN_NONE;
@@ -6630,7 +6630,7 @@ const char pbsv1mod_meth_server_doc[] =
 PyObject *
 pbsv1mod_meth_server(void)
 {
-	PyObject *py_svr = (PyObject *)NULL;
+	PyObject *py_svr = NULL;
 	hook_set_mode = C_MODE;
 	py_svr = _pps_helper_get_server();
 	hook_set_mode = PY_MODE;
@@ -6733,17 +6733,17 @@ pbsv1mod_meth_is_attrib_val_settable(PyObject *self, PyObject *args, PyObject *k
 	PyObject *ret;
 	static char *kwlist[] = {"self", "owner", "value", NULL};
 
-	PyObject *py_self  = (PyObject *)NULL;
-	PyObject *py_owner  = (PyObject *)NULL;
-	PyObject *py_value = (PyObject *)NULL;
+	PyObject *py_self  = NULL;
+	PyObject *py_owner  = NULL;
+	PyObject *py_value = NULL;
 
-	char *name      = (char *) NULL;	/* malloc   */
-	char *resource  = (char *) NULL;	/* malloced */
+	char *name      = NULL;	/* malloc   */
+	char *resource  = NULL;	/* malloced */
 	char *pstr;
 
-	PyObject *py_value_type  = (PyObject *)NULL;
-	PyObject *py_value_type_0  = (PyObject *)NULL;
-	PyObject *py_value_type_0_derived  = (PyObject *)NULL;
+	PyObject *py_value_type  = NULL;
+	PyObject *py_value_type_0  = NULL;
+	PyObject *py_value_type_0_derived  = NULL;
 	int readonly = 0;
 	int is_resource = 0;
 	unsigned int event;
@@ -7354,7 +7354,7 @@ IAVS_ERROR_EXIT:
 	Py_CLEAR(py_value_type_0_derived);
 	free(name);
 	free(resource);
-	return (PyObject *) NULL;
+	return NULL;
 }
 
 /*
@@ -7395,7 +7395,7 @@ pbsv1mod_meth_event_reject(PyObject *self, PyObject *args, PyObject *kwds)
 {
 
 	static char *kwlist[] = {"message", NULL};
-	char *emsg     = (char *) NULL;
+	char *emsg     = NULL;
 
 	if (!PyArg_ParseTupleAndKeywords(args, kwds,
 		"|s:_event_reject",
@@ -7649,10 +7649,10 @@ pbsv1mod_meth_validate_input(PyObject *self, PyObject *args, PyObject *kwds)
 {
 
 	static char *kwlist[] = {"table_descr", "attribute", "value", NULL};
-	char *table    = (char *) NULL;
-	char *name     = (char *) NULL;
-	char *value    = (char *) NULL;
-	char *value_tmp = (char *)NULL;
+	char *table    = NULL;
+	char *name     = NULL;
+	char *value    = NULL;
+	char *value_tmp = NULL;
 	int  attr_idx  = -1;
 	struct attribute attr;
 	int rc;
@@ -7665,7 +7665,7 @@ pbsv1mod_meth_validate_input(PyObject *self, PyObject *args, PyObject *kwds)
 		&name,
 		&value
 		)) {
-		return ((PyObject *)NULL);
+		return NULL;
 	}
 
 	if (hook_set_mode == C_MODE) {
@@ -7881,7 +7881,7 @@ validate_input_error_exit:
 	if (value_tmp) {
 		free(value_tmp);
 	}
-	return ((PyObject *)NULL);
+	return NULL;
 
 }
 
@@ -7907,7 +7907,7 @@ pbsv1mod_meth_duration_to_secs(PyObject *self, PyObject *args, PyObject *kwds)
 {
 
 	static char *kwlist[] = {"time_str", NULL};
-	char *time_str = (char *) NULL;
+	char *time_str = NULL;
 	long num_secs;
 
 	if (!PyArg_ParseTupleAndKeywords(args, kwds,
@@ -7915,7 +7915,7 @@ pbsv1mod_meth_duration_to_secs(PyObject *self, PyObject *args, PyObject *kwds)
 		kwlist,
 		&time_str
 		)) {
-		return ((PyObject *)NULL);
+		return NULL;
 	}
 
 	num_secs = duration_to_secs(time_str);
@@ -7939,7 +7939,7 @@ pbsv1mod_meth_duration_to_secs(PyObject *self, PyObject *args, PyObject *kwds)
 
 duration_error_exit:
 
-	return ((PyObject *)NULL);
+	return NULL;
 }
 
 
@@ -7987,20 +7987,20 @@ char *
 _pbs_python_event_job_getval_hookset(char *attrib_name, char *opval,
 	int opval_len, char *delval, int delval_len)
 {
-	PyObject *py_job = (PyObject *)NULL;
-	PyObject *py_attr_hookset_dict = (PyObject *)NULL;
-	PyObject *py_attr_hookset_dict0 = (PyObject *)NULL;
+	PyObject *py_job = NULL;
+	PyObject *py_attr_hookset_dict = NULL;
+	PyObject *py_attr_hookset_dict0 = NULL;
 	char  *strval = NULL;
 
 	if (py_hook_pbsevent == NULL) {
 		log_err(PBSE_INTERNAL, __func__, "No hook event found!");
-		return (NULL);
+		return NULL;
 	}
 
 	if (!PyObject_HasAttrString(py_hook_pbsevent, PY_EVENT_PARAM_JOB)) {
 		LOG_ERROR_ARG2("%s: does not have attribute <%s>",
 			PY_TYPE_EVENT, PY_EVENT_PARAM_JOB);
-		return (NULL);
+		return NULL;
 
 	}
 
@@ -8010,7 +8010,7 @@ _pbs_python_event_job_getval_hookset(char *attrib_name, char *opval,
 	if (py_job == NULL || (py_job == Py_None)) {
 		LOG_ERROR_ARG2("%s: does not have a value for <%s>",
 			PY_TYPE_EVENT, PY_EVENT_PARAM_JOB);
-		return (NULL);
+		return NULL;
 	}
 
 	/* Get the attributes that have been setin the hook script */
@@ -8043,7 +8043,7 @@ _pbs_python_event_job_getval_hookset(char *attrib_name, char *opval,
 		attrib_name) != NULL) {
 
 		if (PyObject_HasAttrString(py_job, attrib_name)) {
-			PyObject *py_attrval = (PyObject *)NULL;
+			PyObject *py_attrval = NULL;
 
 			py_attrval =  PyObject_GetAttrString(py_job,
 				attrib_name); /* NEW */
@@ -8115,12 +8115,12 @@ pbsv1mod_meth_iter_nextfunc(PyObject *self, PyObject *args, PyObject *kwds)
 		NULL};
 #endif /* localmod 014 */
 	int  meth_mode;
-	char *obj_name = (char *) NULL;
-	char *filter1 = (char *) NULL;
-	char *filter2 = (char *)NULL;
+	char *obj_name = NULL;
+	char *filter1 = NULL;
+	char *filter2 = NULL;
 #ifdef NAS /* localmod 014 */
 	int  ignore_fin;
-	char *filter_user = (char *) NULL;
+	char *filter_user = NULL;
 #endif /* localmod 014 */
 	pbs_iter_item	*iter_entry = NULL;
 	pbs_queue	*pque = NULL;
@@ -8151,7 +8151,7 @@ pbsv1mod_meth_iter_nextfunc(PyObject *self, PyObject *args, PyObject *kwds)
 		&filter2
 		)) {
 #endif /* localmod 014 */
-		return ((PyObject *)NULL);
+		return NULL;
 	}
 
 	iter_entry = (pbs_iter_item *)GET_NEXT(pbs_iter_list);
@@ -8170,15 +8170,15 @@ pbsv1mod_meth_iter_nextfunc(PyObject *self, PyObject *args, PyObject *kwds)
 			if (iter_entry != NULL) { /* must be NULL */
 				PyErr_SetString(PyExc_AssertionError,
 					"attempted to initialize an already initialized iterator!");
-				return (PyObject *) NULL;
+				return NULL;
 			}
 
 			iter_entry = (pbs_iter_item *)malloc(sizeof(pbs_iter_item));
-			if (iter_entry == (pbs_iter_item *)0) {
+			if (iter_entry == NULL) {
 				log_err(errno, __func__, "no memory");
 				PyErr_SetString(PyExc_AssertionError,
 					"failed to malloc memory");
-				return (PyObject *) NULL;
+				return NULL;
 			}
 			(void)memset((char *)iter_entry, (int)0,
 				(size_t)sizeof(pbs_iter_item));
@@ -8191,7 +8191,7 @@ pbsv1mod_meth_iter_nextfunc(PyObject *self, PyObject *args, PyObject *kwds)
 				if ((filter1 != NULL) && (filter1[0] != '\0') &&
 					(strcmp(filter1, server_name) != 0)) {
 					PyErr_SetString(PyExc_StopIteration, "");
-					return (PyObject *) NULL;
+					return NULL;
 				}
 				iter_entry->data = (pbs_queue *)GET_NEXT(svr_queues);
 			} else if (strcmp(obj_name, ITER_JOBS) == 0) {
@@ -8199,7 +8199,7 @@ pbsv1mod_meth_iter_nextfunc(PyObject *self, PyObject *args, PyObject *kwds)
 				if ((filter1 != NULL) && (filter1[0] != '\0') &&
 					(strcmp(filter1, server_name) != 0)) {
 					PyErr_SetString(PyExc_StopIteration, "");
-					return (PyObject *) NULL;
+					return NULL;
 				}
 #ifdef NAS /* localmod 014 */
 				if (!ignore_fin &&
@@ -8215,7 +8215,7 @@ pbsv1mod_meth_iter_nextfunc(PyObject *self, PyObject *args, PyObject *kwds)
 							filter2);
 						PyErr_SetString(PyExc_ValueError,
 							log_buffer);
-						return (PyObject *) NULL;
+						return NULL;
 					}
 					iter_entry->data = (job *)GET_NEXT(pque->qu_jobs);
 
@@ -8239,19 +8239,19 @@ pbsv1mod_meth_iter_nextfunc(PyObject *self, PyObject *args, PyObject *kwds)
 				if ((filter1 != NULL) && (filter1[0] != '\0') &&
 					(strcmp(filter1, server_name) != 0)) {
 					PyErr_SetString(PyExc_StopIteration, "");
-					return (PyObject *) NULL;
+					return NULL;
 				}
 				iter_entry->data = (resc_resv *)GET_NEXT(svr_allresvs);
 			} else if (strcmp(obj_name, ITER_VNODES) == 0) {
 				if ((filter1 != NULL) && (filter1[0] != '\0') &&
 					(strcmp(filter1, server_name) != 0)) {
 					PyErr_SetString(PyExc_StopIteration, "");
-					return (PyObject *) NULL;
+					return NULL;
 				}
 
 				if ((pbsndlist == NULL) || (svr_totnodes <= 0)) {
 					PyErr_SetString(PyExc_StopIteration, "");
-					return (PyObject *) NULL;
+					return NULL;
 				}
 				iter_entry->data = NULL;
 
@@ -8270,7 +8270,7 @@ pbsv1mod_meth_iter_nextfunc(PyObject *self, PyObject *args, PyObject *kwds)
 					"invalid parameter %s to iter_nextfunc()",
 					obj_name);
 				PyErr_SetString(PyExc_AssertionError, log_buffer);
-				return (PyObject *) NULL;
+				return NULL;
 
 			}
 
@@ -8282,12 +8282,12 @@ pbsv1mod_meth_iter_nextfunc(PyObject *self, PyObject *args, PyObject *kwds)
 			if (iter_entry == NULL) { /* must be stored internally */
 				PyErr_SetString(PyExc_AssertionError,
 					"internal iterator should exist during next() call");
-				return (PyObject *) NULL;
+				return NULL;
 			}
 
 			if (iter_entry->data == NULL) {
 				PyErr_SetString(PyExc_StopIteration, "");
-				return (PyObject *)NULL;
+				return NULL;
 			}
 
 			hook_set_mode = C_MODE;
@@ -8362,7 +8362,7 @@ pbsv1mod_meth_iter_nextfunc(PyObject *self, PyObject *args, PyObject *kwds)
 					obj_name);
 				PyErr_SetString(PyExc_AssertionError, log_buffer);
 				hook_set_mode = PY_MODE;
-				return (PyObject *) NULL;
+				return NULL;
 			}
 			hook_set_mode = PY_MODE;
 			return py_object;
@@ -8373,7 +8373,7 @@ pbsv1mod_meth_iter_nextfunc(PyObject *self, PyObject *args, PyObject *kwds)
 				meth_mode);
 			PyErr_SetString(PyExc_AssertionError, log_buffer);
 	}
-	return (PyObject *) NULL;
+	return NULL;
 }
 
 const char pbsv1mod_meth_mark_vnode_set_doc[] =
@@ -8409,9 +8409,9 @@ pbsv1mod_meth_mark_vnode_set(PyObject *self, PyObject *args, PyObject *kwds)
 
 	static char *kwlist[] = {"vnode_name", "attr_name", "attr_value",
 		NULL};
-	char *vnode_name = (char *) NULL;
-	char *attr_name = (char *) NULL;
-	char *attr_value = (char *)NULL;
+	char *vnode_name = NULL;
+	char *attr_name = NULL;
+	char *attr_value = NULL;
 	vnode_set_req *vn_set_req = NULL;
 	svrattrl *plist = NULL;
 
@@ -8422,13 +8422,13 @@ pbsv1mod_meth_mark_vnode_set(PyObject *self, PyObject *args, PyObject *kwds)
 		&attr_name,
 		&attr_value
 		)) {
-		return ((PyObject *)NULL);
+		return NULL;
 	}
 	if ((attr_name == NULL) || (attr_name[0] == '\0') ||
 		(attr_value == NULL) || (attr_value[0] == '\0')) {
 		PyErr_SetString(PyExc_AssertionError,
 			"mark_vnode_set: bad parameter!");
-		return ((PyObject *)NULL);
+		return NULL;
 	}
 
 	vn_set_req = (vnode_set_req *)GET_NEXT(pbs_vnode_set_list);
@@ -8442,11 +8442,11 @@ pbsv1mod_meth_mark_vnode_set(PyObject *self, PyObject *args, PyObject *kwds)
 
 	if (vn_set_req == NULL) {
 		vn_set_req = (vnode_set_req *)malloc(sizeof(vnode_set_req));
-		if (vn_set_req == (vnode_set_req *)0) {
+		if (vn_set_req == NULL) {
 			log_err(errno, __func__, "no memory");
 			PyErr_SetString(PyExc_AssertionError,
 				"failed to malloc memory");
-			return (PyObject *) NULL;
+			return NULL;
 		}
 		(void)memset((char *)vn_set_req, (int)0,
 			(size_t)sizeof(vnode_set_req));
@@ -8479,7 +8479,7 @@ pbsv1mod_meth_mark_vnode_set(PyObject *self, PyObject *args, PyObject *kwds)
 		log_buffer[LOG_BUF_SIZE-1] = '\0';
 		log_err(errno, __func__, log_buffer);
 		PyErr_SetString(PyExc_AssertionError, "");
-		return (PyObject *) NULL;
+		return NULL;
 	}
 
 	Py_RETURN_NONE; /* nothing to return since this is __init__ */
@@ -8518,7 +8518,7 @@ pbsv1mod_meth_vnode_state_to_str(PyObject *self, PyObject *args, PyObject *kwds)
 		kwlist,
 		&state_bit
 		)) {
-		return ((PyObject *)NULL);
+		return NULL;
 	}
 
 	return (PyString_FromString(vnode_state_to_str(state_bit)));
@@ -8559,7 +8559,7 @@ pbsv1mod_meth_vnode_sharing_to_str(PyObject *self, PyObject *args, PyObject *kwd
 		kwlist,
 		&share_val
 		)) {
-		return ((PyObject *)NULL);
+		return NULL;
 	}
 
 	vns = vnode_sharing_to_str(share_val);
@@ -8600,7 +8600,7 @@ pbsv1mod_meth_vnode_ntype_to_str(PyObject *self, PyObject *args, PyObject *kwds)
 		kwlist,
 		&node_type
 		)) {
-		return ((PyObject *)NULL);
+		return NULL;
 	}
 
 	return (PyString_FromString(vnode_ntype_to_str(node_type)));
@@ -8664,7 +8664,7 @@ _pbs_python_do_vnode_set(void)
 
 		pnode = find_nodebyname(vn_set_req->vnode_name);
 
-		if ((pnode == (struct pbsnode *)0) ||
+		if ((pnode == NULL) ||
 			(pnode->nd_state & INUSE_DELETED)) {
 			vn_set_req = (vnode_set_req *) GET_NEXT(vn_set_req->all_reqs);
 			continue;
@@ -8856,14 +8856,14 @@ PyObject *
 pbsv1mod_meth_str_to_vnode_state(PyObject *self, PyObject *args, PyObject *kwds)
 {
 	static char *kwlist[] = {"state_str", NULL};
-	char *state_str = (char *) NULL;
+	char *state_str = NULL;
 
 	if (!PyArg_ParseTupleAndKeywords(args, kwds,
 		"s:str_to_vnode_state",
 		kwlist,
 		&state_str
 		)) {
-		return ((PyObject *)NULL);
+		return NULL;
 	}
 
 	return (PyString_FromFormat("%d", str_to_vnode_state(state_str)));
@@ -8895,14 +8895,14 @@ PyObject *
 pbsv1mod_meth_str_to_vnode_ntype(PyObject *self, PyObject *args, PyObject *kwds)
 {
 	static char *kwlist[] = {"type_str", NULL};
-	char *type_str = (char *) NULL;
+	char *type_str = NULL;
 
 	if (!PyArg_ParseTupleAndKeywords(args, kwds,
 		"s:str_to_vnode_ntype",
 		kwlist,
 		&type_str
 		)) {
-		return ((PyObject *)NULL);
+		return NULL;
 	}
 
 	return (PyString_FromFormat("%d", str_to_vnode_ntype(type_str)));
@@ -8935,14 +8935,14 @@ PyObject *
 pbsv1mod_meth_str_to_vnode_sharing(PyObject *self, PyObject *args, PyObject *kwds)
 {
 	static char *kwlist[] = {"share_str", NULL};
-	char *share_str = (char *) NULL;
+	char *share_str = NULL;
 
 	if (!PyArg_ParseTupleAndKeywords(args, kwds,
 		"s:str_to_vnode_sharing",
 		kwlist,
 		&share_str
 		)) {
-		return ((PyObject *)NULL);
+		return NULL;
 	}
 	return (PyString_FromFormat("%d", str_to_vnode_sharing(share_str)));
 }
@@ -9015,7 +9015,7 @@ pbs_python_get_reboot_host_cmd(void)
 	if (hook_reboot_host_cmd[0] != '\0')
 		return ((char *)hook_reboot_host_cmd);
 
-	return (NULL);
+	return NULL;
 }
 
 /**
@@ -9083,7 +9083,7 @@ pbsv1mod_meth_reboot(PyObject *self, PyObject *args, PyObject *kwds)
 {
 
 	static char *kwlist[] = {"cmd", NULL};
-	char *cmd = (char *) NULL;
+	char *cmd = NULL;
 
 	if (!PyArg_ParseTupleAndKeywords(args, kwds,
 		"|s:reboot",
@@ -9165,7 +9165,7 @@ pbsv1mod_meth_scheduler_restart_cycle(PyObject *self, PyObject *args, PyObject *
 {
 
 	static char *kwlist[] = {"server_host", NULL};
-	char *shost = (char *) NULL;
+	char *shost = NULL;
 
 	if (!PyArg_ParseTupleAndKeywords(args, kwds,
 		"|s:scheduler_restart_cycle",
@@ -9204,7 +9204,7 @@ pbsv1mod_meth_set_pbs_statobj(PyObject *self, PyObject *args,
 	PyObject *kwds)
 {
 	static char *kwlist[] = {"func", NULL};
-	PyObject	*f = (PyObject *)NULL;
+	PyObject	*f = NULL;
 
 	if (!PyArg_ParseTupleAndKeywords(args, kwds,
 		"O:set_pbs_statobj", kwlist, &f)) {
@@ -9250,26 +9250,26 @@ pbsv1mod_meth_set_pbs_statobj(PyObject *self, PyObject *args,
 char *
 _pbs_python_event_job_getval(char *attr_name)
 {
-	PyObject *py_job = (PyObject *)NULL;
-	PyObject *py_val = (PyObject *)NULL;
+	PyObject *py_job = NULL;
+	PyObject *py_val = NULL;
 	char  *strval = NULL;
 
 	if (py_hook_pbsevent == NULL) {
 		log_err(PBSE_INTERNAL, __func__, "No hook event found!");
-		return (NULL);
+		return NULL;
 	}
 
 	if (!PyObject_HasAttrString(py_hook_pbsevent, PY_EVENT_PARAM_JOB)) {
 		LOG_ERROR_ARG2("%s: does not have attribute <%s>",
 			PY_TYPE_EVENT, PY_EVENT_PARAM_JOB);
-		return (NULL);
+		return NULL;
 	}
 
 	py_job = PyObject_GetAttrString(py_hook_pbsevent, PY_EVENT_PARAM_JOB); /* NEW */
 	if (py_job == NULL || (py_job == Py_None)) {
 		LOG_ERROR_ARG2("%s: does not have a value for <%s>",
 			PY_TYPE_EVENT, PY_EVENT_PARAM_JOB);
-		return (NULL);
+		return NULL;
 	}
 
 	if (PyObject_HasAttrString(py_job, attr_name)) {
@@ -9312,23 +9312,23 @@ _pbs_python_event_job_getval(char *attr_name)
 char *
 _pbs_python_event_jobresc_getval_hookset(char *attr_name, char *resc_name)
 {
-	PyObject *py_job = (PyObject *)NULL;
-	PyObject *py_jobresc = (PyObject *)NULL;
-	PyObject *py_attr_hookset_dict = (PyObject *)NULL;
-	PyObject *py_attr_hookset_dict0 = (PyObject *)NULL;
-	PyObject *py_rescval = (PyObject *)NULL;
+	PyObject *py_job = NULL;
+	PyObject *py_jobresc = NULL;
+	PyObject *py_attr_hookset_dict = NULL;
+	PyObject *py_attr_hookset_dict0 = NULL;
+	PyObject *py_rescval = NULL;
 
 	char  *strval = NULL;
 
 	if (py_hook_pbsevent == NULL) {
 		log_err(PBSE_INTERNAL, __func__, "No hook event found!");
-		return (NULL);
+		return NULL;
 	}
 
 	if (!PyObject_HasAttrString(py_hook_pbsevent, PY_EVENT_PARAM_JOB)) {
 		LOG_ERROR_ARG2("%s: does not have attribute <%s>",
 			PY_TYPE_EVENT, PY_EVENT_PARAM_JOB);
-		return (NULL);
+		return NULL;
 
 	}
 
@@ -9337,7 +9337,7 @@ _pbs_python_event_jobresc_getval_hookset(char *attr_name, char *resc_name)
 	if (py_job == NULL || (py_job == Py_None)) {
 		LOG_ERROR_ARG2("%s: does not have a value for <%s>",
 			PY_TYPE_EVENT, PY_EVENT_PARAM_JOB);
-		return (NULL);
+		return NULL;
 	}
 
 	/* Get:pbs.event().job.<attr_name>[]
@@ -9429,20 +9429,20 @@ jobresc_getval_hookset_exit:
 char *
 _pbs_python_event_jobresc_getval(char *attr_name, char *resc_name)
 {
-	PyObject *py_job = (PyObject *)NULL;
-	PyObject *py_jobresc = (PyObject *)NULL;
-	PyObject *py_rescval = (PyObject *)NULL;
+	PyObject *py_job = NULL;
+	PyObject *py_jobresc = NULL;
+	PyObject *py_rescval = NULL;
 	char  *strval = NULL;
 
 	if (py_hook_pbsevent == NULL) {
 		log_err(PBSE_INTERNAL, __func__, "No hook event found!");
-		return (NULL);
+		return NULL;
 	}
 
 	if (!PyObject_HasAttrString(py_hook_pbsevent, PY_EVENT_PARAM_JOB)) {
 		LOG_ERROR_ARG2("%s: does not have attribute <%s>",
 			PY_TYPE_EVENT, PY_EVENT_PARAM_JOB);
-		return (NULL);
+		return NULL;
 	}
 
 	py_job = PyObject_GetAttrString(py_hook_pbsevent, PY_EVENT_PARAM_JOB); /* NEW */
@@ -9450,7 +9450,7 @@ _pbs_python_event_jobresc_getval(char *attr_name, char *resc_name)
 	if (py_job == NULL || (py_job == Py_None)) {
 		LOG_ERROR_ARG2("%s: does not have a value for <%s>",
 			PY_TYPE_EVENT, PY_EVENT_PARAM_JOB);
-		return (NULL);
+		return NULL;
 	}
 	py_jobresc = PyObject_GetAttrString(py_job, attr_name); /* NEW */
 
@@ -9494,9 +9494,9 @@ jobresc_getval_exit:
 int
 _pbs_python_event_jobresc_clear_hookset(char *attr_name)
 {
-	PyObject *py_job = (PyObject *)NULL;
-	PyObject *py_jobresc = (PyObject *)NULL;
-	PyObject *py_attr_hookset_dict = (PyObject *)NULL;
+	PyObject *py_job = NULL;
+	PyObject *py_jobresc = NULL;
+	PyObject *py_attr_hookset_dict = NULL;
 	int		rc = 1;
 
 	if (py_hook_pbsevent == NULL) {
@@ -9576,7 +9576,7 @@ pbsv1mod_meth_size_to_kbytes(PyObject *self, PyObject *args,
 	PyObject *kwds)
 {
 	static char *kwlist[] = {"py_size", NULL};
-	PyObject	*l = (PyObject *)NULL;
+	PyObject	*l = NULL;
 
 	if (!PyArg_ParseTupleAndKeywords(args, kwds,
 		"O:size_to_kbytes", kwlist, &l)) {
@@ -9630,7 +9630,7 @@ char *
 pbs_python_get_hook_debug_input_file(void)
 {
 	if (hook_debug.input_file == NULL)
-		return (NULL);
+		return NULL;
 	return (hook_debug.input_file);
 }
 
@@ -9679,7 +9679,7 @@ char *
 pbs_python_get_hook_debug_output_file(void)
 {
 	if (hook_debug.output_file == NULL)
-		return (NULL);
+		return NULL;
 	return (hook_debug.output_file);
 }
 
@@ -9726,7 +9726,7 @@ char *
 pbs_python_get_hook_debug_data_file(void)
 {
 	if (hook_debug.data_file == NULL)
-		return (NULL);
+		return NULL;
 	return (hook_debug.data_file);
 }
 
@@ -9749,7 +9749,7 @@ char *
 pbs_python_get_hook_debug_objname(void)
 {
 	if (hook_debug.objname == NULL)
-		return (NULL);
+		return NULL;
 	return (hook_debug.objname);
 }
 /**
@@ -9887,9 +9887,9 @@ pbs_python_unset_server_vnodes_info(void)
 static PyObject *
 py_get_server_static(void)
 {
-	PyObject *py_svr_class = (PyObject *) NULL;
-	PyObject *py_svr = (PyObject *) NULL;
-	PyObject *py_sargs = (PyObject *) NULL;
+	PyObject *py_svr_class = NULL;
+	PyObject *py_svr = NULL;
+	PyObject *py_sargs = NULL;
 	int tmp_rc = -1;
 
 	if (!use_static_data || (server_data == NULL))
@@ -9903,7 +9903,7 @@ py_get_server_static(void)
 		goto server_static_error_exit;
 	}
 
-	py_svr = PyObject_Call(py_svr_class, py_sargs, (PyObject *) NULL);
+	py_svr = PyObject_Call(py_svr_class, py_sargs, NULL);
 	if (!py_svr) {
 		log_err(-1, pbs_python_daemon_name, "failed to create a python server object");
 		goto server_static_error_exit;
@@ -9937,7 +9937,7 @@ server_static_error_exit:
 
 	PyErr_SetString(PyExc_AssertionError, "Failed to create server object");
 
-	return (PyObject *) NULL;
+	return NULL;
 }
 
 const char pbsv1mod_meth_get_server_static_doc[] =
@@ -9960,7 +9960,7 @@ const char pbsv1mod_meth_get_server_static_doc[] =
 PyObject *
 pbsv1mod_meth_get_server_static(void)
 {
-	PyObject *py_obj = (PyObject *) NULL;
+	PyObject *py_obj = NULL;
 
 	hook_set_mode = C_MODE;
 	py_obj = py_get_server_static();
@@ -9984,9 +9984,9 @@ pbsv1mod_meth_get_server_static(void)
 static PyObject *
 py_get_queue_static(char *qname, char *svr_name)
 {
-	PyObject *py_queue_class = (PyObject *) NULL;
-	PyObject *py_queue = (PyObject *) NULL;
-	PyObject *py_qargs = (PyObject *) NULL;
+	PyObject *py_queue_class = NULL;
+	PyObject *py_queue = NULL;
+	PyObject *py_qargs = NULL;
 	svrattrl        *plist, *plist_next;
 	char		*p = NULL;
 	char		*pn = NULL;
@@ -10002,7 +10002,7 @@ py_get_queue_static(char *qname, char *svr_name)
 	if (qname == NULL) {
 		log_err(PBSE_INTERNAL, __func__,
 			"Unable to populate python queue object");
-		return (NULL);
+		return NULL;
 	}
 
 	if (qname[0] == '\0') {
@@ -10120,7 +10120,7 @@ py_get_queue_static(char *qname, char *svr_name)
 	}
 
 	py_queue = PyObject_Call(py_queue_class, py_qargs,
-		(PyObject *) NULL); /* NEW ref */
+		NULL); /* NEW ref */
 	if (py_queue == NULL) {
 		snprintf(log_buffer, sizeof(log_buffer),
 			"failed to create a python queue %s object",
@@ -10153,7 +10153,7 @@ get_queue_error_exit:
 	Py_CLEAR(py_queue);
 	PyErr_SetString(PyExc_AssertionError, "Failed to create queue object");
 
-	return (PyObject *) NULL;
+	return NULL;
 }
 
 const char pbsv1mod_meth_get_queue_static_doc[] =
@@ -10184,9 +10184,9 @@ pbsv1mod_meth_get_queue_static(PyObject *self, PyObject *args, PyObject *kwds)
 {
 
 	static char *kwlist[] = {"queue", "server_name", NULL};
-	char *qname = (char *) NULL;
-	char *svr_name = (char *) NULL;
-	PyObject *py_obj = (PyObject *) NULL;
+	char *qname = NULL;
+	char *svr_name = NULL;
+	PyObject *py_obj = NULL;
 
 	if (!PyArg_ParseTupleAndKeywords(args, kwds,
 		"ss:get_queue_static",
@@ -10194,7 +10194,7 @@ pbsv1mod_meth_get_queue_static(PyObject *self, PyObject *args, PyObject *kwds)
 		&qname,
 		&svr_name
 		)) {
-		return ((PyObject *)NULL);
+		return NULL;
 	}
 
 
@@ -10221,9 +10221,9 @@ pbsv1mod_meth_get_queue_static(PyObject *self, PyObject *args, PyObject *kwds)
 static PyObject *
 py_get_vnode_static(char *vname, char *svr_name)
 {
-	PyObject *py_vnode_class = (PyObject *) NULL;
-	PyObject *py_vnode = (PyObject *) NULL;
-	PyObject *py_vargs = (PyObject *) NULL;
+	PyObject *py_vnode_class = NULL;
+	PyObject *py_vnode = NULL;
+	PyObject *py_vargs = NULL;
 	svrattrl        *plist, *plist_next;
 	char		*p = NULL;
 	char		*pn = NULL;
@@ -10239,7 +10239,7 @@ py_get_vnode_static(char *vname, char *svr_name)
 	if (vname == NULL) {
 		log_err(PBSE_INTERNAL, __func__,
 			"Unable to populate python vnode object");
-		return (NULL);
+		return NULL;
 	}
 
 	if (vname[0] == '\0') {
@@ -10358,7 +10358,7 @@ py_get_vnode_static(char *vname, char *svr_name)
 	}
 
 	py_vnode = PyObject_Call(py_vnode_class, py_vargs,
-		(PyObject *) NULL); /* NEW ref */
+		NULL); /* NEW ref */
 	if (py_vnode == NULL) {
 		snprintf(log_buffer, sizeof(log_buffer),
 			"failed to create a python vnode %s object",
@@ -10390,7 +10390,7 @@ get_vnode_error_exit:
 	Py_CLEAR(py_vnode);
 	PyErr_SetString(PyExc_AssertionError, "Failed to create vnode object");
 
-	return (PyObject *) NULL;
+	return NULL;
 }
 
 const char pbsv1mod_meth_get_vnode_static_doc[] =
@@ -10420,9 +10420,9 @@ pbsv1mod_meth_get_vnode_static(PyObject *self, PyObject *args, PyObject *kwds)
 {
 
 	static char *kwlist[] = {"vnode", "server_name", NULL};
-	char *vname = (char *) NULL;
-	char *svr_name = (char *) NULL;
-	PyObject *py_obj = (PyObject *) NULL;
+	char *vname = NULL;
+	char *svr_name = NULL;
+	PyObject *py_obj = NULL;
 
 	if (!PyArg_ParseTupleAndKeywords(args, kwds,
 		"ss:get_vnode_static",
@@ -10430,7 +10430,7 @@ pbsv1mod_meth_get_vnode_static(PyObject *self, PyObject *args, PyObject *kwds)
 		&vname,
 		&svr_name
 		)) {
-		return ((PyObject *)NULL);
+		return NULL;
 	}
 
 	hook_set_mode = C_MODE;
@@ -10463,9 +10463,9 @@ pbsv1mod_meth_get_vnode_static(PyObject *self, PyObject *args, PyObject *kwds)
 static PyObject *
 py_get_job_static(char *jid, char *svr_name, char *queue_name)
 {
-	PyObject *py_job_class = (PyObject *) NULL;
-	PyObject *py_job = (PyObject *) NULL;
-	PyObject *py_jargs = (PyObject *) NULL;
+	PyObject *py_job_class = NULL;
+	PyObject *py_job = NULL;
+	PyObject *py_jargs = NULL;
 	svrattrl        *plist, *plist_next;
 	char		*p = NULL;
 	char		*pn = NULL;
@@ -10474,8 +10474,8 @@ py_get_job_static(char *jid, char *svr_name, char *queue_name)
 	pbs_list_head	jobl;
 	/* set job.queue to actual queue object */
 	char		*qname;
-	PyObject *py_server = (PyObject *) NULL;
-	PyObject *py_que = (PyObject *) NULL;
+	PyObject *py_server = NULL;
+	PyObject *py_que = NULL;
 	int		rc;
 
 	if (!use_static_data || (server_jobs.data == NULL)) {
@@ -10485,7 +10485,7 @@ py_get_job_static(char *jid, char *svr_name, char *queue_name)
 	if (jid == NULL) {
 		log_err(PBSE_INTERNAL, __func__,
 			"Unable to populate python job object");
-		return (NULL);
+		return NULL;
 	}
 
 	if (jid[0] == '\0') {
@@ -10620,7 +10620,7 @@ py_get_job_static(char *jid, char *svr_name, char *queue_name)
 	}
 
 	py_job = PyObject_Call(py_job_class, py_jargs,
-		(PyObject *) NULL); /* NEW ref */
+		NULL); /* NEW ref */
 	if (py_job == NULL) {
 		snprintf(log_buffer, sizeof(log_buffer),
 			"failed to create a python job %s object",
@@ -10677,7 +10677,7 @@ get_job_error_exit:
 	Py_CLEAR(py_job);
 	PyErr_SetString(PyExc_AssertionError, "Failed to create job object");
 
-	return (PyObject *) NULL;
+	return NULL;
 }
 
 const char pbsv1mod_meth_get_job_static_doc[] =
@@ -10707,8 +10707,8 @@ PyObject *
 pbsv1mod_meth_get_job_static(PyObject *self, PyObject *args, PyObject *kwds)
 {
 	static char *kwlist[] = {"job", "server_name", "queue_name", NULL};
-	char *jobid = (char *) NULL;
-	PyObject *py_obj = (PyObject *) NULL;
+	char *jobid = NULL;
+	PyObject *py_obj = NULL;
 	char	*qname = NULL;
 	char	*sname = NULL;
 
@@ -10719,7 +10719,7 @@ pbsv1mod_meth_get_job_static(PyObject *self, PyObject *args, PyObject *kwds)
 		&sname,
 		&qname
 		)) {
-		return ((PyObject *)NULL);
+		return NULL;
 	}
 	hook_set_mode = C_MODE;
 	py_obj = py_get_job_static(jobid, sname, qname);
@@ -10744,17 +10744,17 @@ pbsv1mod_meth_get_job_static(PyObject *self, PyObject *args, PyObject *kwds)
 static PyObject *
 py_get_resv_static(char *resvid, char *svr_name)
 {
-	PyObject *py_resv_class = (PyObject *) NULL;
-	PyObject *py_resv = (PyObject *) NULL;
-	PyObject *py_rargs = (PyObject *) NULL;
+	PyObject *py_resv_class = NULL;
+	PyObject *py_resv = NULL;
+	PyObject *py_rargs = NULL;
 	svrattrl        *plist, *plist_next;
 	char		*p = NULL;
 	char		*pn = NULL;
 	char		*p1 = NULL;
 	char		*attr_name = NULL;
 	pbs_list_head	resvl;
-	PyObject *py_server = (PyObject *) NULL;
-	PyObject *py_que = (PyObject *) NULL;
+	PyObject *py_server = NULL;
+	PyObject *py_que = NULL;
 	int		rc;
 
 	if (!use_static_data || (server_resvs.data == NULL)) {
@@ -10764,7 +10764,7 @@ py_get_resv_static(char *resvid, char *svr_name)
 	if (resvid == NULL) {
 		log_err(PBSE_INTERNAL, __func__,
 			"Unable to populate python resv object");
-		return (NULL);
+		return NULL;
 	}
 
 	if (resvid[0] == '\0') {
@@ -10885,7 +10885,7 @@ py_get_resv_static(char *resvid, char *svr_name)
 	}
 
 	py_resv = PyObject_Call(py_resv_class, py_rargs,
-		(PyObject *) NULL); /* NEW ref */
+		NULL); /* NEW ref */
 	if (py_resv == NULL) {
 		snprintf(log_buffer, sizeof(log_buffer),
 			"failed to create a python resv %s object",
@@ -10944,7 +10944,7 @@ get_resv_error_exit:
 	Py_CLEAR(py_resv);
 	PyErr_SetString(PyExc_AssertionError, "Failed to create resv object");
 
-	return (PyObject *) NULL;
+	return NULL;
 }
 
 const char pbsv1mod_meth_get_resv_static_doc[] =
@@ -10973,9 +10973,9 @@ pbsv1mod_meth_get_resv_static(PyObject *self, PyObject *args, PyObject *kwds)
 {
 
 	static char *kwlist[] = {"resv", "server_name", NULL};
-	char *resvid = (char *) NULL;
-	char *svr_name = (char *)NULL;
-	PyObject *py_obj = (PyObject *) NULL;
+	char *resvid = NULL;
+	char *svr_name = NULL;
+	PyObject *py_obj = NULL;
 
 	if (!PyArg_ParseTupleAndKeywords(args, kwds,
 		"ss:get_resv_static",
@@ -10983,7 +10983,7 @@ pbsv1mod_meth_get_resv_static(PyObject *self, PyObject *args, PyObject *kwds)
 		&resvid,
 		&svr_name
 		)) {
-		return ((PyObject *)NULL);
+		return NULL;
 	}
 
 	hook_set_mode = C_MODE;
@@ -11007,7 +11007,7 @@ const char pbsv1mod_meth_get_server_data_fp_doc[] =
 PyObject *
 pbsv1mod_meth_get_server_data_fp(void)
 {
-	PyObject *fp_obj = (PyObject *) NULL;
+	PyObject *fp_obj = NULL;
 
 	if (hook_debug.data_fp == NULL)
 		Py_RETURN_NONE;
@@ -11066,10 +11066,10 @@ pbs_python_set_use_static_data_value(int value)
 int
 pbs_python_set_os_environ(char *env_var, char *env_val)
 {
-	PyObject *pystr_env_val = (PyObject *) NULL;
-	PyObject *os_mod_obj = (PyObject *) NULL; /* 'sys' module  */
-	PyObject *os_mod_env = (PyObject *) NULL; /* os.environ */
-	PyObject *os_env_dict = (PyObject *) NULL; /* os.environ */
+	PyObject *pystr_env_val = NULL;
+	PyObject *os_mod_obj = NULL; /* 'sys' module  */
+	PyObject *os_mod_env = NULL; /* os.environ */
+	PyObject *os_env_dict = NULL; /* os.environ */
 
 	if (env_var == NULL) {
 		log_err(PBSE_INTERNAL, __func__, "passed NULL env_var!");
@@ -11170,7 +11170,7 @@ pbs_python_set_os_environ(char *env_var, char *env_val)
 int
 pbs_python_set_pbs_hook_config_filename(char *conf_file)
 {
-	PyObject *pbs_mod_obj = (PyObject *) NULL; /* 'pbs' module  */
+	PyObject *pbs_mod_obj = NULL; /* 'pbs' module  */
 	char	*configfile_attrname = "hook_config_filename";
 
 	PyErr_Clear(); /* clear any exceptions */
@@ -11270,19 +11270,19 @@ PyObject *
 pbsv1mod_meth_load_resource_value(PyObject *self, PyObject *args, PyObject *kwds)
 {
 	static char *kwlist[] = {"resc_object", NULL};
-	PyObject *py_resource_match = (PyObject *)NULL;
+	PyObject *py_resource_match = NULL;
 
 	if (!PyArg_ParseTupleAndKeywords(args, kwds,
 		"O:load_resource_value",
 		kwlist,
 		&py_resource_match)) {
-		return ((PyObject *)NULL);
+		return NULL;
 	}
 
 	if (load_cached_resource_value(py_resource_match) != 0) {
 		PyErr_SetString(PyExc_AssertionError,
 				"Failed to load cached value for resoure list");
-		return ((PyObject *)NULL);
+		return NULL;
 	}
 
 	Py_RETURN_NONE;
@@ -11313,13 +11313,13 @@ pbsv1mod_meth_resource_str_value(PyObject *self, PyObject *args, PyObject *kwds)
 {
 	static char *kwlist[] = {"resc_object", NULL};
 	pbs_resource_value *resc_val;
-	PyObject *py_resource_match = (PyObject *)NULL;
+	PyObject *py_resource_match = NULL;
 
 	if (!PyArg_ParseTupleAndKeywords(args, kwds,
 		"O:str_resource_value",
 		kwlist,
 		&py_resource_match)) {
-		return ((PyObject *)NULL);
+		return NULL;
 	}
 
 	resc_val = (pbs_resource_value *)GET_NEXT(pbs_resource_value_list);

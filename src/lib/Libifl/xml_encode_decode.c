@@ -76,7 +76,7 @@
 /**
  * @brief
  *	-Find max number of chars an argument can take.
- * 
+ *
  * @param[out] escape_chars  - list of escape chars
  * @param[out] arg_max - max chars
  *
@@ -159,7 +159,7 @@ encode_argument(char *original_arg, char *encoded_arg,
 
 		if (((int)original_arg[i] >= 0) &&
 			((int)original_arg[i] < PBS_NUM_ESC_CHARS) &&
-			(escape_chars[(int)original_arg[i]] != (char *)NULL)) {
+			(escape_chars[(int)original_arg[i]] != NULL)) {
 			/* found an escape char */
 			ind = (int)original_arg[i];
 			/* Replace with corresponding escape string */

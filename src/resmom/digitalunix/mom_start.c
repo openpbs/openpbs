@@ -362,5 +362,5 @@ struct sig_tbl sig_tbl[] = {
 	{ "PROF", SIGPROF },
 	{ "XCPU", SIGXCPU },
 	{ "XFSZ", SIGXFSZ },
-	{(char *)0, -1}
+	{NULL, -1}
 };

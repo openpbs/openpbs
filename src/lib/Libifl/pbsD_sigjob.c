@@ -68,8 +68,7 @@ __pbs_sigjob(int c, char *jobid, char *signal, char *extend)
 	int rc = 0;
 	struct batch_reply *reply;
 
-	if ((jobid == (char *)0) || (*jobid == '\0') ||
-		(signal == (char *)0) || (*jobid == '\0'))
+	if ((jobid == NULL) || (*jobid == '\0') || (signal == NULL))
 		return (pbs_errno = PBSE_IVALREQ);
 
 	/* initialize the thread context data, if not already initialized */

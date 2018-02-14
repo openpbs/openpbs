@@ -72,8 +72,8 @@ pbs_confirmresv(int c, char *rid, char *location, unsigned long start,
 	int	sock;
 
 
-	if ((rid == (char *)0)      || (*rid == '\0')  ||
-		(location == (char *)0) || (*location == '\0'))
+	if ((rid == NULL)      || (*rid == '\0')  ||
+		(location == NULL) || (*location == '\0'))
 		return (pbs_errno = PBSE_IVALREQ);
 
 	sock = connection[c].ch_socket;

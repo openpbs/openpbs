@@ -74,18 +74,18 @@ __pbs_submit_resv(int c, struct attropl *attrib, char *extend)
 
 	/* initialize the thread context data, if not already initialized */
 	if (pbs_client_thread_init_thread_context() != 0)
-		return (char *)NULL;
+		return NULL;
 
 	/* first verify the attributes, if verification is enabled */
 	rc = pbs_verify_attributes(c, PBS_BATCH_SubmitResv,
 		MGR_OBJ_RESV, MGR_CMD_NONE, attrib);
 	if (rc)
-		return (char *)NULL;
+		return NULL;
 
 	/* lock pthread mutex here for this connection */
 	/* blocking call, waits for mutex release */
 	if (pbs_client_thread_lock_connection(c) != 0)
-		return (char *)NULL;
+		return NULL;
 
 	/* initiate the queueing of the reservation  */
 
@@ -94,7 +94,7 @@ __pbs_submit_resv(int c, struct attropl *attrib, char *extend)
 
 	/* unlock the thread lock and update the thread context data */
 	if (pbs_client_thread_unlock_connection(c) != 0)
-		return (char *) NULL;
+		return NULL;
 
 	return ret;
 }

@@ -115,7 +115,7 @@ site_check_user_map(void *pobj, int objtype, char *luser)
 	cvrt_fqn_to_name(p1, owner);
 
 	orighost = strchr(p1, '@');
-	if ((orighost == (char *)0) || (*++orighost == '\0')) {
+	if ((orighost == NULL) || (*++orighost == '\0')) {
 		log_event(event_type, event_class, LOG_INFO, objid, msg_orighost);
 		return (-1);
 	}
@@ -133,7 +133,7 @@ site_check_user_map(void *pobj, int objtype, char *luser)
 			"User %s's [HOMEDIR]/.rhosts is unreadable! Needs SYSTEM or Everyone access", luser);
 		log_err(0, "site_check_user_map", log_buffer);
 		rc = -1;
-	}	
+	}
 #else
 	rc =   ruserok(orighost, 0, owner, luser);
 #endif
@@ -156,13 +156,13 @@ site_check_user_map(void *pobj, int objtype, char *luser)
  *    	access controls that differ from the standard PBS user, group, host
  *    	access controls.  It does NOT replace their functionality.
  *
- * @param[in] pjob - job pointer 
+ * @param[in] pjob - job pointer
  * @param[in] pqueue - pointer to queue defn
  *
  * @return	int
  * @retval	0	ok
  * @retval	-1	access denied
- * 
+ *
  */
 
 int

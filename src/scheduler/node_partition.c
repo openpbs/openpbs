@@ -747,7 +747,7 @@ find_np_cache(np_cache **npc_arr,
 	if (npc_arr == NULL || resnames == NULL || ninfo_arr == NULL)
 		return NULL;
 
-	for (i = 0; npc_arr[i] != NULL ; i++) {
+	for (i = 0; npc_arr[i] != NULL; i++) {
 		if (npc_arr[i]->ninfo_arr == ninfo_arr &&
 			match_string_array(npc_arr[i]->resnames, resnames) == SA_FULL_MATCH)
 			break;

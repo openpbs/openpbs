@@ -51,7 +51,7 @@
 /**
  * @brief
  *	-The function that deallocates a "batch_status" structure
- * 
+ *
  * @param[in] bsp - pointer to batch request.
  *
  * @return	Void
@@ -63,15 +63,15 @@ __pbs_statfree(struct batch_status *bsp)
 	struct attrl        *atnxt;
 	struct batch_status *bsnxt;
 
-	while (bsp != (struct batch_status *)NULL) {
-		if (bsp->name != (char *)NULL)(void)free(bsp->name);
-		if (bsp->text != (char *)NULL)(void)free(bsp->text);
-		while (bsp->attribs != (struct attrl *)NULL) {
-			if (bsp->attribs->name != (char *)NULL)
+	while (bsp != NULL) {
+		if (bsp->name != NULL)(void)free(bsp->name);
+		if (bsp->text != NULL)(void)free(bsp->text);
+		while (bsp->attribs != NULL) {
+			if (bsp->attribs->name != NULL)
 				(void)free(bsp->attribs->name);
-			if (bsp->attribs->resource != (char *)NULL)
+			if (bsp->attribs->resource != NULL)
 				(void) free(bsp->attribs->resource);
-			if (bsp->attribs->value != (char *)NULL)
+			if (bsp->attribs->value != NULL)
 				(void)free(bsp->attribs->value);
 			atnxt = bsp->attribs->next;
 			(void)free(bsp->attribs);

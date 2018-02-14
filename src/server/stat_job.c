@@ -124,7 +124,7 @@ svrcached(attribute *pat, pbs_list_head *phead, attribute_def *pdef)
 		if (pat->at_flags & ATR_VFLAG_SET) {
 			/* encode and cache new svrattrl structure */
 			(void)pdef->at_encode(pat, phead, pdef->at_name,
-				(char *)0, ATR_ENCODE_CLIENT, &working);
+				NULL, ATR_ENCODE_CLIENT, &working);
 			if (resc_access_perm & PRIV_READ)
 				pat->at_priv_encoded = working;
 			else
@@ -304,7 +304,7 @@ status_job(job *pjob, struct batch_request *preq, svrattrl *pal, pbs_list_head *
 	/* allocate reply structure and fill in header portion */
 
 	pstat = (struct brp_status *)malloc(sizeof(struct brp_status));
-	if (pstat == (struct brp_status *)0)
+	if (pstat == NULL)
 		return (PBSE_SYSTEM);
 	CLEAR_LINK(pstat->brp_stlink);
 	pstat->brp_objtype = MGR_OBJ_JOB;
@@ -396,7 +396,7 @@ status_subjob(job *pjob, struct batch_request *preq, svrattrl *pal, int subj, pb
 	if (pal == NULL)
 		limit = JOB_ATR_array;
 	pstat = (struct brp_status *)malloc(sizeof(struct brp_status));
-	if (pstat == (struct brp_status *)0)
+	if (pstat == NULL)
 		return (PBSE_SYSTEM);
 	CLEAR_LINK(pstat->brp_stlink);
 	pstat->brp_objtype = MGR_OBJ_JOB;
@@ -421,33 +421,33 @@ status_subjob(job *pjob, struct batch_request *preq, svrattrl *pal, int subj, pb
 		if (pjob->ji_ajtrk->tkm_tbl[subj].trk_substate == JOB_SUBSTATE_FINISHED) {
 			if (pjob->ji_wattr[(int)JOB_ATR_Comment].at_flags & ATR_VFLAG_SET) {
 				old_subjob_comment = strdup(pjob->ji_wattr[(int)JOB_ATR_Comment].at_val.at_str);
-				if (old_subjob_comment == (char *)0)
+				if (old_subjob_comment == NULL)
 					return (PBSE_SYSTEM);
 			}
 			if (job_attr_def[(int)JOB_ATR_Comment].at_decode(&pjob->ji_wattr[(int)JOB_ATR_Comment],
-				(char *)0, (char *)0, "Subjob finished") == PBSE_SYSTEM) {
+				NULL, NULL, "Subjob finished") == PBSE_SYSTEM) {
 				free(old_subjob_comment);
 				return (PBSE_SYSTEM);
 			}
 		} else if (pjob->ji_ajtrk->tkm_tbl[subj].trk_substate == JOB_SUBSTATE_FAILED) {
 			if (pjob->ji_wattr[(int)JOB_ATR_Comment].at_flags & ATR_VFLAG_SET) {
 				old_subjob_comment = strdup(pjob->ji_wattr[(int)JOB_ATR_Comment].at_val.at_str);
-				if (old_subjob_comment == (char *)0)
+				if (old_subjob_comment == NULL)
 					return (PBSE_SYSTEM);
 			}
 			if (job_attr_def[(int)JOB_ATR_Comment].at_decode(&pjob->ji_wattr[(int)JOB_ATR_Comment],
-				(char *)0, (char *)0, "Subjob failed") == PBSE_SYSTEM) {
+				NULL, NULL, "Subjob failed") == PBSE_SYSTEM) {
 				free(old_subjob_comment);
 				return (PBSE_SYSTEM);
 			}
 		} else if (pjob->ji_ajtrk->tkm_tbl[subj].trk_substate == JOB_SUBSTATE_TERMINATED) {
 			if (pjob->ji_wattr[(int)JOB_ATR_Comment].at_flags & ATR_VFLAG_SET) {
 				old_subjob_comment = strdup(pjob->ji_wattr[(int)JOB_ATR_Comment].at_val.at_str);
-				if (old_subjob_comment == (char *)0)
+				if (old_subjob_comment == NULL)
 					return (PBSE_SYSTEM);
 			}
 			if (job_attr_def[(int)JOB_ATR_Comment].at_decode(&pjob->ji_wattr[(int)JOB_ATR_Comment],
-				(char *)0, (char *)0, "Subjob terminated") == PBSE_SYSTEM) {
+				NULL, NULL, "Subjob terminated") == PBSE_SYSTEM) {
 				free(old_subjob_comment);
 				return (PBSE_SYSTEM);
 			}
@@ -481,7 +481,7 @@ status_subjob(job *pjob, struct batch_request *preq, svrattrl *pal, int subj, pb
 	/* Set the parent comment back to what it really is */
 	if (old_subjob_comment != NULL) {
 		if (job_attr_def[(int)JOB_ATR_Comment].at_decode(&pjob->ji_wattr[(int)JOB_ATR_Comment],
-			(char *)0, (char *)0, old_subjob_comment) == PBSE_SYSTEM) {
+			NULL, NULL, old_subjob_comment) == PBSE_SYSTEM) {
 			free(old_subjob_comment);
 			return (PBSE_SYSTEM);
 		}

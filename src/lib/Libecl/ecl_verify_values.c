@@ -125,7 +125,7 @@ verify_value_resc(int batch_request, int parent_object, int cmd,
 	if (pattr == NULL)
 		return (PBSE_INTERNAL);
 
-	if (pattr->resource == (char *) 0)
+	if (pattr->resource == NULL)
 		return (PBSE_NONE);
 
 	if ((prdef = ecl_find_resc_def(ecl_svr_resc_def, pattr->resource,
@@ -442,7 +442,7 @@ verify_value_jobname(int batch_request, int parent_object, int cmd,
 		batch_request == PBS_BATCH_SubmitResv ||	/* for reservation submit allow numeric first char */
 		batch_request == PBS_BATCH_ModifyResv ||	/* for reservation modify allow numeric first char */
 		batch_request == PBS_BATCH_SelectJobs)		/* for selectjob allow numeric first char */
-		chk_alpha = 0; 
+		chk_alpha = 0;
 
 	ret = check_job_name(pattr->value, chk_alpha);
 	if (ret == -1)
@@ -1493,7 +1493,7 @@ verify_value_mgr_opr_acl_check(int batch_request, int parent_object,
 		while (token && *token == ' ') token++;
 
 		entry = strchr(token, (int) '@');
-		if (entry == (char *) 0) {
+		if (entry == NULL) {
 			err = PBSE_BADHOST;
 			break;
 		}
@@ -1611,7 +1611,7 @@ verify_value_state(int batch_request, int parent_object, int cmd,
  *
  * @par Functionality:
  *	1. Parses select specification by calling parse_chunk function.
- *	2. Decodes each chunk 
+ *	2. Decodes each chunk
  *	3. Calls verify_value_resc for each resource in a chunk.
  *
  * @see

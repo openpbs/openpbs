@@ -557,7 +557,7 @@ rmtmpdir(char *jobid)
 		return;
 
 	rpp_terminate();
-	execl(rm, "pbs_cleandir", rf, newdir, (char *)0);
+	execl(rm, "pbs_cleandir", rf, newdir, NULL);
 	log_err(errno, __func__, "execl");
 	exit(21);
 #endif
@@ -577,7 +577,7 @@ compare(const void *arg1, const void *arg2)
 
 /**
  * @brief
- * 	initializes the storage that stores set environment variables. 
+ * 	initializes the storage that stores set environment variables.
  *
  * @par MT-safe: no
  */
@@ -868,7 +868,7 @@ mktmpdir(char *jobid, char *username)
 int
 mkjobdir(char *jobid, char *jobdir, char *username, HANDLE login_handle)
 {
-	/* 
+	/*
 	 * Create the job directory under user session if it is a network path.
 	 */
 	if(login_handle != INVALID_HANDLE_VALUE) {
@@ -880,7 +880,7 @@ mkjobdir(char *jobid, char *jobdir, char *username, HANDLE login_handle)
 			return JOB_EXEC_FAIL1;
 		}
 	}
-	
+
 	if (_mkdir(jobdir) == -1) {
 		errno = GetLastError();
 		if(login_handle != INVALID_HANDLE_VALUE)
@@ -916,7 +916,7 @@ mkjobdir(char *jobid, char *jobdir, char *username, HANDLE login_handle)
  *	from mapping to a local drive, using the actual path, or
  *	returning a default, local path in 2 locations:
  *
- * @par 
+ * @par
  *	1. in pjob->ji_wattr[(int)JOB_ATR_altid] as a
  *	"HomeDirectory=<actual_homedir_path>" string (permanent save)
  *
@@ -934,7 +934,7 @@ mkjobdir(char *jobid, char *jobdir, char *username, HANDLE login_handle)
  *	if pwdp is NULL, then return an empty string.
  *	If pjob->ji_grpcache is NULL, then it will be recreated along with
  *	pjob->ji_wattr[(int)JOB_ATR_altid] and pjob->ji_grpcache->gc_homedir.
- *	
+ *
  *	Otherwise, this function will pick up the current values of
  *	pjob->ji_grpcache->gc_homedir/pjob->ji_wattr[(int)JOB_ATR_altid].
  *
@@ -951,7 +951,7 @@ save_actual_homedir(struct passwd *pwdp, job *pjob)
 		return (default_local_homedir(pwdp->pw_name,
 			pwdp->pw_userlogin, 0));
 
-	if (pjob->ji_grpcache == (struct grpcache *)NULL) {
+	if (pjob->ji_grpcache == NULL) {
 
 		char lpath[MAXPATHLEN+1];
 		char opath[MAXPATHLEN+15]; /* HomeDirectory=<path>\0 */
@@ -978,7 +978,7 @@ save_actual_homedir(struct passwd *pwdp, job *pjob)
 		/* save cache copy */
 		pjob->ji_grpcache = malloc(sizeof(struct grpcache) +
 			strlen(lpath) + 1);
-		if (pjob->ji_grpcache == (struct grpcache *)0)
+		if (pjob->ji_grpcache == NULL)
 			return ("");
 		strcpy(pjob->ji_grpcache->gc_homedir, lpath);
 	}
@@ -989,9 +989,9 @@ save_actual_homedir(struct passwd *pwdp, job *pjob)
 
 /**
  * @brief
- *	set_homedir_to_local_default: if pjob exists, then reset value of 
- * 	pjob->ji_grpcache->gc_homedir to the user's default, local homedir 
- * 	Otherwise find username's default, local homedir 
+ *	set_homedir_to_local_default: if pjob exists, then reset value of
+ * 	pjob->ji_grpcache->gc_homedir to the user's default, local homedir
+ * 	Otherwise find username's default, local homedir
  *
  * @param[in] pjob - job pointer
  * @param[in] username -user name
@@ -1089,7 +1089,7 @@ check_pwd(job *pjob)
 	if (pwdp)
 		pjob->ji_qs.ji_un.ji_momt.ji_exuid = pwdp->pw_uid;
 
-	if (pjob->ji_grpcache != (struct grpcache *)NULL) {
+	if (pjob->ji_grpcache != NULL) {
 		(void)free(pjob->ji_grpcache);
 		pjob->ji_grpcache = NULL;
 	}
@@ -1152,7 +1152,7 @@ becomeuser(job *pjob)
 
 /**
  * @brief
- *	terminate process tree by using given 
+ *	terminate process tree by using given
  *	parent process handle <hProcess> and close that handle
  *
  * @param[in] ptask - pointer to task
@@ -1359,11 +1359,11 @@ conn_qsub(char *hostname, long port)
 
 /**
  * @brief
- *	Regenerate the PBS_NODEFILE of a job based on internal 
+ *	Regenerate the PBS_NODEFILE of a job based on internal
  *	nodes-related data.
  * @param[in]	pjob	- the job whose PBS_NODEFILE is to be generated.
  * @param[out]	nodefile- buffer to hold the path to PBS_NODEFILE
- *			  that got regenerated.		 
+ *			  that got regenerated.
  *			  NOTE: Ok for this to be NULL, which means
  *			  don't save nodefile path.
  *
@@ -1381,7 +1381,7 @@ int
 generate_pbs_nodefile(job *pjob, char *nodefile, int nodefile_sz,
 					char *err_msg, int err_msg_sz)
 {
-	
+
 	FILE			*nhow;
 	int	   		j, vnodenum;
 	char			pbs_nodefile[MAXPATHLEN+1];
@@ -1436,7 +1436,7 @@ generate_pbs_nodefile(job *pjob, char *nodefile, int nodefile_sz,
 		"\\Everyone", READS_MASK | READ_CONTROL);
 
 
-	if ((nodefile != NULL) && (nodefile_sz > 0)) { 
+	if ((nodefile != NULL) && (nodefile_sz > 0)) {
 		strncpy(nodefile, pbs_nodefile, nodefile_sz);
 		nodefile[nodefile_sz-1] = '\0';
 	}
@@ -1464,7 +1464,7 @@ finish_exec(job *pjob)
 	attribute		*pattr = NULL;
 	attribute		*pattri = NULL;
 	attribute		*pattrx = NULL;
-	char			*shell = NULL; 
+	char			*shell = NULL;
 	char			*env_block = NULL;
 	int			rc = 0;
 	int                     rc_demux = 0;
@@ -1705,7 +1705,7 @@ finish_exec(job *pjob)
 		/* get host where qsub resides */
 		phost = arst_string("PBS_O_HOST",
 			&pjob->ji_wattr[(int)JOB_ATR_variables]);
-		if ((phost == (char *)0) || ((phost = strchr(phost, (int)'=')) == (char *)0)) {
+		if ((phost == NULL) || ((phost = strchr(phost, (int)'=')) == NULL)) {
 			log_joberr(-1, __func__, "PBS_O_HOST not set",
 				pjob->ji_qs.ji_jobid);
 			exec_bail(pjob, JOB_EXEC_FAIL1, NULL);
@@ -1769,13 +1769,13 @@ finish_exec(job *pjob)
 	/*  First variables from the local environment */
 
 	for (j = 0; j < num_var_env; ++j)
-		bld_wenv_variables(environ[j], (char *)0);
+		bld_wenv_variables(environ[j], NULL);
 
 	/* Second, the variables passed with the job.  They may */
 	/* be overwritten with new correct values for this job	*/
 
 	for (j = 0; j < vstrs->as_usedptr; ++j)
-		bld_wenv_variables(vstrs->as_string[j], (char *)0);
+		bld_wenv_variables(vstrs->as_string[j], NULL);
 
 	/*
 	 ** If environment variable, ComSpec is already not setup, then
@@ -2046,19 +2046,19 @@ finish_exec(job *pjob)
 		 */
 		si.lpDesktop = PBS_DESKTOP_NAME;
 		si.dwFlags = STARTF_USESTDHANDLES;
-				
-			
+
+
 		if (script_in != -1)
 			si.hStdInput = (HANDLE)_get_osfhandle(script_in);
 		else {
-			/* 
+			/*
 			 * A blocking process will not block on input unless it has a valid input handle.
 			 * This results in many issues like a blocking command gets blank as input
-			 * and in case of many commands such inputs are constantly rejected and 
+			 * and in case of many commands such inputs are constantly rejected and
 			 * the commands keep running infinitely waiting for correct input,
 			 * resulting in high CPU consupmtion and very very large error files that
 			 * may result in disk full conditions.
-			 * Create a dummpy pipe and use it's handle as stdin of child process. 
+			 * Create a dummpy pipe and use it's handle as stdin of child process.
 			 * This is required to block on process that need user input (wrongly)
 			 * even when invoked for read only.
 			 */
@@ -2121,7 +2121,7 @@ finish_exec(job *pjob)
 					READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED,
 					"Administrators",
 					READS_MASK|WRITES_MASK|STANDARD_RIGHTS_REQUIRED);
-				
+
 				sprintf(cmdline, "%s /Q /C \"%s\"", shell, script_bat);
 				log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
 					pjob->ji_qs.ji_jobid, cmdline);
@@ -2311,8 +2311,8 @@ finish_exec(job *pjob)
 		/* create job process in TMPDIR or in user's Home */
 		if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) &&
 			(strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0)) {
-				/* 
-				 * User impersonation is necessary to launch a job 
+				/*
+				 * User impersonation is necessary to launch a job
 				 * if PBS job directory is a network mapped drive
 				 * accessible only under user session
 				 */
@@ -2338,7 +2338,7 @@ finish_exec(job *pjob)
 						env_block, pbs_jobdir, &si, &pi_demux);
 				}
 		} else {
-			/* 
+			/*
 			 * User impersonation is necessary to launch a job
 			 * if user home directory is a network mapped drive
 			 * accessible only under user session
@@ -2416,7 +2416,7 @@ finish_exec(job *pjob)
 	close_valid_handle(&(si.hStdOutput));
 	close_valid_handle(&(si.hStdError));
 	close_valid_handle(&(hWritePipe_dummy));
-	
+
 	/* restore MOM to its home */
 	(void)chdir(mom_home);
 
@@ -2435,7 +2435,7 @@ finish_exec(job *pjob)
 	/*
 	 **	Get the job going.
 	 */
-	/* 
+	/*
 	 * An interactive GUI job would run mom_shell as LOCALSYSTEM account while
 	 * the application itself is going to be run as the job submitting user.
 	 * Thus you have two processes running in different user sessions.
@@ -2454,7 +2454,7 @@ finish_exec(job *pjob)
 			exec_bail(pjob, JOB_EXEC_FAIL1, log_buffer);
 			return;
 		}
-	}	
+	}
 	if (!is_interactive_job && (pjob->ji_numnodes > 1)) {
 		rc = AssignProcessToJobObject(hjob, pi_demux.hProcess);
 		if (!rc) {
@@ -2744,17 +2744,17 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 	 * set up the Environmental Variables to be given to the job
 	 */
 	vstrs = pjob->ji_wattr[(int)JOB_ATR_variables].at_val.at_arst;
-	
+
 	/* First variables from the local environment */
 	for (j = 0; j < num_var_env; ++j)
-		bld_wenv_variables(environ[j], (char *)0);
-	
+		bld_wenv_variables(environ[j], NULL);
+
 	/* Next, the variables passed with the job.  They may   */
 	/* be overwritten with new correct values for this job	*/
-	
+
 	for (j = 0; j < vstrs->as_usedptr; ++j)
-		bld_wenv_variables(vstrs->as_string[j], (char *)0);
-	
+		bld_wenv_variables(vstrs->as_string[j], NULL);
+
 	/*
 	 ** If environment variable, PATH is already not setup, then
 	 ** setup the PATH by fetching it's value from user's environment.
@@ -2763,7 +2763,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 		if (pwdp->pw_userlogin == INVALID_HANDLE_VALUE) {
 			HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, GetCurrentProcessId());
 			/* Obtain access token for current process.*/
-	
+
 			if (OpenProcessToken(hProcess, MAXIMUM_ALLOWED, &hToken)) {
 				if (DuplicateTokenEx(
 					hToken,
@@ -2777,7 +2777,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 						bld_wenv_variables("PATH", envbuf);
 				}
 			}
-	
+
 			if (hLogin != INVALID_HANDLE_VALUE && hLogin != NULL)
 				CloseHandle(hLogin);
 			if (hToken != INVALID_HANDLE_VALUE && hToken != NULL)
@@ -2791,47 +2791,47 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 				bld_wenv_variables("PATH", envbuf);
 		}
 	}
-	
+
 	/* HOME */
 	bld_wenv_variables(variables_else[0], pjob->ji_grpcache->gc_homedir);
-	
+
 	/* PBS_JOBNAME */
 	bld_wenv_variables(variables_else[2],
 		pjob->ji_wattr[(int)JOB_ATR_jobname].at_val.at_str);
-	
+
 	/* PBS_JOBID */
 	bld_wenv_variables(variables_else[3], pjob->ji_qs.ji_jobid);
-	
+
 	/* PBS_QUEUE */
 	bld_wenv_variables(variables_else[4],
 		pjob->ji_wattr[(int)JOB_ATR_in_queue].at_val.at_str);
-	
+
 	/* PBS_JOBCOOKIE */
 	bld_wenv_variables(variables_else[7],
 		pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str);
-	
+
 	/* PBS_NODENUM */
 	sprintf(buf, "%d", pjob->ji_nodeid);
 	bld_wenv_variables(variables_else[8], buf);
-	
+
 	/* PBS_TASKNUM */
 	sprintf(buf, "%ld", (long)ptask->ti_qs.ti_task);
 	bld_wenv_variables(variables_else[9], buf);
-	
+
 	/* PBS_MOMPORT */
 	sprintf(buf, "%d", pbs_rm_port);
 	bld_wenv_variables(variables_else[10], buf);
-	
+
 	/* OMP_NUM_THREADS and NCPUS eq to number of cpus */
 	sprintf(buf, "%d", pjob->ji_vnods[ptask->ti_qs.ti_myvnode].vn_threads);
 	bld_wenv_variables(variables_else[12], buf);
 	bld_wenv_variables("NCPUS", buf);
-	
+
 	/* PBS_ACCOUNT */
 	if (pjob->ji_wattr[(int)JOB_ATR_account].at_flags & ATR_VFLAG_SET)
 		bld_wenv_variables(variables_else[13],
 			pjob->ji_wattr[(int)JOB_ATR_account].at_val.at_str);
-	
+
 	/* Add TMPDIR to environment */
 	j = mktmpdir(pjob->ji_qs.ji_jobid, pjob->ji_user->pw_name);
 	if (j != 0) {
@@ -2839,7 +2839,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 		exec_bail(pjob, JOB_EXEC_FAIL1, NULL);
 		return PBSE_SYSTEM;
 	}
-	
+
 	/* set PBS_JOBDIR */
 	if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) &&
 		(strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0)) {
@@ -2847,22 +2847,22 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 	} else {
 		bld_wenv_variables("PBS_JOBDIR", pjob->ji_grpcache->gc_homedir);
 	}
-	
+
 	/* USERPROFILE */
 	bld_wenv_variables(variables_else[16],
 		default_local_homedir(pwdp->pw_name,
 		pwdp->pw_userlogin, 1));
-	
+
 	/* USERNAME */
 	bld_wenv_variables(variables_else[17], pwdp->pw_name);
-	
+
 	/* set Environment to reflect batch */
 	bld_wenv_variables("PBS_ENVIRONMENT", "PBS_BATCH");
 	bld_wenv_variables("ENVIRONMENT", "BATCH");
-	
+
 	for (i=0; envp[i]; i++)
 		bld_wenv_variables(envp[i], NULL);
-	
+
 	/*
 	 **	Might need to create a job and set the limits.
 	 */
@@ -2890,14 +2890,14 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 	 */
 	env_block = make_envp();
 	si.cb = sizeof(si);
-	
+
 	/*
 	 * To hide the black screen popping up while job is running
 	 * in Personal Mode.
 	 */
-	
+
 	si.lpDesktop = PBS_DESKTOP_NAME;
-	
+
 	si.hStdInput = INVALID_HANDLE_VALUE;
 	if ((is_interactive_job) || ((pjob->ji_numnodes > 1) && (!nodemux))) {	/* mom_open_demux mechanism available */
 		si.hStdOutput = INVALID_HANDLE_VALUE;
@@ -2912,11 +2912,11 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 		SetFilePointer(si.hStdError, (LONG)NULL,
 			(PLONG)NULL, FILE_END);
 	}
-	
+
 	/* If we fail to get cmd shell(unlikely), use "cmd.exe" as shell */
 	if (0 != get_cmd_shell(cmd_shell, sizeof(cmd_shell)))
 		(void)snprintf(cmd_shell, sizeof(cmd_shell) - 1, "cmd.exe");
-	
+
 	/*
 	 * On Windows spawn mom_open_demux that will take care of running
 	 * a multinode job task and redirecting it's output to pbs_demux at MS host
@@ -2937,53 +2937,53 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 			strncat(cmdline, argv[i], _countof(cmdline) -1);
 		}
 	}
-	
+
 	if (pwdp->pw_userlogin != INVALID_HANDLE_VALUE) { /* ENTERPRISE MODE */
-	
+
 		argv_in = str_to_str_array(cmdline, ' ');
 		if ((argv_in == NULL) || (argv_in[0] == NULL)) {
-	
+
 			if (argv_in != NULL) {
 				free_str_array(argv_in);
 			}
 			exec_bail(pjob, JOB_EXEC_FAIL2, "bad commandline");
 			return PBSE_SYSTEM;
 		}
-	
+
 		progname = strdup(argv_in[0]);
 		if (progname == NULL) {
 			free_str_array(argv_in);
 			exec_bail(pjob, JOB_EXEC_FAIL2, "failed to strdup progname");
 			return PBSE_SYSTEM;
 		}
-	
+
 		env = env_array; /* pass current environment array */
-	
+
 		mom_hook_input_init(&hook_input);
 		hook_input.pjob = pjob;
 		hook_input.progname = progname;
 		hook_input.argv = argv_in;
 		hook_input.env = env;
-	
+
 		mom_hook_output_init(&hook_output);
 		hook_output.reject_errcode = &hook_errcode;
-	
+
 		hook_output.last_phook = &last_phook;
 		hook_output.fail_action = &hook_fail_action;
 		hook_output.progname = &progname_out;
 		CLEAR_HEAD(argv_list);
 		hook_output.argv = &argv_list;
-	
+
 		switch (mom_process_hooks(HOOK_EVENT_EXECJOB_LAUNCH,
 				PBS_MOM_SERVICE_NAME,
 				mom_host, &hook_input, &hook_output,
 				hook_msg, sizeof(hook_msg), 0)) {
-	
+
 			case 0:	/* explicit reject */
 				free_str_array(argv_in);
 				free(progname_out);
 				free_attrlist(&argv_list);
-				free_str_array(hook_output.env);	
+				free_str_array(hook_output.env);
 				exec_bail(pjob, JOB_EXEC_FAIL1, NULL);
 				return PBSE_SYSTEM;
 			case 1:   /* explicit accept */
@@ -2995,7 +2995,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 						"execjob_launch hook returned NULL progname!");
 					return PBSE_SYSTEM;
 				}
-	
+
 				argv_out = svrattrl_to_str_array(&argv_list);
 				if (argv_out == NULL) {
 					free_str_array(argv_in);
@@ -3011,11 +3011,11 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 				/* freeing argv_out[] will automatically */
 				/* free progname_out */
 				free(argv_out[0]);
-				argv_out[0] = progname_out;	
-	
+				argv_out[0] = progname_out;
+
 				argv_str = str_array_to_str(argv_out, ' ');
 				if (argv_str == NULL) {
-	
+
 					free_str_array(argv_in);
 					free_attrlist(&argv_list);
 					free_str_array(hook_output.env);
@@ -3040,7 +3040,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 						"execjob_launch hook NULL env!");
 					return PBSE_SYSTEM;
 				}
-	
+
 				init_envp(); /* free up all entries */
 					     /* in env_array */
 				free(env_block);/* since values from */
@@ -3050,7 +3050,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 				/* with entries from */
 				/* new env_array */
 				env_block = make_envp();
-					
+
 				break;
 			case 2:	  /* no hook script executed - go ahead and accept event */
 				break;
@@ -3059,11 +3059,11 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 					LOG_INFO, "",
 					"execjob_launch hook event: accept req by default");
 		}
-	
+
 		free_str_array(argv_in);
 		free_attrlist(&argv_list);
 		free_str_array(hook_output.env);
-	
+
 		if (!impersonate_user(pwdp->pw_userlogin)) {
 			sprintf(log_buffer,
 				"failed to ImpersonateLoggedOnUser on %s", mom_host);
@@ -3084,9 +3084,9 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 				env_block, pjob->ji_grpcache->gc_homedir, &si, &pi);
 		}
 		(void)revert_impersonated_user();
-	
+
 	} else if (strcmpi(pwdp->pw_name, getlogin()) == 0) { /* Personal Mode */
-	
+
 		if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) &&
 			(strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0)) {
 			rc = CreateProcess(NULL, cmdline,
@@ -3104,14 +3104,14 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 		exec_bail(pjob, JOB_EXEC_FAIL_PASSWORD, NULL);
 		return PBSE_SYSTEM;
 	}
-	
-	
+
+
 	/* restore MOM to its home */
 	(void)chdir(mom_home);
-	
+
 	if (env_block)
 		free(env_block);
-	
+
 	if (!rc) {
 		sprintf(log_buffer, "CreateProcess(AsUser) err=%d", GetLastError());
 		log_err(-1, __func__, log_buffer);
@@ -3138,7 +3138,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 #endif
 	script_out = -1;
 	script_err = -1;
-	
+
 	/*
 	 **	Get the job going.
 	 */
@@ -3149,7 +3149,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 		proc_bail(ptask);
 		return PBSE_SYSTEM;
 	}
-	
+
 	/*
 	 **	After adding process to job
 	 */
@@ -3164,7 +3164,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 		ptask->ti_qs.ti_task, argv[0]);
 	log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
 		pjob->ji_qs.ji_jobid, log_buffer);
-	
+
 	rc = ResumeThread(pi.hThread);
 	if (rc == -1) {
 		log_err(-1, __func__, "ResumeThread");
@@ -3173,7 +3173,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 		return PBSE_SYSTEM;
 	}
 	close_valid_handle(&(pi.hThread));
-	
+
 	return PBSE_NONE;
 }
 
@@ -3209,7 +3209,7 @@ open_std_file(job *pjob, enum job_file which, int mode, gid_t exgid)
 			(pjob->ji_user->pw_userlogin != INVALID_HANDLE_VALUE)) {
 			/* temporarily revert to ADMIN to do secure file */
 			(void)revert_impersonated_user();
-			
+
 			became_admin =1;
 		}
 
@@ -3480,7 +3480,7 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 
 	for (i=0; i <= n_chunks; ++i) {
 		pjob->ji_vnods0[i].vn_node = TM_ERROR_NODE;
-	}	
+	}
 
 	/* Now parse schedselect and exec_vnode at same time to map mpiprocs */
 	/* onto the corresponding Mom and sum up the resources allocated     */
@@ -3531,7 +3531,7 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 			/* figure out what is "need"ed */
 			for (j=0; j<snelma; ++j) {
 				if (strcmp(skv[j].kv_keyw, "ncpus") == 0)
-					need.rl_ncpus= atol(skv[j].kv_val);				
+					need.rl_ncpus= atol(skv[j].kv_val);
 				else if (strcmp(skv[j].kv_keyw, "mem") == 0)
 					need.rl_mem= to_kbsize(skv[j].kv_val);
 				else if (strcmp(skv[j].kv_keyw, "vmem") == 0)
@@ -3638,7 +3638,7 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 				hp->hn_sister = SISTER_OKAY;
 				hp->hn_nprocs = 0;
 				hp->hn_vlnum  = 0;
-				hp->hn_vlist  = (host_vlist_t *)0;
+				hp->hn_vlist  = NULL;
 				memset(&hp->hn_nrlimit, 0, sizeof(resc_limit));
 				CLEAR_HEAD(hp->hn_events);
 				/* mark next slot as the (current) end */
@@ -3915,7 +3915,7 @@ start_exec(job *pjob)
 		pattr = pjob->ji_wattr;
 		for (i=0; i < (int)JOB_ATR_LAST; i++) {
 			(void)(job_attr_def+i)->at_encode(pattr+i, &phead,
-				(job_attr_def+i)->at_name, (char *)0,
+				(job_attr_def+i)->at_name, NULL,
 				ATR_ENCODE_MOM, NULL);
 		}
 		attrl_fixlink(&phead);
@@ -4158,7 +4158,7 @@ std_file_name(job *pjob, enum job_file which, int *keeping)
 			at_val.at_str, '/');
 #endif
 
-		if (pd == (char *)0) {
+		if (pd == NULL) {
 			pd = pjob->ji_wattr[(int)JOB_ATR_jobname].
 				at_val.at_str;
 #ifdef WIN32
@@ -4424,7 +4424,7 @@ set_credential(job *pjob, char **shell, char ***argarray)
 		if (shell != NULL)
 			*shell = prog;
 	}
-	argv[i++] = (char *)0;
+	argv[i++] = NULL;
 	*argarray = argv;
 
 	if (cred_buf) {

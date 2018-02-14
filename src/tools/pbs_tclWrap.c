@@ -76,7 +76,7 @@ int	(*local_disconnect)(int connect) = pbs_disconnect;
 	(void)Tcl_ObjSetVar2(interp, pbsmsg, NULL, \
 	Tcl_NewStringObj((msg), -1), TCL_GLOBAL_ONLY)
 
-#ifdef NAS 
+#ifdef NAS
 	#define PBS_CALL(function) \
 		if ( function ) { \
 			Tcl_SetObjResult(interp, Tcl_NewIntObj(-1)); \
@@ -87,8 +87,8 @@ int	(*local_disconnect)(int connect) = pbs_disconnect;
 		log_err(-1, (char *)argv[0], log_buffer); \
         } \
 	else \
-		Tcl_SetObjResult(interp, Tcl_NewIntObj(0)); 
-#else 
+		Tcl_SetObjResult(interp, Tcl_NewIntObj(0));
+#else
 	#define PBS_CALL(function) \
 		if ( function ) { \
 			Tcl_SetObjResult(interp, Tcl_NewIntObj(-1)); \
@@ -98,7 +98,7 @@ int	(*local_disconnect)(int connect) = pbs_disconnect;
 			log_err(-1, (char *)argv[0], log_buffer); \
 		 } \
 		else \
-			Tcl_SetObjResult(interp, Tcl_NewIntObj(0)); 
+			Tcl_SetObjResult(interp, Tcl_NewIntObj(0));
 #endif
 
 int
@@ -227,7 +227,7 @@ Tcl_Obj	*CONST	objv[];
 		#ifdef NAS
 			if(!quiet)
 		#endif
-		log_err(pbs_errno, cmd, filename);	
+		log_err(pbs_errno, cmd, filename);
 	}
 
 	SET_PBSERR(pbs_errno);
@@ -1578,7 +1578,7 @@ char	*argv[];
 	switch (argc) {
 
 		case 1:			/* current date/time */
-			when = time((time_t *)NULL);
+			when = time(NULL);
 			sprintf(log_buffer, "%ld", (long)when);
 			Tcl_SetResult(interp, log_buffer, TCL_VOLATILE);
 			return TCL_OK;
@@ -1654,7 +1654,7 @@ char	*argv[];
 				Tcl_SetResult(interp, log_buffer, TCL_VOLATILE);
 				return TCL_ERROR;
 			}
-			when = time((time_t *)NULL);
+			when = time(NULL);
 			t = localtime(&when);
 			t->tm_mday += (i - t->tm_wday + 7) % 7;
 			t->tm_hour = 0;
@@ -1732,7 +1732,7 @@ Tcl_Obj	*CONST	objv[];
 	static const char *subCmds[] = {
 		"batch_service_port", "batch_service_port_dis",
 		"mom_service_port", "manager_service_port",
-		"scheduler_service_port", (char *) NULL};
+		"scheduler_service_port", NULL};
 	enum ISubCmdIdx {
 		IBatchSvcIdx, IBatchSvcDisIdx,
 		IMomSvcIdx, IManSvcIdx,

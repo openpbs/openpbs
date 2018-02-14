@@ -2265,7 +2265,7 @@ hook_init(hook *phook, void (*pyfree_func)(struct python_script *))
 			pyfree_func(phook->script);
 		free(phook->script);
 	}
-	phook->script = (struct python_script *)NULL;
+	phook->script = NULL;
 	phook->hook_control_checksum = 0;
 	phook->hook_script_checksum = 0;
 	phook->hook_config_checksum = 0;
@@ -2286,9 +2286,9 @@ hook_alloc(void)
 	hook		*phook;
 
 	phook = (hook *)malloc(sizeof(hook));
-	if (phook == (hook *)0) {
+	if (phook == NULL) {
 		log_err(errno, __func__, "no memory");
-		return ((hook *)0);
+		return NULL;
 	}
 	(void)memset((char *)phook, (int)0, (size_t)sizeof(hook));
 
@@ -3344,7 +3344,7 @@ hook_recov(char	*filename, FILE	*hookfp, char *msg, size_t msg_len,
 
 	if (msg == NULL) { /* should not happen */
 		log_err(PBSE_INTERNAL, __func__, "'msg' buffer is NULL");
-		return ((hook *)0);
+		return NULL;
 	}
 	memset(msg, '\0', msg_len);
 	memset(basename, '\0', MAXPATHLEN+1);
@@ -3354,7 +3354,7 @@ hook_recov(char	*filename, FILE	*hookfp, char *msg, size_t msg_len,
 		snprintf(msg, msg_len-1,
 			"bad filename %s format: should have %s suffix",
 			filename, HOOK_FILE_SUFFIX);
-		return ((hook *)0);
+		return NULL;
 	}
 
 	strncpy(basename, filename, p - filename);
@@ -3373,9 +3373,9 @@ hook_recov(char	*filename, FILE	*hookfp, char *msg, size_t msg_len,
 		created_here = 0;
 	} else {
 		phook = hook_alloc();
-		if (phook == (hook *)0) {
+		if (phook == NULL) {
 			snprintf(msg, msg_len-1, "hook_alloc() returned NULL!");
-			return ((hook *)0);
+			return NULL;
 		}
 		created_here = 1;
 		phook->hook_name = strdup(hook_name);
@@ -3556,13 +3556,13 @@ hook_recov_error:
 	if (created_here) {
 		clear_hook_links(phook);
 		hook_free(phook, pyfree_func);
-		return ((hook *)0);
+		return NULL;
 	} else {
 		/* reuse phook later */
 		hook_init(phook, pyfree_func);
 		clear_hook_links(phook);
 		append_link(&svr_allhooks, &phook->hi_allhooks, phook);
-		return ((hook *)0);
+		return NULL;
 	}
 }
 
@@ -3680,13 +3680,13 @@ cleanup_hooks_workdir(struct work_task *ptask)
 
 	memset(hook_file, '\0', MAXPATHLEN+1);
 	dir = opendir(path_hooks_workdir);
-	if (dir == (DIR *)0) {
+	if (dir == NULL) {
 		sprintf(log_buffer, "could not opendir %s",
 			path_hooks_workdir);
 		log_err(errno, __func__, log_buffer);
 		return;
 	}
-	while (errno = 0, (pdirent = readdir(dir)) != (struct dirent *)0) {
+	while (errno = 0, (pdirent = readdir(dir)) != NULL) {
 
 		if (pdirent->d_name[0] == '.') {
 			if (pdirent->d_name[1] == '\0' ||

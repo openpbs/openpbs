@@ -224,9 +224,9 @@ que_recov_db(char *qname)
 	obj.pbs_db_un.pbs_db_que = &dbque;
 
 	pq = que_alloc(qname);  /* allocate & init queue structure space */
-	if (pq == (pbs_queue *)0) {
+	if (pq == NULL) {
 		log_err(-1, "que_recov", "que_alloc failed");
-		return ((pbs_queue *)0);
+		return NULL;
 	}
 
 	/* load server_qs */

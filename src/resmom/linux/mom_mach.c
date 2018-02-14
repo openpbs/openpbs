@@ -1448,13 +1448,13 @@ bgl_vnode_create(char *vnode_name)
 
 	if (vnode_name == NULL) {
 		log_err(-1, __func__, "vnode_name is NULL");
-		return (NULL);
+		return NULL;
 	}
 
 	iptr = (struct bgl_vnode *)malloc(sizeof(struct bgl_vnode));
 	if (iptr == NULL) {
 		log_err(errno, __func__, "malloc failed!");
-		return (NULL);
+		return NULL;
 	}
 	iptr->state = BGLVN_UNKNOWN;
 	iptr->num_cnodes = -1;
@@ -1587,7 +1587,7 @@ bgl_vnode_get_part_list(struct bgl_vnode *head, char *vnode_name)
 
 	if (vnode_name == NULL) {
 		log_err(-1, __func__, "vnode_name is NULL!");
-		return (NULL);
+		return NULL;
 	}
 
 	for (iptr=head; iptr; iptr=iptr->nextptr) {
@@ -1596,7 +1596,7 @@ bgl_vnode_get_part_list(struct bgl_vnode *head, char *vnode_name)
 			return (iptr->part_list);
 		}
 	}
-	return (NULL);
+	return NULL;
 }
 
 /**
@@ -1626,7 +1626,7 @@ bgl_vnode_get_part_list_spanning_vnode(struct bgl_vnode *head, char *vnode_name,
 
 	if (vnode_name == NULL) {
 		log_err(-1, __func__, "vnode_name is NULL!");
-		return (NULL);
+		return NULL;
 	}
 
 	for (iptr=head; iptr; iptr=iptr->nextptr) {
@@ -1912,13 +1912,13 @@ bgl_job_create_given_bgl_jobid(db_job_id_t bgl_jobid)
 
 	if (bgl_jobid == -1) {
 		log_err(-1, __func__, "bgl_jobid is -1");
-		return (NULL);
+		return NULL;
 	}
 
 	iptr = (struct bgl_job *)malloc(sizeof(struct bgl_job));
 	if (iptr == NULL) {
 		log_err(errno, __func__, "malloc failed!");
-		return (NULL);
+		return NULL;
 	}
 	iptr->partition = NULL;
 	iptr->pbs_jobid = NULL;
@@ -1948,13 +1948,13 @@ bgl_job_create_given_pbs_jobid(char *pbs_jobid)
 
 	if (pbs_jobid == NULL) {
 		log_err(-1, __func__, "pbs_jobid is NULL!");
-		return (NULL);
+		return NULL;
 	}
 
 	iptr = (struct bgl_job *)malloc(sizeof(struct bgl_job));
 	if (iptr == NULL) {
 		log_err(errno, __func__, "malloc failed!");
-		return (NULL);
+		return NULL;
 	}
 	iptr->partition = NULL;
 	iptr->bgl_jobid = -1;
@@ -1990,7 +1990,7 @@ bgl_job_get_partition_given_bgl_jobid(struct bgl_job *head,
 
 	if (bgl_jobid == -1) {
 		log_err(-1, __func__, "bgl_jobid is -1");
-		return (NULL);
+		return NULL;
 	}
 
 	for (iptr=head; iptr; iptr=iptr->nextptr) {
@@ -1998,7 +1998,7 @@ bgl_job_get_partition_given_bgl_jobid(struct bgl_job *head,
 			return (iptr->partition);
 		}
 	}
-	return (NULL);
+	return NULL;
 }
 
 /**
@@ -2021,7 +2021,7 @@ bgl_job_get_partition_given_pbs_jobid(struct bgl_job *head, char *pbs_jobid)
 
 	if (pbs_jobid == NULL) {
 		log_err(-1, __func__, "pbs_jobid is NULL");
-		return (NULL);
+		return NULL;
 	}
 
 	for (iptr=head; iptr; iptr=iptr->nextptr) {
@@ -2030,7 +2030,7 @@ bgl_job_get_partition_given_pbs_jobid(struct bgl_job *head, char *pbs_jobid)
 			return (iptr->partition);
 		}
 	}
-	return (NULL);
+	return NULL;
 }
 
 /**
@@ -2085,7 +2085,7 @@ bgl_job_get_pbs_jobid(struct bgl_job *head, char *part)
 
 	if (part == NULL) {
 		log_err(-1, __func__, "part is NULL");
-		return (NULL);
+		return NULL;
 	}
 
 	for (iptr=head; iptr; iptr=iptr->nextptr) {
@@ -2094,7 +2094,7 @@ bgl_job_get_pbs_jobid(struct bgl_job *head, char *part)
 			return (iptr->pbs_jobid);
 		}
 	}
-	return (NULL);
+	return NULL;
 }
 
 /**
@@ -2341,13 +2341,13 @@ bgl_partition_create(char *part_name)
 
 	if (part_name == NULL) {
 		log_err(-1, __func__, "part_name is NULL");
-		return (NULL);
+		return NULL;
 	}
 
 	iptr = (struct bgl_partition *)malloc(sizeof(struct bgl_partition));
 	if (iptr == NULL) {
 		log_err(errno, __func__, "malloc failed!");
-		return (NULL);
+		return NULL;
 	}
 	iptr->nextptr = NULL;
 
@@ -2707,7 +2707,7 @@ generate_bglvnodes_from_partitions(void)
 			bglerror_to_txt(st));
 		log_err(errno, __func__, log_buffer);
 
-		return (NULL);
+		return NULL;
 	}
 
 	rm_get_data(part_list, RM_PartListSize, &num_parts);
@@ -2849,7 +2849,7 @@ generate_bglvnodes_from_system(void)
 	if (bglvnodes_p == NULL) {
 		log_err(-1, __func__,
 			"FATAL: No working BGL partitions exist! No jobs will run. Please create partitions using genfullblock/gensmallblock");
-		return (NULL);
+		return NULL;
 	}
 
 	if ((st=rm_get_BGL(&bgl)) != STATUS_OK) {
@@ -2859,7 +2859,7 @@ generate_bglvnodes_from_system(void)
 		bgl_partition_free(bglpartitions);
 		bglpartitions = NULL;
 
-		return (NULL);
+		return NULL;
 	}
 
 	rm_get_data(bgl, RM_BPsize, &bp_size);
@@ -3057,7 +3057,7 @@ uniquify_part_list(char *part_list)
 	int		part_list_len = 0;
 
 	if ((part_list == NULL) || (part_list[0] == '\0'))
-		return (NULL);
+		return NULL;
 
 	part_list_len = strlen(part_list);
 	/* Get # of partitions */
@@ -3073,7 +3073,7 @@ uniquify_part_list(char *part_list)
 
 	if (plist == NULL) {
 		log_err(errno, __func__, "strdup failed!");
-		return (NULL);
+		return NULL;
 	}
 
 	/* size accounts for '-', extra ',', ' ', and '\0' */
@@ -3082,7 +3082,7 @@ uniquify_part_list(char *part_list)
 	if (plist2 == NULL) {
 		log_err(errno, __func__, "malloc failed!");
 		(void)free(plist);
-		return (NULL);
+		return NULL;
 	}
 
 	pl = strtok(plist, ", ");
@@ -3126,7 +3126,7 @@ get_real_part_name(char *part_name)
 	char matchstr[PBS_MAXHOSTNAME+2];	/* '\0' and '-' */
 
 	if (part_name == NULL)
-		return (NULL);
+		return NULL;
 
 	sprintf(matchstr, "%s-", mom_short_name);
 	if (strncmp(part_name, matchstr, strlen(matchstr)) == 0)
@@ -3285,14 +3285,14 @@ bgl_read_machine_serial(void)
 
 	if (config_file == NULL) {
 		log_err(-1, __func__, "The environment parameter \"BRIDGE_CONFIG_FILE\" not set, set it to point to the configuration file");
-		return (NULL);
+		return NULL;
 	}
 	conf = fopen(config_file, "r");
 
 	if (conf == NULL) {
 		log_err(errno, __func__,
 			"Bridge config file could not be found or accessed");
-		return (NULL);
+		return NULL;
 	}
 
 	while (((n=fscanf(conf, "%s %s", name, value)) != EOF) && (n > 0)) {
@@ -3327,7 +3327,7 @@ get_vnode_list_spanned_bypartition(struct bgl_vnode *vns, char *partition)
 
 	if (partition == NULL) {
 		log_err(-1, __func__, "part_name is NULL!");
-		return (NULL);
+		return NULL;
 	}
 
 	for (iptr=vns; iptr; iptr=iptr->nextptr) {
@@ -3465,13 +3465,13 @@ job_bgl_partition(job *pjob)
 
 	if (pjob == NULL) {
 		log_err(-1, __func__, "pjob is NULL!");
-		return (NULL);
+		return NULL;
 	}
 	cur_jid = pjob->ji_qs.ji_jobid;
 
 	if (!(pjob->ji_wattr[(int)JOB_ATR_pset].at_flags & ATR_VFLAG_SET)) {
 		log_joberr(-1, __func__, "job has no pset", cur_jid);
-		return (NULL);
+		return NULL;
 	}
 
 	p = strstr(pjob->ji_wattr[(int)JOB_ATR_pset].at_val.at_str,
@@ -3482,7 +3482,7 @@ job_bgl_partition(job *pjob)
 		sprintf(log_buffer, "pjob has no %s in pset",
 			PSET_SUFFIX);
 		log_joberr(-1, __func__, log_buffer, cur_jid);
-		return (NULL);
+		return NULL;
 	}
 	if ((p2=strstr(p, "="))) {
 		p2++;
@@ -3702,7 +3702,7 @@ get_bgl_jobs(void)
 		sprintf(log_buffer, "rm_get_jobs: %s",
 			bglerror_to_txt(st));
 		log_err(-1, __func__, log_buffer);
-		return (NULL);
+		return NULL;
 	}
 	rm_get_data(bjobs, RM_JobListSize, &num_jobs);
 
@@ -4590,7 +4590,7 @@ get_proc_mem(void)
 	char			strbuf[BUFSIZ];
 
 	if ((fp = fopen("/proc/meminfo", "r")) == NULL)
-		return (NULL);
+		return NULL;
 
 
 	m_tot = m_free = s_tot = s_free = (ulong) 0;
@@ -4812,7 +4812,7 @@ dep_initialize(void)
 	/*
 	 ** The global cpu counts are now set in ncpus()
 	 */
-	(void)ncpus((struct rm_attribute *)0);
+	(void)ncpus(NULL);
 
 #if	MOM_CPUSET
 	cpuset_nodes = numnodes();
@@ -6826,7 +6826,7 @@ uname2release(struct utsname *u)
 		log_event(PBSEVENT_DEBUG4, 0, LOG_DEBUG, __func__, log_buffer);
 		return (u_release);
 	} else
-		return (NULL);
+		return NULL;
 }
 
 /**
@@ -6888,7 +6888,7 @@ procflagsfmt(char *release)
 		}
 	}
 
-	return ((char *) NULL);
+	return NULL;
 }
 
 /**
@@ -6914,23 +6914,23 @@ choose_procflagsfmt(void)
 
 	if (uname(&u) == -1) {
 		log_err(errno, __func__, "uname");
-		return (NULL);
+		return NULL;
 	} else {
 		char	*release;
 		char	*fffs;		/* the flags field format string */
 
 		if ((release = uname2release(&u)) == NULL) {
 			log_err(-1, __func__, "uname2release returned NULL");
-			return (NULL);
+			return NULL;
 		}
 		else if ((fffs = procflagsfmt(release)) == NULL) {
 			log_err(-1, __func__, "procflagsfmt returned NULL");
-			return (NULL);
+			return NULL;
 		} else {
 			sprintf(buf, stat_str_pre, fffs);
 			if ((fmtstr = strdup(buf)) == NULL) {
 				log_err(-1, __func__, "strdup returned NULL");
-				return (NULL);
+				return NULL;
 			} else {
 				initialized = 1;
 				return (fmtstr);
@@ -7570,7 +7570,7 @@ get_la(double *rv)
 u_long
 gracetime(u_long secs)
 {
-	time_t	now = time((time_t *)NULL);
+	time_t	now = time(NULL);
 
 	if (secs > now)		/* time is in the future */
 		return (secs - now);

@@ -98,7 +98,7 @@ extern char 	    *pbs_server_name;
 void
 req_track(struct batch_request *preq)
 {
-	struct tracking *empty = (struct tracking *)0;
+	struct tracking *empty = NULL;
 	int		 i;
 	int		 need;
 	struct tracking	*new;
@@ -141,7 +141,7 @@ req_track(struct batch_request *preq)
 				reply_ack(preq);
 				return;
 			}
-		} else if (empty == (struct tracking *)0) {
+		} else if (empty == NULL) {
 			empty = ptk + i;
 		}
 	}
@@ -152,14 +152,14 @@ req_track(struct batch_request *preq)
 
 		/* and need to add it */
 
-		if (empty == (struct tracking *)0) {
+		if (empty == NULL) {
 
 			/* need to make room for more */
 
 			need = server.sv_tracksize * 3 / 2;
 			new  = (struct tracking *)realloc(server.sv_track,
 				need * sizeof(struct tracking));
-			if (new == (struct tracking *)0) {
+			if (new == NULL) {
 				log_err(errno, "req_track", "malloc failed");
 				req_reject(PBSE_SYSTEM, 0, preq);
 				return;
@@ -241,7 +241,7 @@ issue_track(job *pjob)
 	char		       *pc;
 
 	preq = alloc_br(PBS_BATCH_TrackJob);
-	if (preq == (struct batch_request *)0)
+	if (preq == NULL)
 		return;
 
 	preq->rq_ind.rq_track.rq_hopcount = pjob->ji_wattr[(int)JOB_ATR_hopcount].at_val.at_long;
@@ -272,7 +272,7 @@ static void
 track_history_job(struct rq_track *prqt, char *extend)
 {
 	char	*comment = "Job has been moved to";
-	job	*pjob = (job *)0;
+	job	*pjob = NULL;
 	char	dest_queue[PBS_MAXROUTEDEST+1] = {'\0'};
 
 	/* return if the server is not configured for job history */
@@ -316,8 +316,8 @@ track_history_job(struct rq_track *prqt, char *extend)
 		/* Set the new queue attribute to destination */
 		(void)job_attr_def[(int)JOB_ATR_in_queue].at_decode(
 			&pjob->ji_wattr[(int)JOB_ATR_in_queue],
-			(char *)0,
-			(char *)0,
+			NULL,
+			NULL,
 			dest_queue);
 	}
 
@@ -329,8 +329,8 @@ track_history_job(struct rq_track *prqt, char *extend)
 	sprintf(log_buffer, "%s \"%s\"", comment, prqt->rq_location);
 	(void)job_attr_def[(int)JOB_ATR_Comment].at_decode(
 		&pjob->ji_wattr[(int)JOB_ATR_Comment],
-		(char *)0,
-		(char *)0,
+		NULL,
+		NULL,
 		log_buffer);
 	svr_histjob_update(pjob, pjob->ji_qs.ji_state, pjob->ji_qs.ji_substate);
 }

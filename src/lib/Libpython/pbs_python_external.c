@@ -282,7 +282,7 @@ pbs_python_ext_shutdown_interpreter(struct python_interpreter_data *interp_data)
 		}
 		interp_data->destroy_interpreter_data(interp_data);
 		/* reset so that we do not have a problem */
-		pbs_python_daemon_name = (char *) NULL;
+		pbs_python_daemon_name = NULL;
 	}
 
 #endif /* PYTHON */
@@ -434,11 +434,11 @@ pbs_python_ext_alloc_python_script(
 
 #ifdef PYTHON                 /* --- BEGIN PYTHON BLOCK --- */
 
-	struct python_script *tmp_py_script = (struct python_script *) NULL;
+	struct python_script *tmp_py_script = NULL;
 	size_t nbytes = sizeof(struct python_script);
 	struct stat sbuf;
 
-	*py_script = (struct python_script *) NULL; /* init, to be safe */
+	*py_script = NULL; /* init, to be safe */
 
 	if (!(tmp_py_script = (struct python_script *) malloc(nbytes))) {
 		log_err(errno, func_id, "failed to malloc struct python_script");
@@ -493,7 +493,7 @@ pbs_python_ext_namespace_init(
 
 #ifdef PYTHON                        /* --- BEGIN PYTHON BLOCK --- */
 
-	PyObject *namespace_dict = (PyObject *) NULL;
+	PyObject *namespace_dict = NULL;
 
 	namespace_dict = PyDict_New(); /* New Refrence MUST Decref */
 	if (!namespace_dict) {
@@ -535,7 +535,7 @@ ERROR_EXIT:
 	return namespace_dict;
 
 #else	/* !PYTHON */
-	return (void *) NULL;
+	return NULL;
 #endif  /* --- END   PYTHON BLOCK --- */
 
 }
@@ -784,7 +784,7 @@ pbs_python_run_code_in_namespace(struct python_interpreter_data *interp_data,
  * @param[out]  compiled_code_file_name - compiled file
  *
  * @return	object
- * @retval	
+ * @retval
  * @retval	error code	error
  *
  */
@@ -793,13 +793,13 @@ _pbs_python_compile_file(const char *file_name,
 	const char *compiled_code_file_name)
 {
 	static char func_id[] = "_pbs_python_compile_file";
-	FILE *fp = (FILE *) NULL;
+	FILE *fp = NULL;
 
 	long len = 0;
 	size_t file_sz = 0;   /* script file no. of bytes */
-	char *file_buffer = (char *) NULL; /* buffer to hold the python script file */
-	char *cp = (char *) NULL; /* useful character pointer */
-	PyObject *rv = (PyObject *) NULL;
+	char *file_buffer = NULL; /* buffer to hold the python script file */
+	char *cp = NULL; /* useful character pointer */
+	PyObject *rv = NULL;
 
 	fp = fopen(file_name, "rb");
 	if (!fp) {

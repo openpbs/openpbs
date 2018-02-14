@@ -121,7 +121,7 @@ extern PyObject * PPSVR_Size_FromSizeValue(struct size_value);
  */
 static int
 _pps_check_for_negative_number(PyObject *il) {
-	PyObject *str_value = (PyObject *)NULL;
+	PyObject *str_value = NULL;
 	char *c_value;
 	int rc = 0;
 
@@ -145,7 +145,7 @@ EXIT:
 
 /**
  * @brief
- *	server function which encode a string 
+ *	server function which encode a string
  *	FROM a PPSVR_Size_Object  structure
  *
  * @param[in] self - python object (string)
@@ -172,7 +172,7 @@ _pps_size_make_str_value(PyObject *self)
 
 /**
  * @brief
- *      server function which encode a string 
+ *      server function which encode a string
  *      FROM a PPSVR_Size_Object  structure
  *
  * @param[in] self - python object (string)
@@ -271,15 +271,15 @@ _pps_size_from_string(PyObject *self, PyObject *from)
  *
  * @return	structure handle
  * @retval	pointer to size_val structure	success
- */ 
+ */
 static PyObject *
 pps_size_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
-	PPSVR_Size_Object * self = (PPSVR_Size_Object *) NULL;
+	PPSVR_Size_Object * self = NULL;
 	self = (PPSVR_Size_Object *) type->tp_alloc(type, 0);
 	if (self) {
 		memset(&self->sz_value, 0, sizeof(self->sz_value));
-		self->str_value = (char *) NULL;
+		self->str_value = NULL;
 	}
 	return (PyObject *) self;
 }
@@ -302,7 +302,7 @@ pps_size_init(PPSVR_Size_Object *self, PyObject *args, PyObject *kwds)
 {
 
 	static char *kwlist[] = {"value", NULL};
-	PyObject *py_arg0 = (PyObject *) NULL;
+	PyObject *py_arg0 = NULL;
 	int rc;
 
 	if (!PyArg_ParseTupleAndKeywords(args, kwds,
@@ -398,7 +398,7 @@ pps_size_repr(PPSVR_Size_Object *self) {
 static int
 pps_size_number_methods_coerce(PyObject **self, PyObject **other)
 {
-	PyObject *tmp_other = (PyObject *) NULL;
+	PyObject *tmp_other = NULL;
 	int rc;
 	if (PyInt_Check(*other) || PyLong_Check(*other)) {
 		if (!(tmp_other = pps_size_new(&PPSVR_Size_Type, NULL, NULL)))
@@ -540,7 +540,7 @@ pps_size_number_methods_add(PyObject *left, PyObject *right)
 		if ((l_result < tmp_left.atsv_num) || (l_result < tmp_right.atsv_num)) {
 			PyErr_SetString(PyExc_ArithmeticError,
 				"expression evaluates to wrong _size value (overflow?)");
-			result = (PyObject *)NULL;
+			result = NULL;
 			goto QUIT;
 		}
 		sz_result.atsv_num = l_result;
@@ -595,7 +595,7 @@ pps_size_number_methods_subtract(PyObject *left, PyObject *right)
 #endif /* localmod 005 */
 			PyErr_SetString(PyExc_ArithmeticError,
 				"expression evaluates to negative _size value");
-			result = (PyObject *)NULL;
+			result = NULL;
 			goto QUIT;
 		}
 #ifdef NAS /* localmod 005 */
@@ -762,7 +762,7 @@ PyTypeObject PPSVR_Size_Type = {
 PyObject *
 PPSVR_Size_FromSizeValue(struct size_value from)
 {
-	PPSVR_Size_Object *pyobj = (PPSVR_Size_Object *) NULL;
+	PPSVR_Size_Object *pyobj = NULL;
 
 	if (!(pyobj = (PPSVR_Size_Object *)pps_size_new(&PPSVR_Size_Type, NULL, NULL)))
 		goto ERROR_EXIT;
@@ -773,5 +773,5 @@ PPSVR_Size_FromSizeValue(struct size_value from)
 ERROR_EXIT:
 	if (pyobj)
 		Py_CLEAR(pyobj);
-	return (PyObject *) NULL;
+	return NULL;
 }

@@ -135,7 +135,7 @@ decode_DIS_svrattrl(int sock, pbs_list_head *phead)
 			return DIS_NOMALLOC;
 
 		CLEAR_LINK(psvrat->al_link);
-		psvrat->al_sister = (svrattrl *)0;
+		psvrat->al_sister = NULL;
 		psvrat->al_atopl.next = 0;
 		psvrat->al_tsize = tsize;
 		psvrat->al_name  = (char *)psvrat + sizeof(svrattrl);

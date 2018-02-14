@@ -112,7 +112,7 @@ ctnodes(char *spec)
 				++ct;
 		} else
 			++ct;
-		if ((pc = strchr(spec, '+')) == (char *)0)
+		if ((pc = strchr(spec, '+')) == NULL)
 			break;
 		spec = pc+1;
 	}
@@ -159,10 +159,10 @@ set_node_ct(resource *pnodesp, attribute *pattr, void *pobj, int type, int actmo
 	/* Set "nodect" to count of nodes in "nodes" */
 
 	pndef = find_resc_def(svr_resc_def, "nodect", svr_resc_size);
-	if (pndef == (resource_def *)0)
+	if (pndef == NULL)
 		return (PBSE_SYSTEM);
 
-	if ((pnct = find_resc_entry(pattr, pndef)) == (resource *)0) {
+	if ((pnct = find_resc_entry(pattr, pndef)) == NULL) {
 		if ((pnct = add_resource_entry(pattr, pndef)) == 0)
 			return (PBSE_SYSTEM);
 	}
@@ -178,9 +178,9 @@ set_node_ct(resource *pnodesp, attribute *pattr, void *pobj, int type, int actmo
 	/* Is "ncpus" set as a separate resource? */
 
 	pndef = find_resc_def(svr_resc_def, "ncpus", svr_resc_size);
-	if (pndef == (resource_def *)0)
+	if (pndef == NULL)
 		return (PBSE_SYSTEM);
-	if ((pncpus = find_resc_entry(pattr, pndef)) == (resource *)0) {
+	if ((pncpus = find_resc_entry(pattr, pndef)) == NULL) {
 		if ((pncpus = add_resource_entry(pattr, pndef)) == 0)
 			return (PBSE_SYSTEM);
 	}
@@ -803,7 +803,7 @@ apply_aoe_inchunk_rules(resource *presc, attribute *pattr, void *pobj,
 #endif /* not PBS_MOM */
 /**
  * @brief
- *      action routine for built-in resources to check if its value is zero 
+ *      action routine for built-in resources to check if its value is zero
  *      or positive whose datatype is long.
  *
  * @param[in]   presc	-	pointer to resource
@@ -839,7 +839,7 @@ int zero_or_positive_action(resource *presc, attribute *pattr, void *pobj, int t
  *
  * @par Functionality:
  *      1. Parses select specification by calling parse_chunk function.
- *      2. Decodes each chunk 
+ *      2. Decodes each chunk
  *      3. Calls resource action function for each resource in a chunk if
  *	   the resource is of type long.
  *

@@ -103,27 +103,27 @@ char *cnvt_est_start_time(char *start_time, int shortform);
 static struct attrl basic_attribs[] = {
 	{	&basic_attribs[1],
 		ATTR_N,
-		(char *)0,
+		NULL,
 		"",
 		SET		},
 	{	&basic_attribs[2],
 		ATTR_owner,
-		(char *)0,
+		NULL,
 		"",
 		SET		},
 	{	&basic_attribs[3],
 		ATTR_used,
-		(char *)0,
+		NULL,
 		"",
 		SET		},
 	{	&basic_attribs[4],
 		ATTR_state,
-		(char *)0,
+		NULL,
 		"",
 		SET		},
-	{	(struct attrl *)0,
+	{	NULL,
 		ATTR_queue,
-		(char *)0,
+		NULL,
 		"",
 		SET		}
 };
@@ -131,12 +131,12 @@ static struct attrl basic_attribs[] = {
 static struct attrl alt_attribs[] = {
 	{	&alt_attribs[1],
 		ATTR_session,
-		(char *)0,
+		NULL,
 		"",
 		SET		},
 	{	&basic_attribs[0],
 		ATTR_l,
-		(char *)0,
+		NULL,
 		"",
 		SET		}
 };
@@ -521,7 +521,7 @@ prt_attr(char *name, char *resource, char *value, int one_line) {
 						}
 					}
 				}
-				if ((buf = strtok((char *) 0, comma)) != NULL) {
+				if ((buf = strtok(NULL, comma)) != NULL) {
 					first = 0;
 					putchar(',');
 				}
@@ -564,7 +564,7 @@ prt_nodes(char *nodes, int no_newl)
 	char *stp;
 	int   vnodeid = 0;
 
-	if ((nodes == (char *)0) || (*nodes == '\0'))
+	if ((nodes == NULL) || (*nodes == '\0'))
 		return;
 
 	i = 0;
@@ -1198,7 +1198,7 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 	char *location;
 	char format[80];
 	char long_name[SIZEJOBNAME + 1] = {'\0'};
-	char *cmdargs = (char *)0;
+	char *cmdargs = NULL;
 	char *hpcbp_executable;
 
 	sprintf(format, "%%-%ds %%-%ds %%-%ds  %%%ds %%%ds %%-%ds\n",
@@ -2247,16 +2247,16 @@ main(int argc, char **argv, char **envp) /* qstat */
 				alt_opt |= ALT_DISPLAY_T;
 				display_attribs = &alt_attribs[0];
 				add_atropl((struct attropl **)&display_attribs, ATTR_estimated, "start_time", "", SET);
-				add_atropl((struct attropl **)&display_attribs, ATTR_stime, (char*)0, "", SET);
+				add_atropl((struct attropl **)&display_attribs, ATTR_stime, NULL, "", SET);
 				break;
 
 			case 'i':
 				alt_opt |= ALT_DISPLAY_i;
 				display_attribs = &alt_attribs[0];
 #ifdef NAS /* localmod 071 */
-				add_atropl(&p_atropl, ATTR_state, (char *)0, "HQTW", EQ);
+				add_atropl(&p_atropl, ATTR_state, NULL, "HQTW", EQ);
 #else
-				add_atropl(&p_atropl, ATTR_state, (char *)0, "EHQTW", EQ);
+				add_atropl(&p_atropl, ATTR_state, NULL, "EHQTW", EQ);
 #endif /* localmod 071 */
 				break;
 
@@ -2264,9 +2264,9 @@ main(int argc, char **argv, char **envp) /* qstat */
 				alt_opt |= ALT_DISPLAY_r;
 				display_attribs = &alt_attribs[0];
 #ifdef NAS /* localmod 071 */
-				add_atropl(&p_atropl, ATTR_state, (char *)0, "BERS", EQ);
+				add_atropl(&p_atropl, ATTR_state, NULL, "BERS", EQ);
 #else
-				add_atropl(&p_atropl, ATTR_state, (char *)0, "RS", EQ);
+				add_atropl(&p_atropl, ATTR_state, NULL, "RS", EQ);
 #endif /* localmod 071 */
 				break;
 
@@ -2275,7 +2275,7 @@ main(int argc, char **argv, char **envp) /* qstat */
 				display_attribs = &alt_attribs[0];
 				if (strchr(extend, (int)'x') == NULL)
 					strcat(extend, "x");
-				add_atropl(&p_atropl, ATTR_state, (char *)0, "MFX", EQ);
+				add_atropl(&p_atropl, ATTR_state, NULL, "MFX", EQ);
 				break;
 
 			case 't':
@@ -2293,7 +2293,7 @@ main(int argc, char **argv, char **envp) /* qstat */
 			case 'u':
 				alt_opt |= ALT_DISPLAY_u;
 				display_attribs = &alt_attribs[0];
-				add_atropl(&p_atropl, ATTR_u, (char *)0, optarg, EQ);
+				add_atropl(&p_atropl, ATTR_u, NULL, optarg, EQ);
 				break;
 
 			case 'n':
@@ -2301,14 +2301,14 @@ main(int argc, char **argv, char **envp) /* qstat */
 				if (display_attribs == &basic_attribs[0] || f_opt == 1)
 					display_attribs = &alt_attribs[0];
 				add_atropl((struct attropl **)&display_attribs, ATTR_exechost,
-					(char *)0, "", SET);
+					NULL, "", SET);
 				f_opt=0;
 				break;
 
 			case 'p':
 				p_opt = 1;
-				add_atropl((struct attropl **)&display_attribs, ATTR_l, (char *)0, "", EQ);
-				add_atropl((struct attropl **)&display_attribs, ATTR_array_state_count, (char *)0, "", EQ);
+				add_atropl((struct attropl **)&display_attribs, ATTR_l, NULL, "", EQ);
+				add_atropl((struct attropl **)&display_attribs, ATTR_array_state_count, NULL, "", EQ);
 				break;
 
 			case 's':
@@ -2316,7 +2316,7 @@ main(int argc, char **argv, char **envp) /* qstat */
 				if (display_attribs == &basic_attribs[0] || f_opt == 1)
 					display_attribs = &alt_attribs[0];
 				add_atropl((struct attropl **)&display_attribs, ATTR_comment,
-					(char *)0, "", SET);
+					NULL, "", SET);
 				f_opt=0;
 				break;
 
@@ -2331,7 +2331,7 @@ main(int argc, char **argv, char **envp) /* qstat */
 				break;
 
 			case 'J':
-				add_atropl(&p_atropl, ATTR_array, (char *)0, "True", EQ);
+				add_atropl(&p_atropl, ATTR_array, NULL, "True", EQ);
 				break;
 
 			case 'M':
@@ -2351,7 +2351,7 @@ main(int argc, char **argv, char **envp) /* qstat */
 
 			case 'f':
 				f_opt = 1;
-				display_attribs = (struct attrl *)0;	/* get all attributes */
+				display_attribs = NULL;	/* get all attributes */
 				break;
 
 			case 'B':
@@ -2404,15 +2404,15 @@ main(int argc, char **argv, char **envp) /* qstat */
 
 						case 'i':
 							alt_opt |= ALT_DISPLAY_i;
-							add_atropl(&p_atropl, ATTR_state, (char *)0, "EHQTW", EQ);
+							add_atropl(&p_atropl, ATTR_state, NULL, "EHQTW", EQ);
 							break;
 
 						case 'r':
 							alt_opt |= ALT_DISPLAY_r;
 #ifdef NAS /* localmod 071 */
-							add_atropl(&p_atropl, ATTR_state, (char *)0, "BRS", EQ);
+							add_atropl(&p_atropl, ATTR_state, NULL, "BRS", EQ);
 #else
-							add_atropl(&p_atropl, ATTR_state, (char *)0, "RS", EQ);
+							add_atropl(&p_atropl, ATTR_state, NULL, "RS", EQ);
 #endif /* localmod 071 */
 							break;
 
@@ -2420,7 +2420,7 @@ main(int argc, char **argv, char **envp) /* qstat */
 							alt_opt |= ALT_DISPLAY_H;
 							if (strchr(extend, (int)'x') == NULL)
 								strcat(extend, "x");
-							add_atropl(&p_atropl, ATTR_state, (char *)0, "MF", EQ);
+							add_atropl(&p_atropl, ATTR_state, NULL, "MF", EQ);
 							break;
 
 						case 'u':
@@ -2428,7 +2428,7 @@ main(int argc, char **argv, char **envp) /* qstat */
 							/* string and all remaining is the name list */
 							alt_opt |= ALT_DISPLAY_u;
 							while (*++pc == ' ');
-							add_atropl(&p_atropl, ATTR_u, (char *)0, pc, EQ);
+							add_atropl(&p_atropl, ATTR_u, NULL, pc, EQ);
 							pc = pc + strlen(pc) - 1;	/* for the later incr */
 							break;
 
@@ -2478,7 +2478,7 @@ main(int argc, char **argv, char **envp) /* qstat */
 #ifdef NAS /* localmod 071 */
 #if TCL_QSTAT
 	if (tcl_opt) {
-		display_attribs = (struct attrl *)0;        /* get all attributes */
+		display_attribs = NULL;        /* get all attributes */
 	}
 #endif
 #endif /* localmod 071 */

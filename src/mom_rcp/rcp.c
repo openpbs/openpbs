@@ -461,7 +461,7 @@ main(int argc, char *argv[])
  *
  * @return	Void
  *
- */ 
+ */
 void
 toremote(char *targ, int argc, char *argv[])
 {
@@ -593,7 +593,7 @@ toremote(char *targ, int argc, char *argv[])
 
 /**
  * @brief
- *      using rcmd or kerboros authentication mechanism tries to execute 
+ *      using rcmd or kerboros authentication mechanism tries to execute
  *	commands on local machine
  *
  * @param[in] argc - num of args
@@ -1348,7 +1348,7 @@ screwup:
  *	provides kerberos authentication data.
  *
  * @param[in] host - host name
- * @param[in] bp - 
+ * @param[in] bp -
  * @param[in] localuser - present working user
  * @param[in] user - username
  *
@@ -1488,7 +1488,7 @@ usage()
 #include <stdarg.h>
 
 #ifdef KERBEROS
-/** 
+/**
  * @brief
  *	prints error message to stderr in provided format.
  *
@@ -1562,7 +1562,7 @@ use_logusage(char *mes, char *app)
 static void
 use_prep_timer()
 {
-	gettimeofday(&use_time0, (struct timezone*)0);
+	gettimeofday(&use_time0, NULL);
 }
 
 /**
@@ -1577,7 +1577,7 @@ use_get_wtime()
 	struct timeval td;
 	float realt;
 
-	gettimeofday(&timedol, (struct timezone *)0);
+	gettimeofday(&timedol, NULL);
 
 	/* Get real time */
 	use_tvsub(&td, &timedol, &use_time0);

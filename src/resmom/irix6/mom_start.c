@@ -448,7 +448,7 @@ oien_master(char **rtn_name)
 	int	fds;
 
 	*rtn_name = _getpty(&fds, O_RDWR | O_NOCTTY, 0600, 1);
-	if (*rtn_name == (char *)0)
+	if (*rtn_name == NULL)
 		return (-1);
 	else
 		return (fds);
@@ -495,5 +495,5 @@ struct sig_tbl sig_tbl[] = {
 	{ "PROF", SIGPROF },
 	{ "XCPU", SIGXCPU },
 	{ "XFSZ", SIGXFSZ },
-	{(char *)0, -1}
+	{NULL, -1}
 };

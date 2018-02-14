@@ -99,7 +99,7 @@ decode_l(struct attribute *patr, char *name, char *rescn, char *val)
 	char *pc;
 	char *endp;
 
-	if ((val != (char *)0) && (strlen(val) != 0)) {
+	if ((val != NULL) && (strlen(val) != 0)) {
 
 		pc = val;
 		if ((*pc == '+') || (*pc == '-'))
@@ -156,7 +156,7 @@ encode_l(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int 
 	ct = strlen(cvnbuf) + 1;
 
 	pal = attrlist_create(atname, rsname, ct);
-	if (pal == (svrattrl *)0)
+	if (pal == NULL)
 		return (-1);
 
 	(void)memcpy(pal->al_value, cvnbuf, ct);

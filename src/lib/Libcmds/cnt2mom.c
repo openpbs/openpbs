@@ -77,7 +77,7 @@ extern struct connect_handle connection[NCONNECTS];
 /**
  * @brief
  *	establishes connection to host
- * 
+ *
  * @param[in] momhost - The name of the MOM host to connect to.
  *
  * @return	int
@@ -234,7 +234,7 @@ pbs_connect2mom(char *momhost)
 	connection[conn].ch_inuse = 1;
 	connection[conn].ch_errno = 0;
 	connection[conn].ch_socket= sd;
-	connection[conn].ch_errtxt = (char *)NULL;
+	connection[conn].ch_errtxt = NULL;
 
 	/* setup connection level thread context */
 	if (pbs_client_thread_init_connect_context(conn) != 0) {

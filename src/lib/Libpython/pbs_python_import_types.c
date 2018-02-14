@@ -102,8 +102,8 @@ static char svr_types_module_doc[]=
 PyObject *
 ppsvr_create_types_module(void)
 {
-	PyObject *m     = (PyObject *) NULL; /* create types module */
-	PyObject *mdict = (PyObject *) NULL; /* module dict  */
+	PyObject *m     = NULL; /* create types module */
+	PyObject *mdict = NULL; /* module dict  */
 
 
 	m = Py_InitModule3(PBS_PYTHON_V1_MODULE_EXTENSION_NAME ".svr_types",
@@ -121,7 +121,7 @@ ppsvr_create_types_module(void)
 	/* Add _size type to svr_types */
 	if ((PyDict_SetItemString(mdict, "_size",
 		(PyObject *)&PPSVR_Size_Type)) == -1)
-		return (PyObject *) NULL;
+		return NULL;
 
 	return m;
 }

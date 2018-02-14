@@ -116,7 +116,7 @@ req_signaljob(struct batch_request *preq)
 
 	jid = preq->rq_ind.rq_signal.rq_jid;
 	parent = chk_job_request(jid, preq, &jt);
-	if (parent == (job *)0)
+	if (parent == NULL)
 		return;		/* note, req_reject already called */
 
 	if (strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_RESUME) == 0 || strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_ADMIN_RESUME) == 0)
@@ -124,7 +124,7 @@ req_signaljob(struct batch_request *preq)
 	else if (strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_SUSPEND) == 0 || strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_ADMIN_SUSPEND) == 0)
 		suspend = 1;
 
-	
+
 	if (suspend || resume) {
 
 		if ((preq->rq_perm & (ATR_DFLAG_OPRD | ATR_DFLAG_OPWR |
@@ -299,7 +299,7 @@ req_signaljob2(struct batch_request *preq, job *pjob)
 		req_reject(PBSE_WRONG_RESUME, 0, preq);
 		return;
 	}
-	
+
 	if (strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_RESUME) == 0 || strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_ADMIN_RESUME) == 0)
 		resume = 1;
 	else if (strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_SUSPEND) == 0 || strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_ADMIN_SUSPEND) == 0)
@@ -319,7 +319,7 @@ req_signaljob2(struct batch_request *preq, job *pjob)
 		if (resume) {
 			if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend) != 0) {
 
-				if (preq->rq_fromsvr == 1 || 
+				if (preq->rq_fromsvr == 1 ||
 				    strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_ADMIN_RESUME) == 0) {
 					/* from Scheduler, resume job */
 					pnodespec = pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_val.at_str;
@@ -408,7 +408,7 @@ issue_signal(job *pjob, char *signame, void (*func)(struct work_task *), void *e
 
 	/* build up a Signal Job batch request */
 
-	if ((newreq = alloc_br(PBS_BATCH_SignalJob))==(struct batch_request *)0)
+	if ((newreq = alloc_br(PBS_BATCH_SignalJob)) == NULL)
 		return (PBSE_SYSTEM);
 
 	newreq->rq_extra = extra;
@@ -510,8 +510,8 @@ post_signal_req(struct work_task *pwt)
 
 			if (!(pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob)) {
 				job_attr_def[(int) JOB_ATR_Comment].at_decode(
-						&pjob->ji_wattr[(int) JOB_ATR_Comment], (char *) 0,
-						(char *) 0, form_attr_comment("Job run at %s",
+						&pjob->ji_wattr[(int) JOB_ATR_Comment], NULL,
+						NULL, form_attr_comment("Job run at %s",
 						pjob->ji_wattr[(int) JOB_ATR_exec_vnode].at_val.at_str));
 			}
 		}
@@ -522,8 +522,8 @@ post_signal_req(struct work_task *pwt)
 
 
 /**
- * @brief  Create the job's resources_released and Resource_Rel_List 
- *	    attributes based on its exec_vnode 
+ * @brief  Create the job's resources_released and Resource_Rel_List
+ *	    attributes based on its exec_vnode
  * @param[in/out] pjob - Job structure
  *
  * @return int
@@ -547,7 +547,7 @@ create_resreleased(job *pjob)
 
 	attribute *pexech = &pjob->ji_wattr[(int) JOB_ATR_exec_vnode];
 	/* Multiplying by 2 to take care of superchunks of the format
-	 * (node:resc=n+node:resc=m) which will get converted to 
+	 * (node:resc=n+node:resc=m) which will get converted to
 	 * (node:resc=n)+(node:resc=m). This will add room for this
 	 * expansion.
 	 */
@@ -622,10 +622,10 @@ create_resreleased(job *pjob)
  *	@brief Handle admin-suspend/admin-resume on the job and nodes
  *		set or remove the JOB_SVFLG_AdmSuspd flag on the job
  *		set or remove nodes in state maintenance
- * 
+ *
  *	@param[in] pjob - job to act upon
  *	@param[in] set_remove_nstate if 1, set flag/state if 0 remove flag/state
- * 
+ *
  *	@return void
  */
 void set_admin_suspend(job *pjob, int set_remove_nstate) {
@@ -638,25 +638,25 @@ void set_admin_suspend(job *pjob, int set_remove_nstate) {
 	int nelem;
 	struct pbsnode *pnode;
 	attribute new;
-	
+
 	if(pjob == NULL)
 		return;
-	
+
 	execvncopy = strdup(pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_val.at_str);
-	
+
 	if(execvncopy == NULL)
 		return;
-	
+
 	if(set_remove_nstate)
 		pjob->ji_qs.ji_svrflags |= JOB_SVFLG_AdmSuspd;
 	 else
 		pjob->ji_qs.ji_svrflags &= ~JOB_SVFLG_AdmSuspd;
-	
+
 	clear_attr(&new, &node_attr_def[(int)ND_ATR_MaintJobs]);
 	decode_arst(&new, ATTR_NODE_MaintJobs, NULL, pjob->ji_qs.ji_jobid);
-		
+
 	chunk = parse_plus_spec_r(execvncopy, &last, &hasprn);
-		
+
 	while (chunk) {
 
 		if (parse_node_resc(chunk, &vname, &nelem, &pkvp) == 0) {

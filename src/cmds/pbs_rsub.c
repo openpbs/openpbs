@@ -67,9 +67,9 @@ char rrule[67];
 
 /**
  * @brief
- *	processes the argument list for pbs_rsub and validates 
+ *	processes the argument list for pbs_rsub and validates
  *	and sets attribute according to the argument value
- * 
+ *
  * @param[in] argc - commandline args count
  * @param[in] argv - pointer to argument list
  * @param[in] dest - server option
@@ -125,7 +125,7 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 				break;
 
 			case 'I':
-				if ((optarg == (char *)0) || (optarg == '\0'))
+				if ((optarg == NULL) || (optarg == '\0'))
 					set_attr(&attrib, ATTR_inter, "0");
 				else {
 					char* endptr;
@@ -246,7 +246,7 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 
 					/* move to next attribute in this "-W" specification */
 
-					i = parse_equal_string((char *)0, &keyword, &valuewd);
+					i = parse_equal_string(NULL, &keyword, &valuewd);
 
 				}   /* bottom of inner while loop */
 
@@ -283,7 +283,7 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 }
 
 /**
- * @brief 
+ * @brief
  *	sets the environment for reservation
  *
  * @param[in] envp - pointer to pointer to the environment variable
@@ -383,7 +383,7 @@ set_resv_env(char **envp)
  * @retval   0 Success
  * @retval   exits on failure
  *
- */ 
+ */
 int
 cnvrt_proc_attrib(int connect, struct attrl **attrp, char *dest)
 {
@@ -416,7 +416,7 @@ cnvrt_proc_attrib(int connect, struct attrl **attrp, char *dest)
 	}
 
 	p_status = pbs_statjob(connect, jobid_ptr->value, NULL, NULL);
-	if (p_status == (struct batch_status *)0) {
+	if (p_status == NULL) {
 		fprintf(stderr, "Job %s does not exist\n", jobid_ptr->value);
 		exit(2);
 	}
@@ -554,7 +554,7 @@ print_usage()
 
 /**
  * @brief
- * 	handles attribute errors and prints appropriate errmsg 
+ * 	handles attribute errors and prints appropriate errmsg
  *
  * @param[in] err_list - list of possible attribute errors
  *

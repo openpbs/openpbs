@@ -56,11 +56,11 @@ static char *deptypes[] = {
 	"beforenotok",
 	"beforeany",
 	"syncwith",
-	(char *)0
+	NULL
 };
 
 /**
- * @brief 
+ * @brief
  *	Append to an allocated string which will be expanded as needed.
  *
  * @param[in/out]	dest	destination location (malloc'ed)
@@ -139,7 +139,7 @@ parse_depend_item(char *depend_list, char **rtn_list, int *rtn_size)
 				if (strcmp(s, deptypes[i]) == 0)
 					break;
 			}
-			if (deptypes[i] == (char *)0)
+			if (deptypes[i] == NULL)
 				return 1;
 			if (append_string(rtn_list, deptypes[i], rtn_size))
 				return 1;
@@ -187,7 +187,7 @@ parse_depend_item(char *depend_list, char **rtn_list, int *rtn_size)
 
 
 /**
- * @brief 
+ * @brief
  *	Parse dependency lists with
  * 	syntax depend_list[,depend_list...]
  *
@@ -214,7 +214,7 @@ parse_depend_list(char *list, char **rtn_list, int rtn_size)
 
 	if (strlen(list) == 0) return (1);
 
-	if ((lc = (char *)malloc(strlen(list)+1)) == (char *)0) {
+	if ((lc = (char *)malloc(strlen(list)+1)) == NULL) {
 		fprintf(stderr, "Out of memory.\n");
 		exit(1);
 	}

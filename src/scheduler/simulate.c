@@ -502,7 +502,7 @@ find_timed_event(timed_event *te_list, char *name,
 	if (te_list == NULL)
 		return NULL;
 
-	for (te = te_list; te != NULL ; te = find_next_timed_event(te, 0, ALL_MASK)) {
+	for (te = te_list; te != NULL; te = find_next_timed_event(te, 0, ALL_MASK)) {
 		found_name = found_type = found_time = 0;
 		if (name == NULL || strcmp(te->name, name) == 0)
 			found_name = 1;

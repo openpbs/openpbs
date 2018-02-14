@@ -146,7 +146,7 @@ svr_chk_owner(struct batch_request *preq, job *pjob)
 	/* map requestor user@host to "local" name */
 
 	pu = site_map_user(preq->rq_user, preq->rq_host);
-	if (pu == (char *)0)
+	if (pu == NULL)
 		return (-1);
 	(void)strncpy(rmtuser, pu, PBS_MAXUSER);
 
@@ -410,7 +410,7 @@ authenticate_user(struct batch_request *preq, struct connection *pcred)
  *
  * @return	job *
  * @retval	a pointer to the job	: if found and the tests pass.
- * @retval	(job *)0	: failed
+ * @retval	NULL	: failed
  */
 
 
@@ -434,22 +434,22 @@ chk_job_request(char *jobid, struct batch_request *preq, int *rc)
 
 	*rc = t;
 
-	if (pjob == (job *)0) {
+	if (pjob == NULL) {
 		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
 			jobid, msg_unkjobid);
 		req_reject(PBSE_UNKJOBID, 0, preq);
-		return ((job *)0);
+		return NULL;
 	} else {
 		histerr = svr_chk_histjob(pjob);
 		if (histerr && deletehist == 0) {
 			req_reject(histerr, 0, preq);
-			return ((job*)0);
+			return NULL;
 		}
 		if (deletehist ==1&& pjob->ji_qs.ji_state == JOB_STATE_MOVED &&
 			pjob->ji_qs.ji_substate != JOB_SUBSTATE_FINISHED) {
 			job_purge(pjob);
 			req_reject(PBSE_UNKJOBID, 0, preq);
-			return ((job*)0);
+			return NULL;
 		}
 	}
 
@@ -465,7 +465,7 @@ chk_job_request(char *jobid, struct batch_request *preq, int *rc)
 	p1 = strchr(pjob->ji_qs.ji_jobid, '.');
 	if (p1) {
 		p2 = strchr(jobid, '.');
-		if (p2) 
+		if (p2)
 			*p2 = '\0';
 		strncat(jobid, p1, PBS_MAXSVRJOBID-1);
 	}
@@ -477,7 +477,7 @@ chk_job_request(char *jobid, struct batch_request *preq, int *rc)
 		log_event(PBSEVENT_SECURITY, PBS_EVENTCLASS_JOB, LOG_INFO,
 			pjob->ji_qs.ji_jobid, log_buffer);
 		req_reject(PBSE_PERM, 0, preq);
-		return ((job *)0);
+		return NULL;
 	}
 
 	if ((t == IS_ARRAY_NO) && (pjob->ji_qs.ji_state == JOB_STATE_EXITING)) {
@@ -494,7 +494,7 @@ chk_job_request(char *jobid, struct batch_request *preq, int *rc)
 		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
 			pjob->ji_qs.ji_jobid, log_buffer);
 		req_reject(PBSE_BADSTATE, 0, preq);
-		return ((job *)0);
+		return NULL;
 	}
 
 	return (pjob);
@@ -514,7 +514,7 @@ chk_job_request(char *jobid, struct batch_request *preq, int *rc)
  *		an appropriate error event is logged, an error code is passed
  *		back to the requester via function req_reject(), the batch
  *		request structure is handled appropriately, and
- *		value (resc_resv *)0 is returned to the caller.
+ *		value NULL is returned to the caller.
  * @note
  *		Notes: On failure the reply back to the requester will be handled
  *	       for the caller - as is the batch request structure itself.
@@ -529,7 +529,7 @@ chk_job_request(char *jobid, struct batch_request *preq, int *rc)
  *
  * @return	resc_resv *
  * @retval	resc_resv object ptr	: successful
- * @retval	(resc_resv *)0	: failed test/no object
+ * @retval	NULL	: failed test/no object
  */
 
 resc_resv  *
@@ -537,11 +537,11 @@ chk_rescResv_request(char *resvID, struct batch_request *preq)
 {
 	resc_resv	*presv;
 
-	if ((presv = find_resv(resvID)) == (resc_resv *)0) {
+	if ((presv = find_resv(resvID)) == NULL) {
 		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV, LOG_INFO,
 			resvID, msg_unkresvID);
 		req_reject(PBSE_UNKRESVID, 0, preq);
-		return ((resc_resv *)0);
+		return NULL;
 	}
 
 	if (svr_authorize_resvReq(preq, presv) == -1) {
@@ -551,7 +551,7 @@ chk_rescResv_request(char *resvID, struct batch_request *preq)
 		log_event(PBSEVENT_SECURITY, PBS_EVENTCLASS_RESV, LOG_INFO,
 			presv->ri_qs.ri_resvID, log_buffer);
 		req_reject(PBSE_PERM, 0, preq);
-		return ((resc_resv *)0);
+		return NULL;
 	}
 
 	return (presv);
@@ -582,7 +582,7 @@ svr_chk_ownerResv(struct batch_request *preq, resc_resv *presv)
 	/* map user@host to "local" name */
 
 	pu = site_map_user(preq->rq_user, preq->rq_host);
-	if (pu == (char *)0)
+	if (pu == NULL)
 		return (-1);
 	(void)strncpy(rmtuser, pu, PBS_MAXUSER);
 

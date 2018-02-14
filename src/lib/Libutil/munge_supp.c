@@ -161,14 +161,14 @@ pbs_get_munge_auth_data(int fromsvr, char *ebuf, int ebufsz)
 
 	myrealuid = getuid();
 	pwent = getpwuid(myrealuid);
-	if (pwent == (struct passwd *) 0) {
+	if (pwent == NULL) {
 		snprintf(ebuf, ebufsz, "Failed to obtain user-info for uid = %d", myrealuid);
 		pbs_errno = PBSE_SYSTEM;
 		goto err;
 	}
 
 	grp = getgrgid(pwent->pw_gid);
-	if (grp == (struct group *) 0) {
+	if (grp == NULL) {
 		snprintf(ebuf, ebufsz, "Failed to obtain group-info for gid=%d", pwent->pw_gid);
 		pbs_errno = PBSE_SYSTEM;
 		goto err;
@@ -187,7 +187,7 @@ pbs_get_munge_auth_data(int fromsvr, char *ebuf, int ebufsz)
 
 err:
 	free(cred);
-	return (NULL);
+	return NULL;
 }
 
 

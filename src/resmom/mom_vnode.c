@@ -296,7 +296,7 @@ mom_vnlp_report(vnl_t *vnl, char *header)
  *	Add a range of CPUs (an element of the form M or M-N where M and N are
  *	nonnegative integers) to the given mvi.  If any CPUs are already present
  *	in mvp->mvi_cpulist[], they are preserved and their state is unchanged.
- * 
+ *
  * @param[in] mvp - pointer to mom_vninfo_t
  * @param[in] cpurange - cpu range
  *
@@ -315,8 +315,8 @@ add_CPUrange(mom_vninfo_t *mvp, char *cpurange)
 	if ((p = strchr(cpurange, '-')) != NULL) {
 
 		*p = '\0';
-		from = strtoul(cpurange, (char **) NULL, 0);
-		to = strtoul(p + 1, (char **) NULL, 0);
+		from = strtoul(cpurange, NULL, 0);
+		to = strtoul(p + 1, NULL, 0);
 		if (from > to) {
 			sprintf(log_buffer, "chunk %d:  lhs (%u) > rhs (%u)",
 				chunknum, from, to);
@@ -324,7 +324,7 @@ add_CPUrange(mom_vninfo_t *mvp, char *cpurange)
 			return;
 		}
 	} else {
-		from = to = strtoul(cpurange, (char **) NULL, 0);
+		from = to = strtoul(cpurange, NULL, 0);
 		chunknum++;
 	}
 
@@ -392,7 +392,7 @@ cpuindex_free(mom_vninfo_t *mvp, unsigned int cpuindex)
 	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, buf);
 
 	mvp->mvi_cpulist[cpuindex].mvic_flags = MVIC_FREE;
-	mvp->mvi_cpulist[cpuindex].mvic_job = (job *) NULL;
+	mvp->mvi_cpulist[cpuindex].mvic_job = NULL;
 }
 
 /**
@@ -517,7 +517,7 @@ cpunum_inuse(unsigned int cpunum, job *pjob)
  * @param[in] op - enum for resource option
  *
  * @return Void
- * 
+ *
  */
 static void
 resadj(vnl_t *vp, const char *vnid, const char *res, enum res_op op,
@@ -618,7 +618,7 @@ resadj(vnl_t *vp, const char *vnid, const char *res, enum res_op op,
  * @brief
  *	cpunum_outofservice() is a ``context-free'' function that marks a CPU
  *	(which is referred to by its physical CPU number) as being unusable.
- * 
+ *
  * @param[in] cpunum - number of cpu
  *
  * @return Void
@@ -643,7 +643,7 @@ cpunum_outofservice(unsigned int cpunum)
  *	looking for a match.  If taking a CPU out of service, cpu_inuse() must
  *	also adjust the "resources_available.ncpus" for the vnode that contains
  *	the CPU being taken out of service.
- * 
+ *
  * @param[in] cpunum - number of cpu
  * @param[in] pjob - pointer to job structure
  * @param[in] outofserviceflag - flag value to indicate whether cpu out of service
@@ -841,7 +841,7 @@ find_mominfo(const char *vnid)
 {
 	if (cpuctx == NULL) {
 		log_err(PBSE_SYSTEM, __func__, "CPU context not initialized");
-		return ((mominfo_t *) NULL);
+		return NULL;
 	} else
 		return (find_vmapent_byID(cpuctx, vnid));
 
@@ -951,13 +951,13 @@ vn_callback(const char *vnid, char *attr, char *attrval)
  *
  * @return vnode on Success or NULL on failure
  *
- */ 
+ */
 static void *
 new_ctx(void)
 {
 	if (!create_vmap(&cpuctx)) {
 		log_err(PBSE_SYSTEM, __func__, "create_vmap failed");
-		return (NULL);
+		return NULL;
 	} else
 		return (cpuctx);
 }
@@ -965,7 +965,7 @@ new_ctx(void)
 /**
  * @brief
  *	returns pointer to vnode info (mom_vninfo_t).
- * 
+ *
  * @param[in] vnid - vnode id
  * @param[in] ctx - vnode info
  *
@@ -990,7 +990,7 @@ vnid2mominfo(const char *vnid, const void *ctx)
 		assert(mvp != NULL);
 	} else
 		if ((mvp = new_vnid(vnid, (void *)ctx)) == NULL)
-			return (NULL);
+			return NULL;
 
 	return (mvp);
 }
@@ -1018,36 +1018,36 @@ new_vnid(const char *vnid, void *ctx)
 
 	if ((mip = malloc(sizeof(mominfo_t))) == NULL) {
 		log_err(errno, __func__, "malloc mominfo_t");
-		return ((mom_vninfo_t *) NULL);
+		return NULL;
 	}
 	if ((mvp = malloc(sizeof(mom_vninfo_t))) == NULL) {
 		free(mip);
 		log_err(errno, __func__, "malloc vninfo_t");
-		return ((mom_vninfo_t *) NULL);
+		return NULL;
 	}
 	if ((newid = strdup(vnid)) == NULL) {
 		free(mvp);
 		free(mip);
 		log_err(errno, __func__, "strdup vnid");
-		return ((mom_vninfo_t *) NULL);
+		return NULL;
 	}
 
 	strncpy(mip->mi_host, mom_host, sizeof(mip->mi_host));
 	mip->mi_port = pbs_mom_port;
 	mip->mi_rmport = pbs_rm_port;
 	mip->mi_data = mvp;
-	mip->mi_action = (mom_hook_action_t **)0;
+	mip->mi_action = NULL;
 	mip->mi_num_action = 0;
 	mvp->mvi_id = newid;
 	mvp->mvi_ncpus = mvp->mvi_acpus = 0;
-	mvp->mvi_cpulist = (mom_mvic_t *) NULL;
+	mvp->mvi_cpulist = NULL;
 	mvp->mvi_memnum = (unsigned int) -1;	/* uninitialized data marker */
 
 	if (!add_mominfo(ctx, vnid, mip)) {
 		sprintf(log_buffer, "add_mom_data %s failed",
 			vnid);
 		log_err(PBSE_SYSTEM, __func__, log_buffer);
-		return ((mom_vninfo_t *) NULL);
+		return NULL;
 	}
 
 	return (mvp);

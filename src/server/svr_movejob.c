@@ -288,12 +288,12 @@ local_move(job *jobp, struct batch_request *req)
 	if (qp->qu_resvp) {
 
 		job_attr_def[(int)JOB_ATR_reserve_ID].at_decode(pattr,
-			(char *)0, (char *)0, qp->qu_resvp->ri_qs.ri_resvID);
+			NULL, NULL, qp->qu_resvp->ri_qs.ri_resvID);
 		jobp->ji_myResv = qp->qu_resvp;
 	} else {
 
 		job_attr_def[(int)JOB_ATR_reserve_ID].at_decode(pattr,
-			(char *)0, (char *)0, (char*)0);
+			NULL, NULL, NULL);
 	}
 
 	if (server.sv_attr[(int)SRV_ATR_EligibleTimeEnable].at_val.at_long == 1) {
@@ -548,7 +548,7 @@ send_job_exec(job *jobp, pbs_net_t hostaddr, int port, struct batch_request *req
 	for (i = 0; i < (int) JOB_ATR_LAST; i++) {
 		if ((job_attr_def + i)->at_flags & resc_access_perm) {
 			(void)(job_attr_def + i)->at_encode(pattr + i, &attrl,
-				(job_attr_def + i)->at_name, (char *) 0, encode_type,
+				(job_attr_def + i)->at_name, NULL, encode_type,
 				NULL);
 		}
 	}
@@ -563,7 +563,7 @@ send_job_exec(job *jobp, pbs_net_t hostaddr, int port, struct batch_request *req
 	pbs_errno = 0;
 
 	pqjatr = &((svrattrl *) GET_NEXT(attrl))->al_atopl;
-	jobid = PBSD_queuejob(stream, jobp->ji_qs.ji_jobid, destin, pqjatr, (char *) 0, rpp, &msgid);
+	jobid = PBSD_queuejob(stream, jobp->ji_qs.ji_jobid, destin, pqjatr, NULL, rpp, &msgid);
 	free_attrlist(&attrl);
 	if (jobid == NULL)
 		goto send_err;
@@ -1030,7 +1030,7 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 	for (i=0; i < (int)JOB_ATR_LAST; i++) {
 		if ((job_attr_def+i)->at_flags & resc_access_perm) {
 			(void)(job_attr_def+i)->at_encode(pattr+i, &attrl,
-				(job_attr_def+i)->at_name, (char *)0,
+				(job_attr_def+i)->at_name, NULL,
 				encode_type, NULL);
 		}
 	}
@@ -1090,7 +1090,7 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 
 			pqjatr = &((svrattrl *)GET_NEXT(attrl))->al_atopl;
 			if (PBSD_queuejob(con, jobp->ji_qs.ji_jobid, destin,
-				pqjatr, (char *)0, rpp, NULL) == 0) {
+				pqjatr, NULL, rpp, NULL) == 0) {
 				if (pbs_errno == PBSE_JOBEXIST &&
 					move_type == MOVE_TYPE_Exec) {
 					/* already running, mark it so */
@@ -1425,38 +1425,38 @@ small_job_files(job* pjob)
 	if (pjob->ji_script && (strlen(pjob->ji_script) > max_bytes_over_tpp))
 		return 0;
 
-	/* 
+	/*
 	 * If the job is not being rerun, we need not check
 	 * the size of the spool files.
 	 */
 	if (!(pjob->ji_qs.ji_svrflags & JOB_SVFLG_HASRUN))
 		return 1;
-	
+
 	if (*pjob->ji_qs.ji_fileprefix != '\0')
 		have_file_prefix = 1;
 
 	if (have_file_prefix)
-		snprintf(path, MAXPATHLEN, "%s%s%s", path_spool, pjob->ji_qs.ji_fileprefix, JOB_STDOUT_SUFFIX); 
+		snprintf(path, MAXPATHLEN, "%s%s%s", path_spool, pjob->ji_qs.ji_fileprefix, JOB_STDOUT_SUFFIX);
 	else
-		snprintf(path, MAXPATHLEN, "%s%s%s", path_spool, pjob->ji_qs.ji_jobid, JOB_STDOUT_SUFFIX); 
+		snprintf(path, MAXPATHLEN, "%s%s%s", path_spool, pjob->ji_qs.ji_jobid, JOB_STDOUT_SUFFIX);
 	if ((access(path, F_OK) == 0) && !stat(path, &sb))
 		if (sb.st_size > max_bytes_over_tpp)
 			return 0;
 
 	memset(path, 0, sizeof(path));
 	if (have_file_prefix)
-		snprintf(path, MAXPATHLEN, "%s%s%s", path_spool, pjob->ji_qs.ji_fileprefix, JOB_STDERR_SUFFIX); 
+		snprintf(path, MAXPATHLEN, "%s%s%s", path_spool, pjob->ji_qs.ji_fileprefix, JOB_STDERR_SUFFIX);
 	else
-		snprintf(path, MAXPATHLEN, "%s%s%s", path_spool, pjob->ji_qs.ji_jobid, JOB_STDERR_SUFFIX); 
+		snprintf(path, MAXPATHLEN, "%s%s%s", path_spool, pjob->ji_qs.ji_jobid, JOB_STDERR_SUFFIX);
 	if ((access(path, F_OK) == 0) && !stat(path, &sb))
 		if (sb.st_size > max_bytes_over_tpp)
 			return 0;
 
 	memset(path, 0, sizeof(path));
 	if (have_file_prefix)
-		snprintf(path, MAXPATHLEN, "%s%s%s", path_spool, pjob->ji_qs.ji_fileprefix, JOB_CKPT_SUFFIX); 
+		snprintf(path, MAXPATHLEN, "%s%s%s", path_spool, pjob->ji_qs.ji_fileprefix, JOB_CKPT_SUFFIX);
 	else
-		snprintf(path, MAXPATHLEN, "%s%s%s", path_spool, pjob->ji_qs.ji_jobid, JOB_CKPT_SUFFIX); 
+		snprintf(path, MAXPATHLEN, "%s%s%s", path_spool, pjob->ji_qs.ji_jobid, JOB_CKPT_SUFFIX);
 	if ((access(path, F_OK) == 0) && !stat(path, &sb))
 		if (sb.st_size > max_bytes_over_tpp)
 			return 0;

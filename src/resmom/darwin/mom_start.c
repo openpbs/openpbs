@@ -167,7 +167,7 @@ char *set_shell(job *pjob, struct passwd  *pwdp)
 }
 
 /**
- * @brief 
+ * @brief
  * 	scan_for_terminated - scan the list of runnings jobs for a task whose
  *	session id matched that of a terminated child pid.  Mark that
  *	task as Exiting.
@@ -232,7 +232,7 @@ void scan_for_terminated()
 			exiteval = WEXITSTATUS(statloc);
 		else if (WIFSIGNALED(statloc))
 			exiteval = WTERMSIG(statloc) + 10000;
-		else 
+		else
 			exiteval = 1;
 
 		if (pjob == NULL) {
@@ -299,10 +299,10 @@ int open_master(char **rtn_name)
 			pty_name[9] = *pc2;
 			if ((ptc = open(pty_name, O_RDWR | O_NOCTTY, 0)) >= 0) {
 				/* Got a master, fix name to matching slave */
-				pty_name[5] = 't';	
+				pty_name[5] = 't';
 				*rtn_name = pty_name;
 				return (ptc);
-		
+
 			} else if (errno == ENOENT)
 				return (-1);	/* tried all entries, give up */
 		}
@@ -348,5 +348,5 @@ struct sig_tbl sig_tbl[] = {
 	{ "WINCH", SIGWINCH },
 	{ "USR1", SIGUSR1 },
 	{ "USR2", SIGUSR2 },
-	{ (char *)0, -1 }
+	{ NULL, -1 }
 };

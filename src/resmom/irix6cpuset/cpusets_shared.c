@@ -81,7 +81,7 @@ cpusetjobs_create(void)
 	cjptr = (cpusetjobs *)malloc(sizeof(struct cpusetjobs));
 
 	if (cjptr == NULL) {
-		return (NULL);
+		return NULL;
 	}
 
 	cjptr->jobid[0]  = '\0';
@@ -94,7 +94,7 @@ cpusetjobs_create(void)
 
 /**
  * @brief
- *	This add jobs in the order of their arrival. 
+ *	This add jobs in the order of their arrival.
  *
  * @param[in] head - head pointer to cpusetjobs
  * @param[in] jobid - job id
@@ -114,7 +114,7 @@ cpusetjobs_add(cpusetjobs *head, char *jobid, int ttl, int *add_flag)
 	*add_flag = 0;
 
 	if (jobid == NULL)
-		return (NULL);
+		return NULL;
 
 	/* check if already on the list */
 	lastptr = NULL;
@@ -133,7 +133,7 @@ cpusetjobs_add(cpusetjobs *head, char *jobid, int ttl, int *add_flag)
 
 	cjptr = cpusetjobs_create();
 	if (cjptr == NULL) {
-		return (NULL);
+		return NULL;
 	}
 
 	strcpy(cjptr->jobid, jobid);
@@ -171,7 +171,7 @@ cpusetjobs_remove(cpusetjobs *head, char *jobid, int *rem_flag)
 	*rem_flag = 0;
 
 	if (head == NULL || jobid == NULL)
-		return (NULL);
+		return NULL;
 
 	/* check if already on the list */
 	new_head = head;
@@ -282,7 +282,7 @@ cpuset_shared_create(void)
 	csptr = (cpuset_shared *)malloc(sizeof(cpuset_shared));
 
 	if (csptr == NULL) {
-		return (NULL);
+		return NULL;
 	}
 
 	cpuset_shared_unset(csptr);
@@ -292,7 +292,7 @@ cpuset_shared_create(void)
 
 /**
  * @brief
- *	unset the values of shared cpuset 
+ *	unset the values of shared cpuset
  *
  * @param[in] csptr - pointer to cpuset_shared struct
  *
@@ -309,7 +309,7 @@ cpuset_shared_unset(cpuset_shared *csptr)
 	csptr->free_mem = 0;
 	csptr->time_to_live = -1;
 	csptr->numjobs = -1;
-	csptr->jobs = (cpusetjobs *)NULL;
+	csptr->jobs = NULL;
 	csptr->owner[0] = '\0';
 
 }
@@ -322,7 +322,7 @@ cpuset_shared_unset(cpuset_shared *csptr)
  *
  * @return     int
  * @retval	1	Failure
- * @retval	0	success 
+ * @retval	0	success
  *
  */
 
@@ -466,7 +466,7 @@ cpuset_shared_get_owner(cpuset_shared *cs)
 	if (cs) {
 		return (cs->owner);
 	}
-	return (NULL);
+	return NULL;
 }
 
 /**
@@ -518,7 +518,7 @@ cpuset_shared_set_free_mem(cpuset_shared *cs, size_t mem)
 
 /**
  * @brief
- * 	set to maximum end time among jobs that cs owns 
+ * 	set to maximum end time among jobs that cs owns
  *
  * @param[out/in] cs - pointer to cpuset_shared struct
  *
@@ -533,16 +533,16 @@ cpuset_shared_set_time_to_live(cpuset_shared *cs)
 	}
 }
 
-/** 
- * @brief 
- *      set owner value of cs 
+/**
+ * @brief
+ *      set owner value of cs
  *
  * @param[out/in] 	cs - pointer to cpuset_shared struct
  * @param[in] 		owner - owner val
  *
  * @return      void
  *
- */     
+ */
 void
 cpuset_shared_set_owner(cpuset_shared *cs, char *owner)
 {
@@ -554,7 +554,7 @@ cpuset_shared_set_owner(cpuset_shared *cs, char *owner)
 /**
  * @brief
  * 	Everytime a job is added, the time_to_live attribute of cs is automatically
- *	updated, and also the owner is set to the first job in the list. 
+ *	updated, and also the owner is set to the first job in the list.
  *
  * @param[out/in] cs - pointer to cpuset_shared struct
  * @param[in]	  jobid - job id
@@ -580,7 +580,7 @@ cpuset_shared_add_job(cpuset_shared *cs, char *jobid, time_t ttl)
 	cpuset_shared_set_time_to_live(cs);
 }
 
-/** 
+/**
  * @brief
  * 	wrapper function for cpusetjobs_remove
  *

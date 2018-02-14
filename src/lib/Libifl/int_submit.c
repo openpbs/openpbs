@@ -205,7 +205,7 @@ PBSD_rdytocmt(int connect, char *jobid, int rpp, char **msgid)
 
 	if ((rc=encode_DIS_ReqHdr(sock, PBS_BATCH_RdytoCommit, pbs_current_user)) ||
 		(rc = encode_DIS_JobId(sock, jobid))  ||
-		(rc = encode_DIS_ReqExtend(sock, (char *)0))) {
+		(rc = encode_DIS_ReqExtend(sock, NULL))) {
 		if (!rpp) {
 			connection[connect].ch_errtxt = strdup(dis_emsg[rc]);
 			if (connection[connect].ch_errtxt == NULL)
@@ -267,7 +267,7 @@ PBSD_commit(int connect, char *jobid, int rpp, char **msgid)
 
 	if ((rc = encode_DIS_ReqHdr(sock, PBS_BATCH_Commit, pbs_current_user)) ||
 		(rc = encode_DIS_JobId(sock, jobid)) ||
-		(rc = encode_DIS_ReqExtend(sock, (char *)0))) {
+		(rc = encode_DIS_ReqExtend(sock, NULL))) {
 		if (!rpp) {
 			connection[connect].ch_errtxt = strdup(dis_emsg[rc]);
 			if (connection[connect].ch_errtxt == NULL)
@@ -305,7 +305,7 @@ PBSD_commit(int connect, char *jobid, int rpp, char **msgid)
  * @param[in] seq - file chunk sequence number
  * @param[in] buf - file chunk
  * @param[in] len - length of chunk
- * @param[in] jobid - ob id (for types 1 and 2 only) 
+ * @param[in] jobid - ob id (for types 1 and 2 only)
  * @param[in] which - standard file type (enum)
  * @param[in] rpp - indication for rpp to use or not
  * @param[in] msgid - message id
@@ -317,7 +317,7 @@ PBSD_commit(int connect, char *jobid, int rpp, char **msgid)
  */
 
 static int
-PBSD_scbuf(int c, int reqtype, int seq, char *buf, int len, char *jobid, 
+PBSD_scbuf(int c, int reqtype, int seq, char *buf, int len, char *jobid,
 		enum job_file which, int rpp, char **msgid)
 {
 	struct batch_reply   *reply;
@@ -333,12 +333,12 @@ PBSD_scbuf(int c, int reqtype, int seq, char *buf, int len, char *jobid,
 			return rc;
 	}
 
-	if (jobid == (char *)0)
+	if (jobid == NULL)
 		jobid = "";	/* use null string for null pointer */
 
 	if ((rc = encode_DIS_ReqHdr(sock, reqtype, pbs_current_user)) ||
 		(rc = encode_DIS_JobFile(sock, seq, buf, len, jobid, which)) ||
-		(rc = encode_DIS_ReqExtend(sock, (char *)0))) {
+		(rc = encode_DIS_ReqExtend(sock, NULL))) {
 		if (!rpp) {
 			connection[c].ch_errtxt = strdup(dis_emsg[rc]);
 			if (connection[c].ch_errtxt == NULL)
@@ -400,7 +400,7 @@ PBSD_jscript(int c, char *script_file, int rpp, char **msgid)
 	i = 0;
 	cc = read(fd, s_buf, SCRIPT_CHUNK_Z);
 	while ((cc > 0) &&
-		((rc = PBSD_scbuf(c, PBS_BATCH_jobscript, i, s_buf, cc, (char *)0, JScript, rpp, msgid)) == 0)) {
+		((rc = PBSD_scbuf(c, PBS_BATCH_jobscript, i, s_buf, cc, NULL, JScript, rpp, msgid)) == 0)) {
 		i++;
 		cc = read(fd, s_buf, SCRIPT_CHUNK_Z);
 	}
@@ -447,7 +447,7 @@ PBSD_jscript_direct(int c, char *script, int rpp, char **msgid)
 	len = strlen(script);
 	do {
 		tosend = (len > SCRIPT_CHUNK_Z) ? SCRIPT_CHUNK_Z : len;
-		rc = PBSD_scbuf(c, PBS_BATCH_jobscript, i, p, tosend, (char *)0, JScript, rpp, msgid);
+		rc = PBSD_scbuf(c, PBS_BATCH_jobscript, i, p, tosend, NULL, JScript, rpp, msgid);
 		i++;
 		p += tosend;
 		len -= tosend;
@@ -460,7 +460,7 @@ PBSD_jscript_direct(int c, char *script, int rpp, char **msgid)
 }
 
 
-/** 
+/**
  * @brief
  *	-PBS_jobfile.c
  *	The Job File function used to move files related to
@@ -471,7 +471,7 @@ PBSD_jscript_direct(int c, char *script, int rpp, char **msgid)
  * @param[in] c - connection handle
  * @param[in] reqtype - request type
  * @param[in] path - file path
- * @param[in] jobid - job id 
+ * @param[in] jobid - job id
  * @param[in] which - standard file type (enum)
  * @param[in] rpp - indication for rpp to use or not
  * @param[in] msgid - message id
@@ -483,7 +483,7 @@ PBSD_jscript_direct(int c, char *script, int rpp, char **msgid)
  */
 
 int
-PBSD_jobfile(int c, int req_type, char *path, char *jobid, 
+PBSD_jobfile(int c, int req_type, char *path, char *jobid,
 		enum job_file which, int rpp, char **msgid)
 {
 	int   i;
@@ -520,7 +520,7 @@ PBSD_jobfile(int c, int req_type, char *path, char *jobid,
  *
  * @param[in] c - socket descriptor
  * @param[in] jobid - job identifier
- * @param[in] destin - destination name 
+ * @param[in] destin - destination name
  * @param[in] attrib - pointer to attribute list
  * @param[in] extend - extention string for req encode
  * @param[in] rpp - indication for rpp protocol
@@ -535,7 +535,7 @@ char *
 PBSD_queuejob(int connect, char *jobid, char *destin, struct attropl *attrib, char *extend, int rpp, char **msgid)
 {
 	struct batch_reply *reply;
-	char  *return_jobid = (char *)NULL;
+	char  *return_jobid = NULL;
 	int    rc;
 	int    sock;
 

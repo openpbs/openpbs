@@ -230,7 +230,7 @@ get_proc_mem()
 
 
 	if ((fp = fopen("/proc/meminfo", "r")) == NULL)
-		return (NULL);
+		return NULL;
 
 	fscanf(fp, "%*[^\n]%*c");       /* lose the text header */;
 	fscanf(fp, "%*s %u %u %u %*[^\n]%*c", &m_tot, &m_use, &m_free);
@@ -353,7 +353,7 @@ end_proc()
  * @param[in] sid - session id
  *
  * @return      Bool
- * @retval      TRUE    
+ * @retval      TRUE
  * @retval      FALSE   Error
  *
  */
@@ -462,7 +462,7 @@ cput_sum(job *pjob)
  *              space consumed by all current processes within the job.
  *
  */
-static unsigned long 
+static unsigned long
 mem_sum(job *pjob)
 {
 	int			i;
@@ -494,9 +494,9 @@ mem_sum(job *pjob)
  * @return      ulong
  * @retval      new resident set size   Success
  * @retval      old resident set size   Error
- *      
+ *
  */
-static unsigned long 
+static unsigned long
 resi_sum(job *pjob)
 {
 	int		 i;
@@ -522,7 +522,7 @@ resi_sum(job *pjob)
  *	Set nodes to be inuse by a given job or return error.
  *
  * @param[in] jp - job pointer
- * @param[in] num - 
+ * @param[in] num -
  */
 int
 alloc_nodes(job *jp, int num)
@@ -713,7 +713,7 @@ mom_set_limits(job *pjob, int set_mode)
  *
  * @return      int
  * @retval      TRUE    if polling is necessary
- * @retval      FALSE   otherwise. 
+ * @retval      FALSE   otherwise.
  *
  * NOTE: Actual polling is done using the mom_over_limit machine-dependent function.
  *
@@ -866,7 +866,7 @@ mom_get_sample()
  * @return int
  * @retval PBSE_NONE    for success.
  */
-int 
+int
 mom_set_use(job *pjob)
 {
 	int			i;
@@ -1011,17 +1011,17 @@ mom_set_use(job *pjob)
 /**
  * @brief
  *      bld_ptree - establish links (parent, child, and sibling) for processes
- *      in a given session.     
- *      
+ *      in a given session.
+ *
  *      The PBS_PROC_* macros are defined in resmom/.../mom_mach.h
  *      to refer to the correct machine dependent table.
- *              
+ *
  * @param[in] sid - session id
  *
  * @return      int
  * @retval      number of processes in session  Success
- *       
- */      
+ *
+ */
 int
 bld_ptree(pid_t sid)
 {
@@ -1136,7 +1136,7 @@ kill_task(pbs_task *ptask, int sig, int dir)
  * @brief
  *      Kill a task session.
  *      Call with the task pointer and a signal number.
- *      
+ *
  * @param[in] sesid - session id
  * @param[in] sig - signal number
  * @param[in] dir - indication how to kill
@@ -1908,7 +1908,7 @@ allpids(void)
 /**
  * @brief
  *       return amount of total memory on system in KB as numeric string
- *    
+ *
  * @return      string
  * @retval      total memory            Success
  * @retval      NULl                    Error
@@ -2038,14 +2038,14 @@ ncpus(struct rm_attribute *attrib)
 /**
  * @brief
  *      returns the total physical memory
- *      
+ *
  * @param[in] attrib - pointer to rm_attribute structure
- *      
+ *
  * @return      string
  * @retval      tot physical memory     Success
  * @retval      NULL                    Error
- *              
- */             
+ *
+ */
 char *
 physmem(struct rm_attribute *attrib)
 {
@@ -2302,7 +2302,7 @@ get_la(double *rv)
 u_long
 gracetime(u_long secs)
 {
-	time_t	now = time((time_t *)NULL);
+	time_t	now = time(NULL);
 
 	if (secs > now)		/* time is in the future */
 		return (secs - now);

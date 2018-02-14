@@ -323,9 +323,9 @@ svr_disconnect_with_wait_option(int handle, int wait)
 			/* error sending disconnect, just close now */
 			close_conn(connection[handle].ch_socket);
 		}
-		if (connection[handle].ch_errtxt != (char *)0) {
+		if (connection[handle].ch_errtxt != NULL) {
 			free(connection[handle].ch_errtxt);
-			connection[handle].ch_errtxt = (char *)0;
+			connection[handle].ch_errtxt = NULL;
 		}
 		connection[handle].ch_errno = 0;
 		connection[handle].ch_inuse = 0;
@@ -397,9 +397,9 @@ svr_force_disconnect(int handle)
 			return;
 
 		close_conn(connection[handle].ch_socket);
-		if (connection[handle].ch_errtxt != (char *)0) {
+		if (connection[handle].ch_errtxt != NULL) {
 			free(connection[handle].ch_errtxt);
-			connection[handle].ch_errtxt = (char *)0;
+			connection[handle].ch_errtxt = NULL;
 		}
 		connection[handle].ch_errno = 0;
 		connection[handle].ch_inuse = 0;

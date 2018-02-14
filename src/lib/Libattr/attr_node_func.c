@@ -74,13 +74,13 @@ static struct node_state {
 	{INUSE_UNRESOLVABLE, ND_unresolvable},
 	{INUSE_OFFLINE_BY_MOM, ND_offline_by_mom},
 	{INUSE_MAINTENANCE, ND_maintenance},
-	{0,		(char *)0} };
+	{0,		NULL} };
 
 static struct node_type {
 	short	 bit;
 	char	*name;
 } nt[] = {	{NTYPE_PBS,	ND_pbs},
-	{0,		(char *)0} };
+	{0,		NULL} };
 
 /**
  * @file	attr_node_func.c
@@ -338,7 +338,7 @@ encode_state(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int 
 	}
 
 	pal = attrlist_create(aname, rname, (int)strlen(state_str)+1);
-	if (pal == (svrattrl *)0)
+	if (pal == NULL)
 		return -(PBSE_SYSTEM);
 
 	(void)strcpy(pal->al_value, state_str);
@@ -460,7 +460,7 @@ encode_ntype(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int 
 	}
 
 	pal = attrlist_create(aname, rname, (int)strlen(ntype_str)+1);
-	if (pal == (svrattrl *)0)
+	if (pal == NULL)
 		return -(PBSE_SYSTEM);
 
 	(void)strcpy(pal->al_value, ntype_str);
@@ -488,7 +488,7 @@ encode_ntype(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int 
  * @param[out]  rname - resource's name (null if none)
  * @param[out]  mode - mode code, unused here
  * @param[out]  rtnl - the return value, a pointer to svrattrl
- * 
+ *
  * @return	int
  * @retval	<0	an error encountered; value is negative of an error code
  * @retval	 0	ok, encode happened and svrattrl created and linked in,
@@ -563,7 +563,7 @@ encode_jobs(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int m
 
 
 	pal = attrlist_create(aname, rname, (int)strlen(job_str) + 1  );
-	if (pal == (svrattrl *)0) {
+	if (pal == NULL) {
 		free(job_str);
 		return -(PBSE_SYSTEM);
 	}
@@ -647,7 +647,7 @@ encode_resvs(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, int 
 
 
 	pal = attrlist_create(aname, rname, (int)strlen(resv_str) + 1  );
-	if (pal == (svrattrl *)0) {
+	if (pal == NULL) {
 		free(resv_str);
 		return -(PBSE_SYSTEM);
 	}
@@ -702,7 +702,7 @@ encode_sharing(attribute *pattr, pbs_list_head *ph, char *aname, char *rname, in
 		return -(PBSE_INTERNAL);
 
 	pal = attrlist_create(aname, rname, (int)strlen(vn_str)+1);
-	if (pal == (svrattrl *)0)
+	if (pal == NULL)
 		return -(PBSE_SYSTEM);
 
 	(void)strcpy(pal->al_value, vn_str);
@@ -750,7 +750,7 @@ decode_state(attribute *pattr, char *name, char *rescn, char *val)
 	int	slen;
 
 
-	if (val == (char *)0)
+	if (val == NULL)
 		return (PBSE_BADNDATVAL);
 
 	/*
@@ -768,7 +768,7 @@ decode_state(attribute *pattr, char *name, char *rescn, char *val)
 
 	strcpy(sbufp, val);
 
-	if ((str = parse_comma_string(sbufp)) == (char *)0) {
+	if ((str = parse_comma_string(sbufp)) == NULL) {
 		if (slen >= 512)
 			free(sbufp);
 		return rc;
@@ -786,7 +786,7 @@ decode_state(attribute *pattr, char *name, char *rescn, char *val)
 	/*last call left off.  The initial comma separated string   */
 	/*copy pointed to by sbufp is modified with each func call  */
 
-	while ((str = parse_comma_string((char *)0)) != 0) {
+	while ((str = parse_comma_string(NULL)) != 0) {
 		if ((rc = set_nodeflag(str, &flag)) != 0)
 			break;
 
@@ -827,7 +827,7 @@ decode_state(attribute *pattr, char *name, char *rescn, char *val)
  * @param[in] name - attribute name
  * @param[in] rescn - resource name, unused here
  * @param[in] val - attribute value
- * 
+ *
  * @return	int
  * @retval	0	Success
  */
@@ -863,7 +863,7 @@ decode_sharing(attribute *pattr, char *name, char *rescn, char *val)
 	int	rc = 0;		/*return code; 0==success*/
 
 
-	if (val == (char *)0)
+	if (val == NULL)
 		rc = (PBSE_BADNDATVAL);
 	else {
 		vns = (int) str_to_vnode_sharing(val);
@@ -1095,7 +1095,7 @@ node_state(attribute *new, void *pnode, int actmode)
  *
  * @param[out] new - derive ntype into this attribute
  * @param[in] pnode - pointer to a pbsnode struct
- * @param[in] actmode - action mode; "NEW" or "ALTER" 
+ * @param[in] actmode - action mode; "NEW" or "ALTER"
  *
  * @return      int
  * @retval      0                       success

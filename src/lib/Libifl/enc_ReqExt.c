@@ -72,7 +72,7 @@ encode_DIS_ReqExtend(int sock, char *extend)
 {
 	int rc;
 
-	if ((extend == (char *)0) || (*extend == '\0')) {
+	if ((extend == NULL) || (*extend == '\0')) {
 		rc = diswui(sock, 0);
 	} else {
 		if ((rc = diswui(sock, 1)) == 0) {

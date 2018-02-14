@@ -34,7 +34,7 @@
  *
  *		The parent_connection_port is required unless -t (for test) is given.
  */
-/* 
+/*
  * Copyright (C) 1994-2018 Altair Engineering, Inc.
  * For more information, contact Altair at www.altair.com.
  *
@@ -196,7 +196,7 @@ main(int argc, char *argv[], char *envp[])
 	connection[1].ch_inuse = 1;
 	connection[1].ch_errno = 0;
 	connection[1].ch_socket = sock;
-	connection[1].ch_errtxt = (char *)0;
+	connection[1].ch_errtxt = NULL;
 	DIS_tcp_setup(sock);
 
 	/* setup connection level thread context */
@@ -223,7 +223,7 @@ main(int argc, char *argv[], char *envp[])
 
 	myrealuid = getuid();
 	pwent = getpwuid(myrealuid);
-	if (pwent == (struct passwd *)0)
+	if (pwent == NULL)
 		return (3);
 
 	/* now get the parent's client-side port */
@@ -247,7 +247,7 @@ main(int argc, char *argv[], char *envp[])
 
 		if (encode_DIS_ReqHdr(sock, PBS_BATCH_AuthenResvPort, pwent->pw_name) ||
 			diswui(sock, parentport) ||
-			encode_DIS_ReqExtend(sock, (char *)0)) {
+			encode_DIS_ReqExtend(sock, NULL)) {
 			return (2);
 		}
 		if (DIS_tcp_wflush(sock)) {

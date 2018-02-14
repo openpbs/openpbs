@@ -63,7 +63,7 @@
  *		caller.   It is assumed that the header fields (protocol type,
  *		protocol version, request type, and user name) have been decoded.
  *
- * @par	Data items are:\n	
+ * @par	Data items are:\n
  *		signed int	resource handle\n
  *		unsigned int	count of resource queries\n
  *	followed by that number of:\n
@@ -101,7 +101,7 @@ decode_DIS_Rescl(int sock, struct batch_request *preq)
 			return PBSE_RMSYSTEM;
 
 		for (i=0; i<ct; i++)
-			*(ppc + i) = (char *)0;
+			*(ppc + i) = NULL;
 
 		preq->rq_ind.rq_rescq.rq_list = ppc;
 		for (i=0; i<ct; i++) {

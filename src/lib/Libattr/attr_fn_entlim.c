@@ -317,13 +317,13 @@ int
 decode_entlim(struct attribute *patr, char *name, char *rescn, char *val)
 {
 
-	if (patr == (attribute *)0)
+	if (patr == NULL)
 		return (PBSE_INTERNAL);
-	if (rescn != (char *)0)
+	if (rescn != NULL)
 		return (PBSE_INTERNAL);
 
 
-	return (internal_decode_entlim(patr, name, (char *)0, (struct resource_def *)0, val));
+	return (internal_decode_entlim(patr, name, NULL, NULL, val));
 }
 
 /**
@@ -351,12 +351,12 @@ decode_entlim_res(struct attribute *patr, char *name, char *rescn, char *val)
 {
 	resource_def	*prdef;
 
-	if (patr == (attribute *)0)
+	if (patr == NULL)
 		return (PBSE_INTERNAL);
-	if (rescn == (char *)0)
+	if (rescn == NULL)
 		return (PBSE_UNKRESC);
 	prdef = find_resc_def(svr_resc_def, rescn, svr_resc_size);
-	if (prdef == (resource_def *)0) {
+	if (prdef == NULL) {
 		/*
 		 * didn't find resource with matching name
 		 * return PBSE_UNKRESC
@@ -456,7 +456,7 @@ encode_entlim_db(attribute *attr, pbs_list_head *phead, char *atname, char *rsna
 	/* the call to entlim_get_next with a null key will allocate */
 	/* space for a max sized key.  It needs to be freed.	     */
 
-	pkey = entlim_get_next((pbs_entlim_key_t *) 0, ctx);
+	pkey = entlim_get_next(NULL, ctx);
 	while (pkey) {
 
 		rescn[0] = '\0';
@@ -657,7 +657,7 @@ encode_entlim(attribute *attr, pbs_list_head *phead, char *atname, char *rsname,
 	/* the call to entlim_get_next with a null key will allocate */
 	/* space for a max sized key.  It needs to be freed.	     */
 
-	pkey = entlim_get_next((pbs_entlim_key_t *)0, ctx);
+	pkey = entlim_get_next(NULL, ctx);
 
 	rescn_array = malloc(array_size*sizeof(char *));
 	if (rescn_array == NULL)
@@ -720,7 +720,7 @@ encode_entlim(attribute *attr, pbs_list_head *phead, char *atname, char *rsname,
 						if (strcmp(rescn, rescn_array[i]) == 0) {
 							op = INCR;
 							break;
-						}	
+						}
 					}
 					if (op == SET) {
 						/* Doubling the size of array */
@@ -736,7 +736,7 @@ encode_entlim(attribute *attr, pbs_list_head *phead, char *atname, char *rsname,
 								free (rescn_array);
 								return (PBSE_SYSTEM);
 							}
-							
+
 						}
 						rescn_array[index] = strdup(rescn);
 						if (rescn_array[index] == NULL) {

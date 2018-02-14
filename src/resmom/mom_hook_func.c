@@ -163,7 +163,7 @@ fprintf_job_struct(FILE *fp, job *pjob)
 	pattr = pjob->ji_wattr;
 	for (i=0; i < (int)JOB_ATR_LAST; i++) {
 		(void)(job_attr_def+i)->at_encode(pattr+i, &phead,
-			(job_attr_def+i)->at_name, (char *)0,
+			(job_attr_def+i)->at_name, NULL,
 			ATR_ENCODE_MOM, NULL);
 	}
 	attrl_fixlink(&phead);
@@ -303,7 +303,7 @@ fprint_joblist(FILE *fp, char *head_str, pbs_list_head *joblist)
 		pattr = pjob->ji_wattr;
 		for (i=0; i < (int)JOB_ATR_LAST; i++) {
 			(void)(job_attr_def+i)->at_encode(pattr+i, &phead,
-				(job_attr_def+i)->at_name, (char *)0,
+				(job_attr_def+i)->at_name, NULL,
 				ATR_ENCODE_MOM, NULL);
 		}
 		attrl_fixlink(&phead);
@@ -397,11 +397,11 @@ add_natural_vnode_info(vnl_t **p_vnlp)
 	}
 
 	if (vn_addvnr(*p_vnlp, mom_short_name, "resources_available.arch",
-		arch((struct rm_attribute *)NULL), 0, 0, NULL) == -1) {
+		arch(NULL), 0, 0, NULL) == -1) {
 		snprintf(log_buffer, sizeof(log_buffer),
 			"Failed to add '%s %s=%s' to vnode list",
 			mom_host, "arch",
-			arch((struct rm_attribute *)NULL));
+			arch(NULL));
 		log_err(-1, __func__, log_buffer);
 		return;
 
@@ -1608,7 +1608,7 @@ int
 python_script_alloc(const char *script_path, struct python_script **py_script)
 {
 
-	struct python_script *tmp_py_script = (struct python_script *) NULL;
+	struct python_script *tmp_py_script = NULL;
 	size_t nbytes = sizeof(struct python_script);
 	struct stat sbuf;
 
@@ -1628,7 +1628,7 @@ python_script_alloc(const char *script_path, struct python_script **py_script)
 		free(*py_script);
 	}
 
-	*py_script = (struct python_script *) NULL; /* init, to be safe */
+	*py_script = NULL; /* init, to be safe */
 
 	if (!(tmp_py_script = (struct python_script *) malloc(nbytes))) {
 		log_err(errno, __func__, "failed to malloc struct python_script");
@@ -1671,7 +1671,7 @@ void
 run_periodic_hook_bg(hook *phook)
 {
 	int rc;
-	mom_hook_input_t hook_input;	
+	mom_hook_input_t hook_input;
 
 	if (phook == NULL) {
 		log_err(-1, "run_periodic_hook_bg", "bad input parameter");
@@ -2664,7 +2664,7 @@ get_hook_results_end:
  *	If 'reboot_cmd' is NULL, then use the default reboot
  *	cmd line - see REBOOT_CMD macro.
  *
- * @param[in] reboot_cmd char pointer which hold cmd to rebbot host 
+ * @param[in] reboot_cmd char pointer which hold cmd to rebbot host
  *
  * @return Void
  *
@@ -2955,7 +2955,7 @@ send_hook_fail_action_error:
  *	location:
  *
  *	"<location_directory>/hook_<pjob's jobid>.out"
- *	
+ *
  *
  * @param[in]	hook_event - calling event.
  * @param[in]	hook_name - name of hook that executed
@@ -3569,13 +3569,13 @@ cleanup_hooks_in_path_spool(struct work_task *ptask)
 
 	memset(hook_file, '\0', MAXPATHLEN+1);
 	dir = opendir(path_spool);
-	if (dir == (DIR *)0) {
+	if (dir == NULL) {
 		sprintf(log_buffer, "could not opendir %s",
 			path_hooks_workdir);
 		log_err(errno, __func__, log_buffer);
 		return;
 	}
-	while (errno = 0, (pdirent = readdir(dir)) != (struct dirent *)0) {
+	while (errno = 0, (pdirent = readdir(dir)) != NULL) {
 
 		if (pdirent->d_name[0] == '.') {
 			if (pdirent->d_name[1] == '\0' ||

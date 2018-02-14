@@ -2592,7 +2592,7 @@ which_suffixset(MPUG *pmpug)
 
 
 	if (pmpug->path == NULL)
-		return (NULL);
+		return NULL;
 	else if (strcmp("server_priv/jobs", pmpug->path) == 0)
 		return (vld_job);
 	else if (strcmp("server_priv/users", pmpug->path) == 0)
@@ -2636,7 +2636,7 @@ which_suffixset(MPUG *pmpug)
 	else if (strcmp("lib/python/python2.5/xml/sax", pmpug->path) == 0)
 		return (vld_python);
 	else
-		return (NULL);
+		return NULL;
 }
 #endif /* 0 */
 
@@ -2789,7 +2789,7 @@ chk_entries(MPUG *pmpug, MPUG **knwn_set)
 	if ((dirpath == NULL) || !(pmpug->req_modes & S_IFDIR))
 		return;
 
-	if ((dir = opendir(dirpath)) == (DIR *)0) {
+	if ((dir = opendir(dirpath)) == NULL) {
 
 		snprintf(msg, sizeof(msg), "Can't open directory %s for inspection\n", dirpath);
 		put_msg_in_table(NULL, SRC_none, MSG_oth, msg);
@@ -2809,7 +2809,7 @@ chk_entries(MPUG *pmpug, MPUG **knwn_set)
 
 	pbs_dirtype(&dirtype, pmpug);
 
-	while (errno = 0, (pdirent = readdir(dir)) != (struct dirent *)0) {
+	while (errno = 0, (pdirent = readdir(dir)) != NULL) {
 
 		/*
 		 * Ignore non-relevant directory entries

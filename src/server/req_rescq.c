@@ -163,7 +163,7 @@ cnvrt_qmove(resc_resv  *presv)
 	}
 
 	pjob = find_job(presv->ri_wattr[(int)RESV_ATR_convert].at_val.at_str);
-	if (pjob != (job *)0)
+	if (pjob != NULL)
 		q_job_id = pjob->ji_qs.ji_jobid;
 	else {
 		(void)resv_purge(presv);
@@ -266,8 +266,8 @@ assign_resv_resc(resc_resv *presv, char *vnodes)
 
 		(void)resv_attr_def[(int)RESV_ATR_resv_nodes].at_decode(
 			&presv->ri_wattr[(int)RESV_ATR_resv_nodes],
-			(char *)0,
-			(char *)0,
+			NULL,
+			NULL,
 			node_str);
 
 		presv->ri_modified = 1;
@@ -300,7 +300,7 @@ req_confirmresv(struct batch_request *preq)
 	char		buf[PBS_MAXQRESVNAME+PBS_MAXHOSTNAME+256] = {0}; /* FQDN resvID+text */
 	time_t		newstart = 0;
 	attribute	*petime = NULL;
-	resc_resv	*presv = (resc_resv*)0;
+	resc_resv	*presv = NULL;
 	int		rc = 0;
 	int		state = 0;
 	int		sub = 0;
@@ -323,7 +323,7 @@ req_confirmresv(struct batch_request *preq)
 	}
 
 	presv = find_resv(preq->rq_ind.rq_run.rq_jid);
-	if (presv == (resc_resv *)0) {
+	if (presv == NULL) {
 		req_reject(PBSE_UNKRESVID, 0, preq);
 		return;
 	}
@@ -468,7 +468,7 @@ req_confirmresv(struct batch_request *preq)
 		}
 
 		execvnodes = strdup(preq->rq_ind.rq_run.rq_destin);
-		if (execvnodes == (char *) 0) {
+		if (execvnodes == NULL) {
 			req_reject(PBSE_SYSTEM, 0, preq);
 			return;
 		}
@@ -483,14 +483,14 @@ req_confirmresv(struct batch_request *preq)
 		 * which causes the confirmation message to be rejected
 		 */
 		short_xc = unroll_execvnode_seq(execvnodes, &tofree);
-		if (short_xc == (char **) 0) {
+		if (short_xc == NULL) {
 			free(execvnodes);
 			req_reject(PBSE_SYSTEM, 0, preq);
 			return;
 		}
 		/* The execvnode of the soonest (i.e., next) occurrence */
 		next_execvnode = strdup(short_xc[0]);
-		if (next_execvnode == (char *)0) {
+		if (next_execvnode == NULL) {
 			free(short_xc);
 			free_execvnode_seq(tofree);
 			free(execvnodes);
@@ -541,15 +541,15 @@ req_confirmresv(struct batch_request *preq)
 
 				(void) resv_attr_def[(int)RESV_ATR_resv_execvnodes].at_decode(
 					&presv->ri_wattr[(int)RESV_ATR_resv_execvnodes],
-					(char *)0,
-					(char *)0,
+					NULL,
+					NULL,
 					preq->rq_ind.rq_run.rq_destin);
 			}
 		}
 	}
 	else { /* Advance reservation */
 		next_execvnode = strdup(preq->rq_ind.rq_run.rq_destin);
-		if (next_execvnode == (char *) 0) {
+		if (next_execvnode == NULL) {
 			req_reject(PBSE_SYSTEM, 0, preq);
 			return;
 		}
@@ -641,7 +641,7 @@ req_confirmresv(struct batch_request *preq)
 		}
 
 		rc = reply_text(presv->ri_brp, PBSE_NONE, buf);
-		presv->ri_brp = (struct batch_request *)0;
+		presv->ri_brp = NULL;
 	}
 
 	svr_mailownerResv(presv, MAIL_CONFIRM, MAIL_NORMAL, log_buffer);

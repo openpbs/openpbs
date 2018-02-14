@@ -382,7 +382,7 @@ done:
  * @param[in] preq - pointer to batch_request structure
  *
  * @return 	HANDLE
- * @retval	
+ * @retval
  */
 #ifdef WIN32
 static HANDLE
@@ -541,7 +541,7 @@ struct batch_request *preq;
 		/* Need to look up the uid, gid, and home directory */
 
 		if ((pwdp = getpwnam(rqcpf->rq_user)) ==
-			(struct passwd *)0) {
+			NULL) {
 			frk_err(PBSE_BADUSER, preq); /* no return */
 		}
 		useruid = pwdp->pw_uid;
@@ -551,7 +551,7 @@ struct batch_request *preq;
 			usergid = pwdp->pw_gid;	/* default to login group */
 		} else {
 			if ((grpp = getgrnam(rqcpf->rq_group)) ==
-				(struct group *)0) {
+				NULL) {
 				frk_err(PBSE_BADUSER, preq); /* no return */
 			}
 			usergid = grpp->gr_gid;
@@ -598,7 +598,7 @@ struct batch_request *preq;
 					frk_err(PBSE_SYSTEM, preq); /* no return */
 				}
 				cred_pipe = fds[1];
-				
+
 				sprintf(buf, "%d", fds[0]);
 				setenv("PBS_PWPIPE", buf, 1);
 				fcntl(cred_pipe, F_SETFD, 1);	/* close on exec */
@@ -768,7 +768,7 @@ return_file(job *pjob, enum job_file which, int sock)
 	/* a block of the file and send it on its way         */
 
 	prq = alloc_br(PBS_BATCH_MvJobFile);
-	if (prq == (struct batch_request *)0) {
+	if (prq == NULL) {
 		close(fds);
 		return (-1);
 	}
@@ -788,7 +788,7 @@ return_file(job *pjob, enum job_file which, int sock)
 			pbs_current_user)) ||
 			(rc = encode_DIS_JobFile(sock, seq++, buf, amt,
 			pjob->ji_qs.ji_jobid, which)) ||
-			(rc = encode_DIS_ReqExtend(sock, (char *)0))) {
+			(rc = encode_DIS_ReqExtend(sock, NULL))) {
 			break;
 		}
 
@@ -942,7 +942,7 @@ req_deletejob(struct batch_request *preq)
  *
  * @param[in] batch_request structure for the job
  *
- * @return Void 
+ * @return Void
  *
  */
 
@@ -952,7 +952,7 @@ req_holdjob(struct batch_request *preq)
 	job	*pjob;
 
 	pjob = find_job(preq->rq_ind.rq_hold.rq_orig.rq_objname);
-	if (pjob == (job *)0) {
+	if (pjob == NULL) {
 		req_reject(PBSE_UNKJOBID, 0, preq);
 		return;
 	}
@@ -1189,7 +1189,7 @@ req_py_spawn(struct batch_request *preq)
 	ptask->ti_qs.ti_myvnode = TM_ERROR_NODE;
 	ptask->ti_qs.ti_parenttask = TM_INIT_TASK;
 	(void)task_save(ptask);
-	
+
 	/* start the task with no demux option */
 	ret = start_process(ptask, argv, preq->rq_ind.rq_py_spawn.rq_envp, true);
 	free(argv);
@@ -1243,17 +1243,17 @@ req_modifyjob(struct batch_request *preq)
 	svrattrl	*psatl;
 #endif
 	int		 rc;
-	int		 recreate_nodes = 0;	
+	int		 recreate_nodes = 0;
 	char		*new_peh = NULL;
 
 	pjob = find_job(preq->rq_ind.rq_modify.rq_objname);
-	if (pjob == (job *)0) {
+	if (pjob == NULL) {
 		req_reject(PBSE_UNKJOBID, 0, preq);
 		return;
 	}
 
 	plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_modify.rq_attr);
-	if (plist == (svrattrl *)0) {	/* nothing to do */
+	if (plist == NULL) {	/* nothing to do */
 		reply_ack(preq);
 		return;
 	}
@@ -1586,7 +1586,7 @@ post_resume(job *pjob, int err)
 		pjob->ji_flags &= ~MOM_SISTER_ERR;
 }
 
-#if MOM_ALPS 
+#if MOM_ALPS
 
 /*
  * Try to minimize latency of suspend/resume. Wait half a second before
@@ -1597,7 +1597,7 @@ post_resume(job *pjob, int err)
 #define ALPS_SWITCH_SLEEP_USECS_SHORT (100000)
 
 /**
- * On a Cray, make the requested switch, and confirm it 
+ * On a Cray, make the requested switch, and confirm it
  * @param[in]	pjob	job of interest
  * @param[in]	which	SUSPEND/RESUME
  * @retval	PBSE_NONE	no error
@@ -1605,7 +1605,7 @@ post_resume(job *pjob, int err)
  */
 static int
 do_cray_susres_conf (job *pjob, int which)
-{ 
+{
 	/**
 	 * On a Cray, we need to send an ALPS SWITCH request to move the jobs
 	 * to a suspend or resume state.
@@ -1620,9 +1620,9 @@ do_cray_susres_conf (job *pjob, int which)
 	int	first_status;
 	int	first_status_was_empty = 0;
 	int	first_sleep;
-	
+
 	/* Check if there is an ALPS reservation to act on.
-	 * If not, just return PBSE_NONE.  
+	 * If not, just return PBSE_NONE.
 	 */
 	if (pjob->ji_extended.ji_ext.ji_reservation <= 0) {
 		return PBSE_NONE;
@@ -1647,20 +1647,20 @@ do_cray_susres_conf (job *pjob, int which)
 			  pjob->ji_qs.ji_jobid, log_buffer);
 		return (PBSE_ALPS_SWITCH_ERR);
 	}
-	
+
 	/* The call to ALPS SWITCH was successful
-	 * Now we have to poll to confirm the SWITCH happens 
+	 * Now we have to poll to confirm the SWITCH happens
 	 * We will assume that the ALPS suspend happens "relatively quickly"
-	 * as per the Cray ALPS folks, and we will poll for a successful 
+	 * as per the Cray ALPS folks, and we will poll for a successful
 	 * suspend state here.  If the confirmation takes a while, then PBS
 	 * may need to somehow poll for the confirmation without tying up
 	 * the mom.
 	 *
 	 * Keep trying in this process (don't fork a child) until the SWITCH
-	 * completes, or a hard error is returned, or 
+	 * completes, or a hard error is returned, or
 	 * alps_confirm_switch_timeout is reached.
-	 * alps_confirm_switch_timeout is set by default to 
-	 * ALPS_CONF_SWITCH_TIMEOUT 
+	 * alps_confirm_switch_timeout is set by default to
+	 * ALPS_CONF_SWITCH_TIMEOUT
 	 * NOTE:  The MOM, server and scheduler are blocked while we poll
 	 * ALPS and wait for the SWITCH.
 	 */
@@ -1676,19 +1676,19 @@ do_cray_susres_conf (job *pjob, int which)
 		if (rc == 2) {
 			/* we got a response of "EMPTY" */
 			if (first_status) {
-				/* 
+				/*
 				 * Alps may report EMPTY reservation for the first
 				 * time we query it. So for the first time we
 				 * need to poll for alps_confirm_empty_timeout
-				 * time in hopes of letting the Cray race 
-				 * condition work itself out.  Once we hit the 
+				 * time in hopes of letting the Cray race
+				 * condition work itself out.  Once we hit the
 				 * timeout we assume that there are no ALPS
 				 * claims (i.e. apruns) on the reservation and
 				 * the suspend can proceed.
 				 */
 				timeout_val = alps_confirm_empty_timeout;
 				first_status_was_empty = 1;
-			} 
+			}
 			if (!first_status_was_empty) {
 				/* The first status response wasn't EMPTY and
 				 * the status is now EMPTY.  According to
@@ -1699,7 +1699,7 @@ do_cray_susres_conf (job *pjob, int which)
 			}
 		} else {
 			/* Reset the timeout_val if we get anything besides
-			 * "EMPTY" 
+			 * "EMPTY"
 			 */
 			timeout_val = alps_confirm_switch_timeout;
 		}
@@ -1725,7 +1725,7 @@ do_cray_susres_conf (job *pjob, int which)
 			"%ld seconds of waiting for a status of EMPTY "
 			"to change.  Proceeding as if the SWITCH "
 			"succeeded.", i, total_time);
-		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, 
+		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB,
 			LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
 		return (PBSE_NONE);
 	} else if (rc < 0) {
@@ -1773,7 +1773,7 @@ do_susres(job *pjob, int which)
 			LOG_ERR, "do_susres", "The job information is NULL");
 		return (PBSE_SYSTEM);
 	}
-		
+
 
 #if     MOM_BGL
 	return (PBSE_NOSUP);     /* don't support suspend/resume as */
@@ -1802,7 +1802,7 @@ do_susres(job *pjob, int which)
 	}
 
 	/* Continue on through the code.  Let the signal get sent to the job */
-		
+
 #endif /* MOM_ALPS */
 
 	for (ptask = (pbs_task *)GET_NEXT(pjob->ji_tasks);
@@ -1835,7 +1835,7 @@ do_susres(job *pjob, int which)
 	}
 
 #if MOM_ALPS
-	/* 
+	/*
 	 * We're trying to resume, we already sent the signal to the processes
 	 * now we tell ALPS to resume the ALPS reservation
 	 */
@@ -1890,7 +1890,7 @@ local_supres(job *pjob, int which, struct batch_request *preq)
  * 	susp_resum - the suspend/resume function
  *
  * @param[in] pjob - pointer to job
- * @param[in] which - SUSPEND/RESUME 
+ * @param[in] which - SUSPEND/RESUME
  * @param[in] preq - pointer to batch_request structure
  *
  * @return 	Void
@@ -1972,7 +1972,7 @@ susp_resum(job *pjob, int which, struct batch_request *preq)
  *
  * @param[in] pjob - pointer to job
  * @param[in] err - exit value
- * 
+ *
  * @return 	Void
  *
  */
@@ -2643,8 +2643,8 @@ post_rerunjob(struct work_task *ptask)
  * @brief
  *	request to rerun job.
  *
- * @param[in] preq - pointer to batch_request structure 
- * 
+ * @param[in] preq - pointer to batch_request structure
+ *
  * @return 	Void
  *
  */
@@ -2661,7 +2661,7 @@ req_rerunjob(struct batch_request *preq)
 	struct work_task *wtask = NULL;
 
 	pjob = find_job(preq->rq_ind.rq_rerun);
-	if (pjob == (job *)0) {
+	if (pjob == NULL) {
 		req_reject(PBSE_UNKJOBID, 0, preq);
 		return;
 	}
@@ -2714,8 +2714,8 @@ req_rerunjob(struct batch_request *preq)
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_REQUEST, LOG_WARNING,
 			"req_rerun", "no contact with the server");
 #ifdef WIN32
-		/* TPP streams cannot be inherited. 
-		 * For Unix, we create a child process, 
+		/* TPP streams cannot be inherited.
+		 * For Unix, we create a child process,
 		 * But for Windows, we don't.
 		 * So, we need to reject the request here itself.
 		 */
@@ -2728,8 +2728,8 @@ req_rerunjob(struct batch_request *preq)
 		if (((rc = return_file(pjob, StdOut, sock)) != 0) ||
 			((rc = return_file(pjob, StdErr, sock)) != 0))
 #ifdef WIN32
-		/* TPP streams cannot be inherited. 
-		 * For Unix, we create a child process, 
+		/* TPP streams cannot be inherited.
+		 * For Unix, we create a child process,
 		 * But for Windows, we don't.
 		 * So, we need to reject/ack the request here itself.
 		 */
@@ -2789,7 +2789,7 @@ post_cpyfile(struct work_task *pwt)
 	if (cpyinfo->jobid == NULL)
 		return;
 	jobid = cpyinfo->jobid;
-	
+
 	(void)snprintf(log_buffer, sizeof(log_buffer), "%s: entered %s", __func__, jobid);
 	DBPRT(("%s\n", log_buffer))
 	log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_DEBUG, jobid, log_buffer);
@@ -2840,7 +2840,7 @@ post_cpyfile(struct work_task *pwt)
 		default:
 			(void)snprintf(log_buffer, sizeof(log_buffer), "file copy failed for job %s with error %d", jobid, ecode);
 			log_err(PBSE_NOCOPYFILE, __func__, log_buffer);
-			
+
 			if (pjob) {
 				/*
 				* child that was doing file copies had major error
@@ -2848,7 +2848,7 @@ post_cpyfile(struct work_task *pwt)
 				*/
 				send_obit(pjob, 0);
 			}
-			
+
 			(void)reply_text(preq, PBSE_NOCOPYFILE, log_buffer);
 			break;
 	}
@@ -2993,7 +2993,7 @@ req_cpyfile(struct batch_request *preq)
 	} else {
 		/*
 		 * stage out will have the pjob already set, and the
-		 * home directory should have also been set. 
+		 * home directory should have also been set.
 		 * Find the pbs_jobdir based off the user home info
 		 * stored in the pjob
 		 */
@@ -3019,7 +3019,7 @@ req_cpyfile(struct batch_request *preq)
 			req_reject(PBSE_MOMREJECT, 0, preq);
 			return;
 		}
-		
+
 		/*
 		 * remove enironment variables PBS_JOBDIR and TMPDIR created
 		 * by "mkjobdir" since they are not used in this function
@@ -3062,7 +3062,7 @@ req_cpyfile(struct batch_request *preq)
 #endif
 	/* win_popen() doesn't launch process if current directory is a mapped path is user session */
 	current_dir[0] = '\0';
-	_getcwd(current_dir, MAX_PATH+1);	
+	_getcwd(current_dir, MAX_PATH+1);
 	if ((pjob != NULL) && (pjob->ji_user != NULL) && impersonate_user(pjob->ji_user->pw_userlogin) == 0) {
 			snprintf(log_buffer, sizeof(log_buffer) - 1, "req_cpyfile: failed to impersonate user %s error=%d",
 				pjob->ji_user->pw_name, GetLastError());
@@ -3102,7 +3102,7 @@ req_cpyfile(struct batch_request *preq)
 		req_reject(PBSE_MOMREJECT, 0, preq);
 		return;
 	}
-	
+
 	cpyinfo->ptask = ptask;
 	append_link(&mom_copyreqs_list, &cpyinfo->al_link, cpyinfo);
 
@@ -3683,8 +3683,8 @@ struct batch_request *preq;
  *
  * @return	PBSerrorcode
  * @retval	0		no error
- * @retval	!0		error 
- *		
+ * @retval	!0		error
+ *
  */
 
 int
@@ -3736,7 +3736,7 @@ mom_checkpoint_job(job *pjob, int abort)
 
 	/* Change to user's home to pick up .cpr */
 #ifdef	WIN32
-	if ((cwdname = getcwd((char *)NULL, _MAX_PATH+2)) != NULL) {
+	if ((cwdname = getcwd(NULL, _MAX_PATH+2)) != NULL) {
 		if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) &&
 			(strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str, "PRIVATE") ==0)) {
 			/* "sandbox=PRIVATE" mode is enabled, so restart job in PBS_JOBDIR */
@@ -3753,7 +3753,7 @@ mom_checkpoint_job(job *pjob, int abort)
 		}
 	}
 #else
-	if ((cwdname = getcwd((char *)NULL, PATH_MAX+2)) != NULL) {
+	if ((cwdname = getcwd(NULL, PATH_MAX+2)) != NULL) {
 		if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) &&
 			(strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0)) {
 			/* "sandbox=PRIVATE" mode is enabled, so restart job in PBS_JOBDIR */
@@ -4224,7 +4224,7 @@ local_checkpoint(job *pjob,
  * @return 	int
  * @retval	0 	success
  * @retval	!0	Error
- *	
+ *
  */
 int
 start_checkpoint(job *pjob,
@@ -4315,7 +4315,7 @@ mom_restart_job(job *pjob)
 
 	/* Change to user's home or PBS_JOBDIR to pick up .cpr */
 #ifdef	WIN32
-	if ((cwdname = getcwd((char *)NULL, _MAX_PATH+2)) != NULL) {
+	if ((cwdname = getcwd(NULL, _MAX_PATH+2)) != NULL) {
 		if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) &&
 			(strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0)) {
 			/* "sandbox=PRIVATE" mode is enabled, so restart job in PBS_JOBDIR */
@@ -4332,7 +4332,7 @@ mom_restart_job(job *pjob)
 		}
 	}
 #else
-	if ((cwdname = getcwd((char *)NULL, PATH_MAX+2)) != NULL) {
+	if ((cwdname = getcwd(NULL, PATH_MAX+2)) != NULL) {
 		if ((pjob->ji_wattr[(int)JOB_ATR_sandbox].at_flags & ATR_VFLAG_SET) &&
 			(strcasecmp(pjob->ji_wattr[JOB_ATR_sandbox].at_val.at_str, "PRIVATE") == 0)) {
 			/* "sandbox=PRIVATE" mode is enabled, so restart job in PBS_JOBDIR */
@@ -4498,9 +4498,9 @@ post_restart(job *pjob, int ev)
 				ptask->ti_qs.ti_status = TI_STATE_RUNNING;
 				/*
 				 * KLUDGE
-				 * The sid for the task is saved as a negative value in 
-				 * scan_for_exiting() when it goes into DEAD state. We 
-				 * need to keep it for the restarted task if a new sid 
+				 * The sid for the task is saved as a negative value in
+				 * scan_for_exiting() when it goes into DEAD state. We
+				 * need to keep it for the restarted task if a new sid
 				 * has not been generated.
 				 */
 				if (ptask->ti_qs.ti_sid < 0) {
@@ -4630,7 +4630,7 @@ local_restart(job *pjob,
 }
 
 /**
- * @brief 
+ * @brief
  *	Parse a resourcedef file and return an array of resource names
  *
  * @param[in] path - Path to a resourcedef file
@@ -4705,7 +4705,7 @@ get_resources_from_file(char *path)
 }
 
 /**
- * @brief 
+ * @brief
  *	Returns an array of names of resources that were deleted based on
  * 	the comparison between an 'old' (r1) and 'new' (r2) set of names.
  *
@@ -4756,7 +4756,7 @@ get_deleted_resources(char **r1, char **r2)
 }
 
 /**
- * @brief 
+ * @brief
  *	Update vnodes when resource definitions have changed
  *
  * @param deleted_resources - Array of deleted resources
@@ -5050,7 +5050,7 @@ req_copy_hookfile(struct batch_request *preq) /* ptr to the decoded request   */
 			}
 		}
 	}
-	/* obtain new checksums after file is closed/flushed */ 
+	/* obtain new checksums after file is closed/flushed */
 	if (is_hook_cntrl_file) {
 		if (phook != NULL) {
 			phook->hook_control_checksum = crc_file(namebuf);

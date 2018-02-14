@@ -117,16 +117,16 @@ decode_resc(struct attribute *patr, char *name, char *rescn, char *val)
 	int		 rc = 0;
 	int		 rv;
 
-	if (patr == (attribute *)0)
+	if (patr == NULL)
 		return (PBSE_INTERNAL);
-	if (rescn == (char *)0)
+	if (rescn == NULL)
 		return (PBSE_UNKRESC);
 	if (!(patr->at_flags & ATR_VFLAG_SET))
 		CLEAR_HEAD(patr->at_val.at_list);
 
 
 	prdef = find_resc_def(svr_resc_def, rescn, svr_resc_size);
-	if (prdef == (resource_def *)0) {
+	if (prdef == NULL) {
 		/*
 		 * didn't find resource with matching name, use unknown;
 		 * but return PBSE_UNKRESC incase caller dosn`t wish to
@@ -137,8 +137,8 @@ decode_resc(struct attribute *patr, char *name, char *rescn, char *val)
 	}
 
 	prsc = find_resc_entry(patr, prdef);
-	if (prsc == (resource *)0) 	/* no current resource entry, add it */
-		if ((prsc = add_resource_entry(patr, prdef)) == (resource *)0) {
+	if (prsc == NULL) 	/* no current resource entry, add it */
+		if ((prsc = add_resource_entry(patr, prdef)) == NULL) {
 			return (PBSE_SYSTEM);
 		}
 
@@ -219,7 +219,7 @@ encode_resc(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, i
 	/* ok now do each separate resource */
 
 	for (prsc = (resource *)GET_NEXT(attr->at_val.at_list);
-			prsc != (resource *)0;
+			prsc != NULL;
 			prsc = (resource *)GET_NEXT(prsc->rs_link)) {
 
 		/*
@@ -300,17 +300,17 @@ set_resc(struct attribute *old, struct attribute *new, enum batch_op op)
 	assert(old && new);
 
 	newresc = (resource *)GET_NEXT(new->at_val.at_list);
-	while (newresc != (resource *)0) {
+	while (newresc != NULL) {
 
 		local_op = op;
 
 		/* search for old that has same definition as new */
 
 		oldresc = find_resc_entry(old, newresc->rs_defin);
-		if (oldresc == (resource *)0) {
+		if (oldresc == NULL) {
 			/* add new resource to list */
 			oldresc = add_resource_entry(old, newresc->rs_defin);
-			if (oldresc == (resource *)0) {
+			if (oldresc == NULL) {
 				log_err(-1, "set_resc", "Unable to malloc space");
 				return (PBSE_SYSTEM);
 			}
@@ -389,14 +389,14 @@ comp_resc(struct attribute *attr, struct attribute *with)
 	comp_resc_lt = 0;
 	comp_resc_nc = 0;
 
-	if ((attr == (attribute *)0) || (with == (attribute *)0))
+	if ((attr == NULL) || (with == NULL))
 		return (-1);
 
 	wiresc = (resource *)GET_NEXT(with->at_val.at_list);
-	while (wiresc != (resource *)0) {
+	while (wiresc != NULL) {
 		if (wiresc->rs_value.at_flags & ATR_VFLAG_SET) {
 			atresc = find_resc_entry(attr, wiresc->rs_defin);
-			if (atresc != (resource *)0) {
+			if (atresc != NULL) {
 				if (atresc->rs_value.at_flags & ATR_VFLAG_SET) {
 					if ((rc=atresc->rs_defin->rs_comp(&atresc->rs_value, 				      &wiresc->rs_value)) > 0)
 						comp_resc_gt++;
@@ -435,7 +435,7 @@ free_resc(attribute *pattr)
 	resource *pr;
 
 	pr = (resource *)GET_NEXT(pattr->at_val.at_list);
-	while (pr != (resource *)0) {
+	while (pr != NULL) {
 		next = (resource *)GET_NEXT(pr->rs_link);
 		delete_link(&pr->rs_link);
 		if (pr->rs_value.at_flags & ATR_VFLAG_INDIRECT)
@@ -454,10 +454,10 @@ free_resc(attribute *pattr)
  * 	find_resc_def - find the resource_def structure for a resource with
  *	a given name
  *
- * @param[in] rscdf - address of array of resource_def structs 
+ * @param[in] rscdf - address of array of resource_def structs
  * @param[in] name - name of resource
  * @param[in] limit - number of members in resource_def array
- * 
+ *
  * @return	pointer to structure
  * @retval	pointer to resource_def structure	Success
  * @retval	NULL					Error
@@ -468,18 +468,18 @@ resource_def *
 find_resc_def(resource_def *rscdf, char *name, int limit)
 {
 	if (rscdf == NULL || name == NULL)
-		return ((resource_def *)0);
+		return NULL;
 
 	while (limit--) {
 		if (strcasecmp(rscdf->rs_name, name) == 0)
 			return (rscdf);
 		rscdf = rscdf->rs_next;
 	}
-	return ((resource_def *)0);
+	return NULL;
 }
 
 /**
- * @brief 
+ * @brief
  *	Determines if a resource is a PBS built-in or user custom
  *
  * @param[in] rscdf - address of array of resource_def structs
@@ -539,7 +539,7 @@ find_resc_entry(attribute *pattr, resource_def *rscdf)
 	resource *pr;
 
 	pr = (resource *)GET_NEXT(pattr->at_val.at_list);
-	while (pr != (resource *)0) {
+	while (pr != NULL) {
 		if (pr->rs_defin == rscdf)
 			break;
 		pr = (resource *)GET_NEXT(pr->rs_link);
@@ -571,7 +571,7 @@ add_resource_entry(attribute *pattr, resource_def *prdef)
 	resource	*pr;
 
 	pr = (resource *)GET_NEXT(pattr->at_val.at_list);
-	while (pr != (resource *)0) {
+	while (pr != NULL) {
 		i = strcasecmp(pr->rs_defin->rs_name, prdef->rs_name);
 		if (i == 0)	/* found a matching entry */
 			return (pr);
@@ -580,9 +580,9 @@ add_resource_entry(attribute *pattr, resource_def *prdef)
 		pr = (resource *)GET_NEXT(pr->rs_link);
 	}
 	new = (resource *)malloc(sizeof(resource));
-	if (new == (resource *)0) {
+	if (new == NULL) {
 		log_err(-1, "add_resource_entry", "unable to malloc space");
-		return ((resource *)0);
+		return NULL;
 	}
 	CLEAR_LINK(new->rs_link);
 	new->rs_defin = prdef;
@@ -592,7 +592,7 @@ add_resource_entry(attribute *pattr, resource_def *prdef)
 	new->rs_value.at_priv_encoded = 0;
 	prdef->rs_free(&new->rs_value);
 
-	if (pr != (resource *)0) {
+	if (pr != NULL) {
 		insert_link(&pr->rs_link, &new->rs_link, new, LINK_INSET_BEFORE);
 	} else {
 		append_link(&pattr->at_val.at_list, &new->rs_link, new);

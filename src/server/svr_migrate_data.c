@@ -393,16 +393,16 @@ svr_migrate_data_from_fs(void)
 	had = server.sv_qs.sv_numque;
 	server.sv_qs.sv_numque = 0;
 	dir = opendir(".");
-	if (dir == (DIR *) 0) {
+	if (dir == NULL) {
 		fprintf(stderr, "%s\n", msg_init_noqueues);
 		(void) pbs_db_end_trx(svr_db_conn, PBS_DB_ROLLBACK);
 		chdir(origdir);
 		return (-1);
 	}
-	while (errno = 0, (pdirent = readdir(dir)) != (struct dirent *) 0) {
+	while (errno = 0, (pdirent = readdir(dir)) != NULL) {
 		if (chk_save_file(pdirent->d_name) == 0) {
 			if ((pque = que_recov_fs(pdirent->d_name)) !=
-				(pbs_queue *) 0) {
+				NULL) {
 				/* que_recov increments sv_numque */
 				fprintf(stderr, msg_init_recovque,
 					pque->qu_qs.qu_name);
@@ -455,18 +455,18 @@ svr_migrate_data_from_fs(void)
 	}
 
 	dir = opendir(".");
-	if (dir == (DIR *) 0) {
+	if (dir == NULL) {
 		fprintf(stderr, "%s\n", msg_init_noresvs);
 		(void) pbs_db_end_trx(svr_db_conn, PBS_DB_ROLLBACK);
 		chdir(origdir);
 		return (-1);
 	}
-	while (errno = 0, (pdirent = readdir(dir)) != (struct dirent *) 0) {
+	while (errno = 0, (pdirent = readdir(dir)) != NULL) {
 		if (chk_save_file(pdirent->d_name) == 0) {
 			presv = (resc_resv *)
 				job_or_resv_recov_fs(pdirent->d_name,
 				RESC_RESV_OBJECT);
-			if (presv != (resc_resv *) 0) {
+			if (presv != NULL) {
 				if (resv_save_db(presv, SAVERESV_NEW) != 0) {
 					fprintf(stderr,
 						"Could not save resv info for resv %s\n",
@@ -505,7 +505,7 @@ svr_migrate_data_from_fs(void)
 	server.sv_qs.sv_numjobs = 0;
 	recovered = 0;
 	dir = opendir(".");
-	if (dir == (DIR *) 0) {
+	if (dir == NULL) {
 		if (had == 0) {
 			fprintf(stderr, "%s", msg_init_nojobs);
 		} else {
@@ -515,7 +515,7 @@ svr_migrate_data_from_fs(void)
 	} else {
 		/* Now, for each job found ... */
 		while (errno = 0,
-			(pdirent = readdir(dir)) != (struct dirent *) 0) {
+			(pdirent = readdir(dir)) != NULL) {
 			if (chk_save_file(pdirent->d_name) != 0)
 				continue;
 
@@ -708,7 +708,7 @@ rm_migrated_files(char *dirname)
 		"svrdb",
 		"scheddb",
 		"jobs",
-		(char *) 0 /* keep as last entry */
+		NULL /* keep as last entry */
 	};
 
 	dir = opendir(dirname);

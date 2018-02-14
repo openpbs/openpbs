@@ -69,8 +69,8 @@ extern char *pbs_python_daemon_name;
 void
 pbs_python_write_object_to_log(PyObject *obj, char *pre, int severity)
 {
-	PyObject *py_tmp_str = (PyObject *) NULL;
-	char *obj_str = (char *) NULL;
+	PyObject *py_tmp_str = NULL;
+	char *obj_str = NULL;
 
 	if (!(py_tmp_str = PyObject_Str(obj))) { goto ERROR_EXIT; }
 	if (!(obj_str = PyString_AsString(py_tmp_str))) { goto ERROR_EXIT; }
@@ -112,9 +112,9 @@ ERROR_EXIT:
 int
 pbs_python_modify_syspath(const char *dirname, int pos)
 {
-	PyObject *sys_mod_obj = (PyObject *) NULL; /* 'sys' module  */
-	PyObject *sys_mod_path_attr = (PyObject *) NULL; /* sys.path */
-	PyObject *pystr_dirname = (PyObject *) NULL;
+	PyObject *sys_mod_obj = NULL; /* 'sys' module  */
+	PyObject *sys_mod_path_attr = NULL; /* sys.path */
+	PyObject *pystr_dirname = NULL;
 
 	if (!dirname) {
 		log_err(PBSE_INTERNAL, __func__, "passed NULL pointer to dirname argument!!");
@@ -224,10 +224,10 @@ ERROR_EXIT:
 void
 pbs_python_write_error_to_log(const char *emsg)
 {
-	PyObject *exc_type = (PyObject *)NULL;      /* NEW refrence, please DECREF */
-	PyObject *exc_value = (PyObject *)NULL;     /* NEW refrence, please DECREF */
-	PyObject *exc_traceback = (PyObject *)NULL; /* NEW refrence, please DECREF */
-	PyObject *exc_string = (PyObject *)NULL;    /* the exception message to be written to pbs log */
+	PyObject *exc_type = NULL;      /* NEW refrence, please DECREF */
+	PyObject *exc_value = NULL;     /* NEW refrence, please DECREF */
+	PyObject *exc_traceback = NULL; /* NEW refrence, please DECREF */
+	PyObject *exc_string = NULL;    /* the exception message to be written to pbs log */
 
 	/* get the exception */
 	if (!PyErr_Occurred()) {
@@ -305,7 +305,7 @@ pbs_python_object_set_attr_string_value(PyObject *obj,
 	const char *key,
 	const char *value)
 {
-	PyObject *tmp_py_str = (PyObject *)NULL;
+	PyObject *tmp_py_str = NULL;
 
 	int rv = -1; /* default failure */
 
@@ -384,7 +384,7 @@ pbs_python_object_set_attr_integral_value(PyObject *obj,
 /**
  * @brief
  *      pbs_python_object_set_attr_string_value
- *      Current PBS API does not have an easy interface to get a C integral value of 
+ *      Current PBS API does not have an easy interface to get a C integral value of
  *      a object attribute. Hence, a lot of boilerplate code is needed to just get a integral
  *      value, hence this routine.
  *
@@ -400,7 +400,7 @@ int
 pbs_python_object_get_attr_integral_value(PyObject *obj, const char *key)
 {
 	int 		rv = -1; /* default failure */
-	PyObject 	*py_int = (PyObject *)NULL;
+	PyObject 	*py_int = NULL;
 	int 		retval;
 
 	if (!key) { /* Uh-of failed */
@@ -436,7 +436,7 @@ pbs_python_object_get_attr_integral_value(PyObject *obj, const char *key)
  * 	Returns a string representation of 'obj' in a fixed memory area that must
  * 	not be freed. This never returns NULL.
  *
- * @par Note: 
+ * @par Note:
  *	next call of this function would overwrite this fixed memory area
  * 	so probably best to use the result immediately, or strdup() it.
  *
@@ -503,7 +503,7 @@ char *
 pbs_python_object_get_attr_string_value(PyObject *obj, const char *name)
 {
 	char *attrval_str = NULL;
-	PyObject *py_attrval = (PyObject *)NULL;
+	PyObject *py_attrval = NULL;
 
 	if (!name) {
 		log_err(PBSE_INTERNAL, __func__, "No value for name");
@@ -592,7 +592,7 @@ pbs_python_dict_set_item_string_value(PyObject *dict,
 char *
 pbs_python_list_get_item_string_value(PyObject *list,  int index)
 {
-	PyObject *py_item = (PyObject *)NULL;
+	PyObject *py_item = NULL;
 	char	*ret_str = NULL;
 
 	if (!PyList_Check(list)) {
@@ -665,8 +665,8 @@ pbs_python_dict_set_item_integral_value(PyObject *dict,
 PyObject *
 pbs_python_import_name(const char *module_name, const char *fromname)
 {
-	PyObject *py_mod_obj = (PyObject *) NULL;
-	PyObject *py_fromname_obj = (PyObject *) NULL;
+	PyObject *py_mod_obj = NULL;
+	PyObject *py_fromname_obj = NULL;
 
 	py_mod_obj = PyImport_ImportModule(module_name);           /* fetch module */
 	if (py_mod_obj == NULL) {
@@ -685,7 +685,7 @@ ERROR_EXIT:
 	pbs_python_write_error_to_log(__func__);
 	if (py_mod_obj)
 		Py_CLEAR(py_mod_obj);
-	return (PyObject *) NULL;
+	return NULL;
 }
 
 
@@ -753,7 +753,7 @@ pbsv1mod_meth_logmsg(PyObject *self, PyObject *args, PyObject *kwds)
 	int   loglevel;
 	int   severity = -1;
 	int   eventtype = -1;
-	char *emsg     = (char *) NULL;
+	char *emsg     = NULL;
 	int  emsg_len = 0;
 
 	/* The use of "s#" below is to allow embedded NULLs, to guarantee */
@@ -836,7 +836,7 @@ pbsv1mod_meth_logjobmsg(PyObject *self, PyObject *args, PyObject *kwds)
 	static char *kwlist[] = {"jobid", "message" , NULL};
 
 	char  *jobid = NULL;
-	char  *msg     = (char *) NULL;
+	char  *msg     = NULL;
 	int   msg_len = 0;
 
 	/* The use of "s#" below is to allow embedded NULLs, to guarantee */

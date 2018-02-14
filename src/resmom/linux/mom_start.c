@@ -217,7 +217,7 @@ int			mems_nbits;	/* max size of a memory bitmask */
  * @par
  *   	This code was taken from make_cpuset and put in an externally
  *   	available function for use by the Cray project.
- *    
+ *
  */
 enum rlplace_value
 getplacesharing(job *pjob)
@@ -294,7 +294,7 @@ getvnodesharing(mominfo_t *mip)
  * @return string
  * @retval setname(name)
  *
- */ 
+ */
 char *
 newsetname(job *pjob, char *prefix, size_t prelen)
 {
@@ -353,7 +353,7 @@ newsetname(job *pjob, char *prefix, size_t prelen)
  * @param[in] pjob - pointer to job structure
  *
  * @return 	string
- * @retval 	cpuset name	SUCCESS	
+ * @retval 	cpuset name	SUCCESS
  * @retval 	NULL		FAILURE
  *
  */
@@ -401,7 +401,7 @@ int			*cpuignore = NULL;
  * @param[in] recover - indiaction flag for recovery
  *
  * @return Void
- * 
+ *
  */
 void
 #if	(CPUSET_VERSION < 4)
@@ -830,11 +830,11 @@ make_cpuset(job *pjob)
 			return qname;
 		else {
 			free(qname);
-			qname = newsetname(pjob, (char *) NULL, 0);
+			qname = newsetname(pjob, NULL, 0);
 		}
 #endif	/* CPUSET_VERSION < 4 */
 	} else
-		qname = newsetname(pjob, (char *) NULL, 0);
+		qname = newsetname(pjob, NULL, 0);
 
 	/*
 	 *	The hnodent with index pjob->ji_nodeid contains a list of
@@ -1593,13 +1593,13 @@ done:
  * 	in each of the three possible cases (found, not found, bogus arguments).
  * 	The caller chooses to log or ignore the content of log_buffer.
  *
- * 
+ *
  * @param[in]	handle	valid handle from call to dlopen
  * @param[in]	plnam	pointer to the name of the library (NULL acceptable)
  * @param[in]	psnam	pointer to the name of the symbol
  * @param[out]	psp	where to return the symbol pointer if found
  *
- * @return	int 
+ * @return	int
  * @retval	1      success, with symbol pointer stored to *psp
  * @retval 	0      failure, and *psp unmodified
  * @retval	-1      bad input to this function
@@ -2145,7 +2145,7 @@ new_cpuset(job *pjob)
 
 /**
  * @brief
- * 	attaches cpu set 
+ * 	attaches cpu set
  *
  * @param[in] pjob - pointer to job structure
  * @param[in] sjr  - pointer to startjob_rtn structure
@@ -2313,7 +2313,7 @@ set_globid(job *pjob, struct startjob_rtn *sjr)
 /**
  * @brief
  * 	set_mach_vars - setup machine dependent environment variables
- * 
+ *
  * @param[in] pjob - pointer to job structure
  * @param[in] vtab - pointer to var_table structure
  *
@@ -2352,7 +2352,7 @@ set_mach_vars(job *pjob, struct var_table *vtab)
  * @return 	string
  * @retval 	shellname	Success
  *
- */ 
+ */
 char *
 set_shell(job *pjob, struct passwd *pwdp)
 {
@@ -2648,7 +2648,7 @@ struct sig_tbl sig_tbl[] = {
 	{ "WINCH", SIGWINCH },
 	{ "USR1", SIGUSR1 },
 	{ "USR2", SIGUSR2 },
-	{(char *)0, -1 }
+	{NULL, -1 }
 };
 
 /**

@@ -109,7 +109,7 @@ static struct pid {
  * @retval	NULL		error
  *
  */
- 
+
 FILE *
 pbs_popen(const char *command, const char *type)
 {
@@ -129,15 +129,15 @@ pbs_popen(const char *command, const char *type)
 	} else  {
 		twoway = 0;
 		if ((*type != 'r' && *type != 'w') || type[1])
-			return (NULL);
+			return NULL;
 	}
 	if (pipe(pdes) < 0)
-		return (NULL);
+		return NULL;
 
 	if ((cur = malloc(sizeof(struct pid))) == NULL) {
 		(void)close(pdes[0]);
 		(void)close(pdes[1]);
-		return (NULL);
+		return NULL;
 	}
 
 	argv[0] = "sh";
@@ -150,7 +150,7 @@ pbs_popen(const char *command, const char *type)
 			(void)close(pdes[0]);
 			(void)close(pdes[1]);
 			free(cur);
-			return (NULL);
+			return NULL;
 			/* NOTREACHED */
 		case 0:				/* Child. */
 			/* create a new session */

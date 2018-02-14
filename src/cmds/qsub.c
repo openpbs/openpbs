@@ -368,7 +368,7 @@ static char	*tmpdir = NULL;
  *	Function used to log port forwarding messages.
  *
  * @param[in] msg - error message to be logged
- * 
+ *
  * @return Void
  *
  */
@@ -538,7 +538,7 @@ expand_varlist(char *varlist)
 			strcat(v_value1, vn);
 			strcat(v_value1, "=");
 
-			if (copy_env_value(v_value1, ev, 1) == (char *)0) {
+			if (copy_env_value(v_value1, ev, 1) == NULL) {
 				fprintf(stderr,
 					"qsub: cannot send environment with the job\n");
 				goto expand_varlist_err;
@@ -549,7 +549,7 @@ expand_varlist(char *varlist)
 				strcat(v_value1, ",");
 			strcat(v_value1, vn);
 			strcat(v_value1, "=");
-			if (copy_env_value(v_value1, vv, 0) == (char *)0) {
+			if (copy_env_value(v_value1, vv, 0) == NULL) {
 				fprintf(stderr,
 					"qsub: cannot send environment with the job\n");
 				goto expand_varlist_err;
@@ -641,7 +641,7 @@ x11_get_authstring(void)
 	if (p == NULL) {
 		fprintf(stderr, "qsub: Failed to get xauth data "
 			"(check $DISPLAY variable)\n");
-		return (NULL);
+		return NULL;
 	}
 
 	/* Try to get Xauthority information for the display. */
@@ -659,7 +659,7 @@ x11_get_authstring(void)
 			xauth_err_redirection);
 		if (ret >= sizeof(line)) {
 			fprintf(stderr, " qsub: line overflow\n");
-			return (NULL);
+			return NULL;
 		}
 	} else {
 		ret = snprintf(line, sizeof(line), "%s list %.255s %s",
@@ -668,7 +668,7 @@ x11_get_authstring(void)
 			xauth_err_redirection);
 		if (ret >= sizeof(line)) {
 			fprintf(stderr, " qsub: line overflow\n");
-			return (NULL);
+			return NULL;
 		}
 	}
 	strncpy(command, line, strlen(line) - X11_MSG_OFFSET);
@@ -712,13 +712,13 @@ x11_get_authstring(void)
 		 */
 		if (pclose(f) != 0) {
 			fprintf(stderr, "execution of xauth failed: %s", line);
-			return (NULL);
+			return NULL;
 		}
 	}
 
 	if (!got_data) {
 		/* FAILURE */
-		return (NULL);
+		return NULL;
 	}
 
 	/**
@@ -730,7 +730,7 @@ x11_get_authstring(void)
 	if (authstring == NULL) {
 		/* FAILURE */
 		fprintf(stderr, " qsub: Malloc Failed\n");
-		return (NULL);
+		return NULL;
 	}
 	sprintf(authstring, "%s:%s:%s",
 		protocol,
@@ -834,7 +834,7 @@ resize_buffer(int bufused, int lenreq)
 #ifdef DEBUG
 /**
  * @brief
- *	prints the error messgae 
+ *	prints the error messgae
  *
  */
 static void
@@ -1289,11 +1289,11 @@ recv_dyn_string(void *s, char **strp)
  * @brief
  *	strdup_esc_commas - duplicate a string escaping commas
  *	The string is duplicated with all commas in the original string
- *	escaped by preceeding black slash 
+ *	escaped by preceeding black slash
  *
  * @param[in] str_to_dup - string to be duplicated
  *
- * @return 
+ * @return
  * @retval string Succes
  * @retval NULL   Failure
  *
@@ -1325,7 +1325,7 @@ strdup_esc_commas(char *str_to_dup)
 }
 
 /**
- * @brief 
+ * @brief
  *	sets directory prefix
  *
  * @param[in] prefix - string to be prefixed
@@ -1412,7 +1412,7 @@ interactive_port()
 
 #ifndef WIN32
 /**
- * @brief       
+ * @brief
  *	This function creates a socket to listen for "X11" data
  *	and returns a port number where its listening for X data.
  *
@@ -1469,7 +1469,7 @@ port_X11(void)
  *
  * @return None
  * @retval Void
- * 
+ *
  */
 void
 settermraw(ptio)
@@ -1736,7 +1736,7 @@ getwinsize(struct winsize *pwsz)
  * @brief
  *	send_winsize = send the current tty's window size
  *
- * @param[in] sock - file descriptor 
+ * @param[in] sock - file descriptor
  *
  * @return Void
  *
@@ -1771,7 +1771,7 @@ send_term(int sock)
 	(void)strcpy(buf, "TERM=");
 	term = getenv("TERM");
 	term = strdup_esc_commas(term);
-	if (term == (char *)0)
+	if (term == NULL)
 		(void)strcat(buf, "unknown");
 	else {
 		(void)strncat(buf, term, PBS_TERM_BUF_SZ-5);
@@ -1840,7 +1840,7 @@ no_suspend(int sig)
 #endif	/* ! WIN32 */
 
 /**
- * @brief	
+ * @brief
  *	Close a socket for both windows and unix.
  *
  * @return	void
@@ -1883,7 +1883,7 @@ bailout(int ret)
 			pbs_server, pbs_errno);
 		exit_qsub(1);
 	}
-	(void)pbs_deljob(c, new_jobname, (char *)0);
+	(void)pbs_deljob(c, new_jobname, NULL);
 	pbs_disconnect(c);
 	exit_qsub(ret);
 }
@@ -1907,7 +1907,7 @@ toolong(int sig)
 
 /**
  * @brief
- *	signal handler function for interrupt signal 
+ *	signal handler function for interrupt signal
  *
  * @param[in] sig - signal number
  *
@@ -1942,7 +1942,7 @@ catchint(int sig)
 }
 
 /**
- * @brief	
+ * @brief
  *	This function initializes pfwdsock structure and eventually
  *	calls port_forwarder.
  *
@@ -1981,7 +1981,7 @@ x11handler(int X_data_socket, int interactive_reader_socket)
 
 
 /**
- * @brief       
+ * @brief
  *	interactive - set up for interactive communication with job
  *
  * @return      void
@@ -2014,7 +2014,7 @@ interactive(void)
 	sigemptyset(&act.sa_mask);
 	act.sa_handler = no_suspend;
 	act.sa_flags   = 0;
-	if (sigaction(SIGTSTP, &act, (struct sigaction *)0) < 0) {
+	if (sigaction(SIGTSTP, &act, NULL) < 0) {
 		perror("sigaction(SIGTSTP)");
 		exit_qsub(1);
 	}
@@ -2023,13 +2023,13 @@ interactive(void)
 	/* setup to catch Death of child */
 
 	act.sa_handler = catchint;
-	if ((sigaction(SIGINT, &act, (struct sigaction *)0) < 0) ||
-		(sigaction(SIGTERM, &act, (struct sigaction *)0) < 0)) {
+	if ((sigaction(SIGINT, &act, NULL) < 0) ||
+		(sigaction(SIGTERM, &act, NULL) < 0)) {
 		perror("unable to catch signals");
 		exit_qsub(1);
 	}
 	act.sa_handler = toolong;
-	if ((sigaction(SIGALRM, &act, (struct sigaction *)0) < 0)) {
+	if ((sigaction(SIGALRM, &act, NULL) < 0)) {
 		perror("cannot catch alarm");
 		exit_qsub(2);
 	}
@@ -2060,7 +2060,7 @@ interactive(void)
 		FD_SET(comm_sock, &selset);
 		timeout.tv_usec = 0;
 		timeout.tv_sec  = 30;
-		nsel = select(FD_SETSIZE, &selset, (fd_set *)0, (fd_set *)0, &timeout);
+		nsel = select(FD_SETSIZE, &selset, NULL, NULL, &timeout);
 		if (nsel == -1) {
 			if (errno == EINTR)
 				nsel = 0;
@@ -2141,10 +2141,10 @@ retry:
 	/* set SIGINT, SIGTERM processing to default */
 
 	act.sa_handler = SIG_DFL;
-	if ((sigaction(SIGINT, &act, (struct sigaction *)0) < 0)  ||
-		(sigaction(SIGTERM, &act, (struct sigaction *)0) < 0) ||
-		(sigaction(SIGALRM, &act, (struct sigaction *)0) < 0) ||
-		(sigaction(SIGTSTP, &act, (struct sigaction *)0) < 0)) {
+	if ((sigaction(SIGINT, &act, NULL) < 0)  ||
+		(sigaction(SIGTERM, &act, NULL) < 0) ||
+		(sigaction(SIGALRM, &act, NULL) < 0) ||
+		(sigaction(SIGTSTP, &act, NULL) < 0)) {
 		perror("unable to reset signals");
 		exit_qsub(1);
 	}
@@ -2179,7 +2179,7 @@ retry:
 		 */
 
 		act.sa_handler = catchchild;
-		if (sigaction(SIGCHLD, &act, (struct sigaction *) 0) < 0)
+		if (sigaction(SIGCHLD, &act, NULL) < 0)
 			exit_qsub(1);
 
 		writer(news);
@@ -2201,7 +2201,7 @@ retry:
 
 #else /* end of ! WIN32 code */
 /**
- * @brief       
+ * @brief
  *	interactive - set up for interactive communication with job
  *
  * @return      void
@@ -2239,7 +2239,7 @@ interactive(void)
 		FD_SET(comm_sock, &selset);
 		timeout.tv_usec = 0;
 		timeout.tv_sec  = 30;
-		nsel = select(FD_SETSIZE, &selset, (fd_set *)0, (fd_set *)0, &timeout);
+		nsel = select(FD_SETSIZE, &selset, NULL, NULL, &timeout);
 		if (nsel == -1) {
 			int err_no = WSAGetLastError();
 			if (err_no == WSAEINTR)
@@ -2330,7 +2330,7 @@ interactive(void)
 	/* Ignore SIGINT */
 	signal(SIGINT, SIG_IGN);
 	LeaveCriticalSection(&continuethread_cs);
-	
+
 	/*
 	 * If it is a GUI job, a configured remote viewer client should be launched if submission host and execution host are not the same.
 	 * If no remote viewer is configured in pbs.conf, use Windows native remote desktop for remote viewing of GUI jobs.
@@ -2341,22 +2341,22 @@ interactive(void)
 		int		flags = CREATE_NO_WINDOW | CREATE_SUSPENDED;
 		int		rc = 0;
 		struct hostent	*hp = NULL;
-		char		hname[PBS_MAXHOSTNAME + 1] = {'\0'};		
+		char		hname[PBS_MAXHOSTNAME + 1] = {'\0'};
 		int		i = 0;
 
 		/* Check whether the Mom host is same as submission host */
 		(void)gethostname(hname, PBS_MAXHOSTNAME);
 		hp = gethostbyname(hname);
-		for (i=0; hp->h_addr_list[i]; i++) {			
+		for (i=0; hp->h_addr_list[i]; i++) {
 			/* Compare with Mom host IP address to know whether the Mom host is same as submission host */
 			if(memcmp(&(from.sin_addr), hp->h_addr_list[i], hp->h_length) == 0) {
 				is_mom_local = 1;
 				break;
 			}
-		}		
+		}
 		/* Invoke remote viewer client only if the execution host is not same as submission host */
 		if(is_mom_local == 0) {
-			pbs_loadconf(0);			
+			pbs_loadconf(0);
 			if(pbs_conf.pbs_conf_remote_viewer) { /* Invoke remote viewer client configured */
 				snprintf(rdp_command, PBS_CMDLINE_LENGTH -1, "%s %s", pbs_conf.pbs_conf_remote_viewer, remote_ip);
 			}
@@ -2380,7 +2380,7 @@ interactive(void)
 				exit_qsub(1);
 			}
 			/* Attach the remote viewer session to the job object */
-			rc = AssignProcessToJobObject(hjob_remotesession, pi_rdp.hProcess);			
+			rc = AssignProcessToJobObject(hjob_remotesession, pi_rdp.hProcess);
 			if (!rc) {
 				fprintf(stderr, "qsub: failed to attach remote viewer client. \
 						Please close manually after job completion.\nAssignProcessToJobObject() failed: error=%d\n",
@@ -2425,7 +2425,7 @@ interactive(void)
  * @return char *
  * @retval portstring string holding port info
  *
- */ 
+ */
 char *
 block_port()
 {
@@ -2513,13 +2513,13 @@ win_blockint(int sig)
 #else
 /**
  * @brief
- *	signal handler to avoid race condition 
+ *	signal handler to avoid race condition
  *
  * @param[in] sig - signal number
  *
  * @return Void
  *
- */ 
+ */
 void
 blockint(int sig)
 {
@@ -2527,7 +2527,7 @@ blockint(int sig)
 }
 
 /**
- * @brief	
+ * @brief
  *	Signal handler for SIGPIPE
  * @param[in]	sig - signal number
  * @return	void
@@ -2576,10 +2576,10 @@ block()
 	sigemptyset(&act.sa_mask);
 	act.sa_handler = blockint;
 	act.sa_flags   = 0;
-	if ((sigaction(SIGHUP, &act, (struct sigaction *)0) < 0) ||
-		(sigaction(SIGINT, &act, (struct sigaction *)0) < 0) ||
-		(sigaction(SIGQUIT, &act, (struct sigaction *)0) < 0) ||
-		(sigaction(SIGTERM, &act, (struct sigaction *)0) < 0)) {
+	if ((sigaction(SIGHUP, &act, NULL) < 0) ||
+		(sigaction(SIGINT, &act, NULL) < 0) ||
+		(sigaction(SIGQUIT, &act, NULL) < 0) ||
+		(sigaction(SIGTERM, &act, NULL) < 0)) {
 		perror("qsub: unable to catch signals");
 		exit_qsub(1);
 	}
@@ -2698,11 +2698,11 @@ time_t	now;
  *
  * @return krb5_error_code
  * @retval 0 	Success
- * @retval krb5_error_code 	Failure 
+ * @retval krb5_error_code 	Failure
  *
  */
 krb5_error_code
-get_cred_from_cache(krb5_context context, krb5_ccache    cc, krb5_creds *creds, 
+get_cred_from_cache(krb5_context context, krb5_ccache    cc, krb5_creds *creds,
 			krb5_address **addrs, krb5_creds **pcreds)
 {
 	krb5_error_code		retval;
@@ -2768,11 +2768,11 @@ done:
  *
  * @return krb5_error_code
  * @retval 0 	Success
- * @retval krb5_error_code 	Failure 
- *  
+ * @retval krb5_error_code 	Failure
+ *
  */
 krb5_error_code
-fwd_tgt_creds(krb5_context context, krb5_auth_context auth_context, krb5_principal client, 
+fwd_tgt_creds(krb5_context context, krb5_auth_context auth_context, krb5_principal client,
 		krb5_principal server, krb5_ccache cc,  krb5_data *outbuf)
 {
 	krb5_replay_data	replaydata;
@@ -2991,7 +2991,7 @@ done:
 /**
  * @brief
  *	Get a grid proxy.
- * 
+ *
  * @return   Error code
  * @retval  -1  Failure
  * @retval   0  Success
@@ -3498,7 +3498,7 @@ process_opts(int argc, char **argv, int passet)
 					back2forward_slash(optarg);
 #endif
 					v_value = expand_varlist(optarg);
-					if (v_value == (char *)0) {
+					if (v_value == NULL) {
 						exit(1);
 					}
 				}
@@ -3533,7 +3533,7 @@ process_opts(int argc, char **argv, int passet)
 				if ((i == -1) && (strcmp(optarg, ATTR_pwd) == 0)) {
 					i = 1;
 					keyword = optarg;
-					valuewd = (char *)0;
+					valuewd = NULL;
 				}
 #endif
 
@@ -3673,7 +3673,7 @@ process_opts(int argc, char **argv, int passet)
 					} else {
 						set_attr(&attrib, keyword, valuewd);
 					}
-					i = parse_equal_string((char *)0, &keyword, &valuewd);
+					i = parse_equal_string(NULL, &keyword, &valuewd);
 				}   /* bottom of long while loop */
 				if (i == -1) {
 					fprintf(stderr, "%s", badw);
@@ -4122,7 +4122,7 @@ copy_env_value(char *dest, /* destination  */
 
 	*dest = '\0';
 	if (q_ch)
-		return ((char *)0);	/* error-unterminated quote */
+		return NULL;	/* error-unterminated quote */
 	else
 		return (pv);
 }
@@ -4263,7 +4263,7 @@ job_env_basic(void)
 			ino = statbuf.st_ino;
 			if (stat(".", &statbuf) < 0) {
 				perror("qsub: cannot stat current directory: ");
-				return (NULL);
+				return NULL;
 			}
 			/* compare against "." */
 			if ((dev != statbuf.st_dev) || (ino != statbuf.st_ino)) {
@@ -4324,7 +4324,7 @@ job_env_basic(void)
 #endif
 	} else {
 		perror("qsub: cannot get uname info:");
-		return (NULL);
+		return NULL;
 	}
 
 	return (job_env);
@@ -4490,7 +4490,7 @@ set_job_env(char *basic_vlist, char *current_vlist)
 #ifdef WIN32
 			back2forward_slash(env);
 #endif
-			if (copy_env_value(job_env, env, 1) == (char *)0)
+			if (copy_env_value(job_env, env, 1) == NULL)
 				return FALSE;
 		}
 
@@ -4516,7 +4516,7 @@ set_job_env(char *basic_vlist, char *current_vlist)
 #ifdef WIN32
 		back2forward_slash(c);
 #endif
-		if ((c = copy_env_value(job_env, c, 0)) == (char *)0) return FALSE;
+		if ((c = copy_env_value(job_env, c, 0)) == NULL) return FALSE;
 
 		/* Have to undo here, since 'c' was incremented by copy_env_value */
 		if (strncmp(s, pbs_o_env, sizeof(pbs_o_env)-1) == 0) {
@@ -4566,7 +4566,7 @@ set_opt_defaults()
 }
 
 /**
- * @brief 
+ * @brief
  *	prints the usage format for qsub
  *
  */
@@ -4711,7 +4711,7 @@ main(int argc, char **argv, char **envp)   /* qsub */
 	char *s_n_out;                      /* server part of destination */
 	/* server:port to send request to */
 	struct stat statbuf;
-	char *cmdargs = (char *)0;
+	char *cmdargs = NULL;
 	int command_flag = 0;
 	char *arg_list = NULL;
 	int rc;
@@ -4738,7 +4738,7 @@ main(int argc, char **argv, char **envp)   /* qsub */
 	sigemptyset(&act.sa_mask);
 	act.sa_handler = exit_on_sigpipe;
 	act.sa_flags   = 0;
-	if (sigaction(SIGPIPE, &act, (struct sigaction *)0) < 0) {
+	if (sigaction(SIGPIPE, &act, NULL) < 0) {
 		perror("qsub: unable to catch SIGPIPE");
 		exit_qsub(1);
 	}
@@ -4897,7 +4897,7 @@ main(int argc, char **argv, char **envp)   /* qsub */
 		}
 	}
 #ifndef WIN32
-	if (Forwardx11_opt) {	
+	if (Forwardx11_opt) {
 		if (!Interact_opt) {
 			fprintf(stderr, "qsub: X11 Forwarding possible only for "
 				"interactive jobs\n");
@@ -5644,7 +5644,7 @@ do_daemon_stuff(void)
 		memcpy(&workset, &readset, sizeof(readset));
 		timeout.tv_usec = 0;
 		timeout.tv_sec = QSUB_DMN_TIMEOUT; /* since timeout gets reset on Linux */
-		n = select(maxfd + 1, &workset, (fd_set *) 0, (fd_set *) 0, &timeout);
+		n = select(maxfd + 1, &workset, NULL, NULL, &timeout);
 		if (n == 0)
 			goto out; /* daemon timed out waiting for connect from foreground */
 		else if (n == -1) {
@@ -6050,7 +6050,7 @@ restore_opts()
 	pwd_opt = pwd_opt_o;
 	cred_opt = cred_opt_o;
 	block_opt = block_opt_o;
-	relnodes_on_stageout_opt = relnodes_on_stageout_opt_o; 
+	relnodes_on_stageout_opt = relnodes_on_stageout_opt_o;
 	P_opt = P_opt_o;
 
 }

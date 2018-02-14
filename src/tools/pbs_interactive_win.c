@@ -365,7 +365,7 @@ pbsinteractiveMain(DWORD dwArgc, LPTSTR *rgszArgv)
 	if (dwArgc > 1) {
 		/* Argumet found, create argument structure to pass given argument into main thread of PBS_INTERACTIVE service */
 		pap = create_arg_param();
-		if (pap == (struct arg_param *)0)
+		if (pap == NULL)
 			ErrorMessage("create_arg_param");
 
 		pap->argc = dwArgc;

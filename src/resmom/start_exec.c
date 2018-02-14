@@ -200,7 +200,7 @@ starter_return(int upfds, int downfds, int code,
  *
  * @return 	int
  * @retval	error number
- *	
+ *
  */
 int
 error(char *string, int value)
@@ -276,7 +276,7 @@ check_pwd(job *pjob)
 	struct stat		sb;
 
 	pwdp = getpwnam(pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str);
-	if (pwdp == (struct passwd *)0) {
+	if (pwdp == NULL) {
 		(void)sprintf(log_buffer, "No Password Entry for User %s",
 			pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str);
 		return NULL;
@@ -289,7 +289,7 @@ check_pwd(job *pjob)
 	if (pjob->ji_grpcache == NULL) {
 		pjob->ji_grpcache = malloc(sizeof(struct grpcache) +
 			strlen(pwdp->pw_dir) + 1);
-		if (pjob->ji_grpcache == (struct grpcache *)0) {
+		if (pjob->ji_grpcache == NULL) {
 			sprintf(log_buffer, "Malloc failed");
 			return NULL;
 		}
@@ -313,7 +313,7 @@ check_pwd(job *pjob)
 
 		grpp = getgrnam(pjob->ji_wattr[(int)JOB_ATR_egroup].
 			at_val.at_str);
-		if (grpp == (struct group *)0) {
+		if (grpp == NULL) {
 			(void)sprintf(log_buffer, "No Group Entry for Group %s",
 				pjob->ji_wattr[(int)JOB_ATR_egroup].at_val.at_str);
 			return NULL;
@@ -346,7 +346,7 @@ check_pwd(job *pjob)
 /**
  * @brief
  *	writepipe() - writes to pipe
- * 
+ *
  * @param[in] pfd - file descriptor
  * @param[in] vptr - content to be written
  * @param[in] nbytes - length of content
@@ -474,16 +474,16 @@ exec_bail(job *pjob, int code, char *txt)
 #define	RETRY	3
 
 /**
- * @brief 
+ * @brief
  *	opens the demux
- * 
+ *
  * @param[in] addr - ip address
  * @param[in] port - port number
  *
  * @return 	int
  * @retval	-1		Error
  * @retval	socket number	Success
- * 
+ *
  */
 
 int
@@ -532,12 +532,12 @@ open_demux(u_long addr, int port)
 /**
  * @brief
  * 	open_pty - open slave side of master/slave pty
- * 
+ *
  * @param[in] pjob - job pointer
  *
  * @retval	int
  * @retval 	pty descriptor	Success
- * 
+ *
  */
 
 static int
@@ -698,7 +698,7 @@ NAS_tmpdirname(job *pjob)
 /**
  * @brief
  * 	tmpdirname - build a temporary directory name
- * 
+ *
  * @param[in] sequence - directory name
  *
  * @return 	string
@@ -720,7 +720,7 @@ tmpdirname(char *sequence)
  *	jobdirname - build the staging and execution directory name
  *	with a random number tagged onto the end
  *
- * @param[in] sequence - directory name 
+ * @param[in] sequence - directory name
  * @param[in] homedir - home dirctory
  *
  * @return	string
@@ -832,7 +832,7 @@ mktmpdir(char *jobid, uid_t uid, gid_t gid, struct var_table *vtab)
 }
 
 /**
- * @brief	
+ * @brief
  *	Make the staging and execution directory with what ever
  *	privileges are currently set,  may be root or may be user.
  *	This function is a helper task for mkjobdir() below.
@@ -866,9 +866,9 @@ internal_mkjobdir(char *jobid, char *jobdir)
 }
 
 /**
- * @brief	
+ * @brief
  * 	Impersonate the user by changing effective uid and gid.
- * 
+ *
  * @param[in] uid - user id
  * @param[in] gid - group id
  *
@@ -1055,7 +1055,7 @@ rmtmpdir(char *jobid)
 		return;
 
 	rpp_terminate();
-	execl(rm, "pbs_cleandir", rf, newdir, (char *)0);
+	execl(rm, "pbs_cleandir", rf, newdir, NULL);
 	log_err(errno, __func__, "execl");
 	exit(21);
 }
@@ -1091,7 +1091,7 @@ lastname(char *shell)
  *	the user's login group to it,  then changes to the specified group,
  *	new group list, and the specified uid.
  *
- * @param[in] eusrname - the execution user name 
+ * @param[in] eusrname - the execution user name
  * @param[in] euid     - the execution uid
  * @param[in] egid     - the execution gid
  * @param[in] rgid     - the login (or real) gid of the user
@@ -1149,7 +1149,7 @@ becomeuser_args(char *eusrname, uid_t euid, gid_t egid, gid_t rgid)
  * @brief
  *	Become the user using information sent with the job and in the cached
  *	password information in the job structure if available.
- *	
+ *
  *	Picks up the execution user name from the euser attribute, the euid
  *	and egid from the mom subarea of the job structure and the login gid
  *	from the cached password info if that has been set.  Otherwise use
@@ -1397,7 +1397,7 @@ set_credential(job *pjob, char **shell, char ***argarray)
 		if (shell != NULL)
 			*shell = prog;
 	}
-	argv[i++] = (char *)0;
+	argv[i++] = NULL;
 
 	if (argarray != NULL) {
 		*argarray = argv;
@@ -1655,7 +1655,7 @@ record_finish_exec(int sd)
 
 			CLEAR_HEAD(vnl_changes);
 			if (sjr.sj_code == JOB_EXEC_HOOKERROR) {
-		
+
 				char	hook_buf2[HOOK_BUF_SIZE];
 				int	fd;
 				char	*hook_name = NULL;
@@ -1673,19 +1673,19 @@ record_finish_exec(int sd)
 					    if (hook_buf2[rd_size-1] == '\n') {
 							hook_buf2[rd_size-1] = '\0';
 					    }
-					    
+
 					    hook_name = strchr(hook_buf2, '=');
 					    if (hook_name != NULL)
 							hook_name++;
 					}
-				
+
 					close(fd);
 					unlink(hook_outfile);
 				}
 				if (hook_name != NULL) {
 					send_hook_fail_action(find_hook(hook_name));
 				}
-		
+
 			} else if (get_hook_results(hook_outfile, NULL, NULL, NULL, 0,
 				&reject_rerunjob, &reject_deletejob, NULL,
 				NULL, 0, &vnl_changes, pjob, NULL, 0, NULL) != 0) {
@@ -1773,7 +1773,7 @@ record_finish_exec(int sd)
 	write_wkmg_record(WM_INIT, WM_INIT_START, pjob);
 #endif
 
-	/* 
+	/*
 	 * return from the starter indicated the job is a go ...
 	 * record the start time and session/process id
 	 */
@@ -1818,11 +1818,11 @@ record_finish_exec(int sd)
 
 /**
  * @brief
- *	Regenerate the PBS_NODEFILE of a job based on internal 
+ *	Regenerate the PBS_NODEFILE of a job based on internal
  *	nodes-related data.
  * @param[in]	pjob	- the job whose PBS_NODEFILE is to be generated.
  * @param[out]	nodefile- buffer to hold the path to PBS_NODEFILE
- *			  that got regenerated.		 
+ *			  that got regenerated.
  *			  NOTE: OK for this to be NULL, which means
  *			  don't save nodefile path.
  *
@@ -1896,7 +1896,7 @@ generate_pbs_nodefile(job *pjob, char *nodefile, int nodefile_sz,
 	}
 	fclose(nhow);
 
-	if ((nodefile != NULL) && (nodefile_sz > 0)) { 
+	if ((nodefile != NULL) && (nodefile_sz > 0)) {
 		strncpy(nodefile, pbs_nodefile, nodefile_sz);
 		nodefile[nodefile_sz-1] = '\0';
 	}
@@ -1944,7 +1944,7 @@ write_pipe_data(int upfds, void *data, int data_size)
  * @retval <opaque_data>	- pointer to some data that is in a static
  *				  area that must not be freed and can
  *				  get overwritten on a next call to this
- *				  function. 
+ *				  function.
  * @retval NULL			- if no data was found or error encountered.
  */
 void *
@@ -1964,7 +1964,7 @@ read_pipe_data(int downfds, int data_size)
 
 	FD_SET((unsigned int)downfds, &readset);
 
-	ret = select(FD_SETSIZE, &readset, (fd_set *)0, (fd_set *)0, &tv);
+	ret = select(FD_SETSIZE, &readset, NULL, NULL, &tv);
 
 #else
 	struct pollfd pollfds[1];
@@ -1978,11 +1978,11 @@ read_pipe_data(int downfds, int data_size)
 #endif
 	if (ret == -1) {
 		log_err(errno, __func__, "error on monitoring pipe");
-		return (NULL);
+		return NULL;
 	} else if (ret == 0) {
 		/* select or poll timed out */
-		return (NULL);
-	}	
+		return NULL;
+	}
 
 	if (data_size > buf_size) {
 		char *tpbuf;
@@ -1990,9 +1990,9 @@ read_pipe_data(int downfds, int data_size)
 		tpbuf = realloc(buf, data_size);
 		if (tpbuf == NULL) {
 			log_err(-1, __func__, "realloc failure");
-			return (NULL);
+			return NULL;
 		}
-		buf = tpbuf;	
+		buf = tpbuf;
 		buf_size = data_size;
 	}
 
@@ -2000,7 +2000,7 @@ read_pipe_data(int downfds, int data_size)
 
 	if (data_size != nread) {
 		log_err(-1, __func__, "did not receive all data");
-		return (NULL);
+		return NULL;
 	}
 	return (buf);
 }
@@ -2049,7 +2049,7 @@ receive_pipe_request(int sd)
 	}
 
 	ptask = (pbs_task *)conn->cn_data;
-	if (ptask == NULL) 
+	if (ptask == NULL)
 		return;
 
 	pjob  = ptask->ti_job;
@@ -2249,11 +2249,11 @@ finish_exec(job *pjob)
 		pattr = &pjob->ji_wattr[(int)JOB_ATR_outpath];
 		job_attr_def[(int)JOB_ATR_outpath].at_free(pattr);
 		(void)job_attr_def[(int)JOB_ATR_outpath].at_decode(
-			pattr, (char *)0, (char *)0, pts_name);
+			pattr, NULL, NULL, pts_name);
 		pattr = &pjob->ji_wattr[(int)JOB_ATR_errpath];
 		job_attr_def[(int)JOB_ATR_errpath].at_free(pattr);
 		(void)job_attr_def[(int)JOB_ATR_errpath].at_decode(
-			pattr, (char *)0, (char *)0, pts_name);
+			pattr, NULL, NULL, pts_name);
 
 #if SHELL_INVOKE == 1
 	} else {
@@ -2325,7 +2325,7 @@ finish_exec(job *pjob)
 	}
 
 	prolo_hooks = num_eligible_hooks(HOOK_EVENT_EXECJOB_PROLOGUE);
-	
+
 	/* create 2nd set of pipes between MOM and the job starter */
 	/* if there are prologue hooks */
 	if (prolo_hooks > 0) {
@@ -2367,7 +2367,7 @@ finish_exec(job *pjob)
 			exec_bail(pjob, JOB_EXEC_RETRY, log_buffer);
 			return;
 		}
-	} 
+	}
 
 	pjob->ji_qs.ji_stime = time_now;
 	pjob->ji_sampletim  = time_now;
@@ -2413,13 +2413,13 @@ finish_exec(job *pjob)
 		pjob->ji_jsmpipe2 = jsmpipe2[0];
 		pjob->ji_mjspipe2 = mjspipe2[1];
 
-		/* 
+		/*
 		 * at this point, parent mom writes to
 		 * pjob->ji_mjspipe2, and parent reads from
 		 * pjob->ji_jsmpipe2
 		 */
 
-		/* 
+		/*
 		 * if there are prologue hooks to run
 		 * add the pipe to the connection table so we can poll it
 		 */
@@ -2434,10 +2434,10 @@ finish_exec(job *pjob)
 					   "connection table is full");
 				(void)close(jsmpipe2[0]);
 				(void)close(mjspipe2[1]);
-	
+
 				(void)close(jsmpipe[0]);
 				(void)close(mjspipe[1]);
-	
+
 				if (pipe_script[0] != -1)
 					(void)close(pipe_script[0]);
 				if (pipe_script[1] != -1)
@@ -2565,9 +2565,9 @@ finish_exec(job *pjob)
 
 	(void)close(jsmpipe[0]);
 	(void)close(mjspipe[1]);
-	(void)close(jsmpipe2[0]); 
+	(void)close(jsmpipe2[0]);
 	(void)close(mjspipe2[1]);
-	/* 
+	/*
 	 * at this point, child writes to upfds2, and child
 	 * reads from downfds2
 	 */
@@ -2609,13 +2609,13 @@ finish_exec(job *pjob)
 	/*  First variables from the local environment */
 
 	for (j = 0; j < num_var_env; ++j)
-		bld_env_variables(&vtable, environ[j], (char *)0);
+		bld_env_variables(&vtable, environ[j], NULL);
 
 	/* Second, the variables passed with the job.  They may */
 	/* be overwritten with new correct values for this job	*/
 
 	for (j = 0; j < vstrs->as_usedptr; ++j)
-		bld_env_variables(&vtable, vstrs->as_string[j], (char *)0);
+		bld_env_variables(&vtable, vstrs->as_string[j], NULL);
 
 	/* .. Next the critical variables: home, path, logname, ... */
 	/* these may replace some passed in with the job	    */
@@ -2769,7 +2769,7 @@ finish_exec(job *pjob)
 		act.sa_flags   = 0;
 #endif /* SA_INTERRUPT */
 		act.sa_handler = no_hang;
-		(void)sigaction(SIGALRM, &act, (struct sigaction *)0);
+		(void)sigaction(SIGALRM, &act, NULL);
 		alarm(30);
 
 
@@ -2781,8 +2781,8 @@ finish_exec(job *pjob)
 
 		phost = arst_string("PBS_O_HOST",
 			&pjob->ji_wattr[(int)JOB_ATR_variables]);
-		if ((phost == (char *)0) ||
-			((phost = strchr(phost, (int)'=')) == (char *)0)) {
+		if ((phost == NULL) ||
+			((phost = strchr(phost, (int)'=')) == NULL)) {
 			log_joberr(-1, __func__, "PBS_O_HOST not set",
 				pjob->ji_qs.ji_jobid);
 			starter_return(upfds, downfds, JOB_EXEC_FAIL1, &sjr);
@@ -2836,10 +2836,10 @@ finish_exec(job *pjob)
 
 		/* receive terminal type and window size */
 
-		if ((termtype = rcvttype(qsub_sock)) == (char *)0)
+		if ((termtype = rcvttype(qsub_sock)) == NULL)
 			starter_return(upfds, downfds, JOB_EXEC_FAIL1, &sjr);
 
-		bld_env_variables(&vtable, termtype, (char *)0);
+		bld_env_variables(&vtable, termtype, NULL);
 
 		if (rcvwinsize(qsub_sock) == -1)
 			starter_return(upfds, downfds, JOB_EXEC_FAIL1, &sjr);
@@ -2849,7 +2849,7 @@ finish_exec(job *pjob)
 		alarm(0);
 		act.sa_handler = SIG_DFL;
 		act.sa_flags   = 0;
-		(void)sigaction(SIGALRM, &act, (struct sigaction *)0);
+		(void)sigaction(SIGALRM, &act, NULL);
 
 		/* set up the Job session */
 
@@ -3021,7 +3021,7 @@ finish_exec(job *pjob)
 					act.sa_flags   = SA_NOCLDSTOP;
 					act.sa_handler = catchinter;
 					(void)sigaction(SIGCHLD, &act,
-						(struct sigaction *)0);
+						NULL);
 
 					mom_reader_go = 1;
 					/* prepare shell command "cd $PBS_JOBDIR" if in sandbox=PRIVATE mode */
@@ -3132,7 +3132,7 @@ finish_exec(job *pjob)
 
 		/* After the error is redirected, stderr does not have a valid FILE* */
 		temp_stderr = fdopen(STDERR_FILENO, "w");
-		/* If we could not get the valid FILE*, let temp_stderr point to stderr to avoid 
+		/* If we could not get the valid FILE*, let temp_stderr point to stderr to avoid
 		 * a possible crash in subsequent calls to output functions like printf/fprintf */
 		if (!temp_stderr)
 			temp_stderr = stderr;
@@ -3345,7 +3345,7 @@ finish_exec(job *pjob)
 	the_argv = argv;
 
 	/* NULL terminate the envp array */
-	*(vtable.v_envp + vtable.v_used) = (char *)0;
+	*(vtable.v_envp + vtable.v_used) = NULL;
 	the_env = vtable.v_envp;
 
 	mom_hook_input_init(&hook_input);
@@ -3404,7 +3404,7 @@ finish_exec(job *pjob)
 
 			/* clear the env array */
 			vtable.v_used = 0;
-			vtable.v_envp[0] = (char *)0;
+			vtable.v_envp[0] = NULL;
 
 			/* need to also set vtable as that would */
 			/* get appended to later in the code */
@@ -3446,7 +3446,7 @@ finish_exec(job *pjob)
 
 	/* include any new env settings added by set_credential. */
 	the_env = vtable.v_envp;
-	*(vtable.v_envp + vtable.v_used) = (char *)0;
+	*(vtable.v_envp + vtable.v_used) = NULL;
 
 	/*
 	 * If JOB_ATR_executable is set, and job is in "sandbox=PRIVATE" mode,
@@ -3598,7 +3598,7 @@ finish_exec(job *pjob)
 
 		/* include any new env settings added. */
 		the_env = vtable.v_envp;
-		*(vtable.v_envp + vtable.v_used) = (char *)0;
+		*(vtable.v_envp + vtable.v_used) = NULL;
 
 		execve(the_progname, the_argv, the_env);
 		free(progname);
@@ -3628,7 +3628,7 @@ finish_exec(job *pjob)
 		else
 			shellname = shell;
 		arg[0] = shellname;
-		arg[1] = (char *)0;
+		arg[1] = NULL;
 
 		/* we're purposely not calling log_close() here */
 		/* for this causes a side-effect. log_close() would */
@@ -3820,13 +3820,13 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 
 	/* First variables from the local environment */
 	for (j = 0; j < num_var_env; ++j)
-		bld_env_variables(&vtable, environ[j], (char *)0);
+		bld_env_variables(&vtable, environ[j], NULL);
 
 	/* Next, the variables passed with the job.  They may   */
 	/* be overwritten with new correct values for this job	*/
 
 	for (j = 0; j < vstrs->as_usedptr; ++j)
-		bld_env_variables(&vtable, vstrs->as_string[j], (char *)0);
+		bld_env_variables(&vtable, vstrs->as_string[j], NULL);
 
 	/* HOME */
 	bld_env_variables(&vtable, variables_else[0],
@@ -3948,7 +3948,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 	the_progname = argv[0];
 	the_argv = argv;
 
-	*(vtable.v_envp + vtable.v_used) = (char *)0;
+	*(vtable.v_envp + vtable.v_used) = NULL;
 	the_env = vtable.v_envp;
 
 	mom_hook_input_init(&hook_input);
@@ -4006,7 +4006,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 
 			/* clear the env array */
 			vtable.v_used = 0;
-			vtable.v_envp[0] = (char *)0;
+			vtable.v_envp[0] = NULL;
 
 			/* need to also set vtable as that would */
 			/* get appended to later in the code */
@@ -4043,7 +4043,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 
 	/* Pick up any env settings added by set_credential(), and NULL */
 	/* terminate the envp array. */
-	*(vtable.v_envp + vtable.v_used) = (char *)0;
+	*(vtable.v_envp + vtable.v_used) = NULL;
 	the_env = vtable.v_envp;
 
 	/* change working directory to PBS_JOBDIR or to User's Home */
@@ -4141,7 +4141,7 @@ start_process(task *ptask, char **argv, char **envp, bool nodemux)
 			/* After the error is redirected, stderr does not have a valid FILE* */
 			temp_stderr = fdopen(STDERR_FILENO, "w");
 
-			/* If we could not get the valid FILE*, let temp_stderr point to stderr to avoid 
+			/* If we could not get the valid FILE*, let temp_stderr point to stderr to avoid
 		 	* a possible crash in subsequent calls to output functions like printf/fprintf */
 			if (!temp_stderr)
 				temp_stderr = stderr;
@@ -4484,7 +4484,7 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 
 	for (i=0; i <= n_chunks; ++i) {
 		pjob->ji_vnods0[i].vn_node = TM_ERROR_NODE;
-	}	
+	}
 
 	/* Now parse schedselect and exec_vnode at same time to map mpiprocs */
 	/* onto the corresponding Mom and sum up the resources allocated     */
@@ -4669,7 +4669,7 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 				hp->hn_sister = SISTER_OKAY;
 				hp->hn_nprocs = 0;
 				hp->hn_vlnum  = 0;
-				hp->hn_vlist  = (host_vlist_t *)0;
+				hp->hn_vlist  = NULL;
 				memset(&hp->hn_nrlimit, 0, sizeof(resc_limit));
 				CLEAR_HEAD(hp->hn_events);
 				/* mark next slot as the (current) end */
@@ -5068,7 +5068,7 @@ start_exec(job *pjob)
 		pattr = pjob->ji_wattr;
 		for (i=0; i < (int)JOB_ATR_LAST; i++) {
 			(void)(job_attr_def+i)->at_encode(pattr+i, &phead,
-				(job_attr_def+i)->at_name, (char *)0,
+				(job_attr_def+i)->at_name, NULL,
 				ATR_ENCODE_MOM, NULL);
 		}
 		attrl_fixlink(&phead);
@@ -5254,7 +5254,7 @@ start_exec(job *pjob)
  *
  * @return 	pid_t
  * @retval	child process id	Success
- * 
+ *
  */
 
 pid_t
@@ -5279,11 +5279,11 @@ fork_me(int conn)
 		sigemptyset(&act.sa_mask);
 		act.sa_flags   = 0;
 		act.sa_handler = SIG_DFL;
-		(void)sigaction(SIGCHLD, &act, (struct sigaction *)0);
-		(void)sigaction(SIGINT, &act, (struct sigaction *)0);
-		(void)sigaction(SIGTERM, &act, (struct sigaction *)0);
+		(void)sigaction(SIGCHLD, &act, NULL);
+		(void)sigaction(SIGINT, &act, NULL);
+		(void)sigaction(SIGTERM, &act, NULL);
 		act.sa_handler = SIG_IGN;
-		(void)sigaction(SIGHUP, &act, (struct sigaction *)0);
+		(void)sigaction(SIGHUP, &act, NULL);
 
 		/* Reset signal mask */
 		(void)sigprocmask(SIG_SETMASK, &act.sa_mask, NULL);
@@ -5549,7 +5549,7 @@ std_file_name(job *pjob, enum job_file which, int *keeping)
 		}
 
 		pd = strrchr(pjob->ji_wattr[(int) JOB_ATR_jobname].at_val.at_str, '/');
-		if (pd == (char *) 0) {
+		if (pd == NULL) {
 			pd = pjob->ji_wattr[(int) JOB_ATR_jobname].at_val.at_str;
 			(void) strcat(path, "/");
 		}
@@ -5621,8 +5621,8 @@ std_file_name(job *pjob, enum job_file which, int *keeping)
  * @param[in] exgid - User's gid
  *
  * @return 	int
- * @retval	fd	On success  
- * @retval	-1	on failure 
+ * @retval	fd	On success
+ * @retval	-1	on failure
  *
  */
 
@@ -5875,7 +5875,7 @@ catchinter(int sig)
 /**
  * @brief
  *	log_mom_portfw_msg - used to log a port forwarding error message to
- *	MOM logs 
+ *	MOM logs
  *
  * @param[in]	msg -  pointer to error message
  *

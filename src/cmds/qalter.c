@@ -79,7 +79,7 @@ print_usage()
 
 /**
  * @brief
- * 	handles attribute errors and prints appropriate errmsg 
+ * 	handles attribute errors and prints appropriate errmsg
  *
  * @param[in] connect - value indicating server connection
  * @param[in] err_list - list of possible attribute errors
@@ -304,7 +304,7 @@ main(int argc, char **argv, char **envp) /* qalter */
 				i = parse_equal_string(optarg, &keyword, &valuewd);
 				while (i == 1) {
 					set_attr(&attrib, keyword, valuewd);
-					i = parse_equal_string((char *)0, &keyword, &valuewd);
+					i = parse_equal_string(NULL, &keyword, &valuewd);
 				}
 				if (i == -1) {
 					fprintf(stderr, "qalter: illegal -W value\n");

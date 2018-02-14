@@ -62,7 +62,7 @@
  * 	_b (boolean) routines.
  *
  */
- 
+
 /**
  * @brief
  *	decode_hold - decode string into hold attribute
@@ -85,7 +85,7 @@ decode_hold(struct attribute *patr, char *name, char *rescn, char *val)
 	char  *pc;
 
 	patr->at_val.at_long = 0;
-	if ((val != (char *)0) && (strlen(val) > (size_t)0)) {
+	if ((val != NULL) && (strlen(val) > (size_t)0)) {
 		for (pc = val; *pc != '\0'; pc++) {
 			switch (*pc) {
 				case 'n':
@@ -147,7 +147,7 @@ encode_hold(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, i
 		return (0);
 
 	pal = attrlist_create(atname, rsname, HOLD_ENCODE_SIZE + 1);
-	if (pal == (svrattrl *)0)
+	if (pal == NULL)
 		return (-1);
 
 	i = 0;

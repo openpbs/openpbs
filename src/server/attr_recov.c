@@ -253,7 +253,7 @@ save_attr_fs(struct attribute_def *padef, struct attribute *pattr, int numattr)
 
 			rc = (padef+i)->at_encode(pattr+i, &lhead,
 				(padef+i)->at_name,
-				(char *)0, ATR_ENCODE_SAVE, NULL);
+				NULL, ATR_ENCODE_SAVE, NULL);
 
 			if (rc < 0)
 				errct++;
@@ -263,7 +263,7 @@ save_attr_fs(struct attribute_def *padef, struct attribute *pattr, int numattr)
 			/* now that it has been encoded, block and save it */
 
 			while ((pal = (svrattrl *)GET_NEXT(lhead)) !=
-				(svrattrl *)0) {
+				NULL) {
 
 				if (save_struct((char *)pal, pal->al_tsize) < 0)
 					errct++;
@@ -318,9 +318,9 @@ recov_attr_fs(int fd, void *parent, struct attribute_def *padef,
 	int	  amt;
 	int	  len;
 	int	  index;
-	svrattrl *pal = (svrattrl *)0;
+	svrattrl *pal = NULL;
 	int	  palsize = 0;
-	svrattrl *tmpal = (svrattrl *)0;
+	svrattrl *tmpal = NULL;
 
 	pal = (svrattrl *)malloc(sizeof(svrattrl));
 	if (!pal)
@@ -361,7 +361,7 @@ recov_attr_fs(int fd, void *parent, struct attribute_def *padef,
 
 		if (palsize < pal->al_tsize) {
 			tmpal = (svrattrl *)realloc(pal, pal->al_tsize);
-			if (tmpal == (svrattrl *)0) {
+			if (tmpal == NULL) {
 				sprintf(log_buffer,
 					"Unable to alloc attr list size in %s",
 					pbs_recov_filename);
@@ -393,12 +393,12 @@ recov_attr_fs(int fd, void *parent, struct attribute_def *padef,
 		if (pal->al_rescln)
 			pal->al_resc = pal->al_name + pal->al_nameln;
 		else
-			pal->al_resc = (char *)0;
+			pal->al_resc = NULL;
 		if (pal->al_valln)
 			pal->al_value = pal->al_name + pal->al_nameln +
 				pal->al_rescln;
 		else
-			pal->al_value = (char *)0;
+			pal->al_value = NULL;
 
 		pal->al_refct = 1;	/* ref count reset to 1 */
 

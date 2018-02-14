@@ -66,7 +66,7 @@
  *		*name will point to "name1"
  *		*value will point to "value1 ..." upto but not
  *			including the colon before "name2".
- * 
+ *
  * @param[in] start - the start of the string to parse.
  * @param[in] name - point to "name1"
  * @param[in] value - will point to "value1 ..." upto but not
@@ -98,7 +98,7 @@ parse_resc_equal_string(char  *start, char **name, char **value, char **last)
 	pc = start;
 
 	if (*pc == '\0') {
-		*name = (char *)0;
+		*name = NULL;
 		return (0);	/* already at end, return no strings */
 	}
 
@@ -108,7 +108,7 @@ parse_resc_equal_string(char  *start, char **name, char **value, char **last)
 		pc++;
 
 	if (*pc == '\0') {
-		*name = (char *)0;	/* null name */
+		*name = NULL;	/* null name */
 		return (0);
 	} else if (!isalpha((int)*pc))
 		return (-1);	/* no name, return error */
@@ -645,7 +645,7 @@ parse_plus_spec(char *selstr, int *rc)
 	if (*ps == '+') {
 		/* invalid string, starts with + */
 		*rc = PBSE_BADNODESPEC;
-		return (NULL);
+		return NULL;
 	}
 
 	return (parse_plus_spec_r(ps, &pe, &hp));

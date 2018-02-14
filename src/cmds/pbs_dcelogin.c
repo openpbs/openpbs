@@ -106,13 +106,13 @@ int			handler_refreshed_context;
 int			have_login_context;
 
 
-/** 
+/**
  * @brief
  *	fill_pwdrec -  fills in the fields of  sec_passwd_rec_t structure.  This
  *	structure is passed in the sec_login_validate_identity call.
  *
  * @param[in] pwd - password
- * @param[out] p_pwdrec - structure to hold password 
+ * @param[out] p_pwdrec - structure to hold password
  *
  * @return Void
  *
@@ -194,7 +194,7 @@ compute_refresh_time(sec_login_handle_t lcon)
  * @return - time_t
  * @retval   retry_time(now + SHORT_TIME)  -  refresh failure
  *					      validation failure
- * @retval   refresh_time                     Success                          	               
+ * @retval   refresh_time                     Success
  *
  */
 time_t
@@ -258,14 +258,14 @@ do_refresh(sec_login_handle_t lcon)
 
 /**
  * @brief
- *	Removes the dce login context in case of fork fail 
+ *	Removes the dce login context in case of fork fail
  *  	or child finishes its task.
  *
  * @return - Error code
  * @retval   -1  Failure
  * @retval   0   Success
  *
- */ 
+ */
 int
 remove_context()
 {
@@ -294,7 +294,7 @@ remove_context()
  * @param[in] username - username for  validation
  *
  * @return - Error code
- * @retval   253 -  sec_login_setup_identity was not successful  
+ * @retval   253 -  sec_login_setup_identity was not successful
  *	     254 -  the validate call did not return success
  * @retval   0      Success
  *
@@ -418,13 +418,13 @@ main(int argc, char *argv[])
 	}
 
 	/* In the event we inherited creds from the parent, ignore them. */
-	if (getenv("KRB5CCNAME") != (char *)0) {
+	if (getenv("KRB5CCNAME") != NULL) {
 		unsetenv("KRB5CCNAME");
 	}
 
 	/* read password from descriptor, close descriptor */
 
-	if ((pdesc = getenv("PBS_PWPIPE")) == (char *)0) {
+	if ((pdesc = getenv("PBS_PWPIPE")) == NULL) {
 		fprintf(stderr, "PBS_PWPIPE not in the environment\n");
 		exit  (254);
 	}

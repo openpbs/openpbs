@@ -85,7 +85,7 @@
 /**
  * @brief
  * 	clear_attr - clear an attribute value structure and clear ATR_VFLAG_SET
- * 
+ *
  * @param[in] pattr - pointer to attribute structure
  * @param[in] pdef - pointer to attribute_def structure
  *
@@ -117,8 +117,8 @@ clear_attr(attribute *pattr, struct attribute_def *pdef)
  *	whose name matches the requested name.
  *
  * @param[in] attr_def - ptr to attribute definitions
- * @param[in] name - attribute name to find 
- * @param[in] limit - limit on size of def array 
+ * @param[in] name - attribute name to find
+ * @param[in] limit - limit on size of def array
  *
  * @return	int
  * @retval	>=0	index into definition struture array
@@ -166,7 +166,7 @@ free_svrcache(struct attribute *attr)
 			working = sister;
 		}
 	}
-	attr->at_user_encoded = (svrattrl *)0;
+	attr->at_user_encoded = NULL;
 
 	working = attr->at_priv_encoded;
 	if ((working != NULL) && (--working->al_refct <= 0)) {
@@ -177,7 +177,7 @@ free_svrcache(struct attribute *attr)
 			working = sister;
 		}
 	}
-	attr->at_priv_encoded = (svrattrl *)0;
+	attr->at_priv_encoded = NULL;
 }
 
 /**
@@ -283,17 +283,17 @@ attrlist_alloc(int szname, int szresc, int szval)
 	svrattrl *pal;
 
 	if (szname < 0 || szresc < 0 || szval < 0)
-		return ((svrattrl *)0);
+		return NULL;
 	tsize = sizeof(svrattrl) + szname + szresc + szval;
 	pal = (svrattrl *)malloc(tsize);
-	if (pal == (svrattrl *)0)
-		return ((svrattrl *)0);
+	if (pal == NULL)
+		return NULL;
 #ifdef DEBUG
 	memset(pal, 0, sizeof(svrattrl));
 #endif
 
 	CLEAR_LINK(pal->al_link);	/* clear link */
-	pal->al_sister	   = (svrattrl *)0;
+	pal->al_sister	   = NULL;
 	pal->al_atopl.next = 0;
 	pal->al_tsize = tsize;		/* set various string sizes */
 	pal->al_nameln = szname;
@@ -305,7 +305,7 @@ attrlist_alloc(int szname, int szresc, int szval)
 	if (szresc)
 		pal->al_resc = pal->al_name + szname;
 	else
-		pal->al_resc = (char *)0;
+		pal->al_resc = NULL;
 	pal->al_value = pal->al_name + szname + szresc;
 	pal->al_refct = 0;
 	return (pal);
@@ -321,7 +321,7 @@ attrlist_alloc(int szname, int szresc, int szval)
  *
  * @param[in] aname - attribute name
  * @param[in] rname - resource name if needed or null
- * @param[in] vsize - size of resource value  
+ * @param[in] vsize - size of resource value
  *
  * @return      svrattrl *
  * @retval      ptr to entry    on success
@@ -338,7 +338,7 @@ attrlist_create(char  *aname, char  *rname, int vsize)
 
 	asz = strlen(aname) + 1;     /* attribute name,allow for null term */
 
-	if (rname == (char *)0)      /* resource name only if type resource */
+	if (rname == NULL)      /* resource name only if type resource */
 		rsz = 0;
 	else
 		rsz = strlen(rname) + 1;
@@ -354,7 +354,7 @@ attrlist_create(char  *aname, char  *rname, int vsize)
 }
 
 /**
- * @brief 
+ * @brief
  *	free_attrlist - free the space allocated to a list of svrattrl
  *	structures
  *
@@ -370,7 +370,7 @@ free_attrlist(pbs_list_head *pattrlisthead)
 }
 
 /**
- * @brief 
+ * @brief
  *	free an attribute list
  *
  * @param[in] pal - Pointer to the attribute list
@@ -384,7 +384,7 @@ free_svrattrl(svrattrl *pal)
 	svrattrl *nxpal;
 	svrattrl *sister;
 
-	while (pal != (svrattrl *)0) {
+	while (pal != NULL) {
 		if (--pal->al_refct <= 0) {
 			/* if we have any sisters, need to delete them now */
 			/* just in case we end up deleting them later and  */
@@ -413,7 +413,7 @@ free_svrattrl(svrattrl *pal)
  *	On the first call, start is non null, a pointer to the first value
  *	element upto a comma, new-line, or end of string is returned.
  *
- *	On any following calls with start set to a null pointer (char *)0,
+ *	On any following calls with start set to a null pointer NULL,
  *	the next value element is returned...
  *
  *	A null pointer is returned when there are no (more) value elements.
@@ -427,11 +427,11 @@ parse_comma_string(char *start)
 	char	    *back;
 	char	    *rv;
 
-	if (start != (char *)0)
+	if (start != NULL)
 		pc = start;
 
 	if (*pc == '\0')
-		return ((char *)0);	/* already at end, no strings */
+		return NULL;	/* already at end, no strings */
 
 	/* skip over leading white space */
 
@@ -471,7 +471,7 @@ parse_comma_string(char *start)
  *
  * @return	int
  * @retval	0			success
- * @retval	PBSE error code		error 
+ * @retval	PBSE error code		error
  */
 int
 count_substrings(char *val, int *pcnt)
@@ -480,7 +480,7 @@ count_substrings(char *val, int *pcnt)
 	int	ns;
 	char   *pc;
 
-	if (val == (char *)0)
+	if (val == NULL)
 		return  (PBSE_INTERNAL);
 	/*
 	 * determine number of substrings, each sub string is terminated
@@ -513,7 +513,7 @@ count_substrings(char *val, int *pcnt)
  * @param[in] phead - pointer to head of svrattrl list
  *
  * @return	Void
- * 
+ *
  */
 
 void
@@ -533,7 +533,7 @@ attrl_fixlink(pbs_list_head *phead)
 		if (pnxt)
 			pal->al_atopl.next = &pnxt->al_atopl;
 		else
-			pal->al_atopl.next = (struct attropl *)0;
+			pal->al_atopl.next = NULL;
 		pal = pnxt;
 	}
 }
@@ -846,13 +846,13 @@ compare_svrattrl_list(pbs_list_head *l1, pbs_list_head *l2)
 
 	/* now compare the 2 lists */
 	pal1 = (svrattrl *)GET_NEXT(list1);
-	while (pal1 != (svrattrl *)0) {
+	while (pal1 != NULL) {
 
 		nxpal1 = (svrattrl *)GET_NEXT(pal1->al_link);
 
 		pal2 = (svrattrl *)GET_NEXT(list2);
 		found_match = 0;
-		while (pal2 != (svrattrl *)0) {
+		while (pal2 != NULL) {
 			nxpal2 = (struct svrattrl *)GET_NEXT(pal2->al_link);
 			if ((strcmp(pal1->al_name, pal2->al_name) == 0) &&
 				(strcmp(pal1->al_value, pal2->al_value) == 0)) {
@@ -934,14 +934,14 @@ svrattrl_to_str_array(pbs_list_head *pbs_list)
 	svrattrl *plist = NULL;
 
 	if (pbs_list == NULL)
-		return (NULL);
+		return NULL;
 
 	/* calculate the list size */
 	len = 0;
 	plist = (svrattrl *)GET_NEXT(*pbs_list);
 	while (plist) {
 		if (plist->al_value == NULL) {
-			return (NULL);
+			return NULL;
 		}
 
 		len++;
@@ -951,7 +951,7 @@ svrattrl_to_str_array(pbs_list_head *pbs_list)
 	/* add one more entry to calloc for the terminating NULL entry */
 	str_array = (char **)calloc(len+1, sizeof(char *));
 	if (str_array == NULL) {
-		return (NULL);
+		return NULL;
 	}
 
 	plist = (svrattrl *)GET_NEXT(*pbs_list);
@@ -961,7 +961,7 @@ svrattrl_to_str_array(pbs_list_head *pbs_list)
 			str_array[i] = strdup(plist->al_value);
 			if (str_array[i] == NULL) {
 				free_str_array(str_array);
-				return (NULL);
+				return NULL;
 			}
 		}
 		plist = (svrattrl *)GET_NEXT(plist->al_link);
@@ -1033,7 +1033,7 @@ str_array_to_str(char **str_array, char delimiter)
 	char	*ret_string = NULL;
 
 	if (str_array == NULL)
-		return (NULL);
+		return NULL;
 
 	len=0;
 	i=0;
@@ -1051,7 +1051,7 @@ str_array_to_str(char **str_array, char delimiter)
 		ret_string = (char *)malloc(len);
 
 		if (ret_string == NULL)
-			return (NULL);
+			return NULL;
 		i=0;
 		while (str_array[i]) {
 
@@ -1097,14 +1097,14 @@ str_to_str_array(char *str, char delimiter)
 	char	*p;
 
 	if (str == NULL)
-		return (NULL);
+		return NULL;
 
 	/* calculate the list size */
 	len = 0;
 
 	str1 = strdup(str);
 	if (str1 == NULL)
-		return (NULL);
+		return NULL;
 
 	len=0;
 	p = strtok_quoted(str1, delimiter);
@@ -1117,11 +1117,12 @@ str_to_str_array(char *str, char delimiter)
 	/* add one more entry to calloc for the terminating NULL entry */
 	str_array = (char **)calloc(len+1, sizeof(char *));
 	if (str_array == NULL) {
-		return (NULL);
+		return NULL;
 	}
 	str1 = strdup(str);
 	if (str1 == NULL) {
-		return (NULL);
+		free_str_array(str_array);
+		return NULL;
 	}
 	p = strtok_quoted(str1, delimiter);
 	i = 0;
@@ -1130,7 +1131,7 @@ str_to_str_array(char *str, char delimiter)
 		if (str_array[i] == NULL) {
 			free_str_array(str_array);
 			free(str1);
-			return (NULL);
+			return NULL;
 		}
 		i++;
 		p = strtok_quoted(NULL, delimiter);
@@ -1182,7 +1183,7 @@ env_array_to_str(char **env_array, char delimiter)
 	char	*pc2 = NULL;
 
 	if (env_array == NULL)
-		return (NULL);
+		return NULL;
 
 	len=0;
 	i=0;
@@ -1214,7 +1215,7 @@ env_array_to_str(char **env_array, char delimiter)
 		ret_string = (char *)malloc(len);
 
 		if (ret_string == NULL)
-			return (NULL);
+			return NULL;
 		i=0;
 		while (env_array[i]) {
 			var = env_array[i];
@@ -1321,7 +1322,7 @@ strtok_quoted(char *source, char delimiter)
 	}
 
 	if ((pc == NULL) || (*pc == '\0'))
-		return (NULL);
+		return NULL;
 
 	for (stok = pc; *pc != 0; pc++) {
 

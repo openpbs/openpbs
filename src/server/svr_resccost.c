@@ -141,7 +141,7 @@ decode_rcost(struct attribute *patr, char *name, char *rescn, char *val)
 	void free_rcost(attribute *);
 
 
-	if ((val == (char *)0) || (rescn == (char *)0)) {
+	if ((val == NULL) || (rescn == NULL)) {
 		patr->at_flags = (patr->at_flags & ~ATR_VFLAG_SET) |
 			ATR_VFLAG_MODIFY;
 		return (0);
@@ -151,7 +151,7 @@ decode_rcost(struct attribute *patr, char *name, char *rescn, char *val)
 	}
 
 	prdef = find_resc_def(svr_resc_def, rescn, svr_resc_size);
-	if (prdef == (resource_def *)0)
+	if (prdef == NULL)
 		return (PBSE_UNKRESC);
 	pcost = (struct resource_cost *)GET_NEXT(patr->at_val.at_list);
 	while (pcost) {
@@ -159,8 +159,8 @@ decode_rcost(struct attribute *patr, char *name, char *rescn, char *val)
 			break;	/* have entry in attr already */
 		pcost = (struct resource_cost *)GET_NEXT(pcost->rc_link);
 	}
-	if (pcost == (struct resource_cost *)0) {	/* add entry */
-		if ((pcost=add_cost_entry(patr, prdef)) == (struct resource_cost *)0)
+	if (pcost == NULL) {	/* add entry */
+		if ((pcost=add_cost_entry(patr, prdef)) == NULL)
 			return (PBSE_SYSTEM);
 	}
 	pcost->rc_cost = atol(val);
@@ -203,7 +203,7 @@ encode_rcost(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, 
 	pcost = (struct resource_cost *)GET_NEXT(attr->at_val.at_list);
 	while (pcost) {
 		rsname = pcost->rc_def->rs_name;
-		if ((pal = attrlist_create(atname, rsname, 23)) == (svrattrl *)0)
+		if ((pal = attrlist_create(atname, rsname, 23)) == NULL)
 			return (-1);
 
 		(void)sprintf(pal->al_value, "%ld", pcost->rc_cost);
@@ -254,8 +254,8 @@ set_rcost(struct attribute *old, struct attribute *new, enum batch_op op)
 				break;
 			pcold = (struct resource_cost *)GET_NEXT(pcold->rc_link);
 		}
-		if (pcold == (struct resource_cost *)0)
-			if ((pcold = add_cost_entry(old, pcnew->rc_def)) == (struct resource_cost *)0)
+		if (pcold == NULL)
+			if ((pcold = add_cost_entry(old, pcnew->rc_def)) == NULL)
 				return (PBSE_SYSTEM);
 
 		switch (op) {
