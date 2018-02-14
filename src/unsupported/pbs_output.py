@@ -57,7 +57,7 @@ except Exception:
 
 def outname(jobid):
     # Create the pathname to write the RUR data for PBS.
-    # By default it will be "/var/spool/PBS/spool/<jobid>.rur"
+    # By default it will be "/var/spool/pbs/spool/<jobid>.rur"
     home = "PBS_HOME"
     dirname = "/var/spool/pbs"
     if home in os.environ:

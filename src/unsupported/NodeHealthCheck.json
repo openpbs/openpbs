@@ -82,7 +82,7 @@
          "<user_home>":["pbsuser","Warn"], 
          "/scratch/<userid>":["pbsuser","Warn"], 
          "$PBS_O_WORKDIR":["pbsuser","Warn"],
-         "/var/spool/PBS/mom_priv":["pbsadmin","Warn"]
+         "/var/spool/pbs/mom_priv":["pbsadmin","Warn"]
       }
    }
 }

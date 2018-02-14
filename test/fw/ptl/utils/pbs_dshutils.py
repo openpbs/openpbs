@@ -427,14 +427,14 @@ class DshUtils(object):
         return pbs_conf['PBS_SERVER']
 
     def parse_pbs_environment(self, hostname=None,
-                              file='/var/spool/PBS/pbs_environment'):
+                              file='/var/spool/pbs/pbs_environment'):
         """
         Initialize pbs_conf dictionary by parsing pbs config file
         """
         return self._parse_file(hostname, file)
 
     def set_pbs_environment(self, hostname=None,
-                            fin='/var/spool/PBS/pbs_environment', fout=None,
+                            fin='/var/spool/pbs/pbs_environment', fout=None,
                             append=True, vars={}):
         """
         Set the PBS environment
