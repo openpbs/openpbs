@@ -222,7 +222,7 @@ class TestFairshare(TestFunctional):
         """
 
         self.set_up_resource_group()
-        a = {'log_filter': 2048, 'fair_share': "True All"}
+        a = {'log_filter': 2048, 'fair_share': "True ALL"}
         self.scheduler.set_sched_config(a)
 
         formula = 'fairshare_factor'
