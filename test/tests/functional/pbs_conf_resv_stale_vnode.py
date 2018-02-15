@@ -62,7 +62,7 @@ class TestResvStaleVnode(TestFunctional):
                                   additive=True, mom=self.mom, expect=False)
 
         self.scheduler.set_sched_config({'node_sort_key':
-                                        'sort_priority HIGH'})
+                                        '\"sort_priority HIGH\"'})
 
     def test_conf_resv_stale_vnode(self):
         """
