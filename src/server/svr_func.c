@@ -7193,3 +7193,39 @@ action_opt_bf_fuzzy(attribute *pattr, void *pobj, int actmode)
 
 	return PBSE_NONE;
 }
+
+/**
+ * @brief
+ * 		sets the given value for an attribute of any object from server
+ *
+ * @param[in]	pattr	-	pointer to attribute being set
+ * @param[in]	pobj	-	pointer to attribute definition
+ * @param[in]	value	-	value to be set
+ *
+ * @return	void
+ *
+ * @par MT-Safe: No
+ * @par Side Effects: None
+ *
+ */
+void
+set_attr_svr(attribute *pattr, attribute_def *pdef, char *value)
+{
+	attribute tempat;
+	int rc;
+
+	if (pattr == NULL || pdef == NULL) {
+		snprintf(log_buffer, sizeof(log_buffer), "Invalid pointer to attribute or its definition");
+		log_err(-1, __func__, log_buffer);
+		return;
+	}
+	clear_attr(&tempat, pdef);
+	if ((rc = pdef->at_decode(&tempat, pdef->at_name, NULL, value)) != 0) {
+		snprintf(log_buffer,  sizeof(log_buffer), "decode of %s failed", pdef->at_name);
+		log_err(rc, __func__, log_buffer);
+	} else if ((rc = pdef->at_set(pattr, &tempat, SET)) != 0) {
+		snprintf(log_buffer, sizeof(log_buffer), "set of %s failed", pdef->at_name);
+		log_err(rc, __func__, log_buffer);
+	}
+	pdef->at_free(&tempat);
+}

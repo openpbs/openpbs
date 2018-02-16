@@ -387,14 +387,11 @@ poke_scheduler(attribute *pattr, void *pobj, int actmode)
 		if (pobj == &server) {
 			/* set this attribute on main scheduler */
 			if (dflt_scheduler) {
-				dflt_scheduler->sch_attr[SCHED_ATR_scheduling].at_val.at_long = pattr->at_val.at_long;
-				dflt_scheduler->sch_attr[SCHED_ATR_scheduling].at_flags |=
-						ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+				sched_attr_def[(int) SCHED_ATR_scheduling].at_set(&dflt_scheduler->sch_attr[(int) SCHED_ATR_scheduling], pattr, SET);
 				(void)sched_save_db(dflt_scheduler, SVR_SAVE_FULL);
 			}
 		} else {
-			server.sv_attr[SRV_ATR_scheduling].at_val.at_long = pattr->at_val.at_long;
-			server.sv_attr[SRV_ATR_scheduling].at_flags |= ATR_VFLAG_MODCACHE;
+			svr_attr_def[(int) SRV_ATR_scheduling].at_set(&server.sv_attr[SRV_ATR_scheduling], pattr, SET);
 			svr_save_db(&server, SVR_SAVE_QUICK);
 		}
 		if (actmode == ATR_ACTION_ALTER) {
@@ -422,75 +419,50 @@ poke_scheduler(attribute *pattr, void *pobj, int actmode)
 void
 set_sched_default(pbs_sched *psched, int unset_flag)
 {
+	char *temp;
+	char dir_path[MAXPATHLEN +1] = {0};
+
 	if (!psched)
 		return;
+
 	if ((psched->sch_attr[(int) SCHED_ATR_sched_cycle_len].at_flags & ATR_VFLAG_SET) == 0) {
-		psched->sch_attr[(int) SCHED_ATR_sched_cycle_len].at_val.at_long = PBS_SCHED_CYCLE_LEN_DEFAULT;
-		psched->sch_attr[(int) SCHED_ATR_sched_cycle_len].at_flags =
-				ATR_VFLAG_DEFLT | ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+		set_attr_svr(&(psched->sch_attr[(int) SCHED_ATR_sched_cycle_len]), &sched_attr_def[(int) SCHED_ATR_sched_cycle_len],
+			TOSTR(PBS_SCHED_CYCLE_LEN_DEFAULT));
 	}
 	if (!unset_flag && (psched->sch_attr[(int) SCHED_ATR_schediteration].at_flags & ATR_VFLAG_SET) == 0) {
-		psched->sch_attr[(int) SCHED_ATR_schediteration].at_val.at_long = PBS_SCHEDULE_CYCLE;
-		psched->sch_attr[(int) SCHED_ATR_schediteration].at_flags =
-				ATR_VFLAG_DEFLT | ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+		set_attr_svr(&(psched->sch_attr[(int) SCHED_ATR_schediteration]), &sched_attr_def[(int) SCHED_ATR_schediteration],
+			TOSTR(PBS_SCHEDULE_CYCLE));
 	}
 	if ((psched->sch_attr[(int) SCHED_ATR_scheduling].at_flags & ATR_VFLAG_SET) == 0) {
 		if (psched != dflt_scheduler)
-			psched->sch_attr[(int) SCHED_ATR_scheduling].at_val.at_long = 0;
+			temp = "0";
 		else
-			psched->sch_attr[(int) SCHED_ATR_scheduling].at_val.at_long = 1;
-		psched->sch_attr[(int) SCHED_ATR_scheduling].at_flags =
-				ATR_VFLAG_DEFLT | ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+			temp = "1";
+		set_attr_svr(&(psched->sch_attr[(int) SCHED_ATR_scheduling]), &sched_attr_def[(int) SCHED_ATR_scheduling], temp);
 	}
 	if ((psched->sch_attr[(int) SCHED_ATR_sched_state].at_flags & ATR_VFLAG_SET) == 0) {
-		psched->sch_attr[(int) SCHED_ATR_sched_state].at_val.at_str = malloc(SC_STATUS_LEN + 1);
-		if (psched->sch_attr[(int) SCHED_ATR_sched_state].at_val.at_str == NULL) {
-			log_err(errno, __func__, "no memory");
-			return;
-		} else {
 			if (psched != dflt_scheduler)
-				strncpy(psched->sch_attr[(int) SCHED_ATR_sched_state].at_val.at_str, SC_DOWN, SC_STATUS_LEN);
+				temp = SC_DOWN;
 			else
-				strncpy(psched->sch_attr[(int) SCHED_ATR_sched_state].at_val.at_str, SC_IDLE, SC_STATUS_LEN);
-			psched->sch_attr[(int) SCHED_ATR_sched_state].at_val.at_str[SC_STATUS_LEN] = '\0';
-			psched->sch_attr[(int) SCHED_ATR_sched_state].at_flags =
-			ATR_VFLAG_DEFLT | ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
-		}
-
+				temp = SC_IDLE;
+			set_attr_svr(&(psched->sch_attr[(int) SCHED_ATR_sched_state]), &sched_attr_def[(int) SCHED_ATR_sched_state], temp);
 	}
-	if ((psched->sch_attr[(int) SCHED_ATR_sched_priv].at_flags & ATR_VFLAG_SET) == 0) {
-		psched->sch_attr[(int) SCHED_ATR_sched_priv].at_val.at_str = malloc(MAXPATHLEN + 1);
-		if (psched->sch_attr[(int) SCHED_ATR_sched_priv].at_val.at_str == NULL) {
-			log_err(errno, __func__, "no memory");
-			return;
-		} else {
-			if (psched != dflt_scheduler)
-				(void) snprintf(psched->sch_attr[(int) SCHED_ATR_sched_priv].at_val.at_str, MAXPATHLEN, "%s/sched_priv_%s",
-						pbs_conf.pbs_home_path, psched->sc_name);
-			else
-				(void) snprintf(psched->sch_attr[(int) SCHED_ATR_sched_priv].at_val.at_str, MAXPATHLEN, "%s/sched_priv",
-						pbs_conf.pbs_home_path);
-			psched->sch_attr[(int) SCHED_ATR_sched_priv].at_flags =
-			ATR_VFLAG_DEFLT | ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
-		}
 
+	if ((psched->sch_attr[(int) SCHED_ATR_sched_priv].at_flags & ATR_VFLAG_SET) == 0) {
+			if (psched != dflt_scheduler)
+				(void) snprintf(dir_path, MAXPATHLEN, "%s/sched_priv_%s", pbs_conf.pbs_home_path, psched->sc_name);
+			else
+				(void) snprintf(dir_path, MAXPATHLEN, "%s/sched_priv", pbs_conf.pbs_home_path);
+			set_attr_svr(&(psched->sch_attr[(int) SCHED_ATR_sched_priv]), &sched_attr_def[(int) SCHED_ATR_sched_priv],
+				dir_path);
 	}
 	if ((psched->sch_attr[(int) SCHED_ATR_sched_log].at_flags & ATR_VFLAG_SET) == 0) {
-		psched->sch_attr[(int) SCHED_ATR_sched_log].at_val.at_str = malloc(MAXPATHLEN + 1);
-		if (psched->sch_attr[(int) SCHED_ATR_sched_log].at_val.at_str == NULL) {
-			log_err(errno, __func__, "no memory");
-			return;
-		} else {
 			if (psched != dflt_scheduler)
-				(void) snprintf(psched->sch_attr[(int) SCHED_ATR_sched_log].at_val.at_str, MAXPATHLEN, "%s/sched_logs_%s",
-						pbs_conf.pbs_home_path, psched->sc_name);
+				(void) snprintf(dir_path, MAXPATHLEN, "%s/sched_logs_%s", pbs_conf.pbs_home_path, psched->sc_name);
 			else
-				(void) snprintf(psched->sch_attr[(int) SCHED_ATR_sched_log].at_val.at_str, MAXPATHLEN, "%s/sched_logs",
-						pbs_conf.pbs_home_path);
-			psched->sch_attr[(int) SCHED_ATR_sched_log].at_flags =
-			ATR_VFLAG_DEFLT | ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
-		}
-
+				(void) snprintf(dir_path, MAXPATHLEN, "%s/sched_logs", pbs_conf.pbs_home_path);
+			set_attr_svr(&(psched->sch_attr[(int) SCHED_ATR_sched_log]), &sched_attr_def[(int) SCHED_ATR_sched_log],
+				dir_path);
 	}
 }
 

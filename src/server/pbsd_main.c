@@ -1973,8 +1973,6 @@ try_db_again:
 	}
 	dflt_scheduler->pbs_scheduler_addr = pbs_scheduler_addr;
 	dflt_scheduler->pbs_scheduler_port = pbs_scheduler_port;
-	strncpy(dflt_scheduler->sch_attr[(int) SCHED_ATR_sched_state].at_val.at_str, SC_SCHEDULING, SC_STATUS_LEN);
-	dflt_scheduler->sch_attr[(int) SCHED_ATR_sched_state].at_val.at_str[SC_STATUS_LEN] = '\0';
 
 #ifdef WIN32
 	sprintf(log_buffer, msg_startup2, getpid(), pbs_server_port_dis,

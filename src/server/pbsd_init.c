@@ -256,16 +256,16 @@ init_server_attrs()
 {
 	resource_def    *prdef = NULL;
 	resource        *presc = NULL;
-	struct attribute attrib = {0};
-	int i = 0;
+	attribute	attrib;
+	int 		i = 0;
 
-	for (i=0; i<SRV_ATR_LAST; i++)
+
+	for (i = 0; i < SRV_ATR_LAST; i++)
 		clear_attr(&server.sv_attr[i], &svr_attr_def[i]);
 
-	server.sv_attr[(int)SRV_ATR_scheduler_iteration].at_val.at_long =
-		PBS_SCHEDULE_CYCLE;
-	server.sv_attr[(int)SRV_ATR_scheduler_iteration].at_flags =
-		ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
+	set_attr_svr(&(server.sv_attr[(int)SRV_ATR_scheduler_iteration]), &svr_attr_def[(int) SRV_ATR_scheduler_iteration],
+		TOSTR(PBS_SCHEDULE_CYCLE));
+
 	server.sv_attr[(int)SRV_ATR_State].at_val.at_long = SV_STATE_INIT;
 	server.sv_attr[(int)SRV_ATR_State].at_flags =
 		ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
@@ -313,6 +313,7 @@ init_server_attrs()
 	server.sv_attr[(int)SRV_ATR_max_concurrent_prov].at_flags =
 		ATR_VFLAG_DEFLT|ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
 
+	clear_attr(&attrib, &svr_attr_def[(int)	SVR_ATR_jobscript_max_size]);
 	svr_attr_def[(int)SVR_ATR_jobscript_max_size].at_decode(&attrib,ATTR_jobscript_max_size,NULL,DFLT_JOBSCRIPT_MAX_SIZE);
 	attr_jobscript_max_size.at_type  |= ATR_TYPE_SIZE;  /* get_bytes_from_attr() is checking for at_type */
 	set_size(&attr_jobscript_max_size,&attrib,SET);

@@ -230,7 +230,7 @@ typedef struct pbs_db_svr_info pbs_db_svr_info_t;
  *
  */
 struct pbs_db_sched_info {
-	char    sched_name[PBS_MAXSERVERNAME+1];
+	char    sched_name[PBS_MAXSCHEDNAME+1];
 	char    sched_sv_name[PBS_MAXSERVERNAME+1];
 	BIGINT  sched_creattm;
 	BIGINT  sched_savetm;

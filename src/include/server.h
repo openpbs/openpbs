@@ -253,6 +253,9 @@ enum failover_state {
 #define SVR_CLEAN_JOBHIST_SECS	5	/* never spend more than 5 seconds in one sweep to clean hist */
 #define SVR_JOBHIST_DEFAULT	1209600	/* default time period to keep job history: 2 weeks */
 
+#define VALUE(str) #str
+#define TOSTR(str) VALUE(str)
+
 /* function prototypes */
 
 extern int			svr_recov_db(void);
@@ -263,6 +266,7 @@ extern enum failover_state	are_we_primary(void);
 extern int			have_socket_licensed_nodes(void);
 extern void			unlicense_socket_licensed_nodes(void);
 extern void			set_sched_default(pbs_sched *, int unset_flag);
+extern void			set_attr_svr(attribute *pattr, attribute_def *pdef, char *value);
 
 #ifdef	__cplusplus
 }

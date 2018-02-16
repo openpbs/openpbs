@@ -349,8 +349,10 @@ schedule_high(pbs_sched *psched)
 		return -1;
 
 	if (psched->scheduler_sock == -1) {
-		if ((s = contact_sched(psched->svr_do_sched_high, NULL, psched->pbs_scheduler_addr, psched->pbs_scheduler_port)) < 0)
+		if ((s = contact_sched(psched->svr_do_sched_high, NULL, psched->pbs_scheduler_addr, psched->pbs_scheduler_port)) < 0) {
+			set_attr_svr(&(psched->sch_attr[(int) SCHED_ATR_sched_state]), &sched_attr_def[(int) SCHED_ATR_sched_state], SC_DOWN);
 			return (-1);
+		}
 		set_sched_sock(s, psched);
 		if (psched->scheduler_sock2 == -1) {
 			if ((s = contact_sched(SCH_SCHEDULE_NULL, NULL, psched->pbs_scheduler_addr, psched->pbs_scheduler_port)) >= 0)
@@ -359,9 +361,8 @@ schedule_high(pbs_sched *psched)
 		psched->svr_do_sched_high = SCH_SCHEDULE_NULL;
 		return 0;
 	}
-	strncpy(psched->sch_attr[(int) SCHED_ATR_sched_state].at_val.at_str, SC_SCHEDULING, SC_STATUS_LEN);
-	psched->sch_attr[(int) SCHED_ATR_sched_state].at_val.at_str[SC_STATUS_LEN] = '\0';
-	psched->sch_attr[(int) SCHED_ATR_sched_state].at_flags = ATR_VFLAG_DEFLT | ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+
+	set_attr_svr(&(psched->sch_attr[(int) SCHED_ATR_sched_state]), &sched_attr_def[(int) SCHED_ATR_sched_state], SC_SCHEDULING);
 
 	return 1;
 }
@@ -425,8 +426,10 @@ schedule_jobs(pbs_sched *psched)
 			pdefr = (struct deferred_request *)GET_NEXT(pdefr->dr_link);
 		}
 
-		if ((s = contact_sched(cmd, jid, psched->pbs_scheduler_addr, psched->pbs_scheduler_port)) < 0)
+		if ((s = contact_sched(cmd, jid, psched->pbs_scheduler_addr, psched->pbs_scheduler_port)) < 0) {
+			set_attr_svr(&(psched->sch_attr[(int) SCHED_ATR_sched_state]), &sched_attr_def[(int) SCHED_ATR_sched_state], SC_DOWN);
 			return (-1);
+		}
 		else if (pdefr != NULL)
 			pdefr->dr_sent = 1;   /* mark entry as sent to sched */
 		set_sched_sock(s, psched);
@@ -436,9 +439,7 @@ schedule_jobs(pbs_sched *psched)
 		}
 		psched->svr_do_schedule = SCH_SCHEDULE_NULL;
 
-		strncpy(psched->sch_attr[(int) SCHED_ATR_sched_state].at_val.at_str, SC_SCHEDULING, SC_STATUS_LEN);
-		psched->sch_attr[(int) SCHED_ATR_sched_state].at_val.at_str[SC_STATUS_LEN] = '\0';
-		psched->sch_attr[(int) SCHED_ATR_sched_state].at_flags = ATR_VFLAG_DEFLT | ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+		set_attr_svr(&(psched->sch_attr[(int) SCHED_ATR_sched_state]), &sched_attr_def[(int) SCHED_ATR_sched_state], SC_SCHEDULING);
 
 		first_time = 0;
 
@@ -489,9 +490,7 @@ scheduler_close(int sock)
 	if (psched == NULL)
 		return;
 
-	strncpy(psched->sch_attr[(int) SCHED_ATR_sched_state].at_val.at_str, SC_IDLE, SC_STATUS_LEN);
-	psched->sch_attr[(int) SCHED_ATR_sched_state].at_val.at_str[SC_STATUS_LEN] = '\0';
-	psched->sch_attr[(int) SCHED_ATR_sched_state].at_flags = ATR_VFLAG_DEFLT | ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
+	set_attr_svr(&(psched->sch_attr[(int) SCHED_ATR_sched_state]), &sched_attr_def[(int) SCHED_ATR_sched_state], SC_IDLE);
 
 	if ((sock != -1) && (sock == psched->scheduler_sock2)) {
 		psched->scheduler_sock2 = -1;

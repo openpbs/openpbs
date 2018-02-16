@@ -504,8 +504,10 @@ sched_save_db(pbs_sched *ps, int mode)
 		attr_info.parent_obj_type = PARENT_TYPE_SCHED; /* svr attr */
 		attr_info.parent_id = ps->sc_name;
 
+		ps->sch_attr[SCHED_ATR_sched_state].at_flags &= ~(ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE);
 		if (save_attr_db(conn, &attr_info, sched_attr_def, ps->sch_attr, (int)SCHED_ATR_LAST, flag) !=0)
 			goto db_err;
+		ps->sch_attr[SCHED_ATR_sched_state].at_flags |= (ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE);
 
 		if (pbs_db_end_trx(conn, PBS_DB_COMMIT) != 0)
 			goto db_err;
