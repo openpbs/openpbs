@@ -982,9 +982,9 @@ mgr_hook_delete(struct batch_request *preq)
 {
 
 
-	hook 		*phook;
-	char		*hookname;
-	char		hook_msg[HOOK_MSG_SIZE];
+	hook *phook = NULL;
+	char hookname[PBS_MAXSVRJOBID + 1] = {0};
+	char hook_msg[HOOK_MSG_SIZE] = {0};
 
 	memset(hook_msg, '\0', HOOK_MSG_SIZE);
 
@@ -993,7 +993,7 @@ mgr_hook_delete(struct batch_request *preq)
 		return;
 	}
 
-	hookname = preq->rq_ind.rq_manager.rq_objname;
+	strncpy(hookname, preq->rq_ind.rq_manager.rq_objname, PBS_MAXSVRJOBID);
 
 	phook = find_hook(hookname);
 
@@ -1127,21 +1127,21 @@ py_compile_and_run(char *input_file_path, char *hook_msg, size_t msg_len,
 void
 mgr_hook_import(struct batch_request *preq)
 {
-	svrattrl	*plist, *plx;
-	char		*hookname;
-	hook		*phook;
-	char		content_type[BUFSIZ];
-	char		content_encoding[BUFSIZ];
-	char		input_file[MAXPATHLEN+1];
-	char		input_file_path[MAXPATHLEN+1];
-	char		input_path[MAXPATHLEN+1];
-	char		temp_path[MAXPATHLEN+1];
-	char		output_path[MAXPATHLEN+1];
-	char		hook_msg[HOOK_MSG_SIZE];
-	int		overwrite;
-	struct python_script *py_test_script=NULL;
-	int		rc;
-	int		hook_obj;
+	svrattrl *plist, *plx;
+	char hookname[PBS_MAXSVRJOBID + 1] = {0};
+	hook *phook;
+	char content_type[BUFSIZ];
+	char content_encoding[BUFSIZ];
+	char input_file[MAXPATHLEN + 1];
+	char input_file_path[MAXPATHLEN + 1];
+	char input_path[MAXPATHLEN + 1] = {0};
+	char temp_path[MAXPATHLEN + 1];
+	char output_path[MAXPATHLEN + 1] = {0};
+	char hook_msg[HOOK_MSG_SIZE] = {0};
+	int overwrite;
+	struct python_script *py_test_script = NULL;
+	int rc;
+	int hook_obj;
 
 	hook_obj = preq->rq_ind.rq_manager.rq_objtype;
 
@@ -1150,19 +1150,14 @@ mgr_hook_import(struct batch_request *preq)
 		return;
 	}
 
-	memset(hook_msg, '\0', HOOK_MSG_SIZE);
-	memset(input_path, '\0', MAXPATHLEN+1);
-	memset(output_path, '\0', MAXPATHLEN+1);
-	hookname = preq->rq_ind.rq_manager.rq_objname;
+	strncpy(hookname, preq->rq_ind.rq_manager.rq_objname, PBS_MAXSVRJOBID);
 
 	phook = find_hook(hookname);
 
 	if ((phook == NULL) || phook->pending_delete) {
-		snprintf(hook_msg, HOOK_MSG_SIZE-1,
-			"%s does not exist!", hookname);
+		snprintf(hook_msg, HOOK_MSG_SIZE, "%s does not exist!", hookname);
+		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_HOOK, LOG_INFO, hookname, hook_msg);
 		reply_text(preq, PBSE_HOOKERROR, hook_msg);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_HOOK, LOG_INFO,
-			hookname, hook_msg);
 		return;
 	}
 
@@ -1170,22 +1165,18 @@ mgr_hook_import(struct batch_request *preq)
 	/* But HOOK_PBS hooks can also be shown if the qmgr request is */
 	/* specifically operating on the "pbshook" keyword. */
 	if ((phook->type != HOOK_SITE) && (hook_obj != MGR_OBJ_PBS_HOOK)) {
-		snprintf(hook_msg, HOOK_MSG_SIZE-1,
-			"%s not of '%s' type", hookname, HOOKSTR_SITE);
+		snprintf(hook_msg, HOOK_MSG_SIZE, "%s not of '%s' type", hookname, HOOKSTR_SITE);
+		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_HOOK, LOG_INFO, hookname, hook_msg);
 		reply_text(preq, PBSE_HOOKERROR, hook_msg);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_HOOK, LOG_INFO,
-			hookname, hook_msg);
 		return;
 	}
 
 	/* Cannot show a HOOK_SITE hook if the qmgr request keyword is */
 	/* "pbshook" */
 	if ((phook->type == HOOK_SITE) && (hook_obj == MGR_OBJ_PBS_HOOK)) {
-		snprintf(hook_msg, HOOK_MSG_SIZE-1,
-			"%s not of '%s' type", hookname, HOOKSTR_PBS);
+		snprintf(hook_msg, HOOK_MSG_SIZE, "%s not of '%s' type", hookname, HOOKSTR_PBS);
+		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_HOOK, LOG_INFO, hookname, hook_msg);
 		reply_text(preq, PBSE_HOOKERROR, hook_msg);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_HOOK, LOG_INFO,
-			hookname, hook_msg);
 		return;
 	}
 
@@ -1202,13 +1193,13 @@ mgr_hook_import(struct batch_request *preq)
 
 		if (strcasecmp(plx->al_name, CONTENT_TYPE_PARAM) == 0) {
 			if (plx->al_value == NULL) {
-				snprintf(hook_msg, HOOK_MSG_SIZE-1,
+				snprintf(hook_msg, HOOK_MSG_SIZE,
 					"<%s> is NULL", CONTENT_TYPE_PARAM);
 				goto mgr_hook_import_error;
 			}
 			if (hook_obj == MGR_OBJ_PBS_HOOK) {
 				if (strcmp(plx->al_value, HOOKSTR_CONFIG) != 0) {
-					snprintf(hook_msg, HOOK_MSG_SIZE-1,
+					snprintf(hook_msg, HOOK_MSG_SIZE,
 						"<%s> must be %s",
 						CONTENT_TYPE_PARAM, HOOKSTR_CONFIG);
 					goto mgr_hook_import_error;
@@ -1216,7 +1207,7 @@ mgr_hook_import(struct batch_request *preq)
 			} else if ((strcmp(plx->al_value, HOOKSTR_CONTENT) != 0) &&
 				(strcmp(plx->al_value, HOOKSTR_CONFIG) != 0)) {
 
-				snprintf(hook_msg, HOOK_MSG_SIZE-1,
+				snprintf(hook_msg, HOOK_MSG_SIZE,
 					"<%s> must be %s or %s",
 					CONTENT_TYPE_PARAM, HOOKSTR_CONTENT, HOOKSTR_CONFIG);
 				goto mgr_hook_import_error;
@@ -1225,13 +1216,13 @@ mgr_hook_import(struct batch_request *preq)
 		} else if (strcasecmp(plx->al_name,
 			CONTENT_ENCODING_PARAM) == 0) {
 			if (plx->al_value == NULL) {
-				snprintf(hook_msg, HOOK_MSG_SIZE-1,
+				snprintf(hook_msg, HOOK_MSG_SIZE,
 					"<%s> is NULL", CONTENT_ENCODING_PARAM);
 				goto mgr_hook_import_error;
 			}
 			if ((strcmp(plx->al_value, HOOKSTR_DEFAULT) != 0) &&
 				(strcmp(plx->al_value, HOOKSTR_BASE64) != 0)) {
-				snprintf(hook_msg, HOOK_MSG_SIZE-1,
+				snprintf(hook_msg, HOOK_MSG_SIZE,
 					"<%s> must be '%s' or '%s'",
 					CONTENT_ENCODING_PARAM,
 					HOOKSTR_DEFAULT, HOOKSTR_BASE64);
@@ -1240,20 +1231,20 @@ mgr_hook_import(struct batch_request *preq)
 			strcpy(content_encoding, plx->al_value);
 		} else if (strcasecmp(plx->al_name, INPUT_FILE_PARAM) == 0) {
 			if (plx->al_value == NULL) {
-				snprintf(hook_msg, HOOK_MSG_SIZE-1,
+				snprintf(hook_msg, HOOK_MSG_SIZE,
 					"input-file is NULL");
 				goto mgr_hook_import_error;
 			}
 
 			if (is_full_path(plx->al_value)) {
-				snprintf(hook_msg, HOOK_MSG_SIZE-1,
+				snprintf(hook_msg, HOOK_MSG_SIZE,
 					"<%s> path must be relative to %s",
 					INPUT_FILE_PARAM, path_hooks_workdir);
 				goto mgr_hook_import_error;
 			}
 			strcpy(input_file, plx->al_value);
 		} else {
-			snprintf(hook_msg, HOOK_MSG_SIZE-1,
+			snprintf(hook_msg, HOOK_MSG_SIZE,
 				"unrecognized parameter - %s",
 				plx->al_name);
 			goto mgr_hook_import_error;
@@ -1271,7 +1262,7 @@ mgr_hook_import(struct batch_request *preq)
 		p = strrchr(input_file, '.');
 		if (p != NULL) {
 			if (!in_string_list(p, ' ', VALID_HOOK_CONFIG_SUFFIX)) {
-				snprintf(hook_msg, HOOK_MSG_SIZE-1,
+				snprintf(hook_msg, HOOK_MSG_SIZE,
 					"<%s> contains an invalid suffix, "
 					"should be one of: %s",
 					INPUT_FILE_PARAM,
@@ -1367,7 +1358,7 @@ mgr_hook_import(struct batch_request *preq)
 			hook_msg, sizeof(hook_msg)) != 0)
 			goto mgr_hook_import_error;
 		if (overwrite) {
-			snprintf(hook_msg, HOOK_MSG_SIZE-1,
+			snprintf(hook_msg, HOOK_MSG_SIZE,
 				"hook '%s' contents overwritten", hookname);
 			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
 				LOG_INFO, __func__, hook_msg);
@@ -1392,7 +1383,7 @@ mgr_hook_import(struct batch_request *preq)
 	/* create a py_script */
 	if (pbs_python_ext_alloc_python_script(temp_path,
 		(struct python_script **) &py_test_script) == -1) {
-		snprintf(hook_msg, HOOK_MSG_SIZE-1,
+		snprintf(hook_msg, HOOK_MSG_SIZE,
 			"failed to allocate storage for python script %s",
 			temp_path);
 		unlink(temp_path);
@@ -1407,12 +1398,12 @@ mgr_hook_import(struct batch_request *preq)
 
 	if (rc != 0) {
 		if (overwrite)
-			snprintf(hook_msg, sizeof(hook_msg)-1,
+			snprintf(hook_msg, sizeof(hook_msg),
 				"Failed to compile script, "
 				"hook '%s' contents not overwritten",
 				hookname);
 		else
-			snprintf(hook_msg, sizeof(hook_msg)-1,
+			snprintf(hook_msg, sizeof(hook_msg),
 				"Failed to compile script");
 
 		unlink(temp_path);
@@ -1429,7 +1420,7 @@ mgr_hook_import(struct batch_request *preq)
 	unlink(temp_path);
 
 	if (overwrite) {
-		snprintf(hook_msg, HOOK_MSG_SIZE-1,
+		snprintf(hook_msg, HOOK_MSG_SIZE,
 			"hook '%s' contents overwritten", hookname);
 		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
 			LOG_INFO, __func__, hook_msg);
@@ -1447,7 +1438,7 @@ mgr_hook_import(struct batch_request *preq)
 
 	if (pbs_python_ext_alloc_python_script(output_path,
 		(struct python_script **)&phook->script) == -1) {
-		snprintf(hook_msg, HOOK_MSG_SIZE-1,
+		snprintf(hook_msg, HOOK_MSG_SIZE,
 			"failed to allocate storage for python script %s",
 			output_path);
 		goto mgr_hook_import_error;
@@ -1493,16 +1484,16 @@ mgr_hook_import_error:
 void
 mgr_hook_export(struct batch_request *preq)
 {
-	svrattrl	*plist, *plx;
-	char		*hookname;
-	hook		*phook;
-	char		content_type[BUFSIZ];
-	char		content_encoding[BUFSIZ];
-	char		output_file[MAXPATHLEN+1];
-	char		input_path[MAXPATHLEN+1];
-	char		output_path[MAXPATHLEN+1];
-	char		hook_msg[HOOK_MSG_SIZE];
-	int		hook_obj;
+	svrattrl *plist, *plx;
+	char hookname[PBS_MAXSVRJOBID + 1] = {0};
+	hook *phook;
+	char content_type[BUFSIZ];
+	char content_encoding[BUFSIZ];
+	char output_file[MAXPATHLEN + 1];
+	char input_path[MAXPATHLEN + 1] = {0};
+	char output_path[MAXPATHLEN + 1] = {0};
+	char hook_msg[HOOK_MSG_SIZE] = {0};
+	int hook_obj;
 
 	hook_obj = preq->rq_ind.rq_manager.rq_objtype;
 
@@ -1511,21 +1502,15 @@ mgr_hook_export(struct batch_request *preq)
 		return;
 	}
 
-	memset(hook_msg, '\0', HOOK_MSG_SIZE);
-	memset(input_path, '\0', MAXPATHLEN+1);
-	memset(output_path, '\0', MAXPATHLEN+1);
-
-	hookname = preq->rq_ind.rq_manager.rq_objname;
+	strncpy(hookname, preq->rq_ind.rq_manager.rq_objname, PBS_MAXSVRJOBID);
 
 	/* Else one and only one vhook */
 	phook = find_hook(hookname);
 
 	if ((phook == NULL) || phook->pending_delete) {
-		snprintf(hook_msg, HOOK_MSG_SIZE-1,
-			"%s does not exist!", hookname);
+		snprintf(hook_msg, HOOK_MSG_SIZE, "%s does not exist!", hookname);
+		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_HOOK, LOG_INFO, hookname, hook_msg);
 		reply_text(preq, PBSE_HOOKERROR, hook_msg);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_HOOK, LOG_INFO,
-			hookname, hook_msg);
 		return;
 	}
 
@@ -1533,22 +1518,18 @@ mgr_hook_export(struct batch_request *preq)
 	/* But HOOK_PBS hooks can also be shown if the qmgr request is */
 	/* specifically operating on the "pbshook" keyword. */
 	if ((phook->type != HOOK_SITE) && (hook_obj != MGR_OBJ_PBS_HOOK)) {
-		snprintf(hook_msg, HOOK_MSG_SIZE-1,
-			"%s not of '%s' type", hookname, HOOKSTR_SITE);
+		snprintf(hook_msg, HOOK_MSG_SIZE, "%s not of '%s' type", hookname, HOOKSTR_SITE);
+		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_HOOK, LOG_INFO, hookname, hook_msg);
 		reply_text(preq, PBSE_HOOKERROR, hook_msg);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_HOOK, LOG_INFO,
-			hookname, hook_msg);
 		return;
 	}
 
 	/* Cannot show a HOOK_SITE hook if the qmgr request keyword is */
 	/* "pbshook" */
 	if ((phook->type == HOOK_SITE) && (hook_obj == MGR_OBJ_PBS_HOOK)) {
-		snprintf(hook_msg, HOOK_MSG_SIZE-1,
-			"%s not of '%s' type", hookname, HOOKSTR_PBS);
+		snprintf(hook_msg, HOOK_MSG_SIZE, "%s not of '%s' type", hookname, HOOKSTR_PBS);
+		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_HOOK, LOG_INFO, hookname, hook_msg);
 		reply_text(preq, PBSE_HOOKERROR, hook_msg);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_HOOK, LOG_INFO,
-			hookname, hook_msg);
 		return;
 	}
 
@@ -1565,13 +1546,13 @@ mgr_hook_export(struct batch_request *preq)
 
 		if (strcasecmp(plx->al_name, CONTENT_TYPE_PARAM) == 0) {
 			if (plx->al_value == NULL) {
-				snprintf(hook_msg, HOOK_MSG_SIZE-1,
+				snprintf(hook_msg, HOOK_MSG_SIZE,
 					"<%s> is NULL", CONTENT_TYPE_PARAM);
 				goto mgr_hook_export_error;
 			}
 			if (hook_obj == MGR_OBJ_PBS_HOOK) {
 				if (strcmp(plx->al_value, HOOKSTR_CONFIG) != 0) {
-					snprintf(hook_msg, HOOK_MSG_SIZE-1,
+					snprintf(hook_msg, HOOK_MSG_SIZE,
 						"<%s> must be %s",
 						CONTENT_TYPE_PARAM, HOOKSTR_CONFIG);
 					goto mgr_hook_export_error;
@@ -1579,7 +1560,7 @@ mgr_hook_export(struct batch_request *preq)
 			} else if ((strcmp(plx->al_value,
 				HOOKSTR_CONTENT) != 0) &&
 				(strcmp(plx->al_value, HOOKSTR_CONFIG) != 0)) {
-				snprintf(hook_msg, HOOK_MSG_SIZE-1,
+				snprintf(hook_msg, HOOK_MSG_SIZE,
 					"<%s> must be %s",
 					CONTENT_TYPE_PARAM, HOOKSTR_CONTENT);
 				goto mgr_hook_export_error;
@@ -1588,13 +1569,13 @@ mgr_hook_export(struct batch_request *preq)
 		} else if (strcasecmp(plx->al_name,
 			CONTENT_ENCODING_PARAM) == 0) {
 			if (plx->al_value == NULL) {
-				snprintf(hook_msg, HOOK_MSG_SIZE-1,
+				snprintf(hook_msg, HOOK_MSG_SIZE,
 					"<%s> is NULL", CONTENT_ENCODING_PARAM);
 				goto mgr_hook_export_error;
 			}
 			if ((strcmp(plx->al_value, HOOKSTR_DEFAULT) != 0) &&
 				(strcmp(plx->al_value, HOOKSTR_BASE64) != 0)) {
-				snprintf(hook_msg, HOOK_MSG_SIZE-1,
+				snprintf(hook_msg, HOOK_MSG_SIZE,
 					"<%s> must be '%s' or '%s'",
 					CONTENT_ENCODING_PARAM,
 					HOOKSTR_DEFAULT, HOOKSTR_BASE64);
@@ -1603,20 +1584,20 @@ mgr_hook_export(struct batch_request *preq)
 			strcpy(content_encoding, plx->al_value);
 		} else if (strcasecmp(plx->al_name, OUTPUT_FILE_PARAM) == 0) {
 			if (plx->al_value == NULL) {
-				snprintf(hook_msg, HOOK_MSG_SIZE-1,
+				snprintf(hook_msg, HOOK_MSG_SIZE,
 					"<%s> is NULL", OUTPUT_FILE_PARAM);
 				goto mgr_hook_export_error;
 			}
 
 			if (is_full_path(plx->al_value)) {
-				snprintf(hook_msg, HOOK_MSG_SIZE-1,
+				snprintf(hook_msg, HOOK_MSG_SIZE,
 					"<%s> path must be relative to %s",
 					OUTPUT_FILE_PARAM, path_hooks_workdir);
 				goto mgr_hook_export_error;
 			}
 			strcpy(output_file, plx->al_value);
 		} else {
-			snprintf(hook_msg, HOOK_MSG_SIZE-1,
+			snprintf(hook_msg, HOOK_MSG_SIZE,
 				"unrecognized parameter - %s",
 				plx->al_name);
 			goto mgr_hook_export_error;
@@ -1633,7 +1614,7 @@ mgr_hook_export(struct batch_request *preq)
 		snprintf(input_path, MAXPATHLEN, "%s%s%s",
 			path_hooks, hookname, HOOK_CONFIG_SUFFIX);
 	} else {
-		snprintf(hook_msg, HOOK_MSG_SIZE-1,
+		snprintf(hook_msg, HOOK_MSG_SIZE,
 			"<%s> is unknown", CONTENT_TYPE_PARAM);
 		goto mgr_hook_export_error;
 	}
@@ -1741,19 +1722,19 @@ void
 mgr_hook_set(struct batch_request *preq)
 
 {
-	svrattrl	*plist, *plx;
-	char		*hookname;
-	hook		*phook;
-	int		num_set = 0;
-	int		got_event = 0;	/* event attribute operated on */
-	char		hook_msg[HOOK_MSG_SIZE];
-	hook		shook;
-	unsigned int	prev_phook_event = 0;
-	char		*hook_user_val = NULL;
-	char		*hook_fail_action_val = NULL;
-	enum batch_op	hook_fail_action_op = DFLT;
-	char		*hook_freq_val = NULL;
-	int		hook_obj;
+	svrattrl *plist, *plx;
+	char hookname[PBS_MAXSVRJOBID + 1] = {0};
+	hook *phook;
+	int num_set = 0;
+	int got_event = 0;	/* event attribute operated on */
+	char hook_msg[HOOK_MSG_SIZE] = {0};
+	hook shook;
+	unsigned int prev_phook_event = 0;
+	char *hook_user_val = NULL;
+	char *hook_fail_action_val = NULL;
+	enum batch_op hook_fail_action_op = DFLT;
+	char *hook_freq_val = NULL;
+	int hook_obj;
 
 	hook_obj = preq->rq_ind.rq_manager.rq_objtype;
 
@@ -1762,46 +1743,34 @@ mgr_hook_set(struct batch_request *preq)
 		return;
 	}
 
-	memset(hook_msg, '\0', HOOK_MSG_SIZE-1);
-
-	hookname = preq->rq_ind.rq_manager.rq_objname;
+	strncpy(hookname, preq->rq_ind.rq_manager.rq_objname, PBS_MAXSVRJOBID);
 
 	phook = find_hook(hookname);
 
 	if ((phook == NULL) || phook->pending_delete) {
-		snprintf(hook_msg, HOOK_MSG_SIZE-1,
-			"%s does not exist!", hookname);
+		snprintf(hook_msg, HOOK_MSG_SIZE, "%s does not exist!", hookname);
+		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_HOOK, LOG_INFO, hookname, hook_msg);
 		reply_text(preq, PBSE_HOOKERROR, hook_msg);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_HOOK, LOG_INFO,
-			hookname, hook_msg);
 		return;
 	}
 
 	prev_phook_event = phook->event;
 
 	if ((phook->type == HOOK_PBS) && (hook_obj != MGR_OBJ_PBS_HOOK)) {
-		sprintf(log_buffer,
-			"cannot set attributes of a '%s' hook", HOOKSTR_PBS);
+		snprintf(log_buffer, sizeof(log_buffer),
+				"cannot set attributes of a '%s' hook named %s", HOOKSTR_PBS, phook->hook_name);
+		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_HOOK, LOG_INFO, hookname, log_buffer);
+		snprintf(log_buffer, sizeof(log_buffer), "cannot set attributes of a '%s' hook", HOOKSTR_PBS);
 		reply_text(preq, PBSE_HOOKERROR, log_buffer);
-		sprintf(log_buffer,
-			"cannot set attributes of a '%s' hook named %s",
-			HOOKSTR_PBS, phook->hook_name);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_HOOK, LOG_INFO,
-			hookname, log_buffer);
-
 		return;
 	}
 
 	if ((phook->type == HOOK_SITE) && (hook_obj == MGR_OBJ_PBS_HOOK)) {
-		sprintf(log_buffer,
-			"cannot set attributes of a '%s' hook", HOOKSTR_SITE);
+		snprintf(log_buffer, sizeof(log_buffer),
+				"cannot set attributes of a '%s' hook named %s", HOOKSTR_SITE, phook->hook_name);
+		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_HOOK, LOG_INFO, hookname, log_buffer);
+		snprintf(log_buffer, sizeof(log_buffer), "cannot set attributes of a '%s' hook", HOOKSTR_SITE);
 		reply_text(preq, PBSE_HOOKERROR, log_buffer);
-		sprintf(log_buffer,
-			"cannot set attributes of a '%s' hook named %s",
-			HOOKSTR_SITE, phook->hook_name);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_HOOK, LOG_INFO,
-			hookname, log_buffer);
-
 		return;
 	}
 
@@ -1843,7 +1812,7 @@ mgr_hook_set(struct batch_request *preq)
 						sprintf(log_buffer, "periodic hook is missing information, check hook frequency and script");
 						log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_HOOK, LOG_INFO,
 							    hookname, log_buffer);
-						snprintf(hook_msg, HOOK_MSG_SIZE-1,
+						snprintf(hook_msg, HOOK_MSG_SIZE,
 							"periodic hook is missing information, check hook frequency and script");
 						goto mgr_hook_set_error;
 					}
@@ -1873,7 +1842,7 @@ mgr_hook_set(struct batch_request *preq)
 				free(hook_user_val);
 			hook_user_val = strdup(plx->al_value);
 			if (hook_user_val == NULL) {
-				snprintf(hook_msg, HOOK_MSG_SIZE-1,
+				snprintf(hook_msg, HOOK_MSG_SIZE,
 					"strdup(%s) failed: errno %d",
 					plx->al_value, errno);
 				goto mgr_hook_set_error;
@@ -1887,7 +1856,7 @@ mgr_hook_set(struct batch_request *preq)
 				free(hook_fail_action_val);
 			hook_fail_action_val = strdup(plx->al_value);
 			if (hook_fail_action_val == NULL) {
-				snprintf(hook_msg, HOOK_MSG_SIZE-1,
+				snprintf(hook_msg, HOOK_MSG_SIZE,
 					"strdup(%s) failed: errno %d",
 					plx->al_value, errno);
 				goto mgr_hook_set_error;
@@ -1950,7 +1919,7 @@ mgr_hook_set(struct batch_request *preq)
 					num_set++;
 					break;
 				default:
-					snprintf(hook_msg, HOOK_MSG_SIZE-1,
+					snprintf(hook_msg, HOOK_MSG_SIZE,
 						"%s - %s:%d", msg_internal,
 						plx->al_name, plx->al_op);
 					goto mgr_hook_set_error;
@@ -1986,7 +1955,7 @@ mgr_hook_set(struct batch_request *preq)
 				free(hook_freq_val);
 			hook_freq_val = strdup(plx->al_value);
 			if (hook_freq_val == NULL) {
-				snprintf(hook_msg, HOOK_MSG_SIZE-1,
+				snprintf(hook_msg, HOOK_MSG_SIZE,
 					"strdup(%s) failed: errno %d",
 					plx->al_value, errno);
 				goto mgr_hook_set_error;
@@ -2038,7 +2007,7 @@ mgr_hook_set(struct batch_request *preq)
 					num_set++;
 				break;
 			default:
-				snprintf(hook_msg, HOOK_MSG_SIZE-1,
+				snprintf(hook_msg, HOOK_MSG_SIZE,
 					"%s - %s:%d", msg_internal,
 					plx->al_name, plx->al_op);
 				goto mgr_hook_set_error;
@@ -2058,7 +2027,7 @@ mgr_hook_set(struct batch_request *preq)
 
 	if (num_set > 0) {
 		if (hook_save(phook) != 0) {
-			snprintf(hook_msg, HOOK_MSG_SIZE-1,
+			snprintf(hook_msg, HOOK_MSG_SIZE,
 				"Failed to store '%s' permanently.",
 				preq->rq_ind.rq_manager.rq_objname);
 			goto mgr_hook_set_error;
@@ -2102,7 +2071,7 @@ mgr_hook_set(struct batch_request *preq)
 	return;
 
 opnotequal:
-	snprintf(hook_msg, HOOK_MSG_SIZE-1, "'%s' operator not =",
+	snprintf(hook_msg, HOOK_MSG_SIZE, "'%s' operator not =",
 		plx->al_name);
 
 mgr_hook_set_error:
@@ -2146,14 +2115,14 @@ void
 mgr_hook_unset(struct batch_request *preq)
 
 {
-	svrattrl	*plist, *plx;
-	char		*hookname;
-	hook		*phook;
-	int		num_unset = 0;
-	char		hook_msg[HOOK_MSG_SIZE];
-	hook		shook;
-	unsigned int	prev_phook_event;
-	int		hook_obj;
+	svrattrl *plist, *plx;
+	char hookname[PBS_MAXSVRJOBID + 1] = {0};
+	hook *phook;
+	int num_unset = 0;
+	char hook_msg[HOOK_MSG_SIZE] = {0};
+	hook shook;
+	unsigned int prev_phook_event;
+	int hook_obj;
 
 	hook_obj = preq->rq_ind.rq_manager.rq_objtype;
 
@@ -2162,46 +2131,35 @@ mgr_hook_unset(struct batch_request *preq)
 		return;
 	}
 
-	memset(hook_msg, '\0', HOOK_MSG_SIZE);
-	hookname = preq->rq_ind.rq_manager.rq_objname;
+	strncpy(hookname, preq->rq_ind.rq_manager.rq_objname, PBS_MAXSVRJOBID);
 
 	/* Else one and only one vhook */
 	phook = find_hook(hookname);
 
 	if ((phook == NULL) || phook->pending_delete) {
-		snprintf(hook_msg, HOOK_MSG_SIZE-1,
-			"%s does not exist!", hookname);
+		snprintf(hook_msg, HOOK_MSG_SIZE, "%s does not exist!", hookname);
+		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_HOOK, LOG_INFO, hookname, hook_msg);
 		reply_text(preq, PBSE_HOOKERROR, hook_msg);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_HOOK, LOG_INFO,
-			hookname, hook_msg);
 		return;
 	}
 
 	prev_phook_event = phook->event;
 
 	if ((phook->type == HOOK_PBS) && (hook_obj != MGR_OBJ_PBS_HOOK)) {
-		sprintf(log_buffer,
-			"cannot unset attributes of a '%s' hook", HOOKSTR_PBS);
+		snprintf(log_buffer, sizeof(log_buffer),
+				"cannot unset attributes of a '%s' hook named %s", HOOKSTR_PBS, phook->hook_name);
+		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_HOOK, LOG_INFO, hookname, log_buffer);
+		snprintf(log_buffer, sizeof(log_buffer), "cannot unset attributes of a '%s' hook", HOOKSTR_PBS);
 		reply_text(preq, PBSE_HOOKERROR, log_buffer);
-		sprintf(log_buffer,
-			"cannot unset attributes of a '%s' hook named %s",
-			HOOKSTR_PBS, phook->hook_name);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_HOOK, LOG_INFO,
-			hookname, log_buffer);
-
 		return;
 	}
 
 	if ((phook->type == HOOK_SITE) && (hook_obj == MGR_OBJ_PBS_HOOK)) {
-		sprintf(log_buffer,
-			"cannot unset attributes of a '%s' hook", HOOKSTR_SITE);
+		snprintf(log_buffer, sizeof(log_buffer),
+				"cannot unset attributes of a '%s' hook named %s", HOOKSTR_SITE, phook->hook_name);
+		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_HOOK, LOG_INFO, hookname, log_buffer);
+		snprintf(log_buffer, sizeof(log_buffer), "cannot unset attributes of a '%s' hook", HOOKSTR_SITE);
 		reply_text(preq, PBSE_HOOKERROR, log_buffer);
-		sprintf(log_buffer,
-			"cannot unset attributes of a '%s' hook named %s",
-			HOOKSTR_SITE, phook->hook_name);
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_HOOK, LOG_INFO,
-			hookname, log_buffer);
-
 		return;
 	}
 
@@ -2277,7 +2235,7 @@ mgr_hook_unset(struct batch_request *preq)
 
 	if (num_unset > 0) {
 		if (hook_save(phook) != 0) {
-			snprintf(hook_msg, HOOK_MSG_SIZE-1,
+			snprintf(hook_msg, HOOK_MSG_SIZE,
 				"Failed to store '%s' permanently.",
 				preq->rq_ind.rq_manager.rq_objname);
 			goto mgr_hook_unset_error;

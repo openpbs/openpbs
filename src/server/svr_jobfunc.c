@@ -6030,9 +6030,10 @@ if ((err_msg != NULL) && (err_msg_sz > 0)) { \
 static void
 post_send_job_exec_update_req(struct work_task *pwt)
 {
-	struct batch_request *mom_preq;
-	struct batch_request *cli_preq;
-	char   err_msg[LOG_BUF_SIZE];
+	struct batch_request *mom_preq = NULL;
+	struct batch_request *cli_preq = NULL;
+	char   err_msg[LOG_BUF_SIZE] = {0};
+	int bcode = 0;
 
 	if (pwt == NULL)
 		return;
@@ -6041,34 +6042,27 @@ post_send_job_exec_update_req(struct work_task *pwt)
 		svr_disconnect(pwt->wt_event);  /* close connection to MOM */
 	mom_preq = pwt->wt_parm1;
 	mom_preq->rq_conn = mom_preq->rq_orgconn;  /* restore socket to client */
+	bcode = mom_preq->rq_reply.brp_code;
 
 	cli_preq = pwt->wt_parm2;
 
-	if (mom_preq->rq_reply.brp_code) {
-
+	if (bcode) {
 		/* also take note of the reject msg if any */
-		if (mom_preq->rq_reply.brp_choice ==
-					BATCH_REPLY_CHOICE_Text) {
-			(void)snprintf(err_msg, sizeof(err_msg), "%s",
-			    mom_preq->rq_reply.brp_un.brp_txt.brp_str);
+		if (mom_preq->rq_reply.brp_choice == BATCH_REPLY_CHOICE_Text) {
+			(void)snprintf(err_msg, sizeof(err_msg), "%s", mom_preq->rq_reply.brp_un.brp_txt.brp_str);
 		} else {
-			(void)snprintf(err_msg, sizeof(err_msg),
-					msg_mombadmodify,
-					mom_preq->rq_reply.brp_code);
+			(void)snprintf(err_msg, sizeof(err_msg), msg_mombadmodify, bcode);
 		}
-		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
-			mom_preq->rq_ind.rq_modify.rq_objname, err_msg);
-		req_reject(mom_preq->rq_reply.brp_code, 0, mom_preq);
-		reply_text(cli_preq, mom_preq->rq_reply.brp_code,
-						err_msg);
+		log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, mom_preq->rq_ind.rq_modify.rq_objname, err_msg);
+		req_reject(bcode, 0, mom_preq);
+		reply_text(cli_preq, bcode, err_msg);
 	} else {
 		reply_ack(mom_preq);
 		if (cli_preq != NULL) {
 			if (cli_preq->rq_extend == NULL) {
 				reply_ack(cli_preq);
 			} else {
-				reply_text(cli_preq, PBSE_NONE,
-					cli_preq->rq_extend);
+				reply_text(cli_preq, PBSE_NONE, cli_preq->rq_extend);
 			}
 		}
 	}
