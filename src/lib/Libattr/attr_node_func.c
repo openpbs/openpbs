@@ -1083,6 +1083,11 @@ node_state(attribute *new, void *pnode, int actmode)
 
 		default: rc = PBSE_INTERNAL;
 	}
+	/* Now that we are setting the node state, same state should also reflect on the mom */
+	if (np->nd_nummoms == 1) {
+		mom_svrinfo_t *pmom_svr = (mom_svrinfo_t *)np->nd_moms[0]->mi_data;
+		pmom_svr->msr_state = (pmom_svr->msr_state & keep) | new->at_val.at_long;
+	}
 	return rc;
 }
 

@@ -466,8 +466,9 @@ get_addr_of_nodebyname(char *name, unsigned int *port)
 
 
 enum Set_All_State_When {
-	Set_ALL_State_All_Down,	 /* set set on vnodes when all Moms are down */
-	Set_All_State_Regardless /* set set on vnodes regardless */
+	Set_ALL_State_All_Down,	  /* set on vnodes when all Moms are down */
+	Set_All_State_Regardless, /* set on vnodes regardless */
+	Set_All_State_All_Offline /* set on vnodes when all Moms are offline */
 };
 
 /**
@@ -497,11 +498,19 @@ set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 	struct pbsnode *pvnd;
 	attribute	*pat;
 	int		nchild;
+	unsigned long	inuse_flag = 0;
 
 	if (do_set) { /* STALE is not meaning in the state of the Mom, don't set it */
 		psvrmom->msr_state |= (bits & ~INUSE_STALE);
 	} else {
 		psvrmom->msr_state &= ~bits;
+	}
+
+	/* Set the inuse_flag based off the value of setwhen */
+	if (setwhen == Set_ALL_State_All_Down) {
+		inuse_flag = INUSE_DOWN;
+	} else if (setwhen == Set_All_State_All_Offline) {
+		inuse_flag = INUSE_OFFLINE_BY_MOM;
 	}
 
 	for (nchild = 0; nchild < psvrmom->msr_numvnds; ++nchild) {
@@ -512,14 +521,16 @@ set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 
 		/*
 		 * If this vnode has more than one Mom and
-		 * setwhen is Set_ALL_State_All_Down, then we only change
-		 * state if all Moms are down
+		 * setwhen is Set_ALL_State_All_Down or
+		 * setwhen is Set_All_State_All_Offline, then we only change
+		 * state if all Moms are down/offline
 		 */
-		if ((pvnd->nd_nummoms > 1) &&
-			(setwhen == Set_ALL_State_All_Down)) {
+		if ((pvnd->nd_nummoms > 1) && 
+			((setwhen == Set_ALL_State_All_Down) ||
+			(setwhen == Set_All_State_All_Offline))) {
 			for (imom = 0; imom < pvnd->nd_nummoms; ++imom) {
 				mstate = ((mom_svrinfo_t *)(pvnd->nd_moms[imom]->mi_data))->msr_state;
-				if ((mstate & INUSE_DOWN) == 0) {
+				if ((mstate & inuse_flag) == 0) {
 					do_this_vnode = 0;
 					break;
 				}
@@ -8084,7 +8095,7 @@ momptr_offline_by_mom(mominfo_t *pmom, char *why)
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE,
 			LOG_ALERT, pmom->mi_host, why);
 
-	set_all_state(pmom, 1, INUSE_OFFLINE_BY_MOM, why, Set_All_State_Regardless);
+	set_all_state(pmom, 1, INUSE_OFFLINE_BY_MOM, why, Set_All_State_All_Offline);
 	return;
 }
 
