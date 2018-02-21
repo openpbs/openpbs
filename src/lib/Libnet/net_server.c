@@ -996,6 +996,7 @@ static int
 init_poll_context(void)
 {
 #ifdef WIN32
+	int sd_dummy;
 	max_connection = FD_SETSIZE;
 #else
 	int idx;
@@ -1018,6 +1019,25 @@ init_poll_context(void)
 		log_err(errno, __func__, "could not initialize poll_context");
 		return (-1);
 	}
+#ifdef WIN32
+	/* set a dummy fd in the read set so that	*/
+	/* select() does not return WSAEINVAL 		*/
+	sd_dummy = socket(AF_INET, SOCK_STREAM, 0);
+	if (sd_dummy < 0) {
+		errno = WSAGetLastError();
+		log_err(errno, __func__, "socket() failed");
+		return -1;
+	}
+	if ((tpp_em_add_fd(poll_context, sd_dummy, EM_IN) == -1)) {
+		int err = errno;
+		snprintf(logbuf, sizeof(logbuf), 
+			"Could not add socket %d to the read set", sd_dummy);
+		log_err(err, __func__, logbuf);
+		CLOSESOCKET(sd_dummy);
+		return -1;
+	}
+#endif /* WIN32 */
+
 	return 0;
 }
 
