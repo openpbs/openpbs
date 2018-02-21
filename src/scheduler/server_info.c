@@ -709,7 +709,11 @@ query_server_dyn_res(server_info *sinfo)
 				}
 
 				if (set_resource(res, buf, RF_AVAIL) == 0) {
-					return -1;
+					snprintf(buf, sizeof(buf), "Script %s returned bad output",
+							conf.dynamic_res[i].program);
+					schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
+										"server_dyn_res", buf);
+					(void) set_resource(res, res_zero, RF_AVAIL);
 				}
 			}
 			else {
