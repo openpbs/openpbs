@@ -147,8 +147,7 @@ extern int	is_oldlimattr(const struct attrl *);
  * @retval NULL		: attribute value is not an old limit attribute
  *
  */
-char *
-convert_oldlim_to_new(const struct attrl *a);
+extern char *	convert_oldlim_to_new(const struct attrl *a);
 
 /**	@fn int lim_setlimits(const struct attrl *a, enum limtype lt, void *p)
  *	@brief set resource or run-time limits
@@ -215,7 +214,17 @@ extern int	check_soft_limits(server_info *, queue_info *, resource_resv *);
  *             resource definitions are updated.
  *      @return void
  */
-extern void clear_limres(void);
+extern void 	clear_limres(void);
+
+/**
+ * 	@fn schd_resource query_limres()
+ * 	@brief returns a linked list of resources being limited.
+ * 	@par This is to be treated as read-only.  Modifying this will adversely
+ * 	     affect the limits code
+ *
+ * 	@return schd_resource *
+ */
+extern schd_resource *query_limres(void);
 
 
 #ifdef	__cplusplus

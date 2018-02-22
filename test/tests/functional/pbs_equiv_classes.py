@@ -1931,3 +1931,31 @@ else:
 
         self.server.expect(JOB, {"job_state": 'R'}, id=jid1)
         self.server.expect(JOB, {"job_state": 'R'}, id=jid3)
+
+    def test_limit_res(self):
+        """
+        Test when resources are being limited on, but those resources are not
+        in the sched_config resources line.  Jobs requesting these resources
+        should be split into their own equivalence classes.
+        """
+        a = {ATTR_RESC_TYPE: 'long'}
+        self.server.manager(MGR_CMD_CREATE, RSC, a, id='foores')
+
+        a = {'max_run_res.foores': '[u:PBS_GENERIC=4]'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        a = {'Resource_List.foores': 1, 'Resource_List.select': '1:ncpus=1'}
+        self.submit_jobs(2, a)
+        a['Resource_List.foores'] = 2
+        (_, jid4) = self.submit_jobs(2, a)
+        self.server.expect(JOB, {'job_state=R': 3})
+        self.server.expect(JOB, 'comment', op=SET, id=jid4)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid4)
+        (jid5, ) = self.submit_jobs(1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid5)
+
+        # Verify that equivalence class is 3; one for
+        # foores=1 and one for  foores=2 and
+        # one for no foores
+        self.scheduler.log_match("Number of job equivalence classes: 3",
+                                 max_attempts=10, starttime=self.t)

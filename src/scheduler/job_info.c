@@ -1483,7 +1483,7 @@ update_job_attr(int pbs_sd, resource_resv *resresv, char *attr_name,
 			}
 			pattr->next = pattr2;
 			/* extra may have been a list, let's find the end */
-			for(end = pattr2; end->next != NULL; end = end ->next)
+			for (end = pattr2; end->next != NULL; end = end ->next)
 				;
 		}
 	}
@@ -2005,7 +2005,7 @@ free_resresv_set_array(resresv_set **rsets) {
 	if (rsets == NULL)
 		return;
 
-	for(i = 0; rsets[i] != NULL; i++)
+	for (i = 0; rsets[i] != NULL; i++)
 		free_resresv_set(rsets[i]);
 
 	free(rsets);
@@ -2236,16 +2236,24 @@ resresv_set_which_selspec(resource_resv *resresv)
 resdef **
 create_resresv_sets_resdef(status *policy, server_info *sinfo) {
 	resdef **defs;
-	int ct;
+	int def_ct;
+	int limres_ct = 0;
 	int i;
+	schd_resource *limres;
+	schd_resource *cur_res;
+
 	if (policy == NULL || sinfo == NULL)
 		return NULL;
 
-	ct = count_array((void **) policy->resdef_to_check);
-	/* 6 for ctime, walltime, max_walltime, min_walltime, preempt_targets (maybe), and NULL*/
-	defs = malloc((ct+6) * sizeof(resdef *));
+	limres = query_limres();
+	for (cur_res = limres; cur_res != NULL; cur_res = cur_res->next)
+		limres_ct++;
 
-	for (i = 0; i < ct; i++)
+	def_ct = count_array((void **) policy->resdef_to_check);
+	/* 6 for ctime, walltime, max_walltime, min_walltime, preempt_targets (maybe), and NULL*/
+	defs = malloc((def_ct + limres_ct + 6) * sizeof(resdef *));
+
+	for (i = 0; i < def_ct; i++)
 		defs[i] = policy->resdef_to_check[i];
 	defs[i++] = getallres(RES_CPUT);
 	defs[i++] = getallres(RES_WALLTIME);
@@ -2254,6 +2262,14 @@ create_resresv_sets_resdef(status *policy, server_info *sinfo) {
 	if(sinfo->preempt_targets_enable)
 		defs[i++] = getallres(RES_PREEMPT_TARGETS);
 	defs[i] = NULL;
+
+	for (cur_res = limres; cur_res != NULL; cur_res = cur_res->next) {
+		/* There may be overlap between resdef_to_check and limres */
+		if (!resdef_exists_in_array(defs, cur_res->def)) {
+			defs[i++] = cur_res->def;
+			defs[i] = NULL;
+		}
+	}
 
 	return defs;
 }

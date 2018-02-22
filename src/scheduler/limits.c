@@ -2900,10 +2900,11 @@ lim_setreslimits(const struct attrl *a, void *ctx)
 		return (1);
 	}
 }
+
 /**
  * @brief
  * 		free and clear saved limit resources.  Must be called whenever
- *             resource definitions are updated.
+ *		resource definitions are updated.
  *
  * @return void
  */
@@ -2913,6 +2914,21 @@ clear_limres(void)
 	free_resource_list(limres);
 	limres = NULL;
 }
+
+/**
+ *      @brief returns a linked list of resources being limited.
+ *
+ *      @par This is to be treated as read-only.  Modifying this will adversely
+ *           affect the limits code
+ *
+ *      @return schd_resource *
+ */
+schd_resource *
+query_limres(void)
+{
+	return limres;
+}
+
 /**
  * @brief
  *		lim_setrunlimits	set new-style run limits
