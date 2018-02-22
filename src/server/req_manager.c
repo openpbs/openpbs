@@ -2878,6 +2878,38 @@ make_host_addresses_list(char *phost, u_long **pul)
 
 /**
  * @brief
+ * 		remove the cached ip addresses of a mom from the host tree and the ipaddrs tree
+ *
+ * @param[in]	pmom - valid ptr to the mom info
+ *
+ * @return	error code
+ * @retval	0		- no error
+ * @retval	PBS error	- error
+ */
+int
+remove_mom_ipaddresses_list(mominfo_t *pmom)
+{
+	/* take ipaddrs from ipaddrs cache tree */
+	if (hostaddr_tree != NULL) {
+		struct pul_store *tpul;
+
+		if ((tpul = (struct pul_store *) find_tree(hostaddr_tree, pmom->mi_host)) != NULL) {
+			u_long *pul;
+			for (pul = tpul->pul; *pul; pul++)
+				tdelete2(*pul, pmom->mi_port, &ipaddrs);
+
+			if (tree_add_del(hostaddr_tree, pmom->mi_host, NULL, TREE_OP_DEL) != 0)
+				return (PBSE_SYSTEM);
+
+			free(tpul->pul);
+			free(tpul);
+		}
+	}
+	return 0;
+}
+
+/**
+ * @brief
  *		create pbs node structure, i.e. add a node
  *
  * @param[in]	objname	- Name of node

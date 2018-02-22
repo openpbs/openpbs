@@ -95,6 +95,8 @@ int	    svr_num_moms = 0;
 extern char	*msg_daemonname;
 extern char	*path_hooks_rescdef;
 
+extern int remove_mom_ipaddresses_list(mominfo_t *pmom);
+
 /*
  * The following function are used by both the Server and Mom
  *	create_mom_entry()
@@ -469,6 +471,12 @@ delete_svrmom_entry(mominfo_t *pmom)
 		/* take stream out of tree */
 		(void)rpp_close(psvrmom->msr_stream);
 		tdelete2((unsigned long)psvrmom->msr_stream , 0, &streams);
+
+		if (remove_mom_ipaddresses_list(pmom) != 0) {
+			snprintf(log_buffer, sizeof(log_buffer), "Could not remove IP address for mom %s:%d from cache",
+					pmom->mi_host, pmom->mi_port);
+			log_err(errno, __func__, log_buffer);
+		}
 	}
 	memset((void *)psvrmom, 0, sizeof(mom_svrinfo_t));
 	psvrmom->msr_stream = -1; /* always set to -1 when deleted */
