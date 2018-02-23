@@ -5823,17 +5823,57 @@ alps_confirm_reservation(job *pjob)
 int
 alps_cancel_reservation(job *pjob)
 {
-	char buf[1024];
-	basil_response_t *brp;
+	char			buf[1024];
+	basil_response_t	*brp;
+	char			filename[MAXPATHLEN];
 
 	if (!pjob) {
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE, LOG_NOTICE, __func__,
 			"Cannot cancel ALPS reservation, invalid job.");
 		return (-1);
 	}
+
+	/*
+	 * Get the name of the file that contains ALPS reservation ID
+	 * information.  We may need to read the file, or we just need to
+	 * unlink it.  Either way, we need the filename.
+	 */
+	snprintf(filename, MAXPATHLEN, "%s/aux/%s.alpsresv", pbs_conf.pbs_home_path, pjob->ji_qs.ji_jobid);
+	
+	if (pjob->ji_extended.ji_ext.ji_reservation < 0) {
+		/*
+		 * During race conditions, the job structure won't have the
+		 * reservation ID. So we previously stored it in a file.
+		 * We retrieve the ALPS reservation ID from the file and
+		 * cancel the ALPS reservation.
+		 */
+		FILE    *fp;
+		long    value;
+
+		fp = fopen(filename, "r");
+		if (fp == NULL) {
+			snprintf(log_buffer, sizeof(log_buffer),
+				"Unable to open the file %s, failed to cancel orphan reservation", filename);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_DEBUG,
+				(char *)__func__, log_buffer);
+			return (-1);
+		}
+		if (fscanf(fp, "%ld", &value) != 1) {
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_DEBUG,
+				(char *)__func__, "failed to read the ALPS reservation ID value");
+			(void)fclose(fp);
+			(void)unlink(filename);
+			return (-1);
+		}
+		(void)fclose(fp);
+		pjob->ji_extended.ji_ext.ji_reservation = value;
+	}
+
+	/* Delete the file containing ALPS reservation ID*/
+	(void)unlink(filename);
+	
 	/* Return success if no reservation present. */
-	if (pjob->ji_extended.ji_ext.ji_reservation < 0 ||
-		pjob->ji_extended.ji_ext.ji_pagg == 0) {
+	if (pjob->ji_extended.ji_ext.ji_reservation <= 0 ) {
 		return (0);
 	}
 	sprintf(log_buffer, "Canceling ALPS reservation %ld with PAGG %llu.",

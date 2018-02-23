@@ -2098,6 +2098,37 @@ set_job(job *pjob, struct startjob_rtn *sjr)
 					 */
 			sjr->sj_reservation = 0;
 		}
+
+		/*
+		 * Save the ALPS reservation ID so that it can be used to
+		 * delete the reservation in case of race conditions
+		 * where the ID doesn't get recorded in the job structure.
+		 */
+
+		if(pjob->ji_extended.ji_ext.ji_reservation > 0) {
+			FILE	*fp = NULL;
+			char	filename[MAXPATHLEN];
+			int	rc;
+
+			if ((rc = snprintf(filename, MAXPATHLEN, "%s/aux/%s.alpsresv", 
+				pbs_conf.pbs_home_path, pjob->ji_qs.ji_jobid)) < MAXPATHLEN) {
+				fp = fopen(filename, "w");
+				if (fp == NULL) {
+					snprintf(log_buffer, sizeof(log_buffer),
+						"Unable to open %s", filename);
+					log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_JOB, LOG_ERR, 
+						(char *)__func__, log_buffer);
+				} else {
+					fprintf(fp, "%ld\n", pjob->ji_extended.ji_ext.ji_reservation);
+					(void)fclose(fp);
+				}
+			} else {
+				snprintf(log_buffer, sizeof(log_buffer), "The file name is longer than %d", 
+					MAXPATHLEN);
+				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
+						(char *)__func__, log_buffer);
+			}
+		}	
 	}
 #endif	/* MOM_ALPS */
 
