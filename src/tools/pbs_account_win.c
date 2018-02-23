@@ -695,6 +695,8 @@ add_service_account(char *password)
 	wchar_t	unamew[UNLEN+1] = {L'\0'};
 	wchar_t	dnamew[UNLEN+1] = {L'\0'};
 	wchar_t	dctrlw[PBS_MAXHOSTNAME+1] = {L'\0'};
+	LPWSTR	dcw = NULL;
+	char	dctrl_buf[PBS_MAXHOSTNAME+1] = {'\0'};
 
 	NET_API_STATUS nstatus = 0;
 	USER_INFO_1	*ui1_ptr = NULL; /* better indicator of lookup */
@@ -713,7 +715,7 @@ add_service_account(char *password)
 
 	strcpy(dctrl, dname);
 	if (in_domain_environment) {
-		char	dname_a[PBS_MAXHOSTNAME+1];
+		char	dname_a[PBS_MAXHOSTNAME+1] = {'\0'};
 
 		get_dcinfo(dname, dname_a, dctrl);
 	}
@@ -721,6 +723,17 @@ add_service_account(char *password)
 	mbstowcs(unamew, service_accountname, UNLEN+1);
 	mbstowcs(dnamew, dname, PBS_MAXHOSTNAME+1);
 	mbstowcs(dctrlw, dctrl, PBS_MAXHOSTNAME+1);
+
+	if (in_domain_environment && dctrlw[0] == '\0' ) {
+		if (NERR_Success == NetGetDCName(NULL, dnamew, (LPBYTE *)&dcw)) {
+			wcstombs(dctrl_buf, dcw, PBS_MAXHOSTNAME + 1);
+			mbstowcs(dctrlw, dctrl_buf, PBS_MAXHOSTNAME + 1);
+			
+		} else {	
+			fprintf(stderr, "Failed to fetch domain controller name");
+			goto end_add_service_account;
+		}
+	}
 
 	/* create account if it doesn't exist */
 
