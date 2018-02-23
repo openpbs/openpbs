@@ -1058,14 +1058,21 @@ task_find	(job		*pjob,
 #define JOB_EXEC_HOOK_DELETE   -19 /* a hook requested for job to be deleted */
 #define JOB_EXEC_RERUN_MS_FAIL -20 /* Mother superior connection failed */
 #define JOB_EXEC_FAIL_SECURITY -21 /* Security breach in PBS directory */
-#define JOB_EXEC_HOOKERROR	-22 /* job exec failed due to */
-				    /* unexpected exception or */
-				    /* hook execution timed out */
+#define JOB_EXEC_HOOKERROR	-22 /* job exec failed due to
+				     * unexpected exception or
+				     * hook execution timed out
+				     */
+#define JOB_EXEC_UPDATE_ALPS_RESV_ID 1 /* Update ALPS reservation ID to parent mom as soon
+					* as it is available.
+					* This is neither a success nor a failure exit code,
+					* so we are using a positive value
+					*/
 
-
-/* Fake "random" number added onto the end of the staging */
-/* and execution directory when sandbox=private	          */
-/* used in jobdirname()				          */
+/*
+ * Fake "random" number added onto the end of the staging
+ * and execution directory when sandbox=private
+ * used in jobdirname()
+ */
 #define FAKE_RANDOM	"x8z"
 
 /* The default project assigned to jobs when project attribute is unset */

@@ -1628,6 +1628,16 @@ record_finish_exec(int sd)
 		exec_bail(pjob, JOB_EXEC_RETRY, log_buffer);
 		return;
 	}
+
+#if MOM_ALPS
+	if (sjr.sj_code == JOB_EXEC_UPDATE_ALPS_RESV_ID) {
+		pjob->ji_extended.ji_ext.ji_pagg = sjr.sj_pagg;
+		pjob->ji_extended.ji_ext.ji_reservation = sjr.sj_reservation;
+		(void)writepipe(pjob->ji_mjspipe, &sjr, sizeof(sjr));
+		return;
+	}
+#endif
+
 	/* send back as an acknowledgement that MOM got it */
 	(void)writepipe(pjob->ji_mjspipe, &sjr, sizeof(sjr));
 	(void)close_conn(pjob->ji_jsmpipe);
@@ -2125,6 +2135,9 @@ finish_exec(job *pjob)
 	int			downfds2 = -1;	/* init to invalid fd */
 	int			port_out, port_err;
 	struct startjob_rtn	sjr;
+#if MOM_ALPS
+	struct startjob_rtn     ack;
+#endif
 	char			*termtype;
 	pbs_task			*ptask;
 	struct	array_strings	*vstrs;
@@ -2863,6 +2876,13 @@ finish_exec(job *pjob)
 				LOG_NOTICE, pjob->ji_qs.ji_jobid, log_buffer);
 			starter_return(upfds, downfds, JOB_EXEC_FAIL1, &sjr);
 		}
+#if MOM_ALPS
+		sjr.sj_code = JOB_EXEC_UPDATE_ALPS_RESV_ID;
+		(void)writepipe(upfds, &sjr, sizeof(sjr));
+
+		/* wait for acknowledgement */
+		(void)readpipe(downfds, &ack, sizeof(ack));
+#endif
 
 		/* Open the slave pty as the controlling tty */
 
