@@ -70,7 +70,7 @@ class TestJobEquivClassPerf(TestPerformance):
 
         # Wait for cycle to finish
         self.scheduler.log_match("Leaving Scheduling Cycle", starttime=t,
-                                 max_attempts=300)
+                                 max_attempts=300, interval=3)
 
         c = self.scheduler.cycles(lastN=1)[0]
         cycle_time = c.end - c.start
