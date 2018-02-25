@@ -699,3 +699,126 @@ class TestMultipleSchedulers(TestFunctional):
 
         user = self.scheds['sc3'].cmp_fairshare_entities(TEST_USER, TEST_USER2)
         self.assertEquals(user, str(TEST_USER))
+
+    def test_pbsfs_invalid_sched(self):
+        """
+        Test pbsfs -I <sched_name> where sched_name does not exist
+        """
+        sched_name = 'foo'
+        pbsfs_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'],
+                                 'sbin', 'pbsfs') + ' -I ' + sched_name
+        ret = self.du.run_cmd(cmd=pbsfs_cmd, sudo=True)
+        err_msg = 'Scheduler %s does not exist' % sched_name
+        self.assertEquals(err_msg, ret['err'][0])
+
+    def test_pbsfs_no_fairshare_data(self):
+        """
+        Test pbsfs -I <sched_name> where sched_priv_<sched_name> dir
+        does not exist
+        """
+        a = {'partition': 'P5',
+             'sched_host': self.server.hostname,
+             'sched_port': '15050'}
+        self.server.manager(MGR_CMD_CREATE, SCHED, a, id="sc5")
+        err_msg = 'Unable to access fairshare data: No such file or directory'
+        try:
+            # Only a scheduler object is created. Corresponding sched_priv
+            # dir not created yet. Try to query fairshare data.
+            self.scheds['sc5'].query_fairshare()
+        except PbsFairshareError as e:
+            self.assertTrue(err_msg in e.msg)
+
+    def test_pbsfs_server_restart(self):
+        """
+        Verify that server restart has no impact on fairshare data
+        """
+        self.setup_sc1()
+        self.scheds['sc1'].add_to_resource_group(TEST_USER, 20, 'root', 50)
+        self.scheds['sc1'].set_fairshare_usage(name=TEST_USER, usage=25)
+        n = self.scheds['sc1'].query_fairshare().get_node(name=str(TEST_USER))
+        self.assertTrue(n.usage, 25)
+
+        self.server.restart()
+        n = self.scheds['sc1'].query_fairshare().get_node(name=str(TEST_USER))
+        self.assertTrue(n.usage, 25)
+
+    def test_pbsfs_revert_to_defaults(self):
+        """
+        Test if revert_to_defaults() works properly with multi scheds.
+        revert_to_defaults() removes entities from resource_group file and
+        removes their usage(with pbsfs -e)
+        """
+        self.setup_sc1()
+        a = {'queue_type': 'execution',
+             'started': 'True',
+             'enabled': 'True',
+             'partition': 'P1'}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='wq1', expect=True)
+        a = {'partition': 'P1', 'resources_available.ncpus': 2}
+        self.server.manager(MGR_CMD_SET, NODE, a,
+                            id=self.mom.shortname, expect=True)
+
+        self.scheds['sc1'].add_to_resource_group(TEST_USER,
+                                                 11, 'root', 10)
+        self.scheds['sc1'].add_to_resource_group(TEST_USER1,
+                                                 12, 'root', 10)
+        self.scheds['sc1'].set_sched_config({'fair_share': 'True'})
+        self.scheds['sc1'].set_fairshare_usage(TEST_USER, 100)
+
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'False'},
+                            id='sc1')
+        j1 = Job(TEST_USER, attrs={ATTR_queue: 'wq1'})
+        jid1 = self.server.submit(j1)
+        j2 = Job(TEST_USER1, attrs={ATTR_queue: 'wq1'})
+        jid2 = self.server.submit(j2)
+
+        t_start = int(time.time())
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'True'},
+                            id='sc1')
+        self.scheds['sc1'].log_match(
+            'Leaving Scheduling Cycle', starttime=t_start)
+        t_end = int(time.time())
+        job_list = self.scheds['sc1'].log_match(
+            'Considering job to run', starttime=t_start,
+            allmatch=True, endtime=t_end)
+
+        # job 1 runs second as it's run by an entity with usage = 100
+        self.assertTrue(jid1 in job_list[0][1])
+
+        self.server.deljob(id=jid1, wait=True)
+        self.server.deljob(id=jid2, wait=True)
+
+        # revert_to_defaults() does a pbsfs -I <sched_name> -e and cleans up
+        # the resource_group file
+        self.scheds['sc1'].revert_to_defaults()
+
+        # Fairshare tree is trimmed now.  TEST_USER1 is the only entity with
+        # usage set.  So its job, job2 will run second. If trimming was not
+        # successful TEST_USER would still have usage=100 and job1 would run
+        # second
+
+        self.scheds['sc1'].add_to_resource_group(TEST_USER,
+                                                 15, 'root', 10)
+        self.scheds['sc1'].add_to_resource_group(TEST_USER1,
+                                                 16, 'root', 10)
+        self.scheds['sc1'].set_sched_config({'fair_share': 'True'})
+        self.scheds['sc1'].set_fairshare_usage(TEST_USER1, 50)
+
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'False'},
+                            id='sc1')
+        j1 = Job(TEST_USER, attrs={ATTR_queue: 'wq1'})
+        jid1 = self.server.submit(j1)
+        j2 = Job(TEST_USER1, attrs={ATTR_queue: 'wq1'})
+        jid2 = self.server.submit(j2)
+
+        t_start = int(time.time())
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'True'},
+                            id='sc1')
+        self.scheds['sc1'].log_match(
+            'Leaving Scheduling Cycle', starttime=t_start)
+        t_end = int(time.time())
+        job_list = self.scheds['sc1'].log_match(
+            'Considering job to run', starttime=t_start,
+            allmatch=True, endtime=t_end)
+
+        self.assertTrue(jid2 in job_list[0][1])
