@@ -59,6 +59,10 @@
 #include "pbs_error.h"
 #include "libsec.h"
 #include "pbs_internal.h"
+#ifdef WIN32
+#include "win.h"
+#include <Winerror.h>
+#endif
 
 /**
  * @file	net_client.c
@@ -308,12 +312,10 @@ client_to_svr_extend(pbs_net_t hostaddr, unsigned int port, int authport_flags, 
 
 #ifdef WIN32
 			errno = WSAGetLastError();
-#endif
-
-			if (errno != EADDRINUSE && errno != EADDRNOTAVAIL) {
-#ifdef WIN32
+			if (errno != EADDRINUSE && errno != EADDRNOTAVAIL && errno != WSAEACCES) {
 				closesocket(sock);
 #else
+			if (errno != EADDRINUSE && errno != EADDRNOTAVAIL) {
 				close(sock);
 #endif
 				return PBS_NET_RC_FATAL;

@@ -8498,6 +8498,16 @@ main(int argc, char *argv[])
 	/* in the server code.  A -1 is returned in log_open() for all */
 	/* failure cases so it's hard to know if a corrupt log file is the */
 	/* culprit, which happes occasionally under windows. */
+
+	
+	/*
+	 * let SCM wait 10 seconds for log_open() to complete
+	 * as it does network interface query which can take time
+	 */
+
+	ss.dwCheckPoint++;
+	ss.dwWaitHint = 10000;
+	if (g_ssHandle != 0) SetServiceStatus(g_ssHandle, &ss);
 	log_open(log_file, path_log);
 
 

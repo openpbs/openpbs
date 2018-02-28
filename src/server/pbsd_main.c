@@ -1335,6 +1335,16 @@ main(int argc, char **argv)
 	log_event_mask = &server.sv_attr[SRV_ATR_log_events].at_val.at_long;
 	(void)sprintf(path_log, "%s/%s", pbs_conf.pbs_home_path, PBS_LOGFILES);
 
+#ifdef WIN32
+	/*
+	 * let SCM wait 10 seconds for log_open() to complete
+	 * as it does network interface query which can take time
+	 */
+
+	ss.dwCheckPoint++;
+	ss.dwWaitHint = 10000;
+	if (g_ssHandle != 0) SetServiceStatus(g_ssHandle, &ss);
+#endif
 	(void)log_open(log_file, path_log);
 	(void)sprintf(log_buffer, msg_startup1, pbs_version, server_init_type);
 	log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE,

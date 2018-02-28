@@ -1175,6 +1175,18 @@ main(int argc, char *argv[])
 #endif	/* not WIN32 */
 #endif	/* DEBUG */
 
+
+#ifdef WIN32
+	/*
+	 * let SCM wait 10 seconds for log_open() to complete
+	 * as it does network interface query which can take time
+	 */
+
+	ss.dwCheckPoint++;
+	ss.dwWaitHint = 10000;
+	if (g_ssHandle != 0) SetServiceStatus(g_ssHandle, &ss);
+#endif
+
 	if (log_open(logfile, path_log) == -1) {
 		fprintf(stderr, "%s: logfile could not be opened\n", argv[0]);
 		exit(1);
