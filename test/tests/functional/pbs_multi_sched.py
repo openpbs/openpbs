@@ -54,6 +54,7 @@ class TestMultipleSchedulers(TestFunctional):
         self.scheds['sc1'].start()
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'scheduling': 'True'}, id="sc1", expect=True)
+        self.scheds['sc1'].set_sched_config({'log_filter': 2048})
 
     def setup_sc2(self):
         dir_path = '/var/spool/pbs/sched_dir'
@@ -370,8 +371,8 @@ class TestMultipleSchedulers(TestFunctional):
 
     def test_preemption_highp_queue(self):
         """
-        Test preemption occures only within queues
-        which are assigned to same partition
+        Test preemption occures only within queues which are assigned
+        to same partition and check for equivalence classes
         """
         self.common_setup()
         prio = {'Priority': 150, 'partition': 'P1'}
@@ -383,17 +384,24 @@ class TestMultipleSchedulers(TestFunctional):
         t = int(time.time())
         j = Job(TEST_USER1, attrs={ATTR_queue: 'wq4',
                                    'Resource_List.select': '1:ncpus=2'})
-        jid4 = self.server.submit(j)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid4)
+        jid2 = self.server.submit(j)
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduling': 'True'}, id="sc1")
+        self.scheds['sc1'].log_match("Number of job equivalence classes: 1",
+                                     max_attempts=10, starttime=t)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
         j = Job(TEST_USER1, attrs={ATTR_queue: 'wq4',
                                    'Resource_List.select': '1:ncpus=2'})
-        jid5 = self.server.submit(j)
-        self.server.expect(JOB, ATTR_comment, op=SET, id=jid5)
-        self.server.expect(JOB, {'job_state': 'Q'}, id=jid5)
+        jid3 = self.server.submit(j)
+        self.server.expect(JOB, ATTR_comment, op=SET, id=jid3)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid3)
         self.server.expect(JOB, {'job_state': 'S'}, id=jid1)
-        self.server.schedulers['sc1'].log_match(
+        self.scheds['sc1'].log_match(
             jid1 + ';Job preempted by suspension',
             max_attempts=10, starttime=t)
+        # Two equivalence class one for suspended and one for remaining jobs
+        self.scheds['sc1'].log_match("Number of job equivalence classes: 2",
+                                     max_attempts=10, starttime=t)
 
     def test_backfill_per_scheduler(self):
         """
@@ -822,3 +830,434 @@ class TestMultipleSchedulers(TestFunctional):
             allmatch=True, endtime=t_end)
 
         self.assertTrue(jid2 in job_list[0][1])
+
+    def submit_jobs(self, num_jobs=1, attrs=None, user=TEST_USER):
+        """
+        Submit num_jobs number of jobs with attrs attributes for user.
+        Return a list of job ids
+        """
+        if attrs is None:
+            attrs = {'Resource_List.select': '1:ncpus=2'}
+        ret_jids = []
+        for _ in range(num_jobs):
+            J = Job(user, attrs)
+            jid = self.server.submit(J)
+            ret_jids += [jid]
+
+        return ret_jids
+
+    def test_equiv_partition(self):
+        """
+        Test the basic behavior of job equivalence classes: submit two
+        different types of jobs into 2 partitions and see they are
+        in four different equivalence classes
+        """
+        self.setup_sc1()
+        self.setup_queues_nodes()
+        t = int(time.time())
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduling': 'False'}, id="sc1")
+        # Eat up all the resources with the first job to each queue
+        a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq1'}
+        self.submit_jobs(4, a)
+        a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq4'}
+        self.submit_jobs(4, a)
+        a = {'Resource_List.select': '1:ncpus=1', ATTR_queue: 'wq1'}
+        self.submit_jobs(3, a)
+        a = {'Resource_List.select': '1:ncpus=1', ATTR_queue: 'wq4'}
+        self.submit_jobs(3, a)
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduling': 'True'}, id="sc1")
+        self.scheds['sc1'].log_match("Number of job equivalence classes: 4",
+                                     max_attempts=10, starttime=t)
+
+    def test_equiv_multisched(self):
+        """
+        Test the basic behavior of job equivalence classes: submit two
+        different types of jobs into 2 different schedulers and see they
+        are in two different classes in each scheduler
+        """
+        self.setup_sc1()
+        self.setup_sc2()
+        self.setup_queues_nodes()
+        self.scheds['sc2'].set_sched_config({'log_filter': 2048})
+        t = int(time.time())
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduling': 'False'}, id="sc1")
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduling': 'False'}, id="sc2")
+
+        # Eat up all the resources with the first job to each queue
+        a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq1'}
+        self.submit_jobs(4, a)
+        a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq2'}
+        self.submit_jobs(4, a)
+
+        a = {'Resource_List.select': '1:ncpus=1', ATTR_queue: 'wq1'}
+        self.submit_jobs(3, a)
+        a = {'Resource_List.select': '1:ncpus=1', ATTR_queue: 'wq2'}
+        self.submit_jobs(3, a)
+
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduling': 'True'}, id="sc1")
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduling': 'True'}, id="sc2")
+        self.scheds['sc1'].log_match("Number of job equivalence classes: 2",
+                                     max_attempts=10, starttime=t)
+        self.scheds['sc2'].log_match("Number of job equivalence classes: 2",
+                                     max_attempts=10, starttime=t)
+
+    def test_select_partition(self):
+        """
+        Test to see if jobs with select resources not in the resources line
+        fall into the same equivalence class and jobs in different partition
+        fall into different equivalence classes
+        """
+        self.server.manager(MGR_CMD_CREATE, RSC,
+                            {'type': 'long', 'flag': 'nh'}, id='foo')
+        self.setup_sc1()
+        self.setup_queues_nodes()
+        t = int(time.time())
+        # Eat up all the resources
+        a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq1'}
+        J = Job(TEST_USER, attrs=a)
+        self.server.submit(J)
+        a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq4'}
+        J = Job(TEST_USER, attrs=a)
+        self.server.submit(J)
+
+        a = {'Resource_List.select': '1:ncpus=1:foo=4', ATTR_queue: 'wq1'}
+        self.submit_jobs(3, a)
+
+        a = {'Resource_List.select': '1:ncpus=1:foo=4', ATTR_queue: 'wq4'}
+        self.submit_jobs(3, a)
+
+        a = {'Resource_List.select': '1:ncpus=1:foo=8', ATTR_queue: 'wq1'}
+        self.submit_jobs(3, a)
+
+        a = {'Resource_List.select': '1:ncpus=1:foo=8', ATTR_queue: 'wq4'}
+        self.submit_jobs(3, a)
+
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduling': 'True'}, id="sc1")
+
+        # Four equivalence classes: two for the resource eating job in each
+        # partition and two for the other jobs in each partition. While jobs
+        # have different amount of the foo resources which isn't in the
+        # resources line
+        self.scheds['sc1'].log_match("Number of job equivalence classes: 4",
+                                     max_attempts=10, starttime=t)
+
+    def test_select_res_partition(self):
+        """
+        Test to see if jobs with select resources in the resources line and
+        in different partitions fall into the different equivalence class
+        """
+        self.server.manager(MGR_CMD_CREATE, RSC,
+                            {'type': 'long', 'flag': 'nh'}, id='foo')
+        self.setup_sc1()
+        self.setup_queues_nodes()
+        self.scheds['sc1'].add_resource("foo")
+        t = int(time.time())
+        # Eat up all the resources
+        a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq1'}
+        J = Job(TEST_USER, attrs=a)
+        self.server.submit(J)
+        a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq4'}
+        J = Job(TEST_USER, attrs=a)
+        self.server.submit(J)
+
+        a = {'Resource_List.select': '1:ncpus=1:foo=4', ATTR_queue: 'wq1'}
+        self.submit_jobs(3, a)
+
+        a = {'Resource_List.select': '1:ncpus=1:foo=4', ATTR_queue: 'wq4'}
+        self.submit_jobs(3, a)
+
+        a = {'Resource_List.select': '1:ncpus=1:foo=8', ATTR_queue: 'wq1'}
+        self.submit_jobs(3, a)
+
+        a = {'Resource_List.select': '1:ncpus=1:foo=8', ATTR_queue: 'wq4'}
+        self.submit_jobs(3, a)
+
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduling': 'True'}, id="sc1")
+
+        # Six equivalence classes: two for the resource eating jobs in each
+        # partition and 4 for the other jobs requesting different amounts of
+        # the foo resource in each partition.
+        self.scheds['sc1'].log_match("Number of job equivalence classes: 6",
+                                     max_attempts=10, starttime=t)
+
+    def test_multiple_res_partition(self):
+        """
+        Test to see if jobs with select resources in the resources line
+        with multiple custom resources fall into the different equiv class
+        and jobs in different partitions fall into different equiv classes
+        """
+        self.server.manager(MGR_CMD_CREATE, RSC,
+                            {'type': 'long', 'flag': 'nh'}, id='foo')
+        self.server.manager(MGR_CMD_CREATE, RSC,
+                            {'type': 'string', 'flag': 'h'}, id='colour')
+        self.setup_sc1()
+        self.setup_queues_nodes()
+        self.scheds['sc1'].add_resource("foo")
+        self.scheds['sc1'].add_resource("colour")
+        t = int(time.time())
+        # Eat up all the resources
+        a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq1'}
+        J = Job(TEST_USER, attrs=a)
+        self.server.submit(J)
+        a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq4'}
+        J = Job(TEST_USER, attrs=a)
+        self.server.submit(J)
+
+        a = {'Resource_List.select': '1:ncpus=1:foo=4', ATTR_queue: 'wq1'}
+        self.submit_jobs(3, a)
+
+        a = {'Resource_List.select': '1:ncpus=1:foo=4', ATTR_queue: 'wq4'}
+        self.submit_jobs(3, a)
+
+        a = {'Resource_List.select': '1:ncpus=1:colour=blue',
+             ATTR_queue: 'wq1'}
+        self.submit_jobs(3, a)
+
+        a = {'Resource_List.select': '1:ncpus=1:colour=blue',
+             ATTR_queue: 'wq4'}
+        self.submit_jobs(3, a)
+
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduling': 'True'}, id="sc1")
+
+        # Six equivalence classes: two for the resource eating job in each
+        # partition and four for the other jobs. While jobs have different
+        # resource requests two for each resource in different partitions
+        self.scheds['sc1'].log_match("Number of job equivalence classes: 6",
+                                     max_attempts=10, starttime=t)
+
+    def test_place_partition(self):
+        """
+        Test to see if jobs with different place statements and different
+        partitions fall into the different equivalence classes
+        """
+        self.setup_sc1()
+        self.setup_queues_nodes()
+        t = int(time.time())
+
+        # Eat up all the resources
+        a = {'Resource_List.select': '1:ncpus=2',
+             ATTR_queue: 'wq1'}
+        J = Job(TEST_USER, attrs=a)
+        self.server.submit(J)
+        a = {'Resource_List.select': '1:ncpus=2',
+             ATTR_queue: 'wq4'}
+        J = Job(TEST_USER, attrs=a)
+        self.server.submit(J)
+
+        a = {'Resource_List.select': '1:ncpus=1',
+             'Resource_List.place': 'free',
+             ATTR_queue: 'wq1'}
+        self.submit_jobs(3, a)
+        a = {'Resource_List.select': '1:ncpus=1',
+             'Resource_List.place': 'free',
+             ATTR_queue: 'wq4'}
+        self.submit_jobs(3, a)
+
+        a = {'Resource_List.select': '1:ncpus=1',
+             'Resource_List.place': 'excl',
+             ATTR_queue: 'wq1'}
+        self.submit_jobs(3, a)
+        a = {'Resource_List.select': '1:ncpus=1',
+             'Resource_List.place': 'excl',
+             ATTR_queue: 'wq4'}
+        self.submit_jobs(3, a)
+
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduling': 'True'}, id="sc1")
+
+        # Six equivalence classes: two for the resource eating job in
+        # each partition and one for each place statement in each partition
+        self.scheds['sc1'].log_match("Number of job equivalence classes: 6",
+                                     max_attempts=10, starttime=t)
+
+    def test_nolimits_partition(self):
+        """
+        Test to see that jobs from different users, groups, and projects
+        all fall into the same equivalence class when there are no limits
+        but fall into different equivalence classes for each partition
+        """
+        self.setup_sc1()
+        self.setup_queues_nodes()
+        t = int(time.time())
+
+        # Eat up all the resources
+        a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq1'}
+        J = Job(TEST_USER, attrs=a)
+        self.server.submit(J)
+        a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq4'}
+        J = Job(TEST_USER, attrs=a)
+        self.server.submit(J)
+        a = {ATTR_queue: 'wq1'}
+        self.submit_jobs(3, a, user=TEST_USER)
+        self.submit_jobs(3, a, user=TEST_USER2)
+        a = {ATTR_queue: 'wq4'}
+        self.submit_jobs(3, a, user=TEST_USER)
+        self.submit_jobs(3, a, user=TEST_USER2)
+
+        b = {'group_list': TSTGRP1, ATTR_queue: 'wq1'}
+        self.submit_jobs(3, b, TEST_USER1)
+        b = {'group_list': TSTGRP2, ATTR_queue: 'wq1'}
+        self.submit_jobs(3, b, TEST_USER1)
+        b = {'group_list': TSTGRP1, ATTR_queue: 'wq4'}
+        self.submit_jobs(3, b, TEST_USER1)
+        b = {'group_list': TSTGRP2, ATTR_queue: 'wq4'}
+        self.submit_jobs(3, b, TEST_USER1)
+
+        b = {'project': 'p1', ATTR_queue: 'wq1'}
+        self.submit_jobs(3, b)
+        b = {'project': 'p2', ATTR_queue: 'wq1'}
+        self.submit_jobs(3, b)
+        b = {'project': 'p1', ATTR_queue: 'wq4'}
+        self.submit_jobs(3, b)
+        b = {'project': 'p2', ATTR_queue: 'wq4'}
+        self.submit_jobs(3, b)
+
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduling': 'True'}, id="sc1")
+
+        # Four equivalence classes: two for the resource eating job in each
+        # partition and two for the rest. Since there are no limits, user,
+        # group, nor project are taken into account
+        self.scheds['sc1'].log_match("Number of job equivalence classes: 4",
+                                     max_attempts=10, starttime=t)
+
+    def test_limits_partition(self):
+        """
+        Test to see that jobs from different users fall into different
+        equivalence classes with queue hard limits and partitions
+        """
+        self.setup_sc1()
+        self.setup_queues_nodes()
+        t = int(time.time())
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduling': 'False'}, id="sc1")
+        self.server.manager(MGR_CMD_SET, QUEUE,
+                            {'max_run': '[u:PBS_GENERIC=1]'}, id='wq1')
+        self.server.manager(MGR_CMD_SET, QUEUE,
+                            {'max_run': '[u:PBS_GENERIC=1]'}, id='wq4')
+
+        # Eat up all the resources
+        a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq1'}
+        J = Job(TEST_USER, attrs=a)
+        self.server.submit(J)
+        a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq4'}
+        J = Job(TEST_USER, attrs=a)
+        self.server.submit(J)
+        a = {ATTR_queue: 'wq1'}
+        self.submit_jobs(3, a, user=TEST_USER1)
+        self.submit_jobs(3, a, user=TEST_USER2)
+        a = {ATTR_queue: 'wq4'}
+        self.submit_jobs(3, a, user=TEST_USER1)
+        self.submit_jobs(3, a, user=TEST_USER2)
+
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduling': 'True'}, id="sc1")
+
+        # Six equivalence classes. Two for the resource eating job in
+        # different partitions and one for each user per partition.
+        self.scheds['sc1'].log_match("Number of job equivalence classes: 6",
+                                     max_attempts=10, starttime=t)
+
+    def test_job_array_partition(self):
+        """
+        Test that various job types will fall into single equivalence
+        class with same type of request and will only fall into different
+        equivalence class if partition is different
+        """
+        self.setup_sc1()
+        self.setup_queues_nodes()
+        t = int(time.time())
+        # Eat up all the resources
+        a = {'Resource_List.select': '1:ncpus=2', 'queue': 'wq1'}
+        J = Job(TEST_USER1, attrs=a)
+        self.server.submit(J)
+        a = {'Resource_List.select': '1:ncpus=2', 'queue': 'wq4'}
+        J = Job(TEST_USER1, attrs=a)
+        self.server.submit(J)
+
+        # Submit a job array
+        j = Job(TEST_USER)
+        j.set_attributes(
+            {ATTR_J: '1-3:1',
+             'Resource_List.select': '1:ncpus=2',
+             'queue': 'wq1'})
+        self.server.submit(j)
+        j.set_attributes(
+            {ATTR_J: '1-3:1',
+             'Resource_List.select': '1:ncpus=2',
+             'queue': 'wq4'})
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduling': 'True'}, id="sc1")
+        # Two equivalence class one for each partition
+        self.scheds['sc1'].log_match("Number of job equivalence classes: 2",
+                                     max_attempts=10, starttime=t)
+
+    def test_equiv_suspend_jobs(self):
+        """
+        Test that jobs fall into different equivalence classes
+        after they get suspended
+        """
+        self.setup_sc1()
+        self.setup_queues_nodes()
+        t = int(time.time())
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduling': 'False'}, id="sc1")
+        # Eat up all the resources
+        a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq1'}
+        J = Job(TEST_USER, attrs=a)
+        jid1 = self.server.submit(J)
+        self.server.submit(J)
+        a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq4'}
+        J = Job(TEST_USER, attrs=a)
+        jid3 = self.server.submit(J)
+        self.server.submit(J)
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduling': 'True'}, id="sc1")
+        # 2 equivalence classes one for each partition
+        self.scheds['sc1'].log_match("Number of job equivalence classes: 2",
+                                     max_attempts=10, starttime=t)
+        t = int(time.time())
+        self.server.sigjob(jobid=jid1, signal="suspend")
+        self.server.sigjob(jobid=jid3, signal="suspend")
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduling': 'True'}, id="sc1")
+        # 4 equivalance classes 2 for partition 2 for suspended jobs
+        self.scheds['sc1'].log_match("Number of job equivalence classes: 4",
+                                     max_attempts=10, starttime=t)
+
+    def test_equiv_single_partition(self):
+        """
+        Test that jobs fall into same equivalence class if jobs fall
+        into queues set to same partition
+        """
+        self.setup_sc1()
+        self.setup_queues_nodes()
+        t = int(time.time())
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduling': 'False'}, id="sc1")
+        self.server.manager(MGR_CMD_SET, QUEUE,
+                            {'partition': 'P1'}, id='wq4')
+        # Eat up all the resources with the first job to  wq1
+        a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq1'}
+        self.submit_jobs(4, a)
+        a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq4'}
+        self.submit_jobs(3, a)
+        a = {'Resource_List.select': '1:ncpus=1', ATTR_queue: 'wq1'}
+        self.submit_jobs(3, a)
+        a = {'Resource_List.select': '1:ncpus=1', ATTR_queue: 'wq4'}
+        self.submit_jobs(3, a)
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduling': 'True'}, id="sc1")
+        # 2 equivalence classes one for each with different ncpus request
+        # as both queues are having same partition
+        self.scheds['sc1'].log_match("Number of job equivalence classes: 2",
+                                     max_attempts=10, starttime=t)
