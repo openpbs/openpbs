@@ -78,12 +78,12 @@ typedef pbs_list_link pbs_list_head;
 
 /* function prototypes */
 
-extern void insert_link(pbs_list_link *old, pbs_list_link *new, void *pobj, int pos);
-extern void append_link(pbs_list_head *head, pbs_list_link *new, void *pnewobj);
-extern void delete_link(pbs_list_link *old);
+extern void insert_link(pbs_list_link *oldp, pbs_list_link *newp, void *pobj, int pos);
+extern void append_link(pbs_list_head *head, pbs_list_link *newp, void *pnewobj);
+extern void delete_link(pbs_list_link *oldp);
 extern void swap_link   (pbs_list_link *, pbs_list_link *);
-extern int  is_linked(pbs_list_link *head, pbs_list_link *old);
-extern void list_move(pbs_list_head *old, pbs_list_head *new);
+extern int  is_linked(pbs_list_link *head, pbs_list_link *oldp);
+extern void list_move(pbs_list_head *oldp, pbs_list_head *newp);
 
 #ifndef NDEBUG
 extern void *get_next(pbs_list_link, char *file, int line);

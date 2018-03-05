@@ -47,6 +47,7 @@
 #include "win.h"
 #include "log.h"
 #include "pbs_ifl.h"
+#include "list_link.h"
 #include <winbase.h>
 #include <ntsecapi.h>
 #include <Winnetwk.h>
@@ -65,11 +66,6 @@
 
 /* Global variable */
 char    winlog_buffer[WINLOG_BUF_SIZE] = {'\0'};
-
-/* passwd-related stuff mimicking UNIX - definition of passwd in win.h */
-static int 	user_num = 0;
-static int	user_max = 0;
-static struct passwd *user_array = NULL;
 
 #define DESKTOP_ALL (	DESKTOP_CREATEMENU      | DESKTOP_CREATEWINDOW  | \
 			DESKTOP_ENUMERATE       | DESKTOP_HOOKCONTROL   | \
@@ -115,6 +111,9 @@ struct	cache {
 	char	value[CACHE_VALUE_NELEM][CACHE_STR_SIZE]; /* fixed 2-d array */
 	time_t	time_taken;	      /* when value was cached */
 };
+
+static int 	passwd_cache_init = 0;
+pbs_list_head	passwd_cache_ll;
 
 /* the actual array of cached values */
 static struct cache cache_array[CACHE_NELEM] = {0};
@@ -2688,6 +2687,7 @@ getHomedir(char *user)
 	char	*homedir = NULL;
 	HANDLE	userlogin = INVALID_HANDLE_VALUE;
 	int	i;
+	struct passwd *pwdp = NULL;
 
 
 	homedir = getAssignedHomeDirectory(user);
@@ -2695,14 +2695,16 @@ getHomedir(char *user)
 	if (homedir)
 		return (homedir);
 
+	if (passwd_cache_init == 0) {
+		CLEAR_HEAD(passwd_cache_ll);
+		passwd_cache_init = 1;
+	}
+
 	/* look for a user login handle */
-	for (i=0; i<user_num; i++) {
-		struct passwd *pwdp;
-
-		pwdp = &user_array[i];
-
+	for (pwdp = (struct passwd*) GET_NEXT(passwd_cache_ll);
+		pwdp; pwdp = (struct passwd*) GET_NEXT(pwdp->pw_allpasswds)) {
 		if (strcmp(pwdp->pw_name, user) == 0) {
-			userlogin=pwdp->pw_userlogin;
+			userlogin = pwdp->pw_userlogin;
 			break;
 		}
 	}
@@ -3949,10 +3951,14 @@ setuser_with_password(char *user,
 	if ((user == NULL) || (decrypt_func == NULL))
 		return (0);
 
-	/* look in internal array for saved usertoken handle */
-	for (i=0; i<user_num; i++) {
-		pwdp = &user_array[i];
+	if (passwd_cache_init == 0) {
+		CLEAR_HEAD(passwd_cache_ll);
+		passwd_cache_init = 1;
+	}
 
+	/* look in internal cache for saved usertoken handle */
+	for (pwdp = (struct passwd*) GET_NEXT(passwd_cache_ll);
+		pwdp; pwdp = (struct passwd*) GET_NEXT(pwdp->pw_allpasswds)) {
 		if ( (strcmp(pwdp->pw_name, user) == 0) && \
 			(pwdp->pw_userlogin != INVALID_HANDLE_VALUE) ) {
 			setuser_hdle = pwdp->pw_userlogin;
@@ -4025,13 +4031,17 @@ setuser_close_handle()
 	struct passwd *pwdp = NULL;
 	int	i;
 
+	if (passwd_cache_init == 0) {
+		CLEAR_HEAD(passwd_cache_ll);
+		passwd_cache_init = 1;
+	}
+
 	if (setuser_hdle != INVALID_HANDLE_VALUE) {
 		CloseHandle(setuser_hdle);
 
-		/* look in internal array for saved usertoken handle */
-		for (i=0; i<user_num; i++) {
-			pwdp = &user_array[i];
-
+		/* look in internal cache for saved usertoken handle */
+		for (pwdp = (struct passwd*) GET_NEXT(passwd_cache_ll);
+			pwdp; pwdp = (struct passwd*) GET_NEXT(pwdp->pw_allpasswds)) {
 			if (pwdp->pw_userlogin == setuser_hdle) {
 				pwdp->pw_userlogin = INVALID_HANDLE_VALUE;
 			}
@@ -4047,7 +4057,7 @@ int
 setuid(uid_t uid)
 {
 	int ret = 0;
-	struct passwd *pw;
+	struct passwd *pw = NULL;
 
 	if ((pw=getpwuid(uid)) == NULL)
 		return (-1);
@@ -4615,19 +4625,26 @@ use_window_station_desktop2(char *user)
 static void
 print_pwentries(void)
 {
-	int i;
+	int i = 0;
 	/* look for a password */
-	for (i=0; i<user_num; i++) {
-		printf("[%d] (user=%s, pass=%s, uid=%ld, gid=%ld, gecos=%s, dir=%s shell=%s userlogin=%ld\n", i,
-			user_array[i].pw_name,
-			user_array[i].pw_passwd?user_array[i].pw_passwd:"null",
-			user_array[i].pw_uid,
-			user_array[i].pw_gid,
-			user_array[i].pw_gecos?user_array[i].pw_gecos:"null",
-			user_array[i].pw_dir?user_array[i].pw_dir:"null",
-			user_array[i].pw_shell?user_array[i].pw_shell:"null",
-			user_array[i].pw_userlogin);
+	struct passwd* pwdp = NULL;
 
+	if (passwd_cache_init == 0) {
+		CLEAR_HEAD(passwd_cache_ll);
+		passwd_cache_init = 1;
+	}
+
+	for (pwdp = (struct passwd*) GET_NEXT(passwd_cache_ll);
+		pwdp; pwdp = (struct passwd*) GET_NEXT(pwdp->pw_allpasswds)) {
+		printf("[%d] (user=%s, pass=%s, uid=%ld, gid=%ld, gecos=%s, dir=%s shell=%s userlogin=%ld\n", i++,
+			pwdp->pw_name,
+			pwdp->pw_passwd? pwdp->pw_passwd : "null",
+			pwdp->pw_uid,
+			pwdp->pw_gid,
+			pwdp->pw_gecos? pwdp->pw_gecos : "null",
+			pwdp->pw_dir? pwdp->pw_dir : "null",
+			pwdp->pw_shell? pwdp->pw_shell : "null",
+			pwdp->pw_userlogin);
 	}
 }
 
@@ -4647,137 +4664,105 @@ add_pwentry(char *name,
 	HANDLE ulogin)
 {
 
-	int	i;
-	int	index = -1;
-	struct  passwd *pwdp = NULL;
+	struct  passwd *pwdp = NULL, *pwdn = NULL;
 	DWORD	sid_len_need;
 
 	if (name == NULL)
 		return NULL;
 
 	/* look for a password */
-	for (i=0; i<user_num; i++) {
-		pwdp = &user_array[i];
-
+	for (pwdp = (struct passwd*) GET_NEXT(passwd_cache_ll);
+		pwdp; pwdp = (struct passwd*) GET_NEXT(pwdp->pw_allpasswds)) {
 		if (strcmp(pwdp->pw_name, name) == 0)
-			return (pwdp);			/* already recognized */
+			return pwdp;			/* already recognized */
 	}
 
-	if (user_max == user_num) {
-		if (user_max == 0) {
-			user_max = 4;
-			user_array = (struct passwd *)
-				calloc(user_max, sizeof(struct passwd));
-			if (user_array == NULL) {
-				return NULL;
-			}
-		}
-		else {
-			user_max *= 2;
-			pwdp = (struct passwd *) realloc(user_array,
-				user_max * sizeof(struct passwd));
-
-
-			if (pwdp == NULL) {
-				return NULL;
-			}
-
-			user_array = pwdp;
-		}
-
-		for (i=user_num; i < user_max; i++) {
-			user_array[i].pw_name = NULL;
-			user_array[i].pw_uid = NULL;
-			user_array[i].pw_gid = NULL;
-			user_array[i].pw_gecos = NULL;
-			user_array[i].pw_dir = NULL;
-			user_array[i].pw_userlogin = INVALID_HANDLE_VALUE;
-		}
-	}
-
-	if (user_array == NULL)
+	pwdn = (struct passwd *)calloc(1, sizeof(struct passwd));
+	if (pwdn == NULL) {
+		log_err(errno, __func__, "no memory");
 		return NULL;
-
-	if ((user_array[user_num].pw_name = strdup(name)) == NULL) {
+	}
+	
+	if ((pwdn->pw_name = strdup(name)) == NULL) {
 		goto err;
 	}
 
 	if ((passwd == NULL) || strcmp(passwd, "*") == 0) {
-		user_array[user_num].pw_passwd = NULL;
+		pwdn->pw_passwd = NULL;
 	} else {
-		if ((user_array[user_num].pw_passwd = strdup(passwd)) == NULL) {
+		if ((pwdn->pw_passwd = strdup(passwd)) == NULL) {
 			goto err;
 		}
 	}
 
-	user_array[user_num].pw_uid = NULL;
+	pwdn->pw_uid = NULL;
 	if (uid != NULL) {
 		sid_len_need = GetLengthSid(uid);
 
-		user_array[user_num].pw_uid = (uid_t)malloc(sid_len_need);
-		if (user_array[user_num].pw_uid) {
-			CopySid(sid_len_need, user_array[user_num].pw_uid, uid);
+		pwdn->pw_uid = (uid_t)malloc(sid_len_need);
+		if (pwdn->pw_uid) {
+			CopySid(sid_len_need, pwdn->pw_uid, uid);
 		} else {
 			goto err;
 		}
 	}
 
-	user_array[user_num].pw_gid = NULL;
+	pwdn->pw_gid = NULL;
 	if (gid != NULL) {
 		sid_len_need = GetLengthSid(gid);
 
-		user_array[user_num].pw_gid = (gid_t)malloc(sid_len_need);
-		if (user_array[user_num].pw_gid) {
-			CopySid(sid_len_need, user_array[user_num].pw_gid, gid);
+		pwdn->pw_gid = (gid_t)malloc(sid_len_need);
+		if (pwdn->pw_gid) {
+			CopySid(sid_len_need, pwdn->pw_gid, gid);
 		} else {
 			goto err;
 		}
 	}
 
-	user_array[user_num].pw_gecos = NULL;
+	pwdn->pw_gecos = NULL;
 	if (gecos) {
-		if ((user_array[user_num].pw_gecos = strdup(gecos)) == NULL) {
+		if ((pwdn->pw_gecos = strdup(gecos)) == NULL) {
 			goto err;
 		}
 	}
 
-	user_array[user_num].pw_dir = NULL;
+	pwdn->pw_dir = NULL;
 	if (dir) {
-		if ((user_array[user_num].pw_dir = strdup(dir)) == NULL) {
+		if ((pwdn->pw_dir = strdup(dir)) == NULL) {
 			goto err;
 		}
 	}
 
-	user_array[user_num].pw_shell = NULL;
+	pwdn->pw_shell = NULL;
 	if (shell) {
-		if ((user_array[user_num].pw_shell = strdup(shell)) == NULL) {
+		if ((pwdn->pw_shell = strdup(shell)) == NULL) {
 			goto err;
 		}
 	}
 
-	user_array[user_num].pw_userlogin = ulogin;
+	pwdn->pw_userlogin = ulogin;
 
-	index = user_num;
-	user_num++;
+	CLEAR_LINK(pwdn->pw_allpasswds);
+	append_link(&passwd_cache_ll, &pwdn->pw_allpasswds, pwdn);
 
-	return (&user_array[index]);
+	return pwdn;
 err:
-	if (user_array[user_num].pw_name)
-		free(user_array[user_num].pw_name);
-	if (user_array[user_num].pw_passwd)
-		free(user_array[user_num].pw_passwd);
-	if (user_array[user_num].pw_uid)
-		free(user_array[user_num].pw_uid);
-	if (user_array[user_num].pw_gid)
-		free(user_array[user_num].pw_gid);
-	if (user_array[user_num].pw_gecos)
-		free(user_array[user_num].pw_gecos);
-	if (user_array[user_num].pw_dir)
-		free(user_array[user_num].pw_dir);
-	if (user_array[user_num].pw_shell)
-		free(user_array[user_num].pw_shell);
-	if (user_array)
-		free(user_array);
+	if (pwdn->pw_name)
+		free(pwdn->pw_name);
+	if (pwdn->pw_passwd)
+		free(pwdn->pw_passwd);
+	if (pwdn->pw_uid)
+		free(pwdn->pw_uid);
+	if (pwdn->pw_gid)
+		free(pwdn->pw_gid);
+	if (pwdn->pw_gecos)
+		free(pwdn->pw_gecos);
+	if (pwdn->pw_dir)
+		free(pwdn->pw_dir);
+	if (pwdn->pw_shell)
+		free(pwdn->pw_shell);
+	if (pwdn)
+		free(pwdn);
 	fprintf(stderr, "Unable to allocate memory!\n");
 	return NULL;
 }
@@ -4803,7 +4788,7 @@ logon_pw(char *username,
 	int use_winsta,
 	char *msg)
 {
-	int		i = 0;
+	int		found = 0;
 	struct	passwd *pwdp = NULL;
 	SID	*usid = NULL;
 	char	*homedir = NULL;
@@ -4823,11 +4808,15 @@ logon_pw(char *username,
 		strcat(msg, msg2);
 		return NULL;
 	}
+	
+	if (passwd_cache_init == 0) {
+		CLEAR_HEAD(passwd_cache_ll);
+		passwd_cache_init = 1;
+	}
 
 	/* look for a password */
-	for (i=0; i<user_num; i++) {
-		pwdp = &user_array[i];
-
+	for (pwdp = (struct passwd*) GET_NEXT(passwd_cache_ll);
+		pwdp; pwdp = (struct passwd*) GET_NEXT(pwdp->pw_allpasswds)) {
 		if (strcmp(pwdp->pw_name, username) == 0) {
 			/*
 			 * If an entry for user is found and
@@ -4836,11 +4825,12 @@ logon_pw(char *username,
 			 */
 			if (pwdp->pw_dir == NULL)
 				pwdp->pw_dir = getHomedir(username);
+			found = 1;
 			break;
 		}
 	}
 
-	if (i == user_num) {	/* no entry in database */
+	if (!found) {	/* no entry in database */
 
 		homedir = getHomedir(username);
 		if (homedir == NULL) {
@@ -4954,29 +4944,33 @@ logon_pw(char *username,
 struct passwd *
 getpwnam(const char *name)
 {
-	int 	i;
 	SID	*usid;
 	struct  passwd *pwdp = NULL;
+	int found = 0;
 
-	/* look for a password */
-	for (i=0; i<user_num; i++) {
-		pwdp = &user_array[i];
-
-		if (strcmp(pwdp->pw_name, name) == 0)
-			break;
+	if (passwd_cache_init == 0) {
+		CLEAR_HEAD(passwd_cache_ll);
+		passwd_cache_init = 1;
 	}
 
-	if (i == user_num) {	/* no entry in database */
+	/* look for a password */
+	for (pwdp = (struct passwd*) GET_NEXT(passwd_cache_ll);
+		pwdp; pwdp = (struct passwd*) GET_NEXT(pwdp->pw_allpasswds)) {
+		if (strcmp(pwdp->pw_name, name) == 0){
+			found = 1;
+			break;
+		}
+	}
 
+	if (!found) {	/* no entry in database */
 		if ((usid=getusersid((char *)name)) != NULL) {
 			pwdp = add_pwentry((char *)name, "*", usid, NULL,
 				(char *)name, NULL, NULL,
 				INVALID_HANDLE_VALUE);
 			LocalFree(usid);
 		} else {
-			pwdp =  NULL;
+			return NULL;
 		}
-
 	}
 
 	return (pwdp);
@@ -4987,22 +4981,28 @@ getpwuid(uid_t uid)
 {
 	struct  passwd *pwdp = NULL;
 	char	*username = NULL;
-	int	i;
+	int	found = 0;
 
 	if (uid == NULL)
 		return NULL;
 
-	/* look for a password */
-	for (i=0; i<user_num; i++) {
-		pwdp = &user_array[i];
 
+	if (passwd_cache_init == 0) {
+		CLEAR_HEAD(passwd_cache_ll);
+		passwd_cache_init = 1;
+	}
+
+	/* look for a password */
+	for (pwdp = (struct passwd*) GET_NEXT(passwd_cache_ll);
+		pwdp; pwdp = (struct passwd*) GET_NEXT(pwdp->pw_allpasswds)) {
 		if (EqualSid(pwdp->pw_uid, uid)) {
+			found = 1;
 			break;
 		}
 	}
 
 
-	if (i == user_num) {	/* no entry in database */
+	if (!found) {	/* no entry in database */
 
 		if ((username=getusername(uid)) != NULL) {
 			pwdp = add_pwentry(username, "*", uid, NULL, username,
@@ -5037,11 +5037,15 @@ cache_usertoken_and_homedir(char *user,
 	if (user == NULL)
 		return;
 
+	if (passwd_cache_init == 0) {
+		CLEAR_HEAD(passwd_cache_ll);
+		passwd_cache_init = 1;
+	}
+
 	/* look for cached values if not forced to re-save values */
 	if (!force) {
-		for (i=0; i<user_num; i++) {
-			pwdp = &user_array[i];
-
+		for (pwdp = (struct passwd*) GET_NEXT(passwd_cache_ll);
+			pwdp; pwdp = (struct passwd*) GET_NEXT(pwdp->pw_allpasswds)) {
 			if( (strcmp(pwdp->pw_name, user) == 0) && \
 		   	(pwdp->pw_userlogin != INVALID_HANDLE_VALUE) && \
 			  ( (pwdp->pw_dir != NULL) && \
@@ -5090,17 +5094,23 @@ wrap_NetUserGetGroups(LPCWSTR servername,
 	if ((netst == ERROR_LOGON_FAILURE) || (netst == ERROR_ACCESS_DENIED)) {
 		struct passwd *pw = NULL;
 		char	user_name[UNLEN+1];
-		int	i;
+		int	found = 0;
 
 		wcstombs(user_name, username, UNLEN);
 
-		for (i=0; i<user_num; i++) {
-			pw = &user_array[i];
-
-			if (strcmp(pw->pw_name, user_name) == 0)
-				break;
+		if (passwd_cache_init == 0) {
+			CLEAR_HEAD(passwd_cache_ll);
+			passwd_cache_init = 1;
 		}
-		if (i == user_num) {
+
+		for (pw = (struct passwd*) GET_NEXT(passwd_cache_ll);
+			pw; pw = (struct passwd*) GET_NEXT(pw->pw_allpasswds)) {
+			if (strcmp(pw->pw_name, user_name) == 0){
+				found = 1;
+				break;
+			}
+		}
+		if (!found) {
 			sprintf(winlog_buffer, "No user token found for %s",
 				user_name);
 			return (netst);
@@ -5158,17 +5168,22 @@ wrap_NetUserGetLocalGroups(LPCWSTR servername,
 	if ((netst == ERROR_LOGON_FAILURE) || (netst == ERROR_ACCESS_DENIED)) {
 		struct passwd *pw = NULL;
 		char	user_name[UNLEN+1];
-		int 	i;
+		int 	found = 0;
 
 		wcstombs(user_name, username, UNLEN);
-
-		for (i=0; i<user_num; i++) {
-			pw = &user_array[i];
-
-			if (strcmp(pw->pw_name, user_name) == 0)
-				break;
+		if (passwd_cache_init == 0) {
+			CLEAR_HEAD(passwd_cache_ll);
+			passwd_cache_init = 1;
 		}
-		if (i == user_num) {
+
+		for (pw = (struct passwd*) GET_NEXT(passwd_cache_ll);
+			pw; pw = (struct passwd*) GET_NEXT(pw->pw_allpasswds)) {
+			if (strcmp(pw->pw_name, user_name) == 0){
+				found = 1;
+				break;
+			}
+		}
+		if (!found) {
 			sprintf(winlog_buffer, "No user token found for %s",
 				user_name);
 			return (netst);
@@ -5220,17 +5235,23 @@ wrap_NetUserGetInfo(LPCWSTR servername,
 	if ((netst == ERROR_LOGON_FAILURE) || (netst == ERROR_ACCESS_DENIED)) {
 		struct passwd *pw = NULL;
 		char	user_name[UNLEN+1] = {'\0'};
-		int	i;
+		int	found = 0;
 
 		wcstombs(user_name, username, UNLEN);
 
-		for (i=0; i<user_num; i++) {
-			pw = &user_array[i];
-
-			if (strcmp(pw->pw_name, user_name) == 0)
-				break;
+		if (passwd_cache_init == 0) {
+			CLEAR_HEAD(passwd_cache_ll);
+			passwd_cache_init = 1;
 		}
-		if (i == user_num) {
+
+		for (pw = (struct passwd*) GET_NEXT(passwd_cache_ll);
+			pw; pw = (struct passwd*) GET_NEXT(pw->pw_allpasswds)) {
+			if (strcmp(pw->pw_name, user_name) == 0){
+				found = 1;
+				break;
+			}
+		}
+		if (!found) {
 			sprintf(winlog_buffer, "No user token found for %s",
 				user_name);
 			return (netst);

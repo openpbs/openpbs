@@ -69,8 +69,8 @@
  *	Entry is added either before (position=0) or after (position !=0)
  *	an old entry.
  *
- * @param[in] old	ptr to old entry in list
- * @param[in] new  	ptr to new link entry
+ * @param[in] oldp	ptr to old entry in list
+ * @param[in] newp	ptr to new link entry
  * @param[in] pobj 	ptr to object to link in
  * @param[in] position  0=before old, else after
  *
@@ -78,7 +78,7 @@
  */
 
 void
-insert_link(struct pbs_list_link *old, struct pbs_list_link *new,
+insert_link(struct pbs_list_link *oldp, struct pbs_list_link *newp,
  		void *pobj, int position)
 {
 
@@ -86,50 +86,50 @@ insert_link(struct pbs_list_link *old, struct pbs_list_link *new,
 	/* first make sure unlinked entries are pointing to themselves	    */
 
 	if ((pobj          == NULL)	      ||
-		(old           == NULL) ||
-		(old->ll_prior == NULL)        ||
-		(old->ll_next  == NULL)        ||
-		(new->ll_prior != (pbs_list_link *)new)      ||
-		(new->ll_next  != (pbs_list_link *)new)) {
+		(oldp           == NULL) ||
+		(oldp->ll_prior == NULL)        ||
+		(oldp->ll_next  == NULL)        ||
+		(newp->ll_prior != (pbs_list_link *)newp)      ||
+		(newp->ll_next  != (pbs_list_link *)newp)) {
 		(void)fprintf(stderr, "Assertion failed, bad pointer in insert_link\n");
 		abort();
 	}
 #endif
 
-	if (position == LINK_INSET_AFTER) {  /* insert new after old */
-		new->ll_prior = old;
-		new->ll_next  = old->ll_next;
-		(old->ll_next)->ll_prior = new;
-		old->ll_next = new;
-	} else {				/* insert new before old */
-		new->ll_next = old;
-		new->ll_prior = old->ll_prior;
-		(old->ll_prior)->ll_next = new;
-		old->ll_prior = new;
+	if (position == LINK_INSET_AFTER) {  /* insert newp after oldp */
+		newp->ll_prior = oldp;
+		newp->ll_next  = oldp->ll_next;
+		(oldp->ll_next)->ll_prior = newp;
+		oldp->ll_next = newp;
+	} else {				/* insert newp before oldp */
+		newp->ll_next = oldp;
+		newp->ll_prior = oldp->ll_prior;
+		(oldp->ll_prior)->ll_next = newp;
+		oldp->ll_prior = newp;
 	}
 	/*
 	 * its big trouble if ll_struct is null, it would make this
 	 * entry appear to be the head, so we never let that happen
 	 */
 	if (pobj)
-		new->ll_struct = pobj;
+		newp->ll_struct = pobj;
 	else
-		new->ll_struct = (void *)new;
+		newp->ll_struct = (void *)newp;
 }
 
 /**
  * @brief
  * 	-append_link - append a new entry to the end of the list
  *
- * @param[in] head      ptr to head of list
- * @param[in] new       ptr to new link entry
- * @param[in] pobj      ptr to object to link in
+ * @param[in] head		ptr to head of list
+ * @param[in] newp		ptr to new link entry
+ * @param[in] pobj		ptr to object to link in
  *
  * @return      Void
  */
 
 void
-append_link(pbs_list_head *head, pbs_list_head *new, void *pobj)
+append_link(pbs_list_head *head, pbs_list_head *newp, void *pobj)
 {
 
 #ifndef NDEBUG
@@ -138,25 +138,25 @@ append_link(pbs_list_head *head, pbs_list_head *new, void *pobj)
 	if ((pobj == NULL) 		  ||
 		(head->ll_prior == NULL)   ||
 		(head->ll_next  == NULL)   ||
-		(new->ll_prior  != (pbs_list_link *)new) ||
-		(new->ll_next   != (pbs_list_link *)new)) {
+		(newp->ll_prior  != (pbs_list_link *)newp) ||
+		(newp->ll_next   != (pbs_list_link *)newp)) {
 		(void)fprintf(stderr, "Assertion failed, bad pointer in insert_link\n");
 		abort();
 	}
 #endif
 
-	(head->ll_prior)->ll_next = new;
-	new->ll_prior = head->ll_prior;
-	new->ll_next  = head;
-	head->ll_prior = new;
+	(head->ll_prior)->ll_next = newp;
+	newp->ll_prior = head->ll_prior;
+	newp->ll_next  = head;
+	head->ll_prior = newp;
 	/*
 	 * its big trouble if ll_struct is null, it would make this
 	 * entry appear to be the head, so we never let that happen
 	 */
 	if (pobj)
-		new->ll_struct = pobj;
+		newp->ll_struct = pobj;
 	else
-		new->ll_struct = (void *)new;
+		newp->ll_struct = (void *)newp;
 }
 
 /**
@@ -164,29 +164,29 @@ append_link(pbs_list_head *head, pbs_list_head *new, void *pobj)
  * 	-delete_link - delete an entry from the list
  *
  * @par	Checks to be sure links exist before breaking them\n
- *	Note: the old entry is unchanged other than the list links
+ *	Note: the oldp entry is unchanged other than the list links
  *	are cleared.
  *
- * @param[in] old       ptr to link to delete
+ * @param[in] oldp       ptr to link to delete
  *
  * @return	Void
  *
  */
 
 void
-delete_link(struct pbs_list_link *old)
+delete_link(struct pbs_list_link *oldp)
 {
 
-	if ((old->ll_prior != NULL) &&
-		(old->ll_prior != old) && (old->ll_prior->ll_next == old))
-		(old->ll_prior)->ll_next = old->ll_next;
+	if ((oldp->ll_prior != NULL) &&
+		(oldp->ll_prior != oldp) && (oldp->ll_prior->ll_next == oldp))
+		(oldp->ll_prior)->ll_next = oldp->ll_next;
 
-	if ((old->ll_next != NULL) &&
-		(old->ll_next != old) && (old->ll_next->ll_prior == old))
-		(old->ll_next)->ll_prior = old->ll_prior;
+	if ((oldp->ll_next != NULL) &&
+		(oldp->ll_next != oldp) && (oldp->ll_next->ll_prior == oldp))
+		(oldp->ll_next)->ll_prior = oldp->ll_prior;
 
-	old->ll_next  = old;
-	old->ll_prior = old;
+	oldp->ll_next  = oldp;
+	oldp->ll_prior = oldp;
 }
 
 /**

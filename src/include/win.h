@@ -40,6 +40,7 @@
 #define _PBS_WIN_H
 
 #include "windows.h"
+#include "list_link.h"
 #include <lm.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -249,8 +250,8 @@ struct passwd {
 	char	*pw_dir;
 	char	*pw_shell;
 	HANDLE	pw_userlogin;		/* special under windows */
+	pbs_list_link pw_allpasswds;
 };
-
 
 extern struct passwd *getpwnam(const char *name);
 extern struct passwd *getpwuid(uid_t uid);
