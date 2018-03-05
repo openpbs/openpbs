@@ -94,6 +94,26 @@ class TestQstat_json(PBSTestSuite):
             if attr not in qstat_attr:
                 self.assertFalse(attr + " is missing")
 
+    def test_qstat_json_valid_multiple_jobs(self):
+        """
+        Test json output of qstat -f is in valid format when multiple jobs are
+        queried and make sure that all attributes are displayed in qstat are
+        present in the output
+        """
+        j = Job(TEST_USER)
+        j.set_sleep_time(10)
+        jid1 = self.server.submit(j)
+        jid2 = self.server.submit(j)
+        qstat_cmd_json = os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin',
+                                      'qstat') + \
+            ' -f -F json ' + str(jid1) + ' ' + str(jid2)
+        ret = self.du.run_cmd(self.server.hostname, cmd=qstat_cmd_json)
+        qstat_out = "\n".join(ret['out'])
+        try:
+            json.loads(qstat_out)
+        except ValueError:
+            self.assertTrue(False)
+
     def test_qstat_json_valid_user(self):
         """
         Test json output of qstat -f is in valid format when queried as
@@ -232,3 +252,20 @@ class TestQstat_json(PBSTestSuite):
         for attr in attrs_qstatqf:
             if attr not in qstat_attr:
                 self.assertFalse(attr + " is missing")
+
+    def test_qstat_qf_json_valid_multiple_queues(self):
+        """
+        Test json output of qstat -Qf is in valid format when
+        we query multiple queues
+        """
+        q_attr = {'queue_type': 'execution', 'enabled': 'True'}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, q_attr, id='workq1')
+        self.server.manager(MGR_CMD_CREATE, QUEUE, q_attr, id='workq2')
+        qstat_cmd_json = os.path.join(self.server.pbs_conf[
+            'PBS_EXEC'], 'bin', 'qstat') + ' -Qf -F json workq1 workq2'
+        ret = self.du.run_cmd(self.server.hostname, cmd=qstat_cmd_json)
+        qstat_out = "\n".join(ret['out'])
+        try:
+            json.loads(qstat_out)
+        except ValueError, e:
+            self.assertTrue(False)

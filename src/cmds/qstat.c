@@ -151,10 +151,11 @@ enum output_format_enum {
 /* This array contains the names users may specify for output format. */
 static char *output_format_names[] = {"default", "dsv", "json", NULL};
 
-static int output_format = FORMAT_DEFAULT;
+static int  output_format = FORMAT_DEFAULT;
 static char *dsv_delim = "|";
 static char *delimiter = "\n";
 static char *prev_resc_name = NULL;
+static int  first_stat = 1;
 
 static struct attrl *display_attribs = &basic_attribs[0];
 
@@ -271,8 +272,6 @@ istrue(char *string)
  * @param[in] e      - string holding string for end
  * @param[in] len    - length of string
  *
- * @return Void
- *
  */
 static void
 states(char *string, char *q, char *r, char *h, char *w, char *t, char *e, int len)
@@ -365,8 +364,6 @@ convert_feed_chars(char *val) {
  * @param[in] resource - resource name
  * @param[in] value - value for the attribute
  * @param[in] one_line - one line per attribute
- *
- * @return void
  *
  */
 void
@@ -552,8 +549,6 @@ prt_attr(char *name, char *resource, char *value, int one_line) {
  *
  * @param[in] nodes - name of exechosts
  * @param[in] no_newl - int value to decide which comment to be set
- *
- * @return Void
  *
  */
 static void
@@ -1215,9 +1210,11 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 		printf    ("----------------  ---------------- ----------------  -------- - -----\n");
 	}
 
-	if(output_format == FORMAT_JSON)
+	if(output_format == FORMAT_JSON && first_stat) {
 		if (add_json_node(JSON_OBJECT, JSON_NULL, "Jobs", NULL) == NULL)
 			return 1;
+		first_stat = 0;
+	}
 	p = status;
 	while (p != NULL) {
 		jid = NULL;
@@ -1459,9 +1456,11 @@ display_statque(struct batch_status *status, int prtheader, int full, int alt_op
 		printf("---------------- ----- ----- --- --- ----- ----- ----- ----- ----- ----- ----\n");
 	}
 
-	if (output_format == FORMAT_JSON)
+	if (output_format == FORMAT_JSON && first_stat) {
 		if (add_json_node(JSON_OBJECT, JSON_NULL, "Queue", NULL) == NULL)
 			return 1;
+		first_stat = 0;
+	}
 	p = status;
 	while (p != NULL) {
 		name = NULL;
@@ -1606,9 +1605,11 @@ display_statserver(struct batch_status *status, int prtheader, int full, int alt
 		printf("---------------- ----- ----- ----- ----- ----- ----- ----- ----- -----------\n");
 	}
 
-	if(output_format == FORMAT_JSON)
+	if(output_format == FORMAT_JSON && first_stat) {
 		if (add_json_node(JSON_OBJECT, JSON_NULL, "Server", NULL) == NULL)
 			return 1;
+		first_stat = 0;
+	}
 	p = status;
 	while (p != NULL) {
 		name = NULL;
