@@ -108,10 +108,10 @@ class TestFairshare(TestFunctional):
         jid4 = self.server.submit(J4)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         msg = ';Formula Evaluation = '
-        self.scheduler.log_match(str(jid1) + msg + '0.1253', max_attempts=2)
-        self.scheduler.log_match(str(jid2) + msg + '0.1253', max_attempts=2)
-        self.scheduler.log_match(str(jid3) + msg + '0.5004', max_attempts=2)
-        self.scheduler.log_match(str(jid4) + msg + '0.8330', max_attempts=2)
+        self.scheduler.log_match(str(jid1) + msg + '0.1253')
+        self.scheduler.log_match(str(jid2) + msg + '0.1253')
+        self.scheduler.log_match(str(jid3) + msg + '0.5004')
+        self.scheduler.log_match(str(jid4) + msg + '0.8330')
 
     def test_fairshare_formula2(self):
         """
@@ -135,10 +135,10 @@ class TestFairshare(TestFunctional):
         jid4 = self.server.submit(J4)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         msg = ';Formula Evaluation = '
-        self.scheduler.log_match(str(jid1) + msg + '0.2', max_attempts=2)
-        self.scheduler.log_match(str(jid2) + msg + '0.2', max_attempts=2)
-        self.scheduler.log_match(str(jid3) + msg + '0.36', max_attempts=2)
-        self.scheduler.log_match(str(jid4) + msg + '0.24', max_attempts=2)
+        self.scheduler.log_match(str(jid1) + msg + '0.2')
+        self.scheduler.log_match(str(jid2) + msg + '0.2')
+        self.scheduler.log_match(str(jid3) + msg + '0.36')
+        self.scheduler.log_match(str(jid4) + msg + '0.24')
 
     def test_fairshare_formula3(self):
         """
@@ -166,10 +166,10 @@ class TestFairshare(TestFunctional):
         t = int(time.time())
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         msg = ';Formula Evaluation = '
-        self.scheduler.log_match(str(jid1) + msg + '0.3816', max_attempts=2)
-        self.scheduler.log_match(str(jid2) + msg + '0.0902', max_attempts=2)
-        self.scheduler.log_match(str(jid3) + msg + '0.6477', max_attempts=2)
-        self.scheduler.log_match(str(jid4) + msg + '0.6477', max_attempts=2)
+        self.scheduler.log_match(str(jid1) + msg + '0.3816')
+        self.scheduler.log_match(str(jid2) + msg + '0.0902')
+        self.scheduler.log_match(str(jid3) + msg + '0.6477')
+        self.scheduler.log_match(str(jid4) + msg + '0.6477')
         self.scheduler.log_match('Leaving Scheduling Cycle', starttime=t)
 
         c = self.scheduler.cycles(lastN=1)[0]
@@ -203,10 +203,10 @@ class TestFairshare(TestFunctional):
         t = int(time.time())
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         msg = ';Formula Evaluation = '
-        self.scheduler.log_match(str(jid1) + msg + '0.3816', max_attempts=2)
-        self.scheduler.log_match(str(jid2) + msg + '0.0902', max_attempts=2)
-        self.scheduler.log_match(str(jid3) + msg + '0.6477', max_attempts=2)
-        self.scheduler.log_match(str(jid4) + msg + '0.6477', max_attempts=2)
+        self.scheduler.log_match(str(jid1) + msg + '0.3816')
+        self.scheduler.log_match(str(jid2) + msg + '0.0902')
+        self.scheduler.log_match(str(jid3) + msg + '0.6477')
+        self.scheduler.log_match(str(jid4) + msg + '0.6477')
         self.scheduler.log_match('Leaving Scheduling Cycle', starttime=t)
 
         c = self.scheduler.cycles(lastN=1)[0]
@@ -241,10 +241,10 @@ class TestFairshare(TestFunctional):
         t = int(time.time())
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         msg = ';Formula Evaluation = '
-        self.scheduler.log_match(str(jid1) + msg + '0.3816', max_attempts=2)
-        self.scheduler.log_match(str(jid2) + msg + '0.0902', max_attempts=2)
-        self.scheduler.log_match(str(jid3) + msg + '0.6477', max_attempts=2)
-        self.scheduler.log_match(str(jid4) + msg + '0.6477', max_attempts=2)
+        self.scheduler.log_match(str(jid1) + msg + '0.3816')
+        self.scheduler.log_match(str(jid2) + msg + '0.0902')
+        self.scheduler.log_match(str(jid3) + msg + '0.6477')
+        self.scheduler.log_match(str(jid4) + msg + '0.6477')
         self.scheduler.log_match('Leaving Scheduling Cycle', starttime=t)
 
         c = self.scheduler.cycles(start=t, lastN=1)[0]
@@ -283,10 +283,10 @@ class TestFairshare(TestFunctional):
         t = int(time.time())
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         msg = ';Formula Evaluation = '
-        self.scheduler.log_match(str(jid1) + msg + '60.3816', max_attempts=2)
-        self.scheduler.log_match(str(jid2) + msg + '30.0902', max_attempts=2)
-        self.scheduler.log_match(str(jid3) + msg + '40.6477', max_attempts=2)
-        self.scheduler.log_match(str(jid4) + msg + '30.6477', max_attempts=2)
+        self.scheduler.log_match(str(jid1) + msg + '60.3816')
+        self.scheduler.log_match(str(jid2) + msg + '30.0902')
+        self.scheduler.log_match(str(jid3) + msg + '40.6477')
+        self.scheduler.log_match(str(jid4) + msg + '30.6477')
         self.scheduler.log_match('Leaving Scheduling Cycle', starttime=t)
 
         c = self.scheduler.cycles(start=t, lastN=1)[0]
