@@ -1322,3 +1322,37 @@ class TestMultipleSchedulers(TestFunctional):
             err_msg = "Unknown Scheduler"
             self.assertTrue(err_msg in e.msg[0],
                             "Error message is not expected")
+
+    def test_job_sort_formula_threshold(self):
+        """
+        Test the scheduler attribute job_sort_formula_threshold for multisched
+        """
+        # Multisched setup
+        self.setup_sc3()
+        p3 = {'partition': 'P3'}
+        a = {'queue_type': 'execution',
+             'started': 'True',
+             'enabled': 'True'}
+        a.update(p3)
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='wq1', expect=True)
+        a = {'resources_available.ncpus': 2}
+        self.server.create_vnodes('vnode', a, 2, self.mom)
+        self.server.manager(MGR_CMD_SET, NODE, p3, id='vnode[0]', expect=True)
+        # Set job_sort_formula on the server
+        self.server.manager(MGR_CMD_SET, SERVER, {'job_sort_formula': 'ncpus'})
+        # Set job_sort_formula_threshold on the multisched
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'job_sort_formula_threshold': '2'},
+                            id="sc3", expect=True)
+        # Submit job to multisched
+        j1_attrs = {ATTR_queue: 'wq1', 'Resource_List.ncpus': '1'}
+        J1 = Job(TEST_USER, j1_attrs)
+        jid_1 = self.server.submit(J1)
+        # Submit job to default scheduler
+        J2 = Job(TEST_USER, attrs={'Resource_List.ncpus': '1'})
+        jid_2 = self.server.submit(J2)
+        msg = {'job_state': 'Q',
+               'comment': ('Not Running: Job is ' +
+                           'under job_sort_formula threshold value')}
+        self.server.expect(JOB, msg, id=jid_1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid_2)

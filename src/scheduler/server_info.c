@@ -224,7 +224,7 @@ query_server(status *pol, int pbs_sd)
 	}
 
 	sched = pbs_statsched(pbs_sd, NULL, NULL);
-	sched = bs_find(sched, PBS_DFLT_SCHED_NAME);
+	sched = bs_find(sched, sc_name);
 
 	if (sched == NULL) {
 		errmsg = pbs_geterrmsg(pbs_sd);
