@@ -37,15 +37,17 @@
  */
 
 #include <stdio.h>
+#include <string.h>
 
 #include "pbs_ifl.h"
 
 /**
- * @file	batch_status_sort
+ * @file	batch_status.c
  *
  * @brief
- *	batch_status_sort - insertion sort for batch_status structures
+ *	batch_status.c - batch_status structures utilities
  */
+
 /**
  * @brief
  *	bs_isort - insertion sort for batch_status structures
@@ -58,8 +60,10 @@
  * @retval	head of sorted batch status list
  *
  */
-struct batch_status *bs_isort(struct batch_status *bs,
-	int (*cmp_func)(struct batch_status*, struct batch_status *)) {
+struct batch_status *
+bs_isort(struct batch_status *bs,
+	int (*cmp_func)(struct batch_status*, struct batch_status *))
+{
 	struct batch_status *new_head = NULL;	/* new list head */
 	struct batch_status *cur_old; 	/*where we are in the old list*/
 	struct batch_status *cur_new;	/* where we are in the new list */
@@ -94,4 +98,29 @@ struct batch_status *bs_isort(struct batch_status *bs,
 		cur_old = tmp;
 	}
 	return new_head;
+}
+
+/**
+ * @brief
+ *	bs_find - find a batch_status with given name in a batch_status structures list.
+ *
+ * @param[in] bs - batch_status linked list
+ * @param[in] name - name of the batch_status structure to be searched
+ *
+ *
+ * @return 	batch_status structure handle
+ * @retval	batch_status structure pointer with given name or NULL
+ *
+ */
+struct batch_status *
+bs_find(struct batch_status *bs, const char *name)
+{
+
+	if (name == NULL)
+		return NULL;
+
+	for ( ; ((bs != NULL) && strcmp(name, bs->name)); bs = bs->next)
+		;	/* empty for loop */
+
+	return bs;
 }

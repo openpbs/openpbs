@@ -57,7 +57,7 @@ class TestMultipleSchedulers(TestFunctional):
         self.scheds['sc1'].set_sched_config({'log_filter': 2048})
 
     def setup_sc2(self):
-        dir_path = '/var/spool/pbs/sched_dir'
+        dir_path = os.path.join(os.sep, 'var', 'spool', 'pbs', 'sched_dir')
         if not os.path.exists(dir_path):
             self.du.mkdir(path=dir_path, sudo=True)
         a = {'partition': 'P2',
@@ -1261,3 +1261,64 @@ class TestMultipleSchedulers(TestFunctional):
         # as both queues are having same partition
         self.scheds['sc1'].log_match("Number of job equivalence classes: 2",
                                      max_attempts=10, starttime=t)
+
+    def test_list_multi_sched(self):
+        """
+        Test to verify that qmgr list sched works when multiple
+        schedulers are present
+        """
+
+        self.setup_sc1()
+        self.setup_sc2()
+        self.setup_sc3()
+
+        self.server.manager(MGR_CMD_LIST, SCHED)
+
+        self.server.manager(MGR_CMD_LIST, SCHED, id="default")
+
+        self.server.manager(MGR_CMD_LIST, SCHED, id="sc1")
+
+        dir_path = os.path.join(os.sep, 'var', 'spool', 'pbs', 'sched_dir')
+        a = {'partition': 'P2',
+             'sched_priv': os.path.join(dir_path, 'sched_priv_sc2'),
+             'sched_log': os.path.join(dir_path, 'sched_logs_sc2'),
+             'sched_host': self.server.hostname,
+             'sched_port': '15051'}
+        self.server.manager(MGR_CMD_LIST, SCHED, a, id="sc2", expect=True)
+
+        self.server.manager(MGR_CMD_LIST, SCHED, id="sc3")
+
+        try:
+            self.server.manager(MGR_CMD_LIST, SCHED, id="invalid_scname")
+        except PbsManagerError as e:
+            err_msg = "Unknown Scheduler"
+            self.assertTrue(err_msg in e.msg[0],
+                            "Error message is not expected")
+
+        # delete sc3 sched
+        self.server.manager(MGR_CMD_DELETE, SCHED, id="sc3", sudo=True)
+
+        try:
+            self.server.manager(MGR_CMD_LIST, SCHED, id="sc3")
+        except PbsManagerError as e:
+            err_msg = "Unknown Scheduler"
+            self.assertTrue(err_msg in e.msg[0],
+                            "Error message is not expected")
+
+        self.server.manager(MGR_CMD_LIST, SCHED)
+
+        self.server.manager(MGR_CMD_LIST, SCHED, id="default")
+
+        self.server.manager(MGR_CMD_LIST, SCHED, id="sc1")
+
+        self.server.manager(MGR_CMD_LIST, SCHED, id="sc2")
+
+        # delete sc1 sched
+        self.server.manager(MGR_CMD_DELETE, SCHED, id="sc1")
+
+        try:
+            self.server.manager(MGR_CMD_LIST, SCHED, id="sc1")
+        except PbsManagerError as e:
+            err_msg = "Unknown Scheduler"
+            self.assertTrue(err_msg in e.msg[0],
+                            "Error message is not expected")

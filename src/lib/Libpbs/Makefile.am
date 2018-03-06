@@ -73,7 +73,7 @@ libpbs_la_SOURCES = \
 	../Libattr/uLTostr.c \
 	../Libattr/strToL.c \
 	../Libattr/strTouL.c \
-	../Libcmds/batch_status_sort.c \
+	../Libcmds/batch_status.c \
 	../Libcmds/check_job_script.c \
 	../Libcmds/chk_Jrange.c \
 	../Libcmds/ck_job_name.c \

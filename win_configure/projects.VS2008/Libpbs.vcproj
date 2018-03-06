@@ -204,7 +204,7 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\src\lib\Libcmds\batch_status_sort.c"
+				RelativePath="..\..\src\lib\Libcmds\batch_status.c"
 				>
 			</File>
 			<File

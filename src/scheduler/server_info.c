@@ -223,8 +223,10 @@ query_server(status *pol, int pbs_sd)
 		return NULL;
 	}
 
+	sched = pbs_statsched(pbs_sd, NULL, NULL);
+	sched = bs_find(sched, PBS_DFLT_SCHED_NAME);
 
-	if ((sched = pbs_statsched(pbs_sd, PBS_DFLT_SCHED_NAME, NULL, NULL)) == NULL) {
+	if (sched == NULL) {
 		errmsg = pbs_geterrmsg(pbs_sd);
 		if (errmsg == NULL)
 			errmsg = "";

@@ -2608,7 +2608,9 @@ update_svr_schedobj(int connector, int cmd, int alarm_time)
 		return 1;
 
 	/* Stat the scheduler to get details of sched */
-	ss = pbs_statsched(connector, sc_name, NULL, NULL);
+	ss = pbs_statsched(connector, NULL, NULL);
+	ss = bs_find(ss, sc_name);
+
 	if (ss == NULL) {
 		sprintf(log_buffer, "Unable to retrieve the scheduler attributes from server");
 		log_err(-1, __func__, log_buffer);

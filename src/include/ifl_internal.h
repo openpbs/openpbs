@@ -95,7 +95,7 @@ extern struct batch_status *__pbs_statque(int, char *, struct attrl *, char *);
 
 extern struct batch_status *__pbs_statserver(int, struct attrl *, char *);
 
-extern struct batch_status *__pbs_statsched(int, char *, struct attrl *, char *);
+extern struct batch_status *__pbs_statsched(int, struct attrl *, char *);
 
 extern struct batch_status *__pbs_stathost(int, char *, struct attrl *, char *);
 

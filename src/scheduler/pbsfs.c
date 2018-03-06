@@ -171,7 +171,7 @@ main(int argc, char *argv[])
 			fprintf(stderr, "Can't connect to the server\n");
 			exit(1);
 		}
-		bs = pbs_statsched(pbs_sd, NULL, NULL, NULL);
+		bs = pbs_statsched(pbs_sd, NULL, NULL);
 
 		for (cur_bs = bs; cur_bs != NULL; cur_bs = cur_bs->next) {
 			if (strcmp(cur_bs->name, sched_name) == 0) {

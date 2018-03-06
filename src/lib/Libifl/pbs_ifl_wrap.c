@@ -5766,7 +5766,7 @@ SWIGINTERN PyObject *_wrap_pbs_statsched(PyObject *SWIGUNUSEDPARM(self), PyObjec
     SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "pbs_statsched" "', argument " "3"" of type '" "char *""'");
   }
   arg3 = (char *)(buf3);
-  result = (struct batch_status *)pbs_statsched(arg1,PBS_DFLT_SCHED_NAME,arg2,arg3);
+  result = (struct batch_status *)pbs_statsched(arg1,arg2,arg3);
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_batch_status, 0 |  0 );
   if (alloc3 == SWIG_NEWOBJ) free((char*)buf3);
   return resultobj;

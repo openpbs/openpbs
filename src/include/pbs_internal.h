@@ -555,6 +555,7 @@ extern int	decode_xml_arg_list_str(char *, char **);
 extern char *convert_time(char *);
 extern struct batch_status *bs_isort(struct batch_status *bs,
 	int (*cmp_func)(struct batch_status*, struct batch_status *));
+extern struct batch_status *bs_find(struct batch_status *, const char *);
 
 
 #endif /* _USRDLL */
