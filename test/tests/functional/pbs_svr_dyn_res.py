@@ -40,26 +40,66 @@ from ptl.lib.pbs_ifl_mock import *
 
 
 class TestServerDynRes(TestFunctional):
+
+    def setUp(self):
+        TestFunctional.setUp(self)
+        # Setup node
+        a = {'resources_available.ncpus': 4}
+        self.server.manager(MGR_CMD_SET, NODE, a,
+                            id=self.mom.shortname, expect=True)
+
+    def setup_dyn_res(self, resname, restype, resval):
+        """
+        Helper function to setup server dynamic resources
+        """
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
+
+        for i in resname:
+            attr = {"type": restype[0]}
+            self.server.manager(MGR_CMD_CREATE, RSC, attr, id=i, expect=True)
+            # Add resource to sched_config's 'resources' line
+            self.scheduler.add_resource(i)
+
+        # Add server_dyn_res entry in sched_config
+        if len(resval) > 1:  # Mutliple resources
+            # To create multiple server dynamic resources in sched_config
+            # from PTL, a list containing "resource !<script>" should be
+            # supplied as value to the key 'server_dyn_res' when calling
+            # set_sched_config().
+            # But this workaround works only if sched_config already has a
+            # server_dyn_res entry.
+            # HACK: So adding a single resource first and then the list.
+            # There wouldn't be any duplicate entries though.
+            a = {'server_dyn_res': resval[0]}
+            self.scheduler.set_sched_config(a)
+            a = {'server_dyn_res': resval}
+        else:
+            a = {'server_dyn_res': resval[0]}
+
+        self.scheduler.set_sched_config(a)
+
+        # The server dynamic resource script gets executed for every
+        # scheduling cycle
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
+
     def test_invalid_script_out(self):
         """
         Test that the scheduler handles incorrect output from server_dyn_res
         script correctly
         """
         # Create a server_dyn_res of type long
-        attr = {"type": "long"}
-        resname = "mybadres"
-        self.server.manager(MGR_CMD_CREATE, RSC, attr, id=resname, expect=True)
+        resname = ["mybadres"]
+        restype = ["long"]
+        script_body = "echo abc"
+        (fd, fn) = self.du.mkstemp(prefix="PtlPbs_badoutfile",
+                                   body=script_body)
+
+        self.du.chmod(path=fn, mode=0755, sudo=True)
+        os.close(fd)
+        resval = ['"' + resname[0] + ' ' + '!' + fn + '"']
 
         # Add it as a server_dyn_res that returns a string output
-        script_body = "echo abc"
-        filename = "badoutfile"
-        tmpfilepath = os.path.join(os.sep, "tmp", filename)
-        with open(tmpfilepath, "w") as fd:
-            fd.write(script_body)
-        self.scheduler.add_server_dyn_res(resname, file=tmpfilepath)
-
-        # Add it to the scheduler's 'resources' line
-        self.scheduler.add_resource(resname)
+        self.setup_dyn_res(resname, restype, resval)
 
         # Submit a job
         j = Job(TEST_USER)
@@ -72,12 +112,14 @@ class TestServerDynRes(TestFunctional):
 
         # Also check that "Script %s returned bad output"
         # is logged
-        self.scheduler.log_match("%s returned bad output" % (filename))
+        self.scheduler.log_match("%s returned bad output" % (fn))
 
         # The scheduler uses 0 as the available amount of the dynamic resource
         # if the server_dyn_res script output is bad
         # So, submit a job that requests 1 of the resource
-        attr = {"Resource_List." + resname: 1}
+        attr = {"Resource_List." + resname[0]: 1}
+
+        # Submit job
         j = Job(TEST_USER, attrs=attr)
         jid = self.server.submit(j)
 
@@ -87,4 +129,161 @@ class TestServerDynRes(TestFunctional):
         # Check for the expected log message for insufficient resources
         self.scheduler.log_match(
             "Insufficient amount of server resource: %s (R: 1 A: 0 T: 0)"
-            % (resname))
+            % (resname[0]))
+
+    def test_res_long_pos(self):
+        """
+        Test that server_dyn_res accepts command line arguments to the
+        commands it runs. Resource value set to a positive long int.
+        """
+        # Create a resource of type long. positive value
+        resname = ["foobar"]
+        restype = ["long"]
+        resval = ['"' + resname[0] + ' ' + '!/bin/echo 4' + '"']
+
+        # Add server_dyn_res entry in sched_config
+        self.setup_dyn_res(resname, restype, resval)
+
+        a = {'Resource_List.foobar': 4}
+        # Submit job
+        j = Job(TEST_USER, attrs=a)
+        jid = self.server.submit(j)
+
+        # Job must run successfully
+        a = {'job_state': 'R', 'Resource_List.foobar': '4'}
+        self.server.expect(JOB, a, id=jid)
+
+    def test_res_long_neg(self):
+        """
+        Test that server_dyn_res accepts command line arguments to the
+        commands it runs. Resource value set to a negative long int.
+        """
+        # Create a resource of type long. negative value
+        resname = ["foobar"]
+        restype = ["long"]
+        resval = ['"' + resname[0] + ' ' + '!/bin/echo -1' + '"']
+
+        # Add server_dyn_res entry in sched_config
+        self.setup_dyn_res(resname, restype, resval)
+
+        # Submit job
+        a = {'Resource_List.foobar': '1'}
+        # Submit job
+        j = Job(TEST_USER, attrs=a)
+        jid = self.server.submit(j)
+
+        # Check for the expected log message for insufficient resources
+        job_comment = "Can Never Run: Insufficient amount of server resource:"
+        job_comment += " foobar (R: 1 A: -1 T: -1)"
+
+        # The job shouldn't run
+        a = {'job_state': 'Q', 'comment': job_comment}
+        self.server.expect(JOB, a, id=jid, attrop=PTL_AND)
+
+    def test_res_whitespace(self):
+        """
+        Test for parse errors when more than one white space
+        is added between the resource name and the !<script> in a
+        server_dyn_res line. There shouldn't be any errors.
+        """
+        # Create a resource of type long
+        resname = ["foo"]
+        restype = ["long"]
+
+        # Prep for server_dyn_resource scripts. Script "PbsPtl_get_foo*"
+        # generates file "PbsPtl_got_foo" and returns 1.
+        script_body = "echo get_foo > /tmp/PtlPbs_got_foo; echo 1"
+
+        fpath_out = os.path.join(os.sep, "tmp", "PtlPbs_got_foo")
+
+        (fd_in, fn_in) = self.du.mkstemp(prefix="PtlPbs_get_foo",
+                                         body=script_body)
+        self.du.chmod(path=fn_in, mode=0755, sudo=True)
+        os.close(fd_in)
+
+        # Add additional white space between resource name and the script
+        resval = ['"' + resname[0] + '  ' + ' !' + fn_in + '"']
+
+        self.setup_dyn_res(resname, restype, resval)
+
+        # Check if the file "PbsPtl_got_foo" was created
+        for _ in range(10):
+            self.logger.info("Waiting for the file [%s] to appear",
+                             fpath_out)
+            if self.du.isfile(path=fpath_out):
+                break
+            time.sleep(1)
+        self.assertTrue(self.du.isfile(path=fpath_out))
+
+        # Submit job
+        a = {'Resource_List.foo': '1'}
+        # Submit job
+        j = Job(TEST_USER, attrs=a)
+        jid = self.server.submit(j)
+
+        # Job must run successfully
+        a = {'job_state': 'R', 'Resource_List.foo': 1}
+        self.server.expect(JOB, a, id=jid)
+
+    def test_multiple_res(self):
+        """
+        Test multiple dynamic resources specified in resourcedef
+        and sched_config
+        """
+        # Create resources of type long
+        resname = ["foobar_small", "foobar_medium", "foobar_large"]
+        restype = ["long", "long", "long"]
+
+        # Prep for server_dyn_resource scripts.
+        script_body_s = "echo 8"
+        script_body_m = "echo 12"
+        script_body_l = "echo 20"
+
+        (fd_s, fn_s) = self.du.mkstemp(prefix="PtlPbs_small", suffix=".scr",
+                                       body=script_body_s)
+        (fd_m, fn_m) = self.du.mkstemp(prefix="PtlPbs_medium", suffix=".scr",
+                                       body=script_body_m)
+        (fd_l, fn_l) = self.du.mkstemp(prefix="PtlPbs_large", suffix=".scr",
+                                       body=script_body_l)
+
+        self.du.chmod(path=fn_s, mode=0755, sudo=True)
+        self.du.chmod(path=fn_m, mode=0755, sudo=True)
+        self.du.chmod(path=fn_l, mode=0755, sudo=True)
+
+        # Close file handles, else scheduler cannot execute them
+        os.close(fd_s)
+        os.close(fd_m)
+        os.close(fd_l)
+
+        resval = ['"' + resname[0] + ' ' + '!' + fn_s + '"',
+                  '"' + resname[1] + ' ' + '!' + fn_m + '"',
+                  '"' + resname[2] + ' ' + '!' + fn_l + '"']
+
+        self.setup_dyn_res(resname, restype, resval)
+
+        a = {'Resource_List.foobar_small': '4'}
+        # Submit job
+        j = Job(TEST_USER, attrs=a)
+        jid = self.server.submit(j)
+
+        # Job must run successfully
+        a = {'job_state': 'R', 'Resource_List.foobar_small': 4}
+        self.server.expect(JOB, a, id=jid)
+
+        a = {'Resource_List.foobar_medium': '10'}
+        # Submit job
+        j = Job(TEST_USER, attrs=a)
+        jid = self.server.submit(j)
+
+        # Job must run successfully
+        a = {'job_state': 'R', 'Resource_List.foobar_medium': 10}
+        self.server.expect(JOB, a, id=jid)
+
+        a = {'Resource_List.foobar_large': '18'}
+        # Submit job
+        j = Job(TEST_USER, attrs=a)
+        jid = self.server.submit(j)
+
+        # Job must run successfully
+        a = {'job_state': 'R', 'Resource_List.foobar_large': 18}
+        self.server.expect(JOB, a, id=jid)
