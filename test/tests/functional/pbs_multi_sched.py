@@ -1356,3 +1356,284 @@ class TestMultipleSchedulers(TestFunctional):
                            'under job_sort_formula threshold value')}
         self.server.expect(JOB, msg, id=jid_1)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid_2)
+
+    @staticmethod
+    def cust_attr(name, totnodes, numnode, attrib):
+        a = {}
+        if numnode in range(0, 3):
+            a['resources_available.switch'] = 'A'
+        if numnode in range(3, 5):
+            a['resources_available.switch'] = 'B'
+        if numnode in range(6, 9):
+            a['resources_available.switch'] = 'A'
+            a['partition'] = 'P2'
+        if numnode in range(9, 11):
+            a['resources_available.switch'] = 'B'
+            a['partition'] = 'P2'
+        if numnode is 11:
+            a['partition'] = 'P2'
+        return dict(attrib.items() + a.items())
+
+    def setup_placement_set(self):
+        self.server.add_resource('switch', 'string_array', 'h')
+        a = {'resources_available.ncpus': 2}
+        self.server.create_vnodes(
+            'vnode', a, 12, self.mom, attrfunc=self.cust_attr)
+        self.server.manager(MGR_CMD_SET, SERVER, {'node_group_key': 'switch'})
+        self.server.manager(MGR_CMD_SET, SERVER, {'node_group_enable': 't'})
+
+    def test_multi_sched_explicit_ps(self):
+        """
+        Test only_explicit_ps set to sched attr will be in affect
+        and will not read from default scheduler
+        """
+        self.setup_placement_set()
+        self.setup_sc2()
+        a = {'queue_type': 'execution',
+             'started': 'True',
+             'enabled': 'True',
+             'partition': 'P2'}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='wq2')
+        a = {'Resource_List.select': '1:ncpus=2'}
+        j = Job(TEST_USER, attrs=a)
+        j1id = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=j1id)
+        nodes = ['vnode[5]']
+        self.check_vnodes(j, nodes, j1id)
+        a = {'Resource_List.select': '2:ncpus=2'}
+        j = Job(TEST_USER, attrs=a)
+        j2id = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=j2id)
+        nodes = ['vnode[3]', 'vnode[4]']
+        self.check_vnodes(j, nodes, j2id)
+        a = {'Resource_List.select': '3:ncpus=2'}
+        j = Job(TEST_USER, attrs=a)
+        j3id = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=j3id)
+        nodes = ['vnode[0]', 'vnode[1]', 'vnode[2]']
+        self.check_vnodes(j, nodes, j3id)
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'only_explicit_psets': 't'}, id='sc2')
+        a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq2'}
+        j = Job(TEST_USER, attrs=a)
+        j4id = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=j4id)
+        nodes = ['vnode[9]']
+        self.check_vnodes(j, nodes, j4id)
+        a = {'Resource_List.select': '2:ncpus=2', ATTR_queue: 'wq2'}
+        j = Job(TEST_USER, attrs=a)
+        j5id = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=j5id)
+        nodes = ['vnode[6]', 'vnode[7]']
+        self.check_vnodes(j, nodes, j5id)
+        a = {'Resource_List.select': '3:ncpus=2', ATTR_queue: 'wq2'}
+        j = Job(TEST_USER, attrs=a)
+        j6id = self.server.submit(j)
+        self.server.expect(JOB, {
+                           'job_state': 'Q',
+                           'comment': 'Not Running: Placement set switch=A'
+                           ' has too few free resources'}, id=j6id)
+
+    def test_jobs_do_not_span_ps(self):
+        """
+        Test do_not_span_psets set to sched attr will be in affect
+        and will not read from default scheduler
+        """
+        self.setup_placement_set()
+        self.setup_sc2()
+        a = {'queue_type': 'execution',
+             'started': 'True',
+             'enabled': 'True',
+             'partition': 'P2'}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='wq2')
+        # Scheduler sc2 cannot span across placement sets
+        self.server.manager(MGR_CMD_SET, SCHED, {
+                            'do_not_span_psets': 't'}, id='sc2')
+        self.server.manager(MGR_CMD_SET, SCHED, {
+                            'scheduling': 't'}, id='sc2')
+        a = {'Resource_List.select': '4:ncpus=2',  ATTR_queue: 'wq2'}
+        j = Job(TEST_USER, attrs=a)
+        j1id = self.server.submit(j)
+        self.server.expect(
+            JOB, {'job_state': 'Q', 'comment': 'Can Never Run: can\'t fit in '
+                  'the largest placement set, and can\'t span psets'}, id=j1id)
+        # Default scheduler can span as do_not_span_psets is not set
+        a = {'Resource_List.select': '4:ncpus=2'}
+        j = Job(TEST_USER, attrs=a)
+        j2id = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=j2id)
+
+    def test_sched_preempt_enforce_resumption(self):
+        """
+        Test sched_preempt_enforce_resumption can be set to a multi sched
+        and that even if topjob_ineligible is set for a preempted job
+        and sched_preempt_enforce_resumption is set true , the
+        preempted job will be calandered
+        """
+        self.setup_sc1()
+        self.setup_queues_nodes()
+        prio = {'Priority': 150, 'partition': 'P1'}
+        self.server.manager(MGR_CMD_SET, QUEUE, prio, id='wq4')
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'sched_preempt_enforce_resumption': 'true'},
+                            id='sc1')
+        self.server.manager(MGR_CMD_SET, SERVER, {'backfill_depth': '2'})
+
+        # Submit a job
+        j = Job(TEST_USER, {'Resource_List.walltime': '120',
+                            'Resource_List.ncpus': '2'})
+        jid1 = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        j = Job(TEST_USER, {'Resource_List.walltime': '120',
+                            'Resource_List.ncpus': '2',
+                            ATTR_queue: 'wq1'})
+        jid2 = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+
+        # Alter topjob_ineligible for running job
+        self.server.alterjob(jid1, {ATTR_W: "topjob_ineligible = true"},
+                             runas=ROOT_USER, logerr=True)
+        self.server.alterjob(jid1, {ATTR_W: "topjob_ineligible = true"},
+                             runas=ROOT_USER, logerr=True)
+
+        # Create a high priority queue
+        a = {'queue_type': 'e', 'started': 't',
+             'enabled': 't', 'priority': '150'}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, id="highp")
+
+        # Submit 2 jobs to high priority queue
+        j = Job(TEST_USER, {'queue': 'highp', 'Resource_List.walltime': '60',
+                            'Resource_List.ncpus': '2'})
+        jid3 = self.server.submit(j)
+        j = Job(TEST_USER, {'queue': 'wq4', 'Resource_List.walltime': '60',
+                            'Resource_List.ncpus': '2'})
+        jid4 = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid4)
+        # Verify that job1 is not calendered
+        self.server.expect(JOB, 'estimated.start_time',
+                           op=UNSET, id=jid1)
+        # Verify that job2 is calendared
+        self.server.expect(JOB, 'estimated.start_time',
+                           op=SET, id=jid2)
+        qstat = self.server.status(JOB, 'estimated.start_time',
+                                   id=jid2)
+        est_time = qstat[0]['estimated.start_time']
+        self.assertNotEqual(est_time, None)
+        self.scheds['sc1'].log_match(jid2 + ";Job is a top job",
+                                     starttime=self.server.ctime)
+
+    def set_primetime(self, ptime_start, ptime_end, scid='default'):
+        """
+        This function will set the prime time
+        in holidays file
+        """
+        p_day = 'weekday'
+        p_hhmm = time.strftime('%H%M', time.localtime(ptime_start))
+        np_hhmm = time.strftime('%H%M', time.localtime(ptime_end))
+        self.scheds[scid].holidays_set_day(p_day, p_hhmm, np_hhmm)
+
+        p_day = 'saturday'
+        self.scheds[scid].holidays_set_day(p_day, p_hhmm, np_hhmm)
+
+        p_day = 'sunday'
+        self.scheds[scid].holidays_set_day(p_day, p_hhmm, np_hhmm)
+
+    def test_prime_time_backfill(self):
+        """
+        Test opt_backfill_fuzzy can be set to a multi sched and
+        while calandering primetime/nonprimetime will be considered
+        """
+        self.setup_sc2()
+        self.setup_queues_nodes()
+        a = {'strict_ordering': "True   ALL"}
+        self.scheds['sc2'].set_sched_config(a)
+        # set primetime which will start after 30min
+        prime_start = int(time.time()) + 1800
+        prime_end = int(time.time()) + 3600
+        self.set_primetime(prime_start, prime_end, scid='sc2')
+
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'opt_backfill_fuzzy': 'high'}, id='sc2')
+        self.server.manager(MGR_CMD_SET, SERVER, {'backfill_depth': '2'})
+
+        # Submit a job
+        j = Job(TEST_USER, {'Resource_List.walltime': '60',
+                            'Resource_List.ncpus': '2',
+                            ATTR_queue: 'wq2'})
+        jid1 = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+
+        j = Job(TEST_USER1, {'Resource_List.ncpus': '2',
+                             ATTR_queue: 'wq2'})
+        jid2 = self.server.submit(j)
+
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
+
+        # Verify that job2 is calendared to start at primetime start
+        self.server.expect(JOB, 'estimated.start_time',
+                           op=SET, id=jid2)
+        qstat = self.server.status(JOB, 'estimated.start_time',
+                                   id=jid2)
+        est_time = qstat[0]['estimated.start_time']
+        est_epoch = est_time
+        if self.server.get_op_mode() == PTL_CLI:
+            est_epoch = int(time.mktime(time.strptime(est_time, '%c')))
+        prime_mod = prime_start % 60  # ignoring the seconds
+        self.assertEqual((prime_start - prime_mod), est_epoch)
+
+    def test_prime_time_multisched(self):
+        """
+        Test prime time queue can be set partition and multi sched
+        considers prime time queue for jobs submitted to the p_queue
+        """
+        self.setup_sc2()
+        self.setup_queues_nodes()
+        # set primetime which will start after 30min
+        prime_start = int(time.time()) + 1800
+        prime_end = int(time.time()) + 3600
+        self.set_primetime(prime_start, prime_end, scid='sc2')
+        a = {'queue_type': 'e', 'started': 't',
+             'enabled': 't', 'partition': 'P2'}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, id="p_queue")
+
+        j = Job(TEST_USER1, {'Resource_List.ncpus': '1',
+                             ATTR_queue: 'wq2'})
+        jid1 = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        j = Job(TEST_USER1, {'Resource_List.ncpus': '1',
+                             ATTR_queue: 'p_queue'})
+        jid2 = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
+        msg = 'Job will run in primetime only'
+        self.server.expect(JOB, {ATTR_comment: "Not Running: " + msg}, id=jid2)
+        self.scheds['sc2'].log_match(jid2 + ";Job only runs in primetime",
+                                     starttime=self.server.ctime)
+
+    def test_dedicated_time_multisched(self):
+        """
+        Test dedicated time queue can be set partition and multi sched
+        considers dedicated time for jobs submitted to the ded_queue
+        """
+        self.setup_sc2()
+        self.setup_queues_nodes()
+        # Create a dedicated time queue
+        ded_start = int(time.time()) + 1800
+        ded_end = int(time.time()) + 3600
+        self.scheds['sc2'].add_dedicated_time(start=ded_start, end=ded_end)
+        a = {'queue_type': 'e', 'started': 't',
+             'enabled': 't', 'partition': 'P2'}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, id="ded_queue")
+        j = Job(TEST_USER1, {'Resource_List.ncpus': '1',
+                             ATTR_queue: 'wq2'})
+        jid1 = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        j = Job(TEST_USER1, {'Resource_List.ncpus': '1',
+                             ATTR_queue: 'ded_queue'})
+        jid2 = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
+        msg = 'Dedicated time conflict'
+        self.server.expect(JOB, {ATTR_comment: "Not Running: " + msg}, id=jid2)
+        self.scheds['sc2'].log_match(jid2 + ";Dedicated Time",
+                                     starttime=self.server.ctime)
