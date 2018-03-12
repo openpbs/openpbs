@@ -370,6 +370,9 @@ extern "C" {
 #define ATTR_NODE_VnodePool	"vnode_pool"
 #define ATTR_NODE_current_eoe   "current_eoe"
 #define ATTR_NODE_power_provisioning   "power_provisioning"
+#define ATTR_NODE_poweroff_eligible	"poweroff_eligible"
+#define ATTR_NODE_last_state_change_time	"last_state_change_time"
+#define ATTR_NODE_last_used_time	"last_used_time"
 
 /* Resource "attribute" names */
 #define ATTR_RESC_TYPE		"type"

@@ -656,6 +656,7 @@ prt_node(struct batch_status *bstat)
 {
 	char	     *pc;
 	struct attrl *pattr = NULL;
+	time_t       epoch;
 	if (bstat == NULL)
 		return;
 
@@ -695,7 +696,12 @@ prt_node(struct batch_status *bstat)
 				printf("     %s", pattr->name);
 				if (pattr->resource)
 					printf(".%s", pattr->resource);
-				printf(" = %s\n", pattr->value);
+				if ((strcmp(pattr->name, ATTR_NODE_last_used_time) == 0) ||
+				(strcmp(pattr->name, ATTR_NODE_last_state_change_time) == 0)) {
+					epoch = (time_t) atol(pattr->value);
+					printf(" = %s", ctime(&epoch));
+				} else				
+					printf(" = %s\n", pattr->value);
 			}
 			printf("\n");
 			break;

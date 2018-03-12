@@ -79,6 +79,7 @@ extern "C" {
 #define ND_Force_Exclhost	"force_exclhost"
 #define ND_Initializing		"initializing"
 #define ND_unresolvable		"unresolvable"
+#define ND_sleep			"sleep"
 
 /* Node license types */
 

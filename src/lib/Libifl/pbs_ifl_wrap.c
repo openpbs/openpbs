@@ -7293,6 +7293,7 @@ SWIG_init(void) {
   SWIG_Python_SetConstant(d, "ATTR_rpp_highwater",SWIG_FromCharPtr("rpp_highwater"));
   SWIG_Python_SetConstant(d, "ATTR_license_location",SWIG_FromCharPtr("pbs_license_file_location"));
   SWIG_Python_SetConstant(d, "ATTR_pbs_license_info",SWIG_FromCharPtr("pbs_license_info"));
+  SWIG_Python_SetConstant(d, "ATTR_power_provisioning",SWIG_FromCharPtr("ATTR_power_provisioning"));
   SWIG_Python_SetConstant(d, "ATTR_license_min",SWIG_FromCharPtr("pbs_license_min"));
   SWIG_Python_SetConstant(d, "ATTR_license_max",SWIG_FromCharPtr("pbs_license_max"));
   SWIG_Python_SetConstant(d, "ATTR_license_linger",SWIG_FromCharPtr("pbs_license_linger_time"));

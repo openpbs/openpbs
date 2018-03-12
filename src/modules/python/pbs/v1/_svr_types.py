@@ -830,6 +830,7 @@ _event.hook_type = PbsAttributeDescriptor(_event, 'hook_type', "", (str,))
 _event.requestor = PbsAttributeDescriptor(_event, 'requestor', "", (str,))
 _event.requestor_host = PbsAttributeDescriptor(_event, 'requestor_host', "", (str,))
 _event._param = PbsAttributeDescriptor(_event, '_param', {}, (dict,))
+_event.freq = PbsAttributeDescriptor(_event, 'freq', None, (int,))
 #: End (event) setting class attributes
 
 #:-------------------------------------------------------------------------

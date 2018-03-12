@@ -92,6 +92,8 @@ extern "C" {
 #define BUF_SIZE 512
 #define RESC_USED_BUF_SIZE 2048
 
+#define MAX_STR_INT 40
+
 /*
  * The following structure, svrattrl is used to hold the external form of
  * attributes.
@@ -450,6 +452,8 @@ extern void free_depend(attribute *attr);
 extern void free_unkn(attribute *attr);
 extern int   parse_equal_string(char  *start, char **name, char **value);
 extern char *parse_comma_string(char *start);
+extern char *return_external_value(char *name, char *val);
+extern char *return_internal_value(char *name, char *val);
 
 #define NULL_FUNC (int (*)())0
 #define NULL_VERIFY_DATATYPE_FUNC (int (*)(struct attropl *, char **))0

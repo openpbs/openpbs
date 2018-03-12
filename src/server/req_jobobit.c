@@ -1009,6 +1009,9 @@ on_job_exit(struct work_task *ptask)
 				}
 			}
 
+			/* Set job's exec_vnodes with current time for last_used_time. */
+			set_last_used_time_node(pjob, 0);
+
 			/* here we have a reply from MOM about the delete */
 			/* if delete ok, send final track and purge the job */
 
@@ -1079,6 +1082,9 @@ on_job_exit(struct work_task *ptask)
 				 */
 				svr_saveorpurge_finjobhist(pjob);
 			}
+			break;
+		case JOB_SUBSTATE_TERMINATED:
+			set_last_used_time_node(pjob, 0);
 
 	}
 }

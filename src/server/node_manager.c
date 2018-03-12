@@ -243,6 +243,7 @@ extern long node_fail_requeue;
 #define		SKIP_ANYINUSE	2
 
 #define GLOB_SZ 511
+#define STR_TIME_SZ 20
 
 /*
  * Tree search generalized from Knuth (6.2.2) Algorithm T just like
@@ -525,7 +526,7 @@ set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 		 * setwhen is Set_All_State_All_Offline, then we only change
 		 * state if all Moms are down/offline
 		 */
-		if ((pvnd->nd_nummoms > 1) && 
+		if ((pvnd->nd_nummoms > 1) &&
 			((setwhen == Set_ALL_State_All_Down) ||
 			(setwhen == Set_All_State_All_Offline))) {
 			for (imom = 0; imom < pvnd->nd_nummoms; ++imom) {
@@ -536,6 +537,8 @@ set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 				}
 			}
 		}
+		if (pvnd->nd_state & INUSE_SLEEP)
+                        do_this_vnode = 0;
 		if (do_this_vnode == 0)
 			continue;	/* skip setting state on this vnode */
 
@@ -1433,7 +1436,11 @@ ping_a_mom_mcast(mominfo_t *pmom, int force_hello, int mtfd_ishello, int mtfd_is
 void
 set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_state_op type)
 {
-	unsigned long 	nd_prev_state;
+	unsigned long nd_prev_state;
+	char str_val[STR_TIME_SZ];
+	int time_int_val;
+
+	time_int_val = time_now;
 
 	if (pnode == NULL)
 		return;
@@ -1466,6 +1473,9 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 		pnode->nd_attr[(int)ND_ATR_state].at_val.at_long = pnode->nd_state;
 		pnode->nd_attr[(int)ND_ATR_state].at_flags |= ATR_VFLAG_MODIFY |
 			ATR_VFLAG_MODCACHE;
+		snprintf(str_val, sizeof(str_val), "%d", time_int_val);
+		set_attr_svr(&(pnode->nd_attr[(int)ND_ATR_last_state_change_time]),
+			&node_attr_def[(int) ND_ATR_last_state_change_time], str_val);
 	}
 
 	if (pnode->nd_state & INUSE_PROV) {
@@ -4898,7 +4908,7 @@ found:
 					if (vnlp->vnl_modtime > pmom->mi_modtime)
 						cr_node = 1;
 
-					/* set stale bit in state for al vnodes, */
+					/* set stale bit in state for all non sleeping vnodes, */
 					/* it will be cleared for the vnodes     */
 					/* listed in the update2 messsage	 */
 					set_all_state(pmom, 1, INUSE_STALE, NULL,
@@ -5634,7 +5644,7 @@ write_single_node_state(struct pbsnode *np)
 	obj.pbs_db_obj_type = PBS_DB_ATTR;
 	obj.pbs_db_un.pbs_db_attr = &attr;
 	attr.parent_obj_type = PARENT_TYPE_NODE;
-	isoff = np->nd_state & (INUSE_OFFLINE|INUSE_OFFLINE_BY_MOM);
+	isoff = np->nd_state & (INUSE_OFFLINE | INUSE_OFFLINE_BY_MOM | INUSE_SLEEP);
 
 	if (isoff) {
 		sprintf(offline_bits, "%d", isoff);
@@ -8532,6 +8542,65 @@ req_momrestart(struct batch_request *preq)
 	reply_ack(preq);
 	ping_a_mom(pmom, 1, 0);
 }
+
+/**
+ * @brief	Set last_used_time for job's exec_vnodes or reservation's resv_nodes.
+ *		Finds the vnodes by name and sets ND_ATR_last_used_time to time_now.
+ *
+ * @param[in]	pobj - pointer to job/reservation.
+ * @param[in]	type - int, denoting the type of object.
+ *                     Value 1 means reservation object.
+ *                     Value 0 means job object.
+ *
+ * @retval	void
+ */
+void
+set_last_used_time_node(void *pobj, int type)
+{
+	char		*pc;
+	char		*pn;
+	char		*last_pn = NULL;
+	struct pbsnode	*pnode;
+	int 		rc;
+	int 		cmp_ret;
+	job		*pjob;
+	resc_resv	*presv;
+	char		str_val[STR_TIME_SZ];
+	int 		time_int_val;
+
+	time_int_val = time_now;
+
+	if (pobj == NULL)
+		return;
+
+	if (type) {
+		presv = pobj;
+		pn = parse_plus_spec(presv->ri_wattr[(int)RESV_ATR_resv_nodes].at_val.at_str, &rc);
+	} else {
+		pjob = pobj;
+		pn = parse_plus_spec(pjob->ji_wattr[(int)JOB_ATR_exec_vnode].at_val.at_str, &rc);
+	}
+
+	while (pn) {
+		pc = pn;
+		while ((*pc != '\0') && (*pc != ':'))
+			++pc;
+		*pc = '\0';
+
+		if (last_pn == NULL || (cmp_ret = strcmp(pn, last_pn)) != 0 ) {
+			pnode = find_nodebyname(pn);
+			/* had better be the "natural" vnode with only the one parent */
+			if (pnode != NULL) {
+				snprintf(str_val, sizeof(str_val), "%d", time_int_val);
+				set_attr_svr(&(pnode->nd_attr[(int)ND_ATR_last_used_time]),
+						&node_attr_def[(int) ND_ATR_last_used_time], str_val);
+			}
+		}
+		last_pn = pn;
+		pn = parse_plus_spec(NULL, &rc);
+	}
+}
+
 /**
  * @brief update_resource_rel - This function creates JOB_ATR_resc_released_list job attribute
  *		    and add RASSN resources reported in ATTR_released attribute to it.

@@ -283,6 +283,9 @@ typedef struct hook hook;
 #define SEVERITY_LOG_WARNING		0x0006		/* syslog WARNING */
 #define SEVERITY_LOG_ERR		0x0007		/* syslog ERR */
 
+/* Power hook name */
+#define PBS_POWER "PBS_power"
+
 /* External functions */
 extern int
 set_hook_name(hook *, char *, char *, size_t);

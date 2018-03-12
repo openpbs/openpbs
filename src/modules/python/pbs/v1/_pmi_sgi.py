@@ -106,3 +106,19 @@ class Pmi:
         finally:	# be sure to remove the nodeset
             api.NodesetDelete(job.id)
         return False
+
+    def _pmi_power_off(self, hosts):
+        pbs.logmsg(pbs.LOG_DEBUG, "SGI: powering-off the node")
+        return False
+
+    def _pmi_power_on(self, hosts):
+        pbs.logmsg(pbs.LOG_DEBUG, "SGI: powering-on the node")
+        return False
+
+    def _pmi_ramp_down(self, hosts):
+        pbs.logmsg(pbs.LOG_DEBUG, "SGI: ramp-down the node")
+        return False
+
+    def _pmi_ramp_up(self, hosts):
+        pbs.logmsg(pbs.LOG_DEBUG, "SGI: ramp up the node")
+        return False

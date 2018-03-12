@@ -2297,14 +2297,13 @@ pbs_python_populate_python_class_from_svrattrl(PyObject *py_instance,
 			}
 
 			rc = pbs_python_object_set_attr_string_value(py_instance,
-				plist->al_name, plist->al_value);
+				plist->al_name, return_internal_value(plist->al_name, plist->al_value));
 			if (rc == -1) {
 				LOG_ERROR_ARG2("%s:failed to set attribute <%s>",
 					"", plist->al_name);
 				ret_rc = -1;
-			} else if (hook_debug.input_fp != NULL) {
+			} else if (hook_debug.input_fp != NULL)
 				fprintf(hook_debug.input_fp, "%s.%s=%s\n", objname, plist->al_name, plist->al_value);
-			}
 
 		}
 
@@ -2360,42 +2359,6 @@ duration_to_secs(char *time_str)
 
 	return (attr.at_val.at_long);
 }
-
-/**
- *
- * @brief
- *
- *	Returns the "external" form of the attribute 'val' given 'name'.
- *
- * @param[in] 	name - attribute name
- * @param[in] 	val - attribute value
- *
- * @return char * - the external form for name=state: "3" -> "down,offline"
- * @Note
- *     	Returns a static value that can potentially get cleaned up on next call.
- * 	Must use return value immediately!
- */
-static char *
-return_external_value(char *name, char *val)
-{
-	char *vns;
-
-
-	if ((name == NULL) || (val == NULL))
-		return ("");
-
-	if (strcmp(name, ATTR_NODE_state) == 0) {
-		return vnode_state_to_str(atoi(val));
-	} else if (strcmp(name, ATTR_NODE_Sharing) == 0) {
-		vns = vnode_sharing_to_str((enum vnode_sharing)atoi(val));
-		return (vns?vns:"");
-	} else if (strcmp(name, ATTR_NODE_ntype) == 0) {
-		return vnode_ntype_to_str(atoi(val));
-	} else {
-		return val;
-	}
-}
-
 
 /**
  *
@@ -4450,7 +4413,6 @@ create_py_joblist(pbs_list_head *joblist)
 	py_joblist_ret = py_joblist;
 
 create_py_joblist_exit:
-	rqs.rq_id[0] = '\0';
 	free_attrlist(&rqs.rq_attr);
 	CLEAR_HEAD(rqs.rq_attr);
 	if (py_joblist_ret != py_joblist) {
@@ -4478,6 +4440,226 @@ create_py_joblist_exit:
 	}
 
 	return (py_joblist_ret);
+}
+
+/*
+ * @brief
+ *	Given a list of reservation attributes/resources/values in 'resvlist',
+ *	return a Python dictionary object to represent 'resvlist' as an array of
+ *	reservation objects.
+ *
+ * @param[in]	resvlist - list of reservation attributes/resources/values.
+ *			format: a list of svrattrl entries (plist):
+ *	plist->al_name:	<resv_name>.<attribute_name>
+ *	plist->al_resc: <resource_name>.<type>
+ *	plist->al_value: <value>
+ *
+ * @return 	PyObject *
+ * @retval	<object>	- the Python dictionary object holding
+ *			           the individual reservation objects, indexed by
+ *				   reservation names.
+ * @retval	NULL		- if an error occured.
+ */
+static PyObject *
+create_py_resvlist(pbs_list_head *resvlist)
+{
+	svrattrl	*plist, *plist_next;
+	PyObject	*py_rn = NULL;  /* class reservation arg list */
+	PyObject	*py_ra = NULL;  /* instantiated reservation object */
+	PyObject	*py_resvlist = NULL;
+	PyObject	*py_resv_class = NULL;
+	struct 	rq_resv {
+		char	  rq_id[PBS_MAXNODENAME*2];
+		pbs_list_head rq_attr;
+	} rqs;
+	char		*p = NULL;
+	char		*pn = NULL;
+	char		*p1 = NULL;
+	char		*attr_name = NULL;
+	PyObject	*py_resvlist_ret = (PyObject *)NULL;
+	int		rc;
+
+	py_resvlist = PyDict_New(); /* NEW - empty dict */
+	if (py_resvlist == NULL) {
+		log_err(PBSE_INTERNAL, __func__,
+			"failed to create a reservation list dictionary!");
+		return (NULL);
+	}
+
+	py_resv_class = pbs_python_types_table[PP_RESV_IDX].t_class;
+
+	memset(rqs.rq_id, 0, sizeof(rqs.rq_id));
+	CLEAR_HEAD(rqs.rq_attr);
+
+	for (plist = (svrattrl *)GET_NEXT(*resvlist); plist; plist = plist_next) {
+
+		plist_next = (svrattrl *)GET_NEXT(plist->al_link);
+
+		/* look for last dot as the name could be dotted like a resv name */
+		p = strrchr(plist->al_name, '.');
+		if (p == NULL) { /* did not detect entry <resv_name>.<atr_name> */
+			snprintf(log_buffer, sizeof(log_buffer),
+				"warning: encountered an attribute %s without a resv name...ignoring", plist->al_name);
+			log_err(PBSE_INTERNAL, __func__, log_buffer);
+			continue;
+		}
+		*p = '\0';	/* now plist->al_name would be the resv name */
+		attr_name = p+1;/* p will be the actual attribute name */
+		if (plist->al_resc != NULL) {
+			/* looking for resource entry "<resc>,<resc_type>" */
+			p1 = strchr(plist->al_resc, ',');
+			if (p1 != NULL) {
+				*p1 = '\0';
+			}
+		}
+		/* at this point we have:
+		 * plist->al_name = <resv_name><p><attribute_name>
+		 * 				where <p> = \0
+		 * plist->al_resc = <resource_name><p1><type>
+		 * 				where <p1> = \0
+		 */
+
+		if (add_to_svrattrl_list(&rqs.rq_attr, attr_name,
+			plist->al_resc, plist->al_value, 0, NULL) != 0) {
+			snprintf(log_buffer, LOG_BUF_SIZE,
+				"warning: failed to add_to_svrattrl_list(%s,%s,%s)",
+				plist->al_name,
+				plist->al_resc?plist->al_resc:"", plist->al_value);
+			log_err(PBSE_INTERNAL, __func__, log_buffer);
+			goto create_py_resvlist_exit;
+		}
+
+		/* Check if we're done processing the attributes/resources */
+		/* of the current resv. 				    */
+		if (plist_next != NULL) {
+
+			/* looking for the form: <resv_name>.<attrib_name> */
+			pn = strrchr(plist_next->al_name, '.');
+			if (pn == NULL) {
+				snprintf(log_buffer, sizeof(log_buffer),
+					"warning: encountered the next attribute %s without a resv name...ignoring", plist_next->al_name);
+				log_err(PBSE_INTERNAL, __func__, log_buffer);
+				plist = (svrattrl *)GET_NEXT(plist_next->al_link);
+				if (p != NULL) {
+					*p = '.';/* restore plist->al_name to contain resv name */
+					p = NULL;
+				}
+				continue;
+			}
+			*pn = '\0'; /* now plist_next->al_name would be the */
+			/* resv name */
+			/* at this point, we have
+			 * plist_next->al_name: <resv_name><pn><attrib_name>
+			 * 			where <pn> = \0
+			 */
+		}
+
+		/* The next resvlist entry is for a different resv name */
+		/* or we've reached the end of the line */
+		if ((plist_next == NULL) ||
+			(strcmp(plist->al_name, plist_next->al_name) != 0)) {
+
+			strncpy(rqs.rq_id, plist->al_name, sizeof(rqs.rq_id));
+
+			py_ra = Py_BuildValue("(s)", rqs.rq_id); /* NEW ref */
+			if (py_ra == NULL) {
+				snprintf(log_buffer, sizeof(log_buffer),
+					"could not build args list for resv %s",
+					plist->al_name);
+				log_err(PBSE_INTERNAL, __func__, log_buffer);
+				goto create_py_resvlist_exit;
+			}
+
+			py_rn = PyObject_Call(py_resv_class, py_ra,
+				(PyObject *) NULL); /* NEW ref */
+			if (py_rn == NULL) {
+				snprintf(log_buffer, sizeof(log_buffer),
+					"failed to create a python resv %s object",
+					plist->al_name);
+				log_err(PBSE_INTERNAL, __func__, log_buffer);
+				goto create_py_resvlist_exit;
+			}
+
+			rc = pbs_python_populate_python_class_from_svrattrl(
+						       py_rn, &rqs.rq_attr);
+
+			if (rc == -1) {
+				snprintf(log_buffer, sizeof(log_buffer),
+					"failed to fully populate Python"
+					" resv %s object", plist->al_name);
+				log_err(PBSE_INTERNAL, __func__, log_buffer);
+				goto create_py_resvlist_exit;
+			}
+
+			/* set resv : now py_jn ref count auto incremented*/
+			rc = PyDict_SetItemString(py_resvlist, plist->al_name,
+				py_rn);
+			if (rc == -1) {
+				snprintf(log_buffer, sizeof(log_buffer),
+				        "%s: partially set remaining param['%s'] attributes",
+					PY_TYPE_EVENT, PY_EVENT_PARAM_RESVLIST);
+				log_err(PBSE_INTERNAL, __func__, log_buffer);
+				goto create_py_resvlist_exit;
+			}
+
+			rqs.rq_id[0] = '\0';
+			free_attrlist(&rqs.rq_attr);
+			CLEAR_HEAD(rqs.rq_attr);
+
+			Py_CLEAR(py_ra);
+			Py_CLEAR(py_rn);
+		}
+
+		if (p != NULL) {
+			/* restore prev plist->al_name to contain resv name */
+			*p = '.';
+			p = NULL;
+		}
+
+		if (p1 != NULL) {
+			/* restore prev "<resc>,<resc_type>"  value for plist->al_resc */
+			*p1 = ',';
+			p1 = NULL;
+		}
+
+		if (pn != NULL) {
+			/* restore prev plist_next->al_name to contain resv name */
+			*pn = '.';
+			pn = NULL;
+		}
+
+	}
+
+	py_resvlist_ret = py_resvlist;
+
+create_py_resvlist_exit:
+	free_attrlist(&rqs.rq_attr);
+	CLEAR_HEAD(rqs.rq_attr);
+	if (py_resvlist_ret != py_resvlist) {
+		Py_CLEAR(py_resvlist);
+	}
+	Py_CLEAR(py_ra);
+	Py_CLEAR(py_rn);
+
+	if (p != NULL) {
+		/* restore prev plist->al_name to contain resv name */
+		*p = '.';
+		p = NULL;
+	}
+
+	if (p1 != NULL) {
+		/* restore prev "<resc>,<resc_type>"  value for plist->al_resc */
+		*p1 = ',';
+		p1 = NULL;
+	}
+
+	if (pn != NULL) {
+		/* restore prev plist_next->al_name to contain resv name */
+		*pn = '.';
+		pn = NULL;
+	}
+
+	return (py_resvlist_ret);
 }
 
 /**
@@ -4725,6 +4907,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 	PyObject *py_varlist_o = NULL;
 	PyObject *py_vnodelist = NULL;
 	PyObject *py_joblist = NULL;
+	PyObject *py_resvlist = NULL;	
 	PyObject *py_exec_vnode = NULL;
 	PyObject *py_vnode	   = NULL;
 	PyObject *py_aoe	   = NULL;
@@ -4762,6 +4945,7 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 
 	pbs_list_head	*vnlist;
 	pbs_list_head	*joblist;
+	pbs_list_head	*resvlist;
 
        	vnlist = req_params->vns_list;
 
@@ -5258,7 +5442,48 @@ _pbs_python_event_set(unsigned int hook_event, char *req_user, char *req_host,
 			goto event_set_exit;
 		}
 	} else if (hook_event == HOOK_EVENT_PERIODIC) {
-		/* for now we don't want to set anything for this event */
+		vnlist = (pbs_list_head *)req_params->vns_list;
+
+		/* SET VNODE_LIST param */
+		(void)PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_VNODELIST,
+			Py_None);
+		py_vnodelist = create_py_vnodelist(vnlist);
+		if (py_vnodelist == NULL) {
+			LOG_ERROR_ARG2("%s: failed to create a Python vnodelist object for param['%s']",
+				PY_TYPE_EVENT, PY_EVENT_PARAM_VNODELIST);
+			goto event_set_exit;
+		}
+
+		/* set vnode list: py_vnodelist given to py_event_param so ref count */
+		/* auto incremented */
+		rc = PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_VNODELIST,
+			py_vnodelist);
+		if (rc == -1) {
+			LOG_ERROR_ARG2("%s: partially set remaining param['%s'] attributes",
+				PY_TYPE_EVENT, PY_EVENT_PARAM_VNODELIST);
+			goto event_set_exit;
+		}
+
+		/* SET RESV_LIST param */
+		resvlist = (pbs_list_head *)req_params->resv_list;
+
+		(void)PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_RESVLIST,
+			Py_None);
+		py_resvlist = create_py_resvlist(resvlist);
+		if (py_resvlist == NULL) {
+			LOG_ERROR_ARG2("%s: failed to create a Python resvlist object for param['%s']",
+				PY_TYPE_EVENT, PY_EVENT_PARAM_RESVLIST);
+			goto event_set_exit;
+		}
+		/* set resv list: py_resvlist given to py_event_param so ref count */
+		/* auto incremented */
+		rc = PyDict_SetItemString(py_event_param, PY_EVENT_PARAM_RESVLIST,
+			py_resvlist);
+		if (rc == -1) {
+			LOG_ERROR_ARG2("%s: partially set remaining param['%s'] attributes",
+				PY_TYPE_EVENT, PY_EVENT_PARAM_RESVLIST);
+			goto event_set_exit;
+		}
 	} else if (hook_event == HOOK_EVENT_RUNJOB) {
 		struct rq_runjob	*rqj = req_params->rq_run;
 
@@ -5770,6 +5995,7 @@ event_set_exit:
 	Py_CLEAR(py_env);
 	Py_CLEAR(py_joblist);
 	Py_CLEAR(py_pid);
+	Py_CLEAR(py_resvlist);
 
 	return (rc);
 }
@@ -5805,6 +6031,7 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 	PyObject 		*py_vnode = NULL;
 	PyObject 		*py_vnodelist = NULL;
 	PyObject 		*py_joblist = NULL;
+	PyObject 		*py_resvlist = NULL;	
 	PyObject 		*py_job_o = NULL;
 	PyObject 		*py_resv = NULL;
 	char		*queue;
@@ -6180,6 +6407,152 @@ _pbs_python_event_to_request(unsigned int hook_event, hook_output_param_t *req_p
 				ATTR_queue);
 			if (queue)
 				strcpy(((struct rq_move *)(req_params->rq_move))->rq_destin, queue);
+
+			break;
+		case HOOK_EVENT_PERIODIC:
+			py_vnodelist = _pbs_python_event_get_param(PY_EVENT_PARAM_VNODELIST);
+			if (!py_vnodelist) {
+				log_err(PBSE_INTERNAL, __func__,
+					"No vnode list parameter found for event!");
+				return -1;
+			}
+
+			if (!PyDict_Check(py_vnodelist)) {
+				log_err(PBSE_INTERNAL, __func__,
+					"vnode list parameter not a dictionary!");
+				return -1;
+			}
+
+			py_attr_keys = PyDict_Keys(py_vnodelist); /* NEW ref */
+
+			if (py_attr_keys == NULL) {
+				snprintf(log_buffer, sizeof(log_buffer),
+					"Failed to obtain object's '%s' keys",
+					PY_EVENT_PARAM_VNODE);
+				log_err(PBSE_INTERNAL, __func__, log_buffer);
+				return -1;
+			}
+
+			if (!PyList_Check(py_attr_keys)) {
+				snprintf(log_buffer, sizeof(log_buffer),
+					"object's '%s' keys is not a list!",
+					PY_EVENT_PARAM_VNODE);
+				log_err(PBSE_INTERNAL, __func__, log_buffer);
+				Py_CLEAR(py_attr_keys);
+				return -1;
+			}
+
+			num_attrs = PyList_Size(py_attr_keys);
+			for (i = 0; i < num_attrs; i++) {
+
+				key_str = strdup(pbs_python_list_get_item_string_value(
+							py_attr_keys, i));
+
+				if ((key_str == NULL) || (key_str[0] == '\0')) {
+					if (key_str != NULL) {
+						free(key_str);
+						key_str = NULL;
+					}
+					continue;
+				}
+
+				py_vnode = PyDict_GetItemString(py_vnodelist, key_str);
+
+				if (py_vnode == NULL) {
+					snprintf(log_buffer, sizeof(log_buffer),
+						"failed to get attribute '%s' value", key_str);
+					log_err(PBSE_INTERNAL, __func__, log_buffer);
+					Py_CLEAR(py_attr_keys);
+					free(key_str);
+					key_str = NULL;
+					return -1;
+				}
+
+				if (pbs_python_populate_svrattrl_from_python_class(py_vnode,
+					(pbs_list_head *)(req_params->vns_list), key_str, 1) == -1) {
+					snprintf(log_buffer, sizeof(log_buffer),
+						"failed to populate svrattrl with key '%s' value", key_str);
+					log_err(PBSE_INTERNAL, __func__, log_buffer);
+					Py_CLEAR(py_attr_keys);
+					free(key_str);
+					key_str = NULL;
+					return -1;
+				}
+				free(key_str);
+			}
+			Py_CLEAR(py_attr_keys);
+
+			py_resvlist = _pbs_python_event_get_param(PY_EVENT_PARAM_RESVLIST);
+			if (!py_resvlist) {
+				log_err(PBSE_INTERNAL, __func__,
+					"No reservation list parameter found for event!");
+				return -1;
+			}
+
+			if (!PyDict_Check(py_resvlist)) {
+				log_err(PBSE_INTERNAL, __func__,
+					"reservation list parameter not a dictionary!");
+				return -1;
+			}
+
+			py_attr_keys = PyDict_Keys(py_resvlist); /* NEW ref */
+
+			if (py_attr_keys == NULL) {
+				snprintf(log_buffer, sizeof(log_buffer),
+					"Failed to obtain object's '%s' keys",
+					PY_EVENT_PARAM_RESVLIST);
+				log_err(PBSE_INTERNAL, __func__, log_buffer);
+				return -1;
+			}
+
+			if (!PyList_Check(py_attr_keys)) {
+				snprintf(log_buffer, sizeof(log_buffer),
+					"object's '%s' keys is not a list!",
+					PY_EVENT_PARAM_RESVLIST);
+				log_err(PBSE_INTERNAL, __func__, log_buffer);
+				Py_CLEAR(py_attr_keys);
+				return -1;
+			}
+
+			num_attrs = PyList_Size(py_attr_keys);
+
+			for (i = 0; i < num_attrs; i++) {
+
+				key_str = strdup(pbs_python_list_get_item_string_value(\
+							py_attr_keys, i));
+
+				if ((key_str == NULL) || (key_str[0] == '\0')) {
+					if (key_str != NULL) {
+						free(key_str);
+					}
+					continue;
+				}
+
+				py_job = PyDict_GetItemString(py_resvlist,
+					key_str); /* borrowed */
+
+				if (py_job == NULL) {
+					snprintf(log_buffer, sizeof(log_buffer)-1,
+						"failed to get attribute '%s' value", key_str);
+					log_err(PBSE_INTERNAL, __func__, log_buffer);
+					Py_CLEAR(py_attr_keys);
+					free(key_str);
+					return -1;
+				}
+
+				if (pbs_python_populate_svrattrl_from_python_class(py_job,
+					(pbs_list_head *)(req_params->resv_list), key_str, 1) == -1) {
+					snprintf(log_buffer, sizeof(log_buffer)-1,
+						"failed to populate svrattrl with key '%s' value", key_str);
+					log_err(PBSE_INTERNAL, __func__, log_buffer);
+					Py_CLEAR(py_attr_keys);
+					free(key_str);
+					return -1;
+				}
+
+				free(key_str);
+			}
+			Py_CLEAR(py_attr_keys);
 
 			break;
 		default:
@@ -7183,6 +7556,18 @@ pbsv1mod_meth_is_attrib_val_settable(PyObject *self, PyObject *args, PyObject *k
 				goto IAVS_ERROR_EXIT;
 			}
 
+			break;
+		case HOOK_EVENT_PERIODIC:
+			if (!PyObject_IsInstance(py_owner,
+				pbs_python_types_table[PP_VNODE_IDX].t_class) &&
+				!PyObject_IsInstance(py_owner,
+				pbs_python_types_table[PP_RESC_IDX].t_class)) {
+				snprintf(log_buffer, LOG_BUF_SIZE-1,
+					"Can only set node,resource attributes under %s event.", HOOKSTR_PERIODIC);
+				log_buffer[LOG_BUF_SIZE-1] = '\0';
+				PyErr_SetString(PyExc_AssertionError, log_buffer);
+				goto IAVS_ERROR_EXIT;
+			}
 			break;
 		default:
 			PyErr_SetString(PyExc_AssertionError, "Unexpected event");

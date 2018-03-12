@@ -197,6 +197,7 @@
 #define SORT_PREEMPT "preempt_priority"
 #define SORT_PRIORITY "sort_priority"
 #define SORT_JOB_PRIORITY "job_priority"
+#define SORT_USED_TIME "last_used_time"
 
 #ifdef NAS
 /* localmod 039 */

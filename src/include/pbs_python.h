@@ -141,6 +141,7 @@ typedef struct	hook_input_param {
 	char		*env;
 	pbs_list_head	*jobs_list;
 	pbs_list_head	*vns_list;
+	pbs_list_head	*resv_list;
 	pid_t		pid;
 } hook_input_param_t;
 
@@ -178,6 +179,7 @@ typedef struct	hook_output_param {
 	char		**env;
 	pbs_list_head	*jobs_list;
 	pbs_list_head	*vns_list;
+	pbs_list_head	*resv_list;
 } hook_output_param_t;
 
 /* global constants */
@@ -256,6 +258,7 @@ extern void pbs_python_ext_quick_shutdown_interpreter(void);
 #define PY_EVENT_REQUESTOR	"requestor"
 #define PY_EVENT_REQUESTOR_HOST	"requestor_host"
 #define PY_EVENT_PARAM		"_param"
+#define PY_EVENT_FREQ		"freq"
 
 /* The event parameter keys */
 #define PY_EVENT_PARAM_JOB	"job"
@@ -265,6 +268,7 @@ extern void pbs_python_ext_quick_shutdown_interpreter(void);
 #define PY_EVENT_PARAM_VNODE     "vnode"
 #define PY_EVENT_PARAM_VNODELIST "vnode_list"
 #define PY_EVENT_PARAM_JOBLIST "job_list"
+#define PY_EVENT_PARAM_RESVLIST "resv_list"
 #define PY_EVENT_PARAM_AOE	 "aoe"
 #define PY_EVENT_PARAM_PROGNAME "progname"
 #define PY_EVENT_PARAM_ARGLIST "argv"

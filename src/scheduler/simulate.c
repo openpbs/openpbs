@@ -882,6 +882,18 @@ create_events(server_info *sinfo)
 		events = add_timed_event(events, te);
 	}
 
+	/* for nodes that are in state=sleep add a timed event */
+	for (i = 0; sinfo->nodes[i] != NULL; i++) {
+	        node_info *node = sinfo->nodes[i];
+		if (node->is_sleeping) {
+			te = create_event(TIMED_NODE_UP_EVENT, sinfo->server_time + PROVISION_DURATION,
+					(event_ptr_t *) node, (event_func_t) node_up_event, NULL);
+			if (te == NULL)
+				return 0;
+			events = add_timed_event(events, te);
+		}
+	}
+
 	/* A malloc error was encountered, free all allocated memory and return */
 	if (errflag > 0) {
 		free_timed_event_list(events);

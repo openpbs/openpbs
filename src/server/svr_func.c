@@ -116,6 +116,7 @@
  * 	prov_request_deferred()
  * 	prov_request_timed()
  * 	set_srv_prov_attributes()
+ * 	set_srv_pwr_prov_attribute()
  * 	execute_python_prov_script()
  * 	start_vnode_provisioning()
  * 	check_and_enqueue_provisioning()
@@ -133,7 +134,6 @@
  * 	replace_db_svrhost_file()
  * 	chk_and_update_db_svrhost()
  * 	set_sched_throughput_mode()
- *	action_power_provisioning()
  * 	keepfiles_action()
  * 	removefiles_action()
  *	are_we_primary()
@@ -6336,42 +6336,32 @@ del_prov_vnode_entry(job *pjob)
 
 /**
  * @brief
- * action function for power_provisioning
+ * function to enable/disable power_provisioning
  *
- * Reflect the change in the server attribute in the enabled flag for
+ * Reflect the change to the server attribute from enabled flag for
  * a PBS hook.
- *
- * @return	Whether or not setting worked.
- * @retval	PBSE_NONE		Action is okay.
- * @retval	PBSE_INTERNAL	hook could not be updated
+ * *
+ * @return	None.
  */
-int
-action_power_provisioning(attribute *pattr, void *pobj, int actmode)
+void
+set_srv_pwr_prov_attribute()
 {
-	char	hook_name[] = "PBS_power";
-	hook	*phook;
-	int		val;
-	unsigned int	action;
-
-	if (pattr == NULL)
-		return PBSE_NONE;
+	char		hook_name[] = PBS_POWER;
+	hook		*phook = NULL;
+	int		val = 0;
+	unsigned int	action = 0;
+	char		str_val[2] = {0};
 
 	phook = find_hook(hook_name);
 	if (phook == NULL)
-		return PBSE_NONE;
+		return;
 
-	if (actmode == ATR_ACTION_ALTER || actmode == ATR_ACTION_RECOV)
-		val = (int)pattr->at_val.at_long;
-	else
-		val = 0;		/* default */
+	if (phook->enabled == TRUE)
+		val = 1;
 
-	if (phook->enabled == val)	/* no change needed */
-		return PBSE_NONE;
-
-	phook->enabled = val;
-
-	if (hook_save(phook) != 0)
-		return PBSE_INTERNAL;
+	snprintf(str_val, sizeof(str_val), "%d", val);
+	set_attr_svr(&(server.sv_attr[(int)SRV_ATR_PowerProvisioning]),
+			&svr_attr_def[(int) SRV_ATR_PowerProvisioning], str_val);
 
 	/*
 	 * The enabled attribute is changed so send the attributes.
@@ -6381,43 +6371,6 @@ action_power_provisioning(attribute *pattr, void *pobj, int actmode)
 	if (val)
 		action |= MOM_HOOK_ACTION_SEND_SCRIPT;
 	add_pending_mom_hook_action(NULL, hook_name, action);
-
-	return PBSE_NONE;
-}
-
-/**
- * @brief
- * unset function for power_provisioning
- *
- * Disable PBS_power hook
- *
- * @return	Whether or not setting worked.
- * @retval	PBSE_NONE	Action is okay.
- * @retval	PBSE_INTERNAL	hook could not be updated
- */
-int
-unset_power_provisioning(void) {
-	char	hook_name[] = "PBS_power";
-	hook	*phook;
-	unsigned int	action;
-
-	phook = find_hook(hook_name);
-	if (phook == NULL)
-		return PBSE_NONE;
-
-	if (phook->enabled == 0)	/* no change needed */
-		return PBSE_NONE;
-
-	phook->enabled = 0;
-
-	if (hook_save(phook) != 0)
-		return PBSE_INTERNAL;
-
-	/* The enabled attribute is changed so send the attributes */
-	action = MOM_HOOK_ACTION_SEND_ATTRS;
-	add_pending_mom_hook_action(NULL, hook_name, action);
-
-	return PBSE_NONE;
 }
 
 /**

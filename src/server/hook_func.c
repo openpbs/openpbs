@@ -123,7 +123,6 @@
 #include "attribute.h"
 #include "batch_request.h"
 #include "hook.h"
-#include "hook_func.h"
 #include "log.h"
 #include "server_limits.h"
 #include "attribute.h"
@@ -134,6 +133,7 @@
 #include "queue.h"
 #include "pbs_nodes.h"
 #include "svrfunc.h"
+#include "placementsets.h"
 #include <pbs_python.h>  /* for python interpreter */
 #include <signal.h>
 #include "hook_func.h"
@@ -144,7 +144,7 @@
 #include "cmds.h"
 #include "server.h"
 #include "pbs_sched.h"
-
+#include "dis.h"
 
 /* External functions */
 extern void disable_svr_prov();
@@ -157,6 +157,8 @@ extern	char server_host[PBS_MAXHOSTNAME+1];
 /* Global Data items */
 int	do_sync_mom_hookfiles = 1;
 int	sync_mom_hookfiles_proc_running = 0;
+pbs_list_head vnode_attr_list;
+pbs_list_head resv_attr_list;
 
 /* Local Data */
 static char merr[] = "malloc failed";
@@ -1455,6 +1457,7 @@ mgr_hook_import(struct batch_request *preq)
 
 	if (phook->event & HOOK_EVENT_PERIODIC)
 	{
+		set_srv_pwr_prov_attribute(); /* check and set power attributes */
 		if ((phook->enabled == TRUE) && (phook->freq > 0)) {
 			/* Search and delete all already existing periodic hook task */
 			delete_task_by_parm1 (phook, DELETE_ALL);
@@ -1932,8 +1935,7 @@ mgr_hook_set(struct batch_request *preq)
 				sprintf(log_buffer, "Setting order for a periodic hook has no effect");
 				log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_HOOK, LOG_INFO,
 					    hookname, log_buffer);
-			}
-			else if (set_hook_order(phook, plx->al_value,
+			} else if (set_hook_order(phook, plx->al_value,
 				hook_msg, sizeof(hook_msg)) != 0)
 				goto mgr_hook_set_error;
 			num_set++;
@@ -2069,6 +2071,9 @@ mgr_hook_set(struct batch_request *preq)
 
 	if (phook->event & HOOK_EVENT_PROVISION)
 		set_srv_prov_attributes(); /* check and set prov attributes */
+
+	if (phook->event & HOOK_EVENT_PERIODIC)
+		set_srv_pwr_prov_attribute(); /* check and set power attributes */
 
 	reply_ack(preq);	/*create completely successful*/
 	return;
@@ -2261,6 +2266,9 @@ mgr_hook_unset(struct batch_request *preq)
 
 	if (phook->event & HOOK_EVENT_PROVISION)
 		set_srv_prov_attributes(); /* check and set prov attributes */
+
+	if (phook->event & HOOK_EVENT_PERIODIC)
+		set_srv_pwr_prov_attribute(); /* check and set power attributes */
 
 	reply_ack(preq);	/*unset completely successful*/
 	return;
@@ -3678,6 +3686,95 @@ write_hook_accept_debug_output_and_close(void)
 
 /**
  * @brief
+ * 		getting the vnode attributes and resource list
+ *			each node attribute will be of the format:
+ *			<node_name>.<attr_name>
+ *
+ * @see
+ * 		run_periodic_hook
+ *
+ * @return void
+ */
+static pbs_list_head *
+get_vnode_list(void){
+	int i;
+	int index;
+	char name_str_buf[STRBUF + 1] = {'\0'};
+	struct pbsnode	*pnode = NULL;
+	attribute_def *padef = node_attr_def;
+
+	CLEAR_HEAD(vnode_attr_list);
+	for (i = 0; i < svr_totnodes; i++) {
+		pnode = pbsndlist[i];
+		for (index = 0; index < ND_ATR_LAST; index++) {
+			if ((padef+index)->at_flags & ATR_VFLAG_SET) {
+				strncpy(name_str_buf, pnode->nd_name, STRBUF);
+				strcat(name_str_buf, ".");
+				strncat(name_str_buf, (padef+index)->at_name, (STRBUF - strlen(name_str_buf)));
+				if ((padef+index)->at_encode(
+					&pnode->nd_attr[index],
+					&vnode_attr_list, name_str_buf,
+					(char *)0, ATR_ENCODE_HOOK, NULL) < 0) {
+					snprintf(log_buffer, sizeof(log_buffer),
+						"error on encoding node attributes: %s",
+						name_str_buf);
+					log_event(PBSEVENT_DEBUG2,
+						PBS_EVENTCLASS_HOOK, LOG_ERR,
+						__func__, log_buffer);
+					break;
+				}
+			}
+		}
+	}
+	return &vnode_attr_list;
+}
+
+/**
+ * @brief
+ * 		getting the reservation attribute and resource list
+ *
+ * @see
+ * 		run_periodic_hook
+ *
+ * @return void
+ */
+static pbs_list_head *
+get_resv_list(void) {
+	int 	index;
+	char	name_str_buf[STRBUF + 1] = {'\0'};
+	resc_resv  *presv;
+	attribute_def *padef= resv_attr_def;
+
+	CLEAR_HEAD(resv_attr_list);
+	presv = (resc_resv *)GET_NEXT(svr_allresvs);
+
+	while (presv != (resc_resv *)0) {
+		for (index = 0; index < RESV_ATR_LAST; index++) {
+			if ((padef+index)->at_flags & ATR_VFLAG_SET) {
+				strncpy(name_str_buf, presv->ri_qs.ri_resvID, STRBUF);
+				strcat(name_str_buf, ".");
+				strncat(name_str_buf, (padef+index)->at_name, (STRBUF - strlen(name_str_buf)));
+				if ((padef+index)->at_encode(
+					&presv->ri_wattr[index],
+					&resv_attr_list, name_str_buf,
+					(char *)0, ATR_ENCODE_HOOK, NULL) < 0) {
+					snprintf(log_buffer, sizeof(log_buffer),
+						"error on encoding reservation attributes: %s",
+						name_str_buf);
+					log_event(PBSEVENT_DEBUG2,
+						PBS_EVENTCLASS_HOOK, LOG_ERR,
+						__func__, log_buffer);
+					break;
+				}
+			}
+		}
+		presv = (resc_resv *)GET_NEXT(presv->ri_allresvs);
+	}
+	return &resv_attr_list;
+}
+
+/**
+ * @brief
  *
  *		Process hook scripts based on request type.
  *		This loops through the matching list of
@@ -3771,7 +3868,9 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 	} else if (preq->rq_type == PBS_BATCH_HookPeriodic) {
 		hook_event = HOOK_EVENT_PERIODIC;
 		head_ptr = &svr_periodic_hooks;
-		/* TODO: Assign lists in req_ptr, lists which we wish to use in periodic hooks */
+		/* set vnodes and reservation list to hook input parameter */
+		req_ptr.vns_list = (pbs_list_head *)get_vnode_list();
+		req_ptr.resv_list = (pbs_list_head *)get_resv_list();
 	} else {
 		return (-1); /* unexpected event encountered */
 	}
@@ -3882,6 +3981,21 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 	int			rc;
 	char			*p;
 	static size_t		suffix_sz;
+	hook_output_param_t 	req_params_out;
+	pid_t 			mypid;
+	pbs_list_head 		event_vnode;
+	pbs_list_head 		event_resv;
+
+	if (req_ptr == NULL) {
+		snprintf(log_buffer, sizeof(log_buffer),
+			"warning: empty hook input param!");
+		log_event(PBSEVENT_DEBUG3,
+			PBS_EVENTCLASS_HOOK, LOG_ERR,
+			phook->hook_name, log_buffer);
+		return -1;
+	}
+
+	mypid = getpid();
 
 	if (suffix_sz == 0)
 		suffix_sz = strlen(HOOK_SCRIPT_SUFFIX);
@@ -3891,8 +4005,12 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 	pbs_python_set_hook_debug_output_file("");
 
 	if (phook->debug) {
-		snprintf(hook_inputfile, MAXPATHLEN, FMT_HOOK_INFILE, path_hooks_workdir,
-			hook_event_as_string(hook_event), phook->hook_name, (int)time(0));
+		if (rq_type == PBS_BATCH_HookPeriodic)
+			snprintf(hook_inputfile, MAXPATHLEN, FMT_HOOK_INFILE, path_hooks_workdir,
+				hook_event_as_string(hook_event), phook->hook_name, mypid);
+		else
+			snprintf(hook_inputfile, MAXPATHLEN, FMT_HOOK_INFILE, path_hooks_workdir,
+				hook_event_as_string(hook_event), phook->hook_name, (int)time(0));
 
 		fp_debug = fopen(hook_inputfile, "w");
 		if (fp_debug == NULL) {
@@ -3907,9 +4025,14 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 			pbs_python_set_hook_debug_input_file(hook_inputfile);
 		}
 
-		snprintf(hook_datafile, MAXPATHLEN, FMT_HOOK_DATAFILE,
-			path_hooks_workdir, hook_event_as_string(hook_event),
-			phook->hook_name, (int)time(0));
+		if (rq_type == PBS_BATCH_HookPeriodic)
+			snprintf(hook_datafile, MAXPATHLEN, FMT_HOOK_DATAFILE,
+				path_hooks_workdir, hook_event_as_string(hook_event),
+				phook->hook_name, mypid);
+		else
+			snprintf(hook_datafile, MAXPATHLEN, FMT_HOOK_DATAFILE,
+				path_hooks_workdir, hook_event_as_string(hook_event),
+				phook->hook_name, (int)time(0));
 
 		fp2_debug = fopen(hook_datafile, "w");
 		if (fp2_debug == NULL) {
@@ -4049,6 +4172,38 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 		}
 		return (-1);
 	}
+
+	if (rq_type == PBS_BATCH_HookPeriodic) {
+		char freq_str[5];
+		sprintf(freq_str, "%d", phook->freq);
+		rc = pbs_python_event_set_attrval(PY_EVENT_FREQ, freq_str);
+
+		if (rc == -1) {
+			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
+				LOG_ERR, phook->hook_name,
+				"Failed to set event 'freq'.");
+			if (fp_debug != NULL) {
+				fclose(fp_debug);
+				fp_debug = NULL;
+				pbs_python_set_hook_debug_input_fp(NULL);
+				pbs_python_set_hook_debug_input_file("");
+			}
+			if (fp2_debug != NULL) {
+				fclose(fp2_debug);
+				fp2_debug = NULL;
+				pbs_python_set_hook_debug_data_fp(NULL);
+				pbs_python_set_hook_debug_data_file("");
+			}
+			if (fp_debug_out != NULL) {
+				fclose(fp_debug_out);
+				fp_debug_out = NULL;
+				pbs_python_set_hook_debug_output_fp(NULL);
+				pbs_python_set_hook_debug_output_file("");
+			}
+			return (-1);
+		}
+	}	
+	
 	set_alarm(phook->alarm, pyinter_func);
 
 	log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
@@ -4174,19 +4329,34 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 
 	/* set hook_debug_output_file for recreate_request(), set_* calls */
 	/* to dump any hook results in the file. */
-	if (phook->debug) {
-		snprintf(hook_outfile, MAXPATHLEN, FMT_HOOK_OUTFILE,
-		path_hooks_workdir, hook_event_as_string(hook_event),
-		phook->hook_name, (int)time(0));
+	if (phook->debug || rq_type == PBS_BATCH_HookPeriodic) {
+		if (rq_type == PBS_BATCH_HookPeriodic)
+			snprintf(hook_outfile, MAXPATHLEN, FMT_HOOK_OUTFILE,
+				path_hooks_workdir, hook_event_as_string(hook_event),
+				phook->hook_name, mypid);
+		else
+			snprintf(hook_outfile, MAXPATHLEN, FMT_HOOK_OUTFILE,
+				path_hooks_workdir, hook_event_as_string(hook_event),
+				phook->hook_name, (int)time(0));
 
-		pbs_python_set_hook_debug_output_file(hook_outfile);
 		fp_debug_out = fopen(hook_outfile, "w");
-		if (fp_debug_out != NULL) {
+		if (fp_debug_out == NULL) {
+			sprintf(log_buffer,
+				"warning: open of debug output file %s failed!",
+				hook_inputfile);
+			log_event(PBSEVENT_DEBUG3,
+				PBS_EVENTCLASS_HOOK, LOG_ERR,
+				phook->hook_name, log_buffer);
+			if (rq_type == PBS_BATCH_HookPeriodic)
+				/* we will need output file to read data from hook later */
+				return (-1);
+		} else {
 			fp_debug_out_save = pbs_python_get_hook_debug_output_fp();
 			if (fp_debug_out_save != NULL) {
 				fclose(fp_debug_out_save);
 			}
 			pbs_python_set_hook_debug_output_fp(fp_debug_out);
+			pbs_python_set_hook_debug_output_file(hook_outfile);
 		}
 	} else {
 		fp_debug_out_save = pbs_python_get_hook_debug_output_fp();
@@ -4434,8 +4604,31 @@ int server_process_hooks(int rq_type, char *rq_user, char *rq_host, hook *phook,
 				return (0);
 			}
 		}
-	}
 
+		if(rq_type == PBS_BATCH_HookPeriodic) {
+			if (fp_debug_out != NULL) {
+				fprintf(fp_debug_out, "%s=True\n", EVENT_ACCEPT_OBJECT);
+				fprintf(fp_debug_out, "%s=False\n", EVENT_REJECT_OBJECT);
+			}
+			hook_output_param_init(&req_params_out);
+			CLEAR_HEAD(event_vnode);
+			CLEAR_HEAD(event_resv);
+			req_params_out.vns_list = (pbs_list_head *)&event_vnode;
+			req_params_out.resv_list = (pbs_list_head *)&event_resv;
+			rc = pbs_python_event_to_request(hook_event, &req_params_out);
+			if (rc == -1) {
+				log_err(PBSE_INTERNAL, phook->hook_name, "error occured recreating request!");
+			}
+			if (fp_debug_out != NULL)
+				fprint_svrattrl_list(fp_debug_out, EVENT_VNODELIST_OBJECT, &event_vnode);
+			free_attrlist(&event_vnode);
+			CLEAR_HEAD(event_vnode);
+			if (fp_debug_out != NULL)
+				fclose(fp_debug_out);
+			pbs_python_set_hook_debug_output_fp(NULL);
+			return (1);
+		}
+	}
 
 	write_hook_accept_debug_output_and_close();
 	return (1);
@@ -6746,6 +6939,481 @@ get_hook_rescdef_checksum(void)
 	return (hook_rescdef_checksum);
 }
 
+/**
+ *
+ * @brief
+ *	Get the results from 'output_file' of a previously run hook.
+ *
+ * @param[in] 		input_file -  file to process.
+ * @param[in,out] 	accept_flag -  return 1 if event accept flag is true.
+ * @param[in,out] 	reject_flag -  return 1 if event reject flag is true.
+ * @param[in,out] 	reject_msg -  the reject message if reject_flag is 1.
+ * @param[in]		reject_msg_size -  size of reject_msg buffer.
+ * @param[in,out] 	pjob -  job in question, where if present (not NULL),
+ *			        it gets filled in with the
+ *				"pbs.event().job" entries in 'input_file'.
+ *				'pjob' can be NULL in periodic hooks, since
+ *				 periodic hooks are not tied to jobs.
+ *				 Note that pbs.event().job_list[<jobid>] entries
+ *				 in 'input_file' fill in the individual
+ *				 <jobid>'s job struct entry in the system, and
+ *				 not the passed 'pjob' structure.
+ * @param[in]		phook -  hook that executed of which we're getting the
+ *				results. If non-NULL, then phook->user is
+ *				used to validate 'pbs.event().job.euser' line
+ *				in 'input_file'.
+ *				If main Mom is reading a job related hook
+ *				results file, phook will be null; an entry in
+ *				the file should give us the hook name from which
+ *				phook is found.
+ * @param[out]		hook_output - struct of parameters to fill in output.
+ *
+ * @return int
+ * @retval	0 for success
+ * @retval	non-zero for failure;  the returned parameters (accept_flag,
+ *		reject_flag and pjob) may be invalid and should be
+ *		ignored.   The list svrvnalist could have mallocate space and
+ *		should be freed by the calling program.
+ */
+int
+get_server_hook_results(char *input_file, int *accept_flag, int *reject_flag, char *reject_msg,
+	int reject_msg_size, job *pjob, hook *phook, hook_output_param_t *hook_output)  {
+
+	char	*name_str;
+	char	*resc_str;
+	char	*obj_name;
+	char	*data_value;
+	char	*vname_str;
+	int	rc = -1;
+	char	*pc, *pc1, *pc2, *pc3, *pc4;
+	char	*in_data = NULL;
+	size_t	ll;
+	FILE	*fp;
+	char	*p;
+	int	vn_obj_len = strlen(EVENT_VNODELIST_OBJECT);
+	char	hook_job_outfile[MAXPATHLEN + 1];
+	FILE	*fp2 = NULL;
+	char	*line_data = NULL;
+	int	line_data_sz;
+	long int endpos;
+	char	hook_euser[PBS_MAXUSER + 1] = {0};
+	int	arg_list_entries = 0;
+	int	b_triple_quotes = 0;
+	int	e_triple_quotes = 0;
+	char	buf_data[STRBUF];
+	int	buf_data_sz = STRBUF;
+	int	valln = 0;
+	svrattrl *plist = NULL;
+	struct pbsnode *pnode;
+	int	bad = 0;
+	int	ndtype_flag = 0;
+	char	*pbse_err;
+	char	raw_err[10];
+	int	update_db = 0;
+
+	/* Preset hook_euser for later.  If we are reading a job related     */
+	/* copy of hook results, there will be one or more (one per hook)    */
+	/* pbs_event().hook_euser=<value> entries.  In that case, hook_euser */
+	/* is reset to the <value>.  A null string <value> means PBSADMIN.   */
+	if (phook && pjob &&  (phook->user == HOOK_PBSUSER)) {
+		strncpy(hook_euser,
+			pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str,
+			PBS_MAXUSER);
+	}
+
+	/* input_file will have content of the format: */
+	/* pbs.event().accept=True */
+	/* pbs.event().reject=False */
+	/* pbs.event().vnode.pcpus=4 */
+	/* pbs.event().vnode_list["node_name"].state=sleep */
+	/* pbs.event().vnode_list["node_name"].resources_available[ncpus]=10 */
+	if ((input_file != NULL) && (*input_file != '\0')) {
+		fp = fopen(input_file, "r");
+
+		if (fp == NULL) {
+			snprintf(log_buffer, sizeof(log_buffer),
+				"failed to open input file %s", input_file);
+			log_err(errno, __func__, log_buffer);
+			return (1);
+		}
+	} else {
+		log_err(PBSE_INTERNAL, __func__, "bad input_file parameter");
+		return (1);
+	}
+
+	line_data_sz = STRBUF;
+	line_data = (char *)malloc(line_data_sz);
+	if (line_data == NULL) {
+		log_err(errno, __func__, "malloc failed");
+		rc = 1;
+		goto get_hook_results_end;
+	}
+	line_data[0] = '\0';
+
+	if (fseek(fp, 0, SEEK_END) != 0) {
+		log_err(errno, __func__, "fseek to end failed");
+		rc = 1;
+		goto get_hook_results_end;
+	}
+
+	endpos = ftell(fp);
+	if (fseek(fp, 0, SEEK_SET) != 0) {
+		log_err(errno, __func__, "fseek to beginning failed");
+		rc = 1;
+		goto get_hook_results_end;
+	}
+
+	while (fgets(buf_data, buf_data_sz, fp) != NULL) {
+		b_triple_quotes = 0;
+		e_triple_quotes = 0;
+
+		if (pbs_strcat(&line_data, &line_data_sz, buf_data) == NULL) {
+			goto get_hook_results_end;
+		}
+		if (in_data != NULL) {
+			free(in_data);
+		}
+		in_data = strdup(line_data); /* preserve line_data */
+		if (in_data == NULL) {
+			log_err(errno, __func__, "strdup failed");
+			rc = 1;
+			goto get_hook_results_end;
+		}
+
+		if ((p = strchr(in_data, '=')) != NULL) {
+			/* string begins with three consecutive double quotes */
+			b_triple_quotes = starts_with_triple_quotes(p+1);
+		}
+
+		ll = strlen(in_data);
+		if (in_data[ll-1] == '\n') {
+			/* string ends with three consecutive double quotes */
+			e_triple_quotes = ends_with_triple_quotes(in_data, 0);
+
+			if (b_triple_quotes && !e_triple_quotes) {
+				int	jj;
+
+				while (fgets(buf_data, buf_data_sz, fp) != NULL) {
+					if (pbs_strcat(&line_data, &line_data_sz,
+						buf_data) == NULL) {
+						goto get_hook_results_end;
+					}
+
+					jj = strlen(line_data);
+					if ((line_data[jj - 1] != '\n') &&
+					    (ftell(fp) != endpos)) {
+						/* get more input for
+						 * current item.
+						 */
+						continue;
+					}
+					e_triple_quotes =
+					  ends_with_triple_quotes(line_data, 0);
+
+					if (e_triple_quotes) {
+						break;
+					}
+				}
+
+				if ((!b_triple_quotes && e_triple_quotes) ||
+					(b_triple_quotes && !e_triple_quotes)) {
+					snprintf(log_buffer, sizeof(log_buffer),
+						"unmatched triple quotes! Skipping  line %s",
+						in_data);
+					log_err(PBSE_INTERNAL, __func__, log_buffer);
+					/* process a new line */
+					line_data[0] = '\0';
+					continue;
+				}
+
+				if (in_data != NULL) {
+					free(in_data);
+				}
+				in_data = strdup(line_data); /* preserve line_data */
+				if (in_data == NULL) {
+					log_err(errno, __func__, "strdup failed");
+					rc = 1;
+					goto get_hook_results_end;
+				}
+				/* remove newline */
+				in_data[strlen(in_data)-1] = '\0';
+			} else {
+				/* remove newline */
+				in_data[ll-1] = '\0';
+			}
+
+		} else if (ftell(fp) != endpos) { /* continued on next line */
+			/* get more input for current item.  */
+			continue;
+		}
+
+		data_value = NULL;
+		if ((p=strchr(in_data, '=')) != NULL) {
+			*p = '\0';
+			p++;
+			while (isspace(*p))
+				p++;
+
+			if (b_triple_quotes) {
+				/* strip triple quotes */
+				p+=3;
+			}
+			data_value = p;
+			if (e_triple_quotes) {
+				ends_with_triple_quotes(p, 1);
+			}
+		}
+
+		obj_name = in_data;
+
+		pc = strrchr(in_data, '.');
+		if (pc) {
+			*pc = '\0';
+			pc++;
+		} else {
+			pc = in_data;
+		}
+		name_str = pc;
+
+		pc1 = strchr(pc, '[');
+		pc2 = strchr(pc, ']');
+		resc_str = NULL;
+		if (pc1 && pc2 && (pc2 > pc1)) {
+			*pc1 = '\0';
+			pc1++;
+			*pc2 = '\0';
+			pc2++;
+
+			/* now let's if there's anything quoted inside */
+			pc3 = strchr(pc1, '"');
+			if (pc3 != NULL)
+				pc4 = strchr(pc3+1, '"');
+			else
+				pc4 = NULL;
+
+			if (pc3 && pc4 && (pc4 > pc3)) {
+				pc3++;
+				*pc4 = '\0';
+				resc_str = pc3;
+			} else {
+				resc_str = pc1;
+			}
+		}
+
+		/* at this point, we have */
+		/* Given:  pbs.event().<attribute>=<value> */
+		/* Given:  pbs.event().job.<attribute>=<value> */
+		/* Given:  pbs.event().job.<attribute>[<resc>]=<value> */
+		/* Given:  pbs.event().vnode_list[<vname>].<attribute>=<value> */
+		/* Given:  pbs.event().vnode_list[<vname>].<attribute>[<resc>]=<value> */
+		/* We get: */
+
+		/* obj_name = pbs.event() or "pbs.event().job" or "pbs.event().vnode_list[<vname>]" */
+		/* name_str = <attribute> */
+		/* resc_str = <resc> */
+		/* data_value = <value> */
+
+		if (data_value == NULL) {
+
+			snprintf(log_buffer, sizeof(log_buffer),
+				"%s: no value given", in_data);
+			log_err(errno, __func__, log_buffer);
+			rc = 1;
+			goto get_hook_results_end;
+		}
+
+		if (strcmp(obj_name, EVENT_OBJECT) == 0) {
+			if (strcmp(name_str, "hook_euser") == 0) {
+				strncpy(hook_euser, data_value, PBS_MAXUSER);
+			} else if ((accept_flag != NULL) &&
+				strcmp(name_str, "accept") == 0) {
+				if (strcmp(data_value, "True") == 0)
+					*accept_flag = 1;
+				else
+					*accept_flag = 0;
+			} else if ((reject_flag != NULL) &&
+				strcmp(name_str, "reject") == 0) {
+
+				if (strcmp(data_value, "True") == 0)
+					*reject_flag = 1;
+				else
+					*reject_flag = 0;
+			} else if ((reject_msg != NULL) &&
+				(strcmp(name_str, "reject_msg") == 0)) {
+				strncpy(reject_msg, data_value,
+					reject_msg_size-1);
+			} else if (strcmp(name_str, PY_EVENT_PARAM_PROGNAME) == 0) {
+				if (hook_output != NULL) {
+					char	**prog;
+					/* need to free up here previous value */
+					/* in case of multiple hooks! */
+					prog = hook_output->progname;
+					if (*prog != NULL) {
+						free(*prog);
+					}
+					*prog = strdup(data_value);
+				}
+			} else if (strcmp(name_str, PY_EVENT_PARAM_ARGLIST) == 0) {
+				arg_list_entries++;
+				if (hook_output != NULL) {
+					pbs_list_head *ar_list;
+					ar_list = hook_output->argv_list;
+					/* free previous values at start of new list */
+					if (arg_list_entries == 1) {
+						free_attrlist(ar_list);
+					}
+					add_to_svrattrl_list(ar_list, name_str, resc_str,
+									data_value, 0, NULL);
+				}
+			} else if (strcmp(name_str, PY_EVENT_PARAM_ENV) == 0) {
+				if (hook_output != NULL) {
+					char	**env;
+					env = hook_output->env;
+					if (*env != NULL) {
+						free(*env);
+					}
+					*env = strdup(data_value);
+				}
+			}
+
+			/* if the hook is rejected we can go out now */
+			if((*reject_flag == 1) && (reject_msg != NULL))
+				goto get_hook_results_end;
+		} else if (strncmp(obj_name, EVENT_VNODELIST_OBJECT,
+			vn_obj_len) == 0) {
+
+			/* NOTE: obj_name here is: pbs.event().vnode_list[<vname>] */
+
+			/* important here to look for the leftmost '[' (using strchr)
+			 * and the rightmost ']' (using strrchr)
+			 * as we can have:
+			 *	pbs.event().vnode_list["altix[5]"].<attr>=<val>
+			 * 	and "altix[5]" is a valid vnode id.
+			 */
+			if (((pc1=strchr(obj_name, '[')) != NULL) &&
+				((pc2=strrchr(obj_name, ']')) != NULL) &&
+				(pc2 > pc1)) {
+				pc1++; /*  pc1=<vname>] */
+				*pc2 = '\0'; /* pc1=<vname>  */
+				pc2++;
+
+				/* now let's if there's anything quoted inside */
+				pc3 = strchr(pc1, '"');
+				if (pc3 != NULL)
+					pc4 = strchr(pc3+1, '"');
+				else
+					pc4 = NULL;
+
+				if (pc3 && pc4 && (pc4 > pc3)) {
+					pc3++;
+					*pc4 = '\0';
+					vname_str = pc3;
+				} else {
+					vname_str = pc1;
+				}
+			} else {
+				snprintf(log_buffer, sizeof(log_buffer),
+					"object '%s' does not have a vnode name!",
+					obj_name);
+				log_err(-1, __func__, log_buffer);
+				/* process a new line */
+				line_data[0] = '\0';
+				continue;
+			}
+
+			/* server periodic hook vnode objects */
+			valln = (int)strlen(data_value) + 1;
+			plist = attrlist_create(name_str, resc_str, valln);
+			if (plist == NULL) {
+				(void)sprintf(log_buffer,"failed to add svrattrl list %s.%s.%s:%s",
+						vname_str,name_str,resc_str,data_value);
+				log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
+					LOG_NOTICE, msg_daemonname, log_buffer);
+			} else {
+				strcpy(plist->al_value, data_value);
+				(plist->al_link).ll_next->ll_struct = NULL;
+				/* there are vnode hook updates */
+				/* Push hook changes to server */
+				pnode = find_nodebyname(vname_str);
+				if (pnode == NULL) {
+					log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
+						LOG_INFO, phook->hook_name, "node_name not found");
+				} else if ((pnode->nd_state & INUSE_DELETED) == 0) {
+					save_characteristic(pnode);
+
+					rc = mgr_set_attr(pnode->nd_attr, node_attr_def, ND_ATR_LAST,
+								  plist, ATR_DFLAG_WRACC, &bad, (void *)pnode, ATR_ACTION_ALTER);
+					if (rc != 0) {
+						pbse_err = pbse_to_txt(rc);
+						snprintf(raw_err, sizeof(raw_err), "%d", rc);
+						sprintf(log_buffer, "vnode %s: failed to set %s to %s: %s",
+								pnode->nd_name, plist->al_name, plist->al_value ? plist->al_value : "",
+								pbse_err ? pbse_err : raw_err);
+						log_err(PBSE_SYSTEM, __func__, log_buffer);
+					} else {
+						(void)chk_characteristic(pnode, &ndtype_flag);
+						update_db |= ndtype_flag;
+
+						mgr_log_attr(msg_man_set, plist,
+								 PBS_EVENTCLASS_NODE, pnode->nd_name, NULL);
+					}
+				}
+				free_svrattrl(plist);
+			}
+		}
+		/* TODO: for job objects */
+		/* TODO: for Server objects */
+		/* TODO: for PBS objects */
+		if ((fp2 != NULL) && (fputs(line_data, fp2) < 0)) {
+			snprintf(log_buffer, sizeof(log_buffer),
+				"Failed to save data in file %s",
+				hook_job_outfile);
+			log_err(errno, __func__, log_buffer);
+			rc = 1;
+			goto get_hook_results_end;
+		}
+		line_data[0] = '\0';
+	}
+	if (update_db & WRITE_NEW_NODESFILE) {
+		/*create/delete/prop/ntype change*/
+		(void)save_nodes_db(0, NULL);
+	} else if (update_db & WRITENODE_STATE) {
+		write_node_state();
+	}
+
+	rc = 0;
+
+get_hook_results_end:
+
+	if (fp != NULL)
+		fclose(fp);
+
+	if (fp2 != NULL) {
+		if (fflush(fp2) != 0) {
+			/* error in writting job related hook results file */
+			snprintf(log_buffer, sizeof(log_buffer),
+				"Failed to save data in file %s",
+				hook_job_outfile);
+			log_err(errno, __func__, log_buffer);
+			rc = 1;
+			fclose(fp2);
+			unlink(hook_job_outfile);
+		} else {
+			fclose(fp2);
+		}
+	}
+	if (phook && !phook->debug) {
+		(void)unlink(input_file);
+	}
+	if (line_data != NULL) {
+		free(line_data);
+	}
+	if (in_data != NULL) {
+		free(in_data);
+	}
+
+	return (rc);
+}
 
 /**
  * @brief
@@ -6754,24 +7422,103 @@ get_hook_rescdef_checksum(void)
  *
  * @return	void
  */
-static
-void post_server_periodic_hook(struct work_task *ptask) {
+static void
+post_server_periodic_hook(struct work_task *ptask)
+{
 
-	int	stat = ptask->wt_aux;
-	hook *phook = (hook *)ptask->wt_parm1;
-
-	if (WIFEXITED(stat)) {
-		(void)sprintf(log_buffer, "Server periodic hook ran successfully");
-	} else {
-		(void)sprintf(log_buffer, "Server periodic hook encountered errors");
-	}
-	log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_INFO,
-		__func__, log_buffer);
-
+	int	stat;
+	hook	*phook;
+	pid_t	mypid;
+	char	hook_outfile[MAXPATHLEN + 1];
+	time_t	next_time;
+	int	accept_flag = 1;
+	int	reject_flag = 0;
+	stat = ptask->wt_aux;
+	phook = (hook *)ptask->wt_parm1;
+#ifdef WIN32
+	mypid = ptask->wt_aux2;
+#else
+	mypid = ptask->wt_event;
+#endif
 	if (phook == NULL) {
 		log_err(-1, __func__, "A periodic hook disappeared");
 		return;
 	}
+	if (WIFEXITED(stat)) {
+		char reject_msg[HOOK_MSG_SIZE + 1] = {0};
+		char *next_time_str;
+		int hook_error_flag = 0;
+
+		/* Check hook exit status */
+		if (stat == 0) {
+			snprintf(log_buffer, LOG_BUF_SIZE,
+				"Hook got rejected");
+			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
+				LOG_ERR, phook->hook_name, log_buffer);
+			hook_error_flag = 1;	/* hook results are invalid */
+		}
+
+		/* hook results path */
+		snprintf(hook_outfile, MAXPATHLEN, FMT_HOOK_OUTFILE,
+			path_hooks_workdir, HOOKSTR_PERIODIC,
+			phook->hook_name, mypid);
+
+		if (hook_error_flag == 0) {
+			/* hook exited normally, get results from file  */
+			if (get_server_hook_results(hook_outfile, &accept_flag, &reject_flag,
+				reject_msg, sizeof(reject_msg), NULL, phook, NULL) != 0) {
+				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
+					LOG_ERR, phook->hook_name,
+					"Failed getting hook results");
+				/* error getting results, do not accept results */
+				hook_error_flag = 1;
+			}
+		}
+
+		if ((hook_error_flag == 1) || (accept_flag == 0)) {
+			snprintf(log_buffer, sizeof(log_buffer),
+				"%s request rejected by '%s'",
+				"periodic", phook->hook_name);
+			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
+				LOG_ERR, phook->hook_name, log_buffer);
+			if ((reject_msg != NULL) && (reject_msg[0] != '\0')) {
+				snprintf(log_buffer, sizeof(log_buffer), "%s",
+					reject_msg);
+				/* log also the custom reject message */
+				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
+					LOG_ERR, phook->hook_name, log_buffer);
+			}
+		}
+
+		if (hook_error_flag == 0) {
+			/* No hook error means data is communicated to */
+			/* the server and actions are done to jobs.    */
+			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
+				LOG_INFO, phook->hook_name, "periodic hook accepted");
+
+			/* remove the processed results file, note that if  */
+			/* there was an error, it is left for debugging use */
+			if (!phook->debug)
+				(void)unlink(hook_outfile);	/* remove file */
+		}
+
+		next_time = time_now + phook->freq;
+		next_time_str = ctime(&next_time);
+		if ((next_time_str != NULL) && (next_time_str[0] != '\0')) {
+			next_time_str[strlen(next_time_str)-1] = '\0'; /* remove newline */
+			snprintf(log_buffer, sizeof(log_buffer), "will run on %s",
+				next_time_str);
+			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
+				LOG_ERR, phook->hook_name, log_buffer);
+		}
+
+		sprintf(log_buffer, "Server periodic hook ran successfully");
+	} else
+		sprintf(log_buffer, "Server periodic hook encountered errors: %d", stat);
+
+	log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_INFO,
+		__func__, log_buffer);
+
 	return;
 }
 
@@ -6856,6 +7603,11 @@ run_periodic_hook(struct work_task *ptask)
 		rpp_terminate();
 		/* Unprotect child from being killed by kernel */
 		daemon_protect(0, PBS_DAEMON_PROTECT_OFF);
+
+		/* set vnodes and reservation list to hook input parameter */
+		req_ptr.vns_list = (pbs_list_head *)get_vnode_list();
+		req_ptr.resv_list = (pbs_list_head *)get_resv_list();
+
 		ret = server_process_hooks(PBS_BATCH_HookPeriodic, NULL, NULL, phook,
 					   HOOK_EVENT_PERIODIC, NULL, &req_ptr, hook_msg,
 					   sizeof(hook_msg), pbs_python_set_interrupt, &num_run, &event_initialized);

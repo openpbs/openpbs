@@ -274,6 +274,7 @@ extern void  req_deleteReservation(struct batch_request *);
 extern void  req_failover(struct batch_request *);
 extern int   put_failover(int, struct batch_request *);
 extern void  req_momrestart(struct batch_request *preq);
+extern void  set_last_used_time_node(void *pobj, int type);
 
 #endif  /* _BATCH_REQUEST_H */
 

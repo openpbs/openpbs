@@ -66,3 +66,15 @@ class Pmi:
 
     def _deactivate_profile(self, job):
         return False
+
+    def _pmi_power_off(self, hosts):
+        return False
+
+    def _pmi_power_on(self, hosts):
+        return False
+
+    def _pmi_ramp_down(self, hosts):
+        return False
+
+    def _pmi_ramp_up(self, hosts):
+        return False

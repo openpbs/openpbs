@@ -887,6 +887,8 @@ find_node_amount(node_info *ninfo, char *res, resdef *def,
 
 	} else if (!strcmp(res, SORT_PRIORITY))
 		return ninfo->priority;
+	else if (!strcmp(res, SORT_USED_TIME))
+		return ninfo->last_used_time;
 
 	return 0;
 }

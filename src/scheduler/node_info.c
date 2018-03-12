@@ -434,6 +434,14 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 				if ((!sinfo->has_multi_vnode) && (count != 0))
 					sinfo->has_multi_vnode = 1;
 			}
+		} else if  (!strcmp(attrp->name, ATTR_NODE_last_state_change_time)) {
+			count = strtol(attrp->value, &endp, 10);
+			if (*endp == '\0')
+				ninfo->last_state_change_time = count;
+		} else if  (!strcmp(attrp->name, ATTR_NODE_last_used_time)) {
+			count = strtol(attrp->value, &endp, 10);
+			if (*endp == '\0')
+				ninfo->last_used_time = count;
 		}
 		attrp = attrp->next;
 	}
@@ -518,6 +526,8 @@ new_node_info()
 	new->current_aoe = NULL;
 	new->current_eoe = NULL;
 	new->nodesig = NULL;
+	new->last_state_change_time = 0;
+	new->last_used_time = 0;
 
 	new->svr_node = NULL;
 	new->hostset = NULL;
@@ -666,6 +676,7 @@ set_node_info_state(node_info *ninfo, char *state)
 		ninfo->is_sharing = ninfo->is_busy = ninfo->is_job_busy = 0;
 		ninfo->is_stale = ninfo->is_provisioning = ninfo->is_exclusive = 0;
 		ninfo->is_resv_exclusive = ninfo->is_job_exclusive = 0;
+		ninfo->is_sleeping = 0;
 
 		strcpy(statebuf, state);
 		tok = strtok(statebuf, ",");
@@ -807,7 +818,10 @@ add_node_state(node_info *ninfo, char *state)
 		ninfo->is_provisioning = 1;
 	else if (!strcmp(state, ND_wait_prov))
 		ninfo->is_provisioning = 1;
-	else {
+	else if (!strcmp(state, ND_sleep)) {
+		if(ninfo->server->power_provisioning)
+			ninfo->is_sleeping = 1;
+	} else {
 		sprintf(errbuf, "Unknown Node State: %s on add operation", state);
 		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO,
 			ninfo->name, errbuf);
@@ -1258,6 +1272,8 @@ dup_node_info(node_info *onode, server_info *nsinfo,
 	set_current_eoe(nnode, onode->current_eoe);
 	nnode->nodesig = string_dup(onode->nodesig);
 	nnode->nodesig_ind = onode->nodesig_ind;
+	nnode->last_state_change_time = onode->last_state_change_time;
+	nnode->last_used_time = onode->last_used_time;
 
 	if (onode->svr_node != NULL)
 		nnode->svr_node = find_node_by_rank(nsinfo->nodes, onode->rank);
@@ -1789,6 +1805,9 @@ should_talk_with_mom(node_info *ninfo)
 		return 0;
 
 	if (ninfo->is_offline)
+		return 0;
+
+	if (ninfo->is_sleeping)
 		return 0;
 
 	if (conf.dyn_res_to_get != NULL)
@@ -4436,6 +4455,9 @@ node_state_to_str(node_info *ninfo)
 
 	if (ninfo->is_provisioning)
 		return ND_prov;
+
+	if (ninfo->is_sleeping)
+		return ND_sleep;
 
 	/* default */
 	return ND_state_unknown;

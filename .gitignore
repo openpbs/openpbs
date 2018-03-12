@@ -44,6 +44,9 @@
 .autotools
 .csettings/
 
+# Files used by ctags
+tags
+
 # Files used by cscope
 cscope.files
 cscope.out

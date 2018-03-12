@@ -49,6 +49,10 @@ in the 'eoe' value for a job.
 import pbs
 import os
 import socket
+import time
+import datetime
+from subprocess import Popen, PIPE
+import json
 from pbs.v1._pmi_utils import _get_vnode_names, _svr_vnode
 
 
@@ -76,14 +80,338 @@ def vnodes_enabled(job):
     return True
 
 
+def get_local_node(name):
+    # Get host names from /etc/hosts and return matching name for the MoM
+    try:
+        (hostname, aliaslist, _) = socket.gethostbyname_ex(name)
+    except:
+        return None
+    aliaslist.append(hostname)
+    # Search for possible match in server vnode list.
+    pbsvnodes = dict()
+    for vn in pbs.server().vnodes():
+        pbsvnodes[vn.name] = vn
+    for n in aliaslist:
+        if n in pbsvnodes:
+            return pbsvnodes[n]
+    return None
+
+
+# Read the config file in json format
+def parse_config_file():
+    # Turn everything off by default. These settings be modified
+    # when the configuration file is read.
+    global pbs_home
+    global pbs_exec
+    global power_ramp_rate_enable
+    global power_on_off_enable
+    global node_idle_limit
+    global min_node_down_delay
+    global max_jobs_analyze_limit
+    global max_concurrent_nodes
+
+    try:
+        # This block will work for PBS Pro versions 13 and later
+        pbs_conf = pbs.get_pbs_conf()
+        pbs_home = pbs_conf['PBS_HOME']
+        pbs_exec = pbs_conf['PBS_EXEC']
+    except:
+        pbs.logmsg(pbs.EVENT_DEBUG,
+                   "PBS_HOME needs to be defined in the config file")
+        pbs.logmsg(pbs.EVENT_DEBUG, "Exiting the power hook")
+        pbs.event().accept()
+
+    # Identify the config file and read in the data
+    config_file = ''
+    if 'PBS_HOOK_CONFIG_FILE' in os.environ:
+        config_file = os.environ["PBS_HOOK_CONFIG_FILE"]
+    tmpcfg = ''
+    if not config_file:
+        tmpcfg = os.path.join(pbs_home, 'server_priv', 'hooks',
+                              'PBS_power.CF')
+    if os.path.isfile(tmpcfg):
+        config_file = tmpcfg
+    if not config_file:
+        tmpcfg = os.path.join(pbs_home, 'mom_priv', 'hooks',
+                              'PBS_power.CF')
+    if os.path.isfile(tmpcfg):
+        config_file = tmpcfg
+    if not config_file:
+        raise Exception("Config file not found")
+    pbs.logmsg(pbs.EVENT_DEBUG3, "Config file is %s" % config_file)
+    try:
+        fd = open(config_file, 'r')
+        config = json.load(fd)
+        fd.close()
+    except IOError:
+        raise Exception("I/O error reading config file")
+    except:
+        raise Exception("Error reading config file")
+
+    # Assign default values to attributes
+    power_ramp_rate_enable = False
+    power_on_off_enable = False
+    node_idle_limit = 1800
+    min_node_down_delay = 1800
+    max_jobs_analyze_limit = 100
+    max_concurrent_nodes = 10
+
+    # Now assgin values read from config file
+    if 'power_on_off_enable' in config:
+        power_on_off_enable = config['power_on_off_enable']
+        pbs.logmsg(pbs.EVENT_DEBUG3, "power_on_off_enable is set to %s" %
+                   str(power_on_off_enable))
+    if 'power_ramp_rate_enable' in config:
+        power_ramp_rate_enable = config['power_ramp_rate_enable']
+        pbs.logmsg(pbs.EVENT_DEBUG3, "power_ramp_rate_enable is set to %s" %
+                   str(power_ramp_rate_enable))
+    if 'node_idle_limit' in config:
+        node_idle_limit = int(config['node_idle_limit'])
+        if not node_idle_limit or node_idle_limit < 0:
+            node_idle_limit = 1800
+        pbs.logmsg(pbs.EVENT_DEBUG3, "node_idle_limit is set to %d" %
+                   node_idle_limit)
+    if 'min_node_down_delay' in config:
+        min_node_down_delay = int(config['min_node_down_delay'])
+        if not min_node_down_delay or min_node_down_delay < 0:
+            min_node_down_delay = 1800
+        pbs.logmsg(pbs.EVENT_DEBUG3, "min_node_down_delay is set to %d" %
+                   min_node_down_delay)
+    if 'max_jobs_analyze_limit' in config:
+        max_jobs_analyze_limit = int(config['max_jobs_analyze_limit'])
+        if not max_jobs_analyze_limit or max_jobs_analyze_limit < 0:
+            max_jobs_analyze_limit = 100
+        pbs.logmsg(pbs.EVENT_DEBUG3, "max_jobs_analyze_limit is set to %d" %
+                   max_jobs_analyze_limit)
+    if 'max_concurrent_nodes' in config:
+        max_concurrent_nodes = int(config['max_concurrent_nodes'])
+        if not max_concurrent_nodes or max_concurrent_nodes < 0:
+            max_concurrent_nodes = 10
+        pbs.logmsg(pbs.EVENT_DEBUG3, "max_concurrent_nodes is set to %d" %
+                   max_concurrent_nodes)
+
+
 # Accept if event not serviceable.
 this_event = pbs.event()
 if this_event.type not in [pbs.EXECJOB_PROLOGUE, pbs.EXECJOB_EPILOGUE,
                            pbs.EXECJOB_BEGIN, pbs.EXECJOB_END,
-                           pbs.EXECHOST_STARTUP, pbs.EXECHOST_PERIODIC]:
+                           pbs.EXECHOST_STARTUP, pbs.EXECHOST_PERIODIC,
+                           pbs.PERIODIC]:
     pbs.logmsg(pbs.LOG_WARNING,
                "Event not serviceable for power provisioning.")
     this_event.accept()
+
+
+if this_event.type == pbs.PERIODIC:
+    vnlist = this_event.vnode_list
+    resvlist = this_event.resv_list
+    freq = this_event.freq
+    time_now = time.time()
+
+    # Parse the config file for power attributes
+    try:
+        parse_config_file()
+    except Exception, e:
+        this_event.reject(str(e))
+
+    if power_ramp_rate_enable == 0 and power_on_off_enable == 0:
+        this_event.accept()
+
+    if power_on_off_enable and power_ramp_rate_enable:
+        # Disable ramp rate if power on/off is enabled as well.
+        power_ramp_rate_enable = 0
+        pbs.logmsg(pbs.LOG_WARNING,
+                   "Hook config: power_on_off_enable is over-riding power_ramp_rate_enable")
+
+    qselect_cmd = os.path.join(pbs_exec, 'bin', 'qselect')
+    qstat_cmd = os.path.join(pbs_exec, 'bin', 'qstat')
+    dtnow = datetime.datetime.now().strftime("%m%d%H%M")
+    qselect_cmd += " -tt.gt." + str(dtnow)
+    try:
+        p = Popen(qselect_cmd, shell=True, stdout=PIPE, stderr=PIPE)
+        (o, e) = p.communicate()
+        if p.returncode or not o:
+            job_list = []
+        else:
+            job_list = o.splitlines()
+    except OSError, ValueError:
+        job_list = []
+    # Analyze queued jobs and see if any of the nodes are needed in near future
+    exec_vnodes = {}
+    i = 0
+    pattern = '%a %b %d %H:%M:%S %Y'
+    for jobid in job_list:
+        if not jobid:
+            break
+        if i == max_jobs_analyze_limit:
+            break
+        cmd = qstat_cmd + " -f -F json " + jobid
+        try:
+            p = Popen(cmd, shell=True, stdout=PIPE, stderr=PIPE)
+            (o, e) = p.communicate()
+            if p.returncode:
+                continue
+        except OSError, ValueError:
+            pbs.logmsg(pbs.EVENT_DEBUG3,
+                       "Error running qstat command for job %s" % jobid)
+            continue
+        evnlist = None
+        start_time = 0
+        job_state = None
+        if not o:
+            continue
+        try:
+            out = json.loads(o)
+            job = out['Jobs'][jobid]
+            if 'estimated' in job:
+                est = job['estimated']
+                if 'start_time' in est:
+                    fmttime = est['start_time']
+                    start_time = int(time.mktime(
+                        time.strptime(fmttime, pattern)))
+                if 'exec_vnode' in est:
+                    evnlist = est['exec_vnode']
+            if 'job_state' in job:
+                job_state = job['job_state']
+        except ValueError:
+            pbs.logmsg(pbs.EVENT_DEBUG3,
+                       "Error reading json output for job %s" % jobid)
+            continue
+        if job_state == 'Q':
+            if start_time and evnlist:
+                for chunk in evnlist.split("+"):
+                    vn = chunk.split(":")[0][1:]
+                    if vn not in exec_vnodes:
+                        exec_vnodes[vn] = {}
+                        exec_vnodes[vn]["neededby"] = start_time
+                    elif start_time < exec_vnodes[vn]["neededby"]:
+                        exec_vnodes[vn]["neededby"] = start_time
+        i += 1
+
+    nodes = {}
+    for vn in vnlist:
+        vnode = vnlist[vn]
+        host = vnode.resources_available["host"]
+        if power_on_off_enable:
+            try:
+                if vnode.poweroff_eligible and vnode.resources_available["PBScraynid"]:
+                    can_power_off = vnode.poweroff_eligible
+                else:
+                    can_power_off = 0
+            except:
+                can_power_off = 0
+        elif power_ramp_rate_enable:
+            can_power_off = 1
+        else:
+            this_event.accept()
+
+        if host not in nodes:
+            # Initialize the nodes with new host
+            nodes[host] = {}
+            nodes[host]["can_power_off"] = can_power_off
+            nodes[host]["poweroff"] = 0
+            nodes[host]["poweron"] = 0
+            nodes[host]["vnodes"] = []
+        nodes[host]["vnodes"].append(vnode)
+
+        if can_power_off == 0:
+            # Not allowed to power on/off this node
+            nodes[host]["can_power_off"] = 0
+            nodes[host]["poweroff"] = 0
+            nodes[host]["poweron"] = 0
+
+        if nodes[host]["can_power_off"]:
+            # See if the node is actually free
+            if vnode.state != pbs.ND_FREE:
+                nodes[host]["poweroff"] = 0
+            else:
+                # See if there are any reservations on the vnode
+                # Reservations further in time can be ignored.
+                if vnode.resv:
+                    for resid in vnode.resv:
+                        resv = resvlist[resid]
+                        if resv.state == pbs.RESV_STATE_RUNNING or \
+                                resv.state == pbs.RESV_STATE_DELETED or \
+                                resv.state == pbs.RESV_STATE_BEING_ALTERED or \
+                                resv.state == pbs.RESV_STATE_DELETING_JOBS:
+                            nodes[host]["poweroff"] = 0
+
+                # Is the node idle enough to put to sleep or power down?
+                if vnode.last_used_time:
+                    last_used_time = vnode.last_used_time
+                else:
+                    last_used_time = 0
+                idle_time = time_now - last_used_time
+                if node_idle_limit < idle_time:
+                    nodes[host]["poweroff"] = 1
+
+        # POWER-ON/RAMP-UP check: See if the node is down and
+        # needs to be brought up. Check if the node needs to be
+        # up before this periodic event runs again.
+        if vnode.state == pbs.ND_SLEEP:
+            if vn in exec_vnodes and exec_vnodes[vn]["neededby"]:
+                neededby = exec_vnodes[vn]["neededby"]
+            else:
+                neededby = 0
+            if neededby and neededby < (time_now + freq):
+                nodes[host]["poweron"] = 1
+            # See when node was put down
+            if vnode.last_state_change_time:
+                last_state_change = vnode.last_state_change_time
+            else:
+                last_state_change = 0
+            # Do not power on a node if it went down within less than
+            # min_node_down_delay seconds
+            if power_on_off_enable and last_state_change:
+                if (time_now - last_state_change) < int(min_node_down_delay):
+                    nodes[host]["poweron"] = 0
+
+    poweroff_vnlist = []
+    poweron_vnlist = []
+    i = 0
+    j = 0
+    for n in nodes:
+        # Check if any nodes need to be ramped-down/powered-off.
+        if nodes[n]["poweroff"] == 1 and i < max_concurrent_nodes:
+            poweroff_vnlist.append(n)
+            i += 1
+        # Check if any nodes need to be ramped-up/powered-on.
+        elif nodes[n]["poweron"] == 1 and j < max_concurrent_nodes:
+            poweron_vnlist.append(n)
+            j += 1
+        if i == max_concurrent_nodes and j == max_concurrent_nodes:
+            break
+
+    if poweroff_vnlist or poweron_vnlist:
+        power = init_power(this_event)
+    else:
+        this_event.accept()
+    try:
+        if power_ramp_rate_enable:
+            # Ramp rate limiting
+            if poweroff_vnlist:
+                power.ramp_down(poweroff_vnlist)
+            if poweron_vnlist:
+                power.ramp_up(poweron_vnlist)
+        else:
+            # Power on/off nodes
+            if poweroff_vnlist:
+                power.power_off(poweroff_vnlist)
+            if poweron_vnlist:
+                power.power_on(poweron_vnlist)
+        # Mark nodes to ND_Sleep
+        for nd in poweroff_vnlist:
+            for vn in nodes[nd]["vnodes"]:
+                vn.state = pbs.ND_SLEEP
+        # Mark nodes to ND_free
+        for nd in poweron_vnlist:
+            for vn in nodes[nd]["vnodes"]:
+                vn.state = pbs.ND_FREE
+        power.disconnect()
+        this_event.accept()
+    except Exception, e:
+        power.disconnect()
+        this_event.reject(str(e))
 
 
 # Set eoe values for my node
@@ -112,7 +440,7 @@ if this_event.type == pbs.EXECHOST_PERIODIC:
         this_event.accept()
 
     power = init_power(this_event)
-    for jobid in this_event.job_list.keys():
+    for jobid in this_event.job_list:
         # set energy usage
         job = this_event.job_list[jobid]
         # skip any jobs that MOM is not MS
@@ -141,23 +469,30 @@ if this_event.type == pbs.EXECJOB_BEGIN:
             this_event.accept()
     except:
         # Try with different hostname
-        me = socket.getfqdn()
-        if not _svr_vnode(me).power_provisioning:
+        vn = get_local_node(me)
+        if not _svr_vnode(vn.name).power_provisioning:
             this_event.accept()
     requested_profile = str(this_job.schedselect).partition(
         'eoe=')[2].partition('+')[0].partition(':')[0]
     if requested_profile != "":
         try:
             this_event.vnode_list[me].current_eoe = requested_profile
-        except:
+        except KeyError, ValueError:
             pass
     this_event.accept()
 if this_event.type == pbs.EXECJOB_END:
     me = pbs.get_local_nodename()
     try:
         this_event.vnode_list[me].current_eoe = None
-    except:
+    except KeyError, ValueError:
         pass
+
+    power = init_power(this_event)
+    try:
+        power.deactivate_profile(this_job)
+    except Exception, e:
+        pbs.logjobmsg(this_job.id, str(e))
+    power.disconnect()
     this_event.accept()
 
 # No further processing is needed if we are not mother superior.
@@ -189,11 +524,6 @@ elif this_event.type == pbs.EXECJOB_EPILOGUE:
         usage = power.get_usage(this_job)
         if usage is not None:
             this_job.resources_used["energy"] = usage
-    except Exception, e:
-        pbs.logjobmsg(this_job.id, str(e))
-
-    try:
-        power.deactivate_profile(this_job)
     except Exception, e:
         pbs.logjobmsg(this_job.id, str(e))
     power.disconnect()

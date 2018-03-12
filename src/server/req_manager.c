@@ -143,7 +143,6 @@ extern pbs_sched *sched_alloc(char *sched_name);
 extern pbs_sched *find_scheduler(char *sched_name);
 extern void sched_free(pbs_sched *psched);
 extern int sched_delete(pbs_sched *psched);
-extern  void unset_power_provisioning(void);
 
 extern struct server server;
 extern pbs_list_head     svr_queues;
@@ -1610,9 +1609,6 @@ mgr_server_unset(struct batch_request *preq)
 		} else if (strcasecmp(plist->al_name,
 			ATTR_jobscript_max_size) == 0) {
 			unset_jobscript_max_size();
-		} else if (strcasecmp(plist->al_name,
-			ATTR_power_provisioning) == 0) {
-			unset_power_provisioning();
 		} else if (strcasecmp(plist->al_name,
 				ATTR_scheduling) == 0) {
 			if (dflt_scheduler) {

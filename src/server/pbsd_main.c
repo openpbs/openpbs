@@ -1994,6 +1994,9 @@ try_db_again:
 	/* check and enable the prov attributes */
 	set_srv_prov_attributes();
 
+	/* check and set power attribute */
+	set_srv_pwr_prov_attribute();
+
 	periodic_req = alloc_br(PBS_BATCH_HookPeriodic);
 	if (periodic_req == NULL) {
 		log_err(errno, msg_daemonname, "Out of memory!");

@@ -408,6 +408,12 @@ static struct attr_names {
 	{ ATTR_NODE_License,	0,	0,	NULL},
 	{ ATTR_NODE_LicenseInfo,	0,	0,	NULL},
 	{ ATTR_NODE_TopologyInfo,	0,	0,	NULL},
+	{ ATTR_NODE_VnodePool,		0,	0,	NULL},
+	{ ATTR_NODE_power_provisioning,	0,	0,	NULL},
+	{ ATTR_NODE_current_eoe,	0,	0,	NULL},
+	{ ATTR_NODE_poweroff_eligible,	0,	0,	NULL},
+	{ ATTR_NODE_last_state_change_time,	0,	0,	NULL},
+	{ ATTR_NODE_last_used_time,	0,	0,	NULL},
 	{ ATTR_rescavail,	SKIP_ALL,	0,	NULL},
 	{ ATTR_rescassn,	SKIP_ALL,	0,	NULL},
 	{NULL, 0, 0, NULL }
@@ -560,6 +566,9 @@ static struct attr_names {
 	{ ATTR_NODE_VnodePool, NULL},
 	{ ATTR_NODE_power_provisioning, NULL},
 	{ ATTR_NODE_current_eoe, NULL},
+	{ ATTR_NODE_poweroff_eligible, NULL},
+	{ ATTR_NODE_last_state_change_time, NULL},
+	{ ATTR_NODE_last_used_time, NULL},
 	{NULL, NULL }
 };
 

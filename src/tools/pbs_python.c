@@ -52,8 +52,6 @@
  * 	node_queue_action()
  * 	node_np_action()
  * 	node_pcpu_action()
- * 	return_external_value()
- * 	return_internal_value()
  * 	pbs_python_populate_svrattrl_from_file()
  * 	pbs_python_populate_server_svrattrl_from_file()
  * 	fprint_svrattrl_list()
@@ -706,11 +704,6 @@ queuestart_action(attribute *pattr, void *pobject, int actmode)
 	return 0;
 }
 
-int
-action_power_provisioning(attribute *pattr, void *pobj, int actmode) {
-	return PBSE_NONE;
-}
-
 /**
  * @brief
  * 		encode_svrstate - encode string into svrstate value
@@ -955,84 +948,6 @@ chk_vnode_pool(attribute *pattr, void *pobject, int actmode)
 /*
  *	END of "dummy" functions. ---------------------------------------->
  */
-
-/**
- * @brief
- *		Returns the "external" form of the attribute 'val' given 'name'.
- *
- * @param[in]	name	-	attribute name
- * @param[in]	val	-	attribute value
- *
- * @return char *	: the external form for name=state: "3" -> "down,offline"
- * @Note
- *     	Returns a static value that can potentially get cleaned up on next call.
- * 		Must use return value immediately!
- */
-static char *
-return_external_value(char *name, char *val)
-{
-	char *vns;
-
-
-	if ((name == NULL) || (val == NULL))
-		return ("");
-
-	if (strcmp(name, ATTR_NODE_state) == 0) {
-		return vnode_state_to_str(atoi(val));
-	} else if (strcmp(name, ATTR_NODE_Sharing) == 0) {
-		vns = vnode_sharing_to_str((enum vnode_sharing)atoi(val));
-		return (vns?vns:"");
-	} else if (strcmp(name, ATTR_NODE_ntype) == 0) {
-		return vnode_ntype_to_str(atoi(val));
-	} else {
-		return val;
-	}
-}
-
-/**
- * @brief
- *		Returns the "internal" form of the attribute 'val' given 'name'.
- *
- * @param[in]	name	-	attribute name
- * @param[in]	val	-	attribute value
- *
- * @return char *	: the external form for name=state: "down,offline" -> "3"
- * @Note
- *     	Returns a static value that can potentially get cleaned up on next call.
- * 		Must use return value immediately!
- *
- * @par MT-safe: No
- */
-static char *
-return_internal_value(char *name, char *val)
-{
-	static char ret_str[40];
-	enum vnode_sharing share;
-	int  v;
-
-	if ((name == NULL) || (val == NULL))
-		return ("");
-
-	if (strcmp(name, ATTR_NODE_state) == 0) {
-		v=str_to_vnode_state(val);
-		sprintf(ret_str, "%d", v);
-		return (ret_str);
-	} else if (strcmp(name, ATTR_NODE_Sharing) == 0) {
-		share = str_to_vnode_sharing(val);
-		if (share == VNS_UNSET)
-			return val;
-		sprintf(ret_str, "%d", share);
-		return (ret_str);
-	} else if (strcmp(name, ATTR_NODE_ntype) == 0) {
-		v = str_to_vnode_ntype(val);
-		if (v == -1)
-			return val;
-		sprintf(ret_str, "%d", v);
-		return (ret_str);
-	} else {
-		return val;
-	}
-}
 
 /**
  * @brief
@@ -2144,88 +2059,6 @@ populate_server_svrattrl_fail:
 	}
 
 	return (rc);
-}
-
-/**
- * @brief
- *		Prints out the file on opened stream 'fp', the attribute names or
- *		resources and their values as in:
- *			<attribute_name>=<attribute_value>
- *			<attribute_name>[<resource_name>]=<resource_value>
- *			<vnode_name>.<attribute_name>=<attribute value>
- *			<vnode_name>.<attribute_name>[<resource_name>]=<attribute value>
- * @note
- *		Only prints out values that were set in a hook script.
- *
- * @param[in]	fp	-	the stream pointer of the file to write output into
- * @param[in]	head_str	-	some string to print out the beginning.
- * @param[in]	phead	-	pointer to the head of the list containing data.
- *
- * @return	none
- */
-void
-fprint_svrattrl_list(FILE *fp, char *head_str, pbs_list_head *phead)
-{
-	svrattrl *plist = NULL;
-	char	*p, *p0;
-
-	if ((fp == NULL) || (head_str == NULL) || (phead == NULL)) {
-		log_err(errno, __func__, "Bad input parameter!");
-		return;
-	}
-
-	plist = (svrattrl *)GET_NEXT(*phead);
-	log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK, LOG_INFO, __func__, head_str);
-	while (plist) {
-		if (plist->al_flags & ATR_VFLAG_HOOK) {
-
-			p=strrchr(plist->al_name, '.');
-			p0 = p;
-			if (p != NULL) {
-				*p = '\0';
-				p++; /* this is the actual attribute name */
-			}
-
-			if (plist->al_resc != NULL) {
-				if (p != NULL)
-					fprintf(fp, "%s[\"%s\"].%s[%s]=%s\n", head_str,
-						plist->al_name, p,
-						plist->al_resc,
-						return_external_value(p, plist->al_value));
-				else
-					fprintf(fp, "%s.%s[%s]=%s\n", head_str,
-						plist->al_name, plist->al_resc,
-						return_external_value(plist->al_name,
-						plist->al_value));
-			} else {
-				if (p != NULL) {
-					fprintf(fp, "%s[\"%s\"].%s=%s\n", head_str,
-						plist->al_name, p,
-						return_external_value(p, plist->al_value));
-				} else {
-					if (strcmp(plist->al_name, ATTR_v) == 0) {
-						fprintf(fp, "%s.%s=\"\"\"%s\"\"\"\n",
-							head_str,
-							plist->al_name,
-							return_external_value(
-							plist->al_name,
-							plist->al_value));
-					} else {
-						fprintf(fp, "%s.%s=%s\n", head_str,
-							plist->al_name,
-							return_external_value(
-							plist->al_name,
-							plist->al_value));
-					}
-				}
-			}
-			if (p0 != NULL)
-				*p0 = '.';
-
-		}
-
-		plist = (svrattrl *)GET_NEXT(plist->al_link);
-	}
 }
 
 /**

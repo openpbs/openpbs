@@ -102,6 +102,9 @@ enum nodeattr {
 	ND_ATR_Power_Provisioning,
 	ND_ATR_current_eoe,     /* current EOE instantiated */
 	ND_ATR_partition,
+	ND_ATR_poweroff_eligible,	/* Node can be powered-off */
+	ND_ATR_last_state_change_time,	/* Node's state changed at */
+	ND_ATR_last_used_time,		/* Node was last busy at */
 	ND_ATR_LAST	/* WARNING: Must be the highest valued enum */
 };
 
@@ -329,6 +332,7 @@ enum	part_flags { PART_refig, PART_add, PART_rmv };
 #define INUSE_MARKEDDOWN 0x8000 /* TPP layer marked node down */
 #define INUSE_NEED_ADDRS	0x10000	/* Needs to be sent IP addrs */
 #define INUSE_MAINTENANCE	0x20000 /* Node has a job in the admin suspended state */
+#define INUSE_SLEEP             0x40000 /* Node is sleeping */
 
 #define VNODE_AVAILABLE (INUSE_FREE | INUSE_JOB | INUSE_JOBEXCL | \
 			 INUSE_RESVEXCL | INUSE_BUSY)
@@ -352,7 +356,7 @@ enum	part_flags { PART_refig, PART_add, PART_rmv };
 /* bits both in nd_state and inuse	*/
 #define INUSE_SUBNODE_MASK (INUSE_OFFLINE|INUSE_OFFLINE_BY_MOM|INUSE_DOWN|INUSE_JOB|INUSE_STALE|\
 INUSE_JOBEXCL|INUSE_BUSY|INUSE_UNKNOWN|INUSE_INIT|INUSE_PROV|INUSE_WAIT_PROV|\
-INUSE_RESVEXCL|INUSE_UNRESOLVABLE|INUSE_MAINTENANCE)
+INUSE_RESVEXCL|INUSE_UNRESOLVABLE|INUSE_MAINTENANCE|INUSE_SLEEP)
 
 #define INUSE_COMMON_MASK  (INUSE_OFFLINE|INUSE_DOWN)
 /* state bits that go from node to subn */

@@ -3392,6 +3392,7 @@ Time4resvFinish(struct work_task *ptask)
 		svr_mailownerResv(presv, MAIL_END, MAIL_NORMAL, "");
 
 		tickle_for_reply();
+		set_last_used_time_node(presv, 1);
 	}
 }
 
@@ -3763,6 +3764,7 @@ Time4_term(struct work_task *ptask)
 		svr_mailownerResv(presv, MAIL_END, MAIL_NORMAL, "");
 
 		tickle_for_reply();
+		set_last_used_time_node(presv, 1);
 	}
 }
 

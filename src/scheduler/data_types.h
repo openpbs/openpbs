@@ -547,6 +547,7 @@ struct node_info
 	 */
 	unsigned is_multivnoded:1;	/* multi vnode */
 	unsigned power_provisioning:1;	/* can this node can power provision */
+	unsigned is_sleeping:1;		/* node put to sleep through power on/off or ramp rate limit */
 	unsigned has_ghost_job:1;	/* race condition occurred: recalculate resources_assigned */
 
 	/* sharing */
@@ -607,6 +608,8 @@ struct node_info
 	node_partition *hostset;      /* other vnodes on on the same host */
 	node_scratch nscr;            /* scratch space local to node search code */
 	char *partition;	      /* partition to which node belongs to */
+	time_t last_state_change_time;	/* Node state change at time stamp */
+	time_t last_used_time;		/* Node was last active at this time */
 };
 
 struct resv_info

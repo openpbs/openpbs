@@ -43,11 +43,13 @@ __doc__ = """
 This module is used for Cray systems.
 """
 
-import pbs
 import os
 import stat
+import time
+import random
 from subprocess import Popen, PIPE
 from pbs.v1._pmi_types import BackendError
+import pbs
 from pbs.v1._pmi_utils import _running_excl, _pbs_conf, _get_vnode_names, \
     _svr_vnode
 
@@ -382,7 +384,7 @@ class Pmi:
             else:
                 pbs.logjobmsg(job.id, "Cray: no power cap to set")
 
-        return False
+        return True
 
     def _deactivate_profile(self, job):
         pbs.logmsg(pbs.LOG_DEBUG, "Cray: deactivate %s" % job.id)
@@ -480,4 +482,60 @@ class Pmi:
             pbs.logjobmsg(job.id,
                           "Cray:RUR: energy %fkWh last periodic usage %fkWh" %
                           (new_energy, old_energy))
-        return False
+        return True
+
+    def _pmi_power_off(self, hosts):
+        pbs.logmsg(pbs.LOG_DEBUG, "Cray: powering-off the node")
+        nidset = nodenids(hosts)
+        nids, _ = nidlist(None, nidset)
+        cmd = "node_off --nids " + nids
+        func = "node_power_off"
+        launch(func, cmd)
+        return True
+
+    def _pmi_power_on(self, hosts):
+        pbs.logmsg(pbs.LOG_DEBUG, "Cray: powering-on the node")
+        nidset = nodenids(hosts)
+        nids, _ = nidlist(None, nidset)
+        cmd = "node_on --nids " + nids
+        func = "node_power_on"
+        launch(func, cmd)
+        return True
+
+    def _pmi_ramp_down(self, hosts):
+        pbs.logmsg(pbs.LOG_DEBUG, "Cray: ramping down the node")
+        nidset = nodenids(hosts)
+        nids, _ = nidlist(None, nidset)
+        cmd = "get_sleep_state_limit_capabilities --nids " + nids
+        func = "node_ramp_down"
+        out = launch(func, cmd)
+        for n in out["nids"]:
+           if "data" in n:
+                nid = n["nid"]
+                states = n["data"]["PWR_Attrs"][0]["PWR_AttrValueCapabilities"]
+                for s in states:
+                    if int(s) != 0:
+                        cmd = "set_sleep_state_limit --nids " + str(nid) + " --limit " + str(s)
+                        launch(func, cmd)
+                        sleep_time = random.randint(1,10)
+                        time.sleep(sleep_time)
+        return True
+
+    def _pmi_ramp_up(self, hosts):
+        pbs.logmsg(pbs.LOG_DEBUG, "Cray: ramping up the node")
+        nidset = nodenids(hosts)
+        nids, _ = nidlist(None, nidset)
+        cmd = "get_sleep_state_limit_capabilities --nids " + nids
+        func = "node_ramp_up"
+        out = launch(func, cmd)
+        for n in out["nids"]:
+           if "data" in n:
+                nid = n["nid"]
+                states = n["data"]["PWR_Attrs"][0]["PWR_AttrValueCapabilities"]
+                for s in reversed(states):
+                    if int(s) != 0:
+                        cmd = "set_sleep_state_limit --nids " + str(nid) + " --limit " + str(s)
+                        launch(func, cmd)
+                        sleep_time = random.randint(1,10)
+                        time.sleep(sleep_time)
+        return True

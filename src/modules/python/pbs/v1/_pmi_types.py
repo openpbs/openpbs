@@ -184,3 +184,24 @@ class Power:
                 except:
                     pass
         return self.__pmi._deactivate_profile(job)
+
+    def power_off(self, hosts=None):
+        self._check_pmi()
+        pbs.logmsg(pbs.LOG_WARNING, "PMI:poweroff: powering off nodes")
+        return self.__pmi._pmi_power_off(hosts)
+
+    def power_on(self, hosts=None):
+        self._check_pmi()
+        pbs.logmsg(pbs.LOG_WARNING, "PMI:poweron: powering on nodes")
+        return self.__pmi._pmi_power_on(hosts)
+
+    def ramp_down(self, hosts=None):
+        self._check_pmi()
+        pbs.logmsg(pbs.LOG_WARNING, "PMI:rampdown: ramping down nodes")
+        return self.__pmi._pmi_ramp_down(hosts)
+
+    def ramp_up(self, hosts=None):
+        self._check_pmi()
+        pbs.logmsg(pbs.LOG_WARNING, "PMI:rampup: ramping up nodes")
+        return self.__pmi._pmi_ramp_up(hosts)
+

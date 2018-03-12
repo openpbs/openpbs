@@ -937,7 +937,7 @@ save_nodes_db_mom(mominfo_t *pmom)
 			 * so add state and comments only if set
 			 */
 			isoff = np->nd_state &
-				(INUSE_OFFLINE | INUSE_OFFLINE_BY_MOM);
+				(INUSE_OFFLINE | INUSE_OFFLINE_BY_MOM | INUSE_SLEEP);
 
 			hascomment = (np->nd_attr[(int) ND_ATR_Comment].at_flags &
 				(ATR_VFLAG_SET | ATR_VFLAG_DEFLT)) == ATR_VFLAG_SET;

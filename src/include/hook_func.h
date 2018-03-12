@@ -72,7 +72,6 @@ struct mom_hook_action {
 	long long int	tid;	/* transaction id to group actions under */
 };
 
-
 /* Return values to sync_mom_hookfiles() function */
 enum sync_hookfiles_result {
 	SYNC_HOOKFILES_NONE,
@@ -113,6 +112,8 @@ extern void mark_mom_hooks_seen(void);
 extern int mom_hooks_seen_count(void);
 extern void hook_action_tid_set(long long int);
 extern long long int hook_action_tid_get(void);
+extern void set_srv_pwr_prov_attribute(void);
+extern void fprint_svrattrl_list(FILE *, char *, pbs_list_head *);
 
 #ifdef	_BATCH_REQUEST_H
 extern int status_hook(hook *, struct batch_request *, pbs_list_head *, char *, size_t);
@@ -134,6 +135,9 @@ extern int recreate_request(struct batch_request *);
 
 /* Server periodic hook call-back */
 extern void run_periodic_hook (struct work_task *ptask);
+
+extern int get_server_hook_results(char *input_file, int *accept_flag, int *reject_flag,
+	char *reject_msg, int reject_msg_size, job *pjob, hook *phook, hook_output_param_t *hook_output);
 #endif
 
 #ifdef	__cplusplus

@@ -38,6 +38,7 @@
 from tests.functional import *
 import json
 from subprocess import Popen, PIPE
+import time
 
 
 class Test_power_provisioning_cray(TestFunctional):
@@ -170,10 +171,12 @@ e.accept()
         """
         Enable power_provisioning on the server.
         """
-        a = {'power_provisioning': 'True'}
-        self.server.manager(MGR_CMD_SET, SERVER, a)
+        a = {'enabled': 'True'}
+        hook_name = "PBS_power"
+        self.server.manager(MGR_CMD_SET, PBS_HOOK, a, id=hook_name,
+                            sudo=True)
 
-        done = set()		# check that hook becomes active
+        # check that hook becomes active
         nodes = self.server.status(NODE)
         n = nodes[0]
         host = n['Mom']
@@ -181,7 +184,16 @@ e.accept()
         mom = self.moms[host]
         mom.log_match(
             "Hook;PBS_power.HK;copy hook-related file request received",
-            starttime=self.server.ctime, max_attempts=60)
+            starttime=self.server.ctime)
+
+    def disable_power(self):
+        """
+        Disable power_provisioning on the server.
+        """
+        a = {'enabled': 'False'}
+        hook_name = "PBS_power"
+        self.server.manager(MGR_CMD_SET, PBS_HOOK, a, id=hook_name,
+                            sudo=True)
 
     def submit_job(self, secs=10, a={}):
         """
@@ -372,3 +384,74 @@ e.accept()
         self.server.expect(JOB, {'job_state': 'R'}, id=jid_hp)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid)
         self.scheduler.log_match("Job preempted by requeuing", starttime=t)
+
+    def test_power_provisioning_attribute(self):
+        """
+        Test that when hook is disabled power_provisioning on
+        server is set to false and when enabled true.
+        """
+        self.enable_power()
+        a = {'power_provisioning': 'True'}
+        self.server.expect(SERVER, a)
+
+        self.disable_power()
+        a = {'power_provisioning': 'False'}
+        self.server.expect(SERVER, a)
+
+    def test_poweroff_eligible_atrribute(self):
+        """
+        Test that we can set poweroff_eligible for nodes to true/false.
+        """
+        nodes = self.server.status(NODE)
+        host = nodes[0]['id']
+        self.server.manager(MGR_CMD_SET, NODE, {'poweroff_eligible': 'True'},
+                            expect=True, id=host)
+        self.server.manager(MGR_CMD_SET, NODE, {'poweroff_eligible': 'False'},
+                            expect=True, id=host)
+
+    def test_last_state_change_time(self):
+        """
+        Test last_state_change_time is set when a job is run and is exited.
+        """
+        pattern = '%a %b %d %H:%M:%S %Y'
+        self.server.manager(MGR_CMD_SET, SERVER, {
+                            'job_history_enable': 'True'})
+        nodes = self.server.status(NODE)
+        host = nodes[0]['resources_available.host']
+        ncpus = nodes[0]['resources_available.ncpus']
+        jid = self.submit_job(
+            5, {'Resource_List.host': host, 'Resource_List.ncpus': ncpus})
+        self.server.expect(JOB, {'job_state': 'F'}, id=jid, extend='x')
+        status = self.server.status(NODE, id=host)
+        fmttime = status[0]['last_state_change_time']
+        sts_time1 = int(time.mktime(time.strptime(fmttime, pattern)))
+        jid = self.submit_job(
+            5, {'Resource_List.host': host, 'Resource_List.ncpus': ncpus})
+        self.server.expect(JOB, {'job_state': 'F'}, id=jid, extend='x')
+        status = self.server.status(NODE, id=host)
+        fmttime = status[0]['last_state_change_time']
+        sts_time2 = int(time.mktime(time.strptime(fmttime, pattern)))
+        rv = sts_time2 > sts_time1
+        self.assertTrue(rv)
+
+    def test_last_used_time(self):
+        """
+        Test last_used_time is set when a job is run and is exited.
+        """
+        pattern = '%a %b %d %H:%M:%S %Y'
+        self.server.manager(MGR_CMD_SET, SERVER, {
+                            'job_history_enable': 'True'})
+        nodes = self.server.status(NODE)
+        host = nodes[0]['resources_available.host']
+        jid = self.submit_job(5, {'Resource_List.host': host})
+        self.server.expect(JOB, {'job_state': 'F'}, id=jid, extend='x')
+        status = self.server.status(NODE, id=host)
+        fmttime = status[0]['last_used_time']
+        sts_time1 = int(time.mktime(time.strptime(fmttime, pattern)))
+        jid = self.submit_job(5, {'Resource_List.host': host})
+        self.server.expect(JOB, {'job_state': 'F'}, id=jid, extend='x')
+        status = self.server.status(NODE, id=host)
+        fmttime = status[0]['last_used_time']
+        sts_time2 = int(time.mktime(time.strptime(fmttime, pattern)))
+        rv = sts_time2 > sts_time1
+        self.assertTrue(rv)

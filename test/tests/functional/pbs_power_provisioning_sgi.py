@@ -191,8 +191,10 @@ def NodesetDelete( nodeset_name ):
         """
         Enable power_provisioning on the server.
         """
-        a = {'power_provisioning': 'True'}
-        self.server.manager(MGR_CMD_SET, SERVER, a)
+        a = {'enabled': 'True'}
+        hook_name = "PBS_power"
+        self.server.manager(MGR_CMD_SET, PBS_HOOK, a, id=hook_name,
+                            sudo=True)
         done = set()		# check that hook becomes active
         nodes = self.server.status(NODE)
         for n in nodes:
