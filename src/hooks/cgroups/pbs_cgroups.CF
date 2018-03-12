@@ -9,48 +9,48 @@
     "use_hyperthreads"      : false,
     "cgroup" : {
         "cpuacct" : {
-            "enabled"         : true,
-            "exclude_hosts"   : [],
-            "exclude_vntypes" : []
+            "enabled"            : true,
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : []
         },
         "cpuset" : {
-            "enabled"         : true,
-            "exclude_hosts"   : [],
-            "exclude_vntypes" : []
+            "enabled"            : true,
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : []
         },
         "devices" : {
-            "enabled"         : false,
-            "exclude_hosts"   : [],
-            "exclude_vntypes" : [],
-            "allow"           : [
+            "enabled"            : false,
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : [],
+            "allow"              : [
                 "b *:* rwm",
                 "c *:* rwm"
             ]
         },
         "hugetlb" : {
-            "enabled"         : false,
-            "exclude_hosts"   : [],
-            "exclude_vntypes" : [],
-            "default"         : "0MB",
-            "reserve_percent" : "0",
-            "reserve_amount"  : "0MB"
+            "enabled"            : false,
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : [],
+            "default"            : "0MB",
+            "reserve_percent"    : "0",
+            "reserve_amount"     : "0MB"
         },
         "memory" : {
-            "enabled"         : true,
-            "exclude_hosts"   : [],
-            "exclude_vntypes" : [],
-            "soft_limit"      : false,
-            "default"         : "256MB",
-            "reserve_percent" : "0",
-            "reserve_amount"  : "1GB"
+            "enabled"            : true,
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : [],
+            "soft_limit"         : false,
+            "default"            : "256MB",
+            "reserve_percent"    : "0",
+            "reserve_amount"     : "64MB"
         },
         "memsw" : {
-            "enabled"         : true,
-            "exclude_hosts"   : [],
-            "exclude_vntypes" : [],
-            "default"         : "256MB",
-            "reserve_percent" : "0",
-            "reserve_amount"  : "1GB"
+            "enabled"            : true,
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : [],
+            "default"            : "256MB",
+            "reserve_percent"    : "0",
+            "reserve_amount"     : "64MB"
         }
     }
 }
