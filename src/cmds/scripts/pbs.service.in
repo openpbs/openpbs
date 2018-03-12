@@ -63,6 +63,7 @@ IgnoreSIGPIPE=no
 GuessMainPID=no
 ExecStart=@prefix@/libexec/pbs_init.d start
 ExecStop=@prefix@/libexec/pbs_init.d stop
+TasksMax=infinity
 
 [Install]
 WantedBy=multi-user.target
