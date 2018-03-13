@@ -689,6 +689,9 @@ class HookUtils(object):
                    caller_name())
         pbs.logmsg(pbs.EVENT_DEBUG4, "%s: Host assigned job resources: %s" %
                    (caller_name(), jobutil.assigned_resources))
+        # add jobid to cgroup_jobs file to tell periodic handler that this
+        # job is new and its cgroup should not be cleaned up
+        cgroup.add_jobid_to_cgroup_jobs(event.job.id)
         # Make sure the parent cgroup directories exist
         cgroup.create_paths()
         # Make sure the cgroup does not already exist
@@ -737,6 +740,9 @@ class HookUtils(object):
         Handler for execjob_epilogue events.
         """
         pbs.logmsg(pbs.EVENT_DEBUG4, "%s: Method called" % caller_name())
+        # delete this jobid from cgroup_jobs in case hook events before me
+        # failed to do that
+        cgroup.remove_jobid_from_cgroup_jobs(event.job.id)
         # The resources_used information has a base type of pbs_resource.
         # Update the usage data
         cgroup.update_job_usage(event.job.id, event.job.resources_used)
@@ -751,6 +757,9 @@ class HookUtils(object):
         Handler for execjob_end events.
         """
         pbs.logmsg(pbs.EVENT_DEBUG4, "%s: Method called" % caller_name())
+        # delete this jobid from cgroup_jobs in case hook events before me
+        # failed to do that
+        cgroup.remove_jobid_from_cgroup_jobs(event.job.id)
         # The cgroup is usually deleted in the execjob_epilogue event
         # There are certain corner cases where epilogue can fail or skip
         # Delete files again here to make sure we catch those
@@ -777,6 +786,9 @@ class HookUtils(object):
         Handler for execjob_launch events.
         """
         pbs.logmsg(pbs.EVENT_DEBUG4, "%s: Method called" % caller_name())
+        # delete this jobid from cgroup_jobs in case hook events before me
+        # failed to do that
+        cgroup.remove_jobid_from_cgroup_jobs(event.job.id)
         # Add the parent process id to the appropriate cgroups.
         cgroup.add_pids(os.getppid(), jobutil.job.id)
         # FUTURE: Add environment variable to the job environment
@@ -911,6 +923,9 @@ class HookUtils(object):
         Handler for execjob_attach events.
         """
         pbs.logmsg(pbs.EVENT_DEBUG4, "%s: Method called" % caller_name())
+        # delete this jobid from cgroup_jobs in case hook events before me
+        # failed to do that
+        cgroup.remove_jobid_from_cgroup_jobs(event.job.id)
         pbs.logjobmsg(jobutil.job.id, "%s: Attaching PID %s" %
                       (caller_name(), event.pid))
         # Add the job process id to the appropriate cgroups.
@@ -1730,6 +1745,11 @@ class CgroupUtils(object):
         self.host_job_env_dir = os.path.join(PBS_MOM_HOME, 'aux')
         self.host_job_env_filename = os.path.join(self.host_job_env_dir,
                                                   '%s.env')
+        # temporarily stores list of new jobs that came after job_list was
+        # written to mom hook input file (work around for periodic
+        # and begin race condition)
+        self.cgroup_jobs_file = os.path.join(PBS_MOM_HOME, 'mom_priv', 'hooks',
+                                             'hook_data', 'cgroup_jobs')
         # information for offlining nodes
         self.offline_file = os.path.join(PBS_MOM_HOME, 'mom_priv', 'hooks',
                                          ('%s.offline' %
@@ -3445,12 +3465,29 @@ class CgroupUtils(object):
         """
         pbs.logmsg(pbs.EVENT_DEBUG4, "%s: Method called" % caller_name())
         pbs.logmsg(pbs.EVENT_DEBUG4, "Local jobs: %s" % (local_jobs))
+        new_jobs = set()
+        mom_priv_jobs_dir = os.path.join(PBS_MOM_HOME, 'mom_priv', 'jobs')
+        # Make a list of jobs from jobids in cgroup_jobs file and .JB files.
+        # These jobs are new since local_jobs was written to mom hook input
+        # file. We should not mistake their cgroups as orphans
+        cgroup_jobs = self.read_cgroup_jobs()
+        pbs.logmsg(pbs.EVENT_DEBUG4,
+                   'cgroup_jobs file content: %s' % cgroup_jobs)
+        if cgroup_jobs:
+            for jobid in cgroup_jobs:
+                new_jobs.add(jobid)
+            self.empty_cgroup_jobs_file()
+        for p in glob.glob(os.path.join(mom_priv_jobs_dir, '*.JB')):
+            pbs.logmsg(pbs.EVENT_DEBUG4, 'Found file %s' % p)
+            jobid = os.path.splitext(os.path.basename(p))[0]
+            new_jobs.add(jobid)
+        pbs.logmsg(pbs.EVENT_DEBUG4, 'New jobs: %s' % str(new_jobs))
         remaining = 0
         for key in self.paths:
             path = os.path.dirname(self._cgroup_path(key))
             for subdir in glob.glob(os.path.join(path, '[0-9]*')):
                 jobid = os.path.basename(subdir)
-                if jobid not in local_jobs:
+                if jobid not in local_jobs and jobid not in new_jobs:
                     if not jobid.endswith('-orphan'):
                         try:
                             os.rename(subdir, subdir + '-orphan')
@@ -3734,6 +3771,68 @@ class CgroupUtils(object):
             except:
                 raise
         return self.assigned_resources is not None
+
+    def add_jobid_to_cgroup_jobs(self, jobid):
+        pbs.logmsg(pbs.EVENT_DEBUG4, 'Adding jobid %s to cgroup_jobs' % jobid)
+        try:
+            with open(self.cgroup_jobs_file, 'a') as f:
+                if f.tell() > 0:
+                    f.write(' ')
+                f.write(jobid)
+            return True
+        except IOError:
+            pbs.logmsg(pbs.EVENT_DEBUG, 'Failed to open cgroup_jobs file.')
+        except KeyboardInterrupt:
+            raise
+        return False
+
+    def remove_jobid_from_cgroup_jobs(self, jobid):
+        pbs.logmsg(pbs.EVENT_DEBUG4,
+                   'Removing jobid %s from cgroup_jobs' % jobid)
+        try:
+            with open(self.cgroup_jobs_file, 'r+') as f:
+                jobid_set = set(f.readline().split())
+                f.seek(0)
+                jobid_set.discard(jobid)
+                f.write(' '.join(jobid_set))
+                f.truncate()
+            return True
+        except IOError:
+            pbs.logmsg(pbs.EVENT_DEBUG, 'Failed to open cgroup_jobs file.')
+        except KeyboardInterrupt:
+            raise
+        return False
+
+    def read_cgroup_jobs(self):
+        jobids = []
+        try:
+            with open(self.cgroup_jobs_file, 'r') as f:
+                jobids = f.readline().split()
+        except IOError:
+            pbs.logmsg(pbs.EVENT_DEBUG, 'Failed to open cgroup_jobs file.')
+        except KeyboardInterrupt:
+            raise
+        return jobids
+
+    def delete_cgroup_jobs_file(self, jobid):
+        pbs.logmsg(pbs.EVENT_DEBUG4,
+                   'Deleting file: %s' % self.cgroup_jobs_file)
+        if os.path.isfile(self.cgroup_jobs_file):
+            os.remove(self.cgroup_jobs_file)
+        return True
+
+    def empty_cgroup_jobs_file(self):
+        pbs.logmsg(pbs.EVENT_DEBUG4,
+                   'Emptying file: %s' % self.cgroup_jobs_file)
+        try:
+            with open(self.cgroup_jobs_file, 'w') as f:
+                f.truncate()
+            return True
+        except IOError:
+            pbs.logmsg(pbs.EVENT_DEBUG, 'Failed to open cgroup_jobs file.')
+        except KeyboardInterrupt:
+            raise
+        return False
 
 
 def set_global_vars():
