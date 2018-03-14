@@ -341,6 +341,9 @@ e.accept()
         the job's soft_walltime is not extended past its hard walltime.
         It should first extend once and then extend to its hard walltime
         """
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'job_history_enable': 'True'})
+
         J = Job(TEST_USER,
                 attrs={'Resource_List.ncpus': 1, 'Resource_List.walltime': 16})
         jid = self.server.submit(J)
@@ -358,7 +361,8 @@ e.accept()
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
 
         self.server.expect(JOB, {'estimated.soft_walltime':
-                                 (MATCH_RE, '00:00:16|16')}, offset=4, id=jid)
+                                 (MATCH_RE, '00:00:16|16')}, offset=4,
+                           extend='x', id=jid)
 
         self.server.expect(JOB, 'queue', op=UNSET, id=jid)
 
