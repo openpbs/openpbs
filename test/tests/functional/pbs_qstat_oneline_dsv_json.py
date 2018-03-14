@@ -63,8 +63,7 @@ class TestQstat_oneline_json_dsv(TestFunctional):
         run_script = "sh " + qstat_dsv_script
         dsv_ret = self.du.run_cmd(
             self.server.hostname,
-            cmd=run_script,
-            sudo=True)
+            cmd=run_script)
         f = open(qstat_dsv_out, 'r')
         dsv_out = f.read()
         f.close()
@@ -74,7 +73,7 @@ class TestQstat_oneline_json_dsv(TestFunctional):
         f.close()
         run_script = 'sh ' + qstat_oneline_script
         oneline_ret = self.du.run_cmd(
-            self.server.hostname, cmd=run_script, sudo=True)
+            self.server.hostname, cmd=run_script)
         oneline_attr_count = sum(1 for line in open(
             qstat_oneline_out) if not line.isspace())
         map(os.remove, [qstat_dsv_script, qstat_dsv_out,
@@ -99,7 +98,7 @@ class TestQstat_oneline_json_dsv(TestFunctional):
         os.chmod(qstat_json_script, 0o755)
         run_script = 'sh ' + qstat_json_script
         json_ret = self.du.run_cmd(
-            self.server.hostname, cmd=run_script, sudo=True)
+            self.server.hostname, cmd=run_script)
         data = open(qstat_json_out, 'r').read()
         map(os.remove, [qstat_json_script, qstat_json_out])
         try:
