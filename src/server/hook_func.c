@@ -2050,6 +2050,9 @@ mgr_hook_set(struct batch_request *preq)
 				add_pending_mom_hook_action(NULL,
 					phook->hook_name,
 					MOM_HOOK_ACTION_SEND_SCRIPT);
+				add_pending_mom_hook_action(NULL,
+					phook->hook_name,
+					MOM_HOOK_ACTION_SEND_CONFIG);
 			}
 		} else {
 			if (prev_phook_event & MOM_EVENTS) {
@@ -4608,10 +4611,20 @@ add_mom_hook_action(mom_hook_action_t ***hookact_array,
 						"add_mom_hook_action", log_buffer);
 					return (-1);
 				}
-				if (set_action)
+				if (set_action) {
 					pact->action = action;
-				else
+				} else {
+					if (action & MOM_HOOK_ACTION_DELETE) {
+						if (pact->action & MOM_HOOK_SEND_ACTIONS) {
+							/* there's a current send action, so delete action should not execute first */
+							pact->do_delete_action_first = 0;
+						} else {
+							/* there's no current send action, so delete action should execute first */
+							pact->do_delete_action_first = 1;
+						}
+					}
 					pact->action |= action;
+				}
 				pact->tid = input_tid;
 				do_sync_mom_hookfiles = 1;
 				return i;
@@ -4653,6 +4666,7 @@ add_mom_hook_action(mom_hook_action_t ***hookact_array,
 		(void)strncpy(pact->hookname, hookname, MAXPATHLEN);
 		pact->hookname[MAXPATHLEN] = '\0';
 		pact->action = action;
+		pact->do_delete_action_first = 0;
 		pact->tid = input_tid;
 		do_sync_mom_hookfiles = 1;
 		(*hookact_array)[empty] = pact;
@@ -4966,26 +4980,23 @@ sync_mom_hookfiles_count(void *minfo)
 				(pact->action == MOM_HOOK_ACTION_NONE))
 				continue;
 
-			if (pact->action & MOM_HOOK_ACTION_DELETE) {
+			if (pact->action & MOM_HOOK_ACTION_DELETE)
 				action_expected++;
-			} else {
-				if (pact->action & MOM_HOOK_ACTION_SEND_ATTRS) {
-					action_expected++;
-				}
-				if (pact->action & MOM_HOOK_ACTION_SEND_SCRIPT) {
-					action_expected++;
-				}
-				if (pact->action & MOM_HOOK_ACTION_SEND_CONFIG) {
-					action_expected++;
-				}
-			}
+
+			if (pact->action & MOM_HOOK_ACTION_SEND_ATTRS)
+				action_expected++;
+
+			if (pact->action & MOM_HOOK_ACTION_SEND_SCRIPT)
+				action_expected++;
+
+			if (pact->action & MOM_HOOK_ACTION_SEND_CONFIG)
+				action_expected++;
 
 			if (pact->action & MOM_HOOK_ACTION_DELETE_RESCDEF) {
 				action_expected++;
 			} else if (pact->action & MOM_HOOK_ACTION_SEND_RESCDEF) {
 				action_expected++;
 			}
-
 		}
 	}
 
@@ -5103,31 +5114,26 @@ sync_mom_hookfiles(void *minfo)
 
 		pbs_errno=0;
 		for (j=0; j < minfo_array[i]->mi_num_action; j++) {
+			hook *phook;
 			pact = minfo_array[i]->mi_action[j];
-
 			if ((pact == NULL) ||
 				(pact->action == MOM_HOOK_ACTION_NONE))
 				continue;
-
-			if (pact->action & MOM_HOOK_ACTION_DELETE) {
+			phook = find_hook(pact->hookname);
+			if (phook == NULL)
+				continue;
+			if (pact->action & MOM_HOOK_ACTION_DELETE)
 				action_expected++;
-			} else {
-				if (pact->action & MOM_HOOK_ACTION_SEND_ATTRS) {
-					action_expected++;
-				}
-				if (pact->action & MOM_HOOK_ACTION_SEND_SCRIPT) {
-					action_expected++;
-				}
-				if (pact->action & MOM_HOOK_ACTION_SEND_CONFIG) {
-					action_expected++;
-				}
-			}
-
-			if (pact->action & MOM_HOOK_ACTION_DELETE_RESCDEF) {
+			if (pact->action & MOM_HOOK_ACTION_SEND_ATTRS)
 				action_expected++;
-			} else if (pact->action & MOM_HOOK_ACTION_SEND_RESCDEF) {
+			if (pact->action & MOM_HOOK_ACTION_SEND_SCRIPT)
 				action_expected++;
-			}
+			if (pact->action & MOM_HOOK_ACTION_SEND_CONFIG)
+				action_expected++;
+			if (pact->action & MOM_HOOK_ACTION_DELETE_RESCDEF)
+				action_expected++;
+			else if (pact->action & MOM_HOOK_ACTION_SEND_RESCDEF)
+				action_expected++;
 
 			if (action_expected == 0)
 				continue;
@@ -5197,7 +5203,7 @@ sync_mom_hookfiles(void *minfo)
 						pbs_errno, hookfile, minfo_array[i]->mi_host);
 					log_event(PBSEVENT_DEBUG3,
 						PBS_EVENTCLASS_REQUEST, LOG_WARNING,
-						"", log_buffer);
+						msg_daemonname, log_buffer);
 				} else {
 
 					snprintf(log_buffer, sizeof(log_buffer),
@@ -5206,7 +5212,7 @@ sync_mom_hookfiles(void *minfo)
 						minfo_array[i]->mi_port);
 					log_event(PBSEVENT_DEBUG,
 						PBS_EVENTCLASS_REQUEST, LOG_INFO,
-						"", log_buffer);
+						msg_daemonname, log_buffer);
 					/* Delete all SEND_RESCDEF action */
 					/* so it doesn't get retried for this */
 					/* "deleted" resourcdef. */
@@ -5229,7 +5235,7 @@ sync_mom_hookfiles(void *minfo)
 						minfo_array[i]->mi_port);
 					log_event(PBSEVENT_DEBUG3,
 						PBS_EVENTCLASS_REQUEST, LOG_WARNING,
-						"", log_buffer);
+						msg_daemonname, log_buffer);
 				} else {
 					if (pbs_errno != PBSE_MOM_REJECT_ROOT_SCRIPTS) {
 						snprintf(log_buffer, sizeof(log_buffer),
@@ -5238,7 +5244,7 @@ sync_mom_hookfiles(void *minfo)
 							minfo_array[i]->mi_port);
 						log_event(PBSEVENT_DEBUG,
 							PBS_EVENTCLASS_REQUEST, LOG_INFO,
-							"", log_buffer);
+							msg_daemonname, log_buffer);
 					} else {
 						snprintf(log_buffer, sizeof(log_buffer),
 							"warning: sending resourcedef to %s:%d got rejected (mom's reject_root_scripts=1)",
@@ -5246,7 +5252,7 @@ sync_mom_hookfiles(void *minfo)
 							minfo_array[i]->mi_port);
 						log_event(PBSEVENT_DEBUG3,
 							PBS_EVENTCLASS_REQUEST, LOG_INFO,
-							"", log_buffer);
+							msg_daemonname, log_buffer);
 					}
 					pact->action &= ~(MOM_HOOK_ACTION_SEND_RESCDEF);
 					hook_track_save((mominfo_t *)minfo_array[i], j);
@@ -5254,8 +5260,8 @@ sync_mom_hookfiles(void *minfo)
 				}
 			} /* resourcedef else */
 
-			if (pact->action & MOM_HOOK_ACTION_DELETE) {
-
+			/* execute delete action before the send actions */
+			if (pact->do_delete_action_first && (pact->action & MOM_HOOK_ACTION_DELETE)) {
 				/* delete a hook - overrides other hook actions */
 				snprintf(hookfile, MAXPATHLEN, "%s%s",
 					pact->hookname, HOOK_FILE_SUFFIX);
@@ -5266,7 +5272,7 @@ sync_mom_hookfiles(void *minfo)
 						pbs_errno, hookfile, minfo_array[i]->mi_host);
 					log_event(PBSEVENT_DEBUG3,
 						PBS_EVENTCLASS_REQUEST, LOG_WARNING,
-						"", log_buffer);
+						msg_daemonname, log_buffer);
 				} else {
 
 					snprintf(log_buffer, sizeof(log_buffer),
@@ -5275,146 +5281,178 @@ sync_mom_hookfiles(void *minfo)
 						minfo_array[i]->mi_port);
 					log_event(PBSEVENT_DEBUG,
 						PBS_EVENTCLASS_REQUEST, LOG_INFO,
-						"", log_buffer);
+						msg_daemonname, log_buffer);
 
 					/* Delete also any other hook-related actions */
 					/* so they don't get erroneously retried */
-					pact->action &= ~(MOM_HOOK_ACTION_DELETE|MOM_HOOK_ACTION_SEND_ATTRS|MOM_HOOK_ACTION_SEND_SCRIPT|MOM_HOOK_ACTION_SEND_CONFIG);
+					pact->action &= ~MOM_HOOK_ACTION_DELETE;
 					hook_track_save((mominfo_t *)minfo_array[i], j);
 					action_done++;
 				}
+			}
 
-			} else { /* non-delete action */
+			/* send with suffix if a regular hook file
+			 * NOTE: There could be a hook named <resourcedef>
+			 * and it's not the special <resourcedef> file
+			 * that gets the special *RESCDEF aflags. In this
+			 * case, the <resourcedef>.{HK,PY} would be sent
+			 * instead send hook control file
+			 */
+			if (pact->action & MOM_HOOK_ACTION_SEND_ATTRS) {
 
-				/* send with suffix if a regular hook file */
-				/* NOTE: There could be a hook named <resourcedef> */
-				/* and it's not the special <resourcedef> file */
-				/* that gets the special *RESCDEF aflags. In this */
-				/* case, the <resourcedef>.{HK,PY} would be sent */
-				/* instead */
-				/* send hook control file */
-				if (pact->action & MOM_HOOK_ACTION_SEND_ATTRS) {
-
-					snprintf(hookfile, MAXPATHLEN, "%s%s%s",
-						path_hooks, pact->hookname, HOOK_FILE_SUFFIX);
-
-					if ((PBSD_copyhookfile(conn, hookfile, 0, NULL) != 0) &&
-						(pbs_errno != PBSE_MOM_REJECT_ROOT_SCRIPTS)) {
+				snprintf(hookfile, MAXPATHLEN, "%s%s%s",
+					path_hooks, pact->hookname, HOOK_FILE_SUFFIX);
+				if ((phook->event & MOM_EVENTS) == 0) {
+					pact->action &= ~MOM_HOOK_ACTION_SEND_ATTRS;
+				} else if ((PBSD_copyhookfile(conn, hookfile, 0, NULL) != 0) &&
+					(pbs_errno != PBSE_MOM_REJECT_ROOT_SCRIPTS)) {
+					snprintf(log_buffer, sizeof(log_buffer),
+						"errno %d: failed to copy hook file %s to %s:%d",
+						pbs_errno, hookfile,
+						minfo_array[i]->mi_host,
+						minfo_array[i]->mi_port);
+					log_event(PBSEVENT_DEBUG3,
+						PBS_EVENTCLASS_REQUEST, LOG_WARNING,
+						msg_daemonname, log_buffer);
+				} else {
+					if (pbs_errno != PBSE_MOM_REJECT_ROOT_SCRIPTS) {
 						snprintf(log_buffer, sizeof(log_buffer),
-							"errno %d: failed to copy hook file %s to %s:%d",
-							pbs_errno, hookfile,
-							minfo_array[i]->mi_host,
+							"successfully sent hook file %s to %s:%d",
+							hookfile, minfo_array[i]->mi_host,
+							minfo_array[i]->mi_port);
+						log_event(PBSEVENT_DEBUG,
+							PBS_EVENTCLASS_REQUEST, LOG_INFO,
+							msg_daemonname, log_buffer);
+					} else {
+						snprintf(log_buffer, sizeof(log_buffer),
+							"warning: sending hook file %s to %s:%d got rejected (mom's reject_root_scripts=1)",
+							hookfile, minfo_array[i]->mi_host,
 							minfo_array[i]->mi_port);
 						log_event(PBSEVENT_DEBUG3,
-							PBS_EVENTCLASS_REQUEST, LOG_WARNING,
-							"", log_buffer);
-					} else {
-						if (pbs_errno != PBSE_MOM_REJECT_ROOT_SCRIPTS) {
-							snprintf(log_buffer, sizeof(log_buffer),
-								"successfully sent hook file %s to %s:%d",
-								hookfile, minfo_array[i]->mi_host,
-								minfo_array[i]->mi_port);
-							log_event(PBSEVENT_DEBUG,
-								PBS_EVENTCLASS_REQUEST, LOG_INFO,
-								"", log_buffer);
-						} else {
-							snprintf(log_buffer, sizeof(log_buffer),
-								"warning: sending hook file %s to %s:%d got rejected (mom's reject_root_scripts=1)",
-								hookfile, minfo_array[i]->mi_host,
-								minfo_array[i]->mi_port);
-							log_event(PBSEVENT_DEBUG3,
-								PBS_EVENTCLASS_REQUEST, LOG_INFO,
-								"", log_buffer);
-						}
-						pact->action &= ~(MOM_HOOK_ACTION_SEND_ATTRS);
-						hook_track_save((mominfo_t *)minfo_array[i],
-							j);
-						action_done++;
+							PBS_EVENTCLASS_REQUEST, LOG_INFO,
+							msg_daemonname, log_buffer);
 					}
-				} /* send_attrs */
+					pact->action &= ~(MOM_HOOK_ACTION_SEND_ATTRS);
+					hook_track_save((mominfo_t *)minfo_array[i], j);
+					action_done++;
+				}
+			} /* send_attrs */
 
-				/* send hook config */
-				if (pact->action & MOM_HOOK_ACTION_SEND_CONFIG) {
+			/* send hook config */
+			if (pact->action & MOM_HOOK_ACTION_SEND_CONFIG) {
 
-					snprintf(hookfile, MAXPATHLEN, "%s%s%s",
-						path_hooks, pact->hookname,
-						HOOK_CONFIG_SUFFIX);
+				snprintf(hookfile, MAXPATHLEN, "%s%s%s",
+					path_hooks, pact->hookname,
+					HOOK_CONFIG_SUFFIX);
 
-					if ((PBSD_copyhookfile(conn, hookfile, 0, NULL) != 0) &&
-						(pbs_errno != PBSE_MOM_REJECT_ROOT_SCRIPTS)) {
+				if ((phook->event & MOM_EVENTS) == 0) {
+					pact->action &= ~MOM_HOOK_ACTION_SEND_CONFIG;
+				} else if ((PBSD_copyhookfile(conn, hookfile, 0, NULL) != 0) &&
+					(pbs_errno != PBSE_MOM_REJECT_ROOT_SCRIPTS)) {
+					snprintf(log_buffer, sizeof(log_buffer),
+						"errno %d: failed to copy hook file %s to %s:%d",
+						pbs_errno, hookfile, minfo_array[i]->mi_host,
+						minfo_array[i]->mi_port);
+					log_event(PBSEVENT_DEBUG3,
+						PBS_EVENTCLASS_REQUEST, LOG_WARNING,
+						msg_daemonname, log_buffer);
+				} else {
+					if (pbs_errno != PBSE_MOM_REJECT_ROOT_SCRIPTS) {
 						snprintf(log_buffer, sizeof(log_buffer),
-							"errno %d: failed to copy hook file %s to %s:%d",
-							pbs_errno, hookfile, minfo_array[i]->mi_host,
+							"successfully sent hook file %s to %s:%d",
+							hookfile, minfo_array[i]->mi_host,
+							minfo_array[i]->mi_port);
+						log_event(PBSEVENT_DEBUG,
+							PBS_EVENTCLASS_REQUEST, LOG_INFO,
+							msg_daemonname, log_buffer);
+					} else {
+						snprintf(log_buffer, sizeof(log_buffer),
+							"warning: sending hook file %s to %s:%d got rejected (mom's reject_root_scripts=1)",
+							hookfile, minfo_array[i]->mi_host,
 							minfo_array[i]->mi_port);
 						log_event(PBSEVENT_DEBUG3,
-							PBS_EVENTCLASS_REQUEST, LOG_WARNING,
-							"", log_buffer);
-					} else {
-						if (pbs_errno != PBSE_MOM_REJECT_ROOT_SCRIPTS) {
-							snprintf(log_buffer, sizeof(log_buffer),
-								"successfully sent hook file %s to %s:%d",
-								hookfile, minfo_array[i]->mi_host,
-								minfo_array[i]->mi_port);
-							log_event(PBSEVENT_DEBUG,
-								PBS_EVENTCLASS_REQUEST, LOG_INFO,
-								"", log_buffer);
-						} else {
-							snprintf(log_buffer, sizeof(log_buffer),
-								"warning: sending hook file %s to %s:%d got rejected (mom's reject_root_scripts=1)",
-								hookfile, minfo_array[i]->mi_host,
-								minfo_array[i]->mi_port);
-							log_event(PBSEVENT_DEBUG3,
-								PBS_EVENTCLASS_REQUEST, LOG_INFO,
-								"", log_buffer);
-						}
-						pact->action &= ~(MOM_HOOK_ACTION_SEND_CONFIG);
-						hook_track_save((mominfo_t *)minfo_array[i],
-							j);
-						action_done++;
+							PBS_EVENTCLASS_REQUEST, LOG_INFO,
+							msg_daemonname, log_buffer);
 					}
-				} /* send config */
+					pact->action &= ~(MOM_HOOK_ACTION_SEND_CONFIG);
+					hook_track_save((mominfo_t *)minfo_array[i],
+						j);
+					action_done++;
+				}
+			} /* send config */
 
-				/* send hook content */
-				if (pact->action & MOM_HOOK_ACTION_SEND_SCRIPT) {
+			/* send hook content */
+			if (pact->action & MOM_HOOK_ACTION_SEND_SCRIPT) {
 
-					snprintf(hookfile, MAXPATHLEN, "%s%s%s",
-						path_hooks, pact->hookname,
-						HOOK_SCRIPT_SUFFIX);
+				snprintf(hookfile, MAXPATHLEN, "%s%s%s",
+					path_hooks, pact->hookname,
+					HOOK_SCRIPT_SUFFIX);
 
-					if ((PBSD_copyhookfile(conn, hookfile, 0, NULL) != 0) &&
-						(pbs_errno != PBSE_MOM_REJECT_ROOT_SCRIPTS)) {
+				if ((phook->event & MOM_EVENTS) == 0) {
+					pact->action &= ~MOM_HOOK_ACTION_SEND_SCRIPT;
+				} if ((PBSD_copyhookfile(conn, hookfile, 0, NULL) != 0) &&
+					(pbs_errno != PBSE_MOM_REJECT_ROOT_SCRIPTS)) {
+					snprintf(log_buffer, sizeof(log_buffer),
+						"errno %d: failed to copy hook file %s to %s:%d",
+						pbs_errno, hookfile, minfo_array[i]->mi_host,
+						minfo_array[i]->mi_port);
+					log_event(PBSEVENT_DEBUG3,
+						PBS_EVENTCLASS_REQUEST, LOG_WARNING,
+						msg_daemonname, log_buffer);
+				} else {
+					if (pbs_errno != PBSE_MOM_REJECT_ROOT_SCRIPTS) {
 						snprintf(log_buffer, sizeof(log_buffer),
-							"errno %d: failed to copy hook file %s to %s:%d",
-							pbs_errno, hookfile, minfo_array[i]->mi_host,
+							"successfully sent hook file %s to %s:%d",
+							hookfile, minfo_array[i]->mi_host,
+							minfo_array[i]->mi_port);
+						log_event(PBSEVENT_DEBUG,
+							PBS_EVENTCLASS_REQUEST, LOG_INFO,
+							msg_daemonname, log_buffer);
+					} else {
+						snprintf(log_buffer, sizeof(log_buffer),
+							"warning: sending hook file %s to %s:%d got rejected (mom's reject_root_scripts=1)",
+							hookfile, minfo_array[i]->mi_host,
 							minfo_array[i]->mi_port);
 						log_event(PBSEVENT_DEBUG3,
-							PBS_EVENTCLASS_REQUEST, LOG_WARNING,
-							"", log_buffer);
-					} else {
-						if (pbs_errno != PBSE_MOM_REJECT_ROOT_SCRIPTS) {
-							snprintf(log_buffer, sizeof(log_buffer),
-								"successfully sent hook file %s to %s:%d",
-								hookfile, minfo_array[i]->mi_host,
-								minfo_array[i]->mi_port);
-							log_event(PBSEVENT_DEBUG,
-								PBS_EVENTCLASS_REQUEST, LOG_INFO,
-								"", log_buffer);
-						} else {
-							snprintf(log_buffer, sizeof(log_buffer),
-								"warning: sending hook file %s to %s:%d got rejected (mom's reject_root_scripts=1)",
-								hookfile, minfo_array[i]->mi_host,
-								minfo_array[i]->mi_port);
-							log_event(PBSEVENT_DEBUG3,
-								PBS_EVENTCLASS_REQUEST, LOG_INFO,
-								"", log_buffer);
-						}
-						pact->action &= ~(MOM_HOOK_ACTION_SEND_SCRIPT);
-						hook_track_save((mominfo_t *)minfo_array[i],
-							j);
-						action_done++;
+							PBS_EVENTCLASS_REQUEST, LOG_INFO,
+							msg_daemonname, log_buffer);
 					}
-				} /* send script */
-			} /* non-delete else */
+					pact->action &= ~(MOM_HOOK_ACTION_SEND_SCRIPT);
+					hook_track_save((mominfo_t *)minfo_array[i], j);
+					action_done++;
+				}
+			} /* send script */
+
+			/* execute send actions above first, and then this delete action */
+			if (!pact->do_delete_action_first && (pact->action & MOM_HOOK_ACTION_DELETE)) {
+				/* delete a hook - overrides other hook actions */
+				snprintf(hookfile, MAXPATHLEN, "%s%s",
+					pact->hookname, HOOK_FILE_SUFFIX);
+
+				if (PBSD_delhookfile(conn, hookfile, 0, NULL) != 0) {
+					snprintf(log_buffer, sizeof(log_buffer),
+						"errno %d: failed to delete hook file %s from %s",
+						pbs_errno, hookfile, minfo_array[i]->mi_host);
+					log_event(PBSEVENT_DEBUG3,
+						PBS_EVENTCLASS_REQUEST, LOG_WARNING,
+						msg_daemonname, log_buffer);
+				} else {
+
+					snprintf(log_buffer, sizeof(log_buffer),
+						"successfully deleted hook file %s from %s:%d",
+						hookfile, minfo_array[i]->mi_host,
+						minfo_array[i]->mi_port);
+					log_event(PBSEVENT_DEBUG,
+						PBS_EVENTCLASS_REQUEST, LOG_INFO,
+						msg_daemonname, log_buffer);
+
+					/* Delete also any other hook-related actions */
+					/* so they don't get erroneously retried */
+					pact->action &= ~MOM_HOOK_ACTION_DELETE;
+					hook_track_save((mominfo_t *)minfo_array[i], j);
+					action_done++;
+				}
+			}
 
 		} /* j-loop */
 		if (conn >= 0) {
@@ -5522,8 +5560,8 @@ post_sendhookRPP(struct work_task *pwt)
 	if (tid != g_sync_hook_tid) {
 		snprintf(log_buffer, sizeof(log_buffer),
 			"sendhookRPP reply (tid=%lld) not from current "
-			"batch of hook updates (tid=%lld)",
-		       				tid, g_sync_hook_tid);
+			"batch of hook updates (tid=%lld) from mhost=%s",
+		       				tid, g_sync_hook_tid, minfo->mi_host ? minfo->mi_host : "");
 		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_INFO,
 			"post_sendhookRPP", log_buffer);
 		return;	/* return now as info->index no longer valid */
@@ -5537,13 +5575,13 @@ post_sendhookRPP(struct work_task *pwt)
 			snprintf(log_buffer, sizeof(log_buffer),
 				 "errno %d: failed to delete rescdef file %s from %s",
 				 pbs_errno, hookfile, minfo->mi_host);
-			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_REQUEST, LOG_WARNING, "", log_buffer);
+			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_REQUEST, LOG_WARNING, msg_daemonname, log_buffer);
 		} else {
 
 			snprintf(log_buffer, sizeof(log_buffer),
 				 "successfully deleted rescdef file %s from %s:%d", hookfile,
 				 minfo->mi_host, minfo->mi_port);
-			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_INFO, "", log_buffer);
+			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_INFO, msg_daemonname, log_buffer);
 			/* Delete all SEND_RESCDEF action */
 			/* so it doesn't get retried for this */
 			/* "deleted" resourcdef. */
@@ -5558,18 +5596,18 @@ post_sendhookRPP(struct work_task *pwt)
 			snprintf(log_buffer, sizeof(log_buffer),
 				 "errno %d: failed to copy rescdef file %s to %s:%d",
 				 pbs_errno, hookfile, minfo->mi_host, minfo->mi_port);
-			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_REQUEST, LOG_WARNING, "", log_buffer);
+			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_REQUEST, LOG_WARNING, msg_daemonname, log_buffer);
 		} else {
 			if (rc != PBSE_MOM_REJECT_ROOT_SCRIPTS) {
 				snprintf(log_buffer, sizeof(log_buffer),
 					 "successfully sent rescdef file %s to %s:%d", hookfile,
 					 minfo->mi_host, minfo->mi_port);
-				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_INFO, "", log_buffer);
+				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_INFO, msg_daemonname, log_buffer);
 			} else {
 				snprintf(log_buffer, sizeof(log_buffer),
 					 "warning: sending resourcedef to %s:%d got rejected (mom's reject_root_scripts=1)",
 					 minfo->mi_host, minfo->mi_port);
-				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_REQUEST, LOG_INFO, "", log_buffer);
+				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_REQUEST, LOG_INFO, msg_daemonname, log_buffer);
 			}
 			pact->action &= ~(MOM_HOOK_ACTION_SEND_RESCDEF);
 			hook_track_save((mominfo_t *) minfo, j);
@@ -5582,16 +5620,14 @@ post_sendhookRPP(struct work_task *pwt)
 			snprintf(log_buffer, sizeof(log_buffer),
 				 "errno %d: failed to delete hook file %s from %s",
 				 pbs_errno, hookfile, minfo->mi_host);
-			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_REQUEST, LOG_WARNING, "", log_buffer);
+			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_REQUEST, LOG_WARNING, msg_daemonname, log_buffer);
 		} else {
 			snprintf(log_buffer, sizeof(log_buffer),
 				 "successfully deleted hook file %s from %s:%d", hookfile,
 				 minfo->mi_host, minfo->mi_port);
-			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_INFO, "", log_buffer);
+			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_INFO, msg_daemonname, log_buffer);
 
-			/* Delete also any other hook-related actions */
-			/* so they don't get erroneously retried */
-			pact->action &= ~(MOM_HOOK_ACTION_DELETE | MOM_HOOK_ACTION_SEND_ATTRS | MOM_HOOK_ACTION_SEND_SCRIPT | MOM_HOOK_ACTION_SEND_CONFIG);
+			pact->action &= ~MOM_HOOK_ACTION_DELETE;
 			hook_track_save((mominfo_t *) minfo, j);
 		}
 	}
@@ -5602,18 +5638,18 @@ post_sendhookRPP(struct work_task *pwt)
 			snprintf(log_buffer, sizeof(log_buffer),
 				 "errno %d: failed to copy hook file %s to %s:%d",
 				 pbs_errno, hookfile, minfo->mi_host, minfo->mi_port);
-			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_REQUEST, LOG_WARNING, "", log_buffer);
+			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_REQUEST, LOG_WARNING, msg_daemonname, log_buffer);
 		} else {
 			if (pbs_errno != PBSE_MOM_REJECT_ROOT_SCRIPTS) {
 				snprintf(log_buffer, sizeof(log_buffer),
 					 "successfully sent hook file %s to %s:%d", hookfile,
 					 minfo->mi_host, minfo->mi_port);
-				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_INFO, "", log_buffer);
+				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_INFO, msg_daemonname, log_buffer);
 			} else {
 				snprintf(log_buffer, sizeof(log_buffer),
 					 "warning: sending hook file %s to %s:%d got rejected (mom's reject_root_scripts=1)",
 					 hookfile, minfo->mi_host, minfo->mi_port);
-				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_REQUEST, LOG_INFO, "", log_buffer);
+				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_REQUEST, LOG_INFO, msg_daemonname, log_buffer);
 			}
 			pact->action &= ~(MOM_HOOK_ACTION_SEND_ATTRS);
 			hook_track_save((mominfo_t *) minfo, j);
@@ -5626,18 +5662,18 @@ post_sendhookRPP(struct work_task *pwt)
 			snprintf(log_buffer, sizeof(log_buffer),
 				 "errno %d: failed to copy hook file %s to %s:%d",
 				 pbs_errno, hookfile, minfo->mi_host, minfo->mi_port);
-			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_REQUEST, LOG_WARNING, "", log_buffer);
+			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_REQUEST, LOG_WARNING, msg_daemonname, log_buffer);
 		} else {
 			if (pbs_errno != PBSE_MOM_REJECT_ROOT_SCRIPTS) {
 				snprintf(log_buffer, sizeof(log_buffer),
 					 "successfully sent hook file %s to %s:%d", hookfile,
 					 minfo->mi_host, minfo->mi_port);
-				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_INFO, "", log_buffer);
+				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_INFO, msg_daemonname, log_buffer);
 			} else {
 				snprintf(log_buffer, sizeof(log_buffer),
 					 "warning: sending hook file %s to %s:%d got rejected (mom's reject_root_scripts=1)",
 					 hookfile, minfo->mi_host, minfo->mi_port);
-				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_REQUEST, LOG_INFO, "", log_buffer);
+				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_REQUEST, LOG_INFO, msg_daemonname, log_buffer);
 			}
 			pact->action &= ~(MOM_HOOK_ACTION_SEND_CONFIG);
 			hook_track_save((mominfo_t *) minfo, j);
@@ -5650,18 +5686,18 @@ post_sendhookRPP(struct work_task *pwt)
 			snprintf(log_buffer, sizeof(log_buffer),
 				 "errno %d: failed to copy hook file %s to %s:%d",
 				 pbs_errno, hookfile, minfo->mi_host, minfo->mi_port);
-			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_REQUEST, LOG_WARNING, "", log_buffer);
+			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_REQUEST, LOG_WARNING, msg_daemonname, log_buffer);
 		} else {
 			if (pbs_errno != PBSE_MOM_REJECT_ROOT_SCRIPTS) {
 				snprintf(log_buffer, sizeof(log_buffer),
 					 "successfully sent hook file %s to %s:%d", hookfile,
 					 minfo->mi_host, minfo->mi_port);
-				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_INFO, "", log_buffer);
+				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_REQUEST, LOG_INFO, msg_daemonname, log_buffer);
 			} else {
 				snprintf(log_buffer, sizeof(log_buffer),
 					 "warning: sending hook file %s to %s:%d got rejected (mom's reject_root_scripts=1)",
 					 hookfile, minfo->mi_host, minfo->mi_port);
-				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_REQUEST, LOG_INFO, "", log_buffer);
+				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_REQUEST, LOG_INFO, msg_daemonname, log_buffer);
 			}
 			pact->action &= ~(MOM_HOOK_ACTION_SEND_SCRIPT);
 			hook_track_save((mominfo_t *) minfo, j);
@@ -5931,9 +5967,14 @@ sync_mom_hookfilesRPP(void *minfo)
 
 		pbs_errno = 0;
 		for (j = 0; j < minfo_array[i]->mi_num_action; j++) {
+			hook *phook;
 			pact = minfo_array[i]->mi_action[j];
 
 			if ((pact == NULL) || (pact->action == MOM_HOOK_ACTION_NONE))
+				continue;
+
+			phook = find_hook(pact->hookname);
+			if (phook == NULL)
 				continue;
 
 			if (pact->action & MOM_HOOK_ACTION_DELETE_RESCDEF) {
@@ -5946,28 +5987,41 @@ sync_mom_hookfilesRPP(void *minfo)
 					ret = SYNC_HOOKFILES_FAIL;
 			}
 
-			if (pact->action & MOM_HOOK_ACTION_DELETE) {
+			/* execute delete action before the send actions */
+			if (pact->do_delete_action_first && (pact->action & MOM_HOOK_ACTION_DELETE)) {
 				if (!check_add_hook_mcast_info(conn, minfo_array[i], pact->hookname,
 								MOM_HOOK_ACTION_DELETE, j))
 					ret = SYNC_HOOKFILES_FAIL;
-			} else { /* non delete action */
-				if (pact->action & MOM_HOOK_ACTION_SEND_ATTRS) {
-					if (!check_add_hook_mcast_info(conn, minfo_array[i], pact->hookname,
-								       MOM_HOOK_ACTION_SEND_ATTRS, j))
-						ret = SYNC_HOOKFILES_FAIL;
-				}
+			}
 
-				if (pact->action & MOM_HOOK_ACTION_SEND_CONFIG) {
-					if (!check_add_hook_mcast_info(conn, minfo_array[i], pact->hookname,
-								       MOM_HOOK_ACTION_SEND_CONFIG, j))
-						ret = SYNC_HOOKFILES_FAIL;
-				}
+			if (pact->action & MOM_HOOK_ACTION_SEND_ATTRS) {
+				if ((phook->event & MOM_EVENTS) == 0)
+					pact->action &= ~MOM_HOOK_ACTION_SEND_ATTRS;
+				else if (!check_add_hook_mcast_info(conn, minfo_array[i], pact->hookname, MOM_HOOK_ACTION_SEND_ATTRS, j))
+					ret = SYNC_HOOKFILES_FAIL;
+			}
 
-				if (pact->action & MOM_HOOK_ACTION_SEND_SCRIPT) {
-					if (!check_add_hook_mcast_info(conn, minfo_array[i], pact->hookname,
+			if (pact->action & MOM_HOOK_ACTION_SEND_CONFIG) {
+				if ((phook->event & MOM_EVENTS) == 0)
+					pact->action &= ~MOM_HOOK_ACTION_SEND_CONFIG;
+				else if (!check_add_hook_mcast_info(conn, minfo_array[i], pact->hookname, MOM_HOOK_ACTION_SEND_CONFIG, j))
+					ret = SYNC_HOOKFILES_FAIL;
+			}
+
+			if (pact->action & MOM_HOOK_ACTION_SEND_SCRIPT) {
+				if ((phook->event & MOM_EVENTS) == 0)
+					pact->action &= ~MOM_HOOK_ACTION_SEND_SCRIPT;
+				else if (!check_add_hook_mcast_info(conn, minfo_array[i], pact->hookname,
 								       MOM_HOOK_ACTION_SEND_SCRIPT, j))
-						ret = SYNC_HOOKFILES_FAIL;
-				}
+					ret = SYNC_HOOKFILES_FAIL;
+			}
+
+			/* execute send actions above first, and then this delete action */
+
+			if ((!pact->do_delete_action_first) && (pact->action & MOM_HOOK_ACTION_DELETE)) {
+				if (!check_add_hook_mcast_info(conn, minfo_array[i], pact->hookname,
+								MOM_HOOK_ACTION_DELETE, j))
+					ret = SYNC_HOOKFILES_FAIL;
 			}
 		} /* j-loop */
 	} /* i-loop */
@@ -6028,12 +6082,20 @@ sync_mom_hookfilesRPP(void *minfo)
 				snprintf(log_buffer, sizeof(log_buffer),
 					 "errno %d: failed to multicast deletion of %s file %s",
 					 pbs_errno, ((filetype == 1) ? "rscdef":"hook"), hookfile);
+				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER,
+				LOG_INFO, __func__, log_buffer);
 				rc = -1;
+			} else {
+				snprintf(log_buffer, sizeof(log_buffer), "PBSD_delhookfile(hookfile=%s)", hookfile);
+				log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__, log_buffer);
 			}
 		} else if (cmd == 2) {
 
 			rc = PBSD_copyhookfile(mconn, hookfile, 1, &msgid);
 			if (rc == -2) {
+				snprintf(log_buffer, sizeof(log_buffer), "PBSD_copyhookfile(mconn=%d, hookfile=%s): no hook file to copy (rc == -2)", mconn, hookfile);
+				log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER,
+				LOG_INFO, __func__, log_buffer);
 				/* no hookfile to copy */
 				del_deferred_hook_cmds(i);
 				rc = 0;
@@ -6041,12 +6103,16 @@ sync_mom_hookfilesRPP(void *minfo)
 				snprintf(log_buffer, sizeof(log_buffer),
 					 "errno %d: failed to multicast copy %s file %s",
 					 pbs_errno, ((filetype == 1) ? "rscdef":"hook"), hookfile);
+				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__, log_buffer);
 				rc = -1;
+			} else {
+				snprintf(log_buffer, sizeof(log_buffer), "PBSD_copyhookfile(hookfile=%s)", hookfile);
+				log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__, log_buffer);
 			}
 		}
 
 		if (rc == -1) {
-			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_REQUEST, LOG_WARNING, "", log_buffer);
+			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_REQUEST, LOG_WARNING, msg_daemonname, log_buffer);
 			del_deferred_hook_cmds(i);
 			ret = SYNC_HOOKFILES_FAIL;
 		}
