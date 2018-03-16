@@ -45,8 +45,11 @@ class Test_RootOwnedScript(TestFunctional):
     """
 
     def setUp(self):
-        """Set up the parameters required for Test_RootOwnedScript
         """
+        Set up the parameters required for Test_RootOwnedScript
+        """
+        if os.getuid() != 0:
+            self.skipTest("Test need to run as root")
         TestFunctional.setUp(self)
         mom_conf_attr = {'$reject_root_scripts': 'true'}
         qmgr_attr = {'acl_roots': ROOT_USER}
