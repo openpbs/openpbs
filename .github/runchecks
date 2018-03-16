@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (C) 1994-2017 Altair Engineering, Inc.
+# Copyright (C) 1994-2018 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
 # This file is part of the PBS Professional ("PBS Pro") software.
@@ -36,8 +36,7 @@
 
 
 declare -a listofchecks
-listofchecks[0]="checksign"
-listofchecks[1]="checkpep8"
+listofchecks[0]="checkpep8"
 
 checkdir=$(readlink -f $(dirname $0))
 errors_fails=0
