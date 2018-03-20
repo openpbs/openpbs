@@ -525,6 +525,8 @@ req_runjob(struct batch_request *preq)
 		}
 		if (call_to_process_hooks(preq, hook_msg, sizeof(hook_msg),
 				pbs_python_set_interrupt) == 0) {
+			/* subjob reject from hook*/
+			job_purge(pjobsub);
 			reply_text(preq, PBSE_HOOKERROR, hook_msg);
 			return;
 		}
@@ -577,6 +579,8 @@ req_runjob(struct batch_request *preq)
 					}
 					if (call_to_process_hooks(preq, hook_msg, sizeof(hook_msg),
 							pbs_python_set_interrupt) == 0) {
+						/* subjob reject from hook*/
+						job_purge(pjobsub);
 						reply_text(preq, PBSE_HOOKERROR, hook_msg);
 						return;
 					}

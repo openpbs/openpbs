@@ -38,12 +38,11 @@
 from tests.functional import *
 
 
-class TestArraySubJobIndexInRunjobHook(TestFunctional):
+class TestRunJobHook(TestFunctional):
     """
-    This test suite tests the index value in runjob event hook
-    for array and normal job
+    This test suite tests the runjob hook
     """
-    hook_script = """
+    index_hook_script = """
 import pbs
 e = pbs.event()
 j = e.job
@@ -53,6 +52,11 @@ pbs.logmsg(pbs.LOG_DEBUG, "sub_job_array_index=%s"
 e.accept()
 """
 
+    reject_hook_script = """
+import pbs
+pbs.event().reject("runjob hook rejected the job")
+"""
+
     def test_array_sub_job_index(self):
         """
         Submit a job array. Check the array sub-job index value
@@ -60,7 +64,8 @@ e.accept()
         hook_name = "runjob_hook"
         attrs = {'event': "runjob"}
         rv = self.server.create_import_hook(hook_name, attrs,
-                                            self.hook_script, overwrite=True)
+                                            self.index_hook_script,
+                                            overwrite=True)
         self.assertTrue(rv)
         j1 = Job(TEST_USER)
         lower = 1
@@ -78,9 +83,33 @@ e.accept()
         hook_name = "runjob_hook"
         attrs = {'event': "runjob"}
         rv = self.server.create_import_hook(hook_name, attrs,
-                                            self.hook_script, overwrite=True)
+                                            self.index_hook_script,
+                                            overwrite=True)
         self.assertTrue(rv)
         j1 = Job(TEST_USER)
         self.server.submit(j1)
         self.server.log_match("sub_job_array_index=None",
                               max_attempts=10, interval=1)
+
+    def test_reject_array_sub_job(self):
+        """
+        Test to check array subjobs,
+        jobs should run after runjob hook enabled set to false.
+        """
+        hook_name = "runjob_hook"
+        attrs = {'event': "runjob"}
+        rv = self.server.create_import_hook(hook_name, attrs,
+                                            self.reject_hook_script,
+                                            overwrite=True)
+        self.assertTrue(rv)
+        j1 = Job(TEST_USER)
+        j1.set_attributes({ATTR_J: '1-3'})
+        jid = self.server.submit(j1)
+        msg = "Not Running: PBS Error: runjob hook rejected the job"
+        self.server.expect(JOB, {'job_state': 'Q', 'comment': msg}, id=jid)
+        a = {'enabled': 'false'}
+        self.server.manager(MGR_CMD_SET, HOOK, a, id=hook_name,
+                            expect=True, sudo=True)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'},
+                            expect=True)
+        self.server.expect(JOB, {'job_state': 'B'}, id=jid)

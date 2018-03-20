@@ -775,7 +775,7 @@ job_purge(job *pjob)
 		(pjob->ji_qs.ji_substate != JOB_SUBSTATE_TRANSICM)) {
 		if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
 			svr_dequejob(pjob);
-			if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_RERUN3)
+			if ((pjob->ji_qs.ji_substate == JOB_SUBSTATE_RERUN3) || (pjob->ji_qs.ji_substate == JOB_SUBSTATE_QUEUED))
 				update_subjob_state(pjob, JOB_STATE_QUEUED);
 			else
 				update_subjob_state(pjob, JOB_STATE_EXPIRED);
