@@ -661,6 +661,10 @@ create_home() {
 			cp -p ${pbslibdir}/python/altair/pbs_hooks/* \
 					${PBS_HOME}/server_priv/hooks
 		fi
+		# special for Cray
+		if is_cray_xt; then
+			sed --in-place "s/enabled=false/enabled=true/" $PBS_HOME/server_priv/hooks/PBS_alps_inventory_check.HK
+		fi
 		# create the database user file if it does not exist
 		dbuser_fl="${PBS_HOME}/server_priv/db_user"
 		if [ ! -f "${dbuser_fl}" ]; then
