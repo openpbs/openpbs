@@ -48,14 +48,17 @@ class TestServerDynRes(TestFunctional):
         self.server.manager(MGR_CMD_SET, NODE, a,
                             id=self.mom.shortname, expect=True)
 
-    def setup_dyn_res(self, resname, restype, resval):
+    def setup_dyn_res(self, resname, restype, resval, resflag=None):
         """
         Helper function to setup server dynamic resources
         """
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
 
         for i in resname:
-            attr = {"type": restype[0]}
+            if resflag:
+                attr = {"type": restype[0], "flag": resflag[0]}
+            else:
+                attr = {"type": restype[0]}
             self.server.manager(MGR_CMD_CREATE, RSC, attr, id=i, expect=True)
             # Add resource to sched_config's 'resources' line
             self.scheduler.add_resource(i)
@@ -287,3 +290,197 @@ class TestServerDynRes(TestFunctional):
         # Job must run successfully
         a = {'job_state': 'R', 'Resource_List.foobar_large': 18}
         self.server.expect(JOB, a, id=jid)
+
+    def test_res_string(self):
+        """
+        Test that server_dyn_res accepts a string value returned
+        by a script
+        """
+        # Create a resource of type string
+        resname = ["foobar"]
+        restype = ["string"]
+
+        # Prep for server_dyn_resource script
+        script_body = "echo abc"
+
+        (fd, fn) = self.du.mkstemp(prefix="PtlPbs_check", suffix=".scr",
+                                   body=script_body)
+        self.du.chmod(path=fn, mode=0755, sudo=True)
+        os.close(fd)
+
+        resval = ['"' + resname[0] + ' ' + '!' + fn + '"']
+
+        self.setup_dyn_res(resname, restype, resval)
+
+        # Submit job
+        a = {'Resource_List.foobar': 'abc'}
+        j = Job(TEST_USER, attrs=a)
+        jid = self.server.submit(j)
+
+        # Job must run successfully
+        a = {'job_state': 'R', 'Resource_List.foobar': 'abc'}
+        self.server.expect(JOB, a, id=jid)
+
+        # Submit job
+        a = {'Resource_List.foobar': 'xyz'}
+        j = Job(TEST_USER, attrs=a)
+        jid = self.server.submit(j)
+
+        # Check for the expected log message for insufficient resources
+        job_comment = "Can Never Run: Insufficient amount of server resource:"
+        job_comment += " foobar (xyz != abc)"
+
+        # The job shouldn't run
+        a = {'job_state': 'Q', 'comment': job_comment}
+        self.server.expect(JOB, a, id=jid, attrop=PTL_AND)
+
+    def test_res_string_array(self):
+        """
+        Test that server_dyn_res accepts string array returned
+        by a script
+        """
+        # Create a resource of type string_array
+        resname = ["foobar"]
+        restype = ["string_array"]
+
+        # Prep for server_dyn_resource script
+        script_body = "echo white, red, blue"
+
+        (fd, fn) = self.du.mkstemp(prefix="PtlPbs_color", suffix=".scr",
+                                   body=script_body)
+        self.du.chmod(path=fn, mode=0755, sudo=True)
+        os.close(fd)
+
+        resval = ['"' + resname[0] + ' ' + '!' + fn + '"']
+
+        self.setup_dyn_res(resname, restype, resval)
+
+        # Submit job
+        a = {'Resource_List.foobar': 'red'}
+        j = Job(TEST_USER, attrs=a)
+        jid = self.server.submit(j)
+
+        # Job must run successfully
+        a = {'job_state': 'R', 'Resource_List.foobar': 'red'}
+        self.server.expect(JOB, a, id=jid)
+
+        # Submit job
+        a = {'Resource_List.foobar': 'green'}
+        j = Job(TEST_USER, attrs=a)
+        jid = self.server.submit(j)
+
+        # Check for the expected log message for insufficient resources
+        job_comment = "Can Never Run: Insufficient amount of server resource:"
+        job_comment += " foobar (green != white,red,blue)"
+
+        # The job shouldn't run
+        a = {'job_state': 'Q', 'comment': job_comment}
+        self.server.expect(JOB, a, id=jid, attrop=PTL_AND)
+
+    def test_res_size(self):
+        """
+        Test that server_dyn_res accepts type "size" and a "value"
+        returned by a script
+        """
+        # Create a resource of type size
+        resname = ["foobar"]
+        restype = ["size"]
+        resflag = ["q"]
+
+        # Prep for server_dyn_resource script
+        script_body = "echo 100gb"
+
+        (fd, fn) = self.du.mkstemp(prefix="PtlPbs_size", suffix=".scr",
+                                   body=script_body)
+        self.du.chmod(path=fn, mode=0755, sudo=True)
+        os.close(fd)
+
+        resval = ['"' + resname[0] + ' ' + '!' + fn + '"']
+
+        self.setup_dyn_res(resname, restype, resval, resflag)
+
+        # Submit job
+        a = {'Resource_List.foobar': '95gb'}
+        j1 = Job(TEST_USER, attrs=a)
+        jid1 = self.server.submit(j1)
+
+        # Job must run successfully
+        a = {'job_state': 'R', 'Resource_List.foobar': '95gb'}
+        self.server.expect(JOB, a, id=jid1)
+
+        # Submit job
+        a = {'Resource_List.foobar': '101gb'}
+        j2 = Job(TEST_USER, attrs=a)
+        jid2 = self.server.submit(j2)
+
+        # Check for the expected log message for insufficient resources
+        job_comment = "Can Never Run: Insufficient amount of server resource:"
+        job_comment += " foobar (R: 101gb A: 100gb T: 100gb)"
+
+        # The job shouldn't run
+        a = {'job_state': 'Q', 'comment': job_comment}
+        self.server.expect(JOB, a, id=jid2, attrop=PTL_AND)
+
+        # Delete jobs
+        self.server.deljob(jid1, wait=True, runas=TEST_USER)
+        self.server.deljob(jid2, wait=True, runas=TEST_USER)
+
+        # Submit jobs again
+        a = {'Resource_List.foobar': '50gb'}
+        j1 = Job(TEST_USER, attrs=a)
+        jid1 = self.server.submit(j1)
+
+        a = {'Resource_List.foobar': '50gb'}
+        j2 = Job(TEST_USER, attrs=a)
+        jid2 = self.server.submit(j2)
+
+        # Both jobs must run successfully
+        a = {'job_state': 'R', 'Resource_List.foobar': '50gb'}
+        self.server.expect(JOB, a, id=jid1)
+        self.server.expect(JOB, a, id=jid2)
+
+    def test_res_size_runtime(self):
+        """
+        Test that server_dyn_res accepts type "size" and a "value"
+        returned by a script. Check if the script change during
+        job run is correctly considered
+        """
+        # Create a resource of type size
+        resname = ["foobar"]
+        restype = ["size"]
+        resflag = ["q"]
+
+        # Prep for server_dyn_resource script
+        script_body = "echo 100gb"
+
+        (fd, fn) = self.du.mkstemp(prefix="PtlPbs_size", suffix=".scr",
+                                   body=script_body)
+        self.du.chmod(path=fn, mode=0755, sudo=True)
+        os.close(fd)
+
+        resval = ['"' + resname[0] + ' ' + '!' + fn + '"']
+
+        self.setup_dyn_res(resname, restype, resval, resflag)
+
+        # Submit job
+        a = {'Resource_List.foobar': '95gb'}
+        j = Job(TEST_USER, attrs=a)
+        jid = self.server.submit(j)
+
+        # Job must run successfully
+        a = {'job_state': 'R', 'Resource_List.foobar': '95gb'}
+        self.server.expect(JOB, a, id=jid)
+
+        # Change script during job run
+        with open(fn, "rw+") as fd:
+            fd.truncate()
+            fd.write("echo 50gb")
+
+        # Rerun job
+        self.server.rerunjob(jid)
+
+        # The job shouldn't run
+        job_comment = "Can Never Run: Insufficient amount of server resource:"
+        job_comment += " foobar (R: 95gb A: 50gb T: 50gb)"
+        a = {'job_state': 'Q', 'comment': job_comment}
+        self.server.expect(JOB, a, id=jid, attrop=PTL_AND)
