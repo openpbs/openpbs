@@ -48,6 +48,9 @@
 cscope.files
 cscope.out
 
+# ctags file
+tags
+
 #Visual Studio files
 *.user
 *.ncb
