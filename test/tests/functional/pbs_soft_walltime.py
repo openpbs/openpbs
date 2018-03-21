@@ -889,8 +889,8 @@ e.accept()
             " since the walltime was reset to 0")
         time.sleep(17)
         self.server.expect(JOB, {'estimated.soft_walltime':
-                                 (MATCH_RE, '00:00:21|21')}, id=jid,
-                           max_attempts=5)
+                                 (MATCH_RE, '00:00:21|21|00:00:28|28')},
+                           id=jid)
 
     def test_soft_less_cput(self):
         """

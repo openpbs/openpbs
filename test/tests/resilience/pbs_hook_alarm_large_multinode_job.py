@@ -35,32 +35,37 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 
-from tests.functional import *
+from tests.resilience import *
 from time import sleep
 
 
-class TestPbsHookAlarmLargeMultinodeJob(TestFunctional):
+class TestPbsHookAlarmLargeMultinodeJob(TestResilience):
 
     """
     This test suite contains hooks test to verify that a large
     multi-node job does not slow down hook execution and cause an alarm.
     """
 
-    @timeout(400)
     def setUp(self):
 
-        TestFunctional.setUp(self)
+        TestResilience.setUp(self)
+        # Increasing the daemon log for debugging
+        self.server.manager(MGR_CMD_SET, SERVER, {"log_events": '2047'})
+        self.mom.add_config({"$logevent": "0xfffffff"})
 
         a = {'resources_available.mem': '1gb',
              'resources_available.ncpus': '1'}
         self.server.create_vnodes(self.mom.shortname, a, 5000, self.mom)
+        # Restart mom explicitly due to PP-993
+        self.mom.restart()
 
+    @timeout(400)
     def test_begin_hook(self):
         """
         Create an execjob_begin hook, import a hook content with a small
         alarm value, and test it against a large multi-node job.
         """
-        hook_name = "testhook"
+        hook_name = "beginhook"
         hook_event = "execjob_begin"
         hook_body = """
 import pbs
@@ -92,12 +97,13 @@ pbs.logmsg(pbs.LOG_DEBUG, "executing begin hook %s" % (e.hook_name,))
         self.mom.log_match("Job;%s;Started, pid" % (jid,), n=100,
                            max_attempts=5, interval=5, regexp=True)
 
+    @timeout(400)
     def test_prolo_hook(self):
         """
         Create an execjob_prologue hook, import a hook content with a
         small alarm value, and test it against a large multi-node job.
         """
-        hook_name = "testhook"
+        hook_name = "prolohook"
         hook_event = "execjob_prologue"
         hook_body = """
 import pbs
@@ -127,12 +133,13 @@ pbs.logmsg(pbs.LOG_DEBUG, "executing prologue hook %s" % (e.hook_name,))
             "Job;%s;alarm call while running %s hook" % (jid, hook_event),
             n=100, max_attempts=5, interval=5, regexp=True, existence=False)
 
+    @timeout(400)
     def test_epi_hook(self):
         """
         Create an execjob_epilogue hook, import a hook content with a small
         alarm value, and test it against a large multi-node job.
         """
-        hook_name = "testhook"
+        hook_name = "epihook"
         hook_event = "execjob_epilogue"
         hook_body = """
 import pbs
@@ -170,12 +177,13 @@ pbs.logmsg(pbs.LOG_DEBUG, "executing epilogue hook %s" % (e.hook_name,))
         self.mom.log_match("Job;%s;Obit sent" % (jid,), n=100,
                            max_attempts=5, interval=5, regexp=True)
 
+    @timeout(400)
     def test_end_hook(self):
         """
         Create an execjob_end hook, import a hook content with a small
         alarm value, and test it against a large multi-node job.
         """
-        hook_name = "testhook"
+        hook_name = "endhook"
         hook_event = "execjob_end"
         hook_body = """
 import pbs
