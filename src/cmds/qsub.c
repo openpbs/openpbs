@@ -161,7 +161,8 @@
 
 
 #define MAX_QSUB_PREFIX_LEN 32
-#define QSUB_DMN_TIMEOUT 60  /* timeout for qsub background process */
+#define QSUB_DMN_TIMEOUT_LONG 60  /* timeout for qsub background process */
+#define QSUB_DMN_TIMEOUT_SHORT 5  
 
 static char PBS_DPREFIX_DEFAULT[] = "#PBS";
 
@@ -5279,6 +5280,7 @@ do_daemon_stuff(char *file, char *handle, char *server)
 	int svr_sock = -1;
 	HANDLE handles[2];
 	time_t connect_time = 0;
+	time_t cred_connect_time = time(0); /* Record current time to compare against the credential timeout value of 30 mins */
 
 	sd_svr = -1; /* not connected */
 	hEventParent = atoi(handle);
@@ -5321,7 +5323,7 @@ do_daemon_stuff(char *file, char *handle, char *server)
 						goto error;
 					/* do wait for single object */
 					rc = WaitForSingleObject(hEvent,
-						QSUB_DMN_TIMEOUT * 1000);
+						QSUB_DMN_TIMEOUT_LONG * 1000);
 					if (rc != WAIT_OBJECT_0)
 						goto out; /* timeout */
 				} else {
@@ -5338,10 +5340,19 @@ do_daemon_stuff(char *file, char *handle, char *server)
 						FD_CLOSE | FD_READ) != 0)
 						goto error;
 
+				       /*
+			 		* check if we are past the credential timeout
+			 		* Error out even if it is close to CREDENTIAL_LIFETIME, as
+			 		* request could take a while to reach server and get processed
+			 		* Qsub then does a regular submit (new connection)
+			 		*/
+					if ((time(0) - cred_connect_time) > (CREDENTIAL_LIFETIME - QSUB_DMN_TIMEOUT_LONG))
+                                		goto error;
+
 					handles[0] = hEvent;
 					handles[1] = hSockEvent;
 					rc = WaitForMultipleObjects(2, handles,
-						FALSE, QSUB_DMN_TIMEOUT * 1000);
+						FALSE, QSUB_DMN_TIMEOUT_LONG * 1000);
 					if (rc == WAIT_FAILED)
 						goto error;
 					if (rc == WAIT_TIMEOUT)
@@ -5389,15 +5400,6 @@ do_daemon_stuff(char *file, char *handle, char *server)
 		}
 
 		if (sd_svr != -1) {
-			/*
-			 * check if we are past the credential timeout
-			 * Error out even if it is close to CREDENTIAL_LIFETIME, as
-			 * request could take a while to reach server and get processed
-			 * Qsub then does a regular submit (new connection)
-			 */
-			if ((time(0) - connect_time) > (CREDENTIAL_LIFETIME - QSUB_DMN_TIMEOUT))
-				goto error;
-
 			svr_sock = pbs_connection_getsocket(sd_svr);
 			rc = do_submit2(retmsg);
 		}
@@ -5609,6 +5611,7 @@ do_daemon_stuff(void)
 	sigset_t newsigmask, oldsigmask;
 	char *err_op = "";
 	char log_buf[LOG_BUF_SIZE];
+	int cred_timeout = 0;
 
 	/* set umask so socket file created is only accessible by same user */
 	umask(cmask);
@@ -5642,8 +5645,13 @@ do_daemon_stuff(void)
 		err_op = "";
 
 		memcpy(&workset, &readset, sizeof(readset));
+
 		timeout.tv_usec = 0;
-		timeout.tv_sec = QSUB_DMN_TIMEOUT; /* since timeout gets reset on Linux */
+		/* since timeout gets reset on Linux */
+		if (cred_timeout == 1)
+			timeout.tv_sec = QSUB_DMN_TIMEOUT_SHORT; /* Short timeout to allow any foreground process to finsih before exiting */
+		else
+			timeout.tv_sec = QSUB_DMN_TIMEOUT_LONG;
 		n = select(maxfd + 1, &workset, NULL, NULL, &timeout);
 		if (n == 0)
 			goto out; /* daemon timed out waiting for connect from foreground */
@@ -5658,8 +5666,10 @@ do_daemon_stuff(void)
 		 * request could take a while to reach server and get processed
 		 * Qsub then does a regular submit (new connection)
 		 */
-		if ((time(0) - connect_time) > (CREDENTIAL_LIFETIME - QSUB_DMN_TIMEOUT))
-			goto out; /* connect credential likely timed out */
+		if (cred_timeout == 0 && ((time(0) - connect_time) > (CREDENTIAL_LIFETIME - QSUB_DMN_TIMEOUT_LONG))) {
+	                unlink(fl);
+			cred_timeout = 1;
+		}
 
 		if (FD_ISSET(svr_sock, &workset)) {
 			if (recv(svr_sock, &rc, 1, MSG_OOB) < 1)
@@ -5780,8 +5790,8 @@ out:
 error:
 	sprintf(log_buf, "Background qsub: Failed at %s, errno=%d", err_op, errno);
 	log_syslog(log_buf);
-	close(bindfd);
 	unlink(fl);
+	close(bindfd);
 	exit(1);
 }
 #endif
