@@ -5154,9 +5154,6 @@ class Server(PBSService):
                     self.du.run_copy(self.hostname, self.dflt_mpp_hook,
                                      self.mpp_hook, mode=0644, sudo=True)
                     self.signal('-HUP')
-                a = {'enabled': 'true'}
-                self.manager(MGR_CMD_SET, MGR_OBJ_PBS_HOOK, a,
-                             'PBS_translate_mpp')
             hooks = self.status(HOOK, level=logging.DEBUG)
             hooks = [h['id'] for h in hooks]
             a = {ATTR_enable: 'false'}
