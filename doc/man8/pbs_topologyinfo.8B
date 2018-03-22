@@ -41,10 +41,13 @@
 
 .SH SYNOPSIS
 .B pbs_topologyinfo 
-[ -a ][ -s ] 
+[ -a ][ -s ] [ -l ]
 .br
 .B pbs_topologyinfo 
 [ -s <vnode name> [<vnode name> ...]] 
+.br
+.B pbs_topologyinfo 
+[ -l <vnode name> [<vnode name> ...]] 
 .br
 .B pbs_topologyinfo 
 [ -h ]
@@ -60,8 +63,14 @@ you want.  The command reports only the requested information.
 .B pbs_topologyinfo -a -s 
 reports socket counts for all vnodes that have reported sockets.
 
+.B pbs_topologyinfo -a -l
+reports node license counts for all vnodes.
+
 .B pbs_topologyinfo -s <vnode name>
 reports socket count for vnode <vnode name>.
+
+.B pbs_topologyinfo -l <vnode name>
+reports node license count for vnode <vnode name>
 
 This command is not supported on Windows.
 
@@ -80,6 +89,10 @@ option is used alone, the command does not report any information.
 .IP "-s, --sockets " 15
 This option specifies socket count information.  The command reports
 derived socket counts.
+
+.IP "-l, --license " 15
+This option specifies node license count information.  The command reports
+derived node counts.
 
 .IP "-h, --help " 15
 Prints usage and exits.

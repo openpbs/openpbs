@@ -889,7 +889,7 @@ print_license_ct(enum licensing_backend lb, char *buf)
 {
 	switch(lb) {
 		case LIC_SERVER:
-			sprintf(buf, "Avail_Global:%d Avail_Local:%d Used:%d High_Use:%d ",
+			sprintf(buf, "Avail_Global:%d Avail_Local:%d Used:%d High_Use:%d",
 				licenses.lb_glob_floating, licenses.lb_aval_floating,
 				licenses.lb_used_floating, licenses.lb_high_used_floating);
 			break;
@@ -901,8 +901,13 @@ print_license_ct(enum licensing_backend lb, char *buf)
 			sprintf(buf, "Avail_Sockets:%d Unused_Sockets:%d",
 				sockets_total(), sockets_available());
 			break;
+		case LIC_TRIAL:
+			sprintf(buf, "Avail_Local:%d Used:%d High_Use:%d",
+				licenses.lb_aval_floating, licenses.lb_used_floating,
+				licenses.lb_high_used_floating);
+			break;
 		default:
-			sprintf(buf, "NA");
+			sprintf(buf, "Avail_Nodes:%d Unused_Nodes:%d", 0, 0);
 	}
 }
 
@@ -925,6 +930,8 @@ update_license_ct(attribute *pattr, char *buf)
 		print_license_ct(LIC_NODES, buf);
 	else if (licstate_is_up(LIC_SOCKETS))
 		print_license_ct(LIC_SOCKETS, buf);
+	else if (licenses.lb_trial == 1)
+		print_license_ct(LIC_TRIAL, buf);
 	else
 		print_license_ct(last_valid_attempt, buf);
 

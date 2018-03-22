@@ -925,15 +925,17 @@ is_ok_to_run(status *policy, int pbs_sd, server_info *sinfo,
 		set_schd_error_codes(err, NOT_RUN, ERR_SPECIAL);
 		if (resresv->is_job && resresv->job !=NULL) {
 			snprintf(errbuf, sizeof(errbuf),
-				"Could not %s job - unable to obtain %d cpu licenses. avail_licenses=%d",
+				"Could not %s job - nodes are not licensed or unable to obtain"
+				" %d cpu licenses. avail_licenses=%d",
 				(resresv->job->is_suspended?"resume":"run"),
 				resresv->select->total_cpus, sinfo->flt_lic);
 			set_schd_error_arg(err, SPECMSG, errbuf);
 		}
 		else if (resresv->is_resv && resresv->resv !=NULL) {
 			sprintf(errbuf,
-				"Could not confirm reservation - unable to obtain %d cpu licenses at requested time. avail_licenses=%d",
-				resresv->select->total_cpus, sinfo->flt_lic);
+				"Could not confirm reservation - nodes are not licensed or"
+				" unable to obtain %d cpu licenses at requested time." 
+				" avail_licenses=%d", resresv->select->total_cpus, sinfo->flt_lic);
 			set_schd_error_arg(err, SPECMSG, errbuf);
 
 		}

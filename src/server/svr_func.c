@@ -1173,6 +1173,7 @@ unset_license_location(void)
 
 			close_licensing();
 			sockets_reset();
+			unlicense_socket_licensed_nodes();
 
 		} else { /* from no license server */
 			init_fl_license_attrs(&licenses);

@@ -1,5 +1,4 @@
 # coding: utf-8
-#
 
 # Copyright (C) 1994-2018 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
@@ -41,13 +40,28 @@ from optparse import OptionParser
 import os
 import re
 import sys
+import math
 import platform
 
 
 def reportsockets_win(f):
-    temp = f.read().split(',')[0]
-    if temp.find('sockets:') != -1:
-        return int(temp.replace('sockets:', ''))
+    temp = f.read().split(',')
+    for item in temp:
+        if item.find('sockets:') != -1:
+            sockets = int(item[8:])  # len('sockets:') = 8
+        if item.find('gpus:') != -1:
+            gpus = int(item[5:])  # len('gpus:') = 5
+        if item.find('mics:') != -1:
+            coproc = int(item[5:])  # len('mics:') = 5
+    return (sockets, gpus, coproc)
+
+
+def latest_hwloc(hwlocVersion):
+    hwlocVersion = hwlocVersion.split('.')
+    major = int(hwlocVersion[0])
+    minor = int(hwlocVersion[1]) if len(hwlocVersion) > 1 else 0
+    if ((major == 1) and (minor >= 11)) or (major > 1):
+        return 1
     return 0
 
 
@@ -55,39 +69,52 @@ try:
     import xml.parsers.expat
     from xml.parsers.expat import ExpatError
 
-    def reportsockets(dir, files):
+    def reportsockets(dirs, files, options):
         """
-        Look for and report the number of "Socket" elements in a string
-        produced by hwloc_topology_export_xmlbuffer().
+        Look for and report the number of "Package" elements which stands
+        for Sockets in a string produced by hwloc_topology_export_xmlbuffer().
 
         This version of reportsockets uses expat to parse the XML.
         If the PBS version of Python does not allow import of expat,
         we go on to try a simpler approach (below).
         """
+
         def socketXMLstart(name, attrs):
             if name == "BasilResponse":
-                socketXMLstart.isCray = True
+                socketXMLstart.CrayVersion = attrs.get("protocol")
                 return
-            if (name == "info" and attrs.get("name") == "hwlocVersion" and
-                    re.search(r'1.11.*', attrs.get("value"))):
-                socketXMLstart.hwloclatest = 1
+            if (name == "info" and attrs.get("name") == "hwlocVersion"):
+                socketXMLstart.hwloclatest = latest_hwloc(attrs.get("value"))
                 return
-            if socketXMLstart.isCray:
-                if name == "Node":
+            if socketXMLstart.CrayVersion != "0.0":
+                if float(socketXMLstart.CrayVersion) <= 1.2 and name == "Node":
                     socketXMLstart.nsockets += 2
-            else:
-                if (name == "object" and (
-                    (socketXMLstart.hwloclatest == 1 and attrs.get("type") ==
-                        "Package") or (socketXMLstart.hwloclatest == 0 and
-                                       attrs.get("type") == "Socket"))):
+                elif name == "Socket":
                     socketXMLstart.nsockets += 1
+                if name == "Accelerator" and attrs.get("type") == "GPU":
+                    socketXMLstart.ngpus += 1
+            else:
+                if (name == "object" and ((socketXMLstart.hwloclatest == 1 and
+                    attrs.get("type") == "Package") or
+                    (socketXMLstart.hwloclatest == 0 and attrs.get("type") ==
+                        "Socket"))):
+                    socketXMLstart.nsockets += 1
+                if (name == "object" and attrs.get("type") == "OSDev" and
+                    attrs.get("osdev_type") == "1" and
+                        attrs.get("name").startswith("card")):
+                    socketXMLstart.ngpus += 1
+                if (name == "object" and attrs.get("type") == "OSDev" and
+                    attrs.get("osdev_type") == "5" and
+                        attrs.get("name").startswith("mic")):
+                    socketXMLstart.ncoproc += 1
 
         if files is None:
             compute_socket_nodelist = True
             try:
-                files = os.listdir(dir)
-            except (IOError, OSError), (e, strerror):
-                print "%s:  %s (%s)" % (dir, strerror, e)
+                files = os.listdir(dirs)
+            except (IOError, OSError) as err:
+                (e, strerror) = err.args
+                print "%s:  %s (%s)" % (dirs, strerror, e)
                 return
         else:
             compute_socket_nodelist = False
@@ -97,27 +124,39 @@ try:
             print 'max/map failed: %s' % e
             return
         for name in files:
-            pathname = os.sep.join((dir, name))
+            pathname = os.sep.join((dirs, name))
+            socketXMLstart.nsockets = 0
+            socketXMLstart.ngpus = 0
+            socketXMLstart.ncoproc = 0
+            socketXMLstart.hwloclatest = 0
+            socketXMLstart.CrayVersion = "0.0"
             try:
-                socketXMLstart.nsockets = 0
-                socketXMLstart.hwloclatest = 0
                 with open(pathname, "r") as f:
                     if platform.system() == "Windows":
-                        socketXMLstart.nsockets = reportsockets_win(f)
+                        (socketXMLstart.nsockets, socketXMLstart.ngpus,
+                            socketXMLstart.ncoproc) = reportsockets_win(f)
                     else:
                         try:
                             socketXMLstart.isCray = False
                             p = xml.parsers.expat.ParserCreate()
                             p.StartElementHandler = socketXMLstart
                             p.ParseFile(f)
-                        except ExpatError, e:
+                        except ExpatError as e:
                             print "%s:  parsing error at line %d, column %d" \
                                 % (name, e.lineno, e.offset)
-                    print "%-*s%d" % (maxwidth + 1, name,
-                                      socketXMLstart.nsockets)
-            except IOError, (e, strerror):
+
+                    if options.sockets:
+                        print "%-*s%d" % (maxwidth + 1, name,
+                                          socketXMLstart.nsockets)
+                    else:
+                        total = socketXMLstart.nsockets + \
+                            socketXMLstart.ngpus + socketXMLstart.ncoproc
+                        print "%-*s%d" % (maxwidth + 1, name,
+                                          int(math.ceil(total / 4.0)))
+            except IOError as err:
+                (e, strerror) = err.args
                 if e == errno.ENOENT:
-                    if compute_socket_nodelist is False:
+                    if not compute_socket_nodelist:
                         print "no socket information available for node %s" \
                             % name
                     continue
@@ -126,24 +165,33 @@ try:
                     raise
 
 except ImportError:
-    def reportsockets(dir, files):
+    def reportsockets(dirs, files, options):
         """
-        Look for and report the number of "Socket" elements in a string
+        Look for and report the number of "Package" elements in a string
         produced by hwloc_topology_export_xmlbuffer().
 
         This is a backup version of reportsockets which we use when an
         import of the xml.parsers.expat module fails.  In this version,
-        we simply count occurrences of "Socket" objects.
+        we simply count occurrences of "Package" objects.
         """
         socketpattern = r'<\s*object\s+type="Socket"'
         packagepattern = r'<\s*object\s+type="Package"'
-        hwloclatestpattern = r'<\s*info\s+name="hwlocVersion"\s+value="1.11.*'
+        gpupattern = r'<\s*object\s+type="OSDev"\s+name="card\d+"\s+' \
+            'osdev_type="1"'
+        micpattern = r'<\s*object\s+type="OSDev"\s+name="mic\d+"\s+' \
+            'osdev_type="5"'
+        craypattern = r'<\s*BasilResponse\s+'
+        craynodepattern = r'<\s*Node\s+node_id='
+        craysocketpattern = r'<\s*Socket\s+ordinal='
+        craygpupattern = r'<\s*Accelerator\s+.*type="GPU"'
+        hwloclatestpattern = r'<\s*info\s+name="hwlocVersion"\s+'
         if files is None:
             compute_socket_nodelist = True
             try:
-                files = os.listdir(dir)
-            except (IOError, OSError), (e, strerror):
-                print "%s:  %s (%s)" % (dir, strerror, e)
+                files = os.listdir(dirs)
+            except (IOError, OSError) as err:
+                (e, strerror) = err.args
+                print "%s:  %s (%s)" % (dirs, strerror, e)
                 return
         else:
             compute_socket_nodelist = False
@@ -153,23 +201,52 @@ except ImportError:
             print 'max/map failed: %s' % e
             return
         for name in files:
-            pathname = os.sep.join((dir, name))
+            pathname = os.sep.join((dirs, name))
             try:
                 with open(pathname, "r") as f:
+                    (nsockets, ngpus, ncoproc, CrayVersion, hwloclatest) = \
+                        (0, 0, 0, "0.0", 0)
                     if platform.system() == "Windows":
-                        nsockets = reportsockets_win(f)
+                        (nsockets, ngpus, ncoproc) = reportsockets_win(f)
                     else:
-                        data = f.read()
-                        if re.search(hwloclatestpattern, data):
-                            hwloclatest = 1
-                        if hwloclatest == 1:
-                            nsockets = len(re.findall(packagepattern, data))
-                        else:
-                            nsockets = len(re.findall(socketpattern, data))
-                    print "%-*s%d" % (maxwidth + 1, name, nsockets)
-            except IOError, (e, strerror):
+                        for line in f:
+                            if hwloclatest == 1:
+                                nsockets += 1 if re.search(packagepattern,
+                                                           line) else 0
+                            else:
+                                nsockets += 1 if re.search(socketpattern,
+                                                           line) else 0
+                            ngpus += 1 if re.search(gpupattern, line) else 0
+                            ncoproc += 1 if re.search(micpattern, line) else 0
+                            if re.search(craypattern, line):
+                                start_index = line.find('protocol="') + \
+                                    len('protocol="')
+                                CrayVersion = line[start_index:
+                                                   line.find('"', start_index)]
+                                continue
+                            if re.search(hwloclatestpattern, line):
+                                hwlocVer = line[line.find('value="') +
+                                                len('value="'):
+                                                line.rfind('"/>')]
+                                hwloclatest = latest_hwloc(hwlocVer)
+                            if CrayVersion != "0.0":
+                                if float(CrayVersion) <= 1.2 and re.search(
+                                        craynodepattern, line):
+                                    nsockets += 2
+                                elif re.search(craysocketpattern, line):
+                                    nsockets += 1
+                                if re.search(craygpupattern, line):
+                                    ngpus += 1
+                    if options.sockets:
+                        print "%-*s%d" % (maxwidth + 1, name, nsockets)
+                    else:
+                        total = nsockets + ngpus + ncoproc
+                        print "%-*s%d" % (maxwidth + 1, name,
+                                          int(math.ceil(total / 4.0)))
+            except IOError as err:
+                (e, strerror) = err.args
                 if e == errno.ENOENT:
-                    if compute_socket_nodelist is False:
+                    if not compute_socket_nodelist:
                         print "no socket information available for node %s" \
                             % name
                     continue
@@ -184,6 +261,8 @@ if __name__ == "__main__":
                       help="report on all nodes")
     parser.add_option("-s", "--sockets", action="store_true", dest="sockets",
                       help="report node socket count")
+    parser.add_option("-l", "--license", action="store_true", dest="license",
+                      help="report license count")
     (options, progargs) = parser.parse_args()
 
     try:
@@ -192,9 +271,9 @@ if __name__ == "__main__":
     except KeyError:
         print "PBS_HOME must be present in the caller's environment"
         sys.exit(1)
+    if not (options.sockets or options.license):
+        sys.exit(1)
     if options.allnodes:
-        if options.sockets:
-            reportsockets(topology_dir, None)
+        reportsockets(topology_dir, None, options)
     else:
-        if options.sockets:
-            reportsockets(topology_dir, progargs)
+        reportsockets(topology_dir, progargs, options)

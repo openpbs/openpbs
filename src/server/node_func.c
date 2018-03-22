@@ -2634,12 +2634,11 @@ set_node_topology(attribute *new, void *pobj, int op)
 					clear_attr(ppnl, pnadl);
 					pnode->nd_modified |= NODE_UPDATE_OTHERS;
 					sockets_release(ppnli->at_val.at_long);
-					if (sockets_consume(node_nsockets) == 0) 
+					if (sockets_consume(node_nsockets) == 0) {
 						ppnl->at_val.at_char = ND_LIC_TYPE_locked;
-					else 
-						ppnl->at_val.at_char = ND_LIC_TYPE_unlic;
-					ppnl->at_flags  |= ATR_VFLAG_SET |
-						ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+						ppnl->at_flags  |= ATR_VFLAG_SET |
+							ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+					}
 					sprintf(log_buffer, msg_sockets_mismatch,
 						pnode->nd_name, node_nsockets, license_type,
 						ppnli->at_val.at_long);
@@ -2706,9 +2705,6 @@ set_node_topology(attribute *new, void *pobj, int op)
 				 * is updated using qmgr
 				 */
 				clear_attr(ppnl, pnadl);
-				ppnl->at_val.at_char = ND_LIC_TYPE_unlic;
-				ppnl->at_flags  |= ATR_VFLAG_SET |
-					ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 				clear_attr(ppnli, pnadli);
 				ppnli->at_val.at_long = node_nsockets;
 				ppnli->at_flags  |= ATR_VFLAG_SET |

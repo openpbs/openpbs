@@ -79,6 +79,7 @@ enum licensing_backend {
 	LIC_SERVER,	/* reachable license server (to license CPUs) */
 	LIC_SOCKETS,	/* nonzero number of sockets (to license nodes) */
 	LIC_NODES,	/* nonzero number of nodes (to license nodes) */
+	LIC_TRIAL,	/* nonzero number of trial license (to license CPUs) */
 	LIC_UNKNOWN  /* used to hold the value of previous lb */
 };
 

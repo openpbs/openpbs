@@ -195,3 +195,9 @@ nsockets_from_topology(char *topology_str, ntt_t type)
 {
 	return 0;
 }
+
+void
+unlicense_socket_licensed_nodes(void)
+{
+	return;
+}

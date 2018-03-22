@@ -137,9 +137,9 @@ for %%a in (
 )
 
 echo Copying necessory files for PBS_EXEC\lib
-1>nul xcopy /Y /V /J "%PBS_SRCDIR%\src\cmds\scripts\pbs_topologyinfo.py" "%PBS_SRCDIR%\lib\python\"
+1>nul xcopy /Y /V /J "%PBS_SRCDIR%\src\cmds\scripts\pbs_topologyinfo.py" "%PBS_EXECDIR%\lib\python\"
 if not %ERRORLEVEL% == 0 (
-    echo Failed to copy files from "%PBS_SRCDIR%\src\cmds\scripts\pbs_topologyinfo.py" to "%PBS_SRCDIR%\lib\python\"
+    echo Failed to copy files from "%PBS_SRCDIR%\src\cmds\scripts\pbs_topologyinfo.py" to "%PBS_EXECDIR%\lib\python\"
     exit /b 1
 )
 1>nul xcopy /Y /V /J /S "%PBS_SRCDIR%\src\modules\python\pbs" "%PBS_EXECDIR%\lib\python\altair\pbs\"

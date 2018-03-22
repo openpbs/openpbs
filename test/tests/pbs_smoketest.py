@@ -1505,3 +1505,32 @@ class SmokeTest(PBSTestSuite):
             msg = "Successfully retrieved man page for"
             msg += " %s command" % pbs_cmd
             self.logger.info(msg)
+
+    def test_validate_pbsnodes_attrs(self):
+        """
+        Test if the pbsnodes outputs all the default attributes.
+        And does not print any new attributes.
+        """
+        attrs_pbsnodes_dflts = [
+            'id', 'Mom', 'Port', 'pbs_version', 'ntype', 'state', 'pcpus',
+            'resources_available', 'resources_assigned', 'resv_enable',
+            'sharing', 'last_state_change_time']
+        possible_dflt_attrs = {'license': 'l', 'last_used_time': 'arbitrary'}
+        self.server.expect(NODE, {'state': 'free'},
+                           id=self.server.shortname, interval=3)
+        node_attr = []
+        for (key, val) in \
+                (self.server.status(NODE,
+                                    id=self.server.shortname)[0].iteritems()):
+            key = key.split('.')[0]
+            if str(key) not in attrs_pbsnodes_dflts:
+                self.assertFalse(not ((key in possible_dflt_attrs) and
+                                      ((possible_dflt_attrs[key] == val or
+                                        possible_dflt_attrs[key] ==
+                                        'arbitrary'))),
+                                 "Extra attribute " + str(key))
+            if str(key) not in node_attr:
+                node_attr.append(str(key))
+        for attr in attrs_pbsnodes_dflts:
+            if attr not in node_attr:
+                self.assertFalse(True, attr + " is missing")
