@@ -98,6 +98,7 @@ PBS_MOM_HOME = ''
 
 
 class AdminError(Exception):
+
     """
     Base class for errors fixable only by administrative action.
     """
@@ -105,6 +106,7 @@ class AdminError(Exception):
 
 
 class ProcessingError(Exception):
+
     """
     Base class for errors in processing, unknown cause.
     """
@@ -112,6 +114,7 @@ class ProcessingError(Exception):
 
 
 class UserError(Exception):
+
     """
     Base class for errors fixable by the user.
     """
@@ -119,6 +122,7 @@ class UserError(Exception):
 
 
 class JobValueError(UserError):
+
     """
     Errors in PBS job resource values.
     """
@@ -126,6 +130,7 @@ class JobValueError(UserError):
 
 
 class CgroupBusyError(ProcessingError):
+
     """
     Errors when the cgroup is busy.
     """
@@ -133,6 +138,7 @@ class CgroupBusyError(ProcessingError):
 
 
 class CgroupConfigError(AdminError):
+
     """
     Errors in configuring cgroup.
     """
@@ -140,6 +146,7 @@ class CgroupConfigError(AdminError):
 
 
 class CgroupLimitError(AdminError):
+
     """
     Errors in configuring cgroup.
     """
@@ -147,6 +154,7 @@ class CgroupLimitError(AdminError):
 
 
 class CgroupProcessingError(ProcessingError):
+
     """
     Errors processing cgroup.
     """
@@ -154,6 +162,7 @@ class CgroupProcessingError(ProcessingError):
 
 
 class TimeoutError(ProcessingError):
+
     """
     Timeout encountered.
     """
@@ -482,6 +491,7 @@ def ignore_job(jobid):
 # CLASS Lock
 #
 class Lock(object):
+
     """
     Implement a simple locking mechanism using a file lock
     """
@@ -520,6 +530,7 @@ class Lock(object):
 # CLASS Timeout
 #
 class Timeout(object):
+
     """
     Implement a timeout mechanism via SIGALRM
     """
@@ -561,6 +572,7 @@ class Timeout(object):
 # CLASS HookUtils
 #
 class HookUtils(object):
+
     """
     Hook utility methods
     """
@@ -922,6 +934,7 @@ class HookUtils(object):
 # CLASS JobUtils
 #
 class JobUtils(object):
+
     """
     Job utility methods
     """
@@ -1068,6 +1081,7 @@ class JobUtils(object):
 # CLASS NodeConfig
 #
 class NodeConfig(object):
+
     """
     Node utility methods
     NOTE: Multiple log messages pertaining to devices have been commented
@@ -1281,7 +1295,10 @@ class NodeConfig(object):
             pbs.logmsg(pbs.EVENT_DEBUG4, "root.tag: %s" % root.tag)
             for child in root:
                 if child.tag == "gpu":
-                    bus_id = child.get('id')
+                    # make sure the PCI domain is 16 bits and 4 hex numbers
+                    pci_domain, pci_rest = child.get('id').split(":", 1)
+                    fixed_pci_domain = pci_domain[-4:]
+                    bus_id = fixed_pci_domain + ":" + pci_rest
                     name = 'nvidia%s' % child.find('minor_number').text
                     gpus[name] = bus_id
         except Exception as exc:
@@ -1683,6 +1700,7 @@ class NodeConfig(object):
 # CLASS CgroupUtils
 #
 class CgroupUtils(object):
+
     """
     Cgroup utility methods
     """
@@ -2633,7 +2651,7 @@ class CgroupUtils(object):
         memory_only_nodes = []
         for nnid in node.numa_nodes:
             if not node.numa_nodes[nnid]['cpus'] and \
-                   not node.numa_nodes[nnid]['devices']:
+                    not node.numa_nodes[nnid]['devices']:
                 pbs.logmsg(pbs.EVENT_DEBUG4,
                            "Found memory only NUMA node: %s" %
                            (node.numa_nodes[nnid]))
