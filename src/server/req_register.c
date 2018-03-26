@@ -1404,6 +1404,10 @@ free_depend(struct attribute *attr)
 		delete_link(&pdp->dp_link);
 		(void)free(pdp);
 	}
+	/* free any data cached for stats */
+	if (attr->at_user_encoded != NULL || attr->at_priv_encoded != NULL) {
+		free_svrcache(attr);
+	}
 	attr->at_flags &= ~ATR_VFLAG_SET;
 }
 

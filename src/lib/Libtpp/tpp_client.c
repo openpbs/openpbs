@@ -4593,6 +4593,10 @@ leaf_close_handler(int tfd, int error, void *c)
 		return -1; /* while we are doing shutdown don't try to reconnect etc */
 
 	r = (tpp_router_t *) ctx->ptr;
+
+	/* deallocate the connection structure associated with ctx */
+	tpp_transport_close(r->conn_fd);
+
 	/*
 	 * Disassociate the older context, so we can attach
 	 * to new connection old connection will be deleted

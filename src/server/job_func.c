@@ -532,6 +532,10 @@ job_free(job *pj)
 					        free_br(tbr);
 				}
 			}
+
+			/* wt_event2 either has additional data (like msgid) or NULL */
+			free(pwt->wt_event2);
+
 			delete_task(pwt);
 		}
 
