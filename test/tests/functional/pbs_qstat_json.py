@@ -57,6 +57,7 @@ class TestQstat_json(PBSTestSuite):
                         self.parse_json(val, qstat_attr)
         return qstat_attr
 
+    @tags('smoke')
     def test_qstat_json_valid(self):
         """
         Test json output of qstat -f is in valid format when querired as a
@@ -117,7 +118,7 @@ class TestQstat_json(PBSTestSuite):
     def test_qstat_json_valid_user(self):
         """
         Test json output of qstat -f is in valid format when queried as
-        normal user and all attributes displayed in qstat are present in output
+        normal user
         """
         j = Job(TEST_USER)
         j.set_sleep_time(10)
@@ -132,31 +133,10 @@ class TestQstat_json(PBSTestSuite):
             json_object = json.loads(qstat_out)
         except ValueError, e:
             self.assertTrue(False)
-        attrs_qstatf = [
-            'timestamp', 'pbs_version', 'pbs_server', 'Jobs', jid,
-            'Job_Name', 'Job_Owner', 'job_state', 'queue', 'server',
-            'Checkpoint', 'ctime', 'Error_Path', 'Hold_Types',
-            'Join_Path', 'Keep_Files', 'Mail_Points', 'mtime',
-            'Output_Path', 'Priority', 'qtime', 'Rerunable', 'project',
-            'Resource_List', 'ncpus', 'nodect', 'place', 'select',
-            'substate', 'Variable_List', 'PBS_O_HOME',
-            'PBS_O_LOGNAME', 'PBS_O_PATH', 'PBS_O_MAIL', 'PBS_O_SHELL',
-            'PBS_O_WORKDIR', 'PBS_O_SYSTEM', 'PBS_O_QUEUE', 'PBS_O_HOST',
-            'etime', 'Submit_arguments', 'executable', 'argument_list']
-        qstat_attr = []
-        for key, val in json_object.iteritems():
-            qstat_attr.append(str(key))
-            if isinstance(val, dict):
-                qstat_attrs = self.parse_json(val, qstat_attr)
-                qstat_attr.append(qstat_attrs)
-        for attr in attrs_qstatf:
-            if attr not in qstat_attr:
-                self.assertFalse(attr + " is missing")
 
     def test_qstat_json_valid_ja(self):
         """
         Test json output of qstat -f of Job arrays is in valid format
-        and all attributes displayed in qstat are present in output
         """
         j = Job(TEST_USER)
         j.set_sleep_time(10)
@@ -171,29 +151,8 @@ class TestQstat_json(PBSTestSuite):
             json_object = json.loads(qstat_out)
         except ValueError, e:
             self.assertTrue(False)
-        attrs_qstatf = [
-            'timestamp', 'pbs_version', 'pbs_server', 'Jobs', jid, 'Job_Name',
-            'Job_Owner', 'job_state', 'queue', 'server', 'Checkpoint', 'ctime',
-            'Error_Path', 'Hold_Types', 'Join_Path', 'Keep_Files',
-            'mtime', 'Output_Path', 'Priority', 'qtime', 'Rerunable',
-            'Resource_List', 'ncpus', 'nodect', 'place', 'select',
-            'schedselect', 'substate', 'Variable_List', 'PBS_O_HOME',
-            'PBS_O_LOGNAME', 'PBS_O_PATH', 'PBS_O_MAIL',
-            'PBS_O_WORKDIR', 'PBS_O_SYSTEM', 'PBS_O_QUEUE', 'PBS_O_HOST',
-            'PBS_O_SHELL', 'euser', 'egroup', 'queue_rank', 'queue_type',
-            'etime', 'Submit_arguments', 'executable', 'argument_list',
-            'array', 'array_state_count', 'array_indices_submitted',
-            'Mail_Points', 'project']
-        qstat_attr = []
-        for key, val in json_object.iteritems():
-            qstat_attr.append(str(key))
-            if isinstance(val, dict):
-                qstat_attrs = self.parse_json(val, qstat_attr)
-                qstat_attr.append(qstat_attrs)
-        for attr in attrs_qstatf:
-            if attr not in qstat_attr:
-                self.assertFalse(attr + " is missing")
 
+    @tags('smoke')
     def test_qstat_bf_json_valid(self):
         """
         Test json output of qstat -Bf is in valid format and all
@@ -214,8 +173,7 @@ class TestQstat_json(PBSTestSuite):
             'node_fail_requeue', 'resv_enable', 'flatuid', 'query_other_jobs',
             'state_count', 'default_queue', 'server_state', 'managers',
             'max_concurrent_provision', 'resources_default', 'ncpus',
-            'scheduler_iteration', 'pbs_license_linger_time',
-            'resources_assigned', 'ncpus', 'nodect', 'mail_from', 'log_events',
+            'pbs_license_linger_time', 'mail_from', 'log_events',
             'pbs_version', 'acl_roots', 'max_array_size', 'pbs_version']
         qstat_attr = []
         for key, val in json_object.iteritems():
@@ -227,6 +185,7 @@ class TestQstat_json(PBSTestSuite):
             if attr not in qstat_attr:
                 self.assertFalse(attr + " is missing")
 
+    @tags('smoke')
     def test_qstat_qf_json_valid(self):
         """
         Test json output of qstat -Qf is in valid format and all
