@@ -67,14 +67,16 @@ pbs.event().reject("runjob hook rejected the job")
                                             self.index_hook_script,
                                             overwrite=True)
         self.assertTrue(rv)
-        j1 = Job(TEST_USER)
+        a = {'resources_available.ncpus': 3}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
         lower = 1
         upper = 3
+        j1 = Job(TEST_USER)
         j1.set_attributes({ATTR_J: '%d-%d' % (lower, upper)})
         self.server.submit(j1)
         for i in range(lower, upper + 1):
             self.server.log_match("sub_job_array_index=%d" % (i),
-                                  max_attempts=10, interval=1)
+                                  starttime=self.server.ctime)
 
     def test_normal_job_index(self):
         """
@@ -89,7 +91,7 @@ pbs.event().reject("runjob hook rejected the job")
         j1 = Job(TEST_USER)
         self.server.submit(j1)
         self.server.log_match("sub_job_array_index=None",
-                              max_attempts=10, interval=1)
+                              starttime=self.server.ctime)
 
     def test_reject_array_sub_job(self):
         """
@@ -102,6 +104,8 @@ pbs.event().reject("runjob hook rejected the job")
                                             self.reject_hook_script,
                                             overwrite=True)
         self.assertTrue(rv)
+        a = {'resources_available.ncpus': 3}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
         j1 = Job(TEST_USER)
         j1.set_attributes({ATTR_J: '1-3'})
         jid = self.server.submit(j1)
@@ -113,3 +117,5 @@ pbs.event().reject("runjob hook rejected the job")
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'},
                             expect=True)
         self.server.expect(JOB, {'job_state': 'B'}, id=jid)
+        self.server.expect(JOB, {'job_state=R': 3}, count=True,
+                           id=jid, extend='t')
