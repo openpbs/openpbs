@@ -146,7 +146,7 @@ class TestMomHookSync(TestFunctional):
 
         # For testability, delay resuming the mom so we can
         # get a different timestamp on the hook updates
-        self.logger.info("Waiting 3 secs for earlier hook updates to complet")
+        self.logger.info("Waiting 3 secs for earlier hook updates to complete")
         time.sleep(3)
 
         now = int(time.time())
@@ -206,7 +206,7 @@ class TestMomHookSync(TestFunctional):
 
         # For testability, delay resuming the mom so we can
         # get a different timestamp on the hook updates
-        self.logger.info("Waiting 3 secs for earlier hook updates to complet")
+        self.logger.info("Waiting 3 secs for earlier hook updates to complete")
         time.sleep(3)
 
         now = int(time.time())
@@ -260,13 +260,12 @@ class TestMomHookSync(TestFunctional):
 
         # For testability, delay resuming the mom so we can
         # get a different timestamp on the hook updates
-        self.logger.info("Waiting 3 secs for earlier hook updates to complet")
+        self.logger.info("Waiting 3 secs for earlier hook updates to complete")
         time.sleep(3)
 
+        now = int(time.time())
         self.momB.signal('-KILL')
         self.momB.restart()
-
-        now = int(time.time())
 
         # Killing and restarting mom would cause server to sync
         # up its version of the mom hook file resulting in an
@@ -326,7 +325,7 @@ class TestMomHookSync(TestFunctional):
 
         # For testability, delay resuming the mom so we can
         # get a different timestamp on the hook updates
-        self.logger.info("Waiting 3 secs for earlier hook updates to complet")
+        self.logger.info("Waiting 3 secs for earlier hook updates to complete")
         time.sleep(3)
 
         # Killing and restarting mom would cause server to sync
@@ -334,10 +333,9 @@ class TestMomHookSync(TestFunctional):
         # delete mom hook action as that hook is now seen as a
         # server hook. Since it's now a server hook, no further
         # mom hook sends are done.
+        now = int(time.time())
         self.momB.signal('-KILL')
         self.momB.restart()
-
-        now = int(time.time())
 
         # Put another sleep delay so log_match() can see all the matches
         self.logger.info("Waiting 3 secs for new hook updates to complete")
