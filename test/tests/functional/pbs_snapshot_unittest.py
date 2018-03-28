@@ -46,6 +46,8 @@ class TestPBSSnapshot(TestFunctional):
     Test suit with unit tests for the pbs_snapshot tool
     """
     pbs_snapshot_path = None
+    snapdirs = []
+    snaptars = []
 
     def setUp(self):
         TestFunctional.setUp(self)
@@ -74,6 +76,126 @@ class TestPBSSnapshot(TestFunctional):
             cmd=["ls", os.path.join(os.sep, "root")], sudo=True)
         if ret['rc'] != 0:
             self.skipTest("pbs_snapshot/PBSSnapUtils need root privileges")
+
+    def setup_sc(self, sched_id, partition, port):
+        """
+        Setup a scheduler
+
+        :param sched_id: id of the scheduler
+        :type sched_id: str
+        :param partition: partition name for the scheduler (e.g "P1", "P1,P2")
+        :type partition: str
+        :param port: The port number string for the scheduler
+        :type port: str
+        :param sched_priv: 'sched_priv' (full path) for the scheduler
+        :type sched_priv: str
+        :param sched_log: 'sched_log' (full path) for the scheduler
+        :type sched_log: str
+        :param log_filter: log filter value for the scheduler
+        :type log_filter: int
+        """
+        a = {'partition': partition,
+             'sched_host': self.server.hostname,
+             'sched_port': port}
+        self.server.manager(MGR_CMD_CREATE, SCHED, a, id=sched_id)
+        self.scheds[sched_id].create_scheduler()
+        self.scheds[sched_id].start()
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduling': 'True'}, id=sched_id, expect=True)
+
+    def setup_queues_nodes(self, num_partitions):
+        """
+        Given a no. of partitions, create equal no. of associated queues
+        and nodes
+
+        :param num_partitions: number of partitions
+        :type num_partitions: int
+        :return a tuple of lists of queue and node ids:
+            ([q1, q1, ..], [n1, n2, ..])
+        """
+        queues = []
+        nodes = []
+        a_q = {"queue_type": "execution",
+               "started": "True",
+               "enabled": "True"}
+        a_n = {"resources_available.ncpus": 2}
+        self.server.create_vnodes("vnode", a_n, (num_partitions + 1),
+                                  self.mom)
+        for i in range(num_partitions):
+            partition_id = "P" + str(i + 1)
+
+            # Create queue i + 1 with partition i + 1
+            id_q = "wq" + str(i + 1)
+            queues.append(id_q)
+            a_q["partition"] = partition_id
+            self.server.manager(MGR_CMD_CREATE, QUEUE, a_q, id=id_q)
+
+            # Set the partition i + 1 on node i
+            id_n = "vnode[" + str(i) + "]"
+            nodes.append(id_n)
+            a = {"partition": partition_id}
+            self.server.manager(MGR_CMD_SET, NODE, a, id=id_n, expect=True)
+
+        return (queues, nodes)
+
+    def take_snapshot(self, parent_dir, acct_logs=None, daemon_logs=None,
+                      obfuscate=None):
+        """
+        Take a snapshot using pbs_snapshot command
+
+        :param parent_dir: path to the directory where snapshot will be caught
+        :type parent_dir: str
+        :param acct_logs: Number of accounting logs to capture
+        :type acct_logs: int
+        :param daemon_logs: Number of daemon logs to capture
+        :type daemon_logs: int
+        :param obfuscate: Obfuscate information?
+        :type obfuscate: bool
+        :return a tuple of name of tarball and snapshot directory captured:
+            (tarfile, snapdir)
+        """
+        if self.pbs_snapshot_path is None:
+            self.skip_test("pbs_snapshot not found")
+
+        snap_cmd = [self.pbs_snapshot_path, "-o", parent_dir]
+        if acct_logs is not None:
+            snap_cmd.append("--accounting-logs=" + str(acct_logs))
+
+        if daemon_logs is not None:
+            snap_cmd.append("--daemon-logs=" + str(daemon_logs))
+
+        if obfuscate:
+            snap_cmd.append("--obfuscate")
+
+        ret = self.du.run_cmd(cmd=snap_cmd, sudo=True)
+        self.assertEquals(ret['rc'], 0)
+
+        # Get the name of the tarball that was created
+        # pbs_snapshot prints to stdout only the following:
+        #     "Snapshot available at: <path to tarball>"
+        self.assertTrue(len(ret['out']) > 0)
+        snap_out = ret['out'][0]
+        output_tar = snap_out.split(":")[1]
+        output_tar = output_tar.strip()
+
+        # Check that the output tarball was created
+        self.assertTrue(os.path.isfile(output_tar))
+
+        # Unwrap the tarball
+        tar = tarfile.open(output_tar)
+        tar.extractall(path=parent_dir)
+        tar.close()
+
+        # snapshot directory name = <snapshot>.tgz[:-4]
+        snap_dir = output_tar[:-4]
+
+        # Check that the directory exists
+        self.assertTrue(os.path.isdir(snap_dir))
+
+        self.snapdirs.append(snap_dir)
+        self.snaptars.append(output_tar)
+
+        return (output_tar, snap_dir)
 
     def test_capture_server(self):
         """
@@ -239,7 +361,7 @@ class TestPBSSnapshot(TestFunctional):
                 self.assertTrue(os.path.isdir(log_path))
             if sched_up:
                 # Check that 'sched_logs' were captured
-                log_path = os.path.join(snap_dir, SCHED_LOGS_PATH)
+                log_path = os.path.join(snap_dir, DFLT_SCHED_LOGS_PATH)
                 self.assertTrue(os.path.isdir(log_path))
 
         if os.path.isdir(snap_dir):
@@ -252,24 +374,11 @@ class TestPBSSnapshot(TestFunctional):
         if self.pbs_snapshot_path is None:
             self.skip_test("pbs_snapshot not found")
 
-        target_dir = self.du.get_tempdir()
-        snap_cmd = [self.pbs_snapshot_path, "-o", target_dir]
-        ret = self.du.run_cmd(cmd=snap_cmd, sudo=True)
-        self.assertEquals(ret['rc'], 0)
-
-        # Get the name of the tarball that was created
-        # pbs_snapshot prints to stdout only the following:
-        #     "Snapshot available at: <path to tarball>"
-        self.assertTrue(len(ret['out']) > 0)
-        snap_out = ret['out'][0]
-        output_tar = snap_out.split(":")[1]
-        output_tar = output_tar.strip()
+        parent_dir = self.du.get_tempdir()
+        output_tar, _ = self.take_snapshot(parent_dir)
 
         # Check that the output tarball was created
         self.assertTrue(os.path.isfile(output_tar))
-
-        # Cleanup
-        self.du.rm(path=output_tar, recursive=True, force=True)
 
     def test_snapshot_without_logs(self):
         """
@@ -279,33 +388,8 @@ class TestPBSSnapshot(TestFunctional):
         if self.pbs_snapshot_path is None:
             self.skip_test("pbs_snapshot not found")
 
-        target_dir = self.du.get_tempdir()
-        snap_cmd = [self.pbs_snapshot_path, "-o", target_dir,
-                    "--daemon-logs=0", "--accounting-logs=0"]
-        ret = self.du.run_cmd(cmd=snap_cmd, sudo=True)
-        self.assertEquals(ret['rc'], 0)
-
-        # Get the name of the tarball that was created
-        # pbs_snapshot prints to stdout only the following:
-        #     "Snapshot available at: <path to tarball>"
-        self.assertTrue(len(ret['out']) > 0)
-        snap_out = ret['out'][0]
-        output_tar = snap_out.split(":")[1]
-        output_tar = output_tar.strip()
-
-        # Check that the output tarball was created
-        self.assertTrue(os.path.isfile(output_tar))
-
-        # Unwrap the tarball
-        tar = tarfile.open(output_tar)
-        tar.extractall(path=target_dir)
-        tar.close()
-
-        # snapshot directory name = <snapshot>.tgz[:-4]
-        snap_dir = output_tar[:-4]
-
-        # Check that the directory exists
-        self.assertTrue(os.path.isdir(snap_dir))
+        parent_dir = self.du.get_tempdir()
+        (_, snap_dir) = self.take_snapshot(parent_dir, 0, 0)
 
         # Check that 'server_logs' were not captured
         log_path = os.path.join(snap_dir, SVR_LOGS_PATH)
@@ -317,15 +401,11 @@ class TestPBSSnapshot(TestFunctional):
         log_path = os.path.join(snap_dir, COMM_LOGS_PATH)
         self.assertTrue(not os.path.isdir(log_path))
         # Check that 'sched_logs' were not captured
-        log_path = os.path.join(snap_dir, SCHED_LOGS_PATH)
+        log_path = os.path.join(snap_dir, DFLT_SCHED_LOGS_PATH)
         self.assertTrue(not os.path.isdir(log_path))
         # Check that 'accounting_logs' were not captured
         log_path = os.path.join(snap_dir, ACCT_LOGS_PATH)
         self.assertTrue(not os.path.isdir(log_path))
-
-        # Cleanup
-        self.du.rm(path=snap_dir, recursive=True, force=True)
-        self.du.rm(path=output_tar, sudo=True, force=True)
 
     def test_obfuscate_resv_user_groups(self):
         """
@@ -348,33 +428,8 @@ class TestPBSSnapshot(TestFunctional):
         self.server.expect(RESV, attribs, id=resv_id)
 
         # Now, take a snapshot with --obfuscate
-        target_dir = self.du.get_tempdir()
-        snap_cmd = [self.pbs_snapshot_path, "-o", target_dir,
-                    "--daemon-logs=0", "--accounting-logs=0", "--obfuscate"]
-        ret = self.du.run_cmd(cmd=snap_cmd, sudo=True)
-        self.assertEquals(ret['rc'], 0)
-
-        # Get the name of the tarball that was created
-        # pbs_snapshot prints to stdout only the following:
-        #     "Snapshot available at: <path to tarball>"
-        self.assertTrue(len(ret['out']) > 0)
-        snap_out = ret['out'][0]
-        output_tar = snap_out.split(":")[1]
-        output_tar = output_tar.strip()
-
-        # Check that the output tarball was created
-        self.assertTrue(os.path.isfile(output_tar))
-
-        # Unwrap the tarball
-        tar = tarfile.open(output_tar)
-        tar.extractall(path=target_dir)
-        tar.close()
-
-        # snapshot directory name = <snapshot>.tgz[:-4]
-        snap_dir = output_tar[:-4]
-
-        # Check that the directory exists
-        self.assertTrue(os.path.isdir(snap_dir))
+        parent_dir = self.du.get_tempdir()
+        (_, snap_dir) = self.take_snapshot(parent_dir, 0, 0, True)
 
         # Make sure that the pbs_rstat -f output captured doesn't have the
         # Authorized user and group names
@@ -385,6 +440,66 @@ class TestPBSSnapshot(TestFunctional):
             self.assertFalse(str(TEST_USER1) in all_content)
             self.assertFalse(str(TSTGRP0) in all_content)
 
-        # Cleanup
-        self.du.rm(path=snap_dir, recursive=True, force=True)
-        self.du.rm(path=output_tar, sudo=True, force=True)
+    def test_multisched_support(self):
+        """
+        Test that pbs_snapshot can capture details of all schedulers
+        """
+        if self.pbs_snapshot_path is None:
+            self.skip_test("pbs_snapshot not found")
+
+        # Setup 2 schedulers
+        sched_ids = ["sc1", "sc2", "default"]
+        self.setup_sc(sched_ids[0], "P1", "15050")
+        self.setup_sc(sched_ids[1], "P2", "15051")
+
+        # Add 2 partitions, each associated with a queue and a node
+        (q_ids, _) = self.setup_queues_nodes(2)
+
+        # Submit some jobs to fill the system up and get the multiple
+        # schedulers busy
+        for q_id in q_ids:
+            for _ in range(2):
+                attr = {"queue": q_id, "Resource_List.ncpus": "1"}
+                j = Job(TEST_USER1, attrs=attr)
+                self.server.submit(j)
+
+        # Capture a snapshot of the system with multiple schedulers
+        target_dir = self.du.get_tempdir()
+        (_, snapdir) = self.take_snapshot(target_dir)
+
+        # Check that sched priv and sched logs for all schedulers was captured
+        for sched_id in sched_ids:
+            if (sched_id == "default"):
+                schedi_priv = os.path.join(snapdir, DFLT_SCHED_PRIV_PATH)
+                schedi_logs = os.path.join(snapdir, DFLT_SCHED_LOGS_PATH)
+            else:
+                schedi_priv = os.path.join(snapdir, "sched_priv_" + sched_id)
+                schedi_logs = os.path.join(snapdir, "sched_logs_" + sched_id)
+            self.assertTrue(os.path.isdir(schedi_priv))
+            self.assertTrue(os.path.isdir(schedi_logs))
+
+            # Make sure that these directories are not empty
+            self.assertTrue(len(os.listdir(schedi_priv)) > 0)
+            self.assertTrue(len(os.listdir(schedi_logs)) > 0)
+
+        # Check that qmgr -c "l sched" captured information about all scheds
+        lschedpath = os.path.join(snapdir, QMGR_LSCHED_PATH)
+        with open(lschedpath, "r") as fd:
+            scheds_found = 0
+            for line in fd:
+                if line.startswith("Sched "):
+                    sched_id = line.split("Sched ")[1]
+                    sched_id = sched_id.strip()
+                    self.assertTrue(sched_id in sched_ids)
+                    scheds_found += 1
+            self.assertEqual(scheds_found, 3)
+
+    @classmethod
+    def tearDownClass(self):
+        # Delete the snapshot directories and tarballs created
+        for snap_dir in self.snapdirs:
+            self.du.rm(path=snap_dir, recursive=True, force=True)
+        for snap_tar in self.snaptars:
+            self.du.rm(path=snap_tar, sudo=True, force=True)
+
+        TestFunctional.tearDownClass()

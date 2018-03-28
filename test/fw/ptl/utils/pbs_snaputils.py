@@ -42,7 +42,7 @@ import magic
 import logging
 
 from subprocess import STDOUT
-from ptl.lib.pbs_testlib import Server, Scheduler
+from ptl.lib.pbs_testlib import Server, Scheduler, SCHED
 from ptl.lib.pbs_ifl_mock import *
 from ptl.utils.pbs_dshutils import DshUtils
 from ptl.utils.pbs_logutils import PBSLogUtils
@@ -167,9 +167,9 @@ QMGR_LPBSHOOK_PATH = os.path.join(HOOK_DIR, "qmgr_lpbshook.out")
 SCHED_DIR = "scheduler"
 QMGR_LSCHED_PATH = os.path.join(SCHED_DIR, "qmgr_lsched.out")
 # sched_priv/
-SCHED_PRIV_PATH = "sched_priv"
+DFLT_SCHED_PRIV_PATH = "sched_priv"
 # sched_logs/
-SCHED_LOGS_PATH = "sched_logs"
+DFLT_SCHED_LOGS_PATH = "sched_logs"
 # reservation/
 RESV_DIR = "reservation"
 PBS_RSTAT_PATH = os.path.join(RESV_DIR, "pbs_rstat.out")
@@ -289,7 +289,6 @@ class _PBSSnapUtils(object):
         """
         self.logger = logging.getLogger(__name__)
         self.du = DshUtils()
-        self.snap_path = {}
         self.server_info = {}
         self.job_info = {}
         self.node_info = {}
@@ -470,9 +469,9 @@ class _PBSSnapUtils(object):
         # Scheduler information
         value = (QMGR_LSCHED_PATH, [QMGR_CMD, "-c", "l sched"])
         self.sched_info[QMGR_LSCHED_OUT] = value
-        value = (SCHED_PRIV_PATH, None)
+        value = (DFLT_SCHED_PRIV_PATH, None)
         self.sched_info[SCHED_PRIV] = value
-        value = (SCHED_LOGS_PATH, None)
+        value = (DFLT_SCHED_LOGS_PATH, None)
         self.sched_info[SCHED_LOGS] = value
 
         # Reservation information
@@ -535,15 +534,15 @@ class _PBSSnapUtils(object):
 
         dirs_in_snapshot = [SERVER_DIR, JOB_DIR, NODE_DIR, HOOK_DIR,
                             SCHED_DIR, RESV_DIR, DATASTORE_DIR, CORE_DIR,
-                            SYS_DIR, SCHED_PRIV_PATH, SVR_PRIV_PATH,
+                            SYS_DIR, DFLT_SCHED_PRIV_PATH, SVR_PRIV_PATH,
                             MOM_PRIV_PATH, ACCT_LOGS_PATH, COMM_LOGS_PATH,
-                            SVR_LOGS_PATH, SCHED_LOGS_PATH, MOM_LOGS_PATH]
+                            SVR_LOGS_PATH, DFLT_SCHED_LOGS_PATH, MOM_LOGS_PATH]
         for item in dirs_in_snapshot:
             rel_path = os.path.join(self.snapdir, item)
             os.makedirs(rel_path, 0755)
 
     def __capture_cmd_output(self, host, out_path, cmd, skip_anon=False,
-                             as_script=False):
+                             as_script=False, ret_out=False):
         """
         Run a command on the host specified and capture its output
 
@@ -555,17 +554,26 @@ class _PBSSnapUtils(object):
         :type cmd: list
         :param skip_anon: Skip anonymization even though anonymize is True?
         :type skip_anon: bool
+        :param as_script: Passed to run_cmd()
+        :type as_Script: bool
+        :param ret_out: Return output of the command?
+        :type ret_out: bool
         """
+        retstr = None
+
         if "qmgr" in cmd[0]:
             # qmgr -c is being called
             if not self.du.is_localhost(host):
                 # For remote hosts, wrap qmgr's command in quotes
                 cmd[2] = "\'" + cmd[2] + "\'"
 
-        with open(out_path, "w") as out_fd:
+        with open(out_path, "a+") as out_fd:
             try:
                 self.du.run_cmd(host, cmd=cmd, stdout=out_fd,
                                 sudo=self.sudo, as_script=as_script)
+                if ret_out:
+                    out_fd.seek(0, 0)
+                    retstr = out_fd.read()
             except OSError:
                 # This usually happens when the command is not found
                 # Just return
@@ -576,6 +584,9 @@ class _PBSSnapUtils(object):
 
         if self.create_tar:
             self.__add_to_archive(out_path)
+
+        if ret_out:
+            return retstr
 
     def __convert_flag_to_numeric(self, flag):
         """
@@ -770,6 +781,8 @@ class _PBSSnapUtils(object):
         # Capture the stack trace from this core file
         filename = os.path.basename(file_path)
         core_dest = os.path.join(core_dir, filename)
+        if not os.path.isdir(core_dir):
+            os.makedirs(core_dir, 0755)
         self.__capture_trace_from_core(file_path, exec_name,
                                        core_dest)
 
@@ -965,12 +978,10 @@ class _PBSSnapUtils(object):
         self.__capture_logs(self.server_host, pbs_logdir, snap_logdir,
                             self.num_acct_logs)
 
-    def __capture_sched_logs(self):
+    def __capture_sched_logs(self, pbs_logdir, snap_logdir):
         """
         Capture scheduler logs
         """
-        pbs_logdir = os.path.join(self.pbs_home, "sched_logs")
-        snap_logdir = os.path.join(self.snapdir, SCHED_LOGS_PATH)
         self.__capture_logs(self.scheduler.hostname, pbs_logdir,
                             snap_logdir, self.num_daemon_logs)
 
@@ -1161,6 +1172,7 @@ class _PBSSnapUtils(object):
         """
         self.logger.info("capturing scheduler information")
 
+        qmgr_lsched = None
         # Go through 'sched_info' and capture info that depends on commands
         for (path, cmd_list) in self.sched_info.values():
             if cmd_list is None:
@@ -1171,20 +1183,62 @@ class _PBSSnapUtils(object):
             # The command path is the first entry in command list
             cmd_list_cpy[0] = os.path.join(self.pbs_exec, cmd_list[0])
             snap_path = os.path.join(self.snapdir, path)
-            self.__capture_cmd_output(self.scheduler.hostname, snap_path,
-                                      cmd_list_cpy)
+            if "l sched" in cmd_list_cpy:
+                qmgr_lsched = self.__capture_cmd_output(
+                    self.scheduler.hostname, snap_path, cmd_list_cpy,
+                    ret_out=True)
+            else:
+                self.__capture_cmd_output(self.scheduler.hostname, snap_path,
+                                          cmd_list_cpy)
 
-        # Capture 'sched_priv'
-        snap_sched_priv = os.path.join(self.snapdir, SCHED_PRIV_PATH)
-        pbs_sched_priv = os.path.join(self.scheduler.pbs_conf["PBS_HOME"],
-                                      "sched_priv")
-        core_dir = os.path.join(self.snapdir, CORE_SCHED_PATH)
-        self.__copy_dir_with_core(self.scheduler.hostname, pbs_sched_priv,
-                                  snap_sched_priv, core_dir)
+        # Capture sched_priv & sched_logs for all schedulers
+        if qmgr_lsched is not None:
+            sched_details = {}
+            sched_name = None
+            for line in qmgr_lsched.splitlines():
+                if line.startswith("Sched "):
+                    sched_name = line.split("Sched ")[1]
+                    sched_name = "".join(sched_name.split())
+                    sched_details[sched_name] = {}
+                    continue
+                if sched_name is not None:
+                    line = "".join(line.split())
+                    if line.startswith("sched_priv="):
+                        sched_details[sched_name]["sched_priv"] = line.split(
+                            "=")[1]
+                    elif line.startswith("sched_log="):
+                        sched_details[sched_name]["sched_log"] = line.split(
+                            "=")[1]
 
-        if with_sched_logs and self.num_daemon_logs > 0:
-            # Capture scheduler logs
-            self.__capture_sched_logs()
+            for sched_name in sched_details:
+                # Capture sched_priv for the scheduler
+                pbs_sched_priv = sched_details[sched_name]["sched_priv"]
+                if sched_name == "default":
+                    snap_sched_priv = os.path.join(self.snapdir,
+                                                   DFLT_SCHED_PRIV_PATH)
+                    core_dir = os.path.join(self.snapdir, CORE_SCHED_PATH)
+                else:
+                    dirname = DFLT_SCHED_PRIV_PATH + "_" + sched_name
+                    coredirname = CORE_SCHED_PATH + "_" + sched_name
+                    snap_sched_priv = os.path.join(self.snapdir, dirname)
+                    os.makedirs(snap_sched_priv, 0755)
+                    core_dir = os.path.join(self.snapdir, coredirname)
+
+                self.__copy_dir_with_core(self.scheduler.hostname,
+                                          pbs_sched_priv,
+                                          snap_sched_priv, core_dir)
+                if with_sched_logs and self.num_daemon_logs > 0:
+                    # Capture scheduler logs
+                    pbs_sched_log = sched_details[sched_name]["sched_log"]
+                    if sched_name == "default":
+                        snap_sched_log = os.path.join(self.snapdir,
+                                                      DFLT_SCHED_LOGS_PATH)
+                    else:
+                        dirname = DFLT_SCHED_LOGS_PATH + "_" + sched_name
+                        snap_sched_log = os.path.join(self.snapdir, dirname)
+                        os.makedirs(snap_sched_log, 0755)
+
+                    self.__capture_sched_logs(pbs_sched_log, snap_sched_log)
 
         if self.create_tar:
             return self.outtar_path
@@ -1375,8 +1429,17 @@ class _PBSSnapUtils(object):
             # Capture server logs
             self.__capture_svr_logs()
 
-            # Capture scheduler logs
-            self.__capture_sched_logs()
+            # Capture sched logs for all schedulers
+            sched_info = self.server.status(SCHED)
+            for sched in sched_info:
+                sched_name = sched["id"]
+                pbs_sched_log = sched["sched_log"]
+                if sched_name != "default":
+                    snap_sched_log = DFLT_SCHED_LOGS_PATH + "_" + sched["id"]
+                else:
+                    snap_sched_log = DFLT_SCHED_LOGS_PATH
+                snap_sched_log = os.path.join(self.snapdir, snap_sched_log)
+                self.__capture_sched_logs(pbs_sched_log, snap_sched_log)
 
             # Capture mom & comm logs for all the known hosts
             for host in self.all_hosts:
