@@ -664,6 +664,7 @@ remove_mom_from_vnodes(mominfo_t *pmom)
 		}
 
 	}
+	node_attr_def[(int)ND_ATR_Mom].at_free(&tmomattr);
 }
 
 /**
