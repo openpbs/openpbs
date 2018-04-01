@@ -287,6 +287,7 @@
 #define BASIL_VAL_XT		"XT"		/* BASIL_ATR_ARCH:node */
 #define BASIL_VAL_X2		"X2"		/* BASIL_ATR_ARCH:node */
 #define BASIL_VAL_X86_64	"x86_64"	/* BASIL_ATR_ARCH:proc */
+#define BASIL_VAL_AARCH64	"aarch64"	/* BASIL_ATR_ARCH:proc */
 #define BASIL_VAL_CRAY_X2	"cray_x2"	/* BASIL_ATR_ARCH:proc */
 #define BASIL_VAL_OS		"OS"		/* BASIL_ATR_MEM_TYPE */
 #define BASIL_VAL_HUGEPAGE	"HUGEPAGE"	/* BASIL_ATR_MEM_TYPE */
@@ -426,6 +427,7 @@ typedef enum {
 	basil_processor_arch_none = 0,
 	basil_processor_cray_x2,
 	basil_processor_x86_64,
+	basil_processor_aarch64,
 	basil_processor_arch_unknown
 } basil_processor_arch_t;
 

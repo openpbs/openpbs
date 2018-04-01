@@ -1809,6 +1809,8 @@ socket_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 				socket->arch = basil_processor_x86_64;
 			} else if (strcmp(BASIL_VAL_CRAY_X2, *vp) == 0) {
 				socket->arch = basil_processor_cray_x2;
+			} else if (strcmp(BASIL_VAL_AARCH64, *vp) == 0) {
+				socket->arch = basil_processor_aarch64;
 			} else {
 				parse_err_illegal_attr_val(d, *np, *vp);
 				return;
@@ -2241,6 +2243,8 @@ processor_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 				processor->arch = basil_processor_x86_64;
 			} else if (strcmp(BASIL_VAL_CRAY_X2, *vp) == 0) {
 				processor->arch = basil_processor_cray_x2;
+			} else if (strcmp(BASIL_VAL_AARCH64, *vp) == 0) {
+				processor->arch = basil_processor_aarch64;
 			} else {
 				parse_err_illegal_attr_val(d, *np, *vp);
 				return;
