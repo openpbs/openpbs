@@ -1,7 +1,6 @@
 
 """
 
-/* 
 # Copyright (C) 1994-2018 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
@@ -36,9 +35,9 @@
 # Use of Altair’s trademarks, including but not limited to "PBS™",
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
- *
- */
+
 """
+
 __doc__ = """
 This file contains the Power Management Infrastructure (PMI) base types.
 It contains mostly vendor agnostic code with the exception of the
@@ -50,6 +49,7 @@ import sys
 import os
 import pbs
 from pbs.v1._pmi_utils import _get_hosts, _get_vnode_names, _running_excl
+from _exc_types import *
 
 
 class InternalError(Exception):
@@ -83,7 +83,7 @@ class Power:
 
         try:
             _temp = __import__("pbs.v1._pmi_" + self.pmi_type,
-                    globals(), locals(), ['Pmi'], -1)
+                               globals(), locals(), ['Pmi'], -1)
         except Exception, e:
             raise InternalError(
                 "could not import: " + self.pmi_type + ": " + str(e))
@@ -117,13 +117,23 @@ class Power:
         if self.__pmi is None:
             raise InternalError("No Power Management Interface instance.")
 
-    def connect(self, endpoint=None, port=None):
+    def connect(self, endpoint=None, port=None, job=None):
         self._check_pmi()
-        return self.__pmi._connect(endpoint, port)
+        if job is None:
+            try:
+                job = pbs.event().job
+            except EventIncompatibleError:
+                pass
+        return self.__pmi._connect(endpoint, port, job)
 
-    def disconnect(self):
+    def disconnect(self, job=None):
         self._check_pmi()
-        return self.__pmi._disconnect()
+        if job is None:
+            try:
+                job = pbs.event().job
+            except EventIncompatibleError:
+                pass
+        return self.__pmi._disconnect(job)
 
     def get_usage(self, job=None):
         self._check_pmi()
@@ -160,7 +170,7 @@ class Power:
                     names = self._map_profile_names(profiles)
                     mynode.resources_available["eoe"] = names
                     pbs.logmsg(pbs.LOG_WARNING,
-                        "PMI:activate: set eoe: %s" % names)
+                               "PMI:activate: set eoe: %s" % names)
                 except:
                     pass
             raise BackendError(e)
@@ -187,25 +197,25 @@ class Power:
 
     def power_off(self, hosts=None):
         self._check_pmi()
-        pbs.logmsg(pbs.LOG_WARNING, "PMI:poweroff: powering off nodes")
+        pbs.logmsg(pbs.EVENT_DEBUG3, "PMI:poweroff: powering off nodes")
         return self.__pmi._pmi_power_off(hosts)
 
     def power_on(self, hosts=None):
         self._check_pmi()
-        pbs.logmsg(pbs.LOG_WARNING, "PMI:poweron: powering on nodes")
+        pbs.logmsg(pbs.EVENT_DEBUG3, "PMI:poweron: powering on nodes")
         return self.__pmi._pmi_power_on(hosts)
 
     def ramp_down(self, hosts=None):
         self._check_pmi()
-        pbs.logmsg(pbs.LOG_WARNING, "PMI:rampdown: ramping down nodes")
+        pbs.logmsg(pbs.EVENT_DEBUG3, "PMI:rampdown: ramping down nodes")
         return self.__pmi._pmi_ramp_down(hosts)
 
     def ramp_up(self, hosts=None):
         self._check_pmi()
-        pbs.logmsg(pbs.LOG_WARNING, "PMI:rampup: ramping up nodes")
+        pbs.logmsg(pbs.EVENT_DEBUG3, "PMI:rampup: ramping up nodes")
         return self.__pmi._pmi_ramp_up(hosts)
 
     def power_status(self, hosts=None):
         self._check_pmi()
-        pbs.logmsg(pbs.LOG_WARNING, "PMI:powerstatus: status of nodes")
+        pbs.logmsg(pbs.EVENT_DEBUG3, "PMI:powerstatus: status of nodes")
         return self.__pmi._pmi_power_status(hosts)

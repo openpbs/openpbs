@@ -92,7 +92,7 @@ def NodesetDelete( nodeset_name ):
                 if host is None:
                     continue
                 # Delete the server side Mom
-                if host == self.server.hostname:
+                if host == self.server.shortname:
                     self.server.manager(MGR_CMD_DELETE, NODE, None, host)
                     break
             # setup environment for power provisioning
@@ -117,11 +117,10 @@ def NodesetDelete( nodeset_name ):
         multimom = False
         moms = self.server.filter(NODE, 'Mom')
         if moms is not None:
-            for filt in moms:
-                mom = filt.partition('=')[2]
-                if mom != self.server.hostname:
+            for filt in moms.values():
+                if filt[0] != self.server.shortname:
                     self.logger.info("found different mom %s from local %s" %
-                                     (mom, self.server.shortname))
+                                     (filt, self.server.shortname))
                     multimom = True
                     return True
             if not multimom:
@@ -334,9 +333,12 @@ def NodesetDelete( nodeset_name ):
         Submit jobs requesting eoe when power provisioning unset on server
         and verify that jobs wont run.
         """
+        a = {'enabled': 'False'}
+        hook_name = "PBS_power"
+        self.server.manager(MGR_CMD_SET, PBS_HOOK, a, id=hook_name,
+                            sudo=True)
+        self.server.expect(SERVER, {'power_provisioning': 'False'})
         eoes = ['150W', '300W', '450W']
-        a = {'power_provisioning': 'False'}
-        self.server.manager(MGR_CMD_SET, SERVER, a)
         for profile in eoes:
             jid = self.submit_job(10,
                                   {'Resource_List.place': 'scatter',

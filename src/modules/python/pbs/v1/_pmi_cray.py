@@ -1,7 +1,6 @@
 # coding: utf-8
 """
 
-/*
 # Copyright (C) 1994-2018 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
@@ -290,18 +289,24 @@ class Pmi:
     nidarray = dict()
 
     def __init__(self, pyhome=None):
-        pbs.logmsg(pbs.LOG_DEBUG, "Cray: init")
+        pbs.logmsg(pbs.EVENT_DEBUG3, "Cray: init")
 
-    def _connect(self, endpoint=None, port=None):
-        pbs.logmsg(pbs.LOG_DEBUG, "Cray: connect")
+    def _connect(self, endpoint=None, port=None, job=None):
+        if job is None:
+            pbs.logmsg(pbs.EVENT_DEBUG3, "Cray: connect")
+        else:
+            pbs.logmsg(pbs.EVENT_DEBUG3, "Cray: %s connect" % (job.id))
         return
 
-    def _disconnect(self):
-        pbs.logmsg(pbs.LOG_DEBUG, "Cray: disconnect")
+    def _disconnect(self, job=None):
+        if job is None:
+            pbs.logmsg(pbs.EVENT_DEBUG3, "Cray: disconnect")
+        else:
+            pbs.logmsg(pbs.EVENT_DEBUG3, "Cray: %s disconnect" % (job.id))
         return
 
     def _get_usage(self, job):
-        pbs.logjobmsg(job.id, "Cray: get_usage")
+        pbs.logmsg(pbs.EVENT_DEBUG3, "Cray: %s get_usage" % (job.id))
         try:
             f = open(energy_file(job), "r")
             start = int(f.read())
@@ -510,14 +515,14 @@ class Pmi:
         func = "pmi_ramp_down"
         out = launch(func, cmd)
         for n in out["nids"]:
-           if "data" in n:
+            if "data" in n:
                 nid = n["nid"]
                 states = n["data"]["PWR_Attrs"][0]["PWR_AttrValueCapabilities"]
                 for s in states:
                     if int(s) != 0:
                         cmd = "set_sleep_state_limit --nids " + str(nid) + " --limit " + str(s)
                         launch(func, cmd)
-                        sleep_time = random.randint(1,10)
+                        sleep_time = random.randint(1, 10)
                         time.sleep(sleep_time)
         return True
 
@@ -529,20 +534,20 @@ class Pmi:
         func = "pmi_ramp_up"
         out = launch(func, cmd)
         for n in out["nids"]:
-           if "data" in n:
+            if "data" in n:
                 nid = n["nid"]
                 states = n["data"]["PWR_Attrs"][0]["PWR_AttrValueCapabilities"]
                 for s in reversed(states):
                     if int(s) != 0:
                         cmd = "set_sleep_state_limit --nids " + str(nid) + " --limit " + str(s)
                         launch(func, cmd)
-                        sleep_time = random.randint(1,10)
+                        sleep_time = random.randint(1, 10)
                         time.sleep(sleep_time)
         return True
 
     def _pmi_power_status(self, hosts):
         # Do a capmc node_status and return a list of ready nodes.
-        pbs.logmsg(pbs.LOG_DEBUG, "Cray: status of the nodes")
+        pbs.logmsg(pbs.EVENT_DEBUG3, "Cray: status of the nodes")
         nidset = nodenids(hosts)
         nids, _ = nidlist(nidset=nidset)
         cmd = "node_status --nids " + nids

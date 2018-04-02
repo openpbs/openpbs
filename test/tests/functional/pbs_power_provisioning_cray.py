@@ -68,6 +68,7 @@ class Test_power_provisioning_cray(TestFunctional):
         min_nid = 0
         max_nid = 0
         self.names = []
+        nids = []
         for n in self.server.status(NODE):
             if 'resources_available.PBScraynid' in n:
                 self.names.append(n['id'])
@@ -78,6 +79,7 @@ class Test_power_provisioning_cray(TestFunctional):
                     min_nid = craynid
                 if craynid > max_nid:
                     max_nid = craynid
+                nids.append(craynid)
         # Dividing total number of nodes by 3 and setting each part to a
         # different power profile , which will be used to submit jobs with
         # chunks matching to the number of nodes set to each profile
@@ -97,9 +99,8 @@ class Test_power_provisioning_cray(TestFunctional):
                                     self.names[i])
 
         # Find nid range for capmc command
-        nids = str(min_nid) + "-" + str(max_nid)
-        cmd = "/opt/cray/capmc/default/bin/capmc "
-        cmd += "get_power_cap_capabilities --nids=" + nids
+        cmd = "/opt/cray/capmc/default/bin/capmc "\
+              "get_power_cap_capabilities --nids " + ','.join(nids)
         p = Popen(cmd, shell=True, stdout=PIPE, stderr=PIPE)
         (o, e) = p.communicate()
         out = json.loads(o)
@@ -239,7 +240,6 @@ e.accept()
             self.server.expect(VNODE, {'current_eoe': eoe}, id=vname)
         self.server.expect(JOB, 'queue', op=UNSET, id=jid, offset=secs)
         self.host = qstat[0]['exec_host'].partition('/')[0]
-        self.mom_logcheck(";Job;%s;Cray: get_usage", jid)
         self.mom_logcheck("capmc get_node_energy_counter --nids")
         self.mom_logcheck(";Job;%s;energy usage", jid)
         self.mom_logcheck(";Job;%s;Cray: pcap node", jid)
@@ -319,9 +319,11 @@ e.accept()
         """
 
         eoes = ['low', 'med', 'high']
-        a = {'power_provisioning': 'False'}
-        self.server.manager(MGR_CMD_SET, SERVER, a)
-
+        a = {'enabled': 'False'}
+        hook_name = "PBS_power"
+        self.server.manager(MGR_CMD_SET, PBS_HOOK, a, id=hook_name,
+                            sudo=True)
+        self.server.expect(SERVER, {'power_provisioning': 'False'})
         for profile in eoes:
             jid = self.submit_job(10,
                                   {'Resource_List.place': 'scatter',
@@ -417,22 +419,24 @@ e.accept()
         self.server.manager(MGR_CMD_SET, SERVER, {
                             'job_history_enable': 'True'})
         nodes = self.server.status(NODE)
-        host = nodes[0]['resources_available.host']
+        vnode = nodes[0]['resources_available.vnode']
         ncpus = nodes[0]['resources_available.ncpus']
-        jid = self.submit_job(
-            5, {'Resource_List.host': host, 'Resource_List.ncpus': ncpus})
+        vntype = nodes[0]['resources_available.vntype']
+        jid = self.submit_job(5, {'Resource_List.vnode': vnode,
+                              'Resource_List.ncpus': ncpus,
+                              'Resource_List.vntype': vntype})
         self.server.expect(JOB, {'job_state': 'F'}, id=jid, extend='x')
-        status = self.server.status(NODE, id=host)
+        status = self.server.status(NODE, id=vnode)
         fmttime = status[0][ATTR_NODE_last_state_change_time]
         sts_time1 = int(time.mktime(time.strptime(fmttime, pattern)))
-        jid = self.submit_job(
-            5, {'Resource_List.host': host, 'Resource_List.ncpus': ncpus})
+        jid = self.submit_job(5, {'Resource_List.vnode': vnode,
+                              'Resource_List.ncpus': ncpus,
+                              'Resource_List.vntype': vntype})
         self.server.expect(JOB, {'job_state': 'F'}, id=jid, extend='x')
-        status = self.server.status(NODE, id=host)
+        status = self.server.status(NODE, id=vnode)
         fmttime = status[0][ATTR_NODE_last_state_change_time]
         sts_time2 = int(time.mktime(time.strptime(fmttime, pattern)))
-        rv = sts_time2 > sts_time1
-        self.assertTrue(rv)
+        self.assertGreater(sts_time2, sts_time1)
 
     def test_last_used_time(self):
         """
@@ -442,16 +446,18 @@ e.accept()
         self.server.manager(MGR_CMD_SET, SERVER, {
                             'job_history_enable': 'True'})
         nodes = self.server.status(NODE)
-        host = nodes[0]['resources_available.host']
-        jid = self.submit_job(5, {'Resource_List.host': host})
+        vnode = nodes[0]['resources_available.vnode']
+        vntype = nodes[0]['resources_available.vntype']
+        jid = self.submit_job(5, {'Resource_List.vnode': vnode,
+                              'Resource_List.vntype': vntype})
         self.server.expect(JOB, {'job_state': 'F'}, id=jid, extend='x')
-        status = self.server.status(NODE, id=host)
+        status = self.server.status(NODE, id=vnode)
         fmttime = status[0][ATTR_NODE_last_used_time]
         sts_time1 = int(time.mktime(time.strptime(fmttime, pattern)))
-        jid = self.submit_job(5, {'Resource_List.host': host})
+        jid = self.submit_job(5, {'Resource_List.vnode': vnode,
+                              'Resource_List.vntype': vntype})
         self.server.expect(JOB, {'job_state': 'F'}, id=jid, extend='x')
-        status = self.server.status(NODE, id=host)
+        status = self.server.status(NODE, id=vnode)
         fmttime = status[0][ATTR_NODE_last_used_time]
         sts_time2 = int(time.mktime(time.strptime(fmttime, pattern)))
-        rv = sts_time2 > sts_time1
-        self.assertTrue(rv)
+        self.assertGreater(sts_time2, sts_time1)

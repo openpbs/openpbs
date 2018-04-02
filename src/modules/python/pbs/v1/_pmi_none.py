@@ -1,6 +1,6 @@
 
 """
-/* 
+
 # Copyright (C) 1994-2018 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
@@ -35,8 +35,7 @@
 # Use of Altair’s trademarks, including but not limited to "PBS™",
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
-*      
-*/
+
 """
 __doc__ = """
 This module is be used when no PMI is present.
@@ -49,10 +48,10 @@ class Pmi:
     def __init__(self, pyhome=None):
         pbs.logmsg(pbs.LOG_WARNING, "Stubbed PMI calls are being used")
 
-    def _connect(self, endpoint, port):
+    def _connect(self, endpoint, port, job):
         return
 
-    def _disconnect(self):
+    def _disconnect(self, job):
         return
 
     def _get_usage(self, job):

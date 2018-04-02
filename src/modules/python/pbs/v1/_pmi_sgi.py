@@ -1,7 +1,6 @@
 
 """
 
-/* 
 # Copyright (C) 1994-2018 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
@@ -36,9 +35,9 @@
 # Use of Altair’s trademarks, including but not limited to "PBS™",
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
- *
- */
+
 """
+
 __doc__ = """
 This module is used for SGI systems.
 """
@@ -66,20 +65,26 @@ import sgi_power_api as api
 
 class Pmi:
     def __init__(self, pyhome=None):
-        pbs.logmsg(pbs.LOG_DEBUG, "SGI: init")
+        pbs.logmsg(pbs.EVENT_DEBUG3, "SGI: init")
         api.SERVER = """lead-eth:8888"""
 
-    def _connect(self, endpoint, port):
-        pbs.logmsg(pbs.LOG_DEBUG, "SGI: connect")
+    def _connect(self, endpoint, port, job):
+        if job is None:
+            pbs.logmsg(pbs.EVENT_DEBUG3, "SGI: connect")
+        else:
+            pbs.logmsg(pbs.EVENT_DEBUG3, "SGI: %s connect" % (job.id))
         api.VerifyConnection()
         return
 
-    def _disconnect(self):
-        pbs.logmsg(pbs.LOG_DEBUG, "SGI: disconnect")
+    def _disconnect(self, job):
+        if job is None:
+            pbs.logmsg(pbs.EVENT_DEBUG3, "SGI: disconnect")
+        else:
+            pbs.logmsg(pbs.EVENT_DEBUG3, "SGI: %s disconnect" % (job.id))
         return
 
     def _get_usage(self, job):
-        pbs.logjobmsg(job.id, "SGI: get_usage")
+        pbs.logmsg(pbs.EVENT_DEBUG3, "SGI: %s get_usage" % (job.id))
         report = api.MonitorReport(job.id)
         if report is not None and report[0] == 'total_energy':
             pbs.logjobmsg(job.id, "SGI: energy %fkWh" % report[1])
@@ -100,29 +105,30 @@ class Pmi:
         return False
 
     def _deactivate_profile(self, job):
-        pbs.logmsg(pbs.LOG_DEBUG, "SGI: deactivate")
+        pbs.logmsg(pbs.LOG_DEBUG, "SGI: %s deactivate" % (job.id))
         try:
             api.MonitorStop(job.id)
-        finally:	# be sure to remove the nodeset
+        # be sure to remove the nodeset
+        finally:
             api.NodesetDelete(job.id)
         return False
 
     def _pmi_power_off(self, hosts):
-        pbs.logmsg(pbs.LOG_DEBUG, "SGI: powering-off the node")
+        pbs.logmsg(pbs.EVENT_DEBUG3, "SGI: powering-off the node")
         return False
 
     def _pmi_power_on(self, hosts):
-        pbs.logmsg(pbs.LOG_DEBUG, "SGI: powering-on the node")
+        pbs.logmsg(pbs.EVENT_DEBUG3, "SGI: powering-on the node")
         return False
 
     def _pmi_ramp_down(self, hosts):
-        pbs.logmsg(pbs.LOG_DEBUG, "SGI: ramp-down the node")
+        pbs.logmsg(pbs.EVENT_DEBUG3, "SGI: ramp-down the node")
         return False
 
     def _pmi_ramp_up(self, hosts):
-        pbs.logmsg(pbs.LOG_DEBUG, "SGI: ramp up the node")
+        pbs.logmsg(pbs.EVENT_DEBUG3, "SGI: ramp up the node")
         return False
 
     def _pmi_power_status(self, hosts):
-        pbs.logmsg(pbs.LOG_DEBUG, "SGI: status of the nodes")
+        pbs.logmsg(pbs.EVENT_DEBUG3, "SGI: status of the nodes")
         return False
