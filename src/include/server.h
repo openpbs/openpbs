@@ -156,6 +156,7 @@ enum srv_atr {
 	SRV_ATR_PowerProvisioning,
 	SRV_ATR_show_hidden_attribs,
 	SRV_ATR_sync_mom_hookfiles_timeout,
+	SRV_ATR_rpp_max_pkt_check,
 	/* This must be last */
 	SRV_ATR_LAST
 };

@@ -318,6 +318,14 @@ extern "C" {
 #define ATTR_power_provisioning "power_provisioning"
 #define ATTR_sync_mom_hookfiles_timeout "sync_mom_hookfiles_timeout"
 
+/**
+ * RPP_MAX_PKT_CHECK_DEFAULT controls the number of loops used to process
+ * backend data before servicing frontend requests. Smaller values can
+ * starve the amount of time spent on backend processing.
+ * Larger values can have a marginal impact on latency of frontend requests.
+ */
+#define ATTR_rpp_max_pkt_check "rpp_max_pkt_check"
+
 /* additional scheduler "attribute" names */
 
 #define ATTR_SchedHost	"sched_host"

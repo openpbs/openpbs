@@ -473,6 +473,7 @@ do_rpp(int stream)
 	}
 	return;
 }
+
 /**
  * @brief
  * 		Read the stream using rpp_poll and invoke do_rpp using that stream.
@@ -486,22 +487,19 @@ rpp_request(int fd)
 {
 	int	stream;
 	int	iloop;
-	int max_rpp_loops = 3;
+	int	rpp_max_pkt_check = RPP_MAX_PKT_CHECK_DEFAULT;
 
 	/*
-	 * Allow rpp to loop only a few times (3 for now), such that
-	 * we do not become partial to rpp messages only. In some situations
-	 * (like rapid job starts and mom hooks propagation, a storm of
-	 * rpp message exchanges occur which could keep this loop running
-	 * for long, thus circumventing a chance to service a batch request
-	 * that might have been waiting for a while in wait_request.
-	 * We, therefore, break out of this loop after max_rpp_loops and
-	 * service any waiting batch requests, to keep the user commands
-	 * appearing responsive.
+	 * Interleave RPP processing with batch request processing.
+	 * Certain things like hook/short-job propagation can generate a
+	 * huge amount of RPP traffic that can make batch processing
+	 * appear sluggish if not interleaved.
 	 *
 	 */
+	if (server.sv_attr[(int) SRV_ATR_rpp_max_pkt_check].at_flags & ATR_VFLAG_SET)
+		rpp_max_pkt_check = server.sv_attr[(int) SRV_ATR_rpp_max_pkt_check].at_val.at_long;
 
-	for (iloop = 0; iloop < max_rpp_loops; iloop++) {
+	for (iloop = 0; iloop < rpp_max_pkt_check; iloop++) {
 		if ((stream = rpp_poll()) == -1) {
 #ifdef WIN32
 			/* workaround to a win2k winsock bug */
