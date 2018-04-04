@@ -393,9 +393,9 @@ get_if_info(char *msg)
 				msg[LOG_BUF_SIZE - 1] = '\0';
 				return NULL;
 			}
-			for (i = 0; i < c; i++){
+			for (i = 0; i < c; i++) {
 				curr->ifhostnames[i] = (char*)calloc(PBS_MAXHOSTNAME, sizeof(char));
-				if (curr->ifhostnames[i]) {
+				if (!(curr->ifhostnames[i])) {
 					free(addrlistp);
 					free_if_info(head);
 					free_if_hostnames(hostnames);

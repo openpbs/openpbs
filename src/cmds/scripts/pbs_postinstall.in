@@ -405,7 +405,7 @@ install_pbsinitd() {
 				eval "sed -i 's;\(^[[:space:]]*ExecStart=\)[^[:space:]]*;\1${PBS_EXEC}/libexec/pbs_init.d;' \"$pbs_unitfile\""
 				eval "sed -i 's;\(^[[:space:]]*ExecStop=\)[^[:space:]]*;\1${PBS_EXEC}/libexec/pbs_init.d;' \"$pbs_unitfile\""
 				if command -v systemctl >/dev/null 2>&1; then
-					systemctl daemon-reload && systemctl enable pbs
+					systemctl enable pbs && systemctl daemon-reload
 					if [ $? != 0 -a -d "${presetdir}" ]; then
 						echo "*** Creating preset file ${presetdir}/95-pbs.preset"
 						echo "enable pbs.service" > "${presetdir}/95-pbs.preset"

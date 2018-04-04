@@ -2411,7 +2411,7 @@ sched_settings_frm_svr(struct batch_status *status)
 		char comment[MAX_LOG_SIZE] = {0};
 
 		if (tmp_log_dir != NULL) {
-			(void)snprintf(path_log,  sizeof(path_log), tmp_log_dir);
+			(void)snprintf(path_log,  sizeof(path_log), "%s", tmp_log_dir);
 			log_close(1);
 			if (log_open(logfile, path_log) == -1) {
 				/* update the sched comment attribute with the reason for failure */
