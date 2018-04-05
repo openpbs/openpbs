@@ -94,7 +94,6 @@ extern char *msg_deleteresvJ;
 extern char *msg_job_history_delete;
 extern char *msg_job_history_notset;
 extern char *msg_also_deleted_job_history;
-extern char *msg_nosave_histarrayjob;
 extern char *msg_err_malloc;
 extern struct server server;
 extern time_t time_now;
@@ -213,16 +212,16 @@ check_deletehistoryjob(struct batch_request * preq)
 	job *pjob;
 	int historyjob;
 	int histerr;
+	int t;
 	char *jid;
 	jid = preq->rq_ind.rq_delete.rq_objname;
 
-	histpjob = find_job(jid);
 	/*
-	 * if histpjob returns NULL then we can be sure its a array subjob or a range of subjobs . If the array
-	 * subjob or range of subjobs are in a history state then reject the request as we cant delete history
-	 * of array subjobs
+	 * If the array subjob or range of subjobs are in a history state then
+	 * reject the request as we cant delete history of array subjobs
 	 */
-	if (histpjob == NULL) {
+	t = is_job_array(jid);
+	if ((t == IS_ARRAY_Single) || (t == IS_ARRAY_Range)) {
 		pjob = find_arrayparent(jid);
 		if ((histerr = svr_chk_histjob(pjob))) {
 			req_reject(PBSE_NOHISTARRAYSUBJOB, 0, preq);
@@ -235,6 +234,8 @@ check_deletehistoryjob(struct batch_request * preq)
 			return FALSE;
 		}
 	}
+
+	histpjob = find_job(jid);
 
 	historyjob = svr_chk_histjob(histpjob);
 	if (historyjob == PBSE_HISTJOBID) {
@@ -249,7 +250,29 @@ check_deletehistoryjob(struct batch_request * preq)
 		if (histpjob->ji_qs.ji_state == JOB_STATE_MOVED)
 			issue_delete(histpjob);
 
+		if (histpjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) {
+			if (histpjob->ji_ajtrk) {
+				int i;
+				for (i = 0; i < histpjob->ji_ajtrk->tkm_ct; i++) {
+					char *sjid = mk_subjob_id(histpjob, i);
+					job  *psjob;
+
+					if ((get_subjob_state(histpjob, i) != JOB_STATE_QUEUED) && (psjob = find_job(sjid))) {
+						snprintf(log_buffer, sizeof(log_buffer),
+							msg_job_history_delete, preq->rq_user,
+							preq->rq_host);
+						log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
+							sjid,
+							log_buffer);
+
+						job_purge(psjob);
+					}
+				}
+			}
+		}
+
 		job_purge(histpjob);
+
 		preq->rq_reply.brp_code = PBSE_HISTJOBDELETED;
 		reply_send(preq);
 		return TRUE;
@@ -269,8 +292,7 @@ check_deletehistoryjob(struct batch_request * preq)
  * @param[in]	pjob - Job structure.
  */
 void
-issue_delete(pjob)
-job *pjob;
+issue_delete(job *pjob)
 {
 	struct batch_request   *preq;
 	char rmt_server[PBS_MAXSERVERNAME + 1] = {'\0'};
@@ -288,8 +310,9 @@ job *pjob;
 	if (preq == NULL)
 		return;
 
-	(void)strcpy(preq->rq_ind.rq_delete.rq_objname, pjob->ji_qs.ji_jobid);
-	preq->rq_extend = (char *)malloc(strlen(DELETEHISTORY) + 1);
+	(void)strncpy(preq->rq_ind.rq_delete.rq_objname, pjob->ji_qs.ji_jobid, sizeof(preq->rq_ind.rq_delete.rq_objname) - 1);
+	preq->rq_ind.rq_delete.rq_objname[sizeof(preq->rq_ind.rq_delete.rq_objname) - 1] = '\0';
+	preq->rq_extend = malloc(strlen(DELETEHISTORY) + 1);
 	if (preq->rq_extend == NULL) {
 		log_err(errno, "issue_delete", msg_err_malloc);
 		return;
@@ -343,6 +366,7 @@ req_deletejob(struct batch_request *preq)
 		qdel_mail = 0;
 	else
 		qdel_mail = 1;
+
 	parent = chk_job_request(jid, preq, &jt);
 	if (parent == NULL)
 		return; /* note, req_reject already called */
@@ -357,7 +381,7 @@ req_deletejob(struct batch_request *preq)
 	if (jt == IS_ARRAY_NO) {
 
 		/* just a regular job, pass it on down the line and be done
-		 * If the request if to purge the history of the job then set ji_deletehistory to 1
+		 * If the request is to purge the history of the job then set ji_deletehistory to 1
 		 */
 		if (delhist)
 			parent->ji_deletehistory = 1;
@@ -379,33 +403,20 @@ req_deletejob(struct batch_request *preq)
 			req_reject(PBSE_IVALREQ, 0, preq);
 			return;
 		}
-		/*
-		 * If the request if to also purge the history of the sub job then log a message since
-		 * server does not store the history of subjobs
-		 */
-		if (delhist)
-			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB,
-				LOG_INFO, jid,
-				msg_nosave_histarrayjob);
 
-		if (i == JOB_STATE_RUNNING) {
-			pjob = find_job(jid); /* get ptr to the subjob */
-			if (pjob) {
-				req_deletejob2(preq, pjob);
-				if (parent->ji_ajtrk)
-					if (pjob->ji_terminated)
-						parent->ji_ajtrk->tkm_dsubjsct++;
-			} else {
-				parent->ji_ajtrk->tkm_tbl[offset].trk_substate =
-					JOB_SUBSTATE_TERMINATED;
-				set_subjob_tblstate(pjob, offset, JOB_STATE_EXPIRED);
-				parent->ji_ajtrk->tkm_dsubjsct++;
-				acct_del_write(jid, pjob, preq, 0);
-			}
-		} else if (((i == JOB_STATE_EXITING) && (forcedel == 0)) ||
-			(i == JOB_STATE_EXPIRED)) {
+		if ((i == JOB_STATE_EXITING) && (forcedel == 0)) {
 			req_reject(PBSE_BADSTATE, 0, preq);
 			return;
+		} else if (i != JOB_STATE_QUEUED && ((pjob = find_job(jid)) != NULL)) {
+			/*
+			 * If the request is to also purge the history of the sub job then set ji_deletehistory to 1
+			 */
+			if (delhist)
+				pjob->ji_deletehistory = 1;
+			req_deletejob2(preq, pjob);
+			if (parent->ji_ajtrk)
+				if (pjob->ji_terminated)
+					parent->ji_ajtrk->tkm_dsubjsct++;
 		} else {
 			acct_del_write(jid, parent, preq, 0);
 			parent->ji_ajtrk->tkm_tbl[offset].trk_substate =
@@ -413,14 +424,6 @@ req_deletejob(struct batch_request *preq)
 			set_subjob_tblstate(parent, offset, JOB_STATE_EXPIRED);
 			parent->ji_ajtrk->tkm_dsubjsct++;
 
-			if (i == JOB_STATE_EXITING) {
-				pjob = find_job(jid); /* subjob */
-				if (pjob) {
-					discard_job(pjob, "Forced Delete", 1);
-					rel_resc(pjob);
-					job_purge(pjob);
-				}
-			}
 			reply_ack(preq);
 		}
 		chk_array_doneness(parent);
@@ -428,7 +431,7 @@ req_deletejob(struct batch_request *preq)
 
 	} else if (jt == IS_ARRAY_ArrayJob) {
 		/*
-		 * For array jobs the history is stored at the parent array level and not at the subjob level .
+		 * For array jobs the history is stored at the parent array level and also at the subjob level .
 		 * If the request is to delete the history of an array job then set  ji_deletehistory to 1 for
 		 * the parent array.The function chk_array_doneness() will take care of eventually
 		 *  purging the history .
@@ -444,16 +447,21 @@ req_deletejob(struct batch_request *preq)
 		parent->ji_ajtrk->tkm_flags |= TKMFLG_NO_DELETE;
 		for (i = 0; i < parent->ji_ajtrk->tkm_ct; i++) {
 			sjst = get_subjob_state(parent, i);
-			if (sjst == JOB_STATE_EXPIRED) {
+			if ((sjst == JOB_STATE_EXITING) && !forcedel)
 				continue;
-			} else if ((sjst == JOB_STATE_RUNNING) ||
-				(sjst == JOB_STATE_EXITING)) {
-				if ((sjst == JOB_STATE_EXITING) && !forcedel)
-					continue;
-				pjob = find_job(mk_subjob_id(parent, i));
-				if (pjob) {
+			if ((sjst != JOB_STATE_QUEUED) && (pjob = find_job(mk_subjob_id(parent, i)))) {
+				if (delhist)
+					pjob->ji_deletehistory = 1;
+				if (pjob->ji_qs.ji_state == JOB_STATE_EXPIRED) {
+					snprintf(log_buffer, sizeof(log_buffer),
+						msg_job_history_delete, preq->rq_user,
+						preq->rq_host);
+					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
+						pjob->ji_qs.ji_jobid,
+						log_buffer);
+					job_purge(pjob);
+				}else
 					dup_br_for_subjob(preq, pjob, req_deletejob2);
-				}
 			} else {
 				/* Queued, Waiting, Held, just set to expired */
 				parent->ji_ajtrk->tkm_tbl[i].trk_substate =
@@ -487,14 +495,7 @@ req_deletejob(struct batch_request *preq)
 		req_reject(PBSE_IVALREQ, 0, preq);
 		return;
 	}
-	/*
-	 * If the request if to also purge the history of the sub job then log a message since
-	 * server does not store the history of subjobs
-	 */
-	if (delhist)
-		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB,
-			LOG_INFO, jid,
-			msg_nosave_histarrayjob);
+
 	++preq->rq_refct;
 	while (1) {
 		if ((i = parse_subjob_index(range, &pc, &x, &y, &z, &j)) == -1) {
@@ -522,6 +523,8 @@ req_deletejob(struct batch_request *preq)
 			if ((j = get_subjob_state(parent, i)) == JOB_STATE_RUNNING) {
 				pjob = find_job(jidsj);
 				if (pjob) {
+					if (delhist)
+						pjob->ji_deletehistory = 1;
 					dup_br_for_subjob(preq, pjob, req_deletejob2);
 				}
 			} else if ((j != JOB_STATE_EXITING) || (forcedel == 1)) {
@@ -529,6 +532,8 @@ req_deletejob(struct batch_request *preq)
 				if (j == JOB_STATE_EXITING) {
 					pjob = find_job(jidsj); /* subjob */
 					if (pjob) {
+						if (delhist)
+							pjob->ji_deletehistory = 1;
 						discard_job(pjob, "Forced Delete", 1);
 						rel_resc(pjob);
 						job_purge(pjob);
@@ -1096,7 +1101,8 @@ req_deleteReservation(struct batch_request *preq)
 				pjob = (job *) GET_NEXT(presv->ri_qp->qu_jobs);
 			while (pjob != NULL) {
 				if ((pjob->ji_qs.ji_state != JOB_STATE_MOVED) &&
-					(pjob->ji_qs.ji_state != JOB_STATE_FINISHED))
+					(pjob->ji_qs.ji_state != JOB_STATE_FINISHED) &&
+					(pjob->ji_qs.ji_state != JOB_STATE_EXPIRED))
 					break;
 				pjob = (job *) GET_NEXT(pjob->ji_jobque);
 			}
@@ -1290,7 +1296,8 @@ struct work_task *pwt;
 				pjob = (job *) GET_NEXT(presv->ri_qp->qu_jobs);
 			while (pjob != NULL) {
 				if ((pjob->ji_qs.ji_state != JOB_STATE_MOVED) &&
-					(pjob->ji_qs.ji_state != JOB_STATE_FINISHED))
+					(pjob->ji_qs.ji_state != JOB_STATE_FINISHED) &&
+					(pjob->ji_qs.ji_state != JOB_STATE_EXPIRED))
 					break;
 				pjob = (job *) GET_NEXT(pjob->ji_jobque);
 			}

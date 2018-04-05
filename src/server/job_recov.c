@@ -175,16 +175,6 @@ job_save_fs(job *pjob, int updatetype)
 
 	}
 
-	/* don't save if SubJob unless FULLFORCE.  This is done by Windows    */
-	/* Server when ready to run job since separate send_job program needs */
-	/* needs to be able to read up job structure from disk, not sharing   */
-	/* the memory structures                                              */
-	if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) &&
-		(updatetype != SAVEJOB_FULLFORCE)) {
-		pjob->ji_modified = 0;
-		return 0;	/* don't save subjob */
-	}
-
 	if (pjob->ji_qs.ji_jsversion != JSVERSION) {
 		/* version of job structure changed, force full write */
 		pjob->ji_qs.ji_jsversion = JSVERSION;
@@ -242,24 +232,6 @@ job_save_fs(job *pjob, int updatetype)
 		 * (4) the attributes in the "encoded "external form, and last
 		 * (5) the dependency list.
 		 */
-#ifndef PBS_MOM
-		/*
-		 * For an Array Job, we only update it to disk periodically,
-		 * otherwise we would be spending way too much time writting.
-		 */
-
-		isarray = (pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob);
-		if (isarray) {
-			if ((pjob->ji_modifyct > 0) &&
-				(updatetype != SAVEJOB_FULLFORCE)) {
-				pjob->ji_modifyct--;
-				return 0;
-			} else {
-				/* reset count and do write this time */
-				pjob->ji_modifyct = 600;
-			}
-		}
-#endif
 
 		(void)strcat(namebuf2, JOB_FILE_COPY);
 		openflags =  O_CREAT | O_WRONLY | O_Sync;
@@ -413,8 +385,6 @@ recov_514_extend(int fds, job *pj)
  * 		svr_migrate_data_from_fs
  *
  * @param[in]	filename	- Name of job file to load job from
- * @param[in]	recov_subjob	- 1 to load subjob information,
- *									0 not to load subjobs.
  *
  * @return	pointer to new job structure
  *
@@ -424,7 +394,7 @@ recov_514_extend(int fds, job *pj)
  */
 
 job *
-job_recov_fs(char *filename, int recov_subjob)
+job_recov_fs(char *filename)
 {
 	int		 fds;
 	char		 basen[MAXPATHLEN+1];
@@ -520,15 +490,6 @@ job_recov_fs(char *filename, int recov_subjob)
 			pj->ji_qs.ji_jobid,
 			pbs_recov_filename);
 		log_err(-1, "job_recov", log_buffer);
-		free((char *)pj);
-		(void)close(fds);
-		return NULL;
-	}
-
-	/* unless directed, don't recover Array Sub jobs */
-
-	if ((pj->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) &&
-		(recov_subjob == NO_RECOV_SUBJOB)) {
 		free((char *)pj);
 		(void)close(fds);
 		return NULL;

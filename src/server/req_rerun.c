@@ -285,11 +285,12 @@ req_rerunjob(struct batch_request *preq)
 		parent->ji_ajtrk->tkm_dsubjsct = 0;
 
 		for (i=0; i<parent->ji_ajtrk->tkm_ct; i++) {
-			if (get_subjob_state(parent, i) == JOB_STATE_RUNNING) {
-				pjob = find_job(mk_subjob_id(parent, i));
-				if (pjob) {
+			pjob = find_job(mk_subjob_id(parent, i));
+			if (pjob) {
+				if (pjob->ji_qs.ji_state == JOB_STATE_RUNNING)
 					dup_br_for_subjob(preq, pjob, req_rerunjob2);
-				}
+				else
+					force_reque(pjob);
 			} else {
 				set_subjob_tblstate(parent, i, JOB_STATE_QUEUED);
 			}

@@ -350,27 +350,6 @@ ON pbs.job
 
 
 /*
- * Table pbs.subjob holds the subjob information
- */
-CREATE TABLE pbs.subjob_track (
-    ji_jobid		TEXT		NOT NULL,
-    trk_index		INTEGER,
-    trk_status		INTEGER,
-    trk_error		INTEGER,
-    trk_exitstat	INTEGER,
-    trk_substate	INTEGER,
-    trk_stgout		INTEGER
-);
-
-CREATE INDEX subjob_jobid_idx 
-ON pbs.subjob_track 
-(ji_jobid, trk_index);
-
-CREATE INDEX subjob_track_idx
-ON pbs.subjob_track
-( trk_index );
-
-/*
  * Table pbs.job_scr holds the job script 
  */
 CREATE TABLE pbs.job_scr (

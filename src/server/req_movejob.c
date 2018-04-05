@@ -127,8 +127,8 @@ req_movejob(struct batch_request *req)
 	}
 
 	if (jobp->ji_qs.ji_state != JOB_STATE_QUEUED &&
-		jobp->ji_qs.ji_state != JOB_STATE_HELD &&
-		jobp->ji_qs.ji_state != JOB_STATE_WAITING) {
+			jobp->ji_qs.ji_state != JOB_STATE_HELD &&
+			jobp->ji_qs.ji_state != JOB_STATE_WAITING) {
 #ifndef NDEBUG
 		(void)sprintf(log_buffer, "(%s) %s, state=%d",
 			__func__, msg_badstate, jobp->ji_qs.ji_state);

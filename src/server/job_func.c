@@ -778,7 +778,6 @@ job_purge(job *pjob)
 	if ((pjob->ji_qs.ji_substate != JOB_SUBSTATE_TRANSIN) &&
 		(pjob->ji_qs.ji_substate != JOB_SUBSTATE_TRANSICM)) {
 		if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
-			svr_dequejob(pjob);
 			if ((pjob->ji_qs.ji_substate == JOB_SUBSTATE_RERUN3) || (pjob->ji_qs.ji_substate == JOB_SUBSTATE_QUEUED))
 				update_subjob_state(pjob, JOB_STATE_QUEUED);
 			else
@@ -786,12 +785,12 @@ job_purge(job *pjob)
 		} else {
 			(void)set_entity_ct_sum_queued(pjob, NULL, DECR);
 			(void)set_entity_resc_sum_queued(pjob, NULL,
-				NULL, DECR);
+					NULL, DECR);
 			(void)set_entity_ct_sum_max(pjob, NULL, DECR);
 			(void)set_entity_resc_sum_max(pjob, NULL,
-				NULL, DECR);
-			svr_dequejob(pjob);
+					NULL, DECR);
 		}
+		svr_dequejob(pjob);
 	}
 #endif	/* PBS_MOM */
 
@@ -910,14 +909,12 @@ job_purge(job *pjob)
 	}
 #else
 	/* delete job and dependants from database */
-	if (!(pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob)) {
-		obj.pbs_db_obj_type = PBS_DB_JOB;
-		obj.pbs_db_un.pbs_db_job = &dbjob;
-		strcpy(dbjob.ji_jobid, pjob->ji_qs.ji_jobid);
-		if (pbs_db_delete_obj(conn, &obj) == -1) {
-			log_joberr(-1, __func__, msg_err_purgejob_db,
-				pjob->ji_qs.ji_jobid);
-		}
+	obj.pbs_db_obj_type = PBS_DB_JOB;
+	obj.pbs_db_un.pbs_db_job = &dbjob;
+	strcpy(dbjob.ji_jobid, pjob->ji_qs.ji_jobid);
+	if (pbs_db_delete_obj(conn, &obj) == -1) {
+		log_joberr(-1, __func__, msg_err_purgejob_db,
+			pjob->ji_qs.ji_jobid);
 	}
 
 	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_HasNodes) {
@@ -926,7 +923,7 @@ job_purge(job *pjob)
 		is_called_by_job_purge = 0;
 	}
 
-	if (pjob->ji_resvp && !(pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob)) {
+	if (pjob->ji_resvp) {
 		int		rc;
 
 		if (pjob->ji_resvp->ri_qs.ri_type == RESV_JOB_OBJECT) {

@@ -580,7 +580,6 @@ struct job {
 	int		ji_terminated;	/* job terminated by deljob batch req */
 	int		ji_deletehistory; /* job history should not be saved */
 	pbs_list_head	ji_rejectdest;	/* list of rejected destinations */
-	int		ji_modifyct;	/* count of changes before save */
 	struct job     *ji_parentaj;	/* subjob:   parent Array Job */
 	struct ajtrkhd *ji_ajtrk;	/* ArrayJob: index tracking table */
 	int		ji_subjindx;	/* subjob:   its index into the table */
@@ -1032,9 +1031,6 @@ task_find	(job		*pjob,
 #define IS_ARRAY_Range	  3	/* A range of Subjobs */
 #define PBS_FILE_ARRAY_INDEX_TAG "^array_index^"
 
-#define NO_RECOV_SUBJOB   0
-#define RECOV_SUBJOB      1
-
 /* Special Job Exit Values,  Set by the job starter (child of MOM)   */
 /* see server/req_jobobit() & mom/start_exec.c			     */
 
@@ -1128,7 +1124,7 @@ extern int   update_eligible_time(long, job *);
  */
 #ifdef PBS_MOM
 
-extern job  *job_recov_fs(char *, int);
+extern job  *job_recov_fs(char *);
 extern int   job_save_fs(job *, int);
 extern int   job_or_resv_save_fs(void *, int, int);
 void*	job_or_resv_recov_fs(char *, int);
@@ -1139,7 +1135,7 @@ void*	job_or_resv_recov_fs(char *, int);
 
 #else
 
-extern job  *job_recov_db(char *, int);
+extern job  *job_recov_db(char *);
 extern void *job_or_resv_recov_db(char *, int);
 extern int  job_save_db(job *, int);
 extern int   job_or_resv_save_db(void *, int, int);

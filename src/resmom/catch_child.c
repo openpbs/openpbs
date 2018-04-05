@@ -2110,7 +2110,7 @@ init_abort_jobs(int recover)
 		psuffix = pdirent->d_name + i - job_suf_len;
 		if (strcmp(psuffix, job_suffix))
 			continue;
-		pj = job_recov(pdirent->d_name, RECOV_SUBJOB);
+		pj = job_recov(pdirent->d_name);
 		if (pj == NULL) {
 			(void)strcpy(path, path_jobs);
 			(void)strcat(path, pdirent->d_name);

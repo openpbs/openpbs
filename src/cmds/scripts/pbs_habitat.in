@@ -646,6 +646,7 @@ upgrade_pbs_schema_from_v1_1_0() {
 upgrade_pbs_schema_from_v1_2_0() {
 
 	${PGSQL_DIR}/bin/psql -p ${PBS_DATA_SERVICE_PORT} -d pbs_datastore -U ${PBS_DATA_SERVICE_USER} <<-EOF > /dev/null
+		DROP TABLE pbs.subjob_track;
 		INSERT INTO pbs.scheduler (sched_name, sched_sv_name, sched_savetm, sched_creattm) VALUES ('default', '1', localtimestamp, localtimestamp);
 		ALTER TABLE pbs.scheduler_attr DROP CONSTRAINT scheduler_attr_fk;
 		UPDATE pbs.scheduler_attr SET sched_name='default' WHERE sched_name='1';

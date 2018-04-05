@@ -572,28 +572,43 @@ subst_array_index(job *pjob, char *path)
  *
  * @param[in]	range - subjob index range
  * @param[in]	initialstate - job state
+ * @param[out]	pbserror - PBSError to return
  *
  * @return	ptr to table
  * @retval  NULL	- error
  */
-static struct ajtrkhd *mk_subjob_index_tbl(char *range, int initalstate)
+static struct ajtrkhd *mk_subjob_index_tbl(char *range, int initalstate, int *pbserror)
 {
 	int   ct;
-	int   i, j;
+	int   i, j, l;
 	int   x, y, z;
 	char *eptr;
 	struct ajtrkhd *t;
 	size_t  sz;
 
 	i = parse_subjob_index(range, &eptr, &x, &y, &z, &ct);
-	if (i != 0)
+	if (i != 0) {
+		*pbserror = PBSE_BADATVAL;
 		return NULL; /* parse error */
+	}
+
+	if (server.sv_attr[(int)SVR_ATR_maxarraysize].at_flags & ATR_VFLAG_SET)
+		l = server.sv_attr[(int)SVR_ATR_maxarraysize].at_val.at_long;
+	else
+		l = PBS_MAX_ARRAY_JOB_DFL;  /* default limit 10000 */
+
+	if (ct > l) {
+		*pbserror = PBSE_MaxArraySize;
+		return NULL; /* parse error */
+	}
 
 	sz = sizeof(struct ajtrkhd) + ((ct-1) * sizeof(struct ajtrk));
 	t = (struct ajtrkhd *)malloc(sz);
 
-	if (t == NULL)
+	if (t == NULL) {
+		*pbserror = PBSE_SYSTEM;
 		return NULL;
+	}
 	t->tkm_ct   = ct;
 	t->tkm_step = z;
 	t->tkm_size = sz;
@@ -628,24 +643,7 @@ static struct ajtrkhd *mk_subjob_index_tbl(char *range, int initalstate)
 int
 setup_arrayjob_attrs(attribute *pattr, void *pobj, int mode)
 {
-	int  i;
 	job *pjob = pobj;
-
-	if (mode == ATR_ACTION_NEW) {
-		/* validate max array size */
-		int l, x, y, z, ct;
-		char *ep;
-
-		if (server.sv_attr[(int)SVR_ATR_maxarraysize].at_flags & ATR_VFLAG_SET)
-			l = server.sv_attr[(int)SVR_ATR_maxarraysize].at_val.at_long;
-		else
-			l = PBS_MAX_ARRAY_JOB_DFL;  /* default limit 10000 */
-		if (parse_subjob_index(pattr->at_val.at_str, &ep, &x, &y, &z, &ct) != 0)
-			return PBSE_BADATVAL;
-		if (ct > l)
-			return PBSE_MaxArraySize;
-
-	}
 
 	/* set attribute "array" True  and clear "array_state_count" */
 
@@ -653,32 +651,19 @@ setup_arrayjob_attrs(attribute *pattr, void *pobj, int mode)
 	pjob->ji_wattr[(int)JOB_ATR_array].at_flags = ATR_VFLAG_SET | ATR_VFLAG_MODCACHE;
 	job_attr_def[(int)JOB_ATR_array_state_count].at_free(&pjob->ji_wattr[(int)JOB_ATR_array_state_count]);
 
+	if ((mode == ATR_ACTION_NEW) || (mode == ATR_ACTION_RECOV)) {
+		int pbs_error = PBSE_BADATVAL;
+		if (pjob->ji_ajtrk)
+			free(pjob->ji_ajtrk);
+		if ((pjob->ji_ajtrk = mk_subjob_index_tbl(pjob->ji_wattr[(int)JOB_ATR_array_indices_submitted].at_val.at_str,
+			                                      JOB_STATE_QUEUED, &pbs_error)) == NULL)
+			return pbs_error;
+	}
+
 	if (mode == ATR_ACTION_RECOV) {
-		int x, y, z, ct;
-		char *ep;
-
-		/* on recovery ... */
-		/* parse the various components again, since we dont store them */
-		if (parse_subjob_index(pattr->at_val.at_str, &ep, &x, &y, &z, &ct) != 0)
-			return PBSE_BADATVAL;
-
-		pjob->ji_ajtrk->tkm_ct = ct;
-		pjob->ji_ajtrk->tkm_step = z;
-		pjob->ji_ajtrk->tkm_flags = 0;
-
-		/* reset counts and any running/exiting subjob to queued */
-		for (i=0; i < PBS_NUMJOBSTATE; ++i)
-			pjob->ji_ajtrk->tkm_subjsct[i] = 0;
-		for (i=0; i < pjob->ji_ajtrk->tkm_ct; ++i) {
-			if ((pjob->ji_ajtrk->tkm_tbl[i].trk_status == JOB_STATE_RUNNING)
-				|| (pjob->ji_ajtrk->tkm_tbl[i].trk_status == JOB_STATE_EXITING))
-				pjob->ji_ajtrk->tkm_tbl[i].trk_status =JOB_STATE_QUEUED;
-			pjob->ji_ajtrk->tkm_subjsct[pjob->ji_ajtrk->tkm_tbl[i].trk_status]++;
-		}
-
-		/* clear and reset array_indices_remaining to new value */
-		job_attr_def[(int)JOB_ATR_array_indices_remaining].at_free(&pjob->ji_wattr[(int)JOB_ATR_array_indices_remaining]);
-		job_attr_def[(int)JOB_ATR_array_indices_remaining].at_decode(&pjob->ji_wattr[(int)JOB_ATR_array_indices_remaining], NULL, NULL, cvt_range(pjob->ji_ajtrk, JOB_STATE_QUEUED));
+		/* set flags in attribute so stat_job will update the attr string */
+		pjob->ji_wattr[(int)JOB_ATR_array_indices_remaining].at_flags |=
+			ATR_VFLAG_MODCACHE;
 
 		return (PBSE_NONE);
 	}
@@ -707,12 +692,6 @@ setup_arrayjob_attrs(attribute *pattr, void *pobj, int mode)
 
 	pjob->ji_qs.ji_svrflags |= JOB_SVFLG_ArrayJob;
 
-	if (mode == ATR_ACTION_NEW) {
-		if (pjob->ji_ajtrk)
-			free(pjob->ji_ajtrk);
-		if ((pjob->ji_ajtrk = mk_subjob_index_tbl(pjob->ji_wattr[(int)JOB_ATR_array_indices_submitted].at_val.at_str, JOB_STATE_QUEUED)) == NULL)
-			return PBSE_BADATVAL;
-	}
 
 	return (PBSE_NONE);
 }
@@ -738,9 +717,6 @@ fixup_arrayindicies(attribute *pattr, void *pobj, int mode)
 	char *ep;
 	job  *pjob = pobj;
 	char *str;
-
-	if ((mode != ATR_ACTION_NEW) || (pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE))
-		return (PBSE_NONE);
 
 	/* set all all sub jobs expired,  then reset queued the ones in "remaining" */
 	for (i=0; i < pjob->ji_ajtrk->tkm_ct; i++)
@@ -791,7 +767,6 @@ create_subjob(job *parent, char *newjid, int *rc)
 #else
 	struct timeval	    tval;
 #endif
-
 
 	if ((parent->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) == 0) {
 		*rc = PBSE_IVALREQ;
@@ -872,10 +847,11 @@ create_subjob(job *parent, char *newjid, int *rc)
 
 	subj->ji_qs.ji_svrflags &= ~JOB_SVFLG_ArrayJob;
 	subj->ji_qs.ji_svrflags |=  JOB_SVFLG_SubJob;
-	subj->ji_modified = 1;	/* ** will likely take this out ** */
-
+	subj->ji_modified = 0;  /* to avoid db save in svr_setjobstate()*/
+	subj->ji_newjob = 1;    /* Hack to use ji_newjob to mean SAVEJOB_NEW for subjobs */
 	subj->ji_qs.ji_substate = JOB_SUBSTATE_TRANSICM;
 	(void)svr_setjobstate(subj, JOB_STATE_QUEUED, JOB_SUBSTATE_QUEUED);
+	subj->ji_modified = 1;  /* to force a SAVEJOB_NEW db save in svr_setjobstate() for subjobs */
 	subj->ji_wattr[(int)JOB_ATR_state].at_flags    |= ATR_VFLAG_SET;
 	subj->ji_wattr[(int)JOB_ATR_substate].at_flags |= ATR_VFLAG_SET;
 
@@ -908,6 +884,7 @@ create_subjob(job *parent, char *newjid, int *rc)
 		*rc = PBSE_IVALREQ;
 		return NULL;
 	}
+
 	*rc = PBSE_NONE;
 	return subj;
 }

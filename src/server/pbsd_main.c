@@ -2162,7 +2162,7 @@ try_db_again:
 	for (pjob = (job *)GET_NEXT(svr_alljobs);
 		pjob;
 		pjob = (job *)GET_NEXT(pjob->ji_alljobs)) {
-		if ((pjob->ji_modified) && ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) == 0))
+		if (pjob->ji_modified)
 			(void)job_save(pjob, SAVEJOB_FULLFORCE);
 	}
 

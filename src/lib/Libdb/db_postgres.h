@@ -104,12 +104,6 @@ extern "C" {
 #define STMT_DELETE_JOBATTR "delete_jobattr"
 #define STMT_DELETE_JOBATTR_RESC "delete_jobattr_resc"
 
-/* subjob stmts */
-#define STMT_INSERT_SUBJOB "insert_subjob"
-#define STMT_UPDATE_SUBJOB "update_subjob"
-#define STMT_FIND_SUBJOB_ORDBY_INDEX "find_subjob_ordby_index"
-#define STMT_DELETE_SUBJOB "delete_subjob"
-
 /* reservation statement names */
 #define STMT_INSERT_RESV "insert_resv"
 #define STMT_UPDATE_RESV "update_resv"
@@ -366,19 +360,6 @@ int
 pg_db_load_jobscr(pbs_db_conn_t *conn,
 	pbs_db_obj_info_t *obj);
 
-int
-pg_db_insert_subjob(pbs_db_conn_t *conn,
-	pbs_db_obj_info_t *obj);
-int
-pg_db_update_subjob(pbs_db_conn_t *conn,
-	pbs_db_obj_info_t *obj);
-int
-pg_db_find_subjob(pbs_db_conn_t *conn, void *st,
-	pbs_db_obj_info_t *obj,
-	pbs_db_query_options_t *opts);
-int
-pg_db_next_subjob(pbs_db_conn_t *conn, void *st,
-	pbs_db_obj_info_t *obj);
 
 /* resv functions */
 int pg_db_insert_resv(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);

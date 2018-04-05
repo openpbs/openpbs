@@ -123,14 +123,6 @@ pg_db_fn_t db_fn_arr[PBS_DB_NUM_TYPES] =
 		pg_db_find_sched,
 		pg_db_next_sched
 	},
-	{ /* PBS_DB_SUBJOB */
-		pg_db_insert_subjob,
-		pg_db_update_subjob,
-		NULL,
-		NULL,
-		pg_db_find_subjob,
-		pg_db_next_subjob
-	},
 	{ /* PBS_DB_MOMINFO_TIME */
 		pg_db_insert_mominfo_tm,
 		pg_db_update_mominfo_tm,

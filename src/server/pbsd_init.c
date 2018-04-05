@@ -954,7 +954,6 @@ pbsd_init(int type)
 	}
 	avl_create_index(AVL_jctx, AVL_NO_DUP_KEYS, 0);
 
-	had = server.sv_qs.sv_numjobs;
 	server.sv_qs.sv_numjobs = 0;
 
 	/* get jobs from DB */
@@ -970,20 +969,15 @@ pbsd_init(int type)
 	}
 	if (pbs_db_get_rowcount(state) <= 0) {
 		if ((type != RECOV_CREATE) && (type != RECOV_COLD)) {
-			if (had == 0) {
 				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER,
 					LOG_DEBUG,
 					msg_daemonname, msg_init_nojobs);
-			} else {
-				sprintf(log_buffer, msg_init_exptjobs, had, 0);
-				log_err(-1, "pbsd_init", log_buffer);
-			}
 		}
 	} else {
 		/* Now, for each job found ... */
 		numjobs = 0;
 		while ((rc = pbs_db_cursor_next(conn, state, &obj)) == 0) {
-			if ((pjob = job_recov(dbjob.ji_jobid, NO_RECOV_SUBJOB)) == NULL) {
+			if ((pjob = job_recov(dbjob.ji_jobid)) == NULL) {
 				if ((type == RECOV_COLD) || (type == RECOV_CREATE)) {
 					/* remove the loaded job from db */
 					if (pbs_db_delete_obj(conn, &obj) != 0) {
@@ -1029,15 +1023,9 @@ pbsd_init(int type)
 			}
 		}
 
-		if ((had != server.sv_qs.sv_numjobs) &&
-			(type != RECOV_CREATE) &&
-			(type != RECOV_COLD))
-			logtype = PBSEVENT_ERROR | PBSEVENT_SYSTEM;
-		else
-			logtype = PBSEVENT_SYSTEM;
-		sprintf(log_buffer, msg_init_exptjobs, had,
+		sprintf(log_buffer, msg_init_exptjobs,
 			server.sv_qs.sv_numjobs);
-		log_event(logtype, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
+		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
 			msg_daemonname, log_buffer);
 	}
 
@@ -1656,6 +1644,18 @@ pbsd_init_job(job *pjob, int type)
 			pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags |= (ATR_VFLAG_SET & ATR_VFLAG_MODCACHE);
 		}
 
+		if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
+			if ((pjob->ji_parentaj = find_arrayparent(pjob->ji_qs.ji_jobid)) == NULL) {
+				/* parent job object not found */
+				init_abt_job(pjob);
+				return -1;
+			}
+
+			pjob->ji_subjindx = subjob_index_to_offset(pjob->ji_parentaj, get_index_from_jid(pjob->ji_qs.ji_jobid));
+			/* update the tracking table */
+			set_subjob_tblstate(pjob->ji_parentaj, pjob->ji_subjindx,
+					(JOB_STATE_FINISHED == pjob->ji_parentaj->ji_qs.ji_state) ? JOB_STATE_FINISHED : pjob->ji_qs.ji_state);
+		}
 
 		switch (pjob->ji_qs.ji_substate) {
 
@@ -1879,6 +1879,8 @@ pbsd_init_reque(job *pjob, int change_state)
 		svr_evaljobstate(pjob, &newstate, &newsubstate, 1);
 		pjob->ji_qs.ji_state =  newstate;
 		pjob->ji_qs.ji_substate =  newsubstate;
+		if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob)
+			set_subjob_tblstate(pjob->ji_parentaj, pjob->ji_subjindx, newstate);
 	}
 	set_statechar(pjob);
 	/* make sure substate attributes match actual value */

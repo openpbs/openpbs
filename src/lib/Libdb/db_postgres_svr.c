@@ -210,7 +210,6 @@ pbs_db_truncate_all(pbs_db_conn_t *conn)
 		"pbs.queue, "
 		"pbs.resv_attr, "
 		"pbs.resv, "
-		"pbs.subjob_track, "
 		"pbs.job_scr, "
 		"pbs.job_attr, "
 		"pbs.job, "

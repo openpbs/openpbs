@@ -546,6 +546,7 @@ req_runjob(struct batch_request *preq)
 		return;
 
 	}
+
 	/* what's left to handle is a range of subjobs,	*/
 	/* foreach subjob, if queued, run it		*/
 
@@ -1052,15 +1053,8 @@ svr_strtjob2(job *pjob, struct batch_request *preq)
 	}
 
 	/* send the job to MOM */
-	if (!(pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob))
-	{
-		job_attr_def[(int) JOB_ATR_Comment].at_decode(
-				&pjob->ji_wattr[(int) JOB_ATR_Comment],
-				NULL,
-				NULL,
-				form_attr_comment("Job was sent for execution at %s",
-						pjob->ji_wattr[(int) JOB_ATR_exec_vnode].at_val.at_str));
-	}
+	set_attr_svr(&(pjob->ji_wattr[(int) JOB_ATR_Comment]), &job_attr_def[(int) JOB_ATR_Comment],
+		form_attr_comment("Job was sent for execution at %s", pjob->ji_wattr[(int) JOB_ATR_exec_vnode].at_val.at_str));
 
 	if (old_subst != JOB_SUBSTATE_PROVISION)
 		(void)svr_setjobstate(pjob, JOB_STATE_RUNNING,
@@ -1158,14 +1152,12 @@ complete_running(job *jobp)
 	}
 	/* Job started ATR_Comment is set in server since scheduler cannot read	*/
 	/* the reply in case of error in asynchronous communication.	*/
-	else {
-		job_attr_def[(int) JOB_ATR_Comment].at_decode(
-				&jobp->ji_wattr[(int) JOB_ATR_Comment],
-				NULL,
-				NULL,
-				form_attr_comment("Job run at %s",
-						jobp->ji_wattr[(int) JOB_ATR_exec_vnode].at_val.at_str));
-	}
+	job_attr_def[(int) JOB_ATR_Comment].at_decode(
+		&jobp->ji_wattr[(int) JOB_ATR_Comment],
+		NULL,
+		NULL,
+		form_attr_comment("Job run at %s",
+			jobp->ji_wattr[(int) JOB_ATR_exec_vnode].at_val.at_str));
 
 	jobp->ji_qs.ji_svrflags &= ~JOB_SVFLG_HOTSTART;
 
@@ -1441,12 +1433,10 @@ post_sendmom(struct work_task *pwt)
 						NULL, NULL, log_buffer);
 				}
 			}
-			else {
-				/* if the job is a normal job */
-				job_attr_def[(int) JOB_ATR_Comment].at_decode(
-						&jobp->ji_wattr[(int) JOB_ATR_Comment], NULL,
-						NULL, log_buffer);
-			}
+
+			/* if the job is a normal job or a subjob */
+			set_attr_svr(&(jobp->ji_wattr[(int) JOB_ATR_Comment]), &job_attr_def[(int) JOB_ATR_Comment], log_buffer);
+
 		}
 
 		/* in the case of hook error we parse the hook_name and hook msg */

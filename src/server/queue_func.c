@@ -215,7 +215,8 @@ que_purge(pbs_queue *pque)
 				 * return with PBSE_OBJBUSY error.
 				 */
 				if ((pjob->ji_qs.ji_state != JOB_STATE_MOVED) &&
-					(pjob->ji_qs.ji_state != JOB_STATE_FINISHED))
+					(pjob->ji_qs.ji_state != JOB_STATE_FINISHED) &&
+					(pjob->ji_qs.ji_state != JOB_STATE_EXPIRED))
 					return (PBSE_OBJBUSY);
 				pjob = (job *)GET_NEXT(pjob->ji_jobque);
 			}

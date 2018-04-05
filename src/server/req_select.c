@@ -268,7 +268,7 @@ add_select_entry(char *jid, struct brp_select ***pselx)
  * @param[in]	statelist	-	If statelist is NULL, then no need to check anything,
  * 								just add the subjobs to the return list.
  * @param[in,out]	pselx	-	select return
- * @param[in]	pjob	-	pointer to select list
+ * @param[in]	psel	-	pointer to select list
  *
  * @return	int
  * @retval	0	: error and not added

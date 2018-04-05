@@ -378,12 +378,16 @@ status_subjob(job *pjob, struct batch_request *preq, svrattrl *pal, int subj, pb
 	if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) == 0)
 		return PBSE_IVALREQ;
 
-	/* if subjob is running, use real job structure */
+	/* if subjob job obj exists, use real job structure */
 
-	if (get_subjob_state(pjob, subj) == JOB_STATE_RUNNING) {
-		psubjob = find_job(mk_subjob_id(pjob, subj));
-		if (psubjob)
-			status_job(psubjob, preq, pal, pstathd, bad);
+	if ((get_subjob_state(pjob, subj) != JOB_STATE_QUEUED) && (psubjob = find_job(mk_subjob_id(pjob, subj)))) {
+
+		/* if parent job state is F and 'x' is present in rq_extend then we set subjob state also as F */
+		if((pjob->ji_qs.ji_state == JOB_STATE_FINISHED) && strchr(preq->rq_extend, (int)'x')) {
+			psubjob->ji_qs.ji_state = JOB_STATE_FINISHED;
+			set_attr_svr(&psubjob->ji_wattr[(int)JOB_ATR_state], &job_attr_def[(int)JOB_ATR_state], &statechars[JOB_STATE_FINISHED]);
+		}
+		status_job(psubjob, preq, pal, pstathd, bad);
 		return 0;
 	}
 

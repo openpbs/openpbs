@@ -2437,20 +2437,11 @@ req_commit(struct batch_request *preq)
 		pj->ji_script = NULL;
 	}
 
-	/* save server here as part of the transaction */
-	if (svr_save_db(&server, SVR_SAVE_QUICK) != 0) {
-		job_purge(pj);
-		req_reject(PBSE_SYSTEM, 0, preq);
-		(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
-		return;
-	}
-
 	if (pbs_db_end_trx(conn, PBS_DB_COMMIT) != 0) {
 		job_purge(pj);
 		req_reject(PBSE_SYSTEM, 0, preq);
 		return;
 	}
-	pj->ji_newjob = 0; /* reset dontsave - job is now saved */
 
 	/*
 	 * if the job went into a Route (push) queue that has been started,
@@ -3123,14 +3114,6 @@ req_resvSub(struct batch_request *preq)
 		(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
 		(void)resv_purge(presv);
 		req_reject(PBSE_SAVE_ERR, 0, preq);
-		return;
-	}
-
-	/* save server here as part of the transaction */
-	if (svr_save_db(&server, SVR_SAVE_QUICK) != 0) {
-		(void)resv_purge(presv);
-		req_reject(PBSE_SYSTEM, 0, preq);
-		(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
 		return;
 	}
 

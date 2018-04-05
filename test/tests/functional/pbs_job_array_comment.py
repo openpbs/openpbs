@@ -84,17 +84,25 @@ class TestJobArrayComment(TestFunctional):
             ATTR_comment: (MATCH_RE, 'Job Array Began at .*')
         }
         self.server.expect(JOB, attr, id=jid, attrop=PTL_AND)
-        self.server.expect(JOB, {ATTR_comment: 'Subjob failed'},
-                           id=create_subjob_id(jid, 0), extend='x')
-        self.server.expect(JOB, {ATTR_comment: 'Subjob failed'},
-                           id=create_subjob_id(jid, 5), extend='x')
-        self.server.expect(JOB, {ATTR_comment: 'Subjob failed'},
-                           id=create_subjob_id(jid, 7), extend='x')
-
-
-def create_subjob_id(job_array_id, subjob_index):
-    """
-    insert subjob index into the square brackets of job array id
-    """
-    idx = job_array_id.find('[]')
-    return job_array_id[:idx+1] + str(subjob_index) + job_array_id[idx+1:]
+        self.server.expect(JOB, {ATTR_comment: 'Not Running: PBS Error:' +
+                                 ' Execution server rejected request' +
+                                 ' and failed'},
+                           id=test_job_array.create_subjob_id(jid, 0),
+                           extend='x')
+        attr = {
+            ATTR_state: 'R',
+            ATTR_comment: (MATCH_RE, 'Job run at .*')
+        }
+        self.server.expect(JOB, attr, extend='x',
+                           id=test_job_array.create_subjob_id(jid, 1),
+                           attrop=PTL_AND)
+        self.server.expect(JOB, {ATTR_comment: 'Not Running: PBS Error:' +
+                                 ' Execution server rejected request' +
+                                 ' and failed'},
+                           id=test_job_array.create_subjob_id(jid, 5),
+                           extend='x')
+        self.server.expect(JOB, {ATTR_comment: 'Not Running: PBS Error:' +
+                                 ' Execution server rejected request' +
+                                 ' and failed'},
+                           id=test_job_array.create_subjob_id(jid, 7),
+                           extend='x')

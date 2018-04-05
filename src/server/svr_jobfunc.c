@@ -666,7 +666,6 @@ svr_setjobstate(job *pjob, int newstate, int newsubstate)
 
 		if ((oldstate = pjob->ji_qs.ji_state) != (long)newstate) {
 
-			pjob->ji_modifyct = 0; /* force write to disk */
 			changed = 1;
 			server.sv_jobstates[oldstate]--;
 			server.sv_jobstates[newstate]++;
@@ -714,6 +713,10 @@ svr_setjobstate(job *pjob, int newstate, int newsubstate)
 			}
 			/* if subjob, update parent Array Job */
 			if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
+				/* Since subjob never go to F state,
+				 * check if any one setting it to F state. */
+				if (JOB_STATE_FINISHED == newstate)
+					newstate = JOB_STATE_EXPIRED;
 				update_subjob_state(pjob, newstate);
 			}
 		}
@@ -747,9 +750,12 @@ svr_setjobstate(job *pjob, int newstate, int newsubstate)
 		set_entity_resc_sum_queued(pjob, pjob->ji_qhdr, NULL, DECR);
 	}
 
-	if (pjob->ji_modified)
-		return (job_save(pjob, SAVEJOB_FULL));
-	else if (changed)
+	if (pjob->ji_modified) {
+		if (pjob->ji_newjob)	/* Hack to use ji_newjob to mean SAVEJOB_NEW for subjobs */
+			return (job_save(pjob, SAVEJOB_NEW));
+		else
+			return (job_save(pjob, SAVEJOB_FULL));
+	} else if (changed)
 		return (job_save(pjob, SAVEJOB_QUICK));
 
 	return (0);
@@ -5395,7 +5401,6 @@ svr_histjob_update(job * pjob, int newstate, int newsubstate)
 
 	/* update the state count in queue and server */
 	if (oldstate != newstate) {
-		pjob->ji_modifyct = 0; /* force write to disk */
 		server.sv_jobstates[oldstate]--;
 		server.sv_jobstates[newstate]++;
 		if (pque != NULL) {
@@ -5408,6 +5413,15 @@ svr_histjob_update(job * pjob, int newstate, int newsubstate)
 	pjob->ji_qs.ji_substate = newsubstate;
 	set_statechar(pjob);
 
+	/* For subjob update the state */
+	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
+		/* Since subjob never go to F state,
+		 * check if any one setting it to F state. */
+		if (JOB_STATE_FINISHED == newstate)
+			newstate = JOB_STATE_EXPIRED;
+		update_subjob_state(pjob, newstate);
+	}
+
 	/* set the status of each subjob if it is an array job */
 	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) {
 		int indx;
@@ -5418,7 +5432,6 @@ svr_histjob_update(job * pjob, int newstate, int newsubstate)
 				set_subjob_tblstate(pjob, indx, newstate);
 		}
 	}
-
 	/* set the substate attr and cache it */
 	pjob->ji_wattr[(int)JOB_ATR_substate].at_val.at_long = newsubstate;
 	pjob->ji_wattr[(int)JOB_ATR_substate].at_flags |= ATR_VFLAG_MODCACHE;
@@ -5592,7 +5605,8 @@ svr_setjob_histinfo(job *pjob, histjob_type type)
 		 * exited with non-zero exit status, then it is FAILED,
 		 * otherwise FINISHED.
 		 */
-		newstate = JOB_STATE_FINISHED; /* default */
+		newstate = (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) ?
+				JOB_STATE_EXPIRED : JOB_STATE_FINISHED; /* default X for subjob, F for other jobs */
 		newsubstate = JOB_SUBSTATE_FINISHED; /* default */
 
 		/* If Array job, handle here */
@@ -5651,21 +5665,13 @@ svr_setjob_histinfo(job *pjob, histjob_type type)
 		newsubstate = JOB_SUBSTATE_FAILED;
 	}
 
-	/*
-	 * If subjob, set the substate and purge the job structure
-	 * right now and return.
-	 */
-	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
-		pjob->ji_qs.ji_substate = newsubstate;
-		job_purge(pjob);
-		return;
-	}
 
 	/* if the job is not already in MOVED or FINISHED state, then */
 	/* decrement the entity job counts and entity resource sums   */
 
 	if ((pjob->ji_qs.ji_state != JOB_STATE_MOVED) &&
-		(pjob->ji_qs.ji_state != JOB_STATE_FINISHED)) {
+		(pjob->ji_qs.ji_state != JOB_STATE_FINISHED) &&
+		!(pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob)) {
 		int rc;
 		if ((rc=set_entity_ct_sum_max(pjob, NULL, DECR)) != 0) {
 			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_ct_sum_max on server failed with %d for finished job", rc);

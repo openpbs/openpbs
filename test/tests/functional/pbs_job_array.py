@@ -42,6 +42,7 @@ class TestJobArray(TestFunctional):
     """
     Test suite for PBSPro's job array feature
     """
+
     def test_arrayjob_Erecord_startval(self):
         """
         Check that an arrayjob's E record's 'start' value is not set to 0
@@ -68,3 +69,114 @@ class TestJobArray(TestFunctional):
         # Verify that the value of 'start' isn't 0
         self.assertNotEqual(start_val, 0,
                             "E record value of 'start' for arrayjob is 0")
+
+    def kill_and_restart_svr(self):
+        try:
+            self.server.stop('-KILL')
+        except PbsServiceError as e:
+            # The server failed to stop
+            raise self.failureException("Server failed to stop:" + e.msg)
+
+        try:
+            self.server.start()
+        except PbsServiceError as e:
+            # The server failed to start
+            raise self.failureException("Server failed to start:" + e.msg)
+
+    def test_running_subjob_survive_restart(self):
+        """
+        Test to check if a running subjob of an array job survive a
+        pbs_server restart
+        """
+        a = {'resources_available.ncpus': 1}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        j = Job(TEST_USER, attrs={
+            ATTR_J: '1-3', 'Resource_List.select': 'ncpus=1'})
+
+        j.set_sleep_time(10)
+
+        j_id = self.server.submit(j)
+        subjid_2 = j.create_subjob_id(j_id, 2)
+
+        # 1. check job array has begun
+        self.server.expect(JOB, {'job_state': 'B'}, j_id)
+
+        # 2. wait till subjob 2 starts running
+        self.server.expect(JOB, {'job_state': 'R'}, subjid_2)
+
+        # 3. Kill and restart the server
+        self.kill_and_restart_svr()
+
+        # 4. array job should be B
+        self.server.expect(JOB, {'job_state': 'B'}, j_id, max_attempts=1)
+
+        # 5. subjob 1 should be X
+        self.server.expect(JOB, {'job_state': 'X'},
+                           j.create_subjob_id(j_id, 1), max_attempts=1)
+
+        # 6. subjob 2 should be R
+        self.server.expect(JOB, {'job_state': 'R'}, subjid_2, max_attempts=1)
+
+        # 7. subjob 3 should be Q
+        self.server.expect(JOB, {'job_state': 'Q'},
+                           j.create_subjob_id(j_id, 3), max_attempts=1)
+
+    def test_running_subjob_survive_restart_with_history(self):
+        """
+        Test to check if a running subjob of an array job survive a
+        pbs_server restart when history is enabled
+        """
+        attr = {'job_history_enable': 'true'}
+        self.server.manager(MGR_CMD_SET, SERVER, attr)
+        self.test_running_subjob_survive_restart()
+
+    def test_suspended_subjob_survive_restart(self):
+        """
+        Test to check if a suspended subjob of an array job survive a
+        pbs_server restart
+        """
+        a = {'resources_available.ncpus': 1}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        j = Job(TEST_USER, attrs={
+            ATTR_J: '1-3', 'Resource_List.select': 'ncpus=1'})
+
+        j.set_sleep_time(10)
+
+        j_id = self.server.submit(j)
+        subjid_2 = j.create_subjob_id(j_id, 2)
+
+        # 1. check job array has begun
+        self.server.expect(JOB, {'job_state': 'B'}, j_id)
+
+        # 2. wait till subjob_2 starts running
+        self.server.expect(JOB, {'job_state': 'R'}, subjid_2)
+
+        try:
+            self.server.sigjob(subjid_2, 'suspend')
+        except PbsSignalError as e:
+            raise self.failureException("Failed to suspend subjob:" + e.msg)
+
+        self.server.expect(JOB, {'job_state': 'S'}, subjid_2, max_attempts=1)
+
+        # 3. Kill and restart the server
+        self.kill_and_restart_svr()
+
+        # 4. array job should be B
+        self.server.expect(JOB, {'job_state': 'B'}, j_id, max_attempts=1)
+
+        # 5. subjob_2 should be S
+        self.server.expect(JOB, {'job_state': 'S'}, subjid_2, max_attempts=1)
+
+        try:
+            self.server.sigjob(subjid_2, 'resume')
+        except PbsSignalError as e:
+            raise self.failureException("Failed to resume subjob:" + e.msg)
+
+    def test_suspended_subjob_survive_restart_with_history(self):
+        """
+        Test to check if a suspended subjob of an array job survive a
+        pbs_server restart when history is enabled
+        """
+        attr = {'job_history_enable': 'true'}
+        self.server.manager(MGR_CMD_SET, SERVER, attr)
+        self.test_suspended_subjob_survive_restart()

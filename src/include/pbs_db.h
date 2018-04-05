@@ -165,22 +165,6 @@ typedef struct pbs_db_job_info pbs_db_job_info_t;
 
 /**
  * @brief
- *  Structure used to map database subjob structure to C
- *
- */
-struct pbs_db_subjob_info {
-	char     ji_jobid[PBS_MAXSVRJOBID + 1]; /* job identifier */
-	INTEGER  trk_index;
-	INTEGER  trk_status;
-	INTEGER  trk_error;
-	INTEGER  trk_exitstat;
-	INTEGER  trk_substate;
-	INTEGER  trk_stgout;
-};
-typedef struct pbs_db_subjob_info pbs_db_subjob_info_t;
-
-/**
- * @brief
  *  Structure used to map database resv structure to C
  *
  */
@@ -330,9 +314,8 @@ typedef struct pbs_db_query_options pbs_db_query_options_t;
 #define PBS_DB_ATTR			5
 #define PBS_DB_JOBSCR		6
 #define PBS_DB_SCHED		7
-#define PBS_DB_SUBJOB		8
-#define PBS_DB_MOMINFO_TIME	9
-#define PBS_DB_NUM_TYPES	10
+#define PBS_DB_MOMINFO_TIME	8
+#define PBS_DB_NUM_TYPES	9
 
 
 /* connection error code */
@@ -370,7 +353,6 @@ struct pbs_db_obj_info {
 	union {
 		pbs_db_job_info_t	*pbs_db_job;
 		pbs_db_jobscr_info_t	*pbs_db_jobscr;
-		pbs_db_subjob_info_t	*pbs_db_subjob;
 		pbs_db_resv_info_t	*pbs_db_resv;
 		pbs_db_svr_info_t	*pbs_db_svr;
 		pbs_db_que_info_t	*pbs_db_que;

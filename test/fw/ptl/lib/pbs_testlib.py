@@ -13650,6 +13650,19 @@ class Job(ResourceResv):
         self.script = fn
         return fn
 
+    def create_subjob_id(self, job_array_id, subjob_index):
+        """
+        insert subjob index into the square brackets of job array id
+
+        :param job_array_id: PBS parent array job id
+        :type job_array_id: str
+        :param subjob_index: index of subjob
+        :type subjob_index: int
+        :returns: subjob id string
+        """
+        idx = job_array_id.find('[]')
+        return job_array_id[:idx+1] + str(subjob_index) + job_array_id[idx+1:]
+
 
 class Reservation(ResourceResv):
 

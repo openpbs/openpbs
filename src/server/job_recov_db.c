@@ -55,8 +55,6 @@
  *	db_to_svr_job		  - Load data from database job object to a server job object
  *	svr_to_db_resv		  -	Load data from server resv object to a database resv object
  *	db_to_svr_resv		  -	Load data from database resv object to a server resv object
- *	svr_to_db_subjob	  - Load data from server subjob to a database subjob object
- *	db_to_svr_subjob	  -	Load data from database subjob to the server subjob object
  *	resv_save_db		  -	Save resv to database
  *	resv_recov_db		  - Recover resv from database
  *
@@ -309,56 +307,6 @@ db_to_svr_resv(resc_resv *presv, pbs_db_resv_info_t *pdresv)
 
 /**
  * @brief
- *		Load data from server subjob to a database subjob object
- *
- * @see
- * 		job_save_db
- *
- * @param[in]	jid - Jobid of the parent job
- * @param[in]	trk - The servers subjob tracking structure
- * @param[in]   psubjob - Address of the database subjob
- *
- * @return	void
- */
-static void
-svr_to_db_subjob(char *jid, struct ajtrk *trk,
-	pbs_db_subjob_info_t *psubjob)
-{
-	strcpy(psubjob->ji_jobid, jid);
-	psubjob->trk_index = trk->trk_index;
-	psubjob->trk_error = trk->trk_error;
-	psubjob->trk_exitstat = trk->trk_exitstat;
-	psubjob->trk_stgout = trk->trk_stgout;
-	psubjob->trk_status = trk->trk_status;
-	psubjob->trk_substate = trk->trk_substate;
-}
-
-/**
- * @brief
- *		Load data from database subjob to the server subjob object
- *
- * @see
- * 		job_recov_db
- *
- * @param[in]	trk - The servers subjob tracking structure
- * @param[in]   psubjob - Address of the database subjob
- *
- * @return	void
- */
-static void
-db_to_svr_subjob(struct ajtrk *trk, pbs_db_subjob_info_t *psubjob)
-{
-	trk->trk_index = psubjob->trk_index;
-	trk->trk_error = psubjob->trk_error;
-	trk->trk_exitstat = psubjob->trk_exitstat;
-	trk->trk_stgout = psubjob->trk_stgout;
-	trk->trk_status = psubjob->trk_status;
-	trk->trk_substate = psubjob->trk_substate;
-}
-
-
-/**
- * @brief
  *		Save job to database
  *
  * @param[in]	pjob - The job to save
@@ -378,11 +326,8 @@ job_save_db(job *pjob, int updatetype)
 {
 	pbs_db_attr_info_t attr_info;
 	pbs_db_job_info_t dbjob;
-	pbs_db_subjob_info_t dbsubjob;
-	int	isarray = 0;
 	pbs_db_obj_info_t obj;
 	pbs_db_conn_t *conn = svr_db_conn;
-	int i;
 
 	/*
 	 * if job has new_job flag set, then updatetype better be SAVEJOB_NEW
@@ -399,12 +344,6 @@ job_save_db(job *pjob, int updatetype)
 	if (pjob->ji_modified) {
 		pjob->ji_wattr[JOB_ATR_mtime].at_val.at_long = time_now;
 		pjob->ji_wattr[JOB_ATR_mtime].at_flags |= ATR_VFLAG_MODCACHE;
-	}
-
-	if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) &&
-		(updatetype != SAVEJOB_FULLFORCE)) {
-		pjob->ji_modified = 0;
-		return (0);	/* don't save subjob */
 	}
 
 	if (pjob->ji_qs.ji_jsversion != JSVERSION) {
@@ -432,21 +371,6 @@ job_save_db(job *pjob, int updatetype)
 		 * (4) the attributes in the "encoded "external form, and last
 		 * (5) the dependency list.
 		 */
-		/*
-		 * For an Array Job, we only update it to disk periodically,
-		 * otherwise we would be spending way too much time writting.
-		 */
-		isarray = (pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob);
-		if (isarray) {
-			if ((pjob->ji_modifyct > 0) &&
-				(updatetype != SAVEJOB_FULLFORCE)) {
-				pjob->ji_modifyct--;
-				return (0);
-			} else {
-				/* reset count and do write this time */
-				pjob->ji_modifyct = 600;
-			}
-		}
 		if (pbs_db_begin_trx(conn, 0, 0) !=0)
 			goto db_err;
 
@@ -458,19 +382,6 @@ job_save_db(job *pjob, int updatetype)
 			if (pbs_db_insert_obj(conn, &obj) != 0)
 				goto db_err;
 
-			/* if job is array, save subjob tracking information */
-			if (isarray) {
-				obj.pbs_db_obj_type = PBS_DB_SUBJOB;
-				obj.pbs_db_un.pbs_db_subjob = &dbsubjob;
-				for (i = 0; i < pjob->ji_ajtrk->tkm_ct; i++) {
-					svr_to_db_subjob(pjob->ji_qs.ji_jobid,
-						&pjob->ji_ajtrk->tkm_tbl[i],
-						&dbsubjob);
-					if (pbs_db_insert_obj(conn, &obj) != 0)
-						goto db_err;
-				}
-			}
-
 			if (save_attr_db(conn, &attr_info, job_attr_def,
 				pjob->ji_wattr,
 				(int)JOB_ATR_LAST, 1) != 0)
@@ -481,19 +392,6 @@ job_save_db(job *pjob, int updatetype)
 			if (pbs_db_update_obj(conn, &obj) != 0)
 				goto db_err;
 
-			/* if job is array, save subjob tracking information */
-			if (isarray) {
-				obj.pbs_db_obj_type = PBS_DB_SUBJOB;
-				obj.pbs_db_un.pbs_db_subjob = &dbsubjob;
-				for (i = 0; i < pjob->ji_ajtrk->tkm_ct; i++) {
-					svr_to_db_subjob(pjob->ji_qs.ji_jobid,
-						&pjob->ji_ajtrk->tkm_tbl[i],
-						&dbsubjob);
-					if (pbs_db_update_obj(conn, &obj) != 0)
-						goto db_err;
-				}
-			}
-
 			if (save_attr_db(conn, &attr_info, job_attr_def,
 				pjob->ji_wattr,
 				(int)JOB_ATR_LAST, 0) != 0)
@@ -503,6 +401,7 @@ job_save_db(job *pjob, int updatetype)
 			goto db_err;
 
 		pjob->ji_modified = 0;
+		pjob->ji_newjob = 0; /* reset dontsave - job is now saved */
 	}
 	return (0);
 db_err:
@@ -616,7 +515,6 @@ db_err:
  *		Recover job from database
  *
  * @param[in]	jid - Job id of job to recover
- * @param[in]   recov_subjob - Recover subjobs
  *
  * @return      The recovered job
  * @retval	 NULL - Failure
@@ -624,16 +522,13 @@ db_err:
  *
  */
 job *
-job_recov_db(char *jid, int recov_subjob)
+job_recov_db(char *jid)
 {
 	job		*pj;
 	pbs_db_job_info_t dbjob;
 	pbs_db_attr_info_t attr_info;
 	pbs_db_obj_info_t obj;
 	pbs_db_conn_t *conn = svr_db_conn;
-	pbs_db_subjob_info_t dbsubjob;
-	void *state;
-	int count, xs, i;
 
 	pj = job_alloc();	/* allocate & initialize job structure space */
 	if (pj == NULL) {
@@ -653,44 +548,8 @@ job_recov_db(char *jid, int recov_subjob)
 
 	db_to_svr_job(pj, &dbjob);
 
-	/* unless directed, don't recover Array Sub jobs */
-	if ((pj->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) &&
-		(recov_subjob == NO_RECOV_SUBJOB)) {
-		goto db_err;
-	}
 	attr_info.parent_id = jid;
 	attr_info.parent_obj_type = PARENT_TYPE_JOB; /* job attr */
-
-	/* recover subjobs if job is arrayjob */
-	if (pj->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) {
-
-		obj.pbs_db_obj_type = PBS_DB_SUBJOB;
-		obj.pbs_db_un.pbs_db_subjob = &dbsubjob;
-		strcpy(dbsubjob.ji_jobid, jid);
-
-		state = pbs_db_cursor_init(conn, &obj, NULL);
-		if (state == NULL)
-			goto db_err;
-		count = pbs_db_get_rowcount(state);
-		if (count > 0) {
-			xs = ((count - 1) * sizeof(struct ajtrk)) +
-				sizeof(struct ajtrkhd);
-			if ((pj->ji_ajtrk =
-				(struct ajtrkhd *)malloc(xs)) == NULL)
-				goto db_err;
-			pj->ji_ajtrk->tkm_size = xs;
-
-			i=0;
-			while (pbs_db_cursor_next(conn, state, &obj) == 0) {
-				db_to_svr_subjob(&pj->ji_ajtrk->tkm_tbl[i],
-					&dbsubjob);
-				if(pj->ji_ajtrk->tkm_tbl[i].trk_substate == JOB_SUBSTATE_TERMINATED)
-					pj->ji_ajtrk->tkm_dsubjsct++;
-				i++;
-			}
-			pbs_db_cursor_close(conn, state);
-		}
-	}
 
 	/* read in working attributes */
 	if (recov_attr_db(conn, pj, &attr_info, job_attr_def, pj->ji_wattr,
@@ -860,7 +719,7 @@ job_or_resv_recov_db(char *id, int objtype)
 	if (objtype == RESC_RESV_OBJECT) {
 		return (resv_recov_db(id));
 	} else {
-		return (job_recov_db(id, 0));
+		return (job_recov_db(id));
 	}
 }
 #endif

@@ -426,7 +426,7 @@ main(int argc, char *argv[])
 		goto fatal_exit;
 	}
 
-	if ((jobp=job_recov_fs(jobfile, RECOV_SUBJOB)) == NULL) {
+	if ((jobp=job_recov_fs(jobfile)) == NULL) {
 		sprintf(log_buffer, "Failed to recreate job in jobfile=%s", jobfile);
 		log_err(-1, __func__, log_buffer);
 		goto fatal_exit;

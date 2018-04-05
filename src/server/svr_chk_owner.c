@@ -86,6 +86,7 @@ extern char  server_host[];
 extern char *msg_badstate;
 extern char *msg_permlog;
 extern char *msg_unkjobid;
+extern char *msg_system;
 extern char *msg_unkresvID;
 extern char *msg_delProgress;
 extern time_t time_now;

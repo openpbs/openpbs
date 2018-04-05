@@ -172,7 +172,7 @@ extern void rm_files(char *dirname);
 extern int sched_recov_fs(char *svrfile);
 extern int svr_recov_fs(char *svrfile);
 extern pbs_queue *que_recov_fs(char *filename);
-extern job *job_recov_fs(char *filename, int recov_subjob);
+extern job *job_recov_fs(char *filename);
 extern void *job_or_resv_recov_fs(char *filename, int objtype);
 extern char *build_path(char *parent, char *name, char *sufix);
 
@@ -501,17 +501,11 @@ svr_migrate_data_from_fs(void)
 		return (-1);
 	}
 
-	had = server.sv_qs.sv_numjobs;
 	server.sv_qs.sv_numjobs = 0;
 	recovered = 0;
 	dir = opendir(".");
 	if (dir == NULL) {
-		if (had == 0) {
-			fprintf(stderr, "%s", msg_init_nojobs);
-		} else {
-			fprintf(stderr, msg_init_exptjobs, had, 0);
-		}
-		fprintf(stderr, "\n");
+		fprintf(stderr, "%s\n", msg_init_nojobs);
 	} else {
 		/* Now, for each job found ... */
 		while (errno = 0,
@@ -525,7 +519,7 @@ svr_migrate_data_from_fs(void)
 			if (strcmp(psuffix, job_suffix))
 				continue;
 
-			if ((pjob = job_recov_fs(pdirent->d_name,  RECOV_SUBJOB)) == NULL) {
+			if ((pjob = job_recov_fs(pdirent->d_name)) == NULL) {
 				(void)strcpy(basen, pdirent->d_name);
 				psuffix = basen + baselen;
 				(void)strcpy(psuffix, JOB_BAD_SUFFIX);
@@ -653,10 +647,8 @@ svr_migrate_data_from_fs(void)
 			return (-1);
 		}
 		(void) closedir(dir);
-		if (had != recovered) {
-			fprintf(stderr, msg_init_exptjobs, had, recovered);
-			fprintf(stderr, "\n");
-		}
+		fprintf(stderr, msg_init_exptjobs, recovered);
+		fprintf(stderr, "\n");
 	}
 
 	if (save_nodes_db(0, NULL) != 0) {
