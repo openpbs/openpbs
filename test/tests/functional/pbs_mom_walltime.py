@@ -38,7 +38,7 @@
 from tests.functional import *
 
 
-class TestMomHookWalltime(TestFunctional):
+class TestMomWalltime(TestFunctional):
 
     def test_mom_hook_not_counted_in_walltime(self):
         """
@@ -137,3 +137,26 @@ class TestMomHookWalltime(TestFunctional):
         # Used walltime should be less than the sleep time after suspend
         self.server.expect(JOB, {'resources_used.walltime': 10}, op=LE,
                            id=jid1, extend='x')
+
+    def test_mom_restart(self):
+        """
+        Test that time spent on jobs running on MoM will not reset when
+        MoM is restarted
+        """
+        job = Job(TEST_USER)
+        job.set_sleep_time(300)
+        jid = self.server.submit(job)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
+        self.server.expect(JOB, {'resources_used.walltime': 30}, op=GT,
+                           id=jid, offset=30)
+
+        self.mom.stop(sig='-INT')
+        self.mom.start(args=['-p'])
+
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
+        try:
+            self.assertFalse(
+                self.server.expect(JOB, {'resources_used.walltime': 30},
+                                   op=LT, id=jid, max_attempts=5, interval=5))
+        except PtlExpectError:
+            pass
