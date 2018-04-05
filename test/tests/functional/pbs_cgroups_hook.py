@@ -1348,6 +1348,43 @@ execjob_attach,execjob_end,exechost_startup"'}
             self.logger.info("Checking file %s" % filename)
             self.assertFalse(os.path.isfile(filename))
 
+    def test_cgroup_assign_resources_mem_only_vnode(self):
+        """
+        Test to verify that job requesting mem larger than any single vnode
+        works properly
+        """
+        vn_attrs = {ATTR_rescavail + '.ncpus': 1,
+                    ATTR_rescavail + '.mem': '500mb'}
+        self.server.create_vnodes('vnode', vn_attrs, 2, self.moms.values()[0],
+                                  expect=False)
+        self.server.expect(NODE, {ATTR_NODE_state: 'free'},
+                           id=self.moms.values()[0].shortname)
+
+        self.load_config(self.cfg4)
+        a = {'Resource_List.select': '1:ncpus=1:mem=500mb'}
+        j1 = Job(TEST_USER, attrs=a)
+        j1.create_script('date')
+        jid1 = self.server.submit(j1)
+        self.server.expect(JOB, 'queue', id=jid1, op=UNSET, max_attempts=10,
+                           interval=1, offset=1)
+        a = {'Resource_List.select': '1:ncpus=1:mem=1gb'}
+        j2 = Job(TEST_USER, attrs=a)
+        j2.create_script('date')
+        jid2 = self.server.submit(j2)
+        self.server.expect(JOB, 'queue', id=jid2, op=UNSET, max_attempts=10,
+                           interval=1, offset=1)
+        a = {'Resource_List.select': '1:ncpus=1:mem=40gb'}
+        j3 = Job(TEST_USER, attrs=a)
+        j3.create_script('date')
+        jid3 = self.server.submit(j3)
+
+        a = {'job_state': 'Q',
+             'comment':
+             (MATCH_RE,
+              '.*Can Never Run: Insufficient amount of resource: mem.*')}
+        self.server.expect(JOB, a, attrop=PTL_AND, id=jid3, offset=10,
+                           interval=1, max_attempts=10)
+
     def tearDown(self):
         TestFunctional.tearDown(self)
         self.load_config(self.cfg0)

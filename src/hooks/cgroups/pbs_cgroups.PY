@@ -2543,10 +2543,9 @@ class CgroupUtils(object):
     # Determine whether a job fits within resources
     def _assign_resources(self, requested, available, socketlist, node):
         pbs.logmsg(pbs.EVENT_DEBUG4, "%s: Method called" % caller_name())
-        assigned = {}
+        assigned = {'cpuset.cpus': [], 'cpuset.mems': []}
+
         if 'ncpus' in requested:
-            assigned['cpuset.cpus'] = []
-            assigned['cpuset.mems'] = []
             req = int(requested['ncpus'])
             avail = len(available['cpus'])
             if not self.cfg['use_hyperthreads']:
@@ -2578,6 +2577,12 @@ class CgroupUtils(object):
                 pbs.logmsg(pbs.EVENT_DEBUG4, "Insufficient ncpus: %s/%s" %
                            (req, available['cpus']))
                 return {}
+
+        if 'mem' in requested or 'ngpus' in requested or 'nmics' in requested:
+            # for multivnode systems asking memory/ngpus/nmics without asking
+            # cpus is valid, need access to memory
+            assigned['cpuset.mems'] = socketlist
+
         if 'nmics' in requested and int(requested['nmics']) > 0:
             assigned['device_names'] = []
             assigned['devices'] = []
