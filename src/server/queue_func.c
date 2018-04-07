@@ -150,6 +150,7 @@ que_free(pbs_queue *pq)
 	int		 i;
 	attribute	*pattr;
 	attribute_def	*pdef;
+	key_value_pair  *pkvp = NULL;
 
 	/* remove any malloc working attribute space */
 
@@ -158,6 +159,15 @@ que_free(pbs_queue *pq)
 		pattr = &pq->qu_attr[i];
 
 		pdef->at_free(pattr);
+	}
+	/* free default chunks set on queue */
+	pkvp = pq->qu_seldft;
+	if (pkvp) {
+		for (i = 0; i < pq->qu_nseldft; ++i) {
+			free((pkvp+i)->kv_keyw);
+			free((pkvp+i)->kv_val);
+		}
+		free(pkvp);
 	}
 
 	/* now free the main structure */

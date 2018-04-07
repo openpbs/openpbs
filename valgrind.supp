@@ -634,4 +634,11 @@
    fun:log_record
    fun:*
 }
-
+{
+   From PBSPro (server) - Suppress allocations that clear up when python interpreter restarts
+   Memcheck:Leak
+   fun:malloc
+   fun:PyString_FromString
+   fun:pbs_python_populate_attributes_to_python_class
+   fun:*
+}

@@ -4293,6 +4293,7 @@ mom_running_jobs(int stream)
 	char             exec_host_name[PBS_MAXHOSTNAME+2]="UNKNOWN2";
 	char             *slash_pos = NULL;
 	int              exec_host_hostlen = 0;
+	char		*pset = NULL;
 
 	njobs = disrui(stream, &rc);    /* number of jobs in update */
 	if (rc)
@@ -4321,7 +4322,7 @@ mom_running_jobs(int stream)
 		execvnod = disrst(stream, &rc);
 		if (rc)
 			goto err;
-		(void)disrst(stream, &rc);	/* pset is not currently used */
+		pset = disrst(stream, &rc);	/* pset is not currently used */
 		if (rc)
 			goto err;
 
@@ -4418,6 +4419,8 @@ mom_running_jobs(int stream)
 		jobid = NULL;
 		free(execvnod);
 		execvnod = NULL;
+		free(pset);
+		pset = NULL;
 	}
 	return;
 
@@ -4427,6 +4430,7 @@ err:
 	log_err(errno, "mom_running_jobs", log_buffer);
 	free(jobid);
 	free(execvnod);
+	free(pset);
 }
 
 

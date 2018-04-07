@@ -2297,8 +2297,10 @@ mgr_node_set(struct batch_request *preq)
 							reply_text(preq, PBSE_PARTITION_NOT_IN_QUE, log_buffer);
 							break;
 
-						default:  req_reject(rc, 0, preq);
+						default:
+							req_reject(rc, 0, preq);
 					}
+					free(warn_nodes);
 					return;
 				}
 
@@ -2587,8 +2589,10 @@ mgr_node_unset(struct batch_request *preq)
 							reply_badattr(rc, bad, plist, preq);
 							break;
 
-						default:  req_reject(rc, 0, preq);
+						default:
+							req_reject(rc, 0, preq);
 					}
+					free(warn_nodes);
 					return;
 				}
 
