@@ -179,7 +179,7 @@ e.job.resources_used["stra"] = '"glad,elated","happy"'
             'resources_used.vmem': '9gb',
             'resources_used.cput': '00:00:10',
             'resources_used.ncpus': '1'},
-            extend='x', offset=10, id=jid)
+            extend='x', offset=10, attrop=PTL_AND, id=jid)
 
         # Match accounting_logs entry
 

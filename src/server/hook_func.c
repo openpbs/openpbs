@@ -5119,9 +5119,6 @@ sync_mom_hookfiles(void *minfo)
 			if ((pact == NULL) ||
 				(pact->action == MOM_HOOK_ACTION_NONE))
 				continue;
-			phook = find_hook(pact->hookname);
-			if (phook == NULL)
-				continue;
 			if (pact->action & MOM_HOOK_ACTION_DELETE)
 				action_expected++;
 			if (pact->action & MOM_HOOK_ACTION_SEND_ATTRS)
@@ -5291,6 +5288,7 @@ sync_mom_hookfiles(void *minfo)
 				}
 			}
 
+			phook = find_hook(pact->hookname);
 			/* send with suffix if a regular hook file
 			 * NOTE: There could be a hook named <resourcedef>
 			 * and it's not the special <resourcedef> file
@@ -5302,7 +5300,7 @@ sync_mom_hookfiles(void *minfo)
 
 				snprintf(hookfile, MAXPATHLEN, "%s%s%s",
 					path_hooks, pact->hookname, HOOK_FILE_SUFFIX);
-				if ((phook->event & MOM_EVENTS) == 0) {
+				if (!phook || (phook->event & MOM_EVENTS) == 0) {
 					pact->action &= ~MOM_HOOK_ACTION_SEND_ATTRS;
 				} else if ((PBSD_copyhookfile(conn, hookfile, 0, NULL) != 0) &&
 					(pbs_errno != PBSE_MOM_REJECT_ROOT_SCRIPTS)) {
@@ -5345,7 +5343,7 @@ sync_mom_hookfiles(void *minfo)
 					path_hooks, pact->hookname,
 					HOOK_CONFIG_SUFFIX);
 
-				if ((phook->event & MOM_EVENTS) == 0) {
+				if (!phook || (phook->event & MOM_EVENTS) == 0) {
 					pact->action &= ~MOM_HOOK_ACTION_SEND_CONFIG;
 				} else if ((PBSD_copyhookfile(conn, hookfile, 0, NULL) != 0) &&
 					(pbs_errno != PBSE_MOM_REJECT_ROOT_SCRIPTS)) {
@@ -5388,7 +5386,7 @@ sync_mom_hookfiles(void *minfo)
 					path_hooks, pact->hookname,
 					HOOK_SCRIPT_SUFFIX);
 
-				if ((phook->event & MOM_EVENTS) == 0) {
+				if (!phook || (phook->event & MOM_EVENTS) == 0) {
 					pact->action &= ~MOM_HOOK_ACTION_SEND_SCRIPT;
 				} if ((PBSD_copyhookfile(conn, hookfile, 0, NULL) != 0) &&
 					(pbs_errno != PBSE_MOM_REJECT_ROOT_SCRIPTS)) {
@@ -5973,10 +5971,6 @@ sync_mom_hookfilesRPP(void *minfo)
 			if ((pact == NULL) || (pact->action == MOM_HOOK_ACTION_NONE))
 				continue;
 
-			phook = find_hook(pact->hookname);
-			if (phook == NULL)
-				continue;
-
 			if (pact->action & MOM_HOOK_ACTION_DELETE_RESCDEF) {
 				if (!check_add_hook_mcast_info(conn, minfo_array[i], pact->hookname,
 								MOM_HOOK_ACTION_DELETE_RESCDEF, j))
@@ -5994,22 +5988,23 @@ sync_mom_hookfilesRPP(void *minfo)
 					ret = SYNC_HOOKFILES_FAIL;
 			}
 
+			phook = find_hook(pact->hookname);
 			if (pact->action & MOM_HOOK_ACTION_SEND_ATTRS) {
-				if ((phook->event & MOM_EVENTS) == 0)
+				if (!phook || (phook->event & MOM_EVENTS) == 0)
 					pact->action &= ~MOM_HOOK_ACTION_SEND_ATTRS;
 				else if (!check_add_hook_mcast_info(conn, minfo_array[i], pact->hookname, MOM_HOOK_ACTION_SEND_ATTRS, j))
 					ret = SYNC_HOOKFILES_FAIL;
 			}
 
 			if (pact->action & MOM_HOOK_ACTION_SEND_CONFIG) {
-				if ((phook->event & MOM_EVENTS) == 0)
+				if (!phook || (phook->event & MOM_EVENTS) == 0)
 					pact->action &= ~MOM_HOOK_ACTION_SEND_CONFIG;
 				else if (!check_add_hook_mcast_info(conn, minfo_array[i], pact->hookname, MOM_HOOK_ACTION_SEND_CONFIG, j))
 					ret = SYNC_HOOKFILES_FAIL;
 			}
 
 			if (pact->action & MOM_HOOK_ACTION_SEND_SCRIPT) {
-				if ((phook->event & MOM_EVENTS) == 0)
+				if (!phook || (phook->event & MOM_EVENTS) == 0)
 					pact->action &= ~MOM_HOOK_ACTION_SEND_SCRIPT;
 				else if (!check_add_hook_mcast_info(conn, minfo_array[i], pact->hookname,
 								       MOM_HOOK_ACTION_SEND_SCRIPT, j))

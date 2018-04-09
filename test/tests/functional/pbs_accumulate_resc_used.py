@@ -252,7 +252,7 @@ else:
             'resources_used.vmem': '29gb',
             'resources_used.cput': '00:00:50',
             'resources_used.ncpus': '3'},
-            extend='x', offset=10, id=jid)
+            extend='x', offset=10, attrop=PTL_AND, id=jid)
 
         foo_str_dict_in = {"eight": 8, "seven": 7, "nine": 9}
         qstat = self.server.status(
@@ -402,7 +402,7 @@ else:
             'resources_used.vmem': '35gb',
             'resources_used.cput': '00:00:35',
             'resources_used.ncpus': '3'},
-            extend='x', offset=10, id=jid)
+            extend='x', offset=10, attrop=PTL_AND, id=jid)
 
         foo_str_dict_in = {"eight": 8, "seven": 7, "nine": 9}
         qstat = self.server.status(
@@ -580,7 +580,7 @@ for jk in e.job_list.keys():
                 'resources_used.vmem': '36gb',
                 'resources_used.cput': '00:00:36',
                 'resources_used.ncpus': '3'},
-                extend='x', offset=35, id=jid)
+                extend='x', offset=35, attrop=PTL_AND, id=jid)
 
             foo_str_dict_in = {"eight": 8, "seven": 7, "nine": 9}
             qstat = self.server.status(
@@ -686,7 +686,8 @@ else:
         # foo_bool is True
         a = {'resources_used.foo_bool': "True",
              'job_state': 'F'}
-        self.server.expect(JOB, a, extend='x', offset=5, id=jid)
+        self.server.expect(JOB, a, extend='x', offset=5, attrop=PTL_AND,
+                           id=jid)
 
     def test_resource_invisible(self):
         """
@@ -824,7 +825,7 @@ j.resources_used["stra2"] = '"glad"'
              'resources_used.stra': "\"happy\"",
              'resources_used.stra2': "\"glad\"",
              'job_state': 'F'}
-        self.server.expect(JOB, a, extend='x',
+        self.server.expect(JOB, a, extend='x', attrop=PTL_AND,
                            offset=30, interval=1,
                            max_attempts=20, id=jid)
 
@@ -900,7 +901,7 @@ else:
              'resources_used.foo_str4': "eight",
              'job_state': 'F'}
         self.server.expect(JOB, a, extend='x',
-                           offset=5, id=jid, interval=1)
+                           offset=5, id=jid, interval=1, attrop=PTL_AND)
 
         foo_str_dict_in = {"eight": 8, "seven": 7, "nine": 9}
         qstat = self.server.status(
@@ -1013,7 +1014,7 @@ for jj in e.job_list.keys():
         a = {'resources_used.foo_f': '3.03',
              'resources_used.cput': 30}
         self.server.expect(JOB, a,
-                           offset=10, id=jid1, interval=1)
+                           offset=10, id=jid1, attrop=PTL_AND, interval=1)
 
         # Rerun the job
         self.server.manager(MGR_CMD_SET, SERVER,
@@ -1030,11 +1031,12 @@ for jj in e.job_list.keys():
         # turn the scheduling on
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'scheduling': 'True'})
-        self.server.expect(JOB, {'job_state': "R", "substate": 42}, id=jid1)
+        self.server.expect(JOB, {'job_state': "R", "substate": 42},
+                           attrop=PTL_AND, id=jid1)
 
         # Validate that resources_used.foo_f is reset
         self.server.expect(JOB, a,
-                           offset=10, id=jid1, interval=1)
+                           offset=10, id=jid1, attrop=PTL_AND, interval=1)
 
     def test_job_array(self):
         """
@@ -1178,7 +1180,7 @@ e.job.resources_used["cput"] = 10
             'resources_used.foo_i': '30',
             'resources_used.foo_f': '0.6',
             'resources_used.cput': '30',
-            'job_state': 'F'},
+            'job_state': 'F'}, attrop=PTL_AND,
             extend='x', id=jid, offset=5,
             max_attempts=60, interval=1)
 
@@ -1195,7 +1197,7 @@ e.job.resources_used["cput"] = 10
         self.server.expect(JOB, {
             'job_state': 'R',
             'resources_used.foo_i': '30',
-            'resources_used.foo_f': '0.3'},
+            'resources_used.foo_f': '0.3'}, attrop=PTL_AND,
             id=jid1, max_attempts=30, interval=2)
 
         # Force delete the job
@@ -1204,7 +1206,7 @@ e.job.resources_used["cput"] = 10
         # Verify values are accumulated by prologue hook only
         self.server.expect(JOB, {
             'resources_used.foo_i': '30',
-            'resources_used.foo_f': '0.3'},
+            'resources_used.foo_f': '0.3'}, attrop=PTL_AND,
             extend='x', id=jid1)
 
     def test_server_restart2(self):
@@ -1254,14 +1256,14 @@ time.sleep(15)
              'resources_used.foo_f': 0.29,
              'resources_used.foo_str':
              "\'{\"eight\": 8, \"seven\": 7, \"nine\": 9}\'"}
-        self.server.expect(JOB, a, extend='x',
+        self.server.expect(JOB, a, extend='x', attrop=PTL_AND,
                            offset=5, id=jid, interval=1)
 
         # Restart server while hook is still executing
         self.server.restart()
 
         # Verify that values again
-        self.server.expect(JOB, a, extend='x',
+        self.server.expect(JOB, a, extend='x', attrop=PTL_AND,
                            id=jid)
 
     def test_mom_down2(self):
@@ -1321,7 +1323,8 @@ else:
                             'resources_used.foo_f': '0.19',
                             'resources_used.foo_str':
                             '\'{\"eight\": 8, \"seven\": 7, \"nine\": 9}\''},
-                           offset=10, id=jid, interval=1, extend='x')
+                           offset=10, id=jid, interval=1, extend='x',
+                           attrop=PTL_AND)
 
         # Bring the mom back up
         self.momB.start()
