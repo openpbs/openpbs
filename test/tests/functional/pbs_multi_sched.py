@@ -36,6 +36,7 @@
 # trademark licensing policies.
 
 from tests.functional import *
+import resource
 
 
 class TestMultipleSchedulers(TestFunctional):
@@ -273,6 +274,8 @@ class TestMultipleSchedulers(TestFunctional):
                             {'partition': (DECR, 'P1')}, id="sc1")
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'partition': (DECR, 'P4')}, id="sc1")
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'True'},
+                            id="sc1", expect=True)
         log_msg = "Scheduler does not contain a partition"
         self.scheds['sc1'].log_match(log_msg, max_attempts=10,
                                      starttime=self.server.ctime)
@@ -1637,3 +1640,113 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.expect(JOB, {ATTR_comment: "Not Running: " + msg}, id=jid2)
         self.scheds['sc2'].log_match(jid2 + ";Dedicated Time",
                                      starttime=self.server.ctime)
+
+    def test_auto_sched_off_due_to_fds_limit(self):
+        """
+        Test to make sure scheduling should be turned off automatically
+        when number of open files per process are exhausted
+        """
+
+        if os.getuid() != 0 or sys.platform in ('cygwin', 'win32'):
+            self.skipTest("Test need to run as root")
+
+        try:
+            # get the number of open files per process
+            (open_files_soft_limit, open_files_hard_limit) =\
+                resource.getrlimit(resource.RLIMIT_NOFILE)
+
+            # set the soft limit of number of open files per process to 10
+            resource.setrlimit(resource.RLIMIT_NOFILE,
+                               (10, open_files_hard_limit))
+        except (ValueError, resource.error):
+            self.assertFalse(True, "Error in accessing system RLIMIT_ "
+                                   "variables, test fails.")
+
+        self.setup_sc3()
+
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduler_iteration': 1},
+                            id="sc3", expect=True)
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'True'},
+                            id="sc3", expect=True)
+
+        self.logger.info('The sleep is 15 seconds which will trigger required '
+                         'number of scheduling cycles that are needed to '
+                         'exhaust open files per process which is 10 in our '
+                         'case')
+        time.sleep(15)
+        # scheduling should not go to false once all fds per process
+        # are exhausted.
+        self.server.expect(SCHED, {'scheduling': 'True'},
+                           id='sc3', max_attempts=10)
+
+        try:
+            resource.setrlimit(resource.RLIMIT_NOFILE, (open_files_soft_limit,
+                                                        open_files_hard_limit))
+        except (ValueError, resource.error):
+            self.assertFalse(True, "Error in accessing system RLIMIT_ "
+                                   "variables, test fails.")
+
+    def test_set_msched_attr_sched_log_with_sched_off(self):
+        """
+        Test to set Multisched attributes even when its scheduling is off
+        and check whether they are actually be effective
+        """
+        self.setup_sc3()
+        self.scheds['sc3'].set_sched_config({'log_filter': 2048})
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduling': 'False'}, id="sc3")
+
+        new_sched_log = os.path.join(self.server.pbs_conf['PBS_HOME'],
+                                     'sc3_new_logs')
+        if os.path.exists(new_sched_log):
+            self.du.rm(path=new_sched_log, recursive=True,
+                       sudo=True, force=True)
+
+        self.du.mkdir(path=new_sched_log, sudo=True)
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'sched_log': new_sched_log},
+                            id="sc3", expect=True)
+
+        a = {'sched_log': new_sched_log}
+        self.server.expect(SCHED, a, id='sc3', max_attempts=10)
+
+        # This is required since we need to call log_match only when
+        # the new log file is created.
+        time.sleep(1)
+        self.scheds['sc3'].log_match(
+            "scheduler log directory is changed to " + new_sched_log,
+            max_attempts=10, starttime=self.server.ctime)
+
+    def test_set_msched_attr_sched_priv_with_sched_off(self):
+        """
+        Test to set Multisched attributes even when its scheduling is off
+        and check whether they are actually be effective
+        """
+        self.setup_sc3()
+        self.scheds['sc3'].set_sched_config({'log_filter': 2048})
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduling': 'False'}, id="sc3")
+
+        # create and set-up a new priv directory for sc3
+        new_sched_priv = os.path.join(self.server.pbs_conf['PBS_HOME'],
+                                      'sched_priv_new')
+        if os.path.exists(new_sched_priv):
+            self.du.rm(path=new_sched_priv, recursive=True,
+                       sudo=True, force=True)
+        dflt_sched_priv = os.path.join(self.server.pbs_conf['PBS_HOME'],
+                                       'sched_priv')
+
+        self.du.run_copy(src=dflt_sched_priv, dest=new_sched_priv,
+                         recursive=True, sudo=True)
+        self.server.manager(MGR_CMD_SET, SCHED, {'sched_priv': new_sched_priv},
+                            id="sc3", expect=True)
+
+        a = {'sched_priv': new_sched_priv}
+        self.server.expect(SCHED, a, id='sc3', max_attempts=10)
+
+        # This is required since we need to call log_match only when
+        # the new log file is created.
+        time.sleep(1)
+        self.scheds['sc3'].log_match(
+            "scheduler priv directory has changed to " + new_sched_priv,
+            max_attempts=10, starttime=self.server.ctime)

@@ -185,7 +185,7 @@ query_queues(status *policy, int pbs_sd, server_info *sinfo)
 			return NULL;
 		}
 
-		if (queue_in_partition(qinfo)) {
+		if (queue_in_partition(qinfo, sinfo->partitions)) {
 			/* check if the queue is a dedicated time queue */
 			if (conf.ded_prefix[0] != '\0')
 				if (!strncmp(qinfo->name, conf.ded_prefix, strlen(conf.ded_prefix))) {
@@ -1042,6 +1042,7 @@ node_queue_cmp(node_info *ninfo, void *arg)
  *      queue_in_partition	-  Tells whether the given node belongs to this scheduler
  *
  * @param[in]	qinfo		-  queue information
+ * @param[in]	partitions	-  array of partitions associated to scheduler
  *
  * @return	a node_info filled with information from node
  *
@@ -1050,10 +1051,8 @@ node_queue_cmp(node_info *ninfo, void *arg)
  * @retval	0	: if failure
  */
 int
-queue_in_partition(queue_info *qinfo)
+queue_in_partition(queue_info *qinfo, char **partitions)
 {
-	char **my_partitions;
-
 	if (dflt_sched) {
 		if (qinfo->partition == NULL)
 			return 1;
@@ -1063,20 +1062,10 @@ queue_in_partition(queue_info *qinfo)
 	if (qinfo->partition == NULL)
 		return 0;
 
-	my_partitions = break_comma_list(partitions);
-	if (my_partitions == NULL) {
-		log_err(errno, __func__, "Error parsing partitions");
-		return 0;
-	}
-
-	if (find_string(my_partitions, qinfo->partition)) {
-		free_string_array(my_partitions);
+	if (find_string(partitions, qinfo->partition))
 		return 1;
-	} else {
-		free_string_array(my_partitions);
+	else
 		return 0;
-	}
-
 }
 
 

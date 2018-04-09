@@ -294,6 +294,7 @@ struct server_info
 	int num_resvs;			/* number of reservations on the server */
 	int num_preempted;		/* number of jobs currently preempted */
 	long sched_cycle_len;		/* length of cycle in seconds */
+	char **partitions;		/* partitions associated */
 	long opt_backfill_fuzzy_time;	/* time window for fuzzy backfill opt */
 	char **node_group_key;		/* the node grouping resources */
 	state_count sc;			/* number of jobs in each state */

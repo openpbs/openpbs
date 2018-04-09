@@ -603,12 +603,6 @@ intermediate_schedule(int sd, char *jobid)
 	int ret; /* to re schedule or not */
 	int cycle_cnt = 0; /* count of cycles run */
 
-	/*
-	 * This is required since there is a probability that scheduler's configuration has been changed at
-	 * server through qmgr.
-	 */
-	update_svr_schedobj(connector, 0, 0);
-
 	do {
 		ret = scheduling_cycle(sd, jobid);
 
@@ -2375,12 +2369,12 @@ sched_settings_frm_svr(struct batch_status *status)
 	struct attrl *attr;
 	char *tmp_priv_dir = NULL;
 	char *tmp_log_dir = NULL;
-	char *tmp_partitions = NULL;
+	static char *priv_dir = NULL;
+	static char *log_dir = NULL;
 	struct	attropl	*attribs;
 	char *tmp_comment = NULL;
 	int clear_comment = 0;
 	int ret = 0;
-	extern char *partitions;
 
 	attr = status->attribs;
 
@@ -2393,9 +2387,6 @@ sched_settings_frm_svr(struct batch_status *status)
 			} else if (!strcmp(attr->name, ATTR_sched_log)) {
 				if ((tmp_log_dir = string_dup(attr->value)) == NULL)
 					goto cleanup;
-			} else if (!strcmp(attr->name, ATTR_partition)) {
-				if ((tmp_partitions = string_dup(attr->value)) == NULL)
-					goto cleanup;
 			} else if (!strcmp(attr->name, ATTR_comment)) {
 				if ((tmp_comment = string_dup(attr->value)) == NULL)
 					goto cleanup;
@@ -2407,13 +2398,27 @@ sched_settings_frm_svr(struct batch_status *status)
 	if (!dflt_sched) {
 		int err;
 		int priv_dir_update_fail = 0;
+		int validate_log_dir = 0;
+		int validate_priv_dir = 0;
 		struct attropl *patt;
 		char comment[MAX_LOG_SIZE] = {0};
 
-		if (tmp_log_dir != NULL) {
-			(void)snprintf(path_log,  sizeof(path_log), "%s", tmp_log_dir);
+		if (log_dir == NULL)
+			validate_log_dir = 1;
+		else if (strcmp(log_dir, tmp_log_dir) != 0)
+			validate_log_dir = 1;
+
+		if (priv_dir == NULL)
+			validate_priv_dir = 1;
+		else if (strcmp(priv_dir, tmp_priv_dir) != 0)
+			validate_priv_dir = 1;
+
+		if (!validate_log_dir && !validate_priv_dir && tmp_comment != NULL)
+			clear_comment = 1;
+
+		if (validate_log_dir) {
 			log_close(1);
-			if (log_open(logfile, path_log) == -1) {
+			if (log_open(logfile, tmp_log_dir) == -1) {
 				/* update the sched comment attribute with the reason for failure */
 				attribs = calloc(2, sizeof(struct attropl));
 				if (attribs == NULL) {
@@ -2445,10 +2450,14 @@ sched_settings_frm_svr(struct batch_status *status)
 				snprintf(log_buffer, sizeof(log_buffer), "scheduler log directory is changed to %s", tmp_log_dir);
 				schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG,
 						"reconfigure", log_buffer);
+				free(log_dir);
+				if ((log_dir = string_dup(tmp_log_dir)) == NULL) {
+					return 0;
+				}
 			}
 		}
 
-		if (tmp_priv_dir != NULL) {
+		if (validate_priv_dir) {
 			int c = -1;
 #if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
 				c  = chk_file_sec(tmp_priv_dir, 1, 0, S_IWGRP|S_IWOTH, 1);
@@ -2468,7 +2477,6 @@ sched_settings_frm_svr(struct batch_status *status)
 					priv_dir_update_fail = 1;
 				} else {
 					int lockfds;
-					(void)unlink("sched.lock");
 					lockfds = open("sched.lock", O_CREAT|O_WRONLY, 0644);
 					if (lockfds < 0) {
 						snprintf(log_buffer, sizeof(log_buffer), "PBS failed validation checks for directory %s", tmp_priv_dir);
@@ -2484,11 +2492,16 @@ sched_settings_frm_svr(struct batch_status *status)
 						#endif
 							(void)sprintf(log_buffer, "%d\n", getpid());
 						(void)write(lockfds, log_buffer, strlen(log_buffer));
+						close(lockfds);
 						snprintf(log_buffer, sizeof(log_buffer), "scheduler priv directory has changed to %s", tmp_priv_dir);
 						schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SCHED, LOG_DEBUG,
 								"reconfigure", log_buffer);
 						if (tmp_comment != NULL)
 							clear_comment = 1;
+						free(priv_dir);
+						if ((priv_dir = string_dup(tmp_priv_dir)) == NULL) {
+							return 0;
+						}
 					}
 				}
 			}
@@ -2521,12 +2534,6 @@ sched_settings_frm_svr(struct batch_status *status)
 				schdlog(PBSEVENT_ERROR, PBS_EVENTCLASS_SCHED, LOG_ERR, __func__, log_buffer);
 			}
 			goto cleanup;
-		}
-		if (cstrcmp(partitions, tmp_partitions) != 0) {
-			free(partitions);
-			partitions = NULL;
-			if ((tmp_partitions != NULL) && (partitions = string_dup(tmp_partitions)) == NULL)
-				goto cleanup;
 		}
 	}
 	if (clear_comment) {
@@ -2566,7 +2573,6 @@ cleanup:
 	free(tmp_log_dir);
 	free(tmp_priv_dir);
 	free(tmp_comment);
-	free(tmp_partitions);
 	return ret;
 
 }
@@ -2599,6 +2605,7 @@ update_svr_schedobj(int connector, int cmd, int alarm_time)
 	int	err;
 	struct	attropl	*attribs, *patt;
 	struct batch_status *ss = NULL;
+	char sched_host[PBS_MAXHOSTNAME + 1];
 
 	/* This command is only sent on restart of the server */
 	if (cmd == SCH_SCHEDULE_FIRST)
@@ -2619,12 +2626,6 @@ update_svr_schedobj(int connector, int cmd, int alarm_time)
 	if (!sched_settings_frm_svr(ss))
 		return 0;
 
-	if (!dflt_sched && (partitions == NULL)) {
-		sprintf(log_buffer, "Scheduler does not contain a partition");
-		log_err(-1, __func__, log_buffer);
-		return 0;
-	}
-
 	pbs_statfree(ss);
 
 	/* update the sched with new values */
@@ -2633,9 +2634,17 @@ update_svr_schedobj(int connector, int cmd, int alarm_time)
 		schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_INFO, __func__, MEM_ERR_MSG);
 		return 0;
 	}
+
+	if ((gethostname(sched_host, (sizeof(sched_host) - 1)) == -1) ||
+		(get_fullhostname(sched_host, sched_host, (sizeof(sched_host) - 1)) == -1)) {
+		log_err(-1, __func__, "Unable to get my host name");
+		free(attribs);
+		return 0;
+	}
+
 	patt = attribs;
 	patt->name = ATTR_SchedHost;
-	patt->value = scheduler_host_name;
+	patt->value = sched_host;
 	patt->next = patt + 1;
 	patt++;
 	patt->name = ATTR_sched_port;

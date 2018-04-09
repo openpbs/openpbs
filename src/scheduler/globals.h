@@ -75,8 +75,6 @@ extern resdef **allres;
 extern resdef **consres;
 extern resdef **boolres;
 
-extern char *partitions;
-extern char scheduler_host_name[PBS_MAXHOSTNAME+1];
 extern char *sc_name;
 extern int sched_port;
 extern char *logfile;

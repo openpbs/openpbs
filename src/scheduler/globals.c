@@ -159,8 +159,6 @@ resdef **boolres = NULL;
 /* AOE name used to compare nodes, free when exit cycle */
 char *cmp_aoename = NULL;
 
-char *partitions = NULL;
-char scheduler_host_name[PBS_MAXHOSTNAME + 1] = "Me";  /* arbitrary string */
 char *sc_name = NULL;
 int sched_port = -1;
 char *logfile = NULL;

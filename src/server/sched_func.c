@@ -55,6 +55,7 @@
 #include "pbs_error.h"
 #include "sched_cmds.h"
 #include "server.h"
+#include "svrfunc.h"
 
 extern pbs_db_conn_t *svr_db_conn;
 
@@ -277,7 +278,8 @@ action_sched_priv(attribute *pattr, void *pobj, int actmode)
 			psched = (pbs_sched*) GET_NEXT(psched->sc_link);
 		}
 	}
-	set_scheduler_flag(SCH_ATTRS_CONFIGURE, psched);
+	if (actmode != ATR_ACTION_RECOV)
+		(void)contact_sched(SCH_ATTRS_CONFIGURE, NULL, psched->pbs_scheduler_addr, psched->pbs_scheduler_port);
 	return PBSE_NONE;
 }
 
@@ -317,7 +319,8 @@ action_sched_log(attribute *pattr, void *pobj, int actmode)
 			psched = (pbs_sched*) GET_NEXT(psched->sc_link);
 		}
 	}
-	set_scheduler_flag(SCH_ATTRS_CONFIGURE, psched);
+	if (actmode != ATR_ACTION_RECOV)
+		(void)contact_sched(SCH_ATTRS_CONFIGURE, NULL, psched->pbs_scheduler_addr, psched->pbs_scheduler_port);
 	return PBSE_NONE;
 }
 
@@ -512,6 +515,7 @@ action_sched_partition(attribute *pattr, void *pobj, int actmode)
 			}
 		}
 	}
-	set_scheduler_flag(SCH_ATTRS_CONFIGURE, pin_sched);
+	if (actmode != ATR_ACTION_RECOV)
+		(void)contact_sched(SCH_ATTRS_CONFIGURE, NULL, pin_sched->pbs_scheduler_addr, pin_sched->pbs_scheduler_port);
 	return PBSE_NONE;
 }

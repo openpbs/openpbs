@@ -223,7 +223,7 @@ query_nodes(int pbs_sd, server_info *sinfo)
 		sinfo->nodes_by_NASrank[i] = ninfo;
 #endif /* localmod 049 */
 
-		if (node_in_partition(ninfo)) {
+		if (node_in_partition(ninfo, sinfo->partitions)) {
 			ninfo->rank = get_sched_rank();
 			/* get node info from mom */
 			if (talk_with_mom(ninfo)) {
@@ -5684,6 +5684,7 @@ check_node_array_eligibility(node_info **ninfo_arr, resource_resv *resresv, plac
  *      node_in_partition	-  Tells whether the given node belongs to this scheduler
  *
  * @param[in]	ninfo		-  node information
+ * @param[in]	partitions	-  array of partitions associated to scheduler
  *
  *
  * @return	int
@@ -5691,10 +5692,8 @@ check_node_array_eligibility(node_info **ninfo_arr, resource_resv *resresv, plac
  * @retval	0	: if failure
  */
 int
-node_in_partition(node_info *ninfo)
+node_in_partition(node_info *ninfo, char **partitions)
 {
-	char **my_partitions;
-
 	if (dflt_sched) {
 		if (ninfo->partition == NULL)
 			return 1;
@@ -5704,19 +5703,10 @@ node_in_partition(node_info *ninfo)
 	if (ninfo->partition == NULL)
 		return 0;
 
-	my_partitions = break_comma_list(partitions);
-	if (my_partitions == NULL) {
-		log_err(errno, __func__, "Error parsing partitions");
-		return 0;
-	}
-
-	if (find_string(my_partitions, ninfo->partition)) {
-		free_string_array(my_partitions);
+	if (find_string(partitions, ninfo->partition))
 		return 1;
-	} else {
-		free_string_array(my_partitions);
+	else
 		return 0;
-	}
 }
 
 /**

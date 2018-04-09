@@ -241,6 +241,14 @@ query_server(status *pol, int pbs_sd)
 	query_sched_obj(policy, sched, sinfo);
 	pbs_statfree(sched);
 
+	if (!dflt_sched && (sinfo->partitions == NULL)) {
+		snprintf(log_buffer, sizeof(log_buffer), "Scheduler does not contain a partition");
+		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, log_buffer);
+		pbs_statfree(server);
+		sinfo->fairshare = NULL;
+		free_server(sinfo, 0);
+		return NULL;
+	}
 
 	/* to avoid a possible race condition in which the time it takes to
 	 * query nodes is long enough that a reservation may have crossed
@@ -785,6 +793,9 @@ query_sched_obj(status *policy, struct batch_status *sched, server_info *sinfo)
 		if (!strcmp(attrp->name, ATTR_sched_cycle_len)) {
 			sinfo->sched_cycle_len = res_to_num(attrp->value, NULL);
 		}
+		else if (!strcmp(attrp->name, ATTR_partition)) {
+			sinfo->partitions = break_comma_list(attrp->value);
+		}
 		else if (!strcmp(attrp->name, ATTR_do_not_span_psets)) {
 			sinfo->dont_span_psets = res_to_num(attrp->value, NULL);
 		}
@@ -1031,6 +1042,8 @@ free_server_info(server_info *sinfo)
 		free_queue_list(sinfo->queue_list);
 	if(sinfo->equiv_classes != NULL)
 		free_resresv_set_array(sinfo->equiv_classes);
+	if (sinfo->partitions != NULL)
+		free_string_array(sinfo->partitions);
 
 	free_resource_list(sinfo->res);
 #ifdef NAS
@@ -1144,6 +1157,7 @@ new_server_info(int limallocflag)
 	sinfo->enforce_prmptd_job_resumption = 0;
 	sinfo->use_hard_duration = 0;
 	sinfo->sched_cycle_len = 0;
+	sinfo->partitions = NULL;
 	sinfo->opt_backfill_fuzzy_time = conf.dflt_opt_backfill_fuzzy;
 	sinfo->name = NULL;
 	sinfo->res = NULL;
@@ -2082,6 +2096,7 @@ dup_server_info(server_info *osinfo)
 	nsinfo->enforce_prmptd_job_resumption = osinfo->enforce_prmptd_job_resumption;
 	nsinfo->use_hard_duration = osinfo->use_hard_duration;
 	nsinfo->sched_cycle_len = osinfo->sched_cycle_len;
+	nsinfo->partitions = dup_string_array(osinfo->partitions);
 	nsinfo->opt_backfill_fuzzy_time = osinfo->opt_backfill_fuzzy_time;
 	nsinfo->name = string_dup(osinfo->name);
 	nsinfo->preempt_targets_enable = osinfo->preempt_targets_enable;
