@@ -639,7 +639,12 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 	 */
 
 #ifndef WIN32
-	if (fork())
+	mcpid = fork();
+	if (mcpid == -1) { /* Error on fork */
+		log_err(errno, __func__, "fork failed\n");
+		return;
+	}
+	if (mcpid > 0)
 		return;		/* its all up to the child now */
 
 	/*
@@ -752,15 +757,20 @@ svr_mailowner_id(char *jid, job *pjob, int mailpoint, int force, char *text)
 	mcpid = fork();
 	if(mcpid == 0) {
 		/* this child will be sendmail with its stdin set to the pipe */
-      if (mfds[0] != 0) {
-            (void)close(0);
-            if (dup(mfds[0]) == -1)
+		if (mfds[0] != 0) {
+			(void)close(0);
+			if (dup(mfds[0]) == -1)
 				exit(1);
-        }
-        (void)close(1);
-        (void)close(2);
-        if (execv(SENDMAIL_CMD, margs) == -1)
+		}
+		(void)close(1);
+		(void)close(2);
+		if (execv(SENDMAIL_CMD, margs) == -1)
 			exit(1);
+	}
+	if (mcpid == -1) {/* Error on fork */
+		log_err(errno, __func__, "fork failed\n");
+		(void)close(mfds[0]);
+		exit(1);
 	}
 
 	/* parent (not the real server though) will write body of message on pipe */
@@ -896,7 +906,12 @@ svr_mailownerResv(resc_resv *presv, int mailpoint, int force, char *text)
 	 */
 
 #ifndef WIN32
-	if (fork())
+	mcpid = fork();
+	if (mcpid == -1) { /* Error on fork */
+		log_err(errno, __func__, "fork failed\n");
+		return;
+	}
+	if (mcpid > 0)
 		return;		/* its all up to the child now */
 
 	/*
@@ -995,15 +1010,20 @@ svr_mailownerResv(resc_resv *presv, int mailpoint, int force, char *text)
 	mcpid = fork();
 	if(mcpid == 0) {
 		/* this child will be sendmail with its stdin set to the pipe */
-      if (mfds[0] != 0) {
-            (void)close(0);
-            if (dup(mfds[0]) == -1)
+		if (mfds[0] != 0) {
+			(void)close(0);
+			if (dup(mfds[0]) == -1)
 				exit(1);
-        }
-        (void)close(1);
-        (void)close(2);
-        if (execv(SENDMAIL_CMD, margs) == -1)
+		}
+		(void)close(1);
+		(void)close(2);
+		if (execv(SENDMAIL_CMD, margs) == -1)
 			exit(1);
+	}
+	if (mcpid == -1) {/* Error on fork */
+		log_err(errno, __func__, "fork failed\n");
+		(void)close(mfds[0]);
+		exit(1);
 	}
 
 	/* parent (not the real server though) will write body of message on pipe */
