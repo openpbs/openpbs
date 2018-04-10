@@ -178,14 +178,14 @@ class TestReservations(TestFunctional):
         This test checks whether the sched cycle gets started
         when the advance reservation ends.
         """
-        now = int(time.time())
         a = {'resources_available.ncpus': 2}
         self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname,
                             expect=True, sudo=True)
 
+        now = int(time.time())
         a = {'Resource_List.select': "1:ncpus=2",
-             'reserve_start': now + 5,
-             'reserve_end': now + 12,
+             'reserve_start': now + 10,
+             'reserve_end': now + 30,
              }
         r = Reservation(TEST_USER, a)
         rid = self.server.submit(r)
@@ -203,7 +203,11 @@ class TestReservations(TestFunctional):
         self.scheduler.log_match(
             jid + ";" + msg,
             max_attempts=30)
-        self.server.log_match(
-            rid.split('.')[0] + ";deleted at request of pbs_server",
-            id=rid.split('.')[0], max_attempts=30)
+
+        a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|2')}
+        self.server.expect(RESV, a, rid)
+
+        resid = d.split('.')[0]
+        self.server.log_match(resid + ";deleted at request of pbs_server",
+                              id=resid, interval=5)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
