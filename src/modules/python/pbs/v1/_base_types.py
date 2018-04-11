@@ -533,6 +533,9 @@ class size(_size):
 	# and not in _size's richcompare.
         return size(s.__sub__(o))
 
+    def __deepcopy__(self, mem):
+        return size(str(self))
+
 class duration(int):
     """
     Represents an interval or elapsed time object in number of seconds. This is
