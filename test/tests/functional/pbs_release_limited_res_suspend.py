@@ -848,3 +848,84 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         self.assertFalse("resource_released_list.mem" in attrs[0],
                          "Normal user can see resources_released_list "
                          "which is not expected")
+
+    def test_if_node_gets_oversubscribed(self):
+        """
+        Check if the node gets oversubscribed if a filler job runs
+        on resources left on the node after suspension.
+        """
+        # Set mem in restrict_res_to_release_on_suspend server attribute
+        a = {ATTR_restrict_res_to_release_on_suspend: 'mem'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        a = {ATTR_sched_preempt_enforce_resumption: True}
+        self.server.manager(MGR_CMD_SET, SCHED, a)
+
+        j1 = Job(TEST_USER)
+        j1.set_attributes({ATTR_l + '.select': '1:ncpus=2:mem=512mb'})
+        jid1 = self.server.submit(j1)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
+
+        # Submit a filler job
+        j2 = Job(TEST_USER)
+        j2.set_attributes({ATTR_l + '.select': '1:ncpus=3',
+                           ATTR_l + '.walltime': 50})
+        jid2 = self.server.submit(j2)
+        self.server.expect(JOB, {ATTR_state: 'Q'}, id=jid2)
+
+        # Submit a high priority job
+        j3 = Job(TEST_USER)
+        j3.set_attributes({ATTR_l + '.select': '1:ncpus=1:mem=2gb',
+                           ATTR_q: 'expressq',
+                           ATTR_l + '.walltime': 100})
+        jid3 = self.server.submit(j3)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid3)
+        self.server.expect(JOB, {ATTR_state: 'S'}, id=jid1)
+        # Check that resources_assigned is not exceeding resources_available
+        ras_ncpus = ATTR_rescassn + '.ncpus'
+        rav_ncpus = ATTR_rescavail + '.ncpus'
+        rv = self.server.status(
+            NODE, [ras_ncpus, rav_ncpus], id=self.mom.shortname)
+        self.assertNotEqual(rv, None)
+
+        self.assertLessEqual(rv[0][ras_ncpus], rv[0][rav_ncpus],
+                             msg="pbs released resource ncpus incorrectly")
+
+        # Expect filler job to be in queued state because
+        # suspended job did not release any ncpus
+        self.server.expect(JOB, {ATTR_state: 'Q'}, id=jid2)
+
+    def test_suspended_job_gets_calendered(self):
+        """
+        Check if a job which releases limited amount of resources gets
+        calendared in the same cycle when it gets suspended.
+        """
+        # Set mem in restrict_res_to_release_on_suspend server attribute
+        a = {ATTR_restrict_res_to_release_on_suspend: 'mem'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        a = {ATTR_sched_preempt_enforce_resumption: True}
+        self.server.manager(MGR_CMD_SET, SCHED, a)
+
+        # Set 5 ncpus available on the node
+        a = {ATTR_rescavail + '.ncpus': 5}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+
+        j1 = Job(TEST_USER)
+        j1.set_attributes({ATTR_l + '.select': '1:ncpus=3:mem=1512mb'})
+        jid1 = self.server.submit(j1)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
+
+        # Submit a high priority job
+        j2 = Job(TEST_USER)
+        j2.set_attributes({ATTR_l + '.select': '1:ncpus=2:mem=2gb',
+                           ATTR_q: 'expressq',
+                           ATTR_l + '.walltime': 100})
+        jid2 = self.server.submit(j2)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
+        self.server.expect(JOB, {ATTR_state: 'S'}, id=jid1)
+
+        # Check if the job is calendared
+        self.scheduler.log_match(
+            jid1 + ";Can't find start time estimate", existence=False,
+            max_attempts=2)

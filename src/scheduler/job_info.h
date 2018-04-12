@@ -393,7 +393,7 @@ resresv_set **create_resresv_sets(status *policy, server_info *sinfo);
  *  The string created will be similar to how exec_vnode is presented
  *  example: (node1:ncpus=8)+(node2:ncpus=8)
  */
-char *create_res_released( status *policy, resource_resv *pjob);
+void create_res_released( status *policy, resource_resv *pjob);
 
 /*
  *This function populates resreleased job structure for a particular job.

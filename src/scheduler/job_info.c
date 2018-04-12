@@ -2787,6 +2787,9 @@ preempt_job(status *policy, int pbs_sd, resource_resv *pjob, server_info *sinfo)
 	for (i = 0; i < PREEMPT_METHOD_HIGH && pjob->job->is_running; i++) {
 		if (po->order[i] == PREEMPT_METHOD_SUSPEND &&
 				pjob->job->can_suspend) {
+			/* Set resources_released and execselect on the job */
+			create_res_released(policy, pjob);
+
 			ret = pbs_sigjob(pbs_sd, pjob->name, "suspend", NULL);
 			if ((ret != 0) && (is_finished_job(pbs_errno) == 1)) {
 				histjob = 1;
@@ -5076,24 +5079,27 @@ preemption_similarity(resource_resv *hjob, resource_resv *pjob, schd_error *full
 
 /**
  * @brief Create the resources_released and resource_released_list for a job 
- *	    and return the resources_released in exec_vnode string form
+ *	    and also set execselect on the job based on resources_released
  *
  * @param[in] policy - policy object
  * @param[in] pjob - Job structure using which resources_released string is created
  *
- * @retval - char* 
- * @return - string of resources released similar to exec_vnode format
+ * @retval - void
  */
-char *create_res_released(status *policy, resource_resv *pjob)
+void create_res_released(status *policy, resource_resv *pjob)
 {
+	char *selectspec = NULL;
 	if (pjob->job->resreleased == NULL) {
 		pjob->job->resreleased = create_res_released_array(policy, pjob);
 		if (pjob->job->resreleased == NULL) {
-			return NULL;
+			return;
 		}
 		pjob->job->resreq_rel = create_resreq_rel_list(policy, pjob);
 	}
-	return create_execvnode(pjob->job->resreleased);
+	selectspec = create_select_from_nspec(pjob->job->resreleased);
+	pjob->execselect = parse_selspec(selectspec);
+	free(selectspec);
+	return;
 }
 
 /**
