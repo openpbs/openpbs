@@ -1528,7 +1528,9 @@ else:
              'enabled': 't', 'priority': 150}
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='expressq')
 
-        (jid1, jid2) = self.submit_jobs(2)
+        (jid1, ) = self.submit_jobs(1)
+        time.sleep(1)
+        (jid2, ) = self.submit_jobs(1)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
 
