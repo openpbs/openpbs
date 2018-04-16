@@ -642,3 +642,37 @@
    fun:pbs_python_populate_attributes_to_python_class
    fun:*
 }
+{
+   From PBSPro (mom) - Suppress intentional unfreed memory from python_script_alloc() inside req_copy_hookfile() that is tracked globally in svr_allhooks.
+   Memcheck:Leak
+   fun:malloc
+   ...
+   fun:python_script_alloc
+   ...
+   fun:req_copy_hookfile
+   fun:is_request
+   fun:do_rpp
+   fun:rpp_request
+   fun:wait_request
+   fun:main
+}
+{
+   From PBSPro (mom) - Suppress intentional unfreed memory from hook_recov() inside req_copy_hookfile() that is tracked globally in svr_allhooks.
+   Memcheck:Leak
+   fun:malloc
+   ...
+   fun:hook_recov
+   fun:req_copy_hookfile
+   fun:is_request
+   fun:do_rpp
+   fun:rpp_request
+   fun:wait_request
+   fun:main
+}
+{
+   From PBSPro (server) - Suppress intentional unfreed memory from pbs_python_populae_attributes_to_python_class() that is tracked globally in pbs_resource_value_list.
+   Memcheck:Leak
+   fun:malloc
+   fun:pbs_python_populate_attributes_to_python_class
+   fun:*
+}
