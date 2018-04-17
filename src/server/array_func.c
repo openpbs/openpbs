@@ -422,6 +422,17 @@ chk_array_doneness(job *parent)
 		 */
 		svr_saveorpurge_finjobhist(parent);
 	} else {
+		/* Before we do a full save of parent, recalculate "JOB_ATR_array_indices_remaining" here*/
+		attribute *premain = &parent->ji_wattr[(int)JOB_ATR_array_indices_remaining];
+		if (premain->at_flags & ATR_VFLAG_MODCACHE) {
+			char *pnewstr = cvt_range(parent->ji_ajtrk, JOB_STATE_QUEUED);
+			if (pnewstr == NULL)
+				pnewstr = "-";
+			job_attr_def[JOB_ATR_array_indices_remaining].at_free(premain);
+			job_attr_def[JOB_ATR_array_indices_remaining].at_decode(premain, 0, 0, pnewstr);
+			/* also update value of attribute "array_state_count" */
+			update_subjob_state_ct(parent);
+		}
 		(void)job_save(parent, SAVEJOB_FULL);
 	}
 }

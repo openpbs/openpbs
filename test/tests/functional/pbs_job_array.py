@@ -180,3 +180,70 @@ class TestJobArray(TestFunctional):
         attr = {'job_history_enable': 'true'}
         self.server.manager(MGR_CMD_SET, SERVER, attr)
         self.test_suspended_subjob_survive_restart()
+
+    def test_deleted_q_subjob_survive_restart(self):
+        """
+        Test to check if a deleted queued subjob of an array job survive a
+        pbs_server restart when history is disabled
+        """
+        a = {'resources_available.ncpus': 1}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        j = Job(TEST_USER, attrs={
+            ATTR_J: '1-3', 'Resource_List.select': 'ncpus=1'})
+
+        j.set_sleep_time(10)
+
+        j_id = self.server.submit(j)
+        subjid_3 = j.create_subjob_id(j_id, 3)
+
+        self.server.expect(JOB, {'job_state': 'B'}, j_id)
+        self.server.deljob(subjid_3)
+        self.server.expect(JOB, {'job_state': 'X'}, subjid_3)
+
+        self.kill_and_restart_svr()
+
+        self.server.expect(JOB, {'job_state': 'B'}, j_id, max_attempts=1)
+        self.server.expect(JOB, {'job_state': 'X'}, subjid_3, max_attempts=1)
+
+    def test_deleted_q_subjob_survive_restart_w_history(self):
+        """
+        Test to check if a deleted queued subjob of an array job survive a
+        pbs_server restart when history is enabled
+        """
+        attr = {'job_history_enable': 'true'}
+        self.server.manager(MGR_CMD_SET, SERVER, attr)
+        self.test_deleted_q_subjob_survive_restart()
+
+    def test_deleted_r_subjob_survive_restart(self):
+        """
+        Test to check if a deleted running subjob of an array job survive a
+        pbs_server restart when history is disabled
+        """
+        a = {'resources_available.ncpus': 1}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        j = Job(TEST_USER, attrs={
+            ATTR_J: '1-3', 'Resource_List.select': 'ncpus=1'})
+
+        j.set_sleep_time(10)
+
+        j_id = self.server.submit(j)
+        subjid_1 = j.create_subjob_id(j_id, 1)
+
+        self.server.expect(JOB, {'job_state': 'B'}, j_id)
+        self.server.expect(JOB, {'job_state': 'R'}, subjid_1)
+        self.server.deljob(subjid_1)
+        self.server.expect(JOB, {'job_state': 'X'}, subjid_1)
+
+        self.kill_and_restart_svr()
+
+        self.server.expect(JOB, {'job_state': 'B'}, j_id, max_attempts=1)
+        self.server.expect(JOB, {'job_state': 'X'}, subjid_1, max_attempts=1)
+
+    def test_deleted_r_subjob_survive_restart_w_history(self):
+        """
+        Test to check if a deleted running subjob of an array job survive a
+        pbs_server restart when history is enabled
+        """
+        attr = {'job_history_enable': 'true'}
+        self.server.manager(MGR_CMD_SET, SERVER, attr)
+        self.test_deleted_q_subjob_survive_restart()
