@@ -205,3 +205,7 @@ class Power:
         pbs.logmsg(pbs.LOG_WARNING, "PMI:rampup: ramping up nodes")
         return self.__pmi._pmi_ramp_up(hosts)
 
+    def power_status(self, hosts=None):
+        self._check_pmi()
+        pbs.logmsg(pbs.LOG_WARNING, "PMI:powerstatus: status of nodes")
+        return self.__pmi._pmi_power_status(hosts)

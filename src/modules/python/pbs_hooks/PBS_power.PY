@@ -65,7 +65,7 @@ def init_power(event):
             name = os.environ[confvar]
         power = pbs.Power(name)
         power.connect()
-    except Exception, e:
+    except Exception as e:
         event.reject(str(e))
     return power
 
@@ -205,13 +205,12 @@ if this_event.type not in [pbs.EXECJOB_PROLOGUE, pbs.EXECJOB_EPILOGUE,
 if this_event.type == pbs.PERIODIC:
     vnlist = this_event.vnode_list
     resvlist = this_event.resv_list
-    freq = this_event.freq
     time_now = time.time()
 
     # Parse the config file for power attributes
     try:
         parse_config_file()
-    except Exception, e:
+    except Exception as e:
         this_event.reject(str(e))
 
     if power_ramp_rate_enable == 0 and power_on_off_enable == 0:
@@ -288,6 +287,28 @@ if this_event.type == pbs.PERIODIC:
                         exec_vnodes[vn]["neededby"] = start_time
         i += 1
 
+    pbs_conf = pbs.get_pbs_conf()
+    if 'PBS_HOME' in pbs_conf:
+        pbs_home = pbs_conf['PBS_HOME']
+    else:
+        pbs.logmsg(pbs.EVENT_DEBUG,
+                   "PBS_HOME needs to be defined in the config file")
+        pbs.logmsg(pbs.EVENT_DEBUG, "Exiting the power hook")
+        pbs.event().accept()
+
+    # Identify the nodes file and read in the data
+    node_file = ''
+    sleep_node_list = []
+    node_file = os.path.join(pbs_home,
+                             'server_priv', 'hooks', 'tmp', 'pbs_power_nodes_file')
+    if os.path.isfile(node_file) and os.stat(node_file).st_size:
+        pbs.logmsg(pbs.EVENT_DEBUG3, "pbs_power_nodes_file is %s" % node_file)
+        try:
+            with open(node_file, 'r') as fd:
+                sleep_node_list = fd.read().split(',')
+        except IOError as e:
+            this_event.reject(str(e))
+
     nodes = {}
     for vn in vnlist:
         vnode = vnlist[vn]
@@ -320,6 +341,11 @@ if this_event.type == pbs.PERIODIC:
             nodes[host]["poweroff"] = 0
             nodes[host]["poweron"] = 0
 
+        rs_list = []
+        if vnode.resv:
+            resv_str = str(vnode.resv)
+            rs_list = resv_str.split(",")
+
         if nodes[host]["can_power_off"]:
             # See if the node is actually free
             if vnode.state != pbs.ND_FREE:
@@ -327,33 +353,64 @@ if this_event.type == pbs.PERIODIC:
             else:
                 # See if there are any reservations on the vnode
                 # Reservations further in time can be ignored.
-                if vnode.resv:
-                    for resid in vnode.resv:
-                        resv = resvlist[resid]
-                        if resv.state == pbs.RESV_STATE_RUNNING or \
-                                resv.state == pbs.RESV_STATE_DELETED or \
-                                resv.state == pbs.RESV_STATE_BEING_ALTERED or \
-                                resv.state == pbs.RESV_STATE_DELETING_JOBS:
+                for resid in rs_list:
+                    resv = resvlist[resid.lstrip()]
+                    rstates = [pbs.RESV_STATE_RUNNING, pbs.RESV_STATE_DELETED,
+                               pbs.RESV_STATE_BEING_ALTERED,
+                               pbs.RESV_STATE_DELETING_JOBS]
+                    if resv.reserve_state in rstates:
+                        nodes[host]["poweroff"] = 0
+                        nodes[host]["can_power_off"] = 0
+                    if resv.reserve_state == pbs.RESV_STATE_CONFIRMED:
+                        reserve_start = resv.reserve_start
+                        if vn not in exec_vnodes:
+                            exec_vnodes[vn] = {}
+                            exec_vnodes[vn]["neededby"] = reserve_start
+                        elif reserve_start < exec_vnodes[vn]["neededby"]:
+                            exec_vnodes[vn]["neededby"] = reserve_start
+                        # Do not power off a node if it has reservation starting
+                        # in (time_now + min_node_down_delay + 900) seconds
+                        if time_now > (reserve_start - (min_node_down_delay + 900)):
                             nodes[host]["poweroff"] = 0
+                            nodes[host]["can_power_off"] = 0
 
                 # Is the node idle enough to put to sleep or power down?
-                if vnode.last_used_time:
-                    last_used_time = vnode.last_used_time
-                else:
-                    last_used_time = 0
-                idle_time = time_now - last_used_time
-                if node_idle_limit < idle_time:
-                    nodes[host]["poweroff"] = 1
+                if nodes[host]["can_power_off"]:
+                    if vnode.last_used_time:
+                        last_used_time = vnode.last_used_time
+                    else:
+                        last_used_time = 0
+                    idle_time = time_now - last_used_time
+                    if node_idle_limit < idle_time:
+                        nodes[host]["poweroff"] = 1
 
         # POWER-ON/RAMP-UP check: See if the node is down and
         # needs to be brought up. Check if the node needs to be
         # up before this periodic event runs again.
         if vnode.state == pbs.ND_SLEEP:
+            if power_on_off_enable:
+                # Ignore the nodes in sleep_node_list as they are
+                # being powered up by previous interation of the hook.
+                if vn in sleep_node_list:
+                    continue
+            # Look for upcoming reservation starts in the node.
+            for resid in rs_list:
+                resv = resvlist[resid.lstrip()]
+                rstates = [pbs.RESV_STATE_CONFIRMED, pbs.RESV_STATE_DEGRADED]
+                if resv.reserve_state in rstates:
+                    reserve_start = resv.reserve_start
+                    if vn not in exec_vnodes:
+                        exec_vnodes[vn] = {}
+                        exec_vnodes[vn]["neededby"] = reserve_start
+                    elif reserve_start < exec_vnodes[vn]["neededby"]:
+                        exec_vnodes[vn]["neededby"] = reserve_start
             if vn in exec_vnodes and exec_vnodes[vn]["neededby"]:
                 neededby = exec_vnodes[vn]["neededby"]
             else:
                 neededby = 0
-            if neededby and neededby < (time_now + freq):
+            # Check if node is needed in near future.
+            # Assuming node will take about 900 seconds to come up.
+            if neededby and neededby < (time_now + 900):
                 nodes[host]["poweron"] = 1
             # See when node was put down
             if vnode.last_state_change_time:
@@ -382,7 +439,7 @@ if this_event.type == pbs.PERIODIC:
         if i == max_concurrent_nodes and j == max_concurrent_nodes:
             break
 
-    if poweroff_vnlist or poweron_vnlist:
+    if poweroff_vnlist or poweron_vnlist or sleep_node_list:
         power = init_power(this_event)
     else:
         this_event.accept()
@@ -399,17 +456,46 @@ if this_event.type == pbs.PERIODIC:
                 power.power_off(poweroff_vnlist)
             if poweron_vnlist:
                 power.power_on(poweron_vnlist)
+            ready_nodes = set()
+            if sleep_node_list:
+                ready_nodes = power.power_status(sleep_node_list)
+                # For the nodes which are up remove ND_SLEEP
+                for host in ready_nodes:
+                    for vn in nodes[host]["vnodes"]:
+                        prev_state = vn.state
+                        vn.state = prev_state & ~(pbs.ND_SLEEP)
+                        vn.last_used_time = time_now
+            # nodes which are still booting, write them to
+            # node file for status check in next iteration.
+            if sleep_node_list or poweron_vnlist:
+                if poweron_vnlist:
+                    sleeping_nodes = poweron_vnlist
+                else:
+                    sleeping_nodes = []
+                # Look for still booting nodes from previous iteration.
+                for n in sleep_node_list:
+                    if n not in ready_nodes:
+                        sleeping_nodes.append(n)
+                data = ','.join(sleeping_nodes)
+                try:
+                    with open(node_file, 'w') as fd:
+                        fd.write(data)
+                except IOError as e:
+                    power.disconnect()
+                    this_event.reject(str(e))
         # Mark nodes to ND_Sleep
         for nd in poweroff_vnlist:
             for vn in nodes[nd]["vnodes"]:
                 vn.state = pbs.ND_SLEEP
         # Mark nodes to ND_free
-        for nd in poweron_vnlist:
-            for vn in nodes[nd]["vnodes"]:
-                vn.state = pbs.ND_FREE
+        if power_ramp_rate_enable:
+            for nd in poweron_vnlist:
+                for vn in nodes[nd]["vnodes"]:
+                    vn.state = pbs.ND_FREE
+                    vn.last_used_time = time_now
         power.disconnect()
         this_event.accept()
-    except Exception, e:
+    except Exception as e:
         power.disconnect()
         this_event.reject(str(e))
 
@@ -454,7 +540,7 @@ if this_event.type == pbs.EXECHOST_PERIODIC:
             usage = power.get_usage(job)
             if usage is not None:
                 job.resources_used["energy"] = usage
-        except Exception, e:
+        except Exception as e:
             pbs.logmsg(pbs.LOG_ERROR, str(e))
     power.disconnect()
     this_event.accept()
@@ -490,7 +576,7 @@ if this_event.type == pbs.EXECJOB_END:
     power = init_power(this_event)
     try:
         power.deactivate_profile(this_job)
-    except Exception, e:
+    except Exception as e:
         pbs.logjobmsg(this_job.id, str(e))
     power.disconnect()
     this_event.accept()
@@ -514,7 +600,7 @@ if this_event.type == pbs.EXECJOB_PROLOGUE:
     try:
         power.activate_profile(requested_profile, this_job)
         power.disconnect()
-    except Exception, e:
+    except Exception as e:
         power.disconnect()
         this_event.reject(str(e))
 elif this_event.type == pbs.EXECJOB_EPILOGUE:
@@ -524,7 +610,7 @@ elif this_event.type == pbs.EXECJOB_EPILOGUE:
         usage = power.get_usage(this_job)
         if usage is not None:
             this_job.resources_used["energy"] = usage
-    except Exception, e:
+    except Exception as e:
         pbs.logjobmsg(this_job.id, str(e))
     power.disconnect()
 

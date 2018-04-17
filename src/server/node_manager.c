@@ -538,7 +538,7 @@ set_all_state(mominfo_t *pmom, int do_set, unsigned long bits, char *txt,
 			}
 		}
 		if (pvnd->nd_state & INUSE_SLEEP)
-                        do_this_vnode = 0;
+			do_this_vnode = 0;
 		if (do_this_vnode == 0)
 			continue;	/* skip setting state on this vnode */
 
@@ -1473,6 +1473,9 @@ set_vnode_state(struct pbsnode *pnode, unsigned long state_bits, enum vnode_stat
 		pnode->nd_attr[(int)ND_ATR_state].at_val.at_long = pnode->nd_state;
 		pnode->nd_attr[(int)ND_ATR_state].at_flags |= ATR_VFLAG_MODIFY |
 			ATR_VFLAG_MODCACHE;
+	}
+
+	if (nd_prev_state != pnode->nd_state) {
 		snprintf(str_val, sizeof(str_val), "%d", time_int_val);
 		set_attr_svr(&(pnode->nd_attr[(int)ND_ATR_last_state_change_time]),
 			&node_attr_def[(int) ND_ATR_last_state_change_time], str_val);

@@ -147,7 +147,7 @@ def nodenids(hosts):
     return nidset
 
 
-def nidlist(job, nidset=None):
+def nidlist(job=None, nidset=None):
     """
     Return a string to be used with capmc --nids option
     and the number of nids
@@ -489,7 +489,7 @@ class Pmi:
         nidset = nodenids(hosts)
         nids, _ = nidlist(None, nidset)
         cmd = "node_off --nids " + nids
-        func = "node_power_off"
+        func = "pmi_power_off"
         launch(func, cmd)
         return True
 
@@ -498,7 +498,7 @@ class Pmi:
         nidset = nodenids(hosts)
         nids, _ = nidlist(None, nidset)
         cmd = "node_on --nids " + nids
-        func = "node_power_on"
+        func = "pmi_power_on"
         launch(func, cmd)
         return True
 
@@ -507,7 +507,7 @@ class Pmi:
         nidset = nodenids(hosts)
         nids, _ = nidlist(None, nidset)
         cmd = "get_sleep_state_limit_capabilities --nids " + nids
-        func = "node_ramp_down"
+        func = "pmi_ramp_down"
         out = launch(func, cmd)
         for n in out["nids"]:
            if "data" in n:
@@ -526,7 +526,7 @@ class Pmi:
         nidset = nodenids(hosts)
         nids, _ = nidlist(None, nidset)
         cmd = "get_sleep_state_limit_capabilities --nids " + nids
-        func = "node_ramp_up"
+        func = "pmi_ramp_up"
         out = launch(func, cmd)
         for n in out["nids"]:
            if "data" in n:
@@ -539,3 +539,26 @@ class Pmi:
                         sleep_time = random.randint(1,10)
                         time.sleep(sleep_time)
         return True
+
+    def _pmi_power_status(self, hosts):
+        # Do a capmc node_status and return a list of ready nodes.
+        pbs.logmsg(pbs.LOG_DEBUG, "Cray: status of the nodes")
+        nidset = nodenids(hosts)
+        nids, _ = nidlist(nidset=nidset)
+        cmd = "node_status --nids " + nids
+        func = "pmi_power_status"
+        out = launch(func, cmd)
+        ready = []
+        nodeset = set()
+        if 'ready' in out:
+            ready = out['ready']
+        else:
+            return nodeset
+        craynid = "PBScraynid"
+        for vnames in hosts:
+            vnode = _svr_vnode(vnames)
+            if craynid in vnode.resources_available:
+                nid = int(vnode.resources_available[craynid])
+                if nid in ready:
+                    nodeset.add(vnames)
+        return nodeset

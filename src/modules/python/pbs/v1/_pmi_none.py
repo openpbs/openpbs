@@ -78,3 +78,6 @@ class Pmi:
 
     def _pmi_ramp_up(self, hosts):
         return False
+
+    def _pmi_power_status(self, hosts):
+        return False

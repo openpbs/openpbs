@@ -3868,9 +3868,6 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 	} else if (preq->rq_type == PBS_BATCH_HookPeriodic) {
 		hook_event = HOOK_EVENT_PERIODIC;
 		head_ptr = &svr_periodic_hooks;
-		/* set vnodes and reservation list to hook input parameter */
-		req_ptr.vns_list = (pbs_list_head *)get_vnode_list();
-		req_ptr.resv_list = (pbs_list_head *)get_resv_list();
 	} else {
 		return (-1); /* unexpected event encountered */
 	}
@@ -3913,7 +3910,7 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 			continue;
 		}
 
-		if (phook->event == HOOK_EVENT_PERIODIC) {
+		if (phook->event & HOOK_EVENT_PERIODIC) {
 			(void)set_task(WORK_Timed, time_now+phook->freq, run_periodic_hook, phook);
 			num_run++;
 			continue;

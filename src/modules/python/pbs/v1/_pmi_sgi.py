@@ -122,3 +122,7 @@ class Pmi:
     def _pmi_ramp_up(self, hosts):
         pbs.logmsg(pbs.LOG_DEBUG, "SGI: ramp up the node")
         return False
+
+    def _pmi_power_status(self, hosts):
+        pbs.logmsg(pbs.LOG_DEBUG, "SGI: status of the nodes")
+        return False

@@ -1,8 +1,8 @@
 {
 	"power_ramp_rate_enable": false,
 	"power_on_off_enable": false,
-	"node_idle_limit": "1000",
-	"min_power_down_delay": "600",
-	"max_jobs_analyze_limit": "80",
-	"max_concurrent_nodes" : "10"
+	"node_idle_limit": "1800",
+	"min_node_down_delay": "1800",
+	"max_jobs_analyze_limit": "100",
+	"max_concurrent_nodes" : "5"
 }
