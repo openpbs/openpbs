@@ -1699,7 +1699,7 @@ else:
 
         # if we use deljob(wait=True) starts the scheduling cycle if job
         # takes more time to be deleted.
-        # The while loop below is to check that the jobs have been deleted
+        # The for loop below is to check that the jobs have been deleted
         # without kicking off a new scheduling cycle.
 
         deleted = False
@@ -1712,7 +1712,8 @@ else:
                 deleted = True
                 break
             else:
-                time.sleep(1)
+                # jobs take longer than one second to delete, use two seconds
+                time.sleep(2)
 
         self.assertTrue(deleted)
 
