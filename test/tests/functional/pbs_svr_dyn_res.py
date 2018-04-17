@@ -48,17 +48,14 @@ class TestServerDynRes(TestFunctional):
         self.server.manager(MGR_CMD_SET, NODE, a,
                             id=self.mom.shortname, expect=True)
 
-    def setup_dyn_res(self, resname, restype, resval, resflag=None):
+    def setup_dyn_res(self, resname, restype, resval):
         """
         Helper function to setup server dynamic resources
         """
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
 
         for i in resname:
-            if resflag:
-                attr = {"type": restype[0], "flag": resflag[0]}
-            else:
-                attr = {"type": restype[0]}
+            attr = {"type": restype[0]}
             self.server.manager(MGR_CMD_CREATE, RSC, attr, id=i, expect=True)
             # Add resource to sched_config's 'resources' line
             self.scheduler.add_resource(i)
@@ -112,8 +109,8 @@ class TestServerDynRes(TestFunctional):
         self.scheduler.log_match("Problem with creating server data structure",
                                  existence=False, max_attempts=10)
 
-        # Also check that "Script %s returned bad output"
-        # is logged
+        # Also check that "<script> returned bad output"
+        # is in the logs
         self.scheduler.log_match("%s returned bad output" % (fn))
 
         # The scheduler uses 0 as the available amount of the dynamic resource
@@ -381,7 +378,6 @@ class TestServerDynRes(TestFunctional):
         # Create a resource of type size
         resname = ["foobar"]
         restype = ["size"]
-        resflag = ["q"]
 
         # Prep for server_dyn_resource script
         script_body = "echo 100gb"
@@ -393,7 +389,7 @@ class TestServerDynRes(TestFunctional):
 
         resval = ['"' + resname[0] + ' ' + '!' + fn + '"']
 
-        self.setup_dyn_res(resname, restype, resval, resflag)
+        self.setup_dyn_res(resname, restype, resval)
 
         # Submit job
         a = {'Resource_List.foobar': '95gb'}
@@ -444,7 +440,6 @@ class TestServerDynRes(TestFunctional):
         # Create a resource of type size
         resname = ["foobar"]
         restype = ["size"]
-        resflag = ["q"]
 
         # Prep for server_dyn_resource script
         script_body = "echo 100gb"
@@ -456,7 +451,7 @@ class TestServerDynRes(TestFunctional):
 
         resval = ['"' + resname[0] + ' ' + '!' + fn + '"']
 
-        self.setup_dyn_res(resname, restype, resval, resflag)
+        self.setup_dyn_res(resname, restype, resval)
 
         # Submit job
         a = {'Resource_List.foobar': '95gb'}
@@ -478,5 +473,118 @@ class TestServerDynRes(TestFunctional):
         # The job shouldn't run
         job_comment = "Can Never Run: Insufficient amount of server resource:"
         job_comment += " foobar (R: 95gb A: 50gb T: 50gb)"
+        a = {'job_state': 'Q', 'comment': job_comment}
+        self.server.expect(JOB, a, id=jid, attrop=PTL_AND)
+
+    def test_res_size_invalid_input(self):
+        """
+        Test invalid values returned from server_dyn_resource
+        script for resource type 'size'.
+        Script returns a 'string' instead of type 'size'.
+        """
+        # Create a resource of type size
+        resname = ["foobar"]
+        restype = ["size"]
+
+        # Script returns invalid value for resource type 'size'
+        script_body = "echo two gb"
+
+        fn = self.du.create_temp_file(prefix="PtlPbs_size",
+                                      suffix=".scr",
+                                      body=script_body)
+        self.du.chmod(path=fn, mode=0755, sudo=True)
+
+        resval = ['"' + resname[0] + ' ' + '!' + fn + '"']
+
+        self.setup_dyn_res(resname, restype, resval)
+
+        # Submit job
+        a = {'Resource_List.foobar': '2gb'}
+        j = Job(TEST_USER, attrs=a)
+        jid = self.server.submit(j)
+
+        # Also check that "<script> returned bad output"
+        # is in the logs
+        self.scheduler.log_match("%s returned bad output" % (fn))
+
+        # The job shouldn't run
+        job_comment = "Can Never Run: Insufficient amount of server resource:"
+        job_comment += " foobar (R: 2gb A: 0kb T: 0kb)"
+        a = {'job_state': 'Q', 'comment': job_comment}
+        self.server.expect(JOB, a, id=jid, attrop=PTL_AND)
+
+    def test_res_float_invalid_input(self):
+        """
+        Test invalid values returned from server_dyn_resource
+        script for resource type 'float'
+        Script returns 'string' instead of type 'float'.
+        """
+
+        # Create a resource of type float
+        resname = ["foo"]
+        restype = ["float"]
+
+        # Prep for server_dyn_resource script
+        script_body = "echo abc"
+
+        fn = self.du.create_temp_file(prefix="PtlPbs_float",
+                                      suffix=".scr",
+                                      body=script_body)
+        self.du.chmod(path=fn, mode=0755, sudo=True)
+
+        resval = ['"' + resname[0] + ' ' + '!' + fn + '"']
+
+        self.setup_dyn_res(resname, restype, resval)
+
+        # Submit job
+        a = {'Resource_List.foo': '1.2'}
+        j = Job(TEST_USER, attrs=a)
+        jid = self.server.submit(j)
+
+        # Also check that "<script> returned bad output"
+        # is in the logs
+        self.scheduler.log_match("%s returned bad output" % (fn))
+
+        # The job shouldn't run
+        job_comment = "Can Never Run: Insufficient amount of server resource:"
+        job_comment += " foo (R: 1.2 A: 0 T: 0)"
+        a = {'job_state': 'Q', 'comment': job_comment}
+        self.server.expect(JOB, a, id=jid, attrop=PTL_AND)
+
+    def test_res_boolean_invalid_input(self):
+        """
+        Test invalid values returned from server_dyn_resource
+        script for resource type 'boolean'.
+        Script returns 'non boolean' values
+        """
+
+        # Create a resource of type boolean
+        resname = ["foo"]
+        restype = ["boolean"]
+
+        # Prep for server_dyn_resource script
+        script_body = "echo yes"
+
+        fn = self.du.create_temp_file(prefix="PtlPbs_bool",
+                                      suffix=".scr",
+                                      body=script_body)
+        self.du.chmod(path=fn, mode=0755, sudo=True)
+
+        resval = ['"' + resname[0] + ' ' + '!' + fn + '"']
+
+        self.setup_dyn_res(resname, restype, resval)
+
+        # Submit job
+        a = {'Resource_List.foo': '"true"'}
+        j = Job(TEST_USER, attrs=a)
+        jid = self.server.submit(j)
+
+        # Also check that "<script> returned bad output"
+        # is in the logs
+        self.scheduler.log_match("%s returned bad output" % (fn))
+
+        # The job shouldn't run
+        job_comment = "Can Never Run: Insufficient amount of server resource:"
+        job_comment += " foo (True != False)"
         a = {'job_state': 'Q', 'comment': job_comment}
         self.server.expect(JOB, a, id=jid, attrop=PTL_AND)
