@@ -85,10 +85,16 @@ class TestProvisioningJob(TestFunctional):
     def setUp(self):
         TestFunctional.setUp(self)
         self.momA = self.moms.values()[0]
+        serverA = (self.servers.values()[0]).shortname
+        self.hostA = self.momA.shortname
+        msg = ("Server and Mom can't be on the same host. "
+               "Provide a mom not present on server host "
+               "while invoking the test: -p moms=<m1>")
+        if serverA == self.hostA:
+            self.skipTest(msg)
         self.momA.delete_vnode_defs()
         self.logger.info(self.momA.shortname)
 
-        self.hostA = self.momA.shortname
         self.server.manager(
             MGR_CMD_DELETE, NODE, None, "", runas=ROOT_USER)
 
