@@ -247,3 +247,43 @@ class TestJobArray(TestFunctional):
         attr = {'job_history_enable': 'true'}
         self.server.manager(MGR_CMD_SET, SERVER, attr)
         self.test_deleted_q_subjob_survive_restart()
+
+    def test_qdel_expired_subjob(self):
+        """
+        Test to check if qdel of a subjob is disallowed
+        """
+        attr = {'job_history_enable': 'true'}
+        self.server.manager(MGR_CMD_SET, SERVER, attr)
+        a = {'resources_available.ncpus': 1}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        j = Job(TEST_USER, attrs={
+            ATTR_J: '1-3', 'Resource_List.select': 'ncpus=1'})
+
+        j.set_sleep_time(5)
+
+        j_id = self.server.submit(j)
+        subjid_1 = j.create_subjob_id(j_id, 1)
+
+        # 1. check job array has begun
+        self.server.expect(JOB, {'job_state': 'B'}, j_id)
+
+        # 2. wait till subjob 1 becomes expired
+        self.server.expect(JOB, {'job_state': 'X'}, subjid_1)
+
+        try:
+            self.server.deljob(subjid_1)
+        except PbsDeljobError as e:
+            err_msg = "Request invalid for finished array subjob"
+            self.assertTrue(err_msg in e.msg[0],
+                            "Error message is not expected")
+        else:
+            raise self.failureException("subjob in X state can be deleted")
+
+        try:
+            self.server.deljob(subjid_1, extend="deletehist")
+        except PbsDeljobError as e:
+            err_msg = "Request invalid for finished array subjob"
+            self.assertTrue(err_msg in e.msg[0],
+                            "Error message is not expected")
+        else:
+            raise self.failureException("subjob in X state can be deleted")

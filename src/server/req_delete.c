@@ -407,6 +407,9 @@ req_deletejob(struct batch_request *preq)
 		if ((i == JOB_STATE_EXITING) && (forcedel == 0)) {
 			req_reject(PBSE_BADSTATE, 0, preq);
 			return;
+		} else if (i == JOB_STATE_EXPIRED) {
+			req_reject(PBSE_NOHISTARRAYSUBJOB, 0, preq);
+			return;
 		} else if (i != JOB_STATE_QUEUED && ((pjob = find_job(jid)) != NULL)) {
 			/*
 			 * If the request is to also purge the history of the sub job then set ji_deletehistory to 1
