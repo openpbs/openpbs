@@ -207,7 +207,7 @@ class TestReservations(TestFunctional):
         a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|2')}
         self.server.expect(RESV, a, rid)
 
-        resid = d.split('.')[0]
+        resid = rid.split('.')[0]
         self.server.log_match(resid + ";deleted at request of pbs_server",
                               id=resid, interval=5)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
