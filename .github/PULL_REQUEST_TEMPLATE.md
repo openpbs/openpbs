@@ -18,6 +18,9 @@
 #### Solution Description
 * *Please describe your code changes in detail for reviewers*
 
+#### Testing logs/output
+* *Please attach your test log output from running the test you added (or from existing tests that cover your changes)*
+
 #### Checklist:
 <!--- Use the preview button to see the checkboxes/links properly. -->
 <!--- Go over the following points, and put an `x` (without spaces around it) in the boxes that apply. -->
