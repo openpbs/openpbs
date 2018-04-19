@@ -236,3 +236,23 @@ class TestPbsExecutePrologue(TestFunctional):
             exp_err += " contain at least one of execjob_begin"
             exp_err += ", exechost_startup, execjob_prologue"
             self.assertTrue(exp_err in e.msg[0])
+
+    def test_prologue_hook_does_not_execute_twice_on_pbsdsh(self):
+        """
+        """
+        hook_name = 'prologue'
+        hook_body = ("import pbs\n"
+                     "e = pbs.event()\n"
+                     "pbs.logjobmsg(e.job.id, 'executed prologue hook')\n")
+        attr = {'event': 'execjob_prologue'}
+        self.server.create_import_hook(hook_name, attr, hook_body)
+
+        j = Job(TEST_USER, {'Resource_List.select': '2:ncpus=1',
+                            'Resource_List.place': 'scatter'})
+        j.create_script('pbsdsh -n 1 hostname')
+        jid = self.server.submit(j)
+        self.server.expect(JOB, 'queue', op=UNSET, id=jid)
+        match = self.momB.log_match("Job;%s;executed prologue hook" % jid,
+                                    allmatch=True)
+        self.assertTrue(match is not None)
+        self.assertTrue(len(match) == 1)

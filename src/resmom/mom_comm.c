@@ -3465,36 +3465,6 @@ join_err:
 				sprintf(log_buffer, "SPAWN_TASK read of envp array");
 				goto err;
 			}
-			/*
-			 ** do the spawn
-			 */
-
-			if (GET_NEXT(pjob->ji_tasks) == NULL) {
-				mom_hook_input_init(&hook_input);
-				hook_input.pjob = pjob;
-
-				mom_hook_output_init(&hook_output);
-				hook_output.reject_errcode = &hook_errcode;
-				hook_output.last_phook = &last_phook;
-				hook_output.fail_action = &hook_fail_action;
-				switch (mom_process_hooks(HOOK_EVENT_EXECJOB_PROLOGUE,
-						PBS_MOM_SERVICE_NAME, mom_host, &hook_input,
-						&hook_output, hook_msg, sizeof(hook_msg), 1)) {
-					case 0: /* explicit reject */
-						SEND_ERR2(hook_errcode, (char *)hook_msg);
-						arrayfree(argv);
-						arrayfree(envp);
-						goto done;
-					case 1: /* explicit accept */
-						break;
-					case 2:/* no hook script executed - go ahead and accept event*/
-						break;
-					default:
-						log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-							LOG_INFO, "",
-							"execjob_prologue event: accept req by default");
-				}
-			}
 
 			ret = DIS_SUCCESS;
 			if ((ptask = momtask_create(pjob)) == NULL) {
