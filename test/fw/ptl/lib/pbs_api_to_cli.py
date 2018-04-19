@@ -278,6 +278,8 @@ api_to_cli = {
     ATTR_NODE_License: 'license',
     ATTR_NODE_LicenseInfo: 'license_info',
     ATTR_NODE_TopologyInfo: 'topology_info',
+    ATTR_NODE_last_used_time: 'last_used_time',
+    ATTR_NODE_last_state_change_time: 'last_state_change_time',
     ATTR_RESC_TYPE: 'type',
     ATTR_RESC_FLAG: 'flag',
     SHUT_QUICK: 't quick',

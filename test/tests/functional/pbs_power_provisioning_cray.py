@@ -423,13 +423,13 @@ e.accept()
             5, {'Resource_List.host': host, 'Resource_List.ncpus': ncpus})
         self.server.expect(JOB, {'job_state': 'F'}, id=jid, extend='x')
         status = self.server.status(NODE, id=host)
-        fmttime = status[0]['last_state_change_time']
+        fmttime = status[0][ATTR_NODE_last_state_change_time]
         sts_time1 = int(time.mktime(time.strptime(fmttime, pattern)))
         jid = self.submit_job(
             5, {'Resource_List.host': host, 'Resource_List.ncpus': ncpus})
         self.server.expect(JOB, {'job_state': 'F'}, id=jid, extend='x')
         status = self.server.status(NODE, id=host)
-        fmttime = status[0]['last_state_change_time']
+        fmttime = status[0][ATTR_NODE_last_state_change_time]
         sts_time2 = int(time.mktime(time.strptime(fmttime, pattern)))
         rv = sts_time2 > sts_time1
         self.assertTrue(rv)
@@ -446,12 +446,12 @@ e.accept()
         jid = self.submit_job(5, {'Resource_List.host': host})
         self.server.expect(JOB, {'job_state': 'F'}, id=jid, extend='x')
         status = self.server.status(NODE, id=host)
-        fmttime = status[0]['last_used_time']
+        fmttime = status[0][ATTR_NODE_last_used_time]
         sts_time1 = int(time.mktime(time.strptime(fmttime, pattern)))
         jid = self.submit_job(5, {'Resource_List.host': host})
         self.server.expect(JOB, {'job_state': 'F'}, id=jid, extend='x')
         status = self.server.status(NODE, id=host)
-        fmttime = status[0]['last_used_time']
+        fmttime = status[0][ATTR_NODE_last_used_time]
         sts_time2 = int(time.mktime(time.strptime(fmttime, pattern)))
         rv = sts_time2 > sts_time1
         self.assertTrue(rv)
