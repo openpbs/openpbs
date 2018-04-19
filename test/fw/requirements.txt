@@ -1,5 +1,4 @@
 nose
 BeautifulSoup
 pexpect
-python-magic
 defusedxml

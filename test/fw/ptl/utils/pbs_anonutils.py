@@ -854,7 +854,7 @@ class PBSAnonymizer(object):
 
         :returns: a str object containing filename of the anonymized file
         """
-        (fd, fn) = self.du.mkstemp()
+        fn = self.du.create_temp_file()
 
         # qstat outputs sometimes have different names for some attributes
         self.__add_alias_attr(ATTR_euser, "User")
@@ -866,7 +866,7 @@ class PBSAnonymizer(object):
         self.__add_alias_attr(ATTR_NODE_Host, "host")
 
         header = None
-        with open(filename) as f, os.fdopen(fd, "w") as nf:
+        with open(filename) as f, open(fn, "w") as nf:
             # Get the header and the line with '-'s
             # Also write out the header and dash lines to the output file
             line_num = 0
@@ -982,9 +982,9 @@ class PBSAnonymizer(object):
 
         :returns: a str object containing filename of the anonymized file
         """
-        (fd, fn) = self.du.mkstemp()
+        fn = self.du.create_temp_file()
 
-        with open(filename) as f, os.fdopen(fd, "w") as nf:
+        with open(filename) as f, open(fn, "w") as nf:
             delete_line = False
             for line in f:
                 # Check if this is a line extension for an attr being deleted

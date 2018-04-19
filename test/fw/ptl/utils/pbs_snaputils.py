@@ -38,7 +38,6 @@
 import os
 import time
 import tarfile
-import magic
 import logging
 
 from subprocess import STDOUT
@@ -667,25 +666,24 @@ class _PBSSnapUtils(object):
 
         # Create a gdb-python script to capture backtrace from core
         gdb_python = """
-        import gdb
-        gdb.execute("core %s")
-        o = gdb.execute("thread apply all bt", to_string=True)
-        print(o)
-        gdb.execute("quit")
-        quit()
-        """ % (core_file_name)
+import gdb
+gdb.execute("file %s")
+gdb.execute("core %s")
+o = gdb.execute("thread apply all bt", to_string=True)
+print(o)
+gdb.execute("quit")
+quit()
+        """ % (exec_path, core_file_name)
         # Remove tabs from triple quoted strings
         gdb_python = gdb_python.replace("\t", "")
 
-        # Open a temporary file to write the gdb-python script above
-        fd, fn = self.du.mkstemp(mode=0755)
-        with os.fdopen(fd, "w") as tempfd:
-            tempfd.write(gdb_python)
+        # Write the gdb-python script in a temporary file
+        fn = self.du.create_temp_file(body=gdb_python)
 
         # Catch the stack trace using gdb
-        gdb_cmd = ["gdb", exec_path, "-P", fn]
+        gdb_cmd = ["gdb", "-P", fn]
         with open(out_path, "w") as outfd:
-            self.du.run_cmd(gdb_cmd, stdout=outfd, stderr=STDOUT)
+            self.du.run_cmd(cmd=gdb_cmd, stdout=outfd, stderr=STDOUT)
 
         # Remove the temp file
         os.remove(fn)
@@ -761,12 +759,19 @@ class _PBSSnapUtils(object):
         :param core_dir: path to directory to store core information
         :type core_dir: str
 
+
         :returns: True if this was a valid core file, otherwise False
         """
         if not os.path.isfile(file_path):
             return False
 
-        file_header = magic.from_file(file_path)
+        # Get the header of this file
+        ret = self.du.run_cmd(cmd=["file", file_path], sudo=self.sudo)
+        if ret['err'] is not None and len(ret['err']) != 0:
+            raise AssertionError(
+                "\'file\' command failed with error: " + ret['err'])
+
+        file_header = ret["out"][0]
         if "core file" not in file_header:
             return False
 
