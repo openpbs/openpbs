@@ -48,30 +48,27 @@ class CrayUtils(object):
     """
     node_status = []
     node_summary = {}
+    cmd_output = []
     du = None
 
     def __init__(self):
         self.du = DshUtils()
         (self.node_status, self.node_summary) = self.parse_apstat_rn()
 
-    def parse_apstat_rn(self):
+    def call_apstat(self, options):
         """
-        Run apstat command on cray/craysim and parse its output
+        Build the apstat command and run it.  Return the output of the command.
 
         :param options: options to pass to apstat command
         :type options: str
-        :returns: tuple of (node status, node summary)
+        :returns: the command output
         """
-        status = []
-        summary = {}
-        count = 0
-        options = '-rn'
         hostname = socket.gethostname()
         platform = self.du.get_platform(hostname)
         apstat_env = os.environ
         apstat_cmd = "apstat"
         if 'cray' not in platform:
-            return (status, summary)
+            return None
         if 'craysim' in platform:
             lib_path = '$LD_LIBRARY_PATH:/opt/alps/tester/usr/lib/'
             apstat_env['LD_LIBRARY_PATH'] = lib_path
@@ -81,6 +78,22 @@ class CrayUtils(object):
         cmd_run = self.du.run_cmd(hostname, [apstat_cmd, options],
                                   as_script=True, wait_on_script=True,
                                   env=apstat_env)
+        return cmd_run
+
+    def parse_apstat_rn(self):
+        """
+        Parse the apstat command output for node status and summary
+
+        :type options: str
+        :returns: tuple of (node status, node summary)
+        """
+        status = []
+        summary = {}
+        count = 0
+        options = '-rn'
+        cmd_run = self.call_apstat(options)
+        if cmd_run is None:
+            return (status, summary)
         cmd_result = cmd_run['out']
         keys = cmd_result[0].split()
         # Add a key 'Mode' because 'State' is composed of two list items, e.g:
@@ -141,3 +154,24 @@ class CrayUtils(object):
             if stat['State'] == state:
                 count += 1
         return count
+
+    def get_numthreads(self, nid):
+        """
+        Returns the number of hyperthread for the given node
+        """
+        options = '-N %d -n -f "nid,c/cu"' % int(nid)
+        cmd_run = self.call_apstat(options)
+        if cmd_run is None:
+            return None
+        cmd_result = cmd_run['out']
+        cmd_iter = iter(cmd_result)
+        numthreads = 0
+        for line in cmd_iter:
+            if "Compute node summary" in line:
+                break
+            elif "NID" in line:
+                continue
+            else:
+                key = line.split()
+                numthreads = int(key[1])
+        return numthreads
