@@ -5882,7 +5882,7 @@ class Server(PBSService):
                                                   prefix='PtlPbsJobScript',
                                                   asuser=obj.username,
                                                   body=aprun_cmd)
-                    self.du.chmod(fn, mode=0755)
+                    self.du.chmod(path=fn, mode=0755)
                     script = fn
             elif script is None and obj.script is not None:
                 script = obj.script

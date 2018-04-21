@@ -284,13 +284,12 @@ class DshUtils(object):
 
         try:
             fn = self.create_temp_file()
-            self.chmod(hostname, fn, mode=0644)
+            self.chmod(path=fn, mode=0644)
             with open(fn, 'w') as fd:
                 for k, v in conf.items():
                     fd.write(str(k) + '=' + str(v) + '\n')
-            self.chown(path=fn, uid=0, gid=0, sudo=True)
-            self.run_copy(hostname, fn, fout, sudo=True, level=logging.DEBUG2)
-            self.rm(path=fn, sudo=True)
+            self.run_copy(hostname, fn, fout, level=logging.DEBUG2)
+            self.rm(path=fn)
         except:
             raise PbsConfigError(rc=1, rv=None,
                                  msg='error writing to file ' + str(fout))
@@ -1057,9 +1056,10 @@ class DshUtils(object):
             if ret['rc'] != 0:
                 self.logger.error(ret['err'])
             elif sudo_save_dest:
-                cmd = [self.which(targethost, 'mv', level=level)]
+                cmd = [self.which(targethost, 'cp', level=level)]
                 cmd += [dest, sudo_save_dest]
                 ret = self.run_cmd(targethost, cmd=cmd, sudo=True, level=level)
+                self.rm(targethost, path=dest, level=level)
                 dest = sudo_save_dest
                 if ret['rc'] != 0:
                     self.logger.error(ret['err'])
