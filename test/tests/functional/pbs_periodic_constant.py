@@ -63,5 +63,4 @@ if e.type == pbs.PERIODIC:
                                                 overwrite=True)
         self.assertTrue(retval)
 
-        self.server.log_match("This hook is using pbs.PERIODIC",
-                              max_attempts=10)
+        self.server.log_match("This hook is using pbs.PERIODIC")
