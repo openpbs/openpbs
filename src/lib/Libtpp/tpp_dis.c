@@ -857,6 +857,7 @@ set_tpp_config(struct pbs_config *pbs_conf,
 			strcat(formatted_names, ",");
 			strcat(formatted_names, nm);
 		}
+		free(nm);
 
 		len += hlen + 2;
 

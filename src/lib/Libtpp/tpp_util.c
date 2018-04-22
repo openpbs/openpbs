@@ -1592,6 +1592,7 @@ tpp_get_addresses(char *names, int *count)
 					tot_count++;
 				}
 			}
+			free(addrs_tmp);
 		}
 
 		token = strtok_r(NULL, ",", &saveptr);
