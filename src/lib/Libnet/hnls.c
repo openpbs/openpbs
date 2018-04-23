@@ -170,7 +170,7 @@ char **
 get_if_hostnames(struct sockaddr *saddr)
 {
 	int i;
-	int aliases;
+	int aliases = 0;
 	char **names;
 	const void *addr;
 	size_t addr_size;
@@ -179,6 +179,10 @@ get_if_hostnames(struct sockaddr *saddr)
 	struct sockaddr_in6 *saddr_in6;
 	char buf[INET6_ADDRSTRLEN];
 	const char *bufp = NULL;
+#ifdef WIN32
+	char host[NI_MAXHOST] = {'\0'};
+	int ret = 0;	
+#endif /* WIN32 */
 
 	if (!saddr)
 		return NULL;
@@ -186,29 +190,54 @@ get_if_hostnames(struct sockaddr *saddr)
 	switch (saddr->sa_family) {
 		case AF_INET:
 			saddr_in = (struct sockaddr_in *)saddr;
+#ifdef WIN32
+			saddr_in->sin_family = AF_INET;
+#endif /* WIN32 */
 			addr = &saddr_in->sin_addr;
 			addr_size = sizeof(saddr_in->sin_addr);
 			bufp = inet_ntop(AF_INET, addr, buf, INET_ADDRSTRLEN);
 			if (!bufp)
 				return NULL;
+#ifdef WIN32
+			ret = getnameinfo(saddr_in, sizeof(struct sockaddr_in), host, NI_MAXHOST, NULL, NULL, 0);
+			if (ret != 0 || host[0] == '\0')
+				return NULL;
+#else
 			hostp = gethostbyaddr(addr, addr_size, saddr_in->sin_family);
+			if (!hostp)
+				return NULL;
+#endif /* WIN32 */
 			break;
 		case AF_INET6:
 			saddr_in6 = (struct sockaddr_in6 *)saddr;
+#ifdef WIN32
+			saddr_in6->sin6_family = AF_INET6;
+#endif /* WIN32 */
 			addr = &saddr_in6->sin6_addr;
 			addr_size = sizeof(saddr_in6->sin6_addr);
 			bufp = inet_ntop(AF_INET6, addr, buf, INET6_ADDRSTRLEN);
 			if (!bufp)
 				return NULL;
+#ifdef WIN32
+			ret = getnameinfo(saddr_in6, sizeof(struct sockaddr_in6), host, NI_MAXHOST, NULL, NULL, 0);
+			if (ret != 0 || host[0] == '\0')
+				return NULL;
+#else
 			hostp = gethostbyaddr(addr, addr_size, saddr_in6->sin6_family);
+			if (!hostp)
+				return NULL;
+#endif /* WIN32 */
 			break;
 		default:
 			return NULL;
 	}
 
-	if (!hostp)
+#ifdef WIN32
+	names = (char**)calloc(2, sizeof(char*));
+	if(!names)
 		return NULL;
-
+	names[0] = strdup(host);
+#else
 	/* Count the aliases. */
 	for (aliases = 0; hostp->h_aliases[aliases]; aliases++)
 		;
@@ -219,6 +248,7 @@ get_if_hostnames(struct sockaddr *saddr)
 	for (i = 0; i < aliases; i++) {
 		names[i+1] = strdup(hostp->h_aliases[i]);
 	}
+#endif /* WIN32 */
 	return names;
 }
 

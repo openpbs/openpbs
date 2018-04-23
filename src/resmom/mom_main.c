@@ -8506,7 +8506,7 @@ main(int argc, char *argv[])
 	 */
 
 	ss.dwCheckPoint++;
-	ss.dwWaitHint = 10000;
+	ss.dwWaitHint = 60000;
 	if (g_ssHandle != 0) SetServiceStatus(g_ssHandle, &ss);
 	log_open(log_file, path_log);
 
