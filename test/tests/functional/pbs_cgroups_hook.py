@@ -36,6 +36,7 @@
 # trademark licensing policies.
 
 from tests.functional import *
+from glob import glob
 
 
 def have_swap():
@@ -51,6 +52,20 @@ def have_swap():
     return tt
 
 
+def is_memsw_enabled(mem_path):
+    """
+    Check if system has swapcontrol enabled, then return true
+    else return false
+    """
+
+    # List all files and check if memsw files exists
+    for files in os.listdir(mem_path):
+        if "memory.memsw" in files:
+            return "true"
+
+    return "false"
+
+
 @tags('mom', 'multi_node')
 class TestCgroupsHook(TestFunctional):
 
@@ -60,20 +75,49 @@ class TestCgroupsHook(TestFunctional):
 
     def setUp(self):
         TestFunctional.setUp(self)
-        if len(self.moms) != 2:
-            self.skipTest("Test requires two Moms as input, " +
-                          "use -p moms=<mom1:mom2>")
-        self.hostA = self.moms.values()[0]
-        self.hostB = self.moms.values()[1]
-        self.momA = self.hostA.shortname
-        self.momB = self.hostB.shortname
+
+        # Some of the tests requires 2 nodes.
+        # Hence setting the values to default when no mom is specified
+
+        self.momA = socket.gethostname()
+        self.momB = self.momA
+        self.vntypenameA = "no_cgroups"
+        self.vntypenameB = self.vntypenameA
+        self.iscray = 0
+        self.tempfile = []
+        if self.moms:
+            if len(self.moms) == 1:
+                self.hostA = self.moms.values()[0]
+                self.hostB = self.hostA
+                self.momA = self.hostA.shortname
+                self.momB = self.momA
+                self.vntypenameA = self.get_vntype(self.momA)
+                self.vntypenameB = self.vntypenameA
+                if self.hostA.is_cray():
+                    self.iscray = 1
+            if len(self.moms) == 2:
+                self.hostA = self.moms.values()[0]
+                self.hostB = self.moms.values()[1]
+                self.momA = self.hostA.shortname
+                self.momB = self.hostB.shortname
+                self.vntypenameA = self.get_vntype(self.momA)
+                self.vntypenameB = self.get_vntype(self.momB)
+                if self.hostA.is_cray() or self.hostB.is_cray():
+                    self.iscray = 1
+
+        self.serverA = self.servers.values()[0].name
 
         self.paths = self.get_paths()
         if not self.paths:
             self.skipTest("No cgroups mounted")
+        self.swapctl = is_memsw_enabled(self.paths['memsw'])
+
         self.server.set_op_mode(PTL_CLI)
         self.server.cleanup_jobs(extend='force')
-        self.remove_vntype()
+
+        if not self.iscray:
+            self.remove_vntype()
+
         self.eatmem_script = """
 import sys
 MB = 2 ** 20
@@ -133,9 +177,21 @@ if [ -z "$cpuset_base" ]; then
 else
     base="$cpuset_base/pbspro/$PBS_JOBID"
     if [ -d "$base" ]; then
-        cpus=`cat $base/cpuset.cpus`
+        cpupath1="$base/cpuset.cpus"
+        cpupath2="$base/cpus"
+        if [ -f "$cpupath1" ]; then
+            cpus=`cat $base/cpuset.cpus`
+        elif [ -f "$cpupath2" ]; then
+            cpus=`cat $base/cpus`
+        fi
         echo "CpuIDs=${cpus}"
-        mems=`cat $base/cpuset.mems`
+        mempath1="$base/cpuset.mems"
+        mempath2="$base/mems"
+        if [ -f "$mempath1" ]; then
+            mems=`cat $base/cpuset.mems`
+        elif [ -f "$mempath2" ]; then
+            mems=`cat $base/mems`
+        fi
         echo "MemorySocket=${mems}"
     fi
 fi
@@ -151,7 +207,7 @@ else
        echo "MemswLimit=${memsw_limit}"
     fi
 fi
-sleep 2
+sleep 15
 """
         self.check_dirs_script = """#!/bin/bash
 #PBS -joe
@@ -254,7 +310,7 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         },
         "memsw":
         {
-            "enabled"         : true,
+            "enabled"         : %s,
             "exclude_hosts"   : [],
             "exclude_vntypes" : [],
             "default"         : "256MB",
@@ -314,7 +370,7 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         self.cfg3 = """{
     "cgroup_prefix"         : "pbspro",
     "exclude_hosts"         : [],
-    "exclude_vntypes"       : ["no_cgroups"],
+    "exclude_vntypes"       : [%s],
     "run_only_on_hosts"     : [],
     "periodic_resc_update"  : true,
     "vnode_per_numa_node"   : false,
@@ -332,7 +388,7 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         {
             "enabled"         : true,
             "exclude_hosts"   : [],
-            "exclude_vntypes" : ["no_cgroups_cpus"]
+            "exclude_vntypes" : [%s]
         },
         "devices":
         {
@@ -348,15 +404,15 @@ for i in 1 2 3 4; do while : ; do : ; done & done
             "default"         : "256MB",
             "reserve_amount"  : "50MB",
             "exclude_hosts"   : [],
-            "exclude_vntypes" : ["no_cgroups_mem"]
+            "exclude_vntypes" : [%s]
         },
         "memsw":
         {
-            "enabled"         : true,
+            "enabled"         : %s,
             "default"         : "256MB",
             "reserve_amount"  : "45MB",
             "exclude_hosts"   : [],
-            "exclude_vntypes" : ["no_cgroups_mem"]
+            "exclude_vntypes" : [%s]
         }
     }
 }
@@ -402,7 +458,7 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         },
         "memsw":
         {
-            "enabled"         : true,
+            "enabled"         : %s,
             "default"         : "256MB",
             "reserve_amount"  : "90MB",
             "exclude_hosts"   : [],
@@ -447,6 +503,10 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         # Restart mom so exechost_startup hook is run
         self.hostA.signal('-HUP')
         self.hostB.signal('-HUP')
+        self.logger.info("vntype set for %s is %s" %
+                         (self.momA, self.vntypenameA))
+        self.logger.info("vntype set for %s is %s" %
+                         (self.momB, self.vntypenameB))
 
     def get_paths(self):
         """
@@ -464,7 +524,16 @@ for i in 1 2 3 4; do while : ; do : ; done & done
                 subsys = os.path.basename(entries[1])
                 paths[subsys] = entries[1]
                 if 'memory' in flags:
-                    paths['memsw'] = paths['memory']
+                    paths['memsw'] = paths[subsys]
+                    paths['memory'] = paths[subsys]
+                if 'cpuacct' in flags:
+                    paths['cpuacct'] = paths[subsys]
+                else:
+                    paths['cpuacct'] = 0
+                if 'devices' in flags:
+                    paths['devices'] = paths[subsys]
+                else:
+                    paths['devices'] = 0
         return paths
 
     def is_dir(self, cpath, mom):
@@ -501,19 +570,19 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         """
         Create a hook configuration file with the provided contents.
         """
-        fn = self.du.create_temp_file(body=cfg)
+        fn = self.du.create_temp_file(hostname=self.serverA, body=cfg)
+        self.tempfile.append(fn)
         a = {'content-type': 'application/x-config',
              'content-encoding': 'default',
              'input-file': fn}
         self.server.manager(MGR_CMD_IMPORT, HOOK, a, self.hook_name)
-        os.remove(fn)
-        self.mom.log_match('pbs_cgroups.CF;copy hook-related ' +
-                           'file request received',
-                           max_attempts=5,
-                           starttime=self.server.ctime)
+        self.hostA.log_match('pbs_cgroups.CF;copy hook-related '
+                             'file request received',
+                             starttime=self.server.ctime)
         self.logger.info("Current config: %s" % cfg)
         # Restart MoM to work around PP-993
-        self.mom.restart()
+        self.hostA.restart()
+        self.hostB.restart()
 
     def set_vntype(self, mom, typestring='myvntype'):
         """
@@ -523,11 +592,12 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         vntype_file = os.path.join(pbs_home, 'mom_priv', 'vntype')
         self.logger.info("Setting vntype to %s in %s on mom %s" %
                          (typestring, vntype_file, mom))
-        fn = self.du.create_temp_file(body=typestring)
+        localhost = socket.gethostname()
+        fn = self.du.create_temp_file(hostname=localhost, body=typestring)
+        self.tempfile.append(fn)
         ret = self.du.run_copy(hosts=mom, src=fn,
-                               dest=vntype_file, sudo=True, uid=0,
-                               gid=0, mode=0644)
-        os.remove(fn)
+                               dest=vntype_file, sudo=True, uid='root',
+                               gid='root', mode=0644)
         if ret['rc'] != 0:
             self.skipTest("pbs_cgroups_hook: need root privileges")
 
@@ -544,6 +614,19 @@ for i in 1 2 3 4; do while : ; do : ; done & done
                           force=True, sudo=True, logerr=False)
         if not (ret or ret1):
             self.skipTest("pbs_cgroups_hook: need root privileges")
+
+    def get_vntype(self, mom):
+        """
+        Get the vntype if it exists for example on cray
+        """
+        vntype = "no_cgroups"
+        pbs_home = self.server.pbs_conf['PBS_HOME']
+        vntype_f = os.path.join(pbs_home, 'mom_priv', 'vntype')
+        self.logger.info("Reading the vntype value for mom %s" % mom)
+        if self.du.isfile(hostname=mom, path=vntype_f):
+            output = self.du.cat(hostname=mom, filename=vntype_f, sudo=True)
+            vntype = output['out'][0]
+        return vntype
 
     def wait_and_remove_file(self, mom, filename=''):
         """
@@ -563,36 +646,76 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         self.assertFalse(self.du.isfile(hostname=mom, path=filename),
                          "File not removed: %s" % filename)
 
-    def wait_and_read_file(self, mom, filename=''):
+    def wait_and_read_file(self, mom, filepath=''):
         """
         Wait up to ten seconds for a file to appear and then read it.
         """
-        from ptl.utils.pbs_logutils import PBSLogUtils
-        self.logger.info("Reading file: %s on mom: %s" % (filename, mom))
-        if not filename:
+        self.logger.info("Reading file: %s on mom: %s" % (filepath, mom))
+        if not filepath:
             raise ValueError('Invalid filename')
         for _ in range(30):
-            if self.du.isfile(hostname=mom, path=filename):
+            if self.du.isfile(hostname=mom, path=filepath):
                 break
             time.sleep(1)
-        self.assertTrue(self.du.isfile(hostname=mom, path=filename),
-                        "File not found: %s" % filename)
-        with PBSLogUtils().open_log(
-                hostname=mom,
-                log=filename,
-                sudo=True) as fd:
-            output = fd.read().splitlines()
-        return output
+        self.assertTrue(self.du.isfile(hostname=mom, path=filepath),
+                        "File %s not found on mom %s" % (filepath, mom))
+        output = self.du.cat(hostname=mom, filename=filepath, sudo=True)
+        return output['out']
+
+    def get_hostname(self, mom):
+        """
+        get short hostname of the mom.
+        This is needed since cgroups logs hostname not mom name
+        """
+
+        cmd = "hostname"
+        rv = self.du.run_cmd(hosts=mom, cmd=cmd)
+        host = rv['out'][0].split('.')[0]
+        return host
+
+    def get_host_names(self, mom):
+        """
+        get shortname and hostname of the mom. This is needed
+        for some systems where hostname and shortname is different.
+        """
+        cmd1 = "hostname -s"
+        rv1 = self.du.run_cmd(hosts=mom, cmd=cmd1)
+        host2 = self.get_hostname(mom)
+        hostlist = '"' + host2 + '"'
+        moms = [hostlist]
+        mlog = ["'" + host2 + "'"]
+
+        # if shortname and hostname is not same then construct a
+        # list including both to be passed to cgroups hook
+        if (str(rv1['out'][0]) != host2):
+            moms.append('"' + str(rv1['out'][0]) + '"')
+            mlog.append("'" + str(rv1['out'][0]) + "'")
+        if len(moms) > 1:
+            mom1 = ','.join(moms)
+            log1 = ', '.join(mlog)
+        else:
+            mom1 = '"' + host2 + '"'
+            log1 = "'" + host2 + "'"
+        return mom1, log1
 
     def test_cgroup_vntype_excluded(self):
         """
         Test to verify that cgroups are not enforced on nodes
         that have an exclude vntype file set
         """
+        # Test requires 2 nodes
+        if len(self.moms) != 2:
+            self.skipTest("Test requires two Moms as input, "
+                          "use -p moms=<mom1:mom2>")
+
         name = 'CGROUP8'
-        self.logger.info("Adding vntype to mom %s " % (self.momA))
-        self.set_vntype(typestring="no_cgroups", mom=self.momA)
-        self.load_config(self.cfg1 % ("", '"no_cgroups"', "", ""))
+        if self.vntypenameA == "no_cgroups":
+            self.logger.info("Adding vntype %s to mom %s " %
+                             (self.vntypenameA, self.momA))
+            self.set_vntype(typestring=self.vntypenameA, mom=self.momA)
+        self.load_config(
+            self.cfg1
+            % ("", '"' + self.vntypenameA + '"', "", "", self.swapctl))
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.momA, ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
@@ -605,14 +728,19 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         self.logger.info("memory subsystem is at location %s" %
                          self.paths['memory'])
         cpath = os.path.join(self.paths['memory'], 'pbspro', jid)
-        rv = self.is_dir(cpath, self.momA)
-        self.assertFalse(rv)
-        self.hostA.log_match("no_cgroups is in the excluded vnode " +
-                             "type list: ['no_cgroups']",
-                             max_attempts=3,
+        self.assertFalse(self.is_dir(cpath, self.momA))
+        self.hostA.log_match("%s is in the excluded vnode type list: ['%s']"
+                             % (self.vntypenameA, self.vntypenameA),
                              starttime=self.server.ctime)
-
         self.wait_and_remove_file(filename=o.split(':')[1], mom=self.momA)
+
+        self.logger.info("vntypes on both hosts are: %s and %s"
+                         % (self.vntypenameA, self.vntypenameB))
+        if self.vntypenameB == self.vntypenameA:
+            self.logger.info(
+                "Skipping the second part of this test"
+                " since hostB also has same vntype value")
+            return
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.momB, ATTR_N: name}
         j1 = Job(TEST_USER, attrs=a)
@@ -621,17 +749,21 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid2)
         cpath = os.path.join(self.paths['memory'], 'pbspro', jid2)
-        rv = self.is_dir(cpath, self.momB)
-        self.assertTrue(rv)
+        self.assertTrue(self.is_dir(cpath, self.momB))
 
     def test_cgroup_host_excluded(self):
         """
         Test to verify that cgroups are not enforced on nodes
         that have the exclude_hosts set
         """
+        # Test requires 2 nodes
+        if len(self.moms) != 2:
+            self.skipTest("Test requires two Moms as input, "
+                          "use -p moms=<mom1:mom2>")
+
         name = 'CGROUP9'
-        mom1 = self.hostA.name
-        self.load_config(self.cfg1 % ('"%s"' % mom1, "", "", ""))
+        mom, log = self.get_host_names(self.momA)
+        self.load_config(self.cfg1 % ('%s' % mom, "", "", "", self.swapctl))
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.momA, ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
@@ -642,12 +774,10 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         self.server.status(JOB, ATTR_o, jid)
         o = j.attributes[ATTR_o]
         cpath = os.path.join(self.paths['memory'], 'pbspro', jid)
-        rv = self.is_dir(cpath, self.momA)
-        self.assertFalse(rv)
-        self.hostA.log_match("%s" % self.momA +
-                             " is in the excluded host list: " +
-                             "['%s']" % self.momA,
-                             max_attempts=5,
+        self.assertFalse(self.is_dir(cpath, self.momA))
+        host = self.get_hostname(self.momA)
+        self.hostA.log_match("%s is in the excluded host list: [%s]"
+                             % (host, log),
                              starttime=self.server.ctime)
         self.wait_and_remove_file(filename=o.split(':')[1], mom=self.momA)
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
@@ -658,18 +788,26 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid2)
         cpath = os.path.join(self.paths['memory'], 'pbspro', jid2)
-        rv = self.is_dir(cpath, self.momB)
-        self.assertTrue(rv)
+        self.assertTrue(self.is_dir(cpath, self.momB))
 
     def test_cgroup_exclude_vntype_mem(self):
         """
         Test to verify that cgroups are not enforced on nodes
         that have an exclude vntype file set
         """
+        # Test requires 2 nodes
+        if len(self.moms) != 2:
+            self.skipTest("Test requires two Moms as input, "
+                          "use -p moms=<mom1:mom2>")
+
         name = 'CGROUP12'
-        self.load_config(self.cfg3)
-        self.logger.info("Adding vntype to mom %s " % (self.momA))
-        self.set_vntype(typestring="no_cgroups_mem", mom=self.momA)
+        if self.vntypenameA == "no_cgroups":
+            self.logger.info("Adding vntype %s to mom %s " %
+                             (self.vntypenameA, self.momA))
+            self.set_vntype(typestring="no_cgroups", mom=self.momA)
+        self.load_config(self.cfg3 % (
+            "", "", '"' + self.vntypenameA + '"', self.swapctl,
+            '"' + self.vntypenameA + '"'))
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s'
              % self.momA, ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
@@ -679,13 +817,18 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         self.server.expect(JOB, a, jid)
         self.server.status(JOB, ATTR_o, jid)
         o = j.attributes[ATTR_o]
-        self.hostA.log_match("cgroup excluded for subsystem memory " +
-                             "on vnode type no_cgroups_mem",
-                             max_attempts=5,
+        self.hostA.log_match("cgroup excluded for subsystem memory "
+                             "on vnode type %s" % self.vntypenameA,
                              starttime=self.server.ctime)
         cpath = os.path.join(self.paths['memory'], 'pbspro', jid)
-        rv = self.is_dir(cpath, self.momA)
-        self.assertFalse(rv)
+        self.assertFalse(self.is_dir(cpath, self.momA))
+
+        self.logger.info("vntype values for each hosts are: %s and %s"
+                         % (self.vntypenameA, self.vntypenameB))
+        if self.vntypenameB == self.vntypenameA:
+            self.logger.info("Skipping the second part of this test" +
+                             " since hostB also has same vntype value")
+            return
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.momB, ATTR_N: name}
         j1 = Job(TEST_USER, attrs=a)
@@ -694,8 +837,7 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid2)
         cpath = os.path.join(self.paths['memory'], 'pbspro', jid2)
-        rv = self.is_dir(cpath, self.momB)
-        self.assertTrue(rv)
+        self.assertTrue(self.is_dir(cpath, self.momB))
         self.wait_and_remove_file(filename=o.split(':')[1], mom=self.momA)
 
     @timeout(600)
@@ -704,7 +846,7 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         Test to verify that cgroups are reporting usage for cput and mem
         """
         name = 'CGROUP13'
-        self.load_config(self.cfg3)
+        self.load_config(self.cfg3 % ("", "", "", self.swapctl, ""))
         a = {'Resource_List.select': '1:ncpus=1:mem=500mb:host=%s' %
              self.momA, ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
@@ -714,26 +856,26 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         self.server.expect(JOB, a, jid)
         self.server.status(JOB, ATTR_o, jid)
         o = j.attributes[ATTR_o]
-        self.hostA.log_match("%s;update_job_usage: " % jid +
-                             "CPU usage: 0.000 secs",
-                             max_attempts=2)
-        self.hostA.log_match("%s;update_job_usage: " % jid +
-                             "Memory usage: mem=0b",
-                             max_attempts=2)
-        self.hostA.log_match("%s;update_job_usage: " % jid +
-                             "Memory usage: vmem=0b",
-                             max_attempts=2)
+        if self.paths['cpuacct']:
+            self.hostA.log_match("%s;update_job_usage: CPU usage: 0.000 secs"
+                                 % jid)
+        if self.paths['memory']:
+            self.hostA.log_match(
+                "%s;update_job_usage: Memory usage: mem=0b" % jid)
+            if self.swapctl == "true":
+                self.hostA.log_match(
+                    "%s;update_job_usage: Memory usage: vmem=0b" % jid)
         # Allow some time to pass for values to be updated
         time.sleep(5)
-        self.hostA.log_match("%s;update_job_usage: " % jid +
-                             "CPU usage: [0-9.]+ secs",
-                             regexp=True,
-                             max_attempts=5)
-        self.hostA.log_match("%s;update_job_usage: " % jid +
-                             "Memory usage: vmem=[1-9][0-9]+kb",
-                             regexp=True,
-                             max_attempts=5)
-        self.wait_and_remove_file(filename=o.split(':')[1], mom=self.momA)
+        if self.paths['cpuacct']:
+            self.hostA.log_match(
+                "%s;update_job_usage: CPU usage: [0-9.]+ secs" % jid,
+                regexp=True)
+        if self.paths['memory']:
+            self.hostA.log_match(
+                "%s;update_job_usage: Memory usage: mem=[1-9][0-9]+kb"
+                % jid, regexp=True)
+            self.wait_and_remove_file(filename=o.split(':')[1], mom=self.momA)
 
     def test_cgroup_cpuset_and_memory(self):
         """
@@ -742,10 +884,10 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         memory.limit_in_bytes = 314572800
         """
         name = 'CGROUP1'
-        self.load_config(self.cfg3)
-        j = Job(TEST_USER)
-        a = {'Resource_List.select': '1:ncpus=1:mem=300mb', ATTR_N: name}
-        j.set_attributes(a)
+        self.load_config(self.cfg3 % ("", "", "", self.swapctl, ""))
+        a = {'Resource_List.select': '1:ncpus=1:mem=300mb',
+             ATTR_N: name, ATTR_k: 'oe'}
+        j = Job(TEST_USER, attrs=a)
         j.create_script(self.cpuset_mem_script)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
@@ -755,17 +897,20 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         ehost = j.attributes['exec_host']
         tmp_file = filename.split(':')[1]
         tmp_host = ehost.split('/')[0]
-        tmp_out = self.wait_and_read_file(filename=tmp_file, mom=tmp_host)
+        tmp_out = self.wait_and_read_file(filepath=tmp_file, mom=tmp_host)
         self.logger.info("%s: %s" % (name, tmp_out))
         self.wait_and_remove_file(filename=tmp_file, mom=tmp_host)
         self.assertTrue(jid in tmp_out)
         self.logger.info("job dir check passed")
-        self.assertTrue("CpuIDs=0" in tmp_out)
-        self.logger.info("CpuIDs check passed")
-        self.assertTrue("MemorySocket=0" in tmp_out)
-        self.logger.info("MemorySocket check passed")
-        self.assertTrue("MemoryLimit=314572800" in tmp_out)
-        self.logger.info("MemoryLimit check passed")
+        if self.paths['cpuacct']:
+            self.assertTrue("CpuIDs=0" in tmp_out)
+            self.logger.info("CpuIDs check passed")
+        if self.paths['memory']:
+            self.assertTrue("MemorySocket=0" in tmp_out)
+            self.logger.info("MemorySocket check passed")
+            if self.swapctl == "true":
+                self.assertTrue("MemoryLimit=314572800" in tmp_out)
+                self.logger.info("MemoryLimit check passed")
 
     def test_cgroup_cpuset_and_memsw(self):
         """
@@ -776,10 +921,10 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         memory.memsw.limit_in_bytes = 268435456
         """
         name = 'CGROUP2'
-        self.load_config(self.cfg3)
-        j = Job(TEST_USER)
-        a = {'Resource_List.select': '1:ncpus=1', ATTR_N: name}
-        j.set_attributes(a)
+        self.load_config(self.cfg3 % ("", "", "", self.swapctl, ""))
+        a = {'Resource_List.select': '1:ncpus=1:host=%s' %
+             self.momA, ATTR_N: name}
+        j = Job(TEST_USER, attrs=a)
         j.create_script(self.cpuset_mem_script)
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
@@ -789,17 +934,21 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         ehost = j.attributes['exec_host']
         tmp_file = filename.split(':')[1]
         tmp_host = ehost.split('/')[0]
-        tmp_out = self.wait_and_read_file(filename=tmp_file, mom=tmp_host)
-        self.wait_and_remove_file(filename=tmp_file, mom=tmp_host)
+        tmp_out = self.wait_and_read_file(filepath=tmp_file, mom=self.momA)
+        self.logger.info("output of job is %s" % tmp_out)
+        self.wait_and_remove_file(filename=tmp_file, mom=self.momA)
         self.assertTrue(jid in tmp_out)
         self.logger.info("job dir check passed")
-        self.assertTrue("CpuIDs=0" in tmp_out)
-        self.logger.info("CpuIDs check passed")
-        self.assertTrue("MemorySocket=0" in tmp_out)
-        self.logger.info("MemorySocket check passed")
-        self.assertTrue("MemoryLimit=268435456" in tmp_out)
-        self.assertTrue("MemswLimit=268435456" in tmp_out)
-        self.logger.info("MemoryLimit check passed")
+        if self.paths['cpuacct']:
+            self.assertTrue("CpuIDs=0" in tmp_out)
+            self.logger.info("CpuIDs check passed")
+        if self.paths['memory']:
+            self.assertTrue("MemorySocket=0" in tmp_out)
+            self.logger.info("MemorySocket check passed")
+            if self.swapctl == "true":
+                self.assertTrue("MemoryLimit=268435456" in tmp_out)
+                self.assertTrue("MemswLimit=268435456" in tmp_out)
+                self.logger.info("MemoryLimit check passed")
 
     def test_cgroup_prefix_and_devices(self):
         """
@@ -807,6 +956,8 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         only the devices subsystem is enabled with the correct devices
         allowed
         """
+        if not self.paths['devices']:
+            self.skipTest("Skipping test since no devices subsystem defined")
         name = "CGROUP3"
         self.load_config(self.cfg2)
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb', ATTR_N: name}
@@ -820,7 +971,7 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         ehost = j.attributes['exec_host']
         tmp_file = filename.split(':')[1]
         tmp_host = ehost.split('/')[0]
-        tmp_out = self.wait_and_read_file(filename=tmp_file, mom=tmp_host)
+        tmp_out = self.wait_and_read_file(filepath=tmp_file, mom=tmp_host)
         self.wait_and_remove_file(filename=tmp_file, mom=tmp_host)
         check_devices = ['b *:* rwm',
                          'c 5:1 rwm',
@@ -847,8 +998,9 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         if pcpus < 2:
             self.skipTest("Test requires at least two physical CPUs")
         name = "CGROUP4"
-        self.load_config(self.cfg3)
-        a = {'Resource_List.select': '1:ncpus=1:mem=300mb', ATTR_N: name + 'a'}
+        self.load_config(self.cfg3 % ("", "", "", self.swapctl, ""))
+        a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
+             self.momA, ATTR_N: name + 'a'}
         j1 = Job(TEST_USER, attrs=a)
         j1.create_script(self.cpuset_mem_script)
         jid1 = self.server.submit(j1)
@@ -858,7 +1010,8 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         self.server.status(JOB, attrib, jid1)
         filename1 = j1.attributes[ATTR_o]
         ehost1 = j1.attributes['exec_host']
-        b = {'Resource_List.select': '1:ncpus=1:mem=300mb', ATTR_N: name + 'b'}
+        b = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
+             self.momA, ATTR_N: name + 'b'}
         j2 = Job(TEST_USER, attrs=b)
         j2.create_script(self.cpuset_mem_script)
         jid2 = self.server.submit(j2)
@@ -870,7 +1023,7 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         self.logger.info("Job1 .o file: %s" % filename1)
         tmp_file1 = filename1.split(':')[1]
         tmp_host1 = ehost1.split('/')[0]
-        tmp_out1 = self.wait_and_read_file(filename=tmp_file1, mom=tmp_host1)
+        tmp_out1 = self.wait_and_read_file(filepath=tmp_file1, mom=tmp_host1)
         self.logger.info("tmp_out1: %s" % tmp_out1)
         self.wait_and_remove_file(filename=tmp_file1, mom=tmp_host1)
         self.assertTrue(
@@ -879,7 +1032,7 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         self.logger.info("Job2 .o file: %s" % filename2)
         tmp_file2 = filename2.split(':')[1]
         tmp_host2 = ehost2.split('/')[0]
-        tmp_out2 = self.wait_and_read_file(filename=tmp_file2, mom=tmp_host2)
+        tmp_out2 = self.wait_and_read_file(filepath=tmp_file2, mom=tmp_host2)
         self.logger.info("tmp_out2: %s" % tmp_out2)
         self.wait_and_remove_file(filename=tmp_file2, mom=tmp_host2)
         self.assertTrue(
@@ -901,9 +1054,9 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         use more memory then it requested
         """
         name = 'CGROUP5'
-        self.load_config(self.cfg3)
+        self.load_config(self.cfg3 % ("", "", "", self.swapctl, ""))
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
-             self.momB, ATTR_N: name}
+             self.momA, ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.eatmem_job1)
         jid = self.server.submit(j)
@@ -912,10 +1065,10 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         self.server.status(JOB, ATTR_o, jid)
         o = j.attributes[ATTR_o]
         # mem and vmem limit will both be set, and either could be detected
-        self.hostB.log_match("%s;Cgroup mem(ory|sw) limit exceeded" % jid,
+        self.hostA.log_match("%s;Cgroup mem(ory|sw) limit exceeded" % jid,
                              regexp=True,
                              max_attempts=20)
-        self.wait_and_remove_file(filename=o.split(':')[1], mom=self.momB)
+        self.wait_and_remove_file(filename=o.split(':')[1], mom=self.momA)
 
     def test_cgroup_enforce_memsw(self):
         """
@@ -926,7 +1079,7 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         if have_swap() == 0:
             self.skipTest("no swap space available on the local host")
         name = 'CGROUP6'
-        self.load_config(self.cfg3)
+        self.load_config(self.cfg3 % ("", "", "", self.swapctl, ""))
         a = {
             'Resource_List.select':
             '1:ncpus=1:mem=300mb:vmem=320mb:host=%s' % self.momA,
@@ -941,7 +1094,7 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         ehost = j.attributes['exec_host']
         tmp_file = filename.split(':')[1]
         tmp_host = ehost.split('/')[0]
-        tmp_out = self.wait_and_read_file(filename=tmp_file, mom=tmp_host)
+        tmp_out = self.wait_and_read_file(filepath=tmp_file, mom=tmp_host)
         self.wait_and_remove_file(filename=tmp_file, mom=tmp_host)
         self.assertTrue("MemoryError" in tmp_out,
                         'MemoryError not present in output')
@@ -958,7 +1111,7 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         if not os.path.isdir(fdir):
             self.skipTest("Freezer cgroup is not found")
         # Configure the hook
-        self.load_config(self.cfg3)
+        self.load_config(self.cfg3 % ("", "", "", self.swapctl, ""))
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' % self.momA,
              'Resource_List.walltime': 3, ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
@@ -991,35 +1144,35 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         # Write each PID into the tasks file for the freezer cgroup
         task_file = os.path.join(fdir, 'tasks')
         for task in tasks[1:]:
-            fn = self.du.create_temp_file(body=task)
+            fn = self.du.create_temp_file(hostname=self.serverA, body=task)
+            self.tempfile.append(fn)
             ret = self.du.run_copy(self.momA, src=fn,
                                    dest=task_file, sudo=True,
                                    uid='root', gid='root',
                                    mode=0644)
-            os.remove(fn)
             if ret['rc'] != 0:
                 self.skipTest("pbs_cgroups_hook: need root privileges")
         # Freeze the cgroup
         freezer_file = os.path.join(fdir, 'freezer.state')
         state = 'FROZEN'
-        fn = self.du.create_temp_file(body=state)
+        fn = self.du.create_temp_file(hostname=self.serverA, body=state)
+        self.tempfile.append(fn)
         ret = self.du.run_copy(self.momA, src=fn,
                                dest=freezer_file, sudo=True,
                                uid='root', gid='root',
                                mode=0644)
-        os.remove(fn)
         if ret['rc'] != 0:
             self.skipTest("pbs_cgroups_hook: need root privileges")
-        self.server.expect(NODE, {'state': 'offline'},
+        self.server.expect(NODE, {'state': (MATCH_RE, 'offline')},
                            id=self.momA, interval=3)
         # Thaw the cgroup
         state = 'THAWED'
-        fn = self.du.create_temp_file(body=state)
+        fn = self.du.create_temp_file(hostname=self.serverA, body=state)
+        self.tempfile.append(fn)
         ret = self.du.run_copy(self.momA, src=fn,
                                dest=freezer_file, sudo=True,
                                uid='root', gid='root',
                                mode=0644)
-        os.remove(fn)
 
         if ret['rc'] != 0:
             self.skipTest("pbs_cgroups_hook: need root privileges")
@@ -1035,9 +1188,15 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         Test to verify that cgroups subsystems are not enforced on nodes
         that have the exclude_hosts set but are enforced on other systems
         """
+        # Test requires 2 nodes
+        if len(self.moms) != 2:
+            self.skipTest("Test requires two Moms as input, " +
+                          "use -p moms=<mom1:mom2>")
+
         name = 'CGROUP10'
-        mom1 = self.hostA.name
-        self.load_config(self.cfg1 % ("", "", "", '"%s"' % mom1))
+        momn = self.get_host_names(self.momA)
+        self.load_config(
+            self.cfg1 % ("", "", "", '%s' % momn[0], self.swapctl))
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.momA, ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
@@ -1047,14 +1206,13 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         self.server.expect(JOB, a, jid)
         self.server.status(JOB, ATTR_o, jid)
         o = j.attributes[ATTR_o]
-        self.hostA.log_match("cgroup excluded for subsystem cpuset " +
-                             "on host %s" % self.momA,
-                             max_attempts=5,
+        hostn = self.get_hostname(self.momA)
+        self.hostA.log_match("cgroup excluded for subsystem cpuset "
+                             "on host %s" % hostn,
                              starttime=self.server.ctime)
         self.wait_and_remove_file(filename=o.split(':')[1], mom=self.momA)
         cpath = os.path.join(self.paths['cpuset'], 'pbspro', jid)
-        rv = self.is_dir(cpath, self.momA)
-        self.assertFalse(rv)
+        self.assertFalse(self.is_dir(cpath, self.momA))
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.momB, ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
@@ -1063,16 +1221,21 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid2)
         cpath = os.path.join(self.paths['cpuset'], 'pbspro', jid2)
-        rv = self.is_dir(cpath, self.momB)
-        self.assertTrue(rv)
+        self.assertTrue(self.is_dir(cpath, self.momB))
 
     def test_cgroup_run_on_host(self):
         """
         Test to verify that the cgroup hook only runs on nodes
         in the run_only_on_hosts
         """
+        # Test requires 2 nodes
+        if len(self.moms) != 2:
+            self.skipTest("Test requires two Moms as input, " +
+                          "use -p moms=<mom1:mom2>")
+
         name = 'CGROUP11'
-        self.load_config(self.cfg1 % ("", "", '"%s"' % self.momA, ""))
+        mom, log = self.get_host_names(self.momA)
+        self.load_config(self.cfg1 % ("", "", '%s' % mom, "", self.swapctl))
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.momB, ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
@@ -1083,13 +1246,12 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         self.server.status(JOB, ATTR_o, jid)
         o = j.attributes[ATTR_o]
         time.sleep(1)
-        self.hostB.log_match("%s is not in " % (self.momB) +
-                             "the approved host list: ['%s']" % self.momA,
-                             max_attempts=5,
+        hostn = self.get_hostname(self.momB)
+        self.hostB.log_match("%s is not in the approved host list: [%s]"
+                             % (hostn, log),
                              starttime=self.server.ctime)
         cpath = os.path.join(self.paths['memory'], 'pbspro', jid)
-        rv = self.is_dir(cpath, self.momB)
-        self.assertFalse(rv)
+        self.assertFalse(self.is_dir(cpath, self.momB))
         self.wait_and_remove_file(filename=o.split(':')[1], mom=self.momB)
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.momA, ATTR_N: name}
@@ -1098,9 +1260,11 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         jid2 = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid2)
+        self.server.status(JOB, ATTR_o, jid2)
+        o = j.attributes[ATTR_o]
         cpath = os.path.join(self.paths['memory'], 'pbspro', jid2)
-        rv = self.is_dir(cpath, self.momA)
-        self.assertTrue(rv)
+        self.assertTrue(self.is_dir(cpath, self.momA))
+        self.wait_and_remove_file(filename=o.split(':')[1], mom=self.momA)
 
     def test_cgroup_qstat_resources(self):
         """
@@ -1108,7 +1272,7 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         mem, and vmem in qstat
         """
         name = 'CGROUP14'
-        self.load_config(self.cfg3)
+        self.load_config(self.cfg3 % ("", "", "", self.swapctl, ""))
         a = {'Resource_List.select': '1:ncpus=1:mem=500mb', ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
         j.create_script(self.eatmem_job2)
@@ -1159,50 +1323,58 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         mem: 950MB - 900MB = 50MB = 51200KB
         vmem: 1905MB - 1810MB = 95MB = 97280KB
         """
-        self.load_config(self.cfg3)
+        if self.iscray:
+            self.skipTest("Test is skipped on cray due to PTL errors")
+
+        self.load_config(self.cfg3 % ("", "", "", self.swapctl, ""))
         self.hostA.stop()
         self.server.expect(NODE, {'state': 'down'},
                            self.hostA.shortname, interval=3)
-        self.hostA.delete_vnode_defs()
         self.hostA.start()
         self.server.expect(NODE, {'state': 'free'},
                            self.hostA.shortname, interval=3)
-        vmem = self.server.status(NODE, 'resources_available.vmem')
-        self.logger.info("vmem: %s" % str(vmem))
-        vmem1 = PbsTypeSize(vmem[0]['resources_available.vmem'])
+        if self.swapctl == "true":
+            vmem = self.server.status(NODE, 'resources_available.vmem')
+            self.logger.info("vmem: %s" % str(vmem))
+            vmem1 = PbsTypeSize(vmem[0]['resources_available.vmem'])
+            self.logger.info("Vmem-1: %s" % vmem1.value)
         mem = self.server.status(NODE, 'resources_available.mem')
         mem1 = PbsTypeSize(mem[0]['resources_available.mem'])
         self.logger.info("Mem-1: %s" % mem1.value)
-        self.logger.info("Vmem-1: %s" % vmem1.value)
-        self.load_config(self.cfg4)
+        self.load_config(self.cfg4 % (self.swapctl))
         self.hostA.stop()
         self.server.expect(NODE, {'state': 'down'},
                            self.hostA.shortname, interval=3)
-        self.hostA.delete_vnode_defs()
         self.hostA.start()
         self.server.expect(NODE, {'state': 'free'},
                            self.hostA.shortname, interval=3)
-        vmem = self.server.status(NODE, 'resources_available.vmem')
-        vmem2 = PbsTypeSize(vmem[0]['resources_available.vmem'])
+        if self.swapctl == "true":
+            vmem = self.server.status(NODE, 'resources_available.vmem')
+            vmem2 = PbsTypeSize(vmem[0]['resources_available.vmem'])
+            self.logger.info("Vmem-2: %s" % vmem2.value)
+            vmem_resv = vmem1 - vmem2
+            self.logger.info("Vmem resv: %s" % vmem_resv.value)
+            self.assertEqual(vmem_resv.value, 97280)
+            self.assertEqual(vmem_resv.unit, 'kb')
         mem = self.server.status(NODE, 'resources_available.mem')
         mem2 = PbsTypeSize(mem[0]['resources_available.mem'])
         self.logger.info("Mem-2: %s" % mem2.value)
-        self.logger.info("Vmem-2: %s" % vmem2.value)
         mem_resv = mem1 - mem2
-        vmem_resv = vmem1 - vmem2
         self.logger.info("Mem resv: %s" % mem_resv.value)
-        self.logger.info("Vmem resv: %s" % vmem_resv.value)
         self.assertEqual(mem_resv.value, 51200)
         self.assertEqual(mem_resv.unit, 'kb')
-        self.assertEqual(vmem_resv.value, 97280)
-        self.assertEqual(vmem_resv.unit, 'kb')
 
     def test_cgroup_multi_node(self):
         """
         Test that multi-node jobs with cgroups works fine
         """
+        # Test requires 2 nodes
+        if len(self.moms) != 2:
+            self.skipTest("Test requires two Moms as input, " +
+                          "use -p moms=<mom1:mom2>")
+
         name = 'CGROUP16'
-        self.load_config(self.cfg1 % ("", "", "", ""))
+        self.load_config(self.cfg1 % ("", "", "", "", self.swapctl))
         a = {'Resource_List.select': '2:ncpus=1:mem=300mb',
              'Resource_List.place': 'scatter', ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
@@ -1210,20 +1382,23 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         jid = self.server.submit(j)
         a = {'job_state': 'R'}
         self.server.expect(JOB, a, jid)
+
+        self.server.status(JOB, 'exec_host', jid)
+        ehost = j.attributes['exec_host']
+        tmp_host = ehost.split('+')
+        ehost1 = tmp_host[0].split('/')[0]
+        ehost2 = tmp_host[1].split('/')[0]
+
         cpath = os.path.join(self.paths['memory'], 'pbspro', jid)
-        rv1 = self.is_dir(cpath, self.momA)
-        self.assertTrue(rv1)
-        rv2 = self.is_dir(cpath, self.momB)
-        self.assertTrue(rv2)
+        self.assertTrue(self.is_dir(cpath, ehost1))
+        self.assertTrue(self.is_dir(cpath, ehost2))
 
         # Wait for job to finish and make sure that cgroup directories
         # has been cleaned up by the hook
         self.server.expect(
             JOB, 'queue', op=UNSET, offset=15, interval=1, id=jid)
-        rv1 = self.is_dir(cpath, self.momA)
-        self.assertFalse(rv1)
-        rv2 = self.is_dir(cpath, self.momB)
-        self.assertFalse(rv2)
+        self.assertFalse(self.is_dir(cpath, ehost1))
+        self.assertFalse(self.is_dir(cpath, ehost2))
 
     def test_cgroup_job_array(self):
         """
@@ -1231,45 +1406,41 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         a regular job
         """
         name = 'CGROUP17'
-        self.load_config(self.cfg1 % ("", "", "", ""))
-        a = {'Resource_List.select': '2:ncpus=1:mem=300mb',
-             'Resource_List.place': 'scatter:excl', ATTR_N: name,
-             ATTR_J: "1-4"}
+        self.load_config(self.cfg1 % ("", "", "", "", self.swapctl))
+        a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' % self.momA,
+             ATTR_N: name,
+             ATTR_J: "1-4",
+             'Resource_List.place': "pack:excl"}
         j = Job(TEST_USER, attrs=a)
+        j.set_sleep_time(60)
         jid = self.server.submit(j)
         a = {'job_state': 'B'}
         self.server.expect(JOB, a, jid)
         # Get subjob ID
         subj1 = jid.replace('[]', '[1]')
         self.server.expect(JOB, {'job_state': 'R'}, subj1)
-
+        rv = self.server.status(JOB, ['exec_host'], subj1)
+        ehost = rv[0].get('exec_host')
+        ehost1 = ehost.split('/')[0]
         # Verify that cgroups files created for subjobs
         # but not for parent job array
         cpath = os.path.join(self.paths['memory'], 'pbspro', subj1)
-        rv1 = self.is_dir(cpath, self.momA)
-        self.assertTrue(rv1)
-        rv2 = self.is_dir(cpath, self.momB)
-        self.assertTrue(rv2)
+        self.assertTrue(self.is_dir(cpath, ehost1))
         cpath = os.path.join(self.paths['memory'], 'pbspro', jid)
-        rv1 = self.is_dir(cpath, self.momA)
-        self.assertFalse(rv1)
+        self.assertFalse(self.is_dir(cpath, ehost1))
 
         # Verify that subjob4 is queued and no cgroups
         # files are created for queued subjob
         subj4 = jid.replace('[]', '[4]')
         self.server.expect(JOB, {'job_state': 'Q'}, id=subj4)
         cpath = os.path.join(self.paths['cpuset'], 'pbspro', subj4)
-        rv1 = self.is_dir(cpath, self.momA)
-        self.assertFalse(rv1)
+        self.assertFalse(self.is_dir(cpath, self.momA))
 
         # Delete subjob1 and verify that cgroups files are cleaned up
         self.server.delete(id=subj1)
         self.server.expect(JOB, {'job_state': 'X'}, subj1)
         cpath = os.path.join(self.paths['memory'], 'pbspro', subj1)
-        rv1 = self.is_dir(cpath, self.momA)
-        self.assertFalse(rv1)
-        rv2 = self.is_dir(cpath, self.momB)
-        self.assertFalse(rv2)
+        self.assertFalse(self.is_dir(cpath, ehost1))
 
         # Verify if subjob2 is running
         subj2 = jid.replace('[]', '[2]')
@@ -1281,15 +1452,17 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         # Adding extra sleep for file to clean up
         time.sleep(2)
         cpath = os.path.join(self.paths['memory'], 'pbspro', subj2)
-        rv1 = self.is_dir(cpath, self.momA)
-        self.assertFalse(rv1)
-        rv2 = self.is_dir(cpath, self.momB)
-        self.assertFalse(rv2)
+        self.assertFalse(self.is_dir(cpath, self.momA))
 
     def test_cgroup_cleanup(self):
         """
         Test that cgroups files are cleaned up after qdel
         """
+        # Test requires 2 nodes
+        if len(self.moms) != 2:
+            self.skipTest("Test requires two Moms as input, " +
+                          "use -p moms=<mom1:mom2>")
+
         hook_body = """
 import pbs
 import time
@@ -1297,7 +1470,7 @@ time.sleep(20)
 """
         a = {'event': "execjob_prologue", "enabled": "True"}
         self.server.create_import_hook("pro", a, hook_body)
-        self.load_config(self.cfg1 % ("", "", "", ""))
+        self.load_config(self.cfg1 % ("", "", "", "", self.swapctl))
         a = {'Resource_List.select': '2:ncpus=1:mem=300mb',
              'Resource_List.place': 'scatter'}
         j = Job(TEST_USER, attrs=a)
@@ -1305,37 +1478,39 @@ time.sleep(20)
         jid = self.server.submit(j)
         a = {'substate': '41'}
         self.server.expect(JOB, a, jid)
+
+        self.server.status(JOB, ['exec_host'], jid)
+        ehost = j.attributes['exec_host']
+        tmp_host = ehost.split('+')
+        ehost1 = tmp_host[0].split('/')[0]
+        ehost2 = tmp_host[1].split('/')[0]
         # Adding delay for cgroups files to get created
         time.sleep(1)
         cpath = os.path.join(self.paths['cpuset'], 'pbspro', jid)
-        rv1 = self.is_dir(cpath, self.momA)
-        self.assertTrue(rv1)
-        rv2 = self.is_dir(cpath, self.momB)
-        self.assertTrue(rv2)
+        self.assertTrue(self.is_dir(cpath, ehost1))
+        self.assertTrue(self.is_dir(cpath, ehost2))
 
         self.server.delete(id=jid, wait=True)
 
-        rv1 = self.is_dir(cpath, self.momA)
-        self.assertFalse(rv1)
-        rv2 = self.is_dir(cpath, self.momB)
-        self.assertFalse(rv2)
+        self.assertFalse(self.is_dir(cpath, ehost1))
+        self.assertFalse(self.is_dir(cpath, ehost2))
 
     def test_cgroup_execjob_end_should_delete_cgroup(self):
         """
         Test to verify that if execjob_epilogue hook failed to run or to
         clean up cgroup files for a job, execjob_end hook should clean them up
         """
-        self.load_config(self.cfg4)
+        self.load_config(self.cfg4 % (self.swapctl))
         # remove epilogue and periodic from the list of events
         attr = {'enabled': 'True', 'event': '"execjob_begin,execjob_launch,\
 execjob_attach,execjob_end,exechost_startup"'}
         self.server.manager(MGR_CMD_SET, HOOK, attr, self.hook_name)
         self.server.expect(NODE, {'state': 'free'})
         j = Job(TEST_USER)
-        j.set_execargs('/bin/true')
+        j.set_sleep_time(1)
         jid = self.server.submit(j)
         # wait for job to finish
-        self.server.expect(JOB, 'queue', id=jid, op=UNSET, max_attempts=10,
+        self.server.expect(JOB, 'queue', id=jid, op=UNSET, max_attempts=20,
                            interval=1, offset=1)
         # verify that cgroup files for this job are gone even if
         # epilogue and periodic events are not disabled
@@ -1344,9 +1519,11 @@ execjob_attach,execjob_end,exechost_startup"'}
             enabled_subsys = ['cpuacct', 'cpuset', 'memory', 'memsw']
             if (any([x in subsys for x in enabled_subsys])):
                 continue
-            filename = os.path.join(path, 'pbspro', str(jid))
-            self.logger.info("Checking file %s" % filename)
-            self.assertFalse(os.path.isfile(filename))
+            if path:
+                filename = os.path.join(path, 'pbspro', str(jid))
+                self.logger.info("Checking that file %s should not exist"
+                                 % filename)
+                self.assertFalse(os.path.isfile(filename))
 
     def test_cgroup_assign_resources_mem_only_vnode(self):
         """
@@ -1360,18 +1537,18 @@ execjob_attach,execjob_end,exechost_startup"'}
         self.server.expect(NODE, {ATTR_NODE_state: 'free'},
                            id=self.moms.values()[0].shortname)
 
-        self.load_config(self.cfg4)
+        self.load_config(self.cfg4 % (self.swapctl))
         a = {'Resource_List.select': '1:ncpus=1:mem=500mb'}
         j1 = Job(TEST_USER, attrs=a)
         j1.create_script('date')
         jid1 = self.server.submit(j1)
-        self.server.expect(JOB, 'queue', id=jid1, op=UNSET, max_attempts=10,
+        self.server.expect(JOB, 'queue', id=jid1, op=UNSET, max_attempts=20,
                            interval=1, offset=1)
         a = {'Resource_List.select': '1:ncpus=1:mem=1gb'}
         j2 = Job(TEST_USER, attrs=a)
         j2.create_script('date')
         jid2 = self.server.submit(j2)
-        self.server.expect(JOB, 'queue', id=jid2, op=UNSET, max_attempts=10,
+        self.server.expect(JOB, 'queue', id=jid2, op=UNSET, max_attempts=30,
                            interval=1, offset=1)
         a = {'Resource_List.select': '1:ncpus=1:mem=40gb'}
         j3 = Job(TEST_USER, attrs=a)
@@ -1383,15 +1560,62 @@ execjob_attach,execjob_end,exechost_startup"'}
              (MATCH_RE,
               '.*Can Never Run: Insufficient amount of resource: mem.*')}
         self.server.expect(JOB, a, attrop=PTL_AND, id=jid3, offset=10,
-                           interval=1, max_attempts=10)
+                           interval=1, max_attempts=30)
 
     def tearDown(self):
         TestFunctional.tearDown(self)
         self.load_config(self.cfg0)
-        self.remove_vntype()
+        if not self.iscray:
+            self.remove_vntype()
         events = '"execjob_begin,execjob_launch,execjob_attach,'
         events += 'execjob_epilogue,execjob_end,exechost_startup,'
         events += 'exechost_periodic"'
         # Disable the cgroups hook
         conf = {'enabled': 'False', 'freq': 30, 'event': events}
         self.server.manager(MGR_CMD_SET, HOOK, conf, self.hook_name)
+        # Cleanup any temp file created
+        self.logger.info("Deleting temporary files %s" % self.tempfile)
+        self.du.rm(hostname=self.serverA, path=self.tempfile,
+                   force=True)
+        # Cleanup frozen jobs
+        if 'freezer' in self.paths:
+            self.logger.info("Cleaning up frozen jobs ****")
+            fdir = self.paths['freezer']
+            if os.path.isdir(fdir):
+                fpath = os.path.join(fdir, 'PtlPbs')
+                if os.path.isdir(fpath):
+                    jid = glob(os.path.join(fpath, "*", ""))
+                    if jid:
+                        for files in jid:
+                            self.logger.info("*** found jobdir %s" % files)
+                            jpath = os.path.join(fpath, files)
+                            freezer_file = os.path.join(jpath, 'freezer.state')
+                            # Thaw the cgroup
+                            state = 'THAWED'
+                            fn = self.du.create_temp_file(
+                                hostname=self.momA, body=state)
+                            self.du.run_copy(hosts=self.momA, src=fn,
+                                             dest=freezer_file, sudo=True,
+                                             uid='root', gid='root',
+                                             mode=0644)
+                            self.du.rm(hostname=self.momA, path=fn)
+                            cmd = ["rmdir", jpath]
+                            self.logger.info("deleting jobdir %s" % cmd)
+                            self.du.run_cmd(cmd=cmd, sudo=True)
+        # Remove the jobdir if any under other cgroups
+        cgroup_subsys = ('cpuset', 'memory')
+        for subsys in cgroup_subsys:
+            self.logger.info("Looking for orphaned jobdir in %s" % subsys)
+            if self.paths[subsys]:
+                cdir = self.paths['cpuset']
+                if os.path.isdir(cdir):
+                    cpath = os.path.join(cdir, 'pbspro')
+                    if os.path.isdir(cpath):
+                        jid = glob(os.path.join(cpath, "*", ""))
+                        if jid:
+                            for files in jid:
+                                self.logger.info("***Found jobid %s" % files)
+                                jdir = os.path.join(cpath, files)
+                                cmd2 = ["rmdir", jdir]
+                                self.logger.info("deleting jobdir %s" % cmd2)
+                                self.du.run_cmd(cmd=cmd2, sudo=True)
