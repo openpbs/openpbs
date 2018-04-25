@@ -268,12 +268,14 @@ time_t		time_resc_updated = 0;
 extern pbs_list_head svr_requests;
 extern struct var_table vtable;	/* see start_exec.c */
 #if	MOM_ALPS
-#define	ALPS_REL_INTERVAL_MAX		30;	/* 30 sec */
+#define	ALPS_REL_WAIT_TIME_DFLT		400000;	/* 0.4 sec */
+#define	ALPS_REL_JITTER_DFLT		120000;	/* 0.12 sec */
 #define	ALPS_REL_TIMEOUT		600;	/* 10 min */
 #define	ALPS_CONF_EMPTY_TIMEOUT		10;	/* 10 sec */
 #define	ALPS_CONF_SWITCH_TIMEOUT	35;	/* 35 sec */
 char	       *alps_client = NULL;
-int		alps_release_interval_max;
+useconds_t	alps_release_wait_time = ALPS_REL_WAIT_TIME_DFLT;
+useconds_t	alps_release_jitter = ALPS_REL_JITTER_DFLT;
 int		vnode_per_numa_node;
 int		alps_release_timeout;
 int		alps_confirm_empty_timeout;
@@ -460,7 +462,8 @@ static handler_ret_t	set_alien_attach(char *);
 static handler_ret_t	set_alien_kill(char *);
 #if	MOM_ALPS
 static handler_ret_t	set_alps_client(char *);
-static handler_ret_t	set_alps_release_interval_max(char *);
+static handler_ret_t	set_alps_release_wait_time(char *);
+static handler_ret_t	set_alps_release_jitter(char *);
 static handler_ret_t	set_alps_release_timeout(char *);
 static handler_ret_t	set_alps_confirm_empty_timeout(char *);
 static handler_ret_t	set_vnode_per_numa_node(char *);
@@ -526,7 +529,8 @@ static struct	specials {
 #if	MOM_ALPS
 	{ "alps_client",		set_alps_client },
 	{ "alps_confirm_empty_timeout", set_alps_confirm_empty_timeout },
-	{ "alps_release_interval_max",	set_alps_release_interval_max },
+	{ "alps_release_wait_time",	set_alps_release_wait_time },
+	{ "alps_release_jitter",	set_alps_release_jitter },
 	{ "alps_release_timeout",	set_alps_release_timeout },
 	{ "vnode_per_numa_node", 	set_vnode_per_numa_node },
 	{ "alps_confirm_switch_timeout",set_alps_confirm_switch_timeout },
@@ -3732,6 +3736,45 @@ set_int(const char *id, char *value, int *var)
 
 /**
  * @brief
+ *	set float value
+ *
+ * @param[in] id - function name
+ * @param[in] value - value
+ * @param[out] var - output float value
+ *
+ * @return      handler_ret_t
+ * @retval      HANDLER_FAIL            Failure
+ * @retval      HANDLER_SUCCESS         Success
+ *
+ */
+handler_ret_t
+set_float(const char *id, char *value, float *var)
+{
+	char	*left;
+	float	val;
+
+	if (value == NULL || *value == '\0') {
+		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
+			id, "No value specified, no action taken.");
+		return HANDLER_FAIL;	/* error */
+	}
+
+	val = strtod(value, &left);
+	if (left == value || val <= 0) {
+		sprintf(log_buffer, "bad value \"%s\"", value);
+		log_event(PBSEVENT_SYSTEM, 0, LOG_ERR, id, log_buffer);
+		return HANDLER_FAIL;	/* error */
+	}
+	*var = val;
+
+	snprintf(log_buffer, sizeof(log_buffer), "setting %f", val);
+	log_event(PBSEVENT_SYSTEM, 0, LOG_DEBUG, id, log_buffer);
+
+	return HANDLER_SUCCESS;
+}
+
+/**
+ * @brief
  *	Set the configuration flag that defines whether the restart nunction
  * 	occurs in the background.
  *
@@ -3933,23 +3976,49 @@ set_vnode_per_numa_node(char *value)
 
 /**
  * @brief
- * 	Set the maximum time in seconds to wait between ALPS release
- * 	reservation requests
+ *	Set the alps_release_wait_time in micoseconds to wait between ALPS release
+ *	reservation requests
  *
- * @par
- * PBS will make release reservation requests at i*i intervals until
- * the result of i*i is larger than alps_release_interval_max, at
- * which point PBS will only make release reservation requests
- * every alps_release_interval_max seconds on a per job basis.
- *
- * @retval 0 failure
- * @retval 1 success
+ * @return returns value of set_float()
  *
  */
 static handler_ret_t
-set_alps_release_interval_max(char *value)
+set_alps_release_wait_time(char *value)
 {
-	return (set_int(__func__, value, &alps_release_interval_max));
+	float tmp;
+	handler_ret_t ret;
+	double fract, integ;
+	ret = set_float(__func__, value, &tmp);
+	if (ret == HANDLER_SUCCESS) {
+		fract = modf(tmp, &integ);
+		alps_release_wait_time = (useconds_t)integ*1000000 + (fract*1000000);
+	}
+	return (ret);
+}
+
+/**
+ * @brief
+ *	Set the alps_release_jitter value in microseconds.
+ *
+ * @par
+ *	PBS will randomly generate how much
+ *	microseconds to add to the alps_release_wait_time value
+ *
+ * @return returns value of set_float()
+ *
+ */
+static handler_ret_t
+set_alps_release_jitter(char *value)
+{
+	float tmp;
+	handler_ret_t ret;
+	double fract, integ;
+	ret = set_float(__func__, value, &tmp);
+	if (ret == HANDLER_SUCCESS) {
+		fract = modf(tmp, &integ);
+		alps_release_jitter = (useconds_t)integ*1000000 + (fract*1000000);
+	}
+	return (ret);
 }
 
 /**
@@ -4802,7 +4871,8 @@ read_config(char *file)
 #endif /* localmod 015 */
 
 #if MOM_ALPS
-	alps_release_interval_max = ALPS_REL_INTERVAL_MAX;
+	alps_release_wait_time = ALPS_REL_WAIT_TIME_DFLT;
+	alps_release_jitter = ALPS_REL_JITTER_DFLT;
 	vnode_per_numa_node = FALSE;
 	alps_release_timeout      = ALPS_REL_TIMEOUT;
 	alps_confirm_empty_timeout = ALPS_CONF_EMPTY_TIMEOUT;

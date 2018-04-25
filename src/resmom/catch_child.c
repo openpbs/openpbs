@@ -109,8 +109,9 @@ extern time_t		time_now;
 extern pbs_list_head	mom_polljobs;
 extern unsigned int	pbs_mom_port;
 #if MOM_ALPS
-extern int		alps_release_interval_max;
+extern useconds_t	alps_release_wait_time;
 extern int		alps_release_timeout;
+extern useconds_t	alps_release_jitter;
 #endif
 
 extern char		*path_hooks_workdir;
@@ -2401,25 +2402,19 @@ del_job_hw(job *pjob)
 			/* We are the child */
 			begin_time = time(NULL);
 			end_time = begin_time;
-			/* casting to unsigned per Open standards */
+			/* add jobid to the seed */
 			srandom((unsigned)(atoi(pjob->ji_qs.ji_jobid) + begin_time));
-			for (i=0;
-				(total_time = end_time - begin_time) < alps_release_timeout;
-				++i) {
+			for (i = 1; (total_time = end_time - begin_time) < alps_release_timeout; ++i, end_time = time(NULL)) {
 				/* calculate time to sleep */
-				sleeptime = i*i;
-				if (sleeptime > alps_release_interval_max) {
-					sleeptime = alps_release_interval_max;
-				}
-				/* Add randomness of 0 to 4 seconds to the
+				sleeptime = alps_release_wait_time;
+				/* Add randomness of 0 to 0.12 seconds to the
 				 * sleeptime so we don't overwhelm ALPS with
 				 * multiple ALPS release requests when jobs end
 				 * at the same time.
 				 */
-				jitter = random() % 5;
-				sleeptime = sleeptime + jitter;
-				sleep(sleeptime);
-				end_time = time(NULL);
+				jitter = random() % alps_release_jitter;
+				sleeptime += jitter;
+				usleep(sleeptime);
 				if ((j = alps_cancel_reservation(pjob)) <= 0)
 					break;
 			}
@@ -2441,9 +2436,8 @@ del_job_hw(job *pjob)
 			} else if (j == 0) {
 				sprintf(log_buffer,
 					"Cancelled ALPS reservation %ld after a "
-					"total of %ld seconds",
-					pjob->ji_extended.ji_ext.ji_reservation,
-					total_time);
+					"total of %d tries",
+					pjob->ji_extended.ji_ext.ji_reservation, i + 1);
 				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB,
 					LOG_DEBUG, pjob->ji_qs.ji_jobid,
 					log_buffer);
