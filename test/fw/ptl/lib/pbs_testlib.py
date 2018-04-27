@@ -8423,6 +8423,12 @@ class Server(PBSService):
                 else:
                     self.hooks[id] = Hook(id, binfo, server=self)
                 obj = self.hooks[id]
+            elif obj_type == PBS_HOOK:
+                if id in self.pbshooks:
+                    self.pbshooks[id].attributes.update(binfo)
+                else:
+                    self.pbshooks[id] = Hook(id, binfo, server=self)
+                obj = self.pbshooks[id]
             elif obj_type == SCHED:
                 if id in self.schedulers:
                     self.schedulers[id].attributes.update(binfo)

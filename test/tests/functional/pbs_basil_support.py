@@ -81,6 +81,12 @@ class TestBasilQuery(TestFunctional):
 
     def setUp(self):
         TestFunctional.setUp(self)
+
+        # Set pbshook frequency to 10 seconds
+        self.server.manager(MGR_CMD_SET, PBS_HOOK,
+                            {'enabled': 'true', 'freq': 10},
+                            id='PBS_alps_inventory_check', expect=True)
+
         momA = self.moms.values()[0]
         if not momA.is_cray():
             self.skipTest("%s: not a cray mom." % (momA.shortname))
@@ -202,6 +208,46 @@ class TestBasilQuery(TestFunctional):
                         knl_vnodes['%d' % node_id] = knl_info
         return knl_vnodes
 
+    def retklist(self):
+        """
+        Return a list of KNL vnodes, empty list if there are no KNL vnodes.
+        """
+        klist = []
+        kvnl = self.server.filter(
+            VNODE, {'current_aoe': (NE, "")})
+        klist = kvnl.values()[0]
+        return klist
+
+    def set_provisioning(self):
+        """
+        Set provisioning enabled and aoe resource on Xeon Phi nodes.
+        """
+        nodelist = self.server.status(NODE, 'current_aoe')
+        for node in nodelist:
+            a = {'provision_enable': 'true',
+                 'resources_available.aoe': '%s' % node['current_aoe']}
+            self.server.manager(MGR_CMD_SET, NODE,
+                                a, id=node['id'], expect=True)
+
+    def unset_provisioning(self):
+        """
+        Unset provisioning attribute and aoe resource on Xeon Phi nodes.
+        """
+        nodelist = self.server.status(NODE, 'current_aoe')
+        for node in nodelist:
+            a = ['provision_enable',
+                 'resources_available.aoe']
+            self.server.manager(MGR_CMD_UNSET, NODE,
+                                a, id=node['id'], expect=True)
+
+    def request_current_aoe(self):
+        """
+        Get the value of current_aoe set on the XeonPhi vnodes
+        """
+        list1 = self.server.status(NODE, 'current_aoe')
+        req_aoe = list1[0]['current_aoe']
+        return req_aoe
+
     def test_InventoryQueryVersion(self):
         """
         Test if BASIL version is set to required BASIL version
@@ -255,8 +301,8 @@ type=\"ENGINE\"/>" % (self.basil_version[1])
                 vnode['arch'] = node.attrib['architecture']
                 vnode['vnode'] = hn + '_' + node_id
                 vnode['vntype'] = "cray_compute"
-                vnode['mem'] = str(int(page_size_kb) * int(page_count)
-                                   * len(mem_el)) + "kb"
+                vnode['mem'] = str(int(page_size_kb) *
+                                   int(page_count) * len(mem_el)) + "kb"
                 vnode['host'] = vnode['vnode']
                 vnode['PBScraynid'] = node_id
                 vnode['PBScrayhost'] = hn
@@ -273,7 +319,7 @@ type=\"ENGINE\"/>" % (self.basil_version[1])
                     vnode['vnode'] = hn + '_' + node_id
 
                 # Compare xml vnode with pbs node.
-                print "Validating vnode:%s" % (vnode['vnode'])
+                self.logger.info("Validating vnode:%s" % (vnode['vnode']))
                 self.comp_node(vnode)
 
     def test_cray_login_node(self):
@@ -293,7 +339,7 @@ type=\"ENGINE\"/>" % (self.basil_version[1])
                              "Mom node %s doesn't exist on pbs server"
                              % (mom_id))
         # List of resources to be ignored while comparing.
-        ignr_rsc = ['license']
+        ignr_rsc = ['license', 'last_state_change_time']
 
         for rsc, val in pbs_node.iteritems():
             if rsc in ignr_rsc:
@@ -318,7 +364,6 @@ type=\"ENGINE\"/>" % (self.basil_version[1])
 
         if len(knl_vnodes) == 0:
             self.skipTest(reason='No KNL vnodes present')
-            return
         else:
             self.logger.info("KNL vnode list: %s" % (knl_vnodes))
 
@@ -362,5 +407,359 @@ type=\"ENGINE\"/>" % (self.basil_version[1])
                         "requested hbmem of %d mb" %
                         (hbm_assig, v_name, hbm_req))
                     self.assertTrue(False)
-        # Delete the Job.
+
+    def test_job_request_insufficent_hbmemm_rsc(self):
+        """
+        Submit a job request that requests more than available HBMEM.
+        Check if the job is in the 'Q' state with valid comment.
+        Delete the job
+        """
+        # Find the list of KNL vnodes
+        knl_vnodes = self.get_knl_vnodes()
+
+        if len(knl_vnodes) == 0:
+            self.skipTest(reason='No KNL vnodes present')
+        else:
+            self.logger.info("KNL vnode list: %s" % (knl_vnodes))
+
+        hbm_req = 18000
+        a = {'Resource_List.select': '1:hbmem=%dmb' % hbm_req}
+        job = Job(TEST_USER, attrs=a)
+
+        job_id = self.server.submit(job)
+
+        # Check that job is in Q state with valid comment
+        job_comment = "Not Running: Insufficient amount of resource: hbmem"
+        self.server.expect(JOB, {'job_state': 'Q', 'comment':
+                                 (MATCH_RE, job_comment)}, attrop=PTL_AND,
+                           id=job_id)
+
+    def test_job_request_knl(self):
+        """
+        Create a job that requests aoe should run on a KNL vnode.
+        Submit the job to the Server. Check if the job runs on a KNL vnode
+        and if the job is in the 'R' state.
+        """
+        if self.du.platform == 'craysim':
+            self.skipTest(reason='Test is not applicable for Craysim')
+
+        # Find the list of KNL vnodes
+        klist = self.retklist()
+        if len(klist) == 0:
+            self.skipTest(reason='No KNL vnodes present')
+        else:
+            self.logger.info("KNL vnode list: %s" % (klist))
+
+        # Set provisioning attributes on KNL vnode.
+        self.set_provisioning()
+
+        # Submit job that request aoe
+        req_aoe = self.request_current_aoe()
+        job = Job(TEST_USER)
+
+        job.create_script(
+            "#PBS -joe -o localhost:/tmp -lselect=1:ncpus=1:aoe=%s\n"
+            % req_aoe +
+            " cd /tmp\n"
+            "aprun -B sleep 10\n"
+            "sleep 10")
+
+        job_id = self.server.submit(job)
+        self.server.expect(JOB, {'job_state': 'R'}, id=job_id)
+
+        # Check that exec_vnode is a KNL vnode.
+        self.server.status(JOB, 'exec_vnode', id=job_id)
+        evnode = job.get_vnodes()[0]
+        if evnode in klist:
+            self.logger.info("exec_vnode %s is a KNL vnode." % (evnode))
+            rv = True
+        else:
+            rv = False
+            self.logger.info("exec_vnode %s is not a KNL vnode." % (evnode))
+        self.assertTrue(rv)
+
+        # Unset provisioning attributes.
+        self.unset_provisioning()
+
+    def test_job_request_subchunk(self):
+        """
+        Test job request consist of subchunks with and without aoe resource.
+        """
+        if self.du.platform == 'craysim':
+            self.skipTest(reason='Test is not applicable for craysim')
+
+        # Find the list of KNL vnodes
+        klist = self.retklist()
+        if len(klist) == 0:
+            self.skipTest(reason='No KNL vnodes present')
+        else:
+            self.logger.info("KNL vnode list: %s" % (klist))
+
+        # Set provisioning attributes.
+        self.set_provisioning()
+
+        # Submit job that request sub-chunk with and without aoe resources
+        req_aoe = self.request_current_aoe()
+        job = Job(TEST_USER)
+
+        job.create_script(
+            "#PBS -joe -o localhost:/tmp -lplace=scatter "
+            "-lselect=1:ncpus=1:aoe=%s+1:ncpus=1\n" % req_aoe +
+            " cd /tmp\n"
+            "aprun -B sleep 10\n"
+            "sleep 10")
+        job_id = self.server.submit(job)
+        self.server.expect(JOB, {'job_state': 'R'}, id=job_id)
+
+        # Check that exec_vnode is a KNL vnode.
+        self.server.status(JOB, 'exec_vnode', id=job_id)
+        evnode = job.get_vnodes()
+        if evnode[0] in klist:
+            self.logger.info("exec_vnode %s is a KNL vnode." % (evnode))
+            rv = True
+        else:
+            rv = False
+            self.logger.info("exec_vnode %s is not a KNL vnode." % (evnode))
+        self.assertTrue(rv)
+
+        if evnode[1] not in klist:
+            self.logger.info("exec_vnode %s is a NON KNL vnode." % (evnode))
+            rv = True
+        else:
+            rv = False
+            self.logger.info("exec_vnode %s is not a KNL vnode." % (evnode))
+        self.assertTrue(rv)
+
+        # Unset provisioning attributes.
+        self.unset_provisioning()
+
+    def test_pbs_alps_in_sync(self):
+        """
+        Check for the presence of message indicating PBS and ALPS are
+        in sync.
+        """
+        # Determine if BASIL 1.7 is supported.
+        try:
+            rv = self.mom.log_match(
+                "This Cray system supports the BASIL 1.7 protocol.",
+                n='ALL')
+        except PtlLogMatchError:
+            self.logger_info(
+                "This Cray system not supports the BASIL 1.7 protocol.",
+                n='ALL.')
+            self.skipTest(
+                reason='Test not applicable for systems not having BASIL 1.7')
+
+        # Determine if KNL vnodes are present.
+        knl_vnodes = self.get_knl_vnodes()
+
+        if len(knl_vnodes) == 0:
+            self.skipTest(reason='No KNL vnodes present')
+        else:
+            self.logger.info("KNL vnode list: %s" % (knl_vnodes))
+
+        # Check for PBS ALPS Inventory Hook message.
+        now = int(time.time())
+        rv = self.mom.log_match("ALPS Inventory Check: PBS and ALPS"
+                                " are in sync",
+                                starttime=now, interval=5)
+        self.assertTrue(rv)
+
+    def test_knl_batch_to_interactive(self):
+        """
+        Change the mode of any two KNL nodes to interactive. Then check if the
+        PBS_alps_inventory_check hook picks up on the change and nodes are
+        marked as stale. Restore changes to hook and mode of KNL nodes.
+        """
+        if self.du.platform == 'craysim':
+            self.skipTest(reason='xtprocadmin cmd is not on cray simulator')
+
+        # Find the list of KNL vnodes
+        klist = self.retklist()
+        if len(klist) == 0:
+            self.skipTest(reason='No KNL vnodes present')
+        else:
+            self.logger.info("KNL vnode list: %s" % (klist))
+
+        # Change mode of two KNL nodes to interactive
+        if len(klist) >= 2:
+            k1 = klist[0]
+            k2 = klist[len(klist) - 1]
+            knl1 = re.search(r'\d+', k1).group()
+            knl2 = re.search(r'\d+', k2).group()
+
+        cmd = ['xtprocadmin', '-k', 'm', 'interactive', '-n', knl1]
+        ret = self.server.du.run_cmd(self.server.hostname,
+                                     cmd, logerr=True)
+        self.assertEqual(ret['rc'], 0)
+
+        cmd = ['xtprocadmin', '-k', 'm', 'interactive', '-n', knl2]
+        ret = self.server.du.run_cmd(self.server.hostname,
+                                     cmd, logerr=True)
+        self.assertEqual(ret['rc'], 0)
+
+        # Do Mom HUP
+        self.mom.signal('-HUP')
+
+        # Check that the nodes are now stale.
+        self.server.expect(VNODE, {'state': 'Stale'}, id=k1,
+                           max_attempts=10, interval=5)
+        self.server.expect(VNODE, {'state': 'Stale'}, id=k2)
+
+        # Change nodes back to batch mode
+        cmd = ['xtprocadmin', '-k', 'm', 'batch']
+        ret = self.server.du.run_cmd(self.server.hostname,
+                                     cmd, logerr=True)
+        self.assertEqual(ret['rc'], 0)
+
+        # Do Mom HUP
+        self.mom.signal('-HUP')
+
+        # Check that the nodes are now free.
+        self.server.expect(VNODE, {'state': 'free'}, id=k1,
+                           max_attempts=10, interval=5)
+        self.server.expect(VNODE, {'state': 'free'}, id=k2)
+
+    def test_job_run_on_knl_node(self):
+        """
+        Change the mode of KNL nodes to batch.
+        Then check if the PBS_alps_inventory_check hook picks up on the change.
+        Submit job and confirm job should be in R state
+        """
+        if self.du.platform == 'craysim':
+            self.skipTest(reason='xtprocadmin cmd is not on cray simulator')
+
+        # Find the list of KNL vnodes
+        klist = self.retklist()
+        if len(klist) == 0:
+            self.skipTest(reason='No KNL vnodes present')
+        else:
+            self.logger.info("KNL vnode list: %s" % (klist))
+
+        # Change mode of all nodes to interactive
+        cmd = ['xtprocadmin', '-k', 'm', 'interactive']
+        ret = self.server.du.run_cmd(self.server.hostname,
+                                     cmd, logerr=True)
+        self.assertEqual(ret['rc'], 0)
+
+        # Change mode of two KNL nodes to batch
+        if len(klist) >= 2:
+            k1 = klist[0]
+            k2 = klist[len(klist) - 1]
+            knl1 = re.search(r'\d+', k1).group()
+            knl2 = re.search(r'\d+', k2).group()
+
+        cmd = ['xtprocadmin', '-k', 'm', 'batch', '-n', knl1]
+        ret = self.server.du.run_cmd(self.server.hostname, cmd, logerr=True)
+        self.assertEqual(ret['rc'], 0)
+        cmd = ['xtprocadmin', '-k', 'm', 'batch', '-n', knl2]
+        ret = self.server.du.run_cmd(self.server.hostname, cmd, logerr=True)
+        self.assertEqual(ret['rc'], 0)
+
+        # Do Mom HUP
+        self.mom.signal('-HUP')
+
+        # Check that the nodes are Free.
+        self.server.expect(VNODE, {'state': 'free'}, id=k1, max_attempts=10,
+                           interval=5)
+        self.server.expect(VNODE, {'state': 'free'}, id=k2)
+
+        # Submit few jobs
+        a = {'Resource_List.select': '1:vntype=cray_compute'}
+        job = Job(TEST_USER, attrs=a)
+
+        job_id = self.server.submit(job)
+        self.server.expect(JOB, {'job_state': 'R'}, id=job_id)
+        # Check that exec_vnode is a KNL vnode.
+        self.server.status(JOB, 'exec_vnode', id=job_id)
+        evnode = job.get_vnodes()[0]
+        if evnode in klist:
+            self.logger.info("exec_vnode %s is a KNL vnode." % (evnode))
+            rv = True
+        else:
+            rv = False
+            self.logger.info("exec_vnode %s is not a KNL vnode." % (evnode))
+        self.assertTrue(rv)
+
+        job2 = Job(TEST_USER, attrs=a)
+
+        job_id2 = self.server.submit(job2)
+        self.server.expect(JOB, {'job_state': 'R'}, id=job_id2)
+        # Check that exec_vnode is a KNL vnode.
+        self.server.status(JOB, 'exec_vnode', id=job_id2)
+        evnode = job2.get_vnodes()[0]
+        if evnode in klist:
+            self.logger.info("exec_vnode %s is a KNL vnode." % (evnode))
+            rv = True
+        else:
+            rv = False
+            self.logger.info("exec_vnode %s is not a KNL vnode." % (evnode))
+        self.assertTrue(rv)
+
+        job3 = Job(TEST_USER, attrs=a)
+
+        job_id3 = self.server.submit(job3)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=job_id3)
+
+        # Delete the Job1.
         self.server.delete(job_id, wait=True)
+
+        # Verify Job3 should start running
+        self.server.expect(JOB, {'job_state': 'R'}, id=job_id3)
+        # Check that exec_vnode is a KNL vnode.
+        self.server.status(JOB, 'exec_vnode', id=job_id3)
+        evnode = job3.get_vnodes()[0]
+        if evnode in klist:
+            self.logger.info("exec_vnode %s is a KNL vnode." % (evnode))
+            rv = True
+        else:
+            rv = False
+            self.logger.info("exec_vnode %s is not a KNL vnode." % (evnode))
+        self.assertTrue(rv)
+
+    def test_validate_pbs_xeon_phi_provision_hook(self):
+        """
+        Verify the default attribute of pbs_hook PBS_xeon_phi_provision hook.
+        """
+        attr = {'type': 'pbs', 'enabled': 'false', 'event': 'provision',
+                'alarm': 1800, 'order': 1, 'debug': 'false',
+                'user': 'pbsadmin', 'fail_action': 'none'}
+
+        self.server.manager(MGR_CMD_LIST, PBS_HOOK,
+                            attr, id='PBS_xeon_phi_provision', expect=True)
+
+        self.server.manager(MGR_CMD_SET, PBS_HOOK, {'enabled': 'true',
+                                                    'alarm': 1000},
+                            id='PBS_xeon_phi_provision',
+                            expect=True)
+        self.server.manager(MGR_CMD_LIST, PBS_HOOK, {'enabled': 'true',
+                                                     'alarm': 1000},
+                            id='PBS_xeon_phi_provision',
+                            expect=True)
+
+        # Reset pbs_hook value to default PBS_xeon_phi_provision hook
+        self.server.manager(MGR_CMD_SET, PBS_HOOK, {'enabled': 'false',
+                                                    'alarm': 1800},
+                            id='PBS_xeon_phi_provision',
+                            expect=True)
+
+        self.server.manager(MGR_CMD_LIST, PBS_HOOK,
+                            attr, id='PBS_xeon_phi_provision',
+                            expect=True)
+
+    def tearDown(self):
+        TestFunctional.tearDown(self)
+
+        # Change all nodes back to batch mode and restart PBS
+        cmd = ['xtprocadmin', '-k', 'm', 'batch']
+        self.logger.info(cmd)
+        ret = self.server.du.run_cmd(self.server.hostname,
+                                     cmd, logerr=True)
+        self.assertEqual(ret['rc'], 0)
+
+        # Restore hook freq to 300
+        self.server.manager(MGR_CMD_SET, PBS_HOOK,
+                            {'enabled': 'true', 'freq': 300},
+                            id='PBS_alps_inventory_check', expect=True)
+        # Do Mom HUP
+        self.mom.signal('-HUP')
