@@ -2844,7 +2844,7 @@ im_request(int stream, int version)
 						char	hook_buf[HOOK_BUF_SIZE];
 						int	vret = 0;
 
-						snprintf(hook_buf,
+						snprintf(log_buffer,
 							sizeof(log_buffer),
 							"1,%s",
 							last_phook->hook_name);

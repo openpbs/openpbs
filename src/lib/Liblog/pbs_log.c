@@ -370,6 +370,7 @@ log_add_debug_info()
 {
 	char tbuf[LOG_BUF_SIZE];
 	char temp[LOG_BUF_SIZE];
+	char dest[LOG_BUF_SIZE];
 	/* Temporary buffers to create log entry string for leaf name and mom node name */
 	char host[PBS_MAXHOSTNAME+1];
 
@@ -385,23 +386,25 @@ log_add_debug_info()
 
 	/* To add leaf node name, if set */
 	strcpy(temp, "pbs_leaf_name=");
-	if(pbs_conf.pbs_leaf_name){
-		strncat(temp, pbs_conf.pbs_leaf_name, LOG_BUF_SIZE);
-		strncat(temp, ";", LOG_BUF_SIZE);
+	if(pbs_conf.pbs_leaf_name) {
+		snprintf(dest, LOG_BUF_SIZE, "%s%s;", temp, pbs_conf.pbs_leaf_name);
+		strcpy(temp, dest);
 	}
 	else
 		strcat(temp, "N/A;");
-	strncat(tbuf, temp, LOG_BUF_SIZE);
-
+	snprintf(dest, LOG_BUF_SIZE, "%s%s", tbuf, temp);
+	strcpy(tbuf, dest);
 
 	/* To add mom node name, if set */
 	strcpy(temp, "pbs_mom_node_name=");
-	if(pbs_conf.pbs_mom_node_name)
-		strncat(temp, pbs_conf.pbs_mom_node_name, LOG_BUF_SIZE);
+	if(pbs_conf.pbs_mom_node_name) {
+		snprintf(dest, LOG_BUF_SIZE, "%s%s", temp, pbs_conf.pbs_mom_node_name);
+		strcpy(temp, dest);
+	}
 	else
 		strncat(temp, "N/A", LOG_BUF_SIZE);
-	strncat(tbuf, temp, LOG_BUF_SIZE);
-	log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, tbuf);
+	snprintf(dest, LOG_BUF_SIZE, "%s%s", tbuf, temp);
+	log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, dest);
 
 	return;
 
@@ -425,6 +428,7 @@ log_add_if_info()
 	char msg[LOG_BUF_SIZE];
 	char temp[LOG_BUF_SIZE];
 	int i;
+	char dest[LOG_BUF_SIZE];
 	struct log_net_info *ni, *curr;
 
 	memset(msg, '\0', sizeof(msg));
@@ -443,9 +447,9 @@ log_add_if_info()
 			(curr->ifname) ? curr->ifname : "NULL");
 		for (i = 0; curr->ifhostnames[i]; i++) {
 			snprintf(temp, LOG_BUF_SIZE, "%s ", curr->ifhostnames[i]);
-			strncat(tbuf, temp, LOG_BUF_SIZE);
+			snprintf(dest, LOG_BUF_SIZE, "%s%s", tbuf, temp);
 		}
-		log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, tbuf);
+		log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, dest);
 	}
 
 	free_if_info(ni);

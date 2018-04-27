@@ -313,7 +313,7 @@ upgrade_job_file(int fd)
 		return 1;
 	}
 	tmpfd = fileno(tmp);
-	if (!tmpfd < 0) {
+	if (tmpfd < 0) {
 		fprintf(stderr, "Failed to find temporary file descriptor [%s]\n",
 			errno ? strerror(errno) : "No error");
 		return 1;
@@ -455,7 +455,7 @@ upgrade_task_file(char *taskfile)
 		return 1;
 	}
 	tmpfd = fileno(tmp);
-	if (!tmpfd < 0) {
+	if (tmpfd < 0) {
 		fprintf(stderr, "Failed to find temporary file descriptor [%s]\n",
 			errno ? strerror(errno) : "No error");
 		return 1;
