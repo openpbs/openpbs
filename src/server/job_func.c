@@ -685,7 +685,7 @@ remove_stdouterr_files(job *pjob, char *suffix) {
  */
 int direct_write_requested(job *pjob) {
 	char *pj_attrk = NULL;
-	if ((pjob->ji_wattr[(int)JOB_ATR_keep].at_flags & ATR_VFLAG_SET)) {
+	if (pjob && (pjob->ji_wattr[(int)JOB_ATR_keep].at_flags & ATR_VFLAG_SET)) {
 		pj_attrk = pjob->ji_wattr[(int)JOB_ATR_keep].at_val.at_str;
 		if (strchr(pj_attrk, 'd') && (strchr(pj_attrk, 'o') || (strchr(pj_attrk, 'e'))))
 			return 1;
