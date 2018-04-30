@@ -157,6 +157,9 @@ encode_str(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, in
 	if (rtnl)
 		*rtnl = pal;
 
+	if ((phead == NULL) && (rtnl == NULL))
+		free(pal);
+
 	return (1);
 }
 

@@ -162,6 +162,8 @@ encode_size(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, i
 		append_link(phead, &pal->al_link, pal);
 	if (rtnl)
 		*rtnl = pal;
+	if ((phead == NULL) && (rtnl == NULL))
+		free(pal);
 
 	return (1);
 }

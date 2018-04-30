@@ -4822,6 +4822,7 @@ update_vnodes_on_resourcedef_change(char **deleted_resources)
 		}
 	}
 
+	free(attr);
 	if (mod_vnlp) {
 		vnl_free(vnlp);
 		nv->vnl_modtime = time(0);
@@ -5112,7 +5113,7 @@ req_del_hookfile(struct batch_request *preq) /* ptr to the decoded request   */
 				"deleted any hook task entry");
 			/* inside hook_purge() is where the hook control */
 			/* file is deleted */
-			hook_purge(phook, NULL);
+			hook_purge(phook, python_script_free);
 		}
 		reply_ack(preq);
 		return;

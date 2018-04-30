@@ -596,7 +596,10 @@ free_sellist(struct select_list *pslist)
 
 	while (pslist) {
 		next = pslist->sl_next;
-		job_attr_def[pslist->sl_atindx].at_free(&pslist->sl_attr); /* free the attr */
+		if (pslist->sl_atindx == JOB_ATR_state)
+			state_sel.at_free(&pslist->sl_attr);
+		else
+			job_attr_def[pslist->sl_atindx].at_free(&pslist->sl_attr); /* free the attr */
 		(void)free(pslist);			  /* free the entry */
 		pslist = next;
 	}

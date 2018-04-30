@@ -166,6 +166,9 @@ encode_l(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int 
 	if (rtnl)
 		*rtnl = pal;
 
+	if ((phead == NULL) && (rtnl == NULL))
+		free(pal);
+
 	return (1);
 }
 

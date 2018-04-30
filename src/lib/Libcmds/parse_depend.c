@@ -185,7 +185,6 @@ parse_depend_item(char *depend_list, char **rtn_list, int *rtn_size)
 	return 0;
 }
 
-
 /**
  * @brief
  *	Parse dependency lists with
@@ -240,6 +239,7 @@ parse_depend_list(char *list, char **rtn_list, int rtn_size)
 		/* Parse the individual list item */
 
 		if (parse_depend_item(s, rtn_list, &rtn_size)) {
+			free(lc);	
 			return 1;
 		}
 
