@@ -664,6 +664,8 @@ create_home() {
 		# special for Cray
 		if is_cray_xt; then
 			sed --in-place "s/enabled=false/enabled=true/" $PBS_HOME/server_priv/hooks/PBS_alps_inventory_check.HK
+		else
+			rm -f ${PBS_HOME}/server_priv/hooks/PBS_xeon_phi_provision.{HK,PY}
 		fi
 		# create the database user file if it does not exist
 		dbuser_fl="${PBS_HOME}/server_priv/db_user"
