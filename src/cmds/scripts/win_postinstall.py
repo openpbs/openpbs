@@ -16,15 +16,17 @@ pbs_exec = None
 pbs_home = None
 pbs_bin = None
 pbs_sbin = None
+installtype = 'server'
+server = None
 
 pbs_conf_t = Template(r"""
 PBS_SERVER=${pbs_server}
 PBS_EXEC=${pbs_exec}
 PBS_HOME=${pbs_home}
-PBS_START_SERVER=1
-PBS_START_COMM=1
-PBS_START_MOM=1
-PBS_START_SCHED=1
+PBS_START_SERVER=${pbs_start_server}
+PBS_START_COMM=${pbs_start_comm}
+PBS_START_MOM=${pbs_start_mom}
+PBS_START_SCHED=${pbs_start_sched}
 """)
 
 createdb_t = Template(r"""
@@ -115,13 +117,16 @@ exit /b %ERRORLEVEL%
 
 """)
 
+
 def __log_err(msg):
     sys.stderr.write(msg + '\n')
     sys.stderr.flush()
 
+
 def __log_info(msg):
     sys.stdout.write(msg + '\n')
     sys.stdout.flush()
+
 
 def __run_cmd(cmd):
     with open(os.devnull, 'w') as fd:
@@ -162,9 +167,38 @@ def install_vcredist():
 def create_pbs_conf():
     __log_info('Creating PBSPro configuration at %s' % pbs_conf_path)
     with open(pbs_conf_path, 'w+') as fp:
-        pbs_conf_data = pbs_conf_t.substitute(pbs_server=gethostname(),
-                                              pbs_exec=pbs_exec,
-                                              pbs_home=pbs_home)
+        if installtype == 'server':
+            pbs_conf_data = pbs_conf_t.substitute(pbs_server=gethostname(),
+                                                  pbs_exec=pbs_exec,
+                                                  pbs_home=pbs_home,
+                                                  pbs_start_server=1,
+                                                  pbs_start_comm=1,
+                                                  pbs_start_mom=1,
+                                                  pbs_start_sched=1)
+        elif installtype == 'execution':
+            pbs_conf_data = pbs_conf_t.substitute(pbs_server=server,
+                                                  pbs_exec=pbs_exec,
+                                                  pbs_home=pbs_home,
+                                                  pbs_start_server=0,
+                                                  pbs_start_comm=0,
+                                                  pbs_start_mom=1,
+                                                  pbs_start_sched=0)
+        elif installtype == 'client':
+            pbs_conf_data = pbs_conf_t.substitute(pbs_server=server,
+                                                  pbs_exec=pbs_exec,
+                                                  pbs_home=pbs_home,
+                                                  pbs_start_server=0,
+                                                  pbs_start_comm=0,
+                                                  pbs_start_sched=0,
+                                                  pbs_start_mom=0)
+        elif installtype == 'comm':
+            pbs_conf_data = pbs_conf_t.substitute(pbs_server=server,
+                                                  pbs_exec=pbs_exec,
+                                                  pbs_home=pbs_home,
+                                                  pbs_start_server=0,
+                                                  pbs_start_sched=0,
+                                                  pbs_start_mom=0,
+                                                  pbs_start_comm=1)
         fp.write(pbs_conf_data.lstrip())
     __log_info('Successfully created PBSPro configuration')
 
@@ -172,7 +206,11 @@ def create_pbs_conf():
 def create_home():
     __log_info('Creating PBSPro home')
     # No need to set correct permission here as it will be done by pbs_mkdirs
-    os.makedirs(pbs_home)
+    try:
+        os.makedirs(pbs_home)
+    except WindowsError:
+        __log_info('PBS_HOME already available, delete & try')
+        sys.exit(3)
     __run_cmd(['icacls', pbs_home, '/grant', 'everyone:(OI)(CI)F'])
     os.makedirs(os.path.join(pbs_home, 'spool'))
     os.makedirs(os.path.join(pbs_home, 'undelivered'))
@@ -223,9 +261,10 @@ def create_home():
     src_file = os.path.join(pbs_exec, 'etc', 'pbs_sched_config')
     dst_file = os.path.join(pbs_home, 'sched_priv', 'sched_config')
     copyfile(src_file, dst_file)
-    src = os.path.join(pbs_exec, 'lib', 'python' ,'altair', 'pbs_hooks')
+    src = os.path.join(pbs_exec, 'lib', 'python', 'altair', 'pbs_hooks')
     dst = os.path.join(pbs_home, 'server_priv', 'hooks')
-    copytree(src, dst)
+    if os.path.isdir(src):
+        copytree(src, dst)
 
 
 def init_db(username, password):
@@ -314,9 +353,16 @@ def __svc_helper(svc, username, password):
     svc_name = os.path.basename(svc).replace('.exe', '').upper()
     cmd = [os.path.join(pbs_bin, 'pbs_account.exe')]
     cmd += ['--reg', svc, '-a', username, '-p', password]
-    if __run_cmd(cmd) > 0:
-        __log_err('Failed to register service %s' % svc_name)
-        sys.exit(9)
+    unregcmd = [os.path.join(pbs_bin, 'pbs_account.exe')]
+    unregcmd += ['--unreg', svc]
+    ret_code = __run_cmd(cmd)
+    if ret_code > 0:
+        __run_cmd(unregcmd)
+        if __run_cmd(cmd) > 0:
+            __log_err('Failed to register service %s' % svc_name)
+            sys.exit(9)
+        else:
+            __log_info('Successfully registered %s service' % svc_name)
     else:
         __log_info('Successfully registered %s service' % svc_name)
     if __run_cmd(['net', 'start', svc_name]) > 0:
@@ -327,10 +373,20 @@ def __svc_helper(svc, username, password):
 
 
 def register_and_start_services(username, password):
-    __svc_helper(os.path.join(pbs_sbin, 'pbs_sched.exe'), username, password)
-    __svc_helper(os.path.join(pbs_sbin, 'pbs_comm.exe'), username, password)
-    __svc_helper(os.path.join(pbs_sbin, 'pbs_mom.exe'), username, password)
-    __svc_helper(os.path.join(pbs_sbin, 'pbs_server.exe'), username, password)
+    if installtype == 'server':
+        __svc_helper(os.path.join(pbs_sbin, 'pbs_sched.exe'),
+                     username, password)
+        __svc_helper(os.path.join(pbs_sbin, 'pbs_server.exe'),
+                     username, password)
+        rshd_path = os.path.join(pbs_sbin, 'pbs_rshd.exe')
+        if os.path.isfile(rshd_path):
+            __svc_helper(rshd_path, username, password)
+        set_svr_defaults()
+    if installtype in ('server', 'comm'):
+        __svc_helper(os.path.join(pbs_sbin, 'pbs_comm.exe'),
+                     username, password)
+    if installtype in ('server', 'execution'):
+        __svc_helper(os.path.join(pbs_sbin, 'pbs_mom.exe'), username, password)
 
 
 def usage():
@@ -341,6 +397,10 @@ def usage():
     _msg += ['specify PBS Service/database username\n']
     _msg += ['    -p|--passwd=<password>\t- ']
     _msg += ['specify PBS Service/database user\'s password\n']
+    _msg += ['    -t|--type=<type>\t\t- specify PBS installation type \n']
+    _msg += ['\t\t\t\t  (server\execution\client\comm)\n']
+    _msg += ['    -s|--server=<server>\t- ']
+    _msg += ['specify PBS Server value\n']
     _msg += ['    -h|--help\t\t\t- print help message\n']
     print "".join(_msg)
 
@@ -351,14 +411,16 @@ def main():
     global pbs_home
     global pbs_bin
     global pbs_sbin
+    global installtype
+    global server
     username = None
     password = None
     if len(sys.argv) < 2:
         usage()
         sys.exit(3)
     try:
-        largs = ['help', 'user=', 'passwd=']
-        opts, _ = getopt.getopt(sys.argv[1:], 'hu:p:', largs)
+        largs = ['help', 'user=', 'passwd=', 'type=', 'server=']
+        opts, _ = getopt.getopt(sys.argv[1:], 'hu:p:t:s:', largs)
     except getopt.GetoptError as e:
         print e
         usage()
@@ -371,14 +433,26 @@ def main():
             username = arg
         elif opt in ('-p', '--passwd'):
             password = arg
+        elif opt in ('-t', '--type'):
+            if arg not in ('server', 'execution', 'client', 'comm'):
+                usage()
+                sys.exit(3)
+            installtype = arg
+        elif opt in ('-s', '--server'):
+            server = arg
         else:
-            __log_err('Unreocgnized option %s' % o)
+            __log_err('Unrecognized option %s' % o)
             usage()
             sys.exit(3)
     if username is None or password is None:
         __log_err('No username and/or password provided!')
         usage()
         sys.exit(4)
+    if installtype != 'server':
+        if server is None:
+            __log_err('\nProvide PBS_SERVER info value using -s|--server \n')
+            usage()
+            sys.exit(4)
 
     if not ctypes.windll.shell32.IsUserAnAdmin():
         __log_err('Only user with Administrators privileges can run this script!')
@@ -403,13 +477,14 @@ def main():
         sys.exit(2)
     pbs_home = os.path.join(os.path.dirname(pbs_conf_path), 'home')
     validate_cred(username, password)
-    install_vcredist()
     create_pbs_conf()
-    create_home()
-    init_db(username, password)
+    if installtype != 'client':
+        create_home()
+    if installtype == 'server':
+        install_vcredist()
+        init_db(username, password)
     __run_cmd([os.path.join(pbs_bin, 'pbs_mkdirs.exe')])
     register_and_start_services(username, password)
-    set_svr_defaults()
     __log_info('Successfully completed post installation process')
 
 
