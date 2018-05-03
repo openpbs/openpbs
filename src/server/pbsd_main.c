@@ -1450,6 +1450,11 @@ main(int argc, char **argv)
 		/* in case secondary didn't remove the file */
 		/* also tells the secondary to go idle	    */
 		(void)unlink(path_secondaryact);
+		/* 
+		 * Make the scheduler (re)-read the configuration
+		 * and fairshare usage.
+		 */
+		(void)contact_sched(SCH_CONFIGURE, NULL, pbs_scheduler_addr, pbs_scheduler_port); 
 
 	} else {
 		/* we believe we are a secondary server */
@@ -1898,37 +1903,32 @@ try_db_again:
 
 		svr_mailowner(0, 0, 1, log_buffer);
 		if (server.sv_attr[(int)SRV_ATR_scheduling].at_val.at_long) {
-			/* Scheduling is true, see if we can contact scheduler */
+			/* Bring up scheduler here */
+			pbs_scheduler_addr = get_hostaddr(pbs_conf.pbs_secondary);
 			if (contact_sched(SCH_SCHEDULE_NULL, NULL, pbs_scheduler_addr, pbs_scheduler_port) < 0) {
-				/* No - try bringing up scheduler here */
-				pbs_scheduler_addr = get_hostaddr(pbs_conf.pbs_secondary);
-				if (contact_sched(SCH_SCHEDULE_NULL, NULL, pbs_scheduler_addr, pbs_scheduler_port) < 0) {
-					char **workenv;
-					char schedcmd[MAXPATHLEN+1];
-					/* save the current, "safe", environment.          */
-					/* reset the enviroment to that when first started */
-					/* this is to get PBS_CONF_FILE if specified       */
-					workenv = environ;
-					environ = origevp;
+				char **workenv;
+				char schedcmd[MAXPATHLEN + 1];
+				/* save the current, "safe", environment.
+				 * reset the enviroment to that when first started
+				 * this is to get PBS_CONF_FILE if specified.*/
+				workenv = environ;
+				environ = origevp;
 #ifdef WIN32
-					strcpy(schedcmd, "net start pbs_sched");
-					sprintf(log_buffer, "starting scheduler: %s", schedcmd);
-					log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE,
-						PBS_EVENTCLASS_SERVER, LOG_CRIT,
-						msg_daemonname, log_buffer);
-					(void)wsystem(schedcmd, INVALID_HANDLE_VALUE);
+				snprintf(schedcmd, sizeof(schedcmd), "net start pbs_sched");
+				snprintf(log_buffer, sizeof(log_buffer), "starting scheduler: %s", schedcmd);
+				(void)wsystem(schedcmd, INVALID_HANDLE_VALUE);
 #else
-					sprintf(schedcmd, "%s/sbin/pbs_sched &", pbs_conf.pbs_exec_path);
-					sprintf(log_buffer, "starting scheduler: %s", schedcmd);
-					log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE,
-						PBS_EVENTCLASS_SERVER, LOG_CRIT,
-						msg_daemonname, log_buffer);
-					(void)system(schedcmd);
+				snprintf(schedcmd, sizeof(schedcmd), "%s/sbin/pbs_sched &", pbs_conf.pbs_exec_path);
+				snprintf(log_buffer, sizeof(log_buffer), "starting scheduler: %s", schedcmd);
+				(void)system(schedcmd);
 #endif /* WIN32 */
-					brought_up_alt_sched = 1;
-					/* restore environment to "safe" one */
-					environ = workenv;
-				}
+				log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE,
+					PBS_EVENTCLASS_SERVER, LOG_CRIT,
+					msg_daemonname, log_buffer);
+
+				brought_up_alt_sched = 1;
+				/* restore environment to "safe" one */
+				environ = workenv;
 			}
 		}
 	} else if (are_primary == FAILOVER_PRIMARY) {
