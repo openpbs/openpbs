@@ -855,11 +855,11 @@ class PBSTestSuite(unittest.TestCase):
         server_stat = server.status(SERVER)[0]
         current_user = pwd.getpwuid(os.getuid())[0]
         try:
-            # remove current user's entry from managers list (if any)
-            a = {ATTR_managers: (DECR, current_user + '@*')}
-            server.manager(MGR_CMD_SET, SERVER, a, sudo=True)
-        except:
-            pass
+            # Unset managers list
+            server.manager(MGR_CMD_UNSET, SERVER, 'managers', sudo=True,
+                           expect=True)
+        except PbsManagerError as e:
+            self.logger.error(e.msg)
         a = {ATTR_managers: (INCR, current_user + '@*')}
         server.manager(MGR_CMD_SET, SERVER, a, sudo=True)
         if ((self.revert_to_defaults and self.server_revert_to_defaults) or
