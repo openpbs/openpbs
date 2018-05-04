@@ -1750,3 +1750,68 @@ class TestMultipleSchedulers(TestFunctional):
         self.scheds['sc3'].log_match(
             "scheduler priv directory has changed to " + new_sched_priv,
             max_attempts=10, starttime=self.server.ctime)
+
+    def test_set_msched_update_inbuilt_attrs_accrue_type(self):
+        """
+        Test to make sure Multisched is able to update any one of the builtin
+        attributes like accrue_type
+        """
+        a = {'eligible_time_enable': 'True'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        self.setup_sc3()
+        self.setup_queues_nodes()
+
+        a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq3'}
+
+        J1 = Job(TEST_USER1, attrs=a)
+        J1.set_sleep_time(5)
+
+        J2 = Job(TEST_USER1, attrs=a)
+        J2.set_sleep_time(5)
+
+        jid1 = self.server.submit(J1)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
+
+        jid2 = self.server.submit(J2)
+        self.server.expect(JOB, {ATTR_state: 'Q'}, id=jid2)
+
+        # accrue_type = 2 is eligible_time
+        self.server.expect(JOB, {ATTR_accrue_type: 2}, id=jid2)
+
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
+        # This makes sure that accrue_type is indeed getting changed
+        self.server.expect(JOB, {ATTR_accrue_type: 3}, id=jid2)
+
+    def test_multisched_not_crash(self):
+        """
+        Test to make sure Multisched does not crash when all nodes in partition
+        are not associated with the corresponding queue
+        """
+        self.setup_sc1()
+        self.setup_queues_nodes()
+
+        # Assign a queue with the partition P1. This queue association is not
+        # required as per the current Multisched feature. But this is just to
+        # verify even if we associate a queue to one of the nodes in partition
+        # the scheduler won't crash.
+        # Ex: Here we are associating wq1 to vnode[0] but vnode[4] has no
+        # queue associated to it. Expectation is in this case scheduler won't
+        # crash
+        a = {ATTR_queue: 'wq1'}
+        self.server.manager(MGR_CMD_SET, NODE, a, id='vnode[0]', expect="True")
+
+        self.scheds['sc1'].terminate()
+
+        self.scheds['sc1'].start()
+        # Ideally the following statement is not requried. start() method
+        # itself should take care of updating the PID in its cache. I have
+        # created a new bug to fix in this framework. For the time being
+        # the following statement is required as a work around.
+        self.scheds['sc1']._update_pid(self.scheds['sc1'])
+
+        j = Job(TEST_USER1, attrs={ATTR_queue: 'wq1',
+                                   'Resource_List.select': '1:ncpus=1'})
+        jid1 = self.server.submit(j)
+        # If job goes to R state means scheduler is still alive.
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
