@@ -5290,7 +5290,8 @@ svr_clean_job_history(struct work_task *pwt)
 		nxpjob = (job *)GET_NEXT(pjob->ji_alljobs);
 
 		if ((pjob->ji_qs.ji_state == JOB_STATE_MOVED) ||
-			(pjob->ji_qs.ji_state == JOB_STATE_FINISHED)) {
+			(pjob->ji_qs.ji_state == JOB_STATE_FINISHED) ||
+			(pjob->ji_qs.ji_state == JOB_STATE_EXPIRED)) {
 
 			if (!(pjob->ji_wattr[(int) JOB_ATR_history_timestamp].at_flags & ATR_VFLAG_SET)) {
 				if (pjob->ji_qs.ji_state == JOB_STATE_MOVED)

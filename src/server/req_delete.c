@@ -452,7 +452,7 @@ req_deletejob(struct batch_request *preq)
 			sjst = get_subjob_state(parent, i);
 			if ((sjst == JOB_STATE_EXITING) && !forcedel)
 				continue;
-			if ((sjst != JOB_STATE_QUEUED) && (pjob = find_job(mk_subjob_id(parent, i)))) {
+			if ((pjob = find_job(mk_subjob_id(parent, i)))) {
 				if (delhist)
 					pjob->ji_deletehistory = 1;
 				if (pjob->ji_qs.ji_state == JOB_STATE_EXPIRED) {
