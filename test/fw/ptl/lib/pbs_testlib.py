@@ -14191,10 +14191,8 @@ class PBSInitServices(object):
                 dconf['PBS_START_SCHED'] = 1
             elif daemon == 'comm' and conf.get('PBS_START_COMM', 0) != 0:
                 dconf['PBS_START_COMM'] = 1
-            fn = self.du.create_temp_file(hostname)
-            self.du.set_pbs_config(hostname, fin=conf_file, fout=fn,
-                                   confs=dconf)
-            init_cmd += ['PBS_CONF_FILE=' + fn]
+            for k, v in dconf.items():
+                init_cmd += ["%s=%s" % (k, str(v))]
             _as = True
         else:
             fn = None
