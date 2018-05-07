@@ -79,13 +79,11 @@ class TestCrayAlpsReleaseTunables(TestFunctional):
 
         # Look for a message that confirms that reservation is deleted
         self.mom.log_match("%s;ALPS reservation cancelled" % jid1,
-                           starttime=start_time, max_attempts=5,
-                           interval=2)
+                           starttime=start_time)
         # Now that we know that reservation is cleared we should
         # check for time difference between each cancellation request
         out = self.mom.log_match("%s;Canceling ALPS reservation *" % jid1,
-                                 n='ALL', max_attempts=5, regexp=True,
-                                 allmatch=True)
+                                 n='ALL', regexp=True, allmatch=True)
 
         # We found something, Let's first check there are atleast 2 such
         # log messages, If not then that means reservation was cancelled
@@ -135,13 +133,11 @@ class TestCrayAlpsReleaseTunables(TestFunctional):
 
             # Look for a message that confirms that reservation is deleted
             self.mom.log_match("%s;ALPS reservation cancelled" % jid1,
-                               starttime=start_time, max_attempts=5,
-                               interval=2)
+                               starttime=start_time)
             # Now that we know that reservation is cleared we should
             # check for time difference between each cancellation request
             out = self.mom.log_match("%s;Canceling ALPS reservation *" % jid1,
-                                     n='ALL', max_attempts=2, regexp=True,
-                                     allmatch=True)
+                                     n='ALL', regexp=True, allmatch=True)
 
             # We found something, Let's first check there are atleast 2 such
             # log messages, If not then that means reservation was cancelled
