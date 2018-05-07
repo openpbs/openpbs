@@ -647,6 +647,117 @@ class TestMultipleSchedulers(TestFunctional):
         self.assertEquals(n.nshares, sc3_shares)
         self.assertEquals(n.usage, sc3_usage)
 
+    @timeout(240)
+    def test_fairshare_usage(self):
+        """
+        Test the schedulers fairshare usage file and
+        check the usage file is updating correctly or not
+        """
+        self.setup_sc1()
+        a = {'queue_type': 'execution',
+             'started': 'True',
+             'enabled': 'True',
+             'partition': 'P1'}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='wq1')
+        # Set resources to node
+        resc = {'resources_available.ncpus': 1,
+                'partition': 'P1'}
+        self.server.manager(MGR_CMD_SET, NODE, resc, self.mom.shortname)
+        # Add entry to the resource group of multisched 'sc1'
+        self.scheds['sc1'].add_to_resource_group('grp1', 100, 'root', 60)
+        self.scheds['sc1'].add_to_resource_group('grp2', 200, 'root', 40)
+        self.scheds['sc1'].add_to_resource_group(TEST_USER1,
+                                                 101, 'grp1', 40)
+        self.scheds['sc1'].add_to_resource_group(TEST_USER2,
+                                                 102, 'grp1', 20)
+        self.scheds['sc1'].add_to_resource_group(TEST_USER3,
+                                                 201, 'grp2', 30)
+        self.scheds['sc1'].add_to_resource_group(TEST_USER4,
+                                                 202, 'grp2', 10)
+        # Set scheduler iteration
+        sc_attr = {'scheduler_iteration': 7,
+                   'scheduling': 'False'}
+        self.server.manager(MGR_CMD_SET, SCHED, sc_attr, id='sc1')
+        # Update scheduler config file
+        sc_config = {'fair_share': 'True',
+                     'fairshare_usage_res': 'ncpus*100'}
+        self.scheds['sc1'].set_sched_config(sc_config)
+        # submit jobs to multisched 'sc1'
+        sc1_attr = {ATTR_queue: 'wq1',
+                    'Resource_List.select': '1:ncpus=1',
+                    'Resource_List.walltime': 10}
+        sc1_J1 = Job(TEST_USER1, attrs=sc1_attr)
+        sc1_jid1 = self.server.submit(sc1_J1)
+        sc1_J2 = Job(TEST_USER2, attrs=sc1_attr)
+        sc1_jid2 = self.server.submit(sc1_J2)
+        sc1_J3 = Job(TEST_USER3, attrs=sc1_attr)
+        sc1_jid3 = self.server.submit(sc1_J3)
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'True'},
+                            id='sc1')
+        # pbsuser1 job will run and other two will be queued
+        self.server.expect(JOB, {'job_state': 'R'}, id=sc1_jid1)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=sc1_jid3)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=sc1_jid2)
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'True'},
+                            id='sc1')
+        # pbsuser3 job will run after pbsuser1
+        self.server.expect(JOB, {'job_state': 'R'}, id=sc1_jid3)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=sc1_jid2)
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'True'},
+                            id='sc1')
+        # pbsuser2 job will run in the end
+        self.server.expect(JOB, {'job_state': 'R'}, id=sc1_jid2)
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'True'},
+                            id='sc1')
+        self.server.log_match(sc1_jid2 + ";Exit_status")
+        # query fairshare and check usage
+        sc1_fs_user1 = self.scheds['sc1'].query_fairshare(name=str(TEST_USER1))
+        self.assertEquals(sc1_fs_user1.usage, 101)
+        sc1_fs_user2 = self.scheds['sc1'].query_fairshare(name=str(TEST_USER2))
+        self.assertEquals(sc1_fs_user2.usage, 101)
+        sc1_fs_user3 = self.scheds['sc1'].query_fairshare(name=str(TEST_USER3))
+        self.assertEquals(sc1_fs_user3.usage, 101)
+        sc1_fs_user4 = self.scheds['sc1'].query_fairshare(name=str(TEST_USER4))
+        self.assertEquals(sc1_fs_user4.usage, 1)
+        # Restart the scheduler
+        self.scheds['sc1'].restart()
+        # Check the multisched 'sc1' usage file whether it's updating or not
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'False'},
+                            id='sc1')
+        sc1_J1 = Job(TEST_USER1, attrs=sc1_attr)
+        sc1_jid1 = self.server.submit(sc1_J1)
+        sc1_J2 = Job(TEST_USER2, attrs=sc1_attr)
+        sc1_jid2 = self.server.submit(sc1_J2)
+        sc1_J4 = Job(TEST_USER4, attrs=sc1_attr)
+        sc1_jid4 = self.server.submit(sc1_J4)
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'True'},
+                            id='sc1')
+        # pbsuser4 job will run and other two will be queued
+        self.server.expect(JOB, {'job_state': 'R'}, id=sc1_jid4)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=sc1_jid1)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=sc1_jid2)
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'True'},
+                            id='sc1')
+        # pbsuser1 job will run after pbsuser4
+        self.server.expect(JOB, {'job_state': 'R'}, id=sc1_jid1)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=sc1_jid2)
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'True'},
+                            id='sc1')
+        # pbsuser2 job will run in the end
+        self.server.expect(JOB, {'job_state': 'R'}, id=sc1_jid2)
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'True'},
+                            id='sc1')
+        self.server.log_match(sc1_jid2 + ";Exit_status")
+        # query fairshare and check usage
+        sc1_fs_user1 = self.scheds['sc1'].query_fairshare(name=str(TEST_USER1))
+        self.assertEquals(sc1_fs_user1.usage, 201)
+        sc1_fs_user2 = self.scheds['sc1'].query_fairshare(name=str(TEST_USER2))
+        self.assertEquals(sc1_fs_user2.usage, 201)
+        sc1_fs_user3 = self.scheds['sc1'].query_fairshare(name=str(TEST_USER3))
+        self.assertEquals(sc1_fs_user3.usage, 101)
+        sc1_fs_user4 = self.scheds['sc1'].query_fairshare(name=str(TEST_USER4))
+        self.assertEquals(sc1_fs_user4.usage, 101)
+
     def test_sched_priv_change(self):
         """
         Test that when the sched_priv directory changes, all of the
