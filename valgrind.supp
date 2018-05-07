@@ -594,14 +594,6 @@
    fun:*
 }
 {
-   From PBSPro (server) - Suppress allocations that clear up when python interpreter restarts
-   Memcheck:Leak
-   fun:malloc
-   fun:PyString_FromString
-   fun:pbs_python_populate_attributes_to_python_class
-   fun:*
-}
-{
    From PBSPro (mom) - Suppress intentional unfreed memory from python_script_alloc() inside req_copy_hookfile() that is tracked globally in svr_allhooks.
    Memcheck:Leak
    fun:malloc
