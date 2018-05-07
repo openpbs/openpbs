@@ -9,6 +9,7 @@ import subprocess
 from socket import gethostname
 from string import Template
 from shutil import copyfile
+from shutil import copytree
 
 pbs_conf_path = None
 pbs_exec = None
@@ -181,7 +182,6 @@ def create_home():
     os.makedirs(os.path.join(pbs_home, 'server_priv', 'accounting'))
     os.makedirs(os.path.join(pbs_home, 'server_priv', 'jobs'))
     os.makedirs(os.path.join(pbs_home, 'server_priv', 'users'))
-    os.makedirs(os.path.join(pbs_home, 'server_priv', 'hooks', 'tmp'))
     os.makedirs(os.path.join(pbs_home, 'sched_logs'))
     os.makedirs(os.path.join(pbs_home, 'sched_priv'))
     os.makedirs(os.path.join(pbs_home, 'comm_logs'))
@@ -223,6 +223,9 @@ def create_home():
     src_file = os.path.join(pbs_exec, 'etc', 'pbs_sched_config')
     dst_file = os.path.join(pbs_home, 'sched_priv', 'sched_config')
     copyfile(src_file, dst_file)
+    src = os.path.join(pbs_exec, 'lib', 'python' ,'altair', 'pbs_hooks')
+    dst = os.path.join(pbs_home, 'server_priv', 'hooks')
+    copytree(src, dst)
 
 
 def init_db(username, password):
