@@ -1537,8 +1537,8 @@ else:
         a = {'Resource_List.ncpus': 3, 'queue': 'expressq'}
         (jid3,) = self.submit_jobs(1, a)
 
-        self.server.expect(JOB, {'job_state': 'S'}, id=jid1)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        self.server.expect(JOB, {'job_state': 'S'}, id=jid2)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
 
         (jid4,) = self.submit_jobs(1)
@@ -1550,10 +1550,10 @@ else:
         self.scheduler.log_match("Number of job equivalence classes: 3",
                                  max_attempts=10, starttime=self.t)
 
-        # Make sure jid1 is in its own class.  If it is still in jid4's class
-        # jid4 will not run.  This is because jid1 will be considered first
+        # Make sure jid2 is in its own class.  If it is still in jid4's class
+        # jid4 will not run.  This is because jid2 will be considered first
         # and mark the entire class as can not run.
-        self.server.deljob(jid2, wait=True)
+        self.server.deljob(jid1, wait=True)
 
         self.server.expect(JOB, {'job_state': 'R'}, id=jid4)
 
