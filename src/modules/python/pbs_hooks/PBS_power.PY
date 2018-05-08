@@ -313,18 +313,17 @@ if this_event.type == pbs.PERIODIC:
     for vn in vnlist:
         vnode = vnlist[vn]
         host = vnode.resources_available["host"]
-        if power_on_off_enable:
-            try:
-                if vnode.poweroff_eligible and vnode.resources_available["PBScraynid"]:
-                    can_power_off = vnode.poweroff_eligible
+        can_power_off = 0
+        try:
+            if vnode.resources_available["PBScraynid"]:
+                if power_on_off_enable:
+                    if vnode.poweroff_eligible:
+                        can_power_off = vnode.poweroff_eligible
                 else:
-                    can_power_off = 0
-            except:
-                can_power_off = 0
-        elif power_ramp_rate_enable:
-            can_power_off = 1
-        else:
-            this_event.accept()
+                    # For ramp rate limiting.
+                    can_power_off = 1
+        except Exception:
+            pass
 
         if host not in nodes:
             # Initialize the nodes with new host
