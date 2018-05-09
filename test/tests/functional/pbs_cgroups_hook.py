@@ -147,10 +147,13 @@ import time
 MB = 2 ** 20
 iterations = 1
 chunkSizeMb = 1
+sleeptime = 0
 if (len(sys.argv) > 1):
     iterations = int(sys.argv[1])
 if (len(sys.argv) > 2):
     chunkSizeMb = int(sys.argv[2])
+if (len(sys.argv) > 3):
+    sleeptime = int(sys.argv[3])
 if (iterations < 1):
     print('Iteration count must be greater than zero.')
     exit(1)
@@ -164,31 +167,33 @@ buf = ''
 for i in range(iterations):
     print('allocating %dMB' % ((i + 1) * chunkSizeMb))
     buf += ('#' * MB * chunkSizeMb)
-time.sleep(10)
+if sleeptime > 0:
+    time.sleep(sleeptime)
 """
         self.eatmem_job1 = \
             '#PBS -joe\n' \
+            '#PBS -S /bin/bash\n' \
             'sleep 4\n' \
-            'python - 80 10 <<EOF\n' \
+            'python - 80 10 10 <<EOF\n' \
             '%s\nEOF\n' % self.eatmem_script
         self.eatmem_job2 = \
             '#PBS -joe\n' \
             '#PBS -S /bin/bash\n' \
             'let i=0; while [ $i -lt 400000 ]; do let i+=1 ; done\n' \
-            'python - 200 2 <<EOF\n' \
+            'python - 200 2 10 <<EOF\n' \
             '%s EOF\n' \
             'let i=0; while [ $i -lt 400000 ]; do let i+=1 ; done\n' \
-            'python - 100 4 <<EOF\n' \
+            'python - 100 4 10 <<EOF\n' \
             '%sEOF\n' \
             'let i=0; while [ $i -lt 400000 ]; do let i+=1 ; done\n' \
             'sleep 15\n' % (self.eatmem_script, self.eatmem_script)
         self.eatmem_job3 = \
             '#PBS -joe\n' \
+            '#PBS -S /bin/bash\n' \
             'sleep 2\n' \
-            'let i=0; while [ $i -lt 1500000 ]; do let i+=1 ; done\n' \
-            'python - 90 5 <<EOF\n' \
-            '%s\nEOF\n' \
-            'sleep 15\n' % self.eatmem_script
+            'let i=0; while [ $i -lt 500000 ]; do let i+=1 ; done\n' \
+            'python - 90 5 30 <<EOF\n' \
+            '%s\nEOF\n' % self.eatmem_script
         self.cpuset_mem_script = """#!/bin/bash
 #PBS -joe
 echo $PBS_JOBID
@@ -251,12 +256,9 @@ sleep 5
 check_file_diff() {
     for filename in $1/*.*; do
         filename=$(basename $filename)
-        if [ ! -f $1/$filename ] || [ ! -f $2/$filename ]; then
-            continue
-        fi
-        if [ ! -r $1/$filename ]; then
-            continue
-        fi
+        [ $filename = memory.kmem.slabinfo ] && continue
+        [ ! -r $1/$filename ] && continue
+        [ ! -r $2/$filename ] && continue
         if ! diff $1/$filename $2/$filename >/dev/null ; then
             echo "Disabled cgroup subsystems are populated with the job id"
         fi
@@ -984,7 +986,7 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         # Allow some time to pass for values to be updated
         self.logger.info('Waiting for periodic hook to update usage data.')
         time.sleep(5)
-        begin = time.time()
+        begin = int(time.time())
         if self.paths['cpuacct']:
             lines = self.hostA.log_match(
                 '%s;update_job_usage: CPU usage:' %
@@ -1010,14 +1012,14 @@ for i in 1 2 3 4; do while : ; do : ; done & done
                 usage = int(match.groups()[0])
                 if usage > 400000:
                     break
-            self.assertTrue(usage > 400000)
+            self.assertTrue(usage > 400000, 'Max memory usage: %dkb' % usage)
             if self.swapctl == 'true':
                 lines = self.hostA.log_match(
                     '%s;update_job_usage: Memory usage: vmem=' % jid,
                     allmatch=True, max_attempts=5, starttime=begin)
                 usage = 0
                 for line in lines:
-                    match = re.search(r'mem=(\d+)kb', line[1])
+                    match = re.search(r'vmem=(\d+)kb', line[1])
                     if not match:
                         continue
                     usage = int(match.groups()[0])
