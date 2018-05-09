@@ -1846,22 +1846,14 @@ class NodeConfig(object):
                         pbs.logmsg(pbs.EVENT_DEBUG4, vnode_msg_mem %
                                    (caller_name(), self.hostname,
                                     str(host_resc_avail['mem'])))
-                elif key == 'mem':
-                    # Used for vnodes per NUMA socket
-                    if vnodes:
-                        vnode_resc_avail['mem'] = pbs.size(val)
-                elif key == 'vmem':
-                    # Used for vnodes per NUMA socket
-                    if vnodes:
-                        vnode_resc_avail['vmem'] = pbs.size(val)
                 elif key == 'HugePages_Total':
                     # Used for the natural vnode
                     if vnodes:
                         host_resc_avail['hpmem'] = pbs.size(0)
-                elif key == 'hpmem':
+                elif key in ['mem', 'vmem', 'hpmem']:
                     # Used for vnodes per NUMA socket
                     if vnodes:
-                        vnode_resc_avail['hpmem'] = pbs.size(val)
+                        vnode_resc_avail[key] = pbs.size(val)
                 elif isinstance(val, list):
                     pass
                 elif isinstance(val, dict):
@@ -1970,8 +1962,9 @@ class CgroupUtils(object):
         self.offline_file = os.path.join(PBS_MOM_HOME, 'mom_priv', 'hooks',
                                          ('%s.offline' %
                                           pbs.event().hook_name))
-        self.offline_msg = 'Hook %s: ' % pbs.event().hook_name
-        self.offline_msg += 'Unable to clean up one or more cgroups'
+        self.offline_msg = \
+            'Hook %s: Unable to clean up one or more cgroups' % \
+            pbs.event().hook_name
 
     def __repr__(self):
         return ('CgroupUtils(%s, %s, %s, %s, %s, %s, %s, %s)' %
@@ -2111,27 +2104,11 @@ class CgroupUtils(object):
                 # It is possible to have more than one cgroup mounted in
                 # the same place, so check them all for each mount.
                 flags = entries[3].split(',')
-                if 'blkio' in flags:
-                    paths['blkio'] = \
-                        self._assemble_path('blkio', entries[1], flags)
-                if 'cpu' in flags:
-                    paths['cpu'] = \
-                        self._assemble_path('cpu', entries[1], flags)
-                if 'cpuacct' in flags:
-                    paths['cpuacct'] = \
-                        self._assemble_path('cpuacct', entries[1], flags)
-                if 'cpuset' in flags:
-                    paths['cpuset'] = \
-                        self._assemble_path('cpuset', entries[1], flags)
-                if 'devices' in flags:
-                    paths['devices'] = \
-                        self._assemble_path('devices', entries[1], flags)
-                if 'freezer' in flags:
-                    paths['freezer'] = \
-                        self._assemble_path('freezer', entries[1], flags)
-                if 'hugetlb' in flags:
-                    paths['hugetlb'] = \
-                        self._assemble_path('hugetlb', entries[1], flags)
+                for subsys in ['blkio', 'cpu', 'cpuacct', 'cpuset', 'devices',
+                               'freezer', 'hugetlb', 'pids']:
+                    if subsys in flags:
+                        paths[subsys] = self._assemble_path(subsys, entries[1],
+                                                            flags)
                 if 'memory' in flags:
                     paths['memory'] = \
                         self._assemble_path('memory', entries[1], flags)
@@ -2139,9 +2116,6 @@ class CgroupUtils(object):
                     # but use a different prefix
                     paths['memsw'] = \
                         self._assemble_path('memsw', entries[1], flags)
-                if 'pids' in flags:
-                    paths['pids'] = \
-                        self._assemble_path('pids', entries[1], flags)
                 if 'systemd' in flags or 'name=systemd' in flags:
                     paths['systemd'] = \
                         self._assemble_path('systemd', entries[1], flags)

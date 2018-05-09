@@ -15,8 +15,12 @@
         },
         "cpuset" : {
             "enabled"            : true,
+            "exclude_cpus"       : [],
             "exclude_hosts"      : [],
-            "exclude_vntypes"    : []
+            "exclude_vntypes"    : [],
+            "mem_fences"         : true,
+            "mem_hardwall"       : false,
+            "memory_spread_page" : false
         },
         "devices" : {
             "enabled"            : false,
