@@ -9225,6 +9225,9 @@ class Server(PBSService):
             self.logger.error("name, attributes, and mom object are required")
             return False
 
+        if natvnode is None:
+            natvnode = mom.shortname
+
         if delall:
             try:
                 rv = self.manager(MGR_CMD_DELETE, NODE, None, "")
@@ -9233,14 +9236,21 @@ class Server(PBSService):
             except PbsManagerError:
                 pass
 
-        if natvnode is None:
-            natvnode = mom.shortname
-
         vdef = mom.create_vnode_def(name, attrib, num, sharednode,
                                     usenatvnode=usenatvnode, attrfunc=attrfunc,
                                     vnodes_per_host=vnodes_per_host)
         mom.insert_vnode_def(vdef, fname=fname, additive=additive,
                              restart=restart)
+
+        new_vnodelist = []
+        if usenatvnode:
+            new_vnodelist.append(natvnode)
+            num_check = num - 1
+        else:
+            num_check = num
+        for i in range(num_check):
+            new_vnodelist.append("%s[%s]" % (name, i))
+
         if createnode:
             try:
                 statm = self.status(NODE, id=natvnode)
@@ -9255,16 +9265,13 @@ class Server(PBSService):
                 else:
                     m_attr = None
                 self.manager(MGR_CMD_CREATE, NODE, m_attr, natvnode)
-        attrs = {}
         # only expect if vnodes were added rather than the nat vnode modified
         if expect and num > 0:
-            for k, v in attrib.items():
-                attrs[str(k) + '=' + str(self.utils.decode_value(v))] = num
-            attrs['state=free'] = num
-            rv = self.expect(VNODE, attrs, attrop=PTL_AND)
-        else:
-            rv = True
-        return rv
+            attrs = {'state': 'free'}
+            attrs.update(attrib)
+            for vn in new_vnodelist:
+                self.expect(VNODE, attrs, id=vn)
+        return True
 
     def create_moms(self, name=None, attrib=None, num=1, delall=True,
                     createnode=True, conf_prefix='pbs.conf_m',
@@ -12720,7 +12727,9 @@ class MoM(PBSService):
             try:
                 _vs = self.server.status(HOST, a, id=self.shortname)
             except PbsStatusError as e:
-                if e.msg[0].endswith('Server has no node list'):
+                err_msg = e.msg[0].rstrip()
+                if (err_msg.endswith('Server has no node list') or
+                        err_msg.endswith('Unknown node')):
                     _vs = []
                 else:
                     raise e
@@ -13104,7 +13113,7 @@ class MoM(PBSService):
             raise PbsMomConfigError(rc=1, rv=False,
                                     msg="Failed to insert vnode definition")
         if fname is None:
-            fname = 'pbs_vnode.def'
+            fname = 'pbs_vnode_' + str(int(time.time())) + '.def'
         if not additive:
             self.delete_vnode_defs()
         cmd = [os.path.join(self.pbs_conf['PBS_EXEC'], 'sbin', 'pbs_mom')]
