@@ -339,6 +339,7 @@ static stream_t *find_stream_with_dest(tpp_addr_t *dest_addr, unsigned int dest_
 static int tpp_send_inner(unsigned int sd, void *data, unsigned int len, unsigned int full_len, unsigned int cmprsd_len);
 static int send_spl_packet(stream_t *strm, int type);
 static void flush_acks(stream_t *strm);
+static void tpp_clr_retry(tpp_packet_t *pkt, stream_t *strm);
 
 /* externally called functions */
 int leaf_pkt_postsend_handler(int tfd, tpp_packet_t *pkt);
@@ -2733,16 +2734,7 @@ shelve_pkt(tpp_packet_t *pkt, tpp_packet_t *data_pkt, time_t retry_time)
 		if (rt->acked == 1) {
 			/* this packet was already acked from a previous (re)try */
 			/* so release this packet */
-
-			if (rt->strm_retry_node) {
-				tpp_que_del_elem(&strm->retry_queue, rt->strm_retry_node);
-				rt->strm_retry_node = NULL;
-			}
-
-			if (rt->global_retry_node) {
-				tpp_que_del_elem(&global_retry_queue, rt->global_retry_node);
-				rt->global_retry_node = NULL;
-			}
+			tpp_clr_retry(pkt, strm);
 
 			tpp_free_pkt(rt->data_pkt);
 			tpp_free_pkt(pkt);
@@ -2762,6 +2754,7 @@ shelve_pkt(tpp_packet_t *pkt, tpp_packet_t *data_pkt, time_t retry_time)
 	}
 
 	rt->data_pkt = data_pkt;
+	rt->acked = 0;
 	rt->retry_time = retry_time;
 	rt->retry_count = 0;
 	rt->sent_to_transport = 0;
@@ -3874,6 +3867,7 @@ leaf_pkt_presend_handler(int tfd, tpp_packet_t *pkt)
 		strm = get_strm_atomic(sd);
 		if (!strm) {
 			TPP_DBPRT(("Sending data on free/deleted slot sd=%u, seq=%u", sd, ack_no));
+			tpp_clr_retry(pkt, strm);
 			tpp_free_pkt(pkt);
 			return -1;
 		}
@@ -3926,16 +3920,9 @@ leaf_pkt_presend_handler(int tfd, tpp_packet_t *pkt)
 			/* remove pkt from retry list in case its linked there */
 			if (pkt->extra_data) {
 				retry_info_t *rt = pkt->extra_data;
-				if (rt->global_retry_node) {
-					tpp_que_del_elem(&global_retry_queue, rt->global_retry_node);
-					rt->global_retry_node = NULL;
-				}
-				if (rt->strm_retry_node) {
-					tpp_que_del_elem(&strm->retry_queue, rt->strm_retry_node);
-					rt->strm_retry_node = NULL;
-				}
 				tpp_free_pkt(rt->data_pkt); /* mcast data */
 			}
+			tpp_clr_retry(pkt, strm);
 
 			/* delete the packet and return -1 so no data is sent out */
 			tpp_free_pkt(pkt);
@@ -4010,6 +3997,7 @@ leaf_pkt_postsend_handler(int tfd, tpp_packet_t *pkt)
 		sd = ntohl(data->src_sd);
 		strm = get_strm_atomic(sd);
 		if (!strm) {
+			tpp_clr_retry(pkt, strm);
 			tpp_free_pkt(pkt);
 			return -1;
 		}
@@ -4030,17 +4018,8 @@ leaf_pkt_postsend_handler(int tfd, tpp_packet_t *pkt)
 			 * global retry list in case it was there due to flow
 			 * control
 			 */
-			if (pkt->extra_data) {
-				retry_info_t *rt = pkt->extra_data;
-				if (rt->global_retry_node) {
-					tpp_que_del_elem(&global_retry_queue, rt->global_retry_node);
-					rt->global_retry_node = NULL;
-				}
-				if (rt->strm_retry_node) {
-					tpp_que_del_elem(&strm->retry_queue, rt->strm_retry_node);
-					rt->strm_retry_node = NULL;
-				}
-			}
+			tpp_clr_retry(pkt, strm);
+
 			/* pkt itself is deleted at the end of the function
 			 * so just fall through to the end
 			 */
@@ -4120,6 +4099,10 @@ leaf_pkt_postsend_handler(int tfd, tpp_packet_t *pkt)
 
 		/* let it fall through and free the packet */
 	}
+
+	if (type != TPP_MCAST_DATA)
+		tpp_clr_retry(pkt, NULL); /* for mcast packet, extra_data is mcast related data */
+
 	tpp_free_pkt(pkt);
 	return 0;
 }
@@ -4670,4 +4653,37 @@ leaf_close_handler(int tfd, int error, void *c)
 		check_pending_acks(-1);
 	}
 	return 0;
+}
+
+/**
+ * @brief
+ * 	Utility function to clear the retry related information from the packet
+ *
+ * @param[in] pkt  - pointer to the packet structure
+ * @param[in] strm - if a stream is associated, then pointer to it, so that pkt
+ *                   can be removed from the stream level retry queue
+ *
+ * @par Side Effects:
+ *	None
+ *
+ * @par MT-safe: No
+ *
+ */
+static void
+tpp_clr_retry(tpp_packet_t *pkt, stream_t *strm)
+{
+	if (pkt->extra_data) {
+		retry_info_t *rt = pkt->extra_data;
+		if (rt->global_retry_node) {
+			tpp_que_del_elem(&global_retry_queue, rt->global_retry_node);
+			rt->global_retry_node = NULL;
+		}
+
+		if (rt->strm_retry_node) {
+			if (strm)
+				tpp_que_del_elem(&strm->retry_queue, rt->strm_retry_node);
+
+			rt->strm_retry_node = NULL;
+		}
+	}
 }
