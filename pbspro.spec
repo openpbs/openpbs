@@ -128,6 +128,7 @@ Conflicts: pbspro-server-ohpc
 Conflicts: pbs
 Conflicts: pbs-mom
 Conflicts: pbs-cmds
+Requires: bash
 Requires: expat
 Requires: libedit
 Requires: postgresql-server
@@ -164,6 +165,7 @@ Conflicts: pbspro-server-ohpc
 Conflicts: pbs
 Conflicts: pbs-mom
 Conflicts: pbs-cmds
+Requires: bash
 Requires: expat
 Requires: python >= 2.6
 Requires: python < 3.0
@@ -190,6 +192,7 @@ Conflicts: pbspro-server-ohpc
 Conflicts: pbs
 Conflicts: pbs-mom
 Conflicts: pbs-cmds
+Requires: bash
 Requires: python >= 2.6
 Requires: python < 3.0
 Autoreq: 1
