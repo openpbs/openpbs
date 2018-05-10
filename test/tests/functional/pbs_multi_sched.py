@@ -1815,3 +1815,67 @@ class TestMultipleSchedulers(TestFunctional):
         jid1 = self.server.submit(j)
         # If job goes to R state means scheduler is still alive.
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+
+    def test_multi_sched_job_sort_key(self):
+        """
+        Test to make sure that jobs are sorted as per
+        job_sort_key in a multi sched
+        """
+        self.setup_sc1()
+        self.setup_queues_nodes()
+        a = {'job_sort_key': '"ncpus LOW"'}
+        self.scheds['sc1'].set_sched_config(a)
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduling': 'False'}, id="sc1")
+        j = Job(TEST_USER, {'Resource_List.ncpus': '2',
+                            ATTR_queue: 'wq1'})
+        jid1 = self.server.submit(j)
+        j = Job(TEST_USER, {'Resource_List.ncpus': '1',
+                            ATTR_queue: 'wq1'})
+        jid2 = self.server.submit(j)
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduling': 'True'}, id="sc1")
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid1)
+
+    def test_multi_sched_node_sort_key(self):
+        """
+        Test to make sure nodes are sorted in the order
+        as per node_sort_key in a multi sched
+        """
+        self.setup_sc1()
+        self.setup_queues_nodes()
+        a = {'partition': 'P1'}
+        self.server.manager(MGR_CMD_SET, NODE, a, id='@default', expect=True)
+        a = {'node_sort_key': '"ncpus HIGH " ALL'}
+        self.scheds['sc1'].set_sched_config(a)
+        a = {'resources_available.ncpus': 1}
+        self.server.manager(MGR_CMD_SET, NODE, a, id='vnode[0]', expect=True)
+        a = {'resources_available.ncpus': 2}
+        self.server.manager(MGR_CMD_SET, NODE, a, id='vnode[1]', expect=True)
+        a = {'resources_available.ncpus': 3}
+        self.server.manager(MGR_CMD_SET, NODE, a, id='vnode[2]', expect=True)
+        a = {'resources_available.ncpus': 4}
+        self.server.manager(MGR_CMD_SET, NODE, a, id='vnode[3]', expect=True)
+        # Offlining the node as we do not need for the test
+        a = {'state': 'offline'}
+        self.server.manager(MGR_CMD_SET, NODE, a, id='vnode[4]', expect=True)
+        a = {'Resource_List.select': '1:ncpus=1',
+             'Resource_List.place': 'excl',
+             ATTR_queue: 'wq1'}
+        j = Job(TEST_USER1, a)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        self.check_vnodes(j, ['vnode[3]'], jid)
+        j = Job(TEST_USER1, a)
+        jid1 = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        self.check_vnodes(j, ['vnode[2]'], jid1)
+        j = Job(TEST_USER1, a)
+        jid2 = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        self.check_vnodes(j, ['vnode[1]'], jid2)
+        j = Job(TEST_USER1, a)
+        jid3 = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
+        self.check_vnodes(j, ['vnode[0]'], jid3)
