@@ -82,6 +82,10 @@ class TestJobArray(TestFunctional):
         except PbsServiceError as e:
             # The server failed to start
             raise self.failureException("Server failed to start:" + e.msg)
+        self.server.isUp()
+        rv = self.is_server_licensed(self.server)
+        _msg = 'No license found on server %s' % (self.server.shortname)
+        self.assertTrue(rv, _msg)
 
     def test_running_subjob_survive_restart(self):
         """
@@ -93,7 +97,7 @@ class TestJobArray(TestFunctional):
         j = Job(TEST_USER, attrs={
             ATTR_J: '1-3', 'Resource_List.select': 'ncpus=1'})
 
-        j.set_sleep_time(10)
+        j.set_sleep_time(20)
 
         j_id = self.server.submit(j)
         subjid_2 = j.create_subjob_id(j_id, 2)
@@ -102,7 +106,7 @@ class TestJobArray(TestFunctional):
         self.server.expect(JOB, {'job_state': 'B'}, j_id)
 
         # 2. wait till subjob 2 starts running
-        self.server.expect(JOB, {'job_state': 'R'}, subjid_2)
+        self.server.expect(JOB, {'job_state': 'R'}, subjid_2, offset=20)
 
         # 3. Kill and restart the server
         self.kill_and_restart_svr()
@@ -287,3 +291,322 @@ class TestJobArray(TestFunctional):
                             "Error message is not expected")
         else:
             raise self.failureException("subjob in X state can be deleted")
+
+    def test_subjob_comments(self):
+        """
+        Test subjob comments for finished and terminated subjobs
+        """
+        a = {'resources_available.ncpus': 1}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        j = Job(TEST_USER, attrs={
+            ATTR_J: '1-3', 'Resource_List.select': 'ncpus=1'})
+        j.set_sleep_time(5)
+        j_id = self.server.submit(j)
+        subjid_1 = j.create_subjob_id(j_id, 1)
+        subjid_2 = j.create_subjob_id(j_id, 2)
+        self.server.expect(JOB, {'comment': 'Subjob finished'}, subjid_1)
+        self.server.delete(subjid_2, extend='force')
+        self.server.expect(JOB, {'comment': 'Subjob terminated'}, subjid_2)
+        self.kill_and_restart_svr()
+        self.server.expect(
+            JOB, {'comment': 'Subjob finished'}, subjid_1, max_attempts=1)
+
+    def test_subjob_comments_with_history(self):
+        """
+        Test subjob comments for finished, failed and terminated subjobs
+        when history is enabled
+        """
+        a = {'resources_available.ncpus': 1}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        a = {'job_history_enable': 'True'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        j = Job(TEST_USER, attrs={
+            ATTR_J: '1-2', 'Resource_List.select': 'ncpus=1'})
+        j.set_sleep_time(5)
+        j_id = self.server.submit(j)
+        subjid_1 = j.create_subjob_id(j_id, 1)
+        subjid_2 = j.create_subjob_id(j_id, 2)
+        self.server.expect(JOB, {'comment': (
+            MATCH_RE, 'Job run at.*and finished')}, subjid_1, extend='x')
+        self.server.delete(subjid_2, extend='force')
+        self.server.expect(
+            JOB, {'comment': (MATCH_RE, 'terminated')}, subjid_2, extend='x')
+        self.kill_and_restart_svr()
+        self.server.expect(JOB, {'comment': (
+            MATCH_RE, 'Job run at.*and finished')}, subjid_1, extend='x',
+            max_attempts=1)
+        script_body = "exit 1"
+        j = Job(TEST_USER, attrs={
+            ATTR_J: '1-2', 'Resource_List.select': 'ncpus=1'})
+        j.create_script(body=script_body)
+        j_id = self.server.submit(j)
+        subjid_1 = j.create_subjob_id(j_id, 1)
+        subjid_2 = j.create_subjob_id(j_id, 2)
+        self.server.expect(
+            JOB, {'comment': (MATCH_RE, 'Job run at.*and failed')}, subjid_1,
+            extend='x')
+        self.server.expect(
+            JOB, {'comment': (MATCH_RE, 'Job run at.*and failed')}, subjid_2,
+            extend='x')
+        self.kill_and_restart_svr()
+        self.server.expect(
+            JOB, {'comment': (MATCH_RE, 'Job run at.*and failed')}, subjid_1,
+            extend='x', max_attempts=1)
+        self.server.expect(
+            JOB, {'comment': (MATCH_RE, 'Job run at.*and failed')}, subjid_2,
+            extend='x')
+
+    def test_multiple_server_restarts(self):
+        """
+        Test subjobs wont rerun after multiple server restarts
+        """
+        a = {'resources_available.ncpus': 1}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        a = {'job_history_enable': 'True'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        j = Job(TEST_USER, attrs={
+            ATTR_J: '1-2', 'Resource_List.select': 'ncpus=1'})
+        j_id = self.server.submit(j)
+        subjid_1 = j.create_subjob_id(j_id, 1)
+        a = {'job_state': 'R', 'run_count': 1}
+        self.server.expect(JOB, a, subjid_1, attrop=PTL_AND)
+        for _ in range(5):
+            self.kill_and_restart_svr()
+            self.server.expect(
+                JOB, a, subjid_1, attrop=PTL_AND, max_attempts=1)
+
+    def test_job_array_history_duration(self):
+        """
+        Test that job array and subjobs are purged after history duration
+        """
+        a = {'resources_available.ncpus': 1}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        a = {'job_history_enable': 'True'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        a = {'job_history_duration': 30}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        j = Job(TEST_USER, attrs={
+            ATTR_J: '1-2', 'Resource_List.select': 'ncpus=1'})
+        j.set_sleep_time(5)
+        j_id = self.server.submit(j)
+        subjid_1 = j.create_subjob_id(j_id, 1)
+        subjid_2 = j.create_subjob_id(j_id, 2)
+        a = {'job_state': 'R', 'run_count': 1}
+        self.server.expect(JOB, a, subjid_1, attrop=PTL_AND)
+        self.server.delete(subjid_1, extend='force')
+        b = {'job_state': 'X'}
+        self.server.expect(JOB, b, subjid_1)
+        self.server.expect(JOB, a, subjid_2, attrop=PTL_AND)
+        msg = "Waiting for 150 secs as server will purge db once"
+        msg += " in 2 mins plus 30 sec of history duration"
+        self.logger.info(msg)
+        self.server.expect(JOB, 'job_state', op=UNSET,
+                           id=subjid_1, offset=150, extend='x')
+        self.server.expect(JOB, 'job_state', op=UNSET,
+                           id=subjid_2, extend='x')
+
+    def test_queue_deletion_after_terminated_subjob(self):
+        """
+        Test that queue can be deleted after the job array is
+        terminated and server is restarted.
+        """
+        a = {'resources_available.ncpus': 1}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        j = Job(TEST_USER, attrs={
+            ATTR_J: '1-2', 'Resource_List.select': 'ncpus=1'})
+        j.set_sleep_time(5)
+        j_id = self.server.submit(j)
+        subjid_1 = j.create_subjob_id(j_id, 1)
+        a = {'job_state': 'R', 'run_count': 1}
+        self.server.expect(JOB, a, subjid_1, attrop=PTL_AND)
+        self.server.delete(subjid_1, extend='force')
+        self.kill_and_restart_svr()
+        self.server.delete(j_id, wait=True)
+        self.server.manager(MGR_CMD_DELETE, QUEUE, id='workq')
+
+    def test_held_job_array_survive_server_restart(self):
+        """
+        Test held job array can be released after server restart
+        """
+        a = {'resources_available.ncpus': 1}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        j = Job(TEST_USER, attrs={
+            ATTR_J: '1-2', 'Resource_List.select': 'ncpus=1'})
+        j.set_sleep_time(60)
+        j_id = self.server.submit(j)
+        j_id2 = self.server.submit(j)
+        subjid_1 = j.create_subjob_id(j_id, 1)
+        subjid_3 = j.create_subjob_id(j_id2, 1)
+        a = {'job_state': 'R', 'run_count': 1}
+        self.server.expect(JOB, a, subjid_1, attrop=PTL_AND)
+        self.server.holdjob(j_id2, USER_HOLD)
+        self.server.expect(JOB, {'job_state': 'H'}, j_id2)
+        self.kill_and_restart_svr()
+        self.server.delete(j_id, wait=True)
+        self.server.expect(JOB, {'job_state': 'H'}, j_id2)
+        self.server.rlsjob(j_id2, USER_HOLD)
+        self.server.expect(JOB, {'job_state': 'B'}, j_id2)
+        self.server.expect(JOB, a, subjid_3, attrop=PTL_AND)
+
+    def test_held_job_array_survive_server_restart_w_history(self):
+        """
+        Test held job array can be released after server restart
+        when history is enabled
+        """
+        a = {'job_history_enable': 'True'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        self.test_held_job_array_survive_server_restart()
+
+    def test_subjobs_qrun(self):
+        """
+        Test that job array's subjobs can be qrun
+        """
+        a = {'resources_available.ncpus': 1}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        a = {'scheduling': 'false'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        j = Job(TEST_USER, attrs={
+            ATTR_J: '1-2', 'Resource_List.select': 'ncpus=1'})
+        j.set_sleep_time(60)
+        j_id = self.server.submit(j)
+        subjid_1 = j.create_subjob_id(j_id, 1)
+        self.server.runjob(subjid_1)
+        self.server.expect(JOB, {'job_state': 'B'}, j_id)
+        self.server.expect(JOB, {'job_state': 'R'}, subjid_1)
+
+    def test_dependent_job_array_server_restart(self):
+        """
+        Check Job array dependency is not released after server restart
+        """
+        a = {'job_history_enable': 'true'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        a = {'resources_available.ncpus': 2}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        j = Job(TEST_USER, attrs={
+            ATTR_J: '1-2', 'Resource_List.select': 'ncpus=1'})
+        j.set_sleep_time(10)
+        j_id = self.server.submit(j)
+        subjid_1 = j.create_subjob_id(j_id, 1)
+        subjid_2 = j.create_subjob_id(j_id, 2)
+        self.server.expect(JOB, {'job_state': 'B'}, j_id)
+        self.server.expect(JOB, {'job_state': 'R'}, subjid_1)
+        self.server.expect(JOB, {'job_state': 'R'}, subjid_2)
+        depend_value = 'afterok:' + j_id
+        j = Job(TEST_USER, attrs={
+            ATTR_J: '1-2', 'Resource_List.select': 'ncpus=1',
+            ATTR_depend: depend_value})
+        j_id2 = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'H'}, j_id2)
+        self.kill_and_restart_svr()
+        self.server.expect(JOB, {'job_state': 'F'},
+                           j_id, extend='x', interval=5)
+        self.server.expect(JOB, {'job_state': 'B'}, j_id2, interval=5)
+
+    def test_rerun_subjobs_server_restart(self):
+        """
+        Test that subjobs which are requeued remain queued after server restart
+        """
+        a = {'job_history_enable': 'true'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        a = {'resources_available.ncpus': 1}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        j = Job(TEST_USER, attrs={
+            ATTR_J: '1-2', 'Resource_List.select': 'ncpus=1'})
+        j.set_sleep_time(60)
+        j_id = self.server.submit(j)
+        subjid_1 = j.create_subjob_id(j_id, 1)
+        self.server.expect(JOB, {'job_state': 'R'}, subjid_1)
+        a = {'scheduling': 'false'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        self.server.rerunjob(subjid_1)
+        self.server.expect(JOB, {'job_state': 'Q'}, subjid_1)
+        self.kill_and_restart_svr()
+        self.server.expect(JOB, {'job_state': 'Q'}, subjid_1)
+        a = {'scheduling': 'true'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        a = {'job_state': 'R'}
+        self.server.expect(JOB, a, subjid_1)
+
+    def test_rerun_node_fail_requeue(self):
+        """
+        Test sub jobs gets requeued after node_fail_requeue time
+        """
+        a = {'node_fail_requeue': 10}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        a = {'resources_available.ncpus': 1}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        j = Job(TEST_USER, attrs={
+            ATTR_J: '1-2', 'Resource_List.select': 'ncpus=1'})
+        j.set_sleep_time(60)
+        j_id = self.server.submit(j)
+        subjid_1 = j.create_subjob_id(j_id, 1)
+        self.server.expect(JOB, {'job_state': 'R'}, subjid_1)
+        self.mom.stop()
+        self.server.expect(JOB, {'job_state': 'Q'}, subjid_1, offset=5)
+
+    def test_qmove_job_array(self):
+        """
+        Test job array's can be qmoved to a high priority queue
+        and qmoved job array preempts running subjob
+        """
+        a = {'queue_type': 'execution',
+             'started': 'True',
+             'enabled': 'True',
+             'priority': 150}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='wq1')
+        a = {'job_history_enable': 'true'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        a = {'resources_available.ncpus': 1}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        j = Job(TEST_USER, attrs={
+            ATTR_J: '1-2', 'Resource_List.select': 'ncpus=1'})
+        j.set_sleep_time(60)
+        j_id = self.server.submit(j)
+        subjid_1 = j.create_subjob_id(j_id, 1)
+        self.server.expect(JOB, {'job_state': 'R'}, subjid_1)
+        j_id2 = self.server.submit(j)
+        subjid_3 = j.create_subjob_id(j_id2, 1)
+        self.server.movejob(j_id2, 'wq1')
+        a = {'scheduling': 'true'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        self.server.expect(JOB, {'job_state': 'S'}, subjid_1)
+        self.server.expect(JOB, {'job_state': 'R'}, subjid_3)
+
+    def test_delete_history_subjob_server_restart(self):
+        """
+        Test that subjobs can be deleted from history
+        and they remain deleted after server restart
+        """
+        a = {'job_history_enable': 'true'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        a = {'resources_available.ncpus': 2}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        j = Job(TEST_USER, attrs={
+            ATTR_J: '1-2', 'Resource_List.select': 'ncpus=1'})
+        j.set_sleep_time(5)
+        j_id = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'F'}, j_id, extend='x', offset=5)
+        self.server.delete(j_id, extend='deletehist')
+        self.server.expect(JOB, 'job_state', op=UNSET, extend='x', id=j_id)
+        self.kill_and_restart_svr()
+        self.server.expect(JOB, 'job_state', op=UNSET, extend='x', id=j_id)
+
+    def test_job_id_duplicate_server_restart(self):
+        """
+        Test that after server restart there is no duplication
+        of job identifiers
+        """
+        a = {'resources_available.ncpus': 1}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        j = Job(TEST_USER, attrs={
+            ATTR_J: '1-2', 'Resource_List.select': 'ncpus=1'})
+        self.server.submit(j)
+        j = Job(TEST_USER)
+        self.server.submit(j)
+        self.kill_and_restart_svr()
+        try:
+            j = Job(TEST_USER)
+            self.server.submit(j)
+        except PbsSubmitError as e:
+            err_msg = "Job with requested ID already exists"
+            raise self.failureException(err_msg in e.msg)
