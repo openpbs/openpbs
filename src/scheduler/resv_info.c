@@ -1043,6 +1043,12 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 						 * the required fields.
 						 */
 						release_nodes(nresv_copy);
+						nresv_copy->nspec_arr = parse_execvnode(occr_execvnodes_arr[j],
+							sinfo);
+						nresv_copy->ninfo_arr = create_node_array_from_nspec(
+							nresv_copy->nspec_arr);
+						nresv_copy->resv->resv_nodes = create_resv_nodes(
+							nresv_copy->nspec_arr, sinfo);
 					}
 
 					/* Note that the sequence of occurrence dates and time are determined
@@ -1053,12 +1059,6 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 
 					/* update start time, duration, and execvnodes of the occurrence */
 					nresv_copy->end = nresv_copy->start + nresv_copy->duration ;
-					nresv_copy->nspec_arr = parse_execvnode(occr_execvnodes_arr[j],
-						sinfo);
-					nresv_copy->ninfo_arr = create_node_array_from_nspec(
-						nresv_copy->nspec_arr);
-					nresv_copy->resv->resv_nodes = create_resv_nodes(
-						nresv_copy->nspec_arr, sinfo);
 
 					/* Only add the occurrence to the real universe if we are not
 					 * processing a degraded reservation as otherwise, the resources
@@ -1592,11 +1592,10 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 		schdlog(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv_parent->name,
 			"Reservation Confirmed");
 
-		/* If handling a degraded reservation, we recreate a new execvnode sequence
-		 * string, so the old should be cleared
+		/* If handling a degraded reservation or while altering a standing reservation
+		 * we recreate a new execvnode sequence string, so the old should be cleared.
 		 */
-		if (nresv_parent->resv->resv_substate == RESV_DEGRADED)
-			free(nresv_parent->resv->execvnodes_seq);
+		free(nresv_parent->resv->execvnodes_seq);
 
 		/* set or update (for reconfirmation) the sequence of execvnodes */
 		nresv_parent->resv->execvnodes_seq = short_xc;
