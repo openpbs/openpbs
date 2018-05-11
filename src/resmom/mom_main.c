@@ -1213,8 +1213,8 @@ initialize(void)
 				if ((last_phook != NULL) &&
 				(last_phook->fail_action & \
 					   HOOK_FAIL_ACTION_OFFLINE_VNODES)) {
-					snprintf(log_buffer,
-						sizeof(log_buffer),
+					snprintf(hook_buf,
+						HOOK_BUF_SIZE+1,
 						"1,%s", last_phook->hook_name);
 
 					ret = vn_addvnr(vnlp_from_hook,
