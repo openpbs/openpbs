@@ -154,8 +154,9 @@ def NodesetDelete( nodeset_name ):
             # will use the SGI functionality.
             mom = self.moms[host]
             if mom is not None:
+                environ = {"PBS_PMINAME": "sgi"}
                 self.server.du.set_pbs_environment(host,
-                                                   vars={"PBS_PMINAME": "sgi"})
+                                                   environ=environ)
                 self.server.du.run_cmd(host, "chown root %s" %
                                        os.path.join(mom.pbs_conf[
                                                     'PBS_HOME'],

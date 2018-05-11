@@ -121,9 +121,10 @@ struct pbs_config pbs_conf = {
 	NULL,					/* for router, default communication routers list */
 	0,					/* default comm logevent mask */
 	4,					/* default number of threads */
-	NULL					/* mom short name override */
+	NULL,					/* mom short name override */
+	0					/* high resolution timestamp logging */
 #ifdef WIN32
-	,NULL					/* remote viewer launcher executable alongwith launch options */
+	,NULL					/* remote viewer launcher executable along with launch options */
 #endif
 };
 
@@ -564,6 +565,10 @@ pbs_loadconf(int reload)
 				free(pbs_conf.pbs_mom_node_name);
 				pbs_conf.pbs_mom_node_name = strdup(conf_value);
 			}
+			else if (!strcmp(conf_name, PBS_CONF_LOG_HIGHRES_TIMESTAMP)) {
+				if (sscanf(conf_value, "%u", &uvalue) == 1)
+					pbs_conf.pbs_log_highres_timestamp = ((uvalue > 0) ? 1 : 0);
+			}
 #ifdef WIN32
 			else if (!strcmp(conf_name, PBS_CONF_REMOTE_VIEWER)) {
 				free(pbs_conf.pbs_conf_remote_viewer);
@@ -790,6 +795,10 @@ pbs_loadconf(int reload)
 	if ((gvalue = getenv(PBS_CONF_ENVIRONMENT)) != NULL) {
 		free(pbs_conf.pbs_environment);
 		pbs_conf.pbs_environment = shorten_and_cleanup_path(gvalue);
+	}
+	if ((gvalue = getenv(PBS_CONF_LOG_HIGHRES_TIMESTAMP)) != NULL) {
+		if (sscanf(gvalue, "%u", &uvalue) == 1)
+			pbs_conf.pbs_log_highres_timestamp = ((uvalue > 0) ? 1 : 0);
 	}
 
 #ifdef WIN32

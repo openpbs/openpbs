@@ -257,7 +257,7 @@ class DshUtils(object):
 
         return props
 
-    def _set_file(self, hostname, fin, fout, append, vars):
+    def _set_file(self, hostname, fin, fout, append, variables, sudo=False):
         """
         Create a file out of a set of dictionaries, possibly parsed
         from an input file. @see _parse_file.
@@ -271,7 +271,12 @@ class DshUtils(object):
         :type fout: str
         :param append: If true, append to the output file.
         :type append: bool
-        :param vars: The ``key/value`` pairs to write to fout
+        :param variables: The ``key/value`` pairs to write to fout
+        :type variables: dictionary
+        :param sudo: copy file to destination through sudo
+        :type sudo: boolean
+        :return dictionary of items set
+        :raises PbsConfigError:
         """
         if hostname is None:
             hostname = socket.gethostname()
@@ -280,7 +285,14 @@ class DshUtils(object):
             conf = self._parse_file(hostname, fin)
         else:
             conf = {}
-        conf = dict(conf.items() + vars.items())
+        conf = dict(conf.items() + variables.items())
+        if os.path.isfile(fout):
+            fout_stat = os.stat(fout)
+            user = fout_stat.st_uid
+            group = fout_stat.st_gid
+        else:
+            user = None
+            group = None
 
         try:
             fn = self.create_temp_file()
@@ -288,12 +300,17 @@ class DshUtils(object):
             with open(fn, 'w') as fd:
                 for k, v in conf.items():
                     fd.write(str(k) + '=' + str(v) + '\n')
-            self.run_copy(hostname, fn, fout, level=logging.DEBUG2)
-            self.rm(path=fn)
+            rv = self.run_copy(hostname, fn, fout, uid=user, gid=group,
+                               level=logging.DEBUG2, sudo=sudo)
+            if rv['rc'] != 0:
+                raise PbsConfigError
         except:
             raise PbsConfigError(rc=1, rv=None,
                                  msg='error writing to file ' + str(fout))
-            raise
+        finally:
+            if os.path.isfile(fn):
+                self.rm(path=fn)
+
         return conf
 
     def get_pbs_conf_file(self, hostname=None):
@@ -340,7 +357,7 @@ class DshUtils(object):
         return self._parse_file(hostname, file)
 
     def set_pbs_config(self, hostname=None, fin=None, fout=None,
-                       append=True, confs={}):
+                       append=True, confs=None):
         """
         Set ``environment/configuration`` variables in a
         ``pbs.conf`` file
@@ -356,18 +373,20 @@ class DshUtils(object):
                        to True
         :type append: boolean
         :param confs: The ``key/value`` pairs to create
-        :type confs: Dictionary
+        :type confs: Dictionary or None
         """
         if fin is None:
             fin = self.get_pbs_conf_file(hostname)
         if fout is None and fin is not None:
             fout = fin
-        if confs:
+        if confs is not None:
             self.logger.info('Set ' + str(confs) + ' in ' + fout)
-        return self._set_file(hostname, fin, fout, append, confs)
+        else:
+            confs = {}
+        return self._set_file(hostname, fin, fout, append, confs, sudo=True)
 
     def unset_pbs_config(self, hostname=None, fin=None, fout=None,
-                         confs=[]):
+                         confs=None):
         """
         Unset ``environment/configuration`` variables in a pbs.conf
         file
@@ -380,14 +399,16 @@ class DshUtils(object):
                      to ``/etc/pbs.conf``
         :type fout: str or None
         :param confs: The configuration keys to unset
-        :type confs: List
+        :type confs: List or str or dict or None
         """
         if fin is None:
             fin = self.get_pbs_conf_file(hostname)
 
         if fout is None and fin is not None:
             fout = fin
-        if isinstance(confs, str):
+        if confs is None:
+            confs = []
+        elif isinstance(confs, str):
             confs = confs.split(',')
         elif isinstance(confs, dict):
             confs = confs.keys()
@@ -402,7 +423,7 @@ class DshUtils(object):
             self.logger.info('Unset ' + ",".join(tounset) + ' from ' + fout)
 
         return self._set_file(hostname, fin, fout, append=False,
-                              vars=cur_confs)
+                              variables=cur_confs, sudo=True)
 
     def get_pbs_server_name(self, pbs_conf=None):
         """
@@ -432,11 +453,12 @@ class DshUtils(object):
 
     def set_pbs_environment(self, hostname=None,
                             fin='/var/spool/pbs/pbs_environment', fout=None,
-                            append=True, vars={}):
+                            append=True, environ=None):
         """
         Set the PBS environment
 
-        :param vars: Dictionary
+        :param environ: variables to set
+        :type environ: dict or None
         :param hostname: Hostname of the machine
         :type hostname: str or None
         :param fin: pbs_environment input file
@@ -449,7 +471,46 @@ class DshUtils(object):
         """
         if fout is None and fin is not None:
             fout = fin
-        return self._set_file(hostname, fin, fout, append, vars)
+        if environ is None:
+            environ = {}
+        return self._set_file(hostname, fin, fout, append, environ, sudo=True)
+
+    def unset_pbs_environment(self, hostname=None,
+                              fin='/var/spool/pbs/pbs_environment', fout=None,
+                              environ=None):
+        """
+        Unset environment variables in a pbs_environment file
+
+        :param hostname: the name of the host on which to operate
+        :type hostname: str or None
+        :param fin: the input pbs_environment file
+        :type fin: str
+        :param fout: the name of the output pbs.conf file, defaults
+                     to ``/var/spool/pbs/pbs_environment``
+        :type fout: str or None
+        :param environ: The environment keys to unset
+        :type environ: List or str or dict or None
+        """
+        if fout is None and fin is not None:
+            fout = fin
+        if environ is None:
+            environ = []
+        elif isinstance(environ, str):
+            environ = environ.split(',')
+        elif isinstance(environ, dict):
+            environ = environ.keys()
+
+        tounset = []
+        cur_environ = self.parse_pbs_environment(hostname, fin)
+        for k in environ:
+            if k in cur_environ:
+                tounset.append(k)
+                del cur_environ[k]
+        if tounset:
+            self.logger.info('Unset ' + ",".join(tounset) + ' from ' + fout)
+
+        return self._set_file(hostname, fin, fout, append=False,
+                              variables=cur_environ, sudo=True)
 
     def parse_rhosts(self, hostname=None, user=None):
         """
@@ -542,7 +603,7 @@ class DshUtils(object):
                 fd.write('#!/bin/bash\n')
                 fd.write('cd %s\n' % (home))
                 fd.write('%s -rf %s\n' % (self.which(hostname, 'rm',
-                                          level=logging.DEBUG2),
+                                                     level=logging.DEBUG2),
                                           rhost))
                 fd.write('touch %s\n' % (rhost))
                 for k, v in conf.items():
@@ -556,7 +617,7 @@ class DshUtils(object):
                         l = 'echo "%s %s" >> %s\n' % (str(k), str(v), rhost)
                         fd.write(l)
                 fd.write('%s 0600 %s\n' % (self.which(hostname, 'chmod',
-                                           level=logging.DEBUG2),
+                                                      level=logging.DEBUG2),
                                            rhost))
             ret = self.run_cmd(hostname, cmd=fn, runas=uid)
             self.rm(hostname, path=fn)

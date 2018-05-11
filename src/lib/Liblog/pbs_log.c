@@ -61,6 +61,7 @@
 #include <sys/stat.h>
 #include <sys/param.h>
 #include <sys/types.h>
+#include <sys/time.h>
 #include <limits.h>
 #include <time.h>
 #include <fcntl.h>
@@ -130,6 +131,41 @@ static char *class_names[] = {
 	"TPP"
 };
 
+#ifdef WIN32
+/**
+ * @brief
+ *		gettimeofday - This function returns the current calendar
+ *		time as the elapsed time since the epoch in the struct timeval
+ *		structure indicated by tp
+ *
+ * @param[in] - tp - pointer to timeval struct
+ * @param[in] - tzp - pointer to timezone struct (not used)
+ * @return int
+ * @retval -1 - failure
+ * @retval 0 - success
+ */
+int
+gettimeofday(struct timeval *tp, struct timezone *tzp)
+{
+	FILETIME file_time = {0};
+	ULARGE_INTEGER large_int = {0};
+	/*
+ 	 * Microsecond different from "January 1, 1601 (UTC)" to
+  	 * "00:00:00 January 1, 1970" as Windows's FILESYSTEM is represents from
+ 	 * "January 1, 1601 (UTC)"
+  	 */
+	static const unsigned __int64 epoch = 116444736000000000ULL;
+
+	GetSystemTimeAsFileTime(&file_time);
+	large_int.LowPart = file_time.dwLowDateTime;
+	large_int.HighPart = file_time.dwHighDateTime;
+	tp->tv_sec = (time_t)((large_int.QuadPart - epoch) / 10000000L);
+	tp->tv_usec = (time_t)((large_int.QuadPart - epoch) % 1000000L);
+	return 0;
+}
+#endif
+
+
 /* External functions called */
 
 /**
@@ -142,7 +178,8 @@ static char *class_names[] = {
  * @retval 0 - success
  */
 
-int set_msgdaemonname(char *ch)
+int 
+set_msgdaemonname(char *ch)
 {
 	if(!(msg_daemonname = strdup(ch))) {
 		return 1;
@@ -157,7 +194,8 @@ int set_msgdaemonname(char *ch)
  * @return void
  */
 
-void set_logfile(FILE *fp)
+void 
+set_logfile(FILE *fp)
 {
 	log_opened = 1;
 	logfile = fp;
@@ -181,7 +219,9 @@ void set_logfile(FILE *fp)
 static char *
 mk_log_name(char *pbuf, size_t pbufsz)
 {
+#ifndef WIN32
 	struct tm ltm;
+#endif
 	struct tm *ptm;
 	time_t time_now;
 
@@ -833,13 +873,16 @@ log_suspect_file(const char *func, const char *text, const char *file, struct st
 void
 log_record(int eventtype, int objclass, int sev, const char *objname, const char *text)
 {
-	time_t now;
+	time_t now = 0;
 	struct tm *ptm;
+#ifndef WIN32
 	struct tm ltm;
+#endif
 	int    rc = 0;
 	FILE  *savlog;
 	static char slogbuf[LOG_BUF_SIZE];
-
+	struct timeval tp;
+	char microsec_buf[8] = {0};
 
 #if SYSLOG
 	if (syslogopen != 0) {
@@ -858,7 +901,13 @@ log_record(int eventtype, int objclass, int sev, const char *objname, const char
 	if ((text == NULL) || (objname == NULL))
 		return;
 
-	now = time(NULL);	/* get time for message */
+	/* if gettimeofday() fails, log messages will be printed at the epoch */
+	if (gettimeofday(&tp, NULL) != -1) {
+		now = tp.tv_sec;
+
+		if (pbs_conf.pbs_log_highres_timestamp)
+			snprintf(microsec_buf, sizeof(microsec_buf), ".%06ld", (long)tp.tv_usec);
+	}
 
 #ifdef WIN32
 	ptm = localtime(&now);
@@ -889,14 +938,13 @@ log_record(int eventtype, int objclass, int sev, const char *objname, const char
 
 	if (pbs_conf.locallog != 0 || pbs_conf.syslogfac == 0) {
 		rc = fprintf(logfile,
-			"%02d/%02d/%04d %02d:%02d:%02d;%04x;%s;%s;%s;%s\n",
-			ptm->tm_mon+1, ptm->tm_mday, ptm->tm_year+1900,
-			ptm->tm_hour, ptm->tm_min, ptm->tm_sec,
-			eventtype & ~PBSEVENT_FORCE,
-			msg_daemonname,
-			class_names[objclass],
-			objname,
-			text);
+			     "%02d/%02d/%04d %02d:%02d:%02d%s;%04x;%s;%s;%s;%s\n",
+			     ptm->tm_mon + 1, ptm->tm_mday, ptm->tm_year + 1900,
+			     ptm->tm_hour, ptm->tm_min, ptm->tm_sec, microsec_buf,
+			     eventtype & ~PBSEVENT_FORCE, msg_daemonname,
+			     class_names[objclass], objname, text);
+
+
 
 		(void)fflush(logfile);
 		if (rc < 0) {

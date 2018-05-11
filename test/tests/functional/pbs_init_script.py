@@ -43,23 +43,29 @@ class TestPbsInitScript(TestFunctional):
     """
     Testing PBS Pro init script
     """
+
     def test_env_vars_precede_pbs_conf_file(self):
         """
         Test PBS_START environment variables overrides values in pbs.conf file
         """
-        self.du.run_cmd(cmd=['/etc/init.d/pbs', 'stop'])
-
         conf = {'PBS_START_SERVER': '1', 'PBS_START_SCHED': '1',
-                'PBS_START_COMM': '1', 'PBS_START_MOM': '0'}
+                'PBS_START_COMM': '1', 'PBS_START_MOM': '1'}
         self.du.set_pbs_config(confs=conf)
 
-        env = {'PBS_START_SERVER': '0', 'PBS_START_SCHED': '0',
-               'PBS_START_COMM': '0', 'PBS_START_MOM': '1'}
+        pbs_init = os.path.join(os.sep, 'etc', 'init.d', 'pbs')
+        self.du.run_cmd(cmd=[pbs_init, 'stop'], sudo=True)
 
-        rc = self.du.run_cmd(cmd=['/etc/init.d/pbs', 'start'], env=env)
+        conf['PBS_START_MOM'] = '0'
+        self.du.set_pbs_config(confs=conf)
+
+        cmd = ['PBS_START_SERVER=0', 'PBS_START_SCHED=0',
+               'PBS_START_COMM=0', 'PBS_START_MOM=1',
+               pbs_init, 'start']
+
+        rc = self.du.run_cmd(cmd=cmd, as_script=True, sudo=True)
         output = rc['out']
 
-        self.assertFalse("PBS server" in output)
-        self.assertFalse("PBS sched" in output)
-        self.assertFalse("PBS comm" in output)
-        self.assertTrue("PBS mom" in output)
+        self.assertNotIn("PBS server", output)
+        self.assertNotIn("PBS sched", output)
+        self.assertNotIn("PBS comm", output)
+        self.assertIn("PBS mom", output)

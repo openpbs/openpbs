@@ -82,6 +82,7 @@ const char *mid_path[] = {"server_priv/accounting", "server_logs", "mom_logs",
 struct log_entry *log_lines;
 int ll_cur_amm;
 int ll_max_amm;
+int has_high_res_timestamp = 0;
 
 static char none[1] = { '\0' };
 /**
@@ -337,8 +338,14 @@ main(int argc, char *argv[])
 				else
 					event_type = strtol(log_lines[i].event, &endp, 16);
 				if (!(log_filter & event_type) && !(log_lines[i].no_print)) {
-					printf("%-20s %-5c", log_lines[i].date, log_lines[i].log_file);
-					line_wrap(log_lines[i].msg, 26, wrap);
+					if (has_high_res_timestamp) {
+						printf("%-27s %-5c", log_lines[i].date, log_lines[i].log_file);
+						line_wrap(log_lines[i].msg, 33, wrap);
+					} else {
+						printf("%-20s %-5c", log_lines[i].date, log_lines[i].log_file);
+						line_wrap(log_lines[i].msg, 26, wrap);
+					}
+
 				}
 			}
 		}
@@ -349,10 +356,10 @@ main(int argc, char *argv[])
 			 */
 			unknw_job = 1;
 			if (strchr(argv[opt], '.') == NULL)
-			  fprintf(stderr, "\ntracejob: Couldn't find Job Id %s.%s in logs of past %d day%s\n\n", argv[opt],
+				fprintf(stderr, "\ntracejob: Couldn't find Job Id %s.%s in logs of past %d day%s\n\n", argv[opt],
 					pbs_conf.pbs_server_name, number_of_days, number_of_days == 1 ? "" : "s");
 			else
-			  fprintf(stderr, "\ntracejob: Couldn't find Job Id %s in logs of past %d day%s\n\n", argv[opt],
+				fprintf(stderr, "\ntracejob: Couldn't find Job Id %s in logs of past %d day%s\n\n", argv[opt],
 					number_of_days, number_of_days == 1 ? "" : "s");
 		}
 	}
@@ -480,14 +487,41 @@ parse_log(FILE *fp, char *job, int ind)
 			free_log_entry(&log_lines[ll_cur_amm]);
 
 			if (tmp.date != NULL) {
+				/*
+				 * We need to parse the time string.
+				 * The string will either have high res logging or not.
+				 * The high res logging is after the dot after the seconds field.
+				 */
 				log_lines[ll_cur_amm].date = strdup(tmp.date);
-				if (sscanf(tmp.date, "%d/%d/%d %d:%d:%d", &tms.tm_mon, &tms.tm_mday, &tms.tm_year, &tms.tm_hour, &tms.tm_min, &tms.tm_sec) != 6)
-					log_lines[ll_cur_amm].date_time = -1;	/* error in date field */
-				else {
-					if (tms.tm_year > 1900)
-						tms.tm_year -= 1900;
-					tms.tm_mon--;         /* The number of months since January, in the range 0 to 11 for mktime */
-					log_lines[ll_cur_amm].date_time = mktime(&tms);
+				if ((ind != IND_ACCT) && (strchr(tmp.date, '.'))) {
+					/* Parse time string looking for high res logging.  If we don't parse 7 fields, we have a invalid log time. */
+					if (sscanf(tmp.date, "%d/%d/%d %d:%d:%d.%ld", &tms.tm_mon, 
+					    &tms.tm_mday, &tms.tm_year, &tms.tm_hour, &tms.tm_min, 
+					    &tms.tm_sec, &(log_lines[ll_cur_amm].highres)) != 7) {
+						log_lines[ll_cur_amm].date_time = -1;	/* error in date field */
+						log_lines[ll_cur_amm].highres = NO_HIGH_RES_TIMESTAMP;
+					} else { /* We found all 7 fields, correctly formed time string */
+						has_high_res_timestamp = 1;
+						if (tms.tm_year > 1900)
+							tms.tm_year -= 1900;
+						/* The number of months since January, 
+ 						 * in the range 0 to 11 for mktime()
+ 						 */
+						tms.tm_mon--;
+						log_lines[ll_cur_amm].date_time = mktime(&tms);
+					}
+				} else { /* Normal time string */
+					if (sscanf(tmp.date, "%d/%d/%d %d:%d:%d", &tms.tm_mon, &tms.tm_mday, 
+					    &tms.tm_year, &tms.tm_hour, &tms.tm_min, &tms.tm_sec) != 6) {
+						log_lines[ll_cur_amm].date_time = -1;	/* error in date field */
+					} else { /* We found all 6 fields, correctly formed time string */
+						if (tms.tm_year > 1900)
+							tms.tm_year -= 1900;
+						tms.tm_mon--;         /* The number of months since January, in the range 0 to 11 for mktime */
+						log_lines[ll_cur_amm].date_time = mktime(&tms);
+					}
+					log_lines[ll_cur_amm].highres = NO_HIGH_RES_TIMESTAMP;
+
 				}
 			}
 			if (tmp.event != NULL)
@@ -539,7 +573,7 @@ parse_log(FILE *fp, char *job, int ind)
 /**
  * @brief
  *		sort_by_date - compare function for qsort.  It compares two time_t
- *			variables
+ *			variables and high resolution time stamp (if set)
  *
  * @param[in]	v1	-	log_entry structure1 which contains time_t variables.
  * @param[in]	v1	-	log_entry structure2 which contains time_t variables.
@@ -563,6 +597,13 @@ sort_by_date(const void *v1, const void *v2)
 	else if (l1->date_time > l2->date_time)
 		return 1;
 	else {
+		if ((l1->highres != NO_HIGH_RES_TIMESTAMP) && (l2->highres != NO_HIGH_RES_TIMESTAMP)) {
+			if (l1->highres < l2->highres)
+				return -1;
+			else if (l1->highres > l2->highres)
+				return 1;
+		}
+
 		if (l1->log_file == l2->log_file) {
 			if (l1->lineno < l2->lineno)
 				return -1;

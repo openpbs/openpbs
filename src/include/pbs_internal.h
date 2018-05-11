@@ -233,6 +233,7 @@ struct pbs_config
 	long  pbs_comm_log_events;      /* log_events for pbs_comm process, default 0 */
 	unsigned int pbs_comm_threads;	/* number of threads for router, default 4 */
 	char *pbs_mom_node_name;	/* mom short name used for natural node, default NULL */
+	unsigned int pbs_log_highres_timestamp; /* high resolution logging */
 #ifdef WIN32
 	char *pbs_conf_remote_viewer; /* Remote viewer client executable for PBS GUI jobs, along with launch options */
 #endif
@@ -295,6 +296,7 @@ extern struct pbs_config pbs_conf;
 #define PBS_CONF_AUTH           "PBS_AUTH_METHOD"
 #define PBS_CONF_SCHEDULER_MODIFY_EVENT	"PBS_SCHEDULER_MODIFY_EVENT"
 #define PBS_CONF_MOM_NODE_NAME	"PBS_MOM_NODE_NAME"
+#define PBS_CONF_LOG_HIGHRES_TIMESTAMP	"PBS_LOG_HIGHRES_TIMESTAMP"
 #ifdef WIN32
 #define PBS_CONF_REMOTE_VIEWER "PBS_REMOTE_VIEWER"	/* Executable for remote viewer application alongwith its launch options, for PBS GUI jobs */
 #endif

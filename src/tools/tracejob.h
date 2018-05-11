@@ -92,14 +92,15 @@ enum field
 /* A PBS log entry */
 struct log_entry
 {
-	char *date;           /* date of log entry */
-	time_t date_time;     /* number of seconds from the epoch to date */
-	char *event;          /* event type */
-	char *obj;            /* what entity is writing the log */
-	char *type;           /* type of object Job/Svr/etc */
-	char *name;           /* name of object */
-	char *msg;            /* log message */
-	char log_file;        /* What log file */
+	char *date;		/* date of log entry */
+	time_t date_time;	/* number of seconds from the epoch to date */
+	long highres;	  	/* high resolution portion of the log entry (number smaller than seconds) */
+	char *event;		/* event type */
+	char *obj;		/* what entity is writing the log */
+	char *type;		/* type of object Job/Svr/etc */
+	char *name;		/* name of object */
+	char *msg;		/* log message */
+	char log_file;		/* What log file */
 	int lineno;		/* what line in the file.  used to stabilize the sort */
 	unsigned no_print:1;	/* whether or not to print the message */
 	/* A=accounting S=server M=Mom L=Scheduler */
@@ -119,6 +120,9 @@ char *log_path(char *path, int index, int month, int day, int year);
 void alloc_more_space();
 void filter_excess(int threshold);
 int sort_by_message(const void *v1, const void *v2);
+
+/* Macros */
+#define NO_HIGH_RES_TIMESTAMP -1
 
 
 /* used by getopt(3) */
