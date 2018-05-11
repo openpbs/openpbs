@@ -51,8 +51,8 @@ How to install PBS Pro using the configure script.
 3. Open a terminal as a normal (non-root) user, unpack the PBS Pro
   tarball, and cd to the package directory.
 
-    tar -xpvf pbspro-18.1.0.tar.gz
-    cd pbspro-18.1.0
+    tar -xpvf pbspro-18.1.1.tar.gz
+    cd pbspro-18.1.1
 
 4. Generate the configure script and Makefiles. (See note 1 below)
 
