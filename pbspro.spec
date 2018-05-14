@@ -132,7 +132,6 @@ Requires: bash
 Requires: expat
 Requires: libedit
 Requires: postgresql-server
-Requires: postgresql-upgrade
 Requires: python >= 2.6
 Requires: python < 3.0
 Requires: tcl
@@ -140,9 +139,11 @@ Requires: tk
 %if %{defined suse_version}
 Requires: smtp_daemon
 Requires: libical1
+Requires: postgresql-contrib
 %else
 Requires: smtpdaemon
 Requires: libical
+Requires: postgresql-upgrade
 %endif
 Autoreq: 1
 
