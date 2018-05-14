@@ -132,6 +132,7 @@ Requires: bash
 Requires: expat
 Requires: libedit
 Requires: postgresql-server
+Requires: postgresql-upgrade
 Requires: python >= 2.6
 Requires: python < 3.0
 Requires: tcl
@@ -253,14 +254,28 @@ imps=0
 cle_release_version=0
 cle_release_path=/etc/opt/cray/release/cle-release
 if [ -f ${cle_release_path} ]; then
-        cle_release_version=`grep RELEASE ${cle_release_path} | cut -f2 -d= | cut -f1 -d.`
+	cle_release_version=`grep RELEASE ${cle_release_path} | cut -f2 -d= | cut -f1 -d.`
 fi
 [ "${cle_release_version}" -ge 6 ] 2>/dev/null && imps=1
 if [ $imps -eq 0 ]; then
-${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_postinstall server \
-	%{version} ${RPM_INSTALL_PREFIX:=%{pbs_prefix}} %{pbs_home} %{pbs_dbuser}
+	${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_postinstall server \
+		%{version} ${RPM_INSTALL_PREFIX:=%{pbs_prefix}} %{pbs_home} %{pbs_dbuser}
 else
-        install -D %{pbs_prefix}/libexec/pbs_init.d /etc/init.d/pbs
+	install -D %{pbs_prefix}/libexec/pbs_init.d /etc/init.d/pbs
+fi
+if [ "$1" = "2" ]; then
+	# The %preun section of 14.x unconditially removes /etc/init.d/pbs
+	setsid nohup /bin/bash >/dev/null 2>&1 <<EOF &
+let i=0
+while [ \$i -lt 60 ]; do
+  if [ ! -r /etc/init.d/pbs ]; then
+    install -D %{pbs_prefix}/libexec/pbs_init.d /etc/init.d/pbs
+    break
+  fi
+  let i+=1
+  sleep 1
+done
+EOF
 fi
 
 %post %{pbs_execution}
@@ -269,14 +284,28 @@ imps=0
 cle_release_version=0
 cle_release_path=/etc/opt/cray/release/cle-release
 if [ -f ${cle_release_path} ]; then
-        cle_release_version=`grep RELEASE ${cle_release_path} | cut -f2 -d= | cut -f1 -d.`
+	cle_release_version=`grep RELEASE ${cle_release_path} | cut -f2 -d= | cut -f1 -d.`
 fi
 [ "${cle_release_version}" -ge 6 ] 2>/dev/null && imps=1
 if [ $imps -eq 0 ]; then
-${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_postinstall execution \
-	%{version} ${RPM_INSTALL_PREFIX:=%{pbs_prefix}} %{pbs_home}
+	${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_postinstall execution \
+		%{version} ${RPM_INSTALL_PREFIX:=%{pbs_prefix}} %{pbs_home}
 else
-        install -D %{pbs_prefix}/libexec/pbs_init.d /etc/init.d/pbs
+	install -D %{pbs_prefix}/libexec/pbs_init.d /etc/init.d/pbs
+fi
+if [ "$1" = "2" ]; then
+	# The %preun section of 14.x unconditially removes /etc/init.d/pbs
+	setsid nohup /bin/bash >/dev/null 2>&1 <<EOF &
+let i=0
+while [ \$i -lt 60 ]; do
+  if [ ! -r /etc/init.d/pbs ]; then
+    install -D %{pbs_prefix}/libexec/pbs_init.d /etc/init.d/pbs
+    break
+  fi
+  let i+=1
+  sleep 1
+done
+EOF
 fi
 
 %post %{pbs_client}
@@ -285,14 +314,12 @@ imps=0
 cle_release_version=0
 cle_release_path=/etc/opt/cray/release/cle-release
 if [ -f ${cle_release_path} ]; then
-        cle_release_version=`grep RELEASE ${cle_release_path} | cut -f2 -d= | cut -f1 -d.`
+	cle_release_version=`grep RELEASE ${cle_release_path} | cut -f2 -d= | cut -f1 -d.`
 fi
 [ "${cle_release_version}" -ge 6 ] 2>/dev/null && imps=1
 if [ $imps -eq 0 ]; then
-${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_postinstall client \
-	%{version} ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}
-else
-        install -D %{pbs_prefix}/libexec/pbs_init.d /etc/init.d/pbs
+	${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_postinstall client \
+		%{version} ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}
 fi
 
 %preun %{pbs_server}
