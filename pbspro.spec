@@ -264,20 +264,6 @@ if [ $imps -eq 0 ]; then
 else
 	install -D %{pbs_prefix}/libexec/pbs_init.d /etc/init.d/pbs
 fi
-if [ "$1" = "2" ]; then
-	# The %preun section of 14.x unconditially removes /etc/init.d/pbs
-	setsid nohup /bin/bash >/dev/null 2>&1 <<EOF &
-let i=0
-while [ \$i -lt 60 ]; do
-  if [ ! -r /etc/init.d/pbs ]; then
-    install -D %{pbs_prefix}/libexec/pbs_init.d /etc/init.d/pbs
-    break
-  fi
-  let i+=1
-  sleep 1
-done
-EOF
-fi
 
 %post %{pbs_execution}
 # do not run pbs_postinstall when the CLE is greater than or equal to 6
@@ -293,20 +279,6 @@ if [ $imps -eq 0 ]; then
 		%{version} ${RPM_INSTALL_PREFIX:=%{pbs_prefix}} %{pbs_home}
 else
 	install -D %{pbs_prefix}/libexec/pbs_init.d /etc/init.d/pbs
-fi
-if [ "$1" = "2" ]; then
-	# The %preun section of 14.x unconditially removes /etc/init.d/pbs
-	setsid nohup /bin/bash >/dev/null 2>&1 <<EOF &
-let i=0
-while [ \$i -lt 60 ]; do
-  if [ ! -r /etc/init.d/pbs ]; then
-    install -D %{pbs_prefix}/libexec/pbs_init.d /etc/init.d/pbs
-    break
-  fi
-  let i+=1
-  sleep 1
-done
-EOF
 fi
 
 %post %{pbs_client}
@@ -400,6 +372,22 @@ if [ "$1" != "1" ]; then
 	echo
 	echo "NOTE: /etc/pbs.conf must be deleted manually"
 	echo
+fi
+
+%posttrans %{pbs_server}
+# The %preun section of 14.x unconditially removes /etc/init.d/pbs
+# because it does not check whether the package is being removed
+# or upgraded. Make sure it exists here.
+if [ -r %{pbs_prefix}/libexec/pbs_init.d ]; then
+    install -D %{pbs_prefix}/libexec/pbs_init.d /etc/init.d/pbs
+fi
+
+%posttrans %{pbs_execution}
+# The %preun section of 14.x unconditially removes /etc/init.d/pbs
+# because it does not check whether the package is being removed
+# or upgraded. Make sure it exists here.
+if [ -r %{pbs_prefix}/libexec/pbs_init.d ]; then
+    install -D %{pbs_prefix}/libexec/pbs_init.d /etc/init.d/pbs
 fi
 
 %files %{pbs_server}
