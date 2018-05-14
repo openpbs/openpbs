@@ -4952,9 +4952,9 @@ alps_request_parent(int fdin, char *basil_ver)
 			__func__, log_buffer);
 		snprintf(brp->error, BASIL_ERROR_BUFFER_SIZE, ud.message);
 		if (strcmp(BASIL_VAL_PARSER, ud.error_source) == 0) {
-			sprintf(log_buffer, "XML buffer: %s", expatBuffer);
+			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG, __func__, "XML buffer: ");
 			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE,
-				LOG_DEBUG, __func__, log_buffer);
+				LOG_DEBUG, __func__, expatBuffer);
 		}
 	}
 	XML_ParserFree(parser);
