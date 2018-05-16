@@ -1015,20 +1015,22 @@ class JobUtils(object):
                  repr(self.hostname),
                  repr(self.assigned_resources)))
 
-    def _get_assigned_job_resources(self):
+    def _get_assigned_job_resources(self, hostname=None):
         """
         Return a dictionary of assigned resources on the local node
         """
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
         # Bail out if no hostname was provided
-        if self.hostname is None:
+        if not hostname:
+            hostname = self.hostname
+        if not hostname:
             raise CgroupProcessingError('No hostname available')
         # Bail out if no job information is present
         if self.job is None:
             raise CgroupProcessingError('No job information available')
         # Create a list of local vnodes
         vnodes = []
-        vnhost_pattern = r'%s\[[\d+]\]' % self.hostname
+        vnhost_pattern = r'%s\[[\d+]\]' % hostname
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: vnhost pattern: %s' %
                    (caller_name(), vnhost_pattern))
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Job exec_vnode list: %s' %
@@ -1038,7 +1040,7 @@ class JobUtils(object):
             vnodes.append(match)
         if vnodes:
             pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Vnodes on %s: %s' %
-                       (caller_name(), self.hostname, vnodes))
+                       (caller_name(), hostname, vnodes))
         # Collect host assigned resources
         resources = {}
         for chunk in self.job.exec_vnode.chunks:
@@ -1070,7 +1072,7 @@ class JobUtils(object):
                            (caller_name(), chunk.vnode_name, resources))
             else:
                 # Vnodes list is empty
-                if chunk.vnode_name != self.hostname:
+                if chunk.vnode_name != hostname:
                     continue
             for resc in chunk.chunk_resources.keys():
                 if resc not in resources.keys():
@@ -1082,7 +1084,7 @@ class JobUtils(object):
                     resources[resc] += chunk.chunk_resources[resc]
                     pbs.logmsg(pbs.EVENT_DEBUG4,
                                '%s: resources[%s][%s] is now %s' %
-                               (caller_name(), self.hostname, resc,
+                               (caller_name(), hostname, resc,
                                 resources[resc]))
                     if vnodes:
                         resources['vnodes'][chunk.vnode_name][resc] += \
@@ -1098,11 +1100,28 @@ class JobUtils(object):
                             str(chunk.chunk_resources[resc])
         if resources:
             pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Resources for %s: %s' %
-                       (caller_name(), self.hostname, repr(resources)))
-        else:
-            pbs.logmsg(pbs.EVENT_DEBUG2,
-                       '%s: No resources assigned to host %s' %
-                       (caller_name(), self.hostname))
+                       (caller_name(), hostname, repr(resources)))
+            # Return assigned resources for specified host
+            return resources
+        # Workaround for systems where node is short hostname
+        pbs.logmsg(pbs.EVENT_DEBUG2,
+                   '%s: No resources assigned to host %s' %
+                   (caller_name(), hostname))
+        try:
+            cmd = ['hostname', '-s']
+            process = subprocess.Popen(cmd, shell=False,
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE)
+            out, err = process.communicate()
+        except KeyboardInterrupt:
+            raise
+        except:
+            pbs.logmsg(pbs.EVENT_DEBUG4, 'Failed to execute: %s' %
+                       string.join(cmd, ' '))
+            return resources
+        shorthostname = out.strip()
+        if shorthostname and shorthostname != hostname:
+            return self._get_assigned_job_resources(hostname=shorthostname)
         # Return assigned resources for specified host
         return resources
 
@@ -2392,7 +2411,8 @@ class CgroupUtils(object):
             except KeyboardInterrupt:
                 raise
             except:
-                pbs.logmsg(pbs.EVENT_DEBUG, '%s: Failed to delete slice file: %s' %
+                pbs.logmsg(pbs.EVENT_DEBUG,
+                           '%s: Failed to delete slice file: %s' %
                            (caller_name(), slicefile))
                 raise
         else:
