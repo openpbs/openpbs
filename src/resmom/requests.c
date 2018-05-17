@@ -3423,7 +3423,7 @@ req_cpyfile(struct batch_request *preq)
 		}
 	}
 
-	if (dir == STAGE_DIR_OUT && direct_write_requested(pjob))
+	if ((pjob != NULL) && (dir == STAGE_DIR_OUT) && direct_write_requested(pjob))
 		stage_inout.direct_write = 1;
 	else
 		stage_inout.direct_write = 0;
