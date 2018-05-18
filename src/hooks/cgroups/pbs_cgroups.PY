@@ -79,7 +79,7 @@ import pwd
 import fnmatch
 try:
     import json
-except:
+except Exception:
     import simplejson as json
 import pbs
 
@@ -217,9 +217,7 @@ def convert_size(value, units='b'):
         if val <= 0:
             return '0'
         return str(val) + new
-    except KeyboardInterrupt:
-        raise
-    except:
+    except Exception:
         return None
 
 
@@ -483,8 +481,6 @@ def printjob_info(jobid, include_attributes=False):
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE)
         out, err = process.communicate()
-    except KeyboardInterrupt:
-        raise
     except Exception as exc:
         pbs.logmsg(pbs.EVENT_DEBUG2, 'Error running command: %s' % cmd)
         pbs.logmsg(pbs.EVENT_DEBUG2, 'Error message: %s' % err)
@@ -828,9 +824,7 @@ class HookUtils(object):
                 os.remove(filename)
             except OSError:
                 pbs.logmsg(pbs.EVENT_DEBUG4, 'File: %s not found' % (filename))
-            except KeyboardInterrupt:
-                raise
-            except:
+            except Exception:
                 pbs.logmsg(pbs.EVENT_DEBUG4,
                            'Error removing file: %s' % (filename))
         return True
@@ -882,9 +876,7 @@ class HookUtils(object):
                             comment = \
                                 pbs.server().vnode(cgroup.hostname).comment
                         pbs.logmsg(pbs.EVENT_DEBUG4, 'Comment: %s' % comment)
-                except KeyboardInterrupt:
-                    raise
-                except:
+                except Exception:
                     pbs.logmsg(pbs.EVENT_DEBUG,
                                'Unable to contact server for node comment')
                     comment = None
@@ -900,9 +892,7 @@ class HookUtils(object):
                 # Remove file
                 try:
                     os.remove(cgroup.offline_file)
-                except KeyboardInterrupt:
-                    raise
-                except:
+                except Exception:
                     pbs.logmsg(pbs.EVENT_DEBUG, '%s: Failed to remove %s' %
                                (caller_name(), msg))
         # Update the resource usage information for each job
@@ -914,9 +904,7 @@ class HookUtils(object):
                 try:
                     cgroup.update_job_usage(jobid, (event.job_list[jobid]
                                                     .resources_used))
-                except KeyboardInterrupt:
-                    raise
-                except:
+                except Exception:
                     pbs.logmsg(pbs.EVENT_DEBUG, '%s: Failed to update %s' %
                                (caller_name(), jobid))
         return True
@@ -946,9 +934,7 @@ class HookUtils(object):
                             pbs.size(convert_size(val, 'kb'))
                 try:
                     cgroup.set_limit('mem', val)
-                except KeyboardInterrupt:
-                    raise
-                except:
+                except Exception:
                     result = False
             if 'memsw' in cgroup.subsystems:
                 val = node.get_vmem_on_node()
@@ -957,9 +943,7 @@ class HookUtils(object):
                         pbs.size(convert_size(val, 'kb'))
                     try:
                         cgroup.set_limit('vmem', val)
-                    except KeyboardInterrupt:
-                        raise
-                    except:
+                    except Exception:
                         result = False
             if 'hugetlb' in cgroup.subsystems:
                 val = node.get_hpmem_on_node()
@@ -968,9 +952,7 @@ class HookUtils(object):
                         pbs.size(convert_size(val, 'kb'))
                     try:
                         cgroup.set_limit('hpmem', val)
-                    except KeyboardInterrupt:
-                        raise
-                    except:
+                    except Exception:
                         result = False
             if result:
                 return True
@@ -1113,9 +1095,7 @@ class JobUtils(object):
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE)
             out, err = process.communicate()
-        except KeyboardInterrupt:
-            raise
-        except:
+        except Exception:
             pbs.logmsg(pbs.EVENT_DEBUG4, 'Failed to execute: %s' %
                        string.join(cmd, ' '))
             return resources
@@ -1136,9 +1116,7 @@ class JobUtils(object):
                 return
             with open(filename, 'a') as desc:
                 desc.write(msg)
-        except KeyboardInterrupt:
-            raise
-        except:
+        except Exception:
             pass
 
     def write_to_stdout(self, job, msg):
@@ -1152,9 +1130,7 @@ class JobUtils(object):
                 return
             with open(filename, 'a') as desc:
                 desc.write(msg)
-        except KeyboardInterrupt:
-            raise
-        except:
+        except Exception:
             pass
 
 
@@ -1440,9 +1416,7 @@ class NodeConfig(object):
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE)
             out, err = process.communicate()
-        except KeyboardInterrupt:
-            raise
-        except:
+        except Exception:
             pbs.logmsg(pbs.EVENT_DEBUG4, 'Failed to execute: %s' %
                        string.join(cmd, ' '))
             pbs.logmsg(pbs.EVENT_DEBUG2, '%s: No GPUs found' % caller_name())
@@ -1570,9 +1544,7 @@ class NodeConfig(object):
                                     threads.append(yid)
                         pbs.logmsg(pbs.EVENT_DEBUG4, 'HT cores: %s' % threads)
                         cpuinfo['hyperthreads'] = threads
-        except KeyboardInterrupt:
-            raise
-        except:
+        except Exception:
             pbs.logmsg(pbs.EVENT_DEBUG, '%s: Hyperthreading check failed' %
                        caller_name())
         cpuinfo['physical_cpus'] = cpuinfo['logical_cpus'] / \
@@ -1600,9 +1572,7 @@ class NodeConfig(object):
             for jobid in [os.path.splitext(os.path.basename(x))[0] for x in
                           glob.glob(os.path.join(PBS_MOM_JOBS, '*.JB'))]:
                 jobset.add(jobid)
-        except KeyboardInterrupt:
-            raise
-        except:
+        except Exception:
             pbs.logmsg(pbs.EVENT_DEBUG, 'Could not get job list for %s' %
                        self.hostname)
         pbs.logmsg(pbs.EVENT_DEBUG4, 'Local job set: %s' % jobset)
@@ -1636,9 +1606,7 @@ class NodeConfig(object):
                 total = size_as_int(self.meminfo['MemTotal'])
             else:
                 total = size_as_int(memtotal)
-        except KeyboardInterrupt:
-            raise
-        except:
+        except Exception:
             pbs.logmsg(pbs.EVENT_DEBUG,
                        '%s: Could not determine total node memory' %
                        caller_name())
@@ -1694,9 +1662,7 @@ class NodeConfig(object):
                 swap = size_as_int(self.meminfo['SwapTotal'])
             else:
                 swap = size_as_int(vmemtotal)
-        except KeyboardInterrupt:
-            raise
-        except:
+        except Exception:
             pbs.logmsg(pbs.EVENT_DEBUG,
                        '%s: Could not determine total node swap' %
                        caller_name())
@@ -1761,9 +1727,7 @@ class NodeConfig(object):
                           self.meminfo['HugePages_Rsvd'])
             else:
                 total = size_as_int(hpmemtotal)
-        except KeyboardInterrupt:
-            raise
-        except:
+        except Exception:
             pbs.logmsg(pbs.EVENT_DEBUG,
                        '%s: Could not determine huge page availability' %
                        caller_name())
@@ -1809,11 +1773,18 @@ class NodeConfig(object):
             vnodes = False
             pbs.logmsg(pbs.EVENT_DEBUG4,
                        '%s: vnode_per_numa_node is disabled' % caller_name())
-        vnode_name = self.hostname
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: numa nodes: %s' %
                    (caller_name(), self.numa_nodes))
+        vnode_name = self.hostname
+        # In some cases the hostname and vnode name do not match
+        if vnode_name not in vnode_list:
+            vnkeys = vnode_list.keys()
+            if len(vnkeys) == 1:
+                vnode_name = vnkeys[0]
+            else:
+                raise ProcessingError('Could not identify local vnode')
         vnode_list[vnode_name] = pbs.vnode(vnode_name)
-        host_resc_avail = vnode_list[self.hostname].resources_available
+        host_resc_avail = vnode_list[vnode_name].resources_available
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: host_resc_avail: %s' %
                    (caller_name(), host_resc_avail))
         # Set the vnode type if supplied
@@ -1825,9 +1796,9 @@ class NodeConfig(object):
         vnode_msg_mem = '%s: vnode_list[%s].resources_available[mem] = %s'
         for nnid in self.numa_nodes:
             if vnodes:
-                vnode_name = self.hostname + '[%d]' % nnid
-                vnode_list[vnode_name] = pbs.vnode(vnode_name)
-                vnode_resc_avail = vnode_list[vnode_name].resources_available
+                vnode_key = vnode_name + '[%d]' % nnid
+                vnode_list[vnode_key] = pbs.vnode(vnode_name)
+                vnode_resc_avail = vnode_list[vnode_key].resources_available
                 if vntype:
                     vnode_resc_avail['vntype'] = vntype
             for key, val in sorted(self.numa_nodes[nnid].iteritems()):
@@ -1855,7 +1826,7 @@ class NodeConfig(object):
                         # set the value on the host to 0
                         host_resc_avail['ncpus'] = 0
                         pbs.logmsg(pbs.EVENT_DEBUG4, vnode_msg_cpu %
-                                   (caller_name(), self.hostname,
+                                   (caller_name(), vnode_name,
                                     host_resc_avail['ncpus']))
                         # set the vnode value
                         vnode_resc_avail['ncpus'] = threads
@@ -1871,7 +1842,7 @@ class NodeConfig(object):
                         # update the cumulative value
                         host_resc_avail['ncpus'] += threads
                         pbs.logmsg(pbs.EVENT_DEBUG4, vnode_msg_cpu %
-                                   (caller_name(), self.hostname,
+                                   (caller_name(), vnode_name,
                                     host_resc_avail['ncpus']))
                 elif key == 'MemTotal':
                     mem = self.get_memory_on_node(memtotal=val)
@@ -1892,7 +1863,7 @@ class NodeConfig(object):
                             host_resc_avail['vmem'] = pbs.size('0kb')
                         host_resc_avail['vmem'] += mem
                         pbs.logmsg(pbs.EVENT_DEBUG4, vnode_msg_mem %
-                                   (caller_name(), self.hostname,
+                                   (caller_name(), vnode_name,
                                     str(host_resc_avail['mem'])))
                 elif key == 'HugePages_Total':
                     # Used for the natural vnode
@@ -1922,7 +1893,7 @@ class NodeConfig(object):
                                 host_resc_avail[key] = initialize_resource(val)
                         host_resc_avail[key] += val
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: vnode list: %s' %
-                   (caller_name(), vnode_list))
+                   (caller_name(), str(vnode_list)))
         if vnodes:
             pbs.logmsg(pbs.EVENT_DEBUG4, '%s: vnode_resc_avail: %s' %
                        (caller_name(), vnode_resc_avail))
@@ -2184,9 +2155,7 @@ class CgroupUtils(object):
             return None
         try:
             subdir, prefix = os.path.split(self.paths[subsys])
-        except KeyboardInterrupt:
-            raise
-        except:
+        except Exception:
             return None
         if not cgfile:
             if jobid:
@@ -2354,8 +2323,6 @@ class CgroupUtils(object):
                 elif subsys == 'cpuset':
                     self._copy_from_parent(self._cgroup_path(subsys, 'cpus'))
                     self._copy_from_parent(self._cgroup_path(subsys, 'mems'))
-        except KeyboardInterrupt:
-            raise
         except Exception as exc:
             raise CgroupConfigError('Failed to create cgroup paths: %s' % exc)
         finally:
@@ -2384,9 +2351,7 @@ class CgroupUtils(object):
                            'Delegate=yes\n'
                            'TasksMax=infinity\n' % description)
                 desc.truncate()
-        except KeyboardInterrupt:
-            raise
-        except:
+        except Exception:
             pbs.logmsg(pbs.EVENT_DEBUG, '%s: Failed to write slice file: %s' %
                        (caller_name(), slicefile))
             raise
@@ -2396,9 +2361,7 @@ class CgroupUtils(object):
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE)
             out, err = process.communicate()
-        except KeyboardInterrupt:
-            raise
-        except:
+        except Exception:
             pbs.logmsg(pbs.EVENT_DEBUG,
                        '%s: Failed to start systemd slice: %s' %
                        (caller_name(), os.path.basename(slicefile)))
@@ -2425,9 +2388,7 @@ class CgroupUtils(object):
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE)
             out, err = process.communicate()
-        except KeyboardInterrupt:
-            raise
-        except:
+        except Exception:
             pbs.logmsg(pbs.EVENT_DEBUG,
                        '%s: Failed to stop systemd slice: %s' %
                        (caller_name(), os.path.basename(slicefile)))
@@ -2437,9 +2398,7 @@ class CgroupUtils(object):
                        (caller_name(), slicefile))
             try:
                 os.remove(slicefile)
-            except KeyboardInterrupt:
-                raise
-            except:
+            except Exception:
                 pbs.logmsg(pbs.EVENT_DEBUG,
                            '%s: Failed to delete slice file: %s' %
                            (caller_name(), slicefile))
@@ -2468,9 +2427,7 @@ class CgroupUtils(object):
         try:
             with open(filename, 'r') as desc:
                 file_vntype = desc.readline().strip()
-        except KeyboardInterrupt:
-            raise
-        except:
+        except Exception:
             pbs.logmsg(pbs.EVENT_DEBUG4,
                        '%s: Failed to read vntype file %s' %
                        (caller_name(), filename))
@@ -2491,9 +2448,7 @@ class CgroupUtils(object):
             try:
                 with open(filename, 'w') as desc:
                     desc.write(resc_vntype)
-            except KeyboardInterrupt:
-                raise
-            except:
+            except Exception:
                 pbs.logmsg(pbs.EVENT_DEBUG2,
                            '%s: Failed to update vntype file %s' %
                            (caller_name(), filename))
@@ -2588,9 +2543,7 @@ class CgroupUtils(object):
                                        stderr=subprocess.PIPE)
             out, err = process.communicate()
             ver = int(re.sub(r'systemd ([0-9]+)', r'\1', out.splitlines()[0]))
-        except KeyboardInterrupt:
-            raise
-        except:
+        except Exception:
             # Loop through the mounts to see if systemd is present. Do not
             # rely on self.paths because it has not been initialized yet.
             with open(os.path.join(os.sep, 'proc', 'mounts'), 'r') as desc:
@@ -2826,9 +2779,7 @@ class CgroupUtils(object):
             pbs.logmsg(pbs.EVENT_DEBUG4, 'event type: attach')
             try:
                 uid = pwd.getpwnam(pbs.event().job.euser).pw_uid
-            except KeyboardInterrupt:
-                raise
-            except:
+            except Exception:
                 pbs.logmsg(pbs.EVENT_DEBUG2,
                            'Failed to lookup UID by name')
                 raise
@@ -3417,9 +3368,7 @@ class CgroupUtils(object):
                         available[socket]['cpus'].remove(cpu)
                     except ValueError:
                         pass
-                    except KeyboardInterrupt:
-                        raise
-                    except:
+                    except Exception:
                         pbs.logmsg(pbs.EVENT_DEBUG4,
                                    'Error removing %d from %s' %
                                    (cpu, available[socket]['cpus']))
@@ -3692,7 +3641,7 @@ class CgroupUtils(object):
             except OSError as exc:
                 raise CgroupConfigError('Failed to create directory: %s (%s)' %
                                         (path, errno.errorcode[exc.errno]))
-            except:
+            except Exception:
                 raise
             finally:
                 os.umask(old_umask)
@@ -3861,9 +3810,7 @@ class CgroupUtils(object):
                 joblist = []
                 try:
                     joblist = node.gather_jobs_on_node(cgroup)
-                except KeyboardInterrupt:
-                    raise
-                except:
+                except Exception:
                     pbs.logmsg(pbs.EVENT_DEBUG2,
                                'Failed to resyncing local job data')
                 # Job list should contain the new jobid. Do not attempt to
@@ -3972,9 +3919,7 @@ class CgroupUtils(object):
                                 statlist.append(line2.strip())
                             if line2.find('Uid:') != -1:
                                 statlist.append(line2.strip())
-                except KeyboardInterrupt:
-                    raise
-                except:
+                except Exception:
                     pass
                 pbs.logmsg(pbs.EVENT_DEBUG2, '%s: PID %s survived: %s' %
                            (caller_name(), pid, statlist))
@@ -4002,8 +3947,6 @@ class CgroupUtils(object):
                 pbs.logmsg(pbs.EVENT_SYSTEM,
                            'OS error removing cgroup path: %s (%s)' %
                            (subdir, errno.errorcode[exc.errno]))
-            except KeyboardInterrupt:
-                raise
 
     def _remove_cgroup(self, path, jobid=None, timeout=0, do_offline=True):
         """
@@ -4032,9 +3975,7 @@ class CgroupUtils(object):
         else:
             try:
                 remaining = self._kill_tasks(tasks_file, timeout)
-            except KeyboardInterrupt:
-                raise
-            except:
+            except Exception:
                 remaining = 0
         if remaining == 0:
             pbs.logmsg(pbs.EVENT_DEBUG2, '%s: Removing directory %s' %
@@ -4050,9 +3991,7 @@ class CgroupUtils(object):
                     pbs.logmsg(pbs.EVENT_SYSTEM,
                                'OS error removing cgroup path: %s (%s)' %
                                (parent, errno.errorcode[exc.errno]))
-                except KeyboardInterrupt:
-                    raise
-                except:
+                except Exception:
                     pbs.logmsg(pbs.EVENT_SYSTEM,
                                'Failed to remove cgroup path: %s' % (parent))
                     raise
@@ -4089,9 +4028,7 @@ class CgroupUtils(object):
             # Check to see that the node is not already offline.
             try:
                 tmp_state = pbs.server().vnode(self.hostname).state
-            except KeyboardInterrupt:
-                raise
-            except:
+            except Exception:
                 pbs.logmsg(pbs.EVENT_DEBUG,
                            'Unable to contact server for node state')
                 tmp_state = None
@@ -4117,9 +4054,7 @@ class CgroupUtils(object):
                 try:
                     with open(self.offline_file, 'w') as desc:
                         desc.write('Offlined %s\n' % time.strftime('%c'))
-                except KeyboardInterrupt:
-                    raise
-                except:
+                except Exception:
                     pbs.logmsg(pbs.EVENT_DEBUG2,
                                'Failed to write to %s' % self.offline_file)
                 vnode.comment = self.offline_msg
@@ -4153,9 +4088,7 @@ class CgroupUtils(object):
                            (caller_name(), subdir, subdir))
                 try:
                     os.rename(subdir, subdir + '.orphan')
-                except KeyboardInterrupt:
-                    raise
-                except:
+                except Exception:
                     pbs.logmsg(pbs.EVENT_DEBUG2,
                                '%s: Failed to rename %s to %s' %
                                (caller_name(), subdir, subdir + '.orphan'))
@@ -4254,9 +4187,7 @@ class CgroupUtils(object):
             with open(self._cgroup_path('memory', 'failcnt', jobid),
                       'r') as desc:
                 return int(desc.readline().strip())
-        except KeyboardInterrupt:
-            raise
-        except:
+        except Exception:
             return None
 
     def _get_memsw_failcnt(self, jobid):
@@ -4268,9 +4199,7 @@ class CgroupUtils(object):
             with open(self._cgroup_path('memsw', 'failcnt', jobid),
                       'r') as desc:
                 return int(desc.readline().strip())
-        except KeyboardInterrupt:
-            raise
-        except:
+        except Exception:
             return None
 
     def _get_hugetlb_failcnt(self, jobid):
@@ -4282,9 +4211,7 @@ class CgroupUtils(object):
             with open(self._cgroup_path('hugetlb', 'failcnt', jobid),
                       'r') as desc:
                 return int(desc.readline().strip())
-        except KeyboardInterrupt:
-            raise
-        except:
+        except Exception:
             return None
 
     def _get_max_mem_usage(self, jobid):
@@ -4296,9 +4223,7 @@ class CgroupUtils(object):
             with open(self._cgroup_path('memory', 'max_usage_in_bytes',
                                         jobid), 'r') as desc:
                 return int(desc.readline().strip())
-        except KeyboardInterrupt:
-            raise
-        except:
+        except Exception:
             return None
 
     def _get_max_memsw_usage(self, jobid):
@@ -4310,9 +4235,7 @@ class CgroupUtils(object):
             with open(self._cgroup_path('memsw', 'max_usage_in_bytes', jobid),
                       'r') as desc:
                 return int(desc.readline().strip())
-        except KeyboardInterrupt:
-            raise
-        except:
+        except Exception:
             return None
 
     def _get_max_hugetlb_usage(self, jobid):
@@ -4325,9 +4248,7 @@ class CgroupUtils(object):
                                         jobid),
                       'r') as desc:
                 return int(desc.readline().strip())
-        except KeyboardInterrupt:
-            raise
-        except:
+        except Exception:
             return None
 
     def _get_cpu_usage(self, jobid):
@@ -4339,9 +4260,7 @@ class CgroupUtils(object):
         try:
             with open(path, 'r') as desc:
                 return int(desc.readline().strip())
-        except KeyboardInterrupt:
-            raise
-        except:
+        except Exception:
             return None
 
     def select_cpus(self, path, ncpus):
@@ -4388,9 +4307,7 @@ class CgroupUtils(object):
             proc = subprocess.Popen(['dmesg'], shell=False,
                                     stdout=subprocess.PIPE)
             out = proc.communicate()[0].splitlines()
-        except KeyboardInterrupt:
-            raise
-        except:
+        except Exception:
             return ''
         out.reverse()
         # Check to see if the job id is found in dmesg output
@@ -4424,9 +4341,7 @@ class CgroupUtils(object):
             pbs.logmsg(pbs.EVENT_DEBUG4, 'Wrote out file: %s' % (filename))
             pbs.logmsg(pbs.EVENT_DEBUG4, 'Data: %s' % (lines))
             return True
-        except KeyboardInterrupt:
-            raise
-        except:
+        except Exception:
             return False
 
     def write_cgroup_assigned_resources(self, jobid):
@@ -4447,9 +4362,7 @@ class CgroupUtils(object):
                        (os.path.join(self.hook_storage_dir, jobid)))
             pbs.logmsg(pbs.EVENT_DEBUG4, 'Data: %s' % (json_str))
             return True
-        except KeyboardInterrupt:
-            raise
-        except:
+        except Exception:
             return False
 
     def read_cgroup_assigned_resources(self, jobid):
@@ -4521,8 +4434,6 @@ class CgroupUtils(object):
                 jobids = f.readline().split()
         except IOError:
             pbs.logmsg(pbs.EVENT_DEBUG, 'Failed to open cgroup_jobs file')
-            raise
-        except KeyboardInterrupt:
             raise
         return jobids
 
@@ -4596,9 +4507,7 @@ def set_global_vars():
                         if not PBS_MOM_HOME and (match.group(1) ==
                                                  'PBS_MOM_HOME'):
                             PBS_MOM_HOME = match.group(2)
-        except KeyboardInterrupt:
-            raise
-        except:
+        except Exception:
             pass
     # If PBS_MOM_HOME is not set, use the PBS_HOME value
     if not PBS_MOM_HOME:
@@ -4631,9 +4540,7 @@ def main():
                (caller_name(), event.hook_name))
     try:
         set_global_vars()
-    except KeyboardInterrupt:
-        raise
-    except:
+    except Exception:
         pbs.logmsg(pbs.EVENT_DEBUG,
                    '%s: Hook failed to initialize configuration properly' %
                    caller_name())
@@ -4647,9 +4554,7 @@ def main():
                    (caller_name(), hooks.event_name(event.type)))
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Hook utility class instantiated' %
                    caller_name())
-    except KeyboardInterrupt:
-        raise
-    except:
+    except Exception:
         pbs.logmsg(pbs.EVENT_DEBUG,
                    '%s: Failed to instantiate hook utility class' %
                    caller_name())
@@ -4715,9 +4620,7 @@ def main():
             try:
                 event.job.delete()
                 msg += ' (deleted)'
-            except KeyboardInterrupt:
-                raise
-            except:
+            except Exception:
                 msg += ' (deletion failed)'
         msg += (': %s %s' % (exc.__class__.__name__, str(exc.args)))
         pbs.logmsg(pbs.EVENT_ERROR, msg)
@@ -4734,9 +4637,7 @@ def main():
                 event.job.Hold_Types = pbs.hold_types('s')
                 event.job.rerun()
                 msg += ' (suspended)'
-            except KeyboardInterrupt:
-                raise
-            except:
+            except Exception:
                 msg += ' (suspend failed)'
         msg += (': %s %s' % (exc.__class__.__name__, str(exc.args)))
         pbs.logmsg(pbs.EVENT_ERROR, msg)
@@ -4752,7 +4653,7 @@ if __name__ == '__builtin__':
         # The event.accept() and event.reject() methods generate a
         # SystemExit exception.
         pass
-    except:
+    except Exception:
         pbs.logmsg(pbs.EVENT_DEBUG,
                    str(traceback.format_exc().strip().splitlines()))
     finally:
