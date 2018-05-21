@@ -139,9 +139,11 @@ Requires: tk
 %if %{defined suse_version}
 Requires: smtp_daemon
 Requires: libical1
+Requires: postgresql-contrib
 %else
 Requires: smtpdaemon
 Requires: libical
+Requires: postgresql-upgrade
 %endif
 Autoreq: 1
 
@@ -253,14 +255,14 @@ imps=0
 cle_release_version=0
 cle_release_path=/etc/opt/cray/release/cle-release
 if [ -f ${cle_release_path} ]; then
-        cle_release_version=`grep RELEASE ${cle_release_path} | cut -f2 -d= | cut -f1 -d.`
+	cle_release_version=`grep RELEASE ${cle_release_path} | cut -f2 -d= | cut -f1 -d.`
 fi
 [ "${cle_release_version}" -ge 6 ] 2>/dev/null && imps=1
 if [ $imps -eq 0 ]; then
-${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_postinstall server \
-	%{version} ${RPM_INSTALL_PREFIX:=%{pbs_prefix}} %{pbs_home} %{pbs_dbuser}
+	${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_postinstall server \
+		%{version} ${RPM_INSTALL_PREFIX:=%{pbs_prefix}} %{pbs_home} %{pbs_dbuser}
 else
-        install -D %{pbs_prefix}/libexec/pbs_init.d /etc/init.d/pbs
+	install -D %{pbs_prefix}/libexec/pbs_init.d /etc/init.d/pbs
 fi
 
 %post %{pbs_execution}
@@ -269,14 +271,14 @@ imps=0
 cle_release_version=0
 cle_release_path=/etc/opt/cray/release/cle-release
 if [ -f ${cle_release_path} ]; then
-        cle_release_version=`grep RELEASE ${cle_release_path} | cut -f2 -d= | cut -f1 -d.`
+	cle_release_version=`grep RELEASE ${cle_release_path} | cut -f2 -d= | cut -f1 -d.`
 fi
 [ "${cle_release_version}" -ge 6 ] 2>/dev/null && imps=1
 if [ $imps -eq 0 ]; then
-${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_postinstall execution \
-	%{version} ${RPM_INSTALL_PREFIX:=%{pbs_prefix}} %{pbs_home}
+	${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_postinstall execution \
+		%{version} ${RPM_INSTALL_PREFIX:=%{pbs_prefix}} %{pbs_home}
 else
-        install -D %{pbs_prefix}/libexec/pbs_init.d /etc/init.d/pbs
+	install -D %{pbs_prefix}/libexec/pbs_init.d /etc/init.d/pbs
 fi
 
 %post %{pbs_client}
@@ -285,14 +287,12 @@ imps=0
 cle_release_version=0
 cle_release_path=/etc/opt/cray/release/cle-release
 if [ -f ${cle_release_path} ]; then
-        cle_release_version=`grep RELEASE ${cle_release_path} | cut -f2 -d= | cut -f1 -d.`
+	cle_release_version=`grep RELEASE ${cle_release_path} | cut -f2 -d= | cut -f1 -d.`
 fi
 [ "${cle_release_version}" -ge 6 ] 2>/dev/null && imps=1
 if [ $imps -eq 0 ]; then
-${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_postinstall client \
-	%{version} ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}
-else
-        install -D %{pbs_prefix}/libexec/pbs_init.d /etc/init.d/pbs
+	${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_postinstall client \
+		%{version} ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}
 fi
 
 %preun %{pbs_server}
@@ -372,6 +372,22 @@ if [ "$1" != "1" ]; then
 	echo
 	echo "NOTE: /etc/pbs.conf must be deleted manually"
 	echo
+fi
+
+%posttrans %{pbs_server}
+# The %preun section of 14.x unconditially removes /etc/init.d/pbs
+# because it does not check whether the package is being removed
+# or upgraded. Make sure it exists here.
+if [ -r %{pbs_prefix}/libexec/pbs_init.d ]; then
+    install -D %{pbs_prefix}/libexec/pbs_init.d /etc/init.d/pbs
+fi
+
+%posttrans %{pbs_execution}
+# The %preun section of 14.x unconditially removes /etc/init.d/pbs
+# because it does not check whether the package is being removed
+# or upgraded. Make sure it exists here.
+if [ -r %{pbs_prefix}/libexec/pbs_init.d ]; then
+    install -D %{pbs_prefix}/libexec/pbs_init.d /etc/init.d/pbs
 fi
 
 %files %{pbs_server}
