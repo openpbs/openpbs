@@ -1412,7 +1412,7 @@ handle_cmd(thrd_data_t *td, int tfd, int cmd, void *data)
 			}
 		}
 
-		tpp_mbox_destroy(&td->mbox);
+		tpp_mbox_destroy(&td->mbox, 1);
 		tpp_em_destroy(td->em_context);
 		if (td->listen_fd > -1)
 			tpp_sock_close(td->listen_fd);

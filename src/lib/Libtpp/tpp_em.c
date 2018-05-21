@@ -1425,7 +1425,7 @@ tpp_mbox_getfd(tpp_mbox_t *mbox)
  *
  */
 void
-tpp_mbox_destroy(tpp_mbox_t *mbox)
+tpp_mbox_destroy(tpp_mbox_t *mbox, int destroy_lock)
 {
 #ifdef HAVE_SYS_EVENTFD_H
 	close(mbox->mbox_eventfd);
@@ -1435,7 +1435,8 @@ tpp_mbox_destroy(tpp_mbox_t *mbox)
 	if (mbox->mbox_pipe[1] > -1)
 		tpp_pipe_close(mbox->mbox_pipe[1]);
 #endif
-	tpp_destroy_lock(&mbox->mbox_mutex);
+	if (destroy_lock)
+		tpp_destroy_lock(&mbox->mbox_mutex);
 }
 
 /**
