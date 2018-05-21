@@ -646,7 +646,7 @@ int tpp_em_wait_win(void *em_ctx, em_event_t **ev_array, int timeout);
  * plain pipes etc.
  */
 int tpp_mbox_init(tpp_mbox_t *mbox);
-void tpp_mbox_destroy(tpp_mbox_t *mbox);
+void tpp_mbox_destroy(tpp_mbox_t *mbox, int destroy_lock);
 int tpp_mbox_monitor(void *em_ctx, tpp_mbox_t *mbox);
 int tpp_mbox_read(tpp_mbox_t *mbox, unsigned int *tfd, int *cmdval, void **data);
 int tpp_mbox_clear(tpp_mbox_t *mbox, tpp_que_elem_t **n, unsigned int tfd, int *cmdval, void **data);

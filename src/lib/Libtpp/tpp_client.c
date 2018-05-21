@@ -1532,7 +1532,7 @@ tpp_shutdown()
 
 	TPP_DBPRT(("from pid = %d", getpid()));
 
-	tpp_mbox_destroy(&app_mbox);
+	tpp_mbox_destroy(&app_mbox, 1);
 
 	tpp_going_down = 1;
 
@@ -1590,7 +1590,7 @@ tpp_terminate()
 
 	tpp_transport_terminate();
 
-	tpp_mbox_destroy(&app_mbox);
+	tpp_mbox_destroy(&app_mbox, 0);
 
 	if (strmarray)
 		free(strmarray);
