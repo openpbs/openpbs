@@ -5865,7 +5865,7 @@ class Server(PBSService):
                 if obj.script is not None:
                     script = obj.script
                 elif m or vncompute:
-                    aprun_cmd = "aprun -B"
+                    aprun_cmd = "aprun -b -B"
                     executable = obj.attributes[ATTR_executable]
                     start = executable.startswith('aprun ')
                     aprun_exist = start or '/aprun' in executable

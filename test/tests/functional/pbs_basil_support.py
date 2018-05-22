@@ -461,7 +461,7 @@ type=\"ENGINE\"/>" % (self.basil_version[1])
             "#PBS -joe -o localhost:/tmp -lselect=1:ncpus=1:aoe=%s\n"
             % req_aoe +
             " cd /tmp\n"
-            "aprun -B sleep 10\n"
+            "aprun -b -B sleep 10\n"
             "sleep 10")
 
         job_id = self.server.submit(job)
@@ -506,7 +506,7 @@ type=\"ENGINE\"/>" % (self.basil_version[1])
             "#PBS -joe -o localhost:/tmp -lplace=scatter "
             "-lselect=1:ncpus=1:aoe=%s+1:ncpus=1\n" % req_aoe +
             " cd /tmp\n"
-            "aprun -B sleep 10\n"
+            "aprun -b -B sleep 10\n"
             "sleep 10")
         job_id = self.server.submit(job)
         self.server.expect(JOB, {'job_state': 'R'}, id=job_id)

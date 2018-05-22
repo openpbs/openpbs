@@ -153,7 +153,7 @@ class TestCraySmokeTest(TestFunctional):
         scr = []
         scr += ['echo Hello World\n']
         scr += ['/bin/sleep 5\n']
-        scr += ['aprun -B /bin/sleep 10\n']
+        scr += ['aprun -b -B /bin/sleep 10\n']
 
         sub_dir = self.du.mkdtemp(uid=TEST_USER.uid)
         j1.create_script(scr)

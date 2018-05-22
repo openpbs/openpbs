@@ -91,7 +91,7 @@ class TestCrayHyperthread(TestFunctional):
         scr = []
         scr += ['hostname\n']
         scr += ['/bin/sleep 5\n']
-        scr += ['aprun %s /bin/hostname\n' % aprun_args]
+        scr += ['aprun -b %s /bin/hostname\n' % aprun_args]
 
         sub_dir = self.du.mkdtemp(uid=TEST_USER.uid)
         j1.create_script(scr)
