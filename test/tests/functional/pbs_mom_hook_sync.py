@@ -79,9 +79,7 @@ class TestMomHookSync(TestFunctional):
     "banana"         : "cucumbers"
 }
 """
-        (fd, fn) = self.du.mkstemp()
-        os.write(fd, hook_config)
-        os.close(fd)
+        fn = self.du.create_temp_file(body=hook_config)
         a = {'content-type': 'application/x-config',
              'content-encoding': 'default',
              'input-file': fn}
