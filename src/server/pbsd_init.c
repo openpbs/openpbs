@@ -1137,6 +1137,7 @@ pbsd_init(int type)
 	print_hooks(HOOK_EVENT_RUNJOB);
 	print_hooks(HOOK_EVENT_PROVISION);
 	print_hooks(HOOK_EVENT_PERIODIC);
+	print_hooks(HOOK_EVENT_RESV_END);
 
 	/*
 	 * cleanup  the hooks work directory

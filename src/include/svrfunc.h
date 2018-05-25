@@ -271,6 +271,7 @@ extern void  req_track(struct batch_request *preq);
 extern void  req_stagein(struct batch_request *preq);
 extern void  req_resvSub(struct batch_request *);
 extern void  req_deleteReservation(struct batch_request *);
+extern void  req_reservationOccurrenceEnd(struct batch_request *);
 extern void  req_failover(struct batch_request *);
 extern int   put_failover(int, struct batch_request *);
 extern void  req_momrestart(struct batch_request *preq);

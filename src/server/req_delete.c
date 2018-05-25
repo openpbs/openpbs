@@ -68,6 +68,7 @@
 #include "batch_request.h"
 #include "resv_node.h"
 #include "queue.h"
+#include "hook.h"
 
 #ifdef WIN32
 #include <windows.h>
@@ -118,6 +119,7 @@ static char *sigt  = "SIGTERM";
 static char *sigtj =  SIG_TermJob;
 static char *acct_fmt = "requestor=%s@%s";
 static int qdel_mail = 1; /* true: sending mail */
+
 
 /**
  * @brief
@@ -834,6 +836,35 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 	reply_send(preq);
 }
 
+/**
+ * @brief
+ * 		req_reservationOccurrenceEnd - service the PBS_BATCH_ResvOccurEnd Request
+ *
+ *		This request runs a hook script at the end of the reservation occurrence
+ *
+ * @param[in]	preq	- Job Request
+ *
+ */
+
+
+void req_reservationOccurrenceEnd(struct batch_request *preq)
+{
+	char hook_msg[HOOK_MSG_SIZE] = {0};
+
+        switch (process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt)) {
+		case 0:	/* explicit reject */
+			reply_text(preq, PBSE_HOOKERROR, hook_msg);
+			break;
+		case 1: /* no recreate request as there are only read permissions */ 
+		case 2:	/* no hook script executed - go ahead and accept event*/
+			reply_ack(preq);
+			break;
+		default:
+			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,	LOG_INFO, __func__, "resv_end event: accept req by default");
+			reply_ack(preq);
+	}
+	return;
+}
 
 /**
  * @brief
@@ -865,7 +896,6 @@ req_deleteReservation(struct batch_request *preq)
 	int state, sub;
 	long futuredr;
 
-
 	/*Does resc_resv object exist and requester have enough priviledge?*/
 
 	presv = chk_rescResv_request(preq->rq_ind.rq_delete.rq_objname, preq);
@@ -875,7 +905,6 @@ req_deleteReservation(struct batch_request *preq)
 	 */
 	if (presv == NULL)
 		return;
-
 
 	/*Know resc_resv struct exists and requester allowed to remove it*/
 	futuredr = presv->ri_futuredr;
@@ -920,6 +949,17 @@ req_deleteReservation(struct batch_request *preq)
 	else
 		account_recordResv(PBS_ACCT_DRclient, presv, log_buffer);
 
+	if (presv->ri_qs.ri_state != RESV_UNCONFIRMED) {
+		char hook_msg[HOOK_MSG_SIZE] = {0};
+		switch (process_hooks(preq, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt)) {
+	                case 0: /* explicit reject */
+	                case 1: /* no recreate request as there are only read permissions */
+	                case 2: /* no hook script executed - go ahead and accept event*/
+	                        break;
+	                default:
+	                        log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK, LOG_INFO, __func__, "resv_end event: accept req by default");
+        	}
+	}
 
 
 	/*If there are any jobs associated with the reservation, construct and

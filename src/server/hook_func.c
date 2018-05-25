@@ -212,6 +212,7 @@ extern pbs_list_head svr_movejob_hooks;
 extern pbs_list_head svr_runjob_hooks;
 extern pbs_list_head svr_periodic_hooks;
 extern pbs_list_head svr_provision_hooks;
+extern pbs_list_head svr_resv_end_hooks;
 extern pbs_list_head svr_execjob_begin_hooks;
 extern pbs_list_head svr_execjob_prologue_hooks;
 extern pbs_list_head svr_execjob_epilogue_hooks;
@@ -3781,7 +3782,7 @@ get_resv_list(void) {
  *		hooks, and executes the corresponding hook scripts.
  *
  * @see
- * 		req_modifyjob, req_movejob, req_quejob, req_resvSub and req_runjob
+ * 		req_modifyjob, req_movejob, req_quejob, req_resvSub, req_delete and req_runjob
  *
  * @param[in] 	preq	- the batch request
  * @param[in] 	hook_msg  - upon failure, fill this buffer with the actual error
@@ -3868,6 +3869,10 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 	} else if (preq->rq_type == PBS_BATCH_HookPeriodic) {
 		hook_event = HOOK_EVENT_PERIODIC;
 		head_ptr = &svr_periodic_hooks;
+	} else if (preq->rq_type == PBS_BATCH_DeleteResv || preq->rq_type == PBS_BATCH_ResvOccurEnd) {
+		hook_event = HOOK_EVENT_RESV_END;
+		req_ptr.rq_manage = (struct rq_manage *)&preq->rq_ind.rq_delete;
+		head_ptr = &svr_resv_end_hooks;
 	} else {
 		return (-1); /* unexpected event encountered */
 	}
@@ -3892,7 +3897,9 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 			phook_next = (hook *)GET_NEXT(phook->hi_runjob_hooks);
 		} else if (preq->rq_type == PBS_BATCH_HookPeriodic) {
 			phook_next = (hook *)GET_NEXT(phook->hi_periodic_hooks);
-		}else {
+		} else if (preq->rq_type == PBS_BATCH_DeleteResv || preq->rq_type == PBS_BATCH_ResvOccurEnd) {
+			phook_next = (hook *)GET_NEXT(phook->hi_resv_end_hooks);
+		} else {
 			return (-1); /* should not get here */
 		}
 

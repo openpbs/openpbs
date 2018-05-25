@@ -337,6 +337,7 @@ pbs_list_head	svr_movejob_hooks;
 pbs_list_head	svr_runjob_hooks;
 pbs_list_head	svr_periodic_hooks;
 pbs_list_head	svr_provision_hooks;
+pbs_list_head	svr_resv_end_hooks;
 pbs_list_head	svr_hook_job_actions;
 pbs_list_head   svr_hook_vnl_actions;
 int		svr_hook_resend_job_attrs = 0;
@@ -9026,6 +9027,7 @@ main(int argc, char *argv[])
 	CLEAR_HEAD(svr_runjob_hooks);
 	CLEAR_HEAD(svr_periodic_hooks);
 	CLEAR_HEAD(svr_provision_hooks);
+	CLEAR_HEAD(svr_resv_end_hooks);
 	CLEAR_HEAD(svr_hook_job_actions);
 	CLEAR_HEAD(svr_hook_vnl_actions);
 

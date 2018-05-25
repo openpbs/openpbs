@@ -940,6 +940,10 @@ dispatch_request(int sfds, struct batch_request *request)
 		case PBS_BATCH_ModifyResv:
 			req_modifyReservation(request);
 			break;
+
+		case PBS_BATCH_ResvOccurEnd:
+			req_reservationOccurrenceEnd(request);
+			break;
 #endif
 
 		case PBS_BATCH_HoldJob:

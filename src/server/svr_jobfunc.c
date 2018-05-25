@@ -3337,6 +3337,21 @@ Time4resvFinish(struct work_task *ptask)
 		/* When recovering past the last occurrence the standing reservation is purged
 		 * in a manner similar to an advance reservation  */
 		if (ridx < rcount) {
+			/*
+			 * Invoke the reservation end hook for every occurrence
+			 */
+			struct batch_request *newreq;
+			newreq = alloc_br(PBS_BATCH_ResvOccurEnd);
+			if (newreq != NULL)	{
+				newreq->rq_perm |= ATR_DFLAG_MGWR;
+				strcpy(newreq->rq_user, pbs_current_user);
+				strcpy(newreq->rq_host, server_host);
+				strcpy(newreq->rq_ind.rq_delete.rq_objname, presv->ri_qs.ri_resvID);
+				if (issue_Drequest(PBS_LOCAL_CONNECTION, newreq, resvFinishReply, NULL, 0) == -1) {
+					free_br(newreq);
+				}
+				tickle_for_reply();
+			}
 			/* 1) Change queue state from started True to False and change
 			 * state of the reservation queue
 			 */
