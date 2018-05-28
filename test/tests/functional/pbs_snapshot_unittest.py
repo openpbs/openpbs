@@ -77,7 +77,8 @@ class TestPBSSnapshot(TestFunctional):
         if ret['rc'] != 0:
             self.skipTest("pbs_snapshot/PBSSnapUtils need root privileges")
 
-    def setup_sc(self, sched_id, partition, port):
+    def setup_sc(self, sched_id, partition, port,
+                 sched_priv=None, sched_log=None):
         """
         Setup a scheduler
 
@@ -97,9 +98,18 @@ class TestPBSSnapshot(TestFunctional):
         a = {'partition': partition,
              'sched_host': self.server.hostname,
              'sched_port': port}
+        if sched_priv is not None:
+            a['sched_priv'] = sched_priv
+        if sched_log is not None:
+            a['sched_log'] = sched_log
         self.server.manager(MGR_CMD_CREATE, SCHED, a, id=sched_id)
-        self.scheds[sched_id].create_scheduler()
-        self.scheds[sched_id].start()
+        if 'sched_priv' in a:
+            sched_dir = os.path.dirname(sched_priv)
+            self.scheds[sched_id].create_scheduler(sched_dir)
+            self.scheds[sched_id].start(sched_dir)
+        else:
+            self.scheds[sched_id].create_scheduler()
+            self.scheds[sched_id].start()
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'scheduling': 'True'}, id=sched_id, expect=True)
 
@@ -447,13 +457,20 @@ class TestPBSSnapshot(TestFunctional):
         if self.pbs_snapshot_path is None:
             self.skip_test("pbs_snapshot not found")
 
-        # Setup 2 schedulers
-        sched_ids = ["sc1", "sc2", "default"]
+        # Setup 3 schedulers
+        sched_ids = ["sc1", "sc2", "sc3", "default"]
         self.setup_sc(sched_ids[0], "P1", "15050")
         self.setup_sc(sched_ids[1], "P2", "15051")
+        # Setup scheduler at non-default location
+        dir_path = os.path.join(os.sep, 'var', 'spool', 'pbs', 'sched_dir')
+        if not os.path.exists(dir_path):
+            self.du.mkdir(path=dir_path, sudo=True)
+        sched_priv = os.path.join(dir_path, 'sched_priv_sc3')
+        sched_log = os.path.join(dir_path, 'sched_logs_sc3')
+        self.setup_sc(sched_ids[2], "P3", "15052", sched_priv, sched_log)
 
-        # Add 2 partitions, each associated with a queue and a node
-        (q_ids, _) = self.setup_queues_nodes(2)
+        # Add 3 partitions, each associated with a queue and a node
+        (q_ids, _) = self.setup_queues_nodes(3)
 
         # Submit some jobs to fill the system up and get the multiple
         # schedulers busy
@@ -475,6 +492,7 @@ class TestPBSSnapshot(TestFunctional):
             else:
                 schedi_priv = os.path.join(snapdir, "sched_priv_" + sched_id)
                 schedi_logs = os.path.join(snapdir, "sched_logs_" + sched_id)
+
             self.assertTrue(os.path.isdir(schedi_priv))
             self.assertTrue(os.path.isdir(schedi_logs))
 
@@ -492,7 +510,7 @@ class TestPBSSnapshot(TestFunctional):
                     sched_id = sched_id.strip()
                     self.assertTrue(sched_id in sched_ids)
                     scheds_found += 1
-            self.assertEqual(scheds_found, 3)
+            self.assertEqual(scheds_found, 4)
 
     @classmethod
     def tearDownClass(self):
