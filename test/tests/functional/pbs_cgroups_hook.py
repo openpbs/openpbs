@@ -1546,8 +1546,8 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         cput1 = qstat1[0]['resources_used.cput']
         mem1 = qstat1[0]['resources_used.mem']
         vmem1 = qstat1[0]['resources_used.vmem']
-        self.logger.info('Waiting 15 seconds for CPU time to accumulate')
-        time.sleep(15)
+        self.logger.info('Waiting 25 seconds for CPU time to accumulate')
+        time.sleep(25)
         qstat2 = self.server.status(JOB, resc_list, id=jid)
         for q in qstat2:
             self.logger.info('Q2: %s' % q)
@@ -1576,9 +1576,6 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         mem: 950MB - 900MB = 50MB = 51200KB
         vmem: 1905MB - 1810MB = 95MB = 97280KB
         """
-        if self.iscray:
-            self.skipTest('Test is skipped on cray due to PTL errors')
-
         self.load_config(self.cfg3 % ('', '', '', self.swapctl, ''))
         self.server.expect(NODE, {'state': 'free'},
                            id=self.nodeA, interval=3, offset=10)
