@@ -2818,6 +2818,9 @@ class CgroupUtils(object):
         execjob_launch hook
         """
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
+        if 'devices' in self.subsystems:
+            # prevent using GPUs without user awareness
+            pbs.event().env['CUDA_VISIBLE_DEVICES'] = ''
         if 'device_names' in self.assigned_resources:
             names = self.assigned_resources['device_names']
             pbs.logmsg(pbs.EVENT_DEBUG4,
