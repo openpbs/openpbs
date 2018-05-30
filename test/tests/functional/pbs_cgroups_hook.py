@@ -121,10 +121,8 @@ class TestCgroupsHook(TestFunctional):
                 self.vntypenameA = self.get_vntype(self.hostA)
                 self.vntypenameB = self.vntypenameA
                 self.momA.delete_vnode_defs()
-                rc = self.server.manager(MGR_CMD_DELETE, NODE, None, "")
-                self.assertEqual(rc, 0)
-                rc = self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostA)
-                self.assertEqual(rc, 0)
+                self.server.manager(MGR_CMD_DELETE, NODE, None, "")
+                self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostA)
             elif len(self.moms) == 2:
                 self.momA = self.moms.values()[0]
                 self.momB = self.moms.values()[1]
@@ -144,12 +142,9 @@ class TestCgroupsHook(TestFunctional):
                     self.iscray = 1
                 self.momA.delete_vnode_defs()
                 self.momB.delete_vnode_defs()
-                rc = self.server.manager(MGR_CMD_DELETE, NODE, None, "")
-                self.assertEqual(rc, 0)
-                rc = self.server.manager(MGR_CMD_CREATE, NODE, id=self.nodeA)
-                self.assertEqual(rc, 0)
-                rc = self.server.manager(MGR_CMD_CREATE, NODE, id=self.nodeB)
-                self.assertEqual(rc, 0)
+                self.server.manager(MGR_CMD_DELETE, NODE, None, "")
+                self.server.manager(MGR_CMD_CREATE, NODE, id=self.nodeA)
+                self.server.manager(MGR_CMD_CREATE, NODE, id=self.nodeB)
             else:
                 self.skipTest('Tests require one or two MoMs, '
                               'use -p moms=<mom1>:<mom2>')
@@ -757,17 +752,16 @@ for i in 1 2 3 4; do while : ; do : ; done & done
              'freq': '10',
              'event': events}
         # Sometimes the deletion of the old hook is still pending
-        failed = False
+        failed = True
         for _ in range(5):
             try:
                 self.server.create_import_hook(self.hook_name, a, script,
                                                overwrite=True)
             except Exception:
-                failed = True
-            if not failed:
-                break
-            else:
                 time.sleep(2)
+            else:
+                failed = False
+                break
         if failed:
             self.skipTest('pbs_cgroups_hook: failed to load hook')
         # Add the configuration
@@ -1386,6 +1380,7 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         if not self.du.isdir(fdir):
             self.du.mkdir(hostname=self.hostA, path=fdir,
                           mode=0755, sudo=True)
+            self.tempfile.append(fdir)
         # Write a PID into the tasks file for the freezer cgroup
         task_file = os.path.join(fdir, 'tasks')
         success = False
@@ -1764,10 +1759,10 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         """
         vn_attrs = {ATTR_rescavail + '.ncpus': 1,
                     ATTR_rescavail + '.mem': '500mb'}
-        self.server.create_vnodes('vnode', vn_attrs, 2, self.moms.values()[0],
-                                  expect=False)
-        self.server.expect(NODE, {ATTR_NODE_state: 'free'}, id=self.nodeA)
         self.load_config(self.cfg4 % (self.swapctl))
+        self.server.expect(NODE, {ATTR_NODE_state: 'free'}, id=self.nodeA)
+        self.server.create_vnodes('vnode', vn_attrs, 2, self.moms.values()[0])
+        self.server.expect(NODE, {ATTR_NODE_state: 'free'}, id=self.nodeA)
         a = {'Resource_List.select': '1:ncpus=1:mem=500mb'}
         j1 = Job(TEST_USER, attrs=a)
         j1.create_script('date')
@@ -1972,7 +1967,7 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         ehost = j.attributes['exec_host']
         tmp_file = filename.split(':')[1]
         tmp_host = ehost.split('/')[0]
-        tmp_out = self.wait_and_read_file(filename=tmp_file, mom=tmp_host)
+        tmp_out = self.wait_and_read_file(filename=tmp_file, host=tmp_host)
         self.logger.info(tmp_out)
         self.assertIn('There are 1 GPUs', tmp_out, 'No gpus were assigned')
         self.assertIn('c 195:255 rwm', tmp_out, 'Nvidia controller not found')
@@ -2039,7 +2034,8 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         self.server.manager(MGR_CMD_SET, HOOK, conf, self.hook_name)
         # Cleanup any temp file created
         self.logger.info('Deleting temporary files %s' % self.tempfile)
-        self.du.rm(hostname=self.serverA, path=self.tempfile, force=True)
+        self.du.rm(hostname=self.serverA, path=self.tempfile, force=True,
+                   recursive=True, sudo=True)
         # Cleanup frozen jobs
         if 'freezer' in self.paths:
             self.logger.info('Cleaning up frozen jobs ****')

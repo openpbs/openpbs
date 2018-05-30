@@ -38,6 +38,18 @@
 from tests.performance import *
 
 
+def is_memsw_enabled(mem_path):
+    """
+    Check if system has swapcontrol enabled, then return true
+    else return false
+    """
+    # List all files and check if memsw files exists
+    for files in os.listdir(mem_path):
+        if 'memory.memsw' in files:
+            return 'true'
+    return 'false'
+
+
 class TestCgroupsStress(TestPerformance):
     """
     This test suite targets Linux Cgroups hook stress.
@@ -84,7 +96,7 @@ class TestCgroupsStress(TestPerformance):
         },
         "memsw":
         {
-            "enabled"         : true,
+            "enabled"         : %s,
             "exclude_hosts"   : [],
             "exclude_vntypes" : [],
             "default"         : "256MB",
@@ -97,6 +109,7 @@ class TestCgroupsStress(TestPerformance):
         self.paths = self.get_paths()
         if not self.paths:
             self.skipTest("No cgroups mounted")
+        self.swapctl = is_memsw_enabled(self.paths['memsw'])
         self.server.set_op_mode(PTL_CLI)
         self.server.cleanup_jobs(extend='force')
         Job.dflt_attributes[ATTR_k] = 'oe'
@@ -157,7 +170,7 @@ class TestCgroupsStress(TestPerformance):
         self.server.create_import_hook(self.hook_name, a, script,
                                        overwrite=True)
         # Add the configuration
-        self.load_config(self.cfg0)
+        self.load_config(self.cfg0 % self.swapctl)
 
     def load_config(self, cfg):
         """
@@ -194,7 +207,7 @@ class TestCgroupsStress(TestPerformance):
 
         attr = {'job_history_enable': 'true'}
         self.server.manager(MGR_CMD_SET, SERVER, attr)
-        self.load_config(self.cfg0)
+        self.load_config(self.cfg0 % self.swapctl)
         now = time.time()
         j = Job(TEST_USER, attrs={ATTR_J: '0-1000'})
         j.create_script(self.true_script)
