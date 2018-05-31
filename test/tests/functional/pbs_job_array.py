@@ -605,8 +605,8 @@ class TestJobArray(TestFunctional):
         self.server.submit(j)
         self.kill_and_restart_svr()
         try:
-            j = Job(TEST_USER)
+            j = Job(TEST_USER, attrs={
+                ATTR_J: '1-2', 'Resource_List.select': 'ncpus=1'})
             self.server.submit(j)
         except PbsSubmitError as e:
-            err_msg = "Job with requested ID already exists"
-            raise self.failureException(err_msg in e.msg)
+            raise self.failureException("Failed to submit job: " + str(e.msg))
