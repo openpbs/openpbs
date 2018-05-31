@@ -246,9 +246,13 @@ upgrade_pbs_database() {
 	[ ${sys_pgsql_ver%.*} -eq ${old_pgsql_ver%.*} ] && [ ${sys_pgsql_ver#*.} \> ${old_pgsql_ver#*.} ] || [ ${sys_pgsql_ver%.*} -gt ${old_pgsql_ver%.*} ];
 	result=$?
 	if [ ${result} -eq 0 ]; then
-		#Start upgrade process of datastore
-		upgrade_db
-		return $?
+		if [ -d "$PBS_EXEC/pgsql" ]; then
+			#Start upgrade process of datastore
+			upgrade_db
+			return $?
+		else
+			return 2
+		fi
 	elif [ "${old_pgsql_ver}" = "${sys_pgsql_ver}" ]; then
 		return 0
 	fi
@@ -891,7 +895,14 @@ if [ "${PBS_START_SERVER:-0}" != 0 ] ; then
 		upgrade_pbs_database
 		ret=$?
 		if [ $ret -ne 0 ]; then
-			echo "Failed to upgrade PBS Datastore"
+			if [ $ret -eq 2 ]; then
+				echo "It appears that PostgreSQL has been upgraded independently of PBS Pro."
+				echo "The PBS Pro database must be manually upgraded. Please refer to the"
+				echo "instructions in the release notes for version @PBS_VERSION@ located here:"
+				echo "https://github.com/PBSPro/pbspro/releases"
+			else 
+				echo "Failed to upgrade PBS Datastore"
+			fi
 			exit $ret
 		else
 			#Remove old dataservice directory
