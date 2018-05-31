@@ -374,6 +374,22 @@ if [ "$1" != "1" ]; then
 	echo
 fi
 
+%posttrans %{pbs_server}
+# The %preun section of 14.x unconditially removes /etc/init.d/pbs
+# because it does not check whether the package is being removed
+# or upgraded. Make sure it exists here.
+if [ -r %{pbs_prefix}/libexec/pbs_init.d ]; then
+    install -D %{pbs_prefix}/libexec/pbs_init.d /etc/init.d/pbs
+fi
+
+%posttrans %{pbs_execution}
+# The %preun section of 14.x unconditially removes /etc/init.d/pbs
+# because it does not check whether the package is being removed
+# or upgraded. Make sure it exists here.
+if [ -r %{pbs_prefix}/libexec/pbs_init.d ]; then
+    install -D %{pbs_prefix}/libexec/pbs_init.d /etc/init.d/pbs
+fi
+
 %files %{pbs_server}
 %defattr(-,root,root, -)
 %dir %{pbs_prefix}
