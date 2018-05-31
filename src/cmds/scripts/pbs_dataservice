@@ -40,6 +40,9 @@
 PBS_TMPDIR="${PBS_TMPDIR:-${TMPDIR:-/var/tmp}}"
 export PBS_TMPDIR
 
+log_file="${PBS_HOME}/spool/pg_start.log"
+version_mismatch=3
+
 get_db_user() {
   dbusr_file="${PBS_HOME}/server_priv/db_user"
   if [ ! -f "${dbusr_file}" ]; then
@@ -253,18 +256,24 @@ start_dataservice() {
 	if [ $ret -eq 0 ]; then
 		if [ "$1" = "startasync" ]; then
 			if [ -n "$NASMODE" ] ; then
-				su - ${PGUSR} -s /bin/sh -c "/bin/sh -c '${PGSQL_LIBSTR} ${PG_CTL} -o \"-p ${PGPORT}\" -W start'"
+				su - ${PGUSR} -s /bin/sh -c "/bin/sh -c '${PGSQL_LIBSTR} ${PG_CTL} -o \"-p ${PGPORT}\" -W start -l $log_file > /dev/null'"
 			else
-				su - ${PGUSR} -c "/bin/sh -c '${PGSQL_LIBSTR} ${PG_CTL} -o \"-p ${PGPORT}\" -W start'"
+				su - ${PGUSR} -c "/bin/sh -c '${PGSQL_LIBSTR} ${PG_CTL} -o \"-p ${PGPORT}\" -W start -l $log_file > /dev/null'"
 			fi
 		else
 			if [ -n "$NASMODE" ] ; then
-				su - ${PGUSR} -s /bin/sh -c "/bin/sh -c '${PGSQL_LIBSTR} ${PG_CTL} -o \"-p ${PGPORT}\" -w start'"
+				su - ${PGUSR} -s /bin/sh -c "/bin/sh -c '${PGSQL_LIBSTR} ${PG_CTL} -o \"-p ${PGPORT}\" -w start -l $log_file > /dev/null'"
 			else
-				su - ${PGUSR} -c "/bin/sh -c '${PGSQL_LIBSTR} ${PG_CTL} -o \"-p ${PGPORT}\" -w start'"
+				su - ${PGUSR} -c "/bin/sh -c '${PGSQL_LIBSTR} ${PG_CTL} -o \"-p ${PGPORT}\" -w start -l $log_file > /dev/null'"
 			fi
 		fi
 		ret=$?
+		grep -q "database files are incompatible with server" $log_file
+		grep_ret=$?
+
+		if [ $grep_ret -eq 0 ]; then
+			return ${version_mismatch}
+		fi
 
 		if [ $ret -eq 0 -a $is_systemd -eq 1 ] ; then
 			SYSTEMD_CGROUP=`grep ^cgroup /proc/mounts | grep systemd | head -1 | cut -d ' ' -f2`
@@ -323,12 +332,22 @@ case "$1" in
 			fi
 			start_dataservice $1
 			ret=$?
-			if [ ${ret} -ne 0 -a "$2" != "PBS" ]; then
-				echo "Failed to start PBS Data Service"
+			if [ ${ret} -ne 0 ]; then
+				if  [ "$2" != "PBS" ]; then
+					echo "Failed to start PBS Data Service"
+				else
+					cat $log_file 2> /dev/null
+					if [ ${ret} -eq ${version_mismatch} ]; then
+						echo "PBS database needs to be upgraded."
+						echo "Please follow the upgrade instructions in the release notes for the v18.1.2 release at:"
+						echo "https://github.com/PBSPro/pbspro/releases"
+					fi
+				fi
 			fi
 		else
 			echo "$msg - cannot start"
 		fi
+		rm -f $log_file
 
 		exit ${ret}
 		;;
