@@ -1035,22 +1035,28 @@ validate_ext_auth_data(int auth_type, void *data, int data_len, char *ebuf, int 
 
 /**
  *
- *	@brief break apart a comma delimited string into an array of strings
+ *	@brief break apart a delimited string into an array of strings
  *
- *	  @param[in] strlist - the comma delimited string
+ *	@param[in] strlist - the delimited string
+ *	@param[in] sep - the separator character
  *
  *	@return char **
  *
+ *	@note
+ *		The returned array of strings has to be freed by the caller.
  */
 char **
-break_comma_list(char *strlist)
+break_delimited_str(char *strlist, char delim)
 {
+	char sep[2] = "\0";
 	int num_words = 1; /* number of words delimited by commas*/
 	char **arr = NULL; /* the array of words */
 	char *list;
 	char *tok; /* used with strtok() */
 	char *end;
 	int i;
+
+	sep[0] = delim;
 
 	if (strlist == NULL) {
 		pbs_errno = PBSE_BADATVAL;
@@ -1063,7 +1069,7 @@ break_comma_list(char *strlist)
 		char* saveptr = NULL;
 
 		for (i = 0; list[i] != '\0'; i++)
-			if (list[i] == ',')
+			if (list[i] == delim)
 				num_words++;
 
 		if ((arr = (char **) malloc(sizeof(char*) * (num_words + 1))) == NULL) {
@@ -1072,7 +1078,7 @@ break_comma_list(char *strlist)
 			return NULL;
 		}
 
-		tok = strtok_r(list, ",", &saveptr);
+		tok = strtok_r(list, sep, &saveptr);
 
 		for (i = 0; tok != NULL; i++) {
 			while (isspace((int) *tok))
@@ -1086,7 +1092,7 @@ break_comma_list(char *strlist)
 			}
 
 			arr[i] = strdup(tok);
-			tok = strtok_r(NULL, ",", &saveptr);
+			tok = strtok_r(NULL, sep, &saveptr);
 		}
 		arr[i] = NULL;
 	}
@@ -1094,6 +1100,21 @@ break_comma_list(char *strlist)
 		free(list);
 
 	return arr;
+}
+
+/**
+ *
+ *	@brief break apart a comma delimited string into an array of strings
+ *
+ *	@param[in] strlist - the comma delimited string
+ *
+ *	@return char **
+ *
+ */
+char **
+break_comma_list(char *strlist)
+{
+	return (break_delimited_str(strlist, ','));
 }
 
 

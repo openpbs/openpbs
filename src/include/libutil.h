@@ -241,10 +241,16 @@ lock_file(FILE *fp, int op, char *filename, int lock_retry,
 
 
 /*
- *      break_comma_list - break apart a comma delemetd string into an arary
+ *      break_comma_list - break apart a comma delimited string into an array
  *                         of strings
  */
 char **break_comma_list(char *list);
+
+/*
+ *      break_delimited_str - break apart a delimited string into an array
+ *                         of strings
+ */
+char **break_delimited_str(char *list, char delim);
 
 /*
  *      free_string_array - free an array of strings with NULL as sentinel
