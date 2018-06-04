@@ -43,7 +43,8 @@ bin_PROGRAMS = \
 	pbs_wish \
 	printjob.bin \
 	printjob_svr.bin \
-	tracejob
+	tracejob \
+	pbs_sleep
 
 sbin_PROGRAMS = \
 	pbs_ds_monitor \
@@ -59,6 +60,9 @@ common_libs = \
 	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
 	-lpthread \
 	@socket_lib@
+
+pbs_sleep_LDFLAGS = -all-static
+pbs_sleep_SOURCES = pbs_sleep.c
 
 chk_tree_CPPFLAGS = -I$(top_srcdir)/src/include
 chk_tree_LDADD = ${common_libs}

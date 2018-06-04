@@ -37,33 +37,55 @@
  */
 /**
  * @file
- *		pbs_sleep_win.c
+ *		pbs_sleep.c
  *
  * @brief
- *		This file contains functions related to sleep of PBS on Windows.
+ *		This file contains functions related to sleep of PBS.
  *
  * Functions included are:
  * 	main()
  *
  */
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <signal.h>
+#ifdef WIN32
 #include <windows.h>
 #include "win.h"
+#endif
+
 /**
  * @Brief
- *      This is main function of pbs_sleep_win process.
- *      It calls sleep internally for the number of seconds passed to it.
+ *      This is main function of pbs_sleep process.
+ *      It calls sleep internally for the number of seconds passed to it, -1 for sleep indefinitely.
  *
  */
+
+
+int
 main(int argc, char *argv[])
 {
+	int i;
+	int forever = 0;
+	int secs = 0;
+
 	if (argc != 2) {
 		fprintf(stderr, "%s secs\n", argv[0]);
 		exit(1);
 	}
 
-	sleep(atoi(argv[1]));
 
-	exit(0);
+	/* if argv[1] is -1, loop with sleep 1 indefinitely */
+	if (strcmp(argv[1], "-1") == 0)
+		forever = 1;
+	else
+		secs = atoi(argv[1]);
+
+	for (i = 0; i < secs || forever; i++)
+		sleep(1);
+
+	return 0;
 
 }

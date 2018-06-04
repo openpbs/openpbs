@@ -6,6 +6,7 @@ import sys
 import getopt
 import ctypes
 import subprocess
+import string
 from socket import gethostname
 from string import Template
 from shutil import copyfile
@@ -484,6 +485,11 @@ def main():
         install_vcredist()
         init_db(username, password)
     __run_cmd([os.path.join(pbs_bin, 'pbs_mkdirs.exe')])
+    cmd = ['mklink', '/H']
+    cmd += ['"' + os.path.join(pbs_bin, 'pbs-sleep.exe') + '"']
+    cmd += ['"' + os.path.join(pbs_bin, 'pbs_sleep.exe') + '"']
+    cmd = string.join(cmd, " ")
+    os.system(cmd)
     register_and_start_services(username, password)
     __log_info('Successfully completed post installation process')
 

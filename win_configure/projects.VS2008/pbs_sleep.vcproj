@@ -73,12 +73,12 @@
 				Name="VCLinkerTool"
 				AdditionalOptions="/SAFESEH"
 				AdditionalDependencies="secur32.lib Userenv.lib mpr.lib odbc32.lib odbccp32.lib"
-				OutputFile="..\..\..\win_build\src\tools\Debug\pbs-sleep.exe"
+				OutputFile="..\..\..\win_build\src\tools\Debug\pbs_sleep.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
 				UACExecutionLevel="0"
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile="..\..\..\win_build\src\tools\Debug\pbs-sleep.pdb"
+				ProgramDatabaseFile="..\..\..\win_build\src\tools\Debug\pbs_sleep.pdb"
 				SubSystem="1"
 				RandomizedBaseAddress="2"
 				DataExecutionPrevention="2"
@@ -166,11 +166,11 @@
 				Name="VCLinkerTool"
 				AdditionalOptions="/SAFESEH"
 				AdditionalDependencies="secur32.lib Userenv.lib mpr.lib odbc32.lib odbccp32.lib"
-				OutputFile="..\..\..\win_build\src\tools\Release\pbs-sleep.exe"
+				OutputFile="..\..\..\win_build\src\tools\Release\pbs_sleep.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
 				UACExecutionLevel="0"
-				ProgramDatabaseFile="..\..\..\win_build\src\tools\Release\pbs-sleep.pdb"
+				ProgramDatabaseFile="..\..\..\win_build\src\tools\Release\pbs_sleep.pdb"
 				SubSystem="1"
 				RandomizedBaseAddress="2"
 				DataExecutionPrevention="2"
@@ -207,7 +207,7 @@
 			Filter="cpp;c;cxx;rc;def;r;odl;idl;hpj;bat"
 			>
 			<File
-				RelativePath="..\..\src\tools\pbs_sleep_win.c"
+				RelativePath="..\..\src\tools\pbs_sleep.c"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
