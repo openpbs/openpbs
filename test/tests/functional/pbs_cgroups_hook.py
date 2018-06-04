@@ -102,14 +102,15 @@ class TestCgroupsHook(TestFunctional):
 
         self.vntypenameA = 'no_cgroups'
         self.vntypenameB = self.vntypenameA
-        self.iscray = 0
+        self.iscray = False
+        self.noprefix = False
         self.tempfile = []
         if self.moms:
             if len(self.moms) == 1:
                 self.momA = self.moms.values()[0]
                 self.momB = self.momA
                 if self.momA.is_cray():
-                    self.iscray = 1
+                    self.iscray = True
                 self.hostA = self.momA.shortname
                 self.hostB = self.hostA
                 if self.iscray:
@@ -127,7 +128,7 @@ class TestCgroupsHook(TestFunctional):
                 self.momA = self.moms.values()[0]
                 self.momB = self.moms.values()[1]
                 if self.momA.is_cray() or self.momB.is_cray():
-                    self.iscray = 1
+                    self.iscray = True
                 self.hostA = self.momA.shortname
                 self.hostB = self.momB.shortname
                 if self.iscray:
@@ -139,7 +140,7 @@ class TestCgroupsHook(TestFunctional):
                 self.vntypenameA = self.get_vntype(self.hostA)
                 self.vntypenameB = self.get_vntype(self.hostB)
                 if self.momA.is_cray() or self.momB.is_cray():
-                    self.iscray = 1
+                    self.iscray = True
                 self.momA.delete_vnode_defs()
                 self.momB.delete_vnode_defs()
                 self.server.manager(MGR_CMD_DELETE, NODE, None, "")
@@ -692,6 +693,8 @@ for i in 1 2 3 4; do while : ; do : ; done & done
                 if entries[2] != 'cgroup':
                     continue
                 flags = entries[3].split(',')
+                if 'noprefix' in flags:
+                    self.noprefix = True
                 subsys = os.path.basename(entries[1])
                 paths[subsys] = entries[1]
                 if 'memory' in flags:
@@ -1553,7 +1556,7 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         self.assertNotEqual(mem1, mem2)
         self.assertNotEqual(vmem1, vmem2)
 
-    @timeout(300)
+    @timeout(500)
     def test_cgroup_reserve_mem(self):
         """
         Test to verify that the mom reserve memory for OS
@@ -1786,7 +1789,7 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         self.server.expect(JOB, a, attrop=PTL_AND, id=jid3, offset=10,
                            interval=1, max_attempts=30)
 
-    @timeout(300)
+    @timeout(500)
     def test_cgroup_cpuset_exclude_cpu(self):
         """
         Confirm that exclude_cpus reduces resources_available.ncpus
@@ -1907,8 +1910,11 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         self.server.status(JOB, ATTR_o, jid)
         o = j.attributes[ATTR_o]
         self.tempfile.append(o)
+        memh_path = 'cpuset.mem_hardwall'
         fn = self.get_cgroup_job_dir('cpuset', jid, self.hostA)
-        fn = os.path.join(fn, 'cpuset.mem_hardwall')
+        if self.noprefix:
+            memh_path = 'mem_hardwall'
+        fn = os.path.join(fn, memh_path)
         result = self.du.cat(hostname=self.hostA, filename=fn, sudo=True)
         self.assertEqual(result['rc'], 0)
         self.assertEqual(result['out'][0], '0')
@@ -1927,7 +1933,7 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         o = j.attributes[ATTR_o]
         self.tempfile.append(o)
         fn = self.get_cgroup_job_dir('cpuset', jid, self.hostA)
-        fn = os.path.join(fn, 'cpuset.mem_hardwall')
+        fn = os.path.join(fn, memh_path)
         result = self.du.cat(hostname=self.hostA, filename=fn, sudo=True)
         self.assertEqual(result['rc'], 0)
         self.assertEqual(result['out'][0], '1')
@@ -1993,8 +1999,11 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         self.server.status(JOB, ATTR_o, jid)
         o = j.attributes[ATTR_o]
         self.tempfile.append(o)
+        spread_path = 'cpuset.memory_spread_page'
         fn = self.get_cgroup_job_dir('cpuset', jid, self.hostA)
-        fn = os.path.join(fn, 'cpuset.memory_spread_page')
+        if self.noprefix:
+            spread_path = 'memory_spread_page'
+        fn = os.path.join(fn, spread_path)
         result = self.du.cat(hostname=self.hostA, filename=fn, sudo=True)
         self.assertEqual(result['rc'], 0)
         self.assertEqual(result['out'][0], '0')
@@ -2013,7 +2022,7 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         o = j.attributes[ATTR_o]
         self.tempfile.append(o)
         fn = self.get_cgroup_job_dir('cpuset', jid, self.hostA)
-        fn = os.path.join(fn, 'cpuset.memory_spread_page')
+        fn = os.path.join(fn, spread_path)
         result = self.du.cat(hostname=self.hostA, filename=fn, sudo=True)
         self.assertEqual(result['rc'], 0)
         self.assertEqual(result['out'][0], '1')
