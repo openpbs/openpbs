@@ -4055,6 +4055,7 @@ copy_env_value(char *dest, /* destination  */
 	int   go = 1;
 	int   q_ch = 0;
 	int   is_func = 0;
+	char  *dest_full = dest;
 
 	while (*dest)
 		++dest;
@@ -4087,12 +4088,15 @@ copy_env_value(char *dest, /* destination  */
 
 			case ESC_CHAR:			/* backslash in value, escape it */
 				*dest++ = *pv;
-				*dest++ = *pv;
+				if (*(pv+1) != ',') /* do not escape if ESC_CHAR already escapes */
+					*dest++ = *pv;
 				break;
 
 			case ',':
 				if (q_ch || quote_flg) {
 					*dest++ = ESC_CHAR;
+					*dest++ = *pv;
+				} else if (dest_full != dest && *(dest-1) == ESC_CHAR) { /* the comma is escaped, not finished yet */
 					*dest++ = *pv;
 				} else {
 					go = 0;		/* end of value string */
