@@ -1452,11 +1452,6 @@ main(int argc, char **argv)
 		/* in case secondary didn't remove the file */
 		/* also tells the secondary to go idle	    */
 		(void)unlink(path_secondaryact);
-		/* 
-		 * Make the scheduler (re)-read the configuration
-		 * and fairshare usage.
-		 */
-		(void)contact_sched(SCH_CONFIGURE, NULL, pbs_scheduler_addr, pbs_scheduler_port); 
 
 	} else {
 		/* we believe we are a secondary server */
@@ -2007,6 +2002,13 @@ try_db_again:
 		return (1);
 	}
 	process_hooks(periodic_req, hook_msg, sizeof(hook_msg), pbs_python_set_interrupt);
+
+	/*
+	 * Make the scheduler (re)-read the configuration
+	 * and fairshare usage.
+	 */
+	(void)contact_sched(SCH_CONFIGURE, NULL, pbs_scheduler_addr, pbs_scheduler_port);
+
 
 	/*
 	 * main loop of server
