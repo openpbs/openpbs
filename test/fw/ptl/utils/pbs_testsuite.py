@@ -135,6 +135,22 @@ NUMNODES = 'numnodes'
 TIMEOUT_KEY = '__testcase_timeout__'
 
 
+def skip(reason="Skipped test execution"):
+    """
+    Unconditionally skip a test.
+
+    :param reason: Reason for the skip
+    :type reason: str or None
+    """
+    skip_flag = True
+
+    def wrapper(test_item):
+        test_item.__unittest_skip__ = skip_flag
+        test_item.__unittest_skip_why__ = reason
+        return test_item
+    return wrapper
+
+
 def timeout(val):
     """
     Decorator to set timeout value of test case
