@@ -720,6 +720,9 @@ remove_node_state(node_info *ninfo, char *state)
 {
 	char errbuf[256];
 
+	if (ninfo == NULL)
+		return 1;
+
 	if (!strcmp(state, ND_down))
 		ninfo->is_down = 0;
 	else if (!strcmp(state, ND_free))
@@ -787,6 +790,9 @@ add_node_state(node_info *ninfo, char *state)
 {
 	char errbuf[256];
 	int set_free = 0;
+
+	if (ninfo == NULL)
+		return 1;
 
 	if (!strcmp(state, ND_down))
 		ninfo->is_down = 1;
@@ -1665,6 +1671,8 @@ update_node_on_run(nspec *ns, resource_resv *resresv, char *job_state)
 			}
 			else {
 				add_node_state(ninfo, ND_job_exclusive);
+				if (ninfo->svr_node != NULL)
+					add_node_state(ninfo->svr_node, ND_job_exclusive);
 			}
 		}
 	}
@@ -1719,12 +1727,12 @@ update_node_on_end(node_info *ninfo, resource_resv *resresv, char *job_state)
 	if (ninfo->is_job_busy)
 		remove_node_state(ninfo, ND_jobbusy);
 	if (is_excl(resresv->place_spec, ninfo->sharing)) {
-		if (resresv->is_resv) {
-			if (ninfo->svr_node != NULL)
-				remove_node_state(ninfo->svr_node, ND_resv_exclusive);
-		}
+		if (resresv->is_resv)
+			remove_node_state(ninfo, ND_resv_exclusive);
 		else {
 			remove_node_state(ninfo, ND_job_exclusive);
+			if (ninfo->svr_node != NULL)
+				remove_node_state(ninfo->svr_node, ND_job_exclusive);
 		}
 	}
 
@@ -1735,7 +1743,7 @@ update_node_on_end(node_info *ninfo, resource_resv *resresv, char *job_state)
 			resreq = ns->resreq;
 			if ((job_state != NULL) && (*job_state == 'S')) {
 				if (resresv->job->resreleased != NULL) {
-					nspec * temp = find_nspec_by_rank(resresv->job->resreleased, ninfo->rank);
+					nspec *temp = find_nspec_by_rank(resresv->job->resreleased, ninfo->rank);
 					if (temp != NULL)
 						resreq = temp->resreq;
 				}

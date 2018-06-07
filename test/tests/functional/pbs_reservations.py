@@ -211,3 +211,64 @@ class TestReservations(TestFunctional):
         self.server.log_match(resid + ";deleted at request of pbs_server",
                               id=resid, interval=5)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
+
+    def test_exclusive_state(self):
+        """
+        Test that the resv-exclusive and job-exclusive
+        states are approprately set
+        """
+        a = {'resources_available.ncpus': 1}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.server.shortname)
+
+        now = int(time.time())
+        a = {'Resource_List.select': '1:ncpus=1',
+             'Resource_List.place': 'excl', 'reserve_start': now + 30,
+             'reserve_end': now + 3600}
+        r = Reservation(TEST_USER, attrs=a)
+        rid = self.server.submit(r)
+
+        exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, exp_attr, id=rid)
+
+        self.logger.info('Waiting 30s for reservation to start')
+        exp_attr['reserve_state'] = (MATCH_RE, 'RESV_RUNNING|5')
+        self.server.expect(RESV, exp_attr, id=rid, offset=30)
+
+        self.server.expect(NODE, {'state': 'resv-exclusive'},
+                           id=self.server.shortname)
+
+        a = {'Resource_List.select': '1:ncpus=1',
+             'Resource_List.place': 'excl', 'queue': rid.split('.')[0]}
+        j = Job(TEST_USER, attrs=a)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+
+        n = self.server.status(NODE)
+        states = n[0]['state'].split(',')
+        self.assertIn('resv-exclusive', states)
+        self.assertIn('job-exclusive', states)
+
+    def test_resv_excl_future_resv(self):
+        """
+        Test to see that exclusive reservations in the near term do not
+        interfere with longer term reservations
+        """
+        a = {'resources_available.ncpus': 1}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.server.shortname)
+
+        now = int(time.time())
+        a = {'Resource_List.select': '1:ncpus=1',
+             'Resource_List.place': 'excl', 'reserve_start': now + 30,
+             'reserve_end': now + 3600}
+        r1 = Reservation(TEST_USER, attrs=a)
+        rid1 = self.server.submit(r1)
+
+        exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, exp_attr, id=rid1)
+
+        a['reserve_start'] = now + 7200
+        a['reserve_end'] = now + 10800
+        r2 = Reservation(TEST_USER, attrs=a)
+        rid2 = self.server.submit(r2)
+
+        self.server.expect(RESV, exp_attr, id=rid2)
