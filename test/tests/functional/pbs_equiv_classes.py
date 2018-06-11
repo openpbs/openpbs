@@ -1536,10 +1536,12 @@ else:
 
         a = {'Resource_List.ncpus': 3, 'queue': 'expressq'}
         (jid3,) = self.submit_jobs(1, a)
-
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
-        self.server.expect(JOB, {'job_state': 'S'}, id=jid2)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
+
+        # Make sure one of the job is suspended
+        sus_job = self.server.select(attrib={'job_state': 'S'})
+        self.assertEqual(len(sus_job), 1,
+                         "Either no or more jobs are suspended")
 
         (jid4,) = self.submit_jobs(1)
         self.server.expect(JOB, 'comment', op=SET)
