@@ -61,6 +61,23 @@ class TestOfflineVnodeOnHookFailure(TestFunctional):
                 'alarm': '3', 'enabled': 'true'}
         self.server.create_import_hook(name, attr, body)
 
+    def create_bad_begin_hook(self):
+        name = "h2"
+        body = ("import pbs\n"
+                "e=pbs.event()\n"
+                "if e.job.in_ms_mom():\n"
+                "    e.accept()\n"
+                "raise ValueError('invalid name')\n")
+        attr = {'event': 'execjob_begin', 'fail_action': 'offline_vnodes'}
+        self.server.create_import_hook(name, attr, body)
+
+    def create_bad_startup_hook(self):
+        name = "h3"
+        body = ("import pbs\n"
+                "raise ValueError('invalid name')\n")
+        attr = {'event': 'exechost_startup', 'fail_action': 'offline_vnodes'}
+        self.server.create_import_hook(name, attr, body)
+
     def create_multi_vnodes(self, num_moms, num_vnode=3):
         if num_moms != len(self.moms.values()):
             self.server.manager(MGR_CMD_DELETE, NODE, id="@default",
@@ -178,6 +195,14 @@ class TestOfflineVnodeOnHookFailure(TestFunctional):
                            interval=2)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
 
+        # Restore original node setup for future test cases.
+        self.server.cleanup_jobs(extend='force')
+        self.server.manager(MGR_CMD_DELETE, NODE, id="@default",
+                            expect=True)
+        for m in self.moms.values():
+            self.server.manager(MGR_CMD_CREATE, NODE,
+                                id=m.shortname)
+
     def test_multi_mom_hook_failure_affects_vnode(self):
         """
         Run an execjob_begin hook that sleeps for sometime,
@@ -252,9 +277,107 @@ class TestOfflineVnodeOnHookFailure(TestFunctional):
             self.server.expect(NODE, {ATTR_NODE_state: 'free'}, id='vnode[1]',
                                max_attempts=3, interval=2)
 
-        # Delete and create offline node because PTL's setup does not delete
-        # offline nodes
-        self.server.manager(MGR_CMD_DELETE, NODE,
-                            id=self.moms.values()[0].shortname, expect=True)
-        self.server.manager(MGR_CMD_CREATE, NODE,
-                            id=self.moms.values()[0].shortname)
+        # Restore original node setup for future test cases.
+        self.server.cleanup_jobs(extend='force')
+        self.server.manager(MGR_CMD_DELETE, NODE, id="@default",
+                            expect=True)
+        for m in self.moms.values():
+            self.server.manager(MGR_CMD_CREATE, NODE,
+                                id=m.shortname)
+
+    def test_multi_mom_hook_failure_affects_vnode2(self):
+        """
+        Run an execjob_begin hook that gets an exception
+        when executed by sister mom, causing
+        the server to execute the fail_action=offline_vnodes, which
+        result in sister vnode to be marked offline.
+        Then run an exechost_startup hook that gets an
+        exception when local mom is restarted. Vnode representing
+        local mom would be marked offline.
+        """
+        if len(self.moms.values()) != 2:
+            self.skipTest("Provide 2 moms while invoking test")
+
+        for m in self.moms.values():
+            if m.is_cpuset_mom():
+                self.skipTest("Skipping test on cpuset moms")
+
+        if self.is_cray is True:
+            self.skipTest("Skipping test on Crays")
+
+        # The moms provided to the test may have unwanted vnodedef files.
+        if self.moms.values()[0].has_vnode_defs():
+            self.moms.values()[0].delete_vnode_defs()
+        if self.moms.values()[1].has_vnode_defs():
+            self.moms.values()[1].delete_vnode_defs()
+
+        self.create_multi_vnodes(num_moms=2, num_vnode=1)
+
+        self.create_bad_begin_hook()
+
+        j1 = Job(TEST_USER)
+
+        a = {ATTR_l + '.select': '2:ncpus=1',
+             ATTR_l + '.place': 'scatter'}
+        j1.set_attributes(a)
+
+        jid = self.server.submit(j1)
+
+        self.server.expect(NODE, {ATTR_NODE_state: 'free'},
+                           id=self.moms.values()[0].shortname, max_attempts=3,
+                           interval=2)
+        # sister mom's vnode gets offlined due to hook exception
+        self.server.expect(NODE,
+                           {ATTR_NODE_state: 'offline',
+                            ATTR_comment:
+                            "offlined by hook 'h2' due to hook error"},
+                           id=self.moms.values()[1].shortname,
+                           max_attempts=6, interval=2, attrop=PTL_AND)
+        self.server.expect(JOB, {ATTR_state: 'Q'}, id=jid)
+
+        # Restore original node setup for future test cases.
+        self.server.cleanup_jobs(extend='force')
+        self.server.manager(MGR_CMD_DELETE, NODE, id="@default",
+                            expect=True)
+        for m in self.moms.values():
+            self.server.manager(MGR_CMD_CREATE, NODE,
+                                id=m.shortname)
+
+    def test_fail_action_startup_hook(self):
+        """
+        Run an exechost_startup hook that gets an
+        exception when local mom is restarted. Vnode representing
+        local mom would be marked offline.
+        """
+        mom = self.moms.values()[0]
+        if mom.is_cpuset_mom():
+            self.skipTest("Skipping test on cpuset moms")
+
+        if self.is_cray is True:
+            self.skipTest("Skipping test on Crays")
+
+        # The moms provided to the test may have unwanted vnodedef files.
+        if mom.has_vnode_defs():
+            mom.delete_vnode_defs()
+
+        self.create_multi_vnodes(1)
+        self.create_bad_startup_hook()
+
+        mom.stop()
+        mom.start()
+
+        # primary mom's vnode gets offlined due to startup hook exception
+        self.server.expect(NODE,
+                           {ATTR_NODE_state: 'offline',
+                            ATTR_comment:
+                            "offlined by hook 'h3' due to hook error"},
+                           id=mom.shortname,
+                           max_attempts=3, interval=2, attrop=PTL_AND)
+
+        # Restore original node setup for future test cases.
+        self.server.cleanup_jobs(extend='force')
+        self.server.manager(MGR_CMD_DELETE, NODE, id="@default",
+                            expect=True)
+        for m in self.moms.values():
+            self.server.manager(MGR_CMD_CREATE, NODE,
+                                id=m.shortname)
