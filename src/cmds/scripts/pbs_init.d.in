@@ -783,11 +783,27 @@ site_mom_cleanup()
 	fi
 }
 
+# Check whether PBS is registered to start at boot time
+is_registered()
+{
+	if command -v systemctl >/dev/null 2>&1; then
+		systemctl is-enabled pbs > /dev/null 2>&1
+		return $?
+	elif command -v chkconfig; then
+		chkconfig pbs > /dev/null 2>&1
+		return $?
+	fi
+	return 0
+}
+
 # Check whether system is being booted or not 
 # and also update the time in /var/tmp/pbs_boot_check file  
 # return 0 if system is being booted otherwise return 1
 is_boottime()
 {
+	is_registered
+	[ $? -ne 0 ] && return 1
+	
 	PYTHON_EXE=${PBS_EXEC}/python/bin/python
 	if [ -z "${PYTHON_EXE}" -o ! -x "${PYTHON_EXE}" ] ; then
 		return 1
@@ -801,8 +817,8 @@ is_boottime()
 	fi
 	
 	${PYTHON_EXE} ${BOOTPYFILE} ${BOOTCHECKFILE} > /dev/null 2>&1
-        ret=$?
-        return ${ret}
+	ret=$?
+	return ${ret}
 }
 
 pre_start_pbs()

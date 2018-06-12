@@ -1517,11 +1517,11 @@ class SmokeTest(PBSTestSuite):
             'sharing', 'last_state_change_time']
         possible_dflt_attrs = {'license': 'l', 'last_used_time': 'arbitrary'}
         self.server.expect(NODE, {'state': 'free'},
-                           id=self.server.shortname, interval=3)
+                           id=self.mom.shortname, interval=3)
         node_attr = []
         for (key, val) in \
                 (self.server.status(NODE,
-                                    id=self.server.shortname)[0].iteritems()):
+                                    id=self.mom.shortname)[0].iteritems()):
             key = key.split('.')[0]
             if str(key) not in attrs_pbsnodes_dflts:
                 self.assertFalse(not ((key in possible_dflt_attrs) and
