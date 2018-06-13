@@ -36,7 +36,7 @@
 # trademark licensing policies.
 #
 
-noinst_LIBRARIES = libtpp.a
+noinst_LIBRARIES = libtpp.a 
 
 libtpp_a_CPPFLAGS = -I$(top_srcdir)/src/include
 

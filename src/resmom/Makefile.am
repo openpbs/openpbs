@@ -59,6 +59,7 @@ pbs_mom_LDADD = \
 	@PYTHON_LDFLAGS@ \
 	@PYTHON_LIBS@ \
 	@mom_mach_libs@ \
+	@libz_lib@ \
 	-lssl \
 	-lcrypto
 

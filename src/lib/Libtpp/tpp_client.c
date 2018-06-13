@@ -1047,6 +1047,7 @@ tpp_send(int sd, void *data, int len)
 			tpp_log_func(LOG_CRIT, __func__, "tpp deflate failed");
 			return -1;
 		}
+		tpp_log_func(LOG_INFO, __func__, "tpp_deflate called inside tpp_send routine");
 		pkt = tpp_cr_pkt(outbuf, cmprsd_len, 0);
 		if (pkt == NULL) {
 			free(outbuf);
@@ -3556,6 +3557,7 @@ add_part_packet(stream_t *strm, void *data, int sz)
 			void *uncmpr_data;
 
 			if ((uncmpr_data = tpp_inflate(tmp->data, cmprsd_len, totlen))) {
+				tpp_log_func(LOG_INFO, __func__, "tpp_inflate called inside add_part_packet routine");
 				obj = tpp_cr_pkt(uncmpr_data, totlen, 0);
 				if (!obj)
 					free(uncmpr_data);

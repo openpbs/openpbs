@@ -60,6 +60,7 @@ pbs_server_bin_LDADD = \
 	@database_ldflags@ \
 	@database_lib@ \
 	@expat_lib@ \
+	@libz_lib@ \
 	@libical_lib@ \
 	@PYTHON_LDFLAGS@ \
 	@PYTHON_LIBS@ \
@@ -142,6 +143,7 @@ pbs_comm_LDADD = \
 	$(top_builddir)/src/lib/Libutil/libutil.a \
 	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
 	-lpthread \
+	@libz_lib@ \
 	@socket_lib@
 
 pbs_comm_SOURCES = pbs_comm.c

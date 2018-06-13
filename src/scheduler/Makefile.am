@@ -114,6 +114,7 @@ common_libs = \
 	$(top_builddir)/src/lib/Libsec/libsec.a \
 	@PYTHON_LDFLAGS@ \
 	@PYTHON_LIBS@ \
+	@libz_lib@ \
 	@libical_lib@
 
 pbs_sched_CPPFLAGS = ${common_cppflags}

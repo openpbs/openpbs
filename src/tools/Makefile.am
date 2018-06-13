@@ -139,6 +139,7 @@ pbs_tclsh_LDADD = \
 	$(top_builddir)/src/lib/Libutil/libutil.a \
 	-lpthread \
 	@socket_lib@ \
+	@libz_lib@ \
 	@tcl_lib@
 pbs_tclsh_SOURCES = \
 	pbs_tclWrap.c \

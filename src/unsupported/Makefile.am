@@ -71,5 +71,6 @@ pbs_rmget_LDADD = \
 	$(top_builddir)/src/lib/Libnet/libnet.a \
 	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
 	$(top_builddir)/src/lib/Libutil/libutil.a \
-	-lpthread
+	-lpthread \
+	@libz_lib@
 pbs_rmget_SOURCES = pbs_rmget.c
