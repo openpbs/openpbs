@@ -414,7 +414,6 @@ char *msg_stdg_resv_occr_conflict = "Requested time(s) will interfere with a lat
 char *msg_alps_switch_err = "Switching ALPS reservation failed";
 
 char *msg_softwt_stf = "soft_walltime is not supported with Shrink to Fit jobs";
-char *msg_bad_node_state = "Node is in the wrong state for operation";
 
 /*
  * The following table connects error numbers with text
@@ -591,7 +590,6 @@ struct pbs_err_to_txt pbs_err_to_txt[] = {
 	{PBSE_STDG_RESV_OCCR_CONFLICT, &msg_stdg_resv_occr_conflict},
 	{PBSE_ALPS_SWITCH_ERR, &msg_alps_switch_err},
 	{PBSE_SOFTWT_STF, &msg_softwt_stf},
-	{PBSE_BAD_NODE_STATE, &msg_bad_node_state},
 	{PBSE_SCHED_OP_NOT_PERMITTED, &msg_sched_op_not_permitted},
 	{PBSE_SCHED_PARTITION_ALREADY_EXISTS, &msg_sched_part_already_used},
 	{ 0, NULL }		/* MUST be the last entry */

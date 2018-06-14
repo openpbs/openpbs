@@ -193,6 +193,7 @@ src/tools/printjob.bin
 src/tools/printjob_svr.bin
 src/tools/tracejob
 src/tools/wrap_tcl.sh
+src/tools/pbs_sleep
 src/unsupported/pbs_diag
 src/unsupported/pbs_dtj
 src/unsupported/pbs_rmget

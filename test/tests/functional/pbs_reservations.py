@@ -492,3 +492,71 @@ class TestReservations(TestFunctional):
 
         exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, exp_attr, id=rid3)
+
+    def test_resv_excl_with_jobs(self):
+        """
+        Test to see that exclusive reservations in the near term do not
+        interfere with longer term reservations with jobs inside
+        """
+        a = {'resources_available.ncpus': 1}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.server.shortname)
+
+        now = int(time.time())
+        a = {'Resource_List.select': '1:ncpus=1',
+             'Resource_List.place': 'excl', 'reserve_start': now + 30,
+             'reserve_end': now + 300}
+        r = Reservation(TEST_USER, attrs=a)
+        rid = self.server.submit(r)
+
+        exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, exp_attr, id=rid)
+
+        self.logger.info('Waiting 30s for reservation to start')
+        exp_attr['reserve_state'] = (MATCH_RE, 'RESV_RUNNING|5')
+        self.server.expect(RESV, exp_attr, id=rid, offset=30)
+
+        a = {'Resource_List.select': '1:ncpus=1',
+             'Resource_List.place': 'excl',
+             'Resource_List.walltime': '30',
+             'queue': rid.split('.')[0]}
+        j = Job(TEST_USER, attrs=a)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+
+        # Submit another reservation that will start after first
+        a = {'Resource_List.select': '1:ncpus=1',
+             'Resource_List.place': 'excl', 'reserve_start': now + 360,
+             'reserve_end': now + 3600}
+        r2 = Reservation(TEST_USER, attrs=a)
+        rid2 = self.server.submit(r2)
+
+        exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, exp_attr, id=rid2)
+
+    def test_resv_server_restart(self):
+        """
+        Test if a reservation correctly goes into the resv-exclusive state
+        if the server is restarted between when the reservation gets
+        confirmed and when it starts
+        """
+        now = int(time.time())
+        start = now + 30
+        a = {'reserve_start': start, 'reserve_end': start + 300,
+             'Resource_List.select': '1:ncpus=1:vnode=' +
+             self.server.shortname, 'Resource_List.place': 'excl'}
+
+        r = Reservation(TEST_USER, a)
+        rid = self.server.submit(r)
+        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, a, id=rid)
+
+        self.server.restart()
+
+        sleep_time = start - int(time.time())
+
+        self.logger.info('Waiting %d seconds till resv starts' % sleep_time)
+        a = {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')}
+        self.server.expect(RESV, a, id=rid, offset=sleep_time)
+
+        self.server.expect(NODE, {'state': 'resv-exclusive'},
+                           id=self.server.shortname)
