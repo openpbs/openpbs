@@ -68,6 +68,12 @@ class TestPbsHookCrossLinkMom(TestFunctional):
         When the job has finished, the test checks if the server did the wrong
         cross-linking or not.
         """
+        status = self.server.status(NODE, id=self.hostA)
+        Mom1_before = status[0][ATTR_NODE_Mom]
+
+        status = self.server.status(NODE, id=self.hostB)
+        Mom2_before = status[0][ATTR_NODE_Mom]
+
         hook_name = "job_end"
         hook_body = """
 import pbs
@@ -102,8 +108,8 @@ this_event.accept()
 
         status = self.server.status(NODE, id=self.hostA)
         Mom = status[0][ATTR_NODE_Mom]
-        self.assertEquals(Mom, self.hostA)
+        self.assertEquals(Mom, Mom1_before)
 
         status = self.server.status(NODE, id=self.hostB)
         Mom = status[0][ATTR_NODE_Mom]
-        self.assertEquals(Mom, self.hostB)
+        self.assertEquals(Mom, Mom2_before)
