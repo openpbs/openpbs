@@ -860,7 +860,7 @@ create_events(server_info *sinfo)
 	qsort(all, count_array((void **)all), sizeof(resource_resv *), cmp_events);
 
 	for (i = 0; all[i] != NULL && is_timed(all[i]); i++) {
-		if (all[i]->is_resv && all[i]->resv &&
+		if (all[i]->is_resv && all[i]->resv != NULL &&
 			all[i]->resv->resv_state == RESV_BEING_ALTERED)
 			continue;
 		/* only add a run event for a job or reservation if they're

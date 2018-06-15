@@ -218,7 +218,8 @@ class TestReservations(TestFunctional):
         states are approprately set
         """
         a = {'resources_available.ncpus': 1}
-        self.server.manager(MGR_CMD_SET, NODE, a, id=self.server.shortname)
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname,
+                            sudo=True)
 
         now = int(time.time())
         a = {'Resource_List.select': '1:ncpus=1',
@@ -254,7 +255,8 @@ class TestReservations(TestFunctional):
         interfere with longer term reservations
         """
         a = {'resources_available.ncpus': 1}
-        self.server.manager(MGR_CMD_SET, NODE, a, id=self.server.shortname)
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname,
+                            sudo=True)
 
         now = int(time.time())
         a = {'Resource_List.select': '1:ncpus=1',
@@ -272,3 +274,221 @@ class TestReservations(TestFunctional):
         rid2 = self.server.submit(r2)
 
         self.server.expect(RESV, exp_attr, id=rid2)
+
+    def test_job_exceed_resv_end(self):
+        """
+        Test to see that a job when submitted to a reservation without the
+        walltime would not show up as exceeding the reservation and
+        making the scheduler reject future reservations.
+        """
+
+        a = {'resources_available.ncpus': 1}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname,
+                            sudo=True)
+
+        now = int(time.time())
+        a = {'Resource_List.select': '1:ncpus=1',
+             'Resource_List.place': 'excl',
+             'reserve_start': now + 30,
+             'reserve_end': now + 300}
+        r = Reservation(TEST_USER, attrs=a)
+        rid = self.server.submit(r)
+
+        exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, exp_attr, id=rid)
+
+        self.logger.info('Waiting 30s for reservation to start')
+        exp_attr['reserve_state'] = (MATCH_RE, 'RESV_RUNNING|5')
+        self.server.expect(RESV, exp_attr, id=rid, offset=30)
+
+        # Submit a job but do not specify walltime, scheduler will consider
+        # the walltime of such a job to be 5 years
+        a = {'Resource_List.select': '1:ncpus=1',
+             'Resource_List.place': 'excl',
+             'queue': rid.split('.')[0]}
+        j = Job(TEST_USER, attrs=a)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+
+        # Submit another reservation that will start after first
+        a = {'Resource_List.select': '1:ncpus=1',
+             'reserve_start': now + 360,
+             'reserve_end': now + 3600}
+        r2 = Reservation(TEST_USER, attrs=a)
+        rid2 = self.server.submit(r2)
+
+        exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, exp_attr, id=rid2)
+
+    def test_future_resv_conflicts_running_job(self):
+        """
+        Test if a running exclusive job without walltime will deny the future
+        resv from getting confirmed.
+        """
+
+        now = int(time.time())
+        # Submit a job but do not specify walltime, scheduler will consider
+        # the walltime of such a job to be 5 years
+        a = {'Resource_List.select': '1:ncpus=1',
+             'Resource_List.place': 'excl'}
+        j = Job(TEST_USER, attrs=a)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+
+        # Submit a reservation that will start after the job starts running
+        a = {'Resource_List.select': '1:ncpus=1',
+             'Resource_List.place': 'excl',
+             'reserve_start': now + 360,
+             'reserve_end': now + 3600}
+        r1 = Reservation(TEST_USER, attrs=a)
+        rid1 = self.server.submit(r1)
+
+        self.server.log_match(rid1 + ";Reservation denied",
+                              id=rid1, interval=5)
+
+    def test_future_resv_confirms_after_running_job(self):
+        """
+        Test if a future reservation gets confirmed if its start time starts
+        after the end time of a job running in an exclusive reservation
+        """
+
+        a = {'resources_available.ncpus': 1}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname,
+                            sudo=True)
+
+        now = int(time.time())
+        a = {'Resource_List.select': '1:ncpus=1',
+             'Resource_List.place': 'excl',
+             'reserve_start': now + 30,
+             'reserve_end': now + 300}
+        r = Reservation(TEST_USER, attrs=a)
+        rid = self.server.submit(r)
+
+        exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, exp_attr, id=rid)
+
+        self.logger.info('Waiting 30s for reservation to start')
+        exp_attr['reserve_state'] = (MATCH_RE, 'RESV_RUNNING|5')
+        self.server.expect(RESV, exp_attr, id=rid, offset=30)
+
+        # Submit a job with walltime exceeding reservation duration
+        a = {'Resource_List.select': '1:ncpus=1',
+             'Resource_List.place': 'excl',
+             'Resource_List.walltime': 600,
+             'queue': rid.split('.')[0]}
+        j = Job(TEST_USER, attrs=a)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+
+        # Submit another reservation that will start after the job ends
+        a = {'Resource_List.select': '1:ncpus=1',
+             'reserve_start': now + 630,
+             'reserve_end': now + 3600}
+        r2 = Reservation(TEST_USER, attrs=a)
+        rid2 = self.server.submit(r2)
+
+        exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, exp_attr, id=rid2)
+
+    def test_future_resv_confirms_before_non_excl_job(self):
+        """
+        Test if a future reservation gets confirmed if its start time starts
+        before the end time of a non exclusive job running in an exclusive
+        reservation.
+        """
+
+        a = {'resources_available.ncpus': 1}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname,
+                            sudo=True)
+
+        now = int(time.time())
+        a = {'Resource_List.select': '1:ncpus=1',
+             'Resource_List.place': 'excl',
+             'reserve_start': now + 30,
+             'reserve_end': now + 300}
+        r = Reservation(TEST_USER, attrs=a)
+        rid = self.server.submit(r)
+
+        exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, exp_attr, id=rid)
+
+        self.logger.info('Waiting 30s for reservation to start')
+        exp_attr['reserve_state'] = (MATCH_RE, 'RESV_RUNNING|5')
+        self.server.expect(RESV, exp_attr, id=rid, offset=30)
+
+        # Submit a job with walltime exceeding reservation duration
+        a = {'Resource_List.select': '1:ncpus=1',
+             'Resource_List.walltime': 600,
+             'queue': rid.split('.')[0]}
+        j = Job(TEST_USER, attrs=a)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+
+        # Submit another reservation that will start after the first
+        # reservation ends
+        a = {'Resource_List.select': '1:ncpus=1',
+             'reserve_start': now + 330,
+             'reserve_end': now + 3600}
+        r2 = Reservation(TEST_USER, attrs=a)
+        rid2 = self.server.submit(r2)
+
+        exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, exp_attr, id=rid2)
+
+    def test_future_resv_with_non_excl_jobs(self):
+        """
+        Test if future reservations with/without exclusive placement are
+        confirmed if their start time starts before end time of non exclusive
+        jobs that are running in reservation.
+        """
+
+        a = {'resources_available.ncpus': 1}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname,
+                            sudo=True)
+
+        now = int(time.time())
+        a = {'Resource_List.select': '1:ncpus=1',
+             'reserve_start': now + 30,
+             'reserve_end': now + 300}
+        r = Reservation(TEST_USER, attrs=a)
+        rid = self.server.submit(r)
+
+        exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, exp_attr, id=rid)
+
+        self.logger.info('Waiting 30s for reservation to start')
+        exp_attr['reserve_state'] = (MATCH_RE, 'RESV_RUNNING|5')
+        self.server.expect(RESV, exp_attr, id=rid, offset=30)
+
+        # Submit a job with walltime exceeding reservation
+        a = {'Resource_List.select': '1:ncpus=1',
+             'Resource_List.walltime': 600,
+             'queue': rid.split('.')[0]}
+        j = Job(TEST_USER, attrs=a)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+
+        # Submit another non exclusive reservation that will start after
+        # previous reservation ends but before job's walltime is over.
+        a = {'Resource_List.select': '1:ncpus=1',
+             'reserve_start': now + 330,
+             'reserve_end': now + 3600}
+        r2 = Reservation(TEST_USER, attrs=a)
+        rid2 = self.server.submit(r2)
+
+        exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, exp_attr, id=rid2)
+
+        self.server.delete(rid2)
+
+        # Submit another exclusive reservation that will start after
+        # previous reservation ends but before job's walltime is over.
+        a = {'Resource_List.select': '1:ncpus=1',
+             'Resource_List.place': 'excl',
+             'reserve_start': now + 330,
+             'reserve_end': now + 3600}
+        r3 = Reservation(TEST_USER, attrs=a)
+        rid3 = self.server.submit(r3)
+
+        exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, exp_attr, id=rid3)

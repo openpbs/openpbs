@@ -1575,7 +1575,7 @@ update_node_on_run(nspec *ns, resource_resv *resresv, char *job_state)
 	resource_resv **tmp_arr;
 	node_info *ninfo;
 	timed_event *te;
-	
+
 	if (ns == NULL || resresv == NULL)
 		return;
 
@@ -1693,17 +1693,17 @@ update_node_on_run(nspec *ns, resource_resv *resresv, char *job_state)
 			}
 		}
 	}
-	
+
 	for(te = resresv->server->calendar->next_event; te != NULL; te = te->next) {
 		if(te->event_type & TIMED_RUN_EVENT) {
 			if(te->event_ptr == resresv)
 				break;
 		}
 	}
-	
+
 	remove_te_list(&ninfo->node_events, te);
 
-	if (ninfo->bucket_ind != -1) {
+	if (ninfo->node_ind != -1 && ninfo->bucket_ind != -1) {
 		node_bucket *bkt = ninfo->server->buckets[ninfo->bucket_ind];
 		int ind = ninfo->node_ind;
 
@@ -1832,9 +1832,9 @@ update_node_on_end(node_info *ninfo, resource_resv *resresv, char *job_state)
 			}
 		}
 	}
-	
+
 	ind = ninfo->node_ind;
-	if (ind != -1) {
+	if (ind != -1 && ninfo->bucket_ind != -1) {
 		node_bucket *bkt = ninfo->server->buckets[ninfo->bucket_ind];
 
 		if (ninfo->node_events == NULL) {
@@ -5544,7 +5544,7 @@ node_info *find_node_by_indrank(node_info **ninfo_arr, int ind, int rank) {
 	if(ninfo_arr == NULL || *ninfo_arr == NULL)
 		return NULL;
 	
-	if(ninfo_arr[0] == NULL || ninfo_arr[0]->server == NULL || ninfo_arr[0]->server->unordered_nodes == NULL)
+	if(ninfo_arr[0] == NULL || ninfo_arr[0]->server == NULL || ninfo_arr[0]->server->unordered_nodes == NULL || ind == -1)
 		return find_node_by_rank(ninfo_arr, rank);
 	
 	return ninfo_arr[0]->server->unordered_nodes[ind];
