@@ -3710,26 +3710,6 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 		return PBSE_UNKNODE;
 	}
 
-	/* If the request is coming from a hook, check if the MoM requesting the update
-	 * actually owns the vnode. If it does not, do not crosslink and return an error.
-	 */
-	if (from_hook) {
-		/* see if the node already has this Mom listed,if not add her */
-		for (i=0; i<pnode->nd_nummoms; ++i) {
-			if (pnode->nd_moms[i] == pmom)
-				pnode_has_mom = 1;
-			break;
-		}
-
-		if (!pnode_has_mom) {
-			snprintf(log_buffer, sizeof(log_buffer),
-				"Not allowed to update vnode '%s', as it is owned by a different mom", pvnal->vnal_id);
-			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE,
-				LOG_INFO, pmom->mi_host, log_buffer);
-			return (PBSE_BADHOST);
-		}
-	}
-
 	/* if mom has a vnode_pool value */
 	pcursvrm = (mom_svrinfo_t *)(pmom->mi_data);
 	if ((localmadenew == 1) && (pcursvrm->msr_vnode_pool > 0)) {
@@ -3748,6 +3728,24 @@ update2_to_vnode(vnal_t *pvnal, int new, mominfo_t *pmom, int *madenew, int from
 		/* cross link the vnode and its Mom */
 		if ((i = cross_link_mom_vnode(pnode, pmom)) != 0) {
 			return (i);
+		}
+	}
+
+	if (from_hook) {
+
+		/* see if the node already has this Mom listed,if not add her */
+		for (i=0; i<pnode->nd_nummoms; ++i) {
+			if (pnode->nd_moms[i] == pmom)
+				pnode_has_mom = 1;
+			break;
+		}
+
+		if (!pnode_has_mom) {
+			snprintf(log_buffer, sizeof(log_buffer),
+				"Not allowed to update vnode '%s', as it is owned by a different mom", pvnal->vnal_id);
+			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_NODE,
+				LOG_INFO, pmom->mi_host, log_buffer);
+			return (PBSE_BADHOST);
 		}
 	}
 
