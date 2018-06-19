@@ -1,39 +1,23 @@
-.\" Copyright (C) 1994-2018 Altair Engineering, Inc.
-.\" For more information, contact Altair at www.altair.com.
+.\" Copyright (c) 2003-2018 Altair Engineering, Inc.  All rights reserved.
 .\"
-.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" ALTAIR ENGINEERING INC. Proprietary and Confidential. Contains Trade 
+.\" Secret Information. Not for use or disclosure outside of Licensee's 
+.\" organization. The software and information contained herein may only 
+.\" be used internally and is provided on a non-exclusive, 
+.\" non-transferable basis.  Licensee may not sublicense, sell, lend, 
+.\" assign, rent, distribute, publicly display or publicly perform the 
+.\" software or other information provided herein, nor is Licensee 
+.\" permitted to decompile, reverse engineer, or disassemble the 
+.\" software. Usage of the software and other information provided by 
+.\" Altair (or its resellers) is only as explicitly stated in the 
+.\" applicable end user license agreement between Altair and Licensee. In 
+.\" the absence of such agreement, the Altair standard end user license 
+.\" agreement terms shall govern. 
 .\"
-.\" Open Source License Information:
 .\"
-.\" PBS Pro is free software. You can redistribute it and/or modify it under the
-.\" terms of the GNU Affero General Public License as published by the Free
-.\" Software Foundation, either version 3 of the License, or (at your option) any
-.\" later version.
+.\" Copyright notice does not imply publication. 
 .\"
-.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-.\" FOR A PARTICULAR PURPOSE.
-.\" See the GNU Affero General Public License for more details.
-.\"
-.\" You should have received a copy of the GNU Affero General Public License
-.\" along with this program.  If not, see <http://www.gnu.org/licenses/>.
-.\"
-.\" Commercial License Information:
-.\"
-.\" For a copy of the commercial license terms and conditions,
-.\" go to: (http://www.pbspro.com/UserArea/agreement.html)
-.\" or contact the Altair Legal Department.
-.\"
-.\" Altair’s dual-license business model allows companies, individuals, and
-.\" organizations to create proprietary derivative works of PBS Pro and
-.\" distribute them - whether embedded or bundled with other software -
-.\" under a commercial license agreement.
-.\"
-.\" Use of Altair’s trademarks, including but not limited to "PBS™",
-.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-.\" trademark licensing policies.
-.\"
-.TH pbs_resources 7B "26 February 2015" Local "PBS Professional"
+.TH pbs_resources 7B "18 April 2018" Local "PBS Professional"
 .SH NAME
 .B pbs_resources 
 \- computational resources for PBS jobs
@@ -49,42 +33,52 @@ PBS provides built-in resources and custom resources for some systems,
 and allows the administrator to define
 custom resources.  The administrator can specify which resources are
 available on a given vnode, as well as at the queue or server level
-(e.g. floating licenses.)  Resources can be "stretched" across vnodes.
+(e.g. walltime).  Resources can be "stretched" across vnodes.
 See the 
-.B qmgr(8B)
-man page and The 
-.B PBS Professional Administrator's Guide.
+.I qmgr(8B)
+man page and the 
+.I PBS Professional Administrator's Guide.
 
 
 Resources defined at the queue or server level apply to an entire job.
-If they are defined at the host level, they apply only to the part of
+If resources are defined at the host level, they apply only to the part of
 the job running on that host.
 
-Jobs request resources, which are allocated to the job, along with any
-defaults specified by the administrator.
+For information on defining resources, see the 
+.I PBS Professional Administrator's Guide.
 
-For information on defining resources, see The 
-.B PBS Professional Administrator's Guide.
-
-.B Summary
+.B Allocating Resources to Jobs
 .br
-Resources are allocated to jobs both by explicitly requesting them and
-by applying defaults.  Resources are explicitly requested (in order of
-precedence) through a
+Resources are allocated to jobs when jobs explicitly request them, 
+when hooks assign them, and when defaults are assigned by PBS.  
+Resources are explicitly requested in this order of precedence:
+.RS 3
+Through a
 .B qalter
-operation, the 
+operation
+.br
+Via the 
 .B qsub
-command line, and PBS job script directives.  Default resources can be
+command line
+.br
+Via PBS job script directives  
+.RE 
+The administrator writes
+any hooks that assign resources to jobs.  Default resources can be
 specified by the administrator (in order of precedence) for
 .B qsub
 arguments, 
 queues, the server, and vnodes.  
 
-Jobs are assigned limits on the amount of resources they can use.
-These limits apply to how much the job can use on each vnode and 
-to how much the whole job can use.  Limits are derived from both requested
-resources and applied default resources.
+.B Limits on Resource Usage
+.br
+A resource allocated to a job, whether explicitly requested or
+assigned via hooks or defaults, places a limit on the amount of that
+resource a job can use.  This limit applies to how much the job can
+use on each vnode and to how much the whole job can use.
 
+.B Placing Jobs on Vnodes
+.br
 Jobs are placed on vnodes according to their explicit placement request, 
 or according to default placement rules.
 The explicit placement request can be specified (in order of precedence) using 
@@ -93,6 +87,8 @@ and PBS job script directives.
 Default placement rules can be specified for queues and the server, 
 and rules for default placement take effect if no other placement
 specifications exist.  
+A job's placement request is specified in its 
+.I place statement.
 
 .B Old Syntax
 .br
@@ -109,36 +105,34 @@ and
 .B BACKWARD COMPATIBILITY.  
 Jobs cannot use both new and old syntax for resource requests.
 
-.B Allocation
+.B Allocating Chunks and Job-wide Resources
 .br
-Resources are allocated to jobs both by explicitly requesting them
-and by applying specified defaults.  
-Jobs explicitly request resources either at the host level in 
+Job resource requests are defined either at the host level in 
 .I chunks
-defined in a 
+specified in a 
 .I selection statement,
-or in job-wide resource requests.  
-
-Format: 
-.RS 4
+or as job-wide resources.  
+.br
+Job-wide format: 
+.RS 3
 .nf
-qsub ... -l <resource name>=<value>   <--- job-wide request
-         -l select=<chunks>           <--- selection statement
+.I qsub ... -l <resource name>=<value>
+.RE
+Chunk format:
+.RS 3
+.I -l select=<chunks>
 .fi
 .RE
 The only resources that can be
-requested in chunks are host-level resources, such as mem and ncpus.
+requested in chunks are host-level resources, such as 
+.I mem 
+and 
+.I ncpus.
 The only resources that can be in a job-wide request are server-level
-or queue-level resources, such as walltime.  An explicit resource
-request can appear here, with this order of precedence:
-.IP " " 5
-.B qalter
-.br
-.B qsub
-.br
-PBS job script directives
-.LP
-.IP " " 5
+or queue-level resources, such as 
+.I walltime.  
+
+.IP " " 3
 .RS
 .B Requesting Resources in Chunks
 .br
@@ -155,68 +149,71 @@ A
 is the smallest 
 set of resources that will be allocated to a job.  It is one or 
 more 
-.I resource_name=value 
+.I <resource name>=<value>
 statements separated by a colon, e.g.:
-.IP " " 5
+.RS 3
 ncpus=2:mem=10GB:host=Host1
 .br
 ncpus=1:mem=20GB:arch=linux
-.LP
+.RE
+
 .I Chunks 
 are described in a 
 .I selection statement, 
 which specifies how many of each kind of chunk.
 A selection statement is of the form:
-.IP " " 5
--l select=[N:]chunk[+[N:]chunk ...]
-.LP
+.RS 3
+.I -l select=[<N>:]<chunk>[+[<N>:]<chunk> ...]
+.RE
 If 
 .I N 
 is not specified, it is taken to be 1.
-
+.br
 No spaces are allowed between chunks.
 
 Example of multiple chunks in a 
 .I selection statement:
-.IP " " 5
+.RS 3
 -l select=2:ncpus=1:mem=10GB+3:ncpus=2:mem=8GB
-.LP
+.RE
+
 .B Requesting Job-wide Resources
 .br
-
 A job-wide resource request is for resource(s) at the server or queue
 level.  This resource must be a server-level or queue-level resource.
 A job-wide resource is designed to be used by the entire job, and is
 available to the complex, not just one execution host.  Job-wide
 resources are requested outside of a
-
 .I selection statement, 
 in this form:
-.IP " " 5
--l keyword=value[,keyword=value ...]
-.LP
+.RS 3
+.I -l <resource name>=<value>[,<resource name>=<value> ...]
+.RE
 where 
-.I keyword  
-identifies either a consumable resource or a time-based resource such
+.I resource name
+is either a consumable resource or a time-based resource such
 as
 .I walltime.
 
-Examples of job-wide resources: walltime, scratch space, licenses
+Example of job-wide resources: walltime
 
-.B Do not mix old style resource 
-.B or node specification with the 
-.B new select and place statements.
+.B Do not mix old style resource or node specification with the new select and place statements.
 Do not use one in a job script and the other on the command line.
 This will result in an error.
 
+See the qsub(1B) man page for a detailed description of how to request 
+resources and place jobs on vnodes.
+
 .B Applying Resource Defaults
 .br
-Jobs get default resources, both 
+When a default resource is defined, it is applied to a job when that
+job does not explicitly request the resource.  Jobs get default
+resources, both
 .I job-wide 
 and per-
 .I chunk
 with the following order of precedence, from 
-.IP " " 5
+.RS 3
 Default
 .B qsub
 arguments
@@ -224,55 +221,64 @@ arguments
 Default queue resources
 .br	
 Default server resources
-.LP
-
+.RE
 
 For each 
 .I chunk
 in the job's selection statement, first queue chunk defaults are
 applied, then server chunk defaults are applied.  If the chunk does not
 contain a resource defined in the defaults, the default is
-added.  The chunk defaults are called "default_chunk.RESOURCE".
+added.  The chunk defaults are specified with "default_chunk.<resource name>".
 
 For example, if the queue in which the job is enqueued has the
 following defaults defined: 
-.IP " " 5
+.RS 3
 default_chunk.ncpus=1
 .br
 default_chunk.mem=2gb
-.LP
+.RE
 a job submitted with this selection statement:
-.IP " " 5
+.RS 3
 select=2:ncpus=4+1:mem=9gb 
-.LP
-will have this specification after the default_chunk elements are applied:
-.IP " " 5
-select=2:ncpus=4:mem=2gb+1:ncpus=1:mem=9gb.  
-.LP
-In the above, mem=2gb and ncpus=1 are inherited from default_chunk.
+.RE
+will have this specification after the 
+.I default_chunk 
+elements are applied:
+.RS 3
+select=2:ncpus=4:mem=2gb+1:ncpus=1:mem=9gb 
+.RE
+In the above, mem=2gb and ncpus=1 are inherited from 
+.I default_chunk.
 
-The job-wide resource request is checked against queue resource
-defaults, then against server resource defaults.  If a default
-resource is defined which is not specified in the resource request, it
-is added to the resource request.
+If a default job-wide resource is defined which is not specified in a
+job's resource request, it is added to the resource request.
+Queue defaults are applied first, then server defaults are applied
+to any remaining gaps in the resource request.
 
-.B Default Resources on Server or Queue
+.B Specifying Default Resources
 .br
 The administrator can specify default resources on the server and
-queue.  These resources can be job-wide or apply to chunks.
-Specifying a job-wide resource has the same effect as adding -l
-RESOURCE to the job's resource request.  Specifying a chunk resource is
-the same as adding :RESOURCE=VALUE to the job's chunks (for chunks that
-don't already specify that resource.)  Job-wide resources are
-specified via resources_default on the server or queue, and chunk
-resources are specified via default_chunk on the server or queue.
+queue.  These resources can be job-wide or apply to chunks.  Job-wide
+resources are specified via
+.I resources_default 
+on the server or queue, and chunk
+resources are specified via 
+.I default_chunk 
+on the server or queue.
 
-The administrator can also specify default resources to be added to
-any qsub arguments, as well as default placement of jobs.
+The administrator can specify default resources to be added to
+any qsub arguments via the server's 
+.I default_qsub_arguments
+attribute.
 
-See the 
-.B qmgr(8B)
-man page for how to set default resources.
+.B Specifying Default Placement
+.br
+The administrator can specify default job placement by setting 
+a value for 
+.I resources.default 
+at the queue or server. 
+
+See the qmgr(8B) man page for how to set default resources.
 
 .B How Default Resources Work When 
 .B Moving Jobs Between Queues
@@ -288,46 +294,46 @@ or
 .I place
 is missing from the job's new resource list, it will 
 be automatically generated,
-using any newly inherited default values.
+using any newly-inherited default values.
 
 Example:
-.RS
+.RS 3
 Given the following set of queue and server default values:
-.IP Server 5
+.IP Server 3
 resources_default.ncpus=1
-.IP "Queue QA" 5
+.IP "Queue QA" 3
 resources_default.ncpus=2
 .br
 default_chunk.mem=2gb
-.IP "Queue QB" 5
+.IP "Queue QB" 3
 default_chunk.mem=1gb
 .br
 no default for ncpus
 .LP
-.RE
+
 The following illustrate the equivalent select specification for jobs
 submitted into queue QA and then moved to (or submitted directly to)
 queue QB:
-.IP "qsub -l ncpus=1 -lmem=4gb" 5
+.IP "qsub -l ncpus=1 -lmem=4gb" 3
 In QA:  select=1:ncpus=1:mem=4gb  -  no defaults need be applied
 .br
 In QB:  select=1:ncpus=1:mem=4gb  -  no defaults need be applied
 
-.IP "qsub -l ncpus=1" 5
+.IP "qsub -l ncpus=1" 3
 In QA: select=1:ncpus=1:mem=2gb
 .br
 In QB: select=1:ncpus=1:mem=1gb
 
-.IP "qsub -lmem=4gb" 5
+.IP "qsub -lmem=4gb" 3
 In QA: select=1:ncpus=2:mem=4gb
 .br
 In QB: select=1:ncpus=1:mem=4gb
 
-.IP "qsub -l nodes=4" 5
+.IP "qsub -l nodes=4" 3
 In QA: select=4:ncpus=1:mem=2gb
 .br
 In QB: select=4:mem=1gb
-.IP "qsub -l mem=16gb -l nodes=4" 5
+.IP "qsub -l mem=16gb -l nodes=4" 3
 In QA: select=4:ncpus=1:mem=4gb
 .br
 In QB: select=4:ncpus=1:mem=4gb
@@ -343,24 +349,21 @@ that chunk.
 Per-chunk resource usage limits are established by per-chunk
 resources, both from explicit requests and from defaults.  
 
-.I Job resource limits 
+.I Job-wide resource limits 
 set a limit for per-job resource usage.  
-.I Job resource limits 
+.I Job-wide resource limits 
 are established both by requesting job-wide resources and 
-when per-chunk consumable resources are summed.  
-.I Job resource limits 
-from sums of all chunks, including defaults, override those
-from job-wide defaults and resource requests.
-Limits include
-both explicitly requested resources and default resources.
+by summing per-chunk consumable resources.  
+.I Job-wide resource limits 
+from sums of all chunks, including defaults, override those from
+job-wide defaults and resource requests.  Limits include both
+explicitly requested resources and default resources.
 
-If a job's
-.I job resource limit 
-exceeds queue or server restrictions, it will not be put in the queue or 
-accepted by the server.
-If, while running, a job exceeds its limit for a consumable or time-based 
-resource, it will be terminated.  See The 
-.B PBS Professional Administrator's Guide.
+If a job-wide resource limit exceeds queue or server restrictions, it
+will not be put in the queue or accepted by the server.  If, while
+running, a job exceeds its limit for a consumable or time-based
+resource, it will be terminated.  See the
+.I PBS Professional Administrator's Guide.
 
 .B Controlling Placement of Jobs
 .br
@@ -368,8 +371,8 @@ Jobs are placed on vnodes according to their
 .I place
 statements.  The 
 .I place 
-statement can be specified, in order of precedence, via:
-.IP " " 5
+statement is specified, in order of precedence, via:
+.RS 3
 Explicit placement request in 
 .B qalter
 .br
@@ -387,90 +390,25 @@ Queue default placement rules
 Server default placement rules
 .br
 Built-in default conversion and placement rules
-.LP
+.RE
+
 The 
 .I place
 statement may be not be used without the 
 .I select
 statement.  
 
-The 
-.I place
-statement has this form:
-.IP " " 5
--l place=[
-.I arrangement
-][:
-.I sharing
-][:
-.I grouping
-]
-.LP
-where
-.IP " " 5
-.I arrangement 
-is one of 
-.I free
-|
-.I pack
-|
-.I scatter
-| 
-.I vscatter
-.br
-.I sharing
-is one of 
-.I excl 
-| 
-.I shared 
-|
-.I exclhost
-.br
-.I grouping 
-can have only one instance of 
-.I group=resource
-.LP
-and where
-.IP " " 5
-.I free:
-Place job on any vnode(s).
-.br
-.I pack:
-All chunks will be taken from one host.
-.br
-.I scatter:
-Only one chunk with any MPI processes will be taken from a host.
-A chunk with no MPI processes may be taken from the same vnode as
-another chunk.
-.br
-.I vscatter:
-Only one chunk is taken from any vnode.
-.br
-.I excl:
-Only this job uses the vnodes chosen.
-.br
-.I exclhost:
-The entire host is allocated to the job.
-.br
-.I shared:
-This job can share the vnodes chosen.
-.br
-.I group=resource:
-Chunks will be grouped according to a 
-.I resource.  
-This resource must be a string or string array.
-All vnodes in the group must have a common value for the 
-.I resource, 
-which can be either the built-in resource
-.I host
-or a site-defined host-level resource.
+For a detailed description of the 
+.I place 
+statement, see the qsub(1B) man page, or the
+.I PBS Professional User's Guide.
 
 Note that vnodes can have sharing attributes that override
 job placement requests.  See the
-.B pbs_node_attributes(7B)
+.I pbs_node_attributes(7B)
 man page.
 .LP
-.RS 5
+.RS 3
 .B Default Placement
 .br
 If, after all defaults have been applied to a resource request that
@@ -504,17 +442,18 @@ according to the rules described below in
 
 .B Boolean Resources
 .br 
-A boolean resource can be either true or false.  A resource request
-can specify the value a boolean resource should have.  For
+A Boolean resource can be either true or false.  A resource request
+for a Boolean specifies the required value for the Boolean resource.  For
 example, if some vnodes have
 .I green=true 
 and some have
 .I red=true,
 a selection statement for two vnodes, each with one CPU, all green and
 no red, would be:
-.IP " " 5
+.RS 3
 -l select=2:green=true:red=false:ncpus=1
-.LP
+.RE
+
 .B Consumable Resources 
 .br
 Consumable resources are those whose use by a job reduces the amount
@@ -530,22 +469,17 @@ and string-value resources such as architecture
 
 .B Custom Resources
 .br
-Custom resources are defined in PBS_HOME/server_priv/resourcedef.
-Custom resources are site-defined and site-dependent.  Typically
-used for licenses and scratch space.  PBS provides custom resources 
-specifically for Cray systems.  See The
-.B PBS Professional Administrator's Guide.
+Custom resources are site-defined and site-dependent.  The
+administrator defines custom resources.  These are typically used for
+licenses and scratch space.  PBS provides custom resources
+specifically for Cray systems.  See the
+.I PBS Professional Administrator's Guide.
 
-A job requesting a floating license must specify it outside of a 
-.I selection statement, 
-as a job-wide resource limit.  
-A job requesting a node-locked license must specify it inside a 
-.I selection statement
-in a 
-.I chunk.
-See your system administrator.
-Refer to The 
-.B PBS Professional User's Guide.
+A job requesting a floating license must specify it outside of a
+selection statement, as a job-wide resource limit.  A job requesting a
+node-locked license must specify it inside a selection statement in a
+chunk.  See your system administrator.  Refer to the
+.I PBS Professional User's Guide.
 
 Custom resources can be created to be invisible or read-only for
 unprivileged users.  See the pbsnodes(8B), pbs_rstat(1B), pbs_rsub(1B),
@@ -554,35 +488,55 @@ These restricted resources cannot be requested by a job via the
 .B qsub
 command, regardless of privilege.  
 
-.B Matching Jobs to Resources
+.B Behavior of Unset Resources
 .br
 An unset resource is undefined.  An unset numerical resource
 (i.e. float, long, size, or time) at the host level behaves as if its
 value is zero, but at the server or queue level it behaves as if it
 were infinite.  An unset string or string array resource at the
 server, queue or vnode level cannot be matched by a job's resource
-request.  An unset boolean resource at a server, queue, or vnode
+request.  An unset Boolean resource at a server, queue, or vnode
 behaves as if that resource is set to "false".
 
-.SH BUILT-IN RESOURCES
+.SH Resources Built Into PBS
 
-.IP accelerator 10
+.IP accelerator 8
 Indicates whether this vnode is associated with an accelerator.
-Host-level.  Can be requested only inside of a select statement.  On
-Cray, this resource exists only when there is at least one associated
-accelerator.  On Cray, this is set to True when there is at least one
-associated accelerator whose state is UP.  On Cray, set to False when
-all associated accelerators are in state DOWN.  Used for requesting
-accelerators.
+Used for requesting accelerators.
 .br
-Format: Boolean
+On Cray, this resource exists only when there is at least one associated
+accelerator. 
+.br 
+Behavior:
+.RS
+.IP True 3
+On Cray, this is set to 
+.I True 
+when there is at least one associated accelerator whose state is UP.  
+.IP False 3
+On Cray, set to 
+.I False 
+when all associated accelerators are in state DOWN.  
+.RE
+.IP
+Host-level.  Can be requested only inside of a select statement.  
 .br
-Python type: bool
+Not consumable.
+.br
+Format: 
+.I Boolean
+.br
+Python type: 
+.I bool
+.br
+Default: 
+.I False
 
-.IP accelerator_memory 10
+.IP accelerator_memory 8
 Indicates amount of memory for accelerator(s) associated with this
-vnode.  Host-level.  Can be requested only inside of a select
-statement.  On Cray, PBS sets this resource only on vnodes with at
+vnode.  
+.br
+On Cray, PBS sets this resource only on vnodes with at
 least one accelerator with state = UP.  For Cray, PBS sets this
 resource on the 0th NUMA node (the vnode with PBScrayseg=0), and the
 resource is shared by other vnodes on the compute node.
@@ -593,136 +547,296 @@ For example, on vnodeA_2_0:
    resources_available.accelerator_memory=4196mb 
 On vnodeA_2_1: 
    resources_available.accelerator_memory=@vnodeA_2_0
-Consumable.  
-Format: Size
-Python type: pbs.size
 .fi
+.br
+A scheduler rounds all resources of type 
+.I size
+up to the nearest kb.
+.br
+Host-level.  Can be requested only inside of a select statement.  
+.br
+Consumable.  
+.br
+Format: 
+.I Size
+.br
+Python type: 
+.I pbs.size
+.br
+Default: No default
 
-.IP accelerator_model 10
+.IP accelerator_model 8
 Indicates model of accelerator(s) associated with this vnode.
-Host-level.  On Cray, PBS sets this resource only on vnodes with at
-least one accelerator with state = UP.  Can be requested only inside
-of a select statement.
+.br
+On Cray, PBS sets this resource only on vnodes with at
+least one accelerator with state = UP.  
+.br
+Host-level.  Can be requested only inside of a select statement.
 .br
 Non-consumable.  
 .br
-Format: String
+Format: 
+.I String
 .br
-Python type: str
+Python type: 
+.I str
+.br
+Default: No default
 
-.IP aoe 10
+.IP aoe 8
 List of AOEs (Application Operating Environments) 
-that can be instantiated on a vnode.  An AOE is the environment that
-results from provisioning a vnode.
-Each job can request at most one AOE.  Cannot be set on Server's host.
-Can be requested only inside of a select statement.  Settable by
-Manager and Operator only; readable by all.  Non-consumable.
+that can be instantiated on this vnode.  Case-sensitive.  
+An AOE is the environment that results from provisioning a vnode.
+Each job can request at most one AOE.  Cannot be set on server's host.
 .br
-Type: string_array
+Valid values: Allowable values are site-dependent.  
+.br
+Host-level.  Can be requested only inside of a select statement.  
+.br
+Non-consumable.
+.br
+Type: 
+.I String_array
+.br
+Python type: 
+.I str
+.br
+Default: No default
 
-.IP arch 10
+.IP arch 8
 System architecture.  One architecture
 can be defined for a vnode.  One architecture can be requested per
-vnode.  Allowable values and effect on job placement are
-site-dependent.  Can be requested only inside of a select statement.
-Type: string.
+vnode.  
+.br
+Valid values: 
+.RS 11
+Allowable values and effect on job placement are site-dependent.  
+.RE
+.IP
+Host-level.  Can be requested only inside of a select statement.
+.br
+Non-consumable.  
+.br
+Type: 
+.I String
+.br
+Python type: 
+.I str
+.br
+Default: No default
 
-.IP cput 10
+.IP cput 8
 Amount of CPU time used by the job for all processes on all
-vnodes.  Establishes a
-.I job resource limit.  
-Can be requested only outside of a select statement.
+vnodes.  Establishes a job-wide resource limit.  
+.br
+Job-wide.  Can be requested only outside of a select statement.
+.br
 Non-consumable.
-Type: duration.
-
-.IP exec_vnode 10
-Read-only.  The vnodes that PBS estimates this job will use.  Cannot
-be requested for a job; used for reporting only. 
 .br
-Type: String
+Type: 
+.I Duration
 .br
-Python type: str
+Python type: 
+.I pbs.duration
+.br
+Default: No default
 
-.IP file 10
+.IP energy 8
+The energy used by a job.  Set by PBS.  
+.br
+Consumable.
+.br
+Format: 
+.I Float
+.br
+Units: 
+.I kWh
+.br
+Default: No default
+
+.IP eoe 8
+Stands for "Energy Operational Environment".  When set on a vnode in
+.I resources_available.eoe, 
+contains the list of available power profiles.  When set for a job
+in
+.I Resource_List.eoe,
+can contain at most one power profile.  (A job can request only one
+power profile.)  
+.br
+Non-consumable.
+.br
+Format: 
+.I String_array
+.br
+Python type:
+.I str
+.br
+Default value for 
+.I resources_available.eoe: 
+unset
+.br
+Default value for 
+.I Resource_List.eoe:
+no default
+
+.IP exec_vnode 8
+The vnodes that PBS estimates this job will use.  Cannot
+be requested for a job; used for reporting only. Read-only.  
+.br
+Type: 
+.I String
+.br
+Python type: 
+.I str
+.br
+Default: No default
+
+.IP file 8
 Size of any single file that may be created by the job.
-Can be requested only outside of a select statement.
-Type: size.
+.br
+The scheduler rounds all resources of type 
+.I size
+up to the nearest kb.
+.br
+Job-wide.  Can be requested only outside of a select statement.
+.br
+Type: 
+.I Size
+.br
+Python type: 
+.I pbs.size
+.br
+Default: No default
 
-.IP host 10
-Name of execution host.
-Can be requested only inside of a select statement.  Automatically 
-set to the short form of 
-the hostname in the Mom attribute. 
+.IP hbmem 8
+High-bandwidth memory.  Available only on some architectures such as 
+Xeon Phi KNL.
+.br
+Valid values: Greater than or equal to zero.
+.br
+Host-level.  
+.br
+Format:
+.I Size
+.br
+Python type:
+.I pbs.size
+.br
+Default: No default
+
+.IP host 8
+Name of execution host.  Cannot be changed.  Site-dependent.
+.br
+Can be requested only inside of a select statement.  
+.br
+Behavior:
+.RS 11
+Automatically set to the short form of the hostname in the 
+.I Mom 
+attribute. 
 .br
 On Cray compute node, set to 
 .I <mpp_host>_<nid>.
+.RE
+.IP
+Type: 
+.I String
 .br
-On CLE 2.2, "default" replaces value of 
-.I mpp_host.
-.br
-Cannot be
-changed.  Site-dependent.
-Type: string.
+Python type: 
+.I str
 
-.IP max_walltime 10
-Maximum walltime allowed for a shrink-to-fit job.  Actual
-walltime of job is between 
+.IP max_walltime 8
+Maximum walltime allowed for a shrink-to-fit job.  Job's actual
+walltime is between 
 .I max_walltime 
 and 
 .I min_walltime.  
-PBS sets walltime
-for a shrink-to-fit job.  If this resource is specifed, 
+PBS sets 
+.I walltime
+for a shrink-to-fit job.  If 
+.I max_walltime 
+is specifed, 
 .I min_walltime
-must also be specified.  Must be greater than or equal to
-.I min_walltime.  
+must also be specified.  
 Cannot be used for 
 .I resources_min 
 or 
 .I resources_max.
-Cannot be set on job arrays or reservations.  If not specified, PBS
-uses 5 years as the maximum time slot.  Can be requested only outside
-of a select statement.  Non-consumable.
+Cannot be set on job arrays or reservations.  
 .br
-Default: None.  
+Valid values: Must be greater than or equal to
+.I min_walltime.  
 .br
-Type: duration.  
+Can be requested only outside of a select statement.  
 .br
-Python type: pbs.duration
+Non-consumable.
+.br
+Format: 
+.I Duration
+.br
+Python type: 
+.I pbs.duration
+.br
+Default: 
+.I 5 years
 
-.IP mem 10
+.IP mem 8
 Amount of physical memory i.e. workingset allocated to 
-the job, either job-wide or host-level.  Consumable.
-Can be requested only inside of a select statement.
-Type: size.
+the job, either job-wide or host-level.  
+.br
+The scheduler rounds all resources of type 
+.I size
+up to the nearest kb.
+.br
+Can be requested only inside of a select statement. 
+.br
+Consumable.
+.br
+Format: 
+.I Size
+.br
+Python type: 
+.I pbs.size
+.br
+Default: No default
 
-.IP min_walltime 10
-Minimum walltime allowed for a shrink-to-fit job.  When this resource
+.IP min_walltime 8
+Minimum walltime allowed for a shrink-to-fit job.  When 
+.I min_walltime
 is specified, job is a shrink-to-fit job.  If this attribute is set,
-PBS sets the job walltime.  Actual job walltime is between
+PBS sets the job 
+.I walltime.  
+Job's actual 
+.I walltime 
+is between
 .I max_walltime 
 and 
 .I min_walltime.  
-Must be less than or equal to
-.I max_walltime.  
 Cannot be used for 
 .I resources_min 
 or 
 .I resources_max.
-Cannot be set on job arrays or reservations.  Can be requested only
-outside of a select statement.  Non-consumable.
+Cannot be set on job arrays or reservations.  
 .br
-Default: None.  
+Valid values: Must be less than or equal to
+.I max_walltime.  
 .br
-Type: duration.  
+Can be requested only outside of a select statement.  
 .br
-Python type: pbs.duration
+Non-consumable.
+.br
+Type: 
+.I Duration
+.br
+Python type: 
+.I pbs.duration
+.br
+Default: No default
 
-.IP mpiprocs 10
-Number of MPI processes for this chunk.  Defaults to 1 if 
-.I ncpus
-> 0, 0 otherwise.  Can be requested only inside of a select statement.
-Type: integer.
-
+.IP mpiprocs 8
+Number of MPI processes for this chunk.  Cannot use sum from chunks
+as job-wide limit.
+.br
 The number of lines in PBS_NODEFILE is the sum of the values
 of 
 .I mpiprocs
@@ -730,138 +844,61 @@ for all chunks requested by the job.  For each chunk with
 .I mpiprocs=P, 
 the host name for that chunk is written to the PBS_NODEFILE
 .I P
-times.  Can be requested only inside of a select statement.
-
-.IP mpparch
-.B Deprecated. 
-MPP compute node system type.  Can be requested only outside of a 
-select statement.  Not consumable.  Allowable values: 
-.I XT 
-or 
-.I X2.  
-Cray-only resource.  Ignored at other systems.
+times.  
 .br
-Type: string.
-
-.IP mppdepth
-.B Deprecated. 
-Depth (number of threads) of each processor.  Specifies the number of
-processors that each processing element will use.  Can be requested only outside of a 
-select statement.  Not consumable. Cray-only resource.  Ignored at other systems.
+Host-level.  Can be requested only inside of a select statement.
 .br
-Default: 1.  
+Format: 
+.I Integer
 .br
-Type: integer.
-
-.IP mpphost
-.B Deprecated. 
-MPP host.  Can be requested only outside of a select statement.  
-Not consumable. 
-Cray-only resource.  Ignored at other systems.
+Python type: 
+.I int
 .br
-Type: string.
- 
-.IP mpplabels
-.B Deprecated. 
-List of node labels.
-Runs the application only on those nodes with the specified 
-labels.  Not consumable.   
-Format: comma-separated list of labels and/or a range 
-of labels.  Any lists containing commas should be enclosed in quotes escaped 
-by backslashes.
-For example:
-.RS 14
-#PBS -l mpplabels=\\"red,blue\\"
+Default: 
+.RS 11
+.nf
+If ncpus > 0
+\ \ \ 1
+Otherwise
+\ \ \ 0
+.fi
 .RE
 .IP
-or 
-.RS 14
-qsub -l mpplabels=\\"red,blue\\"
-.RE
-.IP
-Can be requested only outside of a select statement.
-Cray-only resource.  Ignored at other systems.
-.br
-Type: string.
 
-.IP mppmem
-.B Deprecated. 
-The maximum memory for all applications.  The per-processing-element
-maximum resident set size memory limit.  Can be requested only outside 
-of a select statement.  Not consumable. Cray-only resource.  Ignored at other systems.
+.IP naccelerators 8
+Number of accelerators on the host.  PBS sets this resource to the
+number of accelerators with state = 
+.I UP.
 .br
-Type: size. 
-
-.IP mppnodes
-.B Deprecated. 
-Manual placement list consisting of a comma-separated list of nodes
-(node1,node2), a range of nodes (node1-node2), or a
-combination of both formats. Node values are expressed as
-decimal numbers.
-The first number in a range must be less than the second
-number (i.e., 8-6 is invalid). A complete node list is
-required.   Any lists containing commas should be enclosed in quotes
-escaped by backslashes. 
-For example:
-.RS 14
-#PBS -l mppnodes=\\"40-48,52-60,84,86,88,90\\"
-.RE
-.IP
-or 
-.RS 14
-qsub -l mppnodes=\\"40-48,52-60,84,86,88,90\\"
-.RE
-.IP
-Can be requested only outside of a select statement.
-Not consumable. Cray-only resource.  Ignored at other systems.
-.br
-Type: string.
-.br
-Python attribute value type: str
-
-.IP mppnppn
-.B Deprecated. 
-Number of processing elements (PEs) per node.  
-Can be requested only outside of a select statement.  Not consumable. 
-Cray-only resource.  Ignored at other systems.
-.br
-Type: integer.
-
-.IP mppwidth
-.B Deprecated. 
-Number of processing elements (PEs) for the job.  Can be requested 
-only outside of a select statement.  Not consumable. 
-Cray-only resource.  Ignored at other systems.
-.br
-Type: integer.
-
-.IP naccelerators 10
-Indicates number of accelerators on the host.  Host-level.  On Cray,
-should not be requested for jobs; PBS does not pass the request to
-ALPS.  On Cray, PBS sets this resource only on vnodes whose hosts have
-at least one accelerator with state = UP.  PBS sets this resource to
-the number of accelerators with state = UP.  For Cray, PBS sets this
-resource on the 0th NUMA node (the vnode with PBScrayseg=0), and the
-resource is shared by other vnodes on the compute node.
+On Cray, PBS sets this resource only on vnodes whose hosts have at 
+least one accelerator with state = 
+.I UP.  
+For Cray, PBS sets this resource on the 0th NUMA
+node (the vnode with PBScrayseg=0), and the resource is shared by
+other vnodes on the compute node.
 .nf
 For example, on vnodeA_2_0:
    resources_available.naccelerators=1
 On vnodeA_2_1:
    resources_available.naccelerators=@vnodeA_2_0
 .fi
-Can be requested only inside of a select statement, but should not be requested.
+Host-level.  Can be requested only inside of a select statement.
 .br
 Consumable.
 .br
-Format: Long
+Format: 
+.I Integer
 .br
-Python type: int
+Python type: 
+.I int
+.br
+Default: No default
 
-.IP nchunk 10
-This is the number of chunks requested between plus symbols in a
+.IP nchunk 8
+Number of chunks requested between plus symbols in a
 select statement.  For example, if the select statement is 
 .br
--lselect=4:ncpus=2+12:ncpus=8 
+\ \ \ -lselect=4:ncpus=2+12:ncpus=8 
 .br
 the value of nchunk for the first part is 4, and
 for the second part it is 12.  The 
@@ -870,200 +907,135 @@ resource cannot be named in
 a select statement; it can only be specified as a number preceding the
 colon, as in the above example.  When the number is omitted, 
 .I nchunk 
-is 1.
+is 
+.I 1.
+.br
 This resource can be used to specify the default
-number of chunks at the server or queue (replacing 
-.I mppwidth.
-)
+number of chunks at the server or queue 
+Example:  
 .br
-Example:  set queue myqueue default_chunk.nchunk=2
+\ \ \ set queue myqueue default_chunk.nchunk=2
 .br
-This resource cannot be used in server and queue resources_min and 
-resources_max.
-.br
-Settable by Manager and Operator; readable by all.
+This resource cannot be used in server and queue 
+.I resources_min 
+and 
+.I resources_max.
 .br
 Non-consumable.
 .br
-Format: Integer.
+Format: 
+.I Integer
 .br
-Python type: int.
+Python type: 
+.I int
 .br
-Default value: 1
+Default value: 
+.I 1
 
-.IP ncpus 10
-Number of processors requested.  Cannot be shared across vnodes.
+.IP ncpus 8
+Number of processors.
+.br
 Can be requested only inside of a select statement.
+.br
 Consumable.  
 .br
-Type: integer.
+Format: 
+.I Integer
+.br
+Python type: 
+.I int
+.br
+Default: No default
 
-.IP nice 10
-Nice value under which the job is to be run.  Host-dependent.
+.IP nice 8
+Nice value with which the job is to be run.  Host-dependent.
+.br
 Can be requested only outside of a select statement.
 .br
-Type: integer.
+Format: 
+.I Integer
+.br
+Python type: 
+.I int
+.br
+Default: No default
 
-.IP nodect 10
-.B Deprecated.  
-Read-only.  Number of chunks in resource request from selection
+.IP nodect 8
+.B Deprecated.    
+Number of chunks in resource request from selection
 directive, or number of nodes requested from node specification.
 Otherwise defaults to value of 1.  Can be requested only outside 
-of a select statement.
-Type: integer.
+of a select statement.  Read-only.
+.br
+Format:
+.I Integer
+.br
+Python type:
+.I int
+.br
+Default: 
+.I 1
 
 .IP nodes
 .B Deprecated.
 .br
-Number of hosts requested.  Integer.  See 
+Number of hosts requested.  
+.br
+Format:
+.I Integer  
+.br
+See 
 .B BACKWARD COMPATIBILITY.
 
-.IP ompthreads 10
-Number of OpenMP threads for this chunk.  Defaults to 
-.I ncpus 
-if not specified.  Can be requested only inside of a select statement.
-Non-consumable.  
-Type: integer.  Python type: int.
-
+.IP ompthreads 8
+Number of OpenMP threads for this chunk.  
+.br
+Cannot use sum from chunks as job-wide limit.  
+.br
 For the MPI process with rank 0, the environment variables NCPUS and  
 OMP_NUM_THREADS are set to the value of 
 .I ompthreads.
 For other MPI processes, behavior is dependent on MPI implementation.
-See The 
-.B PBS Professional Administrator's Guide.
-
-.IP pcput 10
-Amount of CPU time allocated to any single process in the job.
-Establishes a 
-.I per-process resource limit.  
-Can be requested only outside of a select statement.
-Non-consumable.
-Type: duration.
-
-.IP pmem 10
-Amount of physical memory (workingset) for use by any single
-process of the job.  Establishes a
-.I per-process resource limit.  
-Can be requested only outside of a select statement.
-Non-consumable.
-Type: size
-
-.IP preempt_targets
-List of resources and/or queues.  Jobs requesting those resources or
-in those queues are preemption targets.  Syntax:
-.RS 14
-Resource_List.<resource>=<value> 
-.RE
-.IP 
-and/or 
-.RS 14
-queue=<queue name>.  
-.RE
-.IP 
-You can
-list multiple comma-separated targets.  Non-consumable.  
-Can be requested only outside of a select statement.  
-Type: string_array
-
-.IP pvmem 10
-Amount of virtual memory for use by any single process in the
-job.  Establishes a
-.I job resource limit.  
-Can be requested only outside of a select statement.
-Non-consumable.
-Type: size.
-
-.IP site 10
-Arbitrary string resource.  Can be requested only outside of a select
-statement.  Not consumable.  Type: string.  Python type: str
-
-.IP software 10
-Site-specific software specification.  Can be requested 
-only outside of a select statement.
-Allowable values and effect on job placement are
-site-dependent.  Type: string.
-
-.IP start_time 10
-Read-only.  The estimated start time for this job.  Cannot be requested
-for a job; used for reporting only.  
+See the 
+.I PBS Professional Administrator's Guide.
 .br
-Type: long
-.br
-Python type: int
-
-.IP vmem 10
-Amount of virtual memory for use by all concurrent processes in
-the job.  Establishes a
-.I chunk resource limit.  
 Can be requested only inside of a select statement.
-Not consumable.
-Type: size.
-
-.IP vnode 10
-Name of virtual node (vnode) on which to execute.  
-Can be requested only inside of a select statement.
-Site-dependent.  Type: string.  See the
-.B pbs_node_attributes(7B)
-man page.
-
-.IP vntype 10
-This resource represents the type of the vnode.  Automatically set by
-PBS to one of two specific values for cray vnodes.  Has no meaning for
-non-Cray vnodes.  Can be requested only inside of a select statement.
-.br
-Automatically assigned values for Cray vnodes:
-.br
-.RS
-.IP cray_compute 15 
-This vnode represents part of a compute node.
-.IP cray_login 15
-This vnode represents a login node.
-.LP
-Non-consumable.
-.br
-Format: String array.
-.br
-Default value:  None.  
-.br
-Python type: str
-.RE
-
-.IP walltime 10
-Amount of wall-clock time during which the job can run.  Establishes a
-.I job resource limit.  
-Can be requested only outside of a select statement.
-Non-consumable.
-Type: duration.
-
-.SH CUSTOM RESOURCES FOR THE CRAY
-
-.IP PBScrayhost 10
-On CLE 2.2, this is set to "default".
-.br
-On CLE 3.0 and higher, used to delineate a Cray system, containing
-ALPS, login nodes running PBS MOMs, and compute nodes, from a separate
-Cray system with a separate ALPS.  The value of
-.I PBScrayhost 
-is set to
-the value of 
-.I mpp_host 
-for this system.
 .br
 Non-consumable.  
 .br
-Format: String.
+Format:
+.I Integer
 .br
-Default: CLE 2.2: "default"; CLE 3.0 and higher: None.
+Python type:
+.I int
+.br
+Default: Value of
+.I ncpus 
 
-.IP "PBScraylabel_<label name>" 10
-Tracks labels applied to compute nodes.  For each label on a compute
-node, PBS creates a custom resources whose name is a concatenation of
-.I PBScraylabel_ 
-and the name of the label.  PBS sets the value of the
-resource to 
-.I True 
-on all vnodes representing the compute node.
+.IP PBScrayhost 8
+Used to differentiate a Cray system, containing
+ALPS, login nodes running PBS MoMs, and compute nodes, from a separate
+Cray system with a separate ALPS.  
 .br
+Non-consumable.  
+.br
+Format: 
+.I String
+.br
+Python type:
+.I str
+.br
+Default: Value of 
+.I mpp_host 
+for this system
+
+.IP "PBScraylabel_<label name>" 8
+Tracks labels applied to compute nodes.  
+.br
+For each label on a compute node, PBS creates a custom resource 
+whose name is a concatenation of
+.I PBScraylabel_ 
+and the name of the label.  
 Name format: PBScraylabel_<label name>
 .br
 For example, if the label name is 
@@ -1071,153 +1043,341 @@ For example, if the label name is
 the name of this resource is 
 .I PBScraylabel_Blue.
 .br
-Format: Boolean.
+Behavior: 
+.RS 11
+PBS sets the value of the resource to 
+.I True 
+on all vnodes representing the compute node.
+.RE
+.IP
+Format: 
+.I Boolean
 .br
-Default: None.
+Python type:
+.I bool
+.br
+Default: No default
 
-.IP PBScraynid 10
-Used to track the node ID of the associated compute node.  All vnodes
+.IP PBScraynid 8
+Tracks the node ID of the associated compute node.  All vnodes
 representing a particular compute node share a value
 for 
 .I PBScraynid.  
-The value of 
-.I PBScraynid 
-is set to the value of 
-.I node_id 
-for this compute node.  
 .br 
 Non-consumable.  
 .br 
-Format: String.  
+Format: 
+.I String 
 .br 
-Default: None
+Python type:
+.I str
+.br
+Default: Value of 
+.I node_id 
+for this compute node
 
-.IP PBScrayorder 10
-Used to track the order in which compute nodes are listed in the Cray
+.IP PBScrayorder 8
+Tracks the order in which compute nodes are listed in the Cray
 inventory.  All vnodes associated with a particular compute node share
 a value for 
 .I PBScrayorder.  
-Vnodes for the first
-compute node listed are assigned a value of 1 for 
+.br
+Behavior:
+.RS 11
+Vnodes for the first compute node listed are assigned a value of 
+.I 1 
+for 
 .I PBScrayorder.  
-The
-vnodes for each subsequent compute node listed are assigned a value
+.br
+The vnodes for each subsequent compute node listed are assigned a value
 one greater than the previous value.  
-.br 
+.RE
+.IP 
 Do not use this resource in a resource request.
 .br
 Non-consumable.  
 .br
-Format: Integer.  
+Format: 
+.I Integer 
 .br
-Default: None
+Python type: 
+.I int
+.br
+Default: No default
 
-.IP PBScrayseg 10
-Tracks the segment ordinal of the associated NUMA node.  For the first
-NUMA node of a compute host, the segment ordinal is 0, and the value
-of 
-.I PBScrayseg 
-for the associated vnode is 0.  For the second NUMA
-node, the segment ordinal is 1, 
-.I PBScrayseg 
-is 1, and so on.
+.IP PBScrayseg 8
+Not used. 
+.br
+Format: 
+.I String
+.br
+Default: No default
+
+.IP pcput 8
+Amount of CPU time allocated to any single process in the job.
+Establishes a per-process resource limit.  
+.br
+Can be requested only outside of a select statement.
+.br
+Non-consumable.
+.br
+Format:
+.I Duration
+.br
+Python type:
+.I pbs.duration
+.br
+Default: No default
+
+.IP pmem 8
+Amount of physical memory (workingset) for use by any single
+process of the job.  Establishes a
+per-process resource limit.  
+.br
+The scheduler rounds all resources of type
+.I size
+up to the nearest kb.
+.br
+Can be requested only outside of a select statement.
+.br
+Non-consumable.
+.br
+Format:
+.I Size
+.br
+Python type:
+.I pbs.size
+.br
+Default: No default
+
+.IP preempt_targets
+List of resources and/or queues.  Jobs requesting those resources or
+in those queues are preemption targets.  
+.br
+Job-wide.  Can be requested only outside of a select statement.  
 .br
 Non-consumable.  
 .br
-Format: String.  
+Format:
+.I String_array
 .br
-Default: None
+Syntax:
+.RS 11
+preempt_targets="Queue=<queue name>[,Queue=<queue name>],
+Resource_List.<resource>=<value>[,Resource_List.<resource>=<value>]" 
+.RE
+.IP
+or 
+.RS 11
+preempt_targets=None
+.RE
+.IP 
+Keywords "queue" and "none" are case-insensitive.  You can
+list multiple comma-separated targets.  
+.br
+Python type: 
+.I str
+.br
+Default: No default
 
-.LP
-.SH RESOURCE TYPES
-.IP boolean 10
-Boolean-valued resource.  Can be requested only inside of a 
-select statement.  Non-consumable. 
-Allowable values (case insensitive): True|T|Y|1|False|F|N|0
+.IP pvmem 8
+Amount of virtual memory for use by any single process in the
+job.  Establishes a per-process resource limit.  
 .br
-Example: To select a vnode with red but not blue, 
-.RS 15
--l select=1:red=true:blue=false
-.RE
-.IP float 10
-Float. 
-Allowable values: [+-] 0-9 [[0-9] ...][.][[0-9] ...]
-.IP long 10
-Long integer.
-Allowable values: 0-9 [[0-9] ...]
-.IP size 10
-Number of bytes or words.  Expressed
-in the form:
-.RS 15
-.I integer[suffix]
-where 
-.I suffix 
-can be
-.IP "\ b\ or\ \ w" 15
-bytes or words.
-.IP "kb\ or\ kw"
-Kilo (2 to the 10th, or 1024) bytes or words.
-.IP "mb\ or\ mw" 15
-Mega (2 to the 20th, or 1,048,576) bytes or words.
-.IP "gb\ or\ gw" 15
-Giga (2 to the 30th, or 1,073,741,824) bytes or words.
-.IP "tb\ or\ tw" 15
-Tera (2 to the 40th, or 1024 gigabytes) bytes or words.
-.IP "pb\ or\ pw" 15
-Peta (2 to the 50th, or 1,048,576 gigabytes) bytes or words.
+The scheduler rounds all resources of type
+.I size
+up to the nearest kb.
+.br
+Can be requested only outside of a select statement.
+.br
+Non-consumable.  
+.br
+Format:
+.I Size
+.br
+Python type:
+.I pbs.size
+.br
+Default: No default
 
-The size of a word is the word size on the execution host.
-.RE
-.IP string 10
-String.  Non-consumable.
+.IP site 8
+Arbitrary string resource.  
 .br
-Allowable values: [_a-zA-Z0-9][[-_a-zA-Z0-9[]#.] ...]
+Can be requested only outside of a select statement.  
 .br
-(Leading underscore ("_"), alphabetic or numeric, 
-followed by dash ("-"), underscore ("_"), alphabetic, numeric,
-left bracket ("["), right bracket ("]"), hash ("#") or period ("."))
-.IP "string_array" 10
-String-valued resource which can contain multiple values.
-Comma-separated list of strings.  
-Non-consumable.  Resource request will succeed if request matches one
-of the values.  Resource request can contain only one string.
-.IP duration 10
-The maximum time period the resource can be used.  Expressed
-in seconds as an integer, or in the form:
-.RS 15
-.I [[hours:]minutes:]seconds[.milliseconds]
+Non-consumable.  
+.br
+Format:
+.I String
+.br  
+Python type:
+.I str
+.br
+Default: No default
+
+.IP software 8
+Site-specific software specification.  
+.br
+Values: Allowable values and effect on job placement are site-dependent.  
+.br
+Can be requested only outside of a select statement.
+.br
+Format:
+.I String
+.br
+Python type:
+.I pbs.software
+.br
+Default: No default
+
+.IP soft_walltime 8
+Soft limit on walltime.  Similar to 
+.I walltime, 
+but cannot be requested by unprivileged users, and job is not killed
+if it exceeds its 
+.I soft_walltime.  
+A job's 
+.I soft_walltime 
+cannot exceed its 
+.I walltime.  
+Can be set by Manager only.
+.br
+Format:
+.I Duration
+.br
+Python type:
+.I pbs.duration
+.br
+Default: No default
+
+.IP start_time 8
+The estimated start time for this job.  Cannot be requested
+for a job; used for reporting only.  Appears only in job's 
+.I estimated
+attribute.  Read-only.
+.br
+Host-level.
+.br
+Consumable.
+.br
+Format:
+.I Integer
+.br
+Python type:
+.I int
+.br
+Default: No default
+
+.IP vmem 8
+Amount of virtual memory for use by all concurrent processes in
+the job.  Establishes a per-chunk resource limit.  
+.br
+The scheduler rounds all resources of type
+.I size
+up to the nearest kb
+.br
+Can be requested only inside of a select statement.
+.br
+Consumable.
+.br
+Format:
+.I Size
+.br
+Python type:
+.I pbs.size
+.br
+Default: No default
+
+.IP vnode 8
+Name of virtual node (vnode) on which to execute.  Site-dependent.  
+See the 
+.I pbs_node_attributes(7B) 
+man page.
+.br
+Can be requested only inside of a select statement.
+.br
+Format:
+.I String
+.br
+Python type:
+.I str
+.br
+Default: No default
+
+.IP vntype 8
+The type of the vnode.  
+Automatically set by PBS to one of two specific values for Cray vnodes.  
+Has no meaning for non-Cray vnodes.  
+.br
+Automatically assigned values for Cray vnodes:
+.RS 11
+.IP cray_compute 3
+This vnode represents part of a compute node.
+.IP cray_login 3
+This vnode represents a login node.
 .RE
-.LP
+.IP
+Can be requested only inside of a select statement.
+.br
+Non-consumable. 
+.br
+Format: 
+.I String_array
+.br
+Python type:
+.I str
+.br
+Default:  No default
+
+.IP walltime 8
+Amount of wall-clock time.  Establishes a job-wide resource limit. 
+.br
+Actual elapsed time may differ from 
+.I walltime 
+during Daylight Savings transitions.
+.br 
+Can be requested only outside of a select statement.
+.br
+Non-consumable.  
+.br
+Format:
+.I Duration
+.br
+Python type:
+.I pbs.duration
+.br
+Default: 
+.I 5 years
+
 .SH BACKWARD COMPATIBILITY
 .B Conversion to Select and Place
 .br
-For backward compatibility, a legal node specification or 
-resource specification 
-will be converted into selection and placement directives.  
+For backward compatibility, a legal node specification or resource
+specification is converted into selection and placement directives.
 
 .B Node Specification Conversion
 .br
 Node specification format:
-.IP " " 5
--lnodes=[N:spec_list | spec_list]
+.IP " " 3
+-lnodes=[<N>:<spec list> | <spec list>]
 .br
-        [[+N:spec_list | +spec_list] ...]
+        [[+<N>:<spec list> | +<spec list>] ...]
 .br
-        [#suffix ...][-lncpus=Z]
+        [#<suffix> ...][-lncpus=Z]
 .LP
 where:
-.IP " " 5
-.I spec_list  
+.IP " " 3
+.I spec list  
 has syntax:  
-.I spec[:spec ...]
+.I <spec>[:<spec> ...]
 .br
 .I spec 
 is any of:  
-.I hostname | property | ncpus=X | cpp=X | ppn=P 
+.I <hostname> | <property> | ncpus=X | cpp=X | ppn=P 
 .br
 .I suffix 
 is any of: 
-.I property | excl | shared
+.I <property> | excl | shared
 .br
 .I N
 and 
@@ -1230,12 +1390,12 @@ and
 are non-negative integers
 .LP
 The node specification is converted into selection and placement directives as follows:
-.IP " " 5
+.IP " " 3
 Each
-.I spec_list 
+.I spec list 
 is converted into one chunk, 
 so that 
-.I N:spec_list 
+.I <N>:<spec list> 
 is converted into 
 .I N 
 chunks.
@@ -1247,7 +1407,7 @@ is
 :
 .br
 The chunk will include 
-.I host=hostname
+.I host=<hostname>
 
 If 
 .I spec 
@@ -1256,19 +1416,20 @@ matches any vnode's
 value:
 .br
 The chunk will include 
-.I host=hostname
+.I host=<hostname>
 
 If 
 .I spec 
 is 
-.I property 
+.I <property>
 :
 .br
 The chunk will include 
-.I property=true
+.I <property>=true
 .br
-.I Property 
-must be a site-defined host-level boolean resource.
+where
+.I property 
+must be a site-defined host-level Boolean resource.
 
 If 
 .I spec 
@@ -1344,7 +1505,7 @@ is a
 :
 .br
 All chunks will include 
-.I property=true
+.I <property>=true
 
 If 
 .I excl 
@@ -1374,17 +1535,18 @@ The placement directive will be
 .I -lplace=scatter
 .LP
 Example: 
-.IP " " 5
+.IP " " 3
 -l nodes=3:green:ncpus=2:ppn=2+2:red
 .LP
 is converted to:
-.IP " " 5
+.IP " " 3
 -l select=3:green=true:ncpus=4:mpiprocs=2+2:red=true:ncpus=1 
 .br
 -l place=scatter
 .LP
-Node specification syntax for requesting properties is deprecated.
-The new boolean resource syntax "property=true" is only accepted in a
+Node specification syntax for requesting properties is 
+.B deprecated.
+The new Boolean resource syntax "<property>=<value>" is accepted only in a
 selection directive.  It is erroneous to mix old and new syntax.
 
 .B Resource Specification Conversion
@@ -1393,22 +1555,22 @@ The resource specification is converted to select and place statements
 after any defaults have been applied.
 
 Resource specification format:
-.IP " " 5
--lresource=value[:resource=value ...]
+.IP " " 3
+-l<resource>=<value>[:<resource>=<value> ...]
 .LP
 The resource specification is converted to:
-.IP " " 5
-select=1[:resource=value ...]
+.IP " " 3
+select=1[:<resource>=<value> ...]
 .br
 place=pack
 .br
 .LP
 with one instance of 
-.I resource=value 
+.I <resource>=<value> 
 for each of the following 
 host-level resources in the resource request:
-.IP " " 5
-built-in resources: 
+.IP " " 3
+Built-in resources: 
 .I ncpus 
 | 
 .I mem 
@@ -1419,14 +1581,13 @@ built-in resources:
 | 
 .I host
 
-site-defined host-level resources listed in the Server's 
-resourcedef file with flags including "h"
+Site-defined host-level resources with flags including "h"
 
 .SH SEE ALSO
 The
-.B PBS Professional Administrator's Guide,
-The 
-.B PBS Professional User's Guide,
+.I PBS Professional Administrator's Guide,
+the 
+.I PBS Professional User's Guide,
 pbs_node_attributes(7B),
 pbs_rsub(1B),
 qalter(1B), 

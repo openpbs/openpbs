@@ -40,7 +40,9 @@ notrans_dist_man1_MANS = \
 	man1/nqs2pbs.1B \
 	man1/pbsdsh.1B \
 	man1/pbs_python.1B \
+	man1/pbs_ralter.1B \
 	man1/pbs_rdel.1B \
+	man1/pbs_release_nodes.1B \
 	man1/pbs_rstat.1B \
 	man1/pbs_rsub.1B \
 	man1/qalter.1B \
@@ -70,9 +72,11 @@ notrans_dist_man3_MANS = \
 	man3/pbs_holdjob.3B \
 	man3/pbs_locjob.3B \
 	man3/pbs_manager.3B \
+	man3/pbs_modify_resv.3B \
 	man3/pbs_movejob.3B \
 	man3/pbs_msgjob.3B \
 	man3/pbs_orderjob.3B \
+	man3/pbs_relnodesjob.3B \
 	man3/pbs_rerunjob.3B \
 	man3/pbs_rescreserve.3B \
 	man3/pbs_rlsjob.3B \
@@ -127,9 +131,11 @@ notrans_dist_man8_MANS = \
 	man8/pbsfs.8B \
 	man8/pbs_hostn.8B \
 	man8/pbs_idled.8B \
+	man8/pbs_iff.8B \
 	man8/pbs_interactive.8B \
 	man8/pbs_lamboot.8B \
 	man8/pbs_migrate_users.8B \
+	man8/pbs_migration_assistant.bat.8B \
 	man8/pbs_mkdirs.8B \
 	man8/pbs_mom.8B \
 	man8/pbs_mpihp.8B \
@@ -143,6 +149,7 @@ notrans_dist_man8_MANS = \
 	man8/pbsrun_wrap.8B \
 	man8/pbs_sched.8B \
 	man8/pbs_server.8B \
+	man8/pbs_snapshot.8B \
 	man8/pbs_tclsh.8B \
 	man8/pbs_tmrsh.8B \
 	man8/pbs_topologyinfo.8B \
@@ -155,5 +162,6 @@ notrans_dist_man8_MANS = \
 	man8/qstart.8B \
 	man8/qstop.8B \
 	man8/qterm.8B \
-	man8/tracejob.8B
+	man8/tracejob.8B \
+	man8/win_postinstall.py.8B
 

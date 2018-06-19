@@ -1,0 +1,69 @@
+.\" Copyright (c) 2003-2018 Altair Engineering, Inc.  All rights reserved.
+.\"
+.\" ALTAIR ENGINEERING INC. Proprietary and Confidential. Contains Trade 
+.\" Secret Information. Not for use or disclosure outside of Licensee's 
+.\" organization. The software and information contained herein may only 
+.\" be used internally and is provided on a non-exclusive, 
+.\" non-transferable basis.  Licensee may not sublicense, sell, lend, 
+.\" assign, rent, distribute, publicly display or publicly perform the 
+.\" software or other information provided herein, nor is Licensee 
+.\" permitted to decompile, reverse engineer, or disassemble the 
+.\" software. Usage of the software and other information provided by 
+.\" Altair (or its resellers) is only as explicitly stated in the 
+.\" applicable end user license agreement between Altair and Licensee. In 
+.\" the absence of such agreement, the Altair standard end user license 
+.\" agreement terms shall govern. 
+.\"
+.\"
+.\" Copyright notice does not imply publication. 
+.\"
+.TH pbs_iff 8B "18 October 2017" Local "PBS Professional"
+.SH NAME
+.B pbs_iff
+\- tests authentication with the server
+.SH SYNOPSIS
+.B pbs_iff 
+[-t] <server host> <server port>
+
+.B pbs_iff 
+--version
+.SH DESCRIPTION
+Called from the pbs_connect() IFL API to authenticate a connection
+with the PBS server.  Designed to be called internally by PBS commands
+and components, to be used by our IFL layer to talk to the server.
+
+If 
+.B pbs_iff
+cannot authenticate, it returns an error message.
+
+.B Required Privilege
+.br
+Can be run by any user.
+
+It's a setuid root binary so it runs as the user who requests a
+connection to a server but it becomes root so that it can grab a
+privileged port.
+
+.SH OPTIONS TO pbs_iff
+.IP "-t" 10
+Test mode; means test whether 
+.B pbs_iff 
+can authenticate with the server
+.IP "--version" 10
+Reports version and exits; can only be used alone
+
+.SH ARGUMENTS TO pbs_iff
+.IP "daemon host" 10
+Host where server is running
+.IP "daemon port" 10
+Port on which server is listening; default is 15001
+
+.SH EXIT STATUS
+.IP "Zero" 10
+If 
+.B pbs_iff 
+is able to contact the server at the specified port
+.IP "Non-zero" 10
+If 
+.B pbs_iff 
+is unable to contact the server at the specified port

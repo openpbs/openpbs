@@ -1,0 +1,124 @@
+.\" Copyright (c) 2003-2018 Altair Engineering, Inc.  All rights reserved.
+.\"
+.\" ALTAIR ENGINEERING INC. Proprietary and Confidential. Contains Trade 
+.\" Secret Information. Not for use or disclosure outside of Licensee's 
+.\" organization. The software and information contained herein may only 
+.\" be used internally and is provided on a non-exclusive, 
+.\" non-transferable basis.  Licensee may not sublicense, sell, lend, 
+.\" assign, rent, distribute, publicly display or publicly perform the 
+.\" software or other information provided herein, nor is Licensee 
+.\" permitted to decompile, reverse engineer, or disassemble the 
+.\" software. Usage of the software and other information provided by 
+.\" Altair (or its resellers) is only as explicitly stated in the 
+.\" applicable end user license agreement between Altair and Licensee. In 
+.\" the absence of such agreement, the Altair standard end user license 
+.\" agreement terms shall govern. 
+.\"
+.\"
+.\" Copyright notice does not imply publication. 
+.\"
+.TH pbs_release_nodes 1B "18 May 2018" Local "PBS Professional"
+.SH NAME
+.B pbs_release_nodes 
+\- release vnodes assigned to a PBS job
+.SH SYNOPSIS
+.B pbs_release_nodes
+[-j <job ID>] <vnode> [<vnode> [<vnode>] ...]
+.br
+.B pbs_release_nodes 
+[-j <job ID>] -a
+.br
+.B pbs_release_nodes
+--version
+.SH DESCRIPTION
+
+You can use the 
+.B pbs_release_nodes 
+command to release no-longer-needed
+vnodes assigned to a running job, before the job would normally
+release them.  These vnodes are then available for use by other jobs.
+
+You can specify the names of vnodes to be released, or you can release
+all vnodes not on the primary execution host that are assigned to a
+running job via the 
+.I -a 
+option.
+
+.B Caveats and Restrictions
+.br
+You can release only vnodes that are not on the primary execution
+host.  You cannot release vnodes on the primary execution host.
+
+The job must be running (in the 
+.I R 
+state).
+
+The pbs_release_nodes command is not supported on vnodes tied to Cray
+X* series systems (vnodes whose 
+.I vntype 
+has the "cray_" prefix).
+
+The pbs_release_nodes command is not supported for vnodes managed by
+cpuset MoMs; partial release of vnodes may result in leftover cpusets.
+
+If cgroups support is enabled, and pbs_release_nodes is called to
+release some but not all the vnodes managed by a MoM, resources on
+those vnodes that are part of a cgroup are not released until the
+entire cgroup is released.
+
+.B Required Privilege
+.br
+This command can be run by the job owner, the PBS Manager, Operator,
+and Administrator, as well as root on Linux and Admin on Windows.
+
+.SH Options to pbs_release_nodes
+
+.IP "-a" 10
+Releases all job vnodes not on the primary execution host.  Cannot be
+used with list of vnode names.
+
+.IP "-j <job ID>" 10
+
+Specifies the job ID for the job whose vnode(s) are to be released.
+
+.IP "(no options)" 10
+Without the 
+.I -j 
+option, pbs_release_nodes uses the value of the
+.I PBS_JOBID 
+environment variable as the job ID of the job whose vnodes are to be released.
+
+.IP "--version" 10
+The pbs_release_nodes command returns its PBS version information and exits.
+This option can only be used alone.
+
+.SH Operands for pbs_release_nodes
+The pbs_release_nodes command can take as an operand a list of vnodes.  Format:
+.br
+.I <vnode name> [<vnode name> [<vnode name>] ...]
+.br
+Cannot be used with the 
+.I -a 
+option.
+
+.SH Usage
+This command can be run at the command line, or called inside a job
+script, where it can use the value of the 
+.I PBS_JOBID 
+environment variable.
+
+You can release any vnode that appears in the job's 
+.I exec_vnode 
+attribute that is not on the primary execution host.  You can release
+a particular set of a job's vnodes, or you can release all of a job's
+non-primary-execution-host vnodes.
+
+To release specific vnodes:
+.br
+.I pbs_release_nodes [-j <job ID>] <vnode name> [<vnode name>] ...]
+
+To release all of a job’s vnodes that are not on the primary execution host:
+.br
+.I pbs_release_nodes [-j <job ID>] -a
+
+
