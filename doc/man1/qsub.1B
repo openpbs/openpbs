@@ -1,428 +1,481 @@
-.\" Copyright (C) 1994-2018 Altair Engineering, Inc.
-.\" For more information, contact Altair at www.altair.com.
+.\" Copyright (c) 2003-2018 Altair Engineering, Inc.  All rights reserved.
 .\"
-.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" ALTAIR ENGINEERING INC. Proprietary and Confidential. Contains Trade 
+.\" Secret Information. Not for use or disclosure outside of Licensee's 
+.\" organization. The software and information contained herein may only 
+.\" be used internally and is provided on a non-exclusive, 
+.\" non-transferable basis.  Licensee may not sublicense, sell, lend, 
+.\" assign, rent, distribute, publicly display or publicly perform the 
+.\" software or other information provided herein, nor is Licensee 
+.\" permitted to decompile, reverse engineer, or disassemble the 
+.\" software. Usage of the software and other information provided by 
+.\" Altair (or its resellers) is only as explicitly stated in the 
+.\" applicable end user license agreement between Altair and Licensee. In 
+.\" the absence of such agreement, the Altair standard end user license 
+.\" agreement terms shall govern. 
 .\"
-.\" Open Source License Information:
 .\"
-.\" PBS Pro is free software. You can redistribute it and/or modify it under the
-.\" terms of the GNU Affero General Public License as published by the Free
-.\" Software Foundation, either version 3 of the License, or (at your option) any
-.\" later version.
+.\" Copyright notice does not imply publication. 
 .\"
-.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-.\" FOR A PARTICULAR PURPOSE.
-.\" See the GNU Affero General Public License for more details.
-.\"
-.\" You should have received a copy of the GNU Affero General Public License
-.\" along with this program.  If not, see <http://www.gnu.org/licenses/>.
-.\"
-.\" Commercial License Information:
-.\"
-.\" For a copy of the commercial license terms and conditions,
-.\" go to: (http://www.pbspro.com/UserArea/agreement.html)
-.\" or contact the Altair Legal Department.
-.\"
-.\" Altair’s dual-license business model allows companies, individuals, and
-.\" organizations to create proprietary derivative works of PBS Pro and
-.\" distribute them - whether embedded or bundled with other software -
-.\" under a commercial license agreement.
-.\"
-.\" Use of Altair’s trademarks, including but not limited to "PBS™",
-.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-.\" trademark licensing policies.
-.\"
-.TH qsub 1B "2 February 2016" Local "PBS Professional"
+.TH qsub 1B "27 February 2018" Local "PBS Professional"
 .SH NAME
 .B qsub 
-\- submit PBS job
+\- submit a job to PBS 
 
 
 .SH SYNOPSIS
 .B qsub 
-[-a date_time] [-A account_string] [-c interval] 
+[-a <date and time>] [-A <account string>] [-c <checkpoint spec>] 
 .RS 5
-[-C directive_prefix] [-e path] [-f] [-h] 
+[-C <directive prefix>] [-e <path>] [-f] [-h] 
 .br
-[-I [-G [-- <GUI application>]] | [-X]] [-j join] 
-[-J range] [-k keep] [-l resource_list] [-m mail_events] 
-[-M user_list] [-N name] [-o path] [-p priority] [-P project] 
-[-q destination] [-r c] [-R remove] [-S path_list] [-u user_list] 
-[-v variable_list] [-V] [-W additional_attributes] 
-[-z] [script | -- executable [arglist for executable]]
+[-I [-G [-- <GUI application/script>]] | [-X]] [-j <join>] 
+.br
+[-J <range>] [-k <discard>] [-l <resource list>] 
+.br
+[-m <mail events>] [-M <user list>] [-N <name>] [-o <path>]
+.br
+[-p <priority>] [-P <project>] [-q <destination>] [-r <y|n>]
+.br
+[-R <remove options>] [-S <path list>] [-u <user list>] 
+.br
+[-v <variable list>] [-V] [-W <additional attributes>] [-z] 
+.br
+[- | <script> | -- <executable> [<arguments to executable>]]
 .RE
 .B qsub
 --version
 
 .SH DESCRIPTION
-The 
+You use the 
 .B qsub 
-command is used to submit a batch job to PBS.
-Submitting a PBS job specifies a task, requests resources and sets job attributes.
+command to submit a batch job to PBS.
+Submitting a PBS job specifies a task, requests resources, and sets job attributes.
 
 The 
 .B qsub 
 command can read from a job script, from standard input, or from the command line.
 When the user has submitted the job, PBS returns the job identifier for that job.
 For a job, this is of the form:
-.IP
-.I sequence_number.servername
-.LP
-For an array job, this is of the form:
-.IP
-.I sequence_number[].servername
-.LP
-During execution, jobs can be interactive or non-interactive.
+.RS 3
+.I <sequence number>.<server name>
+.RE
 
+For an array job, this is of the form:
+.RS 3
+.I <sequence number>[].<server name>
+.RE
+
+During execution, jobs can be interactive or non-interactive.
+Interactive jobs are not rerunnable, and if they are blocking, you
+cannot use their exit status.
+
+Jobs are run as the user and group who submitted the job.
+
+.B Background Process
+.br
 By default, on the first invocation, qsub spawns a background process
 to manage communication with the PBS server.  Later invocations of
 qsub attempt to communicate with this background process.  Under
 certain circumstances, calls to qsub when it uses the background
 process can result in communication problems.  You can prevent qsub
-from spawning a background process by using the -f option, although
-this can degrade performance.
+from spawning a background process by using the 
+.I -f 
+option, although this can degrade performance.
 
-.B Where PBS puts job files
+.B Where PBS Puts Job Files
 .br
 By default, PBS copies the stdout and stderr files from the job back to the 
 current working directory where the 
 .B qsub
-command is executed.  See the 
+command is executed.  However, you can specify the output paths using
+the 
 .I -o 
 and 
 .I -e 
+options.  You can also specify which and whether these
+files should be kept on the execution host via the 
+.I -k 
+option, or deleted, using the 
+.I -R 
+option.  See the 
+.I -k, -o, -e, 
+and 
+.I -R 
 options.
 
-.B Submitting jobs by using scripts
+.B Submitting Jobs By Using Scripts
 .br
-To submit a PBS job script, the user types
-.IP
-.B qsub
-[options] scriptname 
-.LP
-Scripts can be written in Python, UNIX shells such as csh and sh,
-Perl, Windows command language, etc.  The same Python script can be 
-used on both UNIX/Linux and Windows.
+To submit a PBS job by using a script, you specify a job script on the
+command line:
 .br
-A PBS job script consists of 
-.IP
-Optional shell specification
-.br
-Any 
-.I PBS directives
-.br
-The user's tasks: programs, commands or applications
-.LP
+.I \ \ \ qsub [<options>] <script name>
 
-Example of using Python for UNIX/Linux or Windows:
+For example:
 .br
-The Python job script named "myjob.py" for a job named
-"HelloJob" prints "Hello" under UNIX/Linux or Windows:
-.IP
-#!/usr/bin/python
-.br
-#PBS -l select=1:ncpus=3:mem=1gb
-.br
-#PBS -N HelloJob
-.br
-print "Hello"
-.LP
-To run a Python job script under UNIX/Linux: 
-.IP
-qsub <script name>
-.LP
-To run a Python job script under Windows: 
-.IP
-qsub -S \%PBS_EXEC\%\\bin\\pbs_python.exe <script name>
-.LP
-If the path contains spaces, it must be quoted, for example:
-.IP
-qsub -S "C:\Program Files\\PBS Pro\\bin\\pbs_python.exe" <script name>
-.LP
+.B \ \ \ qsub myscript.sh
 
-Example of a UNIX/LInux job script named "weatherscript" for a job 
-named "Weather1" which runs the executable "weathersim":
+Job scripts are run as the user and group who submitted the job.  Job
+scripts can be written in Python, Linux shells such as csh and sh, the
+Windows command batch language, Perl, etc.
+
+A PBS job script consists of the following:
+.RS 3
+Optional shell specification 
+
+Any PBS directives
+
+The user's tasks: programs, commands, or applications 
+
+Optional comments (Under Windows, comments can contain only ASCII
+characters.  See the PBS Professional User's Guide.)
+.RE
+
+.B Using Shells and Interpreters
 .br
-.IP
+By default, PBS uses your login shell to run your script.  You can
+optionally specify a different shell or interpreter to run your
+script:
+
+Via the 
+.I -S 
+option to qsub:
+.RS 3
+.I qsub -S <path to shell> <script name>
+
+For example:
+.br
+.B qsub -S /bin/bash myscript.sh
+.RE
+
+In the first line of your script.  For example:
+.RS 3
+.nf
+.B cat myscript.sh
 #!/bin/sh
-.br
-#PBS -N Weather1
-.br
-#PBS -l walltime=1:00:00
-.br
-/usr/local/weathersim
-.LP
-To submit the job, the user types:
-.IP
-.B qsub
-weatherscript <return>
-.LP
-
-Example of a Windows job script:
-.br
-Example of a script named "weather.exe" for a job named "Weather1" run under Windows:
-
-.IP
-#PBS -N Weather1
-.br
-#PBS -l walltime=1:00:00
-.br
-weathersim.exe
-.LP
-To submit the job, the user types:
-.IP
-.B qsub
-weather.exe <return>
-.LP
-
-Scripts can contain comments.  Under Windows, comments can contain
-only ASCII characters.  See the
-.B PBS Professional User's Guide.
+#PBS -N MyHelloJob
+print "Hello"
+.fi
+.RE
 
 .B Python Job Scripts
 .br
-PBS allows you to submit jobs using a Python script.  You can use the
-same Python script under Windows or UNIX/Linux.  PBS includes a Python
-package, allowing Python job scripts to run; you do not need to
-install Python.
-
+You can use the same Python script under Linux or under Windows, if
+the script is written to be portable.  PBS includes a Python package,
+allowing Python job scripts to run; you do not need to install Python.
 You can include PBS directives in a Python job script as you would in
-a UNIX shell script.  For example:
-.IP
-cat myjob.py
-.br
-#!/usr/bin/python
-.br
-#PBS -l select=1:ncpus=3:mem=1gb
-.br
-#PBS -N HelloJob
-.br
-print "Hello"
-.LP
-
-Python job scripts can access Win32 APIs, including the following modules:
-.IP
+a Linux shell script.  Python job scripts can access Win32 APIs,
+including the following modules:
+.RS 3
 Win32api
-.br
+
 Win32con
-.br
+
 Pywintypes
-.LP
+.RE
 
-.B UNIX/Linux Shell Scripts
-.br
-The first line of a job file can be used to
-specify which shell to use to execute the script. The default shell is
-the user's login shell.  If the default is not acceptable, you can
-specify a different shell on the first line.
+For example, we have a Python job script that includes PBS directives:
+.RS 3
+.B cat myjob.py
+.nf
+#!/usr/bin/python
+#PBS -l select=1:ncpus=3:mem=1gb
+#PBS -N HelloJob
+print "Hello"
+.fi
+.RE
 
-.B Windows Command Scripts
+To run a Python job script under Linux, use the Python path on the execution host:
+.RS 3
+.I qsub -S <Python path on execution host> <script name>
+
+For example, 
 .br
+.B qsub -S $PBS_EXEC/bin/pbs_python <script name>
+.RE
+
+To run a Python job script under Windows, use the Python path on the execution host: 
+.RS 3
+.I qsub -S <Python path on execution host> <script name>
+
+For example, 
+.br
+qsub -S %PBS_EXEC%\\bin\\pbs_python.exe <script name>
+.RE
+
+If the script pathname contains spaces, it must be quoted, for example:
+.RS 3
+qsub -S "C:\\Program Files\\PBS Pro\\bin\\pbs_python.exe" <script name>
+.RE
+
+.B Linux Shell Job Scripts
+.br
+For example, we have a Linux job script named "weatherscript" for a job named
+"Weather1" which runs the executable "weathersim" on Linux:
+.RS 3
+.nf
+#!/bin/sh
+#PBS -N Weather1
+#PBS -l walltime=1:00:00
+/usr/local/weathersim
+.RE
+.fi
+
+To submit the job, the user types:
+.RS 3
+.B qsub weatherscript <return>
+.RE
+
+.B Windows Command Job Scripts
+.br
+For example, we have a script named "weather.exe" for a job named "Weather1" which
+runs under Windows:
+.RS 3
+.nf
+#PBS -N Weather1
+#PBS -l walltime=1:00:00
+weathersim.exe
+.fi
+.RE
+
+To submit the job, the user types:
+.RS 3
+.B qsub weather.exe <return>
+.RE
+
 In Windows, if you use notepad to create a job script, the last line
 does not automatically get newline-terminated. Be sure to put one
 explicitly, otherwise, PBS job will get the following error message:
-.IP
-More?
-.LP
+
+   More?
+
 when the Windows command interpreter tries to execute that last line.
 
-.B Specifying Top Shell
+.B Submitting Jobs From Standard Input
 .br
-You can specify the top shell for the job:
-.IP 
-qsub -S <path to shell> <script name>
-.LP
-Under UNIX/Linux, you cannot use this option to specify the path 
-to a Python interpreter.
+To submit a PBS job by typing job specifications at the command line,
+you type:
+.br
+.I qsub [<options>]  [-] <return>  
+.br
+then type any directives, then any tasks, followed by:
+.RS 3
+Linux: CTRL-D on a line by itself
 
-.B Submitting jobs from standard input
-.br
-To submit a PBS job by typing job specifications at the command line, the user types
-.IP
-.B qsub 
-[options] <return>
-.LP
-then types any directives, then any tasks, followed by 
-.IP
-(in UNIX)     CTRL-D on a line by itself
-.br
-(in Windows)  CTRL-Z <return>
-.LP
+Windows: CTRL-Z <return>
+.RE
+
 to terminate the input.
 
-.B Submitting a job from the 
-.B qsub command line
+The qsub command behaves the same both with and without the dash operand.
 .br
-To submit a job from the command line, the user types
-.IP
-.B qsub 
-[options] 
-.B -- executable 
-[arguments to executable] <return>
-.LP
+For example, on Linux:
+.RS 3
+.nf
+.B qsub <return>
+#PBS -N StdInJob
+sleep 100
+<CTRL-D>
+.RE
+.fi
+
+.B Submitting Job Directly by Specifying Executable on Command Line
+.br
+To submit a job directly, you specify the executable on the command
+line:
+.RS 3
+.I qsub [<options>] -- <executable> [<arguments to executable>] <return>
+.RE
+
+When you run qsub this way, it runs the executable directly.  It does
+not start a shell, so no shell initialization scripts are run, and
+execution paths and other environment variables are not set.  There is
+not an easy way to run your command in a different directory.  You
+should make sure that environment variables are set correctly, and you
+will usually have to specify the full path to the command.
+
 For example, to run myprog with the arguments a and b:
-.IP
-.B qsub
--- myprog a b <return>
-.LP
+.RS 3
+.B qsub -- myprog a b <return>
+.RE
 
-To run myprog with the arguments a and b, naming the job JobA,
-.IP
-.B qsub
--N JobA 
--- myprog a b <return>
-.LP
+For example, to run myprog with the arguments a and b, naming the job "JobA":
+.RS 3
+.B qsub -N JobA -- myprog a b <return>
+.RE
 
-.B Requesting resources and placing jobs
+.B Requesting Resources and Placing Jobs
 .br
 Requesting resources includes setting limits 
-on resource usage and controlling how the job is placed on nodes.
+on resource usage and controlling how the job is placed on vnodes.
 
 Resources are requested by using the 
 .I -l
-option, either in
+option, either in job-wide requests using
+.I <resource name>=<value>
+pairs, or in
 .I chunks 
 inside of 
-.I selection statements,
-or in job-wide requests using
-.I resource_name=value
-pairs.  See the 
+.I selection statements.
+  See the 
 .B pbs_resources(7B) 
 man page.
+
+Job-wide 
+.I <resource name>=<value> 
+requests are of the form:
+.RS 3
+.I -l <resource name>=<value>[,<resource name>=<value> ...]
+.RE
+
 The 
 .I selection statement 
 is of the form:
-.IP
-.I -l select=[N:]chunk[+[N:]chunk ...]
-.LP
+.RS 3
+.I -l select=[<N>:]<chunk>[+[<N>:]<chunk> ...]
+.RE
 where 
 .I N
-specifies how many of that chunk, and 
-a 
+specifies how many of that chunk, and a 
 .I chunk 
 is of the form:
-.IP
-.I resource_name=value[:resource_name=value ...]
-.LP
-Job-wide 
-.I resource_name=value 
-requests are of the form:
-.IP
-.I -l resource_name=value[,resource_name=value ...]
-.LP
-The 
-.I place
-statement can contain the following elements, in any order:
-.IP " " 5
--l place=[
-.I arrangement
-][:
-.I sharing
-][:
-.I grouping]
-.LP
+.RS 3
+.I <resource name>=<value>[:<resource name>=<value> ...]
+.RE
+
+You choose how your chunks are placed using the 
+.I place statement.  
+The place statement can contain the following elements, in any order:
+.RS 3
+.I -l place=[<arrangement>][:<sharing>][:<grouping>]
+
 where
-.IP " " 5
+.br
 .I arrangement 
-is one of 
-.I free
-|
-.I pack
-|
-.I scatter
-|
-.I vscatter
+.RS 3
+Whether this chunk is willing to share this vnode or host with other
+chunks from the same job.  
 .br
+One of 
+.I free | pack | scatter | vscatter
+.RE
+
 .I sharing
-is one of 
-.I excl 
-| 
-.I shared 
-|
-.I exclhost
+.RS 3
+Whether this this chunk is willing to share this vnode or host with
+other jobs.  
 .br
+One of 
+.I excl | shared | exclhost
+.RE
+
 .I grouping 
-can have only one instance of 
-.I group=resource
-.LP
-and where
-.IP " " 5
-.I free:
+.RS 3
+Whether the chunks from this job should be placed on vnodes that all
+have the same value for a resource.  
+.br
+Can have only one instance of
+.I group=<resource name>
+.RE
+
+.I free
+.RS 3
 Place job on any vnode(s).
-.br
-.I pack:
-All chunks will be taken from one host.
-.br
-.I scatter:
-Only one chunk with any MPI processes will be taken from a host.
-A chunk with no MPI processes may be taken from the same node as
-another chunk.
-.br
-.I vscatter:
-Only one chunk is taken from any vnode.
-.br
-.I excl:
+.RE
+
+.I pack
+.RS 3
+All chunks are taken from one host.
+.RE
+
+.I scatter
+.RS 3
+Only one chunk with any MPI processes is taken from a host.  A chunk
+with no MPI processes may be taken from the same vnode as another
+chunk.
+.RE
+
+.I vscatter
+.RS 3
+Only one chunk is taken from any vnode.  Each chunk must fit on a vnode.
+.RE
+
+.I excl
+.RS 3
 Only this job uses the vnodes chosen.
-.br
-.I exclhost:
-The entire host is allocated to the job.
-.br
-.I shared:
+.RE
+
+.I shared
+.RS 3
 This job can share the vnodes chosen.
-.br
-.I group=resource:
-Chunks will be grouped according to a 
-.I resource.  
-This resource must be a string or string array.
-All nodes in the group must have a common value for the 
-.I resource, 
-which can be either the built-in resource
-.I host
-or a site-defined node-level resource.
+.RE
 
-The place statement cannot begin with a colon.
+.I exclhost
+.RS 3
+The entire host is allocated to the job.
+.RE
 
-Note that nodes can have sharing attributes that override
-job placement requests.  See the
-.B pbs_node_attributes(7B)
+.I group=<resource name>
+.RS 3
+Chunks are grouped according to a resource.  All vnodes in the group
+must have a common value for resource, which can be either the
+built-in resource host or a custom vnode-level resource.
+
+.I resource name 
+must be a string or a string array.
+.RE
+
+The place statement cannot begin with a colon.  Colons are delimiters;
+use them only to separate parts of a place statement, unless they are
+quoted inside resource values.
+.RE
+
+Note that vnodes can have 
+.I sharing 
+attributes that override job placement requests.  
+See the 
+.I pbs_node_attributes.7B
 man page.
-.LP
 
-.B Do not mix old style resource or node specifications with the new select and place statements.  
-Do not use one in a job script and the other on the command line.
-Mixing the two will result in an error.
+For more on resources, resource requests, usage limits, and job
+placement, see the
+.I PBS Professional Administrator's Guide 
+and the 
+.I PBS Professional User's Guide.
 
-You cannot submit a job requesting a custom resource which has
-been created to be invisible or read-only for users, regardless of
-your privilege.  A manager or operator can use the 
+.B Caveats for Requesting Resources
+.br
+Do not mix old-style resource or vnode specifications with the new
+select and place statements.  Do not use one in a job script and the
+other on the command line.  Mixing the two will result in an error.
+
+You cannot submit a job requesting a custom resource which has been
+created to be invisible or read-only for unprivileged users,
+regardless of your privilege.  A Manager or Operator can use the
 .B qalter 
 command to change a job's request for this kind of custom resource.
 
 For more on resource requests, usage limits and job placement, see
-.B pbs_resources(7B).
+.I pbs_resources(7B).
+
+
 
 .B Setting attributes
 .br
-The user sets job attributes by giving options to the 
+The job submitter sets job attributes by giving options to the 
 .B qsub 
-command and by using 
+command or by using 
 .I PBS directives.
-Each 
-.B qsub 
-option except
-.I -C, -q, 
-and 
-.I -z
-sets a job attribute, and has a corresponding 
-.I PBS directive
-with the same syntax as the option.
-Attributes set via command-line options take precedence over those 
-set using 
-.I PBS directives.
-See the
-.B PBS Professional User's Guide, pbs_job_attributes(7B).
+Most qsub options set a job attribute, and have a corresponding PBS
+directive with the same syntax as the option.  Attributes set via
+command-line options take precedence over those set using PBS
+directives.  See the 
+.I PBS Professional User's Guide, 
+or 
+.I pbs_job_attributes.7B.
 
+.B Changing qsub Behavior
+.br
 The behavior of the 
 .B qsub
 command
@@ -437,7 +490,7 @@ server attribute is settable by the administrator,
 and is overridden by command-line arguments and
 script directives.
 See the 
-.B pbs_server_attributes(1B) 
+.I pbs_server_attributes(1B) 
 man page.
 
 The behavior of the 
@@ -446,27 +499,38 @@ command may also be affected by
 any site hooks.  Site hooks can modify the job's attributes, 
 change its routing, etc.
 
-.SH OPTIONS
+.SH Options to qsub
 
-.IP "-a date_time" 8
+.IP "-a <date and time>" 8
 Point in time after which the job is eligible for execution.
 Given in pairs of digits.  Sets job's 
 .I Execution_Time
 attribute to 
-.I date_time.
-Format:
-.IP
-.RS 13
-.I "[[[[CC]YY]MM]DD]hhmm[.SS]"
+.I date and time.
+Format: 
+.I datetime, 
+expressed as
+.RS 11
+.I [[[[CC]YY]MM]DD]hhmm[.SS]
 .RE
-.IP
-where CC is the century,
-YY is the year, 
-MM is the month,
-DD is the day of the month, 
-hh is the hour, mm is the minute,
-and SS is the seconds.
+.IP " " 8
+where 
+.I CC 
+is the century,
+.I YY 
+is the year, 
+.I MM 
+is the month,
+.I DD 
+is the day of the month, 
+.I hh 
+is the hour, 
+.I mm 
+is the minute, and 
+.I SS 
+is the seconds.
 
+.IP " " 8
 Each portion of the date defaults to the current date, as long as the 
 next-smaller portion is in the future.  For example, if today is the
 3rd of the month and the specified day 
@@ -485,58 +549,63 @@ the day
 .I DD
 is set to tomorrow.
 
-.IP "-A account_string" 8
+.IP "-A <account string>" 8
 Accounting string associated with the job.  Used for labeling accounting data.
 Sets job's 
 .I Account_Name 
 attribute to 
-.I account_string.
-Format: string.
+.I account string.
+.br
+Format: 
+.I String
 
-.IP "-c checkpoint_spec"
+.IP "-c <checkpoint spec>"
 Determines when the job will be checkpointed.  Sets job's 
 .I Checkpoint
-attribute.  An 
+attribute to 
+.I checkpoint spec.  
+An 
 .I $action
-script is required to checkpoint the job.  See the 
-.B pbs_mom(8B)
-man page.
+script is required to checkpoint the job.  
 
-.IP
+See the 
+.I PBS Professional User's Guide.
+
 The argument 
-.I checkpoint_spec
+.I checkpoint spec
 can take on one of the following values:
 .RS
 .IP c 5
-Checkpointing is to be performed according to the interval, measured
-in CPU time, set on the execution queue in which the job resides.
-If there is no interval set on the queue, the job is not checkpointed.
+Checkpoint at intervals, measured in CPU time, set on job's execution
+queue.  If there is no interval set at the queue, the job is not
+checkpointed.
 
 .IP "c=<minutes of CPU time>" 5
-Checkpointing is to be performed at intervals of the specified number
-of minutes of CPU time used by the job.  This value must be greater
-than zero.  If the interval specified is less that that set on the
-execution queue in which the job resides, the queue's interval is
-used.
+Checkpoint at intervals of specified number of minutes of job CPU
+time.  This value must be greater than zero.  If the interval
+specified is less than that set on the job's execution queue, the
+queue's interval is used.
 .br
-Format: integer.  
+Format: 
+.I Integer
 .IP w 5
-Checkpointing is to be performed according to the interval, measured
-in walltime, set on the execution queue in which the job resides.
-If there is no interval set on the queue, the job is not checkpointed.
+Checkpoint at intervals, measured in walltime, set on job's execution
+queue.  If there is no interval set at the queue, the job is not
+checkpointed.
 
 .IP "w=<minutes of walltime>" 5
-Checkpointing is to be performed at intervals of the specified number
-of minutes of walltime used by the job.  This value must be greater
+Checkpoint at intervals of the specified number of minutes of job walltime.
+This value must be greater
 than zero.  If the interval specified is less than that set on the
-execution queue in which the job resides, the queue's interval is
+job's execution queue, the queue's interval is
 used.
 .br
-Format: integer.  
+Format: 
+.I Integer
 .IP n 5
-No checkpointing is to be performed.
+No checkpointing.
 .IP s 5
-Checkpointing is to be performed only when the server is shut down.
+Checkpoint only when the server is shut down.
 
 .IP u 5
 Unset.  Defaults to behavior when 
@@ -546,26 +615,27 @@ argument is set to
 .I 
 .LP
 Default: 
-.I u.
+.I u
 .br
-Format: String.
+Format: 
+.I String
 .RE
 .RE
 
-.IP "-C directive_prefix" 8
+.IP "-C <directive prefix>" 8
 Defines the prefix identifying a 
 .I PBS directive.
 Default prefix is "#PBS".
 .IP
 If the
-.I directive_prefix
+.I directive prefix
 argument is a null string, qsub
 does not scan the script file for directives.
 Overrides the PBS_DPREFIX environment variable and the default.
-Cannot be used as a 
-.I PBS directive.
+The string "PBS_DPREFIX" cannot be used as a PBS directive.
+Length limit: 4096 charactes.
 
-.IP "-e path" 8
+.IP "-e <path>" 8
 Path to be used for the job's standard error stream.
 Sets job's 
 .I Error_Path 
@@ -575,60 +645,58 @@ The
 .I path
 argument is of the form:
 .RS 13
-.I [hostname:]path_name
+.I [<hostname>:]<path>
 .RE
 .RS
 The 
 .I path 
 is interpreted as follows:
 
-.IP path_name 5
+.IP path 5
 If
-.I path_name 
-is a relative path, then it is taken to be relative to 
-the current working directory of the 
+.I path
+is relative, it is taken to be relative to the current working directory of the 
 .B qsub
-command, where it is executing 
-on the current host.
+command, where it is executing on the current host.
 
 If
-.I path_name
-is an absolute path, then it is taken to be an absolute path on 
-the current host where the 
+.I path
+is absolute, it is taken to be an absolute path on the current host where the 
 .B qsub
 command is executing.
 
-.IP hostname:path_name
+.IP hostname:path
 If 
-.I path_name
-is a relative path, then it is taken to be relative to the user's 
+.I path
+is relative, it is taken to be relative to the user's 
 home directory on the host named
 .I hostname.
 
 If 
-.I path_name 
-is an absolute path, then it is the absolute path on the host named
+.I path
+is absolute, it is an absolute path on the host named
 .I hostname.
 .LP
 If 
-.I path_name
-does not include a filename, the default filename is
-.RS 
-jobid.ER
-.RE
+.I path
+does not include a filename, the default filename has the form
+.I <job ID>.ER
+
 If the
 .I -e
 option is not specified, PBS copies the standard error to the current
 working directory where the 
 .B qsub 
-command was executed.
-The default filename for the standard error stream
-is used.  It has this form:
-.RS 
-job_name.e<sequence number>
-.RE
-If you use a UNC path, the hostname is optional.  If you use a non-UNC
-path, the hostname is required.
+command was executed, and writes standard error to the default filename, 
+which has this form:
+.br
+.I <job name>.e<sequence number>
+
+If you use a UNC path for output or error files, the 
+.I hostname 
+is optional.  If you use a non-UNC path, the 
+.I hostname 
+is required.
 
 This option is overridden by the 
 .I -k
@@ -645,7 +713,7 @@ When this option is specified, the
 .B qsub
 process connects directly to the server and no background process is created.
 
-NOTE: Use of this option will degrade performance of the 
+NOTE: Use of this option degrades performance of the 
 .B qsub
 command when calls are made in rapid succession.
 
@@ -655,16 +723,21 @@ starts a GUI-enabled interactive shell.  When an application or script
 is provided, starts the GUI application or script.  Use full path to
 application or script unless the path is part of the user's
 PATH environment variable on the execution host.  When submission and
-execution hosts are different, uses a remote viewer.
+execution hosts are different, this uses a remote viewer.
 .br
-Session is terminated when remote viewer or GUI application is terminated, when interactive shell is terminated, or when job is deleted.
+Session is terminated when remote viewer, GUI application, or 
+interactive shell is terminated, or when job is deleted.
 .br
-Can only be used with interactive jobs (the -I option).
+Can be used only with interactive jobs (the 
+.I -I 
+option).
 .br
 Available only under Windows.
 
 .IP "-h" 8
-Applies a user hold to the job.
+Applies a 
+.I User 
+hold to the job.
 Sets the job's 
 .I Hold_Types 
 attribute to "u".
@@ -672,7 +745,8 @@ attribute to "u".
 .IP "-I" 8
 Job is to be run interactively.  Sets job's 
 .I interactive
-attribute to TRUE.
+attribute to 
+.I True.
 The job is queued
 and scheduled as any PBS batch job, but when executed, the standard input,
 output, and error streams of the job are connected to the
@@ -682,7 +756,7 @@ is running.
 If a job script is given, only its directives are processed.  When the job
 begins execution, all input to the job is taken from the terminal session.
 See the 
-.B PBS Professional User's Guide
+.I PBS Professional User's Guide
 for additional information on interactive jobs.
 
 Interactive jobs are not rerunnable.
@@ -694,180 +768,182 @@ When used with
 no exit status is returned.
 
 
-.IP "-j join" 8
-Whether and how to join the job's standard error and standard output streams.
+.IP "-j <join>" 8
+Specifies whether and how to join the job's standard error and standard output streams.
 Sets job's 
 .I Join_Path
 attribute to 
 .I join.
-Default: not merged.  
-Possible values of 
-.I join:
+Default: 
+.I n, 
+not merged.  
+The 
+.I join
+argument can take the following values:
 .RS
-.IP oe 5
+.IP oe 11
 Standard error and standard output are merged into standard output.
 
-.IP eo 5
+.IP eo 11
 Standard error and standard output are merged into standard error.
 
-.IP n 5
+.IP n 11
 Standard error and standard output are not merged.
 .RE
 
-.IP "-J range" 8
-Declares that this job is an array job.  
-Sets job's 
+.IP "-J <range>" 8
+Makes this job an array job.  Sets job's 
 .I array
-attribute to TRUE.
-The argument 
+attribute to 
+.I True.
+Use the
 .I range 
-identifies the integers greater than or equal to zero that are 
-associated with the subjobs of the array.
+argument to specify the indices of the subjobs of the array.
 .I range 
 is specified in the form
-X-Y[:Z]  where X is the first index, Y is the upper bound on the indices and
-Z is the stepping factor.  For example,  2-7:2 will produce indices of 2, 4, and
-6.  If Z is not specified, it is taken to be 1.
+.I X-Y[:Z]  
+where 
+.I X 
+is the first index, 
+.I Y 
+is the upper bound on the indices, and
+.I Z 
+is the stepping factor.  For example,  2-7:2 will produce indices of 2, 4, and
+6.  If 
+.I Z 
+is not specified, it is taken to be 1.  Indices must be greater than or 
+equal to zero.
 
-.IP "-k keep" 8
-.br
-"k" specifies whether and which of the standard output and standard error streams
-is retained on the execution host.  direct_write can be enabled by passing
-"d" option (This will override "k" functionality). 
-Overrides default path names for these streams.  Sets the job's 
+Job arrays are always rerunnable.
+
+.IP "-k <discard>" 8
+Specifies whether and which of the standard output and standard error streams
+is left behind on the execution host, or written to their final destination.
+Sets the job's 
 .I Keep_Files 
-attribute to the
-.I keep
-.br
-Format: Any combination of 'd','o','e' or 'n'. 'n' cannot be used with other options.
-.br
-Default: n
+attribute to 
+.I discard.
+Overrides default path names for these streams.  
+Overrides 
+.I -o
+and 
+.I -e
+options.
+
+Default: 
+.I n; 
+neither is retained, and files are not written to their final destinations.
 
 In the case where output and/or error is retained on the execution host in
 a job-specific staging and execution directory created by PBS, these
 files are deleted when PBS deletes the directory.
 
 The 
-.I keep 
-argument can take on the following values:
+.I discard
+argument can take the following values:
 .RS
-.IP d 5
-direct_write option is used to output (stdout/stderr) files to the final destination, 
-instead of being staged, if the final destination is known to be writable 
-from the job execution node.
 .IP e 5
-"k/d" option is applicable to stderr file. The filename is
+The standard error stream is retained on the execution host, in the 
+job's staging and execution directory.  The filename is
 .RS
-.RS 5
-job_name.e<sequence number>
+.RS 3
+.I <job name>.e<sequence number>
 .RE
-.RE
-.IP o  5
-"k/d" option is applicable to stdout file. The filename is
-.RS
-.RS 5
-job_name.o<sequence number>
-.RE
-.RE
-.IP n  5
-"k/d" option is not applicable.
 .RE
 
-.IP "-l resource_list" 8
+.IP o  5
+The standard output stream is retained on the execution host, in the
+job's staging and execution directory.  The filename is
 .RS
-Allows the user to request resources and specify job
-placement.  Sets job's 
+.RS 3
+.I <job name>.o<sequence number>
+.RE
+.RE
+
+.IP "eo, oe"  5
+Both standard output and standard error streams are 
+retained on the execution host, in the
+job's staging and execution directory. 
+
+.IP d 5
+Output and/or error are written directly to their final destination.
+Overrides action of leaving files on execution host.
+
+.IP n  5
+Neither stream is retained.
+.RE
+
+.IP "-l <resource list>" 8
+.RS
+Allows the user to request resources and specify job placement.  Sets job's 
 .I Resource_list 
 attribute to 
-.I resource_list.
+.I resource list.
 Requesting a resource places a limit on its usage.
 
-Requesting resources in 
-.I chunks:
-.RS 5
--l select=[N:]chunk[+[N:]chunk ...]
-
-where N specifies how many of that chunk, and a chunk is:
-.RS 5
-resource_name=value[:resource_name=value ...]
-.RE
-.RE
-Requesting job-wide resources:
-.RS 5
--l resource_name=value[,resource_name=value ...]
-.RE
-Specifying placement of jobs:
-.RS 5
--l place=modifier[:modifier]
-.RE
-where
-.I modifier
-is any combination of
-.I group, excl,
-and/or one of
-.I free|pack|scatter.
-
-For more on resource requests, usage limits and job placement, see
-.B pbs_resources(7B).
+For how to request resources and place jobs, see 
+.B "Requesting Resources and Placing Jobs" above.
 .RE
 
-.IP "-m mail_events " 8
-The set of conditions under which mail about the job is sent.
+.IP "-m <mail events> " 8
+Specifies the set of conditions under which mail about the job is sent.
 Sets job's 
 .I Mail_Points
 attribute to 
-.I mail_events.  
+.I mail events.  
 The 
-.I mail_events
+.I mail events
 argument can be either "n" or any combination of "a", "b", and "e".
 .RS
 .IP n 5
-No mail will be sent.  
+No mail is sent.  
 .IP
 .IP a 5
-Mail is sent when the job is aborted by the batch system.
+Mail is sent when the job is aborted by PBS.
 .IP b 5
 Mail is sent when the job begins execution.
 .IP e 5
 Mail is sent when the job terminates.
-.IP j 5
-Mail is sent also for subjobs of an array job.
-Option "j" must be combined with "a", "b", or "e".
 .LP
 .br
-Format: string.  
+Format: 
+.I String 
 .br
-Default value: "a".  
+Default value: "a"
 .RE
 
-.IP "-M user_list" 8
+.IP "-M <user list>" 8
 List of users to whom mail about the job is sent.  Sets job's 
 .I Mail_Users 
 attribute to 
-.I user_list.  
-Default: job owner.
+.I user list.  
+
 .RS
 The
-.I user_list
-argument is of the form:
-.RS 5
-.I user[@host][,user[@host],...]
+.I user list
+argument has the form:
+.RS 3
+.I <username>[@<hostname>][,<username>[@<hostname>],...]
 .RE
+
+Default: Job owner
 .RE
-.IP "-N name " 8
-Sets job's name to 
-.I name.  
+
+.IP "-N <name> " 8
 Sets job's 
-.I Job_Name
-attribute to 
-.I name.
-Format: string, up to 236 characters in length.
-It must consist of an alphabetic or numeric character followed by
-printable, non-white-space characters.
-.br
+.I Job_Name 
+attribute and name to 
+.I name.  
+
+Format: 
+.I Job Name;
+See the 
+.I PBS Professional Reference Guide.
+
 Default: if a script is used to submit the job, the job's name is the
 name of the script.  If no script is used, the job's name is "STDIN".
-.IP "-o path" 8
+
+.IP "-o <path>" 8
 Path to be used for the job's standard output stream.
 Sets job's 
 .I Output_Path 
@@ -875,50 +951,52 @@ attribute to
 .I path.
 The
 .I path
-argument is of the form:
+argument has the form:
 .RS 13
-.I [hostname:]path_name
+.I [<hostname>:]<path>
 .RE
 .RS
 The 
 .I path 
 is interpreted as follows:
-.IP path_name 5
+.IP path 5
 If
-.I path_name 
-is a relative path, then it is taken to be relative to 
+.I path 
+is relative, it is taken to be relative to 
 the current working directory of the command, where it is executing 
-on the current host.  If
-.I path_name
-is an absolute path, then it is taken to be an absolute path on 
+on the current host.  
+
+If
+.I path
+is absolute, it is taken to be an absolute path on 
 the current host where the command is executing.
-.IP hostname:path_name
+.IP hostname:path
+
 If 
-.I path_name
-is a relative path, then it is taken to be relative to the user's 
+.I path
+is relative, it is taken to be relative to the user's 
 home directory on the host named
 .I hostname.
+
 If 
-.I path_name 
-is an absolute path, then it is the absolute path on the host named
+.I path 
+is absolute, it is an absolute path on the host named
 .I hostname.
 .LP
+
 If 
-.I path_name
-does not include a filename, the default filename is
-.RS 
-jobid.OU
-.RE
+.I path
+does not include a filename, the default filename has the form 
+.I <job ID>.OU
+
 If the
 .I -o
 option is not specified, PBS copies the standard output to the current
 working directory where the 
 .B qsub 
-command was executed.  The default filename for the standard output stream
-is used.  It has this form:
-.RS 
-job_name.o<sequence number>
-.RE
+command was executed, and writes standard output to the default filename,
+which has this form: 
+.I <job name>.o<sequence number>
 
 If you use a UNC path, the hostname is optional.  If you use a non-UNC
 path, the hostname is required.
@@ -928,56 +1006,68 @@ This option is overridden by the
 option.
 .RE
 
-.IP "-p priority" 8
-Priority of the job.  Format: host-dependent integer.
-Default: zero.  Range: [-1024, +1023] inclusive.  Sets job's 
+.IP "-p <priority>" 8
+Priority of the job.  Sets job's 
 .I Priority
 attribute to 
 .I priority.
 
-.IP "-P project" 8
+Format: host-dependent integer
+.br
+Range: 
+.I [-1024, +1023] 
+inclusive
+.br
+Default: 
+.I Zero  
 
+.IP "-P <project>" 8
 Specifies a project for the job. Sets job's 
 .I project
-attribute to specified value.
+attribute to 
+.I project.
 
-Format: String.
-.br
-Project name can contain any characters except for the following:
-Slash ("/"), left bracket ("["), right bracket ("]"), double quote ("""), 
-semicolon (";"), colon (":"), vertical bar ("|"), left angle bracket ("<"), 
-right angle bracket (">"), plus ("+"), comma (","), question mark ("?"), 
-and asterisk ("*").
-.br
-Default value: "_pbs_project_default".
+Format: 
+.I Project Name;
+see the
+.I PBS Professional Reference Guide.
 
-.IP "-q destination" 8
-Where the job is sent upon submission.  Default: default queue at default server.
-Specifies a queue, a server, or a queue at a server.  The 
-.I destination 
+Default value: "_pbs_project_default"
+
+.IP "-q <destination>" 8
+Where the job is sent upon submission.  
+
+Specifies a queue, a server, or a queue at a server.  The destination
 argument can have one of these formats:
 .RS
-.IP queue 5
-Job is submitted to the named queue at the default server.
-.IP @server 5
-Job is submitted to the default queue at the named server.
-.IP queue@server 5
-Job is submitted to the named queue at the named server.
+.I <queue name>
+.RS 3
+Job is submitted to the specified queue at the default server.
 .RE
 
-.IP "-r y|n" 8
-Declares whether the job is rerunnable.  Does not affect how the
-job is handled in the case where the job was unable to begin 
-execution.  Sets job's 
+.I @<server name>
+.RS 3
+Job is submitted to the default queue at the specified server.
+.RE
+
+.I <queue name>@<server name>
+.RS 3
+Job is submitted to the specified queue at the specified server.
+.RE
+
+Default: Default queue at default server 
+.RE
+
+.IP "-r <y|n>" 8
+Declares whether the job is rerunnable.  Sets job's 
 .I Rerunable
-attribute to the argument.
-See the
-.B qrerun(1B)
-command.  
+attribute to the argument value.
+Does not affect how the job is handled in the case where the job was
+unable to begin execution.
+
+Format: Single character, "y" or "n"
 .br
-Format: single character, "y" or "n".
-.br
-Default: "y".  
+
 .RS
 .IP y 5
 Job is rerunnable.
@@ -986,112 +1076,146 @@ Job is not rerunnable.
 .RE
 
 .IP "" 8
+Default: "y"
+
 Interactive jobs are not rerunnable.
 Job arrays are automatically marked as rerunnable.
+See the
+.I qrerun.1B
+man page.
 
-.IP "-R remove" 8
-Declares whether the job stdout/err files should get deleted 
-if the job completes successfully. Sets job's
-.I Remove_Files
+.IP "-R <remove options>" 8
+Specifies whether standard output and/or standard error files are
+automatically removed (deleted) upon job completion.
+
+Sets the job's 
+.I Remove_Files 
 attribute to 
-.I remove  
-.br
-Format: 'o' or 'e' or both of them.
-.br
-Default: "none".  (option will be disabled)
+.I remove options.  
+Overrides default path names for these streams.  Overrides 
+.I -o 
+and 
+.I -e 
+options.
+
+This attribute cannot be altered once the job has begun execution.
+
+Default: 
+.I Unset; 
+neither is removed
+
+The 
+.I remove options 
+argument can take the following values:
 .RS
-.IP o 5
-Job's stdout file will not be retained if job succeeds. 
-.IP e 5
-Job's stderr file will not be retained if job succeeds. 
+.IP e 5     
+The standard error stream is removed (deleted) upon job completion
+.IP o 5      
+The standard output stream is removed (deleted) upon job completion
+.IP "eo, oe" 5  
+Both standard output and standard error streams are removed (deleted) upon job completion
+.IP unset 5  
+Neither stream is removed.
 .RE
 
-.IP "-S path_list" 8
+.IP "-S <path list>" 8
 Specifies the interpreter or shell path for the job script.  Sets job's 
 .I Shell_Path_List 
 attribute to 
-.I path_list.
-Default: user's login shell on execution node.
+.I path list.
+
 The 
-.I path_list
+.I path list
 argument is the full path to the interpreter or shell including the 
-executable name.  Format:
-.RS
-.IP
-.I path[@host][,path@host ...]
-.LP
+executable name.  
+
 Only one path may be specified without a host name.
 Only one path may be specified per named host.  The path selected
 is the one whose host name is that of the server on which the job
 resides.  
 
+.RS
+Format:
+.RS 3
+.I <path>[@<hostname>][,<path>@<hostname> ...]
+.RE
+
+Default: user's login shell on execution host
+
 Example of using bash via a directive:
-.IP
-#PBS -S /bin/bash@mars,/usr/bin/bash@jupiter
-.LP
-Example of running a Python script from the command line on UNIX/Linux: 
-.IP
-qsub -S $PBS_EXEC/bin/pbs_python <script name>
-.LP
+.RS 3
+.B #PBS -S /bin/bash@mars,/usr/bin/bash@jupiter
+.RE
+Example of running a Python script from the command line on Linux: 
+.RS 3
+.B qsub -S $PBS_EXEC/bin/pbs_python <script name>
+.RE
 Example of running a Python script from the command line on Windows: 
-.IP
-qsub -S \%PBS_EXEC\%\\bin\\pbs_python.exe <script name>
-.LP
+.RS 3
+qsub -S %PBS_EXEC%\\bin\\pbs_python.exe <script name>
+.RE
 .RE
 .IP 
-.IP "-u user_list" 8
+
+.IP "-u <user list>" 8
 List of usernames.  Job is run under a username from this list.
 Sets job's 
 .I User_List 
 attribute to 
-.I user_list.
-Default: job owner (username on submit host.)  Format of
-.I user_list: 
-.RS
-.IP 
-.I user[@host][,user@host ...]
-.LP
-Only one username may be specified without a host name.
+.I user list.
+
+Only one username may be specified without a hostname.
 Only one username may be specified per named host.  
 The server on which the job resides will select first the username whose
-host name is the same as the server name.  Failing that, 
-the next selection will be the username with no specified hostname.
+hostname is the same as the server name.  Failing that, 
+the next selection is the username with no specified hostname.
 The usernames on the server and execution hosts must be the same.
 The job owner must have authorization to run as the specified user.
+
+.RS
+Format of
+.I user list: 
+.RS 3
+.I <username>[@<hostname>][,<username>@<hostname> ...]
 .RE
-.IP "-v variable_list"
+
+Default: job owner (username on submission host)  
+.RE
+
+.IP "-v <variable list>"
 Lists environment variables and shell functions to be exported to the job.
 This is the list of environment variables which is added to 
 those already automatically exported.  These variables exist in
-the user's login environment from which 
+the user's login environment, from which 
 .B qsub
 is run.
 The job's 
 .I Variable_List
 attribute is appended with the variables in
-.I user_list 
+.I variable list 
 and their values.
-See 
+See the 
 .B ENVIRONMENT
 section of this man page.
-Format: comma-separated list of strings in the form:
+
 .RS
-.IP
-.I variable
-.LP
+Format: comma-separated list of strings in the form:
+.RS 3
+.I <variable>
+.RE
 or
-.IP
-.I variable=value
-.LP
+.RS 3
+.I <variable>=<value>
+.RE
 
 If a 
-.I variable=value 
+.I <variable>=<value> 
 pair contains any commas, the value must be 
 enclosed in single or double quotes, and the 
-.I variable=value 
+.I <variable>=<value> 
 pair must be enclosed in the kind of quotes not used to 
 enclose the value.  For example:
-.RS
+.RS 3
 qsub -v "var1='A,B,C,D'" job.sh
 .br
 qsub -v a=10, "var2='A,B'", c=20, HOME=/home/zzz job.sh
@@ -1101,108 +1225,126 @@ Default: no environment variables are added to the job's variable list.
 .RE
 
 .IP "-V" 8
-Declares that all environment variables and shell functions in the user's
+All environment variables and shell functions in the user's
 login environment where 
 .B qsub
-is run are to be exported to the job.
+is run are exported to the job.
 The job's
 .I Variable_List
 attribute is appended with all of these environment variables and
 their values.
 
-.IP "-W additional_attributes" 8
-The -W option allows specification of any job attribute.  Some
+.IP "-W <additional attributes>" 8
+The 
+.I -W 
+option allows specification of some job attributes.  Some
 job attributes must be specified using this option.  Those attributes
 are listed below.
-Format:
 .RS
-.IP
-.I -W attribute_name=value[,attribute_name=value...]
-.LP
-If white space occurs within the 
-.I additional_attributes
-argument, or the equal sign "=" occurs within an 
-.I attribute_value
-string, then that must be enclosed with single- or double-quotes.
-PBS supports the following attributes within the -W option:
+Format:
+.RS 3
+.I -W <attribute name>=<value>[,<attribute name>=<value>...]
+.RE
 
-.I "depend=dependency_list"
-.IP
+If white space occurs within the 
+.I additional attributes
+argument, or the equal sign "=" occurs within a
+.I value
+string, it must be enclosed with single quotes or double quotes.
+
+The following attributes can be set using the -W option only
+
+.I "block=true"
+.RS 3
+The 
+.B qsub
+command waits for the job to terminate, then returns the job's exit value.
+Sets job's 
+.I block
+attribute to 
+.I True.
+When used with X11 forwarding or interactive jobs, no exit value is returned.
+See 
+.B EXIT STATUS
+section in this man page.
+.LP
+.RE
+
+.I "depend=<dependency list>"
+.RS 3
 Defines dependencies between this and other jobs.  
 Sets the job's
 .I depend
 attribute to 
-.I dependency_list.
+.I dependency list.
 The 
-.I dependency_list
+.I dependency list
 has the form:
-.RS
-.RS 5
-.I type:arg_list[,type:arg_list ...]
+.RS 3
+.I <type>:<arg list>[,<type>:<arg list> ...]
 .RE
 where except for the 
 .I on
-type, 
-the
-.I arg_list
-is one or more PBS job IDs in the form:
-.RS 5
-.I jobid[:jobid ...]
+type, the
+.I arg list
+is one or more PBS job IDs, and has the form:
+.RS 3
+.I <job ID>[:<job ID> ...]
 .RE
 The 
 .I type 
 can be:
 
-.IP " after: arg_list" 4
+.IP "after: <arg list>" 4
 This job may be scheduled for execution at any point after all jobs
 in 
-.I arg_list
+.I arg list
 have started execution.
 
-.IP " afterok: arg_list" 4
+.IP "afterok: <arg list>" 4
 This job may be scheduled for execution only after all jobs in
-.I arg_list
+.I arg list
 have terminated with no errors.
 See "Warning about exit status with csh" in 
 .B EXIT STATUS.
 
-.IP " afternotok: arg_list" 4
+.IP "afternotok: <arg list>" 4
 This job may be scheduled for execution only after all jobs in 
-.I arg_list
+.I arg list
 have terminated with errors.
 See "Warning about exit status with csh" in 
 .B EXIT STATUS.
 
-.IP "afterany: arg_list" 4
+.IP "afterany: <arg list>" 4
 This job may be scheduled for execution after all jobs in
-.I arg_list
+.I arg list
 have finished execution, with any exit status (with or without errors.)
 This job will not run if a job in the 
-.I arg_list 
+.I arg list 
 was deleted without ever having been run.
 
-.IP  "before: arg_list " 4
+.IP  "before: <arg list> " 4
 Jobs in 
-.I arg_list 
+.I arg list 
 may begin execution once this job has begun execution.
 
-.IP  "beforeok: arg_list" 4
+.IP  "beforeok: <arg list>" 4
 Jobs in 
-.I arg_list
+.I arg list
 may begin execution once this job terminates without errors.
 See "Warning about exit status with csh" in 
 .B EXIT STATUS.
 
-.IP  "beforenotok: arg_list" 4
-If this job terminates execution with errors, then jobs in 
-.I arg_list
+.IP  "beforenotok: <arg list>" 4
+If this job terminates execution with errors, jobs in 
+.I arg list
 may begin.
 See "Warning about exit status with csh" in 
 .B EXIT STATUS.
 
-.IP  "beforeany: arg_list" 4
+.IP  "beforeany: <arg list>" 4
 Jobs in 
-.I arg_list
+.I arg list
 may begin execution once this job terminates execution,
 with or without errors.
 
@@ -1214,11 +1356,12 @@ other jobs have been satisfied.  This type is used in conjunction
 with one of the 
 .I before
 types listed.
-Count is an integer greater than 0.
+.I count 
+is an integer greater than 0.
 .LP
 
 Job IDs in the
-.I arg_list 
+.I arg list 
 of 
 .I before 
 types must have been submitted with a 
@@ -1229,53 +1372,57 @@ of
 To use the 
 .I before types,
 the user must have the authority to alter the jobs in 
-.I arg_list.
+.I arg list.
 Otherwise, the dependency is rejected and the new job aborted.
 
-Error processing of the existence, state, or condition of the job on which the
-newly submitted job is a deferred service, i.e. the check is performed after
-the job is queued.  If an error is detected, the new job will be deleted by
-the server.  Mail will be sent to the job submitter stating the error.
+Error processing of the existence, state, or condition of the job on
+which the newly submitted job is performed after the job is queued.
+If an error is detected, the new job is deleted by the server.  Mail
+is sent to the job submitter stating the error.
 
 Dependency examples:
+.RS 3
+.B "qsub -W depend=afterok:123.host1.domain.com /tmp/script"
 .br
-.I "qsub -W depend=afterok:123.host1.domain.com /tmp/script"
-.br
-.I "qsub -W depend=before:234.host1.com:235.host1.com /tmp/script"
+.B "qsub -W depend=before:234.host1.com:235.host1.com /tmp/script"
+.RE
 .RE
 
-.I "group_list=g_list"
-.IP
+.I "group_list=<group list>"
+.RS 3
 List of group names.  Job is run under a group name from this list.
 Sets job's
 .I group_List
 attribute to
-.I g_list.
-Default: login group name of job owner.  Format of
-.I g_list:
-.RS 
-.IP
-.I group[@host][,group@host ...]
-.LP
-Only one group name may be specified without a host name.
+.I group list.
+
+Only one group name may be specified without a hostname.
 Only one group name may be specified per named host.
 The server on which the job resides will select first the group name whose
-host name is the same as the server name.  Failing that,
-the next selection will be the group name with no specified hostname.
+hostname is the same as the server name.  Failing that,
+the next selection is the group name with no specified hostname.
 The group names on the server and execution hosts must be the same.
 Job submitter's primary group is automatically added to this 
 list.  
 .LP
 Under Windows, the primary group is the first group found for 
 the user by PBS when it queries the accounts database.
+
+Format of
+.I group list:
+.RS 3
+.I <group name>[@<hostname>][,<group name>@<hostname> ...]
 .RE
 
-.nf
+Default: Login group name of job owner
+.RE
+
 .I pwd
+.br
 .I pwd=''
-pwd=""
-.fi
-.IP
+.br
+.I pwd=""
+.RS 3
 These forms prompt the user for a password.  A space between
 .I W
 and 
@@ -1288,120 +1435,144 @@ Examples:
     qsub ... -W pwd="  " <return>
 .fi
 Available on Windows and supported Linux x86 and x86_64 platforms only.
-.LP
-.LP
+.RE
 
-.I "block=true"
-.IP
-Specifies that 
-.B qsub
-waits for the job to terminate, then returns the job's exit value.
-Sets job's 
-.I block
-attribute to TRUE.
-When used with X11 forwarding or interactive jobs, no exit value is returned.
-See 
-.B EXIT VALUES
-section.
-.LP
+.I release_nodes_on_stageout=<value>
+.RS 3
+When set to 
+.I True, 
+all of the job's vnodes not on the primary execution
+host are released when stageout begins.
+
+Cannot be used with vnodes managed by cpuset MoMs, (whose 
+.I arch 
+is
+.I linux_cpuset), 
+or with vnodes tied to Cray X* series systems.
+
+When cgroups is enabled and this is used with some but not all vnodes
+from one MoM, resources on those vnodes that are part of a cgroup are
+not released until the entire cgroup is released.
+
+The job's 
+.I stageout 
+attribute must be set for the
+.I release_nodes_on_stageout 
+attribute to take effect.
+
+Format: 
+.I Boolean
+
+Default: 
+.I False
+.RE
 
 .I "run_count=<value>"
-.IP
+.RS 3
 Sets the number of times the server thinks it has run the job.  Sets the value of
 the job's 
 .I run_count
-attribute.  Job is held when the value of this attribute goes over 20.
-.br
-Format: integer greater than or equal to zero.
-.LP
+attribute to 
+.I value.  
 
-.I "sandbox=<value>"
-.IP
+Format: Integer greater than or equal to zero
+.RE
+
+.I "sandbox=<sandbox spec>"
+.RS 3
 Determines which directory PBS uses for the job's staging and execution.  Sets
 job's 
 .I sandbox
 attribute to 
-.I value.
-If
-.I value
-is 
-.I PRIVATE
-, PBS creates a job-specific directory for staging and execution.
-If 
-.I value
-is 
-.I HOME 
-or is unset, PBS uses the user's home directory for staging and execution.
-Sets the job's 
-.I sandbox
-attribute to the specified value.
+.I sandbox spec.
+
+Allowed values for 
+.I sandbox spec:
+
+.IP PRIVATE 5
+PBS creates a job-specific directory for staging and execution.
+.IP "HOME or unset" 5
+PBS uses the user's home directory for staging and execution.
 .LP
 
-.I "stagein=path_list"
+Format:
+.I String
+.RE
+
+.I "stagein=<path list>"
 .br
-.I "stageout=path_list"
-.IP
-Specifies files or directories to be staged-in before execution or staged-out
+.I "stageout=<path list>"
+.RS 3
+Specifies files or directories to be staged in before execution or staged out
 after execution is complete.  Sets the job's 
 .I stagein
 and 
 .I stageout
 attributes to the specified
-.I path_lists.
+.I path lists.
 On completion of the job, all staged-in and staged-out files and directories
 are removed from the execution host(s).  The
-.I path_list
+.I path list
 has the form:
-.RS
-.IP
-.I filespec[,filespec]
-.LP
+.RS 3
+.I <file spec>[,<file spec>]
+.RE
 where 
-.I filespec 
+.I file spec 
 is 
-.IP
-.I local_path@hostname:remote_path
-.LP
+.RS 3
+.I <execution path>@<hostname>:<storage path>
+.RE
 regardless of the direction of the copy.
 The name
-.I local_path 
+.I execution path
 is the name of the file or directory on the primary execution host.
 It can be relative to the staging and execution directory on the
 execution host, or it can be an absolute path.
 
-The "@" character separates local_path from remote_path.
+The "@" character separates 
+.I execution path
+from 
+.I storage path.
 
 The name
-.I remote_path
+.I storage_path
 is the path on 
-.I hostname. 
+.I <hostname>. 
 The name can be relative to the staging and execution directory on the
 primary execution host, or it can be an absolute path.
 
 If 
-.I path_list
+.I path list
 has more than one 
-.I filespec,
-i.e. it contains commas, it must be enclosed in double-quotes.
+.I file spec,
+i.e. it contains commas, it must be enclosed in double quotes.
 
-If you use a UNC path, the hostname is optional.  If you use a non-UNC
-path, the hostname is required.
+If you use a UNC path, the 
+.I hostname 
+is optional.  If you use a non-UNC path, the 
+.I hostname 
+is required.
 .RE
-.LP
 
-.I "umask=NNNN"
-.IP
-The umask with which the job is started.  Default value: 077.
-Can be used with one to four digits; typically two.
-Sets job's 
+.I "umask=<mask value>"
+.RS 3
+The umask with which the job is started.  Sets job's 
 .I umask
 attribute to 
-.I NNNN.
+.I mask value.
 Controls umask of job's standard output and standard error.
-Example:  
-.I -W umask=33
-allows group and world read on the job's output.
-.LP
+
+The following example allows group and world read on the job's output:
+.RS 3
+.B -W umask=33
+.RE
+
+Format: One to four digits; typically two
+
+Default value: 
+.I 077
+.RE
 .RE
 
 .IP "-X" 8
@@ -1411,9 +1582,14 @@ DISPLAY variable in submission environment must be set to
 desired display.
 
 Can be used with interactive jobs only: must be used with
+one of the following:
+.RS
+.RS 3
 .I -I 
-or 
-.I -W interactive = true.
+.br
+.I -W interactive = true 
+.B (deprecated)
+.RE
 
 Cannot be used with 
 .I -v DISPLAY.
@@ -1431,7 +1607,7 @@ Not available under Windows.
 
 .IP "-z" 8
 Job identifier is not written to standard output.
-.LP
+.RE
 
 .IP "--version" 8
 The 
@@ -1443,55 +1619,53 @@ This option can only be used alone.
 The 
 .B qsub 
 command accepts as operands one of the following:
-.RS 5
-.I <script>
-.br
-.RS 5
-a script 
-.RE
-.I "-"
-.RS 5
-a dash
-.RE
-
-.I -- <executable> [arguments to executable]
-.RS 5
-a single executable (preceded by two dashes) and its arguments
-.RE
+.RS 3
+.I (no operands)
+.RS 3
+Same as with a dash. Any PBS directives and user tasks are read
+from the command line.
 .RE
 
 .I <script>
-.IP
+.RS 3
 Path to script.  Can be absolute or relative to current directory
 where 
 .B qsub 
 is run.
-.LP
+.RE
+
 .I "-"
-.IP
-Any PBS directives and user tasks are read from the command line.
-Same as for no operands.
-.LP
-.I -- <executable> [arguments to executable]
-.IP
-The executable, and any arguments to the executable, are given on  
-the 
-.B qsub 
-command line.  The executable is preceded by two dashes, "--".
-.LP
-If a script or executable is specified, the script or executable must
-be the last argument to 
-.B qsub.
-The arguments to the executable follow the name of the executable.
+.RS 3
+When you use a dash, any PBS directives and user tasks are read
+from the command line.
+.RE
 
+.I -- <executable> [<arguments to executable>]
+.RS 3
+A single executable (preceded by two dashes) and its arguments
 
+The executable, and any arguments to the executable, are given on the
+qsub command line.  The executable is preceded by two dashes, "--".
 
+If a script or executable is specified, it must be the last argument
+to qsub.  The arguments to an executable must follow the name of the
+executable.
+
+When you run qsub this way, it runs the executable directly.  It does
+not start a shell, so no shell initialization scripts are run, and
+execution paths and other environment variables are not set.  You
+should make sure that environment variables are set correctly.
+.RE
+.RE
 
 .SH STANDARD OUTPUT
-Unless the
-.I \-z
-option is set, the job identifier assigned to the job is written to
-standard output if the job is successfully created.
+.IP "Job ID for submitted jobs" 8
+If the job is successfully created
+
+.IP "(No output)" 8
+If the 
+.I -z
+option is set
 
 .SH STANDARD ERROR
 The
@@ -1502,110 +1676,128 @@ each error occurrence.
 .SH ENVIRONMENT VARIABLES
 The
 .B qsub
-command uses the following:
-
-.IP PBS_DEFAULT 5
+command uses the following environment variables:
+.RS 3
+.IP PBS_DEFAULT 3
 Name of default server.
 
-.IP PBS_DPREFIX 5
+.IP PBS_DPREFIX 3
 Prefix string which identifies PBS directives.
-.LP
-Environment variables beginning with "PBS_O_" are created
-by 
+.RE
+
+Environment variables beginning with "PBS_O_" are created by 
 .B qsub.
 PBS automatically exports the following environment variables to the job, 
 and the job's 
 .I Variable_List 
 attribute is set to this list:
 
-.IP PBS_ENVIRONMENT 5
+.IP PBS_ENVIRONMENT 8
 Set to 
 .I PBS_BATCH 
 for a batch job.  Set to 
 .I PBS_INTERACTIVE
 for an interactive job.
-Created upon execution.
+Created when 
+.B qsub
+is run.
 
-.IP PBS_JOBDIR 5
+.IP PBS_JOBDIR 8
 Pathname of job's staging and execution directory on the
 primary execution host.  
 
-.IP PBS_JOBID 5
+.IP PBS_JOBID 8
 Job identifier given by PBS when the job is submitted.
-Created upon execution.
+Created when 
+.B qsub
+is run.
 
-.IP PBS_JOBNAME 5
-Job name given by user.
-Created upon execution.
+.IP PBS_JOBNAME 8
+Job name specified by submitter.
+Created when 
+.B qsub
+is run.
 
-.IP PBS_NODEFILE 5
-Name of file containing the list of nodes assigned to the job.
-Created upon execution.
+.IP PBS_NODEFILE 8
+Name of file containing the list of vnodes assigned to the job.
+Created when 
+.B qsub
+is run.
 
-.IP PBS_O_HOME 5
+.IP PBS_O_HOME 8
 User's home directory.  
 Value of HOME taken from user's submission environment.
 
-.IP PBS_O_HOST 5
+.IP PBS_O_HOST 8
 Name of submit host.
 Value taken from user's submission environment.
 
-.IP PBS_O_LANG 5
+.IP PBS_O_LANG 8
 Value of LANG taken from user's submission environment.
 
-.IP PBS_O_LOGNAME 5
+.IP PBS_O_LOGNAME 8
 User's login name.
 Value of LOGNAME taken from user's submission environment.
 
-.IP PBS_O_MAIL 5
+.IP PBS_O_MAIL 8
 Value of MAIL taken from user's submission environment.
 
-.IP PBS_O_PATH 5
+.IP PBS_O_PATH 8
 User's PATH.
 Value of PATH taken from user's submission environment.
 
-.IP PBS_O_QUEUE 5
+.IP PBS_O_QUEUE 8
 Name of the queue to which the job was submitted.
+Value taken from job submission, otherwise default queue.
+
+.IP PBS_O_SHELL 8
 Value taken from user's submission environment.
 
-.IP PBS_O_SHELL 5
-Value taken from user's submission environment.
-
-.IP PBS_O_SYSTEM 5
+.IP PBS_O_SYSTEM 8
 Operating system, from 
 .I uname -s, 
 on submit host.
 Value taken from user's submission environment.
 
-.IP PBS_O_TZ 5
-Value taken from user's submission environment.
+.IP PBS_O_TZ 8
+Timezone.  Value taken from user's submission environment.
 
-.IP PBS_O_WORKDIR 5
+.IP PBS_O_WORKDIR 8
 Absolute path to directory where
 .B qsub
 is run.
 Value taken from user's submission environment.
 
-.IP PBS_QUEUE 5
+.IP PBS_QUEUE 8
 Name of the queue from which the job is executed.
-Created upon execution.
+Created when 
+.B qsub
+is run.
 
-.IP TMPDIR 5
-Pathname of job's scratch directory.
+.IP TMPDIR 8
+Pathname of job's scratch directory.  Set when PBS assigns it.
 
 .SH EXIT STATUS
-Zero upon successful processing of input.
-Exit value is greater than zero upon failure of 
-.B qsub.
+For non-blocking jobs:
+.RS 3
+.IP Zero 8
+Upon successful processing of input
 
-For blocking jobs, 
+.IP "Greater than zero" 8
+Upon failure of 
 .B qsub
-exits and returns the exit value of the job.  If the job is deleted 
-without being run, 
-.B qsub 
-returns an exit value of 3.
+.RE
 
-Warning about exit status with csh:
+For blocking jobs:
+.RS 3
+.IP "Exit value of job" 8
+Wnen job runs successfully
+
+.IP 3 8
+If the job is deleted without being run
+.RE
+
+.B Warning About Exit Status with csh:
 .br
 If a job is run in csh and a .logout file
 exists in the home directory in which the job executes, the exit status
@@ -1614,9 +1806,9 @@ impact any inter-job dependencies.
 
 .SH SEE ALSO
 The
-.B PBS Professional User's Guide,
+.I PBS Professional User's Guide,
 the
-.B PBS Professional Administrator's Guide,
+.I PBS Professional Administrator's Guide,
 .br
 pbs_job_attributes(7B),
 pbs_server_attributes(7B),

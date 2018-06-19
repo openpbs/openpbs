@@ -17,26 +17,25 @@
 .\"
 .\" Copyright notice does not imply publication. 
 .\"
-.TH pbs_disconnect 3B "3 March 2015" Local "PBS Professional"
+.TH pbs_migration_assistant.bat 8B "19 October 2017" Local "PBS Professional"
 .SH NAME
-pbs_disconnect - disconnect from a PBS batch server
-.SH SYNOPSIS
-#include <pbs_error.h>
-.br
-#include <pbs_ifl.h>
-.sp
-.B int pbs_disconnect(int connect)
+.B pbs_migration_assistant.bat
+\- For Windows.  Tells PBS which server configuration settings to use
 
+.SH SYNOPSIS
+.B pbs_migration_assistant.bat 
+/b
+.br
+.B pbs_migration_assistant.bat
+/r
 .SH DESCRIPTION
-The virtual stream connection specified by
-.I connect ,
-which was established with a server
-by a call to \f3pbs_connect\f1(),
-is closed.
-.SH SEE ALSO
-pbs_connect(3B)
-.SH DIAGNOSTICS
-When the connection to batch server
-has been successfully closed, the routine will return zero.
-Otherwise, a non zero error is returned.  The error number is also set
-in pbs_errno.
+On Windows, you use C:\\Program Files(x86)\\PBS Pro\\exec\\bin\\pbs_migration_assistant.bat
+to set server configuration variables appropriately.
+
+.SH OPTIONS
+.IP "/b" 15
+Tells PBS to use the old server configuration settings.
+
+.IP "/r" 15
+Tells PBS to use the new server configuration settings.
+

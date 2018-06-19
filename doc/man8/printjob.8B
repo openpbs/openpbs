@@ -1,45 +1,29 @@
-.\" Copyright (C) 1994-2018 Altair Engineering, Inc.
-.\" For more information, contact Altair at www.altair.com.
+.\" Copyright (c) 2003-2018 Altair Engineering, Inc.  All rights reserved.
 .\"
-.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" ALTAIR ENGINEERING INC. Proprietary and Confidential. Contains Trade 
+.\" Secret Information. Not for use or disclosure outside of Licensee's 
+.\" organization. The software and information contained herein may only 
+.\" be used internally and is provided on a non-exclusive, 
+.\" non-transferable basis.  Licensee may not sublicense, sell, lend, 
+.\" assign, rent, distribute, publicly display or publicly perform the 
+.\" software or other information provided herein, nor is Licensee 
+.\" permitted to decompile, reverse engineer, or disassemble the 
+.\" software. Usage of the software and other information provided by 
+.\" Altair (or its resellers) is only as explicitly stated in the 
+.\" applicable end user license agreement between Altair and Licensee. In 
+.\" the absence of such agreement, the Altair standard end user license 
+.\" agreement terms shall govern. 
 .\"
-.\" Open Source License Information:
 .\"
-.\" PBS Pro is free software. You can redistribute it and/or modify it under the
-.\" terms of the GNU Affero General Public License as published by the Free
-.\" Software Foundation, either version 3 of the License, or (at your option) any
-.\" later version.
+.\" Copyright notice does not imply publication. 
 .\"
-.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-.\" FOR A PARTICULAR PURPOSE.
-.\" See the GNU Affero General Public License for more details.
-.\"
-.\" You should have received a copy of the GNU Affero General Public License
-.\" along with this program.  If not, see <http://www.gnu.org/licenses/>.
-.\"
-.\" Commercial License Information:
-.\"
-.\" For a copy of the commercial license terms and conditions,
-.\" go to: (http://www.pbspro.com/UserArea/agreement.html)
-.\" or contact the Altair Legal Department.
-.\"
-.\" Altair’s dual-license business model allows companies, individuals, and
-.\" organizations to create proprietary derivative works of PBS Pro and
-.\" distribute them - whether embedded or bundled with other software -
-.\" under a commercial license agreement.
-.\"
-.\" Use of Altair’s trademarks, including but not limited to "PBS™",
-.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-.\" trademark licensing policies.
-.\"
-.TH printjob 8B "1 May 2012" Local "PBS Professional"
+.TH printjob 8B "28 November 2017" Local "PBS Professional"
 .SH NAME
 .B printjob 
-\- print job data and attributes from binary files
+\- print job information
 .SH SYNOPSIS
 .B printjob 
-[ -a | -s ] job ID
+[ -a | -s ] <job ID>
 .br
 .B printjob 
 [ -a ] <file path> [<file path>...]
@@ -47,34 +31,30 @@
 .B printjob
 --version
 .SH DESCRIPTION
-The
-.B printjob
-command is used to print job information.  You can print information
-either from the server, using a job ID, or from the execution host,
-using a file path.
-
-Whether or not a MOM is running on the server host, you must use the
-job ID at the server host.
-
-By default all the job data including job attributes are printed.
-This can be suppressed with the 
-.I -a 
-option.
-
-You can print out just the job script using the 
-.I -s 
-option at the server and execution hosts.
-
-This command is mainly useful for troubleshooting, as during normal
-operation, the 
+Prints job information.  This command is mainly useful for troubleshooting, 
+as during normal operation, the 
 .B qstat(8B) 
-command is the preferred method for
-displaying job-specific data and attributes.
+command is the preferred method for displaying job-specific data and attributes.
+The server and MoM do not have to be running to execute this command.
+
+.SH Usage
+For a running job, you can run this command at any host using a 
+job ID, and you can run this command at any execution host where
+the job is running using a .JB file path.
+
+For a finished job, if job history is enabled, you can run this command at
+the server using the job ID.
+
+When querying the server, you must use the job ID, and the data service
+must be running.
+
+Results will vary depending on whether you use the job ID or
+a .JB file, and on which execution host you query with a .JB file.
 
 .SH PERMISSIONS
 In order to execute
 .B printjob,
-the user must have root or Windows Administrator privilege.
+you must have root or Windows Administrator privilege.
 
 .SH OPTIONS
 .IP "(no options)" 15
@@ -84,11 +64,11 @@ Suppresses the printing of job attributes.  Cannot be used with
 .I -s 
 option.
 .IP "-s" 15
-Prints out the job script only.  Cannot be used with 
+Prints out the job script only.  Can be used at server or primary execution host.
+Cannot be used with 
 .I -a
-option.  Cannot be used with 
-.I file path
-argument.
+option.  Must be used with a job ID.
+
 .IP "--version" 15
 The 
 .B printjob
@@ -96,21 +76,23 @@ command returns its PBS version information and exits.
 This option can only be used alone.
 
 .SH OPERANDS
-.IP "<file path>" 15
+.IP "file path" 15
 The 
 .B printjob
 command accepts one or more
 .I file path
-operands.  Files are found in PBS_HOME/mom_priv/jobs/ on the primary
-execution host.  File path must include full path to file.  Cannot be
+operands at the execution host.  Files are found in PBS_HOME/mom_priv/jobs/ 
+on the primary execution host.  File path must include full path to file.  Cannot be
 used with 
 .I -s 
 option.
 
-.IP "<job ID>" 15
+.IP "job ID" 15
 The 
 .B printjob 
-command accepts a job ID. Format: sequence_number[.server_name][@server]
+command accepts a job ID at the server host. 
+.br
+Format: <sequence number>[.<server name>][@<server name>]
 .br
 Data service must be running.
 .SH STANDARD ERROR
@@ -119,18 +101,18 @@ The
 command writes a diagnostic message to standard error for
 each error occurrence.
 .SH EXIT STATUS
-Zero upon successful processing of all the operands presented to the
+.IP Zero 15
+Upon successful processing of all the operands presented to the
 .B printjob
-command.
+command
 .LP
+.IP "Greater than zero" 15
 If the 
-.B printjob
-Greater than zero if the 
 .B printjob 
-command fails to process any operand.
+command fails to process any operand
 
 .SH SEE ALSO
 The
-.B PBS Professional Administrator's Guide,
+.I PBS Professional Administrator's Guide,
 .br
 pbs_server(8B), qstat(8B)

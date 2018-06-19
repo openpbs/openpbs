@@ -1,0 +1,80 @@
+.\" Copyright (c) 2003-2018 Altair Engineering, Inc.  All rights reserved.
+.\"
+.\" ALTAIR ENGINEERING INC. Proprietary and Confidential. Contains Trade 
+.\" Secret Information. Not for use or disclosure outside of Licensee's 
+.\" organization. The software and information contained herein may only 
+.\" be used internally and is provided on a non-exclusive, 
+.\" non-transferable basis.  Licensee may not sublicense, sell, lend, 
+.\" assign, rent, distribute, publicly display or publicly perform the 
+.\" software or other information provided herein, nor is Licensee 
+.\" permitted to decompile, reverse engineer, or disassemble the 
+.\" software. Usage of the software and other information provided by 
+.\" Altair (or its resellers) is only as explicitly stated in the 
+.\" applicable end user license agreement between Altair and Licensee. In 
+.\" the absence of such agreement, the Altair standard end user license 
+.\" agreement terms shall govern. 
+.\"
+.\"
+.\" Copyright notice does not imply publication. 
+.\"
+.TH win_postinstall.py 8B "17 June 2018" Local "PBS Professional"
+.SH NAME
+.B win_postinstall.py 
+\- For Windows.  Configures PBS services
+
+
+.SH SYNOPSIS
+<PBS_EXEC>\\etc\\python win_postinstall.py 
+-u <PBS service account> 
+.br
+        -p <PBS service account password> [-t server]
+.br
+<PBS_EXEC>\\etc\\python win_postinstall.py 
+-u <PBS service account> 
+.br
+        -p <PBS service account password> 
+.br
+        -t <non-server installation type>   
+.br
+        -s <server name>
+
+.SH DESCRIPTION
+The
+.B win_postinstall.py
+command configures PBS services.  It performs post-installation steps
+such as validating the PBS service account username and password,
+installing the Visual C++ redistributable binary, creating PBS_HOME
+and the default queue, initializing the database, and registering and
+starting the PBS_SERVER, PBS_SCHED, PBS_MOM, PBS_COMM and PBS_RSHD PBS
+services.
+
+When you use this command during installation of PBS, the command
+automatically un-registers any old PBS services.
+
+Available on Windows only.
+
+.SH Required Privilege
+
+You must have Administrator privilege to run this command.
+
+.SH Options to win_postinstall.py
+.IP "p, --passwd <PBS service account password>" 8
+Specifies password for PBS service account.  
+.IP "-s, --server <server name>" 8
+Specifies the hostname on which the PBS server will run; required when
+the installation type is one of "execution", "client", or "comm".
+.IP "-t, --type <installation type>" 8
+Specifies type of installation.  Type can be one of "server",
+"execution", "client", or "comm".  Default is server installation.
+.IP "-u, --user <PBS service account>" 8
+Specifies PBS service account.  When you specify the PBS service
+account, whether or not you are on a domain machine, include only the
+username, not the domain.  For example, if the full username on a
+domain machine is 
+.I <domain>
+\\
+.I <username>
+, pass only 
+.I <username>
+as an argument.
+

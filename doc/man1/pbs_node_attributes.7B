@@ -1,497 +1,761 @@
-.\" Copyright (C) 1994-2018 Altair Engineering, Inc.
-.\" For more information, contact Altair at www.altair.com.
+.\" Copyright (c) 2003-2018 Altair Engineering, Inc.  All rights reserved.
 .\"
-.\" This file is part of the PBS Professional ("PBS Pro") software.
+.\" ALTAIR ENGINEERING INC. Proprietary and Confidential. Contains Trade 
+.\" Secret Information. Not for use or disclosure outside of Licensee's 
+.\" organization. The software and information contained herein may only 
+.\" be used internally and is provided on a non-exclusive, 
+.\" non-transferable basis.  Licensee may not sublicense, sell, lend, 
+.\" assign, rent, distribute, publicly display or publicly perform the 
+.\" software or other information provided herein, nor is Licensee 
+.\" permitted to decompile, reverse engineer, or disassemble the 
+.\" software. Usage of the software and other information provided by 
+.\" Altair (or its resellers) is only as explicitly stated in the 
+.\" applicable end user license agreement between Altair and Licensee. In 
+.\" the absence of such agreement, the Altair standard end user license 
+.\" agreement terms shall govern. 
 .\"
-.\" Open Source License Information:
 .\"
-.\" PBS Pro is free software. You can redistribute it and/or modify it under the
-.\" terms of the GNU Affero General Public License as published by the Free
-.\" Software Foundation, either version 3 of the License, or (at your option) any
-.\" later version.
+.\" Copyright notice does not imply publication. 
 .\"
-.\" PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
-.\" WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-.\" FOR A PARTICULAR PURPOSE.
-.\" See the GNU Affero General Public License for more details.
-.\"
-.\" You should have received a copy of the GNU Affero General Public License
-.\" along with this program.  If not, see <http://www.gnu.org/licenses/>.
-.\"
-.\" Commercial License Information:
-.\"
-.\" For a copy of the commercial license terms and conditions,
-.\" go to: (http://www.pbspro.com/UserArea/agreement.html)
-.\" or contact the Altair Legal Department.
-.\"
-.\" Altair’s dual-license business model allows companies, individuals, and
-.\" organizations to create proprietary derivative works of PBS Pro and
-.\" distribute them - whether embedded or bundled with other software -
-.\" under a commercial license agreement.
-.\"
-.\" Use of Altair’s trademarks, including but not limited to "PBS™",
-.\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
-.\" trademark licensing policies.
-.\"
-.TH pbs_node_attributes 7B "29 October 2013" Local "PBS Professional"
+.TH pbs_node_attributes 7B "23 April 2018" Local "PBS Professional"
 .SH NAME
 .B pbs_node_attributes 
 \- attributes of PBS vnodes
 
 
 .SH DESCRIPTION
-.LP
-The vnode attributes listed are divided into those that can be set by
-an Operator or Manager, and those that are read-only.
+Vnodes have the following attributes:
 
-.B Settable Attributes
+.IP comment 8
+Information about this vnode.  This attribute may be set by the
+manager to any string to inform users of any information relating to
+the node. If this attribute is not explicitly set, the PBS server will
+use the attribute to pass information about the node status,
+specifically why the node is down. If the attribute is explicitly set
+by the manager, it will not be modified by the server.
 .br
-Unless otherwise specified, the following attributes are readable by all, 
-and can be set by a Manager only.
+Readable by all; settable by Manager.
+.br
+Format: 
+.I String
+.br
+Python type: 
+.I str
+.br
+Default: No default
 
-.IP comment
-This attribute can be set to any string to inform the users
-of any information relating to the node.   If this attribute is not explicitly
-set, the PBS Server will use the attribute to pass information about the node
-status, specifically why the node is down.  If the attribute is explicitly set
-by the manager, it will not be modified by the Server.
+.IP current_aoe 8
+The AOE currently instantiated on this vnode.  Cannot be set on 
+server's host.
 .br
-Format: String.
+Readable by all; settable by Manager.
 .br
-Default: none
+Format: 
+.I String
 .br
-Python attribute value type: str
+Python type: 
+.I str
+.br
+Default: 
+.I Unset
 
-.IP current_aoe
-This attribute identifies the AOE currently instantiated on this vnode.
-Cannot be set on Server's host.
+.IP current_eoe 8
+Current value of eoe on this vnode.  We do not recommend setting this
+attribute manually.
 .br
-Format: string
+Readable by all; settable by Manager (not recommended).
 .br
-Default: unset
+Format: 
+.I String
 .br
-Python attribute value type: str
+Python type: 
+.I str
+.br
+Default:
+.I Unset
 
-.IP hpcbp_enable
-Enables HPCBP features in MOM, creating HPCBP MOM.
+.IP in_multivnode_host 8
+Specifies whether a vnode is part of a multi-vnoded host.  Used
+internally.  Do not set.
 .br
-Format: Boolean.
+Readable and settable by Manager (not recommended).
 .br
-Default: False
+Format:
+.I Integer 
 .br
-Python attribute value type: bool
+Python type:
+.I int
+.br
+Behavior:
+.RS
+.IP 1 3
+Part of a multi-vnode host
+.IP Unset 3
+Not part of a multi-vnode host
+.RE
+.IP
+Default: 
+.I Unset   
 
-.IP hpcbp_stage_protocol
-Protocol and optional port for staging files used by
-HPC Basic Profile Server.
+.IP jobs 8
+List of jobs running on this vnode.
 .br
-Format: String.  
+Readable by all; set by PBS.
 .br
-Default: none
+Format: 
+.I String
 .br
-Python attribute value type: str
+Syntax: 
+.I <processor number>/<job ID>, ... 
+.br
+Python type:
+.I int
+.br
 
-.IP hpcbp_user_name
-Service account used by HPCBP MOM for retrieving job
-and node status from HPC Basic Profile Server.
+.IP license 8
+Indicates whether this vnode is socket-licensed.
 .br
-Format: String.
+Readable by all; set by PBS.
 .br
-Default: none
+Format:
+.I Character
 .br
-Python attribute value type: str
+Python type: 
+.I str
+.br
+Valid values:
+.RS
+.IP l 3
+This vnode is socket licensed.
+.RE
+.IP 
+Default: 
+.I Unset
 
-.IP hpcbp_webservice_address
-URL used by HPCBP MOM to connect to HPC Basic 
-Profile Server.  Must start with "https://".
+.IP license_info 8
+Number of socket licenses assigned to this vnode.  
 .br
-Format: String.  
+Readable by all; set by PBS.             
 .br
-Default: none
+Format: 
+.I Integer
 .br
-Python attribute value type: str
+Python type:
+.I int
+.br
+Default: 
+.I Unset
 
-.IP lictype
-.B Deprecated.  
+.IP lictype 8
 No longer used.
 
-.IP max_group_run
-The maximum number of jobs owned by any users in a single group that are
-allowed to be run on this vnode at one time.
+.IP maintenance_jobs 8
+List of jobs that were running on this vnode, but have been suspended
+via the
+.I admin-suspend 
+signal to qsig.
 .br
-Can be set by Operator and Manager.
+Readable by Manager; set by PBS.
 .br
-Format: Integer
+Format:
+.I string_array                      
 .br
-Default: none
+Python type:
+.I str
 .br
-Python attribute value type: int
+Default: No default 
+
+.IP max_group_run 8
+The maximum number of jobs owned by any users in a single group
+allowed to run on this vnode at one time.
+.br
+Readable by all; settable by Operator and Manager.
+.br
+Format: 
+.I Integer
+.br
+Python type: 
+.I int
+.br
+Default: No default
 
 .IP max_running
-The maximum number of jobs allowed to be run on this vnode
+The maximum number of jobs allowed to run on this vnode
 at any given time.  
 .br
-Can be set by Operator and Manager.
+Readable by all; settable by Operator and Manager.
 .br
-Format: integer.
+Format: 
+.I Integer
 .br
-Default: none
+Python type: 
+.I int
 .br
-Python attribute value type: int
+Default: No default
 
-.IP max_user_run
-The maximum number of jobs owned by a single user that are allowed to be 
+.IP max_user_run 8
+The maximum number of jobs owned by a single user allowed to 
 run on this vnode at one time.  
 .br
-Can be set by Operator and Manager.
+Readable by all; settable by Operator and Manager.
 .br
-Format: Integer
+Format: 
+.I Integer
 .br
-Default: none
+Python type: 
+.I int
 .br
-Python attribute value type: int
+Default: No default
 
 .IP Mom
-Hostname of host on which MOM daemon will run.  Can be explicitly set only via 
+Hostname of host on which MoM daemon runs.  
+.br
+Readable by all.  Can be explicitly set by Manager only via 
 .B qmgr, 
-and only at vnode creation.  Defaults to value of vnode resource (vnode name.)
+and only at vnode creation. The server can set this to the FQDN of the host 
+on which MoM runs, if the vnode name is the same as the hostname.
 .br
-Python attribute value type: str
+Format: 
+.I String
+.br
+Python type: 
+.I str
+.br
+Default: Value of 
+.I vnode 
+resource (vnode name)
 
-.IP no_multinode_jobs
+.IP name 8
+The name of this vnode.
+.br
+Readable by all; settable by Manager.
+.br
+Format: 
+.I String
+.br
+Python type: 
+.I str
+.br
+Default: No default
+
+.IP no_multinode_jobs 8
 Controls whether jobs which request more than one chunk are allowed to execute
-on this vnode.  When this attribute is set to True, jobs requesting more than
-one chunk are 
-.B not
-allowed to execute on this vnode.  Used for cycle harvesting.  See the 
-.B PBS Professional Administrator's Guide.
+on this vnode.  Used for cycle harvesting.
 .br
-Format: Boolean.
+Readable by all; settable by Manager.
 .br
-Default: False.
+Format: 
+.I Boolean
 .br
-Python attribute value type: bool
-
-.IP ntype
-This attribute defines the type of the vnode.   
-Currently there are two types
-of vnodes supported:
+Python type:
+.I bool
+.br
+Behavior: 
 .RS
-.IP PBS
-PBS vnodes are the default type and are assumed to run multiple jobs. The
-placement of the jobs
-among them is controlled by the site policy defined in the Job Scheduler.
-.IP globus
-PBS no longer supports Globus.  The Globus functionality has been
-.B removed
-from PBS.
+.IP True 3
+Jobs requesting more than one chunk are not allowed to execute on this vnode.
+.RE
+.IP
+Default: 
+.I False
+
+.IP ntype 8
+The type of this vnode.
+.br
+Readable by all; settable by Manager.
+.br
+Format: 
+.I String
+.br
+Valid values:
+.RS
+.IP PBS 3
+Normal vnode; not Globus
+.br
+Python type: 
+.I pbs.ND_PBS
+.IP globus 3
+A Globus vnode (this functionality has been removed). Globus can still
+send jobs to PBS, but PBS no longer supports sending jobs to Globus.
+.br
+Python type: 
+.I pbs.ND_GLOBUS
 .RE
 .IP
 .br
-Format: String.
+Default: 
+.I PBS
+
+.IP partition 8
+Name of partition to which this vnode is assigned.  A vnode can be
+assigned to at most one partition.
 .br
-Allowable values: "PBS"
+Readable by all; settable by Operator and Manager.
 .br
-Default value: PBS. 
+Format:
+.I String
 .br
-Python attribute value type: int
+Python type:
+.I str
+.br
+Default: No default
+
+.IP pbs_version 8
+The version of PBS for this MoM.  
+.br
+Readable by all; set by PBS.
+.br
+Format: 
+.I String
+.br
+Python type: 
+.I str
+.br
+Default: No default
+
+.IP pcpus 8
+.B Deprecated.  
+The number of physical CPUs on this vnode.  This is set to the number
+of CPUs available when MoM starts.  For a multiple-vnode MoM, only the
+natural vnode has 
+.I pcpus.
+.br
+Readable by all; set by PBS.
+.br
+Format: 
+.I Integer
+.br
+Python type: 
+.I int
+.br
+Default: 
+.I Number of CPUs on startup
 
 .IP pnames
 The list of resources being used for placement sets.  
-Comma-separated list of resource names. 
+Not used for scheduling; advisory only.
 .br
-Format: String.  
+Readable by all; settable by Manager.
 .br
-Default: None
+Format: 
+.I String
 .br
-Python attribute value type: str
+Syntax: 
+.I Comma-separated list of resource names
+.br
+Python type: 
+.I str
+.br
+Default: No default
 
-.IP Port
-Port number on which MOM daemon will listen.  Can be explicitly set only via
+.IP Port 8
+Port number on which MoM daemon listens.  
+.br
+Can be explicitly set only via
 .B qmgr, 
 and only at vnode creation.  
+Readable and settable by Operator and Manager.
 .br
-Readable and settable by Operator and Manager only.
+Format: 
+.I Integer
 .br
-Format: Integer.
+Python type: 
+.I int
 .br
-Default: 15002
-.br
-Python attribute value type: int
+Default: 
+.I 15002
 
-.IP Priority
+.IP power_provisioning 8
+Enables use of power profiles by this vnode.
+.br
+Readable by all; settable by Manager.
+.br
+Format:
+.I Boolean
+.br
+Python type:
+.I bool
+.br
+Behavior:
+.RS
+.IP True 3
+Power provisioning is enabled at this vnode.
+.IP False 3
+Power provisioning is disabled at this vnode.
+.RE
+.IP
+Default: 
+.I False
+
+.IP Priority 8
 The priority of this vnode compared with other vnodes.
 .br
-Format: integer.
+Readable by all; settable by Operator and Manager.
 .br
-Valid values: -1024 to +1023
+Format:
+.I Integer
 .br
-Default: none
+Python type: 
+.I int
 .br
-Python attribute value type: int
+Valid values: 
+.I -1024 to +1023
+.br
+Default: No default
 
 .IP provision_enable
-Controls whether this vnode can be provisioned.  If set to True, this vnode
-may be provisioned.  Cannot be set on Server's host.  
+Controls whether this vnode can be provisioned.  
+Cannot be set on server's host.  
 .br
-Format: Boolean
-.br
-Default: Unset
-.br
-Python attribute value type: bool
-
-.IP queue
-The queue with which this vnode is associated.  If set, only jobs in that queue
-may run on this vnode.   If not set, any job in a queue without associated vnodes
-may run on this vnode.
-.br
-Format: String: "queue name"
-.br
-Default value: none.
-.br
-Python attribute value type: pbs.queue
-
-.IP resources_available
-The list of resource and amounts available on this vnode.
-If not explicitly set, the amount shown is that reported by the pbs_mom running
-on the vnode.  Only the ncpus number is retained across Server
-restarts.
-.br
-Can be set by Operator or Manager.
-.br
-Format: String "resources_available.resource_name=value"
-.br
-Default: none
-.br
-Python attribute value type: dictionary containing resource
-.I name=value
-pairs.  
-.RS 11
 Format: 
-.I resources_available['<resource name>'] = <value>
+.I Boolean
+.br
+Python type: 
+.I bool
+.br
+Behavior:
+.RS
+.IP True 3
+This vnode may be provisioned.  
+.IP False 3
+This vnode may not be provisioned.  
+.RE
+.IP
+Default: 
+.I False
+
+.IP queue 8
+The queue with which this vnode is associated.  Each vnode can be
+associated with at most 1 queue.  Queues can be associated with
+multiple vnodes.  Any jobs in a queue that has associated vnodes can
+run only on those vnodes.  If a vnode has an associated queue, only
+jobs in that queue can run on that vnode.  
+.br
+Readable by all; settable by Manager.
+.br
+Format: 
+.I String
+.br
+Python type:
+.I pbs.queue
+.br
+Behavior:
+.RS
+.IP "<name of queue>" 3
+Only jobs in specified queue may run on this vnode.  
+.IP Unset 3
+Any job in any queue that does not have associated vnodes can run on this vnode.
+.RE
+.IP 
+Default: No default
+
+.IP resources_assigned 8
+The total amount of each resource allocated to jobs and started
+reservations running on this vnode.
+.br
+Readable by all; set by PBS.
+.br
+Format: String
+.br
+Syntax: 
+.RS 11
+.I resources_assigned.<resource name>=<value>[,resources_assigned.<resource name>=<value>
+.RE
+.IP
+Python type: 
+.I pbs.pbs_resource
+.br
+Syntax: 
+.RS 11
+resources_assigned['<resource name>'] = < val> 
+.br
 where 
-.I <resource name>
-is any custom or built-in resource.
+.I resource name 
+is any built-in or custom resource
 .RE
 .IP
-.IP resv_enable
-Controls whether the vnode can be used for reservations.  If set to 
-True, the vnode can be used for reservations.  Existing reservations
-are not automatically removed when this attribute is set to False.
-Reservations are incompatible with cycle harvesting.
-For information on reservations and cycle harvesting, see the 
-.B PBS Professional User's Guide 
-and 
-.B PBS Professional Administrator's Guide.
-.br
-Format: Boolean.
-.br
-Default: True.
-.br
-Python attribute value type: 
+Default: No default
 
-.IP sharing
-Defines whether more than one job at a time can use the resources of this vnode 
-or this host.
-Either a) the vnode or host is allocated exclusively to one job, or b) the
-vnode's or host's unused resources are available to other jobs.  This attribute is set in Version 2 configuration files via the 
-.B pbs_mom -s insert 
-command.  
+.IP resources_available 8
+The list of resource and amounts available on this vnode.  If not
+explicitly set, the amount shown is that reported by the pbs_mom
+running on this vnode.  If a resource value is explicitly set, that
+value is retained across restarts.
 .br
-Can be set by Operator or Manager.
+Readable by all; settable by Operator and Manager.
 .br
-Format: String.
+Format:
+.I String
 .br
-Allowable values: default_shared | default_excl | default_exclhost | 
-ignore_excl | force_excl | force_exclhost | (unset)
-.br
-Example: vnodename: sharing=force_excl
-.br
-Default value: default_share.
-.br
-Python attribute value type: int
-.sp
-The behavior of a vnode or host is determined by a combination of its 
-.I sharing
-attribute and a job's placement directive.  The behavior is defined
-as follows:
-.nf
-                |Vnode Behavior   |Host Behavior
-                |when place=...   |when place=...
-                |                 |   
-sharing value   |unset share excl |exclhost !=exclhost
-------------------------------------------------------------
-not set          share share excl  excl     depends on place
-default_shared   share share excl  excl     depends on place
-default_excl     excl  share excl  excl     depends on place
-default_exclhost excl  share excl  excl     depends on place
-ignore_excl      share share share share    not exclusive
-force_excl       excl  excl  excl  excl     not exclusive
-force_exclhost   excl  excl  excl  excl     excl
-.fi
-
+Syntax:
+.RS 11
+.I resources_available.<resource name>=<value>, 
+.I resources_available.<resource name> = <value>, ...
 .RE
-.LP
+.IP 
+Python type:
+.I pbs.pbs_resource
 .br
+Syntax:
+.RS 11
+resources_available['<resource name>'] = < val> 
+.br
+where 
+.I resource name 
+is any built-in or custom resource
+.RE
+.IP 
+Default: No default
 
-.IP state
-The state of the vnode.  State values marked with an asterisk
-("*") may be set by the manager or operator; the other states
-are set internally.  
+.IP resv 8 
+List of advance and standing reservations pending on this vnode.
 .br
-Format: String containing comma-separated list of one or more states.
+Readable by all; set by PBS.
 .br
-Python attribute value type: int
-.RS 
-.IP "free"
-Node is up and capable of accepting additional job(s).
-.IP "offline *"
-Node has been marked by operator or manager as unusable.
-.IP down
-Node is not responding to queries from the Server.  
-.IP job-busy
-All CPUs on the vnode are allocated to jobs.
-.IP job-exclusive
-The entire vnode has been exclusively allocated to one job at the job's request.
-.IP busy
-The vnode is reporting a load average greater than the configured high water
-value.
-.IP stale
-Server can still communicate with MOM, but MOM is not reporting any information.
-.IP state-unknown
-The Server has never been able to contact the node.  Either pbs_mom is not
-running on the node, the node hardware is down, or there is a network problem.
-.IP provisioning
-The vnode is in the process of being provisioned.
-.IP resv-exclusive
-The vnode has been allocated to a reservation that requested exclusive use 
-of the vnode, and the reservation is running.
-.IP unresolvable
-The server cannot resolve the name of the vnode.
-.IP wait-provisioning
-This vnode needs to be provisioned, but cannot because the maximum number 
-of concurrently provisioning vnodes has been reached.  See the 
-.I max_concurrent_provision
-server attribute.
+Format: 
+.I String
+.br
+Syntax: 
+.RS 11
+.I <reservation ID>[, <reservation ID>, ...]
+.br
+(Comma-separated list of reservation IDs)
 .RE
 .IP
-.RE
-
-.B Read-only Attributes
-.br
-The following attributes are read-only:
-
-.IP in_multivnode_host
-Specifies whether a vnode is part of a multi-vnoded host.  Used internally.
-Do not set.  If the value of this attribute is unset, this vnode is not part
-of a multi-vnode host.  If the value is 
-.I 1,
-this vnode is part of a multi-vnode host.
-.br
-Format: Integer
-.br
-No default value.
-.br
-Python attribute value type: int
-
-.IP jobs
-List of jobs running on the vnode.
-This attribute is read-only.
-.br
-Format: "#/jobid,...", where # represents the number of the processor.
-.br
-Python attribute value type: str
-
-.IP license
-Indicates whether the vnode is socket-licensed.  A value of "l" indicates
-that the vnode is socket-licensed.  Set by PBS.
-.br 
-Readable by manager, operator, user.
-.br
-Format: character
-.br
-Valid values: "l"
-.br
-Default value: unset
-.br
-Python attribute value type: str
-
-.IP license_info
-Indicates the number of socket licenses assigned to the vnode.
-Set by PBS.  
-.br
-Format: integer
-.br
-Default value: unset
-.br
-Python attribute value type: int
-
-
-.IP name
-The name of the vnode.
-.br
-Format: String
-.br
-Python attribute value type: str
-
-.IP pbs_version
-The version of PBS for this vnode's MOM.  
-.br
-Format: String
-.br
-Python attribute value type: str
-
-.IP pcpus
-.B Deprecated.  
-The number of physical CPUs on the vnode.   
-.br
-Format: Integer
-.br
-Python attribute value type: int
-
-.IP resv
-List of advance and standing reservations pending on the vnode.
-Comma-separated list of reservations to which the vnode has been
-allocated.
-.br
-Format: String: reservation ID, reservation ID [...]
+Python type:
+.I str
 .br
 Example: resv = R142.examplemachine, R143.examplemachine
 .br
-Python attribute value type: str
+Default: No default
 
-.IP resources_assigned
-The total amount of certain types of resources allocated to jobs running
-on this vnode. 
+.IP resv_enable 8
+Controls whether the vnode can be used for advance and standing
+reservations.  Reservations are incompatible with cycle harvesting.
 .br
-Format: String.
+Readable by all; settable by Manger.
 .br
-Python attribute value type: dictionary containing resource
-.I name=value
-pairs.  
-.RS 11
 Format: 
-.I resources_available['<resource name>'] = <value>
-where 
-.I <resource name>
-is any custom or built-in resource.
+.I Boolean
+.br
+Python type: 
+.I bool
+.br
+Behavior: 
+.RS 11
+When set to 
+.I True, 
+this vnode can be used for reservations. Existing reservations are
+honored when this attribute is changed from 
+.I True 
+to 
+.I False.
 .RE
 .IP
+Default: 
+.I True
+
+.IP sharing 8
+Specifies whether more than one job at a time can use the resources of
+the vnode or the vnode's host.  Either (1) the vnode or host is
+allocated exclusively to one job, or (2) the vnode's or host's unused
+resources are available to other jobs.  
+.br
+Can be set using 
+.I pbs_mom -s insert
+only.
+.br
+Readable by all; settable by Operator and Manager.
+.br
+Format: 
+.I String
+.br
+Python type:
+.I int 
+.br
+Valid values: 
+.RS
+.IP default_shared 3
+Defaults to 
+.I shared
+.br
+Python type:
+.I pbs.ND_DEFAULT_SHARED
+.IP default_excl 3
+Defaults to 
+.I exclusive
+.br
+Python type:
+.I pbs.ND_DEFAULT_EXCL
+.IP default_exclhost 3
+Entire host is assigned to the job unless the job's sharing request
+specifies otherwise
+.br
+Python type:
+.I pbs.ND_DEFAULT_EXCLHOST
+.IP ignore_excl 3
+Overrides any job 
+.I place=excl
+setting
+.br
+Python type:
+.I pbs.ND_IGNORE_EXCL
+.IP force_excl 3
+Overrides any job
+.I place=shared
+setting
+.br
+Python type:
+.I pbs.ND_FORCE_EXCL
+.IP force_exclhost 3
+The entire host is assigned to the job, regardless of the job's sharing request
+.br
+Python type:
+.I pbs.ND_FORCE_EXCLHOST
+.IP Unset 3
+Defaults to 
+.I shared
+.RE
+.IP
+Behavior of a vnode or host is determined by a combination of the 
+.I sharing
+attribute and a job's placement directive, defined as follows:
+.nf
+                 | Vnode Behavior      | Host Behavior
+                 | when place=         | when place=
+                 |                     |   
+sharing value    | unset  shared excl  |exclhost !=exclhost
+----------------------------------------------------------------
+not set          | shared shared excl  | excl   depends on place
+default_shared   | shared shared excl  | excl   depends on place
+default_excl     | excl   shared excl  | excl   depends on place
+default_exclhost | excl   shared excl  | excl   depends on place
+ignore_excl      | shared shared shared| shared not exclusive
+force_excl       | excl   excl   excl  | excl   not exclusive
+force_exclhost   | excl   excl   excl  | excl   excl
+.fi
+
+Example: <vnode name>: sharing=force_excl
+.br
+Default value: 
+.I default_shared
+
+.IP state 8
+Shows or sets the state of the vnode.  
+.br
+Readable by all.  All states are set by PBS; Operator and Manager 
+can set 
+.I state
+to 
+.I offline.
+.br
+Format: 
+.I String 
+.br
+Syntax: 
+.I <state>[, <state>, ...]
+.br
+(Comma-separated list of one or more states)
+.br
+Python type: 
+.I int
+.br
+Valid values:
+.RS
+.IP busy 3
+Vnode is reporting load average greater than allowed max.
+Can combine with 
+.I offline
+.IP down 3
+Node is not responding to queries from the server.  
+Cannot be combined with 
+.I free, provisioning.
+.IP free 3
+Vnode is up and capable of accepting additional job(s).
+Cannot be combined with other states.
+.IP job-busy 3
+All CPUs on the vnode are allocated to jobs.
+Can combine with: 
+.I offline, resv_exclusive
+.IP job-exclusive 3
+Entire vnode is exclusively allocated to one job at the job's request.
+Can combine:
+.I offline, resv_exclusive
+.IP offline 3
+Jobs are not to be assigned to this vnode.  
+Can combine: 
+.I busy, job-busy, job-exclusive, resv_exclusive
+.IP provisioning 3
+Vnode is in being provisioned.  Cannot be combined with other states.
+.IP resv-exclusive 3
+Running reservation has requested exclusive use of vnode.  Can combine
+with: 
+.I job-exclusive, offline
+.IP stale 3
+Vnode was previously reported to server, but is no longer reported to
+server.  Cannot combine with 
+.I free, provisioning.
+.IP state-unknown 3
+The server has never been able to contact the vnode.  Either MoM is
+not running on the vnode, the vnode hardware is down, or there is a
+network problem.
+.IP unresolvable 3
+The server cannot resolve the name of the vnode.
+.IP wait-provisioning 3
+Vnode needs to be provisioned, but can't: limit reached
+for concurrently provisioning vnodes.  See the 
+.I max_concurrent_provision 
+server attribute.
+.RE
+.IP
+Default: No default
 
 .IP topology_info
-This attribute contains information about the topology of the vnode.  Visible
-to hooks only.  Invisible to manager, operator, user.
+Contains information intended to be used in hooks.  
 .br
-Format: string
+Visible in and usable by hooks only.
+Invisible to Manager, Operator, User.
 .br
-Default value: unset
+Format: 
+.I XML String
 .br
-Python attribute value type: str
+Python type: 
+.I str
+.br
+Default value: 
+.I Unset
+
+.IP vnode_pool 8
+Cray only.  Allows just one MoM, instead of all, to report inventory
+upon startup, allowing faster startup and less network communication
+between server and non-reporting MoMs.  On each Cray, all MoMs must
+have same setting for this attribute.  Can be set only at vnode
+creation; valid only on login nodes running a MoM.  Not supported on
+non-Cray machines.
+.br
+Readable by all; settable by Manager.
+.br
+Format: 
+.I Integer
+.br
+Python type:
+.I int
+.br
+Behavior:
+.RS
+.IP ">0" 3
+Only one MoM per Cray reports inventory.
+.IP Unset 3
+Each MoM reports inventory separately.
+.RE
+.IP 
+Default: 
+.I 0
+(Unset)
 
 
 .SH SEE ALSO
 The 
-.B PBS Professional Administrator's Guide, 
-pbs_resources(7B),
+.I PBS Professional Administrator's Guide, 
 qmgr(1B)
 
