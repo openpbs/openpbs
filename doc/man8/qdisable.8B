@@ -33,28 +33,34 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH qdisable 8B "23 August 2011" Local "PBS Professional"
+.TH qdisable 8B "30 November 2017" Local "PBS Professional"
 .SH NAME
 .B qdisable 
-- disable input to a PBS destination
+- prevent a queue from accepting jobs
 .SH SYNOPSIS
 .B qdisable 
-destination ...
+<destination> [<destination> ...]
 .br
 .B qdisable
 --version
 .SH DESCRIPTION
 The
 .B qdisable
-command directs that a destination should no longer accept batch jobs.
-If the command is accepted, the destination will no longer accept
+command prevents a queue from accepting batch jobs.  Sets the value of 
+the queue's 
+.I enabled
+attribute to
+.I False.
+If the command is accepted, the queue no longer accepts
 .I "Queue Job"
-requests which specified the disabled queue.  Jobs which already reside
-in the queue will continue to be processed.  This allows a queue to be
-"drained."
-.LP
-In order to execute qdisable, the user must have PBS Operation or Manager
-privilege.
+requests.  Jobs already in the queue continue to be processed.  You
+can use this to drain a queue of jobs.
+
+.B Required Permission
+.br
+In order to execute 
+.B qdisable, 
+the user must have PBS Operator or Manager privilege.
 
 .SH OPTIONS
 .IP "--version" 8
@@ -64,38 +70,45 @@ command returns its PBS version information and exits.
 This option can only be used alone.
 
 .SH  OPERANDS
-The qdisable command accepts one or more
+The qdisable command accepts one or more space-separated
 .I destination
-operands.  The operands are one of three forms:
-.RS 5
-.B queue
-.br
-.B @server
-.br
-.B queue@server
-.RE
-If
-.B queue
-is specified, the request is to disable that queue at the default server.
-If the
-.B @server
-form is given, the request is to disable all the queues at that server.
-If a full destination identifier,
-.B queue@server ,
-is given, the request is to disable the named queue at the named server.
-.SH STANDARD ERROR
-The qdisable
-command will write a diagnostic message to standard error for
-each error occurrence.
-.SH EXIT STATUS
-Upon successful processing of all the operands presented to the
-qdisable
-command, the exit status will be a value of zero.
+operands.  The operands take any of the following forms:
+
+.I <queue name>
+.IP " " 8
+Prevents specified queue at default server from accepting jobs.
 .LP
-If the qdisable command fails to process any operand, the
-command exits with a value greater than zero.
+.I @<server name>
+.IP " " 8
+Prevents all queues at specified server from accepting jobs.
+.LP
+.I <queue name>@<server name>
+.IP " " 8
+Prevents specified queue at specified server from accepting jobs.
+.LP
+To prevent all queues at the default server from accepting jobs, 
+use the 
+.B qmgr 
+command:
+.br
+.B \ \ \ Qmgr: set queue @default enabled=false
+
+.SH STANDARD ERROR
+The 
+.B qdisable
+command writes a diagnostic message to standard error for
+each error occurrence.
+
+.SH EXIT STATUS
+.IP Zero 8
+Upon successful processing of all the operands
+.IP "Greater than zero" 8
+If the 
+.B qdisable 
+command fails to process any operand
+
 .SH SEE ALSO
 The
-.B PBS Professional Administrator's Guide
+.I PBS Professional Administrator's Guide
 and the following manual pages:
 pbs_server(8B), qmgr(8B), and qenable(8B)

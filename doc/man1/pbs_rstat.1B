@@ -33,47 +33,50 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_rstat 1B "13 Sept 2011" Local "PBS Professional"
+.TH pbs_rstat 1B "25 October 2017" Local "PBS Professional"
 .SH NAME
 .B pbs_rstat 
 \- show status of PBS advance or standing reservations
 .SH SYNOPSIS
 .B pbs_rstat 
-[-F][-B][-S] [reservation_id...]
+[-B] [-F] [-S] [<reservation ID>...]
 .br
 .B pbs_rstat 
 --version
 .SH DESCRIPTION
 The
 .B pbs_rstat
-command is used to show the status of all reservations on the PBS
-Server.  Denied reservations are not
-displayed.  
+command shows the status of all reservations at the PBS server.
+Denied reservations are not displayed.
 
-This command has three different output formats: brief
-.I (B),
-short
-.I (S),
-and full
-.I (F).
-This command can be used with any level of PBS privilege.
+.B Required Privilege
+.br
+This command can be run by a user with any level of PBS privilege.  For
+full output, users without manager or operator privilege cannot print
+custom resources which where created to be invisible to users.
+
+.SH Output
+The
+.B pbs_rstat
+command displays output in any of brief, short, or full formats.
 
 See the 
 .B pbs_resv_attributes(7B) 
-man page for information about reservation attributes.
+man page for information about reservation attributes, and the 
+"States" chapter in the PBS Professional Reference Guide.
 
 .SH OPTIONS
 .IP "-B" 10
-Brief.  Displays each reservation identifier only.
-
-.IP "-S" 10
-Short.  Displays a table showing the name, queue, owner, state, 
-start time, duration, and end time of each reservation.
+Brief output.  Displays each reservation identifier only.
 
 .IP "-F" 10
-Full.  Displays all reservation attributes that are not set to 
+Full output.  Displays all reservation attributes that are not set to 
 the default value.  Users without manager or operator privilege
 cannot print custom resources which were created to be invisible to users.
+
+.IP "-S" 10
+Short output.  Displays a table showing the name, queue, owner, state, 
+start time, duration, and end time of each reservation.
 
 .IP "--version" 10
 The 
@@ -81,59 +84,31 @@ The
 command returns its PBS version information and exits.
 This option can only be used alone.
 
-.SH OUTPUT
-
-Reservation States:
-.RS
-.IP UN
-Reservation not confirmed.
-.IP CO
-Reservation is confirmed.
-.IP RN
-Reservation is running.
-.IP DJ
-Jobs remaining after reservation has ended are being deleted.
-.RE
-
-Duration is shown in seconds.
+.IP "(no options)" 10
+Short output.  Same behavior as 
+.I -S 
+option.
 
 .SH OPERANDS
 The 
 .B pbs_rstat 
 command accepts one or more
-.I reservation_identifier
+.I reservation ID
 operands.  
 .br
-.B Reservations at the default server
-.br
-For an advance reservation, the 
-.I reservation_identifier 
-has the form:
+
+For an advance reservation, this has the form:
 .RS 4
-.I "[R]sequence_number[.server_name]"
+.I "R<sequence number>[.<server name>][@<remote server>]"
 .RE
 
-For a standing reservation, the 
-.I reservation_identifier 
-has the form:
+For a standing reservation, this has the form:
 .RS 4
-.I "[S]sequence_number[.server_name]"
+.I "S<sequence number>[.<server name>][@<remote server>]"
 .RE
 
-.B Reservations at a server other 
-.B than the default server:
-.br
-Specify the remote server's name using 
-.I @remote_server.  
-.br
-For an advance reservation:
-.RS 4
-.I "[R]sequence_number[.server_name][@remote_server]"
-.RE
-For a standing reservation:
-.RS 4
-.I "[S]sequence_number[.server_name][@remote_server]"
-.RE
+.I @<remote server> 
+specifies a reservation at a server other than the default server.
 
 .SH SEE ALSO
 The

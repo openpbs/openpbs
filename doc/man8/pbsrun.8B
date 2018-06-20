@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbsrun 8B "2 March 2015" Local "PBS Professional"
+.TH pbsrun 8B "13 October 2017" Local "PBS Professional"
 .SH NAME
 .B pbsrun
 \- general-purpose wrapper script for mpirun
@@ -56,18 +56,20 @@ script instantiates
 so that the wrapper script for the specific version of mpirun
 being used has the same name as that version of mpirun.
 
-If the mpirun wrapper script is run inside a PBS job, then it will
-translate any mpirun call of the form:
+If the mpirun wrapper script is run inside a PBS job, it
+translates any mpirun call of the form:
 .br
-    mpirun [options] <executable> [args]
+    mpirun [<options>] <executable> [<args>]
 .br
 into
 .br
-    mpirun [options] pbs_attach [options_to_pbs_attach] \\
+    mpirun [<options>] pbs_attach [<special options to pbs_attach>] \\
 .br
-            <executable> [args]
+            <executable> [<args>]
 .br
-where [options_to_pbs_attach] refers to any options needed by 
+where 
+.I special options to pbs_attach 
+refers to any options needed by 
 .B pbs_attach 
 to do its job (e.g. -j $PBS_JOBID).
 
@@ -77,11 +79,12 @@ program had been called in standalone fashion.
 
 The 
 .B pbsrun 
-wrapper script is not meant to be executed directly but instead
+wrapper script is not meant to be executed directly; instead
 it is instantiated by 
 .B pbsrun_wrap.
 It is copied to the target directory and renamed
-"pbsrun.<mpirun version/flavor>" where <mpirun version/flavor> 
+"pbsrun.<mpirun version/flavor>" where 
+.I mpirun version/flavor
 is a string that identifies the mpirun
 version being wrapped (e.g. ch_gm).
 
@@ -103,13 +106,21 @@ launched is the number of entries in $PBS_NODEFILE.
 
 The wrapped MPIs are:
 .RS 5
-MPICH-GM's mpirun (mpirun.ch_gm) with rsh/ssh
+MPICH-GM's mpirun (mpirun.ch_gm) with rsh/ssh (
+.B deprecated
+as of 14.2.1)
 .br
-MPICH-MX's mpirun (mpirun.ch_mx) with rsh/ssh
+MPICH-MX's mpirun (mpirun.ch_mx) with rsh/ssh (
+.B deprecated
+as of 14.2.1)
 .br
-MPICH-GM's mpirun (mpirun.mpd) with MPD
+MPICH-GM's mpirun (mpirun.mpd) with MPD (
+.B deprecated
+as of 14.2.1)
 .br
-MPICH-MX's mpirun (mpirun.mpd) with MPD
+MPICH-MX's mpirun (mpirun.mpd) with MPD (
+.B deprecated
+as of 14.2.1)
 .br
 MPICH2's mpirun
 .br
@@ -117,7 +128,9 @@ Intel MPI's mpirun (
 .B deprecated
 as of 13.0)
 .br
-MVAPICH1's mpirun
+MVAPICH1's mpirun (
+.B deprecated
+as of 14.2.1)
 .br
 MVAPICH2's mpiexec
 .br
@@ -134,11 +147,14 @@ This option can only be used alone.
 .SH INITIALIZATION SCRIPT
 
 The initialization script, called $PBS_EXEC/lib/MPI/pbsrun.<mpirun version/flavor>.init,
-where <mpirun version/flavor> reflects the mpirun flavor/version being wrapped,
+where 
+.I mpirun version/flavor 
+reflects the mpirun flavor/version being wrapped,
 can be modified by an administrator to customize against the local
 flavor/version of mpirun being wrapped.
 
-.IP "1. Inside this sourced init script, 8 variables are set:" 5
+Inside this sourced init script, 8 variables are set:
+.RS 5
 options_to_retain="-optA -optB <val> -optC <val1> val2> ..."
 .br
 options_to_ignore="-optD -optE <n> -optF <val1> val2> ..."
@@ -155,10 +171,13 @@ pbs_attach=pbs_attach
 .br
 options_to_pbs_attach="-J $PBS_JOBID"
 .br
-.RS
+.RE
+
+.B Initialization Script Options
+.br
 .IP "options_to_retain" 5
 Space-separated list of options and values that
-pbsrun.<mpirun version/flavor> passes on to the actual mpirun call. options must
+pbsrun.<mpirun version/flavor> passes on to the actual mpirun call. Options must
 begin with "-" or "--", and option arguments must be specified by some
 arbitrary name with left and right arrows, as in "<val1>".
 
@@ -202,9 +221,9 @@ You may pass variable references (e.g. $PBS_JOBID) and
 they are substituted  by 
 .B pbsrun 
 to actual values.
-
+.LP
 .RE
-.IP " " 5
+
 If 
 .B pbsrun 
 encounters any option not found in 
@@ -214,10 +233,11 @@ and
 then it is flagged
 as an error.
 
-.IP "2. These functions are created inside the init script." 5
-These can be
-modified by the PBS administrator. 
-.RS
+.B Functions Created
+.br
+These functions are created inside the init script.  These can be
+modified by the PBS administrator.
+.RS 5
 
 .IP "transform_action () {" 5
      # passed actual values of $options_to_transform
@@ -300,9 +320,9 @@ version/flavor> is prematurely killed. This function is called
 with the location of actual mpirun passed as first argument.
 .RE
 
-.IP "3. The actual mpirun program to call is the path pointed to by
-    $PBS_EXEC/lib/MPI/pbsrun.<mpirun version/flavor>.link."
-.LP
+The actual mpirun program to call is the path pointed to by
+    $PBS_EXEC/lib/MPI/pbsrun.<mpirun version/flavor>.link.
+
 
 .B Modifying *.init scripts
 .br
@@ -331,6 +351,7 @@ SYNTAX
 .B pbsrun.ch_gm <options> <executable> <arg1> 
 .B <arg2> ... <argn>
 
+.B Deprecated.
 This is the PBS wrapper script to MPICH-GM's mpirun (mpirun.ch_gm) with
 rsh/ssh process startup method.
 
@@ -394,6 +415,7 @@ SYNTAX
 .B pbsrun.ch_mx <options> <executable> <arg1> 
 .B <arg2> ... <argn>
 
+.B Deprecated.  
 This is the PBS wrapper script to MPICH-MX's mpirun (mpirun.ch_mx) with
 rsh/ssh process startup method.
 
@@ -454,6 +476,7 @@ SYNTAX
 .B pbsrun.gm_mpd <options> <executable> <arg1> 
 .B <arg2> ... <argn>
 
+.B Deprecated.  
 This is the PBS wrapper script to MPICH-GM's mpirun (mpirun.mpd) with
 MPD process startup method.
 
@@ -524,6 +547,7 @@ SYNTAX
 .B pbsrun.mx_mpd <options> <executable> <arg1> 
 .B <arg2> ... <argn>
 
+.B Deprecated.  
 This is the PBS wrapper script to MPICH-MX's mpirun (mpirun.mpd) with
 MPD process startup method.
 
@@ -590,11 +614,11 @@ To unwrap MPICH-MX's mpirun script with MPD:
 SYNTAX
 .RS 5
 
-.B pbsrun.mpich2 [global args] [local args] 
-.B executable 
+.B pbsrun.mpich2 [<global args>] [<local args>] 
+.B <executable> 
 .RS 14
-.B [args]
-.B [: [local args] executable [args]] 
+.B [<args>]
+.B [: [<local args>] <executable> [<args>]] 
 .RE
 .br
 - or - 
@@ -676,27 +700,33 @@ To unwrap MPICH2's mpirun script:
 
 -----------------------------------
 .br
-.B Intel MPI's mpirun: pbsrun.intelmpi
+.B Intel MPI's mpirun: pbsrun.intelmpi 
 .br
 -----------------------------------
+
+Wrapping Intel MPI, and support for mpdboot, are 
+.B deprecated.
 
 SYNTAX
 .RS 5
 
-.B pbsrun.intelmpi  [mpdboot options] [mpiexec options]
+.B pbsrun.intelmpi  [<mpdboot options>] [<mpiexec options>]
 .RS 16
-.B executable [prog-args]
+.B <executable> [<prog args>]
 .br 
-.B [: [mpiexec options] executable [prog-args]]
+.B [: [<mpiexec options>] <executable> [<prog args>]]
 .RE
 .br
 - or - 
 .br
-.B pbsrun.intelmpi [mpdboot options] -f <configfile>
+.B pbsrun.intelmpi [<mpdboot options>] -f <configfile>
 
-where [mpdboot options] are any options to pass to the mpdboot program,
+where 
+.I mpdboot options 
+are any options to pass to the mpdboot program,
 which is automatically called by Intel MPI's mpirun to start MPDs, and
-<configfile> contains command line segments as lines.
+.I configfile 
+contains command line segments as lines.
 
 This is the PBS wrapper script to Intel MPI's mpirun.
 
@@ -802,6 +832,7 @@ SYNTAX
 
 .B pbsrun.mvapich1 <mpirun options> <executable> <options>
 
+.B Deprecated.  
 Only one executable can be specified.
 This is the PBS wrapper script to MVAPICH1's mpirun.  
 
@@ -867,10 +898,10 @@ To unwrap MVAPICH1's mpirun script:
 SYNTAX
 .RS 5
 
-.B pbsrun.mvapich2 <mpiexec args> executable <executable's 
+.B pbsrun.mvapich2 <mpiexec args> <executable> <executable's 
 .RS 16
 .B args> 
-.B [: <mpiexec args> executable <executable's args>]
+.B [: <mpiexec args> <executable> <executable's args>]
 .RE
 Multiple executables can be specified using the colon notation.
 This is the PBS wrapper script to MVAPICH2's mpiexec, which have 
@@ -1048,7 +1079,7 @@ WRAP/UNWRAP
 .RS 5
 To wrap IBM's poe:
 .RS 4
-.B # pbsrun_wrap <path_to_actual_poe> pbsrun.poe
+.B # pbsrun_wrap <path to actual poe> pbsrun.poe
 .RE
 To unwrap the IBM poe mpirun script:
 .RS 4

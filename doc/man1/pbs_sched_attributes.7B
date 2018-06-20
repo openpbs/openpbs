@@ -33,53 +33,90 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_sched_attributes 7B "28 January 2016" Local "PBS Professional"
+.TH pbs_sched_attributes 7B "18 June 2018" Local "PBS Professional"
 .SH NAME
-pbs_sched_attributes - PBS scheduler attributes
+.B pbs_sched_attributes
+\- attributes of default PBS scheduler and multischeds
 .SH DESCRIPTION
-Scheduler attributes.
+These are the attributes of the default PBS scheduler and PBS multischeds.
 
-.LP
+.IP comment 8
+For certain scheduler errors, PBS sets the scheduler's 
+.I comment
+attribute to specific error messages.  You can use the 
+.I comment 
+attribute to notify another administrator of something, but PBS does overwrite
+the value of 
+.I comment 
+under certain circumstances.
+.br
+Format: 
+.I String
 
-.SH Settable Scheduler Attributes
-.LP
-The following scheduler attributes are readable by all and settable by
-the PBS Manager and Operator only.
-
-.IP do_not_span_psets
+.IP do_not_span_psets 8
 Specifies whether or not the scheduler requires the job to fit within
 one existing placement set.
 .br
-When this attribute is True, the job must fit in one existing
+When this attribute is 
+.I True, 
+the job must fit in one existing
 placement set.  All existing placement sets are checked.  If the job
 fits in an occupied placement set, the job waits for the placement set
 to be available.  If the job cannot fit within a single placement set,
 it won't run.
 .br
-When this attribute is False, the scheduler first attempts to place
+When this attribute is 
+.I False, 
+the scheduler first attempts to place
 the job in a single placement set, but if it cannot, it allows the job
 to span placement sets, running on whichever vnodes can satisfy the
 job's resource request.
 .br
-Format: Boolean
+Readable by all and settable by the PBS Manager and Operator only.
 .br
-Default: False
+Format: 
+.I Boolean
+.br
+Default: 
+.I False
 
-.IP job_sort_formula_threshold
+.IP job_sort_formula_threshold 8
 Lower bound for calculated priority for job.  If job priority is at 
 or below this value, the job is not eligible to run in the current
 scheduler cycle.  Settable by Manager.  
 .br
-Format: float.  
+Format: 
+.I Float
 .br
-Default: none.  
+Default: None
 
-.IP opt_backfill_fuzzy
+.IP only_explicit_psets 8
+Specifies whether placement sets are created for unset resources.  
+.br
+When 
+.I True,
+placement sets are not created from vnodes whose value for a resource is unset.
+.br
+When
+.I False, 
+placement sets are created from vnodes whose value for a resource is unset.
+.br
+Readable by all and settable by the PBS Manager and Operator only.
+.br
+Format: 
+.I Boolean
+.br
+Default:
+.I False
+
+.IP opt_backfill_fuzzy 8
 Sets the tradeoff between scheduling cycle speed and granularity of 
 estimated start time calculation.  
 .br
+Readable by all; settable by Manager.
+.br
 Valid values: 
-.RS 10
+.RS 11
 .IP off
 Finest granularity; no speedup.
 .IP low
@@ -91,13 +128,67 @@ Coarse granularity; greatest speedup.
 .RE
 .IP
 .br
-Format: string.  
+Format: 
+.I String
 .br 
 Default: unset (behaves like 
 .I low
 ).
 
-.IP sched_cycle_length
+.IP partition 8
+Comma-separated list of partitions for which this scheduler is to run jobs.
+Cannot be set on default scheduler.
+.br
+Format:
+.I String array
+.br
+Default: "None"
+
+.IP pbs_version 8
+The version of PBS for this scheduler.  Readable only by Manager and Operator.
+Not settable.
+
+.IP sched_host 8
+The hostname of the machine on which the scheduler runs. 
+Cannot be set on default scheduler; value for default scheduler is
+server hostname.
+Visible only to the PBS Manager or Operator, and read-only.
+.br
+Format: 
+.I String
+.br
+Default value for multischeds: server's host
+
+.IP scheduler_iteration 8
+Time in seconds between scheduling iterations.  
+.br
+If you set the server's scheduler_iteration attribute, that value is
+assigned to the default scheduler's scheduler_iteration attribute, and
+vice versa.
+.br
+Format: 
+.I Integer seconds
+.br
+Default:
+.I 600
+
+.IP scheduling 8
+Enables scheduling of jobs.  
+.br
+If you set the server's scheduling attribute, that value is
+assigned to the default scheduler's scheduling attribute, and
+vice versa.
+.br
+Format:
+.I Boolean
+.br
+Default value for default scheduler:
+.I True
+.br
+Default value for multischeds: 
+.I False
+
+.IP sched_cycle_length 8
 The scheduler's maximum cycle length.  
 Overwritten by the 
 .I -a
@@ -105,44 +196,112 @@ option to the
 .I pbs_sched
 command.
 .br
-Format: Duration, expressed as integer seconds, or 
-[[hours:]minutes:]seconds[.milliseconds]
+Readable by all and settable by the PBS Manager and Operator only.
 .br
-Default: 20:00 (20 minutes)
+Format: 
+.I Duration
+ expressed as integer seconds, or 
+.I [[hours:]minutes:]seconds[.milliseconds]
+.br
+Default: 
+.I 20:00 (20 minutes)
 
-.IP sched_preempt_enforce_resumption
+.IP sched_host 8
+The hostname of the machine on which this scheduler runs.  
+.br
+Cannot be set on default scheduler; value for default scheduler is server
+hostname.  
+.br
+Must be set by administrator.
+.br
+Format: 
+.I String
+.br
+Default value for multischeds: 
+.I server hostname
+
+.IP sched_log 8
+Directory where this scheduler writes its logs.  Permissions should be
+755.  Must be owned by root.  Cannot be shared with another scheduler.
+Use default value; do not set.
+.br
+Format: 
+.I String
+.br
+Default: 
+.I $PBS_HOME/sched_logs_<scheduler name>
+
+.IP sched_port 8
+Port on which this scheduler listens.  Cannot be set on default scheduler.
+Must be set by administrator.  
+.br
+Format: 
+.I String
+.br
+Default: None
+
+.IP sched_preempt_enforce_resumption 8
 Controls whether the scheduler treats preempted jobs as top jobs.  When 
 .I True
-, these are top jobs.  Settable by Manager.
+, these are top jobs.  Readable by all.  Settable by Manager.
 .br 
-Format: Boolean
+Format: 
+.I Boolean
 .br
-Default: False
+Default: 
+.I False
 
-.IP throughput_mode
-When True, allows scheduler to run faster; it doesn't have to wait for each job
+.IP sched_priv 8
+Directory where this scheduler keeps its fairshare usage, resource_group, 
+holidays, and sched_config files. Must be owned by root.  
+Use default value; do not set.
+.br
+Format: 
+.I String
+.br
+Default: 
+.I $PBS_HOME/sched_priv_<scheduler name>
+
+.IP state 8
+State of this scheduler. 
+.br
+Valid values:
+.RS 11
+.IP down
+Scheduler is not running.
+.IP idle
+Scheduler is running and is waiting for a scheduling cycle to be triggered.
+.IP scheduling
+Scheduler is running and is in a scheduling cycle.
+.RE
+.IP 
+Format:
+.I String
+.br
+Default value for default scheduler: 
+.I idle
+.br
+Default value for multischeds:
+.I down
+
+.IP throughput_mode  8
+When 
+.I True, 
+allows scheduler to run faster; it doesn't have to wait for each job
 to be accepted, and doesn't wait for execjob_begin hooks to finish.
-Also when this attribute is True, jobs that are changed via qalter, server_dyn_res
+Also when this attribute is 
+.I True, 
+jobs that are changed via qalter, server_dyn_res
 scripts, and peering can run in the same scheduler cycle in which they 
 were changed.
 .br
-Format: Boolean
+Readable by all; settable by Manager and Operator.
 .br
-Default: True
-
-.LP 
-.SH Read Only Scheduler Attributes 
-.LP 
-The following scheduler
-attributes are visible only to the PBS Manager or Operator, and are
-read-only.
-
-.RS .25i
-.IP pbs_version
-The version of PBS for this scheduler.  Available only to Manager/Operator.
-.IP sched_host
-The hostname of the machine on which the scheduler runs. 
-Available only to Manager/Operator.
+Format: 
+.I Boolean
+.br
+Default: 
+.I True
 
 .SH SEE ALSO
 The 

@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbsrun_unwrap 8B "2 March 2015" Local "PBS Professional"
+.TH pbsrun_unwrap 8B "16 October 2017" Local "PBS Professional"
 .SH NAME
 .B pbsrun_unwrap
 \- unwraps mpirun, reversing 

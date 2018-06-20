@@ -33,19 +33,23 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH qselect 1B "2 February 2016" Local "PBS Professional"
+.TH qselect 1B "11 January 2018" Local "PBS Professional"
 .SH NAME
 .B qselect 
-\- select PBS batch jobs
+- select specified PBS jobs
 .SH SYNOPSIS
 .B qselect
-[-a [op]date_time] [-A account_string] 
+[-a [<op>] <date and time>] [-A <account string>] 
 .RS 8
-[-c [op]interval]
-[-h hold_list] [-H] [-J] [-l resource_list] [-N name] 
-[-p [op] priority] [-P project] [-q destination] [-r rerun] 
-[-s states] [-t suboption [comparison] specified-time] 
-[-T] [-u user_list] [-x]
+[-c [<op>] <interval>] [-h <hold list>] [-H] [-J] 
+.br
+[-l <resource list>] [-N <name>] [-p [<op>] <priority>] 
+.br
+[-P <project>] [-q <destination>] [-r <rerun>] [-s <states>] 
+.br
+[-t <time option> [<comparison>] <specified time>] [-T] 
+.br
+[-u <user list>] [-x]
 .RE
 .br
 .B qselect
@@ -55,152 +59,169 @@
 The
 .B qselect
 command lists those jobs that meet the specified selection criteria.
-Jobs are selected from a single server.
-.LP
-Each option acts as a filter restricting which jobs are listed.
-With no options, the 
-.B qselect
-command will list all jobs at the server which the user is authorized
-to list (query status of).
-.LP
-When selecting jobs according to their requested resources, this command
-can be used only on resources in the 
+You can compare certain job attribute values to specified values using
+a comparison operator shown as 
+.I op 
+in the option description.
+
+You can select jobs, job arrays, or subjobs.  You can select jobs from
+one server per call to the command.
+
+Each option acts as a filter restricting which jobs are listed.  
+
+You can select jobs according to the values of some of the resources
+in the 
 .I Resource_List 
-job attribute (where any chunk-level resources have been summed), or on 
-job-wide resources in the selection directive.
+job attribute.  You can also select jobs
+according the selection directive (although because this is a string,
+you can only check for equality or inequality.)
 
 Jobs that are finished or moved are listed only when the 
-.I -x
+.I -x 
 or 
-.I -H 
-options are used.  Otherwise, job selection is limited to queued 
-and running jobs.
-.SH OPTIONS
-When an option is specified with a optional
-.I op
-component to the option argument, then
-.I op
-specifies a relation between the value of
-a certain job attribute and the value component of the option argument.
-If an
-.I op
-is allowable on an option, then the description of the option letter
-will indicate the
-.I op
-is allowable.
-The only acceptable strings for the
-.I op
-component, and the relation the string indicates, are shown in the following
-list of relations:
-.LP
-.B Relations
-.RS 5
-.IP .eq. 6
-the value represented by the
-attribute of the job is equal to the value represented by the
-option argument.
-.IP .ne. 6
-the value represented by the
-attribute of the job is not equal to the value represented by the
-option argument.
-.IP .ge. 6
-the value represented by the
-attribute of the job is greater than or equal to the value represented by the
-option argument.
-.IP .gt. 6
-the value represented by the
-attribute of the job is greater than the value represented by the
-option argument.
-.IP .le. 6
-the value represented by the
-attribute of the job is less than or equal to the value represented by the
-option argument.
-.IP .lt. 6
-the value represented by the
-attribute of the job is less than the value represented by the
-option argument.
-.RE
-.B List of Options
-.IP "-a [op]\^date_time " 10
-.B Deprecated.  
-Restricts selection to a specific execution time, or a range of 
-execution times.
-.IP
-The 
-.B qselect
-command selects only jobs for which the value of the
-.I Execution_Time
-attribute is related to the
-.I date_time
-argument by the optional
-.I op
-operator.  The
-.I date_time
-argument is in the form of the date_time operand of the touch(1)
-command:
-.I "[[CC]YY]MMDDhhmm[.SS]"
-.br
-where the MM is the two digits for the month, DD is the day of the
-month, hh is the hour, mm is the minute, and the optional SS is the
-seconds.  CC is the century and YY the year.
-.IP 
-If
-.I op
-is not specified, jobs will be selected for which the
-.I Execution_Time
-and
-.I date_time
-values are equal.
-If
-.I op
-is specified, jobs will be selected according to the definitions 
-given in 
-.B Relations
-above.
+.I -H
+options are used.  Otherwise, job selection is limited to queued and
+running jobs.
 
-.IP "-A account_string" 10
+.B Comparison Operations
+.br
+You can select jobs by comparing the values of certain job attributes
+to values you specify.  The following table lists the comparison 
+operations you can use:
+
+.B Operation \ \ Type of Comparison
+.br
+-----------------------------------------------------------------------
+.IP .eq. 12
+The value of the attribute of the job is equal to the value of the
+option argument.
+.IP .ne. 12
+The value of the attribute of the job is not equal to the value of the
+option argument.
+.IP .ge. 12
+The value of the attribute of the job is greater than or equal to the
+value of the option argument.
+.IP .gt. 12	
+The value of the attribute of the job is greater than the value of the
+option argument.
+.IP .le. 12
+The value of the attribute of the job is less than or equal to the
+value of the option argument.
+.IP .lt. 12
+The value of the attribute of the job is less than the
+value of the option argument.
+.LP
+
+For example, to select jobs whose 
+.I Priority 
+attribute has a value greater than 
+.I 5:
+.br
+.B \ \ \ qselect -p.gt.5
+
+Where an optional comparison is not specified, the comparison
+operation defaults to 
+.I .eq, 
+meaning PBS checks whether the value of the
+attribute is equal to the option argument.
+
+.B Required Permissions
+.br
+When selecting jobs according to resource values, users without
+Operator or Manager privilege cannot specify custom resources which
+were created to be invisible to unprivileged users.
+
+.SH Options to qselect
+.IP "(no options)" 8
+Lists all jobs at the server which the user is authorized to list
+(query status of).
+
+.IP "-a [<op>] <date and time>" 8
+.B Deprecated.  
+Restricts selection to those jobs whose 
+.I Execution_Time
+attribute qualifies when compared to the 
+.I date and time
+argument.  You can select a range of execution times by using this
+option twice, to compare to a minimum time and a maximum time.
+
+The 
+.I date and time
+argument has the format:
+.br
+.I [[CC]YY]MMDDhhmm[.SS]
+.br
+where the 
+.I MM 
+is the two digits for the month, 
+.I DD 
+is the day of the month, 
+.I hh 
+is the hour, 
+.I mm 
+is the minute, and the optional 
+.I SS 
+is the seconds.  
+.I CC 
+is the century and 
+.I YY 
+the year.
+
+.IP "-A <account string>" 8
 Restricts selection to jobs whose 
 .I Account_Name
 attribute matches the specified
-.I account_string .
-.IP "-c [\^op\^]\^interval" 10
+.I account string.
+
+.IP "-c [<op>] <interval>" 8
 Restricts selection to jobs whose 
 .I Checkpoint
-interval attribute matches the specified relationship.
-.IP
-The values of the 
-.I Checkpoint
-attribute are defined to have the following ordered relationship:
-.RS 13
-.I n\ >\ s\ >\ c=minutes\ >\ c\ >\ u
-.RE
-.IP
-If the optional
-.I op
-is not specified, jobs will be selected whose
-.I Checkpoint
-attribute is equal to the 
-.I interval
-argument.  If 
-.I op
-is specified, jobs will be selected according to the rules in  
-.B Relations
-above.
+interval attribute meets the comparison criteria.
 
-.IP
-For an interval value of "u", only ".eq." and ".ne." are valid.
-.IP "-h hold_list" 10
+The 
+.I interval
+argument can take one of the following values:
+.RS 11
+.I c
+.br
+.I c=<minutes>
+.br
+.I n
+.br
+.I s
+.br
+.I w
+.br
+.I w=<minutes>
+.RE
+.IP " "  8
+We give the range of interval  values for the 
+.I Checkpoint
+attribute the following ordered relationship:
+.br
+.I  n\ >\ s\ >\ c=minutes\ >\ c\ >\ u
+
+(Information about 
+.I w
+and 
+.I w=<minutes>
+is not available.)
+
+For an interval value of 
+"u", only ".eq" and ".ne" are valid.
+
+.IP "-h <hold list>" 8
 Restricts the selection of jobs to those with a specific set of hold types.
-Only those jobs will be selected whose
+The holds in the 
 .I Hold_Types
-attribute exactly match the value of the
-.I hold_list
-argument.
-.IP
+job attribute must be the same as those in the 
+.I hold list
+argument, but can be in a different order.
+
 The
-.I hold_list
+.I hold list
 argument is a string consisting of the single letter
-.I n ,
+.I n,
 or one or more of the letters
 .I u,
 .I o,
@@ -210,116 +231,112 @@ or
 in any combination.  If letters are duplicated, they are treated as if they
 occurred once.
 The letters represent the hold types:
-  n - none
-  u - user
-  o - other
-  p - bad password
-  s - system
-.RE
-.IP "-H" 10
+
+.B Letter \ \ Hold Type
+.br
+---------------------------------------------------------------
+.nf
+n        None
+u        User
+o        Other
+p        Bad password
+s        System
+.fi
+
+.IP "-H" 8
 Restricts selection to finished and moved jobs.
-.IP "-J" 10
-Limits the selection to job arrays only.
-.IP "-l resource_list" 10
+
+.IP "-J" 8
+Limits selection to job arrays only.
+
+.IP "-l <resource list>" 8
 Restricts selection of jobs to those with specified resource amounts.
-Users without operator or manager privilege cannot specify custom resources
-which were created to be invisible to users.
-.IP
+Resource must be job-wide, or be 
+.I mem, ncpus, 
+or 
+.I vmem.
+
 The 
-.I resource_list
+.I resource list
 is in the following format:
 .br
-resource_name op value[,resource_name op val,...]
-.br
-The relation operator
-.I op
-must be present.
-.IP
-This option can be used only on job-wide resources, and on the chunk-level 
-resources that are summed in the job's 
-.I Resource_List 
-attribute.  This option cannot be used to select at the chunk level.
+.I <resource name> <op> <value>[,<resource name> <op> <value> ...]
 
-See the operator definitions given in 
-.B Relations
-above.
+You must specify
+.I op,
+and you can use any of the comparison operators.
 
-.IP "-N name" 10
-Restricts selection of jobs to those with a specific name.
-.IP "-p [op]priority" 10
-Restricts selection of jobs to those with a priority that matches the
-specified relationship.  If
-.I op
-is not specified, jobs are selected for which the job
-.I Priority
-attribute is equal to the
-.I priority
-.IP
-If the
-.I op
-is specified, the relationship is defined in 
-.B Relations
-above.
+Because resource specifications for chunks using the select statement,
+and placement using the place statement, are stored as strings, the
+only useful operators for these are 
+.I .eq.  
+and 
+.I .ne.
 
-.IP "-P project" 10
+Unprivileged users cannot specify custom resources
+which were created to be invisible to unprivileged users.
 
-Restricts selection of jobs to those matching the specified 
-.I project.
+.IP "-N <name>" 8
+Restricts selection of jobs to those with the specified value for the
+.I Job_Name
+attribute.
 
-Format: String.
-.br
-Project name can contain any characters except for the following:
-Slash ("/"), left bracket ("["), right bracket ("]"), double quote ("""), 
-semicolon (";"), colon (":"), vertical bar ("|"), left angle bracket ("<"), 
-right angle bracket (">"), plus ("+"), comma (","), question mark ("?"), 
-and asterisk ("*").
+.IP "-p [<op>] <priority>" 8
+Restricts selection of jobs to those with the specified 
+.I Priority 
+value(s).
 
-.IP "-q destination" 10
-Restricts selection to those jobs residing at the specified destination.
-.IP
+.IP "-P <project>" 8
+Restricts selection of jobs to those matching the specified value for the 
+.I project
+attribute.
+
+Format: 
+.I Project Name;
+see the 
+.I PBS Professional Reference Guide.
+
+.IP "-q <destination>" 8
+Restricts selection to those jobs at the specified 
+.I destination.
+
 The
 .I destination
-may be of one of the following three forms:
-.RS 13
-.I "queue"
+may take of one of the following forms:
+.RS 11
+.I <queue name>
 .br
-.I "@server"
+Restricts selection to the specified queue at the default server.
 .br
-.I "queue@server"
+.I @<server name>
+.br
+Restricts selection to the specified server.
+.br
+.I <queue name>@<server name>
+.br
+Restricts selection to the specified queue at the specified server. 
 .RE
-.IP
-If the 
-.I -q
-option is not specified, jobs will be selected from the default server.
-.IP
-If the
-.I destination
-describes only a queue, only jobs in that queue on the default batch server
-will be selected.
-.IP
-If the
-.I destination
-describes only a server, then jobs in all queues on that server will be
-selected.
-.IP
-If the
-.I destination
-describes both a queue and a server, then only jobs in the named queue on
-the named server will be selected.
-.IP \-r\ rerun
-Restricts selection of jobs to those with the specified
-.I Rerunnable
-attribute.  The option argument must be a single character.  The following
-two characters are supported by PBS:
+.IP " " 8
+If the -q option is not specified, jobs are selected from the default server.
+
+.IP "-r <rerun>" 8
+Restricts selection of jobs to those with the specified value for the 
+.I Rerunable
+attribute.  The option argument 
+.I rerun
+must be a single character, either
 .I y
-and
-.I n .
-.IP "-s states" 10
-Restricts job selection to those in the specified states.
-.IP
+or 
+.I n.
+
+.IP "-s <states>" 8
+Restricts job selection to those whose
+.I job_state
+attribute has the specified value(s).
+
 The
 .I states
-argument is a character string which consists of any combination of the
+argument is a character string consisting of any combination of these
 characters:
 .I B
 , 
@@ -341,152 +358,175 @@ characters:
 ,
 .I U
 ,
-and
-.I W.
-[A repeated character will be accepted, but no additional meaning is
-assigned to it.]
-.IP
-Job
-.I states:
+.I W
+, and
+.I X.
+(A repeated character is accepted, but no additional meaning is
+assigned to it.)
 
-.RS 
 .nf
-B   Job array has started execution.
-E   The Exiting state.
-F   The Finished state.
-H   The Held state.
-M   The Moved state.
-Q   The Queued state.
-R   The Running state.
-S   The Suspended state.
-T   The Transiting state.
-U   Job suspended due to workstation user activity.
-W   The Waiting state.
-X   The eXited state.  Subjobs only.
+.B State \ \ Meaning
+---------------------------------------------------------------
+B       Job array has started execution
+E       The Exiting state
+F       The Finished state
+H       The Held state
+M       The Moved state
+Q       The Queued state
+R       The Running state
+S       The Suspended state
+T       The Transiting state
+U       Job suspended due to workstation user activity
+W       The Waiting state
+X       The eXited state.  Subjobs only
 .fi
-.RE
 
 .IP
-Jobs will be selected which are in any of the specified states.
-Since array jobs are never in states R, S, T, or U,  if those states are
-specified, no array job will be selected.   Subjobs of the array in those 
-states may be selected if -T is specified.
+Jobs in any of the specified states are selected.
 
-.IP "-t suboption [comparison] specified-time"
-Allows jobs to be selected according to their time attributes.
-The suboption is one of:
-.IP 
-Suboption  Time Attribute Selected
-.br
-----------------------------------
-.br
-a          Execution_Time
-.br
-c          ctime
-.br
-e          etime
-.br
-g          eligible_time
-.br
-m          mtime
-.br
-q          qtime
-.br
-s          stime
-.br
-t          estimated.start_time
+Job arrays are never in states 
+.I R, S, T, 
+or 
+.I U.  
+Subjobs may be in those states.
 
-The comparison is one of the relations listed above in 
-.B Relations.
-.br
+.IP "-t <time option> [<op>] <specified time>" 8
+Jobs are selected according to one of their time-based attributes.  The 
+.I time option
+specifies which time-based attribute is tested.  You give the 
+.I specified time
+in 
+.I datetime
+format.  See the 
+.I PBS Professional Reference Guide.
+
 The 
-.I specified-time 
-is in datetime format.  See
-.B FORMATS.
-.br
-A time period can be bracketed by using the 
+.I time option 
+is one of the following:
+
+.nf
+.B Time 
+.B Option \ Time Attribute \ Attribute Description
+---------------------------------------------------------------
+a       Execution_Time  Timestamp.  Time the job is eligible 
+                        for execution.  Specified in datetime 
+                        format.
+
+c       ctime           Timestamp; time at which the job was
+                        created.  Printed by qstat in 
+                        human-readable format.  Output in hooks
+                        as seconds since epoch.
+
+e       etime           Timestamp; time when job became 
+                        eligible to run, i.e. was enqueued in 
+                        an execution queue and was in the "Q" 
+                        state.  Reset when a job moves queues, 
+                        or is held then released.  Not affected 
+                        by qaltering.  Printed by qstat in 
+                        human-readable format.  Output in hooks 
+                        as seconds since epoch.
+
+g       eligible_time   Amount of eligible time job accrued 
+                        waiting to run.  Specified as duration.
+
+m       mtime           Timestamp; the time that the job was 
+                        last modified, changed state, or 
+                        changed locations.  Printed by qstat in 
+                        human-readable format.  Output in hooks 
+                        as seconds since epoch.
+
+q       qtime           Timestamp; the time that the job 
+                        entered the current queue.  Printed by 
+                        qstat in human-readable format.  Output 
+                        in hooks as seconds since epoch.
+
+s       stime           Timestamp; time the job started.  
+                        Updated when job is restarted.  Printed 
+                        by qstat in human-readable format.  
+                        Output in hooks as seconds since epoch.
+
+t       estimated.      Job's estimated start time.  Specified 
+        start_time      in datetime format.  Printed by qstat in 
+                        human-readable format.  Output in hooks 
+                        as seconds since epoch.
+.fi
+
+To bracket a time period, use the 
 .I -t
 option twice.
 .br
-For example, to select jobs using stime between noon and 3 p.m.:
+For example, to select jobs using 
+.I stime 
+between noon and 3 p.m.:
 .br
-qselect -ts.gt.09251200 -ts.lt.09251500
+.B \ \ \ qselect -ts.gt.09251200 -ts.lt.09251500
 
-.IP "-T"
-Limits selection to job and subjob identifiers.
+.IP "-T" 8
+Limits selection to jobs and subjobs.
 
-.IP "-u user_list" 10
-Restricts selection to jobs owned by the specified user names.
-.IP
-This provides a means of limiting the selection to jobs owned by one or
-more users.
-.IP
-The syntax of the
-.I user_list
-is:
-.RS 14
-.I "user_name[@host][,user_name[@host],...]"
-.RE
-.IP
-Host names may be wild carded on the left end, e.g. "*.nasa.gov".
-User_name without a "@host" is equivalent to "user_name@*", that is at any host.
-Jobs will be selected which are owned by the listed users at the
-corresponding hosts.
-.LP
-.IP "-x" 10
-Allows selection of finished and moved jobs in addition to queued and running jobs.
+.IP "-u <user list>" 8
+Restricts selection to jobs owned by the specified usernames.
 
-.IP "-X" 10
-Allows selection of completed or deleted subjobs (subjobs in X state).
+Syntax of
+.I user_list:
+.br
+.I <username>[@<hostname>][,<username>[@<hostname>],...]
 
-.IP "--version" 10
+Selects jobs which are owned by the listed users at the corresponding hosts. 
+Hostnames may be wildcarded on the left end, e.g. "*.nasa.gov".  A username
+without a "@<hostname>" is equivalent to "<username>@*", meaning that it is 
+valid at any host.
+
+.IP "-x" 8
+Selects finished and moved jobs in addition to queued and running jobs.
+
+.IP "-X" 8
+Selects completed or deleted subjobs (subjobs in 
+.I X 
+state).
+
+.IP "--version" 8
 The 
 .B qselect
 command returns its PBS version information and exits.
 This option can only be used alone.
 
-.SH FORMATS
-.IP "Datetime Format" 4
-.I "[[[[CC]YY]MM]DD]hhmm[.SS]"
-
 .SH STANDARD OUTPUT
-The list of job identifiers of selected jobs is written to standard output.
-Each job identifier is separated by white space.
-Each job identifier is of the form:
-.RS 4
-.I "sequence_number.server_name@server"
-.RE
-Where
-.I "sequence_number.server"
-is the identifier assigned at submission time, see
-.BR qsub .
-.I @server
+PBS writes a list of the selected job IDs to standard output.  Each
+job ID is separated by white space.  A job ID can represent a job, a
+job array, or a subjob.  Each job ID has one of the forms:
+.br
+.I <sequence number>.<server name>[@<server name>]
+.br
+.I <sequence number>[].<server name>[@<server name>]   
+.br
+.I <sequence number>[<index>].<server name>[@<server name>]
+.br
+.I @<server name> 
 identifies the server which currently owns the job.
+
 .SH STANDARD ERROR
 The 
 .B qselect 
-command will write a diagnostic message to standard error for
+command writes a diagnostic message to standard error for
 each error occurrence.
+
 .SH EXIT STATUS
+.IP Zero 8
 Upon successful processing of all options presented to the
 .B qselect 
-command, the exit status will be a value of zero.
-.LP
+command
+.IP "Greater than zero" 8
 If the 
 .B qselect 
-command fails to process any option, the
-command exits with a value greater than zero.
+command fails to process any option
+
 .SH SEE ALSO
 The
-.B PBS Professional User's Guide,
+.I PBS Professional User's Guide,
 the
-.B PBS Professional Administrator's Guide,
+.I PBS Professional Administrator's Guide,
 .br
-qalter(1B),
-qdel(1B),
-qhold(1B),
-qmove(1B),
-qrls(1B),
 qstat(1B),
 qsub(1B), 
 pbs_job_attributes(7B),

@@ -33,15 +33,14 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH qterm 8B "6 October 2011" Local "PBS Professional"
+.TH qterm 8B "16 April 2018" Local "PBS Professional"
 .SH NAME
 .B qterm 
-\- terminate a PBS Server
-
+\- terminate one or both PBS servers, and optionally terminate scheduler(s) and/or MoMs
 
 .SH SYNOPSIS
 .B qterm 
-[\^-t\ type\^] [-f | -i | -F] [-m] [-s] [server_list]
+[-f | -F | -i] [-m] [-s] [-t <type>] [<server>[ <server> ...]]
 .br
 .B qterm
 --version
@@ -49,38 +48,30 @@
 .SH DESCRIPTION
 The
 .B qterm 
-command terminates a PBS batch server (
-.B pbs_server
-).
-When a server receives a 
-terminate command,
-The server will go into 
-.I Terminating 
-or 
-.I Terminating-Delayed
-state.
-.br
+command terminates a PBS batch server.
+
 Once the server is terminating, no new jobs are accepted by the
 server, and no jobs are allowed to begin execution.  The impact on
-running jobs depends on the way the server is shut down.  
-.br
-The qterm
-command does not exit until the server has completed its shutdown
-procedure.  
-.br
-If the complex is configured for failover, and the primary
-server is shut down, the normal behavior for the secondary server is
-to become active.  The 
+running jobs depends on the way the server is shut down.
+
+The 
 .B qterm 
-command provides options to manage the
-behavior of the secondary server; it can be shut down, forced to
-remain idle, or shut down in place of the primary server.  
+command does not exit until the server has completed its shutdown procedure.
+
+If the complex is configured for failover, and the primary server is
+shut down, the normal behavior for the secondary server is to become
+active.  The 
+.B qterm 
+command provides options to manage the behavior of
+the secondary server; it can be shut down, forced to remain idle, or
+shut down in place of the primary server.
+
+.B Required Privilege
 .br
 In order to
 run the 
 .B qterm 
-command, the user must have PBS Operator or Manager
-privilege.
+command, you must have PBS Operator or Manager privilege.
 
 .SH OPTIONS
 .IP "(no options)" 10
@@ -90,11 +81,14 @@ command defaults to
 .B qterm -t quick.
 
 .IP "-f" 10
-If the complex is configured for failover, both the primary and
-secondary servers are shut down.  Without the 
+If the complex is configured for failover, shuts down both the primary and
+secondary servers.  
+.br
+Without the 
 .I -f 
-option, the primary
-server is shut down and the secondary server becomes active.  
+option, 
+.B qterm 
+shuts down the the primary server and makes the secondary server active.  
 .br
 The 
 .I -f
@@ -105,8 +99,8 @@ or
 options.
 
 .IP "-F" 10
-If the complex is configured for failover, only the secondary server
-is shut down, and the primary server remains active.
+If the complex is configured for failover, shuts down only the secondary server,
+leaving the primary server active.
 .br
 The 
 .I -F 
@@ -117,9 +111,9 @@ or
 options.
 
 .IP "-i" 10
-If the complex is configured for failover, the secondary server
-remains idle when the primary server is shut down.
-
+If the complex is configured for failover, leaves the secondary server
+idle when the primary server is shut down.
+.br
 The 
 .I -i 
 option cannot be used with the 
@@ -129,17 +123,16 @@ or
 options.
 
 .IP "-m" 10
-All MOMs (
-.B pbs_mom
-) are shut down.  This option does not cause jobs or subjobs to be killed.
+Shuts down the primary server and all MoMs 
+.B (pbs_mom).
+This option does not cause jobs or subjobs to be killed.
 Jobs are left running subject to other options to the 
 .B qterm
 command.  
 
 .IP "-s" 10
-The scheduler (
-.B pbs_sched
-) is shut down.
+Shuts down the primary server and the scheduler
+.B (pbs_sched).
 
 .IP "-t <type>" 10
 The 
@@ -149,48 +142,45 @@ specifies how the server is shut down.  The
 are the following:
 .RS
 .IP immediate
-All running jobs and subjobs immediately stop execution.
+Shuts down the primary server.  Immediately stops all running jobs.
 Any running jobs that can be checkpointed are checkpointed,
 terminated, and requeued.  Jobs that cannot be checkpointed are
 terminated and requeued if they are rerunnable, otherwise they are
-killed. All subjobs are killed and requeued.
-.br
-If any job cannot be terminated, for example the server
-cannot contact the MOM of a running job, the server continues to
-execute and the job is listed as running.  The server can be
-terminated by a second 
+killed.
+
+If any job cannot be terminated, for example the server cannot contact
+the MoM of a running job, the server continues to execute and the job
+is listed as running.  The server can be terminated by a second 
 .B qterm -t immediate 
 command.
-.br
-While terminating, the server is in the 
-.I Terminating
-state.
-  
-.IP
 
-.IP delay
-The server waits to terminate until all non-checkpointable,
-non-rerunnable jobs are finished executing.  Any running jobs that can
-be checkpointed are checkpointed, terminated, and requeued.  Jobs that
-cannot be checkpointed are terminated and requeued if they are
-rerunnable, otherwise they are allowed to continue to run.
-All subjobs are killed and requeued.
-.br
 While terminating, the server is in the 
-.I Terminating-Delayed
+.I Terminating 
+state.
+
+.IP delay 
+Shuts down the primary server.  The server waits to terminate until
+all non-checkpointable, non-rerunnable jobs are finished executing.
+Any running jobs that can be checkpointed are checkpointed,
+terminated, and requeued.  Jobs that cannot be checkpointed are
+terminated and requeued if they are rerunnable, otherwise they are
+allowed to continue to run.
+
+While terminating, the server is in the 
+.I Terminating-Delayed 
 state.
 
 .IP quick
-Running jobs are left running.  Running subjobs 
-are requeued.
-.br
+Shuts down the primary server.  Running jobs and subjobs are left running.
+
 This is the default behavior when no options are given to the 
-.B qterm 
+.B qterm
 command.
-.br
+
 While terminating, the server is in the 
-.I Terminating
+.I Terminating 
 state.
+
 .RE
 .LP
 .IP "--version" 10
@@ -200,9 +190,12 @@ command returns its PBS version information and exits.
 This option can only be used alone.
 
 .SH OPERANDS
-The server list operand specifies which servers are to shut down.  It
-is a space-separated list of server names.  If no servers are
-specified, then the default server is terminated.
+You optionally specify the list of servers to shut down using 
+.I [<server>[ <server> ...].
+
+If you do not specify any servers, the 
+.B qterm
+command shuts down the default server.
 
 .SH STANDARD ERROR
 The
@@ -211,17 +204,18 @@ command writes a diagnostic message to standard error for
 each error occurrence.
 
 .SH EXIT STATUS
-Zero upon successful processing of all the operands presented to the
+.IP Zero 8
+Upon successful processing of all operands presented to the 
 .B qterm
 command.
-.LP
-Greater than zero if the 
+.IP "Greater than zero" 8
+If the 
 .B qterm 
-command fails to process any operand.
+command fails to process any operand
 
 .SH SEE ALSO
 The
-.B PBS Professional Administrator's Guide, 
+.I PBS Professional Administrator's Guide, 
 pbs_server(8B), pbs_mom(8B), pbs_sched(8B)
 
 

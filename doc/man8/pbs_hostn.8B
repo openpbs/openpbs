@@ -33,13 +33,13 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_hostn 8B "12 April 2007" Local "PBS Professional"
+.TH pbs_hostn 8B "18 October 2017" Local "PBS Professional"
 .SH NAME
 .B pbs_hostn 
 - report hostname and network address(es)
 .SH SYNOPSIS
 .B pbs_hostn 
-[ -v ] hostname
+[ -v ] <hostname>
 .br
 .B pbs_hostn 
 --version
@@ -67,6 +67,7 @@ This option can only be used alone.
 
 
 .SH OPERANDS
+.IP "hostname" 15
 The
 .B pbs_hostn
 command accepts a 
@@ -76,15 +77,17 @@ domain name (FQDN) form.
 .SH STANDARD ERROR
 The
 .B pbs_hostn
-command will write a diagnostic message to standard error for
+command writes a diagnostic message to standard error for
 each error occurrence.
 
 .SH EXIT STATUS
-Zero upon successful processing of all the operands presented to the
+.IP "Zero" 15
+Upon successful processing of all the operands presented to the
 .B pbs_hostn
-command.
+command
 .LP
-Greater than zero if the
+.IP "Greater than zero" 15
+If the
 .B pbs_hostn
 command fails to process any operand.
 

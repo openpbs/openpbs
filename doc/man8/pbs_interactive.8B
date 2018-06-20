@@ -33,10 +33,10 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_interactive 8B "8 October 2012" Local "PBS Professional"
+.TH pbs_interactive 8B "19 October 2017" Local "PBS Professional"
 .SH NAME
 .B pbs_interactive 
-\- register, unregister, or get the version of the PBS_INTERACTIVE service
+\- For Windows. Register, unregister, or get the version of the PBS_INTERACTIVE service
 .SH SYNOPSIS
 .B pbs_interactive 
 [R | U]
@@ -48,11 +48,14 @@
 The
 .B pbs_interactive
 command registers, unregisters, or gets the version of the PBS_INTERACTIVE service.
+The service must be registered manually; the installer does not register it.
 
-Available only under Windows.
+On Windows, the PBS_INTERACTIVE service itself monitors logging in and out by users,
+starts a pbs_idled process for each user logging in, and stops the pbs_idled process
+of each user logging out.
 
 .SH Permission
-On Windows, Admin privilege is required.
+Admin privilege is required to use this command.
 
 .SH Arguments
 .IP "R" 15
@@ -62,7 +65,9 @@ Registers the PBS_INTERACTIVE service.
 Unregisters the PBS_INTERACTIVE service.
 
 .IP "--version" 15   
-Displays the version of the PBS_INTERACTIVE service and exits.
+The 
+.B pbs_interactive
+command returns its version information and exits.
 This option can only be used alone.
 
 

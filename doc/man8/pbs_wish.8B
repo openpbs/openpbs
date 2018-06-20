@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_wish 8B "15 September 2011" Local "PBS Professional"
+.TH pbs_wish 8B "28 November 2017" Local "PBS Professional"
 .SH NAME
 .B pbs_wish 
 - TK window shell with TCL-wrapped PBS API
@@ -59,10 +59,10 @@ This option can only be used alone.
 .SH STANDARD ERROR
 The
 .B pbs_wish
-command will write a diagnostic message to standard error for
-each error occurrence.
+command writes a diagnostic message to standard error for each error occurrence.
+
 .SH SEE ALSO
 The
-.B PBS Professional Administrator's Guide
+.I PBS Professional Administrator's Guide
 and the following manual pages:
 pbs_tclsh(8B), pbs_mom(8B), pbs_server(8B), pbs_sched(8B)

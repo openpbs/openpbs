@@ -33,28 +33,35 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH qstart 8B "23 August 2011" Local "PBS Professional"
+.TH qstart 8B "12 February 2018" Local "PBS Professional"
 .SH NAME
 .B qstart 
-- start PBS batch job processing at a destination
+- turn on scheduling or routing for jobs in a PBS queue
 .SH SYNOPSIS
 .B qstart 
-destination ...
+<destination> [<destination> ...]
 .br
 .B qstart
 --version
 .SH DESCRIPTION
-The
-.B qstart
-command directs that a destination should process batch jobs.
-If the destination is an execution queue, the server will begin
-to schedule jobs that reside in the queue for execution.  If the
-destination is a routing queue, the server will begin to route
-jobs from that queue.
-.LP
-.LP
-In order to execute qstart, the user must have PBS Operation or Manager
-privilege.
+If 
+.I destination 
+is an execution queue, the 
+.B qstart 
+command allows a PBS scheduler to schedule jobs residing in the specified queue.
+If 
+.I destination
+is a routing queue, the server can begin routing jobs from that queue.  Sets
+the value of the queue's 
+.I started 
+attribute to
+.I True.
+
+.B Required Privilege
+.br
+In order to execute 
+.B qstart, 
+you must have PBS Operator or Manager privilege.
 
 .SH OPTIONS
 .IP "--version" 
@@ -65,38 +72,38 @@ This option can only be used alone.
 
 
 .SH  OPERANDS
-The qstart command accepts one or more
+The qstart command accepts one or more space-separated
 .I destination
-operands.  The operands are one of three forms:
-.RS 5
-.B queue
-.br
-.B @server
-.br
-.B queue@server
-.RE
-If
-.B queue
-is specified, the request is to start that queue at the default server.
-If the
-.B @server
-form is given, the request is to start all queues at that server.
-If a full destination identifier,
-.B queue@server ,
-is given, the request is to start the named queue at the named server.
-.SH STANDARD ERROR
-The qstart
-command will write a diagnostic message to standard error for
-each error occurrence.
-.SH EXIT STATUS
-Upon successful processing of all the operands presented to the
-qstart
-command, the exit status will be a value of zero.
+operands.  The operands take one of three forms:
+.IP "<queue name>" 3
+Starts scheduling or routing from the specified queue.
+.IP "@<server name>" 3
+Starts scheduling or routing from all queues at the specified server.
+.IP "<queue name>@<server name>" 3
+Starts scheduling or routing from the specified queue at the specified server.
 .LP
-If the qstart command fails to process any operand, the
-command exits with a value greater than zero.
+To start scheduling at all queues at the default server, use the 
+.B qmgr
+command:
+.br
+.B \ \ \ Qmgr: set queue @default started=true
+
+.SH STANDARD ERROR
+The 
+.B qstart
+command writes a diagnostic message to standard error for
+each error occurrence.
+
+.SH EXIT STATUS
+.IP Zero 3
+Upon successful processing of all the operands presented to the
+.B qstart
+command
+.IP "Greater than zero" 3
+If the qstart command fails to process any operand
+
 .SH SEE ALSO
 The
-.B PBS Professional Administrator's Guide
+.I PBS Professional Administrator's Guide
 and the following manual pages:
 pbs_server(8B), qstop(8B), and qmgr(8B)

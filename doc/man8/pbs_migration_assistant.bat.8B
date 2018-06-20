@@ -33,89 +33,25 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_mkdirs 8B "19 October 2017" Local "PBS Professional"
+.TH pbs_migration_assistant.bat 8B "19 October 2017" Local "PBS Professional"
 .SH NAME
-.B pbs_mkdirs
-- For Windows. Create, or fix the permissions of, the directories and files used by PBS
-
+.B pbs_migration_assistant.bat
+\- For Windows.  Tells PBS which server configuration settings to use
 
 .SH SYNOPSIS
-.B pbs_mkdirs
+.B pbs_migration_assistant.bat 
+/b
 .br
-.B pbs_mkdirs 
-[ mom | sched | server ]
-.br
-
+.B pbs_migration_assistant.bat
+/r
 .SH DESCRIPTION
-Runs on Windows only.  If the directories and files used by PBS exist, the 
-.B pbs_mkdirs 
-command fixes their permissions.  If the directories and/or files do not
-exist, the 
-.B pbs_mkdirs 
-command creates them, with the correct
-permissions.  The 
-.B pbs_mkdirs 
-command always examines the following directories and files:
-.RS 5
-pbs.conf
-.br
-PBS_EXEC
-.br
-PBS_HOME/spool
-.br
-PBS_HOME/undelivered
-.br
-PBS_HOME/pbs_environment
-.RE
-.B Required Privilege
-.br
-You must have Administrator privilege to run this command.
+On Windows, you use C:\\Program Files(x86)\\PBS Pro\\exec\\bin\\pbs_migration_assistant.bat
+to set server configuration variables appropriately.
 
 .SH OPTIONS
-.IP "mom" 5
-The 
-.B pbs_mkdirs 
-command examines the following additional items:
-.RS 10
-PBS_HOME/mom_priv
-.br
-PBS_HOME/mom_logs
-.RE
+.IP "/b" 15
+Tells PBS to use the old server configuration settings.
 
-.IP "sched" 5
-The 
-.B pbs_mkdirs 
-command examines the following additional items:
-.RS 10
-PBS_HOME/sched_priv
-.br
-PBS_HOME/sched_logs
-.RE
-
-.IP "server" 5
-The 
-.B pbs_mkdirs 
-command examines the following additional items:
-.RS 10
-PBS_HOME/server_priv
-.br
-PBS_HOME/server_logs
-.RE
-
-.IP "(no options)" 5
-The 
-.B pbs_mkdirs 
-command examines all of the files and directories
-specified for each of the 
-.I mom, server, 
-and 
-.I sched 
-options.
-
-
-.SH SEE ALSO
-The
-.B PBS Professional Administrator's Guide, 
-pbs_probe(8B)
-
+.IP "/r" 15
+Tells PBS to use the new server configuration settings.
 

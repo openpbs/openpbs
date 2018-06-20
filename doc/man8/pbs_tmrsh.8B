@@ -33,13 +33,13 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_tmrsh 8B "5 October 2012" Local "PBS Professional"
+.TH pbs_tmrsh 8B "22 November 2017" Local "PBS Professional"
 .SH NAME
 .B pbs_tmrsh 
 - TM-enabled replacement for rsh/ssh for use by MPI implementations
 .SH SYNOPSIS
 .B pbs_tmrsh 
-host [-l username] [-n] command [args ...]
+<hostname> [-l <username>] [-n] <command> [<args> ...]
 .br
 .B pbs_tmrsh 
 --version
@@ -50,52 +50,75 @@ The
 command attempts to emulate an "rsh" connection to the specified host,
 via underlying calls to the Task Management (TM) API. The program is
 intended to be used during MPI integration activities, and not by
-end-users. The initial version of this program is targeted for use
-with MPICH and HP-MPI. 
-.LP
-Running "pbs_tmrsh host command" will cause a PBS task to be started
-on "host" running "command". The "host" may be in IP dot address form.
-.LP
+end-users. 
+
+Running "pbs_tmrsh <hostname> <command>" causes a PBS task to be started
+on 
+.I hostname 
+running 
+.I command. 
+
+.B Requirements for Environment Variables
+.br
 The environment variables used by the two MPI implementations
 to point to the rsh work-alike (MPI_REMSH in the case of HP and
 P4_RSHCOMMAND for MPICH) must be set in the job environment
 and point to the full path for
 .B pbs_tmrsh.
 .LP
-The file $PBS_HOME/pbs_environment will be used to set an environment
-variable PATH to be used to search for the program executable. This
-applies to both Windows and UNIX. It is expected that a full path will
-be specified for the command and the PATH variable will not be needed.
-
-Output and errors are written to the PBS job's output and error files,
-not to standard output/error.
+The file $PBS_HOME/pbs_environment should contain an environment
+variable PATH in which to search for the program executable. This
+applies to both Windows and Linux. It is expected that a full path will
+be specified for the 
+.I command 
+and the PATH variable will not be needed.
 
 .SH OPTIONS
-.IP "-l username" 13
-Specifies the username under which to execute the task. If used, username must
+.IP "-l <username>" 13
+Specifies the username under which to execute the task. If used, 
+.I username 
+must
 match the username running the
-.B pbs_tmrsh command.
+.B pbs_tmrsh 
+command.
 .IP "-n" 13
-Currently a no-op; provided for MPI implementations that expect to call
-rsh with the "-n" option.
+A no-op; provided for MPI implementations that expect to call
+rsh with the 
+.I -n 
+option.
 .LP
 .IP "--version" 13
 The 
 .B pbs_tmrsh
 command returns its PBS version information and exits.
 This option can only be used alone.
-.SH STANDARD ERROR
+
+.SH OPERANDS
+.IP command
+Specifies command to be run as a PBS task.
+
+.IP hostname
+Specifies host on which to run PBS task.  The 
+.I hostname 
+may be in IP-dot-address form.
+
+.SH Output and Error
+Output and errors are written to the PBS job's output and error files,
+not to standard output/error.
+
 The
 .B pbs_tmrsh
-command will write a diagnostic message to the PBS job's error file for
+command writes a diagnostic message to the PBS job's error file for
 each error occurrence.
+
 .SH EXIT STATUS
 The
 .B pbs_tmrsh
-program will exit with the exit status of the remote command or with
+program exits with the exit status of the remote command or with
 255 if an error occurred. This is because ssh works this way.
+
 .SH SEE ALSO
 The
-.B PBS Professional Administrator's Guide
+.I PBS Professional Administrator's Guide
 and the following manual pages:
 pbs_attach(8B), tm(3) 

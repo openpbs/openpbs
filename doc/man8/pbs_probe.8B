@@ -33,10 +33,10 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_probe 8B "19 October 2011" Local "PBS Professional"
+.TH pbs_probe 8B "23 October 2017" Local "PBS Professional"
 .SH NAME
 .B pbs_probe 
-- report PBS diagnostic information
+- report PBS diagnostic information and fix permission errors
 .SH SYNOPSIS
 .B pbs_probe 
 [ -f | -v ] 
@@ -48,38 +48,46 @@
 The
 .B pbs_probe
 command reports post-installation information that is useful for PBS
-diagnostics. Aside from the direct information that is supplied on the
-command line,
-.B pbs_probe
-uses as the source for basic information the file
-/etc/pbs.conf and the values of any of the following environment variable
-that may be set in the environment in which
+diagnostics, and fixes permission errors.
+
+.B Information Sources
+.RS 3
+Information that is supplied on the command line
+.br
+The file /etc/pbs.conf 
+.br
+The file /etc/init.d/pbs
+.br
+The values of any of the following environment variables; these may 
+be set in the environment in which
 .B pbs_probe
 is run: PBS_CONF_FILE, PBS_HOME, PBS_EXEC, PBS_START_SERVER, PBS_START_MOM,
-and PBS_START_SCHED.
-.LP
+and PBS_START_SCHED
+.RE
+
+.B Required Privilege
+.br
 In order to execute
 .B pbs_probe,
-the user must have PBS Operation or Manager privilege.
-.LP
-Used without options, the
-.B pbs_probe
-runs in "report" mode. In this mode
-.B pbs_probe
-reports on any errors in the PBS infrastructure files that it
-detects. The problems are categorized, and a list of the problem messages
-placed in each category are output. Those categories which are empty do not
-show in the output.
-.LP
+the user must have PBS Operator or Manager privilege.
+
 .SH OPTIONS
+.IP "(no options)" 10
+Run in "report" mode. In this mode
+.B pbs_probe
+reports any permission errors detected in the PBS infrastructure files.
+The command categorizes the errors and writes a list of them by category.
+Empty categories are not written.
+
 .IP "-f " 10
-Run in "fix" mode. In this mode pbs_probe will examine each of the relevant
-infrastructure files and, where possible, fix any errors that it detects,
-and print a message of what got changed. If it is unable to fix a problem,
-it will simply print a message regarding what was detected. 
+Run in "fix" mode. In this mode pbs_probe examines each of the relevant
+infrastructure files and, where possible, fixes any errors that it detects,
+and prints a message of what got changed. If it is unable to fix a problem,
+it prints a message regarding what was detected. 
 .IP "-v" 10
-Run in "verbose" mode. If the verbose option is turned on, pbs_probe will
-also output a complete list of the infrastructure files that it checked.
+Run in "verbose" mode. In this mode
+.B pbs_probe
+writes a complete list of the infrastructure files that it checked.
 .LP
 .IP "--version" 10
 The 
@@ -90,23 +98,18 @@ This option can only be used alone.
 .SH STANDARD ERROR
 The
 .B pbs_probe
-command will write a diagnostic message to standard error for
-each error occurrence.
-.LP
-.SH FILES
-/etc/pbs.conf
-.br
-/etc/init.d/pbs
-.LP
+command writes a diagnostic message to standard error for each error occurrence.
+
 .SH EXIT STATUS
 Exit code does not reflect results of probe; it reflects whether or not
-the program ran.  Exit codes:
-.RS 4
-Zero when run correctly, whether or not 
+the program ran.  
+.IP "Zero" 10
+When run correctly, whether or not 
 .B pbs_probe 
-finds any problems or errors.
+finds any problems or errors
 
-Non-negative when run incorrectly.
+.IP "Non-negative" 10
+When run incorrectly
 .RE
 .SH SEE ALSO
 The

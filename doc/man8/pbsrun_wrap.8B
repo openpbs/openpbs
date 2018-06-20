@@ -33,14 +33,14 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbsrun_wrap 8B "2 March 2015" Local "PBS Professional"
+.TH pbsrun_wrap 8B "16 October 2017" Local "PBS Professional"
 .SH NAME
 .B pbsrun_wrap
 \- general-purpose script for wrapping mpirun in pbsrun
 
 .SH SYNOPSIS
 .B pbsrun_wrap
-[-s] <path_to_actual_mpirun> pbsrun.<mpirun version/flavor>
+[-s] <path to actual mpirun> pbsrun.<mpirun version/flavor>
 
 .B pbsrun_wrap
 --version
@@ -57,7 +57,7 @@ path and name as the mpirun being wrapped.  This calls
 .B pbsrun, 
 which uses 
 .B pbs_attach
-to give MOM control of jobs.  The result is transparent to the
+to give MoM control of jobs.  The result is transparent to the
 user; 
 when mpirun is called from inside a
 PBS job, 
@@ -79,34 +79,12 @@ with Intel MPI is
 .B deprecated 
 as of 13.0.
 
-.SH OPTIONS
-
-.IP "-s" 5
-Sets the "strict_pbs" options in the various 
-initialization scripts (e.g. pbsrun.bgl.init, pbsrun.ch_gm.init, etc...)
-to 1 from the default 0. This means that the mpirun being wrapped by 
-pbsrun will only be executed if inside a PBS environment. Otherwise, the user 
-will get the error:
-.RS
-.IP 
-Not running under PBS
-exiting since strict_pbs is enabled; execute only in PBS
-.LP
-
-.RE
-
-.IP "--version" 5
-The 
-.B pbsrun_wrap
-command returns its PBS version information and exits.
-This option can only be used alone.
-
 .SH USAGE
 
 Syntax: 
 .RS 5
 .B pbsrun_wrap 
-[-s] <path_to_actual_mpirun> pbsrun.<mpirun version/flavor>
+[-s] <path to actual mpirun> pbsrun.<mpirun version/flavor>
 .RE
 
 Any mpirun version/flavor that can be wrapped has
@@ -114,7 +92,7 @@ an initialization script ending in ".init",
 found in $PBS_EXEC/lib/MPI:
 .br
 .RS 5
-$PBS_EXEC/lib/MPI/pbsrun.<mpirun version/flavor>.init.
+$PBS_EXEC/lib/MPI/pbsrun.<mpirun version/flavor>.init
 .RE
 
 The  
@@ -167,9 +145,35 @@ $PBS_EXEC/lib/MPI/pbsrun.ch_gm.link
 .RE
 .RE
 
+
+
+.SH OPTIONS
+
+.IP "-s" 5
+Sets the "strict_pbs" options in the various 
+initialization scripts (e.g. pbsrun.bgl.init, pbsrun.ch_gm.init, etc...)
+to 1 from the default 0. This means that the mpirun being wrapped by 
+pbsrun will only be executed if inside a PBS environment. Otherwise, the user 
+gets the error:
+.RS
+.IP 
+Not running under PBS
+exiting since strict_pbs is enabled; execute only in PBS
+.LP
+
+.RE
+
+.IP "--version" 5
+The 
+.B pbsrun_wrap
+command returns its PBS version information and exits.
+This option can only be used alone.
+
+
+
 .SH REQUIREMENTS
 The mpirun being wrapped
-must be installed and working on all the nodes in the PBS cluster.
+must be installed and working on all thev nodes in the PBS complex.
 
 
 .SH SEE ALSO

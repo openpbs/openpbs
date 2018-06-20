@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_sigjob 3B "3 March 2015" Local "PBS Professional"
+.TH pbs_sigjob 3B "12 July 2017" Local "PBS Professional"
 .SH NAME
 pbs_sigjob - send a signal to a PBS batch job
 .SH SYNOPSIS
@@ -53,14 +53,16 @@ specified by
 .I connect 
 which is the return value of \f3pbs_connect\f1().
 If the batch job is in the
-.B running
+.I running
+or 
+.I suspended
 state, the batch server will send the job the signal number corresponding
 to the signal named in
 .I signal .
 .LP
-The argument,
-.I job_id ,
-identifies which job is to be signaled, it is specified in the form:
+The
+.I job_id
+argument identifies which job is to be signaled.  It is specified in the form:
 .RS 4
 .I "sequence_number.server"
 .RE
@@ -69,17 +71,33 @@ The
 .I signal
 argument is the name of a signal.   It may be the alphabetic form with or
 without the SIG prefix, or it may be a numeric string for the signal number.
-Two special names are recognized, 
-.B suspend
-and
-.B resume .
 If the name of the signal
 is not a recognized signal name on the execution host, no signal is
-sent and an error is returned.  If the job is not in the 
-.B running
-state, no signal is sent and an error is returned, except when the signal is
-.B resume
-and the job is suspended.
+sent and an error is returned.  
+.br
+Certain special names are recognized:
+.br
+.B suspend
+can be used only on running jobs.  This signal puts the job into a suspended state.
+.br
+.B resume 
+can be used only on suspended jobs.  This signal marks the job so that
+the scheduler can resume the job when resources are available.
+
+.br 
+.B admin-suspend
+can be used only on running jobs.  This signal puts the job into a
+suspended state, and puts the job's vnodes into the
+.I maintenance
+state.
+.br
+.B admin-resume
+can be used only on admin-suspended jobs.  This signal directly resumes
+the job.  When the last admin-suspended job has been admin-resumed, 
+the vnode leaves the 
+.I maintenance 
+state.
+
 .LP
 The parameter, 
 .I extend ,

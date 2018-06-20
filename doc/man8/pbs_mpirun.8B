@@ -33,35 +33,46 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_mpirun 8B "10 Nov 2010" Local "PBS Professional"
+.TH pbs_mpirun 8B "23 October 2017" Local "PBS Professional"
 .SH NAME
-.B pbs_mpirun 
-\- run MPI programs under PBS with MPICH
+.B pbs_mpirun
+
+.B Deprecated.  
+Run MPI programs under PBS with MPICH
 
 .SH SYNOPSIS
 .B pbs_mpirun 
-[options]
+[<mpirun options>]
 
 .B pbs_mpirun 
 --version
 .SH DESCRIPTION
+
 The PBS command 
 .B pbs_mpirun 
 replaces the standard 
 .I mpirun 
 command in a PBS
-MPICH job using P4 running under Linux 2.4 and higher.  Usage is the same as for 
+MPICH job using P4.  
+
+On Windows, this command cannot be used to start job processes or
+to track a job's resource usage.
+
+.B Prerequisite
+.br
+The PATH on remote machines must contain 
+.I PBS_EXEC/bin.
+
+.SH USAGE
+Usage is the same as for 
 .I mpirun, 
 except for the 
 .I -machinefile 
 option.  All other options are passed directly to 
 .I mpirun.
 
-On Windows, this command cannot be used to start job processes or
-to track a job's resource usage.
-
 .SH OPTIONS
-.IP "options" 8
+.IP "<mpirun options>" 8
 The 
 .I options 
 to 
@@ -115,12 +126,6 @@ copies the value of
 .I P4_RSHCOMMAND 
 into 
 .I PBS_RSHCOMMAND.
-
-
-.SH PATH
-The PATH on remote machines must contain 
-.I PBS_EXEC/bin.
-
 
 .SH SEE ALSO
 The 

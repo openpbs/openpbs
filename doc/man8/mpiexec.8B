@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH mpiexec 8B "21 January 2016" Local "PBS Professional"
+.TH mpiexec 8B "12 October 2017" Local "PBS Professional"
 .SH NAME
 .B mpiexec 
 \- run MPI programs under PBS on Linux
@@ -47,9 +47,9 @@
 .SH DESCRIPTION
 The PBS 
 .B mpiexec
-command provides the standard mpiexec interface on an SGI ICE or UV 
+command provides the standard mpiexec interface on a system
 running supported versions of Performance Suite.  
-If executed on a non-ICE and non-UV system, it will assume
+If executed on a different system, it will assume
 it was invoked by mistake.  In this case it will use the value of
 .B PBS_O_PATH
 to search for the correct mpiexec.  If one is found, the PBS 
@@ -59,14 +59,14 @@ exec it.
 
 The PBS
 .B mpiexec
-calls the SGI mpirun(1).  The name of the array to use when invoking
+calls the HPE SGI mpirun(1).  The name of the array to use when invoking
 mpirun is user-specifiable via the
 .B PBS_MPI_SGIARRAY 
 environment variable.
 
 It is transparent to the user; MPI jobs submitted outside of PBS will
 run as they would normally.  MPI jobs can be launched across multiple
-SGI machines.  PBS will manage, track, and cleanly terminate multi-host MPI
+HPE SGI machines.  PBS will manage, track, and cleanly terminate multi-host MPI
 jobs.  PBS users can run MPI jobs within specific partitions.
 
 If CSA has been configured and enabled, PBS will collect accounting
@@ -95,22 +95,22 @@ command returns its PBS version information and exits.
 This option can only be used alone.
 
 .SH REQUIREMENTS
-ICE or UV running a supported version of Performance Suite.
+System running a supported version of Performance Suite.
 
-PBS uses SGI's mpirun(1) command to launch MPI jobs.  SGI's mpirun
+PBS uses HPE SGI's mpirun(1) command to launch MPI jobs.  HPE SGI's mpirun
 must be in the standard location.
 
 The location of 
-.B pbs_attach(8B) 
+.B pbs_attach() 
 on each node of a multinode MPI job
 must be the same as it is on the mother superior node.
 
-In order to run multihost jobs, the SGI Array Services must be
-correctly configured.  SGI systems communicating via SGI's Array
+In order to run multihost jobs, the HPE SGI Array Services must be
+correctly configured.  HPE SGI systems communicating via HPE SGI's Array
 Services must all use the same version of the sgi-arraysvcs package.
-SGI systems communicating via SGI's Array Services must have been
+HPE SGI systems communicating via HPE SGI's Array Services must have been
 configured to interoperate with each other using the default array.
-See SGI's array_services(5) man page.
+See HPE SGI's array_services(5) man page.
 
 .SH ENVIRONMENT VARIABLES
 
@@ -160,10 +160,10 @@ is located in
 The 
 .B PBS Professional Administrator's Guide
 .LP
-SGI man pages: 
-SGI's mpirun(1), 
-SGI's mpiexec_mpt(1),
-SGI's array_services(5)
+HPE SGI man pages: 
+HPE SGI's mpirun(1), 
+HPE SGI's mpiexec_mpt(1),
+HPE SGI's array_services(5)
 .LP
 PBS man pages:
 pbs_attach(8B)

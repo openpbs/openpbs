@@ -33,17 +33,14 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH qdel 1B "8 October 2012" Local "PBS Professional"
+.TH qdel 1B "30 November 2017" Local "PBS Professional"
 .SH NAME
 .B qdel 
-- deletes PBS jobs
+- delete PBS jobs
 .SH SYNOPSIS
 .B qdel 
-[-x] 
-[\-Wforce | -Wsuppress_email=<N>] 
-.RS 6
-job_identifier [job_identifier ...]
-.RE
+[ -Wforce | -Wsuppress_email=<N>] [-x] <job ID> [<job ID> ...]
+.br
 .B qdel
 --version
 .SH DESCRIPTION
@@ -52,6 +49,8 @@ The
 command deletes jobs in the order given, whether they are at the local
 server or at a remote server.  
 
+.B Usage
+.br
 The qdel command is used without options to delete queued, running,
 held, or suspended jobs, while the
 .I -x  
@@ -69,14 +68,6 @@ retained.  The
 option is used to additionally remove the history of the job being
 deleted.
 
-.LP
-A PBS job may be deleted by its owner, an operator, or the
-administrator.  The server deletes a PBS job by sending a 
-.B SIGTERM
-signal, then, if there are remaining processes, a
-.B SIGKILL 
-signal.  
-
 If someone other than the job's owner deletes the job, mail is
 sent to the job's owner, or to a list of mail recipients if 
 specified during 
@@ -84,10 +75,14 @@ specified during
 See the 
 .B qsub(1B)
 man page.
-.LP
+
+If the job is in the process of provisioning,
+it can be deleted only by using the 
+.I -W force
+option.
 
 .B "How Behavior of qdel Command Can Be Affected"
-.RS 3
+.br
 The server's 
 .I default_qdel_arguments
 attribute may affect the behavior of the 
@@ -96,16 +91,10 @@ command.  This attribute is settable by the administrator
 via the 
 .B qmgr
 command.  The attribute may be set to "-Wsuppress_email=<N>".
-The server attribute is overridden by command line arguments.
+The server attribute is overridden by command-line arguments.
 See the 
 .B pbs_server_attributes(1B) 
 man page.
-
-If the job is in the process of provisioning,
-it can be deleted only by using the 
-.I -W force
-option.
-.RE
 
 .B Sequence of Events
 .IP " " 3
@@ -123,36 +112,63 @@ The job's temp directory is removed.
 The job is removed from the MOM(s) and the server.
 .LP
 
+.B Required Privilege
+.br
+A PBS job may be deleted by its owner, an Operator, or the
+administrator.  The server deletes a PBS job by sending a 
+.B SIGTERM
+signal, then, if there are remaining processes, a
+.B SIGKILL 
+signal.  
+
+
 .SH OPTIONS
-.IP "(no options)" 10
+.IP "(no options)" 8
 Can delete queued, running, held, or suspended jobs.  
 Does not delete job history for specified job(s).
-.IP "-W force" 10
+.IP "-W force" 8
 Deletes the job whether or not the job's execution host is 
 reachable.  Deletes the job whether or not the job is in the
 process of provisioning.  Cannot be used with the 
 .I -Wsuppress_email
 option.
-.LP
-.IP "-Wsuppress_email=<N>" 10
-Sets limit on number of emails sent when deleting multiple jobs.  If 
+
+If the server can contact the MoM, this option is ignored; the 
+server allows the job to be deleted normally.  If the server 
+cannot contact the MoM or the job is in the 
+.I E
+state, the server deletes its information about the job.
+
+.IP "-Wsuppress_email=<N>" 8
+Sets limit on number of emails sent when deleting multiple jobs.  
+.RS 11
+If 
 .I N
 >= 1 and 
 .I N 
 or more 
-.I job_identifiers 
+.I job IDs
 are given, 
 .I N 
-emails are sent.  If 
+emails are sent.  
+.br
+If 
 .I N
 >=1 and less than 
-.I N 
-job identifiers are given, the number of emails is
-the same as the number of jobs.  If 
+.I N job IDs
+are given, the number of emails is
+the same as the number of jobs.  
+.br
+If 
 .I N
-=0, this option is ignored.  If 
+= 0, this option is ignored.  
+.br
+If 
 .I N
 = -1, no email is sent.
+.RE
+.LP
+.IP " " 8
 The 
 .I <N>
 argument is an integer.  Note that there is no space between "W" and "suppress_email".
@@ -160,11 +176,11 @@ Cannot be used with the
 .I -Wforce
 option.
 .LP
-.IP "-x" 10
+.IP "-x" 8
 Can delete running, queued, suspended, held, finished, or moved jobs.
 Deletes job history for specified job(s).
 .LP
-.IP "--version" 10
+.IP "--version" 8
 The 
 .B qdel
 command returns its PBS version information and exits.
@@ -173,44 +189,29 @@ This option can only be used alone.
 .SH OPERANDS
 The 
 .B qdel 
-command accepts one or more
-.I job_identifier
-operands.  
-.B Square brackets in the following 
-.B description have two different meanings.  
-Job array identifiers have square brackets, 
-.B and
-the brackets indicate the contents are optional for 
-.I "[.server_name]" 
-and 
-.I "[@server]".
-The format of 
-.I job_identifier
-is:
+command accepts one or more space-separated
+.I job ID
+operands.  These operands can be job identifiers, job array
+identifiers, subjob dentifiers, or subjob range identifiers.
 
-.IP "Jobs" 10
-.I sequence_number[.server_name][@server]
-.LP
-.IP "Job arrays" 10
-.I sequence_number[][.server_name][@server]
-.LP
-.IP "Array range" 10
-.I sequence_number[<first>-<last>][.server_name][@server]
+Job IDs have the form:
 .br
-.I first
-and 
-.I last
-are the first and last indices of the subjobs to be deleted.
-.LP
-.IP "Subjob" 10
-sequence_number[<index>][.server_name][@server]
+.I \ \ \ <sequence number>[.<server name>][@<server name>]
+
+Job arrays have the form:
 .br
-.I index
-is the index of the subjob to be deleted.
-.LP
-.IP " " 10
+.I \ \ \ <sequence number>[][.<server name>][@<server name>]
+
+Subjobs have the form:
+.br
+.I \ \ \ <sequence number>[<index>][.<server name>][@<server name>]
+
+Ranges of subjobs have the form:
+.br
+.I \ \ \  <sequence number>[<first>-<last>][.<server name>][@<server name>]
+
 Job array identifiers must be enclosed in double quotes for some shells.
-.LP
+
 
 .SH STANDARD ERROR
 The 
@@ -219,15 +220,17 @@ command writes a diagnostic message to standard error for each
 error occurrence.
 
 .SH EXIT STATUS
-Zero upon successful processing of input.
-.LP
-Greater than zero upon error.
+.IP Zero 8
+Upon successful processing of input
+
+.IP "Greater than zero" 8
+Upon error
 
 .SH SEE ALSO
 The
-.B PBS Professional User's Guide,
+.I PBS Professional User's Guide,
 the
-.B PBS Professional Administrator's Guide,
+.I PBS Professional Administrator's Guide,
 .br
 pbs_queue_attributes(7B), pbs_server_attributes(1B), 
 qsub(1B), qsig(1B), pbs_deljob(3B)

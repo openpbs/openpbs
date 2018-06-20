@@ -33,12 +33,12 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_comm 8B "2 February 2016" Local "PBS Professional"
+.TH pbs_comm 8B "17 October 2017" Local "PBS Professional"
 .SH NAME
 .B pbs_comm 
 - start the PBS communication daemon
 .SH SYNOPSIS
-UNIX/Linux:
+Linux:
 .br
 .B pbs_comm 
 [-N] [-r <other routers>] [-t <number of threads>]
@@ -64,23 +64,32 @@ handles communication between daemons, except for scheduler-server and
 server-server communication, which uses TCP.  The server, scheduler,
 and MoMs are connected by one or more pbs_comm daemons.
 
+See the Communication chapter in the PBS Installation & Upgrade Guide.
+
 .SH OPTIONS
 .IP "-N" 10
 Runs the communication daemon in standalone mode.
 
-.IP "-r" 10
-Used to specify the list of other pbs_comm daemons to which this
-pbs_comm must connect. This is equivalent to the pbs.conf variable
+.IP "-r <other routers>" 10
+List of other 
+.B pbs_comm 
+daemons to which this
+.B pbs_comm 
+must connect. This is equivalent to the pbs.conf variable
 .I PBS_COMM_ROUTERS. 
 The command line overrides the variable.  
 .br
 Format: <host>[:<port>][,<host>[:<port>]]
 
 .IP "-R" 10
-Registers the pbs_comm process.  Available under Windows only.
+Registers the 
+.B pbs_comm 
+process.  Available under Windows only.
 
 .IP "-t" 10
-Used to specify the number of threads the pbs_comm daemon uses.  This
+Number of threads the 
+.B pbs_comm 
+daemon uses.  This
 is equivalent to the pbs.conf variable 
 .I PBS_COMM_THREADS.  
 The command
@@ -89,7 +98,9 @@ line overrides the variable.
 Format: Integer
 
 .IP "-U" 10
-Unregisters the pbs_comm process.  Available under Windows only.
+Unregisters the 
+.B pbs_comm 
+process.  Available under Windows only.
 
 .IP "--version" 10
 Prints the PBS version and exits.  This option can only be used alone.
@@ -126,14 +137,16 @@ Format: Integer
 .br
 Example: PBS_COMM_THREADS=8
 
-.IP "PBS_COMM_LOGMASK" 10
+.IP "PBS_COMM_LOG_EVENTS" 10
 Parameter in /etc/pbs.conf.  Tells pbs_comm which log mask to use.  By
 default, pbs_comm produces few log messages.  You can choose more
 logging, usually for troubleshooting.
 .br
 Format: Integer
 .br
-Example: PBS_COMM_LOGMASK=<log level>
+Default: 511
+.br
+Example: PBS_COMM_LOG_EVENTS=<log level>
 
 .IP "PBS_LEAF_NAME" 10
 Parameter in /etc/pbs.conf.  Tells endpoint what name to use for
@@ -164,19 +177,24 @@ Example: PBS_START_COMM=1
 .SH COMMUNICATION DAEMON LOGFILES
 
 The pbs_comm daemon creates its log files under $PBS_HOME/comm_logs.
-This directory is automatically created by the PBS installer.  In a
+This directory is automatically created by the PBS installer.  
+
+In a
 failover configuration, this directory is in the shared PBS_HOME,
 and is used by the pbs_comm daemons running on both the primary and
 secondary servers.  This directory must never be shared across
 multiple pbs_comm daemons in any other case.
-.br
+
 The log filename format is yyyymmdd (the same as for other PBS
-daemons).  The log record format is the same as used by other pbs
+daemons).  
+
+The log record format is the same as used by other pbs
 daemons, with the addition of the thread number and the daemon name in
 the log record. The log record format is as follows:
-date-time;event_code;daemon_name(thread
-number);object_type;object_name;message
 .br
+<date and time>;<event code>;<daemon name>(<thread number>);<object
+type>;<object name>;<message>
+
 Example: 
 .br
 03/25/2014
@@ -188,12 +206,12 @@ The
 .B pbs_comm
 daemon handles the following signals:
 
-.IP "SIGHUP" 10
+.IP "HUP" 10
 Re-reads the value of
-.I PBS_COMM_LOGMASK
+.I PBS_COMM_LOG_EVENTS
 from pbs.conf.
 
-.IP "SIGTERM" 10
+.IP "TERM" 10
 The 
 .B pbs_comm
 daemon exits.

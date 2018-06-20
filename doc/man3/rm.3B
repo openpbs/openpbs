@@ -33,7 +33,6 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.\" @(#)string.3 1.32 90/02/03 TMP;
 .TH RM 3 "29 August 2011" Local "PBS Professional"
 .SH NAME
 openrm, closerm, downrm, configrm, addreq, allreq, getreq, flushreq, activereq, fullresp \- resource monitor API

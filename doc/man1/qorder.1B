@@ -33,27 +33,26 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH qorder 1B "5 Oct 2012" Local "PBS Professional"
+.TH qorder 1B "18 December 2017" Local "PBS Professional"
 .SH NAME
 .B qorder 
 \- exchange order of two PBS batch jobs.
 .SH SYNOPSIS
 .B qorder 
-job_identifier job_identifier
+<job ID> <job ID>
 .br
 .B qorder 
 --version
 .SH DESCRIPTION
 
-Allows the exchange of two jobs' positions in the queue or queues in
-which the jobs reside.  
+Exchanges positions in queue(s) of two jobs, whether in the same or different
+queue(s).
 
-No attribute of the job, e.g. priority, is changed.
+No attribute of either job, e.g. priority, is changed.
 The impact of interchanging the order within or between queues is dependent on local
 job scheduling policy; contact your systems administrator.  
 
-.SH RESTRICTIONS
-The two jobs must be located at the same server.
+.B Restrictions
 .br
 A job in the
 .B running
@@ -62,8 +61,11 @@ state cannot be reordered.
 The 
 .B qorder
 command can be used on job arrays, but not on subjobs or ranges of subjobs.
+.br
+The two jobs must be located at the same server.
 
-.SH EFFECT OF PRIVILEGE ON BEHAVIOR 
+.B Effect of Privilege on Behavior
+.br
 For an unprivileged user to reorder jobs, both jobs must be owned by
 the user.  A privileged user (Manager, Operator) can reorder any jobs.
 
@@ -76,19 +78,20 @@ This option can only be used alone.
 
 .SH OPERANDS
 Both operands are
-.I job_identifiers
+.I job IDs
 which specify the jobs to be exchanged.
 The 
 .B qorder
 command accepts two
-.I job_identifier
+.I job ID
 operands of the form:
 .RS 4
-.I "sequence_number[.server_name][@server]"
+.I <sequence number>[.<server name>][@<server name>]
+.br
+.I <sequence number>[][.<server name>][@<server name>]
 .RE
 
-The server specification for the two jobs must agree as to the current
-location of the two job ids.
+If you specify a server for both jobs, they must be at the same server.
 
 Note that some shells require that you enclose a job array identifier in
 double quotes.
@@ -96,22 +99,21 @@ double quotes.
 .SH STANDARD ERROR
 The 
 .B qorder 
-command will write diagnostic messages to standard error for each
+command writes diagnostic messages to standard error for each
 error occurrence.
+
 .SH EXIT STATUS
-Upon successful processing of all the operands presented to the
-.B qorder 
-command, the exit status will be a value of zero.
-.LP
+.IP "Zero" 8
+Upon successful processing of all operands
+.IP "Greater than zero" 8
 If the 
 .B qorder 
-command fails to process any operand, the
-command exits with a value greater than zero.
-\" turn off any extra indent left by the Sh macro
+command fails to process any operand
+
 .SH SEE ALSO
 The
-.B PBS Professional User's Guide,
+.I PBS Professional User's Guide,
 the
-.B PBS Professional Administrator's Guide,
+.I PBS Professional Administrator's Guide,
 .br
 qsub(1B), qmove(1B), pbs_orderjob(3B), pbs_movejob(3B)

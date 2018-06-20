@@ -36,30 +36,52 @@
 .TH nqs2pbs 1B "1 Oct 2009" Local "PBS Professional"
 .SH NAME
 .B nqs2pbs 
-- convert NQS job scripts to PBS
+- convert NQS job scripts to PBS format
 
 .SH SYNOPSIS
 .B nqs2pbs 
-nqs_script [\^pbs_script\^]
+<NQS script> [<PBS script>]
 .br
 .B nqs2pbs
 --version
 .SH DESCRIPTION
 This utility converts an existing NQS job script to work with PBS and NQS.
-The existing script is copied and PBS directives,
-.I #PBS ,
-are inserted prior to each NQS directive 
+The existing script is copied and PBS directives, using
+.I #PBS,
+are inserted prior to each NQS directive (
 .I #QSUB 
 or
-.I #@$ ,
-in the original script.
+.I #@$
+), in the original script.
 .LP
-Certain NQS date specification and options are not supported by PBS.
+Certain NQS date specifications and options are not supported by PBS.
 A warning message will be displayed indicating the problem and the line of
 the script on which it occurred.
 .LP
 If any unrecognizable NQS directives are encountered, an error message
 is displayed. The new PBS script will be deleted if any errors occur.
+
+.B Specifying Time or Date
+.br
+PBS will interpret a time specification without a date in the following way:
+.IP - 3
+If the time specified has not yet been reached, the job will become eligible
+to run at that time today.
+.IP -
+If the specified time has already passed when the job is submitted, the job
+will become eligible to run at that time tomorrow.
+.LP
+This command does not support time zone identifiers.  All times are taken as local
+time.
+
+Converting NQS date specifications to the PBS form may result in a warning
+message and an incompletely converted date.  PBS does not support date
+specifications of "today", "tomorrow", or the name of the days of the week
+such as "Monday".  If any of these are encountered in a script, the PBS
+specification will contain only the time portion of the NQS specification,
+i.e. #PBS -a hhmm[.ss].   It is suggested that you specify the execution
+time on the qsub command line rather than in the script.
+.LP
 
 .SH OPTIONS
 .IP "--version" 10
@@ -69,33 +91,14 @@ command returns its PBS version information and exits.
 This option must be used alone.
 
 .SH OPERANDS
-.IP nqs_script
+.IP  "NQS script"
 Specifies the file name of the NQS script to convert. This file is not
 changed.
-.IP pbs_script
-If specified, it is the name of the new PBS script. If not specified,
+.IP "PBS script"
+If specified, this is the name of the new PBS script. If not specified,
 the new file name is
 .I nqs_script.new .
 .LP
-.SH NOTES
-Converting NQS date specifications to the PBS form may result in a warning
-message and an incompletely converted date.  PBS does not support date
-specifications of "today", "tomorrow", or the name of the days of the week
-such as "Monday".  If any of these are encountered in a script, the PBS
-specification will contain only the time portion of the NQS specification,
-i.e. #PBS -a hhmm[.ss].   It is suggested that you specify the execution
-time on the qsub command line rather than in the script.
-.LP
-Note that PBS will interpret a time specification without a date in the
-following way:
-.IP - 3
-If the time specified has not yet been reached, the job will become eligible
-to run at that time today.
-.IP -
-If the specified time has already passed when the job is submitted, the job
-will become eligible to run at that time tomorrow.
-.LP
-PBS does not support time zone identifiers.  All times are taken as local
-time.
+
 .SH SEE ALSO
 qsub(1B)

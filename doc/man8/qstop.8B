@@ -33,29 +33,37 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH qstop 8B "15 September 2011" Local "PBS Professional"
+.TH qstop 8B "4 January 2018" Local "PBS Professional"
 .SH NAME
 .B qstop 
-- stop PBS batch job processing at a destination
+\- prevent PBS jobs in the specified queue from being scheduled or routed
 .SH SYNOPSIS
 .B qstop 
-destination ...
+<destination> [<destination> ...]
 .br
 .B qstop
 --version
 
 .SH DESCRIPTION
-The
-.B qstop
-command directs that a destination should stop processing batch jobs.
-If the destination is a execution queue, the server will cease
-scheduling jobs that reside in the queue for execution.  If the
-destination is a routing queue, the server will cease routing
-jobs from that queue.
-.LP
-.LP
-In order to execute qstop, the user must have PBS Operation or Manager
-privilege.
+
+If 
+.I destination 
+is an execution queue, the 
+.B qstop 
+command stops the
+scheduler from scheduling jobs residing in 
+.I destination.  
+If
+.I destination 
+is a routing queue, the server stops routing jobs from
+that queue.  Sets the value of the queue's 
+.I started 
+attribute to 
+.I False.
+
+.B Required Privilege
+.br
+You must have PBS Operator or Manager privilege to run this command.
 
 .SH OPTIONS
 .IP "--version" 8
@@ -65,38 +73,50 @@ command returns its PBS version information and exits.
 This option can only be used alone
 
 .SH  OPERANDS
-The qstop command accepts one or more
+The 
+.B qstop 
+command accepts one or more space-separated
 .I destination
-operands.  The operands are one of three forms:
-.RS 5
-.B queue
+operands.  The operands take one of three forms:
 .br
-.B @server
-.br
-.B queue@server
+.I <queue name>
+.RS 3
+Stops scheduling or routing from the specified queue.
 .RE
-If
-.B queue
-is specified, the request is to stop that queue at the default server.
-If the
-.B @server
-form is given, the request is to stop all the queues at that server.
-If a full destination identifier,
-.B queue@server
-, is given, the request is to stop the named queue at the named server.
+
+.I @<server name>
+.RS 3
+Stops scheduling or routing from all queues at the specified server.
+.RE
+
+.I <queue name>@<server name>
+.RS 3
+Stops scheduling or routing from the specified queue at the specified server.
+.RE
+
+To stop scheduling at all queues at the default server, use the 
+.B qmgr
+command:
+.RS 3
+.B Qmgr: set queue @default started=false
+.RE
+
 .SH STANDARD ERROR
-The qstop
-command will write a diagnostic message to standard error for
-each error occurrence.
+The 
+.B qstop
+command writes a diagnostic message to standard error for each error occurrence.
+
 .SH EXIT STATUS
-Upon successful processing of all the operands presented to the
-qstop
-command, the exit status will be a value of zero.
-.LP
-If the qstop command fails to process any operand, the
-command exits with a value greater than zero.
+.IP Zero 8
+Upon successful processing of all operands
+
+.IP "Greater than zero" 8
+If the 
+.B qstop 
+command fails to process any operand
+
 .SH SEE ALSO
 The
-.B PBS Professional Administrator's Guide
+.I PBS Professional Administrator's Guide
 and the following manual pages:
 pbs_server(8B), qstart(8B), and qmgr(8B)

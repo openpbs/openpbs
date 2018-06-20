@@ -33,14 +33,20 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_account 8B "15 September 2011" Local "PBS Professional"
+.TH pbs_account 8B "16 October 2017" Local "PBS Professional"
 .SH NAME
 .B pbs_account 
-\- manage PBS service account
+For Windows.  Manage PBS service account
 .SH SYNOPSIS
 .B pbs_account 
-[-a <PBS service account name>] [-c] [-s] [-p password] [--reg service_path] 
-[--unreg service_path] [-o output_path] [--ci]
+[-a <PBS service account name>] [-c [<password>]] [--ci] 
+.RS 12
+[--instid <instance ID>] [-o <output path>] 
+.br
+[-p [<password>]] [--reg <service path>] [-s] 
+.br
+[--unreg <service path>]
+.RE
 
 .SH DESCRIPTION
 The
@@ -58,14 +64,33 @@ This command is available on Windows only.
 
 .SH OPTIONS
 .IP "-a <account name>" 15
-Specifies account name.
+Specifies service account name.
 
 .IP "-c [<password>]" 15  
 If specified account does not exist, creates the account with the password.
 
 If specified account exists, validates password against it.
 
+Gives necessary privileges to the specified account: 
+.I Create Token Object, Replace Process Level Token, Log on as a Service, 
+and 
+.I Act as Part of the Operating System
+
 If password is not specified, user is prompted for password.
+
+.IP "--ci" 15
+Informational only.  Prints actions taken by pbs_account while
+creating PBS service account while operations are performed.
+
+.IP "instid <instance ID>" 15
+Specifies the instance ID when registering or unregistering multiple
+instances of a service.  Example:
+.RS 18
+pbs_account --reg "C:\\Program Files (x86)\\PBS Pro_2\\exec\\sbin\\pbs_mom" --instid 2 -a <username> -p <password>
+.br
+pbs_account --unreg "C:\\Program Files (x86)\\PBS Pro_2\\exec\\sbin\\pbs_mom" --instid 2
+
+.RE
 
 .IP "-o <output path>" 15   
 Prints stdout and stderr messages in specified output path.
@@ -74,33 +99,26 @@ Prints stdout and stderr messages in specified output path.
 Updates the PBS service account password. If no password is specified,
 the user is prompted for a password.
 
+.IP "--reg <path to service>" 15
+Registers the PBS service with the SCM, instructing it to run the services 
+under the PBS service account.  
+.I path to service
+must be in double quotes.
+
 .IP "-S" 15
 Adds necessary privileges to the PBS service account. Grants the
 "Create Token Object", "Replace Process Level Token", "Log On as a
 Service", and "Act as Part of the Operating System" privileges to PBS
 service account.
 
-.IP "--reg-server <path to server> [<password>]" 
-.IP "--reg-mom <path to MOM> [<password>]"
-.IP "--reg-sched <path to scheduler> [<password>]"
-.IP "--reg-rshd <path to rshd> [<password>]" 15
-Registers the PBS service with the SCM, instructing it to run the
-services under the PBS service account and supplied password. <path>
+.IP "--unreg <path to service>" 15
+Unregisters the PBS service with the SCM.  
+.I path to service
 must be in double quotes.
 
-.IP "--unreg-server <path to server>"
-.IP "--unreg-mom <path to MOM>"
-.IP "--unreg-sched <path to scheduler>"
-.IP "--unreg-rshd <path to rshd>" 15
-Unregisters the PBS service with the SCM. <path> must be in double
-quotes.
-
-.IP "--ci" 15
-Prints actions taken by pbs_account while creating PBS service account
-when -c option is used.
-
-.IP "<no options>" 15
+.IP "(no options)" 15
 Prints name of PBS service account, if it exists.  Exit value is 0.
+
 
 .SH Examples
 
@@ -110,17 +128,24 @@ pbs_account -c -s -p <password>
 .RE
 To change the PBS service account:
 .RS 4
-pbs_account [--reg service_path] [-a <PBS service account name>]
+pbs_account [--reg <service path>] -a <PBS service account name>
 .RE
-To register the server, scheduler, MOM, and rshd services:
+To register the server, scheduler, MoM, comm, and rshd services:
 .RS 4
 .nf
-pbs_account --reg "\Program Files\PBS Pro\exec\sbin\pbs_server.exe" [-p <password>]
+pbs_account --reg "\\Program Files\\PBS Pro\\exec\\sbin\\pbs_server.exe" -p <password>
 .br
-pbs_account --reg "\Program Files\PBS Pro\exec\sbin\pbs_mom.exe" [-p <password>]
+pbs_account --reg "\\Program Files\\PBS Pro\\exec\\sbin\\pbs_mom.exe" -p <password>
 .br
-pbs_account --reg "\Program Files\PBS Pro\exec\sbin\pbs_sched.exe" [-p <password>]
+pbs_account --reg "\\Program Files\\PBS Pro\\exec\\sbin\\pbs_sched.exe" -p <password>
 .br
-pbs_account --reg "\Program Files\PBS Pro\exec\sbin\pbs_rshd.exe" [-p <password>]
+pbs_account --reg "\\Program Files\\PBS Pro\\exec\\sbin\\pbs_comm.exe" -p <password>
+.br
+pbs_account --reg "\\Program Files\\PBS Pro\\exec\\sbin\\pbs_rshd.exe" -p <password>
 .fi
 .RE
+
+.SH Exit Value
+
+.IP "Zero" 15
+Upon success

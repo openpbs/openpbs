@@ -33,20 +33,17 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbsdsh 1B "24 February 2015" Local "PBS Professional"
+.TH pbsdsh 1B "13 October 2017" Local "PBS Professional"
 .SH NAME
 .B pbsdsh 
-\- distribute task(s) to vnodes under PBS
+\- distribute tasks to vnodes under PBS
 
 .SH SYNOPSIS
 .B pbsdsh 
-[-c copies] [-s] [-v] [-o] -- program [program_args]
+[-c <copies>] [-s] [-v] [-o] -- <program> [<program args>]
 .br
 .B pbsdsh 
-[-n node_index] [-s] [-v] [-o] 
-.RS 7
--- program [program_args]
-.RE
+[-n <vnode index>] [-s] [-v] [-o] -- <program> [<program args>]
 .br
 .B pbsdsh 
 --version
@@ -54,46 +51,79 @@
 .SH DESCRIPTION
 The 
 .B pbsdsh
-command executes (spawns) a normal application program on one or
-more nodes under control of
-the PBS.  
+command allows you to distribute and execute a task on each of the vnodes
+assigned to your job by executing (spawning) the application on each
+vnode.  The 
 .B pbsdsh 
-uses the Task Manager
-API to distribute the program on the allocated nodes.
-.LP
-When run without the -c or the -n option, 
+command uses the PBS Task Manager, or TM, to distribute the program on 
+the allocated vnodes.
+
+When run without the 
+.I -c 
+or the 
+.I -n 
+option, 
 .B pbsdsh 
 will spawn the program
-on all nodes allocated to the PBS job.  The spawns take place concurrently \-
+on all vnodes allocated to the PBS job.  The spawns take place concurrently;
 all execute at (about) the same time.
 
 Note that the double dash must come after the options and before the 
 program and arguments.  The double dash is only required for Linux.
 
+The 
+.B pbsdsh 
+command runs one task for each line in the $PBS_NODEFILE.  Each MPI rank 
+gets a single line in the $PBS_NODEFILE, so if you are running multiple 
+MPI ranks on the same host, you still get multiple 
+.B pbsdsh 
+tasks on that host.
+
+.B Example
+.br
+The following example shows the 
+.B pbsdsh 
+command inside of a PBS batch job. The options indicate that the user wants 
+.B pbsdsh 
+to run the myapp program with one argument (app-arg1) on all four vnodes 
+allocated to the job (i.e. the default behavior).
+
+.RS 5
+#!/bin/sh
+.br
+#PBS -l select=4:ncpus=1
+.br
+#PBS -l walltime=1:00:00
+
+pbsdsh ./myapp app-arg1
+.RE
+
 .SH OPTIONS
 .IP "-c copies"
 The program is spawned 
 .I copies
-times on the nodes allocated, one per node, unless
+times on the vnodes allocated, one per vnode, unless
 .I copies 
-is greater than the number of nodes.
-If this is true,
-it will wrap around, running multiple instances on some nodes.
+is greater than the number of vnodes.
+If 
+.I copies
+is greater than the number of vnodes, 
+it wraps around, running multiple instances on some vnodes.
 This option is mutually exclusive with 
 .I -n.
-.IP "-n node_index"
-The program is spawned only on the 
-.I node_index -th
-node allocated.  This option is mutually exclusive with 
+.IP "-n <vnode index>"
+The program is spawned only on a single vnode, which is the 
+.I vnode index -th
+vnode allocated.  This option is mutually exclusive with 
 .I -c.
+.IP -o
+No obit request is made for spawned tasks.  The program does not wait for
+the tasks to finish.
 .IP -s
-The program is run in turn on each 
-node, one after the other.
+Te program is run in turn on each vnode, one after the other.
 .IP -v
 Produces verbose output about error conditions and task exit status.
-.IP -o
-No obit request is made for spawned tasks.  The program will not wait for
-the tasks to finish.
+
 .IP --version
 The 
 .B pbsdsh
@@ -101,21 +131,23 @@ command returns its PBS version information and exits.
 This option can only be used alone
 
 .SH OPERANDS
+.IP program
 The first operand,
 .I program ,
 is the program to execute.  The double dash must precede the 
 .I program 
 under Linux.
 .LP
+.IP "program args"
 Additional operands,
-.I program_args ,
+.I program args ,
 are passed as arguments to the 
 .I program.
 
 .SH STANDARD ERROR
 The 
 .B pbsdsh 
-command will write a diagnostic message to standard error for
+command writes a diagnostic message to standard error for
 each error occurrence.
 
 .SH SEE ALSO

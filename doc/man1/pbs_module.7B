@@ -33,10 +33,10 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_module 7B "26 February 2015" Local "PBS Professional"
+.TH pbs_module 7B "20 April 2018" Local "PBS Professional"
 .SH NAME
 .B pbs_module
-\- description of the pbs module
+\- Python interface to PBS and PBS hook environment
 
 
 .SH DESCRIPTION
@@ -47,7 +47,7 @@ provides an interface to PBS and the hook environment.
 The interface is made up of Python objects, which have attributes and
 methods.  You can operate on these objects using Python code.
 For a description of each object, see the 
-.B PBS Professional Administrator's Guide.
+.I PBS Professional Administrator's Guide.
 
 .SH PBS MODULE OBJECTS
 
@@ -755,7 +755,9 @@ creation method.
 Creates a PBS 
 .I size 
 object out of the given string specification. 
-See the PBS Professional Reference Guide for suffix information.
+See the 
+.I PBS Professional Reference Guide 
+for suffix information.
 The size of a word
 is the word size on the execution host. 
 .I Size 
@@ -904,7 +906,7 @@ A message is printed to the daemon log.
 
 .SH SEE ALSO
 The
-.B PBS Professional Administrator's Guide,
+.I PBS Professional Administrator's Guide,
 .br
 pbs_hook_attributes(7B), pbs_resources(7B),
 qmgr(1B)

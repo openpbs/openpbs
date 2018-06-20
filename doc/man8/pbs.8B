@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs 8B "8 October 2012" Local "PBS Professional"
+.TH pbs 8B "13 October 2017" Local "PBS Professional"
 .SH NAME
 .B pbs 
 \- Start, stop, restart, or get the PIDs of PBS daemons
@@ -47,12 +47,18 @@
 .SH DESCRIPTION
 The
 .B pbs
-command starts, stops or restarts all PBS daemons on the local machine.
-Does not affect other hosts.
-It also reports the PIDs of all daemons when given the 
+command starts, stops or restarts all PBS daemons on the local machine, or
+reports the PIDs of all daemons when given the 
 .I status
-argument.
+argument.  Does not affect other hosts.
 
+You can start, stop, restart, or status the PBS daemons using the 
+.B systemctl
+command; see Starting and Stopping PBS in the PBS Professional Installation
+and Upgrade Guide.
+
+.B Caveats
+.br
 This command operates only on daemons that are marked as active
 in pbs.conf.  For example, if PBS_START_MOM is set to 0 in the local
 pbs.conf, this command will not operate on pbs_mom, and will not
@@ -61,33 +67,31 @@ start, stop, or restart pbs_mom.
 This command is typically placed in /etc/init.d so that 
 PBS starts up automatically.  
 
+.B Required Privilege
+.br
 Root privilege is required to use this command.
 
-For information on PBS Professional, see the 
-.B pbs_professional.7B
-man page.
-
 .SH ARGUMENTS
-
-.IP "start" 10
-Each daemon on the local machine is started.  PBS reports the number
-and type of licenses available, as well as the name of the license
-server.  Any running jobs are killed.
-
-.IP "stop" 10
-Each daemon on the local machine is stopped, and its PID is reported.
 
 .IP "restart" 10
 All daemons on the local machine are stopped, then they are restarted.
 PBS reports the name of the license server and the 
 number and type of licenses available.
 
+.IP "start" 10
+Each daemon on the local machine is started.  PBS reports the number
+and type of licenses available, as well as the name of the license
+server.  Any running jobs are killed.
+
 .IP "status" 10
 PBS reports the PID of each daemon on the local machine.
+
+.IP "stop" 10
+Each daemon on the local machine is stopped, and its PID is reported.
 
 
 .SH SEE ALSO
 The
 .B PBS Professional Administrator's Guide
 .br
-pbs_mom(8B), pbs_server(8B), pbs_sched(8B)
+pbs_mom(8B), pbs_server(8B), pbs_sched(8B), and pbs_comm(8B)

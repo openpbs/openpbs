@@ -33,31 +33,35 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH qenable 8B "23 August 2011" Local "PBS Professional"
+.TH qenable 8B "30 November 2017" Local "PBS Professional"
 .SH NAME
 .B qenable 
-- enable input to a PBS destination
+- allow a queue to accept jobs
 .SH SYNOPSIS
 .B qenable 
-destination ...
+<destination> [<destination> ...]
 .br
 .B qenable
 --version
 .SH DESCRIPTION
 The
 .B qenable
-command directs that a destination should accept batch jobs.
-.LP
-The qenable command sends a
-.I "Manage"
-request to the batch server specified by
-.I destination .
-If the command is accepted, the destination will accept
+command allows a queue to accept batch jobs.  Sets the value of 
+the queue's 
+.I enabled
+attribute to
+.I True.
+If the command is accepted, the 
+.I destination
+accepts
 .I "Queue Job"
-requests which specified the queue.
-.LP
-In order to execute qenable, the user must have PBS Operation or Manager
-privilege.
+requests.  
+
+.B Required Permission
+.br
+In order to execute 
+.B qenable, 
+the user must have PBS Operator or Manager privilege.
 
 .SH OPTIONS
 .IP "--version" 8
@@ -67,38 +71,45 @@ command returns its PBS version information and exits.
 This option can only be used alone.
 
 .SH  OPERANDS
-The qenable command accepts one or more
+The qenable command accepts one or more space-separated
 .I destination
-operands.  The operands are one of three forms:
-.RS 5
-.B queue
-.br
-.B @server
-.br
-.B queue@server
-.RE
-If
-.B queue
-is specified, the request is to enable that queue at the default server.
-If the
-.B @server
-form is given, the request is to enable all the queues at that server.
-If a full destination identifier,
-.B queue@server ,
-is given, the request is to enable the named queue at the named server.
-.SH STANDARD ERROR
-The qenable
-command will write a diagnostic message to standard error for
-each error occurrence.
-.SH EXIT STATUS
-Upon successful processing of all the operands presented to the
-qenable
-command, the exit status will be a value of zero.
+operands.  The operands take any of the following forms:
+
+.I <queue name>
+.IP " " 8
+Allows specified queue at default server to accept jobs.
 .LP
-If the qenable command fails to process any operand, the
-command exits with a value greater than zero.
+.I @<server name>
+.IP " " 8
+Allows all queues at specified server to accept jobs.
+.LP
+.I <queue name>@<server name>
+.IP " " 8
+Allows specified queue at specified server to accept jobs.
+.LP
+To allow all queues at the default server to accept jobs, 
+use the 
+.B qmgr 
+command:
+.br
+.B \ \ \ Qmgr: set queue @default enabled=true
+
+.SH STANDARD ERROR
+The 
+.B qenable
+command writes a diagnostic message to standard error for
+each error occurrence.
+
+.SH EXIT STATUS
+.IP Zero 8
+Upon successful processing of all the operands
+.IP "Greater than zero" 8
+If the 
+.B qenable 
+command fails to process any operand
+
 .SH SEE ALSO
 The
-.B PBS Professional Administrator's Guide
+.I PBS Professional Administrator's Guide
 and the following manual pages:
-pbs_server(8B), qdisable(8B), and qmgr(8B)
+pbs_server(8B), qmgr(8B), and qenable(8B)

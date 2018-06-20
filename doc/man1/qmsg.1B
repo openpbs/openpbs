@@ -33,90 +33,85 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH qmsg 1B "17 August 2011" Local "PBS Professional"
+.TH qmsg 1B "15 December 2017" Local "PBS Professional"
 .SH NAME
 .B qmsg 
-\- send message to PBS batch jobs
+- write message string into one or more job output files
 .SH SYNOPSIS
 .B qmsg
-[-E] [-O] message_string
-job_identifier ...
+[-E] [-O] <message string>
+<job ID> [<job ID> ...]
 .br
 .B qmsg
 --version
 
 .SH DESCRIPTION
-To send a message to a job is to write a message string into one or
-more output files of the job.  Typically this is done to leave an
-informative message in the output of the job.
-.LP
-The
-.B qmsg
-command writes messages into the files of jobs
-by sending a 
-.I "Message Job"
-batch request to the batch server that owns the job.
+Writes a message string into one or more output files of the job.
+Typically this is done to leave an informative message in the output
+of the job.  Also called "sending a message to a job".  
+
 The 
+.B qmsg
+command writes messages into the files of jobs by sending a 
+.I Message Job 
+batch request to the batch server that owns the job.  The 
 .B qmsg
 command does not directly write the message into the files of the job.
 
 The 
-.B qmsg
-command cannot be used on job arrays, subjobs or ranges of subjobs.
+.B qmsg 
+command cannot be used on job arrays, subjobs, or ranges of
+subjobs.
 
 .SH OPTIONS
-.IP "-E" 15
-Specifies that the message is written to the standard error of each job.
-.IP "-O" 15
-Specifies that the message is written to the standard output of each job.
-.IP "--version" 15
+.IP "-E" 8
+The message is written to the standard error of each job.
+
+.IP "-O" 8
+The message is written to the standard output of each job.
+
+.IP "--version" 8
 The 
 .B qmsg
 command returns its PBS version information and exits.
 This option can only be used alone.
-.LP
-If no option is specified, the message will be written to the standard
-error of the job.
+
+.IP "(no options)" 8
+The message is written to the standard error of each job.
 
 .SH  OPERANDS
-The first operand,
-.I message_string ,
-is the message to be written.  If the string contains blanks, the string
-must be quoted.
-If the final character of the string is not a newline, a newline character
-will be added when written to the job's file.
-.LP
-All following operands are
-.I job_identifiers
-which specify the jobs to receive the message string.
-The 
+.IP "message string" 8
+The message to be written. String.  First operand.  If the string contains
+blanks, the string must be quoted.  If the final character of the string 
+is not a newline, a newline character is added when written to the job's file.
+
+.IP "job ID" 8
+The job(s) to receive the message string.  This operand follows the 
+.I message string
+operand.  Cannot be a job array, subjob, or range of subjobs.  The 
 .B qmsg 
 command accepts one or more
-.I job_identifier
+.I job ID
 operands of the form:
-.RS 4
-.I "sequence_number[.server_name][@server]"
-.RE
-
 .br
+.I <sequence number>[.<server name>][@<server name>]
+
 .SH STANDARD ERROR
 The 
 .B qmsg
-command will write a diagnostic message to standard error for
+command writes a diagnostic message to standard error for
 each error occurrence.
+
 .SH EXIT STATUS
-Upon successful processing of all the operands presented to the
-.B qmsg
-command, the exit status will be a value of zero.
-.LP
-If the 
-.B qmsg 
-command fails to process any operand, the
-command exits with a value greater than zero.
+.IP Zero 8
+Upon success
+.IP "Greater than zero" 8
+Upon failure
+
 .SH SEE ALSO
 The
-.B PBS Professional User's Guide,
+.I PBS Professional User's Guide,
 the
-.B PBS Professional Administrator's Guide, 
+.I PBS Professional Administrator's Guide, 
 .br
 qsub(1B), pbs_msgjob(3B)

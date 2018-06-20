@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_tclsh 8B "23 August 2011" Local "PBS Professional"
+.TH pbs_tclsh 8B "22 November 2017" Local "PBS Professional"
 .SH NAME
 .B pbs_tclsh 
 - TCL shell with TCL-wrapped PBS API
@@ -41,22 +41,16 @@
 .B pbs_tclsh 
 
 .B pbs_tclsh 
--version
+--version
 .SH DESCRIPTION
 The
 .B pbs_tclsh
-is a version of the TCL shell which includes wrapped versions of
-the PBS external API. The PBS TCL API is documented in the
-.B pbs_tclapi
-(3B) manual page.
-
-Root privilege is required in order to query MOM for dynamic 
-resources.  Root privilege is not required in order to query
-MOM for built-in resources and site-defined static resources.
+command starts a version of the TCL shell which includes wrapped versions of
+the PBS external API. The PBS TCL API is documented in the pbs_tclapi(3B) manual page.
 
 The 
 .B pbs_tclsh
-command is used to query MOM.  For example:
+command is used to query MoM.  For example:
 
 .RS
 .nf
@@ -70,6 +64,13 @@ tclsh> closereq <file descriptor>
 .fi
 .RE
 
+.B Required Privilege
+.br
+Root privilege is required in order to query MoM for dynamic 
+resources.  Root privilege is not required in order to query
+MoM for built-in resources and site-defined static resources.
+
+
 .SH OPTIONS
 .IP "--version" 8
 The 
@@ -80,12 +81,13 @@ This option can only be used alone.
 .SH STANDARD ERROR
 The
 .B pbs_tclsh
-command will write a diagnostic message to standard error for
+command writes a diagnostic message to standard error for
 each error occurrence.
+
 .SH SEE ALSO
 The
-.B PBS Professional Administrator's Guide, 
+.I PBS Professional Administrator's Guide, 
 the 
-.B PBS Professional Programmer's Guide, 
+.I PBS Professional Programmer's Guide, 
 and the following manual pages:
 pbs_wish(8B), pbs_server(8B), pbs_mom(8B), pbs_sched(8B)

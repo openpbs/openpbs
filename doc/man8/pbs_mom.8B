@@ -33,24 +33,27 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_mom 8B "10 February 2016" Local "PBS Professional"
+.TH pbs_mom 8B "8 November 2017" Local "PBS Professional"
 .SH NAME
 .B pbs_mom 
-- The PBS job monitoring and execution daemon
+- run the PBS job monitoring and execution daemon
 .SH SYNOPSIS
 .B pbs_mom 
 [-a <alarm timeout>] 
-.RS 8
 [-C <checkpoint directory>] 
+.RS 8
 [-c <config file>] 
 [-d <MoM home directory>] 
 [-L <logfile>] 
+.br
 [-M <MoM service port>] 
+[-N]
 [-n <nice value>] 
-[-N] 
 [-p|-r] 
+.br
 [-R <inter-MoM communication port>] 
 [-S <server port>]
+.br
 [-s script_options]
 .RE
 .B pbs_mom
@@ -60,51 +63,56 @@
 The
 .B pbs_mom
 command starts the PBS job monitoring and execution daemon, called
-MOM.  
+MoM.  
 
-The standard MOM starts jobs on the execution host, monitors and reports
+The standard MoM starts jobs on the execution host, monitors and reports
 resource usage, enforces resource usage limits, and notifies the
-server when the job is finished.  The MOM also runs any prologue
+server when the job is finished.  The MoM also runs any prologue
 scripts before the job runs, and runs any epilogue scripts after the
 job runs.  
 
-The MOM performs any communication with job tasks and with other MOMs.
-The MOM on the first vnode on which a job is running manages
-communication with the MOMs on the remaining vnodes on which the job
+The MoM performs any communication with job tasks and with other MoMs.
+The MoM on the first vnode on which a job is running manages
+communication with the MoMs on the remaining vnodes on which the job
 runs.
 
-The MOM manages one or more vnodes.  PBS may treat a  host as 
-a set of virtual nodes, in which case one MOM would 
-manage all of the host's vnodes.  See the 
+The MoM manages one or more vnodes.  PBS may treat a  host as 
+a set of virtual nodes, in which case one MoM 
+manages all of the host's vnodes.  See the 
 .B PBS Professional Administrator's Guide.
 
-The MOM's log file is in PBS_HOME/mom_logs.  The MOM writes an
+.B Logging
+.br
+The MoM's log file is in PBS_HOME/mom_logs.  The MoM writes an
 error message in its log file when it encounters any error.  If it
 cannot write to its log file, it writes to standard error.  The
-MOM will write events to its log file.  
-The MOM writes its PBS 
+MoM writes events to its log file.  
+The MoM writes its PBS 
 version and build information to the logfile whenever it starts up or 
 the logfile is rolled to a new file.
 
+.B Required Permission
+.br
 The executable for 
 .B pbs_mom
-is in PBS_EXEC/sbin, and can be run only by root.
+is in PBS_EXEC/sbin, and can be run only by root on Linux, and Admin 
+on Windows.
 
-.B CPUSETS
+.B Cpusets
 .br
 A cpusetted machine can have a "boot cpuset" defined by the
 administrator.  A boot cpuset contains one or more CPUs and memory
 boards and is used to restrict the default placement of system
-processes, including login.  If defined, the boot cpuset will contain
+processes, including login.  If defined, the boot cpuset contains
 CPU 0.
 
 Run parallel jobs exclusively within a cpuset for repeatability of
-performance.  SGI states, "Using cpusets on an SGI system improves
+performance.  HPE SGI states, "Using cpusets on an HPE SGI system improves
 cache locality and memory access times and can substantially improve
 an application's performance and runtime repeatability."
 
-The CPUSET_CPU_EXCLUSIVE flag will prevent CPU 0 from being used by
-the MOM in the creation of job cpusets.  This flag is set by default,
+The CPUSET_CPU_EXCLUSIVE flag prevents CPU 0 from being used by
+the MoM in the creation of job cpusets.  This flag is set by default,
 so this is the default behavior.
 
 To find out which cpuset is assigned to a running job, use
@@ -116,56 +124,61 @@ field in the job's
 .I altid 
 attribute.
 
-.IP "SGI Machine Running Supported Versions of Performance Suite" 10
+.B HPE SGI Machine Running Supported Versions of Performance Software - 
+Message Passing Interface
+.br
 The cpusets created for jobs are marked cpu-exclusive.
 
-MOM does not use any CPU which was in use at startup.
+MoM does not use any CPU which was in use at startup.
 
 A PBS job can run across multiple machines that run supported versions 
-of Performance Suite.
+of Performance Software - Message Passing Interface.
 
-PBS can run using SGI's MPI (MPT) over InfiniBand.  See the 
+PBS can run using HPE SGI's MPI (MPT) over InfiniBand.  See the 
 .B PBS Professional Administrator's Guide.
 .LP
 
-.B Effect on Jobs of Starting MOM
+.B Effect on Jobs of Starting MoM
 .br
-When MOM is started or restarted, her default behavior is to leave
+When MoM is started or restarted, her default behavior is to leave
 any running processes running, but to tell the PBS server to requeue
-the jobs she manages.  MOM tracks the process ID of jobs across 
+the jobs she manages.  MoM tracks the process ID of jobs across 
 restarts.
 
 In order to have all jobs killed and requeued, use the 
 .I r
-option when starting or restarting MOM.
+option when starting or restarting MoM.
 
 In order to leave any running processes running, and not to requeue
 any jobs, use the 
 .I p
-option when starting or restarting MOM.
+option when starting or restarting MoM.
 
 .SH OPTIONS
 .IP "-a <alarm timeout>" 10
 Number of seconds before alarm timeout.  
 Whenever a resource request is processed, an alarm is set for the
 given amount of time.  If the request has not completed before 
-.I alarm_timeout, 
-the OS generates an alarm signal and sends it to MOM.  
+.I alarm timeout, 
+the OS generates an alarm signal and sends it to MoM.  
 Default: 10 seconds.  Format: integer.
 
 .IP "-C <checkpoint directory>" 10
-Specifies the path of the directory used to hold checkpoint files.
-MOM passes this path to checkpoint and restart scripts.  Overrides 
-other checkpoint path specification methods.
-Only valid on systems supporting checkpoint/restart.  The default
-directory is PBS_HOME/spool/checkpoint.  Any directory specified with
-the -C option must be owned by root and accessible (rwx) only by root
+Specifies the path of the directory where MoM creates job-specific
+subdirectories used to hold each job's restart files.  MoM passes this
+path to checkpoint and restart scripts.  Overrides other checkpoint
+path specification methods.  Any directory specified with the
+.I -C 
+option must be owned, readable, writable, and executable by root only 
+.I (rwx,---,---, or 0700), 
 to protect the security of the checkpoint files.  See the 
 .I -d 
 option.  Format: string.
+.br
+Default: PBS_HOME/spool/checkpoint.  
 
 .IP "-c <config file>" 10
-MOM will read this alternate default configuration file upon starting.
+MoM will read this alternate default configuration file upon starting.
 If this is a relative file name it will be relative to
 PBS_HOME/mom_priv.  If the specified file cannot be opened,
 .B pbs_mom 
@@ -173,8 +186,8 @@ will abort.  See the
 .I -d 
 option.
 
-MOM's normal operation, when the -c option is not given, is to attempt
-to open the default configuration file "config" in PBS_HOME/mom_priv.
+MoM's normal operation, when the -c option is not given, is to attempt
+to open the default configuration file PBS_HOME/mom_priv/config.
 If this file is not present,
 .B pbs_mom 
 will log the fact and continue.
@@ -194,7 +207,7 @@ See the
 option.  Format: string.
 
 .IP "-M <MoM port>" 10
-Specifies the number of the port on which MOM will
+Specifies the number of the port on which MoM will
 listen for server requests and instructions.  Overrides 
 PBS_MOM_SERVICE_PORT setting in pbs.conf and environment variable.
 Default: 15002.
@@ -206,21 +219,21 @@ Specifies the priority for the
 daemon.  Format: integer.
 
 .IP "-N" 10
-Specifies that when starting, MOM should not detach from the
+Specifies that when starting, MoM should not detach from the
 current session.
 
 .IP "-p" 10
-Specifies that when starting, MOM should allow any running jobs
+Specifies that when starting, MoM should allow any running jobs
 to continue running, and not have them requeued.  This option 
 can be used for single-host jobs only; multi-host jobs cannot
 be preserved.
 Cannot be used with the
 .I -r
 option.  
-MOM is not the parent of these jobs.
+MoM is not the parent of these jobs.
 
 .RS
-.IP "SGI machine  running Performance Suite" 5
+.IP "HPE SGI systems running Performance Software - Message Passing Interface" 5
 The cpuset-enabled
 .B pbs_mom 
 will, if given the 
@@ -228,45 +241,46 @@ will, if given the
 flag, use the existing CPU and memory allocations for the /PBSPro
 cpusets.
 The default behavior is to remove these cpusets.
-Should this fail, MOM will exit, asking to be restarted with the
+Should this fail, MoM will exit, asking to be restarted with the
 .I -p
 flag.
 .LP
 .RE
 
 .IP "-r" 10
-Specifies that when starting, MOM should requeue any rerunnable jobs and 
+Specifies that when starting, MoM should requeue any rerunnable jobs and 
 kill any non-rerunnable jobs that 
 she was tracking, and mark the 
 jobs as terminated.  Cannot be used with the
 .I -p
 option.  
-MOM is not the parent of these jobs.  
+MoM is not the parent of these jobs.  
 
 It is not recommended to use the 
 .I -r 
 option after a reboot, because process IDs of new, legitimate tasks
-may match those MOM was previously tracking.  If they match and MOM is
+may match those MoM was previously tracking.  If they match and MoM is
 started with the 
 .I -r
-option, MOM will kill the new tasks.
+option, MoM will kill the new tasks.
 
 .IP "-R <inter-MoM communication port>" 10
-Specifies the number of the port on which MOM will listen for pings,
-resource information requests, communication from other MOMs, etc.  
+Specifies the number of the port on which MoM will listen for pings,
+resource information requests, communication from other MoMs, etc.  
 Overrides PBS_MANAGER_SERVICE_PORT setting in pbs.conf and environment variable.
 Default:  15003.  Format: integer port number.
 
 .IP "-S <server port>" 10
-Specifies the number of the port on which 
+Specifies the port number on which 
 .B pbs_mom
 initially contacts the server.  Default: 15001.  Format: integer port number.
 
 .IP "-s <script options>" 5
 This option provides an interface that allows the administrator to
-add, delete, and display MOM's configuration files.  See 
+add, delete, and display MoM's configuration files.  See 
 .B CONFIGURATION FILES.  
-.I script_options 
+The 
+.I script options 
 are used this way:
 .RS
 .IP "-s insert <scriptname> <inputfile>" 5
@@ -307,7 +321,8 @@ Causes the contents of the named script to be printed to
 standard output.  If 
 .I scriptname 
 does not exist, the
-operation fails, a diagnostic is presented, and pbs_mom
+operation fails, a diagnostic is presented, and 
+.B pbs_mom
 exits with a nonzero status.  Example:
 
 .B pbs_mom -s show <scriptname> 
@@ -316,7 +331,7 @@ exits with a nonzero status.  Example:
 Causes 
 .B pbs_mom 
 to list the set of PBS-prefixed and site-defined configuration
-files in the order in which they will be executed.  Example:
+files in the order in which they are executed.  Example:
 
 .B pbs_mom -s list
 
@@ -350,7 +365,7 @@ command returns its PBS version information and exits.
 This option can only be used alone.
 
 .SH CONFIGURATION FILES
-MOM's configuration information can be contained in configuration
+MoM's configuration information can be contained in configuration
 files of three types: 
 .I default, PBS-prefixed, 
 and 
@@ -359,7 +374,7 @@ The
 default configuration file is usually PBS_HOME/mom_priv/config.  The
 "PBS" prefix is reserved for files created by PBS.  Site-defined
 configuration files are those created by the site administrator.
-MOM reads the configuration files at startup and reinitialization.  
+MoM reads the configuration files at startup and reinitialization.  
 The files are processed in this order:
 .br
      The default configuration file
@@ -386,10 +401,9 @@ This adds the configuration file "update_script".
 Configuration files can be added, deleted and displayed using
 the 
 .I -s
-option.  An attempt to create or remove a file with the "PBS" prefix
-will result in an error.
+option.  
 
-MOM's configuration files can use either the syntax shown 
+MoM's configuration files can use either the syntax shown 
 below under 
 .B Default Syntax and Contents
 or the syntax for describing 
@@ -405,12 +419,11 @@ PBS places PBS-prefixed and site-defined configuration files
 in an area that is private to each installed instance of PBS.
 This area is relative to the default PBS_HOME.  Note that the 
 .I -d 
-option changes where MOM looks for PBS_HOME, and using this option will
-prevent MOM from finding any but the default configuration file.
+option changes where MoM looks for PBS_HOME.
 
 The 
 .I -c
-option will change which default configuration file MOM reads.
+option will change which default configuration file MoM reads.
 
 Site-defined configuration files can be moved from one installed
 instance of PBS to another.  Do not move PBS-prefixed configuration
@@ -440,7 +453,7 @@ to create a copy of each site-defined configuration file.
 .br
 Configuration files with the following syntax describe vnodes and
 the resources available on them.  They do not contain initialization 
-values for MOM.
+values for MoM.
 See the 
 .B PBS Professional Administrator's Guide
 for a definition of 
@@ -501,8 +514,8 @@ follows:
 .br
 .IP "" 5
 The name of the natural vnode is, by convention,
-the MOM contact name, which is usually the hostname.
-The MOM contact name is the vnode's MOM attribute.  See the
+the MoM contact name, which is usually the hostname.
+The MoM contact name is the vnode's MoM attribute.  See the
 .B pbs_node_attributes(7B) man page.
 
 .IP "" 5
@@ -527,7 +540,7 @@ entity of type X may be assumed to be smaller (that is, be
 capable of containing fewer vnodes) than one of type Y.  No such
 guarantee is made for specific instances of the types.
 
-For example, on an SGI machine named "HostA", with two vnodes, a natural
+For example, on an HPE SGI machine named "HostA", with two vnodes, a natural
 vnode, four processors and two cbricks, the description would
 look like this:
 .br
@@ -557,7 +570,7 @@ The first vnode uses cbrick-0, and the second one uses cbrick-1.
 .B Default Syntax and Contents
 .br
 Configuration files with this syntax list local resources and
-initialization values for MOM.  Local resources are either static,
+initialization values for MoM.  Local resources are either static,
 listed by name and value, or externally-provided, listed by name and
 command path.  See the
 .I -c
@@ -569,7 +582,8 @@ separated by white space.  Comments begin with a hashmark ("#").
 The default configuration file must be secure.  It must be owned by a user ID
 and group ID both less than 10 and must not be world-writable.
 
-.IP "Externally-provided Resources" 10
+.B Externally-provided Resources
+.br
 Externally-provided resources use a shell escape to run a command.
 These resources are described with a name and value, 
 where the first character of the value is an exclamation mark ("!").
@@ -592,54 +606,70 @@ no matching token in the command line, "escape[zzz=snafu]", an error
 is reported.
 .LP
 
-.IP "Initialization Values" 10
-Initialization value directives have names beginning with a
-dollar sign ("$").
-See 
-.B The PBS Professional Administrator's Guide.
+.B Windows Notes
+.br
+If the argument to a MoM option is a pathname containing a space,
+enclose it in double quotes as in the following:
 
-.RS
-.IP "$action <default_action> <timeout> <new_action>" 5
+hostn !"\\Program Files\\PBS Pro\\exec\\bin\\hostn" host
+
+When you edit any PBS configuration file, make sure that you put a
+newline at the end of the file.  The Notepad application does not
+automatically add a newline at the end of a file; you must explicitly
+add the newline.
+
+
+
+.B Replacing Actions
+.br
+.IP "$action <default action> <timeout> <new action>" 5
 Replaces the 
-.I default_action
+.I default action
 for an event with the site-specified
-.I new_action.  
+.I new action.  
 .I timeout
 is the time allowed for 
-.I new_action 
+.I new action 
 to run.  See 
 .B The PBS Professional Administrator's Guide.  
 The 
-.I default_action 
+.I default action 
 can be one of:
 .RS
 .IP "checkpoint" 5
 Run
-.I new_action 
+.I new action 
 in place of the periodic job checkpoint, after which the job 
 continues to run.
 .IP "checkpoint_abort" 5
 Run
-.I new_action 
-to checkpoint the job, after which the job is terminated.
-.IP "multinodebusy" 5
+.I new action 
+to checkpoint the job, after which the job must be terminated by the script.
+.IP "multinodebusy <timeout> requeue" 5
 Used with cycle harvesting and multi-vnode jobs.
-Changes default action when a vnode becomes busy.  Instead of 
-allowing the job to run, the job is requeued.
-The
-.I new_action 
+Changes default behavior when a vnode becomes busy.  Instead of 
+allowing the job to run, the job is requeued.  
+.I timeout
+is ignored.  The only
+.I new action 
 is 
 .I requeue.  
 .IP "restart" 5
 Runs 
-.I new_action 
+.I new action 
 in place of 
 .I restart.
 .IP "terminate" 5
 Runs 
-.I new_action 
-in place of SIGTERM or SIGKILL when MOM terminates a job.
+.I new action 
+in place of SIGTERM or SIGKILL when MoM terminates a job.
 .RE
+
+.SH Initialization Values
+Initialization value directives have names beginning with a
+dollar sign ("$").
+See 
+.B The PBS Professional Administrator's Guide.
 
 .IP "$alps_client <path>" 5
 Cray only.  MoM runs this command to get the ALPS inventory.  Must 
@@ -665,7 +695,7 @@ Format: Seconds, specified as positive integer.
 Default: 600 (10 minutes)
 
 .IP "$checkpoint_path <path>" 5
-MOM passes this path to checkpoint and restart scripts.
+MoM passes this path to checkpoint and restart scripts.
 This path can be absolute or relative to PBS_HOME/mom_priv.
 Overrides default.  Overridden by 
 .I pbs_mom -C 
@@ -674,11 +704,11 @@ option and by
 environment variable.
 .IP "$clienthost <hostname>" 5
 .I hostname 
-is added to the list of hosts which will be allowed
-to connect to MOM as long as they are using a privileged port.
+is added to the list of hosts which are allowed
+to connect to MoM as long as they are using a privileged port.
 For example, 
-this will allow the hosts "fred" and "wilma"
-to connect to MOM:
+this allows the hosts "fred" and "wilma"
+to connect to MoM:
 .br
  "$clienthost      fred"
 .br
@@ -689,7 +719,7 @@ The following hostnames are added to
 .I $clienthost 
 automatically: the
 server, the localhost, and if configured, the secondary server.  The
-server sends each MOM a list of the hosts in the nodes file, and these
+server sends each MoM a list of the hosts in the nodes file, and these
 are added internally to 
 .I $clienthost.  
 None of these hostnames need to
@@ -697,7 +727,7 @@ be listed in the configuration file.
 
 Two hostnames are always allowed to connect to 
 .B pbs_mom, 
-"localhost" and the name returned to MOM 
+"localhost" and the name returned to MoM 
 by the system call gethostname().  These
 hostnames do not need to be listed in the configuration file.  
 
@@ -707,16 +737,15 @@ sisterhood will accept connections from within the
 sisterhood.  The sisterhood must all use the same port number.
 
 .IP "$cpuset_error_action <action>" 5
-When using a cpuset-enabled MOM, specifies the action taken when 
+When using a cpuset-enabled MoM, specifies the action taken when 
 a cpuset creation error occurs.  Can take one of the following values:
 .RS 5
 .IP continue 3
-The error will cause the job to be purged
+The error is logged and the job is killed and requeued.
 .IP offline 3
-The error will cause the vnodes in the job's exec_vnode list
-that belong to this MOM to be marked as 
-.I offline
-and the job to be requeued.
+The vnodes on this host for this job are marked
+.I offline,
+and the job is requeued.
 .LP
 .br
 Format: String
@@ -732,7 +761,7 @@ This sets a
 .I factor 
 used to adjust CPU time used by each job.  This allows adjustment of time
 charged and limits enforced where jobs run on a system with
-different CPU performance.  If MOM's system is faster than the
+different CPU performance.  If MoM's system is faster than the
 reference system, set
 .I factor
 to a decimal value greater than 1.0.  For example:
@@ -740,7 +769,7 @@ to a decimal value greater than 1.0.  For example:
 $cputmult 1.5
 .RE
 .IP
-If MOM's system is slower, set 
+If MoM's system is slower, set 
 .I factor 
 to a value between 1.0 and 0.0.  For example:
 .RS 9
@@ -757,23 +786,23 @@ $dce_refresh_delta 18000
 .IP
 
 .IP "$enforce <limit>" 5
-MOM will enforce the given 
+MoM will enforce the given 
 .I limit.
 Some
 .I limits
-have associated values, and appear in the configuration file like this:
+have associated values.  Syntax:
 .br
-.B $enforce variable_name value
+.I $enforce <variable name> <value>
 .br
 See 
 .B The PBS Professional Administrator's Guide.
 
 .RS
 .IP "$enforce mem" 5
-MOM will enforce each job's memory limit.
+MoM will enforce each job's memory limit.
 
 .IP "$enforce cpuaverage" 5
-MOM will enforce ncpus when the average CPU usage over a job's
+MoM will enforce ncpus when the average CPU usage over a job's
 lifetime usage is greater than the job's limit.
 
 .RS
@@ -804,7 +833,7 @@ limit.  Default: 1.025.  Float.
 
 
 .IP "$enforce cpuburst" 5
-MOM will enforce the ncpus limit when CPU burst usage exceeds
+MoM will enforce the ncpus limit when CPU burst usage exceeds
 the job's limit.
 
 .RS
@@ -825,16 +854,13 @@ to produce actual limit.  Default: 1.5.  Float.
 .IP "$enforce delta_weightup <factor>" 5
 Modifies 
 .I cpuburst.
-Weighting 
-.I factor
-for smoothing burst usage when average is increasing.  Default: 0.4.
+Weighting factor for smoothing burst usage when average is increasing.  Default: 0.4.
 Float.
 
 .IP "$enforce delta_weightdown <factor>" 5
 Modifies 
 .I cpuburst.
-Weighting 
-.I factor
+Weighting factor
 for smoothing burst usage when average is decreasing.  Default: 0.4.
 Float.
 .RE
@@ -858,7 +884,7 @@ which is only internally visible.
 .LP
 .RE
 
-.IP "$jobdir_root <stage_directory_root>
+.IP "$jobdir_root <stage directory root>
 Directory under which PBS creates job-specific staging and execution directories.
 PBS creates a job's staging and execution directory when the job's 
 .I sandbox
@@ -868,9 +894,9 @@ is unset, it defaults to the job owner's home directory.
 In this case the user's home directory must exist.  
 If 
 .I stage_directory_root
-does not exist when MOM starts up, MOM will abort.  If 
-.I stage_directory_root
-does not exist when MOM tries to run a job, MOM will kill the job.
+does not exist when MoM starts up, MoM will abort.  If 
+.I stage directory root
+does not exist when MoM tries to run a job, MoM will kill the job.
 Path must be owned by root, and permissions must be 1777.  On Windows,
 this directory should have Full Control Permission for the local
 Administrators group.
@@ -879,21 +905,21 @@ Administrators group.
 $jobdir_root /scratch/foo
 .RE
 
-.IP "$kbd_idle <idle_wait> <min_use> <poll_interval>" 5
+.IP "$kbd_idle <idle wait> <min use> <poll interval>" 5
 Declares that the vnode will be used for batch jobs during periods when
 the keyboard and mouse are not in use.  
 
 The vnode must be idle for a minimum of 
-.I idle_wait
+.I idle wait
 seconds before being considered available for batch jobs.  
 No default.  Integer.
 
 The vnode must be in use for a minimum of 
-.I min_use
+.I min use
 seconds before it becomes unavailable for batch jobs.  Default: 10.  Integer.
 
 Mom checks for activity every
-.I poll_interval
+.I poll interval
 seconds.  Default: 1.  Integer.
 .RS
 .IP "Example:" 5
@@ -927,7 +953,8 @@ DEBUG4     0800       Limit-related messages
 .fi
 
 .IP "$max_check_poll <seconds>" 5
-Maximum time between polling cycles, in seconds.  See the 
+Maximum time between polling cycles, in seconds.  Minimum recommended
+value: 30 seconds.  See the 
 .B PBS Professional Administrator's Guide
 for usage.  
 
@@ -947,10 +974,45 @@ Minimum value: 1 second
 .br
 Default value: 120 seconds
 
+.IP "$max_load <load> [suspend]" 5
+Defines the load above which the vnode is considered to be busy.
+Used with 
+the 
+.I $ideal_load 
+directive. No new jobs are started on a 
+.I busy
+vnode.
+
+The optional 
+.I suspend 
+directive tells PBS to suspend jobs running on
+the vnode if the load average exceeds the 
+.I $ max_load 
+number, regardless of the source of the load (PBS and/or logged-in users).
+Without this directive, PBS will not suspend jobs due to load.
+
+We recommend setting 
+.I load
+to a value that is slightly higher than the number of CPUs, 
+for example 0.25 + 
+.I ncpus.
+
+.br
+Default: number of CPUs on machine
+.br
+Format: Float  
+.br
+Example:
+.RS 8
+$max_load 3.5
+.RE
+.IP
+
 .IP "$min_check_poll <seconds>" 5
 Minimum time between polling cycles, in seconds.  Must be 
 greater than zero and less than
-.I $max_check_poll.
+.I $max_check_poll.  
+Minimum recommended value: 10 seconds.
 .br
 Format: Integer.
 .br
@@ -958,110 +1020,81 @@ Minimum value: 1 second
 .br
 Default value: 10 seconds
 
-
-.IP "$max_load <load> [suspend]" 5
-Defines the 
-.I load 
-above which the vnode is considered to be busy.
-Used with 
-the 
-.I $ideal_load 
-directive.  
-.br
-Default: number of CPUs. 
-.br
-Format: Float.  
-.br
-Example:
-.RS 8
-$max_load 3.5
-.RE
-.IP
-Use of $max_load adds a static resource to the vnode called "max_load", 
-which is only internally visible.
-
-The optional 
-.I suspend 
-directive tells PBS to suspend jobs running on
-the node if the load average exceeds the 
-.I max_load 
-number, regardless of the source of the load (PBS and/or logged-in users).
-Without this directive, PBS will not suspend jobs due to load.
-
 .IP "$prologalarm <timeout>" 5
 Defines the maximum number of seconds the prologue and epilogue
-may run before timing out.  Default: 30.  Integer.
+may run before timing out.  Default: 30 seconds.  Integer.
 Example:
 .RS 8
 $prologalarm 30
 .RE
 .IP
 
-.IP "$reject_root_scripts <true|false>" 5
+.IP "$reject_root_scripts <True | False>" 5
 When set to 
 .I True,
-MoM won't run any hook scripts, and MoM won't run job scripts that would execute
-as root or Admin.
+MoM won't aquire any new hook scripts, and MoM won't run job scripts that would execute
+as root or Admin. However, MoM will run previously-aquired hooks that run as root.
 .br 
 Format: Boolean
 .br
 Default: False
 
-.IP "$restart_background <true|false>" 5
-Controls how MOM runs a restart script after checkpointing a job.
+.IP "$restart_background <True | False>" 5
+Controls how MoM runs a restart script after checkpointing a job.
 When this option is set to 
-.I true, 
-MOM forks a child which runs the restart script.  The child returns
-when all restarts for all the local tasks of the job are done.  MOM
+.I True, 
+MoM forks a child which runs the restart script.  The child returns
+when all restarts for all the local tasks of the job are done.  MoM
 does not block on the restart.  When this option is set to 
-.I false,
-MOM runs the restart script and waits for the result.
+.I False,
+MoM runs the restart script and waits for the result.
 .br
 Format: Boolean
 .br  
-Default: false
+Default: False
 
 
-.IP "$restart_transmogrify <true|false>" 5
-Controls how MOM runs a restart script after checkpointing a job.
+.IP "$restart_transmogrify <True | False>" 5
+Controls how MoM runs a restart script after checkpointing a job.
 When this option is set to 
-.I true, 
-MOM runs the restart script, replacing the session ID of the original 
+.I True, 
+MoM runs the restart script, replacing the session ID of the original 
 task's top process with the session ID of the script.  
 
 When this option is set to 
-.I false,
-MOM runs the restart script and waits for the result.  The restart
+.I False,
+MoM runs the restart script and waits for the result.  The restart
 script must restore the original session ID for all the processes of
-each task so that MOM can continue to track the job.  
+each task so that MoM can continue to track the job.  
 
 When this option is set to 
-.I false
+.I False
 and the restart uses an external command, the configuration parameter
-.B restart_background
+.I restart_background
 is ignored and treated as if it were set to 
-.I true,
-preventing MOM from blocking on the restart.
+.I True,
+preventing MoM from blocking on the restart.
 .br
-Format: Boolean.  
+Format: Boolean
 .br
-Default: false.
+Default: False
 .br
 
-
-.IP "$restrict_user <value>" 5
+.IP "$restrict_user <True | False>" 5
 Controls whether users not submitting jobs have access to this
 machine.  If 
 .I value
-is "on", restrictions are applied.  See 
+is 
+.I True, 
+restrictions are applied.  See 
 .I $restrict_user_exceptions
 and 
 .I $restrict_user_maxsysid.
 Not supported on Windows.
 .br
-Format: Boolean.  
+Format: Boolean
 .br
-Default: off.
+Default: False
 
 .IP "$restrict_user_exceptions <user_list>" 5
 Comma-separated list of users who are exempt from access
@@ -1078,7 +1111,9 @@ $restrict_user.
 
 If 
 .I $restrict_user 
-is on and no 
+is 
+.I True 
+and no 
 .I value
 exists for 
 .I $restrict_user_maxsysid, 
@@ -1091,9 +1126,10 @@ Integer.  Default: 999
 .IP "$restricted <hostname>" 5
 The 
 .I hostname
+is added to the list of hosts which are allowed to connect to MoM 
+without being required to use a privileged port.  
 
-is added to the list of hosts which will be allowed to connect to MOM 
-without being required to use a privileged port.  Hostnames can be
+Hostnames can be
 wildcarded.  For example, to allow queries from any host from the 
 domain "xyz.com":
 .RS 9
@@ -1104,40 +1140,58 @@ Queries from the hosts in the restricted list are only allowed
 access to information internal to this host, such as load
 average, memory available, etc.  They may not run shell commands.
 
-.IP "$suspendsig <suspend_signal> [resume_signal]" 5
+.IP "$suspendsig <suspend signal> [resume signal]" 5
 Alternate signal 
-.I suspend_signal
+.I suspend signal
 is used to suspend jobs instead of SIGSTOP.  Optional 
-.I resume_signal
+.I resume signal
 is used to resume jobs instead of SIGCONT.
 
 .IP "$tmpdir <directory>" 5
 Location where each job's scratch directory will be created.
-Default on UNIX: /tmp. 
+
+PBS creats a temporary directory for use by the job, not by PBS.
+PBS creates the directory before the the job is run and removes 
+the directory and its contents when the job is finished.  It is 
+scratch space for use by the job.  Permission must be 1777 on
+Linux, writable by 
+.I Everyone 
+on Windows.
+
+Example: 
 .RS 9
 $tmpdir /memfs
 .RE
-.IP
-On Windows, default is value of the
-.I TMP
-environment variable.  Permission must be 1777 on UNIX/Linux, 
-writable by Everyone on Windows.
 
-.IP "$usecp <hostname:source_prefix> <destination_prefix>" 5
-MOM will use /bin/cp to deliver output files when
+.IP
+Default on Linux: /var/tmp
+.br
+Default on Windows: value of the
+.I TMP
+environment variable 
+
+.IP "$usecp <hostname:source prefix> <destination prefix>" 5
+MoM uses /bin/cp to deliver output files when
 the destination is a network mounted file system, or when
 the source and destination are both on the local host, or when
 the 
-.I source_prefix 
+.I source prefix 
 can be replaced with the 
-.I destination_prefix
+.I destination prefix
 on 
 .I hostname.  
 Both
-.I source_prefix
+.I source prefix
 and 
-.I destination_prefix
-are absolute pathnames of directories, not files.  Use trailing
+.I destination prefix
+are absolute pathnames of directories, not files.  
+
+Overrides 
+.I PBS_RCP
+and 
+.I PBS_SCP.
+
+Use trailing
 slashes on both source and destination.  For example:
 .RS 9
 $usecp HostA:/users/work/myproj/ /sharedwork/proj_results/
@@ -1145,32 +1199,33 @@ $usecp HostA:/users/work/myproj/ /sharedwork/proj_results/
 .IP
 
 .IP "$vnodedef_additive" 5
-Specifies whether MOM considers a vnode that appeared previously
+Specifies whether MoM considers a vnode that appeared previously
 either in the inventory or in a vnode definition file, but that does
 not appear now, to be in her list of vnodes.
 .br
 When 
 .I $vnodedef_additive 
-is True, MOM treats missing vnodes as if they
+is True, MoM treats missing vnodes as if they
 are still present, and continues to report them as if they are
 present.  This means that the server does not mark missing vnodes as
-stale.
+.I stale.
 .br
 When 
 .I $vnodedef_additive 
-is False, MOM does not list missing vnodes,
+is False, MoM does not list missing vnodes,
 the server's information is brought up to date with the inventory and
-vnode definition files, and the server marks missing vnodes as stale.
+vnode definition files, and the server marks missing vnodes as 
+.I stale.
 .br
 Visible in configuration file on Cray only.
 .br
 Format: Boolean
 .br
-Default for MOM on Cray login node: False
+Default for MoM on Cray login node: False
 
 
 .IP "$wallmult <factor>" 5
-Each job's walltime usage is multiplied by this 
+Each job's walltime usage is multiplied by 
 .I factor.
 For example:
 .RS 9
@@ -1180,8 +1235,8 @@ $wallmult 1.5
 
 .RE
 
-.IP "Cray-only Initialization Values" 10
-.RS
+.B Cray-only Initialization Values
+.br
 .IP "pbs_accounting_workload_mgmt <value>" 5
 Controls whether CSA accounting is enabled.  Name does not start
 with dollar sign.  If set to "1", "on", or "true", 
@@ -1189,23 +1244,16 @@ CSA accounting is enabled.  If set to "0", "off", or
 "false", accounting is disabled.  Default: "true"; enabled.
 .RE
 
-.IP "SGI-only Initialization Values" 10
-.RS
+.B HPE SGI-only Initialization Values
+.br
 .IP "cpuset_create_flags <flags>" 5
-Lists the flags for when MOM does a cpusetCreate(3) for each job. 
+Lists the flags for when MoM does a cpusetCreate(3) for each job. 
 .I flags
 is an or-ed list of flags.  
 The flags are:
 .RS
 
-.IP "SGI machine with Performance Suite" 5
-CPUSET_CPU_EXCLUSIVE
-.br
-0
-.br
-Default: CPUSET_CPU_EXCLUSIVE
-
-.IP "ICE with Performance Suite" 5
+.IP "HPE SGI formerly known as ICE, with Performance Software - Message Passing Interface" 5
 CPUSET_CPU_EXCLUSIVE
 .br
 0
@@ -1215,32 +1263,41 @@ Default: 0
 .RE
 
 .IP "cpuset_destroy_delay <delay>" 5
-MOM will wait up to
+MoM waits up to
 .I delay
-seconds before issuing a cpusetDestroy(3) on the cpuset of
+seconds before destroying a cpuset of
 a just-completed job, but not longer than necessary. 
 This gives the operating system more time to clean up leftover processes
 after they have been killed.
-Defaults: For SGI machines: 0.  Integer.
-For example,
+
+Example:
 .RS 9
 cpuset_destroy_delay 10
 .RE
 
+.IP
+Default for HPE SGI machines: 0
+.br
+Format: Integer
+
 .IP "memreserved <megabytes>" 5
 .B Deprecated.  
 The amount of per-vnode memory reserved for system overhead. 
-Default: 0MB.  
+This much memory is deducted from the value of 
+.I resources_available.mem
+for each vnode managed by this MoM.
 .br
-For example,
+Example:
 .RS 9
 memreserved 16
 .RE
 .IP
-.RE
+Default: 0MB.  
+.br
 
-.IP "Static Resources" 10
-.RS
+.RE
+.B Static Resources
+.br
 Static resources local to the vnode are described
 one resource to a line,
 with a name and value separated by white space.
@@ -1262,10 +1319,10 @@ For example, tape drives of different types could be specified by:
 Default directory for default configuration files.
 
 .IP $PBS_HOME/mom_priv/config 10
-MOM's default configuration file.
+MoM's default configuration file.
 
 .IP $PBS_HOME/mom_logs 10
-Default directory for log files written by MOM.
+Default directory for log files written by MoM.
 
 .IP $PBS_HOME/mom_priv/prologue 10
 File containing administrative script to be run before job execution.
@@ -1281,11 +1338,11 @@ handles the following signals:
 .IP SIGHUP 10
 The 
 .B pbs_mom 
-daemon will reread its configuration files, close and reopen the log
-file, and reinitialize resource structures.  
+daemon rereads its configuration files, closes and reopens the log
+file, and reinitializes resource structures.  
 
 .IP SIGALRM 10
-MOM writes a log file entry.  See the 
+MoM writes a log file entry.  See the 
 .I -a alarm_timeout 
 option.
 
@@ -1314,21 +1371,27 @@ These are ignored.
 All other signals have their default behavior installed.
 
 .SH EXIT STATUS
-Greater than zero if the 
+.IP "Greater than zero" 5
+If the 
 .B pbs_mom 
-daemon fails to start, if the 
+daemon fails to start
+.br
+If the 
 .I -s insert 
 option is used with an existing 
-.I scriptname, 
-or if the administrator attempts to add a script whose name 
-begins with "PBS".
-Greater than zero if the administrator attempts to use the 
+.I scriptname
+.br
+If the administrator attempts to add a script whose name 
+begins with "PBS"
+.br
+If the administrator attempts to use the 
 .I -s remove 
 option on a nonexistent configuration file, or on a configuration
-file whose name begins with "PBS".
-Greater than zero if the administrator attempts to use the 
+file whose name begins with "PBS"
+.br
+If the administrator attempts to use the 
 .I -s show
-option on a nonexistent script.
+option on a nonexistent script
 
 
 .SH SEE ALSO

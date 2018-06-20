@@ -33,51 +33,55 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_professional 7B "7 April 2015" Local "PBS Professional"
+.TH pbs_professional 7B "20 April 2018" Local "PBS Professional"
 .SH NAME
 .B PBS Professional
 \- The PBS Professional workload management system
 
 
 .SH DESCRIPTION
-PBS Professional is an HPC workload management and job scheduling system.
+PBS Professional is an HPC workload manager and job scheduler.
 PBS schedules jobs onto systems with the required resources, according
 to specified policy.  PBS runs on most major platforms.  See 
-.B www.pbsworks.com.
+.B www.pbsworks.com 
+and
+.B https://pbspro.atlassian.net/wiki/spaces/PBSPro/overview.
 
 .B Primary Commands
 .br
-.IP "init.d/pbs" 10
+.IP "init.d/pbs" 8
 Starts, stops or restarts PBS daemons on the local machine.
 This command is typically placed in /etc/init.d so that 
 PBS starts up automatically.  See the 
 .B pbs.8B
 man page.
 .br
-.IP "qmgr" 10
-Used by administrators to configure and manage PBS.  See the 
+.IP "qmgr" 8
+Administrator's interface for configuring and managing PBS.  See the 
 .B qmgr.8B 
 man page.
-.IP "qstat" 10
-Used by administrators and job submitters to check status.
+.IP "qstat" 8
+Administrator's and job submitter's tool for checking server, queue, and job status.
 See the 
 .B qstat.1B 
-man page
-.IP "qsub" 10
-Used to submit jobs to PBS.  See the 
+man page.
+.IP "qsub" 8
+Job submitter's tool for submitting jobs to PBS.  See the 
 .B qsub.1B
 man page.
 .LP
 
 .B Documentation:
 .br
-PBS Professional Installation and Upgrade Guide
+.I PBS Professional Installation and Upgrade Guide
 .br
-PBS Professional Administrator's Guide
+.I PBS Professional Administrator's Guide
 .br
-PBS Professional User's Guide
+.I PBS Professional Hooks Guide
 .br
-PBS Professional Reference Guide
+.I PBS Professional User's Guide
+.br
+.I PBS Professional Reference Guide
 
 .SH SEE ALSO
 .br

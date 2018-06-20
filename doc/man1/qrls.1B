@@ -33,99 +33,92 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH qrls 1B "17 August 2011" Local "PBS Professional"
+.TH qrls 1B "18 December 2017" Local "PBS Professional"
 .SH NAME
 .B qrls 
-\- release hold on PBS batch jobs
+- release hold on PBS jobs
 .SH SYNOPSIS
 .B qrls
-[-h\ hold_list]
-job_identifier ...
+[-h <hold list>] <job ID> [<job ID> ...]
 .br
 .B qrls
 --version
 .SH DESCRIPTION
 The
 .B qrls
-command removes or releases holds which exist on batch jobs.
-.LP
+command removes or releases holds on batch jobs or job arrays, 
+but not on subjobs or ranges of subjobs.
+
 A job may have one or more types of holds which make the job
 ineligible for execution.
-The types of holds are
-.I USER ,
-.I OTHER ,
-.I SYSTEM, 
-and
-.I bad password.
-The different types of holds may require
-that the user issuing the 
-.B qrls 
-command have special privilege.
-Typically, the owner of the job will be able to remove a
-.I USER
-hold, but not an
-.I OTHER
-or
-.I SYSTEM 
-hold.
-An Attempt to release a hold for which the user does not have the
-correct privilege is an error and no holds will be released for that job.
-.LP
-If no
-.I -h
-option is specified, the 
-.I USER 
-hold will be released.
-.LP
-Only root or admin can set a 
-.I bad password 
-hold via
-.I qhold -h p.
-The owner of the job can 
-.I qrls -h p 
-a hold set with 
-.I qhold -h p.
-.LP
-If the job has no
-.I execution_time
-pending, the job will change to the 
-.B queued
-state.  If an 
-.I execution_time
-is still pending, the job will change to the
-.B waiting
+
+If you 
+.B qrls
+a job whose 
+.I Execution_Time
+attribute is not set to a time in the future, the job changes to the 
+.I queued
+state.  If 
+.I Execution_Time
+is in the future, the job changes to the
+.I waiting
 state.
-.SH OPTIONS
-.IP "\-h hold_list" 15
-Defines the types of hold to be released from the jobs.
-The
-.I hold_list
-option argument is a string consisting of one or more of the letters 
-.I u
-, 
-.I o
-, 
-or 
-.I s
-in any combination, or one or more of the letters
-.I n
-or 
-.I p.
-The hold type associated with each letter is:
-.RS
-.IP "u - " 4
-.I USER
-.IP "o - " 4
-.I OTHER
-.IP "s - " 4
-.I SYSTEM
-.IP "n - " 4
-.I None
-.IP "p - " 4
-.I Bad password
+
+Holds can be set by the owner, an Operator, or Manager, when a job 
+has a dependency, or when a job has its 
+.I Execution_Time 
+attribute set to a time in the future.  Se the 
+.B qhold
+man page.
+
+.B Effect of Privilege on Behavior
+.br
+The following table shows the holds and the privilege required to release each:
+.RS 3
+Hold  Meaning       Privilege Required to Release
+.br
+--------------------------------------------------------------
+.IP u 6
+User          Job owner, Operator, Manager, 
+.br
+              administrator, root
+.IP o 6
+Other         Operator, Manager, administrator, root
+.IP s 6
+System        Manager, administrator, root, 
+.br
+              PBS (dependency)
+.IP n 6
+None          Job owner, Operator, Manager, 
+.br
+              administrator, root
+.IP p 6
+Bad password  Administrator, root
 .RE
 .LP
-.IP "--version" 15
+
+.SH OPTIONS
+.IP "(no options)" 8
+Defaults to
+.I -h u,
+removing
+.I user
+hold.
+.IP "-h <hold list>" 8
+Types of holds to be released for the job(s).
+
+The
+.I hold list
+argument is a string consisting of one or more of the letters
+.I """u""", """o""", 
+or 
+.I """s"""
+in any combination, or one of the letters
+.I """n""" 
+or 
+.I """p""".
+
+.IP "--version" 8
 The 
 .B qrls
 command returns its PBS version information and exits.
@@ -133,36 +126,41 @@ This option can only be used alone.
 
 .SH  OPERANDS
 The 
+.B qrls
+command can be used on jobs and job arrays, but not on subjobs or ranges 
+of subjobs.  The 
 .B qrls 
-command accepts one or more
-.I job_identifier
-operands of the form:
+comand accepts one or more 
+.I job IDs
+in the form:
 .RS 4
-.I "sequence_number[.server_name][@server]"
+.I <sequence number>[.<server name>][@<server name>]
+.br
+.I <sequence number>[][.<server name>][@<server name>]
 .RE
-
 Note that some shells require that you enclose a job array identifier in
 double quotes.
-.br
+
 .SH STANDARD ERROR
 The 
 .B qrls 
-command will write a diagnostic message to standard error for
+command writes a diagnostic message to standard error for
 each error occurrence.
+
 .SH EXIT STATUS
-Upon successful processing of all the operands presented to the
-.B qrls 
-command, the exit status will be a value of zero.
-.LP
+.IP Zero 8
+Upon successful processing of all operands
+
+.IP "Greater than zero" 8
 If the 
-.B qrls 
-command fails to process any operand, the
-command exits with a value greater than zero.
+.B qrls
+command fails to process any operand
+
 .SH SEE ALSO
 The
-.B PBS Professional User's Guide,
+.I PBS Professional User's Guide,
 the
-.B PBS Professional Administrator's Guide,
+.I PBS Professional Administrator's Guide,
 .br
 qsub(1B), qalter(1B), qhold(1B), pbs_alterjob(3B), pbs_holdjob(3B), and
 pbs_rlsjob(3B).

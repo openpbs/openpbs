@@ -33,7 +33,7 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs.conf 8B "9 February 2016" Local "PBS Professional"
+.TH pbs.conf 8B "19 February 2018" Local "PBS Professional"
 .SH NAME
 .B pbs.conf
 - PBS configuration parameters
@@ -171,7 +171,7 @@ Overrides PBS_SERVER_HOST_NAME.
 Location of rcp command if rcp is used.
 
 .IP PBS_SCHEDULER_SERVICE_PORT      
-Port on which scheduler listens.  Default: 15004
+Port on which default scheduler listens.  Default value: 15004
 
 .IP PBS_SCP 
 Location of scp command if scp is used; setting this parameter causes
@@ -207,7 +207,11 @@ Set to 1 if a communication daemon is to run on this host.
 Set to 1 if a MoM is to run on this host.
 
 .IP PBS_START_SCHED 
-Set to 1 if the scheduler is to run on this host.
+.B Deprecated. 
+Set to 1 if the scheduler is to run on this host.  Overridden by 
+scheduler's 
+.I scheduling
+attribute.
 
 .IP PBS_START_SERVER        
 Set to 1 if the server is to run on this host.

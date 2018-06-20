@@ -33,28 +33,31 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_rdel 1B "17 August 2011" Local "PBS Professional"
+.TH pbs_rdel 1B "18 May 2018" Local "PBS Professional"
 .SH NAME
 .B pbs_rdel 
 \- delete a PBS advance or standing reservation 
 .SH SYNOPSIS
 .B pbs_rdel
-reservation_identifier[,reservation_identifier...]
+<reservation ID>[,<reservation ID>...]
 .br
 .B pbs_rdel
 --version
 .SH DESCRIPTION
 The 
 .B pbs_rdel
-command deletes reservations in the order in which
-their reservation identifiers are presented to the command.
-.LP
-A reservation may be deleted by its owner, the PBS Operator,
-or the PBS Manager.
+command deletes reservations in the order specified.
 
+This command deletes the specified reservations, whether or not they
+are running, all jobs in the reservations, and the reservation queues.
+
+.B Required Privilege
+.br
+A reservation may be deleted by its owner, a PBS Operator,
+or a PBS Manager.
 
 .SH OPTIONS
-.IP "--version" 8
+.IP "--version" 10
 The 
 .B pbs_rdel
 command returns its PBS version information and exits.
@@ -62,26 +65,26 @@ This option can only be used alone.
 
 .SH OPERANDS
 The pbs_rdel command accepts one or more 
-.I reservation_identifier
+.I reservation ID
 operands.  
 .br
 For an advance reservation this has the form:
 .RS 4
-.I "[R]sequence_number[.server_name][@remote_server]"
+.I "R<sequence number>[.<server name>][@<remote server>]"
 .RE
 For a standing reservation this has the form:
 .RS 4
-.I "[S]sequence_number[.server_name][@remote_server]"
+.I "S<sequence number>[.<server name>][@<remote server>]"
 .RE
 
-.I @remote_server 
-is used to specify a reservation 
-at a server other than the default server.
+.I @<remote server> 
+specifies a reservation at a server other than the default server.
 
 .SH EXIT STATUS
-Zero upon success.
-.LP
-Greater than zero upon failure to process any operand.
+.IP "Zero" 10 
+Upon success
+.IP "Greater than zero" 10
+Upon failure to process any operand
 
 .SH SEE ALSO
 The

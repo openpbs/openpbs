@@ -33,16 +33,13 @@
 .\" "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 .\" trademark licensing policies.
 .\"
-.TH pbs_idled 8B "5 October 2012" Local "PBS Professional"
+.TH pbs_idled 8B "16 January 2018" Local "PBS Professional"
 .SH NAME
 .B pbs_idled 
-\- PBS daemon to watch the X console and inform pbs_mom of idle time
-.SH UNIX/LINUX SYNOPSIS
+\- run PBS daemon that monitors the console and informs pbs_mom of idle time
+.SH LINUX SYNOPSIS
 .B pbs_idled 
-[-w wait_time] [-f idle_file] [-D display] 
-.RS 10
-[-r reconnect_delay]
-.RE
+[-D <display>] [-r <reconnect delay>] [-w <wait time>] 
 .br
 .B pbs_idled
 --version
@@ -52,19 +49,20 @@
 .br
 .B pbs_idled
 --version
-.SH UNIX/LINUX DESCRIPTION
-On UNIX/Linux, the 
+
+.SH LINUX DESCRIPTION
+On Linux, the 
 .B pbs_idled 
-program sits and watches an X windows
-display and communicates the idle time of the display back to PBS.  If
-the mouse is moved or a key is touched, PBS is informed that the node
-is busy.
+program monitors an X windows display and communicates the idle time
+of the display back to PBS.  If the mouse is moved or a key is
+touched, PBS is informed that the vnode is busy.
 .br
-This program should be run out of the system-wide Xsession file.  It
-should be run in the background before the window manager is run.  If
-this program is run outside of the Xsession, it will need to be able
-to make a connection to the X display.  See the xhost or xauth man
-pages for a description of X security.
+You should run this program from the system-wide Xsession file, in the
+background before the window manager is run.  If this program is run
+outside of the Xsession, it will need to be able to make a connection
+to the X display.  See the xhost or xauth man pages for a description
+of X security.
+
 .SH WINDOWS DESCRIPTION
 On Windows, 
 .B pbs_idled 
@@ -77,18 +75,14 @@ when it finds user activity.  The
 .I idle_touch 
 file is created by MoM.
 
-.SH UNIX/LINUX OPTIONS
-.IP "-w <wait_time>" 10
-Granularity between when the daemon checks for events or pointer movement.
-.IP "-f <idle_file>" 10
-Update file times on <idle_file>.  PBS will not monitor any 
-other than the default.
+.SH LINUX OPTIONS
 .IP "-D <display>" 10
-The display to connect to and monitor.
-.IP "-r <reconnect_delay>" 10
-The amount of time to try and reconnect to the X display if the previous 
-attempt was unsuccessful.
-
+The display to connect to and monitor
+.IP "-r <reconnect delay>" 10
+Time to wait before we try to reconnect to the X display if the previous 
+attempt was unsuccessful
+.IP "-w <wait time>" 10
+Interval between times when the daemon checks for events or pointer movement
 .IP "--version" 10
 The 
 .B pbs_idled
