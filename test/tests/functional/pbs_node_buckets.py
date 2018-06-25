@@ -453,6 +453,51 @@ class TestNodeBuckets(TestFunctional):
         self.check_normal_path(sel='2:ncpus=8')
 
     @timeout(450)
+    def test_multi_vnode_resv(self):
+        """
+        Test that node buckets do not get in the way of running jobs on
+        multi-vnoded systems in reservations
+        """
+        a = {'resources_available.ncpus': 2, 'resources_available.mem': '8gb'}
+        self.server.create_vnodes('vnode', a, 12, self.mom,
+                                  sharednode=False, vnodes_per_host=4,
+                                  attrfunc=self.cust_attr_func)
+
+        now = int(time.time())
+        a = {'Resource_List.select': '8:ncpus=1',
+             'Resource_List.place': 'vscatter',
+             'reserve_start': now + 30,
+             'reserve_end': now + 3600}
+
+        r = Reservation(TEST_USER, attrs=a)
+        rid = self.server.submit(r)
+
+        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, a, id=rid)
+
+        self.logger.info('Waiting 30s for reservation to start')
+        a['reserve_state'] = (MATCH_RE, 'RESV_RUNNING|5')
+        self.server.expect(RESV, a, id=rid, offset=30)
+
+        a = {'Resource_List.select': '2:ncpus=1',
+             'Resource_List.place': 'group=shape',
+             'queue': rid.split('.')[0]}
+        j = Job(TEST_USER, attrs=a)
+        jid = self.server.submit(j)
+
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        self.scheduler.log_match(jid + ';Evaluating subchunk')
+
+        ev = self.server.status(JOB, 'exec_vnode', id=jid)
+        used_nodes = j.get_vnodes(ev[0]['exec_vnode'])
+
+        n = self.server.status(NODE, 'resources_available.shape')
+        s = [x['resources_available.shape']
+             for x in n if x['id'] in used_nodes]
+        self.assertEqual(len(set(s)), 1,
+                         "Job1 ran in more than one placement set")
+
+    @timeout(450)
     def test_bucket_sort(self):
         """
         Test if buckets are sorted properly: all of the yellow bucket

@@ -383,13 +383,13 @@ char *create_node_bucket_name(status *policy, node_bucket *nb) {
  * @param[in] policy - policy info
  * @param[in] nodes - the nodes to create buckets from
  * @param[in] queues - the queues the nodes may be associated with.  May be NULL
- * @param[in] update_node_ind - update node->bucket_ind with the bucket index
+ * @param[in] update_bucket_ind - update node->bucket_ind with the bucket index
  * @return node_bucket **
  * @retval array of node buckets
  * @retval NULL on error
  */
 node_bucket **
-create_node_buckets(status *policy, node_info **nodes, queue_info **queues, int update_node_ind) {
+create_node_buckets(status *policy, node_info **nodes, queue_info **queues, int update_bucket_ind) {
 	int i;
 	int j = 0;
 	node_bucket **buckets = NULL;
@@ -414,14 +414,14 @@ create_node_buckets(status *policy, node_info **nodes, queue_info **queues, int 
 		queue_info *qinfo = NULL;
 		int node_ind = nodes[i]->node_ind;
 		
-		if (nodes[i]->is_down || nodes[i]->is_offline)
+		if (nodes[i]->is_down || nodes[i]->is_offline || node_ind == -1)
 			continue;
 
 		if (queues != NULL && nodes[i]->queue_name != NULL)
 			qinfo = find_queue_info(queues, nodes[i]->queue_name);
 		
 		bkt_ind = find_node_bucket_ind(buckets, nodes[i]->res, qinfo, nodes[i]->priority);
-		if (update_node_ind) {
+		if (update_bucket_ind) {
 			if (bkt_ind == -1)
 				nodes[i]->bucket_ind = j;
 			else
@@ -492,6 +492,11 @@ create_node_buckets(status *policy, node_info **nodes, queue_info **queues, int 
 		}
 	}
 	
+	if (j == 0) {
+		free(buckets);
+		return NULL;
+	}
+
 	tmp = realloc(buckets, (j + 1) * sizeof(node_bucket *));
 	if (tmp != NULL)
 		buckets = tmp;

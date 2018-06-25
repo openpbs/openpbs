@@ -58,7 +58,7 @@ void free_node_bucket_array(node_bucket **buckets);
 int find_node_bucket_ind(node_bucket **buckets, schd_resource *rl, queue_info *queue, int priority);
 
 /* create node_buckets an array of nodes */
-node_bucket **create_node_buckets(status *policy, node_info **nodes, queue_info **queues, int update_node_ind);
+node_bucket **create_node_buckets(status *policy, node_info **nodes, queue_info **queues, int update_bucket_ind);
 
 /* Create a name for the node bucket based on resources, queue, and priority */
 char *create_node_bucket_name(status *policy, node_bucket *nb);
