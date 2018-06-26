@@ -37,6 +37,7 @@
 
 import time
 from tests.functional import *
+from ptl.utils.pbs_crayutils import CrayUtils
 
 
 @tags('cray')
@@ -48,6 +49,7 @@ class TestSuspendResumeOnCray(TestFunctional):
     This test suite expects the platform to be 'cray' and assumes that
     suspend/resume feature is enabled on it.
     """
+    cu = CrayUtils()
 
     def setUp(self):
         if not self.du.get_platform().startswith('cray'):
@@ -210,18 +212,6 @@ at least resid .* is exclusive"
         # The job should be in the same state as it was prior to the signal
         self.server.expect(JOB, {ATTR_state: 'S', ATTR_substate: 43}, id=jid2)
 
-    def num_compute_vnodes(self):
-        """
-        Count the Cray compute nodes and return the value.
-        """
-        vlist = []
-        vnl = self.server.filter(
-            VNODE, {'resources_available.vntype': 'cray_compute'})
-        vlist = vnl["resources_available.vntype=cray_compute"]
-        nv = len(vlist)
-        self.assertNotEqual(nv, 0, "There are no cray_compute vnodes present.")
-        return nv
-
     def submit_resv(self, resv_start, chunks, resv_dur):
         """
         Function to request a PBS reservation with start time, chunks and
@@ -257,7 +247,8 @@ at least resid .* is exclusive"
         self.server.manager(MGR_CMD_SET, QUEUE, a, qname)
 
         # Reserve all the compute nodes
-        nv = self.num_compute_vnodes()
+        nv = self.cu.num_compute_vnodes(self.server)
+        self.assertNotEqual(nv, 0, "There are no cray_compute vnodes present.")
         now = time.time()
         resv_start = now + 100
         resv_dur = 7200
@@ -326,7 +317,8 @@ at least resid .* is exclusive"
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, "expressq3")
 
         # Count the compute nodes
-        nv = self.num_compute_vnodes()
+        nv = self.cu.num_compute_vnodes(self.server)
+        self.assertNotEqual(nv, 0, "There are no cray_compute vnodes present.")
 
         j1 = Job(TEST_USER, {ATTR_l + '.select': '%d:ncpus=1' % nv,
                              ATTR_l + '.place': 'scatter',
@@ -372,7 +364,8 @@ at least resid .* is exclusive"
         self.server.manager(MGR_CMD_SET, SERVER, {'backfill_depth': '2'})
 
         # Count the compute nodes
-        nv = self.num_compute_vnodes()
+        nv = self.cu.num_compute_vnodes(self.server)
+        self.assertNotEqual(nv, 0, "There are no cray_compute vnodes present.")
 
         # Submit a job
         j = Job(TEST_USER, {ATTR_l + '.select': '%d:ncpus=1' % nv,

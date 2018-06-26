@@ -39,6 +39,7 @@ import socket
 import os
 
 from ptl.utils.pbs_dshutils import DshUtils
+from ptl.lib.pbs_ifl_mock import *
 
 
 class CrayUtils(object):
@@ -175,3 +176,11 @@ class CrayUtils(object):
                 key = line.split()
                 numthreads = int(key[1])
         return numthreads
+
+    def num_compute_vnodes(self, server):
+        """
+        Count the Cray compute nodes and return the value.
+        """
+        vnl = server.filter(MGR_OBJ_NODE,
+                            {'resources_available.vntype': 'cray_compute'})
+        return len(vnl["resources_available.vntype=cray_compute"])

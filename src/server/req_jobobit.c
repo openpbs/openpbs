@@ -2251,6 +2251,26 @@ RetryJob:
 
 		check_block(pjob, "");		/* if block set, send word */
 
+		if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_CHKPT) &&
+			((pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) == 0)) {
+
+			/* non-migratable checkpoint, leave there
+			 * and just requeue the job.
+			 */
+
+			rel_resc(pjob);
+			ack_obit(stream, pjob->ji_qs.ji_jobid);
+			pjob->ji_qs.ji_svrflags |= JOB_SVFLG_HASRUN;
+			svr_evaljobstate(pjob, &newstate, &newsubst, 1);
+			(void)svr_setjobstate(pjob, newstate, newsubst);
+			if (pjob->ji_mom_prot == PROT_TCP)
+				svr_disconnect(pjob->ji_momhandle);
+
+			pjob->ji_momhandle = -1;
+			pjob->ji_mom_prot = PROT_INVALID;
+			return;
+		}
+
 		ptask = set_task(WORK_Immed, 0, on_job_exit, (void *)pjob);
 		append_link(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);
 
@@ -2269,24 +2289,6 @@ RetryJob:
 			(JOB_SVFLG_CHKPT | JOB_SVFLG_ChkptMig)) == 0) {
 			job_attr_def[(int)JOB_ATR_resc_used].at_free(
 				&pjob->ji_wattr[(int)JOB_ATR_resc_used]);
-
-		} else if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_CHKPT) &&
-			((pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob)==0)) {
-
-			/* non-migratable checkpoint, leave there */
-			/* and just requeue the job		      */
-
-			rel_resc(pjob);
-			ack_obit(stream, pjob->ji_qs.ji_jobid);
-			pjob->ji_qs.ji_svrflags |= JOB_SVFLG_HASRUN;
-			svr_evaljobstate(pjob, &newstate, &newsubst, 1);
-			(void)svr_setjobstate(pjob, newstate, newsubst);
-			if (pjob->ji_mom_prot == PROT_TCP)
-				svr_disconnect(pjob->ji_momhandle);
-
-			pjob->ji_momhandle = -1;
-			pjob->ji_mom_prot = PROT_INVALID;
-			return;
 		}
 
 		(void)svr_setjobstate(pjob, JOB_STATE_EXITING,
