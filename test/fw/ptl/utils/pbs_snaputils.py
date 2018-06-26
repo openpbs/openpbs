@@ -1209,16 +1209,19 @@ quit()
                 if sched_name is not None:
                     line = "".join(line.split())
                     if line.startswith("sched_priv="):
-                        sched_details[sched_name]["sched_priv"] = line.split(
-                            "=")[1]
+                        sched_details[sched_name]["sched_priv"] = \
+                            line.split("=")[1]
                     elif line.startswith("sched_log="):
-                        sched_details[sched_name]["sched_log"] = line.split(
-                            "=")[1]
+                        sched_details[sched_name]["sched_log"] = \
+                            line.split("=")[1]
 
             for sched_name in sched_details:
                 # Capture sched_priv for the scheduler
-                pbs_sched_priv = sched_details[sched_name]["sched_priv"]
-                if sched_name == "default":
+                if len(sched_details) == 1:  # For pre-multisched outputs
+                    pbs_sched_priv = os.path.join(self.pbs_home, "sched_priv")
+                else:
+                    pbs_sched_priv = sched_details[sched_name]["sched_priv"]
+                if sched_name == "default" or len(sched_details) == 1:
                     snap_sched_priv = os.path.join(self.snapdir,
                                                    DFLT_SCHED_PRIV_PATH)
                     core_dir = os.path.join(self.snapdir, CORE_SCHED_PATH)
@@ -1234,8 +1237,12 @@ quit()
                                           snap_sched_priv, core_dir)
                 if with_sched_logs and self.num_daemon_logs > 0:
                     # Capture scheduler logs
-                    pbs_sched_log = sched_details[sched_name]["sched_log"]
-                    if sched_name == "default":
+                    if len(sched_details) == 1:  # For pre-multisched outputs
+                        pbs_sched_log = os.path.join(self.pbs_home,
+                                                     "sched_logs")
+                    else:
+                        pbs_sched_log = sched_details[sched_name]["sched_log"]
+                    if sched_name == "default" or len(sched_details) == 1:
                         snap_sched_log = os.path.join(self.snapdir,
                                                       DFLT_SCHED_LOGS_PATH)
                     else:
