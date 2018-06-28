@@ -42,6 +42,28 @@ class Test_passing_environment_variable_via_qsub(TestFunctional):
     """
     Test to check passing environment variables via qsub
     """
+    def create_and_submit_job(self, user=None, attribs=None, content=None,
+                              content_interactive=None, preserve_env=False):
+        """
+        create the job object and submit it to the server as 'user',
+        attributes list 'attribs' script 'content' or 'content_interactive',
+        and to 'preserve_env' if interactive job.
+        """
+        # A user=None value means job will be executed by current user
+        # where the environment is set up
+        if attribs is None:
+            use_attribs = {}
+        else:
+            use_attribs = attribs
+        retjob = Job(username=user, attrs=use_attribs)
+
+        if content is not None:
+            retjob.create_script(body=content)
+        elif content_interactive is not None:
+            retjob.interactive_script = content_interactive
+            retjob.preserve_env = preserve_env
+
+        return self.server.submit(retjob)
 
     def test_commas_in_custom_variable(self):
         """
@@ -52,17 +74,33 @@ class Test_passing_environment_variable_via_qsub(TestFunctional):
              'Resource_List.walltime': 10}
         script = ['#PBS -v "var1=\'A,B,C,D\'"']
         script += ['env | grep var1']
-        j = Job(TEST_USER, attrs=a)
-        j.create_script(body=script)
-        jid = self.server.submit(j)
-
+        jid = self.create_and_submit_job(content=script)
         qstat = self.server.status(JOB, ATTR_o, id=jid)
-        job_ofile = qstat[0][ATTR_o].split(':')[1]
+        job_outfile = qstat[0][ATTR_o].split(':')[1]
 
         self.server.expect(JOB, 'queue', op=UNSET, id=jid, offset=10)
-
         job_output = ""
-        with open(job_ofile, 'r') as f:
+        with open(job_outfile, 'r') as f:
             job_output = f.read().strip()
-
         self.assertEqual(job_output, "var1=A,B,C,D")
+
+    def test_passing_shell_function(self):
+        """
+        Define a shell function with new line characters and check that
+        the function is passed correctly
+        """
+        os.environ['foo'] = '"(){if [ /bin/true ];\nthen\necho hello;\nfi};"'
+        script = ['#PBS -V']
+        script += ['env | grep -A 3 foo\n']
+        # Submit a job without hooks in the system
+        jid = self.create_and_submit_job(content=script)
+        qstat = self.server.status(JOB, ATTR_o, id=jid)
+        job_outfile = qstat[0][ATTR_o].split(':')[1]
+        self.server.expect(JOB, 'queue', op=UNSET, id=jid, offset=2)
+        job_output = ""
+        with open(job_outfile, 'r') as f:
+            job_output = f.read().strip()
+        self.assertEqual(job_output,
+                         'foo="(){if [ /bin/true ];\nthen\necho hello;\nfi};"',
+                         msg="Environment variable foo content does "
+                         "not match original")

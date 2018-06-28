@@ -490,15 +490,6 @@ copy_env_value(char *dest, char *pv, int quote_flg)
 					pv++;
 				break;
 
-			case '\n':
-				if (is_func) {
-					*dest++ = ';';
-					*dest++ = ' ';
-				} else {
-					*dest++ = *pv;
-				}
-				break;
-
 			default:
 				*dest++ = *pv;
 				break;

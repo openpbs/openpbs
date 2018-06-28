@@ -193,7 +193,7 @@ class TestPbsHookSetJobEnv(TestFunctional):
         for msg in logmsg:
             if (daemon == "mom"):
                 # Match the trailing separator (',')
-                self.mom.log_match(msg + ',', max_attempts=3)
+                self.mom.log_match(msg + ',')
             elif (daemon == "server"):
                 self.server.log_match(msg, starttime=self.server.ctime)
 

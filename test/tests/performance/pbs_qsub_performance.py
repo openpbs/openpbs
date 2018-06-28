@@ -48,6 +48,7 @@ class TestQsubPerformance(TestPerformance):
         attr = {'scheduling': 'False'}
         self.server.manager(MGR_CMD_SET, SERVER, attr)
 
+    @timeout(400)
     def test_submit_large_env(self):
         """
         submission of 1000 jobs
