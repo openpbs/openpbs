@@ -52,7 +52,7 @@ class TestVnodePerNumaNode(TestFunctional):
             self.skipTest("Test suite only meant to run on a Cray")
         TestFunctional.setUp(self)
 
-    @tags('cray', 'smoke')
+    @tags('cray', 'smoke','CI','tier_two')
     def test_settings(self):
         """
         vnode_per_numa_node is unset (defaults to FALSE).
