@@ -54,7 +54,7 @@ class TestSuspendResumeOnCray(TestFunctional):
             self.skipTest("Test suite only meant to run on a Cray")
         TestFunctional.setUp(self)
 
-    @tags('cray', 'smoke','CI','tier_two')
+    @tags('cray', 'smoke', 'CI', 'tier_two')
     def test_default_restrict_res_to_release_on_suspend_setting(self):
         """
         Check that on Cray restrict_res_to_release_on_suspend is always set

@@ -40,7 +40,7 @@ from ptl.utils.pbs_crayutils import CrayUtils
 import os
 
 
-@tags('cray', 'smoke','CI','tier_two')
+@tags('cray', 'smoke', 'CI', 'tier_two')
 class TestCraySmokeTest(TestFunctional):
 
     """
@@ -96,7 +96,7 @@ class TestCraySmokeTest(TestFunctional):
                     continue
         return found
 
-    @tags('cray', 'smoke','CI','tier_two')
+    @tags('cray', 'smoke', 'CI', 'tier_two')
     def test_cray_login_job(self):
         """
         Submit a simple sleep job that requests to run on a login node
@@ -138,7 +138,7 @@ class TestCraySmokeTest(TestFunctional):
         foundhw = self.find_hw(output_file)
         self.assertEqual(foundhw, 1, msg="Job output file incorrect")
 
-    @tags('cray', 'smoke','CI','tier_two')
+    @tags('cray', 'smoke', 'CI', 'tier_two')
     def test_cray_compute_job(self):
         """
         Submit a simple sleep job that runs on a compute node and

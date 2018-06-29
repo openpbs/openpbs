@@ -57,7 +57,7 @@ class TestQstat_json(PBSTestSuite):
                         self.parse_json(val, qstat_attr)
         return qstat_attr
 
-    @tags('smoke','CI','tier_two')
+    @tags('smoke', 'CI', 'tier_two')
     def test_qstat_json_valid(self):
         """
         Test json output of qstat -f is in valid format when querired as a
@@ -152,7 +152,7 @@ class TestQstat_json(PBSTestSuite):
         except ValueError, e:
             self.assertTrue(False)
 
-    @tags('smoke','CI','tier_two')
+    @tags('smoke', 'CI', 'tier_two')
     def test_qstat_bf_json_valid(self):
         """
         Test json output of qstat -Bf is in valid format and all
@@ -185,7 +185,7 @@ class TestQstat_json(PBSTestSuite):
             if attr not in qstat_attr:
                 self.assertFalse(attr + " is missing")
 
-    @tags('smoke','CI','tier_two')
+    @tags('smoke', 'CI', 'tier_two')
     def test_qstat_qf_json_valid(self):
         """
         Test json output of qstat -Qf is in valid format and all
