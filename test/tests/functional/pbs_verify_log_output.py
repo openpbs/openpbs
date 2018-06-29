@@ -131,3 +131,23 @@ class TestVerifyLogOutput(TestFunctional):
                 starttime=self.server.ctime,
                 max_attempts=5,
                 interval=2)
+
+    def test_auto_sched_cycle_trigger(self):
+        """
+        Test case to verify that scheduling cycle is triggered automatically
+        without any delay  after restart of PBS Services.
+        """
+        started_time = time.time()
+        self.logger.info('Restarting PBS Services')
+        PBSInitServices().restart()
+
+        if self.server.isUp() and self.scheduler.isUp():
+            try:
+                self.scheduler.log_match("Req;;Starting Scheduling Cycle",
+                                         max_attempts=10,
+                                         starttime=started_time)
+                self.scheduler.log_match("Req;;Leaving Scheduling Cycle",
+                                         max_attempts=10,
+                                         starttime=started_time)
+            except PtlLogMatchError:
+                self.assertFalse(True)

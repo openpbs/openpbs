@@ -2007,6 +2007,7 @@ try_db_again:
 	 * and fairshare usage.
 	 */
 	(void)contact_sched(SCH_CONFIGURE, NULL, pbs_scheduler_addr, pbs_scheduler_port);
+	(void)contact_sched(SCH_SCHEDULE_NULL, NULL, pbs_scheduler_addr, pbs_scheduler_port);
 
 
 	/*
