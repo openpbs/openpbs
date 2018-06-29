@@ -1022,7 +1022,7 @@ main(int argc, char *argv[])
 				break;
 
 			case 'S':
-				if (oper == LISTSP || oper == ALL || LISTSPNV)
+				if (oper == LISTSP || oper == ALL || oper == LISTSPNV)
 					prt_summary = 1;
 				else
 					errflg = 1;
