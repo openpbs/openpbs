@@ -499,7 +499,7 @@ for i in 1 2 3 4; do while : ; do : ; done & done
     "periodic_resc_update"  : true,
     "vnode_per_numa_node"   : false,
     "online_offlined_nodes" : true,
-    "use_hyperthreads"      : false,
+    "use_hyperthreads"      : true,
     "cgroup":
     {
         "cpuacct":
@@ -1232,52 +1232,56 @@ for i in 1 2 3 4; do while : ; do : ; done & done
             self.skipTest('Test requires at least two physical CPUs')
         name = 'CGROUP4'
         self.load_config(self.cfg3 % ('', '', '', self.swapctl, ''))
+        # Submit two jobs
         a = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hostA, ATTR_N: name + 'a'}
         j1 = Job(TEST_USER, attrs=a)
         j1.create_script(self.cpuset_mem_script)
         jid1 = self.server.submit(j1)
-        a = {'job_state': 'R'}
-        self.server.expect(JOB, a, jid1)
-        attrib = [ATTR_o, 'exec_host']
-        self.server.status(JOB, attrib, jid1)
-        filename1 = j1.attributes[ATTR_o]
-        self.tempfile.append(filename1)
-        ehost1 = j1.attributes['exec_host']
         b = {'Resource_List.select': '1:ncpus=1:mem=300mb:host=%s' %
              self.hostA, ATTR_N: name + 'b'}
         j2 = Job(TEST_USER, attrs=b)
         j2.create_script(self.cpuset_mem_script)
         jid2 = self.server.submit(j2)
         a = {'job_state': 'R'}
+        # Make sure they are both running
+        self.server.expect(JOB, a, jid1)
         self.server.expect(JOB, a, jid2)
+        # Status the jobs for their output files
+        attrib = [ATTR_o]
+        self.server.status(JOB, attrib, jid1)
+        filename1 = j1.attributes[ATTR_o]
+        self.logger.info('Job1 .o file: %s' % filename1)
+        self.tempfile.append(filename1)
         self.server.status(JOB, attrib, jid2)
         filename2 = j2.attributes[ATTR_o]
+        self.logger.info('Job2 .o file: %s' % filename2)
         self.tempfile.append(filename2)
-        ehost2 = j2.attributes['exec_host']
-        self.logger.info('Job1 .o file: %s' % filename1)
+        # Read the output files
         tmp_file1 = filename1.split(':')[1]
-        tmp_host1 = ehost1.split('/')[0]
-        tmp_out1 = self.wait_and_read_file(filename=tmp_file1, host=tmp_host1)
+        tmp_out1 = self.wait_and_read_file(filename=tmp_file1, host=self.hostA)
         self.assertTrue(
             jid1 in tmp_out1, '%s not found in output on host %s'
-            % (jid1, tmp_host1))
-        self.logger.info('Job2 .o file: %s' % filename2)
+            % (jid1, self.hostA))
         tmp_file2 = filename2.split(':')[1]
-        tmp_host2 = ehost2.split('/')[0]
-        tmp_out2 = self.wait_and_read_file(filename=tmp_file2, host=tmp_host2)
+        tmp_out2 = self.wait_and_read_file(filename=tmp_file2, host=self.hostA)
         self.assertTrue(
             jid2 in tmp_out2, '%s not found in output on host %s'
-            % (jid2, tmp_host2))
+            % (jid2, self.hostA))
         self.logger.info('job dir check passed')
+        # Ensure the CPU ID for each job differs
+        cpuid1 = None
         for kv in tmp_out1:
             if 'CpuIDs=' in kv:
                 cpuid1 = kv
                 break
+        self.assertNotEqual(cpuid1, None, 'Could not read first CPU ID.')
+        cpuid2 = None
         for kv in tmp_out2:
             if 'CpuIDs=' in kv:
                 cpuid2 = kv
                 break
+        self.assertNotEqual(cpuid2, None, 'Could not read second CPU ID.')
         self.assertNotEqual(cpuid1, cpuid2,
                             'Processes should be assigned to different CPUs')
         self.logger.info('CpuIDs check passed')

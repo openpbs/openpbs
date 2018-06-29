@@ -7,6 +7,7 @@
     "vnode_per_numa_node"   : false,
     "online_offlined_nodes" : true,
     "use_hyperthreads"      : false,
+    "ncpus_are_cores"       : false,
     "cgroup" : {
         "cpuacct" : {
             "enabled"            : true,

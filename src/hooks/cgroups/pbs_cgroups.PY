@@ -2196,6 +2196,7 @@ class CgroupUtils(object):
         defaults['vnode_per_numa_node'] = False
         defaults['online_offlined_nodes'] = False
         defaults['use_hyperthreads'] = False
+        defaults['ncpus_are_cores'] = False
         defaults['kill_timeout'] = 10
         defaults['placement_type'] = 'load_balanced'
         defaults['cgroup'] = {}
@@ -3089,35 +3090,30 @@ class CgroupUtils(object):
                         empty_cores.add(corenum)
                 # Assign threads from the empty cores
                 for corenum in empty_cores:
+                    assigned['cpuset.cpus'].append(corenum)
+                    cores.remove(corenum)
+                    needed -= 1
+                    if needed <= 0:
+                        break
                     for thread in node.cpuinfo['cpu'][corenum]['threads']:
                         assigned['cpuset.cpus'].append(thread)
                         needed -= 1
+                        cores.remove(thread)
                         if needed <= 0:
                             break
                     if needed <= 0:
                         break
-                # Assign remaining threads to partially consumed cores
-                if needed > 0:
-                    cores -= empty_cores
-                    for corenum in cores:
-                        for thread in node.cpuinfo['cpu'][corenum]['threads']:
-                            if thread not in available['cpus']:
-                                continue
-                            assigned['cpuset.cpus'].append(thread)
-                            needed -= 1
-                            if needed <= 0:
-                                break
-                        if needed <= 0:
-                            break
-                if needed > 0:
-                    pbs.logmsg(pbs.EVENT_DEBUG4, '%s: %d ncpus still needed' %
-                               (caller_name(), needed))
-                    return {}
-            else:
-                # Only assigning cores, not hyperthreads
-                corelist = list(cores)
-                corelist.sort()
-                assigned['cpuset.cpus'] = corelist[:needed]
+            # When use_hyperthreads is enabled, the above block already
+            # assigned all of the fully avaiable cores. There still may
+            # be cores to assign. When use_hyperthreads is disabled, we
+            # assign all the cores here.
+            corelist = list(cores)
+            corelist.sort()
+            if needed > len(corelist):
+                pbs.logmsg(pbs.EVENT_DEBUG4, '%s: %d ncpus still needed' %
+                           (caller_name(), len(corelist) - needed))
+                return {}
+            assigned['cpuset.cpus'] += corelist[:needed]
             # Set cpuset.mems to the socketlist for now even though
             # there may not be sufficient memory. Memory gets
             # checked later in this method.
@@ -3834,7 +3830,7 @@ class CgroupUtils(object):
                        'Run count for job %s: %d' %
                        (jobid, pbs.event().job.run_count))
             pbs.event().job.rerun()
-            pbs.event().reject('Failed to assign resources')
+            raise CgroupProcessingError('Failed to assign resources')
         # Print out the assigned resources
         pbs.logmsg(pbs.EVENT_DEBUG2,
                    'Assigned resources: %s' % (assigned))
@@ -4614,8 +4610,6 @@ def main():
         pass
     except UserError as exc:
         # User must correct problem and resubmit job, job gets deleted
-        pbs.logmsg(pbs.EVENT_DEBUG,
-                   str(traceback.format_exc().strip().splitlines()))
         msg = ('User error in %s handling %s event' %
                (event.hook_name, hooks.event_name(event.type)))
         if jobutil is not None:
@@ -4628,8 +4622,20 @@ def main():
         msg += (': %s %s' % (exc.__class__.__name__, str(exc.args)))
         pbs.logmsg(pbs.EVENT_ERROR, msg)
         event.reject(msg)
+    except CgroupProcessingError as exc:
+        # Something went wrong manipulating the cgroups
+        pbs.logmsg(pbs.EVENT_DEBUG,
+                   str(traceback.format_exc().strip().splitlines()))
+        msg = ('Processing error in %s handling %s event' %
+               (event.hook_name, hooks.event_name(event.type)))
+        if jobutil is not None:
+            msg += (' for job %s' % (event.job.id))
+        msg += (': %s %s' % (exc.__class__.__name__, str(exc.args)))
+        pbs.logmsg(pbs.EVENT_ERROR, msg)
+        event.reject(msg)
     except Exception as exc:
         # Catch all other exceptions and report them, job gets suspended
+        # and a stack trace is logged
         pbs.logmsg(pbs.EVENT_DEBUG,
                    str(traceback.format_exc().strip().splitlines()))
         msg = ('Unexpected error in %s handling %s event' %
