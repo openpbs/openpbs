@@ -628,8 +628,7 @@ e.accept()
         now = int(time.time())
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
 
-        self.scheduler.log_match('Leaving Scheduling Cycle', starttime=now,
-                                 max_attempts=10)
+        self.scheduler.log_match('Leaving Scheduling Cycle', starttime=now)
 
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
         self.compare_estimates(jid2, [jid3, jid4, jid5])
