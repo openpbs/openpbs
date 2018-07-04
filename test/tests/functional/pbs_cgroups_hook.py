@@ -2027,6 +2027,51 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         self.assertEqual(result['rc'], 0)
         self.assertEqual(result['out'][0], '1')
 
+    def test_cgroup_use_hierarchy(self):
+        """
+        Test that memory.use_hierarchy is enabled by default
+        when PBS cgroups hook is instantiated
+        """
+
+        now = int(time.time())
+
+        # Remove PBS directories from memory subsystem
+        if 'memory' in self.paths and self.paths['memory']:
+            cdir = self.paths['memory']
+            if os.path.isdir(cdir):
+                cpath = os.path.join(cdir, 'pbspro')
+                if not os.path.isdir(cpath):
+                    cpath = os.path.join(cdir, 'pbspro.slice')
+        else:
+            self.skipTest(
+                "memory subsystem is not enabled for cgroups")
+
+        cmd = ["rmdir", cpath]
+        self.logger.info("Removing %s" % cpath)
+        self.du.run_cmd(cmd=cmd, sudo=True)
+
+        self.load_config(self.cfg6 % (self.swapctl))
+
+        self.momA.restart()
+
+        # Wait for exechost_startup hook to run
+        self.momA.log_match("Hook handler returned success for"
+                            " exechost_startup event",
+                            starttime=now)
+
+        # Verify that memory.use_hierarchy is enabled
+        fpath = os.path.join(cpath, "memory.use_hierarchy")
+        self.logger.info("looking for file %s" % fpath)
+        if os.path.isfile(fpath):
+            with open(fpath, 'r') as fd:
+                val = fd.read()
+                self.assertEqual(
+                    val.rstrip(), "1", "%s is not equal to 1"
+                    % val.rstrip())
+            self.logger.info("memory.use_hierarchy is enabled")
+        else:
+            self.assertFalse(1, "File %s not present" % fpath)
+
     def tearDown(self):
         TestFunctional.tearDown(self)
         self.load_config(self.cfg0)
@@ -2069,7 +2114,7 @@ for i in 1 2 3 4; do while : ; do : ; done & done
                                              uid='root', gid='root',
                                              mode=0644)
                             self.du.rm(hostname=self.hostA, path=fn)
-                            cmd = 'rmdir ' + jpath
+                            cmd = ['rmdir ', jpath]
                             self.logger.info('deleting jobdir %s' % cmd)
                             self.du.run_cmd(cmd=cmd, sudo=True)
                         self.du.rm(hostname=self.hostA, path=fpath)
