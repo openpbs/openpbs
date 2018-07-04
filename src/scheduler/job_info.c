@@ -3265,7 +3265,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 			pjob->job->resreleased = create_res_released_array(npolicy, pjob);
 			pjob->job->resreq_rel = create_resreq_rel_list(npolicy, pjob);
 
-			update_universe_on_end(policy, pjob,  "S", NO_ALLPART);
+			update_universe_on_end(npolicy, pjob,  "S", NO_ALLPART);
 			if ( nsinfo->calendar != NULL ) {
 				te = find_timed_event(nsinfo->calendar->events, pjob->name, TIMED_END_EVENT, 0);
 				if (te != NULL) {
@@ -3335,7 +3335,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 
 				schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, njob->name,
 					"Simulation: Preempted enough work to run job");
-				rc = sim_run_update_resresv(policy, njob, ns_arr, NO_ALLPART);
+				rc = sim_run_update_resresv(npolicy, njob, ns_arr, NO_ALLPART);
 				break;
 			}
 
@@ -3423,7 +3423,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 			clear_schd_error(err);
 			if (preemption_similarity(njob, pjobs[j], full_err) == 0) {
 				remove_job = 1;
-			} else if ((ns_arr = is_ok_to_run(policy, nsinfo,
+			} else if ((ns_arr = is_ok_to_run(npolicy, nsinfo,
 				pjobs[j]->job->queue, pjobs[j], NO_ALLPART, err)) != NULL) {
 				remove_job = 1;
 				sim_run_update_resresv(npolicy, pjobs[j], ns_arr, NO_ALLPART);
