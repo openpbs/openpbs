@@ -1529,7 +1529,6 @@ else:
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='expressq')
 
         (jid1, ) = self.submit_jobs(1)
-        time.sleep(1)
         (jid2, ) = self.submit_jobs(1)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
@@ -1542,6 +1541,7 @@ else:
         sus_job = self.server.select(attrib={'job_state': 'S'})
         self.assertEqual(len(sus_job), 1,
                          "Either no or more jobs are suspended")
+        self.logger.info("Job %s is suspended" % sus_job[0])
 
         (jid4,) = self.submit_jobs(1)
         self.server.expect(JOB, 'comment', op=SET)
@@ -1552,10 +1552,13 @@ else:
         self.scheduler.log_match("Number of job equivalence classes: 3",
                                  max_attempts=10, starttime=self.t)
 
-        # Make sure jid2 is in its own class.  If it is still in jid4's class
-        # jid4 will not run.  This is because jid2 will be considered first
-        # and mark the entire class as can not run.
-        self.server.deljob(jid1, wait=True)
+        # Make sure suspended job is in its own class. If it is still in
+        # jid4's class jid4 will not run.  This is because suspended job
+        # will be considered first and mark the entire class as can not run.
+        if sus_job[0] == jid2:
+            self.server.deljob(jid1, wait=True)
+        else:
+            self.server.deljob(jid2, wait=True)
 
         self.server.expect(JOB, {'job_state': 'R'}, id=jid4)
 
