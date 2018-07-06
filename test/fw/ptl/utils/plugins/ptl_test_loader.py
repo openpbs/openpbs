@@ -40,6 +40,7 @@ import sys
 import logging
 from nose.plugins.base import Plugin
 from ptl.utils.pbs_testsuite import PBSTestSuite
+from ptl.utils.common_testsuite import *
 
 log = logging.getLogger('nose.plugins.PTLTestLoader')
 
@@ -198,10 +199,10 @@ class PTLTestLoader(Plugin):
 
     def check_follow(self, cls, method=None):
         cname = cls.__name__
-        if not issubclass(cls, PBSTestSuite):
+        if not issubclass(cls, CommonTestSuite):
             return False
-        if cname == 'PBSTestSuite':
-            if 'PBSTestSuite' not in self._tests_list[self._only_ts]:
+        if cname == 'CommonTestSuite':
+            if 'CommonTestSuite' not in self._tests_list[self._only_ts]:
                 return False
         if cname in self._excludes_list[self._only_ts]:
             return False

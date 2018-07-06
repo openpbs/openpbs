@@ -41,6 +41,7 @@ from nose.plugins.base import Plugin
 from ptl.utils.pbs_testsuite import PBSTestSuite
 from ptl.utils.plugins.ptl_test_tags import TAGKEY
 from copy import deepcopy
+from ptl.utils.common_testsuite import *
 
 log = logging.getLogger('nose.plugins.PTLTestInfo')
 
@@ -112,9 +113,9 @@ class PTLTestInfo(Plugin):
         """
         Is the class wanted?
         """
-        if not issubclass(cls, PBSTestSuite):
+        if not issubclass(cls, CommonTestSuite):
             return False
-        if cls.__name__ == 'PBSTestSuite':
+        if cls.__name__ == 'CommonTestSuite':
             return False
         self._tree.setdefault(cls.__name__, cls)
         if len(cls.__bases__) > 0:

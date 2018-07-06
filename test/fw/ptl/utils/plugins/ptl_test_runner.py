@@ -63,6 +63,7 @@ try:
     from cStringIO import StringIO
 except ImportError:
     from StringIO import StringIO
+from ptl.utils.common_testsuite import *
 
 log = logging.getLogger('nose.plugins.PTLTestRunner')
 
@@ -532,7 +533,7 @@ class PTLTestRunner(Plugin):
     def startContext(self, context):
         context.param = self.param
         context.start_time = datetime.datetime.now()
-        if isclass(context) and issubclass(context, PBSTestSuite):
+        if isclass(context) and issubclass(context, CommonTestSuite):
             self.result.logger.info(self.result.separator1)
             self.result.logger.info('suite name: ' + context.__name__)
             doc = context.__doc__

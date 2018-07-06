@@ -52,6 +52,7 @@ from ptl.utils.pbs_dshutils import DshUtils
 from ptl.utils.pbs_cliutils import CliUtils
 from ptl.utils.pbs_procutils import ProcMonitor
 from ptl.lib.pbs_testlib import *
+from ptl.utils.common_testsuite import *
 try:
     from ptl.utils.plugins.ptl_test_tags import tags
 except ImportError:
@@ -302,7 +303,7 @@ class tearDownClassError(Exception):
     pass
 
 
-class PBSTestSuite(unittest.TestCase):
+class PBSTestSuite(CommonTestSuite):
 
     """
     Generic ``setup``, ``teardown``, and ``logging`` functions to

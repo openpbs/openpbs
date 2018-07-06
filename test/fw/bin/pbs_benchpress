@@ -55,7 +55,7 @@ from ptl.utils.plugins.ptl_test_db import PTLTestDb
 from ptl.utils.plugins.ptl_test_info import PTLTestInfo
 from ptl.utils.plugins.ptl_test_tags import PTLTestTags
 from ptl.utils.plugins.ptl_test_data import PTLTestData
-
+from ptl.utils.common_testsuite import *
 
 # trap SIGINT and SIGPIPE
 def trap_exceptions(etype, value, tb):
@@ -420,7 +420,7 @@ if __name__ == '__main__':
         tests = os.getcwd()
 
     if testsuites is None:
-        testsuites = 'PBSTestSuite'
+        testsuites = 'CommonTestSuite'
         follow = True
 
     if only_info:
