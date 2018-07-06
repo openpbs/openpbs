@@ -57,6 +57,7 @@ from ptl.utils.plugins.ptl_test_tags import PTLTestTags
 from ptl.utils.plugins.ptl_test_data import PTLTestData
 from ptl.utils.common_testsuite import *
 
+
 # trap SIGINT and SIGPIPE
 def trap_exceptions(etype, value, tb):
     sys.excepthook = sys.__excepthook__
