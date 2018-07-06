@@ -2172,8 +2172,10 @@ mgr_node_set(struct batch_request *preq)
 		(*preq->rq_ind.rq_manager.rq_objname == '@')) &&
 		(preq->rq_ind.rq_manager.rq_objtype != MGR_OBJ_HOST)) {
 
-		/*In this instance the set node req is to apply to all */
-		/*nodes at the local ('\0')  or specified ('@') server */
+		/*
+		 * In this instance the set node req is to apply to all
+		 * nodes at the local ('\0')  or specified ('@') server
+		 */
 
 		if ((pbsndlist != NULL) && svr_totnodes) {
 			nodename = all_nodes;
@@ -2185,8 +2187,10 @@ mgr_node_set(struct batch_request *preq)
 		}
 
 	} else if (preq->rq_ind.rq_manager.rq_objtype == MGR_OBJ_HOST) {
-		/* Operating on all vnodes on a named host          */
-		/* find the mom and get the first vnode in her list */
+		/* Operating on all vnodes on a named host
+		 * if it is the last/only host
+		 * find the mom and get the first vnode in her list
+		 */
 
 		char          *pc;
 		unsigned int   port = pbs_mom_port;
@@ -2202,11 +2206,9 @@ mgr_node_set(struct batch_request *preq)
 		}
 		pmom = find_mom_entry(hostname, port);
 		if (pmom) {
-			/* found mom, set number of and first vnode */
 			numnodes = ((mom_svrinfo_t *)(pmom->mi_data))->msr_numvnds;
 			momidx = 0;
 			pnode = ((mom_svrinfo_t *)(pmom->mi_data))->msr_children[momidx];
-
 		} else {
 			/* no such Mom */
 			req_reject(PBSE_UNKNODE, 0, preq);
@@ -2316,10 +2318,34 @@ mgr_node_set(struct batch_request *preq)
 		if (numnodes == 1)
 			break;	/* just the one vnode */
 		else if (preq->rq_ind.rq_manager.rq_objtype == MGR_OBJ_HOST) {
+			int update_mom_only = 0;
+
 			/* next vnode under the Mom */
 			if (++momidx >= ((mom_svrinfo_t *)(pmom->mi_data))->msr_numvnds)
 				break;	/* all down */
 			pnode = ((mom_svrinfo_t *)(pmom->mi_data))->msr_children[momidx];
+			if ((strcmp(plist->al_name, ATTR_NODE_state) == 0) && (plist->al_op == INCR)) {
+				/* Marking nodes offline.  We should only mark the children vnodes
+				 * as offline if no other mom that reports the vnodes are up.
+				 */
+				if (pnode->nd_nummoms > 1) {
+					int imom;
+					for (imom = 0; imom < pnode->nd_nummoms; ++imom) {
+						unsigned long mstate;
+						mstate = ((mom_svrinfo_t *)(pnode->nd_moms[imom]->mi_data))->msr_state;
+						if ((mstate & (INUSE_DOWN | INUSE_OFFLINE)) == 0)  {
+							/* If another mom is up (i.e. not down or offline)
+							 * then do not set the vnode state of the children
+							 */
+							update_mom_only = 1;
+							break; /* found at least one mom that's up, we can stop now */
+						}
+					}
+				}
+			}
+			if (update_mom_only) {
+				break;	/* all done */
+			}
 		} else {
 			if (++i == svr_totnodes)
 				break;	/* all done */
