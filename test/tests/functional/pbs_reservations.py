@@ -46,7 +46,8 @@ class TestReservations(TestFunctional):
     reservations
     """
 
-    def submit_standing_reservation(self, user, select, rrule, start, end):
+    def submit_standing_reservation(self, user, select, rrule, start, end,
+                                    place='free'):
         """
         helper method to submit a standing reservation
         """
@@ -59,6 +60,7 @@ class TestReservations(TestFunctional):
             tzone = 'America/Los_Angeles'
 
         a = {'Resource_List.select': select,
+             'Resource_List.place': place,
              ATTR_resv_rrule: rrule,
              ATTR_resv_timezone: tzone,
              'reserve_start': start,
@@ -620,3 +622,244 @@ class TestReservations(TestFunctional):
             time.strptime(s[0]['reserve_start'], '%c')))
         msg = 'ASAP reservation has incorrect start time'
         self.assertEqual(resv2_stime, resv1_stime + 3600, msg)
+
+    def test_excl_asap_resv_before_longterm_resvs(self):
+        """
+        Test if an ASAP reservation created from an exclusive
+        placement job does not interfere with subsequent long
+        term advance and standing exclusive reservations
+        """
+        a = {'resources_available.ncpus': 1}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
+
+        # Submit a job and let it run with available resources
+        a = {'Resource_List.select': '1:ncpus=1',
+             'Resource_List.walltime': 30}
+        j1 = Job(TEST_USER, attrs=a)
+        jid1 = self.server.submit(j1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+
+        # Submit a second job with exclusive node placement
+        # and let it be queued
+        a = {'Resource_List.select': '1:ncpus=1',
+             'Resource_List.walltime': 300,
+             'Resource_List.place': 'excl'}
+        j2 = Job(TEST_USER, attrs=a)
+        jid2 = self.server.submit(j2)
+        self.server.expect(JOB, 'comment', op=SET, id=jid2)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
+
+        # Convert j2 into an ASAP reservation
+        rid1 = self.submit_asap_reservation(user=TEST_USER,
+                                            jid=jid2)
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        self.server.expect(RESV, exp_attr, id=rid1)
+
+        # Wait for the reservation to start
+        self.logger.info('Waiting 30 seconds for reservation to start')
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
+        self.server.expect(RESV, exp_attr, id=rid1, offset=30)
+
+        # Submit a long term reservation with exclusive node
+        # placement when rid1 is running
+        # This reservation should be confirmed
+        now = int(time.time())
+        a = {'Resource_List.select': '1:ncpus=1',
+             'Resource_List.place': 'excl',
+             'reserve_start': now + 3600,
+             'reserve_end': now + 3605}
+        r2 = Reservation(TEST_USER, attrs=a)
+        rid2 = self.server.submit(r2)
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        self.server.expect(RESV, exp_attr, id=rid2)
+
+        # Submit a long term standing reservation with exclusive node
+        # placement when rid1 is running
+        # This reservation should also be confirmed
+        now = int(time.time())
+        rid3 = self.submit_standing_reservation(user=TEST_USER,
+                                                select='1:ncpus=1',
+                                                place='excl',
+                                                rrule='FREQ=HOURLY;COUNT=3',
+                                                start=now + 7200,
+                                                end=now + 7205)
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        self.server.expect(RESV, exp_attr, id=rid3)
+
+    def test_excl_asap_resv_after_longterm_resvs(self):
+        """
+        Test if an exclusive ASAP reservation created from an exclusive
+        placement job does not interfere with already existing long term
+        exclusive reservations.
+        Also, test if future exclusive reservations are successful when
+        the ASAP reservation is running.
+        """
+        a = {'resources_available.ncpus': 1}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
+
+        # Submit a long term advance reservation with exclusive node
+        now = int(time.time())
+        a = {'Resource_List.select': '1:ncpus=1',
+             'Resource_List.place': 'excl',
+             'reserve_start': now + 360,
+             'reserve_end': now + 365}
+        r1 = Reservation(TEST_USER, attrs=a)
+        rid1 = self.server.submit(r1)
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        self.server.expect(RESV, exp_attr, id=rid1)
+
+        # Submit a long term standing reservation with exclusive node
+        now = int(time.time())
+        rid2 = self.submit_standing_reservation(user=TEST_USER,
+                                                select='1:ncpus=1',
+                                                place='excl',
+                                                rrule='FREQ=HOURLY;COUNT=3',
+                                                start=now + 3600,
+                                                end=now + 3605)
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        self.server.expect(RESV, exp_attr, id=rid2)
+
+        # Submit a job and let it run with available resources
+        a = {'Resource_List.select': '1:ncpus=1',
+             'Resource_List.walltime': 30}
+        j1 = Job(TEST_USER, attrs=a)
+        jid1 = self.server.submit(j1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+
+        # Submit a second job with exclusive node placement
+        # and let it be queued
+        a = {'Resource_List.select': '1:ncpus=1',
+             'Resource_List.walltime': 300,
+             'Resource_List.place': 'excl'}
+        j2 = Job(TEST_USER, attrs=a)
+        jid2 = self.server.submit(j2)
+        self.server.expect(JOB, 'comment', op=SET, id=jid2)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
+
+        # Convert j2 into an ASAP reservation
+        rid1 = self.submit_asap_reservation(user=TEST_USER,
+                                            jid=jid2)
+
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        self.server.expect(RESV, exp_attr, id=rid1)
+
+        # Wait for the reservation to start
+        self.logger.info('Waiting 30 seconds for reservation to start')
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
+        self.server.expect(RESV, exp_attr, id=rid1, offset=30)
+
+        # Submit a long term reservation with exclusive node
+        # placement when rid1 is running
+        # This reservation should be confirmed
+        now = int(time.time())
+        a = {'Resource_List.select': '1:ncpus=1',
+             'Resource_List.place': 'excl',
+             'reserve_start': now + 3600,
+             'reserve_end': now + 3605}
+        r3 = Reservation(TEST_USER, attrs=a)
+        rid3 = self.server.submit(r3)
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        self.server.expect(RESV, exp_attr, id=rid3)
+
+    def test_multi_vnode_excl_advance_resvs(self):
+        """
+        Test if long term exclusive reservations do not interfere
+        with current reservations on a multi-vnoded host
+        """
+        a = {'resources_available.ncpus': 4}
+        self.server.create_vnodes('vn', a, num=3, mom=self.mom)
+
+        # Submit a long term standing reservation with
+        # exclusive nodes.
+        now = int(time.time())
+        rid1 = self.submit_standing_reservation(user=TEST_USER,
+                                                select='1:ncpus=9',
+                                                place='excl',
+                                                rrule='FREQ=HOURLY;COUNT=3',
+                                                start=now + 7200,
+                                                end=now + 7205)
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        self.server.expect(RESV, exp_attr, id=rid1)
+
+        # Submit a long term advance reservation with exclusive node
+        now = int(time.time())
+        a = {'Resource_List.select': '1:ncpus=10',
+             'Resource_List.place': 'excl',
+             'reserve_start': now + 3600,
+             'reserve_end': now + 3605}
+        r2 = Reservation(TEST_USER, attrs=a)
+        rid2 = self.server.submit(r2)
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        self.server.expect(RESV, exp_attr, id=rid2)
+
+        # Submit a short term reservation requesting all the nodes
+        # exclusively
+        now = int(time.time())
+        a = {'Resource_List.select': '1:ncpus=12',
+             'Resource_List.place': 'excl',
+             'reserve_start': now + 20,
+             'reserve_end': now + 100}
+        r3 = Reservation(TEST_USER, attrs=a)
+        rid3 = self.server.submit(r3)
+        exp_attr = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, exp_attr, id=rid3)
+
+        exp_attr['reserve_state'] = (MATCH_RE, 'RESV_RUNNING|5')
+        self.server.expect(RESV, exp_attr, id=rid3, offset=30)
+
+    def test_multi_vnode_excl_asap_resv(self):
+        """
+        Test if an ASAP reservation created from a excl placement
+        job does not interfere with future multinode exclusive
+        reservations on a multi-vnoded host
+        """
+        a = {'resources_available.ncpus': 4}
+        self.server.create_vnodes('vn', a, num=3, mom=self.mom)
+
+        # Submit 3 exclusive jobs, so all the nodes are busy
+        # j1 requesting 4 cpus, j2 requesting 4 cpus and j3
+        # requesting 5 cpus
+        a = {'Resource_List.select': '1:ncpus=4',
+             'Resource_List.place': 'excl',
+             'Resource_List.walltime': 30}
+        j1 = Job(TEST_USER, attrs=a)
+        jid1 = self.server.submit(j1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+
+        a['Resource_List.walltime'] = 400
+        j2 = Job(TEST_USER, attrs=a)
+        jid2 = self.server.submit(j2)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+
+        a = {'Resource_List.select': '1:ncpus=5',
+             'Resource_List.place': 'excl',
+             'Resource_List.walltime': 100}
+        j3 = Job(TEST_USER, attrs=a)
+        jid3 = self.server.submit(j3)
+        self.server.expect(JOB, 'comment', op=SET, id=jid3)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid3)
+
+        # Convert J3 to ASAP reservation
+        rid1 = self.submit_asap_reservation(user=TEST_USER,
+                                            jid=jid3)
+
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        self.server.expect(RESV, exp_attr, id=rid1)
+
+        # Wait for the reservation to start
+        self.logger.info('Waiting 30 seconds for reservation to start')
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_RUNNING|5")}
+        self.server.expect(RESV, exp_attr, id=rid1, offset=30)
+
+        # Submit a long term reservation with exclusive node
+        # placement when rid1 is running (requesting all nodes)
+        # This reservation should be confirmed
+        now = int(time.time())
+        a = {'Resource_List.select': '1:ncpus=12',
+             'Resource_List.place': 'excl',
+             'reserve_start': now + 3600,
+             'reserve_end': now + 3605}
+        r2 = Reservation(TEST_USER, attrs=a)
+        rid2 = self.server.submit(r2)
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        self.server.expect(RESV, exp_attr, id=rid2)
