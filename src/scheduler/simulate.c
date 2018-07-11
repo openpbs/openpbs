@@ -705,6 +705,7 @@ calc_run_time(char *name, server_info *sinfo, int flags)
 	int desc;
 	nspec **ns = NULL;
 	unsigned int ok_flags = NO_ALLPART;
+	queue_info *qinfo = NULL;
 
 	if (name == NULL || sinfo == NULL)
 		return (time_t) -1;
@@ -719,8 +720,10 @@ calc_run_time(char *name, server_info *sinfo, int flags)
 
 	if (flags & USE_BUCKETS)
 		ok_flags |= USE_BUCKETS;
-	if (resresv->is_job)
+	if (resresv->is_job) {
 		ok_flags |= IGNORE_EQUIV_CLASS;
+		qinfo = resresv->job->queue;
+	}
 
 	err = new_schd_error();
 	if(err == NULL)
@@ -734,7 +737,7 @@ calc_run_time(char *name, server_info *sinfo, int flags)
 		desc = describe_simret(ret);
 		if (desc > 0 || (desc == 0 && policy_change_info(sinfo, resresv))) {
 			clear_schd_error(err);
-			ns = is_ok_to_run(sinfo->policy, sinfo, resresv->job->queue, resresv, ok_flags, err);
+			ns = is_ok_to_run(sinfo->policy, sinfo, qinfo, resresv, ok_flags, err);
 		}
 
 		if (ns == NULL) /* event can not run */

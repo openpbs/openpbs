@@ -68,6 +68,21 @@ class TestReservations(TestFunctional):
 
         return self.server.submit(r)
 
+    def submit_asap_reservation(self, user, jid):
+        """
+        Helper method to submit an ASAP reservation
+        """
+        a = {ATTR_convert: jid}
+        r = Reservation(user, a)
+
+        # PTL's Reservation class sets the default ATTR_resv_start
+        # and ATTR_resv_end.
+        # But pbs_rsub: -Wqmove is not compatible with -R or -E option
+        # So, unset these attributes from the reservation instance.
+        r.unset_attributes(['reserve_start', 'reserve_end'])
+
+        return self.server.submit(r)
+
     def test_degraded_standing_reservations(self):
         """
         Verify that degraded standing reservations are reconfirmed on
@@ -560,3 +575,48 @@ class TestReservations(TestFunctional):
 
         self.server.expect(NODE, {'state': 'resv-exclusive'},
                            id=self.server.shortname)
+
+    def test_multiple_asap_resv(self):
+        """
+        Test that multiple ASAP reservations are scheduled one after another
+        """
+        self.server.manager(MGR_CMD_SET, NODE,
+                            {'resources_available.ncpus': 1},
+                            id=self.server.shortname)
+
+        job_attrs = {'Resource_List.select': '1:ncpus=1',
+                     'Resource_List.walltime': '1:00:00'}
+        j = Job(TEST_USER, attrs=job_attrs)
+        jid1 = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+
+        s = self.server.status(JOB, 'stime', id=jid1)
+        job_stime = int(time.mktime(time.strptime(s[0]['stime'], '%c')))
+
+        j = Job(TEST_USER, attrs=job_attrs)
+        jid2 = self.server.submit(j)
+        self.server.expect(JOB, 'comment', op=SET, id=jid2)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
+
+        rid1 = self.submit_asap_reservation(TEST_USER, jid2)
+        exp_attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, exp_attrs, id=rid1)
+        s = self.server.status(RESV, 'reserve_start', id=rid1)
+        resv1_stime = int(time.mktime(
+            time.strptime(s[0]['reserve_start'], '%c')))
+        msg = 'ASAP reservation has incorrect start time'
+        self.assertEqual(resv1_stime, job_stime + 3600, msg)
+
+        j = Job(TEST_USER, attrs=job_attrs)
+        jid3 = self.server.submit(j)
+        self.server.expect(JOB, 'comment', op=SET, id=jid3)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid3)
+
+        rid2 = self.submit_asap_reservation(TEST_USER, jid3)
+        exp_attrs = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, exp_attrs, id=rid2)
+        s = self.server.status(RESV, 'reserve_start', id=rid2)
+        resv2_stime = int(time.mktime(
+            time.strptime(s[0]['reserve_start'], '%c')))
+        msg = 'ASAP reservation has incorrect start time'
+        self.assertEqual(resv2_stime, resv1_stime + 3600, msg)
