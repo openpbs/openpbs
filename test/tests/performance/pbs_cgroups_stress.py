@@ -190,7 +190,7 @@ class TestCgroupsStress(TestPerformance):
         # Restart MoM to work around PP-993
         self.mom.restart()
 
-    @timeout(600)
+    @timeout(1200)
     def test_cgroups_race_condition(self):
         """
         Test to ensure a cgroups event does not read the cgroups file system
