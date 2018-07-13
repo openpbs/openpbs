@@ -52,20 +52,28 @@ class TestPbsInitScript(TestFunctional):
                 'PBS_START_COMM': '1', 'PBS_START_MOM': '1'}
         self.du.set_pbs_config(confs=conf)
 
-        pbs_init = os.path.join(os.sep, 'etc', 'init.d', 'pbs')
+        conf_path = self.du.parse_pbs_config()
+        pbs_init = os.path.join(os.sep, conf_path['PBS_EXEC'],
+                                'libexec', 'pbs_init.d')
         self.du.run_cmd(cmd=[pbs_init, 'stop'], sudo=True)
 
         conf['PBS_START_MOM'] = '0'
         self.du.set_pbs_config(confs=conf)
 
-        cmd = ['PBS_START_SERVER=0', 'PBS_START_SCHED=0',
+        cmd = ['sudo', 'PBS_START_SERVER=0', 'PBS_START_SCHED=0',
                'PBS_START_COMM=0', 'PBS_START_MOM=1',
                pbs_init, 'start']
 
-        rc = self.du.run_cmd(cmd=cmd, as_script=True, sudo=True)
+        rc = self.du.run_cmd(cmd=cmd, as_script=True)
         output = rc['out']
 
         self.assertNotIn("PBS server", output)
         self.assertNotIn("PBS sched", output)
         self.assertNotIn("PBS comm", output)
         self.assertIn("PBS mom", output)
+
+    def tearDown(self):
+        TestFunctional.tearDown(self)
+        # Above test leaves system in unusable state for PTL and PBS.
+        # Hence restarting PBS explicitly
+        PBSInitServices().restart()
