@@ -47,12 +47,8 @@ class TestCheckpoint(TestFunctional):
     abort_file = ''
     cu = CrayUtils()
 
-    def test_checkpoint_abort_with_preempt(self):
-        """
-        This test verifies that checkpoint_abort works as expected when
-        a job is preempted via checkpoint. It does so by submitting a job
-        in express queue which preempts a running job in the default queue.
-        """
+    def setUp(self):
+        TestFunctional.setUp(self)
         abort_script = """#!/bin/bash
 kill $1
 exit 0
@@ -61,43 +57,123 @@ exit 0
         self.du.chmod(path=self.abort_file, mode=0755)
         c = {'$action': 'checkpoint_abort 30 !' + self.abort_file + ' %sid'}
         self.mom.add_config(c)
+        self.platform = self.du.get_platform()
+        if self.platform != 'cray' and self.platform != 'craysim':
+            self.attrs = {ATTR_l + '.select': '1:ncpus=1',
+                          ATTR_l + '.place': 'excl'}
+        else:
+            nv = self.cu.num_compute_vnodes(self.server)
+            self.assertNotEqual(nv, 0, "No cray_compute vnodes are present.")
+            self.attrs = {ATTR_l + '.select': '%d:ncpus=1' % nv,
+                          ATTR_l + '.place': 'scatter'}
 
+    def verify_checkpoint_abort(self, jid, stime):
+        """
+        Verify that checkpoint and abort happened.
+        """
+        self.ck_dir = os.path.join(self.server.pbs_conf['PBS_HOME'],
+                                   'checkpoint', jid + '.CK')
+        self.assertTrue(os.path.isdir(self.ck_dir),
+                        msg="Checkpoint directory %s not found" % self.ck_dir)
+        _msg1 = "%s;req_holdjob: Checkpoint initiated." % jid
+        self.mom.log_match(_msg1, starttime=stime)
+        _msg2 = "%s;checkpoint_abort script %s: exit code 0" % (
+            jid, self.abort_file)
+        self.mom.log_match(_msg2, starttime=stime)
+        _msg3 = "%s;checkpointed to %s" % (jid, self.ck_dir)
+        self.mom.log_match(_msg3, starttime=stime)
+        _msg4 = "%s;task 00000001 terminated" % jid
+        self.mom.log_match(_msg4, starttime=stime)
+
+    def start_server_hot(self):
+        """
+        Start the server with the hot option.
+        """
+        pbs_exec = self.server.pbs_conf['PBS_EXEC']
+        svrname = self.server.pbs_server_name
+        pbs_server_hot = [os.path.join(
+            pbs_exec, 'sbin', 'pbs_server'), '-t', 'hot']
+        self.du.run_cmd(svrname, cmd=pbs_server_hot, sudo=True)
+        self.assertTrue(self.server.isUp())
+
+    def checkpoint_abort_with_qterm_restart_hot(self, qterm_type):
+        """
+        Checkpointing with qterm -t <type>, hot server restart.
+        """
+        self.skipTest("Skipping test due to bug introduced by PR# 732")
+
+        j1 = Job(TEST_USER, self.attrs)
+        jid1 = self.server.submit(j1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+
+        start_time = int(time.time())
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
+        self.server.qterm(manner=qterm_type)
+
+        self.verify_checkpoint_abort(jid1, start_time)
+
+        self.start_server_hot()
+        self.assertTrue(self.server.isUp())
+
+        msg = "%s;Requeueing job, substate: 10 Requeued in queue: workq" % jid1
+        self.server.log_match(msg, starttime=start_time)
+
+        # wait for the server to hot start the job
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1, interval=2)
+        self.server.expect(JOB, 'exec_vnode', id=jid1, op=SET)
+        self.assertFalse(os.path.exists(self.ck_dir),
+                         msg=self.ck_dir + " still exists")
+
+    def test_checkpoint_abort_with_preempt(self):
+        """
+        This test verifies that checkpoint_abort works as expected when
+        a job is preempted via checkpoint. It does so by submitting a job
+        in express queue which preempts a running job in the default queue.
+        """
         self.scheduler.set_sched_config({'preempt_order': 'C'})
-
-        a = {'queue_type': 'e',
+        a = {'queue_type': 'execution',
              'started': 'True',
              'enabled': 'True',
              'Priority': 200}
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, "expressq")
 
-        self.platform = self.du.get_platform()
-        if self.platform != 'cray' and self.platform != 'craysim':
-            attrs = {ATTR_l + '.select': '1:ncpus=1',
-                     ATTR_l + '.place': 'excl'}
-        else:
-            nv = self.cu.num_compute_vnodes(self.server)
-            attrs = {ATTR_l + '.select': '%d:ncpus=1' % nv,
-                     ATTR_l + '.place': 'scatter'}
-
-        j1 = Job(TEST_USER, attrs)
+        j1 = Job(TEST_USER, self.attrs)
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
 
-        attrs['queue'] = 'expressq'
-        j2 = Job(TEST_USER, attrs)
+        self.attrs['queue'] = 'expressq'
+        j2 = Job(TEST_USER, self.attrs)
+        start_time = int(time.time())
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
-
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid1)
-        ck_dir = os.path.join(self.server.pbs_conf['PBS_HOME'], 'checkpoint',
-                              jid1 + '.CK')
-        self.assertTrue(os.path.isdir(ck_dir),
-                        msg="Checkpoint directory for job not found")
-        self.mom.log_match(msg=jid1 + ';req_holdjob: Checkpoint initiated.')
-        self.mom.log_match(msg=jid1 + ';checkpoint_abort script ' +
-                           self.abort_file + ': exit code 0')
-        self.mom.log_match(msg=jid1 + ';checkpointed to ' + ck_dir)
-        self.mom.log_match(msg=jid1 + ';task 00000001 terminated')
+
+        self.verify_checkpoint_abort(jid1, start_time)
+
+    def test_checkpoint_abort_with_qhold(self):
+        """
+        This test uses qhold for checkpointing.
+        """
+        j1 = Job(TEST_USER, self.attrs)
+        jid1 = self.server.submit(j1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        start_time = int(time.time())
+        self.server.holdjob(jid1)
+        self.server.expect(JOB, {'job_state': 'H'}, id=jid1)
+
+        self.verify_checkpoint_abort(jid1, start_time)
+
+    def test_checkpoint_abort_with_qterm_immediate_restart_hot(self):
+        """
+        This tests checkpointing with qterm -t immediate, hot server restart.
+        """
+        self.checkpoint_abort_with_qterm_restart_hot("immediate")
+
+    def test_checkpoint_abort_with_qterm_delay_restart_hot(self):
+        """
+        This tests checkpointing with qterm -t delay, hot server restart.
+        """
+        self.checkpoint_abort_with_qterm_restart_hot("delay")
 
     def tearDown(self):
         TestFunctional.tearDown(self)
