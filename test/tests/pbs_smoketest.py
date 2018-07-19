@@ -1341,30 +1341,22 @@ class SmokeTest(PBSTestSuite):
         """
         Test the basic fairshare behavior with custom resources for math module
         """
-
         rv = self.server.add_resource('foo1', 'float', 'nh')
         self.assertTrue(rv)
-
         self.setup_fs()
-
-        a = {'fairshare_usage_res':
-             'ceil(fabs(-ncpus*(foo1/100.00)*sqrt(100)))'}
-        self.scheduler.set_sched_config(a)
-
-        a = {'resources_available.ncpus': 1, 'resources_available.foo1': 5000}
-        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
-
+        # Set scheduler fairshare usage formula
+        formula = {'fairshare_usage_res':
+                   'ceil(fabs(-ncpus*(foo1/100.00)*sqrt(100)))'}
+        self.scheduler.set_sched_config(formula)
+        node_attr = {'resources_available.ncpus': 1,
+                     'resources_available.foo1': 5000}
+        self.server.manager(MGR_CMD_SET, NODE, node_attr, self.mom.shortname)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
-        time.sleep(1)
-        a = {'Resource_List.select': '1:ncpus=1:foo1=20',
-             'Resource_List.walltime': 4}
-        J1 = Job(TEST_USER2, attrs=a)
-        a = {'Resource_List.select': '1:ncpus=1:foo1=20',
-             'Resource_List.walltime': 4}
-        J2 = Job(TEST_USER3, attrs=a)
-        a = {'Resource_List.select': '1:ncpus=1:foo1=20',
-             'Resource_List.walltime': 4}
-        J3 = Job(TEST_USER1, attrs=a)
+        job_attr = {'Resource_List.select': '1:ncpus=1:foo1=20',
+                    'Resource_List.walltime': 4}
+        J1 = Job(TEST_USER2, attrs=job_attr)
+        J2 = Job(TEST_USER3, attrs=job_attr)
+        J3 = Job(TEST_USER1, attrs=job_attr)
         j1id = self.server.submit(J1)
         j2id = self.server.submit(J2)
         j3id = self.server.submit(J3)
@@ -1372,59 +1364,44 @@ class SmokeTest(PBSTestSuite):
         rv = self.server.expect(SERVER, {'server_state': 'Scheduling'}, op=NE)
 
         self.logger.info("Checking the job state of " + j3id)
-        self.server.expect(
-            JOB, {'job_state': 'R'}, id=j3id, max_attempts=30, interval=2)
-        self.server.expect(
-            JOB, {'job_state': 'Q'}, id=j2id, max_attempts=30, interval=2)
-        self.server.expect(
-            JOB, {'job_state': 'Q'}, id=j1id, max_attempts=30, interval=2)
+        self.server.expect(JOB, {'job_state': 'R'}, id=j3id)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=j2id)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=j1id)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
 
         msg = "Checking the job state of " + j2id + ", runs after "
         msg += j3id + " completes"
         self.logger.info(msg)
-        self.server.expect(
-            JOB, {'job_state': 'R'}, id=j2id, max_attempts=30, interval=2)
-        self.server.expect(
-            JOB, {'job_state': 'Q'}, id=j1id, max_attempts=30, interval=2)
+        self.server.expect(JOB, {'job_state': 'R'}, id=j2id)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=j1id)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
 
         msg = "Checking the job state of " + j1id + ", runs after "
         msg += j2id + " completes"
         self.logger.info(msg)
-        self.server.expect(
-            JOB, {'job_state': 'R'}, id=j1id, max_attempts=30, interval=2)
+        self.server.expect(JOB, {'job_state': 'R'}, id=j1id)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
+        self.server.log_match(j1id + ";Exit_status")
 
-        self.server.log_match(
-            j1id + ";Exit_status", max_attempts=30, interval=2)
-
-        time.sleep(1)
-
+         # query fairshare and check usage
         fs1 = self.scheduler.query_fairshare(name=str(TEST_USER1))
         self.logger.info('Checking ' + str(fs1.usage) + " == 3")
         self.assertEqual(fs1.usage, 3)
-
         fs2 = self.scheduler.query_fairshare(name=str(TEST_USER2))
         self.logger.info('Checking ' + str(fs2.usage) + " == 3")
         self.assertEqual(fs2.usage, 3)
-
         fs3 = self.scheduler.query_fairshare(name=str(TEST_USER3))
         self.logger.info('Checking ' + str(fs3.usage) + " == 3")
         self.assertEqual(fs3.usage, 3)
-
         fs4 = self.scheduler.query_fairshare(name=str(TEST_USER4))
         self.logger.info('Checking ' + str(fs4.usage) + " == 1")
         self.assertEqual(fs4.usage, 1)
 
+        # Check the scheduler usage file whether it's updating or not
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
-        time.sleep(1)
-        a = {'Resource_List.select': '1:ncpus=1:foo1=20',
-             'Resource_List.walltime': 4}
-        J1 = Job(TEST_USER4, attrs=a)
-        a = {'Resource_List.select': '1:ncpus=1:foo1=20',
-             'Resource_List.walltime': 4}
-        J2 = Job(TEST_USER2, attrs=a)
-        a = {'Resource_List.select': '1:ncpus=1:foo1=20',
-             'Resource_List.walltime': 4}
-        J3 = Job(TEST_USER1, attrs=a)
+        J1 = Job(TEST_USER4, attrs=job_attr)
+        J2 = Job(TEST_USER2, attrs=job_attr)
+        J3 = Job(TEST_USER1, attrs=job_attr)
         j1id = self.server.submit(J1)
         j2id = self.server.submit(J2)
         j3id = self.server.submit(J3)
@@ -1432,44 +1409,35 @@ class SmokeTest(PBSTestSuite):
         rv = self.server.expect(SERVER, {'server_state': 'Scheduling'}, op=NE)
 
         self.logger.info("Checking the job state of " + j1id)
-        self.server.expect(
-            JOB, {'job_state': 'R'}, id=j1id, max_attempts=30, interval=2)
-        self.server.expect(
-            JOB, {'job_state': 'Q'}, id=j2id, max_attempts=30, interval=2)
-        self.server.expect(
-            JOB, {'job_state': 'Q'}, id=j3id, max_attempts=30, interval=2)
+        self.server.expect(JOB, {'job_state': 'R'}, id=j1id)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=j2id)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=j3id)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
 
         msg = "Checking the job state of " + j3id + ", runs after "
         msg += j1id + " completes"
         self.logger.info(msg)
-        self.server.expect(
-            JOB, {'job_state': 'R'}, id=j3id, max_attempts=30, interval=2)
-        self.server.expect(
-            JOB, {'job_state': 'Q'}, id=j2id, max_attempts=30, interval=2)
+        self.server.expect(JOB, {'job_state': 'R'}, id=j3id)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=j2id)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
 
         msg = "Checking the job state of " + j2id + ", runs after "
         msg += j1id + " completes"
         self.logger.info(msg)
-        self.server.expect(
-            JOB, {'job_state': 'R'}, id=j2id, max_attempts=30, interval=2)
+        self.server.expect(JOB, {'job_state': 'R'}, id=j2id)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
+        self.server.log_match(j2id + ";Exit_status")
 
-        self.server.log_match(
-            j2id + ";Exit_status", max_attempts=30, interval=2)
-
-        time.sleep(1)
-
+        # query fairshare and check usage
         fs1 = self.scheduler.query_fairshare(name=str(TEST_USER1))
         self.logger.info('Checking ' + str(fs1.usage) + " == 5")
         self.assertEqual(fs1.usage, 5)
-
         fs2 = self.scheduler.query_fairshare(name=str(TEST_USER2))
         self.logger.info('Checking ' + str(fs2.usage) + " == 5")
         self.assertEqual(fs2.usage, 5)
-
         fs3 = self.scheduler.query_fairshare(name=str(TEST_USER3))
         self.logger.info('Checking ' + str(fs3.usage) + " == 3")
         self.assertEqual(fs3.usage, 3)
-
         fs4 = self.scheduler.query_fairshare(name=str(TEST_USER4))
         self.logger.info('Checking ' + str(fs4.usage) + " == 3")
         self.assertEqual(fs4.usage, 3)
