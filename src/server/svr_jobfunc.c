@@ -5304,7 +5304,7 @@ svr_clean_job_history(struct work_task *pwt)
 		/* save the next job */
 		nxpjob = (job *)GET_NEXT(pjob->ji_alljobs);
 
-		if ((pjob->ji_qs.ji_state == JOB_STATE_MOVED) ||
+		if ((pjob->ji_qs.ji_state == JOB_STATE_MOVED && pjob->ji_qs.ji_substate == JOB_SUBSTATE_FINISHED) ||
 			(pjob->ji_qs.ji_state == JOB_STATE_FINISHED) ||
 			(pjob->ji_qs.ji_state == JOB_STATE_EXPIRED)) {
 
