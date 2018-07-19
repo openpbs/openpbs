@@ -52,6 +52,9 @@
 #include <avltree.h>
 
 #define TIME_SIZE 26 /*String length of time string is 26*/
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
 
 BOOL is_user_impersonated = FALSE;
 static AVL_IX_DESC *env_avltree = NULL;
@@ -242,7 +245,10 @@ fcntl(int fd, int cmd, long arg)
  * 	just a placeholder for the unix equivalent function.
  *
  * @param[in] path - file path
- * @param[in] resolved_path - resolved path
+ * @param[out] resolved_path - resolved path, if NULL is passed in, then
+ *     this function will allocate PATH_MAX bytes of memory and return the
+ *     address as return value. It is the caller's responsibility to free
+ *     this memory.
  *
  * @return	string
  * @retval	resolved path	succees
@@ -251,6 +257,12 @@ fcntl(int fd, int cmd, long arg)
 char *
 realpath(const char *path, char *resolved_path)
 {
+	if (resolved_path == NULL) {
+		if ((resolved_path = malloc(PATH_MAX)) == NULL) {
+			fprintf(stderr, "realpath() failed to allocate memory\n");
+			return NULL;
+		}
+	}
 	strcpy(resolved_path, path);
 	back2forward_slash(resolved_path);
 	return (resolved_path);

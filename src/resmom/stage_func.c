@@ -147,23 +147,31 @@ add_bad_list(char **pbl, char *newtext, int nl)
  * @param[in]	path	-	path to check
  *
  * @return	int
- * @retval	FALSE - given not a child path
- * @retval	TRUE - given path is child of dir
- *
+ * @retval	1 - given path is child of dir
+ * @retval	0 - given not a child path
+ * @retval -1 - error encountered
  */
 int
 is_child_path(char *dir, char *path)
 {
 	char fullpath[2*MAXPATHLEN+2] = {'\0'};
-	char dir_real[MAXPATHLEN+1] = {'\0'};
-	char fullpath_real[2*MAXPATHLEN+2] = {'\0'};
+	char *dir_real = NULL;
+	char *fullpath_real = NULL;
 	char *pos = NULL;
+	int  return_value = 0;
 
 	/* if file path is relative, combine it with directory */
 	if (!is_full_path(path)) {
-		(void)snprintf(fullpath, sizeof(fullpath)-1, "%s/%s", dir, path);
+		(void)snprintf(fullpath, sizeof(fullpath), "%s/%s", dir, path);
 	} else {
-		strncpy(fullpath, path, sizeof(fullpath)-1);
+		strncpy(fullpath, path, sizeof(fullpath));
+	}
+
+	dir_real = malloc(sizeof(char) * (MAXPATHLEN + 1));
+	fullpath_real = malloc(sizeof(char) * (2 * MAXPATHLEN + 2));
+	if (dir_real == NULL || fullpath_real == NULL) {
+		return_value = -1;
+		goto error_exit;
 	}
 
 	/* even if the file path is relative to some directory, */
@@ -171,21 +179,25 @@ is_child_path(char *dir, char *path)
 	/* so always perform full check of parent-child directory relation */
 #ifdef WIN32
 	forward2back_slash(fullpath);
-	strncpy(dir_real, lpath2short(dir), sizeof(dir_real)-1);
-	strncpy(fullpath_real, lpath2short(fullpath), sizeof(fullpath_real)-1);
+	strncpy(dir_real, lpath2short(dir), MAXPATHLEN);
+	strncpy(fullpath_real, lpath2short(fullpath), 2 * MAXPATHLEN + 1);
 #else
 	realpath(dir, dir_real);
 	realpath(fullpath, fullpath_real);
 #endif
 
 	/* check that fullpath_real begins with dir_real */
-	if (dir_real != NULL && strlen(dir_real)) {
+	if (strlen(dir_real) && strlen(fullpath_real)) {
 		pos = strstr(fullpath_real, dir_real);
 		if (pos == fullpath_real) {
-			return TRUE;
+			return_value = 1;
 		}
 	}
-	return FALSE;
+
+error_exit:
+	free(dir_real);
+	free(fullpath_real);
+	return return_value;
 }
 
 /**
@@ -734,7 +746,7 @@ copy_file(int dir, int rmtflag, char *owner, char *src, struct rqfpair *pair, in
 			 */
 
 			if (!(stage_inout->sandbox_private &&
-				is_child_path(pbs_jobdir, src))) {
+				is_child_path(pbs_jobdir, src) == 1)) {
 				/* Check if local file path has comma in it, if
 				 * found escape character prefixed will be
 				 * removed
@@ -855,7 +867,7 @@ copy_file(int dir, int rmtflag, char *owner, char *src, struct rqfpair *pair, in
 			}
 #endif	/* NO_SPOOL_OUTPUT */
 
-			if (is_child_path(pbs_jobdir, src))
+			if (is_child_path(pbs_jobdir, src) == 1)
 				stage_inout->stageout_failed = TRUE;
 		}
 	}

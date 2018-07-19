@@ -2485,7 +2485,7 @@ del_files(struct batch_request *preq, char **pbadfile)
 		/* O_WORKDIR behavior should match the behavior of HOME */
 		/* and delete files one by one */
 		if (sandbox_private) {
-			if (is_child_path(pbs_jobdir, path)) {
+			if (is_child_path(pbs_jobdir, path) == 1) {
 				/* file is under staging and execution dir, */
 				/* so defer its removal until staging and */
 				/* execution dir removal time */

@@ -231,23 +231,17 @@ tempstat(struct stat *sp, int isdir, int sticky, int disallow)
  *              			ENOTDIR if not file/directory as specified
  *              			EACCESS if permissions are not ok
  */
-
 int
-chk_file_sec(path, isdir, sticky, disallow, fullpath)
-char	*path;		/* path to check */
-int	isdir;		/* 1 = path is directory, 0 = file */
-int	sticky;		/* allow write on directory if sticky set */
-int	disallow;	/* perm bits to disallow */
-int	fullpath;	/* check full path */
+chk_file_sec(char *path, int isdir, int sticky, int disallow, int fullpath)
 {
 	int		rc = 0;
 	struct	stat	sbuf;
-	char		real[MAXPATHLEN];
+	char 	*real = NULL;
 
 	assert(path != NULL);
 	assert(path[0] != '\0');
 
-	if (realpath(path, real) == NULL) {
+	if ((real = realpath(path, NULL)) == NULL) {
 		rc = errno;
 		goto chkerr;
 	}
@@ -342,6 +336,7 @@ chkerr:
 		}
 	}
 
+	free(real);
 	return (rc);
 }
 
@@ -374,12 +369,12 @@ tmp_file_sec(char *path, int isdir, int sticky, int disallow, int fullpath)
 {
 	int		rc = 0;
 	struct	stat	sbuf;
-	char		real[MAXPATHLEN];
+	char	*real = NULL;
 
 	assert(path != NULL);
 	assert(path[0] != '\0');
 
-	if (realpath(path, real) == NULL) {
+	if ((real = realpath(path, NULL)) == NULL) {
 		rc = errno;
 		goto chkerr;
 	}
@@ -455,7 +450,7 @@ chkerr:
 	if (rc != 0) {
 		char	*error_buf;
 
-		if ((error_buf = malloc(1024)) == 0) {
+		if ((error_buf = malloc(1024)) == NULL) {
 			log_err(rc, "chk_file_sec", "Malloc failed");
 		} else {
 			sprintf(error_buf,
@@ -472,5 +467,6 @@ chkerr:
 		}
 	}
 
+	free(real);
 	return (rc);
 }

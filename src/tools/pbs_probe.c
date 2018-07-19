@@ -2244,7 +2244,7 @@ pbsdotconf(char * path)
 static	int
 get_realpath_values(struct infrastruct *pinf)
 {
-	char real[MAXPATHLEN];
+	char *real = NULL;
 	char path[MAXPATHLEN];
 	char *endhead;
 	char demarc[]="/";
@@ -2257,21 +2257,18 @@ get_realpath_values(struct infrastruct *pinf)
 	 * First try and resolve to a real path the MPUG path
 	 * data belonging to *pinf's "pri" member
 	 */
-
 	for (i=0; i<PBS_last; ++i) {
-
 		good_prime[i] = 0;
 		if (pinf->pri.pbs_mpug[i].path) {
-			if (realpath(pinf->pri.pbs_mpug[i].path, &real[0])) {
-				pinf->pri.pbs_mpug[i].realpath = strdup(&real[0]);
+			if ((real = realpath(pinf->pri.pbs_mpug[i].path, NULL)) != NULL) {
+				pinf->pri.pbs_mpug[i].realpath = strdup(real);
 				good_prime[i] = 1;
-
+				free(real);
 			} else if (pinf->pri.pbs_mpug[i].notReq == 0) {
 				/*
 				 * system not able to convert path string to valid
 				 * file system path
 				 */
-
 				snprintf(msg, sizeof(msg), "Unable to convert the primary, %s, string to a real path\n%s\n", origin_names[i], strerror(errno));
 				put_msg_in_table(pinf, SRC_pri, MSG_pri, msg);
 				snprintf(msg, sizeof(msg), "%s: %s\n", origin_names[i], pinf->pri.pbs_mpug[i].path);
@@ -2279,7 +2276,6 @@ get_realpath_values(struct infrastruct *pinf)
 				/* good_prime[i] = 0; */
 			}
 		} else {
-
 			if (pinf->pri.pbs_mpug[i].notReq == 0)
 				snprintf(msg, sizeof(msg), "Missing primary path %s", origin_names[i]);
 			put_msg_in_table(pinf, SRC_pri, MSG_pri, msg);
@@ -2369,9 +2365,9 @@ get_realpath_values(struct infrastruct *pinf)
 
 					strcpy(endhead, pmpug[j].path);
 
-					if (realpath(path, &real[0])) {
-						pmpug[j].realpath = strdup(&real[0]);
-
+					if ((real = realpath(path, NULL)) != NULL) {
+						pmpug[j].realpath = strdup(real);
+						free(real);
 					} else if ((pmpug[j].notReq & notbits) == 0) {
 
 						if (errno == ENOENT)
@@ -2413,9 +2409,9 @@ get_realpath_values(struct infrastruct *pinf)
 
 					strcpy(endhead, pmpug[j].path);
 
-					if (realpath(path, &real[0])) {
-						pmpug[j].realpath = strdup(&real[0]);
-
+					if ((real = realpath(path, NULL)) != NULL) {
+						pmpug[j].realpath = strdup(real);
+						free(real);
 					} else if ((pmpug[j].notReq & notbits) == 0) {
 
 						if (errno == ENOENT)
@@ -2428,6 +2424,7 @@ get_realpath_values(struct infrastruct *pinf)
 			}
 		}
 	}
+
 	return (0);
 }
 
