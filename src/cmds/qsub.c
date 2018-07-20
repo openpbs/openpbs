@@ -6166,8 +6166,9 @@ main(int argc, char **argv, char **envp) /* qsub */
 		exit(0);
 	}
 
-	/* note the name of the qsub executable */
-	if (snprintf(qsub_exe, sizeof(qsub_exe), "%s", argv[0]) != sizeof(qsub_exe)) {
+	strncpy(qsub_exe, argv[0], sizeof(qsub_exe)); /* note the name of the qsub executable */
+	qsub_exe[sizeof(qsub_exe) - 1] = '\0';
+	if (strlen(qsub_exe) != strlen(argv[0])) { /* exit with error instead of silent truncation */
 		fprintf(stderr, "qsub: Name of executable is too long\n");
 		exit_qsub(2);
 	}
