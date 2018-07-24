@@ -209,7 +209,7 @@ req_holdjob(struct batch_request *preq)
 			req_reject(rc, 0, preq);
 		} else {
 			pjob->ji_qs.ji_svrflags |=
-				JOB_SVFLG_HASRUN | JOB_SVFLG_CHKPT;
+				(JOB_SVFLG_HASRUN | JOB_SVFLG_CHKPT | JOB_SVFLG_HASHOLD);
 			(void)job_save(pjob, SAVEJOB_QUICK);
 			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO,
 				pjob->ji_qs.ji_jobid, log_buffer);

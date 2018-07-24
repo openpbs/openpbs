@@ -49,12 +49,15 @@ class TestCheckpoint(TestFunctional):
 
     def setUp(self):
         TestFunctional.setUp(self)
+        a = {'job_history_enable': 'True'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
         abort_script = """#!/bin/bash
 kill $1
 exit 0
 """
         self.abort_file = self.du.create_temp_file(body=abort_script)
         self.du.chmod(path=self.abort_file, mode=0755)
+        self.du.chown(path=self.abort_file, uid=0, gid=0, runas=ROOT_USER)
         c = {'$action': 'checkpoint_abort 30 !' + self.abort_file + ' %sid'}
         self.mom.add_config(c)
         self.platform = self.du.get_platform()
@@ -73,7 +76,7 @@ exit 0
         """
         self.ck_dir = os.path.join(self.server.pbs_conf['PBS_HOME'],
                                    'checkpoint', jid + '.CK')
-        self.assertTrue(os.path.isdir(self.ck_dir),
+        self.assertTrue(self.du.isdir(path=self.ck_dir, runas=ROOT_USER),
                         msg="Checkpoint directory %s not found" % self.ck_dir)
         _msg1 = "%s;req_holdjob: Checkpoint initiated." % jid
         self.mom.log_match(_msg1, starttime=stime)
@@ -100,9 +103,9 @@ exit 0
         """
         Checkpointing with qterm -t <type>, hot server restart.
         """
-        self.skipTest("Skipping test due to bug introduced by PR# 732")
 
         j1 = Job(TEST_USER, self.attrs)
+        j1.set_sleep_time(20)
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
 
@@ -123,6 +126,8 @@ exit 0
         self.server.expect(JOB, 'exec_vnode', id=jid1, op=SET)
         self.assertFalse(os.path.exists(self.ck_dir),
                          msg=self.ck_dir + " still exists")
+        self.server.expect(JOB, {'job_state': 'F'},
+                           jid1, extend='x', interval=5)
 
     def test_checkpoint_abort_with_preempt(self):
         """
@@ -138,17 +143,24 @@ exit 0
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, "expressq")
 
         j1 = Job(TEST_USER, self.attrs)
+        j1.set_sleep_time(20)
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
 
         self.attrs['queue'] = 'expressq'
         j2 = Job(TEST_USER, self.attrs)
+        j2.set_sleep_time(20)
         start_time = int(time.time())
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid1)
 
         self.verify_checkpoint_abort(jid1, start_time)
+
+        self.server.expect(JOB, {'job_state': 'F'},
+                           jid2, extend='x', interval=5)
+        self.server.expect(JOB, {'job_state': 'F'},
+                           jid1, extend='x', interval=5)
 
     def test_checkpoint_abort_with_qhold(self):
         """

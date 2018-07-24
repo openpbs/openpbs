@@ -2249,10 +2249,9 @@ RetryJob:
 		((pjob->ji_qs.ji_substate != JOB_SUBSTATE_RERUN) &&
 		(pjob->ji_qs.ji_substate != JOB_SUBSTATE_RERUN2))) {
 
-		check_block(pjob, "");		/* if block set, send word */
-
 		if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_CHKPT) &&
-			((pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) == 0)) {
+			((pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) == 0) &&
+			(pjob->ji_qs.ji_svrflags & JOB_SVFLG_HASHOLD)) {
 
 			/* non-migratable checkpoint, leave there
 			 * and just requeue the job.
@@ -2261,6 +2260,7 @@ RetryJob:
 			rel_resc(pjob);
 			ack_obit(stream, pjob->ji_qs.ji_jobid);
 			pjob->ji_qs.ji_svrflags |= JOB_SVFLG_HASRUN;
+			pjob->ji_qs.ji_svrflags &= ~JOB_SVFLG_HASHOLD;
 			svr_evaljobstate(pjob, &newstate, &newsubst, 1);
 			(void)svr_setjobstate(pjob, newstate, newsubst);
 			if (pjob->ji_mom_prot == PROT_TCP)
@@ -2270,6 +2270,8 @@ RetryJob:
 			pjob->ji_mom_prot = PROT_INVALID;
 			return;
 		}
+
+		check_block(pjob, "");		/* if block set, send word */
 
 		ptask = set_task(WORK_Immed, 0, on_job_exit, (void *)pjob);
 		append_link(&pjob->ji_svrtask, &ptask->wt_linkobj, ptask);

@@ -891,6 +891,7 @@ task_find	(job		*pjob,
 #define JOB_SVFLG_ChkptMig 0x100 /* job has migratable checkpoint */
 #define JOB_SVFLG_Suspend  0x200 /* job suspended (signal suspend) */
 #define JOB_SVFLG_StagedIn 0x400 /* job has files that have been staged in */
+#define JOB_SVFLG_HASHOLD  0x800 /* job has a hold request sent to MoM */
 #define JOB_SVFLG_HasNodes 0x1000 /* job has nodes allocated to it */
 #define JOB_SVFLG_RescAssn 0x2000 /* job resources accumulated in server/que */
 #define JOB_SVFLG_SPSwitch 0x2000 /* SP switch loaded for job, SP MOM only */

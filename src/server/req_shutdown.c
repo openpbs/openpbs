@@ -323,9 +323,7 @@ shutdown_chkpt(job *pjob)
 		if (pjob->ji_qs.ji_state == JOB_STATE_TRANSIT)
 			svr_setjobstate(pjob, JOB_STATE_RUNNING, JOB_SUBSTATE_RUNNING);
 
-		pjob->ji_qs.ji_substate = JOB_SUBSTATE_RERUN;
-		pjob->ji_qs.ji_svrflags |= JOB_SVFLG_HASRUN;
-		pjob->ji_qs.ji_svrflags |= JOB_SVFLG_CHKPT;
+		pjob->ji_qs.ji_svrflags |= (JOB_SVFLG_HASRUN | JOB_SVFLG_CHKPT | JOB_SVFLG_HASHOLD);
 		pjob->ji_modified = 1;
 		(void)job_save(pjob, SAVEJOB_QUICK);
 		return (0);
