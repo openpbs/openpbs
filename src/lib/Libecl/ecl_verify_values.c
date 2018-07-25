@@ -1105,13 +1105,15 @@ int
 verify_value_zero_or_positive(int batch_request, int parent_object, int cmd,
 	struct attropl *pattr, char **err_msg)
 {
-	long l;
+	long lval;
+	char *end = NULL;
 
 	if ((pattr->value == NULL) || (pattr->value[0] == '\0'))
 		return PBSE_BADATVAL;
 
-	l = atol(pattr->value);
-	if (l < 0)
+	errno = 0;
+	lval = strtol(pattr->value, &end, 10);
+	if ((errno != 0) || (lval < 0))
 		return PBSE_BADATVAL;
 
 	return PBSE_NONE;
