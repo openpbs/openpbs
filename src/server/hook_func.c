@@ -3593,7 +3593,7 @@ do_runjob_reject_actions(job *pjob, char *hook_name)
  *
  * @return void
  */
-static void
+void
 write_hook_reject_debug_output_and_close(char *reject_msg)
 {
 	char	*hook_outfile;
@@ -3646,7 +3646,7 @@ write_hook_reject_debug_output_and_close(char *reject_msg)
  *
  * @return void
  */
-static void
+void
 write_hook_accept_debug_output_and_close(void)
 {
 	char	*hook_outfile;
@@ -3696,7 +3696,7 @@ write_hook_accept_debug_output_and_close(void)
  *
  * @return void
  */
-static pbs_list_head *
+pbs_list_head *
 get_vnode_list(void){
 	int i;
 	int index;
@@ -3739,7 +3739,7 @@ get_vnode_list(void){
  *
  * @return void
  */
-static pbs_list_head *
+pbs_list_head *
 get_resv_list(void) {
 	int 	index;
 	char	name_str_buf[STRBUF + 1] = {'\0'};
@@ -7543,6 +7543,7 @@ run_periodic_hook(struct work_task *ptask)
 	hook_input_param_t req_ptr;
 	pid_t	pid;
 #ifdef WIN32
+	pid_t	win_pid;
 	TCHAR	  hkFileName[MAX_PATH];
 	STARTUPINFO             si = { 0 };
 	PROCESS_INFORMATION     pi = { 0 };
@@ -7590,12 +7591,21 @@ run_periodic_hook(struct work_task *ptask)
 		return;
 	}
 	pid = (long)pi.hProcess;
+	win_pid = (long)pi.dwProcessId;
 	addpid(pid);
 #endif
 	if (pid != 0) {		/* The parent (main server) */
 		/* Set a task for post processing of the running hook */
-		(void)set_task(WORK_Deferred_Child, (long)pid,
+		struct  work_task *ptask;
+		ptask = set_task(WORK_Deferred_Child, (long)pid,
 			post_server_periodic_hook, phook);
+		if (!ptask) {
+			log_err(errno, __func__, msg_err_malloc);
+			return;
+		}
+#ifdef WIN32
+		ptask->wt_aux2 = win_pid;
+#endif
 		/* Set a timed task for next occurance of this hook */
 		(void)set_task(WORK_Timed, time_now + phook->freq,
 			run_periodic_hook, phook);

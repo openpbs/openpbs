@@ -119,7 +119,7 @@ char	       *path_nodestate = NULL;
 char	       *path_hooks;
 char	       *path_hooks_rescdef;
 char	       *path_hooks_tracking;
-char	       *path_hooks_workdir;
+char	       path_hooks_workdir[MAXPATHLEN+1];
 char           *path_secondaryact;
 char	       *pbs_o_host = "PBS_O_HOST";
 pbs_net_t	pbs_mom_addr = 0;
@@ -266,11 +266,17 @@ execute_python_periodic_hook(hook  *phook)
 	unsigned int		hook_event;
 	char 			*emsg = NULL;
 	char			username[MAXPATHLEN];
-	int			len;
+	char            	hook_outfile[MAXPATHLEN+1];
+	int			len =  MAXPATHLEN - 1;
+	pid_t           	mypid;
 	hook_input_param_t	req_ptr;
-
+	FILE    		*fp_out = NULL;
+	FILE			*fp_out_save = NULL;
+	
 	if (!phook)
 		return rc;
+
+	mypid = (long)GetCurrentProcessId();
 
 	hook_event = HOOK_EVENT_PERIODIC;
 
@@ -283,8 +289,12 @@ execute_python_periodic_hook(hook  *phook)
 		return rc;
 	}
 
+	req_ptr.vns_list = (pbs_list_head *)get_vnode_list();
+	req_ptr.resv_list = (pbs_list_head *)get_resv_list();
+
 	rc = pbs_python_event_set(hook_event, username,
 		"server", &req_ptr);
+
 	if (rc == -1) { /* internal server code failure */
 		log_event(PBSEVENT_DEBUG2,
 			PBS_EVENTCLASS_HOOK, LOG_ERR, __func__,
@@ -327,6 +337,29 @@ execute_python_periodic_hook(hook  *phook)
 		phook->script,
 		&exit_code);
 
+	snprintf(hook_outfile, MAXPATHLEN, FMT_HOOK_OUTFILE,
+                path_hooks_workdir, hook_event_as_string(hook_event),
+                phook->hook_name, mypid);
+
+	fp_out = fopen(hook_outfile, "w");
+	if (fp_out == NULL) {
+            sprintf(log_buffer,
+                "warning: open of debug output file %s failed!",
+                hook_outfile);
+            log_event(PBSEVENT_DEBUG3,
+                PBS_EVENTCLASS_HOOK, LOG_ERR,
+                phook->hook_name, log_buffer);
+                return (-1);
+	} else {
+            fp_out_save = pbs_python_get_hook_debug_output_fp();
+            if (fp_out_save != NULL) {
+                fclose(fp_out_save);
+            }
+            pbs_python_set_hook_debug_output_fp(fp_out);
+            pbs_python_set_hook_debug_output_file(hook_outfile);
+        }
+
+
 	/* go back to server's private directory */
 	if (chdir(path_priv) != 0) {
 		log_event(PBSEVENT_DEBUG2,
@@ -354,14 +387,19 @@ execute_python_periodic_hook(hook  *phook)
 					log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
 						LOG_ERR, phook->hook_name, log_buffer);
 				}
-
+				write_hook_reject_debug_output_and_close(emsg);
+				return (rc);
+			} else {
+				write_hook_accept_debug_output_and_close();
+				rc = 1;
+				return (rc);
 			}
-			return (exit_code);
 
 		case -1:	/* internal error */
 			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
 				LOG_ERR, phook->hook_name,
 				"Internal server error encountered. Skipping hook.");
+			fclose(fp_out);
 			return (rc); /* should not happen */
 
 		case -2:	/* unhandled exception */
@@ -374,6 +412,7 @@ execute_python_periodic_hook(hook  *phook)
 				hook_event_as_string(hook_event), phook->hook_name);
 			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
 				LOG_ERR, phook->hook_name, log_buffer);
+			fclose(fp_out);
 			return (rc);
 	}
 #endif
@@ -402,7 +441,7 @@ main(int argc, char *argv[])
 		fprintf(stderr, "Out of memory\n");
 		return 1;
 	}
-
+	CLEAR_HEAD(svr_allresvs);
 	/* set python interp data */
 	svr_interp_data.data_initialized = 0;
 	svr_interp_data.init_interpreter_data =
@@ -419,6 +458,7 @@ main(int argc, char *argv[])
 	pbs_loadconf(0);
 	/* initialize the pointers in the resource_def array */
 
+	(void)snprintf(path_hooks_workdir, MAXPATHLEN, "%s/server_priv/hooks/tmp/",pbs_conf.pbs_home_path);
 	(void)snprintf(path_log, MAXPATHLEN, "%s/%s", pbs_conf.pbs_home_path, PBS_LOGFILES);
 	(void)log_open_main(log_file, path_log, 1); /* silent open */
 
