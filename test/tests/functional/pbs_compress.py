@@ -1,5 +1,5 @@
+# coding: utf-8
 
-#
 # Copyright (C) 1994-2018 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
@@ -34,20 +34,35 @@
 # Use of Altair’s trademarks, including but not limited to "PBS™",
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
-#
 
-noinst_LIBRARIES = libtpp.a
+import os
+from ptl.utils.pbs_testsuite import *
 
-libtpp_a_CPPFLAGS = -I$(top_srcdir)/src/include
 
-libtpp_a_SOURCES = \
-	tpp_client.c \
-	tpp_common.h \
-	tpp_dis.c \
-	tpp_em.c \
-	tpp_platform.c \
-	tpp_platform.h \
-	tpp_router.c \
-	tpp_transport.c \
-	tpp_util.c
+class classcomp(PBSTestSuite):
 
+    def test_submit_job_comp(self):
+        """
+        Create a large file which can be passed
+        as an environment attribute to a job
+        """
+        with open('compress', 'wb') as out:
+            i = 1
+            while i < 1024:
+                out.write("Text File\n")
+                i += 1
+
+        """
+        Submit Job with created file as an environment attribute
+        """
+
+        j = Job()
+        data = open('compress', 'r').read()
+        j.set_attributes({ATTR_v: "ABC=%s" % data})
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        self.server.log_match("tpp_deflate called inside tpp_send routine")
+        self.mom.log_match("tpp_inflate called inside add_part_packet routine")
+
+        out.close()
+        os.remove(out.name)
