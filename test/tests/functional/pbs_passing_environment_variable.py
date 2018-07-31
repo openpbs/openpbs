@@ -89,9 +89,10 @@ class Test_passing_environment_variable_via_qsub(TestFunctional):
         Define a shell function with new line characters and check that
         the function is passed correctly
         """
-        os.environ['foo'] = '"(){if [ /bin/true ];\nthen\necho hello;\nfi};"'
+        os.environ['foo'] = '() { if [ /bin/true ]; then\necho hello;\nfi\n}'
         script = ['#PBS -V']
         script += ['env | grep -A 3 foo\n']
+        script += ['foo\n']
         # Submit a job without hooks in the system
         jid = self.create_and_submit_job(content=script)
         qstat = self.server.status(JOB, ATTR_o, id=jid)
@@ -100,7 +101,7 @@ class Test_passing_environment_variable_via_qsub(TestFunctional):
         job_output = ""
         with open(job_outfile, 'r') as f:
             job_output = f.read().strip()
-        self.assertEqual(job_output,
-                         'foo="(){if [ /bin/true ];\nthen\necho hello;\nfi};"',
+        match = 'foo=() {  if [ /bin/true ]; then\n echo hello;\n fi\n}\nhello'
+        self.assertEqual(job_output, match,
                          msg="Environment variable foo content does "
                          "not match original")
