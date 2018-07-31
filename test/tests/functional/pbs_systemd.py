@@ -1,4 +1,4 @@
-# coding: utf-8
+#coding: utf-8
 
 # Copyright (C) 1994-2018 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
@@ -43,6 +43,13 @@ class Test_systemd(TestFunctional):
     """
     Test whether you are able to control pbs using systemd
     """
+
+    def setUp(self):
+        TestFunctional.setUp(self)
+        # Skip test if systemctl command is not found.
+        is_systemctl = self.du.which(exe='systemctl')
+        if is_systemctl == 'systemctl':
+            self.skipTest("Systemctl command not found")
 
     def shutdown_all(self):
         if self.server.isUp():
