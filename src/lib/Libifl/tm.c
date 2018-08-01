@@ -630,12 +630,24 @@ tm_init(void *info, struct tm_roots *roots)
 		return TM_ESYSTEM;
 
 	pbs_tcp_interrupt = 1;
-	if ((tm_jobid = getenv("PBS_JOBID")) == NULL)
+	if ((env = getenv("PBS_JOBID")) == NULL)
 		return TM_EBADENVIRONMENT;
-	tm_jobid_len = strlen(tm_jobid);
-	if ((tm_jobcookie = getenv("PBS_JOBCOOKIE")) == NULL)
+	tm_jobid_len = strlen(env);
+	tm_jobid = (char *)calloc(1, tm_jobid_len + 1);
+	if (tm_jobid)
+		strncpy(tm_jobid, env, tm_jobid_len);
+	else
+		return TM_ESYSTEM;
+
+	if ((env = getenv("PBS_JOBCOOKIE")) == NULL)
 		return TM_EBADENVIRONMENT;
-	tm_jobcookie_len = strlen(tm_jobcookie);
+	tm_jobcookie_len = strlen(env);
+	tm_jobcookie = (char *)calloc(1, tm_jobcookie_len + 1);
+	if (tm_jobcookie)
+		strncpy(tm_jobcookie, env, tm_jobcookie_len);
+	else
+		return TM_ESYSTEM;
+
 	if ((env = getenv("PBS_NODENUM")) == NULL)
 		return TM_EBADENVIRONMENT;
 	tm_jobndid = (tm_node_id)strtol(env, &hold, 10);
@@ -1158,6 +1170,8 @@ tm_finalize()
 		++i;	/* check next slot in hash table */
 	}
 	init_done = 0;
+	free(tm_jobid);
+	free(tm_jobcookie);
 	return TM_SUCCESS;	/* what else */
 }
 
