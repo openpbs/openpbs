@@ -82,7 +82,6 @@ class TestBasilQuery(TestFunctional):
     def setUp(self):
         TestFunctional.setUp(self)
 
-        # Set pbshook frequency to 10 seconds
         self.server.manager(MGR_CMD_SET, PBS_HOOK,
                             {'enabled': 'true', 'freq': 10},
                             id='PBS_alps_inventory_check', expect=True)
@@ -213,15 +212,27 @@ class TestBasilQuery(TestFunctional):
         Return a list of KNL vnodes, empty list if there are no KNL vnodes.
         """
         klist = []
-        kvnl = self.server.filter(
-            VNODE, {'current_aoe': (NE, "")})
-        klist = kvnl.values()[0]
+        # Find the list of KNL vnodes
+        kvnl = self.server.filter(VNODE, {'current_aoe': (NE, "")})
+        if len(kvnl) == 0:
+            self.skipTest(reason='No KNL vnodes present')
+        else:
+            klist = kvnl.values()[0]
+            self.logger.info("KNL vnode list: %s" % (klist))
         return klist
 
     def set_provisioning(self):
         """
         Set provisioning enabled and aoe resource on Xeon Phi nodes.
         """
+        # Check for provisioning setup
+        momA = self.moms.values()[0].shortname
+        serverA = self.servers.values()[0].shortname
+        msg = ("Provide a mom not present on server host while invoking"
+               " the test: -p moms=<m1>")
+        if momA == serverA:
+            self.skipTest(reason=msg)
+
         nodelist = self.server.status(NODE, 'current_aoe')
         for node in nodelist:
             a = {'provision_enable': 'true',
@@ -244,8 +255,8 @@ class TestBasilQuery(TestFunctional):
         """
         Get the value of current_aoe set on the XeonPhi vnodes
         """
-        list1 = self.server.status(NODE, 'current_aoe')
-        req_aoe = list1[0]['current_aoe']
+        aoe_val = self.server.status(NODE, 'current_aoe')
+        req_aoe = aoe_val[0]['current_aoe']
         return req_aoe
 
     def test_InventoryQueryVersion(self):
@@ -262,11 +273,11 @@ type=\"ENGINE\"/>" % (self.basil_version[1])
         if self.available_version == '1.7':
             msg = 'This Cray system supports the BASIL 1.7 protocol'
             self.mom.log_match(msg, n='ALL', max_attempts=3)
-            basil_version_log = 'alps_engine_query;The basilversion is' + \
-                                ' set to 1.4'
+            basil_version_log = 'alps_engine_query;The basilversion is' \
+                ' set to 1.4'
         else:
-            basil_version_log = 'alps_engine_query;The basilversion is' + \
-                                ' set + to' + self.available_version
+            basil_version_log = 'alps_engine_query;The basilversion is' \
+                ' set to ' + self.available_version
         self.mom.log_match(basil_version_log, max_attempts=3)
 
     def test_InventoryVnodes(self):
@@ -274,7 +285,7 @@ type=\"ENGINE\"/>" % (self.basil_version[1])
         This test validates the vnode created using alps BASIL 1.4 & 1.7
         inventory query response.
         """
-
+        knl_vnodes = {}
         # Parse inventory query response and fetch node information.
         xml_out = self.query_alps('1.4', 'QUERY', 'INVENTORY')
         xml_tree = ET.parse(xml_out)
@@ -445,10 +456,6 @@ type=\"ENGINE\"/>" % (self.basil_version[1])
 
         # Find the list of KNL vnodes
         klist = self.retklist()
-        if len(klist) == 0:
-            self.skipTest(reason='No KNL vnodes present')
-        else:
-            self.logger.info("KNL vnode list: %s" % (klist))
 
         # Set provisioning attributes on KNL vnode.
         self.set_provisioning()
@@ -461,7 +468,7 @@ type=\"ENGINE\"/>" % (self.basil_version[1])
             "#PBS -joe -o localhost:/tmp -lselect=1:ncpus=1:aoe=%s\n"
             % req_aoe +
             " cd /tmp\n"
-            "aprun -b -B sleep 10\n"
+            "aprun -B sleep 10\n"
             "sleep 10")
 
         job_id = self.server.submit(job)
@@ -470,13 +477,9 @@ type=\"ENGINE\"/>" % (self.basil_version[1])
         # Check that exec_vnode is a KNL vnode.
         self.server.status(JOB, 'exec_vnode', id=job_id)
         evnode = job.get_vnodes()[0]
-        if evnode in klist:
-            self.logger.info("exec_vnode %s is a KNL vnode." % (evnode))
-            rv = True
-        else:
-            rv = False
-            self.logger.info("exec_vnode %s is not a KNL vnode." % (evnode))
-        self.assertTrue(rv)
+        self.assertIn(evnode, klist, "exec_vnode %s is not a KNL vnode."
+                      % (evnode))
+        self.logger.info("exec_vnode %s is a KNL vnode." % (evnode))
 
         # Unset provisioning attributes.
         self.unset_provisioning()
@@ -490,10 +493,6 @@ type=\"ENGINE\"/>" % (self.basil_version[1])
 
         # Find the list of KNL vnodes
         klist = self.retklist()
-        if len(klist) == 0:
-            self.skipTest(reason='No KNL vnodes present')
-        else:
-            self.logger.info("KNL vnode list: %s" % (klist))
 
         # Set provisioning attributes.
         self.set_provisioning()
@@ -506,7 +505,7 @@ type=\"ENGINE\"/>" % (self.basil_version[1])
             "#PBS -joe -o localhost:/tmp -lplace=scatter "
             "-lselect=1:ncpus=1:aoe=%s+1:ncpus=1\n" % req_aoe +
             " cd /tmp\n"
-            "aprun -b -B sleep 10\n"
+            "aprun -B sleep 10\n"
             "sleep 10")
         job_id = self.server.submit(job)
         self.server.expect(JOB, {'job_state': 'R'}, id=job_id)
@@ -514,21 +513,13 @@ type=\"ENGINE\"/>" % (self.basil_version[1])
         # Check that exec_vnode is a KNL vnode.
         self.server.status(JOB, 'exec_vnode', id=job_id)
         evnode = job.get_vnodes()
-        if evnode[0] in klist:
-            self.logger.info("exec_vnode %s is a KNL vnode." % (evnode))
-            rv = True
-        else:
-            rv = False
-            self.logger.info("exec_vnode %s is not a KNL vnode." % (evnode))
-        self.assertTrue(rv)
+        self.assertIn(evnode[0], klist, "exec_vnode %s is not a KNL vnode."
+                      % (evnode[0]))
+        self.logger.info("exec_vnode %s is a KNL vnode." % (evnode[0]))
 
-        if evnode[1] not in klist:
-            self.logger.info("exec_vnode %s is a NON KNL vnode." % (evnode))
-            rv = True
-        else:
-            rv = False
-            self.logger.info("exec_vnode %s is not a KNL vnode." % (evnode))
-        self.assertTrue(rv)
+        self.assertNotIn(evnode[1], klist, "exec_vnode %s is a KNL"
+                         " vnode." % (evnode[1]))
+        self.logger.info("exec_vnode %s is not a KNL vnode." % (evnode[1]))
 
         # Unset provisioning attributes.
         self.unset_provisioning()
@@ -542,13 +533,10 @@ type=\"ENGINE\"/>" % (self.basil_version[1])
         try:
             rv = self.mom.log_match(
                 "This Cray system supports the BASIL 1.7 protocol.",
-                n='ALL')
+                n='ALL', max_attempts=10)
         except PtlLogMatchError:
-            self.logger_info(
-                "This Cray system not supports the BASIL 1.7 protocol.",
-                n='ALL.')
             self.skipTest(
-                reason='Test not applicable for systems not having BASIL 1.7')
+                reason='Test not applicable for system not having BASIL 1.7')
 
         # Determine if KNL vnodes are present.
         knl_vnodes = self.get_knl_vnodes()
@@ -576,10 +564,6 @@ type=\"ENGINE\"/>" % (self.basil_version[1])
 
         # Find the list of KNL vnodes
         klist = self.retklist()
-        if len(klist) == 0:
-            self.skipTest(reason='No KNL vnodes present')
-        else:
-            self.logger.info("KNL vnode list: %s" % (klist))
 
         # Change mode of two KNL nodes to interactive
         if len(klist) >= 2:
@@ -631,10 +615,6 @@ type=\"ENGINE\"/>" % (self.basil_version[1])
 
         # Find the list of KNL vnodes
         klist = self.retklist()
-        if len(klist) == 0:
-            self.skipTest(reason='No KNL vnodes present')
-        else:
-            self.logger.info("KNL vnode list: %s" % (klist))
 
         # Change mode of all nodes to interactive
         cmd = ['xtprocadmin', '-k', 'm', 'interactive']
@@ -673,13 +653,9 @@ type=\"ENGINE\"/>" % (self.basil_version[1])
         # Check that exec_vnode is a KNL vnode.
         self.server.status(JOB, 'exec_vnode', id=job_id)
         evnode = job.get_vnodes()[0]
-        if evnode in klist:
-            self.logger.info("exec_vnode %s is a KNL vnode." % (evnode))
-            rv = True
-        else:
-            rv = False
-            self.logger.info("exec_vnode %s is not a KNL vnode." % (evnode))
-        self.assertTrue(rv)
+        self.assertIn(evnode, klist, "exec_vnode %s is not a KNL vnode."
+                      % (evnode))
+        self.logger.info("exec_vnode %s is a KNL vnode." % (evnode))
 
         job2 = Job(TEST_USER, attrs=a)
 
@@ -688,13 +664,9 @@ type=\"ENGINE\"/>" % (self.basil_version[1])
         # Check that exec_vnode is a KNL vnode.
         self.server.status(JOB, 'exec_vnode', id=job_id2)
         evnode = job2.get_vnodes()[0]
-        if evnode in klist:
-            self.logger.info("exec_vnode %s is a KNL vnode." % (evnode))
-            rv = True
-        else:
-            rv = False
-            self.logger.info("exec_vnode %s is not a KNL vnode." % (evnode))
-        self.assertTrue(rv)
+        self.assertIn(evnode, klist, "exec_vnode %s is not a KNL vnode."
+                      % (evnode))
+        self.logger.info("exec_vnode %s is a KNL vnode." % (evnode))
 
         job3 = Job(TEST_USER, attrs=a)
 
@@ -709,18 +681,18 @@ type=\"ENGINE\"/>" % (self.basil_version[1])
         # Check that exec_vnode is a KNL vnode.
         self.server.status(JOB, 'exec_vnode', id=job_id3)
         evnode = job3.get_vnodes()[0]
-        if evnode in klist:
-            self.logger.info("exec_vnode %s is a KNL vnode." % (evnode))
-            rv = True
-        else:
-            rv = False
-            self.logger.info("exec_vnode %s is not a KNL vnode." % (evnode))
-        self.assertTrue(rv)
+        self.assertIn(evnode, klist, "exec_vnode %s is not a KNL vnode."
+                      % (evnode))
+        self.logger.info("exec_vnode %s is a KNL vnode." % (evnode))
 
     def test_validate_pbs_xeon_phi_provision_hook(self):
         """
         Verify the default attribute of pbs_hook PBS_xeon_phi_provision hook.
         """
+        if self.du.platform != 'cray':
+            self.skipTest(reason='pbs_hook PBS_xeon_phi_provision is not'
+                          ' available on non-cray machine')
+
         attr = {'type': 'pbs', 'enabled': 'false', 'event': 'provision',
                 'alarm': 1800, 'order': 1, 'debug': 'false',
                 'user': 'pbsadmin', 'fail_action': 'none'}
@@ -749,13 +721,13 @@ type=\"ENGINE\"/>" % (self.basil_version[1])
 
     def tearDown(self):
         TestFunctional.tearDown(self)
-
-        # Change all nodes back to batch mode and restart PBS
-        cmd = ['xtprocadmin', '-k', 'm', 'batch']
-        self.logger.info(cmd)
-        ret = self.server.du.run_cmd(self.server.hostname,
-                                     cmd, logerr=True)
-        self.assertEqual(ret['rc'], 0)
+        if self.du.platform == 'cray':
+            # Change all nodes back to batch mode and restart PBS
+            cmd = ['xtprocadmin', '-k', 'm', 'batch']
+            self.logger.info(cmd)
+            ret = self.server.du.run_cmd(self.server.hostname,
+                                         cmd, logerr=True)
+            self.assertEqual(ret['rc'], 0)
 
         # Restore hook freq to 300
         self.server.manager(MGR_CMD_SET, PBS_HOOK,
