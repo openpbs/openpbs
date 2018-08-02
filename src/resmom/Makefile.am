@@ -105,6 +105,9 @@ endif
 if CPUSET_ENABLED
 pbs_mom_CPPFLAGS += -DMOM_CPUSET=1 @cpuset_flags@
 pbs_mom_LDADD += -lcpuset
+if CPUSET_V4
+pbs_mom_LDADD += -lbitmask
+endif
 if CPUSET_FOR_IRIX6
 pbs_mom_SOURCES += \
 	irix6cpuset/allocnodes.c \

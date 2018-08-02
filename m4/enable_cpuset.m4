@@ -50,8 +50,11 @@ AC_DEFUN([PBS_AC_ENABLE_CPUSET],
     AS_IF([test ! -r /usr/include/cpuset.h],
       AC_MSG_ERROR([Missing cpuset header file]))
     AS_IF([test -r /usr/include/cpumemset.h],
-      [cpuset_flags="-DCPUSET_VERSION=2"],
-      [cpuset_flags="-DCPUSET_VERSION=4"])
+      [cpuset_flags="-DCPUSET_VERSION=2"; cpuset_v4=no],
+      [cpuset_flags="-DCPUSET_VERSION=4"; cpuset_v4=yes])
+      AS_IF([test x$cpuset_v4 = xyes],
+        AS_IF([test ! -r /usr/include/bitmask.h],
+          AC_MSG_ERROR([Missing libbitmask or bitmask.h header file])))
     AS_CASE([$PBS_MACH],
       [irix6*],
         [cpuset_flags="$cpuset_flags -DIRIX6_CPUSET=1"]
@@ -63,5 +66,6 @@ AC_DEFUN([PBS_AC_ENABLE_CPUSET],
   AC_SUBST([cpuset_flags])
   AM_CONDITIONAL([CPUSET_ENABLED], [test x$enable_cpuset = xyes])
   AM_CONDITIONAL([CPUSET_FOR_IRIX6], [test x$cpuset_for_irix6 = xyes])
+  AM_CONDITIONAL([CPUSET_V4], [test x$cpuset_v4 = xyes])
 ])
 
