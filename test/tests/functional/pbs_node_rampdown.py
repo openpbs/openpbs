@@ -152,13 +152,22 @@ class TestPbsNodeRampDown(TestFunctional):
         This will fail on an assert if server's license_count used value
         does not equal 'num_licenses'
         """
-        server_stat = self.server.status(SERVER, 'license_count')
-        lic_count = server_stat[0]['license_count']
-        for lic in lic_count.split():
-            lic_split = lic.split(':')
-            if lic_split[0] == 'Used':
-                self.assertEqual(int(lic_split[1]), num_licenses)
-                break
+        n = retry = 5
+        for _ in range(n):
+            server_stat = self.server.status(SERVER, 'license_count')
+            lic_count = server_stat[0]['license_count']
+            for lic in lic_count.split():
+                lic_split = lic.split(':')
+                if lic_split[0] == 'Used':
+                    actual_licenses = int(lic_split[1])
+                    if actual_licenses == num_licenses:
+                        return
+                    break
+            retry -= 1
+            if retry == 0:
+                raise AssertionError("not found %d licenses" % (num_licenses,))
+            self.logger.info("sleeping 3 secs before next retry")
+            time.sleep(3)
 
     def match_accounting_log(self, atype, jid, exec_host, exec_vnode,
                              mem, ncpus, nodect, place, select):
@@ -176,36 +185,36 @@ class TestPbsNodeRampDown(TestFunctional):
         """
         self.server.accounting_match(
             msg=".*%s;%s.*exec_host=%s.*" % (atype, jid, exec_host),
-            regexp=True, n=20, max_attempts=3)
+            regexp=True, n=20)
 
         self.server.accounting_match(
             msg=".*%s;%s.*exec_vnode=%s.*" % (atype, jid, exec_vnode),
-            regexp=True, n=20, max_attempts=3)
+            regexp=True, n=20)
 
         self.server.accounting_match(
             msg=".*%s;%s.*Resource_List\.mem=%s.*" % (atype, jid,  mem),
-            regexp=True, n=20, max_attempts=3)
+            regexp=True, n=20)
 
         self.server.accounting_match(
             msg=".*%s;%s.*Resource_List\.ncpus=%d.*" % (atype, jid, ncpus),
-            regexp=True, n=20, max_attempts=3)
+            regexp=True, n=20)
 
         self.server.accounting_match(
             msg=".*%s;%s.*Resource_List\.nodect=%d.*" % (atype, jid, nodect),
-            regexp=True, n=20, max_attempts=3)
+            regexp=True, n=20)
 
         self.server.accounting_match(
             msg=".*%s;%s.*Resource_List\.place=%s.*" % (atype, jid, place),
-            regexp=True, n=20, max_attempts=3)
+            regexp=True, n=20)
 
         self.server.accounting_match(
             msg=".*%s;%s.*Resource_List\.select=%s.*" % (atype, jid, select),
-            regexp=True, n=20, max_attempts=3)
+            regexp=True, n=20)
 
         if atype != 'c':
             self.server.accounting_match(
                 msg=".*%s;%s.*resources_used\..*" % (atype, jid),
-                regexp=True, n=20, max_attempts=3)
+                regexp=True, n=20)
 
     def match_vnode_status(self, vnode_list, state, jobs=None, ncpus=None,
                            mem=None):
@@ -394,6 +403,7 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint fib(400)\\\")"'
                 "+", "\+")
 
         self.script['job1'] = \
+            "#PBS -S /bin/bash\n" \
             "#PBS -l select=" + self.job1_select + "\n" + \
             "#PBS -l place=" + self.job1_place + "\n" + \
             "#PBS -W stageout=test.img@%s:test.img\n" % (self.n4,) + \
@@ -404,6 +414,7 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint fib(400)\\\")"'
             "%s\n" % (FIB50,)
 
         self.script['job1_1'] = \
+            "#PBS -S /bin/bash\n" \
             "#PBS -l select=" + self.job1_select + "\n" + \
             "#PBS -l place=" + self.job1_place + "\n" + \
             "#PBS -W stageout=test.img@%s:test.img\n" % (self.n4,) + \
@@ -414,6 +425,7 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint fib(400)\\\")"'
             "%s\n" % (FIB50,)
 
         self.script['job1_2'] = \
+            "#PBS -S /bin/bash\n" \
             "#PBS -l select=" + self.job1_select + "\n" + \
             "#PBS -l place=" + self.job1_place + "\n" + \
             "#PBS -W stageout=test.img@%s:test.img\n" % (self.n4,) + \
@@ -423,13 +435,15 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint fib(400)\\\")"'
             "%s\n" % (FIB50,)
 
         self.script['job1_3'] = \
+            "#PBS -S /bin/bash\n" \
             "#PBS -l select=" + self.job1_select + "\n" + \
             "#PBS -l place=" + self.job1_place + "\n" + \
-            SLEEP_CMD + " 10\n" + \
+            SLEEP_CMD + " 5\n" + \
             "pbs_release_nodes -a\n" + \
             "%s\n" % (FIB50,)
 
         self.script['job1_5'] = \
+            "#PBS -S /bin/bash\n" \
             "#PBS -l select=" + self.job1_select + "\n" + \
             "#PBS -l place=" + self.job1_place + "\n" + \
             "pbsdsh -n 1 -- %s &\n" % (FIB45,) + \
@@ -437,6 +451,7 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint fib(400)\\\")"'
             "%s\n" % (FIB45,)
 
         self.script['jobA'] = \
+            "#PBS -S /bin/bash\n" \
             "#PBS -l select=" + self.job1_select + "\n" + \
             "#PBS -l place=" + self.job1_place + "\n" + \
             "#PBS -J 1-5\n"\
@@ -445,9 +460,10 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint fib(400)\\\")"'
             "%s\n" % (FIB45,)
 
         self.script['job1_6'] = \
+            "#PBS -S /bin/bash\n" \
             "#PBS -l select=" + self.job1_select + "\n" + \
             "#PBS -l place=" + self.job1_place + "\n" + \
-            SLEEP_CMD + " 10\n" + \
+            SLEEP_CMD + " 5\n" + \
             self.pbs_release_nodes_cmd + " " + self.n4 + "\n" + \
             "%s\n" % (FIB50,)
 
@@ -471,6 +487,7 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint fib(400)\\\")"'
             "%s:ncpus=1)+" % (self.n6,) + \
             "(%s:ncpus=2:mem=2097152kb)" % (self.n7,)
         self.script['job1_extra_res'] = \
+            "#PBS -S /bin/bash\n" \
             "#PBS -l select=" + self.job1_extra_res_select + "\n" + \
             "#PBS -l place=" + self.job1_extra_res_place + "\n" + \
             "pbsdsh -n 1 -- %s &\n" % (FIB40,) + \
@@ -502,11 +519,11 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint fib(400)\\\")"'
         self.script['job2'] = \
             "#PBS -l select=" + self.job2_select + "\n" + \
             "#PBS -l place=" + self.job2_place + "\n" + \
-            SLEEP_CMD + " 60"
+            SLEEP_CMD + " 60\n"
 
         self.script['job3'] = \
             "#PBS -l select=vnode=" + self.n4 + "+vnode=" + self.n0 + \
-            ":mem=4mb\n" + SLEEP_CMD + " 30"
+            ":mem=4mb\n" + SLEEP_CMD + " 30\n"
 
         self.script['job5'] = \
             "#PBS -l select=vnode=" + self.n0 + ":mem=4mb\n" + \
@@ -527,6 +544,7 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint fib(400)\\\")"'
             "%s:ncpus=1)+" % (self.n6,) + \
             "(%s:ncpus=1:mem=1048576kb)" % (self.n7,)
         self.script['job11x'] = \
+            "#PBS -S /bin/bash\n" \
             "#PBS -l select=" + self.job11x_select + "\n" + \
             "#PBS -l place=" + self.job11x_place + "\n" + \
             "pbsdsh -n 1 -- %s\n" % (FIB40,) + \
@@ -548,6 +566,7 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint fib(400)\\\")"'
             "%s:ncpus=1)+" % (self.n6,) + \
             "(%s:ncpus=1:mem=1048576kb)" % (self.n7,)
         self.script['job11'] = \
+            "#PBS -S /bin/bash\n" \
             "#PBS -l select=" + self.job11_select + "\n" + \
             "#PBS -l place=" + self.job11_place + "\n" + \
             "pbsdsh -n 1 -- %s\n" % (FIB40,) + \
@@ -562,10 +581,11 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint fib(400)\\\")"'
         self.script['job12'] = \
             "#PBS -l select=" + self.job12_select + "\n" + \
             "#PBS -l place=" + self.job12_place + "\n" + \
-            SLEEP_CMD + " 60"
+            SLEEP_CMD + " 60\n"
 
         self.job13_select = "3:ncpus=1"
         self.script['job13'] = \
+            "#PBS -S /bin/bash\n" \
             "#PBS -l select=" + self.job13_select + "\n" + \
             "#PBS -l place=" + self.job1_place + "\n" + \
             "pbsdsh -n 1 -- %s\n" % (FIB400,) + \
@@ -741,11 +761,11 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint fib(400)\\\")"'
 
         # Verify mom_logs
         self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=2, interval=2,
+                            max_attempts=5, interval=1,
                             existence=False)
 
         self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=2, interval=2,
+                            max_attempts=5, interval=1,
                             existence=False)
 
         # Verify no change in remaining job resources.
@@ -777,12 +797,12 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint fib(400)\\\")"'
         # Check for no existence of account update ('u') record
         self.server.accounting_match(
             msg='.*u;' + jid + ".*exec_host=%s.*" % (self.job1_exec_host_esc,),
-            regexp=True, n=20, existence=False, max_attempts=3)
+            regexp=True, n=20, existence=False, max_attempts=5, interval=1)
 
         # Check for no existence of account next ('c') record
         self.server.accounting_match(
             msg='.*c;' + jid + ".*exec_host=%s.*" % (self.job1_new_exec_host,),
-            regexp=True, n=20, existence=False)
+            regexp=True, n=20, existence=False, max_attempts=5, interval=1)
 
     def test_release_nodes_on_stageout_default(self):
         """
@@ -825,11 +845,11 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint fib(400)\\\")"'
 
         # Verify mom_logs
         self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=2, interval=2,
+                            max_attempts=5, interval=1,
                             existence=False)
 
         self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=2, interval=2,
+                            max_attempts=5, interval=1,
                             existence=False)
 
         # Verify no change in remaining job resources.
@@ -862,12 +882,12 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint fib(400)\\\")"'
         # Check for no existence of account update ('u') record
         self.server.accounting_match(
             msg='.*u;' + jid + ".*exec_host=%s.*" % (self.job1_exec_host_esc,),
-            regexp=True, n=20, existence=False, max_attempts=3)
+            regexp=True, n=20, existence=False, max_attempts=5, interval=1)
 
         # Check for no existence of account next ('c') record
         self.server.accounting_match(
             msg='.*c;' + jid + ".*exec_host=%s.*" % (self.job1_new_exec_host,),
-            regexp=True, n=20, existence=False)
+            regexp=True, n=20, existence=False, max_attempts=5, interval=1)
 
     def test_release_nodes_on_stageout_true_qalter(self):
         """
@@ -1022,11 +1042,11 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint fib(400)\\\")"'
 
         # Verify mom_logs
         self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=2, interval=2,
+                            max_attempts=5, interval=1,
                             existence=False)
 
         self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=2, interval=2,
+                            max_attempts=5, interval=1,
                             existence=False)
 
         # Verify no change in remaining job resources.
@@ -1058,12 +1078,12 @@ return i\\n return fib(i-1) + fib(i-2)\\n\\nprint fib(400)\\\")"'
         # Check for no existence of account update ('u') record
         self.server.accounting_match(
             msg='.*u;' + jid + ".*exec_host=%s.*" % (self.job1_exec_host_esc,),
-            regexp=True, n=20, existence=False, max_attempts=3)
+            regexp=True, n=20, existence=False, max_attempts=5, interval=1)
 
         # Check for no existence of account next ('c') record
         self.server.accounting_match(
             msg='.*c;' + jid + ".*exec_host=%s.*" % (self.job1_new_exec_host,),
-            regexp=True, n=20, existence=False)
+            regexp=True, n=20, existence=False, max_attempts=5, interval=1)
 
     def test_hook_release_nodes_on_stageout_true(self):
         """
@@ -1244,11 +1264,11 @@ pbs.event().job.release_nodes_on_stageout=False
 
         # Verify mom_logs
         self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=2, interval=2,
+                            max_attempts=5, interval=1,
                             existence=False)
 
         self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=2, interval=2,
+                            max_attempts=5, interval=1,
                             existence=False)
 
         # Verify no change in remaining job resources.
@@ -1280,12 +1300,12 @@ pbs.event().job.release_nodes_on_stageout=False
         # Check for no existence of account update ('u') record
         self.server.accounting_match(
             msg='.*u;' + jid + ".*exec_host=%s.*" % (self.job1_exec_host_esc,),
-            regexp=True, n=20, existence=False, max_attempts=3)
+            regexp=True, n=20, existence=False, max_attempts=5, interval=1)
 
         # Check for no existence of account next ('c') record
         self.server.accounting_match(
             msg='.*c;' + jid + ".*exec_host=%s.*" % (self.job1_new_exec_host,),
-            regexp=True, n=20, existence=False)
+            regexp=True, n=20, existence=False, max_attempts=5, interval=1)
 
     def test_hook2_release_nodes_on_stageout_true(self):
         """
@@ -1472,11 +1492,11 @@ pbs.event().job.release_nodes_on_stageout=False
 
         # Verify mom_logs
         self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=2, interval=2,
+                            max_attempts=5, interval=1,
                             existence=False)
 
         self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=2, interval=2,
+                            max_attempts=5, interval=1,
                             existence=False)
 
         # Verify no change in remaining job resources.
@@ -1510,12 +1530,12 @@ pbs.event().job.release_nodes_on_stageout=False
         # Check for no existence of account update ('u') record
         self.server.accounting_match(
             msg='.*u;' + jid + ".*exec_host=%s.*" % (self.job1_exec_host_esc,),
-            regexp=True, n=20, existence=False, max_attempts=3)
+            regexp=True, n=20, existence=False, max_attempts=5, interval=1)
 
         # Check for no existence of account next ('c') record
         self.server.accounting_match(
             msg='.*c;' + jid + ".*exec_host=%s.*" % (self.job1_new_exec_host,),
-            regexp=True, n=20, existence=False)
+            regexp=True, n=20, existence=False, max_attempts=5, interval=1)
 
     def test_release_nodes_error(self):
         """
@@ -1691,12 +1711,12 @@ pbs.event().job.release_nodes_on_stageout=False
         # Check for no existence of account update ('u') record
         self.server.accounting_match(
             msg='.*u;' + jid + ".*exec_host=%s.*" % (self.job1_exec_host_esc,),
-            regexp=True, n=20, existence=False, max_attempts=3)
+            regexp=True, n=20, existence=False, max_attempts=5, interval=1)
 
         # Check for no existence of account next ('c') record
         self.server.accounting_match(
             msg='.*c;' + jid + ".*exec_host=%s.*" % (self.job1_new_exec_host,),
-            regexp=True, n=20, existence=False)
+            regexp=True, n=20, existence=False, max_attempts=5, interval=1)
 
     def test_release_not_assigned_nodes(self):
         """
@@ -1790,12 +1810,12 @@ pbs.event().job.release_nodes_on_stageout=False
         # Check for no existence of account update ('u') record
         self.server.accounting_match(
             msg='.*u;' + jid + ".*exec_host=%s.*" % (self.job1_exec_host_esc,),
-            regexp=True, n=20, existence=False, max_attempts=3)
+            regexp=True, n=20, existence=False, max_attempts=5, interval=1)
 
         # Check for no existence of account next ('c') record
         self.server.accounting_match(
             msg='.*c;' + jid + ".*exec_host=%s.*" % (self.job1_new_exec_host,),
-            regexp=True, n=20, existence=False)
+            regexp=True, n=20, existence=False, max_attempts=5, interval=1)
 
     def test_release_cray_nodes(self):
         """
@@ -1895,12 +1915,12 @@ pbs.event().job.release_nodes_on_stageout=False
         # Check for no existence of account update ('u') record
         self.server.accounting_match(
             msg='.*u;' + jid + ".*exec_host=%s.*" % (self.job1_exec_host_esc,),
-            regexp=True, n=20, existence=False, max_attempts=3)
+            regexp=True, n=20, existence=False, max_attempts=5, interval=1)
 
         # Check for no existence of account next ('c') record
         self.server.accounting_match(
             msg='.*c;' + jid + ".*exec_host=%s.*" % (self.job1_new_exec_host,),
-            regexp=True, n=20, existence=False)
+            regexp=True, n=20, existence=False, max_attempts=5, interval=1)
 
     def test_release_cpuset_nodes(self):
         """
@@ -1998,12 +2018,12 @@ pbs.event().job.release_nodes_on_stageout=False
         # Check for no existence of account update ('u') record
         self.server.accounting_match(
             msg='.*u;' + jid + ".*exec_host=%s.*" % (self.job1_exec_host_esc,),
-            regexp=True, n=20, existence=False, max_attempts=3)
+            regexp=True, n=20, existence=False, max_attempts=5, interval=1)
 
         # Check for no existence of account next ('c') record
         self.server.accounting_match(
             msg='.*c;' + jid + ".*exec_host=%s.*" % (self.job1_new_exec_host,),
-            regexp=True, n=20, existence=False)
+            regexp=True, n=20, existence=False, max_attempts=5, interval=1)
 
     def test_release_nodes_all(self):
         """
@@ -2395,17 +2415,17 @@ pbs.event().job.release_nodes_on_stageout=False
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostB), n=10,
             regexp=True,
-            existence=False)
+            existence=False, max_attempts=5, interval=1)
 
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostC), n=10,
             regexp=True,
-            existence=False)
+            existence=False, max_attempts=5, interval=1)
 
         # momB's host will not get DELETE_JOB2 request since
         # not all its vnodes have been released yet from the job.
         self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            existence=False)
+                            existence=False, max_attempts=5, interval=1)
 
         # Verify remaining job resources.
         newsel = "1:mem=2097152kb:ncpus=3+1:mem=1048576kb:ncpus=2+" + \
@@ -2532,20 +2552,20 @@ pbs.event().job.release_nodes_on_stageout=False
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostB), n=10,
             regexp=True,
-            existence=False)
+            existence=False, max_attempts=5, interval=1)
 
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostC), n=10,
             regexp=True,
-            existence=False)
+            existence=False, max_attempts=5, interval=1)
 
         # momB and momC's hosts will not get DELETE_JOB2 request since
         # not all their vnodes have been released yet from the job.
         self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            existence=False)
+                            existence=False, max_attempts=5, interval=1)
 
         self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            existence=False)
+                            existence=False, max_attempts=5, interval=1)
 
         # Verify remaining job resources.
         newsel = "1:mem=2097152kb:ncpus=3+1:mem=1048576kb:ncpus=2+" + \
@@ -2695,20 +2715,20 @@ pbs.event().job.release_nodes_on_stageout=False
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostB), n=10,
             regexp=True,
-            existence=False)
+            existence=False, max_attempts=5, interval=1)
 
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostC), n=10,
             regexp=True,
-            existence=False)
+            existence=False, max_attempts=5, interval=1)
 
         # momB and momC's hosts will not get DELETE_JOB2 request since
         # not all their vnodes have been released yet from the job.
         self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            existence=False)
+                            existence=False, max_attempts=5, interval=1)
 
         self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            existence=False)
+                            existence=False, max_attempts=5, interval=1)
 
         # Verify remaining job resources.
         sel_esc = self.job1_extra_res_select.replace("+", "\+")
@@ -2799,6 +2819,7 @@ pbs.event().job.release_nodes_on_stageout=False
                                   8, 3, self.job1_extra_res_place,
                                   sel_esc)
 
+    @timeout(400)
     def test_release_nodes2(self):
         """
         Test:
@@ -2872,20 +2893,20 @@ pbs.event().job.release_nodes_on_stageout=False
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostB), n=10,
             regexp=True,
-            existence=False)
+            existence=False, max_attempts=5, interval=1)
 
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostC), n=10,
             regexp=True,
-            existence=False)
+            existence=False, max_attempts=5, interval=1)
 
         # momB and momC's hosts will not get DELETE_JOB2 request since
         # not all their vnodes have been released yet from the job.
         self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            existence=False)
+                            existence=False, max_attempts=5, interval=1)
 
         self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            existence=False)
+                            existence=False, max_attempts=5, interval=1)
 
         # Verify remaining job resources.
         exec_host_esc = self.job1_exec_host.replace(
@@ -3039,20 +3060,20 @@ pbs.event().job.release_nodes_on_stageout=False
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostB), n=10,
             regexp=True,
-            existence=False)
+            existence=False, max_attempts=5, interval=1)
 
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostC), n=10,
             regexp=True,
-            existence=False)
+            existence=False, max_attempts=5, interval=1)
 
         # momB and momC's hosts will not get DELETE_JOB2 request since
         # not all their vnodes have been released yet from the job.
         self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            existence=False)
+                            existence=False, max_attempts=5, interval=1)
 
         self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            existence=False)
+                            existence=False, max_attempts=5, interval=1)
 
         # Verify remaining job resources.
         sel_esc = self.job1_extra_res_select.replace("+", "\+")
@@ -3141,6 +3162,7 @@ pbs.event().job.release_nodes_on_stageout=False
                                   8, 3, self.job1_extra_res_place,
                                   sel_esc)
 
+    @timeout(400)
     def test_release_nodes3(self):
         """
         Test:
@@ -3214,20 +3236,20 @@ pbs.event().job.release_nodes_on_stageout=False
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostB), n=10,
             regexp=True,
-            existence=False)
+            existence=False, max_attempts=5, interval=1)
 
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostC), n=10,
             regexp=True,
-            existence=False)
+            existence=False, max_attempts=5, interval=1)
 
         # momB and momC's hosts will not get DELETE_JOB2 request since
         # not all their vnodes have been released yet from the job.
         self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            existence=False)
+                            existence=False, max_attempts=5, interval=1)
 
         self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            existence=False)
+                            existence=False, max_attempts=5, interval=1)
 
         # Verify remaining job resources.
         exec_host_esc = self.job1_exec_host.replace(
@@ -3312,6 +3334,7 @@ pbs.event().job.release_nodes_on_stageout=False
                                   self.job1_exec_vnode_esc, "6gb",
                                   8, 3, self.job1_place, self.job1_sel_esc)
 
+    @timeout(400)
     def test_release_nodes3_extra(self):
         """
         Test:
@@ -3384,20 +3407,20 @@ pbs.event().job.release_nodes_on_stageout=False
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostB), n=10,
             regexp=True,
-            existence=False)
+            existence=False, max_attempts=5, interval=1)
 
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostC), n=10,
             regexp=True,
-            existence=False)
+            existence=False, max_attempts=5, interval=1)
 
         # momB and momC's hosts will not get DELETE_JOB2 request since
         # not all their vnodes have been released yet from the job.
         self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            existence=False)
+                            existence=False, max_attempts=5, interval=1)
 
         self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            existence=False)
+                            existence=False, max_attempts=5, interval=1)
 
         # Verify remaining job resources.
         sel_esc = self.job1_extra_res_select.replace("+", "\+")
@@ -3558,7 +3581,8 @@ pbs.event().job.release_nodes_on_stageout=False
         # momC's host will get the job summary since all vnodes
         # from the host have been released.
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
-            jid, self.hostB), n=10, regexp=True, existence=False)
+            jid, self.hostB), n=10, regexp=True, existence=False,
+            max_attempts=5, interval=1)
 
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostC), n=10, regexp=True)
@@ -3568,7 +3592,7 @@ pbs.event().job.release_nodes_on_stageout=False
         # momC's host will get DELETE_JOB2 request since sole vnnode
         # <n7> has been released from the job.
         self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            existence=False)
+                            existence=False, max_attempts=5, interval=1)
 
         self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20)
 
@@ -3733,7 +3757,8 @@ pbs.event().job.release_nodes_on_stageout=False
         # momC's host will get the job summary since all vnodes
         # from the host have been released.
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
-            jid, self.hostB), n=10, regexp=True, existence=False)
+            jid, self.hostB), n=10, regexp=True, existence=False,
+            max_attempts=5, interval=1)
 
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostC), n=10, regexp=True)
@@ -3743,7 +3768,7 @@ pbs.event().job.release_nodes_on_stageout=False
         # momC will get DELETE_JOB2 request since sole vnode
         # <n7> has been released from the job.
         self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            existence=False)
+                            existence=False, max_attempts=5, interval=1)
 
         self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20)
 
@@ -3913,7 +3938,8 @@ pbs.event().job.release_nodes_on_stageout=False
         # momC's host will get the job summary since all vnodes
         # from the host have been released.
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
-            jid, self.hostB), n=10, regexp=True, existence=False)
+            jid, self.hostB), n=10, regexp=True, existence=False,
+            max_attempts=5, interval=1)
 
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostC), n=10, regexp=True)
@@ -3923,7 +3949,7 @@ pbs.event().job.release_nodes_on_stageout=False
         # momC will get DELETE_JOB2 request since sole vnode
         # <n7> has been released from the job.
         self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            existence=False)
+                            existence=False, max_attempts=5, interval=1)
 
         self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20)
 
@@ -4092,7 +4118,8 @@ pbs.event().job.release_nodes_on_stageout=False
         # momC's host will get the job summary since all vnodes
         # from the host have been released.
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
-            jid, self.hostB), n=10, regexp=True, existence=False)
+            jid, self.hostB), n=10, regexp=True, existence=False,
+            max_attempts=5, interval=1)
 
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostC), n=10, regexp=True)
@@ -4102,7 +4129,7 @@ pbs.event().job.release_nodes_on_stageout=False
         # momC will get DELETE_JOB2 request since sole vnode
         # <n7> has been released from the job.
         self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            existence=False)
+                            existence=False, max_attempts=5, interval=1)
 
         self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20)
 
@@ -4598,7 +4625,7 @@ pbs.event().job.release_nodes_on_stageout=False
         # early courtesy of sole vnode <n7>.
         self.momA.log_match(
             "Job;%s;%s.+cput=.+ mem=.+" % (jid, self.hostB), n=10,
-            regexp=True, existence=False)
+            regexp=True, existence=False, max_attempts=5, interval=1)
 
         self.momA.log_match(
             "Job;%s;%s.+cput=.+ mem=.+" % (jid, self.hostC), n=10,
@@ -4606,7 +4633,7 @@ pbs.event().job.release_nodes_on_stageout=False
 
         # Only mom hostC will gt the IM_DELETE_JOB2 request
         self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            existence=False)
+                            existence=False, max_attempts=5, interval=1)
 
         self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20)
 
@@ -4834,18 +4861,18 @@ pbs.event().job.release_nodes_on_stageout=False
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostB), n=10,
             regexp=True,
-            existence=False)
+            existence=False, max_attempts=5, interval=1)
 
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostC), n=10,
             regexp=True,
-            existence=False)
+            existence=False, max_attempts=5, interval=1)
 
         self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            existence=False)
+                            existence=False, max_attempts=5, interval=1)
 
         self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            existence=False)
+                            existence=False, max_attempts=5, interval=1)
 
         # Verify remaining job resources.
 
@@ -5158,13 +5185,13 @@ pbs.event().job.release_nodes_on_stageout=False
         # <n7> has been released
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostB), n=10, regexp=True,
-            existence=False)
+            existence=False, max_attempts=5, interval=1)
 
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostC), n=10, regexp=True)
 
         self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            existence=False)
+                            existence=False, max_attempts=5, interval=1)
 
         self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20)
 
@@ -5317,11 +5344,9 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
         self.assertEqual(ret['rc'], 0)
 
         # Verify mom_logs
-        self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=5, interval=2)
+        self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20)
 
-        self.momB.log_match("Job;%s;epilogue hook executed" % (jid,), n=20,
-                            max_attempts=5, interval=2)
+        self.momB.log_match("Job;%s;epilogue hook executed" % (jid,), n=20)
 
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostB), n=10,
@@ -5438,23 +5463,23 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostB), n=10,
             regexp=True,
-            existence=False)
+            existence=False, max_attempts=5, interval=1)
 
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostC), n=10,
             regexp=True,
-            existence=False)
+            existence=False, max_attempts=5, interval=1)
 
         # since not all vnodes from momB have been freed from the job,
         # DELETE_JOB2 request from MS is not sent
         self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            existence=False)
+                            existence=False, max_attempts=5, interval=1)
 
         # since node <n7> from mom hostC has not been freed from the job
         # since mom is currently stopped, the DELETE_JOB2 request from
         # MS is not sent
         self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            existence=False)
+                            existence=False, max_attempts=5, interval=1)
 
         # Verify remaining job resources.
 
@@ -5600,7 +5625,7 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
                                  'schedselect': self.job12_schedselect,
                                  'exec_host': self.job12_exec_host,
                                  'exec_vnode': self.job12_exec_vnode},
-                           id=jid3)
+                           id=jid3, max_attempts=3)
 
         # total license = 6 (previous value) + 1 for job 'jid3'
         self.license_count_match(7)
@@ -5713,23 +5738,23 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostB), n=10,
             regexp=True,
-            existence=False)
+            existence=False, max_attempts=5, interval=1)
 
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostC), n=10,
             regexp=True,
-            existence=False)
+            existence=False, max_attempts=5, interval=1)
 
         # since not all vnodes from momB have been freed from the job,
         # DELETE_JOB2 request from MS is not sent
         self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            existence=False)
+                            existence=False, max_attempts=5, interval=1)
 
         # since node <n7> from mom hostC has not been freed from the job
         # since mom is currently stopped, the DELETE_JOB2 request from
         # MS is not sent
         self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            existence=False)
+                            existence=False, max_attempts=5, interval=1)
 
         # Verify remaining job resources.
 
@@ -5810,6 +5835,8 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
 
         # Since job was resumed, the license count goes back to the same
         # number before job was suspended.
+        self.logger.info("sleep for 10 secs while server relicense job")
+        time.sleep(10)
         self.license_count_match(7)
 
         # Check various vnode status.
@@ -5923,23 +5950,23 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostB), n=10,
             regexp=True,
-            existence=False)
+            existence=False, max_attempts=5, interval=1)
 
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostC), n=10,
             regexp=True,
-            existence=False)
+            existence=False, max_attempts=5, interval=1)
 
         # since not all vnodes from momB have been freed from the job,
         # DELETE_JOB2 request from MS is not sent
         self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            existence=False)
+                            existence=False, max_attempts=5, interval=1)
 
         # since node <n7> from mom hostC has not been freed from the job
         # since mom is currently stopped, the DELETE_JOB2 request from
         # MS is not sent
         self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            existence=False)
+                            existence=False, max_attempts=5, interval=1)
 
         # Verify remaining job resources.
 
@@ -6094,23 +6121,23 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostB), n=10,
             regexp=True,
-            existence=False)
+            existence=False, max_attempts=5, interval=1)
 
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostC), n=10,
             regexp=True,
-            existence=False)
+            existence=False, max_attempts=5, interval=1)
 
         # since not all vnodes from momB have been freed from the job,
         # DELETE_JOB2 request from MS is not sent
         self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            existence=False)
+                            existence=False, max_attempts=5, interval=1)
 
         # since node <n7> from mom hostC has not been freed from the job
         # since mom is currently stopped, the DELETE_JOB2 request from
         # MS is not sent
         self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            existence=False)
+                            existence=False, max_attempts=5, interval=1)
 
         # Verify remaining job resources.
         sel_esc = self.job11_select.replace("+", "\+")
@@ -6195,6 +6222,8 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
 
         # Since job was resumed, the license count goes back to the same
         # number before job was suspended.
+        self.logger.info("sleep for 10 secs while server relicense job")
+        time.sleep(10)
         self.license_count_match(7)
 
         # Check various vnode status.
@@ -6283,23 +6312,23 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostB), n=10,
             regexp=True,
-            existence=False)
+            existence=False, max_attempts=5, interval=1)
 
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostC), n=10,
             regexp=True,
-            existence=False)
+            existence=False, max_attempts=5, interval=1)
 
         # since not all vnodes from momB have been freed from the job,
         # DELETE_JOB2 request from MS is not sent
         self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            existence=False)
+                            existence=False, max_attempts=5, interval=1)
 
         # since node <n7> from mom hostC has not been freed from the job
         # since mom is currently stopped, the DELETE_JOB2 request from
         # MS is not sent
         self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            existence=False)
+                            existence=False, max_attempts=5, interval=1)
 
         # Verify remaining job resources.
         sel_esc = self.job11_select.replace("+", "\+")
@@ -6420,7 +6449,15 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
         """
 
         jid = self.create_and_submit_job('job1_5')
-        self.server.expect(JOB, {'job_state': "R"}, id=jid)
+        self.server.expect(JOB, {'job_state': 'R',
+                                 'Resource_List.mem': '6gb',
+                                 'Resource_List.ncpus': 8,
+                                 'Resource_List.nodect': 3,
+                                 'Resource_List.select': self.job1_select,
+                                 'Resource_List.place': self.job1_place,
+                                 'schedselect': self.job1_schedselect,
+                                 'exec_host': self.job1_exec_host,
+                                 'exec_vnode': self.job1_exec_vnode}, id=jid)
 
         manager = str(MGR_USER) + '@*'
         self.server.manager(MGR_CMD_SET, SERVER,
@@ -6441,11 +6478,10 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
         # early courtesy of sole vnode <n7>.
         self.momA.log_match(
             "Job;%s;%s.+cput=.+ mem=.+" % (jid, self.hostC), n=10,
-            max_attempts=5, regexp=True)
+            regexp=True)
 
         # Only mom hostC will get the IM_DELETE_JOB2 request
-        self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=5)
+        self.momC.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20)
 
         # Release vnodes from momB as operator
         cmd = [self.pbs_release_nodes_cmd, '-j', jid, self.n5, self.n6]
@@ -6456,10 +6492,10 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
         # momB's host will not get job summary reported
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             jid, self.hostB), n=10, regexp=True, max_attempts=5,
-            existence=False)
+            existence=False, interval=1)
 
         self.momB.log_match("Job;%s;DELETE_JOB2 received" % (jid,), n=20,
-                            max_attempts=5, existence=False)
+                            max_attempts=5, existence=False, interval=1)
 
         # Verify remaining job resources.
         sel_esc = self.job1_select.replace("+", "\+")
@@ -6615,18 +6651,18 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
             subjob1, self.hostB), n=10,
             regexp=True,
             max_attempts=5,
-            existence=False)
+            existence=False, interval=1)
 
         self.momA.log_match("Job;%s;%s.+cput=.+ mem=.+" % (
             subjob1, self.hostC), n=10,
             regexp=True, max_attempts=5,
-            existence=False)
+            existence=False, interval=1)
 
         # momB's host will not get DELETE_JOB2 request since
         # not all its vnodes have been released yet from the job.
         self.momB.log_match("Job;%s;DELETE_JOB2 received" % (subjob1,),
                             n=20, max_attempts=5,
-                            existence=False)
+                            existence=False, interval=1)
 
         # Verify remaining job resources.
         newsel = "1:mem=2097152kb:ncpus=3+1:mem=1048576kb:ncpus=2+" + \
@@ -6920,18 +6956,25 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
                                  "exec_vnode": e_vnode}, id=jid3)
 
         # Verify that 3 processes running on hostB
-        process = 0
-        self.server.pu.get_proc_info(
-            self.momB.hostname, ".*fib.*", None, regexp=True)
-        if (self.server.pu.processes is not None):
-            for key in self.server.pu.processes:
-                if ("fib" in key):
-                    process = len(self.server.pu.processes[key])
-                    self.logger.info(
-                        "length of the process is " + str(process) +
-                        " expected 3")
-
-        self.assertEqual(process, 3)
+        n = retry = 5
+        for _ in range(n):
+            process = 0
+            self.server.pu.get_proc_info(
+                self.momB.hostname, ".*fib.*", None, regexp=True)
+            if (self.server.pu.processes is not None):
+                for key in self.server.pu.processes:
+                    if ("fib" in key):
+                        process = len(self.server.pu.processes[key])
+                        self.logger.info(
+                            "length of the process is " + str(process) +
+                            ", expected 3")
+            if process == 3:
+                break
+            retry -= 1
+            if retry == 0:
+                raise AssertionError("not found 3 fib processes")
+            self.logger.info("sleeping 3 secs before next retry")
+            time.sleep(3)
 
         # Release node2 from job1 only
         cmd = [self.pbs_release_nodes_cmd, '-j', jid1, self.hostB]
@@ -6961,12 +7004,12 @@ pbs.logjobmsg(pbs.event().job.id, "epilogue hook executed")
         self.momA.log_match(
             "Job;%s;%s.+cput=.+mem.+" % (jid2, self.hostB),
             max_attempts=5, regexp=True,
-            existence=False)
+            existence=False, interval=1)
 
         self.momA.log_match(
             "Job;%s;%s.+cput=.+mem.+" % (jid3, self.hostB),
             max_attempts=5, regexp=True,
-            existence=False)
+            existence=False, interval=1)
 
         # Verify the new schedselect for job1
         new_e_host_j1 = e_host_j1.replace("+%s/0" % (self.hostB,), "")
@@ -7166,7 +7209,7 @@ else:
 
         # Wait for the job to start
         self.server.expect(JOB, {'job_state': 'R'},
-                           offset=30, id=jid)
+                           offset=30, id=jid, max_attempts=30)
 
         # Release vnodes from the job
         cmd = [self.pbs_release_nodes_cmd, '-j', jid, self.n5]
