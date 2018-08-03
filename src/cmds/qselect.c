@@ -55,6 +55,16 @@
 #include <pbs_version.h>
 
 
+#define OPSTRING_LEN 4
+#define OP_LEN 2
+#define OP_ENUM_LEN 6
+#define MAX_OPTARG_LEN 256
+#define MAX_RESOURCE_NAME_LEN 256
+#define GETOPT_ARGS "a:A:c:h:HJl:N:p:q:r:s:t:Tu:xP:"
+static char *opstring_vals[] = { "eq", "ne", "ge", "gt", "le", "lt" };
+static enum batch_op opstring_enums[] = { EQ, NE, GE, GT, LE, LT };
+
+
 /**
  * @brief
  *	sets the attribute details
@@ -72,54 +82,46 @@ set_attrop(struct attropl **list, char *a_name, char *r_name, char *v_name, enum
 {
 	struct attropl *attr;
 
-	attr = (struct attropl *) malloc(sizeof(struct attropl));
+	attr = (struct attropl *)malloc(sizeof(struct attropl));
 	if (attr == NULL) {
 		fprintf(stderr, "qselect: out of memory\n");
 		exit(2);
 	}
-	if (a_name == NULL)
+
+	if (a_name == NULL) {
 		attr->name = NULL;
-	else {
-		attr->name = (char *) malloc(strlen(a_name)+1);
+	} else {
+		attr->name = strdup(a_name);
 		if (attr->name == NULL) {
 			fprintf(stderr, "qselect: out of memory\n");
 			exit(2);
 		}
-		strcpy(attr->name, a_name);
 	}
-	if (r_name == NULL)
+
+	if (r_name == NULL) {
 		attr->resource = NULL;
-	else {
-		attr->resource = (char *) malloc(strlen(r_name)+1);
+	} else {
+		attr->resource = strdup(r_name);
 		if (attr->resource == NULL) {
 			fprintf(stderr, "qselect: out of memory\n");
 			exit(2);
 		}
-		strcpy(attr->resource, r_name);
 	}
-	if (v_name == NULL)
+
+	if (v_name == NULL) {
 		attr->value = NULL;
-	else {
-		attr->value = (char *) malloc(strlen(v_name)+1);
+	} else {
+		attr->value = strdup(v_name);
 		if (attr->value == NULL) {
 			fprintf(stderr, "qselect: out of memory\n");
 			exit(2);
 		}
-		strcpy(attr->value, v_name);
 	}
 	attr->op = op;
 	attr->next = *list;
 	*list = attr;
 	return;
 }
-
-
-
-#define OPSTRING_LEN 4
-#define OP_LEN 2
-#define OP_ENUM_LEN 6
-static char *opstring_vals[] = { "eq", "ne", "ge", "gt", "le", "lt" };
-static enum batch_op opstring_enums[] = { EQ, NE, GE, GT, LE, LT };
 
 /**
  * @brief
@@ -152,7 +154,8 @@ check_op(char *optarg, enum batch_op *op, char *optargout)
 			}
 		}
 	}
-	strcpy(optargout, &optarg[cp_pos]);
+	strncpy(optargout, &optarg[cp_pos], MAX_OPTARG_LEN+1);
+	optargout[MAX_OPTARG_LEN] = '\0';
 	return;
 }
 
@@ -174,7 +177,6 @@ check_op(char *optarg, enum batch_op *op, char *optargout)
  * @par Scope of Linkage: local
  *
  */
-
 static int
 get_tsubopt(char opt, char **attr_t, char **resc_t)
 {
@@ -210,6 +212,7 @@ get_tsubopt(char opt, char **attr_t, char **resc_t)
 	}
 	return 0; /* success */
 }
+
 /**
  * @brief
  *      To parse the optarg and check the option to -l option
@@ -375,7 +378,6 @@ handle_attribute_errors(struct ecl_attribute_errors *err_list)
 	}
 }
 
-
 int
 main(int argc, char **argv, char **envp) /* qselect */
 {
@@ -383,8 +385,6 @@ main(int argc, char **argv, char **envp) /* qselect */
 	int errflg=0;
 	char *errmsg;
 
-#define MAX_OPTARG_LEN 256
-#define MAX_RESOURCE_NAME_LEN 256
 	char optargout[MAX_OPTARG_LEN+1];
 	char resource_name[MAX_RESOURCE_NAME_LEN+1];
 
@@ -393,7 +393,8 @@ main(int argc, char **argv, char **envp) /* qselect */
 
 	struct attropl *select_list = 0;
 
-	static char destination[PBS_MAXQUEUENAME+1] = "";
+	/* two extra spaces because of \0 and '@' */
+	char destination[MAXSERVERNAME + PBS_MAXQUEUENAME + 2] = "";
 	char server_out[MAXSERVERNAME] = "";
 
 	char *queue_name_out;
@@ -410,10 +411,7 @@ main(int argc, char **argv, char **envp) /* qselect */
 	struct ecl_attribute_errors *err_list;
 	char *resc_time = NULL;
 
-#define GETOPT_ARGS "a:A:c:h:HJl:N:p:q:r:s:t:Tu:xP:"
-
 	/*test for real deal or just version and exit*/
-
 	execution_mode(argc, argv);
 
 #ifdef WIN32
@@ -468,7 +466,8 @@ main(int argc, char **argv, char **envp) /* qselect */
 				set_attrop(&select_list, ATTR_p, NULL, optargout, op);
 				break;
 			case 'q':
-				strcpy(destination, optarg);
+				strncpy(destination, optarg, sizeof(destination));
+				destination[sizeof(destination) - 1] = '\0';
 				check_op(optarg, pop, optargout);
 				set_attrop(&select_list, ATTR_q, NULL, optargout, op);
 				break;
@@ -551,13 +550,13 @@ main(int argc, char **argv, char **envp) /* qselect */
 			exit(2);
 		} else {
 			if (notNULL(server_name_out)) {
-				strcpy(server_out, server_name_out);
+				strncpy(server_out, server_name_out, sizeof(server_out));
+				server_out[sizeof(server_out) - 1] = '\0';
 			}
 		}
 	}
 
 	/*perform needed security library initializations (including none)*/
-
 	if (CS_client_init() != CS_SUCCESS) {
 		fprintf(stderr, "qselect: unable to initialize security library.\n");
 		exit(2);
