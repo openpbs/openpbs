@@ -42,47 +42,87 @@ class TestPreemption(TestFunctional):
     """
     Contains tests for scheduler's preemption functionality
     """
+    def setUp(self):
+        TestFunctional.setUp(self)
 
-    def test_preempted_never_run(self):
-        """
-        Test that a preempted job is not marked as "Job will never run"
-        """
-        # Set ncpus to 2
-        attr = {'resources_available.ncpus': '2'}
-        self.server.manager(MGR_CMD_SET, NODE, attr, self.mom.shortname,
+        a = {'resources_available.ncpus': 1}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname,
                             expect=True)
 
-        # Create a high priority queue
-        attr = {"queue_type": "Execution", "Priority": 200, "started": "True",
-                "enabled": "True"}
-        queue_id_h = "highp"
-        self.server.manager(MGR_CMD_CREATE, QUEUE, attr, id=queue_id_h,
-                            logerr=False)
+        # create express queue
+        a = {'queue_type': 'execution',
+             'started': 'True',
+             'enabled': 'True',
+             'Priority': 200}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, "expressq")
 
-        # Create a low priority queue
-        attr = {"queue_type": "Execution", "Priority": 100, "started": "True",
-                "enabled": "True"}
-        queue_id_l = "lowp"
-        self.server.manager(MGR_CMD_CREATE, QUEUE, attr, id=queue_id_l,
-                            logerr=False)
+    def submit_and_preempt_jobs(self, preempt_order='R'):
+        """
+        This function will set the prempt order, submit jobs,
+        preempt jobs and do log_match()
+        """
+        if preempt_order == 'R':
+            job_state = 'Q'
+            preempted_by = 'requeuing'
+        elif preempt_order == 'C':
+            job_state = 'Q'
+            preempted_by = 'checkpointing'
+        elif preempt_order == 'S':
+            job_state = 'S'
+            preempted_by = 'suspension'
 
-        # Submit a job to low priority queue
-        attr = {"Resource_List.ncpus": 2,
-                "queue": queue_id_l,
-                "Resource_List.walltime": "00:10:00"}
-        j = Job(TEST_USER, attrs=attr)
-        jidl = self.server.submit(j)
-        self.server.expect(JOB, {ATTR_state: 'R'}, id=jidl)
+        # set preempt order
+        self.scheduler.set_sched_config({'preempt_order': preempt_order})
 
-        # Submit a job to high priority queue
-        attr["queue"] = queue_id_h
-        j = Job(TEST_USER, attrs=attr)
-        jidh = self.server.submit(j)
-        self.server.expect(JOB, {ATTR_state: 'R'}, id=jidh)
+        attrs = {ATTR_l + '.select': '1:ncpus=1'}
 
-        # The low priority job should be preempted
-        self.server.expect(JOB, {ATTR_state: 'S'}, id=jidl)
+        # submit a job to regular queue
+        j1 = Job(TEST_USER, attrs)
+        jid1 = self.server.submit(j1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
 
-        # Check whether scheduler marked the preempted job as "will never run"
+        # submit a job to high priority queue
+        attrs['queue'] = 'expressq'
+        j2 = Job(TEST_USER, attrs)
+        jid2 = self.server.submit(j2)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        self.server.expect(JOB, {'job_state': job_state}, id=jid1)
+
+        self.scheduler.log_match(jid1 + ";Job preempted by " + preempted_by)
         self.scheduler.log_match(
-            jidl + ";Job will never run", existence=False, max_attempts=5)
+            jid1 + ";Job will never run", existence=False, max_attempts=5)
+
+    def test_never_run_preempt_suspension(self):
+        """
+        Test that a job preempted by suspension is not
+        marked as "Job will never run"
+        """
+        self.submit_and_preempt_jobs(preempt_order='S')
+
+    def test_never_run_preempt_checkpoint(self):
+        """
+        Test that a preempted job with checkpoint is not
+        marked as "Job will never run"
+        """
+
+        # Create checkpoint
+        chk_script = """#!/bin/bash
+kill $1
+exit 0
+"""
+        self.chk_file = self.du.create_temp_file(body=chk_script)
+        self.du.chmod(path=self.chk_file, mode=0755)
+        self.du.chown(path=self.chk_file, uid=0, gid=0, sudo=True)
+        c = {'$action': 'checkpoint_abort 30 !' + self.chk_file + ' %sid'}
+        self.mom.add_config(c)
+        self.attrs = {ATTR_l + '.select': '1:ncpus=1'}
+
+        # preempt jobs and check logs
+        self.submit_and_preempt_jobs(preempt_order='C')
+
+    def test_never_run_preempt_requeue(self):
+        """
+        Test that a preempted job by requeueing is not
+        marked as "Job will never run"
+        """
+        self.submit_and_preempt_jobs(preempt_order='R')
