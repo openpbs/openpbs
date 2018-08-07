@@ -171,8 +171,8 @@ get_server(char *job_id_in, char *job_id_out, char *server_out)
 #else
 		strcat(job_id_out, parent_server);
 #endif /* localmod 086 */
-
-		strcpy(server_out, parent_server);
+		if (server_out[0] == '\0')
+			strcpy(server_out, parent_server);
 		free(parent_server);
 		return 0;
 	}
