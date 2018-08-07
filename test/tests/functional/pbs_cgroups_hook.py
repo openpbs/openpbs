@@ -232,6 +232,7 @@ else
     jobnum=${PBS_JOBID%%.*}
     base="$cpuset_base/pbspro.slice/pbspro-${jobnum}.*.slice"
 fi
+echo "cpuset base path is $base"
 if [ -d $base ]; then
     cpupath1=$base/cpuset.cpus
     cpupath2=$base/cpus
@@ -1260,11 +1261,13 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         # Read the output files
         tmp_file1 = filename1.split(':')[1]
         tmp_out1 = self.wait_and_read_file(filename=tmp_file1, host=self.hostA)
+        self.logger.info("test output for job1: %s" % (tmp_out1))
         self.assertTrue(
             jid1 in tmp_out1, '%s not found in output on host %s'
             % (jid1, self.hostA))
         tmp_file2 = filename2.split(':')[1]
         tmp_out2 = self.wait_and_read_file(filename=tmp_file2, host=self.hostA)
+        self.logger.info("test output for job2: %s" % (tmp_out2))
         self.assertTrue(
             jid2 in tmp_out2, '%s not found in output on host %s'
             % (jid2, self.hostA))
@@ -1282,6 +1285,7 @@ for i in 1 2 3 4; do while : ; do : ; done & done
                 cpuid2 = kv
                 break
         self.assertNotEqual(cpuid2, None, 'Could not read second CPU ID.')
+        self.logger.info("cpuid1 = %s and cpuid2 = %s" % (cpuid1, cpuid2))
         self.assertNotEqual(cpuid1, cpuid2,
                             'Processes should be assigned to different CPUs')
         self.logger.info('CpuIDs check passed')
