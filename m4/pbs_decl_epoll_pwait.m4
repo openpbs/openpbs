@@ -38,7 +38,8 @@
 
 
 #
-# Prefix the macro names with PBS_ so they don't conflict with Python definitions
+# Prefix the macro names with PBS_ so they don't conflict with
+# Python definitions
 #
 
 AC_DEFUN([PBS_AC_DECL_EPOLL_PWAIT],
@@ -46,8 +47,7 @@ AC_DEFUN([PBS_AC_DECL_EPOLL_PWAIT],
   AS_CASE([x$target_os],
     [xlinux*],
       AC_MSG_CHECKING(whether epoll_pwait system call is supported)
-      AC_TRY_RUN(
-[
+      AC_TRY_RUN([
 #include <unistd.h>
 #include <poll.h>
 #include <signal.h>
@@ -56,25 +56,24 @@ AC_DEFUN([PBS_AC_DECL_EPOLL_PWAIT],
 #include <sys/epoll.h>
 int main()
 {
-	sigset_t allsigs;       
-	int n;
-	int maxevents = 1;
-	int timeout = 0;
-	int epollfd;
-	struct   epoll_event  events;	
-	sigemptyset(&allsigs);
-	events.events = EPOLLIN;
-	epollfd = epoll_create1(0);
-        if (epollfd == -1) {
-               perror("epoll_create1");
-               return (1);
-        }
-
-	n = epoll_pwait(epollfd, &events, maxevents, timeout, &allsigs);
-	return (n);
-}
-],
-        AC_DEFINE([PBS_HAVE_EPOLL_PWAIT], [], [Defined when epoll_pwait is available])
+  sigset_t allsigs;
+  int n;
+  int maxevents = 1;
+  int timeout = 0;
+  int epollfd;
+  struct   epoll_event  events;
+  sigemptyset(&allsigs);
+  events.events = EPOLLIN;
+  epollfd = epoll_create1(0);
+  if (epollfd == -1) {
+    perror("epoll_create1");
+    return (1);
+  }
+  n = epoll_pwait(epollfd, &events, maxevents, timeout, &allsigs);
+  return (n);
+}],
+        AC_DEFINE([PBS_HAVE_EPOLL_PWAIT], [],
+                  [Defined when epoll_pwait is available])
         AC_MSG_RESULT([yes]),
         AC_MSG_RESULT([no])
       )

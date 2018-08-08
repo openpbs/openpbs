@@ -769,11 +769,15 @@ rm_migrated_files(char *dirname)
 				baselen = strlen(pdirt->d_name) - strlen(JOB_SCRIPT_SUFFIX);
 				psuffix = pdirt->d_name + baselen;
 				if (strcmp(psuffix, JOB_SCRIPT_SUFFIX) == 0) {
+					size_t pathbd_size = sizeof(pathbd);
 					/* this is a script file, check if .bd file exists */
 					baselen = strlen(path) - strlen(JOB_SCRIPT_SUFFIX);
-					strncpy(pathbd, path, baselen);
-					pathbd[baselen]=0; /* put null char */
-					strcat(pathbd, JOB_BAD_SUFFIX);
+					strncpy(pathbd, path, pathbd_size - 1);
+					if (baselen < (pathbd_size - 1))
+						/* put null char */
+						pathbd[baselen] = '\0';
+					strncat(pathbd, JOB_BAD_SUFFIX,
+						pathbd_size - strlen(pathbd));
 					if (access(pathbd, F_OK) == 0) {
 						/* corresponding .bd file exists, so dont delete */
 						continue;

@@ -16,12 +16,8 @@ after_build:
   - cmd: call .appveyor\generate_installer.bat %CONFIGURATION%
 before_test:
   - cmd: net user %USERNAME% pbS@123
-  - cmd:
-        if [%CONFIGURATION%]==[Release] (
-            msiexec /quiet /qn /norestart /i C:\projects\win_build\msi\PBSPro_18.1.0.msi
-        ) else (
-            msiexec /quiet /qn /norestart /i C:\projects\win_build\msi\PBSPro_18.1.0_debug_version.msi
-        )
+  - ps: copy c:\projects\win_build\msi\PBSPro_*.msi PBSPro.msi
+  - cmd: msiexec /quiet /qn /norestart /i c:\projects\pbspro\PBSPro.msi
   - cmd: refreshenv
   - cmd: C:\PROGRA~2\PBS\exec\python\python.exe C:\PROGRA~2\PBS\exec\etc\win_postinstall.py -u %USERNAME% -p pbS@123
 test_script:
@@ -170,12 +166,8 @@ test_script:
 #  - ps: Retry-Command { grep -Hn 'hook event type is periodic' C:\PROGRA~2\PBS\home\server_logs\$TODAY }
   - ps: cmd /c "grep -Hn 'hook event type is unknown' C:\PROGRA~2\PBS\home\mom_logs\$TODAY && exit /b 1 || exit /b 0"
 after_test:
-  - cmd:
-        if [%CONFIGURATION%]==[Release] (
-          copy /y /b c:\projects\win_build\msi\PBSPro_18.1.0.msi .
-        ) else (
-          copy /y /b c:\projects\win_build\msi\PBSPro_18.1.0_debug_version.msi .
-        )
+  - ps: rm PBSPro.msi
+  - ps: copy c:\projects\win_build\msi\PBSPro_*.msi .
 artifacts:
   - path: '*.msi'
 deploy: off

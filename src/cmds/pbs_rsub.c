@@ -125,7 +125,7 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 				break;
 
 			case 'I':
-				if ((optarg == NULL) || (optarg == '\0'))
+				if ((optarg == NULL) || (*optarg == '\0'))
 					set_attr(&attrib, ATTR_inter, "0");
 				else {
 					char* endptr;
@@ -453,31 +453,26 @@ cnvrt_proc_attrib(int connect, struct attrl **attrp, char *dest)
 									exit(2);
 								}
 
-								str = (char *) malloc(strlen(ATTR_l) + 1);
+								str = strdup(ATTR_l);
 								if (str == NULL) {
 									fprintf(stderr, "pbs_rsub: Out of memory\n");
 									exit(2);
 								}
-								strcpy(str, ATTR_l);
 								attr->name = str;
 
-								str = (char *) malloc(strlen(a->resource) + 1);
+								str = strdup(a->resource);
 								if (str == NULL) {
 									fprintf(stderr, "pbs_rsub: Out of memory\n");
 									exit(2);
 								}
-								strncpy(str, a->resource, strlen(a->resource));
-								str[strlen(a->resource)] = '\0';
 								attr->resource = str;
 
 								if (a->value != NULL) {
-									str = (char *) malloc(strlen(a->value) + 1);
+									str = strdup(a->value);
 									if (str == NULL) {
 										fprintf(stderr, "pbs_rsub: Out of memory\n");
 										exit(2);
 									}
-									strncpy(str, a->value, strlen(a->value));
-									str[strlen(a->value)] = '\0';
 									attr->value = str;
 								} else {
 									str = (char *) malloc(1);

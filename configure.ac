@@ -37,14 +37,23 @@
 #
 
 AC_PREREQ([2.63])
-AC_INIT([pbspro], [18.1.0], [pbssupport@altair.com])
+# Use PBS_VERSION to override the version statically defined here. For example:
+# ./configure PBS_VERSION=19.1.2 --prefix=/opt/pbs
+AC_INIT([PBS Professional],
+  [19.0.0],
+  [pbssupport@altair.com],
+  [pbspro],
+  [http://www.pbspro.org/])
 AC_CONFIG_HEADERS([src/include/pbs_config.h])
 AC_CONFIG_SRCDIR([src/cmds/qmgr.c])
 AC_CONFIG_AUX_DIR([buildutils])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CANONICAL_TARGET([])
-# FIXME: The subdir-objects option will be enabled by default in the future
-AM_INIT_AUTOMAKE([-Wall foreign])
+os_id=`grep ^ID= /etc/os-release | sed -n 's/.*"\(.*\)"/\1/p'`
+AS_CASE([$os_id],
+  [opensuse-tumbleweed], m4_define([am_init_string], [-Wall foreign subdir-objects]),
+  [*], m4_define([am_init_string], [-Wall foreign]))
+AM_INIT_AUTOMAKE(am_init_string)
 AC_USE_SYSTEM_EXTENSIONS
 
 # Checks for programs.
@@ -319,6 +328,7 @@ PBS_AC_ENABLE_CPUSET
 PBS_AC_ENABLE_HPS
 
 AC_CONFIG_FILES([
+	pbspro.spec
 	Makefile
 	buildutils/Makefile
 	buildutils/pbs_mkdirs

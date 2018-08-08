@@ -2160,6 +2160,7 @@ main(int argc, char **argv, char **envp) /* qstat */
 
 	char *errmsg;
 	char *job_list = NULL;
+	size_t job_list_size = 0;
 	char *query_job_list = NULL;
 
 #if !defined(PBS_NO_POSIX_VIOLATION)
@@ -2582,12 +2583,12 @@ qstat -B [-f] [-F format] [-D delim] [ server_name... ]\n";
 	}
 	if (E_opt == 1 && mode == JOBS) {
 		/* allocate enough memory to store list of job ids */
-		job_list = malloc((argc - 1) * (PBS_MAXCLTJOBID + 1));
+		job_list_size = ((argc - 1) * (PBS_MAXCLTJOBID + 1));
+		job_list = calloc(argc - 1, PBS_MAXCLTJOBID + 1);
 		if (job_list == NULL)
 			exit_qstat("out of memory");
-		job_list[0] = '\0';
 		/* sort all jobs */
-		qsort(&argv[optind], argc-optind, sizeof (char *), cmp_jobs);
+		qsort(&argv[optind], (argc - optind), sizeof(char *), cmp_jobs);
 	}
 	for (; optind < argc; optind++) {
 		int connect;
@@ -2618,8 +2619,8 @@ qstat -B [-f] [-F format] [-D delim] [ server_name... ]\n";
 							/* This is probably the first job id requested from primary server */
 							if (prev_server[0] == '\0')
 								strcpy(prev_server, def_server);
-							strncat(job_list, job_id_out, PBS_MAXCLTJOBID-1);
-							strncat(job_list, ",", 1);
+							strncat(job_list, job_id_out, job_list_size - strlen(job_list));
+							strncat(job_list, ",", job_list_size - strlen(job_list));
 							if (optind != argc -1)
 								continue;
 							else {
@@ -2634,8 +2635,8 @@ qstat -B [-f] [-F format] [-D delim] [ server_name... ]\n";
 								/* This is probably the first job id requested and not from primary server */
 								if (prev_server[0] == '\0')
 									strcpy(prev_server, server_out);
-								strncat(job_list, job_id_out, PBS_MAXCLTJOBID-1);
-								strncat(job_list, ",", 1);
+								strncat(job_list, job_id_out, job_list_size - strlen(job_list));
+								strncat(job_list, ",", job_list_size - strlen(job_list));
 								if (optind != argc-1)
 									continue;
 								else {
@@ -2645,15 +2646,12 @@ qstat -B [-f] [-F format] [-D delim] [ server_name... ]\n";
 									query_job_list = strdup(job_list);
 									job_list[0] = '\0';
 								}
-							}
-							/* A new remote server */
-							else {
+							} else {
+								/* A new remote server */
 								new_remote_server = 1;
 								free(query_job_list);
 								query_job_list = strdup(job_list);
-								memset(job_list, 0, ((argc-1) * (PBS_MAXCLTJOBID+1)));
-								strncpy(job_list, job_id_out, PBS_MAXCLTJOBID-1);
-								strncat(job_list, ",", 1);
+								snprintf(job_list, job_list_size, "%s,", job_id_out);
 							}
 						}
 					}

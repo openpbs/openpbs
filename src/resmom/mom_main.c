@@ -81,8 +81,8 @@
 #include	<sys/types.h>
 #include	<sys/stat.h>
 
-#include 	"libpbs.h"
-#include 	"pbs_ifl.h"
+#include	"libpbs.h"
+#include	"pbs_ifl.h"
 #include	"server_limits.h"
 #include	"list_link.h"
 #include	"attribute.h"
@@ -533,7 +533,7 @@ static struct	specials {
 	{ "alps_release_wait_time",	set_alps_release_wait_time },
 	{ "alps_release_jitter",	set_alps_release_jitter },
 	{ "alps_release_timeout",	set_alps_release_timeout },
-	{ "vnode_per_numa_node", 	set_vnode_per_numa_node },
+	{ "vnode_per_numa_node",	set_vnode_per_numa_node },
 	{ "alps_confirm_switch_timeout",set_alps_confirm_switch_timeout },
 #endif	/* MOM_ALPS */
 	{ "attach_allow",		set_attach_allow },
@@ -557,7 +557,7 @@ static struct	specials {
 	{ "logevent",			setlogevent },
 	{ "max_check_poll",		set_max_check_poll },
 	{ "max_load",			setmaxload },
-	{ "max_poll_downtime",  	set_max_poll_downtime },
+	{ "max_poll_downtime",		set_max_poll_downtime },
 	{ "min_check_poll",		set_min_check_poll },
 	{ "momname",			set_momname },
 #ifdef	WIN32
@@ -668,8 +668,8 @@ static void check_busy(double);
 
 /**
  * @brief
- * 	'windows' only function to check for an existence
- * 	of directory.
+ *	'windows' only function to check for an existence
+ *	of directory.
  *
  * @param[in] path - directory path
  * @param[in] id   - char pointer holding which directory
@@ -706,7 +706,7 @@ check_directory(char *path, char *id)
 
 /**
  * @brief
- * 	logs error message
+ *	logs error message
  *
  * @param[in] attrib - pointer to rm_attribute structure
  *
@@ -725,7 +725,7 @@ char	*pbs_mach = NULL;
 
 /**
  * @brief
- *  	gets machine architecture else logs error msg
+ *	gets machine architecture else logs error msg
  *
  * @param[in] attrib - pointer to rm_attribute structure
  *
@@ -750,7 +750,7 @@ arch(struct rm_attribute *attrib)
 
 /**
  * @brief
- * 	returns username
+ *	returns username
  *
  * @return string
  * @retval user name
@@ -795,7 +795,7 @@ getuname(void)
 
 /**
  * @brief
- * 	requsts username else logs error msg on failure
+ *	requsts username else logs error msg on failure
  *
  * @param[in] attrib - pointer to rm_attribute structure
  *
@@ -820,13 +820,13 @@ requname(struct rm_attribute *attrib)
 
 /**
  * @brief
- *  	checks whether valid user
+ *	checks whether valid user
  *
  * @param[in] attrib - pointer to rm_attribute structure
  *
- * @return 	string
- * @retval 	yes 	Success
- * @retval 	no  	Failure
+ * @return	string
+ * @retval	yes	Success
+ * @retval	no	Failure
  *
  */
 static char *
@@ -850,7 +850,7 @@ validuser(struct rm_attribute *attrib)
 
 /**
  * @brief
- * 	returns the current load average on node
+ *	returns the current load average on node
  *
  * @param[in] attrib - pointer to rm_attribute structure
  *
@@ -954,8 +954,8 @@ struct	config	common_config[] = {
  * @param[in] where - pointer to config structure
  * @param[in] what  - char pointer holding what to search
  *
- * @return 	structure handle
- * @retval  	pointer to config structure	Success
+ * @return	structure handle
+ * @retval	pointer to config structure	Success
  * @retval      NULL				Failure
  *
  */
@@ -976,13 +976,13 @@ rm_search(struct config *where, char *what)
 
 /**
  * @brief
- * 	Search the various resource lists.
+ *	Search the various resource lists.
  *
  * @param[in] res - string holding resource
  * @param[in] attr - pointer to rm_attribute structure
  *
- * @return 	string
- * @retval   	structure handler to config	Success
+ * @return	string
+ * @retval	structure handler to config	Success
  * @retval      NULL				Failure
  *
  */
@@ -1011,7 +1011,7 @@ dependent(char *res, struct rm_attribute *attr)
 
 /**
  * @brief
- * 	wrapper function to dep_cleanup
+ *	wrapper function to dep_cleanup
  *
  */
 void
@@ -1051,10 +1051,10 @@ die(int sig)
 
 /**
  * @brief
- * 	Performs initialization steps like loading pbs.conf values,
- * 	setting core limit size, running platform-specific initializations
- * 	(e.g. cpusets initializations, topology data gathering),
- * 	running the exechost_startup hook, and
+ *	Performs initialization steps like loading pbs.conf values,
+ *	setting core limit size, running platform-specific initializations
+ *	(e.g. cpusets initializations, topology data gathering),
+ *	running the exechost_startup hook, and
  *	checking that there are no bad combinations of sharing values
  *	across the vnodes.
  *
@@ -1100,7 +1100,7 @@ initialize(void)
 	/* set limits that can be modified by the Admin */
 #ifndef	WIN32 /* ---- UNIX ------------------------------------------*/
 #ifdef	RLIMIT_CORE
-	int      	char_in_cname = 0;
+	int	char_in_cname = 0;
 
 	(void)pbs_loadconf(0);
 
@@ -1367,7 +1367,7 @@ initialize(void)
 
 /**
  * @brief
- * 	Check for fatal memory allocation error.
+ *	Check for fatal memory allocation error.
  *
  * @param[in]  buf - reallocated memory
  *
@@ -1385,7 +1385,7 @@ memcheck(char *buf)
 
 /**
  * @brief
- * 	Check the ret_string buffer to make sure that there is
+ *	Check the ret_string buffer to make sure that there is
  *	enough room starting at *spot to hold len characters more.
  *	If not, realloc the buffer and make *spot point to
  *	the corresponding place that it used to point to in
@@ -1420,8 +1420,8 @@ checkret(char **spot, int len)
  *
  * @param[in] str - string to be processed
  *
- * @return 	string
- * @retval 	string with no blanks
+ * @return	string
+ * @retval	string with no blanks
  *
  */
 char *
@@ -1442,8 +1442,8 @@ skipwhite(char *str)
  * @param[in] tok - destination string to be copied to
  * @param[in] len - size of string str
  *
- * @return 	string
- * @retval 	destination string "tok"
+ * @return	string
+ * @retval	destination string "tok"
  *
  */
 char *
@@ -1550,7 +1550,7 @@ qwtokcpy(char *str, char *tok, int len)
 /**
  * @brief
  *	malloc memory and make a copy of the path input string that does not
- * 	contain any double quote marks
+ *	contain any double quote marks
  *
  * @param[in] path - char pointer holding input path
  *
@@ -1587,7 +1587,7 @@ remove_quotes(char *path)
  *		of interactive_svc_avail variable to -1 and return success.
  *		on any error set value of interactive_svc_avail variable to 0 and return failure.
  *
- * @return 	int
+ * @return	int
  * @retval	0  - On Success
  * @retval	1  - On Error
  *
@@ -2016,9 +2016,9 @@ done:
  *
  * @param[in] name - name of host
  *
- * @return 	u_long
- * @retval 	0 		Failure
- * @retval 	ipaddr of host	Success
+ * @return	u_long
+ * @retval	0		Failure
+ * @retval	ipaddr of host	Success
  *
  */
 static u_long
@@ -2049,9 +2049,9 @@ addclient_byname(char *name)
  *
  * @param[in] name - name of host
  *
- * @return 	handler_ret_t (return value)
+ * @return	handler_ret_t (return value)
  * @retval      HANDLER_FAIL(0)			Failure
- * @retval 	HANDLER_SUCCESS(1)		Success
+ * @retval	HANDLER_SUCCESS(1)		Success
  *
  */
 
@@ -2121,7 +2121,7 @@ setlogevent(char *value)
 /**
  * @brief
  *	Set the configuration flag that defines whether the hook files/scripts
- * 	or job scripts to be run under root are rejected by mom.
+ *	or job scripts to be run under root are rejected by mom.
  *
  * @param[in] value - log value
  *
@@ -2158,9 +2158,9 @@ set_report_hook_checksums(char *value)
  *
  * @param[in] name - name of host
  *
- * @return 	handler_ret_t
- * @retval 	HANDLER_FAIL(0)		Failure
- * @retval 	HANDLER_SUCCESS		Success
+ * @return	handler_ret_t
+ * @retval	HANDLER_FAIL(0)		Failure
+ * @retval	HANDLER_SUCCESS		Success
  *
  */
 
@@ -2418,7 +2418,7 @@ set_nrun_factor(char *value)
  * @brief
  *      Performs shell_escape_timeout on process tree by using given parent process handle <hProcess> and close that handle.
  *
- * @return 	Void
+ * @return	Void
  *
  */
 
@@ -2459,13 +2459,13 @@ double	delta_weightup       = 0.4;	/* 0.0 <= D <= 1.0	*/
 double	delta_weightdown     = 0.1;     /* 0.0 <= D <= 1.0	*/
 int	average_percent_over = 50;	/* 0   <= I <= 100	*/
 double	average_cpufactor    = 1.025;   /* 1.0 <= D		*/
-int	average_trialperiod  = 120; 	/* 0   <= I		*/
+int	average_trialperiod  = 120;	/* 0   <= I		*/
 /*
  * or the form of:  $enforce [!]NAME
  * where NAME is:
  */
 /* cpuburst */
-int	cpuburst 	     = 0;	/* 1 or 0		*/
+int	cpuburst	     = 0;	/* 1 or 0		*/
 /* cpuaverage */
 int	cpuaverage	     = 0;	/* 1 or 0		*/
 /* mem */
@@ -2479,6 +2479,9 @@ set_enforcement(char *str)
 	char  arg[80];
 	int   on = 1;
 
+	if (!str)
+		return HANDLER_FAIL;
+
 	/* if current token starts with !, then set value off and skip ! */
 	if (*str == '!') {
 		on = 0;		/* set off */
@@ -2487,7 +2490,7 @@ set_enforcement(char *str)
 
 	str = TOKCPY(str, arg);
 	str = skipwhite(str);
-	if (str == '\0')
+	if (*str == '\0')
 		return HANDLER_FAIL;
 
 	if (strcmp(arg, "delta_percent_over") == 0) {
@@ -2524,7 +2527,7 @@ set_enforcement(char *str)
  *
  * @param[in] ae - enum val for action_event
  *
- * @return 	the Action_Verb enum value, see mom_func.h:
+ * @return	the Action_Verb enum value, see mom_func.h:
  * @retval	Default no directive to change the action for the event
  * @retval	Script defined in see mom_func.h
  * @retval	Requeue defined in see mom_func.h
@@ -2561,7 +2564,7 @@ chk_mom_action(enum Action_Event ae)
  *
  */
 int
-do_mom_action_script(int	ae, 	/* index into action table */
+do_mom_action_script(int	ae,	/* index into action table */
 	job		*pjob,	/* ptr to job */
 	pbs_task	*ptask,	/* ptr to task */
 	char		*path,
@@ -2574,7 +2577,7 @@ do_mom_action_script(int	ae, 	/* index into action table */
 	char		buf[_POSIX_PATH_MAX + 1];
 #endif
 	int		i;
-	int		nargs = 1;
+	int		nargs;
 	char		**pargs;
 	struct	stat	sb;
 	struct	passwd	*pwdp;
@@ -2606,7 +2609,7 @@ do_mom_action_script(int	ae, 	/* index into action table */
 	assert((0 <= ae) && (ae < (int)LastAction));
 
 	ma = &mom_action[ae];
-	if (ma->ma_script == NULL)
+	if ((ma == NULL) || (ma->ma_script == NULL))
 		return -2;
 
 	/* does script really exist? */
@@ -2681,63 +2684,61 @@ do_mom_action_script(int	ae, 	/* index into action table */
 	}
 
 	/* build up args to script */
-	if (ma->ma_args) {
-		for (pargs = ma->ma_args; *pargs; ++pargs)
-			++nargs;
-
-		args = malloc((nargs+1) * sizeof(char *));
-		if (args == 0)
-			return -1;
-	}
-	memset(args, 0, (nargs+1) * sizeof(char *));
-
-	/* set args[0] to script */
-	*args = strdup(ma->ma_script);
-	if (*args == NULL)
+	for (nargs = 0, pargs = ma->ma_args; pargs && *pargs; pargs++)
+		nargs++;
+	/* Add one for the command itself */
+	nargs++;
+	args = calloc((nargs + 1), sizeof(char *));
+	if (args == NULL)
 		return -1;
-
-	pargs = ma->ma_args;
 
 #ifdef	WIN32
 	strcpy(cmd_line, "cmd /q /c ");
 	strcat(cmd_line, ma->ma_script);
 #endif
-	for (i=1; i< nargs; i++, pargs++) {
+
+	/* set args[0] to script */
+	args[0] = strdup(ma->ma_script);
+	if (args[0] == NULL)
+		return -1;
+
+	pargs = ma->ma_args;
+	for (i = 1; i < nargs; i++, pargs++) {
 		if (**pargs == '%') {
-			if (strcmp(*pargs+1, "jobid") == 0) {
+			if (strcmp(*pargs + 1, "jobid") == 0) {
 				(void)strcpy(buf, pjob->ji_qs.ji_jobid);
-			} else if (strcmp(*pargs+1, "sid") == 0) {
+			} else if (strcmp(*pargs + 1, "sid") == 0) {
 				sprintf(buf, "%d", ptask->ti_qs.ti_sid);
-			} else if (strcmp(*pargs+1, "taskid") == 0) {
+			} else if (strcmp(*pargs + 1, "taskid") == 0) {
 				sprintf(buf, "%d", ptask->ti_qs.ti_task);
-			} else if (strcmp(*pargs+1, "uid") == 0) {
+			} else if (strcmp(*pargs + 1, "uid") == 0) {
 #ifdef	WIN32
 				sprintf(buf, "%ld", pjob->ji_qs.ji_un.ji_momt.ji_exuid);
 #else
 				sprintf(buf, "%d", pjob->ji_qs.ji_un.ji_momt.ji_exuid);
 #endif
-			} else if (strcmp(*pargs+1, "gid") == 0) {
+			} else if (strcmp(*pargs + 1, "gid") == 0) {
 #ifdef	WIN32
 				sprintf(buf, "%ld", pjob->ji_qs.ji_un.ji_momt.ji_exgid);
 #else
 				sprintf(buf, "%d", pjob->ji_qs.ji_un.ji_momt.ji_exgid);
 #endif
-			} else if (strcmp(*pargs+1, "login") == 0) {
+			} else if (strcmp(*pargs + 1, "login") == 0) {
 				strcpy(buf,
 					pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str);
-			} else if (strcmp(*pargs+1, "owner") == 0) {
+			} else if (strcmp(*pargs + 1, "owner") == 0) {
 				strcpy(buf,
 					pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str);
-			} else if (strcmp(*pargs+1, "globid") == 0) {
+			} else if (strcmp(*pargs + 1, "globid") == 0) {
 				strcpy(buf, "NULL");
-			} else if (strcmp(*pargs+1, "auxid") == 0) {
+			} else if (strcmp(*pargs + 1, "auxid") == 0) {
 				if (pjob->ji_wattr[(int)JOB_ATR_altid].at_val.at_str) {
 					strncpy(buf, pjob->ji_wattr[(int)JOB_ATR_altid].
 						at_val.at_str, sizeof(buf)-1);
 					buf[sizeof(buf)-1] = '\0';
 				} else
 					strcpy(buf, "NULL");
-			} else if (strcmp(*pargs+1, "path") == 0) {
+			} else if (strcmp(*pargs + 1, "path") == 0) {
 				if (path != NULL) {
 					strncpy(buf, path, sizeof(buf)-1);
 					buf[sizeof(buf)-1] = '\0';
@@ -2755,8 +2756,8 @@ do_mom_action_script(int	ae, 	/* index into action table */
 		} else {
 			(void)strcpy(buf, *pargs);
 		}
-		*(args+i) = strdup(buf);
-		if (*(args+i) == NULL)
+		*(args + i) = strdup(buf);
+		if (*(args + i) == NULL)
 			return -1;
 #ifdef	WIN32
 		strcat(cmd_line, " ");
@@ -3311,9 +3312,9 @@ done:
  *
  * @param[in] str - signal name
  *
- * @return 	handler_ret_t
+ * @return	handler_ret_t
  * @retval	HANDLER_FAIL		Failure
- * @retval 	HANDLER_SUCCESS		Success
+ * @retval	HANDLER_SUCCESS		Success
  *
  */
 static handler_ret_t
@@ -3598,7 +3599,7 @@ set_tmpdir(char *value)
 		free(cleaned_value);
 		return HANDLER_FAIL;
 	}
-#else 	/* Unix Only */
+#else	/* Unix Only */
 	if (tmp_file_sec(cleaned_value, 1, 1, 0, 1)) {
 		free(cleaned_value);
 		return HANDLER_FAIL;		/* error */
@@ -3777,7 +3778,7 @@ set_float(const char *id, char *value, float *var)
 /**
  * @brief
  *	Set the configuration flag that defines whether the restart nunction
- * 	occurs in the background.
+ *	occurs in the background.
  *
  * @retval 0 failure
  * @retval 1 success
@@ -3792,7 +3793,7 @@ set_restart_background(char *value)
 /**
  * @brief
  *	 Set the configuration flag that defines whether the restart function
- * 	transmogrifies into a task.
+ *	transmogrifies into a task.
  *
  * @retval 0 failure
  * @retval 1 success
@@ -3807,7 +3808,7 @@ set_restart_transmogrify(char *value)
 /**
  * @brief
  *	Set the configuration flag that defines whether a call to tm_attach
- * 	is allowed.
+ *	is allowed.
  *
  * @retval 0 failure
  * @retval 1 success
@@ -3823,7 +3824,7 @@ set_attach_allow(char *value)
 /**
  * @brief
  *	Set the configuration flag that defines whether AIX Large Page Mode
- * 	is supported.
+ *	is supported.
  *
  * @retval 0 failure
  * @retval 1 success
@@ -3915,14 +3916,14 @@ set_alps_client(char *value)
 
 /**
  * @brief
- * 	Set the timeout value in seconds when we will stop checking for
- * 	ALPS SWITCH response to change from "EMPTY".
- * 	In order to work around a situation where we must poll on "EMPTY" in
- * 	case it changes.  After the timeout, we can proceed with the suspend.
+ *	Set the timeout value in seconds when we will stop checking for
+ *	ALPS SWITCH response to change from "EMPTY".
+ *	In order to work around a situation where we must poll on "EMPTY" in
+ *	case it changes.  After the timeout, we can proceed with the suspend.
  *
  * @par
- * 	It is best if this value is not too large, since PBS will be
- * 	blocked until the timeout is reached or the response changes from "EMPTY".
+ *	It is best if this value is not too large, since PBS will be
+ *	blocked until the timeout is reached or the response changes from "EMPTY".
  *
  * @retval 0 failure
  * @retval 1 success
@@ -3935,12 +3936,12 @@ set_alps_confirm_empty_timeout(char *value)
 
 /**
  * @brief
- * 	Set the time out value in seconds when we will stop checking for
- * 	ALPS SWITCH to complete.  PBS will basically give up trying.
+ *	Set the time out value in seconds when we will stop checking for
+ *	ALPS SWITCH to complete.  PBS will basically give up trying.
  *
  * @par
- * 	It is best if this value is not too large, since PBS will be
- * 	blocked until the timeout is reached or the SWITCH completes.
+ *	It is best if this value is not too large, since PBS will be
+ *	blocked until the timeout is reached or the SWITCH completes.
  *
  * @retval 0 failure
  * @retval 1 success
@@ -4024,8 +4025,8 @@ set_alps_release_jitter(char *value)
 
 /**
  * @brief
- * 	Set the time out value in seconds when we will stop making ALPS release
- * 	reservation requests.  PBS will basically give up trying.
+ *	Set the time out value in seconds when we will stop making ALPS release
+ *	reservation requests.  PBS will basically give up trying.
  *
  * @par
  * It is best if this value is greater than the Cray node health
@@ -4147,9 +4148,9 @@ set_checkpoint_path(char *value)
  *
  * @param[in] value - value for mom name
  *
- * @return 	handler_ret_t
- * @retval 	HANDLER_SUCCESS 	success
- * @retval 	HANDLER_FAIL		Failure
+ * @return	handler_ret_t
+ * @retval	HANDLER_SUCCESS		success
+ * @retval	HANDLER_FAIL		Failure
  *
  */
 static handler_ret_t
@@ -4302,8 +4303,8 @@ set_restrict_user_maxsys(char *value)
 
 /**
  * @brief
- * 	Exempt users from the restrict user feature.  The restrict_user_exempt_uids
- * 	array holds the uids of the exempted users.
+ *	Exempt users from the restrict user feature.  The restrict_user_exempt_uids
+ *	array holds the uids of the exempted users.
  *
  * @param[in]	user_list	comma separated string of usernames
  *
@@ -4372,12 +4373,12 @@ set_restrict_user_exceptions(char *user_list)
 
 /**
  * @brief
- * 	Set the configuration flag that defines whether to get rid of
- * 	all vnode defs when reading the config files.
+ *	Set the configuration flag that defines whether to get rid of
+ *	all vnode defs when reading the config files.
  *
- * @return 	handler_ret_t.
- * @retval	0 	Failure
- * @retval 	1	Success
+ * @return	handler_ret_t.
+ * @retval	0	Failure
+ * @retval	1	Success
  *
  */
 static handler_ret_t
@@ -4627,7 +4628,7 @@ free_dirlist(char **list)
  * @param[out] mod	modified time of the directory
  *
  * @return a sorted, NULL-terminated list of strings (excluding "." and "..")
- * @retval NULL 				Failure
+ * @retval NULL					Failure
  * @retval NULL-terminated list of strings	Success
  *
  */
@@ -4826,7 +4827,7 @@ read_config(char *file)
 
 #endif
 
-	/* 	initialize variable that can be set by config entries in case	*/
+	/*	initialize variable that can be set by config entries in case	*/
 	/*	they are removed and we are HUPped				*/
 
 	for (i=0; i<mask_num; i++)
@@ -4847,7 +4848,7 @@ read_config(char *file)
 	enforce_mem          = 0;
 	ideal_load_val       = -1.0;
 	max_load_val         = -1.0;
-	idle_avail 	     = 0;
+	idle_avail	     = 0;
 	idle_busy            = 10;
 	idle_check	     = -1;
 	idle_poll            = 1;
@@ -5092,17 +5093,19 @@ doconfig_insert(char *name, char *input)
 		sprintf(log_buffer, "open %s", input);
 		log_err(errno, __func__, log_buffer);
 		exit(1);
-	} else 	if ((fdout = open(namebuf, O_WRONLY | O_CREAT, 0600)) == -1) {
+	} else if ((fdout = open(namebuf, O_WRONLY | O_CREAT, 0600)) == -1) {
 		sprintf(log_buffer, "open %s", namebuf);
 		log_err(errno, __func__, log_buffer);
 		exit(1);
-	} else 	while ((nread = read(fdin, iobuf, sizeof(iobuf))) != 0) {
-		if (nread == -1) {
-			log_err(errno, __func__, "read");
-			exit(1);
-		} else if (write(fdout, iobuf, nread) != nread) {
-			log_err(errno, __func__, "write");
-			exit(1);
+	} else {
+		while ((nread = read(fdin, iobuf, sizeof(iobuf))) != 0) {
+			if (nread == -1) {
+				log_err(errno, __func__, "read");
+				exit(1);
+			} else if (write(fdout, iobuf, nread) != nread) {
+				log_err(errno, __func__, "write");
+				exit(1);
+			}
 		}
 	}
 
@@ -5113,7 +5116,7 @@ doconfig_insert(char *name, char *input)
 
 /**
  * @brief
- * 	Removes config files
+ *	Removes config files
  *
  * @param[in] name - name of file
  *
@@ -5182,7 +5185,7 @@ doconfig_remove(char *name)
 
 /**
  * @brief
- * 	Lists the config files by reading directory
+ *	Lists the config files by reading directory
  *
  * @return Void
  *
@@ -5252,13 +5255,15 @@ doconfig_show(char *name)
 		sprintf(log_buffer, "open %s", namebuf);
 		log_err(errno, __func__, log_buffer);
 		exit(1);
-	} else 	while ((nread = read(fdin, iobuf, sizeof(iobuf))) != 0) {
-		if (nread == -1) {
-			log_err(errno, __func__, "read");
-			exit(1);
-		} else if (write(1, iobuf, nread) != nread) {
-			log_err(errno, __func__, "write");
-			exit(1);
+	} else {
+		while ((nread = read(fdin, iobuf, sizeof(iobuf))) != 0) {
+			if (nread == -1) {
+				log_err(errno, __func__, "read");
+				exit(1);
+			} else if (write(1, iobuf, nread) != nread) {
+				log_err(errno, __func__, "write");
+				exit(1);
+			}
 		}
 	}
 
@@ -5307,8 +5312,8 @@ do_configs(char *action, char *name, char *input)
  * @param[in] str - string holding info of attributes structure
  *
  * @return structure handle
- * @retval 	pointer to rm_attribute structure	Success
- * @retval 	NULL					Failure
+ * @retval	pointer to rm_attribute structure	Success
+ * @retval	NULL					Failure
  *
  */
 struct	rm_attribute *
@@ -5563,8 +5568,8 @@ done:
 #ifndef	WIN32
 /**
  * @brief
- * 	Function to catch HUP signal.
- * 	Set call_hup = 1.
+ *	Function to catch HUP signal.
+ *	Set call_hup = 1.
  * @param[in] sig - signal number
  *
  * @return Void
@@ -5721,7 +5726,7 @@ toolong(int sig)
 #ifdef	DEBUG
 /**
  * @brief
- * 	creates logs event
+ *	creates logs event
  *
  * @param[in] id - function name
  * @param[in] buf - msg
@@ -5762,9 +5767,9 @@ log_verbose(char *id, char *buf, int len)
  *
  * @param[in] ipadd - ip address of host
  *
- * @return 	int
- * @retval 	0   	Failure
- * @retval 	1	Success
+ * @return	int
+ * @retval	0	Failure
+ * @retval	1	Success
  *
  */
 int
@@ -5808,7 +5813,7 @@ bad_restrict(u_long ipadd)
  * @param[in] tcp - flag for tcp 0 or 1
  *
  * @return int
- * @retval 	0 	Success
+ * @retval	0	Success
  * @retval	-1	Failure
  *
  */
@@ -6097,7 +6102,7 @@ bad:
 /**
  * @brief
  *	Read a RPP message from a stream, figure out if it is a
- * 	Resource Monitor request or an InterMom message.
+ *	Resource Monitor request or an InterMom message.
  *
  * @param[in] stream - rpp msg
  *
@@ -6188,9 +6193,9 @@ rpp_request(int fd)
  *
  * @param[in] fd - tcp msg
  *
- * @return 	int
- * @retval 	0	Success
- * @retval 	!0	Failure
+ * @return	int
+ * @retval	0	Success
+ * @retval	!0	Failure
  *
  */
 
@@ -6321,7 +6326,7 @@ kill_job(job *pjob, int sig)
 {
 	pbs_task	*ptask = NULL;
 	int		ct = 0;
-	int 	tsk_ct = 0;
+	int	tsk_ct;
 
 #ifdef	WIN32
 	log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_DEBUG,
@@ -6489,7 +6494,7 @@ mom_lock(int fds,
 
 /**
  * @brief
- * 	lock out other MOMs from this directory.
+ *	lock out other MOMs from this directory.
  *
  * @param[in] fds - file descriptor
  * @param[in] op - type of lock
@@ -6521,7 +6526,7 @@ mom_lock(int fds,
 
 /**
  * @brief
- * 	size decoding routine.
+ *	size decoding routine.
  *	Accepts a resource pointer and a pointer to the unsigned long integer
  *	to receive the decoded value.  It returns the decoded value in kb.
  *
@@ -6538,7 +6543,7 @@ mom_lock(int fds,
  * @note  The size of a word is a constant shared between daemons to ensure
  *        consistency over correctness.
  *
- * @return 	u_long
+ * @return	u_long
  * @retval	decoded value for size
  *
  */
@@ -6581,7 +6586,7 @@ getsize(resource *pres)
 
 /**
  * @brief
- * 	time decoding routine.
+ *	time decoding routine.
  *
  *	Accepts a resource pointer and a pointer to the unsigned long integer
  *	to receive the decoded value.  It returns the decoded value of time
@@ -6589,7 +6594,7 @@ getsize(resource *pres)
  *
  * @param[in] pres - pointer to resource structure
  *
- * @return 	u_long
+ * @return	u_long
  * @retval	decoded value for time
  *
  */
@@ -6606,7 +6611,7 @@ gettime(resource *pres)
 
 /**
  * @brief
- * 	Internal size decoding routine.
+ *	Internal size decoding routine.
  *
  *	Accepts a resource pointer and a pointer to the unsigned long integer
  *	to receive the decoded value.  It returns a PBS error code, and the
@@ -6673,7 +6678,7 @@ local_getsize(resource *pres,
 
 /**
  * @brief
- * 	Internal time decoding routine.
+ *	Internal time decoding routine.
  *
  *	Accepts a resource pointer and a pointer to the unsigned long integer
  *	to receive the decoded value.  It returns a PBS error code, and the
@@ -6682,10 +6687,10 @@ local_getsize(resource *pres,
  * @param[in] pres - pointer to resource
  * @param[out] ret - pointer to u_long to hold decoded value
  *
- * @return 	error(numbers)
- * @retval 	PBSE_NONE	no error
- * @retval 	PBSE_UNKRESC	Unknown resource
- * @retval 	PBSE_ATTRTYPE	incompatable queue attribute type
+ * @return	error(numbers)
+ * @retval	PBSE_NONE	no error
+ * @retval	PBSE_UNKRESC	Unknown resource
+ * @retval	PBSE_ATTRTYPE	incompatable queue attribute type
  * @retval	PBSE_BADATVAL	bad attribute value
  *
  *
@@ -6719,7 +6724,7 @@ local_gettime(resource *pres, u_long *ret)
  * @param[in] pres - pointer to resource
  * @param[out] ret - pointer to u_long to hold decoded value
  *
- * @return 	error numbers
+ * @return	error numbers
  *
  */
 int
@@ -6730,8 +6735,8 @@ getlong(resource *pres, u_long *ret)
 
 /**
  * @brief
- * 	Calculate a moving weighted average percentage of cpus used by job.
- * 	100% = 1 cpu full time.
+ *	Calculate a moving weighted average percentage of cpus used by job.
+ *	100% = 1 cpu full time.
  *
  * @param		pjob		pointer to job structure
  * @param		oldcput		cpu time from previous sample
@@ -6840,7 +6845,7 @@ calc_cpupercent(job *pjob, u_long oldcput, u_long newcput, time_t sampletime)
  *
  * @param[in] value - spool size
  *
- * @return 	handler_ret_t
+ * @return	handler_ret_t
  * @retval	HANDLER_FAIL	Failure
  * @retval	HANDLER_SUCCESS	Success
  *
@@ -6892,7 +6897,7 @@ set_spoolsize(char *value)
 
 /**
  * @brief
- * 	spool_usage - compute a job's spool usage (in KB)
+ *	spool_usage - compute a job's spool usage (in KB)
  *
  * Returns the sum of the lengths of stdout and stderr in KB, iff they
  * are being written to the $PBS_HOME/spool directory. In all other cases
@@ -6900,7 +6905,7 @@ set_spoolsize(char *value)
  *
  * @param[in] pjob - pointer to job
  *
- * @return 	long
+ * @return	long
  * @retval	length of output written by job into spool dir
  * @retval	0	not writing into spool dir
  *
@@ -6965,13 +6970,13 @@ job	*pjob;
 
 /**
  * @brief
- * 	spool_over_limit - check job's spool usage against limit
+ *	spool_over_limit - check job's spool usage against limit
  *
  * @param[in] pjob - pointer to job
  *
  * @return	int
- * @retval	1 	iff job's spool usage exceeds spool limit in config file
- * @retval	0 	otherwise.
+ * @retval	1	iff job's spool usage exceeds spool limit in config file
+ * @retval	0	otherwise.
  *
  * A spool limit <= 0 is considered to be "unlimited".
  *
@@ -6979,7 +6984,7 @@ job	*pjob;
 
 int
 spool_over_limit(pjob)
-job 	*pjob;
+job	*pjob;
 {
 	if (spoolsize <= 0)
 		return 0;
@@ -7234,7 +7239,7 @@ mom_over_limit(job *pjob)
  *
  * @param[in] pjob - pointer to job
  *
- * @return 	int
+ * @return	int
  * @retval	0	Failure
  * @retval	1	Success
  *
@@ -7420,7 +7425,7 @@ char	*prog;
  *
  * @param[in] head - pointer to pbs_list_head
  *
- * @return 	Void
+ * @return	Void
  *
  */
 void
@@ -7444,7 +7449,7 @@ free_kp_list_entries(pbs_list_head *head)
  *	kp_comment_node() - Set a node comment regarding the presence of unkillable
  *	processes. Based on Altair's offline_job_vnodes().
  *
- * @return 	Void
+ * @return	Void
  *
  */
 void
@@ -7913,7 +7918,7 @@ badguy:
  *
  * @param[in] mess - msg to be logged
  *
- * @return 	Void
+ * @return	Void
  *
  */
 
@@ -7934,7 +7939,7 @@ log_rppfail(char *mess)
  * @param[in] objname - Name of the object about which logging is being done
  * @param[in] messa   - The log message
  *
- * @return 	Void
+ * @return	Void
  *
  */
 static void
@@ -7963,7 +7968,7 @@ log_tppmsg(int level, const char *objname, char *mess)
  *
  * @param[in] data - currently unused
  *
- * @return 	Void
+ * @return	Void
  *
  */
 void
@@ -7984,7 +7989,7 @@ net_restore_handler(void *data)
  *
  * @param[in] data - currently unused
  *
- * @return 	Void
+ * @return	Void
  *
  */
 void
@@ -8027,7 +8032,7 @@ net_down_handler(void *data)
 #ifdef	WIN32
 /**
  * @brief
- * 	main - the main program of MOM
+ *	main - the main program of MOM
  */
 DWORD WINAPI
 main_thread(pv)
@@ -8039,13 +8044,13 @@ main(int argc, char *argv[])
 {
 	/* both Win32 and Unix */
 	struct tpp_config	tpp_conf;
-	int	 				errflg, c, rc;
+	int					errflg, c;
 	int					stalone = 0;
 	int					i;
 	char				*ptr;
 	char				*servername;
 	unsigned int		serverport;
-	int	 				recover = 0;
+	int					recover = 0;
 	time_t				time_state_update = 0;
 	int					tryport;
 	int					rppfd;				/* fd for rm and im comm */
@@ -8074,7 +8079,7 @@ main(int argc, char *argv[])
 	/* Win32 only */
 	struct arg_param	*p = (struct arg_param *)pv;
 	int					argc;
-	char		 		**argv;
+	char				**argv;
 	SERVICE_STATUS		ss;
 	int					pmode = S_IREAD | S_IWRITE;
 	struct _timeb		tval;
@@ -8111,7 +8116,7 @@ main(int argc, char *argv[])
 
 
 #ifdef WIN32
-	_fcloseall(); 	/* Close any inherited extra files, leaving stdin-err open */
+	_fcloseall();	/* Close any inherited extra files, leaving stdin-err open */
 #else
 	/* Close any inherited extra files, leaving stdin-err open */
 	c = sysconf(_SC_OPEN_MAX);
@@ -8515,19 +8520,19 @@ main(int argc, char *argv[])
 				rlimit.rlim_cur = MIN_STACK_LIMIT;
 				rlimit.rlim_max = MIN_STACK_LIMIT;
 				if (setrlimit(RLIMIT_STACK, &rlimit) == -1) {
+					char msgbuf[] = "Stack limit setting failed";
 					curerror = errno;
-					sprintf(log_buffer, "Stack limit setting failed");
-					log_err(curerror, __func__, log_buffer);
-					sprintf(log_buffer, "%s errno=%d", log_buffer, curerror);
+					log_err(curerror, __func__, msgbuf);
+					sprintf(log_buffer, "%s errno=%d", msgbuf, curerror);
 					log_record(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, (char *)__func__, log_buffer);
 					exit(1);
 				}
 			}
 		} else {
+			char msgbuf[] = "Getting current Stack limit failed";
 			curerror = errno;
-			sprintf(log_buffer, "Getting current Stack limit failed");
-			log_err(curerror, __func__, log_buffer);
-			sprintf(log_buffer, "%s errno=%d", log_buffer, curerror);
+			log_err(curerror, __func__, msgbuf);
+			sprintf(log_buffer, "%s errno=%d", msgbuf, curerror);
 			log_record(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, (char *)__func__, log_buffer);
 			exit(1);
 		}
@@ -8570,7 +8575,7 @@ main(int argc, char *argv[])
 	/* failure cases so it's hard to know if a corrupt log file is the */
 	/* culprit, which happes occasionally under windows. */
 
-	
+
 	/*
 	 * let SCM wait 10 seconds for log_open() to complete
 	 * as it does network interface query which can take time
@@ -9139,6 +9144,7 @@ main(int argc, char *argv[])
                 }
 	}
 	if (pbs_conf.pbs_use_tcp == 1) {
+		int rc;
 		char *nodename;
 
 		sprintf(log_buffer, "Out of memory");
@@ -9327,8 +9333,7 @@ main(int argc, char *argv[])
 				continue;
 			}
 
-			if ((phook = \
- 			       hook_recov(pdirent->d_name, NULL, hook_msg,
+			if ((phook = hook_recov(pdirent->d_name, NULL, hook_msg,
 				sizeof(hook_msg), python_script_alloc,
 				python_script_free)) == NULL) {
 				sprintf(log_buffer,
@@ -10086,11 +10091,11 @@ main(int argc, char *argv[])
 
 /**
  * @brief
- * 	make the directory names used by MOM
+ *	make the directory names used by MOM
  *
  * @param[in] base - base path
  *
- * @return 	string
+ * @return	string
  * @retval	string holding directory path
  *
  */
@@ -10269,7 +10274,7 @@ main(int argc, char *argv[])
  * @param[in] dwArgc - Number of arguments in the rgszArgv array
  * @param[in] rgszArgv - Array of strings. The first string is the name of
  *			 the service and subsequent strings are passed by the process
- *   			 that called the StartService function to start the service.
+ *			 that called the StartService function to start the service.
  *
  * @return Void
  *
@@ -10393,7 +10398,7 @@ PbsMomHandler(DWORD dwControl)
  *
  * @param[in] sig - signal number
  *
- * @return 	Void
+ * @return	Void
  *
  */
 
@@ -10431,7 +10436,7 @@ struct input_dev_list {
 } input_dev_list[]  = {
 	{	1,	"/dev/mouse" },
 	{	1,	"/dev/kbd"   },
-	{	1, 	"/dev/keybd" },
+	{	1,	"/dev/keybd" },
 	{	1,	"/dev/kbd0"  },
 	{	1,	"/dev/kbd1"  },
 	{	1,	"/dev/hid/mouse_000" },
@@ -10475,7 +10480,7 @@ setmax(char *dev)
  * @brief
  *	gets most recent access time found for idle_touch file
  *
- * @return 	time_t
+ * @return	time_t
  * @retval	-1		Failure
  * @retval	max time	Success
  *
@@ -10662,12 +10667,12 @@ do_multinodebusy(job *pjob, int which)
 
 /**
  * @brief
- * 	idle all running jobs on keyboard active
+ *	idle all running jobs on keyboard active
  *	Even jobs that have been suspended on "suspend" signal request are idled
  *	At the current time, only single node jobs are suspended,
  *	multinode jobs are ignored or requeued.
  *
- * @return 	Void
+ * @return	Void
  *
  */
 void
@@ -10693,12 +10698,12 @@ idle_jobs(void)
 
 /**
  * @brief
- * 	activate all idle jobs on keyboard going idle
+ *	activate all idle jobs on keyboard going idle
  *	Even jobs that have been suspended on "suspend" signal request are
  *	"activated", though they will remain in suspend state.
  *	At the current time, only single node jobs are handled.
  *
- * @return 	Void
+ * @return	Void
  *
  */
 
@@ -10747,7 +10752,7 @@ check_busy(double mla)
 	}
 }
 
-/** 
+/**
  * @fn mom_topology
  * @brief
  *	compute and export platform-dependent topology information
@@ -10802,7 +10807,7 @@ mom_topology(void)
 		return;
 	} else
 #endif
-	{ 
+	{
 		char	*lbuf;
 		int	lbuflen = xmllen + 1024;
 #ifdef WIN32
@@ -10855,7 +10860,7 @@ mom_topology(void)
 				topology_type, xmlbuf);
 			log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_NODE, LOG_DEBUG, __func__, lbuf);
 #else
-			sprintf(log_buffer, "attribute '%s = %s' added", ATTR_NODE_TopologyInfo, 
+			sprintf(log_buffer, "attribute '%s = %s' added", ATTR_NODE_TopologyInfo,
 				lbuf);
 			log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_NODE, LOG_DEBUG, __func__,
 				log_buffer);

@@ -76,7 +76,8 @@
  * 	Any embedded commas or back-slashes must be escaped by a prefixed back-
  * 	slash.
  *
- * 	The "decoded" form is a set of strings pointed to by an array_strings struct
+ * 	The "decoded" form is a set of strings pointed to by an array_strings
+ * 	struct
  */
 
 /**
@@ -84,14 +85,16 @@
  *	decode a comma string into an attribute of type ATR_TYPE_ARST
  *
  * @par Functionality:
- *	1. Call count_substrings to find out the number of sub strings separated by comma
+ *	1. Call count_substrings to find out the number of sub strings separated
+ *	   by comma
  *	2. Call parse_comma_string function to parse the value of the attribute
  *
  * @see
  *
- * @param[in/out] patr	-	Pointer to attribute structure
- * @param[in]	  val	-	Value of the attribute as comma separated string. This parameter's value
- *				cannot be modified by any of the functions that are called inside this function.
+ * @param[in,out] patr	- Pointer to attribute structure
+ * @param[in]	  val	- Value of the attribute as comma separated string. This
+ *                        parameter's value cannot be modified by any of the
+ *                        functions that are called inside this function.
  *
  * @return	int
  * @retval	0  -  Success
@@ -128,10 +131,10 @@ decode_arst_direct(struct attribute *patr, char *val)
 
 	slen = strlen(val);
 
-	pbuf  = (char *)malloc(slen + 1);
+	pbuf  = calloc(slen + 1, sizeof(char));
 	if (pbuf == NULL)
 		return (PBSE_SYSTEM);
-	bksize = ((ns-1) * sizeof(char *)) + sizeof(struct array_strings);
+	bksize = ((ns - 1) * sizeof(char *)) + sizeof(struct array_strings);
 	stp = (struct array_strings *)malloc(bksize);
 	if (!stp) {
 		free(pbuf);
@@ -150,21 +153,19 @@ decode_arst_direct(struct attribute *patr, char *val)
 	 * determine string storage requirement and copy the string "val"
 	 * to a work buffer area
 	 */
-
-	if (slen < BUF_SIZE)
+	if (slen < BUF_SIZE) {
 		/* buffer on stack */
+		snprintf(strbuf, sizeof(strbuf), "%s", val);
 		sbufp = strbuf;
-	else {
+	} else {
 		/* buffer on heap */
-		if ((sbufp = (char *)malloc(slen + 1)) == NULL) {
+		sbufp = strdup(val);
+		if (sbufp == NULL) {
 			free(pbuf);
 			free(stp);
 			return (PBSE_SYSTEM);
 		}
 	}
-
-	strncpy(sbufp, val, slen);
-	sbufp[slen] = '\0';
 
 	/* now copy in substrings and set pointers */
 	pc = pbuf;
@@ -736,10 +737,14 @@ int	*pcnt;		/*where to return the value*/
 				++ns;
 		}
 	}
-	pc--;
+	if (pc > val)
+		pc--;
 	if (*pc == ',') {
-		ns--;		/* strip any trailing null string */
-		*pc = '\0';
+		if ((pc > val) && (*(pc - 1) != ESC_CHAR)) {
+			/* strip trailing empty string */
+			ns--;
+			*pc = '\0';
+		}
 	}
 
 	*pcnt = ns;
@@ -790,15 +795,16 @@ decode_arst_direct_bs(struct attribute *patr, char *val)
 
 	slen = strlen(val);
 
-	pbuf  = (char *)malloc(slen + 1);
+	pbuf  = calloc(slen + 1, sizeof(char));
 	if (pbuf == NULL)
 		return (PBSE_SYSTEM);
-	bksize = (ns-1) * sizeof(char *) + sizeof(struct array_strings);
+	bksize = ((ns - 1) * sizeof(char *)) + sizeof(struct array_strings);
 	stp = (struct array_strings *)malloc(bksize);
 	if (!stp) {
 		free(pbuf);
 		return (PBSE_SYSTEM);
 	}
+
 	/* number of slots (sub strings) */
 	stp->as_npointers = ns;
 	stp->as_usedptr = 0;
@@ -811,25 +817,23 @@ decode_arst_direct_bs(struct attribute *patr, char *val)
 	 * determine string storage requirement and copy the string "val"
 	 * to a work buffer area
 	 */
-
-	if (slen < BUF_SIZE)
+	if (slen < BUF_SIZE) {
 		/* buffer on stack */
+		snprintf(strbuf, sizeof(strbuf), "%s", val);
 		sbufp = strbuf;
-	else {
+	} else {
 		/* buffer on heap */
-		if ((sbufp = (char *)malloc(slen + 1)) == NULL) {
+		sbufp = strdup(val);
+		if (sbufp == NULL) {
 			free(pbuf);
 			free(stp);
 			return (PBSE_SYSTEM);
 		}
 	}
 
-	strncpy(sbufp, val, slen);
-	sbufp[slen] = '\0';
-
 	/* now copy in substrings and set pointers */
 	pc = pbuf;
-	j  = 0;
+	j = 0;
 	pstr = parse_comma_string_bs(sbufp);
 	while ((pstr != NULL) && (j < ns)) {
 		stp->as_string[j] = pc;

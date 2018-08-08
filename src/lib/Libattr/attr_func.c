@@ -490,13 +490,22 @@ count_substrings(char *val, int *pcnt)
 
 	ns = 1;
 	for (pc = val; *pc; pc++) {
-		if (((*pc == ',') && ((pc == val) || (*(pc - 1) != ESC_CHAR))) || (*pc == '\n'))
-			++ns;
+		if (*pc == ESC_CHAR) {
+			if (*(pc + 1))
+				pc++;
+		} else {
+			if (*pc == ',' || *pc == '\n')
+				++ns;
+		}
 	}
-	pc--;
+	if (pc > val)
+		pc--;
 	if ((*pc == '\n') || (*pc == ',')) {
-		ns--;           /* strip any trailing null string */
-		*pc = '\0';
+		if ((pc > val) && (*(pc - 1) != ESC_CHAR)) {
+			/* strip trailing empty string */
+			ns--;
+			*pc = '\0';
+		}
 	}
 
 	*pcnt = ns;

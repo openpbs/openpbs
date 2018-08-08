@@ -3525,7 +3525,7 @@ show_help(char *str)
 			str++;
 	}
 
-	if ((str == NULL) || (str == '\0')) {
+	if ((str == NULL) || (*str == '\0')) {
 		printf(HELP_DEFAULT);
 		pbs_authors();
 	} else if (strncmp(str, "active", 6) == 0)

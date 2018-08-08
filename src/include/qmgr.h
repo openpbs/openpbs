@@ -67,10 +67,10 @@
                         )
 
 /* This macro will determine if the char it is passed is white space. */
-#define White(x)        (isspace((int) (x) ) )
+#define White(x)        (isspace((int)(x)))
 
 /* This macro will determine if the char is the end of a line. */
-#define EOL(x)          (x == '\0')
+#define EOL(x)          ((unsigned long)(x) == (unsigned long)'\0')
 
 /* This macro will allocate memory for a character string */
 #define Mstring(x,y)    if ( (x=(char *)malloc(y)) == NULL ) { \

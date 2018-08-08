@@ -408,46 +408,32 @@ log_init(void)
 void
 log_add_debug_info()
 {
-	char tbuf[LOG_BUF_SIZE];
-	char temp[LOG_BUF_SIZE];
-	char dest[LOG_BUF_SIZE];
-	/* Temporary buffers to create log entry string for leaf name and mom node name */
-	char host[PBS_MAXHOSTNAME+1];
+	char dest[LOG_BUF_SIZE] = {'\0'};
+	char temp[PBS_MAXHOSTNAME + 1] = {'\0'};
+	char host[PBS_MAXHOSTNAME + 1] = "N/A";
+	char leaf[PBS_MAXHOSTNAME + 1] = "N/A";
+	char node[PBS_MAXHOSTNAME + 1] = "N/A";
 
-	if (!gethostname(host, (sizeof(host) - 1))) {
-		strncpy(temp, host, LOG_BUF_SIZE);
-		if (!get_fullhostname(host, host, (sizeof(host) - 1)))
-			strncpy(temp, host, LOG_BUF_SIZE);  /* if full hostname is available, then overwrite */
+	/* Set hostname */
+	if (!gethostname(temp, (sizeof(temp) - 1))) {
+		snprintf(host, sizeof(host), "%s", temp);
+		if (!get_fullhostname(temp, temp, (sizeof(temp) - 1)))
+			/* Overwrite if full hostname is available */
+			snprintf(host, sizeof(host), "%s", temp);
 	}
-	else
-		strcpy(temp, "N/A");
-	snprintf(tbuf, LOG_BUF_SIZE, "hostname=%s;", temp);
-
-
-	/* To add leaf node name, if set */
-	strcpy(temp, "pbs_leaf_name=");
-	if(pbs_conf.pbs_leaf_name) {
-		snprintf(dest, LOG_BUF_SIZE, "%s%s;", temp, pbs_conf.pbs_leaf_name);
-		strcpy(temp, dest);
-	}
-	else
-		strcat(temp, "N/A;");
-	snprintf(dest, LOG_BUF_SIZE, "%s%s", tbuf, temp);
-	strcpy(tbuf, dest);
-
-	/* To add mom node name, if set */
-	strcpy(temp, "pbs_mom_node_name=");
-	if(pbs_conf.pbs_mom_node_name) {
-		snprintf(dest, LOG_BUF_SIZE, "%s%s", temp, pbs_conf.pbs_mom_node_name);
-		strcpy(temp, dest);
-	}
-	else
-		strncat(temp, "N/A", LOG_BUF_SIZE);
-	snprintf(dest, LOG_BUF_SIZE, "%s%s", tbuf, temp);
-	log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, dest);
-
+	/* Set leaf node name */
+	if (pbs_conf.pbs_leaf_name)
+		snprintf(leaf, sizeof(leaf), "%s", pbs_conf.pbs_leaf_name);
+	/* Set mom node name */
+	if (pbs_conf.pbs_mom_node_name)
+		snprintf(node, sizeof(node), "%s", pbs_conf.pbs_mom_node_name);
+	/* Record to log */
+	snprintf(dest, sizeof(dest),
+		"hostname=%s;pbs_leaf_name=%s;pbs_mom_node_name=%s",
+		host, leaf, node);
+	log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO,
+		msg_daemonname, dest);
 	return;
-
 }
 
 /**

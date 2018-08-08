@@ -630,23 +630,24 @@ tm_init(void *info, struct tm_roots *roots)
 		return TM_ESYSTEM;
 
 	pbs_tcp_interrupt = 1;
+
 	if ((env = getenv("PBS_JOBID")) == NULL)
 		return TM_EBADENVIRONMENT;
-	tm_jobid_len = strlen(env);
-	tm_jobid = (char *)calloc(1, tm_jobid_len + 1);
-	if (tm_jobid)
-		strncpy(tm_jobid, env, tm_jobid_len);
-	else
+	tm_jobid_len = 0;
+	free(tm_jobid);
+	tm_jobid = strdup(env);
+	if (!tm_jobid)
 		return TM_ESYSTEM;
+	tm_jobid_len = strlen(tm_jobid);
 
 	if ((env = getenv("PBS_JOBCOOKIE")) == NULL)
 		return TM_EBADENVIRONMENT;
-	tm_jobcookie_len = strlen(env);
-	tm_jobcookie = (char *)calloc(1, tm_jobcookie_len + 1);
-	if (tm_jobcookie)
-		strncpy(tm_jobcookie, env, tm_jobcookie_len);
-	else
+	tm_jobcookie_len = 0;
+	free(tm_jobcookie);
+	tm_jobcookie = strdup(env);
+	if (!tm_jobcookie)
 		return TM_ESYSTEM;
+	tm_jobcookie_len = strlen(tm_jobcookie);
 
 	if ((env = getenv("PBS_NODENUM")) == NULL)
 		return TM_EBADENVIRONMENT;
@@ -711,11 +712,26 @@ tm_attach(char *jobid, char *cookie, pid_t pid, tm_task_id *tid, char *host, int
 #endif
 
 	pbs_tcp_interrupt = 1;
-	tm_jobid = jobid;
-	tm_jobid_len = (tm_jobid != NULL) ? strlen(tm_jobid) : 0;
 
-	tm_jobcookie = cookie;
-	tm_jobcookie_len = (tm_jobcookie != NULL) ? strlen(tm_jobcookie) : 0;
+	tm_jobid_len = 0;
+	free(tm_jobid);
+	tm_jobid = NULL;
+	if (jobid && (*jobid != '\0')) {
+		tm_jobid = strdup(jobid);
+		if (!tm_jobid)
+			return TM_ESYSTEM;
+		tm_jobid_len = strlen(tm_jobid);
+	}
+
+	tm_jobcookie_len = 0;
+	free(tm_jobcookie);
+	tm_jobcookie = NULL;
+	if (cookie && (*cookie != '\0')) {
+		tm_jobcookie = strdup(cookie);
+		if (!tm_jobcookie)
+			return TM_ESYSTEM;
+		tm_jobcookie_len = strlen(tm_jobcookie);
+	}
 
 	if (host != NULL && *host != '\0')
 		localhost = host;
@@ -1171,7 +1187,11 @@ tm_finalize()
 	}
 	init_done = 0;
 	free(tm_jobid);
+	tm_jobid = NULL;
+	tm_jobid_len = 0;
 	free(tm_jobcookie);
+	tm_jobcookie = NULL;
+	tm_jobcookie_len = 0;
 	return TM_SUCCESS;	/* what else */
 }
 

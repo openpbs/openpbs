@@ -44,34 +44,30 @@ AC_DEFUN([PBS_AC_DECL_PPOLL],
 [
   AS_CASE([x$target_os],
     [xlinux*],
-     AC_MSG_CHECKING(whether ppoll API is supported)
-      AC_TRY_RUN(
-[
-[
+      AC_MSG_CHECKING(whether ppoll API is supported)
+      AC_TRY_RUN([
 #include <unistd.h>
 #include <poll.h>
 #include <signal.h>
-
 int main()
 {
-	sigset_t allsigs;       
-	int n;
-	int fd[2];
-	struct timespec timeoutspec;
-	struct   pollfd  pollfds[1];
-	timeoutspec.tv_nsec = 1000;
-	timeoutspec.tv_sec = 0;
-	pipe(fd);
-	pollfds[0].fd = fd[0];
-	sigemptyset(&allsigs);
-	n = ppoll(pollfds, 1, &timeoutspec, &allsigs);
-	return (n);
-}]
-],
-	AC_DEFINE([PBS_HAVE_PPOLL], [], [Defined when ppoll is available])
-	AC_MSG_RESULT([yes]),
-	AC_MSG_RESULT([no])
-     )
+  sigset_t allsigs;
+  int n;
+  int fd[2];
+  struct timespec timeoutspec;
+  struct   pollfd  pollfds[1];
+  timeoutspec.tv_nsec = 1000;
+  timeoutspec.tv_sec = 0;
+  pipe(fd);
+  pollfds[0].fd = fd[0];
+  sigemptyset(&allsigs);
+  n = ppoll(pollfds, 1, &timeoutspec, &allsigs);
+  return (n);
+}],
+        AC_DEFINE([PBS_HAVE_PPOLL], [], [Defined when ppoll is available])
+        AC_MSG_RESULT([yes]),
+        AC_MSG_RESULT([no])
+      )
   )
 ])
 

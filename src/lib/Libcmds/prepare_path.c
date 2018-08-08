@@ -55,13 +55,13 @@
 
 /**
  * @brief
- * 	validate if hname is local host
+ *	validate if hname is local host
  *
  * @param[in] hname - host name
- * 
+ *
  * @return	int
  * @retval	0	success
- * @retval 	1	error
+ * @retval	1	error
  *
  */
 int
@@ -89,13 +89,13 @@ is_local_host(char *hname)
 #endif
 	if (get_fullhostname(cname_short, cname_full, PBS_MAXSERVERNAME) != 0)
 		return (0);
-	
+
 	if (get_fullhostname(hname, hname_full, PBS_MAXSERVERNAME) != 0)
 		return (0);
-	
+
 	if (strcmp(hname_full, cname_full) == 0)
 		return (1);
-	
+
 	return (0);
 }
 
@@ -105,81 +105,94 @@ is_local_host(char *hname)
  *	parses path and prepares complete path name
  *
  * @param[in]      path_in - the path name provided as input to be parsed
- * @param[in/out]  path_out - contains final parsed and prepared path
+ * @param[out]     path_out - contains final parsed and prepared path, must
+ *                            be at least MAXPATHLEN+1 bytes.
  *
  * @return int
- * @retval  0   success in parsing
- * @retval -1	error encountered in parsing
+ * @retval  0 - success in parsing
+ * @retval  nonzero - error encountered in parsing
  */
 int
 prepare_path(char *path_in, char *path_out)
 {
-	int i = 0;
 	char *c = NULL;
 	int have_fqdn = 0;
-	char host_name[PBS_MAXSERVERNAME+1] = {'\0'};	/* short host name */
-	char host_fqdn[PBS_MAXSERVERNAME+1] = {'\0'};	/* fully qualified domain name */
+	/* Initialization with {'\0'} populates entire array */
+	char host_name[PBS_MAXSERVERNAME + 1] = {'\0'};	/* short host name */
 	int h_pos = 0;
-	char path_name[MAXPATHLEN+1] = {'\0'};
+	char path_name[MAXPATHLEN + 1] = {'\0'};
+	size_t path_len;
 	int p_pos = 0;
-	char cwd[MAXPATHLEN+1] = {'\0'};
 	char *host_given = NULL;
 	struct stat statbuf = {0};
 	dev_t dev = 0;
 	ino_t ino = 0;
 
-	/* initialize data for this parsing call */
-	for (i=0; i<= PBS_MAXSERVERNAME; i++) host_name[i]='\0';
-	h_pos = 0;
-	for (i=0; i<= MAXPATHLEN; i++) path_name[i]='\0';
-	p_pos = 0;
-	cwd[MAXPATHLEN] = '\0';
+	if (!path_out)
+		return 1;
+	*path_out = '\0';
+	if (!path_in)
+		return 1;
 
 	/* Begin the parse */
-	c = path_in;
-	while ((int)isspace(*c)) c++;
-	if (strlen(c) == 0) return 1;
-
-	/* Looking for a hostname :  */
-	if ((host_given=strchr(path_in, ':')) != NULL) {
-		while (*c != ':' && *c != '\0') {
-			if (isalnum(*c) || (*c == '.') || (*c == '-') || (*c == '_'))
-				host_name[h_pos++]=*c;
-			else
-				break;
-			c++;
-		}
+	for (c = path_in; *c; c++) {
+		if (isspace(*c) == 0)
+			break;
 	}
+	if (*c == '\0')
+		return 1;
 
 #ifdef WIN32
-	if (strlen(host_name) == 1 && isalpha(host_name[0])) { /* found drive */
-		host_given = NULL;
-		host_name[0] = '\0';
-		c = path_in;
-	}
+	/* Check for drive letter in Windows */
+	if (!(isalpha(*c) && (*(c + 1) == ':')))
 #endif
-
-	/* Looking for a posix path */
-	if ((*c == ':') || (c == path_in)) {
-		if (*c == ':') c++;
-		while (*c != '\0') {
-			if (isprint(*c))
-				path_name[p_pos++]=*c;
-			else
-				break;
+	{
+		/* Looking for a hostname */
+		if ((host_given = strchr(c, ':')) != NULL) {
+			/* Capture the hostname portion */
+			for (h_pos = 0; (h_pos < sizeof(host_name)); h_pos++, c++) {
+				if (isalnum(*c) || (*c == '.') || (*c == '-')
+#ifdef WIN32
+					/* Underscores are legal in Windows */
+					|| (*c == '_')
+#endif
+					) {
+					host_name[h_pos] = *c;
+				} else {
+					break;
+				}
+			}
+			if (*c != ':')
+				return 1;
+			/* Advance past the colon */
 			c++;
 		}
 	}
 
-	/* we had trailing trash, or a parse error */
-	if (*c != '\0') return 1;
-	if (strlen(path_name) == 0 && strlen(host_name) == 0)
+	/* Looking for a posix path */
+	for (p_pos = 0; p_pos < sizeof(path_name); p_pos++, c++) {
+		if (!isprint(*c))
+			break;
+		path_name[p_pos] = *c;
+	}
+	/* Should be at end of string */
+	if (*c != '\0')
+		return 1;
+
+	path_len = strlen(path_name);
+	if (path_len == 0 && strlen(host_name) == 0)
 		return 1;
 
 	/* appending a slash in the end to indicate that it is a directory */
-	if (path_name[strlen(path_name) - 1]
-			!= '/'&& path_name[strlen(path_name)-1] != '\\' && stat(path_name, &statbuf) == 0 && S_ISDIR(statbuf.st_mode))
-		strncat(path_name, "/", 1);
+	if ((path_name[path_len - 1] != '/') &&
+	    (path_name[path_len - 1] != '\\') &&
+	    (stat(path_name, &statbuf) == 0) &&
+            S_ISDIR(statbuf.st_mode)) {
+		if ((path_len + 1) < sizeof(path_name)) {
+			strcat(path_name, "/");
+			path_len++;
+		}
+	}
 
 #ifdef WIN32
 	if (IS_UNCPATH(path_name)) {
@@ -190,40 +203,46 @@ prepare_path(char *path_in, char *path_out)
 		 */
 		host_given = NULL;
 		host_name[0] = '\0';
-		path_out[0] = '\0';
-	} else {
+	} else
 #endif
+	{
 		/* get full host name */
 		if (host_name[0] == '\0') {
 			if (pbs_conf.pbs_output_host_name) {
 				/* use the specified host for returning the file */
-				strncpy(host_name, pbs_conf.pbs_output_host_name, PBS_MAXSERVERNAME);
+				snprintf(host_name, sizeof(host_name), "%s", pbs_conf.pbs_output_host_name);
 				have_fqdn = 1;
 			} else {
-				if (gethostname(host_name, PBS_MAXSERVERNAME) != 0)
+				if (gethostname(host_name, sizeof(host_name)) != 0)
 					return 2;
+				host_name[sizeof(host_name) - 1] = '\0';
 			}
 		}
 		if (have_fqdn == 0) {
+			char host_fqdn[PBS_MAXSERVERNAME + 1] = {'\0'};
 			/* need to fully qualify the host name */
 			if (get_fullhostname(host_name, host_fqdn, PBS_MAXSERVERNAME) != 0)
 				return 2;
-			strncpy(path_out, host_fqdn, strlen(host_fqdn));	/* FQ host name */
+			strncpy(path_out, host_fqdn, MAXPATHLEN); /* FQ host name */
 		} else {
-			strncpy(path_out, host_name, strlen(host_name));	/* "localhost" or pbs_output_host_name */
+			strncpy(path_out, host_name, MAXPATHLEN); /* "localhost" or pbs_output_host_name */
 		}
+		path_out[MAXPATHLEN - 1] = '\0';
 
 		/* finish preparing complete host name */
-		strncat(path_out, ":", strlen(":"));
-#ifdef WIN32
+		if (strlen(path_out) < MAXPATHLEN)
+			strcat(path_out, ":");
 	}
 
-	if ( path_name[0] != '/' && path_name[0] != '\\' && \
-		host_given == NULL &&  strchr(path_name, ':') == NULL )
+#ifdef WIN32
+	if (path_name[0] != '/' && path_name[0] != '\\' &&
+		host_given == NULL && strchr(path_name, ':') == NULL )
 #else
 	if (path_name[0] != '/' && host_given == NULL)
 #endif
 	{
+		char cwd[MAXPATHLEN + 1] = {'\0'};
+
 		c = getenv("PWD");		/* PWD carries a name that will cause */
 		if (c != NULL) {		/* the NFS to mount */
 
@@ -234,11 +253,12 @@ prepare_path(char *path_in, char *path_out)
 				ino = statbuf.st_ino;
 				if (stat(".", &statbuf) < 0) {
 					perror("prepare_path: cannot stat current directory:");
+					*path_out = '\0';
 					return (1);
 				}
 			}
 			if (dev == statbuf.st_dev && ino == statbuf.st_ino) {
-				strcpy(cwd, c);
+				snprintf(cwd, sizeof(cwd), "%s", c);
 			} else {
 				c = NULL;
 			}
@@ -247,6 +267,7 @@ prepare_path(char *path_in, char *path_out)
 			c = getcwd(cwd, MAXPATHLEN);
 			if (c == NULL) {
 				perror("prepare_path: getcwd failed : ");
+				*path_out = '\0';
 				return (1);
 			}
 		}
@@ -257,13 +278,13 @@ prepare_path(char *path_in, char *path_out)
 			strcpy(path_out, cwd);
 			if (cwd[strlen(cwd)-1] != '\\')
 				strcat(path_out, "\\");
-		} else {
+		} else
 #endif
-			strcat(path_out, cwd);
-			strcat(path_out, "/");
-#ifdef WIN32
+		{
+			strncat(path_out, cwd, MAXPATHLEN - strlen(path_out));
+			if (strlen(path_out) < MAXPATHLEN)
+				strcat(path_out, "/");
 		}
-#endif
 	}
 
 
@@ -279,13 +300,13 @@ prepare_path(char *path_in, char *path_out)
 		 * if yes then do not append drive into <path_out>
 		 * otherwise append drive into <path_out>
 		 */
-		if(is_local_host(host_name) && \
-			(strchr(path_name, ':') == NULL) && \
-			(path_out[strlen(path_out)-1] != '/') && \
+		if (is_local_host(host_name) &&
+			(strchr(path_name, ':') == NULL) &&
+			(path_out[strlen(path_out) - 1] != '/') &&
 			(!IS_UNCPATH(path_out))) {
 
 			char drivestr[3] = {'\0'};
-			char drivestr_unc[MAXPATHLEN+1] = {'\0'};
+			char drivestr_unc[MAXPATHLEN + 1] = {'\0'};
 
 			drivestr[0] = _getdrive() + 'A' - 1;
 			drivestr[1] = ':';
@@ -302,17 +323,18 @@ prepare_path(char *path_in, char *path_out)
 			snprintf(drivestr_unc, sizeof(drivestr_unc), "%s\\", drivestr);
 			get_uncpath(drivestr_unc);
 			if (IS_UNCPATH(drivestr_unc)) {
-				strncpy(path_out, drivestr_unc, strlen(drivestr_unc));
+				strncpy(path_out, drivestr_unc, MAXPATHLEN);
 			} else {
-				strncat(path_out, drivestr, strlen(drivestr));
+				strncat(path_out, drivestr, MAXPATHLEN - strlen(path_out));
 			}
 		}
-		strncat(path_out, path_name, strlen(path_name));
+		strncat(path_out, path_name, MAXPATHLEN - strlen(path_out));
 	}
 	back2forward_slash(path_out);	/* "\" translate to "/" for path */
 	strcpy(path_out, replace_space(path_out, "\\ "));
+	path_out[MAXPATHLEN - 1] = '\0';
 #else
-	strcat(path_out, path_name);
+	strncat(path_out, path_name, MAXPATHLEN - strlen(path_out));
 #endif
 
 	return (0);

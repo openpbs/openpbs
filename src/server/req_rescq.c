@@ -150,7 +150,7 @@ cnvrt_delete(struct work_task *ptask)
 int
 cnvrt_qmove(resc_resv  *presv)
 {
-	int len, rc;
+	int rc;
 	struct job *pjob;
 	struct work_task wtnew;
 	char *q_job_id, *at;
@@ -175,20 +175,17 @@ cnvrt_qmove(resc_resv  *presv)
 	reqcnvrt->rq_perm = (presv->ri_brp)->rq_perm;
 	strcpy(reqcnvrt->rq_user, (presv->ri_brp)->rq_user);
 	strcpy(reqcnvrt->rq_host, (presv->ri_brp)->rq_host);
-	len = strlen(q_job_id);
 
-	strncpy(reqcnvrt->rq_ind.rq_move.rq_jid, q_job_id, len);
-	reqcnvrt->rq_ind.rq_move.rq_jid[strlen(q_job_id)] = '\0';
-	if ((at = strchr(presv->ri_qs.ri_resvID, (int)'.')) != NULL)
+	snprintf(reqcnvrt->rq_ind.rq_move.rq_jid, sizeof(reqcnvrt->rq_ind.rq_move.rq_jid), "%s", q_job_id);
+	at = strchr(presv->ri_qs.ri_resvID, (int)'.');
+	if (at)
 		*at = '\0';
-	len = strlen(presv->ri_qs.ri_resvID);
 
-	strncpy(reqcnvrt->rq_ind.rq_move.rq_destin,
-		presv->ri_qs.ri_resvID, len);
-	reqcnvrt->rq_ind.rq_move.rq_destin[len] = '\0';
-	*at ='.';
+	snprintf(reqcnvrt->rq_ind.rq_move.rq_destin, sizeof(reqcnvrt->rq_ind.rq_move.rq_destin), "%s", presv->ri_qs.ri_resvID);
+	if (at)
+		*at = '.';
 
-	strncpy(pjob->ji_qs.ji_destin, reqcnvrt->rq_ind.rq_move.rq_destin, PBS_MAXROUTEDEST);
+	snprintf(pjob->ji_qs.ji_destin, PBS_MAXROUTEDEST, "%s", reqcnvrt->rq_ind.rq_move.rq_destin);
 	rc = cnvrt_local_move(pjob, reqcnvrt);
 	wtnew.wt_parm1 = (void *)presv;
 	cnvrt_delete(&wtnew);

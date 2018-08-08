@@ -35,9 +35,9 @@
  * trademark licensing policies.
  *
  */
-#ifndef	_PBS_VERSION_H
-#define	_PBS_VERSION_H
-#ifdef	__cplusplus
+#ifndef _PBS_VERSION_H
+#define _PBS_VERSION_H
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -47,25 +47,25 @@ extern "C" {
  */
 
 #ifdef WIN32
-#define	PBS_BUILD	"mach=WIN32:security=:configure_args="
-#define	PBS_VERSION	"@PBS_WIN_VERSION@"
+#define PBS_BUILD "mach=WIN32:security=:configure_args="
+#define PBS_VERSION "@PBS_WIN_VERSION@"
 #else
 #include <pbs_config.h>
 
 #ifndef PBS_BUILD
-#define	PBS_BUILD	"mach=N/A:security=N/A:configure_args=N/A"
+#define PBS_BUILD "mach=N/A:security=N/A:configure_args=N/A"
 #endif
 
-#ifndef	PBS_VERSION
-#define	PBS_VERSION	"@PBS_VERSION@"
-#endif	/* PBS_VERSION */
+#ifndef PBS_VERSION
+#define PBS_VERSION "@PBS_VERSION@"
+#endif /* PBS_VERSION */
 
 #endif
 
-extern	char	pbs_version [];
-extern	char	pbs_build [];
+extern char pbs_version [];
+extern char pbs_build [];
 extern void execution_mode(int argc, char** argv);
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
-#endif	/* _PBS_VERSION_H */
+#endif /* _PBS_VERSION_H */

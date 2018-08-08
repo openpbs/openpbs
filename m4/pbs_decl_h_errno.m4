@@ -35,7 +35,7 @@
 # trademark licensing policies.
 
 # Test to see whether h_errno is visible when netdb.h is included.
-# At least under HP-UX 10.x this is not the case unless 
+# At least under HP-UX 10.x this is not the case unless
 # XOPEN_SOURCE_EXTENDED is declared but then other nasty stuff happens.
 # The appropriate thing to do is to call this macro and then
 # if it is not available do a "extern int h_errno;" in the code.

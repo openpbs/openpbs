@@ -666,8 +666,8 @@ refresh_dfltqsubargs(void)
 static char *
 x11_get_authstring(void)
 {
-	char line[XAUTH_LEN] = {0};
-	char command[XAUTH_LEN] = {0};
+	char line[XAUTH_LEN] = {'\0'};
+	char command[XAUTH_LEN] = {'\0'};
 	char protocol[XAUTH_LEN];
 	char hexdata[XAUTH_LEN];
 	char screen[XAUTH_LEN];
@@ -717,7 +717,7 @@ x11_get_authstring(void)
 			return NULL;
 		}
 	}
-	strncpy(command, line, strlen(line) - X11_MSG_OFFSET); /* safe because strlen(line) <= sizeof(command) */
+	snprintf(command, sizeof(command), "%s", line);
 
 	if (p != NULL)
 		p = strchr(p, '.');
@@ -1951,7 +1951,7 @@ interactive(void)
 	}
 	/* Run remote command shell. Also redirect stdin */
 	if (remote_shell_command(remote_ip, momjobid, 1) == -1)
-		printf("\nqsub: failed to run remote interactive shell\n", new_jobname);
+		printf("\nqsub: failed to run remote interactive shell\n");
 	printf("\nqsub: job %s completed\n", new_jobname);
 	/* If it is a GUI job and the submission host and execution host are different, terminate remote viewer session */
 	if(gui_opt != FALSE && (is_mom_local == 0)) {
@@ -3827,28 +3827,49 @@ job_env_basic(void)
 	/* Calculate how big to make the variable string. */
 	len = 0;
 	env = strdup_esc_commas(getenv("HOME"));
-	if (env != NULL) {len += strlen(env); free(env);}
+	if (env != NULL) {
+		len += strlen(env);
+		free(env);
+	}
 	env = strdup_esc_commas(getenv("LANG"));
-	if (env != NULL) {len += strlen(env); free(env);}
+	if (env != NULL) {
+		len += strlen(env);
+		free(env);
+	}
 	env = strdup_esc_commas(getenv("LOGNAME"));
-	if (env != NULL) {len += strlen(env); free(env);}
+	if (env != NULL) {
+		len += strlen(env);
+		free(env);
+	}
 	env = strdup_esc_commas(getenv("PATH"));
-	if (env != NULL) {len += strlen(env); free(env);}
+	if (env != NULL) {
+		len += strlen(env);
+		free(env);
+	}
 	env = strdup_esc_commas(getenv("MAIL"));
-	if (env != NULL) {len += strlen(env); free(env);}
+	if (env != NULL) {
+		len += strlen(env);
+		free(env);
+	}
 	env = strdup_esc_commas(getenv("SHELL"));
-	if (env != NULL) {len += strlen(env); free(env);}
+	if (env != NULL) {
+		len += strlen(env);
+		free(env);
+	}
 	env = strdup_esc_commas(getenv("TZ"));
-	if (env != NULL) {len += strlen(env); free(env);}
+	if (env != NULL) {
+		len += strlen(env);
+		free(env);
+	}
 	len += PBS_MAXHOSTNAME;
 	len += MAXPATHLEN;
-	len += len; /* Double it for all the commas, etc. */
+	len *= 2; /* Double it for all the commas, etc. */
 
-	if ((job_env = (char *) malloc(len)) == NULL) {
+	if ((job_env = (char *)malloc(len)) == NULL) {
 		fprintf(stderr, "malloc failure (errno %d)\n", errno);
 		return NULL;
-	} else
-		memset(job_env, 0, len);
+	}
+	memset(job_env, '\0', len);
 
 	/* Send the required variables with the job. */
 	c = strdup_esc_commas(getenv("HOME"));
@@ -3965,7 +3986,7 @@ job_env_basic(void)
 #ifdef WIN32
 			back2forward_slash(c_escaped);
 #endif
-			strncpy(p, c_escaped, strlen(c_escaped));
+			strncpy(p, c_escaped, len - (p - job_env));
 			free(c_escaped);
 			c_escaped = NULL;
 		} else
