@@ -3917,7 +3917,7 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 			continue;
 		}
 
-		if (phook->event & HOOK_EVENT_PERIODIC) {
+		if (hook_event & HOOK_EVENT_PERIODIC) {
 			(void)set_task(WORK_Timed, time_now+phook->freq, run_periodic_hook, phook);
 			num_run++;
 			continue;

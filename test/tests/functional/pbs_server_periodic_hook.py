@@ -253,3 +253,27 @@ pbs.logmsg(pbs.LOG_DEBUG, "periodic hook ended at %%d" %% time.time())
         rv = self.server.manager(MGR_CMD_SET, HOOK, attrs, hook_name)
         self.assertEqual(rv, 0)
         self.check_next_occurances(2, freq, hook_run_time, False)
+
+    def test_sp_with_queuejob(self):
+        """
+        This test case checks that periodic and queuejob
+        event can be set for the same hook
+        """
+        events = "periodic,queuejob"
+        hook_name = "TestHook"
+        hook_attrib = {'event': events, 'freq': 100}
+        scr = self.create_hook(True, 10)
+        retval = self.server.create_import_hook(hook_name,
+                                                hook_attrib,
+                                                scr,
+                                                overwrite=True)
+        self.assertTrue(retval)
+        attrs = {'enabled': 'True'}
+        self.server.manager(MGR_CMD_SET, HOOK, attrs, hook_name)
+
+        job = Job(TEST_USER1, attrs={ATTR_l: 'select=1:ncpus=1',
+                                     ATTR_l: 'walltime=1:00:00'})
+        jid = self.server.submit(job)
+        self.server.log_match(self.start_msg, interval=3)
+        self.server.log_match(self.end_msg, interval=3)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
