@@ -52,9 +52,7 @@ class classcomp(PBSTestSuite):
                 out.write("Text File\n")
                 i += 1
 
-        """
-        Submit Job with created file as an environment attribute
-        """
+        #Submit Job with created file as an environment attribute
 
         j = Job()
         data = open('compress', 'r').read()
