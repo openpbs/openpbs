@@ -34,7 +34,6 @@
 # Use of Altair’s trademarks, including but not limited to "PBS™",
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
-import time
 from tests.functional import *
 
 
@@ -815,6 +814,7 @@ j.resources_used["stra2"] = '"glad"'
         a = {'Resource_List.select': '3:ncpus=1', ATTR_queue: rname[0]}
         j = Job(TEST_USER)
         j.set_attributes(a)
+        j.set_sleep_time(20)
         jid = self.server.submit(j)
 
         # Verify the resource values
@@ -947,6 +947,7 @@ for jj in e.job_list.keys():
         # Submit a job that can never run
         a = {'Resource_List.select': '5:ncpus=1',
              'Resource_List.place': 'scatter'}
+        j.set_attributes(a)
         jid2 = self.server.submit(j)
 
         # Wait for 10s approx for hook to get executed
