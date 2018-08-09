@@ -291,6 +291,9 @@ AC_CHECK_FUNCS([ \
 	utime \
 ])
 
+PKG_PROG_PKG_CONFIG
+PKG_INSTALLDIR
+
 # PBS macros (order matters for some of these)
 PBS_AC_PBS_VERSION
 PBS_AC_MACHINE_TYPE
@@ -365,6 +368,7 @@ AC_CONFIG_FILES([
 	src/lib/Liblog/Makefile
 	src/lib/Libnet/Makefile
 	src/lib/Libpbs/Makefile
+	src/lib/Libpbs/pbs.pc
 	src/lib/Libpython/Makefile
 	src/lib/Libsec/Makefile
 	src/lib/Libsite/Makefile

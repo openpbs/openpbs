@@ -46,6 +46,8 @@ libpbs_la_CPPFLAGS = -I$(top_srcdir)/src/include
 # to the following article prior to modifying the library version:
 # https://autotools.io/libtool/version.html
 #
+pkgconfig_DATA = pbs.pc
+
 libpbs_la_LDFLAGS = -version-info 0:0:0
 
 libpbs_la_LIBADD= \
