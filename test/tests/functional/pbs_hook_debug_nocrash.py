@@ -45,8 +45,8 @@ class TestHookDebugNoCrash(TestFunctional):
           Hook debug causes file descriptor leak that crashes PBS server
 
     PRE: Have 3 queuejob hooks, qjob1, qjob2, qjob3 with order=1, order=2,
-         order=3 respectively. qjob1 and qjob2 have debug=True while
-         order=3 has debug=False. Try submitting 1000 jobs.
+         order=2 respectively. qjob1 and qjob2 have debug=True while
+         qjob3 has debug=False. Try submitting 1000 jobs.
     POST: On a fixed PBS, this test case will run to completion.
           On a PBS containing the bug, the test could fail on a server crash,
           a failure in qsub with "Invalid credential", or even a qstat
