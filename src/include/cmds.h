@@ -78,5 +78,6 @@ extern int	parse_jobid(char *, char **, char **, char **);
 extern int	parse_stage_name(char *, char *, char *, char *);
 extern void	prt_error(char *, char *, int);
 extern int	cnt2mom(char *server);
-extern void     set_attr_resc(struct attrl **, char *, char *, char *);
+extern void	set_attr_resc(struct attrl **, char *, char *, char *);
+extern int	check_max_job_sequence_id(char *);
 

@@ -135,4 +135,5 @@ ATTR_python_restart_min_interval,
 ATTR_show_hidden_attribs,
 ATTR_python_sync_mom_hookfiles_timeout,
 ATTR_rpp_max_pkt_check,
+ATTR_max_job_sequence_id,
 #endif	/* _QMGR_SVR_PUBLIC_H */

@@ -94,6 +94,7 @@ int verify_datatype_float(struct attropl *, char **);
 int verify_datatype_time(struct attropl *, char **);
 int verify_datatype_nodes(struct attropl * , char **);
 int verify_datatype_select(struct attropl * , char **);
+int verify_datatype_long_long(struct attropl *, char **);
 
 
 /* verify value functions */
@@ -110,6 +111,7 @@ int verify_value_hold(int, int, int, struct attropl *, char **);
 int verify_value_credname(int, int, int, struct attropl *, char **);
 int verify_value_zero_or_positive(int, int, int, struct attropl *, char **);
 int verify_value_non_zero_positive(int, int, int, struct attropl *, char **);
+int verify_value_non_zero_positive_long_long(int, int, int, struct attropl *, char **);
 int verify_value_maxlicenses(int, int, int, struct attropl *, char **);
 int verify_value_minlicenses(int, int, int, struct attropl *, char **);
 int verify_value_licenselinger(int, int, int, struct attropl *, char **);

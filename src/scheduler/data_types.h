@@ -478,7 +478,7 @@ struct job_info
 	unsigned int preempt_status;	/* preempt levels (bitfield) */
 	int preempt;			/* preempt priority */
 	int peer_sd;			/* connection descriptor to peer server */
-	int job_id;			/* numeric portion of the job id */
+	long long job_id;		/* numeric portion of the job id */
 	resource_req *resused;		/* a list of resources used */
 	group_info *ginfo;		/* the fair share node for the owner */
 

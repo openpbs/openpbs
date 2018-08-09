@@ -310,10 +310,7 @@ struct batch_request	*saved_takeover_req=NULL;
 struct python_interpreter_data  svr_interp_data;
 int svr_unsent_qrun_req = 0;	/* Set to 1 for scheduling unsent qrun requests */
 
-long		  svr_history_enable = 0; /*disable by default*/
-long		  svr_history_duration = SVR_JOBHIST_DEFAULT; /* default 2 weeks */
-
-AVL_IX_DESC	*AVL_jctx = NULL;
+AVL_IX_DESC *AVL_jctx = NULL;
 
 #ifdef WIN32
 void WINAPI PbsServerMain(DWORD dwArgc, LPTSTR *rgszArgv);

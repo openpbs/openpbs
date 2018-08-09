@@ -7320,6 +7320,7 @@ SWIG_init(void) {
   SWIG_Python_SetConstant(d, "ATTR_preempt_targets_enable",SWIG_FromCharPtr("preempt_targets_enable"));
   SWIG_Python_SetConstant(d, "ATTR_job_sort_formula_threshold",SWIG_FromCharPtr("job_sort_formula_threshold"));
   SWIG_Python_SetConstant(d, "ATTR_throughput_mode",SWIG_FromCharPtr("throughput_mode"));
+  SWIG_Python_SetConstant(d, "ATTR_max_job_sequence_id",SWIG_FromCharPtr("max_job_sequence_id"));
   SWIG_Python_SetConstant(d, "ATTR_NODE_Host",SWIG_FromCharPtr("Host"));
   SWIG_Python_SetConstant(d, "ATTR_NODE_Mom",SWIG_FromCharPtr("Mom"));
   SWIG_Python_SetConstant(d, "ATTR_NODE_Port",SWIG_FromCharPtr("Port"));
@@ -7391,14 +7392,14 @@ SWIG_init(void) {
   SWIG_Python_SetConstant(d, "PBS_MAXPWLEN",SWIG_From_int((int)(256)));
   SWIG_Python_SetConstant(d, "PBS_MAXGRPN",SWIG_From_int((int)(256)));
   SWIG_Python_SetConstant(d, "PBS_MAXQUEUENAME",SWIG_From_int((int)(15)));
-  SWIG_Python_SetConstant(d, "PBS_MAXJOBNAME",SWIG_From_int((int)(236)));
+  SWIG_Python_SetConstant(d, "PBS_MAXJOBNAME",SWIG_From_int((int)(230)));
   SWIG_Python_SetConstant(d, "PBS_MAXSERVERNAME",SWIG_From_int((int)(255)));
-  SWIG_Python_SetConstant(d, "PBS_MAXSEQNUM",SWIG_From_int((int)(7)));
+  SWIG_Python_SetConstant(d, "PBS_MAXSEQNUM",SWIG_From_int((int)(12)));
   SWIG_Python_SetConstant(d, "PBS_MAXPORTNUM",SWIG_From_int((int)(5)));
-  SWIG_Python_SetConstant(d, "PBS_MAXSVRJOBID",SWIG_From_int((int)((7-1+255+5+2))));
-  SWIG_Python_SetConstant(d, "PBS_MAXSVRRESVID",SWIG_From_int((int)(((7-1+255+5+2)))));
+  SWIG_Python_SetConstant(d, "PBS_MAXSVRJOBID",SWIG_From_int((int)((12-1+255+5+2))));
+  SWIG_Python_SetConstant(d, "PBS_MAXSVRRESVID",SWIG_From_int((int)(((12-1+255+5+2)))));
   SWIG_Python_SetConstant(d, "PBS_MAXQRESVNAME",SWIG_From_int((int)((15))));
-  SWIG_Python_SetConstant(d, "PBS_MAXCLTJOBID",SWIG_From_int((int)(((7-1+255+5+2) +255+5+2))));
+  SWIG_Python_SetConstant(d, "PBS_MAXCLTJOBID",SWIG_From_int((int)(((12-1+255+5+2) +255+5+2))));
   SWIG_Python_SetConstant(d, "PBS_MAXDEST",SWIG_From_int((int)(256)));
   SWIG_Python_SetConstant(d, "PBS_MAXROUTEDEST",SWIG_From_int((int)((15+255+5+2))));
   SWIG_Python_SetConstant(d, "PBS_INTERACTIVE",SWIG_From_int((int)(1)));

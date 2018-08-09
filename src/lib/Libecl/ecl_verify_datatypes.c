@@ -132,6 +132,26 @@ verify_datatype_long(struct attropl * pattr, char **err_msg)
 
 /**
  * @brief
+ *      verifies  attribute of long long datatype
+ *
+ * @param[in] pattr - struct attropl - Address of attribute to verify
+ * @param[out] err_msg - char ** - Sets the error message if any
+ *
+ * @return      int
+ * @retval  0 - Attribute passed verification
+ * @retval >0 - Attribute failed verification - pbs error code returned
+ */
+
+int
+verify_datatype_long_long(struct attropl * pattr, char **err_msg)
+{
+	struct attribute atr;
+	atr.at_flags = 0;
+	return (decode_ll(&atr, pattr->name, pattr->resource, pattr->value));
+}
+
+/**
+ * @brief
  *      verifies  attribute of float datatype
  *
  * @param[in] pattr - struct attropl - Address of attribute to verify

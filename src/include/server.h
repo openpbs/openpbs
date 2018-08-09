@@ -157,17 +157,25 @@ enum srv_atr {
 	SRV_ATR_show_hidden_attribs,
 	SRV_ATR_sync_mom_hookfiles_timeout,
 	SRV_ATR_rpp_max_pkt_check,
+	SRV_ATR_max_job_sequence_id,
 	/* This must be last */
 	SRV_ATR_LAST
 };
 extern attribute_def svr_attr_def[];
+/* for trillion job id */
+extern long long svr_max_job_sequence_id;
+extern long long svr_jobidnumber;
+/* for history jobs*/
+extern long svr_history_enable;
+extern long svr_history_duration;
+
 
 struct server {
 	struct server_qs {
-		int  sv_numjobs;	 /* number of job owned by server   */
-		int  sv_numque;		/* nuber of queues managed          */
-		int  sv_jobidnumber;	/* next number to use in new jobid  */
-		time_t sv_savetm;	/* time of server db update         */
+		int		sv_numjobs;	/* number of job owned by server   */
+		int		sv_numque;	/* nuber of queues managed          */
+		long long	sv_jobidnumber;	/* next number to use in new jobid  */
+		time_t		sv_savetm;	/* time of server db update         */
 	} sv_qs;
 
 	time_t	  sv_started;		/* time server started */
@@ -250,9 +258,10 @@ enum failover_state {
 /*
  * Server job history defines & globals
  */
-#define SVR_CLEAN_JOBHIST_TM	120	/* after 2 minutes, reschedule the work task */
+#define SVR_CLEAN_JOBHIST_TM		120	/* after 2 minutes, reschedule the work task */
 #define SVR_CLEAN_JOBHIST_SECS	5	/* never spend more than 5 seconds in one sweep to clean hist */
-#define SVR_JOBHIST_DEFAULT	1209600	/* default time period to keep job history: 2 weeks */
+#define SVR_JOBHIST_DEFAULT		1209600	/* default time period to keep job history: 2 weeks */
+#define SVR_MAX_JOB_SEQ_NUM_DEFAULT	9999999	/* default max job id is 9999999 */
 
 #define VALUE(str) #str
 #define TOSTR(str) VALUE(str)

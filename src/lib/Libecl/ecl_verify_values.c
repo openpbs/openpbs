@@ -1325,6 +1325,48 @@ verify_value_non_zero_positive(int batch_request, int parent_object,
 
 /**
  * @brief
+ *	for some attributes which can have only +ve long values, eg, ATTR_max_job_sequence_id
+ *
+ * @see
+ *
+ * @param[in]	batch_request	-	Batch Request Type
+ * @param[in]	parent_object	-	Parent Object Type
+ * @param[in]	cmd		-	Command Type
+ * @param[in]	pattr		-	address of attribute to verify
+ * @param[out]err_msg		-	error message list
+ *
+ * @return	int
+ * @retval	0 	- 	Attribute passed verification
+ * @retval	>0 	- 	Failed verification - pbs errcode is returned
+ *
+ * @par	Side effects:
+ * 	None
+ *
+ * @par Reentrancy
+ *	MT-safe
+ */
+int
+verify_value_non_zero_positive_long_long(int batch_request, int parent_object,
+	int cmd, struct attropl *pattr, char **err_msg)
+{
+	long long l = -1;
+	char *pc = NULL;
+	if ((pattr->value == NULL) || (pattr->value[0] == '\0'))
+		return PBSE_BADATVAL;
+
+	l = strTouL(pattr->value, &pc, 10);
+	if ((*pc != '\0') || (errno == ERANGE)) {
+		return PBSE_BADATVAL;
+	}
+	if (l <= 0)
+		return PBSE_BADATVAL;
+
+	return PBSE_NONE;
+}
+
+
+/**
+ * @brief
  *	verifies attribute ATTR_license_min
  *
  * @see

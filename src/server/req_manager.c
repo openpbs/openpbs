@@ -137,6 +137,7 @@ extern	void unset_license_max(void);
 extern	void unset_license_linger(void);
 extern	void unset_job_history_enable(void);
 extern	void unset_job_history_duration(void);
+extern	void unset_max_job_sequence_id(void);
 extern	void force_qsub_daemons_update(void);
 extern  void unset_node_fail_requeue(void);
 extern pbs_sched *sched_alloc(char *sched_name);
@@ -162,7 +163,6 @@ extern char *path_hooks;
 extern 	int max_concurrent_prov;
 extern char *msg_new_inventory_mom;
 extern char *msg_cannot_set_route_que;
-
 extern int check_req_aoe_available(struct pbsnode *, char *);
 int resize_prov_table(int);
 vnpool_mom_t    *vnode_pool_mom_list = NULL;
@@ -1597,6 +1597,9 @@ mgr_server_unset(struct batch_request *preq)
 		} else if (strcasecmp(plist->al_name,
 			ATTR_JobHistoryDuration) == 0) {
 			unset_job_history_duration();
+		} else if (strcasecmp(plist->al_name,
+			ATTR_max_job_sequence_id) == 0) {
+			unset_max_job_sequence_id();
 		} else if (strcasecmp(plist->al_name,
 			ATTR_max_concurrent_prov) == 0) {
 			max_concurrent_prov = PBS_MAX_CONCURRENT_PROV;
@@ -5180,7 +5183,6 @@ resize_prov_table(int newsize)
 	server.sv_attr[(int)SRV_ATR_max_concurrent_prov].at_flags =
 		(ATR_VFLAG_SET | ATR_VFLAG_MODCACHE);
 	svr_save_db(&server, SVR_SAVE_FULL);
-
 	return PBSE_NONE;
 }
 

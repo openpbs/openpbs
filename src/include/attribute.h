@@ -544,6 +544,8 @@ extern int force_qsub_daemons_update_action(attribute *pattr,  void *pobject,  i
 extern int action_resc_dflt_svr(attribute *pattr, void *pobj, int actmode);
 extern int action_jobscript_max_size(attribute *pattr, void *pobj, int actmode);
 extern int action_check_res_to_release(attribute *pattr, void *pobj, int actmode);
+extern int set_max_job_sequence_id(attribute *pattr, void *pobj, int actmode);
+
 
 /* Extern functions from sched_attr_def*/
 extern int action_opt_bf_fuzzy(attribute *pattr, void *pobj, int actmode);

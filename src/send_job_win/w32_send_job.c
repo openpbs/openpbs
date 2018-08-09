@@ -164,15 +164,9 @@ extern void	*AVL_jctx = NULL; /* used for the jobs AVL tree */
  * Initially set the connection to up, so that first time ping happens
  * by default.
  */
-int		tpp_network_up = 0;
+int tpp_network_up = 0;
 
-int		svr_unsent_qrun_req = 0;
-/*
- * For history jobs:
- *	To check whether server is configured for history job
- */
-long		svr_history_enable = 0;
-long		svr_history_duration = 0;
+int svr_unsent_qrun_req = 0;
 
 struct license_block licenses;
 struct license_used  usedlicenses;

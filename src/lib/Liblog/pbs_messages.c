@@ -161,6 +161,7 @@ char *msg_prov_script_notfound = "Provision hook script not found";
 char *msg_jobscript_max_size= "jobscript size exceeded the jobscript_max_size";
 char *msg_badjobscript_max_size= "jobscript max size exceeds 2GB";
 char *msg_new_inventory_mom = "Setting inventory_mom for vnode_pool %d to %s";
+
 /*
  * This next set of messages are returned to the client on an error.
  * They may also be logged.
@@ -408,6 +409,7 @@ char *msg_partition_not_in_queue = "Partition %s is not part of queue for node";
 char *msg_invalid_partion_in_queue = "Invalid partition in queue";
 char *msg_sched_op_not_permitted = "Operation is not permitted on default scheduler";
 char *msg_sched_part_already_used = "Partition is already associated with other scheduler";
+char *msg_invalid_max_job_sequence_id = "Cannot set max_job_sequence_id < 9999999, or > 999999999999";
 
 char *msg_resv_not_empty = "Reservation not empty";
 char *msg_stdg_resv_occr_conflict = "Requested time(s) will interfere with a later occurrence";
@@ -592,6 +594,7 @@ struct pbs_err_to_txt pbs_err_to_txt[] = {
 	{PBSE_SOFTWT_STF, &msg_softwt_stf},
 	{PBSE_SCHED_OP_NOT_PERMITTED, &msg_sched_op_not_permitted},
 	{PBSE_SCHED_PARTITION_ALREADY_EXISTS, &msg_sched_part_already_used},
+	{PBSE_INVALID_MAX_JOB_SEQUENCE_ID, &msg_invalid_max_job_sequence_id},
 	{ 0, NULL }		/* MUST be the last entry */
 };
 

@@ -50,7 +50,7 @@ extern "C" {
  * BEWARE OF CHANGING THESE
  */
 #ifndef PBS_MAXNODENAME
-#define PBS_MAXNODENAME 79	/* max lenght of a vnode name		    */
+#define PBS_MAXNODENAME 79	/* max length of a vnode name		    */
 #endif
 #define	PBS_JOBBASE	11	/* basename size for job file, 11 = 14 -3   */
 /* where 14 is min file name, 3 for suffix  */
@@ -65,7 +65,7 @@ extern "C" {
 #define PBS_MAX_HOPCOUNT 10	/* limit on number of routing hops per job */
 #endif /* localmod 083 */
 
-#define PBS_SEQNUMTOP 9999999	/* top number for job sequence number, reset */
+#define PBS_SEQNUMTOP 999999999999	/* top number for job sequence number, reset */
 /* to zero when reached, see req_quejob.c    */
 
 #define PBS_NET_RETRY_TIME     30 /* Retry time between re-sending requests  */

@@ -144,8 +144,6 @@ int		have_blue_gene_nodes = 0;
 int		svr_ping_rate = SVR_DEFAULT_PING_RATE;	/* time between sets of node pings */
 int 		ping_nodes_rate = SVR_DEFAULT_PING_RATE; /* time between ping nodes as determined from server_init_type */
 int		svr_unsent_qrun_req = 0;
-long		svr_history_enable = 0;
-long		svr_history_duration = 0;
 pbs_db_conn_t	*svr_db_conn;
 char		*path_svrlive;
 char		*pbs_server_name;
@@ -190,6 +188,7 @@ int		do_sync_mom_hookfiles;
 struct batch_request    *saved_takeover_req;
 struct python_interpreter_data  svr_interp_data;
 extern void	*AVL_jctx = NULL;
+
 /**
  * @file
  * 	Used only by the TPP layer, to ping nodes only if the connection to the

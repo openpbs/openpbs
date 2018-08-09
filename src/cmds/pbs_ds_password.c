@@ -405,7 +405,7 @@ int
 main(int argc, char *argv[])
 {
 	int i, rc;
-	char passwd[MAX_PASSWORD_LEN + 1];
+	char passwd[MAX_PASSWORD_LEN + 1] = {'\0'};
 	char passwd2[MAX_PASSWORD_LEN + 1];
 	char *pquoted;
 	char pwd_file[MAXPATHLEN + 1];
@@ -468,6 +468,15 @@ main(int argc, char *argv[])
 		fprintf(stderr, "\nusage:\t%s [-r] [-C username]\n", prog);
 		fprintf(stderr, "      \t%s --version\n", prog);
 		return (-1);
+	}
+
+    /* NOTE : This functionality is added just for the automation testing purpose.
+     * Usage: pbs_ds_password <password>
+     */
+	if (argv[optind] != NULL) {
+		gen_pwd = 0;
+		strncpy(passwd, argv[optind], sizeof(passwd));
+		passwd[sizeof(passwd) - 1] = '\0';
 	}
 
 	/* check admin privileges */
@@ -548,7 +557,7 @@ main(int argc, char *argv[])
 		}
 	}
 
-	if (gen_pwd == 0) {
+	if (gen_pwd == 0 && passwd[0] == '\0') {
 		/* ask user to enter password twice */
 		printf("Enter the password:");
 		read_password(passwd);
@@ -564,7 +573,7 @@ main(int argc, char *argv[])
 			fprintf(stderr, "Blank password is not allowed\n");
 			return (-2);
 		}
-	} else {
+	} else if (gen_pwd == 1) {
 		gen_password(passwd, 16);
 	}
 

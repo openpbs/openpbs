@@ -71,6 +71,8 @@
  * 	set_log_events()
  * 	set_job_history_duration()
  * 	unset_job_history_duration()
+ * 	set_max_job_sequence_id()
+ * 	unset_max_job_sequence_id()
  * 	eligibletime_action()
  * 	decode_formula()
  * 	is_attrs_in_list_set()
@@ -239,9 +241,11 @@ extern enum failover_state are_we_primary(void);
 /*
  * Added for History jobs.
  */
-extern long  svr_history_enable;
-extern long  svr_history_duration;
 extern void  svr_clean_job_history(struct work_task *);
+long svr_history_enable = 0; /* disable by default */
+long svr_history_duration = SVR_JOBHIST_DEFAULT; /* default 2 weeks */
+/* Added for Trillion Jobid*/
+long long svr_max_job_sequence_id = SVR_MAX_JOB_SEQ_NUM_DEFAULT; /* default max job id 9999999 */
 
 /*
  * Added for Node_fail_requeue
@@ -1568,6 +1572,71 @@ unset_job_history_duration(void)
 	sprintf(log_buffer,
 		"svr_history_duration reverting back to default val %ld",
 		svr_history_duration);
+	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+		LOG_NOTICE, msg_daemonname, log_buffer);
+}
+
+/**
+ * @brief
+ *	set_max_job_sequence_id - action function for the max_job_sequence_id server
+ *				  attribute.
+ *
+ * @param[in]	pattr	-	pointer to attribute structure
+ * @param[in]	pobject -	pointer to some parent object.(not used here)
+ * @param[in]	actmode	-	the action to take (e.g. ATR_ACTION_ALTER)
+ *
+ * @return	int
+ * @retval	PBSE_NONE	: success
+ */
+int
+set_max_job_sequence_id(attribute *pattr, void *pobject, int actmode)
+{
+
+	if ((actmode == ATR_ACTION_ALTER) ||
+		(actmode == ATR_ACTION_RECOV)) {
+
+		if ((pattr->at_val.at_ll < SVR_MAX_JOB_SEQ_NUM_DEFAULT) ||
+			(pattr->at_val.at_ll > PBS_SEQNUMTOP)) {
+			return (PBSE_INVALID_MAX_JOB_SEQUENCE_ID);
+		}
+		svr_max_job_sequence_id = pattr->at_val.at_ll;
+		/* If the max_job_sequence_id is set to something smaller than current job id,
+		 * then it will wrap to 0(ZERO)*/
+		if (server.sv_qs.sv_jobidnumber > svr_max_job_sequence_id) {
+			(void)reset_svr_sequence_window();/* wrap it*/
+			sprintf(log_buffer, "svr_max_job_sequence_id wrapped to 0");
+			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+				LOG_NOTICE, msg_daemonname, log_buffer);
+		} else {
+			sprintf(log_buffer, "svr_max_job_sequence_id set to val %lld",
+					svr_max_job_sequence_id);
+			log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+					LOG_NOTICE, msg_daemonname, log_buffer);
+		}
+	}
+	return (PBSE_NONE);
+}
+
+/**
+ * @brief
+ *	unset_max_job_sequence_id - set server attribute "max_job_sequence_id" to
+ *				    default value.
+ */
+void
+unset_max_job_sequence_id(void)
+{
+	svr_max_job_sequence_id = SVR_MAX_JOB_SEQ_NUM_DEFAULT;
+	/* If the max_job_sequence_id is set to something smaller than current job id,
+	 * then it will wrap to 0(ZERO)*/
+	if (server.sv_qs.sv_jobidnumber >= svr_max_job_sequence_id) {
+		(void)reset_svr_sequence_window();/* wrap it*/
+		sprintf(log_buffer, "svr_max_job_sequence_id wrapped to 0");
+		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+			LOG_NOTICE, msg_daemonname, log_buffer);
+	}
+	sprintf(log_buffer,
+		"svr_max_job_sequence_id reverting back to default val %lld",
+		svr_max_job_sequence_id);
 	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
 		LOG_NOTICE, msg_daemonname, log_buffer);
 }

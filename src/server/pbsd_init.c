@@ -312,6 +312,10 @@ init_server_attrs()
 	server.sv_attr[(int)SRV_ATR_max_concurrent_prov].at_flags =
 		ATR_VFLAG_DEFLT|ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
 
+	server.sv_attr[(int)SRV_ATR_max_job_sequence_id].at_val.at_ll = SVR_MAX_JOB_SEQ_NUM_DEFAULT;
+	server.sv_attr[(int)SRV_ATR_max_job_sequence_id].at_flags =
+		ATR_VFLAG_DEFLT|ATR_VFLAG_SET|ATR_VFLAG_MODCACHE;
+
 	clear_attr(&attrib, &svr_attr_def[(int)	SVR_ATR_jobscript_max_size]);
 	svr_attr_def[(int)SVR_ATR_jobscript_max_size].at_decode(&attrib,ATTR_jobscript_max_size,NULL,DFLT_JOBSCRIPT_MAX_SIZE);
 	attr_jobscript_max_size.at_type  |= ATR_TYPE_SIZE;  /* get_bytes_from_attr() is checking for at_type */

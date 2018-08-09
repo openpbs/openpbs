@@ -317,6 +317,7 @@ extern "C" {
 #define ATTR_python_restart_min_interval "python_restart_min_interval"
 #define ATTR_power_provisioning "power_provisioning"
 #define ATTR_sync_mom_hookfiles_timeout "sync_mom_hookfiles_timeout"
+#define ATTR_max_job_sequence_id "max_job_sequence_id"
 
 /**
  * RPP_MAX_PKT_CHECK_DEFAULT controls the number of loops used to process
@@ -436,21 +437,22 @@ enum mgr_obj {
 /* SUSv2 guarantees that host names are limited to 255 bytes */
 #define PBS_MAXHOSTNAME		255	/* max host name length */
 #ifndef MAXPATHLEN
-#define MAXPATHLEN		1024	/* max path name length */
+#define MAXPATHLEN		1024		/* max path name length */
 #endif
 #ifndef MAXNAMLEN
 #define MAXNAMLEN		255
 #endif
 #define PBS_MAXSCHEDNAME 	15
-#define PBS_MAXUSER		256	/* max user name length */
-#define PBS_MAXPWLEN		256	/* max password length */
-#define PBS_MAXGRPN		256	/* max group name length */
-#define PBS_MAXQUEUENAME	15	/* max queue name length */
-#define PBS_MAXJOBNAME 		236	/* max job name length */
+#define PBS_MAXUSER		256		/* max user name length */
+#define PBS_MAXPWLEN		256		/* max password length */
+#define PBS_MAXGRPN		256		/* max group name length */
+#define PBS_MAXQUEUENAME	15		/* max queue name length */
+#define PBS_MAXJOBNAME  	230		/* max job name length */
 #define PBS_MAXSERVERNAME	PBS_MAXHOSTNAME	/* max server name length */
-#define PBS_MAXSEQNUM		7	/* max sequence number length */
-#define PBS_MAXPORTNUM		5	/* udp/tcp port numbers max=16 bits */
-#define PBS_MAXSVRJOBID		(PBS_MAXSEQNUM - 1 + PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 2) /* server job id size, -1 to keep same length when made SEQ 7 */
+#define PBS_MAXSEQNUM		12		/* max sequence number length */
+#define PBS_DFLT_MAX_JOB_SEQUENCE_ID 9999999	/* default value of max_job_sequence_id server attribute */
+#define PBS_MAXPORTNUM	5		/* udp/tcp port numbers max=16 bits */
+#define PBS_MAXSVRJOBID	(PBS_MAXSEQNUM - 1 + PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 2) /* server job id size, -1 to keep same length when made SEQ 7 */
 #define PBS_MAXSVRRESVID	(PBS_MAXSVRJOBID)
 #define PBS_MAXQRESVNAME	(PBS_MAXQUEUENAME)
 #define PBS_MAXCLTJOBID		(PBS_MAXSVRJOBID + PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 2) /* client job id size */

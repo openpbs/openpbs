@@ -200,7 +200,7 @@ struct pbs_db_svr_info {
 	char    sv_hostname[PBS_MAXSERVERNAME+1];
 	INTEGER sv_numjobs;
 	INTEGER sv_numque;
-	INTEGER sv_jobidnumber;
+	BIGINT  sv_jobidnumber;
 	BIGINT  sv_svraddr; /* host addr of Server */
 	INTEGER sv_svrport; /* port of host server */
 	BIGINT  sv_creattm;

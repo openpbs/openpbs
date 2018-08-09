@@ -78,24 +78,26 @@ static char *	cvtResvstate(char *);
 static int cmp_est_time(struct batch_status *a, struct batch_status *b);
 char *cnvt_est_start_time(char *start_time, int shortform);
 
+
 #if !defined(PBS_NO_POSIX_VIOLATION)
 /* defines for alternative display formats */
-#define ALT_DISPLAY_a	1	/* -a option - show all jobs */
-#define ALT_DISPLAY_i	2	/* -i option - show not running */
-#define ALT_DISPLAY_r	4	/* -r option - show only running */
-#define ALT_DISPLAY_u	8	/* -u option - list user's jobs */
-#define ALT_DISPLAY_n	0x10	/* -n option - add node list */
-#define ALT_DISPLAY_s	0x20	/* -s option - add scheduler comment */
-#define ALT_DISPLAY_H	0x40	/* -H option - show history(F/M) jobs */
+#define ALT_DISPLAY_a		1		/* -a option - show all jobs */
+#define ALT_DISPLAY_i		2		/* -i option - show not running */
+#define ALT_DISPLAY_r		4		/* -r option - show only running */
+#define ALT_DISPLAY_u		8		/* -u option - list user's jobs */
+#define ALT_DISPLAY_n		0x10		/* -n option - add node list */
+#define ALT_DISPLAY_s		0x20		/* -s option - add scheduler comment */
+#define ALT_DISPLAY_H		0x40		/* -H option - show history(F/M) jobs */
+#define ALT_DISPLAY_q		0x80		/* -q option - alt queue display */
+#define ALT_DISPLAY_Mb	0x100		/* show sizes in MB */
+#define ALT_DISPLAY_Mw	0x200		/* -M option - show sizes in MW */
+#define ALT_DISPLAY_G		0x400		/* -G option - show sizes in GB */
+#define ALT_DISPLAY_1l	0x800		/* -n -s -f on line line */
+#define ALT_DISPLAY_w		0x1000		/* -[a|s|n]w - wide output */
+#define ALT_DISPLAY_T		0x2000		/* -T option - estimated start times */
+#define ALT_DISPLAY_p		0x4000		/* -p option - percentage completed for the job */
+#define ALT_DISPLAY_INCR_WIDTH	0x8000	/* increases qstat header width */
 
-#define ALT_DISPLAY_q	0x80	/* -q option - alt queue display */
-
-#define ALT_DISPLAY_Mb	0x100	/* show sizes in MB */
-#define ALT_DISPLAY_Mw	0x200	/* -M option - show sizes in MW */
-#define ALT_DISPLAY_G	0x400	/* -G option - show sizes in GB */
-#define ALT_DISPLAY_1l  0x800	/* -n -s -f on line line */
-#define ALT_DISPLAY_w   0x1000	/* -[a|s|n]w - wide output */
-#define ALT_DISPLAY_T   0x2000  /* -T option - estimated start times */
 #endif /* not PBS_NO_POSIX_VIOLATION */
 #define HPCBP_EXEC_TAG  "jsdl-hpcpa:Executable"
 #define CHAR_LINE_LIMIT 78 /* maximum number of characters which can be printed on a line */
@@ -685,7 +687,7 @@ cnv_size(char *value, int opt)
  */
 
 static void
-altdsp_statjob(struct batch_status *pstat, struct batch_status *prtheader, int alt_opt, int wide)
+altdsp_statjob(struct batch_status *pstat, struct batch_status *prtheader, int alt_opt, int wide, int how_opt)
 {
 	char *comment;
 	char *pc;
@@ -772,14 +774,23 @@ altdsp_statjob(struct batch_status *pstat, struct batch_status *prtheader, int a
 			printf("------ ----- - -----\n");
 		} else {
 			if (alt_opt & ALT_DISPLAY_T) {
-				printf("\n%75s%s\n%60s%-7s%-8s%s\n", " ", "Est", " ", "Req'd", "Req'd", "Start");
+				if (how_opt & ALT_DISPLAY_INCR_WIDTH)
+					printf("\n%80s%s\n%65s%-7s%-8s%s\n", " ", "Est", " ", "Req'd", "Req'd", "Start");
+				else
+					printf("\n%75s%s\n%60s%-7s%-8s%s\n", " ", "Est", " ", "Req'd", "Req'd", "Start");
 			} else {
-				printf("\n%60s%-7s%-8s%s\n", " ", "Req'd", "Req'd", "Elap");
+				if (how_opt & ALT_DISPLAY_INCR_WIDTH)
+					printf("\n%65s%-7s%-8s%s\n", " ", "Req'd", "Req'd", "Elap");
+				else
+					printf("\n%60s%-7s%-8s%s\n", " ", "Req'd", "Req'd", "Elap");
 			}
-
-
-			printf("Job ID          Username Queue    Jobname    SessID NDS TSK Memory Time  S Time\n");
-			printf("--------------- -------- -------- ---------- ------ --- --- ------ ----- - -----\n");
+			if (how_opt & ALT_DISPLAY_INCR_WIDTH) {
+				printf("Job ID               Username Queue    Jobname    SessID NDS TSK Memory Time  S Time\n");
+				printf("-------------------- -------- -------- ---------- ------ --- --- ------ ----- - -----\n");
+			} else {
+				printf("Job ID          Username Queue    Jobname    SessID NDS TSK Memory Time  S Time\n");
+				printf("--------------- -------- -------- ---------- ------ --- --- ------ ----- - -----\n");
+			}
 		}
 	}
 	while (pstat) {
@@ -901,7 +912,6 @@ altdsp_statjob(struct batch_status *pstat, struct batch_status *prtheader, int a
 			timeval = usecput ? eltimecpu : eltimewal;
 
 
-
 		if (wide) {
 			/* dynamic formatting of values as defined by constants */
 			printf("%-*.*s %-*.*s %-*.*s %-*.*s %*.*s %*.*s %*.*s ", SIZEJOBID, SIZEJOBID, pstat->name,
@@ -918,8 +928,13 @@ altdsp_statjob(struct batch_status *pstat, struct batch_status *prtheader, int a
 				jstate,
 				timeval);
 		} else {
-			printf("%-15.15s %-8.8s %-8.8s ",
-				pstat->name, usern, queuen);
+			if(how_opt & ALT_DISPLAY_INCR_WIDTH) {
+				printf("%-20.20s %-8.8s %-8.8s ",
+						pstat->name, usern, queuen);
+			} else {
+				printf("%-15.15s %-8.8s %-8.8s ",
+						pstat->name, usern, queuen);
+			}
 			printf("%-10.10s %6.6s %3.3s %3.3s %6.6s %5.5s %1.1s %5.5s",
 				jobn, sess, nodect, tasks,
 				rqmem,
@@ -1164,7 +1179,7 @@ percent_cal(char *state, char *timeu, char *timer, char *wtimu, char *wtimr, cha
  */
 
 int
-display_statjob(struct batch_status *status, struct batch_status *prtheader, int full, int p_opt, int alt_opt)
+display_statjob(struct batch_status *status, struct batch_status *prtheader, int full, int how_opt, int alt_opt)
 {
 	struct batch_status *p;
 	struct attrl *a;
@@ -1185,21 +1200,38 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 	char *cmdargs = NULL;
 	char *hpcbp_executable;
 
-	sprintf(format, "%%-%ds %%-%ds %%-%ds  %%%ds %%%ds %%-%ds\n",
-		PBS_MAXSEQNUM+10, NAMEL, OWNERL, TIMEUL, STATEL, LOCL);
+	if (how_opt & ALT_DISPLAY_INCR_WIDTH) {
+		sprintf(format, "%%-%ds %%-%ds %%-%ds  %%%ds %%%ds %%-%ds\n",
+			PBS_MAXSEQNUM+10, NAMEL, OWNERL, TIMEUL, STATEL, LOCL);
+	} else {
+		sprintf(format, "%%-%ds %%-%ds %%-%ds  %%%ds %%%ds %%-%ds\n",
+			PBS_MAXSEQNUM+5, NAMEL, OWNERL, TIMEUL, STATEL, LOCL);
+	}
 
 	if (! full && prtheader && output_format == FORMAT_DEFAULT) {
 		c = get_attr(prtheader->attribs, ATTR_comment, NULL);
 		if (c)
 			printf("%s\n", c);
-		if (p_opt)
-			printf("Job id            Name             User               %% done  S Queue\n");
-		else
-			printf("Job id            Name             User              Time Use S Queue\n");
-		printf    ("----------------  ---------------- ----------------  -------- - -----\n");
+		if (how_opt & ALT_DISPLAY_p) {
+				if (how_opt & ALT_DISPLAY_INCR_WIDTH) {
+					printf("Job id                 Name             User               %% done  S Queue\n");
+					printf("---------------------  ---------------- ----------------  -------- - -----\n");
+				} else {
+					printf("Job id            Name             User               %% done  S Queue\n");
+					printf("----------------  ---------------- ----------------  -------- - -----\n");
+				}
+		} else {
+				if (how_opt & ALT_DISPLAY_INCR_WIDTH) {
+					printf("Job id                 Name             User              Time Use S Queue\n");
+					printf("---------------------  ---------------- ----------------  -------- - -----\n");
+				} else {
+					printf("Job id            Name             User              Time Use S Queue\n");
+					printf("----------------  ---------------- ----------------  -------- - -----\n");
+				}
+		}
 	}
 
-	if(output_format == FORMAT_JSON && first_stat) {
+	if (output_format == FORMAT_JSON && first_stat) {
 		if (add_json_node(JSON_OBJECT, JSON_NULL, JSON_FULLESCAPE, "Jobs", NULL) == NULL)
 			return 1;
 		first_stat = 0;
@@ -1302,9 +1334,16 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 				while (*c != '.' && *c != '\0') c++;
 				*c = '\0';
 				l = strlen(p->name);
-				if (l > (PBS_MAXSEQNUM+10)) {
-					c = p->name + PBS_MAXSEQNUM + 10;
-					*c = '\0';
+				if (how_opt & ALT_DISPLAY_INCR_WIDTH) {
+					if (l > (PBS_MAXSEQNUM+10)) {
+						c = p->name + PBS_MAXSEQNUM + 10;
+						*c = '\0';
+					}
+				} else {
+					if (l > (PBS_MAXSEQNUM+5)) {
+						c = p->name + PBS_MAXSEQNUM + 5;
+					        *c = '\0';
+					}
 				}
 				jid = p->name;
 			}
@@ -1385,7 +1424,7 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 				a = a->next;
 			}
 			if (timeu == NULL) timeu = "0";
-			if (p_opt) {
+			if (how_opt & ALT_DISPLAY_p) {
 				char *pc = percent_cal(state, timeu, timer, wtimu, wtimr, arsct);
 				printf(format, jid, name, owner, pc, state, location);
 				free(pc);
@@ -2132,6 +2171,7 @@ main(int argc, char **argv, char **envp) /* qstat */
 	int wide=0;
 	int format = 0;
 	time_t timenow;
+	int check_seqid_len; /* for dynamic qstat width */
 
 #if TCL_QSTAT
 	char option[3];
@@ -2151,7 +2191,7 @@ main(int argc, char **argv, char **envp) /* qstat */
 
 	char operand[PBS_MAXCLTJOBID+1];
 	int alt_opt;
-	int f_opt, B_opt, Q_opt, p_opt, E_opt;
+	int f_opt, B_opt, Q_opt, how_opt, E_opt;
 	int p_header = TRUE;
 	int stat_single_job = 0;
 	int new_remote_server = 0;
@@ -2188,14 +2228,13 @@ main(int argc, char **argv, char **envp) /* qstat */
 	winsock_init();
 #endif
 
-
 	mode = JOBS; /* default */
 	alt_opt = 0;
 	f_opt = 0;
 	B_opt = 0;
 	Q_opt = 0;
 	E_opt = 0;
-	p_opt = 0;
+	how_opt = 0;
 #ifdef NAS /* localmod 071 */
 	tcl_opt = -2;
 #endif /* localmod 071 */
@@ -2299,7 +2338,7 @@ main(int argc, char **argv, char **envp) /* qstat */
 				break;
 
 			case 'p':
-				p_opt = 1;
+				how_opt |= ALT_DISPLAY_p;
 				add_atropl((struct attropl **)&display_attribs, ATTR_l, NULL, "", EQ);
 				add_atropl((struct attropl **)&display_attribs, ATTR_array_state_count, NULL, "", EQ);
 				break;
@@ -2792,6 +2831,15 @@ job_no_args:
 						any_failed = pbs_errno;
 					}
 				} else {
+				    /* check the server attribute max_job_sequence_id value */
+					check_seqid_len = check_max_job_sequence_id("qstat");
+					if (check_seqid_len == 1) {
+						how_opt |= ALT_DISPLAY_INCR_WIDTH; /* increase column width*/
+					} else if(check_seqid_len == -1) {
+						fprintf(stderr, "qstat: Unable to fetch the width format\n");
+						exit(1);
+					}
+
 #ifdef NAS /* localmod 071 */
 					if (p_server) {
 						tcl_stat("serverhdr", p_server, tcl_opt);
@@ -2799,17 +2847,17 @@ job_no_args:
 					}
 					if (tcl_stat("job", p_status, tcl_opt)) {
 						if (alt_opt != 0) {
-							altdsp_statjob(p_status, p_server, alt_opt, wide);
+							altdsp_statjob(p_status, p_server, alt_opt, wide, how_opt);
 						} else
-							if(display_statjob(p_status, p_server, f_opt,
-								p_opt))
+							if (display_statjob(p_status, p_server, f_opt, how_opt))
 								exit_qstat("out of memory");
 					}
 #else
+
 					if (alt_opt != 0 && !(wide && f_opt)) {
-						altdsp_statjob(p_status, p_server, alt_opt, wide);
+						altdsp_statjob(p_status, p_server, alt_opt, wide, how_opt);
 					} else if (f_opt == 0 || tcl_stat("job", p_status, f_opt))
-						if(display_statjob(p_status, p_server, f_opt, p_opt, alt_opt))
+						if (display_statjob(p_status, p_server, f_opt, how_opt, alt_opt))
 							exit_qstat("out of memory");
 #endif /* localmod 071 */
 					p_header = FALSE;

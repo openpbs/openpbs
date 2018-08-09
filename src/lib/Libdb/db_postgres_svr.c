@@ -243,7 +243,7 @@ pg_db_insert_svr(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj)
 	LOAD_STR(conn, ps->sv_hostname, 1);
 	LOAD_INTEGER(conn, ps->sv_numjobs, 2);
 	LOAD_INTEGER(conn, ps->sv_numque, 3);
-	LOAD_INTEGER(conn, ps->sv_jobidnumber, 4);
+	LOAD_BIGINT(conn, ps->sv_jobidnumber, 4);
 	LOAD_BIGINT(conn, ps->sv_svraddr, 5);
 	LOAD_INTEGER(conn, ps->sv_svrport, 6);
 
@@ -275,7 +275,7 @@ pg_db_update_svr(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj)
 	LOAD_STR(conn, ps->sv_hostname, 1);
 	LOAD_INTEGER(conn, ps->sv_numjobs, 2);
 	LOAD_INTEGER(conn, ps->sv_numque, 3);
-	LOAD_INTEGER(conn, ps->sv_jobidnumber, 4);
+	LOAD_BIGINT(conn, ps->sv_jobidnumber, 4);
 	LOAD_BIGINT(conn, ps->sv_svraddr, 5);
 	LOAD_INTEGER(conn, ps->sv_svrport, 6);
 
@@ -315,7 +315,7 @@ pg_db_load_svr(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj)
 		PQfnumber(res, "sv_numjobs")), NULL, 10);
 	ps->sv_numque = strtol(PQgetvalue(res, 0,
 		PQfnumber(res, "sv_numque")), NULL, 10);
-	ps->sv_jobidnumber = strtol(PQgetvalue(res, 0,
+	ps->sv_jobidnumber = strtoll(PQgetvalue(res, 0,
 		PQfnumber(res, "sv_jobidnumber")), NULL, 10);
 	ps->sv_savetm = strtoll(PQgetvalue(res, 0,
 		PQfnumber(res, "sv_savetm")), NULL, 10);

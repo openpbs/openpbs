@@ -46,6 +46,12 @@
 #include "cmds.h"
 #include "pbs_ifl.h"
 
+
+#define DISP_RESV_FULL		0x01	/* -F,-f option - full verbose description */
+#define DISP_RESV_NAMES		0x02	/* -B option - Reservation names only */
+#define DISP_RESV_DEFAULT		0x04	/* -S option - Default, Short Description */
+#define DISP_INCR_WIDTH		0x08	/*  Increases the header width */
+
 /* prototypes */
 char *convert_resv_state(char *pcode, int long_str);
 void handle_resv(char *resv_id, char *server, int how);
@@ -55,10 +61,10 @@ void handle_resv(char *resv_id, char *server, int how);
  *	display_single_reservation - display a single reservation
  *
  * @param[in] resv - the reservation to display
- * @param[in] how - 0: print reservation name
- *		    1: short form
- *		    2: long form (all resv info)
- *
+ * @param[in] how - 1: long form (all resv info)
+ * 		      2: print reservation name
+ *		      4: short form
+ *                  8: increase header width
  * @return Void
  *
  */
@@ -79,36 +85,40 @@ display_single_reservation(struct batch_status *resv, int how)
 	time_t		tmp_time;
 	char		tbuf[64];
 	char		*fmt = "%a %b %d %H:%M:%S %Y";
-
 	attrp = resv->attribs;
 
-	switch (how) {
-		case 0:	/* just name */
-			printf("Resv ID: %s\n", resv->name);
-			break;
-
-		case 1:	/* short form */
-			while (attrp != NULL) {
-				if (strcmp(attrp->name, ATTR_queue) == 0)
-					queue_name = attrp->value;
-				else if (strcmp(attrp->name, ATTR_auth_u) == 0)
-					user = attrp->value;
-				else if (strcmp(attrp->name, ATTR_resv_start) == 0)
-					resv_start = attrp->value;
-				else if (strcmp(attrp->name, ATTR_resv_end) == 0)
-					resv_end = attrp->value;
-				else if (strcmp(attrp->name, ATTR_resv_duration) == 0)
-					resv_duration = atoi(attrp->value);
-				else if (strcmp(attrp->name, ATTR_resv_state) == 0)
-					resv_state = convert_resv_state(attrp->value, 0);/*short state str*/
+	if (how & DISP_RESV_NAMES) {			/* display just name of the reservation */
+		printf("Resv ID: %s\n", resv->name);
+	} else if (how & DISP_RESV_DEFAULT) {		/* display short form, default*/
+		while (attrp != NULL) {
+			if (strcmp(attrp->name, ATTR_queue) == 0)
+				queue_name = attrp->value;
+			else if (strcmp(attrp->name, ATTR_auth_u) == 0)
+				user = attrp->value;
+			else if (strcmp(attrp->name, ATTR_resv_start) == 0)
+				resv_start = attrp->value;
+			else if (strcmp(attrp->name, ATTR_resv_end) == 0)
+				resv_end = attrp->value;
+			else if (strcmp(attrp->name, ATTR_resv_duration) == 0)
+				resv_duration = atoi(attrp->value);
+			else if (strcmp(attrp->name, ATTR_resv_state) == 0)
+				resv_state = convert_resv_state(attrp->value, 0);/*short state str*/
 #ifdef NAS /* localmod 075 */
-				else if (strcmp(attrp->name, ATTR_resv_name) == 0)
-					resv_name = attrp->value;
+			else if (strcmp(attrp->name, ATTR_resv_name) == 0)
+				resv_name = attrp->value;
 #endif /* localmod 075 */
 
-				attrp = attrp->next;
-			}
-
+			attrp = attrp->next;
+		}
+		if (how & DISP_INCR_WIDTH) {
+			printf("%-15.15s %-13.13s %-8.8s %-5.5s ",
+#ifdef NAS /* localmod 075 */
+				(resv_name ? resv_name : resv->name),
+				queue_name, user, resv_state);
+#else
+				resv->name, queue_name, user, resv_state);
+#endif
+		} else {
 			printf("%-10.10s %-8.8s %-8.8s %-5.5s ",
 #ifdef NAS /* localmod 075 */
 				(resv_name ? resv_name : resv->name),
@@ -116,55 +126,48 @@ display_single_reservation(struct batch_status *resv, int how)
 #else
 				resv->name, queue_name, user, resv_state);
 #endif /* localmod 075 */
-			printf("%17.17s / ", convert_time(resv_start));
-			printf("%ld / %-17.17s\n", (long)resv_duration, convert_time(resv_end));
-			break;
-
-		case 2:
-			printf("Resv ID: %s\n", resv->name);
-			while (attrp != NULL) {
-				if (attrp->resource != NULL)
-					printf("%s.%s = %s\n", attrp->name, attrp->resource, attrp->value);
-				else {
-					if (strcmp(attrp->name, ATTR_resv_state) == 0)
-						str = convert_resv_state(attrp->value, 1);  /* long state str */
-					else if (strcmp(attrp->name, ATTR_resv_start) == 0 ||
-						strcmp(attrp->name, ATTR_resv_end) == 0    ||
-						strcmp(attrp->name, ATTR_ctime) == 0      ||
-						strcmp(attrp->name, ATTR_mtime) == 0      ||
-						strcmp(attrp->name, ATTR_resv_retry) == 0) {
-						tmp_time = atol(attrp->value);
-						strftime(tbuf, sizeof(tbuf), fmt, localtime((time_t *) &tmp_time));
-						str = tbuf;
-					}
-					else if (!strcmp(attrp->name, ATTR_resv_execvnodes)) {
-						attrp = attrp->next;
-						continue;
-					}
-					else if (!strcmp(attrp->name, ATTR_resv_standing)) {
-						attrp = attrp->next;
-						continue;
-					}
-					else if (!strcmp(attrp->name, ATTR_resv_timezone)) {
-						attrp = attrp->next;
-						continue;
-					}
-					else if (!strcmp(attrp->name, ATTR_resv_count))
-						str = attrp->value;
-					else if (!strcmp(attrp->name, ATTR_resv_rrule))
-						str = attrp->value;
-					else if (!strcmp(attrp->name, ATTR_resv_idx))
-						str = attrp->value;
-					else
-						str = attrp->value;
-
-					printf("%s = %s\n", attrp->name, str);
+		}
+		printf("%17.17s / ", convert_time(resv_start));
+		printf("%ld / %-17.17s\n", (long)resv_duration, convert_time(resv_end));
+	} else {			/*display long form (all reservation info)*/
+		printf("Resv ID: %s\n", resv->name);
+		while (attrp != NULL) {
+			if (attrp->resource != NULL)
+				printf("%s.%s = %s\n", attrp->name, attrp->resource, attrp->value);
+			else {
+				if (strcmp(attrp->name, ATTR_resv_state) == 0) {
+					str = convert_resv_state(attrp->value, 1);  /* long state str */
+				} else if (strcmp(attrp->name, ATTR_resv_start) == 0 ||
+					strcmp(attrp->name, ATTR_resv_end) == 0    ||
+					strcmp(attrp->name, ATTR_ctime) == 0      ||
+					strcmp(attrp->name, ATTR_mtime) == 0      ||
+					strcmp(attrp->name, ATTR_resv_retry) == 0) {
+					tmp_time = atol(attrp->value);
+					strftime(tbuf, sizeof(tbuf), fmt, localtime((time_t *) &tmp_time));
+					str = tbuf;
+				} else if (!strcmp(attrp->name, ATTR_resv_execvnodes)) {
+					attrp = attrp->next;
+					continue;
+				} else if (!strcmp(attrp->name, ATTR_resv_standing)) {
+					attrp = attrp->next;
+					continue;
+				} else if (!strcmp(attrp->name, ATTR_resv_timezone)) {
+					attrp = attrp->next;
+					continue;
+				} else if (!strcmp(attrp->name, ATTR_resv_count)) {
+					str = attrp->value;
+				} else if (!strcmp(attrp->name, ATTR_resv_rrule)) {
+					str = attrp->value;
+				} else if (!strcmp(attrp->name, ATTR_resv_idx)) {
+					str = attrp->value;
+				} else {
+					str = attrp->value;
 				}
-
-				attrp = attrp->next;
+				printf("%s = %s\n", attrp->name, str);
 			}
-			printf("\n");
-			break;
+			attrp = attrp->next;
+		}
+		printf("\n");
 	}
 }
 
@@ -174,9 +177,10 @@ display_single_reservation(struct batch_status *resv, int how)
  *	display - display the resv data
  *
  * @param[in] bstat - the batch_status list to display
- * @param[in] how  - 0: just the names
- *		     1: short display
- *		     2: full display (all attributes)
+ * @param[in] how - 1: long form (all resv info)
+ *		      2: print reservation name
+ *		      4: short form
+ *		      8: increase header width
  *
  *@return Void
  *
@@ -192,14 +196,24 @@ display(struct batch_status *resv, int how)
 
 	cur = resv;
 
-	if (how == 1 && !no_display) {
+	if ((how & DISP_RESV_DEFAULT) && (!no_display)) {
 #ifdef NAS /* localmod 075 */
-		printf("%-10.10s %-8.8s %-8.8s %-5.5s %17.17s / Duration / %s\n",
+		if (how & DISP_INCR_WIDTH)
+			printf("%-15.15s %-13.13s %-8.8s %-5.5s %17.17s / Duration / %s\n",
+		else
+			printf("%-10.10s %-8.8s %-8.8s %-5.5s %17.17s / Duration / %s\n",
 #else
-		printf("%-10.10s %-8.8s %-8.8s %-5.5s %17.17s / Duration / %-17.17s\n",
+		if (how & DISP_INCR_WIDTH) {
+		        printf("%-15.15s %-13.13s %-8.8s %-5.5s %17.17s / Duration / %-17.17s\n",
+					"Resv ID", "Queue", "User", "State", "Start", "End");
+		        printf("-------------------------------------------------------------------------------\n");
+		} else {
+			printf("%-10.10s %-8.8s %-8.8s %-5.5s %17.17s / Duration / %-17.17s\n",
+					"Resv ID", "Queue", "User", "State", "Start", "End");
+			printf("---------------------------------------------------------------------\n");
+		}
 #endif /* localmod 075 */
-			"Resv ID", "Queue", "User", "State", "Start", "End");
-		printf("---------------------------------------------------------------------\n");
+
 		/* only display header once */
 		no_display = 1;
 	}
@@ -214,15 +228,13 @@ int
 main(int argc, char *argv[])
 {
 	int c;			/* for getopts() */
-	int how = 1;			/* how should the reservation be displayed
-					 * default to short listing
-					 */
+	int how = DISP_RESV_DEFAULT; /* how the reservation should be display, default to short listing */
 	int errflg = 0;
 	int i;
 	char *resv_id;		/* reservation ID from the command line */
 	char resv_id_out[PBS_MAXCLTJOBID];
 	char server_out[MAXSERVERNAME];
-
+	int check_seqid_len; /* for dynamic pbs_rstat width*/
 
 	/*test for real deal or just version and exit*/
 
@@ -236,15 +248,15 @@ main(int argc, char *argv[])
 		switch (c) {
 			case 'F':			/* full verbose description */
 			case 'f':
-				how = 2;
+				how = DISP_RESV_FULL;
 				break;
 
 			case 'B':			/* Brief, just the names */
-				how = 0;
+				how = DISP_RESV_NAMES;
 				break;
 
 			case 'S':			/* short desc, default */
-				how = 1;
+				how = DISP_RESV_DEFAULT;
 				break;
 
 			default:
@@ -260,6 +272,15 @@ main(int argc, char *argv[])
 
 	if (CS_client_init() != CS_SUCCESS) {
 		fprintf(stderr, "pbs_rstat: unable to initialize security library.\n");
+		exit(1);
+	}
+
+    /* check the server attribute max_job_sequence_id value */
+	check_seqid_len = check_max_job_sequence_id("pbs_rstat");
+	if (check_seqid_len == 1) {
+		how |= DISP_INCR_WIDTH; /* increase column width*/
+	} else if (check_seqid_len == -1) {
+		fprintf(stderr, "pbs_rstat: Unable to fetch the width format\n");
 		exit(1);
 	}
 

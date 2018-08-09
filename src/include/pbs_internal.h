@@ -90,21 +90,21 @@ extern "C" {
 /* Defines for type of Attribute based on data type 			*/
 /* currently limited to 4 bits (max number 15)				*/
 
-#define ATR_TYPE_NONE	 0	/* Not to be used */
-#define ATR_TYPE_LONG    1	/* Long integer, also Boolean */
-#define ATR_TYPE_CHAR    2	/* single character */
-#define ATR_TYPE_STR     3	/* string, null terminated */
-#define ATR_TYPE_ARST    4	/* Array of strings (char **) */
-#define ATR_TYPE_SIZE	 5	/* size (integer + suffix) */
-#define ATR_TYPE_RESC	 6	/* list type: resources only */
-#define ATR_TYPE_LIST    7	/* list type:  dependencies, unkn, etc */
-#define ATR_TYPE_ACL	 8	/* Access Control Lists */
-#define ATR_TYPE_LL	 9	/* Long (64 bit) integer */
-#define ATR_TYPE_SHORT	 10	/* short integer    */
-#define ATR_TYPE_BOOL	 11	/* boolean	    */
-#define ATR_TYPE_JINFOP	 13	/* struct jobinfo*  */
-#define ATR_TYPE_FLOAT	 14	/* Float  */
-#define ATR_TYPE_ENTITY	 15	/* FGC Entity Limit */
+#define ATR_TYPE_NONE		0	/* Not to be used */
+#define ATR_TYPE_LONG		1	/* Long integer, also Boolean */
+#define ATR_TYPE_CHAR		2	/* single character */
+#define ATR_TYPE_STR		3	/* string, null terminated */
+#define ATR_TYPE_ARST		4	/* Array of strings (char **) */
+#define ATR_TYPE_SIZE		5	/* size (integer + suffix) */
+#define ATR_TYPE_RESC		6	/* list type: resources only */
+#define ATR_TYPE_LIST		7	/* list type:  dependencies, unkn, etc */
+#define ATR_TYPE_ACL		8	/* Access Control Lists */
+#define ATR_TYPE_LL		9	/* Long (64 bit) integer */
+#define ATR_TYPE_SHORT	10	/* short integer    */
+#define ATR_TYPE_BOOL		11	/* boolean	    */
+#define ATR_TYPE_JINFOP	13	/* struct jobinfo*  */
+#define ATR_TYPE_FLOAT	14	/* Float  */
+#define ATR_TYPE_ENTITY	15	/* FGC Entity Limit */
 /* WARNING: adding anther WILL overflow the type field in the attribut_def */
 
 /* Defines for  Flag field in attribute_def */
