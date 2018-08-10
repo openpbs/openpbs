@@ -845,6 +845,12 @@ quit()
         if except_list is None:
             except_list = []
 
+        # This can happen when -o is a path that we are capturing
+        # Just return success
+        if os.path.basename(src_path) == self.snapshot_name:
+            self.logger.debug("src_path %s seems to be snapshot directory,"
+                              "ignoring" % src_path)
+            return
         dir_list = self.du.listdir(host, src_path, fullpath=False,
                                    sudo=self.sudo)
 
@@ -886,9 +892,13 @@ quit()
             else:
                 # Copy the file over
                 item_src_path = prefix + item_src_path
-                self.du.run_copy(src=item_src_path, dest=item_dest_path,
-                                 recursive=False, mode=0755,
-                                 level=logging.DEBUG, sudo=self.sudo)
+                try:
+                    self.du.run_copy(src=item_src_path, dest=item_dest_path,
+                                     recursive=False, mode=0755,
+                                     level=logging.DEBUG, sudo=self.sudo)
+                except OSError:
+                    self.logger.error("Could not copy %s" % item_src_path)
+                    continue
 
                 # Check if this is a core file
                 # If it is then this method will capture its stack trace
@@ -940,18 +950,16 @@ quit()
         # Copy mom_priv over from the host
         self.__copy_dir_with_core(host, pbs_mom_priv, snap_mom_priv, core_dir)
 
-    def __add_to_archive(self, dest_path):
+    def __add_to_archive(self, dest_path, src_path=None):
         """
         Add a file to the output tarball and delete the original file
 
         :param dest_path: path to the file inside the target tarball
         :type dest_path: str
+        :param src_path: path to the file to add, if different than dest_path
+        :type src_path: str
         """
-        # pbs_snapshot's log file is located outside of the snapshot
-        # handle it separately
-        if os.path.basename(dest_path) == self.log_filename:
-            src_path = self.log_path
-        else:
+        if src_path is None:
             src_path = dest_path
 
         self.logger.debug("Adding " + src_path + " to tarball " +
@@ -960,10 +968,14 @@ quit()
         # Add file to tar
         dest_relpath = os.path.relpath(dest_path, self.snapdir)
         path_in_tar = os.path.join(self.snapshot_name, dest_relpath)
-        self.outtar_fd.add(src_path, arcname=path_in_tar)
+        try:
+            self.outtar_fd.add(src_path, arcname=path_in_tar)
 
-        # Remove original file
-        os.remove(src_path)
+            # Remove original file
+            os.remove(src_path)
+        except OSError:
+            self.logger.error(
+                "File %s could not be added to tarball" % (src_path))
 
     def __capture_svr_logs(self):
         """
@@ -1531,7 +1543,7 @@ quit()
         # If the caller was pbs_snapshot, add its log file to the tarball
         if self.create_tar and self.log_path is not None:
             snap_logpath = os.path.join(self.snapdir, self.log_filename)
-            self.__add_to_archive(snap_logpath)
+            self.__add_to_archive(snap_logpath, self.log_path)
 
         # Cleanup
         if self.create_tar:

@@ -189,7 +189,8 @@ class TestPBSSnapshot(TestFunctional):
         output_tar = output_tar.strip()
 
         # Check that the output tarball was created
-        self.assertTrue(os.path.isfile(output_tar))
+        self.assertTrue(os.path.isfile(output_tar),
+                        "%s not found" % (output_tar))
 
         # Unwrap the tarball
         tar = tarfile.open(output_tar)
@@ -511,6 +512,44 @@ class TestPBSSnapshot(TestFunctional):
                     self.assertTrue(sched_id in sched_ids)
                     scheds_found += 1
             self.assertEqual(scheds_found, 4)
+
+    def test_snapshot_from_hook(self):
+        """
+        Test that pbs_snapshot can be called from inside a hook
+        """
+        logmsg = "pbs_snapshot was successfully run"
+        hook_body = """
+import pbs
+import os
+import subprocess
+import time
+
+pbs_snap_exec = os.path.join(pbs.pbs_conf['PBS_EXEC'], "sbin", "pbs_snapshot")
+if not os.path.isfile(pbs_snap_exec):
+    raise ValueError("pbs_snapshot executable not found")
+
+ref_time = time.time()
+snap_cmd = [pbs_snap_exec, "-o", "."]
+assert(not subprocess.call(snap_cmd))
+
+# Check that the snapshot was captured
+snapshot_found = False
+for filename in os.listdir("."):
+    if filename.startswith("snapshot") and filename.endswith(".tgz"):
+        # Make sure the mtime on this file is recent enough
+        mtime_file = os.path.getmtime(filename)
+        if mtime_file > ref_time:
+            snapshot_found = True
+            break
+assert(snapshot_found)
+pbs.logmsg(pbs.EVENT_DEBUG,"%s")
+""" % (logmsg)
+        hook_name = "snapshothook"
+        attr = {"event": "periodic", "freq": 5}
+        rv = self.server.create_import_hook(hook_name, attr, hook_body,
+                                            overwrite=True)
+        self.assertTrue(rv)
+        self.server.log_match(logmsg)
 
     @classmethod
     def tearDownClass(self):

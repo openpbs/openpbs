@@ -107,7 +107,6 @@ if __name__ == '__main__':
     map_file = None
     anonymize = False
     create_tar = True
-
     log_file = "pbs_snapshot.log"
 
     PtlConfig()
@@ -158,9 +157,20 @@ if __name__ == '__main__':
             usage()
             sys.exit(1)
 
+    # -o is a mandatory option, so make sure that it was provided
+    if out_dir is None:
+        sys.stderr.write("-o option not provided")
+        usage()
+        sys.exit(1)
+    elif not os.path.isdir(out_dir):
+        sys.stderr.write("-o path should exist,"
+                         " this is where the snapshot is captured")
+        usage()
+        sys.exit(1)
+
     fmt = '%(asctime)-15s %(levelname)-8s %(message)s'
     level_int = CliUtils.get_logging_level(log_level)
-    log_path = os.path.abspath(log_file)
+    log_path = os.path.join(out_dir, log_file)
     logging.basicConfig(filename=log_path, filemode='w+',
                         level=level_int, format=fmt)
     stream_hdlr = logging.StreamHandler()
@@ -169,12 +179,6 @@ if __name__ == '__main__':
     ptl_logger = logging.getLogger('ptl')
     ptl_logger.addHandler(stream_hdlr)
     ptl_logger.setLevel(level_int)
-
-    # -o is a mandatory option, so make sure that it was provided
-    if out_dir is None:
-        sys.stderr.write("-o option not provided")
-        usage()
-        sys.exit(1)
 
     if anonymize is True:
         # find the parent directory of the snapshot
