@@ -151,8 +151,8 @@ class TestCgroupsHook(TestFunctional):
                               'use -p moms=<mom1>:<mom2>')
         self.serverA = self.servers.values()[0].name
         self.paths = self.get_paths()
-        if not self.paths:
-            self.skipTest('No cgroups mounted')
+        if not self.paths['cpuset']:
+            self.skipTest('cpuset cgroup not mounted')
         self.swapctl = is_memsw_enabled(self.paths['memsw'])
         self.server.set_op_mode(PTL_CLI)
         self.server.cleanup_jobs(extend='force')
