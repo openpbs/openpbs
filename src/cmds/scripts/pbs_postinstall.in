@@ -310,7 +310,7 @@ perform_checks() {
 		echo "*** one of the following actions:"
 		echo "*** 1. Update PBS_HOME in $conf"
 		echo "*** 2. mv $oldpbs_home $PBS_HOME"
-		echo "*** 3. ln -s $oldpbshome $PBS_HOME"
+		echo "*** 3. ln -s $oldpbs_home $PBS_HOME"
 		echo "***"
 	fi
 
