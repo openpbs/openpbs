@@ -39,7 +39,6 @@
 include_HEADERS = \
 	pbs_error.h \
 	pbs_ifl.h \
-	rm.h \
 	tm_.h \
 	tm.h
 
@@ -107,6 +106,7 @@ noinst_HEADERS = \
 	resmon.h \
 	resource.h \
 	resv_node.h \
+	rm.h \
 	rpp.h \
 	sched_cmds.h \
 	pbs_sched.h \
