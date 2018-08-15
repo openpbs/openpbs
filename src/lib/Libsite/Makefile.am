@@ -36,7 +36,7 @@
 # trademark licensing policies.
 #
 
-lib_LIBRARIES = libsite.a
+noinst_LIBRARIES = libsite.a
 
 libsite_a_CPPFLAGS = \
 	-I$(top_srcdir)/src/include \
