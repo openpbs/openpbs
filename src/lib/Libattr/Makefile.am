@@ -36,7 +36,7 @@
 # trademark licensing policies.
 #
 
-lib_LIBRARIES = libattr.a
+noinst_LIBRARIES = libattr.a
 
 libattr_a_CPPFLAGS = -I$(top_srcdir)/src/include
 

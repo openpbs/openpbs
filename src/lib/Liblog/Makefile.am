@@ -36,7 +36,7 @@
 # trademark licensing policies.
 #
 
-lib_LIBRARIES = liblog.a
+noinst_LIBRARIES = liblog.a
 
 liblog_a_CPPFLAGS = -I$(top_srcdir)/src/include
 

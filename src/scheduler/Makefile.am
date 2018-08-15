@@ -36,7 +36,7 @@
 # trademark licensing policies.
 #
 
-lib_LIBRARIES = libpbs_sched.a
+noinst_LIBRARIES = libpbs_sched.a
 
 libpbs_sched_a_CPPFLAGS = \
 	-I$(top_srcdir)/src/include \
