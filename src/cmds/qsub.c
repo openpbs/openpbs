@@ -160,6 +160,7 @@
 #define QSUB_DMN_TIMEOUT_LONG 60 /* timeout for qsub background process */
 #define QSUB_DMN_TIMEOUT_SHORT 5
 
+#define DMN_REFUSE_EXIT 7 /* return code when daemon can't serve a job and exits */
 
 #ifdef NAS /* localmod 005 */
 extern void set_attr_resc(struct attrl **attrib, char *attrib_name, char *attrib_resc, char *attrib_value);
@@ -231,6 +232,11 @@ static char *pbs_hostvar = NULL; /* buffer containing ",PBS_O_HOST=" and host na
 static int pbs_o_hostsize = sizeof(",PBS_O_HOST=") + 1; /* size of prefix for hostvar */
 static char *display; /* environment variable DISPLAY */
 
+/*
+ * Flag to check if current process is the background process.
+ * This variable is set only once and is read-only afterwards.
+ */
+static int is_background = 0;
 static int no_background = 0; /* flag to disable backgrounding */
 static char roptarg = 'y'; /* whether the job is rerunnable */
 static char *v_value = NULL; /* expanded variable list from v opt */
@@ -4904,7 +4910,8 @@ do_connect(char *server_out, char *retmsg)
  * @return int
  * @retval 0 - Success
  * @retval 1/-1/pbs_errno - Failure, retmsg paramter is set
- *
+ * @retval DMN_REFUSE_EXIT - If daemon can't submit the job
+ * 
  */
 static int
 do_submit(char *retmsg)
@@ -4915,7 +4922,7 @@ do_submit(char *retmsg)
 	char *errmsg;
 	int retries;
 
-	if (dfltqsubargs != NULL) {
+    if (dfltqsubargs != NULL) {
 		/*
 		 * Setting options from the server defaults will not overwrite
 		 * options set from the job script. CMDLINE-2 means
@@ -4930,6 +4937,16 @@ do_submit(char *retmsg)
 		}
 		if (rc != 0)
 			return (rc);
+	}
+
+	/* 
+	 * get environment variable if -V option is set. Return the code
+	 * DMN_REFUSE_EXIT if -V option is detected in background qsub.
+	 */
+	if (V_opt) {
+		if (is_background)
+			return DMN_REFUSE_EXIT;
+		qsub_envlist = env_array_to_varlist(environ);
 	}
 
 	/* set_job_env must be done here to pick up -v, -V options passed by default_qsub_arguments */
@@ -5898,6 +5915,10 @@ do_daemon_stuff(void)
 			free(cred_buf);
 			cred_buf = NULL;
 		}
+
+		/* Exit the daemon if it can't submit the job */
+		if (rc == DMN_REFUSE_EXIT)
+			goto out;
 #if defined(PBS_PASS_CREDENTIALS)
 		memset(passwd_buf, 0, PBS_MAXPWLEN);
 #endif
@@ -5966,6 +5987,8 @@ fork_and_stay(void)
 		/* set single threaded mode */
 		pbs_client_thread_set_single_threaded_mode();
 
+		/* set when background qsub is running */
+		is_background = 1; 
 		do_daemon_stuff();
 		/*
 		 * Control should never reach here.
@@ -6064,16 +6087,21 @@ again:
 
 			/* read back response from background daemon */
 			if ((recv_string(&sock, retmsg) != 0) ||
-				dorecv(&sock, (char *) &rc, sizeof(int)) != 0) {
+				(dorecv(&sock, (char *) &rc, sizeof(int)) != 0) ||
+				rc == DMN_REFUSE_EXIT) {
 
 				/*
 				 * Something bad happened, either background submitted
 				 * and failed to send us response, or it failed before
-				 * submitting.
+				 * submitting. If background qsub detects -V option, then
+				 * submit the job through foreground.
 				 */
-				rc = -1;
-				sprintf(retmsg, "Failed to recv data from background qsub\n");
-				/* Error message will be printed in caller */
+				if (rc != DMN_REFUSE_EXIT) {
+					rc = -1;
+					sprintf(retmsg, "Failed to recv data from background qsub\n");
+					/* Error message will be printed in caller */
+				} else
+					*do_regular_submit = 1;
 			}
 		}
 		/* going down, no need to free stuff */
@@ -6107,7 +6135,7 @@ regular_submit(int daemon_up)
 			rc = -1;
 	}
 #ifndef WIN32
-	if ((rc == 0) && !(Interact_opt != FALSE || block_opt) && (daemon_up == 0) && (no_background == 0))
+	if ((rc == 0) && !(Interact_opt != FALSE || block_opt) && (daemon_up == 0) && (no_background == 0) && !V_opt)
 		fork_and_stay();
 #endif
 	return rc;

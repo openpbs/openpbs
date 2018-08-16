@@ -105,3 +105,53 @@ class Test_passing_environment_variable_via_qsub(TestFunctional):
         self.assertEqual(job_output, match,
                          msg="Environment variable foo content does "
                          "not match original")
+
+    def test_option_V_dfltqsubargs(self):
+        """
+        Test exporting environment variable when -V is enabled
+        in default_qsub_arguments.
+        """
+        os.environ["SET_IN_SUBMISSION"] = "true"
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'default_qsub_arguments': '-V'})
+        j = Job(self.du.get_current_user())
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'Variable_List': (MATCH_RE,
+                           'SET_IN_SUBMISSION=true')},
+                           id=jid)
+
+    def test_option_V_cmdline(self):
+        """
+        Test exporting environment variable when -V is passed
+        through command line.
+        """
+        os.environ["SET_IN_SUBMISSION"] = "true"
+        self.ATTR_V = 'Full_Variable_List'
+        api_to_cli.setdefault(self.ATTR_V, 'V')
+        a = {self.ATTR_V: None}
+        j = Job(self.du.get_current_user(), attrs=a)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'Variable_List': (MATCH_RE,
+                           'SET_IN_SUBMISSION=true')},
+                           id=jid)
+
+    def test_option_V_dfltqsubargs_qsub_daemon(self):
+        """
+        Test whether the changed value of the exported
+        environment variable is reflected if the submitted job
+        goes to qsub daemon.
+        """
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'default_qsub_arguments': '-V'})
+        os.environ["SET_IN_SUBMISSION"] = "true"
+        j = Job(self.du.get_current_user())
+        jid = self.server.submit(j)
+        os.environ["SET_IN_SUBMISSION"] = "false"
+        j1 = Job(self.du.get_current_user())
+        jid1 = self.server.submit(j1)
+        self.server.expect(JOB, {'Variable_List': (MATCH_RE,
+                           'SET_IN_SUBMISSION=true')},
+                           id=jid)
+        self.server.expect(JOB, {'Variable_List': (MATCH_RE,
+                           'SET_IN_SUBMISSION=false')},
+                           id=jid1)
