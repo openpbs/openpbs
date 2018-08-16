@@ -135,11 +135,13 @@ extern time_t time_now;
  *
  * @param[in]	pjob - Address of the job in the server
  * @param[out]	dbjob - Address of the database job object
+ * @param[in]   updatetype - Quick or full update
  *
- * @return void
+ * @retval   !=0  Failure
+ * @retval   0    Success
  */
-static void
-svr_to_db_job(job *pjob, pbs_db_job_info_t *dbjob)
+static int
+svr_to_db_job(job *pjob, pbs_db_job_info_t *dbjob, int updatetype)
 {
 	memset(dbjob, 0, sizeof(pbs_db_job_info_t));
 	strcpy(dbjob->ji_jobid, pjob->ji_qs.ji_jobid);
@@ -174,6 +176,15 @@ svr_to_db_job(job *pjob, pbs_db_job_info_t *dbjob)
 	strcpy(dbjob->ji_4ash, pjob->ji_extended.ji_ext.ji_4ash);
 	dbjob->ji_credtype  = pjob->ji_extended.ji_ext.ji_credtype;
 	dbjob->ji_qrank = pjob->ji_wattr[(int)JOB_ATR_qrank].at_val.at_long;
+
+	if (updatetype != PBS_UPDATE_DB_QUICK) {
+		if ((encode_attr_db(job_attr_def,
+			pjob->ji_wattr,
+			(int)JOB_ATR_LAST, &dbjob->attr_list, 0)) != 0)
+			return -1;
+	}
+
+	return 0;
 }
 
 /**
@@ -186,9 +197,10 @@ svr_to_db_job(job *pjob, pbs_db_job_info_t *dbjob)
  * @param[out]	pjob - Address of the job in the server
  * @param[in]	dbjob - Address of the database job object
  *
- * @return	void
+ * @retval   !=0  Failure
+ * @retval   0    Success
  */
-static void
+static int
 db_to_svr_job(job *pjob,  pbs_db_job_info_t *dbjob)
 {
 	/* Variables assigned constant values are not stored in the DB */
@@ -233,6 +245,13 @@ db_to_svr_job(job *pjob,  pbs_db_job_info_t *dbjob)
 	strcpy(pjob->ji_extended.ji_ext.ji_4ash, dbjob->ji_4ash);
 #endif
 	pjob->ji_extended.ji_ext.ji_credtype = dbjob->ji_credtype;
+
+	if ((decode_attr_db(pjob, &dbjob->attr_list, job_attr_def,
+				pjob->ji_wattr,
+				(int)JOB_ATR_LAST, (int) JOB_ATR_UNKN)) != 0)
+		return -1;
+
+	return 0;
 }
 
 /**
@@ -243,12 +262,13 @@ db_to_svr_job(job *pjob,  pbs_db_job_info_t *dbjob)
  * 		resv_save_db
  *
  * @param[in]	presv - Address of the resv in the server
- * @param[in]	dbresv - Address of the database resv object
+ * @param[out]  dbresv - Address of the database resv object
  *
- * @return	void
+ * @retval   !=0  Failure
+ * @retval   0    Success
  */
-static void
-svr_to_db_resv(resc_resv *presv,  pbs_db_resv_info_t *dbresv)
+static int
+svr_to_db_resv(resc_resv *presv,  pbs_db_resv_info_t *dbresv, int updatetype)
 {
 	memset(dbresv, 0, sizeof(pbs_db_resv_info_t));
 	strcpy(dbresv->ri_resvid, presv->ri_qs.ri_resvID);
@@ -269,6 +289,14 @@ svr_to_db_resv(resc_resv *presv,  pbs_db_resv_info_t *dbresv)
 	dbresv->ri_svrflags = presv->ri_qs.ri_svrflags;
 	dbresv->ri_tactive = presv->ri_qs.ri_tactive;
 	dbresv->ri_type = presv->ri_qs.ri_type;
+
+	if (updatetype != PBS_UPDATE_DB_QUICK) {
+		if ((encode_attr_db(resv_attr_def,
+				presv->ri_wattr,
+				(int)RESV_ATR_LAST, &dbresv->attr_list, 0)) != 0)
+			return -1;
+	}
+	return 0;
 }
 
 /**
@@ -278,12 +306,13 @@ svr_to_db_resv(resc_resv *presv,  pbs_db_resv_info_t *dbresv)
  * @see
  * 		resv_recov_db
  *
- * @param[in]	presv - Address of the resv in the server
+ * @param[out]	presv - Address of the resv in the server
  * @param[in]	dbresv - Address of the database resv object
  *
- * @return	void
+ * @retval   !=0  Failure
+ * @retval   0    Success
  */
-static void
+static int
 db_to_svr_resv(resc_resv *presv, pbs_db_resv_info_t *pdresv)
 {
 	strcpy(presv->ri_qs.ri_resvID, pdresv->ri_resvid);
@@ -303,6 +332,14 @@ db_to_svr_resv(resc_resv *presv, pbs_db_resv_info_t *pdresv)
 	presv->ri_qs.ri_svrflags = pdresv->ri_svrflags;
 	presv->ri_qs.ri_tactive = pdresv->ri_tactive;
 	presv->ri_qs.ri_type = pdresv->ri_type;
+
+	if ((decode_attr_db(presv, &pdresv->attr_list, resv_attr_def,
+		presv->ri_wattr,
+		(int) RESV_ATR_LAST, (int) RESV_ATR_UNKN)) != 0)
+		return -1;
+
+	return 0;
+
 }
 
 /**
@@ -311,23 +348,25 @@ db_to_svr_resv(resc_resv *presv, pbs_db_resv_info_t *pdresv)
  *
  * @param[in]	pjob - The job to save
  * @param[in]   updatetype:
- *				SAVEJOB_QUICK - Quick update, save only quick save area
- *				SAVEJOB_FULL  - Update along with attributes
- *				SAVEJOB_NEW   - Create new job in database (insert)
- *				SAVEJOB_FULLFORCE - Same as SAVEJOB_FULL
+ *		SAVEJOB_QUICK - Quick update, save only quick save area
+ *		SAVEJOB_FULL  - Update along with attributes
+ *		SAVEJOB_NEW   - Create new job in database (insert)
+ *		SAVEJOB_FULLFORCE - Same as SAVEJOB_FULL
  *
  * @return      Error code
  * @retval	 0 - Success
  * @retval	-1 - Failure
+ * @retval	 1 - Jobid clash, retry with new jobid
  *
  */
 int
 job_save_db(job *pjob, int updatetype)
 {
-	pbs_db_attr_info_t attr_info;
 	pbs_db_job_info_t dbjob;
 	pbs_db_obj_info_t obj;
 	pbs_db_conn_t *conn = svr_db_conn;
+	int savetype = PBS_UPDATE_DB_FULL;
+	int rc;
 
 	/*
 	 * if job has new_job flag set, then updatetype better be SAVEJOB_NEW
@@ -352,16 +391,32 @@ job_save_db(job *pjob, int updatetype)
 		updatetype = SAVEJOB_FULLFORCE;
 	}
 
-	svr_to_db_job(pjob, &dbjob);
+	if (updatetype == SAVEJOB_NEW)
+		savetype = PBS_INSERT_DB;
+	else if (updatetype == SAVEJOB_QUICK)
+		savetype = PBS_UPDATE_DB_QUICK;
+	else
+		savetype = PBS_UPDATE_DB_FULL;
+
+	if (svr_to_db_job(pjob, &dbjob, savetype) != 0)
+		goto db_err;
+
 	obj.pbs_db_obj_type = PBS_DB_JOB;
 	obj.pbs_db_un.pbs_db_job = &dbjob;
 
 	if (updatetype == SAVEJOB_QUICK) {
-		/* update database */
-		if (pbs_db_update_obj(conn, &obj) != 0)
-			goto db_err;
-	} else {
 
+		if (pbs_db_begin_trx(conn, 0, conn->conn_trx_async) != 0)
+			goto db_err;
+
+		/* update database */
+		if (pbs_db_save_obj(conn, &obj, PBS_UPDATE_DB_QUICK) != 0)
+			goto db_err;
+
+		if (pbs_db_end_trx(conn, PBS_DB_COMMIT) != 0)
+			goto db_err;
+
+	} else {
 		/*
 		 * write the whole structure to the database.
 		 * The update has five parts:
@@ -371,40 +426,34 @@ job_save_db(job *pjob, int updatetype)
 		 * (4) the attributes in the "encoded "external form, and last
 		 * (5) the dependency list.
 		 */
-		if (pbs_db_begin_trx(conn, 0, 0) !=0)
+
+		if (pbs_db_begin_trx(conn, 0, conn->conn_trx_async) != 0)
 			goto db_err;
 
-		attr_info.parent_id = pjob->ji_qs.ji_jobid;
-		attr_info.parent_obj_type = PARENT_TYPE_JOB; /* job attr */
+		rc = pbs_db_save_obj(conn, &obj, savetype);
+		if (rc != 0) {
+			if (updatetype == SAVEJOB_NEW && strstr(conn->conn_db_err, "duplicate key value")) {
+				/* new job has a jobid clash, allow retry with a new jobid */
+				pbs_db_reset_obj(&obj);
+				if (pbs_db_end_trx(conn, PBS_DB_COMMIT) != 0)
+					goto db_err;
 
-		if (updatetype == SAVEJOB_NEW) {
-			/* do database inserts for job and job_attr */
-			if (pbs_db_insert_obj(conn, &obj) != 0)
-				goto db_err;
-
-			if (save_attr_db(conn, &attr_info, job_attr_def,
-				pjob->ji_wattr,
-				(int)JOB_ATR_LAST, 1) != 0)
-				goto db_err;
-
-		} else {
-			/* do database updates for job and job_attr */
-			if (pbs_db_update_obj(conn, &obj) != 0)
-				goto db_err;
-
-			if (save_attr_db(conn, &attr_info, job_attr_def,
-				pjob->ji_wattr,
-				(int)JOB_ATR_LAST, 0) != 0)
-				goto db_err;
+				return (1);
+			}
+			goto db_err;
 		}
-		if (pbs_db_end_trx(conn, PBS_DB_COMMIT) != 0)
-			goto db_err;
 
-		pjob->ji_modified = 0;
-		pjob->ji_newjob = 0; /* reset dontsave - job is now saved */
 	}
+
+	if (pbs_db_end_trx(conn, PBS_DB_COMMIT) != 0)
+		goto db_err;
+	pbs_db_reset_obj(&obj);
+	pjob->ji_modified = 0;
+	pjob->ji_newjob = 0; /* reset dontsave - job is now saved */
+
 	return (0);
 db_err:
+	pbs_db_reset_obj(&obj);
 	sprintf(log_buffer, "Failed to save job %s ", pjob->ji_qs.ji_jobid);
 	if (conn->conn_db_err != NULL)
 		strncat(log_buffer, conn->conn_db_err, LOG_BUF_SIZE - strlen(log_buffer) - 1);
@@ -420,16 +469,102 @@ db_err:
 
 /**
  * @brief
- *		Save resv to database
+ *	Utility function called inside job_recov_db
+ *
+ * @param[in]	dbjob - Pointer to the database structure of a job
+ *
+ * @retval	 NULL - Failure
+ * @retval	!NULL - Success, pointer to job structure recovered
+ *
+ */
+job *
+job_recov_db_spl(pbs_db_job_info_t *dbjob)
+{
+	job		*pj;
+	pbs_db_conn_t *conn = svr_db_conn;
+
+	pj = job_alloc();	/* allocate & initialize job structure space */
+	if (pj == (job *)0) {
+		return ((job *)0);
+	}
+
+	if (db_to_svr_job(pj, dbjob) != 0)
+		goto db_err;
+
+	if (pbs_db_end_trx(conn, PBS_DB_COMMIT) != 0)
+		goto db_err;
+
+	return (pj);
+db_err:
+	if (pj)
+		job_free(pj);
+
+	snprintf(log_buffer, LOG_BUF_SIZE, "Failed to recover job %s", dbjob->ji_jobid);
+	log_err(-1, "job_recov", log_buffer);
+
+	return (NULL);
+}
+
+/**
+ * @brief
+ *	Recover job from database
+ *
+ * @param[in]	jid - Job id of job to recover
+ *
+ * @return      The recovered job
+ * @retval	 NULL - Failure
+ * @retval	!NULL - Success, pointer to job structure recovered
+ *
+ */
+job *
+job_recov_db(char *jid)
+{
+	job		*pj = NULL;
+	pbs_db_job_info_t dbjob;
+	pbs_db_obj_info_t obj;
+	pbs_db_conn_t *conn = svr_db_conn;
+
+	if (pbs_db_begin_trx(conn, 0, 0) !=0)
+		goto db_err;
+
+	strcpy(dbjob.ji_jobid, jid);
+	obj.pbs_db_obj_type = PBS_DB_JOB;
+	obj.pbs_db_un.pbs_db_job = &dbjob;
+
+	/* read in job fixed sub-structure */
+	if (pbs_db_load_obj(conn, &obj) != 0)
+		goto db_err;
+
+	pj = job_recov_db_spl(&dbjob);
+	if (!pj)
+		goto db_err;
+
+	if (pbs_db_end_trx(conn, PBS_DB_COMMIT) != 0)
+		goto db_err;
+
+	pbs_db_reset_obj(&obj);
+
+	return (pj);
+db_err:
+	if (pj)
+		job_free(pj);
+
+	(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
+	return (NULL);
+}
+
+/**
+ * @brief
+ *	Save resv to database
  *
  * @see
  * 		job_or_resv_save_db, svr_migrate_data_from_fs
  *
  * @param[in]	presv - The resv to save
  * @param[in]   updatetype:
- *				SAVERESV_QUICK - Quick update without attributes
- *				SAVERESV_FULL  - Full update with attributes
- *				SAVERESV_NEW   - New resv, insert into database
+ *		SAVERESV_QUICK - Quick update without attributes
+ *		SAVERESV_FULL  - Full update with attributes
+ *		SAVERESV_NEW   - New resv, insert into database
  *
  * @return      Error code
  * @retval	 0 - Success
@@ -439,10 +574,11 @@ db_err:
 int
 resv_save_db(resc_resv *presv, int updatetype)
 {
-	pbs_db_attr_info_t attr_info;
 	pbs_db_resv_info_t dbresv;
 	pbs_db_obj_info_t obj;
 	pbs_db_conn_t *conn = svr_db_conn;
+	int savetype = PBS_UPDATE_DB_FULL;
+	int rc;
 
 	/* if ji_modified is set, ie an attribute changed, then update mtime */
 	if (presv->ri_modified) {
@@ -450,13 +586,16 @@ resv_save_db(resc_resv *presv, int updatetype)
 		presv->ri_wattr[RESV_ATR_mtime].at_val.at_long |= ATR_VFLAG_MODCACHE;
 	}
 
-	svr_to_db_resv(presv, &dbresv);
+	if (svr_to_db_resv(presv, &dbresv, savetype) != 0)
+		goto db_err;
+
 	obj.pbs_db_obj_type = PBS_DB_RESV;
 	obj.pbs_db_un.pbs_db_resv = &dbresv;
-
+	if (pbs_db_begin_trx(conn, 0, conn->conn_trx_async) !=0)
+		goto db_err;
 	if (updatetype == SAVERESV_QUICK) {
 		/* update database */
-		if (pbs_db_update_obj(conn, &obj) != 0)
+		if (pbs_db_save_obj(conn, &obj, savetype) != 0)
 			goto db_err;
 	} else {
 
@@ -468,32 +607,30 @@ resv_save_db(resc_resv *presv, int updatetype)
 		 * (3) the attributes in the "encoded "external form, and last
 		 * (4) the dependency list.
 		 */
-		if (pbs_db_begin_trx(conn, 0, 0) !=0)
+
+		if (updatetype == SAVERESV_NEW)
+			savetype = PBS_INSERT_DB;
+
+		rc = pbs_db_save_obj(conn, &obj, savetype);
+		if (rc != 0) {
+			if (updatetype == SAVERESV_NEW && strstr(conn->conn_db_err, "duplicate key value")) {
+				/* new id clash, allow retry with a new */
+				pbs_db_reset_obj(&obj);
+				resv_attr_def[(int)RESV_ATR_queue].at_free(
+						&presv->ri_wattr[(int)RESV_ATR_queue]);
+				if (pbs_db_end_trx(conn, PBS_DB_COMMIT) != 0)
+					goto db_err;
+
+				return (1);
+			}
 			goto db_err;
-
-		attr_info.parent_id = presv->ri_qs.ri_resvID;
-		attr_info.parent_obj_type = PARENT_TYPE_RESV; /* resv attr */
-
-		if (updatetype == SAVERESV_NEW) {
-			/* do database inserts for job and job_attr */
-			if (pbs_db_insert_obj(conn, &obj) != 0)
-				goto db_err;
-			if (save_attr_db(conn, &attr_info, resv_attr_def,
-				presv->ri_wattr, (int)RESV_ATR_LAST, 1) != 0)
-				goto db_err;
-		} else {
-			/* do database updates for job and job_attr */
-			if (pbs_db_update_obj(conn, &obj) != 0)
-				goto db_err;
-			if (save_attr_db(conn, &attr_info, resv_attr_def,
-				presv->ri_wattr, (int)RESV_ATR_LAST, 0) != 0)
-				goto db_err;
 		}
-		if (pbs_db_end_trx(conn, PBS_DB_COMMIT) != 0)
-			goto db_err;
-
-		presv->ri_modified = 0;
 	}
+	presv->ri_modified = 0;
+	pbs_db_reset_obj(&obj);
+	if (pbs_db_end_trx(conn, PBS_DB_COMMIT) != 0)
+		goto db_err;
+
 	return (0);
 db_err:
 	sprintf(log_buffer, "Failed to save resv %s ", presv->ri_qs.ri_resvID);
@@ -509,77 +646,9 @@ db_err:
 	return (-1);
 }
 
-
 /**
  * @brief
- *		Recover job from database
- *
- * @param[in]	jid - Job id of job to recover
- *
- * @return      The recovered job
- * @retval	 NULL - Failure
- * @retval	!NULL - Success, pointer to job structure recovered
- *
- */
-job *
-job_recov_db(char *jid)
-{
-	job		*pj;
-	pbs_db_job_info_t dbjob;
-	pbs_db_attr_info_t attr_info;
-	pbs_db_obj_info_t obj;
-	pbs_db_conn_t *conn = svr_db_conn;
-
-	pj = job_alloc();	/* allocate & initialize job structure space */
-	if (pj == NULL) {
-		return NULL;
-	}
-
-	if (pbs_db_begin_trx(conn, 0, 0) !=0)
-		goto db_err;
-
-	strcpy(dbjob.ji_jobid, jid);
-	obj.pbs_db_obj_type = PBS_DB_JOB;
-	obj.pbs_db_un.pbs_db_job = &dbjob;
-
-	/* read in job fixed sub-structure */
-	if (pbs_db_load_obj(conn, &obj) != 0)
-		goto db_err;
-
-	db_to_svr_job(pj, &dbjob);
-
-	attr_info.parent_id = jid;
-	attr_info.parent_obj_type = PARENT_TYPE_JOB; /* job attr */
-
-	/* read in working attributes */
-	if (recov_attr_db(conn, pj, &attr_info, job_attr_def, pj->ji_wattr,
-		(int)JOB_ATR_LAST, (int)JOB_ATR_UNKN) != 0) {
-		sprintf(log_buffer, "error loading attributes for %s",
-			jid);
-		log_err(-1, "job_recov", log_buffer);
-		goto db_err;
-	}
-	if (pbs_db_end_trx(conn, PBS_DB_COMMIT) != 0)
-		goto db_err;
-
-	return (pj);
-db_err:
-	if (pj)
-		job_free(pj);
-
-	sprintf(log_buffer, "Failed to recover job %s", jid);
-	log_err(-1, "job_recov", log_buffer);
-
-	(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
-	return NULL;
-}
-
-/**
- * @brief
- *		Recover resv from database
- *
- * @see
- * 		job_or_resv_recov_db
+ *	Recover resv from database
  *
  * @param[in]	resvid - Resv id to recover
  *
@@ -593,7 +662,6 @@ resv_recov_db(char *resvid)
 {
 	resc_resv               *presv;
 	pbs_db_resv_info_t	dbresv;
-	pbs_db_attr_info_t      attr_info;
 	pbs_db_obj_info_t       obj;
 	pbs_db_conn_t *conn = svr_db_conn;
 
@@ -613,19 +681,10 @@ resv_recov_db(char *resvid)
 	if (pbs_db_load_obj(conn, &obj) != 0)
 		goto db_err;
 
-	db_to_svr_resv(presv, &dbresv);
-
-	attr_info.parent_id = resvid;
-	attr_info.parent_obj_type = PARENT_TYPE_RESV; /* resv attr */
-
-	/* read in working attributes */
-	if (recov_attr_db(conn, presv, &attr_info, resv_attr_def,
-		presv->ri_wattr, (int)RESV_ATR_LAST, (int)RESV_ATR_UNKN) != 0) {
-		sprintf(log_buffer, "error loading attributes portion for %s",
-			resvid);
-		log_err(-1, "resv_recov", log_buffer);
+	if (db_to_svr_resv(presv, &dbresv) != 0)
 		goto db_err;
-	}
+
+	pbs_db_reset_obj(&obj);
 
 	if (pbs_db_end_trx(conn, PBS_DB_COMMIT) != 0)
 		goto db_err;
@@ -642,10 +701,9 @@ db_err:
 	return NULL;
 }
 
-
 /**
  * @brief
- *		Save job or reservation to database
+ *	Save job or reservation to database
  *
  * @param[in]	pobj - Address of job or reservation
  * @param[in]   updatetype - Type of update, see descriptions of job_save_db

@@ -59,7 +59,10 @@ extern "C" {
 
 #include <libpq-fe.h>
 #include <netinet/in.h>
-
+#ifndef WIN32
+#include <sys/types.h>
+#include <inttypes.h>
+#endif
 #include "net_connect.h"
 #include "list_link.h"
 #include "portability.h"
@@ -68,6 +71,10 @@ extern "C" {
 /* work around strtoll on some platforms */
 #if defined(WIN32)
 #define strtoll(n, e, b)	_strtoi64((n), (e), (b))
+typedef __int32 int32_t;
+typedef __int64 int64_t;
+typedef unsigned __int32 uint32_t;
+typedef unsigned __int64 uint64_t;
 #endif
 
 
@@ -85,79 +92,55 @@ extern "C" {
 #define STMT_SELECT_JOB "select_job"
 #define STMT_INSERT_JOB "insert_job"
 #define STMT_UPDATE_JOB "update_job"
+#define STMT_UPDATE_JOB_QUICK "update_job_quick"
 #define STMT_FINDJOBS_ORDBY_QRANK   "findjobs_ordby_qrank"
 #define STMT_FINDJOBS_BYQUE_ORDBY_QRANK "findjobs_byque_ordby_qrank"
 #define STMT_DELETE_JOB "delete_job"
+#define STMT_REMOVE_JOBATTRS "remove_jobattrs"
 
 /* JOBSCR stands for job script */
 #define STMT_INSERT_JOBSCR  "insert_jobscr"
 #define STMT_SELECT_JOBSCR  "select_jobscr"
 #define STMT_DELETE_JOBSCR  "delete_jobscr"
 
-#define STMT_SELECT_JOBATTR "select_jobattr"
-#define STMT_INSERT_JOBATTR "insert_jobattr"
-#define STMT_UPDATE_JOBATTR "update_jobattr"
-#define STMT_UPDATE_JOBATTR_RESC "update_jobattr_resc"
-#define STMT_DELETE_JOBATTR_ALL "delete_jobattr_all"
-#define STMT_DELETE_JOBATTR "delete_jobattr"
-#define STMT_DELETE_JOBATTR_RESC "delete_jobattr_resc"
+
 
 /* reservation statement names */
 #define STMT_INSERT_RESV "insert_resv"
 #define STMT_UPDATE_RESV "update_resv"
 #define STMT_SELECT_RESV "select_resv"
 #define STMT_DELETE_RESV "delete_resv"
-#define STMT_INSERT_RESVATTR "insert_resvattr"
-#define STMT_UPDATE_RESVATTR "update_resvattr"
-#define STMT_UPDATE_RESVATTR_RESC "update_resvattr_resc"
-#define STMT_DELETE_RESVATTR "delete_resvattr"
-#define STMT_DELETE_RESVATTR_RESC "delete_resvattr_resc"
-#define STMT_SELECT_RESVATTR "select_resvattr"
+#define STMT_REMOVE_RESVATTRS "remove_resvattrs"
+
 /* creattm is the table field that holds the creation time */
 #define STMT_FINDRESVS_ORDBY_CREATTM "findresvs_ordby_creattm"
 
 
 /* server & seq statement names */
 #define STMT_INSERT_SVR "insert_svr"
-#define STMT_UPDATE_SVR "update_svr"
+#define STMT_UPDATE_SVR_FULL "update_svr_full"
+#define STMT_UPDATE_SVR_QUICK "update_svr_quick"
 #define STMT_SELECT_SVR "select_svr"
-#define STMT_INSERT_SVRATTR "insert_svrattr"
-#define STMT_UPDATE_SVRATTR "update_svrattr"
-#define STMT_UPDATE_SVRATTR_RESC "update_svrattr_resc"
-#define STMT_DELETE_SVRATTR "delete_svrattr"
-#define STMT_DELETE_SVRATTR_ALL "delete_svrattr_all"
-#define STMT_DELETE_SVRATTR_RESC "delete_svrattr_resc"
-#define STMT_SELECT_SVRATTR "select_svrattr"
 #define STMT_SELECT_DBVER "select_dbver"
 #define STMT_SELECT_NEXT_SEQID "select_nextseqid"
 #define STMT_SELECT_SVRID "select_svrid"
+#define STMT_REMOVE_SVRATTRS "remove_svrattrs"
 
 /* queue statement names */
 #define STMT_INSERT_QUE "insert_que"
-#define STMT_UPDATE_QUE "update_que"
+#define STMT_UPDATE_QUE_FULL "update_que_full"
 #define STMT_SELECT_QUE "select_que"
 #define STMT_DELETE_QUE "delete_que"
-#define STMT_INSERT_QUEATTR "insert_queattr"
-#define STMT_UPDATE_QUEATTR "update_queattr"
-#define STMT_UPDATE_QUEATTR_RESC "update_queattr_resc"
-#define STMT_DELETE_QUEATTR "delete_queattr"
-#define STMT_DELETE_QUEATTR_RESC "delete_queattr_resc"
-#define STMT_SELECT_QUEATTR "select_queattr"
 #define STMT_FIND_QUES_ORDBY_CREATTM "find_ques_ordby_creattm"
+#define STMT_REMOVE_QUEATTRS "remove_queattrs"
 
 /* node statement names */
 #define STMT_INSERT_NODE "insert_node"
 #define STMT_UPDATE_NODE "update_node"
 #define STMT_SELECT_NODE "select_node"
 #define STMT_DELETE_NODE "delete_node"
-#define STMT_DELETE_ALL_NODES "delete_all_nodes"
-#define STMT_SET_NODE_SEQ "set_node_sequence"
-#define STMT_INSERT_NODEATTR "insert_nodeattr"
-#define STMT_UPDATE_NODEATTR "update_nodeattr"
-#define STMT_UPDATE_NODEATTR_RESC "update_nodeattr_resc"
-#define STMT_DELETE_NODEATTR "delete_nodeattr"
-#define STMT_DELETE_NODEATTR_RESC "delete_nodeattr_resc"
-#define STMT_SELECT_NODEATTR "select_nodeattr"
+#define STMT_REMOVE_NODEATTRS "remove_nodeattrs"
+#define STMT_UPDATE_NODEATTRS "update_nodeattrs"
 #define STMT_FIND_NODES_ORDBY_CREATTM "find_nodes_ordby_creattm"
 #define STMT_FIND_NODES_ORDBY_INDEX "find_nodes_ordby_index"
 #define STMT_SELECT_MOMINFO_TIME "select_mominfo_time"
@@ -166,16 +149,11 @@ extern "C" {
 
 /* scheduler statement names */
 #define STMT_INSERT_SCHED "insert_sched"
-#define STMT_UPDATE_SCHED "update_sched"
+#define STMT_UPDATE_SCHED_FULL "update_sched_full"
 #define STMT_SELECT_SCHED "select_sched"
-#define STMT_INSERT_SCHEDATTR "insert_schedattr"
-#define STMT_UPDATE_SCHEDATTR "update_schedattr"
-#define STMT_UPDATE_SCHEDATTR_RESC "update_schedattr_resc"
-#define STMT_DELETE_SCHEDATTR "delete_schedattr"
-#define STMT_DELETE_SCHEDATTR_RESC "delete_schedattr_resc"
-#define STMT_SELECT_SCHEDATTR "select_schedattr"
 #define STMT_SELECT_SCHED_ALL "select_sched_all"
 #define STMT_DELETE_SCHED "sched_delete"
+#define STMT_REMOVE_SCHEDATTRS "remove_schedattrs"
 
 #define POSTGRES_QUERY_MAX_PARAMS 30
 
@@ -227,8 +205,7 @@ typedef struct postgres_query_state pg_query_state_t;
  *
  */
 struct postgres_db_fn {
-	int (*pg_db_insert_obj)	(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
-	int (*pg_db_update_obj)	(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
+	int (*pg_db_save_obj)	(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype);
 	int (*pg_db_delete_obj)	(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
 	int (*pg_db_load_obj)	(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
 	int (*pg_db_find_obj)	(pbs_db_conn_t *conn, void *state,
@@ -236,6 +213,9 @@ struct postgres_db_fn {
 		pbs_db_query_options_t *opts);
 	int (*pg_db_next_obj)	(pbs_db_conn_t *conn, void *state,
 		pbs_db_obj_info_t *obj);
+	int (*pg_db_del_attr_obj)(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, void *obj_id, pbs_db_attr_list_t *attr_list);
+	int (*pg_db_add_update_attr_obj)(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, void *obj_id, pbs_db_attr_list_t *attr_list);
+	void (*pg_db_reset_obj)(pbs_db_obj_info_t *obj);
 };
 
 typedef struct postgres_db_fn pg_db_fn_t;
@@ -245,11 +225,11 @@ typedef struct postgres_db_fn pg_db_fn_t;
  * The following are defined as macros as they are used very frequently
  * Making them functions would effect performance.
  *
- * LOAD_STR - Loads null terminated string to postgres parameter at index "i"
- * LOAD_STRSZ - Same as LOAD_STR, only size of string is provided
- * LOAD_INTEGER - Loads integer to postgres parameter at index "i"
- * LOAD_BIGINT - Loads BIGINT value to postgres parameter at index "i"
- * LOAD_BIN    - Loads a BINARY value to postgres parameter at index "i"
+ * SET_PARAM_STR     - Loads null terminated string to postgres parameter at index "i"
+ * SET_PARAM_STRSZ   - Same as SET_PARAM_STR, only size of string is provided
+ * SET_PARAM_INTEGER - Loads integer to postgres parameter at index "i"
+ * SET_PARAM_BIGINT  - Loads BIGINT value to postgres parameter at index "i"
+ * SET_PARAM_BIN     - Loads a BINARY value to postgres parameter at index "i"
  *
  * Basically there are 3 values that need to be supplied for every paramter
  * of any prepared sql statement. They are:
@@ -280,40 +260,49 @@ typedef struct postgres_db_fn pg_db_fn_t;
  * - temp_int	  - array to use to convert int to network byte order
  * - temp_long	  - array to use to convery BIGINT to network byte order
  */
-#define LOAD_STR(conn, itm, i)  \
-	((pg_conn_data_t *) (conn)->conn_data)->paramValues[i] = (itm); \
-	if (itm) \
-		((pg_conn_data_t *) (conn)->conn_data)->paramLengths[i] = \
-						strlen(itm); \
-	else \
-		((pg_conn_data_t *) (conn)->conn_data)->paramLengths[i] = 0; \
-	((pg_conn_data_t *) (conn)->conn_data)->paramFormats[i] = 0;
+#define SET_PARAM_STR(conn, itm, i)  \
+        ((pg_conn_data_t *) (conn)->conn_data)->paramValues[i] = (itm); \
+        if (itm) \
+                ((pg_conn_data_t *) (conn)->conn_data)->paramLengths[i] = strlen(itm); \
+        else \
+                ((pg_conn_data_t *) (conn)->conn_data)->paramLengths[i] = 0; \
+        ((pg_conn_data_t *) (conn)->conn_data)->paramFormats[i] = 0;
 
-#define LOAD_STRSZ(conn, itm, size, i)  \
-	((pg_conn_data_t *) (conn)->conn_data)->paramValues[i] = (itm); \
-	((pg_conn_data_t *) (conn)->conn_data)->paramLengths[i] = (size); \
-	((pg_conn_data_t *) (conn)->conn_data)->paramFormats[i] = 0;
+#define SET_PARAM_STRSZ(conn, itm, size, i)  \
+        ((pg_conn_data_t *) (conn)->conn_data)->paramValues[i] = (itm); \
+        ((pg_conn_data_t *) (conn)->conn_data)->paramLengths[i] = (size); \
+        ((pg_conn_data_t *) (conn)->conn_data)->paramFormats[i] = 0;
 
-#define LOAD_INTEGER(conn, itm, i) \
-	((pg_conn_data_t *) (conn)->conn_data)->temp_int[i] = (INTEGER) htonl(itm); \
-	((pg_conn_data_t *) (conn)->conn_data)->paramValues[i] = \
-		(char *) &(((pg_conn_data_t *) (conn)->conn_data)->temp_int[i]); \
-	((pg_conn_data_t *) (conn)->conn_data)->paramLengths[i] = sizeof(int); \
-	((pg_conn_data_t *) (conn)->conn_data)->paramFormats[i] = 1;
+#define SET_PARAM_INTEGER(conn, itm, i) \
+        ((pg_conn_data_t *) (conn)->conn_data)->temp_int[i] = (INTEGER) htonl(itm); \
+        ((pg_conn_data_t *) (conn)->conn_data)->paramValues[i] = \
+                (char *) &(((pg_conn_data_t *) (conn)->conn_data)->temp_int[i]); \
+        ((pg_conn_data_t *) (conn)->conn_data)->paramLengths[i] = sizeof(int); \
+        ((pg_conn_data_t *) (conn)->conn_data)->paramFormats[i] = 1;
 
-#define LOAD_BIGINT(conn, itm, i) \
-	((pg_conn_data_t *) (conn)->conn_data)->temp_long[i] = (BIGINT) htonll(itm); \
-	((pg_conn_data_t *) (conn)->conn_data)->paramValues[i] = \
-		(char *) &(((pg_conn_data_t *) (conn)->conn_data)->temp_long[i]); \
-	((pg_conn_data_t *) (conn)->conn_data)->paramLengths[i] = sizeof(BIGINT); \
-	((pg_conn_data_t *) (conn)->conn_data)->paramFormats[i] = 1;
+#define SET_PARAM_BIGINT(conn, itm, i) \
+        ((pg_conn_data_t *) (conn)->conn_data)->temp_long[i] = (BIGINT) htonll(itm); \
+        ((pg_conn_data_t *) (conn)->conn_data)->paramValues[i] = \
+                (char *) &(((pg_conn_data_t *) (conn)->conn_data)->temp_long[i]); \
+        ((pg_conn_data_t *) (conn)->conn_data)->paramLengths[i] = sizeof(BIGINT); \
+        ((pg_conn_data_t *) (conn)->conn_data)->paramFormats[i] = 1;
 
-#define LOAD_BIN(conn, itm, len , i)  \
+#define SET_PARAM_BIN(conn, itm, len , i)  \
         ((pg_conn_data_t *) (conn)->conn_data)->paramValues[i] = (itm); \
         ((pg_conn_data_t *) (conn)->conn_data)->paramLengths[i] = (len); \
         ((pg_conn_data_t *) (conn)->conn_data)->paramFormats[i] = 1;
 
+#define GET_PARAM_STR(res, row, itm, fnum)  \
+		strcpy((itm), PQgetvalue((res), (row), (fnum)));
 
+#define GET_PARAM_INTEGER(res, row, itm, fnum) \
+		(itm) = ntohl(*((uint32_t *) PQgetvalue((res), (row), (fnum))));
+
+#define GET_PARAM_BIGINT(res, row, itm, fnum) \
+		(itm) = ntohll(*((uint64_t *) PQgetvalue((res), (row), (fnum))));
+
+#define GET_PARAM_BIN(res, row, itm, fnum) \
+		(itm) = PQgetvalue((res), (row), (fnum));
 
 #define FIND_JOBS_BY_QUE 1
 
@@ -330,18 +319,19 @@ int
 pg_prepare_stmt(pbs_db_conn_t *conn, char *stmt, char *sql,
 	int num_vars);
 int pg_db_cmd(pbs_db_conn_t *conn, char *stmt, int num_vars);
-int
-pg_db_query(pbs_db_conn_t *conn, char *stmt, int num_vars,
-	PGresult **res);
+int pg_db_cmd_ret(pbs_db_conn_t *conn, char *stmt, int num_vars);
+int pg_db_query(pbs_db_conn_t *conn, char *stmt, int num_vars, PGresult **res);
 unsigned long long pbs_ntohll(unsigned long long);
+int convert_array_to_db_attr_list(char *raw_array, pbs_db_attr_list_t *attr_list);
+int convert_db_attr_list_to_array(char **raw_array, pbs_db_attr_list_t *attr_list);
+void free_db_attr_list(pbs_db_attr_list_t *attr_list);
 
 #ifdef NAS /* localmod 005 */
 int resize_buff(pbs_db_sql_buffer_t *dest, int size);
 #endif /* localmod 005 */
 
 /* job functions */
-int pg_db_insert_job(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
-int pg_db_update_job(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
+int pg_db_save_job(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype);
 int pg_db_load_job(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
 int
 pg_db_find_job(pbs_db_conn_t *conn, void *st,
@@ -352,16 +342,15 @@ pg_db_next_job(pbs_db_conn_t *conn, void *st,
 int pg_db_delete_job(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
 
 int
-pg_db_insert_jobscr(pbs_db_conn_t *conn,
-	pbs_db_obj_info_t *obj);
+pg_db_save_jobscr(pbs_db_conn_t *conn,
+	pbs_db_obj_info_t *obj, int savetype);
 int
 pg_db_load_jobscr(pbs_db_conn_t *conn,
 	pbs_db_obj_info_t *obj);
 
 
 /* resv functions */
-int pg_db_insert_resv(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
-int pg_db_update_resv(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
+int pg_db_save_resv(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype);
 int pg_db_load_resv(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
 int
 pg_db_find_resv(pbs_db_conn_t *conn, void *st, pbs_db_obj_info_t *obj,
@@ -370,13 +359,11 @@ int pg_db_next_resv(pbs_db_conn_t *conn, void *st, pbs_db_obj_info_t *obj);
 int pg_db_delete_resv(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
 
 /* svr functions */
-int pg_db_insert_svr(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
-int pg_db_update_svr(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
+int pg_db_save_svr(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype);
 int pg_db_load_svr(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
 
 /* node functions */
-int pg_db_insert_node(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
-int pg_db_update_node(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
+int pg_db_save_node(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype);
 int pg_db_load_node(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
 int
 pg_db_find_node(pbs_db_conn_t *conn, void *st, pbs_db_obj_info_t *obj,
@@ -385,14 +372,12 @@ int pg_db_next_node(pbs_db_conn_t *conn, void *st, pbs_db_obj_info_t *obj);
 int pg_db_delete_node(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
 
 /* mominfo_time functions */
-int pg_db_insert_mominfo_tm(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
-int pg_db_update_mominfo_tm(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
+int pg_db_save_mominfo_tm(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype);
 int pg_db_load_mominfo_tm(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
 
 
 /* queue functions */
-int pg_db_insert_que(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
-int pg_db_update_que(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
+int pg_db_save_que(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype);
 int pg_db_load_que(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
 int
 pg_db_find_que(pbs_db_conn_t *conn, void *st, pbs_db_obj_info_t *obj,
@@ -400,24 +385,32 @@ pg_db_find_que(pbs_db_conn_t *conn, void *st, pbs_db_obj_info_t *obj,
 int pg_db_next_que(pbs_db_conn_t *conn, void *st, pbs_db_obj_info_t *obj);
 int pg_db_delete_que(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
 
-/* attribute functions */
-int pg_db_insert_attr(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
-int pg_db_update_attr(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
-int pg_db_load_attr(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
-int
-pg_db_find_attr(pbs_db_conn_t *conn, void *st, pbs_db_obj_info_t *obj,
-	pbs_db_query_options_t *opts);
-int pg_db_next_attr(pbs_db_conn_t *conn, void *st, pbs_db_obj_info_t *obj);
-int pg_db_delete_attr(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
 
 /* scheduler functions */
-int pg_db_insert_sched(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
-int pg_db_update_sched(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
+int pg_db_save_sched(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype);
 int pg_db_load_sched(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
+
 int pg_db_find_sched(pbs_db_conn_t *conn, void *st, pbs_db_obj_info_t *obj,
 	pbs_db_query_options_t *opts);
 int pg_db_next_sched(pbs_db_conn_t *conn, void *st, pbs_db_obj_info_t *obj);
 int pg_db_delete_sched(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj);
+
+int pg_db_del_attr_job(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, void *obj_id, pbs_db_attr_list_t *attr_list);
+int pg_db_del_attr_sched(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, void *obj_id, pbs_db_attr_list_t *attr_list);
+int pg_db_del_attr_resv(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, void *obj_id, pbs_db_attr_list_t *attr_list);
+int pg_db_del_attr_svr(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, void *obj_id, pbs_db_attr_list_t *attr_list);
+int pg_db_del_attr_que(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, void *obj_id, pbs_db_attr_list_t *attr_list);
+int pg_db_del_attr_node(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, void *obj_id, pbs_db_attr_list_t *attr_list);
+int pg_db_add_update_attr_node(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, void *obj_id, pbs_db_attr_list_t *attr_list);
+void pg_db_reset_job(pbs_db_obj_info_t *obj);
+void pg_db_reset_svr(pbs_db_obj_info_t *obj);
+void pg_db_reset_que(pbs_db_obj_info_t *obj);
+void pg_db_reset_node(pbs_db_obj_info_t *obj);
+void pg_db_reset_resv(pbs_db_obj_info_t *obj);
+void pg_db_reset_sched(pbs_db_obj_info_t *obj);
+void pg_db_reset_mominfo(pbs_db_obj_info_t *obj);
+
+
 
 #ifdef	__cplusplus
 }

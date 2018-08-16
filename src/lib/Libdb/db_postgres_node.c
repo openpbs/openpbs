@@ -63,7 +63,7 @@
 int
 pg_db_prepare_node_sqls(pbs_db_conn_t *conn)
 {
-	sprintf(conn->conn_sql, "insert into pbs.node("
+	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "insert into pbs.node("
 		"nd_name, "
 		"nd_index, "
 		"mom_modtime, "
@@ -72,107 +72,73 @@ pg_db_prepare_node_sqls(pbs_db_conn_t *conn)
 		"nd_ntype, "
 		"nd_pque, "
 		"nd_savetm, "
-		"nd_creattm "
+		"nd_creattm, "
+		"attributes "
 		") "
 		"values "
-		"($1, $2, $3, $4, $5, $6, $7, localtimestamp, localtimestamp)");
+		"($1, $2, $3, $4, $5, $6, $7, localtimestamp, localtimestamp, hstore($8::text[]))");
 
-	if (pg_prepare_stmt(conn, STMT_INSERT_NODE, conn->conn_sql, 7) != 0)
+	if (pg_prepare_stmt(conn, STMT_INSERT_NODE, conn->conn_sql, 8) != 0)
 		return -1;
 
-	sprintf(conn->conn_sql, "update pbs.node set "
+	/* in case of nodes do not use || with existing attributes, since we re-write all attributes */
+	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "update pbs.node set "
 		"nd_index = $2, "
 		"mom_modtime = $3, "
 		"nd_hostname = $4, "
 		"nd_state = $5, "
 		"nd_ntype = $6, "
 		"nd_pque = $7, "
-		"nd_savetm = localtimestamp "
+		"nd_savetm = localtimestamp, "
+		"attributes = hstore($8::text[]) "
 		" where nd_name = $1");
-	if (pg_prepare_stmt(conn, STMT_UPDATE_NODE, conn->conn_sql, 7) != 0)
+	if (pg_prepare_stmt(conn, STMT_UPDATE_NODE, conn->conn_sql, 8) != 0)
 		return -1;
 
-	sprintf(conn->conn_sql, "select "
+	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "update pbs.node set "
+		"nd_savetm = localtimestamp,"
+		"attributes = delete(attributes, $2::text[]) "
+		"where nd_name = $1");
+	if (pg_prepare_stmt(conn, STMT_REMOVE_NODEATTRS, conn->conn_sql, 2) != 0)
+		return -1;
+
+	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "update pbs.node set "
+			"nd_savetm = localtimestamp,"
+			"attributes = attributes || hstore($2::text[]) "
+			"where nd_name = $1");
+	if (pg_prepare_stmt(conn, STMT_UPDATE_NODEATTRS, conn->conn_sql, 2) != 0)
+		return -1;
+
+	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "select "
 		"nd_name, "
 		"nd_index, "
 		"mom_modtime, "
 		"nd_hostname, "
 		"nd_state, "
 		"nd_ntype, "
-		"nd_pque "
+		"nd_pque, "
+		"hstore_to_array(attributes) as attributes "
 		"from pbs.node "
 		"where nd_name = $1");
 	if (pg_prepare_stmt(conn, STMT_SELECT_NODE, conn->conn_sql, 1) != 0)
 		return -1;
 
-	sprintf(conn->conn_sql, "insert into pbs.node_attr "
-		"(nd_name, "
-		"attr_name, "
-		"attr_resource, "
-		"attr_value, "
-		"attr_flags) "
-		"values ($1, $2, $3, $4, $5)");
-	if (pg_prepare_stmt(conn, STMT_INSERT_NODEATTR, conn->conn_sql, 5) != 0)
-		return -1;
-
-	sprintf(conn->conn_sql, "update pbs.node_attr set "
-		"attr_resource = $3, "
-		"attr_value = $4, "
-		"attr_flags = $5 "
-		"where nd_name = $1 "
-		"and attr_name = $2");
-	if (pg_prepare_stmt(conn, STMT_UPDATE_NODEATTR, conn->conn_sql, 5) != 0)
-		return -1;
-
-	sprintf(conn->conn_sql, "update pbs.node_attr set "
-		"attr_value = $4, "
-		"attr_flags = $5 "
-		"where nd_name = $1 "
-		"and attr_name = $2 "
-		"and attr_resource = $3");
-	if (pg_prepare_stmt(conn, STMT_UPDATE_NODEATTR_RESC, conn->conn_sql, 5) != 0)
-		return -1;
-
-	sprintf(conn->conn_sql, "delete from pbs.node_attr "
-		" where nd_name = $1 "
-		"and attr_name = $2");
-	if (pg_prepare_stmt(conn, STMT_DELETE_NODEATTR, conn->conn_sql, 2) != 0)
-		return -1;
-
-	sprintf(conn->conn_sql, "delete from pbs.node_attr "
-		" where nd_name = $1 "
-		"and attr_name = $2 "
-		"and attr_resource = $3");
-	if (pg_prepare_stmt(conn, STMT_DELETE_NODEATTR_RESC, conn->conn_sql, 3) != 0)
-		return -1;
-
-	sprintf(conn->conn_sql, "select "
-		"nd_name, "
-		"attr_name, "
-		"attr_resource, "
-		"attr_value, "
-		"attr_flags from "
-		"pbs.node_attr "
-		"where nd_name = $1");
-	if (pg_prepare_stmt(conn, STMT_SELECT_NODEATTR, conn->conn_sql, 1) != 0)
-		return -1;
-
-	sprintf(conn->conn_sql, "select "
+	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "select "
 		"nd_name, "
 		"nd_index, "
 		"mom_modtime, "
 		"nd_hostname, "
 		"nd_state, "
 		"nd_ntype, "
-		"nd_pque "
+		"nd_pque, "
+		"hstore_to_array(attributes) as attributes "
 		"from pbs.node order by nd_creattm");
 	if (pg_prepare_stmt(conn, STMT_FIND_NODES_ORDBY_CREATTM, conn->conn_sql, 0) != 0)
 		return -1;
 
-	sprintf(conn->conn_sql, "select "
+	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "select "
 #ifdef NAS /* localmod 079 */
 		"n.nd_name, "
-		"n.nd_index, "
 		"n.mom_modtime, "
 		"n.nd_hostname, "
 		"n.nd_state, "
@@ -182,33 +148,29 @@ pg_db_prepare_node_sqls(pbs_db_conn_t *conn)
 		"n.nd_name=i.nd_name order by i.nd_nasindex");
 #else
 		"nd_name, "
-		"nd_index, "
 		"mom_modtime, "
 		"nd_hostname, "
 		"nd_state, "
 		"nd_ntype, "
-		"nd_pque "
+		"nd_pque, "
+		"hstore_to_array(attributes) as attributes "
 		"from pbs.node order by nd_index, nd_creattm");
 #endif /* localmod 079 */
 	if (pg_prepare_stmt(conn, STMT_FIND_NODES_ORDBY_INDEX, conn->conn_sql, 0) != 0)
 		return -1;
 
-	sprintf(conn->conn_sql, "delete from pbs.node where nd_name = $1");
+	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "delete from pbs.node where nd_name = $1");
 	if (pg_prepare_stmt(conn, STMT_DELETE_NODE, conn->conn_sql, 1) != 0)
 		return -1;
 
-	sprintf(conn->conn_sql, "delete from pbs.node");
-	if (pg_prepare_stmt(conn, STMT_DELETE_ALL_NODES, conn->conn_sql, 0) != 0)
-		return -1;
-
-	sprintf(conn->conn_sql, "select "
+	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "select "
 		"mit_time, "
 		"mit_gen "
 		"from pbs.mominfo_time ");
 	if (pg_prepare_stmt(conn, STMT_SELECT_MOMINFO_TIME, conn->conn_sql, 0) != 0)
 		return -1;
 
-	sprintf(conn->conn_sql, "insert into pbs.mominfo_time("
+	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "insert into pbs.mominfo_time("
 		"mit_time, "
 		"mit_gen) "
 		"values "
@@ -216,7 +178,7 @@ pg_db_prepare_node_sqls(pbs_db_conn_t *conn)
 	if (pg_prepare_stmt(conn, STMT_INSERT_MOMINFO_TIME, conn->conn_sql, 2) != 0)
 		return -1;
 
-	sprintf(conn->conn_sql, "update pbs.mominfo_time set "
+	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "update pbs.mominfo_time set "
 		"mit_time = $1, "
 		"mit_gen = $2 ");
 	if (pg_prepare_stmt(conn, STMT_UPDATE_MOMINFO_TIME, conn->conn_sql, 2) != 0)
@@ -233,26 +195,41 @@ pg_db_prepare_node_sqls(pbs_db_conn_t *conn)
  * @param[in]	pnd  - Node object to load data into
  * @param[in]	row - The current row to load within the resultset
  *
+ * @return      Error code
+ * @retval	-1 - On Error
+ * @retval	 0 - On Success
+ * @retval	>1 - Number of attributes
  *
  */
-static void
+static int
 load_node(PGresult *res, pbs_db_node_info_t *pnd, int row)
 {
-	/* get the other fields */
-	strcpy(pnd->nd_name, PQgetvalue(res, row,
-		PQfnumber(res, "nd_name")));
-	pnd->nd_index = strtol(PQgetvalue(res, row,
-		PQfnumber(res, "nd_index")), NULL, 10);
-	pnd->mom_modtime = strtoll(PQgetvalue(res, row,
-		PQfnumber(res, "mom_modtime")), NULL, 10);
-	strcpy(pnd->nd_hostname, PQgetvalue(res, row,
-		PQfnumber(res, "nd_hostname")));
-	pnd->nd_state = strtol(PQgetvalue(res, row,
-		PQfnumber(res, "nd_state")), NULL, 10);
-	pnd->nd_ntype = strtol(PQgetvalue(res, row,
-		PQfnumber(res, "nd_ntype")), NULL, 10);
-	strcpy(pnd->nd_pque, PQgetvalue(res, row,
-		PQfnumber(res, "nd_pque")));
+	char *raw_array;
+	static int nd_name_fnum, mom_modtime_fnum, nd_hostname_fnum, nd_state_fnum, nd_ntype_fnum,
+	nd_pque_fnum, attributes_fnum;
+	static int fnums_inited = 0;
+
+	if (fnums_inited == 0) {
+		nd_name_fnum = PQfnumber(res, "nd_name");
+		mom_modtime_fnum = PQfnumber(res, "mom_modtime");
+		nd_hostname_fnum = PQfnumber(res, "nd_hostname");
+		nd_state_fnum = PQfnumber(res, "nd_state");
+		nd_ntype_fnum = PQfnumber(res, "nd_ntype");
+		nd_pque_fnum = PQfnumber(res, "nd_pque");
+		attributes_fnum = PQfnumber(res, "attributes");
+		fnums_inited = 1;
+	}
+
+	GET_PARAM_STR(res, row, pnd->nd_name, nd_name_fnum);
+	GET_PARAM_BIGINT(res, row, pnd->mom_modtime, mom_modtime_fnum);
+	GET_PARAM_STR(res, row, pnd->nd_hostname, nd_hostname_fnum);
+	GET_PARAM_INTEGER(res, row, pnd->nd_state, nd_state_fnum);
+	GET_PARAM_INTEGER(res, row, pnd->nd_ntype, nd_ntype_fnum);
+	GET_PARAM_STR(res, row, pnd->nd_pque, nd_pque_fnum);
+	GET_PARAM_BIN(res, row, raw_array, attributes_fnum);
+
+	/* convert attributes from postgres raw array format */
+	return (convert_array_to_db_attr_list(raw_array, &pnd->attr_list));
 }
 
 /**
@@ -268,51 +245,46 @@ load_node(PGresult *res, pbs_db_node_info_t *pnd, int row)
  *
  */
 int
-pg_db_insert_node(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj)
+pg_db_save_node(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype)
 {
 	pbs_db_node_info_t *pnd = obj->pbs_db_un.pbs_db_node;
+	char *stmt;
+	int params;
+	char *raw_array = NULL;
 
-	LOAD_STR(conn, pnd->nd_name, 0);
-	LOAD_INTEGER(conn, pnd->nd_index, 1);
-	LOAD_BIGINT(conn, pnd->mom_modtime, 2);
-	LOAD_STR(conn, pnd->nd_hostname, 3);
-	LOAD_INTEGER(conn, pnd->nd_state, 4);
-	LOAD_INTEGER(conn, pnd->nd_ntype, 5);
-	LOAD_STR(conn, pnd->nd_pque, 6);
+	SET_PARAM_STR(conn, pnd->nd_name, 0);
+	SET_PARAM_INTEGER(conn, pnd->nd_index, 1);
+	SET_PARAM_BIGINT(conn, pnd->mom_modtime, 2);
+	SET_PARAM_STR(conn, pnd->nd_hostname, 3);
+	SET_PARAM_INTEGER(conn, pnd->nd_state, 4);
+	SET_PARAM_INTEGER(conn, pnd->nd_ntype, 5);
+	SET_PARAM_STR(conn, pnd->nd_pque, 6);
 
-	if (pg_db_cmd(conn, STMT_INSERT_NODE, 7) != 0)
+	if (savetype == PBS_UPDATE_DB_QUICK) {
+		params = 7;
+	} else {
+		int len = 0;
+		/* convert attributes to postgres raw array format */
+		if ((len = convert_db_attr_list_to_array(&raw_array, &pnd->attr_list)) <= 0)
+			return -1;
+
+		SET_PARAM_BIN(conn, raw_array, len, 7);
+		params = 8;
+	}
+
+	if (savetype == PBS_UPDATE_DB_FULL)
+		stmt = STMT_UPDATE_NODE;
+	else
+		stmt = STMT_INSERT_NODE;
+
+	if (pg_db_cmd(conn, stmt, params) != 0) {
+		free(raw_array);
 		return -1;
+	}
+
+	free(raw_array);
 
 	return 0;
-}
-
-/**
- * @brief
- *	Update node data into the database
- *
- * @param[in]	conn - Connection handle
- * @param[in]	obj  - Information of node to be updated
- *
- * @return      Error code
- * @retval	-1 - Failure
- * @retval	 0 - Success
- * @retval	 1 - Success but no rows updated
- *
- */
-int
-pg_db_update_node(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj)
-{
-	pbs_db_node_info_t *pnd = obj->pbs_db_un.pbs_db_node;
-
-	LOAD_STR(conn, pnd->nd_name, 0);
-	LOAD_INTEGER(conn, pnd->nd_index, 1);
-	LOAD_BIGINT(conn, pnd->mom_modtime, 2);
-	LOAD_STR(conn, pnd->nd_hostname, 3);
-	LOAD_INTEGER(conn, pnd->nd_state, 4);
-	LOAD_INTEGER(conn, pnd->nd_ntype, 5);
-	LOAD_STR(conn, pnd->nd_pque, 6);
-
-	return (pg_db_cmd(conn, STMT_UPDATE_NODE, 7));
 }
 
 /**
@@ -335,15 +307,15 @@ pg_db_load_node(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj)
 	int rc;
 	pbs_db_node_info_t *pnd = obj->pbs_db_un.pbs_db_node;
 
-	LOAD_STR(conn, pnd->nd_name, 0);
+	SET_PARAM_STR(conn, pnd->nd_name, 0);
 
 	if ((rc = pg_db_query(conn, STMT_SELECT_NODE, 1, &res)) != 0)
 		return rc;
 
-	load_node(res, pnd, 0);
+	rc = load_node(res, pnd, 0);
 
 	PQclear(res);
-	return 0;
+	return rc;
 }
 
 /**
@@ -401,8 +373,7 @@ pg_db_next_node(pbs_db_conn_t *conn, void *st, pbs_db_obj_info_t *obj)
 	PGresult *res = ((pg_query_state_t *) st)->res;
 	pg_query_state_t *state = (pg_query_state_t *) st;
 
-	load_node(res, obj->pbs_db_un.pbs_db_node, state->row);
-	return 0;
+	return (load_node(res, obj->pbs_db_un.pbs_db_node, state->row));
 }
 
 /**
@@ -422,9 +393,48 @@ int
 pg_db_delete_node(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj)
 {
 	pbs_db_node_info_t *pnd = obj->pbs_db_un.pbs_db_node;
-	LOAD_STR(conn, pnd->nd_name, 0);
+	SET_PARAM_STR(conn, pnd->nd_name, 0);
 	return (pg_db_cmd(conn, STMT_DELETE_NODE, 1));
 }
+
+
+
+/**
+ * @brief
+ *	Deletes attributes of a node
+ *
+ * @param[in]	conn - Connection handle
+ * @param[in]	obj  - Node information
+ * @param[in]	obj_id  - Node id
+ * @param[in]	attr_list - List of attributes
+ *
+ * @return      Error code
+ * @retval	 0 - Success
+ * @retval	-1 - On Failure
+ *
+ */
+int
+pg_db_del_attr_node(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, void *obj_id, pbs_db_attr_list_t *attr_list)
+{
+	char *raw_array = NULL;
+	int len = 0;
+
+	if ((len = convert_db_attr_list_to_array(&raw_array, attr_list)) <= 0)
+		return -1;
+	SET_PARAM_STR(conn, obj_id, 0);
+
+	SET_PARAM_BIN(conn, raw_array, len, 1);
+
+	if (pg_db_cmd(conn, STMT_REMOVE_NODEATTRS, 2) != 0) {
+		free(raw_array);
+		return -1;
+	}
+
+	free(raw_array);
+
+	return 0;
+}
+
 
 /**
  * @brief
@@ -439,40 +449,23 @@ pg_db_delete_node(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj)
  *
  */
 int
-pg_db_insert_mominfo_tm(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj)
+pg_db_save_mominfo_tm(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype)
 {
+	char *stmt;
 	pbs_db_mominfo_time_t *pmi = obj->pbs_db_un.pbs_db_mominfo_tm;
 
-	LOAD_BIGINT(conn, pmi->mit_time, 0);
-	LOAD_INTEGER(conn, pmi->mit_gen, 1);
-	if (pg_db_cmd(conn, STMT_INSERT_MOMINFO_TIME, 2) != 0)
+	SET_PARAM_BIGINT(conn, pmi->mit_time, 0);
+	SET_PARAM_INTEGER(conn, pmi->mit_gen, 1);
+
+	if (savetype == PBS_INSERT_DB)
+		stmt = STMT_INSERT_MOMINFO_TIME;
+	else
+		stmt = STMT_UPDATE_MOMINFO_TIME;
+
+	if (pg_db_cmd(conn, stmt, 2) != 0)
 		return -1;
 
 	return 0;
-}
-
-/**
- * @brief
- *	Update mominfo_time into the database
- *
- * @param[in]	conn - Connection handle
- * @param[in]	obj  - Information of node to be updated
- *
- * @return      Error code
- * @retval	-1 - Failure
- * @retval	 0 - Success
- * @retval	 1 - Success but no rows updated
- *
- */
-int
-pg_db_update_mominfo_tm(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj)
-{
-	pbs_db_mominfo_time_t *pmi = obj->pbs_db_un.pbs_db_mominfo_tm;
-
-	LOAD_BIGINT(conn, pmi->mit_time, 0);
-	LOAD_INTEGER(conn, pmi->mit_gen, 1);
-
-	return (pg_db_cmd(conn, STMT_UPDATE_MOMINFO_TIME, 2));
 }
 
 /**
@@ -494,15 +487,92 @@ pg_db_load_mominfo_tm(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj)
 	PGresult *res;
 	int rc;
 	pbs_db_mominfo_time_t *pmi = obj->pbs_db_un.pbs_db_mominfo_tm;
+	static int mit_time_fnum = -1;
+	static int mit_gen_fnum = -1;
 
 	if ((rc = pg_db_query(conn, STMT_SELECT_MOMINFO_TIME, 0, &res)) != 0)
 		return rc;
 
-	pmi->mit_time = strtoll(PQgetvalue(res, 0,
-		PQfnumber(res, "mit_time")), NULL, 10);
-	pmi->mit_gen = strtol(PQgetvalue(res, 0,
-		PQfnumber(res, "mit_gen")), NULL, 10);
+	if (mit_time_fnum == -1 || mit_gen_fnum == -1) {
+		mit_time_fnum = PQfnumber(res, "mit_time");
+		mit_gen_fnum = PQfnumber(res, "mit_gen");
+	}
+
+	GET_PARAM_BIGINT(res, 0, pmi->mit_time, mit_time_fnum);
+	GET_PARAM_INTEGER(res, 0, pmi->mit_gen, mit_gen_fnum);
 
 	PQclear(res);
+	return 0;
+}
+
+/**
+ * @brief
+ *	Frees allocate memory of an Object
+ *
+ * @param[in]	obj - pbs_db_obj_info_t containing the DB object
+ *
+ * @return None
+ *
+ */
+void
+pg_db_reset_node(pbs_db_obj_info_t *obj)
+{
+	free_db_attr_list(&(obj->pbs_db_un.pbs_db_node->attr_list));
+}
+
+
+/**
+ * @brief
+ *	Frees allocated memory of an Object.
+ *	As of today there is no attributes column for the table mominfo_time. Even though we
+ *	don't have this column we should have the following function as a placeholder since it is
+ *	invoked as a callback from the generic array db_fn_arr.
+ *
+ * @param[in]	obj - pbs_db_obj_info_t containing the DB object
+ *
+ * @return None
+ *
+ */
+void
+pg_db_reset_mominfo(pbs_db_obj_info_t *obj)
+{
+	/* Do nothing*/
+	return ;
+}
+
+/**
+ * @brief
+ *	Add or update attributes of a node
+ *
+ * @param[in]	conn - Connection handle
+ * @param[in]	obj  - Node information
+ * @param[in]	obj_id  - Node name
+ * @param[in]	attr_list - List of attributes
+ *
+ * @return      Error code
+ * @retval	-1 - Execution of prepared statement failed
+ * @retval	 0 - Success and > 0 rows were affected
+ * @retval	 1 - Execution succeeded but statement did not affect any rows
+ *
+ */
+int
+pg_db_add_update_attr_node(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, void *obj_id, pbs_db_attr_list_t *attr_list)
+{
+	char *raw_array = NULL;
+	int len = 0;
+
+	if ((len = convert_db_attr_list_to_array(&raw_array, attr_list)) <= 0)
+		return -1;
+	SET_PARAM_STR(conn, obj_id, 0);
+
+	SET_PARAM_BIN(conn, raw_array, len, 1);
+
+	if (pg_db_cmd(conn, STMT_UPDATE_NODEATTRS, 2) != 0) {
+		free(raw_array);
+		return -1;
+	}
+
+	free(raw_array);
+
 	return 0;
 }

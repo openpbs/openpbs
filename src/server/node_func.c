@@ -927,7 +927,7 @@ save_nodes_db_mom(mominfo_t *pmom)
 
 		if (np->nd_modified & NODE_UPDATE_OTHERS) {
 			DBPRT(("Saving node %s into the database\n", np->nd_name))
-			if (node_save_db(np, NODE_SAVE_FULL) != 0) {
+			if (node_save_db(np) != 0) {
 				log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
 					LOG_WARNING, "nodes", nodeerrtxt);
 				return (-1);
@@ -1051,8 +1051,8 @@ save_nodes_db(int changemodtime, void *p)
 	obj.pbs_db_obj_type = PBS_DB_MOMINFO_TIME;
 	obj.pbs_db_un.pbs_db_mominfo_tm = &mom_tm;
 
-	if (pbs_db_update_obj(svr_db_conn, &obj) == 1) {/* no row updated */
-		if (pbs_db_insert_obj(svr_db_conn, &obj) != 0) /* insert also failed */
+	if (pbs_db_save_obj(svr_db_conn, &obj, PBS_UPDATE_DB_FULL) == 1) {/* no row updated */
+		if (pbs_db_save_obj(svr_db_conn, &obj, PBS_INSERT_DB) != 0) /* insert also failed */
 			goto db_err;
 	}
 
@@ -1636,6 +1636,7 @@ setup_nodes()
 				}
 			}
 		}
+		pbs_db_reset_obj(&obj);
 	}
 
 	pbs_db_cursor_close(conn, state);

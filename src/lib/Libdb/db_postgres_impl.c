@@ -60,76 +60,85 @@
 pg_db_fn_t db_fn_arr[PBS_DB_NUM_TYPES] =
 	{
 	{ /* PBS_DB_JOB */
-		pg_db_insert_job,
-		pg_db_update_job,
+		pg_db_save_job,
 		pg_db_delete_job,
 		pg_db_load_job,
 		pg_db_find_job,
-		pg_db_next_job
+		pg_db_next_job,
+		pg_db_del_attr_job,
+		NULL,
+		pg_db_reset_job
 	},
 	{ /* PBS_DB_RESV */
-		pg_db_insert_resv,
-		pg_db_update_resv,
+		pg_db_save_resv,
 		pg_db_delete_resv,
 		pg_db_load_resv,
 		pg_db_find_resv,
-		pg_db_next_resv
+		pg_db_next_resv,
+		pg_db_del_attr_resv,
+		NULL,
+		pg_db_reset_resv
 	},
 	{ /* PBS_DB_SVR */
-		pg_db_insert_svr,
-		pg_db_update_svr,
+		pg_db_save_svr,
 		NULL,
 		pg_db_load_svr,
 		NULL,
-		NULL
+		NULL,
+		pg_db_del_attr_svr,
+		NULL,
+		pg_db_reset_svr
 	},
 	{ /* PBS_DB_NODE */
-		pg_db_insert_node,
-		pg_db_update_node,
+		pg_db_save_node,
 		pg_db_delete_node,
 		pg_db_load_node,
 		pg_db_find_node,
-		pg_db_next_node
+		pg_db_next_node,
+		pg_db_del_attr_node,
+		pg_db_add_update_attr_node,
+		pg_db_reset_node
 	},
 	{ /* PBS_DB_QUE */
-		pg_db_insert_que,
-		pg_db_update_que,
+		pg_db_save_que,
 		pg_db_delete_que,
 		pg_db_load_que,
 		pg_db_find_que,
-		pg_db_next_que
-	},
-	{ /* PBS_DB_ATTR */
-		pg_db_insert_attr,
-		pg_db_update_attr,
-		pg_db_delete_attr,
-		pg_db_load_attr,
-		pg_db_find_attr,
-		pg_db_next_attr
+		pg_db_next_que,
+		pg_db_del_attr_que,
+		NULL,
+		pg_db_reset_que
 	},
 	{ /* PBS_DB_JOBSCR */
-		pg_db_insert_jobscr,
-		NULL,
+		pg_db_save_jobscr,
 		NULL,
 		pg_db_load_jobscr,
+		NULL,
+		NULL,
+		NULL,
 		NULL,
 		NULL
 	},
 	{ /* PBS_DB_SCHED */
-		pg_db_insert_sched,
-		pg_db_update_sched,
+		pg_db_save_sched,
 		pg_db_delete_sched,
 		pg_db_load_sched,
 		pg_db_find_sched,
-		pg_db_next_sched
+		pg_db_next_sched,
+		pg_db_del_attr_sched,
+		NULL,
+		pg_db_reset_sched
 	},
+
 	{ /* PBS_DB_MOMINFO_TIME */
-		pg_db_insert_mominfo_tm,
-		pg_db_update_mominfo_tm,
+		pg_db_save_mominfo_tm,
 		NULL,
 		pg_db_load_mominfo_tm,
 		NULL,
-		NULL
+		NULL,
+		NULL,
+		NULL,
+		pg_db_reset_mominfo
 	}
 };
 
@@ -258,46 +267,6 @@ void
 pbs_db_cursor_close(pbs_db_conn_t *conn, void *state)
 {
 	pg_destroy_state(state);
-}
-
-/**
- * @brief
- *	Insert a new object into the database
- *
- * @param[in]	conn - Connected database handle
- * @param[in]	pbs_db_obj_info_t - Wrapper object that describes the object
- *		(and data) to insert
- *
- * @return      Error code
- * @retval	-1  - Failure
- * @retval       0  - success
- * @retval	 1 -  Success but no rows inserted
- *
- */
-int
-pbs_db_insert_obj(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj)
-{
-	return (db_fn_arr[obj->pbs_db_obj_type].pg_db_insert_obj(conn, obj));
-}
-
-/**
- * @brief
- *	Update an existing object into the database
- *
- * @param[in]	conn - Connected database handle
- * @param[in]	pbs_db_obj_info_t - Wrapper object that describes the object
- *		(and data) to update
- *
- * @return      Error code
- * @retval	-1  - Failure
- * @retval       0  - success
- * @retval	 1 -  Success but no rows updated
- *
- */
-int
-pbs_db_update_obj(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj)
-{
-	return (db_fn_arr[obj->pbs_db_obj_type].pg_db_update_obj(conn, obj));
 }
 
 /**
@@ -448,6 +417,7 @@ pbs_db_begin_trx(pbs_db_conn_t *conn, int isolation_level, int async)
 				return -1;
 			}
 			PQclear(res);
+			conn->conn_trx_async = 0; /* reset the variable immediately */
 		}
 		conn->conn_trx_rollback = 0; /* reset rollback flag at toplevel */
 	}
@@ -655,7 +625,7 @@ pbs_db_init_connection(char * host, int timeout, int have_db_control, int *failc
 	else
 		conn->conn_db_state = PBS_DB_DOWN; /* assume database to be down to start with */
 
-	conn->conn_result_format = 0; /* default result format is TEXT */
+	conn->conn_result_format = 1; /* default result format is binary */
 	conn->conn_info = pbs_get_connect_string(host, conn->conn_timeout, failcode, errmsg, len);
 	if (!conn->conn_info) {
 		free(conn->conn_data);
@@ -860,3 +830,76 @@ pbs_db_destroy_connection(pbs_db_conn_t *conn)
 	return;
 }
 
+/**
+ * @brief
+ *	Saves a new object into the database
+ *
+ * @param[in]	conn - Connected database handle
+ * @param[in]	pbs_db_obj_info_t - Wrapper object that describes the object (and data) to insert
+ * @param[in]	savetype - quick or full save
+ *
+ * @return      Error code
+ * @retval	-1  - Failure
+ * @retval	 0  - Success
+ * @retval	 1  - Success but no rows inserted
+ *
+ */
+int
+pbs_db_save_obj(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype)
+{
+	return (db_fn_arr[obj->pbs_db_obj_type].pg_db_save_obj(conn, obj, savetype));
+}
+
+/**
+ * @brief
+ *	Delete attributes of an object from the database
+ *
+ * @param[in]	conn - Connected database handle
+ * @param[in]	pbs_db_obj_info_t - Wrapper object that describes the object
+ * @param[in]	id - Object id
+ * @param[in]	attr_list - list of attributes to delete
+ *
+ * @return      Error code
+ * @retval      0  - success
+ * @retval     -1  - Failure
+ *
+ */
+int
+pbs_db_delete_attr_obj(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, void *obj_id, pbs_db_attr_list_t *attr_list) {
+	return (db_fn_arr[obj->pbs_db_obj_type].pg_db_del_attr_obj(conn, obj, obj_id, attr_list));
+}
+
+/**
+ * @brief
+ *	Add/update attributes of an object to the database
+ *
+ * @param[in]	conn - Connected database handle
+ * @param[in]	pbs_db_obj_info_t - Wrapper object that describes the object
+ * @param[in]	id - Object id
+ * @param[in]	attr_list - list of attributes to add/update
+ *
+ * @return      Error code
+ * @retval       0  - success
+ * @retval      -1  - Failure
+ *
+ */
+int
+pbs_db_add_update_attr_obj(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, void *obj_id, pbs_db_attr_list_t *attr_list) {
+	return (db_fn_arr[obj->pbs_db_obj_type].pg_db_add_update_attr_obj(conn, obj, obj_id, attr_list));
+}
+
+/**
+ * @brief
+ *	Frees allocate memory of an Object
+ *
+ * @param[in]	obj - db object
+ *
+ * @return None
+ *
+ */
+void
+pbs_db_reset_obj(pbs_db_obj_info_t *obj)
+{
+	db_fn_arr[obj->pbs_db_obj_type].pg_db_reset_obj(obj);
+
+}

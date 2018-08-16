@@ -56,469 +56,170 @@
  */
 #define INIT_BUF_SIZE 1000
 
-/**
- * @brief
- *	Load the attribute values from the resultset into the attribute object
- *  passed
- *
- * @param[in]	res - Postgres resultset obtained by executing a query
- * @param[out]	pattr - Attribute object that is populated with values from DB
- * @param[in]	row - The current row of the resultset that is to be used
- *
- *
- */
-static void
-load_attr(PGresult *res, pbs_db_attr_info_t *pattr, int row)
-{
-	strcpy(pattr->attr_name, PQgetvalue(res, row,
-		PQfnumber(res, "attr_name"))); /* name */
-	pattr->attr_resc = PQgetvalue(res, row,
-		PQfnumber(res, "attr_resource")); /* resource */
-	pattr->attr_value = PQgetvalue(res, row,
-		PQfnumber(res, "attr_value")); /* value */
-	pattr->attr_flags = strtol(PQgetvalue(res, row,
-		PQfnumber(res, "attr_flags")), NULL, 10); /* flags */
-}
+#define   TEXTOID   25
+
+struct str_data {
+	int32_t len;
+	char str[0];
+};
+
+/* Structure of array header to determine array type */
+struct pg_array {
+	int32_t ndim; /* Number of dimensions */
+	int32_t off; /* offset for data, removed by libpq */
+	Oid elemtype; /* type of element in the array */
+
+	/* First dimension */
+	int32_t size; /* Number of elements */
+	int32_t index; /* Index of first element */
+	/* data follows this portion */
+};
 
 /**
  * @brief
- *	Start a statement to insert multiple attributes in one DB call
+ *	Converts a postgres hstore(which is in the form of array) to attribute list.
  *
- * @param[in]	  conn - Database connection handle
- * @param[in]	  info - The database object to be inserted
- * @param[in/out] sql  - The buffer to use for creating the insert query
+ * @param[in]	raw_array - Array string which is in the form of postgres hstore
+ * @param[out]  attr_list - List of pbs_db_attr_list_t objects
  *
  * @return      Error code
- * @retval	-1 - Failure
- * @retval	 0 - Success
- *
+ * @retval	-1 - On Error
+ * @retval	 0 - On Success
+ * @retval	>1 - Number of attributes
  *
  */
 int
-pbs_db_insert_multiattr_start(pbs_db_conn_t *conn,
-	pbs_db_obj_info_t *info,
-	pbs_db_sql_buffer_t *sql)
+convert_array_to_db_attr_list(char *raw_array, pbs_db_attr_list_t *attr_list)
 {
-	pbs_db_attr_info_t *pattr = info->pbs_db_un.pbs_db_attr;
+	int i;
+	int j;
+	int rows;
+	char *p;
+	char *attr_name;
+	char *attr_value;
+	pbs_db_attr_info_t *attrs = NULL;
+	struct pg_array *array = (struct pg_array *) raw_array;
+	struct str_data *val = (struct str_data *)(raw_array + sizeof(struct pg_array));
 
-
-	if (resize_buff(sql, INIT_BUF_SIZE) != 0)
-		return -1;
-
-	strcpy(sql->buff, "insert into ");
-
-	if (pattr->parent_obj_type == PARENT_TYPE_JOB)
-		strcat(sql->buff, "pbs.job_attr");
-	else if (pattr->parent_obj_type == PARENT_TYPE_SERVER)
-		strcat(sql->buff, "pbs.server_attr");
-	else if (pattr->parent_obj_type == PARENT_TYPE_QUE_ALL)
-		strcat(sql->buff, "pbs.queue_attr");
-	else if (pattr->parent_obj_type == PARENT_TYPE_RESV)
-		strcat(sql->buff, "pbs.resv_attr");
-	else if (pattr->parent_obj_type == PARENT_TYPE_NODE)
-		strcat(sql->buff, "pbs.node_attr");
-	else if (pattr->parent_obj_type == PARENT_TYPE_SCHED)
-		strcat(sql->buff, "pbs.scheduler_attr");
-	strcat(sql->buff, " values");
-
-	return 0;
-}
-
-/**
- * @brief
- *	Add an attribute to the multi-attribute insert statment created eariler
- *
- * @param[in]	  conn - Database connection handle
- * @param[in]	  firsttime - Is it being called for the firsttime?
- * @param[in]	  info - The database object to be inserted
- * @param[in/out] sql  - The buffer to used to hold the final sql query that
- *			is being formed by calling this function multiple times.
- *
- * @param[in]	part - This buffer is used for hold the a "part" of the whole
- *			sql query. This is eventually added to the sql buffer.
- *			Thus, part is a "work" buffer, and "sql" hold the final
- *			sql formed, that would be executed at the end.
- *
- * @return      Error code
- * @retval	-1 - Failure
- * @retval	 0 - Success
- *
- */
-int
-pbs_db_insert_multiattr_add(pbs_db_conn_t *conn, pbs_db_obj_info_t *info,
-	int firsttime, pbs_db_sql_buffer_t *sql,
-	pbs_db_sql_buffer_t *part)
-{
-	pbs_db_attr_info_t *pattr = info->pbs_db_un.pbs_db_attr;
-	static char fmt[] = "%c ('%s', '%s', '%s', '%s', %d)";
-	char *val_escaped;
-
-	int size = sizeof(fmt) + 1;
-	int attr_str_len = 0;
-
-	val_escaped = pbs_db_escape_str(conn, pattr->attr_value);
-	if (!val_escaped)
-		return -1;
-
-	/*
-	 * +5 is for the flags, its integer and the size depends of the number
-	 * of digits after coversion to string, which we dont know yet, so
-	 * using a max of 5 digits
-	 */
-	attr_str_len = strlen(pattr->parent_id) + strlen(pattr->attr_name) +
-		strlen(pattr->attr_resc) + strlen(val_escaped) + 5;
-	size += attr_str_len;
-
-	if (resize_buff(part, attr_str_len) != 0) {
-		free(val_escaped);
-		return -1;
-	}
-	if (resize_buff(sql, size) != 0) {
-		free(val_escaped);
+	if (ntohl(array->ndim) != 1 || ntohl(array->elemtype) != TEXTOID) {
 		return -1;
 	}
 
-	part->buff[0]=0;
-	sprintf(part->buff, fmt,
-		(firsttime == 0)? ',':' ',
-		pattr->parent_id,
-		pattr->attr_name,
-		pattr->attr_resc,
-		val_escaped,
-		pattr->attr_flags);
-
-	free(val_escaped); /* done with val_escaped */
-
-	strcat(sql->buff, part->buff);
-	return 0;
-}
-
-/**
- * @brief
- *	Execute the multi-attr insert sql query that is created so far
- *
- * @param[in]	conn - Database connection handle
- * @param[in]	info - The database object to be inserted
- * @param[in]	sql  - The buffer to use for creating the insert query
- *
- * @return      Error code
- * @retval	-1 - Failure
- * @retval	 0 - Success
- *
- */
-int
-pbs_db_insert_multiattr_execute(pbs_db_conn_t *conn,
-	pbs_db_obj_info_t *info,
-	pbs_db_sql_buffer_t *sql)
-{
-	int rc;
-
-	if (resize_buff(sql, 1) != 0) {
-		return -1;
-	}
-	strcat(sql->buff, ";");
-	rc = pbs_db_execute_str(conn, sql->buff);
-	if (rc != 0)
-		return -1;
-	return 0;
-}
-
-/**
- * @brief
- *	Insert an attribute to the database
- *
- * @param[in]	conn - Database connection handle
- * @param[in]	info - The database object to be inserted
- *
- * @return      Error code
- * @retval	-1 - Failure
- * @retval	 0 - Success
- *
- */
-int
-pg_db_insert_attr(pbs_db_conn_t *conn, pbs_db_obj_info_t *info)
-{
-	pbs_db_attr_info_t *pattr = info->pbs_db_un.pbs_db_attr;
-
-	if (pattr->parent_obj_type == PARENT_TYPE_JOB)
-		strcpy(conn->conn_sql, STMT_INSERT_JOBATTR);
-	else if (pattr->parent_obj_type == PARENT_TYPE_SERVER)
-		strcpy(conn->conn_sql, STMT_INSERT_SVRATTR);
-	else if (pattr->parent_obj_type == PARENT_TYPE_QUE_ALL)
-		strcpy(conn->conn_sql, STMT_INSERT_QUEATTR);
-	else if (pattr->parent_obj_type == PARENT_TYPE_RESV)
-		strcpy(conn->conn_sql, STMT_INSERT_RESVATTR);
-	else if (pattr->parent_obj_type == PARENT_TYPE_NODE)
-		strcpy(conn->conn_sql, STMT_INSERT_NODEATTR);
-	else if (pattr->parent_obj_type == PARENT_TYPE_SCHED)
-		strcpy(conn->conn_sql, STMT_INSERT_SCHEDATTR);
-
-	LOAD_STR(conn, pattr->parent_id, 0);
-	LOAD_STR(conn, pattr->attr_name, 1);
-	LOAD_STR(conn, pattr->attr_resc, 2);
-	LOAD_STR(conn, pattr->attr_value, 3);
-	LOAD_INTEGER(conn, pattr->attr_flags, 4);
-
-	if (pg_db_cmd(conn, conn->conn_sql, 5) != 0)
+	rows = ntohl(array->size);
+	attrs = malloc(sizeof(pbs_db_attr_info_t)*rows/2);
+	if (!attrs)
 		return -1;
 
+	attr_list->attributes = attrs;
+
+	for (i=0, j = 0; j < rows; i++, j+=2) {
+		attr_name = val->str;
+		val = (struct str_data *)((char *) val->str + ntohl(val->len));
+
+		attr_value = val->str;
+		val = (struct str_data *)((char *) val->str + ntohl(val->len));
+
+		if (attr_name) {
+			attrs[i].attr_name[sizeof(attrs[i].attr_name) -1] = '\0';
+			strncpy(attrs[i].attr_name, attr_name, sizeof(attrs[i].attr_name));
+			if ((p = strchr(attrs[i].attr_name, '.'))) {
+				*p = '\0';
+				attrs[i].attr_resc[sizeof(attrs[i].attr_resc) -1] = '\0';
+				strncpy(attrs[i].attr_resc, p + 1, sizeof(attrs[i].attr_resc));
+			} else
+				attrs[i].attr_resc[0] = '\0';
+		} else
+			attrs[i].attr_name[0] = 0;
+
+		if (attr_value && (p = strchr(attr_value, '.'))) {
+			*p ='\0';
+			attrs[i].attr_flags = atol(attr_value);
+			attrs[i].attr_value = strdup(p + 1);
+		} else {
+			attrs[i].attr_flags = 0;
+			attrs[i].attr_value = NULL;
+		}
+	}
+	attr_list->attr_count = i;
 	return 0;
 }
 
 /**
  * @brief
- *	Update an attribute to the database
+ *	Converts an attribute list to string array which is in the form of postgres hstore.
  *
- * @param[in]	conn - Database connection handle
- * @param[in]	info - The database object to be inserted
+ * @param[in]	attr_list - List of pbs_db_attr_list_t objects
+ * @param[out]  raw_array - Array string which is in the form of postgres hstore
  *
  * @return      Error code
- * @retval	-1 - Failure
- * @retval	 0 - Success
- * @retval	 1 - Success but no rows updated
+ * @retval	-1 - On Error
+ * @retval	 0 - On Success
  *
  */
 int
-pg_db_update_attr(pbs_db_conn_t *conn, pbs_db_obj_info_t *info)
+convert_db_attr_list_to_array(char **raw_array, pbs_db_attr_list_t *attr_list)
 {
-	pbs_db_attr_info_t *pattr = info->pbs_db_un.pbs_db_attr;
-	int resc_flag = 0;
+	int i;
+	pbs_db_attr_info_t *attrs = attr_list->attributes;
+	struct pg_array *array;
+	int len = 0;
+	struct str_data *val = NULL;
+	int attr_val_len = 0;
 
-	/* if attribute has a non-null, non-empty resource, set resc_flag */
-	if (pattr->attr_resc != NULL && pattr->attr_resc[0] != 0)
-		resc_flag=1;
-
-	/*
-	 * When updating attributes there could be two cases
-	 * 1. The attribute does not have a resource
-	 * 2. The attribute has a resource
-	 *
-	 * They are two different types of statements. Please see
-	 * STMT_UPDATE_JOBATTR vs STMT_UPDATE_JOBATTR_RESC for a comparison.
-	 * So, when the attribute has a resource, use the variant of the SQL
-	 * statement that allows updating the resource, rather than the one
-	 * that allows only updating the value
-	 *
-	 */
-	if (pattr->parent_obj_type == PARENT_TYPE_JOB) {
-		if (resc_flag == 1)
-			strcpy(conn->conn_sql, STMT_UPDATE_JOBATTR_RESC);
-		else
-			strcpy(conn->conn_sql, STMT_UPDATE_JOBATTR);
-	} else if (pattr->parent_obj_type == PARENT_TYPE_SERVER) {
-		if (resc_flag == 1)
-			strcpy(conn->conn_sql, STMT_UPDATE_SVRATTR_RESC);
-		else
-			strcpy(conn->conn_sql, STMT_UPDATE_SVRATTR);
-	} else if (pattr->parent_obj_type == PARENT_TYPE_QUE_ALL) {
-		if (resc_flag == 1)
-			strcpy(conn->conn_sql, STMT_UPDATE_QUEATTR_RESC);
-		else
-			strcpy(conn->conn_sql, STMT_UPDATE_QUEATTR);
-	} else if (pattr->parent_obj_type == PARENT_TYPE_RESV) {
-		if (resc_flag == 1)
-			strcpy(conn->conn_sql, STMT_UPDATE_RESVATTR_RESC);
-		else
-			strcpy(conn->conn_sql, STMT_UPDATE_RESVATTR);
-	} else if (pattr->parent_obj_type == PARENT_TYPE_NODE) {
-		if (resc_flag == 1)
-			strcpy(conn->conn_sql, STMT_UPDATE_NODEATTR_RESC);
-		else
-			strcpy(conn->conn_sql, STMT_UPDATE_NODEATTR);
-	} else if (pattr->parent_obj_type == PARENT_TYPE_SCHED) {
-		if (resc_flag == 1)
-			strcpy(conn->conn_sql, STMT_UPDATE_SCHEDATTR_RESC);
-		else
-			strcpy(conn->conn_sql, STMT_UPDATE_SCHEDATTR);
+	len = sizeof(struct pg_array);
+	for (i = 0; i < attr_list->attr_count; i++) {
+		len += sizeof(int32_t) + PBS_MAXATTRNAME + PBS_MAXATTRRESC + 1; /* include space for dot */
+		attr_val_len = (attr_list->attributes[i].attr_value == NULL? 0:strlen(attr_list->attributes[i].attr_value));
+		len += sizeof(int32_t) + 3 + attr_val_len + 1; /* include space for dot */
 	}
 
-	LOAD_STR(conn, pattr->parent_id, 0);
-	LOAD_STR(conn, pattr->attr_name, 1);
-	LOAD_STR(conn, pattr->attr_resc, 2);
-	LOAD_STR(conn, pattr->attr_value, 3);
-	LOAD_INTEGER(conn, pattr->attr_flags, 4);
-	return (pg_db_cmd(conn, conn->conn_sql, 5));
-}
-
-/**
- * @brief
- *	Delete an attribute to the database
- *
- * @param[in]	conn - Database connection handle
- * @param[in]	info - The database object to be deleted
- *
- * @return      Error code
- * @retval	-1 - Failure
- * @retval	 0 - Success
- * @retval	 1 - Success but no rows deleted
- *
- */
-int
-pg_db_delete_attr(pbs_db_conn_t *conn, pbs_db_obj_info_t *info)
-{
-	pbs_db_attr_info_t *pattr = info->pbs_db_un.pbs_db_attr;
-	int resc_flag = 0;
-
-	/* if attribute has a non-null, non-empty resource, set resc_flag */
-	if (pattr->attr_resc != NULL && pattr->attr_resc[0] != 0)
-		resc_flag=1;
-
-	/*
-	 * When updating attributes there could be two cases
-	 * 1. The attribute does not have a resource
-	 * 2. The attribute has a resource
-	 *
-	 * They are two different types of statements. Please see
-	 * STMT_DELETE_JOBATTR_RESC vs STMT_DELETE_JOBATTR for a comparison.
-	 * So, when the attribute has a resource, use the variant of the SQL
-	 * statement that allows updating the resource, rather than the one
-	 * that allows only updating the value
-	 *
-	 */
-	if (pattr->parent_obj_type == PARENT_TYPE_JOB) {
-		if (resc_flag == 1)
-			strcpy(conn->conn_sql, STMT_DELETE_JOBATTR_RESC);
-		else
-			strcpy(conn->conn_sql, STMT_DELETE_JOBATTR);
-	} else if (pattr->parent_obj_type == PARENT_TYPE_SERVER) {
-		if (resc_flag == 1)
-			strcpy(conn->conn_sql, STMT_DELETE_SVRATTR_RESC);
-		else
-			strcpy(conn->conn_sql, STMT_DELETE_SVRATTR);
-	} else if (pattr->parent_obj_type == PARENT_TYPE_QUE_ALL) {
-		if (resc_flag == 1)
-			strcpy(conn->conn_sql, STMT_DELETE_QUEATTR_RESC);
-		else
-			strcpy(conn->conn_sql, STMT_DELETE_QUEATTR);
-	} else if (pattr->parent_obj_type == PARENT_TYPE_RESV) {
-		if (resc_flag == 1)
-			strcpy(conn->conn_sql, STMT_DELETE_RESVATTR_RESC);
-		else
-			strcpy(conn->conn_sql, STMT_DELETE_RESVATTR);
-	} else if (pattr->parent_obj_type == PARENT_TYPE_NODE) {
-		if (resc_flag == 1)
-			strcpy(conn->conn_sql, STMT_DELETE_NODEATTR_RESC);
-		else
-			strcpy(conn->conn_sql, STMT_DELETE_NODEATTR);
-	} else if (pattr->parent_obj_type == PARENT_TYPE_SCHED) {
-		if (resc_flag == 1)
-			strcpy(conn->conn_sql, STMT_DELETE_SCHEDATTR_RESC);
-		else
-			strcpy(conn->conn_sql, STMT_DELETE_SCHEDATTR);
-	}
-
-	LOAD_STR(conn, pattr->parent_id, 0);
-	LOAD_STR(conn, pattr->attr_name, 1);
-	if (resc_flag == 1) {
-		LOAD_STR(conn, pattr->attr_resc, 2);
-		return (pg_db_cmd(conn, conn->conn_sql, 3));
-	}
-
-	return (pg_db_cmd(conn, conn->conn_sql, 2));
-}
-
-/**
- * @brief
- *	Load an attribute from the database
- *
- * @param[in]	conn - Database connection handle
- * @param[in]	info - The database object to be loaded
- *
- * @return      Error code
- * @retval	-1 - Failure
- * @retval	 0 - Success
- * @retval	 1 -  Success but no rows loaded
- *
- */
-int
-pg_db_load_attr(pbs_db_conn_t *conn, pbs_db_obj_info_t *info)
-{
-	PGresult *res;
-	int rc;
-	pbs_db_attr_info_t *pattr = info->pbs_db_un.pbs_db_attr;
-
-	LOAD_STR(conn, pattr->parent_id, 0);
-	LOAD_STR(conn, pattr->attr_name, 1);
-
-	if ((rc = pg_db_query(conn, conn->conn_sql, 2, &res)) != 0)
-		return rc;
-
-	load_attr(res, pattr, 0);
-	return 0;
-}
-
-
-/**
- * @brief
- *	Find a set of attribute in the database (for a job/node/resv etc)
- *
- * @param[in]	conn - Database connection handle
- * @param[out]	st   - opaque state parameter that retains the cursor state
- * @param[in]	info - The database object to be found
- * @param[in]	opts - Options if any to use for the find query
- *
- * @return      Error code
- * @retval	-1 - Error
- * @retval	 0 - Success and > 0 rows were returned
- * @retval	 1 - Execution succeeded but statement did not return any rows
- *
- */
-int
-pg_db_find_attr(pbs_db_conn_t *conn, void* st,
-	pbs_db_obj_info_t *info,
-	pbs_db_query_options_t *opts)
-{
-	PGresult *res;
-	pg_query_state_t *state = (pg_query_state_t *) st;
-	pbs_db_attr_info_t *pattr = info->pbs_db_un.pbs_db_attr;
-	int rc;
-
-	if (!state)
+	array = malloc(len);
+	if (!array)
 		return -1;
+	array->ndim = htonl(1);
+	array->off = 0;
+	array->elemtype = htonl(TEXTOID);
+	array->size = htonl(attr_list->attr_count * 2);
+	array->index = htonl(1);
 
-	if (pattr->parent_obj_type == PARENT_TYPE_JOB)
-		strcpy(conn->conn_sql, STMT_SELECT_JOBATTR);
-	else if (pattr->parent_obj_type == PARENT_TYPE_SERVER)
-		strcpy(conn->conn_sql, STMT_SELECT_SVRATTR);
-	else if (pattr->parent_obj_type == PARENT_TYPE_QUE_ALL)
-		strcpy(conn->conn_sql, STMT_SELECT_QUEATTR);
-	else if (pattr->parent_obj_type == PARENT_TYPE_RESV)
-		strcpy(conn->conn_sql, STMT_SELECT_RESVATTR);
-	else if (pattr->parent_obj_type == PARENT_TYPE_NODE)
-		strcpy(conn->conn_sql, STMT_SELECT_NODEATTR);
-	else if (pattr->parent_obj_type == PARENT_TYPE_SCHED)
-		strcpy(conn->conn_sql, STMT_SELECT_SCHEDATTR);
+	/* point to data area */
+	val = (struct str_data *)((char *) array + sizeof(struct pg_array));
 
-	LOAD_STR(conn, pattr->parent_id, 0);
-	if ((rc = pg_db_query(conn, conn->conn_sql, 1, &res)) != 0)
-		return rc;
+	for (i = 0; i < attr_list->attr_count; ++i) {
+		sprintf(val->str, "%s.%s", attrs[i].attr_name, attrs[i].attr_resc);
+		val->len = htonl(strlen(val->str));
 
-	state->row = 0;
-	state->res = res;
-	state->count = PQntuples(res);
-	return 0;
+		val = (struct str_data *)(val->str + ntohl(val->len)); /* point to end */
+		sprintf(val->str, "%d.%s", attrs[i].attr_flags, attrs[i].attr_value == NULL ? "": attrs[i].attr_value);
+		val->len = htonl(strlen(val->str));
+
+		val = (struct str_data *)(val->str + ntohl(val->len)); /* point to end */
+	}
+	*raw_array = (char *) array;
+
+	return ((char *) val - (char *) array);
 }
 
 /**
  * @brief
- *	Get the next attribute from a resultset created in a previous find
+ *	Frees attribute list memory
  *
- * @param[in]	conn - Database connection handle
- * @param[out]	st - opaque state parameter that retains the cursor state
- * @param[out]	info - The database object to be found
+ * @param[in]	attr_list - List of pbs_db_attr_list_t objects
  *
- * @return      Error code
- *		(Even though this returns only 0 now, keeping it as int
- *			to support future change to return a failure)
- * @retval	 0 - Success
+ * @return      None
  *
  */
-int
-pg_db_next_attr(pbs_db_conn_t *conn, void* st,
-	pbs_db_obj_info_t *info)
+void
+free_db_attr_list(pbs_db_attr_list_t *attr_list)
 {
-	pg_query_state_t *state = (pg_query_state_t *) st;
-
-	load_attr(state->res, info->pbs_db_un.pbs_db_attr, state->row);
-	return 0;
+	if (attr_list->attributes != NULL) {
+		if (attr_list->attr_count > 0) {
+			int i;
+			for (i=0; i < attr_list->attr_count; i++) {
+				free(attr_list->attributes[i].attr_value);
+			}
+		}
+		free(attr_list->attributes);
+		attr_list->attributes = NULL;
+	}
 }

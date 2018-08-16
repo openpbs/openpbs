@@ -256,6 +256,10 @@ svr_migrate_data()
 		}
 		return 0;
 	}
+	if (db_maj_ver == 3 && db_min_ver == 0) {
+		/* Do nothing, schema has already taken care by query */
+		return 0;
+	}
 
 	/*
 	 * if the code fall through here, we did not recognize the schema
@@ -618,7 +622,7 @@ svr_migrate_data_from_fs(void)
 				jobscr.script = scrbuf;
 				obj.pbs_db_obj_type = PBS_DB_JOBSCR;
 				obj.pbs_db_un.pbs_db_jobscr = &jobscr;
-				if (pbs_db_insert_obj(svr_db_conn, &obj) != 0) {
+				if (pbs_db_save_obj(svr_db_conn, &obj, PBS_INSERT_DB) != 0) {
 					fprintf(stderr, "Could not save job script for jobid %s\n",
 						pjob->ji_qs.ji_jobid);
 					if (svr_db_conn->conn_db_err)

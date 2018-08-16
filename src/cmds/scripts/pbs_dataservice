@@ -427,7 +427,9 @@ case "$1" in
 	status)
 		check_status
 		ret=$?
-		echo "$msg"
+		if [ "$2" != "PBS" ]; then
+			echo "$msg"
+		fi
 		exit ${ret}
 		;;
 

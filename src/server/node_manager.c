@@ -5629,15 +5629,22 @@ write_single_node_state(struct pbsnode *np)
 	int     isoff;
 	int     hascomment;
 	int     hascurrentaoe;
-	pbs_db_attr_info_t attr;
-	pbs_db_obj_info_t obj;
+	pbs_db_attr_info_t attr;	
+	pbs_db_attr_list_t attr_list;
 	extern char	*get_vnode_state_str(char *);
+
+	pbs_db_conn_t *conn = (pbs_db_conn_t *) svr_db_conn;
+	pbs_db_obj_info_t obj;
+	obj.pbs_db_un.pbs_db_node = NULL;
+	obj.pbs_db_obj_type = PBS_DB_NODE;
+
+	attr_list.attr_count = 1;
+	attr_list.attributes = &attr;
+	memset(&attr, 0, sizeof(pbs_db_attr_info_t));
+
 
 	DBPRT(("write_single_node_state: entered\n"))
 
-	obj.pbs_db_obj_type = PBS_DB_ATTR;
-	obj.pbs_db_un.pbs_db_attr = &attr;
-	attr.parent_obj_type = PARENT_TYPE_NODE;
 	isoff = np->nd_state & (INUSE_OFFLINE | INUSE_OFFLINE_BY_MOM | INUSE_SLEEP);
 
 	if (isoff) {
@@ -5675,25 +5682,22 @@ write_single_node_state(struct pbsnode *np)
 	hascurrentaoe = (np->nd_attr[(int) ND_ATR_current_aoe].at_flags &
 		(ATR_VFLAG_SET | ATR_VFLAG_DEFLT)) == ATR_VFLAG_SET;
 
-	attr.parent_id = np->nd_name;
-	attr.attr_resc = "";
 	attr.attr_flags = 0;
-
+	strcpy(attr.attr_resc, "");
 	/* work on node state */
 	if (np->nd_modified & NODE_UPDATE_STATE) {
 		/* Write node state / comment to database */
 		strcpy(attr.attr_name, ATTR_NODE_state);
 		if (isoff) {
 			attr.attr_value = offline_str;
-			if (pbs_db_update_obj(svr_db_conn, &obj) == 1) {
-				if (pbs_db_insert_obj(svr_db_conn, &obj) != 0) {
-					log_err(errno, "write_single_node_state", "Failed to update node state");
-					return -1;
-				}
+			if (pbs_db_add_update_attr_obj(svr_db_conn, &obj, np->nd_name, &attr_list) != 0) {
+				log_err(errno, "write_single_node_state", "Failed to update node state");
+				return -1;
 			}
+
 		} else {
 			/* remove offline */
-			if (pbs_db_delete_obj(svr_db_conn, &obj) == -1) {
+			if (pbs_db_delete_attr_obj(svr_db_conn, &obj, np->nd_name, &attr_list) != 0) {
 				log_err(errno, "write_single_node_state", "Failed to delete node state");
 				return -1;
 			}
@@ -5705,15 +5709,13 @@ write_single_node_state(struct pbsnode *np)
 		strcpy(attr.attr_name, ATTR_comment);
 		if (hascomment) {
 			attr.attr_value = np->nd_attr[(int) ND_ATR_Comment].at_val.at_str;
-			if (pbs_db_update_obj(svr_db_conn, &obj) == 1) {
-				if (pbs_db_insert_obj(svr_db_conn, &obj) != 0) {
-					log_err(errno, "write_single_node_state", "Failed to update node comment");
-					return -1;
-				}
+			if (pbs_db_add_update_attr_obj(svr_db_conn, &obj, np->nd_name, &attr_list) != 0) {
+				log_err(errno, "write_single_node_state", "Failed to update node comment");
+				return -1;
 			}
 		} else {
 			/* remove comment attribute */
-			if (pbs_db_delete_obj(svr_db_conn, &obj) == -1) {
+			if (pbs_db_delete_attr_obj(conn, &obj, np->nd_name, &attr_list) != 0) {
 				log_err(errno, "write_single_node_state", "Failed to delete node comment");
 				return -1;
 			}
@@ -5725,15 +5727,13 @@ write_single_node_state(struct pbsnode *np)
 		strcpy(attr.attr_name, ATTR_NODE_current_aoe);
 		if (hascurrentaoe) {
 			attr.attr_value = np->nd_attr[(int) ND_ATR_current_aoe].at_val.at_str;
-			if (pbs_db_update_obj(svr_db_conn, &obj) == 1) {
-				if (pbs_db_insert_obj(svr_db_conn, &obj) != 0) {
-					log_err(errno, "write_single_node_state", "Failed to update node current_aoe");
-					return -1;
-				}
+			if (pbs_db_add_update_attr_obj(svr_db_conn, &obj, np->nd_name, &attr_list) != 0) {
+				log_err(errno, "write_single_node_state", "Failed to update node current_aoe");
+				return -1;
 			}
 		} else {
 			/* remove current_aoe attribute */
-			if (pbs_db_delete_obj(svr_db_conn, &obj) == -1) {
+			if (pbs_db_delete_attr_obj(conn, &obj, np->nd_name, &attr_list) != 0) {
 				log_err(errno, "write_single_node_state", "Failed to delete node current_aoe");
 				return -1;
 			}
@@ -5760,21 +5760,24 @@ write_single_node_state(struct pbsnode *np)
 int
 write_single_node_mom_attr(struct pbsnode *np)
 {
-	pbs_db_attr_info_t attr;
-	pbs_db_obj_info_t obj;
 	pbs_list_head     wrtattr;
 	svrattrl     *psvrl;
 
-	obj.pbs_db_obj_type = PBS_DB_ATTR;
-	obj.pbs_db_un.pbs_db_attr = &attr;
-	attr.parent_obj_type = PARENT_TYPE_NODE;
+	pbs_db_obj_info_t obj;
+	pbs_db_attr_info_t attr;
+	pbs_db_attr_list_t attr_list;
+	obj.pbs_db_un.pbs_db_node = NULL;
+	obj.pbs_db_obj_type = PBS_DB_NODE;
+
+	attr_list.attr_count = 1;
+	attr_list.attributes = &attr;
+	memset(&attr, 0, sizeof(pbs_db_attr_info_t));
 
 	if (np->nd_state & INUSE_DELETED)
 		return 0;
 
-	attr.parent_id = np->nd_name;
-	attr.attr_resc = "";
 	attr.attr_flags = 0;
+	strcpy(attr.attr_resc, "");
 
 	/* work on node state */
 	if (np->nd_modified & NODE_UPDATE_MOM) {
@@ -5790,17 +5793,15 @@ write_single_node_mom_attr(struct pbsnode *np)
 		if ((psvrl = (svrattrl *) GET_NEXT(wrtattr)) != NULL) {
 			attr.attr_value = psvrl->al_value;
 
-			if (pbs_db_update_obj(svr_db_conn, &obj) == 1) {
-				if (pbs_db_insert_obj(svr_db_conn, &obj) != 0) {
+			if (pbs_db_add_update_attr_obj(svr_db_conn, &obj, np->nd_name, &attr_list) != 0) {
 					log_err(errno, "write_single_node_mom_attr",
 							"Failed to update 'Mom' attribute");
 					return -1;
-				}
 			}
 			delete_link(&psvrl->al_link);
 			(void)free(psvrl);
 		}
-		node_save_db(np, NODE_SAVE_QUICK); /* save node qs so that nd_index is updated as well */
+		node_save_db(np); /* save node qs so that nd_index is updated as well */
 		np->nd_modified &= ~NODE_UPDATE_MOM;
 	}
 	return 0;

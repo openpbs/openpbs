@@ -62,7 +62,7 @@
 int
 pg_db_prepare_resv_sqls(pbs_db_conn_t *conn)
 {
-	sprintf(conn->conn_sql, "insert into pbs.resv ("
+	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "insert into pbs.resv ("
 		"ri_resvID, "
 		"ri_sv_name, "
 		"ri_queue, "
@@ -80,15 +80,16 @@ pg_db_prepare_resv_sqls(pbs_db_conn_t *conn)
 		"ri_fromsock, "
 		"ri_fromaddr, "
 		"ri_savetm, "
-		"ri_creattm "
+		"ri_creattm, "
+		"attributes "
 		") "
 		"values "
 		"($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, "
-		"$14, $15, $16, localtimestamp, localtimestamp)");
-	if (pg_prepare_stmt(conn, STMT_INSERT_RESV, conn->conn_sql, 16) != 0)
+		"$14, $15, $16, localtimestamp, localtimestamp, hstore($17::text[]))");
+	if (pg_prepare_stmt(conn, STMT_INSERT_RESV, conn->conn_sql, 17) != 0)
 		return -1;
 
-	sprintf(conn->conn_sql, "update pbs.resv set "
+	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "update pbs.resv set "
 		"ri_sv_name = $2, "
 		"ri_queue = $3, "
 		"ri_state = $4, "
@@ -104,12 +105,20 @@ pg_db_prepare_resv_sqls(pbs_db_conn_t *conn)
 		"ri_un_type = $14, "
 		"ri_fromsock = $15, "
 		"ri_fromaddr = $16, "
-		"ri_savetm = localtimestamp "
+		"ri_savetm = localtimestamp, "
+		"attributes = attributes || hstore($17::text[]) "
 		"where ri_resvID = $1");
-	if (pg_prepare_stmt(conn, STMT_UPDATE_RESV, conn->conn_sql, 16) != 0)
+	if (pg_prepare_stmt(conn, STMT_UPDATE_RESV, conn->conn_sql, 17) != 0)
 		return -1;
 
-	sprintf(conn->conn_sql, "select "
+	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "update pbs.resv set "
+		"ri_savetm = localtimestamp,"
+		"attributes = attributes - hstore($2::text[]) "
+		"where ri_resvID = $1");
+	if (pg_prepare_stmt(conn, STMT_REMOVE_RESVATTRS, conn->conn_sql, 2) != 0)
+		return -1;
+
+	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "select "
 		"ri_resvID, "
 		"ri_sv_name, "
 		"ri_queue, "
@@ -127,66 +136,13 @@ pg_db_prepare_resv_sqls(pbs_db_conn_t *conn)
 		"ri_fromsock, "
 		"ri_fromaddr, "
 		"extract(epoch from ri_savetm)::bigint as ri_savetm, "
-		"extract(epoch from ri_creattm)::bigint as ri_creattm "
+		"extract(epoch from ri_creattm)::bigint as ri_creattm, "
+		"hstore_to_array(attributes) as attributes "
 		"from pbs.resv where ri_resvid = $1");
 	if (pg_prepare_stmt(conn, STMT_SELECT_RESV, conn->conn_sql, 1) != 0)
 		return -1;
 
-	sprintf(conn->conn_sql, "insert into "
-		"pbs.resv_attr "
-		"(ri_resvid, "
-		"attr_name, "
-		"attr_resource, "
-		"attr_value, "
-		"attr_flags) "
-		"values "
-		"($1, $2, $3, $4, $5)");
-	if (pg_prepare_stmt(conn, STMT_INSERT_RESVATTR, conn->conn_sql, 5) != 0)
-		return -1;
-
-	sprintf(conn->conn_sql, "update pbs.resv_attr set "
-		"attr_resource = $3, "
-		"attr_value = $4, "
-		"attr_flags = $5 "
-		"where ri_resvid = $1 "
-		"and attr_name = $2");
-	if (pg_prepare_stmt(conn, STMT_UPDATE_RESVATTR, conn->conn_sql, 5) != 0)
-		return -1;
-
-	sprintf(conn->conn_sql, "update pbs.resv_attr set "
-		"attr_value = $4, "
-		"attr_flags = $5 "
-		"where ri_resvid = $1 "
-		"and attr_name = $2 "
-		"and attr_resource = $3");
-	if (pg_prepare_stmt(conn, STMT_UPDATE_RESVATTR_RESC, conn->conn_sql, 5) != 0)
-		return -1;
-
-	sprintf(conn->conn_sql, "delete from pbs.resv_attr "
-		"where ri_resvid = $1 "
-		"and attr_name = $2");
-	if (pg_prepare_stmt(conn, STMT_DELETE_RESVATTR, conn->conn_sql, 2) != 0)
-		return -1;
-
-	sprintf(conn->conn_sql, "delete from pbs.resv_attr "
-		"where ri_resvid = $1 "
-		"and attr_name = $2 "
-		"and attr_resource = $3");
-	if (pg_prepare_stmt(conn, STMT_DELETE_RESVATTR_RESC, conn->conn_sql, 3) != 0)
-		return -1;
-
-	sprintf(conn->conn_sql,
-		"select ri_resvid, "
-		"attr_name, "
-		"attr_resource, "
-		"attr_value, "
-		"attr_flags "
-		"from pbs.resv_attr "
-		"where ri_resvid = $1");
-	if (pg_prepare_stmt(conn, STMT_SELECT_RESVATTR, conn->conn_sql, 1) != 0)
-		return -1;
-
-	sprintf(conn->conn_sql, "select "
+	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "select "
 		"ri_resvID, "
 		"ri_sv_name, "
 		"ri_queue, "
@@ -204,14 +160,15 @@ pg_db_prepare_resv_sqls(pbs_db_conn_t *conn)
 		"ri_fromsock, "
 		"ri_fromaddr, "
 		"extract(epoch from ri_savetm)::bigint as ri_savetm, "
-		"extract(epoch from ri_creattm)::bigint as ri_creattm "
+		"extract(epoch from ri_creattm)::bigint as ri_creattm, "
+		"hstore_to_array(attributes) as attributes "
 		"from pbs.resv "
 		"order by ri_creattm");
 	if (pg_prepare_stmt(conn, STMT_FINDRESVS_ORDBY_CREATTM,
 		conn->conn_sql, 0) != 0)
 		return -1;
 
-	sprintf(conn->conn_sql, "delete from pbs.resv where ri_resvid = $1");
+	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "delete from pbs.resv where ri_resvid = $1");
 	if (pg_prepare_stmt(conn, STMT_DELETE_RESV, conn->conn_sql, 1) != 0)
 		return -1;
 
@@ -226,46 +183,67 @@ pg_db_prepare_resv_sqls(pbs_db_conn_t *conn)
  * @param[in]	presv  - resv object to load data into
  * @param[in]	row - The current row to load within the resultset
  *
+ * @return      Error code
+ * @retval	-1 - On Error
+ * @retval	 0 - On Success
+ * @retval	>1 - Number of attributes
  */
-static void
+static int
 load_resv(PGresult *res, pbs_db_resv_info_t *presv, int row)
 {
-	strcpy(presv->ri_resvid, PQgetvalue(res, row,
-		PQfnumber(res, "ri_resvID")));
-	strcpy(presv->ri_queue, PQgetvalue(res, row,
-		PQfnumber(res, "ri_queue")));
-	presv->ri_state = strtol(PQgetvalue(res, row,
-		PQfnumber(res, "ri_state")), NULL, 10);
-	presv->ri_substate = strtol(PQgetvalue(res, row,
-		PQfnumber(res, "ri_substate")), NULL, 10);
-	presv->ri_type = strtol(PQgetvalue(res, row,
-		PQfnumber(res, "ri_type")), NULL, 10);
-	presv->ri_stime = strtoll(PQgetvalue(res, row,
-		PQfnumber(res, "ri_stime")), NULL, 10);
-	presv->ri_etime = strtoll(PQgetvalue(res, row,
-		PQfnumber(res, "ri_etime")), NULL, 10);
-	presv->ri_duration = strtoll(PQgetvalue(res, row,
-		PQfnumber(res, "ri_duration")), NULL, 10);
-	presv->ri_tactive = strtol(PQgetvalue(res, row,
-		PQfnumber(res, "ri_tactive")), NULL, 10);
-	presv->ri_svrflags = strtol(PQgetvalue(res, row,
-		PQfnumber(res, "ri_svrflags")), NULL, 10);
-	presv->ri_numattr = strtol(PQgetvalue(res, row,
-		PQfnumber(res, "ri_numattr")), NULL, 10);
-	presv->ri_resvTag = strtol(PQgetvalue(res, row,
-		PQfnumber(res, "ri_resvTag")), NULL, 10);
-	presv->ri_un_type = strtol(PQgetvalue(res, row,
-		PQfnumber(res, "ri_un_type")), NULL, 10);
-	presv->ri_fromsock = strtol(PQgetvalue(res, row,
-		PQfnumber(res, "ri_fromsock")), NULL, 10);
-	presv->ri_fromaddr = strtoll(PQgetvalue(res, row,
-		PQfnumber(res, "ri_fromaddr")), NULL, 10);
-	strcpy(presv->ri_sv_name, PQgetvalue(res, row,
-		PQfnumber(res, "ri_sv_name")));
-	presv->ri_savetm = strtoll(PQgetvalue(res, row,
-		PQfnumber(res, "ri_savetm")), NULL, 10);
-	presv->ri_creattm = strtoll(PQgetvalue(res, row,
-		PQfnumber(res, "ri_creattm")), NULL, 10);
+	char *raw_array;
+	static int ri_resvid_fnum, ri_queue_fnum, ri_state_fnum, ri_substate_fnum, ri_type_fnum, ri_stime_fnum,
+	ri_etime_fnum, ri_duration_fnum, ri_tactive_fnum, ri_svrflags_fnum, ri_numattr_fnum, ri_resvTag_fnum,
+	ri_un_type_fnum, ri_fromsock_fnum, ri_fromaddr_fnum, ri_sv_name_fnum, ri_savetm_fnum, ri_creattm_fnum,
+	attributes_fnum;
+
+	static int fnums_inited = 0;
+
+	if (fnums_inited == 0) {
+		ri_resvid_fnum = PQfnumber(res, "ri_resvID");
+		ri_sv_name_fnum = PQfnumber(res, "ri_sv_name");
+		ri_queue_fnum = PQfnumber(res, "ri_queue");
+		ri_state_fnum = PQfnumber(res, "ri_state");
+		ri_substate_fnum = PQfnumber(res, "ri_substate");
+		ri_type_fnum = PQfnumber(res, "ri_type");
+		ri_stime_fnum = PQfnumber(res, "ri_stime");
+		ri_etime_fnum = PQfnumber(res, "ri_etime");
+		ri_duration_fnum = PQfnumber(res, "ri_duration");
+		ri_tactive_fnum = PQfnumber(res, "ri_tactive");
+		ri_svrflags_fnum = PQfnumber(res, "ri_svrflags");
+		ri_numattr_fnum = PQfnumber(res, "ri_numattr");
+		ri_resvTag_fnum = PQfnumber(res, "ri_resvTag");
+		ri_un_type_fnum = PQfnumber(res, "ri_un_type");
+		ri_fromsock_fnum = PQfnumber(res, "ri_fromsock");
+		ri_fromaddr_fnum = PQfnumber(res, "ri_fromaddr");
+		ri_savetm_fnum = PQfnumber(res, "ri_savetm");
+		ri_creattm_fnum = PQfnumber(res, "ri_creattm");
+		attributes_fnum = PQfnumber(res, "attributes");
+		fnums_inited = 1;
+	}
+
+	GET_PARAM_STR(res, row, presv->ri_resvid, ri_resvid_fnum);
+	GET_PARAM_STR(res, row, presv->ri_sv_name, ri_sv_name_fnum);
+	GET_PARAM_STR(res, row, presv->ri_queue, ri_queue_fnum);
+	GET_PARAM_INTEGER(res, row, presv->ri_state, ri_state_fnum);
+	GET_PARAM_INTEGER(res, row, presv->ri_substate, ri_substate_fnum);
+	GET_PARAM_INTEGER(res, row, presv->ri_type, ri_type_fnum);
+	GET_PARAM_BIGINT(res, row, presv->ri_stime, ri_stime_fnum);
+	GET_PARAM_BIGINT(res, row, presv->ri_etime, ri_etime_fnum);
+	GET_PARAM_BIGINT(res, row, presv->ri_duration, ri_duration_fnum);
+	GET_PARAM_INTEGER(res, row, presv->ri_tactive, ri_tactive_fnum);
+	GET_PARAM_INTEGER(res, row, presv->ri_svrflags, ri_svrflags_fnum);
+	GET_PARAM_INTEGER(res, row, presv->ri_numattr, ri_numattr_fnum);
+	GET_PARAM_INTEGER(res, row, presv->ri_resvTag, ri_resvTag_fnum);
+	GET_PARAM_INTEGER(res, row, presv->ri_un_type, ri_un_type_fnum);
+	GET_PARAM_INTEGER(res, row, presv->ri_fromsock, ri_fromsock_fnum);
+	GET_PARAM_BIGINT(res, row, presv->ri_fromaddr, ri_fromaddr_fnum);
+	GET_PARAM_BIGINT(res, row, presv->ri_savetm, ri_savetm_fnum);
+	GET_PARAM_BIGINT(res, row, presv->ri_creattm, ri_creattm_fnum);
+	GET_PARAM_BIN(res, row, raw_array, attributes_fnum);
+
+	/* convert attributes from postgres raw array format */
+	return (convert_array_to_db_attr_list(raw_array, &presv->attr_list));
 }
 
 /**
@@ -281,69 +259,55 @@ load_resv(PGresult *res, pbs_db_resv_info_t *presv, int row)
  *
  */
 int
-pg_db_insert_resv(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj)
+pg_db_save_resv(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype)
 {
 	pbs_db_resv_info_t *presv = obj->pbs_db_un.pbs_db_resv;
+	char *stmt;
+	int params;
+	char *raw_array = NULL;
 
-	LOAD_STR(conn, presv->ri_resvid, 0);
-	LOAD_STR(conn, presv->ri_sv_name, 1);
-	LOAD_STR(conn, presv->ri_queue, 2);
-	LOAD_INTEGER(conn, presv->ri_state, 3);
-	LOAD_INTEGER(conn, presv->ri_substate, 4);
-	LOAD_INTEGER(conn, presv->ri_type, 5);
-	LOAD_BIGINT(conn, presv->ri_stime, 6);
-	LOAD_BIGINT(conn, presv->ri_etime, 7);
-	LOAD_BIGINT(conn, presv->ri_duration, 8);
-	LOAD_INTEGER(conn, presv->ri_tactive, 9);
-	LOAD_INTEGER(conn, presv->ri_svrflags, 10);
-	LOAD_INTEGER(conn, presv->ri_numattr, 11);
-	LOAD_INTEGER(conn, presv->ri_resvTag, 12);
-	LOAD_INTEGER(conn, presv->ri_un_type, 13);
-	LOAD_INTEGER(conn, presv->ri_fromsock, 14);
-	LOAD_BIGINT(conn, presv->ri_fromaddr, 15);
+	SET_PARAM_STR(conn, presv->ri_resvid, 0);
+	SET_PARAM_STR(conn, presv->ri_sv_name, 1);
+	SET_PARAM_STR(conn, presv->ri_queue, 2);
+	SET_PARAM_INTEGER(conn, presv->ri_state, 3);
+	SET_PARAM_INTEGER(conn, presv->ri_substate, 4);
+	SET_PARAM_INTEGER(conn, presv->ri_type, 5);
+	SET_PARAM_BIGINT(conn, presv->ri_stime, 6);
+	SET_PARAM_BIGINT(conn, presv->ri_etime, 7);
+	SET_PARAM_BIGINT(conn, presv->ri_duration, 8);
+	SET_PARAM_INTEGER(conn, presv->ri_tactive, 9);
+	SET_PARAM_INTEGER(conn, presv->ri_svrflags, 10);
+	SET_PARAM_INTEGER(conn, presv->ri_numattr, 11);
+	SET_PARAM_INTEGER(conn, presv->ri_resvTag, 12);
+	SET_PARAM_INTEGER(conn, presv->ri_un_type, 13);
+	SET_PARAM_INTEGER(conn, presv->ri_fromsock, 14);
+	SET_PARAM_BIGINT(conn, presv->ri_fromaddr, 15);
 
-	if (pg_db_cmd(conn, STMT_INSERT_RESV, 16) != 0)
+	if (savetype == PBS_UPDATE_DB_QUICK) {
+		params = 16;
+	} else {
+		int len = 0;
+		/* convert attributes to postgres raw array format */
+		if ((len = convert_db_attr_list_to_array(&raw_array, &presv->attr_list)) <= 0)
+			return -1;
+
+		SET_PARAM_BIN(conn, raw_array, len, 16);
+		params = 17;
+	}
+
+	if (savetype == PBS_UPDATE_DB_FULL)
+		stmt = STMT_UPDATE_RESV;
+	else
+		stmt = STMT_INSERT_RESV;
+
+	if (pg_db_cmd(conn, stmt, params) != 0) {
+		free(raw_array);
 		return -1;
+	}
+
+	free(raw_array);
 
 	return 0;
-}
-
-/**
- * @brief
- *	Update resv data into the database
- *
- * @param[in]	conn - Connection handle
- * @param[in]	obj  - Information of resv to be updated
- *
- * @return      Error code
- * @retval	-1 - Failure
- * @retval	 0 - Success
- * @retval	 1 - Success but no rows updated
- *
- */
-int
-pg_db_update_resv(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj)
-{
-	pbs_db_resv_info_t *presv = obj->pbs_db_un.pbs_db_resv;
-
-	LOAD_STR(conn, presv->ri_resvid, 0);
-	LOAD_STR(conn, presv->ri_sv_name, 1);
-	LOAD_STR(conn, presv->ri_queue, 2);
-	LOAD_INTEGER(conn, presv->ri_state, 3);
-	LOAD_INTEGER(conn, presv->ri_substate, 4);
-	LOAD_INTEGER(conn, presv->ri_type, 5);
-	LOAD_BIGINT(conn, presv->ri_stime, 6);
-	LOAD_BIGINT(conn, presv->ri_etime, 7);
-	LOAD_BIGINT(conn, presv->ri_duration, 8);
-	LOAD_INTEGER(conn, presv->ri_tactive, 9);
-	LOAD_INTEGER(conn, presv->ri_svrflags, 10);
-	LOAD_INTEGER(conn, presv->ri_numattr, 11);
-	LOAD_INTEGER(conn, presv->ri_resvTag, 12);
-	LOAD_INTEGER(conn, presv->ri_un_type, 13);
-	LOAD_INTEGER(conn, presv->ri_fromsock, 14);
-	LOAD_BIGINT(conn, presv->ri_fromaddr, 15);
-
-	return (pg_db_cmd(conn, STMT_UPDATE_RESV, 16));
 }
 
 /**
@@ -366,16 +330,15 @@ pg_db_load_resv(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj)
 	PGresult *res;
 	int rc;
 
-	LOAD_STR(conn, presv->ri_resvid, 0);
+	SET_PARAM_STR(conn, presv->ri_resvid, 0);
 
 	if ((rc = pg_db_query(conn, STMT_SELECT_RESV, 1, &res)) != 0)
 		return rc;
 
-	/* get the other fields */
-	load_resv(res, presv, 0);
+	rc = load_resv(res, presv, 0);
 
 	PQclear(res);
-	return 0;
+	return rc;
 }
 
 /**
@@ -437,8 +400,7 @@ pg_db_next_resv(pbs_db_conn_t* conn, void* st, pbs_db_obj_info_t* obj)
 {
 	pg_query_state_t *state = (pg_query_state_t *) st;
 
-	load_resv(state->res, obj->pbs_db_un.pbs_db_resv, state->row);
-	return 0;
+	return (load_resv(state->res, obj->pbs_db_un.pbs_db_resv, state->row));
 }
 
 /**
@@ -458,6 +420,57 @@ int
 pg_db_delete_resv(pbs_db_conn_t *conn, pbs_db_obj_info_t* obj)
 {
 	pbs_db_resv_info_t *presv = obj->pbs_db_un.pbs_db_resv;
-	LOAD_STR(conn, presv->ri_resvid, 0);
+	SET_PARAM_STR(conn, presv->ri_resvid, 0);
 	return (pg_db_cmd(conn, STMT_DELETE_RESV, 1));
+}
+
+
+/**
+ * @brief
+ *	Deletes attributes of a Resv
+ *
+ * @param[in]	conn - Connection handle
+ * @param[in]	obj  - Resv information
+ * @param[in]	obj_id  - Resv id
+ * @param[in]	attr_list - List of attributes
+ *
+ * @return      Error code
+ * @retval	 0 - Success
+ * @retval	-1 - On Failure
+ *
+ */
+int
+pg_db_del_attr_resv(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, void *obj_id, pbs_db_attr_list_t *attr_list)
+{
+	char *raw_array = NULL;
+	int len = 0;
+
+	if ((len = convert_db_attr_list_to_array(&raw_array, attr_list)) <= 0)
+		return -1;
+	SET_PARAM_STR(conn, obj_id, 0);
+
+	SET_PARAM_BIN(conn, raw_array, len, 1);
+
+	if (pg_db_cmd(conn, STMT_REMOVE_RESVATTRS, 2) != 0)
+		return -1;
+
+	free(raw_array);
+
+	return 0;
+}
+
+
+/**
+ * @brief
+ *	Frees allocate memory of an Object
+ *
+ * @param[in]	obj - pbs_db_obj_info_t containing the DB object
+ *
+ * @return None
+ *
+ */
+void
+pg_db_reset_resv(pbs_db_obj_info_t *obj)
+{
+	free_db_attr_list(&(obj->pbs_db_un.pbs_db_resv->attr_list));
 }

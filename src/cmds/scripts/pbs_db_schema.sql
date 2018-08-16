@@ -43,7 +43,7 @@
 
 drop schema pbs cascade; -- Drop any existing schema called pbs
 create schema pbs;	 -- Create a new schema called pbs
-
+create extension hstore; -- Create the hstore extension if it does not exit
 ---------------------- VERSION -----------------------------
 
 /*
@@ -54,18 +54,7 @@ CREATE TABLE pbs.info (
     pbs_schema_version TEXT 		NOT NULL
 );
 
-INSERT INTO pbs.info values('1.3.0'); /* schema version */
-
-/*
- * Sequence pbs.svr_id_seq is used to create svr_ids for new server entries.
- * The svr hostname (sv_hostname column) is associated with a 
- * sever_id (sv_name) column. This column serves as the id for the server, 
- * used for all subsequent queries. These "id" values are created from the
- * following sequence generator whenever a new server database is created
- * (typically at new installation).
- */
-CREATE SEQUENCE pbs.svr_id_seq;
-
+INSERT INTO pbs.info values('1.4.0'); /* schema version */
 
 ---------------------- SERVER ------------------------------
 
@@ -73,41 +62,18 @@ CREATE SEQUENCE pbs.svr_id_seq;
  * Table pbs.server holds server instance information
  */
 CREATE TABLE pbs.server (
-    sv_name			TEXT		NOT NULL, /* the server id value */
+    sv_name		TEXT		NOT NULL, /* the server id value */
     sv_hostname		TEXT		NOT NULL, /* the actual server hostname - can change */
     sv_numjobs		INTEGER		NOT NULL,
-    sv_numque			INTEGER		NOT NULL,
-    sv_jobidnumber		BIGINT		NOT NULL,
+    sv_numque		INTEGER		NOT NULL,
+    sv_jobidnumber	BIGINT		NOT NULL,
     sv_svraddr		BIGINT		NOT NULL,
     sv_svrport		INTEGER		NOT NULL,
-    sv_savetm			TIMESTAMP	NOT NULL,
+    sv_savetm		TIMESTAMP	NOT NULL,
     sv_creattm		TIMESTAMP	NOT NULL,
+    attributes		hstore		NOT NULL DEFAULT '',	
     CONSTRAINT server_pk PRIMARY KEY (sv_name)
 );
-
-
-/*
- * Table pbs.svr_attr holds server attribute information
- */
-CREATE TABLE pbs.server_attr (
-    sv_name		TEXT		NOT NULL,
-    attr_name		TEXT		NOT NULL,
-    attr_resource	TEXT,
-    attr_value		TEXT,
-    attr_flags		INTEGER		NOT NULL
-);
-CREATE INDEX svr_attr_idx ON pbs.server_attr (sv_name, attr_name);
-
-/*
- * Foreign key constraint between server and its attributes
- */
-ALTER TABLE pbs.server_attr ADD CONSTRAINT server_attr_fk
-FOREIGN KEY (sv_name)
-REFERENCES pbs.server (sv_name)
-ON DELETE CASCADE
-ON UPDATE NO ACTION
-NOT DEFERRABLE;
-
 ---------------------- SCHED -------------------------------
 
 /*
@@ -118,31 +84,9 @@ CREATE TABLE pbs.scheduler (
     sched_sv_name	TEXT		NOT NULL,
     sched_savetm	TIMESTAMP	NOT NULL,
     sched_creattm	TIMESTAMP	NOT NULL,
+    attributes		hstore		NOT NULL default '',	
     CONSTRAINT scheduler_pk PRIMARY KEY (sched_name)
 );
-
-
-/*
- * Table pbs.svr_attr holds scheduler attribute information
- */
-CREATE TABLE pbs.scheduler_attr (
-    sched_name		TEXT		NOT NULL,
-    attr_name		TEXT		NOT NULL,
-    attr_resource	TEXT,
-    attr_value		TEXT,
-    attr_flags		INTEGER		NOT NULL
-);
-CREATE INDEX sched_attr_idx ON pbs.scheduler_attr (sched_name, attr_name);
-
-/*
- * Foreign key constraint between scheduler and its attributes
- */
-ALTER TABLE pbs.scheduler_attr ADD CONSTRAINT scheduler_attr_fk
-FOREIGN KEY (sched_name)
-REFERENCES pbs.scheduler (sched_name)
-ON DELETE CASCADE
-ON UPDATE NO ACTION
-NOT DEFERRABLE;
 
 ---------------------- NODE --------------------------------
 
@@ -168,36 +112,12 @@ CREATE TABLE pbs.node (
     nd_index		INTEGER		NOT NULL,
     nd_savetm		TIMESTAMP	NOT NULL,
     nd_creattm		TIMESTAMP	NOT NULL,
+    attributes		hstore		NOT NULL default '',
     CONSTRAINT pbsnode_pk PRIMARY KEY (nd_name)
 );
 CREATE INDEX nd_idx_cr
 ON pbs.node
 ( nd_creattm );
-
-
-/*
- * Table pbs.node_attr holds node_attribute information
- */
-CREATE TABLE pbs.node_attr (
-    nd_name		TEXT		NOT NULL,
-    attr_name		TEXT		NOT NULL,
-    attr_resource	TEXT,
-    attr_value		TEXT,
-    attr_flags		INTEGER		NOT NULL
-);
-CREATE INDEX node_attr_idx ON pbs.node_attr (nd_name, attr_name);
-
-
-/*
- * Foreign key constraint between node and its attributes
- */
-ALTER TABLE pbs.node_attr ADD CONSTRAINT node_attr_fk
-FOREIGN KEY (nd_name)
-REFERENCES pbs.node (nd_name)
-ON DELETE CASCADE
-ON UPDATE NO ACTION
-NOT DEFERRABLE;
-
 
 ---------------------- QUEUE -------------------------------
 
@@ -210,31 +130,12 @@ CREATE TABLE pbs.queue (
     qu_type		INTEGER		NOT NULL,
     qu_ctime		TIMESTAMP	NOT NULL,
     qu_mtime		TIMESTAMP	NOT NULL,
+    attributes		hstore		NOT NULL default '',
     CONSTRAINT queue_pk PRIMARY KEY (qu_name)
 );
 CREATE INDEX que_idx_cr
 ON pbs.queue
 ( qu_ctime );
-
-
-CREATE TABLE pbs.queue_attr (
-    qu_name		TEXT		NOT NULL,
-    attr_name		TEXT		NOT NULL,
-    attr_resource	TEXT,
-    attr_value		TEXT,
-    attr_flags		INTEGER		NOT NULL
-);
-CREATE INDEX queue_attr_idx ON pbs.queue_attr (qu_name, attr_name);
-
-/*
- * Foreign key constraint between queue and its attributes
- */
-ALTER TABLE pbs.queue_attr ADD CONSTRAINT queue_attr_fk
-FOREIGN KEY (qu_name)
-REFERENCES pbs.queue (qu_name)
-ON DELETE CASCADE
-ON UPDATE NO ACTION
-NOT DEFERRABLE;
 
 
 /*
@@ -271,31 +172,9 @@ CREATE TABLE pbs.resv (
     ri_fromaddr		BIGINT		NOT NULL,
     ri_savetm		TIMESTAMP	NOT NULL,
     ri_creattm		TIMESTAMP	NOT NULL,
+    attributes		hstore		NOT NULL default '',
     CONSTRAINT resv_pk PRIMARY KEY (ri_resvID)
 );
-
-CREATE INDEX resv_idx_cr
-ON pbs.resv
-( ri_creattm );
-
-CREATE TABLE pbs.resv_attr (
-    ri_resvID		TEXT		NOT NULL,
-    attr_name		TEXT		NOT NULL,
-    attr_resource	TEXT,
-    attr_value		TEXT,
-    attr_flags		INTEGER		NOT NULL
-);
-CREATE INDEX resv_attr_idx ON pbs.resv_attr (ri_resvID, attr_name);
-
-/*
- * Foreign key constraint between resv and its attributes
- */
-ALTER TABLE pbs.resv_attr ADD CONSTRAINT resv_attr_fk
-FOREIGN KEY (ri_resvID)
-REFERENCES pbs.resv (ri_resvID)
-ON DELETE CASCADE
-ON UPDATE NO ACTION
-NOT DEFERRABLE;
 
 /*
  * Foreign key constraint between resv and parent server
@@ -338,11 +217,10 @@ CREATE TABLE pbs.job (
     ji_credtype		INTEGER,
     ji_qrank		INTEGER		NOT NULL,
     ji_savetm		TIMESTAMP	NOT NULL,
-    ji_creattm		TIMESTAMP	NOT NULL
+    ji_creattm		TIMESTAMP	NOT NULL,
+    attributes		hstore		NOT NULL default '',
+    CONSTRAINT jobid_pk PRIMARY KEY (ji_jobid)
 );
-CREATE INDEX ji_jobid_idx
-ON pbs.job
-( ji_jobid );
 
 CREATE INDEX job_rank_idx
 ON pbs.job
@@ -356,20 +234,7 @@ CREATE TABLE pbs.job_scr (
     ji_jobid		TEXT		NOT NULL,
     script		TEXT
 );
-CREATE INDEX job_src_idx ON pbs.job_scr (ji_jobid);
-
-
-/*
- * Table pbs.job_attr holds the job attributes 
- */
-CREATE TABLE pbs.job_attr (
-    ji_jobid		TEXT		NOT NULL,
-    attr_name		TEXT		NOT NULL,
-    attr_resource	TEXT,
-    attr_value		TEXT,
-    attr_flags		INTEGER		NOT NULL
-);
-CREATE INDEX job_attr_idx ON pbs.job_attr (ji_jobid, attr_name, attr_resource);
+CREATE INDEX job_scr_idx ON pbs.job_scr (ji_jobid);
 
 ---------------------- END OF SCHEMA -----------------------
 

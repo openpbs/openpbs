@@ -216,7 +216,7 @@ extern void   on_job_rerun(struct work_task *);
 extern int resize_prov_table(int newsize);
 extern void offline_all_provisioning_vnodes(void);
 extern void stop_db();
-
+extern job * job_recov_db_spl(pbs_db_job_info_t *dbjob);
 /* Private functions in this file */
 
 static void  catch_child(int);
@@ -379,10 +379,10 @@ pbsd_init(int type)
 	struct sigaction oact;
 #endif
 	struct tm	*ptm;
-	pbs_db_svr_info_t	dbsvr;
 	pbs_db_job_info_t	dbjob;
 	pbs_db_resv_info_t	dbresv;
 	pbs_db_que_info_t	dbque;
+	pbs_db_sched_info_t	dbsched;
 	pbs_db_obj_info_t	obj;
 	void		*state = NULL;
 	pbs_db_conn_t	*conn = (pbs_db_conn_t *) svr_db_conn;
@@ -646,10 +646,7 @@ pbsd_init(int type)
 
 	/* 5. If not a "create" initialization, recover server db */
 	/*    and sched db					  */
-	strcpy(dbsvr.sv_name, pbs_server_id);
-	obj.pbs_db_obj_type = PBS_DB_SVR;
-	obj.pbs_db_un.pbs_db_svr = &dbsvr;
-	rc = pbs_db_load_obj(conn, &obj);
+	rc =svr_recov_db();
 	if ((rc != 0) && (type != RECOV_CREATE)) {
 #ifdef WIN32
 		if (stalone == 1)
@@ -658,10 +655,10 @@ pbsd_init(int type)
 		type = RECOV_CREATE;
 	}
 	if (type != RECOV_CREATE) {
+		int count;
+		/* Server read success full ?*/
 
-		/* Open the server database (save file) and read it in */
-
-		if ((rc != 0) || ((rc =svr_recov_db()) == -1)) {
+		if (rc != 0) {
 			log_err(rc, __func__, msg_init_baddb);
 			return (-1);
 		}
@@ -693,26 +690,59 @@ pbsd_init(int type)
 		}
 
 		/* now do sched db */
-		rc = sched_recov_db();
-		if (rc == -1) {
-			log_err(rc, __func__, "unable to recover scheddb");
-		} else if(rc == -2) {
+		/* start a transaction */
+		if (pbs_db_begin_trx(conn, 0, 0) != 0)
+			return (-1);
+
+		obj.pbs_db_obj_type = PBS_DB_SCHED;
+		obj.pbs_db_un.pbs_db_sched = &dbsched;
+
+		state = pbs_db_cursor_init(conn, &obj, NULL);
+		if (state == NULL) {
+			snprintf(log_buffer, LOG_BUF_SIZE, "%s", (char *) conn->conn_db_err);
+			log_err(-1, "pbsd_init", log_buffer);
+			pbs_db_cursor_close(conn, state);
+			(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
+			return (-1);
+		}
+
+		count = pbs_db_get_rowcount(state);
+		if (count <= 0) {
+			/* no schedulers found in DB*/
+			pbs_db_cursor_close(conn, state);
+			(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
 			/* No Schedulers found in DB */
 			/* Create and save default to DB*/
 			dflt_scheduler = sched_alloc(PBS_DFLT_SCHED_NAME);
-			(void)sched_save_db(dflt_scheduler, SVR_SAVE_NEW);
 			set_sched_default(dflt_scheduler, 0);
+			(void)sched_save_db(dflt_scheduler, SVR_SAVE_NEW);
 		} else {
-			/* set default values for all schedulers */
-			psched = (pbs_sched *) GET_NEXT(svr_allscheds);
-			while (psched != NULL) {
-				set_sched_default(psched, 0);
-				if (psched != dflt_scheduler) {
+			while ((rc = pbs_db_cursor_next(conn, state, &obj)) == 0) {
+				/* recover sched */
+				if ((psched = sched_recov_db(dbsched.sched_name)) != NULL) {
+					if(!strncmp(dbsched.sched_name, PBS_DFLT_SCHED_NAME,
+						strlen(PBS_DFLT_SCHED_NAME))) {
+						dflt_scheduler = psched;
+
+					}
+					if (pbs_conf.pbs_use_tcp == 0) {
+						/* check if throughput mode is visible in non-TPP mode, if so make it invisible */
+						psched->sch_attr[SCHED_ATR_throughput_mode].at_flags = 0;
+					}
 					psched->pbs_scheduler_port = psched->sch_attr[SCHED_ATR_sched_port].at_val.at_long;
 					psched->pbs_scheduler_addr = get_hostaddr(psched->sch_attr[SCHED_ATR_SchedHost].at_val.at_str);
 				}
-				psched = (pbs_sched *) GET_NEXT(psched->sc_link);
+				pbs_db_reset_obj(&obj);
 			}
+
+			pbs_db_cursor_close(conn, state);
+
+			if (server.sv_attr[SRV_ATR_scheduling].at_val.at_long)
+				set_scheduler_flag(SCH_SCHEDULE_ETE_ON, NULL);
+
+			/* end the transaction */
+			if (pbs_db_end_trx(conn, PBS_DB_COMMIT) != 0)
+				return (-1);
 		}
 	} else {	/* init type is "create" */
 		if (rc == 0) {		/* server was loaded */
@@ -734,8 +764,8 @@ pbsd_init(int type)
 		}
 		svr_save_db(&server, SVR_SAVE_NEW);
 		dflt_scheduler = sched_alloc(PBS_DFLT_SCHED_NAME);
-		(void)sched_save_db(dflt_scheduler, SVR_SAVE_NEW);
 		set_sched_default(dflt_scheduler, 0);
+		(void)sched_save_db(dflt_scheduler, SVR_SAVE_NEW);
 	}
 
 	/* 4. Check License information */
@@ -851,6 +881,7 @@ pbsd_init(int type)
 					&pque->qu_attr[(int) QE_ATR_ResourceAssn]);
 			}
 		}
+		pbs_db_reset_obj(&obj);
 	}
 
 	pbs_db_cursor_close(conn, state);
@@ -931,6 +962,7 @@ pbsd_init(int type)
 					LOG_INFO, msg_daemonname, log_buffer);
 			}
 		}
+		pbs_db_reset_obj(&obj);
 	}
 	pbs_db_cursor_close(conn, state);
 
@@ -969,7 +1001,7 @@ pbsd_init(int type)
 		/* Now, for each job found ... */
 		numjobs = 0;
 		while ((rc = pbs_db_cursor_next(conn, state, &obj)) == 0) {
-			if ((pjob = job_recov(dbjob.ji_jobid)) == NULL) {
+			if ((pjob = job_recov_db_spl(&dbjob)) == NULL) {
 				if ((type == RECOV_COLD) || (type == RECOV_CREATE)) {
 					/* remove the loaded job from db */
 					if (pbs_db_delete_obj(conn, &obj) != 0) {
@@ -984,6 +1016,7 @@ pbsd_init(int type)
 				}
 				continue;
 			}
+			pbs_db_reset_obj(&obj);
 
 			/*chk if job belongs to a reservation or
 			 *is a reservation job.  If this is true

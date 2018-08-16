@@ -270,7 +270,7 @@ enum failover_state {
 
 extern int			svr_recov_db(void);
 extern int			svr_save_db(struct server *, int mode);
-extern int			sched_recov_db(void);
+extern pbs_sched *		sched_recov_db(char *);
 extern int			sched_save_db(pbs_sched *, int mode);
 extern enum failover_state	are_we_primary(void);
 extern int			have_socket_licensed_nodes(void);

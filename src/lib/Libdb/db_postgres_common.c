@@ -217,15 +217,6 @@ pg_db_query(pbs_db_conn_t *conn, char *stmt, int num_vars,
 		((pg_conn_data_t *) conn->conn_data)->paramFormats,
 		conn->conn_result_format);
 
-	/*
-	 * The conn_result_format default is TEXT (0). If set to binary (1), then
-	 * it auto-resets to TEXT mode after each execution. This ensures we dont
-	 * forget to reset it back to TEXT, which is the format in which we need
-	 * most of our results.
-	 *
-	 */
-	conn->conn_result_format = 0; /* reset to TEXT format */
-
 	if (PQresultStatus(*res) != PGRES_TUPLES_OK) {
 		pg_set_error(conn, "Execution of Prepared statement", stmt);
 		PQclear(*res);
@@ -616,11 +607,7 @@ pbs_dataservice_control(char *cmd, char **errmsg)
 int
 pbs_status_db(char **errmsg)
 {
-    int rc = pbs_dataservice_control(PBS_DB_CONTROL_STATUS, errmsg);
-    if (!(rc == 0 || rc == 1 || rc == 2))
-        rc = -1;
-
-    return rc;
+	return (pbs_dataservice_control(PBS_DB_CONTROL_STATUS, errmsg));
 }
 
 /**
@@ -820,4 +807,49 @@ pbs_ntohll(unsigned long long x)
 	 * so there is no clash.
 	 */
 	return (unsigned long long)(((unsigned long long) ntohl((x) & 0xffffffff)) << 32) | ntohl(((unsigned long long)(x)) >> 32);
+}
+
+/**
+ * @brief
+ *	Execute a prepared DML (insert or update) statement
+ *
+ * @param[in] 	  conn - The connnection handle
+ * @param[in]	  stmt - Name of the statement (prepared previously)
+ * @param[in]     num_vars - The number of parameters in the sql ($1, $2 etc)
+ *
+ * @return      Error code
+ * @retval	-1 - Execution of prepared statement failed
+ * @retval	 0 - Success and > 0 rows were affected
+ * @retval	 1 - Execution succeeded but statement did not affect any rows
+ *
+ *
+ */
+int pg_db_cmd_ret(pbs_db_conn_t *conn, char *stmt, int num_vars)
+{
+	PGresult *res;
+	char *rows_affected = NULL;
+
+	res = PQexecPrepared((PGconn*) conn->conn_db_handle, stmt, num_vars,
+			((pg_conn_data_t *) conn->conn_data)->paramValues,
+			((pg_conn_data_t *) conn->conn_data)->paramLengths,
+			((pg_conn_data_t *) conn->conn_data)->paramFormats, 0);
+
+	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+		pg_set_error(conn, "Execution of Prepared statement", stmt);
+		PQclear(res);
+		return -1;
+	}
+	rows_affected = PQcmdTuples(res);
+
+	/*
+	 *  we can't call PQclear(res) yet, since rows_affected
+	 * (used below) is a pointer to a field inside res (PGresult)
+	 */
+	if (rows_affected == NULL || strtol(rows_affected, NULL, 10) <= 0) {
+		PQclear(res);
+		return 1;
+	}
+	conn->conn_resultset = res; /* store, since caller will retrieve results */
+
+	return 0;
 }

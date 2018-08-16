@@ -1906,7 +1906,7 @@ req_commit(struct batch_request *preq)
 	obj.pbs_db_obj_type = PBS_DB_JOBSCR;
 	obj.pbs_db_un.pbs_db_jobscr = &jobscr;
 
-	if (pbs_db_insert_obj(conn, &obj) != 0) {
+	if (pbs_db_save_obj(conn, &obj, PBS_INSERT_DB) != 0) {
 		job_purge(pj);
 		req_reject(PBSE_SYSTEM, 0, preq);
 		(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);

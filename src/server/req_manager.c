@@ -184,12 +184,6 @@ extern pbs_db_conn_t	*svr_db_conn;
 struct work_task *rescdef_wt_g = NULL;
 #endif
 
-#ifdef NAS /* localmod 005 */
-/* External Functions Called */
-extern int delete_attr_db(pbs_db_conn_t *conn,
-	pbs_db_attr_info_t *p_attr_info,
-	struct svrattrl *pal);
-#endif /* localmod 005 */
 
 /*
  * This structure used as part of the avl tree
@@ -1071,15 +1065,19 @@ mgr_set_attr(attribute *pattr, attribute_def *pdef, int limit, svrattrl *plist, 
 static int
 mgr_unset_attr(attribute *pattr, attribute_def *pdef, int limit, svrattrl *plist, int privil, int *bad, void *pobj, int ptype, enum res_op_flag rflag)
 {
-	int		 do_indirect_check = 0;
-	int		 index;
-	int		 ord;
-	svrattrl	*pl;
-	resource_def	*prsdef;
-	resource	*presc;
-	struct pbsnode	*pnode = pobj;
-	pbs_db_attr_info_t attr_info;
+	void *parent_id = NULL;
+	pbs_db_attr_info_t attr;
+	pbs_db_attr_list_t attr_list;
+	int do_indirect_check = 0;
+	int index;
+	int ord;
+	svrattrl *pl;
+	resource_def *prsdef;
+	resource *presc;
+	struct pbsnode *pnode = pobj;
 	pbs_db_conn_t *conn = (pbs_db_conn_t *) svr_db_conn;
+	pbs_db_obj_info_t obj;
+	obj.pbs_db_un.pbs_db_job = NULL;
 
 	/* first check the attribute exists and we have privilege to set */
 	ord = 0;
@@ -1142,22 +1140,49 @@ mgr_unset_attr(attribute *pattr, attribute_def *pdef, int limit, svrattrl *plist
 
 	while (plist) {
 		index = find_attr(pdef, plist->al_name, limit);
+		attr_list.attr_count = 1;
+		attr_list.attributes = &attr;
+		memset(&attr, 0, sizeof(pbs_db_attr_info_t));
+		strcpy(attr.attr_name, plist->al_atopl.name);
+		if (plist->al_atopl.resource)
+			strcpy(attr.attr_resc, plist->al_atopl.resource);
+		else
+			strcpy(attr.attr_resc, "");
 
-		attr_info.parent_obj_type = ptype;
-		if (ptype == PARENT_TYPE_NODE)
-			attr_info.parent_id = pnode->nd_name;
-		else if (ptype == PARENT_TYPE_JOB)
-			attr_info.parent_id = ((job *) pobj)->ji_qs.ji_jobid;
-		else if (ptype == PARENT_TYPE_SERVER)
-			attr_info.parent_id = pbs_server_id;
-		else if (ptype == PARENT_TYPE_QUE_ALL)
-			attr_info.parent_id = ((pbs_queue *) pobj)->qu_qs.qu_name;
-		else if (ptype == PARENT_TYPE_RESV)
-			attr_info.parent_id = ((resc_resv *) pobj)->ri_qs.ri_resvID;
-		else if (ptype == PARENT_TYPE_SCHED)
-			attr_info.parent_id = ((pbs_sched *) pobj)->sc_name;
+		switch (ptype) {
+			case PARENT_TYPE_SERVER:
+				obj.pbs_db_obj_type = PBS_DB_SVR;
+				parent_id = pbs_server_id;
+				break;
 
-		delete_attr_db(conn, &attr_info, plist);
+			case PARENT_TYPE_SCHED:
+				obj.pbs_db_obj_type = PBS_DB_SCHED;
+				parent_id = ((pbs_sched *) pobj)->sc_name;
+				break;
+
+			case PARENT_TYPE_NODE:
+				obj.pbs_db_obj_type = PBS_DB_NODE;
+				parent_id = pnode->nd_name;
+				break;
+
+			case PARENT_TYPE_QUE_ALL:
+				obj.pbs_db_obj_type = PBS_DB_QUEUE;
+				parent_id = ((pbs_queue *) pobj)->qu_qs.qu_name;
+				break;
+
+			case PARENT_TYPE_JOB:
+				obj.pbs_db_obj_type = PBS_DB_JOB;
+				parent_id = ((job *) pobj)->ji_qs.ji_jobid;
+				break;
+
+			case PARENT_TYPE_RESV:
+				obj.pbs_db_obj_type = PBS_DB_RESV;
+				parent_id = ((resc_resv *) pobj)->ri_qs.ri_resvID;
+				break;
+		}
+
+		if (pbs_db_delete_attr_obj(conn, &obj, parent_id, &attr_list) != 0)
+			return -1;
 
 		if (((pdef+index)->at_type == ATR_TYPE_RESC) &&
 			(plist->al_resc != NULL)) {
@@ -1693,8 +1718,8 @@ mgr_sched_set(struct batch_request *preq)
 	if (rc != 0)
 		reply_badattr(rc, bad_attr, plist, preq);
 	else {
-		(void)sched_save_db(psched, SVR_SAVE_FULL);
 		set_sched_default(psched, 0);
+		(void)sched_save_db(psched, SVR_SAVE_FULL);
 		(void)sprintf(log_buffer, msg_manager, msg_man_set,
 			preq->rq_user, preq->rq_host);
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SCHED, LOG_INFO,
@@ -1760,8 +1785,8 @@ mgr_sched_unset(struct batch_request *preq)
 	else {
 
 		/* save the attributes to disk */
-		(void)sched_save_db(psched, SVR_SAVE_FULL);
 		set_sched_default(psched, 1);
+		(void)sched_save_db(psched, SVR_SAVE_FULL);
 		(void)sprintf(log_buffer, msg_manager, msg_man_uns,
 			preq->rq_user, preq->rq_host);
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SCHED, LOG_INFO,
@@ -3641,8 +3666,8 @@ mgr_sched_create(struct batch_request *preq)
 	} else {
 
 		/* save the attributes to disk */
-		(void) sched_save_db(psched, SVR_SAVE_FULL);
 		set_sched_default(psched, 0);
+		(void) sched_save_db(psched, SVR_SAVE_FULL);
 		snprintf(log_buffer, LOG_BUF_SIZE, msg_manager, msg_man_set,
 				preq->rq_user, preq->rq_host);
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SCHED, LOG_INFO, msg_daemonname, log_buffer);
@@ -4182,7 +4207,7 @@ mgr_resource_delete(struct batch_request *preq)
 			}
 		}
 		if (updatedb) {
-			node_save_db(pbsndlist[i], NODE_SAVE_FULL);
+			node_save_db(pbsndlist[i]);
 		}
 	}
 

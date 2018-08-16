@@ -101,13 +101,25 @@ extern int recov_attr_db(pbs_db_conn_t *conn,
  * @param[in]	pque	- Address of the queue in the server
  * @param[out]	pdbque  - Address of the database queue object
  *
+ *@return 0      Success
+ *@return !=0    Failure
  */
-static void
-svr_to_db_que(pbs_queue *pque, pbs_db_que_info_t *pdbque)
+static int
+svr_to_db_que(pbs_queue *pque, pbs_db_que_info_t *pdbque, int updatetype)
 {
-	strcpy(pdbque->qu_name, pque->qu_qs.qu_name);
-	strcpy(pdbque->qu_sv_name, pbs_server_id);
+	pdbque->qu_name[sizeof(pdbque->qu_name) - 1] = '\0';
+	strncpy(pdbque->qu_name, pque->qu_qs.qu_name, sizeof(pdbque->qu_name));
+	pdbque->qu_sv_name[sizeof(pdbque->qu_sv_name) - 1] = '\0';
+	strncpy(pdbque->qu_sv_name, pbs_server_id, sizeof(pdbque->qu_sv_name));
 	pdbque->qu_type = pque->qu_qs.qu_type;
+
+	if (updatetype != PBS_UPDATE_DB_QUICK) {
+		if ((encode_attr_db(que_attr_def, pque->qu_attr,
+			(int)QA_ATR_LAST, &pdbque->attr_list, 1)) != 0) /* encode all attributes */
+			return -1;
+	}
+
+	return 0;
 }
 
 /**
@@ -117,24 +129,33 @@ svr_to_db_que(pbs_queue *pque, pbs_db_que_info_t *pdbque)
  * @param[out]	pque	- Address of the queue in the server
  * @param[in]	pdbque	- Address of the database queue object
  *
+ *@return 0      Success
+ *@return !=0    Failure
  */
-static void
+static int
 db_to_svr_que(pbs_queue *pque, pbs_db_que_info_t *pdbque)
 {
-	strcpy(pque->qu_qs.qu_name, pdbque->qu_name);
+	pque->qu_qs.qu_name[sizeof(pque->qu_qs.qu_name) - 1] = '\0';
+	strncpy(pque->qu_qs.qu_name, pdbque->qu_name, sizeof(pque->qu_qs.qu_name));
 	pque->qu_qs.qu_type = pdbque->qu_type;
 	pque->qu_qs.qu_ctime = pdbque->qu_ctime;
 	pque->qu_qs.qu_mtime = pdbque->qu_mtime;
+
+	if ((decode_attr_db(pque, &pdbque->attr_list, que_attr_def,
+		pque->qu_attr, (int) QA_ATR_LAST, 0)) != 0)
+		return -1;
+
+	return 0;
 }
 
 /**
  * @brief
- *		Save a queue to the database
+ *	Save a queue to the database
  *
  * @param[in]	pque  - Pointer to the queue to save
  * @param[in]	mode:
- *				QUE_SAVE_FULL - Save full queue information (update)
- *				QUE_SAVE_NEW  - Save new queue information (insert)
+ *		QUE_SAVE_FULL - Save full queue information (update)
+ *		QUE_SAVE_NEW  - Save new queue information (insert)
  *
  * @return      Error code
  * @retval	0 - Success
@@ -145,57 +166,35 @@ int
 que_save_db(pbs_queue *pque, int mode)
 {
 	pbs_db_que_info_t	dbque;
-	pbs_db_attr_info_t	attr_info;
 	pbs_db_obj_info_t	obj;
 	pbs_db_conn_t		*conn = (pbs_db_conn_t *) svr_db_conn;
-	int flag=0;
+	int savetype = PBS_UPDATE_DB_FULL;
 
-	svr_to_db_que(pque, &dbque);
+	if (svr_to_db_que(pque, &dbque, savetype) != 0)
+		goto db_err;
+
 	obj.pbs_db_obj_type = PBS_DB_QUEUE;
 	obj.pbs_db_un.pbs_db_que = &dbque;
 
-	/* load que_qs */
-	if (pbs_db_begin_trx(conn, 0, 0) !=0)
+	if (mode == QUE_SAVE_NEW)
+		savetype = PBS_INSERT_DB;
+
+	if (pbs_db_save_obj(conn, &obj, savetype) != 0)
 		goto db_err;
 
-	if (mode == QUE_SAVE_NEW) {
-		if (pbs_db_insert_obj(conn, &obj) != 0)
-			goto db_err;
-		flag = 1;
-	}
-	else if (mode == QUE_SAVE_FULL) {
-		/*
-		 * Delete the queue and write it afresh
-		 * Deleting the queue removes all attributes automatically
-		 * Thus when reinserting, we add only the set attributes
-		 */
-		pbs_db_delete_obj(conn, &obj);
-		if (pbs_db_insert_obj(conn, &obj) != 0)
-			goto db_err;
-		flag = 1;
-	} else {
-		/* que_qs*/
-		if (pbs_db_update_obj(conn, &obj) != 0)
-			goto db_err;
-	}
-
-	/* que_attrs */
-	attr_info.parent_obj_type = PARENT_TYPE_QUE_ALL; /* que attr */
-	attr_info.parent_id = dbque.qu_name;
-
-	if (save_attr_db(conn, &attr_info, que_attr_def, pque->qu_attr, (int)QA_ATR_LAST, flag) !=0)
-		goto db_err;
-
-	if (pbs_db_end_trx(conn, PBS_DB_COMMIT) != 0)
-		goto db_err;
+	pbs_db_reset_obj(&obj);
 
 	return (0);
+
 db_err:
+	/* free the attribute list allocated by encode_attrs */
+	free(dbque.attr_list.attributes);
+
 	strcpy(log_buffer, "que_save failed ");
 	if (conn->conn_db_err != NULL)
 		strncat(log_buffer, conn->conn_db_err, LOG_BUF_SIZE - strlen(log_buffer) - 1);
 	log_err(-1, __func__, log_buffer);
-	(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
+
 	panic_stop_db(log_buffer);
 	return (-1);
 }
@@ -216,7 +215,6 @@ que_recov_db(char *qname)
 {
 	pbs_queue		*pq;
 	pbs_db_que_info_t	dbque;
-	pbs_db_attr_info_t	attr_info;
 	pbs_db_obj_info_t	obj;
 	pbs_db_conn_t		*conn = (pbs_db_conn_t *) svr_db_conn;
 
@@ -230,33 +228,23 @@ que_recov_db(char *qname)
 	}
 
 	/* load server_qs */
-	strcpy(dbque.qu_name, qname);
-
-	if (pbs_db_begin_trx(conn, 0, 0) !=0)
-		goto db_err;
+	dbque.qu_name[sizeof(dbque.qu_name) - 1] = '\0';
+	strncpy(dbque.qu_name, qname, sizeof(dbque.qu_name));
 
 	/* read in job fixed sub-structure */
 	if (pbs_db_load_obj(conn, &obj) != 0)
 		goto db_err;
 
-	db_to_svr_que(pq, &dbque);
-
-	attr_info.parent_id = pq->qu_qs.qu_name;
-	attr_info.parent_obj_type = PARENT_TYPE_QUE_ALL; /* que attr */
-
-	/* read in que attributes */
-	if (recov_attr_db(conn, pq, &attr_info, que_attr_def, pq->qu_attr,
-		(int)QA_ATR_LAST, 0) != 0)
+	if (db_to_svr_que(pq, &dbque) != 0)
 		goto db_err;
 
-	if (pbs_db_end_trx(conn, PBS_DB_COMMIT) != 0)
-		goto db_err;
+	pbs_db_reset_obj(&obj);
 
 	/* all done recovering the queue */
 	return (pq);
+
 db_err:
 	log_err(-1, "que_recov", "read of queuedb failed");
-	(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
 	if (pq)
 		que_free(pq);
 	return 0;

@@ -64,7 +64,7 @@
 int
 pg_db_prepare_svr_sqls(pbs_db_conn_t *conn)
 {
-	sprintf(conn->conn_sql, "insert into pbs.server( "
+	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "insert into pbs.server( "
 		"sv_name, "
 		"sv_hostname, "
 		"sv_numjobs, "
@@ -73,14 +73,29 @@ pg_db_prepare_svr_sqls(pbs_db_conn_t *conn)
 		"sv_svraddr, "
 		"sv_svrport, "
 		"sv_savetm, "
-		"sv_creattm "
+		"sv_creattm, "
+		"attributes "
 		") "
 		"values "
-		"($1, $2, $3, $4, $5, $6, $7, localtimestamp, localtimestamp)");
-	if (pg_prepare_stmt(conn, STMT_INSERT_SVR, conn->conn_sql, 7) != 0)
+		"($1, $2, $3, $4, $5, $6, $7, localtimestamp, localtimestamp, hstore($8::text[]))");
+	if (pg_prepare_stmt(conn, STMT_INSERT_SVR, conn->conn_sql, 8) != 0)
 		return -1;
 
-	sprintf(conn->conn_sql, "update pbs.server set "
+	/* replace all attributes for a FULL update */
+	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "update pbs.server set "
+		"sv_hostname = $2, "
+		"sv_numjobs = $3, "
+		"sv_numque = $4, "
+		"sv_jobidnumber = $5, "
+		"sv_svraddr = $6, "
+		"sv_svrport = $7, "
+		"sv_savetm = localtimestamp, "
+		"attributes = hstore($8::text[]) "
+		"where sv_name = $1");
+	if (pg_prepare_stmt(conn, STMT_UPDATE_SVR_FULL, conn->conn_sql, 8) != 0)
+		return -1;
+
+	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "update pbs.server set "
 		"sv_hostname = $2, "
 		"sv_numjobs = $3, "
 		"sv_numque = $4, "
@@ -89,95 +104,38 @@ pg_db_prepare_svr_sqls(pbs_db_conn_t *conn)
 		"sv_svrport = $7, "
 		"sv_savetm = localtimestamp "
 		"where sv_name = $1");
-	if (pg_prepare_stmt(conn, STMT_UPDATE_SVR, conn->conn_sql, 7) != 0)
+	if (pg_prepare_stmt(conn, STMT_UPDATE_SVR_QUICK, conn->conn_sql, 7) != 0)
 		return -1;
 
-	sprintf(conn->conn_sql, "select "
+	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "update pbs.server set "
+		"sv_savetm = localtimestamp,"
+		"attributes = attributes - hstore($2::text[]) "
+		"where sv_name = $1");
+	if (pg_prepare_stmt(conn, STMT_REMOVE_SVRATTRS, conn->conn_sql, 2) != 0)
+		return -1;
+
+	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "select "
 		"sv_name, "
 		"sv_hostname, "
 		"sv_numjobs, "
 		"sv_numque, "
 		"sv_jobidnumber, "
 		"extract(epoch from sv_savetm)::bigint as sv_savetm, "
-		"extract(epoch from sv_creattm)::bigint as sv_creattm "
+		"extract(epoch from sv_creattm)::bigint as sv_creattm, "
+		"hstore_to_array(attributes) as attributes "
 		"from "
 		"pbs.server where sv_name = $1");
 	if (pg_prepare_stmt(conn, STMT_SELECT_SVR, conn->conn_sql, 1) != 0)
 		return -1;
 
-	sprintf(conn->conn_sql, "insert into "
-		"pbs.server_attr "
-		"(sv_name, "
-		"attr_name, "
-		"attr_resource, "
-		"attr_value, "
-		"attr_flags) "
-		"values "
-		"($1, $2, $3, $4, $5)");
-	if (pg_prepare_stmt(conn, STMT_INSERT_SVRATTR, conn->conn_sql, 5) != 0)
-		return -1;
-
-	sprintf(conn->conn_sql, "update pbs.server_attr set "
-		"attr_resource = $3, "
-		"attr_value = $4, "
-		"attr_flags = $5 "
-		"where sv_name = $1 "
-		"and attr_name = $2");
-	if (pg_prepare_stmt(conn, STMT_UPDATE_SVRATTR, conn->conn_sql, 5) != 0)
-		return -1;
-
-	sprintf(conn->conn_sql, "update pbs.server_attr set "
-		"attr_value = $4, "
-		"attr_flags = $5 "
-		"where sv_name = $1 "
-		"and attr_name = $2 "
-		"and attr_resource = $3");
-	if (pg_prepare_stmt(conn, STMT_UPDATE_SVRATTR_RESC, conn->conn_sql, 5) != 0)
-		return -1;
-
-	sprintf(conn->conn_sql, "delete from "
-		"pbs.server_attr "
-		"where sv_name = $1");
-	if (pg_prepare_stmt(conn, STMT_DELETE_SVRATTR_ALL, conn->conn_sql, 1) != 0)
-		return -1;
-
-	sprintf(conn->conn_sql, "delete from "
-		"pbs.server_attr "
-		"where sv_name = $1 "
-		"and attr_name = $2");
-	if (pg_prepare_stmt(conn, STMT_DELETE_SVRATTR, conn->conn_sql, 2) != 0)
-		return -1;
-
-	sprintf(conn->conn_sql, "delete from "
-		"pbs.server_attr "
-		"where sv_name = $1 "
-		"and attr_name = $2 "
-		"and attr_resource = $3");
-	if (pg_prepare_stmt(conn, STMT_DELETE_SVRATTR_RESC, conn->conn_sql, 3) != 0)
-		return -1;
-
-	sprintf(conn->conn_sql, "select "
-		"attr_name, "
-		"attr_resource, "
-		"attr_value, "
-		"attr_flags "
-		"from pbs.server_attr "
-		"where sv_name = $1");
-	if (pg_prepare_stmt(conn, STMT_SELECT_SVRATTR, conn->conn_sql, 1) != 0)
-		return -1;
-
-	sprintf(conn->conn_sql, "select "
+	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "select "
 		"pbs_schema_version "
 		"from "
 		"pbs.info");
 	if (pg_prepare_stmt(conn, STMT_SELECT_DBVER, conn->conn_sql, 0) != 0)
 		return -1;
 
-	sprintf(conn->conn_sql, "select nextval('pbs.svr_id_seq')");
-	if (pg_prepare_stmt(conn, STMT_SELECT_NEXT_SEQID, conn->conn_sql, 0) != 0)
-		return -1;
-
-	sprintf(conn->conn_sql, "select "
+	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "select "
 		"sv_name "
 		"from "
 		"pbs.server where sv_hostname = $1");
@@ -201,19 +159,13 @@ pg_db_prepare_svr_sqls(pbs_db_conn_t *conn)
 int
 pbs_db_truncate_all(pbs_db_conn_t *conn)
 {
-	sprintf(conn->conn_sql, "truncate table 	"
-		"pbs.scheduler_attr, "
+	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "truncate table 	"
 		"pbs.scheduler, "
-		"pbs.node_attr, "
 		"pbs.node, "
-		"pbs.queue_attr, "
 		"pbs.queue, "
-		"pbs.resv_attr, "
 		"pbs.resv, "
 		"pbs.job_scr, "
-		"pbs.job_attr, "
 		"pbs.job, "
-		"pbs.server_attr, "
 		"pbs.server");
 
 	if (pbs_db_execute_str(conn, conn->conn_sql) == -1)
@@ -235,51 +187,49 @@ pbs_db_truncate_all(pbs_db_conn_t *conn)
  *
  */
 int
-pg_db_insert_svr(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj)
+pg_db_save_svr(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype)
 {
 	pbs_db_svr_info_t *ps = obj->pbs_db_un.pbs_db_svr;
+	char *stmt;
+	int params;
+	int rc = 0;
+	char *raw_array = NULL;
 
-	LOAD_STR(conn, ps->sv_name, 0);
-	LOAD_STR(conn, ps->sv_hostname, 1);
-	LOAD_INTEGER(conn, ps->sv_numjobs, 2);
-	LOAD_INTEGER(conn, ps->sv_numque, 3);
-	LOAD_BIGINT(conn, ps->sv_jobidnumber, 4);
-	LOAD_BIGINT(conn, ps->sv_svraddr, 5);
-	LOAD_INTEGER(conn, ps->sv_svrport, 6);
+	SET_PARAM_STR(conn, ps->sv_name, 0);
+	SET_PARAM_STR(conn, ps->sv_hostname, 1);
+	SET_PARAM_INTEGER(conn, ps->sv_numjobs, 2);
+	SET_PARAM_INTEGER(conn, ps->sv_numque, 3);
+	SET_PARAM_BIGINT(conn, ps->sv_jobidnumber, 4);
+	SET_PARAM_BIGINT(conn, ps->sv_svraddr, 5);
+	SET_PARAM_INTEGER(conn, ps->sv_svrport, 6);
 
-	if (pg_db_cmd(conn, STMT_INSERT_SVR, 7) != 0)
-		return -1;
+	if (savetype == PBS_UPDATE_DB_QUICK) {
+		params = 7;
+	} else {
+		int len = 0;
+		/* convert attributes to postgres raw array format */
+		if ((len = convert_db_attr_list_to_array(&raw_array, &ps->attr_list)) <= 0)
+			return -1;
 
-	return 0;
-}
+		SET_PARAM_BIN(conn, raw_array, len, 7);
+		params = 8;
+	}
 
-/**
- * @brief
- *	Update server data into the database
- *
- * @param[in]	conn - Connection handle
- * @param[in]	obj  - Information of server to be updated
- *
- * @return      Error code
- * @retval	-1 - Failure
- * @retval	 0 - Success
- * @retval	 1 - Success but no rows updated
- *
- */
-int
-pg_db_update_svr(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj)
-{
-	pbs_db_svr_info_t *ps = obj->pbs_db_un.pbs_db_svr;
+	if (savetype == PBS_UPDATE_DB_FULL)
+		stmt = STMT_UPDATE_SVR_FULL;
+	else if (savetype == PBS_UPDATE_DB_QUICK)
+		stmt = STMT_UPDATE_SVR_QUICK;
+	else
+		stmt = STMT_INSERT_SVR;
 
-	LOAD_STR(conn, ps->sv_name, 0);
-	LOAD_STR(conn, ps->sv_hostname, 1);
-	LOAD_INTEGER(conn, ps->sv_numjobs, 2);
-	LOAD_INTEGER(conn, ps->sv_numque, 3);
-	LOAD_BIGINT(conn, ps->sv_jobidnumber, 4);
-	LOAD_BIGINT(conn, ps->sv_svraddr, 5);
-	LOAD_INTEGER(conn, ps->sv_svrport, 6);
+	if (pg_db_cmd(conn, stmt, params) != 0) {
+		free(raw_array);
+		rc = -1;
+	}
 
-	return (pg_db_cmd(conn, STMT_UPDATE_SVR, 7));
+	free(raw_array);
+
+	return rc;
 }
 
 /**
@@ -300,30 +250,42 @@ pg_db_load_svr(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj)
 {
 	PGresult *res;
 	int rc;
+	char *raw_array;
 	pbs_db_svr_info_t *ps = obj->pbs_db_un.pbs_db_svr;
+	static int sv_name_fnum, sv_hostname_fnum, sv_numjobs_fnum, sv_numque_fnum, sv_jobidnumber_fnum, sv_savetm_fnum,
+	sv_creattm_fnum, attributes_fnum;
+	static int fnums_inited = 0;
 
-	LOAD_STR(conn, ps->sv_name, 0);
-	if ((rc = pg_db_query(conn, STMT_SELECT_SVR,  1, &res)) != 0)
+	SET_PARAM_STR(conn, ps->sv_name, 0);
+	if ((rc = pg_db_query(conn, STMT_SELECT_SVR, 1, &res)) != 0)
 		return rc;
 
-	/* get the other fields */
-	strcpy(ps->sv_name, PQgetvalue(res, 0,
-		PQfnumber(res, "sv_name")));
-	strcpy(ps->sv_hostname, PQgetvalue(res, 0,
-		PQfnumber(res, "sv_hostname")));
-	ps->sv_numjobs = strtol(PQgetvalue(res, 0,
-		PQfnumber(res, "sv_numjobs")), NULL, 10);
-	ps->sv_numque = strtol(PQgetvalue(res, 0,
-		PQfnumber(res, "sv_numque")), NULL, 10);
-	ps->sv_jobidnumber = strtoll(PQgetvalue(res, 0,
-		PQfnumber(res, "sv_jobidnumber")), NULL, 10);
-	ps->sv_savetm = strtoll(PQgetvalue(res, 0,
-		PQfnumber(res, "sv_savetm")), NULL, 10);
-	ps->sv_creattm = strtoll(PQgetvalue(res, 0,
-		PQfnumber(res, "sv_creattm")), NULL, 10);
+	if (fnums_inited == 0) {
+		sv_name_fnum = PQfnumber(res, "sv_name");
+		sv_hostname_fnum = PQfnumber(res, "sv_hostname");
+		sv_numjobs_fnum = PQfnumber(res, "sv_numjobs");
+		sv_numque_fnum = PQfnumber(res, "sv_numque");
+		sv_jobidnumber_fnum = PQfnumber(res, "sv_jobidnumber");
+		sv_savetm_fnum = PQfnumber(res, "sv_savetm");
+		sv_creattm_fnum = PQfnumber(res, "sv_creattm");
+		attributes_fnum = PQfnumber(res, "attributes");
+		fnums_inited = 1;
+	}
+
+	GET_PARAM_STR(res, 0, ps->sv_name, sv_name_fnum);
+	GET_PARAM_STR(res, 0, ps->sv_hostname, sv_hostname_fnum);
+	GET_PARAM_INTEGER(res, 0, ps->sv_numjobs, sv_numjobs_fnum);
+	GET_PARAM_INTEGER(res, 0, ps->sv_numque, sv_numque_fnum);
+	GET_PARAM_BIGINT(res, 0, ps->sv_jobidnumber, sv_jobidnumber_fnum);
+	GET_PARAM_BIGINT(res, 0, ps->sv_savetm, sv_savetm_fnum);
+	GET_PARAM_BIGINT(res, 0, ps->sv_creattm, sv_creattm_fnum);
+	GET_PARAM_BIN(res, 0, raw_array, attributes_fnum);
+
+	/* convert attributes from postgres raw array format */
+	rc = convert_array_to_db_attr_list(raw_array, &ps->attr_list);
 
 	PQclear(res);
-	return 0;
+	return rc;
 }
 
 /**
@@ -343,20 +305,19 @@ pbs_db_get_schema_version(pbs_db_conn_t *conn, int *db_maj_ver, int *db_min_ver)
 {
 	PGresult *res;
 	int rc;
-	char ver_str[MAX_SCHEMA_VERSION_LEN + 1] = {'\0'};
+	char ver_str[MAX_SCHEMA_VERSION_LEN + 1];
 	char *token;
-	char *val;
 
 	if ((rc = pg_db_query(conn, STMT_SELECT_DBVER, 0, &res)) != 0)
 		return rc;
 
-	val = PQgetvalue(res, 0, PQfnumber(res, "pbs_schema_version"));
-	if (!val)
-		return -1;
-	if (*val == '\0')
-		return -1;
+	ver_str[0] = '\0';
+	GET_PARAM_STR(res, 0, ver_str, PQfnumber(res, "pbs_schema_version"));
 
-	snprintf(ver_str, sizeof(ver_str), "%s", val);
+	PQclear(res);
+
+	if (ver_str[0] == '\0')
+		return -1;
 
 	token = strtok(ver_str, ".");
 	if (!token)
@@ -371,42 +332,6 @@ pbs_db_get_schema_version(pbs_db_conn_t *conn, int *db_maj_ver, int *db_min_ver)
 	return 0;
 }
 
-/**
- * @brief
- *	Get the svrid sequence number from the database
- *
- * The svr hostname is associated with a sever_id (sv_name) column. This column
- * serves as the id for the server, used for all subsequent queries. These "id"
- * values are created from a sequence generator within the PBS schema called
- * "pbs.svr_id_seq", whenever a new server database is created (typically at new
- * installation).
- * This function reads the "next" value from the sequence "pbs.svr_id_seq" and
- * returns that number (in ascii format) to be used as the server-id for the
- * new server database being created.
- *
- * @see chk_and_update_db_svrhost
- *
- * @param[in]	conn - The database connection handle
- *
- * @return      Current sequence number in ascii format (to be freed by caller)
- * @retval	-NULL  - Failure
- *		-!NULL - Success
- *
- */
-char*
-pbs_db_get_unique_svrid(pbs_db_conn_t *conn)
-{
-	PGresult *res;
-	char *svrid;
-
-	if (pg_db_query(conn, STMT_SELECT_NEXT_SEQID, 0, &res) != 0)
-		return NULL;
-
-	svrid = strdup(PQgetvalue(res, 0, 0));
-	PQclear(res);
-
-	return svrid;
-}
 
 /**
  * @brief
@@ -435,36 +360,68 @@ char*
 pbs_db_get_svr_id(pbs_db_conn_t *conn, char *hostname)
 {
 	PGresult *res;
-	char *svrid;
+	static char buf[PBS_MAXSERVERNAME+1];
 
-	LOAD_STR(conn, hostname, 0);
+	SET_PARAM_STR(conn, hostname, 0);
 	if (pg_db_query(conn, STMT_SELECT_SVRID, 1, &res) != 0)
 		return NULL;
 
-	svrid = strdup(PQgetvalue(res, 0, 0));
+	buf[0] = '\0';
+	GET_PARAM_STR(res, 0, buf, PQfnumber(res, "sv_name"));
+
 	PQclear(res);
 
-	return svrid;
+	return buf;
 }
+
+
 
 /**
  * @brief
- *	Delete all the server attributes from the database
+ *	Deletes attributes of a server
  *
  * @param[in]	conn - Connection handle
  * @param[in]	obj  - server information
+ * @param[in]	obj_id  - server id
+ * @param[in]	attr_list - List of attributes
  *
  * @return      Error code
- * @retval	-1 - Failure
  * @retval	 0 - Success
- * @retval	 1 - Success but no rows deleted
+ * @retval	-1 - On Failure
  *
  */
 int
-pg_db_delete_svrattr(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj)
+pg_db_del_attr_svr(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, void *obj_id, pbs_db_attr_list_t *attr_list)
 {
-	pbs_db_svr_info_t *ps = obj->pbs_db_un.pbs_db_svr;
-	LOAD_STR(conn, ps->sv_name, 0);
+	char *raw_array = NULL;
+	int len = 0;
 
-	return (pg_db_cmd(conn, STMT_DELETE_SVRATTR_ALL, 1));
+	if ((len = convert_db_attr_list_to_array(&raw_array, attr_list)) <= 0)
+		return -1;
+	SET_PARAM_STR(conn, obj_id, 0);
+
+	SET_PARAM_BIN(conn, raw_array, len, 1);
+
+	if (pg_db_cmd(conn, STMT_REMOVE_SVRATTRS, 2) != 0)
+		return -1;
+
+	free(raw_array);
+
+	return 0;
+}
+
+
+/**
+ * @brief
+ *	Frees allocate memory of an Object
+ *
+ * @param[in]	obj - pbs_db_obj_info_t containing the DB object
+ *
+ * @return None
+ *
+ */
+void
+pg_db_reset_svr(pbs_db_obj_info_t *obj)
+{
+	free_db_attr_list(&(obj->pbs_db_un.pbs_db_svr->attr_list));
 }

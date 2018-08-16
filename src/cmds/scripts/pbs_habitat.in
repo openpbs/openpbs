@@ -561,7 +561,6 @@ upgrade_pbs_schema_from_v1_0_0() {
 		drop sequence pbs.node_sequence;
 
 		\set PBS_MAXHOSTNAME	'64'
-		create sequence pbs.svr_id_seq;
 		alter table pbs.server add column sv_hostname varchar(:PBS_MAXHOSTNAME);
 		update pbs.server set sv_hostname = sv_name;
 		alter table pbs.server alter column sv_hostname set not null;

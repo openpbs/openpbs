@@ -493,7 +493,7 @@ extern char *msg_daemonname;
 
 #ifndef PBS_MOM
 extern struct pbsnode * node_recov_db(void *nd);
-extern int node_save_db(struct pbsnode *pnode, int mode);
+extern int node_save_db(struct pbsnode *pnode);
 extern int add_mom_to_pool(mominfo_t *);
 extern void remove_mom_from_pool(mominfo_t *);
 extern void reset_pool_inventory_mom(mominfo_t *);

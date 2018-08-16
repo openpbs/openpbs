@@ -145,68 +145,111 @@ update_svrlive()
 
 /**
  * @brief
- *		Load a database server object from a server object in the server
+ *	Load a database server object from a server object in the server
  *
  * @param[in]	ps	-	Address of the server in pbs server
  * @param[out]	pdbsvr	-	Address of the database server object
+ * @param[in]   updatetype -    quick or full update
+ *
+ * @return   !=0   - Failure
+ * @return   0     - Success
  *
  */
-static void
-svr_to_db_svr(struct server *ps, pbs_db_svr_info_t *pdbsvr)
+static int
+svr_to_db_svr(struct server *ps, pbs_db_svr_info_t *pdbsvr, int updatetype)
 {
 	memset(pdbsvr, 0, sizeof(pbs_db_svr_info_t));
-	strcpy(pdbsvr->sv_name, pbs_server_id);
-	strcpy(pdbsvr->sv_hostname, pbs_server_name);
+	pdbsvr->sv_name[sizeof(pdbsvr->sv_name) - 1] = '\0';
+	strncpy(pdbsvr->sv_name, pbs_server_id, sizeof(pdbsvr->sv_name));
+	pdbsvr->sv_hostname[sizeof(pdbsvr->sv_hostname) - 1] = '\0';
+	strncpy(pdbsvr->sv_hostname, pbs_server_name, sizeof(pdbsvr->sv_hostname));
 	pdbsvr->sv_numjobs = ps->sv_qs.sv_numjobs;
 	pdbsvr->sv_numque = ps->sv_qs.sv_numque;
 	pdbsvr->sv_jobidnumber = ps->sv_qs.sv_jobidnumber;
+
+	if (updatetype != PBS_UPDATE_DB_QUICK) {
+		if ((encode_attr_db(svr_attr_def,
+			ps->sv_attr,
+			(int)SRV_ATR_LAST, &pdbsvr->attr_list, 1)) != 0) /* encode all attributes */
+			return -1;
+	}
+
+	return 0;
 }
 
 /**
  * @brief
- *		Load a server object in pbs_server from a database server object
+ *	Load a server object in pbs_server from a database server object
  *
  * @param[out]	ps	-	Address of the server in pbs server
  * @param[in]	pdbsvr	-	Address of the database server object
  *
- *
+ * @return   !=0   - Failure
+ * @return   0     - Success
  */
-void
+int
 db_to_svr_svr(struct server *ps, pbs_db_svr_info_t *pdbsvr)
 {
 	ps->sv_qs.sv_numjobs = pdbsvr->sv_numjobs;
 	ps->sv_qs.sv_numque = pdbsvr->sv_numque;
 	ps->sv_qs.sv_savetm = pdbsvr->sv_savetm;
 	ps->sv_qs.sv_jobidnumber = pdbsvr->sv_jobidnumber;
+
+	if ((decode_attr_db(ps, &pdbsvr->attr_list, svr_attr_def,
+		ps->sv_attr,
+		(int) SRV_ATR_LAST, 0)) != 0)
+		return -1;
+
+	return 0;
 }
 
 /**
  * @brief
- *		Load a scheduler object in pbs_server from a database scheduler object
+ *	Load a scheduler object in pbs_server from a database scheduler object
  *
- * @param[in]	ps	-	Address of the scheduler in pbs server
- * @param[in]	pdbsched	-	Address of the database scheduler object
+ * @param[in]	ps - Address of the scheduler in pbs server
+ * @param[out] pdbsched  - Address of the database scheduler object
+ * @param[in] updatetype - quick or full update
  *
+ * @return   !=0   - Failure
+ * @return   0     - Success
  */
-static void
-svr_to_db_sched(pbs_sched *ps, pbs_db_sched_info_t *pdbsched)
+static int
+svr_to_db_sched(struct pbs_sched *ps, pbs_db_sched_info_t *pdbsched, int updatetype)
 {
-	strcpy(pdbsched->sched_name, ps->sc_name);
-	strcpy(pdbsched->sched_sv_name, pbs_server_id);
+	pdbsched->sched_name[sizeof(pdbsched->sched_name) - 1] = '\0';
+	strncpy(pdbsched->sched_name, ps->sc_name, sizeof(pdbsched->sched_name));
+	pdbsched->sched_sv_name[sizeof(pdbsched->sched_sv_name) - 1] = '\0';
+	strncpy(pdbsched->sched_sv_name, pbs_server_id, sizeof(pdbsched->sched_sv_name));
+
+	if (updatetype != PBS_UPDATE_DB_QUICK) {
+		if ((encode_attr_db(sched_attr_def,
+			ps->sch_attr,
+			(int)SCHED_ATR_LAST, &pdbsched->attr_list, 1)) != 0) /* encode all attributes */
+			return -1;
+	}
+
+	return 0;
 }
 
 /**
  * @brief
- *		Load a database scheduler object from the scheduler object in server
+ *	Load a database scheduler object from the scheduler object in server
  *
- * @param[in]	ps	-	Address of the scheduler in pbs server
- * @param[in]	pdbsched	-	Address of the database scheduler object
+ * @param[out] ps - Address of the scheduler in pbs server
+ * @param[in]  pdbsched  - Address of the database scheduler object
  *
  */
-static void
-db_to_svr_sched(pbs_sched *ps, pbs_db_sched_info_t *pdbsched)
+static int
+db_to_svr_sched(struct pbs_sched *ps, pbs_db_sched_info_t *pdbsched)
 {
-	strcpy(ps->sc_name,pdbsched->sched_name);
+	/* since we dont need the sched_name and sched_sv_name free here */
+	if ((decode_attr_db(ps, &pdbsched->attr_list, sched_attr_def,
+		ps->sch_attr,
+		(int) SCHED_ATR_LAST, 0)) != 0)
+		return -1;
+
+	return 0;
 }
 
 /**
@@ -232,14 +275,13 @@ svr_recov_db(void)
 {
 	pbs_db_conn_t *conn = (pbs_db_conn_t *) svr_db_conn;
 	pbs_db_svr_info_t dbsvr;
-	pbs_db_attr_info_t attr_info;
 	pbs_db_obj_info_t obj;
 
 	/* load server_qs */
-	strcpy(dbsvr.sv_name, pbs_server_id);
-
-	if (pbs_db_begin_trx(conn, 0, 0) !=0)
-		goto db_err;
+	dbsvr.sv_name[sizeof(dbsvr.sv_name) - 1] = '\0';
+	strncpy(dbsvr.sv_name, pbs_server_id, sizeof(dbsvr.sv_name));
+	dbsvr.attr_list.attr_count = 0;
+	dbsvr.attr_list.attributes = NULL;
 
 	obj.pbs_db_obj_type = PBS_DB_SVR;
 	obj.pbs_db_un.pbs_db_svr = &dbsvr;
@@ -248,23 +290,14 @@ svr_recov_db(void)
 	if (pbs_db_load_obj(conn, &obj) != 0)
 		goto db_err;
 
-	db_to_svr_svr(&server, &dbsvr);
-
-	attr_info.parent_id = pbs_server_id;
-	attr_info.parent_obj_type = PARENT_TYPE_SERVER; /* svr attr */
-
-	/* read in server attributes */
-	if (recov_attr_db(conn, &server, &attr_info, svr_attr_def, server.sv_attr,
-		(int)SRV_ATR_LAST, 0) != 0)
+	if (db_to_svr_svr(&server, &dbsvr) != 0)
 		goto db_err;
 
-	if (pbs_db_end_trx(conn, PBS_DB_COMMIT) != 0)
-		goto db_err;
+	pbs_db_reset_obj(&obj);
 
 	return (0);
+
 db_err:
-	log_err(-1, "svr_recov", "error on recovering server attr");
-	(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
 	return -1;
 }
 
@@ -294,9 +327,9 @@ svr_save_db(struct server *ps, int mode)
 {
 	pbs_db_conn_t *conn = (pbs_db_conn_t *) svr_db_conn;
 	pbs_db_svr_info_t dbsvr;
-	pbs_db_attr_info_t attr_info;
 	pbs_db_obj_info_t obj;
-	int flag=0;
+	int savetype = PBS_UPDATE_DB_FULL;
+	int rc;
 
 	ps->sv_qs.sv_savetm = time_now;
 
@@ -306,52 +339,38 @@ svr_save_db(struct server *ps, int mode)
 	if (update_svrlive() !=0)
 		return -1;
 
-	svr_to_db_svr(ps, &dbsvr);
+	if (mode == SVR_SAVE_FULL)
+		savetype = PBS_UPDATE_DB_FULL;
+	else if (mode == SVR_SAVE_QUICK)
+		savetype = PBS_UPDATE_DB_QUICK;
+	else
+		savetype = PBS_INSERT_DB;
+
+	if (svr_to_db_svr(ps, &dbsvr, savetype) != 0)
+		goto db_err;
+
 	obj.pbs_db_obj_type = PBS_DB_SVR;
 	obj.pbs_db_un.pbs_db_svr = &dbsvr;
 
-	if (mode == SVR_SAVE_QUICK) {
-		/* save server_qs */
-		if (pbs_db_update_obj(conn, &obj) != 0)
-			goto db_err;
-	} else {	/* SVR_SAVE_FULL Save */
-		if (pbs_db_begin_trx(conn, 0, 0) !=0)
-			goto db_err;
-
-		if (mode == SVR_SAVE_NEW) {
-			if (pbs_db_insert_obj(conn, &obj) != 0)
-				goto db_err;
-			flag = 1;
-		} else { /* FULL SAVE */
-			/*
-			 * remove all old attributes
-			 * and insert them back again
-			 */
-
-			pg_db_delete_svrattr(conn, &obj);
-			/* server_qs */
-			if (pbs_db_update_obj(conn, &obj) != 0)
-				goto db_err;
-			flag = 1; /* so all set attributes are re-inserted back */
-		}
-
-		/* svr_attrs */
-		attr_info.parent_obj_type = PARENT_TYPE_SERVER; /* svr attr */
-		attr_info.parent_id = pbs_server_id;
-
-		if (save_attr_db(conn, &attr_info, svr_attr_def, ps->sv_attr, (int)SRV_ATR_LAST, flag) !=0)
-			goto db_err;
-
-		if (pbs_db_end_trx(conn, PBS_DB_COMMIT) != 0)
-			goto db_err;
+	rc = pbs_db_save_obj(conn, &obj, savetype);
+	if (rc != 0) {
+		savetype = PBS_INSERT_DB;
+		rc = pbs_db_save_obj(conn, &obj, savetype);
 	}
+
+	pbs_db_reset_obj(&obj);
+
+	if (rc != 0)
+		goto db_err;
+
 	return (0);
+
 db_err:
 	strcpy(log_buffer, msg_svdbnosv);
 	if (conn->conn_db_err != NULL)
 		strncat(log_buffer, conn->conn_db_err, LOG_BUF_SIZE - strlen(log_buffer) - 1);
 	log_err(-1, __func__, log_buffer);
-	(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
+
 	panic_stop_db(log_buffer);
 	return (-1);
 }
@@ -373,77 +392,44 @@ static char *schedemsg = "unable to save scheddb ";
  * @retval	-2 :	No schedulers found.
  * */
 
-int
-sched_recov_db(void)
+pbs_sched *
+sched_recov_db(char *sname)
 {
-	pbs_db_conn_t *conn = (pbs_db_conn_t *) svr_db_conn;
-	pbs_db_sched_info_t dbsched;
-	pbs_db_attr_info_t attr_info;
-	pbs_db_obj_info_t obj;
-	int rc;
-	int count;
-	void *state = NULL;
-	pbs_sched *psched;
+	pbs_sched		*ps;
+	pbs_db_sched_info_t	dbsched;
+	pbs_db_obj_info_t	obj;
+	pbs_db_conn_t		*conn = (pbs_db_conn_t *) svr_db_conn;
 
-	/* start a transaction */
-	if (pbs_db_begin_trx(conn, 0, 0) != 0)
-		return (-1);
-
-	/* get scheds from DB */
 	obj.pbs_db_obj_type = PBS_DB_SCHED;
 	obj.pbs_db_un.pbs_db_sched = &dbsched;
 
-	state = pbs_db_cursor_init(conn, &obj, NULL);
-	if (state == NULL) {
-		snprintf(log_buffer, LOG_BUF_SIZE,
-				"%s", (char *) conn->conn_db_err);
-		log_err(-1, __func__, log_buffer);
-		pbs_db_cursor_close(conn, state);
-		(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
-		return -1;
+	ps = sched_alloc(sname);  /* allocate & init sched structure space */
+	if (ps == NULL) {
+		log_err(-1, "sched_recov", "sched_alloc failed");
+		return NULL;
 	}
-	count = pbs_db_get_rowcount(state);
-	if (count <= 0) {
-		/* no schedulers found in DB*/
-		pbs_db_cursor_close(conn, state);
-		(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
-		return -2;
-	}
-	while ((rc = pbs_db_cursor_next(conn, state, &obj)) == 0) {
-		/* recover sched */
-		psched = sched_alloc(dbsched.sched_name);
-		if(!strncmp(dbsched.sched_name, PBS_DFLT_SCHED_NAME,
-						strlen(PBS_DFLT_SCHED_NAME))) {
-			dflt_scheduler = psched;
-		}
-		db_to_svr_sched(psched, &dbsched);
 
-		attr_info.parent_id = psched->sc_name;
-		attr_info.parent_obj_type = PARENT_TYPE_SCHED; /* svr attr */
+	/* load sched */
+	dbsched.sched_name[sizeof(dbsched.sched_name) - 1] = '\0';
+	strncpy(dbsched.sched_name, sname, sizeof(dbsched.sched_name));
 
-		/* read in attributes */
-		if (recov_attr_db(conn, psched, &attr_info, sched_attr_def, psched->sch_attr,
-			(int)SCHED_ATR_LAST, 0) != 0)
-			goto db_err;
-
-		if (pbs_conf.pbs_use_tcp == 0) {
-			/* check if throughput mode is visible in non-TPP mode, if so make it invisible */
-			psched->sch_attr[SCHED_ATR_throughput_mode].at_flags = 0;
-		}
-	}
-	pbs_db_cursor_close(conn, state);
-	if (pbs_db_end_trx(conn, PBS_DB_COMMIT) != 0)
+	/* read in job fixed sub-structure */
+	if (pbs_db_load_obj(conn, &obj) != 0)
 		goto db_err;
 
-	if (server.sv_attr[SRV_ATR_scheduling].at_val.at_long)
-		set_scheduler_flag(SCH_SCHEDULE_ETE_ON, NULL);
+	if (db_to_svr_sched(ps, &dbsched) != 0)
+		goto db_err;
 
-	return 0;
+	pbs_db_reset_obj(&obj);
+
+	/* all done recovering the sched */
+	return (ps);
 
 db_err:
-	log_err(-1, "sched_recov", "read of scheduler db failed");
-	(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
-	return -1;
+	log_err(-1, "sched_recov", "read of scheddb failed");
+	if (ps)
+		free(ps);
+	return NULL;
 }
 
 
@@ -471,47 +457,36 @@ sched_save_db(pbs_sched *ps, int mode)
 {
 	pbs_db_conn_t *conn = (pbs_db_conn_t *) svr_db_conn;
 	pbs_db_sched_info_t dbsched;
-	pbs_db_attr_info_t attr_info;
 	pbs_db_obj_info_t obj;
-	int flag=0;
+	int savetype = PBS_UPDATE_DB_FULL;
+	int rc;
 
-	svr_to_db_sched(ps, &dbsched);
+	if (mode == SVR_SAVE_FULL)
+		savetype = PBS_UPDATE_DB_FULL;
+	else if (mode == SVR_SAVE_QUICK)
+		savetype = PBS_UPDATE_DB_QUICK;
+	else
+		savetype = PBS_INSERT_DB;
+
+	if (svr_to_db_sched(ps, &dbsched, savetype) != 0)
+		goto db_err;
+
 	obj.pbs_db_obj_type = PBS_DB_SCHED;
 	obj.pbs_db_un.pbs_db_sched = &dbsched;
 
-	if (mode == SVR_SAVE_QUICK) {
-		/* save server_qs */
-		if (pbs_db_update_obj(conn, &obj) != 0)
-			goto db_err;
-	} else {	/* SVR_SAVE_FULL Save */
-		if (pbs_db_begin_trx(conn, 0, 0) !=0)
-			goto db_err;
 
-		if (mode == SVR_SAVE_NEW) {
-			if (pbs_db_insert_obj(conn, &obj) != 0)
-				goto db_err;
-			flag = 1;
-		} else {
-
-			/* server_qs */
-			if (pbs_db_update_obj(conn, &obj) != 0) {
-				if (pbs_db_insert_obj(conn, &obj) != 0)
-					goto db_err;
-			}
-		}
-
-		/* svr_attrs */
-		attr_info.parent_obj_type = PARENT_TYPE_SCHED; /* svr attr */
-		attr_info.parent_id = ps->sc_name;
-
-		ps->sch_attr[SCHED_ATR_sched_state].at_flags &= ~(ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE);
-		if (save_attr_db(conn, &attr_info, sched_attr_def, ps->sch_attr, (int)SCHED_ATR_LAST, flag) !=0)
-			goto db_err;
-		ps->sch_attr[SCHED_ATR_sched_state].at_flags |= (ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE);
-
-		if (pbs_db_end_trx(conn, PBS_DB_COMMIT) != 0)
-			goto db_err;
+	rc = pbs_db_save_obj(conn, &obj, savetype);
+	if (rc != 0) {
+		savetype = PBS_INSERT_DB;
+		rc = pbs_db_save_obj(conn, &obj, savetype);
 	}
+
+	/* free the attribute list allocated by encode_attrs */
+	pbs_db_reset_obj(&obj);
+
+	if (rc != 0)
+		goto db_err;
+
 	return (0);
 
 db_err:
@@ -519,7 +494,7 @@ db_err:
 	if (conn->conn_db_err != NULL)
 		strncat(log_buffer, conn->conn_db_err, LOG_BUF_SIZE - strlen(log_buffer) - 1);
 	log_err(-1, __func__, log_buffer);
-	(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
+
 	panic_stop_db(log_buffer);
 	return (-1);
 }
