@@ -44,6 +44,7 @@ class Test_run_count(TestFunctional):
     """
 
     def create_reject_begin_hook(self):
+        start_time = int(time.time())
         name = "h1"
         body = ("import pbs\n"
                 "e=pbs.event()\n"
@@ -53,7 +54,23 @@ class Test_run_count(TestFunctional):
 
         # make sure hook has propogated to mom
         self.mom.log_match("h1.HK;copy hook-related file request received",
-                           existence=True)
+                           existence=True, starttime=start_time)
+
+    def check_run_count(self, input_count="0", output_count="21"):
+        """
+        Creates a hook, submits a job and checks the run count.
+        input_count is the user requested run_count and output_count
+        is the run_count attribute of job from the scheduler.
+        """
+        # Create an execjob_begin hook that rejects the job
+        self.create_reject_begin_hook()
+
+        a = {ATTR_W: "run_count=" + input_count}
+        j = Job(TEST_USER, a)
+        jid = self.server.submit(j)
+
+        self.server.expect(JOB, {'job_state': "H", 'run_count': output_count},
+                           attrop=PTL_AND, id=jid)
 
     def test_run_count_overflow(self):
         """
@@ -76,14 +93,12 @@ class Test_run_count(TestFunctional):
         the job upon the first rejection from mom.
         """
 
-        # Create an execjob_begin hook that rejects the job
-        self.create_reject_begin_hook()
+        self.check_run_count(input_count="184", output_count="185")
 
-        a = {ATTR_W: "run_count=184"}
-        j = Job(TEST_USER, a)
-        jid = self.server.submit(j)
-
-        # expect the job to be in held state and run_count to be 1 more than
-        # originally requested
-        self.server.expect(JOB, {'job_state': "H", 'run_count': "185"},
-                           attrop=PTL_AND, id=jid)
+    def test_less_than_20_run_count(self):
+        """
+        Submit a job with a run count 15, create a execjob_begin
+        hook to reject the job and test that the job goes
+        into held state after 5 rejections
+        """
+        self.check_run_count(input_count="15", output_count="21")
