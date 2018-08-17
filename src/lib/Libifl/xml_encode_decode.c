@@ -392,21 +392,14 @@ extern	int decode_xml_arg_list(char *executable, char *arg_list,
 
 	init_escapechars_maxarg(escape_chars, &arg_max);
 
-	/* Allocate memory to hold encoded argument */
-	arg = calloc(arg_max, sizeof(char));
-	if (arg == NULL)
-		return -1;
-
 	no_of_arguments++;
 	argv = calloc(no_of_arguments + 1, sizeof(char *));
 	if (argv == NULL) {
-		free(arg);
 		return -1;
 	}
 
 	argv[0] = malloc(strlen(*shell) + 1);
 	if (argv[0] == NULL) {
-		free(arg);
 		free(argv);
 		return -1;
 	}
@@ -416,9 +409,16 @@ extern	int decode_xml_arg_list(char *executable, char *arg_list,
 	if (arg_list == NULL) {
 		argv[no_of_arguments] = 0;
 		*argarray = argv;
-		free(arg);
 		return 0;
 	}
+
+	/* Allocate memory to hold decoded argument */
+	arg = malloc(strlen(arg_list) + 1);
+	if (arg == NULL) {
+		free(argv);
+		return -1;
+	}
+	arg[0] = '\0';
 
 	argument_list = strdup(arg_list);
 	if (argument_list == NULL)
@@ -496,7 +496,7 @@ extern	int decode_xml_arg_list_str(char *arg_list,
 	char		*argv;
 	char		*argv_temp;
 	int		first = 1;
-	int		arg_len = 0;
+	size_t		arg_len = 0;
 	char		*escape_chars[PBS_NUM_ESC_CHARS];
 	long		arg_max = -1;
 	char		*saveptr;		/* for use with strtok_r */
@@ -512,10 +512,12 @@ extern	int decode_xml_arg_list_str(char *arg_list,
 
 	init_escapechars_maxarg(escape_chars, &arg_max);
 
-	/* Allocate memory to hold encoded argument */
-	arg = calloc(arg_max, sizeof(char *));
+	/* Allocate memory to hold decoded argument */
+	arg_len = strlen(arg_list) + 1;
+	arg = malloc(arg_len);
 	if (arg == NULL)
 		return -1;
+	arg[0] = '\0';
 
 	argument_list = strdup(arg_list);
 	if (argument_list == NULL) {
@@ -524,7 +526,7 @@ extern	int decode_xml_arg_list_str(char *arg_list,
 	}
 
 	/* Assign memory to hold argument list */
-	argv = malloc(strlen(argument_list) + 1);
+	argv = malloc(arg_len);
 	if (argv == NULL) {
 		free(arg);
 		free(argument_list);

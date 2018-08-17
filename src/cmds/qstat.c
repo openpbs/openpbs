@@ -358,6 +358,16 @@ convert_feed_chars(char *val) {
 
 /**
  * @brief
+ *	print the exit message and die.
+ */
+void
+exit_qstat(char *msg) {
+	fprintf(stderr, "qstat: %s\n", msg);
+	exit(1);
+}
+
+/**
+ * @brief
  *	print a attribute value string, formating to break at a comma if possible
  *
  * @param[in] name - attribute name
@@ -382,16 +392,12 @@ prt_attr(char *name, char *resource, char *value, int one_line) {
 	switch (output_format) {
 	case FORMAT_JSON:
 		if (strcmp(name, ATTR_v) == 0) {
-			if (add_json_node(JSON_OBJECT, JSON_NULL, name, NULL) == NULL) {
-				fprintf(stderr, "qstat: out of memory\n");
-				exit(1);
-			}
+			if (add_json_node(JSON_OBJECT, JSON_NULL, name, NULL) == NULL)
+				exit_qstat("out of memory");
 			buf = strdup(value);
 			temp = buf;
-			if (buf == NULL) {
-				fprintf(stderr, "qstat: out of memory\n");
-				exit(1);
-			}
+			if (buf == NULL)
+				exit_qstat("out of memory");
 			while (*value) {
 				/* value is split based on comma and each key-value is stored in keyvalpair.
 				 * If the value contains an escaped comma, only the comma is copied to keyvalpair.
@@ -409,69 +415,51 @@ prt_attr(char *name, char *resource, char *value, int one_line) {
 					*buf++ = *value++;
 				}
 				*buf = '\0';
-				if (add_json_node(JSON_VALUE, JSON_NULL, key, val) == NULL) {
-					fprintf(stderr, "qstat: out of memory\n");
-					exit(1);
-				}
+				if (add_json_node(JSON_VALUE, JSON_NULL, key, val) == NULL)
+					exit_qstat("out of memory");
 				if (*value != '\0')
 					value++;
 			}
-			if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL) == NULL) {
-				fprintf(stderr, "qstat: out of memory\n");
-				exit(1);
-			}
+			if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL) == NULL)
+				exit_qstat("out of memory");
 			free(temp);
 		} else {
 			if (resource) {
 				if (prev_resc_name && strcmp(prev_resc_name, name) != 0) {
 					if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL)
-							== NULL) {
-						fprintf(stderr, "qstat: out of memory\n");
-						exit(1);
-					}
+							== NULL)
+						exit_qstat("out of memory");
 					prev_resc_name = NULL;
 				}
 				if (prev_resc_name == NULL || strcmp(prev_resc_name, name) != 0) {
 					if (add_json_node(JSON_OBJECT, JSON_NULL, name, NULL)
-							== NULL) {
-						fprintf(stderr, "qstat: out of memory\n");
-						exit(1);
-					}
+							== NULL)
+						exit_qstat("out of memory");
 					prev_resc_name = name;
 				}
 				if (add_json_node(JSON_VALUE, JSON_NULL, resource, value)
-						== NULL) {
-					fprintf(stderr, "qstat: out of memory\n");
-					exit(1);
-				}
+						== NULL)
+					exit_qstat("out of memory");
 			} else {
 				if (prev_resc_name) {
 					if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL)
-							== NULL) {
-						fprintf(stderr, "qstat: out of memory\n");
-						exit(1);
-					}
+							== NULL)
+						exit_qstat("out of memory");
 					prev_resc_name = NULL;
 				}
-				if (add_json_node(JSON_VALUE, JSON_NULL, name, value) == NULL) {
-					fprintf(stderr, "qstat: out of memory\n");
-					exit(1);
-				}
+				if (add_json_node(JSON_VALUE, JSON_NULL, name, value) == NULL)
+					exit_qstat("out of memory");
 			}
 		}
 		break;
 
 	case FORMAT_DSV:
 		buf = escape_delimiter(value, delimiter, ESC_CHAR);
-		if (buf == NULL) {
-			fprintf(stderr, "qstat: out of memory\n");
-			exit(1);
-		}
+		if (buf == NULL)
+			exit_qstat("out of memory");
 		buf = convert_feed_chars(buf);
-		if (buf == NULL) {
-			fprintf(stderr, "qstat: out of memory\n");
-			exit(1);
-		}
+		if (buf == NULL)
+			exit_qstat("out of memory");
 		if (resource)
 			printf("%s.%s=%s", name, resource, buf);
 		else
@@ -482,10 +470,8 @@ prt_attr(char *name, char *resource, char *value, int one_line) {
 	default:
 		if (one_line) {
 			buf = convert_feed_chars(value);
-			if (buf == NULL) {
-				fprintf(stderr, "qstat: out of memory\n");
-				exit(1);
-			}
+			if (buf == NULL)
+				exit_qstat("out of memory");
 			if (resource)
 				printf("    %s.%s = %s", name, resource, buf);
 			else
@@ -499,8 +485,9 @@ prt_attr(char *name, char *resource, char *value, int one_line) {
 				printf(".%s", resource);
 			}
 			printf(" = ");
-			buf = NULL;
-			buf = strtok(value, comma);
+			if ((temp = strdup(value)) == NULL)
+				exit_qstat("out of memory");
+			buf = strtok(temp, comma);
 			while (buf) {
 				if ((len = strlen(buf)) + start < CHAR_LINE_LIMIT) {
 					printf("%s", buf);
@@ -523,6 +510,7 @@ prt_attr(char *name, char *resource, char *value, int one_line) {
 					putchar(',');
 				}
 			}
+			free(temp);
 		}
 	}
 }
@@ -1068,10 +1056,8 @@ add_atropl(struct attropl **list, char *name, char *resc, char *value, enum batc
 	struct attropl *patro;
 
 	patro = (struct attropl *)malloc(sizeof(struct attropl));
-	if (patro == 0) {
-		fprintf(stderr, "cannot malloc space\n");
-		exit(1);
-	}
+	if (patro == 0)
+		exit_qstat("out of memory");
 	patro->next     = *list;
 	patro->name     = name;
 	patro->resource = resc;
@@ -1088,10 +1074,8 @@ cvt_time_to_seconds(char *ts)
 	char *pv;
 	long  rv = 0;
 
-	if ((workval = strdup(ts)) == NULL) {
-		fprintf(stderr, "qstat: Out of Memory!\n");
-		exit(1);
-	}
+	if ((workval = strdup(ts)) == NULL)
+		exit_qstat("out of memory");
 	for (pc = workval, pv=workval; *pc; ++pc) {
 		if (*pc == ':') {
 			*pc = '\0';
@@ -1270,8 +1254,10 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 					} else if (strcmp(a->name, ATTR_resv_state) == 0) {
 						prt_attr(a->name, a->resource, cvtResvstate(a->value), alt_opt & ALT_DISPLAY_w);
 					} else if (strcmp(a->name, ATTR_submit_arguments) == 0) {
-						(void)decode_xml_arg_list_str((a->value),  &cmdargs);
+						if (decode_xml_arg_list_str((a->value),  &cmdargs) == -1)
+							exit_qstat("out of memory");
 						prt_attr(a->name, a->resource, cmdargs, alt_opt & ALT_DISPLAY_w);
+						free(cmdargs);
 					} else if (strcmp(a->name, ATTR_executable) == 0) {
 						/*
 						 * Prefix and suffix attribute value with
@@ -1280,10 +1266,8 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 						hpcbp_executable =
 								malloc((strlen(HPCBP_EXEC_TAG) * 2) +
 								sizeof("<></>") + strlen(a->value) + 1);
-						if (hpcbp_executable == NULL) {
-								fprintf(stderr, "cannot malloc space\n");
-								exit(1);
-						}
+						if (hpcbp_executable == NULL)
+							exit_qstat("out of memory");
 						(void)sprintf(hpcbp_executable, "<%s>%s</%s>",
 								HPCBP_EXEC_TAG, a->value, HPCBP_EXEC_TAG);
 						prt_attr(a->name, a->resource, hpcbp_executable, alt_opt & ALT_DISPLAY_w);
@@ -2548,10 +2532,8 @@ qstat -B [-f] [-F format] [-D delim] [ server_name... ]\n";
 
 	/*perform needed security library initializations (including none)*/
 
-	if (CS_client_init() != CS_SUCCESS) {
-		fprintf(stderr, "qstat: unable to initialize security library.\n");
-		exit(1);
-	}
+	if (CS_client_init() != CS_SUCCESS)
+		exit_qstat("unable to initialize security library.");
 
 	/* keep original list for reuse with next operand */
 	/* in case a queue_name is added to front of list */
@@ -2564,18 +2546,12 @@ qstat -B [-f] [-F format] [-D delim] [ server_name... ]\n";
 		delimiter = "";
 		/* adding prologue to json output. */
 		timenow = time(0);
-		if (add_json_node(JSON_VALUE, JSON_INT, "timestamp", &timenow) == NULL) {
-			fprintf(stderr, "qstat: out of memory\n");
-			exit(1);
-		}
-		if (add_json_node(JSON_VALUE, JSON_STRING, "pbs_version", pbs_version) == NULL) {
-			fprintf(stderr, "qstat: out of memory\n");
-			exit(1);
-		}
-		if (add_json_node(JSON_VALUE, JSON_STRING, "pbs_server", def_server) == NULL) {
-			fprintf(stderr, "qstat: out of memory\n");
-			exit(1);
-		}
+		if (add_json_node(JSON_VALUE, JSON_INT, "timestamp", &timenow) == NULL)
+			exit_qstat("out of memory");
+		if (add_json_node(JSON_VALUE, JSON_STRING, "pbs_version", pbs_version) == NULL)
+			exit_qstat("out of memory");
+		if (add_json_node(JSON_VALUE, JSON_STRING, "pbs_server", def_server) == NULL)
+			exit_qstat("out of memory");
 	}
 
 	if (optind >= argc) { /* If no arguments, then set defaults */
@@ -2606,9 +2582,10 @@ qstat -B [-f] [-F format] [-D delim] [ server_name... ]\n";
 	}
 	if (E_opt == 1 && mode == JOBS) {
 		/* allocate enough memory to store list of job ids */
-		job_list = calloc(argc-1,PBS_MAXCLTJOBID+1);
+		job_list = malloc((argc - 1) * (PBS_MAXCLTJOBID + 1));
 		if (job_list == NULL)
-			exit(1);
+			exit_qstat("out of memory");
+		job_list[0] = '\0';
 		/* sort all jobs */
 		qsort(&argv[optind], argc-optind, sizeof (char *), cmp_jobs);
 	}
@@ -2820,19 +2797,15 @@ job_no_args:
 							altdsp_statjob(p_status, p_server, alt_opt, wide);
 						} else
 							if(display_statjob(p_status, p_server, f_opt,
-								p_opt)) {
-								fprintf(stderr, "qstat: out of memory\n");
-								exit(1);
-							}
+								p_opt))
+								exit_qstat("out of memory");
 					}
 #else
 					if (alt_opt != 0 && !(wide && f_opt)) {
 						altdsp_statjob(p_status, p_server, alt_opt, wide);
 					} else if (f_opt == 0 || tcl_stat("job", p_status, f_opt))
-						if(display_statjob(p_status, p_server, f_opt, p_opt, alt_opt)) {
-							fprintf(stderr, "qstat: out of memory\n");
-							exit(1);
-						}
+						if(display_statjob(p_status, p_server, f_opt, p_opt, alt_opt))
+							exit_qstat("out of memory");
 #endif /* localmod 071 */
 					p_header = FALSE;
 					pbs_statfree(p_status);
@@ -2924,10 +2897,8 @@ que_no_args:
 #else
 					} else if (tcl_stat("queue", p_status, f_opt)) {
 #endif /* localmod 071 */
-						if(display_statque(p_status, p_header, f_opt, alt_opt)) {
-							fprintf(stderr, "qstat: out of memory\n");
-							exit(1);
-						}
+						if(display_statque(p_status, p_header, f_opt, alt_opt))
+							exit_qstat("out of memory");
 					}
 					p_header = FALSE;
 					pbs_statfree(p_status);
@@ -2972,10 +2943,8 @@ svr_no_args:
 #else
 					if (tcl_stat("server", p_status, f_opt))
 #endif /* localmod 071 */
-						if(display_statserver(p_status, p_header, f_opt, alt_opt)) {
-							fprintf(stderr, "qstat: out of memory\n");
-							exit(1);
-						}
+						if(display_statserver(p_status, p_header, f_opt, alt_opt))
+							exit_qstat("out of memory");
 					p_header = FALSE;
 					pbs_statfree(p_status);
 				}
@@ -2985,10 +2954,8 @@ svr_no_args:
 		} /* switch */
 	}
 	if(output_format == FORMAT_JSON) {
-		if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL) == NULL) {
-			fprintf(stderr, "qstat : out of memory");
-			exit(1);
-		}
+		if (add_json_node(JSON_OBJECT_END, JSON_NULL, NULL, NULL) == NULL)
+			exit_qstat("out of memory");
 		generate_json(stdout);
 		free_json_node();
 	}
