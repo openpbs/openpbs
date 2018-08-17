@@ -44,6 +44,42 @@ class TestHighResLogging(TestFunctional):
     tm_micro_re = re.compile(
         r'(\d{2,2}/\d{2,2}/\d{4,4}\s\d{2,2}:\d{2,2}:\d{2,2}.\d{6,6})')
 
+    def validate_trace_job_lines(self, jid=None):
+        """
+        Validate that tracejob lines have high resolution time
+        stamp
+        """
+        lines = self.server.log_lines(logtype='tracejob', id=jid, n='ALL')
+        if len(lines) > 1:
+            # Remove first line as it is not log line
+            lines = lines[1:]
+        for line in lines:
+            m = self.tm_micro_re.match(line)
+            if m is None:
+                # If this is accounting log, ignore it as
+                # Accounting log does not have high res logging
+                line = line.split()
+                _msg = 'Not Found high resolution time stamp in log'
+                self.assertFalse(len(line) >= 3 and
+                                 (line[2].strip() != 'A'), _msg)
+        _msg = self.server.shortname + \
+            ': High resolution time stamp found in log'
+        self.logger.info(_msg)
+
+    def validate_server_log_lines(self):
+        """
+        validates that the server_log lines have high resolution
+        time stamp
+        """
+        lines = self.server.log_lines(logtype=self.server, n=20)
+        for line in lines:
+            m = self.tm_micro_re.match(line)
+            _msg = 'Not Found high resolution time stamp in log'
+            self.assertTrue(m, _msg)
+        _msg = self.server.shortname + \
+            ': High resolution time stamp found in log'
+        self.logger.info(_msg)
+
     def test_disabled(self):
         """
         Default High resolution should be disabled (logfile version)
@@ -78,14 +114,15 @@ class TestHighResLogging(TestFunctional):
             lines = lines[1:]
 
         _msg = 'Found high resolution time stamp in tracejob, ' \
-            'it should not be there'
+               'it should not be there'
 
         for line in lines:
             m = self.tm_micro_re.match(line)
             self.assertIsNone(m, _msg)
 
         _msg = self.server.shortname + \
-            ': High resolution time stamp correctly not set in tracejob output'
+            ': High resolution time stamp correctly not set in ' \
+            'tracejob output'
         self.logger.info(_msg)
 
     def test_basic(self):
@@ -100,14 +137,8 @@ class TestHighResLogging(TestFunctional):
         j = Job(TEST_USER)
         jid = self.server.submit(j)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
-        lines = self.server.log_lines(logtype=self.server, n=20)
-        for line in lines:
-            m = self.tm_micro_re.match(line)
-            _msg = 'Not Found high resolution time stamp in log'
-            self.assertTrue(m, _msg)
-        _msg = self.server.shortname + \
-            ': High resolution time stamp found in log'
-        self.logger.info(_msg)
+
+        self.validate_server_log_lines()
 
     def test_basic_tracejob(self):
         """
@@ -122,22 +153,26 @@ class TestHighResLogging(TestFunctional):
         j = Job(TEST_USER)
         jid = self.server.submit(j)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
-        lines = self.server.log_lines(logtype='tracejob', id=jid, n='ALL')
-        if len(lines) > 1:
-            # Remove first line as it is not log line
-            lines = lines[1:]
-        for line in lines:
-            m = self.tm_micro_re.match(line)
-            if m is None:
-                # If this is accounting log, ignore it as
-                # Accounting log does not have high res logging
-                line = line.split()
-                _msg = 'Not Found high resolution time stamp in log'
-                self.assertFalse(len(line) >= 3 and
-                                 (line[2].strip() != 'A'), _msg)
-        _msg = self.server.shortname + \
-            ': High resolution time stamp found in log'
-        self.logger.info(_msg)
+        self.validate_trace_job_lines(jid=jid)
+
+    def test_env_variable_overwrite(self):
+        """
+        Check env variable overwrites the pbs.conf value
+        """
+        self.skipTest("Unskip after pbs_server is is fixed to overwrite "
+                      "PBS_LOG_HIGHRES_TIMESTAMP value with env variable")
+        a = {'PBS_LOG_HIGHRES_TIMESTAMP': 0}
+        self.du.set_pbs_config(confs=a, append=True)
+        conf_path = self.du.parse_pbs_config()
+        pbs_init = os.path.join(os.sep, conf_path['PBS_EXEC'],
+                                'libexec', 'pbs_init.d')
+        cmd = ['sudo', 'PBS_LOG_HIGHRES_TIMESTAMP=1', pbs_init, 'restart']
+        self.du.run_cmd(cmd=cmd, as_script=True, wait_on_script=True)
+        j = Job(TEST_USER)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid)
+        self.validate_server_log_lines()
+        self.validate_trace_job_lines(jid=jid)
 
     def tearDown(self):
         confs = self.du.parse_pbs_config()
