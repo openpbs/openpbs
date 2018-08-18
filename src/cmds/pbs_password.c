@@ -76,7 +76,7 @@ char	*cred_buf = NULL;
  *
  * @return Void
  *
- */ 
+ */
 static void
 set_attrop(struct attropl **list, char *a_name, char *r_name, char *v_name, enum batch_op op)
 {
@@ -164,7 +164,7 @@ main(int argc, char *argv[])
 
 #if	defined(PBS_PASS_CREDENTIALS)
 	int	err, j;
-	char	passwd_buf[PBS_MAXPWLEN];
+	char	passwd_buf[PBS_MAXPWLEN] = {'\0'};
 #endif
 
 	/*test for real deal or just version and exit*/
@@ -234,9 +234,16 @@ main(int argc, char *argv[])
 	}
 
 
-	if (argv[optind] != NULL)
+	if (argv[optind] != NULL) {
 		strcpy(the_user, argv[optind]);
-
+#if	defined(PBS_PASS_CREDENTIALS)
+		optind++;
+		if (argv[optind] != NULL) {
+			strncpy(passwd_buf, argv[optind], sizeof(passwd_buf));
+			passwd_buf[sizeof(passwd_buf) - 1] = '\0';
+		}
+#endif
+	}
 
 	if (delete_user) {
 		int go = 1;
@@ -324,18 +331,20 @@ main(int argc, char *argv[])
 		}
 
 #if	defined(PBS_PASS_CREDENTIALS)
-		for (j=0; j<3; j++) {
-			err = EVP_read_pw_string(passwd_buf,
-				sizeof(passwd_buf),
-				"Enter user's password: ", 1);
-			if (err == 0)
-				break;
-		}
-		if (j == 3) {
-			fprintf(stderr,
-				"%s failed: max retries reached!\n", argv[0]);
-			CS_close_app();
-			exit(-11);
+		if (passwd_buf[0] == '\0') {
+			for (j=0; j<3; j++) {
+				err = EVP_read_pw_string(passwd_buf,
+					sizeof(passwd_buf),
+					"Enter user's password: ", 1);
+				if (err == 0)
+					break;
+			}
+			if (j == 3) {
+				fprintf(stderr,
+					"%s failed: max retries reached!\n", argv[0]);
+				CS_close_app();
+				exit(-11);
+			}
 		}
 
 		pbs_encrypt_pwd(passwd_buf, &cred_type, &cred_buf, &cred_len);
