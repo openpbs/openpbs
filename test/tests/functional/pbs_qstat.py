@@ -84,7 +84,6 @@ class TestQstat(PBSTestSuite):
         qstat_o['pbs_version'] = self.server.pbs_version
         qstat_o['eligible_time_enable'] = 'False'
         qstat_o['max_concurrent_provision'] = '5'
-        qstat_o['pbs_license_info'] = None
         qstat_o['FLicenses'] = None
         qstat_o['license_count'] = None
         qstat_o['managers'] = None
