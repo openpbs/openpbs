@@ -104,6 +104,7 @@ class PBSAnonymizer(object):
         self.gmap_resc_val = {}
         self.gmap_attr_key = {}
         self.gmap_resc_key = {}
+        self.num_bad_acct_records = 0
 
     def __get_anon_key(self, key, attr_map):
         """
@@ -126,7 +127,8 @@ class PBSAnonymizer(object):
 
         return anon_key
 
-    def __refactor_key(self, key):
+    @staticmethod
+    def __refactor_key(key):
         """
         There are some attributes which are aliases of each other
         and others which are lists like user/group lists, lists of hosts etc.
@@ -581,13 +583,13 @@ class PBSAnonymizer(object):
                     if self._entity and (attr.startswith("max_run") or
                                          attr.startswith("max_queued")):
                         self.__anonymize_fgc(d, attr, self.attr_val,
-                                             attr, val)
+                                             val)
 
                     if res_name in self.resc_val:
                         if (attr.startswith("max_run") or
                                 attr.startswith("max_queued")):
                             self.__anonymize_fgc(d, attr, self.attr_val,
-                                                 attr, val)
+                                                 val)
                         self.__anonymize_attr_val(d, attr, self.resc_val,
                                                   res_name, val)
 
@@ -615,7 +617,8 @@ class PBSAnonymizer(object):
 
                         d[attr] = val
 
-    def __verify_key(self, line, key):
+    @staticmethod
+    def __verify_key(line, key):
         """
         Verify that a given key is actually a key in the context of the line
         given.
@@ -767,7 +770,8 @@ class PBSAnonymizer(object):
 
         return value
 
-    def __delete_kv(self, line, key, value):
+    @staticmethod
+    def __delete_kv(line, key, value):
         """
         Delete a key-value pair from a line
         If after deleting the k-v pair, the left over string has
@@ -906,9 +910,7 @@ class PBSAnonymizer(object):
             anon_columns = {}
             start_index = 0
             end_index = 0
-            col_index = 0
-            for col_index in range(len(col_length)):
-                length = col_length[col_index]
+            for col_index, length in enumerate(col_length):
                 start_index = end_index
                 end_index = start_index + length + 1
 
@@ -1090,18 +1092,26 @@ class PBSAnonymizer(object):
                 continue
             buf = shlex.split(curr[3].strip())
 
+            skip_record = False
             # Split the attribute list into key value pairs
-            kvl = map(lambda n: n.split("=", 1), buf)
-            for i in range(len(kvl)):
-                k, v = kvl[i]
+            kvl_list = map(lambda n: n.split("=", 1), buf)
+            for kvl in kvl_list:
+                try:
+                    k, v = kvl
+                except ValueError:
+                    self.num_bad_acct_records += 1
+                    self.logger.debug("Bad accounting record found:\n" +
+                                      data)
+                    skip_record = True
+                    break
 
                 if k in self.attr_val:
                     anon_kv = self.__get_anon_value(k, v, self.gmap_attr_val)
-                    kvl[i][1] = anon_kv
+                    kvl[1] = anon_kv
 
                 if k in self.attr_key:
                     anon_ak = self.__get_anon_key(k, self.gmap_attr_key)
-                    kvl[i][0] = anon_ak
+                    kvl[0] = anon_ak
 
                 if "." in k:
                     restype, resname = k.split(".")
@@ -1109,15 +1119,15 @@ class PBSAnonymizer(object):
                         if resname == rv:
                             anon_rv = self.__get_anon_value(
                                 resname, rv, self.gmap_resc_val)
-                            kvl[i][1] = anon_rv
+                            kvl[1] = anon_rv
 
                     if resname in self.resc_key:
                         anon_rk = self.__get_anon_key(resname,
                                                       self.gmap_resc_key)
-                        kvl[i][0] = restype + "." + anon_rk
-
-            anon_data.append(";".join(curr[:3]) + ";" +
-                             " ".join(map(lambda n: "=".join(n), kvl)))
+                        kvl[0] = restype + "." + anon_rk
+            if not skip_record:
+                anon_data.append(";".join(curr[:3]) + ";" +
+                                 " ".join(["=".join(n) for n in kvl_list]))
         f.close()
 
         return anon_data
@@ -1139,13 +1149,13 @@ class PBSAnonymizer(object):
         # job_sort_key and node_sort_key
         sr = scheduler.get_resources()
         if sr:
-            for i in range(len(sr)):
-                if sr[i] in self.resc_key:
-                    if sr[i] in self.gmap_resc_key:
-                        sr[i] = self.gmap_resc_key[sr[i]]
+            for i, sres in enumerate(sr):
+                if sres in self.resc_key:
+                    if sres in self.gmap_resc_key:
+                        sr[i] = self.gmap_resc_key[sres]
                     else:
-                        anon_res = self.utils.random_str(len(sr[i]))
-                        self.gmap_resc_key[sr[i]] = anon_res
+                        anon_res = self.utils.random_str(len(sres))
+                        self.gmap_resc_key[sres] = anon_res
                         sr[i] = anon_res
 
             scheduler.sched_config["resources"] = ",".join(sr)
@@ -1157,9 +1167,9 @@ class PBSAnonymizer(object):
                     sc_jsk = list(sc_jsk)
 
                 for r in self.resc_key:
-                    for i in range(len(sc_jsk)):
-                        if r in sc_jsk[i]:
-                            sc_jsk[i] = sc_jsk[i].replace(r, self.resc_key[r])
+                    for i, key in enumerate(sc_jsk):
+                        if r in key:
+                            sc_jsk[i] = key.replace(r, self.resc_key[r])
 
     def __str__(self):
         return ("Attributes Values: " + str(self.gmap_attr_val) + "\n" +

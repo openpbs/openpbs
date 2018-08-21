@@ -587,7 +587,8 @@ class _PBSSnapUtils(object):
         if ret_out:
             return retstr
 
-    def __convert_flag_to_numeric(self, flag):
+    @staticmethod
+    def __convert_flag_to_numeric(flag):
         """
         Convert a resource's flag attribute to its numeric equivalent
 
@@ -630,7 +631,8 @@ class _PBSSnapUtils(object):
                           ATR_DFLAG_MGRD | ATR_DFLAG_MGWR)
         return resc_flag
 
-    def __convert_type_to_numeric(self, attr_type):
+    @staticmethod
+    def __convert_type_to_numeric(attr_type):
         """
         Convert a resource's type attribute to its numeric equivalent
 
@@ -704,6 +706,10 @@ quit()
         :param num_days_logs: Number of days of logs to capture
         :type num_days_logs: int
         """
+
+        if num_days_logs < 1:
+            self.logger.debug("Number of days of logs < 1, skipping")
+            return
 
         end_time = self.server.ctime
         start_time = end_time - ((num_days_logs - 1) * 24 * 60 * 60)
@@ -1524,14 +1530,19 @@ quit()
 
         self.finalized = True
 
-        # Print out obfuscation map
-        if self.anonymize and (self.mapfile is not None):
-            try:
-                with open(self.mapfile, "w") as mapfd:
-                    mapfd.write(str(self.anon_obj))
-            except Exception:
-                self.logger.error("Error writing out the map file " +
-                                  self.mapfile)
+        if self.anonymize:
+            # Print out number of bad accounting records:
+            if self.anon_obj.num_bad_acct_records > 0:
+                self.logger.error("Number of bad accounting records found: " +
+                                  str(self.anon_obj.num_bad_acct_records))
+            if self.mapfile is not None:
+                # Print out obfuscation map
+                try:
+                    with open(self.mapfile, "w") as mapfd:
+                        mapfd.write(str(self.anon_obj))
+                except Exception:
+                    self.logger.error("Error writing out the map file " +
+                                      self.mapfile)
 
         # Record timestamp of the snapshot
         snap_ctimepath = os.path.join(self.snapdir, CTIME_PATH)
