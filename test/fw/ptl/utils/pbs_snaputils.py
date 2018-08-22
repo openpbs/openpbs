@@ -890,6 +890,11 @@ quit()
                 self.__copy_dir_with_core(host, item_src_path, item_dest_path,
                                           core_dir, except_list, only_core)
             else:
+                # PBS log files are named YYYYMMDD, skip log files as
+                # they get captured separately
+                if len(item) == 8 and item.isdigit():
+                    continue
+
                 # Copy the file over
                 item_src_path = prefix + item_src_path
                 try:
