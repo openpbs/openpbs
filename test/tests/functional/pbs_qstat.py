@@ -39,9 +39,10 @@ from ptl.utils.pbs_testsuite import *
 import json
 
 
-class TestQstat_json(PBSTestSuite):
+class TestQstat(PBSTestSuite):
     """
-    Test qstat output can be viewed in json format
+    This test suite validates output of qstat for
+    various options
     """
 
     def parse_json(self, dictitems, qstat_attr):
@@ -56,6 +57,75 @@ class TestQstat_json(PBSTestSuite):
                     if isinstance(val, dict):
                         self.parse_json(val, qstat_attr)
         return qstat_attr
+
+    def validate_attribute(self, attr_dict, user):
+        """
+        Check if the value of server attributes reported by
+        qstat -Bf matches the expected values.
+        """
+        qstat_o = {}
+        qstat_o['server_state'] = 'Active'
+        qstat_o['server_host'] = self.server.hostname
+        qstat_o['scheduling'] = 'True'
+        qstat_o['total_jobs'] = '0'
+        qstat_o['state_count'] = ['Transit', 'Queued',
+                                  'Held', 'Waiting', 'Running',
+                                  'Exiting', 'Begun']
+        qstat_o['default_queue'] = 'workq'
+        qstat_o['log_events'] = '511'
+        qstat_o['mail_from'] = 'adm'
+        qstat_o['query_other_jobs'] = 'True'
+        qstat_o['resources_default.ncpus'] = '1'
+        qstat_o['default_chunk.ncpus'] = '1'
+        qstat_o['resv_enable'] = 'True'
+        qstat_o['node_fail_requeue'] = '310'
+        qstat_o['max_array_size'] = '10000'
+        qstat_o['pbs_license_linger_time'] = '3600'
+        qstat_o['pbs_version'] = self.server.pbs_version
+        qstat_o['eligible_time_enable'] = 'False'
+        qstat_o['max_concurrent_provision'] = '5'
+        qstat_o['FLicenses'] = None
+        qstat_o['license_count'] = None
+        qstat_o['managers'] = None
+        qstat_o['flatuid'] = None
+        qstat_o['id'] = self.server.shortname
+
+        # If test case is run as root, PTL sets acl_roots
+        if os.getuid() == 0:
+            qstat_o['acl_roots'] = None
+
+        if user == ROOT_USER:
+            qstat_o['power_provisioning'] = 'False'
+
+        platform = self.du.get_platform()
+        if platform == 'cray' or platform == 'craysim':
+            qstat_o['restrict_res_to_release_on_suspend'] = 'ncpus'
+
+        for each in attr_dict:
+            self.assertIn(each, qstat_o, "Unexpected attribute \"%s\""
+                          " encountered in output of qstat -Bf" % each)
+            if qstat_o[each] is not None:
+                if "state_count" in each:
+                    out1 = []
+                    out = attr_dict[each].split()
+                    for k in out:
+                        out1.append(k.split(':')[0])
+                    self.assertListEqual(qstat_o[each], out1,
+                                         "Value of server attribute \"%s\""
+                                         " does not match expected"
+                                         " value" % each)
+                else:
+                    self.assertEqual(qstat_o[each], attr_dict[each],
+                                     "Value of server attribute \"%s\""
+                                     " does not match expected value" % each)
+                self.logger.info("Server attribute \"%s\""
+                                 " is validated successfully" % each)
+        value = [k for k in qstat_o.keys() if k not in attr_dict.keys()]
+        self.assertEqual(len(value), 0, "Output of qstat -Bf is missing"
+                                        " some expected attributes - %s"
+                                        % value)
+        self.logger.info(
+            "Server attributes in output of qstat -Bf validated succesfully")
 
     @tags('smoke')
     def test_qstat_json_valid(self):
@@ -228,3 +298,19 @@ class TestQstat_json(PBSTestSuite):
             json.loads(qstat_out)
         except ValueError, e:
             self.assertTrue(False)
+
+    @tags('smoke')
+    def test_qstat_Bf_as_user(self):
+        """
+        Validate output of qstat -Bf when executed as non-root user
+        """
+        attr_dict = self.server.status(runas=TEST_USER)[0]
+        self.validate_attribute(attr_dict, TEST_USER)
+
+    @tags('smoke')
+    def test_qstat_Bf_as_root(self):
+        """
+        Validate output of qstat -Bf when executed as root user
+        """
+        attr_dict = self.server.status(runas=ROOT_USER)[0]
+        self.validate_attribute(attr_dict, ROOT_USER)
