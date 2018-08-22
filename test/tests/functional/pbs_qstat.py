@@ -58,7 +58,7 @@ class TestQstat(PBSTestSuite):
                         self.parse_json(val, qstat_attr)
         return qstat_attr
 
-    def validate_el(self, attr_dict, user):
+    def validate_attribute(self, attr_dict, user):
         """
         Check if the value of server attributes reported by
         qstat -Bf matches the expected values.
@@ -304,15 +304,13 @@ class TestQstat(PBSTestSuite):
         """
         Validate output of qstat -Bf when executed as non-root user
         """
-        ret = self.server.status(runas=TEST_USER)
-        attr_dict = ret[0]
-        self.validate_el(attr_dict, TEST_USER)
+        attr_dict = self.server.status(runas=TEST_USER)[0]
+        self.validate_attribute(attr_dict, TEST_USER)
 
     @tags('smoke')
     def test_qstat_Bf_as_root(self):
         """
         Validate output of qstat -Bf when executed as root user
         """
-        ret = self.server.status(runas=ROOT_USER)
-        attr_dict = ret[0]
-        self.validate_el(attr_dict, ROOT_USER)
+        attr_dict = self.server.status(runas=ROOT_USER)[0]
+        self.validate_attribute(attr_dict, ROOT_USER)
