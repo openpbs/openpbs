@@ -12183,18 +12183,22 @@ class Scheduler(PBSService):
         tree.update()
         return tree
 
-    def add_to_resource_group(self, name, id, parent, nshares):
+    def add_to_resource_group(self, name, fairshare_id, parent, nshares,
+                              validate=True):
         """
         Add an entry to the resource group file
 
         :param name: The name of the entity to add
         :type name: str or :py:class:`~ptl.lib.pbs_testlib.PbsUser`
-        :param id: The numeric identifier of the entity to add
-        :type id: int
+        :param fairshare_id: The numeric identifier of the entity to add
+        :type fairshare_id: int
         :param parent: The name of the parent group
         :type parent: str
         :param nshares: The number of shares associated to the entity
         :type nshares: int
+        :param validate: if True (the default), validate the
+                         configuration settings.
+        :type validate: bool
         """
         if self.resource_group is None:
             self.resource_group = self.parse_resource_group(
@@ -12204,8 +12208,24 @@ class Scheduler(PBSService):
                 self.hostname, self.resource_group_file)
         if isinstance(name, PbsUser):
             name = str(name)
-        return self.resource_group.create_node(name, id, parent_name=parent,
-                                               nshares=nshares)
+        reconfig_time = int(time.time())
+        rc = self.resource_group.create_node(name, fairshare_id,
+                                             parent_name=parent,
+                                             nshares=nshares)
+        if validate:
+            self.get_pid()
+            self.signal('-HUP')
+            try:
+                self.log_match("Sched;reconfigure;Scheduler is reconfiguring",
+                               n=10, starttime=reconfig_time)
+                self.log_match("fairshare;resgroup: error ", n=10,
+                               starttime=reconfig_time, existence=False,
+                               max_attempts=2)
+            except PtlLogMatchError:
+                _msg = 'Error in validating resource_group changes'
+                raise PbsSchedConfigError(rc=1, rv=False,
+                                          msg=_msg)
+        return rc
 
     def job_formula(self, jobid=None, starttime=None, max_attempts=5):
         """
@@ -12442,7 +12462,7 @@ class FairshareNode(object):
     """
 
     def __init__(self, name=None, id=None, parent_name=None, parent_id=None,
-                 nshares=None, usage='unknown', perc=None):
+                 nshares=None, usage=None, perc=None):
         self.name = name
         self.id = id
         self.parent_name = parent_name
