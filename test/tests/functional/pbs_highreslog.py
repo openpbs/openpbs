@@ -159,8 +159,6 @@ class TestHighResLogging(TestFunctional):
         """
         Check env variable overwrites the pbs.conf value
         """
-        self.skipTest("Unskip after pbs_server is is fixed to overwrite "
-                      "PBS_LOG_HIGHRES_TIMESTAMP value with env variable")
         a = {'PBS_LOG_HIGHRES_TIMESTAMP': 0}
         self.du.set_pbs_config(confs=a, append=True)
         conf_path = self.du.parse_pbs_config()

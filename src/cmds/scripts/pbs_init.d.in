@@ -846,7 +846,7 @@ pre_start_pbs()
 
 : main code
 # save env variables in a temp file
-env_save="/tmp/$$_`date +'%s'`_env_save"
+env_save="/tmp/$$_$(date +'%s')_env_save"
 declare -x > "${env_save}"
 
 conf=${PBS_CONF_FILE:-/etc/pbs.conf}
