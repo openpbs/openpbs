@@ -742,6 +742,7 @@ update_queue_on_end(queue_info *qinfo, resource_resv *resresv,
 	schd_resource *res = NULL;			/* resource from queue */
 	resource_req *req = NULL;			/* resource request from job */
 	counts *cts;					/* update user/group counts */
+	char logbuf[MAX_LOG_SIZE] = {0};
 
 	if (qinfo == NULL || resresv == NULL)
 		return;
@@ -768,9 +769,17 @@ update_queue_on_end(queue_info *qinfo, resource_resv *resresv,
 	while (req != NULL) {
 		res = find_resource(qinfo->qres, req->def);
 
-		if (res != NULL)
+		if (res != NULL) {
 			res->assigned -= req->amount;
 
+			if (res->assigned < 0) {
+				snprintf(logbuf, MAX_LOG_SIZE,
+					"%s turned negative %.2lf, setting it to 0", res->name, res->assigned);
+				schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE,
+					LOG_DEBUG, __func__, logbuf);
+				res->assigned = 0;
+			}
+		}
 		req = req->next;
 	}
 

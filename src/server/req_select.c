@@ -225,7 +225,7 @@ chk_job_statenum(int istat, char *statelist)
 
 	if (statelist == NULL)
 		return 1;
-	if (istat >= 0 || istat <= 9)
+	if (istat >= 0 && istat <= 9)
 		if (strchr(statelist, (int)(statechars[istat])))
 			return 1;
 	return 0;
@@ -494,6 +494,9 @@ select_job(job *pjob, struct select_list *psel, int dosubjobs, int dohistjobs)
 	else if ((dosubjobs != 2) &&
 		(pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob))
 		return 0;	/* don't bother to look at sub job */
+	else if ((dosubjobs == 2) && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) &&
+		(pjob->ji_qs.ji_state != JOB_STATE_RUNNING)) /* select only running subjobs */
+		return 0;
 
 	while (psel) {
 
