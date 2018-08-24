@@ -447,6 +447,8 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 			count = strtol(attrp->value, &endp, 10);
 			if (*endp == '\0')
 				ninfo->last_used_time = count;
+		} else if (!strcmp(attrp->name, ATTR_NODE_resvs)) {
+			ninfo->resvs = break_comma_list(attrp->value);
 		}
 		attrp = attrp->next;
 	}
@@ -512,6 +514,7 @@ new_node_info()
 	new->mom = NULL;
 	new->port = pbs_rm_port;
 	new->jobs = NULL;
+	new->resvs = NULL;
 	new->job_arr = NULL;
 	new->run_resvs_arr = NULL;
 	new->res = NULL;
@@ -600,6 +603,9 @@ free_node_info(node_info *ninfo)
 
 		if (ninfo->jobs != NULL)
 			free_string_array(ninfo->jobs);
+
+		if (ninfo->resvs != NULL)
+			free_string_array(ninfo->resvs);
 
 		if (ninfo->job_arr != NULL)
 			free(ninfo->job_arr);
@@ -1270,6 +1276,7 @@ dup_node_info(node_info *onode, server_info *nsinfo,
 	nnode->priority = onode->priority;
 
 	nnode->jobs = dup_string_array(onode->jobs);
+	nnode->resvs = dup_string_array(onode->resvs);
 	if (flags & DUP_INDIRECT)
 		nnode->res = dup_ind_resource_list(onode->res);
 	else
@@ -1802,9 +1809,10 @@ update_node_on_end(node_info *ninfo, resource_resv *resresv, char *job_state)
 						res->assigned -= resreq->amount;
 						if (res->assigned < 0) {
 							snprintf(logbuf, MAX_LOG_SIZE,
-								"Setting %s assigned to %.2lf", res->name, res->assigned);
+								"%s turned negative %.2lf, setting it to 0", res->name, res->assigned);
 							schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE,
 								LOG_DEBUG, ninfo->name, logbuf);
+							res->assigned = 0;
 						}
 						if (res->def == getallres(RES_NCPUS)) {
 							ninfo->loadave -= resreq->amount;
@@ -2397,7 +2405,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 	 * remark: reorder_nodes doesn't reorder in place, returns
 	 *         a ptr to a reordered static array
 	 */
-	if ((pl->pack && spec->total_chunks == 1 && nspec_arr != NULL) ||
+	if ((pl->pack && spec->total_chunks == 1) ||
 		(conf.provision_policy == AVOID_PROVISION && resresv->aoename != NULL) ||
 		(resresv->is_resv && resresv->resv != NULL && resresv->resv->check_alternate_nodes))
 		nptr = reorder_nodes(ninfo_arr, resresv);
@@ -4736,41 +4744,43 @@ reorder_nodes(node_info **nodes, resource_resv *resresv)
 	node_array[0] = NULL;
 	nptr = node_array;
 
-	if (resresv != NULL && resresv->is_resv && resresv->resv != NULL && resresv->resv->check_alternate_nodes) {
-		int		i = 0;
-		node_info	*temp = NULL;
-
-		memcpy(nptr, nodes, (nsize + 1) * sizeof(node_info *));
-		for (i = 0; nptr[i] != NULL; i++) {
-			temp = find_node_by_rank(resresv->ninfo_arr, nptr[i]->rank);
-			if (temp != NULL)
-				nptr[i]->nscr.to_be_sorted = 0;
-			else
-				nptr[i]->nscr.to_be_sorted = 1;
-		}
-		qsort(nptr, i, sizeof(node_info*), cmp_nodes_sort);
-		return nptr;
-	}
 
 	if (last_node_name[0] == '\0')
 		strcpy(last_node_name, nodes[0]->name);
 
-	if (resresv->aoename != NULL && conf.provision_policy == AVOID_PROVISION) {
-		memcpy(nptr, nodes, (nsize+1) * sizeof(node_info *));
+	if (resresv != NULL) {
+		if (resresv->is_resv && resresv->resv != NULL && resresv->resv->check_alternate_nodes) {
+			int		i = 0;
+			node_info	*temp = NULL;
 
-		if (cmp_aoename != NULL)
-			free(cmp_aoename);
+			memcpy(nptr, nodes, (nsize + 1) * sizeof(node_info *));
+			for (i = 0; nptr[i] != NULL; i++) {
+				temp = find_node_by_rank(resresv->ninfo_arr, nptr[i]->rank);
+				if (temp != NULL)
+					nptr[i]->nscr.to_be_sorted = 0;
+				else
+					nptr[i]->nscr.to_be_sorted = 1;
+			}
+			qsort(nptr, i, sizeof(node_info*), cmp_nodes_sort);
+			return nptr;
+		}
+		if (resresv->aoename != NULL && conf.provision_policy == AVOID_PROVISION) {
+			memcpy(nptr, nodes, (nsize+1) * sizeof(node_info *));
 
-		cmp_aoename = string_dup(resresv->aoename);
-		qsort(nptr, nsize, sizeof(node_info *), cmp_aoe);
+			if (cmp_aoename != NULL)
+				free(cmp_aoename);
 
-		sprintf(errbuf, "Re-sorted the nodes on aoe %s, since aoe was requested",
-			resresv->aoename);
-		errbuf[MAX_LOG_SIZE - 1] = '\0';
-		schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name,
-			errbuf);
+			cmp_aoename = string_dup(resresv->aoename);
+			qsort(nptr, nsize, sizeof(node_info *), cmp_aoe);
 
-		return nptr;
+			sprintf(errbuf, "Re-sorted the nodes on aoe %s, since aoe was requested",
+				resresv->aoename);
+			errbuf[MAX_LOG_SIZE - 1] = '\0';
+			schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name,
+				errbuf);
+
+			return nptr;
+		}
 	}
 
 	switch (cstat.smp_dist) {

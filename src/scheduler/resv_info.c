@@ -191,9 +191,8 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 	resresv_arr[0] = NULL;
 	sinfo->num_resvs = num_resv;
 
-	cur_resv = resvs;
-
-	while (cur_resv != NULL) {
+	for (cur_resv = resvs; cur_resv != NULL; cur_resv = cur_resv->next) {
+		int ignore_resv = 0;
 		/* convert resv info from server batch_status into resv_info */
 		if ((resresv = query_resv(cur_resv, sinfo)) == NULL) {
 			pbs_statfree(resvs);
@@ -207,6 +206,33 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 		}
 #endif /* localmod 047 */
 
+		/* We continue adding valid resvs to our array.  We're
+		 * freeing what we allocated and ignoring this resv completely.
+		 */
+		if (!is_resource_resv_valid(resresv, err) || resresv->is_invalid) {
+			schdlogerr(PBSEVENT_DEBUG, PBS_EVENTCLASS_RESV, LOG_DEBUG, resresv->name,
+				"Reservation is invalid - ignoring for this cycle", err);
+			ignore_resv = 1;
+		}
+		/* Make sure it is not a future reservation that is being deleted, if so ignore it */
+		else if ((resresv->resv->resv_state == RESV_BEING_DELETED) && (resresv->start > sinfo->server_time)) {
+			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_RESV, LOG_DEBUG,
+				resresv->name, "Future reservation is being deleted, ignoring this reservation");
+			ignore_resv = 1;
+		}
+		else if ((resresv->resv->resv_state == RESV_BEING_DELETED) && (resresv->resv->resv_nodes != NULL) &&
+			(!find_string(resresv->resv->resv_nodes[0]->resvs, resresv->name))) {
+			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_RESV, LOG_DEBUG,
+				resresv->name, "Reservation is being deleted and not present on node, ignoring this reservation");
+			ignore_resv = 1;
+		}
+
+		if (ignore_resv == 1) {
+			sinfo->num_resvs--;
+			free_resource_resv(resresv);
+			continue;
+		}
+
 		resresv->rank = get_sched_rank();
 
 		resresv->aoename = getaoename(resresv->select);
@@ -216,19 +242,6 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 		if (resresv->aoename) {
 			resresv->place_spec->share = 0;
 			resresv->place_spec->excl = 1;
-		}
-
-		if (!is_resource_resv_valid(resresv, err) || resresv->is_invalid) {
-			schdlogerr(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name,
-				"Reservation is invalid - ignoring for this cycle", err);
-
-			/* We continue adding valid resvs to our array.  We're
-			 * freeing what we allocated and ignoring this resv completely.
-			 */
-			sinfo->num_resvs--;
-			free_resource_resv(resresv);
-			cur_resv = cur_resv->next;
-			continue;
 		}
 
 		/*
@@ -397,7 +410,6 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 					free(execvnodes_seq);
 					sinfo->num_resvs--;
 					free_resource_resv(resresv);
-					cur_resv = cur_resv->next;
 					continue;
 				}
 				/* unroll_execvnode_seq will destroy the first argument that is passed
@@ -540,7 +552,6 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 				/* The parent reservation has already been added so move on to handling
 				 * the next reservation
 				 */
-				cur_resv = cur_resv->next;
 
 				free_execvnode_seq(tofree);
 				free(execvnodes_seq);
@@ -552,7 +563,6 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 				resresv_arr[idx] = NULL;
 			}
 		}
-		cur_resv = cur_resv->next;
 	}
 
 	pbs_statfree(resvs);
@@ -1560,13 +1570,13 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 			errmsg = "";
 
 		if (rconf == RESV_CONFIRM_FAIL)
-			snprintf(logmsg, MAX_LOG_SIZE, "PBS Failed to confirm resv: %s", logmsg2);
+			snprintf(logmsg2, MAX_LOG_SIZE, "PBS Failed to confirm resv: %s", logmsg);
 		else {
-			snprintf(logmsg, MAX_LOG_SIZE, "PBS Failed to confirm resv: %s (%d)", errmsg, pbs_errno);
+			snprintf(logmsg2, MAX_LOG_SIZE, "PBS Failed to confirm resv: %s (%d)", errmsg, pbs_errno);
 			rconf = RESV_CONFIRM_RETRY;
 		}
 		schdlog(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv_parent->name,
-			logmsg);
+			logmsg2);
 		if (nresv_parent->resv->resv_substate == RESV_DEGRADED) {
 			snprintf(logmsg, MAX_LOG_SIZE,
 				"Reservation is in degraded mode, %d out of %d vnodes are unavailable; %s",

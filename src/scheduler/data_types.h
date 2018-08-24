@@ -573,6 +573,7 @@ struct node_info
 	int   port;			/* port on which Mom is listening */
 
 	char **jobs;			/* the name of the jobs currently on the node */
+	char **resvs;			/* the name of the reservations currently on the node */
 	resource_resv **job_arr;	/* ptrs to structs of the jobs on the node */
 	resource_resv **run_resvs_arr;	/* ptrs to structs of resvs holding resources on the node */
 

@@ -613,12 +613,14 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 	}
 	resresv_arr[num_prev_jobs] = NULL;
 
-	cur_job = jobs;
 	err = new_schd_error();
-	if(err == NULL)
+	if(err == NULL) {
+		free_resource_resv_array(resresv_arr);
 		return NULL;
+	}
 
-	for (i = num_prev_jobs; cur_job != NULL; i++) {
+	i = num_prev_jobs;
+	for (cur_job = jobs; cur_job != NULL; cur_job = cur_job->next) {
 		char *selectspec = NULL;
 		if ((resresv = query_job(cur_job, qinfo->server, err)) ==NULL) {
 			free_schd_error(err);
@@ -638,9 +640,16 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 			 * header.  We to continue adding valid jobs to our array.  We're
 			 * freeing what we allocated and ignoring this job completely.
 			 */
-			i--;
 			free_resource_resv(resresv);
-			cur_job = cur_job->next;
+			continue;
+		}
+
+		/* Make sure scheduler does not process a subjob in undesirable state*/
+		if (resresv->job->is_subjob && !resresv->job->is_running &&
+			!resresv->job->is_suspended && !resresv->job->is_provisioning) {
+			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_RESV, LOG_DEBUG,
+				resresv->name, "Subjob found in undesirable state, ignoring this job");
+			free_resource_resv(resresv);
 			continue;
 		}
 
@@ -890,10 +899,9 @@ query_jobs(status *policy, int pbs_sd, queue_info *qinfo, resource_resv **pjobs,
 			clear_schd_error(err);
 		}
 
-		resresv_arr[i] = resresv;
-		resresv_arr[i+1] = NULL;	/* Make array searchable */
+		resresv_arr[i++] = resresv;
+		resresv_arr[i] = NULL;	/* Make array searchable */
 
-		cur_job = cur_job->next;
 	}
 	resresv_arr[i] = NULL;
 

@@ -1421,9 +1421,9 @@ add_resource_list(status *policy, schd_resource *r1, schd_resource *r2, unsigned
 						end_r1 = nres;
 					} else {
 						nres = false_res();
-						nres->name = boolres[i]->name;
 						if (nres == NULL)
 							return 0;
+						nres->name = boolres[i]->name;
 						(void)add_resource_bool(cur_r1, nres);
 					}
 				}
@@ -1782,8 +1782,18 @@ update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
 		while (req != NULL) {
 			res = find_resource(sinfo->res, req->def);
 
-			if (res != NULL)
+			if (res != NULL) {
 				res->assigned -= req->amount;
+
+				if (res->assigned < 0) {
+					char logbuf[MAX_LOG_SIZE] = {0};
+					snprintf(logbuf, MAX_LOG_SIZE,
+						"%s turned negative %.2lf, setting it to 0", res->name, res->assigned);
+					schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER,
+						LOG_DEBUG, __func__, logbuf);
+					res->assigned = 0;
+				}
+			}
 
 			req = req->next;
 		}
