@@ -82,14 +82,9 @@ extern int h_errno;
 pbs_net_t
 get_hostaddr(char *hostname)
 {
-#if defined(__hpux)
-	static struct in_addr  hostaddr;
-	struct hostent *hp;
-#else
 	struct addrinfo *aip, *pai;
 	struct addrinfo hints;
 	struct sockaddr_in *inp;
-#endif
 	int		err;
 	pbs_net_t	res;
 
@@ -97,19 +92,7 @@ get_hostaddr(char *hostname)
 		pbs_errno = PBS_NET_RC_FATAL;
 		return ((pbs_net_t)0);
 	}
-#if defined(__hpux)
-	hp = gethostbyname(hostname);
-	if (hp == NULL) {
-		if (h_errno == TRY_AGAIN)
-			pbs_errno = PBS_NET_RC_RETRY;
-		else
-			pbs_errno = PBS_NET_RC_FATAL;
-		return ((pbs_net_t)0);
-	}
 
-	memcpy((void *)&hostaddr, (void *)hp->h_addr_list[0], hp->h_length);
-	return ((pbs_net_t)ntohl(hostaddr.s_addr));
-#else
 	memset(&hints, 0, sizeof(struct addrinfo));
 	/*
 	 *      Why do we use AF_UNSPEC rather than AF_INET?  Some
@@ -145,5 +128,4 @@ get_hostaddr(char *hostname)
 	res = ntohl(inp->sin_addr.s_addr);
 	freeaddrinfo(pai);
 	return (res);
-#endif
 }

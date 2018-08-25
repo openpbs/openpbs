@@ -456,9 +456,6 @@ static handler_ret_t	set_cpuset_error_action(char *);
 static handler_ret_t	parse_config(char *);
 static handler_ret_t	prologalarm(char *);
 static handler_ret_t	restricted(char *);
-#if	defined(_AIX)
-static handler_ret_t	set_aixlargepage(char *);
-#endif
 static handler_ret_t	set_alien_attach(char *);
 static handler_ret_t	set_alien_kill(char *);
 #if	MOM_ALPS
@@ -515,9 +512,6 @@ static struct	specials {
 } special[] = {
 	/* alphabetized by name */
 	{ "action",			add_mom_action },
-#if	defined(_AIX)
-	{ "aix_largepagemode",		set_aixlargepage },
-#endif
 	/*
 	 ****************************************************
 	 ** WARNING
@@ -1085,9 +1079,7 @@ initialize(void)
 	 * the default lenfth of the AVL_IX_REC is accessed, it must be
 	 * through xxrp or the compiler will complain about accessing
 	 * memory beyond the size of the structure.
-	 *
-	 * This also keeps Solaris happy by avoiding unaligned access
-	 * errors.
+	 * 
 	 */
 	union {
 		AVL_IX_REC	xrp;
@@ -3832,23 +3824,6 @@ set_attach_allow(char *value)
 	return (set_boolean(__func__, value, &attach_allow));
 }
 
-#if	defined(_AIX)
-/**
- * @brief
- *	Set the configuration flag that defines whether AIX Large Page Mode
- *	is supported.
- *
- * @retval 0 failure
- * @retval 1 success
- *
- */
-static handler_ret_t
-set_aixlargepage(char *value)
-{
-	return (set_boolean(__func__, value, &aixlargepage));
-}
-#endif	/* AIX */
-
 #if MOM_ALPS
 /**
  * @brief
@@ -4877,9 +4852,6 @@ read_config(char *file)
 	max_check_poll	     = MAX_CHECK_POLL_TIME;
 	min_check_poll	     = MIN_CHECK_POLL_TIME;
 	vnode_additive       = 1;	/* keep vnodes on HUP */
-#if	defined(_AIX)
-	aixlargepage	     = 0;
-#endif
 #ifdef NAS /* localmod 015 */
 	spoolsize            = 0; /* unlimited by default */
 #endif /* localmod 015 */
@@ -6631,7 +6603,7 @@ gettime(resource *pres)
  *
  * @param[in] pres - pointer to resource
  *
- * @note  In platforms other than sgi or aix, the *ret value is only up to
+ * @note  In platforms other than sgi, the *ret value is only up to
  *	  ULONG_MAX bytes (i.e. return value is unsigned long). Even though the
  *	  new size data type has been expanded to hold up to UlONG_MAX bytes
  *	  (i.e. unsigned long long max), this function will still only return
@@ -6645,14 +6617,14 @@ gettime(resource *pres)
  */
 int
 local_getsize(resource *pres,
-#if defined(__sgi) || defined(_AIX)
+#if defined(__sgi)
 	rlim64_t	*ret
 #else
 	u_long	*ret
-#endif	/* __sgi || AIX */
+#endif	/* __sgi */
 	)
 {
-#if defined(__sgi) || defined(_AIX)
+#if defined(__sgi)
 	rlim64_t	value;
 #define PBS_RLIM_MAX (~(rlim64_t)0)
 #define PBS_RLIM_TYPE	rlim64_t
@@ -6660,7 +6632,7 @@ local_getsize(resource *pres,
 	u_Long		value;
 #define PBS_RLIM_MAX ULONG_MAX
 #define PBS_RLIM_TYPE	u_long
-#endif	/* __sgi || AIX */
+#endif	/* __sgi */
 
 	/*
 	 * If the resource pointer(pres) is NULL, then just
@@ -7028,7 +7000,7 @@ mom_over_limit(job *pjob)
 {
 	char		*pname;
 	int		retval;
-#if defined(__sgi) || defined(_AIX)
+#if defined(__sgi)
 	rlim64_t	llvalue, llnum;
 #else
 	u_long		llvalue, llnum;
@@ -7127,7 +7099,7 @@ mom_over_limit(job *pjob)
 		retval = local_getsize(used, &llnum);
 		if (retval == PBSE_NONE) {
 			if (llnum > llvalue) {
-#if defined(__sgi) || defined(_AIX)
+#if defined(__sgi)
 				sprintf(log_buffer,
 					"vmem %llukb exceeded limit %llukb",
 					llnum/1024, llvalue/1024);
@@ -7149,7 +7121,7 @@ mom_over_limit(job *pjob)
 		retval = local_getsize(used, &llnum);
 		if (retval == PBSE_NONE) {
 			if ((llnum > llvalue) && enforce_mem) {
-#if defined(__sgi) || defined(_AIX)
+#if defined(__sgi)
 				sprintf(log_buffer,
 					"mem %llukb exceeded limit %llukb",
 					llnum/1024, llvalue/1024);

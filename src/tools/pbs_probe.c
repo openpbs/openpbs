@@ -47,7 +47,6 @@
  * 	main()
  * 	am_i_authorized()
  * 	infrastruct_params()
- * 	adjust_man_mpugs()
  * 	print_infrastruct()
  * 	title_string()
  * 	print_problems()
@@ -1211,7 +1210,6 @@ static const char	ident[] = "@(#)";
 static void	am_i_authorized(void);
 static void	infrastruct_params(struct infrastruct *, int);
 static void	adjust_for_os(struct infrastruct *pinf);
-static void	adjust_man_mpugs(struct infrastruct *pinf);
 static void	print_infrastruct(struct infrastruct *);
 static void	title_string(enum code_title, int, INFRA *);
 static void	print_problems(INFRA *);
@@ -1539,26 +1537,6 @@ adjust_for_os(struct infrastruct *pinf)
 	int	ofs_bin = 1;  /* use with bin_mpugs[] */
 	int	ofs_lib = 1;  /* use with lib_mpugs[] */
 	int	ofs_sbin = 1; /* use with sbin_mpugs[] */
-	int	ofs_man1 = 1; /* use with man1_mpugs[] */
-
-
-	if (strstr(pinf->utsd.ub.sysname, "SUPER-UX") != NULL) {
-		/* NEC superux: pbs_tclsh pbs_wish */
-
-		bin_mpugs[ofs_bin + 6].notReq = 1;
-		bin_mpugs[ofs_bin + 7].notReq = 1;
-		bin_mpugs[ofs_bin + 31].notReq = 1;
-		bin_mpugs[ofs_bin + 32].notReq = 1;
-
-		lib_mpugs[ofs_lib + 9].notReq = 1;
-		lib_mpugs[ofs_lib + 17].notReq = 1;
-
-		man_mpugs[ofs_man1 + 19].notReq = 1;
-		man_mpugs[ofs_man1 + 20].notReq = 1;
-
-		tcltk_mpugs[0].notReq = 1;
-		python_mpugs[0].notReq = 1;
-	}
 
 	if (strstr(pinf->utsd.ub.sysname, "Linux") != NULL) {
 
@@ -1590,147 +1568,8 @@ adjust_for_os(struct infrastruct *pinf)
 		lib_mpugs[ofs_lib + 29].notReq &= ~(0x1);
 		bin_mpugs[ofs_bin + 30].notReq &= ~(0x1);
 	}
-
-	/********************** HP-UX ************************/
-
-	if (strstr(pinf->utsd.ub.sysname, "HP-UX") != NULL) {
-
-		/* HP-UX: pbs_mpihp */
-		bin_mpugs[ofs_bin + 39].notReq &= ~(0x1);
-
-		/* drop the ending 'B' on each manpage path string */
-		adjust_man_mpugs(pinf);
-	}
-
-	/********************** AIX ************************/
-
-	if (strstr(pinf->utsd.ub.sysname, "AIX") != NULL) {
-
-		/* drop ending 'B' to each manpage path string */
-		adjust_man_mpugs(pinf);
-	}
 }
-/**
- * @brief
- * 		adjust the sizes and offsets for sub-parts of array, man_mpugs[].
- *
- * @param[out]	pinf	-	 pointer to infrastruct
- */
-static void
-adjust_man_mpugs(struct infrastruct *pinf)
-{
-	int   i, len;
-	MPUG *p;
-	char *pm;
 
-
-	int	szman1 = (sizeof(exman1))/80;
-	int	szman3 = (sizeof(exman3))/80;
-	int	szman7 = (sizeof(exman7))/80;
-	int	szman8 = (sizeof(exman8))/80;
-
-	int	ofs_man1;
-	int	ofs_man3;
-	int	ofs_man7;
-	int	ofs_man8;
-
-	ofs_man1 = 1;
-	ofs_man3 = 1 + szman1;
-	ofs_man7 = 1 + szman1 + szman3;
-	ofs_man8 = 1 + szman1 + szman3 + szman7;
-
-
-	if ((strstr(pinf->utsd.ub.sysname, "HP-UX") != NULL) ||
-		(strstr(pinf->utsd.ub.sysname, "AIX") != NULL)) {
-
-		p = &man_mpugs[ofs_man1 + 1];
-		for (i=1; i< szman1; ++i, ++p) {
-
-			len = strlen(p->path);
-			p->path [ len - 1 ] = '\0';
-		}
-
-		p = &man_mpugs[ofs_man3 + 1];
-		for (i=1; i< szman3; ++i, ++p) {
-
-			len = strlen(p->path);
-			p->path [ len - 1 ] = '\0';
-		}
-
-		p = &man_mpugs[ofs_man7 + 1];
-		for (i=1; i< szman7; ++i, ++p) {
-
-			len = strlen(p->path);
-			p->path [ len - 1 ] = '\0';
-		}
-
-		p = &man_mpugs[ofs_man8 + 1];
-		for (i=1; i< szman8; ++i, ++p) {
-
-			len = strlen(p->path);
-			p->path [ len - 1 ] = '\0';
-		}
-	}
-
-	if ((strstr(pinf->utsd.ub.sysname, "IRIX64") != NULL)) {
-
-		man_mpugs[ofs_man1].path = "man/cat1";
-		p = &man_mpugs [ ofs_man1 ];
-		for (i=1; i< szman1; ++i) {
-
-			++p;
-			pm = malloc(strlen(p->path) +3);
-			if (pm) {
-				strcpy(pm, "man/cat1");
-				strcat(pm, strrchr(p->path, (int)'/'));
-				strcat  (pm, ".Z");
-				p->path = pm;
-			}
-		}
-
-		man_mpugs[ofs_man3].path = "man/cat3";
-		p = &man_mpugs [ ofs_man3 ];
-		for (i=1; i< szman3; ++i) {
-
-			++p;
-			pm = malloc(strlen(p->path) +3);
-			if (pm) {
-				strcpy(pm, "man/cat3");
-				strcat(pm, strrchr(p->path, (int)'/'));
-				strcat  (pm, ".Z");
-				p->path = pm;
-			}
-		}
-
-		man_mpugs[ofs_man7].path = "man/cat7";
-		p = &man_mpugs [ ofs_man7 ];
-		for (i=1; i< szman7; ++i) {
-
-			++p;
-			pm = malloc(strlen(p->path) +3);
-			if (pm) {
-				strcpy(pm, "man/cat7");
-				strcat(pm, strrchr(p->path, (int)'/'));
-				strcat  (pm, ".Z");
-				p->path = pm;
-			}
-		}
-
-		man_mpugs[ofs_man8].path = "man/cat8";
-		p = &man_mpugs [ ofs_man8 ];
-		for (i=1; i< szman8; ++i) {
-
-			++p;
-			pm = malloc(strlen(p->path) +3);
-			if (pm) {
-				strcpy(pm, "man/cat8");
-				strcat(pm, strrchr(p->path, (int)'/'));
-				strcat  (pm, ".Z");
-				p->path = pm;
-			}
-		}
-	}
-}
 /**
  * @brief
  * 		print the values of infrstruct.

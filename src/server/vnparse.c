@@ -615,9 +615,6 @@ vn_addvnr(vnl_t *vnlp, char *id, char *attr, char *attrval,
 	vnal_t	*vnrlp;
 	vna_t	*vnrp;
 	char	*newid, *newname, *newval;
-	/**
-	 * Solaris gave an unaligned access error which this fixes.
-	 */
 	union {
 		AVL_IX_REC xrp;
 		char	buf[PBS_MAXHOSTNAME + sizeof(AVL_IX_REC) + 1];
@@ -705,9 +702,6 @@ vn_addvnr(vnl_t *vnlp, char *id, char *attr, char *attrval,
 static vnal_t *
 id2vnrl(vnl_t *vnlp, char *id, AVL_IX_REC *rp)
 {
-	/**
-	 * Solaris gave an unaligned access error which this fixes.
-	 */
 	union {
 		AVL_IX_REC xrp;
 		char	buf[PBS_MAXHOSTNAME + sizeof(AVL_IX_REC) + 1];

@@ -45,12 +45,8 @@ AC_DEFUN([PBS_AC_DECL_SOCKLEN_T],
 #include <sys/socket.h>
 #include <netdb.h>
 ], [
-#ifdef  __hpux
-#error NO socklen_t in HPUX
-#else
   socklen_t       len = 0;
   len++;
-#endif
 ],
     pbs_ac_cv_decl_socklen_t=yes,
     pbs_ac_cv_decl_socklen_t=no)])

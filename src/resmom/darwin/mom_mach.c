@@ -1112,7 +1112,6 @@ kill_session(pid_t sesid, int sig, int dir)
 /**
  * @brief
  * 	Clean up everything related to polling.
- *	In the case of the sun, close the kernal if it is open.
  *
  * @return      int
  * @retval      PBSE_NONE       Success

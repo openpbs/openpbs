@@ -138,14 +138,6 @@ site_check_user_map(void *pobj, int objtype, char *luser)
 	rc =   ruserok(orighost, 0, owner, luser);
 #endif
 
-#ifdef sun
-	/* broken Sun ruserok() sets process so it appears to be owned	*/
-	/* by the luser, change it back for cosmetic reasons		*/
-	if (setuid(0) == -1) {
-		log_err(errno, "site_check_user_map", "cannot go back to root");
-		exit(1);
-	}
-#endif	/* sun */
 	return (rc);
 }
 

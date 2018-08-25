@@ -54,22 +54,6 @@ is_cray_xt() {
 	return 1
 }
 
-check_switch() {
-	adapters=`ntblstatus 2> /dev/null | awk '/^Adapter/ {print $2}' | uniq`
-	if [ -n "$adapters" ]; then
-		switch="HPS"
-		return 0
-	fi
-	adapters=`ibstat 2> /dev/null | \
-			awk '/INFINIBAND DEVICE INFORMATION/ {print $NF}'`
-	if [ -n "$adapters" ]; then
-		switch="InfiniBand"
-		return 0
-	fi
-	switch=""
-	return 1
-}
-
 poe_interactive() {
 	#Check if poe will allow interactive jobs
 	if [ -f /etc/poe.limits ]; then
@@ -348,30 +332,6 @@ install_pbsinitd() {
 	elif [ $INSTALL_PACKAGE != client ] ; then
 		echo "*** Registering PBS Pro as a service."
 		case "$ostype" in
-		SunOS)
-			initscript="/etc/init.d/pbs"
-			cp ${PBS_EXEC}/libexec/pbs_init.d $initscript
-			ln -sf $initscript /etc/rc3.d/S85pbs
-			ln -sf $initscript /etc/rc0.d/K01pbs
-			;;
-		SUPER-UX|IRIX*)
-			initscript="/etc/init.d/pbs"
-			cp ${PBS_EXEC}/libexec/pbs_init.d $initscript
-			ln -sf $initscript /etc/rc2.d/S85pbs
-			ln -sf $initscript /etc/rc0.d/K01pbs
-			;;
-		OSF1)
-			initscript="/sbin/init.d/pbs"
-			cp ${PBS_EXEC}/libexec/pbs_init.d $initscript
-			ln -sf $initscript /sbin/rc2.d/S85pbs
-			ln -sf $initscript /sbin/rc0.d/K01pbs
-			;;
-		HP-UX)
-			initscript="/sbin/init.d/pbs"
-			cp ${PBS_EXEC}/libexec/pbs_init.d $initscript
-			ln -sf $initscript /sbin/rc2.d/S85pbs
-			ln -sf $initscript /sbin/rc0.d/K01pbs
-			;;
 		Linux)
 			if [ -d /etc/init.d ]; then
 				initscript="/etc/init.d/pbs"
@@ -413,59 +373,6 @@ install_pbsinitd() {
 				else
 					echo "*** Systemctl binary is not available; Failed to register PBS Pro as a service"
 				fi
-			fi
-			;;
-		AIX)
-			initscript="/etc/rc.d/rc2.d/S90pbs"
-			cp ${PBS_EXEC}/libexec/pbs_init.d $initscript
-			ln -sf $initscript /etc/rc.d/rc3.d/S90pbs
-			ln -sf $initscript /etc/rc.d/rc4.d/S90pbs
-			echo "*** Checking for High Performance Network"
-			if check_switch; then
-				echo "*** $switch found!"
-				case $switch in
-				HPS)	#Use HPS mom if needed and available
-					if [ -s ${PBS_EXEC}/sbin/pbs_mom.hps ]; then
-					if [ ! -s ${PBS_EXEC}/sbin/pbs_mom.std ]; then
-						mv ${PBS_EXEC}/sbin/pbs_mom \
-							${PBS_EXEC}/sbin/pbs_mom.std
-					fi
-						cp ${PBS_EXEC}/sbin/pbs_mom.hps \
-							${PBS_EXEC}/sbin/pbs_mom
-					fi
-					;;
-				InfiniBand)
-					#Check if poe version is new enough to not need IB MOM
-					rpmver=`rpm -qa 2> /dev/null | grep ppe_rte`
-					poever=`lslpp -L 2> /dev/null | grep poe | awk '{print $2}'`
-					if test -n "$rpmver" || echo "$poever" | awk -F. \
-						'{ \
-						    n=split("5.2.1.6", a, "."); \
-						    for(i=1; i<=n; i++) { \
-							if (i > NF) exit 1; \
-							if ($i < a[i]) exit 1; \
-							if ($i > a[i]) exit 0; \
-						    } \
-						}' ;then
-						poe_interactive
-					else
-						#Use InfiniBand mom if needed and available
-						if [ -s ${PBS_EXEC}/sbin/pbs_mom.ib ]; then
-							if [ ! -s ${PBS_EXEC}/sbin/pbs_mom.std ]; then
-								mv ${PBS_EXEC}/sbin/pbs_mom \
-									${PBS_EXEC}/sbin/pbs_mom.std
-							fi
-							cp ${PBS_EXEC}/sbin/pbs_mom.ib \
-								${PBS_EXEC}/sbin/pbs_mom
-						fi
-					fi
-					;;
-				esac
-			else
-				echo "*** It appears no High Performance Network is available."
-				echo "*** If this is incorrect, please see the PBS"
-				echo "*** Administrator's Guide to configure PBS for"
-				echo "*** jobs to be able use the High Performance Network."
 			fi
 			;;
 		Darwin)
@@ -561,17 +468,6 @@ create_home() {
 				mv -f $envfile ${envfile}.old
 				mv -f ${envfile}.new $envfile
 			fi
-
-			if [ "$ostype" = "AIX" -a ! -z "$switch" ]; then
-				chkenv PBS_MP_EUILIB $euilibus
-				if [ "$switch" = "InfiniBand" ]; then
-					chkenv PBS_MP_DEVTYPE ib
-					if ! cmp -s ${PBS_EXEC}/sbin/pbs_mom.ib ${PBS_EXEC}/sbin/pbs_mom; then
-						chkenv PBS_MP_EUIDEVICE sn_all
-						chkenv PBS_MP_RESD poe
-					fi
-				fi
-			fi
 		else
 			echo "*** Creating new file $envfile"
 			touch $envfile
@@ -582,59 +478,7 @@ create_home() {
 				echo "*** WARNING: TZ not set in $envfile"
 			fi
 
-			case "$ostype" in
-			AIX)
-				echo PATH="/bin:/usr/bin" >> $envfile
-				echo ODMDIR=$ODMDIR >> $envfile
-
-				aixfile="/etc/environment"
-				if [ -z "$NLSPATH" ]; then
-					line=`grep -s '^NLSPATH=' $aixfile`
-					if [ -z "$line" ]; then
-						echo "NLSPATH=/usr/lib/nls/msg/%L/%N" >> $envfile
-					else
-						echo "$line" >> $envfile
-					fi
-				else
-					echo NLSPATH="$NLSPATH" >> $envfile
-				fi
-				line=`grep '^NLSPATH=' $envfile`
-				echo "*** setting $line"
-				if [ -z "$LANG" ]; then
-					line=`grep -s '^LANG=' $aixfile`
-					if [ -z "$line" ]; then
-						echo "LANG=C" >> $envfile
-					else
-						echo "$line" >> $envfile
-					fi
-				else
-					echo LANG="$LANG" >> $envfile
-				fi
-				line=`grep '^LANG=' $envfile`
-				echo "*** setting $line"
-
-				if [ ! -z "$switch" ]; then
-					echo "*** setting PBS_MP_EUILIB=$euilibus"
-					echo "PBS_MP_EUILIB=$euilibus" >> $envfile
-					if [ "$switch" = "InfiniBand" ]; then
-						echo "*** setting PBS_MP_DEVTYPE=ib"
-						echo "PBS_MP_DEVTYPE=ib" >> $envfile
-						if ! cmp -s ${PBS_EXEC}/sbin/pbs_mom.ib ${PBS_EXEC}/sbin/pbs_mom; then
-							echo "*** setting PBS_MP_EUIDEVICE=sn_all"
-							echo "PBS_MP_EUIDEVICE=sn_all" >> $envfile
-							echo "*** setting PBS_MP_RESD=poe"
-							echo "PBS_MP_RESD=poe" >> $envfile
-						fi
-					fi
-				fi
-				;;
-			IRIX*)
-				echo PATH="/bin:/usr/bin:/usr/bsd" >> $envfile
-				;;
-			*)
-				echo PATH="/bin:/usr/bin" >> $envfile
-				;;
-			esac
+			echo PATH="/bin:/usr/bin" >> $envfile
 		fi
 	else
 		echo "*** Existing environment file left unmodified: $envfile"
@@ -733,35 +577,6 @@ create_home() {
 			1777 spool
 			1777 undelivered
 		EOF
-		if [ "$ostype" = "AIX" ]; then
-			echo "*** Checking for IBM Large Page Mode bug"
-			bugid=""
-			case "`uname -v``uname -r`" in
-			52)
-				bugid=IY80185
-				;;
-			53)
-				bugid=IY90555
-				;;
-			6*)
-				largepage=true
-				;;
-			*)
-				largepage=false
-				;;
-			esac
-
-			if [ -n "$bugid" ]; then
-				if instfix -ik $bugid ;then
-					largepage=true
-				else
-					largepage=false
-					echo "*** Large Page Mode cannot be used until"
-					echo "*** IBM APAR $bugid has been applied"
-				fi
-			fi
-			keyword="aix_largepagemode"
-		fi
 		mompriv="${PBS_HOME}/mom_priv"
 		momconfig="${mompriv}/config"
 		if [ ! -f "$momconfig" ]; then
@@ -785,12 +600,6 @@ create_home() {
 			grep "^cpuset_create_flags" "$momconfig" >/dev/null
 			if [ $? -ne 0 ] ; then
 				echo "cpuset_create_flags 0" >>"$momconfig"
-			fi
-		fi
-		if [ "$ostype" = "AIX" ]; then
-			grep "^\$$keyword" "$momconfig" >/dev/null
-			if [ $? -ne 0 ] ; then
-				echo "\$$keyword $largepage" >> $momconfig
 			fi
 		fi
 		if is_cray_xt; then

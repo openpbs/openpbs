@@ -63,11 +63,7 @@ extern "C" {
 
 /* derived from XF4/xc/lib/dps/Xlibnet.h */
 #ifndef X_UNIX_PATH
-#  ifdef __hpux
-#define X_UNIX_PATH "/var/spool/sockets/X11/%u"
-#  else
 #define X_UNIX_PATH "/tmp/.X11-unix/X%u"
-#  endif
 #endif /* X_UNIX_PATH */
 
 #ifndef NI_MAXSERV

@@ -44,10 +44,6 @@
 AC_DEFUN([PBS_AC_DECL_EPOLL],
 [
   AS_CASE([x$target_os],
-    [xsolaris*],
-      AC_DEFINE([PBS_HAVE_DEVPOLL], [], [Defined when devpoll is available]),
-    [xhpux*],
-      AC_DEFINE([PBS_HAVE_DEVPOLL], [], [Defined when devpoll is available]),
     [xlinux*],
       AC_MSG_CHECKING([for epoll])
       AC_TRY_RUN(
@@ -62,22 +58,5 @@ int main()
         AC_MSG_RESULT([yes]),
         AC_MSG_RESULT([no])
       ),
-    [xaix*],
-      AC_MSG_CHECKING([for pollset API])
-      AC_TRY_RUN(
-[
-#include <sys/poll.h>
-#include <sys/pollset.h>
-#include <sys/fcntl.h>
-int main()
-{
-  return (pollset_create(-1) == -1) ? -1 : 0);
-}
-],
-        AC_DEFINE([PBS_HAVE_POLLSET], [], [Defined when pollset is available])
-        AC_MSG_RESULT([yes]),
-        AC_MSG_RESULT([no])
-      )
-  )
-])
+)])
 

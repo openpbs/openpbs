@@ -108,79 +108,12 @@ pbs_mom_LDADD += -lcpuset
 if CPUSET_V4
 pbs_mom_LDADD += -lbitmask
 endif
-if CPUSET_FOR_IRIX6
-pbs_mom_SOURCES += \
-	irix6cpuset/allocnodes.c \
-	irix6cpuset/allocnodes.h \
-	irix6cpuset/collector.c \
-	irix6cpuset/collector.h \
-	irix6cpuset/cpusets.c \
-	irix6cpuset/cpusets.h \
-	irix6cpuset/cpusets_shared.c \
-	irix6cpuset/cpusets_shared.h \
-	irix6cpuset/hammer.c \
-	irix6cpuset/hammer.h \
-	irix6cpuset/mapnodes.c \
-	irix6cpuset/mapnodes.h \
-	irix6cpuset/mom_share.c \
-	irix6cpuset/mom_share.h \
-	irix6cpuset/session.c \
-	irix6cpuset/session.h
-else
 pbs_mom_SOURCES += linux/cpuset_misc.c
-endif
-endif
-
-if HPS_ENABLED
-pbs_mom_CPPFLAGS += -DIBM_HPS=1
-pbs_mom_LDADD += -lntbl
-endif
-
-if AIXIB_ENABLED
-pbs_mom_CPPFLAGS += -DIBM_AIXIB=1
-pbs_mom_LDADD += -lnrt
 endif
 
 EXTRA_DIST = \
-	bsd/mom_mach.c \
-	bsd/mom_mach.h \
-	bsd/mom_start.c \
-	bsd/pe_input.c \
 	darwin/mom_mach.c \
 	darwin/mom_mach.h \
 	darwin/mom_start.c \
-	darwin/pe_input.c \
-	digitalunix/mom_mach.c \
-	digitalunix/mom_mach.h \
-	digitalunix/mom_start.c \
-	digitalunix/pe_input.c \
-	hpux10/mom_mach.c \
-	hpux10/mom_mach.h \
-	hpux10/mom_start.c \
-	hpux10/pe_input.c \
-	irix6/mom_mach.c \
-	irix6/mom_mach.h \
-	irix6/mom_start.c \
-	irix6/pe_input.c \
-	mom_hpcp/advancedfilter.xsd \
-	mom_hpcp/BESFactoryBinding.nsmap \
-	mom_hpcp/bes-factory.h \
-	mom_hpcp/bes-factory.wsdl \
-	mom_hpcp/bes-factory.xsd \
-	mom_hpcp/hpcbp-typemap.dat \
-	mom_hpcp/jsdl-hpcpa.xsd \
-	mom_hpcp/jsdl-posix.xsd \
-	mom_hpcp/jsdl.xsd \
-	mom_hpcp/pbs_hpcp_client.c \
-	mom_hpcp/pbs_hpcp_client.h \
-	mom_hpcp/README \
-	mom_hpcp/soapC.c \
-	mom_hpcp/soapClient.c \
-	mom_hpcp/soapH.h \
-	mom_hpcp/soapStub.h \
-	mom_hpcp/ws-addr.xsd \
-	solaris7/mom_mach.c \
-	solaris7/mom_mach.h \
-	solaris7/mom_start.c \
-	solaris7/pe_input.c
+	darwin/pe_input.c
 

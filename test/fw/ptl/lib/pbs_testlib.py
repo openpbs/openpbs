@@ -3946,10 +3946,6 @@ class PBSService(PBSObject):
                     else:
                         lines = self.du.cat(self.hostname, filename, sudo=sudo,
                                             level=logging.DEBUG2)['out']
-                # tail is not a standard, e.g. on Solaris it does not recognize
-                # -n. We circumvent this problem by using PTL's version of tail
-                # but it currently only works on a local host, for remote hosts
-                # we fall back to using tail/head -n
                 elif self._is_local and not sudo:
                     if tail:
                         futils = FileUtils(filename, FILE_TAIL)
@@ -3965,10 +3961,7 @@ class PBSService(PBSObject):
                     pyexec = os.path.join(self.pbs_conf['PBS_EXEC'], 'python',
                                           'bin', 'python')
                     osflav = self.du.get_platform(self.hostname, pyexec)
-                    if osflav.startswith('sunos'):
-                        cmd += ['-']
-                    else:
-                        cmd += ['-n']
+                    cmd += ['-n']
                     cmd += [str(n), filename]
                     lines = self.du.run_cmd(self.hostname, cmd, sudo=sudo,
                                             level=logging.DEBUG2)['out']
@@ -13915,8 +13908,6 @@ class PBSInitServices(object):
         self.dflt_conf_file = os.environ.get('PBS_CONF_FILE', '/etc/pbs.conf')
         self.conf_file = conf
         self.du = DshUtils()
-        self.is_sunos = sys.platform.startswith('sunos')
-        self.is_aix = sys.platform.startswith('aix')
         self.is_linux = sys.platform.startswith('linux')
 
     def initd(self, hostname=None, op='status', conf_file=None,

@@ -68,8 +68,6 @@ extern "C" {
 /* work around strtoll on some platforms */
 #if defined(WIN32)
 #define strtoll(n, e, b)	_strtoi64((n), (e), (b))
-#elif defined(__hpux)
-#define strtoll(n, e, b)  strtol((n), (e), (b))
 #endif
 
 

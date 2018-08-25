@@ -709,11 +709,6 @@ tpp_sock_resolve_host(char *host, int *count)
 	struct addrinfo hints;
 	int rc = 0;
 
-	/* No hpux specific code. Can't use gethostbyname on hpux since its non-reentrant
-	 * and will cause problems for threaded code. Since we do not support hpux anymore,
-	 * we will just use the regular reentrant functions which are supported in later
-	 * versions of hpux.
-	 */
 	errno = 0;
 	*count = 0;
 

@@ -1181,8 +1181,7 @@ verify_value_preempt_targets(int batch_request, int parent_object, int cmd,
 			ecl_def_size = ecl_resv_attr_size;
 			/*
 			 * Implementation for case insensitive search of string "queue", as many
-			 * platforms like AIX, HP-UX and Windows does not have any case
-			 * insensitive string search
+			 * platforms like Windows does not have any case insensitive string search
 			 */
 			if (lcase_val != NULL) {
 				free(lcase_val);

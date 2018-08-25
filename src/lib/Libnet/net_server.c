@@ -935,7 +935,7 @@ get_connecthost(int sd, char *namebuf, int size)
 	struct hostent *phe;
 	struct in_addr  addr;
 	int	namesize = 0;
-#if !defined(WIN32) && !defined(__hpux)
+#if !defined(WIN32)
 	char	dst[INET_ADDRSTRLEN + 1]; /* for inet_ntop */
 #endif
 
@@ -948,8 +948,8 @@ get_connecthost(int sd, char *namebuf, int size)
 
 	if ((phe = gethostbyaddr((char *) &addr, sizeof(struct in_addr),
 		AF_INET)) == NULL) {
-#if defined(WIN32) || defined(__hpux)
-			/*inet_ntoa is thread-safe on windows & hpux */
+#if defined(WIN32)
+			/* inet_ntoa is thread-safe on windows */
 			(void)strcpy(namebuf, inet_ntoa(addr));
 #else
 			(void)strcpy(namebuf,

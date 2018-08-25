@@ -73,9 +73,6 @@ AC_DEFUN([PBS_AC_WITH_HWLOC],
   )
   AC_MSG_RESULT([$hwloc_dir])
   AS_CASE([x$target_os],
-    [xsolaris*],
-      [hwloc_flags="-D__inline= -U__hwloc_inline -Dfabsf=fabs"]
-      [hwloc_lib="$hwloc_lib -lkstat -llgrp"],
     [xlinux*],
       AC_CHECK_LIB([numa], [mbind], [hwloc_lib="$hwloc_lib -lnuma"])
       AC_CHECK_LIB([udev], [udev_new], [hwloc_lib="$hwloc_lib -ludev"])

@@ -50,14 +50,10 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <netdb.h>
-#ifdef sun
-#include <sys/stream.h>
-#include <sys/stropts.h>
-#endif /* sun */
 #if defined(HAVE_SYS_IOCTL_H)
 #include <sys/ioctl.h>
 #endif
-#if !defined(sgi) && !defined(_AIX) && !defined(linux)
+#if !defined(sgi) && !defined(linux)
 #include <sys/tty.h>
 #endif  /* ! sgi */
 #include "portability.h"

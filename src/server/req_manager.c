@@ -2760,14 +2760,9 @@ make_host_addresses_list(char *phost, u_long **pul)
 	int		err;
 	struct pul_store *tpul = NULL;
 	int		len;
-#if defined(__hpux)
-	static struct in_addr  addr;
-	struct hostent *hp;
-#else
 	struct addrinfo *aip, *pai;
 	struct addrinfo hints;
 	struct sockaddr_in *inp;
-#endif
 #ifdef WIN32
 	int		num_ip;
 #endif
@@ -2790,115 +2785,84 @@ make_host_addresses_list(char *phost, u_long **pul)
 		}
 	}
 
-#if defined(__hpux)
-		hp = gethostbyname(phost);
-		if (hp == NULL) {
-			sprintf(log_buffer,
-					"addr not found for %s h_errno=%d errno=%d",
-					phost, h_errno, errno);
-			return (PBSE_UNKNODE);
-		}
+	memset(&hints, 0, sizeof(struct addrinfo));
+	/*
+	 *      Why do we use AF_UNSPEC rather than AF_INET?  Some
+	 *      implementations of getaddrinfo() will take an IPv6
+	 *      address and map it to an IPv4 one if we ask for AF_INET
+	 *      only.  We don't want that - we want only the addresses
+	 *      that are genuinely, natively, IPv4 so we start with
+	 *      AF_UNSPEC and filter ai_family below.
+	 */
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_protocol = IPPROTO_TCP;
+	if ((err = getaddrinfo(phost, NULL, &hints, &pai)) != 0) {
+		sprintf(log_buffer,
+				"addr not found for %s h_errno=%d errno=%d",
+				phost, err, errno);
+		return (PBSE_UNKNODE);
+	}
 
-		/* count how many ipadrs */
-		for (i=0; hp->h_addr_list[i]; i++);
+	i = 0;
+	for (aip = pai; aip != NULL; aip = aip->ai_next) {
+		/* skip non-IPv4 addresses */
+		if (aip->ai_family == AF_INET)
+			i++;
+	}
 
-		/* null end it */
-		len = sizeof(u_long) * (i + 1);
-		*pul = (u_long *)malloc(len);
-		if (*pul == NULL) {
-			strcat(log_buffer, "out of  memory ");
-			return (PBSE_SYSTEM);
-		}
+	/* null end it */
+	len = sizeof(u_long) * (i + 1);
+	*pul = (u_long *)malloc(len);
+	if (*pul == NULL) {
+		strcat(log_buffer, "out of  memory ");
+		return (PBSE_SYSTEM);
+	}
 
-		for (i=0; hp->h_addr_list[i]; i++) {
+	i = 0;
+	for (aip = pai; aip != NULL; aip = aip->ai_next) {
+		if (aip->ai_family == AF_INET) {
 			u_long ipaddr;
 
-			memcpy((char *)&addr, hp->h_addr_list[i], hp->h_length);
-			ipaddr = ntohl(addr.s_addr);
+			inp = (struct sockaddr_in *) aip->ai_addr;
+			ipaddr = ntohl(inp->sin_addr.s_addr);
 			(*pul)[i] = ipaddr;
+			i++;
 		}
+	}
+	(*pul)[i] = 0; /* null term array ip adrs */
 
-		(*pul)[i] = 0; /* null term array ip adrs */
-#else
-		/* non-hpux part (even windows) */
-		memset(&hints, 0, sizeof(struct addrinfo));
-		/*
-		 *      Why do we use AF_UNSPEC rather than AF_INET?  Some
-		 *      implementations of getaddrinfo() will take an IPv6
-		 *      address and map it to an IPv4 one if we ask for AF_INET
-		 *      only.  We don't want that - we want only the addresses
-		 *      that are genuinely, natively, IPv4 so we start with
-		 *      AF_UNSPEC and filter ai_family below.
-		 */
-		hints.ai_family = AF_UNSPEC;
-		hints.ai_socktype = SOCK_STREAM;
-		hints.ai_protocol = IPPROTO_TCP;
-		if ((err = getaddrinfo(phost, NULL, &hints, &pai)) != 0) {
-			sprintf(log_buffer,
-			        "addr not found for %s h_errno=%d errno=%d",
-			        phost, err, errno);
-			return (PBSE_UNKNODE);
-		}
+	freeaddrinfo( pai);
 
-		i = 0;
-		for (aip = pai; aip != NULL; aip = aip->ai_next) {
-			/* skip non-IPv4 addresses */
-			if (aip->ai_family == AF_INET)
-				i++;
-		}
+	tpul = malloc(sizeof(struct pul_store));
+	if (!tpul) {
+		strcat(log_buffer, "out of  memory");
+		return (PBSE_SYSTEM);
+	}
+	tpul->len = len;
+	tpul->pul = (u_long *) malloc(tpul->len);
+	if (!tpul->pul) {
+		free(tpul);
+		strcat(log_buffer, "out of  memory");
+		return (PBSE_SYSTEM);
+	}
+	memmove(tpul->pul, *pul, tpul->len);
 
-		/* null end it */
-		len = sizeof(u_long) * (i + 1);
-		*pul = (u_long *)malloc(len);
-		if (*pul == NULL) {
-			strcat(log_buffer, "out of  memory ");
-			return (PBSE_SYSTEM);
-		}
-
-		i = 0;
-		for (aip = pai; aip != NULL; aip = aip->ai_next) {
-			if (aip->ai_family == AF_INET) {
-				u_long ipaddr;
-
-				inp = (struct sockaddr_in *) aip->ai_addr;
-				ipaddr = ntohl(inp->sin_addr.s_addr);
-				(*pul)[i] = ipaddr;
-				i++;
-			}
-		}
-		(*pul)[i] = 0; /* null term array ip adrs */
-
-		freeaddrinfo( pai);
-#endif
-		tpul = malloc(sizeof(struct pul_store));
-		if (!tpul) {
-			strcat(log_buffer, "out of  memory");
-			return (PBSE_SYSTEM);
-		}
-		tpul->len = len;
-		tpul->pul = (u_long *) malloc(tpul->len);
-		if (!tpul->pul) {
-			free(tpul);
-			strcat(log_buffer, "out of  memory");
-			return (PBSE_SYSTEM);
-		}
-		memmove(tpul->pul, *pul, tpul->len);
-
+	if (hostaddr_tree == NULL ) {
+		hostaddr_tree = create_tree(AVL_NO_DUP_KEYS, 0);
 		if (hostaddr_tree == NULL ) {
-			hostaddr_tree = create_tree(AVL_NO_DUP_KEYS, 0);
-			if (hostaddr_tree == NULL ) {
-				free(tpul->pul);
-				free(tpul);
-				strcat(log_buffer, "out of  memory");
-				return (PBSE_SYSTEM);
-			}
-		}
-		if (tree_add_del(hostaddr_tree, phost, tpul, TREE_OP_ADD) != 0) {
 			free(tpul->pul);
 			free(tpul);
+			strcat(log_buffer, "out of  memory");
 			return (PBSE_SYSTEM);
 		}
-		return 0;
+	}
+	if (tree_add_del(hostaddr_tree, phost, tpul, TREE_OP_ADD) != 0) {
+		free(tpul->pul);
+		free(tpul);
+		return (PBSE_SYSTEM);
+	}
+	return 0;
 }
 
 /**

@@ -48,14 +48,6 @@
 # a considerable amount of effort to find all the dependencies in
 # the code and documentation.    lonhyn@nas.nasa.gov
 #
-# The big kluge is when we are on an AIX box to figure out whether or
-# not we are running on an SP2. What we do is have the user set
-# --enable-sp2 when ocnfiguring. Since this script is needed by configure
-# we can't perform a substitution on it based on the output of configure.
-# Thus the case of the sp2 will be handled by configure.
-# All of this is rather cheesy as sp2, aix3, and aix4
-# are logically overlapping.
-#
 
 OS=`uname -s | tr '[A-Z]' '[a-z]'`
 REL=`uname -r`
@@ -71,63 +63,9 @@ test "$1" = "-v" && verbose=yes
 
 case "$OS" in 
 
-  sun*)  case "$REL" in
-           4*)  mach=sunos4 ; echo SunOS 4.x is not officially supported >&2;;
-           5.[0123456])  mach=solaris5 ;;
-           5.*)  mach=solaris7 ;;
-           *)   bad_rel=y ;;
-         esac ;;
-
-  #
-  # as usual, AIX is different...
-  #
-  aix*) REL=`uname -v`
-        case "$REL" in
-          4*)  mach=aix4 ;;
-          5*)  mach=aix4 ;;
-          6*)  mach=aix4 ;;
-          *)   bad_rel=y ;;
-        esac ;;
-
-  hp*)  mach=hpux10 ;;
-
-  irix*)  case "$REL" in
-           5*)  mach=irix5 ; echo Irix 5 is not officially supported >&2 ;;
-           6*)  mach=irix6 ;;
-           *)   bad_rel=y ;;
-         esac ;;
-
-  *bsd*) mach=bsd ;;
-
   darwin*) mach=darwin ;;
 
-  linux*)
-	if [ -f /usr/lib/libbproc.a ]; then
-		mach=scyld
-	else
-		mach=linux
-	fi
-	;;
-
-  unicosmk*) mach=unicosmk2 ;;
-
-  unicos/mp) mach=unicosmp ;;
-
-  unicos*) mach=unicos ;;
-
-  sn*)	if echo $OS | egrep '^sn[0-9]+$' > /dev/null ; then
-	    mach=unicos;
-	else
-	    echo $0: the operating system \"$OS\" is unknown >&2 ;
-	    echo unknown ;
-	    exit 1 ;
-	fi;;
-
-  osf*) mach=digitalunix ;;
-
-  unix_system_v)    mach=fujitsu ;;
-
-  super-ux) mach=super-ux ;;
+  linux*) mach=linux ;;
 
   *)   test -n "$verbose" && \
            echo $0: the operating system \"$OS\" is unknown >&2 ;

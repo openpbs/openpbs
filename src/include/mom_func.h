@@ -147,10 +147,6 @@ extern enum hup_action	call_hup;
 
 #ifdef	_PBS_JOB_H
 
-/* version numbers for extra data in IM_JOIN and IM_SETUP */
-#define	IM_JOINX_IBMHPS		1
-#define	IM_JOINX_AIXIB		1
-
 #define COMM_MATURITY_TIME  60 /* time when we consider a pbs_comm connection as mature */
 
 typedef	int	(*pbs_jobfunc_t)(job *);
@@ -273,7 +269,7 @@ extern int	dep_attach(pbs_task *ptask);
 extern u_long	gettime(resource *pres);
 extern u_long	getsize(resource *pres);
 extern int   local_gettime(resource *, unsigned long *ret);
-#if (defined(_SYS_RESOURCE_H) || defined(_H_RESOURCE) ) && (defined(__sgi) || defined(_AIX) )
+#if (defined(_SYS_RESOURCE_H) || defined(_H_RESOURCE) ) && (defined(__sgi) )
 extern int   local_getsize(resource *, rlim64_t *ret);
 #else
 extern int   local_getsize(resource *, unsigned long *ret);

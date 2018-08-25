@@ -951,22 +951,6 @@ class DshUtils(object):
                 (o, e) = p.communicate(input)
                 ret['rc'] = p.returncode
 
-                # Platform specific handling:
-                # default HP-UX 11.31b config is to emit a special
-                # message to stderr (Last successful login ... Last
-                # authentication failure...) for every sudo operation,
-                # we ignore those messages in the error message
-                if sys.platform == 'hp-ux11':
-                    if e.startswith('Last successful login'):
-                        tmp_e = e.splitlines()
-                        if len(tmp_e) > 0:
-                            del tmp_e[0]
-                        if ((len(tmp_e) > 0) and
-                                (tmp_e[0].
-                                 startswith('Last authentication'))):
-                            del tmp_e[0]
-                        e = "\n".join(tmp_e)
-
             if as_script:
                 # must pass as_script=False otherwise it will loop infinite
                 self.rm(hostname, path=_script, as_script=False,
@@ -1787,8 +1771,6 @@ class DshUtils(object):
             cmd += ['-m']
         if home_dir is not None:
             cmd += ['-d', home_dir]
-        elif ((self.platform.startswith('sunos')) and create_home_dir):
-            cmd += ['-d', os.path.join('/export', 'home', str(name))]
         if ((groups is not None) and (len(groups) > 0)):
             cmd += ['-G', ','.join(map(lambda g: str(g), groups))]
         cmd += [str(name)]
@@ -1809,8 +1791,7 @@ class DshUtils(object):
         cmd = ['userdel']
         if del_home:
             cmd += ['-r']
-        if force and (not (self.platform.startswith('sunos') or
-                           self.platform.startswith('aix'))):
+        if force:
             cmd += ['-f']
         cmd += [str(name)]
         self.logger.info('deleting user ' + str(name))

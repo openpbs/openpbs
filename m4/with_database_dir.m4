@@ -62,11 +62,6 @@ AC_DEFUN([PBS_AC_WITH_DATABASE_DIR],
       [database_lib="-lpq"],
       AC_MSG_ERROR([PBS database shared object library not found.])),
     # Using developer installed PostgreSQL
-    AS_CASE([$PBS_MACH],
-      [aix*],
-        AS_IF([test -r "$database_dir/lib/libpq.a"],
-         [database_lib="-bstatic $database_dir/lib/libpq.a -bdynamic"],
-         AC_MSG_ERROR([Database library not found.])),
       AS_IF([test -r "$database_dir/lib64/libpq.a"],
         [database_lib="$database_dir/lib64/libpq.a"],
         AS_IF([test -r "$database_dir/lib/libpq.a"],
@@ -74,11 +69,7 @@ AC_DEFUN([PBS_AC_WITH_DATABASE_DIR],
           AC_MSG_ERROR([PBS database library not found.])
         )
       )
-    )
   )
-  AS_IF([test "x$PBS_MACH" = "xhpux10"],
-    [database_ldflags=" -Wl,+s"],
-    [database_ldflags=""])
   AC_MSG_RESULT([$database_dir])
   AC_SUBST([database_dir])
   AC_SUBST([database_inc])

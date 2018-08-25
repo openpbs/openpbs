@@ -121,11 +121,6 @@ extern	unsigned int	pbs_mom_port;
 extern	time_t		time_now;
 extern	time_t		time_resc_updated;
 extern char		*path_hooks_workdir;
-
-#if  defined(_AIX)
-int     aixlargepage = 0;
-#endif  /* _AIX */
-
 int              mom_reader_go;		/* see catchinter() & mom_writer() */
 struct var_table vtable;		/* for building up Job's environ */
 
@@ -889,7 +884,6 @@ impersonate_user(uid_t uid, gid_t gid)
 		return -1;
 	}
 #elif defined(HAVE_SETRESUID) && defined(HAVE_SETRESGID)
-	/* HPUX and the like */
 	if ((setresgid(-1, gid, -1) == -1) ||
 		(setresuid(-1, uid, -1) == -1)) {
 		(void)setresgid(-1, pbsgroup, -1);
@@ -909,7 +903,6 @@ revert_from_user(void)
 	(void)seteuid(0);
 	(void)setegid(pbsgroup);
 #elif defined(HAVE_SETRESUID) && defined(HAVE_SETRESGID)
-	/* HPUX and the like */
 	(void)setresuid(-1, 0, -1);
 	(void)setresgid(-1, pbsgroup, -1);
 #else
@@ -3245,61 +3238,6 @@ finish_exec(job *pjob)
 	/*************************************************************************/
 
 	pjob->ji_wattr[(int)JOB_ATR_session_id].at_val.at_long = sjr.sj_session;
-
-#if  defined(_AIX)
-	/*
-	 **	NOTE:  calling setpcred() changes the privilege of the process,
-	 **		so it must be done after running the prologue which is why
-	 **		it is not done in the system dependent set_job() function.
-	 **
-	 **	IBM bug:
-	 **	IY80185: SETPCRED() TRUNCATES POINTERS TO 32 BITS
-	 **
-	 **	This is pbs bug 9219 "64 bit mom has segv on setpcred call
-	 **	(large page permissions)".  When this is fixed, this test can
-	 **	be removed.  Until then, only 32 MOM can call setpcred.
-	 **
-	 **	A config value has now been added which is set based on
-	 **	if an IBM patch has been applied to fix the bug.
-	 */
-	if (aixlargepage) {
-		char	buf[32+PBS_MAXGRPN] = "REAL_GROUP=";
-		char	*cred[] = { buf, NULL };
-
-		if ((pjob->ji_wattr[(int)JOB_ATR_egroup].at_flags &
-			(ATR_VFLAG_SET | ATR_VFLAG_DEFLT)) == ATR_VFLAG_SET) {
-			int	len = strlen(buf);
-			/*
-			 ** Execution group specified - not defaulting to login
-			 ** group.  Don't append more than the size of buf.
-			 */
-			strncat(buf,
-				pjob->ji_wattr[(int)JOB_ATR_egroup].at_val.at_str,
-				sizeof(buf)-len);
-		} else {
-			/* default login group, don't specify credentials */
-			*cred = NULL;
-		}
-
-		/*
-		 **	Set process credentials for user.
-		 **	The man page says that the function setpenv must be
-		 **	called after this.  We arn't doing it because we were
-		 ** advised that it is not required.
-		 */
-		if (setpcred(pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str,
-			cred) == -1) {
-			sprintf(log_buffer, "setpcred: %s", strerror(errno));
-			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_ERR,
-				pjob->ji_qs.ji_jobid, log_buffer);
-			fprintf(temp_stderr, "%s\n", log_buffer);
-			starter_return(upfds, downfds,
-				JOB_EXEC_FAIL2, &sjr);		/* exits */
-		}
-	}		/* end bug 9219 */
-
-#endif	/* _AIX */
-
 	if (site_job_setup(pjob) != 0) {
 		starter_return(upfds, downfds,
 			JOB_EXEC_FAIL2, &sjr);		/* exits */

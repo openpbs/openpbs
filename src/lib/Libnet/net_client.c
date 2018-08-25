@@ -111,7 +111,7 @@ engage_authentication(int sd, struct in_addr addr, int port, int authport_flags)
 	int mode;
 	char ebuf[128];
 	char errbuf[1024];
-#if !defined(WIN32) && !defined(__hpux)
+#if !defined(WIN32)
 	char	dst[INET_ADDRSTRLEN+1]; /* for inet_ntop */
 #endif
 
@@ -143,8 +143,8 @@ engage_authentication(int sd, struct in_addr addr, int port, int authport_flags)
 		}
 	}
 
-#if defined(WIN32) || defined(__hpux)
-	/*inet_ntoa is thread-safe on windows & hpux*/
+#if defined(WIN32)
+	/* inet_ntoa is thread-safe on windows */
 	sprintf(ebuf,
 		"Unable to authenticate with (%s:%d)",
 		inet_ntoa(addr), port);
@@ -157,7 +157,7 @@ engage_authentication(int sd, struct in_addr addr, int port, int authport_flags)
 	cs_logerr(-1, __func__, ebuf);
 
 	if ((ret = CS_close_socket(sd)) != CS_SUCCESS) {
-#if defined(WIN32) || defined(__hpux)
+#if defined(WIN32)
 		sprintf(ebuf, "Problem closing context (%s:%d)",
 			inet_ntoa(addr), port);
 #else

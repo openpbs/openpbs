@@ -63,15 +63,6 @@
 #include "cmds.h"
 #include "dis.h"
 
-
-#if 0
-#ifdef uid_t
-static uid_t pbs_current_uid;
-#else
-static int pbs_current_uid;
-#endif
-#endif /* O */
-
 extern struct connect_handle connection[NCONNECTS];
 
 /**
@@ -89,18 +80,9 @@ static int
 pbs_connect2mom(char *momhost)
 {
 	int conn, sd;
-#if defined(__hpux)
-	struct sockaddr_in mom_addr;
-	struct hostent *hp;
-#else
 	struct addrinfo *aip, *pai;
 	struct addrinfo hints;
 	struct sockaddr_in *inp;
-#endif
-
-#if 0
-	struct passwd *pw;
-#endif
 
 	/* initialize the thread context data, if not already initialized */
 	if (pbs_client_thread_init_thread_context() != 0)
@@ -133,13 +115,6 @@ pbs_connect2mom(char *momhost)
 	if (strlen(momhost) <= 0)
 		momhost = "localhost";
 
-#if defined(__hpux)
-	hp = gethostbyname(momhost);
-	if (!hp) {
-		pbs_errno = PBSE_BADHOST;
-		goto err;
-	}
-#else
 	memset(&hints, 0, sizeof(struct addrinfo));
 	/*
 	 *	Why do we use AF_UNSPEC rather than AF_INET?  Some
@@ -169,19 +144,6 @@ pbs_connect2mom(char *momhost)
 		goto err;
 	} else
 		inp->sin_port = htons(pbs_conf.mom_service_port);
-#endif
-
-#if 0
-	/*
-	 * Prepare for authentication before we make the connection.
-	 */
-	pbs_current_uid = getuid();
-	if ((pw = getpwuid(pbs_current_uid)) == NULL) {
-		pbs_errno = PBSE_SYSTEM;
-		goto err;
-	}
-	strcpy(pbs_current_user, pw->pw_name);
-#endif
 
 	/*
 	 * Establish a connection.
@@ -192,16 +154,6 @@ pbs_connect2mom(char *momhost)
 		goto err;
 	}
 
-#if defined(__hpux)
-	mom_addr.sin_family = AF_INET;
-	mom_addr.sin_port = htons(pbs_conf.mom_service_port);
-	memcpy((char *)&mom_addr.sin_addr, hp->h_addr_list[0], hp->h_length);
-	if (connect(sd, (struct sockaddr *)&mom_addr, sizeof(mom_addr)) < 0) {
-		close(sd);
-		pbs_errno = errno;
-		goto err;
-	}
-#else
 	if (connect(sd, aip->ai_addr, aip->ai_addrlen) < 0) {
 		close(sd);
 		pbs_errno = errno;
@@ -209,18 +161,6 @@ pbs_connect2mom(char *momhost)
 		goto err;
 	}
 	freeaddrinfo(pai);
-#endif
-
-#if 0
-	/*
-	 * Have pbs_iff authenticate the connection.
-	 */
-	if (PBSD_authenticate(sd)) {
-		close(sd);
-		pbs_errno = PBSE_PERM;
-		return -1;
-	}
-#endif
 
 	/*
 	 * Setup DIS support routines.
@@ -270,40 +210,5 @@ cnt2mom(char *momhost)
 	int connect;
 
 	connect = pbs_connect2mom(momhost);
-#if 0
-	if (connect <= 0) {
-		if (pbs_errno > PBSE_) {
-			switch (pbs_errno) {
-
-				case PBSE_BADHOST:
-					fprintf(stderr, "Unknown Host.\n");
-					break;
-
-				case PBSE_NOCONNECTS:
-					fprintf(stderr, "Too many open connections.\n");
-					break;
-
-				case PBSE_NOSERVER:
-					fprintf(stderr, "No default server name.\n");
-					break;
-
-				case PBSE_SYSTEM:
-					fprintf(stderr, "System call failure.\n");
-					break;
-
-				case PBSE_PERM:
-					fprintf(stderr, "No Permission.\n");
-					break;
-
-				case PBSE_PROTOCOL:
-					fprintf(stderr, "Communication failure.\n");
-					break;
-
-			}
-		} else {
-			perror(NULL);
-		}
-	}
-#endif
 	return (connect);
 }

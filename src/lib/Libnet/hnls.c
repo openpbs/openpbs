@@ -80,9 +80,6 @@
 #include <unistd.h>
 #include <stropts.h>
 #include <netdb.h>
-#ifdef sun
-#include <sys/sockio.h>
-#endif
 
 #endif
 
@@ -443,131 +440,7 @@ get_if_info(char *msg)
 	}
 	WSACleanup();
 	free(addrlistp);
-
-#else /* AIX, Solaris, etc. */
-
-	int i, ret;
-	char **hostnames;
-	int sock;
-	struct ifconf ifc;
-	struct ifreq *ifrp;
-
-	if (!msg)
-		return NULL;
-	memset(&ifc, 0, sizeof(ifc));
-	sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
-	if (sock < 0) {
-		strncpy(msg, "Failed to create socket", LOG_BUF_SIZE);
-		return NULL;
-	}
-	ifc.ifc_req = NULL;
-
-#ifdef _AIX
-	ret = ioctl(sock, SIOCGSIZIFCONF, (caddr_t)&ifc.ifc_len);
-	if (ret != 0) {
-		strncpy(msg, "Error: %s\n", strerror(errno), LOG_BUF_SIZE);
-		close(sock);
-		return NULL;
-	}
-	if (ifc.ifc_len < 1) {
-		strncpy(msg, "Invalid interface data size", LOG_BUF_SIZE);
-		close(sock);
-		return NULL;
-	}
-	ifc.ifc_req = calloc(1, ifc.ifc_len);
-	if (!ifc.ifc_req) {
-		strncpy(msg, "Out of memory", LOG_BUF_SIZE);
-		close(sock);
-		return NULL;
-	}
-#else
-	ifc.ifc_len = sizeof(struct ifreq) * 64;
-	ifc.ifc_req = (struct ifreq *)calloc((ifc.ifc_len / sizeof(struct ifreq)), sizeof(struct ifreq));
-	if (!ifc.ifc_req) {
-		strncpy(msg, "Out of memory", LOG_BUF_SIZE);
-		close(sock);
-		return NULL;
-	}
 #endif
-
-	ret = ioctl(sock, SIOCGIFCONF, (caddr_t)&ifc);
-	if (ret != 0) {
-		free(ifc.ifc_req);
-		close(sock);
-		strncpy(msg, "Error: %s\n", strerror(errno), LOG_BUF_SIZE);
-		msg[LOG_BUF_SIZE - 1] = '\0';
-		return NULL;
-	}
-	ifrp = ifc.ifc_req;
-	while (ifrp < (struct ifreq *)((caddr_t)ifc.ifc_req + ifc.ifc_len)) {
-		hostnames = get_if_hostnames(&ifrp->ifr_addr);
-		if (hostnames) {
-			curr = (struct log_net_info *)calloc(1, sizeof(struct log_net_info));
-			if (!curr) {
-				free(ifc.ifc_req);
-				close(sock);
-				free_if_info(head);
-				free_if_hostnames(hostnames);
-				strncpy(msg, "Out of memory", LOG_BUF_SIZE);
-				msg[LOG_BUF_SIZE - 1] = '\0';
-				return NULL;
-			}
-			if (prev)
-				prev->next = curr;
-			if (!head)
-				head = curr;
-			get_sa_family(listp->ifa_addr, curr->iffamily);
-			strncpy(curr->ifname, ifrp->ifr_name, IFNAME_MAX);
-			curr->ifname[IFNAME_MAX - 1] = '\0';
-			/* Count the hostname entries and allocate space */
-			for (c = 0; hostnames[c]; c++)
-				;
-			curr->ifhostnames = (char**)calloc(c + 1, sizeof(char*));
-			if (!curr->ifhostnames) {
-				free(ifc.ifc_req);
-				close(sock);
-				free_if_info(head);
-				free_if_hostnames(hostnames);
-				strncpy(msg, "Out of memory", LOG_BUF_SIZE);
-				msg[LOG_BUF_SIZE - 1] = '\0';
-				return NULL;
-			}
-			for (i = 0; i < c; i++) {
-				curr->ifhostnames[i] = (char*)calloc(PBS_MAXHOSTNAME, sizeof(char));
-				if (!curr->ifhostnames) {
-					free(ifc.ifc_req);
-					close(sock);
-					free_if_info(head);
-					free_if_hostnames(hostnames);
-					strncpy(msg, "Out of memory", LOG_BUF_SIZE);
-					msg[LOG_BUF_SIZE - 1] = '\0';
-					return NULL;
-				}
-				strncpy(curr->ifhostnames[i], hostnames[i], (PBS_MAXHOSTNAME - 1));
-			}
-			curr->ifhostnames[i] = NULL;
-			free_if_hostnames(hostnames);
-			prev = curr;
-			curr->next = NULL;
-		}
-#ifdef _AIX
-		{
-			caddr_t p = (caddr_t)ifrp;
-			p += sizeof(ifrp->ifr_name);
-			if (sizeof(ifrp->ifr_addr) > ifrp->ifr_addr.sa_len)
-				p += sizeof(ifrp->ifr_addr);
-			else
-				p += ifrp->ifr_addr.sa_len;
-			ifrp = (struct ifreq *)p;
-		}
-#else
-		ifrp++;
-#endif
-	}
-	free(ifc.ifc_req);
-	close(sock);
-
-#endif /* AIX, Solaris, etc. */
 
 	return(head);
 }

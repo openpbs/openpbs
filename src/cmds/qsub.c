@@ -130,15 +130,11 @@
 #define DBPRT(x)
 #endif
 
-#ifdef sun
-#include <sys/stream.h>
-#endif /* sun */
-
 #if defined(HAVE_SYS_IOCTL_H)
 #include <sys/ioctl.h>
 #endif /* HAVE_SYS_IOCTL_H */
 
-#if !defined(sgi) && !defined(_AIX) && !defined(linux) && !defined(WIN32)
+#if !defined(sgi) && !defined(linux) && !defined(WIN32)
 #include <sys/tty.h>
 #endif
 

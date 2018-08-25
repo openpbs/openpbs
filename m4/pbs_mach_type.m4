@@ -43,10 +43,7 @@ AC_DEFUN([PBS_AC_MACHINE_TYPE],
   AC_MSG_RESULT([$PBS_MACH])
   AC_SUBST(PBS_MACH)
   AC_DEFINE_UNQUOTED([PBS_MACH], ["$PBS_MACH"], [PBS machine type])
-  AS_CASE([$PBS_MACH],
-    [aix*],
-      [mom_mach_libs="-lodm -lcfg"],
-    [mom_mach_libs=""])
+    [mom_mach_libs=""]
   AC_SUBST(mom_mach_libs)
 ])
 

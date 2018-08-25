@@ -133,10 +133,6 @@ host_match(char *line)
 	if (addrvalid == -1) {
 		addr.s_addr = inet_addr(host);
 		addrvalid = (addr.s_addr == INADDR_NONE) ? 0 : 1;
-		/*
-		 ** Every OS other than solaris was able to use this.
-		 ** addrvalid = inet_aton(host, &addr);
-		 */
 	}
 
 	if (addrvalid) {	/* compare IP addresses */

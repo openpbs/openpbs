@@ -710,8 +710,6 @@ hook_track_recov(void)
 		/* action data structure */
 #if defined(WIN32)    /* Windows */
 		hook_tid = _atoi64(p2);
-#elif defined(__hpux) /* HP-UX */
-		hook_tid = strToL(p2, NULL, 10);
 #else
 		hook_tid = atoll(p2);
 #endif

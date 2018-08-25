@@ -173,8 +173,7 @@ PBS_get_server(char *server, char *server_name,
  * @note
  * This function now accepts a argument sock_port and invoke pbs_iff
  * passing this port as a command line argument (both on unix and windows)
- * This change is done because getsockname() fails sometimes on Windows, and
- * popen on HPUX closes some fds (sh-posix treats some fd's in a special way)
+ * This change is done because getsockname() fails sometimes on Windows.
  *
  * Also, this would create an environment variable PBS_IFF_CLIENT_ADDR set to
  * the client's connecting address, which is made known to the pbs_iff process.
@@ -301,8 +300,7 @@ PBSD_authenticate(int psock, char * server_name, int server_port,
 /* This function will now accept a argument sock_port and will pass it to
  * PBSD_authenticate, which will invoke pbs_iff passing this port as a command
  * line argument. (both on unix and windows)
- * This change is done because getsockname() fails sometimes on Windows, and
- * popen on HPUX closes some fds (sh-posix treats some fd's in a special way)
+ * This change is done because getsockname() fails sometimes on Windows.
  */
 static int
 engage_authentication(int sd,
@@ -563,9 +561,6 @@ __pbs_connect_extend(char *server, char *extend_data)
 	struct batch_reply	*reply;
 	char server_name[PBS_MAXSERVERNAME+1];
 	unsigned int server_port;
-#if defined(__hpux)
-	struct hostent *hp;
-#endif
 	struct sockaddr_in sockname;
 	pbs_socklen_t	 socknamelen;
 #ifdef WIN32
@@ -695,30 +690,6 @@ __pbs_connect_extend(char *server, char *extend_data)
 		}
 		strcpy(pbs_server, server); /* set for error messages from commands */
 
-#if defined(__hpux)
-		/* hpux specific code */
-		server_addr.sin_family = AF_INET;
-		hp = NULL;
-		hp = gethostbyname(server);
-		if (hp == NULL) {
-			CLOSESOCKET(connection[out].ch_socket);
-			connection[out].ch_inuse = 0;
-			pbs_errno = PBSE_BADHOST;
-			return -1;
-		}
-		memcpy((char *)&server_addr.sin_addr, hp->h_addr_list[0], hp->h_length);
-		server_addr.sin_port = htons(server_port);
-
-		if (connect(connection[out].ch_socket,
-			(struct sockaddr *)&server_addr,
-			sizeof(server_addr)) == 0) {
-			break;
-		} else {
-			/* connect attempt failed */
-			pbs_errno = errno;
-			CLOSESOCKET(connection[out].ch_socket);
-		}
-#else
 		/* If a specific host name is defined which the client should use */
 
 		if (pbs_conf.pbs_public_host_name) {
@@ -743,7 +714,6 @@ __pbs_connect_extend(char *server, char *extend_data)
 			CLOSESOCKET(connection[out].ch_socket);
 			pbs_errno = errno;
 		}
-#endif
 	}
 	if (i >= (have_alt+1)) {
 		connection[out].ch_inuse = 0;
@@ -1012,7 +982,6 @@ pbs_query_max_connections()
 int
 pbs_connect_noblk(char *server, int tout)
 {
-	struct sockaddr_in server_addr;
 	int out;
 	int i;
 	pbs_socklen_t l;
@@ -1022,13 +991,9 @@ pbs_connect_noblk(char *server, int tout)
 	struct batch_reply *reply;
 	char server_name[PBS_MAXSERVERNAME+1];
 	unsigned int server_port;
-#if defined(__hpux)
-	struct hostent *hp;
-#else
 	struct addrinfo *aip, *pai;
 	struct addrinfo hints;
 	struct sockaddr_in *inp;
-#endif
 	short int connect_err = 0;
 
 	struct sockaddr_in sockname;
@@ -1052,19 +1017,6 @@ pbs_connect_noblk(char *server, int tout)
 	if (pbs_loadconf(0) == 0)
 		return -1;
 
-	/*
-	 * we are now doing it as part of pbs_client_thread_init_thread_context
-	 * so no need to do it here
-	 */
-#if 0
-	/* determine who we are */
-	pbs_current_uid = getuid();
-	if ((pw = getpwuid(pbs_current_uid)) == NULL) {
-		pbs_errno = PBSE_SYSTEM;
-		return -1;
-	}
-	strcpy(pbs_current_user, pw->pw_name);
-#endif
 	/* get server host and port	*/
 
 	server = PBS_get_server(server, server_name, &server_port);
@@ -1135,24 +1087,6 @@ pbs_connect_noblk(char *server, int tout)
 	/* and connect... */
 
 	strcpy(pbs_server, server);    /* set for error messages from commands */
-#if defined(__hpux)
-	/* hpux specific code */
-	server_addr.sin_family = AF_INET;
-	hp = NULL;
-	hp = gethostbyname(server);
-	if (hp == NULL) {
-		CLOSESOCKET(connection[out].ch_socket);
-		connection[out].ch_inuse = 0;
-		pbs_errno = PBSE_BADHOST;
-		return -1;
-	}
-	memcpy((char *)&server_addr.sin_addr, hp->h_addr_list[0], hp->h_length);
-	server_addr.sin_port = htons(server_port);
-
-	if (connect(connection[out].ch_socket,
-		(struct sockaddr *)&server_addr,
-		sizeof(server_addr)) < 0)
-#else
 	memset(&hints, 0, sizeof(struct addrinfo));
 	/*
 	 *      Why do we use AF_UNSPEC rather than AF_INET?  Some
@@ -1194,7 +1128,6 @@ pbs_connect_noblk(char *server, int tout)
 		connect_err = 1;
 	}
 	if (connect_err == 1)
-#endif
 	{
 		/* connect attempt failed */
 		pbs_errno = ERRORNO;
@@ -1239,20 +1172,12 @@ pbs_connect_noblk(char *server, int tout)
 err:
 				CLOSESOCKET(connection[out].ch_socket);
 				connection[out].ch_inuse = 0;
-#if !defined(__hpux)
 				freeaddrinfo(pai);
-#endif
 				return -1;	/* cannot connect */
 
 		}
 	}
-
-#if !defined(__hpux)
-	/* copy to server_addr before deleting pai */
-	memset(&server_addr, 0, sizeof(server_addr));
-	memcpy(&server_addr, aip->ai_addr, aip->ai_addrlen);
 	freeaddrinfo(pai);
-#endif
 
 	/* reset socket blocking */
 #ifdef WIN32

@@ -73,14 +73,9 @@ get_fullhostname(char *shortname, char *namebuf, int bufsize)
 	char           *pcolon = 0;
 	char            extname[PBS_MAXHOSTNAME+1] = {'\0'};
 	char            localname[PBS_MAXHOSTNAME+1] = {'\0'};
-#if defined(__hpux)
-	struct hostent *phe;
-	struct in_addr  ina;
-#else
 	struct addrinfo *aip, *pai;
 	struct addrinfo hints;
 	struct sockaddr_in *inp;
-#endif
 
 	if ((pcolon = strchr(shortname, (int)':')) != NULL) {
 		*pcolon = '\0';
@@ -88,11 +83,6 @@ get_fullhostname(char *shortname, char *namebuf, int bufsize)
 			*(pbkslh = pcolon-1) = '\0';
 	}
 
-#if defined(__hpux)
-	phe = gethostbyname(shortname);
-	if (phe == NULL)
-		return (-1);
-#else
 	memset(&hints, 0, sizeof(struct addrinfo));
 	/*
 	 *	Why do we use AF_UNSPEC rather than AF_INET?  Some
@@ -108,7 +98,6 @@ get_fullhostname(char *shortname, char *namebuf, int bufsize)
 
 	if (getaddrinfo(shortname, NULL, &hints, &pai) != 0)
 		return (-1);
-#endif
 
 	if (pcolon) {
 		*pcolon = ':';	/* replace the colon */
@@ -116,20 +105,6 @@ get_fullhostname(char *shortname, char *namebuf, int bufsize)
 			*pbkslh = '\\';
 	}
 
-#if defined(__hpux)
-	(void)memcpy((char *)&ina, *phe->h_addr_list, phe->h_length);
-	if ((phe = gethostbyaddr((char *)&ina, phe->h_length, phe->h_addrtype))
-		== 0)
-		return (-1);
-
-	if ((size_t)bufsize < strlen(phe->h_name))
-		return (-1);
-	for (i=0; i<bufsize; i++) {
-		*(namebuf+i) = tolower((int)*(phe->h_name+i));
-		if (*(phe->h_name+i) == '\0')
-			break;
-	}
-#else
 	/*
 	 *	This loop tries to find a non-loopback IPv4 address suitable
 	 *	for use by, in particular, pbs_server (which doesn't want to
@@ -163,7 +138,7 @@ get_fullhostname(char *shortname, char *namebuf, int bufsize)
 		if (*(namebuf+i) == '\0')
 			break;
 	}
-#endif
+
 	*(namebuf + bufsize) = '\0';	/* insure null terminated */
 	return (0);
 }

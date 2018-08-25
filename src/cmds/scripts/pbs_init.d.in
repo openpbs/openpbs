@@ -69,20 +69,6 @@ fi
 
 tmpdir=${PBS_TMPDIR:-${TMPDIR:-"/var/tmp"}}
 ostype=`uname 2>/dev/null`
-#
-# check for special system setup
-case "$ostype" in
-	AIX)
-		ldrval="MAXDATA=0x80000000"
-		if [ "$LDR_CNTRL" == "" ]; then
-			LDR_CNTRL=$ldrval
-			export LDR_CNTRL
-		elif [ "`echo $LDR_CNTRL | grep MAXDATA=`" == "" ]; then
-			LDR_CNTRL="$LDR_CNTRL@$ldrval"
-			export LDR_CNTRL
-		fi
-		;;
-esac
 
 getpid() {
 	if [ -f $1 ]; then
@@ -630,9 +616,7 @@ devcpuset_available()
 	then
 	    	return 0
 	fi
-	# Note:  the grep in Solaris's normal path does not understand the -q
-	# argument.  This function should be called only if using_cpuset_mom
-	# has returned true, assuring that the platform isn't Solaris.
+
 	if grep -q cpuset /proc/filesystems
 	then
 		if mount | grep -q /dev/cpuset

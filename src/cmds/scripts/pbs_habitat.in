@@ -81,23 +81,6 @@ chk_dataservice_user() {
 	return 0
 }
 
-check_switch() {
-	adapters=`ntblstatus 2> /dev/null | awk '/^Adapter/ {print $2}' | uniq`
-	if [ -n "$adapters" ]; then
-		switch="HPS"
-		return 0
-	fi
-	adapters=`ibstat 2> /dev/null | \
-			awk '/INFINIBAND DEVICE INFORMATION/ {print $NF}'`
-	if [ -n "$adapters" ]; then
-		switch="InfiniBand"
-		return 0
-	fi
-	echo "*** INFO: No High Performance Network detected"
-	switch=""
-	return 1
-}
-
 is_cray_xt() {
 	if [ -f /proc/cray_xt/cname ] ; then
 		return 0

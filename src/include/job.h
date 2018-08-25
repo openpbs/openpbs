@@ -687,10 +687,6 @@ struct job {
 			unsigned long long	ji_pagg;
 			/* ALPS process aggregate ID */
 #endif	/* MOM_ALPS */
-#if	defined(IBM_HPS) || defined(IBM_AIXIB)
-			int	ji_jobkey;	/* AIX net setup */
-			char	ji_keysaved;	/* != 0 if ji_jobkey valid */
-#endif	/* IBM_HPS || IBM_AIXIB */
 #endif /* PBS_MOM */
 		} ji_ext;
 	} ji_extended;

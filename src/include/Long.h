@@ -54,28 +54,7 @@ extern "C" {
  */
 
 /****************************************************************************/
-#if defined(__hpux)						   /* HP-UX */
-
-/* Under HP-UX, the compiler supports 64-bit signed integers as long longs */
-/* but it is only capable of supporting 63-bit unsigned integers as */
-/* unsigned long longs.  As a consequence, the most negative Long is one */
-/* closer to zero than it would otherwise be.  HP-UX also seems to provide */
-/* neither defined constant support nor library support. */
-
-typedef long long		Long;
-typedef unsigned long long	u_Long;
-
-#define lONG_MIN		-0x7FFFFFFFFFFFFFFFLL
-#define lONG_MAX		 0x7FFFFFFFFFFFFFFFLL
-#define UlONG_MAX		 0x7FFFFFFFFFFFFFFFULL
-
-Long strToL(const char *nptr, char **endptr, int base);
-u_Long strTouL(const char *nptr, char **endptr, int base);
-#define atoL(nptr)		strToL((nptr), NULL, 10)
-
-/****************************************************************************/
-#elif defined(__GNUC__) ||		    /* SunOS, FreeBSD, NetBSD, BSDI */\
-      defined(_AIX) && defined(__EXTENDED__)			     /* AIX */
+#if defined(__GNUC__)
 
 /* On these systems, the compiler supports 64-bit integers as long longs but */
 /* there seems to be neither defined constant support nor library support. */
@@ -110,27 +89,6 @@ typedef unsigned long long	u_Long;
 #define atoL(nptr)		atoll((nptr))
 
 /****************************************************************************/
-#elif defined(sun) && defined(sparc) && defined(LLONG_MAX)	 /* Solaris */
-
-/* Under Solaris, the compiler supports 64-bit integers as long longs with */
-/* defined constant support and library support, but with some strange */
-/* aspects to its library support.  This package ignores the Solaris */
-/* definitions of lltostr and ulltostr.  They aren't anything close to being */
-/* the functionally symetric equivalents of strtoll and strtoull.  The */
-/* LTostr and uLTostr functions in this package are much closer. */
-
-typedef long long		Long;
-typedef unsigned long long	u_Long;
-
-#define lONG_MIN		LLONG_MIN
-#define lONG_MAX		LLONG_MAX
-#define UlONG_MAX		ULLONG_MAX
-
-#define strToL(n, e, b)		strtoll(n, e, (b))
-#define strTouL(n, e, b)	strtoull(n, e, (b))
-#define atoL(nptr)		atoll((nptr))
-
-/****************************************************************************/
 #elif defined(WIN32)	/* Windows */
 
 /* long long and unsigned long long are 64 bit signed  and unsigned */
@@ -151,28 +109,7 @@ typedef unsigned long long	u_Long;
 #define atoL(nptr)		aToL((nptr))
 
 /****************************************************************************/
-#else							/* SunOS cc */
 
-/* On this machine, longs are as long as it gets.  With luck, at least 64 */
-/* bits (SunOS cc users have no luck).  Naturally, defined constant support */
-/* and some library support are both present.  The library has nothing like */
-/* LTostr or uLTostr. */
-
-/* What an amazing concept, long as the longest supported integer data type! */
-/* Congratulations Cray, for being the only ones so far to get it right! */
-
-typedef long			Long;
-typedef unsigned long		u_Long;
-
-#define lONG_MIN		LONG_MIN
-#define lONG_MAX		LONG_MAX
-#define UlONG_MAX		(u_Long)ULONG_MAX	/* Cast for SunOS cc */
-
-#define strToL(n, e, b)		strtol(n, e, (b))
-#define strTouL(n, e, b)	strtoul(n, e, (b))
-#define atoL(nptr)		atol((nptr))
-
-/****************************************************************************/
 #endif
 
 const char *LTostr(Long value, int base);

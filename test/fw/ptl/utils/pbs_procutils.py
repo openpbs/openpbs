@@ -79,16 +79,7 @@ class ProcUtils(object):
 
         # set some platform-specific arguments to ps
         ps_arg = '-C'
-        if platform.startswith('aix'):
-            ps_cmd = ['ps', '-o', 'pid,rssize,vsz,pcpu,comm']
-            ps_arg = '-n'
-        elif platform.startswith('hp-ux'):
-            ps_cmd = ['ps', '-o', 'pid,sz,vsz,pcpu,comm']
-        elif platform.startswith('sun'):
-            ps_cmd = ['ps', '-o', 'pid,rss,vsz,pcpu,comm']
-            ps_arg = '-n'
-        else:
-            ps_cmd = ['ps', '-o', 'pid,rss,vsz,pcpu,command']
+        ps_cmd = ['ps', '-o', 'pid,rss,vsz,pcpu,command']
 
         self.__h2ps[hostname] = (ps_cmd, ps_arg)
 
@@ -186,14 +177,6 @@ class ProcUtils(object):
                 cmd = ['ps', '-o', 'stat', '-p', str(pid), '--no-heading']
                 rv = self.du.run_cmd(hostname, cmd, level=logging.DEBUG2)
                 return rv['out'][0][0]
-            elif platform.startswith('sunos'):
-                cmd = ['ps', '-o' 's', '-p', str(pid)]
-                rv = self.du.run_cmd(hostname, cmd, level=logging.DEBUG2)
-                return rv['out'][1][0]
-            elif platform.startswith('aix'):
-                cmd = ['ps', '-o' 'state', '-p', str(pid)]
-                rv = self.du.run_cmd(hostname, cmd, level=logging.DEBUG2)
-                return rv['out'][1][0]
         except:
             self.logger.error('Error getting process state for pid ' + pid)
             return ''
@@ -223,14 +206,6 @@ class ProcUtils(object):
                 cmd = ['ps', '-o', 'pid', '--ppid:%s' % ppid, '--no-heading']
                 rv = self.du.run_cmd(hostname, cmd)
                 children = rv['out'][:-1]
-            elif platform.startswith('sunos') or platform.startswith('aix'):
-                children = []
-                cmd = ['ps', 'o', 'pid,ppid']
-                ret = self.du.run_cmd(hostname, cmd)
-                for o in ret['out']:
-                    (pid, ppid) = o.split()
-                    if ppid.strip() == str(ppid):
-                        children.append(pid.strip())
             else:
                 children = []
 

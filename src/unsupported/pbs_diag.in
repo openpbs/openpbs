@@ -1206,22 +1206,15 @@ esac
 #TESTING  unalias uname on all systems when testing
 
 case  "$ostype" in
-        IRIX*)
-                ;;
-        SunOS)
-                ;;
         Linux) commands[100]="cat /etc/*release* > $stage/OSrelease"
                commands[101]="ps -ef | grep pbs | grep -v grep > $stage/ps_ef.out"
                commands[102]="uname -a > $stage/uname.out"
                 ;;
         CRAY*)
                 ;;
-       Darwin) commands[100]="system_profiler SPSoftwareDataType |grep Ver > $stage/OSrelease"
+        Darwin) commands[100]="system_profiler SPSoftwareDataType |grep Ver > $stage/OSrelease"
                commands[101]="ps -ax | grep pbs | grep -v grep > $stage/ps_ef.out"
                commands[102]="uname -a > $stage/uname.out"
-                ;;
-
-        AIX*)    #THIS MAY NOT BE RIGHT
                 ;;
         *)
                 ;;

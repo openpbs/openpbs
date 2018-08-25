@@ -79,9 +79,6 @@ AC_DEFUN([PBS_AC_WITH_TCL],
   AC_SUBST(tk_version)
   AS_IF([test x$TCL_INCLUDE_SPEC = x],
     # Using developer installed tcl
-    AS_CASE([$PBS_MACH],
-      [aix*],
-        [TK_LIBS="-lX11 -lld -lm"])
     [tcl_inc="-I$tcl_dir/include"]
     [tcl_lib="$tcl_dir/lib/libtcl$TCL_VERSION.a $TCL_LIBS"]
     [tk_inc="-I$tcl_dir/include"]
