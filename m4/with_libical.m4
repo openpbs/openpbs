@@ -72,10 +72,23 @@ AC_DEFUN([PBS_AC_WITH_LIBICAL],
   AC_SUBST(libical_inc)
   AC_SUBST(libical_lib)
   AC_DEFINE([LIBICAL], [], [Defined when libical is available])
-  PKG_CHECK_MODULES([libical_api2],
-    [libical >= 2],
-    [AC_DEFINE([LIBICAL_API2], [], [Defined when libical version >= 2])],
-    [echo "libical version 2 is not available"]
+  version2_check="yes"
+  AS_IF([test "x$with_libical" != "x"],
+    AS_IF([test -r "${libical_dir}/lib/pkgconfig/libical.pc"],
+      export PKG_CONFIG_PATH=["${libical_dir}/lib/pkgconfig/:$PKG_CONFIG_PATH"],
+      AS_IF([test -r "${libical_dir}/lib64/pkgconfig/libical.pc"],
+        export PKG_CONFIG_PATH=["${libical_dir}/lib64/pkgconfig/:$PKG_CONFIG_PATH"],
+        version2_check="no"
+        AC_MSG_WARN([libical.pc file not found.])
+      )
     )
+  )
+  AS_IF([test "x$version2_check" = "yes"],
+    [PKG_CHECK_MODULES([libical_api2],
+      [libical >= 2],
+      [AC_DEFINE([LIBICAL_API2], [], [Defined when libical version >= 2])],
+      [echo "libical version 2 is not available"]
+    )]
+  )
 ])
 
