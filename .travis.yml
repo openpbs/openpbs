@@ -1,29 +1,32 @@
 language: c
 sudo: required
-group: deprecated-2017Q2
+dist: trusty
+addons:
+    apt:
+      packages:
+        - docker-ce
+        - pep8
 services:
     - docker
 env:
     - OS_TYPE=centos:7
-    - OS_TYPE=opensuse
-    - OS_TYPE=debian:8
-    - OS_TYPE=centos:7 BUILD_MODE=_debug
+    - OS_TYPE=opensuse/leap:15
+    - OS_TYPE=ubuntu:18.04
+    - OS_TYPE=debian:9
     - OS_TYPE=centos:7 BUILD_MODE=_sanitize
 before_install:
     - .github/runchecks
+    - export OS_TYPE_FILE=${OS_TYPE////_}
+    - export OS_TYPE_FILE=${OS_TYPE_FILE//./_}
+    - export OS_TYPE_FILE=${OS_TYPE_FILE//:/_}${BUILD_MODE}
     - docker pull ${OS_TYPE}
-    - docker run -it -d -h testdev.pbspro.com --name testdev -v `pwd`:`pwd` --privileged -w `pwd` ${OS_TYPE} /bin/sh
+    - '[ "${OS_TYPE}" == "ubuntu:18.04" -o "${OS_TYPE}" == "debian:9" ] && export DOCKER_EXTRA_ARG="-e DEBIAN_FRONTEND=noninteractive" || true'
+    - docker run -it -d -h testdev.pbspro.org --name testdev -v $(pwd):$(pwd) --privileged -w $(pwd) ${DOCKER_EXTRA_ARG} ${OS_TYPE} /bin/bash
     - docker ps -a
-    - export DOCKER_EXEC_TTY="docker exec -it testdev"
-    - export DOCKER_EXEC="docker exec -i testdev"
-    - export DOCKER_TESTDEV_IP="$(docker inspect -f '{{ .NetworkSettings.IPAddress }}' testdev)"
-    - ${DOCKER_EXEC} /bin/sh -c "echo '${DOCKER_TESTDEV_IP}     testdev' >> /etc/hosts"
-    - ${DOCKER_EXEC} cat /etc/hosts
+    - export DOCKER_EXEC="docker exec -it ${DOCKER_EXTRA_ARG} --privileged testdev"
 install:
-    - ./.travis/${OS_TYPE//:/_}${BUILD_MODE}.sh
-    - '[ "x${BUILD_MODE}" == "x_debug" ] && exit 0 || true'
-    - ${DOCKER_EXEC} /bin/sh -c "cd test/fw; pip install -r requirements.txt ."
-    - ${DOCKER_EXEC_TTY} pbs_config --make-ug
-    - ${DOCKER_EXEC_TTY} /bin/sh -c "cd test/tests; pbs_benchpress -l INFOCLI2 -o ../../ptl.txt --tags=smoke"
+    - ./.travis/${OS_TYPE_FILE}.sh
+    - docker exec -it -w $(pwd)/test/fw testdev pip install -r requirements.txt .
+    - docker exec -it testdev pbs_config --make-ug
+    - docker exec -it -w $(pwd)/test/tests testdev pbs_benchpress --tags=smoke
 script: true
-

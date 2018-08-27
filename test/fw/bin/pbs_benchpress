@@ -76,7 +76,8 @@ def sighandler(signum, frames):
 
 # join process group of caller makes it possible to programmatically interrupt
 # when run in a subshell
-os.setpgrp()
+if os.getpgrp() != os.getpid():
+    os.setpgrp()
 signal.signal(signal.SIGINT, sighandler)
 signal.signal(signal.SIGTERM, sighandler)
 

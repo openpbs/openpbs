@@ -68,7 +68,11 @@
 %if !%{defined _unitdir}
 %define _unitdir /usr/lib/systemd/system
 %endif
-%if 0%{?suse_version} >= 1210 || 0%{?rhel} >= 7 || 0%{?debian_version} >= 8
+%if %{_vendor} == debian && %(test -f /etc/os-release && echo 1 || echo 0)
+%define _vendor_ver %(cat /etc/os-release | awk -F[=\\".] '/^VERSION_ID=/ {print \$3}')
+%define _vendor_id %(cat /etc/os-release | awk -F= '/^ID=/ {print \$2}')
+%endif
+%if 0%{?suse_version} >= 1210 || 0%{?rhel} >= 7 || (x%{?_vendor_id} == xdebian && 0%{?_vendor_ver} >= 8) || (x%{?_vendor_id} == xubuntu && 0%{?_vendor_ver} >= 16)
 %define have_systemd 1
 %endif
 
@@ -158,6 +162,7 @@ Requires: tk
 Requires: smtp_daemon
 %if %{suse_version} >= 1500
 Requires: libical3
+Requires: hostname
 %else
 Requires: libical1
 %endif
@@ -191,6 +196,9 @@ Requires: bash
 Requires: expat
 Requires: python >= 2.6
 Requires: python < 3.0
+%if 0%{?suse_version} >= 1500
+Requires: hostname
+%endif
 Autoreq: 1
 
 %description %{pbs_execution}
@@ -481,4 +489,3 @@ fi
 %exclude %{pbs_prefix}/unsupported/*.pyc
 %exclude %{pbs_prefix}/unsupported/*.pyo
 %exclude %{_unitdir}/pbs.service
-

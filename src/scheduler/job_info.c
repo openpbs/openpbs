@@ -5169,7 +5169,7 @@ static int cull_preemptible_jobs(resource_resv *job, void *arg)
 			 * to RASSN resources only.
 			 */
 			if (resdef_exists_in_array(policy->resdef_to_check_rassn_select, inp->err->rdef) == 0) {
-				if (find_resource_req(job->resreq, inp->err->rdef));
+				if (find_resource_req(job->resreq, inp->err->rdef))
 					return 1;
 			}
 			break;

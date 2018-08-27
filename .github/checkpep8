@@ -37,18 +37,6 @@
 checkdir="$(readlink -f $(dirname $0))"
 errors=0
 
-if [ "x${CI}" == "xtrue" -a "x${TRAVIS}" == "xtrue" -a "x${TRAVIS_REPO_SLUG}" != "x" ]; then
-    sudo apt-get update
-    if [ $? -ne 0 ]; then
-        exit 1
-    fi
-
-    sudo apt-get install pep8 -yq
-    if [ $? -ne 0 ]; then
-        exit 1
-    fi
-fi
-
 which pep8 1>/dev/null 2>/dev/null
 if [ $? -ne 0 ]; then
     echo "Could not find pep8 command" 1>&2
@@ -66,7 +54,7 @@ is_python_file() {
     if [ "x${name##*.}" == "xrst" ]; then
         return 1
     fi
-    
+
     # special case
     # if __init__.py does not contain any code then file
     # command will consider it as plain text file

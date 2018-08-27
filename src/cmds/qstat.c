@@ -1098,15 +1098,13 @@ cvt_time_to_seconds(char *ts)
  *	3.  walltime_used / walltime_requested if walltime specified, or
  *	4.  "--" if none of the above apply
  */
-static char *
+char *
 percent_cal(char *state, char *timeu, char *timer, char *wtimu, char *wtimr, char *arsct)
 {
-	static char rtn[TIMEUL+1];
+	char *rtn = NULL;
 	long bot = 0;
 	long top = 0;
 	int qu, ru, ex, ep;
-
-	snprintf(rtn, sizeof(rtn), "-- ");
 
 	switch (*state) {
 
@@ -1127,8 +1125,9 @@ percent_cal(char *state, char *timeu, char *timer, char *wtimu, char *wtimr, cha
 		top = ep;
 		if (bot != 0)
 			percexp = (top * 100) / bot;
-		if ((percexp >= 0) && (percexp < 1000))
-			sprintf(rtn, "%3ld ", percexp);
+		if ((percexp >= 0) && (percexp < 1000)) {
+			pbs_asprintf(&rtn, "%3ld ", percexp);
+		}
 	} else {
 		long perccpu = -1;
 		long percwal = -1;
@@ -1145,9 +1144,12 @@ percent_cal(char *state, char *timeu, char *timer, char *wtimu, char *wtimr, cha
 				percwal = (top * 100) / bot;
 		}
 		if ((perccpu != -1) || (percwal != -1)) {
-			sprintf(rtn, "%3ld ",
+			pbs_asprintf(&rtn, "%3ld ",
 				perccpu > percwal ? perccpu : percwal);
 		}
+	}
+	if (rtn == NULL) {
+		pbs_asprintf(&rtn, "%3s", "-- ");
 	}
 	return (rtn);
 }
@@ -1384,7 +1386,9 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 			}
 			if (timeu == NULL) timeu = "0";
 			if (p_opt) {
-				printf(format, jid, name, owner, percent_cal(state, timeu, timer, wtimu, wtimr, arsct), state, location);
+				char *pc = percent_cal(state, timeu, timer, wtimu, wtimr, arsct);
+				printf(format, jid, name, owner, pc, state, location);
+				free(pc);
 			} else
 				printf(format, jid, name, owner, timeu, state, location);
 		}

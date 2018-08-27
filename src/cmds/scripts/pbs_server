@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # Copyright (C) 1994-2018 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
@@ -55,4 +55,3 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PBS_EXEC/lib/:$PBS_EXEC/lib64/
 
 
 exec $PBS_EXEC/sbin/pbs_server.bin ${1+"$@"}
-

@@ -1,4 +1,0 @@
-# dist macros.
-
-%debian_version 8
-%_unitdir /usr/lib/systemd/system/
