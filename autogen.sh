@@ -35,7 +35,6 @@
 # Use of Altair’s trademarks, including but not limited to "PBS™",
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
-#
 
 if test -d ./src/resmom; then
 	echo "Generating configure script and Makefile templates."
@@ -43,4 +42,3 @@ if test -d ./src/resmom; then
 else
 	echo "Execute `basename $0` from the top level distribution directory."
 fi
-

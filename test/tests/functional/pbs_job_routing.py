@@ -3,7 +3,7 @@
 # Copyright (C) 1994-2018 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
-# This file is part of the PBS Professional("PBS Pro") software.
+# This file is part of the PBS Professional ("PBS Pro") software.
 #
 # Open Source License Information:
 #
@@ -34,7 +34,6 @@
 # Use of Altair’s trademarks, including but not limited to "PBS™",
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
-#
 
 from tests.functional import *
 

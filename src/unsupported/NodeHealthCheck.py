@@ -1,7 +1,42 @@
 # coding: utf-8
 
+# Copyright (C) 1994-2018 Altair Engineering, Inc.
+# For more information, contact Altair at www.altair.com.
+#
+# This file is part of the PBS Professional ("PBS Pro") software.
+#
+# Open Source License Information:
+#
+# PBS Pro is free software. You can redistribute it and/or modify it under the
+# terms of the GNU Affero General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+#
+# PBS Pro is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+# See the GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Commercial License Information:
+#
+# For a copy of the commercial license terms and conditions,
+# go to: (http://www.pbspro.com/UserArea/agreement.html)
+# or contact the Altair Legal Department.
+#
+# Altair’s dual-license business model allows companies, individuals, and
+# organizations to create proprietary derivative works of PBS Pro and
+# distribute them - whether embedded or bundled with other software -
+# under a commercial license agreement.
+#
+# Use of Altair’s trademarks, including but not limited to "PBS™",
+# "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
+# trademark licensing policies.
+
 ##################################################################################
-# Purpose: To create a class for preforming node disk checks 
+# Purpose: To create a class for preforming node disk checks
 # Date: 20141114
 # Copyright (C) 1994-2018 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
@@ -72,7 +107,7 @@ try:
 #            pbs.event().accept()
 
     pbs.logmsg(pbs.EVENT_DEBUG3,'Event: %s'%pbs.event().type)
-    
+
     # Add the site-packages paths to the sys path
     pbs_conf = pbs.pbs_conf
 #    py_path = '/opt/pbs/default/python/lib'
@@ -91,8 +126,8 @@ try:
 
 except ImportError:
     pass
-             
-  
+
+
 # Import the needed modules for the program
 import platform
 from pwd import getpwnam
@@ -116,10 +151,10 @@ class NodeHealthCheck:
         pbs_hook_cfg = pbs.hook_config_filename
         if pbs_hook_cfg == None:
             pbs.logmsg(pbs.EVENT_DEBUG3,"%s"%os.environ)
-            pbs_hook_cfg = os.environ["PBS_HOOK_CONFIG_FILE"]    
+            pbs_hook_cfg = os.environ["PBS_HOOK_CONFIG_FILE"]
         pbs.logmsg(pbs.EVENT_DEBUG3,"read config file: %s"%pbs.hook_config_filename)
         config_file = open(pbs.hook_config_filename).read()
-        
+
         self.nhc_cfg = json.loads(config_file)
         pbs.logmsg(pbs.EVENT_DEBUG3,"config file: %s"%self.nhc_cfg)
 
@@ -146,7 +181,7 @@ class NodeHealthCheck:
                 # Added the line below to check to see if the real path is a mount or not
                 if not os.path.ismount(os.path.realpath(mnt_pnt)):
                     pbs.logmsg(pbs.EVENT_DEBUG3,"Mount: %s\tAction: %s"%(mnt_pnt,self.nhc_cfg["mounts"]["mount_points"][mnt_pnt]))
-                    return [self.nhc_cfg["mounts"]["mount_points"][mnt_pnt],'%s does not appear to be mounted'%mnt_pnt] 
+                    return [self.nhc_cfg["mounts"]["mount_points"][mnt_pnt],'%s does not appear to be mounted'%mnt_pnt]
             except Exception, e:
                 pbs.logmsg(pbs.EVENT_DEBUG,"Mount check error: %s"%e)
                 return False
@@ -172,7 +207,7 @@ class NodeHealthCheck:
             pbs.logmsg(pbs.EVENT_DEBUG3,"value: %s"%value)
         else:
             for key in units.keys():
-                if value.find(key) != -1: 
+                if value.find(key) != -1:
                     try:
                         value = int(value[:-2].strip())*units[key]
                     except Exception, e:
@@ -228,16 +263,16 @@ class NodeHealthCheck:
                     pbs.logmsg(pbs.EVENT_DEBUG3,"Free: %d%%\tRequested: %d%%"%(percent,int(spaceVal)))
 
                     if percent < int(spaceVal):
-                        return [self.nhc_cfg["disk_space"]["dirs"][check_dir][1],'%s failed disk space check. Free: %d%%\tRequested: %d%%'%(check_dir,percent,int(spaceVal))] 
+                        return [self.nhc_cfg["disk_space"]["dirs"][check_dir][1],'%s failed disk space check. Free: %d%%\tRequested: %d%%'%(check_dir,percent,int(spaceVal))]
                 except Exception, e:
                     pbs.logmsg(pbs.EVENT_DEBUG,"Error: %s"%e)
 
         return True
-            
+
 
     def ChkDirFilePermissions(self):
-        """ 
-            Returns True if the permissions match. The permissions from python are returned as string with the 
+        """
+            Returns True if the permissions match. The permissions from python are returned as string with the
             '0100600'. The last three digits are the file permissions for user,group, world
             Return action if the permissions don't match and NoFileOrDir if it can't find the file/dir
         """
@@ -261,11 +296,11 @@ class NodeHealthCheck:
                 return [self.nhc_cfg["permissions"]["check_dirs_and_files"][file_dir][1],"Can not find file/dir: %s"%file_dir]
             except:
                 return False
-        
-        return True 
+
+        return True
 
     def ChkProcesses(self):
-        if self.nhc_cfg["processes"]["check"] == False: 
+        if self.nhc_cfg["processes"]["check"] == False:
             pbs.logmsg(pbs.EVENT_DEBUG3,"Skipping processes check")
             return True
 
@@ -315,7 +350,7 @@ class NodeHealthCheck:
         return True
 
     def ChkTouchFileAsUser(self):
-        if self.nhc_cfg["as_user_operations"]["check"] == False: 
+        if self.nhc_cfg["as_user_operations"]["check"] == False:
             pbs.logmsg(pbs.EVENT_DEBUG3,"Skipping touch file as user check")
             return True
 
@@ -345,7 +380,7 @@ class NodeHealthCheck:
                             new_file_dir = V[var]
                             pbs.logmsg(pbs.EVENT_DEBUG3,"New dir: %s"%(file_dir))
                             break
-                            
+
                     pass
 
                 # Check to see what user this test should be run as.
@@ -357,13 +392,13 @@ class NodeHealthCheck:
                         status = self.TouchFileAsUser('root',new_file_dir,file_dir_orig)
                     else:
                         status = self.TouchFileAsUser('root',file_dir,file_dir_orig)
-                        
+
                 elif self.nhc_cfg["as_user_operations"]["touch_files"][file_dir_orig][0] == 'pbsuser':
                     # Check to see if check is to be written to a specific user dir
                     pbs.logmsg(pbs.EVENT_DEBUG3,"TouchFileAsUser: User: %s, Dir: %s"%(self.user,file_dir))
                     if file_dir.find('<userid>') != -1:
                         file_dir = file_dir.replace('<userid>',self.user)
-                    
+
                     # Try to touch the file
                     if new_file_dir != '':
                         status = self.TouchFileAsUser(self.user,new_file_dir,file_dir_orig)
@@ -377,14 +412,14 @@ class NodeHealthCheck:
 
                 if status != True:
                     return status
-                    
+
             except OSError:
                 return [self.nhc_cfg["as_user_operations"]["touch_files"][file_dir_orig][1],'Can not find file/dir: %s'%file_dir]
             except Exception, e:
                 return [self.nhc_cfg["as_user_operations"]["touch_files"][file_dir_orig][1],'Encountered an error %s for file/dir: %s'%(e,file_dir)]
                 #return False
-        
-        return True 
+
+        return True
 
     def TouchFileAsUser(self,user,file_dir,file_dir_orig):
         #file_dir_orig is needed to access the "Warn" or "Offline" information for the file/directory in question from the config file when variable substitution has taken place
@@ -406,7 +441,7 @@ class NodeHealthCheck:
 #This is a special case where the user account does not exist on the node.  Offlining here is a good alternative to the job failing to run 20 times and being held, but it can be changed if desired
         except KeyError:
             pbs.logmsg(pbs.EVENT_DEBUG,"Unable to find user: %s"%user)
-            # 
+            #
             return ['Offline','unable to find user: %s'%user]
 
         # Fork the process for touching a file as the user
@@ -414,7 +449,7 @@ class NodeHealthCheck:
 
         pid = os.fork()
         pbs.logmsg(pbs.EVENT_DEBUG3,"pid: %d"%pid)
-        
+
         if pid:
             # We are the parent
             os.close(w)
@@ -422,7 +457,7 @@ class NodeHealthCheck:
             r = os.fdopen(r) # turn r into a file object
 
             child = pid
-            
+
             pbs.logmsg(pbs.EVENT_DEBUG3,"Ready to read from the child process: %d"%pid)
             lines = r.read()
 
@@ -439,15 +474,15 @@ class NodeHealthCheck:
                 return [self.nhc_cfg["as_user_operations"]["touch_files"][file_dir_orig][1],'Failed to touch/remove file for %s in %s'%(user,file_dir)]
             else:
                 pbs.logmsg(pbs.EVENT_DEBUG3,"Successfully touched and removed file for %s in %s"%(user,file_dir))
-            
+
         else:
             try:
                 # Close the reading pipe
                 os.close(r)
-                
+
                 # Turn w into a file object
                 w = os.fdopen(w,'w')
-                
+
                 # Switch to the user
                 w.write("Ready to switch to user: %s\tuid: %s\n"%(user,user_data[2]))
                 os.setuid(user_data[2])
@@ -456,7 +491,7 @@ class NodeHealthCheck:
                 w.write("Changing dir to: %s\n"%(file_dir))
                 if os.path.isdir(file_dir):
                     os.chdir(file_dir)
-                    
+
                     # Touch a file in the user's home directory
                     touch_file_name = "__user_%s_jobid_%s_host_%s_pbs_test.txt"%(user,self.job_id,self.host)
                     w.write("Ready to touch file: %s\n"%(touch_file_name))
@@ -500,23 +535,23 @@ class NodeHealthCheck:
         pbs.logmsg(pbs.EVENT_DEBUG3,"Ready to check the mounts")
         if not c.ContinueChk(c.ChkMountPoints()):
             failCnt+=1
-                
+
         pbs.logmsg(pbs.EVENT_DEBUG3,"Ready to check the disk usage")
         if not c.ContinueChk(c.ChkDiskUsage()):
             failCnt+=1
-                
+
         pbs.logmsg(pbs.EVENT_DEBUG3,"Ready to check the file permissions")
         if not c.ContinueChk(c.ChkDirFilePermissions()):
             failCnt+=1
-                
+
         pbs.logmsg(pbs.EVENT_DEBUG3,"Ready to check the processes")
         if not c.ContinueChk(c.ChkProcesses()):
             failCnt+=1
-                
+
         pbs.logmsg(pbs.EVENT_DEBUG3,"Ready to touch file as user")
         if not c.ContinueChk(c.ChkTouchFileAsUser()):
             failCnt+=1
-                
+
         pbs.logmsg(pbs.EVENT_DEBUG3,"Exiting CheckNode function")
 
         return failCnt
@@ -531,15 +566,15 @@ class NodeHealthCheck:
         pbs.logmsg(pbs.EVENT_DEBUG3,"Ready to check the mounts")
         if not c.ContinueChk(c.ChkMountPoints()):
             failCnt+=1
-     
+
         pbs.logmsg(pbs.EVENT_DEBUG3,"Ready to check the disk usage")
         if not c.ContinueChk(c.ChkDiskUsage()):
             failCnt+=1
-     
+
         pbs.logmsg(pbs.EVENT_DEBUG3,"Ready to check the file permissions")
         if not c.ContinueChk(c.ChkDirFilePermissions()):
             failCnt+=1
-     
+
         pbs.logmsg(pbs.EVENT_DEBUG3,"Exiting CheckNode function")
 
         return failCnt
@@ -551,7 +586,7 @@ class NodeHealthCheck:
         if failCnt == 0:
             localtime = time.asctime( time.localtime(time.time()) )
             self.ContinueChk(['Online','Passed the periodic test at %s'%localtime])
-        return True    
+        return True
 
     def ContinueChk(self,status,comment=''):
         if isinstance(status,list):
@@ -569,7 +604,7 @@ class NodeHealthCheck:
             return True
         elif status == 'offline' or status == 'reboot':
             pbs.logmsg(pbs.EVENT_DEBUG,"Status: %s\tComment: %s"%(status,comment))
-            # Get the node, offline it, 
+            # Get the node, offline it,
             pbs.logmsg(pbs.EVENT_DEBUG,"Offline node: %s"%(self.host))
             myvnode = pbs.event().vnode_list[self.host]
             myvnode.state = pbs.ND_OFFLINE
@@ -591,7 +626,7 @@ class NodeHealthCheck:
 
             # Reject the job
             pbs.event().reject("Offlined node and restarted scheduling cycle")
-                    
+
         elif status == 'online':
             pbs.logmsg(pbs.EVENT_DEBUG,"Onlined node: %s"%(self.host))
             mynodename = pbs.get_local_nodename()
@@ -602,10 +637,10 @@ class NodeHealthCheck:
             pbs.logmsg(pbs.EVENT_DEBUG,"Changed node state to ND_FREE: %s"%(mynodename))
             myvnode.comment =  None
             pbs.logmsg(pbs.EVENT_DEBUG,"Onlined node: %s"%(mynodename))
-            
+
         else:
             return True
-            
+
 if __name__ == "__builtin__":
     start = time.time()
     pbs.logmsg(pbs.EVENT_DEBUG3,"Starting the node health check")
@@ -622,4 +657,3 @@ if __name__ == "__builtin__":
         c.CheckNode()
 
     pbs.logmsg(pbs.EVENT_DEBUG3,"Finished check disk hook: %0.5lf (s)"%(time.time()-start))
-
