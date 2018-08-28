@@ -376,7 +376,7 @@ req_runjob(struct batch_request *preq)
 		if (i == -1) {
 			req_reject(PBSE_IVALREQ, 0, preq);
 			return;
-		} else if ((i != JOB_STATE_QUEUED) || (find_job(jid) != NULL)) {
+		} else if (i != JOB_STATE_QUEUED) {
 			/* job already running */
 			req_reject(PBSE_BADSTATE, 0, preq);
 			return;
@@ -505,20 +505,9 @@ req_runjob(struct batch_request *preq)
 
 		/* single subjob, if parent qeueud, it can be run */
 
-		offset = subjob_index_to_offset(parent, get_index_from_jid(jid));
-		if (offset == -1) {
-			req_reject(PBSE_UNKJOBID, 0, preq);
-			return;
-		}
-		i = get_subjob_state(parent, offset);
-		if (i == -1) {
-			req_reject(PBSE_IVALREQ, 0, preq);
-			return;
-		} else if ((i != JOB_STATE_QUEUED) || (find_job(jid) != NULL)) {
-			/* job already running */
-			req_reject(PBSE_BADSTATE, 0, preq);
-			return;
-		}
+		if ((pjobsub = find_job(jid)) != NULL)
+			job_purge(pjobsub);
+
 		if ((pjobsub = create_subjob(parent, jid, &j)) == NULL) {
 			req_reject(j, 0, preq);
 			return;
@@ -572,27 +561,27 @@ req_runjob(struct batch_request *preq)
 
 			if (get_subjob_state(parent, i) == JOB_STATE_QUEUED) {
 				jid  = mk_subjob_id(parent, i);
-				pjob = find_job(jid);
-				if (pjob == NULL) {
-					if ((pjobsub = create_subjob(parent, jid, &j)) == NULL) {
-						req_reject(j, 0, preq);
-						continue;
-					}
-					if (call_to_process_hooks(preq, hook_msg, sizeof(hook_msg),
-							pbs_python_set_interrupt) == 0) {
-						/* subjob reject from hook*/
-						job_purge(pjobsub);
-						reply_text(preq, PBSE_HOOKERROR, hook_msg);
-						return;
-					}
-					if ((pjob = where_to_runjob(preq, pjobsub)) == NULL) {
-						/* requeue subjob */
-						pjobsub->ji_qs.ji_substate = JOB_SUBSTATE_RERUN3;
-						job_purge(pjobsub);
-						continue;
-					}
-					dup_br_for_subjob(preq, pjob, req_runjob2);
+				if ((pjobsub = find_job(jid)) != NULL)
+					job_purge(pjobsub);
+
+				if ((pjobsub = create_subjob(parent, jid, &j)) == NULL) {
+					req_reject(j, 0, preq);
+					continue;
 				}
+				if (call_to_process_hooks(preq, hook_msg, sizeof(hook_msg),
+						pbs_python_set_interrupt) == 0) {
+					/* subjob reject from hook*/
+					job_purge(pjobsub);
+					reply_text(preq, PBSE_HOOKERROR, hook_msg);
+					return;
+				}
+				if ((pjob = where_to_runjob(preq, pjobsub)) == NULL) {
+					/* requeue subjob */
+					pjobsub->ji_qs.ji_substate = JOB_SUBSTATE_RERUN3;
+					job_purge(pjobsub);
+					continue;
+				}
+				dup_br_for_subjob(preq, pjob, req_runjob2);
 			}
 		}
 		range = pc;
@@ -1084,7 +1073,8 @@ svr_strtjob2(job *pjob, struct batch_request *preq)
 			pjob->ji_qs.ji_jobid,
 			"Unable to Run Job, send to Mom failed");
 
-		if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_PROVISION)
+		if (pjob->ji_qs.ji_substate == JOB_SUBSTATE_PROVISION ||
+				pjob->ji_qs.ji_substate == JOB_SUBSTATE_PRERUN)
 			rel_resc(pjob);
 		else
 			free_nodes(pjob);
@@ -1500,9 +1490,6 @@ post_sendmom(struct work_task *pwt)
 			break;
 #endif
 		case SEND_JOB_NODEDW:	/* node (mother superior) is down? */
-			if (jobp->ji_qs.ji_substate == JOB_SUBSTATE_PROVISION ||
-					jobp->ji_qs.ji_substate == JOB_SUBSTATE_PRERUN)
-				rel_resc(jobp);
 			mark_node_down(jobp->ji_qs.ji_destin, "could not send job to mom");
 
 			/* fall through to requeue job */

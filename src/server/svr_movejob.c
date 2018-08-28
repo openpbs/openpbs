@@ -530,14 +530,17 @@ send_job_exec(job *jobp, pbs_net_t hostaddr, int port, struct batch_request *req
 	stream = svr_connect(hostaddr, port, NULL, ToServerDIS, rpp);
 	if (stream < 0) {
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_REQUEST, LOG_WARNING, "", "Could not connect to Mom");
+		pbs_errno = PBSE_NORELYMOM;
 		goto send_err;
 	}
 
 	pmom = tfind2((unsigned long) jobp->ji_qs.ji_un.ji_exect.ji_momaddr,
 		jobp->ji_qs.ji_un.ji_exect.ji_momport,
 		&ipaddrs);
-	if (!pmom || (((mom_svrinfo_t *)(pmom->mi_data))->msr_state & INUSE_DOWN))
+	if (!pmom || (((mom_svrinfo_t *)(pmom->mi_data))->msr_state & INUSE_DOWN)) {
+		pbs_errno = PBSE_NORELYMOM;
 		goto send_err;
+	}
 
 	CLEAR_HEAD(attrl);
 
@@ -560,7 +563,7 @@ send_job_exec(job *jobp, pbs_net_t hostaddr, int port, struct batch_request *req
 
 	(void) strcpy(job_id, jobp->ji_qs.ji_jobid);
 
-	pbs_errno = 0;
+	pbs_errno = PBSE_NONE;
 
 	pqjatr = &((svrattrl *) GET_NEXT(attrl))->al_atopl;
 	jobid = PBSD_queuejob(stream, jobp->ji_qs.ji_jobid, destin, pqjatr, NULL, rpp, &msgid);
@@ -571,8 +574,10 @@ send_job_exec(job *jobp, pbs_net_t hostaddr, int port, struct batch_request *req
 	rpp_add_close_func(stream, process_DreplyRPP); /* register a close handler */
 
 	/* adding msgid to deferred list, dont free msgid */
-	if ((ptask = add_mom_deferred_list(stream, pmom, post_sendmom, msgid, request, jobp)) == NULL)
+	if ((ptask = add_mom_deferred_list(stream, pmom, post_sendmom, msgid, request, jobp)) == NULL) {
+		pbs_errno = PBSE_SYSTEM;
 		goto send_err;
+	}
 
 	/* add to pjob->svrtask list so its automatically cleared when job is purged */
 	append_link(&jobp->ji_svrtask, &ptask->wt_linkobj, ptask);
@@ -580,8 +585,10 @@ send_job_exec(job *jobp, pbs_net_t hostaddr, int port, struct batch_request *req
 	/* we cannot use the same msgid, since it is not part of the preq,
 	 * make a dup of it, and we can freely free it
 	 */
-	if ((dup_msgid = strdup(msgid)) == NULL)
+	if ((dup_msgid = strdup(msgid)) == NULL) {
+		pbs_errno = PBSE_SYSTEM;
 		goto send_err;
+	}
 
 	/*
 	 * henceforth use the same msgid, since we mean to say all this is

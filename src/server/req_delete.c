@@ -259,7 +259,7 @@ check_deletehistoryjob(struct batch_request * preq)
 					char *sjid = mk_subjob_id(histpjob, i);
 					job  *psjob;
 
-					if ((get_subjob_state(histpjob, i) != JOB_STATE_QUEUED) && (psjob = find_job(sjid))) {
+					if ((psjob = find_job(sjid))) {
 						snprintf(log_buffer, sizeof(log_buffer),
 							msg_job_history_delete, preq->rq_user,
 							preq->rq_host);
@@ -412,7 +412,7 @@ req_deletejob(struct batch_request *preq)
 		} else if (i == JOB_STATE_EXPIRED) {
 			req_reject(PBSE_NOHISTARRAYSUBJOB, 0, preq);
 			return;
-		} else if (i != JOB_STATE_QUEUED && ((pjob = find_job(jid)) != NULL)) {
+		} else if ((pjob = find_job(jid)) != NULL) {
 			/*
 			 * If the request is to also purge the history of the sub job then set ji_deletehistory to 1
 			 */
@@ -482,12 +482,12 @@ req_deletejob(struct batch_request *preq)
 		/* and reply will be sent to client when last delete is done */
 		/* If not deleteing running subjobs, delete2 to del parent   */
 
-		if (--preq->rq_refct == 0)
+		if (--preq->rq_refct == 0) {
 			if ((parent = find_job(jid)) != NULL)
 				req_deletejob2(preq, parent);
-		else
-			reply_send(preq);
-		else
+			else
+				reply_send(preq);
+		} else
 			acct_del_write(jid, parent, preq, 0);
 
 		return;
