@@ -1321,19 +1321,25 @@ class SmokeTest(PBSTestSuite):
                             self.resc_name, t, f, c, k, v)
                         self.logger.info("")
 
-    def setup_fs(self):
+    def setup_fs(self, formula):
 
-        self.scheduler.set_sched_config({'log_filter': '0'})
-
-        self.scheduler.add_to_resource_group('grp1', 100, 'root', 60)
-        self.scheduler.add_to_resource_group('grp2', 200, 'root', 40)
-        self.scheduler.add_to_resource_group('pbsuser1', 101, 'grp1', 40)
-        self.scheduler.add_to_resource_group('pbsuser2', 102, 'grp1', 20)
-        self.scheduler.add_to_resource_group('pbsuser3', 201, 'grp2', 30)
-        self.scheduler.add_to_resource_group('pbsuser4', 202, 'grp2', 10)
+        # change resource group file and validate after all the changes are in
+        self.scheduler.add_to_resource_group('grp1', 100, 'root', 60,
+                                             validate=False)
+        self.scheduler.add_to_resource_group('grp2', 200, 'root', 40,
+                                             validate=False)
+        self.scheduler.add_to_resource_group('pbsuser1', 101, 'grp1', 40,
+                                             validate=False)
+        self.scheduler.add_to_resource_group('pbsuser2', 102, 'grp1', 20,
+                                             validate=False)
+        self.scheduler.add_to_resource_group('pbsuser3', 201, 'grp2', 30,
+                                             validate=False)
+        self.scheduler.add_to_resource_group('pbsuser4', 202, 'grp2', 10,
+                                             validate=True)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduler_iteration': 7})
         a = {'fair_share': 'True', 'fairshare_decay_time': '24:00:00',
-             'fairshare_decay_factor': 0.5}
+             'fairshare_decay_factor': 0.5, 'fairshare_usage_res': formula,
+             'log_filter': '0'}
         self.scheduler.set_sched_config(a)
 
     @skipOnCpuSet
@@ -1343,11 +1349,8 @@ class SmokeTest(PBSTestSuite):
         """
         rv = self.server.add_resource('foo1', 'float', 'nh')
         self.assertTrue(rv)
-        self.setup_fs()
         # Set scheduler fairshare usage formula
-        formula = {'fairshare_usage_res':
-                   'ceil(fabs(-ncpus*(foo1/100.00)*sqrt(100)))'}
-        self.scheduler.set_sched_config(formula)
+        self.setup_fs('ceil(fabs(-ncpus*(foo1/100.00)*sqrt(100)))')
         node_attr = {'resources_available.ncpus': 1,
                      'resources_available.foo1': 5000}
         self.server.manager(MGR_CMD_SET, NODE, node_attr, self.mom.shortname)
@@ -1355,8 +1358,11 @@ class SmokeTest(PBSTestSuite):
         job_attr = {'Resource_List.select': '1:ncpus=1:foo1=20',
                     'Resource_List.walltime': 4}
         J1 = Job(TEST_USER2, attrs=job_attr)
+        J1.set_sleep_time(4)
         J2 = Job(TEST_USER3, attrs=job_attr)
+        J2.set_sleep_time(4)
         J3 = Job(TEST_USER1, attrs=job_attr)
+        J3.set_sleep_time(4)
         j1id = self.server.submit(J1)
         j2id = self.server.submit(J2)
         j3id = self.server.submit(J3)
@@ -1383,7 +1389,7 @@ class SmokeTest(PBSTestSuite):
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         self.server.log_match(j1id + ";Exit_status")
 
-         # query fairshare and check usage
+        # query fairshare and check usage
         fs1 = self.scheduler.query_fairshare(name=str(TEST_USER1))
         self.logger.info('Checking ' + str(fs1.usage) + " == 3")
         self.assertEqual(fs1.usage, 3)
@@ -1400,8 +1406,11 @@ class SmokeTest(PBSTestSuite):
         # Check the scheduler usage file whether it's updating or not
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
         J1 = Job(TEST_USER4, attrs=job_attr)
+        J1.set_sleep_time(4)
         J2 = Job(TEST_USER2, attrs=job_attr)
+        J2.set_sleep_time(4)
         J3 = Job(TEST_USER1, attrs=job_attr)
+        J3.set_sleep_time(4)
         j1id = self.server.submit(J1)
         j2id = self.server.submit(J2)
         j3id = self.server.submit(J3)
