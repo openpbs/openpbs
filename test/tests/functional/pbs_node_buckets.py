@@ -104,7 +104,7 @@ class TestNodeBuckets(TestFunctional):
         j = Job(TEST_USER, attrs=a)
 
         jid = self.server.submit(j)
-        self.scheduler.log_match(jid + ';Evaluating subchunk')
+        self.scheduler.log_match(jid + ';Evaluating subchunk', n=10000)
 
         self.server.delete(jid, wait=True)
 
@@ -120,7 +120,7 @@ class TestNodeBuckets(TestFunctional):
         J = Job(TEST_USER, a)
         jid = self.server.submit(J)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-        self.scheduler.log_match(jid + ';Chunk: ' + chunk)
+        self.scheduler.log_match(jid + ';Chunk: ' + chunk, n=10000)
 
         js = self.server.status(JOB, id=jid)
         nodes = J.get_vnodes(js[0]['exec_vnode'])
@@ -141,7 +141,7 @@ class TestNodeBuckets(TestFunctional):
         J = Job(TEST_USER, a)
         jid = self.server.submit(J)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-        self.scheduler.log_match(jid + ';Chunk: ')
+        self.scheduler.log_match(jid + ';Chunk: ', n=10000)
 
         js = self.server.status(JOB, id=jid)
         nodes = J.get_vnodes(js[0]['exec_vnode'])
@@ -173,7 +173,7 @@ class TestNodeBuckets(TestFunctional):
         J = Job(TEST_USER, a)
         jid = self.server.submit(J)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-        self.scheduler.log_match(jid + ';Chunk:')
+        self.scheduler.log_match(jid + ';Chunk:', n=10000)
 
         js = self.server.status(JOB, id=jid)
         nodes = J.get_vnodes(js[0]['exec_vnode'])
@@ -196,7 +196,7 @@ class TestNodeBuckets(TestFunctional):
         a = {'comment': (MATCH_RE, '^Can Never Run'),
              'job_state': 'Q'}
         self.server.expect(JOB, a, attrop=PTL_AND, id=jid)
-        self.scheduler.log_match(jid + ';Chunk: ' + chunk)
+        self.scheduler.log_match(jid + ';Chunk: ' + chunk, n=10000)
 
     @timeout(450)
     def test_calendaring1(self):
@@ -214,7 +214,7 @@ class TestNodeBuckets(TestFunctional):
         j = Job(TEST_USER, attrs=a)
         jid1 = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
-        self.scheduler.log_match(jid1 + ';Chunk: ' + chunk1)
+        self.scheduler.log_match(jid1 + ';Chunk: ' + chunk1, n=10000)
 
         chunk2 = '10010:ncpus=1'
         a = {'Resource_List.select': chunk2,
@@ -224,7 +224,7 @@ class TestNodeBuckets(TestFunctional):
         jid2 = self.server.submit(j)
         self.server.expect(JOB, 'comment', op=SET, id=jid2)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
-        self.scheduler.log_match(jid2 + ';Chunk: ' + chunk2)
+        self.scheduler.log_match(jid2 + ';Chunk: ' + chunk2, n=10000)
 
         chunk3 = '2:ncpus=1'
         a = {'Resource_List.select': chunk3,
@@ -233,7 +233,7 @@ class TestNodeBuckets(TestFunctional):
         j = Job(TEST_USER, attrs=a)
         jid3 = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
-        self.scheduler.log_match(jid3 + ';Chunk: ' + chunk3)
+        self.scheduler.log_match(jid3 + ';Chunk: ' + chunk3, n=10000)
 
         a = {'Resource_List.select': chunk3,
              'Resource_List.place': 'scatter:excl',
@@ -242,7 +242,7 @@ class TestNodeBuckets(TestFunctional):
         jid4 = self.server.submit(j)
         self.server.expect(JOB, 'comment', op=SET, id=jid4)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid4)
-        self.scheduler.log_match(jid4 + ';Chunk: ' + chunk3)
+        self.scheduler.log_match(jid4 + ';Chunk: ' + chunk3, n=10000)
 
     @timeout(450)
     def test_calendaring2(self):
@@ -270,7 +270,7 @@ class TestNodeBuckets(TestFunctional):
         j = Job(TEST_USER, attrs=a)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-        self.scheduler.log_match(jid + ';Chunk: ' + chunk)
+        self.scheduler.log_match(jid + ';Chunk: ' + chunk, n=10000)
 
         s = self.server.status(JOB, 'exec_vnode', id=jid)
         n = j.get_vnodes(s[0]['exec_vnode'])
@@ -304,7 +304,7 @@ class TestNodeBuckets(TestFunctional):
         j = Job(TEST_USER, attrs=a)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-        self.scheduler.log_match(jid + ';Chunk: ' + chunk1)
+        self.scheduler.log_match(jid + ';Chunk: ' + chunk1, n=10000)
 
         chunk2 = '2:ncpus=1:color=yellow'
         a = {'Resource_List.select': chunk2,
@@ -312,7 +312,7 @@ class TestNodeBuckets(TestFunctional):
              'Resource_List.walltime': '15:00'}
         j2 = Job(TEST_USER, attrs=a)
         jid2 = self.server.submit(j2)
-        self.scheduler.log_match(jid2 + ';Chunk: ' + chunk2)
+        self.scheduler.log_match(jid2 + ';Chunk: ' + chunk2, n=10000)
         self.server.expect(JOB, 'estimated.exec_vnode', op=SET, id=jid2)
 
         s = self.server.status(JOB, 'estimated.exec_vnode', id=jid2)
@@ -334,7 +334,7 @@ class TestNodeBuckets(TestFunctional):
         j1 = Job(TEST_USER, attrs=a)
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
-        self.scheduler.log_match(jid1 + ';Evaluating subchunk')
+        self.scheduler.log_match(jid1 + ';Evaluating subchunk', n=10000)
 
         chunk = '1429:ncpus=1:color=orange'
         a = {'Resource_List.select': chunk,
@@ -342,7 +342,7 @@ class TestNodeBuckets(TestFunctional):
         j2 = Job(TEST_USER, attrs=a)
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
-        self.scheduler.log_match(jid2 + ';Chunk: ' + chunk)
+        self.scheduler.log_match(jid2 + ';Chunk: ' + chunk, n=10000)
 
         s1 = self.server.status(JOB, 'exec_vnode', id=jid1)
         s2 = self.server.status(JOB, 'exec_vnode', id=jid2)
@@ -423,8 +423,41 @@ class TestNodeBuckets(TestFunctional):
         self.server.expect(JOB, {'job_state': 'S'}, id=jid2)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
-        self.scheduler.log_match(jid3 + ';Evaluating subchunk')
+        self.scheduler.log_match(jid3 + ';Evaluating subchunk', n=10000)
         self.server.delete([jid2, jid3], wait=True)
+
+        # Checkpointed jobs use normal code path
+        self.logger.info('Test checkpointed job')
+        chk_script = """#!/bin/bash
+                kill $1
+                exit 0
+                """
+        self.chk_file = self.du.create_temp_file(body=chk_script)
+        self.du.chmod(path=self.chk_file, mode=0o755)
+        self.du.chown(path=self.chk_file, uid=0, gid=0, sudo=True)
+        c = {'$action': 'checkpoint_abort 30 !' + self.chk_file + ' %sid'}
+        self.mom.add_config(c)
+
+        self.scheduler.set_sched_config({'preempt_order': 'C'})
+        attrs = {'Resource_List.select': '1430:ncpus=1:color=orange',
+                 'Resource_List.place': 'scatter:excl'}
+        j_c1 = Job(TEST_USER, attrs)
+        jid_c1 = self.server.submit(j_c1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid_c1)
+        self.scheduler.log_match(
+            jid_c1 + ';Chunk: 1430:ncpus=1:color=orange', n=10000)
+        a = {'Resource_List.select': '1:ncpus=1:color=orange',
+             'queue': 'expressq'}
+        j_c2 = Job(TEST_USER, a)
+        jid_c2 = self.server.submit(j_c2)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid_c1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid_c2)
+        self.scheduler.log_match(
+            jid_c1 + ";Job preempted by checkpointing", n=10000)
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
+        self.scheduler.log_match(jid_c2 + ';Evaluating subchunk', n=10000)
+        self.server.delete([jid_c1, jid_c2], wait=True)
 
         # Job's in reservations use the standard codepath
         self.logger.info('Test job in reservation')
@@ -485,7 +518,7 @@ class TestNodeBuckets(TestFunctional):
         jid = self.server.submit(j)
 
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-        self.scheduler.log_match(jid + ';Evaluating subchunk')
+        self.scheduler.log_match(jid + ';Evaluating subchunk', n=10000)
 
         ev = self.server.status(JOB, 'exec_vnode', id=jid)
         used_nodes = j.get_vnodes(ev[0]['exec_vnode'])
@@ -510,7 +543,7 @@ class TestNodeBuckets(TestFunctional):
                             'Resource_List.place': 'scatter:excl'})
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-        self.scheduler.log_match(jid + ';Chunk: ' + chunk)
+        self.scheduler.log_match(jid + ';Chunk: ' + chunk, n=10000)
 
         jobs = self.server.status(JOB, {'exec_vnode'})
         jn = j.get_vnodes(jobs[0]['exec_vnode'])
@@ -546,8 +579,8 @@ class TestNodeBuckets(TestFunctional):
 
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
-        self.scheduler.log_match(jid1 + ';Chunk: ' + chunk)
-        self.scheduler.log_match(jid2 + ';Chunk: ' + chunk)
+        self.scheduler.log_match(jid1 + ';Chunk: ' + chunk, n=10000)
+        self.scheduler.log_match(jid2 + ';Chunk: ' + chunk, n=10000)
 
         ev = self.server.status(JOB, 'exec_vnode', id=jid1)
         used_nodes1 = j1.get_vnodes(ev[0]['exec_vnode'])
@@ -585,7 +618,7 @@ class TestNodeBuckets(TestFunctional):
         j1 = Job(TEST_USER, attrs=a)
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
-        self.scheduler.log_match(jid1 + ';Chunk: ' + chunk1)
+        self.scheduler.log_match(jid1 + ';Chunk: ' + chunk1, n=10000)
 
         svr_attr = {'node_group_key': 'shape', 'node_group_enable': 'True'}
         self.server.manager(MGR_CMD_SET, SERVER, svr_attr)
@@ -596,8 +629,8 @@ class TestNodeBuckets(TestFunctional):
         j2 = Job(TEST_USER, a)
         jid2 = self.server.submit(j2)
 
-        self.scheduler.log_match(jid2 + ';Chunk: ' + chunk2)
-        self.scheduler.log_match(jid2 + ';Job is a top job')
+        self.scheduler.log_match(jid2 + ';Chunk: ' + chunk2, n=10000)
+        self.scheduler.log_match(jid2 + ';Job is a top job', n=10000)
 
         n = self.server.status(NODE, 'resources_available.shape')
 
@@ -612,8 +645,8 @@ class TestNodeBuckets(TestFunctional):
         j3 = Job(TEST_USER, a)
         jid3 = self.server.submit(j3)
 
-        self.scheduler.log_match(jid3 + ';Chunk: ' + chunk2)
-        self.scheduler.log_match(jid3 + ';Job is a top job')
+        self.scheduler.log_match(jid3 + ';Chunk: ' + chunk2, n=10000)
+        self.scheduler.log_match(jid3 + ';Job is a top job', n=10000)
 
         ev = self.server.status(JOB, 'estimated.exec_vnode', id=jid3)
         used_nodes3 = j3.get_vnodes(ev[0]['estimated.exec_vnode'])
@@ -639,7 +672,7 @@ class TestNodeBuckets(TestFunctional):
         j = Job(TEST_USER, attrs=a)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-        self.scheduler.log_match(jid + ';Chunk: ' + chunk)
+        self.scheduler.log_match(jid + ';Chunk: ' + chunk, n=10000)
 
         ev = self.server.status(JOB, 'exec_vnode', id=jid)
         used_nodes = j.get_vnodes(ev[0]['exec_vnode'])
@@ -673,7 +706,7 @@ class TestNodeBuckets(TestFunctional):
              (MATCH_RE, 'can\'t fit in the largest placement set, '
               'and can\'t span psets')}
         self.server.expect(JOB, a, attrop=PTL_AND, id=jid)
-        self.scheduler.log_match(jid + ';Chunk: ' + chunk)
+        self.scheduler.log_match(jid + ';Chunk: ' + chunk, n=10000)
 
         a = {'do_not_span_psets': 'False'}
         self.server.manager(MGR_CMD_SET, SCHED, a, id='default')
@@ -715,7 +748,7 @@ class TestNodeBuckets(TestFunctional):
             j = Job(TEST_USER, a)
             jid = self.server.submit(j)
             self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-            self.scheduler.log_match(jid + ';Chunk: ' + chunk)
+            self.scheduler.log_match(jid + ';Chunk: ' + chunk, n=10000)
 
         # Check to see if jobs ran in one placement set
         jobs = self.server.status(JOB)
@@ -741,8 +774,7 @@ class TestNodeBuckets(TestFunctional):
         j = Job(TEST_USER, a)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-        self.scheduler.log_match(jid + ';Chunk: ' + chunk)
-
+        self.scheduler.log_match(jid + ';Chunk: ' + chunk, n=10000)
         ev = self.server.status(JOB, 'exec_vnode', id=jid)
         used_nodes = j.get_vnodes(ev[0]['exec_vnode'])
 
@@ -772,8 +804,8 @@ class TestNodeBuckets(TestFunctional):
 
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
-        self.scheduler.log_match(jid1 + ';Chunk: ' + chunk)
-        self.scheduler.log_match(jid2 + ';Chunk: ' + chunk)
+        self.scheduler.log_match(jid1 + ';Chunk: ' + chunk, n=10000)
+        self.scheduler.log_match(jid2 + ';Chunk: ' + chunk, n=10000)
 
         s1 = self.server.status(JOB, 'exec_vnode', id=jid1)
         s2 = self.server.status(JOB, 'exec_vnode', id=jid2)
@@ -807,7 +839,7 @@ class TestNodeBuckets(TestFunctional):
         j1 = Job(TEST_USER, attrs=a)
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
-        self.scheduler.log_match(jid1 + ';Chunk: ' + chunk1)
+        self.scheduler.log_match(jid1 + ';Chunk: ' + chunk1, n=10000)
         job = self.server.status(JOB, 'exec_vnode', id=jid1)[0]
         ev = j1.get_vnodes(job['exec_vnode'])
         msg = 'Job is using queue\'s nodes'
@@ -821,7 +853,7 @@ class TestNodeBuckets(TestFunctional):
         j2 = Job(TEST_USER, attrs=a)
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
-        self.scheduler.log_match(jid2 + ';Chunk: ' + chunk2)
+        self.scheduler.log_match(jid2 + ';Chunk: ' + chunk2, n=10000)
         job = self.server.status(JOB, 'exec_vnode', id=jid2)[0]
         ev = j2.get_vnodes(job['exec_vnode'])
         msg = 'Job running on nodes not associated with queue'
@@ -844,7 +876,7 @@ class TestNodeBuckets(TestFunctional):
         jid1 = self.server.submit(j1)
 
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
-        self.scheduler.log_match(jid1 + ';Chunk: ' + chunk1)
+        self.scheduler.log_match(jid1 + ';Chunk: ' + chunk1, n=10000)
         jst = self.server.status(JOB, 'exec_vnode', id=jid1)[0]
         ev = j1.get_vnodes(jst['exec_vnode'])
         for n in ev:
@@ -856,7 +888,7 @@ class TestNodeBuckets(TestFunctional):
         j2 = Job(TEST_USER, attrs=a)
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
-        self.scheduler.log_match(jid2 + ';Chunk: ' + chunk2)
+        self.scheduler.log_match(jid2 + ';Chunk: ' + chunk2, n=10000)
 
         jst = self.server.status(JOB, 'exec_vnode', id=jid2)[0]
         ev = j2.get_vnodes(jst['exec_vnode'])
