@@ -46,16 +46,18 @@ class TestNodeBucketPerf(TestPerformance):
     def setUp(self):
         TestPerformance.setUp(self)
         self.server.manager(MGR_CMD_CREATE, RSC,
-                            {'type': 'string', 'flag': 'h'}, id='color')
+                            {'type': 'string', 'flag': 'h'}, id='color',
+                            expect=True)
+        self.colors = \
+            ['red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'violet']
         a = {'resources_available.ncpus': 1, 'resources_available.mem': '8gb'}
         # 10010 nodes since it divides into 7 evenly.
         # Each node bucket will have 1430 nodes in it
         self.server.create_vnodes('vnode', a, 10010, self.mom,
                                   sharednode=False,
-                                  attrfunc=self.cust_attr_func)
+                                  attrfunc=self.cust_attr_func, expect=False)
+        self.server.expect(NODE, {'state=free': (GE, 10010)})
         self.scheduler.add_resource('color')
-        self.colors = \
-            ['red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'violet']
 
     def cust_attr_func(self, name, totalnodes, numnode, attribs):
         """
@@ -64,7 +66,7 @@ class TestNodeBucketPerf(TestPerformance):
         a = {'resources_available.color': self.colors[numnode % 7]}
         return dict(attribs.items() + a.items())
 
-    @timeout(1000)
+    @timeout(10000)
     def test_node_bucket_perf(self):
         """
         Submit a large number of jobs which use node buckets.  Run a cycle and
@@ -86,7 +88,13 @@ class TestNodeBucketPerf(TestPerformance):
              '1429:ncpus=1:color=blue+1429:ncpus=1:color=yellow',
              "Resource_List.place": 'scatter'}
         J = Job(TEST_USER, attrs=a)
-        for _ in range(num_jobs):
+        a = {'Resource_List.select':
+             '1429:ncpus=1:color=blue+1429:ncpus=1:color=yellow',
+             "Resource_List.place": 'scatter',
+             "Resource_List.walltime": 100}
+        for n in range(num_jobs):
+            a["Resource_List.walltime"] = a["Resource_List.walltime"] + n
+            J = Job(TEST_USER, attrs=a)
             jid = self.server.submit(J)
             jids += [jid]
 
@@ -99,7 +107,7 @@ class TestNodeBucketPerf(TestPerformance):
 
         # wait for cycle to finish
         self.scheduler.log_match("Leaving Scheduling Cycle", starttime=t,
-                                 max_attempts=120)
+                                 max_attempts=120, interval=5)
         c = self.scheduler.cycles(lastN=1)[0]
         cycle1_time = c.end - c.start
 
@@ -117,11 +125,10 @@ class TestNodeBucketPerf(TestPerformance):
 
         # wait for cycle to finish
         self.scheduler.log_match("Leaving Scheduling Cycle", starttime=t,
-                                 max_attempts=120)
+                                 max_attempts=120, interval=5)
 
         c = self.scheduler.cycles(lastN=1)[0]
         cycle2_time = c.end - c.start
-
         self.logger.info('Cycle 1: %d Cycle 2: %d Cycle time difference: %d' %
                          (cycle1_time, cycle2_time, cycle1_time - cycle2_time))
         self.assertTrue(cycle1_time > cycle2_time)
