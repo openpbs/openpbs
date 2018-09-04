@@ -527,10 +527,12 @@ send_job_exec(job *jobp, pbs_net_t hostaddr, int port, struct batch_request *req
 	char *dup_msgid = NULL;
 	struct work_task *ptask = NULL;
 
+	pbs_errno = PBSE_NONE;
+
 	stream = svr_connect(hostaddr, port, NULL, ToServerDIS, rpp);
 	if (stream < 0) {
-		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_REQUEST, LOG_WARNING, "", "Could not connect to Mom");
-		pbs_errno = PBSE_NORELYMOM;
+		sprintf(log_buffer, "Could not connect to Mom, svr_connect returned %d", stream);
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_REQUEST, LOG_WARNING, "", log_buffer);
 		goto send_err;
 	}
 
@@ -538,6 +540,7 @@ send_job_exec(job *jobp, pbs_net_t hostaddr, int port, struct batch_request *req
 		jobp->ji_qs.ji_un.ji_exect.ji_momport,
 		&ipaddrs);
 	if (!pmom || (((mom_svrinfo_t *)(pmom->mi_data))->msr_state & INUSE_DOWN)) {
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_REQUEST, LOG_WARNING, "", "Mom is down");
 		pbs_errno = PBSE_NORELYMOM;
 		goto send_err;
 	}
@@ -563,8 +566,6 @@ send_job_exec(job *jobp, pbs_net_t hostaddr, int port, struct batch_request *req
 
 	(void) strcpy(job_id, jobp->ji_qs.ji_jobid);
 
-	pbs_errno = PBSE_NONE;
-
 	pqjatr = &((svrattrl *) GET_NEXT(attrl))->al_atopl;
 	jobid = PBSD_queuejob(stream, jobp->ji_qs.ji_jobid, destin, pqjatr, NULL, rpp, &msgid);
 	free_attrlist(&attrl);
@@ -575,6 +576,7 @@ send_job_exec(job *jobp, pbs_net_t hostaddr, int port, struct batch_request *req
 
 	/* adding msgid to deferred list, dont free msgid */
 	if ((ptask = add_mom_deferred_list(stream, pmom, post_sendmom, msgid, request, jobp)) == NULL) {
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_REQUEST, LOG_WARNING, "", "add_mom_deferred_list returned NULL");
 		pbs_errno = PBSE_SYSTEM;
 		goto send_err;
 	}
@@ -586,6 +588,7 @@ send_job_exec(job *jobp, pbs_net_t hostaddr, int port, struct batch_request *req
 	 * make a dup of it, and we can freely free it
 	 */
 	if ((dup_msgid = strdup(msgid)) == NULL) {
+		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_REQUEST, LOG_WARNING, "", "strdup returned NULL");
 		pbs_errno = PBSE_SYSTEM;
 		goto send_err;
 	}

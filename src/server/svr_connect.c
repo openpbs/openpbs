@@ -144,13 +144,16 @@ svr_connect(pbs_net_t hostaddr, unsigned int port, void (*func)(int), enum conn_
 	pmom = tfind2((unsigned long)hostaddr, port, &ipaddrs);
 	if ((pmom != NULL) && (port == pmom->mi_port)) {
 		if (((mom_svrinfo_t *)(pmom->mi_data))->msr_state & INUSE_DOWN) {
+			pbs_errno = PBSE_NORELYMOM;
 			return (PBS_NET_RC_FATAL);
 		}
 	}
 
 	if (prot == PROT_RPP) {
-		if (!pmom)
+		if (!pmom) {
+			pbs_errno = PBSE_SYSTEM;
 			return (PBS_NET_RC_RETRY);
+		}
 		return ((mom_svrinfo_t *) (pmom->mi_data))->msr_stream;
 	}
 
@@ -199,6 +202,7 @@ svr_connect(pbs_net_t hostaddr, unsigned int port, void (*func)(int), enum conn_
 				strerror(errno), errno);
 			momptr_down(pmom, error_mess);
 		}
+		pbs_errno = PBSE_NORELYMOM;
 		return (sock);	/* PBS_NET_RC_RETRY or PBS_NET_RC_FATAL */
 	}
 
@@ -217,6 +221,7 @@ svr_connect(pbs_net_t hostaddr, unsigned int port, void (*func)(int), enum conn_
 #else
 		(void)close(sock);
 #endif
+		pbs_errno = PBSE_SYSTEM;
 		return (PBS_NET_RC_FATAL);
 	}
 
@@ -230,6 +235,7 @@ svr_connect(pbs_net_t hostaddr, unsigned int port, void (*func)(int), enum conn_
 	handle = socket_to_handle(sock);
 	if (handle == -1) {
 		close_conn(sock);
+		pbs_errno = PBSE_NOCONNECTS;
 		return (PBS_NET_RC_RETRY);
 	}
 
