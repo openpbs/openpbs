@@ -2490,22 +2490,34 @@ set_enforcement(char *str)
 
 	str = TOKCPY(str, arg);
 	str = skipwhite(str);
-	if (*str == '\0')
-		return HANDLER_FAIL;
 
 	if (strcmp(arg, "delta_percent_over") == 0) {
+		if (*str == '\0')
+			return HANDLER_FAIL;
 		delta_percent_over = atoi(str);
 	} else if (strcmp(arg, "delta_cpufactor") == 0) {
+		if (*str == '\0')
+			return HANDLER_FAIL;
 		delta_cpufactor = atof(str);
 	} else if (strcmp(arg, "delta_weightup") == 0) {
+		if (*str == '\0')
+			return HANDLER_FAIL;
 		delta_weightup = atof(str);
 	} else if (strcmp(arg, "delta_weightdown") == 0) {
+		if (*str == '\0')
+			return HANDLER_FAIL;
 		delta_weightdown = atof(str);
 	} else if (strcmp(arg, "average_percent_over") == 0) {
+		if (*str == '\0')
+			return HANDLER_FAIL;
 		average_percent_over = atoi(str);
 	} else if (strcmp(arg, "average_cpufactor") == 0) {
+		if (*str == '\0')
+			return HANDLER_FAIL;
 		average_cpufactor = atof(str);
 	} else if (strcmp(arg, "average_trialperiod") == 0) {
+		if (*str == '\0')
+			return HANDLER_FAIL;
 		average_trialperiod = atoi(str);
 	} else if (strcmp(arg, "cpuburst") == 0) {
 		cpuburst = on;		/* may be off */
