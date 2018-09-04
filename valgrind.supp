@@ -671,3 +671,53 @@
    fun:pbs_python_populate_attributes_to_python_class
    fun:*
 }
+{
+   From PBSPro (server) - Suppress intentional unfreed memory from loading hook script at mgr_hook_import 
+   Memcheck:Leak
+   fun:malloc
+   fun:strdup
+   fun:pbs_python_ext_alloc_python_script
+   fun:mgr_hook_import
+   fun:req_manager
+   fun:dispatch_request
+   fun:process_request
+   fun:wait_request
+   fun:main
+}
+{
+   From PBSPro (server) - Suppress intentional unfreed memory from loading hook script at mgr_hook_import 
+   Memcheck:Leak
+   fun:malloc
+   fun:pbs_python_ext_alloc_python_script
+   fun:mgr_hook_import
+   fun:req_manager
+   fun:dispatch_request
+   fun:process_request
+   fun:wait_request
+   fun:main
+}
+{
+   From PBSPro (server) - Suppress intentional unfreed memory from allocating hook data at mgr_hook_create 
+   Memcheck:Leak
+   fun:malloc
+   fun:hook_alloc
+   fun:mgr_hook_create
+   fun:req_manager
+   fun:dispatch_request
+   fun:process_request
+   fun:wait_request
+   fun:main
+}
+{
+   From PBSPro (server) - Suppress intentional unfreed memory from allocating hook name at mgr_hook_create 
+   Memcheck:Leak
+   fun:malloc
+   fun:strdup
+   fun:set_hook_name
+   fun:mgr_hook_create
+   fun:req_manager
+   fun:dispatch_request
+   fun:process_request
+   fun:wait_request
+   fun:main
+}

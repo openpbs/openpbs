@@ -848,6 +848,7 @@ set_entlim(attribute *old, attribute *new, enum batch_op op)
 					if (entlim_replace(pkey->key, newptr, oldctx, svr_freeleaf) != 0) {
 						/* failed to add */
 						svr_freeleaf(newptr);
+						free(pkey);
 						return (PBSE_SYSTEM);
 					}
 				}
@@ -912,7 +913,7 @@ set_entlim(attribute *old, attribute *new, enum batch_op op)
 			/* having removed one or more elements from the value tree */
 			/* see if any entries are left or if the value is now null */
 			pkey = NULL;
-			if (entlim_get_next(pkey, oldctx) == NULL) {
+			if ((pkey = entlim_get_next(pkey, oldctx)) == NULL) {
 				/* no entries left set, clear the entire attribute */
 				free_entlim(old);
 				/* set _MODIFY flag so up level functions */
@@ -920,6 +921,7 @@ set_entlim(attribute *old, attribute *new, enum batch_op op)
 				old->at_flags |= ATR_VFLAG_MODIFY;
 				return (0);
 			}
+			free(pkey);
 			break;
 
 		default:	return (PBSE_INTERNAL);

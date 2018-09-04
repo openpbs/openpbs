@@ -38,7 +38,7 @@
 from tests.functional import *
 
 
-class TestProvisioningJob(TestFunctional):
+class TestProvisioningJob_Enh(TestFunctional):
     """
     This testsuite tests newly introduced provisioining capabilities.
     With this enhacement, PBS will be able to run job requesting aoe

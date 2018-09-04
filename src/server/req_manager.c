@@ -878,6 +878,7 @@ mgr_set_attr2(attribute *pattr, attribute_def *pdef, int limit, svrattrl *plist,
 						attr_atomic_kill(new, pdef, limit);
 						attr_atomic_kill(pre_copy, pdef, limit);
 						attr_atomic_kill(attr_save, pdef, limit);
+						free(pkey);
 						return (PBSE_BADATVAL);
 					}
 					pkey = entlim_get_next(pkey,
@@ -942,8 +943,8 @@ mgr_set_attr2(attribute *pattr, attribute_def *pdef, int limit, svrattrl *plist,
 				rc = (pdef+index)->at_action((new+index), parent, mode);
 				if (rc) {
 					*bad = index + 1;
-					free(new);
-					free(pre_copy);
+					attr_atomic_kill(new, pdef, limit);
+					attr_atomic_kill(pre_copy, pdef, limit);
 					attr_atomic_copy(pattr, attr_save, pdef, limit);
 					attr_atomic_kill(attr_save, pdef, limit);
 					return (rc);
@@ -3817,6 +3818,7 @@ is_entity_resource_set(attribute *pattr, char *resc_name)
 		while ((pkey=entlim_get_next(pkey, ctx)) != NULL) {
 			if (entlim_resc_from_key(pkey, resc, PBS_MAX_RESC_NAME) == 0)
 				if (strcmp(resc, resc_name) == 0) {
+					free(pkey);
 					return 1;
 				}
 		}
