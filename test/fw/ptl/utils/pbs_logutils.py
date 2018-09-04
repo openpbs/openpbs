@@ -991,7 +991,7 @@ class PBSServerLog(PBSLogAnalyzer):
             tm = self.logutils.convert_date_time(m.group('datetime'))
             self.record_tm.append(tm)
             if not self.logutils.in_range(tm, start, end):
-                if tm > end:
+                if end and tm > end:
                     return PARSER_OK_STOP
                 return PARSER_OK_CONTINUE
 
