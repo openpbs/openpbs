@@ -290,7 +290,8 @@ class PBSLogUtils(object):
 
         return f
 
-    def get_timestamps(self, logfile=None, hostname=None, num=None):
+    def get_timestamps(self, logfile=None, hostname=None, num=None,
+                       sudo=False):
         """
         Helper function to parse logfile
 
@@ -299,7 +300,7 @@ class PBSLogUtils(object):
         if logfile is None:
             return
 
-        records = self.open_log(logfile, hostname)
+        records = self.open_log(logfile, hostname, sudo=sudo)
         if records is None:
             return
 
@@ -519,7 +520,7 @@ class PBSLogUtils(object):
             logs = self.du.listdir(hostname, path, sudo=sudo)
             for f in sorted(logs):
                 if start is not None or end is not None:
-                    tm = self.get_timestamps(f, hostname, num=1)
+                    tm = self.get_timestamps(f, hostname, num=1, sudo=sudo)
                     if not tm:
                         continue
                     d1 = time.strftime("%Y%m%d", time.localtime(tm[0]))

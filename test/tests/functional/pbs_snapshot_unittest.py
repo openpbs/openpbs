@@ -36,6 +36,7 @@
 # trademark licensing policies.
 
 import time
+import os
 
 from tests.functional import *
 from ptl.utils.pbs_snaputils import *
@@ -48,6 +49,7 @@ class TestPBSSnapshot(TestFunctional):
     pbs_snapshot_path = None
     snapdirs = []
     snaptars = []
+    parent_dir = os.getcwd()
 
     def setUp(self):
         TestFunctional.setUp(self)
@@ -148,26 +150,26 @@ class TestPBSSnapshot(TestFunctional):
 
         return (queues, nodes)
 
-    def take_snapshot(self, parent_dir, acct_logs=None, daemon_logs=None,
-                      obfuscate=None):
+    def take_snapshot(self, acct_logs=None, daemon_logs=None,
+                      obfuscate=None, with_sudo=True):
         """
         Take a snapshot using pbs_snapshot command
 
-        :param parent_dir: path to the directory where snapshot will be caught
-        :type parent_dir: str
         :param acct_logs: Number of accounting logs to capture
         :type acct_logs: int
         :param daemon_logs: Number of daemon logs to capture
         :type daemon_logs: int
         :param obfuscate: Obfuscate information?
         :type obfuscate: bool
+        :param with_sudo: use the --with-sudo option?
+        :type with_sudo: bool
         :return a tuple of name of tarball and snapshot directory captured:
             (tarfile, snapdir)
         """
         if self.pbs_snapshot_path is None:
             self.skip_test("pbs_snapshot not found")
 
-        snap_cmd = [self.pbs_snapshot_path, "-o", parent_dir]
+        snap_cmd = [self.pbs_snapshot_path, "-o", self.parent_dir]
         if acct_logs is not None:
             snap_cmd.append("--accounting-logs=" + str(acct_logs))
 
@@ -177,7 +179,10 @@ class TestPBSSnapshot(TestFunctional):
         if obfuscate:
             snap_cmd.append("--obfuscate")
 
-        ret = self.du.run_cmd(cmd=snap_cmd, sudo=True)
+        if with_sudo:
+            snap_cmd.append("--with-sudo")
+
+        ret = self.du.run_cmd(cmd=snap_cmd)
         self.assertEquals(ret['rc'], 0)
 
         # Get the name of the tarball that was created
@@ -194,7 +199,7 @@ class TestPBSSnapshot(TestFunctional):
 
         # Unwrap the tarball
         tar = tarfile.open(output_tar)
-        tar.extractall(path=parent_dir)
+        tar.extractall(path=self.parent_dir)
         tar.close()
 
         # snapshot directory name = <snapshot>.tgz[:-4]
@@ -219,12 +224,12 @@ class TestPBSSnapshot(TestFunctional):
                      "job_history_duration": job_hist_duration}
         self.server.manager(MGR_CMD_SET, SERVER, attr_list)
 
-        target_dir = self.du.get_tempdir()
         num_daemon_logs = 2
         num_acct_logs = 5
 
-        with PBSSnapUtils(out_dir=target_dir, acct_logs=num_acct_logs,
-                          daemon_logs=num_daemon_logs) as snap_obj:
+        with PBSSnapUtils(out_dir=self.parent_dir, acct_logs=num_acct_logs,
+                          daemon_logs=num_daemon_logs,
+                          with_sudo=True) as snap_obj:
             snap_dir = snap_obj.capture_server(True, True)
 
             # Go through the snapshot and perform certain checks
@@ -263,7 +268,6 @@ class TestPBSSnapshot(TestFunctional):
 
         WARNING: Assumes that the test is being run on type - 1 PBS install
         """
-        target_dir = self.du.get_tempdir()
         num_daemon_logs = 2
         num_acct_logs = 5
 
@@ -278,8 +282,9 @@ class TestPBSSnapshot(TestFunctional):
             self.skipTest("Type 1 installation not present or " +
                           "all daemons are not running")
 
-        with PBSSnapUtils(out_dir=target_dir, acct_logs=num_acct_logs,
-                          daemon_logs=num_daemon_logs, sudo=True) as snap_obj:
+        with PBSSnapUtils(out_dir=self.parent_dir, acct_logs=num_acct_logs,
+                          daemon_logs=num_daemon_logs,
+                          with_sudo=True) as snap_obj:
             snap_dir = snap_obj.capture_all()
             snap_obj.finalize()
 
@@ -331,7 +336,6 @@ class TestPBSSnapshot(TestFunctional):
         """
         Test the 'capture_pbs_logs' interface of PBSSnapUtils
         """
-        target_dir = self.du.get_tempdir()
         num_daemon_logs = 2
         num_acct_logs = 5
 
@@ -348,8 +352,9 @@ class TestPBSSnapshot(TestFunctional):
             self.skipTest("No PBSPro daemons found on the system," +
                           " skipping the test")
 
-        with PBSSnapUtils(out_dir=target_dir, acct_logs=num_acct_logs,
-                          daemon_logs=num_daemon_logs) as snap_obj:
+        with PBSSnapUtils(out_dir=self.parent_dir, acct_logs=num_acct_logs,
+                          daemon_logs=num_daemon_logs,
+                          with_sudo=True) as snap_obj:
             snap_dir = snap_obj.capture_pbs_logs()
 
             # Perform some checks
@@ -385,8 +390,7 @@ class TestPBSSnapshot(TestFunctional):
         if self.pbs_snapshot_path is None:
             self.skip_test("pbs_snapshot not found")
 
-        parent_dir = self.du.get_tempdir()
-        output_tar, _ = self.take_snapshot(parent_dir)
+        output_tar, _ = self.take_snapshot()
 
         # Check that the output tarball was created
         self.assertTrue(os.path.isfile(output_tar))
@@ -399,8 +403,7 @@ class TestPBSSnapshot(TestFunctional):
         if self.pbs_snapshot_path is None:
             self.skip_test("pbs_snapshot not found")
 
-        parent_dir = self.du.get_tempdir()
-        (_, snap_dir) = self.take_snapshot(parent_dir, 0, 0)
+        (_, snap_dir) = self.take_snapshot(0, 0)
 
         # Check that 'server_logs' were not captured
         log_path = os.path.join(snap_dir, SVR_LOGS_PATH)
@@ -439,8 +442,7 @@ class TestPBSSnapshot(TestFunctional):
         self.server.expect(RESV, attribs, id=resv_id)
 
         # Now, take a snapshot with --obfuscate
-        parent_dir = self.du.get_tempdir()
-        (_, snap_dir) = self.take_snapshot(parent_dir, 0, 0, True)
+        (_, snap_dir) = self.take_snapshot(0, 0, True)
 
         # Make sure that the pbs_rstat -f output captured doesn't have the
         # Authorized user and group names
@@ -482,8 +484,7 @@ class TestPBSSnapshot(TestFunctional):
                 self.server.submit(j)
 
         # Capture a snapshot of the system with multiple schedulers
-        target_dir = self.du.get_tempdir()
-        (_, snapdir) = self.take_snapshot(target_dir)
+        (_, snapdir) = self.take_snapshot()
 
         # Check that sched priv and sched logs for all schedulers was captured
         for sched_id in sched_ids:

@@ -223,7 +223,7 @@ class PBSSnapUtils(object):
     def __init__(self, out_dir, server_host=None, acct_logs=None,
                  daemon_logs=None, additional_hosts=None,
                  map_file=None, anonymize=None, create_tar=False,
-                 log_path=None, sudo=False):
+                 log_path=None, with_sudo=False):
         self.out_dir = out_dir
         self.server_host = server_host
         self.acct_logs = acct_logs
@@ -233,7 +233,7 @@ class PBSSnapUtils(object):
         self.anonymize = anonymize
         self.create_tar = create_tar
         self.log_path = log_path
-        self.sudo = sudo
+        self.with_sudo = with_sudo
         self.utils_obj = None
 
     def __enter__(self):
@@ -242,7 +242,7 @@ class PBSSnapUtils(object):
                                        self.additional_hosts,
                                        self.map_file, self.anonymize,
                                        self.create_tar, self.log_path,
-                                       self.sudo)
+                                       self.with_sudo)
         return self.utils_obj
 
     def __exit__(self, exc_type, exc_value, traceback):
@@ -261,7 +261,7 @@ class _PBSSnapUtils(object):
     def __init__(self, out_dir, server_host=None, acct_logs=None,
                  daemon_logs=None, additional_hosts=None,
                  map_file=None, anonymize=False, create_tar=False,
-                 log_path=None, sudo=False):
+                 log_path=None, with_sudo=False):
         """
         Initialize a PBSSnapUtils object with the arguments specified
 
@@ -283,8 +283,8 @@ class _PBSSnapUtils(object):
         :type create_tar: bool or None
         :param log_path: Path to pbs_snapshot's log file
         :type log_path: str or None
-        :param sudo: Capture information with sudo?
-        :type sudo: bool
+        :param with_sudo: Capture relevant information with sudo?
+        :type with_sudo: bool
         """
         self.logger = logging.getLogger(__name__)
         self.du = DshUtils()
@@ -308,7 +308,7 @@ class _PBSSnapUtils(object):
         self.outtar_fd = None
         self.create_tar = create_tar
         self.snapshot_name = None
-        self.sudo = sudo
+        self.with_sudo = with_sudo
         self.log_path = log_path
         if self.log_path is not None:
             self.log_filename = os.path.basename(self.log_path)
@@ -350,7 +350,8 @@ class _PBSSnapUtils(object):
 
         # Add self.server_host to the list of hosts
         self.server_host = self.server.hostname
-        self.all_hosts.append(self.server_host)
+        if self.server_host not in self.all_hosts:
+            self.all_hosts.append(self.server_host)
 
         # If output needs to be a tarball, create the tarfile name
         # tarfile name = <output directory name>.tgz
@@ -541,7 +542,7 @@ class _PBSSnapUtils(object):
             os.makedirs(rel_path, 0755)
 
     def __capture_cmd_output(self, host, out_path, cmd, skip_anon=False,
-                             as_script=False, ret_out=False):
+                             as_script=False, ret_out=False, sudo=False):
         """
         Run a command on the host specified and capture its output
 
@@ -569,13 +570,14 @@ class _PBSSnapUtils(object):
         with open(out_path, "a+") as out_fd:
             try:
                 self.du.run_cmd(host, cmd=cmd, stdout=out_fd,
-                                sudo=self.sudo, as_script=as_script)
+                                sudo=sudo, as_script=as_script)
                 if ret_out:
                     out_fd.seek(0, 0)
                     retstr = out_fd.read()
-            except OSError:
+            except OSError as e:
                 # This usually happens when the command is not found
-                # Just return
+                # Just log and return
+                self.logger.error(str(e))
                 return
 
             if self.anonymize and not skip_anon:
@@ -685,7 +687,8 @@ quit()
         # Catch the stack trace using gdb
         gdb_cmd = ["gdb", "-P", fn]
         with open(out_path, "w") as outfd:
-            self.du.run_cmd(cmd=gdb_cmd, stdout=outfd, stderr=STDOUT)
+            self.du.run_cmd(cmd=gdb_cmd, stdout=outfd, stderr=STDOUT,
+                            sudo=self.with_sudo)
 
         # Remove the temp file
         os.remove(fn)
@@ -693,7 +696,8 @@ quit()
         if self.create_tar:
             self.__add_to_archive(out_path)
 
-    def __capture_logs(self, host, pbs_logdir, snap_logdir, num_days_logs):
+    def __capture_logs(self, host, pbs_logdir, snap_logdir, num_days_logs,
+                       sudo=False):
         """
         Capture specific logs from host mentioned, for the days mentioned
 
@@ -705,6 +709,8 @@ quit()
         :type snap_logdir: str
         :param num_days_logs: Number of days of logs to capture
         :type num_days_logs: int
+        :param sudo: copy logs with sudo?
+        :type sudo: bool
         """
 
         if num_days_logs < 1:
@@ -717,7 +723,7 @@ quit()
         # Get the list of log file names to capture
         pbs_logfiles = self.log_utils.get_log_files(host, pbs_logdir,
                                                     start=start_time,
-                                                    end=end_time)
+                                                    end=end_time, sudo=sudo)
         if len(pbs_logfiles) == 0:
             self.logger.debug(pbs_logdir + "not found/accessible on " + host)
             return
@@ -730,11 +736,12 @@ quit()
         # log path with the hostname
         if not self.du.is_localhost(host):
             prefix = host + ":"
-            # Make sure that the target, host specific log dir exists
-            if not os.path.isdir(snap_logdir):
-                os.makedirs(snap_logdir)
         else:
             prefix = ""
+
+        # Make sure that the target, host specific log dir exists
+        if not os.path.isdir(snap_logdir):
+            os.makedirs(snap_logdir)
 
         # Go over the list and copy over each log file
         for pbs_logfile in pbs_logfiles:
@@ -742,7 +749,14 @@ quit()
                                         os.path.basename(pbs_logfile))
             pbs_logfile = prefix + pbs_logfile
             self.du.run_copy(src=pbs_logfile, dest=snap_logfile,
-                             sudo=self.sudo)
+                             recursive=False,
+                             preserve_permission=False,
+                             sudo=sudo)
+            if sudo:
+                # Copying files with sudo makes root the owner, set it to the
+                # current user
+                self.du.chown(path=snap_logfile, uid=os.getuid(),
+                              gid=os.getgid(), sudo=self.with_sudo)
 
             # Anonymize accounting logs
             if self.anonymize and "accounting" in snap_logdir:
@@ -768,14 +782,17 @@ quit()
 
         :returns: True if this was a valid core file, otherwise False
         """
-        if not os.path.isfile(file_path):
+        if not self.du.isfile(path=file_path, sudo=self.with_sudo):
+            self.logger.debug("Could not find file path " + str(file_path))
             return False
 
         # Get the header of this file
-        ret = self.du.run_cmd(cmd=["file", file_path], sudo=self.sudo)
+        ret = self.du.run_cmd(cmd=["file", file_path], sudo=self.with_sudo)
         if ret['err'] is not None and len(ret['err']) != 0:
-            raise AssertionError(
-                "\'file\' command failed with error: " + ret['err'])
+            self.logger.error(
+                "\'file\' command failed with error: " + ret['err'] +
+                " on file: " + str(file_path))
+            return False
 
         file_header = ret["out"][0]
         if "core file" not in file_header:
@@ -815,6 +832,10 @@ quit()
 
         self.logger.debug("Anonymizing " + file_path)
 
+        # Anonymizing a file requires editing it, so make sure the user owns it
+        self.du.chown(path=file_path, uid=os.getuid(),
+                      gid=os.getgid(), sudo=self.with_sudo)
+
         file_name = os.path.basename(file_path)
         if file_name == "sched_config":
             self.anon_obj.anonymize_sched_config(self.scheduler)
@@ -830,7 +851,7 @@ quit()
             self.anon_obj.anonymize_file_kv(file_path, inplace=True)
 
     def __copy_dir_with_core(self, host, src_path, dest_path, core_dir,
-                             except_list=None, only_core=False):
+                             except_list=None, only_core=False, sudo=False):
         """
         Copy over a directory recursively which might have core files
         When a core file is found, capture the stack trace from it
@@ -847,6 +868,8 @@ quit()
         :type except_list: list
         :param only_core: Copy over only core files?
         :type only_core: bool
+        :param sudo: Copy with sudo?
+        :type sudo: bool
         """
         if except_list is None:
             except_list = []
@@ -858,7 +881,7 @@ quit()
                               "ignoring" % src_path)
             return
         dir_list = self.du.listdir(host, src_path, fullpath=False,
-                                   sudo=self.sudo)
+                                   sudo=sudo)
 
         if dir_list is None:
             self.logger.info("Can't find/access " + src_path + " on host " +
@@ -887,21 +910,28 @@ quit()
             # to copy the entire directory tree as we need to take care
             # of the 'except_list'. So, we recursively explore the whole
             # tree and copy over files individually.
-            if self.du.isdir(host, item_src_path, sudo=self.sudo):
+            if self.du.isdir(host, item_src_path, sudo=sudo):
                 # Make sure that the directory exists in the snapshot
                 if not self.du.isdir(item_dest_path):
                     # Create the directory
                     os.makedirs(item_dest_path, 0755)
                 # Recursive call to copy contents of the directory
                 self.__copy_dir_with_core(host, item_src_path, item_dest_path,
-                                          core_dir, except_list, only_core)
+                                          core_dir, except_list, only_core,
+                                          sudo=sudo)
             else:
                 # Copy the file over
                 item_src_path = prefix + item_src_path
                 try:
                     self.du.run_copy(src=item_src_path, dest=item_dest_path,
-                                     recursive=False, mode=0755,
-                                     level=logging.DEBUG, sudo=self.sudo)
+                                     recursive=False,
+                                     preserve_permission=False,
+                                     level=logging.DEBUG, sudo=sudo)
+                    if sudo:
+                        # Copying files with sudo makes root the owner,
+                        # set it to the current user
+                        self.du.chown(path=item_dest_path, uid=os.getuid(),
+                                      gid=os.getgid(), sudo=self.with_sudo)
                 except OSError:
                     self.logger.error("Could not copy %s" % item_src_path)
                     continue
@@ -954,7 +984,8 @@ quit()
             core_dir = os.path.join(core_dir, host)
 
         # Copy mom_priv over from the host
-        self.__copy_dir_with_core(host, pbs_mom_priv, snap_mom_priv, core_dir)
+        self.__copy_dir_with_core(host, pbs_mom_priv, snap_mom_priv, core_dir,
+                                  sudo=self.with_sudo)
 
     def __add_to_archive(self, dest_path, src_path=None):
         """
@@ -999,7 +1030,7 @@ quit()
         pbs_logdir = os.path.join(self.pbs_home, "server_priv", "accounting")
         snap_logdir = os.path.join(self.snapdir, ACCT_LOGS_PATH)
         self.__capture_logs(self.server_host, pbs_logdir, snap_logdir,
-                            self.num_acct_logs)
+                            self.num_acct_logs, sudo=self.with_sudo)
 
     def __capture_sched_logs(self, pbs_logdir, snap_logdir):
         """
@@ -1075,7 +1106,7 @@ quit()
             cmd_list_cpy[0] = os.path.join(self.pbs_exec, cmd_list[0])
             snap_path = os.path.join(self.snapdir, path)
             self.__capture_cmd_output(self.server_host, snap_path,
-                                      cmd_list_cpy)
+                                      cmd_list_cpy, sudo=self.with_sudo)
 
         # Copy over 'server_priv', everything except accounting logs
         snap_server_priv = os.path.join(self.snapdir, SVR_PRIV_PATH)
@@ -1083,7 +1114,8 @@ quit()
         core_dir = os.path.join(self.snapdir, CORE_SERVER_PATH)
         exclude_list = ["accounting"]
         self.__copy_dir_with_core(self.server_host, pbs_server_priv,
-                                  snap_server_priv, core_dir, exclude_list)
+                                  snap_server_priv, core_dir, exclude_list,
+                                  sudo=self.with_sudo)
 
         if with_svr_logs and self.num_daemon_logs > 0:
             # Capture server logs
@@ -1115,7 +1147,7 @@ quit()
             cmd_list_cpy[0] = os.path.join(self.pbs_exec, cmd_list[0])
             snap_path = os.path.join(self.snapdir, path)
             self.__capture_cmd_output(self.server_host, snap_path,
-                                      cmd_list_cpy)
+                                      cmd_list_cpy, sudo=self.with_sudo)
 
         if self.create_tar:
             return self.outtar_path
@@ -1144,7 +1176,7 @@ quit()
             cmd_list_cpy[0] = os.path.join(self.pbs_exec, cmd_list[0])
             snap_path = os.path.join(self.snapdir, path)
             self.__capture_cmd_output(self.server_host, snap_path,
-                                      cmd_list_cpy)
+                                      cmd_list_cpy, sudo=self.with_sudo)
 
         if len(self.all_hosts) == 0:
             self.all_hosts.append(self.server_host)
@@ -1212,7 +1244,7 @@ quit()
                     ret_out=True)
             else:
                 self.__capture_cmd_output(self.scheduler.hostname, snap_path,
-                                          cmd_list_cpy)
+                                          cmd_list_cpy, sudo=self.with_sudo)
 
         # Capture sched_priv & sched_logs for all schedulers
         if qmgr_lsched is not None:
@@ -1252,7 +1284,8 @@ quit()
 
                 self.__copy_dir_with_core(self.scheduler.hostname,
                                           pbs_sched_priv,
-                                          snap_sched_priv, core_dir)
+                                          snap_sched_priv, core_dir,
+                                          sudo=self.with_sudo)
                 if with_sched_logs and self.num_daemon_logs > 0:
                     # Capture scheduler logs
                     if len(sched_details) == 1:  # For pre-multisched outputs
@@ -1294,7 +1327,7 @@ quit()
             cmd_list_cpy[0] = os.path.join(self.pbs_exec, cmd_list[0])
             snap_path = os.path.join(self.snapdir, path)
             self.__capture_cmd_output(self.server_host, snap_path,
-                                      cmd_list_cpy)
+                                      cmd_list_cpy, sudo=self.with_sudo)
 
         if self.create_tar:
             return self.outtar_path
@@ -1320,7 +1353,7 @@ quit()
             cmd_list_cpy[0] = os.path.join(self.pbs_exec, cmd_list[0])
             snap_path = os.path.join(self.snapdir, path)
             self.__capture_cmd_output(self.server_host, snap_path,
-                                      cmd_list_cpy)
+                                      cmd_list_cpy, sudo=self.with_sudo)
 
         if self.create_tar:
             return self.outtar_path
@@ -1340,7 +1373,7 @@ quit()
             pbs_logdir = os.path.join(self.pbs_home, "datastore", "pg_log")
             snap_logdir = os.path.join(self.snapdir, PG_LOGS_PATH)
             self.__capture_logs(self.server_host, pbs_logdir, snap_logdir,
-                                self.num_daemon_logs)
+                                self.num_daemon_logs, sudo=self.with_sudo)
 
         if self.create_tar:
             return self.outtar_path
@@ -1374,6 +1407,11 @@ quit()
         """
         self.logger.info("capturing system information")
 
+        sudo_cmds = [PBS_PROBE_OUT, LSOF_PBS_OUT, DMESG_OUT]
+        as_script_cmds = [PROCESS_INFO, LSOF_PBS_OUT]
+        pbs_cmds = [PBS_PROBE_OUT, PBS_HOSTN_OUT]
+        sudo = False
+
         # Go over all the hosts specified
         for host in self.all_hosts:
             host_platform = self.du.get_platform(host)
@@ -1386,42 +1424,52 @@ quit()
                 (path, cmd_list) = values
                 if cmd_list is None:
                     continue
-                # For Windows, only capture pbs_probe and pbs_hostn
-                if win_platform and (key not in
-                                     [PBS_PROBE_OUT, PBS_HOSTN_OUT]):
+                # For Windows, only capture PBS commands
+                if win_platform and (key not in pbs_cmds):
                     continue
 
                 cmd_list_cpy = list(cmd_list)
+
                 # Find the full path to the command on the host
-                if key in [PBS_PROBE_OUT, PBS_HOSTN_OUT]:
-                    cmd_full = os.path.join(self.pbs_exec, cmd_list[0])
+                if key in pbs_cmds:
+                    cmd_full = os.path.join(self.pbs_exec, cmd_list_cpy[0])
                 else:
-                    cmd_full = self.du.which(host, cmd_list[0])
+                    cmd_full = self.du.which(host, cmd_list_cpy[0])
                 # du.which() returns the name of the command passed if
                 # it can't find the command
-                if cmd_full is cmd_list[0]:
+                if cmd_full is cmd_list_cpy[0]:
                     continue
                 cmd_list_cpy[0] = cmd_full
 
                 # Handle special commands
-                if "pbs_hostn" in cmd_list[0]:
+                if "pbs_hostn" in cmd_list_cpy[0]:
                     # Append hostname to the command list
                     cmd_list_cpy.append(self.server_host)
-                if key in [PROCESS_INFO, LSOF_PBS_OUT]:
+                if key in as_script_cmds:
                     as_script = True
+                    if key in sudo_cmds and self.with_sudo:
+                        # Because this cmd needs to be run in a script,
+                        # PTL run_cmd's sudo will try to run the script
+                        # itself with sudo, not the cmd
+                        # So, append sudo as a prefix to the cmd instead
+                        cmd_list_cpy[0] = "sudo " + cmd_list_cpy[0]
                 else:
                     as_script = False
+                    if key in sudo_cmds:
+                        sudo = self.with_sudo
 
                 snap_path = os.path.join(self.snapdir, path)
                 self.__capture_cmd_output(host, snap_path, cmd_list_cpy,
-                                          skip_anon=True, as_script=as_script)
+                                          skip_anon=True, as_script=as_script,
+                                          sudo=sudo)
 
             # Capture platform dependent information
             if win_platform:
                 # Capture process information using tasklist command
                 cmd = ["tasklist", ["/v"]]
                 snap_path = PROCESS_PATH
-                self.__capture_cmd_output(host, snap_path, cmd)
+                self.__capture_cmd_output(host, snap_path, cmd,
+                                          sudo=self.with_sudo)
 
             # Capture OS/platform information
             self.logger.info("capturing OS information")
@@ -1561,5 +1609,4 @@ quit()
             # Close the output tarfile
             self.outtar_fd.close()
             # Remove the snapshot directory
-            self.du.rm(path=self.snapdir, recursive=True, force=True,
-                       sudo=True)
+            self.du.rm(path=self.snapdir, recursive=True, force=True)

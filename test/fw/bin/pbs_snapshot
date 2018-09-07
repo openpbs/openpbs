@@ -89,6 +89,7 @@ Usage: pbs_snapshot -o <path to output tar file> [OPTION]
                                       'hostname' is a comma separated list
     --map=<file>                      file to store the map of obfuscated data
     --obfuscate                       obfuscates sensitive data
+    --with-sudo                       Uses sudo to capture privileged data
     --version                         print version number and exit
 """
 
@@ -108,6 +109,7 @@ if __name__ == '__main__':
     anonymize = False
     create_tar = True
     log_file = "pbs_snapshot.log"
+    with_sudo = False
 
     PtlConfig()
 
@@ -115,7 +117,8 @@ if __name__ == '__main__':
     try:
         sopt = "d:H:l:o:h"
         lopt = ["accounting-logs=", "daemon-logs=", "help",
-                "additional-hosts=", "map=", "obfuscate", "version"]
+                "additional-hosts=", "map=", "obfuscate", "with-sudo",
+                "version"]
         opts, args = getopt.getopt(sys.argv[1:], sopt, lopt)
     except GetoptError:
         usage()
@@ -149,6 +152,8 @@ if __name__ == '__main__':
             map_file = val
         elif o == "--obfuscate":
             anonymize = True
+        elif o == "--with-sudo":
+            with_sudo = True
         elif o == "--version":
             print ptl.__version__
             sys.exit(0)
@@ -191,7 +196,8 @@ if __name__ == '__main__':
                       daemon_logs=daemon_logs,
                       additional_hosts=additional_hosts, map_file=map_file,
                       anonymize=anonymize,
-                      create_tar=create_tar, log_path=log_path) as snap_utils:
+                      create_tar=create_tar, log_path=log_path,
+                      with_sudo=with_sudo) as snap_utils:
         outtar = snap_utils.capture_all()
 
     if outtar is not None:
