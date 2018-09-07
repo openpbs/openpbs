@@ -145,7 +145,7 @@ class TestAcctlogRescUsedWithTwoMomHooks(TestFunctional):
         try:
             rv = self.server.expect(JOB, {'resources_used.walltime': '0'},
                                     id=jid1, max_attempts=2, extend='x')
-        except PtlExpectError, e:
+        except PtlExpectError as e:
             # resources_used.walltime is non-zero.
             self.assertFalse(rv)
         else:

@@ -98,7 +98,7 @@ class TestJSONReport(TestSelf):
                                   "start_time", "end_time", "measurements"]
         }
         field_values = {
-            'machine_info_name': test_data['machinfo'].keys()[0],
+            'machine_info_name': list(test_data['machinfo'].keys())[0],
             'testresult_status': test_data['status'],
             'requirements': {
                 "num_moms": 1,
@@ -149,7 +149,7 @@ class TestJSONReport(TestSelf):
                         faulty_fields.append(v)
         for k, v in field_values.items():
             if k == 'machine_info_name':
-                if jdata['machine_info'].keys()[0] != v:
+                if list(jdata['machine_info'].keys())[0] != v:
                     faulty_values.append(k)
             if k == 'testresult_status':
                 if vdata['results']['status'] != v:

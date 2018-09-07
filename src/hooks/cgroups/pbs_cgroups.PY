@@ -207,7 +207,7 @@ def convert_size(value, units='b'):
         if not result:
             raise ValueError('Unrecognized value')
         val, old = result.groups()
-        if val < 0:
+        if int(val) < 0:
             raise ValueError('Value may not be negative')
         if old not in logs:
             old = 'b'
@@ -288,12 +288,12 @@ def convert_time(value, units='s'):
 
 def decode_list(data):
     """
-    json hook to convert lists from unicode to utf-8
+    json hook to convert lists from non string type to str
     """
     ret = []
     for item in data:
-        if isinstance(item, unicode):
-            item = item.encode('utf-8')
+        if isinstance(item, (bytes, bytearray)):
+            item = str(item,'utf-8')    
         elif isinstance(item, list):
             item = decode_list(item)
         elif isinstance(item, dict):
@@ -304,14 +304,14 @@ def decode_list(data):
 
 def decode_dict(data):
     """
-    json hook to convert dictionaries from unicode to utf-8
+    json hook to convert dictionaries from non string type to str
     """
     ret = {}
-    for key, value in data.iteritems():
-        if isinstance(key, unicode):
-            key = key.encode('utf-8')
-        if isinstance(value, unicode):
-            value = value.encode('utf-8')
+    for key, value in list(data.items()):
+        if isinstance(key, (bytes, bytearray)):
+            key = str(key,'utf-8')
+        if isinstance(value, (bytes, bytearray)):
+            value = str(value,'utf-8')
         elif isinstance(value, list):
             value = decode_list(value)
         elif isinstance(value, dict):
@@ -329,7 +329,7 @@ def merge_dict(base, new):
         raise ValueError('base must be type dict')
     if not isinstance(new, dict):
         raise ValueError('new must be type dict')
-    newkeys = new.keys()
+    newkeys = list(new.keys())
     merged = {}
     for key in base:
         if key in newkeys and isinstance(base[key], dict):
@@ -355,7 +355,7 @@ def expand_list(old):
     """
     new = []
     if isinstance(old, list):
-        old = string.join(map(str, old), ',')
+        old = ",".join(list(map(str, old)))
     stripped = old.strip()
     if not stripped:
         return new
@@ -491,8 +491,8 @@ def printjob_info(jobid, include_attributes=False):
         pbs.logmsg(pbs.EVENT_DEBUG2, 'Exception: %s' % exc)
         return info
     pattern = re.compile(r'^(\w.*):\s*(\S+)')
-    for line in out.splitlines():
-        result = re.match(pattern, line)
+    for line in out.decode('utf-8').splitlines():
+        result = re.match(pattern, str(line))
         if not result:
             continue
         key, val = result.groups()
@@ -792,12 +792,12 @@ class HookUtils(object):
                         gpus.append(node.devices['gpu'][key]['uuid'])
                 if mics:
                     env_list.append('OFFLOAD_DEVICES=%s' %
-                                    string.join(mics, ','))
+                                    ",".join(mics))
                 if gpus:
                     # Don't put quotes around the values. ex "0" or "0,1".
                     # This will cause it to fail.
                     env_list.append('CUDA_VISIBLE_DEVICES=%s' %
-                                    string.join(gpus, ','))
+                                    ",".join(gpus))
                     env_list.append('CUDA_DEVICE_ORDER=PCI_BUS_ID')
             pbs.logmsg(pbs.EVENT_DEBUG4, 'ENV_LIST: %s' % env_list)
             cgroup.write_job_env_file(event.job.id, env_list)
@@ -1012,12 +1012,12 @@ class HookUtils(object):
                         gpus.append(node.devices['gpu'][key]['uuid'])
                 if mics:
                     env_list.append('OFFLOAD_DEVICES=%s' %
-                                    string.join(mics, ','))
+                                    ",".join(mics))
                 if gpus:
                     # Don't put quotes around the values. ex "0" or "0,1".
                     # This will cause it to fail.
                     env_list.append('CUDA_VISIBLE_DEVICES=%s' %
-                                    string.join(gpus, ','))
+                                    ",".join(gpus))
                     env_list.append('CUDA_DEVICE_ORDER=PCI_BUS_ID')
             pbs.logmsg(pbs.EVENT_DEBUG4, 'ENV_LIST: %s' % env_list)
             cgroup.write_job_env_file(event.job.id, env_list)
@@ -1102,9 +1102,9 @@ class JobUtils(object):
                 # exec_vnodes =
                 # (node1[0]:ncpus=4:mem=4gb+node1[1]:mem=2gb) +
                 # (node1[1]:ncpus=3+node[0]:ncpus=1:mem=4gb)
-                for resc in chunk.chunk_resources.keys():
+                for resc in list(chunk.chunk_resources.keys()):
                     vnresc = resources['vnodes'][chunk.vnode_name]
-                    if resc in vnresc.keys():
+                    if resc in list(vnresc.keys()):
                         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: %s:%s defined' %
                                    (caller_name(), chunk.vnode_name, resc))
                     else:
@@ -1118,8 +1118,8 @@ class JobUtils(object):
                 # Vnodes list is empty
                 if chunk.vnode_name != hostname:
                     continue
-            for resc in chunk.chunk_resources.keys():
-                if resc not in resources.keys():
+            for resc in list(chunk.chunk_resources.keys()):
+                if resc not in list(resources.keys()):
                     resources[resc] = \
                         initialize_resource(chunk.chunk_resources[resc])
                 # Add resource value to total
@@ -1159,7 +1159,7 @@ class JobUtils(object):
             out, err = process.communicate()
         except Exception:
             pbs.logmsg(pbs.EVENT_DEBUG4, 'Failed to execute: %s' %
-                       string.join(cmd, ' '))
+                       " ".join(cmd))
             return resources
         shorthostname = out.strip()
         if shorthostname and shorthostname != hostname:
@@ -1263,8 +1263,7 @@ class NodeUtils(object):
             exclude = expand_list(self.cfg['cgroup']['cpuset']['exclude_cpus'])
             with open(os.path.join(node, 'cpulist'), 'r') as desc:
                 avail = expand_list(desc.readline())
-                numa_nodes[num]['cpus'] = filter(lambda x: x not in exclude,
-                                                 avail)
+                numa_nodes[num]['cpus'] = [x for x in avail if x not in exclude]
             with open(os.path.join(node, 'meminfo'), 'r') as desc:
                 for line in desc:
                     # Each line will contain four or five fields. Examples:
@@ -1374,7 +1373,7 @@ class NodeUtils(object):
             devices[dclass][inst]['minor'] = None
             if os.path.isfile(filename):
                 with open(filename, 'r') as desc:
-                    major, minor = map(int, desc.readline().strip().split(':'))
+                    major, minor = list(map(int, desc.readline().strip().split(':')))
                     devices[dclass][inst]['major'] = int(major)
                     devices[dclass][inst]['minor'] = int(minor)
             numa_node = -1
@@ -1463,7 +1462,7 @@ class NodeUtils(object):
             out, err = process.communicate()
         except Exception:
             pbs.logmsg(pbs.EVENT_DEBUG4, 'Failed to execute: %s' %
-                       string.join(cmd, ' '))
+                       " ".join(cmd))
             pbs.logmsg(pbs.EVENT_DEBUG3, '%s: No GPUs found' % caller_name())
             return gpus
         elapsed_time = time.time() - time_start
@@ -1573,7 +1572,7 @@ class NodeUtils(object):
                     if cpuinfo['hyperthreads_per_core'] > 1:
                         pbs.logmsg(pbs.EVENT_DEBUG4,
                                    'Mapping hyperthreads to cores')
-                        cores = cpuinfo['cpu'].keys()
+                        cores = list(cpuinfo['cpu'].keys())
                         threads = set()
                         # CPUs with matching core IDs are hyperthreads
                         # sharing the same physical core. Loop through
@@ -1828,7 +1827,7 @@ class NodeUtils(object):
         vnode_name = self.hostname
         # In some cases the hostname and vnode name do not match
         if vnode_name not in vnode_list:
-            vnkeys = vnode_list.keys()
+            vnkeys = list(vnode_list.keys())
             if len(vnkeys) == 1:
                 vnode_name = vnkeys[0]
             else:
@@ -1851,7 +1850,7 @@ class NodeUtils(object):
                 vnode_resc_avail = vnode_list[vnode_key].resources_available
                 if vntype:
                     vnode_resc_avail['vntype'] = vntype
-            for key, val in sorted(self.numa_nodes[nnid].iteritems()):
+            for key, val in sorted(self.numa_nodes[nnid].items()):
                 if key is None:
                     pbs.logmsg(pbs.EVENT_DEBUG4, '%s: key is None' %
                                caller_name())
@@ -2121,7 +2120,7 @@ class CgroupUtils(object):
                                              'hooks', 'hook_data')
         if not os.path.isdir(self.hook_storage_dir):
             try:
-                os.makedirs(self.hook_storage_dir, 0700)
+                os.makedirs(self.hook_storage_dir, 0o700)
             except OSError:
                 pbs.logmsg(pbs.EVENT_DEBUG, 'Failed to create %s' %
                            self.hook_storage_dir)
@@ -2157,8 +2156,7 @@ class CgroupUtils(object):
             pbs.logmsg(pbs.EVENT_DEBUG, '%s: OS does not support cgroups' %
                        caller_name())
             raise CgroupConfigError('OS type not supported')
-        rel = map(int,
-                  string.split(string.split(platform.release(), '-')[0], '.'))
+        rel = list(map(int,(platform.release().split('-')[0].split('.'))))
         pbs.logmsg(pbs.EVENT_DEBUG4,
                    '%s: Detected Linux kernel version %d.%d.%d' %
                    (caller_name(), rel[0], rel[1], rel[2]))
@@ -2255,7 +2253,7 @@ class CgroupUtils(object):
                 prefix = subsys + '.'
         if self.systemd_version < 205:
             return os.path.join(mnt_point, self.cfg['cgroup_prefix'], prefix)
-        return os.path.join(mnt_point, self.cfg['cgroup_prefix'] + '.slice',
+        return os.path.join(mnt_point, str(self.cfg['cgroup_prefix']) + '.slice',
                             prefix)
 
     def _get_paths(self):
@@ -2453,14 +2451,14 @@ class CgroupUtils(object):
             # Create a systemd slice for PBS
             self._create_slice()
             # Create the directories that PBS will use to house the jobs
-            old_umask = os.umask(0022)
+            old_umask = os.umask(0o022)
             for subsys in self.subsystems:
                 subdir = self._cgroup_path(subsys)
                 if not subdir:
                     raise CgroupConfigError('No path for subsystem: %s' %
                                             (subsys))
                 if not os.path.exists(subdir):
-                    os.makedirs(subdir, 0755)
+                    os.makedirs(subdir, 0o755)
                     pbs.logmsg(pbs.EVENT_DEBUG2, '%s: Created directory %s' %
                                (caller_name(), subdir))
                 if subsys == 'memory' or subsys == 'memsw':
@@ -2759,19 +2757,19 @@ class CgroupUtils(object):
         Some distros don't provide the systemd-escape command
         """
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
-        if not isinstance(buf, basestring):
+        if not isinstance(buf, str):
             raise ValueError('Not a basetype string')
         ret = ''
         for i, char in enumerate(buf):
             if i < 1 and char == '.':
-                ret += '\\x' + char.encode('hex')
+                ret += '\\x' + char.encode("utf-8").hex()
                 continue
             if char.isalnum() or char in '_.':
                 ret += char
             elif char == '/':
                 ret += '-'
             else:
-                hexval = char.encode('hex')
+                hexval = char.encode("utf-8").hex()
                 for j in range(0, len(hexval), 2):
                     ret += '\\x' + hexval[j:j + 2]
         return ret
@@ -2782,7 +2780,7 @@ class CgroupUtils(object):
         Some distros don't provide the systemd-escape command
         """
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
-        if not isinstance(buf, basestring):
+        if not isinstance(buf, str):
             raise ValueError('Not a basetype string')
         ret = ''
         length = len(buf)
@@ -2791,7 +2789,7 @@ class CgroupUtils(object):
             if (length - i) > 3 and buf[i] == '\\' and buf[i + 1] == 'x' and \
                 buf[i + 2] in '0123456789abcdef' and \
                     buf[i + 3] in '0123456789abcdef':
-                ret += buf[(i + 2):(i + 4)].decode('hex')
+                ret += bytes.fromhex(buf[(i + 2):(i + 4)]).decode('utf-8') 
                 i += 4
                 continue
             if buf[i] == '-':
@@ -2995,12 +2993,12 @@ class CgroupUtils(object):
                 elif name.startswith('nvidia'):
                     cuda_visible_devices.append(gpus[name]['uuid'])
             if offload_devices:
-                value = string.join(offload_devices, '\\,')
+                value = "\\,".join(offload_devices)
                 pbs.event().env['OFFLOAD_DEVICES'] = '%s' % value
                 pbs.logmsg(pbs.EVENT_DEBUG4,
                            'offload_devices: %s' % offload_devices)
             if cuda_visible_devices:
-                value = string.join(cuda_visible_devices, '\\,')
+                value = "\\,".join(cuda_visible_devices)
                 pbs.event().env['CUDA_VISIBLE_DEVICES'] = '%s' % value
                 pbs.event().env['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
                 pbs.logmsg(pbs.EVENT_DEBUG4,
@@ -3269,8 +3267,7 @@ class CgroupUtils(object):
             # assigned all of the fully avaiable cores. There still may
             # be cores to assign. When use_hyperthreads is disabled, we
             # assign all the cores here.
-            corelist = list(cores)
-            corelist.sort()
+            corelist = sorted(cores)
             if needed > len(corelist):
                 pbs.logmsg(pbs.EVENT_DEBUG4, '%s: %d ncpus still needed' %
                            (caller_name(), len(corelist) - needed))
@@ -3372,7 +3369,7 @@ class CgroupUtils(object):
                 pairlist.append([regex.search(vnode).group(1),
                                  int(regex.search(vnode).group(2))])
         else:
-            sockets = available.keys()
+            sockets = list(available.keys())
             # If placement type is job_balanced, reorder the sockets
             if self.cfg['placement_type'] == 'job_balanced':
                 pbs.logmsg(pbs.EVENT_DEBUG4,
@@ -3387,7 +3384,7 @@ class CgroupUtils(object):
                     if 'cpuset' in jobresc and 'mems' in jobresc['cpuset']:
                         for sock in jobresc['cpuset']['mems']:
                             jobcount[sock] += 1
-                sorted_jobcounts = sorted(jobcount.items(),
+                sorted_jobcounts = sorted(list(jobcount.items()),
                                           key=operator.itemgetter(1))
                 reordered = []
                 for count in sorted_jobcounts:
@@ -3397,7 +3394,7 @@ class CgroupUtils(object):
                 cpucounts = dict()
                 for sock in sockets:
                     cpucounts[sock] = len(available[sock]['cpus'])
-                sorted_cpucounts = sorted(cpucounts.items(),
+                sorted_cpucounts = sorted(list(cpucounts.items()),
                                           key=operator.itemgetter(1),
                                           reverse=True)
                 reordered = list()
@@ -3408,7 +3405,7 @@ class CgroupUtils(object):
                 cpucounts = dict()
                 for sock in sockets:
                     cpucounts[sock] = len(available[sock]['cpus'])
-                sorted_cpucounts = sorted(cpucounts.items(),
+                sorted_cpucounts = sorted(list(cpucounts.items()),
                                           key=operator.itemgetter(1),
                                           reverse=False)
                 reordered = list()
@@ -3664,7 +3661,7 @@ class CgroupUtils(object):
                 cpus = self.select_cpus(path, value)
                 if not cpus:
                     raise CgroupLimitError('Failed to configure cpuset')
-                cpus = string.join(map(str, cpus), ',')
+                cpus = ",".join(list(map(str, cpus)))
                 self.write_value(path, cpus)
                 if jobid:
                     path = self._cgroup_path('cpuset', 'mems', jobid)
@@ -3675,7 +3672,7 @@ class CgroupUtils(object):
                 cpus = value
                 if not cpus:
                     raise CgroupLimitError('Failed to configure cpuset cpus')
-                cpus = string.join(map(str, cpus), ',')
+                cpus = ",".join(list(map(str, cpus)))
                 self.write_value(path, cpus)
         elif resource == 'cpuset.mems':
             if 'cpuset' in self.subsystems:
@@ -3685,7 +3682,7 @@ class CgroupUtils(object):
                     if not mems:
                         raise CgroupLimitError(
                             'Failed to configure cpuset mems')
-                    mems = string.join(map(str, mems), ',')
+                    mems = ','.join(list(map(str, mems)))
                     self.write_value(path, mems)
                 else:
                     pbs.logmsg(pbs.EVENT_DEBUG4, ('Memory fences disabled, '
@@ -3830,13 +3827,13 @@ class CgroupUtils(object):
                 # The _create_slice method already created a directory
                 continue
             # Create a directory for the job
-            old_umask = os.umask(0022)
+            old_umask = os.umask(0o022)
             try:
                 path = self._cgroup_path(subsys, jobid=jobid)
                 if not os.path.exists(path):
                     pbs.logmsg(pbs.EVENT_DEBUG2, '%s: Creating directory %s' %
                                (caller_name(), path))
-                    os.makedirs(path, 0755)
+                    os.makedirs(path, 0o755)
                 else:
                     pbs.logmsg(pbs.EVENT_DEBUG3,
                                '%s: Directory %s already exists' %
@@ -4547,7 +4544,7 @@ class CgroupUtils(object):
         try:
             proc = subprocess.Popen(['dmesg'], shell=False,
                                     stdout=subprocess.PIPE)
-            out = proc.communicate()[0].splitlines()
+            out = proc.communicate()[0].decode('utf-8').splitlines()
         except Exception:
             return ''
         out.reverse()
@@ -4572,10 +4569,10 @@ class CgroupUtils(object):
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
         jobid = str(jobid)
         if not os.path.exists(self.host_job_env_dir):
-            os.makedirs(self.host_job_env_dir, 0755)
+            os.makedirs(self.host_job_env_dir, 0o755)
         # Write out assigned_resources
         try:
-            lines = string.join(env_list, '\n')
+            lines = "\n".join(env_list)
             filename = self.host_job_env_filename % jobid
             with open(filename, 'w') as desc:
                 desc.write(lines)
@@ -4592,7 +4589,7 @@ class CgroupUtils(object):
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
         jobid = str(jobid)
         if not os.path.exists(self.hook_storage_dir):
-            os.makedirs(self.hook_storage_dir, 0700)
+            os.makedirs(self.hook_storage_dir, 0o700)
         # Write out assigned_resources
         try:
             json_str = json.dumps(self.assigned_resources)
@@ -4677,7 +4674,7 @@ class CgroupUtils(object):
             pbs.logmsg(pbs.EVENT_DEBUG, 'Failed to open cgroup_jobs file')
             raise
         cutoff = time.time() - float(self.cfg['job_setup_timeout'])
-        return {key: val for key, val in jobdict.iteritems() if val >= cutoff}
+        return {key: val for key, val in jobdict.items() if val >= cutoff}
 
     def delete_cgroup_jobs_file(self, jobid):
         """
@@ -4897,7 +4894,7 @@ def main():
 
 
 # The following block is skipped if this is a unit testing environment.
-if __name__ == '__builtin__':
+if __name__ == 'builtins':
     START = time.time()
     try:
         main()

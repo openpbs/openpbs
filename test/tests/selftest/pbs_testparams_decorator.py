@@ -60,7 +60,7 @@ class Test_TestparamsDecorator(TestSelf):
         a = {'scheduling': scheduling}
         self.server.manager(MGR_CMD_SET, SERVER, a)
         j = Job(TEST_USER)
-        for _ in xrange(num_jobs):
+        for _ in range(num_jobs):
             self.server.submit(j)
         if scheduling:
             self.server.expect(JOB, {'job_state=R': num_jobs})

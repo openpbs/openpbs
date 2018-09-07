@@ -99,7 +99,7 @@ unset -f foo
 exit 0
 """
         fn = self.du.create_temp_file(body=foo_scr)
-        self.du.chmod(path=fn, mode=0755)
+        self.du.chmod(path=fn, mode=0o755)
         foo_msg = 'Failed to run foo_scr'
         ret = self.du.run_cmd(self.server.hostname, cmd=fn)
         self.assertEqual(ret['rc'], 0, foo_msg)

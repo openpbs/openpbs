@@ -130,7 +130,7 @@ except:
     f.close()
     sys.exit(255)
 f.close()
-os.chmod(boot_check_file, 0644)
+os.chmod(boot_check_file, 0o644)
 # if system being booted then exit with 0 otherwise exit with 1
 if boot_time >= prev_pbs_start_time:
     sys.exit(0)

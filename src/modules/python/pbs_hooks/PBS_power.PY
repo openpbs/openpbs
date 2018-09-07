@@ -233,7 +233,7 @@ if this_event.type == pbs.PERIODIC:
             job_list = []
         else:
             job_list = o.splitlines()
-    except OSError, ValueError:
+    except (OSError, ValueError):
         job_list = []
     # Analyze queued jobs and see if any of the nodes are needed in near future
     exec_vnodes = {}
@@ -250,7 +250,7 @@ if this_event.type == pbs.PERIODIC:
             (o, e) = p.communicate()
             if p.returncode:
                 continue
-        except OSError, ValueError:
+        except (OSError, ValueError):
             pbs.logmsg(pbs.EVENT_DEBUG3,
                        "Error running qstat command for job %s" % jobid)
             continue
@@ -562,14 +562,14 @@ if this_event.type == pbs.EXECJOB_BEGIN:
     if requested_profile != "":
         try:
             this_event.vnode_list[me].current_eoe = requested_profile
-        except KeyError, ValueError:
+        except (KeyError, ValueError):
             pass
     this_event.accept()
 if this_event.type == pbs.EXECJOB_END:
     me = pbs.get_local_nodename()
     try:
         this_event.vnode_list[me].current_eoe = None
-    except KeyError, ValueError:
+    except (KeyError, ValueError):
         pass
 
     power = init_power(this_event)

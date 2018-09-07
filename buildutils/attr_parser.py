@@ -862,8 +862,8 @@ def main(argv):
     try:
         opts, args = getopt.getopt(
             argv, "m:s:e:a:h", ["master=", "svr=", "ecl=", "attr=", "help"])
-    except getopt.error, err:
-        print str(err)
+    except getopt.error as err:
+        print(str(err))
         usage()
         sys.exit(1)
     for opt, arg in opts:
@@ -879,12 +879,12 @@ def main(argv):
         elif opt in ("-a", "--attr"):
             ATTRIBUTE_SCRIPT_ARG = arg
         else:
-            print "Invalid Option!"
+            print("Invalid Option!")
             sys.exit(1)
 #    Error conditions are checked here.
 
     if MASTER_FILE is None or not os.path.isfile(MASTER_FILE) or not os.path.getsize(MASTER_FILE) > 0:
-        print "Master file not found or data is not present in File"
+        print("Master file not found or data is not present in File")
         sys.exit(1)
 
     if SVR_FILE is None:
@@ -894,28 +894,28 @@ def main(argv):
         ECL_FILE = "ecl_attr_def.c"
 
     if ATTRIBUTE_SCRIPT_ARG is None or not str:
-        print "Attribute type is required"
+        print("Attribute type is required")
         sys.exit(1)
 
     try:
         m_file = open(MASTER_FILE)
-    except IOError, err:
-        print str(err)
-        print 'Cannot Open Master File!'
+    except IOError as err:
+        print(str(err))
+        print('Cannot Open Master File!')
         sys.exit(1)
 
     try:
         s_file = open(SVR_FILE, 'w')
-    except IOError, err:
-        print str(err)
-        print 'Cannot Open Server File!'
+    except IOError as err:
+        print(str(err))
+        print('Cannot Open Server File!')
         sys.exit(1)
 
     try:
         e_file = open(ECL_FILE, 'w')
-    except IOError, err:
-        print str(err)
-        print 'Cannot Open Ecl File!'
+    except IOError as err:
+        print(str(err))
+        print('Cannot Open Ecl File!')
         sys.exit(1)
 
     n = str(ATTRIBUTE_SCRIPT_ARG)
@@ -928,7 +928,7 @@ def main(argv):
             resc_attr(m_file, s_file, e_file)
             break
         if case():  # default, could also just omit condition or 'if True'
-            print "Invalid Object!"
+            print("Invalid Object!")
         # No need to break here, it'll stop anyway
 
     m_file.close()
@@ -940,7 +940,7 @@ def usage():
     """
     Usage (depicts the usage of the script)
     """
-    print "usage: prog -m <MASTER_FILE> -s <svr_attr_file> -e <ecl_attr_file> -a <object>"
+    print("usage: prog -m <MASTER_FILE> -s <svr_attr_file> -e <ecl_attr_file> -a <object>")
 
 
 if __name__ == "__main__":

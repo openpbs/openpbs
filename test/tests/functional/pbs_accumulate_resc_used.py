@@ -1079,7 +1079,7 @@ else:
 
         # Verify that once subjobs are over values are
         # set for each subjob in the accounting logs
-        subjob1 = string.replace(jid, '[]', '[1]')
+        subjob1 = str.replace(jid, '[]', '[1]')
 
         acctlog_match = 'resources_used.foo_f=0.29'
         # Below code is commented due to a PTL issue
@@ -1254,7 +1254,7 @@ time.sleep(15)
         a = {'resources_used.foo_i': 29,
              'resources_used.foo_f': 0.29,
              'resources_used.foo_str':
-             "\'{\"eight\": 8, \"seven\": 7, \"nine\": 9}\'"}
+             "\'{\"eight\": 8, \"nine\": 9, \"seven\": 7}\'"}
         self.server.expect(JOB, a, extend='x', attrop=PTL_AND,
                            offset=5, id=jid, interval=1)
 
@@ -1321,7 +1321,7 @@ else:
                             'resources_used.foo_i': '19',
                             'resources_used.foo_f': '0.19',
                             'resources_used.foo_str':
-                            '\'{\"eight\": 8, \"seven\": 7, \"nine\": 9}\''},
+                            '\'{\"eight\": 8, \"nine\": 9, \"seven\": 7}\''},
                            offset=10, id=jid, interval=1, extend='x',
                            attrop=PTL_AND)
 

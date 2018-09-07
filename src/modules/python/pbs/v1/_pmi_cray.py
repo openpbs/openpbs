@@ -325,7 +325,7 @@ class Pmi:
             # of nid numbers.
             if Pmi.ninfo is None:
                 allnids = set()
-                for jobid in e.job_list.keys():
+                for jobid in list(e.job_list.keys()):
                     j = e.job_list[jobid]
                     nidset = jobnids(j)
                     allnids.update(nidset)
@@ -462,7 +462,7 @@ class Pmi:
                 pbs.logjobmsg(job.id,
                               'Cray:RUR: {"apid":%s,"apid_energy":%dJ,"job_energy":%dJ}' %
                               (apid, joules, energy))
-            except Exception, e:
+            except Exception as e:
                 pbs.logjobmsg(job.id,
                               "Cray:RUR: energy_used not found: %s" % str(e))
 

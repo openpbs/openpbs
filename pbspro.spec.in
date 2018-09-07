@@ -77,6 +77,8 @@
 %define have_systemd 1
 %endif
 
+%global __python %{__python3}
+
 Name: %{pbs_name}
 Version: %{pbs_version}
 Release: %{pbs_release}
@@ -107,8 +109,6 @@ BuildRequires: ncurses-devel
 BuildRequires: perl
 BuildRequires: postgresql-devel >= 9.1
 BuildRequires: postgresql-contrib >= 9.1
-BuildRequires: python-devel >= 2.6
-BuildRequires: python-devel < 3.0
 BuildRequires: tcl-devel
 BuildRequires: tk-devel
 BuildRequires: swig
@@ -121,7 +121,9 @@ BuildRequires: libXft-devel
 BuildRequires: fontconfig
 BuildRequires: timezone
 BuildRequires: python-xml
+BuildRequires: python3-devel >= 3.5
 %else
+BuildRequires: python36-devel
 BuildRequires: expat-devel
 BuildRequires: openssl-devel
 BuildRequires: libXext
@@ -129,8 +131,8 @@ BuildRequires: libXft
 %endif
 
 # Pure python extensions use the 32 bit library path
-%{!?py_site_pkg_32: %global py_site_pkg_32 %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib(0)")}
-%{!?py_site_pkg_64: %global py_site_pkg_64 %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib(1)")}
+%{!?py_site_pkg_32: %global py_site_pkg_32 %(%{__python} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib(0))")}
+%{!?py_site_pkg_64: %global py_site_pkg_64 %(%{__python} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib(1))")}
 
 %description
 PBS Professional® is a fast, powerful workload manager and
@@ -153,14 +155,14 @@ Requires: bash
 Requires: expat
 Requires: postgresql-server >= 9.1
 Requires: postgresql-contrib >= 9.1
-Requires: python >= 2.6
-Requires: python < 3.0
 Requires: tcl
 Requires: tk
 %if %{defined suse_version}
 Requires: smtp_daemon
+Requires: python3 >= 3.5
 %else
 Requires: smtpdaemon
+Requires: python36
 %endif
 Requires: hostname
 Requires: libical
@@ -188,10 +190,13 @@ Conflicts: pbs-mom
 Conflicts: pbs-cmds
 Requires: bash
 Requires: expat
-Requires: python >= 2.6
-Requires: python < 3.0
 %if 0%{?suse_version} >= 1500
 Requires: hostname
+%endif
+%if %{defined suse_version}
+Requires: python3 >= 3.5
+%else
+Requires: python36
 %endif
 Autoreq: 1
 
@@ -217,8 +222,11 @@ Conflicts: pbs
 Conflicts: pbs-mom
 Conflicts: pbs-cmds
 Requires: bash
-Requires: python >= 2.6
-Requires: python < 3.0
+%if %{defined suse_version}
+Requires: python3 >= 3.5
+%else
+Requires: python36
+%endif
 Autoreq: 1
 
 %description %{pbs_client}
@@ -254,7 +262,7 @@ HPC clusters, clouds and supercomputers.
 Summary: PBS Test Lab for testing PBS Professional
 Group: System Environment/Base
 Requires: python-nose
-Requires: python-beautifulsoup
+Requires: python-beautifulsoup4
 %if 0%{?rhel}
 Requires: pexpect
 %else
@@ -605,3 +613,4 @@ ${RPM_INSTALL_PREFIX:=%{pbs_prefix}}/libexec/pbs_posttrans \
 - Change to make sure that unsupported hook files are not compiled and packaged.
 * Thu May 12 2016 Hiren Vadalia <hiren.vadalia@altair.com> - 1.0
 - Initial commit of pbspro
+

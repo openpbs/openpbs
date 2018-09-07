@@ -224,7 +224,7 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.manager(MGR_CMD_SET, NODE, a, id='vnode[2]')
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'scheduling': 'False'}, id="sc5")
-        for _ in xrange(500):
+        for _ in range(500):
             j = Job(TEST_USER1, attrs={ATTR_queue: 'wq3'})
             self.server.submit(j)
         self.server.manager(MGR_CMD_SET, SCHED,
@@ -686,20 +686,20 @@ class TestMultipleSchedulers(TestFunctional):
         sc3_fs = self.scheds['sc3'].query_fairshare()
 
         n = default_fs.get_node(id=10)
-        self.assertEquals(n.nshares, default_shares)
-        self.assertEquals(n.usage, default_usage)
+        self.assertEqual(n.nshares, default_shares)
+        self.assertEqual(n.usage, default_usage)
 
         n = sc1_fs.get_node(id=10)
-        self.assertEquals(n.nshares, sc1_shares)
-        self.assertEquals(n.usage, sc1_usage)
+        self.assertEqual(n.nshares, sc1_shares)
+        self.assertEqual(n.usage, sc1_usage)
 
         n = sc2_fs.get_node(id=10)
-        self.assertEquals(n.nshares, sc2_shares)
-        self.assertEquals(n.usage, sc2_usage)
+        self.assertEqual(n.nshares, sc2_shares)
+        self.assertEqual(n.usage, sc2_usage)
 
         n = sc3_fs.get_node(id=10)
-        self.assertEquals(n.nshares, sc3_shares)
-        self.assertEquals(n.usage, sc3_usage)
+        self.assertEqual(n.nshares, sc3_shares)
+        self.assertEqual(n.usage, sc3_usage)
 
     def test_fairshare_usage(self):
         """
@@ -772,13 +772,13 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.delete(sc1_jid2, wait=True)
         # query fairshare and check usage
         sc1_fs_user1 = self.scheds['sc1'].query_fairshare(name=str(TEST_USER1))
-        self.assertEquals(sc1_fs_user1.usage, 101)
+        self.assertEqual(sc1_fs_user1.usage, 101)
         sc1_fs_user2 = self.scheds['sc1'].query_fairshare(name=str(TEST_USER2))
-        self.assertEquals(sc1_fs_user2.usage, 101)
+        self.assertEqual(sc1_fs_user2.usage, 101)
         sc1_fs_user3 = self.scheds['sc1'].query_fairshare(name=str(TEST_USER3))
-        self.assertEquals(sc1_fs_user3.usage, 101)
+        self.assertEqual(sc1_fs_user3.usage, 101)
         sc1_fs_user4 = self.scheds['sc1'].query_fairshare(name=str(TEST_USER4))
-        self.assertEquals(sc1_fs_user4.usage, 1)
+        self.assertEqual(sc1_fs_user4.usage, 1)
         # Restart the scheduler
         self.scheds['sc1'].restart()
         # Check the multisched 'sc1' usage file whether it's updating or not
@@ -815,13 +815,13 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.delete(sc1_jid2, wait=True)
         # query fairshare and check usage
         sc1_fs_user1 = self.scheds['sc1'].query_fairshare(name=str(TEST_USER1))
-        self.assertEquals(sc1_fs_user1.usage, 201)
+        self.assertEqual(sc1_fs_user1.usage, 201)
         sc1_fs_user2 = self.scheds['sc1'].query_fairshare(name=str(TEST_USER2))
-        self.assertEquals(sc1_fs_user2.usage, 201)
+        self.assertEqual(sc1_fs_user2.usage, 201)
         sc1_fs_user3 = self.scheds['sc1'].query_fairshare(name=str(TEST_USER3))
-        self.assertEquals(sc1_fs_user3.usage, 101)
+        self.assertEqual(sc1_fs_user3.usage, 101)
         sc1_fs_user4 = self.scheds['sc1'].query_fairshare(name=str(TEST_USER4))
-        self.assertEquals(sc1_fs_user4.usage, 101)
+        self.assertEqual(sc1_fs_user4.usage, 101)
 
     def test_sched_priv_change(self):
         """
@@ -885,7 +885,7 @@ class TestMultipleSchedulers(TestFunctional):
         self.scheds['sc3'].set_fairshare_usage(name=TEST_USER2, usage=100)
 
         user = self.scheds['sc3'].cmp_fairshare_entities(TEST_USER, TEST_USER2)
-        self.assertEquals(user, str(TEST_USER))
+        self.assertEqual(user, str(TEST_USER))
 
     def test_pbsfs_invalid_sched(self):
         """
@@ -896,7 +896,7 @@ class TestMultipleSchedulers(TestFunctional):
                                  'sbin', 'pbsfs') + ' -I ' + sched_name
         ret = self.du.run_cmd(cmd=pbsfs_cmd, sudo=True)
         err_msg = 'Scheduler %s does not exist' % sched_name
-        self.assertEquals(err_msg, ret['err'][0])
+        self.assertEqual(err_msg, ret['err'][0])
 
     def test_pbsfs_no_fairshare_data(self):
         """
@@ -1553,7 +1553,7 @@ class TestMultipleSchedulers(TestFunctional):
             a['partition'] = 'P2'
         if numnode is 11:
             a['partition'] = 'P2'
-        return dict(attrib.items() + a.items())
+        return dict(list(attrib.items()) + list(a.items()))
 
     def setup_placement_set(self):
         self.server.add_resource('switch', 'string_array', 'h')

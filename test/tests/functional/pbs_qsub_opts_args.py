@@ -80,7 +80,7 @@ bhtiusabsdlg' % (os.environ['HOME'])
             os.makedirs(longpath)
         cmd = [self.qsub_cmd, self.fn]
         rv = self.du.run_cmd(self.server.hostname, cmd=cmd)
-        self.assertEquals(rv['rc'], 0, 'qsub failed')
+        self.assertEqual(rv['rc'], 0, 'qsub failed')
 
     def test_qsub_with_script_executable(self):
         """
@@ -115,7 +115,7 @@ bhtiusabsdlg' % (os.environ['HOME'])
         """
         cmd = [self.qsub_cmd, self.fn]
         rv = self.du.run_cmd(self.server.hostname, cmd=cmd)
-        self.assertEquals(rv['rc'], 0, 'qsub failed')
+        self.assertEqual(rv['rc'], 0, 'qsub failed')
 
     def test_qsub_with_executable(self):
         """
@@ -123,7 +123,7 @@ bhtiusabsdlg' % (os.environ['HOME'])
         """
         cmd = [self.qsub_cmd, '--', '/bin/sleep 10']
         rv = self.du.run_cmd(self.server.hostname, cmd=cmd)
-        self.assertEquals(rv['rc'], 0, 'qsub failed')
+        self.assertEqual(rv['rc'], 0, 'qsub failed')
 
     def test_qsub_with_option_executable(self):
         """
@@ -131,7 +131,7 @@ bhtiusabsdlg' % (os.environ['HOME'])
         """
         cmd = [self.qsub_cmd, '-V', '--', '/bin/sleep', '10']
         rv = self.du.run_cmd(self.server.hostname, cmd=cmd)
-        self.assertEquals(rv['rc'], 0, 'qsub failed')
+        self.assertEqual(rv['rc'], 0, 'qsub failed')
 
     def test_qsub_with_option_script(self):
         """
@@ -139,7 +139,7 @@ bhtiusabsdlg' % (os.environ['HOME'])
         """
         cmd = [self.qsub_cmd, '-V', self.fn]
         rv = self.du.run_cmd(self.server.hostname, cmd=cmd)
-        self.assertEquals(rv['rc'], 0, 'qsub failed')
+        self.assertEqual(rv['rc'], 0, 'qsub failed')
 
     def test_qsub_with_option_a(self):
         """

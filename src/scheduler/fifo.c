@@ -69,6 +69,8 @@
 
 #ifdef PYTHON
 #include <Python.h>
+#include <pythonrun.h>
+#include <wchar.h>
 #endif
 
 #include <stdio.h>
@@ -152,11 +154,13 @@ schedinit(void)
 	char errMsg[LOG_BUF_SIZE];
 	char buf[MAXPATHLEN];
 	char *errstr;
+	char py_version[4];
 
 	PyObject *module;
 	PyObject *obj;
 	PyObject *dict;
 	PyObject *path;
+	PyObject *retval;
 #endif
 
 	init_config();
@@ -205,24 +209,49 @@ schedinit(void)
 #ifdef PYTHON
 	Py_NoSiteFlag = 1;
 	Py_FrozenFlag = 1;
+
+	/* Setting PYTHONHOME */
+	Py_IgnoreEnvironmentFlag = 1;
+        char pbs_python_home[MAXPATHLEN+1];
+        memset((char *)pbs_python_home, '\0', MAXPATHLEN+1);
+        snprintf(pbs_python_home, MAXPATHLEN, "%s/python",
+                pbs_conf.pbs_exec_path);
+        if (file_exists(pbs_python_home)) {
+                wchar_t tmp_pbs_python_home[MAXPATHLEN+1];
+                wmemset((wchar_t *)tmp_pbs_python_home, '\0', MAXPATHLEN+1);
+                mbstowcs(tmp_pbs_python_home, pbs_python_home, MAXPATHLEN+1);
+                Py_SetPythonHome(tmp_pbs_python_home);
+        }
+
 	Py_Initialize();
 
 	path = PySys_GetObject("path");
 
-	snprintf(buf, sizeof(buf), "%s/python/lib/python2.7", pbs_conf.pbs_exec_path);
-	PyList_Insert(path, 0, PyString_FromString(buf));
+	/* get the version of Python interpreter */
+	strncpy(py_version, Py_GetVersion(), 3);
+        py_version[3] = '\0';
 
-	snprintf(buf, sizeof(buf), "%s/python/lib/python2.7/lib-dynload", pbs_conf.pbs_exec_path);
-	PyList_Insert(path, 0, PyString_FromString(buf));
+	snprintf(buf, sizeof(buf), "%s/python/lib/python%s", pbs_conf.pbs_exec_path, py_version);
+        retval = PyUnicode_FromString(buf);
+        if (retval != NULL)
+                PyList_Append(path, retval);
+        Py_CLEAR(retval);
+
+	snprintf(buf, sizeof(buf), "%s/python/lib/python%s/lib-dynload", pbs_conf.pbs_exec_path, py_version);
+        retval = PyUnicode_FromString(buf);
+        if (retval != NULL)
+                PyList_Append(path, retval);
+        Py_CLEAR(retval);
 
 	PySys_SetObject("path", path);
+
 
 	PyRun_SimpleString(
 		"_err =\"\"\n"
 		"ex = None\n"
 		"try:\n"
 			"\tfrom math import *\n"
-		"except ImportError, ex:\n"
+		"except ImportError as ex:\n"
 			"\t_err = str(ex)");
 
 	module = PyImport_AddModule("__main__");
@@ -231,7 +260,7 @@ schedinit(void)
 	errstr = NULL;
 	obj = PyMapping_GetItemString(dict, "_err");
 	if (obj != NULL) {
-		errstr = PyString_AsString(obj);
+		errstr = PyUnicode_AsUTF8(obj);
 		if (errstr != NULL) {
 			if (strlen(errstr) > 0) {
 				snprintf(errMsg, sizeof(errMsg), " %s. Python is unlikely to work properly.", errstr);

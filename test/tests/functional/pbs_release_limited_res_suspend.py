@@ -157,7 +157,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         rc = 0
         try:
             rc = self.server.deljob(jid2, wait=True)
-        except PbsDeljobError, e:
+        except PbsDeljobError as e:
             self.assertEqual(rc, 0, e.msg[0])
 
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
@@ -243,7 +243,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         job = self.server.status(JOB, id=jid1)
 
         rr = "(vnode1[0]:ncpus=8)+(vnode2[0]:ncpus=6)"
-        print job[0][ATTR_released]
+        self.logger.info("resources released are " + job[0][ATTR_released])
         self.assertEqual(job[0][ATTR_released], rr,
                          msg="resources_released incorrect")
 
@@ -430,7 +430,7 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         rc = 0
         try:
             rc = self.server.deljob(jid1, wait=True)
-        except PbsDeljobError, e:
+        except PbsDeljobError as e:
             self.assertEqual(rc, 0, e.msg[0])
 
         rv = self.server.status(

@@ -49,7 +49,7 @@ class classcomp(PBSTestSuite):
         with open('compress', 'wb') as out:
             i = 1
             while i < 1024:
-                out.write("TextFile")
+                out.write("TextFile".encode())
                 i += 1
 
         data = open('compress', 'r').read()

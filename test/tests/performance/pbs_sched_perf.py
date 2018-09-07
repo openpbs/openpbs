@@ -66,7 +66,7 @@ class TestSchedPerf(TestPerformance):
         Add custom resources to nodes
         """
         a = {'resources_available.color': self.colors[numnode % 7]}
-        return dict(attribs.items() + a.items())
+        return dict(list(attribs.items()) + list(a.items()))
 
     def submit_jobs(self, attribs, num, step=1, wt_start=100):
         """

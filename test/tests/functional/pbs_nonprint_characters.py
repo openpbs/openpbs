@@ -68,9 +68,9 @@ class TestNonprintingCharacters(TestFunctional):
         self.npch_asis = ['\x09', '\x0A']
 
         # Terminal control characters used in the tests
-        self.bold = u"\u001b[1m"
-        self.red = u"\u001b[31m"
-        self.reset = u"\u001b[0m"
+        self.bold = "\u001b[1m"
+        self.red = "\u001b[31m"
+        self.reset = "\u001b[0m"
         # Mapping of terminal control character to escaped representation
         self.bold_esc = "^[[1m"
         self.red_esc = "^[[31m"
@@ -94,7 +94,7 @@ foo
 sleep 5
 """
         fn = self.du.create_temp_file(body=foo_scr)
-        self.du.chmod(path=fn, mode=0755)
+        self.du.chmod(path=fn, mode=0o755)
         foo_msg = 'Failed to run foo_scr'
         ret = self.du.run_cmd(self.server.hostname, cmd=fn)
         self.assertEqual(ret['rc'], 0, foo_msg)
@@ -104,6 +104,13 @@ sleep 5
             if m.find(msg) != -1:
                 self.n = m.split('=')[0]
                 continue
+        pbs_conf = self.server.pbs_conf
+        if 'PBS_EXEC' in pbs_conf:
+            self.pbs_exec = pbs_conf['PBS_EXEC']
+        else:
+            raise "PBS EXEC does not exist."
+        self.qmgr = os.path.join(self.pbs_exec, 'bin', 'qmgr')
+        self.pbsnodes = os.path.join(self.pbs_exec, 'bin', 'pbsnodes')
 
         # Client commands full path
         self.qstat_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'],
@@ -174,7 +181,7 @@ sleep 5
                 self.logger.info('##### excluded char: %s' % repr(ch))
                 continue
             # variable to check if with escaped nonprinting character or not
-            chk_var = 'var1=A\,B\,%s\,C\,D' % self.npcat[ch]
+            chk_var = r'var1=A\,B\,%s\,C\,D' % self.npcat[ch]
             if ch in self.npch_asis:
                 chk_var = 'var1=A\,B\,%s\,C\,D' % ch
             a = {ATTR_v: "var1=\'A,B,%s,C,D\'" % ch}
@@ -203,7 +210,7 @@ sleep 5
                 self.logger.info('##### excluded char: %s' % repr(ch))
                 continue
             # variable to check if with escaped nonprinting character or not
-            chk_var = 'var1=A\,B\,%s\,C\,D' % self.npcat[ch]
+            chk_var = r'var1=A\,B\,%s\,C\,D' % self.npcat[ch]
             if ch in self.npch_asis:
                 chk_var = 'var1=A\,B\,%s\,C\,D' % ch
             script = ['#PBS -v "var1=\'A,B,%s,C,D\'"' % ch]

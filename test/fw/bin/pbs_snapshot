@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # coding: utf-8
 
 # Copyright (C) 1994-2019 Altair Engineering, Inc.
@@ -98,7 +98,7 @@ Usage: pbs_snapshot -o <path to existing output directory> [OPTION]
     --version                         print version number and exit
 """
 
-    print msg
+    print(msg)
 
 
 def remotesnap_thread(logger, host):
@@ -144,7 +144,7 @@ def remotesnap_thread(logger, host):
     ret = du.run_cmd(hosts=host, cmd=cmd, logerr=False)
     if ret['rc'] != 0:
         logger.error("Error capturing snapshot from host %s" % (host))
-        print ret['err']
+        print(ret['err'])
         return
 
     # Get the snapshot tar filename from stdout
@@ -265,7 +265,7 @@ if __name__ == '__main__':
         elif o == "--with-sudo":
             with_sudo = True
         elif o == "--version":
-            print ptl.__version__
+            print(ptl.__version__)
             sys.exit(0)
         else:
             sys.stderr.write("Unrecognized option")
@@ -340,7 +340,7 @@ if __name__ == '__main__':
             du.rm(path=p_snappath, force=True)
 
         # Let's reconcile the child snapshots
-        for host, thread in remotesnap_threads.iteritems():
+        for host, thread in remotesnap_threads.items():
             thread.join()
             host_snappath = os.path.join(out_dir, host + "_snapshot.tgz")
             if os.path.isfile(host_snappath):
@@ -374,4 +374,4 @@ if __name__ == '__main__':
         outtar = capture_local_snap(with_sudo)
 
     if outtar is not None:
-        print "Snapshot available at: " + outtar
+        print("Snapshot available at: " + outtar)

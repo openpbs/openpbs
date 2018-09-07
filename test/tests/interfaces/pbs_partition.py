@@ -139,7 +139,7 @@ class TestPartition(TestInterfaces):
         try:
             self.partition_attr(mgr_cmd=MGR_CMD_UNSET)
         except PbsManagerError as e:
-            # self.assertEquals(e.rc, 15007)
+            # self.assertEqual(e.rc, 15007)
             # The above code has to be uncommented when the PTL framework
             # bug PP-881 gets fixed
             self.assertTrue(msg1 in e.msg[0], msg2)
@@ -149,7 +149,7 @@ class TestPartition(TestInterfaces):
         Test to check the set of partition attribute on routing queue
         """
         msg0 = "Route queues are incompatible with the "\
-               "partition attribute enabled"
+               "partition attribute"
         msg1 = "Cannot assign a partition to route queue"
         msg2 = "Qmgr error message do not match"
         try:
@@ -159,7 +159,7 @@ class TestPartition(TestInterfaces):
                 enable="False",
                 start="False")
         except PbsManagerError as e:
-            # self.assertEquals(e.rc, 15217)
+            # self.assertEqual(e.rc, 15217)
             # The above code has to be uncommented when the PTL framework
             # bug PP-881 gets fixed
             self.assertTrue(msg0 in e.msg[0], msg2)
@@ -169,7 +169,7 @@ class TestPartition(TestInterfaces):
         try:
             self.partition_attr(mgr_cmd=MGR_CMD_SET)
         except PbsManagerError as e:
-            # self.assertEquals(e.rc, 15007)
+            # self.assertEqual(e.rc, 15007)
             # The above code has to be uncommented when the PTL framework
             # bug PP-881 gets fixed
             self.assertTrue(msg1 in e.msg[0], msg2)
@@ -186,7 +186,7 @@ class TestPartition(TestInterfaces):
         try:
             self.partition_attr(mgr_cmd=MGR_CMD_SET, q_type="route")
         except PbsManagerError as e:
-            # self.assertEquals(e.rc, 15218)
+            # self.assertEqual(e.rc, 15218)
             # The above code has to be uncommented when the PTL framework
             # bug PP-881 gets fixed
             self.assertTrue(msg1 in e.msg[0], msg2)
@@ -229,7 +229,7 @@ class TestPartition(TestInterfaces):
             self.partition_attr(mgr_cmd=MGR_CMD_UNSET,
                                 obj_name="NODE", user=TEST_USER)
         except PbsManagerError as e:
-            # self.assertEquals(e.rc, 15007)
+            # self.assertEqual(e.rc, 15007)
             # The above code has to be uncommented when the PTL framework
             # bug PP-881 gets fixed
             self.assertTrue(msg1 in e.msg[0], msg2)
@@ -262,7 +262,7 @@ class TestPartition(TestInterfaces):
         try:
             self.partition_attr(mgr_cmd=MGR_CMD_SET, name="Q2")
         except PbsManagerError as e:
-            # self.assertEquals(e.rc, 15221)
+            # self.assertEqual(e.rc, 15221)
             # The above code has to be uncommented when the PTL framework
             # bug PP-881 gets fixed
             self.assertTrue(msg1 in e.msg[0], msg2)
@@ -272,7 +272,7 @@ class TestPartition(TestInterfaces):
                                 NODE, {'queue': "Q1"},
                                 id=self.server.shortname)
         except PbsManagerError as e:
-            # self.assertEquals(e.rc, 15220)
+            # self.assertEqual(e.rc, 15220)
             # The above code has to be uncommented when the PTL framework
             # bug PP-881 gets fixed
             self.assertTrue(msg1 in e.msg[0], msg2)
@@ -280,7 +280,7 @@ class TestPartition(TestInterfaces):
         try:
             self.partition_attr(obj_name="NODE")
         except PbsManagerError as e:
-            # self.assertEquals(e.rc, 15219)
+            # self.assertEqual(e.rc, 15219)
             # The above code has to be uncommented when the PTL framework
             # bug PP-881 gets fixed
             self.assertTrue(msg1 in e.msg[0], msg2)

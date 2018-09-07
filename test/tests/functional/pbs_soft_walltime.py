@@ -112,7 +112,7 @@ class TestSoftWalltime(TestFunctional):
         est, wt = self.stat_job(baseline_job)
         for j in jobs:
             est2, wt2 = self.stat_job(j)
-            self.assertEquals(est + wt, est2)
+            self.assertEqual(est + wt, est2)
             est = est2
             wt = wt2
 
@@ -156,7 +156,7 @@ class TestSoftWalltime(TestFunctional):
         except PbsSubmitError as e:
             self.assertTrue(msg in e.msg[0])
 
-        self.assertEquals(jid, None)
+        self.assertEqual(jid, None)
 
         J = Job(TEST_USER)
         jid = self.server.submit(J)
@@ -242,7 +242,7 @@ class TestSoftWalltime(TestFunctional):
         self.server.alterjob(jid, {'Resource_List.soft_walltime': 240})
         try:
             self.server.alterjob(jid, {'Resource_List.walltime': 120})
-        except PbsAlterError:
+        except PbsAlterError as e:
             self.assertTrue(msg in e.msg[0])
 
         self.server.expect(JOB, 'Resource_List.walltime', op=UNSET, id=jid)
@@ -252,7 +252,7 @@ class TestSoftWalltime(TestFunctional):
         try:
             self.server.alterjob(jid, {'Resource_List.walltime': 120,
                                        'Resource_List.soft_walltime': 240})
-        except PbsAlterError:
+        except PbsAlterError as e:
             self.assertTrue(msg in e.msg[0])
 
         al = ['Resource_List.walltime', 'Resource_List.soft_walltime']
@@ -680,7 +680,7 @@ e.accept()
         to calculate percent done and also if the soft_walltime is exceeded,
         the percent done should remain at 100%
         """
-        self.server.manager(MGR_CMD_SET, SCHED, {'preempt_order': 'R 10 S'},
+        self.server.manager(MGR_CMD_SET, SCHED, {'preempt_order': "R 10 S"},
                             runas=ROOT_USER)
         a = {'resources_available.ncpus': 2}
         self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)

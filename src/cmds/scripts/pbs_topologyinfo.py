@@ -115,8 +115,8 @@ class Inventory(object):
         else:
             compute_socket_nodelist = False
         try:
-            maxwidth = max(map(len, files))
-        except StandardError as e:
+            maxwidth = max(list(map(len, files)))
+        except Exception as e:
             print('max/map failed: %s' % e)
             return
 
@@ -131,7 +131,7 @@ class Inventory(object):
             pathname = os.sep.join((dirs, name))
             self.reset()
             try:
-                with open(pathname, "r") as topo_file:
+                with open(pathname, "rb") as topo_file:
 
                     if platform.system() == "Windows":
                         self.reportsockets_win(topo_file)

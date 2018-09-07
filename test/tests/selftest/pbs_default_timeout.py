@@ -57,7 +57,7 @@ class TestDefaultTimeout(TestSelf):
         except TimeOut as e:
             mssg = 'Timed out after %s second' % MINIMUM_TESTCASE_TIMEOUT
             err_mssg = 'The test timed out for an incorrect timeout duration'
-            self.assertEqual(mssg, e.message, err_mssg)
+            self.assertEqual(mssg, str(e), err_mssg)
 
     def test_timeout_greater_default_value(self):
         """
@@ -71,7 +71,7 @@ class TestDefaultTimeout(TestSelf):
         except TimeOut as e:
             mssg = 'Timed out after %s second' % MINIMUM_TESTCASE_TIMEOUT
             err_mssg = 'The test timed out for an incorrect timeout duration'
-            self.assertEqual(mssg, e.message, err_mssg)
+            self.assertEqual(mssg, str(e), err_mssg)
         else:
             msg = 'Test did not timeout after the min. timeout period of %d' \
                   % MINIMUM_TESTCASE_TIMEOUT
@@ -91,7 +91,7 @@ class TestDefaultTimeout(TestSelf):
         except TimeOut as e:
             mssg = 'Timed out after %s second' % MINIMUM_TESTCASE_TIMEOUT
             err_mssg = 'The test timed out for an incorrect timeout duration'
-            self.assertEqual(mssg, e.message, err_mssg)
+            self.assertEqual(mssg, str(e), err_mssg)
 
     @timeout(800)
     def test_timeout_decorator_greater_default_value(self):
@@ -107,4 +107,4 @@ class TestDefaultTimeout(TestSelf):
         except TimeOut as e:
             mssg = 'Timed out after 800 second'
             err_mssg = 'The test timed out for an incorrect timeout duration'
-            self.assertEqual(mssg, e.message, err_mssg)
+            self.assertEqual(mssg, str(e), err_mssg)

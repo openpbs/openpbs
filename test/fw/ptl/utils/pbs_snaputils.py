@@ -123,7 +123,7 @@ from ptl.lib.pbs_testlib import BatchUtils
     CORE_SERVER,
     CORE_MOM,
     # Miscellaneous
-    CTIME) = range(59)
+    CTIME) = list(range(59))
 
 
 # Define paths to various files/directories with respect to the snapshot
@@ -436,7 +436,8 @@ class ObfuscateSnapshot(object):
         :type filepath - str
         """
         fout = self.du.create_temp_file()
-        with open(fpath, "r") as fd, open(fout, "w") as fdout:
+        with open(fpath, "r", encoding="latin-1") as fd,\
+                open(fout, "w") as fdout:
             alltext = fd.read()
             otext = re.sub(r'\b' + key + r'\b', val, alltext)
             fdout.write(otext)
@@ -470,7 +471,7 @@ class ObfuscateSnapshot(object):
             PBSNODES_VA_PATH: [self.node_attrs_obf, []],
             PBS_RSTAT_F_PATH: [self.resv_attrs_obf, self.resv_attrs_del]
         }
-        for s_f_file, attrs in stat_f_files.iteritems():
+        for s_f_file, attrs in stat_f_files.items():
             qstat_f_path = os.path.join(snap_dir, s_f_file)
             if os.path.isfile(qstat_f_path):
                 self._obfuscate_stat(qstat_f_path, attrs[0], attrs[1])
@@ -533,7 +534,7 @@ class ObfuscateSnapshot(object):
             else:
                 path = os.path.join(jobspath, name)
                 self.du.rm(path=path, recursive=True, force=True)
-        for name, content in jbcontent.iteritems():
+        for name, content in jbcontent.items():
             # Save the printjob outputs, these will be obfuscated later
             fpath = os.path.join(jobspath, name + "_printjob")
             with open(fpath, "w") as fd:
@@ -551,7 +552,7 @@ class ObfuscateSnapshot(object):
                 new_fname = None
 
                 # Obfuscate values from val_obf_map
-                for key, val in self.val_obf_map.iteritems():
+                for key, val in self.val_obf_map.items():
                     self._replace_str_in_file(key, val, fpath)
                     if key in fname:
                         new_fname = fname.replace(key, val)
@@ -899,7 +900,7 @@ class _PBSSnapUtils(object):
 
         for item in dirs_in_snapshot:
             rel_path = os.path.join(self.snapdir, item)
-            os.makedirs(rel_path, 0755)
+            os.makedirs(rel_path, 0o755)
 
     def __capture_cmd_output(self, out_path, cmd, as_script=False,
                              ret_out=False, sudo=False):
@@ -1144,7 +1145,7 @@ quit()
         filename = os.path.basename(file_path)
         core_dest = os.path.join(core_dir, filename)
         if not os.path.isdir(core_dir):
-            os.makedirs(core_dir, 0755)
+            os.makedirs(core_dir, 0o755)
         self.__capture_trace_from_core(file_path, exec_name,
                                        core_dest)
 
@@ -1210,7 +1211,7 @@ quit()
                 # Make sure that the directory exists in the snapshot
                 if not self.du.isdir(path=item_dest_path):
                     # Create the directory
-                    os.makedirs(item_dest_path, 0755)
+                    os.makedirs(item_dest_path, 0o755)
                 # Recursive call to copy contents of the directory
                 self.__copy_dir_with_core(item_src_path, item_dest_path,
                                           core_dir, except_list, only_core,
@@ -1536,7 +1537,7 @@ quit()
                     dirname = DFLT_SCHED_PRIV_PATH + "_" + sched_name
                     coredirname = CORE_SCHED_PATH + "_" + sched_name
                     snap_sched_priv = os.path.join(self.snapdir, dirname)
-                    os.makedirs(snap_sched_priv, 0755)
+                    os.makedirs(snap_sched_priv, 0o755)
                     core_dir = os.path.join(self.snapdir, coredirname)
 
                 self.__copy_dir_with_core(pbs_sched_priv,
@@ -1555,7 +1556,7 @@ quit()
                     else:
                         dirname = DFLT_SCHED_LOGS_PATH + "_" + sched_name
                         snap_sched_log = os.path.join(self.snapdir, dirname)
-                        os.makedirs(snap_sched_log, 0755)
+                        os.makedirs(snap_sched_log, 0o755)
 
                     self.__capture_sched_logs(pbs_sched_log, snap_sched_log)
 
@@ -1690,8 +1691,7 @@ quit()
             win_platform = True
 
         # Capture information that's dependent on commands
-        for (key, values) in self.sys_info.iteritems():
-            sudo = False
+        for (key, values) in self.sys_info.items():
             (path, cmd_list) = values
             if cmd_list is None:
                 continue
@@ -1762,7 +1762,7 @@ quit()
         snap_envpath = os.path.join(self.snapdir, PBS_ENV_PATH)
         if self.server.pbs_env is not None:
             with open(snap_envpath, "w") as envfd:
-                for k, v in self.server.pbs_env.iteritems():
+                for k, v in self.server.pbs_env.items():
                     envfd.write(k + "=" + v + "\n")
         if self.create_tar:
             self.__add_to_archive(snap_envpath)

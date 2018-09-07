@@ -67,8 +67,8 @@ class TestQstat(TestFunctional):
         qstat_cmd_pt = [qstat_cmd, '-pt', str(jid)]
         ret = self.du.run_cmd(self.server.hostname, cmd=qstat_cmd_pt)
 
-        self.assertEquals(ret['rc'], 0,
-                          'Qstat returned with non-zero exit status')
+        self.assertEqual(ret['rc'], 0,
+                         'Qstat returned with non-zero exit status')
         qstat_out = '\n'.join(ret['out'])
 
         sjids = [j.create_subjob_id(jid, x) for x in range(1, job_count)]

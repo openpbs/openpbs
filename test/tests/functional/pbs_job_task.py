@@ -71,7 +71,7 @@ class TestJobTask(TestFunctional):
             job_out = fd.read().strip()
             self.logger.info("job_out=%s" % (job_out,))
 
-        self.assertEquals(job_out, "OK")
+        self.assertEqual(job_out, "OK")
 
     def test_singlenode_pbs_tmrsh(self):
         """
@@ -94,4 +94,4 @@ class TestJobTask(TestFunctional):
             job_out = fd.read().strip()
             self.logger.info("job_out=%s" % (job_out,))
 
-        self.assertEquals(job_out, "OK")
+        self.assertEqual(job_out, "OK")

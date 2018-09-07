@@ -157,5 +157,5 @@ class TestReservationRequests(TestFunctional):
 
         out = self.server.status(RESV, 'reserve_duration', id=rid)[0][
             'reserve_duration']
-        dur = long(out)
+        dur = int(out)
         self.assertTrue(dur > 0, 'Duration ' + str(dur) + 'is negative.')

@@ -69,7 +69,7 @@ class TestNodesQueues(TestFunctional):
             a['resources_available.foo'] = 'A'
         else:
             a['resources_available.foo'] = 'B'
-        return dict(attrib.items() + a.items())
+        return dict(list(attrib.items()) + list(a.items()))
 
     def test_node_queue_assoc_ignored(self):
         """

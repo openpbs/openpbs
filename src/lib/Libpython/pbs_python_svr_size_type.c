@@ -129,7 +129,7 @@ _pps_check_for_negative_number(PyObject *il) {
 		PyErr_Clear(); rc = -1;
 		goto EXIT;
 	}
-	c_value = PyString_AsString(str_value); /* TODO, is error check needed? */
+	c_value = PyUnicode_AsUTF8(str_value); /* TODO, is error check needed? */
 	if (c_value && (*c_value == '-')) {
 		rc = 1;
 	} else {
@@ -189,12 +189,12 @@ _pps_size_from_long_or_int(PyObject *self, PyObject *from)
 	PPSVR_Size_Object *working_copy = (PPSVR_Size_Object *) self;
 	u_Long l_value;
 
-	if (PyInt_Check(from)) {
+	if (PyLong_Check(from)) {
 		if (_pps_check_for_negative_number(from) > 0) {
 			PyErr_SetString(PyExc_TypeError, "_size instance cannot be negative");
 			return -1;
 		}
-		l_value = PyInt_AsUnsignedLongLongMask(from);
+		l_value = PyLong_AsUnsignedLongLongMask(from);
 		if (PyErr_Occurred())
 			return -1;
 		/* good no error */
@@ -244,8 +244,8 @@ _pps_size_from_string(PyObject *self, PyObject *from)
 {
 
 	PPSVR_Size_Object *working_copy = (PPSVR_Size_Object *) self;
-	if (PyString_Check(from)) {
-		if ((to_size(PyString_AsString(from), &working_copy->sz_value) != 0)) {
+	if (PyUnicode_Check(from)) {
+		if ((to_size(PyUnicode_AsUTF8(from), &working_copy->sz_value) != 0)) {
 			snprintf(log_buffer, LOG_BUF_SIZE-1, "%s: bad value for _size",
 				pbs_python_object_str(from));
 			PyErr_SetString(PyExc_TypeError, log_buffer);
@@ -366,7 +366,7 @@ pps_size_dealloc(PPSVR_Size_Object *self)
 	if (self->str_value) {
 		free(self->str_value);
 	}
-	self->ob_type->tp_free((PyObject*) self);
+	Py_TYPE(self)->tp_free((PyObject*) self);
 	return;
 }
 
@@ -386,53 +386,12 @@ pps_size_dealloc(PPSVR_Size_Object *self)
 static PyObject *
 pps_size_repr(PPSVR_Size_Object *self) {
 	if (self->str_value) {
-		return PyString_FromString(self->str_value);
+		return PyUnicode_FromString(self->str_value);
 	} else {
-		return PyString_InternFromString("0");
+		return PyUnicode_InternFromString("0");
 	}
 }
 
-/* __coerce__ */
-
-
-static int
-pps_size_number_methods_coerce(PyObject **self, PyObject **other)
-{
-	PyObject *tmp_other = NULL;
-	int rc;
-	if (PyInt_Check(*other) || PyLong_Check(*other)) {
-		if (!(tmp_other = pps_size_new(&PPSVR_Size_Type, NULL, NULL)))
-			goto ERROR_EXIT;
-		if ((rc = _pps_size_from_long_or_int(tmp_other, *other)) == -1)
-			goto ERROR_EXIT;
-		if (rc == 0) {
-			goto COERCE_SUCESS;
-		}
-	}
-
-	if (PyString_Check(*other)) {
-		if (!(tmp_other = pps_size_new(&PPSVR_Size_Type, NULL, NULL)))
-			goto ERROR_EXIT;
-		if ((rc = _pps_size_from_string(tmp_other, *other)) == -1)
-			goto ERROR_EXIT;
-		if (rc == 0) {
-			goto COERCE_SUCESS;
-		}
-	}
-
-	/* can't conver */
-	goto ERROR_EXIT;
-COERCE_SUCESS:
-	*other = tmp_other;
-	Py_INCREF(*self);
-	Py_INCREF(*other);
-	return 0;
-
-ERROR_EXIT:
-	if (tmp_other)
-		Py_CLEAR(tmp_other);
-	return 1; /* Can't do it */
-}
 
 
 /* __cmp__ */
@@ -645,30 +604,27 @@ static PyNumberMethods pps_size_as_number = {
 	/* nb_add */             (binaryfunc)pps_size_number_methods_add,
 	/* nb_subtract */        (binaryfunc)pps_size_number_methods_subtract,
 	/* nb_multiply */                   0,
-	/* nb_divide */                     0,
 	/* nb_remainder */                  0,
 	/* nb_divmod */                     0,
 	/* nb_power */                      0,
 	/* nb_negative */                   0,
 	/* nb_positive */        (unaryfunc)0,
 	/* nb_absolute */        (unaryfunc)0,
-	/* nb_nonzero */           (inquiry)0,
+	/* nb_bool (new Py3) */	   (inquiry)0,
 	/* nb_invert */                     0,
 	/* nb_lshift */                     0,
 	/* nb_rshift */                     0,
 	/* nb_and */                        0,
 	/* nb_xor */                        0,
 	/* nb_or */                         0,
-	/* nb_coerce */           (coercion)pps_size_number_methods_coerce,
 	/* nb_int */                        0,
-	/* nb_long */                       0,
+	/* The nb_reserved field should always be NULL.
+	 * It was previously called nb_long, and was renamed in Python3*/
+	/* nb_reserved (new Py3) */	    0,
 	/* nb_float */                      0,
-	/* nb_oct */                        0,
-	/* nb_hex */                        0,
 	/* nb_inplace_add */                0,
 	/* nb_inplace_subtract */           0,
 	/* nb_inplace_multiply */           0,
-	/* nb_inplace_divide */             0,
 	/* nb_inplace_remainder */          0,
 	/* nb_inplace_power */              0,
 	/* nb_inplace_lshift */             0,
@@ -690,8 +646,8 @@ static char pps_size_doc[] =
 /* external, hopefully no clash */
 
 PyTypeObject PPSVR_Size_Type = {
-	PyObject_HEAD_INIT(NULL)
-	/* ob_size*/                        0,
+	PyVarObject_HEAD_INIT(NULL, 0)
+	/* ob_size*/
 	/* tp_name*/                        "_size",
 	/* tp_basicsize*/                   sizeof(PPSVR_Size_Object),
 	/* tp_itemsize*/                    0,
@@ -699,7 +655,7 @@ PyTypeObject PPSVR_Size_Type = {
 	/* tp_print*/                       0,
 	/* tp_getattr*/                     0,
 	/* tp_setattr*/                     0,
-	/* tp_compare*/                     0,
+	/* tp_as_async */		    0,
 	/* tp_repr*/                        (reprfunc)pps_size_repr,
 	/* tp_as_number*/                   &pps_size_as_number,
 	/* tp_as_sequence*/                 0,

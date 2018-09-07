@@ -80,8 +80,8 @@ class TestEntityLimits(TestFunctional):
             self.server.submit(j)
         except PbsSubmitError as e:
             if e.msg[0] != exp_err:
-                raise self.failureException("rcvd unexpected err message: "
-                                            + e.msg[0])
+                raise self.failureException("rcvd unexpected err message: " +
+                                            e.msg[0])
         else:
             self.assertFalse(True, "Job violating limits got submitted.")
 
@@ -94,8 +94,8 @@ class TestEntityLimits(TestFunctional):
             jid = self.server.submit(j)
         except PbsSubmitError as e:
             if e.msg[0] != exp_err:
-                raise self.failureException("rcvd unexpected err message: "
-                                            + e.msg[0])
+                raise self.failureException("rcvd unexpected err message: " +
+                                            e.msg[0])
         else:
             self.assertFalse(True, "Array Job violating limits got submitted.")
 
@@ -115,10 +115,10 @@ class TestEntityLimits(TestFunctional):
         try:
             j = Job(TST_USR, job_attr)
             self.server.submit(j)
-        except PbsSubmitError:
+        except PbsSubmitError as e:
             if e.msg[0] != exp_err:
-                raise self.failureException("rcvd unexpected err message: "
-                                            + e.msg[0])
+                raise self.failureException("rcvd unexpected err message: " +
+                                            e.msg[0])
         else:
             self.assertFalse(True, "Job violating limits got submitted.")
 
@@ -126,13 +126,13 @@ class TestEntityLimits(TestFunctional):
 
         try:
             self.server.submit(j)
-        except PbsSubmitError:
+        except PbsSubmitError as e:
             if e.msg[0] != exp_err:
-                raise self.failureException("rcvd unexpected err message: "
-                                            + e.msg[0])
+                raise self.failureException("rcvd unexpected err message: " +
+                                            e.msg[0])
         else:
             self.assertFalse(True, "Job violating limits got submitted after "
-                             + "server restart.")
+                             "server restart.")
 
     def test_server_generic_user_limits_queued(self):
         """
@@ -761,8 +761,8 @@ class TestEntityLimits(TestFunctional):
             exp_err = 'qsub: would exceed limit on resource ' + res_name + \
                 ' in queue ' + qname
             if e.msg[0] != exp_err:
-                raise self.failureException("rcvd unexpected err message: "
-                                            + e.msg[0])
+                raise self.failureException("rcvd unexpected err message: " +
+                                            e.msg[0])
 
         attribs = {'Resource_List.' + res_name: 8}
         self.server.alterjob(J_1_id, attribs)
@@ -778,8 +778,8 @@ class TestEntityLimits(TestFunctional):
             exp_err = 'qsub: would exceed limit on resource ' + res_name + \
                 ' in queue ' + qname
             if e.msg[0] != exp_err:
-                raise self.failureException("rcvd unexpected err message: "
-                                            + e.msg[0])
+                raise self.failureException("rcvd unexpected err message: " +
+                                            e.msg[0])
 
     def test_multiple_queued_limits(self):
         defqname = self.server.default_queue
@@ -812,8 +812,8 @@ class TestEntityLimits(TestFunctional):
             exp_err = "qsub: would exceed queue generic's per-user limit " + \
                 "of jobs in 'Q' state"
             if e.msg[0] != exp_err:
-                raise self.failureException("rcvd unexpected err message: "
-                                            + e.msg[0])
+                raise self.failureException("rcvd unexpected err message: " +
+                                            e.msg[0])
         else:
             self.assertFalse(True, "Job violating limits got submitted.")
 
@@ -826,7 +826,7 @@ class TestEntityLimits(TestFunctional):
             exp_err = "qsub: would exceed complex's per-user limit of " + \
                 "jobs in 'Q' state"
             if e.msg[0] != exp_err:
-                raise self.failureException("rcvd unexpected err message: "
-                                            + e.msg[0])
+                raise self.failureException("rcvd unexpected err message: " +
+                                            e.msg[0])
         else:
             self.assertFalse(True, "Job violating limits got submitted.")

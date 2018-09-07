@@ -681,7 +681,7 @@ int validate_job_formula(attribute *pattr, void *pobject, int actmode) {
 		"errmsg = \'\'\n"
 		"try:\n"
 		"    from math import *\n"
-		"except ImportError, e:\n"
+		"except ImportError as e:\n"
 		"    errnum=4\n"
 		"    errmsg=str(e)\n");
 	if (pbs_strcat(&script, &script_size, buf) == NULL) {
@@ -710,13 +710,13 @@ int validate_job_formula(attribute *pattr, void *pobject, int actmode) {
 		goto validate_job_formula_exit;
 	}
 	sprintf(buf, "\', globals1, locals())\n"
-		"except SyntaxError, e:\n"
+		"except SyntaxError as e:\n"
 		"    errnum=1\n"
 		"    errmsg=str(e)\n"
-		"except NameError, e:\n"
+		"except NameError as e:\n"
 		"    errnum=2\n"
 		"    errmsg=str(e)\n"
-		"except Exception, e:\n"
+		"except Exception as e:\n"
 		"    pass\n"
 		"if errnum == 0:\n"
 		"    try:\n"
@@ -730,10 +730,10 @@ int validate_job_formula(attribute *pattr, void *pobject, int actmode) {
 		goto validate_job_formula_exit;
 	}
 	sprintf(buf, "\', globals2, locals())\n"
-		"    except NameError, e:\n"
+		"    except NameError as e:\n"
 		"        errnum=3\n"
 		"        errmsg=str(e)\n"
-		"    except Exception, e:\n"
+		"    except Exception as e:\n"
 		"        pass\n");
 	if (pbs_strcat(&script, &script_size, buf) == NULL) {
 		rc = PBSE_SYSTEM;

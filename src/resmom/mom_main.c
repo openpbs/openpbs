@@ -45,6 +45,8 @@
 
 #ifdef PYTHON
 #include <Python.h>
+#include <pythonrun.h>
+#include <wchar.h>
 #endif
 
 #ifdef	WIN32
@@ -8199,6 +8201,7 @@ main(int argc, char *argv[])
 	char				*configscriptaction = NULL;
 	char				*inputfile = NULL;
 	char				*scriptname = NULL;
+	char 				pbs_python_home[MAXPATHLEN+1];
 	resource			*prscput;
 	resource			*prswall;
 	char				*getopt_str;
@@ -8245,7 +8248,9 @@ main(int argc, char *argv[])
 
 #ifdef PYTHON
 	PyObject			*path;
+	PyObject 			*retval =  NULL;
 	char				buf[MAXPATHLEN];
+	char				py_version[4];
 #endif
 
 
@@ -9555,33 +9560,70 @@ main(int argc, char *argv[])
 #ifdef PYTHON
 	Py_NoSiteFlag = 1;
 	Py_FrozenFlag = 1;
+
+        /* Setting PYTHONHOME */
+        Py_IgnoreEnvironmentFlag = 1;
+        memset((char *)pbs_python_home, '\0', MAXPATHLEN+1);
+        snprintf(pbs_python_home, MAXPATHLEN, "%s/python",
+                pbs_conf.pbs_exec_path);
+        if (file_exists(pbs_python_home)) {
+                wchar_t tmp_pbs_python_home[MAXPATHLEN+1];
+                wmemset((wchar_t *)tmp_pbs_python_home, '\0', MAXPATHLEN+1);
+                mbstowcs(tmp_pbs_python_home, pbs_python_home, MAXPATHLEN+1);
+                Py_SetPythonHome(tmp_pbs_python_home);
+        }
+
 	Py_Initialize();
 
 	path = PySys_GetObject("path");
 #ifdef WIN32
 	snprintf(buf, sizeof(buf), "%s/python/Lib", pbs_conf.pbs_exec_path);
-
-	PyList_Append(path, PyString_FromString(buf));
+	retval = PyUnicode_FromString(buf);
+	if (retval != NULL)
+		PyList_Append(path, retval);
+	Py_CLEAR(retval);
 
 #else
+	/* Identify the version of the Python interpreter */
+	strncpy(py_version, Py_GetVersion(), 3);
+	py_version[3] = '\0';
+
 	/* list of possible paths to Python modules (mom imports json) */
-	snprintf(buf, sizeof(buf), "%s/python/lib/python2.7", pbs_conf.pbs_exec_path);
-	PyList_Append(path, PyString_FromString(buf));
+	snprintf(buf, sizeof(buf), "%s/python/lib/python%s", pbs_conf.pbs_exec_path, py_version);
+	retval = PyUnicode_FromString(buf);
+	if (retval != NULL)
+		PyList_Append(path, retval);
+	Py_CLEAR(retval);
 
-	snprintf(buf, sizeof(buf), "%s/python/lib/python2.7/lib-dynload", pbs_conf.pbs_exec_path);
-	PyList_Append(path, PyString_FromString(buf));
+	snprintf(buf, sizeof(buf), "%s/python/lib/python%s/lib-dynload", pbs_conf.pbs_exec_path, py_version);
+	retval = PyUnicode_FromString(buf);
+	if (retval != NULL)
+		PyList_Append(path, retval);
+	Py_CLEAR(retval);
 
-	snprintf(buf, sizeof(buf), "/usr/lib/python/python2.7");
-	PyList_Append(path, PyString_FromString(buf));
+	snprintf(buf, sizeof(buf), "/usr/lib/python/python%s", py_version);
+	retval = PyUnicode_FromString(buf);
+	if (retval != NULL)
+		PyList_Append(path, retval);
+	Py_CLEAR(retval);
+	
+	snprintf(buf, sizeof(buf), "/usr/lib/python/python%s/lib-dynload", py_version);
+	retval = PyUnicode_FromString(buf);
+	if (retval != NULL)
+		PyList_Append(path, retval);
+	Py_CLEAR(retval);
 
-	snprintf(buf, sizeof(buf), "/usr/lib/python/python2.7/lib-dynload");
-	PyList_Append(path, PyString_FromString(buf));
+	snprintf(buf, sizeof(buf), "/usr/lib64/python/python%s", py_version);
+	retval = PyUnicode_FromString(buf);
+	if (retval != NULL)
+		PyList_Append(path, retval);
+	Py_CLEAR(retval);
 
-	snprintf(buf, sizeof(buf), "/usr/lib64/python/python2.7");
-	PyList_Append(path, PyString_FromString(buf));
-
-	snprintf(buf, sizeof(buf), "/usr/lib64/python/python2.7/lib-dynload");
-	PyList_Append(path, PyString_FromString(buf));
+	snprintf(buf, sizeof(buf), "/usr/lib64/python/python%s/lib-dynload", py_version);
+	retval = PyUnicode_FromString(buf);
+	if (retval != NULL)
+		PyList_Append(path, retval);
+	Py_CLEAR(retval);
 #endif
 	PySys_SetObject("path", path);
 #endif
