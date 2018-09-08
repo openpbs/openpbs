@@ -150,8 +150,17 @@ class TestOfflineVnode(TestFunctional):
         and check if the job runs on one of the vnodes.
         """
         single_mom = self.moms.values()[0]
+        start_time = int(time.time())
         self.create_multi_vnodes(1)
         self.create_mom_hook()
+
+        # Check if hook files were copied to mom
+        single_mom.log_match(
+            "h1.HK;copy hook-related file request received",
+            starttime=start_time, interval=2)
+        single_mom.log_match(
+            "h1.PY;copy hook-related file request received",
+            starttime=start_time, interval=2)
 
         self.server.expect(NODE, {ATTR_NODE_state: 'free'},
                            id=single_mom.shortname, interval=2)
@@ -216,8 +225,18 @@ class TestOfflineVnode(TestFunctional):
         if self.moms.values()[1].has_vnode_defs():
             self.moms.values()[1].delete_vnode_defs()
 
+        start_time = int(time.time())
         self.create_multi_vnodes(2)
         self.create_mom_hook()
+
+        # Check if hook files were copied to mom
+        for m in self.moms.values():
+            m.log_match(
+                "h1.HK;copy hook-related file request received",
+                starttime=start_time, interval=2)
+            m.log_match(
+                "h1.PY;copy hook-related file request received",
+                starttime=start_time, interval=2)
 
         # set one natural node to have higher ncpus than the other one so
         # that the job only goes to this natural node.
@@ -274,9 +293,19 @@ class TestOfflineVnode(TestFunctional):
         if self.moms.values()[1].has_vnode_defs():
             self.moms.values()[1].delete_vnode_defs()
 
+        start_time = int(time.time())
         self.create_multi_vnodes(num_moms=2, num_vnode=1)
 
         self.create_bad_begin_hook()
+
+        # Check if hook files were copied to mom
+        for m in self.moms.values():
+            m.log_match(
+                "h2.HK;copy hook-related file request received",
+                starttime=start_time, interval=2)
+            m.log_match(
+                "h2.PY;copy hook-related file request received",
+                starttime=start_time, interval=2)
 
         j1 = Job(TEST_USER)
 
@@ -314,8 +343,17 @@ class TestOfflineVnode(TestFunctional):
         if mom.has_vnode_defs():
             mom.delete_vnode_defs()
 
+        start_time = int(time.time())
         self.create_multi_vnodes(1)
         self.create_bad_startup_hook()
+
+        # Check if hook files were copied to mom
+        mom.log_match(
+            "h3.HK;copy hook-related file request received",
+            starttime=start_time, interval=2)
+        mom.log_match(
+            "h3.PY;copy hook-related file request received",
+            starttime=start_time, interval=2)
 
         mom.stop()
         mom.start()
