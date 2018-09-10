@@ -5550,8 +5550,8 @@ mom_get_sample(void)
 {
 	struct dirent		*dent = NULL;
 	FILE			*fd = NULL;
-	static char		path[1024];
-	char			procname[256];
+	static char		path[MAXPATHLEN + 1];
+	char			procname[384]; /* space for dent->d_name plus extra */
 	struct stat		sb;
 	proc_stat_t		*ps = NULL;
 #if MOM_CPUSET
@@ -5673,8 +5673,8 @@ mom_get_sample(void)
 		}
 
 		ps->start_time = linux_time + (starttime / hz);
-		memset(ps->comm, 0, COMSIZE);
-		strncpy(ps->comm, path, COMSIZE-1);
+		snprintf(ps->comm, sizeof(ps->comm), "%.*s",
+			(int)(sizeof(ps->comm) - 1), path);
 
 		ps->utime = JTOS(ps->utime);
 		ps->stime = JTOS(ps->stime);

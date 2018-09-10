@@ -439,9 +439,10 @@ connection_idlecheck(void)
 static int
 engage_authentication(conn_t *pconn)
 {
-	int	ret;
-	int	sd;
-	char ebuf[ PBS_MAXHOSTNAME + 1 ];
+	int ret;
+	int sd;
+	char ebuf[PBS_MAXHOSTNAME + 1] = {'\0'};
+	char *msgbuf;
 
 	if (pconn == NULL || (sd = pconn->cn_sock) <0) {
 		log_err(-1, __func__, "bad arguments, unable to authenticate");
@@ -462,9 +463,11 @@ engage_authentication(conn_t *pconn)
 
 	(void)get_connecthost(sd, ebuf, sizeof(ebuf));
 
-	sprintf(logbuf,	"unable to authenticate connection from (%s:%d)",
+	pbs_asprintf(&msgbuf,
+		"unable to authenticate connection from (%s:%d)",
 		ebuf, pconn->cn_port);
-	log_err(-1, __func__ , logbuf);
+	log_err(-1, __func__ , msgbuf);
+	free(msgbuf);
 
 	return (-1);
 }
@@ -793,15 +796,15 @@ close_conn(int sd)
 
 	if (svr_conn[idx]->cn_active != ChildPipe) {
 		if (CS_close_socket(sd) != CS_SUCCESS) {
-
-			char ebuf[ PBS_MAXHOSTNAME + 1 ] = {'\0'};
+			char ebuf[PBS_MAXHOSTNAME + 1] = {'\0'};
+			char *msgbuf;
 
 			(void)get_connecthost(sd, ebuf, sizeof(ebuf));
-			snprintf(logbuf,sizeof(logbuf),
+			pbs_asprintf(&msgbuf,
 				"problem closing security context for %s:%d",
 				ebuf, svr_conn[idx]->cn_port);
-
-			log_err(-1, __func__ , logbuf);
+			log_err(-1, __func__ , msgbuf);
+			free(msgbuf);
 		}
 
 		/* if there is a function to call on close, do it */

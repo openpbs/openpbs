@@ -2114,7 +2114,6 @@ argv_list_to_str(pbs_list_head *argv_list)
 	i=0;
 
 	/* calculate the list size */
-	len = 0;
 	plist = (svrattrl *)GET_NEXT(*argv_list);
 	while (plist) {
 		if (plist->al_value == NULL) {
@@ -2257,10 +2256,11 @@ main(int argc, char *argv[], char *envp[])
 
 		/* Just pass on the command line arguments onto Python */
 
-		snprintf(python_cmdline, MAXBUF, "%s", python_path);
-		for (i=1; i < argc; i++) {
-			snprintf(python_cmdline, MAXBUF, "%s \"%s\"",
-				python_cmdline, argv[i]);
+		snprintf(python_cmdline, sizeof(python_cmdline), "%s", python_path);
+		for (i = 1; i < argc; i++) {
+			strncat(python_cmdline, " \"", sizeof(python_cmdline) - strlen(python_cmdline) - 1);
+			strncat(python_cmdline, argv[i], sizeof(python_cmdline) - strlen(python_cmdline) - 1);
+			strncat(python_cmdline, "\"", sizeof(python_cmdline) - strlen(python_cmdline) - 1);
 		}
 		rc = wsystem(python_cmdline, INVALID_HANDLE_VALUE);
 #else
@@ -2272,17 +2272,17 @@ main(int argc, char *argv[], char *envp[])
 #ifdef SYSTEM_PYTHON_PATH
 		snprintf(python_path, MAXPATHLEN, "%s", SYSTEM_PYTHON_PATH);
 		pc = strdup(SYSTEM_PYTHON_PATH);
-		if(pc == NULL) {
+		if (pc == NULL) {
 			fprintf(stderr, "Out of memory\n");
 			return 1;
 		}
 		pc2 = strstr(pc,"bin/python");
-		if(pc2 == NULL) {
+		if (pc2 == NULL) {
 			fprintf(stderr, "Python executable not found!\n");
 			return 1;
 		}
 		*pc2 = '\0';
-		if(strlen(pc) > 0) {
+		if (strlen(pc) > 0) {
 			snprintf(python_prefix, MAXPATHLEN, "%s", pc);
 			free(pc);
 		} else {
@@ -2399,22 +2399,22 @@ main(int argc, char *argv[], char *envp[])
 		char 	**argv2 = NULL;
 		int	argc2;
 		int	argv_len = 0;
-		char    hook_script[MAXPATHLEN+1];
-		char	the_input[MAXPATHLEN+1];
-		char	the_output[MAXPATHLEN+1];
-		char	the_server_output[MAXPATHLEN+1];
-		char	the_data[MAXPATHLEN+1];
-		char    path_log[MAXPATHLEN+1];
-		char    logname[MAXPATHLEN+1];
+		char    hook_script[MAXPATHLEN + 1] = {'\0'};
+		char	the_input[MAXPATHLEN + 1] = {'\0'};
+		char	the_output[MAXPATHLEN + 1] = {'\0'};
+		char	the_server_output[MAXPATHLEN + 1] = {'\0'};
+		char	the_data[MAXPATHLEN + 1] = {'\0'};
+		char    path_log[MAXPATHLEN + 1] = {'\0'};
+		char    logname[MAXPATHLEN + 1] = {'\0'};
 
-		char	hook_name[MAXBUF+1];
-		char	req_user[PBS_MAXUSER+1];
-		char	req_host[PBS_MAXHOSTNAME+1];
-		char	hookstr_type[MAXBUF+1];
-		char	hookstr_event[MAXBUF+1];
+		char	hook_name[MAXBUF + 1] = {'\0'};
+		char	req_user[PBS_MAXUSER + 1] = {'\0'};
+		char	req_host[PBS_MAXHOSTNAME + 1] = {'\0'};
+		char	hookstr_type[MAXBUF + 1] = {'\0'};
+		char	hookstr_event[MAXBUF + 1] = {'\0'};
 		int	hook_alarm = 0;
 		int	c, j;
-		int	errflg=0;
+		int	errflg = 0;
 		unsigned int hook_event = 0;
 		struct python_script	*py_script = NULL;
 		pbs_list_head default_list, event, event_job, event_job_o,
@@ -2447,19 +2447,9 @@ main(int argc, char *argv[], char *envp[])
 		char	*argv_str_orig = NULL;
 		char	*argv_str = NULL;
 		int	print_progname = 0;
-		int	print_argv= 0;
-		int	print_env= 0;
+		int	print_argv = 0;
+		int	print_env = 0;
 
-		the_input[0] = '\0';
-		the_output[0] = '\0';
-		the_server_output[0] = '\0';
-		the_data[0] = '\0';
-		hook_name[0] = '\0';
-		req_user[0] = '\0';
-		req_host[0] = '\0';
-		hookstr_type[0] = '\0';
-		hookstr_event[0] = '\0';
-		hook_script[0] = '\0';
 		logname[0] = '\0';
 		strcpy(path_log, ".");
 
@@ -2498,8 +2488,7 @@ main(int argc, char *argv[], char *envp[])
 						fprintf(stderr, "pbs_python: illegal -i value\n");
 						errflg++;
 					} else {
-						strncpy(the_input, optarg,
-							sizeof(the_input)-1);
+						snprintf(the_input, sizeof(the_input), "%s", optarg);
 					}
 					break;
 				case 'o':
@@ -2509,8 +2498,7 @@ main(int argc, char *argv[], char *envp[])
 						fprintf(stderr, "pbs_python: illegal -o value\n");
 						errflg++;
 					} else {
-						strncpy(the_output, optarg,
-							sizeof(the_output)-1);
+						snprintf(the_output, sizeof(the_output), "%s", optarg);
 					}
 					break;
 				case 's':
@@ -2520,8 +2508,7 @@ main(int argc, char *argv[], char *envp[])
 						fprintf(stderr, "pbs_python: illegal -s value\n");
 						errflg++;
 					} else {
-						strncpy(the_data, optarg,
-							sizeof(the_data)-1);
+						snprintf(the_data, sizeof(the_data), "%s", optarg);
 						pbs_python_set_use_static_data_value(1);
 					}
 					break;
@@ -2532,8 +2519,7 @@ main(int argc, char *argv[], char *envp[])
 						fprintf(stderr, "pbs_python: illegal -L value\n");
 						errflg++;
 					} else {
-						strncpy(path_log, optarg,
-							sizeof(path_log)-1);
+						snprintf(path_log, sizeof(path_log), "%s", optarg);
 					}
 					break;
 				case 'l':
@@ -2543,8 +2529,7 @@ main(int argc, char *argv[], char *envp[])
 						fprintf(stderr, "pbs_python: illegal -l value\n");
 						errflg++;
 					} else {
-						strncpy(logname, optarg,
-							sizeof(logname)-1);
+						snprintf(logname, sizeof(logname), "%s", optarg);
 					}
 					break;
 				case 'e':
@@ -2678,7 +2663,7 @@ main(int argc, char *argv[], char *envp[])
 			if (strcmp(plist->al_name, "type") == 0) {
 				hook_event = \
 				     hookstr_event_toint(plist->al_value);
-				sprintf(hookstr_event, "%d", hook_event);
+				sprintf(hookstr_event, "%u", hook_event);
 			} else if (strcmp(plist->al_name, "hook_name") == 0) {
 				strcpy(hook_name, plist->al_value);
 			} else if (strcmp(plist->al_name, "requestor") == 0) {
@@ -2723,21 +2708,35 @@ main(int argc, char *argv[], char *envp[])
 		forward2back_slash(logname);
 #endif
 		if ((logname[0] != '\0') && (!is_full_path(logname))) {
-			char	curdir[MAXPATHLEN+1];
-			char	full_logname[MAXPATHLEN+1];
-			char	slash;
+			char	curdir[MAXPATHLEN + 1];
+			char	full_logname[MAXPATHLEN + 1];
+			char	*slash;
 #ifdef WIN32
-			slash = '\\';
+			slash = "\\";
 #else
-			slash = '/';
+			slash = "/";
 #endif
 			/* save current working dir before any chdirs */
 			if (getcwd(curdir, MAXPATHLEN) == NULL) {
 				fprintf(stderr, "getcwd failed\n");
 				exit(2);
 			}
-			snprintf(full_logname, sizeof(full_logname), "%s%c%s", curdir, slash, logname);
-			strncpy(logname, full_logname, sizeof(logname)-1);
+			if ((strlen(curdir) + strlen(logname) + 1) >= sizeof(full_logname)) {
+				fprintf(stderr, "log file path too long\n");
+				exit(2);
+			}
+			/*
+			 * The following silliness is brought to you by gcc version 8.
+			 * Having checked to ensure full_logname is large enough we
+			 * should be able to snprintf() the entire string in one call.
+			 * However, the bounds checking in gcc version 8 is overzealous
+			 * and generates a format-overflow warning forcing us to use
+			 * strcat() instead.
+			 */
+			snprintf(full_logname, sizeof(full_logname), "%s", curdir);
+			strncat(full_logname, slash, sizeof(full_logname) - strlen(full_logname));
+			strncat(full_logname, logname, sizeof(full_logname) - strlen(full_logname));
+			snprintf(logname, sizeof(logname), "%s", full_logname);
 		}
 
 		/* set python interp data */
@@ -3450,7 +3449,7 @@ main(int argc, char *argv[], char *envp[])
 		}
 pbs_python_end:
 		if (pbs_python_get_reboot_host_flag() == TRUE) {
-			char *reboot_cmd = NULL;
+			char *reboot_cmd;
 
 			fprintf(fp_out, "%s.%s=True\n", PBS_OBJ,
 				PBS_REBOOT_OBJECT);

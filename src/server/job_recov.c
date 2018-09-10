@@ -932,8 +932,7 @@ job_or_resv_recov_fs(char *filename, int objtype)
 	attribute_def	*p_attr_def = NULL;
 	int		final_attr;
 	int		attr_unkn;
-	char		namebuf[MAXPATHLEN];
-	char		err_buf[80];
+	char		namebuf[MAXPATHLEN + 1];
 
 	if (objtype == RESC_RESV_OBJECT) {
 
@@ -989,7 +988,7 @@ job_or_resv_recov_fs(char *filename, int objtype)
 	fds = open(namebuf, O_RDONLY, 0);
 	if (fds < 0) {
 		sprintf(log_buffer, "%s on %s", err_msg, namebuf);
-		log_err(errno, "job_or_resv_recov", log_buffer);
+		log_err(errno, __func__, log_buffer);
 		free((char *)pobj);
 		return NULL;
 	}
@@ -1000,8 +999,9 @@ job_or_resv_recov_fs(char *filename, int objtype)
 	/* read in job or resc_resv quick save sub-structure */
 
 	if (read(fds, (char *)p_fixed, fixed_size) != fixed_size) {
-		(void)sprintf(err_buf, "problem reading %s", namebuf);
-		log_err(errno, "job_or_resv_recov", err_buf);
+		char err_buf[MAXPATHLEN + 32];
+		snprintf(err_buf, sizeof(err_buf), "problem reading %s", namebuf);
+		log_err(errno, __func__, err_buf);
 		free((char *)pobj);
 		(void)close(fds);
 		return NULL;
@@ -1015,7 +1015,7 @@ job_or_resv_recov_fs(char *filename, int objtype)
 		pn = strrchr(namebuf, (int)'\\');
 	if (pn == NULL) {
 		sprintf(log_buffer, "bad path %s", namebuf);
-		log_err(errno, "job_or_resv_recov", log_buffer);
+		log_err(errno, __func__, log_buffer);
 		free((char *)pj);
 		(void)close(fds);
 		return NULL;
@@ -1026,10 +1026,12 @@ job_or_resv_recov_fs(char *filename, int objtype)
 #endif
 
 	if (strncmp(pn, prefix, strlen(prefix)) != 0) {
-		/* mismatch, discard job (reservation) */
+		char *msgbuf;
 
-		(void)sprintf(log_buffer, ptcs, pobjID, namebuf);
-		log_err(-1, "job_or_resv_recov", log_buffer);
+		/* mismatch, discard job (reservation) */
+		pbs_asprintf(&msgbuf, ptcs, pobjID, namebuf);
+		log_err(-1, __func__, msgbuf);
+		free(msgbuf);
 		free((char *)pobj);
 		(void)close(fds);
 		return NULL;
@@ -1040,7 +1042,7 @@ job_or_resv_recov_fs(char *filename, int objtype)
 	if (recov_attr_fs(fds, pobj, p_attr_def, wattr,
 		final_attr, attr_unkn) != 0) {
 
-		log_err(errno, "job_or_resv_recov", "error from recov_attr");
+		log_err(errno, __func__, "error from recov_attr");
 		if (objtype == RESC_RESV_OBJECT) {
 
 #ifndef PBS_MOM		/*MOM doesn't know about resource reservations*/

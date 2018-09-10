@@ -4559,7 +4559,7 @@ create_py_resvlist(pbs_list_head *resvlist)
 		if ((plist_next == NULL) ||
 			(strcmp(plist->al_name, plist_next->al_name) != 0)) {
 
-			strncpy(rqs.rq_id, plist->al_name, sizeof(rqs.rq_id));
+			snprintf(rqs.rq_id, sizeof(rqs.rq_id), "%s", plist->al_name);
 
 			py_ra = Py_BuildValue("(s)", rqs.rq_id); /* NEW ref */
 			if (py_ra == NULL) {
@@ -7643,6 +7643,7 @@ pbsv1mod_meth_is_attrib_val_settable(PyObject *self, PyObject *args, PyObject *k
 		char dtype[STRBUF];
 		int  dlen = 0;
 		char *the_dtype = NULL;
+		char *msgbuf;
 
 		memset(cls, '\0', STRBUF);
 		memset(att, '\0', STRBUF);
@@ -7678,20 +7679,21 @@ pbsv1mod_meth_is_attrib_val_settable(PyObject *self, PyObject *args, PyObject *k
 			}
 		}
 
-		snprintf(log_buffer, LOG_BUF_SIZE-1,
+		pbs_asprintf(&msgbuf,
 			"value for class <%s> attribute <%s> must be 'None' or '%s%s%s'",
-			cls, att, vtype, the_dtype?",":"",
-			the_dtype?the_dtype:"");
-		log_buffer[LOG_BUF_SIZE-1] = '\0';
+			cls, att, vtype,
+			the_dtype ? "," : "",
+			the_dtype ? the_dtype : "");
 
 		if (is_resource == 1)
-		PyErr_SetString(\
-		pbs_python_types_table[PP_BAD_RESC_VTYPE_ERR_IDX].t_class,
-				log_buffer);
+			PyErr_SetString(
+				pbs_python_types_table[PP_BAD_RESC_VTYPE_ERR_IDX].t_class,
+				msgbuf);
 		else
-		PyErr_SetString(\
-		pbs_python_types_table[PP_BADATTR_VTYPE_ERR_IDX].t_class,
-				log_buffer);
+			PyErr_SetString(
+				pbs_python_types_table[PP_BADATTR_VTYPE_ERR_IDX].t_class,
+				msgbuf);
+		free(msgbuf);
 		goto IAVS_ERROR_EXIT;
 	}
 

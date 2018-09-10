@@ -45,8 +45,6 @@ extern "C" {
 /* Max size of buffer to store data*/
 #define PF_BUF_SIZE 8192
 
-#define LOG_BUF_SIZE 4096
-
 /* Limits the number of simultaneous X applications that a single job
  can run in the background to 24 . 1 socket fd is used for storing
  the X11 listening socket fd and 2 socket fds are used whenever an

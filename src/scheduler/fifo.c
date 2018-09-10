@@ -263,7 +263,7 @@ update_cycle_status(struct status *policy, time_t current_time)
 	enum prime_time prime;		/* current prime time status */
 	struct tm *ptm;
 	char logbuf[MAX_LOG_SIZE];
-	char logbuf2[MAX_LOG_SIZE];
+	char logbuf2[MAX_LOG_SIZE / 2];
 	struct tm *tmptr;
 
 	if (policy == NULL)

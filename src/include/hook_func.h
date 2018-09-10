@@ -43,6 +43,7 @@ extern "C" {
 
 #include "work_task.h"
 #include "job.h"
+#include "hook.h"
 
 /*
  * hook_func.h - structure definitions for hook objects
@@ -66,7 +67,7 @@ extern "C" {
 #define MOM_HOOK_SEND_ACTIONS (MOM_HOOK_ACTION_SEND_ATTRS | MOM_HOOK_ACTION_SEND_SCRIPT | MOM_HOOK_ACTION_SEND_CONFIG)
 
 struct mom_hook_action {
-	char            hookname[MAXPATHLEN+1];
+	char            hookname[PBS_HOOK_NAME_SIZE];
 	unsigned int	action;
 	int		do_delete_action_first; /* force order between delete and send actions */
 	long long int	tid;	/* transaction id to group actions under */

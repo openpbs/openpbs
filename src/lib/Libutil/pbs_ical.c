@@ -112,9 +112,9 @@ get_num_occurrences(char *rrule, time_t dtstart, char *tz)
 
 	icalerror_set_error_state(ICAL_PARSE_ERROR, ICAL_ERROR_NONFATAL);
 #ifdef LIBICAL_API2
-    icalerror_set_errors_are_fatal(0);
+	icalerror_set_errors_are_fatal(0);
 #else
-    icalerror_errors_are_fatal = 0;
+	icalerror_errors_are_fatal = 0;
 #endif
 	localzone = icaltimezone_get_builtin_timezone(tz);
 
@@ -196,9 +196,9 @@ get_occurrence(char *rrule, time_t dtstart, char *tz, int idx)
 
 	icalerror_set_error_state(ICAL_PARSE_ERROR, ICAL_ERROR_NONFATAL);
 #ifdef LIBICAL_API2
-    icalerror_set_errors_are_fatal(0);
+	icalerror_set_errors_are_fatal(0);
 #else
-    icalerror_errors_are_fatal = 0;
+	icalerror_errors_are_fatal = 0;
 #endif
     localzone = icaltimezone_get_builtin_timezone(tz);
 
@@ -285,9 +285,9 @@ check_rrule(char *rrule, time_t dtstart, time_t dtend, char *tz, int *err_code)
 
 	icalerror_set_error_state(ICAL_PARSE_ERROR, ICAL_ERROR_NONFATAL);
 #ifdef LIBICAL_API2
-    icalerror_set_errors_are_fatal(0);
+	icalerror_set_errors_are_fatal(0);
 #else
-    icalerror_errors_are_fatal = 0;
+	icalerror_errors_are_fatal = 0;
 #endif
 
 	if (tz == NULL || rrule == NULL)

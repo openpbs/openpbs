@@ -289,9 +289,10 @@ svr_enquejob(job *pjob)
 			server.sv_qs.sv_numjobs++;
 			server.sv_jobstates[pjob->ji_qs.ji_state]++;
 			if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) {
-				int indx;
 				struct ajtrkhd *ptbl = pjob->ji_ajtrk;
 				if (ptbl) {
+					int indx;
+
 					for (indx = 0; indx < ptbl->tkm_ct; ++indx)
 						set_subjob_tblstate(pjob, indx, pjob->ji_qs.ji_state);
 				}
@@ -547,7 +548,6 @@ svr_dequejob(job *pjob)
 {
 	int	   bad_ct = 0;
 	pbs_queue *pque;
-	int	   rc;
 
 	/* remove job from server's all job list and reduce server counts */
 
@@ -569,7 +569,7 @@ svr_dequejob(job *pjob)
 	}
 
 	if ((pque = pjob->ji_qhdr) != NULL) {
-
+		int rc;
 
 		/* update any entity count and entity resources usage at que */
 
@@ -638,9 +638,7 @@ int
 svr_setjobstate(job *pjob, int newstate, int newsubstate)
 {
 	int    changed = 0;
-	int    oldstate;
 	pbs_queue *pque = pjob->ji_qhdr;
-	long newaccruetype;
 	pbs_sched *psched;
 
 	/*
@@ -656,6 +654,7 @@ svr_setjobstate(job *pjob, int newstate, int newsubstate)
 	 */
 
 	if (pjob->ji_qs.ji_substate != JOB_SUBSTATE_TRANSICM) {
+		int oldstate;
 
 		/* Not a new job, update the counts and save if needed */
 
@@ -734,6 +733,8 @@ svr_setjobstate(job *pjob, int newstate, int newsubstate)
 
 	/* eligible_time_enable */
 	if (server.sv_attr[SRV_ATR_EligibleTimeEnable].at_val.at_long == 1) {
+		long newaccruetype;
+
 		/* determine accrue type */
 		newaccruetype = determine_accruetype(pjob);
 
@@ -1256,7 +1257,7 @@ chk_wt_limits_STF(resource *resc_minwt, resource *resc_maxwt, pbs_queue *pque, a
 int
 chk_resc_limits(attribute *pattr, pbs_queue *pque)
 {
-	resource 	*atresc = NULL;
+	resource 	*atresc;
 	resource 	*resc_maxwt = NULL;
 	resource 	*resc_minwt = NULL;
 
@@ -1830,7 +1831,6 @@ default_std(job *pjob, int key, char *to)
 char *
 prefix_std_file(job *pjob, int key)
 {
-	int	 len;
 	char	*name = NULL;
 	char	*outputhost;
 	char	*wdir;
@@ -1841,6 +1841,8 @@ prefix_std_file(job *pjob, int key)
 		outputhost = get_hostPart(pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str);
 	wdir     = get_variable(pjob, "PBS_O_WORKDIR");
 	if (outputhost) {
+		int len;
+
 		len = strlen(outputhost) +
 			strlen(pjob->ji_wattr[(int)JOB_ATR_jobname].at_val.at_str)
 		+ PBS_MAXSEQNUM + strlen(PBS_FILE_ARRAY_INDEX_TAG) + 6;
@@ -2000,16 +2002,12 @@ set_select_and_place(int objtype, void *pobj, attribute *patr)
 	static char  *cvt = NULL;
 	static size_t cvt_len;
 	char	     *ndspec;
-	size_t	      cvtneed;
-	attribute_def *objatrdef;
 	resource     *presc;
 	resource     *prescsl;
 	resource     *prescpc;
 	resource_def *prdefnd;
 	resource_def *prdefpc;
 	resource_def *prdefsl;
-	resource_def *prdefcopy;
-	svrattrl     *psvrl;
 	int	      rc;
 	extern  int   resc_access_perm;
 
@@ -2060,6 +2058,7 @@ set_select_and_place(int objtype, void *pobj, attribute *patr)
 		}
 
 	} else {
+		attribute_def *objatrdef;
 
 		/* No nodes spec, use ncpus/mem/arch/host/software	*/
 		/* from the resource_List attribute			*/
@@ -2072,14 +2071,19 @@ set_select_and_place(int objtype, void *pobj, attribute *patr)
 		CLEAR_HEAD(collectresc);
 		resc_access_perm = READ_ONLY;
 		if (objatrdef->at_encode(patr, &collectresc, objatrdef->at_name, NULL, ATR_ENCODE_CLIENT, NULL) > 0) {
+			svrattrl *psvrl;
 
 			*cvt = '1';
 			*(cvt+1) = '\0';
 			psvrl = (svrattrl *)GET_NEXT(collectresc);
 			while (psvrl) {
+				resource_def *prdefcopy;
+
 				prdefcopy = find_resc_def(svr_resc_def, psvrl->al_resc,
 					svr_resc_size);
 				if (prdefcopy && (prdefcopy->rs_flags & ATR_DFLAG_CVTSLT)) {
+					size_t cvtneed;
+
 					/* how much space is needed in cvt buffer, 	 */
 					/* +5 = one for : = possible quotes and null */
 					cvtneed = strlen(psvrl->al_resc) +
@@ -2377,7 +2381,6 @@ make_schedselect(attribute *patrl, resource *pselect,
 	char        *chunk;
 	int	     i;
 	int	     firstchunk;
-	int	     j;
 	size_t	     len;
 	int 	     nchk;
 	int          already_set = 0;
@@ -2439,6 +2442,7 @@ make_schedselect(attribute *patrl, resource *pselect,
 		if (parse_chunk(chunk, &nchk, &nelem, &pkvp, &nchunk_internally_set) == 0)
 #endif /* localmod 082 */
 		{
+			int j;
 
 			/* first check for any invalid resources in the select */
 			for (j=0; j<nelem; ++j) {
@@ -2778,10 +2782,10 @@ set_resc_deflt(void *pobj, int objtype, pbs_queue *pque)
 void
 set_statechar(job *pjob)
 {
-	static char suspend    = 'S';
-	static char useractive = 'U';
-
 	if (pjob->ji_qs.ji_state == JOB_STATE_RUNNING) {
+		static char suspend = 'S';
+		static char useractive = 'U';
+
 		if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend)
 			pjob->ji_wattr[JOB_ATR_state].at_val.at_char = suspend;
 		else if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_Actsuspd)
@@ -2831,10 +2835,7 @@ state_char2int(char stc)
 void
 eval_chkpnt(attribute *jobckp, attribute *queckp)
 {
-	int jobs;
-	char queues[30];
 	char *pv;
-	char ckt;
 
 	if (((jobckp->at_flags & ATR_VFLAG_SET) == 0)  ||
 		((queckp->at_flags & ATR_VFLAG_SET) == 0))
@@ -2842,6 +2843,10 @@ eval_chkpnt(attribute *jobckp, attribute *queckp)
 
 	pv = jobckp->at_val.at_str;
 	if ((*pv == 'c') || (*pv == 'w')) {
+		int jobs;
+		char queues[30];
+		char ckt;
+
 		ckt = *pv;
 		if (*++pv == '=')
 			pv++;
@@ -3142,16 +3147,16 @@ static	void
 Time4reply(struct work_task *ptask)
 {
 	resc_resv	*presv = ptask->wt_parm1;
-	char		buf[256] = {0};
 
 	if (presv->ri_brp) {
+		char buf[512] = {0};
 		if (presv->ri_qs.ri_state == RESV_UNCONFIRMED ||
 			presv->ri_qs.ri_state == RESV_BEING_ALTERED)
-			sprintf(buf, "%s UNCONFIRMED",  presv->ri_qs.ri_resvID);
+			snprintf(buf, sizeof(buf), "%s UNCONFIRMED", presv->ri_qs.ri_resvID);
 		else if (presv->ri_qs.ri_state == RESV_CONFIRMED) {
 			/*Remark: this part of the if is unlikely to happen*/
 			/*        reply would happen in req_rescreserve()  */
-			sprintf(buf, "%s CONFIRMED",  presv->ri_qs.ri_resvID);
+			snprintf(buf, sizeof(buf), "%s CONFIRMED", presv->ri_qs.ri_resvID);
 		}
 
 		(void)reply_text(presv->ri_brp, PBSE_NONE, buf);
@@ -3183,7 +3188,6 @@ static	void
 Time4resv(struct work_task *ptask)
 {
 	resc_resv	*presv = ptask->wt_parm1;
-	job		*pjob;
 	int		pbs_ecode;
 	int		state, sub;
 
@@ -3196,6 +3200,7 @@ Time4resv(struct work_task *ptask)
 
 	pbs_ecode = change_enableORstart(presv, Q_CHNG_START, "True");
 	if (!pbs_ecode) {
+		job *pjob;
 
 		/*
 		 *this is really the line  we want once the scheduler
@@ -4897,29 +4902,29 @@ void
 resv_mailAction(resc_resv *presv, struct batch_request *preq)
 {
 	int	force;
-	char	text[512];
+	char	text[PBS_MAXUSER + PBS_MAXHOSTNAME + 64];
 
-	if (preq->rq_type == PBS_BATCH_DeleteResv) {
+	if (preq->rq_type != PBS_BATCH_DeleteResv)
+		return;
 
-		sprintf(text, "Requesting party: %s@%s",
-			preq->rq_user, preq->rq_host);
+	snprintf(text, sizeof(text), "Requesting party: %s@%s",
+		preq->rq_user, preq->rq_host);
 #ifdef NAS /* localmod 028 */
-		/*
-		 * The extend attribute can contain additional explanation
-		 */
-		if (preq->rq_extend) {
-			size_t len;
-			len = strlen(text);
-			snprintf(text+len, sizeof(text)-len,
-				"\nReason: %s\n", preq->rq_extend);
-		}
-#endif /* localmod 028 */
-		if (preq->rq_fromsvr != 0)
-			force = MAIL_FORCE;
-		else
-			force = MAIL_NORMAL;
-		svr_mailownerResv(presv, MAIL_ABORT, force, text);
+	/*
+	 * The extend attribute can contain additional explanation
+	 */
+	if (preq->rq_extend) {
+		size_t len;
+		len = strlen(text);
+		snprintf(text+len, sizeof(text)-len,
+			"\nReason: %s\n", preq->rq_extend);
 	}
+#endif /* localmod 028 */
+	if (preq->rq_fromsvr != 0)
+		force = MAIL_FORCE;
+	else
+		force = MAIL_NORMAL;
+	svr_mailownerResv(presv, MAIL_ABORT, force, text);
 }
 
 
@@ -5171,16 +5176,11 @@ update_eligible_time(long newaccruetype, job *pjob)
 int
 alter_eligibletime(attribute *pattr, void *pobject, int actmode)
 {
-		static char *msg[] = { "initial_time", "ineligible_time", "eligible_time",\
-			 "run_time", "exiting" };
-	char *strtime;
 	static char errtime[] = "00:00:00";
-	char logstr[256];
 	long timestamp = (long)time_now; /* accrual begins from here */
 	job * pjob = (job*)pobject;
 	long oldaccruetype = pjob->ji_wattr[(int)JOB_ATR_accrue_type].at_val.at_long;
 	long newaccruetype = oldaccruetype; /* We are not changing accrue type */
-	long accrued_time;
 
 	/* distinguish between genuine qalter and call by action */
 	if (actmode == ATR_ACTION_ALTER) {
@@ -5188,8 +5188,18 @@ alter_eligibletime(attribute *pattr, void *pobject, int actmode)
 		/* eligible_time_enable is OFF, then error */
 		if (!server.sv_attr[SRV_ATR_EligibleTimeEnable].at_val.at_long) {
 			return PBSE_ETEERROR;
-		}
-		else {
+		} else {
+			long accrued_time;
+			char *strtime;
+			char logstr[256];
+			static char *msg[] = {
+				"initial_time",
+				"ineligible_time",
+				"eligible_time",
+			 	"run_time",
+				"exiting"
+			};
+
 			accrued_time = (long)time_now -
 				pjob->ji_wattr[(int)JOB_ATR_sample_starttime].at_val.at_long;
 
@@ -5271,7 +5281,7 @@ svr_saveorpurge_finjobhist(job *pjob)
 void
 svr_clean_job_history(struct work_task *pwt)
 {
-	job 	*pjob = NULL;
+	job 	*pjob;
 	job 	*nxpjob = NULL;
 	int 	walltime_used = 0;
 
@@ -5546,12 +5556,11 @@ svr_setjob_histinfo(job *pjob, histjob_type type)
 	int newsubstate = 0;
 	struct ajtrkhd *ptbl = NULL;
 	struct work_task *pwt = NULL;
-	char qname[PBS_MAXQUEUENAME+PBS_MAXHOSTNAME+1];
 
 	if (type == T_MOV_JOB) { /* MOVED job */
-
 		char *destination = pjob->ji_qs.ji_destin;
 		char *tmpstr = NULL;
+		char qname[PBS_MAXROUTEDEST + 1];
 
 		if (destination == NULL || *destination == '\0') {
 			return;
@@ -5589,7 +5598,8 @@ svr_setjob_histinfo(job *pjob, histjob_type type)
 		if (tmpstr != NULL) {
 			*tmpstr = '\0';
 		}
-		snprintf(pjob->ji_qs.ji_queue, PBS_MAXQUEUENAME+1, "%s", qname);
+		snprintf(pjob->ji_qs.ji_queue, sizeof(pjob->ji_qs.ji_queue),
+			"%.*s", PBS_MAXQUEUENAME, qname);
 
 		/* Set the queue attribute to destination */
 		(void)job_attr_def[(int)JOB_ATR_in_queue].at_decode(
@@ -5953,13 +5963,13 @@ find_ms_full_host_and_port(job *pjob, int *port)
 			return NULL;
 
 		}
-		if ((p=strchr(ms_exec_host, '/')) != NULL)
+		if ((p = strchr(ms_exec_host, '/')) != NULL)
 			*p = '\0';
 
-			if ((p=strchr(ms_exec_host, ':')) != NULL) {
-				*p = '\0';
-				*port = atoi(p+1);
-			}
+		if ((p = strchr(ms_exec_host, ':')) != NULL) {
+			*p = '\0';
+			*port = atoi(p + 1);
+		}
 	} else if (pjob->ji_wattr[(int)JOB_ATR_exec_host].at_flags & ATR_VFLAG_SET) {
 		ms_exec_host = strdup(pjob->ji_wattr[(int)JOB_ATR_exec_host].at_val.at_str);
 		if (ms_exec_host == NULL) {
@@ -5967,7 +5977,7 @@ find_ms_full_host_and_port(job *pjob, int *port)
 			return NULL;
 
 		}
-		if ((p=strchr(ms_exec_host, '/')) != NULL)
+		if ((p = strchr(ms_exec_host, '/')) != NULL)
 			*p = '\0';
 	}
 	return (ms_exec_host);
@@ -6056,7 +6066,6 @@ post_send_job_exec_update_req(struct work_task *pwt)
 {
 	struct batch_request *mom_preq = NULL;
 	struct batch_request *cli_preq = NULL;
-	char   err_msg[LOG_BUF_SIZE] = {0};
 	int bcode = 0;
 
 	if (pwt == NULL)
@@ -6071,6 +6080,8 @@ post_send_job_exec_update_req(struct work_task *pwt)
 	cli_preq = pwt->wt_parm2;
 
 	if (bcode) {
+		char err_msg[LOG_BUF_SIZE];
+
 		/* also take note of the reject msg if any */
 		if (mom_preq->rq_reply.brp_choice == BATCH_REPLY_CHOICE_Text) {
 			(void)snprintf(err_msg, sizeof(err_msg), "%s", mom_preq->rq_reply.brp_un.brp_txt.brp_str);
@@ -6351,7 +6362,7 @@ resc_sum_values_action(enum resc_sum_action action, resource_def *resc_def, char
 	}
 
 	if (action == RESC_SUM_ADD) {
-		int	l, r;
+		int	r;
 		struct	resc_sum *tmp_rs;
 		int	found_match = 0;
 		struct	attribute tmpatr;
@@ -6374,6 +6385,8 @@ resc_sum_values_action(enum resc_sum_action action, resource_def *resc_def, char
 		}
 
 		if (k == resc_sum_values_size) {
+			int l;
+
 			/* add a new entry */
 
 			l = resc_sum_values_size + 5;
@@ -6497,7 +6510,6 @@ expand_select_spec(char *select_str)
 	int		snelma;
 	static int	snelmt = 0; /* must be static per parse_chunk_r() */
 	static key_value_pair *skv = NULL; /* must be static per parse_chunk_r() */
-	int		rc = 0;
 	int		i, j;
 	char		*psubspec;
 	char		buf[LOG_BUF_SIZE+1];
@@ -6518,6 +6530,8 @@ expand_select_spec(char *select_str)
 	/* parse chunk from select spec */
 	psubspec = parse_plus_spec_r(selbuf, &last3, &hasprn3);
 	while (psubspec) {
+		int rc;
+
 #ifdef NAS /* localmod 082 */
 		rc = parse_chunk_r(psubspec, 0, &snc, &snelma, &snelmt, &skv, NULL);
 #else
@@ -7335,8 +7349,8 @@ recreate_exec_vnode(job *pjob, char *vnodelist, char *err_msg,
 	/* output message about nodes to be freed but no part of job */
 	if ((vnodelist != NULL) && (err_msg != NULL) &&
 					(err_msg_sz > 0)) {
-		char	*tmpbuf = NULL;
-		char	*tmpbuf2 = NULL;
+		char	*tmpbuf;
+		char	*tmpbuf2;
 		char	*pc = NULL;
 		char	*pc1 = NULL;
 		char	*save_ptr;	/* posn for strtok_r() */

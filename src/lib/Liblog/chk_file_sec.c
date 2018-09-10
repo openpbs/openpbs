@@ -51,19 +51,13 @@
 #include <sys/stat.h>
 #include "portability.h"
 #include "log.h"
+#include "libutil.h"
+#include "pbs_ifl.h"
 
 
 #ifndef	S_ISLNK
 #define	S_ISLNK(m)	(((m) & S_IFMT) == S_IFLNK)
 #endif
-
-#ifndef MAXPATHLEN
-#ifdef PATHSIZE
-#define MAXPATHLEN PATHSIZE
-#else
-#define MAXPATHLEN 1024
-#endif /* PATHSIZE */
-#endif /* MAXPATHLEN */
 
 #ifdef WIN32
 
@@ -317,23 +311,17 @@ chk_file_sec(char *path, int isdir, int sticky, int disallow, int fullpath)
 
 chkerr:
 	if (rc != 0) {
-		char	*error_buf;
+		char *error_buf;
 
-		if ((error_buf = malloc(1024)) == 0) {
-			log_err(rc, "chk_file_sec", "Malloc failed");
-		} else {
-			sprintf(error_buf,
-				"Security violation \"%s\" resolves to \"%s\"",
-				path, real);
-			log_err(rc, "chk_file_sec", error_buf);
-
+		pbs_asprintf(&error_buf,
+			"Security violation \"%s\" resolves to \"%s\"",
+			path, real);
+		log_err(rc, __func__, error_buf);
 #ifdef WIN32
-			if (strlen(log_buffer) > 0) {
-				log_err(rc, "chk_file_sec", log_buffer);
-			}
+		if (strlen(log_buffer) > 0)
+			log_err(rc, __func__, log_buffer);
 #endif
-			free(error_buf);
-		}
+		free(error_buf);
 	}
 
 	free(real);
@@ -448,23 +436,17 @@ tmp_file_sec(char *path, int isdir, int sticky, int disallow, int fullpath)
 
 chkerr:
 	if (rc != 0) {
-		char	*error_buf;
+		char *error_buf;
 
-		if ((error_buf = malloc(1024)) == NULL) {
-			log_err(rc, "chk_file_sec", "Malloc failed");
-		} else {
-			sprintf(error_buf,
-				"Security violation \"%s\" resolves to \"%s\"",
-				path, real);
-			log_err(rc, "chk_file_sec", error_buf);
-
+		pbs_asprintf(&error_buf,
+			"Security violation \"%s\" resolves to \"%s\"",
+			path, real);
+		log_err(rc, __func__, error_buf);
 #ifdef WIN32
-			if (strlen(log_buffer) > 0) {
-				log_err(rc, "chk_file_sec", log_buffer);
-			}
+		if (strlen(log_buffer) > 0)
+			log_err(rc, __func__, log_buffer);
 #endif
-			free(error_buf);
-		}
+		free(error_buf);
 	}
 
 	free(real);

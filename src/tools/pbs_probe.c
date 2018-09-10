@@ -94,20 +94,13 @@
 #include <grp.h>
 #include "cmds.h"
 #include "pbs_version.h"
+#include "pbs_ifl.h"
 
 
 
 #ifndef	S_ISLNK
 #define	S_ISLNK(m)	(((m) & S_IFMT) == S_IFLNK)
 #endif
-
-#ifndef MAXPATHLEN
-#ifdef PATHSIZE
-#define MAXPATHLEN PATHSIZE
-#else
-#define MAXPATHLEN 1024
-#endif /* PATHSIZE */
-#endif /* MAXPATHLEN */
 
 #define	DEMARC	'/'
 #define DFLT_MSGTBL_SZ (1024)
@@ -1206,7 +1199,6 @@ typedef struct	infrastruct {
 	struct statdata statd;
 } INFRA;
 
-static const char	ident[] = "@(#)";
 static void	am_i_authorized(void);
 static void	infrastruct_params(struct infrastruct *, int);
 static void	adjust_for_os(struct infrastruct *pinf);
@@ -2084,19 +2076,19 @@ static	int
 get_realpath_values(struct infrastruct *pinf)
 {
 	char *real = NULL;
-	char path[MAXPATHLEN];
+	char path[MAXPATHLEN + 1];
 	char *endhead;
 	char demarc[]="/";
 	int  i, j;
 	MPUG *pmpug;
 	int  good_prime[PBS_last];
-	char msg[1024];
+	char *msgbuf;
 
 	/*
 	 * First try and resolve to a real path the MPUG path
 	 * data belonging to *pinf's "pri" member
 	 */
-	for (i=0; i<PBS_last; ++i) {
+	for (i = 0; i < PBS_last; ++i) {
 		good_prime[i] = 0;
 		if (pinf->pri.pbs_mpug[i].path) {
 			if ((real = realpath(pinf->pri.pbs_mpug[i].path, NULL)) != NULL) {
@@ -2108,19 +2100,27 @@ get_realpath_values(struct infrastruct *pinf)
 				 * system not able to convert path string to valid
 				 * file system path
 				 */
-				snprintf(msg, sizeof(msg), "Unable to convert the primary, %s, string to a real path\n%s\n", origin_names[i], strerror(errno));
-				put_msg_in_table(pinf, SRC_pri, MSG_pri, msg);
-				snprintf(msg, sizeof(msg), "%s: %s\n", origin_names[i], pinf->pri.pbs_mpug[i].path);
-				put_msg_in_table(pinf, SRC_pri, MSG_pri, msg);
+				pbs_asprintf(&msgbuf,
+					"Unable to convert the primary, %s, string to a real path\n%s\n",
+					origin_names[i], strerror(errno));
+				put_msg_in_table(pinf, SRC_pri, MSG_pri, msgbuf);
+				free(msgbuf);
+				pbs_asprintf(&msgbuf, "%s: %s\n",
+					origin_names[i], pinf->pri.pbs_mpug[i].path);
+				put_msg_in_table(pinf, SRC_pri, MSG_pri, msgbuf);
+				free(msgbuf);
 				/* good_prime[i] = 0; */
 			}
 		} else {
-			if (pinf->pri.pbs_mpug[i].notReq == 0)
-				snprintf(msg, sizeof(msg), "Missing primary path %s", origin_names[i]);
-			put_msg_in_table(pinf, SRC_pri, MSG_pri, msg);
+			if (pinf->pri.pbs_mpug[i].notReq == 0) {
+				pbs_asprintf(&msgbuf, "Missing primary path %s", 
+					origin_names[i]);
+				put_msg_in_table(pinf, SRC_pri, MSG_pri, msgbuf);
+				free(msgbuf);
+			}
 		}
 	}
-	for (i=0; i<PBS_last; ++i) {
+	for (i = 0; i < PBS_last; ++i) {
 		if (good_prime[i] == 0 && pinf->pri.pbs_mpug[i].notReq == 0) {
 			print_problems(pinf);
 			exit(0);
@@ -2153,16 +2153,20 @@ get_realpath_values(struct infrastruct *pinf)
 			if ((fd = open(path, O_RDONLY)) != -1) {
 				if (fstat(fd, &st) != -1) {
 					if ((st.st_mode & 0777) != 0600) {
-						snprintf(msg, sizeof(msg), "%s, permission must "
-							"be 0600\n", path);
+						pbs_asprintf(&msgbuf,
+							"%s, permission must be 0600\n",
+							path);
 						put_msg_in_table(NULL,
-							SRC_home, MSG_real, msg);
+							SRC_home, MSG_real, msgbuf);
+						free(msgbuf);
 					}
 					if (st.st_uid != 0) {
-						snprintf(msg, sizeof(msg), "%s, owner must "
-							"be root\n", path);
+						pbs_asprintf(&msgbuf,
+							"%s, owner must be root\n",
+							path);
 						put_msg_in_table(NULL,
-							SRC_home, MSG_real, msg);
+							SRC_home, MSG_real, msgbuf);
+						free(msgbuf);
 					}
 					if (st.st_size < sizeof(buf) &&
 						read(fd, buf, st.st_size) ==
@@ -2172,10 +2176,12 @@ get_realpath_values(struct infrastruct *pinf)
 						if (pw != NULL)
 							pbs_dataname[0] = strdup(buf);
 						else {
-							snprintf(msg, sizeof(msg), "db_user %s "
-								"does not exist\n", buf);
+							pbs_asprintf(&msgbuf,
+								"db_user %s does not exist\n",
+								buf);
 							put_msg_in_table(NULL,
-								SRC_home, MSG_real, msg);
+								SRC_home, MSG_real, msgbuf);
+							free(msgbuf);
 						}
 					}
 				}
@@ -2190,11 +2196,11 @@ get_realpath_values(struct infrastruct *pinf)
 		strcat(path, demarc);
 		endhead = &path[strlen(path)];
 
-		for (i=0; i<PH_last; ++i) {
+		for (i = 0; i < PH_last; ++i) {
 			if ((pmpug = pinf->home[i]) == NULL)
 				continue;
 
-			for (j=0; j<home_sizes[i]; ++j) {
+			for (j = 0; j < home_sizes[i]; ++j) {
 				if (pmpug[j].path) {
 
 					/* proceed only if parent realpath is not NULL */
@@ -2210,11 +2216,15 @@ get_realpath_values(struct infrastruct *pinf)
 					} else if ((pmpug[j].notReq & notbits) == 0) {
 
 						if (errno == ENOENT)
-							snprintf(msg, sizeof(msg), "%s, %s\n", path, strerror(errno));
+							pbs_asprintf(&msgbuf, "%s, %s\n",
+								path, strerror(errno));
 						else
-							snprintf(msg, sizeof(msg), "%s,  errno = %d\n", path, errno);
+							pbs_asprintf(&msgbuf,
+								"%s,  errno = %d\n",
+								path, errno);
 
-						put_msg_in_table(NULL, SRC_home, MSG_real, msg);
+						put_msg_in_table(NULL, SRC_home, MSG_real, msgbuf);
+						free(msgbuf);
 					}
 				}
 			}
@@ -2233,12 +2243,12 @@ get_realpath_values(struct infrastruct *pinf)
 		strcat(path, demarc);
 		endhead = &path[strlen(path)];
 
-		for (i=0; i<EXEC_last; ++i) {
+		for (i = 0; i < EXEC_last; ++i) {
 
 			if ((pmpug = pinf->exec[i]) == NULL)
 				continue;
 
-			for (j=0; j<exec_sizes[i]; ++j) {
+			for (j = 0; j < exec_sizes[i]; ++j) {
 				if (pmpug[j].path) {
 
 					/* proceed only if parent realpath is not NULL */
@@ -2254,10 +2264,14 @@ get_realpath_values(struct infrastruct *pinf)
 					} else if ((pmpug[j].notReq & notbits) == 0) {
 
 						if (errno == ENOENT)
-							snprintf(msg, sizeof(msg), "%s, %s\n", path, strerror(errno));
+							pbs_asprintf(&msgbuf, "%s, %s\n",
+								path, strerror(errno));
 						else
-							snprintf(msg, sizeof(msg), "%s,  errno = %d\n", path, errno);
-						put_msg_in_table(NULL, SRC_exec, MSG_real, msg);
+							pbs_asprintf(&msgbuf,
+								"%s,  errno = %d\n",
+								path, errno);
+						put_msg_in_table(NULL, SRC_exec, MSG_real, msgbuf);
+						free(msgbuf);
 					}
 				}
 			}

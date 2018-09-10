@@ -162,9 +162,9 @@ is_child_path(char *dir, char *path)
 
 	/* if file path is relative, combine it with directory */
 	if (!is_full_path(path)) {
-		(void)snprintf(fullpath, sizeof(fullpath), "%s/%s", dir, path);
+		snprintf(fullpath, sizeof(fullpath), "%s/%s", dir, path);
 	} else {
-		strncpy(fullpath, path, sizeof(fullpath));
+		snprintf(fullpath, sizeof(fullpath), "%s", path);
 	}
 
 	dir_real = malloc(sizeof(char) * (MAXPATHLEN + 1));

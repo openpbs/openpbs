@@ -1584,7 +1584,7 @@ char	*argv[];
 			return TCL_OK;
 
 		case 2:
-			strncpy(rtime, argv[1], sizeof(rtime));
+			snprintf(rtime, sizeof(rtime), "%s", argv[1]);
 			len = strlen(rtime);
 			when = 0;
 			if (len < 12)
@@ -1662,7 +1662,7 @@ char	*argv[];
 			t->tm_sec = 0;
 			t->tm_isdst = -1;
 			when = mktime(t);
-			strncpy(rtime, argv[2], sizeof(rtime));
+			snprintf(rtime, sizeof(rtime), "%s", argv[2]);
 			len = strlen(rtime);
 			break;
 

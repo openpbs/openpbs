@@ -117,7 +117,7 @@ static tpp_router_t *this_router = NULL;
 static tpp_router_t *
 alloc_router(char *name, tpp_addr_t *address)
 {
-	tpp_router_t *r = NULL;
+	tpp_router_t *r;
 	tpp_addr_t *addrs = NULL;
 	int count = 0;
 
@@ -490,8 +490,7 @@ static int
 router_post_connect_handler(int tfd, void *data, void *c)
 {
 	tpp_context_t *ctx = (tpp_context_t *) c;
-	tpp_router_t *r;
-	int rc;
+	int rc = 0;
 	tpp_join_pkt_hdr_t hdr;
 	tpp_chunk_t chunks[2];
 
@@ -499,7 +498,7 @@ router_post_connect_handler(int tfd, void *data, void *c)
 		return 0;
 
 	if (ctx->type == TPP_ROUTER_NODE) {
-		r = (tpp_router_t *) ctx->ptr;
+		tpp_router_t *r = (tpp_router_t *) ctx->ptr;
 
 		if (tpp_conf->auth_type == TPP_AUTH_EXTERNAL) {
 			char ebuf[TPP_LOGBUF_SZ];
@@ -517,8 +516,11 @@ router_post_connect_handler(int tfd, void *data, void *c)
 			}
 
 			if ((adata = tpp_conf->get_ext_auth_data(tpp_conf->auth_type, &alen, ebuf, sizeof(ebuf))) == NULL) {
-				snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Authentication failed: %s", ebuf);
-				tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
+				char *msgbuf;
+
+				pbs_asprintf(&msgbuf, "Authentication failed: %s", ebuf);
+				tpp_log_func(LOG_CRIT, __func__, msgbuf);
+				free(msgbuf);
 				return -1;
 			}
 
@@ -563,7 +565,7 @@ router_post_connect_handler(int tfd, void *data, void *c)
 			return 0;
 		}
 	}
-	return 0;
+	return rc;
 }
 
 /**
@@ -725,13 +727,14 @@ router_close_handler_inner(int tfd, int error, void *c, int hop)
 	} else if (ctx->type == TPP_ROUTER_NODE) {
 
 		tpp_router_t *r = (tpp_router_t *) ctx->ptr;
-		AVL_IX_REC *pkey;
 		int rc;
 		tpp_leaf_t *l;
 		tpp_que_t deleted_leaves;
 		tpp_que_elem_t *n = NULL;
 
 		if (r->state == TPP_ROUTER_STATE_CONNECTED) {
+			AVL_IX_REC *pkey;
+
 			/* do any logging or leaf processing only if it was connected earlier */
 
 			snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ,
@@ -782,6 +785,8 @@ router_close_handler_inner(int tfd, int error, void *c, int hop)
 			/* now remove each of the leaf's addresses from avl_clusters */
 			while ((n = TPP_QUE_NEXT(&deleted_leaves, n))) {
 				l = (tpp_leaf_t *) TPP_QUE_DATA(n);
+				if (l == NULL)
+					continue;
 
 				if (l->leaf_type  == TPP_LEAF_NODE_LISTEN) {
 					tree_add_del(AVL_my_leaves_notify, &l->leaf_addrs[0], NULL, TREE_OP_DEL);
@@ -976,7 +981,6 @@ router_timer_handler(time_t now)
 {
 	tpp_ctl_pkt_hdr_t hdr;
 	tpp_chunk_t chunks[1];
-	int len;
 	int send_update = 0;
 	int ret = -1;
 
@@ -992,6 +996,8 @@ router_timer_handler(time_t now)
 	tpp_unlock(&router_lock);
 
 	if (send_update == 1) {
+		int len;
+
 		hdr.type = TPP_CTL_MSG;
 		hdr.code = TPP_MSG_UPDATE;
 
@@ -1093,9 +1099,14 @@ router_pkt_handler(int tfd, void *data, int len, void *c)
 
 			rc = tpp_conf->validate_ext_auth_data(TPP_AUTH_EXTERNAL, adata, alen, ebuf, sizeof(ebuf));
 			if (rc != 0) {
-				snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "tfd=%d connection from %s failed authentication. %s", tfd, tpp_netaddr(&connected_host), ebuf);
-				tpp_log_func(LOG_CRIT, NULL, tpp_get_logbuf());
-				tpp_send_ctl_msg(tfd, TPP_MSG_AUTHERR, &connected_host, &this_router->router_addr, -1, rc, tpp_get_logbuf());
+				char *msgbuf;
+
+				pbs_asprintf(&msgbuf,
+					"tfd=%d connection from %s failed authentication. %s",
+					tfd, tpp_netaddr(&connected_host), ebuf);
+				tpp_log_func(LOG_CRIT, NULL, msgbuf);
+				tpp_send_ctl_msg(tfd, TPP_MSG_AUTHERR, &connected_host, &this_router->router_addr, -1, rc, msgbuf);
+				free(msgbuf);
 				free(adata);
 				return 0; /* let connection be alive, so we can send error */
 			}
@@ -1154,7 +1165,7 @@ router_pkt_handler(int tfd, void *data, int len, void *c)
 
 			/* check if type was router or leaf */
 			if (node_type == TPP_ROUTER_NODE) {
-				tpp_router_t *r = NULL;
+				tpp_router_t *r;
 
 				TPP_DBPRT(("Recvd TPP_CTL_JOIN from pbs_comm node %s", tpp_netaddr(&connected_host)));
 
@@ -1477,10 +1488,8 @@ router_pkt_handler(int tfd, void *data, int len, void *c)
 		break; /* TPP_CTL_LEAVE */
 
 		case TPP_MCAST_DATA: {
-			tpp_leaf_t *l;
 			int i, k;
-			unsigned int src_sd;
-			tpp_addr_t *src_host, *dest_host;
+			tpp_addr_t *src_host;
 			int *rlist = NULL;
 			int rsize = 0;
 			int csize = 0;
@@ -1514,7 +1523,7 @@ router_pkt_handler(int tfd, void *data, int len, void *c)
 			orig_hop = mhdr->hop;
 
 			snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ,
-				"tfd=%d, MCAST packet from %s, %d member streams, cmprsd_len=%d, info_len=%d, len=%d",
+				"tfd=%d, MCAST packet from %s, %u member streams, cmprsd_len=%d, info_len=%d, len=%d",
 				tfd, tpp_netaddr(src_host), num_streams, cmprsd_len, info_len, payload_len);
 			tpp_log_func(LOG_INFO, NULL, tpp_get_logbuf());
 
@@ -1548,13 +1557,16 @@ router_pkt_handler(int tfd, void *data, int len, void *c)
 			 * first to other routers and then to local nodes
 			 */
 			for (k = num_streams - 1; k >= 0; k--) {
+				tpp_addr_t *dest_host;
+				unsigned int src_sd;
+				tpp_leaf_t *l;
 
 				minfo = (tpp_mcast_pkt_info_t *)(((char *) minfo_base) + k * sizeof(tpp_mcast_pkt_info_t));
 
 				dest_host = &minfo->dest_addr;
 				src_sd = ntohl(minfo->src_sd);
 
-				TPP_DBPRT(("MCAST data on fd=%d", src_sd));
+				TPP_DBPRT(("MCAST data on fd=%u", src_sd));
 
 				tpp_lock(&router_lock);
 				l = find_tree(AVL_cluster_leaves, dest_host);
@@ -1610,7 +1622,7 @@ router_pkt_handler(int tfd, void *data, int len, void *c)
 							if (cmprsd_len > 0)
 								free(minfo_base);
 							snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Out of memory allocating pbs_comm list of %lu bytes",
-								sizeof(int) * rsize);
+								(unsigned long)(sizeof(int) * rsize));
 							tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
 							return -1;
 						}
@@ -1641,7 +1653,7 @@ router_pkt_handler(int tfd, void *data, int len, void *c)
 							if (cmprsd_len > 0)
 								free(minfo_base);
 							snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Out of memory resizing pbs_comm list to %lu bytes",
-								sizeof(int) * rsize);
+								(unsigned long)(sizeof(int) * rsize));
 							tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
 							return -1;
 						}
@@ -1904,8 +1916,6 @@ del_router_from_leaf(tpp_leaf_t *l, int tfd)
 static int
 add_route_to_leaf(tpp_leaf_t *l, tpp_router_t *r, int index)
 {
-	int sz, i;
-
 	/*
 	 * Associate the router with the leaf
 	 *
@@ -1917,6 +1927,9 @@ add_route_to_leaf(tpp_leaf_t *l, tpp_router_t *r, int index)
 		return -1; /* error - index must be set before calling add route */
 
 	if (index >= l->tot_routers) {
+		int sz;
+		int i;
+
 		sz = index + 3;
 		l->r = realloc(l->r, sz * sizeof(tpp_router_t *));
 		for (i = l->tot_routers; i < sz; i++)
@@ -1928,13 +1941,16 @@ add_route_to_leaf(tpp_leaf_t *l, tpp_router_t *r, int index)
 	l->num_routers++;
 
 #ifdef DEBUG
-	fprintf(stderr, "Leaf %s:%d routers [", tpp_netaddr(&l->leaf_addrs[0]), l->conn_fd);
-	for (i = 0; i < l->tot_routers; i++) {
-		if (l->r[i] && l->r[i]->router_name)
-			fprintf(stderr, "%s:%d,", l->r[i]->router_name, l->r[i]->conn_fd);
-	}
-	fprintf(stderr, "],router_count=%d\n", l->num_routers);
+	{
+		int i;
 
+		fprintf(stderr, "Leaf %s:%d routers [", tpp_netaddr(&l->leaf_addrs[0]), l->conn_fd);
+		for (i = 0; i < l->tot_routers; i++) {
+			if (l->r[i] && l->r[i]->router_name)
+				fprintf(stderr, "%s:%d,", l->r[i]->router_name, l->r[i]->conn_fd);
+		}
+		fprintf(stderr, "],router_count=%d\n", l->num_routers);
+	}
 #endif
 
 	return index;

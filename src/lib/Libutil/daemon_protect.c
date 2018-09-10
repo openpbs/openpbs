@@ -7,10 +7,7 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include "server_limits.h"
-
-#ifndef MAXPATHLEN
-#define MAXPATHLEN 1024
-#endif
+#include "pbs_ifl.h"
 
 /**
  * @brief

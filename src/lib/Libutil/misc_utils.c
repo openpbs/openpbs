@@ -65,6 +65,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -403,6 +404,70 @@ pbs_fgets_extend(char **pbuf, int *pbuf_size, FILE *fp)
 	return buf;
 }
 
+/**
+ * @brief
+ *	Internal asprintf() implementation for use on all platforms
+ *
+ * @param[in, out] dest - character pointer that will point to allocated
+ *			  space ** must be freed by caller **
+ * @param[in] fmt - format for printed string
+ * @param[in] ... - arguments to format string
+ *
+ * @return int
+ * @retval -1 - Error
+ * @retval >=0 - Length of new string, not including terminator
+ */
+int
+pbs_asprintf(char **dest, const char *fmt, ...)
+{
+	va_list args;
+	int len, rc = -1;
+	char *buf = NULL;
+
+	if (!dest)
+		return -1;
+	*dest = NULL;
+	if (!fmt)
+		return -1;
+	va_start(args, fmt);
+#ifdef WIN32
+	len = _vscprintf(fmt, args);
+#else
+	{
+		va_list dupargs;
+		char c;
+
+		va_copy(dupargs, args);
+		len = vsnprintf(&c, 0, fmt, dupargs);
+		va_end(dupargs);
+	}
+#endif
+	if (len < 0)
+		goto pbs_asprintf_exit;
+	buf = malloc(len + 1);
+	if (!buf)
+		goto pbs_asprintf_exit;
+	rc = vsnprintf(buf, len + 1, fmt, args);
+	if (rc != len) {
+		rc = -1;
+		goto pbs_asprintf_exit;
+	}
+	*dest = buf;
+pbs_asprintf_exit:
+	va_end(args);
+	if (rc < 0) {
+		char *tmp;
+
+		tmp = realloc(buf, 1);
+		if (tmp)
+			buf = tmp;
+		if (buf) {
+			*buf = '\0';
+			*dest = buf;
+		}
+	}
+	return rc;
+}
 
 /**
 
@@ -1171,7 +1236,7 @@ convert_duration_to_str(time_t duration, char* buf, int bufsize)
 	snprintf(buf, bufsize, "%02ld:%02ld:%02ld", hour, min, sec);
 }
 
-/*
+/**
  * @brief
  *	Determines if 'str' ends with three consecutive double quotes,
  *	before a newline (if it exists).
@@ -1228,7 +1293,7 @@ ends_with_triple_quotes(char *str, int strip_quotes)
 	return (0);
 }
 
-/*
+/**
  * @brief
  *	Determines if 'str' begins with three consecutive double quotes.
  *

@@ -224,8 +224,12 @@ static char server_out[PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 2]; /* Destination s
 static struct batch_status *ss = NULL;
 static char *dfltqsubargs = NULL; /* Default qsub arguments */
 static int sd_svr; /* return from pbs_connect */
-static char script_tmp[MAXPATHLEN + 1] = ""; /* name of script file copy */
-static char fl[2 * MAXPATHLEN + 1]; /* the filename used as the pipe name */
+static char script_tmp[MAXPATHLEN + 1] = {'\0'}; /* name of script file copy */
+#ifdef WIN32
+static char fl[(2 * MAXPATHLEN) + 1] = {'\0'}; /* the filename used as the pipe name */
+#else
+static char fl[sizeof(((struct sockaddr_un *)0)->sun_path)] = {'\0'}; /* the filename used as the pipe name */
+#endif
 #define BUFSIZE 1024 /* windows default pipe buffer size */
 #define PIPE_TIMEOUT 0 /* default windows pipe timeout */
 static char *pbs_hostvar = NULL; /* buffer containing ",PBS_O_HOST=" and host name */
@@ -3598,9 +3602,9 @@ get_script(FILE *file, char *script, char *prefix)
 
 #ifdef WIN32
 
-	_snprintf(tmp_name, MAXPATHLEN, "%s\\%s", tmpdir, tmp_template);
+	_snprintf(tmp_name, sizeof(tmp_name), "%s\\%s", tmpdir, tmp_template);
 	if ((in = _mktemp(tmp_name)) != NULL) {
-		snprintf(script, MAXPATHLEN, "%s", tmp_name);
+		snprintf(script, MAXPATHLEN + 1, "%s", tmp_name);
 		if ((TMP_FILE = fopen(in, "w+")) == NULL)
 			err = 1;
 	} else {
@@ -3609,10 +3613,10 @@ get_script(FILE *file, char *script, char *prefix)
 
 #else /* not windows */
 
-	snprintf(tmp_name, MAXPATHLEN, "%s/%s", tmpdir, tmp_template);
+	snprintf(tmp_name, sizeof(tmp_name), "%s/%s", tmpdir, tmp_template);
 	fds = mkstemp(tmp_name); /* returns file descriptor */
 	if (fds != -1) {
-		snprintf(script, MAXPATHLEN, "%s", tmp_name);
+		snprintf(script, MAXPATHLEN + 1, "%s", tmp_name);
 		if ((TMP_FILE = fdopen(fds, "w+")) == NULL)
 			err = 1;
 	} else {
@@ -5310,7 +5314,7 @@ do_submit2(char *rmsg)
  *	Get the filename to be used for communications. This is created by
  *	appending the target server name and the user login name to a filename.
  *
- * @param[out]	fl - The filename used for the communication pipe/socket for
+ * @param[out]	fname - The filename used for the communication pipe/socket for
  *			the communication between background and forground
  *			qsub processes.
  *
@@ -5318,12 +5322,12 @@ do_submit2(char *rmsg)
  *
  */
 static void
-get_comm_filename(char *fl)
+get_comm_filename(char *fname)
 {
 	char *env_svr = getenv(PBS_CONF_SERVER_NAME);
 	char *env_port = getenv(PBS_CONF_BATCH_SERVICE_PORT);
 
-	sprintf(fl, "\\\\.\\pipe\\pipe_%s_%s_%s_%s_%s_%s",
+	sprintf(fname, "\\\\.\\pipe\\pipe_%s_%s_%s_%s_%s_%s",
 		((server_out == NULL || server_out[0] == 0)?
 		"default" : server_out),
 		getlogin(),
@@ -5349,7 +5353,7 @@ get_comm_filename(char *fl)
  *	and results in the background qsub process to quit silently.
  *
  *
- * @param[in]	fl - The filename used for the communication pipe/socket for
+ * @param[in] fname - The filename used for the communication pipe/socket for
  *			the communication between background and forground
  *			qsub processes.
  * @param[in] handle - Handle to synchronization event between foreground and
@@ -5358,7 +5362,7 @@ get_comm_filename(char *fl)
  *
  */
 static void
-do_daemon_stuff(char *file, char *handle, char *server)
+do_daemon_stuff(char *fname, char *handle, char *server)
 {
 	HANDLE h_pipe;
 	int rc, pipe_rc;
@@ -5388,7 +5392,7 @@ do_daemon_stuff(char *file, char *handle, char *server)
 		goto error;
 
 	o_overlap.hEvent = h_event;
-	h_pipe = CreateNamedPipe(file,
+	h_pipe = CreateNamedPipe(fname,
 		PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
 		PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
 		PIPE_UNLIMITED_INSTANCES,
@@ -5675,19 +5679,20 @@ again:
  * @brief
  *	Sets the filename to be used for the unix domain socket based comm.
  *	This is formed by appending the UID and the target server name to the
- *	filename.
+ *	filename. The length of the string is restricted to the length of the
+ *	global variable fl. This is fairly small (108 characters) for Linux.
  *
- * @param[out] fl - The filename in tmpdir that is used as the unix domain socket
+ * @param[out] fname - The filename in tmpdir that is used as the unix domain socket
  *			file.
  *
  */
 static void
-get_comm_filename(char *fl)
+get_comm_filename(char *fname)
 {
 	char *env_svr = getenv(PBS_CONF_SERVER_NAME);
 	char *env_port = getenv(PBS_CONF_BATCH_SERVICE_PORT);
 
-	sprintf(fl, "%s/pbs_%s_%lu_%s_%s_%s_%s",
+	sprintf(fname, "%s/pbs_%.16s_%lu_%.8s_%.32s_%.16s_%.5s",
 		tmpdir,
 		((server_out == NULL || server_out[0] == 0) ?
 		"default" : server_out),
@@ -5704,7 +5709,7 @@ get_comm_filename(char *fl)
  *	Check whether a unix domain socket file is available.
  *	That is an indication that a background qsub might already be running.
  *
- * @param[out]	fl - The filename used for the communication pipe/socket for
+ * @param[out]	fname - The filename used for the communication pipe/socket for
  *			the communication between background and forground
  *			qsub processes.
  *
@@ -5714,10 +5719,10 @@ get_comm_filename(char *fl)
  *
  */
 static int
-check_qsub_daemon(char *fl)
+check_qsub_daemon(char *fname)
 {
-	get_comm_filename(fl);
-	if (access(fl, F_OK) == 0) {
+	get_comm_filename(fname);
+	if (access(fname, F_OK) == 0) {
 		/* check if file is usable */
 		return 1;
 	}

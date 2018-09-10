@@ -1004,8 +1004,7 @@ find_job(char *jobid)
 	char buf[PBS_MAXSVRJOBID+1];
 
 	/* Make a copy of the job ID string before we modify it. */
-	strncpy(buf, jobid, sizeof(buf));
-	buf[PBS_MAXSVRJOBID] = '\0';
+	snprintf(buf, sizeof(buf), "%s", jobid);
 	/*
 	 * If @server_name was specified, it was used to route the
 	 * request to this server. It will not be part of the string

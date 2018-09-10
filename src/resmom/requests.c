@@ -5112,8 +5112,8 @@ req_del_hookfile(struct batch_request *preq) /* ptr to the decoded request   */
 			HOOK_SCRIPT_SUFFIX);
 	} else {
 		*p = '\0';
-		strncpy(hook_name, preq->rq_ind.rq_hookfile.rq_filename,
-			MAXPATHLEN);
+		snprintf(hook_name, sizeof(hook_name), "%s",
+			preq->rq_ind.rq_hookfile.rq_filename);
 		strcat(p, HOOK_FILE_SUFFIX);
 		if ((phook = find_hook(hook_name)) != NULL) {
 			delete_task_by_parm1(phook, DELETE_ONE);

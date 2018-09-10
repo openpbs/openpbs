@@ -59,7 +59,13 @@
  * include file for error/event logging
  */
 
-#define LOG_BUF_SIZE		4096
+/*
+ * The default log buffer size should be large enough to hold a short message
+ * together with the full pathname of a file. A full pathname may be up to 4096
+ * characters. Add to this an extra 256 characters. This helps to avoid format
+ * truncation warnings from certain compilers.
+ */
+#define LOG_BUF_SIZE 4352
 
 /* The following macro assist in sharing code between the Server and Mom */
 #define LOG_EVENT log_event

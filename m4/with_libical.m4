@@ -48,18 +48,26 @@ AC_DEFUN([PBS_AC_WITH_LIBICAL],
     libical_dir=["/usr"]
   )
   AC_MSG_CHECKING([for libical])
-  AS_IF([test -r "$libical_dir/include/ical.h"],
-    AS_IF([test "$libical_dir" != "/usr"],
-      [libical_inc="-I$libical_dir/include"]),
-    AS_IF([test -r "$libical_dir/include/libical/ical.h"],
-      [libical_inc="-I$libical_dir/include/libical"],
-      AC_MSG_ERROR([libical headers not found.])))
+  AS_IF([test -r "$libical_dir/include/libical/ical.h"],
+    [libical_include="$libical_dir/include"],
+    AC_MSG_ERROR([libical headers not found.])
+  )
+  libical_version=`$SED -n 's/^#define ICAL_VERSION "\([[0-9]]*\)..*/\1/p' "$libical_include/libical/ical.h"`
+  AS_IF([test "x$libical_version" = "x"],
+    AC_MSG_ERROR([Could not determine libical version.])
+  )
+  AS_IF([test $libical_version -gt 1],
+    AC_DEFINE([LIBICAL_API2], [], [Defined when libical version >= 2])
+  )
   AS_IF([test "$libical_dir" = "/usr"],
-    # Using system installed libical
+    dnl Using system installed libical
+    libical_inc=""
     AS_IF([test -r "/usr/lib64/libical.so" -o -r "/usr/lib/libical.so" -o -r "/usr/lib/x86_64-linux-gnu/libical.so"],
       [libical_lib="-lical"],
-      AC_MSG_ERROR([libical shared object library not found.])),
-    # Using developer installed libical
+      AC_MSG_ERROR([libical shared object library not found.])
+    ),
+    dnl Using developer installed libical
+    libical_inc="-I$libical_include"
     AS_IF([test -r "${libical_dir}/lib64/libical.a"],
       [libical_lib="${libical_dir}/lib64/libical.a"],
       AS_IF([test -r "${libical_dir}/lib/libical.a"],
@@ -72,23 +80,4 @@ AC_DEFUN([PBS_AC_WITH_LIBICAL],
   AC_SUBST(libical_inc)
   AC_SUBST(libical_lib)
   AC_DEFINE([LIBICAL], [], [Defined when libical is available])
-  version2_check="yes"
-  AS_IF([test "x$with_libical" != "x"],
-    AS_IF([test -r "${libical_dir}/lib/pkgconfig/libical.pc"],
-      export PKG_CONFIG_PATH=["${libical_dir}/lib/pkgconfig/:$PKG_CONFIG_PATH"],
-      AS_IF([test -r "${libical_dir}/lib64/pkgconfig/libical.pc"],
-        export PKG_CONFIG_PATH=["${libical_dir}/lib64/pkgconfig/:$PKG_CONFIG_PATH"],
-        version2_check="no"
-        AC_MSG_WARN([libical.pc file not found.])
-      )
-    )
-  )
-  AS_IF([test "x$version2_check" = "yes"],
-    [PKG_CHECK_MODULES([libical_api2],
-      [libical >= 2],
-      [AC_DEFINE([LIBICAL_API2], [], [Defined when libical version >= 2])],
-      [echo "libical version 2 is not available"]
-    )]
-  )
 ])
-

@@ -235,7 +235,7 @@ static phy_conn_t *get_transport_atomic(int tfd, int *slot_state);
 static void
 enque_lazy_connect(thrd_data_t *td, int tfd, int delay)
 {
-	conn_event_t *conn_ev, *p;
+	conn_event_t *conn_ev;
 	tpp_que_elem_t *n;
 	void *ret;
 
@@ -249,6 +249,8 @@ enque_lazy_connect(thrd_data_t *td, int tfd, int delay)
 
 	n = NULL;
 	while ((n = TPP_QUE_NEXT(&td->lazy_conn_que, n))) {
+		conn_event_t *p;
+
 		p = TPP_QUE_DATA(n);
 
 		/* sorted list, insert before node which has higher time */
@@ -292,7 +294,9 @@ trigger_lazy_connects(thrd_data_t *td, time_t now)
 
 	while ((n = TPP_QUE_NEXT(&td->lazy_conn_que, n))) {
 		q = TPP_QUE_DATA(n);
-		if (q && (now >= q->conn_time)) {
+		if (q == NULL)
+			continue;
+		if (now >= q->conn_time) {
 			(void) get_transport_atomic(q->tfd, &slot_state);
 			if (slot_state == TPP_SLOT_BUSY)
 				handle_cmd(td, q->tfd, TPP_CMD_ASSIGN, NULL);
@@ -427,15 +431,18 @@ tpp_cr_server_socket(int port)
 		return -1;
 	}
 	if (tpp_sock_bind(sd, (struct sockaddr *) &serveraddr, sizeof(serveraddr)) == -1) {
+		char *msgbuf;
 #ifdef HAVE_STRERROR_R
 		char buf[TPP_LOGBUF_SZ + 1];
+
 		if (strerror_r(errno, buf, sizeof(buf)) == 0)
-			snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "%s while binding to port %d", buf, port);
+			pbs_asprintf(&msgbuf, "%s while binding to port %d", buf, port);
 		else
 #endif
-			snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Error %d while binding to port %d", errno, port);
-		tpp_log_func(LOG_CRIT, NULL, tpp_get_logbuf());
-		fprintf(stderr, "%s", tpp_get_logbuf());
+			pbs_asprintf(&msgbuf, "Error %d while binding to port %d", errno, port);
+		tpp_log_func(LOG_CRIT, NULL, msgbuf);
+		fprintf(stderr, "%s", msgbuf);
+		free(msgbuf);
 		return -1;
 	}
 	if (tpp_sock_listen(sd, 1000) == -1) {
@@ -698,8 +705,6 @@ static phy_conn_t*
 alloc_conn(int tfd)
 {
 	phy_conn_t *conn;
-	void *p;
-	int newsize;
 
 	conn = calloc(1, sizeof(phy_conn_t));
 	if (!conn) {
@@ -714,6 +719,9 @@ alloc_conn(int tfd)
 	/* set to stream array */
 	tpp_lock(&cons_array_lock);
 	if (tfd >= conns_array_size - 1) {
+		int newsize;
+		void *p;
+
 		/* resize conns */
 		newsize = tfd + 100;
 		p = realloc(conns_array, sizeof(conns_array_type_t) * newsize);
@@ -1209,7 +1217,6 @@ assign_to_worker(int tfd, int delay, thrd_data_t *td)
 {
 	int slot_state;
 	phy_conn_t *conn;
-	int iters=0;
 
 	conn = get_transport_atomic(tfd, &slot_state);
 	if (conn == NULL || slot_state != TPP_SLOT_BUSY)
@@ -1221,6 +1228,8 @@ assign_to_worker(int tfd, int delay, thrd_data_t *td)
 	}
 
 	if (td == NULL) {
+		int iters = 0;
+
 		tpp_lock(&thrd_array_lock);
 		/* find a thread index to assign to, since none provided */
 		do {
@@ -1313,18 +1322,23 @@ add_transport_conn(phy_conn_t *conn)
 
 		if (tpp_sock_attempt_connection(conn->sock_fd, conn->conn_params->hostname, conn->conn_params->port) == -1) {
 			if (errno != EINPROGRESS && errno != EWOULDBLOCK && errno != EAGAIN) {
+				char *msgbuf;
 #ifdef HAVE_STRERROR_R
 				char buf[TPP_LOGBUF_SZ + 1];
+
 				if (strerror_r(errno, buf, sizeof(buf)) == 0)
-					snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ,
-						"%s while connecting to %s:%d", buf, conn->conn_params->hostname,
+					pbs_asprintf(&msgbuf,
+						"%s while connecting to %s:%d", buf,
+						conn->conn_params->hostname,
 						conn->conn_params->port);
 				else
 #endif
-					snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ,
-						"Error %d while connecting to %s:%d", errno, conn->conn_params->hostname,
+					pbs_asprintf(&msgbuf,
+						"Error %d while connecting to %s:%d", errno,
+						conn->conn_params->hostname,
 						conn->conn_params->port);
-				tpp_log_func(LOG_ERR, NULL, tpp_get_logbuf());
+				tpp_log_func(LOG_ERR, NULL, msgbuf);
+				free(msgbuf);
 				return -1;
 			}
 		} else {
@@ -1907,12 +1921,13 @@ handle_incoming_data(phy_conn_t *conn)
 {
 	int rc;
 	int torecv = 0;
-	int space_left = 0;
-	int offset = 0;
-	int closed = 0;
-	int amt = 0;
 
 	while (1) {
+		int space_left;
+		int offset;
+		int closed;
+		int amt;
+
 		offset = conn->scratch.pos - conn->scratch.data;
 		space_left = conn->scratch.len - offset; /* remaining space */
 		if (space_left == 0) {
@@ -1999,9 +2014,6 @@ handle_incoming_data(phy_conn_t *conn)
 static int
 add_pkts(phy_conn_t *conn)
 {
-	int pkt_len = 0;
-	int data_len = 0;
-	char *data;
 	char *pkt_start;
 	int avl_len;
 	int rc = 0;
@@ -2014,6 +2026,9 @@ add_pkts(phy_conn_t *conn)
 	avl_len = recv_len;
 
 	while (avl_len >= (sizeof(int) + sizeof(char))) {
+		int pkt_len;
+		int data_len;
+		char *data;
 
 		/*  We have enough data now to validate the header */
 		if (tpp_validate_hdr(tfd, pkt_start) != 0) {
@@ -2070,7 +2085,6 @@ static void
 send_data(phy_conn_t *conn)
 {
 	tpp_packet_t *p = NULL;
-	int tosend = 0;
 	int rc;
 	int can_send_more;
 	tpp_que_elem_t *n;
@@ -2096,6 +2110,8 @@ send_data(phy_conn_t *conn)
 	can_send_more = 1;
 
 	while (p && can_send_more) {
+		int tosend;
+
 		tosend = p->len - (p->pos - p->data);
 		if (p->pos == p->data) {
 			if (the_pkt_presend_handler) {

@@ -537,7 +537,6 @@ int
 perform_event(status *policy, timed_event *event)
 {
 	char logbuf[MAX_LOG_SIZE];
-	char logbuf2[MAX_LOG_SIZE];
 	char timebuf[128];
 	resource_resv *resresv;
 	int ret = 1;
@@ -592,9 +591,12 @@ perform_event(status *policy, timed_event *event)
 		event->event_func(event->event_ptr, event->event_func_arg);
 
 	if (ret) {
-		snprintf(logbuf2, MAX_LOG_SIZE, "Simulation: %s [%s]", logbuf, timebuf);
+		char *msgbuf;
+
+		pbs_asprintf(&msgbuf, "Simulation: %s [%s]", logbuf, timebuf);
 		schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-			event->name, logbuf2);
+			event->name, msgbuf);
+		free(msgbuf);
 	}
 	return ret;
 }

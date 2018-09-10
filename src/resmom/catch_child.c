@@ -1658,10 +1658,10 @@ end_loop:
 			 */
 			if (stream == -1) {
 				(void)kill_job(pjob, SIGKILL);
-				if ((pjob->ji_qs.ji_svrflags |
-					(JOB_SVFLG_CHKPT|
-					JOB_SVFLG_ChkptMig)) == 0)
+				if ((pjob->ji_qs.ji_svrflags &
+					(JOB_SVFLG_CHKPT | JOB_SVFLG_ChkptMig)) == 0) {
 					mom_deljob(pjob);
+				}
 				continue;
 			}
 

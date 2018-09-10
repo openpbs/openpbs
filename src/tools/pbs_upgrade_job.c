@@ -297,13 +297,16 @@ upgrade_job_file(int fd)
 	/* Copy the data to the new jobfix structure */
 	memset(&new_job, 0, sizeof(new_job));
 	memcpy(&new_job.ji_qs, &old_jobfix, sizeof(old_jobfix));
-	strncpy(new_job.ji_qs.ji_jobid, old_jobfix.ji_jobid, sizeof(old_jobfix.ji_jobid));
-	strncpy(new_job.ji_qs.ji_fileprefix, old_jobfix.ji_fileprefix,
-		sizeof(old_jobfix.ji_fileprefix));
-	strncpy(new_job.ji_qs.ji_queue, old_jobfix.ji_queue, sizeof(old_jobfix.ji_queue));
-	strncpy(new_job.ji_qs.ji_destin, old_jobfix.ji_destin, sizeof(old_jobfix.ji_destin));
+	snprintf(new_job.ji_qs.ji_jobid, sizeof(new_job.ji_qs.ji_jobid),
+		"%s", old_jobfix.ji_jobid);
+	snprintf(new_job.ji_qs.ji_fileprefix, sizeof(new_job.ji_qs.ji_fileprefix),
+		"%s", old_jobfix.ji_fileprefix);
+	snprintf(new_job.ji_qs.ji_queue, sizeof(new_job.ji_qs.ji_queue),
+		"%s", old_jobfix.ji_queue);
+	snprintf(new_job.ji_qs.ji_destin, sizeof(new_job.ji_qs.ji_destin),
+		"%s", old_jobfix.ji_destin);
 	new_job.ji_qs.ji_un_type = old_jobfix.ji_un_type;
-	memcpy(&new_job.ji_qs.ji_un, &old_jobfix.ji_un, sizeof(old_jobfix.ji_un));
+	memcpy(&new_job.ji_qs.ji_un, &old_jobfix.ji_un, sizeof(new_job.ji_qs.ji_un));
 
 	/* Open a temporary file to stage data */
 	tmp = tmpfile();
@@ -401,7 +404,7 @@ int
 upgrade_task_file(char *taskfile)
 {
 	FILE *tmp = NULL;
-	int fd = -1;
+	int fd;
 	int tmpfd = -1;
 	int len;
 	int ret;
@@ -437,7 +440,7 @@ upgrade_task_file(char *taskfile)
 	/* Copy the data to the new task structure */
 	memset(&new_task, 0, sizeof(new_task));
 	strncpy(new_task.ti_qs.ti_parentjobid, old_taskfix.ti_parentjobid,
-		sizeof(old_taskfix.ti_parentjobid));
+		sizeof(new_task.ti_qs.ti_parentjobid));
 	new_task.ti_qs.ti_parentnode = old_taskfix.ti_parentnode;
 	new_task.ti_qs.ti_myvnode = old_taskfix.ti_myvnode;
 	new_task.ti_qs.ti_parenttask = old_taskfix.ti_parenttask;
@@ -581,7 +584,7 @@ main(int argc, char *argv[])
 	}
 
 	/* Ensure the tasks directory exists */
-	strncpy(namebuf, jobfile, sizeof(namebuf));
+	snprintf(namebuf, sizeof(namebuf), "%s", jobfile);
 	p = strrchr(namebuf, '.');
 	if (!p) {
 		fprintf(stderr, "Missing job file suffix");

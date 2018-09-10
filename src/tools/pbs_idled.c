@@ -232,7 +232,7 @@ main(int argc, char *argv[], char *envp[])
 		}
 
 		if (pointer_query(dsp, w, &cur_xy))
-			if (cur_xy.x != prev_xy.x || cur_xy.y != cur_xy.y) {
+			if (cur_xy.x != prev_xy.x || cur_xy.y != prev_xy.y) {
 				do_update = 1;
 				prev_xy = cur_xy;
 			}

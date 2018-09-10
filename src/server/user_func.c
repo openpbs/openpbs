@@ -299,7 +299,7 @@ req_usercredential(struct batch_request *preq)
 	int	type;
 	char	*cred;
 	size_t	len;
-	char	info[512];
+	char	info[PBS_MAXUSER + PBS_MAXHOSTNAME + 2];
 	int	rval;
 
 	DBPRT(("%s: entered\n", __func__))
@@ -321,9 +321,7 @@ req_usercredential(struct batch_request *preq)
 		return;
 	}
 
-
-	sprintf(info, "%s@%s", preq->rq_user, preq->rq_host);
-
+	snprintf(info, sizeof(info), "%s@%s", preq->rq_user, preq->rq_host);
 
 #ifdef WIN32
 	if (strcmpi(preq->rq_user, user) != 0) {

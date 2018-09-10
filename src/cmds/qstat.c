@@ -833,7 +833,7 @@ altdsp_statjob(struct batch_status *pstat, struct batch_status *prtheader, int a
 						tasks = pat->value;
 				} else if (strcmp(pat->resource, "mem") == 0) {
 					(void)strncpy(rqmem,
-						cnv_size(pat->value, alt_opt), SIZEL);
+						cnv_size(pat->value, alt_opt), sizeof(rqmem) - 1);
 				} else if (strcmp(pat->resource, "walltime") == 0) {
 					rqtimewal = pat->value;
 				} else if (strcmp(pat->resource, "cput") == 0) {
@@ -841,13 +841,13 @@ altdsp_statjob(struct batch_status *pstat, struct batch_status *prtheader, int a
 					usecput = 1;
 				} else if (strcmp(pat->resource, "srfs_big") == 0) {
 					(void)strncpy(srfsbig,
-						cnv_size(pat->value, alt_opt), SIZEL-1);
+						cnv_size(pat->value, alt_opt), sizeof(srfsbig) - 1);
 				} else if (strcmp(pat->resource, "srfs_fast") == 0) {
 					(void)strncpy(srfsfast,
-						cnv_size(pat->value, alt_opt), SIZEL-1);
+						cnv_size(pat->value, alt_opt), sizeof(srfsfast) - 1);
 				} else if (strcmp(pat->resource, "piofs") == 0) {
 					(void)strncpy(pfs,
-						cnv_size(pat->value, alt_opt), SIZEL-1);
+						cnv_size(pat->value, alt_opt), sizeof(pfs) - 1);
 				}
 
 			} else if (strcmp(pat->name, ATTR_exechost) == 0) {
@@ -996,7 +996,7 @@ altdsp_statque(char *serv, struct batch_status *pstat, int opt)
 
 	while (pstat) {
 		/* *rmem = '\0'; */
-		(void)strncpy(rmem, "--  ", SIZEL-1);
+		(void)strncpy(rmem, "--  ", sizeof(rmem) - 1);
 		cput  = blank;
 		wallt = blank;
 		nodect= "-- ";
@@ -1025,7 +1025,7 @@ altdsp_statque(char *serv, struct batch_status *pstat, int opt)
 			} else if (strcmp(pat->name, ATTR_rescmax) == 0) {
 				if (strcmp(pat->resource, "mem") == 0) {
 					(void)strncpy(rmem,
-						cnv_size(pat->value, opt), SIZEL);
+						cnv_size(pat->value, opt), sizeof(rmem) - 1);
 				} else if (strcmp(pat->resource, "cput") == 0) {
 					cput = pat->value;
 				} else if (strcmp(pat->resource, "walltime")==0) {
@@ -1104,11 +1104,9 @@ percent_cal(char *state, char *timeu, char *timer, char *wtimu, char *wtimr, cha
 	static char rtn[TIMEUL+1];
 	long bot = 0;
 	long top = 0;
-	long perccpu = -1;
-	long percwal = -1;
-	int	qu, ru, ex, ep;
+	int qu, ru, ex, ep;
 
-	strcpy(rtn, "-- ");
+	snprintf(rtn, sizeof(rtn), "-- ");
 
 	switch (*state) {
 
@@ -1123,23 +1121,28 @@ percent_cal(char *state, char *timeu, char *timer, char *wtimu, char *wtimr, cha
 
 
 	if (arsct) {			/* array job: percent expired */
+		long percexp = -1;
 		sscanf(arsct, "Queued:%d Running:%d Exiting:%d Expired:%d", &qu, &ru, &ex, &ep);
 		bot = qu + ru + ex + ep;
 		top = ep;
 		if (bot != 0)
-			sprintf(rtn, "%3ld ", (top * 100)/bot);
+			percexp = (top * 100) / bot;
+		if ((percexp >= 0) && (percexp < 1000))
+			sprintf(rtn, "%3ld ", percexp);
 	} else {
+		long perccpu = -1;
+		long percwal = -1;
 		if (timer && timeu) {	/* if cput specified */
 			top = cvt_time_to_seconds(timeu);
 			bot = cvt_time_to_seconds(timer);
 			if (bot != 0)
-				perccpu = (top * 100)/bot;
+				perccpu = (top * 100) / bot;
 		}
 		if (wtimr && wtimu) {	/* if walltime specified */
 			top = cvt_time_to_seconds(wtimu);
 			bot = cvt_time_to_seconds(wtimr);
 			if (bot != 0)
-				percwal = (top * 100)/bot;
+				percwal = (top * 100) / bot;
 		}
 		if ((perccpu != -1) || (percwal != -1)) {
 			sprintf(rtn, "%3ld ",

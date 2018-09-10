@@ -1145,7 +1145,11 @@ check_avail_resources(schd_resource *reslist, resource_req *reqlist,
 	char resbuf1[MAX_LOG_SIZE];
 	char resbuf2[MAX_LOG_SIZE];
 	char resbuf3[MAX_LOG_SIZE];
-	char buf[MAX_LOG_SIZE];
+	/*
+	 * buf must be large enough to hold the three resbuf buffers plus a
+	 * small amount of text... (R: resbuf1 A: resbuf2 T: resbuf3)
+	 */
+	char buf[(MAX_LOG_SIZE * 3) + 16];
 
 	if (reslist == NULL || reqlist == NULL) {
 		if (perr != NULL)
@@ -1224,7 +1228,8 @@ check_avail_resources(schd_resource *reslist, resource_req *reqlist,
 				if (avail == SCHD_INFINITY && (flags & UNSET_RES_ZERO))
 					avail = 0;
 
-				/* if there is an infinite amount available or we are requesting
+				/*
+				 * if there is an infinite amount available or we are requesting
 				 * 0 amount of the resource, we do not need to check if any is
 				 * available
 				 */

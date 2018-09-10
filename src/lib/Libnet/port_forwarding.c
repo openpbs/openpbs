@@ -19,8 +19,9 @@
 #include <stdlib.h>
 
 #include "port_forwarding.h"
-
-#define ERR_MSG_LEN 1024
+#include "pbs_ifl.h"
+#include "log.h"
+#include "libutil.h"
 
 #define PF_LOGGER(logfunc, msg) if(logfunc != NULL) { logfunc(msg); }
 
@@ -31,7 +32,7 @@
  * should fork first since this function is an infinite loop and never returns */
 
 /* __attribute__((noreturn)) - how do I do this portably? */
-int x11_reader_go =1;
+int x11_reader_go = 1;
 
 extern int set_nodelay(int fd);
 
@@ -65,7 +66,7 @@ port_forwarder(
 	void (*logfunc) (char *))
 {
 	fd_set rfdset, wfdset, efdset;
-	int rc, maxsock = 0;
+	int rc;
 	struct sockaddr_in from;
 	pbs_socklen_t fromlen;
 	int n, n2, sock;
@@ -96,6 +97,8 @@ port_forwarder(
 	}
 
 	while (x11_reader_go) {
+		int maxsock;
+
 		FD_ZERO(&rfdset);
 		FD_ZERO(&wfdset);
 		FD_ZERO(&efdset);
@@ -363,7 +366,12 @@ x11_connect_display(
 	long alsounused)
 {
 	int display_number, sock = 0;
-	char buf[1024], *cp;
+	/*
+	 * buf will hold the display string consisting of host:screen so
+	 * allow an extra 32 characters for the :screen portion
+	 */
+	char *buf;
+	char *cp;
 	struct addrinfo hints, *ai, *aitop;
 	char strport[NI_MAXSERV];
 	int gaierr;
@@ -397,10 +405,11 @@ x11_connect_display(
 	 * Connect to an inet socket.  The DISPLAY value is supposedly
 	 * hostname:d[.s], where hostname may also be numeric IP address.
 	 */
-	strncpy(buf, display, sizeof(buf));
+	pbs_asprintf(&buf, "%s", display);
 	cp = strchr(buf, ':');
 	if (!cp) {
 		fprintf(stderr, "Could not find ':' in DISPLAY: %.100s", display);
+		free(buf);
 		return -1;
 	}
 
@@ -409,6 +418,7 @@ x11_connect_display(
 	if (sscanf(cp + 1, "%d", &display_number) != 1) {
 		fprintf(stderr, "Could not parse display number from DISPLAY: %.100s",
 			display);
+		free(buf);
 		return -1;
 	}
 
@@ -419,6 +429,7 @@ x11_connect_display(
 	snprintf(strport, sizeof(strport), "%d", 6000 + display_number);
 	if ((gaierr = getaddrinfo(buf, strport, &hints, &aitop)) != 0) {
 		fprintf(stderr, "%100s: unknown host. (%s)", buf, gai_strerror(gaierr));
+		free(buf);
 		return -1;
 	}
 
@@ -446,9 +457,11 @@ x11_connect_display(
 	if (!ai) {
 		fprintf(stderr, "connect %.100s port %d: %.100s", buf, 6000 + display_number,
 			strerror(errno));
+		free(buf);
 		return -1;
 	}
 
+	free(buf);
 	set_nodelay(sock);
 	return sock;
 }

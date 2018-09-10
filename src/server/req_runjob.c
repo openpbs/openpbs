@@ -451,7 +451,7 @@ req_runjob(struct batch_request *preq)
 		/* fix the job id so the suffix matches the real jobid's */
 		/* suffix;  in case qrun 1.short vs 1.short.domain.com   */
 
-		(void)strncpy(fixjid, jid, PBS_MAXSVRJOBID);
+		snprintf(fixjid, sizeof(fixjid), "%s", jid);
 		pc = strchr(fixjid, (int)'.');
 		if (pc)
 			*pc = '\0';
@@ -1279,8 +1279,7 @@ post_sendmom(struct work_task *pwt)
 	int 	isrpp = pwt->wt_aux2;
 	struct	batch_reply *reply = (struct batch_reply *) pwt->wt_parm3;
 	char	dest_host[PBS_MAXROUTEDEST + 1];
-	char	hook_name[HOOK_BUF_SIZE+1];
-	char	hook_buf[HOOK_BUF_SIZE+1];
+	char	hook_name[PBS_HOOK_NAME_SIZE + 1] = {'\0'};
 	char	*hook_msg = NULL;
 
 	if (jobp == NULL) {
@@ -1298,8 +1297,6 @@ post_sendmom(struct work_task *pwt)
 		if (pbs_conf.pbs_use_tcp == 0)
 			return; /* reply must have already been handled, see job_obit */
 	}
-
-	hook_name[0] = '\0';
 
 	if (!isrpp) {
 		if (WIFEXITED(wstat)) {
@@ -1355,7 +1352,7 @@ post_sendmom(struct work_task *pwt)
 					unlink(name_buf);
 				}
 			}
-			hook_msg = parse_hook_rejectmsg(reject_msg, hook_name, HOOK_BUF_SIZE);
+			hook_msg = parse_hook_rejectmsg(reject_msg, hook_name, PBS_HOOK_NAME_SIZE);
 		}
 
 	} else {
@@ -1435,7 +1432,7 @@ post_sendmom(struct work_task *pwt)
 			(r == SEND_JOB_HOOK_REJECT_RERUNJOB) ||
 			(r == SEND_JOB_HOOK_REJECT_DELETEJOB)) {
 
-			hook_msg = parse_hook_rejectmsg(reject_msg, hook_name, HOOK_BUF_SIZE);
+			hook_msg = parse_hook_rejectmsg(reject_msg, hook_name, PBS_HOOK_NAME_SIZE);
 		}
 	}
 
@@ -1514,7 +1511,7 @@ post_sendmom(struct work_task *pwt)
 			 *    we dont want to copy them again;
 			 * ELSE clear exec_vnode, exec_host, etc.
 			 */
-			strncpy(dest_host, jobp->ji_qs.ji_destin, sizeof(dest_host)-1);
+			snprintf(dest_host, sizeof(dest_host), "%s", jobp->ji_qs.ji_destin);
 			clear_exec_on_run_fail(jobp);
 
 			if (jobp->ji_qs.ji_substate != JOB_SUBSTATE_ABORT) {
@@ -1580,8 +1577,14 @@ post_sendmom(struct work_task *pwt)
 						phook = find_hook(hook_name);
 						if (phook != NULL) {
 							if ((phook->fail_action & HOOK_FAIL_ACTION_OFFLINE_VNODES) != 0) {
-								snprintf(hook_buf,
-									sizeof(hook_buf),
+								/*
+								 * hook_buf must be large enough
+								 * to hold the hook_name and a
+								 * small amount of text.
+								 */
+								char hook_buf[PBS_HOOK_NAME_SIZE + 64];
+
+								snprintf(hook_buf, sizeof(hook_buf),
 									"offlined by hook '%s' due to hook error",
 									hook_name);
 								mark_node_offline_by_mom(dest_host, hook_buf);

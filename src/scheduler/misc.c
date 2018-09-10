@@ -440,7 +440,6 @@ schdlogerr(int event, int class, int sev, char *name, char *text,
 	schd_error *err)
 {
 	char logbuf[MAX_LOG_SIZE];
-	char logbuf2[MAX_LOG_SIZE];
 
 	if (err == NULL)
 		return;
@@ -450,8 +449,11 @@ schdlogerr(int event, int class, int sev, char *name, char *text,
 		if (text == NULL)
 			schdlog(event, class, sev, name, logbuf);
 		else {
-			snprintf(logbuf2, MAX_LOG_SIZE, "%s %s", text, logbuf);
-			schdlog(event, class, sev, name, logbuf2);
+			char *msgbuf;
+
+			pbs_asprintf(&msgbuf, "%s %s", text, logbuf);
+			schdlog(event, class, sev, name, msgbuf);
+			free(msgbuf);
 		}
 	}
 }

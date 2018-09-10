@@ -619,7 +619,7 @@ pbsd_init(int type)
 	rc |= chk_file_sec(pbs_conf.pbs_environment, 0, 0, S_IWGRP|S_IWOTH, 1);
 #endif	/* WIN32 */
 	if (rc) {
-		log_err(-1, "pbsd_init", "chk_file_sec has a failure");
+		log_err(-1, __func__, "chk_file_sec has a failure");
 		return (3);
 	}
 #endif	/* not DEBUG and not NO_SECURITY_CHECK */
@@ -629,7 +629,7 @@ pbsd_init(int type)
 	rc = setup_resc(1);
 	if (rc != 0) {
 		/* log_buffer set in setup_resc */
-		log_err(-1, "pbsd_init(setup_resc)", log_buffer);
+		log_err(-1, __func__, log_buffer);
 		/* return value of -1 means a fatal error, -2 means errors
 		 * were "auto-corrected" */
 		if (rc == -1)
@@ -661,7 +661,7 @@ pbsd_init(int type)
 		/* Open the server database (save file) and read it in */
 
 		if ((rc != 0) || ((rc =svr_recov_db()) == -1)) {
-			log_err(rc, "pbsd_init", msg_init_baddb);
+			log_err(rc, __func__, msg_init_baddb);
 			return (-1);
 		}
 		if (server.sv_attr[(int)SRV_ATR_resource_assn].at_flags &
@@ -689,7 +689,7 @@ pbsd_init(int type)
 		/* now do sched db */
 		rc = sched_recov_db();
 		if (rc == -1) {
-			log_err(rc, "pbsd_init", "unable to recover scheddb");
+			log_err(rc, __func__, "unable to recover scheddb");
 		} else if(rc == -2) {
 			/* No Schedulers found in DB */
 			/* Create and save default to DB*/
@@ -798,7 +798,7 @@ pbsd_init(int type)
 	/* 6. open accounting file */
 
 	if (acct_open(acct_file) != 0) {
-		log_err(-1, "pbsd_init", "Could not open accounting file");
+		log_err(-1, __func__, "Could not open accounting file");
 		return (-1);
 	}
 
@@ -831,7 +831,7 @@ pbsd_init(int type)
 	state = pbs_db_cursor_init(conn, &obj, NULL);
 	if (state == NULL) {
 		sprintf(log_buffer, "%s", (char *) conn->conn_db_err);
-		log_err(-1, "pbsd_init", log_buffer);
+		log_err(-1, __func__, log_buffer);
 		pbs_db_cursor_close(conn, state);
 		(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
 		return (-1);
@@ -871,7 +871,7 @@ pbsd_init(int type)
 	/* Open and read in node list if one exists */
 	if ((rc = setup_nodes()) == -1) {
 		/* log_buffer set in setup_nodes */
-		log_err(-1, "pbsd_init(setup_nodes)", log_buffer);
+		log_err(-1, __func__, log_buffer);
 		return (-1);
 	}
 	mark_which_queues_have_nodes();
@@ -899,7 +899,7 @@ pbsd_init(int type)
 	state = pbs_db_cursor_init(conn, &obj, NULL);
 	if (state == NULL) {
 		sprintf(log_buffer, "%s", (char *) conn->conn_db_err);
-		log_err(-1, "pbsd_init", log_buffer);
+		log_err(-1, __func__, log_buffer);
 		pbs_db_cursor_close(conn, state);
 		(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
 		return (-1);
@@ -954,7 +954,7 @@ pbsd_init(int type)
 	state = pbs_db_cursor_init(conn, &obj, NULL);
 	if (state == NULL) {
 		sprintf(log_buffer, "%s", (char *) conn->conn_db_err);
-		log_err(-1, "pbsd_init", log_buffer);
+		log_err(-1, __func__, log_buffer);
 		pbs_db_cursor_close(conn, state);
 		(void) pbs_db_end_trx(conn, PBS_DB_ROLLBACK);
 		return (-1);
@@ -974,7 +974,7 @@ pbsd_init(int type)
 					/* remove the loaded job from db */
 					if (pbs_db_delete_obj(conn, &obj) != 0) {
 						sprintf(log_buffer, "job %s not purged", dbjob.ji_jobid);
-						log_err(-1, "pbsd_init", log_buffer);
+						log_err(-1, __func__, log_buffer);
 					}
 				} else {
 					sprintf(log_buffer, "Failed to recover job %s", dbjob.ji_jobid);
@@ -1149,7 +1149,7 @@ pbsd_init(int type)
 
 	fd = open(path_track, O_RDONLY | O_CREAT, 0600);
 	if (fd < 0) {
-		log_err(errno, "pbsd_init", "unable to open tracking file");
+		log_err(errno, __func__, "unable to open tracking file");
 		return (-1);
 	}
 #if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
@@ -1221,7 +1221,7 @@ pbsd_init(int type)
 
 	fd = open(path_prov_track, O_RDONLY | O_CREAT, 0600);
 	if (fd < 0) {
-		log_err(errno, "pbsd_init", "unable to open prov_tracking file");
+		log_err(errno, __func__, "unable to open prov_tracking file");
 		return (-1);
 	}
 #if !defined(DEBUG) && !defined(NO_SECURITY_CHECK)
@@ -1252,7 +1252,7 @@ pbsd_init(int type)
 
 		server.sv_provtracksize =
 			server.sv_attr[(int)SRV_ATR_max_concurrent_prov].at_val.at_long;
-		DBPRT(("pbsd_init: server.sv_provtracksize=%d amt=%ld\n", server.sv_provtracksize, (long)amt))
+		DBPRT(("%s: server.sv_provtracksize=%d amt=%ld\n", __func__, server.sv_provtracksize, (long)amt))
 
 		p = malloc(amt + 1);
 		if (p == NULL) {
@@ -1384,7 +1384,7 @@ pbsd_init(int type)
 #ifdef WIN32
 	/* Under WIN32, create structure that will be used to track child processes. */
 	if (initpids() == 0) {
-		log_err(-1, "pbsd_init", "Creating pid handles table failed!");
+		log_err(-1, __func__, "Creating pid handles table failed!");
 		return (-1);
 	}
 #endif
@@ -1856,7 +1856,7 @@ pbsd_init_job(job *pjob, int type)
 static int
 pbsd_init_reque(job *pjob, int change_state)
 {
-	char logbuf[265];
+	char logbuf[384];
 	int newstate;
 	int newsubstate;
 	int rc;

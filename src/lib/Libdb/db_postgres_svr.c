@@ -343,28 +343,30 @@ pbs_db_get_schema_version(pbs_db_conn_t *conn, int *db_maj_ver, int *db_min_ver)
 {
 	PGresult *res;
 	int rc;
-	char ver_str[MAX_SCHEMA_VERSION_LEN+1];
+	char ver_str[MAX_SCHEMA_VERSION_LEN + 1] = {'\0'};
 	char *token;
+	char *val;
 
 	if ((rc = pg_db_query(conn, STMT_SELECT_DBVER, 0, &res)) != 0)
 		return rc;
 
-	memset(ver_str, 0, sizeof(ver_str));
-	strncpy(ver_str, PQgetvalue(res, 0, PQfnumber(res, "pbs_schema_version")), MAX_SCHEMA_VERSION_LEN+1);
-	if (ver_str[MAX_SCHEMA_VERSION_LEN] != '\0')
+	val = PQgetvalue(res, 0, PQfnumber(res, "pbs_schema_version"));
+	if (!val)
 		return -1;
+	if (*val == '\0')
+		return -1;
+
+	snprintf(ver_str, sizeof(ver_str), "%s", val);
 
 	token = strtok(ver_str, ".");
-	if (token)
-		*db_maj_ver = atol(token);
-	else
+	if (!token)
 		return -1;
+	*db_maj_ver = atol(token);
 
 	token = strtok(NULL, ".");
-	if (token)
-		*db_min_ver = atol(token);
-	else
+	if (!token)
 		return -1;
+	*db_min_ver = atol(token);
 
 	return 0;
 }

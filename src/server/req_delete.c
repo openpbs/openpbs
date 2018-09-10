@@ -306,7 +306,7 @@ issue_delete(job *pjob)
 	if ((at = strchr(pjob->ji_wattr[JOB_ATR_in_queue].at_val.at_str, (int)'@')) == NULL)
 		return;
 
-	strncpy(rmt_server, at + 1, PBS_MAXSERVERNAME + 1);
+	snprintf(rmt_server, sizeof(rmt_server), "%s", at + 1);
 
 	preq = alloc_br(PBS_BATCH_DeleteJob);
 	if (preq == NULL)
@@ -888,7 +888,7 @@ req_deleteReservation(struct batch_request *preq)
 	struct batch_request *newreq;
 	struct work_task *pwt;
 
-	char buf[256]; /*temp, possibly remove in future*/
+	char buf[PBS_MAXHOSTNAME + PBS_MAXUSER + 2]; /* temp, possibly remove in future */
 	char user[PBS_MAXUSER + 1];
 	char host[PBS_MAXHOSTNAME + 1];
 	int perm;

@@ -136,7 +136,7 @@ static char prompt[]="Qmgr: "; /* Prompt if input is from terminal */
 static char contin[]="Qmgr< "; /* Prompt if input is continued across lines */
 char *cur_prompt = prompt;
 
-char hook_tempfile_errmsg[HOOK_BUF_SIZE] = { '\0' };
+static char hook_tempfile_errmsg[HOOK_MSG_SIZE] = {'\0'};
 
 /*
  * This variable represents the use of the -z option on the command line.
@@ -176,8 +176,8 @@ static char *entlim_attrs[] = {
 
 /* Hook-related variables and functions */
 
-char	hook_tempfile[MAXPATHLEN+1];  /* a temporary file in PBS_HOOK_WORKDIR */
-char	hook_tempdir[MAXPATHLEN+1];   /* PBS_HOOK_WORKDIR path */
+static char *hook_tempfile = NULL;  /* a temporary file in PBS_HOOK_WORKDIR */
+static char *hook_tempdir = NULL;   /* PBS_HOOK_WORKDIR path */
 
 /**
  * @brief
@@ -1210,27 +1210,27 @@ main(int argc, char **argv)
 			(sizeof(conf_full_server_name) - 1));
 	}
 
-	memset(hook_tempdir, '\0', MAXPATHLEN+1);
-	snprintf(hook_tempdir, MAXPATHLEN, "%s/server_priv/%s",
+	pbs_asprintf(&hook_tempdir, "%s/server_priv/%s",
 		pbs_conf.pbs_home_path, PBS_HOOK_WORKDIR);
-	memset(hook_tempfile, '\0', MAXPATHLEN+1);
-	snprintf(hook_tempfile, MAXPATHLEN, "%s/qmgr_hook%dXXXXXX",
+	pbs_asprintf(&hook_tempfile, "%s/qmgr_hook%dXXXXXX",
 		hook_tempdir, getpid());
 
 #ifdef WIN32
 	/* mktemp() generates a filename */
 	if (mktemp(hook_tempfile) == NULL) {
-		snprintf(hook_tempfile_errmsg, HOOK_BUF_SIZE-1,
+		snprintf(hook_tempfile_errmsg, sizeof(hook_tempfile_errmsg),
 			"unable to generate a hook_tempfile from %s - %s\n",
 			hook_tempfile, strerror(errno));
 		hook_tempfile[0] = '\0'; /* hook_tempfile name generation not successful */
 	}
 #else
-	/* For Linux/Unix, it is recommended to use mkstemp() for mktemp() is */
-	/* dangerous - see mktemp(3).					        */
-	/* mkstemp() generates and CREATES a filename */
-	if ((htmp_fd=mkstemp(hook_tempfile)) == -1) {
-		snprintf(hook_tempfile_errmsg, HOOK_BUF_SIZE-1,
+	/*
+	 * For Linux/Unix, it is recommended to use mkstemp() for mktemp() is
+	 * dangerous - see mktemp(3).
+	 * mkstemp() generates and CREATES a filename
+	 */
+	if ((htmp_fd = mkstemp(hook_tempfile)) == -1) {
+		snprintf(hook_tempfile_errmsg, sizeof(hook_tempfile_errmsg),
 			"unable to generate a hook_tempfile from %s - %s\n",
 			hook_tempfile, strerror(errno));
 		hook_tempfile[0] = '\0'; /* hook_tempfile name generation not successful */
@@ -1303,8 +1303,7 @@ main(int argc, char **argv)
 				name = NULL;
 			}
 		}
-	}
-	else  {
+	} else {
 		if (eopt)
 			printf("%s\n", copt);
 
@@ -1785,6 +1784,8 @@ clean_up_and_exit(int exit_val)
 {
 	struct server *cur_svr, *next_svr;
 
+	free(hook_tempdir);
+	free(hook_tempfile);
 	free_objname_list(active_servers);
 	free_objname_list(active_queues);
 	free_objname_list(active_nodes);

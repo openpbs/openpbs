@@ -194,6 +194,11 @@ char *pbs_fgets(char **pbuf, int *pbuf_size, FILE *fp);
 char *pbs_fgets_extend(char **pbuf, int *pbuf_size, FILE *fp);
 
 /*
+ * Internal asprintf() implementation for use on all platforms
+ */
+int pbs_asprintf(char **dest, const char *fmt, ...);
+
+/*
  * calculate the number of digits to the right of the decimal point in
  *        a floating point number.  This can be used in conjunction with
  *        printf() to not print trailing zeros.
@@ -271,7 +276,6 @@ char * escape_delimiter(char *str, char *delim, char esc);
  *
  */
 void convert_duration_to_str(time_t duration, char* buf, int bufsize);
-
 
 #ifdef  __cplusplus
 }

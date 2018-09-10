@@ -1563,35 +1563,41 @@ int send_attr_updates(int pbs_sd, char *job_name, struct attrl *pattr) {
 	if (pbs_sd == SIMULATE_SD)
 		return 1; /* simulation always successful */
 
+	if (pattr->next == NULL)
+		one_attr = 1;
 
-		if (pattr->next == NULL)
-			one_attr = 1;
+	if (pbs_alterjob(pbs_sd, job_name, pattr, NULL) == 0)
+		return 1;
 
-		if (pbs_alterjob(pbs_sd, job_name, pattr, NULL) == 0)
-			return 1;
-		else {
-			if (is_finished_job(pbs_errno) == 1) {
-				if (one_attr)
-					snprintf(logbuf, MAX_LOG_SIZE, "Failed to update attr \'%s\' = %s, Job already finished", pattr->name, pattr->value);
-				else
-					snprintf(logbuf, MAX_LOG_SIZE, "Failed to update job attributes, Job already finished");
-				schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
-					job_name, logbuf);
-				return 0;
-			}
-			errbuf = pbs_geterrmsg(pbs_sd);
-			if (errbuf == NULL)
-				errbuf = "";
-			if (one_attr)
-				snprintf(logbuf, MAX_LOG_SIZE, "Failed to update attr \'%s\' = %s: %s (%d)", pattr->name, pattr->value, errbuf, pbs_errno);
+	if (is_finished_job(pbs_errno) == 1) {
+		if (one_attr)
+			snprintf(logbuf, MAX_LOG_SIZE,
+				"Failed to update attr \'%s\' = %s, "
+				"Job already finished",
+				pattr->name, pattr->value);
+		else
+			snprintf(logbuf, MAX_LOG_SIZE,
+				"Failed to update job attributes, "
+				"Job already finished");
+		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
+			job_name, logbuf);
+		return 0;
+	}
 
-			else
-				snprintf(logbuf, MAX_LOG_SIZE, "Failed to update job attributes: %s (%d)", errbuf, pbs_errno);
+	errbuf = pbs_geterrmsg(pbs_sd);
+	if (errbuf == NULL)
+		errbuf = "";
+	if (one_attr)
+		snprintf(logbuf, MAX_LOG_SIZE,
+			"Failed to update attr \'%s\' = %s: %s (%d)",
+			pattr->name, pattr->value, errbuf, pbs_errno);
+	else
+		snprintf(logbuf, MAX_LOG_SIZE,
+			"Failed to update job attributes: %s (%d)",
+			errbuf, pbs_errno);
 
-			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING,
-				job_name, logbuf);
-			return 0;
-		}
+	schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_WARNING,
+		job_name, logbuf);
 
 	return 0;
 }
@@ -1942,13 +1948,19 @@ translate_fail_code(schd_error *err, char *comment_msg, char *log_msg)
 		switch (err->status_code) {
 			case SCHD_UNKWN:
 			case NOT_RUN:
-				snprintf(comment_msg, MAX_LOG_SIZE, "%s: %s", NOT_RUN_PREFIX, commentbuf);
+				snprintf(comment_msg, MAX_LOG_SIZE, "%s: %.*s",
+					NOT_RUN_PREFIX,
+					(int)(MAX_LOG_SIZE - strlen(NOT_RUN_PREFIX) - 3),
+					commentbuf);
 				break;
 			case NEVER_RUN:
-				snprintf(comment_msg, MAX_LOG_SIZE, "%s: %s", NEVER_RUN_PREFIX, commentbuf);
+				snprintf(comment_msg, MAX_LOG_SIZE, "%s: %.*s",
+					NEVER_RUN_PREFIX,
+					(int)(MAX_LOG_SIZE - strlen(NEVER_RUN_PREFIX) - 3),
+					commentbuf);
 				break;
 			default:
-				strcpy(comment_msg, commentbuf);
+				snprintf(comment_msg, MAX_LOG_SIZE, "%s", commentbuf);
 		}
 	}
 
@@ -3048,8 +3060,8 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 	resource_resv *pjob = NULL;
 	int rc = 0;
 	int retval = 0;
-	char buf[MAX_LOG_SIZE];
 	char log_buf[MAX_LOG_SIZE];
+	char *msgbuf;
 	nspec **ns_arr = NULL;
 	schd_error *err = NULL;
 
@@ -3149,9 +3161,10 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 			cant_preempt = 1;
 		if (cant_preempt) {
 			translate_fail_code(cur_err, NULL, log_buf);
-			sprintf(buf, "Preempt: Can not preempt to run job: %s", log_buf);
+			pbs_asprintf(&msgbuf, "Preempt: Can not preempt to run job: %s", log_buf);
 			schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB,
-				LOG_DEBUG, hjob->name, buf);
+				LOG_DEBUG, hjob->name, msgbuf);
+			free(msgbuf);
 			free_schd_error_list(full_err);
 			return NULL;
 		}
@@ -3386,9 +3399,10 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 
 		}
 		translate_fail_code(err, NULL, log_buf);
-		sprintf(buf, "Simulation: not enough work preempted: %s", log_buf);
+		pbs_asprintf(&msgbuf, "Simulation: not enough work preempted: %s", log_buf);
 		schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB,
-			LOG_DEBUG, njob->name, buf);
+			LOG_DEBUG, njob->name, msgbuf);
+		free(msgbuf);
 	}
 
 	pjobs[j] = NULL;

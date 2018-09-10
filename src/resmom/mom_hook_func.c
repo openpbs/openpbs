@@ -354,6 +354,7 @@ static void
 add_natural_vnode_info(vnl_t **p_vnlp)
 {
 	char	bufs[BUFSIZ];
+	char	*msgbuf;
 
 	if (*p_vnlp == NULL) {
 		if (vnl_alloc(p_vnlp) == NULL) {
@@ -363,35 +364,34 @@ add_natural_vnode_info(vnl_t **p_vnlp)
 	}
 
 	snprintf(bufs, sizeof(bufs)-1, "%d", num_pcpus);
-	if (vn_addvnr(*p_vnlp, mom_short_name, ATTR_NODE_pcpus, bufs,
-		0, 0, NULL) == -1) {
-		snprintf(log_buffer, sizeof(log_buffer),
+	if (vn_addvnr(*p_vnlp, mom_short_name, ATTR_NODE_pcpus, bufs, 0, 0, NULL) == -1) {
+		pbs_asprintf(&msgbuf,
 			"Failed to add '%s %s=%s' to vnode list",
 			mom_short_name, ATTR_NODE_pcpus, bufs);
-		log_err(-1, __func__, log_buffer);
+		log_err(-1, __func__, msgbuf);
+		free(msgbuf);
 		return;
 
 	}
 
 	snprintf(bufs, sizeof(bufs)-1, "%d", num_acpus);
-	if (vn_addvnr(*p_vnlp, mom_short_name, "resources_available.ncpus",
-		bufs, 0, 0, NULL) == -1) {
-		snprintf(log_buffer, sizeof(log_buffer),
+	if (vn_addvnr(*p_vnlp, mom_short_name, "resources_available.ncpus", bufs, 0, 0, NULL) == -1) {
+		pbs_asprintf(&msgbuf,
 			"Failed to add '%s %s=%s' to vnode list",
-			mom_short_name, "resources_available.ncpus",
-			bufs);
-		log_err(-1, __func__, log_buffer);
+			mom_short_name, "resources_available.ncpus", bufs);
+		log_err(-1, __func__, msgbuf);
+		free(msgbuf);
 		return;
 
 	}
 
 	snprintf(bufs, sizeof(bufs)-1, "%llukb", av_phy_mem);
-	if (vn_addvnr(*p_vnlp, mom_short_name, "resources_available.mem",
-		bufs, 0, 0, NULL) == -1) {
-		snprintf(log_buffer, sizeof(log_buffer),
+	if (vn_addvnr(*p_vnlp, mom_short_name, "resources_available.mem", bufs, 0, 0, NULL) == -1) {
+		pbs_asprintf(&msgbuf,
 			"Failed to add '%s %s=%s' to vnode list",
 			mom_short_name, "resources_available.mem", bufs);
-		log_err(-1, __func__, log_buffer);
+		log_err(-1, __func__, msgbuf);
+		free(msgbuf);
 		return;
 
 	}
@@ -400,8 +400,7 @@ add_natural_vnode_info(vnl_t **p_vnlp)
 		arch(NULL), 0, 0, NULL) == -1) {
 		snprintf(log_buffer, sizeof(log_buffer),
 			"Failed to add '%s %s=%s' to vnode list",
-			mom_host, "arch",
-			arch(NULL));
+			mom_host, "arch", arch(NULL));
 		log_err(-1, __func__, log_buffer);
 		return;
 
@@ -554,6 +553,7 @@ vnl_add_vnode_entries(vnl_t *vnl, vmpiprocs *vnode_entry, int num_vnodes,
 {
 	int	i, rc;
 	char	bufs[BUFSIZ];
+	char	*msgbuf;
 	char	*v_name = NULL;
 	int	v_cpus = 0;
 	Long	v_mem = 0;
@@ -587,10 +587,10 @@ vnl_add_vnode_entries(vnl_t *vnl, vmpiprocs *vnode_entry, int num_vnodes,
 
 		rc=vn_addvnr(vnl, v_name, RESCASSN_NCPUS, bufs, 0, 0, NULL);
 		if (rc == -1) {
-			snprintf(log_buffer, sizeof(log_buffer),
-				"%s:failed to add '%s=%s'",
+			pbs_asprintf(&msgbuf, "%s:failed to add '%s=%s'",
 				v_name, RESCASSN_NCPUS, bufs);
-			log_err(-1, __func__, log_buffer);
+			log_err(-1, __func__, msgbuf);
+			free(msgbuf);
 			return (-1);
 		}
 		v_mem = vnode_entry[i].vn_mem;
@@ -603,10 +603,10 @@ vnl_add_vnode_entries(vnl_t *vnl, vmpiprocs *vnode_entry, int num_vnodes,
 		rc=vn_addvnr(vnl, v_name, RESCASSN_MEM, bufs, 0, 0, NULL);
 
 		if (rc == -1) {
-			snprintf(log_buffer, sizeof(log_buffer),
-				"%s:failed add '%s=%s'",
+			pbs_asprintf(&msgbuf, "%s:failed add '%s=%s'",
 				v_name, RESCASSN_MEM, bufs);
-			log_err(-1, __func__, log_buffer);
+			log_err(-1, __func__, msgbuf);
+			free(msgbuf);
 			return (-1);
 		}
 	}
@@ -694,6 +694,7 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 	char		*pc;
 	int		keeping = 0;
 	char		*std_file = NULL;
+	char		*msgbuf;
 
 	if ((phook == NULL) || (req_user == NULL) || (req_host == NULL)) {
 		log_err(-1, __func__, "Bad input received!");
@@ -818,7 +819,8 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 		/* replace <HOOK_SCRIPT_SUFFIX> with <HOOK_CONFIG_SUFFIX>: */
 		/* must copy up to HOOK_SCRIPT_SUFFIX length so as to not */
 		/* overflow */
-		strncpy(p, HOOK_CONFIG_SUFFIX, strlen(HOOK_SCRIPT_SUFFIX));
+		snprintf(p, sizeof(hook_config_path) - (p - hook_config_path),
+			"%s", HOOK_SCRIPT_SUFFIX);
 		if (stat(hook_config_path, &sbuf) != 0) {
 			hook_config_path[0] = '\0';
 		}
@@ -898,8 +900,8 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 			}
 			/* set hook_config_path to hook_config_copy */
 			/* if the copying was successful */
-			strncpy(hook_config_path, hook_config_copy,
-				sizeof(hook_config_path)-1);
+			snprintf(hook_config_path, sizeof(hook_config_path),
+				"%s", hook_config_copy);
 		}
 		/* copy script_path to user-accessible */
 		/* [PBS_HOME]/path_spool */
@@ -1296,11 +1298,11 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 		arg[11] = NULL;
 
 	}
-	snprintf(log_buffer, sizeof(log_buffer),
-		"execve %s runas_jobuser=%d in child pid=%d",
+	pbs_asprintf(&msgbuf, "execve %s runas_jobuser=%d in child pid=%d",
 		cmdline, runas_jobuser, myseq);
 	log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK, LOG_INFO,
-		phook->hook_name, log_buffer);
+		phook->hook_name, msgbuf);
+	free(msgbuf);
 
 	if (hook_config_path[0] == '\0') {
 #ifdef WIN32
@@ -1833,7 +1835,7 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 	long int endpos;
 	int	start_new_vnl = 1;
 	struct hook_vnl_action *pvna;
-	char hook_euser[PBS_MAXUSER+1];
+	char hook_euser[PBS_MAXUSER+1] = {'\0'};
 	char	*value_type = NULL;
 	job	*pjob2 = NULL;
 	job	*pjob2_prev = NULL;
@@ -1849,7 +1851,6 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 	/* copy of hook results, there will be one or more (one per hook)    */
 	/* pbs_event().hook_euser=<value> entries.  In that case, hook_euser */
 	/* is reset to the <value>.  A null string <value> means PBSADMIN.   */
-	hook_euser[0] = '\0';
 	if (phook && pjob &&  (phook->user == HOOK_PBSUSER)) {
 		strncpy(hook_euser,
 			pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str,
@@ -2494,7 +2495,8 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 				pvna = malloc(sizeof(struct hook_vnl_action));
 				if ((pvna != NULL) && (pvnalist != NULL)) {
 					CLEAR_LINK(pvna->hva_link);
-					strncpy(pvna->hva_euser, hook_euser, PBS_MAXUSER);
+					snprintf(pvna->hva_euser, sizeof(pvna->hva_euser),
+						"%s", hook_euser);
 					pvna->hva_actid = 0;
 					pvna->hva_vnl   = NULL;
 					if (vnl_alloc(&hvnlp) == NULL) {
@@ -2728,7 +2730,7 @@ new_job_action_req(job *pjob, enum hook_user huser, int action)
 		return;
 	}
 	CLEAR_LINK(phja->hja_link);
-	strncpy(phja->hja_jid, pjob->ji_qs.ji_jobid, PBS_MAXSVRJOBID);
+	snprintf(phja->hja_jid, sizeof(phja->hja_jid), "%s", pjob->ji_qs.ji_jobid);
 	phja->hja_actid = ++hook_action_id;
 
 	if (pjob->ji_wattr[(int)JOB_ATR_run_version].at_flags & ATR_VFLAG_SET) {

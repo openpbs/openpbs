@@ -267,7 +267,6 @@ check_pwd(job *pjob)
 {
 	struct passwd		*pwdp;
 	struct group		*grpp;
-	char		      **pgnam;
 	struct stat		sb;
 
 	pwdp = getpwnam(pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str);
@@ -314,6 +313,8 @@ check_pwd(job *pjob)
 			return NULL;
 		}
 		if (grpp->gr_gid != pwdp->pw_gid) {
+			char **pgnam;
+
 			pgnam = grpp->gr_mem;
 			while (*pgnam) {
 				if (!strcmp(*pgnam, pwdp->pw_name))
@@ -356,11 +357,11 @@ ssize_t
 writepipe(int pfd, void *vptr, size_t nbytes)
 {
 	size_t	nleft;
-	ssize_t	nwritten;
 	char	*ptr = vptr;	/* so we can do pointer arithmetic */
 
 	nleft = nbytes;
 	while (nleft > 0) {
+		ssize_t	nwritten;
 		nwritten = write(pfd, ptr, nleft);
 		if (nwritten == -1) {
 			if (errno == EINTR)
@@ -393,11 +394,11 @@ ssize_t
 readpipe(int pfd, void *vptr, size_t nbytes)
 {
 	size_t	nleft;
-	ssize_t	nread;
 	char	*ptr = vptr;	/* so we can do pointer arithmetic */
 
 	nleft = nbytes;
 	while (nleft > 0) {
+		ssize_t	nread;
 		nread = read(pfd, ptr, nleft);
 		if (nread == -1) {
 			if (errno == EINTR)
@@ -782,8 +783,9 @@ mktmpdir(char *jobid, uid_t uid, gid_t gid, struct var_table *vtab)
 
 	tmpdir = tmpdirname(jobid);
 	errno = 0;
-	int tmp_errno;
 	if (mkdir(tmpdir, 0700) == -1) {
+		int tmp_errno;
+
 		if ((tmp_errno = errno) != EEXIST) {
 			sprintf(log_buffer, "mkdir: %s", tmpdir);
 			log_joberr(tmp_errno, __func__, log_buffer, jobid);
@@ -1032,8 +1034,11 @@ rmtmpdir(char *jobid)
 
 	sprintf(rmdir, "%s/pbs_remove.%s", pbs_tmpdir, jobid);
 	if (rename(tmpdir, newdir) == -1) {
-		sprintf(log_buffer, "%s %s", tmpdir, newdir);
-		log_joberr(errno, __func__, log_buffer, jobid);
+		char *msgbuf;
+
+		pbs_asprintf(&msgbuf, "%s %s", tmpdir, newdir);
+		log_joberr(errno, __func__, msgbuf, jobid);
+		free(msgbuf);
 		newdir = tmpdir;
 	}
 
@@ -1098,8 +1103,6 @@ int
 becomeuser_args(char *eusrname, uid_t euid, gid_t egid, gid_t rgid)
 {
 	gid_t *grplist = NULL;
-	int    i;
-	int    numsup;
 	static int   maxgroups=0;
 
 	/* obtain the maximum number of groups possible in the list */
@@ -1107,6 +1110,9 @@ becomeuser_args(char *eusrname, uid_t euid, gid_t egid, gid_t rgid)
 		maxgroups = (int)sysconf(_SC_NGROUPS_MAX);
 
 	if (initgroups(eusrname, egid) != -1) {
+		int numsup;
+		int i;
+
 		/* allocate an array for the group list */
 		grplist = calloc((size_t)maxgroups, sizeof(gid_t));
 		if (grplist == NULL)
@@ -1338,7 +1344,8 @@ set_credential(job *pjob, char **shell, char ***argarray)
 			}
 			close(fd);
 
-			sprintf(buf, "FILE:%s", name_buf);
+			snprintf(buf, sizeof(buf), "FILE:%.*s",
+				(int)(sizeof(buf) - 6), name_buf);
 			bld_env_variables(&vtable, "KRB5CCNAME", buf);
 
 			sprintf(buf, "%s/sbin/pbs_renew", pbs_conf.pbs_exec_path);
@@ -2044,7 +2051,6 @@ receive_pipe_request(int sd)
 	job			*pjob = NULL;
 	pbs_task		*ptask;
 	int			cmd;
-	char			msg[LOG_BUF_SIZE];
 
 	if ((conn = get_conn(sd)) == NULL) {
 		log_err(PBSE_INTERNAL, __func__, "unable to find pipe");
@@ -2081,6 +2087,8 @@ receive_pipe_request(int sd)
 			log_err(-1, __func__, log_buffer);
 		}
 	} else {
+		char msg[LOG_BUF_SIZE];
+
 		snprintf(msg, sizeof(msg), "ignoring unknown cmd %d", cmd);
 		log_err(-1, __func__, msg);
 	}
@@ -2110,13 +2118,10 @@ finish_exec(job *pjob)
 	int			numthreads;
 	attribute		*pattr;
 	attribute		*pattri;
-	char	  		*phost;
 #if SHELL_INVOKE == 1
 	int	   		pipe_script[2] = {-1, -1};
 #endif
 	char			*pts_name;	/* name of slave pty */
-	int	   		pts;		/* fd for slave pty */
-	int			qsub_sock, old_qsub_sock;
 	char			*shell;
 	int			jsmpipe[2] = {-1, -1};	/* job starter to MOM for sid */
 	int			jsmpipe2[2] = {-1, -1};	/* job starter to MOM for sid */
@@ -2131,28 +2136,17 @@ finish_exec(job *pjob)
 #if MOM_ALPS
 	struct startjob_rtn     ack;
 #endif
-	char			*termtype;
 	pbs_task			*ptask;
 	struct	array_strings	*vstrs;
 	struct	sockaddr_in	saddr;
 	int			nodemux = 0;
 	char			*pbs_jobdir; /* staging and execution directory of this job */
 	int			sandbox_private = 0;
-	int			display_number = 0, n = 0 , ret = 0;
-	char			display[X_DISPLAY_LEN];
+	int			display_number = 0, n = 0;
 	struct			pfwdsock *socks = NULL;
 #ifdef NAS /* localmod 020 */
 	char * schedselect;
 #endif /* localmod 020 */
-	char			x11proto[X_DISPLAY_LEN], x11data[X_DISPLAY_LEN];
-	char			format[X_DISPLAY_LEN];
-	char			cmd[X_DISPLAY_LEN], x11authstr[X_DISPLAY_LEN];
-	char			auth_display[X_DISPLAY_LEN];
-	char			var[MAXPATHLEN+1];
-	FILE			*f;
-	unsigned int		x11screen;
-
-
 	char			hook_msg[HOOK_MSG_SIZE+1];
 	int			hook_rc;
 	int			prolo_hooks = 0;/*# of runnable prologue hooks*/
@@ -2468,13 +2462,13 @@ finish_exec(job *pjob)
 			pjob->ji_qs.ji_un.ji_momt.ji_exgid);
 
 		/* add escape in front of brackets */
-		for (s=buf, d=holdbuf; *s; s++, d++) {
+		for (s = buf, d = holdbuf; *s && ((d - holdbuf) < sizeof(holdbuf)); s++, d++) {
 			if (*s == '[' || *s == ']')
 				*d++ = '\\';
 			*d = *s;
 		}
 		*d = '\0';
-		strcpy(buf, holdbuf);
+		snprintf(buf, sizeof(buf), "%s", holdbuf);
 		DBPRT(("shell: %s\n", buf))
 #if SHELL_INVOKE == 1
 		if (is_interactive == 0) {
@@ -2488,7 +2482,8 @@ finish_exec(job *pjob)
 			/* if in "sandbox=PRIVATE" mode, prepend the script name on the pipe */
 			/* with "cd $PBS_JOBDIR;" command */
 			if (sandbox_private) {
-				sprintf(buf, "cd %s;%s", pbs_jobdir, holdbuf);
+				snprintf(buf, sizeof(buf), "cd %s;%.*s", pbs_jobdir,
+					(int)(sizeof(buf) - strlen(pbs_jobdir) - 5), holdbuf);
 			}
 
 			(void)strcat(buf, "\n");	/* setup above */
@@ -2662,7 +2657,7 @@ finish_exec(job *pjob)
 	bld_env_variables(&vtable, variables_else[9], buf);
 
 	/* PBS_MOMPORT */
-	sprintf(buf, "%d", pbs_rm_port);
+	sprintf(buf, "%u", pbs_rm_port);
 	bld_env_variables(&vtable, variables_else[10], buf);
 
 	/* OMP_NUM_THREADS and NCPUS eq to number of cpus */
@@ -2761,7 +2756,12 @@ finish_exec(job *pjob)
 	mom_unnice();
 
 	if (is_interactive) {
-		struct	sigaction	act;
+		struct sigaction act;
+		char *termtype;
+		char *phost;
+		int qsub_sock;
+		int old_qsub_sock;
+		int pts;	/* fd for slave pty */
 
 		/*************************************************************************/
 		/*		We have an "interactive" job, connect the standard	 */
@@ -2806,6 +2806,8 @@ finish_exec(job *pjob)
 		FDMOVE(qsub_sock);
 
 		if (pjob->ji_wattr[JOB_ATR_X11_cookie].at_val.at_str) {
+			char display[X_DISPLAY_LEN];
+
 			if ((socks = calloc(sizeof(struct pfwdsock), NUM_SOCKS)) == NULL) {
 				/* FAILURE - cannot alloc memory */
 				log_err(errno, __func__, "ERROR: could not calloc!\n");
@@ -3465,13 +3467,23 @@ finish_exec(job *pjob)
 	starter_return(upfds, downfds, JOB_EXEC_OK, &sjr);
 	log_close(0);
 
-	if ((pjob->ji_numnodes == 1) || nodemux ||
-		((cpid = fork()) > 0)) {	/* parent does the shell */
+	if ((pjob->ji_numnodes == 1) || nodemux || ((cpid = fork()) > 0)) {
+		/* parent does the shell */
+		FILE *f;
+
 		/* close sockets that child uses */
 		(void)close(pjob->ji_stdout);
 		(void)close(pjob->ji_stderr);
 		if ((is_interactive == TRUE) &&
 			pjob->ji_wattr[JOB_ATR_X11_cookie].at_val.at_str) {
+			char auth_display[X_DISPLAY_LEN];
+			char cmd[X_DISPLAY_LEN];
+			char format[X_DISPLAY_LEN];
+			char x11proto[X_DISPLAY_LEN];
+			char x11data[X_DISPLAY_LEN];
+			char x11authstr[X_DISPLAY_LEN];
+			unsigned int x11screen;
+			int ret;
 
 			x11proto[0] = x11data[0] = '\0';
 			format[0]='\0';
@@ -3500,7 +3512,7 @@ finish_exec(job *pjob)
 				return;
 			}
 			ret = snprintf(auth_display, sizeof(auth_display),
-				"unix:%u.%u",
+				"unix:%d.%u",
 				display_number,
 				x11screen);
 			if (ret >= sizeof(auth_display)) {
@@ -3524,6 +3536,7 @@ finish_exec(job *pjob)
 					return;
 				}
 			} else {
+				char var[MAXPATHLEN + 1];
 				sprintf(var, "%s/.Xauthority", pbs_jobdir);
 				ret = snprintf(cmd, sizeof(cmd),
 					"%s -f %s/.Xauthority -q -",
@@ -4169,7 +4182,6 @@ void
 nodes_free(job *pj)
 {
 	int		 i;
-	hnodent		*np;
 	vmpiprocs       *vp;
 
 	if (pj->ji_vnods) {
@@ -4197,6 +4209,8 @@ nodes_free(job *pj)
 	}
 
 	if (pj->ji_hosts) {
+		hnodent *np;
+
 		np = pj->ji_hosts;
 		for (i = 0; i < pj->ji_numnodes; i++, np++) {
 			eventent	*ep = (eventent *)GET_NEXT(np->hn_events);
@@ -4276,9 +4290,6 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 	char	 momname[PBS_MAXNODENAME+1];
 	char     momport[10] = {0};
 	int	 nmoms;
-	int	 nthreads;
-	int	 numprocs;
-	int	 found_cpus0;
 	vmpiprocs *vmp;
 	momvmap_t *pmm = NULL;
 	mominfo_t *pmom;
@@ -4472,6 +4483,10 @@ job_nodes_inner(struct job *pjob, hnodent **mynp)
 	/* (1) parse chunk from select spec */
 	psubspec = parse_plus_spec_r(sbuf, &slast, &hpn);
 	while (psubspec) {
+		int	 nthreads;
+		int	 numprocs;
+		int	 found_cpus0;
+
 		DBPRT(("\tsubspec: %s\n", psubspec))
 		nthreads = -1;
 		numprocs = -1;
@@ -4918,8 +4933,6 @@ job_nodes(struct job *pjob)
 	return job_nodes_inner(pjob, NULL);
 }
 
-#define	NUMRAND	(16/sizeof(long))
-
 /**
  * @brief
  * 	start_exec() - start execution of a job
@@ -4929,20 +4942,16 @@ job_nodes(struct job *pjob)
  * @return	Void
  *
  */
-
 void
 start_exec(job *pjob)
 {
 	eventent	*ep = NULL;
-	int		com, i, nodenum;
+	int		i, nodenum;
 	pbs_socklen_t	len;
 	int		socks[2];
 	struct	sockaddr_in	saddr;
 	hnodent		*np;
-	attribute	*pattr;
 	pbs_list_head	phead;
-	int		nodemux = 0;
-	int		mtfd = -1;
 #if	MOM_BGL
 	int             job_error_code;
 #endif/* MOM_BGL */
@@ -4964,30 +4973,34 @@ start_exec(job *pjob)
 		return;
 	}
 
-	/* make sure we have a cookie for the job */
+	/*
+	 * Ensure we have a cookie for the job. The cookie consists of a
+	 * string of 32 hex characters plus a null terminator. The machine
+	 * architecture needs to be considered when populating the string
+	 * because random() and lrand48() return a long int.
+	 */
 
 	if (!(pjob->ji_wattr[(int)JOB_ATR_Cookie].at_flags & ATR_VFLAG_SET)) {
 		char		*tt;
 		int		i;
-		int		off = 2*sizeof(unsigned long);
 
-		tt = pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str =
-			malloc(NUMRAND*off + 1);
+		tt = pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str = malloc(33);
 		if (tt == NULL) {
 			log_joberr(ENOMEM, __func__, "out of memory",
 				pjob->ji_qs.ji_jobid);
 			exec_bail(pjob, JOB_EXEC_RETRY, NULL);
 			return;
 		}
-		pjob->ji_wattr[(int)JOB_ATR_Cookie].at_flags |=ATR_VFLAG_SET;
+		pjob->ji_wattr[(int)JOB_ATR_Cookie].at_flags |= ATR_VFLAG_SET;
 
-		for (i=0; i<NUMRAND; i++) {
-			sprintf(&tt[i*off], "%*.*lX", off, off,
+		for (i = 0; i < 33; i += sizeof(long)) {
+			snprintf(&tt[i], 33 - i, "%.*lX", (int)sizeof(long),
 #ifdef	_SX
-				(unsigned long)lrand48());
+				(unsigned long)lrand48()
 #else
-				(unsigned long)random());
+				(unsigned long)random()
 #endif
+				);
 		}
 		DBPRT(("===== COOKIE %s\n", tt))
 	}
@@ -5004,6 +5017,11 @@ start_exec(job *pjob)
 	nodenum = pjob->ji_numnodes;
 
 	if (nodenum > 1) {
+		attribute *pattr;
+		int nodemux = 0;
+		int mtfd = -1;
+		int com;
+
 		pjob->ji_resources = (noderes *)calloc(nodenum-1,
 			sizeof(noderes));
 		assert(pjob->ji_resources != NULL);
@@ -5352,7 +5370,6 @@ create_file_securely(char *path, uid_t exuid, gid_t exgid)
 	char    buf[MAXPATHLEN+1];
 	char   *pc;
 	mode_t  cur_mask;
-	int	acc;
 	int	fds;
 
 	/* create a uniquely named file using mkstemp() */
@@ -5394,6 +5411,8 @@ create_file_securely(char *path, uid_t exuid, gid_t exgid)
 			(void)unlink(buf);
 			fds = -1;
 		} else {
+			int acc;
+
 			/* add O_APPEND to the file descriptor so that lines */
 			/* written by qmsg are not overwritten by the job    */
 

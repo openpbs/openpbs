@@ -228,7 +228,7 @@ truncate_and_log(const char *id, char *buf, int bufsize)
 void
 mom_vnlp_report(vnl_t *vnl, char *header)
 {
-	int		i, j, k;
+	int		i;
 	char		reportbuf[LOG_BUF_SIZE+1];
 	char		*p = NULL;
 	vnl_t		*vp;
@@ -242,6 +242,7 @@ mom_vnlp_report(vnl_t *vnl, char *header)
 
 	for (i = 0; i < vp->vnl_used; i++) {
 		vnal_t	*vnalp;
+		int j, k;
 
 		vnalp = VNL_NODENUM(vp, i);
 		bytes_left = LOG_BUF_SIZE;
@@ -481,7 +482,7 @@ cpunum_free(unsigned int cpunum)
 
 		assert(ret == AVL_EOIX);
 
-		sprintf(log_buffer, "CPU %d not found in cpuctx", cpunum);
+		sprintf(log_buffer, "CPU %u not found in cpuctx", cpunum);
 		log_err(PBSE_SYSTEM, __func__, log_buffer);
 	}
 }
@@ -525,7 +526,7 @@ resadj(vnl_t *vp, const char *vnid, const char *res, enum res_op op,
 {
 	int		i, j;
 
-	sprintf(log_buffer, "vnode %s, resource %s, res_op %u, adjval %u",
+	sprintf(log_buffer, "vnode %s, resource %s, res_op %d, adjval %u",
 		vnid, res, (int) op, adjval);
 	log_event(PBSEVENT_DEBUG3, 0, LOG_DEBUG, __func__, log_buffer);
 	for (i = 0; i < vp->vnl_used; i++) {
@@ -535,12 +536,13 @@ resadj(vnl_t *vp, const char *vnid, const char *res, enum res_op op,
 		if (strcmp(vnalp->vnal_id, vnid) != 0)
 			continue;
 		for (j = 0; j < vnalp->vnal_used; j++) {
-			vna_t		*vnap;
-			unsigned int	resval;
-			char		valbuf[BUFSIZ];
+			vna_t *vnap;
 
 			vnap = VNAL_NODENUM(vnalp, j);
 			if (strcmp(vnap->vna_name, res) == 0) {
+				unsigned int resval;
+				char valbuf[BUFSIZ];
+
 				resval = strtoul(vnap->vna_val, NULL, 0);
 				switch ((int) op) {
 					case RES_DECR:
@@ -553,7 +555,7 @@ resadj(vnl_t *vp, const char *vnid, const char *res, enum res_op op,
 						resval = adjval;
 						break;
 					default:
-						sprintf(log_buffer, "unknown res_op %u",
+						sprintf(log_buffer, "unknown res_op %d",
 							(int) op);
 						log_event(PBSEVENT_ERROR, 0, LOG_ERR, __func__,
 							log_buffer);
@@ -658,61 +660,62 @@ cpu_inuse(unsigned int cpunum, job *pjob, int outofserviceflag)
 	AVL_IX_DESC	*pix;
 	int		ret;
 
-	if ((pix = cpuctx) != NULL) {
-		avl_first_key(pix);
+	pix = cpuctx;
+	if (pix == NULL)
+		return;
 
+	avl_first_key(pix);
+
+	if (pe == NULL) {
+		pe = malloc(sizeof(AVL_IX_REC) + PBS_MAXNODENAME + 1);
 		if (pe == NULL) {
-			pe = malloc(sizeof(AVL_IX_REC) + PBS_MAXNODENAME + 1);
-			if (pe == NULL) {
-				log_err(errno, __func__, "malloc pe failed");
+			log_err(errno, __func__, "malloc pe failed");
+			return;
+		}
+	}
+	while ((ret = avl_next_key(pe, pix)) == AVL_IX_OK) {
+		unsigned int	i;
+		mominfo_t	*mip;
+		mom_vninfo_t	*mvp;
+
+		mip = (mominfo_t *) pe->recptr;
+		assert(mip != NULL);
+		assert(mip->mi_data != NULL);
+
+		mvp = (mom_vninfo_t *) mip->mi_data;
+		for (i = 0; i < mvp->mvi_ncpus; i++)
+			if (mvp->mvi_cpulist[i].mvic_cpunum == cpunum) {
+				if (MVIC_CPUISFREE(mvp, i)) {
+					cpuindex_inuse(mvp, i, pjob);
+					if (outofserviceflag != 0) {
+						assert(vnlp != NULL);
+						assert(mvp->mvi_id != NULL);
+						resadj(vnlp, mvp->mvi_id,
+							ra_ncpus, RES_DECR,
+							1);
+						mvp->mvi_acpus--;
+					}
+				}
 				return;
 			}
-		}
-		while ((ret = avl_next_key(pe, pix)) == AVL_IX_OK) {
-			unsigned int	i;
-			mominfo_t	*mip;
-			mom_vninfo_t	*mvp;
+	}
 
-			mip = (mominfo_t *) pe->recptr;
-			assert(mip != NULL);
-			assert(mip->mi_data != NULL);
+	assert(ret == AVL_EOIX);
 
-			mvp = (mom_vninfo_t *) mip->mi_data;
-			for (i = 0; i < mvp->mvi_ncpus; i++)
-				if (mvp->mvi_cpulist[i].mvic_cpunum == cpunum) {
-					if (MVIC_CPUISFREE(mvp, i)) {
-						cpuindex_inuse(mvp, i, pjob);
-						if (outofserviceflag != 0) {
-							assert(vnlp != NULL);
-							assert(mvp->mvi_id != NULL);
-							resadj(vnlp, mvp->mvi_id,
-								ra_ncpus, RES_DECR,
-								1);
-							mvp->mvi_acpus--;
-						}
-					}
-					return;
-				}
-		}
-
-		assert(ret == AVL_EOIX);
-
-		/*
-		 *	If we get here, we didn't find the CPU in question.
-		 *	Requests to mark a CPU for which we have no record
-		 *	out of service may be benign;  we may never have
-		 *	known about it because we were never told about it
-		 *	in a vnode definitions file, and the caller may
-		 *	simply not have checked first.  So, we silently
-		 *	ignore those requests.  However, if we're asked
-		 *	to mark a CPU in use but haven't heard of it, that's
-		 *	an error.
-		 */
-		if (outofserviceflag == 0) {
-			sprintf(log_buffer, "CPU %d not found in cpuctx",
-				cpunum);
-			log_err(PBSE_SYSTEM, __func__, log_buffer);
-		}
+	/*
+	 *	If we get here, we didn't find the CPU in question.
+	 *	Requests to mark a CPU for which we have no record
+	 *	out of service may be benign;  we may never have
+	 *	known about it because we were never told about it
+	 *	in a vnode definitions file, and the caller may
+	 *	simply not have checked first.  So, we silently
+	 *	ignore those requests.  However, if we're asked
+	 *	to mark a CPU in use but haven't heard of it, that's
+	 *	an error.
+	 */
+	if (outofserviceflag == 0) {
+		sprintf(log_buffer, "CPU %u not found in cpuctx", cpunum);
+		log_err(PBSE_SYSTEM, __func__, log_buffer);
 	}
 }
 
@@ -1032,7 +1035,7 @@ new_vnid(const char *vnid, void *ctx)
 		return NULL;
 	}
 
-	strncpy(mip->mi_host, mom_host, sizeof(mip->mi_host));
+	snprintf(mip->mi_host, sizeof(mip->mi_host), "%s", mom_host);
 	mip->mi_port = pbs_mom_port;
 	mip->mi_rmport = pbs_rm_port;
 	mip->mi_data = mvp;

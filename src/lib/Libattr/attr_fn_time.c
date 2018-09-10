@@ -171,7 +171,7 @@ decode_time(struct attribute *patr, char *name, char *rescn, char *val)
 /**
  * @brief
  *	encode_time - encode attribute of type long into attr_extern
- *	with value in form of [[hh:]mm:]ss
+ *	with value in form of hh:mm:ss
  *
  * @param[in] attr - ptr to attribute to encode
  * @param[in] phead - ptr to head of attrlist list
@@ -188,34 +188,35 @@ decode_time(struct attribute *patr, char *name, char *rescn, char *val)
  */
 /*ARGSUSED*/
 
-#define CVNBUFSZ 21
+#define CVNBUFSZ 24
 
 int
 encode_time(attribute *attr, pbs_list_head *phead, char *atname, char *rsname, int mode, svrattrl **rtnl)
 {
-	size_t	  ct;
-	char	  cvnbuf[CVNBUFSZ];
-	long 	  hr;
-	int	  min;
-	long	  n;
+	size_t ct;
+	unsigned long n;
+	unsigned long hr;
+	unsigned int min;
+	unsigned int sec;
 	svrattrl *pal;
-	int	  sec;
-	char	 *pv;
+	char *pv;
+	char cvnbuf[CVNBUFSZ] = {'\0'};
 
 	if (!attr)
 		return (-1);
 	if (!(attr->at_flags & ATR_VFLAG_SET))
 		return (0);
+	if (attr->at_val.at_long < 0)
+		return (-1);
 
-	n   = attr->at_val.at_long;
-	hr  = n / 3600;
-	n   = n % 3600;
+	n = attr->at_val.at_long;
+	hr = n / 3600;
+	n %= 3600;
 	min = n / 60;
-	n   = n % 60;
-	sec = n;
+	sec = n % 60;
 
 	pv = cvnbuf;
-	(void)sprintf(pv, "%02ld:%02d:%02d", hr, min, sec);
+	(void)sprintf(pv, "%02lu:%02u:%02u", hr, min, sec);
 	pv += strlen(pv);
 
 	ct = strlen(cvnbuf) + 1;

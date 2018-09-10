@@ -307,14 +307,6 @@ prt_node_summary(char *def_server, struct batch_status *bstatus, int job_summary
 	struct attrl	    *pattr;
 	struct attrl	    *next;
 	struct JsonNode     *node = NULL;
-	char		    *name;
-	char		    *state;
-	char		    *hardware;
-	char		    *queue;
-	char		    *os;
-	char		    *host;
-	char		    *comment;
-	char		    *jobs;
 	char		     suffixletter[]  = " kmgtp?";
 	char		    *pc;
 	char		    *pc1;
@@ -324,23 +316,11 @@ prt_node_summary(char *def_server, struct batch_status *bstatus, int job_summary
 	char		     ngpus_info[20] = "0";
 	char		    *prev_jobid = NULL;
 	char		    *cur_jobid = NULL;
-	int		     prefix_total = 0;
-	int		     prefix_available = 0; /*magnitude of value when printed*/
 	int		     prefix_assigned = 0;
-	int		     count = 0;
 	long int	     assigned_mem = 0;
-	long int	     available_mem = 0;
-	long int	     total_mem = 0;
-	long int	     available_cpus = 0;
-	long int	     total_cpus = 0;
 	long int	     njobs = 0;
 	long int	     run_jobs = 0;
 	long int	     susp_jobs = 0;
-	long int	     total_nmic = 0;
-	long int	     available_nmic = 0;
-	long int	     total_ngpus = 0;
-	long int	     available_ngpus = 0;
-	long int	     resource_assigned = 0;
 	long int	     value = 0;
 	static int	     done_headers = 0;
 
@@ -359,7 +339,28 @@ prt_node_summary(char *def_server, struct batch_status *bstatus, int job_summary
 		def_server = "";
 
 	for (bstat = bstatus; bstat; bstat = bstat->next) {
-		name = "--";
+		char *name;
+		char *state;
+		char *hardware;
+		char *queue;
+		char *os;
+		char *host;
+		char *comment;
+		char *jobs;
+		int count;
+		int prefix_total;
+		int prefix_available;	/* magnitude of value when printed */
+		long int total_mem;
+		long int available_mem;
+		long int total_cpus;
+		long int available_cpus;
+		long int total_nmic;
+		long int available_nmic;
+		long int total_ngpus;
+		long int available_ngpus;
+		long int resource_assigned;
+
+		name = bstat->name;
 		state = "--";
 		hardware = "--";
 		queue = "--";
@@ -367,7 +368,26 @@ prt_node_summary(char *def_server, struct batch_status *bstatus, int job_summary
 		host = "--";
 		comment = "--";
 		jobs ="--";
+		count = 0;
+		prefix_total = 0;
+		prefix_available = 0;
+		total_mem = 0;
+		available_mem = 0;
+		total_cpus = 0;
+		available_cpus = 0;
+		total_nmic = 0;
+		available_nmic = 0;
+		total_ngpus = 0;
+		available_ngpus = 0;
+		resource_assigned = 0;
+		njobs = 0;
+		run_jobs = 0;
+		susp_jobs = 0;
+		value = 0;
+		prev_jobid = "";
+		cur_jobid = "";
 		pc = NULL;
+
 		if (job_summary) {
 			strcpy(mem_info, "0kb/0kb");
 			strcpy(ncpus_info, "0/0");
@@ -379,25 +399,7 @@ prt_node_summary(char *def_server, struct batch_status *bstatus, int job_summary
 			strcpy(nmic_info, "0");
 			strcpy(ngpus_info, "0");
 		}
-		prefix_total = 0;
-		prefix_available = 0;
-		count = 0;
-		available_mem = 0;
-		total_mem = 0;
-		available_cpus = 0;
-		total_cpus = 0;
-		njobs = 0;
-		run_jobs = 0;
-		susp_jobs = 0;
-		total_nmic = 0;
-		available_nmic = 0;
-		total_ngpus = 0;
-		available_ngpus = 0;
-		resource_assigned = 0;
-		value = 0;
-		prev_jobid = "";
-		cur_jobid = "";
-		name = bstat->name;
+
 		for (pattr = bstat->attribs; pattr; pattr = pattr->next) {
 			if (pattr->resource && (strcmp(pattr->name, "resources_assigned") != 0)) {
 				if ((strcmp(pattr->resource, "mem") == 0)) {
@@ -441,10 +443,10 @@ prt_node_summary(char *def_server, struct batch_status *bstatus, int job_summary
 						prefix_total++;
 					}
 					if (job_summary)
-						snprintf(mem_info, 20, "%ld%cb/%ld%cb", available_mem, suffixletter[prefix_available],
+						snprintf(mem_info, sizeof(mem_info), "%ld%cb/%ld%cb", available_mem, suffixletter[prefix_available],
 							total_mem, suffixletter[prefix_total]);
 					else
-						snprintf(mem_info, 20, "%ld%cb", total_mem, suffixletter[prefix_total]);
+						snprintf(mem_info, sizeof(mem_info), "%ld%cb", total_mem, suffixletter[prefix_total]);
 				} else if ((strcmp(pattr->resource, "ncpus") == 0)) {
 					total_cpus = atol(pattr->value);
 					resource_assigned = 0;
@@ -816,7 +818,6 @@ marknode(int con, char *name,
 	char *state2, enum batch_op op2,
 	char *comment)
 {
-	char		*errmsg;
 	char		Comment[80];
 	struct attropl	new[3];
 	int		i;
@@ -857,6 +858,8 @@ marknode(int con, char *name,
 
 	rc = pbs_manager(con, MGR_CMD_SET, MGR_OBJ_HOST, name, new, NULL);
 	if (rc && !quiet) {
+		char *errmsg;
+
 		fprintf(stderr, "Error marking node %s - ", name);
 		if ((errmsg = pbs_geterrmsg(con)) != NULL)
 			fprintf(stderr, "%s\n", errmsg);
@@ -901,7 +904,6 @@ main(int argc, char *argv[])
 	int		     long_summary = 0;
 	int		     format = 0;
 	int		     prt_summary = 0;
-	int		     matched = 0;
 
 	/*test for real deal or just version and exit*/
 
@@ -1283,6 +1285,8 @@ main(int argc, char *argv[])
 			/*list nodes and vnodes associated with them.*/
 			if (argc-optind) {
 				for (bstat = bstat_head; bstat;bstat = bstat->next) {
+					int matched;
+
 					matched = 0;
 					pa = argv+optind;
 					while (*pa) {

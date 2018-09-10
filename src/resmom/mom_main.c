@@ -2578,7 +2578,7 @@ do_mom_action_script(int	ae,	/* index into action table */
 #ifdef	WIN32
 	char		buf[MAX_PATH + 1];
 #else
-	char		buf[_POSIX_PATH_MAX + 1];
+	char		buf[MAXPATHLEN + 1];
 #endif
 	int		i;
 	int		nargs;
@@ -8431,19 +8431,20 @@ main(int argc, char *argv[])
 				rlimit.rlim_cur = MIN_STACK_LIMIT;
 				rlimit.rlim_max = MIN_STACK_LIMIT;
 				if (setrlimit64(RLIMIT_STACK, &rlimit) == -1) {
+					char msgbuf[] = "Stack limit setting failed";
 					curerror = errno;
-					sprintf(log_buffer, "Stack limit setting failed");
-					log_err(curerror, __func__, log_buffer);
-					sprintf(log_buffer, "%s errno=%d", log_buffer, curerror);
+					log_err(curerror, __func__, msgbuf);
+					sprintf(log_buffer, "%s errno=%d", msgbuf, curerror);
 					log_record(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, (char *)__func__, log_buffer);
 					exit(1);
 				}
 			}
 		} else {
+			char msgbuf[] = "Getting current Stack limit failed";
+
 			curerror = errno;
-			sprintf(log_buffer, "Getting current Stack limit failed");
-			log_err(curerror, __func__, log_buffer);
-			sprintf(log_buffer, "%s errno=%d", log_buffer, curerror);
+			log_err(curerror, __func__, msgbuf);
+			snprintf(log_buffer, sizeof(log_buffer), "%s errno=%d", msgbuf, curerror);
 			log_record(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, (char *)__func__, log_buffer);
 			exit(1);
 		}
@@ -10495,18 +10496,16 @@ getkbdtime(void)
 {
 	DIR	*dp;
 	struct	dirent	*de;
-	static char	idle_dir[256];
-	char	idle_file[256];
+	static char	idle_dir[MAXPATHLEN + 1] = {'\0'};
+	char	*idle_file = NULL;
 	struct input_dev_list *pl = &input_dev_list[0];
 	int     i;
 	int     checked = 0;
 	char	*ptsname;
 
-
-
 	/* since we call this function so often, only want to set this once */
 	if (idle_dir[0] == '\0')
-		sprintf(idle_dir, "%s/spool/idledir", pbs_conf.pbs_home_path);
+		snprintf(idle_dir, sizeof(idle_dir), "%s/spool/idledir", pbs_conf.pbs_home_path);
 
 	if (check_idle_daemon) {
 		if ((dp=opendir(idle_dir)) != NULL) {
@@ -10517,9 +10516,10 @@ getkbdtime(void)
 					break;
 				if (*ptsname == '.')
 					continue;
-				sprintf(idle_file, "%s/%s", idle_dir, ptsname);
+				pbs_asprintf(&idle_file, "%s/%s", idle_dir, ptsname);
 				if (setmax(idle_file) > 0)
 					checked = 1;
+				free(idle_file);
 			}
 			closedir(dp);
 		}

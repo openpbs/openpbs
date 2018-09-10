@@ -2668,9 +2668,11 @@ hook_save(hook *phook)
 		return (-1);
 	}
 	if (rename(hookfile_new, hookfile) < 0) {
-		sprintf(log_buffer, "rename(%s, %s) failed!",
-			hookfile_new, hookfile);
-		log_err(errno, __func__, log_buffer);
+		char *msgbuf;
+
+		pbs_asprintf(&msgbuf, "rename(%s, %s) failed!", hookfile_new, hookfile);
+		log_err(errno, __func__, msgbuf);
+		free(msgbuf);
 		(void)unlink(hookfile_new);
 		return (-1);
 	}

@@ -661,7 +661,7 @@ rec_write_usage(group_info *root, FILE *fp)
 #else
 	if (root->usage != 1 && root->child == NULL && strcmp(root->name, UNKNOWN_GROUP_NAME) != 0) {
 #endif /* localmod 043 */
-		strncpy(grp.name, root->name, USAGE_NAME_MAX);
+		snprintf(grp.name, sizeof(grp.name), "%s", root->name);
 		grp.usage = root->usage;
 
 		fwrite(&grp, sizeof(struct group_node_usage_v2), 1, fp);

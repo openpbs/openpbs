@@ -281,7 +281,7 @@ prepare_path(char *path_in, char *path_out)
 		} else
 #endif
 		{
-			strncat(path_out, cwd, MAXPATHLEN - strlen(path_out));
+			strncat(path_out, cwd, (MAXPATHLEN + 1) - strlen(path_out));
 			if (strlen(path_out) < MAXPATHLEN)
 				strcat(path_out, "/");
 		}
@@ -334,7 +334,7 @@ prepare_path(char *path_in, char *path_out)
 	strcpy(path_out, replace_space(path_out, "\\ "));
 	path_out[MAXPATHLEN - 1] = '\0';
 #else
-	strncat(path_out, path_name, MAXPATHLEN - strlen(path_out));
+	strncat(path_out, path_name, (MAXPATHLEN + 1) - strlen(path_out));
 #endif
 
 	return (0);

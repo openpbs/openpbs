@@ -2294,11 +2294,14 @@ eval_selspec(status *policy, selspec *spec, place *placespec,
 			}
 		}
 		else {
+			char *msgbuf;
+
 			translate_fail_code(err, NULL, reason);
-			snprintf(logbuf, MAX_LOG_SIZE,
-				"Placement set %s is too small: %s", nodepart[i]->name, reason);
+			pbs_asprintf(&msgbuf, "Placement set %s is too small: %s",
+				nodepart[i]->name, reason);
 			schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-				resresv->name, logbuf);
+				resresv->name, msgbuf);
+			free(msgbuf);
 			set_schd_error_codes(err, NOT_RUN, SET_TOO_SMALL);
 			set_schd_error_arg(err, ARG1, "Placement");
 #ifdef NAS /* localmod 031 */
@@ -2382,6 +2385,7 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 	nspec			**ns_head = NULL;
 	char			logbuf[MAX_LOG_SIZE] = {0};
 	char			reason[MAX_LOG_SIZE] = {0};
+	char			*msgbuf;
 	resource_req		*req = NULL;
 	schd_resource		*res = NULL;
 	selspec			*dselspec = NULL;
@@ -2562,10 +2566,12 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 						else
 							translate_fail_code(err, NULL, reason);
 
-						snprintf(logbuf, MAX_LOG_SIZE,
-							"Insufficient host-level resources %s", reason);
+						pbs_asprintf(&msgbuf,
+							"Insufficient host-level resources %s",
+							reason);
 						schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-							resresv->name, logbuf);
+							resresv->name, msgbuf);
+						free(msgbuf);
 						if (failerr->status_code == SCHD_UNKWN)
 							move_schd_error(failerr, err);
 						clear_schd_error(err);
@@ -2624,17 +2630,19 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 						}
 					}
 					else {
-						if (hostsets[i]->free_nodes ==0) {
+						if (hostsets[i]->free_nodes == 0) {
 							strncpy(reason, "No free nodes available", MAX_LOG_SIZE - 1);
 							reason[MAX_LOG_SIZE - 1] = '\0';
 						}
 						else
 							translate_fail_code(err, NULL, reason);
 
-						snprintf(logbuf, MAX_LOG_SIZE,
-							"Insufficient host-level resources %s", reason);
+						pbs_asprintf(&msgbuf,
+							"Insufficient host-level resources %s",
+							reason);
 						schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-							resresv->name, logbuf);
+							resresv->name, msgbuf);
+						free(msgbuf);
 
 						if (failerr->status_code == SCHD_UNKWN)
 							move_schd_error(failerr, err);
@@ -2745,10 +2753,12 @@ eval_placement(status *policy, selspec *spec, node_info **ninfo_arr, place *pl,
 						else
 							translate_fail_code(err, NULL, reason);
 
-						snprintf(logbuf, MAX_LOG_SIZE,
-							"Insufficient host-level resources %s", reason);
+						pbs_asprintf(&msgbuf,
+							"Insufficient host-level resources %s",
+							reason);
 						schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG,
-							resresv->name, logbuf);
+							resresv->name, msgbuf);
+						free(msgbuf);
 #ifdef NAS /* localmod 998 */
 						set_schd_error_codes(err, NOT_RUN, RESOURCES_INSUFFICIENT);
 #else

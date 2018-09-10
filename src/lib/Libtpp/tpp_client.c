@@ -336,7 +336,7 @@ static int unshelve_pkt(stream_t *strm, int seq_no_acked);
 static void *add_part_packet(stream_t *strm, void *data, int sz);
 static int send_pkt_to_app(stream_t *strm, unsigned char type, void *data, int sz);
 static stream_t *find_stream_with_dest(tpp_addr_t *dest_addr, unsigned int dest_sd, unsigned int dest_magic);
-static int tpp_send_inner(unsigned int sd, void *data, unsigned int len, unsigned int full_len, unsigned int cmprsd_len);
+static int tpp_send_inner(int sd, void *data, int len, int full_len, int cmprsd_len);
 static int send_spl_packet(stream_t *strm, int type);
 static void flush_acks(stream_t *strm);
 static void tpp_clr_retry(tpp_packet_t *pkt, stream_t *strm);
@@ -501,17 +501,17 @@ leaf_post_connect_handler(int tfd, void *data, void *c)
 {
 	tpp_context_t *ctx = (tpp_context_t *) c;
 	tpp_router_t *r;
-	int len;
 	tpp_join_pkt_hdr_t hdr;
 	tpp_chunk_t chunks[2];
-	int i;
 
 	if (!ctx)
 		return 0;
 
 	if (ctx->type == TPP_ROUTER_NODE) {
-		r = (tpp_router_t *) ctx->ptr;
+		int len;
+		int i;
 
+		r = (tpp_router_t *) ctx->ptr;
 		r->state = TPP_ROUTER_STATE_CONNECTING;
 
 		if (tpp_conf->auth_type == TPP_AUTH_EXTERNAL) {
@@ -529,8 +529,11 @@ leaf_post_connect_handler(int tfd, void *data, void *c)
 			}
 
 			if ((adata = tpp_conf->get_ext_auth_data(tpp_conf->auth_type, &alen, ebuf, sizeof(ebuf))) == NULL) {
-				snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Authentication failed: %s", ebuf);
-				tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
+				char *msgbuf;
+
+				pbs_asprintf(&msgbuf, "Authentication failed: %s", ebuf);
+				tpp_log_func(LOG_CRIT, __func__, msgbuf);
+				free(msgbuf);
 				return -1;
 			}
 
@@ -860,7 +863,7 @@ tpp_open(char *dest_host, unsigned int port)
 					tpp_unlock(&strmarray_lock);
 					free(pkey);
 
-					TPP_DBPRT(("Stream for dest[%s] returned = %d", dest, strm->sd));
+					TPP_DBPRT(("Stream for dest[%s] returned = %u", dest, strm->sd));
 					free(dest);
 					return strm->sd;
 				}
@@ -1027,21 +1030,21 @@ get_active_router(int index)
 int
 tpp_send(int sd, void *data, int len)
 {
-	unsigned int to_send;
+	int to_send;
 	void *p;
 	unsigned int cmprsd_len = 0;
-	int send_len;
 	tpp_packet_t *pkt = NULL;
-	void *outbuf;
 
 	if (!get_strm(sd)) {
 		TPP_DBPRT(("Bad sd %d", sd));
 		return -1;
 	}
 
-	TPP_DBPRT(("Sending: sd=%u, len=%d", sd, len));
+	TPP_DBPRT(("Sending: sd=%d, len=%d", sd, len));
 
-	if (tpp_conf->compress == 1 && len > TPP_SEND_SIZE) {
+	if ((tpp_conf->compress == 1) && (len > TPP_SEND_SIZE)) {
+		void *outbuf;
+
 		outbuf = tpp_deflate(data, len, &cmprsd_len);
 		if (outbuf == NULL) {
 			tpp_log_func(LOG_CRIT, __func__, "tpp deflate failed");
@@ -1062,13 +1065,10 @@ tpp_send(int sd, void *data, int len)
 	}
 
 	if (to_send > 0) {
-		send_len = to_send;
-		to_send -= send_len;
-		if (tpp_send_inner(sd, p, send_len, len, cmprsd_len) != send_len) {
+		if (tpp_send_inner(sd, p, to_send, len, cmprsd_len) != to_send) {
 			tpp_free_pkt(pkt);
 			return -1;
 		}
-		p = (char *) p + send_len;
 	}
 	tpp_free_pkt(pkt);
 	return len;
@@ -1101,7 +1101,7 @@ tpp_send(int sd, void *data, int len)
  *
  */
 static int
-tpp_send_inner(unsigned int sd, void *data, unsigned int len, unsigned int full_len, unsigned int cmprsd_len)
+tpp_send_inner(int sd, void *data, int len, int full_len, int cmprsd_len)
 {
 	stream_t *strm;
 	tpp_data_pkt_hdr_t dhdr;
@@ -1113,7 +1113,7 @@ tpp_send_inner(unsigned int sd, void *data, unsigned int len, unsigned int full_
 		return -1;
 	}
 
-	TPP_DBPRT(("**** sd=%u, len=%d, compr_len=%d, totlen=%d, dest_sd=%u, seq=%u", sd, len, cmprsd_len, full_len, strm->dest_sd, strm->send_seq_no));
+	TPP_DBPRT(("**** sd=%d, len=%d, compr_len=%d, totlen=%d, dest_sd=%u, seq=%u", sd, len, cmprsd_len, full_len, strm->dest_sd, strm->send_seq_no));
 
 	if (strm->strm_type == TPP_STRM_MCAST) {
 		/* do other stuff */
@@ -1145,7 +1145,7 @@ tpp_send_inner(unsigned int sd, void *data, unsigned int len, unsigned int full_
 
 	app_thread_active_router = get_active_router(app_thread_active_router);
 	if (app_thread_active_router == -1) {
-		TPP_DBPRT(("no active router, sending TPP_CMD_NET_CLOSE sd=%d", strm->sd));
+		TPP_DBPRT(("no active router, sending TPP_CMD_NET_CLOSE sd=%u", strm->sd));
 		send_app_strm_close(strm, TPP_CMD_NET_CLOSE, 0);
 		return -1;
 	}
@@ -1323,8 +1323,6 @@ static stream_t *
 alloc_stream(tpp_addr_t *src_addr, tpp_addr_t *dest_addr)
 {
 	stream_t *strm;
-	void *p;
-	unsigned int newsize;
 	unsigned int sd = max_strms, i;
 	void *data;
 	unsigned int freed_sd = UNINITIALIZED_INT;
@@ -1389,6 +1387,9 @@ alloc_stream(tpp_addr_t *src_addr, tpp_addr_t *dest_addr)
 
 	/* set to stream array */
 	if (max_strms == 0 || sd > max_strms - 1) {
+		unsigned int newsize;
+		void *p;
+
 		/* resize strmarray */
 		newsize = sd + 100;
 		p = realloc(strmarray, sizeof(stream_slot_t) * newsize);
@@ -1417,7 +1418,7 @@ alloc_stream(tpp_addr_t *src_addr, tpp_addr_t *dest_addr)
 		}
 	}
 
-	TPP_DBPRT(("*** Allocated new stream, sd=%d, src_magic=%d", strm->sd, strm->src_magic));
+	TPP_DBPRT(("*** Allocated new stream, sd=%u, src_magic=%u", strm->sd, strm->src_magic));
 
 	tpp_unlock(&strmarray_lock);
 
@@ -1666,7 +1667,7 @@ tpp_ready_fds(int *sds, int len)
 					}
 					sds[strms_found++] = sd;
 				} else {
-					TPP_DBPRT(("Data recvd on closed stream %d discarded", sd));
+					TPP_DBPRT(("Data recvd on closed stream %u discarded", sd));
 					tpp_free_pkt(pkt);
 					/* respond back by sending the close packet once more
 					 * does not matter if it is a retry anyway
@@ -1674,7 +1675,7 @@ tpp_ready_fds(int *sds, int len)
 					send_spl_packet(strm, TPP_CLOSE_STRM);
 				}
 			} else {
-				TPP_DBPRT(("Data recvd on deleted stream %d discarded", sd));
+				TPP_DBPRT(("Data recvd on deleted stream %u discarded", sd));
 				tpp_free_pkt(pkt);
 			}
 		} else if (cmd == TPP_CMD_PEER_CLOSE || cmd == TPP_CMD_NET_CLOSE) {
@@ -1897,7 +1898,7 @@ tpp_close(int sd)
 
 	tpp_lock(&strmarray_lock);
 
-	TPP_DBPRT(("Closing sd=%u", sd));
+	TPP_DBPRT(("Closing sd=%d", sd));
 	/* free the recv_queue also */
 	while ((p = tpp_deque(&strm->recv_queue)))
 		tpp_free_pkt(p);
@@ -1945,7 +1946,7 @@ tpp_mcast_open(void)
 		return -1;
 	}
 
-	TPP_DBPRT(("tpp_mcast_open called with fd=%d", strm->sd));
+	TPP_DBPRT(("tpp_mcast_open called with fd=%u", strm->sd));
 
 	strm->used_locally = 1;
 	strm->strm_type = TPP_STRM_MCAST;
@@ -2000,7 +2001,7 @@ tpp_mcast_add_strm(int mtfd, int tfd)
 			free(mstrm->mcast_data);
 			snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ,
 				"Out of memory allocating strm array of %lu bytes",
-				(TPP_MCAST_SLOT_INC * sizeof(int)));
+				(unsigned long)(TPP_MCAST_SLOT_INC * sizeof(int)));
 			tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
 			return -1;
 		}
@@ -2116,9 +2117,7 @@ static void
 tpp_mcast_notify_members(int mtfd, int cmd)
 {
 	stream_t *mstrm;
-	stream_t *strm;
 	int i;
-	int tfd;
 
 	mstrm = get_strm_atomic(mtfd);
 	if (!mstrm || !mstrm->mcast_data) {
@@ -2127,6 +2126,9 @@ tpp_mcast_notify_members(int mtfd, int cmd)
 	}
 
 	for (i = 0; i < mstrm->mcast_data->num_fds; i++) {
+		int tfd;
+		stream_t *strm;
+
 		tfd = mstrm->mcast_data->strms[i];
 		strm = get_strm_atomic(tfd);
 		if (!strm)
@@ -2257,7 +2259,7 @@ tpp_mcast_send(int mtfd, void *data, unsigned int len, unsigned int full_len, un
 		if (minfo_buf == NULL)
 			goto err;
 
-		TPP_DBPRT(("*** mcast_send hdr orig=%d, cmprsd=%d", minfo_len, cmpr_len));
+		TPP_DBPRT(("*** mcast_send hdr orig=%d, cmprsd=%u", minfo_len, cmpr_len));
 
 		chunks[1].data = minfo_buf;
 		chunks[1].len = cmpr_len;
@@ -2482,7 +2484,7 @@ strm_timeout_action(unsigned int sd)
 	tpp_lock(&strmarray_lock);
 	strm = strmarray[sd].strm;
 
-	TPP_DBPRT(("*** sd=%d timed out, closing", sd));
+	TPP_DBPRT(("*** sd=%u timed out, closing", sd));
 
 	send_app_strm_close(strm, TPP_CMD_NET_CLOSE, 0);
 	tpp_unlock(&strmarray_lock);
@@ -2628,7 +2630,7 @@ find_stream_with_dest(tpp_addr_t *dest_addr, unsigned int dest_sd, unsigned int 
 	while (1) {
 		strm = pkey->recptr;
 
-		TPP_DBPRT(("sd=%u, dest_sd=%u, u_state=%d, t-state=%d, dest_magic=%d", strm->sd, strm->dest_sd, strm->u_state, strm->t_state, strm->dest_magic));
+		TPP_DBPRT(("sd=%u, dest_sd=%u, u_state=%d, t-state=%d, dest_magic=%u", strm->sd, strm->dest_sd, strm->u_state, strm->t_state, strm->dest_magic));
 		if (strm->dest_sd == dest_sd && strm->dest_magic == dest_magic) {
 			free(pkey);
 			return strm;
@@ -2865,7 +2867,7 @@ shelve_mcast_pkt(tpp_mcast_pkt_hdr_t *mcast_hdr, int sd, int seq, tpp_packet_t *
 static int
 queue_ack(stream_t *strm, unsigned char type, unsigned int seq_no_recvd)
 {
-	ack_info_t *ack = NULL;
+	ack_info_t *ack;
 
 	ack = malloc(sizeof(ack_info_t));
 	if (!ack) {
@@ -3058,11 +3060,12 @@ static void
 check_pending_acks(time_t now)
 {
 	tpp_que_elem_t *n = NULL;
-	ack_info_t *ack;
 	stream_t *strm;
 	int rc;
 
 	while ((n = TPP_QUE_HEAD(&global_ack_queue))) {
+		ack_info_t *ack;
+
 		ack = TPP_QUE_DATA(n);
 		if (ack && (ack->ack_time <= now)) {
 			n = tpp_que_del_elem(&global_ack_queue, n);
@@ -3150,14 +3153,15 @@ static void
 act_strm(time_t now, int force)
 {
 	tpp_que_elem_t *n = NULL;
-	strm_action_info_t *c;
 
 	tpp_lock(&strmarray_lock);
 	while ((n = TPP_QUE_NEXT(&strm_action_queue, n))) {
+		strm_action_info_t *c;
+
 		c = TPP_QUE_DATA(n);
 		if (c && ((c->strm_action_time <= now) || (force == 1))) {
 			n = tpp_que_del_elem(&strm_action_queue, n);
-			TPP_DBPRT(("Calling action function for stream %d", c->sd));
+			TPP_DBPRT(("Calling action function for stream %u", c->sd));
 			c->strm_action_func(c->sd);
 			if (c->strm_action_func == free_stream) {
 				/* free stream itself clears elements from the strm_action_queue
@@ -3188,15 +3192,15 @@ static void
 check_retries(time_t now)
 {
 	tpp_que_elem_t *n = NULL;
-	retry_info_t *rt;
 	int sd;
 	stream_t *strm;
-	tpp_packet_t *pkt;
 	tpp_data_pkt_hdr_t *dhdr;
 	int count_sent_to_transport = 0;
 
-	n = NULL;
 	while ((n = TPP_QUE_NEXT(&global_retry_queue, n))) {
+		tpp_packet_t *pkt;
+		retry_info_t *rt;
+
 		pkt = TPP_QUE_DATA(n);
 		rt = (retry_info_t *) pkt->extra_data;
 		if (rt && (rt->retry_time <= now)) {
@@ -3221,11 +3225,11 @@ check_retries(time_t now)
 
 			if (strm && strm->t_state == TPP_TRNS_STATE_OPEN) {
 
-				TPP_DBPRT(("Sending retry packet for sd=%u seq=%u retry_time=%ld, pkt=%p",
+				TPP_DBPRT(("Sending retry packet for sd=%d seq=%u retry_time=%ld, pkt=%p",
 						sd, ntohl(dhdr->seq_no), rt->retry_time, pkt));
 
 				if (send_retry_packet(pkt) != 0) {
-					sprintf(tpp_get_logbuf(), "Could not send retry, sending net_close for sd=%d", strm->sd);
+					sprintf(tpp_get_logbuf(), "Could not send retry, sending net_close for sd=%u", strm->sd);
 					tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
 					send_app_strm_close(strm, TPP_CMD_NET_CLOSE, 0);
 				} else {
@@ -3468,7 +3472,7 @@ unshelve_pkt(stream_t *strm, int seq_no_acked)
 			dhdr = (tpp_data_pkt_hdr_t *)(pkt->data + sizeof(int));
 			if (ntohl(dhdr->seq_no) == seq_no_acked) {
 				rt->acked = 1;
-				TPP_DBPRT(("Releasing shelved packet sd=%u seq_no=%u type=%d", strm->sd, seq_no_acked, dhdr->type));
+				TPP_DBPRT(("Releasing shelved packet sd=%u seq_no=%d type=%d", strm->sd, seq_no_acked, dhdr->type));
 
 				strm->num_unacked_pkts--;
 				if (strm->num_unacked_pkts < 0)
@@ -3532,7 +3536,7 @@ add_part_packet(stream_t *strm, void *data, int sz)
 	q = (char *) data + sizeof(tpp_data_pkt_hdr_t);
 
 	pkt = strm->part_recv_pkt;
-	TPP_DBPRT(("*** pkt=%p, sd=%u, sz=%d, totlen=%d, cmprsd_len=%d", (void *) pkt, strm->sd, sz, totlen, cmprsd_len));
+	TPP_DBPRT(("*** pkt=%p, sd=%u, sz=%d, totlen=%d, cmprsd_len=%u", (void *) pkt, strm->sd, sz, totlen, cmprsd_len));
 	if (!pkt) {
 		pkt = tpp_cr_pkt(NULL, totlen, 1);
 		if (!pkt)
@@ -3691,7 +3695,6 @@ static AVL_IX_REC *
 find_stream_tree_key(stream_t *strm)
 {
 	AVL_IX_REC *pkey;
-	stream_t *t_strm;
 
 	pkey = avlkey_create(AVL_streams, &strm->dest_addr);
 	if (pkey == NULL) {
@@ -3702,6 +3705,8 @@ find_stream_tree_key(stream_t *strm)
 
 	if (avl_find_key(pkey, AVL_streams) == AVL_IX_OK) {
 		do {
+			stream_t *t_strm;
+
 			t_strm = pkey->recptr;
 			if (strm == t_strm)
 				return pkey;
@@ -3777,17 +3782,18 @@ free_stream_resources(stream_t *strm)
 static void
 free_stream(unsigned int sd)
 {
-	AVL_IX_REC *pkey;
 	stream_t *strm;
 	tpp_que_elem_t *n = NULL;
 	strm_action_info_t *c;
 
-	TPP_DBPRT(("Freeing stream %d", sd));
+	TPP_DBPRT(("Freeing stream %u", sd));
 
 	tpp_lock(&strmarray_lock);
 
 	strm = strmarray[sd].strm;
 	if (strm->strm_type != TPP_STRM_MCAST) {
+		AVL_IX_REC *pkey;
+
 		pkey = find_stream_tree_key(strm);
 		if (pkey == NULL) {
 			/* this should not happen ever */
@@ -3851,8 +3857,6 @@ leaf_pkt_presend_handler(int tfd, tpp_packet_t *pkt)
 {
 	tpp_data_pkt_hdr_t *data = (tpp_data_pkt_hdr_t *)(pkt->data + sizeof(int));
 	unsigned char type = data->type;
-	unsigned int sd;
-	unsigned int ack_no;
 	int len = *((int *)(pkt->data));
 	stream_t *strm;
 
@@ -3861,6 +3865,8 @@ leaf_pkt_presend_handler(int tfd, tpp_packet_t *pkt)
 	len = ntohl(len) - sizeof(tpp_data_pkt_hdr_t);
 
 	if (type == TPP_CLOSE_STRM || (type == TPP_DATA && len > 0)) {
+		unsigned int sd;
+		unsigned int ack_no;
 
 		sd = ntohl(data->src_sd);
 		ack_no = ntohl(data->ack_seq);
@@ -3882,7 +3888,7 @@ leaf_pkt_presend_handler(int tfd, tpp_packet_t *pkt)
 			/* if packet cannot be sent now then shelve them */
 			if (strm->num_unacked_pkts > rpp_highwater) {
 				snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ,
-					"Stream %d reached highwater, %d, throttling, seq=%d", sd,
+					"Stream %u reached highwater, %d, throttling, seq=%d", sd,
 					strm->num_unacked_pkts, ntohl(data->seq_no));
 				tpp_log_func(LOG_CRIT, NULL, tpp_get_logbuf());
 				if (shelve_pkt(pkt, NULL, now + TPP_THROTTLE_RETRY) != 0) {
@@ -4213,7 +4219,7 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx)
 				strm = get_strm_atomic(src_sd);
 				if (strm) {
 					char *msg = ((char *) data) + sizeof(tpp_ctl_pkt_hdr_t);
-					snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "sd %d, Received noroute to dest %s, msg=\"%s\"", src_sd,
+					snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "sd %u, Received noroute to dest %s, msg=\"%s\"", src_sd,
 								tpp_netaddr(&hdr->src_addr), msg);
 #ifdef NAS /* localmod 149 */
 					tpp_log_func(LOG_DEBUG, NULL, tpp_get_logbuf());
@@ -4221,7 +4227,7 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx)
 					tpp_log_func(LOG_INFO, NULL, tpp_get_logbuf());
 #endif /* localmod 149 */
 
-					TPP_DBPRT(("received noroute, sending TPP_CMD_NET_CLOSE to %d", strm->sd));
+					TPP_DBPRT(("received noroute, sending TPP_CMD_NET_CLOSE to %u", strm->sd));
 					send_app_strm_close(strm, TPP_CMD_NET_CLOSE, 0);
 				}
 				return 0;
@@ -4299,7 +4305,7 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx)
 			tpp_unlock(&strmarray_lock);
 
 			while ((strm = (stream_t *) tpp_deque(&send_close_queue))) {
-				TPP_DBPRT(("received TPP_CTL_LEAVE, sending TPP_CMD_NET_CLOSE sd=%d", strm->sd));
+				TPP_DBPRT(("received TPP_CTL_LEAVE, sending TPP_CMD_NET_CLOSE sd=%u", strm->sd));
 				send_app_strm_close(strm, TPP_CMD_NET_CLOSE, hdr->ecode);
 			}
 
@@ -4318,7 +4324,6 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx)
 			unsigned int src_sd;
 			unsigned int dest_sd;
 			unsigned int src_magic;
-			int seq_no_diff;
 			unsigned int sz = len - sizeof(tpp_data_pkt_hdr_t);
 
 			src_sd = ntohl(p->src_sd);
@@ -4354,7 +4359,7 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx)
 				}
 				dest_sd = strm->sd;
 			} else {
-				TPP_DBPRT(("Stream found from index in packet = %d", dest_sd));
+				TPP_DBPRT(("Stream found from index in packet = %u", dest_sd));
 			}
 
 			/* In any case, check for the stream's validity */
@@ -4380,7 +4385,7 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx)
 			strm->dest_magic = src_magic; /* used for matching next time onwards */
 
 			seq_no_expected = strm->seq_no_expected;
-			TPP_DBPRT(("sequence_no expected = %d", seq_no_expected));
+			TPP_DBPRT(("sequence_no expected = %u", seq_no_expected));
 
 			sd = strm->sd;
 
@@ -4454,6 +4459,7 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx)
 			} else {
 				tpp_que_elem_t *n;
 				tpp_packet_t *full_pkt;
+				int seq_no_diff;
 
 				/*
 				* Check the sequence number in the packet, if duplicate drop it,
@@ -4502,7 +4508,7 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx)
 						unsigned int seq_no = (unsigned int) ntohl(shdr->seq_no);
 						if (seq_no == seq_no_recvd) {
 							/* duplicate packet */
-							snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Recvd duplicate packet seq_no=%d, dup=%d", seq_no_recvd, shdr->dup);
+							snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Recvd duplicate packet seq_no=%u, dup=%d", seq_no_recvd, shdr->dup);
 							tpp_log_func(LOG_CRIT, NULL, tpp_get_logbuf());
 
 							tpp_free_pkt(full_pkt);
@@ -4512,7 +4518,7 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx)
 
 							/* insert it here and return */
 							n = tpp_que_ins_elem(&strm->oo_queue, n, full_pkt, 1);
-							snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Inserted OO packet with seq_no = %d for sd=%u", seq_no_recvd,
+							snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Inserted OO packet with seq_no = %u for sd=%u", seq_no_recvd,
 								strm->sd);
 							tpp_log_func(LOG_INFO, NULL, tpp_get_logbuf());
 							return 0;
@@ -4521,7 +4527,7 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx)
 				}
 				/* if it came here then packet was not inserted, so insert at end */
 				if (tpp_enque(&strm->oo_queue, full_pkt) == NULL) {
-					snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Failed to enque OO packet for sd = %d, Out of memory", strm->sd);
+					snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Failed to enque OO packet for sd = %u, Out of memory", strm->sd);
 					tpp_log_func(LOG_CRIT, NULL, tpp_get_logbuf());
 					return -1;
 				}
@@ -4566,7 +4572,6 @@ leaf_pkt_handler(int tfd, void *data, int len, void *ctx)
 int
 leaf_close_handler(int tfd, int error, void *c)
 {
-	unsigned int i;
 	int rc;
 	tpp_context_t *ctx = (tpp_context_t *) c;
 	tpp_router_t *r;
@@ -4603,6 +4608,8 @@ leaf_close_handler(int tfd, int error, void *c)
 
 		active_router = get_active_router(active_router);
 		if (active_router == -1) {
+			unsigned int i;
+
 			/*
 			 * No routers available, let app know of this
 			 */
@@ -4612,7 +4619,7 @@ leaf_close_handler(int tfd, int error, void *c)
 				for (i = 0; i < max_strms; i++) {
 					if (strmarray[i].slot_state == TPP_SLOT_BUSY) {
 						strmarray[i].strm->t_state = TPP_TRNS_STATE_NET_CLOSED;
-						TPP_DBPRT(("net down, sending TPP_CMD_NET_CLOSE sd=%d", strmarray[i].strm->sd));
+						TPP_DBPRT(("net down, sending TPP_CMD_NET_CLOSE sd=%u", strmarray[i].strm->sd));
 						send_app_strm_close(strmarray[i].strm, TPP_CMD_NET_CLOSE, 0);
 					}
 				}
@@ -4622,7 +4629,7 @@ leaf_close_handler(int tfd, int error, void *c)
 				for (i = 0; i < max_strms; i++) {
 					if (strmarray[i].slot_state == TPP_SLOT_BUSY) {
 						strmarray[i].strm->t_state = TPP_TRNS_STATE_NET_CLOSED;
-						TPP_DBPRT(("net down, sending TPP_CMD_NET_CLOSE sd=%d", strmarray[i].strm->sd));
+						TPP_DBPRT(("net down, sending TPP_CMD_NET_CLOSE sd=%u", strmarray[i].strm->sd));
 						send_app_strm_close(strmarray[i].strm, TPP_CMD_NET_CLOSE, 0);
 					}
 				}

@@ -70,15 +70,12 @@
 #include "server_limits.h"
 #endif
 #include <pbs_internal.h>
-
 #ifdef WIN32
 #include <win.h>
 #endif
-
 #include "pbs_db.h"
+#include "pbs_ifl.h"
 
-
-#define MAXPATHLEN 1024
 #define MAX_LOCK_ATTEMPTS 5
 #define MAX_DBPID_ATTEMPTS 20
 #define TEMP_BUF_SIZE 100

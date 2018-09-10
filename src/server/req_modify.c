@@ -149,7 +149,6 @@ req_modifyjob(struct batch_request *preq)
 {
 	int		 add_to_am_list = 0; /* if altered during sched cycle */
 	int		 bad = 0;
-	int		 i;
 	int		 jt;		/* job type */
 	int		 newstate;
 	int		 newsubstate;
@@ -237,6 +236,7 @@ req_modifyjob(struct batch_request *preq)
 		running = 1;
 	}
 	while (plist) {
+		int i;
 
 		i = find_attr(job_attr_def, plist->al_name, JOB_ATR_LAST);
 
@@ -731,13 +731,11 @@ req_modifyReservation(struct batch_request *preq)
 {
 	char		*rid = NULL;
 	svrattrl	*psatl = NULL;
-	int		index;
 	attribute_def	*pdef = NULL;
 	int		rc = 0;
 	int		bad = 0;
-	char		buf[256] = {0};
-	char		buf1[PBS_MAXUSER+ PBS_MAXHOSTNAME + 2] = {0};
-	int		sock = preq->rq_conn;
+	char		buf[PBS_MAXUSER + PBS_MAXHOSTNAME + 32] = {0};
+	int		sock;
 	int		resc_access_perm_save = 0;
 	int		send_to_scheduler = 0;
 	int		log_len = 0;
@@ -749,6 +747,8 @@ req_modifyReservation(struct batch_request *preq)
 
 	if (preq == NULL)
 		return;
+
+	sock = preq->rq_conn;
 
 	presv = chk_rescResv_request(preq->rq_ind.rq_modify.rq_objname, preq);
 	/* Note: on failure, chk_rescResv_request invokes req_reject
@@ -785,6 +785,8 @@ req_modifyReservation(struct batch_request *preq)
 	while (psatl) {
 		long temp = 0;
 		char *end = NULL;
+		int index;
+
 		/* identify the attribute by name */
 		index = find_attr(resv_attr_def, psatl->al_name, RESV_ATR_LAST);
 		if (index < 0) {
@@ -910,6 +912,7 @@ req_modifyReservation(struct batch_request *preq)
 
 	if ((presv->ri_wattr[RESV_ATR_interactive].at_flags &
 		ATR_VFLAG_SET) == 0) {
+		char buf1[PBS_MAXUSER + PBS_MAXHOSTNAME + 32] = {0};
 		/*Not "interactive" so don't wait on scheduler, reply now*/
 
 		sprintf(buf, "%s ALTER REQUESTED",  presv->ri_qs.ri_resvID);

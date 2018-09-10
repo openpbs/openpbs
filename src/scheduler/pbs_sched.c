@@ -1098,19 +1098,19 @@ main(int argc, char *argv[])
 				rlimit.rlim_cur = MIN_STACK_LIMIT;
 				rlimit.rlim_max = MIN_STACK_LIMIT;
 				if (setrlimit(RLIMIT_STACK, &rlimit) == -1) {
+					char errmsg[] = "Stack limit setting failed";
 					curerror = errno;
-					sprintf(log_buffer, "Stack limit setting failed");
-					log_err(curerror, __func__, log_buffer);
-					sprintf(log_buffer, "%s errno=%d", log_buffer, curerror);
+					log_err(curerror, __func__, errmsg);
+					sprintf(log_buffer, "%s errno=%d", errmsg, curerror);
 					log_record(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, (char *)__func__, log_buffer);
 					exit(1);
 				}
 			}
 		} else {
+			char errmsg[] = "Getting current Stack limit failed";
 			curerror = errno;
-			sprintf(log_buffer, "Getting current Stack limit failed");
-			log_err(curerror, __func__, log_buffer);
-			sprintf(log_buffer, "%s errno=%d", log_buffer, curerror);
+			log_err(curerror, __func__, errmsg);
+			sprintf(log_buffer, "%s errno=%d", errmsg, curerror);
 			log_record(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER, LOG_ERR, (char *)__func__, log_buffer);
 			exit(1);
 		}

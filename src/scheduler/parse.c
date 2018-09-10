@@ -102,7 +102,6 @@ parse_config(char *fname)
 	int buf_size = 0;
 	char logbuf[256];		/* used to write out log errors */
 	char buf2[8192];		/* general purpose buffer */
-	char buf3[8192];		/* general purpose buffer */
 	char errbuf[1024];		/* buffer for reporting errors */
 	char *config_name;		/* parse first word of line */
 	char *config_value;		/* parsed second word - right after colen (:) */
@@ -172,34 +171,30 @@ parse_config(char *fname)
 			config_value = scan(NULL, 0);
 			prime_value = scan(NULL, 0);
 			if (config_name != NULL && config_value != NULL) {
-				/* value is true */
-				if (!strcmp(config_value, "true") || !strcmp(config_value, "True")
-					|| !strncmp(config_value, "TRUE", 4)) {
+				if (strcasecmp(config_value, "true") == 0) {
+					/* value is true */
 					num = 1;
-				}
-				/* value is false */
-				else if (!strcmp(config_value, "false") ||
-					!strcmp(config_value, "False") || !strcmp(config_value, "FALSE")) {
+				} else if (strcasecmp(config_value, "false") == 0) {
+					/* value is false */
 					num = 0;
-				}
-				else if (isdigit((int) config_value[0])) { /* value is number */
+				} else if (isdigit((int)config_value[0])) {
+					/* value is number */
 					num = strtol(config_value, &endp, 10);
 				}
-				else ; /* value is a string */
 
-					if (prime_value != NULL) {
-						if (!strcmp(prime_value, "prime") || !strcmp(prime_value, "PRIME"))
-							prime = PRIME;
-						else if (!strcmp(prime_value, "non_prime") ||
-							!strcmp(prime_value, "NON_PRIME"))
-							prime = NON_PRIME;
-						else if (!strcmp(prime_value, "all") || !strcmp(prime_value, "ALL"))
-							prime = ALL;
-						else if (!strcmp(prime_value, "none") || !strcmp(prime_value, "NONE"))
-							prime = NONE;
-						else
-							error = 1;
-					}
+				if (prime_value != NULL) {
+					if (!strcmp(prime_value, "prime") || !strcmp(prime_value, "PRIME"))
+						prime = PRIME;
+					else if (!strcmp(prime_value, "non_prime") ||
+						!strcmp(prime_value, "NON_PRIME"))
+						prime = NON_PRIME;
+					else if (!strcmp(prime_value, "all") || !strcmp(prime_value, "ALL"))
+						prime = ALL;
+					else if (!strcmp(prime_value, "none") || !strcmp(prime_value, "NONE"))
+						prime = NONE;
+					else
+						error = 1;
+				}
 
 				if (!strcmp(config_name, PARSE_ROUND_ROBIN)) {
 					if (prime == PRIME || prime == ALL)
@@ -388,6 +383,7 @@ parse_config(char *fname)
 					}
 				}
 				else if (!strcmp(config_name, PARSE_RESOURCES)) {
+					char *valbuf = NULL;
 					buf2[0] = '\0';
 					/* hack: add in "host" into resources list because this was
 					 * done by default prior to 7.1.
@@ -400,9 +396,8 @@ parse_config(char *fname)
 						strcat(buf2, "vnode,");
 
 					if (buf2[0] != '\0') {
-						buf2[strlen(buf2)-1] = '\0';
-						sprintf(buf3, "%s,%s", config_value, buf2);
-						config_value = buf3;
+						pbs_asprintf(&valbuf, "%s,%s", config_value, buf2);
+						config_value = valbuf;
 					}
 
 					conf.res_to_check = break_comma_list(config_value);
@@ -411,6 +406,7 @@ parse_config(char *fname)
 							;
 						conf.num_res_to_check = i;
 					}
+					free(valbuf);
 				}
 				else if (!strcmp(config_name, PARSE_MOM_RESOURCES))
 					conf.dyn_res_to_get = break_comma_list(config_value);
@@ -901,8 +897,11 @@ parse_config(char *fname)
 		}
 
 		if (error) {
-			sprintf(logbuf, "Error reading line %d: %s", linenum, errbuf);
-			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, fname, logbuf);
+			char *msgbuf;
+
+			pbs_asprintf(&msgbuf, "Error reading line %d: %s", linenum, errbuf);
+			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, fname, msgbuf);
+			free(msgbuf);
 		}
 
 		if (obsolete[0] != NULL) {

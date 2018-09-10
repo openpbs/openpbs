@@ -155,9 +155,10 @@ typedef struct hook hook;
 #define HOOK_TRACKING_SUFFIX	".TR"	/* hook pending action tracking file */
 #define HOOK_BAD_SUFFIX		".BD"	/* a bad (moved out of the way) hook file */
 #define	HOOK_CONFIG_SUFFIX	".CF"
-#define PBS_HOOKDIR             "hooks"
-#define PBS_HOOK_WORKDIR        PBS_HOOKDIR "/tmp"
+#define PBS_HOOKDIR		"hooks"
+#define PBS_HOOK_WORKDIR	PBS_HOOKDIR "/tmp"
 #define PBS_HOOK_TRACKING	PBS_HOOKDIR "/tracking"
+#define PBS_HOOK_NAME_SIZE	512
 
 /* Some hook-related buffer sizes */
 #define	HOOK_BUF_SIZE	512

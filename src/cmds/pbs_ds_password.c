@@ -116,6 +116,10 @@
 #include <ctype.h>
 #endif
 
+#ifndef LOGIN_NAME_MAX
+#define LOGIN_NAME_MAX 256
+#endif
+
 
 int	cred_type;
 size_t	cred_len;
@@ -254,13 +258,14 @@ read_password(char *passwd)
 static int
 gen_password(char *passwd, int len)
 {
-	int chrs = 0, c;
+	int chrs = 0;
 	char allowed_chars[] = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()_+";
 	int arr_len = strlen(allowed_chars);
 
 	sleep(1); /* sleep 1 second to ensure the srand on time(0) truely randomizes the seed */
 	srand(time(0));
 	while (chrs < len) {
+		int c;
 		c = (char)(rand() % arr_len);
 		passwd[chrs++] = allowed_chars[c];
 	}
@@ -400,12 +405,11 @@ int
 main(int argc, char *argv[])
 {
 	int i, rc;
-	char passwd[MAX_PASSWORD_LEN+1];
-	char passwd2[MAX_PASSWORD_LEN+1];
+	char passwd[MAX_PASSWORD_LEN + 1];
+	char passwd2[MAX_PASSWORD_LEN + 1];
 	char *pquoted;
-	char pwd_file[MAXPATHLEN+1];
-	char usr_file[MAXPATHLEN+1];
-	char userid[MAXPATHLEN+1];
+	char pwd_file[MAXPATHLEN + 1];
+	char userid[LOGIN_NAME_MAX + 1];
 	int fd, errflg = 0;
 	int gen_pwd = 0;
 	char sqlbuff[1024];
@@ -413,7 +417,6 @@ main(int argc, char *argv[])
 	char *db_errmsg = NULL;
 	int pmode;
 	int change_user = 0;
-	char datastore[MAXPATHLEN+1];
 	char *olduser;
 	int update_db = 0;
 	char getopt_format[5];
@@ -619,15 +622,18 @@ main(int argc, char *argv[])
 
 		if (change_user == 1) {
 			/* check whether user exists */
-			sprintf(sqlbuff, "select usename from pg_user where usename = '%s'",
+			snprintf(sqlbuff, sizeof(sqlbuff),
+				"select usename from pg_user where usename = '%s'",
 				userid);
 			if (pbs_db_execute_str(conn, sqlbuff) == 1) {
 				/* now attempt to create new user & set the database passwd to the un-encrypted password */
-				sprintf(sqlbuff, "create user \"%s\" SUPERUSER ENCRYPTED PASSWORD '%s'",
+				snprintf(sqlbuff, sizeof(sqlbuff),
+					"create user \"%s\" SUPERUSER ENCRYPTED PASSWORD '%s'",
 					userid, pquoted);
 			} else {
 				/* attempt to alter new user & set the database passwd to the un-encrypted password */
-				sprintf(sqlbuff, "alter user \"%s\" SUPERUSER ENCRYPTED PASSWORD '%s'",
+				snprintf(sqlbuff, sizeof(sqlbuff),
+					"alter user \"%s\" SUPERUSER ENCRYPTED PASSWORD '%s'",
 					userid, pquoted);
 			}
 			memset(passwd, 0, sizeof(passwd));
@@ -698,6 +704,7 @@ main(int argc, char *argv[])
 	}
 
 	if (change_user == 1) {
+		char usr_file[MAXPATHLEN + 1];
 #ifdef WIN32
 		sprintf(usr_file, "%s\\server_priv\\db_user", pbs_conf.pbs_home_path);
 #else
@@ -712,6 +719,7 @@ main(int argc, char *argv[])
 	}
 
 	if (update_db == 1 && change_user == 1) {
+		char datastore[MAXPATHLEN + 1];
 #ifndef WIN32
 		/* ownership is changed only for Unix users
 		 * On windows, these files are allways owned by the user who installed the database

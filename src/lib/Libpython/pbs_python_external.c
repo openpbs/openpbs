@@ -108,7 +108,6 @@ void
 pbs_python_ext_start_interpreter(
 	struct python_interpreter_data *interp_data)
 {
-	static char func_id[] = "pbs_python_ext_start_interpreter";
 
 #ifdef	PYTHON           /* -- BEGIN ONLY IF PYTHON IS CONFIGURED -- */
 
@@ -147,12 +146,12 @@ pbs_python_ext_start_interpreter(
 		rc = stat(pbs_python_destlib, &sbuf);
 	}
 	if (rc != 0) {
-		log_err(-1, func_id,
+		log_err(-1, __func__,
 			"--> PBS Python library directory not found <--");
 		return;
 	}
 	if (!S_ISDIR(sbuf.st_mode)) {
-		log_err(-1, func_id,
+		log_err(-1, __func__,
 			"--> PBS Python library path is not a directory <--");
 		return;
 	}
@@ -166,7 +165,7 @@ pbs_python_ext_start_interpreter(
 			return;
 		}
 	} else { /* we need to allocate memory */
-		log_err(-1, func_id,
+		log_err(-1, __func__,
 			"--> Passed NULL for interpreter data <--");
 		return;
 	}
@@ -191,14 +190,16 @@ pbs_python_ext_start_interpreter(
 	/* Python script to be able to interrupt it       */
 
 	if (Py_IsInitialized()) {
+		char *msgbuf;
+
 		interp_data->interp_started = 1; /* mark python as initialized */
 		/* print only the first five characters, TODO check for NULL? */
-		snprintf(log_buffer, LOG_BUF_SIZE-1,
-			"--> Python Interpreter started, compiled with version:'%.*s' <--",
-			5, Py_GetVersion());
-		log_buffer[LOG_BUF_SIZE-1] = '\0';
+		pbs_asprintf(&msgbuf,
+			"--> Python Interpreter started, compiled with version:'%s' <--",
+			Py_GetVersion());
 		log_event(evtype, PBS_EVENTCLASS_SERVER,
-			LOG_INFO, interp_data->daemon_name, log_buffer);
+			LOG_INFO, interp_data->daemon_name, msgbuf);
+		free(msgbuf);
 	} else {
 		log_err(-1, "Py_InitializeEx",
 			"--> Failed to initialize Python interpreter <--");
@@ -214,7 +215,7 @@ pbs_python_ext_start_interpreter(
 			"could not insert %s into sys.path shutting down",
 			pbs_python_destlib);
 		log_buffer[LOG_BUF_SIZE-1] = '\0';
-		log_err(-1, func_id, log_buffer);
+		log_err(-1, __func__, log_buffer);
 		goto ERROR_EXIT;
 	}
 
@@ -223,7 +224,7 @@ pbs_python_ext_start_interpreter(
 	 * the python modules. since the syspath is setup correctly
 	 */
 	if ((pbs_python_load_python_types(interp_data) == -1)) {
-		log_err(-1, func_id, "could not load python types into the interpreter");
+		log_err(-1, __func__, "could not load python types into the interpreter");
 		goto ERROR_EXIT;
 	}
 
@@ -298,7 +299,6 @@ pbs_python_ext_shutdown_interpreter(struct python_interpreter_data *interp_data)
 void
 pbs_python_ext_quick_start_interpreter(void)
 {
-	static char func_id[] = "pbs_python_ext_quick_start_interpreter";
 
 #ifdef	PYTHON           /* -- BEGIN ONLY IF PYTHON IS CONFIGURED -- */
 
@@ -330,13 +330,15 @@ pbs_python_ext_quick_start_interpreter(void)
 	Py_InitializeEx(0);  /* SKIP initialization of signals */
 
 	if (Py_IsInitialized()) {
-		snprintf(log_buffer, LOG_BUF_SIZE-1,
-			"--> Python Interpreter quick started, compiled with version:'%.*s' <--",
-			5, Py_GetVersion());
-		log_buffer[LOG_BUF_SIZE-1] = '\0';
+		char *msgbuf;
+
+		pbs_asprintf(&msgbuf,
+			"--> Python Interpreter quick started, compiled with version:'%s' <--",
+			Py_GetVersion());
 		log_event(PBSEVENT_SYSTEM|PBSEVENT_ADMIN |
 			PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER,
-			LOG_INFO, func_id, log_buffer);
+			LOG_INFO, __func__, msgbuf);
+		free(msgbuf);
 	} else {
 		log_err(-1, "Py_InitializeEx",
 			"--> Failed to quick initialize Python interpreter <--");
@@ -352,7 +354,7 @@ pbs_python_ext_quick_start_interpreter(void)
 			"could not insert %s into sys.path shutting down",
 			pbs_python_destlib);
 		log_buffer[LOG_BUF_SIZE-1] = '\0';
-		log_err(-1, func_id, log_buffer);
+		log_err(-1, __func__, log_buffer);
 		goto ERROR_EXIT;
 	}
 
@@ -362,7 +364,7 @@ pbs_python_ext_quick_start_interpreter(void)
 	log_buffer[LOG_BUF_SIZE-1] = '\0';
 	log_event(PBSEVENT_SYSTEM|PBSEVENT_ADMIN |
 		PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER,
-		LOG_INFO, func_id, log_buffer);
+		LOG_INFO, __func__, log_buffer);
 
 	return;
 
@@ -417,12 +419,12 @@ pbs_python_ext_free_python_script(
 	}
 	return;
 }
-#define COPY_STRING(dst,src)   					\
-	do {							\
-	   if (!((dst) = strdup(src))) {			\
-	     log_err(errno, func_id, "could not copy string");  \
-	     goto ERROR_EXIT;					\
-	   } 							\
+#define COPY_STRING(dst,src) \
+	do { \
+	   if (!((dst) = strdup(src))) { \
+	     log_err(errno, __func__, "could not copy string"); \
+	     goto ERROR_EXIT; \
+	   } \
 	} while (0)
 
 int
@@ -430,7 +432,6 @@ pbs_python_ext_alloc_python_script(
 	const char *script_path,
 	struct python_script **py_script /* returned value */
 	) {
-	static char func_id[] = "pbs_python_ext_alloc_python_script";
 
 #ifdef PYTHON                 /* --- BEGIN PYTHON BLOCK --- */
 
@@ -441,7 +442,7 @@ pbs_python_ext_alloc_python_script(
 	*py_script = NULL; /* init, to be safe */
 
 	if (!(tmp_py_script = (struct python_script *) malloc(nbytes))) {
-		log_err(errno, func_id, "failed to malloc struct python_script");
+		log_err(errno, __func__, "failed to malloc struct python_script");
 		goto ERROR_EXIT;
 	}
 	(void) memset(tmp_py_script, 0, nbytes);
@@ -454,7 +455,7 @@ pbs_python_ext_alloc_python_script(
 		snprintf(log_buffer, LOG_BUF_SIZE-1,
 			"failed to stat <%s>", script_path);
 		log_buffer[LOG_BUF_SIZE-1] = '\0';
-		log_err(errno, func_id, log_buffer);
+		log_err(errno, __func__, log_buffer);
 		goto ERROR_EXIT;
 	}
 	(void) memcpy(&(tmp_py_script->cur_sbuf), &sbuf,
@@ -471,7 +472,7 @@ ERROR_EXIT:
 	return -1;
 #else
 
-	log_err(-1, func_id, "--> Python is disabled <--");
+	log_err(-1, __func__, "--> Python is disabled <--");
 	return -1;
 #endif                        /* --- END   PYTHON BLOCK --- */
 }
@@ -489,7 +490,6 @@ void *
 pbs_python_ext_namespace_init(
 	struct python_interpreter_data *interp_data)
 {
-	static char func_id[] = "pbs_python_namespace_init";
 
 #ifdef PYTHON                        /* --- BEGIN PYTHON BLOCK --- */
 
@@ -497,7 +497,7 @@ pbs_python_ext_namespace_init(
 
 	namespace_dict = PyDict_New(); /* New Refrence MUST Decref */
 	if (!namespace_dict) {
-		pbs_python_write_error_to_log(func_id);
+		pbs_python_write_error_to_log(__func__);
 		goto ERROR_EXIT;
 	}
 	/*
@@ -507,7 +507,7 @@ pbs_python_ext_namespace_init(
 	if ((PyDict_SetItemString(namespace_dict, "__builtins__",
 		PyEval_GetBuiltins()) == -1)
 		) {
-		pbs_python_write_error_to_log(func_id);
+		pbs_python_write_error_to_log(__func__);
 		goto ERROR_EXIT;
 	}
 
@@ -519,9 +519,9 @@ pbs_python_ext_namespace_init(
 		pbs_v1_module_init()) == -1)
 		) {
 		snprintf(log_buffer, LOG_BUF_SIZE-1, "%s|adding extension object",
-			func_id);
+			__func__);
 		log_buffer[LOG_BUF_SIZE-1] = '\0';
-		pbs_python_write_error_to_log(func_id);
+		pbs_python_write_error_to_log(__func__);
 		goto ERROR_EXIT;
 	}
 
@@ -560,7 +560,6 @@ int
 pbs_python_check_and_compile_script(struct python_interpreter_data *interp_data,
 	struct python_script *py_script)
 {
-	static char func_id[] = "pbs_python_check_and_compile_script";
 
 #ifdef	PYTHON           /* -- BEGIN ONLY IF PYTHON IS CONFIGURED -- */
 	struct stat nbuf; /* new stat buf */
@@ -568,7 +567,7 @@ pbs_python_check_and_compile_script(struct python_interpreter_data *interp_data,
 	int recompile = 1;
 
 	if (!interp_data || !py_script) {
-		log_err(-1, func_id, "Either interp_data or py_script is NULL");
+		log_err(-1, __func__, "Either interp_data or py_script is NULL");
 		return -1;
 	}
 
@@ -644,7 +643,6 @@ pbs_python_run_code_in_namespace(struct python_interpreter_data *interp_data,
 	struct python_script *py_script,
 	int *exit_code)
 {
-	static char func_id[] = "pbs_python_run_code_in_namespace";
 
 #ifdef	PYTHON           /* -- BEGIN ONLY IF PYTHON IS CONFIGURED -- */
 
@@ -660,7 +658,7 @@ pbs_python_run_code_in_namespace(struct python_interpreter_data *interp_data,
 	int rc=0;
 
 	if (!interp_data || !py_script) {
-		log_err(-1, func_id, "Either interp_data or py_script is NULL");
+		log_err(-1, __func__, "Either interp_data or py_script is NULL");
 		return -1;
 	}
 
@@ -708,7 +706,7 @@ pbs_python_run_code_in_namespace(struct python_interpreter_data *interp_data,
 	/* make new namespace dictionary, NOTE new reference */
 
 	if (!(pdict = (PyObject *)pbs_python_ext_namespace_init(interp_data))) {
-		log_err(-1, func_id, "while calling pbs_python_ext_namespace_init");
+		log_err(-1, __func__, "while calling pbs_python_ext_namespace_init");
 		return -1;
 	}
 	if ((pbs_python_setup_namespace_dict(pdict) == -1)) {
@@ -792,7 +790,6 @@ static PyObject *
 _pbs_python_compile_file(const char *file_name,
 	const char *compiled_code_file_name)
 {
-	static char func_id[] = "_pbs_python_compile_file";
 	FILE *fp = NULL;
 
 	long len = 0;
@@ -806,7 +803,7 @@ _pbs_python_compile_file(const char *file_name,
 		snprintf(log_buffer, LOG_BUF_SIZE-1,
 			"could not open file <%s>: %s\n", file_name, strerror(errno));
 		log_buffer[LOG_BUF_SIZE-1] = '\0';
-		log_err(errno, func_id, log_buffer);
+		log_err(errno, __func__, log_buffer);
 		goto ERROR_EXIT;
 	}
 
@@ -816,14 +813,14 @@ _pbs_python_compile_file(const char *file_name,
 			snprintf(log_buffer, LOG_BUF_SIZE-1,
 				"could not determine the file length: %s\n", strerror(errno));
 			log_buffer[LOG_BUF_SIZE-1] = '\0';
-			log_err(errno, func_id, log_buffer);
+			log_err(errno, __func__, log_buffer);
 			goto ERROR_EXIT;
 		}
 		if ((fseek(fp, 0L, SEEK_SET) == -1)) {
 			snprintf(log_buffer, LOG_BUF_SIZE-1,
 				"could not fseek to beginning: %s\n", strerror(errno));
 			log_buffer[LOG_BUF_SIZE-1] = '\0';
-			log_err(errno, func_id, log_buffer);
+			log_err(errno, __func__, log_buffer);
 			goto ERROR_EXIT;
 		}
 		file_sz = len; /* ok good we have a file size */
@@ -831,7 +828,7 @@ _pbs_python_compile_file(const char *file_name,
 		snprintf(log_buffer, LOG_BUF_SIZE-1,
 			"could not fseek to end: %s\n", strerror(errno));
 		log_buffer[LOG_BUF_SIZE-1] = '\0';
-		log_err(errno, func_id, log_buffer);
+		log_err(errno, __func__, log_buffer);
 		goto ERROR_EXIT;
 	}
 	/* allocate memory for file + \n\0 */
@@ -839,7 +836,7 @@ _pbs_python_compile_file(const char *file_name,
 
 	if (!(file_buffer = (char *)PyMem_Malloc(sizeof(char)*file_sz))) {
 		/* could not allocate memory */
-		pbs_python_write_error_to_log(func_id);
+		pbs_python_write_error_to_log(__func__);
 		goto ERROR_EXIT;
 	}
 

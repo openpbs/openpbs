@@ -454,13 +454,14 @@ log_add_if_info()
 	char msg[LOG_BUF_SIZE];
 	char temp[LOG_BUF_SIZE];
 	int i;
-	char dest[LOG_BUF_SIZE];
+	char dest[LOG_BUF_SIZE * 2];
 	struct log_net_info *ni, *curr;
 
 	memset(msg, '\0', sizeof(msg));
 	ni = get_if_info(msg);
-	if(strlen(msg)){ /* Adding error message to log */
-		strncpy(tbuf, msg, LOG_BUF_SIZE);
+	if (msg[0] != '\0') {
+		/* Adding error message to log */
+		snprintf(tbuf, sizeof(tbuf), "%s", msg);
 		log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, tbuf);
 	}
 	if (!ni)
@@ -468,12 +469,12 @@ log_add_if_info()
 
 	/* Add info to log */
 	for (curr = ni; curr; curr = curr->next) {
-		snprintf(tbuf, LOG_BUF_SIZE, "%s interface %s: ",
+		snprintf(tbuf, sizeof(tbuf), "%s interface %s: ",
 			(curr->iffamily) ? curr->iffamily : "NULL",
 			(curr->ifname) ? curr->ifname : "NULL");
 		for (i = 0; curr->ifhostnames[i]; i++) {
-			snprintf(temp, LOG_BUF_SIZE, "%s ", curr->ifhostnames[i]);
-			snprintf(dest, LOG_BUF_SIZE, "%s%s", tbuf, temp);
+			snprintf(temp, sizeof(temp), "%s ", curr->ifhostnames[i]);
+			snprintf(dest, sizeof(dest), "%s%s", tbuf, temp);
 		}
 		log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, dest);
 	}

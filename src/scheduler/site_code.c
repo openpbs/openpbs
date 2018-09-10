@@ -4,8 +4,6 @@
  *=====================================================================
  */
 
-static const char ident[] = "$Id: site_code.c,v 1.56 2016/04/19 00:10:27 dtalcott Exp $";
-
 #include <pbs_config.h>
 
 #include <stdio.h>
@@ -199,7 +197,6 @@ site_check_cpu_share(server_info *sinfo, status *policy, resource_resv *resv)
 	job_info	*job;
 	share_head	*sh;		/* global share totals */
 	timed_event	*te;
-	resource_resv	*te_rr;
 	long		time_left, end;
 	unsigned int	event_mask;
 
@@ -250,6 +247,9 @@ site_check_cpu_share(server_info *sinfo, status *policy, resource_resv *resv)
 	for (te = find_init_timed_event(te, IGNORE_DISABLED_EVENTS, event_mask);
 		te != NULL && te->event_time < end;
 		te = find_next_timed_event(te, IGNORE_DISABLED_EVENTS, event_mask)) {
+
+		resource_resv *te_rr;
+
 		te_rr = (resource_resv *) te->event_ptr;
 		if (te_rr == resv)
 			continue;		/* Should not happen */
@@ -293,7 +293,6 @@ check_cpu_share(share_head *sh, resource_resv *resv)
 	share_info	*leader;	/* info for group leader */
 	int		sh_cls;		/* current share class */
 	sh_amt		*job_amts;	/* amounts requested by job */
-	int		asking, limited, borrowed, allocated;
 
 	if (sh == NULL || resv == NULL)
 		return rc;
@@ -312,7 +311,10 @@ check_cpu_share(share_head *sh, resource_resv *resv)
 	 * none
 	 */
 	for (sh_cls = 0; sh_cls < shr_class_count ; ++sh_cls) {
+		int limited, borrowed, allocated;
+		int asking;
 		int rc2 = 0;
+
 		asking = job_amts[sh_cls];
 #if	NAS_CPU_MULT > 1
 		if (asking % NAS_CPU_MULT) {
@@ -766,7 +768,6 @@ void
 site_list_shares(FILE *fp, server_info *sinfo, const char *pfx, int flag)
 {
 	share_info	*root;
-	char		*sname;
 	int		idx;
 
 	if (fp == NULL || sinfo == NULL || sinfo->share_head == NULL
@@ -774,6 +775,8 @@ site_list_shares(FILE *fp, server_info *sinfo, const char *pfx, int flag)
 		return;
 	}
 	for (idx = 0; idx < shr_class_count ; ++idx) {
+		char *sname;
+
 		sname = shr_class_name_by_idx(idx);
 		list_share_info(fp, root, pfx, idx, sname, flag);
 	}
@@ -799,7 +802,6 @@ site_list_jobs(server_info *sinfo, resource_resv **rarray)
 	sh_amt		*job_amts;
 	char		*sname;
 	char		*starving;
-	static char	whoami[] = "site_list_jobs" ;
 
 	fname = SORTED_FILE;
 	sj = fopen(fname, "w+");
@@ -807,7 +809,7 @@ site_list_jobs(server_info *sinfo, resource_resv **rarray)
 		sprintf(log_buffer, "Cannot open %s: %s\n",
 			fname, strerror(errno));
 		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_ERR,
-			whoami, log_buffer);
+			__func__, log_buffer);
 		return;
 	}
 	site_list_shares(sj, sinfo, "#A ", 0);
@@ -900,7 +902,6 @@ site_parse_shares(char *fname)
 	sh_amt		*tshares;	/* temp shares values */
 	struct shr_class *tclass;	/* temp class pointer */
 	struct shr_type	*ttype;		/* temp type pointer */
-	char		*whoami = "site_parse_shares";
 	int		new_cls_cnt;	/* number of CPU classes */
 	int		new_type_cnt;	/* number of CPU types */
 	struct shr_class *new_shr_clses;	/* new class list */
@@ -922,7 +923,7 @@ site_parse_shares(char *fname)
 	if ((fp = fopen(fname, "r")) == NULL) {
 		i = errno;
 		sprintf(log_buffer, "Error opening file %s", fname);
-		log_err(i, whoami, log_buffer);
+		log_err(i, __func__, log_buffer);
 		return 1;		/* continue without shares */
 	}
 	while (fgets(buf, LINE_BUF_SIZE, fp) != NULL) {
@@ -1255,7 +1256,7 @@ site_parse_shares(char *fname)
 		continue;		/* Done with line */
 err_parse:
 		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE,
-			whoami, log_buffer);
+			__func__, log_buffer);
 		if (cur) {
 			free(cur);
 		}
@@ -1314,8 +1315,8 @@ err_parse:
 	return 1;
 
 err_out_l:
-	log_err(-1, whoami, log_buffer);
-	schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, whoami,
+	log_err(-1, __func__, log_buffer);
+	schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, __func__,
 		"Warning: CPU shares file parse error: file ignored");
 	for (ttype = new_shr_types; ttype; ttype = new_shr_types) {
 		new_shr_types = ttype->next;
@@ -1465,7 +1466,6 @@ site_resort_jobs(resource_resv *njob)
 {
 	server_info	*sinfo;
 	queue_info	*queue;
-	resource_resv	*resv;
 	job_info	*job;
 	int		i;
 
@@ -1476,6 +1476,8 @@ site_resort_jobs(resource_resv *njob)
 	 * Update values that changed due to job starting.
 	 */
 	for (i = 0; i < sinfo->sc.total; ++i) {
+		resource_resv *resv;
+
 		resv = sinfo->jobs[i];
 		if (!resv->is_job || !in_runnable_state(resv))
 			continue;
@@ -1548,10 +1550,8 @@ site_set_job_share(resource_resv *resresv)
 	chunk *			chunk;
 	int			i;
 	job_info *		job;
-	int			ncpus;
 	resource_req *		preq;
 	selspec *		select;
-	int			sh_cls;
 	sh_amt *		sh_amts;
 	struct shr_type *	stp;
 
@@ -1569,8 +1569,12 @@ site_set_job_share(resource_resv *resresv)
 	}
 	memset(sh_amts, 0, shr_class_count * sizeof(*sh_amts));
 	for (i = 0; (chunk = select->chunks[i]) != NULL; ++i) {
+		int ncpus;
+		int sh_cls;
+
 		ncpus = 0;
 		stp = NULL;
+
 		for (preq = chunk->req; preq != NULL; preq = preq->next) {
 			if (strcmp(preq->name, shr_selector) == 0) {
 				stp = shr_type_info_by_name(preq->res_str);
@@ -1915,7 +1919,6 @@ site_update_on_end(server_info *sinfo, queue_info *qinfo, resource_resv *resv)
 	share_info	*si;
 	sh_amt		*sc;
 	share_head	*shead;
-	int		i, ncpus, borrowed;
 
 	if (sinfo == NULL || (shead = sinfo->share_head) == NULL)
 		return;
@@ -1928,13 +1931,17 @@ site_update_on_end(server_info *sinfo, queue_info *qinfo, resource_resv *resv)
 	if ((si = si->leader) == NULL)
 		return;
 	if (resv->share_type != J_TYPE_ignore) {
+		int i;
+
 		for (i = 0; i < shr_class_count; ++i) {
+			int borrowed;
+			int ncpus;
+
 			ncpus = sc[i];
 			shead->sh_avail[i] += ncpus;
-			borrowed = \
-			   si->share_inuse[i][J_TYPE_limited]
-			  +si->share_inuse[i][J_TYPE_borrow]
-			  -si->share_ncpus[i];
+			borrowed = si->share_inuse[i][J_TYPE_limited] +
+				si->share_inuse[i][J_TYPE_borrow] -
+				si->share_ncpus[i];
 			if (borrowed > 0) {
 				if (borrowed > ncpus)
 					borrowed = ncpus;
@@ -2177,7 +2184,6 @@ static void
 count_cpus(node_info **nodes, int ncnt, queue_info **queues, sh_amt *totals)
 {
 	int		i;
-	node_info	*node;
 	resource	*res;
 	sch_resource_t	ncpus;
 
@@ -2185,6 +2191,8 @@ count_cpus(node_info **nodes, int ncnt, queue_info **queues, sh_amt *totals)
 		totals[i] = 0;
 	}
 	for (i = 0; i < ncnt; ++i) {
+		node_info	*node;
+
 		node = nodes[i];
 		/*
 		 * Skip nodes in unusable states.
@@ -2252,11 +2260,12 @@ static void
 count_active_cpus(resource_resv **resvs, int jcnt, sh_amt *sh_active)
 {
 	int		i, k;
-	job_info	*job;
 	resource_resv	*resv;
 
 	memset(sh_active, 0, shr_class_count * sizeof(*sh_active));
 	for (i = 0; i < jcnt; ++i) {
+		job_info *job;
+
 		/*
 		 * Skip everything but running jobs
 		 */
@@ -2327,7 +2336,7 @@ count_demand_cpus(resource_resv **resvs, int jcnt)
 static void
 count_contrib_cpus(share_info *root, share_info *node, sh_amt *sh_contrib)
 {
-	int	i, j;
+	int	i;
 	int	contrib;
 
 	if (root == NULL || node == NULL)
@@ -2360,6 +2369,8 @@ count_contrib_cpus(share_info *root, share_info *node, sh_amt *sh_contrib)
 		 * Remove root demand from amounts available.
 		 */
 		for (i = 0; i < shr_class_count; ++i) {
+			int j;
+
 			contrib = sh_contrib[i];
 			for (j = 0; j < J_TYPE_COUNT; ++j) {
 				if (j != J_TYPE_borrow) {
@@ -2848,21 +2859,24 @@ init_users(server_info *sinfo)
 static void
 list_share_info(FILE *fp, share_info *root, const char *pfx, int idx, const char *sname, int flag)
 {
-	char		buf[J_TYPE_COUNT * 2 * 15];
-	char		*p;
-	char		*s;
-	char		*lname;
-	int		j, len;
-	sh_amt		*use_amts;
-	sh_amt		*dmd_amts;
 	if (shr_types == NULL || shr_class_count == 0)
 		return;
 	if (flag == 0 || root == root->leader) {
+		char		buf[J_TYPE_COUNT * 2 * 15];
+		char		*p;
+		char		*s;
+		char		*lname;
+		int		j;
+		sh_amt		*use_amts;
+		sh_amt		*dmd_amts;
+
 		use_amts = &root->share_inuse[idx][0];
 		dmd_amts = &root->share_demand[idx][0];
 		s = "";
 		p = buf;
 		for (j = 0; j < J_TYPE_COUNT; ++j) {
+			int len;
+
 			len = sprintf(p, "%s%d+%d",
 				s, use_amts[j], dmd_amts[j]);
 			p += len;
@@ -2894,10 +2908,7 @@ list_share_info(FILE *fp, share_info *root, const char *pfx, int idx, const char
 static void
 set_share_cpus(share_info *node, sh_amt *gross, sh_amt *sh_avail)
 {
-	int		cpus;
-	double		t_shares, t_cpus;
 	int		i;
-	static char	whoami[] = "set_share_cpus";
 
 	if (node == NULL)
 		return;
@@ -2905,10 +2916,12 @@ set_share_cpus(share_info *node, sh_amt *gross, sh_amt *sh_avail)
 	 * Only groups with allocations get ncpus set
 	 */
 	if (node->share_gross[0] >= 0) {
+		int cpus;
 		for (i = 0; i < shr_class_count; ++i) {
 			if (node->share_net[i] == 0) {
 				cpus = 0;
 			} else {
+				double t_shares, t_cpus;
 				t_cpus = sh_avail[i];
 				t_shares = gross[i];
 				/*
@@ -2919,7 +2932,7 @@ set_share_cpus(share_info *node, sh_amt *gross, sh_amt *sh_avail)
 					t_shares);
 				if (cpus < 4) {
 					printf("%s: group %s gets only %d %s CPUs\n",
-						whoami, node->name,
+						__func__, node->name,
 						cpus, shr_class_name_by_idx(i));
 					fflush(stdout);
 				}
@@ -3200,8 +3213,6 @@ reconcile_share_tree(share_info *root, share_info *def, int cnt)
 {
 	share_info	*child;
 	int		i;
-	sh_amt		c_sum, gross;
-	static char	whoami[] = "reconcile_share_tree";
 
 	if (root == NULL || def == NULL)
 		return 1;
@@ -3237,6 +3248,8 @@ reconcile_share_tree(share_info *root, share_info *def, int cnt)
 	 */
 	if (def == root) {
 		for (i = 0; i < cnt; ++i) {
+			sh_amt c_sum, gross;
+
 			gross = root->share_gross[i];
 			c_sum = root->share_net[i];
 			if (c_sum > gross) {
@@ -3246,7 +3259,7 @@ reconcile_share_tree(share_info *root, share_info *def, int cnt)
 						root->name, shr_class_name_by_idx(i),
 						gross, c_sum);
 					schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE,
-						LOG_NOTICE, whoami, log_buffer);
+						LOG_NOTICE, __func__, log_buffer);
 				}
 				root->share_gross[i] = gross = c_sum;
 			}
@@ -3529,9 +3542,6 @@ pick_next_job(status *policy, resource_resv **jobs, pick_next_filter pnfilter, s
 	resource_resv *good = NULL;	/* job with the min usage / percentage */
 	int cmp;			/* comparison value of two jobs */
 	int i;
-#if NAS_DEBUG
-	char *whoami = "pick_next_job";
-#endif /* NAS_DEBUG */
 
 	if (policy == NULL || jobs == NULL || pnfilter == NULL)
 		return NULL;
@@ -3553,7 +3563,7 @@ pick_next_job(status *policy, resource_resv **jobs, pick_next_filter pnfilter, s
 				if (multi_sort(good, jobs[i]) != 0) {
 #if NAS_DEBUG
 					printf("%s: stopped at %s vs. %s\n",
-						whoami, good->name, jobs[i]->name);
+						__func__, good->name, jobs[i]->name);
 					fflush(stdout);
 #endif
 					break;

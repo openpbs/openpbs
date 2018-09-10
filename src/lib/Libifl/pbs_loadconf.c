@@ -213,13 +213,14 @@ parse_config_line(FILE *fp, char **key, char **val)
 	char *end;
 	char *split;
 	char *ret;
-	int   len;
 
 	*key = '\0';
 	*val = '\0';
 
 	/* Use a do-while rather than a goto. */
 	do {
+		int len;
+
 		ret = pbs_fgets(&pbs_loadconf_buf, &pbs_loadconf_len, fp);
 		if (ret == NULL)
 			break;
@@ -819,11 +820,17 @@ pbs_loadconf(int reload)
 
 	buf[0] = '\0';
 	if (pbs_conf.pbs_home_path == NULL)
-		sprintf(buf, "%s %s", buf, PBS_CONF_HOME);
-	if (pbs_conf.pbs_exec_path == NULL)
-		sprintf(buf, "%s %s", buf, PBS_CONF_EXEC);
-	if (pbs_conf.pbs_server_name == NULL)
-		sprintf(buf, "%s %s", buf, PBS_CONF_SERVER_NAME);
+		strcat(buf, PBS_CONF_HOME);
+	if (pbs_conf.pbs_exec_path == NULL) {
+		if (buf[0] != '\0')
+			strcat(buf, " ");
+		strcat(buf, PBS_CONF_EXEC);
+	}
+	if (pbs_conf.pbs_server_name == NULL) {
+		if (buf[0] != '\0')
+			strcat(buf, " ");
+		strcat(buf, PBS_CONF_SERVER_NAME);
+	}
 	if (buf[0] != '\0') {
 		fprintf(stderr, "pbsconf error: pbs conf variables not found: %s\n", buf);
 		goto err;

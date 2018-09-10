@@ -62,7 +62,7 @@
 
 
 
-char	log_buffer[4096];
+char	log_buffer[LOG_BUF_SIZE];
 #ifdef NAS /* localmod 099 */
 extern	int	quiet;
 #endif /* localmod 099 */

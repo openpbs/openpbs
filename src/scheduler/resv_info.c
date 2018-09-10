@@ -1223,8 +1223,8 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 	enum resv_conf rconf = RESV_CONFIRM_SUCCESS; /* assume reconf success */
 	char logmsg[MAX_LOG_SIZE];
 	char logmsg2[MAX_LOG_SIZE];
-	char buf[MAX_LOG_SIZE];
 	char *errmsg;
+	char *msgbuf;
 
 	nspec **ns = NULL;
 	resource_resv *nresv = unconf_resv;
@@ -1506,12 +1506,12 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 				(void) translate_fail_code(err, NULL, logmsg);
 
 				/* If the reservation is degraded, we log a message and continue */
-				snprintf(buf, MAX_LOG_SIZE, "Reservation Failed to Reconfirm: %s",
-					logmsg);
+				pbs_asprintf(&msgbuf, "Reservation Failed to Reconfirm: %s", logmsg);
 				if (nresv->resv->resv_substate == RESV_DEGRADED) {
 					schdlog(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
-						nresv->name, buf);
+						nresv->name, msgbuf);
 				}
+				free(msgbuf);
 				/* failed to confirm so move on. This will throw flow out of the
 				 * loop
 				 */
@@ -1570,13 +1570,13 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 			errmsg = "";
 
 		if (rconf == RESV_CONFIRM_FAIL)
-			snprintf(logmsg2, MAX_LOG_SIZE, "PBS Failed to confirm resv: %s", logmsg);
+			pbs_asprintf(&msgbuf, "PBS Failed to confirm resv: %s", errmsg);
 		else {
-			snprintf(logmsg2, MAX_LOG_SIZE, "PBS Failed to confirm resv: %s (%d)", errmsg, pbs_errno);
+			pbs_asprintf(&msgbuf, "PBS Failed to confirm resv: %s (%d)", errmsg, pbs_errno);
 			rconf = RESV_CONFIRM_RETRY;
 		}
-		schdlog(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv_parent->name,
-			logmsg2);
+		schdlog(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO, nresv_parent->name, msgbuf);
+		free(msgbuf);
 		if (nresv_parent->resv->resv_substate == RESV_DEGRADED) {
 			snprintf(logmsg, MAX_LOG_SIZE,
 				"Reservation is in degraded mode, %d out of %d vnodes are unavailable; %s",
