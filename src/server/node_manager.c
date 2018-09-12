@@ -7125,6 +7125,11 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 				return (PBSE_UNKNODE);
 			}
 
+                        if (svr_init == FALSE && (pnode->nd_state & (INUSE_DOWN | INUSE_STALE))) {
+                                   free(phowl);
+                                   free(execvncopy);
+                                   return (PBSE_BAD_NODE_STATE);
+                        }
 
 			if (pjob != NULL) { /* only for jobs do we warn if a mom */
 				/* hook has not been sent */
@@ -8404,8 +8409,10 @@ set_old_subUniverse(resc_resv	*presv)
 		free(sp);
 		return;
 	}
+	int svr_init;
+	svr_init = TRUE;
 	/* set the nodes on the reservation */
-	rc = assign_resv_resc(presv, sp);
+	rc = assign_resv_resc(presv, sp, svr_init);
 	if (rc != PBSE_NONE) {
 		sprintf(log_buffer,
 			"problem assigning resource to reservation %d", rc);

@@ -172,7 +172,6 @@ typedef struct pbsnode_list_ {
 struct resc_resv {
 
 	/* Note: these members, upto ri_qs, are not saved to disk */
-
 	pbs_list_link		ri_allresvs;		/* links this resc_resv into the
 							 * server's global list
 							 */
@@ -358,7 +357,7 @@ extern	int  act_resv_add_owner(attribute*, void*, int);
 extern	void svr_mailownerResv(resc_resv*, int, int, char*);
 extern	void resv_free(resc_resv*);
 extern	void set_old_subUniverse(resc_resv *);
-extern	int  assign_resv_resc(resc_resv *, char *);
+extern	int  assign_resv_resc(resc_resv *, char *, int);
 extern	void  resv_exclusive_handler(resc_resv *);
 #ifdef	__cplusplus
 }

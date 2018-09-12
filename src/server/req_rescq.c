@@ -242,7 +242,7 @@ cnvrt_timer_init()
  * @retval	non-zero	: error code if problem occurs
  */
 int
-assign_resv_resc(resc_resv *presv, char *vnodes)
+assign_resv_resc(resc_resv *presv, char *vnodes, int svr_init)
 {
 	int		  ret;
 	char     *node_str = NULL;
@@ -252,7 +252,7 @@ assign_resv_resc(resc_resv *presv, char *vnodes)
 		return (PBSE_BADNODESPEC);
 
 	ret = set_nodes((void *)presv, presv->ri_qs.ri_type, vnodes,
-		&node_str, &host_str, &host_str2, 0, FALSE);
+		&node_str, &host_str, &host_str2, 0, svr_init);
 
 	if (ret == PBSE_NONE) {
 		/*update resc_resv object's RESV_ATR_resv_nodes attribute*/
@@ -583,7 +583,9 @@ req_confirmresv(struct batch_request *preq)
 	 */
 	if (is_being_altered)
 		free_resvNodes(presv);
-	rc = assign_resv_resc(presv, next_execvnode);
+	int svr_init;
+	svr_init = FALSE;
+	rc = assign_resv_resc(presv, next_execvnode, svr_init);
 
 	if (rc != PBSE_NONE) {
 		free(next_execvnode);

@@ -3600,7 +3600,9 @@ Time4occurrenceFinish(resc_resv *presv)
 	/* Assign the allocated resources to the reservation
 	 * and the reservation to the associated vnodes
 	 */
-	rc = assign_resv_resc(presv, newxc);
+	int svr_init;
+	svr_init = FALSE;
+	rc = assign_resv_resc(presv, newxc, svr_init);
 	free(newxc);
 
 	if (rc != PBSE_NONE) {
