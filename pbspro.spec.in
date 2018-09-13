@@ -89,8 +89,6 @@ Prefix: %{?pbs_prefix}%{!?pbs_prefix:%{_prefix}}
 
 %bcond_with alps
 %bcond_with cpuset
-%bcond_with ibm-ib
-%bcond_with ibm-hps
 
 BuildRoot: %{buildroot}
 BuildRequires: gcc
@@ -256,12 +254,6 @@ cd build
 %endif
 %if %{with cpuset}
 	--enable-cpuset \
-%endif
-%if %{with ibm-hps}
-	--enable-hps \
-%endif
-%if %{with ibm-ib}
-	--enable-aixib \
 %endif
 	--with-pbs-server-home=%{pbs_home} \
 	--with-database-user=%{pbs_dbuser}

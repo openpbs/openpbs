@@ -90,7 +90,6 @@ Prefix: %{?pbs_prefix}%{!?pbs_prefix:%{_prefix}}
 %bcond_with alps
 %bcond_with cpuset
 
-
 BuildRoot: %{buildroot}
 BuildRequires: gcc
 BuildRequires: make

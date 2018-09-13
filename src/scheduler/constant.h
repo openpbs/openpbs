@@ -579,6 +579,11 @@ enum schd_error_args {
 	SPECMSG
 };
 
+enum bucket_flags {
+	UPDATE_BUCKET_IND = 1,
+	NO_PRINT_BUCKETS
+};
+
 #ifdef	__cplusplus
 }
 #endif

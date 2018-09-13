@@ -877,7 +877,6 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 		qinfo = njob->job->queue;
 
 		clear_schd_error(err);
-		err->status_code = NOT_RUN;
 
 		schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 			njob->name, "Considering job to run");

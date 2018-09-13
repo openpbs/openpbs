@@ -962,66 +962,67 @@ is_ok_to_run(status *policy, server_info *sinfo,
 		endtime = sinfo->server_time + calc_time_left(resresv, 0);
 
 	if (resresv->is_job) {
-		if (resresv->job->resv == NULL) {
-			res = simulate_resmin(qinfo->qres, endtime, sinfo->calendar,
-				qinfo->jobs, resresv);
-		}
-		else
+		if (qinfo->qres != NULL) {
+			if (resresv->job->resv == NULL) {
+				res = simulate_resmin(qinfo->qres, endtime, sinfo->calendar,
+						qinfo->jobs, resresv);
+			} else
 #ifdef NAS /* localmod 036 */
-		{
-			if (resresv->job->resv->resv->is_standing) {
-				resource_req *req = find_resource_req(resresv->resreq, getallres(RES_MIN_WALLTIME));
+			{
+				if (resresv->job->resv->resv->is_standing) {
+					resource_req *req = find_resource_req(resresv->resreq, getallres(RES_MIN_WALLTIME));
 
-				if (req != NULL) {
-					int resv_time_left = calc_time_left(resresv->job->resv, 0);
-					if (req->amount > resv_time_left) {
-						set_schd_error_codes(err, NOT_RUN, INSUFFICIENT_RESOURCE);
-						add_err(&prev_err, err);
-						if (!(flags & RETURN_ALL_ERR))
-							return NULL;
+					if (req != NULL) {
+						int resv_time_left = calc_time_left(resresv->job->resv, 0);
+						if (req->amount > resv_time_left) {
+							set_schd_error_codes(err, NOT_RUN, INSUFFICIENT_RESOURCE);
+							add_err(&prev_err, err);
+							if (!(flags & RETURN_ALL_ERR))
+								return NULL;
 
-						err = new_schd_error();
-						if (err == NULL)
-							return NULL;
+							err = new_schd_error();
+							if (err == NULL)
+								return NULL;
+						}
 					}
 				}
-			}
 #endif /* localmod 036 */
-			res = qinfo->qres;
+				res = qinfo->qres;
 #ifdef NAS /* localmod 036 */
-		}
+			}
 #endif /* localmod 036 */
-		/* If job already has a list of resources released, use that list
-		 * check for available resources
-		 */
-		if ((resresv->job != NULL) && (resresv->job->resreq_rel != NULL))
-			resreq = resresv->job->resreq_rel;
-		else
-			resreq = resresv->resreq;
-		if (check_avail_resources(res, resreq,
-			flags, policy->resdef_to_check, INSUFFICIENT_QUEUE_RESOURCE, err) == 0) {
-			struct schd_error *toterr;
-			toterr = new_schd_error();
-			if(toterr == NULL) {
-				if(err != perr)
-					free_schd_error(err);
-				return NULL;
-			}
-			/* We can't fit now, lets see if we can ever fit */
+			/* If job already has a list of resources released, use that list
+			 * check for available resources
+			 */
+			if ((resresv->job != NULL) && (resresv->job->resreq_rel != NULL))
+				resreq = resresv->job->resreq_rel;
+			else
+				resreq = resresv->resreq;
 			if (check_avail_resources(res, resreq,
-				flags|COMPARE_TOTAL, policy->resdef_to_check, INSUFFICIENT_QUEUE_RESOURCE, toterr) == 0) {
-				move_schd_error(err , toterr);
-				err->status_code = NEVER_RUN;
-			}
+					flags, policy->resdef_to_check, INSUFFICIENT_QUEUE_RESOURCE, err) == 0) {
+				struct schd_error *toterr;
+				toterr = new_schd_error();
+				if(toterr == NULL) {
+					if(err != perr)
+						free_schd_error(err);
+					return NULL;
+				}
+				/* We can't fit now, lets see if we can ever fit */
+				if (check_avail_resources(res, resreq,
+						flags|COMPARE_TOTAL, policy->resdef_to_check, INSUFFICIENT_QUEUE_RESOURCE, toterr) == 0) {
+					move_schd_error(err , toterr);
+					err->status_code = NEVER_RUN;
+				}
 
-			add_err(&prev_err, err);
-			err = toterr;
-			clear_schd_error(err);
+				add_err(&prev_err, err);
+				err = toterr;
+				clear_schd_error(err);
 
-			if (!(flags & RETURN_ALL_ERR)) {
-				if(err != perr)
-					free_schd_error(err);
-				return NULL;
+				if (!(flags & RETURN_ALL_ERR)) {
+					if(err != perr)
+						free_schd_error(err);
+					return NULL;
+				}
 			}
 		}
 	}
@@ -1030,38 +1031,40 @@ is_ok_to_run(status *policy, server_info *sinfo,
 	 * because the server resources_assigned will already reflect the entire
 	 * resource amount for the reservation
 	 */
-	if (resresv->is_resv ||
-	(resresv->is_job && resresv->job->resv == NULL)) {
-		res = simulate_resmin(sinfo->res, endtime, sinfo->calendar, NULL, resresv);
-		if ((resresv->job != NULL) && (resresv->job->resreq_rel != NULL))
-			resreq = resresv->job->resreq_rel;
-		else
-			resreq = resresv->resreq;
-		if (check_avail_resources(res, resreq, flags,
-					  policy->resdef_to_check, INSUFFICIENT_SERVER_RESOURCE, err) == 0) {
-			struct schd_error *toterr;
-			toterr = new_schd_error();
-			if (toterr == NULL) {
-				if (err != perr)
-					free_schd_error(err);
-				return NULL;
-			}
-			/* We can't fit now, lets see if we can ever fit */
-			if (check_avail_resources(res, resreq,
-						  flags | COMPARE_TOTAL, policy->resdef_to_check,
-						  INSUFFICIENT_SERVER_RESOURCE, toterr) == 0) {
-				toterr->status_code = NEVER_RUN;
-				move_schd_error(err, toterr);
-			}
+	if (sinfo->res != NULL) {
+		if (resresv->is_resv ||
+				(resresv->is_job && resresv->job->resv == NULL)) {
+			res = simulate_resmin(sinfo->res, endtime, sinfo->calendar, NULL, resresv);
+			if ((resresv->job != NULL) && (resresv->job->resreq_rel != NULL))
+				resreq = resresv->job->resreq_rel;
+			else
+				resreq = resresv->resreq;
+			if (check_avail_resources(res, resreq, flags,
+					policy->resdef_to_check, INSUFFICIENT_SERVER_RESOURCE, err) == 0) {
+				struct schd_error *toterr;
+				toterr = new_schd_error();
+				if (toterr == NULL) {
+					if (err != perr)
+						free_schd_error(err);
+					return NULL;
+				}
+				/* We can't fit now, lets see if we can ever fit */
+				if (check_avail_resources(res, resreq,
+						flags | COMPARE_TOTAL, policy->resdef_to_check,
+						INSUFFICIENT_SERVER_RESOURCE, toterr) == 0) {
+					toterr->status_code = NEVER_RUN;
+					move_schd_error(err, toterr);
+				}
 
-			add_err(&prev_err, err);
-			err = toterr;
-			clear_schd_error(err);
+				add_err(&prev_err, err);
+				err = toterr;
+				clear_schd_error(err);
 
-			if (!(flags & RETURN_ALL_ERR)) {
-				if (err != perr)
-					free_schd_error(err);
-				return NULL;
+				if (!(flags & RETURN_ALL_ERR)) {
+					if (err != perr)
+						free_schd_error(err);
+					return NULL;
+				}
 			}
 		}
 	}

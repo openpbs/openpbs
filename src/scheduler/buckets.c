@@ -383,13 +383,15 @@ char *create_node_bucket_name(status *policy, node_bucket *nb) {
  * @param[in] policy - policy info
  * @param[in] nodes - the nodes to create buckets from
  * @param[in] queues - the queues the nodes may be associated with.  May be NULL
- * @param[in] update_bucket_ind - update node->bucket_ind with the bucket index
+ * @param[in] flags - flags to control creation of buckets
+ * 						UPDATE_BUCKET_IND - update the bucket_ind member on the node_info structure
+ * 						NO_PRINT_BUCKETS - do not print that a bucket has been created
  * @return node_bucket **
  * @retval array of node buckets
  * @retval NULL on error
  */
 node_bucket **
-create_node_buckets(status *policy, node_info **nodes, queue_info **queues, int update_bucket_ind) {
+create_node_buckets(status *policy, node_info **nodes, queue_info **queues, unsigned int flags) {
 	int i;
 	int j = 0;
 	node_bucket **buckets = NULL;
@@ -421,7 +423,7 @@ create_node_buckets(status *policy, node_info **nodes, queue_info **queues, int 
 			qinfo = find_queue_info(queues, nodes[i]->queue_name);
 		
 		bkt_ind = find_node_bucket_ind(buckets, nodes[i]->res, qinfo, nodes[i]->priority);
-		if (update_bucket_ind) {
+		if (flags & UPDATE_BUCKET_IND) {
 			if (bkt_ind == -1)
 				nodes[i]->bucket_ind = j;
 			else
@@ -469,8 +471,10 @@ create_node_buckets(status *policy, node_info **nodes, queue_info **queues, int 
 				free_node_bucket_array(buckets);
 				return NULL;
 			}
-			snprintf(log_buffer, sizeof(log_buffer), "Created node bucket %s", buckets[j]->name);
-			schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG, __func__, log_buffer);
+			if (!(flags & NO_PRINT_BUCKETS)) {
+				snprintf(log_buffer, sizeof(log_buffer), "Created node bucket %s", buckets[j]->name);
+				schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_NODE, LOG_DEBUG, __func__, log_buffer);
+			}
 
 			nb = buckets[j];
 			j++;

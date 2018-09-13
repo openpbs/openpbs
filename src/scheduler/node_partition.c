@@ -343,7 +343,7 @@ find_node_partition_by_rank(node_partition **np_arr, int rank)
  * @param[in]	nodes	-	the nodes which to create partitions from
  * @param[in]	resnames	-	node grouping resource names
  * @param[in]	flags	-	flags which change operations of node partition creation
- *							NP_INGNORE_EXCL - ignore vnodes marked excl
+ *							NP_IGNORE_EXCL - ignore vnodes marked excl
  *	 						NP_CREATE_REST - create a part for vnodes w/ no np resource
  * @param[out]	num_parts	-	the number of partitions created
  *
@@ -381,8 +381,13 @@ create_node_partitions(status *policy, node_info **nodes, char **resnames, unsig
 
 	resdef *def;
 
+	queue_info **queues = NULL;
+
 	if (nodes == NULL || resnames == NULL)
 		return NULL;
+
+	if (nodes[0] != NULL && nodes[0]->server != NULL)
+		queues = nodes[0]->server->queues;
 
 	num_nodes = count_array((void **) nodes);
 
@@ -549,7 +554,7 @@ create_node_partitions(status *policy, node_info **nodes, char **resnames, unsig
 		 * recalculating tot_nodes for each node partition.
 		 */
 		np_arr[np_i]->tot_nodes = count_array((void **) np_arr[np_i]->ninfo_arr);
-		np_arr[np_i]->bkts = create_node_buckets(policy, np_arr[np_i]->ninfo_arr, NULL, 0);
+		np_arr[np_i]->bkts = create_node_buckets(policy, np_arr[np_i]->ninfo_arr, queues, NO_PRINT_BUCKETS);
 		node_partition_update(policy, np_arr[np_i]);
 	}
 

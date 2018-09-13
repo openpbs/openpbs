@@ -691,6 +691,68 @@ class TestNodeBuckets(TestFunctional):
                            "Job did not span properly")
 
     @timeout(450)
+    def test_psets_queue(self):
+        """
+        Test that placement sets work for nodes associated with queues
+        """
+
+        a = {'node_group_key': 'shape', 'node_group_enable': 'True'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        a = {'queue_type': 'Execution', 'started': 'True', 'enabled': 'True'}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='workq2')
+
+        # Take the first 14 vnodes.  This means there are two nodes per shape
+        nodes = ['vnode[0]', 'vnode[1]', 'vnode[2]', 'vnode[3]', 'vnode[4]',
+                 'vnode[5]', 'vnode[6]', 'vnode[7]', 'vnode[8]', 'vnode[9]',
+                 'vnode[10]', 'vnode[11]', 'vnode[12]', 'vnode[13]']
+        self.server.manager(MGR_CMD_SET, NODE, {'queue': 'workq2'}, id=nodes)
+
+        chunk = '2:ncpus=1'
+        a = {'Resource_List.select': chunk, 'queue': 'workq2',
+             'Resource_List.place': 'scatter:excl'}
+        for _ in range(7):
+            j = Job(TEST_USER, a)
+            jid = self.server.submit(j)
+            self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+            self.scheduler.log_match(jid + ';Chunk: ' + chunk)
+
+        # Check to see if jobs ran in one placement set
+        jobs = self.server.status(JOB)
+        for job in jobs:
+            ev = self.server.status(JOB, 'exec_vnode', id=job['id'])
+            used_nodes = j.get_vnodes(ev[0]['exec_vnode'])
+
+            n = self.server.status(NODE, 'resources_available.shape')
+            s = [x['resources_available.shape']
+                 for x in n if x['id'] in used_nodes]
+            self.assertEqual(len(set(s)), 1,
+                             "Job " + job['id'] +
+                             "ran in more than one placement set")
+
+        s = self.server.select()
+        for jid in s:
+            self.server.delete(jid, wait=True)
+
+        # Check to see of jobs span correctly
+        chunk = '7:ncpus=1'
+        a = {'Resource_List.select': chunk, 'queue': 'workq2',
+             'Resource_List.place': 'scatter:excl'}
+        j = Job(TEST_USER, a)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        self.scheduler.log_match(jid + ';Chunk: ' + chunk)
+
+        ev = self.server.status(JOB, 'exec_vnode', id=jid)
+        used_nodes = j.get_vnodes(ev[0]['exec_vnode'])
+
+        n = self.server.status(NODE, 'resources_available.shape')
+        s = [x['resources_available.shape']
+             for x in n if x['id'] in used_nodes]
+        self.assertGreater(len(set(s)), 1,
+                           "Job did not span properly")
+
+    @timeout(450)
     def test_free(self):
         """
         Test that free placement works with the bucket code path

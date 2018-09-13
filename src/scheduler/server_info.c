@@ -454,7 +454,7 @@ query_server(status *pol, int pbs_sd)
 	
 	generic_sim(sinfo->calendar, TIMED_RUN_EVENT, 0, 0, add_node_events, NULL, NULL);
 	
-	sinfo->buckets = create_node_buckets(policy, sinfo->nodes, sinfo->queues, 1);
+	sinfo->buckets = create_node_buckets(policy, sinfo->nodes, sinfo->queues, UPDATE_BUCKET_IND);
 
 	if (sinfo->buckets != NULL) {
 		int ct;
