@@ -709,6 +709,7 @@ struct resource_resv
 #ifdef NAS /* localmod 034 */
 	enum site_j_share_type share_type;	/* How resv counts against group share */
 #endif /* localmod 034 */
+	int		resresv_ind;		/* resource_resv index in all_resresv array */
 };
 
 
@@ -1178,6 +1179,10 @@ struct chunk_map {
 	pbs_bitmap *node_bits;		/* assignment of nodes from buckets */
 };
 
+struct resresv_filter {
+	resource_resv *job;
+	schd_error *err;		/* reason why set can not run*/
+};
 #ifdef	__cplusplus
 }
 #endif

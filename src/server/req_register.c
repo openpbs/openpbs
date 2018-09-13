@@ -679,7 +679,7 @@ depend_on_exec(job *pjob)
 /**
  * @brief
  * 		depend_on_term - Perform actions if job has "afterany, afterok, afternotok"
- *		dependencies, send "register-release" or register-delete" as
+ *		dependencies, send "register-release" or "register-delete" as
  *		appropriate.
  * @par
  *		This function is invoked from on_job_exit() in req_jobobit.c.

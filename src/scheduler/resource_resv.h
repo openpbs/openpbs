@@ -90,7 +90,7 @@ resource_resv *find_resource_resv(resource_resv **resresv_arr, char *name);
  * find a resource_resv by unique numeric rank
 
  */
-resource_resv *find_resource_resv_by_rank(resource_resv **resresv_arr, int rank);
+resource_resv *find_resource_resv_by_indrank(resource_resv **resresv_arr, int rank, int index);
 
 /**
  *  find_resource_resv_by_time - find a resource_resv by name and start time

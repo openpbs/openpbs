@@ -140,13 +140,13 @@ typedef struct limcounts limcounts;
 
 static int
 check_max_group_res(resource_resv *, counts *,
-	char **, void *);
+	resdef **, void *);
 static int
 check_max_project_res(resource_resv *, counts *,
-	char **, void *);
+	resdef **, void *);
 static int
 check_max_user_res(resource_resv *, counts *,
-	char **, void *);
+	resdef **, void *);
 static int
 check_max_group_res_soft(resource_resv *,
 	counts *, void *);
@@ -1341,15 +1341,15 @@ check_server_max_user_res(server_info *si, queue_info *qi, resource_resv *rr,
 	limcounts *sc, limcounts *qc, schd_error *err)
 {
 	int		ret;
-	char		*resname;
 	counts		*cts = NULL;
+	resdef		*rdef = NULL;
 
 	if ((si == NULL) || (rr == NULL) ||(sc==NULL))
 		return (SCHD_ERROR);
 
 	cts = sc->user;
 
-	ret = check_max_user_res(rr, cts, &resname,
+	ret = check_max_user_res(rr, cts, &rdef,
 		LI2RESCTX(si->liminfo));
 	if (ret != 0) {
 		(void) sprintf(log_buffer, "%s check_max_user_res returned %d",
@@ -1364,10 +1364,11 @@ check_server_max_user_res(server_info *si, queue_info *qi, resource_resv *rr,
 		case 0:
 			return (0);
 		case 1:	/* generic user limit exceeded */
-			schderr_args_server_res(NULL, resname, err);
+			err->rdef = rdef;
 			return (SERVER_USER_RES_LIMIT_REACHED);
 		case 2:	/* individual user limit exceeded */
-			schderr_args_server_res(rr->user, resname, err);
+			schderr_args_server_res(rr->user, NULL, err);
+			err->rdef = rdef;
 			return (SERVER_BYUSER_RES_LIMIT_REACHED);
 	}
 }
@@ -1396,8 +1397,8 @@ check_server_max_group_res(server_info *si, queue_info *qi, resource_resv *rr,
 	limcounts *sc, limcounts *qc, schd_error *err)
 {
 	int		ret;
-	char		*resname;
 	counts		*cts = NULL;
+	resdef		*rdef = NULL;
 
 	if ((si == NULL) || (rr == NULL) || (sc == NULL))
 		return (SCHD_ERROR);
@@ -1405,7 +1406,7 @@ check_server_max_group_res(server_info *si, queue_info *qi, resource_resv *rr,
 	cts = sc->group;
 
 	ret = check_max_group_res(rr, cts,
-		&resname, LI2RESCTX(si->liminfo));
+		&rdef, LI2RESCTX(si->liminfo));
 	if (ret != 0) {
 		(void) sprintf(log_buffer, "%s check_max_group_res returned %d",
 			rr->name, ret);
@@ -1419,10 +1420,11 @@ check_server_max_group_res(server_info *si, queue_info *qi, resource_resv *rr,
 		case 0:
 			return (0);
 		case 1:	/* generic group limit exceeded */
-			schderr_args_server_res(NULL, resname, err);
+			err->rdef = rdef;
 			return (SERVER_GROUP_RES_LIMIT_REACHED);
 		case 2:	/* individual group limit exceeded */
-			schderr_args_server_res(rr->group, resname, err);
+			schderr_args_server_res(rr->group, NULL, err);
+			err->rdef = rdef;
 			return (SERVER_BYGROUP_RES_LIMIT_REACHED);
 	}
 }
@@ -1595,15 +1597,15 @@ check_queue_max_user_res(server_info *si, queue_info *qi, resource_resv *rr,
 	limcounts *sc, limcounts *qc, schd_error *err)
 {
 	int		ret;
-	char		*resname;
 	counts		*cts = NULL;
+	resdef		*rdef = NULL;
 
 	if ((qi == NULL) || (rr == NULL) || (qc == NULL))
 		return (SCHD_ERROR);
 
 	cts = qc->user;
 
-	ret = check_max_user_res(rr, cts, &resname, LI2RESCTX(qi->liminfo));
+	ret = check_max_user_res(rr, cts, &rdef, LI2RESCTX(qi->liminfo));
 	if (ret != 0) {
 		(void) sprintf(log_buffer, "%s check_max_user_res returned %d",
 			rr->name, ret);
@@ -1617,10 +1619,12 @@ check_queue_max_user_res(server_info *si, queue_info *qi, resource_resv *rr,
 		case 0:
 			return (0);
 		case 1:	/* generic user limit exceeded */
-			schderr_args_q_res(qi->name, NULL, resname, err);
+			schderr_args_q_res(qi->name, NULL, NULL, err);
+			err->rdef = rdef;
 			return (QUEUE_USER_RES_LIMIT_REACHED);
 		case 2:	/* individual user limit exceeded */
-			schderr_args_q_res(qi->name, rr->user, resname, err);
+			schderr_args_q_res(qi->name, rr->user, NULL, err);
+			err->rdef = rdef;
 			return (QUEUE_BYUSER_RES_LIMIT_REACHED);
 	}
 }
@@ -1649,15 +1653,15 @@ check_queue_max_group_res(server_info *si, queue_info *qi, resource_resv *rr,
 	limcounts *sc, limcounts *qc, schd_error *err)
 {
 	int		ret;
-	char	*resname;
 	counts		*cts = NULL;
+	resdef		*rdef = NULL;
 
 	if ((qi == NULL) || (rr == NULL) || (qc == NULL))
 		return (SCHD_ERROR);
 
 	cts = qc->group;
 
-	ret = check_max_group_res(rr, cts, &resname, LI2RESCTX(qi->liminfo));
+	ret = check_max_group_res(rr, cts, &rdef, LI2RESCTX(qi->liminfo));
 	if (ret != 0) {
 		(void) sprintf(log_buffer, "%s check_max_group_res returned %d",
 			rr->name, ret);
@@ -1671,10 +1675,12 @@ check_queue_max_group_res(server_info *si, queue_info *qi, resource_resv *rr,
 		case 0:
 			return (0);
 		case 1:	/* generic group limit exceeded */
-			schderr_args_q_res(qi->name, NULL, resname, err);
+			schderr_args_q_res(qi->name, NULL, NULL, err);
+			err->rdef = rdef;
 			return (QUEUE_GROUP_RES_LIMIT_REACHED);
 		case 2:	/* individual group limit exceeded */
-			schderr_args_q_res(qi->name, rr->group, resname, err);
+			schderr_args_q_res(qi->name, rr->group, NULL, err);
+			err->rdef = rdef;
 			return (QUEUE_BYGROUP_RES_LIMIT_REACHED);
 	}
 }
@@ -1751,7 +1757,8 @@ check_queue_max_res(server_info *si, queue_info *qi, resource_resv *rr,
 		schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 				__func__, log_buffer);
 		if (used + req->amount > max_res) {
-			schderr_args_q_res(qi->name, NULL, res->name, err);
+			schderr_args_q_res(qi->name, NULL, NULL, err);
+			err->rdef = res->def;
 			return (QUEUE_RESOURCE_LIMIT_REACHED);
 		}
 	}
@@ -1831,7 +1838,7 @@ check_server_max_res(server_info *si, queue_info *qi, resource_resv *rr,
 		schdlog(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 				__func__, log_buffer);
 		if (used + req->amount > max_res) {
-			schderr_args_server_res(NULL, res->name, err);
+			err->rdef = res->def;
 			return (SERVER_RESOURCE_LIMIT_REACHED);
 		}
 	}
@@ -2534,8 +2541,7 @@ check_queue_max_res_soft(server_info *si, queue_info *qi, resource_resv *rr)
  *
  * @param[in]	rr	-	resource_resv to run
  * @param[in]	cts_list	-	the user counts list
- * @param[out]	resname	-	pointer to location to store name of resource
- *							exceeding a limit
+ * @param[out]  rdef -		resource definition of resource exceeding a limit
  * @param[in]	limitctx	-	the limit storage context
  *
  * @return	int
@@ -2546,7 +2552,7 @@ check_queue_max_res_soft(server_info *si, queue_info *qi, resource_resv *rr)
  */
 static int
 check_max_group_res(resource_resv *rr, counts *cts_list,
-	char **resname, void *limitctx)
+	resdef **rdef, void *limitctx)
 {
 	char		*groupreskey;
 	char		*gengroupreskey;
@@ -2600,12 +2606,12 @@ check_max_group_res(resource_resv *rr, counts *cts_list,
 
 		if (max_group_res != SCHD_INFINITY) {
 			if (used + req->amount > max_group_res) {
-				*resname = res->name;
+				*rdef = res->def;
 				return (2);
 			} else
 				continue;	/* ignore a generic limit */
 		} else if (used + req->amount > max_gengroup_res) {
-			*resname = res->name;
+			*rdef = res->def;
 			return (1);
 		}
 	}
@@ -2701,8 +2707,7 @@ check_max_group_res_soft(resource_resv *rr, counts *cts_list, void *limitctx)
  *
  * @param[in]	rr	-	resource_resv to run
  * @param[in]	cts_list	-	the user counts list
- * @param[out]	resname	-	pointer to location to store name of resource
- *							exceeding a limit
+ * @param[out]  rdef -		resource definition of resource exceeding a limit
  * @param [in]	limitctx	-	the limit storage context
  *
  * @return	int
@@ -2712,7 +2717,7 @@ check_max_group_res_soft(resource_resv *rr, counts *cts_list, void *limitctx)
  * @retval	-1	: on error
  */
 static int
-check_max_user_res(resource_resv *rr, counts *cts_list, char **resname,
+check_max_user_res(resource_resv *rr, counts *cts_list, resdef **rdef,
 	void *limitctx)
 {
 	char		*userreskey;
@@ -2768,12 +2773,12 @@ check_max_user_res(resource_resv *rr, counts *cts_list, char **resname,
 
 		if (max_user_res != SCHD_INFINITY) {
 			if (used + req->amount > max_user_res) {
-				*resname = res->name;
+				*rdef = res->def;
 				return (2);
 			} else
 				continue;	/* ignore a generic limit */
 		} else if (used + req->amount > max_genuser_res) {
-			*resname = res->name;
+			*rdef = res->def;
 			return (1);
 		}
 	}
@@ -3363,8 +3368,7 @@ schderr_args_server_res(const char *entity, const char *res, schd_error *err)
  *
  * @param[in]	rr	-	resource_resv to run
  * @param[in]	cts_list	-	the user counts list
- * @param[out]	resname	-	pointer to location to store name of resource
- *							exceeding a limit
+ * @param[out]  rdef -		resource definition of resource exceeding a limit
  * @param[in]	limitctx	-	the limit storage context
  *
  * @return	int
@@ -3375,7 +3379,7 @@ schderr_args_server_res(const char *entity, const char *res, schd_error *err)
  */
 static int
 check_max_project_res(resource_resv *rr, counts *cts_list,
-	char **resname, void *limitctx)
+	resdef **rdef, void *limitctx)
 {
 	char		*projectreskey;
 	char		*genprojectreskey;
@@ -3430,12 +3434,12 @@ check_max_project_res(resource_resv *rr, counts *cts_list,
 
 		if (max_project_res != SCHD_INFINITY) {
 			if (used + req->amount > max_project_res) {
-				*resname = res->name;
+				*rdef = res->def;
 				return (2);
 			} else
 				continue;	/* ignore a generic limit */
 		} else if (used + req->amount > max_genproject_res) {
-			*resname = res->name;
+			*rdef = res->def;
 			return (1);
 		}
 	}
@@ -3550,8 +3554,8 @@ check_server_max_project_res(server_info *si, queue_info *qi, resource_resv *rr,
 	limcounts *sc, limcounts *qc, schd_error *err)
 {
 	int		ret;
-	char		*resname;
 	counts		*cts = NULL;
+	resdef		*rdef = NULL;
 
 	if ((si == NULL) || (rr == NULL) || (sc == NULL))
 		return (SCHD_ERROR);
@@ -3562,7 +3566,7 @@ check_server_max_project_res(server_info *si, queue_info *qi, resource_resv *rr,
 	cts = sc->project;
 
 	ret = check_max_project_res(rr, cts,
-		&resname, LI2RESCTX(si->liminfo));
+		&rdef, LI2RESCTX(si->liminfo));
 	if (ret != 0) {
 		(void) sprintf(log_buffer, "%s check_max_project_res returned %d",
 			rr->name, ret);
@@ -3576,10 +3580,11 @@ check_server_max_project_res(server_info *si, queue_info *qi, resource_resv *rr,
 		case 0:
 			return (0);
 		case 1:	/* generic project limit exceeded */
-			schderr_args_server_res(NULL, resname, err);
+			err->rdef = rdef;
 			return (SERVER_PROJECT_RES_LIMIT_REACHED);
 		case 2:	/* individual project limit exceeded */
-			schderr_args_server_res(rr->project, resname, err);
+			schderr_args_server_res(rr->project, NULL, err);
+			err->rdef = rdef;
 			return (SERVER_BYPROJECT_RES_LIMIT_REACHED);
 	}
 }
@@ -3708,8 +3713,8 @@ check_queue_max_project_res(server_info *si, queue_info *qi, resource_resv *rr,
 	limcounts *sc, limcounts *qc, schd_error *err)
 {
 	int		ret;
-	char	*resname;
 	counts		*cts = NULL;
+	resdef		*rdef = NULL;
 
 	if ((qi == NULL) || (rr == NULL) || (qc == NULL))
 		return (SCHD_ERROR);
@@ -3719,7 +3724,7 @@ check_queue_max_project_res(server_info *si, queue_info *qi, resource_resv *rr,
 
 	cts = qc->project;
 
-	ret = check_max_project_res(rr, cts, &resname, LI2RESCTX(qi->liminfo));
+	ret = check_max_project_res(rr, cts, &rdef, LI2RESCTX(qi->liminfo));
 	if (ret != 0) {
 		(void) sprintf(log_buffer, "%s check_max_project_res returned %d",
 			rr->name, ret);
@@ -3733,10 +3738,12 @@ check_queue_max_project_res(server_info *si, queue_info *qi, resource_resv *rr,
 		case 0:
 			return (0);
 		case 1:	/* generic project limit exceeded */
-			schderr_args_q_res(qi->name, NULL, resname, err);
+			schderr_args_q_res(qi->name, NULL, NULL, err);
+			err->rdef = rdef;
 			return (QUEUE_PROJECT_RES_LIMIT_REACHED);
 		case 2:	/* individual project limit exceeded */
-			schderr_args_q_res(qi->name, rr->project, resname, err);
+			schderr_args_q_res(qi->name, rr->project, NULL, err);
+			err->rdef = rdef;
 			return (QUEUE_BYPROJECT_RES_LIMIT_REACHED);
 	}
 }

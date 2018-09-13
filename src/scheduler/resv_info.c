@@ -948,7 +948,7 @@ check_new_reservations(status *policy, int pbs_sd, resource_resv **resvs, server
 			 * standing reservation, the first to be found will be the "parent"
 			 * reservation
 			 */
-			nresv = find_resource_resv_by_rank(nsinfo->resvs, sinfo->resvs[i]->rank);
+			nresv = find_resource_resv_by_indrank(nsinfo->resvs, sinfo->resvs[i]->rank, sinfo->resvs[i]->resresv_ind);
 			if (nresv == NULL) {
 				schdlog(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
 					sinfo->resvs[i]->name,

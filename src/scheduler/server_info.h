@@ -143,6 +143,11 @@ update_server_on_run(status *policy, server_info *sinfo, queue_info *qinfo,
  */
 int create_server_arrays(server_info *sinfo);
 
+/*
+ *	copy_server_arrays - copy server's jobs and all_resresv arrays
+ */
+int copy_server_arrays(server_info *nsinfo, server_info *osinfo);
+
 
 /*
  *      check_exit_job - function used by job_filter to filter out

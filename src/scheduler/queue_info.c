@@ -965,7 +965,7 @@ dup_queue_info(queue_info *oqinfo, server_info *nsinfo)
 	nqinfo->node_group_key = dup_string_array(oqinfo->node_group_key);
 
 	if (oqinfo->resv != NULL) {
-		nqinfo->resv = find_resource_resv_by_rank(nsinfo->resvs, oqinfo->resv->rank);
+		nqinfo->resv = find_resource_resv_by_indrank(nsinfo->resvs, oqinfo->resv->rank, oqinfo->resv->resresv_ind);
 		/* just incase we we didn't set the reservation cross pointer */
 		if (nqinfo->resv != NULL && nqinfo->resv->resv != NULL)
 			nqinfo->resv->resv->resv_queue = nqinfo;

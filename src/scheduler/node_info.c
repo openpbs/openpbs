@@ -1485,8 +1485,8 @@ collect_jobs_on_nodes(node_info **ninfo_arr, resource_resv **resresv_arr, int si
 					 * it'll show up more then once.  If this is the case, we only
 					 * want to have the job in our array once.
 					 */
-					if (find_resource_resv_by_rank(ninfo_arr[i]->job_arr,
-						job->rank) == NULL) {
+					if (find_resource_resv_by_indrank(ninfo_arr[i]->job_arr,
+						job->rank, -1) == NULL) {
 						if (ninfo_arr[i]->has_hard_limit) {
 						cts = find_alloc_counts(ninfo_arr[i]->group_counts,
 							job->group);
@@ -1600,7 +1600,7 @@ update_node_on_run(nspec *ns, resource_resv *resresv, char *job_state)
 
 	if (resresv->is_job) {
 		ninfo->num_jobs++;
-		if (find_resource_resv_by_rank(ninfo->job_arr, resresv->rank) ==NULL) {
+		if (find_resource_resv_by_indrank(ninfo->job_arr, resresv->rank, resresv->resresv_ind) == NULL) {
 			tmp_arr = add_resresv_to_array(ninfo->job_arr, resresv);
 			if (tmp_arr == NULL)
 				return;
@@ -1611,7 +1611,7 @@ update_node_on_run(nspec *ns, resource_resv *resresv, char *job_state)
 	}
 	else if (resresv->is_resv) {
 		ninfo->num_run_resv++;
-		if (find_resource_resv_by_rank(ninfo->run_resvs_arr, resresv->rank) ==NULL) {
+		if (find_resource_resv_by_indrank(ninfo->run_resvs_arr, resresv->rank, resresv->resresv_ind) == NULL) {
 			tmp_arr = add_resresv_to_array(ninfo->run_resvs_arr, resresv);
 			if (tmp_arr == NULL)
 				return;

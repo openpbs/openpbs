@@ -409,6 +409,8 @@ resource_req *create_resreq_rel_list(status *policy, resource_resv *pjob);
 /* Returns the extended duration of a job that has exceeded its soft_walltime */
 long extend_soft_walltime(resource_resv *resresv, time_t server_time);
 
+/* Returns a list of preemptable candidates */
+resource_resv **filter_preemptable_jobs(resource_resv **arr, resource_resv *job, schd_error *err);
 
 #ifdef	__cplusplus
 }

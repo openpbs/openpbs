@@ -1897,7 +1897,7 @@ add_job_to_calendar(int pbs_sd, status *policy, server_info *sinfo,
 	if ((nsinfo = dup_server_info(sinfo)) == NULL)
 		return 0;
 
-	if ((njob = find_resource_resv_by_rank(nsinfo->jobs, topjob->rank)) == NULL) {
+	if ((njob = find_resource_resv_by_indrank(nsinfo->jobs, topjob->rank, topjob->resresv_ind)) == NULL) {
 		free_server(nsinfo, 1);
 		return 0;
 	}

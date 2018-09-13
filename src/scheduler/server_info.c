@@ -1863,6 +1863,63 @@ update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
 		}
 	}
 }
+/**
+ * @brief
+ * 		copy_server_arrays - copy server arrays of all jobs and all reservations
+ *
+ * @param[in]	nsinfo	-	the server to copy lists to
+ * @param[in]	osinfo	-	the server to copy lists from
+ *
+ * @return	int
+ * @retval	1	: success
+ * @retval	0 	: failure
+ *
+ * @par MT-Safe:	no
+ */
+int
+copy_server_arrays(server_info *nsinfo, server_info *osinfo)
+{
+	resource_resv **job_arr;	/* used in copying jobs to job array */
+	resource_resv **all_arr;	/* used in copying jobs to job/resv array */
+	resource_resv **resresv_arr;	/* used as source array to copy */
+	int i = 0;
+	int j = 0;
+	int index;
+
+	if (nsinfo == NULL || osinfo == NULL)
+		return 0;
+
+	if ((job_arr = (resource_resv **)
+		calloc((osinfo->sc.total + 1), sizeof(resource_resv *))) == NULL) {
+		log_err(errno, __func__, "Error allocating memory");
+		return 0;
+	}
+
+	if ((all_arr = (resource_resv **) calloc((osinfo->sc.total + osinfo->num_resvs +1),
+						 sizeof(resource_resv *))) == NULL) {
+		free(job_arr);
+		log_err(errno, __func__, "Error allocating memory");
+		return 0;
+	}
+
+	for (index = 0; nsinfo->queues[index] != NULL; index++) {
+		resresv_arr = nsinfo->queues[index]->jobs;
+
+		if (resresv_arr != NULL) {
+			for (i = 0; resresv_arr[i] != NULL; i++, j++)
+				job_arr[j] = all_arr[resresv_arr[i]->resresv_ind] = resresv_arr[i];
+		}
+	}
+
+	if (nsinfo->resvs != NULL) {
+		for (i = 0; nsinfo->resvs[i] != NULL; i++)
+			all_arr[nsinfo->resvs[i]->resresv_ind] = nsinfo->resvs[i];
+	}
+	nsinfo->jobs = job_arr;
+	nsinfo->all_resresv = all_arr;
+	nsinfo->num_resvs = osinfo->num_resvs;
+	return 1;
+}
 
 /**
  * @brief
@@ -1906,8 +1963,10 @@ create_server_arrays(server_info *sinfo)
 		resresv_arr = (*qinfo)->jobs;
 
 		if (resresv_arr != NULL) {
-			for (j = 0; resresv_arr[j] != NULL; j++, i++)
+			for (j = 0; resresv_arr[j] != NULL; j++, i++) {
 				job_arr[i] = all_arr[i] = resresv_arr[j];
+				all_arr[i]->resresv_ind = i;
+			}
 			if (i > sinfo->sc.total) {
 				free(job_arr);
 				free(all_arr);
@@ -1927,8 +1986,10 @@ create_server_arrays(server_info *sinfo)
 #endif /* localmod 054 */
 
 	if (sinfo->resvs != NULL) {
-		for (j = 0; sinfo->resvs[j] != NULL; j++, i++)
+		for (j = 0; sinfo->resvs[j] != NULL; j++, i++) {
 			all_arr[i] = sinfo->resvs[j];
+			all_arr[i]->resresv_ind = i;
+		}
 #ifdef NAS /* localmod 054 */
 		if (j != sinfo->num_resvs) {
 			sprintf(log_buffer, "Expected %d resv, but found %d", sinfo->num_resvs, j);
@@ -2197,7 +2258,7 @@ dup_server_info(server_info *osinfo)
 		return NULL;
 	}
 #else
-	create_server_arrays(nsinfo);
+	copy_server_arrays(nsinfo, osinfo);
 #endif /* localmod 054 */
 
 	nsinfo->equiv_classes = dup_resresv_set_array(osinfo->equiv_classes, nsinfo);
