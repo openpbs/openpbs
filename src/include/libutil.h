@@ -267,6 +267,10 @@ void free_string_array(char **arr);
  */
 char * escape_delimiter(char *str, char *delim, char esc);
 
+#ifdef HAVE_MALLOC_INFO
+char * get_mem_info(void);
+#endif
+
 /* Size of time buffer */
 #define TIMEBUF_SIZE 128
 

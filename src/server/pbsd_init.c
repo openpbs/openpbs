@@ -1460,6 +1460,10 @@ pbsd_init(int type)
 	send_rescdef(0);
 	hook_track_save(NULL, -1); /* refresh path_hooks_tracking file */
 
+#ifndef WIN32
+	(void)set_task(WORK_Immed, time_now, memory_debug_log, NULL);
+#endif /* !WIN32 */
+
 	return (0);
 }
 

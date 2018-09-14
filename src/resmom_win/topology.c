@@ -1,5 +1,4 @@
-#include <windows.h>
-#include <malloc.h>    
+#include <windows.h>   
 #include <stdio.h>
 
 #include "pbs_error.h"

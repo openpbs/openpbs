@@ -7163,3 +7163,36 @@ set_attr_svr(attribute *pattr, attribute_def *pdef, char *value)
 	}
 	pdef->at_free(&tempat);
 }
+
+
+/**
+ * @brief
+ * 		dumps the memory usage of the heap into server log in every 10 minutes.
+ *
+ * @param[in]	ptask	-	pointer to the work task
+ *
+ * @return	void
+ *
+ * @par MT-Safe: Yes
+ * @par Side Effects: None
+ *
+ */
+#ifndef WIN32
+void memory_debug_log(struct work_task *ptask) {
+
+	if (ptask)
+		(void)set_task(WORK_Timed, time_now+600, memory_debug_log, NULL);
+	if (!will_log_event(PBSEVENT_DEBUG4))
+		return;
+	snprintf(log_buffer, LOG_BUF_SIZE, "MEM_DEBUG: sbrk: %zu", (size_t)sbrk(0));
+	log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_DEBUG, msg_daemonname, log_buffer);
+#ifdef HAVE_MALLOC_INFO
+	char *buf;
+	buf = get_mem_info();
+	if (buf) {
+		log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_DEBUG, msg_daemonname, buf);
+		free(buf);
+	}
+#endif /* malloc_info */
+}
+#endif /* WIN32 */

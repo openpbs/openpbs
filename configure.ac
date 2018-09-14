@@ -98,6 +98,9 @@ AC_CHECK_LIB([socket], [socket],
   AC_SUBST(socket_lib),
   [-lnsl]
 )
+AC_CHECK_LIB([c], [malloc_info],
+  AC_DEFINE([HAVE_MALLOC_INFO], [], [Defined when malloc_info is available])
+)
 
 # Check for X Window System
 AC_PATH_XTRA

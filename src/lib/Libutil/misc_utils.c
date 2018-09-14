@@ -82,6 +82,10 @@
 #endif
 #include "pbs_error.h"
 
+#ifdef HAVE_MALLOC_INFO
+#include <malloc.h>
+#endif
+
 #define ISESCAPED(ch) (ch == '\'' || ch == '\"' || ch == ',')
 
 /** @brief conversion array for vnode sharing attribute between str and enum */
@@ -1326,3 +1330,36 @@ starts_with_triple_quotes(char *str)
 	}
 	return (0);
 }
+
+/*
+ * @brief
+ *	Gets malloc_info and returns as a string
+ *
+ * @return char *
+ * @retval NULL - Error
+ * @note
+ * The buffer has to be freed by the caller.
+ *
+ */
+#ifndef WIN32
+#ifdef HAVE_MALLOC_INFO
+char *
+get_mem_info(void) {
+	FILE *stream;
+	char *buf;
+	size_t len;
+	int err = 0;
+
+	stream = open_memstream(&buf, &len);
+	if (stream == NULL)
+		return NULL;
+	err = malloc_info(0, stream);
+	fclose(stream);
+	if (err == -1) {
+		free(buf);
+		return NULL;
+	}
+	return buf;
+}
+#endif /* malloc_info */
+#endif /* WIN32 */
