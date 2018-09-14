@@ -42,11 +42,16 @@ import getopt
 import errno
 import logging
 import ptl
+import time
+import tarfile
 
 from getopt import GetoptError
+from threading import Thread
+
 from ptl.lib.pbs_testlib import PtlConfig
 from ptl.utils.pbs_snaputils import PBSSnapUtils
 from ptl.utils.pbs_cliutils import CliUtils
+from ptl.utils.pbs_dshutils import DshUtils
 
 
 def trap_exceptions(etype, value, tb):
@@ -77,8 +82,8 @@ Usage: pbs_snapshot -o <path to output tar file> [OPTION]
 
     Take snapshot of a PBS system and optionally capture logs for diagnostics
 
-    -H <hostname>                     hostname to operate on
-                                      Defaults to value of PBS_SERVER
+    -H <hostname>                     primary hostname to operate on
+                                      Defaults to local host
     -l <loglevel>                     set log level to one of INFO, INFOCLI,
                                       INFOCLI2, DEBUG, DEBUG2, WARNING, ERROR
                                       or FATAL
@@ -96,18 +101,87 @@ Usage: pbs_snapshot -o <path to output tar file> [OPTION]
     print msg
 
 
+def childsnap_thread(logger, host):
+    """
+    Thread routine for each child snapshot being run on a remote host
+
+    :param logger - Logging object
+    :type logger - logging.Logger
+    :param host - the hostname for remote host
+    :type host - str
+    """
+    logger.info("Capturing snapshot from host %s" % (host))
+
+    du = DshUtils()
+
+    # Get path to pbs_snapshot on remote host
+    host_pbsconf = du.parse_pbs_config(hostname=host)
+    try:
+        pbs_exec_path = host_pbsconf["PBS_EXEC"]
+    except KeyError:
+        logger.error("Couldn't find PBS_EXEC on host %s"
+                     ", won't capture snapshot on this host" % (
+                         host))
+        return
+    host_pbssnappath = os.path.join(pbs_exec_path, "sbin",
+                                    "pbs_snapshot")
+
+    # Create a directory on the remote host with a unique name
+    # We will create the snapshot here
+    timestamp = str(int(time.time()))
+    snap_home = "host_" + timestamp
+    du.mkdir(hostname=host, path=snap_home)
+
+    # Run pbs_snapshot on the remote host
+    cmd = [host_pbssnappath, "-o", snap_home,
+           "--daemon-logs=" + str(daemon_logs),
+           "--accounting-logs=" + str(acct_logs)]
+    if anonymize:
+        cmd.extend(["--obfuscate", "--map=" + map_file])
+    if with_sudo:
+        cmd.append("--with-sudo")
+
+    ret = du.run_cmd(hosts=host, cmd=cmd, logerr=False)
+    if ret['rc'] != 0:
+        logger.error("Error capturing snapshot from host %s" % (host))
+        print ret['err']
+        return
+
+    # Get the snapshot tar filename from stdout
+    child_stdout = ret['out'][-1]
+    snaptarname = child_stdout.split("Snapshot available at: ")[1]
+
+    # Copy over the snapshot tar file as <hostname>_snapshot.tgz
+    dest_path = os.path.join(out_dir, host + "_snapshot.tgz")
+    src_path = host + ":" + snaptarname
+    ret = du.run_copy(src=src_path, dest=dest_path)
+    if ret['rc'] != 0:
+        logger.error("Error copying child snapshot from host %s" % (host))
+
+    # Copy over map file if any as 'host_<map filename>'
+    if map_file is not None:
+        dest_path = os.path.join(out_dir, host + "_" + map_file)
+        src_path = os.path.join(snap_home, map_file)
+        src_path = host + ":" + src_path
+        ret = du.run_copy(src=src_path, dest=dest_path)
+        if ret['rc'] != 0:
+            logger.error("Error copying map file from host %s" % (host))
+
+    # Delete the snapshot home from remote host
+    du.rm(hostname=host, path=snap_home, recursive=True, force=True)
+
+
 if __name__ == '__main__':
 
     # Arguments to PBSSnapUtils
     out_dir = None
-    server_host = None
+    primary_host = None
     log_level = "INFOCLI2"
     acct_logs = 30  # Capture 30 days of accounting logs by default
     daemon_logs = 5   # Capture 5 days of daemon logs by default
     additional_hosts = None
     map_file = None
     anonymize = False
-    create_tar = True
     log_file = "pbs_snapshot.log"
     with_sudo = False
 
@@ -128,7 +202,7 @@ if __name__ == '__main__':
         if o == "-o":
             out_dir = val
         elif o == "-H":
-            server_host = val
+            primary_host = val
         elif o == "-l":
             log_level = val
         elif o == "-h" or o == "--help":
@@ -189,16 +263,57 @@ if __name__ == '__main__':
         # find the parent directory of the snapshot
         # This will be used to store the map file
         out_abspath = os.path.abspath(out_dir)
-        map_file = os.path.join(out_abspath, "obfuscate.map")
+        if map_file is None:
+            map_file = os.path.join(out_abspath, "obfuscate.map")
 
-    # Capture the snapshot
-    with PBSSnapUtils(out_dir, server_host=server_host, acct_logs=acct_logs,
-                      daemon_logs=daemon_logs,
-                      additional_hosts=additional_hosts, map_file=map_file,
-                      anonymize=anonymize,
-                      create_tar=create_tar, log_path=log_path,
-                      with_sudo=with_sudo) as snap_utils:
-        outtar = snap_utils.capture_all()
+    if additional_hosts is not None:
+        du = DshUtils()
+
+        # Run child pbs_snapshot commands on those hosts
+        hostnames = additional_hosts.split(",")
+        childsnap_threads = {}
+        for host in hostnames:
+            thread = Thread(target=childsnap_thread, args=(
+                ptl_logger, host))
+            thread.start()
+            childsnap_threads[host] = thread
+
+        # Capture snapshot on the main host in the meantime
+        with PBSSnapUtils(out_dir, primary_host=primary_host,
+                          acct_logs=acct_logs,
+                          daemon_logs=daemon_logs, map_file=map_file,
+                          anonymize=anonymize, create_tar=False,
+                          log_path=log_path,
+                          with_sudo=with_sudo) as snap_utils:
+            main_snap = snap_utils.capture_all()
+
+        # Let's reconcile the child snapshots
+        for host, thread in childsnap_threads.iteritems():
+            thread.join()
+            host_snappath = os.path.join(out_dir, host + "_snapshot.tgz")
+            if os.path.isfile(host_snappath):
+                # Move the tar file to the main snapshot
+                du.run_copy(src=host_snappath, dest=main_snap)
+
+                # Remove the tar file
+                du.rm(host_snappath, force=True)
+
+        # Finally, create a tar of the whole snapshot
+        outtar = main_snap + ".tgz"
+        with tarfile.open(outtar, "w:gz") as tar:
+            tar.add(main_snap, arcname=os.path.basename(main_snap))
+
+        # Delete the snapshot directory itself
+        du.rm(path=main_snap, recursive=True, force=True)
+    else:
+        # No additional hosts to capture
+        with PBSSnapUtils(out_dir, primary_host=primary_host,
+                          acct_logs=acct_logs,
+                          daemon_logs=daemon_logs, map_file=map_file,
+                          anonymize=anonymize, create_tar=True,
+                          log_path=log_path,
+                          with_sudo=with_sudo) as snap_utils:
+            outtar = snap_utils.capture_all()
 
     if outtar is not None:
         print "Snapshot available at: " + outtar

@@ -151,7 +151,7 @@ class TestPBSSnapshot(TestFunctional):
         return (queues, nodes)
 
     def take_snapshot(self, acct_logs=None, daemon_logs=None,
-                      obfuscate=None, with_sudo=True):
+                      obfuscate=None, with_sudo=True, hosts=None):
         """
         Take a snapshot using pbs_snapshot command
 
@@ -163,6 +163,8 @@ class TestPBSSnapshot(TestFunctional):
         :type obfuscate: bool
         :param with_sudo: use the --with-sudo option?
         :type with_sudo: bool
+        :param hosts: list of additional hosts to capture information from
+        :type list
         :return a tuple of name of tarball and snapshot directory captured:
             (tarfile, snapdir)
         """
@@ -182,7 +184,11 @@ class TestPBSSnapshot(TestFunctional):
         if with_sudo:
             snap_cmd.append("--with-sudo")
 
-        ret = self.du.run_cmd(cmd=snap_cmd)
+        if hosts is not None:
+            hosts_str = ",".join(hosts)
+            snap_cmd.append("--additional-hosts=" + hosts_str)
+
+        ret = self.du.run_cmd(cmd=snap_cmd, logerr=False)
         self.assertEquals(ret['rc'], 0)
 
         # Get the name of the tarball that was created
@@ -294,8 +300,7 @@ class TestPBSSnapshot(TestFunctional):
             all_info = [snap_obj.server_info, snap_obj.job_info,
                         snap_obj.node_info, snap_obj.comm_info,
                         snap_obj.hook_info, snap_obj.sched_info,
-                        snap_obj.resv_info, snap_obj.datastore_info,
-                        snap_obj.pbs_info, snap_obj.core_info,
+                        snap_obj.resv_info, snap_obj.core_info,
                         snap_obj.sys_info]
             skip_list = [ACCT_LOGS, QMGR_LPBSHOOK_OUT, "reservation", "job",
                          QMGR_PR_OUT, PG_LOGS, "core_file_bt",
@@ -551,6 +556,97 @@ pbs.logmsg(pbs.EVENT_DEBUG,"%s")
                                             overwrite=True)
         self.assertTrue(rv)
         self.server.log_match(logmsg)
+
+    def snapshot_multi_mom_basic(self, obfuscate=False):
+        """
+        Test capturing data from a multi-mom system
+
+        :param obfuscate: take snapshot with --obfuscate?
+        :type obfuscate: bool
+        """
+        # Skip test if number of moms is not equal to two
+        if len(self.moms) != 2:
+            self.skipTest("test requires atleast two moms as input, "
+                          "use -p moms=<mom 1>:<mom 2>")
+
+        mom1 = self.moms.values()[0]
+        mom2 = self.moms.values()[1]
+
+        host1 = mom1.shortname
+        host2 = mom2.shortname
+
+        self.server.manager(MGR_CMD_DELETE, NODE, None, "")
+        self.server.manager(MGR_CMD_CREATE, NODE, id=host1)
+        self.server.manager(MGR_CMD_CREATE, NODE, id=host2)
+
+        # Give the moms a chance to contact the server.
+        self.server.expect(NODE, {'state': 'free'}, id=host1)
+        self.server.expect(NODE, {'state': 'free'}, id=host2)
+
+        # Capture a snapshot with details from the remote moms
+        (_, snapdir) = self.take_snapshot(hosts=[host1, host2],
+                                          obfuscate=obfuscate)
+
+        # Check that snapshots for the 2 hosts were captured
+        host1_outtar = os.path.join(snapdir, host1 + "_snapshot.tgz")
+        host2_outtar = os.path.join(snapdir, host2 + "_snapshot.tgz")
+
+        self.assertTrue(os.path.isfile(host1_outtar),
+                        "Failed to capture snapshot on %s" % (host1))
+        self.assertTrue(os.path.isfile(host2_outtar),
+                        "Failed to capture snapshot on %s" % (host2))
+
+        # Unwrap the host snapshots
+        host1_snapdir = host1 + "_snapshot"
+        host2_snapdir = host2 + "_snapshot"
+        os.mkdir(host1_snapdir)
+        self.snapdirs.append(host1_snapdir)
+        os.mkdir(host2_snapdir)
+        self.snapdirs.append(host2_snapdir)
+        tar = tarfile.open(host1_outtar)
+        tar.extractall(path=host1_snapdir)
+        tar.close()
+        tar = tarfile.open(host2_outtar)
+        tar.extractall(path=host2_snapdir)
+        tar.close()
+
+        # Determine the name of the child snapshots
+        snap1_path = self.du.listdir(path=host1_snapdir, fullpath=True)
+        snap2_path = self.du.listdir(path=host2_snapdir, fullpath=True)
+        snap1_path = snap1_path[0]
+        snap2_path = snap2_path[0]
+
+        # Check that at least pbs.conf was captured on all of these hosts
+        self.assertTrue(os.path.isfile(os.path.join(snapdir, "pbs.conf")),
+                        "Main snapshot didn't capture all expected"
+                        " information")
+        self.assertTrue(os.path.isfile(os.path.join(snap1_path, "pbs.conf")),
+                        "%s snapshot didn't capture all expected"
+                        " information" % (host1))
+        self.assertTrue(os.path.isfile(os.path.join(snap2_path, "pbs.conf")),
+                        "%s snapshot didn't capture all expected"
+                        " information" % (host2))
+
+    def test_multi_mom_basic(self):
+        """
+        Test running pbs_snapshot on a multi-mom setup
+        """
+        self.snapshot_multi_mom_basic()
+
+    def test_multi_mom_basic_obfuscate(self):
+        """
+        Test running pbs_snapshot on a multi-mom setup with obfuscation
+        """
+        self.snapshot_multi_mom_basic(obfuscate=True)
+
+    def test_no_sudo(self):
+        """
+        Test that running pbs_snapshot without sudo doesn't fail
+        """
+        output_tar, _ = self.take_snapshot(with_sudo=False)
+
+        # Check that the output tarball was created
+        self.assertTrue(os.path.isfile(output_tar))
 
     @classmethod
     def tearDownClass(self):

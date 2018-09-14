@@ -39,6 +39,7 @@ import os
 import time
 import tarfile
 import logging
+import socket
 
 from subprocess import STDOUT
 from ptl.lib.pbs_testlib import Server, Scheduler, SCHED
@@ -220,15 +221,13 @@ class PBSSnapUtils(object):
     This makes sure that we do necessay cleanup before destroying objects
     """
 
-    def __init__(self, out_dir, server_host=None, acct_logs=None,
-                 daemon_logs=None, additional_hosts=None,
-                 map_file=None, anonymize=None, create_tar=False,
-                 log_path=None, with_sudo=False):
+    def __init__(self, out_dir, primary_host=None, acct_logs=None,
+                 daemon_logs=None, map_file=None, anonymize=None,
+                 create_tar=False, log_path=None, with_sudo=False):
         self.out_dir = out_dir
-        self.server_host = server_host
+        self.primary_host = primary_host
         self.acct_logs = acct_logs
         self.srvc_logs = daemon_logs
-        self.additional_hosts = additional_hosts
         self.map_file = map_file
         self.anonymize = anonymize
         self.create_tar = create_tar
@@ -237,9 +236,8 @@ class PBSSnapUtils(object):
         self.utils_obj = None
 
     def __enter__(self):
-        self.utils_obj = _PBSSnapUtils(self.out_dir, self.server_host,
+        self.utils_obj = _PBSSnapUtils(self.out_dir, self.primary_host,
                                        self.acct_logs, self.srvc_logs,
-                                       self.additional_hosts,
                                        self.map_file, self.anonymize,
                                        self.create_tar, self.log_path,
                                        self.with_sudo)
@@ -258,23 +256,20 @@ class _PBSSnapUtils(object):
     PBS snapshot utilities
     """
 
-    def __init__(self, out_dir, server_host=None, acct_logs=None,
-                 daemon_logs=None, additional_hosts=None,
-                 map_file=None, anonymize=False, create_tar=False,
-                 log_path=None, with_sudo=False):
+    def __init__(self, out_dir, primary_host=None, acct_logs=None,
+                 daemon_logs=None, map_file=None, anonymize=False,
+                 create_tar=False, log_path=None, with_sudo=False):
         """
         Initialize a PBSSnapUtils object with the arguments specified
 
         :param out_dir: path to the directory where snapshot will be created
         :type out_dir: str
-        :param server_host: Name of the host where PBS Server is running
-        :type server_host: str or None
+        :param primary_host: Name of the primary host to capture
+        :type primary_host: str or None
         :param acct_logs: number of accounting logs to capture
         :type acct_logs: int or None
         :param daemon_logs: number of daemon logs to capture
         :type daemon_logs: int or None
-        :param additional_hosts: additional hosts to capture information from
-        :type additional_hosts: str or None
         :param map_file: Path to map file for anonymization map
         :type map_file str or None
         :param anonymize: anonymize data?
@@ -295,13 +290,13 @@ class _PBSSnapUtils(object):
         self.hook_info = {}
         self.sched_info = {}
         self.resv_info = {}
-        self.pbs_info = {}
         self.sys_info = {}
         self.core_info = {}
-        self.datastore_info = {}
         self.anon_obj = None
         self.all_hosts = []
         self.server = None
+        self.mom = None
+        self.comm = None
         self.scheduler = None
         self.log_utils = PBSLogUtils()
         self.outtar_path = None
@@ -310,6 +305,11 @@ class _PBSSnapUtils(object):
         self.snapshot_name = None
         self.with_sudo = with_sudo
         self.log_path = log_path
+        self.server_up = False
+        self.server_info_avail = False
+        self.mom_info_avail = False
+        self.comm_info_avail = False
+        self.sched_info_avail = False
         if self.log_path is not None:
             self.log_filename = os.path.basename(self.log_path)
         else:
@@ -334,24 +334,39 @@ class _PBSSnapUtils(object):
             self.num_daemon_logs = int(daemon_logs)
         else:
             self.num_daemon_logs = 0
-        self.all_hosts = []
-        if additional_hosts is not None:
-            hosts_str = "".join(additional_hosts.split())  # remove whitespaces
-            self.all_hosts.extend(hosts_str.split(","))
+
         self.mapfile = map_file
 
-        # Initialize Server and Scheduler objects
-        self.server = Server(server_host)
+        if primary_host is None:
+            primary_host = socket.gethostname()
+
+        # Check which of the PBS daemons' information is available
+        self.server = Server(primary_host)
         self.scheduler = Scheduler(server=self.server)
+        daemon_status = self.server.pi.status()
+        if len(daemon_status) > 0 and daemon_status['rc'] == 0 and \
+                len(daemon_status['err']) == 0:
+            for d_stat in daemon_status['out']:
+                if d_stat.startswith("pbs_server"):
+                    self.server_info_avail = True
+                    if "not running" not in d_stat:
+                        self.server_up = True
+                elif d_stat.startswith("pbs_sched"):
+                    self.sched_info_avail = True
+                elif d_stat.startswith("pbs_mom"):
+                    self.mom_info_avail = True
+                elif d_stat.startswith("pbs_comm"):
+                    self.comm_info_avail = True
+        self.custom_rscs = None
+        if self.server_up:
+            self.custom_rscs = self.server.parse_resources()
 
         # Store paths to PBS_HOME and PBS_EXEC
         self.pbs_home = self.server.pbs_conf["PBS_HOME"]
         self.pbs_exec = self.server.pbs_conf["PBS_EXEC"]
 
-        # Add self.server_host to the list of hosts
-        self.server_host = self.server.hostname
-        if self.server_host not in self.all_hosts:
-            self.all_hosts.append(self.server_host)
+        # Add self.primary_host to the list of hosts
+        self.primary_host = self.server.hostname
 
         # If output needs to be a tarball, create the tarfile name
         # tarfile name = <output directory name>.tgz
@@ -365,7 +380,7 @@ class _PBSSnapUtils(object):
 
         # Create a PBSAnonymizer object
         self.anonymize = anonymize
-        self.custom_rscs = self.server.parse_resources()
+
         if self.anonymize:
             del_attrs = [ATTR_v, ATTR_e, ATTR_mailfrom, ATTR_m, ATTR_name,
                          ATTR_jobdir, ATTR_submit_arguments, ATTR_o, ATTR_S]
@@ -392,105 +407,116 @@ class _PBSSnapUtils(object):
         various classes of outputs along with the paths to the files where
         they will be stored inside the snapshot as a tuple.
         """
-        # Server information
-        value = (QSTAT_B_PATH, [QSTAT_CMD, "-B"])
-        self.server_info[QSTAT_B_OUT] = value
-        value = (QSTAT_BF_PATH, [QSTAT_CMD, "-Bf"])
-        self.server_info[QSTAT_BF_OUT] = value
-        value = (QMGR_PS_PATH, [QMGR_CMD, "-c", "p s"])
-        self.server_info[QMGR_PS_OUT] = value
-        value = (QSTAT_Q_PATH, [QSTAT_CMD, "-Q"])
-        self.server_info[QSTAT_Q_OUT] = value
-        value = (QSTAT_QF_PATH, [QSTAT_CMD, "-Qf"])
-        self.server_info[QSTAT_QF_OUT] = value
-        value = (QMGR_PR_PATH, [QMGR_CMD, "-c", "p r"])
-        self.server_info[QMGR_PR_OUT] = value
-        value = (SVR_PRIV_PATH, None)
-        self.server_info[SVR_PRIV] = value
-        value = (SVR_LOGS_PATH, None)
-        self.server_info[SVR_LOGS] = value
-        value = (ACCT_LOGS_PATH, None)
-        self.server_info[ACCT_LOGS] = value
+        if self.server_up:
+            # Server information
+            value = (QSTAT_B_PATH, [QSTAT_CMD, "-B"])
+            self.server_info[QSTAT_B_OUT] = value
+            value = (QSTAT_BF_PATH, [QSTAT_CMD, "-Bf"])
+            self.server_info[QSTAT_BF_OUT] = value
+            value = (QMGR_PS_PATH, [QMGR_CMD, "-c", "p s"])
+            self.server_info[QMGR_PS_OUT] = value
+            value = (QSTAT_Q_PATH, [QSTAT_CMD, "-Q"])
+            self.server_info[QSTAT_Q_OUT] = value
+            value = (QSTAT_QF_PATH, [QSTAT_CMD, "-Qf"])
+            self.server_info[QSTAT_QF_OUT] = value
+            value = (QMGR_PR_PATH, [QMGR_CMD, "-c", "p r"])
+            self.server_info[QMGR_PR_OUT] = value
 
-        # Job information
-        value = (QSTAT_PATH, [QSTAT_CMD])
-        self.job_info[QSTAT_OUT] = value
-        value = (QSTAT_F_PATH, [QSTAT_CMD, "-f"])
-        self.job_info[QSTAT_F_OUT] = value
-        value = (QSTAT_T_PATH, [QSTAT_CMD, "-t"])
-        self.job_info[QSTAT_T_OUT] = value
-        value = (QSTAT_TF_PATH, [QSTAT_CMD, "-tf"])
-        self.job_info[QSTAT_TF_OUT] = value
-        value = (QSTAT_X_PATH, [QSTAT_CMD, "-x"])
-        self.job_info[QSTAT_X_OUT] = value
-        value = (QSTAT_XF_PATH, [QSTAT_CMD, "-xf"])
-        self.job_info[QSTAT_XF_OUT] = value
-        value = (QSTAT_NS_PATH, [QSTAT_CMD, "-ns"])
-        self.job_info[QSTAT_NS_OUT] = value
-        value = (QSTAT_FX_DSV_PATH, [QSTAT_CMD, "-fx", "-F", "dsv"])
-        self.job_info[QSTAT_FX_DSV_OUT] = value
-        value = (QSTAT_F_DSV_PATH, [QSTAT_CMD, "-f", "-F", "dsv"])
-        self.job_info[QSTAT_F_DSV_OUT] = value
+            # Job information
+            value = (QSTAT_PATH, [QSTAT_CMD])
+            self.job_info[QSTAT_OUT] = value
+            value = (QSTAT_F_PATH, [QSTAT_CMD, "-f"])
+            self.job_info[QSTAT_F_OUT] = value
+            value = (QSTAT_T_PATH, [QSTAT_CMD, "-t"])
+            self.job_info[QSTAT_T_OUT] = value
+            value = (QSTAT_TF_PATH, [QSTAT_CMD, "-tf"])
+            self.job_info[QSTAT_TF_OUT] = value
+            value = (QSTAT_X_PATH, [QSTAT_CMD, "-x"])
+            self.job_info[QSTAT_X_OUT] = value
+            value = (QSTAT_XF_PATH, [QSTAT_CMD, "-xf"])
+            self.job_info[QSTAT_XF_OUT] = value
+            value = (QSTAT_NS_PATH, [QSTAT_CMD, "-ns"])
+            self.job_info[QSTAT_NS_OUT] = value
+            value = (QSTAT_FX_DSV_PATH, [QSTAT_CMD, "-fx", "-F", "dsv"])
+            self.job_info[QSTAT_FX_DSV_OUT] = value
+            value = (QSTAT_F_DSV_PATH, [QSTAT_CMD, "-f", "-F", "dsv"])
+            self.job_info[QSTAT_F_DSV_OUT] = value
 
-        # Node/MoM information
-        value = (PBSNODES_VA_PATH, [PBSNODES_CMD, "-va"])
-        self.node_info[PBSNODES_VA_OUT] = value
-        value = (PBSNODES_A_PATH, [PBSNODES_CMD, "-a"])
-        self.node_info[PBSNODES_A_OUT] = value
-        value = (PBSNODES_AVSJ_PATH, [PBSNODES_CMD, "-avSj"])
-        self.node_info[PBSNODES_AVSJ_OUT] = value
-        value = (PBSNODES_ASJ_PATH, [PBSNODES_CMD, "-aSj"])
-        self.node_info[PBSNODES_ASJ_OUT] = value
-        value = (PBSNODES_AVS_PATH, [PBSNODES_CMD, "-avS"])
-        self.node_info[PBSNODES_AVS_OUT] = value
-        value = (PBSNODES_AS_PATH, [PBSNODES_CMD, "-aS"])
-        self.node_info[PBSNODES_AS_OUT] = value
-        value = (PBSNODES_AFDSV_PATH, [PBSNODES_CMD, "-aFdsv"])
-        self.node_info[PBSNODES_AFDSV_OUT] = value
-        value = (PBSNODES_AVFDSV_PATH, [PBSNODES_CMD, "-avFdsv"])
-        self.node_info[PBSNODES_AVFDSV_OUT] = value
-        value = (QMGR_PN_PATH, [QMGR_CMD, "-c", "p n @default"])
-        self.node_info[QMGR_PN_OUT] = value
-        value = (MOM_PRIV_PATH, None)
-        self.node_info[MOM_PRIV] = value
-        value = (MOM_LOGS_PATH, None)
-        self.node_info[MOM_LOGS] = value
+            # Node information
+            value = (PBSNODES_VA_PATH, [PBSNODES_CMD, "-va"])
+            self.node_info[PBSNODES_VA_OUT] = value
+            value = (PBSNODES_A_PATH, [PBSNODES_CMD, "-a"])
+            self.node_info[PBSNODES_A_OUT] = value
+            value = (PBSNODES_AVSJ_PATH, [PBSNODES_CMD, "-avSj"])
+            self.node_info[PBSNODES_AVSJ_OUT] = value
+            value = (PBSNODES_ASJ_PATH, [PBSNODES_CMD, "-aSj"])
+            self.node_info[PBSNODES_ASJ_OUT] = value
+            value = (PBSNODES_AVS_PATH, [PBSNODES_CMD, "-avS"])
+            self.node_info[PBSNODES_AVS_OUT] = value
+            value = (PBSNODES_AS_PATH, [PBSNODES_CMD, "-aS"])
+            self.node_info[PBSNODES_AS_OUT] = value
+            value = (PBSNODES_AFDSV_PATH, [PBSNODES_CMD, "-aFdsv"])
+            self.node_info[PBSNODES_AFDSV_OUT] = value
+            value = (PBSNODES_AVFDSV_PATH, [PBSNODES_CMD, "-avFdsv"])
+            self.node_info[PBSNODES_AVFDSV_OUT] = value
+            value = (QMGR_PN_PATH, [QMGR_CMD, "-c", "p n @default"])
+            self.node_info[QMGR_PN_OUT] = value
 
-        # Comm information
-        value = (COMM_LOGS_PATH, None)
-        self.comm_info[COMM_LOGS] = value
+            # Hook information
+            value = (QMGR_PH_PATH, [QMGR_CMD, "-c", "p h @default"])
+            self.hook_info[QMGR_PH_OUT] = value
+            value = (QMGR_LPBSHOOK_PATH, [QMGR_CMD, "-c", "l pbshook"])
+            self.hook_info[QMGR_LPBSHOOK_OUT] = value
 
-        # Hook information
-        value = (QMGR_PH_PATH, [QMGR_CMD, "-c", "p h @default"])
-        self.hook_info[QMGR_PH_OUT] = value
-        value = (QMGR_LPBSHOOK_PATH, [QMGR_CMD, "-c", "l pbshook"])
-        self.hook_info[QMGR_LPBSHOOK_OUT] = value
+            # Reservation information
+            value = (PBS_RSTAT_PATH, [PBS_RSTAT_CMD])
+            self.resv_info[PBS_RSTAT_OUT] = value
+            value = (PBS_RSTAT_F_PATH, [PBS_RSTAT_CMD, "-f"])
+            self.resv_info[PBS_RSTAT_F_OUT] = value
 
-        # Scheduler information
-        value = (QMGR_LSCHED_PATH, [QMGR_CMD, "-c", "l sched"])
-        self.sched_info[QMGR_LSCHED_OUT] = value
-        value = (DFLT_SCHED_PRIV_PATH, None)
-        self.sched_info[SCHED_PRIV] = value
-        value = (DFLT_SCHED_LOGS_PATH, None)
-        self.sched_info[SCHED_LOGS] = value
+            # Scheduler information
+            value = (QMGR_LSCHED_PATH, [QMGR_CMD, "-c", "l sched"])
+            self.sched_info[QMGR_LSCHED_OUT] = value
 
-        # Reservation information
-        value = (PBS_RSTAT_PATH, [PBS_RSTAT_CMD])
-        self.resv_info[PBS_RSTAT_OUT] = value
-        value = (PBS_RSTAT_F_PATH, [PBS_RSTAT_CMD, "-f"])
-        self.resv_info[PBS_RSTAT_F_OUT] = value
+        if self.server_info_avail:
+            # Server priv and logs
+            value = (SVR_PRIV_PATH, None)
+            self.server_info[SVR_PRIV] = value
+            value = (SVR_LOGS_PATH, None)
+            self.server_info[SVR_LOGS] = value
+            value = (ACCT_LOGS_PATH, None)
+            self.server_info[ACCT_LOGS] = value
 
-        # Datastore information
-        value = (PG_LOGS_PATH, None)
-        self.datastore_info[PG_LOGS] = value
+            # Core file information
+            value = (CORE_SERVER_PATH, None)
+            self.core_info[CORE_SERVER] = value
 
-        # Core file information
-        value = (CORE_SERVER_PATH, None)
-        self.core_info[CORE_SERVER] = value
-        value = (CORE_SCHED_PATH, None)
-        self.core_info[CORE_SCHED] = value
-        value = (CORE_MOM_PATH, None)
-        self.core_info[CORE_MOM] = value
+        if self.mom_info_avail:
+            # Mom priv and logs
+            value = (MOM_PRIV_PATH, None)
+            self.node_info[MOM_PRIV] = value
+            value = (MOM_LOGS_PATH, None)
+            self.node_info[MOM_LOGS] = value
+
+            # Core file information
+            value = (CORE_MOM_PATH, None)
+            self.core_info[CORE_MOM] = value
+
+        if self.comm_info_avail:
+            # Comm information
+            value = (COMM_LOGS_PATH, None)
+            self.comm_info[COMM_LOGS] = value
+
+        if self.sched_info_avail:
+            # Scheduler logs and priv
+            value = (DFLT_SCHED_PRIV_PATH, None)
+            self.sched_info[SCHED_PRIV] = value
+            value = (DFLT_SCHED_LOGS_PATH, None)
+            self.sched_info[SCHED_LOGS] = value
+
+            # Core file information
+            value = (CORE_SCHED_PATH, None)
+            self.core_info[CORE_SCHED] = value
 
         # System information
         value = (PBS_PROBE_PATH, [PBS_PROBE_CMD, "-v"])
@@ -532,22 +558,30 @@ class _PBSSnapUtils(object):
         if self.create_tar:
             self.outtar_fd = tarfile.open(self.outtar_path, "w:gz")
 
-        dirs_in_snapshot = [SERVER_DIR, JOB_DIR, NODE_DIR, HOOK_DIR,
-                            SCHED_DIR, RESV_DIR, DATASTORE_DIR, CORE_DIR,
-                            SYS_DIR, DFLT_SCHED_PRIV_PATH, SVR_PRIV_PATH,
-                            MOM_PRIV_PATH, ACCT_LOGS_PATH, COMM_LOGS_PATH,
-                            SVR_LOGS_PATH, DFLT_SCHED_LOGS_PATH, MOM_LOGS_PATH]
+        dirs_in_snapshot = [SYS_DIR, CORE_DIR]
+        if self.server_up:
+            dirs_in_snapshot.extend([SERVER_DIR, JOB_DIR, HOOK_DIR, RESV_DIR,
+                                     NODE_DIR, SCHED_DIR])
+        if self.server_info_avail:
+            dirs_in_snapshot.extend([SVR_PRIV_PATH, SVR_LOGS_PATH,
+                                     ACCT_LOGS_PATH, DATASTORE_DIR])
+        if self.mom_info_avail:
+            dirs_in_snapshot.extend([MOM_PRIV_PATH, MOM_LOGS_PATH])
+        if self.comm_info_avail:
+            dirs_in_snapshot.append(COMM_LOGS_PATH)
+        if self.sched_info_avail:
+            dirs_in_snapshot.extend([DFLT_SCHED_LOGS_PATH,
+                                     DFLT_SCHED_PRIV_PATH])
+
         for item in dirs_in_snapshot:
             rel_path = os.path.join(self.snapdir, item)
             os.makedirs(rel_path, 0755)
 
-    def __capture_cmd_output(self, host, out_path, cmd, skip_anon=False,
+    def __capture_cmd_output(self, out_path, cmd, skip_anon=False,
                              as_script=False, ret_out=False, sudo=False):
         """
-        Run a command on the host specified and capture its output
+        Run a command and capture its output
 
-        :param host: the host to run the command on
-        :type host: str
         :param out_path: path of the output file for this command
         :type out_path: str
         :param cmd: The command to execute
@@ -561,15 +595,9 @@ class _PBSSnapUtils(object):
         """
         retstr = None
 
-        if "qmgr" in cmd[0]:
-            # qmgr -c is being called
-            if not self.du.is_localhost(host):
-                # For remote hosts, wrap qmgr's command in quotes
-                cmd[2] = "\'" + cmd[2] + "\'"
-
         with open(out_path, "a+") as out_fd:
             try:
-                self.du.run_cmd(host, cmd=cmd, stdout=out_fd,
+                self.du.run_cmd(cmd=cmd, stdout=out_fd,
                                 sudo=sudo, as_script=as_script)
                 if ret_out:
                     out_fd.seek(0, 0)
@@ -696,13 +724,11 @@ quit()
         if self.create_tar:
             self.__add_to_archive(out_path)
 
-    def __capture_logs(self, host, pbs_logdir, snap_logdir, num_days_logs,
+    def __capture_logs(self, pbs_logdir, snap_logdir, num_days_logs,
                        sudo=False):
         """
-        Capture specific logs from host mentioned, for the days mentioned
+        Capture specific logs for the days mentioned
 
-        :param host: name of the host to get the logs from
-        :type host: str
         :param pbs_logdir: path to the PBS logs directory (source)
         :type pbs_logdir: str
         :param snap_logdir: path to the snapshot logs directory (destination)
@@ -721,25 +747,18 @@ quit()
         start_time = end_time - ((num_days_logs - 1) * 24 * 60 * 60)
 
         # Get the list of log file names to capture
-        pbs_logfiles = self.log_utils.get_log_files(host, pbs_logdir,
+        pbs_logfiles = self.log_utils.get_log_files(self.primary_host,
+                                                    path=pbs_logdir,
                                                     start=start_time,
                                                     end=end_time, sudo=sudo)
         if len(pbs_logfiles) == 0:
-            self.logger.debug(pbs_logdir + "not found/accessible on " + host)
+            self.logger.debug(pbs_logdir + "not found/accessible")
             return
 
         self.logger.debug("Capturing " + str(num_days_logs) +
-                          " days of logs from " + host + "( " + pbs_logdir +
-                          ")")
+                          " days of logs from " + pbs_logdir)
 
-        # For remote hosts, we need to prefix the
-        # log path with the hostname
-        if not self.du.is_localhost(host):
-            prefix = host + ":"
-        else:
-            prefix = ""
-
-        # Make sure that the target, host specific log dir exists
+        # Make sure that the target log dir exists
         if not os.path.isdir(snap_logdir):
             os.makedirs(snap_logdir)
 
@@ -747,7 +766,7 @@ quit()
         for pbs_logfile in pbs_logfiles:
             snap_logfile = os.path.join(snap_logdir,
                                         os.path.basename(pbs_logfile))
-            pbs_logfile = prefix + pbs_logfile
+            pbs_logfile = pbs_logfile
             self.du.run_copy(src=pbs_logfile, dest=snap_logfile,
                              recursive=False,
                              preserve_permission=False,
@@ -850,14 +869,12 @@ quit()
         else:
             self.anon_obj.anonymize_file_kv(file_path, inplace=True)
 
-    def __copy_dir_with_core(self, host, src_path, dest_path, core_dir,
+    def __copy_dir_with_core(self, src_path, dest_path, core_dir,
                              except_list=None, only_core=False, sudo=False):
         """
         Copy over a directory recursively which might have core files
         When a core file is found, capture the stack trace from it
 
-        :param host: name of the host where the source is located
-        :type host: str
         :param src_path: path of the source directory
         :type src_path: str
         :param dest_path: path of the destination directory
@@ -880,22 +897,16 @@ quit()
             self.logger.debug("src_path %s seems to be snapshot directory,"
                               "ignoring" % src_path)
             return
-        dir_list = self.du.listdir(host, src_path, fullpath=False,
+        dir_list = self.du.listdir(path=src_path, fullpath=False,
                                    sudo=sudo)
 
         if dir_list is None:
-            self.logger.info("Can't find/access " + src_path + " on host " +
-                             host)
+            self.logger.info("Can't find/access " + src_path)
             return
 
         # Go over the list and copy over everything
         # If we find a core file, we'll store backtrace from it inside
         # core_file_bt
-        if not self.du.is_localhost(host):
-            prefix = host + ":"
-        else:
-            prefix = ""
-
         for item in dir_list:
             if item in except_list:
                 continue
@@ -910,18 +921,18 @@ quit()
             # to copy the entire directory tree as we need to take care
             # of the 'except_list'. So, we recursively explore the whole
             # tree and copy over files individually.
-            if self.du.isdir(host, item_src_path, sudo=sudo):
+            if self.du.isdir(path=item_src_path, sudo=sudo):
                 # Make sure that the directory exists in the snapshot
-                if not self.du.isdir(item_dest_path):
+                if not self.du.isdir(path=item_dest_path):
                     # Create the directory
                     os.makedirs(item_dest_path, 0755)
                 # Recursive call to copy contents of the directory
-                self.__copy_dir_with_core(host, item_src_path, item_dest_path,
+                self.__copy_dir_with_core(item_src_path, item_dest_path,
                                           core_dir, except_list, only_core,
                                           sudo=sudo)
             else:
                 # Copy the file over
-                item_src_path = prefix + item_src_path
+                item_src_path = item_src_path
                 try:
                     self.du.run_copy(src=item_src_path, dest=item_dest_path,
                                      recursive=False,
@@ -955,36 +966,15 @@ quit()
                     if self.create_tar:
                         self.__add_to_archive(item_dest_path)
 
-    def __capture_mom_priv(self, host):
+    def __capture_mom_priv(self):
         """
-        Capture mom_priv information from the host given
-
-        :param host: name of the host
-        :type host: str
+        Capture mom_priv information
         """
-        if host != self.server_host:
-            # Get path to PBS_HOME on this host
-            host_pbs_config = self.du.parse_pbs_config(hostname=host)
-            if "PBS_HOME" not in host_pbs_config.keys():
-                self.logger.info("PBS_HOME not found on host " + host)
-                return
-            pbs_home = host_pbs_config["PBS_HOME"]
-        else:
-            pbs_home = self.pbs_home
-
-        snap_mom_priv = os.path.join(self.snapdir, MOM_PRIV_PATH)
-        if host != self.server_host:
-            snap_mom_priv = os.path.join(snap_mom_priv, host)
-            os.makedirs(snap_mom_priv, 0755)
-
+        pbs_home = self.pbs_home
         pbs_mom_priv = os.path.join(pbs_home, "mom_priv")
-
+        snap_mom_priv = os.path.join(self.snapdir, MOM_PRIV_PATH)
         core_dir = os.path.join(self.snapdir, CORE_MOM_PATH)
-        if host != self.server_host:
-            core_dir = os.path.join(core_dir, host)
-
-        # Copy mom_priv over from the host
-        self.__copy_dir_with_core(host, pbs_mom_priv, snap_mom_priv, core_dir,
+        self.__copy_dir_with_core(pbs_mom_priv, snap_mom_priv, core_dir,
                                   sudo=self.with_sudo)
 
     def __add_to_archive(self, dest_path, src_path=None):
@@ -1020,8 +1010,7 @@ quit()
         """
         pbs_logdir = os.path.join(self.pbs_home, "server_logs")
         snap_logdir = os.path.join(self.snapdir, SVR_LOGS_PATH)
-        self.__capture_logs(self.server_host, pbs_logdir, snap_logdir,
-                            self.num_daemon_logs)
+        self.__capture_logs(pbs_logdir, snap_logdir, self.num_daemon_logs)
 
     def __capture_acct_logs(self):
         """
@@ -1029,58 +1018,32 @@ quit()
         """
         pbs_logdir = os.path.join(self.pbs_home, "server_priv", "accounting")
         snap_logdir = os.path.join(self.snapdir, ACCT_LOGS_PATH)
-        self.__capture_logs(self.server_host, pbs_logdir, snap_logdir,
-                            self.num_acct_logs, sudo=self.with_sudo)
+        self.__capture_logs(pbs_logdir, snap_logdir, self.num_acct_logs,
+                            sudo=self.with_sudo)
 
     def __capture_sched_logs(self, pbs_logdir, snap_logdir):
         """
         Capture scheduler logs
         """
-        self.__capture_logs(self.scheduler.hostname, pbs_logdir,
-                            snap_logdir, self.num_daemon_logs)
+        self.__capture_logs(pbs_logdir, snap_logdir, self.num_daemon_logs)
 
-    def __capture_mom_logs(self, host):
+    def __capture_mom_logs(self):
         """
-        Capture mom logs for the host specified
+        Capture mom logs
         """
-        if host != self.server_host:
-            # Get path to PBS_HOME on this host
-            host_pbs_config = self.du.parse_pbs_config(hostname=host)
-            if "PBS_HOME" not in host_pbs_config.keys():
-                self.logger.info("PBS_HOME not found on host " + host)
-                return
-            pbs_home = host_pbs_config["PBS_HOME"]
-        else:
-            pbs_home = self.pbs_home
-
+        pbs_home = self.pbs_home
         pbs_logdir = os.path.join(pbs_home, "mom_logs")
         snap_logdir = os.path.join(self.snapdir, MOM_LOGS_PATH)
-        if host != self.server_host:
-            snap_logdir = os.path.join(snap_logdir, host)
-        self.__capture_logs(host, pbs_logdir, snap_logdir,
-                            self.num_daemon_logs)
+        self.__capture_logs(pbs_logdir, snap_logdir, self.num_daemon_logs)
 
-    def __capture_comm_logs(self, host):
+    def __capture_comm_logs(self):
         """
-        Capture pbs_comm logs from the host specified
+        Capture pbs_comm logs
         """
-        if host != self.server_host:
-            # Get path to PBS_HOME on this host
-            host_pbs_config = self.du.parse_pbs_config(hostname=host)
-            if "PBS_HOME" not in host_pbs_config.keys():
-                self.logger.info("PBS_HOME not found on host " + host)
-                return
-            pbs_home = host_pbs_config["PBS_HOME"]
-        else:
-            pbs_home = self.pbs_home
-
-        # Capture comm_logs
+        pbs_home = self.pbs_home
         pbs_logdir = os.path.join(pbs_home, "comm_logs")
         snap_logdir = os.path.join(self.snapdir, COMM_LOGS_PATH)
-        if host != self.server_host:
-            snap_logdir = os.path.join(snap_logdir, host)
-        self.__capture_logs(host, pbs_logdir, snap_logdir,
-                            self.num_daemon_logs)
+        self.__capture_logs(pbs_logdir, snap_logdir, self.num_daemon_logs)
 
     def capture_server(self, with_svr_logs=False, with_acct_logs=False):
         """
@@ -1095,35 +1058,38 @@ quit()
         """
         self.logger.info("capturing server information")
 
-        # Go through 'server_info' and capture info that depends on commands
-        for (path, cmd_list) in self.server_info.values():
-            if cmd_list is None:
-                continue
-            cmd_list_cpy = list(cmd_list)
+        if self.server_up:
+            # Go through 'server_info' and capture info that depends on
+            # commands
+            for (path, cmd_list) in self.server_info.values():
+                if cmd_list is None:
+                    continue
+                cmd_list_cpy = list(cmd_list)
 
-            # Add the path to PBS_EXEC to the command path
-            # The command path is the first entry in command list
-            cmd_list_cpy[0] = os.path.join(self.pbs_exec, cmd_list[0])
-            snap_path = os.path.join(self.snapdir, path)
-            self.__capture_cmd_output(self.server_host, snap_path,
-                                      cmd_list_cpy, sudo=self.with_sudo)
+                # Add the path to PBS_EXEC to the command path
+                # The command path is the first entry in command list
+                cmd_list_cpy[0] = os.path.join(self.pbs_exec, cmd_list[0])
+                snap_path = os.path.join(self.snapdir, path)
+                self.__capture_cmd_output(snap_path, cmd_list_cpy,
+                                          sudo=self.with_sudo)
 
-        # Copy over 'server_priv', everything except accounting logs
-        snap_server_priv = os.path.join(self.snapdir, SVR_PRIV_PATH)
-        pbs_server_priv = os.path.join(self.pbs_home, "server_priv")
-        core_dir = os.path.join(self.snapdir, CORE_SERVER_PATH)
-        exclude_list = ["accounting"]
-        self.__copy_dir_with_core(self.server_host, pbs_server_priv,
-                                  snap_server_priv, core_dir, exclude_list,
-                                  sudo=self.with_sudo)
+        if self.server_info_avail:
+            # Copy over 'server_priv', everything except accounting logs
+            snap_server_priv = os.path.join(self.snapdir, SVR_PRIV_PATH)
+            pbs_server_priv = os.path.join(self.pbs_home, "server_priv")
+            core_dir = os.path.join(self.snapdir, CORE_SERVER_PATH)
+            exclude_list = ["accounting"]
+            self.__copy_dir_with_core(pbs_server_priv,
+                                      snap_server_priv, core_dir, exclude_list,
+                                      sudo=self.with_sudo)
 
-        if with_svr_logs and self.num_daemon_logs > 0:
-            # Capture server logs
-            self.__capture_svr_logs()
+            if with_svr_logs and self.num_daemon_logs > 0:
+                # Capture server logs
+                self.__capture_svr_logs()
 
-        if with_acct_logs and self.num_acct_logs > 0:
-            # Capture accounting logs
-            self.__capture_acct_logs()
+            if with_acct_logs and self.num_acct_logs > 0:
+                # Capture accounting logs
+                self.__capture_acct_logs()
 
         if self.create_tar:
             return self.outtar_path
@@ -1138,16 +1104,17 @@ quit()
         """
         self.logger.info("capturing jobs information")
 
-        # Go through 'job_info' and capture info that depends on commands
-        for (path, cmd_list) in self.job_info.values():
-            cmd_list_cpy = list(cmd_list)
+        if self.server_up:
+            # Go through 'job_info' and capture info that depends on commands
+            for (path, cmd_list) in self.job_info.values():
+                cmd_list_cpy = list(cmd_list)
 
-            # Add the path to PBS_EXEC to the command path
-            # The command path is the first entry in command list
-            cmd_list_cpy[0] = os.path.join(self.pbs_exec, cmd_list[0])
-            snap_path = os.path.join(self.snapdir, path)
-            self.__capture_cmd_output(self.server_host, snap_path,
-                                      cmd_list_cpy, sudo=self.with_sudo)
+                # Add the path to PBS_EXEC to the command path
+                # The command path is the first entry in command list
+                cmd_list_cpy[0] = os.path.join(self.pbs_exec, cmd_list[0])
+                snap_path = os.path.join(self.snapdir, path)
+                self.__capture_cmd_output(snap_path, cmd_list_cpy,
+                                          sudo=self.with_sudo)
 
         if self.create_tar:
             return self.outtar_path
@@ -1165,30 +1132,28 @@ quit()
         """
         self.logger.info("capturing nodes & mom information")
 
-        # Go through 'node_info' and capture info that depends on commands
-        for (path, cmd_list) in self.node_info.values():
-            if cmd_list is None:
-                continue
-            cmd_list_cpy = list(cmd_list)
+        if self.server_up:
+            # Go through 'node_info' and capture info that depends on commands
+            for (path, cmd_list) in self.node_info.values():
+                if cmd_list is None:
+                    continue
+                cmd_list_cpy = list(cmd_list)
 
-            # Add the path to PBS_EXEC to the command path
-            # The command path is the first entry in command list
-            cmd_list_cpy[0] = os.path.join(self.pbs_exec, cmd_list[0])
-            snap_path = os.path.join(self.snapdir, path)
-            self.__capture_cmd_output(self.server_host, snap_path,
-                                      cmd_list_cpy, sudo=self.with_sudo)
+                # Add the path to PBS_EXEC to the command path
+                # The command path is the first entry in command list
+                cmd_list_cpy[0] = os.path.join(self.pbs_exec, cmd_list[0])
+                snap_path = os.path.join(self.snapdir, path)
+                self.__capture_cmd_output(snap_path, cmd_list_cpy,
+                                          sudo=self.with_sudo)
 
-        if len(self.all_hosts) == 0:
-            self.all_hosts.append(self.server_host)
-
-        # Go through the list of all hosts specified and collect mom info
-        for host in self.all_hosts:
+        # Collect mom logs and priv
+        if self.mom_info_avail:
             # Capture mom_priv info
-            self.__capture_mom_priv(host)
+            self.__capture_mom_priv()
 
             if with_mom_logs and self.num_daemon_logs > 0:
                 # Capture mom_logs
-                self.__capture_mom_logs(host)
+                self.__capture_mom_logs()
 
         if self.create_tar:
             return self.outtar_path
@@ -1203,14 +1168,21 @@ quit()
         """
         self.logger.info("capturing comm information")
 
-        if len(self.all_hosts) == 0:
-            self.all_hosts.append(self.server_host)
-
-        # Go through the list of all hosts specified and collect comm info
-        for host in self.all_hosts:
+        # Capture comm logs
+        if self.comm_info_avail:
             if self.num_daemon_logs > 0 and with_comm_logs:
-                self.__capture_comm_logs(host)
+                self.__capture_comm_logs()
 
+        # If not already capturing server information, copy over server_priv
+        # as pbs_comm runs out of it
+        if not self.server_info_avail:
+            pbs_server_priv = os.path.join(self.pbs_home, "server_priv")
+            snap_server_priv = os.path.join(self.snapdir, SVR_PRIV_PATH)
+            core_dir = os.path.join(self.snapdir, CORE_SERVER_PATH)
+            exclude_list = ["accounting"]
+            self.__copy_dir_with_core(pbs_server_priv,
+                                      snap_server_priv, core_dir, exclude_list,
+                                      sudo=self.with_sudo)
         if self.create_tar:
             return self.outtar_path
         else:
@@ -1228,26 +1200,27 @@ quit()
         self.logger.info("capturing scheduler information")
 
         qmgr_lsched = None
-        # Go through 'sched_info' and capture info that depends on commands
-        for (path, cmd_list) in self.sched_info.values():
-            if cmd_list is None:
-                continue
-            cmd_list_cpy = list(cmd_list)
+        if self.server_up:
+            # Go through 'sched_info' and capture info that depends on commands
+            for (path, cmd_list) in self.sched_info.values():
+                if cmd_list is None:
+                    continue
+                cmd_list_cpy = list(cmd_list)
 
-            # Add the path to PBS_EXEC to the command path
-            # The command path is the first entry in command list
-            cmd_list_cpy[0] = os.path.join(self.pbs_exec, cmd_list[0])
-            snap_path = os.path.join(self.snapdir, path)
-            if "l sched" in cmd_list_cpy:
-                qmgr_lsched = self.__capture_cmd_output(
-                    self.scheduler.hostname, snap_path, cmd_list_cpy,
-                    ret_out=True)
-            else:
-                self.__capture_cmd_output(self.scheduler.hostname, snap_path,
-                                          cmd_list_cpy, sudo=self.with_sudo)
+                # Add the path to PBS_EXEC to the command path
+                # The command path is the first entry in command list
+                cmd_list_cpy[0] = os.path.join(self.pbs_exec, cmd_list[0])
+                snap_path = os.path.join(self.snapdir, path)
+                if "l sched" in cmd_list_cpy:
+                    qmgr_lsched = self.__capture_cmd_output(snap_path,
+                                                            cmd_list_cpy,
+                                                            ret_out=True)
+                else:
+                    self.__capture_cmd_output(snap_path, cmd_list_cpy,
+                                              sudo=self.with_sudo)
 
         # Capture sched_priv & sched_logs for all schedulers
-        if qmgr_lsched is not None:
+        if qmgr_lsched is not None and self.sched_info_avail:
             sched_details = {}
             sched_name = None
             for line in qmgr_lsched.splitlines():
@@ -1282,8 +1255,7 @@ quit()
                     os.makedirs(snap_sched_priv, 0755)
                     core_dir = os.path.join(self.snapdir, coredirname)
 
-                self.__copy_dir_with_core(self.scheduler.hostname,
-                                          pbs_sched_priv,
+                self.__copy_dir_with_core(pbs_sched_priv,
                                           snap_sched_priv, core_dir,
                                           sudo=self.with_sudo)
                 if with_sched_logs and self.num_daemon_logs > 0:
@@ -1302,6 +1274,23 @@ quit()
                         os.makedirs(snap_sched_log, 0755)
 
                     self.__capture_sched_logs(pbs_sched_log, snap_sched_log)
+
+        elif self.sched_info_avail:
+            # We don't know about other multi-scheds,
+            # but can still capture the default sched's logs & priv
+            pbs_sched_priv = os.path.join(self.pbs_home, "sched_priv")
+            snap_sched_priv = os.path.join(self.snapdir,
+                                           DFLT_SCHED_PRIV_PATH)
+            core_dir = os.path.join(self.snapdir, CORE_SCHED_PATH)
+            self.__copy_dir_with_core(pbs_sched_priv,
+                                      snap_sched_priv, core_dir,
+                                      sudo=self.with_sudo)
+            if with_sched_logs and self.num_daemon_logs > 0:
+                pbs_sched_log = os.path.join(self.pbs_home,
+                                             "sched_logs")
+                snap_sched_log = os.path.join(self.snapdir,
+                                              DFLT_SCHED_LOGS_PATH)
+                self.__capture_sched_logs(pbs_sched_log, snap_sched_log)
 
         if self.create_tar:
             return self.outtar_path
@@ -1326,8 +1315,8 @@ quit()
             # The command path is the first entry in command list
             cmd_list_cpy[0] = os.path.join(self.pbs_exec, cmd_list[0])
             snap_path = os.path.join(self.snapdir, path)
-            self.__capture_cmd_output(self.server_host, snap_path,
-                                      cmd_list_cpy, sudo=self.with_sudo)
+            self.__capture_cmd_output(snap_path, cmd_list_cpy,
+                                      sudo=self.with_sudo)
 
         if self.create_tar:
             return self.outtar_path
@@ -1352,8 +1341,8 @@ quit()
             # The command path is the first entry in command list
             cmd_list_cpy[0] = os.path.join(self.pbs_exec, cmd_list[0])
             snap_path = os.path.join(self.snapdir, path)
-            self.__capture_cmd_output(self.server_host, snap_path,
-                                      cmd_list_cpy, sudo=self.with_sudo)
+            self.__capture_cmd_output(snap_path, cmd_list_cpy,
+                                      sudo=self.with_sudo)
 
         if self.create_tar:
             return self.outtar_path
@@ -1370,10 +1359,10 @@ quit()
 
         if with_db_logs and self.num_daemon_logs > 0:
             # Capture database logs
-            pbs_logdir = os.path.join(self.pbs_home, "datastore", "pg_log")
+            pbs_logdir = os.path.join(self.pbs_home, PG_LOGS_PATH)
             snap_logdir = os.path.join(self.snapdir, PG_LOGS_PATH)
-            self.__capture_logs(self.server_host, pbs_logdir, snap_logdir,
-                                self.num_daemon_logs, sudo=self.with_sudo)
+            self.__capture_logs(pbs_logdir, snap_logdir, self.num_daemon_logs,
+                                sudo=self.with_sudo)
 
         if self.create_tar:
             return self.outtar_path
@@ -1412,83 +1401,81 @@ quit()
         pbs_cmds = [PBS_PROBE_OUT, PBS_HOSTN_OUT]
         sudo = False
 
-        # Go over all the hosts specified
-        for host in self.all_hosts:
-            host_platform = self.du.get_platform(host)
-            win_platform = False
-            if host_platform.startswith("win"):
-                win_platform = True
+        host_platform = self.du.get_platform(self.primary_host)
+        win_platform = False
+        if host_platform.startswith("win"):
+            win_platform = True
 
-            # Capture information that's dependent on commands
-            for (key, values) in self.sys_info.iteritems():
-                (path, cmd_list) = values
-                if cmd_list is None:
-                    continue
-                # For Windows, only capture PBS commands
-                if win_platform and (key not in pbs_cmds):
-                    continue
+        # Capture information that's dependent on commands
+        for (key, values) in self.sys_info.iteritems():
+            (path, cmd_list) = values
+            if cmd_list is None:
+                continue
+            # For Windows, only capture PBS commands
+            if win_platform and (key not in pbs_cmds):
+                continue
 
-                cmd_list_cpy = list(cmd_list)
+            cmd_list_cpy = list(cmd_list)
 
-                # Find the full path to the command on the host
-                if key in pbs_cmds:
-                    cmd_full = os.path.join(self.pbs_exec, cmd_list_cpy[0])
-                else:
-                    cmd_full = self.du.which(host, cmd_list_cpy[0])
-                # du.which() returns the name of the command passed if
-                # it can't find the command
-                if cmd_full is cmd_list_cpy[0]:
-                    continue
-                cmd_list_cpy[0] = cmd_full
+            # Find the full path to the command on the host
+            if key in pbs_cmds:
+                cmd_full = os.path.join(self.pbs_exec, cmd_list_cpy[0])
+            else:
+                cmd_full = self.du.which(self.primary_host, cmd_list_cpy[0])
+            # du.which() returns the name of the command passed if
+            # it can't find the command
+            if cmd_full is cmd_list_cpy[0]:
+                continue
+            cmd_list_cpy[0] = cmd_full
 
-                # Handle special commands
-                if "pbs_hostn" in cmd_list_cpy[0]:
-                    # Append hostname to the command list
-                    cmd_list_cpy.append(self.server_host)
-                if key in as_script_cmds:
-                    as_script = True
-                    if key in sudo_cmds and self.with_sudo:
-                        # Because this cmd needs to be run in a script,
-                        # PTL run_cmd's sudo will try to run the script
-                        # itself with sudo, not the cmd
-                        # So, append sudo as a prefix to the cmd instead
-                        cmd_list_cpy[0] = "sudo " + cmd_list_cpy[0]
-                else:
-                    as_script = False
-                    if key in sudo_cmds:
-                        sudo = self.with_sudo
+            # Handle special commands
+            if "pbs_hostn" in cmd_list_cpy[0]:
+                # Append hostname to the command list
+                cmd_list_cpy.append(self.primary_host)
+            if key in as_script_cmds:
+                as_script = True
+                if key in sudo_cmds and self.with_sudo:
+                    # Because this cmd needs to be run in a script,
+                    # PTL run_cmd's sudo will try to run the script
+                    # itself with sudo, not the cmd
+                    # So, append sudo as a prefix to the cmd instead
+                    cmd_list_cpy[0] = "sudo " + cmd_list_cpy[0]
+            else:
+                as_script = False
+                if key in sudo_cmds:
+                    sudo = self.with_sudo
 
-                snap_path = os.path.join(self.snapdir, path)
-                self.__capture_cmd_output(host, snap_path, cmd_list_cpy,
-                                          skip_anon=True, as_script=as_script,
-                                          sudo=sudo)
+            snap_path = os.path.join(self.snapdir, path)
+            self.__capture_cmd_output(snap_path, cmd_list_cpy,
+                                      skip_anon=True, as_script=as_script,
+                                      sudo=sudo)
 
-            # Capture platform dependent information
-            if win_platform:
-                # Capture process information using tasklist command
-                cmd = ["tasklist", ["/v"]]
-                snap_path = PROCESS_PATH
-                self.__capture_cmd_output(host, snap_path, cmd,
-                                          sudo=self.with_sudo)
+        # Capture platform dependent information
+        if win_platform:
+            # Capture process information using tasklist command
+            cmd = ["tasklist", ["/v"]]
+            snap_path = PROCESS_PATH
+            self.__capture_cmd_output(snap_path, cmd,
+                                      sudo=self.with_sudo)
 
-            # Capture OS/platform information
-            self.logger.info("capturing OS information")
-            snap_ospath = os.path.join(self.snapdir, OS_PATH)
-            with open(snap_ospath, "w") as osfd:
-                osinfo = self.du.get_os_info(host)
-                osfd.write(osinfo)
-            if self.create_tar:
-                self.__add_to_archive(snap_ospath)
+        # Capture OS/platform information
+        self.logger.info("capturing OS information")
+        snap_ospath = os.path.join(self.snapdir, OS_PATH)
+        with open(snap_ospath, "w") as osfd:
+            osinfo = self.du.get_os_info(self.primary_host)
+            osfd.write(osinfo)
+        if self.create_tar:
+            self.__add_to_archive(snap_ospath)
 
-            # Capture pbs_environment
-            self.logger.info("capturing pbs_environment")
-            snap_envpath = os.path.join(self.snapdir, PBS_ENV_PATH)
-            if self.server.pbs_env is not None:
-                with open(snap_envpath, "w") as envfd:
-                    for k, v in self.server.pbs_env.iteritems():
-                        envfd.write(k + "=" + v + "\n")
-            if self.create_tar:
-                self.__add_to_archive(snap_envpath)
+        # Capture pbs_environment
+        self.logger.info("capturing pbs_environment")
+        snap_envpath = os.path.join(self.snapdir, PBS_ENV_PATH)
+        if self.server.pbs_env is not None:
+            with open(snap_envpath, "w") as envfd:
+                for k, v in self.server.pbs_env.iteritems():
+                    envfd.write(k + "=" + v + "\n")
+        if self.create_tar:
+            self.__add_to_archive(snap_envpath)
 
         if self.create_tar:
             return self.outtar_path
@@ -1505,24 +1492,38 @@ quit()
 
         if self.num_daemon_logs > 0:
             # Capture server logs
-            self.__capture_svr_logs()
+            if self.server_info_avail:
+                self.__capture_svr_logs()
 
             # Capture sched logs for all schedulers
-            sched_info = self.server.status(SCHED)
-            for sched in sched_info:
-                sched_name = sched["id"]
-                pbs_sched_log = sched["sched_log"]
-                if sched_name != "default":
-                    snap_sched_log = DFLT_SCHED_LOGS_PATH + "_" + sched["id"]
+            if self.sched_info_avail:
+                if self.server_up:
+                    sched_info = self.server.status(SCHED)
+                    for sched in sched_info:
+                        sched_name = sched["id"]
+                        pbs_sched_log = sched["sched_log"]
+                        if sched_name != "default":
+                            snap_sched_log = DFLT_SCHED_LOGS_PATH + \
+                                "_" + sched["id"]
+                        else:
+                            snap_sched_log = DFLT_SCHED_LOGS_PATH
+                        snap_sched_log = os.path.join(self.snapdir,
+                                                      snap_sched_log)
+                        self.__capture_sched_logs(pbs_sched_log,
+                                                  snap_sched_log)
                 else:
-                    snap_sched_log = DFLT_SCHED_LOGS_PATH
-                snap_sched_log = os.path.join(self.snapdir, snap_sched_log)
-                self.__capture_sched_logs(pbs_sched_log, snap_sched_log)
+                    # Capture the default sched's logs
+                    pbs_sched_log = os.path.join(self.pbs_home,
+                                                 "sched_logs")
+                    snap_sched_log = os.path.join(self.snapdir,
+                                                  DFLT_SCHED_LOGS_PATH)
+                    self.__capture_sched_logs(pbs_sched_log, snap_sched_log)
 
-            # Capture mom & comm logs for all the known hosts
-            for host in self.all_hosts:
-                self.__capture_mom_logs(host)
-                self.__capture_comm_logs(host)
+            # Capture mom & comm logs
+            if self.mom_info_avail:
+                self.__capture_mom_logs()
+            if self.comm_info_avail:
+                self.__capture_comm_logs()
 
         if self.num_acct_logs > 0:
             # Capture accounting logs
