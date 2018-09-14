@@ -6760,7 +6760,12 @@ build_execvnode(job *pjob, char *nds)
 		pc = parse_plus_spec(NULL, &rc);
 	}
 
-	if (rc)
+       /* 
+        * if the number of nodes defined above in ndarray is not equal
+        * to the number of nodes identified, then skip the below loop
+        */
+
+	if (rc || i != nnodes)
 		goto done;
 
 	/* now loop breaking up the select spec into separate chunks */
