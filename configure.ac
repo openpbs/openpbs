@@ -292,7 +292,13 @@ AC_CHECK_FUNCS([ \
 ])
 
 PKG_PROG_PKG_CONFIG
-PKG_INSTALLDIR
+m4_ifdef([PKG_INSTALLDIR],
+  [PKG_INSTALLDIR],
+  [
+    pkgconfigdir=/usr/lib64/pkgconfig
+    AC_SUBST([pkgconfigdir])
+  ])
+
 
 # PBS macros (order matters for some of these)
 PBS_AC_PBS_VERSION
