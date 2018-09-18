@@ -673,6 +673,10 @@ build_selentry(svrattrl *plist, attribute_def *pdef, int perm, struct select_lis
 
 	resc_access_perm = old_perms;
 	if (rc) {
+		if (rc == PBSE_UNKRESC) {
+			/* The resource was unknown, free the allocated attribute */
+			pdef->at_free(&entry->sl_attr);
+		}
 		(void)free(entry);
 		return (rc);
 	}
