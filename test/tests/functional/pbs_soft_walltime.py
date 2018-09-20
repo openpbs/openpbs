@@ -294,14 +294,19 @@ e.accept()
         time.sleep(7)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
 
-        self.server.expect(JOB, {'estimated.soft_walltime':
-                                 (MATCH_RE, '00:00:12|12')}, id=jid)
+        self.server.expect(JOB, {'estimated.soft_walltime': 6}, op=GT, id=jid)
+
+        # Get the current soft_walltime
+        jstat = self.server.status(JOB, id=jid,
+                                   attrib=['estimated.soft_walltime'])
+        est_soft_walltime = jstat[0]['estimated.soft_walltime']
 
         time.sleep(7)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
 
+        # Check if soft_walltime extended
         self.server.expect(JOB, {'estimated.soft_walltime':
-                                 (MATCH_RE, '00:00:18|18')}, id=jid)
+                                 est_soft_walltime}, op=GT, id=jid)
 
     def test_soft_walltime_extend_hook(self):
         """
@@ -326,14 +331,18 @@ e.accept()
         time.sleep(6)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
 
-        self.server.expect(JOB, {'estimated.soft_walltime':
-                                 (MATCH_RE, '00:00:10|10')}, id=jid)
+        self.server.expect(JOB, {'estimated.soft_walltime': 5}, op=GT, id=jid)
+
+        # Get the current soft_walltime
+        jstat = self.server.status(JOB, id=jid,
+                                   attrib=['estimated.soft_walltime'])
+        est_soft_walltime = jstat[0]['estimated.soft_walltime']
 
         time.sleep(6)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
 
         self.server.expect(JOB, {'estimated.soft_walltime':
-                                 (MATCH_RE, '00:00:15|15')}, id=jid)
+                                 est_soft_walltime}, op=GT, id=jid)
 
     def test_soft_then_hard(self):
         """
@@ -354,15 +363,13 @@ e.accept()
         time.sleep(7)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
 
-        self.server.expect(JOB, {'estimated.soft_walltime':
-                                 (MATCH_RE, '00:00:12|12')}, id=jid)
+        self.server.expect(JOB, {'estimated.soft_walltime': 6}, op=GT, id=jid)
 
         time.sleep(7)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
 
-        self.server.expect(JOB, {'estimated.soft_walltime':
-                                 (MATCH_RE, '00:00:16|16')}, offset=4,
-                           extend='x', id=jid)
+        self.server.expect(JOB, {'estimated.soft_walltime': 16},
+                           offset=4, extend='x', id=jid)
 
         self.server.expect(JOB, 'queue', op=UNSET, id=jid)
 
@@ -390,7 +397,7 @@ e.accept()
         # Dedicated time is in the granularity of minutes.  This can't be set
         # any shorter without making it dedicated time right now.
         now = int(time.time())
-        self.scheduler.add_dedicated_time(start=now + 60, end=now + 180)
+        self.scheduler.add_dedicated_time(start=now + 70, end=now + 180)
         J = Job(TEST_USER, {'Resource_List.walltime': 180})
         jid = self.server.submit(J)
         self.server.alterjob(jid, {'Resource_List.soft_walltime': 5})
@@ -402,8 +409,8 @@ e.accept()
 
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
 
-        self.server.expect(JOB, {'estimated.soft_walltime':
-                                 (MATCH_RE, '00:00:65|65')}, id=jid)
+        self.server.expect(JOB, {'estimated.soft_walltime': 65},
+                           op=GE, id=jid)
 
     def test_soft_before_prime(self):
         """
@@ -442,8 +449,8 @@ e.accept()
         time.sleep(61)
 
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
-        self.server.expect(JOB, {'estimated.soft_walltime':
-                                 (MATCH_RE, '00:00:65|65')}, id=jid)
+        self.server.expect(JOB, {'estimated.soft_walltime': 65}, op=GE,
+                           id=jid)
 
     def test_resv_conf_soft(self):
         """
@@ -857,29 +864,35 @@ e.accept()
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
         self.logger.info(
-            "Sleep to let soft_walltime get extended once")
+            "Sleep to let soft_walltime get extended")
         time.sleep(10)
+
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
-        self.server.expect(JOB, {'estimated.soft_walltime':
-                                 (MATCH_RE, '00:00:14|14')}, id=jid)
+
+        self.server.expect(JOB, {'estimated.soft_walltime': 7}, op=GT,
+                           id=jid)
+
+        # Save the soft_walltime before holding the job
+        jstat = self.server.status(JOB, id=jid,
+                                   attrib=['estimated.soft_walltime'])
+        est_soft_walltime = jstat[0]['estimated.soft_walltime']
 
         self.server.holdjob(jid, 'u')
         self.server.rerunjob(jid)
         self.server.expect(JOB, {'job_state': 'H'}, id=jid)
 
         self.logger.info(
-            "Sleep to verify that soft_walltime"
-            " doesn't change while job is held")
+            "Sleep to verify that soft_walltime: %s"
+            " doesn't change while job is held" % est_soft_walltime)
         time.sleep(10)
         self.server.expect(JOB, {'estimated.soft_walltime':
-                                 (MATCH_RE, '00:00:14|14')}, id=jid)
+                           est_soft_walltime}, id=jid)
 
         # release the job and look for the soft_walltime again
         self.server.rlsjob(jid, 'u')
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
         self.server.expect(JOB, {'job_state': 'R', 'estimated.soft_walltime':
-                                 (MATCH_RE, '00:00:14|14')},
-                           attrop=PTL_AND, id=jid)
+                                 est_soft_walltime}, attrop=PTL_AND, id=jid)
 
         # Wait for some more time and verify that soft_walltime
         # extending again
@@ -887,9 +900,8 @@ e.accept()
             "Sleep enough to let soft_walltime get extended again"
             " since the walltime was reset to 0")
         time.sleep(17)
-        self.server.expect(JOB, {'estimated.soft_walltime':
-                                 (MATCH_RE, '00:00:21|21|00:00:28|28')},
-                           id=jid)
+        self.server.expect(JOB, {'estimated.soft_walltime': est_soft_walltime},
+                           op=GT, id=jid)
 
     def test_soft_less_cput(self):
         """
@@ -967,15 +979,19 @@ e.accept()
         time.sleep(9)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
 
-        self.server.expect(JOB, {'estimated.soft_walltime':
-                                 (MATCH_RE, '00:00:16|16')}, id=jid)
+        self.server.expect(JOB, {'estimated.soft_walltime': 8}, op=GT,
+                           id=jid)
 
         self.server.restart()
 
-        self.server.expect(JOB, {'Resource_List.soft_walltime': 8,
-                                 'estimated.soft_walltime':
-                                 (MATCH_RE, '00:00:16|16')},
-                           attrop=PTL_AND, id=jid)
+        self.server.expect(JOB, {'Resource_List.soft_walltime': 8}, id=jid)
+        self.server.expect(JOB, {'estimated.soft_walltime': 8}, op=GT,
+                           id=jid)
+
+        # Get the current soft_walltime
+        jstat = self.server.status(JOB, id=jid,
+                                   attrib=['estimated.soft_walltime'])
+        est_soft_walltime = jstat[0]['estimated.soft_walltime']
 
         # Delete the job and verify that estimated.soft_walltime is set
         # for job history
@@ -983,7 +999,7 @@ e.accept()
         self.server.expect(JOB,
                            {'job_state': 'F',
                             'estimated.soft_walltime':
-                            (MATCH_RE, '00:00:16|16|00:00:24|24')},
+                            est_soft_walltime}, op=GE,
                            extend='x', attrop=PTL_AND, id=jid)
 
     def test_resv_job_soft_hard2(self):
