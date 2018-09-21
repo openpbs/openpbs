@@ -5648,15 +5648,20 @@ again:
 
 			/* read back response from background qsub */
 			if ((recv_string(h_file, retmsg) != 0) ||
-					(dorecv(h_file, &rc, sizeof(int)) != 0)) {
+					(dorecv(h_file, &rc, sizeof(int)) != 0) ||
+					rc == DMN_REFUSE_EXIT) {
 
 				/* Something bad happened, either background submitted
 				 * and failed to send us response, or it failed before
-				 * submitting.
+				 * submitting. If background qsub detects -V option, then
+				 * submit the job through foreground.
 				 */
-				rc = -1;
-				sprintf(retmsg, "Failed to recv data from background qsub\n");
-				/* fall through to print the error message */
+				if (rc != DMN_REFUSE_EXIT) {
+					rc = -1;
+					sprintf(retmsg, "Failed to recv data from background qsub\n");
+					/* fall through to print the error message */
+				} else
+					*do_regular_submit = 1;
 			}
 		}
 		FlushFileBuffers(h_file);
@@ -6195,6 +6200,8 @@ main(int argc, char **argv, char **envp) /* qsub */
 	 *
 	 */
 	if ((argc == 4 || argc == 5) && (strcasecmp(argv[1], "--daemon") == 0)) {
+		/* set when background qsub is running */
+		is_background = 1;
 		if (argc == 4)
 			do_daemon_stuff(argv[2], argv[3], NULL);
 		else
