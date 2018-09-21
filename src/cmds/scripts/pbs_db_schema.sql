@@ -133,16 +133,6 @@ ON pbs.queue
 ( qu_ctime );
 
 
-/*
- * Foreign key constraint between queue and parent server
- */
-ALTER TABLE pbs.queue ADD CONSTRAINT que_svr_fk
-FOREIGN KEY (qu_sv_name)
-REFERENCES pbs.server (sv_name)
-ON DELETE NO ACTION
-ON UPDATE NO ACTION
-NOT DEFERRABLE;
-
 ---------------------- RESERVATION -------------------------
 
 /*
@@ -170,15 +160,6 @@ CREATE TABLE pbs.resv (
     CONSTRAINT resv_pk PRIMARY KEY (ri_resvID)
 );
 
-/*
- * Foreign key constraint between resv and parent server
- */
-ALTER TABLE pbs.resv ADD CONSTRAINT resv_svr_fk
-FOREIGN KEY (ri_sv_name)
-REFERENCES pbs.server (sv_name)
-ON DELETE NO ACTION
-ON UPDATE NO ACTION
-NOT DEFERRABLE;
 
 ---------------------- JOB ---------------------------------
 

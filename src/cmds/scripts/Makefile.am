@@ -84,7 +84,8 @@ dist_libexec_SCRIPTS = \
 	pbs_habitat \
 	pbs_init.d \
 	pbs_pgsql_env.sh \
-	pbs_postinstall
+	pbs_postinstall \
+	pbs_schema_upgrade
 
 dist_bin_SCRIPTS = \
 	pbs_topologyinfo \
