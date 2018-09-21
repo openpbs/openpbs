@@ -126,7 +126,7 @@ parse_depend_item(char *depend_list, char **rtn_list, int *rtn_size)
 	/* Loop on strings between colons */
 	while ((c != NULL) && (*c != '\0')) {
 		s = c;
-		while (((*c != ':') || (*(c-1) == '\\')) && (*c != '\0')) c++;
+		while (((*c != ':') || ((c != depend_list) && (*(c-1) == '\\'))) && (*c != '\0')) c++;
 		if (s == c) return 1;
 
 		if (*c == ':') {
