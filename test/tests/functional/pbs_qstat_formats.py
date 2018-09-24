@@ -445,3 +445,28 @@ class TestQstatFormats(TestFunctional):
             json.loads(qstat_out)
         except ValueError, e:
             self.assertTrue(False)
+
+    def test_qstat_json_valid_job_special_env(self):
+        """
+        Test json output of qstat -f is in valid format
+        with special chars in env
+        """
+        os.environ["DOUBLEQUOTES"] = 'hi"ha'
+        os.environ["REVERSESOLIDUS"] = 'hi\ha'
+
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'default_qsub_arguments': '-V'})
+
+        j = Job(self.du.get_current_user())
+        j.preserve_env = True
+        j.set_sleep_time(10)
+        jid = self.server.submit(j)
+        qstat_cmd_json = os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin',
+                                      'qstat') + \
+            ' -f -F json ' + str(jid)
+        ret = self.du.run_cmd(self.server.hostname, cmd=qstat_cmd_json)
+        qstat_out = "\n".join(ret['out'])
+        try:
+            json.loads(qstat_out)
+        except ValueError:
+            self.assertTrue(False)

@@ -107,7 +107,7 @@ link_node(JsonNode *node) {
  *
  */
 char*
-strdup_escape(const char *str)
+strdup_escape(JsonEscapeType esc_type, const char *str)
 {
 	int       i = 0;
 	int       len = 0;
@@ -146,6 +146,24 @@ strdup_escape(const char *str)
 				buf[i++] = 't';
 				str++;
 				break;
+			case '"':
+				if (esc_type == JSON_ESCAPE) {
+					buf[i++] = *str++;
+					break;
+				} /* else JSON_FULLESCAPE */
+				buf[i++] = '\\';
+				buf[i++] = '"';
+				str++;
+				break;
+			case '\\':
+				if (esc_type == JSON_ESCAPE) {
+					buf[i++] = *str++;
+					break;
+				} /* else JSON_FULLESCAPE */
+				buf[i++] = '\\';
+				buf[i++] = '\\';
+				str++;
+				break;
 			default:
 				buf[i++] = *str++;
 			}
@@ -179,7 +197,7 @@ strdup_escape(const char *str)
  *
  */
 JsonNode*
-add_json_node(JsonNodeType ntype, JsonValueType vtype, char *key, void *value) {
+add_json_node(JsonNodeType ntype, JsonValueType vtype, JsonEscapeType esc_type, char *key, void *value) {
 	int 	  rc = 0;
 	char	  *ptr = NULL;
 	char 	  *pc  = NULL;
@@ -232,7 +250,7 @@ add_json_node(JsonNodeType ntype, JsonValueType vtype, char *key, void *value) {
 
 	if (node->value_type == JSON_STRING) {
 		if (value != NULL) {
-			ptr = strdup_escape(value);
+			ptr = strdup_escape(esc_type, value);
 			if (ptr == NULL)
 				return NULL;
 		}

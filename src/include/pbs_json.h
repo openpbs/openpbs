@@ -10,6 +10,12 @@ typedef enum {
 }JsonValueType;
 
 typedef enum {
+	JSON_NOVALUE,
+	JSON_ESCAPE, /* the value may be partially escaped */
+	JSON_FULLESCAPE, /* escape all the necessary chars */
+}JsonEscapeType;
+
+typedef enum {
 	JSON_VALUE,
 	JSON_OBJECT,
 	JSON_OBJECT_END,
@@ -29,7 +35,7 @@ struct JsonNode{
 		double   fnumber;
 	}value;
 };
-JsonNode* add_json_node(JsonNodeType ntype, JsonValueType vtype, char *key, void *value);
-char *strdup_escape(const char *str);
+JsonNode* add_json_node(JsonNodeType ntype, JsonValueType vtype, JsonEscapeType esc_type, char *key, void *value);
+char *strdup_escape(JsonEscapeType esc_type, const char *str);
 int  generate_json(FILE *stream);
 void free_json_node();

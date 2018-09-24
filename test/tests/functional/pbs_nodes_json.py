@@ -91,3 +91,35 @@ class TestPbsnodes_json(TestFunctional):
             json.loads("\n".join(n_out))
         except ValueError:
             self.assertFalse(True, "Json failed to load")
+
+    def test_check_quotes_escape_json(self):
+        """
+        Test if the comment with quotes is valid json
+        """
+
+        self.server.manager(MGR_CMD_SET, NODE,
+                            {'comment': '\'hi\"ha\''}, id=self.mom.shortname)
+        cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'],
+                           'bin', 'pbsnodes') + ' -av -Fjson'
+        n_out = self.du.run_cmd(self.server.hostname, cmd=cmd)['out']
+
+        try:
+            json.loads("\n".join(n_out))
+        except ValueError:
+            self.assertFalse(True, "Json failed to load")
+
+    def test_check_reverse_solidus_escape_json(self):
+        """
+        Test if the comment with reverse solidus is valid json
+        """
+
+        self.server.manager(MGR_CMD_SET, NODE,
+                            {'comment': '"hi\\ha"'}, id=self.mom.shortname)
+        cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'],
+                           'bin', 'pbsnodes') + ' -av -Fjson'
+        n_out = self.du.run_cmd(self.server.hostname, cmd=cmd)['out']
+
+        try:
+            json.loads("\n".join(n_out))
+        except ValueError:
+            self.assertFalse(True, "Json failed to load")
