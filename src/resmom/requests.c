@@ -1543,9 +1543,18 @@ post_suspend(job *pjob, int err)
 		stop_walltime(pjob);
 
 		pjob->ji_polltime = 0;	/* don't check polling */
-		pjob->ji_qs.ji_substate = JOB_SUBSTATE_SUSPEND;
-		pjob->ji_qs.ji_svrflags |= JOB_SVFLG_Suspend;
-		(void)job_save(pjob, SAVEJOB_QUICK);
+		if (pjob->ji_qs.ji_substate < JOB_SUBSTATE_EXITING) {
+			pjob->ji_qs.ji_substate = JOB_SUBSTATE_SUSPEND;
+			pjob->ji_qs.ji_svrflags |= JOB_SVFLG_Suspend;
+			(void)job_save(pjob, SAVEJOB_QUICK);
+		}
+		else
+		{
+			snprintf(log_buffer, sizeof(log_buffer), 
+				"This job can't be suspended, since the job was in %d substate",pjob->ji_qs.ji_substate);
+			log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid,
+				log_buffer);
+		}
 	}
 	else
 		pjob->ji_flags &= ~MOM_SISTER_ERR;
