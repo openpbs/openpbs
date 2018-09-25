@@ -4696,10 +4696,11 @@ dep_topology(void)
 	 */
 	/* Inventory (BASIL 1.4) Query processing. */
 	/* Create non-KNL vnodes. */
-	alps_inventory();
-
-	/* Create KNL VNodes. */
-	system_to_vnodes_KNL();
+	if (alps_inventory() != -1 )
+	{
+		/* Create KNL VNodes. */
+		system_to_vnodes_KNL();
+	}
 #endif
 	if (!vnlp_has_topology_info()) {
 		/* Populate "topology_info", only if the attribute */

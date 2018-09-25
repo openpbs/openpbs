@@ -712,7 +712,7 @@ id2vnrl(vnl_t *vnlp, char *id, AVL_IX_REC *rp)
 		snprintf(rp->key, PBS_MAXHOSTNAME, "%s", id);
 	}
 
-	if (avl_find_key(rp, &vnlp->vnl_ix) == AVL_IX_OK) {
+	if (vnlp != NULL && avl_find_key(rp, &vnlp->vnl_ix) == AVL_IX_OK) {
 		unsigned long	i = (unsigned long)rp->recptr;
 		vnal_t	*vnrlp = VNL_NODENUM(vnlp, i);
 

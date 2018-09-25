@@ -4157,9 +4157,11 @@ bad_vnl:
  *
  * @param brp ALPS inventory response
  *
- * @return Void
+ * @return	int
+ * @retval	0	: success
+ * @retval	-1	: failure
  */
-static void
+static int 
 inventory_to_vnodes(basil_response_t *brp)
 {
 	extern	int	internal_state_update;
@@ -4185,30 +4187,30 @@ inventory_to_vnodes(basil_response_t *brp)
 	hwloc_topology_t topology;
 
 	if (!brp)
-		return;
+		return -1;
 	if (brp->method != basil_method_query) {
 		snprintf(log_buffer, sizeof(log_buffer), "Wrong method: %d", brp->method);
 		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG,
 			__func__, log_buffer);
-		return;
+		return -1;
 	}
 	if (brp->data.query.type != basil_query_inventory) {
 		snprintf(log_buffer, sizeof(log_buffer), "Wrong query type: %d",
 			brp->data.query.type);
 		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG,
 			__func__, log_buffer);
-		return;
+		return -1;
 	}
 	if (*brp->error != '\0') {
 		snprintf(log_buffer, sizeof(log_buffer), "Error in BASIL response: %s", brp->error);
 		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE, LOG_DEBUG,
 			__func__, log_buffer);
-		return;
+		return -1;
 	}
 
 	if (vnl_alloc(&nv) == NULL) {
 		log_err(errno, __func__, "vnl_alloc failed!");
-		return;
+		return -1;
 	}
 	strncpy(mpphost, brp->data.query.data.inventory.mpp_host,
 		sizeof(mpphost)-1);
@@ -4231,7 +4233,7 @@ inventory_to_vnodes(basil_response_t *brp)
 	if (ret < 0) {
 		/* on any failure above, issue log message */
 		log_err(PBSE_SYSTEM, __func__, "topology init/load/export failed");
-		return;
+		return -1;
 	} else {
 		char	*lbuf;
 		int	lbuflen = xmllen + 1024;
@@ -4246,7 +4248,7 @@ inventory_to_vnodes(basil_response_t *brp)
 				lbuflen);
 			hwloc_free_xmlbuffer(topology, xmlbuf);
 			hwloc_topology_destroy(topology);
-			return;
+			return -1;
 		} else {
 			snprintf(lbuf, lbuflen, "allocated log buffer, len %d", lbuflen);
 			log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_NODE,
@@ -4419,7 +4421,7 @@ inventory_to_vnodes(basil_response_t *brp)
 		arr_nodes = NULL;
 	}
 
-	return;
+	return 0;
 
 bad_vnl:
 	snprintf(log_buffer, sizeof(log_buffer), "creation of cray vnodes failed at %ld, with name %s", order, name);
@@ -6634,12 +6636,14 @@ alps_engine_query(void)
  *	 Issue a request for a system inventory including nodes, CPUs, and
  * 	assigned applications.
  *
- * @return Void
- *
+ * @return	int
+ * @retval  0   : success
+ * @retval  -1  : failure
  */
-void
+int
 alps_inventory(void)
 {
+	int rc = 0;
 	basil_response_t *brp;
 	first_compute_node = 1;
 
@@ -6655,7 +6659,7 @@ alps_inventory(void)
 		sprintf(log_buffer, "ALPS inventory request failed.");
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE,
 			LOG_NOTICE, __func__, log_buffer);
-		return;
+		return -1;
 	}
 	if (basil_inventory != NULL)
 		free(basil_inventory);
@@ -6665,9 +6669,9 @@ alps_inventory(void)
 		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_NODE, LOG_ERR,
 			__func__, log_buffer);
 	}
-	inventory_to_vnodes(brp);
+	rc = inventory_to_vnodes(brp);
 	free_basil_response_data(brp);
-	return;
+	return rc;
 }
 
 /**
