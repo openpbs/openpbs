@@ -241,6 +241,12 @@ query_nodes(int pbs_sd, server_info *sinfo)
 		cur_node = cur_node->next;
 	}
 	ninfo_arr[nidx] = NULL;
+	if (nidx == 0) {
+		snprintf(log_buffer, sizeof(log_buffer), "No nodes found in partitions serviced by scheduler");
+		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SERVER, LOG_INFO, __func__, log_buffer);
+		free(ninfo_arr);
+		return NULL;
+	}
 
 	if (update_mom_resources(ninfo_arr) == 0) {
 		pbs_statfree(nodes);
@@ -4745,8 +4751,8 @@ reorder_nodes(node_info **nodes, resource_resv *resresv)
 	nptr = node_array;
 
 
-	if (last_node_name[0] == '\0')
-		strcpy(last_node_name, nodes[0]->name);
+	if (last_node_name[0] == '\0' && nodes[0] != NULL)
+		snprintf(last_node_name, sizeof(last_node_name), "%s", nodes[0]->name);
 
 	if (resresv != NULL) {
 		if (resresv->is_resv && resresv->resv != NULL && resresv->resv->check_alternate_nodes) {

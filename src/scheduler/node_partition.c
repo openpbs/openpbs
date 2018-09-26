@@ -965,16 +965,33 @@ resresv_can_fit_nodepart(status *policy, node_partition *np, resource_resv *resr
 
 	pass_flags = flags|UNSET_RES_ZERO;
 
-	/* Check 1: is there at least 1 node in the free state */
-	if (!(flags & COMPARE_TOTAL) && np->free_nodes == 0) {
-		set_schd_error_codes(err, NOT_RUN, NO_FREE_NODES);
-		if ((flags & RETURN_ALL_ERR)) {
-			can_fit = 0;
-			err->next = new_schd_error();
-			prev_err = err;
-			err = err->next;
-		} else
-			return 0;
+	/* Check 1: Based on the flag check if there are any nodes available or if
+	 * they are free.
+	 */
+	if (flags & COMPARE_TOTAL) {
+		/* Check that node partition must have one or more nodes inside it */
+		if (np->tot_nodes == 0) {
+			set_schd_error_codes(err, NEVER_RUN, NO_TOTAL_NODES);
+			if ((flags & RETURN_ALL_ERR)) {
+				can_fit = 0;
+				err->next = new_schd_error();
+				prev_err = err;
+				err = err->next;
+			} else
+				return 0;
+		}
+	} else {
+		/* Check is there at least 1 node in the free state */
+		if (np->free_nodes == 0) {
+			set_schd_error_codes(err, NOT_RUN, NO_FREE_NODES);
+			if ((flags & RETURN_ALL_ERR)) {
+				can_fit = 0;
+				err->next = new_schd_error();
+				prev_err = err;
+				err = err->next;
+			} else
+				return 0;
+		}
 	}
 
 	/* Check 2: v/scatter - If we're scattering or requesting exclusive nodes

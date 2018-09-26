@@ -2643,6 +2643,7 @@ update_svr_schedobj(int connector, int cmd, int alarm_time)
 	static	int svr_knows_me = 0;
 	int	err;
 	struct	attropl	*attribs, *patt;
+	struct batch_status *all_ss = NULL; /* all scheduler objects */
 	struct batch_status *ss = NULL;
 	char sched_host[PBS_MAXHOSTNAME + 1];
 
@@ -2654,18 +2655,19 @@ update_svr_schedobj(int connector, int cmd, int alarm_time)
 		return 1;
 
 	/* Stat the scheduler to get details of sched */
-	ss = pbs_statsched(connector, NULL, NULL);
-	ss = bs_find(ss, sc_name);
+	all_ss = pbs_statsched(connector, NULL, NULL);
+	ss = bs_find(all_ss, sc_name);
 
 	if (ss == NULL) {
 		sprintf(log_buffer, "Unable to retrieve the scheduler attributes from server");
 		log_err(-1, __func__, log_buffer);
+		pbs_statfree(all_ss);
 		return 0;
 	}
 	if (!sched_settings_frm_svr(ss))
 		return 0;
 
-	pbs_statfree(ss);
+	pbs_statfree(all_ss);
 
 	/* update the sched with new values */
 	attribs = calloc(4, sizeof(struct attropl));

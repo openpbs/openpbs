@@ -173,7 +173,8 @@ server_info *
 query_server(status *pol, int pbs_sd)
 {
 	struct batch_status *server;	/* info about the server */
-	struct batch_status *sched;	/* info about the server's scheduler object */
+	struct batch_status *all_sched;	/* info about all server's scheduler objects */
+	struct batch_status *sched;	/* info about the this scheduler object */
 	struct batch_status *bs_resvs = NULL;	/* batch status of the reservations */
 	server_info *sinfo;		/* scheduler internal form of server info */
 	queue_info **qinfo;		/* array of queues on the server */
@@ -224,8 +225,8 @@ query_server(status *pol, int pbs_sd)
 		return NULL;
 	}
 
-	sched = pbs_statsched(pbs_sd, NULL, NULL);
-	sched = bs_find(sched, sc_name);
+	all_sched = pbs_statsched(pbs_sd, NULL, NULL);
+	sched = bs_find(all_sched, sc_name);
 
 	if (sched == NULL) {
 		errmsg = pbs_geterrmsg(pbs_sd);
@@ -235,12 +236,13 @@ query_server(status *pol, int pbs_sd)
 		schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_SERVER, LOG_NOTICE, "server_info",
 			log_buffer);
 		pbs_statfree(server);
+		pbs_statfree(all_sched);
 		sinfo->fairshare = NULL;
 		free_server(sinfo, 0);
 		return NULL;
 	}
 	query_sched_obj(policy, sched, sinfo);
-	pbs_statfree(sched);
+	pbs_statfree(all_sched);
 
 	if (!dflt_sched && (sinfo->partitions == NULL)) {
 		snprintf(log_buffer, sizeof(log_buffer), "Scheduler does not contain a partition");
