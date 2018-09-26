@@ -53,7 +53,9 @@ class TestSisterMom(TestFunctional):
             self.skipTest("test requires atleast two MoMs as input, " +
                           "use -p moms=<mom1:mom2>")
         sister_mom = self.moms.keys()[1]
-        script = "pbsdsh dd if=/dev/zero of=/dev/null"
+        pbsdsh_path = os.path.join(self.server.pbs_conf['PBS_EXEC'],
+                                   "bin", "pbsdsh")
+        script = "%s dd if=/dev/zero of=/dev/null" % pbsdsh_path
         j = Job(TEST_USER)
         j.set_attributes({'Resource_List.select': '2',
                           'Resource_List.place': 'scatter'})
