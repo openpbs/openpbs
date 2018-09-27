@@ -2749,6 +2749,7 @@ req_resvSub(struct batch_request *preq)
 			!(strcasecmp(psatl->al_resc, MAX_WALLTIME)))) {
 			req_reject(PBSE_NOSTF_RESV, 0, preq);
 			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_REQUEST, LOG_ERR, "",  msg_nostf_resv);
+			resv_free(presv);
 			return;
 		}
 		/* identify the attribute by name */
@@ -2766,6 +2767,7 @@ req_resvSub(struct batch_request *preq)
 			}
 
 			/* didn`t recognize the name */
+			resv_free(presv);
 			reply_badattr(PBSE_NOATTR, 1, psatl, preq);
 			return;
 		}
@@ -2784,7 +2786,7 @@ req_resvSub(struct batch_request *preq)
 					    ATR_DFLAG_Creat;
 		}
 		if ((pdef->at_flags & resc_access_perm) == 0) {
-			(void)resv_purge(presv);
+			resv_free(presv);
 			reply_badattr(PBSE_ATTRRO, 1, psatl, preq);
 			return;
 		}
@@ -2796,7 +2798,7 @@ req_resvSub(struct batch_request *preq)
 
 
 		if (rc != 0) {
-			(void)resv_purge(presv);
+			resv_free(presv);
 			reply_badattr(rc, 1, psatl, preq);
 			return;
 		}
@@ -2815,7 +2817,7 @@ req_resvSub(struct batch_request *preq)
 			rc = pdef->at_action(&presv->ri_wattr[i],
 				presv, ATR_ACTION_NEW);
 			if (rc) {
-				(void)resv_purge(presv);
+				resv_free(presv);
 				req_reject(rc, i, preq);
 				return;
 			}
@@ -2825,7 +2827,7 @@ req_resvSub(struct batch_request *preq)
 	/*"start", "end","duration", and "wall"; derive and check*/
 
 	if (start_end_dur_wall(presv, RESC_RESV_OBJECT)) {
-		(void)resv_purge(presv);
+		resv_free(presv);
 		req_reject(PBSE_BADTSPEC, 0, preq);
 		return;
 	}
@@ -2851,7 +2853,7 @@ req_resvSub(struct batch_request *preq)
 		 * syntax or time problem
 		 */
 		if (rc!=0) {
-			(void)resv_purge(presv);
+			resv_free(presv);
 			req_reject(rc, 0, preq);
 			return;
 		}
@@ -2884,7 +2886,7 @@ req_resvSub(struct batch_request *preq)
 	 */
 
 	if ((rc = set_resc_deflt((void *)presv, RESC_RESV_OBJECT, NULL)) != 0) {
-		(void)resv_purge(presv);
+		resv_free(presv);
 		req_reject(rc, 0, preq);
 		return;
 	}
@@ -2911,7 +2913,7 @@ req_resvSub(struct batch_request *preq)
 				(presv->ri_wattr[(int)RESV_ATR_priority]
 				.at_val.at_long > 1024)) {
 
-				resv_purge(presv);
+				resv_free(presv);
 				req_reject(PBSE_BADATVAL, 0, preq);
 				return;
 			}
@@ -2945,7 +2947,7 @@ req_resvSub(struct batch_request *preq)
 
 		if (act_resv_add_owner(&presv->ri_wattr[(int)RESV_ATR_auth_u],
 			presv, ATR_ACTION_NEW)) {
-			resv_purge(presv);
+			resv_free(presv);
 			req_reject(PBSE_BADATVAL, 0, preq);
 			return;
 		}
@@ -2986,7 +2988,7 @@ req_resvSub(struct batch_request *preq)
 	/* determine values for the "euser" and "egroup" attributes */
 
 	if ((rc = set_objexid((void *)presv, RESC_RESV_OBJECT, presv->ri_wattr))) {
-		resv_purge(presv);
+		resv_free(presv);
 		req_reject(rc, 0, preq);
 		return;
 	}
@@ -3008,7 +3010,7 @@ req_resvSub(struct batch_request *preq)
 #endif
 			ACL_Group) == 0) {
 
-			resv_purge(presv);
+			resv_free(presv);
 			req_reject(PBSE_RESVAUTH_G, 0, preq);
 			return;
 		}
@@ -3028,7 +3030,7 @@ req_resvSub(struct batch_request *preq)
 			buf1,
 			ACL_User) == 0) {
 
-			resv_purge(presv);
+			resv_free(presv);
 			req_reject(PBSE_RESVAUTH_U, 0, preq);
 			return;
 		}
