@@ -119,6 +119,8 @@ class _PtlTestResult(unittest.TestResult):
         self.skipped = []
         self.timedout = []
         self.handler = TestLogCaptureHandler()
+        self.start = datetime.datetime.now()
+        self.stop = datetime.datetime.now()
 
     def getDescription(self, test):
         """
@@ -337,7 +339,7 @@ class _PtlTestResult(unittest.TestResult):
                 return False
         return True
 
-    def printSummary(self, start, stop):
+    def printSummary(self):
         """
         Called by the test runner to print the final summary of test
         run results.
@@ -400,7 +402,7 @@ class _PtlTestResult(unittest.TestResult):
         _msg += ', skipped: ' + str(skip)
         _msg += ', timedout: ' + str(timedout)
         msg += [_msg]
-        msg += ['Tests run in ' + str(stop - start)]
+        msg += ['Tests run in ' + str(self.stop - self.start)]
         self.logger.info('\n'.join(msg))
 
 
@@ -435,13 +437,13 @@ class PtlTestRunner(TextTestRunner):
         if wrapped is not None:
             self.stream = wrapped
         self.result = result = self._makeResult()
-        start = datetime.datetime.now()
+        self.result.start = datetime.datetime.now()
         try:
             test(result)
         except KeyboardInterrupt:
             do_exit = True
-        stop = datetime.datetime.now()
-        result.printSummary(start, stop)
+        self.result.stop = datetime.datetime.now()
+        result.printSummary()
         self.config.plugins.finalize(result)
         if do_exit:
             sys.exit(1)

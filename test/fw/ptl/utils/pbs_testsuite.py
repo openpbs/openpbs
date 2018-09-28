@@ -394,6 +394,8 @@ class PBSTestSuite(unittest.TestCase):
 
     logger = logging.getLogger(__name__)
     metrics_data = {}
+    measurements = []
+    additional_data = {}
     conf = {}
     param = None
     du = DshUtils()
@@ -443,6 +445,7 @@ class PBSTestSuite(unittest.TestCase):
         self.revert_schedulers()
         self.revert_moms()
         self.log_end_setup()
+        self.measurements = []
 
     @classmethod
     def log_enter_setup(cls, iscls=False):
@@ -997,6 +1000,36 @@ class PBSTestSuite(unittest.TestCase):
                                              acctlog=self.server.acctlogfile,
                                              start=self.server.ctime,
                                              end=int(time.time()))
+
+    def set_test_measurements(self, mdic=None):
+        """
+        set dictionary of analytical results of the test
+        in order to include it in test report
+
+        :param mdic: dictionary with analytical data
+        :type mdic: dict
+
+        :returns: True on successful append or False on failure
+        """
+        if not (mdic and isinstance(mdic, dict)):
+            return False
+        self.measurements.append(mdic)
+        return True
+
+    def add_additional_data_to_report(self, datadic=None):
+        """
+        set dictionary that will be merged with the test report
+        for the overall test run
+
+        :param datadic: dictionary with analytical data
+        :type datadic: dict
+
+        :returns: True on succssful update or False on failure
+        """
+        if not (datadic and isinstance(datadic, dict)):
+            return False
+        self.additional_data.update(datadic)
+        return True
 
     def start_proc_monitor(self, name=None, regexp=False, frequency=60):
         """

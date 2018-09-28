@@ -107,7 +107,7 @@ def usage():
     msg += [' classname of plugin which is subclass of nose.plugins.base']
     msg += ['.Plugin\n']
     msg += ['--db-type=<type>: Type of database to use.']
-    msg += [' can be one of "html", "file", "sqlite", "pgsql".']
+    msg += [' can be one of "html", "file", "sqlite", "pgsql", "json".']
     msg += [' Default to "file"\n']
     msg += ['--db-name=<name>: database name. Default to']
     msg += [' ptl_test_results.db\n']

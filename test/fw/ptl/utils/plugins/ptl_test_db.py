@@ -43,8 +43,12 @@ import logging
 import platform
 import traceback
 import time
+import json
 import ptl.utils.pbs_logutils as lu
 from ptl.lib.pbs_testlib import PbsTypeDuration
+from ptl.utils.plugins.ptl_test_tags import TAGKEY
+from ptl.utils.pbs_dshutils import DshUtils
+from ptl.utils.plugins.ptl_report_json import PTLJsonData
 
 # Following dance require because PTLTestDb().process_output() from this file
 # is used in pbs_loganalyzer script which is shipped with PBS package
@@ -154,7 +158,7 @@ class DBType(object):
         _msg += ' %s' % (str(self.__class__.__name__))
         raise PTLDbError(rc=1, rv=False, msg=_msg)
 
-    def close(self):
+    def close(self, result=None):
         """
         Close the database
         """
@@ -555,7 +559,7 @@ class PostgreSQLDb(DBType):
                 self.__write_proc_data(md['procs'], logfile)
         self.__index += 1
 
-    def close(self):
+    def close(self, result=None):
         self.__dbobj.commit()
         self.__dbobj.close()
         del self.__dbobj
@@ -954,7 +958,7 @@ class SQLiteDb(DBType):
                 self.__write_proc_data(md['procs'], logfile)
         self.__index += 1
 
-    def close(self):
+    def close(self, result=None):
         self.__dbobj.commit()
         self.__dbobj.close()
         del self.__dbobj
@@ -1092,7 +1096,7 @@ class FileDb(DBType):
                 self.__write_proc_data(md['procs'], logfile)
         self.__index += 1
 
-    def close(self):
+    def close(self, result=None):
         for v in self.__dbobj.values():
             v.write('\n')
             v.flush()
@@ -1577,7 +1581,60 @@ class HTMLDb(DBType):
         if 'testdata' in data.keys():
             self.__write_test_data(data['testdata'])
 
-    def close(self):
+    def close(self, result=None):
+        for v in self.__dbobj.values():
+            v.write('\n')
+            v.flush()
+            v.close()
+
+
+class JSONDb(DBType):
+
+    """
+    JSON type database
+    """
+
+    def __init__(self, dbtype, dbpath, dbaccess):
+        super(JSONDb, self).__init__(dbtype, dbpath, dbaccess)
+        if self.dbtype != 'json':
+            _msg = 'db type does not match with my type(json)'
+            raise PTLDbError(rc=1, rv=False, msg=_msg)
+        if not self.dbpath:
+            _msg = 'Db path require!'
+            raise PTLDbError(rc=1, rv=False, msg=_msg)
+        elif not self.dbpath.endswith('.json'):
+            self.dbpath = self.dbpath.rstrip('.db') + '.json'
+        self.__dbobj = {}
+        self.__cmd = [os.path.basename(sys.argv[0])]
+        self.__cmd += sys.argv[1:]
+        self.__cmd = ' '.join(self.__cmd)
+        self.res_data = PTLJsonData(command=self.__cmd)
+
+    def __write_test_data(self, data):
+        jdata = None
+        if _TESTRESULT_TN not in self.__dbobj.keys():
+            self.__dbobj[_TESTRESULT_TN] = open(self.dbpath, 'w+')
+        else:
+            self.__dbobj[_TESTRESULT_TN].seek(0)
+            jdata = json.load(self.__dbobj[_TESTRESULT_TN])
+        jsondata = self.res_data.get_json(data=data, prev_data=jdata)
+        self.__dbobj[_TESTRESULT_TN].seek(0)
+        json.dump(jsondata, self.__dbobj[_TESTRESULT_TN], indent=2)
+
+    def write(self, data, logfile=None):
+        if len(data) == 0:
+            return
+        if 'testdata' in data.keys():
+            self.__write_test_data(data['testdata'])
+
+    def close(self, result=None):
+        if result is not None:
+            self.__dbobj[_TESTRESULT_TN].seek(0)
+            df = json.load(self.__dbobj[_TESTRESULT_TN])
+            dur = str(result.stop - result.start)
+            df['test_summary']['test_duration'] = dur
+            self.__dbobj[_TESTRESULT_TN].seek(0)
+            json.dump(df, self.__dbobj[_TESTRESULT_TN], indent=2)
         for v in self.__dbobj.values():
             v.write('\n')
             v.flush()
@@ -1596,13 +1653,15 @@ class PTLTestDb(Plugin):
     def __init__(self):
         Plugin.__init__(self)
         self.__dbconn = None
-        self.__dbtype = 'html'
+        self.__dbtype = 'JSONDb'
         self.__dbpath = None
         self.__dbaccess = None
         self.__dbmapping = {'file': FileDb,
                             'html': HTMLDb,
+                            'json': JSONDb,
                             'sqlite': SQLiteDb,
                             'pgsql': PostgreSQLDb}
+        self.__du = DshUtils()
 
     def options(self, parser, env):
         """
@@ -1627,7 +1686,7 @@ class PTLTestDb(Plugin):
         if self.__dbconn is not None:
             return
         if self.__dbtype is None:
-            self.__dbtype = 'html'
+            self.__dbtype = 'json'
         if self.__dbtype not in self.__dbmapping.keys():
             self.logger.error('Invalid db type: %s' % self.__dbtype)
             sys.exit(1)
@@ -1658,13 +1717,24 @@ class PTLTestDb(Plugin):
         else:
             testdata['pbs_version'] = 'unknown'
             testdata['hostname'] = 'unknown'
+        testdata['machinfo'] = self.__get_machine_info(_test)
         testdata['testparam'] = getattr(_test, 'param', None)
         testdata['suite'] = sn
+        testdata['suitedoc'] = str(_test.__class__.__doc__)
+        testdata['file'] = _test.__module__.replace('.', '/') + '.py'
+        testdata['module'] = _test.__module__
         testdata['testcase'] = getattr(_test, '_testMethodName', '<unknown>')
         testdata['testdoc'] = getattr(_test, '_testMethodDoc', '<unknown>')
         testdata['start_time'] = getattr(test, 'start_time', 0)
         testdata['end_time'] = getattr(test, 'end_time', 0)
         testdata['duration'] = getattr(test, 'duration', 0)
+        testdata['tags'] = getattr(_test, TAGKEY, [])
+        measurements_dic = getattr(_test, 'measurements', {})
+        if measurements_dic:
+            testdata['measurements'] = measurements_dic
+        additional_data_dic = getattr(_test, 'additional_data', {})
+        if additional_data_dic:
+            testdata['additional_data'] = additional_data_dic
         if err is not None:
             if isclass(err[0]) and issubclass(err[0], SkipTest):
                 testdata['status'] = 'SKIP'
@@ -1684,6 +1754,49 @@ class PTLTestDb(Plugin):
             data['metrics_data'] = md
         return data
 
+    def __get_machine_info(self, test):
+        """
+        Helper function to return machines dictionary with details
+
+        :param: test
+        :test type: object
+
+        returns dictionary with machines information
+        """
+        mpinfo = {
+            'servers': [],
+            'moms': [],
+            'comms': [],
+            'clients': []
+        }
+        minstall_type = {
+            'servers': 'server',
+            'moms': 'execution',
+            'comms': 'communication',
+            'clients': 'client'
+        }
+        for name in mpinfo:
+            mlist = None
+            if (hasattr(test, name) and
+                    (getattr(test, name, None) is not None)):
+                mlist = getattr(test, name).values()
+            if mlist:
+                for mc in mlist:
+                    mpinfo[name].append(mc.hostname)
+        machines = {}
+        for k, v in mpinfo.items():
+            for hst in v:
+                if hst not in machines:
+                    machines[hst] = {}
+                    mshort = machines[hst]
+                    mshort['platform'] = self.__du.get_uname(hostname=hst)
+                    mshort['os_info'] = self.__du.get_os_info(hostname=hst)
+                machines[hst]['pbs_install_type'] = minstall_type[k]
+                if ((k == 'moms' or k == 'comms') and
+                        hst in mpinfo['servers']):
+                    machines[hst]['pbs_install_type'] = 'server'
+        return machines
+
     def addError(self, test, err):
         self.__dbconn.write(self.__create_data(test, err, 'ERROR'))
 
@@ -1694,7 +1807,7 @@ class PTLTestDb(Plugin):
         self.__dbconn.write(self.__create_data(test, None, 'PASS'))
 
     def finalize(self, result):
-        self.__dbconn.close()
+        self.__dbconn.close(result)
         self.__dbconn = None
         self.__dbaccess = None
 
