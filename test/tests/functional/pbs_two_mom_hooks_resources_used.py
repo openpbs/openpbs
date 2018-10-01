@@ -47,6 +47,9 @@ class TestAcctlogRescUsedWithTwoMomHooks(TestFunctional):
 
     def setUp(self):
         TestFunctional.setUp(self)
+        if len(self.moms) != 2:
+            self.skipTest('Test requires two MoMs as input, '
+                          'use -p moms=<mom1>:<mom2>')
 
         hook_body = "import time\n"
         a = {'event': 'execjob_begin', 'enabled': 'True'}
