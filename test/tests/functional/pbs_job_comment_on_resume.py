@@ -58,11 +58,10 @@ class TestJobComment(TestFunctional):
         jid1 = self.server.submit(J)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
         J = Job(TEST_USER, {'queue': 'expressq'})
-        J.set_sleep_time(1)
         jid2 = self.server.submit(J)
         self.server.expect(JOB, {'job_state': 'S'}, id=jid1)
+        self.server.delete(jid2, wait=True)
         self.server.log_match(
-            jid2 + ";dequeuing from expressq",
-            max_attempts=10)
+            jid2 + ";dequeuing from expressq")
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
         self.server.expect(JOB, {'comment': (MATCH_RE, '.*Job run at.*')})
