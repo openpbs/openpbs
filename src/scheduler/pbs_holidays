@@ -36,7 +36,7 @@
 *
 
 *
-YEAR  2016
+YEAR  2018
 *
 * Prime/Nonprime Table 
 *
@@ -57,21 +57,21 @@ YEAR  2016
 * Jan 1 
     1           Jan 1           New Year's Day
 * Third Monday of Jan
-   18           Jan 18          Martin Luther King Day
+   15           Jan 15          Martin Luther King Day
 * Third Monday in Feb
-   46           Feb 15          President's Day
+   50           Feb 19          President's Day
 * Last Monday in May
-  151           May 30          Memorial Day
+  148           May 28          Memorial Day
 * July 4th
-  186           Jul 4           Independence Day
+  185           Jul 4           Independence Day
 * First Monday in Sept 
-  249           Sep 5           Labor Day
+  246           Sep 3           Labor Day
 * Second Monday in Oct
-  284           Oct 10          Columbus Day
+  281           Oct 8           Columbus Day
 * Nov 11 
-  316           Nov 11          Veterans Day
+  316           Nov 12          Veterans Day
 * Fourth Thursday in Nov
-  329           Nov 24          Thanksgiving
+  326           Nov 22          Thanksgiving
 * Dec 25 
-  360           Dec 25          Christmas Day
+  359           Dec 25          Christmas Day
 
