@@ -929,3 +929,68 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         self.scheduler.log_match(
             jid1 + ";Can't find start time estimate", existence=False,
             max_attempts=2)
+
+    def helper_test_preempt_release_all(self, preempt_method):
+        """
+        Helper function to test that when preempting jobs, all resources
+        are released during preemption simulation for R and C methods
+        """
+        if preempt_method == "R":
+            schedlog_msg = "Job preempted by requeuing"
+        elif preempt_method == "C":
+            schedlog_msg = "Job preempted by checkpointing"
+        else:
+            raise Exception("Unexpected value of argument preempt_method: %s"
+                            % (preempt_method))
+
+        a = {ATTR_restrict_res_to_release_on_suspend: 'mem'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        self.scheduler.set_sched_config({'preempt_order': preempt_method})
+
+        # Set 1gb mem available on the node
+        a = {ATTR_rescavail + '.ncpus': "2"}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+
+        # Submit a low priority jobs which takes up all of the ncpus
+        j1 = Job(TEST_USER)
+        j1.set_attributes({ATTR_l + '.select': '1:ncpus=2'})
+        jid1 = self.server.submit(j1)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
+
+        # Submit a high priority job which requests 1 ncpus
+        j2 = Job(TEST_USER)
+        j2.set_attributes({ATTR_l + '.select': '1:ncpus=1',
+                           ATTR_q: 'expressq'})
+        jid2 = self.server.submit(j2)
+
+        # Even though server is configured to only release mem for suspend,
+        # for requeue and checkpointing, we should have released ncpus as well
+        # and correctly preempted the low priority job
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
+        self.scheduler.log_match(jid1 + ";" + schedlog_msg)
+
+    def test_preempt_requeue_release_all(self):
+        """
+        Test that when preempting jobs via Requeue, all resources
+        are release during the preemption simulation
+        """
+        self.helper_test_preempt_release_all("R")
+
+    def test_preempt_checkpoint_release_all(self):
+        """
+        Test that when preempting jobs via Checkpointing, all resources
+        are release during the preemption simulation
+        """
+        # Create checkpoint
+        chk_script = """#!/bin/bash
+                kill $1
+                exit 0
+                """
+        self.chk_file = self.du.create_temp_file(body=chk_script)
+        self.du.chmod(path=self.chk_file, mode=0o755)
+        self.du.chown(path=self.chk_file, uid=0, gid=0, sudo=True)
+        c = {'$action': 'checkpoint_abort 30 !' + self.chk_file + ' %sid'}
+        self.mom.add_config(c)
+
+        self.helper_test_preempt_release_all("C")

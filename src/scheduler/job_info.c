@@ -3286,6 +3286,8 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 
 	skipto=0;
 	while ((indexfound = select_index_to_preempt(npolicy, nhjob, rjobs_subset, skipto, err, fail_list)) != NO_JOB_FOUND) {
+		struct preempt_ordering *po;
+
 		if (indexfound == ERR_IN_SELECT) {
 			/* System error occurred, no need to proceed */
 			free_server(nsinfo, 1);
@@ -3300,8 +3302,13 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 		schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->name,
 			"Simulation: preempting job");
 
-		pjob->job->resreleased = create_res_released_array(npolicy, pjob);
-		pjob->job->resreq_rel = create_resreq_rel_list(npolicy, pjob);
+		po = get_preemption_order(pjob, sinfo);
+		if (po != NULL) {
+			if (po->order[0] == PREEMPT_METHOD_SUSPEND && pjob->job->can_suspend) {
+				pjob->job->resreleased = create_res_released_array(npolicy,pjob);
+				pjob->job->resreq_rel = create_resreq_rel_list(npolicy, pjob);
+			}
+		}
 
 		update_universe_on_end(npolicy, pjob,  "S", NO_ALLPART);
 		rjobs_count--;
