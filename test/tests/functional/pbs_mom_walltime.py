@@ -83,24 +83,27 @@ class TestMomWalltime(TestFunctional):
 
         a = {'Resource_List.ncpus': 1}
         J1 = Job(TEST_USER, attrs=a)
-        J1.set_sleep_time(30)
+        J1.set_sleep_time(60)
         jid1 = self.server.submit(J1)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
-        time.sleep(10)
+        # Wait for job to run for sometime
+        time.sleep(15)
         self.server.expect(JOB, {'resources_used.walltime': 0}, op=GT, id=jid1,
                            extend='x')
 
         self.server.holdjob(jid1, USER_HOLD)
         self.server.rerunjob(jid1)
         self.server.expect(JOB, {'Hold_Types': 'u'}, jid1)
-        time.sleep(5)
-
+        # Wait for sometime to verify that this time is not
+        # accounted in 'resource_used.walltime'
+        time.sleep(20)
         self.server.rlsjob(jid1, USER_HOLD)
         self.server.expect(JOB, {ATTR_state: 'F'}, id=jid1, extend='x',
-                           offset=30)
-
-        # The sleep time should not be included in the used walltime
-        self.server.expect(JOB, {'resources_used.walltime': 30}, op=LE,
+                           offset=45)
+        # Verify if the job's walltime is in between 60 to 70
+        self.server.expect(JOB, {'resources_used.walltime': 60}, op=GE,
+                           id=jid1, extend='x')
+        self.server.expect(JOB, {'resources_used.walltime': 70}, op=LE,
                            id=jid1, extend='x')
 
     def test_suspend_time_not_counted_in_walltime(self):
