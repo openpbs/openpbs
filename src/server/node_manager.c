@@ -7125,10 +7125,23 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 				return (PBSE_UNKNODE);
 			}
 
-                        if (svr_init == FALSE && (pnode->nd_state & (INUSE_DOWN | INUSE_STALE))) {
+                        if ((pnode->nd_state & (INUSE_DOWN | INUSE_STALE)) && (svr_init == FALSE)) {
+
+				if(objtype == JOB_OBJECT) {
                                    free(phowl);
                                    free(execvncopy);
                                    return (PBSE_BAD_NODE_STATE);
+				} 
+				else {
+					if(presv->ri_qs.ri_state == RESV_UNCONFIRMED) {
+						set_resv_retry(presv, time_now+10);
+						free(phowl);
+                	                	free(execvncopy);
+                        	      		return (PBSE_BAD_NODE_STATE);
+					}
+					else
+						resv_setResvState(presv, RESV_DEGRADED, RESV_DEGRADED);
+				}
                         }
 
 			if (pjob != NULL) { /* only for jobs do we warn if a mom */

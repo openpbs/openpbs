@@ -357,7 +357,7 @@ extern	int  act_resv_add_owner(attribute*, void*, int);
 extern	void svr_mailownerResv(resc_resv*, int, int, char*);
 extern	void resv_free(resc_resv*);
 extern	void set_old_subUniverse(resc_resv *);
-extern	int  assign_resv_resc(resc_resv *, char *, int);
+extern	int  assign_resv_resc(resc_resv *, char *, int svr_init); /* Adding svr_init parameter to track whether the server is in init start mode */
 extern	void  resv_exclusive_handler(resc_resv *);
 #ifdef	__cplusplus
 }

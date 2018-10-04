@@ -3459,6 +3459,7 @@ Time4occurrenceFinish(resc_resv *presv)
 	int			rcount = presv->ri_wattr[RESV_ATR_resv_count].at_val.at_long;
 	char			*rrule = presv->ri_wattr[RESV_ATR_resv_rrule].at_val.at_str;
 	char			*tz = presv->ri_wattr[RESV_ATR_resv_timezone].at_val.at_str;
+	int 			svr_init = FALSE;
 
 	/* the next occurrence returned by get_occurrence is counted from the current
 	 * one which is at index 1. */
@@ -3600,7 +3601,6 @@ Time4occurrenceFinish(resc_resv *presv)
 	/* Assign the allocated resources to the reservation
 	 * and the reservation to the associated vnodes
 	 */
-	int svr_init;
 	svr_init = FALSE;
 	rc = assign_resv_resc(presv, newxc, svr_init);
 	free(newxc);
