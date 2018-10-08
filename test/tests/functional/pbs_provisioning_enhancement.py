@@ -64,11 +64,30 @@ pbs.logmsg(pbs.LOG_DEBUG, "aoe=%s,vnode=%s" % (aoe,vnode))
 pbs.logmsg(pbs.LOG_DEBUG, "fake os provisioning script")
 e.accept(0)
 """
+    reject_runjob_hook = """
+import pbs
+e = pbs.event()
+j = e.job
+pbs.logmsg(pbs.LOG_DEBUG, "job " + str(j) + " solution " + str(j.exec_vnode))
+e.reject()
+"""
 
     def setUp(self):
+
+        if len(self.moms) < 2:
+            self.skipTest("Provide at least 2 moms while invoking test")
+
         TestFunctional.setUp(self)
-        self.momA = self.moms.values()[0]
-        self.momB = self.moms.values()[1]
+        # This test suite expects the the first mom given with "-p moms"
+        # benchpress option to be remote mom. In case this assumption
+        # is not true then it reverses the order in the setup.
+        if self.moms.values()[0].shortname == self.server.shortname:
+            self.momA = self.moms.values()[1]
+            self.momB = self.moms.values()[0]
+        else:
+            self.momA = self.moms.values()[0]
+            self.momB = self.moms.values()[1]
+
         self.hostA = self.momA.shortname
         self.hostB = self.momB.shortname
 
@@ -338,3 +357,86 @@ e.accept(0)
 
         # Current aoe on momA, should be set to the requested aoe in job.
         self.server.expect(NODE, {'current_aoe': 'App1'}, id=self.hostA)
+
+    def test_sched_provisioning_response_with_runjob(self):
+        """
+        Test that if one provisioning job fails to run then scheduler
+        correctly provides the node solution for the second job with aoe in
+        it.
+        """
+        # Setup runjob hook.
+        a = {'event': 'runjob', 'enabled': 'True'}
+        rv = self.server.create_import_hook(
+            'reject_runjob_hook', a, self.reject_runjob_hook, overwrite=True)
+        self.assertTrue(rv)
+        # Set current aoe to App1
+        self.server.manager(MGR_CMD_SET, NODE, id=self.hostA,
+                            attrib={'current_aoe': 'App1'}, expect=True)
+
+        # Turn on scheduling
+        self.server.manager(MGR_CMD_SET,
+                            SERVER, {'scheduling': 'False'})
+
+        # submit two provisioning jobs
+        a = {'Resource_List.select': '1:aoe=osimage1:ncpus=1+1:ncpus=4',
+             'Resource_List.place': 'vscatter'}
+        j = Job(TEST_USER1, attrs=a)
+        jid1 = self.server.submit(j)
+        jid2 = self.server.submit(j)
+
+        # Turn off scheduling
+        self.server.manager(MGR_CMD_SET,
+                            SERVER, {'scheduling': 'True'})
+
+        # Job will be rejected by runjob hook and it should log
+        # correct exec_vnode for each job.
+        msg = "job %s " + "solution (%s:aoe=osimage1:ncpus=1)+(%s:ncpus=4)"
+        job1_msg = msg % (jid1, self.hostA, self.hostB)
+        job2_msg = msg % (jid2, self.hostA, self.hostB)
+        self.server.log_match(job1_msg)
+        self.server.log_match(job2_msg)
+
+    def test_sched_provisioning_response(self):
+        """
+        Test that if scheduler could not find node solution for one
+        provisioning job then it will find the correct solution for the
+        second one.
+        """
+
+        # Set current aoe to osimage1
+        self.server.manager(MGR_CMD_SET, NODE, id=self.hostA,
+                            attrib={'current_aoe': 'osimage1'}, expect=True)
+
+        # submit one job that will run on local node
+        a = {'Resource_List.select': '1:ncpus=10'}
+        j1 = Job(TEST_USER1, attrs=a)
+        j1.set_sleep_time(200)
+        jid1 = self.server.submit(j1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+
+        # Turn off scheduling
+        self.server.manager(MGR_CMD_SET,
+                            SERVER, {'scheduling': 'False'})
+
+        # submit two provisioning jobs where first job will not be able
+        # to run and second one can
+        a = {'Resource_List.select': '1:aoe=App1:ncpus=1+1:ncpus=3',
+             'Resource_List.place': 'vscatter'}
+        j2 = Job(TEST_USER1, attrs=a)
+        jid2 = self.server.submit(j2)
+
+        a = {'Resource_List.select': '1:aoe=App1:ncpus=1+1:ncpus=2',
+             'Resource_List.place': 'vscatter'}
+        j3 = Job(TEST_USER1, attrs=a)
+        jid3 = self.server.submit(j3)
+
+        # Turn on scheduling
+        self.server.manager(MGR_CMD_SET,
+                            SERVER, {'scheduling': 'True'})
+
+        ev_format = "(%s:aoe=App1:ncpus=1)+(%s:ncpus=2)"
+        solution = ev_format % (self.hostA, self.hostB)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
+        job_state = self.server.status(JOB, id=jid3)
+        self.assertEqual(job_state[0]['exec_vnode'], solution)

@@ -2855,7 +2855,7 @@ eval_complex_selspec(status *policy, selspec *spec, node_info **ninfo_arr, place
 	 * through our nodes and will possibly come up with a solution... but
 	 * there is always the chance we could swap out nodes depending on one
 	 * node being able to satisfy multiple simple specs.
-	 * This resursion could take very long to finish.
+	 * This recursion could take very long to finish.
 	 *
 	 * We'll go through the nodes once since it'll probably be fine for most
 	 * cases.
@@ -3596,7 +3596,11 @@ resources_avail_on_vnode(resource_req *specreq_cons, node_info *node,
 					} else if (is_p == PROVISIONING_NEEDED ) {
 						if (ns != NULL)
 							ns->go_provision = 1;
-						if (resresv->select->total_chunks >1)
+						/* Do not set current aoe/eoe on the node when placement is scatter/vscatter
+						 * because in case of scatter/vscatter placement we are not working on duplicate
+						 * copy of nodes.
+						 */
+						if (resresv->select->total_chunks > 1 && pl->scatter != 1 && pl->vscatter != 1)
 							set_current_aoe(node, resresv->aoename);
 						if (resresv->is_job) {
 							sprintf(logbuf, "Vnode %s selected for provisioning with AOE %s",
@@ -3613,7 +3617,7 @@ resources_avail_on_vnode(resource_req *specreq_cons, node_info *node,
 						break;
 					}
 					else if (is_p == PROVISIONING_NEEDED) {
-						if (resresv->select->total_chunks > 1)
+						if (resresv->select->total_chunks > 1 && pl->scatter != 1 && pl->vscatter != 1)
 							set_current_eoe(node, resresv->eoename);
 
 						if (resresv->is_job) {
@@ -3692,7 +3696,7 @@ resources_avail_on_vnode(resource_req *specreq_cons, node_info *node,
 			else if (is_p == PROVISIONING_NEEDED) {
 				if (ns != NULL)
 					ns->go_provision = 1;
-				if (resresv->select->total_chunks >1) {
+				if (resresv->select->total_chunks > 1 && pl->scatter != 1 && pl->vscatter != 1) {
 					set_current_aoe(node, resresv->aoename);
 				}
 			}
@@ -3701,7 +3705,7 @@ resources_avail_on_vnode(resource_req *specreq_cons, node_info *node,
 			if (is_p == NOT_PROVISIONABLE)
 				return 0;
 			else if (is_p == PROVISIONING_NEEDED) {
-				if (resresv->select->total_chunks > 1) {
+				if (resresv->select->total_chunks > 1 && pl->scatter != 1 && pl->vscatter != 1) {
 					set_current_eoe(node, resresv->eoename);
 				}
 			}
