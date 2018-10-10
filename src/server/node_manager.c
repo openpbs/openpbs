@@ -7134,13 +7134,16 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 				} 
 				else {
 					if(presv->ri_qs.ri_state == RESV_UNCONFIRMED) {
-						set_resv_retry(presv, time_now+10);
 						free(phowl);
                 	                	free(execvncopy);
                         	      		return (PBSE_BAD_NODE_STATE);
 					}
-					else
+					else {
 						resv_setResvState(presv, RESV_DEGRADED, RESV_DEGRADED);
+						free(phowl);
+						free(execvncopy);
+						return (PBSE_BAD_NODE_STATE);
+					}
 				}
                         }
 
@@ -8422,10 +8425,8 @@ set_old_subUniverse(resc_resv	*presv)
 		free(sp);
 		return;
 	}
-	int svr_init;
-	svr_init = TRUE;
 	/* set the nodes on the reservation */
-	rc = assign_resv_resc(presv, sp, svr_init);
+	rc = assign_resv_resc(presv, sp, TRUE);
 	if (rc != PBSE_NONE) {
 		sprintf(log_buffer,
 			"problem assigning resource to reservation %d", rc);

@@ -248,6 +248,9 @@ assign_resv_resc(resc_resv *presv, char *vnodes, int svr_init)
 	char     *node_str = NULL;
 	char		 *host_str = NULL;	/* used only as arg to set_nodes */
 	char * host_str2 = NULL;
+	struct work_task *pwt;
+        extern void resv_retry_handler(struct work_task *ptask);
+
 	if ((vnodes == NULL) || (*vnodes == '\0'))
 		return (PBSE_BADNODESPEC);
 
@@ -268,6 +271,18 @@ assign_resv_resc(resc_resv *presv, char *vnodes, int svr_init)
 
 		presv->ri_modified = 1;
 	}
+	else if (ret == PBSE_BAD_NODE_STATE) {
+           /* Set a work task to initiate a scheduling cycle when the time to check
+            * for alternate nodes to assign the reservation comes
+            */
+           if ((pwt = set_task(WORK_Timed, time_now+10, resv_retry_handler, presv)) != NULL) {
+           /* set things so that the reservation going away will result in
+            * any "yet to be processed" work tasks also going away
+            */
+ 	          append_link(&presv->ri_svrtask, &pwt->wt_linkobj, pwt);
+           }
+	}
+
 
 	return (ret);
 }
@@ -312,7 +327,6 @@ req_confirmresv(struct batch_request *preq)
 	int		is_being_altered = 0;
 	char		*tmp_buf = NULL;
 	size_t		tmp_buf_size = 0;
-	int 		svr_init=FALSE;
 
 	if ((preq->rq_perm & (ATR_DFLAG_MGWR | ATR_DFLAG_OPWR)) == 0) {
 		req_reject(PBSE_PERM, 0, preq);
@@ -584,8 +598,7 @@ req_confirmresv(struct batch_request *preq)
 	 */
 	if (is_being_altered)
 		free_resvNodes(presv);
-	svr_init = FALSE;
-	rc = assign_resv_resc(presv, next_execvnode, svr_init);
+	rc = assign_resv_resc(presv, next_execvnode, FALSE);
 
 	if (rc != PBSE_NONE) {
 		free(next_execvnode);
