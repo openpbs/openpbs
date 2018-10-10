@@ -36,6 +36,7 @@
 # trademark licensing policies.
 import os
 from tests.functional import *
+from ptl.utils.pbs_logutils import PBSLogUtils
 
 
 class TestPbsHookSetJobEnv(TestFunctional):
@@ -162,6 +163,7 @@ class TestPbsHookSetJobEnv(TestFunctional):
         """
         Validate the env variable output in daemon logs
         """
+        logutils = PBSLogUtils()
         logmsg = ["TEST_COMMA=1\,2\,3\,4",
                   "TEST_SEMICOLON=;",
                   "TEST_ENCLOSED=\\'\,\\'",
@@ -180,32 +182,50 @@ class TestPbsHookSetJobEnv(TestFunctional):
                   "TEST_SQUOTE5=music \\'makes \\\"the\\'\\\"people",
                   "TEST_SQUOTE6=loving\\'",
                   "TEST_SPECIAL={}[]()~@#$%^&*!",
-                  "TEST_SPECIAL2=<dumb-test_text>"]
+                  "TEST_SPECIAL2=<dumb-test_text>",
+                  "TEST_RETURN=\\'3\,",
+                  # Cannot add '\n' here because '\n' is not included in
+                  # the items of the list returned by log_lines(), (though
+                  # lines are split by '\n')
+                  "4\,",
+                  "5\\',"]
 
         if (daemon == "mom"):
             self.logger.info("Matching in mom logs")
+            logfile_type = self.mom
         elif (daemon == "server"):
             self.logger.info("Matching in server logs")
+            logfile_type = self.server
         else:
             self.logger.info("Provide a valid daemon name; server or mom")
             return
-
+        lines = None
+        ret_linenum = 0
+        search_msg = 'log match: searching for '
+        nomatch_msg = ' No match for '
         for msg in logmsg:
-            if (daemon == "mom"):
-                # Match the trailing separator (',')
-                self.mom.log_match(msg + ',')
-            elif (daemon == "server"):
-                self.server.log_match(msg, starttime=self.server.ctime)
-
-        # Following lines are commented due to PTL bug PP-1008
-        # if (daemon == "mom"):
-        #    rv = self.mom.log_match(
-        #          msg="TEST_RETURN\=\\\'3\\\,\n4\\\,\n5\\\'", regexp=True)
-        #    self.assertTrue(rv)
-        # else:
-        #    rv = self.server.log_match(
-        #            msg="TEST_RETURN\=\\\'3\\\,\n4\\\,\n5\\\'", regexp=True)
-        #    self.assertTrue(rv)
+            for attempt in range(1, 61):
+                lines = self.server.log_lines(
+                    logfile_type, starttime=self.server.ctime)
+                match = logutils.match_msg(lines, msg=msg)
+                if match:
+                    # Dont want the test to pass if there are
+                    # unwanted matched for "4\," and "5\\'.
+                    if msg == "TEST_RETURN=\\'3\,":
+                        ret_linenum = match[0]
+                    if (msg == "4\," and match[0] != (ret_linenum - 1)) or \
+                       (msg == "5\\'" and match[0] != (ret_linenum - 2)):
+                        pass
+                    else:
+                        self.logger.info(search_msg + msg + ' ... OK')
+                        break
+                else:
+                    self.logger.info(nomatch_msg + msg +
+                                     ' attempt ' + str(attempt))
+                time.sleep(0.5)
+            if match is None:
+                _msg = nomatch_msg + msg
+                raise PtlLogMatchError(rc=1, rv=False, msg=_msg)
 
     def common_validate(self):
         """
@@ -479,9 +499,7 @@ pbs.logmsg(pbs.LOG_DEBUG,"Variable List is %s" % (e.job.Variable_List,))
         self.assertEqual(self.env_hook_exclude['happy'], 'days\n')
         self.common_validate()
 
-        # Validate the output in server_log
-        # Following is blocked on PTL bug PP-1008
-        # self.common_log_match("server")
+        self.common_log_match("server")
 
     def test_execjob_epi(self):
         """
@@ -782,6 +800,7 @@ haa'"""
 
         # match the values in qstat -f Variable_List
         # Following is blocked on PTL bug PP-1008
+
         # self.assertTrue("TEST_COMMA=1\,2\,3\,4" in job_var)
         # self.assertTrue("TEST_SEMICOLON=\;" in job_var)
         # self.assertTrue("TEST_COLON=:" in job_var)
@@ -947,7 +966,7 @@ pbs.logmsg(pbs.LOG_DEBUG,
         # now restart mom
         self.mom.start()
 
-        self.mom.log_match("Restart sent to server", max_attempts=5)
+        self.mom.log_match("Restart sent to server")
 
         # Verify the env variables are seen in logs
         self.common_log_match("mom")
