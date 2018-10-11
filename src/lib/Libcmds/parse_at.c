@@ -148,7 +148,7 @@ parse_at_item(char *at_item, char *at_name, char *host_name)
 int
 parse_at_list(char *list, int use_count, int abs_path)
 {
-	char *b, *c, *s, *l;
+	char *b, *c, *s, *list_dup;
 	int rc = 0;
 	char user[MAXPATHLEN+1];
 	char host[PBS_MAXSERVERNAME];
@@ -161,12 +161,12 @@ parse_at_list(char *list, int use_count, int abs_path)
 	back2forward_slash(list);        /* "\" translate to "/" for path */
 #endif
 
-	if ((l = strdup(list)) == NULL) {
+	if ((list_dup = strdup(list)) == NULL) {
 		fprintf(stderr, "Out of memory.\n");
 		exit(1);
 	}
 
-	for (c = l; *c != '\0'; rc = 0) {
+	for (c = list_dup; *c != '\0'; rc = 0) {
 		rc = 1;
 
 		/* Drop leading white space */
@@ -182,7 +182,7 @@ parse_at_list(char *list, int use_count, int abs_path)
 			;
 
 		/* Drop any trailing blanks */
-		for (b = c - 1; isspace(*b); b--)
+		for (b = c - 1; (b >= list_dup) && isspace(*b); b--)
 			*b = '\0';
 
 		/* Make sure the list does not end with a comma */
@@ -227,7 +227,7 @@ duplicate:
 		free(ph);
 		ph = nh;
 	}
-	free(l);
+	free(list_dup);
 
 	return rc;
 }
