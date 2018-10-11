@@ -146,9 +146,9 @@ def NodesetDelete( nodeset_name ):
             if host in done:
                 continue
             done.add(host)
-            dir = "/opt/sgi/ta"
-            dest = os.path.join(dir, "sgi_power_api.py")
-            self.server.du.run_cmd(host, "mkdir -p " + dir, sudo=True)
+            pwr_dir = os.path.join(os.sep, "opt", "clmgr", "power-service")
+            dest = os.path.join(pwr_dir, "hpe_clmgr_power_api.py")
+            self.server.du.run_cmd(host, "mkdir -p " + pwr_dir, sudo=True)
             self.server.du.run_copy(host, fn, dest, True)
             # Set PBS_PMINAME=sgi in pbs_environment so the power hook
             # will use the SGI functionality.
@@ -183,8 +183,8 @@ def NodesetDelete( nodeset_name ):
             if host in done:
                 continue
             done.add(host)
-            dir = "/opt/sgi/ta"
-            dest = os.path.join(dir, "sgi_power_api.py")
+            pwr_dir = os.path.join(os.sep, "opt", "clmgr", "power-service")
+            dest = os.path.join(pwr_dir, "hpe_clmgr_power_api.py")
             self.server.du.run_cmd(host, "rm " + dest, sudo=True)
 
     def enable_power(self):

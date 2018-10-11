@@ -58,9 +58,15 @@ sys.path.append(os.path.join(pbsexec, "python", "lib", "python2.7",
 import encodings
 
 
-# Plug in the path for the SGI power API.
-sys.path.append("/opt/sgi/ta")
-import sgi_power_api as api
+# Plug in the path for the HPE/SGI power API.
+if os.path.exists("/opt/clmgr/power-service"):
+    # Look for HPCM support.
+    sys.path.append("/opt/clmgr/power-service")
+    import hpe_clmgr_power_api as api
+else:
+    # Look for SGIMC support.
+    sys.path.append("/opt/sgi/ta")
+    import sgi_power_api as api
 
 
 class Pmi:
