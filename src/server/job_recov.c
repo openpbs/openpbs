@@ -115,13 +115,12 @@ static const size_t extndsize = sizeof(union jobextend);
  *			 - a full write for a new job
  *
  *		For a quick update, the data written is less than a disk block
- *		size and no size change occurs; so it is rewritten in place
- *		with O_SYNC.
+ *		size and no size change occurs.
  *
- *		For a full update (usually following modify job request), to
- *		insure no data is ever lost due to system crash:
- *		1. write (with O_SYNC) new image to a new file using a temp name
- *		2. rename the temp file to the old name
+ *		No need of O_SYNC flag as this will improve the performance.
+ *		This might lead to data loss from file system in case of system
+ *		crash. This is not an issue as data is mostly recovered from the
+ *		database.
  *
  *		For a new file write, first time, the data is written directly to
  *		the file.
@@ -183,7 +182,7 @@ job_save_fs(job *pjob, int updatetype)
 
 	if (updatetype == SAVEJOB_QUICK) {
 
-		openflags =  O_WRONLY | O_Sync;
+		openflags =  O_WRONLY;
 		fds = open(namebuf1, openflags, pmode);
 		if (fds < 0) {
 			log_err(errno, "job_save", "error on open");
@@ -201,17 +200,6 @@ job_save_fs(job *pjob, int updatetype)
 		if ((save_struct((char *)&pjob->ji_qs, fixedsize) == 0) &&
 			(save_struct((char *)&pjob->ji_extended, extndsize) == 0) &&
 			(save_flush() == 0)) {
-#ifdef WIN32
-			/* since the open() POSIX call provided does not */
-			/* have O_Sync for synchronous writes, the following */
-			/* will force flushing things onto disk */
-			if (_commit(fds) != 0) {
-				log_err(errno, "job_save",
-					"flushing file to disk failed!");
-				(void)close(fds);
-				return (-1);
-			}
-#endif
 			(void)close(fds);
 		} else {
 			log_err(errno, "job_save", "error quickwrite");
@@ -234,7 +222,7 @@ job_save_fs(job *pjob, int updatetype)
 		 */
 
 		(void)strcat(namebuf2, JOB_FILE_COPY);
-		openflags =  O_CREAT | O_WRONLY | O_Sync;
+		openflags =  O_CREAT | O_WRONLY;
 
 #ifdef WIN32
 		fix_perms2(namebuf2, namebuf1);
@@ -287,14 +275,6 @@ job_save_fs(job *pjob, int updatetype)
 				break;
 		}
 
-#ifdef WIN32
-		if (_commit(fds) != 0) {
-			log_err(errno, "job_save",
-				"flushing file to disk failed!");
-			(void)close(fds);
-			return (-1);
-		}
-#endif
 
 		(void)close(fds);
 		if (i >= MAX_SAVE_TRIES) {
@@ -607,13 +587,12 @@ job_recov_fs(char *filename)
  *			 - a full write for a new job or reservation file
  *
  *		For a quick update, the data written is less than a disk block
- *		size and no size change occurs; so it is rewritten in place
- *		with O_SYNC.
+ *		size and no size change occurs.
  *
- *		For a full update (usually following a modify job (resv) request), to
- *		insure no data is ever lost due to system crash:
- *		1. write (with O_SYNC) new image to a new file using a temp name
- *		2. rename the temp file to the file
+ *		No need of O_SYNC flag as this will improve the performance.
+ *		This might lead to data loss from file system in case of system
+ *		crash. This is not an issue as data is mostly recovered from the
+ *		database.
  *
  *		For a new file write, first time, the data is written directly to
  *		the file.
@@ -747,7 +726,7 @@ job_or_resv_save_fs(void *pobj, int updatetype, int objtype)
 
 	if (updatetype == SAVEJOB_QUICK || updatetype == SAVERESV_QUICK) {
 
-		openflags =  O_WRONLY | O_Sync;
+		openflags =  O_WRONLY;
 		fds = open(namebuf1, openflags, pmode);
 		if (fds < 0) {
 			log_err(errno, err_msg, "error on open");
@@ -776,14 +755,6 @@ job_or_resv_save_fs(void *pobj, int updatetype, int objtype)
 				return (-1);
 			}
 		}
-#ifdef WIN32
-		if (_commit(fds) != 0) {
-			log_err(errno, err_msg,
-				"flushing job file to disk failed!");
-			(void)close(fds);
-			return (-1);
-		}
-#endif
 		(void)close(fds);
 
 	} else {
@@ -800,7 +771,7 @@ job_or_resv_save_fs(void *pobj, int updatetype, int objtype)
 		 */
 
 		(void)strcat(namebuf2, cpsuffix);
-		openflags =  O_CREAT | O_WRONLY | O_Sync;
+		openflags =  O_CREAT | O_WRONLY;
 #ifdef WIN32
 		fix_perms2(namebuf2, namebuf1);
 #endif
@@ -839,14 +810,6 @@ job_or_resv_save_fs(void *pobj, int updatetype, int objtype)
 			}
 		} while (redo == 1);
 
-#ifdef WIN32
-		if (_commit(fds) != 0) {
-			log_err(errno, err_msg,
-				"flush job file to disk failed!");
-			close(fds);
-			return (-1);
-		}
-#endif
 
 		(void)close(fds);
 		if (redo > 1) {
