@@ -40,6 +40,7 @@ from tests.functional import *
 
 class TestSchedSubjobBadstate(TestFunctional):
 
+    @timeout('600')
     def test_sched_badstate_subjob(self):
         """
         This test case tests if scheduler goes into infinite loop
@@ -73,5 +74,5 @@ class TestSchedSubjobBadstate(TestFunctional):
 
         self.scheduler.log_match("Leaving Scheduling Cycle",
                                  starttime=now,
-                                 max_attempts=3, interval=1)
+                                 interval=1)
         self.server.delete(j1id)
