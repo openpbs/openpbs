@@ -6665,7 +6665,6 @@ class Server(PBSService):
 
         if c is not None:
             self._disconnect(c)
-
         if cmd == MGR_CMD_SET and 'scheduling' in attrib:
             if attrib['scheduling'] in PTL_FALSE:
                 if obj_type == SERVER:
@@ -8016,7 +8015,7 @@ class Server(PBSService):
     def expect(self, obj_type, attrib=None, id=None, op=EQ, attrop=PTL_AND,
                attempt=0, max_attempts=None, interval=None, count=None,
                extend=None, offset=0, runas=None, level=logging.INFO,
-               msg=None):
+               msg=None, trigger_sched_cycle=True):
         """
         expect an attribute to match a given value as per an
         operation.
@@ -8056,6 +8055,9 @@ class Server(PBSService):
                     message will be used while raising
                     PtlExpectError.
         :type msg: str or None
+        :param trigger_sched_cycle: True by default can be set to False if
+                          kicksched_action is not supposed to be called
+        :type trigger_sched_cycle: Boolean
 
         :returns: True if attributes are as expected
 
@@ -8291,15 +8293,15 @@ class Server(PBSService):
                 time.sleep(interval)
 
                 # run custom actions defined for this object type
-                if self.actions:
+                if trigger_sched_cycle and self.actions:
                     for act_obj in self.actions.get_actions_by_type(obj_type):
                         if act_obj.enabled:
                             act_obj.action(self, obj_type, attrib, id, op,
                                            attrop)
-
                 return self.expect(obj_type, attrib, id, op, attrop,
                                    attempt + 1, max_attempts, interval, count,
-                                   extend, level=level, msg=" ".join(msg))
+                                   extend, level=level, msg=" ".join(msg),
+                                   trigger_sched_cycle=False)
 
         self.logger.log(level, prefix + " ".join(msg) + ' ...  OK')
         return True
