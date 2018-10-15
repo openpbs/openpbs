@@ -35,14 +35,61 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 
-from ptl.utils.pbs_testsuite import *
+from tests.functional import *
 import json
 
 
-class TestQstat_json(PBSTestSuite):
+@tags('commands')
+class TestQstatFormats(TestFunctional):
     """
-    Test qstat output can be viewed in json format
+    This test suite validates output of qstat for
+    various formats
     """
+
+    def parse_dsv(self, jid, qstat_type, delimiter=None):
+        """
+        Common function to parse qstat dsv output using delimiter
+        """
+        if delimiter:
+            delim = "-D" + str(delimiter)
+        else:
+            delim = " "
+        if qstat_type == "job":
+            cmd = ' -f -F dsv ' + delim + " " + str(jid)
+            qstat_cmd_dsv = os.path.join(self.server.pbs_conf['PBS_EXEC'],
+                                         'bin', 'qstat') + cmd
+            qstat_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'],
+                                     'bin', 'qstat') + ' -f ' + str(jid)
+        elif qstat_type == "server":
+            qstat_cmd_dsv = os.path.join(self.server.pbs_conf[
+                'PBS_EXEC'], 'bin', 'qstat') + ' -Bf -F dsv ' + delim
+            qstat_cmd = os.path.join(self.server.pbs_conf[
+                'PBS_EXEC'], 'bin', 'qstat') + ' -Bf '
+        elif qstat_type == "queue":
+            qstat_cmd_dsv = os.path.join(self.server.pbs_conf[
+                'PBS_EXEC'], 'bin', 'qstat') + ' -Qf -F dsv ' + delim
+            qstat_cmd = os.path.join(self.server.pbs_conf[
+                'PBS_EXEC'], 'bin', 'qstat') + ' -Qf '
+        rv = self.du.run_cmd(self.server.hostname, cmd=qstat_cmd)
+        attrs_qstatf = []
+        for line in rv['out']:
+            attr = line.split("=")
+            if not re.match(r'[\t]', attr[0]):
+                attrs_qstatf.append(attr[0].strip())
+        attrs_qstatf.pop()
+        ret = self.du.run_cmd(self.server.hostname, cmd=qstat_cmd_dsv)
+        qstat_attrs = []
+        for line in ret['out']:
+            if delimiter:
+                attr_vals = line.split(str(delimiter))
+            else:
+                attr_vals = line.split("|")
+        for item in attr_vals:
+            qstat_attr = item.split("=")
+            qstat_attrs.append(qstat_attr[0])
+        for attr in attrs_qstatf:
+            if attr not in qstat_attrs:
+                self.assertFalse(attr + " is missing")
 
     def parse_json(self, dictitems, qstat_attr):
         """
@@ -56,6 +103,176 @@ class TestQstat_json(PBSTestSuite):
                     if isinstance(val, dict):
                         self.parse_json(val, qstat_attr)
         return qstat_attr
+
+    def test_qstat_dsv(self):
+        """
+        test qstat outputs job info in dsv format with default delimiter pipe
+        """
+        j = Job(TEST_USER)
+        j.set_sleep_time(10)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': "R"}, id=jid)
+        self.parse_dsv(jid, "job")
+
+    def test_qstat_bf_dsv(self):
+        """
+        test qstat outputs server info in dsv format with default
+        delimiter pipe
+        """
+        self.parse_dsv(None, "server")
+
+    def test_qstat_qf_dsv(self):
+        """
+        test qstat outputs queue info in dsv format with default delimiter pipe
+        """
+        self.parse_dsv(None, "queue")
+
+    def test_qstat_dsv_semicolon(self):
+        """
+        test qstat outputs job info in dsv format with semicolon as delimiter
+        """
+        j = Job(TEST_USER)
+        j.set_sleep_time(10)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': "R"}, id=jid)
+        self.parse_dsv(jid, "job", ";")
+
+    def test_qstat_bf_dsv_semicolon(self):
+        """
+        test qstat outputs server info in dsv format with semicolon as
+        delimiter
+        """
+        self.parse_dsv(None, "server", ";")
+
+    def test_qstat_qf_dsv_semicolon(self):
+        """
+        test qstat outputs queue info in dsv format with semicolon as delimiter
+        """
+        self.parse_dsv(None, "queue", ";")
+
+    def test_qstat_dsv_comma_ja(self):
+        """
+        test qstat outputs job array info in dsv format with comma as delimiter
+        """
+        j = Job(TEST_USER)
+        j.set_sleep_time(10)
+        j.set_attributes({ATTR_J: '1-3'})
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': "B"}, id=jid)
+        self.parse_dsv(jid, "job", ",")
+
+    def test_qstat_bf_dsv_comma(self):
+        """
+        test qstat outputs server info in dsv format with comma as delimiter
+        """
+        self.parse_dsv(None, "server", ",")
+
+    def test_qstat_qf_dsv_comma(self):
+        """
+        test qstat outputs queue info in dsv format with comma as delimiter
+        """
+        self.parse_dsv(None, "queue", ",")
+
+    def test_qstat_dsv_string(self):
+        """
+        test qstat outputs job info in dsv format with string as delimiter
+        """
+        j = Job(TEST_USER)
+        j.set_sleep_time(10)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': "R"}, id=jid)
+        self.parse_dsv(jid, "job", "QWERTY")
+
+    def test_qstat_bf_dsv_string(self):
+        """
+        test qstat outputs server info in dsv format with string as delimiter
+        """
+        self.parse_dsv(None, "server", "QWERTY")
+
+    def test_qstat_qf_dsv_string(self):
+        """
+        test qstat outputs queue info in dsv format with string as delimiter
+        """
+        self.parse_dsv(None, "queue", "QWERTY")
+
+    def test_oneline_dsv(self):
+        """
+        submit a single job and check the no of attributes parsed from dsv
+        is equal to the one parsed from one line output.
+        """
+        j = Job(TEST_USER)
+        j.set_sleep_time(10)
+        jid = self.server.submit(j)
+        time.sleep(1)
+        qstat_cmd = os.path.join(
+            self.server.pbs_conf['PBS_EXEC'], 'bin', 'qstat')
+        [qstat_dsv_script, qstat_dsv_out, qstat_oneline_script,
+         qstat_oneline_out] = [DshUtils().create_temp_file() for _ in range(4)]
+        f = open(qstat_dsv_script, 'w')
+        f.write(qstat_cmd + ' -f -F dsv ' + str(jid) + ' > ' + qstat_dsv_out)
+        f.close()
+        run_script = "sh " + qstat_dsv_script
+        dsv_ret = self.du.run_cmd(
+            self.server.hostname,
+            cmd=run_script)
+        f = open(qstat_dsv_out, 'r')
+        dsv_out = f.read()
+        f.close()
+        dsv_attr_count = len(dsv_out.replace("\|", "").split("|"))
+        f = open(qstat_oneline_script, 'w')
+        f.write(qstat_cmd + ' -f -w ' + str(jid) + ' > ' + qstat_oneline_out)
+        f.close()
+        run_script = 'sh ' + qstat_oneline_script
+        oneline_ret = self.du.run_cmd(
+            self.server.hostname, cmd=run_script)
+        oneline_attr_count = sum(1 for line in open(
+            qstat_oneline_out) if not line.isspace())
+        map(os.remove, [qstat_dsv_script, qstat_dsv_out,
+                        qstat_oneline_script, qstat_oneline_out])
+        self.assertEqual(dsv_attr_count, oneline_attr_count)
+
+    def test_json(self):
+        """
+        Check whether the qstat json output can be parsed using
+        python json module
+        """
+        j = Job(TEST_USER)
+        j.set_sleep_time(10)
+        jid = self.server.submit(j)
+        [qstat_json_script, qstat_json_out] = [DshUtils().create_temp_file()
+                                               for _ in range(2)]
+        qstat_cmd = os.path.join(
+            self.server.pbs_conf['PBS_EXEC'], 'bin', 'qstat')
+        f = open(qstat_json_script, 'w')
+        f.write(qstat_cmd + ' -f -F json ' + str(jid) + ' > ' + qstat_json_out)
+        f.close()
+        self.du.chmod(path=qstat_json_script, mode=0o755)
+        run_script = 'sh ' + qstat_json_script
+        json_ret = self.du.run_cmd(
+            self.server.hostname, cmd=run_script)
+        data = open(qstat_json_out, 'r').read()
+        map(os.remove, [qstat_json_script, qstat_json_out])
+        try:
+            json_data = json.loads(data)
+        except:
+            self.assertTrue(False)
+
+    def test_qstat_tag(self):
+        """
+        Test <jsdl-hpcpa:Executable> tag is dispalyed with "Executable"
+        while doing qstat -f
+        """
+        ret = True
+        j = Job(TEST_USER)
+        j.set_sleep_time(10)
+        jid = self.server.submit(j)
+        qstat_cmd = os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin',
+                                 'qstat') + ' -f ' + str(jid)
+        ret = self.du.run_cmd(self.server.hostname, cmd=qstat_cmd, sudo=True)
+        if -1 != str(ret).find('Executable'):
+            if -1 == str(ret).find('<jsdl-hpcpa:Executable>'):
+                ret = False
+        self.assertTrue(ret)
 
     @tags('smoke')
     def test_qstat_json_valid(self):
