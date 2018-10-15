@@ -7140,9 +7140,7 @@ set_nodes(void *pobj, int objtype, char *execvnod_in, char **execvnod_out, char 
 					}
 					else {
 						resv_setResvState(presv, RESV_DEGRADED, RESV_DEGRADED);
-						free(phowl);
-						free(execvncopy);
-						return (PBSE_BAD_NODE_STATE);
+						set_resv_retry(presv, time_now+10);
 					}
 				}
                         }
