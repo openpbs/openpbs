@@ -123,7 +123,8 @@ static struct libcsa_support {
 	{ "PP7", "SLES11", "ia64", "libcsa.so.4", "libjob.so.2"},
 	{ "---", "SLES10", "x86_64", "libcsa.so.1", "libjob.so"},
 	{ "---", "SLES11", "x86_64", "libcsa.so.1", "libjob.so"},
-	{ "---", "SLES12", "x86_64", "libcsa.so.1", "libjob.so.0"}
+	{ "---", "SLES12", "x86_64", "libcsa.so.1", "libjob.so.0"},
+	{ "---", "SLES12", "aarch64", "libcsa.so.1", "libjob.so.0"}
 };
 
 /**
