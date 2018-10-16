@@ -564,7 +564,7 @@ class TestNodeBuckets(TestFunctional):
         """
         a = {'node_group_key': 'shape', 'node_group_enable': 'True',
              'scheduling': 'False'}
-        self.server.manager(MGR_CMD_SET, SERVER, a)
+        self.server.manager(MGR_CMD_SET, SERVER, a, expect=True)
 
         chunk = '1430:ncpus=1'
         a = {'Resource_List.select': chunk,
