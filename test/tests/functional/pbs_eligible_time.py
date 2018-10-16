@@ -36,6 +36,7 @@
 # trademark licensing policies.
 
 from tests.functional import *
+from ptl.utils.pbs_logutils import PBSLogUtils
 
 
 class TestEligibleTime(TestFunctional):
@@ -76,6 +77,7 @@ class TestEligibleTime(TestFunctional):
         Test that a job array switches from accruing eligible time
         to ineligible time when its last subjob starts running
         """
+        logutils = PBSLogUtils()
         a = {'resources_available.ncpus': 2}
         self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
 
@@ -90,21 +92,33 @@ class TestEligibleTime(TestFunctional):
         sjid2 = jid_short + '[2]'
         sjid3 = jid_short + '[3]'
 
+        # Capture the time stamp when accrue type changed to
+        # eligible time
+        msg1 = jid + ";Accrue type has changed to eligible_time"
+        m1 = self.server.log_match(msg1)
+        t1 = logutils.convert_date_time(m1[1].split(';')[0])
+
         self.server.expect(JOB, {ATTR_state: 'R'}, id=sjid1, extend='t')
         self.server.expect(JOB, {ATTR_state: 'R'}, id=sjid2, extend='t')
         self.server.expect(JOB, {ATTR_state: 'Q'}, id=sjid3, extend='t')
+
         # accrue_type = 2 is eligible_time
         self.server.expect(JOB, {'accrue_type': 2}, id=jid)
 
-        self.logger.info("Sleeping 20s till subjobs end")
-        time.sleep(20)
-        self.server.expect(JOB, {ATTR_state: 'R'}, id=sjid3, extend='t')
+        self.logger.info("subjobs 1 and 2 finished; subjob 3 must run now")
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=sjid3,
+                           extend='t', offset=20)
         self.server.expect(JOB, {'accrue_type': 1}, id=jid)
 
-        # The job array has [] in its ID.
-        # These are regexp, so they need to be escaped.
-        jid_esp = jid.replace('[', '\[').replace(']', '\]')
-        m = jid_esp + ";Accrue type has changed to ineligible_time, "
-        m += "previous accrue type was eligible_time for 2[0-5] secs, "
-        m += "total eligible_time=00:00:2[0-5]"
-        self.server.log_match(m, regexp=True)
+        # Capture the time stamp when accrue type changed to
+        # ineligible time
+        msg2 = jid + ";Accrue type has changed to ineligible_time"
+        m2 = self.server.log_match(msg2)
+        t2 = logutils.convert_date_time(m2[1].split(';')[0])
+        eligible_time = t2 - t1
+
+        m = jid + ";Accrue type has changed to ineligible_time, "
+        m += "previous accrue type was eligible_time"
+        m += " for %d secs, " % eligible_time
+        m += "total eligible_time=00:00:%d" % eligible_time
+        self.server.log_match(m)
