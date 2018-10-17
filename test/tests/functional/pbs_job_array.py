@@ -326,11 +326,11 @@ class TestJobArray(TestFunctional):
         j_id = self.server.submit(j)
         subjid_1 = j.create_subjob_id(j_id, 1)
         subjid_2 = j.create_subjob_id(j_id, 2)
-        self.server.expect(JOB, {'comment': (
-            MATCH_RE, 'Job run at.*and finished')}, subjid_1, extend='x')
         self.server.delete(subjid_2, extend='force')
         self.server.expect(
             JOB, {'comment': (MATCH_RE, 'terminated')}, subjid_2, extend='x')
+        self.server.expect(JOB, {'comment': (
+            MATCH_RE, 'Job run at.*and finished')}, subjid_1, extend='x')
         self.kill_and_restart_svr()
         self.server.expect(JOB, {'comment': (
             MATCH_RE, 'Job run at.*and finished')}, subjid_1, extend='x',
