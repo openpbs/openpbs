@@ -42,6 +42,7 @@
 #include <pbs_version.h>
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 #include "cmds.h"
 #include "pbs_ifl.h"
@@ -100,7 +101,7 @@ display_single_reservation(struct batch_status *resv, int how)
 			else if (strcmp(attrp->name, ATTR_resv_end) == 0)
 				resv_end = attrp->value;
 			else if (strcmp(attrp->name, ATTR_resv_duration) == 0)
-				resv_duration = atoi(attrp->value);
+				resv_duration = strtol(attrp->value, NULL, 10);
 			else if (strcmp(attrp->name, ATTR_resv_state) == 0)
 				resv_state = convert_resv_state(attrp->value, 0);/*short state str*/
 #ifdef NAS /* localmod 075 */

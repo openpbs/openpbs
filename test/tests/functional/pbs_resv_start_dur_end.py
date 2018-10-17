@@ -140,3 +140,22 @@ class TestReservationRequests(TestFunctional):
 
         a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
         self.server.expect(RESV, a, id=rid)
+
+    def test_rstat_longterm_resv(self):
+        """
+        Test to submit a reservation, where duration > INT_MAX.
+        Check whether rstat displaying negative number.
+        """
+        now = int(time.time())
+        a = {'Resource_List.select': '1:ncpus=1',
+             'reserve_start': now + 3600,
+             'reserve_end': now + 4294970895}
+        r = Reservation(TEST_USER, attrs=a)
+        rid = self.server.submit(r)
+        a = {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')}
+        self.server.expect(RESV, a, id=rid)
+
+        out = self.server.status(RESV, 'reserve_duration', id=rid)[0][
+            'reserve_duration']
+        dur = long(out)
+        self.assertTrue(dur > 0, 'Duration ' + str(dur) + 'is negative.')
