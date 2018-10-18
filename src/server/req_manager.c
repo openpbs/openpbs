@@ -742,7 +742,7 @@ unset_indirect(resource *presc, attribute_def *pdef, int limit, char *name, void
 		return;
 
 	pnode = (struct pbsnode *)pobj;
-	(void)set_clear_target(pnode, presc, ND_ATR_ResourceAvail, 0);
+	(void)fix_indirect_resc_targets(pnode, presc, ND_ATR_ResourceAvail, 0);
 	free_str(&presc->rs_value);
 
 	/* Now,  if and only if the above attrbute was "resources_available" */
@@ -760,7 +760,7 @@ unset_indirect(resource *presc, attribute_def *pdef, int limit, char *name, void
 	presc = find_resc_entry(pattr, prdef);
 	if (presc) {
 		if (presc->rs_value.at_flags & ATR_VFLAG_INDIRECT) {
-			(void)set_clear_target(pnode, presc, ND_ATR_ResourceAssn, 0);
+			(void)fix_indirect_resc_targets(pnode, presc, ND_ATR_ResourceAssn, 0);
 			free_str(&presc->rs_value);
 		}
 	}

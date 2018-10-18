@@ -77,7 +77,7 @@
  *	delete_a_subnode()		-	mark a (last) single subnode entry as deleted
  *	mod_node_ncpus()		-	when resources_available.ncpus changes, need to update the number of subnodes,
  *								 creating or deleting as required
- *	set_clear_target()		-	set or clear ATR_VFLAG_TARGET flag in a target resource "index"
+ *	fix_indirect_resc_targets()	-	set or clear ATR_VFLAG_TARGET flag in a target resource "index"
  *								is the index into the node's attribute array.
  *	indirect_target_check()	-	called via a work task to (re)set ATR_VFLAG_TARGET
  *									in any resource which is the target of another indirect resource.
@@ -532,7 +532,8 @@ initialize_pbsnode(struct pbsnode *pnode, char *pname, int ntype)
 	/* or  ATR_DFLAG_ANASSN set in the resource definition          */
 
 	for (prd = svr_resc_def; prd; prd = prd->rs_next) {
-		if (prd->rs_flags & (ATR_DFLAG_FNASSN |  ATR_DFLAG_ANASSN)) {
+		if ((prd->rs_flags & (ATR_DFLAG_FNASSN | ATR_DFLAG_ANASSN)) &&
+									(prd->rs_flags & ATR_DFLAG_MOM)) {
 			presc = add_resource_entry(pat2, prd);
 			presc->rs_value.at_flags = ATR_VFLAG_SET |
 				ATR_VFLAG_MODCACHE;
@@ -1747,9 +1748,12 @@ mod_node_ncpus(struct pbsnode *pnode, long ncpus, int actmode)
 
 /**
  * @brief
- * 		set_clear_target - set or clear ATR_VFLAG_TARGET flag in a target resource
- *		"index" is the index into the node's attribute array (which attr).
- *		either ND_ATR__ResourceAvail or ND_ATR_ResourceAssn
+ * 		fix_indirect_resc_targets - set or clear ATR_VFLAG_TARGET flag in
+ * 		a target resource "index" is the index into the node's attribute
+ * 		array (which attr). If invoked with ND_ATR__ResourceAvail or 
+ * 		ND_ATR_ResourceAssn, the target flag is applied on both. We need
+ * 		to do this as the check for target flag in fix_indirectness relies
+ * 		on resources_assigned as resources_available is already got over-written.
  *
  * @param[out]	psourcend	- Vnode structure
  * @param[in]	psourcerc	- target resource
@@ -1758,10 +1762,10 @@ mod_node_ncpus(struct pbsnode *pnode, long ncpus, int actmode)
  *
  * @return	int
  * @retval	-1	- error
- * @retval	-	- success
+ * @retval	0	- success
  */
 int
-set_clear_target(struct pbsnode *psourcend, resource *psourcerc, int index, int set)
+fix_indirect_resc_targets(struct pbsnode *psourcend, resource *psourcerc, int index, int set)
 {
 	char		*nname;
 	char		*pn;
@@ -1796,7 +1800,29 @@ set_clear_target(struct pbsnode *psourcend, resource *psourcerc, int index, int 
 			ptargetrc->rs_value.at_flags |= ATR_VFLAG_TARGET;
 		else
 			ptargetrc->rs_value.at_flags &= ~ATR_VFLAG_TARGET;
+
+		if (index == ND_ATR_ResourceAvail)
+			index = ND_ATR_ResourceAssn;
+		else
+			index = ND_ATR_ResourceAvail;
+
+		ptargetrc = find_resc_entry(&pnode->nd_attr[index], psourcerc->rs_defin);
+		if (!ptargetrc) {
+			/* For unset if the avail/assign counterpart is null, just return without creating the rescource.
+			* This happens only during node clean-up stage */
+			if (!set || index == ND_ATR_ResourceAvail)
+				return 0;
+			ptargetrc = add_resource_entry(&pnode->nd_attr[index], psourcerc->rs_defin);
+			if (!ptargetrc)
+				return PBSE_SYSTEM;
+		}
+
+		if (set)
+			ptargetrc->rs_value.at_flags |= ATR_VFLAG_TARGET;
+		else
+			ptargetrc->rs_value.at_flags &= ~ATR_VFLAG_TARGET;
 	}
+
 	return 0;
 }
 
@@ -1835,7 +1861,7 @@ indirect_target_check(struct work_task *ptask)
 				presc = (resource *)GET_NEXT(presc->rs_link)) {
 
 				if (presc->rs_value.at_flags & ATR_VFLAG_INDIRECT) {
-					set_clear_target(pnode, presc, (int)ND_ATR_ResourceAvail, 1);
+					fix_indirect_resc_targets(pnode, presc, (int)ND_ATR_ResourceAvail, 1);
 				}
 			}
 		}
@@ -1870,11 +1896,11 @@ int
 fix_indirectness(resource *presc, struct pbsnode *pnode, int doit)
 {
 	int		     consumable;
-	resource            *porignalrc;	/* original before change */
+	resource            *presc_avail;	/* resource available */
+	resource            *presc_assn;	/* resource assigned  */
 	struct pbssubn	    *psn;
 	struct pbsnode      *ptargetnd;		/* target node		  */
 	resource            *ptargetrc;		/* target resource avail  */
-	resource            *ptargetan;		/* target resource assigned  */
 	struct resource_def *prdef;
 	int		     recover_ok;
 	int		     run_safety_check = 0;
@@ -1883,7 +1909,8 @@ fix_indirectness(resource *presc, struct pbsnode *pnode, int doit)
 
 	recover_ok = (server.sv_attr[(int)SRV_ATR_State].at_val.at_long == SV_STATE_INIT);	/* if true, then recoverying and targets may not yet be there */
 	consumable = prdef->rs_flags & (ATR_DFLAG_ANASSN | ATR_DFLAG_FNASSN);
-	porignalrc = find_resc_entry(&pnode->nd_attr[(int)ND_ATR_ResourceAvail], prdef);
+	presc_avail = find_resc_entry(&pnode->nd_attr[(int)ND_ATR_ResourceAvail], prdef);
+	presc_assn = find_resc_entry(&pnode->nd_attr[(int)ND_ATR_ResourceAssn], prdef);
 
 	if (doit == 0) {	/* check for validity only this pass */
 
@@ -1898,9 +1925,9 @@ fix_indirectness(resource *presc, struct pbsnode *pnode, int doit)
 			/* setting this resource to be indirect, make serveral checks */
 
 			/* this vnode may not be a target of another indirect */
-			if (porignalrc) {
-				if (porignalrc->rs_value.at_flags & ATR_VFLAG_TARGET) {
-					if ((resc_in_err = strdup(porignalrc->rs_defin->rs_name)) == NULL)
+			if (presc_assn) {
+				if (presc_assn->rs_value.at_flags & ATR_VFLAG_TARGET) {
+					if ((resc_in_err = strdup(presc_assn->rs_defin->rs_name)) == NULL)
 						return PBSE_SYSTEM;
 					return PBSE_INDIRECTHOP;
 				}
@@ -1945,10 +1972,13 @@ fix_indirectness(resource *presc, struct pbsnode *pnode, int doit)
 
 		} else {
 
-			/* new is not indirect, was the original? */
+			/* new is not indirect, was the original?
+			* we are using resource-assigned to identify that the resource
+			* was an indirect resource because attribute's set function has
+			* already changed resources-available */
 
-			if (porignalrc) {
-				if (porignalrc->rs_value.at_flags & ATR_VFLAG_INDIRECT) {
+			if (presc_assn) {
+				if (presc_assn->rs_value.at_flags & ATR_VFLAG_INDIRECT) {
 					/* disallow change if vnode has running jobs */
 					for (psn = pnode->nd_psn; psn; psn = psn->next) {
 						if (psn->jobs != NULL)
@@ -1972,37 +2002,35 @@ fix_indirectness(resource *presc, struct pbsnode *pnode, int doit)
 		 */
 
 		if (presc->rs_value.at_flags & ATR_VFLAG_INDIRECT) {
+			int	rc;
 
 			/* setting to be indirect */
-
-			if (set_clear_target(pnode, presc, (int)ND_ATR_ResourceAvail, 1) == -1)
+			rc = fix_indirect_resc_targets(pnode, presc, (int)ND_ATR_ResourceAvail, 1);
+			if (rc == PBSE_SYSTEM)
+				return rc;
+			else if (rc == -1)
 				run_safety_check = 1;  /* need to set after nodes done */
 
-			/* resource_assigned for resource being changed ... */
-			ptargetan = find_resc_entry(&pnode->nd_attr[(int)ND_ATR_ResourceAssn], prdef);
-			if (consumable && (ptargetan != NULL)) {
-				prdef->rs_free(&ptargetan->rs_value);	/* free first */
-				(void)decode_str(&ptargetan->rs_value, NULL, NULL,
+			if (consumable && (presc_assn != NULL)) {
+				prdef->rs_free(&presc_assn->rs_value);	/* free first */
+				(void)decode_str(&presc_assn->rs_value, NULL, NULL,
 					presc->rs_value.at_val.at_str);
-				ptargetan->rs_value.at_flags |= ATR_VFLAG_INDIRECT;
+				presc_assn->rs_value.at_flags |= ATR_VFLAG_INDIRECT;
 			}
 
-		} else if ((porignalrc != NULL) && (porignalrc->rs_value.at_flags & ATR_VFLAG_INDIRECT)) {
+		} else if (presc_avail && presc_assn && (presc_assn->rs_value.at_flags & ATR_VFLAG_INDIRECT)) {
 			/* unsetting an old indirect reference */
 			/* Clear ATR_VFLAG_TARGET on target vnode */
-			(void)set_clear_target(pnode, porignalrc, (int)ND_ATR_ResourceAvail, 0);
-
-			/* clear ATR_VFLAG_INDIRECT on the resc being changed */
-			free_str(&porignalrc->rs_value);
-			porignalrc->rs_value.at_flags &= ~ATR_VFLAG_INDIRECT;
-			ptargetan = find_resc_entry(&pnode->nd_attr[(int)ND_ATR_ResourceAssn], prdef);		/* resource_assigned for resource being changed ... */
-			if (consumable && (ptargetan != NULL)) {
-				free_str(&ptargetan->rs_value);
-				ptargetan->rs_value.at_flags &= ~ATR_VFLAG_INDIRECT;
+			(void)fix_indirect_resc_targets(pnode, presc_assn, (int)ND_ATR_ResourceAssn, 0);
+			presc_avail->rs_value.at_flags &= ~ATR_VFLAG_INDIRECT;
+			if (consumable) {
+				free_str(&presc_assn->rs_value);
+				prdef->rs_decode(&presc_assn->rs_value, NULL, NULL, NULL);
+				presc_assn->rs_value.at_flags &= ~ATR_VFLAG_INDIRECT;
 			}
-
 			run_safety_check = 1;
 		}
+
 		if (run_safety_check) 	/* double check TARGET bit on targets */
 			(void)set_task(WORK_Immed, 0, indirect_target_check, NULL);
 

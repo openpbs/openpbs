@@ -158,7 +158,7 @@ extern	void	tinsert2(const u_long, const u_long, mominfo_t *, struct tree **);
 extern	void   *tdelete2(const u_long, const u_long, struct tree **);
 extern	void	tfree2(struct tree **rootp);
 #ifdef	_RESOURCE_H
-extern  int  set_clear_target(struct pbsnode *, resource *, int, int);
+extern  int  fix_indirect_resc_targets(struct pbsnode *, resource *, int, int);
 #endif 	/* _RESOURCE_H */
 #endif	/* _PBS_NODES_H */
 
