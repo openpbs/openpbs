@@ -820,7 +820,7 @@ pbs.logmsg(pbs.LOG_DEBUG,\
         time.sleep(5)
 
         # look for the log message
-        self.mom.log_match("list of maintenance_jobs are None", max_attempts=5)
+        self.mom.log_match("list of maintenance_jobs are None")
 
         # admin-suspend jobs
         self.server.sigjob(jid1, 'admin-suspend')
@@ -829,7 +829,7 @@ pbs.logmsg(pbs.LOG_DEBUG,\
         # wait for periodic hook and check mom_log
         time.sleep(5)
         self.mom.log_match("list of maintenance_jobs are %s" %
-                           ((jid1 + "," + jid2),), max_attempts=5)
+                           ((jid1 + "," + jid2),))
 
         # admin-resume job1
         self.server.sigjob(jid1, 'admin-resume')
@@ -837,7 +837,7 @@ pbs.logmsg(pbs.LOG_DEBUG,\
         # wait for periodic hook and check mom_log
         time.sleep(5)
         self.mom.log_match(
-            "list of maintenance_jobs are %s" % (jid2,), max_attempts=5)
+            "list of maintenance_jobs are %s" % (jid2,))
 
     def test_offline(self):
         """
