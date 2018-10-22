@@ -241,39 +241,12 @@ static int
 tcp_read(int fd)
 {
 	int i;
-	int	try_decrypt_buf = 0;
 	struct	pollfd pollfds[1];
 	int	timeout;
 	struct	tcpdisbuf	*tp;
 	char   *tmcp;
 
 	tp = tcp_get_readbuf(fd);
-
-#if defined(PBS_SECURITY) && (PBS_SECURITY == KCRYPT )
-
-	/* In a case where an intermediate decryption buffer
-	 * is being used (e.g. Kerberized PBS with encryption) the
-	 * "read" into our tcp buffer area is being satisfied outof
-	 * this internal buffer.  For this situation reading begins
-	 * with any unread data residing in the CS library's internal
-	 * buffer area.  Only if that data source is exhausted early
-	 * will the CS library code sequence to reading and decrypting
-	 * data from the socket, placing it in the intermediate
-	 * decryption buffer, from where it's subsequently "read".
-	 *
-	 * Because the CS library is organized in this manner a
-	 * real possibility exists to mistakenly wait for more data
-	 * to be present on the socket, when in fact all the data has
-	 * been collected and is available in the decryption buffer.
-	 * The clause that follows attempts to recognize this case.
-	 */
-
-	if (tp->tdis_eod && tp->tdis_eod == tp->tdis_bufsize) {
-
-		/* don't wait, data probably in decryption buffer */
-		try_decrypt_buf = 1;
-	}
-#endif
 
 	/* compact (move to the front) the uncommitted data */
 
@@ -301,10 +274,7 @@ tcp_read(int fd)
 	 * deliver promptly
 	 */
 	do {
-		if (try_decrypt_buf)
-			timeout = 0;
-		else
-			timeout = pbs_tcp_timeout;
+		timeout = pbs_tcp_timeout;
 
 		pollfds[0].fd = fd;
 		pollfds[0].events = POLLIN;
@@ -315,7 +285,7 @@ tcp_read(int fd)
 			break;
 	} while ((i == -1) && (errno == EINTR));
 
-	if ((i == 0 && try_decrypt_buf == 0) || (i < 0))
+	if ((i == 0) || (i < 0))
 		return i;
 
 	while ((i = CS_read(fd, &tp->tdis_thebuf[tp->tdis_eod],

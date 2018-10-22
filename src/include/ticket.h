@@ -50,27 +50,15 @@ extern "C" {
 
 #define	PBS_CREDVER		1
 #define	PBS_CREDTYPE_NONE	0
-#define	PBS_CREDTYPE_DCE_KRB5	1
-#define	PBS_CREDTYPE_GRIDPROXY	2
+#define	PBS_CREDTYPE_DCE_KRB5	1 /* Deprecated */
+#define	PBS_CREDTYPE_GRIDPROXY	2 /* Deprecated */
 #define PBS_CREDTYPE_AES	3
 
 #define	PBS_GC_BATREQ		100
 #define	PBS_GC_CPYFILE		101
 #define	PBS_GC_EXEC		102
 
-#define	PBS_CREDNAME_DCE_KRB5	"dce"
-#define	PBS_CREDNAME_KRB5	"krb5"
-#define	PBS_CREDNAME_GRIDPROXY	"gridproxy"
 #define PBS_CREDNAME_AES	"aes"
-
-#ifdef	PBS_CRED_DCE_KRB5
-#include <krb5.h>
-#endif	/* PBS_CRED_DCE_KRB5 */
-
-#ifdef	PBS_CRED_GRIDPROXY
-#include <sslutils.h>
-
-#endif	/* PBS_CRED_GRIDPROXY */
 
 extern int pbs_encrypt_data(char *uncrypted, int *credtype, size_t len, char **crypted, size_t *outlen);
 extern int pbs_decrypt_data(char *crypted, int credtype, size_t len, char **uncrypted, size_t *outlen);

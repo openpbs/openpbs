@@ -48,8 +48,6 @@ extern "C" {
 #endif
 
 #define STD		0	/* standard PBS security (pbs_iff program) */
-#define KAUTH		1	/* kerberized PBS with authentication only */
-#define KCRYPT		2	/* kerberized with authentication, encryption */
 
 #define CS_SUCCESS		0	/* success			*/
 #define CS_FATAL_NOMEM		1	/* memory allocation failure	*/

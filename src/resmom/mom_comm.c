@@ -2310,27 +2310,12 @@ mom_create_cred(job *pjob, char *info, size_t len, int tcp, int con)
 {
 	int	ret = -1;
 	int	type = pjob->ji_extended.ji_ext.ji_credtype;
-	char	*newcred;
-	size_t	newlen;
 
 	DBPRT(("%s: entered\n", __func__))
 	switch (type) {
 
 		case PBS_CREDTYPE_NONE:
 			ret = 0;
-			break;
-
-		case PBS_CREDTYPE_DCE_KRB5:
-			/* create a kerberos credential file */
-			ret = save_kerb_cred(pjob, info, len, tcp, con);
-			break;
-
-		case PBS_CREDTYPE_GRIDPROXY:
-			ret = pbs_decrypt_data(info, PBS_CREDTYPE_AES, len, &newcred, &newlen);
-			if (ret)
-				break;
-			ret = write_cred(pjob, newcred, newlen);
-			free(newcred);
 			break;
 
 		default:

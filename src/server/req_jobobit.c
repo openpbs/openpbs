@@ -549,20 +549,6 @@ mom_comm(job *pjob, void (*func)(struct work_task *))
 	if (pbs_conf.pbs_use_tcp == 1)
 		prot = PROT_RPP;
 
-#if defined(PBS_SECURITY) && ((PBS_SECURITY == KCRYPT ) )
-
-	/* The following is being done to keep the initialization
-	 * vector for the connection's security context
-	 * in sync with that being used by the other side.
-	 */
-
-	if (pjob->ji_momhandle != -1 && pjob->ji_mom_prot == PROT_TCP) {
-		svr_disconnect(pjob->ji_momhandle);
-		pjob->ji_momhandle = -1;
-		pjob->ji_mom_prot = PROT_INVALID;
-	}
-#endif
-
 	if (pjob->ji_momhandle < 0) {
 
 		/* need to make connection, called from pbsd_init() */

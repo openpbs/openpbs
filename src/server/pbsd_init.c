@@ -132,9 +132,6 @@
 
 /* global Data Items */
 
-#ifdef	PBS_CRED_GRIDPROXY
-des_cblock	pbs_sisterkey[NUM_KEYBLK];
-#endif
 extern char	*msg_startup3;
 extern char     *msg_daemonname;
 extern char	*msg_init_abt;
@@ -760,12 +757,6 @@ pbsd_init(int type)
 	if (fd != -1)
 		close(fd);
 
-	/* 4B. Create a random key to share with your convent of MOM's */
-#ifdef	PBS_CRED_GRIDPROXY
-	for (i=0; i<NUM_KEYBLK; i++)
-		(void)des_random_key(&pbs_sisterkey[i]);
-#endif
-
 	(void)svr_attr_def[(int)SRV_ATR_version].at_decode(
 		&server.sv_attr[(int)SRV_ATR_version], 0, 0,
 		PBS_VERSION);
@@ -988,8 +979,6 @@ pbsd_init(int type)
 				}
 				continue;
 			}
-
-			renew_credential(pjob);
 
 			/*chk if job belongs to a reservation or
 			 *is a reservation job.  If this is true

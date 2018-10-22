@@ -308,31 +308,6 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\src\lib\Libsec\cs.c"
-				>
-				<FileConfiguration
-					Name="Release|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						Optimization="2"
-						AdditionalIncludeDirectories=""
-						PreprocessorDefinitions=""
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						Optimization="0"
-						AdditionalIncludeDirectories=""
-						PreprocessorDefinitions=""
-						BasicRuntimeChecks="3"
-					/>
-				</FileConfiguration>
-			</File>
-			<File
 				RelativePath="..\..\src\lib\Libsec\cs_standard.c"
 				>
 				<FileConfiguration

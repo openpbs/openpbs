@@ -556,11 +556,6 @@ dis_request_read(int sfds, struct batch_request *request)
 			rc = decode_DIS_UserMigrate(sfds, request);
 			break;
 
-		case PBS_BATCH_GSS_Context:
-			request->rq_ind.rq_gssdata.rq_data = disrcs(sfds,
-				(size_t *)&request->rq_ind.rq_gssdata.rq_size, &rc);
-			break;
-
 		case PBS_BATCH_jobscript:
 		case PBS_BATCH_MvJobFile:
 			rc = decode_DIS_JobFile(sfds, request);

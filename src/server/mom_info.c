@@ -391,18 +391,11 @@ create_svrmom_entry(char *hostname, unsigned int port, unsigned long *pul)
 		delete_mom_entry(pmom);
 		return NULL;
 	}
-#ifdef PBS_CRED_GRIDPROXY
-	psvrmom->msr_gsscontext = GSS_C_NO_CONTEXT;
-#endif /* PBS_CRED_GRIDPROXY */
 	pmom->mi_data = psvrmom;	/* must be done before call tinsert2 */
 	while (*pul) {
 		tinsert2(*pul, port, pmom, &ipaddrs);
 		pul++;
 	}
-
-#ifdef PBS_CRED_GRIDPROXY
-	psvrmom->msr_gsscontext = GSS_C_NO_CONTEXT;
-#endif	/* PBS_CRED_GRIDPROXY */
 
 	return pmom;
 }

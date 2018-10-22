@@ -690,12 +690,6 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 	int	newsub;
 	long	tempval;
 	char	script_name[MAXPATHLEN+1];
-	int 		gridproxy_cred = 0;
-
-#ifdef  PBS_CRED_GRIDPROXY
-	if (jobp->ji_extended.ji_ext.ji_credtype == PBS_CREDTYPE_GRIDPROXY)
-		gridproxy_cred = 1;
-#endif
 
 	/* if job has a script read it from database */
 	if (jobp->ji_qs.ji_svrflags & JOB_SVFLG_SCRIPT) {
@@ -710,7 +704,7 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 		}
 	}
 
-	if (pbs_conf.pbs_use_tcp == 1 && move_type == MOVE_TYPE_Exec && gridproxy_cred == 0 && small_job_files(jobp)) {
+	if (pbs_conf.pbs_use_tcp == 1 && move_type == MOVE_TYPE_Exec && small_job_files(jobp)) {
 		return (send_job_exec(jobp, hostaddr, port, preq));
 	}
 
@@ -897,13 +891,7 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 	struct  hostent *hp;
 	struct in_addr   addr;
 	long		 tempval;
-	int 		gridproxy_cred = 0;
 	int 		rpp = 0;
-
-#ifdef  PBS_CRED_GRIDPROXY
-	if (jobp->ji_extended.ji_ext.ji_credtype == PBS_CREDTYPE_GRIDPROXY)
-		gridproxy_cred = 1;
-#endif
 
 	/* if job has a script read it from database */
 	if (jobp->ji_qs.ji_svrflags & JOB_SVFLG_SCRIPT) {
@@ -917,7 +905,7 @@ send_job(job *jobp, pbs_net_t hostaddr, int port, int move_type,
 		}
 	}
 
-	if (pbs_conf.pbs_use_tcp == 1 && move_type == MOVE_TYPE_Exec && gridproxy_cred == 0 && small_job_files(jobp)) {
+	if (pbs_conf.pbs_use_tcp == 1 && move_type == MOVE_TYPE_Exec && small_job_files(jobp)) {
 		return (send_job_exec(jobp, hostaddr, port, preq));
 	}
 

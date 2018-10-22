@@ -72,7 +72,6 @@
  * 	stream_eof()
  * 	mark_nodes_unknown()
  * 	ping_nodes()
- * 	setup_gss()
  * 	setup_pnames()
  * 	set_no_node_grouping()
  * 	cross_link_mom_vnode()
@@ -1113,7 +1112,7 @@ mom_ping_need(mominfo_t *pmom, int force_hello, int once)
 	int             com;
 
 	if (psvrmom->msr_state & INUSE_INIT) {
-		/* Mom has been sent IS_CLUSTER_KEY/IS_HOST_TO_VNODE */
+		/* Mom has been sent IS_HOST_TO_VNODE */
 		/* Ignore her until she replies or it times out      */
 
 		if (time_now < (psvrmom->msr_timeinit + 2 * svr_ping_rate))
@@ -3271,104 +3270,6 @@ ping_nodes(struct work_task *ptask)
 
 /**
  * @brief
- * 		Do a GSS handshake exchange with the plan of using gss_wrap to
- *		send a random key to the MOM.
- *
- * @param[in]	node	-	MOM
- * @param[in]	inbuf	-	value to the gss_buffer_desc structure
- * @param[in]	inlen	-	length of gss_buffer_desc structure
- *
- * @return	void
- */
-void
-setup_gss(mominfo_t *node, char *inbuf, size_t inlen)
-{
-#ifdef	PBS_CRED_GRIDPROXY
-	OM_uint32		major, minor;
-	gss_buffer_desc		input, output;
-	OM_uint32		flag = GSS_C_CONF_FLAG;
-	OM_uint32		life;
-	int			ret;
-	mom_svrinfo_t	       *psvrmom = (mom_svrinfo_t *)(node->mi_data);
-
-	input.length = inlen;
-	input.value = inbuf;
-	output.length = 0;
-	output.value = NULL;
-	if (inbuf == NULL)
-		psvrmom->msr_gsscontext = GSS_C_NO_CONTEXT;
-
-	major = gss_init_sec_context(&minor,
-		GSS_C_NO_CREDENTIAL, &psvrmom->msr_gsscontext,
-		GSS_C_NO_NAME, GSS_C_NO_OID, flag, 0,
-		GSS_C_NO_CHANNEL_BINDINGS, &input, NULL,
-		&output, NULL, NULL);
-
-	if (output.length > 0) {
-		ret = is_compose(psvrmom->msr_stream, IS_GSS_HANDSHAKE);
-		if (ret != DIS_SUCCESS)
-			goto err;
-		ret = diswcs(psvrmom->msr_stream, output.value, output.length);
-		if (ret != DIS_SUCCESS)
-			goto err;
-		rpp_flush(psvrmom->msr_stream);
-		(void)gss_release_buffer(&minor, &output);
-	}
-	if (GSS_ERROR(major)) {
-		char	*msg = pbs_gss_error("gss_accept_sec_context",
-			major, minor);
-		log_err(-1, __func__, msg);
-		free(msg);
-		msg = NULL;
-		goto err;
-	}
-	if (major & GSS_S_CONTINUE_NEEDED)
-		return;
-	if (psvrmom->msr_gsscontext == GSS_C_NO_CONTEXT)
-		goto err;
-
-	input.value = pbs_sisterkey;
-	input.length = sizeof(pbs_sisterkey);
-	output.length = 0;
-	major = gss_seal(&minor, psvrmom->msr_gsscontext, 1, GSS_C_QOP_DEFAULT,
-		&input, &ret, &output);
-	if (major != GSS_S_COMPLETE) {
-		char	*msg = pbs_gss_error("gss_seal", major, minor);
-
-		log_err(-1, __func__, msg);
-		free(msg);
-		msg = NULL;
-		goto err;
-	}
-	if (ret == 0) {
-		log_err(-1, __func__, "confidentiality not available");
-		goto err;
-	}
-
-	ret = is_compose(psvrmom->msr_stream, IS_CLUSTER_KEY);
-	if (ret != DIS_SUCCESS)
-		goto err;
-	ret = diswcs(psvrmom->msr_stream, output.value, output.length);
-	if (ret != DIS_SUCCESS)
-		goto err;
-	rpp_flush(psvrmom->msr_stream);
-	(void)gss_release_buffer(&minor, &output);
-	pbs_freecontext(&psvrmom->msr_gsscontext);
-	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_INFO,
-		node->mi_host, "cluster key sent");
-	return;
-
-err:
-	sprintf(log_buffer, "context could not be established with %s",
-		node->mi_host);
-	log_err(-1, __func__, log_buffer);
-	pbs_freecontext(&psvrmom->msr_gsscontext);
-#endif
-	return;
-}
-
-/**
- * @brief
  * 		Add placement set names to the Server's pnames attribute.
  * @see
  * 		update2_to_vnode and is_request
@@ -4528,7 +4429,6 @@ is_request(int stream, int version)
 	int			 stm;
 	char			restartmsg[]="Mom restarted on host";
 	char			*val;
-	size_t			len;
 	unsigned long		 oldstate;
 	vnl_t			*vnlp;			/* vnode list */
 	static char		node_up[] = "node up";
@@ -4738,7 +4638,6 @@ found:
 					LOG_NOTICE, pmom->mi_host, node_up);
 			}
 
-			setup_gss(pmom, NULL, 0);       /* initial GSS handshake */
 			break;
 
 		case IS_UPDATE:
@@ -5167,16 +5066,6 @@ found:
 		case IS_IDLE:
 			DBPRT(("%s: IS_IDLE\n", __func__))
 			recv_wk_job_idle(stream);
-			break;
-
-		case IS_GSS_HANDSHAKE:
-			DBPRT(("%s: IS_GSS_HANDSHAKE\n", __func__))
-			val = disrcs(stream, (size_t *)&len, &ret);
-			if (ret != DIS_SUCCESS)
-				goto err;
-			setup_gss(pmom, val, len);
-			free(val);
-			val = NULL;
 			break;
 
 		case IS_MOM_READY:	/* was IS_RECV_VMAP */

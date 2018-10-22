@@ -1060,9 +1060,6 @@ verify_value_credname(int batch_request, int parent_object, int cmd,
 {
 	static const char *cred_list[] = {
 		PBS_CREDNAME_AES,
-		PBS_CREDNAME_DCE_KRB5,
-		PBS_CREDNAME_KRB5,
-		PBS_CREDNAME_GRIDPROXY,
 		NULL /* must be last */
 	};
 

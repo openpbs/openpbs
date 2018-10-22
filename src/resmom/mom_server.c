@@ -132,11 +132,6 @@ extern	char	*path_hooks;
 extern	unsigned long	hooks_rescdef_checksum;
 extern	int	report_hook_checksums;
 
-#ifdef	PBS_CRED_GRIDPROXY
-gss_ctx_id_t		svr_context = GSS_C_NO_CONTEXT;
-des_cblock		pbs_sisterkey[NUM_KEYBLK];
-#endif
-
 /*
  * Tree search generalized from Knuth (6.2.2) Algorithm T just like
  * the AT&T man page says.
@@ -283,114 +278,6 @@ free_vnodemap(void)
 			}
 		}
 	}
-}
-
-/**
- * @brief
- *	Process the GSS handshake coming from the server.
- *
- * @param[in] data - data from server
- * @param[in] len  - length of data
- *
- * @return Void
- *
- */
-void
-setup_gss(char *data, size_t len)
-{
-#ifdef	PBS_CRED_GRIDPROXY
-	OM_uint32		major, minor;
-	gss_buffer_desc		inbuf, outbuf;
-	int			ret;
-
-	if (data == NULL || len == 0) {
-		svr_context = GSS_C_NO_CONTEXT;
-		return;
-	}
-	outbuf.length = 0;
-	outbuf.length = NULL;
-	inbuf.length = len;
-	inbuf.value = data;
-
-	major = gss_accept_sec_context(&minor, &svr_context,
-		GSS_C_NO_CREDENTIAL, &inbuf,
-		GSS_C_NO_CHANNEL_BINDINGS, NULL, NULL,
-		&outbuf, NULL, NULL, NULL);
-	if (GSS_ERROR(major)) {
-		char	*msg = pbs_gss_error("gss_accept_sec_context",
-			major, minor);
-
-		log_err(-1, __func__, msg);
-		free(msg);
-		goto err;
-	}
-
-	if ((major & GSS_S_CONTINUE_NEEDED) == 0) {
-		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_INFO,
-			__func__, "GSS context complete");
-	}
-
-	if (outbuf.length > 0) {
-		ret = is_compose(server_stream, IS_GSS_HANDSHAKE);
-		if (ret != DIS_SUCCESS)
-			goto err;
-		ret = diswcs(server_stream, outbuf.value, outbuf.length);
-		if (ret != DIS_SUCCESS)
-			goto err;
-		rpp_flush(server_stream);
-		(void)gss_release_buffer(&minor, &outbuf);
-	}
-	return;
-
-err:
-	log_err(-1, __func__, "context could not be established with server");
-	pbs_freecontext(&svr_context);
-
-#endif	/* PBS_CRED_GRIDPROXY */
-	return;
-}
-
-/**
- * @brief
- *	Unseal the common server key.
- *
- * @param[in] data - data from server
- * @param[in] len  - length of data
- *
- * @return Void
- *
- */
-void
-unseal_server(char *data, size_t len)
-{
-#ifdef	PBS_CRED_GRIDPROXY
-	gss_buffer_desc		inbuf, outbuf;
-	OM_uint32		major, minor;
-
-	inbuf.length = len;
-	inbuf.value = data;
-	outbuf.length = 0;
-
-	major = gss_unseal(&minor, svr_context, &inbuf, &outbuf, NULL, NULL);
-	if (major != GSS_S_COMPLETE) {
-		char	*msg = pbs_gss_error("gss_unseal", major, minor);
-		log_err(-1, __func__, msg);
-		goto done;
-	}
-	if (outbuf.length != sizeof(pbs_sisterkey)) {
-		sprintf(log_buffer, "bad key size %d", outbuf.length);
-		log_err(-1, __func__, log_buffer);
-		goto done;
-	}
-	memcpy(pbs_sisterkey, outbuf.value, outbuf.length);
-	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER, LOG_INFO,
-		__func__, "Server key received");
-
-done:
-	(void)gss_release_buffer(&minor, &outbuf);
-	pbs_freecontext(&svr_context);
-#endif	/* PBS_CRED_GRIDPROXY */
-	return;
 }
 
 /**
@@ -819,8 +706,6 @@ is_request(int stream, int version)
 	char			*jobid = NULL;
 	struct	sockaddr_in	*addr;
 	void			init_addrs();
-	char			*val;
-	size_t			len;
 	char		 	*hostn;
 	char		 	*vnoden;
 	char		 	*vhost;
@@ -964,7 +849,6 @@ is_request(int stream, int version)
 					(ipaddr & 0x000000ff)))
 				addrinsert(ipaddr);
 			}
-			setup_gss(NULL, 0);
 			if (ret != DIS_EOD)
 				goto err;
 			is_compose(stream, IS_MOM_READY);  /* tell server we're ready */
@@ -1007,7 +891,6 @@ is_request(int stream, int version)
 					DBPRT((" %lu\n", ipdepth))
 				}
 			}
-			setup_gss(NULL, 0);
 			if (ret != DIS_EOD)
 				goto err;
 			is_compose(stream, IS_MOM_READY);  /* tell server we're ready */
@@ -1166,26 +1049,6 @@ is_request(int stream, int version)
 		case IS_SHUTDOWN:
 			DBPRT(("%s: IS_SHUTDOWN\n", __func__))
 			mom_run_state = 0;
-			break;
-
-		case IS_GSS_HANDSHAKE:
-			DBPRT(("%s: IS_GSS_HANDSHAKE\n", __func__))
-			val = disrcs(stream, &len, &ret);
-			if (ret != DIS_SUCCESS)
-				goto err;
-
-			setup_gss(val, len);
-			free(val);
-			break;
-
-		case IS_CLUSTER_KEY:
-			DBPRT(("%s: IS_CLUSTER_KEY\n", __func__))
-			val = disrcs(stream, &len, &ret);
-			if (ret != DIS_SUCCESS)
-				goto err;
-
-			unseal_server(val, len);
-			free(val);
 			break;
 
 		case IS_DISCARD_JOB:

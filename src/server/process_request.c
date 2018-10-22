@@ -51,8 +51,6 @@
  *	of the server.
  *
  * Functions included are:
- *	fwd_tgt_creds()
- *	get_kerb_cred()
  *	pbs_crypt_des()
  *	get_credential()
  *	process_request()
@@ -136,223 +134,6 @@ static void freebr_cpyfile(struct rq_cpyfile *);
 static void freebr_cpyfile_cred(struct rq_cpyfile_cred *);
 static void close_quejob(int sfds);
 
-#ifdef	PBS_CRED_DCE_KRB5
-
-/* helper function: convert flags to necessary KDC options */
-#define flags2options(flags) (flags & KDC_TKT_COMMON_MASK)
-
-/**
- * @brief
- * 		Get a TGT for use at the remote host.
- *
- * @param[in]	context	-	The Kerberos context.
- * @param[in]	auth_context	- Authentication context
- * @param[in]	client	-	Principal to be copied
- * @param[in]	server	-	Server of type krb5_principal
- * @param[in]	cc	-	Credential cache handle
- * @param[out]	outbuf	-	Replay cache data (NULL if not needed)
- *
- * @return	krb5_error_code
- * @retval	0	- success
- * @retval	!=0	- failure
- */
-static
-krb5_error_code
-fwd_tgt_creds(krb5_context context, krb5_auth_context auth_context, krb5_principal client, krb5_principal server, krb5_ccache cc, krb5_data outbuf)
-{
-	krb5_replay_data	replaydata;
-	krb5_data		*scratch = 0;
-	krb5_address		**addrs = 0;
-	krb5_flags		kdcoptions;
-	krb5_error_code		retval;
-	krb5_creds		creds, tgt;
-	krb5_creds		*pcreds;
-	int			free_rhost = 0;
-	char			*rhost;
-
-	memset((char *)&creds, 0, sizeof(creds));
-	memset((char *)&tgt, 0, sizeof(creds));
-
-	if (krb5_princ_type(context, server) != KRB5_NT_SRV_HST)
-		return KRB5_FWD_BAD_PRINCIPAL;
-
-	if (krb5_princ_size(context, server) < 2)
-		return KRB5_CC_BADNAME;
-
-	rhost = malloc(server->data[1].length+1);
-	if (!rhost)
-		return ENOMEM;
-	free_rhost = 1;
-	memcpy(rhost, server->data[1].data, server->data[1].length);
-	rhost[server->data[1].length] = '\0';
-
-	retval = krb5_os_hostaddr(context, rhost, &addrs);
-	if (retval)
-		goto errout;
-
-	if ((retval = krb5_copy_principal(context, client, &creds.client)))
-		goto errout;
-
-	if ((retval = krb5_build_principal_ext(context, &creds.server,
-		client->realm.length,
-		client->realm.data,
-		KRB5_TGS_NAME_SIZE,
-		KRB5_TGS_NAME,
-		client->realm.length,
-		client->realm.data,
-		0)))
-		goto errout;
-
-	/* fetch tgt directly from cache */
-	retval = 	krb5_cc_retrieve_cred(context, cc, KRB5_TC_SUPPORTED_KTYPES,
-		&creds, &tgt);
-	if (retval)
-		goto errout;
-
-	/* tgt->client must be equal to creds.client */
-	if (!krb5_principal_compare(context, tgt.client, creds.client)) {
-		retval = KRB5_PRINC_NOMATCH;
-		goto errout;
-	}
-	if (!tgt.ticket.length) {
-		retval = KRB5_NO_TKT_SUPPLIED;
-		goto errout;
-	}
-
-	kdcoptions = flags2options(tgt.ticket_flags)|
-		KDC_OPT_FORWARDED;
-
-	if ((retval = krb5_get_cred_via_tkt(context, &tgt, kdcoptions,
-		addrs, &creds, &pcreds)))
-		goto errout;
-
-	retval = krb5_mk_1cred(context, auth_context, pcreds,
-		&scratch, &replaydata);
-	krb5_free_creds(context, pcreds);
-
-	if (retval) {
-		if (scratch)
-			krb5_free_data(context, scratch);
-	}
-	else {
-		*outbuf = *scratch;
-		free(scratch);
-	}
-
-errout:
-	if (addrs)
-		krb5_free_addresses(context, addrs);
-	if (free_rhost)
-		free(rhost);
-	krb5_free_cred_contents(context, &creds);
-	krb5_free_cred_contents(context, &tgt);
-
-	return retval;
-}
-#endif	/* PBS_CRED_DCE_KRB5 */
-
-/**
- * @brief
- *		Get a kerberos credential set up to send to a remote host.
- *
- * @param[in]	remote	- server name
- * @param[in]	pjob	- pointer to job structure
- * @param[out]	data	- kerberos credential
- * @param[out]	dsize	- kerberos credential data length
- *
- * @return	int
- * @retval	0	- success
- * @retval	-1	- error
- */
-static int
-get_kerb_cred(char *remote, job *pjob, char **data, size_t *dsize)
-{
-	int			ret = -1;
-#ifdef	PBS_CRED_DCE_KRB5
-	krb5_error_code		err;
-	int			got_auth = 0;
-	char			server_name[512];
-	char			namebuf[MAXPATHLEN+1];
-	krb5_context		ktext = 0;
-	krb5_auth_context	kauth = 0;
-	krb5_ccache		kache = 0;
-	krb5_principal		client = 0;
-	krb5_principal		server = 0;
-	krb5_data		forw_creds;
-	krb5_data		packet;
-	extern char		*path_jobs;
-
-	DBPRT(("%s: entered %s\n", id, remote))
-	memset(&forw_creds, 0, sizeof(forw_creds));
-	memset(&packet, 0, sizeof(packet));
-
-	if ((err = krb5_init_context(&ktext)) != 0) {
-		sprintf(log_buffer,
-			"krb5_init_context(%s)", error_message(err));
-		log_err(-1, __func__, log_buffer);
-		return ret;
-	}
-
-	if ((err = krb5_auth_con_init(ktext, &kauth)) != 0) {
-		sprintf(log_buffer,
-			"krb5_auth_con_init(%s)", error_message(err));
-		log_err(-1, __func__, log_buffer);
-		return ret;
-	}
-	got_auth = 1;
-
-	krb5_auth_con_setflags(ktext, kauth, KRB5_AUTH_CONTEXT_RET_TIME);
-
-	(void)strcpy(namebuf, path_jobs);
-	if (*pjob->ji_qs.ji_fileprefix != '\0')
-		(void)strcat(namebuf, pjob->ji_qs.ji_fileprefix);
-	else
-		(void)strcat(namebuf, pjob->ji_qs.ji_jobid);
-	(void)strcat(namebuf, JOB_CRED_SUFFIX);
-	if ((err = krb5_cc_resolve(ktext, namebuf, &kache)) != 0) {
-		sprintf(log_buffer,
-			"krb5_cc_resolve(%s)", error_message(err));
-		log_err(-1, __func__, log_buffer);
-		goto done;
-	}
-
-	if ((err = krb5_cc_get_principal(ktext, kache, &client)) != 0) {
-		sprintf(log_buffer,
-			"krb5_cc_get_principal(%s)", error_message(err));
-		log_err(-1, __func__, log_buffer);
-		goto done;
-	}
-
-	snprintf(server_name, sizeof(server_name), "host/%s@", remote);
-	strncat(server_name, client->realm.data, client->realm.length);
-	krb5_parse_name(ktext, server_name, &server);
-	server->type = KRB5_NT_SRV_HST;
-
-	if ((err = fwd_tgt_creds(ktext, kauth,
-		client, server, kache, &forw_creds)) != 0) {
-		sprintf(log_buffer, "no usable cred(%s)", error_message(err));
-		log_err(-1, __func__, log_buffer);
-		goto done;
-	}
-
-	*dsize = forw_creds.length;
-	*data = forw_creds.data;
-	ret = 0;
-
-done:
-	if (forw_creds.data && *data != forw_creds.data)
-		free(forw_creds.data);
-	if (client)
-		krb5_free_principal(ktext, client);
-	if (server)
-		krb5_free_principal(ktext, server);
-	if (got_auth)
-		krb5_auth_con_free(ktext, kauth);
-	krb5_free_context(ktext);
-#endif	/* PBS_CRED_DCE_KRB5 */
-	return ret;
-}
-
 /**
  * @brief
  *		Return 1 if there is no credential, 0 if there is and -1 on error.
@@ -373,30 +154,8 @@ int
 get_credential(char *remote, job *jobp, int from, char **data, size_t *dsize)
 {
 	int	ret;
-	int type;
 
 	switch (jobp->ji_extended.ji_ext.ji_credtype) {
-
-		case PBS_CREDTYPE_DCE_KRB5:
-			ret = get_kerb_cred(remote, jobp, data, dsize);
-			break;
-
-		case PBS_CREDTYPE_GRIDPROXY:
-			ret = read_cred(jobp, data, dsize);
-			if (ret)
-				break;
-			if (from != PBS_GC_BATREQ) {	/* need to encrypt */
-				char	*newcred;
-				size_t	newlen;
-
-				ret = pbs_encrypt_data(*data, &type, *dsize, &newcred, &newlen);
-				if (ret)
-					break;
-				free(*data);
-				*data = newcred;
-				*dsize = newlen;
-			}
-			break;
 
 		default:
 
@@ -888,10 +647,6 @@ dispatch_request(int sfds, struct batch_request *request)
 #else
 			req_user_migrate(request);
 #endif	/* PBS_MOM */
-			break;
-
-		case PBS_BATCH_GSS_Context:
-			req_gsscontext(request);
 			break;
 
 		case PBS_BATCH_jobscript:
@@ -1532,10 +1287,6 @@ free_br(struct batch_request *preq)
 		case PBS_BATCH_UserCred:
 			if (preq->rq_ind.rq_usercred.rq_data)
 				(void)free(preq->rq_ind.rq_usercred.rq_data);
-			break;
-		case PBS_BATCH_GSS_Context:
-			if (preq->rq_ind.rq_gssdata.rq_data)
-				free(preq->rq_ind.rq_gssdata.rq_data);
 			break;
 		case PBS_BATCH_jobscript:
 			if (preq->rq_ind.rq_jobfile.rq_data)

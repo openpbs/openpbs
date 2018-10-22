@@ -416,12 +416,11 @@ static char exsbin[][80] = {
 	/* 05 */ "sbin/pbs_mom.cpuset",
 	/* 06 */ "sbin/pbs_mom.standard",
 	/* 07 */ "sbin/pbs_rcp",
-	/* 08 */ "sbin/pbs_renew",
-	/* 09 */ "sbin/pbs_sched",
-	/* 10 */ "sbin/pbs_server",
-	/* 11 */ "sbin/pbsfs",
-	/* 12 */ "sbin/pbs_probe",
-	/* 13 */ "sbin/pbs_upgrade_job"
+	/* 08 */ "sbin/pbs_sched",
+	/* 09 */ "sbin/pbs_server",
+	/* 10 */ "sbin/pbsfs",
+	/* 11 */ "sbin/pbs_probe",
+	/* 12 */ "sbin/pbs_upgrade_job"
 };
 
 static char exetc[][80] = {
@@ -815,12 +814,11 @@ static MPUG	sbin_mpugs[] = {
 	{1, 1, 0,     frwxgo, sgsrwxorwx, &dflt_pbs_ug, exsbin[ 5], NULL }, /* pbs_mom.cpuset, notReq reset to 2 if SGI Linux */
 	{1, 1, 0,     frwxgo, sgsrwxorwx, &dflt_pbs_ug, exsbin[ 6], NULL }, /* pbs_mom.standard, notReq reset to 2 if SGI Linux */
 	{1, 2, 0,  fsrwxrxrx,      gswow, &dflt_pbs_ug, exsbin[ 7], NULL }, /* pbs_rcp */
-	{1, 1, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exsbin[ 8], NULL }, /* pbs_renew */
-	{1, 6, 0,     frwxgo, sgsrwxorwx, &dflt_pbs_ug, exsbin[ 9], NULL }, /* pbs_sched */
-	{1, 6, 0,     frwxgo, sgsrwxorwx, &dflt_pbs_ug, exsbin[10], NULL }, /* pbs_server */
-	{1, 6, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exsbin[11], NULL }, /* pbsfs */
-	{1, 0, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exsbin[12], NULL }, /* pbs_probe */
-	{1, 2, 0,     frwxgo, sgsrwxorwx, &dflt_pbs_ug, exsbin[13], NULL } /* pbs_upgrade_job */
+	{1, 6, 0,     frwxgo, sgsrwxorwx, &dflt_pbs_ug, exsbin[ 8], NULL }, /* pbs_sched */
+	{1, 6, 0,     frwxgo, sgsrwxorwx, &dflt_pbs_ug, exsbin[ 9], NULL }, /* pbs_server */
+	{1, 6, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exsbin[10], NULL }, /* pbsfs */
+	{1, 0, 0,   frwxrxrx,     sgswow, &dflt_pbs_ug, exsbin[11], NULL }, /* pbs_probe */
+	{1, 2, 0,     frwxgo, sgsrwxorwx, &dflt_pbs_ug, exsbin[12], NULL } /* pbs_upgrade_job */
 };
 
 

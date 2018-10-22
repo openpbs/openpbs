@@ -262,7 +262,7 @@ struct batch_reply {
 #define PBS_BATCH_JobCred		62
 #define PBS_BATCH_CopyFiles_Cred	63
 #define PBS_BATCH_DelFiles_Cred		64
-#define PBS_BATCH_GSS_Context		65
+#define PBS_BATCH_GSS_Context		65 /* Deprecated */
 #define PBS_BATCH_SubmitResv	70
 #define PBS_BATCH_StatusResv	71
 #define PBS_BATCH_DeleteResv	72

@@ -58,12 +58,6 @@ extern pbs_db_conn_t	*svr_db_conn;
 #endif
 
 
-#ifdef	PBS_CRED_GRIDPROXY
-#include	<gssapi.h>
-
-extern char *pbs_gss_error(char *msg, OM_uint32 maj, OM_uint32 min);
-#endif
-
 #include "pbs_array_list.h"
 #include "hook.h"
 #include "hook_func.h"
@@ -155,9 +149,6 @@ struct mom_svrinfo {
 	int	      msr_jbinxsz;  /* size of job index array */
 	struct job  **msr_jobindx;  /* index array of jobs on this Mom */
 	long	      msr_vnode_pool;/* the pool of vnodes that belong to this Mom */
-#ifdef PBS_CRED_GRIDPROXY
-	gss_ctx_id_t  msr_gsscontext; /* gss context */
-#endif /* PBS_CRED_GRIDPROXY */
 };
 typedef struct mom_svrinfo mom_svrinfo_t;
 

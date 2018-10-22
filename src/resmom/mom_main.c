@@ -9827,12 +9827,6 @@ main(int argc, char *argv[])
 				}
 			}
 
-			if (pjob->ji_credrtime != 0 &&
-				time_now >= pjob->ji_credrtime) {
-				pjob->ji_credrtime = 0;
-				renew_credential(pjob);
-			}
-
 			if (pbs_conf.pbs_use_tcp == 0)
 				(void)rpp_io();
 

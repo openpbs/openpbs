@@ -58,9 +58,6 @@ notrans_dist_man1_MANS = \
 	man1/qstat.1B \
 	man1/qsub.1B
 
-noinst_man1_MANS = \
-	man1/pbs_renew.1B
-
 notrans_dist_man3_MANS = \
 	man3/pbs_alterjob.3B \
 	man3/pbs_connect.3B \

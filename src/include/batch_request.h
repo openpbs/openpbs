@@ -107,13 +107,6 @@ struct rq_user_migrate {
 	char		   rq_tohost[PBS_MAXHOSTNAME+1];
 };
 
-/* GSS handshake data */
-
-struct rq_gssdata {
-	long		   rq_size;
-	char		  *rq_data;
-};
-
 /* Job File */
 
 struct rq_jobfile {
@@ -342,7 +335,6 @@ struct batch_request {
 		int			rq_connect;
 		struct rq_queuejob	rq_queuejob;
 		struct rq_jobcred       rq_jobcred;
-		struct rq_gssdata	rq_gssdata;
 		struct rq_jobfile	rq_jobfile;
 		char		        rq_rdytocommit[PBS_MAXSVRJOBID+1];
 		char		        rq_commit[PBS_MAXSVRJOBID+1];

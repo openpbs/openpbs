@@ -189,191 +189,6 @@ is_file_same(char *file1, char *file2)
 
 /**
  * @brief
- *	Set up a kerberos credential for a copy or delete process.
- *
- * @param[in] filename - file path
- * @param[in] data - credentials
- * @param[in] conn - type of socket connection
- *
- * @return 	int
- * @retval	0	Success
- * @retval	-1	Error
- *
- */
-
-int
-set_kerb_cred(char *filename, char *data, size_t dsize, int conn)
-{
-	int			ret = -1;
-#ifdef	PBS_CRED_DCE_KRB5
-	krb5_error_code		err;
-	int			i;
-	size_t			len;
-	krb5_context		ktext;
-	krb5_principal		rcache_server = 0;
-	krb5_rcache		rcache = 0;
-	krb5_auth_context	kauth = 0;
-	krb5_creds		**creds = NULL;
-	krb5_ccache		kache = NULL;
-	krb5_data		inbuf;
-	char			cname[MAXPATHLEN+1];
-	char			service[] = "pbs";
-
-	memset(&inbuf, 0, sizeof(inbuf));
-
-	if ((err = krb5_init_context(&ktext)) != 0) {
-		sprintf(log_buffer, "krb5_init_context(%s",
-			error_message(err));
-		return -1;
-	}
-
-	if ((err = krb5_auth_con_init(ktext, &kauth)) != 0) {
-		sprintf(log_buffer, "krb5_auth_con_init(%s",
-			error_message(err));
-		return -1;
-	}
-
-	if ((err = krb5_parse_name(ktext, service, &rcache_server)) != 0) {
-		sprintf(log_buffer, "krb5_parse_name(%s",
-			error_message(err));
-		goto done;
-	}
-
-	inbuf.length = (int)dsize;
-	inbuf.data = data;
-
-	err = krb5_auth_con_genaddrs(ktext, kauth, conn,
-		KRB5_AUTH_CONTEXT_GENERATE_REMOTE_FULL_ADDR|
-		KRB5_AUTH_CONTEXT_GENERATE_LOCAL_FULL_ADDR);
-	if (err != 0) {
-		sprintf(log_buffer, "krb5_auth_con_genaddrs(%s",
-			error_message(err));
-		goto done;
-	}
-
-	if ((err = krb5_get_server_rcache(ktext,
-		krb5_princ_component(ktext, rcache_server, 0),
-		&rcache)) != 0) {
-		sprintf(log_buffer, "krb5_get_server_rcache(%s",
-			error_message(err));
-		goto done;
-	}
-
-	if ((err = krb5_auth_con_setrcache(ktext, kauth, rcache)) != 0) {
-		sprintf(log_buffer, "krb5_auth_con_setrcache(%s",
-			error_message(err));
-		goto done;
-	}
-
-	if ((err = krb5_rd_cred(ktext, kauth, &inbuf, &creds, NULL)) != 0) {
-		sprintf(log_buffer, "krb5_rd_cred(%s",
-			error_message(err));
-		goto done;
-	}
-
-	(void)strcpy(cname, "FILE:");
-	(void)strcat(cname, filename);
-	setenv("KRB5CCNAME", cname, 1);
-
-	if ((err = krb5_cc_resolve(ktext, cname, &kache)) == -1) {
-		sprintf(log_buffer, "krb5_cc_resolve(%s",
-			error_message(err));
-		goto done;
-	}
-
-	if ((err = krb5_cc_initialize(ktext, kache, (*creds)->client)) != 0) {
-		sprintf(log_buffer, "krb5_cc_initialize(%s",
-			error_message(err));
-		goto done;
-	}
-
-	if ((err = krb5_cc_store_cred(ktext, kache, *creds)) != 0) {
-		sprintf(log_buffer, "krb5_cc_store_cred(%s",
-			error_message(err));
-		goto done;
-	}
-	DBPRT(("Forwarded credentials cached\n"))
-	ret = 0;
-
-done:
-	krb5_auth_con_free(ktext, kauth);
-	if (rcache_server)
-		krb5_free_principal(ktext, rcache_server);
-	if (creds)
-		krb5_free_creds(ktext, *creds);
-	krb5_free_context(ktext);
-
-#else
-	sprintf(log_buffer, "kerberos not supported");
-#endif	/* PBS_CRED_DCE_KRB5 */
-	return ret;
-}
-
-/**
- * @brief
- *	Set up a grid proxy for a copy or delete process.
- *	The grid proxy passed into data needs to be decrypted before use.
- *	Return 0 on success, -1 on error.
- *
- *      NOTE: This code is currently commented out on Windows. When it comes
- *            time to have PBS Windows understand CREDTYPE_GRIDPROXY,
- *            then open_file_as_user() will also need to be made available
- *            on Windows.
- *
- * @param[in] filename - file path
- * @param[in] data - credentials
- * @param[in] dsize - data size
- * @param[in] uid - user id
- * @param[in] gid - group id
- *
- * @return 	int
- * @retval	0	Success
- * @retval	-1	Error
- *
- */
-
-#ifndef WIN32
-int
-set_gridproxy(char *filename, char *data, size_t dsize, uid_t uid, gid_t gid)
-{
-	int		ret = -1;
-	char		*cred;
-	size_t		len;
-	int		fd = -1;
-
-	if (pbs_decrypt_data(data, PBS_CREDTYPE_AES, dsize, &cred, &len))
-		goto done;
-
-	if (setenv("X509_USER_PROXY", filename, 1) == -1) {
-		sprintf(log_buffer, "setenv: %s=%s %s", "X509_USER_PROXY", filename, strerror(errno));
-		goto done;
-	}
-
-	if ((fd = open_file_as_user(filename, O_WRONLY|O_CREAT|O_EXCL, 0600,
-		uid, gid)) == -1) {
-		sprintf(log_buffer, "%s: open: %s", filename, strerror(errno));
-		goto done;
-	}
-	if (write(fd, cred, len) != len) {
-		sprintf(log_buffer, "%s: write %s", filename, strerror(errno));
-		goto done;
-	}
-	ret = 0;
-
-done:
-	if (fd != -1)
-		close(fd);
-	if (ret)
-		(void)unlink(filename);
-	if (cred)
-		free(cred);
-
-	return ret;
-}
-#endif
-
-/**
- * @brief
  * 	fork_to_user - fork mom and go to user's home directory
  *	also sets up the global useruid and usergid in the child
  *
@@ -498,7 +313,6 @@ struct batch_request *preq;
 	gid_t		usergid;
 	gid_t		user_rgid;
 	int		fds[2];
-	int		usek5dce = 0;
 	struct rq_cpyfile	*rqcpf;
 	static char	buf[MAXPATHLEN+1];
 
@@ -567,15 +381,6 @@ struct batch_request *preq;
 
 		switch (preq->rq_ind.rq_cpyfile_cred.rq_credtype) {
 
-			case PBS_CREDTYPE_GRIDPROXY:
-				sprintf(buf, "%s/x509_pbs%d", TMP_DIR, getpid());
-				if (set_gridproxy(buf, cred_buf, cred_len,
-					useruid, usergid) != 0) {
-					log_err(errno, __func__, log_buffer);
-					frk_err(PBSE_BADCRED, preq); /* no return */
-				}
-				/* fall through */
-
 			case PBS_CREDTYPE_NONE:
 				if (becomeuser_args(rqcpf->rq_user, useruid, usergid, user_rgid) == -1) {
 					log_err(errno, __func__, "set privilege as user");
@@ -611,46 +416,6 @@ struct batch_request *preq;
 				argv[argc++] = rqcpf->rq_user;
 				break;
 
-			case PBS_CREDTYPE_DCE_KRB5:
-				/* create a new cache file */
-				sprintf(buf, "%s/krb5cc_pbs%d", TMP_DIR, getpid());
-				if (set_kerb_cred(buf, cred_buf, cred_len,
-					preq->rq_conn) != 0) {
-					log_err(errno, __func__, log_buffer);
-					frk_err(PBSE_BADCRED, preq); /* no return */
-				}
-				chown(buf, useruid, usergid);
-
-				sprintf(buf, "%s/sbin/pbs_renew",
-					pbs_conf.pbs_exec_path);
-#ifdef	K5DCELOGIN
-				/* becomes the user based on the DCE cred */
-				shell = K5DCELOGIN;
-				usek5dce = 1;
-#endif	/* K5DCELOGIN */
-
-				if (pbs_conf.k5dcelogin_path != NULL) {
-					shell = pbs_conf.k5dcelogin_path;
-					usek5dce = 1;
-				}
-				if (!usek5dce) {	/* not using K5DCELOGIN */
-					if (becomeuser_args(rqcpf->rq_user, useruid, usergid, user_rgid) == -1) {
-						log_err(errno, __func__,
-							"set privilege as user");
-						frk_err(PBSE_SYSTEM, preq);
-						/* no return */
-					}
-					shell = buf;
-				}
-
-				/* construct argv array */
-				argv[argc++] = lastname(shell);
-				if (usek5dce) {
-					argv[argc++] = rqcpf->rq_user;
-					argv[argc++] = buf;	/* pbs_renew */
-				}
-				break;
-
 			default:
 				log_err(errno, __func__, "unknown credential type");
 				break;
@@ -667,48 +432,6 @@ struct batch_request *preq;
 }
 #endif	/* WIN32 */
 
-
-/**
- * @brief
- *	After a fork_to_user(), clean up any credential that
- *	remains for a copy/del file request.
- *
- * @param[in] preq - pointer to batch_request structure
- *
- * @return 	Void
- *
- */
-
-static void
-cleanup_cred(struct batch_request *preq)
-{
-	char	*envptr;
-
-	if (preq->rq_type != PBS_BATCH_CopyFiles_Cred &&
-		preq->rq_type != PBS_BATCH_DelFiles_Cred)
-		return;
-
-	switch (preq->rq_ind.rq_cpyfile_cred.rq_credtype) {
-
-		case PBS_CREDTYPE_GRIDPROXY:
-			envptr = getenv("X509_USER_PROXY");
-			if (envptr)
-				(void)unlink(envptr);
-			break;
-
-		case PBS_CREDTYPE_DCE_KRB5:
-			envptr = getenv("KRB5CCNAME");
-			if (envptr == NULL)
-				break;
-			if (strncmp(envptr, "FILE:", 5) == 0)
-				(void)unlink(envptr+5);
-			break;
-
-		default:		/* nothing to do */
-			break;
-	}
-	return;
-}
 
 #define RT_BLK_SZ 65536
 /**
@@ -2803,7 +2526,6 @@ post_cpyfile(struct work_task *pwt)
 	DBPRT(("%s\n", log_buffer))
 	log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_DEBUG, jobid, log_buffer);
 
-	cleanup_cred(preq);
 	pjob = find_job(jobid);
 
 	ecode = pwt->wt_aux;
@@ -3521,7 +3243,6 @@ req_cpyfile(struct batch_request *preq)
 		rmjobdir(rqcpf->rq_jobid, pbs_jobdir, useruid, usergid);
 	}
 
-	cleanup_cred(preq);
 	strncpy(dup_rqcpf_jobid, rqcpf->rq_jobid, sizeof(dup_rqcpf_jobid) - 1);
 	if (!preq->isrpp) {
 		if (stage_inout.bad_files) {
@@ -3661,7 +3382,6 @@ struct batch_request *preq;
 	/* Child process ... delete the files */
 
 	rc = del_files(preq, &bad_list);
-	cleanup_cred(preq);
 
 	if (rc != 0) {
 		if (!preq->isrpp) {

@@ -4246,16 +4246,14 @@ int
 set_credential(job *pjob, char **shell, char ***argarray)
 {
 	char	**argv;
-	char	name_buf[MAXPATHLEN+1];
 	static	char	buf[MAXPATHLEN+1];
 	int	ret = 0;
 	char	*prog;		/* possible new shell */
 	char	*name;
 	int	i = 0;
 	int	j;
-	int	usek5dce = 0;
 	int	num = 0;
-	int	fd, fds[2];
+	int	fds[2];
 
 	if (*argarray != NULL) {
 		while ((*argarray)[num] != NULL)
@@ -4264,23 +4262,6 @@ set_credential(job *pjob, char **shell, char ***argarray)
 	cred_buf = NULL;
 
 	switch (pjob->ji_extended.ji_ext.ji_credtype) {
-
-		case PBS_CREDTYPE_GRIDPROXY:
-			(void)strcpy(name_buf, path_jobs);
-			if (*pjob->ji_qs.ji_fileprefix != '\0')
-				(void)strcat(name_buf, pjob->ji_qs.ji_fileprefix);
-			else
-				(void)strcat(name_buf, pjob->ji_qs.ji_jobid);
-			(void)strcat(name_buf, JOB_CRED_SUFFIX);
-
-#ifdef WIN32
-			bld_wenv_variables("X509_USER_PROXY", name_buf);
-#else
-			chown(name_buf, pjob->ji_qs.ji_un.ji_momt.ji_exuid,
-				pjob->ji_qs.ji_un.ji_momt.ji_exgid);
-			bld_env_variables(&vtable, "X509_USER_PROXY", name_buf);
-#endif
-			/* fall through */
 
 		case PBS_CREDTYPE_NONE:
 			argv = (char **)calloc(2+num, sizeof(char *));
@@ -4343,67 +4324,6 @@ set_credential(job *pjob, char **shell, char ***argarray)
 			argv[i++] = name;
 			argv[i++] = pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str;
 
-			break;
-
-		case PBS_CREDTYPE_DCE_KRB5:
-			argv = (char **)calloc(6+num, sizeof(char *));
-			assert(argv != NULL);
-
-			/* create a new cache file */
-			if (read_cred(pjob, &cred_buf, &cred_len) != 0)
-				break;
-			sprintf(name_buf, "%s/krb5cc_pbs%d", TMP_DIR, getpid());
-			if ((fd = creat(name_buf, 0600)) == -1) {
-				log_err(errno, __func__, name_buf);
-				break;
-			}
-			if (write(fd, cred_buf, cred_len) != cred_len) {
-				log_err(errno, __func__, "cred write");
-				close(fd);
-				break;
-			}
-#ifndef WIN32
-			fchown(fd, pjob->ji_qs.ji_un.ji_momt.ji_exuid,
-				pjob->ji_qs.ji_un.ji_momt.ji_exgid);
-#endif
-			close(fd);
-
-			sprintf(buf, "FILE:%s", name_buf);
-#ifdef WIN32
-			bld_wenv_variables("KRB5CCNAME", buf);
-#else
-			bld_env_variables(&vtable, "KRB5CCNAME", buf);
-#endif
-
-			sprintf(buf, "%s/sbin/pbs_renew", pbs_conf.pbs_exec_path);
-#ifdef	K5DCELOGIN
-			/* Doug's program becomes the user based on the DCE cred */
-			prog = K5DCELOGIN;
-			usek5dce = 1;
-#endif	/* K5DCELOGIN */
-
-			if (pbs_conf.k5dcelogin_path != NULL) {
-				prog = pbs_conf.k5dcelogin_path;
-				usek5dce = 1;
-			}
-			if (!usek5dce) {	/* not using K5DCELOGIN */
-				log_err(errno, __func__, "k5dcelogin unavailable");
-				break;
-				/*
-				 This is for krb5 alone
-				 ret = becomeuser(pjob);
-				 prog = buf;
-				 */
-			}
-
-			/* construct argv array */
-			name = (shell == NULL) ? prog : lastname(prog);
-			argv[i++] = name;
-			if (usek5dce) {
-				argv[i++] = pjob->ji_wattr[(int)JOB_ATR_euser].
-					at_val.at_str;
-				argv[i++] = buf;	/* pbs_renew */
-			}
 			break;
 
 		default:

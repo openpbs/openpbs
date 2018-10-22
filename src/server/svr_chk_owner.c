@@ -348,10 +348,6 @@ authenticate_user(struct batch_request *preq, struct connection *pcred)
 {
 	char uath[PBS_MAXUSER + PBS_MAXHOSTNAME + 1];
 
-#if defined(PBS_SECURITY) && ((PBS_SECURITY == KAUTH ) || (PBS_SECURITY == KCRYPT ) )
-	strcpy(pcred->cn_username, preq->rq_user);
-	strcpy(pcred->cn_hostname, preq->rq_host);
-#endif
 	if (strncmp(preq->rq_user, pcred->cn_username, PBS_MAXUSER))
 		return (PBSE_BADCRED);
 	if (strncasecmp(preq->rq_host, pcred->cn_hostname, PBS_MAXHOSTNAME))

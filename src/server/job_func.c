@@ -331,9 +331,6 @@ job_alloc(void)
 	CLEAR_LINK(pj->ji_alljobs);
 	CLEAR_LINK(pj->ji_jobque);
 	CLEAR_LINK(pj->ji_unlicjobs);
-#ifdef	PBS_CRED_GRIDPROXY
-	pj->ji_gsscontext = GSS_C_NO_CONTEXT;
-#endif
 
 	pj->ji_rerun_preq = NULL;
 
@@ -407,48 +404,6 @@ job_alloc(void)
 #endif
 
 	return (pj);
-}
-
-#ifdef	PBS_CRED_GRIDPROXY
-void
-pbs_freecontext(gss_ctx_id_t *gsscp)
-{
-	OM_uint32		major, minor;
-	gss_buffer_desc		outbuf;
-
-	if (*gsscp == GSS_C_NO_CONTEXT)
-		return;
-
-	outbuf.length = 0;
-	major = gss_delete_sec_context(&minor, gsscp, &outbuf);
-	if (major == GSS_S_COMPLETE && outbuf.length > 0) {
-		(void)gss_process_context_token(&minor, *gsscp, &outbuf);
-		(void)gss_release_buffer(&minor, &outbuf);
-	}
-	*gsscp = GSS_C_NO_CONTEXT;
-
-	return;
-}
-#endif	/* PBS_CRED_GRIDPROXY */
-
-/**
- * @brief
- *		Clean up any security context.
- *
- * @see
- * 		job_free
- *
- * @param[in]	pj - pointer to job structure
- *
- * @return	void
- */
-void
-job_freecontext(job *pj)
-{
-#ifdef	PBS_CRED_GRIDPROXY
-	pbs_freecontext(&pj->ji_gsscontext);
-#endif	/* PBS_CRED_GRIDPROXY */
-	return;
 }
 
 /**
@@ -602,9 +557,6 @@ job_free(job *pj)
 	/* which are malloced and shared with the parent Array Job */
 	/* They will be freed when the parent is removed           */
 
-	if ((pj->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) == 0) {
-		job_freecontext(pj);	/* free any security context */
-	}
 	pj->ji_qs.ji_jobid[0] = 'X';	/* as a "freed" marker */
 	free(pj);	/* now free the main structure */
 }

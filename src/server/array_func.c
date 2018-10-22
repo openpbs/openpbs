@@ -808,10 +808,6 @@ create_subjob(job *parent, char *newjid, int *rc)
 
 	subj = job_alloc();
 	subj->ji_qs = parent->ji_qs;	/* copy the fixed save area */
-
-#ifdef PBS_CRED_GRIDPROXY
-	subj->ji_gsscontext  = parent->ji_gsscontext;
-#endif
 	subj->ji_qhdr     = parent->ji_qhdr;
 	subj->ji_resvp    = parent->ji_resvp;
 	subj->ji_myResv   = parent->ji_myResv;

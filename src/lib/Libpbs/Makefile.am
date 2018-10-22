@@ -262,7 +262,6 @@ libpbs_la_SOURCES = \
 	../Libifl/tm.c \
 	../Libifl/xml_encode_decode.c \
 	../Liblog/pbs_messages.c \
-	../Libsec/cs.c \
 	../Libsec/cs_standard.c \
 	../Libutil/misc_utils.c \
 	../Libutil/munge_supp.c \

@@ -58,12 +58,6 @@ extern "C" {
 #include "server_limits.h"
 #endif
 
-#ifdef	PBS_CRED_GRIDPROXY
-#include	<gssapi.h>
-
-extern char *pbs_gss_error(char *msg, OM_uint32 maj, OM_uint32 min);
-#endif
-
 /*
  * Dependent Job Structures
  *
@@ -517,13 +511,9 @@ struct job {
 	struct batch_request *ji_rerun_preq;	/* outstanding rerun request */
 	int		ji_licneed;	/* # of cpu licenses needed by job */
 	int		ji_licalloc;	/* actual # of cpu licenses allocated */
-#ifdef	PBS_CRED_GRIDPROXY
-	gss_ctx_id_t	ji_gsscontext;	/* gss context */
-#endif
 #ifdef	PBS_MOM				/* MOM ONLY */
 	struct batch_request *ji_preq;	/* outstanding request */
 	struct grpcache *ji_grpcache;	/* cache of user's groups */
-	time_t		ji_credrtime;	/* credential renew time */
 	enum PBS_Chkpt_By ji_chkpttype; /* checkpoint type  */
 	time_t		ji_chkpttime;	/* periodic checkpoint time */
 	time_t		ji_chkptnext;	/* next checkpoint time */
@@ -1085,7 +1075,6 @@ extern void  issue_track(job *);
 extern void  issue_delete(job *);
 extern int   job_abt(job *, char *);
 extern job  *job_alloc(void);
-extern void  job_freecontext(job *pj);
 extern void  job_free(job *);
 extern int   add_resc_resv_if_resvJob(job*);
 extern int   modify_job_attr(job *, svrattrl *, int, int *);
