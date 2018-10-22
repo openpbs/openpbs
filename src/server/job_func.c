@@ -679,6 +679,12 @@ job_purge(job *pjob)
 	extern	char	*path_checkpoint;
 	int keeping = 0;
 	attribute *jrpattr = NULL;
+
+#ifndef WIN32
+	pid_t pid = -1;
+	int child_process = 0;
+#endif
+
 #else
 	extern	char	*msg_err_purgejob_db;
 	pbs_db_obj_info_t obj;
@@ -775,6 +781,22 @@ job_purge(job *pjob)
 #endif	/* PBS_MOM */
 
 #ifdef PBS_MOM
+
+#ifndef WIN32
+	/* on the mom end, perform file-system related cleanup in a forked process
+	 * only if job is executed successfully with exit status 0(JOB_EXEC_OK)
+	 */
+	if (pjob->ji_qs.ji_un.ji_momt.ji_exitstat == JOB_EXEC_OK) {
+		child_process = 1;
+		pid = fork();
+		if (pid > 0) {
+			/* parent mom */
+			job_free(pjob);
+			return;
+		}
+	}
+	/* Parent Mom process will continue the job cleanup itself, if call to fork is failed */
+#endif
 	(void)strcpy(namebuf, path_jobs);	/* delete script file */
 	if (*pjob->ji_qs.ji_fileprefix != '\0')
 		(void)strcat(namebuf, pjob->ji_qs.ji_fileprefix);
@@ -945,6 +967,18 @@ job_purge(job *pjob)
                 delete_link(&pjob->ji_alljobs);
 
 	job_free(pjob);
+
+#ifdef PBS_MOM
+#ifndef WIN32
+	if (child_process && pid == 0) {
+		/* I am child of the forked process. Deleted all the
+		 * particular job related files, thus exiting.
+		 */
+		exit(0);
+	}
+#endif
+#endif
+
 	return;
 }
 
