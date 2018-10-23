@@ -118,6 +118,47 @@ class SmokeTest(PBSTestSuite):
         if _m == PTL_API:
             self.server.set_op_mode(PTL_API)
 
+    def test_standing_reservation_stale_nodes(self):
+        """
+        Test to submit a standing reservation for nodes which are stale after scheduling cycle and before set_nodes in server.
+        """
+        # PBS_TZID environment variable must be set, there is no way to set
+        # it through the API call, use CLI instead for this test
+
+        _m = self.server.get_op_mode()
+        if _m != PTL_CLI:
+            self.server.set_op_mode(PTL_CLI)
+        if 'PBS_TZID' in self.conf:
+            tzone = self.conf['PBS_TZID']
+        elif 'PBS_TZID' in os.environ:
+            tzone = os.environ['PBS_TZID']
+        else:
+            self.logger.info('Missing timezone, using America/Los_Angeles')
+            tzone = 'America/Los_Angeles'
+       	a = {'resources_available.ncpus': 1}
+       	self.server.create_vnodes('vn', a, num=4, mom=self.mom)
+       	a = {'Resource_List.select': '1:ncpus=2',
+             ATTR_resv_rrule: 'FREQ=HOURLY;COUNT=2',
+             ATTR_resv_timezone: tzone,
+             ATTR_resv_standing: '1',
+             'reserve_start': time.time() + 4,
+             'reserve_end': time.time() + 9, }
+       	r = Reservation(TEST_USER, a)
+        rid = self.server.submit(r)
+        a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
+        a2 = {'reserve_state': (MATCH_RE, "RESV_DEGRADED|2")}
+        self.server.expect(RESV, a, id=rid)
+        self.server.status(RESV, 'resv_nodes', id=rid)
+        resv_node = self.server.reservations[rid].get_vnodes()[0]
+        b = {'state': 'down'}
+        self.server.manager(MGR_CMD_SET, NODE, b, id=resv_node)
+        self.server.expect(RESV, a2, id=rid)
+	time.sleep(13)
+        self.server.expect(RESV, a, id=rid)
+	if _m == PTL_API:
+            self.server.set_op_mode(PTL_API)
+
+
     @skipOnCpuSet
     def test_degraded_advance_reservation(self):
         """
