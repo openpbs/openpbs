@@ -239,6 +239,9 @@ class TestPbsExecutePrologue(TestFunctional):
 
     def test_prologue_hook_does_not_execute_twice_on_pbsdsh(self):
         """
+        This test creates a hook and then submits a job.
+        It then uses the job output file to do a log_match
+        on both the moms
         """
         hook_name = 'prologue'
         hook_body = ("import pbs\n"
@@ -249,10 +252,17 @@ class TestPbsExecutePrologue(TestFunctional):
 
         j = Job(TEST_USER, {'Resource_List.select': '2:ncpus=1',
                             'Resource_List.place': 'scatter'})
-        j.create_script('pbsdsh -n 1 hostname')
+        j.create_script('#!/bin/sh\npbsdsh  hostname\nsleep 10\n')
         jid = self.server.submit(j)
-        self.server.expect(JOB, 'queue', op=UNSET, id=jid)
-        match = self.momB.log_match("Job;%s;executed prologue hook" % jid,
-                                    allmatch=True)
-        self.assertTrue(match is not None)
-        self.assertTrue(len(match) == 1)
+        attribs = self.server.status(JOB, id=jid)
+        self.server.expect(JOB, 'queue', op=UNSET, id=jid, offset=10)
+        host, opath = attribs[0]['Output_Path'].split(':', 1)
+        ret = self.du.cat(hostname=host, filename=opath, runas=TEST_USER)
+        _msg = "cat command failed with error: %s" % ret['err']
+        self.assertEqual(ret['rc'], 0, _msg)
+        mom1 = ret['out'][2].split(".")[0]
+        mom2 = ret['out'][3].split(".")[0]
+        self.exec_mom1 = self.moms[mom1]
+        self.exec_mom2 = self.moms[mom2]
+        self.exec_mom1.log_match("Job;%s;executed prologue hook" % jid)
+        self.exec_mom2.log_match("Job;%s;executed prologue hook" % jid)
