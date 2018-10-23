@@ -249,7 +249,7 @@ assign_resv_resc(resc_resv *presv, char *vnodes, int svr_init)
 	char		 *host_str = NULL;	/* used only as arg to set_nodes */
 	char * host_str2 = NULL;
 	struct work_task *pwt;
-        extern void resv_retry_handler(struct work_task *ptask);
+	extern void resv_retry_handler(struct work_task *ptask);
 
 	if ((vnodes == NULL) || (*vnodes == '\0'))
 		return (PBSE_BADNODESPEC);
