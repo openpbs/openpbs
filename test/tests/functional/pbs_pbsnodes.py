@@ -89,3 +89,21 @@ class TestPbsnodes(TestFunctional):
             self.assertIn(
                 hdr, out2['out'][0],
                 "header %s not found in output" % hdr)
+
+    def test_pbsnodes_av(self):
+        """
+        This verifies the values of last_used_time in 'pbsnodes -av'
+        result before and after server shutdown, once a job submitted.
+        """
+        j = Job(TEST_USER)
+        j.set_sleep_time(1)
+        jid = self.server.submit(j)
+        self.server.accounting_match("E;%s;" % jid)
+        prev = self.server.status(NODE, 'last_used_time')[0]['last_used_time']
+        self.logger.info("Restarting server")
+        self.server.restart()
+        self.assertTrue(self.server.isUp(), 'Failed to restart Server Daemon')
+        now = self.server.status(NODE, 'last_used_time')[0]['last_used_time']
+        self.logger.info("Before: " + prev + ". After: " + now + ".")
+        self.assertEquals(prev.strip(), now.strip(),
+                          'Last used time mismatch after server restart')
