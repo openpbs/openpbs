@@ -78,7 +78,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "periodic hook ended at %%d" %% time.time())
         - count			to know how many times to repeat
                                 checking these logs
         - freq			is the frequency set in pbs server to run this hook
-        - hook_rum_time		is the amount of time hook takes to run.
+        - hook_run_time		is the amount of time hook takes to run.
         - check_for_hook_end	If it is true then the functions checks for
                                 hook end messages.
         """
@@ -89,7 +89,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "periodic hook ended at %%d" %% time.time())
         intr = freq
         while (occurance < count):
             msg_expected = self.start_msg
-            msg = self.server.log_match(msg_expected, max_attempts=2,
+            msg = self.server.log_match(msg_expected,
                                         interval=(intr + 1),
                                         starttime=search_after)
             time_logged = self.get_timestamp(msg[1])
@@ -154,7 +154,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "periodic hook ended at %%d" %% time.time())
         hook_run_time = 10
         scr = self.create_hook(False, hook_run_time)
         attrs = {'event': "periodic"}
-        msg_expected = "periodic request rejected by " + hook_name
+        msg_expected = ";periodic request rejected by " + "'" + hook_name + "'"
         rv = self.server.create_import_hook(
             hook_name,
             attrs,
@@ -168,7 +168,7 @@ pbs.logmsg(pbs.LOG_DEBUG, "periodic hook ended at %%d" %% time.time())
         rv = self.server.manager(MGR_CMD_SET, HOOK, attrs, hook_name)
         self.assertEqual(rv, 0)
         self.check_next_occurances(2, freq, hook_run_time, True)
-        self.server.log_match(msg_expected, max_attempts=2, interval=1)
+        self.server.log_match(msg_expected, interval=1)
 
     def test_sp_hook_long_run(self):
         """
@@ -277,3 +277,132 @@ pbs.logmsg(pbs.LOG_DEBUG, "periodic hook ended at %%d" %% time.time())
         self.server.log_match(self.start_msg, interval=3)
         self.server.log_match(self.end_msg, interval=3)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+
+    def test_alarm_more_than_freq(self):
+        """
+        Test when alarm is more than freq. Ensure multiple
+        instances do not get launched
+        """
+        hook_name = "medium_hook"
+        scr = self.create_hook(accept=True, sleep_time=10)
+        attrs = {'event': 'periodic', 'alarm': 15, 'freq': 5}
+        self.server.create_import_hook(hook_name, attrs, scr, overwrite=True)
+        self.check_next_occurances(2, freq=5, hook_run_time=10,
+                                   check_for_hook_end=True)
+
+    def test_check_for_negative_freq(self):
+        """
+        Check for the correct messages thrown if negative values of freq is set
+        """
+        hook_name = "med_hook"
+        attrs = {'event': "periodic", 'freq': "0"}
+        match_str1 = "set_hook_freq: freq value '0'"
+        match_str1 += " of a hook must be > 0"
+        try:
+            self.server.create_hook(hook_name, attrs)
+        except PbsManagerError as e:
+            self.assertIn(match_str1, e.msg[0])
+            self.logger.info('Expected error: ' + match_str1)
+        else:
+            msg = "Able to set freq to zero"
+            self.assertTrue(False, msg)
+        attrs = {'enabled': "False", 'event': "periodic", 'freq': '120'}
+        self.server.manager(MGR_CMD_SET, HOOK, attrs, hook_name, expect=True)
+        attrs = {'freq': "-1"}
+        match_str1 = "set_hook_freq: freq value '-1'"
+        match_str1 += " of a hook must be > 0"
+        try:
+            self.server.manager(MGR_CMD_SET, HOOK, attrs, hook_name)
+        except PbsManagerError as e:
+            self.assertIn(match_str1, e.msg[0])
+            self.logger.info('Expected error: ' + match_str1)
+        else:
+            msg = "Able to set freq to negative value"
+            self.assertTrue(False, msg)
+
+    @timeout('600')
+    def test_with_other_hooks(self):
+        """
+        Test periodic hook works fine with other hooks
+        """
+        hook_name = "periodic_hook"
+        freq = 30
+        scr = self.create_hook(accept=True, sleep_time=25)
+        attrs = {'event': "periodic", 'alarm': "28"}
+        self.server.create_import_hook(hook_name, attrs, scr, overwrite=True)
+        start_time = int(time.time())
+        attrs = {'freq': 30, 'enabled': 'True'}
+        self.server.manager(MGR_CMD_SET, HOOK, attrs, hook_name)
+        expected_msg = "periodic hook started at "
+        self.server.log_match(expected_msg, starttime=start_time,
+                              interval=(freq+1))
+        self.check_next_occurances(count=1, freq=freq, hook_run_time=25,
+                                   check_for_hook_end=False)
+        hook_name = "exechost_periodic_hook3"
+        freq = 8
+        hook_run_time = 5
+        scr = self.create_hook(True, sleep_time=5)
+        attrs = {'event': "exechost_periodic", 'alarm': "7", 'freq': "8",
+                 'enabled': 'True'}
+        self.server.create_import_hook(hook_name, attrs, scr)
+        start_time = int(time.time())
+        expected_msg = "periodic hook started at "
+        self.mom.log_match(expected_msg, interval=(freq+1),
+                           starttime=start_time)
+        expected_msg = "periodic hook ended at "
+        self.mom.log_match(expected_msg, interval=(hook_run_time+1),
+                           starttime=start_time)
+
+    def test_other_pbs_operations_work(self):
+        """
+        Test that when periodic hook is launched PBS operations do not get
+        hampered
+        """
+        hook_name = "medium_hook"
+        freq = 20
+        scr = self.create_hook(accept=True, sleep_time=15)
+        attrs = {'event': "periodic"}
+        self.server.create_import_hook(hook_name, attrs, scr)
+        attrs = {'alarm': "18", 'freq': freq}
+        self.server.manager(MGR_CMD_SET, HOOK, attrs, hook_name)
+        attrs = {'enabled': 'True'}
+        self.server.manager(MGR_CMD_SET, HOOK, attrs, hook_name)
+        self.start_msg = ";periodic hook started at "
+        self.check_next_occurances(count=1, freq=freq, hook_run_time=25,
+                                   check_for_hook_end=False)
+        a = {'Resource_List.select': '1:ncpus=1',
+             'Resource_List.walltime': 3}
+        j = Job(TEST_USER, attrs=a)
+        j.set_sleep_time(3)
+        jid1 = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        self.server.expect(JOB, 'queue', id=jid1, op=UNSET, offset=3)
+        self.server.log_match(jid1 + ";Exit_status=0")
+        j1 = Job(TEST_USER)
+        jid2 = self.server.submit(j1)
+        self.server.delete(jid2)
+
+    def test_set_as_non_admin(self):
+        """
+        Check for the correct messages thrown if user other
+        than pbsadmin tries to set
+        """
+        hook_name = "medium_hook"
+        host_name = str(self.server.hostname)
+        self.server.create_hook(hook_name, attrs={'enabled': "False"})
+        attrs = {'event': "periodic", 'freq': '120'}
+        match_str1 = str(TEST_USER1) + "@" + host_name + \
+            " is unauthorized to access hooks data from server " + host_name
+        try:
+            self.server.manager(MGR_CMD_SET, HOOK, attrs, hook_name,
+                                runas=TEST_USER1)
+        except PbsManagerError as e:
+            self.assertIn(match_str1, e.msg[0])
+            self.logger.info('Expected error: ' + match_str1)
+        else:
+            msg = "Able to create hook as other user"
+            self.assertTrue(False, msg)
+        self.server.manager(MGR_CMD_SET, HOOK, attrs, hook_name,
+                            expect=True)
+        self.server.manager(MGR_CMD_LIST, HOOK, {'freq': '120'}, hook_name,
+                            expect=True)
