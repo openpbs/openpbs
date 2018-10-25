@@ -130,7 +130,8 @@ pbs_python_SOURCES = \
 
 pbs_tclsh_CPPFLAGS = \
 	-I$(top_srcdir)/src/include \
-	@tcl_inc@
+	@tcl_inc@ \
+	@libz_inc@
 pbs_tclsh_LDADD = \
 	$(top_builddir)/src/lib/Liblog/liblog.a \
 	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
@@ -139,6 +140,7 @@ pbs_tclsh_LDADD = \
 	$(top_builddir)/src/lib/Libutil/libutil.a \
 	-lpthread \
 	@socket_lib@ \
+	@libz_lib@ \
 	@tcl_lib@
 pbs_tclsh_SOURCES = \
 	pbs_tclWrap.c \

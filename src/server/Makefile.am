@@ -43,6 +43,7 @@ pbs_server_bin_CPPFLAGS = \
 	@database_inc@ \
 	@expat_inc@ \
 	@libical_inc@ \
+	@libz_inc@ \
 	@PYTHON_INCLUDES@
 
 pbs_server_bin_LDADD = \
@@ -60,6 +61,7 @@ pbs_server_bin_LDADD = \
 	@database_ldflags@ \
 	@database_lib@ \
 	@expat_lib@ \
+	@libz_lib@ \
 	@libical_lib@ \
 	@PYTHON_LDFLAGS@ \
 	@PYTHON_LIBS@ \
@@ -134,7 +136,8 @@ pbs_server_bin_SOURCES = \
 
 pbs_comm_CPPFLAGS = \
 	-I$(top_srcdir)/src/include \
-	-I$(top_srcdir)/src/lib/Libtpp
+	-I$(top_srcdir)/src/lib/Libtpp \
+	@libz_inc@
 
 pbs_comm_LDADD = \
 	$(top_builddir)/src/lib/Libtpp/libtpp.a \
@@ -142,6 +145,7 @@ pbs_comm_LDADD = \
 	$(top_builddir)/src/lib/Libutil/libutil.a \
 	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
 	-lpthread \
+	@libz_lib@ \
 	@socket_lib@
 
 pbs_comm_SOURCES = pbs_comm.c

@@ -1,5 +1,5 @@
+# coding: utf-8
 
-#
 # Copyright (C) 1994-2018 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
 #
@@ -34,44 +34,31 @@
 # Use of Altair’s trademarks, including but not limited to "PBS™",
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
-#
 
-unsupporteddir = ${exec_prefix}/unsupported
-
-unsupported_PROGRAMS = pbs_rmget
-
-dist_unsupported_SCRIPTS = \
-	pbs_diag \
-	pbs_dtj \
-	pbs_loganalyzer \
-	pbs_stat
+import os
+from ptl.utils.pbs_testsuite import *
 
 
-# Marking all *.py files as data as these files are meant to be used as hooks and 
-# need no compilation.
-dist_unsupported_DATA = \
-	NodeHealthCheck.py \
-	load_balance.py \
-	mom_dyn_res.py \
-	rapid_inter.py \
-	run_pelog_shell.py \
-	NodeHealthCheck.json \
-	README \
-	pbs_dtj.8B \
-	pbs_jobs_at.8B \
-	pbs_rescquery.3B \
-	run_pelog_shell.ini \
-	cray_readme \
-	pbs_output.py
+class classcomp(PBSTestSuite):
 
-pbs_rmget_CPPFLAGS = -I$(top_srcdir)/src/include \
-					@libz_inc@
-pbs_rmget_LDADD = \
-	$(top_builddir)/src/lib/Libtpp/libtpp.a \
-	$(top_builddir)/src/lib/Liblog/liblog.a \
-	$(top_builddir)/src/lib/Libnet/libnet.a \
-	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
-	$(top_builddir)/src/lib/Libutil/libutil.a \
-	-lpthread \
-	@libz_lib@
-pbs_rmget_SOURCES = pbs_rmget.c
+    def test_submit_job_comp(self):
+        """
+        Create a large file which can be passed
+        as an environment attribute to a job
+        """
+        with open('compress', 'wb') as out:
+            i = 1
+            while i < 1024:
+                out.write("TextFile")
+                i += 1
+
+        data = open('compress', 'r').read()
+        j = Job()
+        j.set_attributes({ATTR_v: "ABC=%s" % data})
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        self.server.log_match("tpp_deflate called inside tpp_send routine")
+        self.mom.log_match("tpp_inflate called inside add_part_packet routine")
+
+        out.close()
+        os.remove(out.name)

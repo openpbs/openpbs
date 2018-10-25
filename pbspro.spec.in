@@ -114,6 +114,7 @@ BuildRequires: python-devel < 3.0
 BuildRequires: tcl-devel
 BuildRequires: tk-devel
 BuildRequires: swig
+BuildRequires: zlib-devel
 %if %{defined suse_version}
 BuildRequires: libexpat-devel
 BuildRequires: libopenssl-devel
@@ -158,6 +159,7 @@ Requires: python >= 2.6
 Requires: python < 3.0
 Requires: tcl
 Requires: tk
+Requires: zlib
 %if %{defined suse_version}
 Requires: smtp_daemon
 %if %{suse_version} >= 1500
@@ -196,6 +198,7 @@ Requires: bash
 Requires: expat
 Requires: python >= 2.6
 Requires: python < 3.0
+Requires: zlib
 %if 0%{?suse_version} >= 1500
 Requires: hostname
 %endif

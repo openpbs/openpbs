@@ -40,6 +40,7 @@ lib_LIBRARIES = libpbs_sched.a
 
 libpbs_sched_a_CPPFLAGS = \
 	-I$(top_srcdir)/src/include \
+	@libz_inc@ \
 	@PYTHON_INCLUDES@
 libpbs_sched_a_SOURCES = \
 	buckets.c \
@@ -114,6 +115,7 @@ common_libs = \
 	$(top_builddir)/src/lib/Libsec/libsec.a \
 	@PYTHON_LDFLAGS@ \
 	@PYTHON_LIBS@ \
+	@libz_lib@ \
 	@libical_lib@
 
 pbs_sched_CPPFLAGS = ${common_cppflags}

@@ -36,42 +36,43 @@
 # trademark licensing policies.
 #
 
-unsupporteddir = ${exec_prefix}/unsupported
+AC_DEFUN([PBS_AC_WITH_LIBZ],
+[
+  AC_ARG_WITH([libz],
+    AS_HELP_STRING([--with-libz=DIR],
+      [Specify the directory where libz is installed.]
+    )
+  )
+  AS_IF([test "x$with_libz" != "x"],
+    libz_dir=["$with_libz"],
+    libz_dir=["/lib64"]
+  )
+  AC_MSG_CHECKING([for libz])
+  AS_IF([test "$libz_dir" = "/lib64"],
+    # Using system installed libz
+	libz_inc=""
+	AS_IF([test -r "/lib64/libz.so" -o -r "/usr/lib64/libz.so" -o -r "/usr/lib/x86_64-linux-gnu/libz.so"],
+    	[libz_lib="-lz"],
+      AC_MSG_ERROR([libz shared object library not found.])
+	),
 
-unsupported_PROGRAMS = pbs_rmget
-
-dist_unsupported_SCRIPTS = \
-	pbs_diag \
-	pbs_dtj \
-	pbs_loganalyzer \
-	pbs_stat
-
-
-# Marking all *.py files as data as these files are meant to be used as hooks and 
-# need no compilation.
-dist_unsupported_DATA = \
-	NodeHealthCheck.py \
-	load_balance.py \
-	mom_dyn_res.py \
-	rapid_inter.py \
-	run_pelog_shell.py \
-	NodeHealthCheck.json \
-	README \
-	pbs_dtj.8B \
-	pbs_jobs_at.8B \
-	pbs_rescquery.3B \
-	run_pelog_shell.ini \
-	cray_readme \
-	pbs_output.py
-
-pbs_rmget_CPPFLAGS = -I$(top_srcdir)/src/include \
-					@libz_inc@
-pbs_rmget_LDADD = \
-	$(top_builddir)/src/lib/Libtpp/libtpp.a \
-	$(top_builddir)/src/lib/Liblog/liblog.a \
-	$(top_builddir)/src/lib/Libnet/libnet.a \
-	$(top_builddir)/src/lib/Libpbs/.libs/libpbs.a \
-	$(top_builddir)/src/lib/Libutil/libutil.a \
-	-lpthread \
-	@libz_lib@
-pbs_rmget_SOURCES = pbs_rmget.c
+	# Using developer installed libz
+    AS_IF([test -r "$libz_dir/include/zlib.h"],
+      [libz_include="$libz_dir/include"],
+      AC_MSG_ERROR([libz headers not found.])
+    )
+	libz_inc="-I$libz_include"
+    AS_IF([test -r "${libz_dir}/lib64/libz.a"],
+      [libz_lib="${libz_dir}/lib64/libz.a"],
+      AS_IF([test -r "${libz_dir}/lib/libz.a"],
+        [libz_lib="${libz_dir}/lib/libz.a"],
+        AC_MSG_ERROR([libz not found.])
+      )
+    )
+  )
+  AC_MSG_RESULT([$libz_dir])
+  AC_MSG_RESULT([$libz_inc])
+  AC_SUBST(libz_inc)
+  AC_SUBST(libz_lib)
+  AC_DEFINE([PBS_COMPRESSION_ENABLED], [], [Defined when libz is available])
+])

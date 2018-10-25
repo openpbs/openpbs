@@ -44,6 +44,7 @@ pbs_mom_CPPFLAGS = \
 	-I$(top_srcdir)/src/resmom/${PBS_MACH} \
 	@hwloc_flags@ \
 	@hwloc_inc@ \
+	@libz_inc@ \
 	@PYTHON_INCLUDES@
 
 pbs_mom_LDADD = \
@@ -59,6 +60,7 @@ pbs_mom_LDADD = \
 	@PYTHON_LDFLAGS@ \
 	@PYTHON_LIBS@ \
 	@mom_mach_libs@ \
+	@libz_lib@ \
 	-lssl \
 	-lcrypto
 
