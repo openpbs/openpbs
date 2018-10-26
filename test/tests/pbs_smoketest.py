@@ -122,7 +122,7 @@ class SmokeTest(PBSTestSuite):
     def test_standing_reservation_stale_nodes(self):
         """
         Test to submit a standing reservation for nodes which are stale
-	after scheduling cycle and before set_nodes in server.
+        after scheduling cycle and before set_nodes in server.
         """
         # PBS_TZID environment variable must be set, there is no way to set
         # it through the API call, use CLI instead for this test
@@ -167,7 +167,7 @@ class SmokeTest(PBSTestSuite):
         self.server.manager(MGR_CMD_SET, NODE, b, id=resv_node)
         self.server.expect(RESV, a2, id=rid)
         self.logger.info('testinfo: waiting for recurring reservation,' +
-                                                'while expecting status')
+                         'while expecting status')
         self.server.expect(RESV, a, id=rid, offset=16)
         if _m == PTL_API:
             self.server.set_op_mode(PTL_API)
