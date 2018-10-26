@@ -112,12 +112,15 @@ class SmokeTest(PBSTestSuite):
              'reserve_start': time.time() + 20,
              'reserve_end': time.time() + 30, }
         r = Reservation(TEST_USER, a)
+        nodes = r.get_vnodes(r.exec_vnode)
+        print "NODES:"
+        print nodes
         rid = self.server.submit(r)
         a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
         self.server.expect(RESV, a, id=rid)
         if _m == PTL_API:
             self.server.set_op_mode(PTL_API)
-
+    @skipOnCray
     def test_standing_reservation_stale_nodes(self):
         """
         Test to submit a standing reservation for nodes which are stale after scheduling cycle and before set_nodes in server.
@@ -135,27 +138,35 @@ class SmokeTest(PBSTestSuite):
         else:
             self.logger.info('Missing timezone, using America/Los_Angeles')
             tzone = 'America/Los_Angeles'
-       	a = {'resources_available.ncpus': 1}
-       	self.server.create_vnodes('vn', a, num=4, mom=self.mom)
-       	a = {'Resource_List.select': '1:ncpus=2',
+            
+        a = {'resources_available.ncpus': 1}
+        time_now = int(time.time())
+        self.server.create_vnodes('vn', a, num=4, mom=self.mom)
+        a = {'Resource_List.select': '1:ncpus=2',
              ATTR_resv_rrule: 'FREQ=HOURLY;COUNT=2',
              ATTR_resv_timezone: tzone,
              ATTR_resv_standing: '1',
-             'reserve_start': time.time() + 4,
-             'reserve_end': time.time() + 9, }
-       	r = Reservation(TEST_USER, a)
+             'reserve_start': time_now + 8,
+             'reserve_end': time_now + 14, 
+             'Resource_List.place': 'free'}
+        r = Reservation(TEST_USER, a)
+        #Submitting recurring reservation to check the resv status for one of the vnode being stale
         rid = self.server.submit(r)
+        #To check the standing resv once confirmed.
         a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
-        a2 = {'reserve_state': (MATCH_RE, "RESV_DEGRADED|2")}
+        #To check the standing resv for Degraded status when one of the vnode becomes down
+        a2 = {'reserve_state': (MATCH_RE, "RESV_DEGRADED|10")}
         self.server.expect(RESV, a, id=rid)
         self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]
+        #To check the status of standing resv in next cycle and also check the down node doesn't exist in resv_nodes.
+        a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2"),'resv_nodes': (MATCH_RE, '^((?!' + re.escape(resv_node) + ').)*$')}
         b = {'state': 'down'}
         self.server.manager(MGR_CMD_SET, NODE, b, id=resv_node)
         self.server.expect(RESV, a2, id=rid)
-	time.sleep(13)
-        self.server.expect(RESV, a, id=rid)
-	if _m == PTL_API:
+        self.logger.info('testinfo: waiting for recurring reservation, while expecting status')
+        self.server.expect(RESV, a, id=rid, offset=16)
+        if _m == PTL_API:
             self.server.set_op_mode(PTL_API)
 
 
