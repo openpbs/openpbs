@@ -1990,3 +1990,32 @@ class TestMultipleSchedulers(TestFunctional):
         jid3 = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
         self.check_vnodes(j, ['vnode[0]'], jid3)
+
+    def test_multi_sched_priority_sockets(self):
+        """
+        Test scheduler socket connections from all the schedulers
+        are processed on priority
+        """
+        self.common_setup()
+        self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047})
+        for name in self.scheds:
+            self.server.manager(MGR_CMD_SET, SCHED,
+                                {'scheduling': 'False'}, id=name, expect=True)
+        a = {ATTR_queue: 'wq1',
+             'Resource_List.select': '1:ncpus=2',
+             'Resource_List.walltime': 60}
+        j = Job(TEST_USER1, attrs=a)
+        self.server.submit(j)
+        t = int(time.time())
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduling': 'True'}, id='sc1', expect=True)
+        self.server.log_match("processing priority sockets", starttime=t)
+        a = {ATTR_queue: 'wq2',
+             'Resource_List.select': '1:ncpus=2',
+             'Resource_List.walltime': 60}
+        j = Job(TEST_USER1, attrs=a)
+        self.server.submit(j)
+        t = int(time.time())
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduling': 'True'}, id='sc2', expect=True)
+        self.server.log_match("processing priority sockets", starttime=t)

@@ -6223,20 +6223,22 @@ do_rpp(int stream)
 
 /**
  * @brief
- *	wrapper function for do_rpp which calls infinitely
+ *	wrapper function for do_rpp
  *
  * @param[in] fd - file descriptor
  *
  * @return Void
  *
  */
-
+#define MAX_RPP_LOOPS 3
+/* Reducing rpp request process for a minimum of 3 times to interleave other connections */
 void
 rpp_request(int fd)
 {
 	int	stream;
-
-	for (;;) {
+	int	i;
+	/* To reduce rpp process storm reducing max do_rpp processing to 3 times */
+	for (i=0 ; i < MAX_RPP_LOOPS ; i++) {
 		if ((stream = rpp_poll()) == -1) {
 #ifdef	WIN32
 			if (errno != 10054)
@@ -6493,7 +6495,7 @@ finish_loop(time_t waittime)
 
 		if (exiting_tasks)
 			scan_for_exiting();
-		wait_request(1);
+		wait_request(1, NULL);
 	}
 #else
 	if (do_debug_report)
@@ -6512,7 +6514,7 @@ finish_loop(time_t waittime)
 	DBPRT(("%s: waittime %lu\n", __func__, (unsigned long) waittime))
 
 	/* wait for a request to process */
-	if (wait_request(waittime) != 0)
+	if (wait_request(waittime, NULL) != 0)
 		log_err(-1, msg_daemonname, "wait_request failed");
 
 #endif	/* WIN32 */

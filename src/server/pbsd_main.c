@@ -139,9 +139,7 @@
 #include "pbs_db.h"
 #include "pbs_sched.h"
 #include "pbs_share.h"
-
 #include <pbs_python.h>  /* for python interpreter */
-
 
 /* External functions called */
 
@@ -2048,7 +2046,6 @@ try_db_again:
 				if (psched->sch_attr[SCHED_ATR_scheduling].at_val.at_long &&
 					psched->svr_do_sched_high != SCH_SCHEDULE_NULL)
 					schedule_high(psched);
-
 				if (psched->svr_do_schedule == SCH_SCHEDULE_RESTART_CYCLE) {
 
 					/* send only to existing connection */
@@ -2058,6 +2055,7 @@ try_db_again:
 					/* connect must have been setup to be valid */
 					if ((psched->scheduler_sock2 != -1) &&
 						(psched->scheduler_sock != -1)) {
+
 						if (put_sched_cmd(psched->scheduler_sock2,
 								psched->svr_do_schedule, NULL) == 0) {
 							sprintf(log_buffer, "sent scheduler restart scheduling cycle request to %s", psched->sc_name);
@@ -2132,7 +2130,7 @@ try_db_again:
 #endif	/* WIN32 */
 
 		/* wait for a request and process it */
-		if (wait_request(waittime) != 0) {
+		if (wait_request(waittime, priority_context) != 0) {
 			log_err(-1, msg_daemonname, "wait_requst failed");
 		}
 #ifdef WIN32

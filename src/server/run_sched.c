@@ -90,6 +90,7 @@ int scheduler_sock = -1;	/* socket open to scheduler during a cycle */
 int scheduler_sock2 = -1;
 int scheduler_jobs_stat = 0;	/* set to 1 once scheduler queried jobs in a cycle*/
 extern int svr_unsent_qrun_req;
+#define PRIORITY_CONNECTION 1
 
 /**
  * @brief
@@ -302,18 +303,16 @@ contact_sched(int cmd, char *jobid, pbs_net_t pbs_scheduler_addr, unsigned int p
 
 	(void)sigaction(SIGALRM, &oact, NULL);	/* reset handler for SIGALRM */
 #endif
-
 	if (sock < 0) {
 		log_err(errno, __func__, msg_sched_nocall);
 		return (-1);
 	}
-	conn = add_conn(sock, FromClientDIS, pbs_scheduler_addr,
-		pbs_scheduler_port, process_request);
+	conn = add_conn_priority(sock, FromClientDIS, pbs_scheduler_addr,
+		pbs_scheduler_port, process_request, PRIORITY_CONNECTION);
 	if (!conn) {
 		log_err(errno, __func__, "could not find sock in connection table");
 		return (-1);
 	}
-
 	conn->cn_authen |=
 		PBS_NET_CONN_FROM_PRIVIL | PBS_NET_CONN_AUTHENTICATED;
 

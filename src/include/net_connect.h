@@ -176,6 +176,7 @@ enum conn_type {
 /* functions available in libnet.a */
 
 conn_t *add_conn(int sock, enum conn_type, pbs_net_t, unsigned int port, void (*func)(int));
+conn_t *add_conn_priority(int sock, enum conn_type, pbs_net_t, unsigned int port, void (*func)(int), int priority_flag);
 int add_conn_data(int sock, void *data); /* Adds the data to the connection */
 void *get_conn_data(int sock); /* Gets the pointer to the data present with the connection */
 void close_socket(int sock);
@@ -190,7 +191,8 @@ unsigned int  get_svrport(char *servicename, char *proto, unsigned int df);
 int  init_network(unsigned int port);
 int  init_network_add(int sock, void (*readfunc)(int));
 void net_close(int);
-int  wait_request(time_t waittime);
+int  wait_request(time_t waittime, void *priority_context);
+extern void *priority_context;
 void net_add_close_func(int, void(*)(int));
 extern  pbs_net_t  get_addr_of_nodebyname(char *name, unsigned int *port);
 
@@ -211,6 +213,7 @@ struct connection {
 	time_t		cn_lasttime;	/* time last active */
 	void		(*cn_func)(int); /* read function when data rdy */
 	void		(*cn_oncl)(int); /* func to call on close */
+	unsigned short	cn_prio_flag;	/* flag for a priority socket */
 	/* following attributes are for */
 	/* credential checking */
 	time_t          cn_timestamp;
