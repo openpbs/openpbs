@@ -144,34 +144,33 @@ class SmokeTest(PBSTestSuite):
              ATTR_resv_timezone: tzone,
              ATTR_resv_standing: '1',
              'reserve_start': time_now + 8,
-             'reserve_end': time_now + 14, 
+             'reserve_end': time_now + 14,
              'Resource_List.place': 'free'}
         r = Reservation(TEST_USER, a)
-        #Submitting recurring reservation to check the resv status 
+        #Submitting recurring reservation to check the resv status
         #for one of the vnode being stale
         rid = self.server.submit(r)
         #To check the standing resv once confirmed.
         a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
-        #To check the standing resv for Degraded status 
+        #To check the standing resv for Degraded status
         #when one of the vnode becomes down
         a2 = {'reserve_state': (MATCH_RE, "RESV_DEGRADED|10")}
         self.server.expect(RESV, a, id=rid)
         self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]
-        #To check the status of standing resv in next cycle and also 
+        #To check the status of standing resv in next cycle and also
         #check the down node doesn't exist in resv_nodes.
         a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2"),
-             'resv_nodes': 
+             'resv_nodes':
              (MATCH_RE, '^((?!' + re.escape(resv_node) + ').)*$')}
         b = {'state': 'down'}
         self.server.manager(MGR_CMD_SET, NODE, b, id=resv_node)
         self.server.expect(RESV, a2, id=rid)
-        self.logger.info('testinfo: waiting for recurring reservation,' + 
+        self.logger.info('testinfo: waiting for recurring reservation,' +
                                                 'while expecting status')
         self.server.expect(RESV, a, id=rid, offset=16)
         if _m == PTL_API:
             self.server.set_op_mode(PTL_API)
-
 
     @skipOnCpuSet
     def test_degraded_advance_reservation(self):
@@ -179,7 +178,6 @@ class SmokeTest(PBSTestSuite):
         Make reservations more fault tolerant
         Test for an advance reservation
         """
-
         now = int(time.time())
         a = {'reserve_retry_init': 5, 'reserve_retry_cutoff': 1}
         self.server.manager(MGR_CMD_SET, SERVER, a)
