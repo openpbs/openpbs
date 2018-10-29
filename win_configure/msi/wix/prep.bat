@@ -74,7 +74,6 @@ for %%a in (
         exit /b 1
     )
 )
-1>nul copy /B /Y "%PBS_EXECDIR%\bin\printjob_svr.exe" "%PBS_EXECDIR%\bin\printjob.exe"
 
 REM Remove unneccesory files from bin directory
 del /F /Q "%PBS_EXECDIR%\bin\pbs_ds_monitor.exe"

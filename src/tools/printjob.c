@@ -520,6 +520,10 @@ char *argv[];
 		return 1;
 	}
 
+#if defined(PRINTJOBSVR) && defined(WIN32)
+	winsock_init();
+#endif
+
 	for (f=optind; f<argc; ++f) {
 		char	*jobfile = argv[f];
 		int	len;
@@ -588,7 +592,6 @@ char *argv[];
 				fprintf(stderr, "Job %s not found\n", job_id);
 				free(job_id);
 				free(jobfile);
-				close(fp);
 				exit(1);
 			}
 #endif
@@ -725,6 +728,9 @@ char *argv[];
 	if (conn != NULL) {
 		pbs_db_disconnect(conn);
 	}
+#ifdef WIN32
+	winsock_cleanup();
+#endif
 #endif
 	return (0);
 }
