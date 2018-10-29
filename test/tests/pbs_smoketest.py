@@ -147,20 +147,20 @@ class SmokeTest(PBSTestSuite):
              'reserve_end': time_now + 14,
              'Resource_List.place': 'free'}
         r = Reservation(TEST_USER, a)
-        #Submitting recurring reservation to check the resv status
-        #for one of the vnode being stale
+        # Submitting recurring reservation to check the resv status
+        # for one of the vnode being stale
         rid = self.server.submit(r)
-        #To check the standing resv once confirmed.
+        # To check the standing resv once confirmed.
         a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
-        #To check the standing resv for Degraded status
-        #when one of the vnode becomes down
+        # To check the standing resv for Degraded status
+        # when one of the vnode becomes down
         a2 = {'reserve_state': (MATCH_RE, "RESV_DEGRADED|10")}
         self.server.expect(RESV, a, id=rid)
         self.server.status(RESV, 'resv_nodes', id=rid)
         resv_node = self.server.reservations[rid].get_vnodes()[0]
-        #To check the status of standing resv in next cycle and also
-        #check the down node doesn't exist in resv_nodes.
-        a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2"),
+        # To check the status of standing resv in next cycle and also
+        # check the down node doesn't exist in resv_nodes.
+        a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2|RESV_RUNNING|5"),
              'resv_nodes':
              (MATCH_RE, '^((?!' + re.escape(resv_node) + ').)*$')}
         b = {'state': 'down'}
