@@ -833,7 +833,6 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 	int sort_again = DONT_SORT_JOBS;
 	schd_error *err;
 	schd_error *chk_lim_err;
-	unsigned int flags = NO_FLAGS;	/* flags to is_ok_to_run @see is_ok_to_run() */
 	
 
 	if (policy == NULL || sinfo == NULL || rerr == NULL)
@@ -864,6 +863,7 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 	for (i = 0; !end_cycle &&
 		(njob = next_job(policy, sinfo, sort_again)) != NULL; i++) {
 		int should_use_buckets;		/* Should use node buckets for a job */
+		unsigned int flags = NO_FLAGS;	/* flags to is_ok_to_run @see is_ok_to_run() */
 
 #ifdef NAS /* localmod 030 */
 		if (check_for_cycle_interrupt(1)) {

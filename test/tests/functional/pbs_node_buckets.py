@@ -895,3 +895,45 @@ class TestNodeBuckets(TestFunctional):
         for n in ev:
             self.server.expect(
                 NODE, 'resources_available.bool', op=UNSET, id=n)
+
+    @timeout(450)
+    def test_last_pset_can_never_run(self):
+        """
+        Test that the job does not retain the error value of last placement
+        set seen by the node bucketing code. To check this make sure that the
+        last placement set check results into a 'can never run' case because
+        resources do not match and check that the job is not marked as
+        never run.
+        """
+
+        self.server.manager(MGR_CMD_CREATE, RSC,
+                            {'type': 'long', 'flag': 'nh'}, id='foo')
+        self.server.manager(MGR_CMD_CREATE, RSC,
+                            {'type': 'string', 'flag': 'h'}, id='bar')
+        self.server.manager(MGR_CMD_SET, SERVER, {'node_group_key': 'bar'})
+        self.server.manager(MGR_CMD_SET, SERVER, {'node_group_enable': 'true'})
+        self.mom.delete_vnode_defs()
+        a = {'resources_available.ncpus': 80,
+             'resources_available.bar': 'large'}
+        self.server.create_vnodes(name='vnode', attrib=a, num=8,
+                                  mom=self.mom, sharednode=False,
+                                  expect=False)
+        self.scheduler.add_resource('foo')
+        a['resources_available.foo'] = 8
+        a['resources_available.ncpus'] = 8
+        a['resources_available.bar'] = 'small'
+        for val in range(0, 5):
+            vname = "vnode[" + str(val) + "]"
+            self.server.manager(MGR_CMD_SET, NODE, a, id=vname)
+        chunk1 = '4:ncpus=5:foo=5'
+        a = {'Resource_List.select': chunk1,
+             'Resource_List.place': 'scatter:excl'}
+        j1 = Job(TEST_USER, attrs=a)
+        jid1 = self.server.submit(j1)
+
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
+        j2 = Job(TEST_USER, attrs=a)
+        jid2 = self.server.submit(j2)
+        self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
+        self.scheduler.log_match(jid2 + ';Job will never run',
+                                 existence=False, max_attempts=10)

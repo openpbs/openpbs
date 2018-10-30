@@ -1018,8 +1018,8 @@ find_correct_buckets(status *policy, node_bucket **buckets, resource_resv *resre
 				} else {
 					if (failerr->status_code == SCHD_UNKWN)
 						move_schd_error(failerr, err);
-					clear_schd_error(err);
 				}
+				clear_schd_error(err);
 			}
 		}
 		
@@ -1032,11 +1032,9 @@ find_correct_buckets(status *policy, node_bucket **buckets, resource_resv *resre
 	log_chunk_map_array(resresv, cb_map);
 
 	if (can_run == 0) {
-		if (err->status_code == SCHD_UNKWN && failerr->status_code != SCHD_UNKWN) {
+		if (err->status_code == SCHD_UNKWN && failerr->status_code != SCHD_UNKWN)
 			move_schd_error(err, failerr);
-			err->status_code = NEVER_RUN;
-		}
-
+		err->status_code = NEVER_RUN;
 		free_chunk_map_array(cb_map);
 		return NULL;
 	}
@@ -1100,16 +1098,28 @@ check_node_buckets(status *policy, server_info *sinfo, queue_info *qinfo, resour
 	if (nodepart != NULL) {
 		int i;
 		int can_run = 0;
+		static schd_error *failerr = NULL;
+		if (failerr == NULL) {
+			failerr = new_schd_error();
+			if (failerr == NULL)
+				return NULL;
+		} else
+			clear_schd_error(failerr);
+
 		for (i = 0; nodepart[i] != NULL; i++) {
 			nspec **nspecs;
 			snprintf(log_buffer, MAX_LOG_SIZE, "Evaluating placement set: %s", nodepart[i]->name);
 			schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name, log_buffer);
 
+			clear_schd_error(err);
 			nspecs = map_buckets(policy, nodepart[i]->bkts, resresv, err);
 			if (nspecs != NULL)
 				return nspecs;
-			if (err->status_code == NOT_RUN)
+			if (err->status_code == NOT_RUN) {
+				if (failerr->status_code == SCHD_UNKWN)
+					move_schd_error(failerr, err);
 				can_run = 1;
+			}
 		}
 		/* If we can't fit in any placement set, span over all of them */
 		if (can_run == 0) {
@@ -1121,7 +1131,11 @@ check_node_buckets(status *policy, server_info *sinfo, queue_info *qinfo, resour
 				schdlog(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_DEBUG, resresv->name,  "Request won't fit into any placement sets, will use all nodes");
 				return map_buckets(policy, sinfo->buckets, resresv, err);
 			}
-		}
+		} else
+			/* There is a possibility that the job might fit in one of the placement set,
+			 * use that error code
+			 */
+			move_schd_error(err, failerr);
 	}
 	else
 		return map_buckets(policy, sinfo->buckets, resresv, err);
