@@ -179,7 +179,7 @@ def attr(masterf, svrf, eclf):
                 s_flag = 1
             if flag_name == 'ECL':
                 e_flag = 1
-            if flag_name == None:
+            if flag_name is None:
                 e_flag = 0
                 s_flag = 0
             attr_list = attr_list.strip(' \t')
@@ -448,7 +448,7 @@ def attr(masterf, svrf, eclf):
         tail_list = node.getElementsByTagName('tail')
         for t in tail_list:
             tail_value = t.childNodes[0].nodeValue
-            if tail_value == None:
+            if tail_value is None:
                 pass
             fileappend('\n') 
             tail_both = t.getElementsByTagName('both')
@@ -520,7 +520,7 @@ def resc_attr(masterf, svrf, eclf):
                 s_flag = 1
             if flag_name == 'ECL':
                 e_flag = 1
-            if flag_name == None:
+            if flag_name is None:
                 e_flag = 0
                 s_flag = 0
             if macro_name:
@@ -826,7 +826,7 @@ def resc_attr(masterf, svrf, eclf):
         tail_list = node.getElementsByTagName('tail')
         for t in tail_list:
             tail_value = t.childNodes[0].nodeValue
-            if tail_value == None:
+            if tail_value is None:
                 pass
             fileappend('\n') 
             tail_both = t.getElementsByTagName('both')

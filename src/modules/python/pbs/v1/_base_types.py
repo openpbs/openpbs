@@ -736,7 +736,7 @@ class pbs_bool(_generic_attr):
     def __cmp__(self,value):
         iself = int(str(self))
 
-        if value == None:
+        if value is None:
             return 1
 
         ivalue = int(value)

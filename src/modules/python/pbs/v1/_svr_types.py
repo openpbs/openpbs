@@ -115,7 +115,7 @@ def pbs_statobj(type, name=None, connect_server=None, filter_queue=None):
 
         server_data_fp = _pbs_v1.get_server_data_fp();
 
-        if( connect_server == None ):
+        if( connect_server is None ):
             con=pbs_connect("localhost")
         else:
             con=pbs_connect(connect_server)
@@ -195,18 +195,18 @@ def pbs_statobj(type, name=None, connect_server=None, filter_queue=None):
                     pr=getattr(obj,n)
 
                     # instantiate Resource_List object if not set
-                    if( pr == None):
+                    if( pr is None):
                         setattr(obj,n)
 
                     pr=getattr(obj,n)
-                    if (pr == None):
+                    if (pr is None):
                         _pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
                                          "pbs_statobj: missing %s" % (n))
                         a=a.next
                         continue
 
                     vo=getattr(pr, r)
-                    if( vo == None ):
+                    if( vo is None ):
                         setattr(pr,r,v)
                         if server_data_fp:
                             server_data_fp.write("%s.%s[%s]=%s\n" %(header_str,n,r,v))
@@ -221,7 +221,7 @@ def pbs_statobj(type, name=None, connect_server=None, filter_queue=None):
                 else:
                     vo=getattr(obj,n)
 
-                    if( vo == None ):
+                    if( vo is None ):
                         setattr(obj,n,v)
                         if server_data_fp:
                             server_data_fp.write("%s.%s=%s\n" %(header_str,n,v))
@@ -695,7 +695,7 @@ class _server(object):
         """
         Flags the server to tell the scheduler to restart scheduling cycle
         """
-        if self._connect_server == None:
+        if self._connect_server is None:
             _pbs_v1.scheduler_restart_cycle(_pbs_v1.get_pbs_server_name())
         else:
             _pbs_v1.scheduler_restart_cycle(self._connect_server)
@@ -863,7 +863,7 @@ class pbs_iter(object):
 	    self._caller = _pbs_v1.get_python_daemon_name()
 	    if self._caller == "pbs_python":
 
-		if( connect_server == None ):
+		if( connect_server is None ):
 		    self._connect_server = "localhost"
 		    sn = ""
 		else:        
@@ -936,7 +936,7 @@ class pbs_iter(object):
 	    self._caller = _pbs_v1.get_python_daemon_name()
 	    if self._caller == "pbs_python":
 
-		if( connect_server == None ):
+		if( connect_server is None ):
 		    self._connect_server = "localhost"
 		    sn = ""
 		else:        
@@ -995,7 +995,7 @@ class pbs_iter(object):
     if NAS_mod != None and NAS_mod != 0:
         def next(self):
 	    if self._caller == "pbs_python":
-		if not hasattr(self, "bs") or self.bs == None:
+		if not hasattr(self, "bs") or self.bs is None:
 		    if not _pbs_v1.use_static_data():
 			pbs_disconnect(self.con)
 			self.con = -1
@@ -1070,18 +1070,18 @@ class pbs_iter(object):
 			    pr=getattr(obj,n)
 
 			    # if resource list does not exist, then set it
-			    if( pr == None):
+			    if( pr is None):
 				setattr(obj,n)
 
 			    pr=getattr(obj,n)
-			    if (pr == None):
+			    if (pr is None):
 				_pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
 					       "pbs_statobj: missing %s" % (n))
 				a=a.next
 				continue
 
 			    vo=getattr(pr, r)
-			    if( vo == None ):
+			    if( vo is None ):
 				setattr(pr,r,v)
 				if server_data_fp:
 				    server_data_fp.write("%s.%s[%s]=%s\n" %(header_str,n,r,v))
@@ -1096,7 +1096,7 @@ class pbs_iter(object):
 			else:
 			    vo=getattr(obj,n)
 
-			    if( vo == None ):
+			    if( vo is None ):
 				setattr(obj,n,v)
 				if server_data_fp:
 				    server_data_fp.write("%s.%s=%s\n" %(header_str,n,v))
@@ -1118,7 +1118,7 @@ class pbs_iter(object):
     else:
 	def next(self):
 	    if self._caller == "pbs_python":
-		if not hasattr(self, "bs") or self.bs == None:
+		if not hasattr(self, "bs") or self.bs is None:
 		    if not _pbs_v1.use_static_data():
 			pbs_disconnect(self.con)
 			self.con = -1
@@ -1189,18 +1189,18 @@ class pbs_iter(object):
 			    pr=getattr(obj,n)
 
 			    # if resource list does not exist, then set it
-			    if( pr == None):
+			    if( pr is None):
 				setattr(obj,n)
 
 			    pr=getattr(obj,n)
-			    if (pr == None):
+			    if (pr is None):
 				_pbs_v1.logmsg(_pbs_v1.LOG_DEBUG,
 					       "pbs_statobj: missing %s" % (n))
 				a=a.next
 				continue
 
 			    vo=getattr(pr, r)
-			    if( vo == None ):
+			    if( vo is None ):
 				setattr(pr,r,v)
 				if server_data_fp:
 				    server_data_fp.write("%s.%s[%s]=%s\n" %(header_str,n,r,v))
@@ -1215,7 +1215,7 @@ class pbs_iter(object):
 			else:
 			    vo=getattr(obj,n)
 
-			    if( vo == None ):
+			    if( vo is None ):
 				setattr(obj,n,v)
 				if server_data_fp:
 				    server_data_fp.write("%s.%s=%s\n" %(header_str,n,v))
