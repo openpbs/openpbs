@@ -61,8 +61,7 @@ class Test_acl_host_moms(TestFunctional):
 
         self.hostA = self.momA.shortname
         if not self.du.is_localhost(self.server.client):
-            # acl_hosts expects FQDN
-            self.hostB = socket.getfqdn(self.server.client)
+            self.hostB = self.server.client
         else:
             self.skip_test(usage_string)
 

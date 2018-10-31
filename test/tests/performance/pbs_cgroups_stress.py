@@ -106,10 +106,9 @@ class TestCgroupsStress(TestPerformance):
     }
 }"""
 
-        self.noprefix = False
         self.paths = self.get_paths()
-        if not (self.paths['cpuset'] and self.paths['memory']):
-            self.skipTest('cpuset or memory cgroup subsystem not mounted')
+        if not self.paths:
+            self.skipTest("No cgroups mounted")
         self.swapctl = is_memsw_enabled(self.paths['memsw'])
         self.server.set_op_mode(PTL_CLI)
         self.server.cleanup_jobs(extend='force')
@@ -132,37 +131,25 @@ class TestCgroupsStress(TestPerformance):
         # Restart mom so exechost_startup hook is run
         self.mom.signal('-HUP')
 
+    @staticmethod
     def get_paths():
         """
         Returns a dictionary containing the location where each cgroup
         is mounted.
         """
-        paths = {'pids': None,
-                 'blkio': None,
-                 'systemd': None,
-                 'cpuset': None,
-                 'memory': None,
-                 'memsw': None,
-                 'cpuacct': None,
-                 'devices': None}
+        paths = {}
         # Loop through the mounts and collect the ones for cgroups
-        with open(os.path.join(os.sep, 'proc', 'mounts'), 'r') as fd:
+        with open(os.path.join(os.sep, "proc", "mounts"), 'r') as fd:
             for line in fd:
                 entries = line.split()
-                if entries[2] != 'cgroup':
+                if entries[2] != "cgroup":
                     continue
                 flags = entries[3].split(',')
-                if 'noprefix' in flags:
-                    self.noprefix = True
                 subsys = os.path.basename(entries[1])
                 paths[subsys] = entries[1]
                 if 'memory' in flags:
                     paths['memsw'] = paths[subsys]
                     paths['memory'] = paths[subsys]
-                if 'cpuacct' in flags:
-                    paths['cpuacct'] = paths[subsys]
-                if 'devices' in flags:
-                    paths['devices'] = paths[subsys]
         return paths
 
     def load_hook(self, filename):

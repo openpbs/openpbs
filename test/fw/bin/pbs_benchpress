@@ -44,10 +44,8 @@ import logging.config
 import platform
 import errno
 import signal
-import importlib
 import ptl
 import nose
-from nose.plugins.base import Plugin
 from ptl.lib.pbs_testlib import PtlConfig
 from distutils.version import LooseVersion
 from ptl.utils.pbs_cliutils import CliUtils
@@ -78,8 +76,7 @@ def sighandler(signum, frames):
 
 # join process group of caller makes it possible to programmatically interrupt
 # when run in a subshell
-if os.getpgrp() != os.getpid():
-    os.setpgrp()
+os.setpgrp()
 signal.signal(signal.SIGINT, sighandler)
 signal.signal(signal.SIGTERM, sighandler)
 
@@ -102,10 +99,6 @@ def usage():
     msg += [' pairs. Note that the comma can not be used in val\n']
     msg += ['-t <test suites>: comma-separated list of test suites to run\n']
     msg += ['--exclude=<names>: comma-separated string of tests to exclude\n']
-    msg += ['--user-plugins=<names>: comma-separated list of key=val of']
-    msg += [' user plugins to load, where key is module and val is']
-    msg += [' classname of plugin which is subclass of nose.plugins.base']
-    msg += ['.Plugin\n']
     msg += ['--db-type=<type>: Type of database to use.']
     msg += [' can be one of "html", "file", "sqlite", "pgsql".']
     msg += [' Default to "file"\n']
@@ -220,7 +213,6 @@ if __name__ == '__main__':
     tc_failure_threshold = 10
     cumulative_tc_failure_threshold = 100
     max_postdata_threshold = 10
-    user_plugins = None
     PtlConfig()
 
     largs = ['exclude=', 'log-conf=', 'timeout=']
@@ -232,7 +224,7 @@ if __name__ == '__main__':
     largs += ['stop-on-failure', 'enable-nose-debug']
     largs += ['post-analysis-data=', 'gen-ts-tree']
     largs += ['tc-failure-threshold=', 'cumulative-tc-failure-threshold=']
-    largs += ['max-postdata-threshold=', 'user-plugins=']
+    largs += ['max-postdata-threshold=']
 
     try:
         opts, args = getopt.getopt(
@@ -271,8 +263,6 @@ if __name__ == '__main__':
             testfiles = CliUtils.expand_abs_path(val)
         elif o == '-t':
             testsuites = val
-        elif o == '--user-plugins':
-            user_plugins = val
         elif o == '--tags':
             tags.append(val.strip())
         elif o == '--eval-tags':
@@ -458,35 +448,6 @@ if __name__ == '__main__':
         db.set_data(dbtype, dbname, dbaccess)
         data.set_data(post_data_dir, max_postdata_threshold)
         plugins = (loader, testtags, runner, db, data)
-    if user_plugins:
-        for plugin in user_plugins.split(','):
-            if '=' not in plugin:
-                _msg = 'Invalid value (%s)' % (plugin)
-                _msg += ' provided in user-plugins, it should be key value'
-                _msg += ' pair where key is module name and value is class'
-                _msg += ' name of plugin'
-                logging.error(_msg)
-                sys.exit(1)
-            mod, clsname = plugin.split('=', 1)
-            try:
-                loaded_mod = importlib.import_module(mod)
-            except ImportError:
-                _msg = 'Failed to load module (%s)' % mod
-                _msg += ' for plugin (%s)' % plugin
-                logging.error(_msg)
-                sys.exit(1)
-            _plugin = getattr(loaded_mod, clsname, None)
-            if not _plugin:
-                _msg = 'Could not find class named "%s"' % clsname
-                _msg += ' in module (%s)' % mod
-                logging.error(_msg)
-                sys.exit(1)
-            if not issubclass(_plugin, Plugin):
-                _msg = 'Plugin class (%s) should be subclass of ' % (clsname)
-                _msg += 'nose.plugins.base.Plugin'
-                logging.error(_msg)
-                sys.exit(1)
-            plugins += (_plugin(),)
     test_regex = r'(^(?:[\w]+|^)Test|pbs_|^test_[\(]*)'
     os.environ['NOSE_TESTMATCH'] = test_regex
     if nosedebug:

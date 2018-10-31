@@ -254,7 +254,6 @@ api_to_cli = {
     ATTR_do_not_span_psets: 'do_not_span_psets',
     ATTR_soft_time: 'Wsoft_limit_time',
     ATTR_power_provisioning: 'power_provisioning',
-    ATTR_max_job_sequence_id: 'max_job_sequence_id',
     ATTR_NODE_Host: 'Host',
     ATTR_NODE_Mom: 'Mom',
     ATTR_NODE_Port: 'Port',

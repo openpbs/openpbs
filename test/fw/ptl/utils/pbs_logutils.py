@@ -42,9 +42,10 @@ import datetime
 import logging
 import traceback
 import math
-from subprocess import Popen, PIPE
+import subprocess
+import platform
 
-from ptl.utils.pbs_dshutils import DshUtils
+from ptl.utils.pbs_dshutils import DshUtils, PbsConfigError
 from ptl.lib.pbs_testlib import BatchUtils, Server, NODE, JOB, SET, EQ
 from ptl.lib.pbs_testlib import ResourceResv
 from ptl.utils.pbs_fileutils import FileUtils, FILE_TAIL
@@ -221,7 +222,7 @@ class PBSLogUtils(object):
     du = DshUtils()
 
     @classmethod
-    def convert_date_time(cls, datetime=None, fmt="%m/%d/%Y %H:%M:%S"):
+    def convert_date_time(cls, datetime=None, fmt="%m/%d/%Y %H:%M:%S", syslog=False):
         """
         convert a date time string of the form given by fmt into
         number of seconds since epoch
@@ -235,13 +236,29 @@ class PBSLogUtils(object):
         if datetime is None:
             return None
 
+        if syslog:
+            fmt = "%b %d %H:%M:%S"
+            print("datetime in convert_date is: " + str(datetime))
+            #print("fmt is " + fmt)
+
         try:
             t = time.strptime(datetime, fmt)
+            if syslog:
+                print("I am in if loop")
+                #now = datetime.now()
+                current_t = time.strftime("%Y,%m,%d,%H,%M,%S")
+                print("current_t is" + str(current_t))
+                split_current_t = current_t.split(',')
+                t_edit = list(t)
+                t_edit[0] = int(split_current_t[0])
+                t = time.struct_time(tuple(t_edit))
+                print("t is: " + str(t))
         except:
             cls.logger.debug("could not convert date time: " + str(datetime))
             return None
 
         tm = int(time.mktime(t))
+        print("returning to match_msg")
         return tm
 
     def get_num_lines(self, log, hostname=None, sudo=False):
@@ -319,7 +336,7 @@ class PBSLogUtils(object):
         return rec_times
 
     def match_msg(self, lines, msg, allmatch=False, regexp=False,
-                  starttime=None, endtime=None):
+                  starttime=None, endtime=None, syslog=False):
         """
         Returns (x,y) where x is the matching line y, or None if
         nothing is found.
@@ -335,30 +352,41 @@ class PBSLogUtils(object):
         :param endtime: If set ignore matches that occur after
                         specified time
         """
+        print("Syslog value in match_msg is : " + str(syslog))
+        if syslog:
+            date_length = 15
+            # print("Date lenght is: " + str(date_length))
+        else:
+            date_length = 19
+            # print("Date lenght is: " + str(date_length))
+
         linecount = 0
         ret = []
         if lines:
             for l in lines:
                 if starttime is not None:
                     # l[:19] captures the log record time
-                    tm = self.convert_date_time(l[:19])
+                    tm = self.convert_date_time(l[:date_length], syslog=syslog)
                     if tm is None or tm < starttime:
+                        print("startime if loop")
                         continue
                 if endtime is not None:
                     # l[:19] captures the log record time
-                    tm = self.convert_date_time(l[:19])
+                    tm = self.convert_date_time(l[:date_length], syslog=syslog)
                     if tm is None or tm > endtime:
                         continue
                 if ((regexp and re.search(msg, l)) or
                         (not regexp and l.find(msg) != -1)):
+                    print("Before datetime in final loop")
                     m = (linecount, l)
                     if allmatch:
                         ret.append(m)
                     else:
                         return m
-                linecount += 1
+
         if len(ret) > 0:
             return ret
+        print("Did not get any ret value")
         return None
 
     @staticmethod
@@ -537,6 +565,188 @@ class PBSLogUtils(object):
             paths = [path]
 
         return paths
+
+
+    def _get_syslog_lines(self, hostname=None, n=100, logval=None):
+        """
+        Get the syslog lines to be matched and send them to _log_match()
+
+        :param hostname: the on which syslog files reside
+        :type hostname: str
+        :param n: the number of lines to match
+        :type n: int
+        :param logtype: The entity requested, an instance of a
+                        Scheduler, Server or MoM object, or the
+                        string 'tracejob' for tracejob
+        :type logtype: str or object
+        :returns Last ``<n>`` lines of logfile for ``Server``,
+                  ``Scheduler``, ``MoM or tracejob``
+        """
+
+        # if syslog utility is not rsyslogd, throw error
+        cmd_sys = "ps -e | grep syslog | awk '{print $NF}'"
+        utility = self.du.run_cmd(hosts=hostname, cmd=cmd_sys, as_script=True, sudo=True,
+                                  level=logging.DEBUG2)['out']
+        print("utility is: ")
+        print(utility[0])
+        print(type(utility[0]))
+        print("host is : " + hostname)
+
+        if utility[0] != "rsyslogd":
+            raise PbsConfigError(rc=1, rv=None, msg="Only rsyslog utility is supported currently")
+
+        syslog_daemon = subprocess.check_output(["bash", "-c", "ps", "-e", "|", "grep", "syslog"])
+
+        severity = self.du.run_cmd(hosts=hostname, cmd="cat /etc/pbs.conf | grep -w PBS_SYSLOGSEVR "
+                                                       "| awk '{print substr($0,length,1)}'",
+                                   as_script=True, sudo=True,
+                                   level=logging.DEBUG2)['out'][0]
+
+        if severity is None:
+            raise PbsConfigError(rc=1, rv=None, msg="Set PBS_SYSLOGSEVR in pbs.conf")
+
+        facility = self.du.run_cmd(hosts=hostname, cmd="cat /etc/pbs.conf | grep -w PBS_SYSLOG "
+                                                       "| awk '{print substr($0,length,1)}'",
+                                   as_script=True, sudo=True,
+                                   level=logging.DEBUG2)['out'][0]
+
+        list_of_syslog_files = self._get_rsyslog_files(hostname=hostname, severity=severity, facility=facility)
+
+        lines = []
+        combined_lines = []
+        if n == "ALL":
+            n = 5000
+        if hostname is None:
+            hostname = socket.gethostname()
+
+        if logval is 'sched_logs':
+            daemon_str = 'pbs_sched'
+        elif logval is 'server_logs':
+            daemon_str = 'Server@'
+        elif logval is 'mom_logs':
+            daemon_str = 'pbs_mom'
+        elif logval is 'comm_logs':
+            daemon_str = 'pbs_comm'
+        else:
+            daemon_str = None
+
+        cmd = "/usr/bin/tail -" + str(n)
+
+        # pyexec = os.path.join(self.pbs_conf['PBS_EXEC'], 'python',
+        #                      'bin', 'python')
+        osflav = self.du.get_platform(hostname=hostname)
+        print("n is:")
+        print(n)
+
+        for x in list_of_syslog_files:
+            run_cmd = cmd + " " + x
+            print("x is: " + x)
+            print("cmd is " + cmd)
+            print("hostname is" + hostname)
+            l_sys = self.du.run_cmd(hosts=hostname, cmd=run_cmd, sudo=True,
+                                    level=logging.DEBUG2)['out']
+
+            print("lsys is ===========================" + str(l_sys))
+            for l in l_sys:
+                if daemon_str in l:
+                    lines.append(l)
+
+        #print("lines is *******************************" + str(lines))
+        lines.sort(key=lambda x: datetime.datetime.strptime(x[:15], "%b %d %H:%M:%S"))
+        print("combined line +++++++++++++++++++++++++++++++" + str(lines))
+        return lines
+
+    def _get_rsyslog_files(self, hostname=None, severity=None, facility=None):
+        """
+        :param severity: syslog serverity in pbs.conf
+        :type severity: int
+        :param facility: syslog facilty in pbs.conf
+        :type facility: int
+        :return: list of priorites list[]
+        """
+        facility = int(facility)
+        severity = int(severity)
+        print(str(facility))
+        print(str(severity))
+        # PBS supported severity
+        p_severity = {
+            0 : "emerg",
+            1 : "alert",
+            2 : "crit",
+            3 : "err",
+            4 : "warning",
+            5 : "notice",
+            6 : "info",
+            7 : "debug",
+            -1: "*"
+        }
+        p_facility = {
+            1 : "daemon",
+            2 : "local0",
+            3 : "local1",
+            4 : "local2",
+            5 : "local3",
+            6 : "local4",
+            7 : "local5",
+            8 : "local6",
+            9 : "local7",
+            10: "*"
+        }
+
+
+        list_of_priority = {"*." + p_severity[severity], p_facility[facility] + ".*", "*.*"}
+        print("I am here")
+
+        if severity is None and facility is None:
+            print("I am in 1")
+            for x in p_severity:
+                for y in p_facility:
+                    c = p_facility[y] + "." + p_severity[x]
+                    list_of_priority.add(c)
+        elif severity is None and facility is not None:
+            print("I am in 2")
+            for x in p_severity:
+                c = facility + "." + p_severity[x]
+                list_of_priority.add(c)
+        elif severity is not None and facility is None:
+            print("I am in 3")
+            for x in p_severity:
+                if int(x) <= severity:
+                    for y in p_facility:
+                        c = p_facility[y] + "." + p_severity[x]
+                        list_of_priority.add(c)
+        else:
+            print("I am in 4")
+            for x in p_severity:
+                if int(x) <= severity:
+                    c = p_facility[facility] + "." + p_severity[x]
+                    list_of_priority.add(c)
+                    c = "*." + p_severity[x]
+                    list_of_priority.add(c)
+
+        print(list_of_priority)
+
+        # open syslog conf file and get files where syslog messages are stored
+        list_of_syslog_files = set()
+
+        cmd_sys = "cat /etc/rsyslog.conf"
+        f = self.du.run_cmd(hosts=hostname, cmd=cmd_sys, as_script=True, sudo=True,
+                            level=logging.DEBUG2)['out']
+
+        print(str(f))
+
+        for line in f:
+            for p in list_of_priority:
+                if p in line and line[0] != '#':
+                    print("p is: " + str(p))
+                    print("line is: " + str(line))
+                    msg_file = line.split()[-1]
+                    if "/" in msg_file:
+                        print(str(line.split()[-1]))
+                        list_of_syslog_files.add(msg_file)
+
+        print(list(list_of_syslog_files))
+        return list(list_of_syslog_files)
 
 
 class PBSLogAnalyzer(object):
@@ -2168,3 +2378,4 @@ class PBSAccountingLog(PBSLogAnalyzer):
         self.info[USRS] = len(set(self.users.values()))
 
         return self.info
+
