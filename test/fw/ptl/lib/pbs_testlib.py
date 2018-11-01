@@ -10958,8 +10958,10 @@ class Scheduler(PBSService):
             script_body = f.readlines()
             f.close()
         else:
+            home_dir = os.path.expanduser("~")
             res_file = self.du.create_temp_file(prefix='PtlPbsSchedConfig',
-                                                body=script_body)
+                                                body=script_body,
+                                                dirname=home_dir)
 
         self.server_dyn_res = res_file
         self.logger.info(self.logprefix + "adding server dyn res " + res_file)
