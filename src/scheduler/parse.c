@@ -743,6 +743,16 @@ parse_config(char *fname)
 								tmp2 = string_dup(tok);
 								conf.dynamic_res[res_num].res = tmp1;
 								conf.dynamic_res[res_num].program = tmp2;
+#ifdef  WIN32
+								if (chk_file_sec(tmp2, 0, 0, WRITES_MASK, 1)) {
+#else
+								if (chk_file_sec(tmp2, 0, 0, S_IWGRP|S_IWOTH, 1)) {
+#endif
+									snprintf(errbuf, sizeof(errbuf),
+										"error: %s file has a non-secure file access", tmp2);
+									error = 1;
+								}
+
 							}
 							else
 								error = 1;

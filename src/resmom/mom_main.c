@@ -3416,10 +3416,13 @@ set_suspend_signal(char *str)
  * @param[in] file - filename
  * @param[in] linenum - line number in file
  *
- * @return Void
+ * @return int
+ *
+ * @retval  1 - In case of error
+ * @retval  0 - In case of success
  *
  */
-static void
+static int
 add_static(char *str, char *file, int linenum)
 {
 	int	 i;
@@ -3429,8 +3432,18 @@ add_static(char *str, char *file, int linenum)
 
 	str = TOKCPY(str, name);/* resource name */
 	str = skipwhite(str);	/* resource value */
-	if (*str == '!')	/* shell escape command */
+	if (*str == '!') {	/* shell escape command */
 		rmnl(str);
+#ifdef  WIN32
+		if (chk_file_sec(&str[1], 0, 0, WRITES_MASK, 1)) {
+#else
+		if (chk_file_sec(&str[1], 0, 0, S_IWGRP|S_IWOTH, 1)) {
+#endif
+			snprintf(log_buffer, sizeof(log_buffer), "error: %s file has a non-secure file access", str);
+			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG, "add_static", log_buffer);
+			return 1;
+		}
+	}
 	else {			/* get the value */
 		i = strlen(str);
 		while (--i) {	/* strip trailing blanks */
@@ -3449,11 +3462,12 @@ add_static(char *str, char *file, int linenum)
 	cp->c.c_u.c_value = strdup(str);
 	memcheck(cp->c.c_u.c_value);
 
-	sprintf(log_buffer, "%s[%d] add name %s value %s",
+	snprintf(log_buffer, sizeof(log_buffer), "%s[%d] add name %s value %s",
 		file, linenum, name, str);
 	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, "add_static", log_buffer);
 
 	config_list = cp;
+	return 0;
 }
 
 /**
@@ -3483,7 +3497,8 @@ setidealload(char *value)
 	if (max_load_val < 0.0)
 		max_load_val = val;	/* set a default */
 	(void)strcat(newstr, value);
-	add_static(newstr, "config", 0);
+	if (add_static(newstr, "config", 0))
+		return HANDLER_FAIL;
 	nconfig++;
 	return HANDLER_SUCCESS;
 }
@@ -3520,7 +3535,8 @@ setmaxload(char *value)
 	if (ideal_load_val < 0.0)
 		ideal_load_val = val;
 	(void)strncat(newstr, value, 40);
-	add_static(newstr, "config", 0);
+	if (add_static(newstr, "config", 0))
+		return HANDLER_FAIL;
 	nconfig++;
 
 	if (*endptr != '\0') {
@@ -4545,7 +4561,8 @@ parse_config(char *file)
 			continue;
 		}
 
-		add_static(str, file, linenum);
+		if (add_static(str, file, linenum))
+			continue;
 		num_newstaticdefs++;
 	}
 	nconfig += num_newstaticdefs;
@@ -6954,7 +6971,8 @@ set_spoolsize(char *value)
 
 	spoolsize = val;
 	(void) strncat(newstr, value, 39);
-	add_static(newstr, "config", 0);
+	if (add_static(newstr, "config", 0))
+		return HANDLER_FAIL;
 	nconfig++;
 	return HANDLER_SUCCESS;
 }

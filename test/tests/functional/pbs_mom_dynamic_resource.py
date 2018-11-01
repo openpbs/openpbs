@@ -70,6 +70,17 @@ class TestMomDynRes(TestFunctional):
             self.filenames.append(fp)
         return fp_list
 
+    def check_log(self, fp, exist=True):
+        match_from = time.time()
+        # adding a second delay because log_match can then start from the
+        # correct log message and avoid false positives from previous
+        # logs
+        time.sleep(1)
+        self.mom.signal('-HUP')
+        self.mom.log_match(fp + ' file has a non-secure file access',
+                           starttime=match_from, existence=exist,
+                           max_attempts=10)
+
     def test_res_string_incorrect_value(self):
         """
         Test for host level string resource
@@ -338,8 +349,68 @@ class TestMomDynRes(TestFunctional):
         self.server.expect(JOB, {'job_state': 'Q', 'comment': c},
                            id=jid, attrop=PTL_AND)
 
+    def test_mom_dyn_res_permissions(self):
+        """
+        Test whether mom rejects the mom dynamic resource script when the
+        permission of the script are open to write for others and group
+        """
+        scr_body = ['echo "10"', 'exit 0']
+        home_dir = os.path.expanduser("~")
+        fp = self.du.create_temp_file(body=scr_body, dirname=home_dir)
+        mom_config_str = '!' + fp
+        self.scheduler.set_sched_config({'mom_resources': 'foo'},
+                                        validate=True)
+        self.scheduler.add_resource('foo')
+        self.mom.add_config({'foo': mom_config_str})
+
+        # give write permission to group and others
+        self.du.chmod(path=fp, mode=0766)
+        self.check_log(fp)
+
+        # give write permission to group
+        self.du.chmod(path=fp, mode=0764)
+        self.check_log(fp)
+
+        # give write permission to others
+        self.du.chmod(path=fp, mode=0746)
+        self.check_log(fp)
+
+        # give write permission to user only
+        self.du.chmod(path=fp, mode=0744)
+        self.check_log(fp, exist=False)
+
+        # Cleanup
+        os.remove(fp)
+
+        # Create a script in tmp directory which has more open privileges
+        # This should make loading of this file fail in all cases
+        dir_temp = self.du.mkdtemp(mode=0766, dir=home_dir)
+        fp = self.du.create_temp_file(body=scr_body, dirname=dir_temp)
+        mom_config_str = '!' + fp
+        self.mom.add_config({'foo': mom_config_str})
+
+        # give write permission to group and others
+        self.du.chmod(path=fp, mode=0766)
+        self.check_log(fp)
+
+        # give write permission to group
+        self.du.chmod(path=fp, mode=0764)
+        self.check_log(fp)
+
+        # give write permission to others
+        self.du.chmod(path=fp, mode=0746)
+        self.check_log(fp)
+
+        # give write permission to user only
+        self.du.chmod(path=fp, mode=0744)
+        self.check_log(fp)
+
+        # Cleanup
+        os.remove(fp)
+        os.removedirs(dir_temp)
+
     def tearDown(self):
-        #removing all files creating in test
+        # removing all files creating in test
         for i in self.filenames:
             if os.path.isfile(i):
                 os.remove(i)
