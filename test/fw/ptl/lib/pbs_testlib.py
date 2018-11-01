@@ -3485,6 +3485,7 @@ class PBSService(PBSObject):
         self.pbs_env = {}
         self._is_local = True
         self.launcher = None
+        self.dyn_created_files = []
 
         PBSObject.__init__(self, name, attrs, defaults)
 
@@ -4307,6 +4308,15 @@ class PBSService(PBSObject):
     def __repr__(self):
         return (self.__class__.__name__ + '/' + self.pbs_conf_file + '@' +
                 self.hostname)
+
+    def cleanup_files(self):
+        """
+        This function removes any dynamic resource files created by server/mom
+        objects
+        """
+        for dyn_files in self.dyn_created_files:
+            self.du.rm(path=dyn_files, sudo=True, force=True)
+        self.dyn_created_files = []
 
 
 class Comm(PBSService):
@@ -10574,7 +10584,6 @@ class Scheduler(PBSService):
         self.resource_group = None
         self.holidays_obj = None
         self.server = None
-        self.server_dyn_res = None
         self.logger = logging.getLogger(__name__)
         self.db_access = None
 
@@ -11062,10 +11071,12 @@ class Scheduler(PBSService):
         return True
 
     def add_server_dyn_res(self, custom_resource, script_body=None,
-                           res_file=None, apply=True, validate=True):
+                           res_file=None, apply=True, validate=True,
+                           dirname=None, host=None, perm=0700,
+                           prefix='PtlPbsSvrDynRes', suffix='.scr'):
         """
-        Add a server dynamic resource script or file to the scheduler
-        configuration
+        Add a root owned server dynamic resource script or file to the
+        scheduler configuration.
 
         :param custom_resource: The name of the custom resource to
                                 define
@@ -11079,25 +11090,46 @@ class Scheduler(PBSService):
         :param validate: if True (the default), validate the
                          configuration settings.
         :type validate: bool
+        :param dirname: the file will be created in this directory
+        :type dirname: str or None
+        :param host: the hostname on which dyn res script is created
+        :type host: str or None
+        :param perm: perm to use while creating scripts
+                     (must be octal like 0777)
+        :param prefix: the file name will begin with this prefix
+        :type prefix: str
+        :param suffix: the file name will end with this suffix
+        :type suffix: str
+        :return Absolute path of the dynamic resource script
         """
         if res_file is not None:
-            f = open(file)
-            script_body = f.readlines()
-            f.close()
+            with open(res_file) as f:
+                script_body = f.readlines()
+                self.du.chmod(hostname=host, path=res_file, mode=perm,
+                              sudo=True)
         else:
-            res_file = self.du.create_temp_file(prefix='PtlPbsSchedConfig',
-                                                body=script_body)
+            if dirname is None:
+                dirname = self.pbs_conf['PBS_HOME']
+            tmp_file = self.du.create_temp_file(prefix=prefix, suffix=suffix,
+                                                body=script_body,
+                                                hostname=host)
+            res_file = os.path.join(dirname, tmp_file.split(os.path.sep)[-1])
+            self.du.run_copy(host, tmp_file, res_file, sudo=True,
+                             preserve_permission=False)
+            self.du.chown(hostname=host, path=res_file, uid=0, gid=0,
+                          sudo=True)
+            self.du.chmod(hostname=host, path=res_file, mode=perm, sudo=True)
+            if host is None:
+                self.dyn_created_files.append(res_file)
 
-        self.server_dyn_res = res_file
         self.logger.info(self.logprefix + "adding server dyn res " + res_file)
         self.logger.info("-" * 30)
         self.logger.info(script_body)
         self.logger.info("-" * 30)
 
-        self.du.chmod(self.hostname, path=res_file, mode=0755)
-
         a = {'server_dyn_res': '"' + custom_resource + ' !' + res_file + '"'}
         self.set_sched_config(a, apply=apply, validate=validate)
+        return res_file
 
     def unset_sched_config(self, name, apply=True):
         """
@@ -11149,10 +11181,6 @@ class Scheduler(PBSService):
                              self.resource_group_file,
                              preserve_permission=False,
                              sudo=True)
-        if self.server_dyn_res is not None:
-            self.du.rm(self.hostname, self.server_dyn_res, force=True,
-                       sudo=True)
-            self.server_dyn_res = None
         rc = self.holidays_revert_to_default()
         if self.du.cmp(self.hostname, self.dflt_sched_config_file,
                        self.sched_config_file, sudo=True) != 0:
@@ -13450,6 +13478,62 @@ class MoM(PBSService):
         Define action script. Not currently implemented
         """
         pass
+
+    def add_mom_dyn_res(self, custom_resource, script_body=None,
+                        res_file=None, dirname=None, host=None, perm=0700,
+                        prefix='PtlPbsMomDynRes', suffix='.scr'):
+        """
+        Add a root owned mom dynamic resource script or file to the mom
+        configuration
+
+        :param custom_resource: The name of the custom resource to
+                                define
+        :type custom_resource: str
+        :param script_body: The body of the mom dynamic resource
+        :param res_file: Alternatively to passing the script body, use
+                     the file instead
+        :type res_file: str or None
+        :param dirname: the file will be created in this directory
+        :type dirname: str or None
+        :param host: the hostname on which dyn res script is created
+        :type host: str or None
+        :param perm: perm to use while creating scripts
+                     (must be octal like 0777)
+        :param prefix: the file name will begin with this prefix
+        :type prefix: str
+        :param suffix: the file name will end with this suffix
+        :type suffix: str
+        :return Absolute path of the dynamic resource script
+        """
+        if res_file is not None:
+            with open(res_file) as f:
+                script_body = f.readlines()
+                self.du.chmod(host, path=res_file, mode=perm,
+                              sudo=True)
+        else:
+            if dirname is None:
+                dirname = self.pbs_conf['PBS_HOME']
+            tmp_file = self.du.create_temp_file(prefix=prefix, suffix=suffix,
+                                                body=script_body,
+                                                hostname=host)
+
+            res_file = os.path.join(dirname, tmp_file.split(os.path.sep)[-1])
+            self.du.run_copy(host, tmp_file, res_file, sudo=True,
+                             preserve_permission=False)
+            self.du.chown(hostname=host, path=res_file, uid=0, gid=0,
+                          sudo=True)
+            self.du.chmod(hostname=host, path=res_file, mode=perm, sudo=True)
+            if host is None:
+                self.dyn_created_files.append(res_file)
+
+        self.logger.info(self.logprefix + "adding mom dyn res " + res_file)
+        self.logger.info("-" * 30)
+        self.logger.info(script_body)
+        self.logger.info("-" * 30)
+
+        a = {custom_resource: '!' + res_file}
+        self.add_config(a)
+        return res_file
 
 
 class Hook(PBSObject):

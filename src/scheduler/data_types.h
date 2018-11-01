@@ -962,7 +962,8 @@ struct timegap
 struct dyn_res
 {
 	char *res;
-	char *program;
+	char *command_line;
+	char *script_name;
 };
 
 struct peer_queue

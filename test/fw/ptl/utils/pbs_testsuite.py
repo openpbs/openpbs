@@ -1471,6 +1471,16 @@ class PBSTestSuite(unittest.TestCase):
         self.log_enter_teardown()
         self.server.cleanup_jobs(runas=ROOT_USER)
         self.stop_proc_monitor()
+
+        for server in self.servers.values():
+            server.cleanup_files()
+
+        for mom in self.moms.values():
+            mom.cleanup_files()
+
+        for sched in self.scheds:
+            self.scheds[sched].cleanup_files()
+
         self.log_end_teardown()
 
     @classmethod

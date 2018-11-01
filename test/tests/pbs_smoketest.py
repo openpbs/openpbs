@@ -765,9 +765,12 @@ class SmokeTest(PBSTestSuite):
         self.scheduler.add_server_dyn_res("foo", script_body=body)
         self.scheduler.add_resource("foo", apply=True)
         j1 = Job(TEST_USER)
-        j1.set_attributes({'Resource_List': 'foo=5'})
+        j1.set_attributes({'Resource_List': 'foo=15'})
         j1id = self.server.submit(j1)
-        a = {'job_state': 'R', 'Resource_List.foo': '5'}
+        msg = "Can Never Run: Insufficient amount of server resource: foo "\
+              "(R: 15 A: 10 T: 10)"
+        a = {'job_state': 'Q', 'Resource_List.foo': '15',
+             'comment': msg}
         self.server.expect(JOB, a, id=j1id)
 
     @skipOnCpuSet

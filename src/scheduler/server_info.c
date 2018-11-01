@@ -689,19 +689,34 @@ query_server_dyn_res(server_info *sinfo)
 	char			  cmd_line[512];
 #endif
 
-	for (i = 0; i < MAX_SERVER_DYN_RES && conf.dynamic_res[i].res != NULL; i ++) {
+	for (i = 0; (i < MAX_SERVER_DYN_RES) && (conf.dynamic_res[i].res != NULL); i++) {
 		res = find_alloc_resource_by_str(sinfo->res, conf.dynamic_res[i].res);
 		if (res != NULL) {
+			int err;
+			char *filename = conf.dynamic_res[i].script_name;
 			if (sinfo->res == NULL)
 				sinfo->res = res;
 
 			pipe_err = errno = 0;
+			/* Make sure file does not have open permissions */
+#ifdef  WIN32
+			err = tmp_file_sec(filename, 0, 1, WRITES_MASK, 1);
+#else
+			err = tmp_file_sec(filename, 0, 1, S_IWGRP|S_IWOTH, 1);
+#endif
+			if (err != 0) {
+				snprintf(buf, sizeof(buf),
+					"error: %s file has a non-secure file access, setting resource %s to 0, errno: %d",
+					filename, res->name, err);
+				schdlog(PBSEVENT_SECURITY, PBS_EVENTCLASS_SERVER, LOG_ERR, "server_dyn_res", buf);
+				(void) set_resource(res, res_zero, RF_AVAIL);
+			}
 #ifdef	WIN32
 			/* In Windows, don't use popen() as this crashes if COMSPEC not set */
 			/* also, let's quote command line so that paths with spaces can be */
 			/* executed. */
 			snprintf(cmd_line, sizeof(cmd_line), "\"%s\"",
-				conf.dynamic_res[i].program);
+				conf.dynamic_res[i].command_line);
 
 			if (((win_popen(cmd_line, "r", &pio, NULL) == 0) ||
 				((k = win_pread(&pio, buf, 255)) <= 0))) {
@@ -711,7 +726,7 @@ query_server_dyn_res(server_info *sinfo)
 			if (pio.hReadPipe_out != INVALID_HANDLE_VALUE) /* did win_popen() succeed? */
 				win_pclose(&pio);
 #else
-			if (((fp = popen(conf.dynamic_res[i].program, "r")) == NULL) ||
+			if (((fp = popen(conf.dynamic_res[i].command_line, "r")) == NULL) ||
 				(fgets(buf, 256, fp) == NULL)) {
 				pipe_err = errno;
 				k = 0;
@@ -731,7 +746,7 @@ query_server_dyn_res(server_info *sinfo)
 
 				if (set_resource(res, buf, RF_AVAIL) == 0) {
 					snprintf(buf, sizeof(buf), "Script %s returned bad output",
-							conf.dynamic_res[i].program);
+							conf.dynamic_res[i].command_line);
 					schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
 										"server_dyn_res", buf);
 					(void) set_resource(res, res_zero, RF_AVAIL);
@@ -739,20 +754,21 @@ query_server_dyn_res(server_info *sinfo)
 			} else {
 				if (pipe_err != 0)
 					snprintf(buf, sizeof(buf), "Can't pipe to program %s: %s",
-						conf.dynamic_res[i].program, strerror(pipe_err));
+						conf.dynamic_res[i].command_line, strerror(pipe_err));
 				else
 					snprintf(buf, sizeof(buf), "Error piping to program %s.",
-						conf.dynamic_res[i].program);
+						conf.dynamic_res[i].command_line);
 				schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
 					"server_dyn_res", buf);
 				(void) set_resource(res, res_zero, RF_AVAIL);
 			}
 			if (res->type.is_non_consumable) {
 				snprintf(log_buffer, sizeof(log_buffer), "%s = %s",
-					conf.dynamic_res[i].program, res_to_str(res, RF_AVAIL));
-			} else {
+					conf.dynamic_res[i].command_line, res_to_str(res, RF_AVAIL));
+			}
+			else {
 				snprintf(log_buffer, sizeof(log_buffer), "%s = %s (\"%s\")",
-					conf.dynamic_res[i].program, res_to_str(res, RF_AVAIL), buf);
+					conf.dynamic_res[i].command_line, res_to_str(res, RF_AVAIL), buf);
 			}
 			schdlog(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
 				"server_dyn_res", log_buffer);

@@ -121,6 +121,7 @@ extern int  tmp_file_sec(char *path, int isdir, int sticky,
 extern int  chk_file_sec2(char *path, int isdir, int sticky,
 	int disallow, int fullpath, char *owner);
 #endif
+extern char *get_script_name(char *input);
 
 extern int  setup_env(char *filename);
 

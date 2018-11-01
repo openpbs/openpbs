@@ -452,3 +452,84 @@ chkerr:
 	free(real);
 	return (rc);
 }
+
+/**
+ * @brief - This function takes an <program name> <args> as input in string format
+ *	    and returns the program name
+ *
+ * @return - char *
+ * @retval - NULL when no valid program name is found
+ * @retval - a newly allocated program name
+ *
+ * @note - Caller holds the responsibility of freeing up the return value
+ */
+char *
+get_script_name(char *input) {
+	char * tok;
+	char *next_space;
+	int path_exists = 0;
+	char *prev_space = NULL;
+	int starts_with_quotes = 0;
+	char *delim = " ";
+	struct stat sbuf;
+
+	if (input == NULL)
+		return NULL;
+
+	/* if path starts with double quotes, skip it */
+	if (input[0] == '\"') {
+		input++;
+		starts_with_quotes = 1;
+	}
+
+	tok = strdup(input);
+	if (tok == NULL)
+		return NULL;
+
+	/* get rid of double quotes at the end */
+	if (starts_with_quotes && tok[strlen(tok) - 1] == '\"')
+		tok[strlen(tok)-1] = '\0';
+
+	for (next_space = strpbrk(tok, delim); next_space != NULL; next_space = strpbrk(next_space, delim)) {
+		int ret_fs;
+		*next_space = '\0';
+		memset (&sbuf, 0, sizeof(struct stat));
+		ret_fs = stat(tok, &sbuf);
+		if (ret_fs != 0) {
+			if (path_exists == 1) {
+				*prev_space = '\0';
+				return (tok);
+			}
+		}
+		else if (S_ISREG(sbuf.st_mode)) {
+			/* even if we encounter a regular file, do not break out of loop
+			 * unless we hit a case where stat call fails. This is because there is a
+			 * possibility that we might be looking at a file with a prefix
+			 * similar to the script but not exactly the same.
+			 * Example, if input is "/get foo" and there exists a filename "/get"
+			 * then we do not want to return from this place.
+			 */
+			path_exists = 1;
+			prev_space = next_space;
+		}
+		*next_space = ' ';
+		/* Ignore any extra spaces */
+		next_space += strspn(next_space, delim);
+	}
+
+	if (path_exists == 1) {
+		/* set last known space as '\0' so that returned path contains no arguments */
+		*prev_space = '\0';
+		return tok;
+	}
+
+	/* If control is here then it would mean that "tok" must have only file path */
+	memset (&sbuf, 0, sizeof(struct stat));
+	stat(tok, &sbuf);
+	if (S_ISREG(sbuf.st_mode))
+		return tok;
+
+	/* No file found */
+	free(tok);
+	return NULL;
+}
