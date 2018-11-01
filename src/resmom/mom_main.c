@@ -3416,10 +3416,13 @@ set_suspend_signal(char *str)
  * @param[in] file - filename
  * @param[in] linenum - line number in file
  *
- * @return Void
+ * @return int
+ *
+ * @retval  1 - In case of error
+ * @retval  0 - In case of success
  *
  */
-static void
+static int
 add_static(char *str, char *file, int linenum)
 {
 	int	 i;
@@ -3429,8 +3432,27 @@ add_static(char *str, char *file, int linenum)
 
 	str = TOKCPY(str, name);/* resource name */
 	str = skipwhite(str);	/* resource value */
-	if (*str == '!')	/* shell escape command */
+	if (*str == '!') {	/* shell escape command */
+		int err;
+		char *filename;
 		rmnl(str);
+		filename = get_script_name(&str[1]);
+		if (filename == NULL)
+			return 1;
+#ifdef  WIN32
+		err = tmp_file_sec(filename, 0, 1, WRITES_MASK, 1);
+#else
+		err = tmp_file_sec(filename, 0, 1, S_IWGRP|S_IWOTH, 1);
+#endif
+		if (err != 0) {
+			snprintf(log_buffer, sizeof(log_buffer),
+				"error: %s file has a non-secure file access, errno: %d", filename, err);
+			log_event(PBSEVENT_SECURITY, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, log_buffer);
+			free(filename);
+			return 1;
+		}
+		free(filename);
+	}
 	else {			/* get the value */
 		i = strlen(str);
 		while (--i) {	/* strip trailing blanks */
@@ -3449,11 +3471,12 @@ add_static(char *str, char *file, int linenum)
 	cp->c.c_u.c_value = strdup(str);
 	memcheck(cp->c.c_u.c_value);
 
-	sprintf(log_buffer, "%s[%d] add name %s value %s",
+	snprintf(log_buffer, sizeof(log_buffer), "%s[%d] add name %s value %s",
 		file, linenum, name, str);
 	log_event(PBSEVENT_DEBUG, 0, LOG_DEBUG, "add_static", log_buffer);
 
 	config_list = cp;
+	return 0;
 }
 
 /**
@@ -3483,7 +3506,8 @@ setidealload(char *value)
 	if (max_load_val < 0.0)
 		max_load_val = val;	/* set a default */
 	(void)strcat(newstr, value);
-	add_static(newstr, "config", 0);
+	if (add_static(newstr, "config", 0))
+		return HANDLER_FAIL;
 	nconfig++;
 	return HANDLER_SUCCESS;
 }
@@ -3520,7 +3544,8 @@ setmaxload(char *value)
 	if (ideal_load_val < 0.0)
 		ideal_load_val = val;
 	(void)strncat(newstr, value, 40);
-	add_static(newstr, "config", 0);
+	if (add_static(newstr, "config", 0))
+		return HANDLER_FAIL;
 	nconfig++;
 
 	if (*endptr != '\0') {
@@ -4545,7 +4570,8 @@ parse_config(char *file)
 			continue;
 		}
 
-		add_static(str, file, linenum);
+		if (add_static(str, file, linenum))
+			continue;
 		num_newstaticdefs++;
 	}
 	nconfig += num_newstaticdefs;
@@ -5444,6 +5470,7 @@ conf_res(char *s, struct rm_attribute *attr)
 	int	used[RM_NPARM];
 	char	param[256], *d;
 	int	i,  len;
+	char	*filename = NULL;
 #ifdef	WIN32
 	pio_handles     child;
 #else
@@ -5453,6 +5480,7 @@ conf_res(char *s, struct rm_attribute *attr)
 	char	*child_spot;
 	int	child_len;
 	int	secondalarm = 0;
+	int	err;
 
 	if (*s != '!') {	/* static value */
 		if (attr) {
@@ -5520,6 +5548,22 @@ conf_res(char *s, struct rm_attribute *attr)
 
 	*d = '\0';
 	DBPRT(("command: %s\n", ret_string))
+
+	filename = get_script_name(ret_string);
+	if (filename == NULL)
+		return NULL;
+	/* Make sure file does not have open permissions */
+#ifdef  WIN32
+	err = tmp_file_sec(filename, 0, 1, WRITES_MASK, 1);
+#else
+	err = tmp_file_sec(filename, 0, 1, S_IWGRP|S_IWOTH, 1);
+#endif
+	if (err != 0) {
+		snprintf(log_buffer, sizeof(log_buffer),
+			"error: %s file has a non-secure file access, errno: %d", filename, err);
+		log_event(PBSEVENT_SECURITY, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, log_buffer);
+		goto done;
+	}
 
 #ifdef	WIN32
 	if (!win_popen(ret_string, "w", &child, NULL)) {
@@ -5626,6 +5670,7 @@ done:
 		free(name[i]);
 		free(value[i]);
 	}
+	free(filename);
 	return ret_string;
 }
 
@@ -6956,7 +7001,8 @@ set_spoolsize(char *value)
 
 	spoolsize = val;
 	(void) strncat(newstr, value, 39);
-	add_static(newstr, "config", 0);
+	if (add_static(newstr, "config", 0))
+		return HANDLER_FAIL;
 	nconfig++;
 	return HANDLER_SUCCESS;
 }
