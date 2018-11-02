@@ -93,7 +93,7 @@ class TestQstatFormats(TestFunctional):
 
     def parse_json(self, dictitems, qstat_attr):
         """
-        Common function for parsing the all values in json output
+        Common function for parsing all values in json output
         """
         for key, val in dictitems.items():
             qstat_attr.append(str(key))
@@ -103,6 +103,84 @@ class TestQstatFormats(TestFunctional):
                     if isinstance(val, dict):
                         self.parse_json(val, qstat_attr)
         return qstat_attr
+
+    def get_qstat_attribs(self, obj_type):
+        """
+        Common function to get the qstat attributes in default format.
+        Attributes returned by this function are used to validate the
+        '-F json' format output.
+        The dictionary of attributes as returned by status() can not
+        be used directly because some attributes are printed differently
+        in '-F json' format.  Hence this function returns a modified
+        attributes list.
+        obj_type: Can be SERVER, QUEUE or JOB for qstat -Bf, qstat -Qf
+              and qstat -f respectively
+        """
+        attrs = self.server.status(obj_type)
+        qstat_attrs = []
+
+        for key, val in attrs[0].iteritems():
+            # qstat -F json output does not
+            # print the 'id' attribute. Its value
+            # is printed instead.
+            if key is 'id':
+                qstat_attrs.append(str(val))
+            else:
+                # Extract keys coming after '.' in 'qstat -f' output so they
+                # can be matched with 'qstat -f -F json' format.
+                # This is because some attributes, like below, are represented
+                # differently in 'qstat -f' output and 'qstat -f -F json'
+                # outputs
+                #
+                # Example:
+                # qstat -f output:
+                #   default_chunk.ncpus = 1
+                #   default_chunk.mem = 1gb
+                #   Resource_List.ncpus = 1
+                #   Resource_List.nodect = 1
+                #
+                # qstat -f -F json output:
+                #   "default_chunk":{
+                #      "ncpus":1
+                #      "mem":1gb
+                #   }
+                #    "Resource_List":{
+                #       "ncpus":1,
+                #      "nodect":1,
+                #   }
+
+                k = key.split('.')
+                if k[0] not in qstat_attrs:
+                    qstat_attrs.append(str(k[0]))
+                if len(k) == 2:
+                    qstat_attrs.append(str(k[1]))
+
+            # Extract individual variables under 'Variable_List' from
+            # 'qstat -f' output so they can be matched with 'qstat -f -F json'
+            # format.
+            # Example:
+            #
+            # qstat -f output:
+            #    Variable_List = PBS_O_LANG=en_US.UTF-8,
+            #        PBS_O_PATH=/usr/lib64/qt-3.3/bin
+            #        PBS_O_SHELL=/bin/bash,
+            #        PBS_O_WORKDIR=/home/pbsuser,
+            #        PBS_O_SYSTEM=Linux,PBS_O_QUEUE=workq,
+            #
+            # qstat -f -F json output:
+            #    "Variable_List":{
+            #        "PBS_O_LANG":"en_US.UTF-8",
+            #        "PBS_O_PATH":"/usr/lib64/qt-3.3/bin:/usr/local/bin
+            #        "PBS_O_SHELL":"/bin/bash",
+            #        "PBS_O_WORKDIR":"/home/pbsuser,
+            #        "PBS_O_SYSTEM":"Linux",
+            #        "PBS_O_QUEUE":"workq",
+            #    },
+
+            if ',' in val:
+                for v in val.split(','):
+                    qstat_attrs.append(str(v).split('=')[0])
+        return qstat_attrs
 
     def test_qstat_dsv(self):
         """
@@ -281,8 +359,10 @@ class TestQstatFormats(TestFunctional):
         super user and all attributes displayed in qstat are present in output
         """
         j = Job(TEST_USER)
-        j.set_sleep_time(10)
+        j.set_sleep_time(40)
         jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': "R"}, id=jid)
+
         qstat_cmd_json = os.path.join(self.server.pbs_conf[
             'PBS_EXEC'], 'bin', 'qstat') + ' -f -F json ' + str(jid)
         ret = self.du.run_cmd(self.server.hostname, cmd=qstat_cmd_json)
@@ -291,25 +371,22 @@ class TestQstatFormats(TestFunctional):
             json_object = json.loads(qstat_out)
         except ValueError, e:
             self.assertTrue(False)
-        attrs_qstatf = [
-            'timestamp', 'pbs_version', 'pbs_server', 'Jobs', jid, 'Job_Name',
-            'Job_Owner', 'job_state', 'queue', 'server', 'Checkpoint', 'ctime',
-            'Error_Path', 'Hold_Types', 'Join_Path', 'Keep_Files',
-            'mtime', 'Output_Path', 'Priority', 'qtime', 'Rerunable',
-            'Resource_List', 'ncpus', 'nodect', 'place', 'select', 'project',
-            'executable', 'Variable_List', 'PBS_O_HOME',
-            'PBS_O_LOGNAME', 'PBS_O_PATH', 'PBS_O_MAIL', 'PBS_O_SHELL',
-            'PBS_O_WORKDIR', 'PBS_O_SYSTEM', 'PBS_O_QUEUE', 'PBS_O_HOST',
-            'egroup', 'queue_rank', 'queue_type', 'etime', 'Submit_arguments',
-            'Mail_Points', 'schedselect', 'substate', 'argument_list', 'euser']
-        qstat_attr = []
+
+        json_only_attrs = ['Jobs', 'timestamp', 'pbs_version', 'pbs_server']
+        attrs_qstatf = self.get_qstat_attribs(JOB)
+        qstat_json_attr = []
+
         for key, val in json_object.iteritems():
-            qstat_attr.append(str(key))
+            qstat_json_attr.append(str(key))
             if isinstance(val, dict):
-                qstat_attrs = self.parse_json(val, qstat_attr)
-                qstat_attr.append(qstat_attrs)
+                self.parse_json(val, qstat_json_attr)
+
         for attr in attrs_qstatf:
-            if attr not in qstat_attr:
+            if attr not in qstat_json_attr:
+                self.assertFalse(attr + " is missing")
+
+        for attr in json_only_attrs:
+            if attr not in qstat_json_attr:
                 self.assertFalse(attr + " is missing")
 
     def test_qstat_json_valid_multiple_jobs(self):
@@ -383,23 +460,22 @@ class TestQstatFormats(TestFunctional):
             json_object = json.loads(qstat_out)
         except ValueError, e:
             self.assertTrue(False)
-        attrs_qstatbf = [
-            'timestamp', 'pbs_server', 'Server', 'eligible_time_enable',
-            'license_count', 'scheduling', 'total_jobs', 'server_host',
-            'default_chunk', 'ncpus', 'FLicenses',
-            'node_fail_requeue', 'resv_enable', 'flatuid', 'query_other_jobs',
-            'state_count', 'default_queue', 'server_state', 'managers',
-            'max_concurrent_provision', 'resources_default', 'ncpus',
-            'pbs_license_linger_time', 'mail_from', 'log_events',
-            'pbs_version', 'acl_roots', 'max_array_size', 'pbs_version']
-        qstat_attr = []
+
+        json_only_attrs = ['Server', 'timestamp', 'pbs_version', 'pbs_server']
+        attrs_qstatbf = self.get_qstat_attribs(SERVER)
+
+        qstat_json_attr = []
         for key, val in json_object.iteritems():
-            qstat_attr.append(str(key))
+            qstat_json_attr.append(str(key))
             if isinstance(val, dict):
-                qstat_attrs = self.parse_json(val, qstat_attr)
-                qstat_attr.append(qstat_attrs)
+                self.parse_json(val, qstat_json_attr)
+
         for attr in attrs_qstatbf:
-            if attr not in qstat_attr:
+            if attr not in qstat_json_attr:
+                self.assertFalse(attr + " is missing")
+
+        for attr in json_only_attrs:
+            if attr not in qstat_json_attr:
                 self.assertFalse(attr + " is missing")
 
     @tags('smoke')
@@ -416,17 +492,22 @@ class TestQstatFormats(TestFunctional):
             json_object = json.loads(qstat_out)
         except ValueError, e:
             self.assertTrue(False)
-        attrs_qstatqf = ['Queue', 'workq', 'started', 'enabled', 'queue_type',
-                         'state_count', 'total_jobs', 'timestamp',
-                         'pbs_server', 'pbs_version']
-        qstat_attr = []
+
+        json_only_attrs = ['Queue', 'timestamp', 'pbs_version', 'pbs_server']
+        attrs_qstatqf = self.get_qstat_attribs(QUEUE)
+
+        qstat_json_attr = []
         for key, val in json_object.iteritems():
-            qstat_attr.append(str(key))
+            qstat_json_attr.append(str(key))
             if isinstance(val, dict):
-                qstat_attrs = self.parse_json(val, qstat_attr)
-                qstat_attr.append(qstat_attrs)
+                self.parse_json(val, qstat_json_attr)
+
         for attr in attrs_qstatqf:
-            if attr not in qstat_attr:
+            if attr not in qstat_json_attr:
+                self.assertFalse(attr + " is missing")
+
+        for attr in json_only_attrs:
+            if attr not in qstat_json_attr:
                 self.assertFalse(attr + " is missing")
 
     def test_qstat_qf_json_valid_multiple_queues(self):
