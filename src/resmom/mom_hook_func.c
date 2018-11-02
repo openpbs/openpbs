@@ -850,7 +850,7 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 		/* must copy up to HOOK_SCRIPT_SUFFIX length so as to not */
 		/* overflow */
 		snprintf(p, sizeof(hook_config_path) - (p - hook_config_path),
-			"%s", HOOK_SCRIPT_SUFFIX);
+			"%s", HOOK_CONFIG_SUFFIX);
 		if (stat(hook_config_path, &sbuf) != 0) {
 			hook_config_path[0] = '\0';
 		}
