@@ -223,7 +223,7 @@ upgrade_pbs_database() {
 		return 1
 	fi
 	
-	sys_pgsql_ver=$(echo `${PGSQL_DIR}/bin/psql -V` | awk 'NR==1 {print $NF}' | cut -d '.' -f 1,2)
+	sys_pgsql_ver=$(${PGSQL_DIR}/bin/psql -V | awk 'NR==1 {print $NF}' | cut -d '.' -f 1,2)
 	old_pgsql_ver=`cat ${data_dir}/PG_VERSION`
 
 	[ ${sys_pgsql_ver%.*} -eq ${old_pgsql_ver%.*} ] && [ ${sys_pgsql_ver#*.} \> ${old_pgsql_ver#*.} ] || [ ${sys_pgsql_ver%.*} -gt ${old_pgsql_ver%.*} ];
