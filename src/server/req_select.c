@@ -489,14 +489,15 @@ select_job(job *pjob, struct select_list *psel, int dosubjobs, int dohistjobs)
 		return 0;
 	}
 
+	if ((dosubjobs == 2) && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) &&
+		(pjob->ji_qs.ji_state != JOB_STATE_RUNNING)) /* select only running subjobs */
+		return 0;
+
 	if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) == 0)
 		dosubjobs = 0;  /* not an Array Job,  ok to check state */
 	else if ((dosubjobs != 2) &&
 		(pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob))
 		return 0;	/* don't bother to look at sub job */
-	else if ((dosubjobs == 2) && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) &&
-		(pjob->ji_qs.ji_state != JOB_STATE_RUNNING)) /* select only running subjobs */
-		return 0;
 
 	while (psel) {
 

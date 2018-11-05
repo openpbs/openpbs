@@ -610,3 +610,31 @@ class TestJobArray(TestFunctional):
             self.server.submit(j)
         except PbsSubmitError as e:
             raise self.failureException("Failed to submit job: " + str(e.msg))
+
+    def test_expired_subjobs_not_reported(self):
+        """
+        Test if a subjob is finished and moves to expired state,
+        it is not reported to scheduler in the next scheduling
+        cycle. Scheduler expects only running subjobs to be reported to it.
+        """
+
+        a = {'job_history_enable': 'True'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        req_node = ":host=" + self.mom.shortname
+        res_req = {'Resource_List.select': '1:ncpus=1' + req_node,
+                   'array_indices_submitted': '1-16',
+                   'Resource_List.place': 'excl'}
+        j1 = Job(TEST_USER, attrs=res_req)
+        j1.set_sleep_time(2)
+        jid1 = self.server.submit(j1)
+        j1_sub1 = j1.create_subjob_id(jid1, 1)
+
+        self.server.expect(JOB, {'job_state': 'X'}, j1_sub1)
+        # Trigger a sched cycle
+        a = {'scheduling': 'True'}
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+
+        msg = j1_sub1 + ";" + "Subjob found in undesirable state"
+        msg += ", ignoring this job"
+        self.scheduler.log_match(msg, existence=False, max_attempts=10)
