@@ -58,7 +58,7 @@ class TestSyslog(TestSelf):
         Each individaul daemon is logged seperately
         :return:
         """
-        self.setup_syslog(local_log=0, syslog_facility=1, syslog_severity=7)
+        self.setup_syslog(local_log=0, syslog_facility=9, syslog_severity=7)
         a = {'Resource_List.ncpus': 1}
         J1 = Job(TEST_USER, attrs=a)
         jid1 = self.server.submit(J1)
@@ -72,7 +72,8 @@ class TestSyslog(TestSelf):
         according to the set priority
         :return:
         """
-        self.setup_syslog(local_log=0, syslog_facility=1, syslog_severity=6)
+	self.t = int(time.time())
+        self.setup_syslog(local_log=0, syslog_facility=9, syslog_severity=6)
         a = {'Resource_List.ncpus': 1}
         J1 = Job(TEST_USER, attrs=a)
         jid1 = self.server.submit(J1)
@@ -80,10 +81,10 @@ class TestSyslog(TestSelf):
         str = "Job;" + jid1 + ";Considering job to run"
         #self.scheduler.log_match(str, n=500, max_attempts=10)
         with self.assertRaises(PtlLogMatchError):
-            self.scheduler.log_match(str, n=500, max_attempts=10)
-        #self.assertTrue("Log File to check is not set", self.scheduler.log_match(str, n=500))
+            self.scheduler.log_match(str, n=500, max_attempts=10, starttime=self.t)
+        #self.assertTrue("Log File to check is not set", self.scheduler.log_match(str, n=100, starttime=self.t))
         self.server.deljob(jid1, wait=True)
-        self.setup_syslog(local_log=0, syslog_facility=1, syslog_severity=7)
+        self.setup_syslog(local_log=0, syslog_facility=9, syslog_severity=7)
         J2 = Job(TEST_USER, attrs=a)
         jid2 = self.server.submit(J2)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
@@ -97,7 +98,7 @@ class TestSyslog(TestSelf):
         Test that syslog matching works on a multihost system
         :return:
         """
-        self.setup_syslog(local_log=0, syslog_facility=1, syslog_severity=7)
+        self.setup_syslog(local_log=0, syslog_facility=9, syslog_severity=7)
         if len(self.moms) != 2:
             self.skip_test(reason="need 2 mom hosts: -p moms=<m1>:<m2>")
 
@@ -106,7 +107,7 @@ class TestSyslog(TestSelf):
         self.hostA = self.momA.shortname
         self.hostB = self.momB.shortname
 
-        attr = {'Resource_List.select': '3:ncpus=1'}
+        attr = {'Resource_List.select': '2:ncpus=1'}
         j = Job(TEST_USER, attrs=attr)
         jid1 = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
@@ -115,11 +116,11 @@ class TestSyslog(TestSelf):
         self.momB.log_match(str, starttime=self.t, n=200)
 
 
-    def local_and_syslog_match(self):
+    def test_local_and_syslog_match(self):
         """
         Test that local logging and sylog logging can work simultaneously
         """
-        self.setup_syslog(local_log=1, syslog_facility=1, syslog_severity=7)
+        self.setup_syslog(local_log=1, syslog_facility=9, syslog_severity=7)
         self.t = int(time.time())
         a = {'Resource_List.ncpus': 1}
         J1 = Job(TEST_USER, attrs=a)

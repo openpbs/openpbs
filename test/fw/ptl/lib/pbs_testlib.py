@@ -3904,6 +3904,9 @@ class PBSService(PBSObject):
         :type day: int
         :param starttime: date timestamp to start matching
         :param endtime: date timestamp to end matching
+        :param syslog: If True, checks for syslog messages.
+                       Defaults to False.
+        :type str
         :returns: Last ``<n>`` lines of logfile for ``Server``,
                   ``Scheduler``, ``MoM or tracejob``
         """
@@ -4166,6 +4169,7 @@ class PBSService(PBSObject):
 
         syslog_value = self._get_log_type(hostname=self.hostname)
 
+
         if syslog_value == 1:
             return self._log_match(self, msg, id, n, tail, allmatch, regexp,
                                    day, max_attempts, interval, starttime, endtime,
@@ -4178,9 +4182,8 @@ class PBSService(PBSObject):
             syslog_return = self._log_match(self, msg, id, n, tail, allmatch, regexp,
                                             day, max_attempts, interval, starttime, endtime,
                                             level=level, existence=existence, syslog=True)
-            print("I am in 3")
             if syslog_return:
-                print("Read local logs")
+                self.logger.log(level, "Reading local logs")
                 return self._log_match(self, msg, id, n, tail, allmatch, regexp,
                                        day, max_attempts, interval, starttime, endtime,
                                        level=level, existence=existence, syslog=False)
@@ -4402,13 +4405,13 @@ class PBSService(PBSObject):
 
         PBS_LOCALLOG = int(self.du.run_cmd(hosts=hostname, cmd="cat /etc/pbs.conf | grep -w PBS_LOCALLOG "
                                                                    "| awk '{print substr($0,length,1)}'",
-                                               as_script=True, sudo=True,
+                                               as_script=True,
                                                level=logging.DEBUG2)['out'][0])
         print("Value of local log is: " + str(PBS_LOCALLOG))
 
         PBS_SYSLOG = int(self.du.run_cmd(hosts=hostname, cmd="cat /etc/pbs.conf | grep -w PBS_SYSLOG "
                                                                  "| awk '{print substr($0,length,1)}'",
-                                             as_script=True, sudo=True,
+                                             as_script=True,
                                              level=logging.DEBUG2)['out'][0])
         print("Value of Syslog is : " + str(PBS_SYSLOG))
 
