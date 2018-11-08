@@ -42,9 +42,8 @@ from datetime import tzinfo, timedelta, datetime
 import logging
 import traceback
 import math
-from subprocess import Popen, PIPE
 
-from ptl.utils.pbs_dshutils import DshUtils
+from ptl.utils.pbs_dshutils import DshUtils, PbsConfigError
 from ptl.lib.pbs_testlib import BatchUtils, Server, NODE, JOB, SET, EQ
 from ptl.lib.pbs_testlib import ResourceResv
 from ptl.utils.pbs_fileutils import FileUtils, FILE_TAIL
@@ -222,7 +221,12 @@ class PBSLogUtils(object):
     du = DshUtils()
 
     @classmethod
+<<<<<<< HEAD
     def convert_date_time(cls, dt=None, fmt=None):
+=======
+    def convert_date_time(cls, datetime=None, fmt="%m/%d/%Y %H:%M:%S",
+                          syslog=False):
+>>>>>>> c79f8b6d... syslog framework changes
         """
         convert a date time string of the form given by fmt into
         number of seconds since epoch (with possible microseconds).
@@ -233,11 +237,14 @@ class PBSLogUtils(object):
         :type dt: str or None
         :param fmt: Format to which datetime is to be converted
         :type fmt: str
+        :param syslog: If true, uses default syslog date format
+        :type syslog: str
         :returns: None if conversion fails
         """
         if dt is None:
             return None
 
+<<<<<<< HEAD
         stdoffset = timedelta(seconds=-time.timezone)
         if time.daylight:
             dstoffset = timedelta(seconds=-time.altzone)
@@ -259,6 +266,19 @@ class PBSLogUtils(object):
             t -= epoch_datetime
             # get epoch time from timedelta object
             tm = t.total_seconds() - offsetdiff.total_seconds()
+=======
+        if syslog:
+            fmt = "%b %d %H:%M:%S"
+
+        try:
+            t = time.strptime(datetime, fmt)
+            if syslog:
+                current_t = time.strftime("%Y,%m,%d,%H,%M,%S")
+                split_current_t = current_t.split(',')
+                t_edit = list(t)
+                t_edit[0] = int(split_current_t[0])
+                t = time.struct_time(tuple(t_edit))
+>>>>>>> c79f8b6d... syslog framework changes
         except:
             cls.logger.debug("could not convert date time: " + str(datetime))
             return None
@@ -343,7 +363,7 @@ class PBSLogUtils(object):
         return rec_times
 
     def match_msg(self, lines, msg, allmatch=False, regexp=False,
-                  starttime=None, endtime=None):
+                  starttime=None, endtime=None, syslog=False):
         """
         Returns (x,y) where x is the matching line y, or None if
         nothing is found.
@@ -358,19 +378,27 @@ class PBSLogUtils(object):
                           specified time
         :param endtime: If set ignore matches that occur after
                         specified time
+         :param syslog: If True, checks for syslog format of date.
+                       Defaults to False.
+        :type str
         """
+        if syslog:
+            date_length = 15
+        else:
+            date_length = 19
+
         linecount = 0
         ret = []
         if lines:
             for l in lines:
                 if starttime is not None:
-                    # l[:19] captures the log record time
-                    tm = self.convert_date_time(l[:19])
+                    # l[:date_length] captures the log record time
+                    tm = self.convert_date_time(l[:date_length], syslog=syslog)
                     if tm is None or tm < starttime:
                         continue
                 if endtime is not None:
-                    # l[:19] captures the log record time
-                    tm = self.convert_date_time(l[:19])
+                    # l[:date_length] captures the log record time
+                    tm = self.convert_date_time(l[:date_length], syslog=syslog)
                     if tm is None or tm > endtime:
                         continue
                 if ((regexp and re.search(msg, l)) or
@@ -380,7 +408,7 @@ class PBSLogUtils(object):
                         ret.append(m)
                     else:
                         return m
-                linecount += 1
+
         if len(ret) > 0:
             return ret
         return None
@@ -561,6 +589,172 @@ class PBSLogUtils(object):
             paths = [path]
 
         return paths
+
+    def _get_syslog_lines(self, hostname=None, n=100, logval=None):
+        """
+        Get the syslog lines to be matched and send them to _log_match()
+
+        :param hostname: the on which syslog files reside
+        :type hostname: str
+        :param n: the number of lines to match
+        :type n: int
+        :param logval: The entity requested, an instance of a
+                        Scheduler, Server or MoM object, or the
+                        string 'tracejob' for tracejob
+        :type logval: str or object
+        :returns Last ``<n>`` lines of logfile for ``Server``,
+                  ``Scheduler``, ``MoM or tracejob``
+        """
+
+        # if syslog utility is not rsyslogd, throw error
+        try:
+            cmd_sys = "ps -e | grep syslog | awk '{print $NF}'"
+            utility = self.du.run_cmd(hosts=hostname, cmd=cmd_sys,
+                                      as_script=True,
+                                      level=logging.DEBUG2)['out']
+
+            if utility[0] != "rsyslogd":
+                raise PbsConfigError(rc=1, rv=None,
+                                     msg="Currently only rsyslog is supported")
+
+            severity = self.du.run_cmd(hosts=hostname,
+                                       cmd="cat /etc/pbs.conf "
+                                           "| grep -w PBS_SYSLOGSEVR | "
+                                           "awk '{print substr($0,length,1)}'",
+                                       as_script=True,
+                                       level=logging.DEBUG2)['out'][0]
+
+            if severity is None:
+                raise PbsConfigError(rc=1, rv=None,
+                                     msg="Set PBS_SYSLOGSEVR in pbs.conf")
+
+            facility = self.du.run_cmd(hosts=hostname,
+                                       cmd="cat /etc/pbs.conf "
+                                           "| grep -w PBS_SYSLOG | "
+                                           "awk '{print substr($0,length,1)}'",
+                                       as_script=True,
+                                       level=logging.DEBUG2)['out'][0]
+
+            list_of_syslog_files = self._get_rsyslog_files(hostname=hostname,
+                                                           severity=severity,
+                                                           facility=facility)
+
+            lines = []
+            if n == "ALL":
+                n = 5000
+            if hostname is None:
+                hostname = socket.gethostname()
+
+            if logval is 'sched_logs':
+                daemon_str = 'pbs_sched'
+            elif logval is 'server_logs':
+                daemon_str = 'Server@'
+            elif logval is 'mom_logs':
+                daemon_str = 'pbs_mom'
+            elif logval is 'comm_logs':
+                daemon_str = 'pbs_comm'
+            else:
+                daemon_str = None
+
+            for x in list_of_syslog_files:
+                run_cmd = [self.du.which(hostname, 'cat',
+                                         level=logging.INFOCLI2), x,
+                           " | tail -", str(n)]
+                l_sys = self.du.run_cmd(hosts=hostname, cmd=run_cmd, sudo=True,
+                                        level=logging.DEBUG2)['out']
+                for l in l_sys:
+                    if daemon_str in l:
+                        lines.append(l)
+
+            lines.sort(key=lambda x: datetime.datetime.strptime(
+                x[:15], "%b %d %H:%M:%S"))
+        except:
+            self.logger.error('error in getting syslog log_lines ')
+            traceback.print_exc()
+            return None
+
+        return lines
+
+    def _get_rsyslog_files(self, hostname=None, severity=None, facility=None):
+        """
+        :param severity: syslog serverity in pbs.conf
+        :type severity: int
+        :param facility: syslog facilty in pbs.conf
+        :type facility: int
+        :return: list of priorites list[]
+        """
+        facility = int(facility)
+        severity = int(severity)
+        # PBS supported severity
+        p_severity = {
+            0: "emerg",
+            1: "alert",
+            2: "crit",
+            3: "err",
+            4: "warning",
+            5: "notice",
+            6: "info",
+            7: "debug",
+            -1: "*"
+        }
+        p_facility = {
+            1: "daemon",
+            2: "local0",
+            3: "local1",
+            4: "local2",
+            5: "local3",
+            6: "local4",
+            7: "local5",
+            8: "local6",
+            9: "local7",
+            10: "*"
+        }
+
+        list_of_syslog_files = set()
+
+        list_of_priority = {"*." + p_severity[severity],
+                            p_facility[facility] + ".*", "*.*"}
+
+        try:
+            if severity is None and facility is None:
+                for x in p_severity:
+                    for y in p_facility:
+                        c = p_facility[y] + "." + p_severity[x]
+                        list_of_priority.add(c)
+            elif severity is None and facility is not None:
+                for x in p_severity:
+                    c = facility + "." + p_severity[x]
+                    list_of_priority.add(c)
+            elif severity is not None and facility is None:
+                for x in p_severity:
+                    if int(x) <= severity:
+                        for y in p_facility:
+                            c = p_facility[y] + "." + p_severity[x]
+                            list_of_priority.add(c)
+            else:
+                for x in p_severity:
+                    if int(x) <= severity:
+                        c = p_facility[facility] + "." + p_severity[x]
+                        list_of_priority.add(c)
+                        c = "*." + p_severity[x]
+                        list_of_priority.add(c)
+
+            cmd_sys = "cat /etc/rsyslog.conf"
+            f = self.du.run_cmd(hosts=hostname, cmd=cmd_sys, as_script=True,
+                                level=logging.DEBUG2)['out']
+
+            for line in f:
+                for p in list_of_priority:
+                    if p in line and line[0] != '#':
+                        msg_file = line.split()[-1]
+                        if "/" in msg_file:
+                            list_of_syslog_files.add(msg_file)
+        except:
+            self.logger.error('error reading syslog files from rsyslog.conf')
+            traceback.print_exc()
+            return None
+
+        return list(list_of_syslog_files)
 
 
 class PBSLogAnalyzer(object):

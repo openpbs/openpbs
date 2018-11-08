@@ -2383,7 +2383,7 @@ class BatchUtils(object):
         :type op: str or None
         :param hostname: The name of the host on which to operate
         :type hostname: str or None
-        :param dflt_conf: Whether we are using the default PBS
+        :param dflt_conf: Whether we are using the default PBS
                           configuration
         :type dflt_conf: bool
         :param exclude_attrs: Optional list of attributes to not
@@ -3880,8 +3880,13 @@ class PBSService(PBSObject):
         the service
         """
 
+<<<<<<< HEAD
     def log_lines(self, logtype, id=None, n=50, tail=True, starttime=None,
                   endtime=None):
+=======
+    def log_lines(self, logtype, id=None, n=50, tail=True, day=None,
+                  starttime=None, endtime=None, syslog=False):
+>>>>>>> c79f8b6d... syslog framework changes
         """
         Return the last ``<n>`` lines of a PBS log file, which
         can be one of ``server``, ``scheduler``, ``MoM``, or
@@ -3905,18 +3910,31 @@ class PBSService(PBSObject):
         :type day: int
         :param starttime: date timestamp to start matching
         :param endtime: date timestamp to end matching
+        :param syslog: If True, checks for syslog messages.
+                       Defaults to False.
+        :type str
         :returns: Last ``<n>`` lines of logfile for ``Server``,
                   ``Scheduler``, ``MoM or tracejob``
         """
         logval = None
         lines = []
         sudo = False
+<<<<<<< HEAD
         if endtime is None:
             endtime = int(time.time())
         if starttime is None:
             starttime = self.ctime
+=======
+        if self.logutils is None:
+            self.logutils = PBSLogUtils()
+
+>>>>>>> c79f8b6d... syslog framework changes
         try:
-            if logtype == 'tracejob':
+            if syslog:
+                logval = self._instance_to_logpath(logtype)
+                lines = self.logutils._get_syslog_lines(
+                    hostname=self.hostname, n=n, logval=logval)
+            elif logtype == 'tracejob':
                 if id is None:
                     return None
                 cmd = [os.path.join(
@@ -3992,7 +4010,7 @@ class PBSService(PBSObject):
     def _log_match(self, logtype, msg, id=None, n=50, tail=True,
                    allmatch=False, regexp=False, max_attempts=None,
                    interval=None, starttime=None, endtime=None,
-                   level=logging.INFO, existence=True):
+                   level=logging.INFO, existence=True, syslog=False):
         """
         Match given ``msg`` in given ``n`` lines of log file
 
@@ -4005,7 +4023,7 @@ class PBSService(PBSObject):
                     ``regexp`` is True
         :type msg: str
         :param id: The id of the object to trace. Only used for
-                   tracejob
+                   tracejobe
         :type id: str
         :param n: 'ALL' or the number of lines to search through,
                   defaults to 50
@@ -4078,11 +4096,17 @@ class PBSService(PBSObject):
         while attempt <= max_attempts:
             if attempt > 1:
                 attemptmsg = ' - attempt ' + str(attempt)
+<<<<<<< HEAD
             lines = self.log_lines(logtype, id, n=n, tail=tail,
                                    starttime=starttime, endtime=endtime)
+=======
+            lines = self.log_lines(logtype, id, n=n, tail=tail, day=day,
+                                   starttime=starttime, endtime=endtime,
+                                   syslog=syslog)
+>>>>>>> c79f8b6d... syslog framework changes
             rv = self.logutils.match_msg(lines, msg, allmatch=allmatch,
                                          regexp=regexp, starttime=starttime,
-                                         endtime=endtime)
+                                         endtime=endtime, syslog=syslog)
             if rv:
                 self.logger.log(level, infomsg + '... OK')
                 break
@@ -4109,6 +4133,97 @@ class PBSService(PBSObject):
             _msg = infomsg + attemptmsg
             raise PtlLogMatchError(rc=1, rv=False, msg=_msg)
         return rv
+
+    def log_match(self, msg=None, id=None, n=50, tail=True, allmatch=False,
+                  regexp=False, day=None, max_attempts=None, interval=None,
+                  starttime=None, endtime=None, level=logging.INFO,
+                  existence=True):
+        """
+        Match given ``msg`` in given ``n`` lines of logs
+
+        :param msg: log message to match, can be regex also when
+                    ``regexp`` is True
+        :type msg: str
+        :param id: The id of the object to trace. Only used for
+                   tracejob
+        :type id: str
+        :param n: 'ALL' or the number of lines to search through,
+                  defaults to 50
+        :type n: str or int
+        :param tail: If true (default), starts from the end of
+                     the file
+        :type tail: bool
+        :param allmatch: If True all matching lines out of then
+                         parsed are returned as a list. Defaults
+                         to False
+        :type allmatch: bool
+        :param regexp: If true msg is a Python regular expression.
+                       Defaults to False
+        :type regexp: bool
+        :param day: Optional day in YYYMMDD format.
+        :type day: str
+        :param max_attempts: the number of attempts to make to find
+                             a matching entry
+        :type max_attempts: int
+        :param interval: the interval between attempts
+        :type interval: int
+        :param starttime: If set ignore matches that occur before
+                          specified time
+        :type starttime: int
+        :param endtime: If set ignore matches that occur after
+                        specified time
+        :type endtime: int
+        :param level: The logging level, defaults to INFO
+        :type level: int
+        :param existence: If True (default), check for existence of
+                        given msg, else check for non-existence of
+                        given msg.
+        :type existence: bool
+
+        :return: (x,y) where x is the matching line
+                 number and y the line itself. If allmatch is True,
+                 a list of tuples is returned.
+        :rtype: tuple
+        :raises PtlLogMatchError:
+                When ``existence`` is True and given
+                ``msg`` is not found in ``n`` line
+                Or
+                When ``existence`` is False and given
+                ``msg`` found in ``n`` line.
+
+        .. note:: The matching line number is relative to the record
+                  number, not the absolute line number in the file.
+        """
+
+        syslog_value = self._get_log_type(hostname=self.hostname)
+
+        if syslog_value == 1:
+            return self._log_match(self, msg, id, n, tail, allmatch, regexp,
+                                   day, max_attempts, interval, starttime,
+                                   endtime, level=level, existence=existence,
+                                   syslog=True)
+        elif syslog_value == 2:
+            return self._log_match(self, msg, id, n, tail, allmatch, regexp,
+                                   day, max_attempts, interval, starttime,
+                                   endtime, level=level, existence=existence,
+                                   syslog=False)
+        elif syslog_value == 3:
+            syslog_return = self._log_match(self, msg, id, n, tail, allmatch,
+                                            regexp, day, max_attempts,
+                                            interval, starttime, endtime,
+                                            level=level, existence=existence,
+                                            syslog=True)
+            if syslog_return:
+                self.logger.log(level, "Reading local logs")
+                return self._log_match(self, msg, id, n, tail, allmatch,
+                                       regexp, day, max_attempts, interval,
+                                       starttime, endtime, level=level,
+                                       existence=existence, syslog=False)
+            else:
+                return syslog_return
+        else:
+            _msg = "Log File to check is not set"
+            PtlLogMatchError(rc=1, rv=False, msg=_msg)
 
     def accounting_match(self, msg, id=None, n=50, tail=True,
                          allmatch=False, regexp=False, max_attempts=None,
@@ -4309,6 +4424,7 @@ class PBSService(PBSObject):
         return (self.__class__.__name__ + '/' + self.pbs_conf_file + '@' +
                 self.hostname)
 
+<<<<<<< HEAD
     def cleanup_files(self):
         """
         This function removes any dynamic resource files created by server/mom
@@ -4317,6 +4433,54 @@ class PBSService(PBSObject):
         for dyn_files in self.dyn_created_files:
             self.du.rm(path=dyn_files, sudo=True, force=True)
         self.dyn_created_files = []
+=======
+    def _get_log_type(self, hostname=None):
+        # logic for which file to read will come from the above table
+
+        PBS_LOCALLOG = None
+        PBS_SYSLOG = None
+
+        pbs_llog = self.du.run_cmd(hosts=hostname,
+                                   cmd="cat /etc/pbs.conf |"
+                                   " grep -w PBS_LOCALLOG | "
+                                   "awk '{print substr($0,length,1)}'",
+                                   as_script=True,
+                                   level=logging.DEBUG2)
+
+        if pbs_llog['out']:
+            PBS_LOCALLOG = int(pbs_llog['out'][0])
+
+        pbs_slog = self.du.run_cmd(hosts=hostname,
+                                   cmd="cat /etc/pbs.conf |"
+                                   " grep -w PBS_SYSLOG "
+                                   "| awk '{print substr($0,length,1)}'",
+                                   as_script=True,
+                                   level=logging.DEBUG2)
+
+        if pbs_slog['out']:
+            PBS_SYSLOG = int(pbs_slog['out'][0])
+
+        if PBS_SYSLOG is None:
+            PBS_SYSLOG = 0
+
+        if PBS_LOCALLOG is None:
+            PBS_LOCALLOG = 1
+
+        # file_to_check =1 for syslog, file_to_check=2 for local,
+        # file_to_check=3 for both
+
+        if PBS_SYSLOG == 0 and PBS_LOCALLOG == 0:
+            raise ValueError('logging should be present in atleast one file')
+
+        if PBS_SYSLOG == 0 and PBS_LOCALLOG == 1:
+            return 2
+
+        if PBS_SYSLOG > 0 and PBS_LOCALLOG == 0:
+            return 1
+
+        if PBS_SYSLOG > 0 and PBS_LOCALLOG == 1:
+            return 3
+>>>>>>> c79f8b6d... syslog framework changes
 
 
 class Comm(PBSService):
@@ -4449,6 +4613,7 @@ class Comm(PBSService):
                 return False
         return self.start()
 
+<<<<<<< HEAD
     def log_match(self, msg=None, id=None, n=50, tail=True, allmatch=False,
                   regexp=False, max_attempts=None, interval=None,
                   starttime=None, endtime=None, level=logging.INFO,
@@ -4511,6 +4676,8 @@ class Comm(PBSService):
                                max_attempts, interval, starttime, endtime,
                                level=level, existence=existence)
 
+=======
+>>>>>>> c79f8b6d... syslog framework changes
 
 class Server(PBSService):
 
@@ -4967,6 +5134,7 @@ class Server(PBSService):
                 return False
         return self.start()
 
+<<<<<<< HEAD
     def log_match(self, msg=None, id=None, n=50, tail=True, allmatch=False,
                   regexp=False, max_attempts=None, interval=None,
                   starttime=None, endtime=None, level=logging.INFO,
@@ -5029,6 +5197,8 @@ class Server(PBSService):
                                max_attempts, interval, starttime, endtime,
                                level=level, existence=existence)
 
+=======
+>>>>>>> c79f8b6d... syslog framework changes
     def revert_to_defaults(self, reverthooks=True, revertqueues=True,
                            revertresources=True, delhooks=True,
                            delqueues=True, delscheds=True, server_stat=None):
@@ -10708,6 +10878,7 @@ class Scheduler(PBSService):
                 return False
         return self.start()
 
+<<<<<<< HEAD
     def log_match(self, msg=None, id=None, n=50, tail=True, allmatch=False,
                   regexp=False, max_attempts=None, interval=None,
                   starttime=None, endtime=None, level=logging.INFO,
@@ -10770,6 +10941,8 @@ class Scheduler(PBSService):
                                max_attempts, interval, starttime, endtime,
                                level=level, existence=existence)
 
+=======
+>>>>>>> c79f8b6d... syslog framework changes
     def pbs_version(self):
         """
         Get the version of the scheduler instance
@@ -12758,6 +12931,7 @@ class MoM(PBSService):
                 return False
         return self.start()
 
+<<<<<<< HEAD
     def log_match(self, msg=None, id=None, n=50, tail=True, allmatch=False,
                   regexp=False, max_attempts=None, interval=None,
                   starttime=None, endtime=None, level=logging.INFO,
@@ -12820,6 +12994,8 @@ class MoM(PBSService):
                                max_attempts, interval, starttime, endtime,
                                level, existence)
 
+=======
+>>>>>>> c79f8b6d... syslog framework changes
     def pbs_version(self):
         """
         Get the PBS version
@@ -13838,6 +14014,7 @@ class Job(ResourceResv):
         idx = job_array_id.find('[]')
         return job_array_id[:idx + 1] + str(subjob_index) + \
             job_array_id[idx + 1:]
+<<<<<<< HEAD
 
     def create_eatcpu_job(self, duration=None):
         """
@@ -13848,6 +14025,8 @@ class Job(ResourceResv):
         script_path = os.path.join(script_dir, 'utils', 'jobs', 'eatcpu.py')
         DshUtils().chmod(path=script_path, mode=0755)
         self.set_execargs(script_path, duration)
+=======
+>>>>>>> c79f8b6d... syslog framework changes
 
 
 class Reservation(ResourceResv):
