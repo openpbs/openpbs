@@ -85,26 +85,20 @@ isalnumspch(int c)
  * @retval -2	job name length is too long.
  */
 int
-check_job_name(name, chk_alpha)
-char *name;
-int   chk_alpha;
+check_job_name(char *name, int chk_alpha)
 {
+
+	char *p;
+	if (!name)
+		return (-1);
 
 	if (strlen(name) > (size_t)PBS_MAXJOBNAME)
 		return (-2);
 	else if ((chk_alpha == 1) && (isalpha((int)*name) == 0))
 		return (-1);
 
-	/* if caller is job submission request then allow 1st char to be
-	 * only alpha or numeric or permitted special char
-	 */
-	if ((chk_alpha == 0) && (isalnumspch((int)*name) == 0)) {
-		return (-1);
-	}
-
-	while (*name) {
-		if (isgraph((int)*name++) == 0)	/* disallow any non-printing */
+	for (p = name; *p; p++)
+		if (isalnumspch((int)*p) == 0)
 			return (-1);
-	}
 	return (0);
 }

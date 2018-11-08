@@ -87,3 +87,58 @@ pbs.logmsg(pbs.LOG_DEBUG, "submitted job with long select" )
         job_status = self.server.status(JOB, id=jid)
         select_resource = job_status[0]['Resource_List.select']
         self.assertTrue(select_len == len(select_resource))
+
+    def test_qsub_N_cmdline(self):
+        """
+        This test case validates, illlegal characters in job name,
+        cause qsub to error out
+        """
+        J = Job(TEST_USER, attrs={ATTR_N: 'j&whoami&gt;/tmp/b&'})
+        try:
+            jid = self.server.submit(J)
+        except PbsSubmitError as e:
+            self.assertTrue("illegal -N value" in e.msg[0])
+            self.logger.info('qsub: illegal -N value.Job not submitted')
+        else:
+            self.logger.info('Job created with illegal name: ' + jid)
+            self.assertTrue(False, "Job shouldn't be accepted")
+
+    def test_qsub_N_jobscript(self):
+        """
+        This test case validates, illlegal characters in job name
+        passed from job script, cause qsub to error out
+        """
+        j = Job(TEST_USER)
+        scrpt = []
+        scrpt += ['#!/bin/bash']
+        scrpt += ['#PBS -N "j&whoami&gt;/tmp/b&"\n']
+        scrpt += ['#PBS -j oe\n']
+        scrpt += ['#PBS -m n\n']
+        scrpt += ['#PBS -l select=1:ncpus=1\n']
+        scrpt += ['#PBS -l walltime=00:0:15\n']
+        scrpt += ['#PBS -l place=scatter:excl\n']
+        scrpt += ['date +%s']
+        j.create_script(body=scrpt, hostname=self.server.client)
+        try:
+            jid = self.server.submit(j)
+        except PbsSubmitError as e:
+            self.assertTrue("illegal -N value" in e.msg[0])
+            self.logger.info('qsub: illegal -N value.Job not submitted')
+        else:
+            self.logger.info('Job created with illegal name: ' + jid)
+            self.assertTrue(False, "Job shouldn't be accepted")
+
+    def test_qsub_N_job_array(self):
+        """
+        This test case validates, illlegal characters in job name
+        for a job array, cause qsub to error out
+        """
+        J = Job(TEST_USER, attrs={ATTR_N: 'j&whoami&g;/tmp/b&', ATTR_J: '1-2'})
+        try:
+            jid = self.server.submit(J)
+        except PbsSubmitError as e:
+            self.assertTrue("illegal -N value" in e.msg[0])
+            self.logger.info('qsub: illegal -N value.Job not submitted')
+        else:
+            self.logger.info('Job created with illegal name: ' + jid)
+            self.assertTrue(False, "Job shouldn't be accepted")
