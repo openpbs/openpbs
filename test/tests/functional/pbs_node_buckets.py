@@ -45,6 +45,11 @@ class TestNodeBuckets(TestFunctional):
 
     def setUp(self):
         TestFunctional.setUp(self)
+        day = time.strftime("%Y%m%d", time.localtime(time.time()))
+        filename = os.path.join(self.server.pbs_conf['PBS_HOME'],
+                                'sched_logs', day)
+        self.du.rm(path=filename, force=True, sudo=True, level=logging.DEBUG2)
+
         self.colors = \
             ['red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'violet']
         self.shapes = ['circle', 'square', 'triangle',
