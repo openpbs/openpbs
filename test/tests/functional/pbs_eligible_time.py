@@ -92,9 +92,9 @@ class TestEligibleTime(TestFunctional):
         sjid2 = jid_short + '[2]'
         sjid3 = jid_short + '[3]'
 
-        # Capture the time stamp when accrue type changed to
-        # eligible time
-        msg1 = jid + ";Accrue type has changed to eligible_time"
+        # Capture the time stamp when subjob 1 starts run. Accrue type changes
+        # to eligible time
+        msg1 = J1.create_subjob_id(jid, 1) + ";Job Run at request of Scheduler"
         m1 = self.server.log_match(msg1)
         t1 = logutils.convert_date_time(m1[1].split(';')[0])
 
@@ -110,15 +110,41 @@ class TestEligibleTime(TestFunctional):
                            extend='t', offset=20)
         self.server.expect(JOB, {'accrue_type': 1}, id=jid)
 
-        # Capture the time stamp when accrue type changed to
-        # ineligible time
-        msg2 = jid + ";Accrue type has changed to ineligible_time"
+        # Capture the time stamp when subjob 3 starts run. Accrue type changes
+        # to ineligible time. eligible_time calculation is completed.
+        msg2 = J1.create_subjob_id(jid, 3) + ";Job Run at request of Scheduler"
         m2 = self.server.log_match(msg2)
         t2 = logutils.convert_date_time(m2[1].split(';')[0])
         eligible_time = t2 - t1
 
-        m = jid + ";Accrue type has changed to ineligible_time, "
-        m += "previous accrue type was eligible_time"
-        m += " for %d secs, " % eligible_time
-        m += "total eligible_time=00:00:%d" % eligible_time
-        self.server.log_match(m)
+        m1 = jid + ";Accrue type has changed to ineligible_time, "
+        m1 += "previous accrue type was eligible_time"
+
+        m2 = m1 + " for %d secs, " % eligible_time
+        # Format timedelta object as it does not print a preceding 0 for
+        # hours in HH:MM:SS
+        m2 += "total eligible_time={:0>8}".format(
+              datetime.timedelta(seconds=eligible_time))
+        try:
+            self.server.log_match(m2)
+        except PtlLogMatchError as e:
+            # In some slow machines, there is a delay observed between
+            # job run and accrue type change.
+            # Checking if log_match failed because eligible_time
+            # value was off only by a few seconds(5 seconds).
+            # This is done to acommodate differences in the eligible
+            # time calculated by the test and the eligible time
+            # calculated by PBS.
+            # If the eligible_time value was off by > 5 seconds, test fails.
+            match = self.server.log_match(m1)
+            e_time = re.search('(\d+) secs', match[1])
+            if e_time:
+                self.logger.info("Checking if log_match failed because "
+                                 "the eligible_time value was off by "
+                                 "a few seconds, but within the allowed "
+                                 "range (5 secs). Expected %d secs Got: %s"
+                                 % (eligible_time, e_time.group(1)))
+                if int(e_time.group(1)) - eligible_time > 5:
+                    raise PtlLogMatchError(rc=1, rv=False, msg=e.msg)
+            else:
+                raise PtlLogMatchError(rc=1, rv=False, msg=e.msg)
