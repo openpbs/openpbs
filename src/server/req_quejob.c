@@ -3236,7 +3236,7 @@ long long get_next_svr_sequence_id(void)
 	++svr_sequence_window_count;
 	ret_svr_sequence_id = svr_jobidnumber;
 	/* sequence window count is more than 1000, reset back to zero*/
-	if (svr_sequence_window_count > SEQ_WIN_INCR) {
+	if (svr_sequence_window_count >= SEQ_WIN_INCR) {
 		svr_sequence_window_count = 0;
 	}
 	/* If server job limit is over, reset back to zero */

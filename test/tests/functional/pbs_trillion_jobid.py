@@ -144,7 +144,7 @@ exit 0
         self.assertTrue(self.server.isUp(), restart_msg)
 
     def submit_job(self, sleep=10, lower=0,
-                   upper=0, job_id=None, job_msg=None):
+                   upper=0, job_id=None, job_msg=None, verify=False):
         """
         Helper method to submit a normal/array job
         and also checks the R state and particular jobid if success,
@@ -165,6 +165,9 @@ exit 0
         :param job_msg : Expected message upon submission failure
         :type  job_msg : int
 
+        :param verify : Checks Job status R
+        :type  verify : boolean(True/False)
+
         """
         arr_flag = False
         j = Job(TEST_USER)
@@ -178,15 +181,15 @@ exit 0
             if job_id is not None:
                 self.assertEqual(jid.split('.')[0], job_id)
             if arr_flag:
-                self.server.expect(JOB, {'job_state': 'B'}, id=jid)
-                self.server.expect(JOB, {'job_state=R': '%d' % (total_jobs)},
-                                   count=True, id=jid, extend='t')
-                if sleep == 1:
-                    self.server.expect(JOB, 'queue', op=UNSET, id=jid)
+                if verify:
+                    self.server.expect(JOB, {'job_state': 'B'}, id=jid)
+                    self.server.expect(
+                        JOB,
+                        {'job_state=R': total_jobs},
+                        count=True, id=jid, extend='t')
             else:
-                self.server.expect(JOB, {'job_state': 'R'}, id=jid)
-                if sleep == 1:
-                    self.server.expect(JOB, 'queue', op=UNSET, id=jid)
+                if verify:
+                    self.server.expect(JOB, {'job_state': 'R'}, id=jid)
         except PbsSubmitError as e:
             if job_msg is not None:
                 # if JobId already exist
@@ -323,13 +326,14 @@ exit 0
         # Check default limit(9999999) and wrap it 0
         a = {'resources_available.ncpus': 20}
         self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
-        self.submit_job()
-        self.submit_job(lower=1, upper=2)
+        self.submit_job(verify=True)
+        self.submit_job(lower=1, upper=2, verify=True)
         self.submit_resv()
         sv_jobidnumber = 9999999  # default
         self.set_svr_sv_jobidnumber(sv_jobidnumber)
-        self.submit_job(job_id='%s' % (sv_jobidnumber))
-        self.submit_job(lower=1, upper=2, job_id='0[]')  # wrap it
+        self.submit_job(job_id='%s' % (sv_jobidnumber), verify=True)
+        self.submit_job(lower=1, upper=2, job_id='0[]',
+                        verify=True)  # wrap it
         self.submit_resv(resv_id='R1')
 
         # Check max limit (999999999999) and wrap it 0
@@ -342,12 +346,13 @@ exit 0
             runas=ROOT_USER,
             expect=True)
         self.server.expect(SERVER, seq_id)
-        self.submit_job()
-        self.submit_job(lower=1, upper=2)
+        self.submit_job(verify=True)
+        self.submit_job(lower=1, upper=2, verify=True)
         self.submit_resv()
         self.set_svr_sv_jobidnumber(sv_jobidnumber)
-        self.submit_job(job_id='%s' % (sv_jobidnumber))
-        self.submit_job(lower=1, upper=2, job_id='0[]')  # wrap it
+        self.submit_job(job_id='%s' % (sv_jobidnumber), verify=True)
+        self.submit_job(lower=1, upper=2, job_id='0[]',
+                        verify=True)  # wrap it
         self.submit_resv(resv_id='R1')
 
         # Someone set the max_job_sequence_id less than current jobid then also
@@ -363,8 +368,8 @@ exit 0
         self.server.expect(SERVER, seq_id)
         sv_jobidnumber = 123456789
         self.set_svr_sv_jobidnumber(sv_jobidnumber)
-        self.submit_job(job_id='%s' % (sv_jobidnumber))
-        self.submit_job(lower=1, upper=2, job_id='123456790[]')
+        self.submit_job(job_id='%s' % (sv_jobidnumber), verify=True)
+        self.submit_job(lower=1, upper=2, job_id='123456790[]', verify=True)
         self.submit_resv(resv_id='R123456791')
         # Set smaller(12345678) than current jobid(123456790)
         sv_jobidnumber = 12345678
@@ -376,8 +381,8 @@ exit 0
             runas=ROOT_USER,
             expect=True)
         self.server.expect(SERVER, seq_id)
-        self.submit_job(job_id='0')  # wrap it to zero
-        self.submit_job(lower=1, upper=2, job_id='1[]')
+        self.submit_job(job_id='0', verify=True)  # wrap it to zero
+        self.submit_job(lower=1, upper=2, job_id='1[]', verify=True)
         self.submit_resv(resv_id='R2')
 
     def test_verify_sequence_window(self):
@@ -387,8 +392,6 @@ exit 0
         """
         # Abruptly kill the server so next jobid should be 1000 after server
         # start
-        a = {'resources_available.ncpus': 15}
-        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
         self.set_svr_sv_jobidnumber(0)
         self.submit_job(job_id='0')
         self.submit_job(lower=1, upper=2, job_id='1[]')
@@ -411,14 +414,18 @@ exit 0
         self.submit_job(lower=1, upper=2, job_id='2004[]')
         self.submit_resv(resv_id='R2005')
 
+        # Verify the sequence window, incase of submitting more than 1001 jobs
+        # and all jobs should submit successfully without any duplication error
+        for _ in xrange(1010):
+            j = Job(TEST_USER)
+            self.server.submit(j)
+
     def test_jobid_duplication(self):
         """
                 Tests the JobId/ResvId duplication after wrap
                 Job/Resv shouldn't submit because previous
                 jobs with the same id's are still running
         """
-        a = {'resources_available.ncpus': 8}
-        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
         seq_id = {ATTR_max_job_sequence_id: 99999999}
         self.server.manager(
             MGR_CMD_SET,
@@ -444,3 +451,34 @@ exit 0
         # Job should submit successfully because all existing id's has been
         # passed
         self.submit_job(lower=1, upper=2, job_id='3[]')
+
+    def test_jobid_resvid_after_multiple_restart(self):
+        """
+        Test to check the Jobid/Resvid should not wrap to 0 during
+        server restart multiple times consecutively either gracefully/abruptly
+        """
+        j = Job(TEST_USER)
+        jid = self.server.submit(j)
+        curr_id = int(jid.split('.')[0])
+        self.submit_job(job_id='%s' % str(curr_id + 1))
+        self.submit_job(lower=1, upper=2, job_id='%s[]' % str(curr_id + 2))
+        self.submit_resv(resv_id='R%s' % str(curr_id + 3))
+        # Gracefully stop and start the server twice consecutively
+        self.stop_and_restart_svr('normal')
+        self.stop_and_restart_svr('normal')
+        self.submit_job(job_id='%s' % str(curr_id + 4))
+        self.submit_job(lower=1, upper=2, job_id='%s[]' % str(curr_id + 5))
+        self.submit_resv(resv_id='R%s' % str(curr_id + 6))
+        # Abruptly kill and start the server twice consecutively
+        self.stop_and_restart_svr('kill')
+        self.stop_and_restart_svr('kill')
+        # Adding 1000 in current jobid for the sequence window buffer and
+        # 4 for the jobs that ran already after server start
+        curr_id += 1000 + 4
+        self.submit_job(job_id='%s' % str(curr_id))
+        self.submit_job(lower=1, upper=2, job_id='%s[]' % str(curr_id + 1))
+        self.submit_resv(resv_id='R%s' % str(curr_id + 2))
+
+    def tearDown(self):
+        self.server.cleanup_jobs()
+        TestFunctional.tearDown(self)

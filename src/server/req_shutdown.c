@@ -132,7 +132,7 @@ svr_shutdown(int type)
 
 	/* Lets start by logging shutdown and saving everything */
 
-	/* Saving server jobid number to the database as server is going to shutdown.
+      /* Saving server jobid number to the database as server is going to shutdown.
 	 * Once server will come up then it will start jobid/resvid from this number onwards.
 	 */
 	server.sv_qs.sv_jobidnumber = svr_jobidnumber;

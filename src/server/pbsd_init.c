@@ -665,6 +665,11 @@ pbsd_init(int type)
 			log_err(rc, __func__, msg_init_baddb);
 			return (-1);
 		}
+		/*
+		 * Retrieve the jobidnumber from the database and use it to generate jobid's locally
+		 * see: get_next_svr_sequence_id(void)
+		 */
+		svr_jobidnumber = server.sv_qs.sv_jobidnumber;
 		if (server.sv_attr[(int)SRV_ATR_resource_assn].at_flags &
 			ATR_VFLAG_SET) {
 			svr_attr_def[(int)SRV_ATR_resource_assn].at_free(
