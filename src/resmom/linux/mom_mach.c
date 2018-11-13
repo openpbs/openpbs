@@ -8031,7 +8031,6 @@ pidcache_reset(pidcachetype_t *pidcache)
 {
 	struct dirent		*dent = NULL;
 	pid_t			pid = 0;
-	char			taskname[256] = {0};
 	int			ncantstat = 0;
 	FILE			*fd = NULL;
 	char			line[25] = {0};
@@ -8048,13 +8047,14 @@ pidcache_reset(pidcachetype_t *pidcache)
 		rewinddir(cpusetdir);
 
 	while (errno = 0, (dent = readdir(cpusetdir)) != NULL) {
+		char *taskname = NULL;
 		if (!isdigit(dent->d_name[0]))
 			continue;
-
-		sprintf(taskname, "%s/%s/tasks", cpusetfs, dent->d_name);
+		pbs_asprintf(&taskname, "%s/%s/tasks", cpusetfs, dent->d_name);
 
 		if ((fd = fopen(taskname, "r")) == NULL) {
 			ncantstat++;
+			free(taskname);
 			continue;
 		}
 
@@ -8063,6 +8063,7 @@ pidcache_reset(pidcachetype_t *pidcache)
 			if (pidcache_insert(pid, pidcache))
 				nprocs++;
 		}
+		free(taskname);
 		fclose(fd);
 	}
 
