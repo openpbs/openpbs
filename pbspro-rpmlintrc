@@ -1,4 +1,8 @@
-
+# IGNORE: The following are purposely suppressed.
+addFilter("non-standard-executable-perm .*pbs_iff")
+addFilter("setuid-binary .*pbs_iff")
+addFilter("non-standard-executable-perm .*pbs_rcp")
+addFilter("setuid-binary .*pbs_rcp")
 # FIXME: The following errors need to be addressed rather than ignored
 addFilter('permissions-file-setuid-bit')
 setBadness('permissions-file-setuid-bit', 0)
