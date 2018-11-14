@@ -901,7 +901,7 @@ class HookUtils(object):
                                (caller_name(), msg))
         # Update the resource usage information for each job
         if cgroup.cfg['periodic_resc_update']:
-            for jobid in joblist:
+            for jobid in event.job_list():
                 pbs.logmsg(pbs.EVENT_DEBUG4,
                            '%s: Updating resource usage for %s' %
                            (caller_name(), jobid))

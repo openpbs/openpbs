@@ -357,6 +357,10 @@ sleep 10
 #PBS -joe
 sleep 15
 """
+        self.sleep5_job = """#!/bin/bash
+#PBS -joe
+sleep 5
+"""
         self.eat_cpu_script = """#!/bin/bash
 #PBS -joe
 for i in 1 2 3 4; do while : ; do : ; done & done
@@ -1032,7 +1036,7 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         self.assertTrue(self.is_dir(cpath, self.hostB))
 
     @timeout(300)
-    def test_cgroup_periodic_update(self):
+    def test_cgroup_periodic_update_check_values(self):
         """
         Test to verify that cgroups are reporting usage for cput and mem
         """
@@ -2040,9 +2044,7 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         Test that memory.use_hierarchy is enabled by default
         when PBS cgroups hook is instantiated
         """
-
         now = int(time.time())
-
         # Remove PBS directories from memory subsystem
         if 'memory' in self.paths and self.paths['memory']:
             cdir = self.paths['memory']
@@ -2053,20 +2055,15 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         else:
             self.skipTest(
                 "memory subsystem is not enabled for cgroups")
-
         cmd = ["rmdir", cpath]
         self.logger.info("Removing %s" % cpath)
         self.du.run_cmd(cmd=cmd, sudo=True)
-
         self.load_config(self.cfg6 % (self.swapctl))
-
         self.momA.restart()
-
         # Wait for exechost_startup hook to run
         self.momA.log_match("Hook handler returned success for"
                             " exechost_startup event",
                             starttime=now)
-
         # Verify that memory.use_hierarchy is enabled
         fpath = os.path.join(cpath, "memory.use_hierarchy")
         self.logger.info("looking for file %s" % fpath)
@@ -2079,6 +2076,116 @@ for i in 1 2 3 4; do while : ; do : ; done & done
             self.logger.info("memory.use_hierarchy is enabled")
         else:
             self.assertFalse(1, "File %s not present" % fpath)
+
+    def test_cgroup_periodic_update_known_jobs(self):
+        """
+        Verify that jobs known to mom are updated, not orphans
+        """
+        conf = {'freq': 5, 'order': 100}
+        self.server.manager(MGR_CMD_SET, HOOK, conf, self.hook_name)
+        self.load_config(self.cfg3 % ('', '', '', self.swapctl, ''))
+        # Submit a short job and let it run to completion
+        a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' %
+             self.hostA}
+        j = Job(TEST_USER, attrs=a)
+        j.create_script(self.sleep5_job)
+        jid1 = self.server.submit(j)
+        a = {'job_state': 'R'}
+        self.server.expect(JOB, a, jid1)
+        self.server.status(JOB, ATTR_o, jid1)
+        o = j.attributes[ATTR_o]
+        self.tempfile.append(o)
+        self.server.log_match(jid1 + ';Exit_status=0')
+        # Create a periodic hook that runs more frequently than the
+        # cgroup hook to prepend jid1 to mom_priv/hooks/hook_data/cgroup_jobs
+        hookname = 'prependjob'
+        hookbody = """
+import pbs
+import os
+import re
+import traceback
+event = pbs.event()
+jid_to_prepend = '%s'
+pbs_home = ''
+pbs_mom_home = ''
+if 'PBS_HOME' in os.environ:
+    pbs_home = os.environ['PBS_HOME']
+if 'PBS_MOM_HOME' in os.environ:
+    pbs_mom_home = os.environ['PBS_MOM_HOME']
+pbs_conf = pbs.get_pbs_conf()
+if pbs_conf:
+    if not pbs_home and 'PBS_HOME' in pbs_conf:
+        pbs_home = pbs_conf['PBS_HOME']
+    if not pbs_mom_home and 'PBS_MOM_HOME' in pbs_conf:
+        pbs_mom_home = pbs_conf['PBS_MOM_HOME']
+if not pbs_home or not pbs_mom_home:
+    if 'PBS_CONF_FILE' in os.environ:
+        pbs_conf_file = os.environ['PBS_CONF_FILE']
+    else:
+        pbs_conf_file = os.path.join(os.sep, 'etc', 'pbs.conf')
+    regex = re.compile(r'\\s*([^\\s]+)\\s*=\\s*([^\\s]+)\\s*')
+    try:
+        with open(pbs_conf_file, 'r') as desc:
+            for line in desc:
+                match = regex.match(line)
+                if match:
+                    if not pbs_home and match.group(1) == 'PBS_HOME':
+                        pbs_home = match.group(2)
+                    if not pbs_mom_home and (match.group(1) ==
+                                             'PBS_MOM_HOME'):
+                        pbs_mom_home = match.group(2)
+    except Exception:
+        pass
+if not pbs_home:
+    pbs.logmsg(pbs.EVENT_DEBUG, 'Failed to locate PBS_HOME')
+    event.reject()
+if not pbs_mom_home:
+    pbs_mom_home = pbs_home
+jobsfile = os.path.join(pbs_mom_home, 'mom_priv', 'hooks',
+                        'hook_data', 'cgroup_jobs')
+try:
+    with open(jobsfile, 'r+') as desc:
+        joblist = desc.readline().split()
+        jobset = set(joblist)
+        if jid_to_prepend not in jobset:
+            jobset.add(jid_to_prepend)
+            desc.seek(0)
+            desc.write(' '.join(jobset))
+            desc.truncate()
+except Exception as exc:
+    pbs.logmsg(pbs.EVENT_DEBUG, 'Failed to modify ' + jobsfile)
+    pbs.logmsg(pbs.EVENT_DEBUG,
+               str(traceback.format_exc().strip().splitlines()))
+    event.reject()
+event.accept()
+""" % jid1
+        events = '"execjob_begin,exechost_periodic"'
+        hookconf = {'enabled': 'True', 'freq': 2, 'alarm': 30, 'event': events}
+        self.server.create_import_hook(hookname, hookconf, hookbody,
+                                       overwrite=True)
+        # Submit a second job and verify that the following message
+        # does NOT appear in the mom log:
+        # _exechost_periodic_handler: Failed to update jid1
+        presubmit = int(time.time())
+        a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' %
+             self.hostA}
+        j = Job(TEST_USER, attrs=a)
+        j.create_script(self.sleep15_job)
+        jid2 = self.server.submit(j)
+        a = {'job_state': 'R'}
+        self.server.expect(JOB, a, jid2)
+        self.server.status(JOB, ATTR_o, jid2)
+        o = j.attributes[ATTR_o]
+        self.tempfile.append(o)
+        self.server.log_match(jid2 + ';Exit_status=0')
+        self.server.manager(MGR_CMD_DELETE, HOOK, None, hookname)
+        command = ['truncate', '-s0',
+                   os.path.join(self.momA.pbs_conf['PBS_HOME'], 'mom_priv',
+                                'hooks', 'hook_data', 'cgroup_jobs')]
+        self.du.run_cmd(cmd=command, hosts=self.hostA, sudo=True)
+        logmsg = '_exechost_periodic_handler: Failed to update %s' % jid1
+        self.momA.log_match(msg=logmsg, starttime=presubmit,
+                            max_attempts=1, existence=False)
 
     def tearDown(self):
         TestFunctional.tearDown(self)
