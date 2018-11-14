@@ -3,7 +3,7 @@ pull_requests:
   do_not_increment_build_number: true
 clone_depth: 5
 cache:
-  - C:\projects\binaries -> .appveyor.yml, .appveyor
+  - C:\projects\binaries -> .appveyor
 configuration:
   - Release
   - Debug
@@ -143,6 +143,8 @@ test_script:
           }
         } -Timeout 5000
   - ps: qsub -J1-2 -f -- pbs_sleep 1000
+  - ps: qstat -tf
+  - ps: Get-Process pbs_sleep
   - ps: Retry-Command {
           if ((Get-Process pbs_sleep).Length -ne 2) {
             qmgr -c "s s scheduling = True";
