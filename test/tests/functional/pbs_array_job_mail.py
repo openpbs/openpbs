@@ -79,8 +79,8 @@ class Test_array_job_email(TestFunctional):
         self.logger.info("Wait 10s for saving the e-mails")
         time.sleep(10)
 
-        with open(mailfile, 'r') as f:
-            maillog = [x.strip() for x in f.readlines()[-600:]]
+        ret = self.du.cat(filename=mailfile, sudo=True)
+        maillog = [x.strip() for x in ret['out'][-600:]]
 
         for (jobid, msg) in emails:
             emailpass = 0
