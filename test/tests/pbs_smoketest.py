@@ -484,9 +484,8 @@ class SmokeTest(PBSTestSuite):
                               max_attempts=100, interval=5)
         j = Job(TEST_USER)
         jid = self.server.submit(j)
-        self.server.expect(JOB, {ATTR_state: 'H'}, id=jid)
-        self.mom.log_match("my custom message", max_attempts=10,
-                           starttime=self.server.ctime)
+        self.mom.log_match("my custom message", starttime=self.server.ctime,
+                           interval=1)
 
     @skipOnCpuSet
     def test_shrink_to_fit(self):

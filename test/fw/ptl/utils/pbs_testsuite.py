@@ -440,6 +440,7 @@ class PBSTestSuite(unittest.TestCase):
             return
         self.log_enter_setup()
         self.init_proc_mon()
+        self.revert_pbsconf()
         self.revert_servers()
         self.revert_comms()
         self.revert_schedulers()
@@ -830,6 +831,331 @@ class PBSTestSuite(unittest.TestCase):
                 self.start_proc_monitor(name='|'.join(_proc_mon), regexp=True,
                                         frequency=freq)
                 self._process_monitoring = True
+
+    def _get_dflt_pbsconfval(self, conf, primary_host, hosttype, hostobj):
+        """
+        Helper function to revert_pbsconf, tries to determine and return
+        default value for the pbs.conf variable given
+
+        :param conf: the pbs.conf variable
+        :type conf: str
+        :param primary_host: hostname of the primary server host
+        :type primary_host: str
+        :param hosttype: type of host being reverted
+        :type hosttype: str
+        :param hostobj: PTL object associated with the host
+        :type hostobj: PBSService
+
+        :return default value of the pbs.conf variable if it can be determined
+        as a string, otherwise None
+        """
+        if conf == "PBS_SERVER":
+            return primary_host
+        elif conf == "PBS_START_SCHED":
+            if hosttype == "server":
+                return "1"
+            else:
+                return "0"
+        elif conf == "PBS_START_COMM":
+            if hosttype == "comm":
+                return "1"
+            else:
+                return "0"
+        elif conf == "PBS_START_SERVER":
+            if hosttype == "server":
+                return "1"
+            else:
+                return "0"
+        elif conf == "PBS_START_MOM":
+            if hosttype == "mom":
+                return "1"
+            else:
+                return "0"
+        elif conf == "PBS_CORE_LIMIT":
+            return "unlimited"
+        elif conf == "PBS_SCP":
+            scppath = self.du.which(hostobj.hostname, "scp")
+            if scppath != "scp":
+                return scppath
+
+        return None
+
+    def _revert_pbsconf_comm(self, primary_server, vals_to_set):
+        """
+        Helper function to revert_pbsconf to revert all comm daemons' pbs.conf
+
+        :param primary_server: object of the primary PBS server
+        :type primary_server: PBSService
+        :param vals_to_set: dict of pbs.conf values to set
+        :type vals_to_set: dict
+        """
+        for comm in self.comms.values():
+            if comm.hostname == primary_server.hostname:
+                continue
+
+            new_pbsconf = dict(vals_to_set)
+            restart_comm = False
+            pbs_conf_val = self.du.parse_pbs_config(comm.hostname)
+            if not pbs_conf_val:
+                raise ValueError("Could not parse pbs.conf on host %s" %
+                                 (comm.hostname))
+
+            # to start with, set all keys in new_pbsconf with values from the
+            # existing pbs.conf
+            keys_to_delete = []
+            for conf in new_pbsconf:
+                if conf in pbs_conf_val:
+                    new_pbsconf[conf] = pbs_conf_val[conf]
+                else:
+                    # existing pbs.conf doesn't have a default variable set
+                    # Try to determine the default
+                    val = self._get_dflt_pbsconfval(conf,
+                                                    primary_server.hostname,
+                                                    "comm", comm)
+                    if val is None:
+                        self.logger.error("Couldn't revert %s in pbs.conf"
+                                          " to its default value" %
+                                          (conf))
+                        keys_to_delete.append(conf)
+                    else:
+                        new_pbsconf[conf] = val
+
+            for key in keys_to_delete:
+                del(new_pbsconf[key])
+
+            # Set the comm start bit to 1
+            if new_pbsconf["PBS_START_COMM"] != "1":
+                new_pbsconf["PBS_START_COMM"] = "1"
+                restart_comm = True
+
+            # Set PBS_CORE_LIMIT, PBS_SCP and PBS_SERVER
+            if new_pbsconf["PBS_CORE_LIMIT"] != "unlimited":
+                new_pbsconf["PBS_CORE_LIMIT"] = "unlimited"
+                restart_comm = True
+            if new_pbsconf["PBS_SERVER"] != primary_server.hostname:
+                new_pbsconf["PBS_SERVER"] = primary_server.hostname
+                restart_comm = True
+            if "PBS_SCP" not in new_pbsconf:
+                scppath = self.du.which(comm.hostname, "scp")
+                if scppath != "scp":
+                    new_pbsconf["PBS_SCP"] = scppath
+                    restart_comm = True
+
+            # Check if existing pbs.conf has more/less entries than the
+            # default list
+            if len(pbs_conf_val) != len(new_pbsconf):
+                restart_comm = True
+
+            if restart_comm:
+                self.du.set_pbs_config(comm.hostname, confs=new_pbsconf)
+                comm.pbs_conf = new_pbsconf
+                comm.pi.initd(comm.hostname, "restart", daemon="comm")
+
+    def _revert_pbsconf_mom(self, primary_server, vals_to_set):
+        """
+        Helper function to revert_pbsconf to revert all mom daemons' pbs.conf
+
+        :param primary_server: object of the primary PBS server
+        :type primary_server: PBSService
+        :param vals_to_set: dict of pbs.conf values to set
+        :type vals_to_set: dict
+        """
+        for mom in self.moms.values():
+            if mom.hostname == primary_server.hostname:
+                continue
+
+            new_pbsconf = dict(vals_to_set)
+            restart_mom = False
+            pbs_conf_val = self.du.parse_pbs_config(mom.hostname)
+            if not pbs_conf_val:
+                raise ValueError("Could not parse pbs.conf on host %s" %
+                                 (mom.hostname))
+
+            # to start with, set all keys in new_pbsconf with values from the
+            # existing pbs.conf
+            keys_to_delete = []
+            for conf in new_pbsconf:
+                if conf in pbs_conf_val:
+                    new_pbsconf[conf] = pbs_conf_val[conf]
+                else:
+                    # existing pbs.conf doesn't have a default variable set
+                    # Try to determine the default
+                    val = self._get_dflt_pbsconfval(conf,
+                                                    primary_server.hostname,
+                                                    "mom", mom)
+                    if val is None:
+                        self.logger.error("Couldn't revert %s in pbs.conf"
+                                          " to its default value" %
+                                          (conf))
+                        keys_to_delete.append(conf)
+                    else:
+                        new_pbsconf[conf] = val
+
+            for key in keys_to_delete:
+                del(new_pbsconf[key])
+
+            # Set the mom start bit to 1
+            if (new_pbsconf["PBS_START_MOM"] != "1"):
+                new_pbsconf["PBS_START_MOM"] = "1"
+                restart_mom = True
+
+            # Set PBS_CORE_LIMIT, PBS_SCP and PBS_SERVER
+            if new_pbsconf["PBS_CORE_LIMIT"] != "unlimited":
+                new_pbsconf["PBS_CORE_LIMIT"] = "unlimited"
+                restart_mom = True
+            if new_pbsconf["PBS_SERVER"] != primary_server.hostname:
+                new_pbsconf["PBS_SERVER"] = primary_server.hostname
+                restart_mom = True
+            if "PBS_SCP" not in new_pbsconf:
+                scppath = self.du.which(mom.hostname, "scp")
+                if scppath != "scp":
+                    new_pbsconf["PBS_SCP"] = scppath
+                    restart_mom = True
+
+            # Check if existing pbs.conf has more/less entries than the
+            # default list
+            if len(pbs_conf_val) != len(new_pbsconf):
+                restart_mom = True
+
+            if restart_mom:
+                self.du.set_pbs_config(mom.hostname, confs=new_pbsconf,
+                                       append=False)
+                mom.pbs_conf = new_pbsconf
+                mom.pi.initd(mom.hostname, "restart", daemon="mom")
+
+    def _revert_pbsconf_server(self, primary_server, vals_to_set):
+        """
+        Helper function to revert_pbsconf to revert all servers' pbs.conf
+
+        :param primary_server: object of the primary PBS server
+        :type primary_server: PBSService
+        :param vals_to_set: dict of pbs.conf values to set
+        :type vals_to_set: dict
+        """
+        for server in self.servers.values():
+            new_pbsconf = dict(vals_to_set)
+            cmds_to_exec = []
+            dmns_to_restart = 0
+            restart_pbs = False
+            pbs_conf_val = self.du.parse_pbs_config(server.hostname)
+            if not pbs_conf_val:
+                raise ValueError("Could not parse pbs.conf on host %s" %
+                                 (server.hostname))
+
+            # to start with, set all keys in new_pbsconf with values from the
+            # existing pbs.conf
+            keys_to_delete = []
+            for conf in new_pbsconf:
+                if conf in pbs_conf_val:
+                    new_pbsconf[conf] = pbs_conf_val[conf]
+                else:
+                    # existing pbs.conf doesn't have a default variable set
+                    # Try to determine the default
+                    val = self._get_dflt_pbsconfval(conf,
+                                                    primary_server.hostname,
+                                                    "server", server)
+                    if val is None:
+                        self.logger.error("Couldn't revert %s in pbs.conf"
+                                          " to its default value" %
+                                          (conf))
+                        keys_to_delete.append(conf)
+                    else:
+                        new_pbsconf[conf] = val
+
+            for key in keys_to_delete:
+                del(new_pbsconf[key])
+
+            # Set all start bits
+            if (new_pbsconf["PBS_START_SERVER"] != "1"):
+                new_pbsconf["PBS_START_SERVER"] = "1"
+                dmns_to_restart += 1
+                cmds_to_exec.append(["server", "start"])
+            if (new_pbsconf["PBS_START_SCHED"] != "1"):
+                new_pbsconf["PBS_START_SCHED"] = "1"
+                cmds_to_exec.append(["sched", "start"])
+                dmns_to_restart += 1
+            if self.moms and server.hostname not in self.moms:
+                if new_pbsconf["PBS_START_MOM"] != "0":
+                    new_pbsconf["PBS_START_MOM"] = "0"
+                    cmds_to_exec.append(["mom", "stop"])
+                    dmns_to_restart += 1
+            else:
+                if (new_pbsconf["PBS_START_MOM"] != "1"):
+                    new_pbsconf["PBS_START_MOM"] = "1"
+                    cmds_to_exec.append(["mom", "start"])
+                    dmns_to_restart += 1
+            if self.comms and server.hostname not in self.comms:
+                if new_pbsconf["PBS_START_COMM"] != "0":
+                    new_pbsconf["PBS_START_COMM"] = "0"
+                    cmds_to_exec.append(["comm", "stop"])
+            else:
+                if (new_pbsconf["PBS_START_COMM"] != "1"):
+                    new_pbsconf["PBS_START_COMM"] = "1"
+                    cmds_to_exec.append(["comm", "start"])
+                    dmns_to_restart += 1
+
+            if dmns_to_restart == 4:
+                # If all daemons need to be started again, just restart PBS
+                # instead of making PTL start each of them one at a time
+                restart_pbs = True
+
+            # Set PBS_CORE_LIMIT, PBS_SCP and PBS_SERVER
+            if new_pbsconf["PBS_CORE_LIMIT"] != "unlimited":
+                new_pbsconf["PBS_CORE_LIMIT"] = "unlimited"
+                restart_pbs = True
+            if new_pbsconf["PBS_SERVER"] != primary_server.hostname:
+                new_pbsconf["PBS_SERVER"] = primary_server.hostname
+                restart_pbs = True
+            if "PBS_SCP" not in new_pbsconf:
+                scppath = self.du.which(server.hostname, "scp")
+                if scppath != "scp":
+                    new_pbsconf["PBS_SCP"] = scppath
+                    restart_pbs = True
+
+            # Check if existing pbs.conf has more/less entries than the
+            # default list
+            if len(pbs_conf_val) != len(new_pbsconf):
+                restart_pbs = True
+
+            if restart_pbs or dmns_to_restart > 0:
+                # Write out the new pbs.conf file
+                self.du.set_pbs_config(server.hostname, confs=new_pbsconf,
+                                       append=False)
+                server.pbs_conf = new_pbsconf
+
+                if restart_pbs:
+                    # Restart all
+                    server.pi.restart(server.hostname)
+                else:
+                    for initcmd in cmds_to_exec:
+                        # start/stop the particular daemon
+                        server.pi.initd(server.hostname, initcmd[1],
+                                        daemon=initcmd[0])
+
+    def revert_pbsconf(self):
+        """
+        Revert contents of the pbs.conf file
+        Also start/stop the appropriate daemons
+        """
+        primary_server = self.server
+
+        vals_to_set = {
+            "PBS_HOME": None,
+            "PBS_EXEC": None,
+            "PBS_SERVER": None,
+            "PBS_START_SCHED": None,
+            "PBS_START_COMM": None,
+            "PBS_START_SERVER": None,
+            "PBS_START_MOM": None,
+            "PBS_CORE_LIMIT": None,
+            "PBS_SCP": None
+        }
+
+        self._revert_pbsconf_server(primary_server, vals_to_set)
+
+        self._revert_pbsconf_mom(primary_server, vals_to_set)
+
+        self._revert_pbsconf_comm(primary_server, vals_to_set)
 
     def revert_servers(self, force=False):
         """
