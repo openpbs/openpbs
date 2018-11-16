@@ -43,7 +43,8 @@ class TestNodePartition(TestInterfaces):
     """
     Test suite to test partition attr for node
     """
-    host_name = socket.gethostname()
+    # Node id is MoM's short name
+    host_name = socket.gethostname().split('.')[0]
 
     def set_node_partition_attr(self, mgr_cmd="MGR_CMD_SET", n_name=host_name,
                                 partition="P1", user=ROOT_USER):
