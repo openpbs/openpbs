@@ -686,11 +686,6 @@ tpp_init(struct tpp_config *cnf)
 	snprintf(log_buffer, TPP_LOGBUF_SZ, "TPP leaf node names = %s", tpp_conf->node_name);
 	tpp_log_func(LOG_CRIT, NULL, log_buffer);
 
-	if (tpp_addr_cache_init() != 0) {
-		tpp_log_func(LOG_CRIT, __func__, "Failed to initialize the TPP address cache");
-		return -1;
-	}
-
 	tpp_init_lock(&strmarray_lock);
 	if (tpp_mbox_init(&app_mbox) != 0) {
 		tpp_log_func(LOG_CRIT, __func__, "Failed to create application mbox");

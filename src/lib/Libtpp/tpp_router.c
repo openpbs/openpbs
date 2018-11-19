@@ -2026,11 +2026,6 @@ tpp_init_router(struct tpp_config *cnf)
 		return -1;
 	}
 
-	if (tpp_addr_cache_init() != 0) {
-		tpp_log_func(LOG_CRIT, NULL, "Failed to initialize the TPP address cache");
-		return -1;
-	}
-
 	tpp_init_lock(&router_lock);
 
 	AVL_routers = create_tree(AVL_NO_DUP_KEYS, sizeof(tpp_addr_t));

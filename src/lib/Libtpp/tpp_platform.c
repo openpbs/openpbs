@@ -712,10 +712,6 @@ tpp_sock_resolve_host(char *host, int *count)
 	errno = 0;
 	*count = 0;
 
-	/* check name in tree if we already have an address */
-	if ((ips = tpp_lookup_addr_cache(host, count)) != NULL)
-		return ips; /* free @ caller*/
-
 	memset(&hints, 0, sizeof(struct addrinfo));
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
@@ -790,9 +786,6 @@ tpp_sock_resolve_host(char *host, int *count)
 			ips = tmp;
 	}
 	*count = i; /* adjust count */
-
-	/* add (a copy) this to the address cache */
-	tpp_set_addr_cache(host, ips, *count);
 
 	return ips;
 }

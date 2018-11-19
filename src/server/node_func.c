@@ -160,7 +160,6 @@ extern char	*resc_in_err;
 extern char	server_host[];
 extern AVL_IX_DESC *node_tree;
 extern int write_single_node_mom_attr(struct pbsnode *np);
-static AVL_IX_DESC *momfqdn_tree = NULL;
 
 extern struct python_interpreter_data  svr_interp_data;
 
@@ -2317,7 +2316,6 @@ decode_Mom_list(struct attribute *patr, char *name, char *rescn, char *val)
 	static char		**str_arr = NULL;
 	static long int		  str_arr_len = 0;
 	attribute		  new;
-	char			 *tmp_fqdn;
 
 	if ((val == NULL) || (strlen(val) == 0) || count_substrings(val, &ns)) {
 		node_attr_def[(int)ND_ATR_Mom].at_free(patr);
@@ -2355,34 +2353,15 @@ decode_Mom_list(struct attribute *patr, char *name, char *rescn, char *val)
 
 	for (i = 0; (p = str_arr[i]) != NULL; i++) {
 		clear_attr(&new, &node_attr_def[(int)ND_ATR_Mom]);
-		/* try the cache first */
-		tmp_fqdn = NULL;
-		if ((momfqdn_tree == NULL) || ((tmp_fqdn = (char *) find_tree(momfqdn_tree, p)) == NULL)) {
-			/* cache miss, do name resolution */
-			if (get_fullhostname(p, buf, (sizeof(buf) - 1)) != 0)
-				strncpy(buf, p, (sizeof(buf) - 1));
-		} else {
-			/* found it in the cache */
-			strncpy(buf, tmp_fqdn, (sizeof(buf) - 1));
+		if (get_fullhostname(p, buf, (sizeof(buf) - 1)) != 0) {
+			strncpy(buf, p, (sizeof(buf) - 1));
+			buf[sizeof(buf) - 1] = '\0';
 		}
 		rc = decode_arst(&new, ATTR_NODE_Mom, NULL, buf);
 		if (rc != 0)
 			continue;
 		set_arst(patr, &new, INCR);
 		free_arst(&new);
-		if (tmp_fqdn == NULL) {
-			/* there was a cache miss, add resolved name to cache.
-			 * Ignore all errors while adding to the cache.
-			 */
-			if (momfqdn_tree == NULL)
-				momfqdn_tree = create_tree(AVL_NO_DUP_KEYS, 0);
-
-			if (momfqdn_tree != NULL) {
-				if ((tmp_fqdn = strdup(buf)) != NULL)
-					tree_add_del(momfqdn_tree, p,
-						tmp_fqdn, TREE_OP_ADD);
-			}
-		}
 	}
 
 	return (0);

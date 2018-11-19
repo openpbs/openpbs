@@ -95,7 +95,6 @@ extern "C" {
 #define UNINITIALIZED_INT       (MAX_SEQ_NUMBER + 1)
 #define TPP_LOGBUF_SZ        	1024
 #define TPP_MAXADDRLEN          (INET6_ADDRSTRLEN + 10)
-#define TPP_CACHE_EXPIRY_SECS	300 /* 5 minutes life in address cache */
 
 /* some built in timing control defines to retry connections to routers */
 #define TPP_CONNNECT_RETRY_MIN	2
@@ -497,9 +496,6 @@ tpp_addr_t *tpp_get_local_host(int sock);
 tpp_addr_t *tpp_get_connected_host(int sock);
 int tpp_sock_resolve_ip(tpp_addr_t *addr, char *host, int len);
 tpp_addr_t *tpp_sock_resolve_host(char *host, int *count);
-int tpp_addr_cache_init();
-tpp_addr_t *tpp_lookup_addr_cache(char *host, int *count);
-int tpp_set_addr_cache(char *host, tpp_addr_t *addrs, int count);
 
 char *tpp_netaddr(tpp_addr_t *);
 
