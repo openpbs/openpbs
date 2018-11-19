@@ -1563,7 +1563,7 @@ work(void *v)
 	em_event_t *events;
 	phy_conn_t *conn;
 	int slot_state;
-	struct sockaddr_in clientaddr;
+	struct sockaddr clientaddr;
 	int new_connection = 0;
 	int timeout, timeout2;
 	time_t now;
@@ -1765,8 +1765,8 @@ work(void *v)
 				return NULL;
 			}
 			conn->conn_params->auth_type = auth_type;
-			conn->conn_params->hostname = strdup(netaddr((struct sockaddr_in *) &clientaddr));
-			conn->conn_params->port = ntohs(clientaddr.sin_port);
+			conn->conn_params->hostname = strdup(tpp_netaddr_sa(&clientaddr));
+			conn->conn_params->port = ntohs(((struct sockaddr_in *) &clientaddr)->sin_port);
 
 			/**
 			 *  accept socket, and add socket to stream, assign stream to

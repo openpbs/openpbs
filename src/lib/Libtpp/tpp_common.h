@@ -48,6 +48,8 @@ extern "C" {
 #include <limits.h>
 #include <time.h>
 #include <pthread.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 #include <errno.h>
 
 #include "avltree.h"
@@ -498,6 +500,7 @@ int tpp_sock_resolve_ip(tpp_addr_t *addr, char *host, int len);
 tpp_addr_t *tpp_sock_resolve_host(char *host, int *count);
 
 char *tpp_netaddr(tpp_addr_t *);
+char *tpp_netaddr_sa(struct sockaddr *);
 
 extern void (*tpp_log_func)(int level, const char *id, char *mess); /* log function */
 

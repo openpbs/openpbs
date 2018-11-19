@@ -1647,6 +1647,42 @@ tpp_netaddr(tpp_addr_t *ap)
 	return ptr->tppstaticbuf;
 }
 
+/**
+ * @brief return a human readable string representation of an address
+ *        for either an ipv4 or ipv6 address
+ *
+ * @param[in] sa - address in sockaddr format
+ *
+ * @return  - string representation of address
+ *            (uses TLS area to make it easy and yet thread safe)
+ *
+ * @par MT-safe: Yes
+ **/
+char *
+tpp_netaddr_sa(struct sockaddr *sa)
+{
+	tpp_tls_t *ptr;
+	int len = TPP_LOGBUF_SZ;
+
+	ptr = tpp_get_tls();
+	if (!ptr) {
+		fprintf(stderr, "Out of memory\n");
+		exit(1);
+	}
+	ptr->tppstaticbuf[0] = '\0';
+
+#ifdef WIN32
+	WSAAddressToString((LPSOCKADDR)&sa, sizeof(struct sockaddr), NULL, (LPSTR)&ptr->tppstaticbuf, &len);
+#else
+	if (sa->sa_family == AF_INET)
+		inet_ntop(sa->sa_family, &(((struct sockaddr_in *) sa)->sin_addr), ptr->tppstaticbuf, len);
+	else
+		inet_ntop(sa->sa_family, &(((struct sockaddr_in6 *) sa)->sin6_addr), ptr->tppstaticbuf, len);
+#endif
+
+	return ptr->tppstaticbuf;
+}
+
 /*
  * Convenience function to delete information about a router
  */
