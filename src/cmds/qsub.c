@@ -2346,20 +2346,14 @@ process_opts(int argc, char **argv, int passet)
 	int ddash_index = -1;
 
 #ifdef WIN32
-#define GETOPT_ARGS_ORIG "a:A:c:C:e:fGhIj:J:k:l:m:M:N:o:p:q:r:R:S:u:v:VW:zP:"
+#define GETOPT_ARGS "a:A:c:C:e:fGhIj:J:k:l:m:M:N:o:p:q:r:R:S:u:v:VW:zP:"
 #else
 #if !defined(PBS_NO_POSIX_VIOLATION)
-#define GETOPT_ARGS_ORIG "a:A:c:C:e:fhIj:J:k:l:m:M:N:o:p:q:r:R:S:u:v:VW:XzP:"
+#define GETOPT_ARGS "a:A:c:C:e:fhIj:J:k:l:m:M:N:o:p:q:r:R:S:u:v:VW:XzP:"
 #else
-#define GETOPT_ARGS_ORIG "a:A:c:C:e:fhj:J:k:l:m:M:N:o:p:q:r:R:S:u:v:VW:zP:"
+#define GETOPT_ARGS "a:A:c:C:e:fhj:J:k:l:m:M:N:o:p:q:r:R:S:u:v:VW:zP:"
 #endif /* PBS_NO_POSIX_VIOLATION */
 #endif /* WIN32 */
-
-#ifdef PBS_GNU_GETOPTS
-#define GETOPT_ARGS "+"GETOPT_ARGS_ORIG
-#else
-#define GETOPT_ARGS GETOPT_ARGS_ORIG
-#endif /* PBS_GNU_GETOPTS */
 
 /*
  * The following macro, together the value of passet is used
@@ -2954,6 +2948,11 @@ process_special_args(int argc, char **argv, char *script)
 			if (!N_opt)	/* '-N' is not set */
 				set_attr(&attrib, ATTR_N, "STDIN");
 		} else {
+			if (optind + 1 != argc) {
+				/* argument is a job script, it should be last */
+				print_usage();
+				exit_qsub(2);
+			}
 			snprintf(script, MAXPATHLEN, "%s", argv[optind]);
 		}
 	}
@@ -4470,7 +4469,7 @@ do_connect(char *server_out, char *retmsg)
  * @retval 0 - Success
  * @retval 1/-1/pbs_errno - Failure, retmsg paramter is set
  * @retval DMN_REFUSE_EXIT - If daemon can't submit the job
- * 
+ *
  */
 static int
 do_submit(char *retmsg)
@@ -4498,7 +4497,7 @@ do_submit(char *retmsg)
 			return (rc);
 	}
 
-	/* 
+	/*
 	 * get environment variable if -V option is set. Return the code
 	 * DMN_REFUSE_EXIT if -V option is detected in background qsub.
 	 */
@@ -5548,7 +5547,7 @@ fork_and_stay(void)
 		pbs_client_thread_set_single_threaded_mode();
 
 		/* set when background qsub is running */
-		is_background = 1; 
+		is_background = 1;
 		do_daemon_stuff();
 		/*
 		 * Control should never reach here.
@@ -5718,6 +5717,8 @@ main(int argc, char **argv, char **envp) /* qsub */
 	char qsub_exe[MAXPATHLEN + 1];
 #endif
 	int daemon_up = 0;
+	char **argv_cpy; /* copy argv for getopt */
+	int i;
 
 	/* Set signal handlers */
 	set_sig_handlers();
@@ -5784,14 +5785,31 @@ main(int argc, char **argv, char **envp) /* qsub */
 	}
 
 	/* Process options */
-	errflg = process_opts(argc, argv, CMDLINE); /* get cmd-line options */
-	if (errflg) {
+	argv_cpy = calloc(argc + 1, sizeof(char *));
+	if (argv_cpy == NULL) {
+		fprintf(stderr, "qsub: out of memory\n");
+		exit_qsub(2);
+	}
+	for (i = 0; i < argc; i++) {
+		argv_cpy[i] = argv[i];
+	}
+	argv_cpy[argc] = NULL;
+
+	errflg = process_opts(argc, argv_cpy, CMDLINE); /* get cmd-line options */
+	if (errflg || ((optind < argc) && (strcmp(argv[optind], argv_cpy[optind]) != 0))) {
+		/*
+		 * The arguments changed, the script and "--" must have been present.
+		 * getopt will move all non-options to the end of the array. In qsub's
+		 * case, it will only happen if both the "script" and "-- executable"
+		 * were present in the qsub command. This is unsupported usage and
+		 * should exit.
+		 */
 		print_usage();
 		exit_qsub(2);
 	}
+	free(argv_cpy);
 	/* Process special arguments */
 	command_flag = process_special_args(argc, argv, script);
-
 #ifdef WIN32
 	back2forward_slash(script);
 #endif
