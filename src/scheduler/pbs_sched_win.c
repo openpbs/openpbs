@@ -544,6 +544,15 @@ server_command(char **jid)
 		return SCH_ERROR;
 	}
 
+	if (set_nodelay(new_socket) == -1) {
+#ifdef WIN32
+		errno = WSAGetLastError();
+#endif
+		snprintf(log_buffer, sizeof(log_buffer), "cannot set nodelay on primary socket connection %d (errno=%d)\n", new_socket, errno);
+		log_err(-1, __func__, log_buffer);
+		return SCH_ERROR;
+	}
+
 	if (ntohs(saddr.sin_port) >= IPPORT_RESERVED) {
 		badconn("non-reserved port");
 #ifdef WIN32
@@ -611,6 +620,15 @@ server_command(char **jid)
 			log_err(errno, __func__,
 				"warning: failed to get second_connection");
 			return cmd; /* bail out early */
+		}
+
+		if (set_nodelay(second_connection) == -1) {
+#ifdef WIN32
+			errno = WSAGetLastError();
+#endif
+			snprintf(log_buffer, sizeof(log_buffer), "cannot set nodelay on secondary socket connection %d (errno=%d)\n", second_connection, errno);
+			log_err(-1, __func__, log_buffer);
+			return cmd;
 		}
 
 		if (ntohs(saddr.sin_port) >= IPPORT_RESERVED) {

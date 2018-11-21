@@ -319,6 +319,15 @@ contact_sched(int cmd, char *jobid, pbs_net_t pbs_scheduler_addr, unsigned int p
 
 	net_add_close_func(sock, scheduler_close);
 
+	if (set_nodelay(sock) == -1) {
+#ifdef WIN32
+		errno = WSAGetLastError();
+#endif
+		snprintf(log_buffer, sizeof(log_buffer), "cannot set nodelay on connection %d (errno=%d)\n", sock, errno);
+		log_err(-1, __func__, log_buffer);
+		return (-1);
+	}
+
 	/* send command to Scheduler */
 
 	if (put_sched_cmd(sock, cmd, jobid) < 0) {

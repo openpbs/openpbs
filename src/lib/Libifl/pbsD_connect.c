@@ -803,6 +803,17 @@ __pbs_connect_extend(char *server, char *extend_data)
 	DIS_tcp_setup(connection[out].ch_socket);
 	pbs_tcp_timeout = PBS_DIS_TCP_TIMEOUT_VLONG;	/* set for 3 hours */
 
+	/*
+	 * Disable Nagle's algorithm on the TCP connection to server.
+	 * Nagle's algorithm is hurting cmd-server communication.
+	 */
+	if (pbs_connection_set_nodelay(out) == -1) {
+		CLOSESOCKET(connection[out].ch_socket);
+		connection[out].ch_inuse = 0;
+		pbs_errno = PBSE_SYSTEM;
+		return -1;
+	}
+
 	return out;
 }
 

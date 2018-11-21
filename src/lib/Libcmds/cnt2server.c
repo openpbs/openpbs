@@ -108,16 +108,6 @@ cnt2server_extend(char *server, char *extend)
 		return (connect);
 	}
 
-	/*
-	 * Disable Nagle's algorithm on the TCP connection to server.
-	 * Nagle's algorithm is hurting cmd-server communication.
-	 */
-	if (pbs_connection_set_nodelay(connect) == -1) {
-		fprintf(stderr, "Cannot set nodelay on connection %d (errno=%d)\n",
-			connect, pbs_errno);
-		return (PBSE_SYSTEM);
-	}
-
 	return (connect);
 }
 
