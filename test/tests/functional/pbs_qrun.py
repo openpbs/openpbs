@@ -36,6 +36,8 @@
 # trademark licensing policies.
 
 from tests.functional import *
+import os
+import signal
 
 
 class TestQrun(TestFunctional):
@@ -92,3 +94,48 @@ class TestQrun(TestFunctional):
         msg = "Server is not up"
         self.assertTrue(self.server.isUp(), msg)
         self.logger.info("As expected server is up and running")
+
+    def test_qrun_hangs(self):
+        """
+        This test submit 500 jobs with differnt equivalence class,
+        turn of scheduling and qrun job to
+        verify whether qrun hangs.
+        """
+        node = self.mom.shortname
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'scheduling': 'False'})
+        self.server.manager(MGR_CMD_SET, NODE,
+                            {'resources_available.ncpus': 1}, id=node)
+        for walltime in range(1, 501):
+            j = Job(TEST_USER)
+            a = {'Resource_List.walltime': walltime}
+            j.set_attributes(a)
+            if walltime == 500:
+                jid = self.server.submit(j)
+            else:
+                self.server.submit(j)
+        self.logger.info("Submitted 500 jobs with different walltime")
+        now = int(time.time())
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'scheduling': 'True'})
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'scheduling': 'False'}, expect=True)
+        pid = os.fork()
+        if pid == 0:
+            try:
+                self.server.runjob(jobid=jid)
+                self.logger.info("Successfully runjob. Child process exit.")
+            except PbsRunError as e:
+                self.logger.info("Runjob throws error: " + e.msg[0])
+        else:
+            out = self.scheduler.log_match(
+                "Starting Scheduling Cycle",
+                allmatch=True, interval=5, starttime=now, max_attempts=10)
+            if len(out) < 2:
+                os.kill(pid, signal.SIGKILL)
+                os.waitpid(pid, 0)
+                self.logger.info("Runjob hung. Child process exit.")
+                self.assertFalse(True,
+                                 "Qrun didn't start another sched cycle")
+            else:
+                self.logger.info("No hangs. Parent process exit")

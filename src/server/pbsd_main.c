@@ -2097,8 +2097,7 @@ try_db_again:
 
 					psched->sch_next_schedule = time_now +
 							psched->sch_attr[(int)	SCHED_ATR_schediteration].at_val.at_long;
-					if (psched->sch_attr[SCHED_ATR_scheduling].at_val.at_long &&
-							(schedule_jobs(psched) == 0) && (svr_unsent_qrun_req))
+					if ((schedule_jobs(psched) == 0) && (svr_unsent_qrun_req))
 						svr_unsent_qrun_req = 0;
 				}
 			}
