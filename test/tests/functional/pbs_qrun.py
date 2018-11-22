@@ -49,7 +49,11 @@ class TestQrun(TestFunctional):
         self.pbs_exec = self.server.pbs_conf['PBS_EXEC']
         self.qrun = os.path.join(self.pbs_exec, 'bin', 'qrun')
 
-    def test_misuse_of_qrun(self):
+    def test_invalid_host_val(self):
+        """
+        Tests that pbs_server should not crash when the node list in
+        qrun is ill-formed
+        """
         j1 = Job(TEST_USER)
         # submit a multi-chunk job
         j1 = Job(attrs={'Resource_List.select':
@@ -57,20 +61,34 @@ class TestQrun(TestFunctional):
                  (self.mom.shortname, self.mom.shortname)})
         jid1 = self.server.submit(j1)
         self.server.expect(JOB, {ATTR_state: 'Q'}, jid1)
-        cmd = [self.qrun, '-H', '"\'(%s)+(%s)\'"' %
-               (self.mom.shortname, self.mom.shortname), jid1]
-        ret = self.du.run_cmd(self.server.hostname, cmd,
-                              sudo=True, as_script=True)
-        msg = "qrun: Unknown node  \'(%s)+(%s)\'" % \
+        exec_vnode = '"\'(%s)+(%s)\'"' % \
+                     (self.mom.shortname, self.mom.shortname)
+        err_msg = 'qrun: Unknown node  "\'(%s)+(%s)\'"' % \
             (self.mom.shortname, self.mom.shortname)
-        self.assertIn(msg, ret['err'][-1])
+        try:
+            self.server.runjob(jobid=jid1, location=exec_vnode)
+        except PbsRunError as e:
+            self.assertIn(err_msg, e.msg[0])
+            self.logger.info('As expected qrun throws error: ' + err_msg)
+        else:
+            msg = "Able to run job successfully"
+            self.assertTrue(False, msg)
+        msg = "Server is not up"
+        self.assertTrue(self.server.isUp(), msg)
+        self.logger.info("As expected server is up and running")
         j2 = Job(TEST_USER)
         # submit a sleep job
         j2 = Job(attrs={'Resource_List.select': 'ncpus=3'})
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, {ATTR_state: 'Q'}, jid2)
-        cmd = [self.qrun, '-H', '"\'(%s)+(%s)\'"' %
-               (self.mom.shortname, self.mom.shortname), jid2]
-        ret = self.du.run_cmd(self.server.hostname, cmd,
-                              sudo=True, as_script=True)
-        self.assertIn(msg, ret['err'][-1])
+        try:
+            self.server.runjob(jobid=jid2, location=exec_vnode)
+        except PbsRunError as e:
+            self.assertIn(err_msg, e.msg[0])
+            self.logger.info('As expected qrun throws error: ' + err_msg)
+        else:
+            msg = "Able to run job successfully"
+            self.assertTrue(False, msg)
+        msg = "Server is not up"
+        self.assertTrue(self.server.isUp(), msg)
+        self.logger.info("As expected server is up and running")
