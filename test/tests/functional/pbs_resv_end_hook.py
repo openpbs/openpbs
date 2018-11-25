@@ -586,9 +586,11 @@ if e.type == pbs.RESV_END:
 
         self.scheduler.stop()
 
-        offset = 10
-        duration = 10
+        offset = 40
+        duration = 60
         rid = self.submit_resv(offset, duration)
+        exp_attr = {'reserve_state': (MATCH_RE, "RESV_UNCONFIRMED|1")}
+        self.server.expect(RESV, exp_attr, id=rid)
 
         self.server.delete(rid)
         msg = 'Hook;Server@%s;Reservation ID - %s' % \
