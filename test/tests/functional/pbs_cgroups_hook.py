@@ -267,7 +267,7 @@ if [ -d $base ]; then
 else
     echo "Memory subsystem job directory not created."
 fi
-sleep 5
+sleep 10
 """
         self.check_dirs_script = """#!/bin/bash
 #PBS -joe
@@ -336,7 +336,7 @@ if [ -d $devices_job ]; then
 else
     echo "Devices directory should be populated"
 fi
-sleep 2
+sleep 10
 """
         self.check_gpu_script = """#!/bin/bash
 #PBS -joe
