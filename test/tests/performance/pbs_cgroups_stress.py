@@ -132,7 +132,7 @@ class TestCgroupsStress(TestPerformance):
         # Restart mom so exechost_startup hook is run
         self.mom.signal('-HUP')
 
-    def get_paths():
+    def get_paths(self):
         """
         Returns a dictionary containing the location where each cgroup
         is mounted.
