@@ -4609,6 +4609,7 @@ class Server(PBSService):
         self.last_error = []  # type: array. Set for CLI IFL errors. Not reset
         self.last_out = []  # type: array. Set for CLI IFL output. Not reset
         self.last_rc = None  # Set for CLI IFL return code. Not thread-safe
+        self.moms = {}
 
         # default timeout on connect/disconnect set to 60s to mimick the qsub
         # buffer introduced in PBS 11
@@ -9458,6 +9459,10 @@ class Server(PBSService):
                           Defaults to True
         :returns: True on success and False otherwise
         """
+        # Check for log messages 20 seconds earlier, to account for
+        # server and mom system time differences
+        t = int(time.time()) - 20
+
         if 'event' not in attrs:
             self.logger.error('attrs must specify at least an event and key')
             return False
@@ -9481,7 +9486,42 @@ class Server(PBSService):
 
         # In 12.0 A MoM hook must be enabled and the event set prior to
         # importing, otherwise the MoM does not get the hook content
-        return self.import_hook(name, body)
+        ret = self.import_hook(name, body)
+
+        # In case of mom hooks, make sure that the hook related files
+        # are successfully copied to the MoM
+        try:
+            if 'exec' in attrs['event']:
+                hook_py = name + '.PY'
+                hook_hk = name + '.HK'
+                pyfile = os.path.join(self.pbs_conf['PBS_HOME'],
+                                      "server_priv", "hooks", hook_py)
+                hfile = os.path.join(self.pbs_conf['PBS_HOME'],
+                                     "server_priv", "hooks", hook_hk)
+                logmsg = hook_py + ";copy hook-related file request received"
+
+                cmd = os.path.join(self.client_conf['PBS_EXEC'], 'bin',
+                                   'pbsnodes') + ' -a'
+                cmd_out = self.du.run_cmd(self.hostname, cmd, sudo=True)
+                if cmd_out['rc'] == 0:
+                    for i in cmd_out['out']:
+                        if re.match(r'\s+Mom = ', i):
+                            mom_names = i.split(' = ')[1].split(',')
+                            for m in mom_names:
+                                if m in self.moms:
+                                    self.log_match(
+                                        "successfully sent hook file %s to %s"
+                                        % (hfile, m), interval=1)
+                                    self.log_match(
+                                        "successfully sent hook file %s to %s"
+                                        % (pyfile, m), interval=1)
+                                    self.moms[m].log_match(logmsg, starttime=t)
+                else:
+                    return False
+        except PtlLogMatchError:
+            return False
+
+        return ret
 
     def evaluate_formula(self, jobid=None, formula=None, full=True,
                          include_running_jobs=False, exclude_subjobs=True):

@@ -720,6 +720,7 @@ class PBSTestSuite(unittest.TestCase):
                                       func=init_mom_func)
         if cls.moms:
             cls.mom = cls.moms.values()[0]
+        cls.server.moms = cls.moms
 
     @classmethod
     def init_server(cls, hostname, pbsconf_file=None):
