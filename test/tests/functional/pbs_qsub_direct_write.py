@@ -290,3 +290,64 @@ class TestQsub_direct_write(TestFunctional):
         file_count = len([name for name in os.listdir(
             mapping_dir) if os.path.isfile(os.path.join(mapping_dir, name))])
         self.assertEqual(2, file_count)
+
+    def test_direct_write_job_array(self):
+        """
+        submit a job array and make sure that the std_files
+        is directly written to the submission directory when it is
+        accessible from mom and direct_files option is used
+        but submission directory is not mapped in mom config file.
+        """
+        a = {'resources_available.ncpus': 4}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        j = Job(TEST_USER, attrs={ATTR_k: 'doe', ATTR_J: '1-4'})
+        j.set_sleep_time(10)
+        sub_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        jid = self.server.submit(j, submit_dir=sub_dir)
+        self.server.expect(JOB, {ATTR_state: 'B'}, id=jid)
+        self.server.expect(JOB, {ATTR_state + '=R': 4}, count=True,
+                           id=jid, extend='t')
+        self.logger.info('checking for directly written std files')
+        file_list = [name for name in os.listdir(
+            sub_dir) if os.path.isfile(os.path.join(sub_dir, name))]
+        self.assertEqual(8, len(file_list))
+        idn = jid[:jid.find('[]')]
+        for std in ['o', 'e']:
+            for sub_ind in range(1, 5):
+                f_name = 'STDIN.' + std + idn + '.' + str(sub_ind)
+                if f_name not in file_list:
+                    raise self.failureException("std file " + f_name
+                                                + " not found")
+
+    def test_direct_write_job_array_custom_dir(self):
+        """
+        submit a job array and make sure that the files
+        are getting directly written to the custom dir
+        provided in -e and -o option even when -doe is set.
+        """
+        a = {'resources_available.ncpus': 4}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        tmp_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        a = {ATTR_e: tmp_dir, ATTR_o: tmp_dir, ATTR_k: 'doe', ATTR_J: '1-4'}
+        j = Job(TEST_USER, attrs=a)
+        j.set_sleep_time(10)
+        sub_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        mapping_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        self.mom.add_config(
+            {'$usecp': self.server.hostname + ':' + sub_dir
+             + ' ' + mapping_dir})
+        self.mom.restart()
+        jid = self.server.submit(j, submit_dir=sub_dir)
+        self.server.expect(JOB, {ATTR_state: 'B'}, id=jid)
+        self.server.expect(JOB, {ATTR_state + '=R': 4}, count=True,
+                           id=jid, extend='t')
+        self.logger.info('checking for directly written std files')
+        file_list = [name for name in os.listdir(
+            tmp_dir) if os.path.isfile(os.path.join(tmp_dir, name))]
+        self.assertEqual(8, len(file_list))
+        for ext in ['.OU', '.ER']:
+            for sub_ind in range(1, 5):
+                f_name = j.create_subjob_id(jid, sub_ind) + ext
+                if f_name not in file_list:
+                    raise self.failureException("std file " + f_name
+                                                + " not found")

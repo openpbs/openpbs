@@ -296,7 +296,6 @@ req_quejob(struct batch_request *preq)
 	int             rc;
 	int             sock = preq->rq_conn;
 	int             resc_access_perm_save;
-	char            namebuf[MAXPATHLEN+1];
 #ifndef PBS_MOM
 	int              set_project = 0;
 	int		 i;
@@ -310,10 +309,10 @@ req_quejob(struct batch_request *preq)
 	resource_def	*prdefplc;
 	resource	*presc;
 	conn_t		*conn;
-	attribute       temp_attr;
 #else
 	mom_hook_input_t  hook_input;
 	mom_hook_output_t hook_output;
+	char		namebuf[MAXPATHLEN+1];
 	int		hook_errcode = 0;
 	int		hook_rc = 0;
 	char		hook_buf[HOOK_MSG_SIZE];
@@ -884,12 +883,6 @@ req_quejob(struct batch_request *preq)
 						free(pj->ji_wattr[(int)JOB_ATR_outpath].at_val.at_str);
 						pj->ji_wattr[(int)JOB_ATR_outpath].at_val.at_str = result;
 					}
-				} else if (pj->ji_wattr[(int)JOB_ATR_outpath].at_val.at_str[l -1] == '/') {
-					namebuf[0] = 0;
-					spool_filename(pj, namebuf, JOB_STDOUT_SUFFIX);
-					temp_attr.at_flags |= ATR_VFLAG_SET;
-					temp_attr.at_val.at_str = namebuf;
-					set_str(&pj->ji_wattr[(int)JOB_ATR_outpath], &temp_attr, INCR);
 				}
 			}
 		}
@@ -910,12 +903,6 @@ req_quejob(struct batch_request *preq)
 						free(pj->ji_wattr[(int)JOB_ATR_errpath].at_val.at_str);
 						pj->ji_wattr[(int)JOB_ATR_errpath].at_val.at_str = result;
 					}
-				} else if (pj->ji_wattr[(int)JOB_ATR_errpath].at_val.at_str[l -1] == '/') {
-					namebuf[0] = 0;
-					spool_filename(pj, namebuf, JOB_STDERR_SUFFIX);
-					temp_attr.at_flags |= ATR_VFLAG_SET;
-					temp_attr.at_val.at_str = namebuf;
-					set_str(&pj->ji_wattr[(int)JOB_ATR_errpath], &temp_attr, INCR);
 				}
 			}
 		}

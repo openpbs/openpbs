@@ -429,9 +429,10 @@ local_or_remote(char **path)
 int
 is_direct_write(job *pjob, enum job_file which, char *path, int *direct_write_possible)
 {
-	char *oldpath;
-	char working_path[MAXPATHLEN + 1];
+	char working_path[MAXPATHLEN * 2];
 	char *p = working_path;
+
+	working_path[MAXPATHLEN] = '\0';
 
 	if (which == Chkpt) return(0); /* direct write of checkpoint not supported */
 
@@ -447,20 +448,28 @@ is_direct_write(job *pjob, enum job_file which, char *path, int *direct_write_po
 			if(!strchr(pjob->ji_wattr[(int)JOB_ATR_keep].at_val.at_str, 'o'))
 				return(0);
 			else
-				oldpath = pjob->ji_wattr[JOB_ATR_outpath].at_val.at_str;
+				/* Make local working copy of path for call to local_or_remote */
+				strncpy(working_path, pjob->ji_wattr[JOB_ATR_outpath].at_val.at_str, MAXPATHLEN);
+			if (working_path[strlen(working_path) -1] == '/') {
+				strcat(working_path, pjob->ji_qs.ji_jobid);
+				strcat(working_path, JOB_STDOUT_SUFFIX);
+			}
 			break;
 		case StdErr:
 			if(!strchr(pjob->ji_wattr[(int)JOB_ATR_keep].at_val.at_str, 'e'))
 				return(0);
 			else
-				oldpath = pjob->ji_wattr[JOB_ATR_errpath].at_val.at_str;
+				/* Make local working copy of path for call to local_or_remote */
+				strncpy(working_path, pjob->ji_wattr[JOB_ATR_errpath].at_val.at_str, MAXPATHLEN);
+			if (working_path[strlen(working_path) -1] == '/') {
+				strcat(working_path, pjob->ji_qs.ji_jobid);
+				strcat(working_path, JOB_STDERR_SUFFIX);
+			}
 			break;
 		default:
 			return(0);
 	}
 
-	/* Make local working copy of path for call to local_or_remote */
-	strncpy(working_path, oldpath, MAXPATHLEN);
 	if (local_or_remote(&p) == 1) {
 		*direct_write_possible = 0;
 		sprintf(log_buffer,
@@ -472,8 +481,19 @@ is_direct_write(job *pjob, enum job_file which, char *path, int *direct_write_po
 		return (0);
 	}
 
+	if (strlen(p) > MAXPATHLEN) {
+		*direct_write_possible = 0;
+		sprintf(log_buffer,
+				"Direct write is requested for job: %s, but the destination path is longer than %d",
+				pjob->ji_qs.ji_jobid, MAXPATHLEN);
+		log_event(PBSEVENT_DEBUG3,
+		PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);
+		return (0);
+	}
+
 	/* Destination maps to local directory - final path is in working_path. */
 	strncpy(path, p, MAXPATHLEN); /* pass correct path back to caller */
+	path[MAXPATHLEN] = '\0';
 	return(1);
 }
 

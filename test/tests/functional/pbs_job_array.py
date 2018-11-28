@@ -638,3 +638,25 @@ class TestJobArray(TestFunctional):
         msg = j1_sub1 + ";" + "Subjob found in undesirable state"
         msg += ", ignoring this job"
         self.scheduler.log_match(msg, existence=False, max_attempts=10)
+
+    def test_subjob_stdfile_custom_dir(self):
+        """
+        Test that subjobs standard error and out files are generated
+        in the custom directory provided with oe qsub options
+        """
+        tmp_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        a = {ATTR_e: tmp_dir, ATTR_o: tmp_dir, ATTR_J: '1-4'}
+        j = Job(TEST_USER, attrs=a)
+        j.set_sleep_time(2)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {ATTR_state: 'B'}, id=jid)
+        self.server.expect(JOB, ATTR_state, op=UNSET, id=jid)
+        file_list = [name for name in os.listdir(
+            tmp_dir) if os.path.isfile(os.path.join(tmp_dir, name))]
+        self.assertEqual(8, len(file_list), 'expected 8 std files')
+        for ext in ['.OU', '.ER']:
+            for sub_ind in range(1, 5):
+                f_name = j.create_subjob_id(jid, sub_ind) + ext
+                if f_name not in file_list:
+                    raise self.failureException("std file " + f_name
+                                                + " not found")

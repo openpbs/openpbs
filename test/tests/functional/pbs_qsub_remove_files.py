@@ -233,3 +233,61 @@ class TestQsub_remove_files(TestFunctional):
             self.assertTrue(
                 'Cannot modify attribute while job'
                 ' running  Remove_Files' in e.msg[0])
+
+    def test_remove_file_job_array(self):
+        """
+        submit job array script that makes subjobs to exit with 0 except for
+        subjob[2] and make sure that the std_files for only subjob[2] are
+        available when remove_files option is used.
+        """
+        script = \
+            "#!/bin/sh\n"\
+            "/bin/sleep 3;\n"\
+            "if [ $PBS_ARRAY_INDEX -eq 2 ]; then\n"\
+            "exit 1; fi; exit 0;"
+        j = Job(TEST_USER, attrs={ATTR_R: 'oe', ATTR_J: '1-3'},
+                jobname='JOB_NAME')
+        j.create_script(script)
+        sub_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        jid = self.server.submit(j, submit_dir=sub_dir)
+        self.server.expect(JOB, {ATTR_state: 'B'}, id=jid)
+        self.server.expect(JOB, ATTR_state, op=UNSET, id=jid)
+        file_list = [name for name in os.listdir(
+            sub_dir) if os.path.isfile(os.path.join(sub_dir, name))]
+        self.assertEqual(2, len(file_list), "expected 2 std files")
+        idn = jid[:jid.find('[]')]
+        std_files = ['JOB_NAME.o' + idn + '.2', 'JOB_NAME.e' + idn + '.2']
+        for f_name in std_files:
+            if f_name not in file_list:
+                raise self.failureException("std file " + f_name
+                                            + " not found")
+
+    def test_remove_file_custom_path_job_array(self):
+        """
+        submit job array script that makes subjobs to exit with 0 except for
+        subjob[2] and make sure that the std_files for only subjob[2] are
+        available in custom directory when remove_files option is used with
+        -o and -e options.
+        """
+        script = \
+            "#!/bin/sh\n"\
+            "/bin/sleep 3;\n"\
+            "if [ $PBS_ARRAY_INDEX -eq 2 ]; then\n"\
+            "exit 1; fi; exit 0;"
+        tmp_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        j = Job(TEST_USER, attrs={ATTR_e: tmp_dir, ATTR_o: tmp_dir,
+                                  ATTR_R: 'oe', ATTR_J: '1-3'})
+        j.create_script(script)
+        sub_dir = self.du.mkdtemp(uid=TEST_USER.uid)
+        jid = self.server.submit(j, submit_dir=sub_dir)
+        self.server.expect(JOB, {ATTR_state: 'B'}, id=jid)
+        self.server.expect(JOB, ATTR_state, op=UNSET, id=jid)
+        file_list = [name for name in os.listdir(
+            tmp_dir) if os.path.isfile(os.path.join(tmp_dir, name))]
+        self.assertEqual(2, len(file_list), "expected 2 std files")
+        subj2_id = j.create_subjob_id(jid, 2)
+        std_files = [subj2_id + '.OU', subj2_id + '.ER']
+        for f_name in std_files:
+            if f_name not in file_list:
+                raise self.failureException("std file " + f_name
+                                            + " not found")

@@ -122,6 +122,7 @@ static enum job_atr attrs_to_copy[] = {
 	JOB_ATR_outpath,
 	JOB_ATR_priority,
 	JOB_ATR_qtime,
+	JOB_ATR_remove,
 	JOB_ATR_rerunable,
 	JOB_ATR_resource,
 	JOB_ATR_session_id,
@@ -779,6 +780,7 @@ create_subjob(job *parent, char *newjid, int *rc)
 #else
 	struct timeval	    tval;
 #endif
+	char tmp_path[MAXPATHLEN + 1] = {0};
 
 	if ((parent->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) == 0) {
 		*rc = PBSE_IVALREQ;
@@ -892,6 +894,16 @@ create_subjob(job *parent, char *newjid, int *rc)
 		*rc = PBSE_IVALREQ;
 		return NULL;
 	}
+
+	psub = &subj->ji_wattr[JOB_ATR_outpath];
+	strncpy(tmp_path, psub->at_val.at_str, MAXPATHLEN);
+	job_attr_def[JOB_ATR_outpath].at_decode(psub, NULL, NULL,
+		subst_array_index(subj, tmp_path));
+
+	psub = &subj->ji_wattr[JOB_ATR_errpath];
+	strncpy(tmp_path, psub->at_val.at_str, MAXPATHLEN);
+	job_attr_def[JOB_ATR_errpath].at_decode(psub, NULL, NULL,
+		subst_array_index(subj, tmp_path));
 
 	*rc = PBSE_NONE;
 	return subj;
