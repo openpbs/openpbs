@@ -1,4 +1,6 @@
 # IGNORE: The following are purposely suppressed.
+addFilter("dir-or-file-in-opt")
+addFilter("non-executable-script")
 addFilter("non-standard-executable-perm .*pbs_iff")
 addFilter("setuid-binary .*pbs_iff")
 addFilter("non-standard-executable-perm .*pbs_rcp")
