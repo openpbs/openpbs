@@ -6898,6 +6898,81 @@ unset_jobscript_max_size(void)
 		LOG_NOTICE, msg_daemonname, log_buffer);
 }
 
+/**
+ * @brief
+ */
+
+void
+unset_sched_preempt_queue_prio(attribute *attr, char *sched_name)
+{
+	if ((attr->at_flags & ATR_VFLAG_SET) == 0)
+		return;
+
+	attr->at_val.at_long = PBS_PREEMPT_QUEUE_PRIO_DEFAULT;
+	snprintf(log_buffer, sizeof(log_buffer),
+		"unsetting preempt_queue_prio for %s - reverting back to default val %d",
+		sched_name, PBS_PREEMPT_QUEUE_PRIO_DEFAULT);
+	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+		LOG_NOTICE, msg_daemonname, log_buffer);
+}
+
+/**
+ * @brief
+ */
+
+void
+unset_sched_preempt_prio(attribute *attr, char *sched_name)
+{
+	if ((attr->at_flags & ATR_VFLAG_SET) == 0)
+		return;
+
+	strcpy(attr->at_val.at_str, PBS_PREEMPT_PRIO_DEFAULT);
+	snprintf(log_buffer, sizeof(log_buffer),
+		"unsetting preempt_prio for %s - reverting back to default val %s",
+		sched_name, PBS_PREEMPT_PRIO_DEFAULT);
+	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+		LOG_NOTICE, msg_daemonname, log_buffer);
+}
+
+/**
+ * @brief
+ */
+
+void
+unset_sched_preempt_order(attribute *attr, char *sched_name)
+{
+	if ((attr->at_flags & ATR_VFLAG_SET) == 0)
+		return;
+
+	strcpy(attr->at_val.at_str, PBS_PREEMPT_ORDER_DEFAULT);
+	snprintf(log_buffer, sizeof(log_buffer),
+		"unsetting preempt_order for %s - reverting back to default val %s",
+		sched_name, PBS_PREEMPT_ORDER_DEFAULT);
+	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+		LOG_NOTICE, msg_daemonname, log_buffer);
+}
+
+/**
+ * @brief
+ */
+
+void
+unset_sched_preempt_sort(attribute *attr, char *sched_name)
+{
+	if ((attr->at_flags & ATR_VFLAG_SET) == 0)
+		return;
+
+	snprintf(log_buffer, sizeof(log_buffer),
+		"unsetting preempt_sort for %s",
+		sched_name);
+	log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
+		LOG_NOTICE, msg_daemonname, log_buffer);
+
+	strcpy(attr->at_val.at_str, "");
+	attr->at_flags &= ~(ATR_VFLAG_SET);
+	attr->at_flags |= ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
+
+}
 
 /**
  * @brief

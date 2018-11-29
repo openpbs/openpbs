@@ -49,7 +49,7 @@
  * 	init_config()
  * 	scan()
  * 	preempt_bit_field()
- * 	premept_cmp()
+ * 	preempt_cmp()
  *
  */
 #include <pbs_config.h>
@@ -61,6 +61,7 @@
 #include <ctype.h>
 #include <log.h>
 #include <libutil.h>
+#include <unistd.h>
 #include "data_types.h"
 #include "parse.h"
 #include "constant.h"
@@ -515,7 +516,7 @@ parse_config(char *fname)
 						}
 						if (!error) {
 							/* conf.pprio is an int array of size[NUM_PPRIO][2] */
-							qsort(conf.pprio, NUM_PPRIO, sizeof(int) * 2, premept_cmp);
+							qsort(conf.pprio, NUM_PPRIO, sizeof(int) * 2, preempt_cmp);
 
 							/* cache preemption priority for normal jobs */
 							for (i = 0; conf.pprio[i][1] != 0 && i < NUM_PPRIO; i++) {
@@ -560,7 +561,7 @@ parse_config(char *fname)
 											conf.preempt_order[i].order[j] = PREEMPT_METHOD_SUSPEND;
 											break;
 										case 'C':
-											conf.preempt_order[i].order[j] =PREEMPT_METHOD_CHECKPOINT;
+											conf.preempt_order[i].order[j] = PREEMPT_METHOD_CHECKPOINT;
 											break;
 										case 'R':
 											conf.preempt_order[i].order[j] = PREEMPT_METHOD_REQUEUE;
@@ -1043,27 +1044,28 @@ init_config()
 	conf.enforce_no_shares = 1;
 	conf.fairshare_decay_factor = .5;
 
-	/* default ordering suspend checkpoint requeue */
+	/* default ordering suspend checkpoint requeue
 	conf.preempt_order[0].high_range = 100;
 	conf.preempt_order[0].low_range = 0;
 	conf.preempt_order[0].order[0] = PREEMPT_METHOD_SUSPEND;
 	conf.preempt_order[0].order[1] = PREEMPT_METHOD_CHECKPOINT;
 	conf.preempt_order[0].order[2] = PREEMPT_METHOD_REQUEUE;
 	conf.dflt_opt_backfill_fuzzy = BF_DEFAULT;
-
+	*/
 
 	/* if preempt_prio is not specified, then keep backwards compatibility
 	 * of only the express queue.  If express is not specified but others are
 	 * they'll have a much higher prio then 1.
 	 * qrun is always the top preempt prio
-	 */
 	conf.pprio[0][0] = PREEMPT_TO_BIT(PREEMPT_QRUN);
 	conf.pprio[0][1] = 10;
 	conf.pprio[1][0] = PREEMPT_TO_BIT(PREEMPT_EXPRESS);
 	conf.pprio[1][1] = 1;
+	 */
 
-	/* don't want it to default to 0 and think all queues are express queues */
+	/* don't want it to default to 0 and think all queues are express queues
 	conf.preempt_queue_prio = SCHD_INFINITY;
+	*/
 
 	conf.max_preempt_attempts = SCHD_INFINITY;
 	conf.max_jobs_to_check = SCHD_INFINITY;
@@ -1092,7 +1094,7 @@ init_config()
 
 /**
  * @brief
- *		scan - Scan through the string looking for a white space delemeted
+ *		scan - Scan through the string looking for a white space delimited
  *	       word or quoted string.  If the target parameter is not 0, then
  *	       use that as a delimiter as well.
  *
@@ -1164,7 +1166,6 @@ scan(char *str, char target)
  *
  * @return	a bitfield of -1 on error
  *
- */
 int
 preempt_bit_field(char *plist)
 {
@@ -1178,12 +1179,12 @@ preempt_bit_field(char *plist)
 	while (tok != NULL) {
 		obitfield = bitfield;
 		for (i = 0; i < PREEMPT_HIGH; i++) {
-			if (!strcmp(prempt_prio_info[i].str, tok))
-				bitfield |= PREEMPT_TO_BIT(prempt_prio_info[i].value);
+			if (!strcmp(preempt_prio_info[i].str, tok))
+				bitfield |= PREEMPT_TO_BIT(preempt_prio_info[i].value);
 		}
 
-		/* invaid preempt string */
-		if (obitfield == bitfield) {
+		invaid preempt string */
+/*		if (obitfield == bitfield) {
 			bitfield = -1;
 			break;
 		}
@@ -1194,6 +1195,7 @@ preempt_bit_field(char *plist)
 	return bitfield;
 }
 
+ */
 /**
  * @brief
  * 	sort compare function for preempt status's
@@ -1209,7 +1211,7 @@ preempt_bit_field(char *plist)
  * @retval	0	: Equal
  */
 int
-premept_cmp(const void *p1, const void *p2)
+preempt_cmp(const void *p1, const void *p2)
 {
 	int *i1, *i2;
 
@@ -1229,3 +1231,22 @@ premept_cmp(const void *p1, const void *p2)
 			return 0;
 	}
 }
+
+void update_preempt_params_from_copy()
+{
+	int i = 0;
+
+	conf.preempt_queue_prio = preempt_params_copy.preempt_queue_prio;
+	conf.preempt_min_wt_used = preempt_params_copy.preempt_min_wt_used;
+	memcpy(conf.pprio, preempt_params_copy.pprio, sizeof(conf.pprio));
+	memcpy(conf.preempt_order, preempt_params_copy.preempt_order, sizeof(conf.preempt_order));
+
+	/* cache preemption priority for normal jobs */
+	for (i = 0; conf.pprio[i][1] != 0 && i < NUM_PPRIO; i++) {
+		if (conf.pprio[i][0] == PREEMPT_TO_BIT(PREEMPT_NORMAL)) {
+			conf.preempt_normal = conf.pprio[i][1];
+			break;
+		}
+	}
+}
+

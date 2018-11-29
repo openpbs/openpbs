@@ -81,6 +81,7 @@ encode_DIS_reply_inner(int sock, struct batch_reply *reply)
 	struct brp_select  *psel;
 	struct brp_status  *pstat;
 	svrattrl	   *psvrl;
+	preempt_job_info   *ppj;
 
 	int rc;
 
@@ -199,6 +200,23 @@ encode_DIS_reply_inner(int sock, struct batch_reply *reply)
 				rc =diswui(sock, *(reply->brp_un.brp_rescq.brq_down+i));
 			}
 			if (rc) return rc;
+			break;
+
+		case BATCH_REPLY_CHOICE_PreemptJobs:
+
+			/* Preempt Jobs Reply */
+			ct = reply->brp_un.brp_preempt_jobs.count;
+			ppj = reply->brp_un.brp_preempt_jobs.ppj_list;
+
+			if ((rc = diswui(sock, ct)) != 0)
+				return rc;
+
+			for (i = 0; i < ct; i++) {
+				if (((rc = diswst(sock, ppj[i].job_id)) != 0) ||
+					((rc = diswst(sock, ppj[i].order)) != 0))
+						return rc;
+			}
+
 			break;
 
 		default:

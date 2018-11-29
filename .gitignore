@@ -67,6 +67,7 @@ ptl_test_results.html
 test/fw/build/
 test/fw/ptl/__init__.py
 test/fw/setup.py
+test/tests/ptl_test_results.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -680,7 +680,14 @@ e.accept()
         to calculate percent done and also if the soft_walltime is exceeded,
         the percent done should remain at 100%
         """
-        self.scheduler.set_sched_config({'preempt_order': '"R 10 S"'})
+        try:
+            self.server.expect(SERVER, {'pbs_version': (GE, '19.0')},
+                               max_attempts=2)
+            self.server.manager(MGR_CMD_SET, SCHED,
+                                {'preempt_order': '"R 10 S"'}, expect=True,
+                                runas=ROOT_USER)
+        except PtlExpectError:
+            self.scheduler.set_sched_config({'preempt_order': '"R 10 S"'})
         a = {'resources_available.ncpus': 2}
         self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
 

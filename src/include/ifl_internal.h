@@ -117,6 +117,8 @@ extern int __pbs_delresv(int, char *, char *);
 
 extern int __pbs_terminate(int, int, char *);
 
+extern preempt_job_info *__pbs_preempt_jobs(int, char **);
+
 #ifdef	__cplusplus
 }
 #endif

@@ -983,6 +983,31 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath="..\..\src\lib\Libifl\dec_PreemptJobs.c"
+				>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="2"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="0"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+						BasicRuntimeChecks="3"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
 				RelativePath="..\..\src\lib\Libdis\dis.c"
 				>
 				<FileConfiguration
@@ -2833,6 +2858,31 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath="..\..\src\lib\Libifl\enc_PreemptJobs.c"
+				>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="2"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="0"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+						BasicRuntimeChecks="3"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
 				RelativePath="..\..\src\lib\Libifl\entlim_parse.c"
 				>
 				<FileConfiguration
@@ -3317,6 +3367,31 @@
 			</File>
 			<File
 				RelativePath="..\..\src\lib\Libifl\int_ucred.c"
+				>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="2"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="0"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+						BasicRuntimeChecks="3"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\..\src\lib\Libifl\int_preempt_jobs.c"
 				>
 				<FileConfiguration
 					Name="Release|Win32"
@@ -4621,6 +4696,31 @@
 			</File>
 			<File
 				RelativePath="..\..\src\lib\Libifl\pbsD_termin.c"
+				>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="2"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="0"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+						BasicRuntimeChecks="3"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\..\src\lib\Libifl\pbsD_Preempt_Jobs.c"
 				>
 				<FileConfiguration
 					Name="Release|Win32"

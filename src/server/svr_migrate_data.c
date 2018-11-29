@@ -378,7 +378,7 @@ svr_migrate_data_from_fs(void)
 		(void) pbs_db_end_trx(svr_db_conn, PBS_DB_ROLLBACK);
 		return (-1);
 	}
-	set_sched_default(dflt_scheduler, 0);
+	set_sched_default(dflt_scheduler, 0, 0);
 	/* save current working dir before any chdirs */
 	if (getcwd(origdir, MAXPATHLEN) == NULL) {
 		fprintf(stderr, "getcwd failed\n");

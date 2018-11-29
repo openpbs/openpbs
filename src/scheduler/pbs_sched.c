@@ -111,6 +111,7 @@
 #include	"config.h"
 #include	"fifo.h"
 #include	"globals.h"
+#include	"misc.h"
 
 struct		connect_handle connection[NCONNECTS];
 int		connector;

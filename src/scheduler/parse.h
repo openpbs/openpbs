@@ -69,10 +69,10 @@ char *scan(char *str, char target);
 
 /*
  * sort compare function for preempt status's
- * sort by decending number of bits in the bitfields (most number of prempt
+ * sort by decending number of bits in the bitfields (most number of preempt
  * statuses at the top) and then priorities
  */
-int premept_cmp(const void *p1, const void *p2);
+int preempt_cmp(const void *p1, const void *p2);
 
 /*
  *      preempt_bit_field - take list of preempt names seperated by +'s and
@@ -95,6 +95,7 @@ int valid_config(void);
 /* Check if string is a valid special case sorting string */
 int is_speccase_sort(char *sort_res, int sort_type);
 
+void update_preempt_params_from_copy();
 
 #ifdef	__cplusplus
 }

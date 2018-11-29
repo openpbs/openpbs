@@ -707,6 +707,10 @@ dispatch_request(int sfds, struct batch_request *request)
 			req_holdjob(request);
 			break;
 #ifndef PBS_MOM
+		case PBS_BATCH_PreemptJobs:
+			req_preemptjobs(request);
+			break;
+
 		case PBS_BATCH_LocateJob:
 			req_locatejob(request);
 			break;

@@ -430,32 +430,6 @@ enum smp_cluster_dist
 	HIGH_SMP_DIST
 };
 
-/*
- *	When adding entries to this enum, be sure to initialize a matching
- *	entry in prempt_prio_info[] (globals.c).
- */
-enum preempt
-{
-	PREEMPT_NORMAL,		/* normal priority jobs */
-	PREEMPT_OVER_FS_LIMIT,	/* jobs over their fairshare of the machine */
-	PREEMPT_OVER_QUEUE_LIMIT,	/* jobs over queue run limits (maxrun etc) */
-	PREEMPT_OVER_SERVER_LIMIT,	/* jobs over server run limits */
-	PREEMPT_STARVING,		/* starving jobs */
-	PREEMPT_EXPRESS,		/* jobs in express queue */
-	PREEMPT_QRUN,			/* job is being qrun */
-	PREEMPT_ERR,			/* error occurred during preempt computation */
-	PREEMPT_HIGH
-};
-
-enum preempt_method
-{
-	PREEMPT_METHOD_LOW,
-	PREEMPT_METHOD_SUSPEND,
-	PREEMPT_METHOD_CHECKPOINT,
-	PREEMPT_METHOD_REQUEUE,
-	PREEMPT_METHOD_HIGH
-};
-
 enum schd_simulate_cmd
 {
 	SIM_NONE,

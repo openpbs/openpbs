@@ -150,7 +150,7 @@ int find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjinfo, ser
  */
 int *
 find_jobs_to_preempt(status *policy, resource_resv *jinfo,
-	server_info *sinfo, int *fail_list);
+	server_info *sinfo, int *fail_list, int *count);
 
 /*
  *      select_job_to_preempt - select the best candidite out of the running

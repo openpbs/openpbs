@@ -73,7 +73,7 @@
 /* Private Functions Local to this file */
 
 static int get_hold(pbs_list_head *, char **);
-static void post_hold(struct work_task *);
+void post_hold(struct work_task *);
 
 /* Global Data Items: */
 
@@ -378,7 +378,7 @@ get_hold(pbs_list_head *phead, char	 **pset)
  * @return void
  */
 
-static void
+void
 post_hold(struct work_task *pwt)
 {
 	int			code;
@@ -396,7 +396,10 @@ post_hold(struct work_task *pwt)
 		conn = get_conn(preq->rq_conn);
 
 		if (!conn) {
-			req_reject(PBSE_SYSTEM, 0, preq);
+			if (preq->rq_nest)
+				reply_preempt_jobs_request(PBSE_SYSTEM, 0, preq);
+			else
+				req_reject(PBSE_SYSTEM, 0, preq);
 			return;
 		}
 
@@ -408,7 +411,10 @@ post_hold(struct work_task *pwt)
 		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 			preq->rq_ind.rq_hold.rq_orig.rq_objname,
 			msg_postmomnojob);
-		req_reject(PBSE_UNKJOBID, 0, preq);
+		if (preq->rq_nest)
+			reply_preempt_jobs_request(PBSE_SYSTEM, 0, preq);
+		else
+			req_reject(PBSE_UNKJOBID, 0, preq);
 		return;
 	}
 	if (code != 0) {
@@ -418,7 +424,10 @@ post_hold(struct work_task *pwt)
 			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 				pjob->ji_qs.ji_jobid, log_buffer);
 			/* send message back to server for display to user */
-			reply_text(preq, code, log_buffer);
+			if (preq->rq_nest)
+				reply_preempt_jobs_request(code, 0, preq);
+			else
+				reply_text(preq, code, log_buffer);
 			return;
 		}
 	} else if (code == 0) {
@@ -437,5 +446,8 @@ post_hold(struct work_task *pwt)
 
 		account_record(PBS_ACCT_CHKPNT, pjob, NULL);
 	}
-	reply_ack(preq);
+	if (preq->rq_nest)
+		reply_preempt_jobs_request(PBSE_NONE, 2, preq);
+	else
+		reply_ack(preq);
 }

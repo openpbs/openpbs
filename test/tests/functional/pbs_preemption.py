@@ -72,7 +72,14 @@ class TestPreemption(TestFunctional):
             preempted_by = 'suspension'
 
         # set preempt order
-        self.scheduler.set_sched_config({'preempt_order': preempt_order})
+        try:
+            self.server.expect(SERVER, {'pbs_version': (GE, '19.0')},
+                               max_attempts=2)
+            self.server.manager(MGR_CMD_SET, SCHED,
+                                {'preempt_order': preempt_order},
+                                expect=True, runas=ROOT_USER)
+        except PtlExpectError:
+            self.scheduler.set_sched_config({'preempt_order': preempt_order})
 
         attrs = {ATTR_l + '.select': '1:ncpus=1'}
 

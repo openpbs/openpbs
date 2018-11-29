@@ -2733,7 +2733,7 @@ struct preempt_ordering *get_preemption_order(resource_resv *pjob,
 		return 0;
 
 	/* check if we have more then one range... no need to choose if not */
-	if (conf.preempt_order[1].high_range != 0) {
+	if (conf.preempt_order[0].high_range != 0) {
 		resource_req *req;		/* the jobs requested soft_walltime/walltime/cput */
 		resource_req *used;		/* the amount of the walltime/cput used */
 
@@ -2931,17 +2931,21 @@ int
 find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_info *sinfo, schd_error *err)
 {
 
-	int i;
-	int *jobs = NULL;
-	resource_resv *job = NULL;
-	int ret = -1;
-	int done = 0;
-	int rc = 1;
-	int *preempted_list;
-	int preempted_count = 0;
-	int *fail_list = NULL;
-	int fail_count=0;
-	int num_tries=0;
+	int 			i = 0;
+	int 			j = 0;
+	int 			*jobs = NULL;
+	resource_resv 		*job = NULL;
+	int 			ret = -1;
+	int 			done = 0;
+	int 			rc = 1;
+	int 			*preempted_list = NULL;
+	int 			preempted_count = 0;
+	int 			*fail_list = NULL;
+	int 			fail_count = 0;
+	int 			num_tries = 0;
+	int 			count = 0;
+	char			**preempt_jobs_list = NULL;
+	preempt_job_info	*preempt_jobs_reply = NULL;
 
 	/* jobs with AOE cannot preempt (atleast for now) */
 	if (hjob->aoename != NULL)
@@ -2964,25 +2968,75 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
 	 * or the maximum number of tries has been exhausted
 	 */
 	while (!done &&
-		((jobs = find_jobs_to_preempt(policy, hjob, sinfo, fail_list)) != NULL) &&
+		((jobs = find_jobs_to_preempt(policy, hjob, sinfo, fail_list, &count)) != NULL) &&
 		num_tries < MAX_PREEMPT_RETRIES) {
 		done = 1;
-		for (i = 0 ; jobs[i] != 0; i++) {
+
+		if ((preempt_jobs_list = calloc(count+1, sizeof(char *))) == NULL) {
+			log_err(errno, __func__, MEM_ERR_MSG);
+			free(preempted_list);
+			free(fail_list);
+			return -1;
+		}
+
+		for (i = 0; i < count; i++) {
 			job = find_resource_resv_by_indrank(sinfo->running_jobs, jobs[i], -1);
 			if (job != NULL) {
-				ret = preempt_job(policy, pbs_sd, job, sinfo);
-
-				if (ret)
-					/* copy this job into the preempted array list */
-					preempted_list[preempted_count++] = jobs[i];
-				else  {
-					done = 0; /* preemption failed for some job, need to loop */
-					/* add to the fail list */
-					fail_list[fail_count++] = jobs[i];
+				if ((preempt_jobs_list[i] = calloc(PBS_MAXSVRJOBID+1, 1)) == NULL) {
+					log_err(errno, __func__, MEM_ERR_MSG);
+					for (j = 0; j < i; j++)
+						free(preempt_jobs_list[j]);
+					free(preempt_jobs_list);
+					free(preempted_list);
+					free(fail_list);
+					return -1;
 				}
+				snprintf(preempt_jobs_list[i], PBS_MAXSVRJOBID, "%s", job->name);
 			}
 		}
+
+		preempt_jobs_reply = pbs_preempt_jobs(pbs_sd, preempt_jobs_list);
+
+		for (i = 0; i < count; i++) {
+			job = find_resource_resv(sinfo->running_jobs, preempt_jobs_reply[i].job_id);
+			if (preempt_jobs_reply[i].order[0] == '0')
+				fail_list[fail_count++] = job->rank;
+			else {
+				preempted_list[preempted_count++] = job->rank;
+				if (preempt_jobs_reply[i].order[0] == 'S') {
+					/* Set resources_released and execselect on the job */
+					create_res_released(policy, job);
+
+					update_universe_on_end(policy, job, "S", NO_FLAGS);
+					job->job->is_susp_sched = 1;
+					schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
+						job->name, "Job preempted by suspension");
+				} else if (preempt_jobs_reply[i].order[0] == 'C') {
+					job->job->is_checkpointed = 1;
+					update_universe_on_end(policy, job, "Q", NO_FLAGS);
+					schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
+						job->name, "Job preempted by checkpointing");
+					//if (pbs_sd != SIMULATE_SD)
+						//pbs_statfree(status);
+
+					pbs_rlsjob(pbs_sd, job->name, "s", NULL);
+				} else {
+					update_universe_on_end(policy, job, "Q", NO_FLAGS);
+					schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_JOB, LOG_INFO,
+						job->name, "Job preempted by requeuing");
+				}
+				update_accruetype(pbs_sd, sinfo, ACCRUE_MAKE_ELIGIBLE, SUCCESS, job);
+				mark_job_preempted(pbs_sd, job, sinfo->server_time);
+				sinfo->num_preempted++;
+			}
+		}
+
 		free(jobs);
+		for (i = 0; i < count; i++) {
+			free(preempt_jobs_list[i]);
+		}
+		free(preempt_jobs_list);
+		free(preempt_jobs_reply);
 		num_tries++;
 	}
 
@@ -3040,11 +3094,12 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
  *        need to be preempted.  Finally we'll return the list if we found
  *        one, NULL if not.
  *
- * @param[in]	policy	-	policy info
- * @param[in]	hjob	-	the high priority job
- * @param[in]	sinfo	-	the server of the jobs to preempt
+ * @param[in]	policy		-	policy info
+ * @param[in]	hjob		-	the high priority job
+ * @param[in]	sinfo		-	the server of the jobs to preempt
  * @param[in]	fail_list	-	list of jobs which preemption has failed
- *				 				do not attempt to preempt again
+ *				 	do not attempt to preempt again
+ * @param[out]	count		-	number of jobs in the list being returned
  *
  * @return	int *
  * @retval	array of job ranks to preempt
@@ -3053,7 +3108,7 @@ find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjob, server_in
  *
  */
 int *
-find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, int *fail_list)
+find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, int *fail_list, int *count)
 {
 	int i;
 	int j = 0;
@@ -3090,6 +3145,7 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 	int rjobs_count = 0;
 
 
+	*count = 0;
 	if (hjob == NULL || sinfo == NULL)
 		return NULL;
 
@@ -3465,7 +3521,8 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 		if (i == 0) {
 			schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG, nhjob->name,
 				"Simulation Error: All jobs removed from preemption list");
-		}
+		} else
+			*count = i;
 	}
 
 	free_server(nsinfo, 1);
@@ -3473,7 +3530,6 @@ find_jobs_to_preempt(status *policy, resource_resv *hjob, server_info *sinfo, in
 	free(prjobs);
 	free_schd_error_list(full_err);
 	free_schd_error(err);
-
 
 	return pjobs_list;
 }
@@ -3502,7 +3558,6 @@ select_index_to_preempt(status *policy, resource_resv *hjob,
 {
 	int i, j, k;
 	int good = 1;		/* good boolean: Is job eligible to be preempted */
-	struct preempt_ordering *po;
 	resdef **rdtc_non_consumable = NULL;
 
 	if ( err == NULL || hjob == NULL || hjob->job == NULL ||
@@ -3554,29 +3609,6 @@ select_index_to_preempt(status *policy, resource_resv *hjob,
 					break;
 				}
 			}
-		}
-
-
-		if (good) {
-			/* get the preemption order to be used for this job */
-			po = get_preemption_order(rjobs[i], rjobs[i]->server);
-
-			/* check whether chosen order is enabled for this job */
-			for (j = 0; j < PREEMPT_METHOD_HIGH; j++) {
-				if (po->order[j] == PREEMPT_METHOD_SUSPEND  &&
-					rjobs[i]->job->can_suspend)
-					break; /* suspension is always allowed */
-
-				if (po->order[j] == PREEMPT_METHOD_CHECKPOINT &&
-					rjobs[i]->job->can_checkpoint)
-					break; /* choose if checkpoint is allowed */
-
-				if (po->order[j] == PREEMPT_METHOD_REQUEUE &&
-					rjobs[i]->job->can_requeue)
-					break; /* choose if requeue is allowed */
-			}
-			if (j == PREEMPT_METHOD_HIGH) /* no preemption method good */
-				good = 0;
 		}
 
 		if (good) {

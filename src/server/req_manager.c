@@ -140,8 +140,12 @@ extern	void unset_job_history_duration(void);
 extern	void unset_max_job_sequence_id(void);
 extern	void force_qsub_daemons_update(void);
 extern  void unset_node_fail_requeue(void);
+extern  void unset_sched_preempt_queue_prio(attribute *attr, char *sched_name);
+extern  void unset_sched_preempt_prio(attribute *attr, char *sched_name);
+extern  void unset_sched_preempt_order(attribute *attr, char *sched_name);
+extern  void unset_sched_preempt_sort(attribute *attr, char *sched_name);
+//extern  void sched_set_default_preempt_params(pbs_sched *psched, int unset_flag, int from_scheduler);
 extern pbs_sched *sched_alloc(char *sched_name);
-extern pbs_sched *find_scheduler(char *sched_name);
 extern void sched_free(pbs_sched *psched);
 extern int sched_delete(pbs_sched *psched);
 
@@ -1645,7 +1649,7 @@ mgr_server_unset(struct batch_request *preq)
 						ATR_VFLAG_SET | ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
 				(void)sched_save_db(dflt_scheduler, SVR_SAVE_FULL);
 			}
-		}  else if (strcasecmp(plist->al_name,
+		} else if (strcasecmp(plist->al_name,
 				ATTR_schediteration) == 0) {
 			if (dflt_scheduler) {
 				svrattrl *tm_list;
@@ -1717,8 +1721,12 @@ mgr_sched_set(struct batch_request *preq)
 	if (rc != 0)
 		reply_badattr(rc, bad_attr, plist, preq);
 	else {
-		set_sched_default(psched, 0);
+		if (find_sched_from_sock(preq->rq_conn))
+			set_sched_default(psched, 0, 1);
+		else
+			set_sched_default(psched, 0, 0);
 		(void)sched_save_db(psched, SVR_SAVE_FULL);
+
 		(void)sprintf(log_buffer, msg_manager, msg_man_set,
 			preq->rq_user, preq->rq_host);
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SCHED, LOG_INFO,
@@ -1750,7 +1758,6 @@ mgr_sched_unset(struct batch_request *preq)
 		return;
 	}
 
-
 	for (tmp_plist = (svrattrl *)GET_NEXT(preq->rq_ind.rq_manager.rq_attr); tmp_plist; tmp_plist = (struct svrattrl *)GET_NEXT(tmp_plist->al_link)) {
 		if (strcasecmp(tmp_plist->al_name, ATTR_sched_log) == 0 ||
 			strcasecmp(tmp_plist->al_name, ATTR_sched_priv) == 0) {
@@ -1773,6 +1780,22 @@ mgr_sched_unset(struct batch_request *preq)
 				svr_save_db(&server, SVR_SAVE_FULL);
 				free_svrattrl(t_list);
 			}
+		} else if (strcasecmp(tmp_plist->al_name,
+				ATTR_sched_preempt_queue_prio) == 0) {
+			unset_sched_preempt_queue_prio(&psched->sch_attr[(int) SCHED_ATR_preempt_queue_prio], psched->sc_name);
+			set_scheduler_flag(SCH_ATTRS_CONFIGURE, psched);
+		} else if (strcasecmp(tmp_plist->al_name,
+				ATTR_sched_preempt_prio) == 0) {
+			unset_sched_preempt_prio(&psched->sch_attr[(int) SCHED_ATR_preempt_prio], psched->sc_name);
+			set_scheduler_flag(SCH_ATTRS_CONFIGURE, psched);
+		} else if (strcasecmp(tmp_plist->al_name,
+				ATTR_sched_preempt_order) == 0) {
+			unset_sched_preempt_order(&psched->sch_attr[(int) SCHED_ATR_preempt_order], psched->sc_name);
+			set_scheduler_flag(SCH_ATTRS_CONFIGURE, psched);
+		} else if (strcasecmp(tmp_plist->al_name,
+				ATTR_sched_preempt_sort) == 0) {
+			unset_sched_preempt_sort(&psched->sch_attr[(int) SCHED_ATR_preempt_sort], psched->sc_name);
+			set_scheduler_flag(SCH_ATTRS_CONFIGURE, psched);
 		}
 	}
 
@@ -1784,7 +1807,7 @@ mgr_sched_unset(struct batch_request *preq)
 	else {
 
 		/* save the attributes to disk */
-		set_sched_default(psched, 1);
+		set_sched_default(psched, 1, 0);
 		(void)sched_save_db(psched, SVR_SAVE_FULL);
 		(void)sprintf(log_buffer, msg_manager, msg_man_uns,
 			preq->rq_user, preq->rq_host);
@@ -3665,7 +3688,7 @@ mgr_sched_create(struct batch_request *preq)
 	} else {
 
 		/* save the attributes to disk */
-		set_sched_default(psched, 0);
+		set_sched_default(psched, 0, 0);
 		(void) sched_save_db(psched, SVR_SAVE_FULL);
 		snprintf(log_buffer, LOG_BUF_SIZE, msg_manager, msg_man_set,
 				preq->rq_user, preq->rq_host);

@@ -60,6 +60,7 @@ extern "C" {
 #include "constant.h"
 #include "config.h"
 #include "pbs_bitmap.h"
+#include "pbs_share.h"
 #ifdef NAS
 #include "site_queue.h"
 #endif
@@ -95,6 +96,7 @@ struct node_bucket;
 struct bucket_bitpool;
 struct chunk_map;
 struct node_bucket_count;
+struct preempt_job_st;
 
 
 typedef struct state_count state_count;
@@ -130,6 +132,7 @@ typedef struct node_bucket node_bucket;
 typedef struct bucket_bitpool bucket_bitpool;
 typedef struct chunk_map chunk_map;
 typedef struct node_bucket_count node_bucket_count;
+typedef struct preempt_job_st preempt_job_st;
 
 #ifdef NAS
 /* localmod 034 */
@@ -943,27 +946,10 @@ struct sort_conv
 };
 
 
-/* structure to convert an enum to a string or back again */
-struct enum_conv
-{
-	int value;
-	const char *str;
-};
-
-
 struct timegap
 {
 	time_t from;
 	time_t to;
-};
-
-struct preempt_ordering
-{
-	unsigned high_range;		/* high end of the walltime range */
-	unsigned low_range;		/* low end of the walltime range */
-
-
-	enum preempt_method order[PREEMPT_METHOD_HIGH];/* the order to preempt jobs */
 };
 
 struct dyn_res
@@ -1113,6 +1099,14 @@ struct config
 
 	/* selection criteria of nodes for provisioning */
 	enum provision_policy_types provision_policy;
+};
+
+struct preempt_params_copy
+{
+	int			preempt_queue_prio;
+	int			pprio[NUM_PPRIO][2];
+	unsigned		preempt_min_wt_used;
+	struct preempt_ordering preempt_order[PREEMPT_ORDER_MAX+1];
 };
 
 

@@ -42,6 +42,10 @@
  * An example would be to share a constant between the server and the scheduler
  */
 
+#ifndef PBS_SHARE
+#define PBS_SHARE
+
+#include "pbs_ifl.h"
 
 /* Formula special case constants */
 
@@ -101,3 +105,41 @@
 
 #define MAX_INT_LEN 10
 
+/* preempt priority values */
+#define PREEMPT_PRIORITY_HIGH 100000
+#define PREEMPT_PRIORITY_STEP 1000
+
+#define NUM_PPRIO 20
+struct preempt_ordering
+{
+        unsigned high_range;            /* high end of the walltime range */
+        unsigned low_range;             /* low end of the walltime range */
+
+        enum preempt_method order[PREEMPT_METHOD_HIGH];/* the order to preempt jobs */
+};
+
+/* structure to convert an enum to a string or back again */
+struct enum_conv
+{
+	int value;
+	const char *str;
+};
+
+/*
+ *	When adding entries to this enum, be sure to initialize a matching
+ *	entry in prempt_prio_info[] (globals.c).
+ */
+enum preempt
+{
+	PREEMPT_NORMAL,		/* normal priority jobs */
+	PREEMPT_OVER_FS_LIMIT,	/* jobs over their fairshare of the machine */
+	PREEMPT_OVER_QUEUE_LIMIT,	/* jobs over queue run limits (maxrun etc) */
+	PREEMPT_OVER_SERVER_LIMIT,	/* jobs over server run limits */
+	PREEMPT_STARVING,		/* starving jobs */
+	PREEMPT_EXPRESS,		/* jobs in express queue */
+	PREEMPT_QRUN,			/* job is being qrun */
+	PREEMPT_ERR,			/* error occurred during preempt computation */
+	PREEMPT_HIGH
+};
+
+#endif

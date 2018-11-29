@@ -1023,7 +1023,7 @@ class SmokeTest(PBSTestSuite):
              'enabled': 'True'}
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, 'expressq')
 
-    def common_stuff(self, isJobArray=False, isWithPreemt=False):
+    def common_stuff(self, isJobArray=False, isWithPreempt=False):
         """
         Do common stuff for job like submitting, stating and suspending
         """
@@ -1033,7 +1033,7 @@ class SmokeTest(PBSTestSuite):
             a = {'resources_available.ncpus': 1}
         self.server.create_vnodes('vn', a, 1,
                                   mom=self.mom)
-        if isWithPreemt:
+        if isWithPreempt:
             self.do_preempt_config()
         j1 = Job(TEST_USER, attrs={'Resource_List.walltime': 100})
         if isJobArray:
@@ -1044,7 +1044,7 @@ class SmokeTest(PBSTestSuite):
         else:
             a = {'job_state': 'R', 'substate': 42}
         self.server.expect(JOB, a, extend='t')
-        if isWithPreemt:
+        if isWithPreempt:
             j2 = Job(TEST_USER, attrs={'Resource_List.walltime': 100,
                                        'queue': 'expressq'})
             if isJobArray:
@@ -1068,7 +1068,7 @@ class SmokeTest(PBSTestSuite):
             if 'session_id' in job:
                 self.server.expect(JOB, {'session_id': self.isSuspended},
                                    id=job['id'])
-        if isWithPreemt:
+        if isWithPreempt:
             return (j1id, j2id)
         else:
             return j1id
@@ -1078,14 +1078,14 @@ class SmokeTest(PBSTestSuite):
         """
         Test Suspend of Job using Scheduler Preemption
         """
-        self.common_stuff(isWithPreemt=True)
+        self.common_stuff(isWithPreempt=True)
 
     @skipOnCpuSet
     def test_resume_job_with_preempt(self):
         """
         Test Resume of Job using Scheduler Preemption
         """
-        (j1id, j2id) = self.common_stuff(isWithPreemt=True)
+        (j1id, j2id) = self.common_stuff(isWithPreempt=True)
         self.server.delete(j2id)
         self.server.expect(JOB, {'job_state': 'R', 'substate': 42},
                            id=j1id)
@@ -1101,14 +1101,14 @@ class SmokeTest(PBSTestSuite):
         """
         Test Suspend of Job array using Scheduler Preemption
         """
-        self.common_stuff(isJobArray=True, isWithPreemt=True)
+        self.common_stuff(isJobArray=True, isWithPreempt=True)
 
     @skipOnCpuSet
     def test_resume_job_array_with_preempt(self):
         """
         Test Resume of Job array using Scheduler Preemption
         """
-        (j1id, j2id) = self.common_stuff(isJobArray=True, isWithPreemt=True)
+        (j1id, j2id) = self.common_stuff(isJobArray=True, isWithPreempt=True)
         self.server.delete(j2id)
         self.server.expect(JOB,
                            {'job_state=R': 3, 'substate=42': 3},

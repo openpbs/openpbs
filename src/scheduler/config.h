@@ -64,10 +64,6 @@
 
 #define UNKNOWN_GROUP_NAME "unknown"
 
-/* preempt priority values */
-#define PREEMPT_PRIORITY_HIGH 100000
-#define PREEMPT_PRIORITY_STEP 1000
-
 /* max number of preempt orderings */
 #define PREEMPT_ORDER_MAX 20
 
@@ -187,7 +183,6 @@
 #define MAX_LOG_SIZE 1024
 #define MAX_RES_NAME_SIZE 256
 #define MAX_RES_RET_SIZE 256
-#define NUM_PPRIO 20
 #define NUM_PEERS 50
 #define MAX_DEF_REPLY 5
 #define MAX_PTIME_SIZE 64

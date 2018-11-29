@@ -762,7 +762,7 @@ req_deletejob2(struct batch_request *preq, job *pjob)
 		else
 			temp_preq = preq;
 
-		rc = issue_signal(pjob, sig, post_delete_mom1, temp_preq);
+		rc = issue_signal(pjob, sig, post_delete_mom1, temp_preq, NULL);
 
 		/*
 		 * If forcedel is set and request is from a manager,
@@ -1270,7 +1270,7 @@ resend:
 				return;
 			}
 			/* 2nd try, use SIGTERM */
-			rc = issue_signal(pjob, sigt, post_delete_mom1, preq_clt);
+			rc = issue_signal(pjob, sigt, post_delete_mom1, preq_clt, NULL);
 			if (rc == 0)
 				return; /* will be back when replies */
 			goto resend;

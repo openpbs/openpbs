@@ -946,7 +946,14 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
         a = {ATTR_restrict_res_to_release_on_suspend: 'mem'}
         self.server.manager(MGR_CMD_SET, SERVER, a)
 
-        self.scheduler.set_sched_config({'preempt_order': preempt_method})
+        try:
+            self.server.expect(SERVER, {'pbs_version': (GE, '19.0')},
+                               max_attempts=2)
+            self.server.manager(MGR_CMD_SET, SCHED,
+                                {'preempt_order': preempt_method},
+                                expect=True, runas=ROOT_USER)
+        except PtlExpectError:
+            self.scheduler.set_sched_config({'preempt_order': preempt_method})
 
         # Set 1gb mem available on the node
         a = {ATTR_rescavail + '.ncpus': "2"}

@@ -91,6 +91,7 @@ decode_DIS_replyCmd(int sock, struct batch_reply *reply)
 	struct brp_cmdstat  **pstcx;
 	int		      rc = 0;
 	size_t		      txtlen;
+	preempt_job_info 	*ppj = NULL;
 
 	/* first decode "header" consisting of protocol type and version */
 
@@ -235,6 +236,24 @@ decode_DIS_replyCmd(int sock, struct batch_reply *reply)
 				*(reply->brp_un.brp_rescq.brq_resvd+i) = disrui(sock, &rc);
 			for (i=0; (i < ct) && (rc == 0); ++i)
 				*(reply->brp_un.brp_rescq.brq_down+i)  = disrui(sock, &rc);
+			break;
+
+		case BATCH_REPLY_CHOICE_PreemptJobs:
+
+			/* Preempt Jobs Reply */
+			ct = disrui(sock, &rc);
+			reply->brp_un.brp_preempt_jobs.count = ct;
+			if (rc) break;
+
+			ppj = calloc(sizeof(struct preempt_job_info), ct);
+			reply->brp_un.brp_preempt_jobs.ppj_list = ppj;
+
+			for (i = 0; i < ct; i++) {
+				if ((rc = disrfst(sock, PBS_MAXSVRJOBID+1, ppj[i].job_id) != 0) ||
+					((rc = disrfst(sock, PREEMPT_METHOD_HIGH+1, ppj[i].order)) != 0))
+						return rc;
+			}
+
 			break;
 
 		default:

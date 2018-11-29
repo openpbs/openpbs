@@ -204,6 +204,7 @@ main(int argc, char *argv[])
 		exit(1);
 	}
 	init_config();
+
 	parse_config(CONFIG_FILE);
 	if ((conf.fairshare = preload_tree()) == NULL) {
 		fprintf(stderr, "Error in preloading fairshare information\n");

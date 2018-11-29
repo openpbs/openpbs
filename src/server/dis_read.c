@@ -685,6 +685,10 @@ dis_request_read(int sfds, struct batch_request *request)
 			decode_DIS_ModifyResv(sfds, request);
 			break;
 
+		case PBS_BATCH_PreemptJobs:
+			decode_DIS_PreemptJobs(sfds, request);
+			break;
+
 #else	/* yes PBS_MOM */
 
 		case PBS_BATCH_CopyHookFile:

@@ -92,8 +92,7 @@ const struct enum_conv smp_cluster_info[] =
 /*
  *	prempt_prio_info - used to convert parse values into enum values
  *			   for preemption priority levels
- */
-const struct enum_conv prempt_prio_info[] =
+const struct enum_conv preempt_prio_info[] =
 	{
 	{ PREEMPT_NORMAL, "normal_jobs" },
 	{ PREEMPT_OVER_FS_LIMIT, "fairshare" },
@@ -101,10 +100,12 @@ const struct enum_conv prempt_prio_info[] =
 	{ PREEMPT_OVER_SERVER_LIMIT, "server_softlimits" },
 	{ PREEMPT_STARVING, "starving_jobs" },
 	{ PREEMPT_EXPRESS, "express_queue" },
-	{ PREEMPT_ERR, "" },			/* no corresponding config file value */
+	{ PREEMPT_ERR, "" },			no corresponding config file value */
+/*
 	{ PREEMPT_HIGH, "" }
 };
 
+ */
 
 /*
  *	res_to_get - resources to get from each nodes mom
@@ -140,6 +141,8 @@ const int num_resget = sizeof(res_to_get) / sizeof(char *);
 
 struct config conf;
 struct status cstat;
+
+struct preempt_params_copy preempt_params_copy;
 
 /* to make references happy */
 int pbs_rm_port;

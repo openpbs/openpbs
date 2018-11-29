@@ -180,6 +180,21 @@ extern "C" {
 /* Default value of Node fail requeue (ATTR_nodefailrq)*/
 #define PBS_NODE_FAIL_REQUEUE_DEFAULT	310
 
+/* Default value of preempt_queue_prio */
+#define PBS_PREEMPT_QUEUE_PRIO_DEFAULT	150
+
+/* Default value of preempt_prio */
+#define PBS_PREEMPT_PRIO_DEFAULT	"express_queue, normal_jobs"
+#define PBS_PREEMPT_PRIO_DEFAULT_SIZE	30
+
+/* Default value of preempt_order */
+#define PBS_PREEMPT_ORDER_DEFAULT	"SCR"
+#define PBS_PREEMPT_ORDER_DEFAULT_SIZE	5
+
+/* Default value of preempt_sort */
+#define PBS_PREEMPT_SORT_DEFAULT	"min_time_since_start"
+#define PBS_PREEMPT_SORT_DEFAULT_SIZE	25
+
 struct pbs_config
 {
 	unsigned loaded:1;			/* has the conf file been loaded? */

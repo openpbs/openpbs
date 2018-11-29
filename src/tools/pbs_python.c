@@ -346,6 +346,30 @@ action_queue_partition(attribute *pattr, void *pobj, int actmode)
 }
 
 int
+action_sched_preempt_queue_prio(attribute *pattr, void *pobj, int actmode)
+{
+	return 0;
+}
+
+int
+action_sched_preempt_prio(attribute *pattr, void *pobj, int actmode)
+{
+	return 0;
+}
+
+int
+action_sched_preempt_order(attribute *pattr, void *pobj, int actmode)
+{
+	return 0;
+}
+
+int
+action_sched_preempt_sort(attribute *pattr, void *pobj, int actmode)
+{
+	return 0;
+}
+
+int
 set_reserve_retry_init(pattr, pobj, actmode)
 attribute *pattr;
 void      *pobj;
@@ -499,6 +523,30 @@ set_job_history_duration(attribute *pattr, void *pobject, int actmode)
 
 void
 unset_job_history_duration(void)
+{
+	return;
+}
+
+void
+unset_sched_preempt_queue_prio(attribute *attr, char *sched_name)
+{
+	return;
+}
+
+void
+unset_sched_preempt_prio(attribute *attr, char *sched_name)
+{
+	return;
+}
+
+void
+unset_sched_preempt_order(attribute *attr, char *sched_name)
+{
+	return;
+}
+
+void
+unset_sched_preempt_sort(attribute *attr, char *sched_name)
 {
 	return;
 }

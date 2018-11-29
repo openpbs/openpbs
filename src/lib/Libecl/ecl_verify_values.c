@@ -82,6 +82,19 @@
 #include "batch_request.h"
 #include "pbs_share.h"
 
+#define PREEMPT_TO_BIT(X) (1 << (X) )
+
+const struct enum_conv	preempt_prio_info[] =
+	{
+	{ PREEMPT_NORMAL, "normal_jobs" },
+	{ PREEMPT_OVER_FS_LIMIT, "fairshare" },
+	{ PREEMPT_OVER_QUEUE_LIMIT, "queue_softlimits" },
+	{ PREEMPT_OVER_SERVER_LIMIT, "server_softlimits" },
+	{ PREEMPT_STARVING, "starving_jobs" },
+	{ PREEMPT_EXPRESS, "express_queue" },
+	{ PREEMPT_ERR, "" },			/* no corresponding config file value */
+	{ PREEMPT_HIGH, "" }
+};
 static long ecl_pbs_max_licenses = PBS_MAX_LICENSING_LICENSES;
 
 /**
@@ -1742,10 +1755,6 @@ verify_value_tolerate_node_failures(int batch_request, int parent_object, int cm
 {
 	int i;
 	char *tolerance_level[] = {TOLERATE_NODE_FAILURES_ALL, TOLERATE_NODE_FAILURES_JOB_START, TOLERATE_NODE_FAILURES_NONE, NULL};
-
-	if ((pattr->value == NULL) || (pattr->value[0] == '\0'))
-		return PBSE_BADATVAL;
-
 	/* does the requested value match a legal value? */
 	for (i = 0; tolerance_level[i] != NULL; i++) {
 		if (strcmp(tolerance_level[i], pattr->value) == 0)
@@ -1753,3 +1762,220 @@ verify_value_tolerate_node_failures(int batch_request, int parent_object, int cm
 	}
 	return (PBSE_BADATVAL);
 }
+
+/**
+ * @brief
+ *		preempt_bit_field - take list of preempt names seperated by +'s and
+ * 			    create a bitfield representing it.  The bitfield
+ *			    is created by taking the name in the prempt enum
+ *			    and shifting a bit into that position.
+ *
+ * @param[in]	plist	-	a preempt list
+ *
+ * @return	a bitfield of -1 on error
+ *
+ */
+int
+preempt_bit_field(char *plist)
+{
+	int bitfield = 0;
+	int obitfield;
+	int i;
+	char *tok;
+
+	tok = strtok(plist, "+");
+
+	while (tok != NULL) {
+		obitfield = bitfield;
+		for (i = 0; i < PREEMPT_HIGH; i++) {
+			if (!strcmp(preempt_prio_info[i].str, tok))
+				bitfield |= PREEMPT_TO_BIT(preempt_prio_info[i].value);
+		}
+
+		/* invaid preempt string */
+		if (obitfield == bitfield) {
+			bitfield = -1;
+			break;
+		}
+
+		tok = strtok(NULL, "+");
+	}
+
+	return bitfield;
+}
+
+/**
+ * @brief
+ *	Function checks the resource "preempt_prio" and verifies its values
+ *
+ * @see
+ *
+ * @param[in]	batch_request	-	Batch Request Type
+ * @param[in]	parent_object	-	Parent Object Type
+ * @param[in]	cmd		-	Command Type
+ * @param[in]	pattr		-	address of attribute to verify
+ * @param[out]	err_msg		-	error message list
+ *
+ * @return	int
+ * @retval	0 	- 	Attribute passed verification
+ * @retval	>0 	- 	Failed verification - pbs errcode is returned
+ *
+ * @par	Side effects:
+ * 	None
+ *
+ */
+int
+verify_value_preempt_prio(int batch_request, int parent_object, int cmd,
+	struct attropl *pattr, char **err_msg)
+{
+	int			i;
+	int			num = -1;
+	int			prio;
+	char			**list;
+
+	prio = PREEMPT_PRIORITY_HIGH;
+	list = break_comma_list(pattr->value);
+	if (list != NULL) {
+		prio -= PREEMPT_PRIORITY_STEP;
+		for (i = 0; list[i] != NULL; i++) {
+			num = preempt_bit_field(list[i]);
+			if (num >= 0)
+				prio -= PREEMPT_PRIORITY_STEP;
+			else
+				return PBSE_BADATVAL;
+		}
+		free_string_array(list);
+	} else
+		return PBSE_BADATVAL;
+
+	return 0;
+}
+
+/**
+ * @brief
+ *	Function checks the resource "preempt_order" and verifies its values
+ *
+ * @see
+ *
+ * @param[in]	batch_request	-	Batch Request Type
+ * @param[in]	parent_object	-	Parent Object Type
+ * @param[in]	cmd		-	Command Type
+ * @param[in]	pattr		-	address of attribute to verify
+ * @param[out]	err_msg		-	error message list
+ *
+ * @return	int
+ * @retval	0 	- 	Attribute passed verification
+ * @retval	>0 	- 	Failed verification - pbs errcode is returned
+ *
+ * @par	Side effects:
+ * 	None
+ *
+ */
+int
+verify_value_preempt_order(int batch_request, int parent_object, int cmd,
+	struct attropl *pattr, char **err_msg)
+{
+	char	s_done = 0;
+	char	c_done = 0;
+	char	r_done = 0;
+	char	*tok = NULL;
+	char	*endp = NULL;
+	char	copy[256] = {0};
+	char	next_is_num = 0;
+	int	i = 0;
+	int	j = 0;
+
+	if ((pattr->value == NULL) || (pattr->value[0] == '\0'))
+		return PBSE_BADATVAL;
+
+	strcpy(copy, pattr->value);
+	tok = strtok(copy, "\t ");
+
+	if (tok != NULL && !isdigit(tok[0])) {
+		i = 0;
+		do {
+			j = isdigit(tok[0]);
+			if (j) {
+				if (next_is_num) {
+					(void)strtol(tok, &endp, 10);
+					if (*endp == '\0') {
+						i++;
+						next_is_num = 0;
+					} else
+						return PBSE_BADATVAL;
+				} else
+					return PBSE_BADATVAL;
+			} else if (!next_is_num) {
+				for (j = 0; tok[j] != '\0' ; j++) {
+					switch (tok[j]) {
+						case 'S':
+							if (!s_done)
+								s_done = 1;
+							else
+								return PBSE_BADATVAL;
+							break;
+						case 'C':
+							if (!c_done)
+								c_done = 1;
+							else
+								return PBSE_BADATVAL;
+							break;
+						case 'R':
+							if (!r_done)
+								r_done = 1;
+							else
+								return PBSE_BADATVAL;
+							break;
+						default:
+							return PBSE_BADATVAL;
+					}
+					next_is_num = 1;
+				}
+				s_done = 0;
+				c_done = 0;
+				r_done = 0;
+			} else
+				return PBSE_BADATVAL;
+			tok = strtok(NULL, "\t ");
+		} while (tok != NULL && i < PREEMPT_ORDER_MAX);
+
+		if (tok != NULL)
+			return PBSE_BADATVAL;
+
+		//conf.preempt_order[i].low_range = 0;
+	} else
+		return PBSE_BADATVAL;
+
+	return 0;
+}
+
+/**
+ * @brief
+ *	Function checks the resource "preempt_sort" and verifies its values
+ *
+ * @see
+ *
+ * @param[in]	batch_request	-	Batch Request Type
+ * @param[in]	parent_object	-	Parent Object Type
+ * @param[in]	cmd		-	Command Type
+ * @param[in]	pattr		-	address of attribute to verify
+ * @param[out]	err_msg		-	error message list
+ *
+ * @return	int
+ * @retval	0 	- 	Attribute passed verification
+ * @retval	>0 	- 	Failed verification - pbs errcode is returned
+ *
+ * @par	Side effects:
+ * 	None
+ *
+ */
+int
+verify_value_preempt_sort(int batch_request, int parent_object, int cmd,
+	struct attropl *pattr, char **err_msg)
+{
+	if (strcmp(pattr->value, "min_time_since_start") != 0)
+		return PBSE_BADATVAL;
+
+	return 0;
+}
+

@@ -450,7 +450,7 @@ req_rerunjob2(struct batch_request *preq, job *pjob)
 
 	/* ask MOM to kill off the job */
 
-	rc = issue_signal(pjob, SIG_RERUN, post_rerun, force_rerun);
+	rc = issue_signal(pjob, SIG_RERUN, post_rerun, force_rerun, NULL);
 
 	/*
 	 * If force is set and request is from a PBS manager,

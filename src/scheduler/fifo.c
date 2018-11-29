@@ -161,6 +161,7 @@ schedinit(void)
 
 	init_config();
 	parse_config(CONFIG_FILE);
+	update_preempt_params_from_copy();
 
 	parse_holidays(HOLIDAYS_FILE);
 	time(&(cstat.current_time));
@@ -2405,20 +2406,31 @@ next_job(status *policy, server_info *sinfo, int flag)
 static int
 sched_settings_frm_svr(struct batch_status *status)
 {
-	struct attrl *attr;
-	char *tmp_priv_dir = NULL;
-	char *tmp_log_dir = NULL;
-	static char *priv_dir = NULL;
-	static char *log_dir = NULL;
+	struct attrl	*attr;
+	char		*tmp_priv_dir = NULL;
+	char		*tmp_log_dir = NULL;
+	static char	*priv_dir = NULL;
+	static char	*log_dir = NULL;
 	struct	attropl	*attribs;
-	char *tmp_comment = NULL;
-	int clear_comment = 0;
-	int ret = 0;
+	char		*tmp_comment = NULL;
+	int		clear_comment = 0;
+	int		ret = 0;
+
+	int		i = 0;
+	int		j = 0;
+	int		num = -1;
+	int		prio = -1;
+	char		*endp;
+	char		**list;
+	char		got_preempt_sort_frm_server = 0;
+	char		*tok;
 
 	attr = status->attribs;
 
-	 /* resetting the following before fetching from batch_status. */
+	/* resetting the following before fetching from batch_status. */
 	while (attr != NULL) {
+		num = -1;
+
 		if (attr->name != NULL && attr->value != NULL) {
 			if (!strcmp(attr->name, ATTR_sched_priv)) {
 				if ((tmp_priv_dir = string_dup(attr->value)) == NULL)
@@ -2429,11 +2441,94 @@ sched_settings_frm_svr(struct batch_status *status)
 			} else if (!strcmp(attr->name, ATTR_comment)) {
 				if ((tmp_comment = string_dup(attr->value)) == NULL)
 					goto cleanup;
+			} else if (!strcmp(attr->name, ATTR_sched_preempt_order)) {
+				tok = strtok(attr->value, "\t ");
+
+				if (tok != NULL && !isdigit(tok[0])) {
+					/* unset the defaults */
+					conf.preempt_order[0].order[0] = PREEMPT_METHOD_LOW;
+					conf.preempt_order[0].order[1] = PREEMPT_METHOD_LOW;
+					conf.preempt_order[0].order[2] = PREEMPT_METHOD_LOW;
+
+					conf.preempt_order[0].high_range = 100;
+					i = 0;
+					do {
+						if (isdigit(tok[0])) {
+							num = strtol(tok, &endp, 10);
+							if (*endp == '\0') {
+								conf.preempt_order[i].low_range = num + 1;
+								i++;
+								conf.preempt_order[i].high_range = num;
+							}
+						}
+						else {
+							for (j = 0; tok[j] != '\0' ; j++) {
+								switch (tok[j]) {
+									case 'S':
+										conf.preempt_order[i].order[j] = PREEMPT_METHOD_SUSPEND;
+										break;
+									case 'C':
+										conf.preempt_order[i].order[j] = PREEMPT_METHOD_CHECKPOINT;
+										break;
+									case 'R':
+										conf.preempt_order[i].order[j] = PREEMPT_METHOD_REQUEUE;
+										break;
+								}
+							}
+						}
+						tok = strtok(NULL, "\t ");
+					} while (tok != NULL && i < PREEMPT_ORDER_MAX);
+
+					conf.preempt_order[i].low_range = 0;
+				}
+				memcpy (preempt_params_copy.preempt_order, conf.preempt_order, sizeof(preempt_params_copy.preempt_order));
+			} else if (!strcmp(attr->name, ATTR_sched_preempt_queue_prio)) {
+				conf.preempt_queue_prio = strtol(attr->value, &endp, 10);
+				preempt_params_copy.preempt_queue_prio = conf.preempt_queue_prio;
+			} else if (!strcmp(attr->name, ATTR_sched_preempt_prio)) {
+				prio = PREEMPT_PRIORITY_HIGH;
+				list = break_comma_list(attr->value);
+				if (list != NULL) {
+					memset(conf.pprio, 0, sizeof(conf.pprio));
+					conf.pprio[0][0] = PREEMPT_TO_BIT(PREEMPT_QRUN);
+					conf.pprio[0][1] = prio;
+					prio -= PREEMPT_PRIORITY_STEP;
+					for (i = 0; list[i] != NULL; i++) {
+						num = preempt_bit_field(list[i]);
+						if (num >= 0) {
+							conf.pprio[i+1][0] = num;
+							conf.pprio[i+1][1] = prio;
+							conf.preempt_low = prio;
+							prio -= PREEMPT_PRIORITY_STEP;
+						}
+					}
+					/* conf.pprio is an int array of size[NUM_PPRIO][2] */
+					qsort(conf.pprio, NUM_PPRIO, sizeof(int) * 2, preempt_cmp);
+
+					/* cache preemption priority for normal jobs */
+					for (i = 0; conf.pprio[i][1] != 0 && i < NUM_PPRIO; i++) {
+						if (conf.pprio[i][0] == PREEMPT_TO_BIT(PREEMPT_NORMAL)) {
+							conf.preempt_normal = conf.pprio[i][1];
+							break;
+						}
+					}
+
+					free_string_array(list);
+					memcpy(preempt_params_copy.pprio, conf.pprio, sizeof(preempt_params_copy.pprio));
+				}
+			} else if (!strcmp(attr->name, ATTR_sched_preempt_sort)) {
+				got_preempt_sort_frm_server = 1;
+				if (strcasecmp(attr->value, "min_time_since_start") == 0)
+					conf.preempt_min_wt_used = 1;
+				else
+					conf.preempt_min_wt_used = 0;
+				preempt_params_copy.preempt_min_wt_used = conf.preempt_min_wt_used;
 			}
 		}
 		attr = attr->next;
 	}
-
+	if (!got_preempt_sort_frm_server)
+		conf.preempt_min_wt_used = 0;
 	if (!dflt_sched) {
 		int err;
 		int priv_dir_update_fail = 0;
@@ -2638,20 +2733,20 @@ cleanup:
 int
 update_svr_schedobj(int connector, int cmd, int alarm_time)
 {
-	char timestr[128];
-	char port_str[MAX_INT_LEN];
-	static	int svr_knows_me = 0;
-	int	err;
-	struct	attropl	*attribs, *patt;
-	struct batch_status *all_ss = NULL; /* all scheduler objects */
-	struct batch_status *ss = NULL;
-	char sched_host[PBS_MAXHOSTNAME + 1];
+	char			tempstr[128];
+	char			port_str[MAX_INT_LEN];
+	static int		svr_knows_me = 0;
+	int			err;
+	struct attropl		*attribs, *patt;
+	struct batch_status	*ss = NULL;
+	struct batch_status	*all_ss = NULL; /* all scheduler objects */
+	char			sched_host[PBS_MAXHOSTNAME + 1];
 
 	/* This command is only sent on restart of the server */
 	if (cmd == SCH_SCHEDULE_FIRST)
 		svr_knows_me = 0;
 
-	if ((cmd != SCH_SCHEDULE_NULL && svr_knows_me) || cmd == SCH_ERROR || connector < 0)
+	if ((cmd != SCH_SCHEDULE_NULL && cmd != SCH_ATTRS_CONFIGURE && svr_knows_me) || cmd == SCH_ERROR || connector < 0)
 		return 1;
 
 	/* Stat the scheduler to get details of sched */
@@ -2699,9 +2794,15 @@ update_svr_schedobj(int connector, int cmd, int alarm_time)
 		patt->next = patt + 1;
 		patt++;
 		patt->name = ATTR_sched_cycle_len;
-		snprintf(timestr, sizeof(timestr), "%d", alarm_time);
-		patt->value = timestr;
+		snprintf(tempstr, sizeof(tempstr), "%d", alarm_time);
+		patt->value = tempstr;
 	}
+	/*patt->next = patt + 1;
+	patt++;
+	patt->name = ATTR_sched_preempt_sort;
+	snprintf(tempstr, sizeof(tempstr), "%s", "");
+	patt->value = tempstr;
+	*/
 	patt->next = NULL;
 
 	err = pbs_manager(connector,
@@ -2711,8 +2812,5 @@ update_svr_schedobj(int connector, int cmd, int alarm_time)
 		svr_knows_me = 1;
 
 	free(attribs);
-
 	return 1;
 }
-
-

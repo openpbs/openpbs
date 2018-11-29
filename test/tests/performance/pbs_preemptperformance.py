@@ -138,7 +138,15 @@ class TestPreemptPerformance(TestPerformance):
              'resources_available.mem': '2800mb'}
         self.server.create_vnodes('vn', a, 1, self.mom, usenatvnode=True)
         p = '"express_queue, normal_jobs, server_softlimits, queue_softlimits"'
-        self.scheduler.set_sched_config({'preempt_prio': p})
+        a = {'preempt_prio': p}
+        try:
+            self.server.expect(SERVER, {'pbs_version': (GE, '19.0')},
+                               max_attempts=2)
+            self.server.manager(MGR_CMD_SET, SCHED, a, expect=True,
+                                runas=ROOT_USER)
+        except PtlExpectError:
+            self.scheduler.set_sched_config(a)
+
         self.create_workload_and_preempt()
 
     @timeout(3600)
@@ -153,7 +161,15 @@ class TestPreemptPerformance(TestPerformance):
              'resources_available.mem': '1500mb'}
         self.server.create_vnodes('vn', a, 1, self.mom, usenatvnode=True)
         p = '"express_queue, normal_jobs, server_softlimits, queue_softlimits"'
-        self.scheduler.set_sched_config({'preempt_prio': p})
+        a = {'preempt_prio': p}
+        try:
+            self.server.expect(SERVER, {'pbs_version': (GE, '19.0')},
+                               max_attempts=2)
+            self.server.manager(MGR_CMD_SET, SCHED, a, expect=True,
+                                runas=ROOT_USER)
+        except PtlExpectError:
+            self.scheduler.set_sched_config(a)
+
         self.create_workload_and_preempt()
 
     @timeout(3600)
@@ -193,7 +209,13 @@ class TestPreemptPerformance(TestPerformance):
 
         # Add qlist to the resources scheduler checks for
         self.scheduler.add_resource('qlist')
-        self.scheduler.unset_sched_config('preempt_sort')
+        try:
+            self.server.expect(SERVER, {'pbs_version': (GE, '19.0')},
+                               max_attempts=2)
+            self.server.manager(MGR_CMD_UNSET, SCHED, 'preempt_sort',
+                                expect=True, runas=ROOT_USER)
+        except PtlExpectError:
+            self.scheduler.unset_sched_config('preempt_sort')
 
         jid = self.server.submit(j)
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
@@ -282,7 +304,13 @@ class TestPreemptPerformance(TestPerformance):
 
         # Add qlist to the resources scheduler checks for
         self.scheduler.add_resource('qlist')
-        self.scheduler.unset_sched_config('preempt_sort')
+        try:
+            self.server.expect(SERVER, {'pbs_version': (GE, '19.0')},
+                               max_attempts=2)
+            self.server.manager(MGR_CMD_UNSET, SCHED, 'preempt_sort',
+                                expect=True, runas=ROOT_USER)
+        except PtlExpectError:
+            self.scheduler.unset_sched_config('preempt_sort')
 
         jid = self.server.submit(j)
         jid2 = self.server.submit(j2)
@@ -356,7 +384,13 @@ class TestPreemptPerformance(TestPerformance):
 
         # Add foo to the resources scheduler checks for
         self.scheduler.add_resource('foo')
-        self.scheduler.unset_sched_config('preempt_sort')
+        try:
+            self.server.expect(SERVER, {'pbs_version': (GE, '19.0')},
+                               max_attempts=2)
+            self.server.manager(MGR_CMD_UNSET, SCHED, 'preempt_sort',
+                                expect=True, runas=ROOT_USER)
+        except PtlExpectError:
+            self.scheduler.unset_sched_config('preempt_sort')
 
         a = {ATTR_l + '.select': '1:ncpus=1', ATTR_l + '.foo': 25}
         j = Job(TEST_USER, attrs=a)
@@ -402,7 +436,71 @@ class TestPreemptPerformance(TestPerformance):
         self.logger.info('#' * 80)
         self.logger.info('#' * 80)
 
+    @timeout(36000)
+    def test_preemption_basic(self):
+        """
+        Submit a number of low priority job and then submit a high priority
+        job.
+        """
+
+        a = {ATTR_rescavail + ".ncpus": "8"}
+        self.server.create_vnodes(
+            "vn1", a, 400, self.mom, additive=True, fname="vnodedef1")
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
+
+        a = {ATTR_l + '.select': '1:ncpus=1'}
+        for _ in range(3200):
+            j = Job(TEST_USER, attrs=a)
+            j.set_sleep_time(3000)
+            self.server.submit(j)
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
+        self.server.expect(JOB, {'substate=42': 3200}, interval=20,
+                           offset=15)
+
+        qname = 'highp'
+        a = {'queue_type': 'execution', 'priority': '200',
+             'started': 'True', 'enabled': 'True'}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, qname)
+
+        ncpus = 20
+        S_jobs = 20
+        for _ in range(5):
+            a = {ATTR_l + '.select': ncpus,
+                 ATTR_q: 'highp'}
+            j = Job(TEST_USER, attrs=a)
+            j.set_sleep_time(3000)
+            jid_highp = self.server.submit(j)
+
+            self.server.expect(JOB, {ATTR_state: 'R'}, id=jid_highp,
+                               interval=10)
+            self.server.expect(JOB, {'job_state=S': S_jobs}, interval=5)
+            search_str = jid_highp + ";Considering job to run"
+            (_, str1) = self.scheduler.log_match(search_str,
+                                                 id=jid_highp, n='ALL',
+                                                 max_attempts=1, interval=2)
+            search_str = jid_highp + ";Job run"
+            (_, str2) = self.scheduler.log_match(search_str,
+                                                 id=jid_highp, n='ALL',
+                                                 max_attempts=1, interval=2)
+            date_time1 = str1.split(";")[0]
+            date_time2 = str2.split(";")[0]
+            epoch1 = int(time.mktime(time.strptime(
+                date_time1, '%m/%d/%Y %H:%M:%S')))
+            epoch2 = int(time.mktime(time.strptime(
+                date_time2, '%m/%d/%Y %H:%M:%S')))
+            time_diff = epoch2 - epoch1
+            self.logger.info('#' * 80)
+            self.logger.info('#' * 80)
+            res_str = "RESULT: PREEMPTION OF " + str(ncpus) + " JOBS TOOK: " \
+                + str(time_diff) + " SECONDS"
+            self.logger.info(res_str)
+            self.logger.info('#' * 80)
+            self.logger.info('#' * 80)
+            ncpus *= 3
+            S_jobs += ncpus
+
     def tearDown(self):
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
         job_ids = self.server.select()
-        self.server.delete(id=job_ids)

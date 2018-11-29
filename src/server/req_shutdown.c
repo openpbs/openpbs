@@ -45,7 +45,7 @@
  * 	svr_shutdown()
  * 	shutdown_ack()
  * 	req_shutdown()
- * 	shutdown_chkpt()
+ * 	shutdown_preempt_chkpt()
  * 	post_chkpt()
  * 	rerun_or_kill()
  *
@@ -79,7 +79,8 @@
 
 /* Private Fuctions Local to this File */
 
-static int shutdown_chkpt(job *);
+int shutdown_preempt_chkpt(job *, struct batch_request *);
+void post_hold(struct work_task *);
 static void post_chkpt(struct work_task *);
 static void rerun_or_kill(job *, char *text);
 
@@ -208,7 +209,7 @@ svr_shutdown(int type)
 				(*pattr->at_val.at_str != 'n')) {
 				/* do checkpoint of job */
 
-				if (shutdown_chkpt(pjob) == 0)
+				if (shutdown_preempt_chkpt(pjob, NULL) == 0)
 					continue;
 			}
 
@@ -285,7 +286,7 @@ req_shutdown(struct batch_request *preq)
 
 /**
  * @brief
- * 		shutdown_chkpt - perform checkpoint of job by issuing a hold request to mom
+ * 		shutdown_preempt_chkpt - perform checkpoint of job by issuing a hold request to mom
  *
  * @param[in,out]	pjob	-	pointer to job
  *
@@ -295,11 +296,12 @@ req_shutdown(struct batch_request *preq)
  * @retval	PBSE_SYSTEM	: error
  */
 
-static int
-shutdown_chkpt(job *pjob)
+int
+shutdown_preempt_chkpt(job *pjob, struct batch_request *nest)
 {
 	struct batch_request *phold;
 	attribute 	      temp;
+	void (*func)(struct work_task *);
 
 	phold = alloc_br(PBS_BATCH_HoldJob);
 	if (phold == NULL)
@@ -321,7 +323,14 @@ shutdown_chkpt(job *pjob)
 		ATR_ENCODE_CLIENT, NULL) < 0)
 		return (PBSE_SYSTEM);
 
-	if (relay_to_mom(pjob, phold, post_chkpt) == 0) {
+	phold->rq_extra = pjob;
+	if (nest) {
+		phold->rq_nest = nest;
+		func = post_hold;
+	} else
+		func = post_chkpt;
+
+	if (relay_to_mom(pjob, phold, func) == 0) {
 
 		if (pjob->ji_qs.ji_state == JOB_STATE_TRANSIT)
 			svr_setjobstate(pjob, JOB_STATE_RUNNING, JOB_SUBSTATE_RUNNING);
@@ -336,9 +345,9 @@ shutdown_chkpt(job *pjob)
 
 /**
  * @brief
- * 		post-chkpt - clean up after shutdown_chkpt
+ * 		post-chkpt - clean up after shutdown_preempt_chkpt
  *		This is called on the reply from MOM to a Hold request made in
- *		shutdown_chkpt().  If the request succeeded, then record in job.
+ *		shutdown_preempt_chkpt().  If the request succeeded, then record in job.
  *		If the request failed, then we fall back to rerunning or aborting
  *		the job.
  *
@@ -400,7 +409,7 @@ rerun_or_kill(job *pjob, char *text)
 
 		/* job is rerunable, mark it to be requeued */
 
-		(void)issue_signal(pjob, "SIGKILL", release_req, 0);
+		(void)issue_signal(pjob, "SIGKILL", release_req, 0, NULL);
 		pjob->ji_qs.ji_substate  = JOB_SUBSTATE_RERUN;
 		(void)strcpy(log_buffer, msg_init_queued);
 		(void)strcat(log_buffer, pjob->ji_qhdr->qu_qs.qu_name);

@@ -443,7 +443,13 @@ class TestNodeBuckets(TestFunctional):
         c = {'$action': 'checkpoint_abort 30 !' + self.chk_file + ' %sid'}
         self.mom.add_config(c)
 
-        self.scheduler.set_sched_config({'preempt_order': 'C'})
+        try:
+            self.server.expect(SERVER, {'pbs_version': (GE, '19.0')},
+                               max_attempts=2)
+            self.server.manager(MGR_CMD_SET, SCHED, {'preempt_order': 'C'},
+                                expect=True, runas=ROOT_USER)
+        except PtlExpectError:
+            self.scheduler.set_sched_config({'preempt_order': 'C'})
         attrs = {'Resource_List.select': '1430:ncpus=1:color=orange',
                  'Resource_List.place': 'scatter:excl'}
         j_c1 = Job(TEST_USER, attrs)

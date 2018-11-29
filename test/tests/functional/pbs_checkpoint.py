@@ -135,7 +135,13 @@ exit 0
         a job is preempted via checkpoint. It does so by submitting a job
         in express queue which preempts a running job in the default queue.
         """
-        self.scheduler.set_sched_config({'preempt_order': 'C'})
+        try:
+            self.server.expect(SERVER, {'pbs_version': (GE, '19.0')},
+                               max_attempts=2)
+            self.server.manager(MGR_CMD_SET, SCHED, {'preempt_order': 'C'},
+                                expect=True, runas=ROOT_USER)
+        except PtlExpectError:
+            self.scheduler.set_sched_config({'preempt_order': 'C'})
         a = {'queue_type': 'execution',
              'started': 'True',
              'enabled': 'True',

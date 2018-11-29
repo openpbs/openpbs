@@ -713,7 +713,7 @@ pbsd_init(int type)
 			/* No Schedulers found in DB */
 			/* Create and save default to DB*/
 			dflt_scheduler = sched_alloc(PBS_DFLT_SCHED_NAME);
-			set_sched_default(dflt_scheduler, 0);
+			set_sched_default(dflt_scheduler, 0, 0);
 			(void)sched_save_db(dflt_scheduler, SVR_SAVE_NEW);
 		} else {
 			while ((rc = pbs_db_cursor_next(conn, state, &obj)) == 0) {
@@ -763,7 +763,7 @@ pbsd_init(int type)
 		}
 		svr_save_db(&server, SVR_SAVE_NEW);
 		dflt_scheduler = sched_alloc(PBS_DFLT_SCHED_NAME);
-		set_sched_default(dflt_scheduler, 0);
+		set_sched_default(dflt_scheduler, 0, 0);
 		(void)sched_save_db(dflt_scheduler, SVR_SAVE_NEW);
 	}
 
