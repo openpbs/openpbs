@@ -379,7 +379,7 @@ void disconnect_from_server();
 "resources_cost - the cost factors of resources.  Used for sync. job starting\n" \
 "resources_default - the default resource value when the job does not specify\n" \
 "resource_max - the maximum ammount of resources that are on the system\n" \
-"scheduler_iteration - the ammount of seconds between timed scheduler iterations\n" \
+"scheduler_iteration - the amount of seconds between timed scheduler iterations\n" \
 "scheduling - when true the server should tell the scheduler to run\n" \
 "system_cost - arbitirary value factored into resource costs\n" \
 "default_qdel_arguments - default arguments for qdel command\n" \

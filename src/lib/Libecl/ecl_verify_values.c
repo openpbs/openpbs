@@ -82,6 +82,14 @@
 #include "batch_request.h"
 #include "pbs_share.h"
 
+const char *preempt_prio_names[] = {
+	"normal_jobs",
+	"fairshare",
+	"queue_softlimits",
+	"server_softlimits",
+	"starving_jobs",
+	"express_queue",
+};
 static long ecl_pbs_max_licenses = PBS_MAX_LICENSING_LICENSES;
 
 /**
@@ -1742,10 +1750,6 @@ verify_value_tolerate_node_failures(int batch_request, int parent_object, int cm
 {
 	int i;
 	char *tolerance_level[] = {TOLERATE_NODE_FAILURES_ALL, TOLERATE_NODE_FAILURES_JOB_START, TOLERATE_NODE_FAILURES_NONE, NULL};
-
-	if ((pattr->value == NULL) || (pattr->value[0] == '\0'))
-		return PBSE_BADATVAL;
-
 	/* does the requested value match a legal value? */
 	for (i = 0; tolerance_level[i] != NULL; i++) {
 		if (strcmp(tolerance_level[i], pattr->value) == 0)
@@ -1753,3 +1757,185 @@ verify_value_tolerate_node_failures(int batch_request, int parent_object, int cm
 	}
 	return (PBSE_BADATVAL);
 }
+
+/**
+ * @brief
+ *	Function checks the resource "preempt_prio" and verifies its values
+ *
+ * @see
+ *
+ * @param[in]	batch_request	-	Batch Request Type
+ * @param[in]	parent_object	-	Parent Object Type
+ * @param[in]	cmd		-	Command Type
+ * @param[in]	pattr		-	address of attribute to verify
+ * @param[out]	err_msg		-	error message list
+ *
+ * @return	int
+ * @retval	0 	- 	Attribute passed verification
+ * @retval	>0 	- 	Failed verification - pbs errcode is returned
+ *
+ * @par	Side effects:
+ * 	None
+ *
+ */
+int
+verify_value_preempt_prio(int batch_request, int parent_object, int cmd,
+	struct attropl *pattr, char **err_msg)
+{
+	char **list;
+	char *saveptr;
+
+	list = break_comma_list(pattr->value);
+	if (list != NULL) {
+		int i;
+		int j;
+		for (i = 0; list[i] != NULL; i++) {
+			char *tok;
+			short found;
+			found = 0;
+			tok = strtok_r(list[i], "+", &saveptr);
+			while (tok != NULL) {
+				for (j = 0; j < (sizeof(preempt_prio_names) / sizeof(char *)); j++)
+					if (!strcmp(preempt_prio_names[j], tok))
+						found = 1;
+
+				if (!found) {
+					free_string_array(list);
+					return PBSE_BADATVAL;
+				}
+				tok = strtok_r(NULL, "+", &saveptr);
+			}
+		}
+		free_string_array(list);
+	} else
+		return PBSE_BADATVAL;
+
+	return 0;
+}
+
+/**
+ * @brief
+ *	Function checks the resource "preempt_order" and verifies its values
+ *
+ * @see
+ *
+ * @param[in]	batch_request	-	Batch Request Type
+ * @param[in]	parent_object	-	Parent Object Type
+ * @param[in]	cmd		-	Command Type
+ * @param[in]	pattr		-	address of attribute to verify
+ * @param[out]	err_msg		-	error message list
+ *
+ * @return	int
+ * @retval	0 	- 	Attribute passed verification
+ * @retval	>0 	- 	Failed verification - pbs errcode is returned
+ *
+ * @par	Side effects:
+ * 	None
+ *
+ */
+int
+verify_value_preempt_order(int batch_request, int parent_object, int cmd,
+	struct attropl *pattr, char **err_msg)
+{
+	char *save_ptr;
+	char *tok = NULL;
+	char *endp = NULL;
+	char copy[256] = {0};
+
+	if ((pattr->value == NULL) || (pattr->value[0] == '\0'))
+		return PBSE_BADATVAL;
+
+	strcpy(copy, pattr->value);
+	tok = strtok_r(copy, "\t ", &save_ptr);
+
+	if (tok != NULL && !isdigit(tok[0])) {
+		int i = 0;
+		char s_done = 0;
+		char c_done = 0;
+		char r_done = 0;
+		char next_is_num = 0;
+		do {
+			int j = 0;
+			j = isdigit(tok[0]);
+			if (j) {
+				if (next_is_num) {
+					(void)strtol(tok, &endp, 10);
+					if (*endp == '\0') {
+						i++;
+						next_is_num = 0;
+					} else
+						return PBSE_BADATVAL;
+				} else
+					return PBSE_BADATVAL;
+			} else if (!next_is_num) {
+				for (j = 0; tok[j] != '\0' ; j++) {
+					switch (tok[j]) {
+						case 'S':
+							if (!s_done)
+								s_done = 1;
+							else
+								return PBSE_BADATVAL;
+							break;
+						case 'C':
+							if (!c_done)
+								c_done = 1;
+							else
+								return PBSE_BADATVAL;
+							break;
+						case 'R':
+							if (!r_done)
+								r_done = 1;
+							else
+								return PBSE_BADATVAL;
+							break;
+						default:
+							return PBSE_BADATVAL;
+					}
+					next_is_num = 1;
+				}
+				s_done = 0;
+				c_done = 0;
+				r_done = 0;
+			} else
+				return PBSE_BADATVAL;
+			tok = strtok_r(NULL, "\t ", &save_ptr);
+		} while (tok != NULL && i < PREEMPT_ORDER_MAX);
+
+		if (tok != NULL)
+			return PBSE_BADATVAL;
+	} else
+		return PBSE_BADATVAL;
+
+	return 0;
+}
+
+/**
+ * @brief
+ *	Function checks the resource "preempt_sort" and verifies its values
+ *
+ * @see
+ *
+ * @param[in]	batch_request	-	Batch Request Type
+ * @param[in]	parent_object	-	Parent Object Type
+ * @param[in]	cmd		-	Command Type
+ * @param[in]	pattr		-	address of attribute to verify
+ * @param[out]	err_msg		-	error message list
+ *
+ * @return	int
+ * @retval	0 	- 	Attribute passed verification
+ * @retval	>0 	- 	Failed verification - pbs errcode is returned
+ *
+ * @par	Side effects:
+ * 	None
+ *
+ */
+int
+verify_value_preempt_sort(int batch_request, int parent_object, int cmd,
+	struct attropl *pattr, char **err_msg)
+{
+	if (strcmp(pattr->value, PBS_PREEMPT_SORT_DEFAULT) != 0)
+		return PBSE_BADATVAL;
+
+	return 0;
+}
+

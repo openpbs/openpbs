@@ -122,7 +122,6 @@ static int bad;
 static int status_que(pbs_queue *, struct batch_request *, pbs_list_head *);
 static int status_node(struct pbsnode *, struct batch_request *, pbs_list_head *);
 static int status_resv(resc_resv *, struct batch_request *, pbs_list_head *);
-extern pbs_sched *find_scheduler(char *sched_name);
 /**
  * @brief
  * 		Support function for req_stat_job() and stat_a_jobidname().

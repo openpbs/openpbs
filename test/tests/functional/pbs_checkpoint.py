@@ -135,7 +135,8 @@ exit 0
         a job is preempted via checkpoint. It does so by submitting a job
         in express queue which preempts a running job in the default queue.
         """
-        self.scheduler.set_sched_config({'preempt_order': 'C'})
+        self.server.manager(MGR_CMD_SET, SCHED, {'preempt_order': 'C'},
+                            expect=True, runas=ROOT_USER)
         a = {'queue_type': 'execution',
              'started': 'True',
              'enabled': 'True',

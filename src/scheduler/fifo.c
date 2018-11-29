@@ -2421,8 +2421,9 @@ sched_settings_frm_svr(struct batch_status *status)
 
 	attr = status->attribs;
 
-	 /* resetting the following before fetching from batch_status. */
+	/* resetting the following before fetching from batch_status. */
 	while (attr != NULL) {
+
 		if (attr->name != NULL && attr->value != NULL) {
 			if (!strcmp(attr->name, ATTR_sched_priv)) {
 				if ((tmp_priv_dir = string_dup(attr->value)) == NULL)
@@ -2437,7 +2438,6 @@ sched_settings_frm_svr(struct batch_status *status)
 		}
 		attr = attr->next;
 	}
-
 	if (!dflt_sched) {
 		int err;
 		int priv_dir_update_fail = 0;
@@ -2642,20 +2642,20 @@ cleanup:
 int
 update_svr_schedobj(int connector, int cmd, int alarm_time)
 {
-	char timestr[128];
+	char tempstr[128];
 	char port_str[MAX_INT_LEN];
-	static	int svr_knows_me = 0;
-	int	err;
-	struct	attropl	*attribs, *patt;
-	struct batch_status *all_ss = NULL; /* all scheduler objects */
+	static int svr_knows_me = 0;
+	int err;
+	struct attropl*attribs, *patt;
 	struct batch_status *ss = NULL;
+	struct batch_status *all_ss = NULL; /* all scheduler objects */
 	char sched_host[PBS_MAXHOSTNAME + 1];
 
 	/* This command is only sent on restart of the server */
 	if (cmd == SCH_SCHEDULE_FIRST)
 		svr_knows_me = 0;
 
-	if ((cmd != SCH_SCHEDULE_NULL && svr_knows_me) || cmd == SCH_ERROR || connector < 0)
+	if ((cmd != SCH_SCHEDULE_NULL && cmd != SCH_ATTRS_CONFIGURE && svr_knows_me) || cmd == SCH_ERROR || connector < 0)
 		return 1;
 
 	/* Stat the scheduler to get details of sched */
@@ -2703,8 +2703,8 @@ update_svr_schedobj(int connector, int cmd, int alarm_time)
 		patt->next = patt + 1;
 		patt++;
 		patt->name = ATTR_sched_cycle_len;
-		snprintf(timestr, sizeof(timestr), "%d", alarm_time);
-		patt->value = timestr;
+		snprintf(tempstr, sizeof(tempstr), "%d", alarm_time);
+		patt->value = tempstr;
 	}
 	patt->next = NULL;
 
@@ -2715,8 +2715,5 @@ update_svr_schedobj(int connector, int cmd, int alarm_time)
 		svr_knows_me = 1;
 
 	free(attribs);
-
 	return 1;
 }
-
-

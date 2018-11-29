@@ -707,6 +707,10 @@ dispatch_request(int sfds, struct batch_request *request)
 			req_holdjob(request);
 			break;
 #ifndef PBS_MOM
+		case PBS_BATCH_PreemptJobs:
+			req_preemptjobs(request);
+			break;
+
 		case PBS_BATCH_LocateJob:
 			req_locatejob(request);
 			break;
@@ -1372,6 +1376,9 @@ free_br(struct batch_request *preq)
 		case PBS_BATCH_SelStat:
 			free_attrlist(&preq->rq_ind.rq_select.rq_selattr);
 			free_attrlist(&preq->rq_ind.rq_select.rq_rtnattr);
+			break;
+		case PBS_BATCH_PreemptJobs:
+			free(preq->rq_ind.rq_preempt.ppj_list);
 			break;
 #endif /* PBS_MOM */
 	}

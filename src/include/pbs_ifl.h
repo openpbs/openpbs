@@ -344,6 +344,10 @@ extern "C" {
 #define ATTR_sched_log "sched_log"
 #define ATTR_sched_user "sched_user"
 #define ATTR_sched_state  "state"
+#define ATTR_sched_preempt_queue_prio  "preempt_queue_prio"
+#define ATTR_sched_preempt_prio  "preempt_prio"
+#define ATTR_sched_preempt_order  "preempt_order"
+#define ATTR_sched_preempt_sort  "preempt_sort"
 
 /* additional node "attributes" names */
 
@@ -528,6 +532,19 @@ struct ecl_attribute_errors {
 	struct  ecl_attrerr *ecl_attrerr; /* ecl_attrerr array of structs */
 };
 
+enum preempt_method
+{
+	PREEMPT_METHOD_LOW,
+	PREEMPT_METHOD_SUSPEND,
+	PREEMPT_METHOD_CHECKPOINT,
+	PREEMPT_METHOD_REQUEUE,
+	PREEMPT_METHOD_HIGH
+};
+
+typedef struct preempt_job_info {
+        char	job_id[PBS_MAXSVRJOBID + 1];
+        char	order[PREEMPT_METHOD_HIGH + 1];
+} preempt_job_info;
 
 /* Resource Reservation Information */
 typedef int	pbs_resource_t;	/* resource reservation handle */
@@ -640,6 +657,7 @@ DECLDIR int pbs_terminate(int, int, char *);
 
 DECLDIR char *pbs_modify_resv(int, char*, struct attropl *, char *);
 
+DECLDIR preempt_job_info *pbs_preempt_jobs(int, char **);
 #else
 
 #ifndef __PBS_ERRNO
@@ -730,6 +748,8 @@ extern int pbs_delresv(int, char *, char *);
 extern int pbs_terminate(int, int, char *);
 
 extern char *pbs_modify_resv(int, char*, struct attropl *, char *);
+
+extern preempt_job_info *pbs_preempt_jobs(int, char **);
 #endif /* _USRDLL */
 #ifdef	__cplusplus
 }

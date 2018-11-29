@@ -2759,7 +2759,6 @@ Update_Resvstate_if_resv(job *pjob)
 	}
 }
 
-
 /**
  * @brief
  * 		get_wall - get the value of "walltime" for the job
@@ -2825,6 +2824,101 @@ get_used_wall(job *jp)
 		return pres->rs_value.at_val.at_long;   /*wall time value*/
 }
 
+/**
+ * @brief
+ * 		get_softwall - get the value of "soft_walltime" for the job
+ *
+ * @param[in]	jp	-	jp is a valid job pointer
+ *
+ * @return	int
+ * @retval	-1	: function failed
+ * @retval	soft walltime value	: function succeeded
+ *
+ * @note
+ * 		Assumption: input jp is a valid job pointer
+ */
+int
+get_softwall(job *jp)
+{
+	resource_def	*rscdef;
+	resource	*pres;
+
+	rscdef = find_resc_def(svr_resc_def, "soft_walltime", svr_resc_size);
+	if (rscdef == 0)
+		return (-1);
+	pres = find_resc_entry(&jp->ji_wattr[JOB_ATR_resource], rscdef);
+	if (pres == 0)
+		return (-1);
+	else if ((pres->rs_value.at_flags & ATR_VFLAG_SET) == 0)
+		return (-1);
+	else
+		return pres->rs_value.at_val.at_long;   /*wall time value*/
+}
+
+/**
+ * @brief
+ * 		get_cput - get the value of "cput" for the job
+ *
+ * @param[in]	jp	-	jp is a valid job pointer
+ *
+ * @return	int
+ * @retval	-1	: function failed
+ * @retval	cput value	: function succeeded
+ *
+ * @note
+ * 		Assumption: input jp is a valid job pointer
+ */
+int
+get_cput(job *jp)
+{
+	resource_def	*rscdef;
+	resource	*pres;
+
+	rscdef = find_resc_def(svr_resc_def, "cput", svr_resc_size);
+	if (rscdef == 0)
+		return (-1);
+	pres = find_resc_entry(&jp->ji_wattr[JOB_ATR_resource], rscdef);
+	if (pres == 0)
+		return (-1);
+	else if ((pres->rs_value.at_flags & ATR_VFLAG_SET) == 0)
+		return (-1);
+	else
+		return pres->rs_value.at_val.at_long;   /*wall time value*/
+}
+
+/**
+ * @brief
+ * 		get the amount of "cput" resource USED for the job
+ *
+ * @param[in]	jp	- Pointer to a job
+ *
+ * @return	Success/Failure
+ * @retval	-1 		- Function failed
+ * @retval	walltime value	- Function succeeded
+ * @note
+ * 		Assumption: input jp is a valid job pointer
+ *
+ * @return	wall time value
+ * @retval	-1	: failure
+ *
+ */
+int
+get_used_cput(job *jp)
+{
+	resource_def	*rscdef;
+	resource	*pres;
+
+	rscdef = find_resc_def(svr_resc_def, "cput", svr_resc_size);
+	if (rscdef == 0)
+		return (-1);
+	pres = find_resc_entry(&jp->ji_wattr[JOB_ATR_resc_used], rscdef);
+	if (pres == 0)
+		return (-1);
+	else if ((pres->rs_value.at_flags & ATR_VFLAG_SET) == 0)
+		return (-1);
+	else
+		return pres->rs_value.at_val.at_long;   /*wall time value*/
+}
 /*-------------------------------------------------------------------------------
  Functions for establishing reservation related tasks
  --------------------------------------------------------------------------------*/

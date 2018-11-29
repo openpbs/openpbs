@@ -208,6 +208,8 @@ struct batch_reply *reply;
 		(void)free(reply->brp_un.brp_rescq.brq_alloc);
 		(void)free(reply->brp_un.brp_rescq.brq_resvd);
 		(void)free(reply->brp_un.brp_rescq.brq_down);
+	} else if (reply->brp_choice == BATCH_REPLY_CHOICE_PreemptJobs) {
+		(void)free(reply->brp_un.brp_preempt_jobs.ppj_list);
 	}
 
 	(void)free(reply);

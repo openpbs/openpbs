@@ -49,7 +49,7 @@
  * 	init_config()
  * 	scan()
  * 	preempt_bit_field()
- * 	premept_cmp()
+ * 	preempt_cmp()
  *
  */
 #include <pbs_config.h>
@@ -61,6 +61,7 @@
 #include <ctype.h>
 #include <log.h>
 #include <libutil.h>
+#include <unistd.h>
 #include "data_types.h"
 #include "parse.h"
 #include "constant.h"
@@ -107,15 +108,13 @@ parse_config(char *fname)
 	char *config_value;		/* parsed second word - right after colen (:) */
 	char *prime_value;		/* optional third word */
 	char *tok;			/* used with strtok() */
-	char **list;			/* used for temporary break_comma_list() calls*/
 	char *obsolete[2];		/* used to log messages for obsolete params */
 	int num = -1;			/* used to convert string -> integer */
 	char *endp;			/* used for strtol() */
 	char error = 0;		/* boolean: is there an error? */
 	enum prime_time prime;	/* used to convert string -> prime value */
 	int linenum = 0;		/* the current line number in the file */
-	int prio;			/* used for setting priorities in premption */
-	int i, j;
+	int i;
 
 	/* sorting variables */
 	int pkey_num = 0;		/* number of prime time keys for job sort */
@@ -365,8 +364,10 @@ parse_config(char *fname)
 				}
 				else if (!strcmp(config_name, PARSE_LOG_FILTER))
 					conf.log_filter = num;
-				else if (!strcmp(config_name, PARSE_PREEMPT_QUEUE_PRIO))
-					conf.preempt_queue_prio = num;
+				else if (!strcmp(config_name, PARSE_PREEMPT_QUEUE_PRIO)) {
+					obsolete[0] = PARSE_PREEMPT_QUEUE_PRIO;
+					obsolete[1] = "nothing - set via qmgr";
+				}
 				else if (!strcmp(config_name, PARSE_RES_UNSET_INFINITE)) {
 					sprintf(buf2, "%s,mpiprocs,ompthreads", config_value);
 					conf.ignore_res = break_comma_list(buf2);
@@ -496,100 +497,16 @@ parse_config(char *fname)
 					}
 				}
 				else if (!strcmp(config_name, PARSE_PREEMPT_PRIO)) {
-					prio = PREEMPT_PRIORITY_HIGH;
-					list = break_comma_list(config_value);
-					if (list != NULL) {
-						conf.pprio[0][0] = PREEMPT_TO_BIT(PREEMPT_QRUN);
-						conf.pprio[0][1] = prio;
-						prio -= PREEMPT_PRIORITY_STEP;
-						for (i = 0; list[i] != NULL; i++) {
-							num = preempt_bit_field(list[i]);
-							if (num >= 0) {
-								conf.pprio[i+1][0] = num;
-								conf.pprio[i+1][1] = prio;
-								conf.preempt_low = prio;
-								prio -= PREEMPT_PRIORITY_STEP;
-							}
-							else
-								error = 1;
-						}
-						if (!error) {
-							/* conf.pprio is an int array of size[NUM_PPRIO][2] */
-							qsort(conf.pprio, NUM_PPRIO, sizeof(int) * 2, premept_cmp);
-
-							/* cache preemption priority for normal jobs */
-							for (i = 0; conf.pprio[i][1] != 0 && i < NUM_PPRIO; i++) {
-								if (conf.pprio[i][0] == PREEMPT_TO_BIT(PREEMPT_NORMAL)) {
-									conf.preempt_normal = conf.pprio[i][1];
-									break;
-								}
-							}
-						}
-
-						free_string_array(list);
-					}
-					else
-						error = 1;
+					obsolete[0] = PARSE_PREEMPT_PRIO;
+					obsolete[1] = "nothing - set via qmgr";
 				}
 				else if (!strcmp(config_name, PARSE_PREEMPT_ORDER)) {
-					tok = strtok(config_value, DELIM);
-
-					if (tok != NULL && !isdigit(tok[0])) {
-						/* unset the defaults */
-						conf.preempt_order[0].order[0] = PREEMPT_METHOD_LOW;
-						conf.preempt_order[0].order[1] = PREEMPT_METHOD_LOW;
-						conf.preempt_order[0].order[2] = PREEMPT_METHOD_LOW;
-
-						conf.preempt_order[0].high_range = 100;
-						i = 0;
-						do {
-							if (isdigit(tok[0])) {
-								num = strtol(tok, &endp, 10);
-								if (*endp == '\0') {
-									conf.preempt_order[i].low_range = num + 1;
-									i++;
-									conf.preempt_order[i].high_range = num;
-								}
-								else
-									error = 1;
-							}
-							else {
-								for (j = 0; tok[j] != '\0' ; j++) {
-									switch (tok[j]) {
-										case 'S':
-											conf.preempt_order[i].order[j] = PREEMPT_METHOD_SUSPEND;
-											break;
-										case 'C':
-											conf.preempt_order[i].order[j] =PREEMPT_METHOD_CHECKPOINT;
-											break;
-										case 'R':
-											conf.preempt_order[i].order[j] = PREEMPT_METHOD_REQUEUE;
-											break;
-										default:
-											error = 1;
-									}
-								}
-							}
-							tok = strtok(NULL, DELIM);
-						} while (tok != NULL && i < PREEMPT_ORDER_MAX);
-
-						if (tok != NULL) {
-							sprintf(logbuf, "Too many preempt orderings, %d max.",
-								PREEMPT_ORDER_MAX);
-							schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE,
-								fname, logbuf);
-							error = 1;
-						}
-						conf.preempt_order[i].low_range = 0;
-					}
-					else
-						error = 1;
+					obsolete[0] = PARSE_PREEMPT_ORDER;
+					obsolete[1] = "nothing - set via qmgr";
 				}
 				else if (!strcmp(config_name, PARSE_PREEMPT_SORT)) {
-					if (strcmp(config_value, "min_time_since_start") != 0)
-						error = 1;
-					else
-						conf.preempt_min_wt_used = num ? 1 : 0;
+					obsolete[0] = PARSE_PREEMPT_SORT;
+					obsolete[1] = "nothing - set via qmgr";
 				}
 				else if (!strcmp(config_name, PARSE_JOB_SORT_KEY)) {
 					if (((prime == PRIME || prime == ALL) && pkey_num > MAX_SORTS) ||
@@ -1043,27 +960,9 @@ init_config()
 	conf.enforce_no_shares = 1;
 	conf.fairshare_decay_factor = .5;
 
-	/* default ordering suspend checkpoint requeue */
-	conf.preempt_order[0].high_range = 100;
-	conf.preempt_order[0].low_range = 0;
-	conf.preempt_order[0].order[0] = PREEMPT_METHOD_SUSPEND;
-	conf.preempt_order[0].order[1] = PREEMPT_METHOD_CHECKPOINT;
-	conf.preempt_order[0].order[2] = PREEMPT_METHOD_REQUEUE;
-	conf.dflt_opt_backfill_fuzzy = BF_DEFAULT;
-
-
-	/* if preempt_prio is not specified, then keep backwards compatibility
-	 * of only the express queue.  If express is not specified but others are
-	 * they'll have a much higher prio then 1.
-	 * qrun is always the top preempt prio
-	 */
-	conf.pprio[0][0] = PREEMPT_TO_BIT(PREEMPT_QRUN);
-	conf.pprio[0][1] = 10;
-	conf.pprio[1][0] = PREEMPT_TO_BIT(PREEMPT_EXPRESS);
-	conf.pprio[1][1] = 1;
-
-	/* don't want it to default to 0 and think all queues are express queues */
+	/* don't want it to default to 0 and think all queues are express queues
 	conf.preempt_queue_prio = SCHD_INFINITY;
+	*/
 
 	conf.max_preempt_attempts = SCHD_INFINITY;
 	conf.max_jobs_to_check = SCHD_INFINITY;
@@ -1092,7 +991,7 @@ init_config()
 
 /**
  * @brief
- *		scan - Scan through the string looking for a white space delemeted
+ *		scan - Scan through the string looking for a white space delimited
  *	       word or quoted string.  If the target parameter is not 0, then
  *	       use that as a delimiter as well.
  *
@@ -1178,11 +1077,11 @@ preempt_bit_field(char *plist)
 	while (tok != NULL) {
 		obitfield = bitfield;
 		for (i = 0; i < PREEMPT_HIGH; i++) {
-			if (!strcmp(prempt_prio_info[i].str, tok))
-				bitfield |= PREEMPT_TO_BIT(prempt_prio_info[i].value);
+			if (!strcmp(preempt_prio_info[i].str, tok))
+				bitfield |= PREEMPT_TO_BIT(preempt_prio_info[i].value);
 		}
 
-		/* invaid preempt string */
+		/* invalid preempt string */
 		if (obitfield == bitfield) {
 			bitfield = -1;
 			break;
@@ -1209,7 +1108,7 @@ preempt_bit_field(char *plist)
  * @retval	0	: Equal
  */
 int
-premept_cmp(const void *p1, const void *p2)
+preempt_cmp(const void *p1, const void *p2)
 {
 	int *i1, *i2;
 
@@ -1229,3 +1128,4 @@ premept_cmp(const void *p1, const void *p2)
 			return 0;
 	}
 }
+

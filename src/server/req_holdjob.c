@@ -73,7 +73,7 @@
 /* Private Functions Local to this file */
 
 static int get_hold(pbs_list_head *, char **);
-static void post_hold(struct work_task *);
+void post_hold(struct work_task *);
 
 /* Global Data Items: */
 
@@ -153,7 +153,6 @@ req_holdjob(struct batch_request *preq)
 		req_reject(PBSE_BADSTATE, 0, preq);
 		return;
 	}
-
 
 	/* cannot do anything until we decode the holds to be set */
 
@@ -321,13 +320,13 @@ req_releasejob(struct batch_request *preq)
  *		Decode the hold attribute into temphold.
  *
  * @param[in]	phead	- pbs list head.
- * @param[out]	phead	- RETURN - ptr to hold value
+ * @param[out]	pset	- RETURN - ptr to hold value
  *
  * @return	error code
  */
 
 static int
-get_hold(pbs_list_head *phead, char	 **pset)
+get_hold(pbs_list_head *phead, char **pset)
 {
 	int		 have_one = 0;
 	struct svrattrl *holdattr = NULL;
@@ -360,9 +359,9 @@ get_hold(pbs_list_head *phead, char	 **pset)
 
 /**
  * @brief
- * 		"post hold" - A round hold in the ground in which a post is placed :-)
+ * 		"post hold" - A round hole in the ground in which a post is placed :-)
  *		This function is called when a hold request which was sent to Mom has
- *		been responed by to MOM.  The hold request for the running job is
+ *		been responed to by MOM.  The hold request for the running job is
  *		completed and replied to based on what was returned by Mom.
  *
  *		If Mom repies with:
@@ -378,7 +377,7 @@ get_hold(pbs_list_head *phead, char	 **pset)
  * @return void
  */
 
-static void
+void
 post_hold(struct work_task *pwt)
 {
 	int			code;
@@ -396,7 +395,10 @@ post_hold(struct work_task *pwt)
 		conn = get_conn(preq->rq_conn);
 
 		if (!conn) {
-			req_reject(PBSE_SYSTEM, 0, preq);
+			if (preq->rq_nest)
+				reply_preempt_jobs_request(PBSE_SYSTEM, 0, preq);
+			else
+				req_reject(PBSE_SYSTEM, 0, preq);
 			return;
 		}
 
@@ -408,7 +410,10 @@ post_hold(struct work_task *pwt)
 		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 			preq->rq_ind.rq_hold.rq_orig.rq_objname,
 			msg_postmomnojob);
-		req_reject(PBSE_UNKJOBID, 0, preq);
+		if (preq->rq_nest)
+			reply_preempt_jobs_request(PBSE_SYSTEM, 0, preq);
+		else
+			req_reject(PBSE_UNKJOBID, 0, preq);
 		return;
 	}
 	if (code != 0) {
@@ -418,7 +423,10 @@ post_hold(struct work_task *pwt)
 			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 				pjob->ji_qs.ji_jobid, log_buffer);
 			/* send message back to server for display to user */
-			reply_text(preq, code, log_buffer);
+			if (preq->rq_nest)
+				reply_preempt_jobs_request(code, 0, preq);
+			else
+				reply_text(preq, code, log_buffer);
 			return;
 		}
 	} else if (code == 0) {
@@ -437,5 +445,8 @@ post_hold(struct work_task *pwt)
 
 		account_record(PBS_ACCT_CHKPNT, pjob, NULL);
 	}
-	reply_ack(preq);
+	if (preq->rq_nest)
+		reply_preempt_jobs_request(PBSE_NONE, 2, preq);
+	else
+		reply_ack(preq);
 }

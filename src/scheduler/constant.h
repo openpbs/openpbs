@@ -447,15 +447,6 @@ enum preempt
 	PREEMPT_HIGH
 };
 
-enum preempt_method
-{
-	PREEMPT_METHOD_LOW,
-	PREEMPT_METHOD_SUSPEND,
-	PREEMPT_METHOD_CHECKPOINT,
-	PREEMPT_METHOD_REQUEUE,
-	PREEMPT_METHOD_HIGH
-};
-
 enum schd_simulate_cmd
 {
 	SIM_NONE,

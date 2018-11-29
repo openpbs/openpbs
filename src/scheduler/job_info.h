@@ -150,7 +150,7 @@ int find_and_preempt_jobs(status *policy, int pbs_sd, resource_resv *hjinfo, ser
  */
 int *
 find_jobs_to_preempt(status *policy, resource_resv *jinfo,
-	server_info *sinfo, int *fail_list);
+	server_info *sinfo, int *fail_list, int *count);
 
 /*
  *      select_job_to_preempt - select the best candidite out of the running
@@ -305,19 +305,6 @@ long job_starving(status *policy, resource_resv *sjob);
  *	return nothing
  */
 void mark_job_starving(resource_resv *sjob, long sch_priority);
-
-/*
- *
- *	 mark_job_preempted - mark a job preempted and set ATTR_sched_preempted to
- *	                     current system time.
- *
- *	 pbs_sd - connection descriptor to pbs server
- *	 pjob - the preempted job
- *	 server_time - time reported by server_info object
- *
- *	 return nothing
- */
-void mark_job_preempted(int pbs_sd, resource_resv *pjob, time_t server_time);
 
 /*
  *

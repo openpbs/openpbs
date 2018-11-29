@@ -43,6 +43,7 @@
  * 		sched_func.c - various functions dealing with schedulers
  *
  */
+#include <ctype.h>
 #include <errno.h>
 #include <string.h>
 #include <memory.h>
@@ -110,7 +111,7 @@ sched_alloc(char *sched_name)
  */
 
 pbs_sched *
-find_scheduler(char *sched_name)
+find_sched(char *sched_name)
 {
 	pbs_sched *psched = NULL;
 	if (!sched_name)
@@ -372,6 +373,110 @@ action_sched_user(attribute *pattr, void *pobj, int actmode)
 
 /**
  * @brief
+ * 		action routine for the sched's "preempt_order" attribute
+ *
+ * @param[in]	pattr	-	attribute being set
+ * @param[in]	pobj	-	Object on which attribute is being set
+ * @param[in]	actmode	-	the mode of setting, recovery or just alter
+ *
+ * @return	error code
+ * @retval	PBSE_NONE	-	Success
+ * @retval	!PBSE_NONE	-	Failure
+ *
+ */
+int
+action_sched_preempt_order(attribute *pattr, void *pobj, int actmode)
+{
+	char *tok = NULL;
+	char *endp = NULL;
+	pbs_sched *psched = pobj;
+
+	if ((actmode == ATR_ACTION_ALTER) || (actmode == ATR_ACTION_RECOV)) {
+		char copy[256] = {0};
+
+		if (!(pattr->at_val.at_str))
+			return PBSE_BADATVAL;
+		strcpy(copy, pattr->at_val.at_str);
+		tok = strtok(copy, "\t ");
+
+		if (tok != NULL && !isdigit(tok[0])) {
+			int i = 0;
+			int num = 0;
+			char s_done = 0;
+			char c_done = 0;
+			char r_done = 0;
+			char next_is_num = 0;
+
+			psched->preempt_order[0].order[0] = PREEMPT_METHOD_LOW;
+			psched->preempt_order[0].order[1] = PREEMPT_METHOD_LOW;
+			psched->preempt_order[0].order[2] = PREEMPT_METHOD_LOW;
+
+			psched->preempt_order[0].high_range = 100;
+			i = 0;
+			do {
+				int j = 0;
+				j = isdigit(tok[0]);
+				if (j) {
+					if (next_is_num) {
+						num = strtol(tok, &endp, 10);
+						if (*endp == '\0') {
+							psched->preempt_order[i].low_range = num + 1;
+							i++;
+							psched->preempt_order[i].high_range = num;
+							next_is_num = 0;
+						} else
+							return PBSE_BADATVAL;
+					} else
+						return PBSE_BADATVAL;
+				} else if (!next_is_num) {
+					for (j = 0; tok[j] != '\0' ; j++) {
+						switch (tok[j]) {
+							case 'S':
+								if (!s_done) {
+									psched->preempt_order[i].order[j] = PREEMPT_METHOD_SUSPEND;
+									s_done = 1;
+								} else
+									return PBSE_BADATVAL;
+								break;
+							case 'C':
+								if (!c_done) {
+									psched->preempt_order[i].order[j] = PREEMPT_METHOD_CHECKPOINT;
+									c_done = 1;
+								} else
+									return PBSE_BADATVAL;
+								break;
+							case 'R':
+								if (!r_done) {
+									psched->preempt_order[i].order[j] = PREEMPT_METHOD_REQUEUE;
+									r_done = 1;
+								} else
+									return PBSE_BADATVAL;
+								break;
+							default:
+								return PBSE_BADATVAL;
+						}
+						next_is_num = 1;
+					}
+					s_done = 0;
+					c_done = 0;
+					r_done = 0;
+				} else
+					return PBSE_BADATVAL;
+				tok = strtok(NULL, "\t ");
+			} while (tok != NULL && i < PREEMPT_ORDER_MAX);
+
+			if (tok != NULL)
+				return PBSE_BADATVAL;
+
+			psched->preempt_order[i].low_range = 0;
+		} else
+			return PBSE_BADATVAL;
+	}
+	return PBSE_NONE;
+}
+
+/**
+ * @brief
  * 		poke_scheduler - action routine for the server's "scheduling" attribute.
  *		Call the scheduler whenever the attribute is set (or reset) to true.
  *
@@ -416,14 +521,16 @@ poke_scheduler(attribute *pattr, void *pobj, int actmode)
  *
  * @param[in] psched		- Scheduler
  * @parma[in] unset_flag	- flag to indicate if this function is called after unset of any sched attributes.
+ * @parma[in] from_scheduler	- flag to indicate if this function is called on a request from scheduler.
  *
  *
   */
 void
-set_sched_default(pbs_sched *psched, int unset_flag)
+set_sched_default(pbs_sched *psched, int unset_flag, int from_scheduler)
 {
 	char *temp;
 	char dir_path[MAXPATHLEN +1] = {0};
+	int flag = 0;
 
 	if (!psched)
 		return;
@@ -467,6 +574,29 @@ set_sched_default(pbs_sched *psched, int unset_flag)
 			set_attr_svr(&(psched->sch_attr[(int) SCHED_ATR_sched_log]), &sched_attr_def[(int) SCHED_ATR_sched_log],
 				dir_path);
 	}
+	if (!(psched->sch_attr[SCHED_ATR_preempt_queue_prio].at_flags & ATR_VFLAG_SET)) {
+		psched->sch_attr[SCHED_ATR_preempt_queue_prio].at_val.at_long = PBS_PREEMPT_QUEUE_PRIO_DEFAULT;
+		psched->sch_attr[SCHED_ATR_preempt_queue_prio].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_DEFLT;
+		flag = 1;
+	}
+	if (!(psched->sch_attr[SCHED_ATR_preempt_prio].at_flags & ATR_VFLAG_SET)) {
+		psched->sch_attr[SCHED_ATR_preempt_prio].at_val.at_str = strdup(PBS_PREEMPT_PRIO_DEFAULT);
+		psched->sch_attr[SCHED_ATR_preempt_prio].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_DEFLT;
+		flag = 1;
+	}
+	if (!(psched->sch_attr[SCHED_ATR_preempt_order].at_flags & ATR_VFLAG_SET)) {
+		psched->sch_attr[SCHED_ATR_preempt_order].at_val.at_str = strdup(PBS_PREEMPT_ORDER_DEFAULT);
+		action_sched_preempt_order(&psched->sch_attr[SCHED_ATR_preempt_order], psched, ATR_ACTION_ALTER);
+		psched->sch_attr[SCHED_ATR_preempt_order].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_DEFLT;
+		flag = 1;
+	}
+	if (!unset_flag && !from_scheduler && !(psched->sch_attr[SCHED_ATR_preempt_sort].at_flags & ATR_VFLAG_SET)) {
+		psched->sch_attr[SCHED_ATR_preempt_sort].at_val.at_str = strdup(PBS_PREEMPT_SORT_DEFAULT);
+		psched->sch_attr[SCHED_ATR_preempt_sort].at_flags |= ATR_VFLAG_SET | ATR_VFLAG_MODCACHE | ATR_VFLAG_DEFLT;
+		flag = 1;
+	}
+	if (flag)
+		set_scheduler_flag(SCH_ATTRS_CONFIGURE, psched);
 }
 
 
@@ -519,3 +649,4 @@ action_sched_partition(attribute *pattr, void *pobj, int actmode)
 		(void)contact_sched(SCH_ATTRS_CONFIGURE, NULL, pin_sched->pbs_scheduler_addr, pin_sched->pbs_scheduler_port);
 	return PBSE_NONE;
 }
+

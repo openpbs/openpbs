@@ -59,8 +59,10 @@ extern "C" {
 #include "job.h"
 #include "reservation.h"
 
-
 #define PBS_SCHED_CYCLE_LEN_DEFAULT 1200
+
+/* Default value of preempt_queue_prio */
+#define PBS_PREEMPT_QUEUE_PRIO_DEFAULT		150
 
 #define SC_STATUS_LEN 	10
 
@@ -85,6 +87,10 @@ enum sched_atr {
 	SCHED_ATR_sched_user,
 	SCHED_ATR_sched_comment,
 	SCHED_ATR_sched_state,
+	SCHED_ATR_preempt_queue_prio,
+	SCHED_ATR_preempt_prio,
+	SCHED_ATR_preempt_order,
+	SCHED_ATR_preempt_sort,
 #include "site_sched_attr_enum.h"
 	/* This must be last */
 	SCHED_ATR_LAST
@@ -101,6 +107,7 @@ typedef struct pbs_sched {
 	unsigned int pbs_scheduler_port;
 	time_t sch_next_schedule;		/* when to next run scheduler cycle */
 	char sc_name[PBS_MAXSCHEDNAME + 1];
+	struct preempt_ordering preempt_order[PREEMPT_ORDER_MAX + 1];
 	/* sched object's attributes  */
 	attribute sch_attr[SCHED_ATR_LAST];
 } pbs_sched;
@@ -112,6 +119,7 @@ extern void set_scheduler_flag(int flag, pbs_sched *psched);
 extern int find_assoc_sched_jid(char *jid, pbs_sched **target_sched);
 extern int find_assoc_sched_pque(pbs_queue *pq, pbs_sched **target_sched);
 extern pbs_sched *find_sched_from_sock(int sock);
+extern pbs_sched *find_sched(char *sched_name);
 
 #ifdef	__cplusplus
 }

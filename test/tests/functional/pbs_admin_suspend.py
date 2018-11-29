@@ -649,7 +649,7 @@ class TestAdminSuspend(TestFunctional):
                                id=jid4, max_attempts=20)
         except Exception as e:
             self.assertFalse(e.rv)
-            print ("jid3 and jid4 not running on vn[1] as expected")
+            self.logger.info("jid3 and jid4 not running on vn[1] as expected")
 
     def test_list_jobs_1(self):
         """
@@ -757,7 +757,8 @@ class TestAdminSuspend(TestFunctional):
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id="highp")
 
         # set preempt_order to R
-        self.scheduler.set_sched_config({'preempt_order': 'R'})
+        self.server.manager(MGR_CMD_SET, SCHED, {'preempt_order': 'R'},
+                            expect=True, runas=ROOT_USER)
 
         # submit a job
         j = Job(TEST_USER)

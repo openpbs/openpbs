@@ -1028,6 +1028,7 @@ dup_br_for_subjob(struct batch_request *opreq, job *pjob, void (*func)(struct ba
 
 	func(npreq, pjob);
 }
+
 /**
  * @brief
  * 		mk_subjob_id - make (in a static array) a jobid for a subjob based on

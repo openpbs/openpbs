@@ -75,7 +75,7 @@
 
 /* Private Function local to this file */
 
-static void post_signal_req(struct work_task *);
+void post_signal_req(struct work_task *);
 static void req_signaljob2(struct batch_request *preq, job *pjob);
 void set_admin_suspend(job *pjob, int set_remove_nstate);
 int create_resreleased (job *pjob);
@@ -115,6 +115,7 @@ req_signaljob(struct batch_request *preq)
 	int		  x, y, z;
 
 	jid = preq->rq_ind.rq_signal.rq_jid;
+
 	parent = chk_job_request(jid, preq, &jt);
 	if (parent == NULL)
 		return;		/* note, req_reject already called */
@@ -166,7 +167,6 @@ req_signaljob(struct batch_request *preq)
 			req_reject(PBSE_BADSTATE, 0, preq);
 			return;
 		}
-		return;
 
 	} else if (jt == IS_ARRAY_ArrayJob) {
 
@@ -280,11 +280,11 @@ req_signaljob(struct batch_request *preq)
 static void
 req_signaljob2(struct batch_request *preq, job *pjob)
 {
-	int		  rc;
-	char 		 *pnodespec;
-	int		suspend = 0;
-	int		resume = 0;
-	pbs_sched	*psched;
+	int			rc;
+	char			*pnodespec;
+	int			suspend = 0;
+	int			resume = 0;
+	pbs_sched		*psched;
 
 	if ((pjob->ji_qs.ji_state != JOB_STATE_RUNNING)	||
 		((pjob->ji_qs.ji_state == JOB_STATE_RUNNING) && (pjob->ji_qs.ji_substate == JOB_SUBSTATE_PROVISION))) {
@@ -311,8 +311,10 @@ req_signaljob2(struct batch_request *preq, job *pjob)
 		sprintf(log_buffer, "%s job by %s@%s",
 			preq->rq_ind.rq_signal.rq_signame,
 			preq->rq_user, preq->rq_host);
+
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_JOB, LOG_INFO,
 			pjob->ji_qs.ji_jobid, log_buffer);
+
 		if (resume) {
 			if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend) != 0) {
 
@@ -391,6 +393,7 @@ req_signaljob2(struct batch_request *preq, job *pjob)
  * @param[in]	signame	-	name of the signal to send
  * @param[in]	func	-	function pointer taking work_task structure as argument.
  * @param[in]	extra	-	extra parameter to be stored in sig request
+ * @param[in]	nest	-	pointer to the nested batch_request (if any)
  *
  * @return	int
  * @retval	0	- success
@@ -398,7 +401,7 @@ req_signaljob2(struct batch_request *preq, job *pjob)
  */
 
 int
-issue_signal(job *pjob, char *signame, void (*func)(struct work_task *), void *extra)
+issue_signal(job *pjob, char *signame, void (*func)(struct work_task *), void *extra, struct batch_request *nest)
 {
 	struct batch_request *newreq;
 
@@ -408,6 +411,8 @@ issue_signal(job *pjob, char *signame, void (*func)(struct work_task *), void *e
 		return (PBSE_SYSTEM);
 
 	newreq->rq_extra = extra;
+	if (nest)
+		newreq->rq_nest = nest;
 	(void)strcpy(newreq->rq_ind.rq_signal.rq_jid, pjob->ji_qs.ji_jobid);
 	(void)strncpy(newreq->rq_ind.rq_signal.rq_signame, signame, PBS_SIGNAMESZ);
 	return (relay_to_mom(pjob, newreq, func));
@@ -422,15 +427,15 @@ issue_signal(job *pjob, char *signame, void (*func)(struct work_task *), void *e
  * @param[in,out]	pwt	-	work_task which contains Signal Job Request
  */
 
-static void
+void
 post_signal_req(struct work_task *pwt)
 {
-	job 		     *pjob;
-	struct batch_request *preq;
-	int		      rc;
-	int		      ss;
-	int		suspend = 0;
-	int		resume = 0;
+	job			*pjob;
+	struct batch_request	*preq;
+	int			rc;
+	int			ss;
+	int			suspend = 0;
+	int			resume = 0;
 
 	if (pwt->wt_aux2 != 1) /* not rpp */
 		svr_disconnect(pwt->wt_event);	/* disconnect from MOM */
@@ -459,15 +464,18 @@ post_signal_req(struct work_task *pwt)
 			/* resume failed, re-release resc and nodes */
 			rel_resc(pjob);
 		}
-		req_reject(rc, 0, preq);
 
+		if (preq->rq_nest)
+			reply_preempt_jobs_request(rc, 1, preq);
+		else
+			req_reject(rc, 0, preq);
 	} else {
 
 		/* everything went ok for signal request at Mom */
 
 		if (suspend && pjob && (pjob->ji_qs.ji_state == JOB_STATE_RUNNING)) {
 			if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend) == 0) {
-				if (preq->rq_fromsvr == 1)
+				if (preq->rq_fromsvr == 1 || preq->rq_nest)
 					ss = JOB_SUBSTATE_SCHSUSP;
 				else
 					ss = JOB_SUBSTATE_SUSPEND;
@@ -488,8 +496,8 @@ post_signal_req(struct work_task *pwt)
 				 * rel_resc() will pull it out of maintenance state */
 				if(strcmp(preq->rq_ind.rq_signal.rq_signame, SIG_ADMIN_SUSPEND) == 0)
 					set_admin_suspend(pjob, 1);
-			}
 
+			}
 		} else if (resume && pjob && (pjob->ji_qs.ji_state == JOB_STATE_RUNNING)) {
 			/* note - the resources have already been reallocated */
 			pjob->ji_qs.ji_svrflags &= ~JOB_SVFLG_Suspend;
@@ -508,7 +516,10 @@ post_signal_req(struct work_task *pwt)
 				form_attr_comment("Job run at %s", pjob->ji_wattr[(int) JOB_ATR_exec_vnode].at_val.at_str));
 		}
 
-		reply_ack(preq);
+		if (preq->rq_nest)
+			reply_preempt_jobs_request(PBSE_NONE, 1, preq);
+		else
+			reply_ack(preq);
 	}
 }
 

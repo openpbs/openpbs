@@ -143,6 +143,7 @@
 #include "pbs_sched.h"
 #include "fifo.h"
 #include "buckets.h"
+#include "parse.h"
 #ifdef NAS
 #include "site_code.h"
 #endif
@@ -523,8 +524,7 @@ query_server_info(status *pol, struct batch_status *server)
 				sinfo->has_grp_limit = 1;
 			if(strstr(attrp->value, "p:") != NULL)
 				sinfo->has_proj_limit = 1;
-		}
-		else if (is_runlimattr(attrp)) {
+		} else if (is_runlimattr(attrp)) {
 			(void) lim_setlimits(attrp, LIM_RUN, sinfo->liminfo);
 			if(strstr(attrp->value, "u:") != NULL)
 				sinfo->has_user_limit = 1;
@@ -532,8 +532,7 @@ query_server_info(status *pol, struct batch_status *server)
 				sinfo->has_grp_limit = 1;
 			if(strstr(attrp->value, "p:") != NULL)
 				sinfo->has_proj_limit = 1;
-		}
-		else if (is_oldlimattr(attrp)) {
+		} else if (is_oldlimattr(attrp)) {
 			char *limname = convert_oldlim_to_new(attrp);
 			(void) lim_setlimits(attrp, LIM_OLD, sinfo->liminfo);
 
@@ -542,21 +541,18 @@ query_server_info(status *pol, struct batch_status *server)
 			if(strstr(limname, "g:") != NULL)
 				sinfo->has_grp_limit = 1;
 			/* no need to check for project limits because there were no old style project limits */
-		}
-		else if (!strcmp(attrp->name, ATTR_FLicenses)) {
+		} else if (!strcmp(attrp->name, ATTR_FLicenses)) {
 			count = strtol(attrp->value, &endp, 10);
 			if (*endp != '\0')
 				count = -1;
 
 			sinfo->flt_lic = count;
-		}
-		else if (!strcmp(attrp->name, ATTR_NodeGroupEnable)) {
+		} else if (!strcmp(attrp->name, ATTR_NodeGroupEnable)) {
 			if (!strcmp(attrp->value, ATR_TRUE))
 				sinfo->node_group_enable = 1;
 			else
 				sinfo->node_group_enable = 0;
-		}
-		else if (!strcmp(attrp->name, ATTR_NodeGroupKey))
+		} else if (!strcmp(attrp->name, ATTR_NodeGroupKey))
 			sinfo->node_group_key = break_comma_list(attrp->value);
 		else if (!strcmp(attrp->name, ATTR_job_sort_formula)) {
 			sinfo->job_formula = read_formula();
@@ -604,8 +600,7 @@ query_server_info(status *pol, struct batch_status *server)
 					LOG_DEBUG, __func__, log_buffer);
 				rpp_retry = (int)count;
 			}
-		}
-		else if (!strcmp(attrp->name, ATTR_rpp_highwater)) { /* rpp_highwater */
+		} else if (!strcmp(attrp->name, ATTR_rpp_highwater)) { /* rpp_highwater */
 			count = strtol(attrp->value, &endp, 10);
 			if (*endp != '\0')
 				count = RPP_HIGHWATER;
@@ -622,33 +617,28 @@ query_server_info(status *pol, struct batch_status *server)
 					LOG_DEBUG, __func__, log_buffer);
 				rpp_highwater = (int)count;
 			}
-		}
-		else if (!strcmp(attrp->name, ATTR_EligibleTimeEnable)) {
+		} else if (!strcmp(attrp->name, ATTR_EligibleTimeEnable)) {
 			if (!strcmp(attrp->value, ATR_TRUE))
 				sinfo->eligible_time_enable = 1;
 			else
 				sinfo->eligible_time_enable = 0;
-		}
-		else if (!strcmp(attrp->name, ATTR_ProvisionEnable)) {
+		} else if (!strcmp(attrp->name, ATTR_ProvisionEnable)) {
 			if (!strcmp(attrp->value, ATR_TRUE))
 				sinfo->provision_enable = 1;
 			else
 				sinfo->provision_enable = 0;
-		}
-		else if (!strcmp(attrp->name, ATTR_power_provisioning)) {
+		} else if (!strcmp(attrp->name, ATTR_power_provisioning)) {
 			if (!strcmp(attrp->value, ATR_TRUE))
 				sinfo->power_provisioning = 1;
 			else
 				sinfo->power_provisioning = 0;
-		}
-		else if (!strcmp(attrp->name, ATTR_backfill_depth)) {
+		} else if (!strcmp(attrp->name, ATTR_backfill_depth)) {
 			count = strtol(attrp->value, &endp, 10);
 			if (*endp == '\0')
 				sinfo->policy->backfill_depth = count;
 			if (count == 0)
 				sinfo->policy->backfill = 0;
-		}
-		else if(!strcmp(attrp->name, ATTR_restrict_res_to_release_on_suspend)) {
+		} else if(!strcmp(attrp->name, ATTR_restrict_res_to_release_on_suspend)) {
 			char **resl;
 			resl = break_comma_list(attrp->value);
 			if(resl != NULL) {
@@ -656,7 +646,6 @@ query_server_info(status *pol, struct batch_status *server)
 				free_string_array(resl);
 			}
 		}
-
 		attrp = attrp->next;
 	}
 
@@ -726,8 +715,7 @@ query_server_dyn_res(server_info *sinfo)
 				(fgets(buf, 256, fp) == NULL)) {
 				pipe_err = errno;
 				k = 0;
-			}
-			else
+			} else
 				k = strlen(buf);
 			if (fp != NULL)
 				pclose(fp);
@@ -748,8 +736,7 @@ query_server_dyn_res(server_info *sinfo)
 										"server_dyn_res", buf);
 					(void) set_resource(res, res_zero, RF_AVAIL);
 				}
-			}
-			else {
+			} else {
 				if (pipe_err != 0)
 					snprintf(buf, sizeof(buf), "Can't pipe to program %s: %s",
 						conf.dynamic_res[i].program, strerror(pipe_err));
@@ -763,8 +750,7 @@ query_server_dyn_res(server_info *sinfo)
 			if (res->type.is_non_consumable) {
 				snprintf(log_buffer, sizeof(log_buffer), "%s = %s",
 					conf.dynamic_res[i].program, res_to_str(res, RF_AVAIL));
-			}
-			else {
+			} else {
 				snprintf(log_buffer, sizeof(log_buffer), "%s = %s (\"%s\")",
 					conf.dynamic_res[i].program, res_to_str(res, RF_AVAIL), buf);
 			}
@@ -802,6 +788,16 @@ query_sched_obj(status *policy, struct batch_status *sched, server_info *sinfo)
 {
 	struct attrl *attrp;          /* linked list of attributes from server */
 
+	int i = 0;
+	int j = 0;
+	char *tok;
+	char *endp;
+	char **list;
+	char *save_ptr;
+
+	int num = -1;
+	int prio = -1;
+
 	if (sched == NULL || sinfo == NULL)
 		return 0;
 
@@ -815,29 +811,23 @@ query_sched_obj(status *policy, struct batch_status *sched, server_info *sinfo)
 	while (attrp != NULL) {
 		if (!strcmp(attrp->name, ATTR_sched_cycle_len)) {
 			sinfo->sched_cycle_len = res_to_num(attrp->value, NULL);
-		}
-		else if (!strcmp(attrp->name, ATTR_partition)) {
+		} else if (!strcmp(attrp->name, ATTR_partition)) {
 			sinfo->partitions = break_comma_list(attrp->value);
-		}
-		else if (!strcmp(attrp->name, ATTR_do_not_span_psets)) {
+		} else if (!strcmp(attrp->name, ATTR_do_not_span_psets)) {
 			sinfo->dont_span_psets = res_to_num(attrp->value, NULL);
-		}
-		else if (!strcmp(attrp->name, ATTR_only_explicit_psets)) {
+		} else if (!strcmp(attrp->name, ATTR_only_explicit_psets)) {
 			policy->only_explicit_psets = res_to_num(attrp->value, NULL);
-		}
-		else if (!strcmp(attrp->name, ATTR_sched_preempt_enforce_resumption)) {
+		} else if (!strcmp(attrp->name, ATTR_sched_preempt_enforce_resumption)) {
 			if (!strcasecmp(attrp->value, ATR_FALSE))
 				sinfo->enforce_prmptd_job_resumption = 0;
 			else
 				sinfo->enforce_prmptd_job_resumption = 1;
-		}
-		else if (!strcmp(attrp->name, ATTR_preempt_targets_enable)) {
+		} else if (!strcmp(attrp->name, ATTR_preempt_targets_enable)) {
 			if (!strcasecmp(attrp->value, ATR_FALSE))
 				sinfo->preempt_targets_enable = 0;
 			else
 				sinfo->preempt_targets_enable = 1;
-		}
-		else if (!strcmp(attrp->name, ATTR_job_sort_formula_threshold)) {
+		} else if (!strcmp(attrp->name, ATTR_job_sort_formula_threshold)) {
 			policy->job_form_threshold_set = 1;
 			policy->job_form_threshold = res_to_num(attrp->value, NULL);
 		} else if (!strcmp(attrp->name, ATTR_throughput_mode)) {
@@ -853,6 +843,82 @@ query_sched_obj(status *policy, struct batch_status *sched, server_info *sinfo)
 				sinfo->opt_backfill_fuzzy_time = BF_HIGH;
 			else
 				sinfo->opt_backfill_fuzzy_time = BF_DEFAULT;
+		} else if (!strcmp(attrp->name, ATTR_sched_preempt_order)) {
+			tok = strtok_r(attrp->value, "\t ", &save_ptr);
+
+			if (tok != NULL && !isdigit(tok[0])) {
+				/* unset the defaults */
+				conf.preempt_order[0].order[0] = PREEMPT_METHOD_LOW;
+				conf.preempt_order[0].order[1] = PREEMPT_METHOD_LOW;
+				conf.preempt_order[0].order[2] = PREEMPT_METHOD_LOW;
+
+				conf.preempt_order[0].high_range = 100;
+				i = 0;
+				do {
+					if (isdigit(tok[0])) {
+						num = strtol(tok, &endp, 10);
+						if (*endp == '\0') {
+							conf.preempt_order[i].low_range = num + 1;
+							i++;
+							conf.preempt_order[i].high_range = num;
+						}
+					} else {
+						for (j = 0; tok[j] != '\0' ; j++) {
+							switch (tok[j]) {
+								case 'S':
+									conf.preempt_order[i].order[j] = PREEMPT_METHOD_SUSPEND;
+									break;
+								case 'C':
+									conf.preempt_order[i].order[j] = PREEMPT_METHOD_CHECKPOINT;
+									break;
+								case 'R':
+									conf.preempt_order[i].order[j] = PREEMPT_METHOD_REQUEUE;
+									break;
+							}
+						}
+					}
+					tok = strtok_r(NULL, "\t ", &save_ptr);
+				} while (tok != NULL && i < PREEMPT_ORDER_MAX);
+
+				conf.preempt_order[i].low_range = 0;
+			}
+		} else if (!strcmp(attrp->name, ATTR_sched_preempt_queue_prio)) {
+			conf.preempt_queue_prio = strtol(attrp->value, &endp, 10);
+		} else if (!strcmp(attrp->name, ATTR_sched_preempt_prio)) {
+			prio = PREEMPT_PRIORITY_HIGH;
+			list = break_comma_list(attrp->value);
+			if (list != NULL) {
+				memset(conf.pprio, 0, sizeof(conf.pprio));
+				conf.pprio[0][0] = PREEMPT_TO_BIT(PREEMPT_QRUN);
+				conf.pprio[0][1] = prio;
+				prio -= PREEMPT_PRIORITY_STEP;
+				for (i = 0; list[i] != NULL; i++) {
+					num = preempt_bit_field(list[i]);
+					if (num >= 0) {
+						conf.pprio[i + 1][0] = num;
+						conf.pprio[i + 1][1] = prio;
+						conf.preempt_low = prio;
+						prio -= PREEMPT_PRIORITY_STEP;
+					}
+				}
+				/* conf.pprio is an int array of size[NUM_PPRIO][2] */
+				qsort(conf.pprio, NUM_PPRIO, sizeof(int) * 2, preempt_cmp);
+
+				/* cache preemption priority for normal jobs */
+				for (i = 0; i < NUM_PPRIO && conf.pprio[i][1] != 0; i++) {
+					if (conf.pprio[i][0] == PREEMPT_TO_BIT(PREEMPT_NORMAL)) {
+						conf.preempt_normal = conf.pprio[i][1];
+						break;
+					}
+				}
+
+				free_string_array(list);
+			}
+		} else if (!strcmp(attrp->name, ATTR_sched_preempt_sort)) {
+			if (strcasecmp(attrp->value, "min_time_since_start") == 0)
+				conf.preempt_min_wt_used = 1;
+			else
+				conf.preempt_min_wt_used = 0;
 		}
 		attrp = attrp->next;
 	}
@@ -1321,8 +1387,7 @@ create_resource(char *name, char *value, enum resource_fields field)
 				}
 			}
 		}
-	}
-	else {
+	} else {
 		schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_SCHED, LOG_DEBUG, name, "Resource definition does not exist, resource may be invalid");
 		return NULL;
 	}
@@ -1658,8 +1723,7 @@ update_server_on_run(status *policy, server_info *sinfo,
 				num_resv_nodes = count_array((void **) resv_nodes);
 				qsort(resv_nodes, num_resv_nodes, sizeof(node_info *),
 					multi_node_sort);
-			}
-			else {
+			} else {
 				qsort(sinfo->nodes, sinfo->num_nodes, sizeof(node_info *),
 					multi_node_sort);
 
@@ -1763,8 +1827,7 @@ update_server_on_end(status *policy, server_info *sinfo, queue_info *qinfo,
 		if (resresv->job->is_running) {
 			sinfo->sc.running--;
 			remove_resresv_from_array(sinfo->running_jobs, resresv);
-		}
-		else if (resresv->job->is_exiting) {
+		} else if (resresv->job->is_exiting) {
 			sinfo->sc.exiting--;
 			remove_resresv_from_array(sinfo->exiting_jobs, resresv);
 		}
@@ -1896,7 +1959,7 @@ copy_server_arrays(server_info *nsinfo, server_info *osinfo)
 		return 0;
 	}
 
-	if ((all_arr = (resource_resv **) calloc((osinfo->sc.total + osinfo->num_resvs +1),
+	if ((all_arr = (resource_resv **) calloc((osinfo->sc.total + osinfo->num_resvs + 1),
 						 sizeof(resource_resv *))) == NULL) {
 		free(job_arr);
 		log_err(errno, __func__, "Error allocating memory");
@@ -1953,7 +2016,7 @@ create_server_arrays(server_info *sinfo)
 	}
 
 	if ((all_arr = (resource_resv **) malloc(sizeof(resource_resv *) *
-		(sinfo->sc.total + sinfo->num_resvs +1))) == NULL) {
+		(sinfo->sc.total + sinfo->num_resvs + 1))) == NULL) {
 		free(job_arr);
 		log_err(errno, "create_server_arrays", "Error allocating memory");
 		return 0;
@@ -2765,8 +2828,7 @@ find_alloc_counts(counts *ctslist, char *name)
 			prev->next = new;
 
 		return new;
-	}
-	else
+	} else
 		return cur;
 }
 
@@ -2888,8 +2950,7 @@ counts_max(counts *cmax, counts *new)
 
 			cur_fmax->next = cmax_head;
 			cmax_head = cur_fmax;
-		}
-		else {
+		} else {
 			if (cur->running > cur_fmax->running)
 				cur_fmax->running = cur->running;
 
@@ -2904,8 +2965,7 @@ counts_max(counts *cmax, counts *new)
 
 					cur_res_max->next = cur_fmax->rescts;
 					cur_fmax->rescts = cur_res_max;
-				}
-				else {
+				} else {
 					if (cur_res->amount > cur_res_max->amount)
 						cur_res_max->amount = cur_res->amount;
 				}
@@ -2954,7 +3014,7 @@ update_universe_on_end(status *policy, resource_resv *resresv, char *job_state, 
 		if (resresv->job != NULL && resresv->execselect != NULL &&
 		    resresv->execselect->defs != NULL) {
 			int need_metadata_update = 0;
-			for (i = 0; resresv->execselect->defs[i] != NULL;i++) {
+			for (i = 0; resresv->execselect->defs[i] != NULL; i++) {
 				if (!resdef_exists_in_array(policy->resdef_to_check, resresv->execselect->defs[i])) {
 					add_resdef_to_array(&(policy->resdef_to_check), resresv->execselect->defs[i]);
 					need_metadata_update = 1;
@@ -3062,8 +3122,7 @@ set_resource(schd_resource *res, char *val, enum resource_fields field)
 			 */
 			if (res->indirect_vnode_name == NULL)
 				return 0;
-		}
-		else {
+		} else {
 			/* if the resource type is already set, clear it so we can set it here */
 			if (res->type.is_consumable != 0 || res->type.is_non_consumable !=0)
 				memset(&(res->type), 0, sizeof(struct resource_type));
@@ -3079,8 +3138,7 @@ set_resource(schd_resource *res, char *val, enum resource_fields field)
 			if (res->str_avail == NULL)
 				return 0;
 		}
-	}
-	else if (field == RF_ASSN) {
+	} else if (field == RF_ASSN) {
 		/* clear previously allocated memory in the case of a reassignment */
 		if (res->str_assigned != NULL) {
 			free(res->str_assigned);
@@ -3149,8 +3207,7 @@ find_indirect_resource(schd_resource *res, node_info **nodes)
 				schdlog(PBSEVENT_DEBUG, PBS_EVENTCLASS_NODE,
 					LOG_DEBUG, "find_indirect_resource", logbuf);
 			}
-		}
-		else {
+		} else {
 			error = 1;
 			sprintf(logbuf,
 				"Resource %s is indirect but points to node %s, which was not found",
@@ -3566,8 +3623,7 @@ update_total_counts(server_info *si, queue_info* qi,
 		update_counts_on_run(cts, rr->resreq);
 		cts = si->total_user_counts;
 		update_counts_on_run(find_alloc_counts(cts, rr->user), rr->resreq);
-	}
-	else if (((mode == QUEUE) || (mode == ALL)) &&
+	} else if (((mode == QUEUE) || (mode == ALL)) &&
 		((qi != NULL) && qi->has_hard_limit)) {
 		cts = qi->total_group_counts;
 		update_counts_on_run(find_alloc_counts(cts, rr->group), rr->resreq);
@@ -3610,8 +3666,7 @@ update_total_counts_on_end(server_info *si, queue_info* qi,
 		update_counts_on_end(cts, rr->resreq);
 		cts = si->total_user_counts;
 		update_counts_on_end(find_alloc_counts(cts, rr->user), rr->resreq);
-	}
-	else if (((mode == QUEUE) || (mode == ALL)) &&
+	} else if (((mode == QUEUE) || (mode == ALL)) &&
 		((qi != NULL) &&  qi->has_hard_limit)) {
 		cts = qi->total_group_counts;
 		update_counts_on_end(find_alloc_counts(cts, rr->group), rr->resreq);
@@ -3717,8 +3772,7 @@ add_queue_to_list(queue_info **** qlhead, queue_info * qinfo)
 		list_head[queue_list_size + 1] = NULL;
 		if (append_to_queue_list(&list_head[queue_list_size], qinfo) == NULL)
 			return 0;
-	}
-	else {
+	} else {
 		if (append_to_queue_list(temp_list, qinfo) == NULL)
 			return 0;
 	}

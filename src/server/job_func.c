@@ -255,7 +255,7 @@ job_abt(job *pjob, char *text)
 	if ((old_state == JOB_STATE_RUNNING) && (old_substate != JOB_SUBSTATE_PROVISION)) {
 		(void)svr_setjobstate(pjob,
 			JOB_STATE_RUNNING, JOB_SUBSTATE_ABORT);
-		rc = issue_signal(pjob, "SIGKILL", release_req, 0);
+		rc = issue_signal(pjob, "SIGKILL", release_req, 0, NULL);
 		if (rc != 0) {
 			(void)sprintf(log_buffer, msg_abt_err,
 				pjob->ji_qs.ji_jobid, old_substate);

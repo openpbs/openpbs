@@ -60,6 +60,7 @@ extern "C" {
  * request structure.
  */
 
+#include "pbs_share.h"
 #include "libpbs.h"
 
 /*
@@ -301,7 +302,6 @@ struct rqfpair {
 	char		*fp_rmt;	/* used in Copy only     */
 };
 
-
 /*
  * ok we now have all the individual request structures defined,
  * so here is the union ...
@@ -309,7 +309,8 @@ struct rqfpair {
 
 struct batch_request {
 	pbs_list_link rq_link;	/* linkage of all requests 		*/
-	struct batch_request * rq_parentbr;
+	struct batch_request *rq_nest;
+	struct batch_request *rq_parentbr;
 	/* parent request for job array request */
 	int	  rq_refct;	/* reference count - child requests     */
 	int	  rq_type;	/* type of request			*/
@@ -323,8 +324,8 @@ struct batch_request {
 	char	  rq_host[PBS_MAXHOSTNAME+1]; /* name of host sending request */
 	void  	 *rq_extra;	/* optional ptr to extra info		*/
 	char	 *rq_extend;	/* request "extension" data		*/
-	int		 isrpp; /* is this message from rpp stream      */
-	int		 rpp_ack; /* send acks for this? */
+	int	 isrpp;		/* is this message from rpp stream      */
+	int	 rpp_ack;	/* send acks for this? */
 	char	 *rppcmd_msgid; /* msg id with rpp commands */
 
 	struct batch_reply  rq_reply;	  /* the reply area for this request */
@@ -365,6 +366,7 @@ struct batch_request {
 		struct rq_defschrpy     rq_defrpy;
 		struct rq_hookfile	rq_hookfile;
 		struct rq_momrestart	rq_momrestart;
+		struct rq_preempt	rq_preempt;
 	} rq_ind;
 };
 
@@ -411,6 +413,7 @@ extern void  req_stat_svr(struct batch_request *req);
 extern void  req_stat_sched(struct batch_request *req);
 extern void  req_trackjob(struct batch_request *req);
 extern void  req_stat_rsc(struct batch_request *req);
+extern void  req_preemptjobs(struct batch_request *req);
 #else
 extern void  req_cpyfile(struct batch_request *req);
 extern void  req_delfile(struct batch_request *req);
@@ -463,6 +466,7 @@ extern int encode_DIS_svrattrl(int socket, svrattrl *);
 
 extern int dis_request_read(int socket, struct batch_request *);
 extern int dis_reply_read(int socket, struct batch_reply *, int rpp);
+extern int decode_DIS_PreemptJobs(int socket, struct batch_request *);
 
 #ifdef	__cplusplus
 }

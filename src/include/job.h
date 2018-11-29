@@ -626,6 +626,9 @@ struct job {
 	 * is decremented when the job is run*/
 	int             ji_etlimit_decr_queued;
 
+	struct preempt_ordering	*preempt_order;
+	int			preempt_order_index;
+
 #endif					/* END SERVER ONLY */
 
 	/*
@@ -1191,7 +1194,7 @@ extern int   site_acl_check(job *, pbs_queue *);
 #endif	/* _QUEUE_H */
 
 #ifdef	_WORK_TASK_H
-extern int   issue_signal(job *, char *, void(*)(struct work_task *), void *);
+extern int   issue_signal(job *, char *, void(*)(struct work_task *), void *, struct batch_request *);
 extern void   on_job_exit(struct work_task *);
 #endif	/* _WORK_TASK_H */
 
@@ -1201,6 +1204,10 @@ extern int   update_resources_list(job *, char *, int, char *, enum batch_op op,
 
 extern int   Mystart_end_dur_wall(void*, int);
 extern int   get_wall(job*);
+extern int   get_softwall(job*);
+extern int   get_used_wall(job*);
+extern int   get_used_cput(job*);
+extern int   get_cput(job*);
 extern void  remove_deleted_resvs(void);
 
 extern void  clear_and_populate_svr_unlicensedjobs(void);

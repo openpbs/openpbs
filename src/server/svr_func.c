@@ -6898,7 +6898,6 @@ unset_jobscript_max_size(void)
 		LOG_NOTICE, msg_daemonname, log_buffer);
 }
 
-
 /**
  * @brief
  *		Create a copy of the job script from database to a temporary file

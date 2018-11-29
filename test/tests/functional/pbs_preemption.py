@@ -72,7 +72,9 @@ class TestPreemption(TestFunctional):
             preempted_by = 'suspension'
 
         # set preempt order
-        self.scheduler.set_sched_config({'preempt_order': preempt_order})
+        self.server.manager(MGR_CMD_SET, SCHED,
+                            {'preempt_order': preempt_order},
+                            expect=True, runas=ROOT_USER)
 
         attrs = {ATTR_l + '.select': '1:ncpus=1'}
 

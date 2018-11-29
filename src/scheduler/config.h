@@ -68,7 +68,6 @@
 #define PREEMPT_PRIORITY_HIGH 100000
 #define PREEMPT_PRIORITY_STEP 1000
 
-/* max number of preempt orderings */
 #define PREEMPT_ORDER_MAX 20
 
 /* name of root node in the fairshare tree */
