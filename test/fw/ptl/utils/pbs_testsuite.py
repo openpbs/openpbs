@@ -133,6 +133,7 @@ SMOKE = 'smoke'
 REGRESSION = 'regression'
 NUMNODES = 'numnodes'
 TIMEOUT_KEY = '__testcase_timeout__'
+MINIMUM_TESTCASE_TIMEOUT = 600
 
 
 def skip(reason="Skipped test execution"):
@@ -155,7 +156,18 @@ def timeout(val):
     """
     Decorator to set timeout value of test case
     """
+    logger = logging.getLogger(__name__)
+    old_val = None
+    if val < MINIMUM_TESTCASE_TIMEOUT:
+        old_val = val
+        val = MINIMUM_TESTCASE_TIMEOUT
+
     def wrapper(obj):
+        msg = 'for test ' + obj.func_name
+        msg += ' minimum-testcase-timeout updated to '
+        msg += str(val) + ' from ' + str(old_val)
+        if old_val:
+            logger.info(msg)
         setattr(obj, TIMEOUT_KEY, int(val))
         return obj
     return wrapper
@@ -564,7 +576,7 @@ class PBSTestSuite(unittest.TestCase):
         cls._validate_param('revert-queues')
         cls._validate_param('revert-resources')
         if 'default-testcase-timeout' not in cls.conf.keys():
-            cls.conf['default_testcase_timeout'] = 180
+            cls.conf['default_testcase_timeout'] = MINIMUM_TESTCASE_TIMEOUT
         else:
             cls.conf['default_testcase_timeout'] = int(
                 cls.conf['default-testcase-timeout'])
