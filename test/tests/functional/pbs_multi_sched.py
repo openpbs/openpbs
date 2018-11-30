@@ -425,7 +425,7 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
         self.scheds['sc2'].log_match(
             jid2 + ';Job is a top job and will run at',
-            max_attempts=10, starttime=t)
+            starttime=t)
         a['queue'] = 'wq3'
         j = Job(TEST_USER1, attrs=a)
         jid3 = self.server.submit(j)
