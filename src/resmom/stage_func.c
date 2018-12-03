@@ -429,10 +429,8 @@ local_or_remote(char **path)
 int
 is_direct_write(job *pjob, enum job_file which, char *path, int *direct_write_possible)
 {
-	char working_path[MAXPATHLEN * 2];
+	char working_path[MAXPATHLEN + PBS_MAXSVRJOBID + 3 + 1];
 	char *p = working_path;
-
-	working_path[MAXPATHLEN] = '\0';
 
 	if (which == Chkpt) return(0); /* direct write of checkpoint not supported */
 
@@ -449,8 +447,14 @@ is_direct_write(job *pjob, enum job_file which, char *path, int *direct_write_po
 				return(0);
 			else
 				/* Make local working copy of path for call to local_or_remote */
-				strncpy(working_path, pjob->ji_wattr[JOB_ATR_outpath].at_val.at_str, MAXPATHLEN);
-			if (working_path[strlen(working_path) -1] == '/') {
+				snprintf(working_path, MAXPATHLEN + 1, "%s", pjob->ji_wattr[JOB_ATR_outpath].at_val.at_str);
+			if (
+#ifdef WIN32
+					(working_path[strlen(working_path) -1] == '\\')
+#else
+					(working_path[strlen(working_path) -1] == '/')
+#endif
+					) {
 				strcat(working_path, pjob->ji_qs.ji_jobid);
 				strcat(working_path, JOB_STDOUT_SUFFIX);
 			}
@@ -460,8 +464,14 @@ is_direct_write(job *pjob, enum job_file which, char *path, int *direct_write_po
 				return(0);
 			else
 				/* Make local working copy of path for call to local_or_remote */
-				strncpy(working_path, pjob->ji_wattr[JOB_ATR_errpath].at_val.at_str, MAXPATHLEN);
-			if (working_path[strlen(working_path) -1] == '/') {
+				snprintf(working_path, MAXPATHLEN + 1, "%s", pjob->ji_wattr[JOB_ATR_errpath].at_val.at_str);
+		if (
+#ifdef WIN32
+				(working_path[strlen(working_path) -1] == '\\')
+#else
+				(working_path[strlen(working_path) -1] == '/')
+#endif
+				) {
 				strcat(working_path, pjob->ji_qs.ji_jobid);
 				strcat(working_path, JOB_STDERR_SUFFIX);
 			}
@@ -492,8 +502,7 @@ is_direct_write(job *pjob, enum job_file which, char *path, int *direct_write_po
 	}
 
 	/* Destination maps to local directory - final path is in working_path. */
-	strncpy(path, p, MAXPATHLEN); /* pass correct path back to caller */
-	path[MAXPATHLEN] = '\0';
+	snprintf(path, MAXPATHLEN + 1, "%s", p);
 	return(1);
 }
 

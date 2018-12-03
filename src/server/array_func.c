@@ -780,7 +780,7 @@ create_subjob(job *parent, char *newjid, int *rc)
 #else
 	struct timeval	    tval;
 #endif
-	char tmp_path[MAXPATHLEN + 1] = {0};
+	char tmp_path[MAXPATHLEN + 1];
 
 	if ((parent->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) == 0) {
 		*rc = PBSE_IVALREQ;
@@ -896,12 +896,12 @@ create_subjob(job *parent, char *newjid, int *rc)
 	}
 
 	psub = &subj->ji_wattr[JOB_ATR_outpath];
-	strncpy(tmp_path, psub->at_val.at_str, MAXPATHLEN);
+	snprintf(tmp_path, MAXPATHLEN + 1, "%s", psub->at_val.at_str);
 	job_attr_def[JOB_ATR_outpath].at_decode(psub, NULL, NULL,
 		subst_array_index(subj, tmp_path));
 
 	psub = &subj->ji_wattr[JOB_ATR_errpath];
-	strncpy(tmp_path, psub->at_val.at_str, MAXPATHLEN);
+	snprintf(tmp_path, MAXPATHLEN + 1, "%s", psub->at_val.at_str);
 	job_attr_def[JOB_ATR_errpath].at_decode(psub, NULL, NULL,
 		subst_array_index(subj, tmp_path));
 
