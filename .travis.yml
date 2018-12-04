@@ -5,12 +5,15 @@ services:
     - docker
 env:
     - OS_TYPE=centos:7
-    - OS_TYPE=opensuse
+    - OS_TYPE=opensuse/leap:15
     - OS_TYPE=debian:8
     - OS_TYPE=centos:7 BUILD_MODE=_debug
     - OS_TYPE=centos:7 BUILD_MODE=_sanitize
 before_install:
     - .github/runchecks
+    - export OS_TYPE_FILE=${OS_TYPE////_}
+    - export OS_TYPE_FILE=${OS_TYPE_FILE//./_}
+    - export OS_TYPE_FILE=${OS_TYPE_FILE//:/_}${BUILD_MODE}
     - docker pull ${OS_TYPE}
     - docker run -it -d -h testdev.pbspro.com --name testdev -v `pwd`:`pwd` --privileged -w `pwd` ${OS_TYPE} /bin/sh
     - docker ps -a
@@ -20,7 +23,7 @@ before_install:
     - ${DOCKER_EXEC} /bin/sh -c "echo '${DOCKER_TESTDEV_IP}     testdev' >> /etc/hosts"
     - ${DOCKER_EXEC} cat /etc/hosts
 install:
-    - ./.travis/${OS_TYPE//:/_}${BUILD_MODE}.sh
+    - ./.travis/${OS_TYPE_FILE}.sh
     - '[ "x${BUILD_MODE}" == "x_debug" ] && exit 0 || true'
     - ${DOCKER_EXEC} /bin/sh -c "cd test/fw; pip install -r requirements.txt ."
     - ${DOCKER_EXEC_TTY} pbs_config --make-ug

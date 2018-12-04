@@ -137,7 +137,12 @@ Requires: tcl
 Requires: tk
 %if %{defined suse_version}
 Requires: smtp_daemon
+%if %{suse_version} >= 1500
+Requires: libical3
+Requires: hostname
+%else
 Requires: libical1
+%endif
 %else
 Requires: smtpdaemon
 Requires: libical
