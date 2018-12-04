@@ -156,8 +156,7 @@ req_signaljob(struct batch_request *preq)
 			req_reject(PBSE_IVALREQ, 0, preq);
 			return;
 		} else if (i == JOB_STATE_RUNNING) {
-			pjob = find_job(jid);		/* get ptr to the subjob */
-			if (pjob) {
+			if ((pjob = parent->ji_ajtrk->tkm_tbl[offset].trk_psubjob)) {
 				req_signaljob2(preq, pjob);
 			} else {
 				req_reject(PBSE_BADSTATE, 0, preq);
@@ -184,8 +183,7 @@ req_signaljob(struct batch_request *preq)
 
 		for (i=0; i<parent->ji_ajtrk->tkm_ct; i++) {
 			if (get_subjob_state(parent, i) == JOB_STATE_RUNNING) {
-				pjob = find_job(mk_subjob_id(parent, i));
-				if (pjob) {
+				if ((pjob = parent->ji_ajtrk->tkm_tbl[i].trk_psubjob)) {
 					/* if suspending,  skip those already suspended,  */
 					if (suspend && (pjob->ji_qs.ji_svrflags & JOB_SVFLG_Suspend))
 						continue;
@@ -256,8 +254,7 @@ req_signaljob(struct batch_request *preq)
 			}
 
 			if (get_subjob_state(parent, i) == JOB_STATE_RUNNING) {
-				pjob = find_job(mk_subjob_id(parent, i));
-				if (pjob) {
+				if ((pjob = parent->ji_ajtrk->tkm_tbl[i].trk_psubjob)) {
 					dup_br_for_subjob(preq, pjob, req_signaljob2);
 				}
 			}

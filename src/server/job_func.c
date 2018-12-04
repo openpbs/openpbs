@@ -510,8 +510,16 @@ job_free(job *pj)
 			bp = (badplace *)GET_NEXT(pj->ji_rejectdest);
 		}
 	}
-	/* if Arryjob, free the tracking table structure */
-	if (pj->ji_ajtrk) {
+	if (pj->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
+		if ((pj->ji_parentaj) && (pj->ji_parentaj->ji_ajtrk))
+			pj->ji_parentaj->ji_ajtrk->tkm_tbl[pj->ji_subjindx].trk_psubjob = NULL;
+	} else if (pj->ji_ajtrk) {
+		/* if Arrayjob, free the tracking table structure */
+		for (i = 0; i < pj->ji_ajtrk->tkm_ct; i++) {
+			job *psubj = pj->ji_ajtrk->tkm_tbl[i].trk_psubjob;
+			if (psubj)
+				psubj->ji_parentaj = NULL;
+		}
 		free(pj->ji_ajtrk);
 		pj->ji_ajtrk = NULL;
 	}
@@ -763,19 +771,16 @@ job_purge(job *pjob)
 #else	/* not PBS_MOM */
 	if ((pjob->ji_qs.ji_substate != JOB_SUBSTATE_TRANSIN) &&
 		(pjob->ji_qs.ji_substate != JOB_SUBSTATE_TRANSICM)) {
-		if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
+		if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) && (pjob->ji_qs.ji_state != JOB_STATE_FINISHED)) {
 			if ((pjob->ji_qs.ji_substate == JOB_SUBSTATE_RERUN3) || (pjob->ji_qs.ji_substate == JOB_SUBSTATE_QUEUED))
 				update_subjob_state(pjob, JOB_STATE_QUEUED);
 			else
 				update_subjob_state(pjob, JOB_STATE_EXPIRED);
-		} else {
-			(void)set_entity_ct_sum_queued(pjob, NULL, DECR);
-			(void)set_entity_resc_sum_queued(pjob, NULL,
-					NULL, DECR);
-			(void)set_entity_ct_sum_max(pjob, NULL, DECR);
-			(void)set_entity_resc_sum_max(pjob, NULL,
-					NULL, DECR);
 		}
+
+		(void)account_entity_limit_usages(pjob, NULL, NULL, DECR,
+				pjob->ji_etlimit_decr_queued ? ETLIM_ACC_ALL_MAX : ETLIM_ACC_ALL);
+
 		svr_dequejob(pjob);
 	}
 #endif	/* PBS_MOM */

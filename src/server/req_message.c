@@ -232,8 +232,7 @@ req_py_spawn(struct batch_request *preq)
 			req_reject(PBSE_BADSTATE, 0, preq);
 			return;
 		}
-		pjob = find_job(jid);	/* get ptr to the subjob */
-		if (pjob == NULL) {
+		if ((pjob = pjob->ji_ajtrk->tkm_tbl[offset].trk_psubjob) == NULL) {
 			req_reject(PBSE_UNKJOBID, 0, preq);
 			return;
 		}
@@ -323,8 +322,7 @@ req_relnodesjob(struct batch_request *preq)
 			req_reject(PBSE_BADSTATE, 0, preq);
 			return;
 		}
-		pjob = find_job(jid);	/* get ptr to the subjob */
-		if (pjob == NULL) {
+		if ((pjob = pjob->ji_ajtrk->tkm_tbl[offset].trk_psubjob) == NULL) {
 			req_reject(PBSE_UNKJOBID, 0, preq);
 			return;
 		}

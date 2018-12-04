@@ -1463,7 +1463,8 @@ unset_job_history_enable(void)
 		nxpjob = (job *)GET_NEXT(pjob->ji_alljobs);
 
 		if ((pjob->ji_qs.ji_state == JOB_STATE_MOVED) ||
-			(pjob->ji_qs.ji_state == JOB_STATE_FINISHED)) {
+			(pjob->ji_qs.ji_state == JOB_STATE_FINISHED) ||
+			(pjob->ji_qs.ji_state == JOB_STATE_EXPIRED)) {
 			job_purge(pjob);
 			pjob = NULL;
 		}
@@ -2018,14 +2019,14 @@ entlim_resum(struct work_task *pwt)
 	/* then for each job in the parent object, sum up its count/resource */
 
 	while (pj) {
-		if (is_resc) {
-			(void)set_entity_resc_sum_max(pj, pque, NULL, INCR);
-			(void)set_entity_resc_sum_queued(pj, pque, NULL, INCR);
+		if ((pj->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) == 0) {
+			if (is_resc) {
+				account_entity_limit_usages(pj, pque, NULL, INCR, ETLIM_ACC_ALL_RES);
+			} else {
+				account_entity_limit_usages(pj, pque, NULL, INCR, ETLIM_ACC_ALL_CT);
+			}
 		}
-		else {
-			(void)set_entity_ct_sum_max(pj, pque, INCR);
-			(void)set_entity_ct_sum_queued(pj, pque, INCR);
-		}
+
 		if (pque)
 			pj = (job *)GET_NEXT(pj->ji_jobque);
 		else
@@ -2165,6 +2166,15 @@ int actmode;
 #define Exceeds_Limit -1
 #define No_Limit       0
 #define Within_Limit   1
+
+#define ET_LIM_DBG(format, ...) \
+if (will_log_event(PBSEVENT_DEBUG4)) {\
+	snprintf(log_buffer, LOG_BUF_SIZE-1, "ET_LIM_DBG: %s: "format, __VA_ARGS__);\
+	log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_DEBUG, pjob->ji_qs.ji_jobid, log_buffer);\
+}
+
+extern char	 statechars[];
+
 /**
  * @brief
  * 		check_single_entity_ct	-	check the single entity count
@@ -2172,6 +2182,8 @@ int actmode;
  * @param[in]	kt	-	Key type- user/group/project or overall.
  * @param[in]	ename	-	entity name.
  * @param[in]	patr	-	pointer to attribute structure
+ * @param[in]	subjobs	-	number of subjobs if any.
+ * @param[in]	pjob	-	pointer to job
  *
  * @return	int
  * @retval	Exceeds_Generic	: count exceeds generic limit
@@ -2180,52 +2192,63 @@ int actmode;
  * @retval	Within_Limit	: count is within the limit
  */
 static int
-check_single_entity_ct(enum lim_keytypes kt, char *ename, attribute *patr)
+check_single_entity_ct(enum lim_keytypes kt, char *ename, attribute *patr, int subjobs, job *pjob)
 {
 	char *kstr;
 	void *ctx;
 	svr_entlim_leaf_t *plf;
-	int   count;
-
-	if ((patr->at_flags & ATR_VFLAG_SET) == 0)
-		return No_Limit;
+	int   count = subjobs;
 
 	kstr = entlim_mk_runkey(kt, ename);
 	if (kstr == NULL) {
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
 			LOG_ALERT, msg_daemonname,
 			"rejecting job,  unable to make entity limit key, no memory");
+		ET_LIM_DBG("exiting, ret %d [kstr is NULL]", __func__, LIM_OVERALL)
 		return LIM_OVERALL;
 	}
+	ET_LIM_DBG("kstr %s, %d", __func__, kstr, subjobs)
 	ctx = patr->at_val.at_enty.ae_tree;
 	plf = (svr_entlim_leaf_t *)entlim_get(kstr, ctx);
-	free(kstr);
-	if (plf)
-		count = plf->slf_sum.at_val.at_long + 1;
-	else if (kt == LIM_OVERALL)
-		return No_Limit;
-	else
-		count = 1;
 
+	if (plf) {
+		count += plf->slf_sum.at_val.at_long;
+		ET_LIM_DBG("ct usage for %s is %ld", __func__, kstr, plf->slf_sum.at_val.at_long)
+		ET_LIM_DBG("ct specific limit for %s is %ld", __func__, kstr, plf->slf_limit.at_val.at_long)
+	}
+	free(kstr);
+
+	ET_LIM_DBG("count is %d", __func__, count)
 	if (plf && (plf->slf_limit.at_flags & ATR_VFLAG_SET)) {
-		if (count > plf->slf_limit.at_val.at_long)
+		if (count > plf->slf_limit.at_val.at_long) {
+			ET_LIM_DBG("exiting, ret Exceeds_Limit [specific limit]", __func__)
 			return Exceeds_Limit;
-		else
+		} else {
+			ET_LIM_DBG("exiting, ret Within_Limit [specific limit]", __func__)
 			return Within_Limit;
-	} else {
+		}
+	} else if (kt != LIM_OVERALL) {
 		/* compare against generic limit if one */
 		kstr = entlim_mk_runkey(kt, PBS_GENERIC_ENTITY);
-		if (kstr == NULL)
+		if (kstr == NULL) {
+			ET_LIM_DBG("exiting, ret No_Limit [generic limit]", __func__)
 			return No_Limit;
-		plf = (svr_entlim_leaf_t *)entlim_get(kstr, ctx);
-		free(kstr);
-		if (plf && (plf->slf_limit.at_flags & ATR_VFLAG_SET)) {
-			if (count > plf->slf_limit.at_val.at_long)
-				return Exceeds_Generic;
-			else
-				return Within_Limit;
 		}
+		plf = (svr_entlim_leaf_t *)entlim_get(kstr, ctx);
+		if (plf && (plf->slf_limit.at_flags & ATR_VFLAG_SET)) {
+			ET_LIM_DBG("ct generic limit for %s is %ld", __func__, kstr, plf->slf_limit.at_val.at_long)
+			free(kstr);
+			if (count > plf->slf_limit.at_val.at_long) {
+				ET_LIM_DBG("exiting, ret Exceeds_Generic [generic limit]", __func__)
+				return Exceeds_Generic;
+			} else {
+				ET_LIM_DBG("exiting, ret Within_Limit [generic limit]", __func__)
+				return Within_Limit;
+			}
+		}
+		free(kstr);
 	}
+	ET_LIM_DBG("exiting, ret No_Limit [all ok]", __func__)
 	return No_Limit;
 }
 /**
@@ -2237,6 +2260,8 @@ check_single_entity_ct(enum lim_keytypes kt, char *ename, attribute *patr)
  * @param[in]	patr	-	pointer to attribute structure
  * @param[in]	newr	-	new resource
  * @param[in]	oldr	-	old resource
+ * @param[in]	subjobs -	number of subjobs if any.
+ * @param[in]	pjob	-	pointer to job
  *
  * @return	int
  * @retval	Exceeds_Generic	: count exceeds generic limit
@@ -2248,60 +2273,100 @@ static int
 check_single_entity_res(enum lim_keytypes kt, char *ename,
 	attribute *patr,
 	resource  *newr,
-	resource  *oldr)
+	resource  *oldr,
+	int	  subjobs,
+	job	  *pjob)
 {
 	char *kstr;
 	void               *ctx;
 	svr_entlim_leaf_t *plf;
 	int		   rc;
-	attribute          tmpval;
-
-	if ((patr->at_flags & ATR_VFLAG_SET) == 0)
-		return No_Limit;
+	int i;
+	attribute  tmpval = {0};
 
 	kstr = entlim_mk_reskey(kt, ename, newr->rs_defin->rs_name);
 	if (kstr == NULL) {
 		log_event(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
 			LOG_ALERT, msg_daemonname,
 			"rejecting job,  unable to make entity limit key, no memory");
+		ET_LIM_DBG("exiting, ret %d [kstr is NULL]", __func__, LIM_OVERALL)
 		return LIM_OVERALL;
 	}
+	ET_LIM_DBG("kstr %s, %d, oldr %p", __func__, kstr, subjobs, oldr)
 	ctx = patr->at_val.at_enty.ae_tree;
 	plf = (svr_entlim_leaf_t *)entlim_get(kstr, ctx);
-	free(kstr);
+
 	if (plf) {
 		tmpval = plf->slf_sum;
-		if (oldr)
-			plf->slf_rescd->rs_set(&tmpval, &oldr->rs_value, DECR);
-		/* add in requested amount */
-		plf->slf_rescd->rs_set(&tmpval, &newr->rs_value, INCR);
-	} else if (kt == LIM_OVERALL)
-	return No_Limit;
-	else
-		tmpval = newr->rs_value;	/* set to requested amount */
-
+		for (i = 0; i < subjobs; i++) {
+			if (oldr)
+				plf->slf_rescd->rs_set(&tmpval, &oldr->rs_value, DECR);
+			/* add in requested amount */
+			plf->slf_rescd->rs_set(&tmpval, &newr->rs_value, INCR);
+		}
+		if (will_log_event(PBSEVENT_DEBUG4)) {
+			svrattrl *sum = NULL,*limit = NULL;
+			char *sum_val,*limit_val;
+			if (plf->slf_sum.at_flags & ATR_VFLAG_SET) {
+				plf->slf_rescd->rs_encode(&plf->slf_sum, NULL, "sumval", NULL, ATR_ENCODE_CLIENT, &sum);
+				sum_val = sum->al_value;
+			} else
+				sum_val = "(not_set)";
+			if (plf->slf_limit.at_flags & ATR_VFLAG_SET) {
+				plf->slf_rescd->rs_encode(&plf->slf_limit, NULL, "limval", NULL, ATR_ENCODE_CLIENT, &limit);
+				limit_val = limit->al_value;
+			} else
+				limit_val = "(not_set)";
+			ET_LIM_DBG("res usage for %s is %s", __func__, kstr, sum_val)
+			ET_LIM_DBG("res specific limit for %s is %s", __func__, kstr, limit_val)
+			free(sum);
+			free(limit);
+		}
+	}
+	free(kstr);
 	if (plf && (plf->slf_limit.at_flags & ATR_VFLAG_SET)) {
 		/* check the specific user's limit */
 		rc = plf->slf_rescd->rs_comp(&tmpval, &plf->slf_limit);
-		if (rc > 0)
+		if (rc > 0) {
+			ET_LIM_DBG("exiting, ret Exceeds_Limit, rc=%d [specific limit]", __func__, rc)
 			return Exceeds_Limit;
-		else
-			return Within_Limit;
+		}
+		ET_LIM_DBG("exiting, ret Within_Limit, rc=%d [specific limit]", __func__, rc)
+		return Within_Limit;
 	} else if (kt != LIM_OVERALL) {
 		/* check against the generic limit if one */
 		kstr = entlim_mk_reskey(kt, PBS_GENERIC_ENTITY, newr->rs_defin->rs_name);
-		if (kstr == NULL)
+		if (kstr == NULL) {
+			ET_LIM_DBG("exiting, ret No_Limit [generic limit]", __func__)
 			return No_Limit;
-		plf = (svr_entlim_leaf_t *)entlim_get(kstr, ctx);
-		free(kstr);
-		if (plf && (plf->slf_limit.at_flags & ATR_VFLAG_SET)) {
-			rc=plf->slf_rescd->rs_comp(&tmpval, &plf->slf_limit);
-			if (rc > 0)
-				return Exceeds_Generic;
-			else
-				return Within_Limit;
 		}
+		plf = (svr_entlim_leaf_t *)entlim_get(kstr, ctx);
+		if (plf && (plf->slf_limit.at_flags & ATR_VFLAG_SET)) {
+			if (!(tmpval.at_flags & ATR_VFLAG_SET)) {  /* for no recorded usage for entity */
+				plf->slf_rescd->rs_set(&tmpval, &newr->rs_value, SET);
+				for (i = 0; i < (subjobs-1); i++) {
+					plf->slf_rescd->rs_set(&tmpval, &newr->rs_value, INCR);
+				}
+				if (will_log_event(PBSEVENT_DEBUG4) && (tmpval.at_flags & ATR_VFLAG_SET)) {
+					svrattrl *count;
+					plf->slf_rescd->rs_encode(&tmpval, NULL, "tmpval", NULL, ATR_ENCODE_CLIENT, &count);
+					ET_LIM_DBG("res generic limit for %s is %s", __func__, kstr, count->al_value)
+					free(count);
+				} else
+					ET_LIM_DBG("res generic limit for %s is (not_set)", __func__, kstr)
+			}
+			rc = plf->slf_rescd->rs_comp(&tmpval, &plf->slf_limit);
+			free(kstr);
+			if (rc > 0) {
+				ET_LIM_DBG("exiting, ret Exceeds_Generic, rc=%d [generic limit]", __func__, rc)
+				return Exceeds_Generic;
+			}
+			ET_LIM_DBG("exiting, ret Within_Limit, rc=%d [generic limit]", __func__, rc)
+			return Within_Limit;
+		}
+		free(kstr);
 	}
+	ET_LIM_DBG("exiting, ret No_Limit [all ok]", __func__)
 	return No_Limit;
 }
 
@@ -2331,6 +2396,7 @@ check_entity_ct_limit_queued(job *pjob, pbs_queue *pque)
 	char	    *euser;
 	attribute   *pqueued_jobs_threshold;
 	int	     rc;
+	int	     subjobs;
 	char	     ebuff[COMMENT_BUF_SIZE+1];
 	extern char *msg_et_qct_q;
 	extern char *msg_et_sct_q;
@@ -2347,6 +2413,7 @@ check_entity_ct_limit_queued(job *pjob, pbs_queue *pque)
 	extern char *msg_et_suq_q;
 	extern char *msg_et_sus_q;
 
+	ET_LIM_DBG("entered for %s", __func__, pque ? pque->qu_qs.qu_name : "server")
 	euser  = pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str;
 	egroup = pjob->ji_wattr[(int)JOB_ATR_egroup].at_val.at_str;
 	project = pjob->ji_wattr[(int)JOB_ATR_project].at_val.at_str;
@@ -2359,13 +2426,21 @@ check_entity_ct_limit_queued(job *pjob, pbs_queue *pque)
 	else
 		pqueued_jobs_threshold = &server.sv_attr[(int)SRV_ATR_queued_jobs_threshold];
 
-	if ((pqueued_jobs_threshold->at_flags & ATR_VFLAG_SET) == 0)
+	if ((pqueued_jobs_threshold->at_flags & ATR_VFLAG_SET) == 0) {
+		ET_LIM_DBG("exiting, ret 0 [queued_jobs_threshold limit not set for %s]", __func__, pque ? pque->qu_qs.qu_name : "server")
 		return PBSE_NONE;	/* no limits set */
+	}
+
+	if ((subjobs = get_queued_subjobs_ct(pjob)) < 0) {
+		ET_LIM_DBG("exiting, ret %d [get_queued_subjobs_ct() returned %d]", __func__,
+				PBSE_INTERNAL, subjobs)
+		return PBSE_INTERNAL;
+	}
 
 	/* I.  For jobs count limits */
 
 	/* 1. Check against Overall limit, [o:PBS_ALL] */
-	rc = check_single_entity_ct(LIM_OVERALL, PBS_ALL_ENTITY, pqueued_jobs_threshold);
+	rc = check_single_entity_ct(LIM_OVERALL, PBS_ALL_ENTITY, pqueued_jobs_threshold, subjobs, pjob);
 	if (rc == Exceeds_Limit) {
 		if (pque) {
 			snprintf(ebuff, COMMENT_BUF_SIZE, msg_et_qct_q,
@@ -2376,11 +2451,13 @@ check_entity_ct_limit_queued(job *pjob, pbs_queue *pque)
 		ebuff[COMMENT_BUF_SIZE] = '\0';
 		if ((pjob->ji_clterrmsg = strdup(ebuff)) == NULL)
 			return PBSE_SYSTEM;
+		ET_LIM_DBG("exiting, ret %d [check_single_entity_ct(o:"PBS_ALL_ENTITY",%d) returned Exceeds_Limit]", __func__,
+				PBSE_ENTLIMCT, subjobs)
 		return PBSE_ENTLIMCT;
 	}
 
 	/* 2. Check against specific user limit, [u:user] */
-	rc = check_single_entity_ct(LIM_USER, euser, pqueued_jobs_threshold);
+	rc = check_single_entity_ct(LIM_USER, euser, pqueued_jobs_threshold, subjobs, pjob);
 	if (rc == Exceeds_Limit) {
 		if (pque) {
 			snprintf(ebuff, COMMENT_BUF_SIZE, msg_et_suq_q,
@@ -2391,6 +2468,8 @@ check_entity_ct_limit_queued(job *pjob, pbs_queue *pque)
 		ebuff[COMMENT_BUF_SIZE] = '\0';
 		if ((pjob->ji_clterrmsg = strdup(ebuff)) == NULL)
 			return PBSE_SYSTEM;
+		ET_LIM_DBG("exiting, ret %d [check_single_entity_ct(u:%s,%d) returned Exceeds_Limit]", __func__,
+				PBSE_ENTLIMCT, euser, subjobs)
 		return PBSE_ENTLIMCT;
 
 	} else if (rc == Exceeds_Generic) {
@@ -2403,11 +2482,13 @@ check_entity_ct_limit_queued(job *pjob, pbs_queue *pque)
 		ebuff[COMMENT_BUF_SIZE] = '\0';
 		if ((pjob->ji_clterrmsg = strdup(ebuff)) == NULL)
 			return PBSE_SYSTEM;
+		ET_LIM_DBG("exiting, ret %d [check_single_entity_ct(u:%s,%d) returned Exceeds_Generic]", __func__,
+				PBSE_ENTLIMCT, euser, subjobs)
 		return PBSE_ENTLIMCT;
 	}
 
 	/* 3. Check against specific group limit, [g:group] */
-	rc = check_single_entity_ct(LIM_GROUP, egroup, pqueued_jobs_threshold);
+	rc = check_single_entity_ct(LIM_GROUP, egroup, pqueued_jobs_threshold, subjobs, pjob);
 	if (rc == Exceeds_Limit) {
 		if (pque) {
 			snprintf(ebuff, COMMENT_BUF_SIZE, msg_et_sgq_q,
@@ -2418,6 +2499,8 @@ check_entity_ct_limit_queued(job *pjob, pbs_queue *pque)
 		ebuff[COMMENT_BUF_SIZE] = '\0';
 		if ((pjob->ji_clterrmsg = strdup(ebuff)) == NULL)
 			return PBSE_SYSTEM;
+		ET_LIM_DBG("exiting, ret %d [check_single_entity_ct(g:%s,%d) returned Exceeds_Limit]", __func__,
+				PBSE_ENTLIMCT, egroup, subjobs)
 		return PBSE_ENTLIMCT;
 
 	} else if (rc == Exceeds_Generic) {
@@ -2430,12 +2513,14 @@ check_entity_ct_limit_queued(job *pjob, pbs_queue *pque)
 		ebuff[COMMENT_BUF_SIZE] = '\0';
 		if ((pjob->ji_clterrmsg = strdup(ebuff)) == NULL)
 			return PBSE_SYSTEM;
+		ET_LIM_DBG("exiting, ret %d [check_single_entity_ct(g:%s,%d) returned Exceeds_Generic]", __func__,
+				PBSE_ENTLIMCT, egroup, subjobs)
 		return PBSE_ENTLIMCT;
 	}
 
 
 	/* 4. Check against specific project limit, [p:project] */
-	rc = check_single_entity_ct(LIM_PROJECT, project, pqueued_jobs_threshold);
+	rc = check_single_entity_ct(LIM_PROJECT, project, pqueued_jobs_threshold, subjobs, pjob);
 	if (rc == Exceeds_Limit) {
 		if (pque) {
 			snprintf(ebuff, COMMENT_BUF_SIZE, msg_et_spq_q,
@@ -2446,6 +2531,8 @@ check_entity_ct_limit_queued(job *pjob, pbs_queue *pque)
 		ebuff[COMMENT_BUF_SIZE] = '\0';
 		if ((pjob->ji_clterrmsg = strdup(ebuff)) == NULL)
 			return PBSE_SYSTEM;
+		ET_LIM_DBG("exiting, ret %d [check_single_entity_ct(p:%s,%d) returned Exceeds_Limit]", __func__,
+				PBSE_ENTLIMCT, project, subjobs)
 		return PBSE_ENTLIMCT;
 
 	} else if (rc == Exceeds_Generic) {
@@ -2458,10 +2545,12 @@ check_entity_ct_limit_queued(job *pjob, pbs_queue *pque)
 		ebuff[COMMENT_BUF_SIZE] = '\0';
 		if ((pjob->ji_clterrmsg = strdup(ebuff)) == NULL)
 			return PBSE_SYSTEM;
+		ET_LIM_DBG("exiting, ret %d [check_single_entity_ct(p:%s,%d) returned Exceeds_Generic]", __func__,
+				PBSE_ENTLIMCT, project, subjobs)
 		return PBSE_ENTLIMCT;
 	}
 
-
+	ET_LIM_DBG("exiting, ret 0 [all ok]", __func__)
 	return 0;	/* within all count limits */
 }
 
@@ -2491,6 +2580,7 @@ check_entity_ct_limit_max(job *pjob, pbs_queue *pque)
 	char	    *euser;
 	attribute   *pmax_queued;
 	int	     rc;
+	int	     subjobs;
 	char	     ebuff[COMMENT_BUF_SIZE+1];
 	extern char *msg_et_qct;
 	extern char *msg_et_sct;
@@ -2507,6 +2597,7 @@ check_entity_ct_limit_max(job *pjob, pbs_queue *pque)
 	extern char *msg_et_suq;
 	extern char *msg_et_sus;
 
+	ET_LIM_DBG("entered for %s", __func__, pque ? pque->qu_qs.qu_name : "server")
 	euser  = pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str;
 	egroup = pjob->ji_wattr[(int)JOB_ATR_egroup].at_val.at_str;
 	project = pjob->ji_wattr[(int)JOB_ATR_project].at_val.at_str;
@@ -2519,13 +2610,21 @@ check_entity_ct_limit_max(job *pjob, pbs_queue *pque)
 	else
 		pmax_queued = &server.sv_attr[(int)SRV_ATR_max_queued];
 
-	if ((pmax_queued->at_flags & ATR_VFLAG_SET) == 0)
+	if ((pmax_queued->at_flags & ATR_VFLAG_SET) == 0) {
+		ET_LIM_DBG("exiting, ret 0 [max_queued limit not set for %s]", __func__, pque ? pque->qu_qs.qu_name : "server")
 		return PBSE_NONE;	/* no limits set */
+	}
+
+	if ((subjobs = get_queued_subjobs_ct(pjob)) < 0) {
+		ET_LIM_DBG("exiting, ret %d [get_queued_subjobs_ct() returned %d]", __func__,
+				PBSE_INTERNAL, subjobs)
+		return PBSE_INTERNAL;
+	}
 
 	/* I.  For jobs count limits */
 
 	/* 1. Check against Overall limit, [o:PBS_ALL] */
-	rc = check_single_entity_ct(LIM_OVERALL, PBS_ALL_ENTITY, pmax_queued);
+	rc = check_single_entity_ct(LIM_OVERALL, PBS_ALL_ENTITY, pmax_queued, subjobs, pjob);
 	if (rc == Exceeds_Limit) {
 		if (pque) {
 			snprintf(ebuff, COMMENT_BUF_SIZE, msg_et_qct,
@@ -2536,11 +2635,13 @@ check_entity_ct_limit_max(job *pjob, pbs_queue *pque)
 		ebuff[COMMENT_BUF_SIZE] = '\0';
 		if ((pjob->ji_clterrmsg = strdup(ebuff)) == NULL)
 			return PBSE_SYSTEM;
+		ET_LIM_DBG("exiting, ret %d [check_single_entity_ct(o:"PBS_ALL_ENTITY",%d) returned Exceeds_Limit]", __func__,
+				PBSE_ENTLIMCT, subjobs)
 		return PBSE_ENTLIMCT;
 	}
 
 	/* 2. Check against specific user limit, [u:user] */
-	rc = check_single_entity_ct(LIM_USER, euser, pmax_queued);
+	rc = check_single_entity_ct(LIM_USER, euser, pmax_queued, subjobs, pjob);
 	if (rc == Exceeds_Limit) {
 		if (pque) {
 			snprintf(ebuff, COMMENT_BUF_SIZE, msg_et_suq,
@@ -2551,6 +2652,8 @@ check_entity_ct_limit_max(job *pjob, pbs_queue *pque)
 		ebuff[COMMENT_BUF_SIZE] = '\0';
 		if ((pjob->ji_clterrmsg = strdup(ebuff)) == NULL)
 			return PBSE_SYSTEM;
+		ET_LIM_DBG("exiting, ret %d [check_single_entity_ct(u:%s,%d) returned Exceeds_Limit]", __func__,
+				PBSE_ENTLIMCT, euser, subjobs)
 		return PBSE_ENTLIMCT;
 
 	} else if (rc == Exceeds_Generic) {
@@ -2563,11 +2666,13 @@ check_entity_ct_limit_max(job *pjob, pbs_queue *pque)
 		ebuff[COMMENT_BUF_SIZE] = '\0';
 		if ((pjob->ji_clterrmsg = strdup(ebuff)) == NULL)
 			return PBSE_SYSTEM;
+		ET_LIM_DBG("exiting, ret %d [check_single_entity_ct(u:%s,%d) returned Exceeds_Generic]", __func__,
+				PBSE_ENTLIMCT, euser, subjobs)
 		return PBSE_ENTLIMCT;
 	}
 
 	/* 3. Check against specific group limit, [g:group] */
-	rc = check_single_entity_ct(LIM_GROUP, egroup, pmax_queued);
+	rc = check_single_entity_ct(LIM_GROUP, egroup, pmax_queued, subjobs, pjob);
 	if (rc == Exceeds_Limit) {
 		if (pque) {
 			snprintf(ebuff, COMMENT_BUF_SIZE, msg_et_sgq,
@@ -2578,6 +2683,8 @@ check_entity_ct_limit_max(job *pjob, pbs_queue *pque)
 		ebuff[COMMENT_BUF_SIZE] = '\0';
 		if ((pjob->ji_clterrmsg = strdup(ebuff)) == NULL)
 			return PBSE_SYSTEM;
+		ET_LIM_DBG("exiting, ret %d [check_single_entity_ct(g:%s,%d) returned Exceeds_Limit]", __func__,
+				PBSE_ENTLIMCT, egroup, subjobs)
 		return PBSE_ENTLIMCT;
 
 	} else if (rc == Exceeds_Generic) {
@@ -2590,12 +2697,14 @@ check_entity_ct_limit_max(job *pjob, pbs_queue *pque)
 		ebuff[COMMENT_BUF_SIZE] = '\0';
 		if ((pjob->ji_clterrmsg = strdup(ebuff)) == NULL)
 			return PBSE_SYSTEM;
+		ET_LIM_DBG("exiting, ret %d [check_single_entity_ct(g:%s,%d) returned Exceeds_Generic]", __func__,
+				PBSE_ENTLIMCT, egroup, subjobs)
 		return PBSE_ENTLIMCT;
 	}
 
 
 	/* 4. Check against specific project limit, [p:project] */
-	rc = check_single_entity_ct(LIM_PROJECT, project, pmax_queued);
+	rc = check_single_entity_ct(LIM_PROJECT, project, pmax_queued, subjobs, pjob);
 	if (rc == Exceeds_Limit) {
 		if (pque) {
 			snprintf(ebuff, COMMENT_BUF_SIZE, msg_et_spq,
@@ -2606,6 +2715,8 @@ check_entity_ct_limit_max(job *pjob, pbs_queue *pque)
 		ebuff[COMMENT_BUF_SIZE] = '\0';
 		if ((pjob->ji_clterrmsg = strdup(ebuff)) == NULL)
 			return PBSE_SYSTEM;
+		ET_LIM_DBG("exiting, ret %d [check_single_entity_ct(p:%s,%d) returned Exceeds_Limit]", __func__,
+				PBSE_ENTLIMCT, project, subjobs)
 		return PBSE_ENTLIMCT;
 
 	} else if (rc == Exceeds_Generic) {
@@ -2618,9 +2729,12 @@ check_entity_ct_limit_max(job *pjob, pbs_queue *pque)
 		ebuff[COMMENT_BUF_SIZE] = '\0';
 		if ((pjob->ji_clterrmsg = strdup(ebuff)) == NULL)
 			return PBSE_SYSTEM;
+		ET_LIM_DBG("exiting, ret %d [check_single_entity_ct(p:%s,%d) returned Exceeds_Generic]", __func__,
+				PBSE_ENTLIMCT, project, subjobs)
 		return PBSE_ENTLIMCT;
 	}
 
+	ET_LIM_DBG("exiting, ret 0 [all ok]", __func__)
 	return 0;	/* within all count limits */
 }
 
@@ -2650,7 +2764,8 @@ check_entity_resc_limit_queued(job *pjob, pbs_queue *pque, attribute *altered_re
 	char	    *egroup;
 	char	    *project;
 	char	    *euser;
-	int		rc;
+	int 	    rc;
+	int 	    subjobs;
 	attribute   *pmaxqresc;
 	attribute   *pattr_new;
 	attribute   *pattr_old;
@@ -2683,6 +2798,7 @@ check_entity_resc_limit_queued(job *pjob, pbs_queue *pque, attribute *altered_re
 	extern char *msg_et_rsuq_q;
 	extern char *msg_et_rsus_q;
 
+	ET_LIM_DBG("entered for %s, alt_res %p", __func__, pque ? pque->qu_qs.qu_name : "server", altered_resc)
 	euser  = pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str;
 	egroup = pjob->ji_wattr[(int)JOB_ATR_egroup].at_val.at_str;
 	project = pjob->ji_wattr[(int)JOB_ATR_project].at_val.at_str;
@@ -2695,8 +2811,10 @@ check_entity_resc_limit_queued(job *pjob, pbs_queue *pque, attribute *altered_re
 	else
 		pmaxqresc = &server.sv_attr[(int)SRV_ATR_queued_jobs_threshold_res];
 
-	if ((pmaxqresc->at_flags & ATR_VFLAG_SET) == 0)
+	if ((pmaxqresc->at_flags & ATR_VFLAG_SET) == 0) {
+		ET_LIM_DBG("exiting, ret 0 [queued_jobs_threshold_res limit not set for %s]", __func__, pque ? pque->qu_qs.qu_name : "server")
 		return 0;	/* no limits set */
+	}
 
 	if (altered_resc) {
 		pattr_new = altered_resc;
@@ -2706,10 +2824,16 @@ check_entity_resc_limit_queued(job *pjob, pbs_queue *pque, attribute *altered_re
 		pattr_old = NULL;	/* null */
 	}
 
+	if ((subjobs = get_queued_subjobs_ct(pjob)) < 0) {
+		ET_LIM_DBG("exiting, ret %d [get_queued_subjobs_ct() returned %d]", __func__,
+				PBSE_INTERNAL, subjobs)
+		return PBSE_INTERNAL;
+	}
 
 	for (presc_new = (resource *)GET_NEXT(pattr_new->at_val.at_list);
 		presc_new != NULL;
 		presc_new = (resource *)GET_NEXT(presc_new->rs_link)) {
+		char *rescn = presc_new->rs_defin->rs_name;
 		/* is there an entity limit set for this resource */
 		if  (!(presc_new->rs_value.at_flags & ATR_VFLAG_SET)
 			|| (presc_new->rs_defin->rs_entlimflg != PBS_ENTLIM_LIMITSET))
@@ -2723,10 +2847,11 @@ check_entity_resc_limit_queued(job *pjob, pbs_queue *pque, attribute *altered_re
 		else
 			presc_old = NULL;
 
+		ET_LIM_DBG("checking for resc %s", __func__, rescn)
 		/* 1. check against overall limit o:PBS_ALL */
 		rc = check_single_entity_res(LIM_OVERALL, PBS_ALL_ENTITY,
 			pmaxqresc,
-			presc_new, presc_old);
+			presc_new, presc_old, subjobs, pjob);
 		if (rc == Exceeds_Limit) {
 			if (pque) {
 				snprintf(ebuff, COMMENT_BUF_SIZE, msg_et_raq_q,
@@ -2739,13 +2864,15 @@ check_entity_resc_limit_queued(job *pjob, pbs_queue *pque, attribute *altered_re
 			ebuff[COMMENT_BUF_SIZE] = '\0';
 			if ((pjob->ji_clterrmsg = strdup(ebuff)) == NULL)
 				return PBSE_SYSTEM;
+			ET_LIM_DBG("exiting, ret %d [check_single_entity_res(o:"PBS_ALL_ENTITY";%s,%d) returned Exceeds_Limit]", __func__,
+					PBSE_ENTLIMRESC, rescn, subjobs)
 			return PBSE_ENTLIMRESC;
 		}
 
 		/* 2. check aginst user/generic-user limit */
 		rc = check_single_entity_res(LIM_USER, euser,
 			pmaxqresc,
-			presc_new, presc_old);
+			presc_new, presc_old, subjobs, pjob);
 		if (rc == Exceeds_Limit) {
 			if (pque) {
 				snprintf(ebuff, COMMENT_BUF_SIZE, msg_et_rsuq_q,
@@ -2759,6 +2886,8 @@ check_entity_resc_limit_queued(job *pjob, pbs_queue *pque, attribute *altered_re
 			ebuff[COMMENT_BUF_SIZE] = '\0';
 			if ((pjob->ji_clterrmsg = strdup(ebuff)) == NULL)
 				return PBSE_SYSTEM;
+			ET_LIM_DBG("exiting, ret %d [check_single_entity_res(u:%s;%s,%d) returned Exceeds_Limit]", __func__,
+					PBSE_ENTLIMRESC, euser, rescn, subjobs)
 			return PBSE_ENTLIMRESC;
 
 		} else if (rc == Exceeds_Generic) {
@@ -2773,13 +2902,15 @@ check_entity_resc_limit_queued(job *pjob, pbs_queue *pque, attribute *altered_re
 			ebuff[COMMENT_BUF_SIZE] = '\0';
 			if ((pjob->ji_clterrmsg = strdup(ebuff)) == NULL)
 				return PBSE_SYSTEM;
+			ET_LIM_DBG("exiting, ret %d [check_single_entity_res(u:%s;%s,%d) returned Exceeds_Generic]", __func__,
+					PBSE_ENTLIMRESC, euser, rescn, subjobs)
 			return PBSE_ENTLIMRESC;
 		}
 
 		/* 3. check against specific/generic group limit */
 		rc = check_single_entity_res(LIM_GROUP, egroup,
 			pmaxqresc,
-			presc_new, presc_old);
+			presc_new, presc_old, subjobs, pjob);
 		if (rc == Exceeds_Limit) {
 			if (pque) {
 				snprintf(ebuff, COMMENT_BUF_SIZE, msg_et_rsgq_q,
@@ -2794,6 +2925,8 @@ check_entity_resc_limit_queued(job *pjob, pbs_queue *pque, attribute *altered_re
 			ebuff[COMMENT_BUF_SIZE] = '\0';
 			if ((pjob->ji_clterrmsg = strdup(ebuff)) == NULL)
 				return PBSE_SYSTEM;
+			ET_LIM_DBG("exiting, ret %d [check_single_entity_res(g:%s;%s,%d) returned Exceeds_Limit]", __func__,
+					PBSE_ENTLIMRESC, egroup, rescn, subjobs)
 			return PBSE_ENTLIMRESC;
 
 		} else if (rc == Exceeds_Generic) {
@@ -2808,13 +2941,15 @@ check_entity_resc_limit_queued(job *pjob, pbs_queue *pque, attribute *altered_re
 			ebuff[COMMENT_BUF_SIZE] = '\0';
 			if ((pjob->ji_clterrmsg = strdup(ebuff)) == NULL)
 				return PBSE_SYSTEM;
+			ET_LIM_DBG("exiting, ret %d [check_single_entity_res(g:%s;%s,%d) returned Exceeds_Generic]", __func__,
+					PBSE_ENTLIMRESC, egroup, rescn, subjobs)
 			return PBSE_ENTLIMRESC;
 		}
 
 		/* 4. check against specific/generic project limit */
 		rc = check_single_entity_res(LIM_PROJECT, project,
 			pmaxqresc,
-			presc_new, presc_old);
+			presc_new, presc_old, subjobs, pjob);
 		if (rc == Exceeds_Limit) {
 			if (pque) {
 				snprintf(ebuff, COMMENT_BUF_SIZE, msg_et_rspq_q,
@@ -2829,6 +2964,8 @@ check_entity_resc_limit_queued(job *pjob, pbs_queue *pque, attribute *altered_re
 			ebuff[COMMENT_BUF_SIZE] = '\0';
 			if ((pjob->ji_clterrmsg = strdup(ebuff)) == NULL)
 				return PBSE_SYSTEM;
+			ET_LIM_DBG("exiting, ret %d [check_single_entity_res(p:%s;%s,%d) returned Exceeds_Limit]", __func__,
+					PBSE_ENTLIMRESC, project, rescn, subjobs)
 			return PBSE_ENTLIMRESC;
 
 		} else if (rc == Exceeds_Generic) {
@@ -2843,10 +2980,13 @@ check_entity_resc_limit_queued(job *pjob, pbs_queue *pque, attribute *altered_re
 			ebuff[COMMENT_BUF_SIZE] = '\0';
 			if ((pjob->ji_clterrmsg = strdup(ebuff)) == NULL)
 				return PBSE_SYSTEM;
+			ET_LIM_DBG("exiting, ret %d [check_single_entity_res(p:%s;%s,%d) returned Exceeds_Generic]", __func__,
+					PBSE_ENTLIMRESC, project, rescn, subjobs)
 			return PBSE_ENTLIMRESC;
 		}
 	}
 
+	ET_LIM_DBG("exiting, ret 0 [all ok]", __func__)
 	/* At this point the job is good to go (into the queue/server */
 	return 0;
 }
@@ -2877,7 +3017,8 @@ check_entity_resc_limit_max(job *pjob, pbs_queue *pque, attribute *altered_resc)
 	char	    *egroup;
 	char	    *project;
 	char	    *euser;
-	int		rc;
+	int 	    rc;
+	int 	    subjobs;
 	attribute   *pmaxqresc;
 	attribute   *pattr_new;
 	attribute   *pattr_old;
@@ -2910,6 +3051,7 @@ check_entity_resc_limit_max(job *pjob, pbs_queue *pque, attribute *altered_resc)
 	extern char *msg_et_rsuq;
 	extern char *msg_et_rsus;
 
+	ET_LIM_DBG("entered for %s, alt_res %p", __func__, pque ? pque->qu_qs.qu_name : "server", altered_resc)
 	euser  = pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str;
 	egroup = pjob->ji_wattr[(int)JOB_ATR_egroup].at_val.at_str;
 	project = pjob->ji_wattr[(int)JOB_ATR_project].at_val.at_str;
@@ -2922,8 +3064,10 @@ check_entity_resc_limit_max(job *pjob, pbs_queue *pque, attribute *altered_resc)
 	else
 		pmaxqresc = &server.sv_attr[(int)SRV_ATR_max_queued_res];
 
-	if ((pmaxqresc->at_flags & ATR_VFLAG_SET) == 0)
+	if ((pmaxqresc->at_flags & ATR_VFLAG_SET) == 0) {
+		ET_LIM_DBG("exiting, ret 0 [max_queued_res limit not set for %s]", __func__, pque ? pque->qu_qs.qu_name : "server")
 		return 0;	/* no limits set */
+	}
 
 	if (altered_resc) {
 		pattr_new = altered_resc;
@@ -2933,10 +3077,16 @@ check_entity_resc_limit_max(job *pjob, pbs_queue *pque, attribute *altered_resc)
 		pattr_old = NULL;	/* null */
 	}
 
+	if ((subjobs = get_queued_subjobs_ct(pjob)) < 0) {
+		ET_LIM_DBG("exiting, ret %d [get_queued_subjobs_ct() returned %d]", __func__,
+				PBSE_INTERNAL, subjobs)
+		return PBSE_INTERNAL;
+	}
 
 	for (presc_new = (resource *)GET_NEXT(pattr_new->at_val.at_list);
 		presc_new != NULL;
 		presc_new = (resource *)GET_NEXT(presc_new->rs_link)) {
+		char *rescn = presc_new->rs_defin->rs_name;
 		/* is there an entity limit set for this resource */
 		if  (!(presc_new->rs_value.at_flags & ATR_VFLAG_SET)
 			|| (presc_new->rs_defin->rs_entlimflg != PBS_ENTLIM_LIMITSET))
@@ -2950,10 +3100,11 @@ check_entity_resc_limit_max(job *pjob, pbs_queue *pque, attribute *altered_resc)
 		else
 			presc_old = NULL;
 
+		ET_LIM_DBG("checking for resc %s", __func__, rescn)
 		/* 1. check against overall limit o:PBS_ALL */
 		rc = check_single_entity_res(LIM_OVERALL, PBS_ALL_ENTITY,
 			pmaxqresc,
-			presc_new, presc_old);
+			presc_new, presc_old, subjobs, pjob);
 		if (rc == Exceeds_Limit) {
 			if (pque) {
 				snprintf(ebuff, COMMENT_BUF_SIZE, msg_et_raq,
@@ -2966,13 +3117,15 @@ check_entity_resc_limit_max(job *pjob, pbs_queue *pque, attribute *altered_resc)
 			ebuff[COMMENT_BUF_SIZE] = '\0';
 			if ((pjob->ji_clterrmsg = strdup(ebuff)) == NULL)
 				return PBSE_SYSTEM;
+			ET_LIM_DBG("exiting, ret %d [check_single_entity_res(o:"PBS_ALL_ENTITY";%s,%d) returned Exceeds_Limit]", __func__,
+					PBSE_ENTLIMRESC, rescn, subjobs)
 			return PBSE_ENTLIMRESC;
 		}
 
 		/* 2. check aginst user/generic-user limit */
 		rc = check_single_entity_res(LIM_USER, euser,
 			pmaxqresc,
-			presc_new, presc_old);
+			presc_new, presc_old, subjobs, pjob);
 		if (rc == Exceeds_Limit) {
 			if (pque) {
 				snprintf(ebuff, COMMENT_BUF_SIZE, msg_et_rsuq,
@@ -2986,6 +3139,8 @@ check_entity_resc_limit_max(job *pjob, pbs_queue *pque, attribute *altered_resc)
 			ebuff[COMMENT_BUF_SIZE] = '\0';
 			if ((pjob->ji_clterrmsg = strdup(ebuff)) == NULL)
 				return PBSE_SYSTEM;
+			ET_LIM_DBG("exiting, ret %d [check_single_entity_res(u:%s;%s,%d) returned Exceeds_Limit]", __func__,
+					PBSE_ENTLIMRESC, euser, rescn, subjobs)
 			return PBSE_ENTLIMRESC;
 
 		} else if (rc == Exceeds_Generic) {
@@ -3000,13 +3155,15 @@ check_entity_resc_limit_max(job *pjob, pbs_queue *pque, attribute *altered_resc)
 			ebuff[COMMENT_BUF_SIZE] = '\0';
 			if ((pjob->ji_clterrmsg = strdup(ebuff)) == NULL)
 				return PBSE_SYSTEM;
+			ET_LIM_DBG("exiting, ret %d [check_single_entity_res(u:%s;%s,%d) returned Exceeds_Generic]", __func__,
+					PBSE_ENTLIMRESC, euser, rescn, subjobs)
 			return PBSE_ENTLIMRESC;
 		}
 
 		/* 3. check against specific/generic group limit */
 		rc = check_single_entity_res(LIM_GROUP, egroup,
 			pmaxqresc,
-			presc_new, presc_old);
+			presc_new, presc_old, subjobs, pjob);
 		if (rc == Exceeds_Limit) {
 			if (pque) {
 				snprintf(ebuff, COMMENT_BUF_SIZE, msg_et_rsgq,
@@ -3021,6 +3178,8 @@ check_entity_resc_limit_max(job *pjob, pbs_queue *pque, attribute *altered_resc)
 			ebuff[COMMENT_BUF_SIZE] = '\0';
 			if ((pjob->ji_clterrmsg = strdup(ebuff)) == NULL)
 				return PBSE_SYSTEM;
+			ET_LIM_DBG("exiting, ret %d [check_single_entity_res(g:%s;%s,%d) returned Exceeds_Limit]", __func__,
+					PBSE_ENTLIMRESC, egroup, rescn, subjobs)
 			return PBSE_ENTLIMRESC;
 
 		} else if (rc == Exceeds_Generic) {
@@ -3035,13 +3194,15 @@ check_entity_resc_limit_max(job *pjob, pbs_queue *pque, attribute *altered_resc)
 			ebuff[COMMENT_BUF_SIZE] = '\0';
 			if ((pjob->ji_clterrmsg = strdup(ebuff)) == NULL)
 				return PBSE_SYSTEM;
+			ET_LIM_DBG("exiting, ret %d [check_single_entity_res(g:%s;%s,%d) returned Exceeds_Generic]", __func__,
+					PBSE_ENTLIMRESC, egroup, rescn, subjobs)
 			return PBSE_ENTLIMRESC;
 		}
 
 		/* 4. check against specific/generic project limit */
 		rc = check_single_entity_res(LIM_PROJECT, project,
 			pmaxqresc,
-			presc_new, presc_old);
+			presc_new, presc_old, subjobs, pjob);
 		if (rc == Exceeds_Limit) {
 			if (pque) {
 				snprintf(ebuff, COMMENT_BUF_SIZE, msg_et_rspq,
@@ -3056,6 +3217,8 @@ check_entity_resc_limit_max(job *pjob, pbs_queue *pque, attribute *altered_resc)
 			ebuff[COMMENT_BUF_SIZE] = '\0';
 			if ((pjob->ji_clterrmsg = strdup(ebuff)) == NULL)
 				return PBSE_SYSTEM;
+			ET_LIM_DBG("exiting, ret %d [check_single_entity_res(p:%s;%s,%d) returned Exceeds_Limit]", __func__,
+					PBSE_ENTLIMRESC, project, rescn, subjobs)
 			return PBSE_ENTLIMRESC;
 
 		} else if (rc == Exceeds_Generic) {
@@ -3070,10 +3233,13 @@ check_entity_resc_limit_max(job *pjob, pbs_queue *pque, attribute *altered_resc)
 			ebuff[COMMENT_BUF_SIZE] = '\0';
 			if ((pjob->ji_clterrmsg = strdup(ebuff)) == NULL)
 				return PBSE_SYSTEM;
+			ET_LIM_DBG("exiting, ret %d [check_single_entity_res(p:%s;%s,%d) returned Exceeds_Generic]", __func__,
+					PBSE_ENTLIMRESC, project, rescn, subjobs)
 			return PBSE_ENTLIMRESC;
 		}
 	}
 
+	ET_LIM_DBG("exiting, ret 0 [all ok]", __func__)
 	/* At this point the job is good to go (into the queue/server */
 	return 0;
 }
@@ -3088,6 +3254,8 @@ check_entity_resc_limit_max(job *pjob, pbs_queue *pque, attribute *altered_resc)
  * @param[in]	kt    - key type
  * @param[in]	ename - entity name
  * @param[in]	patr  - pointer to attribute
+ * @param[in]	pjob  - pointer to job
+ * @param[in]	subjobs   - count
  * @param[in]	op    - increment or decrement
  *
  * @return	within the limit or not
@@ -3097,18 +3265,19 @@ check_entity_resc_limit_max(job *pjob, pbs_queue *pque, attribute *altered_resc)
  */
 
 static int
-set_single_entity_ct(enum lim_keytypes kt, char *ename, attribute *patr, enum batch_op op)
+set_single_entity_ct(enum lim_keytypes kt, char *ename, attribute *patr, job *pjob, int subjobs, enum batch_op op)
 {
 	char *kstr;
 	void *ctx;
 	svr_entlim_leaf_t *plf;
 	int		   rc;
 
-	if ((patr->at_flags & ATR_VFLAG_SET) == 0)
-		return PBSE_NONE;
 	kstr = entlim_mk_runkey(kt, ename);
-	if (kstr == NULL)
+	if (kstr == NULL) {
+		ET_LIM_DBG("exiting, ret %d [kstr is NULL]", __func__, PBSE_SYSTEM)
 		return (PBSE_SYSTEM);
+	}
+	ET_LIM_DBG("kstr %s, %d, %s", __func__, kstr, subjobs, (op==INCR)?"INCR":"DECR")
 	ctx = patr->at_val.at_enty.ae_tree;
 	plf = (svr_entlim_leaf_t *)entlim_get(kstr, ctx);
 	if (op == INCR) {
@@ -3116,27 +3285,39 @@ set_single_entity_ct(enum lim_keytypes kt, char *ename, attribute *patr, enum ba
 			/* add leaf for this entity-limit */
 			if ((rc = alloc_svrleaf(NULL, &plf)) != PBSE_NONE) {
 				free(kstr);
+				ET_LIM_DBG("exiting, ret %d [alloc_svrleaf failed]", __func__, rc)
 				return (rc);
 			}
 			if (entlim_add(kstr, plf, ctx) == -1) {
 				free(kstr);
 				free(plf);
+				ET_LIM_DBG("exiting, ret %d [entlim_add failed]", __func__, PBSE_SYSTEM)
 				return (PBSE_SYSTEM);
 			}
 		}
-		plf->slf_sum.at_val.at_long += 1;
+		plf->slf_sum.at_val.at_long += subjobs;
 		plf->slf_sum.at_flags |= ATR_VFLAG_SET;
+		ET_LIM_DBG("usage INCR to %ld, by %d", __func__, plf->slf_sum.at_val.at_long, subjobs)
 	} else {
 		if (plf == NULL) {
 			free(kstr);
 			/* Do not decrement what isn't there */
+			ET_LIM_DBG("exiting, ret %d [plf is NULL]", __func__, PBSE_INTERNAL)
 			return (PBSE_INTERNAL);
 		}
-		plf->slf_sum.at_val.at_long -= 1;
+		plf->slf_sum.at_val.at_long -= subjobs;
 		plf->slf_sum.at_flags |= ATR_VFLAG_SET;
+		ET_LIM_DBG("usage DECR to %ld, by %d", __func__, plf->slf_sum.at_val.at_long, subjobs)
+
+		if (plf->slf_sum.at_val.at_long < 0L) {
+			ET_LIM_DBG("zeroing usage, was %ld, by %d", __func__, plf->slf_sum.at_val.at_long, subjobs)
+			plf->slf_sum.at_val.at_long = 0L;
+			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_single_entity_ct zeroing negative usage for %s", kstr);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER , LOG_WARNING, msg_daemonname, log_buffer);
+		}
 	}
-	DBPRT(("...adjusting Entity count for %s to %ld\n", kstr, plf->slf_sum.at_val.at_long))
 	free(kstr);
+	ET_LIM_DBG("exiting, ret 0 [all ok]", __func__)
 	return PBSE_NONE;
 }
 
@@ -3151,6 +3332,8 @@ set_single_entity_ct(enum lim_keytypes kt, char *ename, attribute *patr, enum ba
  *	newval - ptr to resource new value
  *	oldval - ptr to resource old value, null except for qalter case
  *		 where value is being changed, not just set
+ *	pjob   - pointer to job
+ *	subjobs    - count
  *	op     - increment or decrement
  *
  * @return	within the limit or not
@@ -3160,25 +3343,61 @@ set_single_entity_ct(enum lim_keytypes kt, char *ename, attribute *patr, enum ba
 static int
 set_single_entity_res(enum lim_keytypes kt, char *ename,
 	attribute *patr, resource  *newval,
-	resource  *oldval, enum batch_op op)
+	resource  *oldval, job *pjob, int subjobs, enum batch_op op)
 {
 	char *rescn = newval->rs_defin->rs_name;
 	char *kstr;
 	void               *ctx;
 	svr_entlim_leaf_t *plf;
 	int		   rc;
-
-	if ((patr->at_flags & ATR_VFLAG_SET) == 0)
-		return PBSE_NONE;
+	int		   i;
+	attribute tmpval = newval->rs_value;
 
 	kstr = entlim_mk_reskey(kt, ename, rescn);
 	if (kstr == NULL) {
 		snprintf(log_buffer, LOG_BUF_SIZE-1, "Error in entlim_mk_reskey for rescn %s", rescn);
 		log_err(-1, __func__, log_buffer);
+		ET_LIM_DBG("exiting, ret %d [kstr is NULL]", __func__, PBSE_SYSTEM)
 		return (PBSE_SYSTEM);
 	}
+	ET_LIM_DBG("kstr %s, %d, %s, res %s, %p", __func__, kstr,
+			subjobs, (op==INCR)?"INCR":"DECR", rescn, oldval)
 	ctx = patr->at_val.at_enty.ae_tree;
 	plf = (svr_entlim_leaf_t *)entlim_get(kstr, ctx);
+
+	if (oldval && plf) {
+		if (!(plf->slf_rescd->rs_comp(&tmpval, &oldval->rs_value))) {
+			free(kstr);
+			ET_LIM_DBG("exiting, ret 0 [newval == oldval]", __func__)
+			return PBSE_NONE;
+		}
+		plf->slf_rescd->rs_set(&tmpval, &oldval->rs_value, DECR); /* subtract prior value (qalter case) */
+		if (will_log_event(PBSEVENT_DEBUG4)) {
+			svrattrl *new, *old, *diff;
+			char *new_val, *old_val, *diff_val;
+			new = old = diff = NULL;
+			if (newval->rs_value.at_flags & ATR_VFLAG_SET) {
+				plf->slf_rescd->rs_encode(&newval->rs_value, NULL, "newval", NULL, ATR_ENCODE_CLIENT, &new);
+				new_val = new->al_value;
+			} else
+				new_val = "(not_set)";
+			if (oldval->rs_value.at_flags & ATR_VFLAG_SET) {
+				plf->slf_rescd->rs_encode(&oldval->rs_value, NULL, "oldval", NULL, ATR_ENCODE_CLIENT, &old);
+				old_val = old->al_value;
+			} else
+				old_val = "(not_set)";
+			if (tmpval.at_flags & ATR_VFLAG_SET) {
+				plf->slf_rescd->rs_encode(&tmpval, NULL, "diffval", NULL, ATR_ENCODE_CLIENT, &diff);
+				diff_val = diff->al_value;
+			} else
+				diff_val = "(not_set)";
+			ET_LIM_DBG("DECR old from new, %s - %s = %s", __func__, new_val, old_val, diff_val)
+			free(new);
+			free(old);
+			free(diff);
+		}
+	}
+
 
 	if (op == INCR) {
 
@@ -3187,6 +3406,7 @@ set_single_entity_res(enum lim_keytypes kt, char *ename,
 			/* add leaf for this entity-limit */
 			if ((rc = alloc_svrleaf(rescn, &plf)) != PBSE_NONE) {
 				free(kstr);
+				ET_LIM_DBG("exiting, ret %d [alloc_svrleaf failed]", __func__, rc)
 				return (rc);
 			}
 			if (entlim_add(kstr, plf, ctx) == -1) {
@@ -3194,16 +3414,24 @@ set_single_entity_res(enum lim_keytypes kt, char *ename,
 				log_err(-1, __func__, log_buffer);
 				free(kstr);
 				free(plf);
+				ET_LIM_DBG("exiting, ret %d [entlim_add failed]", __func__, PBSE_SYSTEM)
 				return (PBSE_SYSTEM);
 			}
-		} else if (oldval != NULL) {
-			/* subtract prior value (qalter case) */
-			(void)plf->slf_rescd->rs_set(&plf->slf_sum,
-				&oldval->rs_value, DECR);
 		}
-		/* add in requested amount */
-		(void)plf->slf_rescd->rs_set(&plf->slf_sum,
-			&newval->rs_value, INCR);
+
+		for (i = 0; i < subjobs; i++) {
+			/* add in requested amount */
+			(void)plf->slf_rescd->rs_set(&plf->slf_sum,
+				&tmpval, INCR);
+		}
+		if (will_log_event(PBSEVENT_DEBUG4) && (plf->slf_sum.at_flags & ATR_VFLAG_SET)) {
+			svrattrl *sum;
+			plf->slf_rescd->rs_encode(&plf->slf_sum, NULL, "sumval", NULL, ATR_ENCODE_CLIENT, &sum);
+			ET_LIM_DBG("usage INCR to %s", __func__, sum->al_value)
+			free(sum);
+		} else
+			ET_LIM_DBG("usage INCR to (not_set)", __func__)
+
 	} else {	/* DECR */
 
 		/* decrement resource by newval, adding oldval if there */
@@ -3212,40 +3440,34 @@ set_single_entity_res(enum lim_keytypes kt, char *ename,
 			snprintf(log_buffer, LOG_BUF_SIZE-1, "decrementing resource for reskey %s: isn't found in attribute tree", kstr);
 			log_err(-1, __func__, log_buffer);
 			free(kstr);
+			ET_LIM_DBG("exiting, ret %d [plf is NULL]", __func__, PBSE_INTERNAL)
 			return (PBSE_INTERNAL);
 		}
-		(void)plf->slf_rescd->rs_set(&plf->slf_sum,
-			&newval->rs_value, DECR);
-		if (oldval != NULL) {
-			/* add prior value back in, this shouldn't happen */
-			/* as there isn't an unset operation for qalter   */
-			(void)plf->slf_rescd->rs_set(&plf->slf_sum,
-				&oldval->rs_value, INCR);
+
+		for (i = 0; i < subjobs; i++) {
+			(void)plf->slf_rescd->rs_set(&plf->slf_sum, &tmpval, DECR);
+		}
+
+		if (will_log_event(PBSEVENT_DEBUG4) && (plf->slf_sum.at_flags & ATR_VFLAG_SET)) {
+			svrattrl *sum;
+			plf->slf_rescd->rs_encode(&plf->slf_sum, NULL, "sumval", NULL, ATR_ENCODE_CLIENT, &sum);
+			ET_LIM_DBG("usage DECR to %s", __func__, sum->al_value)
+			free(sum);
+		} else
+			ET_LIM_DBG("usage DECR to (not_set)", __func__)
+
+		tmpval = plf->slf_sum;
+		plf->slf_rescd->rs_decode(&tmpval, NULL, NULL, "0");
+		if (plf->slf_rescd->rs_comp(&plf->slf_sum, &tmpval) < 0) {
+			ET_LIM_DBG("zeroing res usage", __func__)
+			plf->slf_sum = tmpval;
+			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_single_entity_res zeroing negative usage for %s-%s", plf->slf_rescd->rs_name, kstr);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_SERVER , LOG_WARNING, msg_daemonname, log_buffer);
 		}
 	}
 
-#ifdef DEBUG
-	if (plf->slf_rescd->rs_type == ATR_TYPE_SIZE)
-		DBPRT(("...adjusting Entity resc for %s to %ldkb\n", kstr, (long)plf->slf_sum.at_val.at_size.atsv_num << (plf->slf_sum.at_val.at_size.atsv_shift - 10)))
-		else if (plf->slf_rescd->rs_type == ATR_TYPE_LONG)
-			DBPRT(("...adjusting Entity resc for %s to %ld\n", kstr, plf->slf_sum.at_val.at_long))
-			else
-				DBPRT(("...adjusting Entity resc for %s \n", kstr))
-#endif	/* DEBUG */
-
-	if (plf->slf_rescd->rs_type == ATR_TYPE_SIZE) {
-		snprintf(log_buffer, LOG_BUF_SIZE-1, "...adjusting Entity resc for reskey %s to %ldkb ", kstr,
-		         (long) plf->slf_sum.at_val.at_size.atsv_num << (plf->slf_sum.at_val.at_size.atsv_shift - 10));
-		log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_ERR, msg_daemonname, log_buffer);
-	} else if (plf->slf_rescd->rs_type == ATR_TYPE_LONG) {
-		snprintf(log_buffer, LOG_BUF_SIZE-1, "...adjusting Entity resc for reskey %s to %ld ",
-		         kstr, plf->slf_sum.at_val.at_long);
-		log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_ERR, msg_daemonname, log_buffer);
-	} else {
-		snprintf(log_buffer, LOG_BUF_SIZE-1, "...adjusting Entity resc for reskey %s ", kstr);
-		log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_SERVER, LOG_ERR, msg_daemonname, log_buffer);
-	}
 	free(kstr);
+	ET_LIM_DBG("exiting, ret 0 [all ok]", __func__)
 	return PBSE_NONE;
 }
 
@@ -3275,7 +3497,8 @@ set_entity_ct_sum_queued(job *pjob, pbs_queue *pque, enum batch_op op)
 	char	    *euser;
 	attribute   *pqueued_jobs_threshold;
 	enum batch_op rev_op;
-	int	     rc;
+	int 	    rc;
+	int 	    subjobs;
 
 	/* if the job is in states JOB_STATE_MOVED or JOB_STATE_FINISHED, */
 	/* then just return,  the job's resources were removed from the   */
@@ -3285,9 +3508,11 @@ set_entity_ct_sum_queued(job *pjob, pbs_queue *pque, enum batch_op op)
 
 	if ((pjob->ji_qs.ji_state == JOB_STATE_MOVED) ||
 		(pjob->ji_qs.ji_state == JOB_STATE_FINISHED) ||
-		((pjob->ji_qs.ji_state == JOB_STATE_RUNNING) && (op == INCR)) ||
-		((pjob->ji_entity_limit_set == 0) && (op == DECR)))
+		(pjob->ji_qs.ji_state == JOB_STATE_EXPIRED) ||
+		((pjob->ji_qs.ji_state == JOB_STATE_RUNNING) && (op == INCR))) {
+		ET_LIM_DBG("exiting, ret 0 [job in %c state]", __func__, statechars[pjob->ji_qs.ji_state])
 		return 0;
+	}
 
 	/* set reverse op incase we have to back up */
 	if (op == INCR)
@@ -3300,54 +3525,65 @@ set_entity_ct_sum_queued(job *pjob, pbs_queue *pque, enum batch_op op)
 	else
 		pqueued_jobs_threshold = &server.sv_attr[(int)SRV_ATR_queued_jobs_threshold];
 
-	if ((pqueued_jobs_threshold->at_flags & ATR_VFLAG_SET) == 0)
+	if ((pqueued_jobs_threshold->at_flags & ATR_VFLAG_SET) == 0) {
+		ET_LIM_DBG("exiting, ret 0 [queued_jobs_threshold limit not set for %s]", __func__, pque ? pque->qu_qs.qu_name : "server")
 		return PBSE_NONE;	/* no limits set */
+	}
 
-	DBPRT(("Adjusting entity counts at %s\n", pque ? pque->qu_qs.qu_name : "server"))
 	euser  = pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str;
 	egroup = pjob->ji_wattr[(int)JOB_ATR_egroup].at_val.at_str;
 	project = pjob->ji_wattr[(int)JOB_ATR_project].at_val.at_str;
 
+	if ((subjobs = get_queued_subjobs_ct(pjob)) < 0) {
+		ET_LIM_DBG("exiting, ret %d [get_queued_subjobs_ct() returned %d]", __func__,
+				PBSE_INTERNAL, subjobs)
+		return PBSE_INTERNAL;
+	}
+
 	/* 1. set Overall limit, [o:PBS_ALL] */
-	rc = set_single_entity_ct(LIM_OVERALL, PBS_ALL_ENTITY, pqueued_jobs_threshold, op);
+	rc = set_single_entity_ct(LIM_OVERALL, PBS_ALL_ENTITY, pqueued_jobs_threshold, pjob, subjobs, op);
 	if (rc != PBSE_NONE) {
+		ET_LIM_DBG("exiting, ret %d [set_single_entity_ct(o:"PBS_ALL_ENTITY",%d,%s) failed]", __func__,
+				rc, subjobs, (op==INCR)?"INCR":"DECR")
 		return rc;
 	}
 
 	/* 2. set specific user limit, [u:user] */
-	rc = set_single_entity_ct(LIM_USER, euser, pqueued_jobs_threshold, op);
+	rc = set_single_entity_ct(LIM_USER, euser, pqueued_jobs_threshold, pjob, subjobs, op);
 	if (rc != PBSE_NONE) {
 		/* undo what was done above */
-		(void)set_single_entity_ct(LIM_OVERALL, PBS_ALL_ENTITY, pqueued_jobs_threshold,
-			rev_op);
+		(void)set_single_entity_ct(LIM_OVERALL, PBS_ALL_ENTITY, pqueued_jobs_threshold, pjob,
+			subjobs, rev_op);
+		ET_LIM_DBG("exiting, ret %d [set_single_entity_ct(u:%s,%d,%s) failed]", __func__,
+				rc, euser, subjobs, (op==INCR)?"INCR":"DECR")
 		return rc;
 	}
 
 	/* 3. set specific group limit, [g:group] */
-	rc = set_single_entity_ct(LIM_GROUP, egroup, pqueued_jobs_threshold, op);
+	rc = set_single_entity_ct(LIM_GROUP, egroup, pqueued_jobs_threshold, pjob, subjobs, op);
 	if (rc != PBSE_NONE) {
 		/* undo what was done above */
-		(void)set_single_entity_ct(LIM_USER, euser, pqueued_jobs_threshold, rev_op);
-		(void)set_single_entity_ct(LIM_OVERALL, PBS_ALL_ENTITY, pqueued_jobs_threshold,
-			rev_op);
+		(void)set_single_entity_ct(LIM_USER, euser, pqueued_jobs_threshold, pjob, subjobs, rev_op);
+		(void)set_single_entity_ct(LIM_OVERALL, PBS_ALL_ENTITY, pqueued_jobs_threshold, pjob,
+			subjobs, rev_op);
+		ET_LIM_DBG("exiting, ret %d [set_single_entity_ct(g:%s,%d,%s) failed]", __func__,
+				rc, egroup, subjobs, (op==INCR)?"INCR":"DECR")
 		return rc;
 	}
 
 	/* 4. set specific project limit, [p:project] */
-	rc = set_single_entity_ct(LIM_PROJECT, project, pqueued_jobs_threshold, op);
+	rc = set_single_entity_ct(LIM_PROJECT, project, pqueued_jobs_threshold, pjob, subjobs, op);
 	if (rc != PBSE_NONE) {
 		/* undo what was done above */
-		(void)set_single_entity_ct(LIM_GROUP, egroup, pqueued_jobs_threshold, rev_op);
-		(void)set_single_entity_ct(LIM_USER, euser, pqueued_jobs_threshold, rev_op);
-		(void)set_single_entity_ct(LIM_OVERALL, PBS_ALL_ENTITY, pqueued_jobs_threshold, rev_op);
+		(void)set_single_entity_ct(LIM_GROUP, egroup, pqueued_jobs_threshold, pjob, subjobs, rev_op);
+		(void)set_single_entity_ct(LIM_USER, euser, pqueued_jobs_threshold, pjob, subjobs, rev_op);
+		(void)set_single_entity_ct(LIM_OVERALL, PBS_ALL_ENTITY, pqueued_jobs_threshold, pjob, subjobs, rev_op);
+		ET_LIM_DBG("exiting, ret %d [set_single_entity_ct(p:%s,%d,%s) failed]", __func__,
+				rc, project, subjobs, (op==INCR)?"INCR":"DECR")
 		return rc;
 	}
 
-	if (op == INCR)
-		pjob->ji_entity_limit_set = 1;
-	else
-		pjob->ji_entity_limit_set = 0;
-
+	ET_LIM_DBG("exiting, ret 0 [all ok]", __func__)
 	return 0;
 }
 /**
@@ -3376,15 +3612,19 @@ set_entity_ct_sum_max(job *pjob, pbs_queue *pque, enum batch_op op)
 	char	    *euser;
 	attribute   *pmax_queued;
 	enum batch_op rev_op;
-	int rc;
+	int 	    rc;
+	int 	    subjobs;
 
 	/* if the job is in states JOB_STATE_MOVED or JOB_STATE_FINISHED, */
 	/* then just return,  the job's resources were removed from the   */
 	/* entity sums when it went into the MOVED/FINISHED state	  */
 
 	if ((pjob->ji_qs.ji_state == JOB_STATE_MOVED) ||
-		(pjob->ji_qs.ji_state == JOB_STATE_FINISHED))
+		(pjob->ji_qs.ji_state == JOB_STATE_EXPIRED) ||
+		(pjob->ji_qs.ji_state == JOB_STATE_FINISHED)) {
+		ET_LIM_DBG("exiting, ret 0 [job in %c state]", __func__, statechars[pjob->ji_qs.ji_state])
 		return 0;
+	}
 
 	/* set reverse op incase we have to back up */
 	if (op == INCR)
@@ -3397,46 +3637,62 @@ set_entity_ct_sum_max(job *pjob, pbs_queue *pque, enum batch_op op)
 	else
 		pmax_queued = &server.sv_attr[(int)SRV_ATR_max_queued];
 
-	if ((pmax_queued->at_flags & ATR_VFLAG_SET) == 0)
+	if ((pmax_queued->at_flags & ATR_VFLAG_SET) == 0) {
+		ET_LIM_DBG("exiting, ret 0 [max_queued limit not set for %s]", __func__, pque ? pque->qu_qs.qu_name : "server")
 		return PBSE_NONE;
+	}
 
-	DBPRT(("Adjusting queued entity counts at %s\n", pque ? pque->qu_qs.qu_name : "server"))
 	euser  = pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str;
 	egroup = pjob->ji_wattr[(int)JOB_ATR_egroup].at_val.at_str;
 	project = pjob->ji_wattr[(int)JOB_ATR_project].at_val.at_str;
 
+	if ((subjobs = get_queued_subjobs_ct(pjob)) < 0) {
+		ET_LIM_DBG("exiting, ret %d [get_queued_subjobs_ct() returned %d]", __func__,
+				PBSE_INTERNAL, subjobs)
+		return PBSE_INTERNAL;
+	}
+
 	/* 1. set Overall limit, [o:PBS_ALL] */
-	rc = set_single_entity_ct(LIM_OVERALL, PBS_ALL_ENTITY, pmax_queued, op);
+	rc = set_single_entity_ct(LIM_OVERALL, PBS_ALL_ENTITY, pmax_queued, pjob, subjobs, op);
 	if (rc != PBSE_NONE) {
+		ET_LIM_DBG("exiting, ret %d [set_single_entity_ct(o:"PBS_ALL_ENTITY",%d,%s) failed]", __func__,
+				rc, subjobs, (op==INCR)?"INCR":"DECR")
 		return rc;
 	}
 
 	/* 2. set specific user limit, [u:user] */
-	rc = set_single_entity_ct(LIM_USER, euser, pmax_queued, op);
+	rc = set_single_entity_ct(LIM_USER, euser, pmax_queued, pjob, subjobs, op);
 	if (rc != PBSE_NONE) {
 		/* undo what was done above */
-		(void)set_single_entity_ct(LIM_OVERALL, PBS_ALL_ENTITY, pmax_queued, rev_op);
+		(void)set_single_entity_ct(LIM_OVERALL, PBS_ALL_ENTITY, pmax_queued, pjob, subjobs, rev_op);
+		ET_LIM_DBG("exiting, ret %d [set_single_entity_ct(u:%s,%d,%s) failed]", __func__,
+				rc, euser, subjobs, (op==INCR)?"INCR":"DECR")
 		return rc;
 	}
 
 	/* 3. set specific group limit, [g:group] */
-	rc = set_single_entity_ct(LIM_GROUP, egroup, pmax_queued, op);
+	rc = set_single_entity_ct(LIM_GROUP, egroup, pmax_queued, pjob, subjobs, op);
 	if (rc != PBSE_NONE) {
 		/* undo what was done above */
-		(void)set_single_entity_ct(LIM_USER, euser, pmax_queued, rev_op);
-		(void)set_single_entity_ct(LIM_OVERALL, PBS_ALL_ENTITY, pmax_queued, rev_op);
+		(void)set_single_entity_ct(LIM_USER, euser, pmax_queued, pjob, subjobs, rev_op);
+		(void)set_single_entity_ct(LIM_OVERALL, PBS_ALL_ENTITY, pmax_queued, pjob, subjobs, rev_op);
+		ET_LIM_DBG("exiting, ret %d [set_single_entity_ct(g:%s,%d,%s) failed]", __func__,
+				rc, egroup, subjobs, (op==INCR)?"INCR":"DECR")
 		return rc;
 	}
 
 	/* 4. set specific project limit, [p:project] */
-	rc = set_single_entity_ct(LIM_PROJECT, project, pmax_queued, op);
+	rc = set_single_entity_ct(LIM_PROJECT, project, pmax_queued, pjob, subjobs, op);
 	if (rc != PBSE_NONE) {
 		/* undo what was done above */
-		(void)set_single_entity_ct(LIM_GROUP, egroup, pmax_queued, rev_op);
-		(void)set_single_entity_ct(LIM_USER, euser, pmax_queued, rev_op);
-		(void)set_single_entity_ct(LIM_OVERALL, PBS_ALL_ENTITY, pmax_queued, rev_op);
+		(void)set_single_entity_ct(LIM_GROUP, egroup, pmax_queued, pjob, subjobs, rev_op);
+		(void)set_single_entity_ct(LIM_USER, euser, pmax_queued, pjob, subjobs, rev_op);
+		(void)set_single_entity_ct(LIM_OVERALL, PBS_ALL_ENTITY, pmax_queued, pjob, subjobs, rev_op);
+		ET_LIM_DBG("exiting, ret %d [set_single_entity_ct(p:%s,%d,%s) failed]", __func__,
+				rc, project, subjobs, (op==INCR)?"INCR":"DECR")
 		return rc;
 	}
+	ET_LIM_DBG("exiting, ret 0 [all ok]", __func__)
 	return 0;	/* within all count limits */
 }
 
@@ -3451,9 +3707,8 @@ set_entity_ct_sum_max(job *pjob, pbs_queue *pque, enum batch_op op)
  * @param[in]  presc_new    -   pointer to current processing resource
  * @param[in]  presc_old    -   pointer to old resource before alter
  * @param[in]  presc_first  -   pointer to first resource, used to reach the starting of resource list
- * @param[in]  egroup       -   effective group name
- * @param[in]  euser        -   effective user name
- * @param[in]  project      -   project name
+ * @param[in]  pjob...      -   pointer to job
+ * @param[in]  subjobs      -   number of subjobs, if any.
  * @param[in]  op           -   operator example- INCR, DECR
  *
  * @return      int
@@ -3461,35 +3716,40 @@ set_entity_ct_sum_max(job *pjob, pbs_queue *pque, enum batch_op op)
  * @retval      -1          -   error in input parameters
  */
 
+static
 int revert_entity_resources(attribute *pmaxqresc, attribute *pattr_old,
 	resource *presc_new, resource *presc_old, resource *presc_first,
-	char *egroup, char *euser, char *project, enum batch_op op)
+	job *pjob, int subjobs, enum batch_op op)
 {
 
 	int res_flag=1;
+	char *euser  = pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str;
+	char *egroup = pjob->ji_wattr[(int)JOB_ATR_egroup].at_val.at_str;
+	char *project = pjob->ji_wattr[(int)JOB_ATR_project].at_val.at_str;
+
 	if ( pmaxqresc && presc_new && presc_first && euser && egroup && project ) {
 
 		for (presc_new = (resource *)GET_PRIOR(presc_new->rs_link);
 			( presc_new != NULL ) && res_flag;
 			presc_new = (resource *)GET_PRIOR(presc_new->rs_link)) {
 
-		if (presc_new == presc_first)
-			res_flag=0;
-		if (!(presc_new->rs_value.at_flags & ATR_VFLAG_SET) || ((presc_new->rs_defin->rs_entlimflg & PBS_ENTLIM_LIMITSET)==0))
-			continue;
+			if (presc_new == presc_first)
+				res_flag=0;
+			if (!(presc_new->rs_value.at_flags & ATR_VFLAG_SET) || ((presc_new->rs_defin->rs_entlimflg & PBS_ENTLIM_LIMITSET)==0))
+				continue;
 
-		/* If this is from qalter where presc_old is set, see if    */
-		/* corresponding resource is in presc_old, had a pior value */
+			/* If this is from qalter where presc_old is set, see if    */
+			/* corresponding resource is in presc_old, had a pior value */
 
-		if (pattr_old)
-			presc_old = find_resc_entry(pattr_old, presc_new->rs_defin);
-		else
-			presc_old = NULL;
+			if (pattr_old)
+				presc_old = find_resc_entry(pattr_old, presc_new->rs_defin);
+			else
+				presc_old = NULL;
 
-		(void)set_single_entity_res(LIM_OVERALL, PBS_ALL_ENTITY, pmaxqresc, presc_new, presc_old, op);
-		(void)set_single_entity_res(LIM_USER, euser, pmaxqresc, presc_new, presc_old, op);
-		(void)set_single_entity_res(LIM_GROUP, egroup, pmaxqresc, presc_new, presc_old, op);
-		(void)set_single_entity_res(LIM_PROJECT, project, pmaxqresc, presc_new, presc_old, op);
+			(void)set_single_entity_res(LIM_OVERALL, PBS_ALL_ENTITY, pmaxqresc, presc_new, presc_old, pjob, subjobs, op);
+			(void)set_single_entity_res(LIM_USER, euser, pmaxqresc, presc_new, presc_old, pjob, subjobs, op);
+			(void)set_single_entity_res(LIM_GROUP, egroup, pmaxqresc, presc_new, presc_old, pjob, subjobs, op);
+			(void)set_single_entity_res(LIM_PROJECT, project, pmaxqresc, presc_new, presc_old, pjob, subjobs, op);
 		}
 
 		return(0);
@@ -3525,7 +3785,9 @@ set_entity_resc_sum_queued(job *pjob, pbs_queue *pque, attribute *altered_resc,
 	char	    *egroup=NULL;
 	char	    *project=NULL;
 	char	    *euser=NULL;
-	int	     rc, rc_final;
+	int 	    rc = PBSE_NONE;
+	int 	    rc_final;
+	int 	    subjobs;
 	attribute   *pmaxqresc=NULL;
 	attribute   *pattr_new=NULL;
 	attribute   *pattr_old=NULL;
@@ -3534,6 +3796,7 @@ set_entity_resc_sum_queued(job *pjob, pbs_queue *pque, attribute *altered_resc,
 	resource    *presc_first=NULL;
 	enum batch_op rev_op;
 
+	ET_LIM_DBG("entered [alt_res %p]", __func__, altered_resc)
 	/* if the job is in states JOB_STATE_MOVED or JOB_STATE_FINISHED, */
 	/* then just return,  the job's resources were removed from the   */
 	/* entity sums when it went into the MOVED/FINISHED state	  */
@@ -3542,9 +3805,11 @@ set_entity_resc_sum_queued(job *pjob, pbs_queue *pque, attribute *altered_resc,
 
 	if ((pjob->ji_qs.ji_state == JOB_STATE_MOVED) ||
 		(pjob->ji_qs.ji_state == JOB_STATE_FINISHED) ||
-		((pjob->ji_qs.ji_state == JOB_STATE_RUNNING) && (op == INCR)) ||
-		((pjob->ji_entity_limit_set == 0) && (op == DECR)))
+		(pjob->ji_qs.ji_state == JOB_STATE_EXPIRED) ||
+		((pjob->ji_qs.ji_state == JOB_STATE_RUNNING) && (op == INCR))) {
+		ET_LIM_DBG("exiting, ret 0 [job in %c state]", __func__, statechars[pjob->ji_qs.ji_state])
 		return 0;
+	}
 
 	/* set reverse op incase we have to back up */
 	if (op == INCR)
@@ -3557,8 +3822,10 @@ set_entity_resc_sum_queued(job *pjob, pbs_queue *pque, attribute *altered_resc,
 	else
 		pmaxqresc = &server.sv_attr[(int)SRV_ATR_queued_jobs_threshold_res];
 
-	if ((pmaxqresc->at_flags & ATR_VFLAG_SET) == 0)
+	if ((pmaxqresc->at_flags & ATR_VFLAG_SET) == 0) {
+		ET_LIM_DBG("exiting, ret 0 [queued_jobs_threshold_res limit not set for %s]", __func__, pque ? pque->qu_qs.qu_name : "server")
 		return 0;	/* no limits set */
+	}
 
 	if (altered_resc) {
 		pattr_new = altered_resc;
@@ -3568,30 +3835,31 @@ set_entity_resc_sum_queued(job *pjob, pbs_queue *pque, attribute *altered_resc,
 		pattr_old = NULL;	/* null */
 	}
 
-	DBPRT(("Adjusting entity resource sums at %s\n", pque ? pque->qu_qs.qu_name : "server"))
 	euser  = pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str;
 	egroup = pjob->ji_wattr[(int)JOB_ATR_egroup].at_val.at_str;
 	project = pjob->ji_wattr[(int)JOB_ATR_project].at_val.at_str;
 
+	if ((subjobs = get_queued_subjobs_ct(pjob)) < 0)
+		rc = PBSE_INTERNAL;
 
 	if (!euser) {
 		log_err(PBSE_INTERNAL, __func__, "EMPTY USER");
-		return PBSE_INTERNAL;
+		rc = PBSE_INTERNAL;
 	}
 	if (!egroup) {
 		log_err(PBSE_INTERNAL, __func__, "EMPTY GROUP");
-                return PBSE_INTERNAL;
+		rc = PBSE_INTERNAL;
 	}
 	if (!project) {
 		log_err(PBSE_INTERNAL, __func__, "EMPTY PROJECT");
-		return PBSE_INTERNAL;
+		rc = PBSE_INTERNAL;
 	}
 
-	snprintf(log_buffer, LOG_BUF_SIZE-1, "Adjusting entity resource sums at %s for euser %s",
-		        pque ? pque->qu_qs.qu_name : "server", euser);
-
-	log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_INFO,
-		pjob->ji_qs.ji_jobid, log_buffer);
+	if (rc == PBSE_INTERNAL) {
+		ET_LIM_DBG("exiting, ret %d [something not right, subjobs %d, %p, %p, %p]", __func__,
+				PBSE_INTERNAL, subjobs, euser, egroup, project)
+		return PBSE_INTERNAL;
+	}
 
 	rc_final = 0;
 
@@ -3615,23 +3883,26 @@ set_entity_resc_sum_queued(job *pjob, pbs_queue *pque, attribute *altered_resc,
 		rescn = presc_new->rs_defin->rs_name;
 		if (rescn == NULL) {
 			if (presc_new != presc_first)
-				if(revert_entity_resources(pmaxqresc, pattr_old, presc_new, presc_old, presc_first, egroup, euser, project, rev_op) != 0)
+				if (revert_entity_resources(pmaxqresc, pattr_old, presc_new, presc_old, presc_first, pjob, subjobs, rev_op) != 0)
 					log_err(PBSE_INTERNAL, __func__, "Error in revert_entity_resources");
 			log_err(PBSE_INTERNAL, __func__, "EMPTY RESOURCE");
+			ET_LIM_DBG("exiting, ret %d [rescn is NULL]", __func__, PBSE_INTERNAL)
 			return PBSE_INTERNAL;
 		}
 
+		ET_LIM_DBG("setting usage for res %s", __func__, rescn)
 		/* 1. set overall limit o:PBS_ALL */
 		rc = set_single_entity_res(LIM_OVERALL, PBS_ALL_ENTITY,
-			pmaxqresc,
-			presc_new, presc_old, op);
+			pmaxqresc, presc_new, presc_old, pjob, subjobs, op);
 		if (rc) {
+			ET_LIM_DBG("set_single_entity_res(o:"PBS_ALL_ENTITY";%s,%d,%s) failed with rc %d", __func__,
+					rescn, subjobs, (op==INCR)?"INCR":"DECR", rc)
 			snprintf(log_buffer, LOG_BUF_SIZE-1,
 				"Error in LIM_OVERALL for resource %s", rescn);
 			log_err(rc ,__func__, log_buffer);
 			if (op == INCR) {
 				if (presc_new != presc_first)
-					if(revert_entity_resources(pmaxqresc, pattr_old, presc_new, presc_old, presc_first, egroup, euser, project, rev_op) != 0)
+					if (revert_entity_resources(pmaxqresc, pattr_old, presc_new, presc_old, presc_first, pjob, subjobs, rev_op) != 0)
 						log_err(PBSE_INTERNAL, __func__, "Error in revert_entity_resources");
 				return rc;
 			} else {
@@ -3642,19 +3913,19 @@ set_entity_resc_sum_queued(job *pjob, pbs_queue *pque, attribute *altered_resc,
 
 		/* 2. sets user limit */
 		rc = set_single_entity_res(LIM_USER, euser,
-			pmaxqresc,
-			presc_new, presc_old, op);
+			pmaxqresc, presc_new, presc_old, pjob, subjobs, op);
 		if (rc) {
+			ET_LIM_DBG("set_single_entity_res(u:%s;%s,%d,%s) failed with rc %d", __func__,
+					euser, rescn, subjobs, (op==INCR)?"INCR":"DECR", rc)
 			snprintf(log_buffer, LOG_BUF_SIZE-1,
 				"Error in LIM_USER for euser %s for resource %s", euser, rescn);
 			log_err(rc, __func__, log_buffer);
 			/* reverse change made above */
-			(void)set_single_entity_res(LIM_OVERALL, PBS_ALL_ENTITY,
-				pmaxqresc,
-				presc_new, presc_old, rev_op);
+			(void)set_single_entity_res(LIM_OVERALL, PBS_ALL_ENTITY, pmaxqresc,
+				presc_new, presc_old, pjob, subjobs, rev_op);
 			if (op == INCR) {
 				if (presc_new != presc_first)
-					if(revert_entity_resources(pmaxqresc, pattr_old, presc_new, presc_old, presc_first, egroup, euser, project, rev_op) != 0)
+					if (revert_entity_resources(pmaxqresc, pattr_old, presc_new, presc_old, presc_first, pjob, subjobs, rev_op) != 0)
 						log_err(PBSE_INTERNAL, __func__, "Error in revert_entity_resources");
 				return rc;
 			} else {
@@ -3666,9 +3937,10 @@ set_entity_resc_sum_queued(job *pjob, pbs_queue *pque, attribute *altered_resc,
 
 		/* 3. set specific group limit */
 		rc = set_single_entity_res(LIM_GROUP, egroup,
-			pmaxqresc,
-			presc_new, presc_old, op);
+			pmaxqresc, presc_new, presc_old, pjob, subjobs, op);
 		if (rc) {
+			ET_LIM_DBG("set_single_entity_res(g:%s;%s,%d,%s) failed with rc %d", __func__,
+					egroup, rescn, subjobs, (op==INCR)?"INCR":"DECR", rc)
 
 			snprintf(log_buffer, LOG_BUF_SIZE-1,
 				"Error in LIM_GROUP for egroup %s for resource %s", egroup, rescn);
@@ -3676,15 +3948,13 @@ set_entity_resc_sum_queued(job *pjob, pbs_queue *pque, attribute *altered_resc,
 
 			/* reverse changes made above */
 			(void)set_single_entity_res(LIM_OVERALL, PBS_ALL_ENTITY,
-				pmaxqresc,
-				presc_new, presc_old, rev_op);
+				pmaxqresc, presc_new, presc_old, pjob, subjobs, rev_op);
 			(void)set_single_entity_res(LIM_USER, euser,
-				pmaxqresc,
-				presc_new, presc_old, rev_op);
+				pmaxqresc, presc_new, presc_old, pjob, subjobs, rev_op);
 			if (op == INCR) {
 				if (presc_new != presc_first)
-                                        if(revert_entity_resources(pmaxqresc, pattr_old, presc_new, presc_old, presc_first, egroup, euser, project, rev_op) != 0)
-                                                log_err(PBSE_INTERNAL, __func__, "Error in revert_entity_resources");
+					if (revert_entity_resources(pmaxqresc, pattr_old, presc_new, presc_old, presc_first, pjob, subjobs, rev_op) != 0)
+						log_err(PBSE_INTERNAL, __func__, "Error in revert_entity_resources");
 				return rc;
 			} else {
 				if (!rc_final)
@@ -3696,26 +3966,24 @@ set_entity_resc_sum_queued(job *pjob, pbs_queue *pque, attribute *altered_resc,
 
 		/* 4. set specific project limit */
 		rc = set_single_entity_res(LIM_PROJECT, project,
-			pmaxqresc,
-			presc_new, presc_old, op);
+			pmaxqresc, presc_new, presc_old, pjob, subjobs, op);
 		if (rc) {
+			ET_LIM_DBG("set_single_entity_res(p:%s;%s,%d,%s) failed with rc %d", __func__,
+					project, rescn, subjobs, (op==INCR)?"INCR":"DECR", rc)
 			snprintf(log_buffer, LOG_BUF_SIZE-1,
 				"Error in LIM_USER for project %s for resource %s", project, rescn);
 			log_err(rc, __func__, log_buffer);
 
 			/* reverse changes made above */
 			(void)set_single_entity_res(LIM_OVERALL, PBS_ALL_ENTITY,
-				pmaxqresc,
-				presc_new, presc_old, rev_op);
+				pmaxqresc, presc_new, presc_old, pjob, subjobs, rev_op);
 			(void)set_single_entity_res(LIM_USER, euser,
-				pmaxqresc,
-				presc_new, presc_old, rev_op);
+				pmaxqresc, presc_new, presc_old, pjob, subjobs, rev_op);
 			(void)set_single_entity_res(LIM_GROUP, egroup,
-				pmaxqresc,
-				presc_new, presc_old, rev_op);
+				pmaxqresc, presc_new, presc_old, pjob, subjobs, rev_op);
 			if (op == INCR) {
 				if (presc_new != presc_first)
-					if(revert_entity_resources(pmaxqresc, pattr_old, presc_new, presc_old, presc_first, egroup, euser, project, rev_op) != 0)
+					if (revert_entity_resources(pmaxqresc, pattr_old, presc_new, presc_old, presc_first, pjob, subjobs, rev_op) != 0)
 						log_err(PBSE_INTERNAL, __func__, "Error in revert_entity_resources");
 				return rc;
 			} else {
@@ -3726,16 +3994,8 @@ set_entity_resc_sum_queued(job *pjob, pbs_queue *pque, attribute *altered_resc,
 		}
 	}
 
-	if (rc_final)
-		return rc_final;
-
-	if (op == INCR)
-		pjob->ji_entity_limit_set = 1;
-	else
-		pjob->ji_entity_limit_set = 0;
-
-	return 0;
-
+	ET_LIM_DBG("exiting, ret %d", __func__, rc_final)
+	return rc_final;
 }
 
 /**
@@ -3765,7 +4025,9 @@ set_entity_resc_sum_max(job *pjob, pbs_queue *pque, attribute *altered_resc,
 	char	    *egroup=NULL;
 	char	    *project=NULL;
 	char	    *euser=NULL;
-	int	    rc, rc_final;
+	int 	    rc = PBSE_NONE;
+	int 	    rc_final;
+	int 	    subjobs;
 	attribute   *pmaxqresc=NULL;
 	attribute   *pattr_new=NULL;
 	attribute   *pattr_old=NULL;
@@ -3774,13 +4036,17 @@ set_entity_resc_sum_max(job *pjob, pbs_queue *pque, attribute *altered_resc,
 	resource    *presc_first=NULL;
 	enum batch_op rev_op;
 
+	ET_LIM_DBG("entered [alt_res %p]", __func__, altered_resc)
 	/* if the job is in states JOB_STATE_MOVED or JOB_STATE_FINISHED, */
 	/* then just return,  the job's resources were removed from the   */
 	/* entity sums when it went into the MOVED/FINISHED state	  */
 
 	if ((pjob->ji_qs.ji_state == JOB_STATE_MOVED) ||
-		(pjob->ji_qs.ji_state == JOB_STATE_FINISHED))
+		(pjob->ji_qs.ji_state == JOB_STATE_EXPIRED) ||
+		(pjob->ji_qs.ji_state == JOB_STATE_FINISHED)) {
+		ET_LIM_DBG("exiting, ret 0 [job in %c state]", __func__, statechars[pjob->ji_qs.ji_state])
 		return 0;
+	}
 
 	/* set reverse op incase we have to back up */
 	if (op == INCR)
@@ -3793,8 +4059,10 @@ set_entity_resc_sum_max(job *pjob, pbs_queue *pque, attribute *altered_resc,
 	else
 		pmaxqresc = &server.sv_attr[(int)SRV_ATR_max_queued_res];
 
-	if ((pmaxqresc->at_flags & ATR_VFLAG_SET) == 0)
+	if ((pmaxqresc->at_flags & ATR_VFLAG_SET) == 0) {
+		ET_LIM_DBG("exiting, ret 0 [max_queued_res limit not set for %s]", __func__, pque ? pque->qu_qs.qu_name : "server")
 		return 0;	/* no limits set */
+	}
 
 	if (altered_resc) {
 		pattr_new = altered_resc;
@@ -3804,29 +4072,32 @@ set_entity_resc_sum_max(job *pjob, pbs_queue *pque, attribute *altered_resc,
 		pattr_old = NULL;	/* null */
 	}
 
-	DBPRT(("Adjusting entity resource sums at %s\n", pque ? pque->qu_qs.qu_name : "server"))
 	euser  = pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str;
 	egroup = pjob->ji_wattr[(int)JOB_ATR_egroup].at_val.at_str;
 	project = pjob->ji_wattr[(int)JOB_ATR_project].at_val.at_str;
 
+	if ((subjobs = get_queued_subjobs_ct(pjob)) < 0) {
+		rc = PBSE_INTERNAL;
+	}
+
 	if (!euser) {
 		log_err(PBSE_INTERNAL, __func__, "EMPTY USER");
-		return PBSE_INTERNAL;
+		rc = PBSE_INTERNAL;
 	}
 	if (!egroup) {
 		log_err(PBSE_INTERNAL, __func__, "EMPTY GROUP");
-                return PBSE_INTERNAL;
+		rc = PBSE_INTERNAL;
 	}
 	if (!project) {
 		log_err(PBSE_INTERNAL, __func__, "EMPTY PROJECT");
-		return PBSE_INTERNAL;
+		rc = PBSE_INTERNAL;
 	}
 
-	snprintf(log_buffer, LOG_BUF_SIZE-1, "Adjusting entity resource sums at %s for euser %s",
-			pque ? pque->qu_qs.qu_name : "server", euser);
-
-	log_event(PBSEVENT_DEBUG4, PBS_EVENTCLASS_JOB, LOG_INFO,
-		pjob->ji_qs.ji_jobid, log_buffer);
+	if (rc == PBSE_INTERNAL) {
+		ET_LIM_DBG("exiting, ret %d [something not right, subjobs %d, %p, %p, %p]", __func__,
+				PBSE_INTERNAL, subjobs, euser, egroup, project)
+		return PBSE_INTERNAL;
+	}
 
 	rc_final = 0;
 
@@ -3850,24 +4121,28 @@ set_entity_resc_sum_max(job *pjob, pbs_queue *pque, attribute *altered_resc,
 		rescn = presc_new->rs_defin->rs_name;
 		if (rescn == NULL) {
 			if (presc_new != presc_first)
-				if(revert_entity_resources(pmaxqresc, pattr_old, presc_new, presc_old, presc_first, egroup, euser, project, rev_op) != 0)
+				if (revert_entity_resources(pmaxqresc, pattr_old, presc_new, presc_old, presc_first, pjob, subjobs, rev_op) != 0)
 					log_err(PBSE_INTERNAL, __func__, "Error in revert_entity_resources");
 			log_err(PBSE_INTERNAL, __func__, "EMPTY RESOURCE");
+			ET_LIM_DBG("exiting, ret %d [rescn is NULL]", __func__, PBSE_INTERNAL)
 			return PBSE_INTERNAL;
 		}
 
+		ET_LIM_DBG("setting usage for res %s", __func__, rescn)
 		/* 1. set overall limit o:PBS_ALL */
 		rc = set_single_entity_res(LIM_OVERALL, PBS_ALL_ENTITY,
-			pmaxqresc,
-			presc_new, presc_old, op);
+			pmaxqresc, presc_new, presc_old, pjob, subjobs, op);
 		if (rc) {
+			ET_LIM_DBG("set_single_entity_res(o:"PBS_ALL_ENTITY";%s,%d,%s) failed with rc %d", __func__,
+					rescn, subjobs, (op==INCR)?"INCR":"DECR", rc)
+
 			snprintf(log_buffer, LOG_BUF_SIZE-1,
 				"Error in  LIM_OVERALL for resource %s", rescn);
 			log_err(rc ,__func__, log_buffer);
 			if (op == INCR) {
 				if (presc_new != presc_first)
-                                        if(revert_entity_resources(pmaxqresc, pattr_old, presc_new, presc_old, presc_first, egroup, euser, project, rev_op) != 0)
-                                                log_err(PBSE_INTERNAL, __func__, "Error in revert_entity_resources");
+					if (revert_entity_resources(pmaxqresc, pattr_old, presc_new, presc_old, presc_first, pjob, subjobs, rev_op) != 0)
+						log_err(PBSE_INTERNAL, __func__, "Error in revert_entity_resources");
 				return rc;
 			} else {
 				if (!rc_final)
@@ -3878,19 +4153,19 @@ set_entity_resc_sum_max(job *pjob, pbs_queue *pque, attribute *altered_resc,
 
 		/* 2. sets user limit */
 		rc = set_single_entity_res(LIM_USER, euser,
-			pmaxqresc,
-			presc_new, presc_old, op);
+			pmaxqresc, presc_new, presc_old, pjob, subjobs, op);
 		if (rc) {
+			ET_LIM_DBG("set_single_entity_res(u:%s;%s,%d,%s) failed with rc %d", __func__,
+					euser, rescn, subjobs, (op==INCR)?"INCR":"DECR", rc)
 			/* reverse change made above */
 			snprintf(log_buffer, LOG_BUF_SIZE-1,
 				"Error in  LIM_USER for euser %s for resource %s", euser, rescn);
 			log_err(rc ,__func__, log_buffer);
 			(void)set_single_entity_res(LIM_OVERALL, PBS_ALL_ENTITY,
-				pmaxqresc,
-				presc_new, presc_old, rev_op);
+				pmaxqresc, presc_new, presc_old, pjob, subjobs, rev_op);
 			if (op == INCR) {
 				if (presc_new != presc_first)
-					if(revert_entity_resources(pmaxqresc, pattr_old, presc_new, presc_old, presc_first, egroup, euser, project, rev_op) != 0)
+					if (revert_entity_resources(pmaxqresc, pattr_old, presc_new, presc_old, presc_first, pjob, subjobs, rev_op) != 0)
 						log_err(PBSE_INTERNAL, __func__, "Error in revert_entity_resources");
 				return rc;
 			} else {
@@ -3902,22 +4177,21 @@ set_entity_resc_sum_max(job *pjob, pbs_queue *pque, attribute *altered_resc,
 
 		/* 3. set specific group limit */
 		rc = set_single_entity_res(LIM_GROUP, egroup,
-			pmaxqresc,
-			presc_new, presc_old, op);
+			pmaxqresc, presc_new, presc_old, pjob, subjobs, op);
 		if (rc) {
+			ET_LIM_DBG("set_single_entity_res(g:%s;%s,%d,%s) failed with rc %d", __func__,
+					egroup, rescn, subjobs, (op==INCR)?"INCR":"DECR", rc)
 			snprintf(log_buffer, LOG_BUF_SIZE-1,
 				"Error in  LIM_GROUP for egroup %s for resource %s", egroup, rescn);
 			log_err(rc ,__func__, log_buffer);
 			/* reverse changes made above */
 			(void)set_single_entity_res(LIM_OVERALL, PBS_ALL_ENTITY,
-				pmaxqresc,
-				presc_new, presc_old, rev_op);
+				pmaxqresc, presc_new, presc_old, pjob, subjobs, rev_op);
 			(void)set_single_entity_res(LIM_USER, euser,
-				pmaxqresc,
-				presc_new, presc_old, rev_op);
+				pmaxqresc, presc_new, presc_old, pjob, subjobs, rev_op);
 			if (op == INCR) {
 				if (presc_new != presc_first)
-					if((revert_entity_resources(pmaxqresc, pattr_old, presc_new, presc_old, presc_first, egroup, euser, project, rev_op)) != 0)
+					if ((revert_entity_resources(pmaxqresc, pattr_old, presc_new, presc_old, presc_first, pjob, subjobs, rev_op)) != 0)
 						log_err(PBSE_INTERNAL, __func__, "Error in revert_entity_resources");
 				return rc;
 			} else {
@@ -3929,26 +4203,23 @@ set_entity_resc_sum_max(job *pjob, pbs_queue *pque, attribute *altered_resc,
 
 		/* 4. set specific project limit */
 		rc = set_single_entity_res(LIM_PROJECT, project,
-			pmaxqresc,
-			presc_new, presc_old, op);
+			pmaxqresc, presc_new, presc_old, pjob, subjobs, op);
 		if (rc) {
-
+			ET_LIM_DBG("set_single_entity_res(p:%s;%s,%d,%s) failed with rc %d", __func__,
+					project, rescn, subjobs, (op==INCR)?"INCR":"DECR", rc)
 			snprintf(log_buffer, LOG_BUF_SIZE-1,
 				"Error in LIM_PROJECT for project %s for resource %s", project, rescn);
 			log_err(rc ,__func__, log_buffer);
 			/* reverse changes made above */
 			(void)set_single_entity_res(LIM_OVERALL, PBS_ALL_ENTITY,
-				pmaxqresc,
-				presc_new, presc_old, rev_op);
+				pmaxqresc, presc_new, presc_old, pjob, subjobs, rev_op);
 			(void)set_single_entity_res(LIM_USER, euser,
-				pmaxqresc,
-				presc_new, presc_old, rev_op);
+				pmaxqresc, presc_new, presc_old, pjob, subjobs, rev_op);
 			(void)set_single_entity_res(LIM_GROUP, egroup,
-				pmaxqresc,
-				presc_new, presc_old, rev_op);
+				pmaxqresc, presc_new, presc_old, pjob, subjobs, rev_op);
 			if (op == INCR) {
 				if (presc_new != presc_first)
-					if(revert_entity_resources(pmaxqresc, pattr_old, presc_new, presc_old, presc_first, egroup, euser, project, rev_op) != 0)
+					if (revert_entity_resources(pmaxqresc, pattr_old, presc_new, presc_old, presc_first, pjob, subjobs, rev_op) != 0)
 						log_err(PBSE_INTERNAL, __func__, "Error in revert_entity_resources");
 				return rc;
 			} else {
@@ -3959,9 +4230,78 @@ set_entity_resc_sum_max(job *pjob, pbs_queue *pque, attribute *altered_resc,
 		}
 	}
 
-	if (rc_final)
-		return rc_final;
-	return 0;
+	ET_LIM_DBG("exiting, ret %d", __func__, rc_final)
+	return rc_final;
+}
+/**
+ * @brief
+ * 		account_entity_limit_usages() - set entity usage
+ *		for all four combination of entity limits res/ct and max/queued
+ *		1. Called against server attributes (pque will be null):
+ *	   		a. When new job arrives (INCR)
+ *	   		b. when job is purged (DECR)
+ *		2. Called against queue attributes (pque will point to queue struct):
+ *	   		a. on any enqueue (INCR), or
+ *	   		b. on any dequeue (DECR)
+ *
+ * @param[in]	pjob	-	pointer to job structure
+ * @param[in]	pque	-	pque will point to queue structure, i.e. not be null
+ * @param[in]	altered_resc	-	altered resources.
+ * @param[in]	op	-	operator example- INCR, DECR
+ * @param[in]	op_flag	-	operation flag for selecting combinations of set_entity_*_sum_*()
+ * 				use ETLIM_ACC_* flag macros defined in pbs_entlim.h, ex: ETLIM_ACC_ALL
+ *
+ * @return	int
+ * @retval	zero	: all went ok
+ * @retval	PBS_Enumber	: if error, typically a system or internal error
+ */
+int
+account_entity_limit_usages(job *pjob, pbs_queue *pque, attribute *altered_resc,
+	enum batch_op op, int op_flag)
+{
+	int rc,ret_error = PBSE_NONE;
+
+	/* not doing NULL checks of parameters as this function is currently invoked from sane locations */
+
+	ET_LIM_DBG("entered, %s on %s %s, op_flag %x, alt_res_ptr %p", __func__,
+				(op==INCR)?"INCR":"DECR", pque?"queue":"server", pque?pque->qu_qs.qu_name:server_name, op_flag, altered_resc)
+
+
+	if ((op_flag & ETLIM_ACC_CT_MAX) == ETLIM_ACC_CT_MAX)
+		if ((rc = set_entity_ct_sum_max(pjob, pque, op)) != 0) {
+			ret_error = rc;
+			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_ct_sum_max %s on %s %s failed with %d",
+					(op == INCR) ? "INCR" : "DECR", pque?"queue":"server", pque?pque->qu_qs.qu_name:server_name, rc);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE, pjob->ji_qs.ji_jobid, log_buffer);
+		}
+
+	if((op_flag & ETLIM_ACC_CT_QUEUED) == ETLIM_ACC_CT_QUEUED)
+		if ((rc = set_entity_ct_sum_queued(pjob, pque, op)) != 0) {
+			ret_error = rc;
+			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_ct_sum_queued %s on %s %s failed with %d",
+					(op == INCR) ? "INCR" : "DECR", pque?"queue":"server",pque?pque->qu_qs.qu_name:server_name, rc);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE, pjob->ji_qs.ji_jobid, log_buffer);
+		}
+
+	if((op_flag & ETLIM_ACC_RES_MAX) == ETLIM_ACC_RES_MAX)
+		if ((rc = set_entity_resc_sum_max(pjob, pque, altered_resc, op)) != 0) {
+			ret_error = rc;
+			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_resc_sum_max %s on %s %s failed with %d, (altered_resc %p)",
+					(op == INCR) ? "INCR" : "DECR", pque?"queue":"server",pque?pque->qu_qs.qu_name:server_name, rc, altered_resc);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE, pjob->ji_qs.ji_jobid, log_buffer);
+		}
+
+	if((op_flag & ETLIM_ACC_RES_QUEUED) == ETLIM_ACC_RES_QUEUED)
+		if ((rc = set_entity_resc_sum_queued(pjob, pque, altered_resc, op)) != 0) {
+			ret_error = rc;
+			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_resc_sum_queued %s on %s %s failed with %d, (altered_resc %p)",
+					(op == INCR) ? "INCR" : "DECR", pque?"queue":"server",pque?pque->qu_qs.qu_name:server_name, rc, altered_resc);
+			log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE, pjob->ji_qs.ji_jobid, log_buffer);
+		}
+
+	ET_LIM_DBG("exiting, ret_error %d", __func__, ret_error)
+
+	return ret_error;
 }
 
 /**

@@ -301,7 +301,7 @@ req_runjob(struct batch_request *preq)
 	int		  j;
 	char		 *jid;
 	int		  jt;		/* job type */
-	int		  offset;
+	int		  offset = -1;
 	char		 *pc;
 	job		 *pjob = NULL;
 	job		 *pjobsub = NULL;
@@ -505,7 +505,7 @@ req_runjob(struct batch_request *preq)
 
 		/* single subjob, if parent qeueud, it can be run */
 
-		if ((pjobsub = find_job(jid)) != NULL)
+		if ((pjobsub = parent->ji_ajtrk->tkm_tbl[offset].trk_psubjob) != NULL)
 			job_purge(pjobsub);
 
 		if ((pjobsub = create_subjob(parent, jid, &j)) == NULL) {
@@ -561,7 +561,7 @@ req_runjob(struct batch_request *preq)
 
 			if (get_subjob_state(parent, i) == JOB_STATE_QUEUED) {
 				jid  = mk_subjob_id(parent, i);
-				if ((pjobsub = find_job(jid)) != NULL)
+				if ((pjobsub = parent->ji_ajtrk->tkm_tbl[i].trk_psubjob) != NULL)
 					job_purge(pjobsub);
 
 				if ((pjobsub = create_subjob(parent, jid, &j)) == NULL) {

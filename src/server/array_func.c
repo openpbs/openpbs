@@ -298,6 +298,32 @@ get_index_from_jid(char *newjid)
 	index[i] = '\0';
 	return index;
 }
+
+/**
+ * @brief
+ * 		get_queued_subjobs_ct	-	get the number of queued subjobs if pjob is job array else return 1
+ *
+ * @param[in]	pjob	-	pointer to job structure
+ *
+ * @return	int
+ * @retval	-1	: parse error
+ * @retval	positive	: count of subjobs in JOB_ATR_array_indices_remaining if job array else 1
+ */
+int
+get_queued_subjobs_ct(job *pjob)
+{
+	if (NULL == pjob)
+		return -1;
+
+	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) {
+		if (NULL == pjob->ji_ajtrk)
+			return -1;
+
+		return pjob->ji_ajtrk->tkm_subjsct[JOB_STATE_QUEUED];
+	}
+
+	return 1;
+}
 /**
  * @brief
  * 		find_arrayparent - find and return a pointer to the job that is or will be
@@ -363,9 +389,33 @@ set_subjob_tblstate(job *parent, int offset, int newstate)
 	ptbl->tkm_subjsct[newstate]++;
 
 	/* set flags in attribute so stat_job will update the attr string */
-	parent->ji_wattr[(int)JOB_ATR_array_indices_remaining].at_flags |=
-		ATR_VFLAG_MODCACHE;
+	ptbl->tkm_flags |= TKMFLG_REVAL_IND_REMAINING;
 
+}
+/**
+ * @brief
+ * 		update_array_indices_remaining_attr - updates array_indices_remaining attribute
+ *
+ * @param[in,out]	parent - pointer to parent job.
+ *
+ * @return	void
+ */
+void
+update_array_indices_remaining_attr(job *parent)
+{
+	struct ajtrkhd	*ptbl = parent->ji_ajtrk;
+
+	if (ptbl->tkm_flags & TKMFLG_REVAL_IND_REMAINING) {
+		attribute *premain = &parent->ji_wattr[(int)JOB_ATR_array_indices_remaining];
+		char *pnewstr = cvt_range(parent->ji_ajtrk, JOB_STATE_QUEUED);
+		if ((pnewstr == NULL) || (*pnewstr == '\0'))
+			pnewstr = "-";
+		job_attr_def[JOB_ATR_array_indices_remaining].at_free(premain);
+		job_attr_def[JOB_ATR_array_indices_remaining].at_decode(premain, 0, 0, pnewstr);
+		/* also update value of attribute "array_state_count" */
+		update_subjob_state_ct(parent);
+		ptbl->tkm_flags &= ~TKMFLG_REVAL_IND_REMAINING;
+	}
 }
 /**
  * @brief
@@ -387,8 +437,8 @@ chk_array_doneness(job *parent)
 	if (ptbl == NULL)
 		return;
 
-	if (ptbl->tkm_flags & TKMFLG_NO_DELETE)
-		return;	/* delete of subjobs in progress, don't array */
+	if (ptbl->tkm_flags & (TKMFLG_NO_DELETE | TKMFLG_CHK_ARRAY))
+		return;	/* delete of subjobs in progress, or re-entering, so return here */
 
 	if (ptbl->tkm_subjsct[JOB_STATE_QUEUED] + ptbl->tkm_subjsct[JOB_STATE_RUNNING] + ptbl->tkm_subjsct[JOB_STATE_EXITING] == 0) {
 
@@ -422,19 +472,12 @@ chk_array_doneness(job *parent)
 		/*
 		 * Check if the history of the finished job can be saved or it needs to be purged .
 		 */
+		ptbl->tkm_flags |= TKMFLG_CHK_ARRAY;
+
 		svr_saveorpurge_finjobhist(parent);
 	} else {
 		/* Before we do a full save of parent, recalculate "JOB_ATR_array_indices_remaining" here*/
-		attribute *premain = &parent->ji_wattr[(int)JOB_ATR_array_indices_remaining];
-		if (premain->at_flags & ATR_VFLAG_MODCACHE) {
-			char *pnewstr = cvt_range(parent->ji_ajtrk, JOB_STATE_QUEUED);
-			if (pnewstr == NULL)
-				pnewstr = "-";
-			job_attr_def[JOB_ATR_array_indices_remaining].at_free(premain);
-			job_attr_def[JOB_ATR_array_indices_remaining].at_decode(premain, 0, 0, pnewstr);
-			/* also update value of attribute "array_state_count" */
-			update_subjob_state_ct(parent);
-		}
+		update_array_indices_remaining_attr(parent);
 		(void)job_save(parent, SAVEJOB_FULL);
 	}
 }
@@ -638,6 +681,7 @@ static struct ajtrkhd *mk_subjob_index_tbl(char *range, int initalstate, int *pb
 		t->tkm_tbl[j].trk_substate  = JOB_SUBSTATE_FINISHED;
 		t->tkm_tbl[j].trk_stgout  = -1;
 		t->tkm_tbl[j].trk_exitstat  = 0;
+		t->tkm_tbl[j].trk_psubjob = NULL;
 	}
 	return t;
 }
@@ -675,8 +719,7 @@ setup_arrayjob_attrs(attribute *pattr, void *pobj, int mode)
 
 	if (mode == ATR_ACTION_RECOV) {
 		/* set flags in attribute so stat_job will update the attr string */
-		pjob->ji_wattr[(int)JOB_ATR_array_indices_remaining].at_flags |=
-			ATR_VFLAG_MODCACHE;
+		pjob->ji_ajtrk->tkm_flags |= TKMFLG_REVAL_IND_REMAINING;
 
 		return (PBSE_NONE);
 	}
@@ -809,8 +852,12 @@ create_subjob(job *parent, char *newjid, int *rc)
 	 * non-saved items before ji_qs.
 	 */
 
-	subj = job_alloc();
+	if ((subj = job_alloc()) == NULL) {
+		*rc = PBSE_SYSTEM;
+		return NULL;
+	}
 	subj->ji_qs = parent->ji_qs;	/* copy the fixed save area */
+	parent->ji_ajtrk->tkm_tbl[indx].trk_psubjob = subj;
 	subj->ji_qhdr     = parent->ji_qhdr;
 	subj->ji_resvp    = parent->ji_resvp;
 	subj->ji_myResv   = parent->ji_myResv;
@@ -1113,7 +1160,7 @@ parse_subjob_index(char *pc, char **ep, int *px, int *py, int *pz, int *pct)
 	char *eptr;
 
 
-	while (isspace((int)*pc))
+	while (isspace((int)*pc) || (*pc == ','))
 		pc++;
 	if ((*pc == '\0') || (*pc == ']')) {
 		*pct = 0;

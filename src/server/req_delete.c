@@ -259,7 +259,7 @@ check_deletehistoryjob(struct batch_request * preq)
 					char *sjid = mk_subjob_id(histpjob, i);
 					job  *psjob;
 
-					if ((psjob = find_job(sjid))) {
+					if ((psjob = histpjob->ji_ajtrk->tkm_tbl[i].trk_psubjob)) {
 						snprintf(log_buffer, sizeof(log_buffer),
 							msg_job_history_delete, preq->rq_user,
 							preq->rq_host);
@@ -326,6 +326,21 @@ issue_delete(job *pjob)
 }
 
 /**
+ * @Brief
+ *		decrement entity usage for a single un-instantiated subjob
+ *
+ * @param[in]	parent - pointer to parent Job structure.
+ */
+static void
+decr_single_subjob_usage(job *parent)
+{
+	parent->ji_qs.ji_svrflags &= ~JOB_SVFLG_ArrayJob; /* small hack to decrement usage for a single un-instantiated subjob */
+	account_entity_limit_usages(parent, NULL, NULL, DECR, ETLIM_ACC_ALL); /* for server limit */
+	account_entity_limit_usages(parent, parent->ji_qhdr, NULL, DECR, ETLIM_ACC_ALL); /* for queue limit */
+	parent->ji_qs.ji_svrflags |= JOB_SVFLG_ArrayJob; /* setting arrayjob flag back */
+}
+
+/**
  * @brief
  * 		req_deletejob - service the Delete Job Request
  *
@@ -341,7 +356,6 @@ req_deletejob(struct batch_request *preq)
 	int i;
 	int j;
 	char *jid;
-	char *jidsj;
 	int jt; /* job type */
 	int offset;
 	char *pc;
@@ -412,22 +426,23 @@ req_deletejob(struct batch_request *preq)
 		} else if (i == JOB_STATE_EXPIRED) {
 			req_reject(PBSE_NOHISTARRAYSUBJOB, 0, preq);
 			return;
-		} else if ((pjob = find_job(jid)) != NULL) {
+		} else if ((pjob = parent->ji_ajtrk->tkm_tbl[offset].trk_psubjob)) {
 			/*
 			 * If the request is to also purge the history of the sub job then set ji_deletehistory to 1
 			 */
 			if (delhist)
 				pjob->ji_deletehistory = 1;
 			req_deletejob2(preq, pjob);
-			if (parent->ji_ajtrk)
-				if (pjob->ji_terminated)
-					parent->ji_ajtrk->tkm_dsubjsct++;
+			if (pjob->ji_terminated)
+				parent->ji_ajtrk->tkm_dsubjsct++;
 		} else {
 			acct_del_write(jid, parent, preq, 0);
 			parent->ji_ajtrk->tkm_tbl[offset].trk_substate =
 				JOB_SUBSTATE_TERMINATED;
 			set_subjob_tblstate(parent, offset, JOB_STATE_EXPIRED);
 			parent->ji_ajtrk->tkm_dsubjsct++;
+
+			decr_single_subjob_usage(parent);
 
 			reply_ack(preq);
 		}
@@ -454,7 +469,7 @@ req_deletejob(struct batch_request *preq)
 			sjst = get_subjob_state(parent, i);
 			if ((sjst == JOB_STATE_EXITING) && !forcedel)
 				continue;
-			if ((pjob = find_job(mk_subjob_id(parent, i)))) {
+			if ((pjob = parent->ji_ajtrk->tkm_tbl[i].trk_psubjob)) {
 				if (delhist)
 					pjob->ji_deletehistory = 1;
 				if (pjob->ji_qs.ji_state == JOB_STATE_EXPIRED) {
@@ -469,9 +484,12 @@ req_deletejob(struct batch_request *preq)
 					dup_br_for_subjob(preq, pjob, req_deletejob2);
 			} else {
 				/* Queued, Waiting, Held, just set to expired */
-				parent->ji_ajtrk->tkm_tbl[i].trk_substate =
-					JOB_SUBSTATE_TERMINATED;
-				set_subjob_tblstate(parent, i, JOB_STATE_EXPIRED);
+				if (sjst != JOB_STATE_EXPIRED) {
+					parent->ji_ajtrk->tkm_tbl[i].trk_substate =
+						JOB_SUBSTATE_TERMINATED;
+					set_subjob_tblstate(parent, i, JOB_STATE_EXPIRED);
+					decr_single_subjob_usage(parent);
+				}
 			}
 		}
 		parent->ji_ajtrk->tkm_flags &= ~TKMFLG_NO_DELETE;
@@ -524,31 +542,30 @@ req_deletejob(struct batch_request *preq)
 				continue;
 			}
 
-			jidsj = mk_subjob_id(parent, i);
-			if ((j = get_subjob_state(parent, i)) == JOB_STATE_RUNNING) {
-				pjob = find_job(jidsj);
-				if (pjob) {
-					if (delhist)
-						pjob->ji_deletehistory = 1;
+			sjst = get_subjob_state(parent, i);
+			if ((sjst == JOB_STATE_EXITING) && !forcedel)
+				continue;
+			if ((pjob = parent->ji_ajtrk->tkm_tbl[i].trk_psubjob)) {
+				if (delhist)
+					pjob->ji_deletehistory = 1;
+				if (pjob->ji_qs.ji_state == JOB_STATE_EXPIRED) {
+					snprintf(log_buffer, sizeof(log_buffer),
+						msg_job_history_delete, preq->rq_user,
+						preq->rq_host);
+					log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_INFO,
+						pjob->ji_qs.ji_jobid,
+						log_buffer);
+					job_purge(pjob);
+				}else
 					dup_br_for_subjob(preq, pjob, req_deletejob2);
+			} else {
+				/* Queued, Waiting, Held, just set to expired */
+				if (sjst != JOB_STATE_EXPIRED) {
+					parent->ji_ajtrk->tkm_tbl[i].trk_substate =
+						JOB_SUBSTATE_TERMINATED;
+					set_subjob_tblstate(parent, i, JOB_STATE_EXPIRED);
+					decr_single_subjob_usage(parent);
 				}
-			} else if ((j != JOB_STATE_EXITING) || (forcedel == 1)) {
-				/* not running, just set to expired */
-				if (j == JOB_STATE_EXITING) {
-					pjob = find_job(jidsj); /* subjob */
-					if (pjob) {
-						if (delhist)
-							pjob->ji_deletehistory = 1;
-						discard_job(pjob, "Forced Delete", 1);
-						rel_resc(pjob);
-						job_purge(pjob);
-					}
-				}
-				parent->ji_ajtrk->tkm_tbl[i].trk_substate =
-					JOB_SUBSTATE_TERMINATED;
-				parent->ji_ajtrk->tkm_dsubjsct++;
-				set_subjob_tblstate(parent, i, JOB_STATE_EXPIRED);
-				acct_del_write(jidsj, NULL, preq, 1); /* no mail */
 			}
 			x += z;
 		}
@@ -1079,6 +1096,7 @@ req_deleteReservation(struct batch_request *preq)
 			 * it again as it is already deleted.
 			 */
 			if ((pjob->ji_qs.ji_state == JOB_STATE_MOVED) ||
+				(pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) ||
 				(pjob->ji_qs.ji_state == JOB_STATE_FINISHED)) {
 				pjob = pnxj;
 				continue;

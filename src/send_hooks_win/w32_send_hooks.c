@@ -147,7 +147,7 @@ char		*path_svrdb;  /* path to server db */
 char		*path_nodestate; /* path to node state file */
 char		*path_nodes; /* path to nodes file */
 char		*path_resvs; /* path to resvs directory */
-extern void	*AVL_jctx = NULL; /* used for the jobs AVL tree */
+AVL_IX_DESC	*AVL_jctx = NULL; /* used for the jobs AVL tree */
 /*
  * Used only by the TPP layer, to ping nodes only if the connection to the
  * local router to the server is up.

@@ -597,28 +597,20 @@ modify_job_attr(job *pjob, svrattrl *plist, int perm, int *bad)
 		rc = set_objexid((void *)pjob, JOB_OBJECT, newattr);
 	}
 
-	/* OK, if resources changed, reset entity sums */
-
-	if (changed_resc) {
-		(void)set_entity_resc_sum_max(pjob, NULL,
-			&newattr[(int)JOB_ATR_resource],
-			INCR);
-		(void)set_entity_resc_sum_queued(pjob, NULL,
-			&newattr[(int)JOB_ATR_resource],
-			INCR);
-		(void)set_entity_resc_sum_max(pjob, pjob->ji_qhdr,
-			&newattr[(int)JOB_ATR_resource],
-			INCR);
-		(void)set_entity_resc_sum_queued(pjob, pjob->ji_qhdr,
-			&newattr[(int)JOB_ATR_resource],
-			INCR);
-	}
-
 	if (rc) {
 		attr_atomic_kill(newattr, job_attr_def, JOB_ATR_LAST);
 		attr_atomic_kill(attr_save, job_attr_def, JOB_ATR_LAST);
 		attr_atomic_kill(pre_copy, job_attr_def, JOB_ATR_LAST);
 		return (rc);
+	}
+
+	/* OK, if resources changed, reset entity sums */
+
+	if (changed_resc) {
+		account_entity_limit_usages(pjob, NULL,
+				&newattr[(int)JOB_ATR_resource], INCR, ETLIM_ACC_ALL_RES);
+		account_entity_limit_usages(pjob, pjob->ji_qhdr,
+				&newattr[(int)JOB_ATR_resource], INCR, ETLIM_ACC_ALL_RES);
 	}
 
 	/* Now copy the new values into the job attribute array for the purposes of running the action functions */

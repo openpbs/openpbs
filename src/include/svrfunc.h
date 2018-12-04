@@ -49,6 +49,7 @@ extern "C" {
 #include "reservation.h"
 #include "resource.h"
 #include "pbs_sched.h"
+#include "pbs_entlim.h"
 
 /* Protocol types when connecting to another server (eg mom) */
 #define PROT_INVALID	-1
@@ -101,6 +102,7 @@ extern void  mark_which_queues_have_nodes(void);
 extern void  set_sched_sock(int, pbs_sched *);
 extern void  pbs_close_stdfiles(void);
 extern int   is_job_array(char *id);
+extern int   get_queued_subjobs_ct(job *pjob);
 extern char *get_index_from_jid(char *newjid);
 extern int      parse_subjob_index(char *pc, char **ep, int *px, int *py, int *pz, int *pct);
 extern int expand_resc_array(char *rname, int rtype, int rflag);
@@ -182,6 +184,7 @@ extern void  svr_mailowner(job *, int mailtype, int force, char *);
 extern void  svr_mailowner_id(char *jid, job *, int mailtype, int force, char *);
 extern char *lastname(char *shell);
 extern void  chk_array_doneness(job *parent);
+extern void  update_array_indices_remaining_attr(job *parent);
 extern job  *create_subjob(job *parent, char *newjid, int *rc);
 extern char *cvt_range(struct ajtrkhd *t, int state);
 extern job  *find_arrayparent(char *subjobid);
@@ -210,10 +213,10 @@ extern int   set_entity_ct_sum_max(job *pj, pbs_queue *pq, enum batch_op op);
 extern int   set_entity_ct_sum_queued(job *pj, pbs_queue *pq, enum batch_op op);
 extern int   set_entity_resc_sum_max(job *pj, pbs_queue *pq,
 	attribute *altered_resc, enum batch_op op);
-extern int   set_entity_resc_sum_max_queued(job *pj, pbs_queue *pq,
-	attribute *altered_resc, enum batch_op op);
 extern int   set_entity_resc_sum_queued(job *pj, pbs_queue *pq,
 	attribute *altered_resc, enum batch_op op);
+extern int   account_entity_limit_usages(job *pj, pbs_queue *pq,
+	attribute *altered_resc, enum batch_op op, int op_flag);
 extern void  eval_chkpnt(attribute *j, attribute *q);
 #endif /* _QUEUE_H */
 

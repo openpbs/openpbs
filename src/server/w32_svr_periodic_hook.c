@@ -188,8 +188,7 @@ time_t          secondary_delay = 30;
 int		do_sync_mom_hookfiles;
 struct batch_request    *saved_takeover_req;
 struct python_interpreter_data  svr_interp_data;
-extern void	*AVL_jctx = NULL;
-
+AVL_IX_DESC	*AVL_jctx = NULL;
 /**
  * @file
  * 	Used only by the TPP layer, to ping nodes only if the connection to the

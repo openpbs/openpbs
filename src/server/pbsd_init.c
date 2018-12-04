@@ -1647,9 +1647,9 @@ pbsd_init_job(job *pjob, int type)
 			}
 
 			pjob->ji_subjindx = subjob_index_to_offset(pjob->ji_parentaj, get_index_from_jid(pjob->ji_qs.ji_jobid));
+			pjob->ji_parentaj->ji_ajtrk->tkm_tbl[pjob->ji_subjindx].trk_psubjob = pjob;
 			/* update the tracking table */
-			set_subjob_tblstate(pjob->ji_parentaj, pjob->ji_subjindx,
-					(JOB_STATE_FINISHED == pjob->ji_parentaj->ji_qs.ji_state) ? JOB_STATE_FINISHED : pjob->ji_qs.ji_state);
+			set_subjob_tblstate(pjob->ji_parentaj, pjob->ji_subjindx, pjob->ji_qs.ji_state);
 		}
 
 		switch (pjob->ji_qs.ji_substate) {
@@ -1813,10 +1813,7 @@ pbsd_init_job(job *pjob, int type)
 		}
 
 		/* update entity limit sums for this job */
-		(void)set_entity_ct_sum_max(pjob, NULL, INCR);
-		(void)set_entity_ct_sum_queued(pjob, NULL, INCR);
-		(void)set_entity_resc_sum_max(pjob, NULL, NULL, INCR);
-		(void)set_entity_resc_sum_queued(pjob, NULL, NULL, INCR);
+		(void)account_entity_limit_usages(pjob, NULL, NULL, INCR, ETLIM_ACC_ALL);
 
 		/* if job has IP address of Mom, it may have changed */
 		/* reset based on hostname                           */

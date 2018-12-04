@@ -438,27 +438,9 @@ svr_enquejob(job *pjob)
 
 	/* update any entity count and entity resources usage for the queue */
 
-
-	if ((rc=set_entity_ct_sum_max(pjob, pque, INCR)) != 0) {
-		snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_ct_sum_max on queue failed with %d for enqueue in %s", rc, pque->qu_qs.qu_name);
-		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE, pjob->ji_qs.ji_jobid, log_buffer);
+	if (!(pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) || (server.sv_attr[(int)SRV_ATR_State].at_val.at_long == SV_STATE_INIT)) {
+		account_entity_limit_usages(pjob, pque, NULL, INCR, ETLIM_ACC_ALL);
 	}
-
-	if ((rc=set_entity_ct_sum_queued(pjob, pque, INCR)) != 0) {
-		snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_ct_sum_queued on queue failed with %d for enqueue in %s", rc, pque->qu_qs.qu_name);
-		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE, pjob->ji_qs.ji_jobid, log_buffer);
-	}
-
-	if ((rc=set_entity_resc_sum_max(pjob, pque, NULL, INCR)) != 0) {
-		snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_resc_sum_max on queue failed with %d for enqueue in %s", rc, pque->qu_qs.qu_name);
-		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE, pjob->ji_qs.ji_jobid, log_buffer);
-	}
-
-	if ((rc=set_entity_resc_sum_queued(pjob, pque, NULL, INCR)) != 0) {
-		snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_resc_sum_queued on queue failed with %d for enqueue in %s", rc, pque->qu_qs.qu_name);
-		log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB, LOG_NOTICE, pjob->ji_qs.ji_jobid, log_buffer);
-	}
-
 
 	/*
 	 * See if we need to do anything special based on type of queue
@@ -570,29 +552,11 @@ svr_dequejob(job *pjob)
 	}
 
 	if ((pque = pjob->ji_qhdr) != NULL) {
-		int rc;
 
 		/* update any entity count and entity resources usage at que */
 
-		if ((rc=set_entity_ct_sum_max(pjob, pque, DECR)) != 0) {
-			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_ct_sum_max on queue failed with %d for dequeue in %s", rc, pque->qu_qs.qu_name);
-			log_err(rc, __func__, log_buffer);
-		}
-
-		if ((rc=set_entity_ct_sum_queued(pjob, pque, DECR)) != 0) {
-			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_ct_sum_queued on queue failed with %d for dequeue in %s", rc, pque->qu_qs.qu_name);
-			log_err(rc, __func__, log_buffer);
-		}
-
-		if ((rc=set_entity_resc_sum_max(pjob, pque, NULL, DECR)) != 0) {
-			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_resc_sum_max on queue failed with %d for dequeue in %s", rc, pque->qu_qs.qu_name);
-			log_err(rc, __func__, log_buffer);
-		}
-
-		if ((rc=set_entity_resc_sum_queued(pjob, pque, NULL, DECR)) != 0) {
-			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_resc_sum_queued on queue failed with %d for dequeue in %s", rc, pque->qu_qs.qu_name);
-			log_err(rc, __func__, log_buffer);
-		}
+		account_entity_limit_usages(pjob, pque, NULL, DECR,
+				pjob->ji_etlimit_decr_queued ? ETLIM_ACC_ALL_MAX : ETLIM_ACC_ALL);
 
 
 		if (is_linked(&pque->qu_jobs, &pjob->ji_jobque)) {
@@ -713,10 +677,6 @@ svr_setjobstate(job *pjob, int newstate, int newsubstate)
 			}
 			/* if subjob, update parent Array Job */
 			if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
-				/* Since subjob never go to F state,
-				 * check if any one setting it to F state. */
-				if (JOB_STATE_FINISHED == newstate)
-					newstate = JOB_STATE_EXPIRED;
 				update_subjob_state(pjob, newstate);
 			}
 		}
@@ -745,11 +705,12 @@ svr_setjobstate(job *pjob, int newstate, int newsubstate)
 
 	/* update the job file */
 
-	if (newstate == JOB_STATE_RUNNING || newstate == JOB_STATE_BEGUN) {
-		set_entity_ct_sum_queued(pjob, NULL, DECR);
-		set_entity_ct_sum_queued(pjob, pjob->ji_qhdr, DECR);
-		set_entity_resc_sum_queued(pjob, NULL, NULL, DECR);
-		set_entity_resc_sum_queued(pjob, pjob->ji_qhdr, NULL, DECR);
+	if (newstate == JOB_STATE_RUNNING) {
+		if (pjob->ji_etlimit_decr_queued == FALSE) {
+			account_entity_limit_usages(pjob, NULL, NULL, DECR, ETLIM_ACC_ALL_QUEUED);
+			account_entity_limit_usages(pjob, pjob->ji_qhdr, NULL, DECR, ETLIM_ACC_ALL_QUEUED);
+			pjob->ji_etlimit_decr_queued = TRUE;
+		}
 	}
 
 	if (pjob->ji_modified) {
@@ -1368,7 +1329,8 @@ svr_chkque(job *pjob, pbs_queue *pque, char *hostname, int mtype)
 			if (svr_chk_history_conf()) {
 				/* calculate number of finished and moved jobs */
 				histjobs = pque->qu_njstate[JOB_STATE_MOVED] +
-					pque->qu_njstate[JOB_STATE_FINISHED];
+						pque->qu_njstate[JOB_STATE_FINISHED] +
+						pque->qu_njstate[JOB_STATE_EXPIRED];
 			}
 			/*
 			 * check number of jobs in queue excluding
@@ -4969,9 +4931,11 @@ svr_saveorpurge_finjobhist(job *pjob)
 	int flag = 0;
 
 	flag = svr_chk_history_conf();
-	if (flag && !pjob->ji_deletehistory)
+	if (flag && !pjob->ji_deletehistory) {
 		svr_setjob_histinfo(pjob, T_FIN_JOB);
-	else {
+		if (pjob->ji_ajtrk)
+			pjob->ji_ajtrk->tkm_flags &= ~TKMFLG_CHK_ARRAY;
+	} else {
 		if (pjob->ji_deletehistory && flag) {
 			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB,
 				LOG_INFO, pjob->ji_qs.ji_jobid,
@@ -5172,10 +5136,6 @@ svr_histjob_update(job * pjob, int newstate, int newsubstate)
 
 	/* For subjob update the state */
 	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob) {
-		/* Since subjob never go to F state,
-		 * check if any one setting it to F state. */
-		if (JOB_STATE_FINISHED == newstate)
-			newstate = JOB_STATE_EXPIRED;
 		update_subjob_state(pjob, newstate);
 	}
 
@@ -5185,8 +5145,13 @@ svr_histjob_update(job * pjob, int newstate, int newsubstate)
 		struct ajtrkhd *ptbl = pjob->ji_ajtrk;
 		if (ptbl) {
 			/* update the subjob state table */
-			for (indx = 0; indx < ptbl->tkm_ct; ++indx)
-				set_subjob_tblstate(pjob, indx, newstate);
+			for (indx = 0; indx < ptbl->tkm_ct; ++indx) {
+				job *psubj = ptbl->tkm_tbl[indx].trk_psubjob;
+				if (psubj)
+					svr_histjob_update(psubj, newstate, newsubstate);
+				else
+					set_subjob_tblstate(pjob, indx, newstate);
+			}
 		}
 	}
 	/* set the substate attr and cache it */
@@ -5427,48 +5392,12 @@ svr_setjob_histinfo(job *pjob, histjob_type type)
 	/* decrement the entity job counts and entity resource sums   */
 
 	if ((pjob->ji_qs.ji_state != JOB_STATE_MOVED) &&
-		(pjob->ji_qs.ji_state != JOB_STATE_FINISHED) &&
-		!(pjob->ji_qs.ji_svrflags & JOB_SVFLG_SubJob)) {
-		int rc;
-		if ((rc=set_entity_ct_sum_max(pjob, NULL, DECR)) != 0) {
-			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_ct_sum_max on server failed with %d for finished job", rc);
-			log_err(rc, __func__, log_buffer);
-		}
-
-		if ((rc=set_entity_resc_sum_max(pjob, NULL, NULL, DECR)) != 0) {
-			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_resc_sum_max on server failed with %d for finished job", rc);
-			log_err(rc, __func__, log_buffer);
-		}
-
-		if ((rc=set_entity_ct_sum_max(pjob, pjob->ji_qhdr, DECR)) != 0) {
-			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_ct_sum_max on queue failed with %d for finished job", rc);
-			log_err(rc, __func__, log_buffer);
-		}
-
-		if ((rc=set_entity_resc_sum_max(pjob, pjob->ji_qhdr, NULL, DECR)) != 0) {
-			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_resc_sum_max on queue failed with %d for finished job", rc);
-			log_err(rc, __func__, log_buffer);
-		}
-
-		if ((rc=set_entity_ct_sum_queued(pjob, NULL, DECR)) != 0) {
-			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_ct_sum_queued on server failed with %d for finished job", rc);
-			log_err(rc, __func__, log_buffer);
-		}
-
-		if ((rc=set_entity_resc_sum_queued(pjob, NULL, NULL, DECR)) != 0) {
-			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_resc_sum_queued on server failed with %d for finished job", rc);
-			log_err(rc, __func__, log_buffer);
-		}
-
-		if ((rc=set_entity_ct_sum_queued(pjob, pjob->ji_qhdr, DECR)) != 0) {
-			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_ct_sum_queued on queue failed with %d for finished job", rc);
-			log_err(rc, __func__, log_buffer);
-		}
-
-		if ((rc=set_entity_resc_sum_queued(pjob, pjob->ji_qhdr, NULL, DECR)) != 0) {
-			snprintf(log_buffer, LOG_BUF_SIZE-1, "set_entity_resc_sum_queued on queue failed with %d for finished job", rc);
-			log_err(rc, __func__, log_buffer);
-		}
+		(pjob->ji_qs.ji_state != JOB_STATE_EXPIRED) &&
+		(pjob->ji_qs.ji_state != JOB_STATE_FINISHED)) {
+		account_entity_limit_usages(pjob, NULL, NULL, DECR,
+				pjob->ji_etlimit_decr_queued ? ETLIM_ACC_ALL_MAX : ETLIM_ACC_ALL);
+		account_entity_limit_usages(pjob, pjob->ji_qhdr, NULL, DECR,
+				pjob->ji_etlimit_decr_queued ? ETLIM_ACC_ALL_MAX : ETLIM_ACC_ALL);
 	}
 
 	/* set the history timestamp */

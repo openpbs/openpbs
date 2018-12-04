@@ -1831,10 +1831,7 @@ req_commit(struct batch_request *preq)
 
 	/* Set Server level entity usage */
 
-	if (((rc = set_entity_ct_sum_max(pj, NULL, INCR)) != 0) ||
-		((rc = set_entity_ct_sum_queued(pj, NULL, INCR)) != 0) ||
-		((rc = set_entity_resc_sum_max(pj, NULL, NULL, INCR)) != 0) ||
-		((rc = set_entity_resc_sum_queued(pj, NULL, NULL, INCR)) != 0)) {
+	if ((rc = account_entity_limit_usages(pj, NULL, NULL, INCR, ETLIM_ACC_ALL)) != 0) {
 		job_purge(pj);
 		req_reject(rc, 0, preq);
 		return;

@@ -260,19 +260,7 @@ status_job(job *pjob, struct batch_request *preq, svrattrl *pal, pbs_list_head *
 	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) {
 		/* for Array Job, if array_indices_remaining is modified */
 		/* then need to recalculate the string value	     */
-		char *pnewstr;
-		attribute *premain;
-
-		premain = &pjob->ji_wattr[(int)JOB_ATR_array_indices_remaining];
-		if (premain->at_flags & ATR_VFLAG_MODCACHE) {
-			pnewstr = cvt_range(pjob->ji_ajtrk, JOB_STATE_QUEUED);
-			if (pnewstr == NULL)
-				pnewstr = "-";
-			job_attr_def[JOB_ATR_array_indices_remaining].at_free(premain);
-			job_attr_def[JOB_ATR_array_indices_remaining].at_decode(premain, 0, 0, pnewstr);
-			/* also update value of attribute "array_state_count" */
-			update_subjob_state_ct(pjob);
-		}
+		update_array_indices_remaining_attr(pjob);
 	}
 
 	/* calc eligible time on the fly and return, don't save. */
@@ -380,13 +368,8 @@ status_subjob(job *pjob, struct batch_request *preq, svrattrl *pal, int subj, pb
 
 	/* if subjob job obj exists, use real job structure */
 
-	if ((get_subjob_state(pjob, subj) != JOB_STATE_QUEUED) && (psubjob = find_job(mk_subjob_id(pjob, subj)))) {
+	if ((get_subjob_state(pjob, subj) != JOB_STATE_QUEUED) && (psubjob = pjob->ji_ajtrk->tkm_tbl[subj].trk_psubjob)) {
 
-		/* if parent job state is F and 'x' is present in rq_extend then we set subjob state also as F */
-		if((pjob->ji_qs.ji_state == JOB_STATE_FINISHED) && strchr(preq->rq_extend, (int)'x')) {
-			psubjob->ji_qs.ji_state = JOB_STATE_FINISHED;
-			set_attr_svr(&psubjob->ji_wattr[(int)JOB_ATR_state], &job_attr_def[(int)JOB_ATR_state], &statechars[JOB_STATE_FINISHED]);
-		}
 		status_job(psubjob, preq, pal, pstathd, bad);
 		return 0;
 	}

@@ -438,7 +438,7 @@ struct ajtrk {
 	int trk_exitstat;  /* if executed and exitstat set */
 	int trk_substate; /* sub state    */
 	int trk_stgout; /* stageout status  */
-
+	struct job *trk_psubjob; /* pointer to instantiated subjob */
 };
 
 /* subjob index table */
@@ -470,7 +470,9 @@ struct jbdscrd {
 
 
 /* Special array job flags in tkm_flags */
-#define TKMFLG_NO_DELETE 1
+#define TKMFLG_NO_DELETE           0x01
+#define TKMFLG_REVAL_IND_REMAINING 0x02 /* Flag to re-evaluate "array_indices_remaining" */
+#define TKMFLG_CHK_ARRAY           0x04 /* chk_array_doneness() already in call stack*/
 
 /*
  * THE JOB
@@ -617,7 +619,11 @@ struct job {
 	 *	under one single transaction. After this the memory is freed.
 	 */
 	char           *ji_script;
-	int             ji_entity_limit_set;/* indicator that the entity limits are incremented */
+
+	/*
+	 * This flag is to indicate if queued entity limit attribute usage
+	 * is decremented when the job is run*/
+	int             ji_etlimit_decr_queued;
 
 #endif					/* END SERVER ONLY */
 
