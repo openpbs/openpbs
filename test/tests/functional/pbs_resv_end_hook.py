@@ -122,7 +122,7 @@ if e.type == pbs.RESV_END:
 
         self.server.delete(rid)
         msg = 'Hook;Server@%s;Reservation ID - %s' % \
-              (self.server.hostname.lower(), rid)
+              (self.server.shortname, rid)
         self.server.log_match(msg, tail=True, interval=2, max_attempts=30)
 
     def test_delete_degraded_resv(self):
@@ -148,7 +148,7 @@ if e.type == pbs.RESV_END:
 
         self.server.delete(rid)
         msg = 'Hook;Server@%s;Reservation ID - %s' % \
-              (self.server.hostname.lower(), rid)
+              (self.server.shortname, rid)
         self.server.log_match(msg, tail=True, interval=2, max_attempts=30)
 
     def test_server_down_case_1(self):
@@ -174,7 +174,7 @@ if e.type == pbs.RESV_END:
         self.server.delete(rid)
 
         msg = 'Hook;Server@%s;Reservation ID - %s' % \
-              (self.server.hostname.lower(), rid)
+              (self.server.shortname, rid)
         self.server.log_match(msg, tail=True, interval=2, max_attempts=30)
 
     @timeout(300)
@@ -202,7 +202,7 @@ if e.type == pbs.RESV_END:
         self.server.start()
 
         msg = 'Hook;Server@%s;Reservation ID - %s' % \
-              (self.server.hostname.lower(), rid)
+              (self.server.shortname, rid)
         self.server.log_match(msg, tail=True, interval=2, max_attempts=30)
 
     @timeout(240)
@@ -228,7 +228,7 @@ if e.type == pbs.RESV_END:
         time.sleep(30)
 
         msg = 'Hook;Server@%s;Reservation ID - %s' % \
-              (self.server.hostname.lower(), rid)
+              (self.server.shortname, rid)
         self.server.log_match(msg, tail=True, interval=2, max_attempts=30)
 
     def test_delete_advance_resv_with_jobs(self):
@@ -264,7 +264,7 @@ if e.type == pbs.RESV_END:
 
         self.server.delete(rid)
         msg = 'Hook;Server@%s;Reservation ID - %s' % \
-              (self.server.hostname.lower(), rid)
+              (self.server.shortname, rid)
         self.server.log_match(msg, tail=True, interval=2, max_attempts=30)
 
     @timeout(240)
@@ -300,7 +300,7 @@ if e.type == pbs.RESV_END:
         time.sleep(30)
 
         msg = 'Hook;Server@%s;Reservation ID - %s' % \
-              (self.server.hostname.lower(), rid)
+              (self.server.shortname, rid)
         self.server.log_match(msg, tail=True, interval=2, max_attempts=30)
 
     def test_set_attrs(self):
@@ -333,7 +333,7 @@ if e.type == pbs.RESV_END:
         self.server.delete(rid)
         msg = 'Svr;Server@%s;PBS server internal error (15011) in Error ' \
               'evaluating Python script, attribute '"'resources_used'"' is ' \
-              'part of a readonly object' % self.server.hostname.lower()
+              'part of a readonly object' % self.server.shortname
         self.server.log_match(msg, tail=True, max_attempts=30, interval=2)
 
     @timeout(300)
@@ -361,7 +361,7 @@ if e.type == pbs.RESV_END:
         time.sleep(30)
 
         msg = 'Hook;Server@%s;Reservation occurrence - 1' % \
-              self.server.hostname.lower()
+              self.server.shortname
         self.server.log_match(msg, tail=True, interval=2, max_attempts=30)
         self.logger.info('Reservation end hook ran for first occurrence of '
                          'a standing reservation')
@@ -372,7 +372,7 @@ if e.type == pbs.RESV_END:
 
         self.server.delete(rid)
         msg = 'Hook;Server@%s;Reservation occurrence - 2' % \
-              self.server.hostname.lower()
+              self.server.shortname
         self.server.log_match(msg, tail=True, interval=2, max_attempts=30)
 
     @timeout(300)
@@ -401,7 +401,7 @@ if e.type == pbs.RESV_END:
         time.sleep(30)
 
         msg = 'Hook;Server@%s;Reservation occurrence - 1' % \
-              self.server.hostname.lower()
+              self.server.shortname
         self.server.log_match(msg, tail=True, interval=2, max_attempts=30)
         self.logger.info('Reservation end hook ran for first occurrence of a '
                          'standing reservation')
@@ -415,7 +415,7 @@ if e.type == pbs.RESV_END:
         self.server.expect(RESV, attrs, id=rid, attrop=PTL_AND)
 
         msg = 'Hook;Server@%s;Reservation occurrence - 2' % \
-              self.server.hostname.lower()
+              self.server.shortname
         self.server.log_match(msg, tail=True, interval=2, max_attempts=30)
         self.logger.info('Reservation end hook ran for second occurrence of a'
                          ' standing reservation')
@@ -456,7 +456,7 @@ if e.type == pbs.RESV_END:
         time.sleep(30)
 
         msg = 'Hook;Server@%s;Reservation occurrence - 1' % \
-              self.server.hostname.lower()
+              self.server.shortname
         self.server.log_match(msg, tail=True, interval=2, max_attempts=30)
         self.logger.info('Reservation end hook ran for first occurrence of a '
                          'standing reservation')
@@ -467,7 +467,7 @@ if e.type == pbs.RESV_END:
 
         self.server.delete(rid)
         msg = 'Hook;Server@%s;Reservation occurrence - 2' % \
-              self.server.hostname.lower()
+              self.server.shortname
         self.server.log_match(msg, tail=True, interval=2, max_attempts=30)
 
     @timeout(300)
@@ -505,7 +505,7 @@ if e.type == pbs.RESV_END:
         time.sleep(30)
 
         msg = 'Hook;Server@%s;Reservation occurrence - 1' % \
-              self.server.hostname.lower()
+              self.server.shortname
         self.server.log_match(msg, tail=True, interval=2, max_attempts=30)
         self.logger.info('Reservation end hook ran for first occurrence of a '
                          'standing reservation')
@@ -519,7 +519,7 @@ if e.type == pbs.RESV_END:
         self.server.expect(RESV, attrs, id=rid, attrop=PTL_AND)
 
         msg = 'Hook;Server@%s;Reservation occurrence - 2' % \
-              self.server.hostname.lower()
+              self.server.shortname
         self.server.log_match(msg, tail=True, interval=2, max_attempts=30)
         self.logger.info('Reservation end hook ran for second occurrence of a '
                          'standing reservation')
@@ -547,7 +547,7 @@ if e.type == pbs.RESV_END:
         new_rid = self.submit_resv(offset, duration)
 
         msg = 'Hook;Server@%s;Reservation ID - %s' % \
-              (self.server.hostname.lower(), new_rid)
+              (self.server.shortname, new_rid)
         self.server.log_match(msg, tail=True, max_attempts=10,
                               existence=False)
 
@@ -571,7 +571,7 @@ if e.type == pbs.RESV_END:
         time.sleep(30)
 
         msg = 'Hook;Server@%s;Reservation ID - %s' % \
-              (self.server.hostname.lower(), rid)
+              (self.server.shortname, rid)
         self.server.log_match(msg, tail=True, max_attempts=10,
                               existence=False)
 
@@ -592,6 +592,6 @@ if e.type == pbs.RESV_END:
 
         self.server.delete(rid)
         msg = 'Hook;Server@%s;Reservation ID - %s' % \
-              (self.server.hostname.lower(), rid)
+              (self.server.shortname, rid)
         self.server.log_match(msg, tail=True, max_attempts=10,
                               existence=False)
