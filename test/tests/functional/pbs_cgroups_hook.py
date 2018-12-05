@@ -365,6 +365,25 @@ sleep 5
 #PBS -joe
 for i in 1 2 3 4; do while : ; do : ; done & done
 """
+        self.job_scr2 = """#!/bin/bash
+#PBS -l select=host=%s:ncpus=1+ncpus=4:mem=2gb
+#PBS -l place=vscatter
+#PBS -W umask=022
+#PBS -koe
+echo "$PBS_NODEFILE"
+cat $PBS_NODEFILE
+sleep 300
+""" % self.hostB
+        self.job_scr3 = """#!/bin/bash
+#PBS -l select=2:ncpus=4:mem=2gb
+#PBS -l place=pack
+#PBS -W umask=022
+#PBS -W tolerate_node_failures=job_start
+#PBS -koe
+echo "$PBS_NODEFILE"
+cat $PBS_NODEFILE
+sleep 300
+"""
         self.cfg0 = """{
     "cgroup_prefix"         : "pbspro",
     "exclude_hosts"         : [],
@@ -635,6 +654,50 @@ for i in 1 2 3 4; do while : ; do : ; done & done
     }
 }
 """
+        self.cfg7 = """{
+    "cgroup_prefix"         : "pbspro",
+    "exclude_hosts"         : [],
+    "exclude_vntypes"       : [],
+    "run_only_on_hosts"     : [],
+    "periodic_resc_update"  : true,
+    "vnode_per_numa_node"   : true,
+    "online_offlined_nodes" : true,
+    "use_hyperthreads"      : false,
+    "cgroup" : {
+        "cpuacct" : {
+            "enabled"            : true,
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : []
+        },
+        "cpuset" : {
+            "enabled"            : true,
+            "exclude_cpus"       : [],
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : []
+        },
+        "devices" : {
+            "enabled"            : false
+        },
+        "hugetlb" : {
+            "enabled"            : false
+        },
+        "memory" : {
+            "enabled"            : true,
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : [],
+            "default"            : "256MB",
+            "reserve_amount"     : "64MB"
+        },
+        "memsw" : {
+            "enabled"            : true,
+            "exclude_hosts"      : [],
+            "exclude_vntypes"    : [],
+            "default"            : "256MB",
+            "reserve_amount"     : "64MB"
+        }
+    }
+}
+"""
         Job.dflt_attributes[ATTR_k] = 'oe'
         # Increase the log level
         a = {'log_events': '4095'}
@@ -665,7 +728,7 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         self.load_hook(self.hook_file)
         events = '"execjob_begin,execjob_launch,execjob_attach,'
         events += 'execjob_epilogue,execjob_end,exechost_startup,'
-        events += 'exechost_periodic"'
+        events += 'exechost_periodic,execjob_resize"'
         # Enable the cgroups hook
         conf = {'enabled': 'True', 'freq': 10, 'alarm': 30, 'event': events}
         self.server.manager(MGR_CMD_SET, HOOK, conf, self.hook_name)
@@ -677,6 +740,53 @@ for i in 1 2 3 4; do while : ; do : ; done & done
                          (self.momA, self.vntypenameA))
         self.logger.info('vntype set for %s is %s' %
                          (self.momB, self.vntypenameB))
+
+        # queuejob hook
+        self.qjob_hook_body = """
+import pbs
+e=pbs.event()
+pbs.logmsg(pbs.LOG_DEBUG, "queuejob hook executed")
+# Save current select spec in resource 'site'
+e.job.Resource_List["site"] = str(e.job.Resource_List["select"])
+
+# Add 1 chunk to each chunk (except the first chunk) in the job's select s
+new_select = e.job.Resource_List["select"].increment_chunks(1)
+e.job.Resource_List["select"] = new_select
+
+# Make job tolerate node failures that occur only during start.
+e.job.tolerate_node_failures = "job_start"
+"""
+        # launch hook
+        self.launch_hook_body = """
+import pbs
+import time
+e=pbs.event()
+
+pbs.logmsg(pbs.LOG_DEBUG, "Executing launch")
+
+# print out the vnode_list[] values
+for vn in e.vnode_list:
+    v = e.vnode_list[vn]
+    pbs.logjobmsg(e.job.id, "launch: found vnode_list[" + v.name + "]")
+
+# print out the vnode_list_fail[] values:
+for vn in e.vnode_list_fail:
+    v = e.vnode_list_fail[vn]
+    pbs.logjobmsg(e.job.id, "launch: found vnode_list_fail[" + v.name + "]")
+if e.job.in_ms_mom():
+    pj = e.job.release_nodes(keep_select=%s)
+    if pj is None:
+        e.job.Hold_Types = pbs.hold_types("s")
+        e.job.rerun()
+        e.reject("unsuccessful at LAUNCH")
+"""
+        # resize hook
+        self.resize_hook_body = """
+import pbs
+e=pbs.event()
+if %s e.job.in_ms_mom():
+    e.reject("Cannot resize the job")
+"""
 
     def get_paths(self):
         """
@@ -2187,6 +2297,310 @@ event.accept()
         self.momA.log_match(msg=logmsg, starttime=presubmit,
                             max_attempts=1, existence=False)
 
+    def check_req_rjs(self):
+        """
+        Check the requirements for the reliable job startup tests.
+        MomA must have two free vnodes and MomB has one free vnode.
+        Return 1 if requirements are not satisfied.
+        """
+        # Check that momA has two free vnodes
+        attr = {'state': 'free'}
+        rv1 = True
+        try:
+            self.server.expect(VNODE, attr, id='%s[0]' % self.hostA,
+                               max_attempts=3, interval=2)
+        except PtlExpectError as exc:
+            rv1 = exc.rv
+        rv2 = True
+        try:
+            self.server.expect(VNODE, attr, id='%s[1]' % self.hostA,
+                               max_attempts=3, interval=2)
+        except PtlExpectError as exc:
+            rv2 = exc.rv
+        # Check that momB has one free vnode
+        rv3 = True
+        try:
+            self.server.expect(VNODE, attr, id='%s[0]' % self.hostB,
+                               max_attempts=3, interval=2)
+        except PtlExpectError as exc:
+            rv3 = exc.rv
+        if not rv1 or not rv2 or not rv3:
+            return 1
+        return 0
+
+    def test_cgroup_release_nodes(self):
+        """
+        Verify that exec_vnode values are trimmed
+        when execjob_launch hook prunes job via release_nodes(),
+        tolerate_node_failures=job_start
+        """
+        # Test requires 2 nodes
+        if len(self.moms) != 2:
+            self.skipTest('Test requires two Moms as input, '
+                          'use -p moms=<mom1:mom2>')
+        self.load_config(self.cfg7)
+        # Check that MomA has two free vnodes and MomB has a free vnode
+        if self.check_req_rjs() == 1:
+            self.skipTest(
+                'MomA must have two free vnodes and MomB one free vnode')
+        # instantiate queuejob hook
+        hook_event = 'queuejob'
+        hook_name = 'qjob'
+        a = {'event': hook_event, 'enabled': 'true'}
+        self.server.create_import_hook(hook_name, a, self.qjob_hook_body)
+        # instantiate execjob_launch hook
+        hook_event = 'execjob_launch'
+        hook_name = 'launch'
+        a = {'event': hook_event, 'enabled': 'true'}
+        self.keep_select = 'e.job.Resource_List["site"]'
+        self.server.create_import_hook(
+            hook_name, a, self.launch_hook_body % (self.keep_select))
+        # Submit a job that requires 2 nodes
+        j = Job(TEST_USER)
+        j.create_script(self.job_scr2)
+        jid = self.server.submit(j)
+        # Check the exec_vnode while in substate 41
+        self.server.expect(JOB, {ATTR_substate: '41'}, id=jid)
+        self.server.expect(JOB, 'exec_vnode', id=jid, op=SET)
+        job_stat = self.server.status(JOB, id=jid)
+        execvnode1 = job_stat[0]['exec_vnode']
+        self.logger.info("initial exec_vnode: %s" % execvnode1)
+        initial_vnodes = execvnode1.split('+')
+        # Check the exec_vnode after job is in substate 42
+        self.server.expect(JOB, {ATTR_substate: '42'}, id=jid)
+        self.server.expect(JOB, 'exec_vnode', id=jid, op=SET)
+        job_stat = self.server.status(JOB, id=jid)
+        execvnode2 = job_stat[0]['exec_vnode']
+        self.logger.info("pruned exec_vnode: %s" % execvnode2)
+        pruned_vnodes = execvnode2.split('+')
+        # Check that the pruned exec_vnode has one less than initial value
+        self.assertEqual(len(pruned_vnodes) + 1, len(initial_vnodes))
+        # Find the released vnode
+        for vn in initial_vnodes:
+            if vn not in pruned_vnodes:
+                rel_vn = vn
+        vnodeB = rel_vn.split(':')[0].split('(')[1]
+        self.logger.info("released vnode: %s" % vnodeB)
+        # Submit a second job requesting the released vnode, job runs
+        j2 = Job(TEST_USER,
+                 {ATTR_l + '.select': '1:ncpus=1:mem=2gb:vnode=%s' % vnodeB})
+        jid2 = self.server.submit(j2)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
+
+    def test_cgroup_sismom_resize_fail(self):
+        """
+        Verify that exec_vnode values are trimmed
+        when execjob_launch hook prunes job via release_nodes(),
+        exec_job_resize failure in sister mom,
+        tolerate_node_failures=job_start
+        """
+        # Test requires 2 nodes
+        if len(self.moms) != 2:
+            self.skipTest('Test requires two Moms as input, '
+                          'use -p moms=<mom1:mom2>')
+        self.load_config(self.cfg7)
+        # Check that MomA has two free vnodes and MomB has a free vnode
+        if self.check_req_rjs() == 1:
+            self.skipTest(
+                'MomA must have two free vnodes and MomB one free vnode')
+        # instantiate queuejob hook
+        hook_event = 'queuejob'
+        hook_name = 'qjob'
+        a = {'event': hook_event, 'enabled': 'true'}
+        self.server.create_import_hook(hook_name, a, self.qjob_hook_body)
+        # instantiate execjob_launch hook
+        hook_event = 'execjob_launch'
+        hook_name = 'launch'
+        a = {'event': hook_event, 'enabled': 'true'}
+        self.keep_select = 'e.job.Resource_List["site"]'
+        self.server.create_import_hook(
+            hook_name, a, self.launch_hook_body % (self.keep_select))
+        # instantiate execjob_resize hook
+        hook_event = 'execjob_resize'
+        hook_name = 'resize'
+        a = {'event': hook_event, 'enabled': 'true'}
+        self.server.create_import_hook(
+            hook_name, a, self.resize_hook_body % ('not'))
+        # Submit a job that requires 2 nodes
+        j = Job(TEST_USER)
+        j.create_script(self.job_scr2)
+        stime = int(time.time())
+        jid = self.server.submit(j)
+        # Check the exec_vnode while in substate 41
+        self.server.expect(JOB, {ATTR_substate: '41'}, id=jid)
+        self.server.expect(JOB, 'exec_vnode', id=jid, op=SET)
+        job_stat = self.server.status(JOB, id=jid)
+        execvnode1 = job_stat[0]['exec_vnode']
+        self.logger.info("initial exec_vnode: %s" % execvnode1)
+        initial_vnodes = execvnode1.split('+')
+        # Check the exec_resize hook reject message in sister mom logs
+        self.momA.log_match(
+            "Job;%s;Cannot resize the job" % (jid),
+            starttime=stime, interval=2)
+        # Check the exec_vnode after job is in substate 42
+        self.server.expect(JOB, {ATTR_substate: '42'}, id=jid)
+        # Check for the pruned exec_vnode due to release_nodes() in launch hook
+        self.server.expect(JOB, 'exec_vnode', id=jid, op=SET)
+        job_stat = self.server.status(JOB, id=jid)
+        execvnode2 = job_stat[0]['exec_vnode']
+        self.logger.info("pruned exec_vnode: %s" % execvnode2)
+        pruned_vnodes = execvnode2.split('+')
+        # Check that the pruned exec_vnode has one less than initial value
+        self.assertEqual(len(pruned_vnodes) + 1, len(initial_vnodes))
+        # Check that the exec_vnode got pruned
+        self.momB.log_match("Job;%s;pruned from exec_vnode=%s" % (
+            jid, execvnode1), starttime=stime)
+        self.momB.log_match("Job;%s;pruned to exec_vnode=%s" % (
+            jid, execvnode2), starttime=stime)
+        # Check that the sister mom failed to update the job
+        self.momB.log_match(
+            "Job;%s;sister node %s.* failed to update job" % (jid, self.hostA),
+            starttime=stime, interval=2, regexp=True)
+        # Because of resize hook reject Mom failed to update the job.
+        # Check that job got requeued.
+        self.server.log_match("Job;%s;Job requeued" % (jid), starttime=stime)
+
+    def test_cgroup_msmom_resize_fail(self):
+        """
+        Verify that exec_vnode values are trimmed
+        when execjob_launch hook prunes job via release_nodes(),
+        exec_job_resize failure in mom superior,
+        tolerate_node_failures=job_start
+        """
+        # Test requires 2 nodes
+        if len(self.moms) != 2:
+            self.skipTest('Test requires two Moms as input, '
+                          'use -p moms=<mom1:mom2>')
+        self.load_config(self.cfg7)
+        # Check that MomA has two free vnodes and MomB has a free vnode
+        if self.check_req_rjs() == 1:
+            self.skipTest(
+                'MomA must have two free vnodes and MomB one free vnode')
+        # instantiate queuejob hook
+        hook_event = 'queuejob'
+        hook_name = 'qjob'
+        a = {'event': hook_event, 'enabled': 'true'}
+        self.server.create_import_hook(hook_name, a, self.qjob_hook_body)
+        # instantiate execjob_launch hook
+        hook_event = 'execjob_launch'
+        hook_name = 'launch'
+        a = {'event': hook_event, 'enabled': 'true'}
+        self.keep_select = 'e.job.Resource_List["site"]'
+        self.server.create_import_hook(
+            hook_name, a, self.launch_hook_body % (self.keep_select))
+        # instantiate execjob_resize hook
+        hook_event = 'execjob_resize'
+        hook_name = 'resize'
+        a = {'event': hook_event, 'enabled': 'true'}
+        self.server.create_import_hook(
+            hook_name, a, self.resize_hook_body % (''))
+        # Submit a job that requires 2 nodes
+        j = Job(TEST_USER)
+        j.create_script(self.job_scr2)
+        stime = int(time.time())
+        jid = self.server.submit(j)
+        # Check the exec_vnode while in substate 41
+        self.server.expect(JOB, {ATTR_substate: '41'}, id=jid)
+        self.server.expect(JOB, 'exec_vnode', id=jid, op=SET)
+        job_stat = self.server.status(JOB, id=jid)
+        execvnode1 = job_stat[0]['exec_vnode']
+        self.logger.info("initial exec_vnode: %s" % execvnode1)
+        initial_vnodes = execvnode1.split('+')
+        # Check the exec_resize hook reject message in mom superior logs
+        self.momB.log_match(
+            "Job;%s;Cannot resize the job" % (jid),
+            starttime=stime, interval=2)
+        # Check the exec_vnode after job is in substate 42
+        self.server.expect(JOB, {ATTR_substate: '42'}, id=jid)
+        self.server.expect(JOB, 'exec_vnode', id=jid, op=SET)
+        job_stat = self.server.status(JOB, id=jid)
+        execvnode2 = job_stat[0]['exec_vnode']
+        self.logger.info("pruned exec_vnode: %s" % execvnode2)
+        pruned_vnodes = execvnode2.split('+')
+        # Check that the pruned exec_vnode has one less than initial value
+        self.assertEqual(len(pruned_vnodes) + 1, len(initial_vnodes))
+        # Check that the exec_vnode got pruned
+        self.momB.log_match("Job;%s;pruned from exec_vnode=%s" % (
+            jid, execvnode1), starttime=stime)
+        self.momB.log_match("Job;%s;pruned to exec_vnode=%s" % (
+            jid, execvnode2), starttime=stime)
+        # Because of resize hook reject Mom failed to update the job.
+        # Check that job got requeued
+        self.server.log_match("Job;%s;Job requeued" % (jid), starttime=stime)
+
+    def test_cgroup_msmom_nodes_only(self):
+        """
+        Verify that exec_vnode values are trimmed
+        when execjob_launch hook prunes job via release_nodes(),
+        job is using only vnodes from mother superior host,
+        tolerate_node_failures=job_start
+        """
+        # Test requires 2 nodes
+        if len(self.moms) != 2:
+            self.skipTest('Test requires two Moms as input, '
+                          'use -p moms=<mom1:mom2>')
+        self.load_config(self.cfg7)
+        # Check that MomA has two free vnodes and MomB has a free vnode
+        if self.check_req_rjs() == 1:
+            self.skipTest(
+                'MomA must have two free vnodes and MomB one free vnode')
+        # disable queuejob hook
+        hook_event = 'queuejob'
+        hook_name = 'qjob'
+        a = {'event': hook_event, 'enabled': 'false'}
+        self.server.create_import_hook(hook_name, a, self.qjob_hook_body)
+        # instantiate execjob_launch hook
+        hook_event = 'execjob_launch'
+        hook_name = 'launch'
+        a = {'event': hook_event, 'enabled': 'true'}
+        self.keep_select = '"ncpus=4:mem=2gb"'
+        self.server.create_import_hook(
+            hook_name, a, self.launch_hook_body % (self.keep_select))
+        # disable execjob_resize hook
+        hook_event = 'execjob_resize'
+        hook_name = 'resize'
+        a = {'event': hook_event, 'enabled': 'false'}
+        self.server.create_import_hook(
+            hook_name, a, self.resize_hook_body % (''))
+        # Submit a job that requires two vnodes on one host
+        j = Job(TEST_USER)
+        j.create_script(self.job_scr3)
+        stime = int(time.time())
+        jid = self.server.submit(j)
+        # Check the exec_vnode while in substate 41
+        self.server.expect(JOB, {ATTR_substate: '41'}, id=jid)
+        self.server.expect(JOB, 'exec_vnode', id=jid, op=SET)
+        job_stat = self.server.status(JOB, id=jid)
+        execvnode1 = job_stat[0]['exec_vnode']
+        self.logger.info("initial exec_vnode: %s" % execvnode1)
+        initial_vnodes = execvnode1.split('+')
+        # Check the exec_vnode after job is in substate 42
+        self.server.expect(JOB, {ATTR_substate: '42'}, id=jid)
+        self.server.expect(JOB, 'exec_vnode', id=jid, op=SET)
+        job_stat = self.server.status(JOB, id=jid)
+        execvnode2 = job_stat[0]['exec_vnode']
+        self.logger.info("pruned exec_vnode: %s" % execvnode2)
+        pruned_vnodes = execvnode2.split('+')
+        # Check that the pruned exec_vnode has one less than initial value
+        self.assertEqual(len(pruned_vnodes) + 1, len(initial_vnodes))
+        # Check that the exec_vnode got pruned
+        self.momA.log_match("Job;%s;pruned from exec_vnode=%s" % (
+            jid, execvnode1), starttime=stime)
+        self.momA.log_match("Job;%s;pruned to exec_vnode=%s" % (
+            jid, execvnode2), starttime=stime)
+        # Find out the released vnode
+        if initial_vnodes[0] == execvnode2:
+            execvnodeB = initial_vnodes[1]
+        else:
+            execvnodeB = initial_vnodes[0]
+        vnodeB = execvnodeB.split(':')[0].split('(')[1]
+        self.logger.info("released vnode: %s" % vnodeB)
+        # Submit job2 requesting the released vnode, job runs
+        j2 = Job(TEST_USER, {
+            ATTR_l + '.select': '1:ncpus=1:mem=2gb:vnode=%s' % vnodeB})
+        jid2 = self.server.submit(j2)
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
+
     def tearDown(self):
         TestFunctional.tearDown(self)
         self.load_config(self.cfg0)
@@ -2197,7 +2611,7 @@ event.accept()
             self.momB.delete_vnode_defs()
         events = '"execjob_begin,execjob_launch,execjob_attach,'
         events += 'execjob_epilogue,execjob_end,exechost_startup,'
-        events += 'exechost_periodic"'
+        events += 'exechost_periodic,execjob_resize"'
         # Disable the cgroups hook
         conf = {'enabled': 'False', 'freq': 30, 'event': events}
         self.server.manager(MGR_CMD_SET, HOOK, conf, self.hook_name)
