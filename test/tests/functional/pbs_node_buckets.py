@@ -921,8 +921,7 @@ class TestNodeBuckets(TestFunctional):
         a = {'resources_available.ncpus': 80,
              'resources_available.bar': 'large'}
         self.server.create_vnodes(name='vnode', attrib=a, num=8,
-                                  mom=self.mom, sharednode=False,
-                                  expect=False)
+                                  mom=self.mom, sharednode=False)
         self.scheduler.add_resource('foo')
         a['resources_available.foo'] = 8
         a['resources_available.ncpus'] = 8
