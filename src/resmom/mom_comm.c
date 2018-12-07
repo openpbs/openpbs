@@ -3043,6 +3043,8 @@ im_request(int stream, int version)
 	int			argc = 0;
 	mom_hook_input_t	hook_input;
 	mom_hook_output_t	hook_output;
+	mom_hook_input_t	*hook_input_ptr;
+	mom_hook_output_t	*hook_output_ptr;
 	int			hook_errcode = 0;
 	int			hook_rc = 0;
 	hook			*last_phook = NULL;
@@ -3676,25 +3678,49 @@ join_err:
 				log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 				jobid, delete_job_msg);
 
+			if (pjob->ji_hook_running_bg_on)
+				goto fini;
+
 			kill_job(pjob, SIGKILL);	/* just in case */
 
 			/* NULL value passed to hook_input.vnl 				*/
 			/* means to assign vnode list using pjob->ji_host[].	    	*/
 
-			mom_hook_input_init(&hook_input);
-			hook_input.pjob = pjob;
+			if ((hook_input_ptr = (mom_hook_input_t *)malloc(
+				sizeof(mom_hook_input_t))) == NULL) {
+					log_err(errno, __func__, MALLOC_ERR_MSG);
+					goto err;
+			}
+			mom_hook_input_init(hook_input_ptr);
+			hook_input_ptr->pjob = pjob;
 
-			mom_hook_output_init(&hook_output);
-			hook_output.reject_errcode = &hook_errcode;
-			hook_output.last_phook = &last_phook;
-			hook_output.fail_action = &hook_fail_action;
+			if ((hook_output_ptr = (mom_hook_output_t *)malloc(
+				sizeof(mom_hook_output_t))) == NULL) {
+					log_err(errno, __func__, MALLOC_ERR_MSG);
+					goto err;
+			}
+			mom_hook_output_init(hook_output_ptr);
 
-			(void)mom_process_hooks(
+			if ((hook_output_ptr->reject_errcode =
+				(int *)malloc(sizeof(int))) == NULL) {
+					log_err(errno, __func__, MALLOC_ERR_MSG);
+					goto err;
+			}
+			memset(hook_output_ptr->reject_errcode, 0, sizeof(int));
+
+			pjob->ji_postevent = event;
+			pjob->ji_taskid = fromtask;
+
+			if (mom_process_hooks(
 				(command == IM_DELETE_JOB2)?
 					HOOK_EVENT_EXECJOB_EPILOGUE:
 					HOOK_EVENT_EXECJOB_END,
-				PBS_MOM_SERVICE_NAME, mom_host, &hook_input,
-				&hook_output, hook_msg, sizeof(hook_msg), 1);
+				PBS_MOM_SERVICE_NAME, mom_host, hook_input_ptr,
+				hook_output_ptr, NULL, 0, 1) ==
+						HOOK_RUNNING_IN_BACKGROUND) {
+					pjob->ji_hook_running_bg_on = command;
+					break;
+				}
 
 			if (command == IM_DELETE_JOB_REPLY) {
 				mom_deljob(pjob);
@@ -3754,6 +3780,9 @@ join_err:
 				mom_deljob(pjob);
 				reply = 0;
 			}
+			free(hook_input_ptr);
+			free(hook_output_ptr->reject_errcode);
+			free(hook_output_ptr);
 			break;
 
 		case	IM_EXEC_PROLOGUE:
