@@ -62,6 +62,7 @@ from ptl.utils.pbs_anonutils import PBSAnonymizer
     QSTAT_NS_OUT,
     QSTAT_FX_DSV_OUT,
     QSTAT_F_DSV_OUT,
+    QSTAT_F_JSON_OUT,
     QSTAT_Q_OUT,
     QSTAT_QF_OUT,
     # qmgr outputs
@@ -80,6 +81,7 @@ from ptl.utils.pbs_anonutils import PBSAnonymizer
     PBSNODES_AS_OUT,
     PBSNODES_AFDSV_OUT,
     PBSNODES_AVFDSV_OUT,
+    PBSNODES_AVFJSON_OUT,
     # pbs_rstat outputs
     PBS_RSTAT_OUT,
     PBS_RSTAT_F_OUT,
@@ -114,7 +116,7 @@ from ptl.utils.pbs_anonutils import PBSAnonymizer
     CORE_SERVER,
     CORE_MOM,
     # Miscellaneous
-    CTIME) = range(55)
+    CTIME) = range(57)
 
 
 # Define paths to various files/directories with respect to the snapshot
@@ -142,6 +144,7 @@ QSTAT_XF_PATH = os.path.join(JOB_DIR, "qstat_xf.out")
 QSTAT_NS_PATH = os.path.join(JOB_DIR, "qstat_ns.out")
 QSTAT_FX_DSV_PATH = os.path.join(JOB_DIR, "qstat_fx_F_dsv.out")
 QSTAT_F_DSV_PATH = os.path.join(JOB_DIR, "qstat_f_F_dsv.out")
+QSTAT_F_JSON_PATH = os.path.join(JOB_DIR, "qstat_f_F_json.out")
 # node/
 NODE_DIR = "node"
 PBSNODES_VA_PATH = os.path.join(NODE_DIR, "pbsnodes_va.out")
@@ -152,6 +155,7 @@ PBSNODES_AVS_PATH = os.path.join(NODE_DIR, "pbsnodes_avS.out")
 PBSNODES_AS_PATH = os.path.join(NODE_DIR, "pbsnodes_aS.out")
 PBSNODES_AFDSV_PATH = os.path.join(NODE_DIR, "pbsnodes_aFdsv.out")
 PBSNODES_AVFDSV_PATH = os.path.join(NODE_DIR, "pbsnodes_avFdsv.out")
+PBSNODES_AVFJSON_PATH = os.path.join(NODE_DIR, "pbsnodes_avFjson.out")
 QMGR_PN_PATH = os.path.join(NODE_DIR, "qmgr_pn_default.out")
 # mom_priv/
 MOM_PRIV_PATH = "mom_priv"
@@ -441,6 +445,8 @@ class _PBSSnapUtils(object):
             self.job_info[QSTAT_FX_DSV_OUT] = value
             value = (QSTAT_F_DSV_PATH, [QSTAT_CMD, "-f", "-F", "dsv"])
             self.job_info[QSTAT_F_DSV_OUT] = value
+            value = (QSTAT_F_JSON_PATH, [QSTAT_CMD, "-f", "-F", "json"])
+            self.job_info[QSTAT_F_JSON_OUT] = value
 
             # Node information
             value = (PBSNODES_VA_PATH, [PBSNODES_CMD, "-va"])
@@ -459,6 +465,8 @@ class _PBSSnapUtils(object):
             self.node_info[PBSNODES_AFDSV_OUT] = value
             value = (PBSNODES_AVFDSV_PATH, [PBSNODES_CMD, "-avFdsv"])
             self.node_info[PBSNODES_AVFDSV_OUT] = value
+            value = (PBSNODES_AVFJSON_PATH, [PBSNODES_CMD, "-avFjson"])
+            self.node_info[PBSNODES_AVFJSON_OUT] = value
             value = (QMGR_PN_PATH, [QMGR_CMD, "-c", "p n @default"])
             self.node_info[QMGR_PN_OUT] = value
 

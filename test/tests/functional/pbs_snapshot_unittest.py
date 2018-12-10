@@ -37,6 +37,7 @@
 
 import time
 import os
+import json
 
 from tests.functional import *
 from ptl.utils.pbs_snaputils import *
@@ -647,6 +648,24 @@ pbs.logmsg(pbs.EVENT_DEBUG,"%s")
 
         # Check that the output tarball was created
         self.assertTrue(os.path.isfile(output_tar))
+
+    def test_snapshot_json(self):
+        """
+        Test that pbs_snapshot captures job and vnode info in json
+        """
+        _, snap_dir = self.take_snapshot()
+
+        # Verify that qstat json was captured
+        jsonpath = os.path.join(snap_dir, QSTAT_F_JSON_PATH)
+        self.assertTrue(os.path.isfile(jsonpath))
+        with open(jsonpath, "r") as fd:
+            json.load(fd)   # this will fail if file is not a valid json
+
+        # Verify that pbsnodes json was captured
+        jsonpath = os.path.join(snap_dir, PBSNODES_AVFJSON_PATH)
+        self.assertTrue(os.path.isfile(jsonpath))
+        with open(jsonpath, "r") as fd:
+            json.load(fd)
 
     @classmethod
     def tearDownClass(self):
