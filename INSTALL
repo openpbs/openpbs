@@ -75,6 +75,10 @@ How to install PBS Pro using the configure script.
 
     ./configure --prefix=/opt/pbs --libexecdir=/opt/pbs/libexec
 
+  If PTL needs to be installed along with pbspro use the option 
+  "--enable-ptl" (see note 5 below)
+    eg ./configure --prefix=/opt/pbs --enable-ptl
+
 7. Build PBS Pro by running "make". (See note 4 below)
 
     make
@@ -190,6 +194,11 @@ Note 4: You need to use a POSIX (or nearly POSIX) make. GNU make
   to make, however, complicating things by using various make flags
   is not guaranteed to work. Don't be surprised if the first thing
   that make does is call configure again.
+
+Note 5: PTL gets installed in the parent directory of where PBS Professional
+  is installed. For example if you have given install prefix=/opt/pbs, then 
+  you can find PTL installation in the directory /opt/ptl . You may need to 
+  log out and log in from the terminal for PATH and PYTHONPATH to update.
 
 
 

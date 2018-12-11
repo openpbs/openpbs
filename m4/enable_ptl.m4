@@ -1,4 +1,3 @@
-
 #
 # Copyright (C) 1994-2018 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
@@ -36,4 +35,16 @@
 # trademark licensing policies.
 #
 
-SUBDIRS = fw tests
+AC_DEFUN([PBS_AC_ENABLE_PTL],
+[
+# check for PTL enable to generate PTL package which is disabled by default
+AC_ARG_ENABLE([ptl],
+    AS_HELP_STRING([--enable-ptl],
+    [Enable package creation for PTL]))
+
+AS_IF([test "x$enable_ptl" = "xyes"],
+    [AC_MSG_RESULT([checking for PTL... yes])],
+    [AC_MSG_RESULT([checking for PTL... no])])
+
+AM_CONDITIONAL([ENABLEPTL], [test "x${enable_ptl}" = "xyes"])
+])

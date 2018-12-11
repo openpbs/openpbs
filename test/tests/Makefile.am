@@ -1,4 +1,3 @@
-
 #
 # Copyright (C) 1994-2018 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
@@ -35,5 +34,31 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 #
+if ENABLEPTL
+ptl_prefixdir = $(prefix)/../ptl
+ptl_testsdir = $(ptl_prefixdir)/tests
 
-SUBDIRS = fw tests
+dist_ptl_tests_PYTHON = $(srcdir)/*.py
+
+ptl_testfunctionaldir = $(ptl_testsdir)/functional
+dist_ptl_testfunctional_DATA = $(srcdir)/functional/*.py
+
+ptl_testinterfacesdir = $(ptl_testsdir)/interfaces
+dist_ptl_testinterfaces_DATA = $(srcdir)/interfaces/*.py
+
+ptl_testperformancedir = $(ptl_testsdir)/performance
+dist_ptl_testperformance_DATA = $(srcdir)/performance/*.py
+
+ptl_testresiliencedir = $(ptl_testsdir)/resilience
+dist_ptl_testresilience_DATA = $(srcdir)/resilience/*.py
+
+ptl_testsecuritydir = $(ptl_testsdir)/security
+dist_ptl_testsecurity_DATA = $(srcdir)/security/*.py
+
+ptl_testselftestdir = $(ptl_testsdir)/selftest
+dist_ptl_testselftest_DATA = $(srcdir)/selftest/*.py
+
+ptl_testupgradesdir = $(ptl_testsdir)/upgrades
+dist_ptl_testupgrades_DATA = $(srcdir)/upgrades/*.py
+
+endif

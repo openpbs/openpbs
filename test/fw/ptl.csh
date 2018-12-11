@@ -1,4 +1,4 @@
-
+#!/usr/bin/csh
 #
 # Copyright (C) 1994-2018 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
@@ -34,6 +34,12 @@
 # Use of Altair’s trademarks, including but not limited to "PBS™",
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
-#
 
-SUBDIRS = fw tests
+# This file will set path variables in case of ptl installation
+
+ptl_prefix_lib=$( rpm -ql pbspro-ptl | grep -m 1 lib$ )
+python_dir=$( /bin/ls -1 ${ptl_prefix_lib} )
+prefix=$( dirname ${ptl_prefix_lib} )
+
+setenv PATH=${prefix}/bin/:${PATH}
+setenv PYTHONPATH=${prefix}/lib/${python_dir}/site-packages/:$PYTHONPATH

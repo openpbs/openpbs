@@ -1,4 +1,3 @@
-
 #
 # Copyright (C) 1994-2018 Altair Engineering, Inc.
 # For more information, contact Altair at www.altair.com.
@@ -35,6 +34,35 @@
 # "PBS Professional®", and "PBS Pro™" and Altair’s logos is subject to Altair's
 # trademark licensing policies.
 #
+
+# making aptl installation in case it is enabled with configure
+# all directories for ptl install start with 'ptl_'
+
+if ENABLEPTL
+ptl_prefixdir = $(prefix)/../ptl
+ptl_libdir = $(ptl_prefixdir)/lib/python$(PYTHON_VERSION)/site-packages/ptl
+ptl_bindir = $(ptl_prefixdir)/bin
+sysprofiledir = /etc/profile.d
+
+dist_sysprofile_DATA = \
+	ptl.csh \
+	ptl.sh
+
+dist_ptl_bin_SCRIPTS= $(srcdir)/bin/*
+
+ptl_lib_libdir = $(ptl_libdir)/lib
+
+dist_ptl_lib_PYTHON= $(srcdir)/ptl/*.py
+
+dist_ptl_lib_lib_PYTHON = $(srcdir)/ptl/lib/*.py
+
+ptl_lib_utilsdir = $(ptl_libdir)/utils
+
+dist_ptl_lib_utils_PYTHON = $(srcdir)/ptl/utils/*.py
+
+ptl_lib_utilspluginsdir = $(ptl_lib_utilsdir)/plugins
+dist_ptl_lib_utilsplugins_PYTHON = $(srcdir)/ptl/utils/plugins/*.py
+endif
 
 ptlmoduledir = $(exec_prefix)/unsupported/fw/ptl
 ptlbindir = $(exec_prefix)/unsupported/fw/bin

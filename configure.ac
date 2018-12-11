@@ -56,6 +56,7 @@ AS_CASE([$os_id],
 AM_INIT_AUTOMAKE(am_init_string)
 AC_USE_SYSTEM_EXTENSIONS
 
+
 # Checks for programs.
 AC_PROG_AWK
 AC_PROG_YACC
@@ -337,6 +338,7 @@ PBS_AC_DISABLE_SYSLOG
 PBS_AC_ENABLE_ALPS
 PBS_AC_ENABLE_CPUSET
 PBS_AC_WITH_LIBZ
+PBS_AC_ENABLE_PTL
 
 AC_CONFIG_FILES([
 	pbspro.spec
@@ -346,6 +348,7 @@ AC_CONFIG_FILES([
 	doc/Makefile
 	test/Makefile
 	test/fw/Makefile
+	test/tests/Makefile
 	test/fw/setup.py
 	test/fw/ptl/__init__.py
 	src/Makefile
