@@ -49,7 +49,7 @@ class Test_explicit_psets(TestFunctional):
         Set the attributes 'only_explicit_psets', 'do_not_span_psets'
         to True and create 'foo' host resource.
         """
-
+        TestFunctional.setUp(self)
         sched_qmgr_attr = {'do_not_span_psets': 'True',
                            'only_explicit_psets': 'True'}
         self.server.manager(MGR_CMD_SET, SCHED, sched_qmgr_attr)
