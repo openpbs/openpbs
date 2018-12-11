@@ -338,7 +338,8 @@ class TestFairshare(TestFunctional):
 
         self.scheduler.set_fairshare_usage(TEST_USER1, 50)
 
-        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'},
+                            expect=True)
         J3 = Job(TEST_USER)
         jid3 = self.server.submit(J3)
         J4 = Job(TEST_USER1)
