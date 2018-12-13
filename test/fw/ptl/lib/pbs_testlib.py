@@ -6429,10 +6429,7 @@ class Server(PBSService):
         issue a management command to the server, e.g to set an
         attribute
 
-        Returns the return code of ``qmgr/pbs_manager()`` on
-        success, if expect is set to True, the return value is
-        that of the call to expect.Raises ``PbsManagerError`` on
-        error
+        Returns 0 for Success and non 0 number for Failure
 
         :param cmd: The command to issue,
                     ``MGR_CMD_[SET,UNSET, LIST,...]`` see pbs_ifl.h
@@ -6470,12 +6467,21 @@ class Server(PBSService):
                        i.e. silent mode
         :type logerr: bool
         :raises: PbsManagerError
-
-        When expect is ``False``, return the value, ``0/!0``
-        returned by pbs_manager
-        When expect is ``True``, return the value, ``True/False``,
-        returned by expect
+        :returns: On success:
+                - if expect is False, return code of qmgr/pbs_manager
+                - if expect is True, 0 for success
+        :raises: On Error/Failure:
+                - PbsManagerError if qmgr/pbs_manager() failed
+                - PtlExpectError if expect() failed
         """
+
+        # Currently, expect() doesn't validate the values being set for
+        # create operations.
+        # For unset operations, expect does not handle attributes that are
+        # reset to default after unset.
+        # So, only call expect automatically for set and delete operations.
+        if cmd in (MGR_CMD_SET, MGR_CMD_DELETE):
+            expect = True
 
         if isinstance(id, str):
             oid = id.split(',')
@@ -6689,15 +6695,17 @@ class Server(PBSService):
                     attrop = PTL_AND
 
             if oid is None:
-                return self.expect(obj_type, attrib, oid, op=op,
-                                   max_attempts=max_attempts,
-                                   attrop=attrop, offset=offset)
-            for i in oid:
-                rc = self.expect(obj_type, attrib, i, op=op,
-                                 max_attempts=max_attempts,
-                                 attrop=attrop, offset=offset)
-                if not rc:
-                    break
+                self.expect(obj_type, attrib, op=op,
+                            max_attempts=max_attempts,
+                            attrop=attrop, offset=offset)
+
+            else:
+                for i in oid:
+                    self.expect(obj_type, attrib, i, op=op,
+                                max_attempts=max_attempts,
+                                attrop=attrop, offset=offset)
+            rc = 0  # If we've reached here then expect passed, so return 0
+
         return rc
 
     def sigjob(self, jobid=None, signal=None, extend=None, runas=None,
@@ -8080,8 +8088,9 @@ class Server(PBSService):
                     PtlExpectError.
         :type msg: str or None
 
-        :returns: True if attributes are as expected and False
-                  otherwise
+        :returns: True if attributes are as expected
+
+        :raises: PtlExpectError if attributes are not as expected
         """
 
         if attempt == 0 and offset > 0:
@@ -8135,6 +8144,7 @@ class Server(PBSService):
 
         prefix = 'expect on ' + self.logprefix
         msg = []
+        attrs_to_ignore = []
         for k, v in attrib.items():
             args = None
             if isinstance(v, tuple):
@@ -8145,6 +8155,11 @@ class Server(PBSService):
             else:
                 operator = op
                 val = v
+            if operator not in PTL_OP_TO_STR:
+                self.logger.log(level, "Operator not supported by expect(), "
+                                "cannot verify change in " + str(k))
+                attrs_to_ignore.append(k)
+                continue
             msg += [k, PTL_OP_TO_STR[operator].strip()]
             if callable(val):
                 msg += ['callable(' + val.__name__ + ')']
@@ -8153,6 +8168,13 @@ class Server(PBSService):
             else:
                 msg += [str(val)]
             msg += [PTL_ATTROP_TO_STR[attrop]]
+
+        # Delete the attributes that we cannot verify
+        for k in attrs_to_ignore:
+            del(attrib[k])
+
+        if attrs_to_ignore and len(attrib) < 1 and op == SET:
+            return True
 
         # remove the last converted PTL_ATTROP_TO_STR
         if len(msg) > 1:

@@ -36,6 +36,8 @@
 # trademark licensing policies.
 
 from tests.selftest import *
+from StringIO import StringIO
+import logging
 
 
 class TestExpect(TestSelf):
@@ -56,3 +58,36 @@ class TestExpect(TestSelf):
         # Set other attributes normally
         a = {'enabled': 'True', 'started': 'True', 'priority': 150}
         self.server.manager(MGR_CMD_SET, QUEUE, a, 'expressq', expect=True)
+
+    def test_unsupported_operator(self):
+        """
+        Test that expect can handle unsupported operators correctly
+        """
+        # Add a new log handler which writes into a StringIO buffer
+        logbuffer = StringIO()
+        ptllogger = logging.getLogger('ptl')
+        temploghandler = logging.StreamHandler(logbuffer)
+        tempfmt = logging.Formatter("%(message)s")
+        temploghandler.setFormatter(tempfmt)
+        ptllogger.addHandler(temploghandler)
+        ptllogger.propagate = True
+
+        # Call manager on an unsupported operator (INCR)
+        # As expect is done automatically for set operations,
+        # we should see a log message for unsupported operator
+        manager = str(MGR_USER) + '@*'
+        rc = self.server.manager(MGR_CMD_SET, SERVER,
+                                 {'managers': (INCR, manager)}, sudo=True)
+        self.assertEqual(rc, 0)
+        ptllogger.removeHandler(temploghandler)
+
+        # Verify that expect logged the expected log message
+        logmsg = "Operator not supported by expect(), " +\
+            "cannot verify change in managers"
+        msgfound = False
+        for line in logbuffer.getvalue().splitlines():
+            if line == logmsg:
+                msgfound = True
+                break
+        self.assertTrue(msgfound,
+                        "Didn't find expected log message from expect()")
