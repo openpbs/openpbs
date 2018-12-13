@@ -1104,8 +1104,8 @@ class PBSTestSuite(unittest.TestCase):
             if new_pbsconf["PBS_CORE_LIMIT"] != "unlimited":
                 new_pbsconf["PBS_CORE_LIMIT"] = "unlimited"
                 restart_pbs = True
-            if new_pbsconf["PBS_SERVER"] != primary_server.hostname:
-                new_pbsconf["PBS_SERVER"] = primary_server.hostname
+            if new_pbsconf["PBS_SERVER"] != primary_server.shortname:
+                new_pbsconf["PBS_SERVER"] = primary_server.shortname
                 restart_pbs = True
             if "PBS_SCP" not in new_pbsconf:
                 scppath = self.du.which(server.hostname, "scp")
