@@ -659,3 +659,28 @@ class TestJobArray(TestFunctional):
                 if f_name not in file_list:
                     raise self.failureException("std file " + f_name
                                                 + " not found")
+
+    @skipOnCpuSet
+    @skipOnCray
+    def test_subjob_wrong_state(self):
+        """
+        Test that after submitting a job and restarting the server,
+        the subjobs are not in the wrong substate and can be scheduled.
+        """
+        a = {'resources_available.ncpus': 200}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        j = Job(attrs={ATTR_J: '1-200'})
+        self.server.submit(j)
+        # while the server is sending the jobs to the MoM, restart the server
+        self.server.restart()
+        # make sure the mom is free so the scheduler can run jobs on it
+        self.server.expect(NODE, {'state': 'free'}, id=self.mom.shortname)
+        self.logger.info('Sleeping to ensure licenses are received')
+        time.sleep(5)
+        self.server.manager(MGR_CMD_SET, MGR_OBJ_SERVER,
+                            {'scheduling': 'True'})
+        # ensure the sched cycle is finished
+        self.server.manager(MGR_CMD_SET, MGR_OBJ_SERVER,
+                            {'scheduling': 'False'}, expect=True)
+        # ensure all the subjobs are running
+        self.server.expect(JOB, {'job_state=R': 200}, extend='t')
