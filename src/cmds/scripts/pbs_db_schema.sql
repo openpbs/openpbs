@@ -62,8 +62,6 @@ INSERT INTO pbs.info values('1.4.0'); /* schema version */
  * Table pbs.server holds server instance information
  */
 CREATE TABLE pbs.server (
-    sv_name		TEXT		NOT NULL, /* the server id value */
-    sv_hostname		TEXT		NOT NULL, /* the actual server hostname - can change */
     sv_numjobs		INTEGER		NOT NULL,
     sv_numque		INTEGER		NOT NULL,
     sv_jobidnumber	BIGINT		NOT NULL,
@@ -71,8 +69,7 @@ CREATE TABLE pbs.server (
     sv_svrport		INTEGER		NOT NULL,
     sv_savetm		TIMESTAMP	NOT NULL,
     sv_creattm		TIMESTAMP	NOT NULL,
-    attributes		hstore		NOT NULL DEFAULT '',	
-    CONSTRAINT server_pk PRIMARY KEY (sv_name)
+    attributes		hstore		NOT NULL DEFAULT ''	
 );
 ---------------------- SCHED -------------------------------
 
@@ -81,7 +78,6 @@ CREATE TABLE pbs.server (
  */
 CREATE TABLE pbs.scheduler (
     sched_name		TEXT		NOT NULL,
-    sched_sv_name	TEXT		NOT NULL,
     sched_savetm	TIMESTAMP	NOT NULL,
     sched_creattm	TIMESTAMP	NOT NULL,
     attributes		hstore		NOT NULL default '',	
@@ -126,7 +122,6 @@ ON pbs.node
  */
 CREATE TABLE pbs.queue (
     qu_name		TEXT		NOT NULL,
-    qu_sv_name		TEXT		NOT NULL,
     qu_type		INTEGER		NOT NULL,
     qu_ctime		TIMESTAMP	NOT NULL,
     qu_mtime		TIMESTAMP	NOT NULL,
@@ -155,7 +150,6 @@ NOT DEFERRABLE;
  */
 CREATE TABLE pbs.resv (
     ri_resvID		TEXT		NOT NULL,
-    ri_sv_name		TEXT		NOT NULL,
     ri_queue		TEXT		NOT NULL,
     ri_state		INTEGER		NOT NULL,
     ri_substate		INTEGER		NOT NULL,
@@ -193,7 +187,6 @@ NOT DEFERRABLE;
  */
 CREATE TABLE pbs.job (
     ji_jobid		TEXT		NOT NULL,
-    ji_sv_name		TEXT		NOT NULL,
     ji_state		INTEGER		NOT NULL,
     ji_substate		INTEGER		NOT NULL,
     ji_svrflags		INTEGER		NOT NULL,

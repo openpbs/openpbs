@@ -96,7 +96,6 @@ extern char	*path_svrlive;
 
 #ifndef PBS_MOM
 extern char *pbs_server_name;
-extern char *pbs_server_id;
 extern pbs_db_conn_t	*svr_db_conn;
 #endif
 
@@ -159,10 +158,6 @@ static int
 svr_to_db_svr(struct server *ps, pbs_db_svr_info_t *pdbsvr, int updatetype)
 {
 	memset(pdbsvr, 0, sizeof(pbs_db_svr_info_t));
-	pdbsvr->sv_name[sizeof(pdbsvr->sv_name) - 1] = '\0';
-	strncpy(pdbsvr->sv_name, pbs_server_id, sizeof(pdbsvr->sv_name));
-	pdbsvr->sv_hostname[sizeof(pdbsvr->sv_hostname) - 1] = '\0';
-	strncpy(pdbsvr->sv_hostname, pbs_server_name, sizeof(pdbsvr->sv_hostname));
 	pdbsvr->sv_numjobs = ps->sv_qs.sv_numjobs;
 	pdbsvr->sv_numque = ps->sv_qs.sv_numque;
 	pdbsvr->sv_jobidnumber = ps->sv_qs.sv_jobidnumber;
@@ -219,8 +214,6 @@ svr_to_db_sched(struct pbs_sched *ps, pbs_db_sched_info_t *pdbsched, int updatet
 {
 	pdbsched->sched_name[sizeof(pdbsched->sched_name) - 1] = '\0';
 	strncpy(pdbsched->sched_name, ps->sc_name, sizeof(pdbsched->sched_name));
-	pdbsched->sched_sv_name[sizeof(pdbsched->sched_sv_name) - 1] = '\0';
-	strncpy(pdbsched->sched_sv_name, pbs_server_id, sizeof(pdbsched->sched_sv_name));
 
 	if (updatetype != PBS_UPDATE_DB_QUICK) {
 		if ((encode_attr_db(sched_attr_def,
@@ -278,8 +271,6 @@ svr_recov_db(void)
 	pbs_db_obj_info_t obj;
 
 	/* load server_qs */
-	dbsvr.sv_name[sizeof(dbsvr.sv_name) - 1] = '\0';
-	strncpy(dbsvr.sv_name, pbs_server_id, sizeof(dbsvr.sv_name));
 	dbsvr.attr_list.attr_count = 0;
 	dbsvr.attr_list.attributes = NULL;
 

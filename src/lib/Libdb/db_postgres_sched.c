@@ -65,22 +65,20 @@ pg_db_prepare_sched_sqls(pbs_db_conn_t *conn)
 	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "insert into "
 		"pbs.scheduler( "
 		"sched_name, "
-		"sched_sv_name, "
 		"sched_savetm, "
 		"sched_creattm, "
 		"attributes "
 		") "
-		"values ($1, $2, localtimestamp, localtimestamp, hstore($3::text[]))");
-	if (pg_prepare_stmt(conn, STMT_INSERT_SCHED, conn->conn_sql, 3) != 0)
+		"values ($1, localtimestamp, localtimestamp, hstore($2::text[]))");
+	if (pg_prepare_stmt(conn, STMT_INSERT_SCHED, conn->conn_sql, 2) != 0)
 		return -1;
 
 	/* rewrite all attributes for a FULL update */
 	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "update pbs.scheduler set "
-		"sched_sv_name = $2, "
 		"sched_savetm = localtimestamp, "
-		"attributes = hstore($3::text[]) "
+		"attributes = hstore($2::text[]) "
 		"where sched_name = $1");
-	if (pg_prepare_stmt(conn, STMT_UPDATE_SCHED_FULL, conn->conn_sql, 3) != 0)
+	if (pg_prepare_stmt(conn, STMT_UPDATE_SCHED_FULL, conn->conn_sql, 2) != 0)
 		return -1;
 
 	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "update pbs.scheduler set "
@@ -92,7 +90,6 @@ pg_db_prepare_sched_sqls(pbs_db_conn_t *conn)
 
 	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "select "
 		"sched_name, "
-		"sched_sv_name, "
 		"extract(epoch from sched_savetm)::bigint as sched_savetm, "
 		"extract(epoch from sched_creattm)::bigint as sched_creattm, "
 		"hstore_to_array(attributes) as attributes "
@@ -104,13 +101,12 @@ pg_db_prepare_sched_sqls(pbs_db_conn_t *conn)
 
 	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "select "
 		"sched_name, "
-		"sched_sv_name, "
 		"extract(epoch from sched_savetm)::bigint as sched_savetm, "
 		"extract(epoch from sched_creattm)::bigint as sched_creattm, "
 		"hstore_to_array(attributes) as attributes "
 		"from "
 		"pbs.scheduler ");
-	if (pg_prepare_stmt(conn, STMT_SELECT_SCHED_ALL, conn->conn_sql, 1) != 0)
+	if (pg_prepare_stmt(conn, STMT_SELECT_SCHED_ALL, conn->conn_sql, 0) != 0)
 		return -1;
 
 	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "delete from pbs.scheduler where sched_name = $1");
@@ -141,18 +137,17 @@ pg_db_save_sched(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype)
 	char *raw_array = NULL;
 
 	SET_PARAM_STR(conn, psch->sched_name, 0);
-	SET_PARAM_STR(conn, psch->sched_sv_name, 1);
 
 	if (savetype == PBS_UPDATE_DB_QUICK) {
-		params = 2;
+		params = 1;
 	} else {
 		int len = 0;
 		/* convert attributes to postgres raw array format */
 		if ((len = convert_db_attr_list_to_array(&raw_array, &psch->attr_list)) <= 0)
 			return -1;
 
-		SET_PARAM_BIN(conn, raw_array, len, 2);
-		params = 3;
+		SET_PARAM_BIN(conn, raw_array, len, 1);
+		params = 2;
 	}
 
 	if (savetype == PBS_UPDATE_DB_FULL)
@@ -187,12 +182,11 @@ static int
 load_sched(PGresult *res, pbs_db_sched_info_t *psch, int row)
 {
 	char *raw_array;
-	static int sched_name_fnum, sched_sv_name_fnum, sched_savetm_fnum, sched_creattm_fnum, attributes_fnum;
+	static int sched_name_fnum, sched_savetm_fnum, sched_creattm_fnum, attributes_fnum;
 	static int fnums_inited = 0;
 
 	if (fnums_inited == 0) {
 		sched_name_fnum = PQfnumber(res, "sched_name");
-		sched_sv_name_fnum = PQfnumber(res, "sched_sv_name");
 		sched_savetm_fnum = PQfnumber(res, "sched_savetm");
 		sched_creattm_fnum = PQfnumber(res, "sched_creattm");
 		attributes_fnum = PQfnumber(res, "attributes");
@@ -200,7 +194,6 @@ load_sched(PGresult *res, pbs_db_sched_info_t *psch, int row)
 	}
 
 	GET_PARAM_STR(res, row, psch->sched_name, sched_name_fnum);
-	GET_PARAM_STR(res, row, psch->sched_sv_name, sched_sv_name_fnum);
 	GET_PARAM_BIGINT(res, row, psch->sched_savetm, sched_savetm_fnum);
 	GET_PARAM_BIGINT(res, row, psch->sched_creattm, sched_creattm_fnum);
 	GET_PARAM_BIN(res, row, raw_array, attributes_fnum);

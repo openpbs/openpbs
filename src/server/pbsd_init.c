@@ -199,7 +199,6 @@ extern char   *path_hooks_workdir;
 extern pbs_list_head       prov_allvnodes;
 extern int 		max_concurrent_prov;
 extern int		brought_up_db;
-extern char		*pbs_server_id;
 extern pbs_db_conn_t	*svr_db_conn;
 
 extern	pbs_list_head	svr_allhooks;

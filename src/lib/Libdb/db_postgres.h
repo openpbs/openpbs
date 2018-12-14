@@ -123,7 +123,6 @@ typedef unsigned __int64 uint64_t;
 #define STMT_SELECT_SVR "select_svr"
 #define STMT_SELECT_DBVER "select_dbver"
 #define STMT_SELECT_NEXT_SEQID "select_nextseqid"
-#define STMT_SELECT_SVRID "select_svrid"
 #define STMT_REMOVE_SVRATTRS "remove_svrattrs"
 
 /* queue statement names */

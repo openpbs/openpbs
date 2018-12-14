@@ -65,26 +65,24 @@ pg_db_prepare_que_sqls(pbs_db_conn_t *conn)
 {
 	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "insert into pbs.queue("
 		"qu_name, "
-		"qu_sv_name, "
 		"qu_type, "
 		"qu_ctime, "
 		"qu_mtime, "
 		"attributes "
 		") "
 		"values "
-		"($1, $2, $3, localtimestamp, localtimestamp, hstore($4::text[]))");
+		"($1, $2,  localtimestamp, localtimestamp, hstore($3::text[]))");
 
-	if (pg_prepare_stmt(conn, STMT_INSERT_QUE, conn->conn_sql, 4) != 0)
+	if (pg_prepare_stmt(conn, STMT_INSERT_QUE, conn->conn_sql, 3) != 0)
 		return -1;
 
 	/* rewrite all attributes for FULL update */
 	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "update pbs.queue set "
-			"qu_sv_name = $2, "
-			"qu_type = $3, "
+			"qu_type = $2, "
 			"qu_mtime = localtimestamp, "
-			"attributes = hstore($4::text[])"
+			"attributes = hstore($3::text[])"
 			" where qu_name = $1");
-	if (pg_prepare_stmt(conn, STMT_UPDATE_QUE_FULL, conn->conn_sql, 4) != 0)
+	if (pg_prepare_stmt(conn, STMT_UPDATE_QUE_FULL, conn->conn_sql, 3) != 0)
 		return -1;
 
 
@@ -96,7 +94,6 @@ pg_db_prepare_que_sqls(pbs_db_conn_t *conn)
 		return -1;
 
 	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "select qu_name, "
-			"qu_sv_name, "
 			"qu_type, "
 			"extract(epoch from qu_ctime)::bigint as qu_ctime, "
 			"extract(epoch from qu_mtime)::bigint as qu_mtime, "
@@ -108,7 +105,6 @@ pg_db_prepare_que_sqls(pbs_db_conn_t *conn)
 
 	snprintf(conn->conn_sql, MAX_SQL_LENGTH, "select "
 			"qu_name, "
-			"qu_sv_name, "
 			"qu_type, "
 			"extract(epoch from qu_ctime)::bigint as qu_ctime, "
 			"extract(epoch from qu_mtime)::bigint as qu_mtime, "
@@ -141,12 +137,11 @@ static int
 load_que(PGresult *res, pbs_db_que_info_t *pq, int row)
 {
 	char *raw_array;
-	static int qu_name_fnum, qu_sv_name_fnum, qu_type_fnum, qu_ctime_fnum, qu_mtime_fnum, attributes_fnum;
+	static int qu_name_fnum, qu_type_fnum, qu_ctime_fnum, qu_mtime_fnum, attributes_fnum;
 	static int fnums_inited = 0;
 
 	if (fnums_inited == 0) {
 		qu_name_fnum = PQfnumber(res, "qu_name");
-		qu_sv_name_fnum = PQfnumber(res, "qu_sv_name");
 		qu_type_fnum = PQfnumber(res, "qu_type");
 		qu_ctime_fnum = PQfnumber(res, "qu_ctime");
 		qu_mtime_fnum = PQfnumber(res, "qu_mtime");
@@ -155,7 +150,6 @@ load_que(PGresult *res, pbs_db_que_info_t *pq, int row)
 	}
 
 	GET_PARAM_STR(res, row, pq->qu_name, qu_name_fnum);
-	GET_PARAM_STR(res, row, pq->qu_sv_name, qu_sv_name_fnum);
 	GET_PARAM_INTEGER(res, row, pq->qu_type, qu_type_fnum);
 	GET_PARAM_BIGINT(res, row, pq->qu_ctime, qu_ctime_fnum);
 	GET_PARAM_BIGINT(res, row, pq->qu_mtime, qu_mtime_fnum);
@@ -186,19 +180,18 @@ pg_db_save_que(pbs_db_conn_t *conn, pbs_db_obj_info_t *obj, int savetype)
 	char *raw_array = NULL;
 
 	SET_PARAM_STR(conn, pq->qu_name, 0);
-	SET_PARAM_STR(conn, pq->qu_sv_name, 1);
-	SET_PARAM_INTEGER(conn, pq->qu_type, 2);
+	SET_PARAM_INTEGER(conn, pq->qu_type, 1);
 
 	if (savetype == PBS_UPDATE_DB_QUICK) {
-		params = 3;
+		params = 2;
 	} else {
 		int len = 0;
 		/* convert attributes to postgres raw array format */
 		if ((len = convert_db_attr_list_to_array(&raw_array, &pq->attr_list)) <= 0)
 			return -1;
 
-		SET_PARAM_BIN(conn, raw_array, len, 3);
-		params = 4;
+		SET_PARAM_BIN(conn, raw_array, len, 2);
+		params = 3;
 	}
 
 	if (savetype == PBS_UPDATE_DB_FULL)

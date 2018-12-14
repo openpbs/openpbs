@@ -147,7 +147,6 @@ int		svr_unsent_qrun_req = 0;
 pbs_db_conn_t	*svr_db_conn;
 char		*path_svrlive;
 char		*pbs_server_name;
-char		*pbs_server_id; /* pbs server database id */
 
 struct license_block licenses;
 struct license_used  usedlicenses;

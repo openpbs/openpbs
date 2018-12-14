@@ -179,7 +179,6 @@ enum res_op_flag {
 
 #ifndef PBS_MOM
 extern time_t time_now;
-extern char *pbs_server_id;
 extern pbs_db_conn_t	*svr_db_conn;
 struct work_task *rescdef_wt_g = NULL;
 #endif
@@ -1152,7 +1151,7 @@ mgr_unset_attr(attribute *pattr, attribute_def *pdef, int limit, svrattrl *plist
 		switch (ptype) {
 			case PARENT_TYPE_SERVER:
 				obj.pbs_db_obj_type = PBS_DB_SVR;
-				parent_id = pbs_server_id;
+				parent_id = 0;
 				break;
 
 			case PARENT_TYPE_SCHED:

@@ -162,7 +162,6 @@ typedef struct pbs_db_attr_list pbs_db_attr_list_t;
  */
 struct pbs_db_job_info {
 	char     ji_jobid[PBS_MAXSVRJOBID + 1]; /* job identifier */
-	char     ji_sv_name[PBS_MAXSERVERNAME + 1]; /* server id */
 	INTEGER  ji_state; /* INTEGERernal copy of state */
 	INTEGER  ji_substate; /* job sub-state */
 	INTEGER  ji_svrflags; /* server flags */
@@ -198,7 +197,6 @@ typedef struct pbs_db_job_info pbs_db_job_info_t;
  */
 struct pbs_db_resv_info {
 	char    ri_resvid[PBS_MAXSVRJOBID + 1];
-	char    ri_sv_name[PBS_MAXSERVERNAME + 1]; /* server id */
 	char    ri_queue[PBS_MAXQUEUENAME + 1];
 	INTEGER ri_state;
 	INTEGER ri_substate;
@@ -225,8 +223,6 @@ typedef struct pbs_db_resv_info pbs_db_resv_info_t;
  *
  */
 struct pbs_db_svr_info {
-	char    sv_name[PBS_MAXSERVERNAME+1];
-	char    sv_hostname[PBS_MAXSERVERNAME+1];
 	INTEGER sv_numjobs;
 	INTEGER sv_numque;
 	BIGINT  sv_jobidnumber;
@@ -245,7 +241,6 @@ typedef struct pbs_db_svr_info pbs_db_svr_info_t;
  */
 struct pbs_db_sched_info {
 	char    sched_name[PBS_MAXSCHEDNAME+1];
-	char    sched_sv_name[PBS_MAXSERVERNAME+1];
 	BIGINT  sched_creattm;
 	BIGINT  sched_savetm;
 	pbs_db_attr_list_t attr_list; /* list of attributes */
@@ -259,7 +254,6 @@ typedef struct pbs_db_sched_info pbs_db_sched_info_t;
  */
 struct pbs_db_que_info {
 	char    qu_name[PBS_MAXQUEUENAME +1];
-	char    qu_sv_name[PBS_MAXSERVERNAME + 1]; /* server id */
 	INTEGER qu_type;
 	BIGINT  qu_ctime;
 	BIGINT  qu_mtime;

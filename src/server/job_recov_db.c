@@ -104,7 +104,6 @@
 
 #ifndef PBS_MOM
 extern pbs_db_conn_t	*svr_db_conn;
-extern char *pbs_server_id;
 #endif
 
 #ifdef NAS /* localmod 005 */
@@ -145,7 +144,6 @@ svr_to_db_job(job *pjob, pbs_db_job_info_t *dbjob, int updatetype)
 {
 	memset(dbjob, 0, sizeof(pbs_db_job_info_t));
 	strcpy(dbjob->ji_jobid, pjob->ji_qs.ji_jobid);
-	strcpy(dbjob->ji_sv_name, pbs_server_id);
 	dbjob->ji_state     = pjob->ji_qs.ji_state;
 	dbjob->ji_substate  = pjob->ji_qs.ji_substate;
 	dbjob->ji_svrflags  = pjob->ji_qs.ji_svrflags;
@@ -272,7 +270,6 @@ svr_to_db_resv(resc_resv *presv,  pbs_db_resv_info_t *dbresv, int updatetype)
 {
 	memset(dbresv, 0, sizeof(pbs_db_resv_info_t));
 	strcpy(dbresv->ri_resvid, presv->ri_qs.ri_resvID);
-	strcpy(dbresv->ri_sv_name, pbs_server_id);
 	strcpy(dbresv->ri_queue, presv->ri_qs.ri_queue);
 	dbresv->ri_duration = presv->ri_qs.ri_duration;
 	dbresv->ri_etime = presv->ri_qs.ri_etime;

@@ -152,7 +152,6 @@ int 		ping_nodes_rate = SVR_DEFAULT_PING_RATE; /* time between ping nodes as det
 /* The following are defined to resolve external reference errors in windows build */
 char		*path_svrlive;		/* the svrlive file used for monitoring during failover */
 char		*pbs_server_name; /* pbs server name */
-char		*pbs_server_id; /* pbs server database id */
 char		*path_svrdb;  /* path to server db */
 char		*path_nodestate; /* path to node state file */
 char		*path_nodes; /* path to nodes file */

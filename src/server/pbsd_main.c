@@ -264,7 +264,6 @@ unsigned int	pbs_server_port_dis;
 char	       *pbs_server_name;
 char		server_name[PBS_MAXSERVERNAME+1]; /* host_name[:service|port] */
 char		server_host[PBS_MAXHOSTNAME+1];	  /* host_name of this svr */
-char	       *pbs_server_id;
 int		reap_child_flag = 0;
 time_t		secondary_delay = 30;
 struct server	server;		/* the server structure */
@@ -1061,8 +1060,6 @@ main(int argc, char **argv)
 		return (-1);
 	}
 
-	pbs_server_id = NULL;
-
 	pbs_server_addr = get_hostaddr(server_host);
 	pbs_mom_addr = pbs_server_addr;		/* assume on same host */
 
@@ -1673,14 +1670,6 @@ try_db_again:
 	/* attributes  and resources (including custom resources) into       */
 	/* Python world, which are made  complete after call to pbsd_init()! */
 	pbs_python_ext_quick_start_interpreter();
-
-	/* get/set the current instance's svrid */
-	if (chk_and_update_db_svrhost() != 0) {
-		log_err(-1, msg_daemonname, "Failed to retrieve/set pbs server id");
-		pbs_python_ext_quick_shutdown_interpreter();
-		stop_db();
-		return (3);
-	}
 
 	if (server_init_type == RECOV_UPDATEDB) {
 		if (svr_migrate_data() != 0) {

@@ -124,7 +124,6 @@ struct server	server;
 
 
 char            *pbs_server_name;
-char            *pbs_server_id;
 char		*resc_in_err = NULL;
 
 pbs_list_head	task_list_immed;
@@ -2261,7 +2260,6 @@ main(int argc, char *argv[], char *envp[])
 		return (-1);
 	}
 
-	pbs_server_id = NULL;
 
 	/* initialize the pointers in the resource_def array */
 
