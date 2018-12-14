@@ -39,29 +39,31 @@
 # all directories for ptl install start with 'ptl_'
 
 if ENABLEPTL
-ptl_prefixdir = $(prefix)/../ptl
-ptl_libdir = $(ptl_prefixdir)/lib/python$(PYTHON_VERSION)/site-packages/ptl
-ptl_bindir = $(ptl_prefixdir)/bin
+ptlpkg_bindir = ${ptl_prefix}/bin
+
+dist_ptlpkg_bin_SCRIPTS = $(wildcard $(srcdir)/bin/*)
+
+ptlpkg_pylib_topdir = ${ptl_prefix}/lib/python$(PYTHON_VERSION)/site-packages/ptl
+
+dist_ptlpkg_pylib_top_PYTHON = $(wildcard $(srcdir)/ptl/*.py)
+
+ptlpkg_pylib_libdir = $(ptlpkg_pylib_topdir)/lib
+
+dist_ptlpkg_pylib_lib_PYTHON = $(wildcard $(srcdir)/ptl/lib/*.py)
+
+ptlpkg_pylib_utilsdir = $(ptlpkg_pylib_topdir)/utils
+
+dist_ptlpkg_pylib_utils_PYTHON = $(wildcard $(srcdir)/ptl/utils/*.py)
+
+ptlpkg_pylib_pluginsdir = $(ptlpkg_pylib_utilsdir)/plugins
+
+dist_ptlpkg_pylib_plugins_PYTHON = $(wildcard $(srcdir)/ptl/utils/plugins/*.py)
+
 sysprofiledir = /etc/profile.d
 
 dist_sysprofile_DATA = \
 	ptl.csh \
 	ptl.sh
-
-dist_ptl_bin_SCRIPTS= $(srcdir)/bin/*
-
-ptl_lib_libdir = $(ptl_libdir)/lib
-
-dist_ptl_lib_PYTHON= $(srcdir)/ptl/*.py
-
-dist_ptl_lib_lib_PYTHON = $(srcdir)/ptl/lib/*.py
-
-ptl_lib_utilsdir = $(ptl_libdir)/utils
-
-dist_ptl_lib_utils_PYTHON = $(srcdir)/ptl/utils/*.py
-
-ptl_lib_utilspluginsdir = $(ptl_lib_utilsdir)/plugins
-dist_ptl_lib_utilsplugins_PYTHON = $(srcdir)/ptl/utils/plugins/*.py
 endif
 
 ptlmoduledir = $(exec_prefix)/unsupported/fw/ptl

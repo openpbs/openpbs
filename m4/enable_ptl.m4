@@ -37,14 +37,15 @@
 
 AC_DEFUN([PBS_AC_ENABLE_PTL],
 [
-# check for PTL enable to generate PTL package which is disabled by default
-AC_ARG_ENABLE([ptl],
+  # check for PTL enable to generate PTL package which is disabled by default
+  AC_MSG_CHECKING([whether PTL package was requested])
+  AC_ARG_ENABLE([ptl],
     AS_HELP_STRING([--enable-ptl],
     [Enable package creation for PTL]))
-
-AS_IF([test "x$enable_ptl" = "xyes"],
-    [AC_MSG_RESULT([checking for PTL... yes])],
-    [AC_MSG_RESULT([checking for PTL... no])])
-
-AM_CONDITIONAL([ENABLEPTL], [test "x${enable_ptl}" = "xyes"])
+  AS_IF([test "x$enable_ptl" = "xyes"],
+    [AC_MSG_RESULT([yes])],
+    [AC_MSG_RESULT([no])])
+  AM_CONDITIONAL([ENABLEPTL], [test "x${enable_ptl}" = "xyes"])
+  [ptl_prefix=`dirname ${prefix}`/ptl]
+  AC_SUBST(ptl_prefix)
 ])

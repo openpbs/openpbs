@@ -71,7 +71,6 @@ AC_DEFUN([PBS_AC_WITH_LIBZ],
     )
   )
   AC_MSG_RESULT([$libz_dir])
-  AC_MSG_RESULT([$libz_inc])
   AC_SUBST(libz_inc)
   AC_SUBST(libz_lib)
   AC_DEFINE([PBS_COMPRESSION_ENABLED], [], [Defined when libz is available])

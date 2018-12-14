@@ -52,10 +52,6 @@
 %define pbs_prefix /opt/pbs
 %endif
 
-%if !%{defined ptl_prefix}
-%define ptl_prefix %{pbs_prefix}/../ptl
-%endif
-
 %if !%{defined pbs_home}
 %define pbs_home /var/spool/pbs
 %endif
@@ -64,7 +60,6 @@
 %define pbs_dbuser postgres
 %endif
 
-%define pbs_ptl ptl
 %define pbs_client client
 %define pbs_execution execution
 %define pbs_server server
@@ -85,7 +80,6 @@ Name: %{pbs_name}
 Version: %{pbs_version}
 Release: %{pbs_release}
 Source0: %{pbs_dist}
-Source1: %{name}-rpmlintrc
 Summary: PBS Professional
 License: AGPLv3 with exceptions
 URL: http://www.pbspro.org
@@ -143,29 +137,9 @@ job scheduler designed to improve productivity, optimize
 utilization & efficiency, and simplify administration for
 HPC clusters, clouds and supercomputers.
 
-%if %{with ptl}
-%package %{pbs_ptl}
-Summary: PBS Test Lab for testing
-Group: System/Base
-Requires: python-nose
-Requires: python-beautifulsoup
-%if 0%{?rhel} 
-Requires: pexpect
-%else
-Requires: python-pexpect
-%endif
-Requires: python-defusedxml
-Prefix: %(dirname %{pbs_prefix})
-
-%description %{pbs_ptl}
-PBS Test Lab is a test harness and test suite intended to validate the
-functionality of PBS Professional®.
-
-%endif
-
 %package %{pbs_server}
 Summary: PBS Professional for a server host
-Group: System/Base
+Group: System Environment/Base
 Conflicts: pbspro-execution
 Conflicts: pbspro-client
 Conflicts: pbspro-client-ohpc
@@ -206,7 +180,7 @@ PBS Professional components.
 
 %package %{pbs_execution}
 Summary: PBS Professional for an execution host
-Group: System/Base
+Group: System Environment/Base
 Conflicts: pbspro-server
 Conflicts: pbspro-client
 Conflicts: pbspro-client-ohpc
@@ -236,7 +210,7 @@ does include the PBS Professional user commands.
 
 %package %{pbs_client}
 Summary: PBS Professional for a client host
-Group: System/Base
+Group: System Environment/Base
 Conflicts: pbspro-server
 Conflicts: pbspro-execution
 Conflicts: pbspro-client-ohpc
@@ -258,6 +232,33 @@ HPC clusters, clouds and supercomputers.
 
 This package is intended for a client host and provides
 the PBS Professional user commands.
+
+%if %{with ptl}
+
+%define pbs_ptl ptl
+
+%if !%{defined ptl_prefix}
+%define ptl_prefix %{pbs_prefix}/../ptl
+%endif
+
+%package %{pbs_ptl}
+Summary: PBS Test Lab for testing PBS Professional
+Group: System Environment/Base
+Requires: python-nose
+Requires: python-beautifulsoup
+%if 0%{?rhel} 
+Requires: pexpect
+%else
+Requires: python-pexpect
+%endif
+Requires: python-defusedxml
+Prefix: %{ptl_prefix}
+
+%description %{pbs_ptl}
+PBS Test Lab is a test harness and test suite intended to validate the
+functionality of PBS Professional®.
+
+%endif
 
 %if 0%{?opensuse_bs}
 # Do not specify debug_package for OBS builds.
@@ -457,15 +458,6 @@ fi
 %exclude %{pbs_prefix}/unsupported/*.pyc
 %exclude %{pbs_prefix}/unsupported/*.pyo
 
-%if %{with ptl}
-%files %{pbs_ptl}
-%defattr(-,root,root, -)
-%dir %{ptl_prefix}
-%{ptl_prefix}/*
-%{_sysconfdir}/profile.d/ptl.csh
-%{_sysconfdir}/profile.d/ptl.sh
-%endif
-
 %files %{pbs_execution}
 %defattr(-,root,root, -)
 %dir %{pbs_prefix}
@@ -543,7 +535,20 @@ fi
 %exclude %{pbs_prefix}/unsupported/*.pyc
 %exclude %{pbs_prefix}/unsupported/*.pyo
 %exclude %{_unitdir}/pbs.service
+
+%if %{with ptl}
+%files %{pbs_ptl}
+%defattr(-,root,root, -)
+%dir %{ptl_prefix}
+%{ptl_prefix}/*
+%{_sysconfdir}/profile.d/ptl.csh
+%{_sysconfdir}/profile.d/ptl.sh
+%endif
+
 %changelog
+* Thu Dec 13 2018 Michael Karo <mike0042@gmail.com> - 1.26
+- Remove pbspro-rpmlintrc from source list
+- Updates to conditional build of pbspro-ptl package
 * Mon Dec 10 2018 bayucan <bayucan@altair.com> - 1.25
 - Add changelog
 * Wed Nov 28 2018 bayucan <bayucan@altair.com> - 1.24

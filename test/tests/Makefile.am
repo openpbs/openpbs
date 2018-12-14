@@ -35,30 +35,27 @@
 # trademark licensing policies.
 #
 if ENABLEPTL
-ptl_prefixdir = $(prefix)/../ptl
-ptl_testsdir = $(ptl_prefixdir)/tests
-
-dist_ptl_tests_PYTHON = $(srcdir)/*.py
+ptl_testsdir = ${ptl_prefix}/tests
+dist_ptl_tests_PYTHON = $(wildcard $(srcdir)/*.py)
 
 ptl_testfunctionaldir = $(ptl_testsdir)/functional
-dist_ptl_testfunctional_DATA = $(srcdir)/functional/*.py
+dist_ptl_testfunctional_DATA = $(wildcard $(srcdir)/functional/*.py)
 
 ptl_testinterfacesdir = $(ptl_testsdir)/interfaces
-dist_ptl_testinterfaces_DATA = $(srcdir)/interfaces/*.py
+dist_ptl_testinterfaces_DATA = $(wildcard $(srcdir)/interfaces/*.py)
 
 ptl_testperformancedir = $(ptl_testsdir)/performance
-dist_ptl_testperformance_DATA = $(srcdir)/performance/*.py
+dist_ptl_testperformance_DATA = $(wildcard $(srcdir)/performance/*.py)
 
 ptl_testresiliencedir = $(ptl_testsdir)/resilience
-dist_ptl_testresilience_DATA = $(srcdir)/resilience/*.py
+dist_ptl_testresilience_DATA = $(wildcard $(srcdir)/resilience/*.py)
 
 ptl_testsecuritydir = $(ptl_testsdir)/security
-dist_ptl_testsecurity_DATA = $(srcdir)/security/*.py
+dist_ptl_testsecurity_DATA = $(wildcard $(srcdir)/security/*.py)
 
 ptl_testselftestdir = $(ptl_testsdir)/selftest
-dist_ptl_testselftest_DATA = $(srcdir)/selftest/*.py
+dist_ptl_testselftest_DATA = $(wildcard $(srcdir)/selftest/*.py)
 
 ptl_testupgradesdir = $(ptl_testsdir)/upgrades
-dist_ptl_testupgrades_DATA = $(srcdir)/upgrades/*.py
-
+dist_ptl_testupgrades_DATA = $(wildcard $(srcdir)/upgrades/*.py)
 endif
