@@ -58,7 +58,7 @@ isalnumspch(int c)
 	if (isalnum(c) != 0)
 		return c;
 
-	if (c == '-' || c == '_' || c == '+')
+	if (c == '-' || c == '_' || c == '+' || c == '.')
 		return c;
 
 	return 0;

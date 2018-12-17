@@ -142,3 +142,18 @@ pbs.logmsg(pbs.LOG_DEBUG, "submitted job with long select" )
         else:
             self.logger.info('Job created with illegal name: ' + jid)
             self.assertTrue(False, "Job shouldn't be accepted")
+
+    def test_qsub_N_validchar(self):
+        """
+        This test case validates whether character "."
+        in job name passed via -N args in qsub works fine
+        """
+        j = Job(TEST_USER, {ATTR_N: 'job.scr'})
+        try:
+            jid = self.server.submit(j)
+        except PbsSubmitError as e:
+            self.assertNotIn('illegal -N value', e.msg[0],
+                             'qsub: Not accepted "." in job name')
+        else:
+            self.server.expect(JOB, {'job_state': (MATCH_RE, '[RQ]')}, id=jid)
+            self.logger.info('Job submitted successfully: ' + jid)

@@ -517,6 +517,18 @@ class SmokeTest(PBSTestSuite):
         j.create_script('sleep 120\n', hostname=self.server.client)
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
+        self.logger.info("Testing script with extension")
+        j = Job(TEST_USER)
+        fn = self.du.create_temp_file(suffix=".scr", body="/bin/sleep 10",
+                                      asuser=str(TEST_USER))
+        try:
+            jid = self.server.submit(j, script=fn)
+        except PbsSubmitError as e:
+            self.assertNotIn('illegal -N value', e.msg[0],
+                             'qsub: Not accepted "." in job name')
+        else:
+            self.server.expect(JOB, {'job_state': (MATCH_RE, '[RQ]')}, id=jid)
+            self.logger.info('Job submitted successfully: ' + jid)
 
     @skipOnCpuSet
     def test_formula_match(self):
