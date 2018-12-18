@@ -215,24 +215,26 @@ if sleeptime > 0:
         self.cpuset_mem_script = """#!/bin/bash
 #PBS -joe
 echo $PBS_JOBID
-cpuset_base=`grep cgroup /proc/mounts | grep cpuset | cut -d' ' -f2`
+cpuset_base=`grep cgroup /proc/mounts | grep cpuset | cut -d' ' -f2 | \
+             tr " " "\n" | sed -n '1p'`
 if [ -z "$cpuset_base" ]; then
     echo "Cpuset subsystem not mounted."
     exit 1
 fi
-memory_base=`grep cgroup /proc/mounts | grep memory | cut -d' ' -f2`
+memory_base=`grep cgroup /proc/mounts | grep memory | cut -d' ' -f2 | \
+             tr " " "\n" | sed -n '1p'`
 if [ -z "$memory_base" ]; then
     echo "Memory subsystem not mounted."
     exit 1
 fi
-
+echo "cpuset_base is $cpuset_base"
 if [ -d "$cpuset_base/pbspro" ]; then
     base="$cpuset_base/pbspro/$PBS_JOBID"
 else
     jobnum=${PBS_JOBID%%.*}
     base="$cpuset_base/pbspro.slice/pbspro-${jobnum}.*.slice"
 fi
-echo "cpuset base path is $base"
+echo "cgroups base path for cpuset is $base"
 if [ -d $base ]; then
     cpupath1=$base/cpuset.cpus
     cpupath2=$base/cpus
@@ -259,6 +261,7 @@ else
     jobnum=${PBS_JOBID%%.*}
     base="$memory_base/pbspro.slice/pbspro-${jobnum}.*.slice"
 fi
+echo "cgroups base path for memory is $base"
 if [ -d $base ]; then
    mem_limit=`cat $base/memory.limit_in_bytes`
    echo "MemoryLimit=${mem_limit}"
@@ -1248,6 +1251,7 @@ if %s e.job.in_ms_mom():
         tmp_file = filename.split(':')[1]
         tmp_host = ehost.split('/')[0]
         tmp_out = self.wait_and_read_file(filename=tmp_file, host=tmp_host)
+        self.logger.info("Job output is %s\n" % tmp_out)
         self.assertTrue(jid in tmp_out)
         self.logger.info('job dir check passed')
         if self.paths['cpuacct']:
@@ -1284,6 +1288,7 @@ if %s e.job.in_ms_mom():
         tmp_file = filename.split(':')[1]
         tmp_host = ehost.split('/')[0]
         tmp_out = self.wait_and_read_file(filename=tmp_file, host=tmp_host)
+        self.logger.info("Job output is %s\n" % tmp_out)
         self.assertTrue(jid in tmp_out)
         self.logger.info('job dir check passed')
         if self.paths['cpuacct']:
