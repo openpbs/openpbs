@@ -8216,72 +8216,86 @@ class Server(PBSService):
                 v = v[1]
 
             for stat in statlist:
-                if k == ATTR_version and k in stat:
-                    m = self.version_tag.match(stat[k])
+                if k not in stat:
+                    if op == UNSET:
+                        continue
+
+                    # Sometimes users provide the wrong case for attributes
+                    # Convert to lowercase and compare
+                    attrs_lower = {
+                        ks.lower(): [ks, vs] for ks, vs in stat.iteritems()}
+                    k_lower = k.lower()
+                    if k_lower not in attrs_lower:
+                        self.logger.error("Attribute %s not found" % k)
+                        return False
+                    stat_v = attrs_lower[k_lower][1]
+                    stat_k = attrs_lower[k_lower][0]
+                else:
+                    stat_v = stat[k]
+                    stat_k = k
+
+                if stat_k == ATTR_version:
+                    m = self.version_tag.match(stat_v)
                     if m:
-                        stat[k] = m.group('version')
+                        stat_v = m.group('version')
                     else:
                         time.sleep(interval)
                         return self.expect(obj_type, attrib, id, op, attrop,
                                            attempt + 1, max_attempts, interval,
                                            count, extend, runas=runas,
                                            level=level, msg=" ".join(msg))
-                if k not in stat:
-                    if op == UNSET:
-                        continue
-                else:
-                    # functions/methods are invoked and their return value
-                    # used on expect
-                    if callable(v):
-                        if varargs is not None:
-                            rv = v(stat[k], *varargs)
-                        else:
-                            rv = v(stat[k])
-                        if isinstance(rv, bool):
-                            if op == NOT:
-                                if not rv:
-                                    continue
-                            if rv:
+
+                # functions/methods are invoked and their return value
+                # used on expect
+                if callable(v):
+                    if varargs is not None:
+                        rv = v(stat_v, *varargs)
+                    else:
+                        rv = v(stat_v)
+                    if isinstance(rv, bool):
+                        if op == NOT:
+                            if not rv:
                                 continue
-                        else:
-                            v = rv
+                        if rv:
+                            continue
+                    else:
+                        v = rv
 
-                    stat[k] = self.utils.decode_value(stat[k])
-                    v = self.utils.decode_value(v)
+                stat_v = self.utils.decode_value(stat_v)
+                v = self.utils.decode_value(v)
 
-                    if k == ATTR_version:
-                        stat[k] = LooseVersion(str(stat[k]))
-                        v = LooseVersion(str(v))
+                if stat_k == ATTR_version:
+                    stat_v = LooseVersion(str(stat_v))
+                    v = LooseVersion(str(v))
 
-                    if op == EQ and stat[k] == v:
+                if op == EQ and stat_v == v:
+                    continue
+                elif op == SET and count and stat_v == v:
+                    continue
+                elif op == SET and count in (False, None):
+                    continue
+                elif op == NE and stat_v != v:
+                    continue
+                elif op == LT:
+                    if stat_v < v:
                         continue
-                    elif op == SET and count and stat[k] == v:
+                elif op == GT:
+                    if stat_v > v:
                         continue
-                    elif op == SET and count in (False, None):
+                elif op == LE:
+                    if stat_v <= v:
                         continue
-                    elif op == NE and stat[k] != v:
+                elif op == GE:
+                    if stat_v >= v:
                         continue
-                    elif op == LT:
-                        if stat[k] < v:
-                            continue
-                    elif op == GT:
-                        if stat[k] > v:
-                            continue
-                    elif op == LE:
-                        if stat[k] <= v:
-                            continue
-                    elif op == GE:
-                        if stat[k] >= v:
-                            continue
-                    elif op == MATCH_RE:
-                        if re.search(str(v), str(stat[k])):
-                            continue
-                    elif op == MATCH:
-                        if str(stat[k]).find(str(v)) != -1:
-                            continue
+                elif op == MATCH_RE:
+                    if re.search(str(v), str(stat_v)):
+                        continue
+                elif op == MATCH:
+                    if str(stat_v).find(str(v)) != -1:
+                        continue
 
-                if k in stat:
-                    msg += [' got: ' + str(k) + ' = ' + str(stat[k])]
+                msg += [' got: ' + stat_k + ' = ' + str(stat_v)]
                 self.logger.info(prefix + " ".join(msg))
                 time.sleep(interval)
 
@@ -13701,7 +13715,8 @@ class Job(ResourceResv):
         :returns: subjob id string
         """
         idx = job_array_id.find('[]')
-        return job_array_id[:idx+1] + str(subjob_index) + job_array_id[idx+1:]
+        return job_array_id[:idx + 1] + str(subjob_index) + \
+            job_array_id[idx + 1:]
 
 
 class Reservation(ResourceResv):
