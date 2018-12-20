@@ -628,7 +628,7 @@ class TestAdminSuspend(TestFunctional):
 
         # submit other jobs asking for specific resources on vn[1]
         j = Job(TEST_USER)
-        j.set_attributes({'foo': '2'})
+        j.set_attributes({'Resource_List.foo': '2'})
         jid2 = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid2)
 
