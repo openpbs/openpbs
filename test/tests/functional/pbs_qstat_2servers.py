@@ -38,40 +38,45 @@
 from tests.functional import *
 
 
-class QstatTest(TestFunctional):
+class TestQstatTwoServers(TestFunctional):
 
     """
-    This test suite checks whether qstat sends the
-    status request to the correct server or not for
-    requests like job_id.serverA@serverB
+    This test suite checks that qstat works correctly when there
+    are 2 PBS servers set up
     """
 
     def setUp(self):
         if len(self.servers) != 2 or self.server.client in self.servers:
             self.skipTest("This test needs two servers and one client")
+        # Because of a bug in PTL, having moms on respective server hosts
+        # don't work, so the server hosts need to be passed as nomom hosts
+        svrnames = self.servers.keys()
+        if "nomom" not in self.conf or \
+                svrnames[0] not in self.conf["nomom"] or \
+                svrnames[1] not in self.conf["nomom"]:
+            self.skipTest("This test needs the server hosts to be passed"
+                          " as nomom hosts: -p servers=<host1>:<host2>,"
+                          "nomom=<host1>:<host2>")
         TestFunctional.setUp(self)
+
+    def test_qstat_req_server(self):
+        _m = self.server.get_op_mode()
+        if _m != PTL_CLI:
+            self.skipTest("Test only supported for CLI mode")
+
         self.server1 = self.servers.values()[0]
         self.server2 = self.servers.values()[1]
         a = {'scheduling': 'false', 'flatuid': 'true'}
         self.server1.manager(MGR_CMD_SET, SERVER, a)
         self.server2.manager(MGR_CMD_SET, SERVER, a)
 
-    def test_qstat_req_server(self):
         j = Job(TEST_USER)
         jid = self.server1.submit(j)
         destination = '@%s' % self.server2.hostname
         self.server1.movejob(jobid=jid, destination=destination)
-        self.client_conf = self.du.parse_pbs_config(
-            hostname=self.server.client)
-        self.du.set_pbs_config(self.server.client, confs={'PBS_SERVER': ''})
-        self.server1.status(JOB, id=jid+'@%s' % self.server2.hostname,
+        self.server1.status(JOB, id=jid + '@%s' % self.server2.hostname,
                             runas=str(TEST_USER))
         expmsg = "Type 19 request received"\
                  " from %s@%s" % (str(TEST_USER), self.server.client)
         self.server1.log_match(msg=expmsg, existence=False, max_attempts=5)
         self.server2.log_match(msg=expmsg)
-
-    def tearDown(self):
-        a = {'PBS_SERVER': self.client_conf['PBS_SERVER']}
-        self.du.set_pbs_config(self.server.client, confs=a)
-        TestFunctional.tearDown(self)

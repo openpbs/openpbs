@@ -845,15 +845,15 @@ class PBSTestSuite(unittest.TestCase):
                                         frequency=freq)
                 self._process_monitoring = True
 
-    def _get_dflt_pbsconfval(self, conf, primary_host, hosttype, hostobj):
+    def _get_dflt_pbsconfval(self, conf, svr_hostname, hosttype, hostobj):
         """
         Helper function to revert_pbsconf, tries to determine and return
         default value for the pbs.conf variable given
 
         :param conf: the pbs.conf variable
         :type conf: str
-        :param primary_host: hostname of the primary server host
-        :type primary_host: str
+        :param svr_hostname: hostname of the server host
+        :type svr_hostname: str
         :param hosttype: type of host being reverted
         :type hosttype: str
         :param hostobj: PTL object associated with the host
@@ -863,7 +863,7 @@ class PBSTestSuite(unittest.TestCase):
         as a string, otherwise None
         """
         if conf == "PBS_SERVER":
-            return primary_host
+            return svr_hostname
         elif conf == "PBS_START_SCHED":
             if hosttype == "server":
                 return "1"
@@ -902,8 +902,9 @@ class PBSTestSuite(unittest.TestCase):
         :param vals_to_set: dict of pbs.conf values to set
         :type vals_to_set: dict
         """
+        svr_hostnames = [svr.hostname for svr in self.servers.values()]
         for comm in self.comms.values():
-            if comm.hostname == primary_server.hostname:
+            if comm.hostname in svr_hostnames:
                 continue
 
             new_pbsconf = dict(vals_to_set)
@@ -973,8 +974,9 @@ class PBSTestSuite(unittest.TestCase):
         :param vals_to_set: dict of pbs.conf values to set
         :type vals_to_set: dict
         """
+        svr_hostnames = [svr.hostname for svr in self.servers.values()]
         for mom in self.moms.values():
-            if mom.hostname == primary_server.hostname:
+            if mom.hostname in svr_hostnames:
                 continue
 
             new_pbsconf = dict(vals_to_set)
@@ -1036,12 +1038,10 @@ class PBSTestSuite(unittest.TestCase):
                 mom.pbs_conf = new_pbsconf
                 mom.pi.initd(mom.hostname, "restart", daemon="mom")
 
-    def _revert_pbsconf_server(self, primary_server, vals_to_set):
+    def _revert_pbsconf_server(self, vals_to_set):
         """
         Helper function to revert_pbsconf to revert all servers' pbs.conf
 
-        :param primary_server: object of the primary PBS server
-        :type primary_server: PBSService
         :param vals_to_set: dict of pbs.conf values to set
         :type vals_to_set: dict
         """
@@ -1065,7 +1065,7 @@ class PBSTestSuite(unittest.TestCase):
                     # existing pbs.conf doesn't have a default variable set
                     # Try to determine the default
                     val = self._get_dflt_pbsconfval(conf,
-                                                    primary_server.hostname,
+                                                    server.hostname,
                                                     "server", server)
                     if val is None:
                         self.logger.error("Couldn't revert %s in pbs.conf"
@@ -1116,8 +1116,8 @@ class PBSTestSuite(unittest.TestCase):
             if new_pbsconf["PBS_CORE_LIMIT"] != "unlimited":
                 new_pbsconf["PBS_CORE_LIMIT"] = "unlimited"
                 restart_pbs = True
-            if new_pbsconf["PBS_SERVER"] != primary_server.shortname:
-                new_pbsconf["PBS_SERVER"] = primary_server.shortname
+            if new_pbsconf["PBS_SERVER"] != server.shortname:
+                new_pbsconf["PBS_SERVER"] = server.shortname
                 restart_pbs = True
             if "PBS_SCP" not in new_pbsconf:
                 scppath = self.du.which(server.hostname, "scp")
@@ -1164,7 +1164,7 @@ class PBSTestSuite(unittest.TestCase):
             "PBS_SCP": None
         }
 
-        self._revert_pbsconf_server(primary_server, vals_to_set)
+        self._revert_pbsconf_server(vals_to_set)
 
         self._revert_pbsconf_mom(primary_server, vals_to_set)
 
