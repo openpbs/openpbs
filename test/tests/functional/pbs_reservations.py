@@ -863,3 +863,23 @@ class TestReservations(TestFunctional):
         rid2 = self.server.submit(r2)
         exp_attr = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
         self.server.expect(RESV, exp_attr, id=rid2)
+
+    def test_fail_confirm_resv_message(self):
+        """
+        Test if the scheduler fails to reserve a
+        reservation, the reason will be logged.
+        """
+        a = {'resources_available.ncpus': 1}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
+
+        # Submit a long term advance reservation that will be denied
+        now = int(time.time())
+        a = {'Resource_List.select': '1:ncpus=10',
+             'reserve_start': now + 360,
+             'reserve_end': now + 365}
+        rid = self.server.submit(Reservation(TEST_USER, attrs=a))
+        self.server.log_match(rid + ";Reservation denied",
+                              id=rid, interval=5)
+        # The scheduler should log reason why it was denied
+        self.scheduler.log_match(rid + ";PBS Failed to confirm resv: " +
+                                 "Insufficient amount of resource: ncpus")

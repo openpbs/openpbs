@@ -1506,12 +1506,12 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 				(void) translate_fail_code(err, NULL, logmsg);
 
 				/* If the reservation is degraded, we log a message and continue */
-				pbs_asprintf(&msgbuf, "Reservation Failed to Reconfirm: %s", logmsg);
 				if (nresv->resv->resv_substate == RESV_DEGRADED) {
+					pbs_asprintf(&msgbuf, "Reservation Failed to Reconfirm: %s", logmsg);
 					schdlog(PBSEVENT_RESV, PBS_EVENTCLASS_RESV, LOG_INFO,
 						nresv->name, msgbuf);
+					free(msgbuf);
 				}
-				free(msgbuf);
 				/* failed to confirm so move on. This will throw flow out of the
 				 * loop
 				 */
@@ -1565,13 +1565,15 @@ confirm_reservation(status *policy, int pbs_sd, resource_resv *unconf_resv, serv
 	 * we print success
 	 */
 	if (pbsrc > 0 || rconf == RESV_CONFIRM_FAIL) {
-		errmsg = pbs_geterrmsg(pbs_sd);
-		if (errmsg == NULL)
-			errmsg = "";
-
+		/* If the scheduler could not find a place for the reservation, use the
+		 * translated error code. Otherwise, use the error message from the server.
+		 */
 		if (rconf == RESV_CONFIRM_FAIL)
-			pbs_asprintf(&msgbuf, "PBS Failed to confirm resv: %s", errmsg);
+			pbs_asprintf(&msgbuf, "PBS Failed to confirm resv: %s", logmsg);
 		else {
+			errmsg = pbs_geterrmsg(pbs_sd);
+			if (errmsg == NULL)
+				errmsg = "";
 			pbs_asprintf(&msgbuf, "PBS Failed to confirm resv: %s (%d)", errmsg, pbs_errno);
 			rconf = RESV_CONFIRM_RETRY;
 		}
@@ -1821,7 +1823,7 @@ int will_confirm(resource_resv *resv, time_t server_time) {
 	 * retry time that is in the past, then the reservation has to be
 	 * respectively confirmed and reconfirmed.
 	 */
-	if (resv->resv->resv_state == RESV_UNCONFIRMED || 
+	if (resv->resv->resv_state == RESV_UNCONFIRMED ||
 		resv->resv->resv_state == RESV_BEING_ALTERED ||
 		((resv->resv->resv_state != RESV_RUNNING &&
 		resv->resv->resv_substate == RESV_DEGRADED &&
