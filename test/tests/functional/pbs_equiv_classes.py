@@ -89,7 +89,7 @@ class TestEquivClass(TestFunctional):
                             {'scheduling': 'True'})
 
         self.scheduler.log_match("Number of job equivalence classes: 2",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
     def test_select(self):
         """
@@ -117,7 +117,7 @@ class TestEquivClass(TestFunctional):
         # for the other two jobs. While jobs have different amounts of
         # the foo resource, foo is not on the resources line.
         self.scheduler.log_match("Number of job equivalence classes: 2",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
     def test_place(self):
         """
@@ -143,7 +143,7 @@ class TestEquivClass(TestFunctional):
         # Three equivalence classes: one for the resource eating job and
         # one for each place statement
         self.scheduler.log_match("Number of job equivalence classes: 3",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
     def test_reslist1(self):
         """
@@ -179,7 +179,7 @@ class TestEquivClass(TestFunctional):
         # one for the rest.  The rest of the jobs have differing values of
         # resources not on the resources line.  They fall into one class.
         self.scheduler.log_match("Number of job equivalence classes: 2",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
     def test_reslist2(self):
         """
@@ -217,7 +217,7 @@ class TestEquivClass(TestFunctional):
         # Three equivalence classes.  One for the resource eating job and
         # one for each value of software and baz.
         self.scheduler.log_match("Number of job equivalence classes: 5",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
     def test_nolimits(self):
         """
@@ -254,7 +254,7 @@ class TestEquivClass(TestFunctional):
         # for the rest.  Since there are no limits, user, group, nor project
         # are taken into account
         self.scheduler.log_match("Number of job equivalence classes: 2",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
     def test_user(self):
         """
@@ -279,7 +279,7 @@ class TestEquivClass(TestFunctional):
         # one for the rest.  Since there are no limits, both users are
         # in one class.
         self.scheduler.log_match("Number of job equivalence classes: 2",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
     def test_user_old(self):
         """
@@ -306,7 +306,7 @@ class TestEquivClass(TestFunctional):
         # Three equivalence classes.  One for the resource eating job
         # and one for each user.
         self.scheduler.log_match("Number of job equivalence classes: 3",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
     def test_user_server(self):
         """
@@ -333,7 +333,7 @@ class TestEquivClass(TestFunctional):
         # Three equivalence classes.  One for the resource eating job
         # and one for each user.
         self.scheduler.log_match("Number of job equivalence classes: 3",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
     def test_user_server_soft(self):
         """
@@ -360,7 +360,7 @@ class TestEquivClass(TestFunctional):
         # Three equivalence classes.  One for the resource eating job and
         # one for each user.
         self.scheduler.log_match("Number of job equivalence classes: 3",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
     def test_user_queue(self):
         """
@@ -388,7 +388,7 @@ class TestEquivClass(TestFunctional):
         # Three equivalence classes.  One for the resource eating job and
         # one for each user.
         self.scheduler.log_match("Number of job equivalence classes: 3",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
     def test_user_queue_soft(self):
         """
@@ -416,7 +416,7 @@ class TestEquivClass(TestFunctional):
         # Three equivalence classes.  One for the resource eating job and
         # one for each user.
         self.scheduler.log_match("Number of job equivalence classes: 3",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
     def test_group(self):
         """
@@ -445,7 +445,7 @@ class TestEquivClass(TestFunctional):
         # one for the rest.  Since there are no limits, both groups are
         # in one class.
         self.scheduler.log_match("Number of job equivalence classes: 2",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
     def test_group_old(self):
         """
@@ -476,7 +476,7 @@ class TestEquivClass(TestFunctional):
         # Three equivalence classes.  One for the resource eating job and
         # one for each group.
         self.scheduler.log_match("Number of job equivalence classes: 3",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
     def test_group_server(self):
         """
@@ -507,7 +507,7 @@ class TestEquivClass(TestFunctional):
         # Three equivalence classes.  One for the resource eating job and
         # one for each group.
         self.scheduler.log_match("Number of job equivalence classes: 3",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
     def test_group_server_soft(self):
         """
@@ -538,7 +538,7 @@ class TestEquivClass(TestFunctional):
         # Three equivalence classes.  One for the resource eating job and
         # one for each group.
         self.scheduler.log_match("Number of job equivalence classes: 3",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
     def test_group_queue(self):
         """
@@ -572,7 +572,7 @@ class TestEquivClass(TestFunctional):
         # Three equivalence classes.  One for the resource eating job and
         # one for each group.
         self.scheduler.log_match("Number of job equivalence classes: 3",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
     def test_group_queue_soft(self):
         """
@@ -606,7 +606,7 @@ class TestEquivClass(TestFunctional):
         # Three equivalence classes.  One for the resource eating job and
         # one for each group.
         self.scheduler.log_match("Number of job equivalence classes: 3",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
     def test_proj(self):
         """
@@ -635,7 +635,7 @@ class TestEquivClass(TestFunctional):
         # one for the rest.  Since there are no limits, both projects are
         # in one class.
         self.scheduler.log_match("Number of job equivalence classes: 2",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
     def test_proj_server(self):
         """
@@ -666,7 +666,7 @@ class TestEquivClass(TestFunctional):
         # Three equivalence classes.  One for the resource eating job and
         # one for each project.
         self.scheduler.log_match("Number of job equivalence classes: 3",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
     def test_proj_server_soft(self):
         """
@@ -697,7 +697,7 @@ class TestEquivClass(TestFunctional):
         # Three equivalence classes.  One for the resource eating job and
         # one for each project.
         self.scheduler.log_match("Number of job equivalence classes: 3",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
     def test_proj_queue(self):
         """
@@ -728,7 +728,7 @@ class TestEquivClass(TestFunctional):
         # Three equivalence classes.  One for the resource eating job and
         # one for each project.
         self.scheduler.log_match("Number of job equivalence classes: 3",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
     def test_proj_queue_soft(self):
         """
@@ -759,7 +759,7 @@ class TestEquivClass(TestFunctional):
         # Three equivalence classes.  One for the resource eating job and
         # one for each project.
         self.scheduler.log_match("Number of job equivalence classes: 3",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
     def test_queue(self):
         """
@@ -795,7 +795,7 @@ class TestEquivClass(TestFunctional):
         # one for the rest.  There is nothing to differentiate the queues
         # so all jobs are in one class.
         self.scheduler.log_match("Number of job equivalence classes: 2",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
     def test_queue_limits(self):
         """
@@ -851,7 +851,7 @@ class TestEquivClass(TestFunctional):
         # One for the queues without limits and one
         # each for the two queues with limits.
         self.scheduler.log_match("Number of job equivalence classes: 4",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
     def test_queue_nodes(self):
         """
@@ -905,7 +905,7 @@ class TestEquivClass(TestFunctional):
         # one class for the queue with nodes associated with it.
         # One class for normal queues.
         self.scheduler.log_match("Number of job equivalence classes: 3",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
     def test_prime_queue(self):
         """
@@ -967,7 +967,7 @@ class TestEquivClass(TestFunctional):
         # Four equivalence classes.  One for the resource eating job and
         # one for the normal queues and one for each prime time queue
         self.scheduler.log_match("Number of job equivalence classes: 4",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
     def test_non_prime_queue(self):
         """
@@ -1030,7 +1030,7 @@ class TestEquivClass(TestFunctional):
         # Four equivalence classes.  One for the resource eating job and
         # one for the normal queues and one for each non-prime time queue
         self.scheduler.log_match("Number of job equivalence classes: 4",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
     def test_ded_time_queue(self):
         """
@@ -1078,7 +1078,7 @@ class TestEquivClass(TestFunctional):
         # Three equivalence classes: One for the resource eating job and
         # one for each dedicated time queue job
         self.scheduler.log_match("Number of job equivalence classes: 3",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
     def test_job_array(self):
         """
@@ -1104,7 +1104,7 @@ class TestEquivClass(TestFunctional):
 
         # One equivalence class
         self.scheduler.log_match("Number of job equivalence classes: 1",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
     def test_reservation(self):
         """
@@ -1135,7 +1135,7 @@ class TestEquivClass(TestFunctional):
         # Two equivalence classes: one for jobs inside reservations
         # and one for regular jobs
         self.scheduler.log_match("Number of job equivalence classes: 2",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
     def test_time_limit(self):
         """
@@ -1173,7 +1173,7 @@ class TestEquivClass(TestFunctional):
 
         # Three equivalence classes: one for each job set
         self.scheduler.log_match("Number of job equivalence classes: 3",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
     def test_fairshare(self):
         """
@@ -1195,7 +1195,7 @@ class TestEquivClass(TestFunctional):
 
         # One equivalence class
         self.scheduler.log_match("Number of job equivalence classes: 1",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
         # Wait sometime for jobs to accumulate walltime
         time.sleep(20)
@@ -1206,7 +1206,6 @@ class TestEquivClass(TestFunctional):
 
         # Look at the job equivalence classes again
         self.scheduler.log_match("Number of job equivalence classes: 1",
-                                 max_attempts=10,
                                  starttime=self.t)
 
     def test_server_hook(self):
@@ -1263,7 +1262,7 @@ e.job.Resource_List["cput"] = 20
 
         # One equivalence class
         self.scheduler.log_match("Number of job equivalence classes: 1",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
         # Alter a queued job
         self.t = int(time.time())
@@ -1276,7 +1275,6 @@ e.job.Resource_List["cput"] = 20
         # do not have cput set. 2 for the different cputime value
         # set by runjob and modifyjob hook
         self.scheduler.log_match("Number of job equivalence classes: 3",
-                                 max_attempts=10,
                                  starttime=self.t)
 
     def test_mom_hook(self):
@@ -1334,7 +1332,7 @@ else:
         # Three equivalence class for each string value
         # set by mom_hook
         self.scheduler.log_match("Number of job equivalence classes: 3",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
     def test_incr_decr(self):
         """
@@ -1349,7 +1347,7 @@ else:
 
         # One equivalance class
         self.scheduler.log_match("Number of job equivalence classes: 1",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
         # Submit another job
         self.t = int(time.time())
@@ -1360,7 +1358,7 @@ else:
 
         # Two equivalence classes
         self.scheduler.log_match("Number of job equivalence classes: 2",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
         # Submit another job
         self.t = int(time.time())
@@ -1371,7 +1369,7 @@ else:
 
         # Three equivalence classes
         self.scheduler.log_match("Number of job equivalence classes: 3",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
         # Delete job1
         self.server.delete(jid1, wait='True')
@@ -1383,7 +1381,7 @@ else:
 
         # Two equivalence classes
         self.scheduler.log_match("Number of job equivalence classes: 2",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
         # Delete job2
         self.server.delete(jid2, wait='true')
@@ -1395,7 +1393,7 @@ else:
 
         # One equivalence classes
         self.scheduler.log_match("Number of job equivalence classes: 1",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
         # Delete job3
         self.server.delete(jid3, wait='true')
@@ -1408,7 +1406,6 @@ else:
 
         # No message for equivalence class
         self.scheduler.log_match("Number of job equivalence classes",
-                                 max_attempts=10,
                                  starttime=self.t,
                                  existence=False)
         self.logger.info(
@@ -1508,7 +1505,7 @@ else:
         # Eight equivalence classes; one for each combination of
         # users and groups
         self.scheduler.log_match("Number of job equivalence classes: 8",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
     def test_preemption(self):
         """
@@ -1550,7 +1547,7 @@ else:
         # 3 equivalence classes: 1 for jid2 and jid4; 1 for jid3; and 1 for
         # jid1 by itself because it is suspended.
         self.scheduler.log_match("Number of job equivalence classes: 3",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
         # Make sure suspended job is in its own class. If it is still in
         # jid4's class jid4 will not run.  This is because suspended job
@@ -1603,7 +1600,7 @@ else:
         # 3 equivalence classes: 1 for jid1, jid3, and jid5; 1 for jid4;
         # jid2 by itself because it is suspended.
         self.scheduler.log_match("Number of job equivalence classes: 3",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
         # Make sure jid2 is in its own class.  If it is still in jid5's class
         # jid5 will not run.  This is because jid2 will be considered first
@@ -1663,7 +1660,7 @@ else:
         self.server.expect(JOB, {'job_state': 'R'}, id=jid4)
 
         self.scheduler.log_match("Number of job equivalence classes: 2",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
         self.t = int(time.time())
 
         # Preempt jid2, check no new equivalence class is created
@@ -1680,7 +1677,7 @@ else:
         # suspended jobs are of same type and running on same vnode
 
         self.scheduler.log_match("Number of job equivalence classes: 2",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
         # Add a job to Queue state
         a = {'Resource_List.ncpus': 1}
@@ -1760,7 +1757,7 @@ else:
         (jid3, jid4) = self.submit_jobs(2, a2)
 
         self.scheduler.log_match("Number of job equivalence classes: 2",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
@@ -1779,7 +1776,7 @@ else:
         # Check that both suspended jobs go to different equivalence class
         # 1 for jid1, 1 for jid2, 1 for jid3, and 1 for jid4
         self.scheduler.log_match("Number of job equivalence classes: 4",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
         # Start a high priority job to preempt jid 2 and jid4
         a = {'Resource_List.ncpus': 4, 'queue': 'expressq'}
@@ -1797,7 +1794,7 @@ else:
         # for jid3 and jid4 and 1 equivalence class for jid5
 
         self.scheduler.log_match("Number of job equivalence classes: 3",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
         self.t = int(time.time())
 
         # Resume the jobs suspended by qsig
@@ -1809,7 +1806,7 @@ else:
 
         # On resume check that there are same number of equivalence classes
         self.scheduler.log_match("Number of job equivalence classes: 3",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
         self.t = int(time.time())
 
         # delete the expressq jobs and check that the suspended jobs
@@ -1823,7 +1820,7 @@ else:
 
         # Check equivalence classes =2
         self.scheduler.log_match("Number of job equivalence classes: 2",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
     def test_held_jobs_equiv_class(self):
         """
@@ -1834,11 +1831,11 @@ else:
         a = {'resources_available.ncpus': 1}
         self.server.create_vnodes('vnode', a, 1, self.mom, usenatvnode=True)
 
-        a = {'Resource_List.ncpus': 1, 'Hold_Types': 'u'}
+        a = {'Resource_List.select': '1:ncpus=1', ATTR_h: None}
         J1 = Job(TEST_USER, attrs=a)
         jid1 = self.server.submit(J1)
 
-        a = {'Resource_List.ncpus': 1}
+        a = {'Resource_List.select': '1:ncpus=1'}
         J2 = Job(TEST_USER, attrs=a)
         jid2 = self.server.submit(J2)
 
@@ -1846,7 +1843,7 @@ else:
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
 
         self.scheduler.log_match("Number of job equivalence classes: 1",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
     def test_queue_resav(self):
         """
@@ -1884,7 +1881,7 @@ else:
         # 2 quivalence classes - one for jobs inside workq2
         # and one for jobs inside workq
         self.scheduler.log_match("Number of job equivalence classes: 2",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
     def test_overlap_resv(self):
         """
@@ -1932,7 +1929,7 @@ else:
         # Verify that equivalence class is 2; one for
         # each reservation queue
         self.scheduler.log_match("Number of job equivalence classes: 2",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
 
         # Verify that one job from R1 is running and
         # one job from R2 is running
@@ -1966,4 +1963,4 @@ else:
         # foores=1 and one for  foores=2 and
         # one for no foores
         self.scheduler.log_match("Number of job equivalence classes: 3",
-                                 max_attempts=10, starttime=self.t)
+                                 starttime=self.t)
