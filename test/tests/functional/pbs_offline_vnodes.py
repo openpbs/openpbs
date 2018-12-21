@@ -273,9 +273,6 @@ class TestOfflineVnode(TestFunctional):
         when executed by sister mom, causing
         the server to execute the fail_action=offline_vnodes, which
         result in sister vnode to be marked offline.
-        Then run an exechost_startup hook that gets an
-        exception when local mom is restarted. Vnode representing
-        local mom would be marked offline.
         """
         if len(self.moms) != 2:
             self.skipTest("Provide 2 moms while invoking test")
