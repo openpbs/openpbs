@@ -1340,7 +1340,10 @@ class TestMultipleSchedulers(TestFunctional):
         self.scheds['sc1'].log_match("Number of job equivalence classes: 2",
                                      max_attempts=10, starttime=t)
         t = int(time.time())
+        # Make sure that Job is in R state before issuing a signal to suspend
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
         self.server.sigjob(jobid=jid1, signal="suspend")
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
         self.server.sigjob(jobid=jid3, signal="suspend")
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'scheduling': 'True'}, id="sc1")
