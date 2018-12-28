@@ -2980,7 +2980,7 @@ accelerator_start(ud_t *d, const XML_Char *el, const XML_Char **atts)
 		parse_err_unspecified_attr(d, BASIL_ATR_STATE);
 		return;
 	}
-	if (gpu->family == '\0') {
+	if (!gpu->family) {
 		parse_err_unspecified_attr(d, BASIL_ATR_FAMILY);
 		return;
 	}
