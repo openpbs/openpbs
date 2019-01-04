@@ -143,7 +143,7 @@ node_partition *find_node_partition_by_rank(node_partition **np_arr, int rank);
  *	returns 1 on all success, 0 on any failure
  *	Note: This is not an atomic operation
  */
-int node_partition_update_array(status *policy, node_partition **nodepart, node_info **ninfo_arr);
+int node_partition_update_array(status *policy, node_partition **nodepart);
 
 /*
  *	node_partition_update - update the meta data about a node partition
@@ -217,7 +217,7 @@ node_partition *create_specific_nodepart(status *policy, char *name, node_info *
 int create_placement_sets(status *policy, server_info *sinfo);
 
 /* Update placement sets and allparts */
-void update_all_nodepart(status *policy, server_info *sinfo, resource_resv *resresv, unsigned int flags);
+void update_all_nodepart(status *policy, server_info *sinfo, unsigned int flags);
 
 
 #ifdef	__cplusplus

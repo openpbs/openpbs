@@ -784,6 +784,9 @@ is_ok_to_run(status *policy, server_info *sinfo,
 		}
 	}
 
+	/* If the pset metadata is stale, update it now for the allpart */
+	if (sinfo->pset_metadata_stale && !(flags & NO_ALLPART))
+		update_all_nodepart(policy, sinfo, NO_FLAGS);
 
 	/* quick check to see if there are enough consumable resources over all nodes
 	 * on the system to see if the resresv can possibly fit.
@@ -1069,12 +1072,8 @@ is_ok_to_run(status *policy, server_info *sinfo,
 		}
 	}
 
+	ns_arr = check_nodes(policy, sinfo, qinfo, resresv, flags, err);
 
-	if (flags & USE_BUCKETS)
-		ns_arr = check_node_buckets(policy, sinfo, qinfo, resresv, err);
-	else 
-		ns_arr = check_nodes(policy, sinfo, qinfo, resresv, flags, err);
-	
 	if (err->error_code != SUCCESS)
 		add_err(&prev_err, err);
 
@@ -1490,9 +1489,45 @@ dedtime_conflict(resource_resv *resresv)
 
 	return 0;
 }
+
+/**
+ * @brief check to see if a resresv can run on nodes using either node search code path
+  * @param[in]	policy	-	policy info
+ * @param[in]	sinfo	-	server associated with job/resv
+ * @param[in]	qinfo	-	queue associated with job (NULL if resv)
+ * @param[in]	resresv	-	resource resv to check
+ * @param[in]	flags   -	flags to change functions behavior
+ *					EVAL_OKBREAK - ok to break chunk up across vnodes
+ *					EVAL_EXCLSET - allocate entire nodelist exclusively
+ *					NO_ALLPART - don't update allpart when updating meta data
+ *					USE_BUCKETS - use the bucket code path
+ * @param[out]	err	-	error structure on why job/resv can't run
+ *
+ * @return	nspec **
+ * @retval	node solution of where the job/resv will run
+ * @retval	NULL	: if the job/resv can't run now
+
+ */
+nspec **
+check_nodes(status *policy, server_info *sinfo, queue_info *qinfo, resource_resv *resresv, unsigned int flags, schd_error *err) {
+	nspec **ns_arr;
+
+	if (sinfo->pset_metadata_stale)
+		update_all_nodepart(policy, sinfo, (flags & NO_ALLPART));
+
+	if (flags & USE_BUCKETS)
+		ns_arr = check_node_buckets(policy, sinfo, qinfo, resresv, err);
+	else
+		ns_arr = check_normal_node_path(policy, sinfo, qinfo, resresv, flags, err);
+
+	return ns_arr;
+}
+
+
 /**
  *	@brief
- *		check to see if there is sufficient nodes available to run a job/resv.
+ *		check to see if there is sufficient nodes available to run a job/resv
+ *		using the normal node search code path.
  *
  * @param[in]	policy	-	policy info
  * @param[in]	sinfo	-	server associated with job/resv
@@ -1509,7 +1544,7 @@ dedtime_conflict(resource_resv *resresv)
  *
  */
 nspec **
-check_nodes(status *policy, server_info *sinfo, queue_info *qinfo, resource_resv *resresv, unsigned int flags, schd_error *err)
+check_normal_node_path(status *policy, server_info *sinfo, queue_info *qinfo, resource_resv *resresv, unsigned int flags, schd_error *err)
 {
 	nspec			**nspec_arr = NULL;
 	selspec			*spec = NULL;

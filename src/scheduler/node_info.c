@@ -5377,14 +5377,11 @@ node_up_event(node_info *node, void *arg)
 
 	sinfo = node->server;
 	if (sinfo->node_group_enable && sinfo->node_group_key != NULL) {
-		node_info *arr[2];
-		arr[0] = node;
-		arr[1] = NULL;
-		node_partition_update_array(sinfo->policy, sinfo->nodepart, (node_info **) arr);
+		node_partition_update_array(sinfo->policy, sinfo->nodepart);
 		qsort(sinfo->nodepart, sinfo->num_parts,
 			sizeof(node_partition *), cmp_placement_sets);
 	}
-	update_all_nodepart(sinfo->policy, sinfo, NULL, NO_ALLPART);
+	update_all_nodepart(sinfo->policy, sinfo, NO_ALLPART);
 
 	return 1;
 }
@@ -5428,14 +5425,11 @@ node_down_event(node_info *node, void *arg)
 	set_node_info_state(node, ND_down);
 
 	if (sinfo->node_group_enable && sinfo->node_group_key != NULL) {
-		node_info *arr[2];
-		arr[0] = node;
-		arr[1] = NULL;
-		node_partition_update_array(sinfo->policy, sinfo->nodepart, (node_info **) arr);
+		node_partition_update_array(sinfo->policy, sinfo->nodepart);
 		qsort(sinfo->nodepart, sinfo->num_parts,
 			sizeof(node_partition *), cmp_placement_sets);
 	}
-	update_all_nodepart(sinfo->policy, sinfo, NULL, NO_ALLPART);
+	update_all_nodepart(sinfo->policy, sinfo, NO_ALLPART);
 
 	return 1;
 }

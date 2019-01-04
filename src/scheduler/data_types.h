@@ -297,6 +297,7 @@ struct server_info
 	unsigned enforce_prmptd_job_resumption:1;/* If set, preempted jobs will resume after the preemptor finishes */
 	unsigned preempt_targets_enable:1;/* if preemptable limit targets are enabled */
 	unsigned use_hard_duration:1;	/* use hard duration when creating the calendar */
+	unsigned pset_metadata_stale:1;	/* The placement set meta data is stale and needs to be regenerated before the next use */
 	char *name;			/* name of server */
 	struct schd_resource *res;	/* list of resources */
 	void *liminfo;			/* limit storage information */

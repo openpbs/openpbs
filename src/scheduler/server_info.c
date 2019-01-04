@@ -1184,6 +1184,7 @@ new_server_info(int limallocflag)
 	sinfo->has_nonCPU_licenses = 0;
 	sinfo->enforce_prmptd_job_resumption = 0;
 	sinfo->use_hard_duration = 0;
+	sinfo->pset_metadata_stale = 0;
 	sinfo->sched_cycle_len = 0;
 	sinfo->num_parts = 0;
 	sinfo->partitions = NULL;
@@ -2181,6 +2182,7 @@ dup_server_info(server_info *osinfo)
 	nsinfo->has_nonCPU_licenses = osinfo->has_nonCPU_licenses;
 	nsinfo->enforce_prmptd_job_resumption = osinfo->enforce_prmptd_job_resumption;
 	nsinfo->use_hard_duration = osinfo->use_hard_duration;
+	nsinfo->pset_metadata_stale = osinfo->pset_metadata_stale;
 	nsinfo->sched_cycle_len = osinfo->sched_cycle_len;
 	nsinfo->partitions = dup_string_array(osinfo->partitions);
 	nsinfo->opt_backfill_fuzzy_time = osinfo->opt_backfill_fuzzy_time;
@@ -2989,10 +2991,8 @@ update_universe_on_end(status *policy, resource_resv *resresv, char *job_state, 
 	if (qinfo != NULL)
 		update_queue_on_end(qinfo, resresv, job_state);
 
-	if (flags & NO_ALLPART)
-		update_all_nodepart(policy, sinfo, resresv, NO_ALLPART);
-	else
-		update_all_nodepart(policy, sinfo, resresv, NO_FLAGS);
+	/* Mark the metadata stale.  It will be updated in the next call to is_ok_to_run() */
+	sinfo->pset_metadata_stale = 1;
 
 	update_resresv_on_end(resresv, job_state);
 

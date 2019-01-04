@@ -130,10 +130,14 @@ sch_resource_t find_counts_elm(counts *cts_list, char *name, char *res);
 
 
 /*
- *      check_nodes - check to see if there is suficient nodes available to
- *                    run a job.
+ *      check_nodes - check to see if there is sufficient nodes available to
+ *                    run a job/resv.
  */
 nspec **check_nodes(status *policy, server_info *sinfo, queue_info *qinfo, resource_resv *resresv, unsigned int flags, schd_error *err);
+
+/* Normal node searching algorithm */
+nspec **
+check_normal_node_path(status *policy, server_info *sinfo, queue_info *qinfo, resource_resv *resresv, unsigned int flags, schd_error *err);
 
 
 /*

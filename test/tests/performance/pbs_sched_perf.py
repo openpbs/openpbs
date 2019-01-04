@@ -38,9 +38,9 @@
 from tests.performance import *
 
 
-class TestNodeBucketPerf(TestPerformance):
+class TestSchedPerf(TestPerformance):
     """
-    Test the performance of node buckets
+    Test the performance of scheduler features
     """
 
     def setUp(self):
@@ -69,19 +69,20 @@ class TestNodeBucketPerf(TestPerformance):
         a = {'resources_available.color': self.colors[numnode % 7]}
         return dict(attribs.items() + a.items())
 
-    def submit_jobs(self, attribs, num):
+    def submit_jobs(self, attribs, num, step=1, wt_start=100):
         """
         Submit num jobs each in their individual equiv class
         """
-        wt = 100
         jids = []
 
         self.server.manager(MGR_CMD_SET, MGR_OBJ_SERVER,
                             {'scheduling': 'False'}, expect=True)
 
         for i in range(num):
-            attribs['Resource_List.walltime'] = wt + i
+            job_wt = wt_start + (i * step)
+            attribs['Resource_List.walltime'] = job_wt
             J = Job(TEST_USER, attrs=attribs)
+            J.set_sleep_time(job_wt)
             jid = self.server.submit(J)
             jids.append(jid)
 
@@ -164,3 +165,54 @@ class TestNodeBucketPerf(TestPerformance):
         """
         num_jobs = 3000
         self.compare_normal_path_to_buckets('free', num_jobs)
+
+    @timeout(3600)
+    def test_pset_fuzzy_perf(self):
+        """
+        Test opt_backfill_fuzzy with placement sets.
+        """
+        self.scheduler.set_sched_config(
+            {'strict_ordering': 'True', 'log_filter': '2048'})
+
+        a = {'node_group_key': 'color', 'node_group_enable': 'True',
+             'scheduling': 'False'}
+
+        self.server.manager(MGR_CMD_SET, SERVER, a)
+        self.server.expect(SERVER, {'server_state': (NE, 'Scheduling')})
+
+        a = {'Resource_List.select': '1:ncpus=1:color=yellow'}
+        self.submit_jobs(attribs=a, num=1430, step=60, wt_start=3600)
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
+        self.server.expect(SERVER, {'server_state': (NE, 'Scheduling')})
+
+        self.server.expect(JOB, {'job_state=R': 1430})
+
+        a = {'Resource_List.select': '10000:ncpus=1'}
+        tj = Job(TEST_USER, attrs=a)
+        self.server.submit(tj)
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
+        self.server.expect(SERVER, {'server_state': (NE, 'Scheduling')},
+                           interval=5, max_attempts=240)
+
+        cycle1 = self.scheduler.cycles(lastN=1)[0]
+        cycle1_time = cycle1.end - cycle1.start
+
+        a = {'opt_backfill_fuzzy': 'High'}
+        self.server.manager(MGR_CMD_SET, SCHED, a, id='default')
+
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
+        self.server.expect(SERVER, {'server_state': (NE, 'Scheduling')},
+                           interval=5, max_attempts=240)
+
+        cycle2 = self.scheduler.cycles(lastN=1)[0]
+        cycle2_time = cycle2.end - cycle2.start
+
+        self.logger.info('Cycle 1: %f Cycle 2: %f Perc %.2f%%' % (
+            cycle1_time, cycle2_time, (cycle1_time / cycle2_time) * 100))
+        self.assertLess(cycle2_time, cycle1_time,
+                        'Optimization was not faster')

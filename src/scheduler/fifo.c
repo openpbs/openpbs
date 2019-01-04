@@ -1667,10 +1667,8 @@ run_update_resresv(status *policy, int pbs_sd, server_info *sinfo,
 		}
 
 		update_queue_on_run(qinfo, rr, &old_state);
-		if (flags & NO_ALLPART)
-			update_all_nodepart(policy, sinfo, rr, NO_ALLPART);
-		else
-			update_all_nodepart(policy, sinfo, rr, NO_FLAGS);
+
+		sinfo->pset_metadata_stale = 1;
 
 		update_server_on_run(policy, sinfo, qinfo, rr, &old_state);
 
