@@ -1297,7 +1297,8 @@ tpp_inflate(void *inbuf, unsigned int inlen, unsigned int totlen)
 	ret = inflateInit(&strm);
 	if (ret != Z_OK) {
 		free(outbuf);
-		tpp_log_func(LOG_CRIT, __func__, "Decompression failed");
+		snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Decompression Init (inflateInit) failed, ret = %d", ret);
+		tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
 		return NULL;
 	}
 
@@ -1312,7 +1313,8 @@ tpp_inflate(void *inbuf, unsigned int inlen, unsigned int totlen)
 	inflateEnd(&strm);
 	if (ret != Z_STREAM_END) {
 		free(outbuf);
-		tpp_log_func(LOG_CRIT, __func__, "Decompression failed");
+		snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "Decompression (inflate) failed, ret = %d", ret);
+		tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
 		return NULL;
 	}
 	return outbuf;
@@ -1321,30 +1323,35 @@ tpp_inflate(void *inbuf, unsigned int inlen, unsigned int totlen)
 void *
 tpp_multi_deflate_init(int initial_len)
 {
+	tpp_log_func(LOG_CRIT, __func__, "TPP compression disabled");
 	return NULL;
 }
 
 int
 tpp_multi_deflate_do(void *c, int fini, void *inbuf, unsigned int inlen)
 {
+	tpp_log_func(LOG_CRIT, __func__, "TPP compression disabled");
 	return -1;
 }
 
 void *
 tpp_multi_deflate_done(void *c, unsigned int *cmpr_len)
 {
+	tpp_log_func(LOG_CRIT, __func__, "TPP compression disabled");
 	return NULL;
 }
 
 void *
 tpp_deflate(void *inbuf, unsigned int inlen, unsigned int *outlen)
 {
+	tpp_log_func(LOG_CRIT, __func__, "TPP compression disabled");
 	return NULL;
 }
 
 void *
 tpp_inflate(void *inbuf, unsigned int inlen, unsigned int totlen)
 {
+	tpp_log_func(LOG_CRIT, __func__, "TPP compression disabled");
 	return NULL;
 }
 #endif
