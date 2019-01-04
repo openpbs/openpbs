@@ -62,7 +62,7 @@ class TestHookUnsetRes(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, {
                             'log_events': 2047}, expect=True)
         j = Job(TEST_USER, attrs={
-                'Resource_List.select': '1:ncpus=1', 'Hold_Types': 'u'})
+                'Resource_List.select': '1:ncpus=1', ATTR_h: None})
         jid = self.server.submit(j)
         self.server.expect(JOB, {'job_state': 'H'}, id=jid)
         self.server.alterjob(jid, {'Resource_List.ncpus': '2'})

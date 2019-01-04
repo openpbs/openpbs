@@ -188,7 +188,7 @@ class TestSoftWalltime(TestFunctional):
         Test that STF jobs can't have soft_walltime
         """
         msg = 'soft_walltime is not supported with Shrink to Fit jobs'
-        J = Job(attrs={'Resource_List.min_walltime': 120, ATTR_h: 'u'})
+        J = Job(attrs={'Resource_List.min_walltime': 120, ATTR_h: None})
         jid = self.server.submit(J)
         try:
             self.server.alterjob(jid, {'Resource_List.soft_walltime': 10})
@@ -198,7 +198,7 @@ class TestSoftWalltime(TestFunctional):
         self.server.expect(JOB, 'Resource_List.soft_walltime',
                            op=UNSET, id=jid)
 
-        J = Job(TEST_USER, attrs={ATTR_h: 'u'})
+        J = Job(TEST_USER, attrs={ATTR_h: None})
         jid = self.server.submit(J)
         self.server.alterjob(jid, {'Resource_List.soft_walltime': 10})
         try:
@@ -209,7 +209,7 @@ class TestSoftWalltime(TestFunctional):
         self.server.expect(JOB, 'Resource_List.min_walltime',
                            op=UNSET, id=jid)
 
-        J = Job(TEST_USER, attrs={ATTR_h: 'u'})
+        J = Job(TEST_USER, attrs={ATTR_h: None})
         jid = self.server.submit(J)
         a = {'Resource_List.soft_walltime': 10,
              'Resource_List.min_walltime': 120}
@@ -226,7 +226,7 @@ class TestSoftWalltime(TestFunctional):
         Test that a job's soft_walltime can't be greater than its hard walltime
         """
         msg = 'Illegal attribute or resource value'
-        J = Job(TEST_USER, attrs={'Resource_List.walltime': 120, ATTR_h: 'u'})
+        J = Job(TEST_USER, attrs={'Resource_List.walltime': 120, ATTR_h: None})
         jid = self.server.submit(J)
 
         try:
@@ -237,7 +237,7 @@ class TestSoftWalltime(TestFunctional):
         self.server.expect(JOB, 'Resource_List.soft_walltime',
                            op=UNSET, id=jid)
 
-        J = Job(TEST_USER, {ATTR_h: 'u'})
+        J = Job(TEST_USER, {ATTR_h: None})
         jid = self.server.submit(J)
         self.server.alterjob(jid, {'Resource_List.soft_walltime': 240})
         try:
@@ -247,7 +247,7 @@ class TestSoftWalltime(TestFunctional):
 
         self.server.expect(JOB, 'Resource_List.walltime', op=UNSET, id=jid)
 
-        J = Job(TEST_USER, {ATTR_h: 'u'})
+        J = Job(TEST_USER, {ATTR_h: None})
         jid = self.server.submit(J)
         try:
             self.server.alterjob(jid, {'Resource_List.walltime': 120,
@@ -517,7 +517,7 @@ e.accept()
                            {'reserve_state': (MATCH_RE, 'RESV_CONFIRMED|2')},
                            id=rid)
 
-        a = {'Resource_List.ncpus': 4, ATTR_h: 'u'}
+        a = {'Resource_List.ncpus': 4, ATTR_h: None}
         J = Job(TEST_USER, attrs=a)
         jid = self.server.submit(J)
         self.server.alterjob(jid, {'Resource_List.soft_walltime': 60})
@@ -547,7 +547,7 @@ e.accept()
                            id=rid)
 
         a = {'Resource_List.ncpus': 4,
-             'Resource_List.walltime': 150, ATTR_h: 'u'}
+             'Resource_List.walltime': 150, ATTR_h: None}
         J = Job(TEST_USER, attrs=a)
         jid = self.server.submit(J)
         self.server.alterjob(jid, {'Resource_List.soft_walltime': 60})

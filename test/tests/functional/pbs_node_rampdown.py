@@ -1612,7 +1612,7 @@ pbs.event().job.release_nodes_on_stageout=False
 
         # Test pbs_release_nodes on a non-running job
         a = {'Resource_List.select': '3:ncpus=1',
-             'Hold_Types': 'u',
+             ATTR_h: None,
              'Resource_List.place': 'scatter'}
         jid = self.create_and_submit_job('job', a)
 

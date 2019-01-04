@@ -80,7 +80,7 @@ class TestJobRouting(TestFunctional):
 
         job_attrib = Job(TEST_USER, attrs={ATTR_queue: 'routeq',
                                            ATTR_l + '.ncpus': 1,
-                                           ATTR_h: 'u',
+                                           ATTR_h: None,
                                            ATTR_J: '1-2',
                                            ATTR_r: 'y'})
 
