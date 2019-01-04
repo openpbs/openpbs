@@ -853,7 +853,7 @@ is_comm_up(int maturity_time)
  *				that have been taken out from the list of
  *				vnodes assigned with non-functioning parent
  *				moms.
- *				
+ *
  * @return  int
  * @retval	0	- for success
  * @retval	1	- if any error occurred.
@@ -949,7 +949,7 @@ prune_exec_vnode(job *pjob,  char *select_str, vnl_t **failed_vnodes, vnl_t **go
 	}
 
 	if (new_exec_vnode != NULL) {
-	
+
 		if (strcmp(execvnode, new_exec_vnode) == 0) {
 			/* there was no change */
 			rc = 0;
@@ -1324,7 +1324,7 @@ receive_job_update(int stream, job *pjob)
 			return (-1);
 		}
 #endif	/* MOM_CPUSET && !IRIX6_CPUSET */
-	
+
 		mom_hook_input_init(&hook_input);
 		hook_input.pjob = pjob;
 
@@ -1888,7 +1888,7 @@ find_node(job *pjob, int stream, tm_node_id vnodeid)
  *	The returned hostname points to a fixed memory area that must not
  *	be freed, and get overwritten on the next call to
  *	addr_to_hostname().
- * 
+ *
  */
 char *
 addr_to_hostname(struct sockaddr_in *ap)
@@ -1965,7 +1965,7 @@ job_start_error(job *pjob, int code, char *nodename, char *cmd)
 			pjob->ji_qs.ji_jobid, log_buffer);
 		/* a filled-in log_buffer could be mistaken for an error message */
 		log_buffer[0] = '\0';
-		
+
 		reliable_job_node_add(&pjob->ji_failed_node_list, nodename);
 		reliable_job_node_delete(&pjob->ji_node_list, nodename);
 
@@ -2277,7 +2277,7 @@ node_bailout(job *pjob, hnodent *np)
 				snprintf(log_buffer, sizeof(log_buffer),
 			 		"sister node %s failed to update job",
 						np->hn_host?np->hn_host:"");
-			
+
 #ifndef WIN32
 				close_update_pipes(pjob);
 #endif
@@ -2416,7 +2416,7 @@ im_eof(int stream, int ret)
 #ifndef WIN32
 					if (pjob->ji_parent2child_moms_status_pipe != -1) {
 						size_t r_size;
-						r_size = strlen(np->hn_host) + 1; 	
+						r_size = strlen(np->hn_host) + 1;
 						if (write_pipe_data(pjob->ji_parent2child_moms_status_pipe, &r_size, sizeof(size_t)) == 0)
 							(void)write_pipe_data(pjob->ji_parent2child_moms_status_pipe, np->hn_host, r_size);
 						else
@@ -2925,7 +2925,7 @@ recv_resc_used_from_sister(int stream, char *jobid, int nodeidx)
  *	before calling finish_exec() on a job.
  *
  * @param[in]       pjob		job being operated on
- * @param[in]       do_job_setup_send	set to 1 if job_setup_send() should be done 
+ * @param[in]       do_job_setup_send	set to 1 if job_setup_send() should be done
  *
  * @return enum pre_finish_results_t
  * @retval PRE_FINISH_SUCCESS			all actions executed successfully
@@ -2933,7 +2933,7 @@ recv_resc_used_from_sister(int stream, char *jobid, int nodeidx)
  * @retval PRE_FINISH_SUCCESS_JOB_SETUP_SEND	all actions up to job_setup_send()
  *						succeeded
  * @retval PRE_FINISH_FAIL_JOB_SETUP_SEND	action to do job_setup_send() failed
- * @retval PRE_FINISH_FAIL_JOIN_EXTRA		action to do job_join_extra() failed 
+ * @retval PRE_FINISH_FAIL_JOIN_EXTRA		action to do job_join_extra() failed
  * @retval PRE_FINISH_FAIL_NEW_CPUSET		action to create new cpuset failed
  *
  */
@@ -3005,7 +3005,7 @@ im_request(int stream, int version)
 	char			*jobid = NULL;
 	char			*cookie = NULL;
 	char			*oreo;
-	char			basename[50];
+	char			basename[MAXPATHLEN + 1] = {0};
 	char			namebuf[MAXPATHLEN+1];
 	job			*pjob;
 	pbs_task		*ptask;
@@ -3146,12 +3146,12 @@ im_request(int stream, int version)
 			psatl = (svrattrl *)GET_NEXT(lhead);
 			while (psatl) {
 				if (!strcmp(psatl->al_name, ATTR_hashname)) {
-					(void)strcpy(basename, psatl->al_value);
+					strncpy(basename, psatl->al_value, MAXPATHLEN);
 					break;
 				}
 				psatl = (svrattrl *)GET_NEXT(psatl->al_link);
 			}
-			(void)strcpy(pjob->ji_qs.ji_jobid, jobid);
+			strncpy(pjob->ji_qs.ji_jobid, jobid, PBS_MAXSVRJOBID);
 			if (strlen(basename) <= PBS_JOBBASE)
 				strcpy(pjob->ji_qs.ji_fileprefix, basename);
 			else
