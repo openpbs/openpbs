@@ -651,7 +651,6 @@ int tpp_mbox_read(tpp_mbox_t *mbox, unsigned int *tfd, int *cmdval, void **data)
 int tpp_mbox_clear(tpp_mbox_t *mbox, tpp_que_elem_t **n, unsigned int tfd, int *cmdval, void **data);
 int tpp_mbox_post(tpp_mbox_t *mbox, unsigned int tfd, int cmdval, void *data);
 int tpp_mbox_getfd(tpp_mbox_t *mbox);
-void tpp_mbox_drain_unsafe(tpp_mbox_t *mbox);
 
 extern int tpp_going_down;
 /**********************************************************************/

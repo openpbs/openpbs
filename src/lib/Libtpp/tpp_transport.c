@@ -2427,47 +2427,33 @@ tpp_transport_terminate()
 	 * not used after a fork. The function tpp_mbox_destroy
 	 * calls pthread_mutex_destroy, so don't call them.
 	 * Also never log anything from a terminate handler
+	 *
+	 * Don't bother to free any TPP data as well, as the forked 
+	 * process is usually short lived and no point spending time
+	 * freeing space on a short lived forked process. Besides, 
+	 * the TPP thread which is lost after fork might have been in 
+	 * between using these data when the fork happened, so freeing
+	 * some structures might be dangerous.
+	 *
+	 * Thus the only thing we do here is to close file/sockets 
+	 * so that the kernel can recognize when a close happens from the
+	 * main process.
+	 * 
 	 */
 	tpp_log_func = tpp_dummy_logfunc;
 
 	for (i = 0; i < num_threads; i++) {
-#ifdef DEBUG
-		conn_event_t *conn_ev;
-		/* satisfy valgrind in debug mode, not in regular for performance */
-		tpp_mbox_drain_unsafe(&thrd_pool[i]->mbox);
-
-		/* clean up the lazy conn queue */
-		while ((conn_ev = tpp_deque(&thrd_pool[i]->lazy_conn_que))) {
-			free(conn_ev);
-		}
-#endif
-		tpp_em_destroy(thrd_pool[i]->em_context);
-		if (thrd_pool[i]->tpp_tls) {
-			free(thrd_pool[i]->tpp_tls->log_data);
-			free(thrd_pool[i]->tpp_tls->avl_data);
-		}
-		free(thrd_pool[i]->tpp_tls);
 		if (thrd_pool[i]->listen_fd > -1)
 			tpp_sock_close(thrd_pool[i]->listen_fd);
-		free(thrd_pool[i]);
 	}
-	free(thrd_pool);
-
-	num_threads = 0;
-	thrd_pool = NULL;
 
 	/* close all open physical connections, else child carries open socket
 	 * and a later close at parent is not all sides closed
 	 */
 	for (i = 0; i < conns_array_size; i++) {
-		if (conns_array[i].conn) {
+		if (conns_array[i].conn)
 			tpp_sock_close(conns_array[i].conn->sock_fd);
-			free_phy_conn(conns_array[i].conn);
-		}
 	}
-
-	/* free the array */
-	free(conns_array);
 
 	return 0;
 }

@@ -1575,7 +1575,19 @@ tpp_terminate()
 	 * This is not required since our library is effectively
 	 * not used after a fork. The function tpp_mbox_destroy
 	 * calls pthread_mutex_destroy, so don't call them.
-	 * Also never log anything from a terminate handler
+	 * Also never log anything from a terminate handler.
+	 * 
+	 * Don't bother to free any TPP data as well, as the forked 
+	 * process is usually short lived and no point spending time
+	 * freeing space on a short lived forked process. Besides, 
+	 * the TPP thread which is lost after fork might have been in 
+	 * between using these data when the fork happened, so freeing
+	 * some structures might be dangerous.
+	 *
+	 * Thus the only thing we do here is to close file/sockets 
+	 * so that the kernel can recognize when a close happens from the
+	 * main process.
+	 * 
 	 */
 	if (tpp_child_terminated == 1)
 		return;
@@ -1588,11 +1600,6 @@ tpp_terminate()
 	tpp_transport_terminate();
 
 	tpp_mbox_destroy(&app_mbox, 0);
-
-	if (strmarray)
-		free(strmarray);
-
-	free_routers();
 }
 
 /* NULL definitions for some unimplemented functions */
