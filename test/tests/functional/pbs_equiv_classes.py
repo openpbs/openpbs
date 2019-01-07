@@ -1578,35 +1578,39 @@ else:
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='expressq')
 
         (jid1,) = self.submit_jobs(1)
-        # Jobs most recently started are suspended first.
-        # Sleep for a second to force jid2 to be suspended.
-        time.sleep(1)
-        (jid2, jid3) = self.submit_jobs(2)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
 
-        self.server.expect(JOB, {'job_state=R': 3})
+        (jid2,) = self.submit_jobs(1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+
+        # Jobs most recently started are suspended first.
+        # Sleep for a second to force jid3 to be suspended.
+        time.sleep(1)
+        (jid3,) = self.submit_jobs(1)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
 
         a = {'Resource_List.ncpus': 2, 'queue': 'expressq'}
         (jid4,) = self.submit_jobs(1, a)
 
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
-        self.server.expect(JOB, {'job_state': 'S'}, id=jid2)
-        self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
+        self.server.expect(JOB, {'job_state': 'S'}, id=jid3)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid4)
 
         (jid5,) = self.submit_jobs(1)
         self.server.expect(JOB, 'comment', op=SET)
         self.server.expect(JOB, {'job_state': 'Q'}, id=jid5)
 
-        # 3 equivalence classes: 1 for jid1, jid3, and jid5; 1 for jid4;
-        # jid2 by itself because it is suspended.
+        # 3 equivalence classes: 1 for jid1, jid2, and jid5; 1 for jid4;
+        # jid3 by itself because it is suspended.
         self.scheduler.log_match("Number of job equivalence classes: 3",
                                  starttime=self.t)
 
-        # Make sure jid2 is in its own class.  If it is still in jid5's class
-        # jid5 will not run.  This is because jid2 will be considered first
+        # Make sure jid3 is in its own class.  If it is still in jid5's class
+        # jid5 will not run.  This is because jid3 will be considered first
         # and mark the entire class as can not run.
 
-        self.server.deljob(jid3, wait=True)
+        self.server.deljob(jid2, wait=True)
 
         self.server.expect(JOB, {'job_state': 'R'}, id=jid5)
 
@@ -1635,15 +1639,18 @@ else:
         a = {'Resource_List.ncpus': 1}
         J = Job(TEST_USER, attrs=a)
         jid1 = self.server.submit(J)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
 
         time.sleep(1)
 
         J2 = Job(TEST_USER, attrs=a)
         jid2 = self.server.submit(J2)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
 
         time.sleep(1)
         J3 = Job(TEST_USER, attrs=a)
         jid3 = self.server.submit(J3)
+        self.server.expect(JOB, {'job_state': 'R'}, id=jid3)
 
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid2)
