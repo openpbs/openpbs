@@ -36,6 +36,7 @@
 # trademark licensing policies.
 
 from tests.functional import *
+from ptl.lib.pbs_testlib import BatchUtils
 
 
 class TestMomWalltime(TestFunctional):
@@ -115,7 +116,7 @@ class TestMomWalltime(TestFunctional):
         a = {'Resource_List.ncpus': 1}
 
         script_content = (
-            'for i in {1..10}\n'
+            'for i in {1..30}\n'
             'do\n'
             '\techo "time wait"\n'
             '\tsleep 1\n'
@@ -127,19 +128,56 @@ class TestMomWalltime(TestFunctional):
         jid1 = self.server.submit(J1)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
 
+        # Accumulate wall time
+        time.sleep(10)
+
         self.server.sigjob(jobid=jid1, signal="suspend")
         self.server.expect(JOB, {'job_state': 'S'}, id=jid1)
 
-        time.sleep(15)
+        # Make sure the sched cycle is completed before reading
+        # the walltime
+        self.server.manager(MGR_CMD_SET, MGR_OBJ_SERVER,
+                            {'scheduling': 'True'}, expect=True)
+        self.server.manager(MGR_CMD_SET, MGR_OBJ_SERVER,
+                            {'scheduling': 'False'}, expect=True)
+
+        jstat = self.server.status(JOB, id=jid1,
+                                   attrib=['resources_used.walltime'])
+        walltime = BatchUtils().convert_duration(
+            jstat[0]['resources_used.walltime'])
+        self.logger.info("Walltime before sleep: %d secs" % walltime)
+        self.server.manager(MGR_CMD_SET, MGR_OBJ_SERVER,
+                            {'scheduling': 'True'})
+
+        # Sleep for the job's entire walltime secs so we can catch any
+        # walltime increment during job suspension time
+        self.logger.info("Suspending job for 30s, job's execution time. " +
+                         "Walltime should not get incremented while job " +
+                         "is suspended")
+        time.sleep(30)
+
+        # Used walltime should remain the same
+        self.server.expect(JOB, {'resources_used.walltime': walltime}, op=EQ,
+                           id=jid1)
+
         self.server.sigjob(jobid=jid1, signal="resume")
         self.server.expect(JOB, {'job_state': 'R'}, id=jid1)
-
         self.server.expect(JOB, {ATTR_state: 'F'}, id=jid1, extend='x',
-                           offset=5)
+                           offset=20)
 
-        # Used walltime should be less than the sleep time after suspend
-        self.server.expect(JOB, {'resources_used.walltime': 10}, op=LE,
-                           id=jid1, extend='x')
+        # Verify if the job's total walltime is within limits
+        # Adding 10s buffer since min mom poll time is 10s
+        jstat = self.server.status(JOB, id=jid1,
+                                   attrib=['resources_used.walltime'],
+                                   extend='x')
+        walltime_final = BatchUtils().convert_duration(
+            jstat[0]['resources_used.walltime'])
+        self.assertGreater(walltime_final, 0,
+                           'Error fetching resources_used.walltime value')
+        self.logger.info("Walltime at job completion: %d secs"
+                         % walltime_final)
+        self.assertIn(walltime_final, range(25, 41),
+                      'Walltime is not in expected range')
 
     def test_mom_restart(self):
         """
