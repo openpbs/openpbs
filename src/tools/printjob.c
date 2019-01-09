@@ -251,7 +251,7 @@ read_attr(int fd)
 		printf(".%s", pal->al_resc);
 	printf(" = ");
 	if (pal->al_value)
-		printf("%s", pal->al_value);
+		printf("%s", show_nonprint_chars(pal->al_value));
 	printf("\n");
 
 	free(pal);
@@ -422,7 +422,7 @@ print_db_job(char *id, int no_attributes)
 					printf(".%s", attrs->attr_resc);
 				printf(" = ");
 				if (attrs->attr_value)
-					printf("%s", attrs->attr_value);
+					printf("%s", show_nonprint_chars(attrs->attr_value));
 				printf("\n");
 
 			}

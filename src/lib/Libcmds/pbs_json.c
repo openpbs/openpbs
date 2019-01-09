@@ -377,9 +377,9 @@ generate_json(FILE * stream) {
 				else
 					fprintf(stream, "\n");
 				if (arr_lvl[curnt_arr_lvl]==indent)
-					fprintf(stream, "%*.*s\"%s\"", indent, indent, " ", node->value.string);
+					fprintf(stream, "%*.*s\"%s\"", indent, indent, " ", show_nonprint_chars(node->value.string));
 				else
-					fprintf(stream, "%*.*s\"%s\":\"%s\"", indent, indent, " ", node->key, node->value.string);
+					fprintf(stream, "%*.*s\"%s\":\"%s\"", indent, indent, " ", node->key, show_nonprint_chars(node->value.string));
 				prnt_comma = 1;
 				break;
 

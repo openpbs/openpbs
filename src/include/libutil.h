@@ -50,6 +50,9 @@ extern "C" {
 /* replace - Replace sub-string  with new pattern in string */
 void replace(char *, char *, char *, char *);
 
+/* show_nonprint_chars - show non-printable characters in string */
+char *show_nonprint_chars(char *);
+
 /*	char_in_set - is the char c in the tokenset */
 int char_in_set(char c, const char *tokset);
 

@@ -17,4 +17,4 @@ ${DOCKER_EXEC} /bin/bash -c 'CFLAGS="-g -O2 -Wall -Werror" rpmbuild -bb pbspro.s
 ${DOCKER_EXEC} /bin/bash -c 'zypper --no-gpg-checks -n install /root/rpmbuild/RPMS/x86_64/pbspro-server-??.*.x86_64.rpm'
 ${DOCKER_EXEC} /bin/bash -c 'sed -i "s@PBS_START_MOM=0@PBS_START_MOM=1@" /etc/pbs.conf'
 ${DOCKER_EXEC} /etc/init.d/pbs start
-${DOCKER_EXEC} zypper -n install python-pip sudo which net-tools man time.x86_64
+${DOCKER_EXEC} zypper -n install python-pip sudo which net-tools man time.x86_64 python-curses

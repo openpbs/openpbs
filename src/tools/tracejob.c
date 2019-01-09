@@ -729,7 +729,7 @@ line_wrap(char *line, int start, int end)
 	start_index = 0;
 
 	if (end == 0)
-		printf("%s\n", line);
+		printf("%s\n", show_nonprint_chars(line));
 	else {
 		while (start_index < total_size) {
 			if (start_index + wrap_at < total_size) {
@@ -751,9 +751,9 @@ line_wrap(char *line, int start, int end)
 
 			/* first line, don't indent */
 			if (start_ptr == line)
-				printf("%s\n", start_ptr);
+				printf("%s\n", show_nonprint_chars(start_ptr));
 			else
-				printf("%*s%s\n", start, " ", start_ptr);
+				printf("%*s%s\n", start, " ", show_nonprint_chars(start_ptr));
 
 			start_ptr = cur_ptr + 1;
 			start_index = cur_ptr - line;

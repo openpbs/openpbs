@@ -2071,18 +2071,18 @@ display(int otype, int ptype, char *oname, struct batch_status *status,
 		}
 		else if (otype == MGR_OBJ_SITE_HOOK) {
 			if (format) {
-				printf("#\n# Create and define hook %s\n#\n", status->name);
-				printf("create hook %s\n", status->name);
+				printf("#\n# Create and define hook %s\n#\n", show_nonprint_chars(status->name));
+				printf("create hook %s\n", show_nonprint_chars(status->name));
 			}
 			else
-				printf("Hook %s\n", status->name);
+				printf("Hook %s\n", show_nonprint_chars(status->name));
 		}
 		else if (otype == MGR_OBJ_PBS_HOOK) {
 			if (format) {
-				printf("#\n# Set pbshook %s\n#\n", status->name);
+				printf("#\n# Set pbshook %s\n#\n", show_nonprint_chars(status->name));
 			}
 			else
-				printf("Hook %s\n", status->name);
+				printf("Hook %s\n", show_nonprint_chars(status->name));
 		}
 		else if (otype == MGR_OBJ_RSC) {
 			if ((oname == NULL) || (strcmp(oname, "") == 0)) {
@@ -2172,9 +2172,9 @@ display(int otype, int ptype, char *oname, struct batch_status *status,
 							printf("node %s ", status->name);
 						}
 						else if (otype == MGR_OBJ_SITE_HOOK)
-							printf("hook %s ", status->name);
+							printf("hook %s ", show_nonprint_chars(status->name));
 						else if (otype == MGR_OBJ_PBS_HOOK)
-							printf("pbshook %s ", status->name);
+							printf("pbshook %s ", show_nonprint_chars(status->name));
 
 						if (attr->name != NULL)
 							printf("%s", attr->name);
@@ -2187,7 +2187,7 @@ display(int otype, int ptype, char *oname, struct batch_status *status,
 								}
 							}
 							if((attrdef_l != NULL) && (attrdef_l[i].at_type == ATR_TYPE_STR)) {
-								printf(" = %s\n", c);
+								printf(" = %s\n", show_nonprint_chars(c));
 								break;
 							}
 							else {
@@ -2213,9 +2213,9 @@ display(int otype, int ptype, char *oname, struct batch_status *status,
 										q = '\'';
 									else
 										q = '"';
-									printf("%c%s%c", q, c, q);
+									printf("%c%s%c", q, show_nonprint_chars(c), q);
 								} else
-									printf("%s", c);	/* no quoting */
+									printf("%s", show_nonprint_chars(c));	/* no quoting */
 
 								c = e;
 							}
@@ -2279,7 +2279,7 @@ display(int otype, int ptype, char *oname, struct batch_status *status,
 								c++;
 						}
 
-						printf("%s", c);
+						printf("%s", show_nonprint_chars(c));
 						first = FALSE;
 
 						if (comma) {
@@ -2304,7 +2304,7 @@ display(int otype, int ptype, char *oname, struct batch_status *status,
 					fprintf(stderr, "can't display hooks data - no hook_tempfile!\n");
 				} else if (pbs_manager(mysvr->s_connect, MGR_CMD_EXPORT, otype,
 					status->name, exp_attribs, NULL) == 0) {
-					printf(PRINT_HOOK_IMPORT_CALL, status->name);
+					printf(PRINT_HOOK_IMPORT_CALL, show_nonprint_chars(status->name));
 					if (dump_file(hook_tempfile, NULL, HOOKSTR_BASE64,
 						dump_msg, sizeof(dump_msg)) != 0) {
 						fprintf(stderr, "%s\n", dump_msg);
@@ -2316,7 +2316,7 @@ display(int otype, int ptype, char *oname, struct batch_status *status,
 					fprintf(stderr, "can't display hooks data - no hook_tempfile!\n");
 				} else if (pbs_manager(mysvr->s_connect, MGR_CMD_EXPORT, otype,
 					status->name, exp_attribs_config, NULL) == 0) {
-					printf(PRINT_HOOK_IMPORT_CONFIG, status->name);
+					printf(PRINT_HOOK_IMPORT_CONFIG, show_nonprint_chars(status->name));
 					if (dump_file(hook_tempfile, NULL, HOOKSTR_BASE64,
 						dump_msg, sizeof(dump_msg)) != 0) {
 						fprintf(stderr, "%s\n", dump_msg);
@@ -2329,7 +2329,7 @@ display(int otype, int ptype, char *oname, struct batch_status *status,
 					fprintf(stderr, "can't display pbs hooks data - no hook_tempfile!\n");
 				} else if (pbs_manager(mysvr->s_connect, MGR_CMD_EXPORT, otype,
 					status->name, exp_attribs_config, NULL) == 0) {
-					printf(PRINT_HOOK_IMPORT_CONFIG, status->name);
+					printf(PRINT_HOOK_IMPORT_CONFIG, show_nonprint_chars(status->name));
 					if (dump_file(hook_tempfile, NULL, HOOKSTR_BASE64,
 						dump_msg, sizeof(dump_msg)) != 0) {
 						fprintf(stderr, "%s\n", dump_msg);

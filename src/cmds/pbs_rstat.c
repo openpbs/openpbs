@@ -134,7 +134,7 @@ display_single_reservation(struct batch_status *resv, int how)
 		printf("Resv ID: %s\n", resv->name);
 		while (attrp != NULL) {
 			if (attrp->resource != NULL)
-				printf("%s.%s = %s\n", attrp->name, attrp->resource, attrp->value);
+				printf("%s.%s = %s\n", attrp->name, attrp->resource, show_nonprint_chars(attrp->value));
 			else {
 				if (strcmp(attrp->name, ATTR_resv_state) == 0) {
 					str = convert_resv_state(attrp->value, 1);  /* long state str */
@@ -164,7 +164,7 @@ display_single_reservation(struct batch_status *resv, int how)
 				} else {
 					str = attrp->value;
 				}
-				printf("%s = %s\n", attrp->name, str);
+				printf("%s = %s\n", attrp->name, show_nonprint_chars(str));
 			}
 			attrp = attrp->next;
 		}

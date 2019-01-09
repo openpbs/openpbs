@@ -463,9 +463,9 @@ prt_attr(char *name, char *resource, char *value, int one_line) {
 		if (buf == NULL)
 			exit_qstat("out of memory");
 		if (resource)
-			printf("%s.%s=%s", name, resource, buf);
+			printf("%s.%s=%s", name, resource, show_nonprint_chars(buf));
 		else
-			printf("%s=%s", name, buf);
+			printf("%s=%s", name, show_nonprint_chars(buf));
 		free(buf);
 		break;
 
@@ -477,7 +477,7 @@ prt_attr(char *name, char *resource, char *value, int one_line) {
 			if (resource)
 				printf("    %s.%s = %s", name, resource, buf);
 			else
-				printf("    %s = %s", name, buf);
+				printf("    %s = %s", name, show_nonprint_chars(buf));
 			free(buf);
 		} else {
 			start = strlen(name) + 7; /* 4 spaces + ' = ' is 7 */
@@ -492,7 +492,7 @@ prt_attr(char *name, char *resource, char *value, int one_line) {
 			buf = strtok(temp, comma);
 			while (buf) {
 				if ((len = strlen(buf)) + start < CHAR_LINE_LIMIT) {
-					printf("%s", buf);
+					printf("%s", show_nonprint_chars(buf));
 					start += len;
 				} else {
 					if (!first) {
@@ -500,7 +500,20 @@ prt_attr(char *name, char *resource, char *value, int one_line) {
 						start = 9; /* tab + 1 */
 					}
 					while (*buf) {
-						putchar(*buf++);
+						char *sbuf;
+						int  ch;
+						char char_buf[2];
+
+						ch = *buf++;
+						sprintf(char_buf, "%c", ch);
+						sbuf = show_nonprint_chars(char_buf);
+						if (sbuf != NULL) {
+							int c;
+							for (c=0; c < strlen(sbuf); c++)
+								putchar(sbuf[c]);
+						} else {
+							putchar(ch);
+						}
 						if (++start > CHAR_LINE_LIMIT) {
 							start = 8; /* tab */
 							printf("\n\t");
@@ -569,9 +582,9 @@ prt_nodes(char *nodes, int no_newl)
 				/* flush line and start next */
 				linebuf[i] = '\0';
 				if (no_newl)
-					printf("%s", linebuf);
+					printf("%s", show_nonprint_chars(linebuf));
 				else
-					printf("   %s\n", linebuf);
+					printf("   %s\n", show_nonprint_chars(linebuf));
 				i = 0;
 				while (nodes < stp)
 					linebuf[i++] = *nodes++;
@@ -588,9 +601,9 @@ prt_nodes(char *nodes, int no_newl)
 	if (i != 0) {
 		linebuf[i] = '\0';
 		if (no_newl)
-			printf("%s\n", linebuf);
+			printf("%s\n", show_nonprint_chars(linebuf));
 		else
-			printf("   %s\n", linebuf);
+			printf("   %s\n", show_nonprint_chars(linebuf));
 	} else if (no_newl)
 		printf("\n");
 }
@@ -721,7 +734,7 @@ altdsp_statjob(struct batch_status *pstat, struct batch_status *prtheader, int a
 		printf("\n%s: ", prtheader->name);
 		pc = get_attr(prtheader->attribs, ATTR_comment, NULL);
 		if (pc)
-			printf("%s", pc);
+			printf("%s", show_nonprint_chars(pc));
 		if (wide) {
 
 			/* Used for for displaying spaces and dashes dynamically for wide formatted output */
@@ -954,7 +967,7 @@ altdsp_statjob(struct batch_status *pstat, struct batch_status *prtheader, int a
 		if (alt_opt & ALT_DISPLAY_s) {
 			/* print (scheduler) comment */
 			if (*comment != '\0')
-				printf("   %s\n", comment);
+				printf("   %s\n", show_nonprint_chars(comment));
 		}
 
 		pstat = pstat->next;
@@ -1211,7 +1224,7 @@ display_statjob(struct batch_status *status, struct batch_status *prtheader, int
 	if (! full && prtheader && output_format == FORMAT_DEFAULT) {
 		c = get_attr(prtheader->attribs, ATTR_comment, NULL);
 		if (c)
-			printf("%s\n", c);
+			printf("%s\n", show_nonprint_chars(c));
 		if (how_opt & ALT_DISPLAY_p) {
 				if (how_opt & ALT_DISPLAY_INCR_WIDTH) {
 					printf("Job id                 Name             User               %% done  S Queue\n");

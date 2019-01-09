@@ -1413,3 +1413,62 @@ get_mem_info(void) {
 }
 #endif /* malloc_info */
 #endif /* WIN32 */
+
+/**
+ * @brief
+ *	Return a copy of 'str' where non-printing characters
+ *	(except the ones listed in the local variable 'special_char') are
+ *	shown in ^<translated_char> notation.
+ *
+ * @param[in]	str - input string
+ *
+ * @return char *
+ *
+ * @note
+ * 	Do not free the return value - it's in a fixed memory area that
+ *	will get overwritten the next time the function is called.
+ *      So best to use the result immediately or strdup() it.
+ *
+ *	This will return the original (non-translated) 'str' value if 
+ *	an error was encounted, like a realloc() error.
+ */
+char *
+show_nonprint_chars(char *str)
+{
+#ifndef WIN32
+	static char	*locbuf = NULL;
+	static size_t	locbuf_size = 0;
+	char		*buf, *buf2;
+	size_t		nsize;
+	int		ch;
+	char		special_char[] = "\n\t";
+
+	if ((str == NULL) || (str[0] == '\0'))
+		return str;
+
+	nsize = (strlen(str) * 2) + 1;
+	if (nsize > locbuf_size) {
+		char *tmpbuf;
+		if ((tmpbuf = realloc(locbuf, nsize)) == NULL)
+			return str;
+		locbuf = tmpbuf;
+		locbuf_size = nsize;
+	}
+
+	locbuf[0] = '\0';
+	buf = str;
+	buf2 = locbuf;
+	while ((ch = *buf++) != '\0') {
+		if ((ch < 32) && !char_in_set(ch, special_char)) {
+			*buf2++ = '^';
+			*buf2++ = ch + 64;
+		} else {
+			*buf2++ = ch;
+		}
+	}
+	*buf2 = '\0';
+	return (locbuf);
+#else
+	return (str);
+#endif
+}

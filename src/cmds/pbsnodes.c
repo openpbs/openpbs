@@ -551,7 +551,7 @@ prt_node_summary(char *def_server, struct batch_status *bstatus, int job_summary
 				} else {
 					printf("vnode=%s%sstate=%s%sOS=%s%shardware=%s%shost=%s%squeue=%s%smem=%s%sncpus=%s%snmics=%s%sngpus=%s%scomment=%s\n",
 						name, dsv_delim, state, dsv_delim, os, dsv_delim, hardware, dsv_delim, host, dsv_delim, queue,
-						dsv_delim, mem_info, dsv_delim, ncpus_info, dsv_delim, nmic_info, dsv_delim, ngpus_info, dsv_delim, comment);
+						dsv_delim, mem_info, dsv_delim, ncpus_info, dsv_delim, nmic_info, dsv_delim, ngpus_info, dsv_delim, show_nonprint_chars(comment));
 				}
 				break;
 
@@ -632,12 +632,12 @@ prt_node_summary(char *def_server, struct batch_status *bstatus, int job_summary
 					if (long_summary)
 						printf("%-*s %-*s %-*s %-*s %-*s %-*s %*s %*s %*s %*s %s\n", NODE_NAME, name, NODE_STATE, state,
 							NODE_OS, os, NODE_HARDW, hardware, NODE_HOST, host, QUEUE, queue, MEM, mem_info, NCPUS, ncpus_info,
-							NMIC, nmic_info, NGPUS, ngpus_info, comment);
+							NMIC, nmic_info, NGPUS, ngpus_info, show_nonprint_chars(comment));
 					else
 						printf("%-*.*s %-*.*s %-*.*s %-*.*s %-*.*s %-*.*s %*.*s %*.*s %*.*s %*.*s %s\n", NODE_NAME, NODE_NAME, name,
 							NODE_STATE, NODE_STATE, state, NODE_OS, NODE_OS, os, NODE_HARDW, NODE_HARDW, hardware,
 							NODE_HOST, NODE_HOST, host, QUEUE, QUEUE, queue, MEM, MEM, mem_info, NCPUS, NCPUS, ncpus_info,
-							NMIC, NMIC, nmic_info, NGPUS, NGPUS, ngpus_info, comment);
+							NMIC, NMIC, nmic_info, NGPUS, NGPUS, ngpus_info, show_nonprint_chars(comment));
 				}
 		}
 	}
@@ -673,20 +673,31 @@ prt_node(struct batch_status *bstat)
 			printf("Name=%s%s", bstat->name, dsv_delim);
 			for (pattr = bstat->attribs; pattr; pattr = pattr->next) {
 				if (pattr->resource)
-					printf("%s.%s=%s", pattr->name, pattr->resource, pattr->value);
+					printf("%s.%s=%s", pattr->name, pattr->resource, show_nonprint_chars(pattr->value));
 				else if (strcmp(pattr->name, "jobs") == 0) {
 					printf("%s=", pattr->name);
 					pc = pattr->value;
 					while (*pc) {
+						char *sbuf;
+						char char_buf[2];
 						if (*pc == ' ') {
 							pc++;
 							continue;
 						}
-						printf("%c", *pc);
+
+						sprintf(char_buf, "%c", *pc);
+						sbuf = show_nonprint_chars(char_buf);
+						if (sbuf != NULL) {
+							int  c;
+							for (c=0; c < strlen(sbuf); c++)
+								printf("%c", sbuf[c]);
+						} else {
+							printf("%c", *pc);
+						}
 						pc++;
 					}
 				} else
-					printf("%s=%s", pattr->name, pattr->value);
+					printf("%s=%s", pattr->name, show_nonprint_chars(pattr->value));
 				if (pattr->next)
 					printf("%s", dsv_delim);
 			}
@@ -703,7 +714,7 @@ prt_node(struct batch_status *bstat)
 					epoch = (time_t) atol(pattr->value);
 					printf(" = %s", ctime(&epoch));
 				} else				
-					printf(" = %s\n", pattr->value);
+					printf(" = %s\n", show_nonprint_chars(pattr->value));
 			}
 			printf("\n");
 			break;
@@ -1234,7 +1245,7 @@ main(int argc, char *argv[])
 			for (bstat = bstat_head; bstat; bstat = bstat->next) {
 				if (is_down(bstat) || is_offline(bstat)) {
 					printf("%-20s %s %s\n", bstat->name,
-						get_nstate(bstat), get_comment(bstat));
+						get_nstate(bstat), show_nonprint_chars(get_comment(bstat)));
 				}
 			}
 			break;
