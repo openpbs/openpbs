@@ -58,6 +58,9 @@ class TestNodeBucketPerf(TestPerformance):
                                   attrfunc=self.cust_attr_func, expect=False)
         self.server.expect(NODE, {'state=free': (GE, 10010)})
         self.scheduler.add_resource('color')
+        a = {'PBS_LOG_HIGHRES_TIMESTAMP': 1}
+        self.du.set_pbs_config(confs=a, append=True)
+        self.scheduler.restart()
 
     def cust_attr_func(self, name, totalnodes, numnode, attribs):
         """
@@ -66,69 +69,98 @@ class TestNodeBucketPerf(TestPerformance):
         a = {'resources_available.color': self.colors[numnode % 7]}
         return dict(attribs.items() + a.items())
 
-    @timeout(10000)
-    def test_node_bucket_perf(self):
+    def submit_jobs(self, attribs, num):
         """
-        Submit a large number of jobs which use node buckets.  Run a cycle and
-        compare that to a cycle that doesn't use node buckets.  Jobs require
-        place=scatter:excl to use node buckets.
+        Submit num jobs each in their individual equiv class
         """
-        num_jobs = 1000
+        wt = 100
+        jids = []
+
+        self.server.manager(MGR_CMD_SET, MGR_OBJ_SERVER,
+                            {'scheduling': 'False'}, expect=True)
+
+        for i in range(num):
+            attribs['Resource_List.walltime'] = wt + i
+            J = Job(TEST_USER, attrs=attribs)
+            jid = self.server.submit(J)
+            jids.append(jid)
+
+        return jids
+
+    def run_cycle(self):
+        """
+        Run a cycle and return the length of the cycle
+        """
+        self.server.expect(SERVER, {'server_state': 'Scheduling'}, op=NE)
+        self.server.manager(MGR_CMD_SET, MGR_OBJ_SERVER,
+                            {'scheduling': 'True'})
+        self.server.expect(SERVER, {'server_state': 'Scheduling'})
+        self.server.manager(MGR_CMD_SET, MGR_OBJ_SERVER,
+                            {'scheduling': 'False'}, expect=True)
+
+        # 600 * 2sec = 20m which is the max cycle length
+        self.server.expect(SERVER, {'server_state': 'Scheduling'}, op=NE,
+                           max_attempts=600, interval=2)
+        c = self.scheduler.cycles(lastN=1)[0]
+        return c.end - c.start
+
+    def compare_normal_path_to_buckets(self, place, num_jobs):
+        """
+        Submit num_jobs jobs and run two cycles.  First one with the normal
+        node search code path and the second with buckets.  Print the
+        time difference between the two cycles.
+        """
+        # Submit one job to eat up the resources.  We want to compare the
+        # time it takes for the scheduler to attempt and fail to run the jobs
         a = {'Resource_List.select': '1429:ncpus=1:color=yellow',
-             'Resource_List.place': 'scatter'}
+             'Resource_List.place': place,
+             'Resource_List.walltime': '1:00:00'}
         Jyellow = Job(TEST_USER, attrs=a)
+        Jyellow.set_sleep_time(3600)
         jid_yellow = self.server.submit(Jyellow)
         self.server.expect(JOB, {'job_state': 'R'}, id=jid_yellow)
 
         self.server.manager(MGR_CMD_SET, MGR_OBJ_SERVER,
-                            {'scheduling': 'False'})
+                            {'scheduling': 'False'}, expect=True)
 
-        jids = []
+        # Shared jobs use standard code path
         a = {'Resource_List.select':
              '1429:ncpus=1:color=blue+1429:ncpus=1:color=yellow',
-             "Resource_List.place": 'scatter'}
-        J = Job(TEST_USER, attrs=a)
-        a = {'Resource_List.select':
-             '1429:ncpus=1:color=blue+1429:ncpus=1:color=yellow',
-             "Resource_List.place": 'scatter',
-             "Resource_List.walltime": 100}
-        for n in range(num_jobs):
-            a["Resource_List.walltime"] = a["Resource_List.walltime"] + n
-            J = Job(TEST_USER, attrs=a)
-            jid = self.server.submit(J)
-            jids += [jid]
+             "Resource_List.place": place}
+        jids = self.submit_jobs(a, num_jobs)
 
-        t = int(time.time())
-        # run only one cycle
-        self.server.manager(MGR_CMD_SET, MGR_OBJ_SERVER,
-                            {'scheduling': 'True'})
-        self.server.manager(MGR_CMD_SET, MGR_OBJ_SERVER,
-                            {'scheduling': 'False'})
+        cycle1_time = self.run_cycle()
 
-        # wait for cycle to finish
-        self.scheduler.log_match("Leaving Scheduling Cycle", starttime=t,
-                                 max_attempts=120, interval=5)
-        c = self.scheduler.cycles(lastN=1)[0]
-        cycle1_time = c.end - c.start
-
-        a = {'Resource_List.place': 'scatter:excl'}
+        # Excl jobs use bucket codepath
+        a = {'Resource_List.place': place + ':excl'}
         for jid in jids:
             self.server.alterjob(jid, a)
 
-        t = int(time.time())
+        cycle2_time = self.run_cycle()
 
-        # run only one cycle
-        self.server.manager(MGR_CMD_SET, MGR_OBJ_SERVER,
-                            {'scheduling': 'True'})
-        self.server.manager(MGR_CMD_SET, MGR_OBJ_SERVER,
-                            {'scheduling': 'False'})
+        log_msg = 'Cycle 1: %.2f Cycle 2: %.2f Cycle time difference: %.2f'
+        self.logger.info(log_msg % (cycle1_time, cycle2_time,
+                                    cycle1_time - cycle2_time))
+        self.assertGreater(cycle1_time, cycle2_time)
 
-        # wait for cycle to finish
-        self.scheduler.log_match("Leaving Scheduling Cycle", starttime=t,
-                                 max_attempts=120, interval=5)
+    @timeout(10000)
+    def test_node_bucket_perf_scatter(self):
+        """
+        Submit a large number of jobs which use node buckets.  Run a cycle and
+        compare that to a cycle that doesn't use node buckets.  Jobs require
+        place=excl to use node buckets.
+        This test uses place=scatter.  Scatter placement is quicker than free
+        """
+        num_jobs = 3000
+        self.compare_normal_path_to_buckets('scatter', num_jobs)
 
-        c = self.scheduler.cycles(lastN=1)[0]
-        cycle2_time = c.end - c.start
-        self.logger.info('Cycle 1: %d Cycle 2: %d Cycle time difference: %d' %
-                         (cycle1_time, cycle2_time, cycle1_time - cycle2_time))
-        self.assertTrue(cycle1_time > cycle2_time)
+    @timeout(10000)
+    def test_node_bucket_perf_free(self):
+        """
+        Submit a large number of jobs which use node buckets.  Run a cycle and
+        compare that to a cycle that doesn't use node buckets.  Jobs require
+        place=excl to use node buckets.
+        This test uses free placement.  Free placement is slower than scatter
+        """
+        num_jobs = 3000
+        self.compare_normal_path_to_buckets('free', num_jobs)

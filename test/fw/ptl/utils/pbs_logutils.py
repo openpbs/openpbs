@@ -103,10 +103,9 @@ Analyze ``server``, ``scheduler``, ``MoM``, and ``accounting`` logs.
     utilization
 """
 
-
-tm_re = "(?P<datetime>\d\d/\d\d/\d{4,4}[\s]\d\d:\d\d:\d\d)"
-job_re = ";(?P<jobid>[\d\[\d*\]]+)\."
-fail_re = ";(?P<jobid>[\d\[\[]+)\."
+tm_re = r'(?P<datetime>\d\d/\d\d/\d{4}\s\d\d:\d\d:\d\d(\.\d{6})?)'
+job_re = r';(?P<jobid>[\d\[\d*\]]+)\.'
+fail_re = r';(?P<jobid>[\d\[\[]+)\.'
 
 # Server metrics
 NUR = 'node_up_rate'
@@ -210,6 +209,8 @@ PARSER_OK_STOP = 1
 PARSER_ERROR_CONTINUE = 2
 PARSER_ERROR_STOP = 3
 
+epoch_datetime = datetime.datetime.fromtimestamp(0)
+
 
 class PBSLogUtils(object):
 
@@ -221,28 +222,43 @@ class PBSLogUtils(object):
     du = DshUtils()
 
     @classmethod
-    def convert_date_time(cls, datetime=None, fmt="%m/%d/%Y %H:%M:%S"):
+    def convert_date_time(cls, dt=None, fmt=None):
         """
         convert a date time string of the form given by fmt into
-        number of seconds since epoch
+        number of seconds since epoch (with possible microseconds)
 
-        :param datetime: the datetime string to convert
-        :type datetime: str or None
+        :param dt: the datetime string to convert
+        :type dt: str or None
         :param fmt: Format to which datetime is to be converted
         :type fmt: str
         :returns: None if conversion fails
         """
-        if datetime is None:
+        if dt is None:
             return None
 
+        micro = False
+        if fmt is None:
+            if '.' in dt:
+                micro = True
+                fmt = "%m/%d/%Y %H:%M:%S.%f"
+            else:
+                fmt = "%m/%d/%Y %H:%M:%S"
+
         try:
-            t = time.strptime(datetime, fmt)
+            # Get datetime object
+            t = datetime.datetime.strptime(dt, fmt)
+            # Get timedelta object of epoch time
+            t -= epoch_datetime
+            # get epoch time from timedelta object
+            tm = t.total_seconds()
         except:
             cls.logger.debug("could not convert date time: " + str(datetime))
             return None
 
-        tm = int(time.mktime(t))
-        return tm
+        if micro is True:
+            return tm
+        else:
+            return int(tm)
 
     def get_num_lines(self, log, hostname=None, sudo=False):
         """
@@ -1137,6 +1153,7 @@ class PBSSchedulerLog(PBSLogAnalyzer):
         dedicated array
         """
         m = self.startcycle_tag.match(line)
+
         if m:
             tm = self.logutils.convert_date_time(m.group('datetime'))
             # if cycle was interrupted assume previous cycle ended now
