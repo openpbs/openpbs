@@ -76,18 +76,13 @@
 
 '''
 create hook NHC
-set hook NHC event = execjob_begin
+set hook NHC event = 'execjob_begin,execjob_prologue'
 set hook NHC fail_action = offline_vnodes
 import hook NHC application/x-python default NodeHealthCheck.py
 import hook NHC application/x-config default NodeHealthCheck.json
 
 One can also optionally add exechost_periodic to NHC event
 '''
-
-
-# Define the version
-__version__ = '0.0.2'
-
 
 import sys
 import os
