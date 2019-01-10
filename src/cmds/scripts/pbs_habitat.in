@@ -698,7 +698,7 @@ if [ "${PBS_START_SERVER:-0}" != 0 ] ; then
 		echo "*** Setting default queue and resource limits."
 		echo "***"
 
-		${PBS_EXEC}/sbin/pbs_server -t create -a 0 > /dev/null
+		${PBS_EXEC}/sbin/pbs_server -t create > /dev/null
 		ret=$?
 		if [ $ret -ne 0 ]; then
 			echo "*** Error starting pbs server"
@@ -716,12 +716,6 @@ if [ "${PBS_START_SERVER:-0}" != 0 ] ; then
 			set queue workq enabled = True
 			set queue workq started = True
 			set server default_queue = workq
-			set server log_events = 511
-			set server mail_from = adm
-			set server query_other_jobs = True
-			set server scheduler_iteration = 600
-			set server resources_default.ncpus = 1
-			set server scheduling = True
 		EOF
 		if [ -f ${PBS_HOME}/server_priv/$PBS_licensing_loc_file ]; then
 			read ans < ${PBS_HOME}/server_priv/$PBS_licensing_loc_file

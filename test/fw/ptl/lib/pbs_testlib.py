@@ -4568,21 +4568,10 @@ class Server(PBSService):
     logger = logging.getLogger(__name__)
 
     dflt_attributes = {
-        ATTR_scheduling: "True",
         ATTR_dfltque: "workq",
-        ATTR_logevents: "511",
-        ATTR_mailfrom: "adm",
-        ATTR_queryother: "True",
-        ATTR_rescdflt + ".ncpus": "1",
-        ATTR_DefaultChunk + ".ncpus": "1",
-        ATTR_schedit: "600",
-        ATTR_ResvEnable: "True",
         ATTR_nodefailrq: "310",
-        ATTR_maxarraysize: "10000",
-        ATTR_license_linger: "3600",
-        ATTR_EligibleTimeEnable: "False",
-        ATTR_max_concurrent_prov: "5",
         ATTR_FlatUID: 'True',
+        ATTR_DefaultChunk + ".ncpus": "1",
     }
 
     dflt_sched_name = 'default'

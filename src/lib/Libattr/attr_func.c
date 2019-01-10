@@ -343,7 +343,7 @@ attrlist_create(char  *aname, char  *rname, int vsize)
 	else
 		rsz = strlen(rname) + 1;
 
-	pal = attrlist_alloc(asz, rsz, vsize);
+	pal = attrlist_alloc(asz, rsz, vsize + 1);
 	if (pal != NULL) {
 		strcpy(pal->al_name, aname);    /* copy name right after struct */
 		if (rsz)

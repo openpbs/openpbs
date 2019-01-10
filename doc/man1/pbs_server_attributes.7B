@@ -1317,7 +1317,7 @@ To unset
 \ \ \ Qmgr> unset server pbs_license_linger_time
 .br
 Default: 
-.I 3600 seconds
+.I 31536000 seconds (1 year)
 
 .IP pbs_license_max 8
 Maximum number of licenses to be checked out at any time, i.e maximum
@@ -1731,7 +1731,7 @@ where
 is any built-in or custom resource
 .RE
 .IP 
-Default: No limit
+Default: resources_default.ncpus=1
 
 .IP resources_max 8 
 The maximum amount of each resource that can be requested by any
@@ -1918,7 +1918,7 @@ Python type:
 .I bool
 .br
 Default: 
-.I False
+.I True
 if never set via 
 .I pbs_server 
 command
