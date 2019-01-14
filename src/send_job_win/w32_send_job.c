@@ -312,7 +312,8 @@ main(int argc, char *argv[])
 
 	winsock_init();
 
-	connection_init();
+	(void)init_network(0);
+	(void)init_network_add(-1, NULL);
 
 	while (fgets(buf, sizeof(buf), stdin) != NULL) {
 		buf[strlen(buf)-1] = '\0';	/* gets rid of newline */

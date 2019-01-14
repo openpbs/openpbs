@@ -140,9 +140,6 @@ static const size_t extndsize = sizeof(union jobextend);
 int
 job_save_fs(job *pjob, int updatetype)
 {
-#ifndef	PBS_MOM
-	int	isarray = 0;
-#endif	/* PBS_MOM */
 	int	fds;
 	int	i;
 	char	*filename;
@@ -256,7 +253,7 @@ job_save_fs(job *pjob, int updatetype)
 				extndsize) != 0) {
 				redo++;
 #ifndef PBS_MOM
-			} else if (isarray &&
+			} else if ((pjob->ji_qs.ji_svrflags & JOB_SVFLG_ArrayJob) &&
 				(save_struct((char *)pjob->ji_ajtrk,
 				pjob->ji_ajtrk->tkm_size) != 0)) {
 				redo++;
