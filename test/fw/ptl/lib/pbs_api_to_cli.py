@@ -102,6 +102,7 @@ api_to_cli = {
     ATTR_jobdir: 'jobdir',
     ATTR_euser: 'euser',
     ATTR_egroup: 'egroup',
+    ATTR_account: 'A',
     ATTR_project: 'P',
     ATTR_hashname: 'hashname',
     ATTR_hopcount: 'hop_count',

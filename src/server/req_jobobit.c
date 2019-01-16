@@ -1528,13 +1528,19 @@ setrerun(job *pjob)
  * @brief
  *		Concatenate the resources used to the buffer provided.
  *
- * @param[in,out]buffer - pointer to buffer to add info to.  May grow/change due to pbs_strcat() (realloc)
- * @param[in,out]buffer_size - size of buffer - may increase through pbs_strcat()
+ * @param[in,out]	buffer - pointer to buffer to add info to.  May grow/change due to pbs_strcat() (realloc)
+ * @param[in,out]	buffer_size - size of buffer - may increase through pbs_strcat()
+ * @param[in]		patlist - a pointer to the attribute list
  * @param[in]		delim - a pointer to the delimiter to use
- * @param[in]		pjob - job structure for additional info
+ * @param[in]		for_acctbuf - flag to denote if we are updating the accounting logs.
+ * @param[in]		pjob - job structure for additional info.
+ * 
+ * @retval 0		success
+ * @retval 1		error
+ * 
  */
 int
-concat_rescused_to_buffer(char **buffer, int *buffer_size, svrattrl *patlist, char *delim, job *pjob)
+concat_rescused_to_buffer(char **buffer, int *buffer_size, svrattrl *patlist, char *delim, job *pjob, int for_acctbuf)
 {
 	int val_len;
 
@@ -1594,10 +1600,23 @@ concat_rescused_to_buffer(char **buffer, int *buffer_size, svrattrl *patlist, ch
 				}
 
 			}
-		} else if(pbs_strcat(buffer, buffer_size,
-						patlist->al_value) == NULL) {
-			log_err(errno, __func__, "Failed to allocate memory.");
-			return 1;
+		} else if ( (pjob != NULL) &&
+                        patlist->al_resc && (strcmp(patlist->al_resc,
+                                                        "select") == 0)) {
+			if (pbs_strcat(buffer, buffer_size, patlist->al_value) == NULL) {
+                                log_err(errno, __func__, "Failed to allocate memory.");
+                                return 1;
+			}
+		} else if (for_acctbuf) {
+			if (cpy_quote_value(buffer, buffer_size, patlist->al_value, "") == -1) {
+				log_err(errno, __func__, "Failed to allocate memory.");
+				return 1;
+			}
+		} else {
+		   	if (pbs_strcat(buffer, buffer_size, patlist->al_value) == NULL) {
+				log_err(errno, __func__, "Failed to allocate memory.");
+				return 1;
+			}
 		}
 	}
 	return 0;
@@ -1941,11 +1960,11 @@ job_obit(struct resc_used_update *pruu, int stream)
 			 * Copy all but invisible resources into the mail buffer.
 			 * The ATR_DFLAG_USRD flag will not be set on invisible resources.
 			 */
-			if (concat_rescused_to_buffer(&acctbuf, &acctbuf_size, patlist, " ", pjob) != 0)
+			if (concat_rescused_to_buffer(&acctbuf, &acctbuf_size, patlist, " ", pjob, 1) != 0)
 				break;
 
 			if (tmpdef->rs_flags & ATR_DFLAG_USRD) {
-				if (concat_rescused_to_buffer(&mailbuf, &mailbuf_size, patlist, "\n", pjob) != 0)
+				if (concat_rescused_to_buffer(&mailbuf, &mailbuf_size, patlist, "\n", pjob, 0) != 0)
 					break;
 			}
 		}

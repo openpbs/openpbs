@@ -79,6 +79,7 @@ extern "C" {
 #define PBS_ACCT_PROV_START	(int)'P'	/* Provisioning start record */
 #define PBS_ACCT_PROV_END	(int)'p'	/* Provisioning end record */
 
+extern int cpy_quote_value(char **buf, int *buf_size, char *value, char *fmt);
 extern int  acct_open(char *filename);
 extern void acct_close(void);
 extern void account_record(int acctype, job *pjob, char *text);
@@ -96,7 +97,7 @@ extern void account_jobend(job *pjob, char * used, int type);
 
 extern void set_job_ProvAcctRcd(job *pjob, long time_se, int type);
 
-extern int concat_rescused_to_buffer(char **buffer, int *buffer_size, svrattrl *patlist, char *delim, job *pjob);
+extern int concat_rescused_to_buffer(char **buffer, int *buffer_size, svrattrl *patlist, char *delim, job *pjob, int for_acctbuf);
 
 #define PROVISIONING_STARTED 1
 #define PROVISIONING_SUCCESS 2

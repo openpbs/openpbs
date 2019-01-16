@@ -124,6 +124,7 @@ int sort_by_message(const void *v1, const void *v2);
 /* Macros */
 #define NO_HIGH_RES_TIMESTAMP -1
 
+void remove_quotes_and_escapes(char *buf);
 
 /* used by getopt(3) */
 extern char *optarg;

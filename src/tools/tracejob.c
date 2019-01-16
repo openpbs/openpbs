@@ -333,8 +333,10 @@ main(int argc, char *argv[])
 		if (ll_cur_amm != 0) {
 			printf("\nJob: %s\n\n", log_lines[0].name);
 			for (i = 0; i < ll_cur_amm; i++) {
-				if (log_lines[i].log_file == 'A')
+				if (log_lines[i].log_file == 'A') {
 					event_type = 0;
+					remove_quotes_and_escapes(log_lines[i].msg);
+				}
 				else
 					event_type = strtol(log_lines[i].event, &endp, 16);
 				if (!(log_filter & event_type) && !(log_lines[i].no_print)) {
@@ -905,3 +907,38 @@ filter_excess(int threshold)
 	}
 }
 
+/**
+ * @brief - This function is used to remove the surrounding quotes and escapes
+ * 	    from a character string.
+ * 
+ * @param[in, out] - buf - the string that possibly has surrounding quotes and
+ * 			   escapes.
+ *
+ * @return - void.
+ *
+ */
+
+void 
+remove_quotes_and_escapes(char *buf)
+{
+	int	j = 0;
+
+	if (buf != NULL) {
+		int	i = 0;
+		int	flag = 0;
+		int len = strlen(buf);
+		for (i = 0; i < len; i++, j++) {
+			if (buf[i] == '\\' || buf[i] == '\"') {
+				if (!flag) {
+					flag = 1;
+					j = i;
+				}
+				i++;
+			}
+			if (flag) {
+				buf[j] = buf[i];
+			}
+		}
+		buf[j] = '\0';
+	}
+}
