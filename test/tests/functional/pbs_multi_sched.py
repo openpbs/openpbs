@@ -647,7 +647,6 @@ class TestMultipleSchedulers(TestFunctional):
         self.assertEquals(n.nshares, sc3_shares)
         self.assertEquals(n.usage, sc3_usage)
 
-    @timeout(240)
     def test_fairshare_usage(self):
         """
         Test the schedulers fairshare usage file and
@@ -700,16 +699,23 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.expect(JOB, {'job_state': 'Q'}, id=sc1_jid2)
         self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'True'},
                             id='sc1')
+        # need to delete the running job because PBS has only 1 ncpu and
+        # our work is also done with the job.
+        # this step will decrease the execution time as well
+        self.server.delete(sc1_jid1, wait=True)
         # pbsuser3 job will run after pbsuser1
         self.server.expect(JOB, {'job_state': 'R'}, id=sc1_jid3)
         self.server.expect(JOB, {'job_state': 'Q'}, id=sc1_jid2)
         self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'True'},
                             id='sc1')
+        # deleting the currently running job
+        self.server.delete(sc1_jid3, wait=True)
         # pbsuser2 job will run in the end
         self.server.expect(JOB, {'job_state': 'R'}, id=sc1_jid2)
         self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'True'},
                             id='sc1')
-        self.server.log_match(sc1_jid2 + ";Exit_status")
+        # deleting the currently running job
+        self.server.delete(sc1_jid2, wait=True)
         # query fairshare and check usage
         sc1_fs_user1 = self.scheds['sc1'].query_fairshare(name=str(TEST_USER1))
         self.assertEquals(sc1_fs_user1.usage, 101)
@@ -738,16 +744,21 @@ class TestMultipleSchedulers(TestFunctional):
         self.server.expect(JOB, {'job_state': 'Q'}, id=sc1_jid2)
         self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'True'},
                             id='sc1')
+        # deleting the currently running job
+        self.server.delete(sc1_jid4, wait=True)
         # pbsuser1 job will run after pbsuser4
         self.server.expect(JOB, {'job_state': 'R'}, id=sc1_jid1)
         self.server.expect(JOB, {'job_state': 'Q'}, id=sc1_jid2)
         self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'True'},
                             id='sc1')
+        # deleting the currently running job
+        self.server.delete(sc1_jid1, wait=True)
         # pbsuser2 job will run in the end
         self.server.expect(JOB, {'job_state': 'R'}, id=sc1_jid2)
         self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': 'True'},
                             id='sc1')
-        self.server.log_match(sc1_jid2 + ";Exit_status")
+        # deleting the currently running job
+        self.server.delete(sc1_jid2, wait=True)
         # query fairshare and check usage
         sc1_fs_user1 = self.scheds['sc1'].query_fairshare(name=str(TEST_USER1))
         self.assertEquals(sc1_fs_user1.usage, 201)
