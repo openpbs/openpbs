@@ -62,7 +62,8 @@ class TestMomDynRes(TestFunctional):
                                 id=resc_name[i], expect=True)
 
             fp = self.du.create_temp_file(prefix="mom_resc", suffix=".scr",
-                                          body=script_body[i])
+                                          body=script_body[i],
+                                          asuser=ROOT_USER)
             self.du.chmod(path=fp, mode=0755)
             mom_config_str = "!" + fp
             self.mom.add_config({resc_name[i]: mom_config_str})
@@ -360,7 +361,8 @@ class TestMomDynRes(TestFunctional):
         """
         scr_body = ['echo "10"', 'exit 0']
         home_dir = os.path.expanduser("~")
-        fp = self.du.create_temp_file(body=scr_body, dirname=home_dir)
+        fp = self.du.create_temp_file(body=scr_body, dirname=home_dir,
+                                      asuser=ROOT_USER)
         # Add to filenames for cleanup
         self.filenames.append(fp)
 
@@ -391,7 +393,8 @@ class TestMomDynRes(TestFunctional):
         # Create the dirctory name with a space in it, to make sure PBS parses
         # it correctly.
         dir_temp = self.du.mkdtemp(mode=0766, dir=home_dir, suffix=' tmp')
-        fp = self.du.create_temp_file(body=scr_body, dirname=dir_temp)
+        fp = self.du.create_temp_file(body=scr_body, dirname=dir_temp,
+                                      asuser=ROOT_USER)
         # Add to filenames for cleanup
         self.filenames.append(fp)
         self.filenames.append(dir_temp)
@@ -419,7 +422,8 @@ class TestMomDynRes(TestFunctional):
         self.server.manager(MGR_CMD_CREATE, RSC, attr,
                             id="foo", expect=True)
         # Create a dynamic script with right permissions
-        fp = self.du.create_temp_file(body=scr_body, dirname=home_dir)
+        fp = self.du.create_temp_file(body=scr_body, dirname=home_dir,
+                                      asuser=ROOT_USER)
         # Add to filenames for cleanup
         self.filenames.append(fp)
 
@@ -443,7 +447,7 @@ class TestMomDynRes(TestFunctional):
 
         # Create dynamic resource script in tmp directory and check
         # file permissions
-        fp = self.du.create_temp_file(body=scr_body)
+        fp = self.du.create_temp_file(body=scr_body, asuser=ROOT_USER)
         # Add to filenames for cleanup
         self.filenames.append(fp)
 

@@ -111,7 +111,7 @@ class TestServerDynRes(TestFunctional):
         restype = ["long"]
         script_body = "echo abc"
         fn = self.du.create_temp_file(prefix="PtlPbs_badoutfile",
-                                      body=script_body)
+                                      body=script_body, asuser=ROOT_USER)
 
         self.du.chmod(path=fn, mode=0755, sudo=True)
         resval = ['"' + resname[0] + ' ' + '!' + fn + '"']
@@ -215,7 +215,7 @@ class TestServerDynRes(TestFunctional):
         fpath_out = os.path.join(os.sep, "tmp", "PtlPbs_got_foo")
 
         fn_in = self.du.create_temp_file(prefix="PtlPbs_get_foo",
-                                         body=script_body)
+                                         body=script_body, asuser=ROOT_USER)
         self.du.chmod(path=fn_in, mode=0755, sudo=True)
 
         # Add additional white space between resource name and the script
@@ -258,13 +258,16 @@ class TestServerDynRes(TestFunctional):
 
         fn_s = self.du.create_temp_file(prefix="PtlPbs_small",
                                         suffix=".scr",
-                                        body=script_body_s)
+                                        body=script_body_s,
+                                        asuser=ROOT_USER)
         fn_m = self.du.create_temp_file(prefix="PtlPbs_medium",
                                         suffix=".scr",
-                                        body=script_body_m)
+                                        body=script_body_m,
+                                        asuser=ROOT_USER)
         fn_l = self.du.create_temp_file(prefix="PtlPbs_large",
                                         suffix=".scr",
-                                        body=script_body_l)
+                                        body=script_body_l,
+                                        asuser=ROOT_USER)
 
         self.du.chmod(path=fn_s, mode=0755, sudo=True)
         self.du.chmod(path=fn_m, mode=0755, sudo=True)
@@ -317,7 +320,7 @@ class TestServerDynRes(TestFunctional):
 
         fn = self.du.create_temp_file(prefix="PtlPbs_check",
                                       suffix=".scr",
-                                      body=script_body)
+                                      body=script_body, asuser=ROOT_USER)
         self.du.chmod(path=fn, mode=0755, sudo=True)
 
         resval = ['"' + resname[0] + ' ' + '!' + fn + '"']
@@ -360,7 +363,7 @@ class TestServerDynRes(TestFunctional):
 
         fn = self.du.create_temp_file(prefix="PtlPbs_color",
                                       suffix=".scr",
-                                      body=script_body)
+                                      body=script_body, asuser=ROOT_USER)
         self.du.chmod(path=fn, mode=0755, sudo=True)
 
         resval = ['"' + resname[0] + ' ' + '!' + fn + '"']
@@ -403,7 +406,7 @@ class TestServerDynRes(TestFunctional):
 
         fn = self.du.create_temp_file(prefix="PtlPbs_size",
                                       suffix=".scr",
-                                      body=script_body)
+                                      body=script_body, asuser=ROOT_USER)
         self.du.chmod(path=fn, mode=0755, sudo=True)
 
         resval = ['"' + resname[0] + ' ' + '!' + fn + '"']
@@ -465,7 +468,7 @@ class TestServerDynRes(TestFunctional):
 
         fn = self.du.create_temp_file(prefix="PtlPbs_size",
                                       suffix=".scr",
-                                      body=script_body)
+                                      body=script_body, asuser=ROOT_USER)
         self.du.chmod(path=fn, mode=0755, sudo=True)
 
         resval = ['"' + resname[0] + ' ' + '!' + fn + '"']
@@ -510,7 +513,7 @@ class TestServerDynRes(TestFunctional):
 
         fn = self.du.create_temp_file(prefix="PtlPbs_size",
                                       suffix=".scr",
-                                      body=script_body)
+                                      body=script_body, asuser=ROOT_USER)
         self.du.chmod(path=fn, mode=0755, sudo=True)
 
         resval = ['"' + resname[0] + ' ' + '!' + fn + '"']
@@ -548,7 +551,7 @@ class TestServerDynRes(TestFunctional):
 
         fn = self.du.create_temp_file(prefix="PtlPbs_float",
                                       suffix=".scr",
-                                      body=script_body)
+                                      body=script_body, asuser=ROOT_USER)
         self.du.chmod(path=fn, mode=0755, sudo=True)
 
         resval = ['"' + resname[0] + ' ' + '!' + fn + '"']
@@ -586,7 +589,7 @@ class TestServerDynRes(TestFunctional):
 
         fn = self.du.create_temp_file(prefix="PtlPbs_bool",
                                       suffix=".scr",
-                                      body=script_body)
+                                      body=script_body, asuser=ROOT_USER)
         self.du.chmod(path=fn, mode=0755, sudo=True)
 
         resval = ['"' + resname[0] + ' ' + '!' + fn + '"']
@@ -620,7 +623,8 @@ class TestServerDynRes(TestFunctional):
 
         scr_body = ['echo "10"', 'exit 0']
         home_dir = os.path.expanduser("~")
-        fp = self.du.create_temp_file(body=scr_body, dirname=home_dir)
+        fp = self.du.create_temp_file(body=scr_body, dirname=home_dir,
+                                      asuser=ROOT_USER)
         # Add to filenames for cleanup
         self.filenames.append(fp)
 
@@ -649,7 +653,8 @@ class TestServerDynRes(TestFunctional):
         # Create the dirctory name with a space in it, to make sure PBS parses
         # it correctly.
         dir_temp = self.du.mkdtemp(mode=0766, dir=home_dir, suffix=' tmp')
-        fp = self.du.create_temp_file(body=scr_body, dirname=dir_temp)
+        fp = self.du.create_temp_file(body=scr_body, dirname=dir_temp,
+                                      asuser=ROOT_USER)
         # Add to filenames for cleanup
         self.filenames.append(fp)
         self.filenames.append(dir_temp)
@@ -675,7 +680,8 @@ class TestServerDynRes(TestFunctional):
         self.check_access_log(fp)
 
         # Create a dynamic script with right permissions
-        fp = self.du.create_temp_file(body=scr_body, dirname=home_dir)
+        fp = self.du.create_temp_file(body=scr_body, dirname=home_dir,
+                                      asuser=ROOT_USER)
         # Add to filenames for cleanup
         self.filenames.append(fp)
 
@@ -697,7 +703,7 @@ class TestServerDynRes(TestFunctional):
 
         # Create dynamic resource script in tmp directory and check
         # file permissions
-        fp = self.du.create_temp_file(body=scr_body)
+        fp = self.du.create_temp_file(body=scr_body, asuser=ROOT_USER)
         # Add to filenames for cleanup
         self.filenames.append(fp)
 
