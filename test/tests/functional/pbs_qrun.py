@@ -115,11 +115,12 @@ class TestQrun(TestFunctional):
             else:
                 self.server.submit(j)
         self.logger.info("Submitted 500 jobs with different walltime")
-        now = int(time.time())
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'scheduling': 'True'})
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'scheduling': 'False'}, expect=True)
+        time.sleep(1)
+        now = int(time.time())
         pid = os.fork()
         if pid == 0:
             try:
@@ -128,14 +129,13 @@ class TestQrun(TestFunctional):
             except PbsRunError as e:
                 self.logger.info("Runjob throws error: " + e.msg[0])
         else:
-            out = self.scheduler.log_match(
-                "Starting Scheduling Cycle",
-                allmatch=True, interval=5, starttime=now, max_attempts=10)
-            if len(out) < 2:
+            try:
+                self.scheduler.log_match("Starting Scheduling Cycle",
+                                         interval=5, starttime=now,
+                                         max_attempts=10)
+                self.logger.info("No hangs. Parent process exit")
+            except PtlLogMatchError:
                 os.kill(pid, signal.SIGKILL)
                 os.waitpid(pid, 0)
                 self.logger.info("Runjob hung. Child process exit.")
-                self.assertFalse(True,
-                                 "Qrun didn't start another sched cycle")
-            else:
-                self.logger.info("No hangs. Parent process exit")
+                self.fail("Qrun didn't start another sched cycle")
