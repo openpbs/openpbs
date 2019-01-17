@@ -299,12 +299,13 @@ class TestJobArray(TestFunctional):
         a = {'resources_available.ncpus': 1}
         self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
         j = Job(TEST_USER, attrs={
-            ATTR_J: '1-3', 'Resource_List.select': 'ncpus=1'})
-        j.set_sleep_time(5)
+            ATTR_J: '1-30', 'Resource_List.select': 'ncpus=1'})
+        j.set_sleep_time(8)
         j_id = self.server.submit(j)
         subjid_1 = j.create_subjob_id(j_id, 1)
         subjid_2 = j.create_subjob_id(j_id, 2)
-        self.server.expect(JOB, {'comment': 'Subjob finished'}, subjid_1)
+        self.server.expect(JOB, {'comment': 'Subjob finished'}, subjid_1,
+                           offset=8)
         self.server.delete(subjid_2, extend='force')
         self.server.expect(JOB, {'comment': 'Subjob terminated'}, subjid_2)
         self.kill_and_restart_svr()
