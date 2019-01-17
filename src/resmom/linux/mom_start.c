@@ -89,7 +89,8 @@ static struct release_info {
 } release_info[] = {
 	{"/etc/sgi-release",	"PP",	"ProPack",	" "},
 	{"/etc/redhat-release",	"RHEL",	"release",	" "},
-	{"/etc/SuSE-release",	"SLES",	"VERSION",	"="}
+	{"/etc/SuSE-release",	"SLES",	"VERSION",	"="},
+	{"/etc/os-release",	"SLES",	"VERSION",	"="}
 };
 
 /**
@@ -124,7 +125,9 @@ static struct libcsa_support {
 	{ "---", "SLES10", "x86_64", "libcsa.so.1", "libjob.so"},
 	{ "---", "SLES11", "x86_64", "libcsa.so.1", "libjob.so"},
 	{ "---", "SLES12", "x86_64", "libcsa.so.1", "libjob.so.0"},
-	{ "---", "SLES12", "aarch64", "libcsa.so.1", "libjob.so.0"}
+	{ "---", "SLES12", "aarch64", "libcsa.so.1", "libjob.so.0"},
+	{ "---", "SLES15", "aarch64", "libcsa.so.1", "libjob.so.0"},
+	{ "---", "SLES15", "x86_64", "libcsa.so.1", "libjob.so.0"}
 };
 
 /**
