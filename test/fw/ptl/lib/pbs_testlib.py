@@ -11080,6 +11080,8 @@ class Scheduler(PBSService):
                          configuration settings.
         :type validate: bool
         """
+        super_user_grp = PbsGroup(grp.getgrgid(0).gr_name, gid=0) 
+        super_user = PbsUser('root', uid=0, groups=[super_user_grp])
         if res_file is not None:
             f = open(file)
             script_body = f.readlines()
@@ -11087,7 +11089,7 @@ class Scheduler(PBSService):
         else:
             res_file = self.du.create_temp_file(prefix='PtlPbsSchedConfig',
                                                 body=script_body,
-                                                asuser=ROOT_USER)
+                                                asuser=super_user)
 
         self.server_dyn_res = res_file
         self.logger.info(self.logprefix + "adding server dyn res " + res_file)
