@@ -3879,8 +3879,8 @@ class PBSService(PBSObject):
         the service
         """
 
-    def log_lines(self, logtype, id=None, n=50, tail=True, day=None,
-                  starttime=None, endtime=None):
+    def log_lines(self, logtype, id=None, n=50, tail=True, starttime=None,
+                  endtime=None):
         """
         Return the last ``<n>`` lines of a PBS log file, which
         can be one of ``server``, ``scheduler``, ``MoM``, or
@@ -3908,9 +3908,12 @@ class PBSService(PBSObject):
                   ``Scheduler``, ``MoM or tracejob``
         """
         logval = None
-        lines = None
+        lines = []
         sudo = False
-
+        if endtime is None:
+            endtime = int(time.time())
+        if starttime is None:
+            starttime = self.ctime
         try:
             if logtype == 'tracejob':
                 if id is None:
@@ -3924,47 +3927,60 @@ class PBSService(PBSObject):
                 if n != 'ALL':
                     lines = lines[-n:]
             else:
-                if day is None:
-                    day = time.strftime("%Y%m%d", time.localtime(time.time()))
+                daystart = time.strftime("%Y%m%d", time.localtime(starttime))
+                dayend = time.strftime("%Y%m%d", time.localtime(endtime))
+                firstday_obj = datetime.datetime.strptime(daystart, '%Y%m%d')
+                lastday_obj = datetime.datetime.strptime(dayend, '%Y%m%d')
                 if logtype == 'accounting':
-                    filename = os.path.join(self.pbs_conf['PBS_HOME'],
-                                            'server_priv', 'accounting', day)
+                    logdir = os.path.join(self.pbs_conf['PBS_HOME'],
+                                          'server_priv', 'accounting')
                     sudo = True
+                elif (isinstance(self, Scheduler) and
+                        'sched_log' in self.attributes):
+                    # if setup is multi-sched then get logdir from
+                    # its attributes
+                    logdir = self.attributes['sched_log']
                 else:
-                    if (isinstance(self, Scheduler) and
-                            'sched_log' in self.attributes):
-                        filename = os.path.join(
-                            self.attributes['sched_log'], day)
+                    logval = self._instance_to_logpath(logtype)
+                    if logval is None:
+                        m = 'Invalid logtype'
+                        raise PtlLogMatchError(rv=False, rc=-1, msg=m)
+                    logdir = os.path.join(self.pbs_conf['PBS_HOME'], logval)
+                while firstday_obj <= lastday_obj:
+                    day = firstday_obj.strftime("%Y%m%d")
+                    filename = os.path.join(logdir, day)
+                    if n == 'ALL':
+                        if self._is_local and not sudo:
+                            with open(filename) as f:
+                                day_lines = f.readlines()
+                        else:
+                            day_lines = self.du.cat(
+                                self.hostname, filename, sudo=sudo,
+                                level=logging.DEBUG2)['out']
+                    elif self._is_local and not sudo:
+                        if tail:
+                            futils = FileUtils(filename, FILE_TAIL)
+                        else:
+                            futils = FileUtils(filename)
+                        day_lines = futils.next(n)
                     else:
-                        logval = self._instance_to_logpath(logtype)
-                        if logval:
-                            filename = os.path.join(self.pbs_conf['PBS_HOME'],
-                                                    logval, day)
-                if n == 'ALL':
-                    if self._is_local and not sudo:
-                        lines = open(filename)
-                    else:
-                        lines = self.du.cat(self.hostname, filename, sudo=sudo,
-                                            level=logging.DEBUG2)['out']
-                elif self._is_local and not sudo:
-                    if tail:
-                        futils = FileUtils(filename, FILE_TAIL)
-                    else:
-                        futils = FileUtils(filename)
-                    lines = futils.next(n)
-                else:
-                    if tail:
-                        cmd = ['/usr/bin/tail']
-                    else:
-                        cmd = ['/usr/bin/head']
+                        if tail:
+                            cmd = ['/usr/bin/tail']
+                        else:
+                            cmd = ['/usr/bin/head']
 
-                    pyexec = os.path.join(self.pbs_conf['PBS_EXEC'], 'python',
-                                          'bin', 'python')
-                    osflav = self.du.get_platform(self.hostname, pyexec)
-                    cmd += ['-n']
-                    cmd += [str(n), filename]
-                    lines = self.du.run_cmd(self.hostname, cmd, sudo=sudo,
-                                            level=logging.DEBUG2)['out']
+                        cmd += ['-n']
+                        cmd += [str(n), filename]
+                        day_lines = self.du.run_cmd(
+                            self.hostname, cmd, sudo=sudo,
+                            level=logging.DEBUG2)['out']
+                    lines.extend(day_lines)
+                    firstday_obj = firstday_obj + datetime.timedelta(days=1)
+                    if n == 'ALL':
+                        continue
+                    n = n - len(day_lines)
+                    if n <= 0:
+                        break
         except:
             self.logger.error('error in log_lines ')
             traceback.print_exc()
@@ -3973,7 +3989,7 @@ class PBSService(PBSObject):
         return lines
 
     def _log_match(self, logtype, msg, id=None, n=50, tail=True,
-                   allmatch=False, regexp=False, day=None, max_attempts=None,
+                   allmatch=False, regexp=False, max_attempts=None,
                    interval=None, starttime=None, endtime=None,
                    level=logging.INFO, existence=True):
         """
@@ -4003,8 +4019,6 @@ class PBSService(PBSObject):
         :param regexp: If true msg is a Python regular expression.
                        Defaults to False
         :type regexp: bool
-        :param day: Optional day in YYYMMDD format.
-        :type day: str
         :param max_attempts: the number of attempts to make to find
                              a matching entry
         :type max_attempts: int
@@ -4049,8 +4063,6 @@ class PBSService(PBSObject):
             max_attempts = 60
         if interval is None:
             interval = 0.5
-        if starttime is None and n != 'ALL':
-            starttime = self.ctime
         rv = (None, None)
         attempt = 1
         lines = None
@@ -4065,7 +4077,7 @@ class PBSService(PBSObject):
         while attempt <= max_attempts:
             if attempt > 1:
                 attemptmsg = ' - attempt ' + str(attempt)
-            lines = self.log_lines(logtype, id, n=n, tail=tail, day=day,
+            lines = self.log_lines(logtype, id, n=n, tail=tail,
                                    starttime=starttime, endtime=endtime)
             rv = self.logutils.match_msg(lines, msg, allmatch=allmatch,
                                          regexp=regexp, starttime=starttime,
@@ -4099,9 +4111,9 @@ class PBSService(PBSObject):
         return rv
 
     def accounting_match(self, msg, id=None, n=50, tail=True,
-                         allmatch=False, regexp=False, day=None,
-                         max_attempts=None, interval=None, starttime=None,
-                         endtime=None, level=logging.INFO, existence=True):
+                         allmatch=False, regexp=False, max_attempts=None,
+                         interval=None, starttime=None, endtime=None,
+                         level=logging.INFO, existence=True):
         """
         Match given ``msg`` in given ``n`` lines of accounting log
 
@@ -4124,8 +4136,6 @@ class PBSService(PBSObject):
         :param regexp: If true msg is a Python regular expression.
                        Defaults to False
         :type regexp: bool
-        :param day: Optional day in YYYMMDD format.
-        :type day: str
         :param max_attempts: the number of attempts to make to find
                              a matching entry
         :type max_attempts: int
@@ -4159,13 +4169,13 @@ class PBSService(PBSObject):
                   number, not the absolute line number in the file.
         """
         return self._log_match('accounting', msg, id, n, tail, allmatch,
-                               regexp, day, max_attempts, interval, starttime,
+                               regexp, max_attempts, interval, starttime,
                                endtime, level, existence)
 
     def tracejob_match(self, msg, id=None, n=50, tail=True,
-                       allmatch=False, regexp=False, day=None,
-                       max_attempts=None, interval=None, starttime=None,
-                       endtime=None, level=logging.INFO, existence=True):
+                       allmatch=False, regexp=False, max_attempts=None,
+                       interval=None, starttime=None, endtime=None,
+                       level=logging.INFO, existence=True):
         """
         Match given ``msg`` in given ``n`` lines of tracejob log
 
@@ -4187,8 +4197,6 @@ class PBSService(PBSObject):
         :param regexp: If true msg is a Python regular expression.
                        Defaults to False
         :type regexp: bool
-        :param day: Optional day in YYYMMDD format.
-        :type day: str
         :param max_attempts: the number of attempts to make to find
                              a matching entry
         :type max_attempts: int
@@ -4222,7 +4230,7 @@ class PBSService(PBSObject):
                   number, not the absolute line number in the file.
         """
         return self._log_match('tracejob', msg, id, n, tail, allmatch,
-                               regexp, day, max_attempts, interval, starttime,
+                               regexp, max_attempts, interval, starttime,
                                endtime, level, existence)
 
     def _save_config_file(self, dict_conf, fname):
@@ -4433,7 +4441,7 @@ class Comm(PBSService):
         return self.start()
 
     def log_match(self, msg=None, id=None, n=50, tail=True, allmatch=False,
-                  regexp=False, day=None, max_attempts=None, interval=None,
+                  regexp=False, max_attempts=None, interval=None,
                   starttime=None, endtime=None, level=logging.INFO,
                   existence=True):
         """
@@ -4458,8 +4466,6 @@ class Comm(PBSService):
         :param regexp: If true msg is a Python regular expression.
                        Defaults to False
         :type regexp: bool
-        :param day: Optional day in YYYMMDD format.
-        :type day: str
         :param max_attempts: the number of attempts to make to find
                              a matching entry
         :type max_attempts: int
@@ -4493,7 +4499,7 @@ class Comm(PBSService):
                   number, not the absolute line number in the file.
         """
         return self._log_match(self, msg, id, n, tail, allmatch, regexp,
-                               day, max_attempts, interval, starttime, endtime,
+                               max_attempts, interval, starttime, endtime,
                                level=level, existence=existence)
 
 
@@ -4964,7 +4970,7 @@ class Server(PBSService):
         return self.start()
 
     def log_match(self, msg=None, id=None, n=50, tail=True, allmatch=False,
-                  regexp=False, day=None, max_attempts=None, interval=None,
+                  regexp=False, max_attempts=None, interval=None,
                   starttime=None, endtime=None, level=logging.INFO,
                   existence=True):
         """
@@ -4989,8 +4995,6 @@ class Server(PBSService):
         :param regexp: If true msg is a Python regular expression.
                        Defaults to False
         :type regexp: bool
-        :param day: Optional day in YYYMMDD format.
-        :type day: str
         :param max_attempts: the number of attempts to make to find
                              a matching entry
         :type max_attempts: int
@@ -5024,7 +5028,7 @@ class Server(PBSService):
                   number, not the absolute line number in the file.
         """
         return self._log_match(self, msg, id, n, tail, allmatch, regexp,
-                               day, max_attempts, interval, starttime, endtime,
+                               max_attempts, interval, starttime, endtime,
                                level=level, existence=existence)
 
     def revert_to_defaults(self, reverthooks=True, revertqueues=True,
@@ -10699,7 +10703,7 @@ class Scheduler(PBSService):
         return self.start()
 
     def log_match(self, msg=None, id=None, n=50, tail=True, allmatch=False,
-                  regexp=False, day=None, max_attempts=None, interval=None,
+                  regexp=False, max_attempts=None, interval=None,
                   starttime=None, endtime=None, level=logging.INFO,
                   existence=True):
         """
@@ -10724,8 +10728,6 @@ class Scheduler(PBSService):
         :param regexp: If true msg is a Python regular expression.
                        Defaults to False
         :type regexp: bool
-        :param day: Optional day in YYYMMDD format.
-        :type day: str
         :param max_attempts: the number of attempts to make to find
                              a matching entry
         :type max_attempts: int
@@ -10758,7 +10760,7 @@ class Scheduler(PBSService):
         .. note:: The matching line number is relative to the record
                   number, not the absolute line number in the file.
         """
-        return self._log_match(self, msg, id, n, tail, allmatch, regexp, day,
+        return self._log_match(self, msg, id, n, tail, allmatch, regexp,
                                max_attempts, interval, starttime, endtime,
                                level=level, existence=existence)
 
@@ -12714,7 +12716,7 @@ class MoM(PBSService):
         return self.start()
 
     def log_match(self, msg=None, id=None, n=50, tail=True, allmatch=False,
-                  regexp=False, day=None, max_attempts=None, interval=None,
+                  regexp=False, max_attempts=None, interval=None,
                   starttime=None, endtime=None, level=logging.INFO,
                   existence=True):
         """
@@ -12739,8 +12741,6 @@ class MoM(PBSService):
         :param regexp: If true msg is a Python regular expression.
                        Defaults to False
         :type regexp: bool
-        :param day: Optional day in YYYMMDD format.
-        :type day: str
         :param max_attempts: the number of attempts to make to find
                              a matching entry
         :type max_attempts: int
@@ -12773,7 +12773,7 @@ class MoM(PBSService):
         .. note:: The matching line number is relative to the record
                   number, not the absolute line number in the file.
         """
-        return self._log_match(self, msg, id, n, tail, allmatch, regexp, day,
+        return self._log_match(self, msg, id, n, tail, allmatch, regexp,
                                max_attempts, interval, starttime, endtime,
                                level, existence)
 
