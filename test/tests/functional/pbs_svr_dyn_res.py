@@ -110,10 +110,9 @@ class TestServerDynRes(TestFunctional):
         resname = ["mybadres"]
         restype = ["long"]
         script_body = "echo abc"
-        fn = self.du.create_temp_file(prefix="PtlPbs_badoutfile",
-                                      body=script_body, asuser=ROOT_USER)
-
-        self.du.chmod(path=fn, mode=0755, sudo=True)
+        fn = self.du.create_dyn_res_script(script_body,
+                                           prefix="PtlPbs_badoutfile",
+                                           perm=0755)
         resval = ['"' + resname[0] + ' ' + '!' + fn + '"']
 
         # Add it as a server_dyn_res that returns a string output
@@ -214,9 +213,9 @@ class TestServerDynRes(TestFunctional):
 
         fpath_out = os.path.join(os.sep, "tmp", "PtlPbs_got_foo")
 
-        fn_in = self.du.create_temp_file(prefix="PtlPbs_get_foo",
-                                         body=script_body, asuser=ROOT_USER)
-        self.du.chmod(path=fn_in, mode=0755, sudo=True)
+        fn_in = self.du.create_dyn_res_script(script_body,
+                                              prefix="PtlPbs_get_foo")
+        self.filenames.append(fn_in)
 
         # Add additional white space between resource name and the script
         resval = ['"' + resname[0] + '  ' + ' !' + fn_in + '"']
@@ -241,6 +240,8 @@ class TestServerDynRes(TestFunctional):
         # Job must run successfully
         a = {'job_state': 'R', 'Resource_List.foo': 1}
         self.server.expect(JOB, a, id=jid)
+        # Cleanup dynamically created file
+        self.du.rm(fpath_out, sudo=True, force=True)
 
     def test_multiple_res(self):
         """
@@ -256,22 +257,18 @@ class TestServerDynRes(TestFunctional):
         script_body_m = "echo 12"
         script_body_l = "echo 20"
 
-        fn_s = self.du.create_temp_file(prefix="PtlPbs_small",
-                                        suffix=".scr",
-                                        body=script_body_s,
-                                        asuser=ROOT_USER)
-        fn_m = self.du.create_temp_file(prefix="PtlPbs_medium",
-                                        suffix=".scr",
-                                        body=script_body_m,
-                                        asuser=ROOT_USER)
-        fn_l = self.du.create_temp_file(prefix="PtlPbs_large",
-                                        suffix=".scr",
-                                        body=script_body_l,
-                                        asuser=ROOT_USER)
-
-        self.du.chmod(path=fn_s, mode=0755, sudo=True)
-        self.du.chmod(path=fn_m, mode=0755, sudo=True)
-        self.du.chmod(path=fn_l, mode=0755, sudo=True)
+        fn_s = self.du.create_dyn_res_script(script_body_s,
+                                             prefix="PtlPbs_small",
+                                             suffix=".scr")
+        fn_m = self.du.create_dyn_res_script(script_body_m,
+                                             prefix="PtlPbs_medium",
+                                             suffix=".scr")
+        fn_l = self.du.create_dyn_res_script(script_body_l,
+                                             prefix="PtlPbs_large",
+                                             suffix=".scr")
+        self.filenames.append(fn_s)
+        self.filenames.append(fn_m)
+        self.filenames.append(fn_l)
 
         resval = ['"' + resname[0] + ' ' + '!' + fn_s + '"',
                   '"' + resname[1] + ' ' + '!' + fn_m + '"',
@@ -318,10 +315,9 @@ class TestServerDynRes(TestFunctional):
         # Prep for server_dyn_resource script
         script_body = "echo abc"
 
-        fn = self.du.create_temp_file(prefix="PtlPbs_check",
-                                      suffix=".scr",
-                                      body=script_body, asuser=ROOT_USER)
-        self.du.chmod(path=fn, mode=0755, sudo=True)
+        fn = self.du.create_dyn_res_script(script_body, prefix="PtlPbs_check",
+                                           suffix=".scr")
+        self.filenames.append(fn)
 
         resval = ['"' + resname[0] + ' ' + '!' + fn + '"']
 
@@ -361,10 +357,9 @@ class TestServerDynRes(TestFunctional):
         # Prep for server_dyn_resource script
         script_body = "echo white, red, blue"
 
-        fn = self.du.create_temp_file(prefix="PtlPbs_color",
-                                      suffix=".scr",
-                                      body=script_body, asuser=ROOT_USER)
-        self.du.chmod(path=fn, mode=0755, sudo=True)
+        fn = self.du.create_dyn_res_script(script_body, prefix="PtlPbs_color",
+                                           suffix=".scr")
+        self.filenames.append(fn)
 
         resval = ['"' + resname[0] + ' ' + '!' + fn + '"']
 
@@ -404,10 +399,9 @@ class TestServerDynRes(TestFunctional):
         # Prep for server_dyn_resource script
         script_body = "echo 100gb"
 
-        fn = self.du.create_temp_file(prefix="PtlPbs_size",
-                                      suffix=".scr",
-                                      body=script_body, asuser=ROOT_USER)
-        self.du.chmod(path=fn, mode=0755, sudo=True)
+        fn = self.du.create_dyn_res_script(script_body, prefix="PtlPbs_size",
+                                           suffix=".scr")
+        self.filenames.append(fn)
 
         resval = ['"' + resname[0] + ' ' + '!' + fn + '"']
 
@@ -466,10 +460,9 @@ class TestServerDynRes(TestFunctional):
         # Prep for server_dyn_resource script
         script_body = "echo 100gb"
 
-        fn = self.du.create_temp_file(prefix="PtlPbs_size",
-                                      suffix=".scr",
-                                      body=script_body, asuser=ROOT_USER)
-        self.du.chmod(path=fn, mode=0755, sudo=True)
+        fn = self.du.create_dyn_res_script(script_body, prefix="PtlPbs_size",
+                                           suffix=".scr")
+        self.filenames.append(fn)
 
         resval = ['"' + resname[0] + ' ' + '!' + fn + '"']
 
@@ -485,9 +478,11 @@ class TestServerDynRes(TestFunctional):
         self.server.expect(JOB, a, id=jid)
 
         # Change script during job run
-        with open(fn, "rw+") as fd:
-            fd.truncate()
-            fd.write("echo 50gb")
+        change_res = "echo 50gb"
+        home_dir = os.path.expanduser("~")
+        fp = self.du.create_dyn_res_script(change_res, dirname=home_dir)
+        self.du.run_copy(src=fp, dest=fn, runas=ROOT_USER)
+        self.filenames.append(fn)
 
         # Rerun job
         self.server.rerunjob(jid)
@@ -511,10 +506,9 @@ class TestServerDynRes(TestFunctional):
         # Script returns invalid value for resource type 'size'
         script_body = "echo two gb"
 
-        fn = self.du.create_temp_file(prefix="PtlPbs_size",
-                                      suffix=".scr",
-                                      body=script_body, asuser=ROOT_USER)
-        self.du.chmod(path=fn, mode=0755, sudo=True)
+        fn = self.du.create_dyn_res_script(script_body, prefix="PtlPbs_size",
+                                           suffix=".scr")
+        self.filenames.append(fn)
 
         resval = ['"' + resname[0] + ' ' + '!' + fn + '"']
 
@@ -549,10 +543,9 @@ class TestServerDynRes(TestFunctional):
         # Prep for server_dyn_resource script
         script_body = "echo abc"
 
-        fn = self.du.create_temp_file(prefix="PtlPbs_float",
-                                      suffix=".scr",
-                                      body=script_body, asuser=ROOT_USER)
-        self.du.chmod(path=fn, mode=0755, sudo=True)
+        fn = self.du.create_dyn_res_script(script_body, prefix="PtlPbs_float",
+                                           suffix=".scr")
+        self.filenames.append(fn)
 
         resval = ['"' + resname[0] + ' ' + '!' + fn + '"']
 
@@ -587,10 +580,9 @@ class TestServerDynRes(TestFunctional):
         # Prep for server_dyn_resource script
         script_body = "echo yes"
 
-        fn = self.du.create_temp_file(prefix="PtlPbs_bool",
-                                      suffix=".scr",
-                                      body=script_body, asuser=ROOT_USER)
-        self.du.chmod(path=fn, mode=0755, sudo=True)
+        fn = self.du.create_dyn_res_script(script_body, prefix="PtlPbs_bool",
+                                           suffix=".scr")
+        self.filenames.append(fn)
 
         resval = ['"' + resname[0] + ' ' + '!' + fn + '"']
 
@@ -623,8 +615,7 @@ class TestServerDynRes(TestFunctional):
 
         scr_body = ['echo "10"', 'exit 0']
         home_dir = os.path.expanduser("~")
-        fp = self.du.create_temp_file(body=scr_body, dirname=home_dir,
-                                      asuser=ROOT_USER)
+        fp = self.du.create_dyn_res_script(scr_body, dirname=home_dir)
         # Add to filenames for cleanup
         self.filenames.append(fp)
 
@@ -633,28 +624,33 @@ class TestServerDynRes(TestFunctional):
                                         validate=False)
 
         # give write permission to group and others
-        self.du.chmod(path=fp, mode=0766)
+        self.du.chmod(path=fp, mode=0766, sudo=True)
         self.check_access_log(fp)
 
         # give write permission to group
-        self.du.chmod(path=fp, mode=0764)
+        self.du.chmod(path=fp, mode=0764, sudo=True)
         self.check_access_log(fp)
 
         # give write permission to others
-        self.du.chmod(path=fp, mode=0746)
+        self.du.chmod(path=fp, mode=0746, sudo=True)
         self.check_access_log(fp)
 
         # give write permission to user only
-        self.du.chmod(path=fp, mode=0744)
-        self.check_access_log(fp, exist=False)
+        self.du.chmod(path=fp, mode=0744, sudo=True)
+        root_priv = self.du.run_cmd(
+            cmd=["ls", os.path.join(os.sep, "root")])
+        if root_priv['rc'] != 0:
+                self.check_access_log(fp, exist=True)
+        else:
+                self.check_access_log(fp, exist=False)
 
         # Create script in a directory which has more open privileges
         # This should make loading of this file fail in all cases
         # Create the dirctory name with a space in it, to make sure PBS parses
         # it correctly.
         dir_temp = self.du.mkdtemp(mode=0766, dir=home_dir, suffix=' tmp')
-        fp = self.du.create_temp_file(body=scr_body, dirname=dir_temp,
-                                      asuser=ROOT_USER)
+        fp = self.du.create_dyn_res_script(scr_body, dirname=dir_temp)
+
         # Add to filenames for cleanup
         self.filenames.append(fp)
         self.filenames.append(dir_temp)
@@ -664,19 +660,19 @@ class TestServerDynRes(TestFunctional):
                                         validate=False)
 
         # give write permission to group and others
-        self.du.chmod(path=fp, mode=0766)
+        self.du.chmod(path=fp, mode=0766, sudo=True)
         self.check_access_log(fp)
 
         # give write permission to group
-        self.du.chmod(path=fp, mode=0764)
+        self.du.chmod(path=fp, mode=0764, sudo=True)
         self.check_access_log(fp)
 
         # give write permission to others
-        self.du.chmod(path=fp, mode=0746)
+        self.du.chmod(path=fp, mode=0746, sudo=True)
         self.check_access_log(fp)
 
         # give write permission to user only
-        self.du.chmod(path=fp, mode=0744)
+        self.du.chmod(path=fp, mode=0744, sudo=True)
         self.check_access_log(fp)
 
         # Create a dynamic script with right permissions
@@ -685,52 +681,44 @@ class TestServerDynRes(TestFunctional):
         # Add to filenames for cleanup
         self.filenames.append(fp)
 
-        dyn_scr = '"foo !' + fp + '"'
-        # give write permission to user only
-        self.du.chmod(path=fp, mode=0744)
-        self.scheduler.set_sched_config({'server_dyn_res': dyn_scr},
-                                        validate=False)
-        self.check_access_log(fp, exist=False)
-
-        time.sleep(1)
-        match_from = int(time.time())
-        # give write permission to others
-        self.du.chmod(path=fp, mode=0746)
-        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'})
-        self.scheduler.log_match(fp + ' file has a non-secure file access',
-                                 starttime=match_from, existence=True,
-                                 max_attempts=10)
-
         # Create dynamic resource script in tmp directory and check
         # file permissions
-        fp = self.du.create_temp_file(body=scr_body, asuser=ROOT_USER)
-        # Add to filenames for cleanup
-        self.filenames.append(fp)
+        # du.create_dyn_res_script by default creates the script in /tmp
 
+        # give write permission to group and others
+        fp = self.du.create_dyn_res_script(scr_body, perm=0766)
+        self.filenames.append(fp)
         dyn_scr = '"foo !' + fp + '"'
         self.scheduler.set_sched_config({'server_dyn_res': dyn_scr},
                                         validate=False)
-
-        # give write permission to group and others
-        self.du.chmod(path=fp, mode=0766)
         self.check_access_log(fp)
 
         # give write permission to group
-        self.du.chmod(path=fp, mode=0764)
+        fp = self.du.create_dyn_res_script(scr_body, perm=0764)
+        self.filenames.append(fp)
+        dyn_scr = '"foo !' + fp + '"'
+        self.scheduler.set_sched_config({'server_dyn_res': dyn_scr},
+                                        validate=False)
         self.check_access_log(fp)
 
         # give write permission to others
-        self.du.chmod(path=fp, mode=0746)
+        fp = self.du.create_dyn_res_script(scr_body, perm=0746)
+        self.filenames.append(fp)
+        dyn_scr = '"foo !' + fp + '"'
+        self.scheduler.set_sched_config({'server_dyn_res': dyn_scr},
+                                        validate=False)
         self.check_access_log(fp)
 
         # give write permission to user only
-        self.du.chmod(path=fp, mode=0744)
+        fp = self.du.create_dyn_res_script(scr_body, perm=0744)
+        self.filenames.append(fp)
+        dyn_scr = '"foo !' + fp + '"'
+        self.scheduler.set_sched_config({'server_dyn_res': dyn_scr},
+                                        validate=False)
         self.check_access_log(fp, exist=False)
 
     def tearDown(self):
         # removing all files creating in test
-        for i in self.filenames:
-            if os.path.isfile(i):
-                os.remove(i)
-            elif os.path.isdir(i):
-                os.removedirs(i)
+        self.du.rm(path=self.filenames, sudo=True, force=True,
+                   recursive=True)
+        self.filenames = []

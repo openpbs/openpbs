@@ -1968,6 +1968,25 @@ class DshUtils(object):
                        sudo=True)
         return fn
 
+    def create_dyn_res_script(self, body, prefix=None, suffix=None, perm=0755,
+                              dirname=None, host=None):
+        """
+        Create a dynamic resource script owned by root
+        """
+        home_dir = os.path.expanduser("~")
+        fp = self.create_temp_file(prefix="mom_resc", suffix=".scr",
+                                   body=body, asuser="root",
+                                   dirname=home_dir, hostname=host)
+        self.chmod(path=fp, mode=perm, sudo=True, hostname=host)
+        if dirname is None:
+            dest_file = os.path.join(os.sep, 'tmp', fp.split(os.sep)[-1])
+        else:
+            dest_file = os.path.join(dirname, fp.split(os.sep)[-1])
+        if dest_file != fp:
+            self.run_copy(src=fp, dest=dest_file, runas="root", hosts=host)
+            self.rm(path=fp, sudo=True, hostname=host)
+        return dest_file
+
     def parse_strace(self, lines):
         """
         strace parsing. Just the regular expressions for now

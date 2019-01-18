@@ -61,14 +61,13 @@ class TestMomDynRes(TestFunctional):
             self.server.manager(MGR_CMD_CREATE, RSC, attr,
                                 id=resc_name[i], expect=True)
 
-            fp = self.du.create_temp_file(prefix="mom_resc", suffix=".scr",
-                                          body=script_body[i],
-                                          asuser=ROOT_USER)
-            self.du.chmod(path=fp, mode=0755)
-            mom_config_str = "!" + fp
+            dest_file = self.du.create_dyn_res_script(script_body[i],
+                                                      prefix="mom_resc",
+                                                      suffix=".scr")
+            mom_config_str = "!" + dest_file
             self.mom.add_config({resc_name[i]: mom_config_str})
-            fp_list.append(fp)
-            self.filenames.append(fp)
+            fp_list.append(dest_file)
+            self.filenames.append(dest_file)
         return fp_list
 
     def check_access_log(self, fp, exist=True):
@@ -342,9 +341,12 @@ class TestMomDynRes(TestFunctional):
         # The job should run
         self.server.expect(JOB, {'job_state': 'R'}, id=jid)
 
-        with open(filename[0], "wb") as fd:
-            fd.truncate()
-            fd.write("echo 1")
+        # Change script during job run
+        change_res = "/bin/echo 1"
+        home_dir = os.path.expanduser("~")
+        src_file = self.du.create_dyn_res_script(change_res, dirname=home_dir)
+        self.du.run_copy(src=src_file, dest=filename[0], runas=ROOT_USER)
+        self.filenames.append(src_file)
 
         self.server.rerunjob(jobid=jid)
 
@@ -359,10 +361,12 @@ class TestMomDynRes(TestFunctional):
         Test whether mom rejects the mom dynamic resource script when the
         permission of the script are open to write for others and group
         """
+        attr = {"type": "long", "flag": "h"}
+        self.server.manager(MGR_CMD_CREATE, RSC, attr,
+                            id="foo", expect=True)
         scr_body = ['echo "10"', 'exit 0']
         home_dir = os.path.expanduser("~")
-        fp = self.du.create_temp_file(body=scr_body, dirname=home_dir,
-                                      asuser=ROOT_USER)
+        fp = self.du.create_dyn_res_script(scr_body, dirname=home_dir)
         # Add to filenames for cleanup
         self.filenames.append(fp)
 
@@ -373,28 +377,33 @@ class TestMomDynRes(TestFunctional):
         self.mom.add_config({'foo': mom_config_str})
 
         # give write permission to group and others
-        self.du.chmod(path=fp, mode=0766)
+        self.du.chmod(path=fp, mode=0766, sudo=True)
         self.check_access_log(fp)
 
         # give write permission to group
-        self.du.chmod(path=fp, mode=0764)
+        self.du.chmod(path=fp, mode=0764, sudo=True)
         self.check_access_log(fp)
 
         # give write permission to others
-        self.du.chmod(path=fp, mode=0746)
+        self.du.chmod(path=fp, mode=0746, sudo=True)
         self.check_access_log(fp)
 
         # give write permission to user only
-        self.du.chmod(path=fp, mode=0744)
-        self.check_access_log(fp, exist=False)
+        self.du.chmod(path=fp, mode=0744, sudo=True)
+        root_priv = self.du.run_cmd(
+            cmd=["ls", os.path.join(os.sep, "root")])
+        if root_priv['rc'] != 0:
+                self.check_access_log(fp, exist=True)
+        else:
+                self.check_access_log(fp, exist=False)
 
         # Create script in a directory which has more open privileges
         # This should make loading of this file fail in all cases.
         # Create the dirctory name with a space in it, to make sure PBS parses
         # it correctly.
         dir_temp = self.du.mkdtemp(mode=0766, dir=home_dir, suffix=' tmp')
-        fp = self.du.create_temp_file(body=scr_body, dirname=dir_temp,
-                                      asuser=ROOT_USER)
+        fp = self.du.create_dyn_res_script(scr_body, dirname=dir_temp)
+
         # Add to filenames for cleanup
         self.filenames.append(fp)
         self.filenames.append(dir_temp)
@@ -403,80 +412,59 @@ class TestMomDynRes(TestFunctional):
         self.mom.add_config({'foo': mom_config_str})
 
         # give write permission to group and others
-        self.du.chmod(path=fp, mode=0766)
+        self.du.chmod(path=fp, mode=0766, sudo=True)
         self.check_access_log(fp)
 
         # give write permission to group
-        self.du.chmod(path=fp, mode=0764)
+        self.du.chmod(path=fp, mode=0764, sudo=True)
         self.check_access_log(fp)
 
         # give write permission to others
-        self.du.chmod(path=fp, mode=0746)
+        self.du.chmod(path=fp, mode=0746, sudo=True)
         self.check_access_log(fp)
 
         # give write permission to user only
-        self.du.chmod(path=fp, mode=0744)
+        self.du.chmod(path=fp, mode=0744, sudo=True)
         self.check_access_log(fp)
-
-        attr = {"type": "long", "flag": "h"}
-        self.server.manager(MGR_CMD_CREATE, RSC, attr,
-                            id="foo", expect=True)
-        # Create a dynamic script with right permissions
-        fp = self.du.create_temp_file(body=scr_body, dirname=home_dir,
-                                      asuser=ROOT_USER)
-        # Add to filenames for cleanup
-        self.filenames.append(fp)
-
-        mom_config_str = '!' + fp
-        self.mom.add_config({'foo': mom_config_str})
-        # give write permission to user only
-        self.du.chmod(path=fp, mode=0744)
-        self.check_access_log(fp, exist=False)
-
-        match_from = int(time.time())
-        time.sleep(1)
-        # give write permission to others
-        self.du.chmod(path=fp, mode=0746)
-        # submit a job requesting this mom resource
-        attr = {"Resource_List.foo": 4}
-        j = Job(TEST_USER, attrs=attr)
-        self.server.submit(j)
-        self.mom.log_match(fp + ' file has a non-secure file access',
-                           starttime=match_from, existence=True,
-                           max_attempts=10)
 
         # Create dynamic resource script in tmp directory and check
         # file permissions
-        fp = self.du.create_temp_file(body=scr_body, asuser=ROOT_USER)
-        # Add to filenames for cleanup
-        self.filenames.append(fp)
-
-        mom_config_str = '!' + fp
-        self.scheduler.set_sched_config({'mom_resources': 'foo'},
-                                        validate=True)
-        self.scheduler.add_resource('foo')
-        self.mom.add_config({'foo': mom_config_str})
+        # du.create_dyn_res_script by default creates the script in /tmp
 
         # give write permission to group and others
-        self.du.chmod(path=fp, mode=0766)
+        fp = self.du.create_dyn_res_script(scr_body, perm=0766)
+        # Add to filenames for cleanup
+        self.filenames.append(fp)
+        mom_config_str = '!' + fp
+        self.mom.add_config({'foo': mom_config_str})
         self.check_access_log(fp)
 
         # give write permission to group
-        self.du.chmod(path=fp, mode=0764)
+        fp = self.du.create_dyn_res_script(scr_body, perm=0764)
+        # Add to filenames for cleanup
+        self.filenames.append(fp)
+        mom_config_str = '!' + fp
+        self.mom.add_config({'foo': mom_config_str})
         self.check_access_log(fp)
 
         # give write permission to others
-        self.du.chmod(path=fp, mode=0746)
+        fp = self.du.create_dyn_res_script(scr_body, perm=0746)
+        # Add to filenames for cleanup
+        self.filenames.append(fp)
+        mom_config_str = '!' + fp
+        self.mom.add_config({'foo': mom_config_str})
         self.check_access_log(fp)
 
         # give write permission to user only
-        self.du.chmod(path=fp, mode=0744)
+        fp = self.du.create_dyn_res_script(scr_body, perm=0744)
+        # Add to filenames for cleanup
+        self.filenames.append(fp)
+        mom_config_str = '!' + fp
+        self.mom.add_config({'foo': mom_config_str})
         self.check_access_log(fp, exist=False)
 
     def tearDown(self):
         # removing all files creating in test
-        for i in self.filenames:
-            if os.path.isfile(i):
-                os.remove(i)
-            elif os.path.isdir(i):
-                os.removedirs(i)
+        self.du.rm(path=self.filenames, sudo=True, force=True,
+                   recursive=True)
+        self.filenames = []
