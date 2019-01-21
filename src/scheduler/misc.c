@@ -197,7 +197,7 @@ add_str_to_unique_array(char ***str_arr, char *str)
 	if (str_arr == NULL || str == NULL)
 		return -1;
 
-	ind = find_string_ind(*str_arr, str);
+	ind = find_string_idx(*str_arr, str);
 	if (ind >= 0) /* found it! */
 		return ind;
 
@@ -552,56 +552,6 @@ dup_string_array(char **ostrs)
 	return nstrs;
 }
 
-/**
- * @brief
- *		find a string in a NULL terminated string array
- *
- * @param[in]	strarr	-	the string array to search
- * @param[in]	str	-	the string to find
- *
- * @return	int
- * @retval	1	: if the string is found
- * @retval	0	: the string is not found or on error
- *
- */
-int
-find_string(char **strarr, char *str)
-{
-	int ind;
-
-	ind = find_string_ind(strarr, str);
-
-	if (ind >= 0)
-		return 1;
-
-	return 0;
-}
-
-/**
- * @brief
- * 		find index of str in strarr
- *
- * @param[in]	strarr	-	the string array to search
- * @param[in]	str	-	the string to find
- *
- * @return	int
- * @retval	index of string
- * @retval	-1	: if not found
- */
-int
-find_string_ind(char **strarr, char *str)
-{
-	int i;
-	if (strarr == NULL || str == NULL)
-		return -1;
-
-	for (i = 0; strarr[i] != NULL && strcmp(strarr[i], str); i++)
-		;
-	if (strarr[i] == NULL)
-		return -1;
-
-	return i;
-}
 
 /**
  * @brief
@@ -650,7 +600,7 @@ enum match_string_array_ret match_string_array(char **strarr1, char **strarr2)
 	strarr2_len = count_array((void **)strarr2);
 
 	for (i = 0; strarr1[i] != NULL; i++) {
-		if (find_string(strarr2, strarr1[i]))
+		if (is_string_in_arr(strarr2, strarr1[i]))
 			match++;
 	}
 

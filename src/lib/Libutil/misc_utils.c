@@ -1192,6 +1192,56 @@ break_comma_list(char *strlist)
 	return (break_delimited_str(strlist, ','));
 }
 
+/**
+ * @brief
+ *		Does a string exist in the given array?
+ *
+ * @param[in]	strarr	-	the string array to search, should be NULL terminated
+ * @param[in]	str	-	the string to find
+ *
+ * @return	int
+ * @retval	1	: if the string is found
+ * @retval	0	: the string is not found or on error
+ *
+ */
+int
+is_string_in_arr(char **strarr, char *str)
+{
+	int ind;
+
+	ind = find_string_idx(strarr, str);
+
+	if (ind >= 0)
+		return 1;
+
+	return 0;
+}
+
+/**
+ * @brief
+ * 		find index of str in strarr
+ *
+ * @param[in]	strarr	-	the string array to search
+ * @param[in]	str	-	the string to find
+ *
+ * @return	int
+ * @retval	index of string
+ * @retval	-1	: if not found
+ */
+int
+find_string_idx(char **strarr, char *str)
+{
+	int i;
+	if (strarr == NULL || str == NULL)
+		return -1;
+
+	for (i = 0; strarr[i] != NULL && strcmp(strarr[i], str); i++)
+		;
+	if (strarr[i] == NULL)
+		return -1;
+
+	return i;
+}
 
 /**
  * @brief

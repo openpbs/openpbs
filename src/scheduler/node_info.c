@@ -4192,7 +4192,7 @@ parse_selspec(char *select_spec)
 							num_cpus += (num_chunks * req->amount);
 						}
 					if (!invalid && (req->type.is_boolean || conf.res_to_check == NULL ||
-						find_string(conf.res_to_check, kv[i].kv_keyw))) {
+						is_string_in_arr(conf.res_to_check, kv[i].kv_keyw))) {
 						if (!resdef_exists_in_array(spec->defs, req->def))
 							add_resdef_to_array(&(spec->defs), req->def);
 						if (req_head == NULL)
@@ -5183,7 +5183,7 @@ is_aoe_avail_on_vnode(node_info *ninfo, resource_resv *resresv)
 		return 0;
 
 	if ((resp = find_resource(ninfo->res, getallres(RES_AOE))) != NULL)
-		return find_string(resp->str_avail, resresv->aoename);
+		return is_string_in_arr(resp->str_avail, resresv->aoename);
 
 	return 0;
 }
@@ -5222,7 +5222,7 @@ is_eoe_avail_on_vnode(node_info *ninfo, resource_resv *resresv)
 		return 0;
 
 	if ((resp = find_resource(ninfo->res, getallres(RES_EOE))) != NULL)
-		return find_string(resp->str_avail, resresv->eoename);
+		return is_string_in_arr(resp->str_avail, resresv->eoename);
 
 	return 0;
 }
@@ -5459,7 +5459,7 @@ node_in_str(node_info *node, void *strarr)
 	if (node == NULL || strarr == NULL)
 		return 0;
 
-	if (find_string((char **)strarr, node->name))
+	if (is_string_in_arr((char **)strarr, node->name))
 		return 1;
 
 	return 0;
@@ -5860,7 +5860,7 @@ node_in_partition(node_info *ninfo, char **partitions)
 	if (ninfo->partition == NULL)
 		return 0;
 
-	if (find_string(partitions, ninfo->partition))
+	if (is_string_in_arr(partitions, ninfo->partition))
 		return 1;
 	else
 		return 0;

@@ -221,7 +221,7 @@ query_reservations(server_info *sinfo, struct batch_status *resvs)
 			ignore_resv = 1;
 		}
 		else if ((resresv->resv->resv_state == RESV_BEING_DELETED) && (resresv->resv->resv_nodes != NULL) &&
-			(!find_string(resresv->resv->resv_nodes[0]->resvs, resresv->name))) {
+			(!is_string_in_arr(resresv->resv->resv_nodes[0]->resvs, resresv->name))) {
 			schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_RESV, LOG_DEBUG,
 				resresv->name, "Reservation is being deleted and not present on node, ignoring this reservation");
 			ignore_resv = 1;

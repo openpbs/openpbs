@@ -258,6 +258,16 @@ char **break_comma_list(char *list);
 char **break_delimited_str(char *list, char delim);
 
 /*
+ * find index of str in strarr
+ */
+int find_string_idx(char **strarr, char *str);
+
+/*
+ *	is_string_in_arr - Does a string exist in the given array?
+ */
+int is_string_in_arr(char **strarr, char *str);
+
+/*
  *      free_string_array - free an array of strings with NULL as sentinel
  */
 void free_string_array(char **arr);

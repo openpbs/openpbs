@@ -130,16 +130,6 @@ char **dup_string_array(char **ostrs);
 unsigned string_array_verify(char **sa1, char **sa2);
 
 /*
- * find index of str in strarr
- */
-int find_string_ind(char **strarr, char *str);
-
-/*
- *	find_string - find a string in a NULL terminated string array
- */
-int find_string(char **strarr, char *str);
-
-/*
  *
  *	match_string_array - match two NULL terminated string arrays
  *

@@ -1070,7 +1070,7 @@ queue_in_partition(queue_info *qinfo, char **partitions)
 	if (qinfo->partition == NULL)
 		return 0;
 
-	if (find_string(partitions, qinfo->partition))
+	if (is_string_in_arr(partitions, qinfo->partition))
 		return 1;
 	else
 		return 0;
