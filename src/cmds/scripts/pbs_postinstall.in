@@ -358,9 +358,9 @@ install_pbsinitd() {
 				[ -f /etc/profile.d/pbs.sh ] || cp ${PBS_EXEC}/etc/pbs.sh /etc/profile.d
 			fi
 
-			pbs_unitfile="/usr/lib/systemd/system/pbs.service"
+			pbs_unitfile="@_unitdir@/pbs.service"
 			if [ -f "${pbs_unitfile}" ]; then
-				presetdir="/usr/lib/systemd/system-preset"
+				presetdir="@_unitdir@-preset"
 				eval "sed -i 's;\(^[[:space:]]*SourcePath=\)[^[:space:]]*;\1${PBS_EXEC}/libexec/pbs_init.d;' \"$pbs_unitfile\""
 				eval "sed -i 's;\(^[[:space:]]*ExecStart=\)[^[:space:]]*;\1${PBS_EXEC}/libexec/pbs_init.d;' \"$pbs_unitfile\""
 				eval "sed -i 's;\(^[[:space:]]*ExecStop=\)[^[:space:]]*;\1${PBS_EXEC}/libexec/pbs_init.d;' \"$pbs_unitfile\""
