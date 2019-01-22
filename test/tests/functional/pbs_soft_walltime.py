@@ -730,34 +730,34 @@ e.accept()
         msg = 'Illegal attribute or resource value'
         try:
             self.server.manager(
-                MGR_CMD_SET, SERVER, {'Resources_default.soft_walltime': '0'})
+                MGR_CMD_SET, SERVER, {'resources_default.soft_walltime': '0'})
         except PbsManagerError as e:
             self.assertTrue(msg in e.msg[0])
 
         try:
             self.server.manager(
                 MGR_CMD_SET, SERVER,
-                {'Resources_default.soft_walltime': '00:00:00'})
+                {'resources_default.soft_walltime': '00:00:00'})
         except PbsManagerError as e:
             self.assertTrue(msg in e.msg[0])
 
         try:
             self.server.manager(
                 MGR_CMD_SET, SERVER,
-                {'Resources_default.soft_walltime': 'abc'})
+                {'resources_default.soft_walltime': 'abc'})
         except PbsManagerError as e:
             self.assertTrue(msg in e.msg[0])
 
         try:
             self.server.manager(
                 MGR_CMD_SET, SERVER,
-                {'Resources_default.soft_walltime': '01:20:aa'})
+                {'resources_default.soft_walltime': '01:20:aa'})
         except PbsManagerError as e:
             self.assertTrue(msg in e.msg[0])
 
         try:
             self.server.manager(MGR_CMD_SET, SERVER, {
-                                'Resources_default.soft_walltime':
+                                'resources_default.soft_walltime':
                                 '1000000000000000000000000'})
         except PbsManagerError as e:
             self.assertTrue(msg in e.msg[0])
@@ -765,20 +765,20 @@ e.accept()
         try:
             self.server.manager(
                 MGR_CMD_SET, SERVER,
-                {'Resources_default.soft_walltime': '-1'})
+                {'resources_default.soft_walltime': '-1'})
         except PbsManagerError as e:
             self.assertTrue(msg in e.msg[0])
 
         try:
             self.server.manager(
                 MGR_CMD_SET, SERVER,
-                {'Resources_default.soft_walltime': '00.10'})
+                {'resources_default.soft_walltime': '00.10'})
         except PbsManagerError as e:
             self.assertTrue(msg in e.msg[0])
 
         self.server.manager(
             MGR_CMD_SET, SERVER,
-            {'Resources_default.soft_walltime': '00:01:00'})
+            {'resources_default.soft_walltime': '00:01:00'})
 
     def test_soft_runjob_hook(self):
         """
@@ -831,7 +831,7 @@ e.accept()
         """
 
         self.server.manager(MGR_CMD_SET, SERVER,
-                            {'Resources_default.soft_walltime': '15'})
+                            {'resources_default.soft_walltime': '15'})
 
         J = Job(TEST_USER, attrs={'Resource_List.walltime': 15})
         jid = self.server.submit(J)
@@ -886,7 +886,7 @@ e.accept()
             " doesn't change while job is held" % est_soft_walltime)
         time.sleep(10)
         self.server.expect(JOB, {'estimated.soft_walltime':
-                           est_soft_walltime}, id=jid)
+                                 est_soft_walltime}, id=jid)
 
         # release the job and look for the soft_walltime again
         self.server.rlsjob(jid, 'u')

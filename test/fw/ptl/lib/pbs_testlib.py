@@ -6691,11 +6691,17 @@ class Server(PBSService):
                 op = EQ
 
             # If scheduling is set to false then check for
-            # 'server_state' to be 'Idle'
+            # state to be idle
             if attrib and isinstance(attrib,
                                      dict) and 'scheduling' in attrib.keys():
                 if str(attrib['scheduling']) in PTL_FALSE:
-                    attrib['server_state'] = 'Idle'
+                    if obj_type == MGR_OBJ_SERVER:
+                        state_val = 'Idle'
+                        state_attr = ATTR_status
+                    else:   # SCHED object
+                        state_val = 'idle'
+                        state_attr = 'state'
+                    attrib[state_attr] = state_val
                     attrop = PTL_AND
 
             if oid is None:
@@ -8214,8 +8220,8 @@ class Server(PBSService):
             except PbsStatusError:
                 statlist = []
 
-        if (len(statlist) == 0 or statlist[0] is None or
-                len(statlist[0]) == 0):
+        if (statlist is None or len(statlist) == 0 or
+                statlist[0] is None or len(statlist[0]) == 0):
             if op == UNSET or list(set(attrib.values())) == [0]:
                 self.logger.log(level, prefix + " ".join(msg) + ' ...  OK')
                 return True
@@ -8288,7 +8294,7 @@ class Server(PBSService):
                         v = rv
 
                 stat_v = self.utils.decode_value(stat_v)
-                v = self.utils.decode_value(v)
+                v = self.utils.decode_value(str(v))
 
                 if stat_k == ATTR_version:
                     stat_v = LooseVersion(str(stat_v))

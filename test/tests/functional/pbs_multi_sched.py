@@ -1627,7 +1627,7 @@ class TestMultipleSchedulers(TestFunctional):
 
         # Create a high priority queue
         a = {'queue_type': 'e', 'started': 't',
-             'enabled': 't', 'priority': '150'}
+             'enabled': 't', 'Priority': '150'}
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id="highp")
 
         # Submit 2 jobs to high priority queue
@@ -2023,7 +2023,7 @@ class TestMultipleSchedulers(TestFunctional):
         t = int(time.time())
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'scheduling': 'True'}, id='sc1', expect=True)
-        self.server.log_match("processing priority sockets", starttime=t)
+        self.server.log_match("processing priority socket", starttime=t)
         a = {ATTR_queue: 'wq2',
              'Resource_List.select': '1:ncpus=2',
              'Resource_List.walltime': 60}
@@ -2032,4 +2032,4 @@ class TestMultipleSchedulers(TestFunctional):
         t = int(time.time())
         self.server.manager(MGR_CMD_SET, SCHED,
                             {'scheduling': 'True'}, id='sc2', expect=True)
-        self.server.log_match("processing priority sockets", starttime=t)
+        self.server.log_match("processing priority socket", starttime=t)

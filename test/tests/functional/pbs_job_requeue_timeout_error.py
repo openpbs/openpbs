@@ -63,20 +63,16 @@ class TestJobRequeueTimeoutErrorMsg(TestFunctional):
         self.hostA = self.momA.shortname
         self.hostB = self.momB.shortname
 
-        rc = self.server.manager(MGR_CMD_DELETE, NODE, None, "")
-        self.assertEqual(rc, 0)
+        self.server.manager(MGR_CMD_DELETE, NODE, None, "")
 
         islocal = self.du.is_localhost(self.hostA)
         if islocal is False:
-            rc = self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostA)
-            self.assertEqual(rc, 0)
+            self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostA)
         else:
-            rc = self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostB)
-            self.assertEqual(rc, 0)
+            self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostB)
 
-        rc = self.server.manager(MGR_CMD_SET, SERVER, {
-                                 'job_requeue_timeout': 1}, expect=True)
-        self.assertTrue(rc)
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'job_requeue_timeout': 1}, expect=True)
 
     def test_error_message(self):
         j = Job(TEST_USER, attrs={ATTR_N: 'job_requeue_timeout'})

@@ -50,20 +50,16 @@ class TestJobRouting(TestFunctional):
 
         self.hostA = self.momA.shortname
 
-        rc = self.server.manager(MGR_CMD_DELETE, NODE, None, "")
-        self.assertEqual(rc, 0)
+        self.server.manager(MGR_CMD_DELETE, NODE, None, "")
 
-        rc = self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostA)
-        self.assertEqual(rc, 0)
+        self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostA)
 
         a = {'resources_available.ncpus': 3}
-        rv = self.server.manager(MGR_CMD_SET, NODE, a,
-                                 id=self.hostA, expect=True)
-        self.assertTrue(rv)
+        self.server.manager(MGR_CMD_SET, NODE, a,
+                            id=self.hostA, expect=True)
 
-        rv = self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'false'},
-                                 expect=True)
-        self.assertTrue(rv)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'false'},
+                            expect=True)
 
     def test_t1(self):
         """
@@ -145,9 +141,8 @@ class TestJobRouting(TestFunctional):
 
         # Start scheduling cycle. This will move all 3 subjobs to R state.
         # And parent job state to B state.
-        rv = self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'true'},
-                                 expect=True)
-        self.assertTrue(rv)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'true'},
+                            expect=True)
 
         self.server.expect(JOB, {ATTR_state + '=R': 3}, count=True,
                            id=jid, extend='t')
@@ -163,8 +158,8 @@ class TestJobRouting(TestFunctional):
         self.momA = self.moms.values()[0]
         self.hostA = self.momA.shortname
         a = {'state': 'offline'}
-        rv = self.server.manager(MGR_CMD_SET, NODE, a,
-                                 id=self.hostA, expect=True)
+        self.server.manager(MGR_CMD_SET, NODE, a,
+                            id=self.hostA, expect=True)
 
         # Rerun Third job, job will move to Q state.
         self.server.rerunjob(subjobs[3]['id'])

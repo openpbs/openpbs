@@ -70,25 +70,19 @@ class Test_Rrecord_with_resources_used(TestFunctional):
         self.hostA = self.momA.shortname
         self.hostB = self.momB.shortname
 
-        rc = self.server.manager(MGR_CMD_DELETE, NODE, None, "")
-        self.assertEqual(rc, 0)
+        self.server.manager(MGR_CMD_DELETE, NODE, None, "")
 
-        rc = self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostA)
-        self.assertEqual(rc, 0)
+        self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostA)
 
-        rc = self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostB)
-        self.assertEqual(rc, 0)
+        self.server.manager(MGR_CMD_CREATE, NODE, id=self.hostB)
 
         a = {'resources_available.ncpus': 4}
-        rv = self.server.manager(MGR_CMD_SET, NODE, a,
-                                 id=self.hostA, expect=True)
-        self.assertTrue(rv)
-        rv = self.server.manager(MGR_CMD_SET, NODE, a,
-                                 id=self.hostB, expect=True)
-        self.assertTrue(rv)
-        rv = self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'},
-                                 expect=True)
-        self.assertTrue(rv)
+        self.server.manager(MGR_CMD_SET, NODE, a,
+                            id=self.hostA, expect=True)
+        self.server.manager(MGR_CMD_SET, NODE, a,
+                            id=self.hostB, expect=True)
+        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'},
+                            expect=True)
 
     def common(self, is_nonrerunnable, restart_mom):
 

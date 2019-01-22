@@ -772,7 +772,7 @@ class TestEquivClass(TestFunctional):
                              'enabled': 'True'}, id='workq2')
 
         self.server.manager(MGR_CMD_SET, QUEUE,
-                            {'priority': 120}, id='workq')
+                            {'Priority': 120}, id='workq')
 
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'scheduling': 'False'})
@@ -816,7 +816,7 @@ class TestEquivClass(TestFunctional):
                              'enabled': 'True'}, id='limits2')
 
         self.server.manager(MGR_CMD_SET, QUEUE,
-                            {'priority': 120}, id='workq')
+                            {'Priority': 120}, id='workq')
 
         self.server.manager(MGR_CMD_SET, QUEUE,
                             {'max_run': '[o:PBS_ALL=20]'}, id='limits1')
@@ -864,7 +864,7 @@ class TestEquivClass(TestFunctional):
 
         self.server.manager(MGR_CMD_CREATE, QUEUE,
                             {'queue_type': 'e', 'started': 'True',
-                             'enabled': 'True', 'priority': 100}, id='workq2')
+                             'enabled': 'True', 'Priority': 100}, id='workq2')
 
         self.server.manager(MGR_CMD_CREATE, QUEUE,
                             {'queue_type': 'e', 'started': 'True',
@@ -874,7 +874,7 @@ class TestEquivClass(TestFunctional):
                             {'queue': 'nodes_queue'}, id='vnode[0]')
 
         self.server.manager(MGR_CMD_SET, QUEUE,
-                            {'priority': 120}, id='workq')
+                            {'Priority': 120}, id='workq')
 
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'scheduling': 'False'})
@@ -924,7 +924,7 @@ class TestEquivClass(TestFunctional):
 
         self.server.manager(MGR_CMD_CREATE, QUEUE,
                             {'queue_type': 'e', 'started': 'True',
-                             'enabled': 'True', 'priority': 100},
+                             'enabled': 'True', 'Priority': 100},
                             id='anytime1')
         self.server.manager(MGR_CMD_CREATE, QUEUE,
                             {'queue_type': 'e', 'started': 'True',
@@ -932,14 +932,14 @@ class TestEquivClass(TestFunctional):
 
         self.server.manager(MGR_CMD_CREATE, QUEUE,
                             {'queue_type': 'e', 'started': 'True',
-                             'enabled': 'True', 'priority': 100},
+                             'enabled': 'True', 'Priority': 100},
                             id='p_queue1')
         self.server.manager(MGR_CMD_CREATE, QUEUE,
                             {'queue_type': 'e', 'started': 'True',
                              'enabled': 'True'}, id='p_queue2')
 
         self.server.manager(MGR_CMD_SET, QUEUE,
-                            {'priority': 120}, id='workq')
+                            {'Priority': 120}, id='workq')
 
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'scheduling': 'False'})
@@ -986,7 +986,7 @@ class TestEquivClass(TestFunctional):
 
         self.server.manager(MGR_CMD_CREATE, QUEUE,
                             {'queue_type': 'e', 'started': 'True',
-                             'enabled': 'True', 'priority': 100},
+                             'enabled': 'True', 'Priority': 100},
                             id='anytime1')
         self.server.manager(MGR_CMD_CREATE, QUEUE,
                             {'queue_type': 'e', 'started': 'True',
@@ -994,7 +994,7 @@ class TestEquivClass(TestFunctional):
 
         self.server.manager(MGR_CMD_CREATE, QUEUE,
                             {'queue_type': 'e', 'started': 'True',
-                             'enabled': 'True', 'priority': 100},
+                             'enabled': 'True', 'Priority': 100},
                             id='np_queue1')
 
         self.server.manager(MGR_CMD_CREATE, QUEUE,
@@ -1002,7 +1002,7 @@ class TestEquivClass(TestFunctional):
                              'enabled': 'True'}, id='np_queue2')
 
         self.server.manager(MGR_CMD_SET, QUEUE,
-                            {'priority': 120}, id='workq')
+                            {'Priority': 120}, id='workq')
 
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'scheduling': 'False'})
@@ -1045,16 +1045,16 @@ class TestEquivClass(TestFunctional):
 
         self.server.manager(MGR_CMD_CREATE, QUEUE,
                             {'queue_type': 'e', 'started': 'True',
-                             'enabled': 'True', 'priority': 100},
+                             'enabled': 'True', 'Priority': 100},
                             id='ded_queue1')
 
         self.server.manager(MGR_CMD_CREATE, QUEUE,
                             {'queue_type': 'e', 'started': 'True',
-                             'enabled': 'True', 'priority': 100},
+                             'enabled': 'True', 'Priority': 100},
                             id='ded_queue2')
 
         self.server.manager(MGR_CMD_SET, QUEUE,
-                            {'priority': 120}, id='workq')
+                            {'Priority': 120}, id='workq')
 
         self.server.manager(MGR_CMD_SET, SERVER,
                             {'scheduling': 'False'})
@@ -1522,7 +1522,7 @@ else:
         self.server.create_vnodes('vnode', a, 4, self.mom, usenatvnode=True)
 
         a = {'queue_type': 'e', 'started': 't',
-             'enabled': 't', 'priority': 150}
+             'enabled': 't', 'Priority': 150}
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='expressq')
 
         (jid1, ) = self.submit_jobs(1)
@@ -1574,7 +1574,7 @@ else:
         self.server.create_vnodes('vnode', a, 4, self.mom, usenatvnode=True)
 
         a = {'queue_type': 'e', 'started': 't',
-             'enabled': 't', 'priority': 150}
+             'enabled': 't', 'Priority': 150}
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='expressq')
 
         (jid1,) = self.submit_jobs(1)
@@ -1631,7 +1631,7 @@ else:
 
         # Create expressq
         a = {'queue_type': 'execution', 'started': 'true',
-             'enabled': 'true', 'priority': 150}
+             'enabled': 'true', 'Priority': 150}
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='expressq')
 
         # Submit 3 jobs with delay of 1 sec
@@ -1752,7 +1752,7 @@ else:
 
         # Create a expressq
         a = {'queue_type': 'execution', 'started': 'true',
-             'enabled': 'true', 'priority': 150}
+             'enabled': 'true', 'Priority': 150}
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='expressq')
 
         # Submit regular job

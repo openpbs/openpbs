@@ -192,8 +192,8 @@ class SmokeTest(PBSTestSuite):
         Test for backfilling
         """
         a = {'resources_available.ncpus': 2}
-        rv = self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname,
-                                 expect=True)
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname,
+                            expect=True)
         self.scheduler.set_sched_config({'strict_ordering': 'True'})
         a = {'Resource_List.select': '1:ncpus=1',
              'Resource_List.walltime': 3600}

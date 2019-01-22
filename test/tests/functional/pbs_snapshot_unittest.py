@@ -58,9 +58,9 @@ class TestPBSSnapshot(TestFunctional):
         # Create a custom resource called 'ngpus'
         # This will help us test parts of PBSSnapUtils which handle resources
         attr = {"type": "long", "flag": "nh"}
-        self.assertTrue(self.server.manager(MGR_CMD_CREATE, RSC, attr,
-                                            id="ngpus", expect=True,
-                                            sudo=True))
+        self.server.manager(MGR_CMD_CREATE, RSC, attr,
+                            id="ngpus", expect=True,
+                            sudo=True)
 
         # Check whether pbs_snapshot is accessible
         try:

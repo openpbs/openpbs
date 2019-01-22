@@ -60,8 +60,7 @@ class TestStrictOrderingAndBackfilling(TestFunctional):
         self.assertTrue(rv)
 
         a = {'backfill_depth': 0}
-        rv = self.server.manager(MGR_CMD_SET, SERVER, a, expect=True)
-        self.assertTrue(rv)
+        self.server.manager(MGR_CMD_SET, SERVER, a, expect=True)
 
         j1 = Job(TEST_USER)
         a = {'Resource_List.select': '1:ncpus=2',
@@ -102,38 +101,32 @@ class TestStrictOrderingAndBackfilling(TestFunctional):
              'strict_ordering': 'true all'})
         self.assertTrue(rv)
         a = {'backfill_depth': 2}
-        rv = self.server.manager(
+        self.server.manager(
             MGR_CMD_SET, QUEUE, a, id='workq', expect=True)
-        self.assertTrue(rv)
         a = {
             'queue_type': 'execution',
             'started': 't',
             'enabled': 't',
             'backfill_depth': 1}
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='wq2')
-        self.assertTrue(rv)
         a = {
             'queue_type': 'execution',
             'started': 't',
             'enabled': 't',
             'backfill_depth': 0}
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='wq3')
-        self.assertTrue(rv)
         a = {'backfill_depth': 0}
-        rv = self.server.manager(MGR_CMD_SET, SERVER, a, expect=True)
-        self.assertTrue(rv)
+        self.server.manager(MGR_CMD_SET, SERVER, a, expect=True)
         a = {'resources_available.ncpus': 5}
-        rv = self.server.manager(
+        self.server.manager(
             MGR_CMD_SET,
             NODE,
             a,
             self.mom.shortname,
             expect=True)
-        self.assertTrue(rv)
-        rv = self.server.manager(
+        self.server.manager(
             MGR_CMD_SET, SERVER, {
                 'scheduling': 'False'}, expect=True)
-        self.assertTrue(rv)
         a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'workq'}
         j = Job(TEST_USER, a)
         j.set_sleep_time(100)
@@ -148,31 +141,26 @@ class TestStrictOrderingAndBackfilling(TestFunctional):
         j = Job(TEST_USER, a)
         j.set_sleep_time(100)
         j5id = self.server.submit(j)
-        rv = self.server.manager(
+        self.server.manager(
             MGR_CMD_SET, SERVER, {
                 'scheduling': 'True'}, expect=True)
-        self.assertTrue(rv)
-        rv = self.server.expect(JOB,
-                                {'job_state': 'R'},
-                                id=j1id,
-                                max_attempts=30,
-                                interval=2)
-        self.assertTrue(rv)
-        rv = self.server.expect(JOB,
-                                {'job_state': 'R'},
-                                id=j2id,
-                                max_attempts=30,
-                                interval=2)
-        self.assertTrue(rv)
-        rv = self.server.expect(JOB,
-                                {'job_state': 'R'},
-                                id=j4id,
-                                max_attempts=30,
-                                interval=2)
-        self.assertTrue(rv)
-        rv = self.server.expect(JOB,
-                                {'job_state': 'Q'},
-                                id=j5id,
-                                max_attempts=30,
-                                interval=2)
-        self.assertTrue(rv)
+        self.server.expect(JOB,
+                           {'job_state': 'R'},
+                           id=j1id,
+                           max_attempts=30,
+                           interval=2)
+        self.server.expect(JOB,
+                           {'job_state': 'R'},
+                           id=j2id,
+                           max_attempts=30,
+                           interval=2)
+        self.server.expect(JOB,
+                           {'job_state': 'R'},
+                           id=j4id,
+                           max_attempts=30,
+                           interval=2)
+        self.server.expect(JOB,
+                           {'job_state': 'Q'},
+                           id=j5id,
+                           max_attempts=30,
+                           interval=2)
