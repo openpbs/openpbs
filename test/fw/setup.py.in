@@ -56,6 +56,7 @@ setup(
     author_email='pbspro@discoursemail.com',
     packages=find_packages(),
     scripts=get_scripts(),
+    include_package_data=True,
     url='http://pbspro.org/',
     license='AGPLv3 with exceptions',
     description='PBS Pro Testing and Benchmarking Framework',

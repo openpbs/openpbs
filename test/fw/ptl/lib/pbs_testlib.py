@@ -13734,6 +13734,16 @@ class Job(ResourceResv):
         return job_array_id[:idx + 1] + str(subjob_index) + \
             job_array_id[idx + 1:]
 
+    def create_eatcpu_job(self, duration=None):
+        """
+        Create a job that eats cpu indefinitely or for the given
+        duration of time
+        """
+        script_dir = os.path.dirname(os.path.dirname(__file__))
+        script_path = os.path.join(script_dir, 'utils', 'jobs', 'eatcpu.py')
+        DshUtils().chmod(path=script_path, mode=0755)
+        self.set_execargs(script_path, duration)
+
 
 class Reservation(ResourceResv):
 
