@@ -1185,6 +1185,10 @@ if %s e.job.in_ms_mom():
             self.assertFalse(match is None)
             usage = int(match.groups()[0])
             self.assertGreater(30000, usage)
+        err_msg = "Unexpected error in pbs_cgroups " + \
+            "handling exechost_periodic event: TypeError"
+        self.mom.log_match(err_msg, max_attempts=3,
+                           interval=1, n=100, existence=False)
         # Allow some time to pass for values to be updated
         begin = int(time.time())
         self.logger.info('Waiting for periodic hook to update usage data.')
@@ -2210,6 +2214,10 @@ if %s e.job.in_ms_mom():
         self.server.status(JOB, ATTR_o, jid1)
         o = j.attributes[ATTR_o]
         self.tempfile.append(o)
+        err_msg = "Unexpected error in pbs_cgroups " + \
+            "handling exechost_periodic event: TypeError"
+        self.mom.log_match(err_msg, max_attempts=3,
+                           interval=1, n=100, existence=False)
         self.server.log_match(jid1 + ';Exit_status=0')
         # Create a periodic hook that runs more frequently than the
         # cgroup hook to prepend jid1 to mom_priv/hooks/hook_data/cgroup_jobs
@@ -2292,6 +2300,10 @@ event.accept()
         self.server.status(JOB, ATTR_o, jid2)
         o = j.attributes[ATTR_o]
         self.tempfile.append(o)
+        err_msg = "Unexpected error in pbs_cgroups " + \
+            "handling exechost_periodic event: TypeError"
+        self.mom.log_match(err_msg, max_attempts=3,
+                           interval=1, n=100, existence=False)
         self.server.log_match(jid2 + ';Exit_status=0')
         self.server.manager(MGR_CMD_DELETE, HOOK, None, hookname)
         command = ['truncate', '-s0',
