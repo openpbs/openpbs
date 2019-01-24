@@ -1890,10 +1890,8 @@ class TestMultipleSchedulers(TestFunctional):
         a = {'Resource_List.select': '1:ncpus=2', ATTR_queue: 'wq3'}
 
         J1 = Job(TEST_USER1, attrs=a)
-        J1.set_sleep_time(5)
 
         J2 = Job(TEST_USER1, attrs=a)
-        J2.set_sleep_time(5)
 
         jid1 = self.server.submit(J1)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
@@ -1904,6 +1902,7 @@ class TestMultipleSchedulers(TestFunctional):
         # accrue_type = 2 is eligible_time
         self.server.expect(JOB, {ATTR_accrue_type: 2}, id=jid2)
 
+        self.server.delete(jid1, wait=True)
         self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
         # This makes sure that accrue_type is indeed getting changed
         self.server.expect(JOB, {ATTR_accrue_type: 3}, id=jid2)
