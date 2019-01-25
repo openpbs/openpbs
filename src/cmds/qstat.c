@@ -1139,10 +1139,12 @@ percent_cal(char *state, char *timeu, char *timer, char *wtimu, char *wtimr, cha
 		case 'Q':
 		case 'T':
 		case 'W':
+			pbs_asprintf(&rtn, "%3s", "-- ");
 			return (rtn);
 
 		case 'X':
-			return ("100");
+			pbs_asprintf(&rtn, "%3s", "100");
+			return (rtn);
 	}
 
 
