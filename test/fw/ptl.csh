@@ -37,9 +37,15 @@
 
 # This file will set path variables in case of ptl installation
 
-ptl_prefix_lib=$( rpm -ql pbspro-ptl | grep -m 1 lib$ )
-python_dir=$( /bin/ls -1 ${ptl_prefix_lib} )
-prefix=$( dirname ${ptl_prefix_lib} )
+if [ -f "/etc/debian_version" ]; then
+	ptl_prefix_lib=$( dpkg -L pbspro-ptl 2>/dev/null | grep -m 1 lib$ 2>/dev/null )
+else
+	ptl_prefix_lib=$( rpm -ql pbspro-ptl 2>/dev/null | grep -m 1 lib$ 2>/dev/null )
+fi
+if [ "x${ptl_prefix_lib}" != "x" ]; then
+	python_dir=$( /bin/ls -1 ${ptl_prefix_lib} )
+	prefix=$( dirname ${ptl_prefix_lib} )
 
-setenv PATH=${prefix}/bin/:${PATH}
-setenv PYTHONPATH=${prefix}/lib/${python_dir}/site-packages/:$PYTHONPATH
+	setenv PATH=${prefix}/bin/:${PATH} 
+	setenv PYTHONPATH=${prefix}/lib/${python_dir}/site-packages/:$PYTHONPATH 
+fi
