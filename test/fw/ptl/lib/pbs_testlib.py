@@ -4086,8 +4086,7 @@ class PBSService(PBSObject):
                 self.logger.log(level, infomsg + '... OK')
                 break
             else:
-                if ((starttime is not None or endtime is not None) and
-                        n != 'ALL'):
+                if n != 'ALL':
                     if attempt > max_attempts:
                         # We will do one last attempt to match in case the
                         # number of lines that were provided did not capture
