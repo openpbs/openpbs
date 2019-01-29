@@ -72,7 +72,7 @@ class TestPbsInitScript(TestFunctional):
         self.assertIn("PBS mom", output)
 
     def tearDown(self):
-        TestFunctional.tearDown(self)
         # Above test leaves system in unusable state for PTL and PBS.
         # Hence restarting PBS explicitly
         PBSInitServices().restart()
+        TestFunctional.tearDown(self)

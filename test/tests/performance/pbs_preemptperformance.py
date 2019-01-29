@@ -401,8 +401,3 @@ class TestPreemptPerformance(TestPerformance):
         self.logger.info(res_str)
         self.logger.info('#' * 80)
         self.logger.info('#' * 80)
-
-    def tearDown(self):
-        self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'False'})
-        job_ids = self.server.select()
-        self.server.delete(id=job_ids)
