@@ -48,7 +48,7 @@ class TestTrillionJobid(TestFunctional):
 . ${PBS_EXEC}/libexec/pbs_pgsql_env.sh
 
 DATA_PORT=${PBS_DATA_SERVICE_PORT}
-if [ -z $DATA_PORT ]; then
+if [ -z ${DATA_PORT} ]; then
     DATA_PORT=15007
 fi
 
@@ -82,7 +82,7 @@ if [ $? -ne 0 ]; then
 fi
 
 args="-U ${DATA_USER} -p ${DATA_PORT} -d pbs_datastore"
-PGPASSWORD=test psql ${args} <<-EOF
+PGPASSWORD=test ${PGSQL_BIN}/psql ${args} <<-EOF
     UPDATE pbs.server SET sv_jobidnumber = %d;
 EOF
 
@@ -213,7 +213,7 @@ exit 0
         :type  resv_msg : string
 
         """
-        resv_start = int(time.time())
+        resv_start = int(time.time()) + 2
         a = {'reserve_start': int(resv_start),
              'reserve_duration': int(resv_dur)
              }
