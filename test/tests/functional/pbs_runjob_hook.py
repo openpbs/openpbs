@@ -57,6 +57,12 @@ import pbs
 pbs.event().reject("runjob hook rejected the job")
 """
 
+    new_res_in_hook_script = """
+import pbs
+e = pbs.event()
+e.job.Resource_List['site'] = 'site_value'
+"""
+
     def test_array_sub_job_index(self):
         """
         Submit a job array. Check the array sub-job index value
@@ -77,6 +83,35 @@ pbs.event().reject("runjob hook rejected the job")
         for i in range(lower, upper + 1):
             self.server.log_match("sub_job_array_index=%d" % (i),
                                   starttime=self.server.ctime)
+
+    def test_array_sub_new_res_in_hook(self):
+        """
+        Insert site resource in runjob hook. Submit a job array.
+        Check if site resource set for all subjobs
+        """
+        hook_name = "runjob_hook"
+        attrs = {'event': "runjob"}
+        rv = self.server.create_import_hook(hook_name, attrs,
+                                            self.new_res_in_hook_script,
+                                            overwrite=True)
+        self.assertTrue(rv)
+        a = {'resources_available.ncpus': 3}
+        self.server.manager(MGR_CMD_SET, NODE, a, self.mom.shortname)
+        lower = 1
+        upper = 3
+        j1 = Job(TEST_USER)
+        j1.set_sleep_time(3)
+        j1.set_attributes({ATTR_J: '%d-%d' % (lower, upper)})
+        jid = self.server.submit(j1)
+        self.server.expect(JOB, {ATTR_state: 'B'}, id=jid)
+        time.sleep(5)
+        self.server.expect(JOB, ATTR_state, op=UNSET, id=jid)
+        for i in range(lower, upper + 1):
+            sid = j1.create_subjob_id(jid, i)
+            m = "'runjob_hook' hook set job's Resource_List.site = site_value"
+            self.server.tracejob_match(m, id=sid, n='ALL', tail=False)
+            m = "Resource_List.site=site_value"
+            self.server.tracejob_match(m, id=sid, n='ALL', tail=False)
 
     def test_normal_job_index(self):
         """

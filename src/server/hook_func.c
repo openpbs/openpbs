@@ -3857,13 +3857,11 @@ process_hooks(struct batch_request *preq, char *hook_msg, size_t msg_len,
 
 		jobid = ((struct rq_runjob *)(req_ptr.rq_run))->rq_jid;
 		t = is_job_array(jobid);
-		if (t == IS_ARRAY_NO) {
-			pjob = find_job(jobid); /* regular job */
-		} else if ((t == IS_ARRAY_Single) || (t == IS_ARRAY_Range)) {
-			pjob = find_arrayparent(jobid); /* subjob(s) */
+		if ((t == IS_ARRAY_Single) || (t == IS_ARRAY_NO)) {
+			pjob = find_job(jobid); /* regular job and single subjob */
 		}
 
-		/* an array job will fall through with pjob set to NULL */
+		/* an array job or range of subjobs will fall through with pjob set to NULL */
 
 		if (pjob == NULL) {
 			log_event(PBSEVENT_DEBUG2,
