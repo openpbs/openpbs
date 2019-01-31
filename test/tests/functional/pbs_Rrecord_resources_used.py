@@ -194,7 +194,7 @@ class Test_Rrecord_with_resources_used(TestFunctional):
 
         return jid1, jid2, jid3s1
 
-    def test_t1(self):
+    def test_Rrecord_with_nodefailrequeue(self):
         """
         Scenario: The node on which the job was running goes down and
                   node_fail_requeue time-out is hit.
@@ -212,7 +212,7 @@ class Test_Rrecord_with_resources_used(TestFunctional):
             msg='.*R;' + re.escape(jid3s1) + '.*resources_used.*',
             id=jid3s1, regexp=True)
 
-    def test_t2(self):
+    def test_Rrecord_when_mom_restarted_with_r(self):
         """
         Scenario: The node on which the job was running goes down and
                   node_fail_requeue time-out is hit and mom is restarted
@@ -233,14 +233,13 @@ class Test_Rrecord_with_resources_used(TestFunctional):
             msg='.*R;' + re.escape(jid3s1) + '.*resources_used.*run_count=1',
             id=jid3s1, regexp=True)
 
-    def test_t3(self):
+    def test_Rrecord_for_nonrerunnable_jobs(self):
         """
         Scenario: One non-rerunnable job. The node on which the job was
                   running goes down and node_fail_requeue time-out is hit.
         Expected outcome: Server should record last known resource usage in
                   the 'R' record only for rerunnable jobs.
         """
-
         a = {ATTR_JobHistoryEnable: 1}
         self.server.manager(MGR_CMD_SET, SERVER, a)
 
@@ -251,12 +250,12 @@ class Test_Rrecord_with_resources_used(TestFunctional):
             regexp=True)
         self.server.accounting_match(
             msg='.*R;' + jid2 + '.*resources_used.*run_count=1', id=jid2,
-            regexp=True)
+            regexp=True, existence=False, max_attempts=5)
         self.server.accounting_match(
             msg='.*R;' + re.escape(jid3s1) + '.*resources_used.*run_count=1',
             id=jid3s1, regexp=True)
 
-    def test_t4(self):
+    def test_Rrecord_when_mom_restarted_without_r(self):
         """
         Scenario: Mom restarted without '-r' option and jobs are requeued
                    using qrerun.
@@ -303,7 +302,7 @@ class Test_Rrecord_with_resources_used(TestFunctional):
         self.server.manager(MGR_CMD_SET, SERVER, {'scheduling': 'True'},
                             expect=True)
 
-    def test_t5(self):
+    def test_Rrecord_with_multiple_reruns(self):
         """
         Scenario: Job is rerun multiple times.
         Expected outcome: Server should record last known resource usage
@@ -404,7 +403,7 @@ class Test_Rrecord_with_resources_used(TestFunctional):
             '.*Exit_status=-11.*.*resources_used.*.*run_count=1.*',
             id=jid3s1, regexp=True)
 
-    def test_t6(self):
+    def test_Rrecord_with_multiple_reruns_case2(self):
         """
         Scenario: Jobs submitted with select cput and ncpus. Job is rerun
                   multiple times.
@@ -479,7 +478,7 @@ class Test_Rrecord_with_resources_used(TestFunctional):
             '.*.*resources_used.cput=[0-9]*:[0-9]*:[0-9]*.*.*run_count=2.*',
             id=jid2, regexp=True)
 
-    def test_t7(self):
+    def test_Rrecord_job_rerun_forcefully(self):
         """
         Scenario: Job is forcefully rerun.
         Expected outcome: server should record last known resource usage in
