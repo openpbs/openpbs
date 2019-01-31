@@ -120,7 +120,7 @@ class TestMomHookSync(TestFunctional):
         self.momB.signal("-CONT")
         TestFunctional.tearDown(self)
 
-    def test_1(self):
+    def test_momhook_to_serverhook_with_resume(self):
         """
         Given an existing mom hook, suspend mom on hostB,
         change the hook to be a server hook (causes a
@@ -179,7 +179,7 @@ class TestMomHookSync(TestFunctional):
         self.assertTrue(match_delete[0] > match_sent2[0])
         self.assertTrue(match_delete[0] > match_sent3[0])
 
-    def test_2(self):
+    def test_momhook_to_momhook_with_resume(self):
         """
         Given an existing mom hook, suspend mom on hostB,
         change the hook event to be another mom hook event
@@ -238,7 +238,7 @@ class TestMomHookSync(TestFunctional):
             'to %s.*' % self.momB.hostname, existence=False,
             starttime=now, max_attempts=10, regexp=True)
 
-    def test_3(self):
+    def test_momhook_to_serverhook_with_restart(self):
         """
         Like test_1 except instead of resuming mom,
         we kill -9 it and restart.
@@ -303,7 +303,7 @@ class TestMomHookSync(TestFunctional):
         self.assertTrue(match_delete[0] > match_sent2[0])
         self.assertTrue(match_delete[0] > match_sent3[0])
 
-    def test_4(self):
+    def test_momhook_to_momhook_with_restart(self):
         """
         Like test_2 except instead of resuming mom,
         we kill -9 it and restart.
