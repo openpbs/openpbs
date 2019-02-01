@@ -171,8 +171,9 @@ class TestSchedPerf(TestPerformance):
         """
         Test opt_backfill_fuzzy with placement sets.
         """
-        self.scheduler.set_sched_config(
-            {'strict_ordering': 'True', 'log_filter': '2048'})
+
+        a = {'strict_ordering': 'True'}
+        self.scheduler.set_sched_config(a)
 
         a = {'node_group_key': 'color', 'node_group_enable': 'True',
              'scheduling': 'False'}
