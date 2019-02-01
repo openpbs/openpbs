@@ -246,7 +246,7 @@ class SmokeTest(PBSTestSuite):
         qname = 'testq'
         try:
             self.server.manager(MGR_CMD_DELETE, QUEUE, None, qname)
-        except:
+        except PbsManagerError:
             pass
         a = {'queue_type': 'Execution', 'enabled': 'True', 'started': 'True'}
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, qname, expect=True)
@@ -259,7 +259,7 @@ class SmokeTest(PBSTestSuite):
         qname = 'routeq'
         try:
             self.server.manager(MGR_CMD_DELETE, QUEUE, None, qname)
-        except:
+        except PbsManagerError:
             pass
         a = {'queue_type': 'Route', 'started': 'True'}
         self.server.manager(MGR_CMD_CREATE, QUEUE, a, qname, expect=True)
@@ -463,11 +463,12 @@ class SmokeTest(PBSTestSuite):
         self.server.manager(MGR_CMD_SET, SERVER, {'log_events': 2047},
                             expect=True)
         j = Job(TEST_USER)
+        now = int(time.time())
         try:
             self.server.submit(j)
         except PbsSubmitError:
             pass
-        self.server.log_match("my custom message")
+        self.server.log_match("my custom message", starttime=now)
 
     def test_mom_hook(self):
         """
@@ -793,7 +794,7 @@ class SmokeTest(PBSTestSuite):
         """
         try:
             self.server.manager(MGR_CMD_DELETE, QUEUE, id="expressq")
-        except:
+        except PbsManagerError:
             pass
         a = {'queue_type': 'e',
              'started': 'True',
@@ -827,7 +828,7 @@ class SmokeTest(PBSTestSuite):
         """
         try:
             self.server.manager(MGR_CMD_DELETE, QUEUE, id="expressq")
-        except:
+        except PbsManagerError:
             pass
         a = {'queue_type': 'e',
              'started': 'True',
@@ -1015,7 +1016,7 @@ class SmokeTest(PBSTestSuite):
         self.scheduler.set_sched_config(a)
         try:
             self.server.manager(MGR_CMD_DELETE, QUEUE, None, 'expressq')
-        except:
+        except PbsManagerError:
             pass
         a = {'queue_type': 'e',
              'started': 'True',
@@ -1318,7 +1319,7 @@ class SmokeTest(PBSTestSuite):
             self.server.status(RSC, id=self.resc_name)
             self.server.manager(MGR_CMD_DELETE, RSC,
                                 id=self.resc_name, logerr=False)
-        except:
+        except (PbsManagerError, PbsStatusError):
             pass
         for k in self.objs:
             if k not in self.obj_map:
