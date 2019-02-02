@@ -36,7 +36,6 @@
 # trademark licensing policies.
 
 from tests.functional import *
-import curses
 import json
 import os
 
@@ -69,43 +68,37 @@ class TestNonprintingCharacters(TestFunctional):
         self.npch_asis = ['\x09', '\x0A']
 
         # Terminal control characters used in the tests
-        curses.setupterm()
-        self.bold = curses.tparm(curses.tigetstr("bold"))
-        self.red = curses.tparm(curses.tigetstr("setaf"), 1)
-        self.reset = curses.tparm(curses.tigetstr("sgr"), 0, 0)
+        self.bold = u"\u001b[1m"
+        self.red = u"\u001b[31m"
+        self.reset = u"\u001b[0m"
         # Mapping of terminal control character to escaped representation
         self.bold_esc = "^[[1m"
         self.red_esc = "^[[31m"
-        self.reset_esc = "^[(B^[[0m"
+        self.reset_esc = "^[[0m"
 
         self.ATTR_V = 'Full_Variable_List'
         api_to_cli.setdefault(self.ATTR_V, 'V')
 
-        self.os_version = self.find_os_ver()
-        self.osv, self.pver = self.os_version[0], self.os_version[1]
-        # Platforms that have bash changes due to ShellShock malware
-        self.osv1 = {'"SLES"': '"12"', '"CentOS Linux"': '"7"'}
-        self.osv2 = {'"Ubuntu"': '"16"'}
-
-    @staticmethod
-    def find_os_ver():
-        """
-        If /etc/os-release exists find and return the NAME and VERSION_ID.
-        Otherwise return an empty list. Use this instead of module 'platform'
-        due to platform.py behavior difference in pbs_python.
-        """
-        osrelpath = '/etc/os-release'
-        searchfor = ['NAME', 'VERSION_ID']
-        os_ver = []
-        if os.path.exists(osrelpath):
-            with open("/etc/os-release") as osrel:
-                for line in osrel:
-                    l1 = line.strip().split('=')
-                    if l1[0] in searchfor:
-                        os_ver.append(l1[1])
-        else:
-            os_ver = ['', '']
-        return os_ver
+        # Check if ShellShock fix for exporting shell function in bash exists
+        # on this system and what "BASH_FUNC_" format to use
+        foo_scr = """#!/bin/bash
+foo() { a=B; echo $a; }
+export -f foo
+env | grep foo
+unset -f foo
+exit 0
+"""
+        fn = self.du.create_temp_file(body=foo_scr)
+        self.du.chmod(path=fn, mode=0755)
+        foo_msg = 'Failed to run foo_scr'
+        ret = self.du.run_cmd(self.server.hostname, cmd=fn)
+        self.assertEqual(ret['rc'], 0, foo_msg)
+        msg = 'BASH_FUNC_'
+        self.n = 'foo'
+        for m in ret['out']:
+            if m.find(msg) != -1:
+                self.n = m.split('=')[0]
+                continue
 
     def create_and_submit_job(self, user=None, attribs=None, content=None,
                               content_interactive=None, preserve_env=False):
@@ -295,31 +288,12 @@ class TestNonprintingCharacters(TestFunctional):
                 continue
             func = '() { a=%s; echo XX${a}YY}; }' % ch
             # Adjustments in bash due to ShellShock malware fix in various OS
-            if self.osv in self.osv1 and self.pver >= self.osv1[self.osv]:
-                os.environ['BASH_FUNC_foo()'] = func
-                chk_var = 'BASH_FUNC_foo()=() ' + \
-                    '{ a=%s; echo XX${a}YY}; }' % self.npcat[ch]
-                if ch in self.npch_asis:
-                    chk_var = 'BASH_FUNC_foo()=() ' + \
-                        '{ a=%s; echo XX${a}YY}; }' % ch
-                out = 'BASH_FUNC_foo()=() ' + \
-                    '{  a=%s;\n echo XX${a}YY}\n}\nXX%sYY}' % (ch, ch)
-            elif self.osv in self.osv2 and self.pver >= self.osv2[self.osv]:
-                os.environ['BASH_FUNC_foo%%'] = func
-                chk_var = 'BASH_FUNC_foo%%=() ' + \
-                    '{ a=%s; echo XX${a}YY}; }' % self.npcat[ch]
-                if ch in self.npch_asis:
-                    chk_var = 'BASH_FUNC_foo%%=() ' + \
-                        '{ a=%s; echo XX${a}YY}; }' % ch
-                out = 'BASH_FUNC_foo%%=() ' + \
-                    '{  a=%s;\n echo XX${a}YY}\n}\nXX%sYY}' % (ch, ch)
-            else:
-                os.environ['foo'] = func
-                chk_var = 'foo=() { a=%s; echo XX${a}YY}; }' % self.npcat[ch]
-                if ch in self.npch_asis:
-                    chk_var = 'foo=() { a=%s; echo XX${a}YY}; }' % ch
-                out = 'foo=() {  a=%s;\n echo XX${a}YY}\n}\nXX%sYY}' % (ch, ch)
-
+            os.environ[self.n] = func
+            chk_var = self.n + '=() { a=%s; echo XX${a}YY}; }' % self.npcat[ch]
+            if ch in self.npch_asis:
+                chk_var = self.n + '=() { a=%s; echo XX${a}YY}; }' % ch
+            out = self.n + \
+                '=() {  a=%s;\n echo XX${a}YY}\n}\nXX%sYY}' % (ch, ch)
             script = ['#PBS -V']
             script += ['env | grep -A 3 foo\n']
             script += ['foo\n']
@@ -436,27 +410,11 @@ class TestNonprintingCharacters(TestFunctional):
         """
         func = '() { a=$(%s; %s); echo XX${a}YY; }' % (self.bold, self.red)
         # Adjustments in bash due to ShellShock malware fix in various OS
-        if self.osv in self.osv1 and self.pver >= self.osv1[self.osv]:
-            os.environ['BASH_FUNC_foo()'] = func
-            chk_var = 'BASH_FUNC_foo()=() { a=$(%s; %s); echo XX${a}YY; }' % (
-                self.bold_esc, self.red_esc)
-            out = 'BASH_FUNC_foo()=() ' + \
-                '{  a=$(%s; %s);\n echo XX${a}YY\n}\nXXYY' % (
-                    self.bold, self.red)
-        elif self.osv in self.osv2 and self.pver >= self.osv2[self.osv]:
-            os.environ['BASH_FUNC_foo%%'] = func
-            chk_var = 'BASH_FUNC_foo' + '%%' + \
-                '=() { a=$(%s; %s); echo XX${a}YY; }' % (
-                    self.bold_esc, self.red_esc)
-            out = 'BASH_FUNC_foo' + '%%' + \
-                '=() {  a=$(%s; %s);\n echo XX${a}YY\n}\nXXYY' % (
-                    self.bold, self.red)
-        else:
-            os.environ['foo'] = func
-            chk_var = 'foo=() { a=$(%s; %s); echo XX${a}YY; }' % (
-                self.bold_esc, self.red_esc)
-            out = 'foo=() {  a=$(%s; %s);\n echo XX${a}YY\n}\nXXYY' % (
-                self.bold, self.red)
+        os.environ[self.n] = func
+        chk_var = self.n + '=() { a=$(%s; %s); echo XX${a}YY; }' % (
+            self.bold_esc, self.red_esc)
+        out = self.n + '=() {  a=$(%s; %s);\n echo XX${a}YY\n}\nXXYY' % (
+            self.bold, self.red)
         script = ['#PBS -V']
         script += ['env | grep -A 3 foo\n']
         script += ['foo\n']
@@ -945,20 +903,23 @@ e.env["LAUNCH_NONPRINT"] = "CD"
         Test using terminal control characters in hook name. Qmgr
         'print hook' and 'list hook' displays the escaped nonprint character.
         """
-        # Create hook
         hook_name = "h%s%sd" % (self.bold, self.red)
-        a = {'event': "execjob_begin", 'enabled': 'True', 'debug': 'True'}
-        try:
-            rv = self.server.create_hook(hook_name, a)
-        except PbsManagerError:
-            # Delete the hook first then create the hook
-            self.server.manager(MGR_CMD_DELETE, HOOK, id=hook_name)
-            rv = self.server.create_hook(hook_name, a)
-        self.assertTrue(rv)
+        create_hook = ['qmgr', '-c', 'create hook %s' % hook_name]
+        delete_hook = ['qmgr', '-c', 'delete hook %s' % hook_name]
+        list_hook = ['qmgr', '-c', 'list hook %s' % hook_name]
+        # Delete hook if hook already exists
+        ret = self.du.run_cmd(self.server.hostname, list_hook, sudo=True)
+        if ret['rc'] == 0:
+            ret = self.du.run_cmd(self.server.hostname, delete_hook, sudo=True)
+            self.assertEqual(ret['rc'], 0)
+        # Create hook. Qmgr print,list hook output will have escaped chars
+        ret = self.du.run_cmd(self.server.hostname, create_hook, sudo=True)
+        self.assertEqual(ret['rc'], 0)
         hook_name_esc = "h%s%sd" % (self.bold_esc, self.red_esc)
         self.check_print_list_hook(hook_name, hook_name_esc)
         # Delete the hook
-        self.server.manager(MGR_CMD_DELETE, HOOK, id=hook_name, expect=True)
+        ret = self.du.run_cmd(self.server.hostname, delete_hook, sudo=True)
+        self.assertEqual(ret['rc'], 0)
         # Reset the terminal
         self.logger.info('%sReset terminal' % self.reset)
 
