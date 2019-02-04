@@ -442,7 +442,7 @@ void tpp_transport_set_handlers(
 	int (*timer_handler)(time_t now)
 	);
 void tpp_set_logmask(long logmask);
-void tpp_transport_shutdown(void);
+int tpp_transport_shutdown(void);
 int tpp_transport_terminate(void);
 int tpp_transport_send(int tfd, void *data, int len);
 int tpp_transport_send_raw(int tfd, tpp_packet_t *pkt);
@@ -455,10 +455,10 @@ int tpp_transport_connect_spl(char *hostname, int authtype,
 	int delay, void *ctx, int *ret_tfd, void *tctx);
 int tpp_transport_close(int tfd);
 
-void tpp_init_lock(pthread_mutex_t *lock);
-void tpp_lock(pthread_mutex_t *lock);
-void tpp_unlock(pthread_mutex_t *lock);
-void tpp_destroy_lock(pthread_mutex_t *lock);
+int tpp_init_lock(pthread_mutex_t *lock);
+int tpp_lock(pthread_mutex_t *lock);
+int tpp_unlock(pthread_mutex_t *lock);
+int tpp_destroy_lock(pthread_mutex_t *lock);
 
 /* rwlock is not supported by posix, so dont
  * refer to this in the header file, instead
@@ -466,11 +466,11 @@ void tpp_destroy_lock(pthread_mutex_t *lock);
  * implement this will defined _XOPEN_SOURCE
  * if necessary
  */
-void tpp_init_rwlock(void *lock);
-void tpp_rdlock_rwlock(void *lock);
-void tpp_wrlock_rwlock(void *lock);
-void tpp_unlock_rwlock(void *lock);
-void tpp_destroy_rwlock(void *lock);
+int tpp_init_rwlock(void *lock);
+int tpp_rdlock_rwlock(void *lock);
+int tpp_wrlock_rwlock(void *lock);
+int tpp_unlock_rwlock(void *lock);
+int tpp_destroy_rwlock(void *lock);
 
 int tpp_set_non_blocking(int fd);
 int tpp_set_close_on_exec(int fd);

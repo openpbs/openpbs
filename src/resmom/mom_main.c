@@ -8204,7 +8204,7 @@ main(int argc, char *argv[])
 		(void)close(c);	/* close any file desc left open by parent */
 
 	/* the real deal or version and exit? */
-	execution_mode(argc, argv);
+	PRINT_VERSION_AND_EXIT(argc, argv);
 #endif
 
 	/* If we are not run with real and effective uid of 0, forget it */
@@ -8754,7 +8754,9 @@ main(int argc, char *argv[])
 #endif  /* not DEBUG and not NO_SECURITY_CHECK */
 
 #ifdef	WIN32
-	winsock_init();
+	if (winsock_init()) {
+		return 1;
+	}
 
 	/* Under WIN32, create structure that will be used to track child processes. */
 	if (initpids() == 0) {
@@ -9643,7 +9645,7 @@ main(int argc, char *argv[])
 #endif	/* MOM_CPUSET */
 
 	/* record the fact that we are up and running */
-	(void)sprintf(log_buffer, msg_startup1, pbs_version, recover);
+	(void)sprintf(log_buffer, msg_startup1, PBS_VERSION, recover);
 	log_event(PBSEVENT_SYSTEM | PBSEVENT_ADMIN | PBSEVENT_FORCE,
 		LOG_NOTICE, PBS_EVENTCLASS_SERVER, msg_daemonname, log_buffer);
 	(void)sprintf(log_buffer,
@@ -10260,7 +10262,7 @@ main(int argc, char *argv[])
 	TCHAR	szFileName[MAX_PATH];
 
 	/*the real deal or version and exit?*/
-	execution_mode(argc, argv);
+	PRINT_VERSION_AND_EXIT(argc, argv);
 
 	if (argc > 1) {
 		if (strcmp(argv[1], "-R") == 0)
@@ -10278,6 +10280,7 @@ main(int argc, char *argv[])
 		schManager = OpenSCManager(0, 0, SC_MANAGER_ALL_ACCESS);
 		if (schManager == 0) {
 			ErrorMessage("OpenSCManager");
+			return 1;
 		}
 
 		if (reg) {
@@ -10299,6 +10302,7 @@ main(int argc, char *argv[])
 
 			} else {
 				ErrorMessage("CreateService");
+				return 1;
 			}
 
 			if (schSelf != 0)
@@ -10312,9 +10316,11 @@ main(int argc, char *argv[])
 					printf("Service %s uninstalled successfully!\n", g_PbsMomName);
 				} else {
 					ErrorMessage("DeleteService");
+					return 1;
 				}
 			} else {
 				ErrorMessage("OpenService failed");
+				return 1;
 			}
 			if (schSelf != 0)
 				CloseServiceHandle(schSelf);
@@ -10331,6 +10337,7 @@ main(int argc, char *argv[])
 		pap = create_arg_param();
 		if (pap == NULL)
 			ErrorMessage("create_arg_param");
+			return 1;
 
 		pap->argc = argc-1;	/* don't pass the second argument */
 		for (i=j=0; i < argc; i++) {
@@ -10339,6 +10346,7 @@ main(int argc, char *argv[])
 			if ((pap->argv[j] = strdup(argv[i])) == NULL) {
 				free_arg_param(pap);
 				ErrorMessage("strdup");
+				return 1;
 			}
 			j++;
 		}
@@ -10377,6 +10385,7 @@ main(int argc, char *argv[])
 		if (!StartServiceCtrlDispatcher(ServiceTable)) {
 			log_err(-1, "main", "StartServiceCtrlDispatcher");
 			ErrorMessage("StartServiceCntrlDispatcher");
+			return 1;
 		}
 		CloseHandle(hStop);
 	}
@@ -10409,6 +10418,7 @@ PbsMomMain(DWORD dwArgc, LPTSTR *rgszArgv)
 	g_ssHandle = RegisterServiceCtrlHandler(g_PbsMomName, PbsMomHandler);
 	if (g_ssHandle == 0) {
 		ErrorMessage("RegisterServiceCtrlHandler");
+		return 1;
 	}
 
 	pap = create_arg_param();
@@ -10420,6 +10430,7 @@ PbsMomMain(DWORD dwArgc, LPTSTR *rgszArgv)
 		if ((pap->argv[i] = strdup(rgszArgv[i])) == NULL) {
 			free_arg_param(pap);
 			ErrorMessage("strdup");
+			return 1;
 		}
 	}
 
@@ -10427,12 +10438,14 @@ PbsMomMain(DWORD dwArgc, LPTSTR *rgszArgv)
 	if (g_hthreadMain == 0) {
 		(void)free_arg_param(pap);
 		ErrorMessage("CreateThread");
+		return 1;
 	}
 
 	dwWait = WaitForSingleObject(g_hthreadMain, INFINITE);
 	if (dwWait != WAIT_OBJECT_0) {
 		(void)free_arg_param(pap);
 		ErrorMessage("WaitForSingleObject");
+		return 1;
 	}
 
 	// NOTE: Update the global service state variable to indicate

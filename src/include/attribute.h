@@ -592,6 +592,9 @@ extern int decode_attr_db(void *parent, pbs_db_attr_list_t *attr_list,
 
 extern int is_attr(int, char *, int);
 
+extern int set_attr(struct attrl **attrib, char *attrib_name, char *attrib_value);
+extern int set_attr_resc(struct attrl **attrib, char *attrib_name, char *attrib_resc, char *attrib_value);
+
 /* "type" to pass to acl_check() */
 #define ACL_Host  1
 #define ACL_User  2

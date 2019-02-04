@@ -943,10 +943,12 @@ main(int argc, char *argv[])
 	struct	passwd	*pw = NULL;
 	char	*p = NULL;
 
-	winsock_init();
+	if (winsock_init()) {
+		return 1;
+	}
 
 	/*test for real deal or just version and exit*/
-	execution_mode(argc, argv);
+	PRINT_VERSION_AND_EXIT(argc, argv);
 
 	strcpy(exec_unamef, getlogin_full());
 	strcpy(exec_dname, ".");

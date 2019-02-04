@@ -206,8 +206,8 @@ pthread_mutex_t thrd_array_lock;             /* mutex used to synchronize thrd a
 
 /* function forward declarations */
 static void *work(void *v);
-static void assign_to_worker(int tfd, int delay, thrd_data_t *td);
-static void handle_disconnect(phy_conn_t *conn);
+static int assign_to_worker(int tfd, int delay, thrd_data_t *td);
+static int handle_disconnect(phy_conn_t *conn);
 static void handle_incoming_data(phy_conn_t *conn);
 static void send_data(phy_conn_t *conn);
 static void free_phy_conn(phy_conn_t *conn);
@@ -333,7 +333,9 @@ tpp_transport_get_thrd_context(int tfd)
 {
 	thrd_data_t *td = NULL;
 
-	tpp_lock(&cons_array_lock);
+	if (tpp_lock(&cons_array_lock)) {
+		return NULL;
+	}
 	if (tfd >= 0 && tfd < conns_array_size) {
 		if (conns_array[tfd].conn && conns_array[tfd].slot_state == TPP_SLOT_BUSY)
 			td = conns_array[tfd].conn->td;
@@ -499,8 +501,12 @@ tpp_transport_init(struct tpp_config *conf)
 	}
 
 	tpp_log_func(LOG_INFO, NULL, "Initializing TPP transport Layer");
-	tpp_init_lock(&thrd_array_lock);
-	tpp_init_lock(&cons_array_lock);
+	if (tpp_init_lock(&thrd_array_lock)) {
+		return -1;
+	}
+	if (tpp_init_lock(&cons_array_lock)) {
+		return -1;
+	}
 	tpp_sock_layer_init();
 
 	max_con = tpp_get_nfiles();
@@ -717,7 +723,10 @@ alloc_conn(int tfd)
 	/* initialize the send queue to empty */
 
 	/* set to stream array */
-	tpp_lock(&cons_array_lock);
+	if (tpp_lock(&cons_array_lock)) {
+		free(conn);
+		return NULL;
+	}
 	if (tfd >= conns_array_size - 1) {
 		int newsize;
 		void *p;
@@ -899,7 +908,9 @@ get_transport_atomic(int tfd, int *slot_state)
 	phy_conn_t *conn = NULL;
 	*slot_state = TPP_SLOT_FREE;
 
-	tpp_lock(&cons_array_lock);
+	if (tpp_lock(&cons_array_lock)) {
+		return NULL;
+	}
 	if (tfd >= 0 && tfd < conns_array_size) {
 		conn = conns_array[tfd].conn;
 		*slot_state = conns_array[tfd].slot_state;
@@ -937,7 +948,9 @@ tpp_post_cmd(int tfd, int cmd, tpp_packet_t *pkt)
 
 	errno = 0;
 
-	tpp_lock(&cons_array_lock);
+	if (tpp_lock(&cons_array_lock)) {
+		return -1;
+	}
 
 	if (tfd >= 0 && tfd < conns_array_size) {
 		if (conns_array[tfd].conn && conns_array[tfd].slot_state == TPP_SLOT_BUSY)
@@ -1206,13 +1219,17 @@ tpp_transport_isresvport(int tfd)
  * @param[in] delay - Connect/accept this new function only after this delay
  * @param[in] td    - The thread index to which to assign the conn to
  *
+ * @return	Error code
+ * @retval	1	Failure
+ * @retval	0	Success
+ * 
  * @par Side Effects:
  *	None
  *
  * @par MT-safe: No
  *
  */
-static void
+static int
 assign_to_worker(int tfd, int delay, thrd_data_t *td)
 {
 	int slot_state;
@@ -1220,7 +1237,7 @@ assign_to_worker(int tfd, int delay, thrd_data_t *td)
 
 	conn = get_transport_atomic(tfd, &slot_state);
 	if (conn == NULL || slot_state != TPP_SLOT_BUSY)
-		return;
+		return 1;
 
 	if (conn->td != NULL) {
 		snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "ERROR! tfd=%d conn_td=%p, conn_td_index=%d, thrd_td=%p, thrd_td_index=%d", tfd, conn->td, conn->td->thrd_index, td, td->thrd_index);
@@ -1230,7 +1247,9 @@ assign_to_worker(int tfd, int delay, thrd_data_t *td)
 	if (td == NULL) {
 		int iters = 0;
 
-		tpp_lock(&thrd_array_lock);
+		if (tpp_lock(&thrd_array_lock)) {
+			return 1;
+		}
 		/* find a thread index to assign to, since none provided */
 		do {
 			last_thrd++;
@@ -1248,6 +1267,7 @@ assign_to_worker(int tfd, int delay, thrd_data_t *td)
 		snprintf(tpp_get_logbuf(), TPP_LOGBUF_SZ, "tfd=%d, Error writing to mbox", tfd);
 		tpp_log_func(LOG_CRIT, __func__, tpp_get_logbuf());
 	}
+	return 0;
 }
 
 /**
@@ -1315,7 +1335,7 @@ add_transport_conn(phy_conn_t *conn)
 		if (tpp_em_add_fd(conn->td->em_context, conn->sock_fd,
 			EM_OUT | EM_ERR | EM_HUP) == -1) {
 			tpp_log_func(LOG_ERR, __func__, "Multiplexing failed");
-			exit(1);
+			return -1;
 		}
 
 		conn->can_send = 0;
@@ -1366,7 +1386,7 @@ add_transport_conn(phy_conn_t *conn)
 		TPP_DBPRT(("Phy Con %d accepted", conn->sock_fd));
 	} else {
 		tpp_log_func(LOG_CRIT, __func__, "Bad net state - internal error");
-		exit(1);
+		return -1;
 	}
 	return 0;
 }
@@ -1581,7 +1601,7 @@ work(void *v)
 	ptr = tpp_get_tls();
 	if (!ptr) {
 		fprintf(stderr, "Out of memory getting thread specific storage\n");
-		exit(1);
+		return NULL;
 	}
 	ptr->td = (void *) td;
 	td->tpp_tls = ptr; /* store allocated area for tls into td to free at shutdown/terminate */
@@ -1603,7 +1623,7 @@ work(void *v)
 	if ((rc = pthread_sigmask(SIG_BLOCK, &blksigs, NULL)) != 0) {
 		sprintf(tpp_get_logbuf(), "Failed in pthread_sigmask, errno=%d", rc);
 		tpp_log_func(LOG_CRIT, NULL, "Failed in pthread_sigmask");
-		exit(1);
+		return NULL;
 	}
 #endif
 	tpp_log_func(LOG_CRIT, NULL, "Thread ready");
@@ -1728,7 +1748,7 @@ work(void *v)
 						 **/
 						if (tpp_em_mod_fd(conn->td->em_context, conn->sock_fd, EM_IN | EM_HUP | EM_ERR) == -1) {
 							tpp_log_func(LOG_ERR, __func__, "Multiplexing failed");
-							exit(1);
+							return NULL;
 						}
 						conn->can_send = 1;
 						send_data(conn);
@@ -1826,8 +1846,11 @@ tpp_transport_close(int tfd)
  *
  * @par MT-safe: No
  *
+ * @return Error code
+ * @retval	1	Failure
+ * @retval	0	Succeess
  */
-static void
+static int
 handle_disconnect(phy_conn_t *conn)
 {
 	int error;
@@ -1837,12 +1860,12 @@ handle_disconnect(phy_conn_t *conn)
 	tpp_que_elem_t *n;
 
 	if (conn == NULL || conn->net_state == TPP_CONN_DISCONNECTED)
-		return;
+		return 1;
 
 	if (conn->net_state == TPP_CONN_CONNECTING || conn->net_state == TPP_CONN_CONNECTED) {
 		if (tpp_em_del_fd(conn->td->em_context, conn->sock_fd) == -1) {
 			tpp_log_func(LOG_ERR, __func__, "Multiplexing failed");
-			exit(1);
+			return 1;
 		}
 	}
 	tpp_sock_getsockopt(conn->sock_fd, SOL_SOCKET, SO_ERROR, &error, &len);
@@ -1854,7 +1877,9 @@ handle_disconnect(phy_conn_t *conn)
 	if (the_close_handler)
 		the_close_handler(conn->sock_fd, error, conn->ctx);
 
-	tpp_lock(&cons_array_lock);
+	if (tpp_lock(&cons_array_lock)) {
+		return 1;
+	}
 
 	/*
 	 * Since we are freeing the socket connection we must
@@ -1897,6 +1922,8 @@ handle_disconnect(phy_conn_t *conn)
 	 */
 	if (tpp_enque(&conn->td->close_conn_que, conn) == NULL)
 		tpp_log_func(LOG_CRIT, __func__, "Out of memory queueing close connection");
+	
+	return 0;
 }
 
 /**
@@ -2281,7 +2308,7 @@ send_data(phy_conn_t *conn)
 					if (tpp_em_mod_fd(conn->td->em_context, conn->sock_fd,
 						EM_IN | EM_OUT | EM_HUP | EM_ERR)	== -1) {
 						tpp_log_func(LOG_ERR, __func__, "Multiplexing failed");
-						exit(1);
+						return;
 					}
 
 					/* set to cannot send data any more */
@@ -2375,8 +2402,11 @@ tpp_dummy_logfunc(int level, const char *id, char *mess)
  *
  * @par MT-safe: No
  *
+ * @return error code
+ * @retval	1	failure
+ * @retval	0	success
  */
-void
+int
 tpp_transport_shutdown()
 {
 	int i;
@@ -2404,7 +2434,10 @@ tpp_transport_shutdown()
 
 	/* free the array */
 	free(conns_array);
-	tpp_destroy_lock(&cons_array_lock);
+	if (tpp_destroy_lock(&cons_array_lock)) {
+		return 1;
+	}
+	return 0;
 }
 
 /**

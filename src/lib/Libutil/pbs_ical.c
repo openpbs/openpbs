@@ -624,7 +624,8 @@ test_it(char *rrule, time_t dtstart, char *tz)
  * @param[in] argv - argument list
  *
  * @return	int
- * @retval	1	success
+ * @retval	0	success
+ * #retval	1	failure
  *
  */
 int
@@ -637,7 +638,7 @@ test_main(int argc, char *argv[])
 
 	if (argc < 2) {
 		printf("Usage: test_it <rrule>");
-		exit(2);
+		return 1;
 	}
 
 	tz = getenv("PBS_TZID");
@@ -650,6 +651,6 @@ test_main(int argc, char *argv[])
 	printf("check_rrule returned %d\n", check_rrule(rrule, dtstart, 0, tz, &err_code));
 	printf("get_num_occurrences = %d\n", get_num_occurrences(rrule, dtstart, tz));
 
-	return 1;
+	return 0;
 }
 #endif

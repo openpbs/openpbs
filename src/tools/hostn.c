@@ -103,10 +103,12 @@ main(int argc, char *argv[], char *env[])
 	extern int optind;
 
 	/*the real deal or output pbs_version and exit?*/
-	execution_mode(argc, argv);
+	PRINT_VERSION_AND_EXIT(argc, argv);
 
 #ifdef WIN32
-	winsock_init();
+	if (winsock_init()) {
+		return 1;
+	}
 #endif
 
 	while ((i = getopt(argc, argv, "v-:")) != EOF) {

@@ -484,7 +484,7 @@ char *argv[];
 	}
 
 	/*the real deal or output pbs_version and exit?*/
-	execution_mode(argc, argv);
+	PRINT_VERSION_AND_EXIT(argc, argv);
 	opterr = 0;
 	while ((f = getopt(argc, argv, "as")) != EOF) {
 		switch (f) {
@@ -517,7 +517,9 @@ char *argv[];
 	}
 
 #if defined(PRINTJOBSVR) && defined(WIN32)
-	winsock_init();
+	if (winsock_init()) {
+		return 1;
+	}
 #endif
 
 	for (f=optind; f<argc; ++f) {

@@ -2234,11 +2234,13 @@ main(int argc, char *argv[], char *envp[])
 	/* won't end up getting ^M */
 	_set_fmode(_O_BINARY);
 
-	winsock_init();
+	if (winsock_init()) {
+		return 1;
+	}
 #endif
 
 	/*the real deal or output pbs_version and exit?*/
-	execution_mode(argc, argv);
+	PRINT_VERSION_AND_EXIT(argc, argv);
 	if (pbs_loadconf(0) == 0) {
 		fprintf(stderr, "Failed to load pbs.conf!\n");
 		return 1;

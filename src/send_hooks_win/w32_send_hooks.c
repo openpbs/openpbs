@@ -253,7 +253,7 @@ main(int argc, char *argv[])
 	char		*param_name, *param_val;
 	int		rc;
 
-	execution_mode(argc, argv);
+	PRINT_VERSION_AND_EXIT(argc, argv);
 
 	if(set_msgdaemonname("PBS_send_hooks")) {
 		fprintf(stderr, "Out of memory\n");
@@ -280,7 +280,9 @@ main(int argc, char *argv[])
 		exit(-1);
 	}
 
-	winsock_init();
+	if (winsock_init()) {
+		return 1;
+	}
 
 	connection_init();
 

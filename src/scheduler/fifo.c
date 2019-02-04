@@ -2692,7 +2692,7 @@ update_svr_schedobj(int connector, int cmd, int alarm_time)
 	patt->next = patt + 1;
 	patt++;
 	patt->name = ATTR_version;
-	patt->value = pbs_version;
+	patt->value = PBS_VERSION;
 	if (alarm_time) {
 		patt->next = patt + 1;
 		patt++;

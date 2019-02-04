@@ -1407,7 +1407,7 @@ state_to_server(int what_to_update)
 			goto err;
 	}
 
-	ret = diswst(server_stream, pbs_version);	/* pbs_version */
+	ret = diswst(server_stream, PBS_VERSION);	/* pbs_version */
 	if (ret != DIS_SUCCESS)
 		goto err;
 

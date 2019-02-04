@@ -143,7 +143,6 @@ avl_init_tls(void)
 {
 	if (pthread_key_create(&avl_tls_key, NULL) != 0) {
 		fprintf(stderr, "avl tls key creation failed\n");
-		exit(1);
 	}
 }
 
@@ -166,7 +165,7 @@ get_avl_tls(void)
 		p_avl_tls = (avl_tls_t *) calloc(1, sizeof(avl_tls_t));
 		if (!p_avl_tls) {
 			fprintf(stderr, "Out of memory creating avl_tls\n");
-			exit(1);
+			return NULL;
 		}
 		p_avl_tls->__node_overhead = sizeof(node)-AVL_DEFAULTKEYLEN;
 		pthread_setspecific(avl_tls_key, (void *) p_avl_tls);
@@ -282,14 +281,18 @@ copydata(rectype *r1, rectype *r2)
  * @brief
  *	check for duplicate records.
  *
+ * @return	error code
+ * @retval	1	True
+ * @retval	0	False
  */
-static void
+static int
 duprec(rectype *r)
 {
 	if (r->count++==UINT_MAX) {
 		fprintf(stderr, "avltrees: repeat count exceeded\n");
-		exit(1);
+		return 1;
 	}
+	return 0;
 }
 
 /**
@@ -307,7 +310,7 @@ allocnode()
 	node *n=(node *)malloc(size+node_overhead);
 	if (n==NULL) {
 		fprintf(stderr, "avltrees: out of memory\n");
-		exit(1);
+		return NULL;
 	}
 	if (ix_dupkeys != AVL_NO_DUP_KEYS)
 		n->data.count=1;
@@ -662,10 +665,12 @@ avltree_clear(node **tt)
  * @param[in] dup - value indicating whether to allow dup records.
  * @param[in] keylength - key length
  *
- * @return	Void
+ * @return	error code
+ * @retval	1	error
+ * @retval	0	success
  *
  */
-void
+int
 avl_create_index(AVL_IX_DESC *pix, int dup, int keylength)
 {
 	if (dup != AVL_NO_DUP_KEYS  &&
@@ -673,18 +678,19 @@ avl_create_index(AVL_IX_DESC *pix, int dup, int keylength)
 		dup != AVL_COUNT_DUPS) {
 		fprintf(stderr,
 			"create_index 'dup'=%d: programming error\n", dup);
-		exit(1);
+		return 1;
 	}
 	if (keylength < 0) {
 		fprintf(stderr,
 			"create_index 'keylength'=%d: programming error\n",
 			keylength);
-		exit(1);
+		return 1;
 	}
 	pix->root = NULL;
 	pix->keylength = keylength;
 	pix->dup_keys=dup;
 
+	return 0;
 }
 
 /**
@@ -989,7 +995,9 @@ create_tree(int dups, int keylen)
 	if (AVL_p == NULL)
 		return NULL;
 
-	avl_create_index(AVL_p, dups, keylen);
+	if (avl_create_index(AVL_p, dups, keylen))
+		return NULL;
+
 	return AVL_p;
 }
 

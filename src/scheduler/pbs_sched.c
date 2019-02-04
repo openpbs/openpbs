@@ -914,7 +914,7 @@ main(int argc, char *argv[])
 
 	/*the real deal or show version and exit?*/
 
-	execution_mode(argc, argv);
+	PRINT_VERSION_AND_EXIT(argc, argv);
 
 	if(set_msgdaemonname("pbs_sched")) {
 		fprintf(stderr, "Out of memory\n");

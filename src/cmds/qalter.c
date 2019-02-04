@@ -195,10 +195,12 @@ main(int argc, char **argv, char **envp) /* qalter */
 
 	/*test for real deal or just version and exit*/
 
-	execution_mode(argc, argv);
+	PRINT_VERSION_AND_EXIT(argc, argv);
 
 #ifdef WIN32
-	winsock_init();
+	if (winsock_init()) {
+		return 1;
+	}
 #endif
 
 	while ((c = getopt(argc, argv, GETOPT_ARGS)) != EOF)
@@ -210,13 +212,13 @@ main(int argc, char **argv, char **envp) /* qalter */
 					break;
 				}
 				sprintf(a_value, "%ld", (long)after);
-				set_attr(&attrib, ATTR_a, a_value);
+				set_attr_error_exit(&attrib, ATTR_a, a_value);
 				break;
 			case 'A':
-				set_attr(&attrib, ATTR_A, optarg);
+				set_attr_error_exit(&attrib, ATTR_A, optarg);
 				break;
 			case 'P':
-				set_attr(&attrib, ATTR_project, optarg);
+				set_attr_error_exit(&attrib, ATTR_project, optarg);
 				break;
 			case 'c':
 				while (isspace((int)*optarg)) optarg++;
@@ -226,20 +228,20 @@ main(int argc, char **argv, char **envp) /* qalter */
 					errflg++;
 					break;
 				}
-				set_attr(&attrib, ATTR_c, optarg);
+				set_attr_error_exit(&attrib, ATTR_c, optarg);
 				break;
 			case 'e':
-				set_attr(&attrib, ATTR_e, optarg);
+				set_attr_error_exit(&attrib, ATTR_e, optarg);
 				break;
 			case 'h':
 				while (isspace((int)*optarg)) optarg++;
-				set_attr(&attrib, ATTR_h, optarg);
+				set_attr_error_exit(&attrib, ATTR_h, optarg);
 				break;
 			case 'j':
-				set_attr(&attrib, ATTR_j, optarg);
+				set_attr_error_exit(&attrib, ATTR_j, optarg);
 				break;
 			case 'k':
-				set_attr(&attrib, ATTR_k, optarg);
+				set_attr_error_exit(&attrib, ATTR_k, optarg);
 				break;
 			case 'l':
 				if ((i = set_resources(&attrib, optarg, TRUE, &erplace)) != 0) {
@@ -254,20 +256,20 @@ main(int argc, char **argv, char **envp) /* qalter */
 				break;
 			case 'm':
 				while (isspace((int)*optarg)) optarg++;
-				set_attr(&attrib, ATTR_m, optarg);
+				set_attr_error_exit(&attrib, ATTR_m, optarg);
 				break;
 			case 'M':
-				set_attr(&attrib, ATTR_M, optarg);
+				set_attr_error_exit(&attrib, ATTR_M, optarg);
 				break;
 			case 'N':
-				set_attr(&attrib, ATTR_N, optarg);
+				set_attr_error_exit(&attrib, ATTR_N, optarg);
 				break;
 			case 'o':
-				set_attr(&attrib, ATTR_o, optarg);
+				set_attr_error_exit(&attrib, ATTR_o, optarg);
 				break;
 			case 'p':
 				while (isspace((int)*optarg)) optarg++;
-				set_attr(&attrib, ATTR_p, optarg);
+				set_attr_error_exit(&attrib, ATTR_p, optarg);
 				break;
 			case 'r':
 				if (strlen(optarg) != 1) {
@@ -280,16 +282,16 @@ main(int argc, char **argv, char **envp) /* qalter */
 					errflg++;
 					break;
 				}
-				set_attr(&attrib, ATTR_r, optarg);
+				set_attr_error_exit(&attrib, ATTR_r, optarg);
 				break;
 			case 'R':
-				set_attr(&attrib, ATTR_R, optarg);
+				set_attr_error_exit(&attrib, ATTR_R, optarg);
 				break;
 			case 'S':
-				set_attr(&attrib, ATTR_S, optarg);
+				set_attr_error_exit(&attrib, ATTR_S, optarg);
 				break;
 			case 'u':
-				set_attr(&attrib, ATTR_u, optarg);
+				set_attr_error_exit(&attrib, ATTR_u, optarg);
 				break;
 			case 'W':
 				while (isspace((int)*optarg)) optarg++;
@@ -303,7 +305,7 @@ main(int argc, char **argv, char **envp) /* qalter */
 #endif
 				i = parse_equal_string(optarg, &keyword, &valuewd);
 				while (i == 1) {
-					set_attr(&attrib, keyword, valuewd);
+					set_attr_error_exit(&attrib, keyword, valuewd);
 					i = parse_equal_string(NULL, &keyword, &valuewd);
 				}
 				if (i == -1) {

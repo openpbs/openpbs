@@ -80,6 +80,7 @@
 #include "mom_hook_func.h"
 #include "hook.h"
 #include "pbs_reliable.h"
+#include "pbs_version.h"
 
 
 #define	RESCASSN_NCPUS	"resources_assigned.ncpus"
@@ -126,7 +127,7 @@ extern	time_t		time_now;
 extern	int		num_pcpus;
 extern	int		num_acpus;
 extern 	u_Long		av_phy_mem;
-extern	char		pbs_version[];
+
 
 extern int becomeuser(job *pjob);
 
@@ -411,10 +412,10 @@ add_natural_vnode_info(vnl_t **p_vnlp)
 	}
 
 	if (vn_addvnr(*p_vnlp, mom_short_name, "pbs_version",
-		pbs_version, 0, 0, NULL) == -1) {
+		PBS_VERSION, 0, 0, NULL) == -1) {
 		snprintf(log_buffer, sizeof(log_buffer),
 			"Failed to add '%s %s=%s' to vnode list",
-			mom_short_name, "pbs_version", pbs_version);
+			mom_short_name, "pbs_version", PBS_VERSION);
 		log_err(-1, __func__, log_buffer);
 		return;
 

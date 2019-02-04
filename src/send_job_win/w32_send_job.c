@@ -278,7 +278,7 @@ main(int argc, char *argv[])
 	int 		prot = PROT_TCP;
 	/*the real deal or output version and exit?*/
 
-	execution_mode(argc, argv);
+	PRINT_VERSION_AND_EXIT(argc, argv);
 
 	/* If we are not run with real and effective uid of 0, forget it */
 
@@ -310,7 +310,9 @@ main(int argc, char *argv[])
 		return 1;
 	}
 
-	winsock_init();
+	if (winsock_init()) {
+		return 1;
+	}
 
 	(void)init_network(0);
 	(void)init_network_add(-1, NULL);

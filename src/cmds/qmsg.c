@@ -77,10 +77,12 @@ main(int argc, char **argv, char **envp) /* qmsg */
 
 	/*test for real deal or just version and exit*/
 
-	execution_mode(argc, argv);
+	PRINT_VERSION_AND_EXIT(argc, argv);
 
 #ifdef WIN32
-	winsock_init();
+	if (winsock_init()) {
+		return 1;
+	}
 #endif
 
 	msg_string[0]='\0';

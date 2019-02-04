@@ -99,11 +99,13 @@ main(int argc, char *argv[])
 	char *testp;
 
 	/* the real deal or output version and exit? */
-	execution_mode(argc, argv);
+	PRINT_VERSION_AND_EXIT(argc, argv);
 	set_msgdaemonname("pbsfs");
 
 #ifdef WIN32
-	winsock_init();
+	if (winsock_init()) {
+		return 1;
+	}
 #endif
 
 

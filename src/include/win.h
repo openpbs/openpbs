@@ -351,7 +351,7 @@ extern int lstat(const char *file_name, struct stat *buf);
 
 
 /* refers to windows - net functions */
-extern void winsock_init(void);
+extern int winsock_init(void);
 extern void winsock_cleanup(void);
 
 /* refers to directory manipulation routines */
@@ -459,7 +459,7 @@ extern void save_env(void);
 extern int _setenv_win(char *key, char *value, int overwrite);
 extern char *_getenv_win(char *key);
 extern char *get_saved_env(char *e);
-extern void create_env_avltree();
+extern int create_env_avltree();
 extern void update_env_avltree();
 extern void destroy_env_avltree();
 
