@@ -58,15 +58,20 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <pwd.h>
+#include <pthread.h>
 #ifndef WIN32
 #include <dlfcn.h>
 #include <grp.h>
 #endif
 #include "pbs_error.h"
+#include "log.h"
 
 
 
 #ifndef WIN32
+static pthread_once_t munge_init_once = PTHREAD_ONCE_INIT;
+static char err_initmunge[LOG_BUF_SIZE];
+
 const char libmunge[] = "libmunge.so";  /* MUNGE library */
 void *munge_dlhandle; /* MUNGE dynamic loader handle */
 int (*munge_encode_ptr)(char **, void *, const void *, int); /* MUNGE munge_encode() function pointer */
@@ -79,44 +84,42 @@ char * (*munge_strerror_ptr) (int); /* MUNGE munge_stderror() function pointer *
  *      and assign specific function pointers to be used at the time
  *      of decode or encode.
  *
- * @param[in/out] ebuf	Error message is updated here
- * @param[in] ebufsz	size of the error message buffer
- *
- * @return int
- * @retval  0 on success
- * @retval -1 on failure
+ * @note
+ * 	This function should get invoked only once. Using pthread_once for this purpose.
+ * 	This function is not expecting any arguments. So storing error messages in a static
+ * 	variable in case of error.
  */
-int
-init_munge(char *ebuf, int ebufsz)
+void
+init_munge(void)
 {
         munge_dlhandle = dlopen(libmunge, RTLD_LAZY);
         if (munge_dlhandle == NULL) {
-            snprintf(ebuf, ebufsz, "%s not found", libmunge);
+            snprintf(err_initmunge, LOG_BUF_SIZE, "%s not found", libmunge);
             goto err;
         }
 
         munge_encode_ptr = dlsym(munge_dlhandle, "munge_encode");
         if (munge_encode_ptr == NULL) {
-        	snprintf(ebuf, ebufsz, "symbol munge_encode not found in %s", libmunge);
+            snprintf(err_initmunge, LOG_BUF_SIZE, "symbol munge_encode not found in %s", libmunge);
             goto err;
         }
 
         munge_decode_ptr = dlsym(munge_dlhandle, "munge_decode");
         if (munge_decode_ptr == NULL) {
-        	snprintf(ebuf, ebufsz, "symbol munge_decode not found in %s", libmunge);
+            snprintf(err_initmunge, LOG_BUF_SIZE, "symbol munge_decode not found in %s", libmunge);
             goto err;
         }
 
         munge_strerror_ptr = dlsym(munge_dlhandle, "munge_strerror");
         if (munge_strerror_ptr == NULL) {
-        	snprintf(ebuf, ebufsz, "symbol munge_strerror not found in %s", libmunge);
+            snprintf(err_initmunge, LOG_BUF_SIZE, "symbol munge_strerror not found in %s", libmunge);
             goto err;
         }
         /*
          * Don't close the munge handler as it will be used
          * further for encode or decode
          */
-        return (0);
+        return;
 
 err:
 	if (munge_dlhandle)
@@ -126,7 +129,7 @@ err:
 	munge_encode_ptr = NULL;
 	munge_decode_ptr = NULL;
 	munge_strerror_ptr = NULL;
-	return (-1);
+	return;
 }
 
 /**
@@ -152,11 +155,11 @@ pbs_get_munge_auth_data(int fromsvr, char *ebuf, int ebufsz)
 	char payload[2 + PBS_MAXUSER + PBS_MAXGRPN + 1] = { '\0' };
 	int munge_err = 0;
 
+	pthread_once(&munge_init_once, init_munge);
 	if (munge_dlhandle == NULL) {
-		if (init_munge(ebuf, ebufsz) != 0) {
-			pbs_errno = PBSE_SYSTEM;
-			goto err;
-		}
+		strncpy(ebuf, err_initmunge, ebufsz);
+		pbs_errno = PBSE_SYSTEM;
+		goto err;
 	}
 
 	myrealuid = getuid();
@@ -221,11 +224,11 @@ pbs_munge_validate(void *auth_data, int *fromsvr, char *ebuf, int ebufsz)
 
 	*fromsvr = 0;
 
+	pthread_once(&munge_init_once, init_munge);
 	if (munge_dlhandle == NULL) {
-		if (init_munge(ebuf, ebufsz) != 0) {
-			pbs_errno = PBSE_SYSTEM;
-			goto err;
-		}
+		strncpy(ebuf, err_initmunge, ebufsz);
+		pbs_errno = PBSE_SYSTEM;
+		goto err;
 	}
 
 	munge_err = munge_decode_ptr(auth_data, NULL, &recv_payload, &recv_len, &uid, &gid);
