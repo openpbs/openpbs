@@ -946,12 +946,15 @@ class _PBSSnapUtils(object):
 
         :returns: numeric value of the resource flag
         """
+        # Variable assignments below mirrors definitions
+        # from src/include/pbs_internal.h
         ATR_DFLAG_USRD = 0x01
         ATR_DFLAG_USWR = 0x02
         ATR_DFLAG_OPRD = 0x04
         ATR_DFLAG_OPWR = 0x08
         ATR_DFLAG_MGRD = 0x10
         ATR_DFLAG_MGWR = 0x20
+        ATR_DFLAG_MOM = 0x400
         ATR_DFLAG_RASSN = 0x4000
         ATR_DFLAG_ANASSN = 0x8000
         ATR_DFLAG_FNASSN = 0x10000
@@ -971,6 +974,8 @@ class _PBSSnapUtils(object):
             resc_flag |= ATR_DFLAG_ANASSN
         if "h" in flag:
             resc_flag |= ATR_DFLAG_CVTSLT
+        if "m" in flag:
+            resc_flag |= ATR_DFLAG_MOM
         if "r" in flag:
             resc_flag &= ~READ_WRITE
             resc_flag |= NO_USER_SET

@@ -2645,7 +2645,7 @@ get_hook_results(char *input_file, int *accept_flag, int *reject_flag,
 				/* We're now passing type and flag so that if 'name_str' resource */
 				/* does not exist, then it will be dynamically allocated on the server */
 				/* side, essentially allowing hook scripts to define custom resource! */
-				rs_flag = READ_WRITE | ATR_DFLAG_CVTSLT;
+				rs_flag = READ_WRITE | ATR_DFLAG_CVTSLT | ATR_DFLAG_MOM;
 				if ((p2=strrchr(name_str, '.')) != NULL) {
 					p2++;
 					prdef = find_resc_def(svr_resc_def,

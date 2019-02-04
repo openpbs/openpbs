@@ -624,11 +624,13 @@ setup_resc(int autocorrect)
 					ATR_DFLAG_ANASSN |
 					ATR_DFLAG_FNASSN |
 					ATR_DFLAG_CVTSLT |
+					ATR_DFLAG_MOM |
 					READ_WRITE );
 				presc->rs_flags &= ~( ATR_DFLAG_RASSN |
 						ATR_DFLAG_ANASSN |
 						ATR_DFLAG_FNASSN |
 						ATR_DFLAG_CVTSLT |
+						ATR_DFLAG_MOM |
 						READ_WRITE );
 				presc->rs_flags |= resc_flag;
 #ifndef PBS_MOM
