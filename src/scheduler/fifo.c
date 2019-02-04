@@ -170,10 +170,13 @@ schedinit(void)
 	else
 		init_non_prime_time(&cstat, NULL);
 
-	tmptr = localtime(&cstat.current_time);
-	if ((tmptr != NULL) && ((tmptr->tm_year + 1900) > conf.holiday_year))
-		schdlog(PBSEVENT_ADMIN, PBS_EVENTCLASS_FILE, LOG_NOTICE,
-			HOLIDAYS_FILE, "The holiday file is out of date; please update it.");
+	if (conf.holiday_year != 0) {
+		tmptr = localtime(&cstat.current_time);
+		if ((tmptr != NULL) && ((tmptr->tm_year + 1900) > conf.holiday_year))
+			schdlog(PBSEVENT_ADMIN, PBS_EVENTCLASS_FILE, LOG_NOTICE,
+			HOLIDAYS_FILE,
+					"The holiday file is out of date; please update it.");
+	}
 
 	parse_ded_file(DEDTIME_FILE);
 
@@ -299,10 +302,13 @@ update_cycle_status(struct status *policy, time_t current_time)
 	else if (prime == NON_PRIME && policy->is_prime)
 		init_non_prime_time(policy, NULL);
 
-	tmptr = localtime(&policy->current_time);
-	if ((tmptr != NULL ) && ((tmptr->tm_year + 1900) > conf.holiday_year))
-		schdlog(PBSEVENT_ADMIN, PBS_EVENTCLASS_FILE, LOG_NOTICE,
-		       HOLIDAYS_FILE, "The holiday file is out of date; please update it.");
+	if (conf.holiday_year != 0) {
+		tmptr = localtime(&policy->current_time);
+		if ((tmptr != NULL) && ((tmptr->tm_year + 1900) > conf.holiday_year))
+			schdlog(PBSEVENT_ADMIN, PBS_EVENTCLASS_FILE, LOG_NOTICE,
+			HOLIDAYS_FILE,
+					"The holiday file is out of date; please update it.");
+	}
 	policy->prime_status_end = end_prime_status(policy->current_time);
 
 	if (policy->prime_status_end == SCHD_INFINITY)

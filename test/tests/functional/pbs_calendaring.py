@@ -44,6 +44,7 @@ class TestCalendaring(TestFunctional):
     """
     This test suite tests if PBS scheduler calendars events correctly
     """
+
     def test_topjob_start_time(self):
         """
         In this test we test that the top job which gets added to the
@@ -96,7 +97,7 @@ class TestCalendaring(TestFunctional):
         # since only one subjob of array parent can become topjob
         # second job must start 10 seconds after that because
         # walltime of array job is 10 seconds.
-        self.assertEqual(est_epoch2, est_epoch1+10)
+        self.assertEqual(est_epoch2, est_epoch1 + 10)
         # Also make sure that since second subjob from array is running
         # Third subjob should set estimated.start_time in future.
         self.assertGreater(est_epoch1, time_now)
