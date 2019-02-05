@@ -9454,6 +9454,16 @@ class Server(PBSService):
         :returns: True on success.
         :raises: PbsManagerError
         """
+        # sync_mom_hookfiles_timeout is 15min by default
+        # Setting it to lower value to avoid the race condition at hook copy
+        srv_stat = self.status(SERVER, 'sync_mom_hookfiles_timeout')
+        try:
+            sync_val = srv_stat[0]['sync_mom_hookfiles_timeout']
+        except:
+            self.logger.info("Setting sync_mom_hookfiles_timeout to 15s")
+            self.manager(MGR_CMD_SET, SERVER,
+                         {"sync_mom_hookfiles_timeout": 15})
+
         fn = self.du.create_temp_file(body=body)
 
         if not self._is_local:
