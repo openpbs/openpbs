@@ -11080,24 +11080,21 @@ class Scheduler(PBSService):
                          configuration settings.
         :type validate: bool
         """
-        file_specified = False
         if res_file is not None:
             f = open(file)
             script_body = f.readlines()
             f.close()
-            file_specified = True
+            self.du.chmod(self.hostname, path=res_file, mode=0755, sudo=True)
         else:
+            f_prefix = 'PtlPbsSchedConfig'
             res_file = self.du.create_dyn_res_script(script_body,
-                                                     prefix='\
-                                                     PtlPbsSchedConfig')
+                                                     prefix=f_prefix)
 
         self.server_dyn_res = res_file
         self.logger.info(self.logprefix + "adding server dyn res " + res_file)
         self.logger.info("-" * 30)
         self.logger.info(script_body)
         self.logger.info("-" * 30)
-        if file_specified is True:
-            self.du.chmod(self.hostname, path=res_file, mode=0755)
 
         a = {'server_dyn_res': '"' + custom_resource + ' !' + res_file + '"'}
         self.set_sched_config(a, apply=apply, validate=validate)

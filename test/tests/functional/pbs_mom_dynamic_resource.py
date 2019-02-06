@@ -390,9 +390,7 @@ class TestMomDynRes(TestFunctional):
 
         # give write permission to user only
         self.du.chmod(path=fp, mode=0744, sudo=True)
-        root_priv = self.du.run_cmd(
-            cmd=["ls", os.path.join(os.sep, "root")])
-        if root_priv['rc'] != 0:
+        if os.getuid() != 0:
                 self.check_access_log(fp, exist=True)
         else:
                 self.check_access_log(fp, exist=False)
@@ -427,9 +425,9 @@ class TestMomDynRes(TestFunctional):
         self.du.chmod(path=fp, mode=0744, sudo=True)
         self.check_access_log(fp)
 
-        # Create dynamic resource script in tmp directory and check
+        # Create dynamic resource script in PBS_HOME directory and check
         # file permissions
-        # du.create_dyn_res_script by default creates the script in /tmp
+        # du.create_dyn_res_script by default creates the script in PBS_HOME
 
         # give write permission to group and others
         fp = self.du.create_dyn_res_script(scr_body, perm=0766)
@@ -467,4 +465,5 @@ class TestMomDynRes(TestFunctional):
         # removing all files creating in test
         self.du.rm(path=self.filenames, sudo=True, force=True,
                    recursive=True)
-        self.filenames = []
+        del self.filenames[:]
+        TestFunctional.tearDown(self)

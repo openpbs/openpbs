@@ -637,9 +637,7 @@ class TestServerDynRes(TestFunctional):
 
         # give write permission to user only
         self.du.chmod(path=fp, mode=0744, sudo=True)
-        root_priv = self.du.run_cmd(
-            cmd=["ls", os.path.join(os.sep, "root")])
-        if root_priv['rc'] != 0:
+        if os.getuid() != 0:
                 self.check_access_log(fp, exist=True)
         else:
                 self.check_access_log(fp, exist=False)
@@ -721,4 +719,5 @@ class TestServerDynRes(TestFunctional):
         # removing all files creating in test
         self.du.rm(path=self.filenames, sudo=True, force=True,
                    recursive=True)
-        self.filenames = []
+        del self.filenames[:]
+        TestFunctional.tearDown(self)
