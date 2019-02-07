@@ -5486,7 +5486,8 @@ do_daemon_stuff(void)
 
 out:
 	close(bindfd);
-	unlink(fl);
+	if (cred_timeout != 1)
+		unlink(fl);
 	exit(0);
 
 error:
