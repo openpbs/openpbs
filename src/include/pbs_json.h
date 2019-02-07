@@ -6,7 +6,8 @@ typedef enum {
 	JSON_NULL,
 	JSON_STRING,
 	JSON_INT,
-	JSON_FLOAT
+	JSON_FLOAT,
+	JSON_NUMERIC 
 }JsonValueType;
 
 typedef enum {

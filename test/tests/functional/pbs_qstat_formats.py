@@ -551,3 +551,31 @@ class TestQstatFormats(TestFunctional):
             json.loads(qstat_out)
         except ValueError:
             self.assertTrue(False)
+
+    def test_qstat_json_valid_job_longint_env(self):
+        """
+        Test if JSON output of qstat -f is in valid format
+        with longint in env
+        """
+        os.environ["LONGINT"] = '1111111111111111111111111111111111111111' + \
+                                '1111111111111111111111111111111111111111' + \
+                                '11111111111111111111111111111111111'
+        os.environ["LONGDOUBLE"] = '1111111111111111111111111111112.88888' + \
+                                   '8888888888888888'
+
+        self.server.manager(MGR_CMD_SET, SERVER,
+                            {'default_qsub_arguments': '-V'})
+
+        j = Job(self.du.get_current_user())
+        j.preserve_env = True
+        j.set_sleep_time(10)
+        jid = self.server.submit(j)
+        qstat_cmd_json = os.path.join(self.server.pbs_conf['PBS_EXEC'], 'bin',
+                                      'qstat') + \
+            ' -f -F json ' + str(jid)
+        ret = self.du.run_cmd(self.server.hostname, cmd=qstat_cmd_json)
+        qstat_out = "\n".join(ret['out'])
+        try:
+            json.loads(qstat_out)
+        except ValueError:
+            self.assertTrue(False)
