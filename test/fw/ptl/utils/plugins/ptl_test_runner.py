@@ -42,6 +42,7 @@ import datetime
 import unittest
 import tempfile
 import platform
+import socket
 import pwd
 import signal
 import ptl
@@ -56,7 +57,9 @@ from nose.plugins.skip import SkipTest
 from nose.suite import ContextSuite
 from ptl.utils.pbs_testsuite import PBSTestSuite
 from ptl.utils.pbs_testsuite import TIMEOUT_KEY
+from ptl.utils.pbs_testsuite import REQUIREMENTS_KEY
 from ptl.utils.pbs_dshutils import DshUtils
+from ptl.utils.plugins.ptl_test_info import get_effective_reqs
 from ptl.lib.pbs_testlib import PBSInitServices
 from ptl.utils.pbs_covutils import LcovUtils
 try:
@@ -476,6 +479,7 @@ class PTLTestRunner(Plugin):
         self.__failed_tc_count = 0
         self.__tf_count = 0
         self.__failed_tc_count_msg = False
+        self._test_marker = 'test_'
 
     def options(self, parser, env):
         """
@@ -518,6 +522,7 @@ class PTLTestRunner(Plugin):
         """
         self.config = config
         self.enabled = True
+        self.param_dict = self.__get_param_dictionary()
 
     def prepareTestRunner(self, runner):
         """
@@ -577,6 +582,98 @@ class PTLTestRunner(Plugin):
         test.duration = test.end_time - test.start_time
         test.captured_logs = self.result.handler.get_logs()
 
+    def __get_param_dictionary(self):
+        """
+        Method to convert data in param into dictionary of cluster
+        information
+        """
+        tparam_contents = {}
+        nomomlist = []
+        shortname = (socket.gethostname()).split('.', 1)[0]
+        for key in ['servers', 'moms', 'comms', 'clients']:
+            tparam_contents[key] = []
+        if self.param is not None:
+            for h in self.param.split(','):
+                if '=' in h:
+                    k, v = h.split('=', 1)
+                    if (k == 'server' or k == 'servers'):
+                        tparam_contents['servers'].extend(v.split(':'))
+                    elif (k == 'mom' or k == 'moms'):
+                        tparam_contents['moms'].extend(v.split(':'))
+                    elif k == 'comms':
+                        tparam_contents['comms'] = v.split(':')
+                    elif k == 'client':
+                        tparam_contents['clients'] = v.split(':')
+                    elif k == 'nomom':
+                        nomomlist = v.split(':')
+        for pkey in ['servers', 'moms', 'comms', 'clients']:
+            if not tparam_contents[pkey]:
+                tparam_contents[pkey] = set([shortname])
+            else:
+                tparam_contents[pkey] = set(tparam_contents[pkey])
+        if nomomlist:
+            tparam_contents['moms'] -= set(nomomlist)
+        return tparam_contents
+
+    @staticmethod
+    def __are_requirements_matching(param_dic=None, test=None):
+        """
+        Validates test requirements against test cluster information
+        returns True on match or False otherwise None
+
+        :param param_dic: dictionary of cluster information from data passed
+                          to param list
+        :param_dic type: dic
+        :param test: test object
+        :test type: object
+
+        :returns True or False or None
+        """
+        ts_requirements = {}
+        tc_requirements = {}
+        param_count = {}
+        shortname = (socket.gethostname()).split('.', 1)[0]
+        if test is None:
+            return None
+        test_name = getattr(test.test, '_testMethodName', None)
+        if test_name is not None:
+            method = getattr(test.test, test_name, None)
+        if method is not None:
+            tc_requirements = getattr(method, REQUIREMENTS_KEY, {})
+            cls = method.im_class
+            ts_requirements = getattr(cls, REQUIREMENTS_KEY, {})
+        if not tc_requirements:
+            if not ts_requirements:
+                return None
+        eff_tc_req = get_effective_reqs(ts_requirements, tc_requirements)
+        for key in ['servers', 'moms', 'comms', 'clients']:
+            param_count['num_' + key] = len(param_dic[key])
+        for pk in param_count:
+            if param_count[pk] < eff_tc_req[pk]:
+                return False
+        if set(param_dic['moms']) & set(param_dic['servers']):
+            if eff_tc_req['no_mom_on_server']:
+                return False
+        else:
+            if not eff_tc_req['no_mom_on_server']:
+                return False
+        if set(param_dic['comms']) & set(param_dic['servers']):
+            if eff_tc_req['no_comm_on_server']:
+                return False
+        else:
+            if not eff_tc_req['no_comm_on_server']:
+                return False
+        comm_mom_list = set(param_dic['moms']) & set(param_dic['comms'])
+        if comm_mom_list and shortname in comm_mom_list:
+            # Excluding the server hostname for flag 'no_comm_on_mom'
+            comm_mom_list.remove(shortname)
+        if comm_mom_list:
+            if eff_tc_req['no_comm_on_mom']:
+                return False
+        else:
+            if not eff_tc_req['no_comm_on_mom']:
+                return False
+
     def startTest(self, test):
         """
         Start the test
@@ -599,6 +696,13 @@ class PTLTestRunner(Plugin):
             self.__failed_tc_count_msg = True
             raise TCThresholdReached
         timeout = self.__get_timeout(test)
+        rv = self.__are_requirements_matching(self.param_dict, test)
+        if rv is False:
+            # Below method call is needed in order to get the test case
+            # details in the output and to have the skipped test count
+            # included in total run count of the test run
+            self.result.startTest(test)
+            raise SkipTest('Test requirements are not matching')
 
         def timeout_handler(signum, frame):
             raise TimeOut('Timed out after %s second' % timeout)

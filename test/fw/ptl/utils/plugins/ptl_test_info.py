@@ -40,9 +40,25 @@ import logging
 from nose.plugins.base import Plugin
 from ptl.utils.pbs_testsuite import PBSTestSuite
 from ptl.utils.plugins.ptl_test_tags import TAGKEY
+from ptl.utils.pbs_testsuite import REQUIREMENTS_KEY
+from ptl.utils.pbs_testsuite import default_requirements
 from copy import deepcopy
 
 log = logging.getLogger('nose.plugins.PTLTestInfo')
+
+
+def get_effective_reqs(ts_reqs=None, tc_reqs=None):
+    """
+    get effective requirements at test case
+    """
+    tc_effective_reqs = {}
+    if (tc_reqs is None and ts_reqs is None):
+        tc_effective_reqs = deepcopy(default_requirements)
+    else:
+        tc_effective_reqs = deepcopy(default_requirements)
+        tc_effective_reqs.update(ts_reqs)
+        tc_effective_reqs.update(tc_reqs)
+    return tc_effective_reqs
 
 
 class FakeRunner(object):
@@ -203,6 +219,7 @@ class PTLTestInfo(Plugin):
         tsd['module'] = suite.__module__
         dcl = suite.__dict__
         tcs = {}
+        ts_req = getattr(suite, REQUIREMENTS_KEY, {})
         for k in dcl.keys():
             if k.startswith('test_'):
                 tcd = {}
@@ -213,8 +230,10 @@ class PTLTestInfo(Plugin):
                     # not a test case, ignore
                     continue
                 tcd['doc'] = str(tc.__doc__)
-                tctags = sorted(set(tstags + getattr(tc, TAGKEY, [])))
+                tc_req = getattr(tc, REQUIREMENTS_KEY, {})
+                tcd['requirements'] = get_effective_reqs(ts_req, tc_req)
                 numnodes = 1
+                tctags = sorted(set(tstags + getattr(tc, TAGKEY, [])))
                 for tag in tctags:
                     if 'numnodes' in tag:
                         numnodes = tag.split('=')[1].strip()
