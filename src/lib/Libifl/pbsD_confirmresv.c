@@ -64,7 +64,7 @@
  */
 
 int
-pbs_confirmresv(int c, char *rid, char *location, unsigned long start,
+__pbs_confirmresv(int c, char *rid, char *location, unsigned long start,
 	char *extend)
 {
 	int	rc;

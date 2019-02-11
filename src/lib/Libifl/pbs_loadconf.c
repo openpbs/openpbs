@@ -277,7 +277,7 @@ parse_config_line(FILE *fp, char **key, char **val)
  * @retval 0 Failure
  */
 int
-pbs_loadconf(int reload)
+__pbs_loadconf(int reload)
 {
 	FILE *fp;
 	char buf[256];

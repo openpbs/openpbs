@@ -440,13 +440,9 @@ DECLDIR char *
 pbs_submit_with_cred(int, struct attropl *, char *,
 	char *, char *, int, size_t, char *);
 
-DECLDIR int pbs_loadconf(int);
-
 DECLDIR char *pbs_get_tmpdir(void);
 
 DECLDIR char *pbs_strsep(char **, const char *);
-
-DECLDIR int pbs_confirmresv(int, char *, char *, unsigned long, char *);
 
 DECLDIR int pbs_defschreply(int, int, char *, int, char *, char *);
 
@@ -499,9 +495,6 @@ extern int pbs_decrypt_pwd(char *, int, size_t, char **);
 extern char *pbs_submit_with_cred(int, struct attropl *, char *,
 	char *, char *, int, size_t , char *);
 
-
-extern int pbs_loadconf(int);
-
 extern int pbs_query_max_connections(void);
 
 extern char *pbs_get_tmpdir(void);
@@ -513,8 +506,6 @@ extern int pbs_pkill(FILE *, int);
 extern int pbs_pclose(FILE *);
 
 extern char* pbs_strsep(char **, const char *);
-
-extern int pbs_confirmresv(int, char *, char *, unsigned long, char *);
 
 extern int pbs_defschreply(int, int, char *, int, char *, char *);
 
