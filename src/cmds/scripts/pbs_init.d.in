@@ -790,7 +790,10 @@ is_boottime()
 	
 	PYTHON_EXE=${PBS_EXEC}/python/bin/python
 	if [ -z "${PYTHON_EXE}" -o ! -x "${PYTHON_EXE}" ] ; then
-		return 1
+		PYTHON_EXE=`type python 2>/dev/null | cut -d' ' -f3`
+		if [ -z "${PYTHON_EXE}" -o ! -x "${PYTHON_EXE}" ] ; then
+			return 1
+		fi
 	fi
 	
 	BOOTPYFILE="/var/tmp/pbs_bootcheck.py"

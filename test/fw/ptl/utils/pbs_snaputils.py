@@ -346,7 +346,7 @@ class _PBSSnapUtils(object):
 
         # Check which of the PBS daemons' information is available
         self.server = Server(primary_host)
-        self.scheduler = Scheduler(server=self.server)
+        self.scheduler = None
         daemon_status = self.server.pi.status()
         if len(daemon_status) > 0 and daemon_status['rc'] == 0 and \
                 len(daemon_status['err']) == 0:
@@ -357,6 +357,7 @@ class _PBSSnapUtils(object):
                         self.server_up = True
                 elif d_stat.startswith("pbs_sched"):
                     self.sched_info_avail = True
+                    self.scheduler = Scheduler(server=self.server)
                 elif d_stat.startswith("pbs_mom"):
                     self.mom_info_avail = True
                 elif d_stat.startswith("pbs_comm"):

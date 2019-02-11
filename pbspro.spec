@@ -357,6 +357,8 @@ if [ "$1" != "1" ]; then
 	fi
 	rm -f /etc/init.d/pbs
 	rm -f /opt/modulefiles/pbs/%{version}
+	rm -f /var/tmp/pbs_boot_check
+	rm -f /var/tmp/pbs_bootcheck.py
 	%if %{defined have_systemd}
 		systemctl disable pbs
 		rm -f /usr/lib/systemd/system-preset/95-pbs.preset
@@ -378,6 +380,8 @@ if [ "$1" != "1" ]; then
 	fi
 	rm -f /etc/init.d/pbs
 	rm -f /opt/modulefiles/pbs/%{version}
+	rm -f /var/tmp/pbs_boot_check
+	rm -f /var/tmp/pbs_bootcheck.py
 	%if %{defined have_systemd}
 		systemctl disable pbs
 		rm -f /usr/lib/systemd/system-preset/95-pbs.preset
@@ -470,6 +474,7 @@ fi
 %endif
 %exclude %{pbs_prefix}/bin/printjob_svr.bin
 %exclude %{pbs_prefix}/etc/pbs_db_schema.sql
+%exclude %{pbs_prefix}/libexec/pbs_schema_upgrade
 %exclude %{pbs_prefix}/etc/pbs_dedicated
 %exclude %{pbs_prefix}/etc/pbs_holidays*
 %exclude %{pbs_prefix}/etc/pbs_resource_group

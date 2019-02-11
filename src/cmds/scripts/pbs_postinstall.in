@@ -401,6 +401,9 @@ install_pbsinitd() {
 			cp ${pbslibdir}/python/pbs_bootcheck.py /var/tmp/pbs_bootcheck.py
 			chmod 0644 /var/tmp/pbs_bootcheck.py
 		fi
+		if [ -f /var/tmp/pbs_boot_check ] ; then
+			rm -f /var/tmp/pbs_boot_check
+		fi
 	fi
 	echo "***"
 
