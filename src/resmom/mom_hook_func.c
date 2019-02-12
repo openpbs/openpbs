@@ -113,6 +113,7 @@ extern pbs_list_head	svr_exechost_periodic_hooks;
 extern pbs_list_head	svr_exechost_startup_hooks;
 extern pbs_list_head	svr_execjob_attach_hooks;
 extern pbs_list_head	svr_execjob_resize_hooks;
+extern pbs_list_head	svr_execjob_abort_hooks;
 extern pbs_list_head	svr_hook_job_actions;
 extern pbs_list_head	svr_hook_vnl_actions;
 
@@ -768,6 +769,7 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 		case HOOK_EVENT_EXECJOB_PRETERM:
 		case HOOK_EVENT_EXECJOB_EPILOGUE:
 		case HOOK_EVENT_EXECJOB_END:
+		case HOOK_EVENT_EXECJOB_ABORT:
 			pjob = hook_input->pjob;
 			if ((event_type == HOOK_EVENT_EXECJOB_LAUNCH) ||
 			    (event_type == HOOK_EVENT_EXECJOB_PROLOGUE)) {
@@ -1153,6 +1155,7 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 		case HOOK_EVENT_EXECJOB_EPILOGUE:
 		case HOOK_EVENT_EXECJOB_END:
 		case HOOK_EVENT_EXECJOB_PRETERM:
+		case HOOK_EVENT_EXECJOB_ABORT:
 			if (pjob == NULL) {
 				log_err(-1, __func__, "No job parameter passed!");
 				goto run_hook_exit;
@@ -3646,6 +3649,9 @@ mom_process_hooks(unsigned int hook_event, char *req_user, char *req_host,
 		case HOOK_EVENT_EXECJOB_RESIZE:
 			head_ptr = &svr_execjob_resize_hooks;
 			break;
+		case HOOK_EVENT_EXECJOB_ABORT:
+			head_ptr = &svr_execjob_abort_hooks;
+			break;
 		default:
 			free (php);
 			return (-1); /* unexpected event encountered */
@@ -3686,6 +3692,9 @@ mom_process_hooks(unsigned int hook_event, char *req_user, char *req_host,
 				break;
 			case HOOK_EVENT_EXECJOB_RESIZE:
 				phook_next = (hook *)GET_NEXT(phook->hi_execjob_resize_hooks);
+				break;
+			case HOOK_EVENT_EXECJOB_ABORT:
+				phook_next = (hook *)GET_NEXT(phook->hi_execjob_abort_hooks);
 				break;
 			default:
 				return (-1); /*  should not get here */
@@ -3907,6 +3916,9 @@ num_eligible_hooks(unsigned int hook_event)
 		case HOOK_EVENT_EXECJOB_RESIZE:
 			head_ptr = &svr_execjob_resize_hooks;
 			break;
+		case HOOK_EVENT_EXECJOB_ABORT:
+			head_ptr = &svr_execjob_abort_hooks;
+			break;
 		default:
 			return (0); /* unexpected event encountered */
 	}
@@ -3943,6 +3955,9 @@ num_eligible_hooks(unsigned int hook_event)
 				break;
 			case HOOK_EVENT_EXECJOB_RESIZE:
 				phook_next = (hook *)GET_NEXT(phook->hi_execjob_resize_hooks);
+				break;
+			case HOOK_EVENT_EXECJOB_ABORT:
+				phook_next = (hook *)GET_NEXT(phook->hi_execjob_abort_hooks);
 				break;
 			default:
 				return (0); /*  should not get here */
