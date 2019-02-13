@@ -987,7 +987,9 @@ class TestReleaseLimitedResOnSuspend(TestFunctional):
                 kill $1
                 exit 0
                 """
-        self.chk_file = self.du.create_temp_file(body=chk_script)
+        pbs_home = self.server.pbs_conf['PBS_HOME']
+        self.chk_file = self.du.create_temp_file(body=chk_script,
+                                                 dirname=pbs_home)
         self.du.chmod(path=self.chk_file, mode=0o755)
         self.du.chown(path=self.chk_file, uid=0, gid=0, sudo=True)
         c = {'$action': 'checkpoint_abort 30 !' + self.chk_file + ' %sid'}

@@ -1892,29 +1892,36 @@ class DshUtils(object):
         os.close(fd)
         # by default mkstemp creates file with 0600 permission
         # to create file as different user first change the file
-        # permissions (default is 0644)
-        self.chmod(path=tmpfile, mode=mode)
+        # permissions
+        if mode is not None:
+            self.chmod(path=tmpfile, mode=mode)
         dest_file = ""
         if asuser is not None:
-            # since we need to create as differnt user than current user
-            # create a temp file just to get temp file name with absolute path
-            # in user's home directory
-            (_, tmpfile2) = tempfile.mkstemp(suffix, prefix, home_dir, text)
-            # remove the newly created temp file
-            os.unlink(tmpfile2)
+            # since we need to create as different user than current user
+            # create a path with temp file name and absolute path
+            # of user's home directory
             if dirname:
-                dest_file = os.path.join(dirname, tmpfile2.split(os.sep)[-1])
+                dest_file = os.path.join(dirname, tmpfile.split(os.sep)[-1])
             else:
-                dest_file = tmpfile2
+                dest_file = os.path.join(os.sep, 'home', str(asuser),
+                                         tmpfile.split(os.sep)[-1])
         elif dirname:
+            # create the file in specified directory
             dest_file = os.path.join(dirname, tmpfile.split(os.sep)[-1])
         else:
-            dest_file = tmpfile
-
-        if dest_file != tmpfile or not self.is_localhost(hostname):
+            # Neither user is provided nor directory, create the file in
+            # tmp directory
+            dest_file = os.path.join(os.sep, 'tmp', tmpfile.split(os.sep)[-1])
+        # copy file in any of the following conditions:
+        # 1 - If asuser is set and it is not the current user
+        # 2 - If destination file path is not same as temporary file path
+        # 3 - If file creation is needed on a remote host
+        if asuser is not None and asuser != self.get_current_user() or \
+           dest_file != tmpfile or not self.is_localhost(hostname):
             self.run_copy(hostname, tmpfile, dest_file, runas=asuser,
-                          preserve_permission=False, level=level)
-            os.unlink(tmpfile)
+                          preserve_permission=False, level=level, mode=mode)
+            if dest_file != tmpfile:
+                os.unlink(tmpfile)
         return dest_file
 
     def mkdtemp(self, hostname=None, suffix='', prefix='PtlPbs', dir=None,
@@ -1961,26 +1968,6 @@ class DshUtils(object):
             self.chown(hostname, fn, uid=uid, gid=gid, recursive=True,
                        sudo=True)
         return fn
-
-    def create_dyn_res_script(self, body, prefix="PbsPtl", suffix=".scr",
-                              perm=0744, dirname=None, host=None):
-        """
-        Create a dynamic resource script owned by root
-        """
-        conf_file = self.get_pbs_conf_file(hostname=host)
-        config = self.parse_pbs_config(file=conf_file, hostname=host)
-        pbs_home_dir = config['PBS_HOME']
-        if dirname is None:
-            dirname = pbs_home_dir
-        fp = self.create_temp_file(prefix=prefix, suffix=suffix,
-                                   body=body, asuser="root",
-                                   dirname=dirname, hostname=host,
-                                   mode=perm)
-        # exclicity change the permission of the file because create_temp_file
-        # will only create a not be able to apply default permissions
-        if perm != 0744 and dirname == pbs_home_dir:
-            self.chmod(path=fp, mode=perm, sudo=True, hostname=host)
-        return fp
 
     def parse_strace(self, lines):
         """
