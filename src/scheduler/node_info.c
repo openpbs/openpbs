@@ -126,6 +126,7 @@
 #include <errno.h>
 #include <math.h>
 #include <errno.h>
+#include <time.h>
 #include <pbs_ifl.h>
 #include <log.h>
 #include <rm.h>
@@ -149,6 +150,7 @@
 #include "server_info.h"
 #include "pbs_share.h"
 #include "pbs_bitmap.h"
+#include "pbs_license.h"
 #ifdef NAS
 #include "site_code.h"
 #endif
@@ -284,6 +286,8 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 	sch_resource_t count;		/* used to convert str->num */
 	char *endp;			/* end pointer for strtol */
 	char logbuf[256];		/* log buffer */
+	int check_expiry = 0;
+	time_t expiry = 0;
 
 	if ((ninfo = new_node_info()) == NULL)
 		return NULL;
@@ -377,12 +381,18 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 					ninfo->lic_lock = 1;
 					sinfo->has_nonCPU_licenses = 1;
 					break;
+				case ND_LIC_TYPE_cloud:
+					check_expiry = 1;
+					break;
 				default:
 					sprintf(logbuf, "Unknown license type: %c", attrp->value[0]);
 					schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO,
 						ninfo->name, logbuf);
 			}
 		} else if (!strcmp(attrp->name, ATTR_rescavail)) {
+			if (!strcmp(attrp->resource, ND_RESC_LicSignature)) {
+				expiry = strtol(attrp->value, &endp, 10);
+			}
 			res = find_alloc_resource_by_str(ninfo->res, attrp->resource);
 
 			if (res != NULL) {
@@ -458,6 +468,12 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 			ninfo->resvs = break_comma_list(attrp->value);
 		}
 		attrp = attrp->next;
+	}
+	if (check_expiry) {
+		if (time(NULL) < expiry) {
+			ninfo->lic_lock = 1;
+			sinfo->has_nonCPU_licenses = 1;
+		}
 	}
 	return ninfo;
 }

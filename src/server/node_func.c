@@ -703,7 +703,7 @@ effective_node_delete(struct pbsnode *pnode)
 	struct pbssubn  *pnxt;
 	mom_svrinfo_t	*psvrmom;
 	int		 iht;
-	int		 socket_released = 0;
+	int		 lic_released = 0;
 
 	psubn = pnode->nd_psn;
 	while (psubn) {
@@ -712,13 +712,7 @@ effective_node_delete(struct pbsnode *pnode)
 		psubn = pnxt;
 	}
 
-	/* release license if node is locked */
-	if (pnode->nd_attr[(int)ND_ATR_License].at_val.at_char == ND_LIC_TYPE_locked &&
-			(strcmp(pnode->nd_name, pnode->nd_hostname) == 0)) {
-		sockets_release(
-			pnode->nd_attr[(int)ND_ATR_LicenseInfo].at_val.at_long);
-		socket_released = 1;
-	}
+	lic_released = release_node_lic(pnode);
 
         /* free attributes */
 
@@ -778,7 +772,7 @@ effective_node_delete(struct pbsnode *pnode)
 	}
 	svr_totnodes--;
 	free_pnode(pnode);
-	if (socket_released)
+	if (lic_released)
 		license_more_nodes();
 }
 
@@ -2111,6 +2105,9 @@ node_np_action(attribute *new, void *pobj, int actmode)
 			return (err);
 	}
 
+	if ((err = check_sign((pbsnode *) pobj, new)) != PBSE_NONE)
+		return err;
+
 	/* 3. check each entry that is modified to see if it is now   */
 	/*    becoming an indirect reference or was one and now isn't */
 	/*    This first pass just validates the changes...	      */
@@ -2525,7 +2522,7 @@ remove_node_topology(char *node_name)
 			PBS_EVENTCLASS_SERVER,
 			LOG_DEBUG, msg_daemonname,
 			log_buffer);
-	} else if (unlink(path) == -1) {
+	} else if ((unlink(path) == -1) && (errno != ENOENT)) {
 		sprintf(log_buffer, msg_unlinkfail, node_name);
 		log_err(errno, __func__, log_buffer);
 	}
@@ -2568,24 +2565,10 @@ set_node_topology(attribute *new, void *pobj, int op)
 
 	int		rc = PBSE_NONE;
 	struct pbsnode	*pnode = ((pbsnode *) pobj);
-	attribute_def	*pnadl = &node_attr_def[(int) ND_ATR_License];
-	attribute_def	*pnadli = &node_attr_def[(int) ND_ATR_LicenseInfo];
-	attribute	*ppnl = &pnode->nd_attr[(int) ND_ATR_License];
-	attribute	*ppnli = &pnode->nd_attr[(int) ND_ATR_LicenseInfo];
 	char		*valstr;
-	int		node_nsockets;
 	ntt_t		ntt;
-	enum		licensing_backend lb = LIC_SOCKETS;
-	char		license_type[8];
 	char		msg_unknown_topology_type[] = "unknown topology type in "
 					"topology attribute for node %s";
-	char		msg_sockets_initialized[] = "node %s already assigned "
-				"license for %d %s%s, nd_attr[ND_ATR_License] set to %c";
-	char		msg_licensed_with_sockets[] = "node %s assigned %d "
-					"%s license%s, nd_attr[ND_ATR_License] set to %c";
-	char		msg_sockets_mismatch[] = "node %s:  node reporting %d "
-						"%s licenses, has licenses for %d";
-	strcpy(license_type, "node");
 
 	switch (op) {
 
@@ -2620,104 +2603,8 @@ set_node_topology(attribute *new, void *pobj, int op)
 			}
 
 			record_node_topology(pnode->nd_name, valstr);
-			node_nsockets = nsockets_from_topology(valstr, ntt);
-			lb = LIC_NODES;
+			process_topology_info(pnode, valstr, ntt);
 
-			if (licstate_is_up(LIC_SOCKETS)) {
-				lb = LIC_SOCKETS;
-				strcpy(license_type, "socket");
-			}
-			
-			if ((ppnl->at_flags & ATR_VFLAG_SET) && (ppnl->at_val.at_char == ND_LIC_TYPE_locked)) {
-				/* node socket licenses previously initialized */
-				if (ppnli->at_val.at_long != node_nsockets) {
-					/*
-					 *	This node's socket licensing information
-					 *	has already been initialized;  the node
-					 *	is now reporting different socket count than have
-					 *	previously been licensed.  try to license the node
-					 *	if enough licenses are available else we reset the 
-					 *	node's License and LicenseInfo attributes.
-					 */
-					clear_attr(ppnl, pnadl);
-					pnode->nd_modified |= NODE_UPDATE_OTHERS;
-					sockets_release(ppnli->at_val.at_long);
-					if (sockets_consume(node_nsockets) == 0) {
-						ppnl->at_val.at_char = ND_LIC_TYPE_locked;
-						ppnl->at_flags  |= ATR_VFLAG_SET |
-							ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
-					}
-					sprintf(log_buffer, msg_sockets_mismatch,
-						pnode->nd_name, node_nsockets, license_type,
-						ppnli->at_val.at_long);
-					log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER,
-						LOG_DEBUG, __func__, log_buffer);
-					ppnli->at_val.at_long = node_nsockets;
-					ppnli->at_flags  |= ATR_VFLAG_SET |
-					ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
-				} else if (licstate_is_up(lb)) {
-					/*
-					 *	A valid socket license file exists and
-					 *	the node claims no more sockets than
-					 *	licensed before - mark it as licensed.
-					 *
-					 *	Note that in contrast to the "else"
-					 *	case below, no socket licenses need be
-					 *	consumed here - since the node was
-					 *	already licensed, that accounting was
-					 *	done in pbsd_init(), q.v.
-					 */
-					/* mark node as using node-locked licenses */
-					clear_attr(ppnl, pnadl);
-					ppnl->at_val.at_char = ND_LIC_TYPE_locked;
-					ppnl->at_flags  |= ATR_VFLAG_SET |
-						ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
-					pnode->nd_modified |= NODE_UPDATE_OTHERS;
-					sprintf(log_buffer, msg_sockets_initialized,
-						pnode->nd_name, node_nsockets, license_type,
-						node_nsockets == 1 ? "" : "s", ND_LIC_TYPE_locked);
-					log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER,
-						LOG_DEBUG, __func__, log_buffer);
-				}
-			} else if ((node_nsockets > 0) && licstate_is_up(lb) &&
-					(sockets_consume(node_nsockets) == 0)) {
-				/*
-				 *	Not previously initialized and sufficient
-				 *	licenses - mark node as using node-locked
-				 *	licenses ...
-				 */
-				clear_attr(ppnl, pnadl);
-				ppnl->at_val.at_char = ND_LIC_TYPE_locked;
-				ppnl->at_flags  |= ATR_VFLAG_SET |
-					ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
-				/*
-				 *	... and remember the number of socket
-				 *	licenses consumed.
-				 */
-				clear_attr(ppnli, pnadli);
-				ppnli->at_val.at_long = node_nsockets;
-				ppnli->at_flags  |= ATR_VFLAG_SET |
-					ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
-				sprintf(log_buffer, msg_licensed_with_sockets,
-					pnode->nd_name, node_nsockets, license_type,
-					node_nsockets == 1 ? "" : "s", ND_LIC_TYPE_locked);
-				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_SERVER,
-					LOG_DEBUG, __func__, log_buffer);
-
-				pnode->nd_modified |= NODE_UPDATE_OTHERS;
-			} else {
-				/*
-				 * In this case, we don't have enough license for this node.
-				 * However, the nsockets is saved for future reference.
-				 * We don't have to re-evaluate topology if license file
-				 * is updated using qmgr
-				 */
-				clear_attr(ppnl, pnadl);
-				clear_attr(ppnli, pnadli);
-				ppnli->at_val.at_long = node_nsockets;
-				ppnli->at_flags  |= ATR_VFLAG_SET |
-					ATR_VFLAG_MODIFY | ATR_VFLAG_MODCACHE;
-			}
 			break;
 
 		case ATR_ACTION_RECOV:

@@ -737,7 +737,6 @@ if [ "${PBS_START_SERVER:-0}" != 0 ] ; then
 			echo "***"
 			${PBS_EXEC}/sbin/pbs_server > /dev/null
 			${PBS_EXEC}/bin/qmgr <<-EOF > /dev/null
-				unset server pbs_license_file_location
 				set server pbs_license_info = $ans
 			EOF
 			if ! is_cray_xt; then

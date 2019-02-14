@@ -103,7 +103,6 @@ struct pbs_config pbs_conf = {
 	NULL,					/* secondary name */
 	NULL,					/* aux Mom home   */
 	NULL,					/* pbs_core_limit */
-	NULL,					/* pbs_license_file_location */
 	NULL,					/* default database host  */
 	NULL,					/* pbs_tmpdir */
 	NULL,					/* pbs_server_host_name */
@@ -534,10 +533,6 @@ __pbs_loadconf(int reload)
 				free(pbs_conf.pbs_core_limit);
 				pbs_conf.pbs_core_limit = strdup(conf_value);
 			}
-			else if (!strcmp(conf_name, PBS_CONF_LICENSE_STRING)) {
-				free(pbs_conf.pbs_license_file_location);
-				pbs_conf.pbs_license_file_location = strdup(conf_value);
-			}
 			else if (!strcmp(conf_name, PBS_CONF_SERVER_HOST_NAME)) {
 				free(pbs_conf.pbs_server_host_name);
 				pbs_conf.pbs_server_host_name = strdup(conf_value);
@@ -921,13 +916,6 @@ __pbs_loadconf(int reload)
 		goto err;
 	}
 
-	if ((gvalue = getenv(PBS_CONF_LICENSE_STRING)) != NULL) {
-		free(pbs_conf.pbs_license_file_location);
-		if ((pbs_conf.pbs_license_file_location = strdup(gvalue)) == NULL) {
-			goto err;
-		}
-	}
-
 #ifndef WIN32
 	if ((gvalue = getenv(PBS_CONF_AUTH)) != NULL) {
 		if (!strcasecmp(gvalue, "MUNGE")) {
@@ -1030,10 +1018,6 @@ err:
 	if (pbs_conf.pbs_core_limit) {
 		free(pbs_conf.pbs_core_limit);
 		pbs_conf.pbs_core_limit = NULL;
-	}
-	if (pbs_conf.pbs_license_file_location) {
-		free(pbs_conf.pbs_license_file_location);
-		pbs_conf.pbs_license_file_location = NULL;
 	}
 
 	pbs_conf.load_failed = 1;

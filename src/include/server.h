@@ -126,7 +126,6 @@ enum srv_atr {
 	SRV_ATR_dfltqsubargs,
 	SRV_ATR_rpp_retry,
 	SRV_ATR_rpp_highwater,
-	SRV_ATR_license_location,
 	SRV_ATR_pbs_license_info,
 	SRV_ATR_license_min,
 	SRV_ATR_license_max,
