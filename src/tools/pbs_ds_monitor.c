@@ -925,7 +925,9 @@ main(int argc, char *argv[])
 		return 1;
 	}
 #ifdef WIN32
-	winsock_init();
+	if (winsock_init()) {
+		return 1;
+	}
 	if (gethostname(thishost, (sizeof(thishost) - 1)) == SOCKET_ERROR)
 #else
 	if (gethostname(thishost, (sizeof(thishost) - 1)) == -1)

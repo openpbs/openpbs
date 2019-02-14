@@ -163,7 +163,6 @@
 #define DMN_REFUSE_EXIT 7 /* return code when daemon can't serve a job and exits */
 
 #ifdef NAS /* localmod 005 */
-extern void set_attr_resc(struct attrl **attrib, char *attrib_name, char *attrib_resc, char *attrib_value);
 #endif /* localmod 005 */
 extern char *msg_force_qsub_update;
 
@@ -1450,8 +1449,8 @@ enable_gui(void)
 		}
 		/* get the DISPLAY's auth protocol, hexdata, and screen number */
 		if ((x11authstr = x11_get_authstring()) != NULL) {
-			set_attr(&attrib, ATTR_X11_cookie, x11authstr);
-			set_attr(&attrib, ATTR_X11_port, port_X11());
+			set_attr_error_exit(&attrib, ATTR_X11_cookie, x11authstr);
+			set_attr_error_exit(&attrib, ATTR_X11_port, port_X11());
 #ifdef DEBUG
 			fprintf(stderr, "x11auth string: %s\n", x11authstr);
 #endif
@@ -1465,7 +1464,7 @@ enable_gui(void)
 			fprintf(stderr, "qsub: only interactive jobs can have GUI display\n");
 			exit_qsub(1);
 		}
-		set_attr(&attrib, ATTR_GUI, "TRUE");
+		set_attr_error_exit(&attrib, ATTR_GUI, "TRUE");
 	}
 #endif
 }
@@ -2115,7 +2114,9 @@ set_sig_handlers(void)
 	signal(SIGBREAK, win_blockint);
 	signal(SIGTERM, win_blockint);
 
-	winsock_init();
+	if (winsock_init()) {
+		return 1;
+	}
 	InitializeCriticalSection(&continuethread_cs);
 #else
 	/* Catch SIGPIPE on write() failures. */
@@ -2396,19 +2397,19 @@ process_opts(int argc, char **argv, int passet)
 						break;
 					}
 					sprintf(a_value, "%ld", (long)after);
-					set_attr(&attrib, ATTR_a, a_value);
+					set_attr_error_exit(&attrib, ATTR_a, a_value);
 				}
 				break;
 			case 'A':
 				if_cmd_line(A_opt) {
 					A_opt = passet;
-					set_attr(&attrib, ATTR_A, optarg);
+					set_attr_error_exit(&attrib, ATTR_A, optarg);
 				}
 				break;
 			case 'P':
 				if_cmd_line(P_opt) {
 					P_opt = passet;
-					set_attr(&attrib, ATTR_project, optarg);
+					set_attr_error_exit(&attrib, ATTR_project, optarg);
 				}
 				break;
 			case 'c':
@@ -2423,7 +2424,7 @@ process_opts(int argc, char **argv, int passet)
 							break;
 						}
 					}
-					set_attr(&attrib, ATTR_c, optarg);
+					set_attr_error_exit(&attrib, ATTR_c, optarg);
 				}
 				break;
 			case 'C':
@@ -2435,13 +2436,13 @@ process_opts(int argc, char **argv, int passet)
 			case 'e':
 				if_cmd_line(e_opt) {
 					e_opt = passet;
-					set_attr(&attrib, ATTR_e, optarg);
+					set_attr_error_exit(&attrib, ATTR_e, optarg);
 				}
 				break;
 			case 'h':
 				if_cmd_line(h_opt) {
 					h_opt = passet;
-					set_attr(&attrib, ATTR_h, "u");
+					set_attr_error_exit(&attrib, ATTR_h, "u");
 				}
 				break;
 			case 'f':
@@ -2463,14 +2464,14 @@ process_opts(int argc, char **argv, int passet)
 					if (roptarg_inter == TRUE) {
 						fprintf(stderr, "%s", INTER_RERUN_WARN);
 					}
-					set_attr(&attrib, ATTR_inter, interactive_port());
+					set_attr_error_exit(&attrib, ATTR_inter, interactive_port());
 				}
 				break;
 #endif	/* PBS_NO_POSIX_VIOLATION */
 			case 'j':
 				if_cmd_line(j_opt) {
 					j_opt = passet;
-					set_attr(&attrib, ATTR_j, optarg);
+					set_attr_error_exit(&attrib, ATTR_j, optarg);
 				}
 				break;
 			case 'J':
@@ -2486,13 +2487,13 @@ process_opts(int argc, char **argv, int passet)
 				}
 				if_cmd_line(J_opt) {
 					J_opt = passet;
-					set_attr(&attrib, ATTR_J, optarg);
+					set_attr_error_exit(&attrib, ATTR_J, optarg);
 				}
 				break;
 			case 'k':
 				if_cmd_line(k_opt) {
 					k_opt = passet;
-					set_attr(&attrib, ATTR_k, optarg);
+					set_attr_error_exit(&attrib, ATTR_k, optarg);
 				}
 				break;
 			case 'l':
@@ -2510,13 +2511,13 @@ process_opts(int argc, char **argv, int passet)
 				if_cmd_line(m_opt) {
 					m_opt = passet;
 					while (isspace((int)*optarg)) optarg++;
-					set_attr(&attrib, ATTR_m, optarg);
+					set_attr_error_exit(&attrib, ATTR_m, optarg);
 				}
 				break;
 			case 'M':
 				if_cmd_line(M_opt) {
 					M_opt = passet;
-					set_attr(&attrib, ATTR_M, optarg);
+					set_attr_error_exit(&attrib, ATTR_M, optarg);
 				}
 				break;
 			case 'N':
@@ -2524,7 +2525,7 @@ process_opts(int argc, char **argv, int passet)
 					N_opt = passet;
 					/* If ATTR_N is not set previously */
 					if (get_attr(attrib, ATTR_N, NULL) == NULL) {
-						set_attr(&attrib, ATTR_N, optarg);
+						set_attr_error_exit(&attrib, ATTR_N, optarg);
 					}
 					/* If N_opt is not set previously but if ATTR_N is set
 					 * earlier directly without verification based on the
@@ -2553,14 +2554,14 @@ process_opts(int argc, char **argv, int passet)
 			case 'o':
 				if_cmd_line(o_opt) {
 					o_opt = passet;
-					set_attr(&attrib, ATTR_o, optarg);
+					set_attr_error_exit(&attrib, ATTR_o, optarg);
 				}
 				break;
 			case 'p':
 				if_cmd_line(p_opt) {
 					p_opt = passet;
 					while (isspace((int)*optarg)) optarg++;
-					set_attr(&attrib, ATTR_p, optarg);
+					set_attr_error_exit(&attrib, ATTR_p, optarg);
 				}
 				break;
 			case 'q':
@@ -2593,25 +2594,25 @@ process_opts(int argc, char **argv, int passet)
 							fprintf(stderr, "%s", INTER_RERUN_WARN);
 					}
 					roptarg = *optarg;
-					set_attr(&attrib, ATTR_r, optarg);
+					set_attr_error_exit(&attrib, ATTR_r, optarg);
 				}
 				break;
 			case 'R':
 				if_cmd_line(R_opt) {
 					R_opt = passet;
-					set_attr(&attrib, ATTR_R, optarg);
+					set_attr_error_exit(&attrib, ATTR_R, optarg);
 				}
 				break;
 			case 'S':
 				if_cmd_line(S_opt) {
 					S_opt = passet;
-					set_attr(&attrib, ATTR_S, optarg);
+					set_attr_error_exit(&attrib, ATTR_S, optarg);
 				}
 				break;
 			case 'u':
 				if_cmd_line(u_opt) {
 					u_opt = passet;
-					set_attr(&attrib, ATTR_u, optarg);
+					set_attr_error_exit(&attrib, ATTR_u, optarg);
 				}
 				break;
 			case 'v':
@@ -2669,27 +2670,27 @@ process_opts(int argc, char **argv, int passet)
 					if (strcmp(keyword, ATTR_depend) == 0) {
 						if_cmd_line(Depend_opt) {
 							Depend_opt = passet;
-							set_attr(&attrib, ATTR_depend, valuewd);
+							set_attr_error_exit(&attrib, ATTR_depend, valuewd);
 						}
 					} else if (strcmp(keyword, ATTR_stagein) == 0) {
 						if_cmd_line(Stagein_opt) {
 							Stagein_opt = passet;
-							set_attr(&attrib, ATTR_stagein, valuewd);
+							set_attr_error_exit(&attrib, ATTR_stagein, valuewd);
 						}
 					} else if (strcmp(keyword, ATTR_stageout) == 0) {
 						if_cmd_line(Stageout_opt) {
 							Stageout_opt = passet;
-							set_attr(&attrib, ATTR_stageout, valuewd);
+							set_attr_error_exit(&attrib, ATTR_stageout, valuewd);
 						}
 					} else if (strcmp(keyword, ATTR_sandbox) == 0) {
 						if_cmd_line(Sandbox_opt) {
 							Sandbox_opt = passet;
-							set_attr(&attrib, ATTR_sandbox, valuewd);
+							set_attr_error_exit(&attrib, ATTR_sandbox, valuewd);
 						}
 					} else if (strcmp(keyword, ATTR_g) == 0) {
 						if_cmd_line(Grouplist_opt) {
 							Grouplist_opt = passet;
-							set_attr(&attrib, ATTR_g, valuewd);
+							set_attr_error_exit(&attrib, ATTR_g, valuewd);
 						}
 					} else if (strcmp(keyword, ATTR_inter) == 0) {
 						if_cmd_line(Interact_opt) {
@@ -2705,12 +2706,12 @@ process_opts(int argc, char **argv, int passet)
 							 *   with "false" string and accordingly decide whether it
 							 *   is an interactive job or not.
 							 * Solution: Added additional checks which will not set
-							 *   Interact_opt and will not call set_attr() to create
+							 *   Interact_opt and will not call set_attr_error_exit() to create
 							 *   interactive port if user gives a value "false"
 							 */
 							if (!(strcasecmp(valuewd, "true"))) {
 								Interact_opt = passet;
-								set_attr(&attrib, ATTR_inter, interactive_port());
+								set_attr_error_exit(&attrib, ATTR_inter, interactive_port());
 							} else if (!(strcasecmp(valuewd, "false"))) {
 								/* Do Nothing, let it run as a non-interactive job */
 							} else {
@@ -2756,7 +2757,7 @@ process_opts(int argc, char **argv, int passet)
 								break;
 							}
 							sprintf(a_value, "%ld", (long)after);
-							set_attr(&attrib, ATTR_resv_start, a_value);
+							set_attr_error_exit(&attrib, ATTR_resv_start, a_value);
 						}
 					} else if (strcmp(keyword, ATTR_resv_end) == 0) {
 						if_cmd_line(Resvend_opt) {
@@ -2767,7 +2768,7 @@ process_opts(int argc, char **argv, int passet)
 								break;
 							}
 							sprintf(a_value, "%ld", (long)after);
-							set_attr(&attrib, ATTR_resv_end, a_value);
+							set_attr_error_exit(&attrib, ATTR_resv_end, a_value);
 						}
 #if defined(PBS_PASS_CREDENTIALS)
 					} else if (strcmp(keyword, ATTR_pwd) == 0) {
@@ -2796,15 +2797,15 @@ process_opts(int argc, char **argv, int passet)
 						if_cmd_line(cred_opt) {
 							cred_opt = passet;
 							snprintf(cred_name, sizeof(cred_name), "%s", valuewd);
-							set_attr(&attrib, ATTR_cred, valuewd);
+							set_attr_error_exit(&attrib, ATTR_cred, valuewd);
 						}
 					} else if (strcmp(keyword, ATTR_tolerate_node_failures) == 0) {
 						if_cmd_line(tolerate_node_failures_opt) {
 							tolerate_node_failures_opt = passet;
-							set_attr(&attrib, ATTR_tolerate_node_failures, valuewd);
+							set_attr_error_exit(&attrib, ATTR_tolerate_node_failures, valuewd);
 						}
 					} else {
-						set_attr(&attrib, keyword, valuewd);
+						set_attr_error_exit(&attrib, keyword, valuewd);
 					}
 					i = parse_equal_string(NULL, &keyword, &valuewd);
 				} /* bottom of long while loop */
@@ -2829,7 +2830,7 @@ process_opts(int argc, char **argv, int passet)
 			case 'G':
 				if_cmd_line(gui_opt) {
 					gui_opt = passet;
-					set_attr(&attrib, ATTR_GUI, "TRUE");
+					set_attr_error_exit(&attrib, ATTR_GUI, "TRUE");
 				}
 				break;
 #endif
@@ -2842,7 +2843,7 @@ process_opts(int argc, char **argv, int passet)
 		}
 	}
 	if ((block_opt == passet) && (Interact_opt == FALSE))
-		set_attr(&attrib, ATTR_block, block_port());
+		set_attr_error_exit(&attrib, ATTR_block, block_port());
 	if ((Forwardx11_opt == CMDLINE) && (Interact_opt == FALSE)
 		&& (errflg == 0)) {
 		fprintf(stderr, "qsub: X11 Forwarding possible only for "
@@ -2900,7 +2901,7 @@ process_opts(int argc, char **argv, int passet)
 	if (S_opt == FALSE) {
 		char* c = getenv("PBS_SHELL");
 		if (c)
-			set_attr(&attrib, ATTR_S, c);
+			set_attr_error_exit(&attrib, ATTR_S, c);
 	}
 
 	if (u_opt && cred_name[0]) {
@@ -2931,7 +2932,7 @@ process_special_args(int argc, char **argv, char *script)
 		if (strcmp(argv[optind], "--") == 0) {
 			command_flag = 1;
 			/* set executable */
-			set_attr(&attrib, ATTR_executable, argv[optind + 1]);
+			set_attr_error_exit(&attrib, ATTR_executable, argv[optind + 1]);
 			if (argc > (optind + 2)) {
 				/* user has specified arguments to executable as well. */
 				arg_list = encode_xml_arg_list(optind + 2, argc, argv);
@@ -2940,13 +2941,13 @@ process_special_args(int argc, char **argv, char *script)
 					exit_qsub(2);
 				} else {
 					/* set argument list */
-					set_attr(&attrib, ATTR_Arglist, arg_list);
+					set_attr_error_exit(&attrib, ATTR_Arglist, arg_list);
 					free(arg_list);
 					arg_list = NULL;
 				}
 			}
 			if (!N_opt)	/* '-N' is not set */
-				set_attr(&attrib, ATTR_N, "STDIN");
+				set_attr_error_exit(&attrib, ATTR_N, "STDIN");
 		} else {
 			if (optind + 1 != argc) {
 				/* argument is a job script, it should be last */
@@ -3095,19 +3096,19 @@ static void
 set_opt_defaults(void)
 {
 	if (c_opt == FALSE)
-		set_attr(&attrib, ATTR_c, CHECKPOINT_UNSPECIFIED);
+		set_attr_error_exit(&attrib, ATTR_c, CHECKPOINT_UNSPECIFIED);
 	if (h_opt == FALSE)
-		set_attr(&attrib, ATTR_h, NO_HOLD);
+		set_attr_error_exit(&attrib, ATTR_h, NO_HOLD);
 	if (j_opt == FALSE)
-		set_attr(&attrib, ATTR_j, NO_JOIN);
+		set_attr_error_exit(&attrib, ATTR_j, NO_JOIN);
 	if (k_opt == FALSE)
-		set_attr(&attrib, ATTR_k, NO_KEEP);
+		set_attr_error_exit(&attrib, ATTR_k, NO_KEEP);
 	if (m_opt == FALSE)
-		set_attr(&attrib, ATTR_m, MAIL_AT_ABORT);
+		set_attr_error_exit(&attrib, ATTR_m, MAIL_AT_ABORT);
 	if (p_opt == FALSE)
-		set_attr(&attrib, ATTR_p, "0");
+		set_attr_error_exit(&attrib, ATTR_p, "0");
 	if (r_opt == FALSE)
-		set_attr(&attrib, ATTR_r, "TRUE");
+		set_attr_error_exit(&attrib, ATTR_r, "TRUE");
 }
 
 /* End of "Options Processing" functions. */
@@ -3304,7 +3305,7 @@ read_job_script(char *script)
 		}
 
 		if (!N_opt)
-			set_attr(&attrib, ATTR_N, "STDIN");
+			set_attr_error_exit(&attrib, ATTR_N, "STDIN");
 		if (Interact_opt == FALSE) {
 			errflg = get_script(stdin, script_tmp, set_dir_prefix(dir_prefix, C_opt));
 			if (errflg > 0) {
@@ -3335,7 +3336,7 @@ read_job_script(char *script)
 				 * set ATTR_N directly - verification would be done
 				 * by IFL later
 				 */
-				set_attr(&attrib, ATTR_N, basename);
+				set_attr_error_exit(&attrib, ATTR_N, basename);
 			}
 			errflg = get_script(f, script_tmp, set_dir_prefix(dir_prefix, C_opt));
 			if (errflg > 0) {
@@ -3792,7 +3793,7 @@ final:
 		/* Send every environment variable with the job. */
 		strcat(job_env, current_vlist);
 
-	set_attr(&attrib, ATTR_v, job_env);
+	set_attr_error_exit(&attrib, ATTR_v, job_env);
 	free(job_env);
 
 	return TRUE;
@@ -4125,7 +4126,7 @@ recv_attrl(void *s, struct attrl **attrib)
 
 		if (len_r > 0) {
 			/* strings have null character also in daemon_buf */
-			set_attr_resc(&attr, p,
+			set_attr_resc_error_exit(&attr, p,
 				p + len_n,
 				p + len_n + len_r);
 		} else {
@@ -4141,10 +4142,10 @@ recv_attrl(void *s, struct attrl **attrib)
 					return -1;
 				strcpy(attr_v_val, p + len_n);
 				strcat(attr_v_val, pbs_hostvar);
-				set_attr(&attr, p, attr_v_val);
+				set_attr_error_exit(&attr, p, attr_v_val);
 				free(attr_v_val);
 			} else {
-				set_attr(&attr, p, p + len_n);
+				set_attr_error_exit(&attr, p, p + len_n);
 			}
 		}
 		p += len_n + len_r + len_v;
@@ -4708,11 +4709,11 @@ dup_attrl(struct attrl *attrib)
 	for (attr = attrib; attr != NULL; attr = attr->next) {
 		if (attr->resource != NULL) {
 			/* strings have null character also in buf */
-			set_attr_resc(&attr_new, attr->name,
+			set_attr_resc_error_exit(&attr_new, attr->name,
 				attr->resource,
 				attr->value);
 		} else {
-			set_attr(&attr_new, attr->name, attr->value);
+			set_attr_error_exit(&attr_new, attr->name, attr->value);
 		}
 	}
 
@@ -5727,7 +5728,7 @@ main(int argc, char **argv, char **envp) /* qsub */
 	 * Print version info and exit, if specified with --version option.
 	 * Otherwise, proceed normally.
 	 */
-	execution_mode(argc, argv);
+	PRINT_VERSION_AND_EXIT(argc, argv);
 
 	/*
 	 * Identify the configured tmpdir without calling pbs_loadconf().
@@ -5779,7 +5780,7 @@ main(int argc, char **argv, char **envp) /* qsub */
 	 * "Submit_arguments" job attribute.
 	 */
 	if ((argc >= 2) && (cmdargs = encode_xml_arg_list(1, argc, argv))) {
-		set_attr(&attrib, ATTR_submit_arguments, cmdargs);
+		set_attr_error_exit(&attrib, ATTR_submit_arguments, cmdargs);
 		free(cmdargs);
 		cmdargs = NULL;
 	}

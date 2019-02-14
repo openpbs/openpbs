@@ -1127,10 +1127,12 @@ main(int argc, char **argv)
 
 	/*test for real deal or just version and exit*/
 
-	execution_mode(argc, argv);
+	PRINT_VERSION_AND_EXIT(argc, argv);
 
 #ifdef WIN32
-	winsock_init();
+	if (winsock_init()) {
+		return 1;
+	}
 #endif
 
 	/* Command line options */
@@ -1873,7 +1875,7 @@ is_reservation_queue(int sd, char *qname)
 	struct attrl *resv_queue = NULL;
 
 	/* pasing "" as value because DIS expects a non NULL value */
-	(void) set_attr(&resv_queue, ATTR_queue, "");
+	set_attr_error_exit(&resv_queue, ATTR_queue, "");
 	if (resv_queue != NULL) {
 		bs = pbs_statresv(sd, NULL, resv_queue, NULL);
 		while (bs != NULL) {

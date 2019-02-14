@@ -939,7 +939,7 @@ main(int argc, char *argv[])
 
 #ifndef	WIN32
 	/*the real deal or show version and exit?*/
-	execution_mode(argc, argv);
+	PRINT_VERSION_AND_EXIT(argc, argv);
 #endif
 
 #ifndef DEBUG
@@ -1230,7 +1230,9 @@ main(int argc, char *argv[])
 	if (alarm_time)
 		log_record(PBSEVENT_SCHED, PBS_EVENTCLASS_SCHED, LOG_NOTICE, "", "The -a option was given on the command line.  This is deprecated.  Please seee the \'sched_cycle_length\' scheduler attribute");
 #ifdef WIN32
-	winsock_init();
+	if (winsock_init()) {
+		return 1;
+	}
 
 /* Let's do an extra validity check */
 
@@ -1667,7 +1669,7 @@ main(int argc, char *argv[])
 
 	/*the real deal or show version and exit?*/
 
-	execution_mode(argc, argv);
+	PRINT_VERSION_AND_EXIT(argc, argv);
 	if(set_msgdaemonname("pbs_sched")) {
 		fprintf(stderr, "Out of memory\n");
 		return 1;
@@ -1686,6 +1688,7 @@ main(int argc, char *argv[])
 		schManager = OpenSCManager(0, 0, SC_MANAGER_ALL_ACCESS);
 		if (schManager == 0) {
 			ErrorMessage("OpenSCManager");
+			return 1;
 		}
 
 		if (reg) {
@@ -1714,6 +1717,7 @@ main(int argc, char *argv[])
 				ChangeServiceConfig2(schSelf, SERVICE_CONFIG_FAILURE_ACTIONS, &sfa);
 			} else {
 				ErrorMessage("CreateService");
+				return 1;
 			}
 
 			if (schSelf != 0)
@@ -1726,9 +1730,11 @@ main(int argc, char *argv[])
 					printf("Service %s uninstalled successfully!\n", g_PbsSchedName);
 				} else {
 					ErrorMessage("DeleteService");
+					return 1;
 				}
 			} else {
 				ErrorMessage("OpenService failed");
+				return 1;
 			}
 			if (schSelf != 0)
 				CloseServiceHandle(schSelf);
@@ -1743,6 +1749,7 @@ main(int argc, char *argv[])
 		pap = create_arg_param();
 		if (pap == NULL)
 			ErrorMessage("create_arg_param");
+			return 1;
 
 		pap->argc = argc-1;	/* don't pass the second argument */
 		for (i=j=0; i < argc; i++) {
@@ -1751,6 +1758,7 @@ main(int argc, char *argv[])
 			if ((pap->argv[j] = strdup(argv[i])) == NULL) {
 				free_arg_param(pap);
 				ErrorMessage("strdup");
+				return 1;
 			}
 			j++;
 		}
@@ -1781,6 +1789,7 @@ main(int argc, char *argv[])
 
 		if (!StartServiceCtrlDispatcher(rgste)) {
 			ErrorMessage("StartServiceCntrlDispatcher");
+			return 1;
 		}
 	}
 	return (0);
@@ -1805,6 +1814,7 @@ PbsSchedMain(DWORD dwArgc, LPTSTR *rgszArgv)
 	g_ssHandle = RegisterServiceCtrlHandler(g_PbsSchedName, PbsSchedHandler);
 	if (g_ssHandle == 0) {
 		ErrorMessage("RegisterServiceCtrlHandler");
+		return 1;
 	}
 
 	pap = create_arg_param();
@@ -1816,6 +1826,7 @@ PbsSchedMain(DWORD dwArgc, LPTSTR *rgszArgv)
 		if ((pap->argv[i] = strdup(rgszArgv[i])) == NULL) {
 			free_arg_param(pap);
 			ErrorMessage("strdup");
+			return 1;
 		}
 	}
 
@@ -1823,12 +1834,14 @@ PbsSchedMain(DWORD dwArgc, LPTSTR *rgszArgv)
 	if (g_hthreadMain == 0) {
 		(void)free_arg_param(pap);
 		ErrorMessage("CreateThread");
+		return 1;
 	}
 
 	dwWait = WaitForSingleObject(g_hthreadMain, INFINITE);
 	if (dwWait != WAIT_OBJECT_0) {
 		(void)free_arg_param(pap);
 		ErrorMessage("WaitForSingleObject");
+		return 1;
 	}
 
 	// NOTE: Update the global service state variable to indicate

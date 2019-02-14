@@ -114,11 +114,13 @@ main(int argc, char *argv[])
 
 	/*the real deal or just pbs_version and exit?*/
 
-	execution_mode(argc, argv);
+	PRINT_VERSION_AND_EXIT(argc, argv);
 	set_logfile(stderr);
 
 #ifdef WIN32
-	winsock_init();
+	if (winsock_init()) {
+		return 1;
+	}
 	Tcl_FindExecutable(argv[0]);
 #endif
 

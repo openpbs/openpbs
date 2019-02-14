@@ -150,7 +150,7 @@ main(int argc, char *argv[])
 	int unknw_job = 0;
 
 	/*the real deal or output pbs_version and exit?*/
-	execution_mode(argc, argv);
+	PRINT_VERSION_AND_EXIT(argc, argv);
 
 #if defined(FILTER_EXCESSIVE)
 	filter_excessive = 1;

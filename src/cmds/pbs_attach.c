@@ -257,10 +257,12 @@ main(int argc, char *argv[])
 
 	/*test for real deal or just version and exit*/
 
-	execution_mode(argc, argv);
+	PRINT_VERSION_AND_EXIT(argc, argv);
 
 #ifdef WIN32
-	winsock_init();
+	if (winsock_init()) {
+		return 1;
+	}
 	/* Windows has an additional option -c, in order to run built-in DOS commands using a new command shell */
 	while ((c = getopt(argc, argv, "+j:p:h:m:csP")) != EOF) {
 #else

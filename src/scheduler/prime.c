@@ -229,6 +229,34 @@ is_holiday(long date)
 }
 
 /**
+ * @brief	Set conf.prime values to reflect "ALL PRIME" before we start parsing
+ * 			the holidays file
+ *
+ * @param	void
+ *
+ * @return void
+ */
+static void
+handle_missing_prime_info(void)
+{
+	enum days d;
+
+	for (d = SUNDAY; d < HIGH_DAY; d++) {
+		if (conf.prime[d][PRIME].all + conf.prime[d][PRIME].none
+				+ conf.prime[d][PRIME].hour + conf.prime[d][PRIME].min == 0) {
+			conf.prime[d][PRIME].all = TRUE;
+			conf.prime[d][PRIME].none = FALSE;
+			conf.prime[d][PRIME].hour = UNSPECIFIED;
+			conf.prime[d][PRIME].min = UNSPECIFIED;
+			conf.prime[d][NON_PRIME].none = TRUE;
+			conf.prime[d][NON_PRIME].all = FALSE;
+			conf.prime[d][NON_PRIME].hour = UNSPECIFIED;
+			conf.prime[d][NON_PRIME].min = UNSPECIFIED;
+		}
+	}
+}
+
+/**
  * @brief
  *		parse_holidays - parse the holidays file.  It should be in UNICOS 8
  *			 format.
@@ -438,7 +466,13 @@ parse_holidays(char *fname)
 		}
 		error = 0;
 	}
-	conf.num_holidays = hol_index + 1;
+
+	if (conf.holiday_year != 0) {
+		/* Let's make sure that any missing days get marked as 24hr prime-time */
+		handle_missing_prime_info();
+	}
+
+	conf.num_holidays = hol_index;
 	fclose(fp);
 	return 0;
 }
@@ -467,16 +501,26 @@ load_day(enum days d, enum prime_time pr, char *tok)
 
 	if (tok != NULL) {
 		if (!strcmp(tok, "all") || !strcmp(tok, "ALL")) {
+			if (pr == NON_PRIME && conf.prime[d][PRIME].all == TRUE) {
+				schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, HOLIDAYS_FILE,
+						"Warning: both prime & non-prime starts are 'all'; assuming 24hr primetime");
+				return 0;
+			}
 			conf.prime[d][pr].all = TRUE;
 			conf.prime[d][pr].hour = UNSPECIFIED;
 			conf.prime[d][pr].min = UNSPECIFIED;
-		}
-		else if (!strcmp(tok, "none") || !strcmp(tok, "NONE")) {
-			conf.prime[d][pr].none = TRUE;
+			conf.prime[d][pr].none = FALSE;
+		} else if (!strcmp(tok, "none") || !strcmp(tok, "NONE")) {
+			if (pr == NON_PRIME && conf.prime[d][PRIME].none == TRUE) {
+				schdlog(PBSEVENT_SCHED, PBS_EVENTCLASS_FILE, LOG_NOTICE, HOLIDAYS_FILE,
+						"Warning: both prime & non-prime starts are 'none'; assuming 24hr primetime");
+				return load_day(d, PRIME, "all");
+			}
+			conf.prime[d][pr].all = FALSE;
 			conf.prime[d][pr].hour = UNSPECIFIED;
 			conf.prime[d][pr].min = UNSPECIFIED;
-		}
-		else {
+			conf.prime[d][pr].none = TRUE;
+		} else {
 			num = strtol(tok, &endp, 10);
 			if (*endp == '\0') {
 				/* num is a 4 digit number of the time HHMM */

@@ -1259,7 +1259,7 @@ main(int argc, char *argv[])
 	extern int optind;
 
 	/*the real deal or output pbs_version and exit?*/
-	execution_mode(argc, argv);
+	PRINT_VERSION_AND_EXIT(argc, argv);
 
 	/* If not authorized, don't proceed any further */
 	am_i_authorized();

@@ -98,7 +98,7 @@ main(int argc, char *argv[], char *envp[])
 	char *cln_hostaddr = NULL;
 
 	/*the real deal or output pbs_version and exit?*/
-	execution_mode(argc, argv);
+	PRINT_VERSION_AND_EXIT(argc, argv);
 
 	cln_hostaddr = getenv(PBS_IFF_CLIENT_ADDR);
 
@@ -157,7 +157,9 @@ main(int argc, char *argv[], char *envp[])
 	}
 
 #ifdef WIN32
-	winsock_init();
+		if (winsock_init()) {
+		return 1;
+	}
 #endif
 
 	/* first, make sure we have a valid server (host), and ports */

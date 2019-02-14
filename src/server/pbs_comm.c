@@ -87,6 +87,7 @@
 #include "rpp.h"
 #include "tpp_common.h"
 #include "server_limits.h"
+#include "pbs_version.h"
 
 char daemonname[PBS_MAXHOSTNAME+8];
 extern char	*msg_corelimit;
@@ -96,7 +97,6 @@ int already_forked = 0;
 #define PBS_COMM_LOGDIR "comm_logs"
 
 static void log_tppmsg(int level, const char *id, char *mess);
-extern void execution_mode(int argc, char** argv);
 
 char	        server_host[PBS_MAXHOSTNAME+1];   /* host_name of server */
 char	        primary_host[PBS_MAXHOSTNAME+1];   /* host_name of primary */
@@ -220,7 +220,7 @@ main(int argc, char *argv[])
 
 	/*the real deal or just pbs_version and exit*/
 
-	execution_mode(argc, argv);
+	PRINT_VERSION_AND_EXIT(argc, argv);
 
 	if (argc > 1) {
 		if (strcmp(argv[1], "-R") == 0)
@@ -235,6 +235,7 @@ main(int argc, char *argv[])
 		schManager = OpenSCManager(0, 0, SC_MANAGER_ALL_ACCESS);
 		if (schManager == 0) {
 			ErrorMessage("OpenSCManager");
+			return 1;
 		}
 
 		if (reg) {
@@ -251,6 +252,7 @@ main(int argc, char *argv[])
 				printf("Service %s installed succesfully!\n", g_PbsCommName);
 			} else {
 				ErrorMessage("CreateService");
+				return 1;
 			}
 
 			if (schSelf != 0)
@@ -263,9 +265,11 @@ main(int argc, char *argv[])
 					printf("Service %s uninstalled successfully!\n", g_PbsCommName);
 				} else {
 					ErrorMessage("DeleteService");
+					return 1;
 				}
 			} else {
 				ErrorMessage("OpenService failed");
+				return 1;
 			}
 			if (schSelf != 0)
 				CloseServiceHandle(schSelf);
@@ -278,8 +282,10 @@ main(int argc, char *argv[])
 		int	i, j;
 
 		pap = create_arg_param();
-		if (pap == NULL)
+		if (pap == NULL) {
 			ErrorMessage("create_arg_param");
+			return 1;
+		}
 
 		pap->argc = argc-1;	/* don't pass the second argument */
 		for (i=j=0; i < argc; i++) {
@@ -313,6 +319,7 @@ main(int argc, char *argv[])
 		}
 		if (!StartServiceCtrlDispatcher(rgste)) {
 			ErrorMessage("StartServiceCntrlDispatcher");
+			return 1;
 		}
 	}
 	return (0);
@@ -340,6 +347,7 @@ PbsCommMain(DWORD dwArgc, LPTSTR *rgszArgv)
 	g_ssHandle = RegisterServiceCtrlHandler(g_PbsCommName, PbsCommHandler);
 	if (g_ssHandle == 0) {
 		ErrorMessage("RegisterServiceCtrlHandler");
+		return 1;
 	}
 
 	pap = create_arg_param();
@@ -355,12 +363,14 @@ PbsCommMain(DWORD dwArgc, LPTSTR *rgszArgv)
 	if (g_hthreadMain == 0) {
 		(void)free_arg_param(pap);
 		ErrorMessage("CreateThread");
+		return 1;
 	}
 
 	dwWait = WaitForSingleObject(g_hthreadMain, INFINITE);
 	if (dwWait != WAIT_OBJECT_0) {
 		(void)free_arg_param(pap);
 		ErrorMessage("WaitForSingleObject");
+		return 1;
 	}
 	GetExitCodeThread(g_hthreadMain, &exitCode);
 
@@ -821,8 +831,7 @@ main(int argc, char **argv)
 
 #ifndef WIN32
 	/*the real deal or just pbs_version and exit*/
-
-	execution_mode(argc, argv);
+	PRINT_VERSION_AND_EXIT(argc, argv);
 #endif
 
 	/* As a security measure and to make sure all file descriptors	*/
@@ -901,7 +910,9 @@ main(int argc, char **argv)
 	tpp_set_logmask(*log_event_mask);
 
 #ifdef WIN32
-	winsock_init();
+	if (winsock_init()) {
+		return 1;
+	}
 #endif
 
 	routers = pbs_conf.pbs_comm_routers;

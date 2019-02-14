@@ -46,8 +46,12 @@
  * @brief 
  *	exits of WSAStartup fails; otherwise, proceeds normally. 
  *
+ * @return error code
+ * @retval 0 Success
+ * @retval 1 Failure
+ * 
  */
-void
+int
 winsock_init()
 {	
 	char	logb[LOG_BUF_SIZE] = {'\0' } ;
@@ -59,8 +63,9 @@ winsock_init()
 	if (WSAStartup(MAKEWORD(2, 2), &data)) {
 		sprintf(logb,"winsock_init failed! error=%d", WSAGetLastError());
 		log_err(-1, "winsock_init", logb);
-		exit(1);
+		return 1;
 	}
+	return 0;
 }
 
 /**

@@ -195,7 +195,6 @@ libpbs_la_SOURCES = \
 	../Libifl/enc_ModifyResv.c \
 	../Libifl/enc_svrattrl.c \
 	../Libifl/entlim_parse.c \
-	../Libifl/execution_mode.c \
 	../Libifl/get_hostname.c \
 	../Libifl/get_svrport.c \
 	../Libifl/grunt_parse.c \

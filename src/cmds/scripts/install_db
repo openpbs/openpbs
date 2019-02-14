@@ -219,7 +219,7 @@ if [ ! -d "${data_dir}" ]; then
 fi
 
 # delete the password file, if any, since we are creating new db
-rm -f "${PBS_HOME}/server_priv/db_password"
+[${upgrade} -eq 0] && rm -f "${PBS_HOME}/server_priv/db_password"
 passwd="${user}"
 
 chown ${user} ${data_dir}

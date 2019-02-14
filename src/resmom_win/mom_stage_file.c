@@ -109,7 +109,7 @@ main(int argc, char *argv[])
 	cpy_files stage_inout = {0};
 	char *prmt = NULL;
 
-	execution_mode(argc, argv);
+	PRINT_VERSION_AND_EXIT(argc, argv);
 
 	if(set_msgdaemonname("PBS_stage_file")) {
 		fprintf(stderr, "Out of memory\n");
@@ -128,7 +128,9 @@ main(int argc, char *argv[])
 		exit(STAGEFILE_FATAL);
 	}
 
-	winsock_init();
+	if (winsock_init()) {
+		return 1;
+	}
 
 	connection_init();
 

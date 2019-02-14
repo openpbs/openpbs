@@ -232,8 +232,7 @@ main(int argc, char *argv[])
 	size_t cnt;
 	size_t a_cnt = 0;
 #endif
-	/* pbs_version is used in main only, so no need to declare it as a global variable*/
-	char pbs_version[] = PBS_VERSION;
+
 #ifdef USELOG
 	use_prep_timer();
 	strcpy(use_user, "no_user");
@@ -242,12 +241,8 @@ main(int argc, char *argv[])
 #endif        /* USELOG */
 
 	/*the real deal or output pbs_version and exit?*/
+	PRINT_VERSION_AND_EXIT(argc, argv);
 
-	if (argc == 2 && strcasecmp(argv[1], "--version") == 0) {
-
-		fprintf(stdout, "pbs_version = %s\n", pbs_version);
-		exit(0);
-	}
 	fflag = tflag = 0;
 	while ((ch = getopt(argc, argv, OPTIONS)) != EOF)
 		switch (ch) {			/* User-visible flags. */
@@ -348,7 +343,9 @@ main(int argc, char *argv[])
 	argv += optind;
 
 #ifdef WIN32
-	winsock_init();
+	if (winsock_init()) {
+		return 1;
+	}
 #endif
 
 #ifdef KERBEROS

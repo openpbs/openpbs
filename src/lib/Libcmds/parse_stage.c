@@ -190,7 +190,7 @@ parse_stage_list(char *list)
 
 	if ((l = (char *)malloc(strlen(list)+1)) == NULL) {
 		fprintf(stderr, "Out of memory.\n");
-		exit(1);
+		return 1;
 	}
 	memset(l, 0, strlen(list)+1);
 	strcpy(l, list);

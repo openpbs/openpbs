@@ -115,7 +115,7 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 				t = cvtdate(optarg);
 				if (t >= 0) {
 					(void)sprintf(time_buf, "%ld", (long)t);
-					set_attr(&attrib, ATTR_resv_end, time_buf);
+					set_attr_error_exit(&attrib, ATTR_resv_end, time_buf);
 					dtend = t;
 				}
 				else {
@@ -126,12 +126,12 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 
 			case 'I':
 				if ((optarg == NULL) || (*optarg == '\0'))
-					set_attr(&attrib, ATTR_inter, "0");
+					set_attr_error_exit(&attrib, ATTR_inter, "0");
 				else {
 					char* endptr;
 					(void)strtol(optarg, &endptr, 0);
 					if (*endptr == '\0') {
-						set_attr(&attrib, ATTR_inter, optarg);
+						set_attr_error_exit(&attrib, ATTR_inter, optarg);
 					}
 					else {
 						fprintf(stderr, "pbs_rsub: illegal -I time value\n");
@@ -154,15 +154,15 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 			case 'm':
 				while (isspace((int)*optarg))
 					optarg++;
-				set_attr(&attrib, ATTR_m, optarg);
+				set_attr_error_exit(&attrib, ATTR_m, optarg);
 				break;
 
 			case 'M':
-				set_attr(&attrib, ATTR_M, optarg);
+				set_attr_error_exit(&attrib, ATTR_M, optarg);
 				break;
 
 			case 'N':
-				set_attr(&attrib, ATTR_resv_name, optarg);
+				set_attr_error_exit(&attrib, ATTR_resv_name, optarg);
 				break;
 
 			case 'q':
@@ -180,7 +180,7 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 				t = cvtdate(optarg);
 				if (t >= 0) {
 					(void)sprintf(time_buf, "%ld", (long)t);
-					set_attr(&attrib, ATTR_resv_start, time_buf);
+					set_attr_error_exit(&attrib, ATTR_resv_start, time_buf);
 					dtstart = t;
 				}
 				else {
@@ -191,8 +191,8 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 
 			case 'r':
 				is_stdng_resv = 1;
-				set_attr(&attrib, ATTR_resv_rrule, optarg);
-				set_attr(&attrib, ATTR_resv_standing, "1");
+				set_attr_error_exit(&attrib, ATTR_resv_rrule, optarg);
+				set_attr_error_exit(&attrib, ATTR_resv_standing, "1");
 				if (strlen(optarg) > sizeof(rrule)-1) {
 					fprintf(stderr, "pbs_rsub: illegal -r value (expression too long)\n");
 					errflg++;
@@ -202,23 +202,23 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 				break;
 
 			case 'u':
-				set_attr(&attrib, ATTR_u, optarg);
+				set_attr_error_exit(&attrib, ATTR_u, optarg);
 				break;
 
 			case 'U':
-				set_attr(&attrib, ATTR_auth_u, optarg);
+				set_attr_error_exit(&attrib, ATTR_auth_u, optarg);
 				break;
 
 			case 'g':
-				set_attr(&attrib, ATTR_g, optarg);
+				set_attr_error_exit(&attrib, ATTR_g, optarg);
 				break;
 
 			case 'G':
-				set_attr(&attrib, ATTR_auth_g, optarg);
+				set_attr_error_exit(&attrib, ATTR_auth_g, optarg);
 				break;
 
 			case 'H':
-				set_attr(&attrib, ATTR_auth_h, optarg);
+				set_attr_error_exit(&attrib, ATTR_auth_h, optarg);
 				break;
 
 			case 'W':
@@ -242,7 +242,7 @@ process_opts(int argc, char **argv, struct attrl **attrp, char *dest)
 						errflg++;
 					}
 					if (errflg == 0)
-						set_attr(&attrib, keyword, valuewd);
+						set_attr_error_exit(&attrib, keyword, valuewd);
 
 					/* move to next attribute in this "-W" specification */
 
@@ -359,14 +359,14 @@ set_resv_env(char **envp)
 	if (c != NULL) {
 		strcat(job_env, ",PBS_TZID=");
 		strcat(job_env, c);
-		set_attr(&attrib, ATTR_resv_timezone, c);
+		set_attr_error_exit(&attrib, ATTR_resv_timezone, c);
 	}
 	else if (is_stdng_resv) {
 		fprintf(stderr, "pbs_rsub error: a valid PBS_TZID timezone environment variable is required.\n");
 		exit(2);
 	}
 
-	set_attr(&attrib, ATTR_v, job_env);
+	set_attr_error_exit(&attrib, ATTR_v, job_env);
 	free(job_env);
 	return TRUE;
 }
@@ -519,7 +519,7 @@ cnvrt_proc_attrib(int connect, struct attrl **attrp, char *dest)
 	}
 
 	(void)sprintf(time_buf, "%ld", PBS_RESV_FUTURE_SCH);
-	set_attr(&attrib, ATTR_resv_start, time_buf);
+	set_attr_error_exit(&attrib, ATTR_resv_start, time_buf);
 	*attrp = attrib;
 
 	return (0);
@@ -638,10 +638,12 @@ main(int argc, char *argv[], char *envp[])
 
 	/*test for real deal or just version and exit*/
 
-	execution_mode(argc, argv);
+	PRINT_VERSION_AND_EXIT(argc, argv);
 
 #ifdef WIN32
-	winsock_init();
+	if (winsock_init()) {
+		return 1;
+	}
 #endif
 
 	destbuf[0] = '\0';
@@ -678,7 +680,7 @@ main(int argc, char *argv[], char *envp[])
 		qmoveflg = FALSE;
 		interactive = get_attr(attrib, ATTR_inter, NULL);
 		if (interactive == NULL) {
-			set_attr(&attrib, ATTR_inter, DEFAULT_INTERACTIVE);
+			set_attr_error_exit(&attrib, ATTR_inter, DEFAULT_INTERACTIVE);
 		} else {
 			if (atoi(interactive) > -1) {
 				fprintf(stderr, "pbs_rsub: -I <timeout> value must be negative when used with -Wqmove option.\n");

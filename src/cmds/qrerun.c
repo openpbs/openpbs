@@ -74,10 +74,12 @@ main(int argc, char **argv, char **envp) /* qrerun */
 
 	/*test for real deal or just version and exit*/
 
-	execution_mode(argc, argv);
+	PRINT_VERSION_AND_EXIT(argc, argv);
 
 #ifdef WIN32
-	winsock_init();
+	if (winsock_init()) {
+		return 1;
+	}
 #endif
 
 	while ((i = getopt(argc, argv, "W:")) != EOF) {

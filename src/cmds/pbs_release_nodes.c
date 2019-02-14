@@ -75,10 +75,12 @@ main(int argc, char **argv, char **envp) /* pbs_release_nodes */
 #define GETOPT_ARGS "j:a"
 
 	/*test for real deal or just version and exit*/
-	execution_mode(argc, argv);
+	PRINT_VERSION_AND_EXIT(argc, argv);
 
 #ifdef WIN32
-	winsock_init();
+	if (winsock_init()) {
+		return 1;
+	}
 #endif
 
 	job_id[0] = '\0';

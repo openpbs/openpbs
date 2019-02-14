@@ -556,7 +556,7 @@ main(int argc, char *argv[])
 	errno = 0;
 
 	/* Print pbs_version and exit if --version specified */
-	execution_mode(argc, argv);
+	PRINT_VERSION_AND_EXIT(argc, argv);
 
 	/* Parse the command line parameters */
 	while (!err && ((i = getopt(argc, argv, "cf:")) != EOF)) {

@@ -213,7 +213,7 @@ main(int argc, char *argv[])
 	HWND hWindow;
 
 	/* The real deal or output pbs_version and exit? */
-	execution_mode(argc, argv);
+	PRINT_VERSION_AND_EXIT(argc, argv);
 
 	if (argc == 2 && _stricmp(argv[1], "start") == 0) {
 		start = 1;

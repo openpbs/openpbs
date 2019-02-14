@@ -567,16 +567,9 @@ return_file(job *pjob, enum job_file which, int sock)
 void
 req_deletejob(struct batch_request *preq)
 {
-#if !MOM_ALPS
-	int  		numnodes;
-#endif
 	job 		*pjob;
-	char 		hook_msg[HOOK_MSG_SIZE+1];
-	hook		*last_phook = NULL;
-	unsigned int	hook_fail_action = 0;
-	mom_hook_input_t	hook_input;
-	mom_hook_output_t	hook_output;
-	int		reject_errcode = 0;
+	mom_hook_input_t	*hook_input = NULL; 
+	mom_hook_output_t	*hook_output = NULL;
 	char *jobid = NULL;
 
 	jobid = preq->rq_ind.rq_delete.rq_objname;
@@ -586,6 +579,10 @@ req_deletejob(struct batch_request *preq)
 		req_reject(PBSE_UNKJOBID, 0, preq);
 		return;
 	}
+
+	if (pjob->ji_hook_running_bg_on)
+		/* This is a duplicate request just return from here. */ 
+		return;
 
 	/*
 	 * check to see is there any copy request pending
@@ -606,62 +603,66 @@ req_deletejob(struct batch_request *preq)
 		req_reject(PBSE_TRYAGAIN, 0, preq);
 		return;
 	}
-
-#if !MOM_ALPS
-	/*
-	 * save number of nodes in sisterhood in case
-	 * job is deleted in mom_deljob_wait()
-	 */
-	numnodes = pjob->ji_numnodes;
-#endif
-
 	/*
 	 * mom_deljob_wait() sets substate to
 	 * prevent sending more OBIT messages
 	 */
-
-#if MOM_ALPS
-	pjob->ji_preq = preq;	/* needed when canceling ALPS */
-#else
-	pjob->ji_preq = NULL;
-#endif
-	mom_hook_input_init(&hook_input);
-	hook_input.pjob = pjob;
-
-	mom_hook_output_init(&hook_output);
-	hook_output.reject_errcode = &reject_errcode;
-	hook_output.last_phook = &last_phook;
-	hook_output.fail_action = &hook_fail_action;
-
-	(void)mom_process_hooks(HOOK_EVENT_EXECJOB_END,
-		PBS_MOM_SERVICE_NAME, mom_host, &hook_input,
-		&hook_output, hook_msg, sizeof(hook_msg), 1);
-#if MOM_ALPS
-	(void)mom_deljob_wait(pjob);
-
-	/*
-	 * The delete job request from Server will have been
-	 * or will be replied to and freed by the
-	 * alps_cancel_reservation code in the sequence of
-	 * functions started with the above call to
-	 * mom_deljob_wait().  Set preq to NULL here so we
-	 * don't try, mistakenly, to use it again.
-	 */
-	pjob->ji_preq = NULL;
-#else
-	if (mom_deljob_wait(pjob) > 0) {
-		/* wait till sisters respond */
-		pjob->ji_preq = preq;
-	} else if (numnodes > 1) {
-		/*
-		 * no messages sent, but there are sisters
-		 * must be all down
-		 */
-		req_reject(PBSE_SISCOMM, 0, preq); /* all sis down */
-	} else {
-		reply_ack(preq);	/* no sisters, reply now  */
+	pjob->ji_preq = preq;
+	if ((hook_input = (mom_hook_input_t *)malloc(
+		sizeof(mom_hook_input_t))) == NULL) {
+			log_err(errno, __func__, MALLOC_ERR_MSG);
+			return;
 	}
-#endif
+	mom_hook_input_init(hook_input);
+	hook_input->pjob = pjob;
+
+	if ((hook_output = (mom_hook_output_t *)malloc(
+		sizeof(mom_hook_output_t))) == NULL) {
+			log_err(errno, __func__, MALLOC_ERR_MSG);
+			return;
+	}
+	mom_hook_output_init(hook_output);
+	if ((hook_output->reject_errcode =
+		(int *)malloc(sizeof(int))) == NULL) {
+			log_err(errno, __func__, MALLOC_ERR_MSG);
+			return;
+	}
+	memset(hook_output->reject_errcode, 0, sizeof(int));
+
+	if (mom_process_hooks(HOOK_EVENT_EXECJOB_END,
+		PBS_MOM_SERVICE_NAME, mom_host, hook_input,
+		hook_output, NULL, 0, 1) == HOOK_RUNNING_IN_BACKGROUND) {
+		
+		pjob->ji_hook_running_bg_on = PBS_BATCH_DeleteJob;
+
+		/*
+		* save number of nodes in sisterhood in case
+		* job is deleted in send_sisters_deljob()
+		*/
+		if (pjob->ji_numnodes > 1) {
+			if (send_sisters_deljob_wait(pjob) == 0) {
+					sprintf(log_buffer, "Unable to send delete job "
+						"request to one or more sisters");
+					log_event(PBSEVENT_ERROR, PBS_EVENTCLASS_JOB,
+						LOG_ERR, pjob->ji_qs.ji_jobid, log_buffer);
+				/*
+				* no messages sent, but there are sisters
+				* must be all down
+				*/
+				pjob->ji_hook_running_bg_on += PBSE_SISCOMM;
+			}
+		}
+		/* 
+		* Hook is running in background reply to the batch
+		* request will be taken care of in mom_process_background_hooks
+		* function 
+		*/
+		return;
+	}
+	mom_deljob_wait2(pjob);
+	free(hook_output->reject_errcode);
+	free(hook_output);
+	free(hook_input);
 }
 
 /**

@@ -215,7 +215,7 @@ parse_depend_list(char *list, char **rtn_list, int rtn_size)
 
 	if ((lc = (char *)malloc(strlen(list)+1)) == NULL) {
 		fprintf(stderr, "Out of memory.\n");
-		exit(1);
+		return 1;
 	}
 	strcpy(lc, list);
 	c = lc;

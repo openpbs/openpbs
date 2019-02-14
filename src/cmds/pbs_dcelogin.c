@@ -409,7 +409,7 @@ main(int argc, char *argv[])
 
 	/*test for real deal or just version and exit*/
 
-	execution_mode(argc, argv);
+	PRINT_VERSION_AND_EXIT(argc, argv);
 
 	if (argc < 3) {
 		fprintf(stderr, "usage: %s user program [arg(s)]\n", argv[0]);

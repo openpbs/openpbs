@@ -160,7 +160,6 @@ init_lib_data()
 		NULL);			// object name
 
 	if (ghOnceMutex == NULL) {
-		exit(1);
 		return ENOMEM;
 	}
 	return 0;

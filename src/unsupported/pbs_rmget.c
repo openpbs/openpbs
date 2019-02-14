@@ -74,7 +74,9 @@ main(int argc, char *argv[])
 	char *req;
 
 #ifdef WIN32
-	winsock_init();
+	if (winsock_init()) {
+		return 1;
+	}
 #endif
 	if (gethostname(mom_name, (sizeof(mom_name) - 1)) < 0  )
 		mom_name[0] = '\0';

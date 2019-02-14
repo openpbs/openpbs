@@ -80,6 +80,9 @@
 #include "mom_hook_func.h"
 #include "hook.h"
 #include "pbs_reliable.h"
+#include "pbs_version.h"
+#include "rpp.h"
+#include "dis.h"
 
 
 #define	RESCASSN_NCPUS	"resources_assigned.ncpus"
@@ -126,18 +129,21 @@ extern	time_t		time_now;
 extern	int		num_pcpus;
 extern	int		num_acpus;
 extern 	u_Long		av_phy_mem;
-extern	char		pbs_version[];
+
 
 extern int becomeuser(job *pjob);
 
 extern int  send_sched_recycle(char *user);
 
 static void post_periodic_hook(struct work_task *pwt);
+static void mom_process_background_hooks(struct work_task *ptask);
+
 
 extern vnl_t		*vnlp;
 extern unsigned long	 hook_action_id;
 extern	int		internal_state_update; /* flag for sending mom information update to the server */
 
+extern int		server_stream;
 /**
  * @brief
  * 	Print job data into stream pointed by 'fp'.
@@ -411,10 +417,10 @@ add_natural_vnode_info(vnl_t **p_vnlp)
 	}
 
 	if (vn_addvnr(*p_vnlp, mom_short_name, "pbs_version",
-		pbs_version, 0, 0, NULL) == -1) {
+		PBS_VERSION, 0, 0, NULL) == -1) {
 		snprintf(log_buffer, sizeof(log_buffer),
 			"Failed to add '%s %s=%s' to vnode list",
-			mom_short_name, "pbs_version", pbs_version);
+			mom_short_name, "pbs_version", PBS_VERSION);
 		log_err(-1, __func__, log_buffer);
 		return;
 
@@ -653,6 +659,7 @@ vnl_add_vnode_entries(vnl_t *vnl, vmpiprocs *vnode_entry, int num_vnodes,
  * @param[in/out] file_data	- be filled in by the hook server data file used
  * @param[in]	  file_size	- max size of file_in and file_out string
  *				  buffers.
+ * @param[in]	  php - holds the arguments from mom_process_hooks function
  *
  *
  * @return int		the exit value of the executing hook script
@@ -664,7 +671,8 @@ static int
 run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 	char *req_user, char *req_host,
 	int parent_wait,  void (*post_func)(struct work_task *),
-	char *file_in,  char *file_out, char *file_data, size_t file_size)
+	char *file_in,  char *file_out, char *file_data, size_t file_size,
+	mom_process_hooks_params_t *php)
 {
 
 	FILE		*fp = NULL;
@@ -798,8 +806,11 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 				log_err(errno, __func__, msg_err_malloc);
 				return (-1);
 			}
+		 	if (php)
+				ptask->wt_parm2 = (void *)php;
 			return (0);	/* no hook output file at this time */
-		}
+		} else if (php)
+			php->child = child;
 
 
 		set_alarm(phook->alarm, run_hook_alarm);
@@ -834,6 +845,8 @@ run_hook(hook *phook, unsigned int event_type, mom_hook_input_t *hook_input,
 #else	/* Windows */
 	myseq = rand();
 	child = myseq;
+	if (php)
+		php->child = child;
 #endif
 
 
@@ -1403,9 +1416,9 @@ run_hook_exit:
 		ptask->wt_aux2 = myseq;
 		addpid(pio.pi.hProcess);
 		win_pclose2(&pio); /* closes all handles except the process handle */
+		ptask->wt_parm2 = (void *)php;
 		return (0);	/* no hook output file at this time */
 	} else if (runas_jobuser) {
-
 		if (pwdp == NULL) {
 			log_err(-1, __func__,
 				"runas_jobuser does not have credential set!");
@@ -1435,6 +1448,8 @@ run_hook_exit:
 		win_pclose(&pio);
 		(void)win_alarm(0, NULL);
 	}
+	if (php)
+		php->child = child;
 run_hook_exit:
 	if (fp != NULL)
 		fclose(fp);
@@ -1746,7 +1761,7 @@ run_periodic_hook_bg(hook *phook)
 	rc = run_hook(phook, HOOK_EVENT_EXECHOST_PERIODIC, &hook_input,
 		PBS_MOM_SERVICE_NAME, mom_host, 0,
 		post_periodic_hook,
-		NULL, NULL, NULL, 0);
+		NULL, NULL, NULL, 0, NULL);
 	if (rc != 0) {
 		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
 			LOG_ERR, phook->hook_name,
@@ -3077,6 +3092,440 @@ record_job_last_hook_executed(unsigned int hook_event,
 
 /**
  * @brief
+ * This function runs after execution of a single hook and processes
+ * the results from hook execution. If hook is backgrounded,on
+ * successful execution, a new task will be created to run the next
+ * hook script and if there was an error (the hook process returned a non-zero exit
+ * status) it does not create the new task for the next hook script.
+ * 
+ * @param[in] 	ptask - the work task.
+ *
+ * @return 1 a hook accepted
+ * @return 0 a hook rejected
+ * @return -1 an internal error occurred
+ */
+static int
+post_run_hook(struct work_task *ptask)
+{
+
+	int    accept_flag = 1;
+	int    reject_flag = 0;
+	int    reject_rerunjob = 0;
+	int    reject_deletejob = 0;
+	int    reboot_flag = 0;
+	int    log_type = 0;
+	int    log_class = 0;
+	int    hook_error_flag = 0;
+	int    *reject_errcode = NULL;
+	int    wstat = 0;
+	char   *log_id = NULL;
+	char   reject_msg[HOOK_MSG_SIZE+1] = {'\0'};
+	char   reboot_cmd[HOOK_BUF_SIZE]  = {'\0'};
+	char   hook_outfile[MAXPATHLEN+1] = {'\0'};
+	hook   *phook	= NULL;
+	mom_hook_input_t *hook_input = NULL;
+	job   *pjob = NULL;
+	struct work_task *new_task = NULL;
+	pbs_list_head   vnl_changes;
+	mom_process_hooks_params_t *php = NULL;
+
+	if (ptask == NULL) {
+		log_err(-1, __func__, "missing ptask argument to event");
+		return -1;
+	}
+
+	if ((phook = (hook *)ptask->wt_parm1) == NULL) {
+		log_err(-1, __func__, "missing hook phook argument to event");
+		return -1;
+	}
+
+	if ((php = (mom_process_hooks_params_t *) ptask->wt_parm2) == NULL) {
+		log_err(-1, __func__, "missing hook params argument to event");
+		return -1;
+	}
+
+	if (php->hook_event == HOOK_EVENT_EXECHOST_PERIODIC) {
+		post_periodic_hook(ptask);
+		return 1;
+	}
+
+	if ((hook_input = (mom_hook_input_t *) php->hook_input) == NULL) {
+		log_err(-1, __func__, "missing input argument to event");
+		return -1;
+	}
+	
+	pjob = (job *)hook_input->pjob;
+	CLEAR_HEAD(vnl_changes);
+
+	if ((php->hook_event == HOOK_EVENT_EXECHOST_PERIODIC) ||
+		(php->hook_event == HOOK_EVENT_EXECHOST_STARTUP)) {
+		log_id = phook->hook_name;
+		log_type = PBSEVENT_DEBUG2;
+		log_class = PBS_EVENTCLASS_HOOK;
+	} else {
+		log_id = pjob->ji_qs.ji_jobid;
+		log_type = PBSEVENT_JOB;
+		log_class = PBS_EVENTCLASS_JOB;
+	}
+
+	/* hook results path */
+	snprintf(hook_outfile, MAXPATHLEN, FMT_HOOK_OUTFILE,
+		path_hooks_workdir,
+		hook_event_as_string(php->hook_event),
+		phook->hook_name, 
+		(pid_t)((php->parent_wait)?php->child:ptask->wt_event));
+
+	if (php->parent_wait == 0) {
+		/* background hook */
+		wstat = ptask->wt_aux;
+
+		log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
+			LOG_INFO, phook->hook_name, "finished");
+
+		switch (wstat) {
+			case 0:
+				break;
+			case -2:	/* unhandled exception return on Windows */
+			case 254:
+				snprintf(log_buffer, LOG_BUF_SIZE-1,
+					"%s hook '%s' encountered an exception, "
+					"request rejected",
+					hook_event_as_string(php->hook_event), phook->hook_name);
+				log_event(log_type, log_class,
+					LOG_ERR, log_id, log_buffer);
+				record_job_last_hook_executed(php->hook_event,
+					phook->hook_name, pjob, hook_outfile);
+				hook_error_flag = 1;
+				break;
+				/* -3 return from pbs_python == 2^8-3, but run_hook() */
+				/* itself could return "-3" if it catches the alarm()   */
+				/* to the process first. Both run_hook() code here, and */
+				/* pbs_python program set alarm signals. One or the   */
+				/* other would catch it first */
+			case -3:	/* somewhere in this file, we do return -3 */
+			case 253:
+				snprintf(log_buffer, LOG_BUF_SIZE-1,
+					"alarm call while running %s hook '%s', "
+					"request rejected",
+					hook_event_as_string(php->hook_event), phook->hook_name);
+				log_event(log_type, log_class, LOG_ERR, log_id,
+					log_buffer);
+				record_job_last_hook_executed(php->hook_event,
+					phook->hook_name, pjob, hook_outfile);
+				hook_error_flag = 1;
+				break;
+			default:
+				snprintf(log_buffer, LOG_BUF_SIZE-1,
+					"Non-zero exit status %d encountered for %s hook",
+					wstat, hook_event_as_string(php->hook_event));
+				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
+					LOG_ERR, phook->hook_name, log_buffer);
+				hook_error_flag = 1;	/* hook results are invalid */
+		}
+	}
+
+	if (hook_error_flag == 0) {
+		/* hook exited normally, get results from file  */
+		if (get_hook_results(hook_outfile, &accept_flag, &reject_flag,
+			reject_msg, sizeof(reject_msg), &reject_rerunjob,
+			&reject_deletejob, &reboot_flag, reboot_cmd,
+			HOOK_BUF_SIZE, &vnl_changes, pjob, phook,
+			(php->hook_event == HOOK_EVENT_EXECHOST_STARTUP)?0:!php->update_svr,
+			php->hook_output) != 0) {
+			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
+				LOG_ERR, phook->hook_name,
+				"Failed to get hook results");
+			vna_list_free(vnl_changes);
+			if(php->parent_wait)
+				return -1;
+			hook_error_flag = 1;
+		}
+	}
+
+	if (!hook_error_flag) {
+		if ((php->hook_output != NULL) && (php->hook_output->vnl != NULL)) {
+			struct hook_vnl_action *phvna;
+			/* save vnl changes into  results array */
+			for (phvna = GET_NEXT(vnl_changes); phvna;
+				phvna = GET_NEXT(phvna->hva_link)) {
+				vn_merge(php->hook_output->vnl, phvna->hva_vnl, NULL);
+			}
+		}
+
+		if (php->update_svr == 1) {
+			if (pjob != NULL) {
+				/* Delete job or reject job actions */
+				/* NOTE: Must appear here before vnode changes, */
+				/* since this action will be sent whether or not */
+				/* hook script executed by PBSADMIN or not. */
+				if (reject_deletejob) {
+					/* deletejob takes precedence */
+					new_job_action_req(pjob, phook->user,
+						JOB_ACT_REQ_DELETE);
+				} else if (reject_rerunjob) {
+					new_job_action_req(pjob, phook->user,
+						JOB_ACT_REQ_REQUEUE);
+				}
+
+				/* Whether or not we accept or reject, we'll make */
+				/* job changes, vnode changes, job actions */
+				update_ajob_status_using_cmd(pjob,
+					IS_RESCUSED_FROM_HOOK, 0);
+			}
+
+
+			if (vnl_changes.ll_next != NULL)
+				/* Push vnl hook changes to server */
+				hook_requests_to_server(&vnl_changes);
+		} else {
+			vna_list_free(vnl_changes);
+		}
+	}
+
+	/* reject if at least one hook script rejects */
+	if (hook_error_flag || !accept_flag) {
+
+		if (php->hook_msg != NULL) {
+			snprintf(php->hook_msg, php->msg_len-1,
+				"%s request rejected by '%s'",
+				hook_event_as_string(php->hook_event),
+				phook->hook_name);
+			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
+				LOG_ERR, phook->hook_name, php->hook_msg);
+		} else {
+			snprintf(log_buffer, sizeof(log_buffer),
+				"%s request rejected by '%s'",
+				hook_event_as_string(php->hook_event),
+				phook->hook_name);
+			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
+				LOG_ERR, phook->hook_name, log_buffer);
+		}
+
+		if ((reject_msg != NULL) && (reject_msg[0] != '\0')) {
+			if (php->hook_msg != NULL) {
+				snprintf(php->hook_msg, php->msg_len-1, "%s",
+					reject_msg);
+				/* log also the custom reject message */
+				log_event(log_type,
+					log_class, LOG_ERR,
+					log_id, php->hook_msg);
+			} else {
+				snprintf(log_buffer, sizeof(log_buffer), "%s",
+					reject_msg);
+				/* log also the custom reject message */
+				log_event(log_type, log_class, LOG_ERR,
+					log_id, log_buffer);
+			}
+		}
+
+		if (php->hook_output)
+			reject_errcode = php->hook_output->reject_errcode;
+
+		if (reject_errcode != NULL) {
+			*reject_errcode = PBSE_HOOK_REJECT;
+			if (reject_rerunjob)
+				*reject_errcode = PBSE_HOOK_REJECT_RERUNJOB;
+			if (reject_deletejob)
+				*reject_errcode = PBSE_HOOK_REJECT_DELETEJOB;
+		}
+		if (php->parent_wait)
+			return (0); /* don't process anymore hooks on reject */
+	}
+
+	if (!hook_error_flag && reboot_flag) {
+		if (phook->user == HOOK_PBSUSER) {
+			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_HOOK,
+				LOG_INFO, phook->hook_name,
+				"Not allowed to issue reboot if run as user");
+		} else {
+			log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_HOOK,
+				LOG_INFO, phook->hook_name,
+				"requested for host to be rebooted");
+			do_reboot(reboot_cmd);
+		}
+	}
+
+	if (!php->parent_wait) {
+		/* Backround hook */
+		/* Create task to check and run next hook script */
+		new_task = set_task(WORK_Immed, 0,
+						(void *)mom_process_background_hooks, phook);
+		if (!new_task) 
+			log_err(errno, __func__, 
+				"Unable to set task for mom_process_background_hooks");
+		else
+			new_task->wt_parm2 = (void *)php;
+	}
+
+	return 1;
+}
+
+
+/**
+ * @brief
+ * This function replies to the outstanding request after
+ * execution of the hook event was in background.
+ * 
+ * @param[in] pjob
+ * 
+ * @return void
+ */
+
+void reply_hook_bg(job *pjob)
+{
+	int	n = 0;
+	int	ret = 0;
+	char	jobid[PBS_MAXSVRJOBID+1] = {'\0'};
+#if !MOM_ALPS
+	struct	batch_request *preq = pjob->ji_preq;
+#endif
+
+	if (pjob->ji_qs.ji_svrflags & JOB_SVFLG_HERE) { /*MS*/
+		switch (pjob->ji_hook_running_bg_on) {
+			case PBS_BATCH_DeleteJob:
+			case (PBS_BATCH_DeleteJob + PBSE_SISCOMM):
+				if ((pjob->ji_numnodes == 1) ||(pjob->ji_hook_running_bg_on == 
+					(PBS_BATCH_DeleteJob + PBSE_SISCOMM))) {
+					del_job_resc(pjob);	/* rm tmpdir, cpusets, etc */
+					pjob->ji_preq = NULL;
+					(void) kill_job(pjob, SIGKILL);
+					job_purge(pjob);
+					dorestrict_user();
+#if !MOM_ALPS
+					/*
+					* The delete job request from Server will have
+					* been or will be replied to and freed by the
+					* alps_cancel_reservation code in the sequence
+					* of functions started with the above call to
+					* del_job_resc(). Set preq to NULL here so we
+					* don't try, mistakenly, to use it again.
+					*/ 
+					if (pjob->ji_numnodes == 1) 
+						reply_ack(preq);
+					else if (pjob->ji_hook_running_bg_on == 
+						(PBS_BATCH_DeleteJob + PBSE_SISCOMM))
+							req_reject(PBSE_SISCOMM, 0, preq); /* sis down */
+#endif
+				}
+				/*
+				* otherwise, job_purge() and dorestrict_user() are called in
+				* mom_comm when all the sisters have replied.  The reply to
+				* the Server is also done there
+				*/
+				break;
+
+			case IS_DISCARD_JOB:
+				n = pjob->ji_wattr[(int)JOB_ATR_run_version].at_val.at_long;
+				strcpy(jobid, pjob->ji_qs.ji_jobid);
+
+				del_job_resc(pjob);	/* rm tmpdir, cpusets, etc */
+				job_purge(pjob);
+				dorestrict_user();
+
+				if ((ret = is_compose(server_stream, IS_DISCARD_DONE)) != DIS_SUCCESS)
+					goto err;
+
+				if ((ret = diswst(server_stream, jobid)) != DIS_SUCCESS)
+					goto err;
+
+				if ((ret = diswsi(server_stream, n)) != DIS_SUCCESS)
+					goto err;
+
+				rpp_flush(server_stream);
+				rpp_eom(server_stream); 
+				break;
+		}
+	} else { /*SISTER MOM*/
+		switch (pjob->ji_hook_running_bg_on) {
+			case IM_DELETE_JOB_REPLY:
+				post_reply(pjob, 0);
+			case IM_DELETE_JOB:
+				mom_deljob(pjob);
+		}
+	}
+	return;
+	err:
+		sprintf(log_buffer, "%s", dis_emsg[ret]);
+		log_err(-1, __func__, log_buffer);
+		rpp_close(server_stream);
+}
+
+/**
+ * @brief
+ * This function loops through the hook list,
+ * and runs it in the background.
+ * 
+ * @param[in] ptask - the work task. 
+ * 
+ * @retval void
+ */
+ static void
+ mom_process_background_hooks(struct work_task *ptask)
+ {
+	char	hook_infile[MAXPATHLEN+1] = {'\0'};
+	char	hook_outfile[MAXPATHLEN+1] = {'\0'};
+	char	hook_datafile[MAXPATHLEN+1] = {'\0'};
+	hook	*phook = NULL;
+	job	*pjob = NULL;
+	mom_process_hooks_params_t	*php = NULL;
+
+	if (ptask == NULL) {
+		log_err(-1, __func__, "missing ptask argument");
+		return;
+	}
+
+	if ((phook = (hook *)ptask->wt_parm1) == NULL){
+		log_err(-1, __func__, "missing phook argument");
+		return;
+	}
+
+	if ((php = (mom_process_hooks_params_t *)ptask->wt_parm2) == NULL) {
+		log_err(-1, __func__, "missing php argument");
+		return;
+	}
+
+	pjob = php->hook_input->pjob;
+
+	if ( php->hook_output && *(php->hook_output->reject_errcode)){
+		reply_hook_bg(pjob);
+		goto fini;
+	}
+
+	phook = (hook *)GET_NEXT(phook->hi_execjob_end_hooks);
+	while (phook) {
+		if (phook->enabled == FALSE) {
+			phook = (hook *)GET_NEXT(phook->hi_execjob_end_hooks);
+			continue;
+		}
+		if (phook->script == NULL) {
+			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_HOOK,
+			LOG_ERR, phook->hook_name,
+				"Hook has no script content. Skipping hook.");
+			phook = (hook *)GET_NEXT(phook->hi_execjob_end_hooks);
+			continue;
+		}
+		break;
+	}
+	if (!phook) {
+		reply_hook_bg(pjob);
+		goto fini;
+ 	}
+
+	run_hook(phook, php->hook_event, php->hook_input,
+			php->req_user, php->req_host, 0, (void *)post_run_hook,
+			hook_infile, hook_outfile, hook_datafile, MAXPATHLEN+1, php);
+	return;
+
+	fini:
+		/*free(php->hook_output->reject_errcode);*/
+		free(php->hook_output);
+		free(php->hook_input);
+		free(php);
+
+ }
+
+/**
+ * @brief
  *	Process hook scripts based on request type.
  *	This loops through the matching list of
  *	hooks, and executes the corresponding hook scripts.
@@ -3099,9 +3548,11 @@ record_job_last_hook_executed(unsigned int hook_event,
  * @return	int
  * @retval 	0 means at least one hook was encountered to have rejected the
  *		request.
- * @retval  	1 means all the executed hooks have agreed to accept the request
+ * @retval 	1 means all the executed hooks have agreed to accept the request
  * @retval	2 means no hook script executed (special case).
- * @retval      -1 an internal error occurred
+ * @retval	-1 an internal error occurred
+ * @retval	HOOK_RUNNING_IN_BACKGROUND 
+ * 				background process started for the hook script.
  *
  */
 int
@@ -3109,35 +3560,25 @@ mom_process_hooks(unsigned int hook_event, char *req_user, char *req_host,
 	mom_hook_input_t *hook_input, mom_hook_output_t *hook_output, char *hook_msg,
 	size_t msg_len, int update_server)
 {
-	hook			*phook;
-	hook			*phook_next = NULL;
+	char		hook_infile[MAXPATHLEN+1];
+	char		hook_outfile[MAXPATHLEN+1];
+	char		hook_datafile[MAXPATHLEN+1];
+	char		*log_id = NULL;
 	int			rc;
-	pbs_list_head		*head_ptr;
 	int			num_run = 0;
-	char			hook_infile[MAXPATHLEN+1];
-	char			hook_outfile[MAXPATHLEN+1];
-	char			hook_datafile[MAXPATHLEN+1];
-	int			accept_flag = 1;
-	int			reject_flag = 0;
-	char			reject_msg[HOOK_MSG_SIZE+1];
-	int			reject_rerunjob = 0;
-	int			reject_deletejob = 0;
-	int			reboot_flag = 0;
-	char			reboot_cmd[HOOK_BUF_SIZE];
-	int			wait_hook;
-	pbs_list_head		vnl_changes;
 	int			set_job_exit = 0;
-	char			*log_id = NULL;
 	int			log_type = 0;
 	int			log_class = 0;
-	job			*pjob = NULL;
-	hook			**last_phook = NULL;
-	/* last hook that executed */
-	unsigned int		*pfail_action = NULL; 	/* holds summation of hook */
-	/* fail_action values */
-	/* of those hook that */
-	/*  executed */
 	int			*reject_errcode = NULL;
+	unsigned int		*pfail_action = NULL;
+	hook		*phook;
+	hook		*phook_next = NULL;
+	hook		**last_phook = NULL;
+	job			*pjob = NULL;
+	pbs_list_head vnl_changes;
+	pbs_list_head *head_ptr;
+	mom_process_hooks_params_t *php = NULL;
+	struct work_task task;
 
 	if (hook_input == NULL) {
 		log_err(-1, __func__, "missing input argument to event");
@@ -3153,9 +3594,22 @@ mom_process_hooks(unsigned int hook_event, char *req_user, char *req_host,
 		last_phook = hook_output->last_phook;
 		pfail_action = hook_output->fail_action;
 	}
+	if ((php = (mom_process_hooks_params_t *)malloc(
+		sizeof(mom_process_hooks_params_t))) == NULL) {
+		log_err(errno, __func__, MALLOC_ERR_MSG);
+		return -1;
+	}
+	php->hook_event = hook_event;
+	php->req_user	= req_user;
+	php->req_host	= req_host;
+	php->hook_msg	= hook_msg;
+	php->msg_len	= msg_len;
+	php->update_svr	= update_server;
+	php->hook_input	= hook_input;
+	php->hook_output = hook_output;
+	php->parent_wait = 1;
 
 	CLEAR_HEAD(vnl_changes);
-	wait_hook = 1;
 	switch (hook_event) {
 
 		case HOOK_EVENT_EXECJOB_BEGIN:
@@ -3169,6 +3623,9 @@ mom_process_hooks(unsigned int hook_event, char *req_user, char *req_host,
 			break;
 		case HOOK_EVENT_EXECJOB_END:
 			head_ptr = &svr_execjob_end_hooks;
+#ifndef WIN32
+			php->parent_wait = 0;
+#endif
 			break;
 		case HOOK_EVENT_EXECJOB_PRETERM:
 			head_ptr = &svr_execjob_preterm_hooks;
@@ -3178,7 +3635,7 @@ mom_process_hooks(unsigned int hook_event, char *req_user, char *req_host,
 			break;
 		case HOOK_EVENT_EXECHOST_PERIODIC:
 			head_ptr = &svr_exechost_periodic_hooks;
-			wait_hook = 0;
+			php->parent_wait = 0;
 			break;
 		case HOOK_EVENT_EXECHOST_STARTUP:
 			head_ptr = &svr_exechost_startup_hooks;
@@ -3190,6 +3647,7 @@ mom_process_hooks(unsigned int hook_event, char *req_user, char *req_host,
 			head_ptr = &svr_execjob_resize_hooks;
 			break;
 		default:
+			free (php);
 			return (-1); /* unexpected event encountered */
 	}
 
@@ -3249,8 +3707,6 @@ mom_process_hooks(unsigned int hook_event, char *req_user, char *req_host,
 		hook_infile[0] = '\0';
 		hook_outfile[0] = '\0';
 		hook_datafile[0] = '\0';
-		accept_flag = 1;
-		reject_msg[0]  = '\0';
 
 		/* on an execjob_end or execjob_epilogue hook, need to set  */
 		/* the job's exit value. 				    */
@@ -3292,8 +3748,8 @@ mom_process_hooks(unsigned int hook_event, char *req_user, char *req_host,
 		}
 
 		rc = run_hook(phook, hook_event, hook_input,
-			req_user, req_host, wait_hook, post_periodic_hook,
-			hook_infile, hook_outfile, hook_datafile, MAXPATHLEN+1  );
+			req_user, req_host, php->parent_wait, (void *)post_run_hook,
+			hook_infile, hook_outfile, hook_datafile, MAXPATHLEN+1, php);
 
 		if (last_phook != NULL) {
 			*last_phook = phook;
@@ -3383,130 +3839,14 @@ mom_process_hooks(unsigned int hook_event, char *req_user, char *req_host,
 			/* hook backgrounded */
 			continue;
 
-		/* We're in a non-periodic hook */
-		accept_flag = 1;
-		reject_flag = 0;
-		reject_rerunjob = 0;
-		reject_deletejob = 0;
-		reboot_flag = 0;
-		reject_msg[0] = '\0';
-		reboot_cmd[0] = '\0';
+		if (php->parent_wait == 0)
+			return (HOOK_RUNNING_IN_BACKGROUND); 
 
-		if (get_hook_results(hook_outfile, &accept_flag, &reject_flag,
-			reject_msg, sizeof(reject_msg), &reject_rerunjob,
-			&reject_deletejob, &reboot_flag, reboot_cmd,
-			HOOK_BUF_SIZE, &vnl_changes, pjob, phook,
-			(hook_event == HOOK_EVENT_EXECHOST_STARTUP)?0:!update_server,
-								hook_output) != 0) {
-			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-				LOG_ERR, phook->hook_name,
-				"Failed to get hook results");
-			vna_list_free(vnl_changes);
-			return (-1);
-		}
-
-		if ((hook_output != NULL) && (hook_output->vnl != NULL)) {
-			struct hook_vnl_action *phvna;
-			/* save vnl changes into  results array */
-			for (phvna = GET_NEXT(vnl_changes); phvna;
-				phvna = GET_NEXT(phvna->hva_link)) {
-				vn_merge(hook_output->vnl, phvna->hva_vnl, NULL);
-			}
-		}
-
-		if (update_server == 1) {
-
-			if (pjob != NULL) {
-				/* Delete job or reject job actions */
-				/* NOTE: Must appear here before vnode changes, */
-				/* since this action will be sent whether or not */
-				/* hook script executed by PBSADMIN or not. */
-				if (reject_deletejob) {
-					/* deletejob takes precedence */
-					new_job_action_req(pjob, phook->user,
-						JOB_ACT_REQ_DELETE);
-				} else if (reject_rerunjob) {
-					new_job_action_req(pjob, phook->user,
-						JOB_ACT_REQ_REQUEUE);
-				}
-
-				/* Whether or not we accept or reject, we'll make */
-				/* job changes, vnode changes, job actions */
-
-
-				update_ajob_status_using_cmd(pjob,
-					IS_RESCUSED_FROM_HOOK, 0);
-			}
-
-			/* Push vnl hook changes to server */
-			hook_requests_to_server(&vnl_changes);
-		} else {
-			vna_list_free(vnl_changes);
-		}
-
-		/* reject if at least one hook script rejects */
-		if (!accept_flag) {
-
-			if (hook_msg != NULL) {
-				snprintf(hook_msg, msg_len-1,
-					"%s request rejected by '%s'",
-					hook_event_as_string(hook_event),
-					phook->hook_name);
-				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-					LOG_ERR, phook->hook_name, hook_msg);
-			} else {
-				snprintf(log_buffer, sizeof(log_buffer),
-					"%s request rejected by '%s'",
-					hook_event_as_string(hook_event),
-					phook->hook_name);
-				log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_HOOK,
-					LOG_ERR, phook->hook_name, log_buffer);
-			}
-			if ((reject_msg != NULL) && (reject_msg[0] != '\0')) {
-				if (hook_msg != NULL) {
-					snprintf(hook_msg, msg_len-1, "%s",
-						reject_msg);
-					/* log also the custom reject message */
-					log_event(log_type,
-						log_class, LOG_ERR,
-						log_id, hook_msg);
-				} else {
-					snprintf(log_buffer, sizeof(log_buffer), "%s",
-						reject_msg);
-					/* log also the custom reject message */
-					log_event(log_type,
-						log_class, LOG_ERR,
-						log_id, log_buffer);
-				}
-			}
-
-			if (reject_errcode != NULL) {
-				*reject_errcode = PBSE_HOOK_REJECT;
-				if (reject_rerunjob)
-					*reject_errcode = PBSE_HOOK_REJECT_RERUNJOB;
-				if (reject_deletejob)
-					*reject_errcode = PBSE_HOOK_REJECT_DELETEJOB;
-			}
-
-			return (0); /* don't process anymore hooks on reject */
-
-		}
-
-		if (reboot_flag) {
-
-			if (phook->user == HOOK_PBSUSER) {
-				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_HOOK,
-					LOG_INFO, phook->hook_name,
-					"Not allowed to issue reboot if run as user");
-			} else {
-
-				log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_HOOK,
-					LOG_INFO, phook->hook_name,
-					"requested for host to be rebooted");
-				do_reboot(reboot_cmd);
-			}
-		}
-
+		task.wt_parm1 = (void *)phook;
+		task.wt_parm2 = (void *)php;
+		if ((rc = post_run_hook(&task)) != 1)
+			/* if a hook is not accepted do not proceed further*/
+			return rc;
 	}
 	if (num_run == 0)
 		return (2);

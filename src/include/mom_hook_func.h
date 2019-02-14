@@ -55,6 +55,8 @@ extern "C" {
 /* receiving IS_HELLO sequeunce.  */
 #define HOOK_VNL_PERSISTENT_ATTRIBS  "resources_available sharing pcpus resources_assigned"
 
+#define HOOK_RUNNING_IN_BACKGROUND (3)
+
 /* used to send hook's job delete/requeue request to server */
 struct hook_job_action {
 	pbs_list_link  hja_link;
@@ -160,6 +162,27 @@ typedef struct mom_hook_output {
 	void		*vnl;
 	void		*vnl_fail;
 } mom_hook_output_t;
+
+/**
+ * @brief
+ * 	The mom_process_hooks_params_t holds the arguments of
+ *  mom_process_hooks function, which will be prcessed in
+ *  the post_run_hook function.
+ */
+typedef struct mom_process_hooks_params {
+	char *hook_msg;
+	char *req_user;
+	char *req_host;
+	int update_svr;
+	int parent_wait;
+	unsigned int hook_event;
+	pid_t child;
+	size_t msg_len;
+	mom_hook_input_t *hook_input;
+	mom_hook_output_t *hook_output;
+} mom_process_hooks_params_t;
+
+void post_reply(job *, int);
 
 extern int
 mom_process_hooks(unsigned int hook_event, char *req_user, char *req_host,

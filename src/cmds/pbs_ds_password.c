@@ -427,7 +427,7 @@ main(int argc, char *argv[])
 	pwd_file_new[0]=0;
 
 	/*test for real deal or just version and exit*/
-	execution_mode(argc, argv);
+	PRINT_VERSION_AND_EXIT(argc, argv);
 
 	/* read configuration file */
 	if (pbs_loadconf(0) == 0) {

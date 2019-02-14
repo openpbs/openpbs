@@ -12649,7 +12649,25 @@ class MoM(PBSService):
         """
         Check for PBS mom up
         """
-        return super(MoM, self)._isUp(self)
+        # Poll for few seconds to see if mom is up and node is free
+        for _ in range(20):
+            rv = super(MoM, self)._isUp(self)
+            if rv:
+                break
+            time.sleep(1)
+        if rv:
+            try:
+                nodes = self.server.status(NODE, id=self.shortname)
+                if nodes:
+                    self.server.expect(NODE, {'state': 'free'},
+                                       id=self.shortname)
+            # Ignore PbsStatusError if mom daemon is up but there aren't
+            # any mom nodes
+            except PbsStatusError:
+                pass
+            except PtlExpectError:
+                rv = False
+        return rv
 
     def signal(self, sig):
         """

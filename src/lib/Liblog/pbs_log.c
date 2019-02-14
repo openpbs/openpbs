@@ -378,19 +378,19 @@ log_init(void)
 {
 	if (pthread_key_create(&pbs_log_tls_key, NULL) != 0) {
 		fprintf(stderr, "log tls key creation failed\n");
-		exit(1);
+		return;
 	}
 
 	if (pthread_mutex_init(&log_mutex, NULL) != 0) {
 		fprintf(stderr, "log mutex init failed\n");
-		exit(1);
+		return;
 	}
 
 #ifndef WIN32
 	/* for unix, set a pthread_atfork handler */
 	if (pthread_atfork(log_atfork_prepare, log_atfork_parent, log_atfork_child) != 0) {
 		fprintf(stderr, "log mutex atfork handler failed\n");
-		exit(1);
+		return;
 	}
 #endif
 }
@@ -607,9 +607,9 @@ log_open_main(char *filename, char *directory, int silent)
 
 		if (!silent) {
 			log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, "Log", "Log opened");
-			snprintf(tbuf, LOG_BUF_SIZE, "pbs_version=%s", pbs_version);
+			snprintf(tbuf, LOG_BUF_SIZE, "pbs_version=%s", PBS_VERSION);
 			log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, tbuf);
-			snprintf(tbuf, LOG_BUF_SIZE, "pbs_build=%s", pbs_build);
+			snprintf(tbuf, LOG_BUF_SIZE, "pbs_build=%s", PBS_BUILD);
 			log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_INFO, msg_daemonname, tbuf);
 
 			log_add_debug_info();

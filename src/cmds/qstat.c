@@ -2237,10 +2237,12 @@ main(int argc, char **argv, char **envp) /* qstat */
 
 	/*test for real deal or just version and exit*/
 
-	execution_mode(argc, argv);
+	PRINT_VERSION_AND_EXIT(argc, argv);
 
 #ifdef WIN32
-	winsock_init();
+	if (winsock_init()) {
+		return 1;
+	}
 #endif
 
 	mode = JOBS; /* default */
@@ -2610,7 +2612,7 @@ qstat -B [-f] [-F format] [-D delim] [ server_name... ]\n";
 		timenow = time(0);
 		if (add_json_node(JSON_VALUE, JSON_INT, JSON_FULLESCAPE, "timestamp", &timenow) == NULL)
 			exit_qstat("out of memory");
-		if (add_json_node(JSON_VALUE, JSON_STRING, JSON_FULLESCAPE, "pbs_version", pbs_version) == NULL)
+		if (add_json_node(JSON_VALUE, JSON_STRING, JSON_FULLESCAPE, "pbs_version", PBS_VERSION) == NULL)
 			exit_qstat("out of memory");
 		if (add_json_node(JSON_VALUE, JSON_STRING, JSON_FULLESCAPE, "pbs_server", def_server) == NULL)
 			exit_qstat("out of memory");

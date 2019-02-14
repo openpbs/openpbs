@@ -81,7 +81,9 @@ main(int argc, char *argv[])
 	ZeroMemory(&si, sizeof(si));
 	si.cb = sizeof(si);
 
-	winsock_init();
+	if (winsock_init()) {
+		return 1;
+	}
 
 	/* connect to remote host's IPC$ */
 	if (!connect_remote_resource(demux_hostname, "IPC$", TRUE)) {
