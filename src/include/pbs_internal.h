@@ -81,12 +81,6 @@ extern "C" {
 #define ND_unresolvable		"unresolvable"
 #define ND_sleep			"sleep"
 
-/* Node license types */
-
-#define ND_LIC_TYPE_locked	'l'
-#define ND_LIC_TYPE_float 	'f'
-#define ND_LIC_TYPE_unlic	'u'
-
 /* Defines for type of Attribute based on data type 			*/
 /* currently limited to 4 bits (max number 15)				*/
 
@@ -226,7 +220,6 @@ struct pbs_config
 	char *pbs_secondary;			/* FQDN of host with secondary server */
 	char *pbs_mom_home;			/* path to alternate home for Mom */
 	char *pbs_core_limit;			/* RLIMIT_CORE setting */
-	char *pbs_license_file_location;	/* kludge to override bad server attribute */
 	char *pbs_data_service_host;		/* dataservice host */
 	char *pbs_tmpdir;			/* temporary file directory */
 	char *pbs_server_host_name;	/* name of host on which Server is running */
@@ -304,7 +297,6 @@ extern struct pbs_config pbs_conf;
 #define PBS_CONF_OUTPUT_HOST_NAME "PBS_OUTPUT_HOST_NAME"
 #define PBS_CONF_SMTP_SERVER_NAME "PBS_SMTP_SERVER_NAME" /* Name of SMTP Host to send mail to */
 #define PBS_CONF_TMPDIR		"PBS_TMPDIR"     /* temporary file directory */
-#define	PBS_CONF_LICENSE_STRING	"PBS_LICENSE_FILE_LOCATION"	/* LM-X recovery hook */
 #define PBS_CONF_AUTH           "PBS_AUTH_METHOD"
 #define PBS_CONF_SCHEDULER_MODIFY_EVENT	"PBS_SCHEDULER_MODIFY_EVENT"
 #define PBS_CONF_MOM_NODE_NAME	"PBS_MOM_NODE_NAME"

@@ -1258,10 +1258,6 @@ Python type:
 .br
 Default: No default
 
-.IP pbs_license_file_location 8
-.B Deprecated.  
-Do not use.
-
 .IP pbs_license_info 8
 Location of license information.  Can be port number and hostname of
 license server, or local pathname to the actual license file

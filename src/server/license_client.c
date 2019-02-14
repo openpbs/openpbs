@@ -106,10 +106,7 @@ pbs_checkout_licensing(int need)
 char *
 pbs_license_location(void)
 {
-	if (pbs_conf.pbs_license_file_location)
-		return (pbs_conf.pbs_license_file_location);
-	else
-		return (pbs_licensing_license_location);
+	return (pbs_licensing_license_location);
 }
 
 void
@@ -198,6 +195,33 @@ nsockets_from_topology(char *topology_str, ntt_t type)
 
 void
 unlicense_socket_licensed_nodes(void)
+{
+	return;
+}
+
+int
+release_node_lic(void *pobj)
+{
+	return 0;
+}
+
+int
+validate_sign(char *sign, void *pobj)
+{
+   return 1;
+}
+
+int check_sign(void *pobj, void *new)
+{
+	return 0;
+}
+
+void process_topology_info(void *pobj, char *topology_str, ntt_t type)
+{
+	return;
+}
+
+void unset_signature(void *pobj, char * rs_name)
 {
 	return;
 }

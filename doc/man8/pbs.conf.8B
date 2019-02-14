@@ -109,9 +109,6 @@ Location of endpoint's
 .I pbs_comm 
 daemon(s).
 
-.IP PBS_LICENSE_FILE_LOCATION       
-Location of license server. 
-
 .IP PBS_LOCALLOG    
 Enables logging to local PBS log files.
 

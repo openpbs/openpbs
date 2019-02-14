@@ -924,7 +924,7 @@ pbsd_init(int type)
 		return (-1);
 	}
 	mark_which_queues_have_nodes();
-	(void) license_sanity_check();
+	unlicense_socket_licensed_nodes();
 
 	/* at this point, we know all the resource types have been defined,        */
 	/* build the resource summation table for validating the Select directives */
@@ -1081,8 +1081,7 @@ pbsd_init(int type)
 	/* relicense_svr_unlicensedjobs() is periodically called by  */
 	/* return_licenses() in checkkey.c.                          */
 
-	if( ( (server.sv_attr[SRV_ATR_pbs_license_info].at_flags & \
-                                                ATR_VFLAG_SET) == 0) ||
+	if( !(server.sv_attr[SRV_ATR_pbs_license_info].at_flags & ATR_VFLAG_SET) ||
 	(server.sv_attr[SRV_ATR_pbs_license_info].at_val.at_str[0] \
                                                                == '\0') ) {
 		relicense_svr_unlicensedjobs();

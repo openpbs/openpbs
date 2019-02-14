@@ -119,6 +119,7 @@
 #include "sched_cmds.h"
 #include "pbs_sched.h"
 #include "pbs_share.h"
+#include "pbs_license.h"
 
 
 #define PERM_MANAGER (ATR_DFLAG_MGWR | ATR_DFLAG_MGRD)
@@ -1195,6 +1196,8 @@ mgr_unset_attr(attribute *pattr, attribute_def *pdef, int limit, svrattrl *plist
 			if (presc) {
 				if ((ptype != PARENT_TYPE_SERVER) ||
 					(index != (int)SRV_ATR_resource_cost)) {
+					
+					unset_signature(pnode, prsdef->rs_name);
 					if ((ptype == PARENT_TYPE_NODE) && (presc->rs_value.at_flags & ATR_VFLAG_INDIRECT)) {
 							unset_indirect(presc, pdef,
 								limit, plist->al_name,
